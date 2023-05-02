@@ -113,65 +113,81 @@
 		cpu0: cpu@0 {
 			device_type = "cpu";
 			reg = <0x0000>;
+			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 			//			&system_vcore &s2idle>;
+			capacity-dmips-mhz = <766>;
 		};
 
 		//cpu1: cpu@1 {
 		//	device_type = "cpu";
 		//	reg = <0x0100>;
+		//	performance-domains = <&performance 0>;
 		//	enable-method = "psci";
 		//	cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 		//			&system_vcore &s2idle>;
+		//	capacity-dmips-mhz = <766>;
 		//};
 
 		//cpu2: cpu@2 {
 		//	device_type = "cpu";
 		//	reg = <0x0200>;
+		//	performance-domains = <&performance 0>;
 		//	enable-method = "psci";
 		//	cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 		//			&system_vcore &s2idle>;
+		//	capacity-dmips-mhz = <766>;
 		//};
 
 		//cpu3: cpu@3 {
 		//	device_type = "cpu";
 		//	reg = <0x0300>;
+		//	performance-domains = <&performance 0>;
 		//	enable-method = "psci";
 		//	cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 		//			&system_vcore &s2idle>;
+		//	capacity-dmips-mhz = <766>;
 		//};
 
 		//cpu4: cpu@100 {
 		//	device_type = "cpu";
 		//	reg = <0x0400>;
+		//	performance-domains = <&performance 1>;
 		//	enable-method = "psci";
 		//	cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
 		//			&system_vcore &s2idle>;
+		//	capacity-dmips-mhz = <958>;
 		//};
 
 		//cpu5: cpu@101 {
 		//	device_type = "cpu";
 		//	reg = <0x0500>;
+		//	performance-domains = <&performance 1>;
 		//	enable-method = "psci";
 		//	cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
 		//			&system_vcore &s2idle>;
+		//	capacity-dmips-mhz = <958>;
 		//};
 
 		//cpu6: cpu@102 {
 		//	device_type = "cpu";
 		//	reg = <0x0600>;
+		//	performance-domains = <&performance 1>;
 		//	enable-method = "psci";
 		//	cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
 		//			&system_vcore &s2idle>;
+		//	capacity-dmips-mhz = <958>;
 		//};
 
 		//cpu7: cpu@200 {
 		//	device_type = "cpu";
 		//	reg = <0x0700>;
+		//	performance-domains = <&performance 2>;
 		//	enable-method = "psci";
 		//	cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 		//			&system_vcore &s2idle>;
+		//	capacity-dmips-mhz = <1024>;
 		//};
 
 		//cpu-map {
@@ -381,6 +397,37 @@
 	dbg-error-flag {
 		compatible = "mediatek,dbg-error-flag";
 		mediatek,error-flag = <&soc_dbg_error_flag>;
+	};
+
+	cpuhvfs: cpuhvfs@c0de750 {
+		compatible = "mediatek,cpufreq-hybrid";
+		reg = <0 0x0c0de750 0 0xc00>,
+			<0 0x0c0dd350 0 0x1400>,
+			<0 0x0c0d3800 0 0x3b0>,
+			<0 0x0c0df290 0 0xc0>;
+		reg-names = "USRAM", "CSRAM", "ESRAM";
+		cslog-range = <0x03d0>, <0x0fa0>;
+		tbl-off = <4>, <76>, <148>, <220>;
+
+		/* pll mcucfg */
+		mcucfg-ver = <0>;
+		apmixedsys = <&cpu_pll>;
+		clk-div-base = <&cpu_mcucfg>;
+		pll-con = <0x40c>, <0x80c>, <0xc0c>, <0x00c>;
+		clk-div = <0x10c>, <0x118>, <0x124>, <0x100>;
+
+		/* regulator */
+		proc1-supply = <&mt6316_8_vbuck3>; //L
+		proc2-supply = <&mt6316_6_vbuck1>; //M
+		proc3-supply = <&mt6373_vbuck9>; //B
+		proc4-supply = <&mt6373_vbuck9>; //DSU
+
+		/* wl support */
+		// wl-support = <1>;
+
+		/* leakage info */
+		// nvmem-cells = <&lkginfo>;
+		// nvmem-cell-names = "lkginfo";
 	};
 
 	topckgen_clk: syscon@10000000 {
@@ -1341,6 +1388,39 @@
 		#size-cells = <2>;
 		ranges;
 		dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+
+		lkg: lkg@c0de750 {
+			compatible = "mediatek,mtk-lkg";
+			reg = <0 0x0c0de750 0 0xc00>;
+		};
+
+		performance: performance-controller@c0dd350 {
+			compatible = "mediatek,cpufreq-hw";
+			reg = <0 0x0c0dd360 0 0x120>,
+					<0 0x0c0dd480 0 0x120>,
+					<0 0x0c0dd5a0 0 0x120>;
+			reg-names = "performance-domain0",
+						"performance-domain1",
+						"performance-domain2";
+			#performance-domain-cells = <1>;
+		};
+
+		eas_info: eas-info {
+			compatible = "mediatek,eas-info";
+			csram-base = <0x0c0dd350>;
+			/* L, M, B, CCI */
+			// offs-thermal-limit = <0x1208 0x120c 0x1210 0x1214>;
+			// offs-cap = <0xfa0>;
+			share-buck = <1>;
+		};
+
+		cpu_mcucfg: mcusys-ao-cfg@c530000 {
+			reg = <0 0x0c000000 0 0x10000>; /* 64KB */
+		};
+
+		cpu_pll: mcusys-pll1u-top@1000c000 {
+			reg = <0 0x0c030000 0 0x1000>; /* 4KB */
+		};
 
 		topckgen@10000000 {
 			compatible = "mediatek,topckgen";
