@@ -2470,7 +2470,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			fbt_layer_id = mtk_crtc->fbt_layer_id;
 			/* if layer is fbt layer need find fbt layer ratio to cal bw */
 			if (idx == fbt_layer_id) {
-				key = frame_idx - MAX_FRAME_RATIO_NUMBER;
+				key = frame_idx - BWM_GPUC_TUNING_FRAME;
 				for (i = 0; i < MAX_FRAME_RATIO_NUMBER; i++) {
 					if ((key == fbt_layer_compress_ratio_tb[i].key_value) &&
 						(fbt_layer_compress_ratio_tb[i].average_ratio
@@ -2487,7 +2487,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			} else {
 				int have_get_ratio = 0;
 
-				key = frame_idx + alloc_id - MAX_FRAME_RATIO_NUMBER;
+				key = frame_idx + alloc_id - BWM_GPUC_TUNING_FRAME;
 				for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
 					if ((alloc_id ==
 						unchanged_compress_ratio_table[i].key_value) &&
@@ -2521,6 +2521,11 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 					}
 				}
 			}
+
+			/* Due to low ratio, bw will be 0 */
+			/* We want the min value to be 1 */
+			if (temp_bw <= 0)
+				temp_bw = 1;
 
 			DDPINFO("BWM:frame idx:%u alloc id:%lu key:%llu lye_idx:%u bw:%llu(%llu)\n",
 					frame_idx, alloc_id, key, idx, temp_bw, temp_bw_old);

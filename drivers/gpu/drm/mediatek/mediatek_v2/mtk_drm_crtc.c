@@ -6408,11 +6408,6 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 			need_skip = true;
 		}
 
-		if (((plane_state->comp_state.layer_caps & MTK_DISP_UNCHANGED_RATIO_VALID) ||
-			(plane_state->comp_state.layer_caps & MTK_DISP_FBT_RATIO_VALID)) &&
-			(need_skip == false))
-			need_skip = true;
-
 		DDPDBG_BWM("BWM: need skip:%d\n", need_skip);
 
 		if ((plane_index < MAX_LAYER_RATIO_NUMBER) &&
@@ -6510,10 +6505,6 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			need_skip = true;
 		}
 
-		if (((plane_state->comp_state.layer_caps & MTK_DISP_UNCHANGED_RATIO_VALID) ||
-			(plane_state->comp_state.layer_caps & MTK_DISP_FBT_RATIO_VALID)) &&
-			(need_skip == false))
-			need_skip = true;
 		DDPDBG_BWM("BWM: need skip:%d\n", need_skip);
 
 		if (!comp) {

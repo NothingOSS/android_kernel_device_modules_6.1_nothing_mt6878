@@ -1729,8 +1729,6 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 
 	weight = HRT_UINT_WEIGHT;
 
-#define BWM_GPUC_TUNING_FRAME (5)
-
 	if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR) && frame_idx && is_gles &&
 			get_layering_opt(LYE_OPT_GPU_CACHE) && (disp_idx == HRT_PRIMARY)
 			&& (have_force_gpu_layer == 0)) {
