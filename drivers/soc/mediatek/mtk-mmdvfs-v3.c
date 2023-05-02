@@ -85,6 +85,10 @@ static int log_level;
 static int vcp_log_level;
 static int vmrc_log_level;
 
+static u32 force_vol;
+static u32 force_rc_clk;
+static u32 force_single_clk;
+
 static call_ccu call_ccu_fp;
 
 void mmdvfs_call_ccu_set_fp(call_ccu fp)
@@ -909,6 +913,7 @@ struct mmdvfs_mux {
 	s8 opp;
 	s8 last;
 	u8 user_num;
+	u8 vcp_mux_id;
 	struct mtk_mux_user *user[MMDVFS_USER_NUM];
 };
 
@@ -982,6 +987,95 @@ int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_force_step_by_vcp);
+
+int mmdvfs_force_voltage_by_vcp(const u8 pwr_idx, const s8 opp)
+{
+	struct mmdvfs_mux *mux;
+	u8 idx = pwr_idx + MMDVFS_USER_VCORE;
+	int ret;
+
+	if (!mmdvfs_mux_version || idx >= ARRAY_SIZE(mmdvfs_user)) {
+		MMDVFS_ERR("invalid:%d pwr_idx:%hhu idx:%hhu", mmdvfs_mux_version, pwr_idx, idx);
+		return -EINVAL;
+	}
+	mux = &mmdvfs_mux[mmdvfs_user[idx].target_id];
+
+	if (opp >= MAX_OPP || opp >= mux->freq_num) {
+		MMDVFS_ERR("invalid opp:%hhd idx:%hhu mux:%hhu freq_num:%hhu",
+			opp, idx, mux->id, mux->freq_num);
+		return -EINVAL;
+	}
+
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
+	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
+		mux->opp < dpsw_thr && mux->last >= dpsw_thr)
+		mtk_mmdvfs_enable_vmm(true);
+	ret = mmdvfs_vcp_ipi_send(FUNC_FORCE_VOL, pwr_idx, opp, NULL);
+	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
+		mux->opp >= dpsw_thr && mux->last < dpsw_thr)
+		mtk_mmdvfs_enable_vmm(false);
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
+
+	if (ret || log_level & (1 << log_adb))
+		MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd", pwr_idx, idx, mux->id, opp);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_force_voltage_by_vcp);
+
+int mmdvfs_force_rc_clock_by_vcp(const u8 pwr_idx, const s8 opp)
+{
+	struct mmdvfs_mux *mux;
+	u8 idx = pwr_idx + MMDVFS_USER_VCORE;
+	int ret;
+
+	if (!mmdvfs_mux_version || idx >= ARRAY_SIZE(mmdvfs_user)) {
+		MMDVFS_ERR("invalid:%d pwr_idx:%hhu idx:%hhu", mmdvfs_mux_version, pwr_idx, idx);
+		return -EINVAL;
+	}
+	mux = &mmdvfs_mux[mmdvfs_user[idx].target_id];
+
+	if (opp >= MAX_OPP || opp >= mux->freq_num) {
+		MMDVFS_ERR("invalid opp:%hhd idx:%hhu mux:%hhu freq_num:%hhu",
+			opp, idx, mux->id, mux->freq_num);
+		return -EINVAL;
+	}
+
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
+	ret = mmdvfs_vcp_ipi_send(FUNC_FORCE_CLK, pwr_idx, opp, NULL);
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
+
+	if (ret || log_level & (1 << log_adb))
+		MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd", pwr_idx, idx, mux->id, opp);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_force_rc_clock_by_vcp);
+
+int mmdvfs_force_single_clock_by_vcp(const u8 mux_idx, const s8 opp)
+{
+	struct mmdvfs_mux *mux;
+	int ret;
+
+	if (!mmdvfs_mux_version || mux_idx >= ARRAY_SIZE(mmdvfs_mux)) {
+		MMDVFS_ERR("invalid:%d mux_idx:%hhu", mmdvfs_mux_version, mux_idx);
+		return -EINVAL;
+	}
+	mux = &mmdvfs_mux[mux_idx];
+
+	if (opp >= MAX_OPP || opp >= mux->freq_num) {
+		MMDVFS_ERR("invalid opp:%hhd mux_idx:%hhu mux:%hhu freq_num:%hhu",
+			opp, mux_idx, mux->id, mux->freq_num);
+		return -EINVAL;
+	}
+
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
+	ret = mmdvfs_vcp_ipi_send(FUNC_FORCE_SINGLE_CLK, mux->vcp_mux_id, opp, NULL);
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
+
+	if (ret || log_level & (1 << log_adb))
+		MMDVFS_DBG("mux_idx:%hhu mux:%hhu opp:%hhd", mux_idx, mux->id, opp);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_force_single_clock_by_vcp);
 
 int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp)
 {
@@ -1057,6 +1151,15 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 			return -EINVAL;
 		}
 		ret = clk_set_rate(mmdvfs_user_clk[idx], mmdvfs_mux[mux_idx].freq[level]);
+		break;
+	case FUNC_FORCE_VOL:
+		ret = mmdvfs_force_voltage_by_vcp(idx, opp);
+		break;
+	case FUNC_FORCE_CLK:
+		ret = mmdvfs_force_rc_clock_by_vcp(idx, opp);
+		break;
+	case FUNC_FORCE_SINGLE_CLK:
+		ret = mmdvfs_force_single_clock_by_vcp(idx, opp);
 		break;
 	default:
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_GENPD);
@@ -1275,11 +1378,13 @@ static int mmdvfs_vcp_init_thread(void *data)
 		writel_relaxed(MAX_OPP, MEM_VOTE_OPP_PWR(i));
 		writel_relaxed(MAX_OPP, MEM_PWR_OPP(i));
 		writel_relaxed(MAX_OPP, MEM_PWR_CUR_GEAR(i));
+		writel_relaxed(MAX_OPP, MEM_FORCE_VOL(i));
 	}
 	for (i = 0; i < USER_NUM; i++) {
 		writel_relaxed(MAX_OPP, MEM_VOTE_OPP_USR(i));
 		writel_relaxed(MAX_OPP, MEM_MUX_OPP(i));
 		writel_relaxed(MAX_OPP, MEM_MUX_MIN(i));
+		writel_relaxed(MAX_OPP, MEM_FORCE_CLK(i));
 	}
 	for (i = 0; i < MMDVFS_VCP_USER_NUM; i++)
 		writel_relaxed(MAX_OPP, MEM_USR_OPP(i));
@@ -1305,6 +1410,16 @@ static int mmdvfs_vcp_init_thread(void *data)
 
 	force_on_notifier.notifier_call = mmdvfs_force_on_callback;
 	mtk_smi_dbg_register_force_on_notifier(&force_on_notifier);
+
+	if (force_vol != 0xff)
+		mmdvfs_force_voltage_by_vcp(force_vol >> 4 & 0xf, force_vol & 0xf);
+
+	if (force_rc_clk != 0xff)
+		mmdvfs_force_rc_clock_by_vcp(force_rc_clk >> 4 & 0xf, force_rc_clk & 0xf);
+
+	if (force_single_clk != 0xff)
+		mmdvfs_force_single_clock_by_vcp(
+			force_single_clk >> 4 & 0xf, force_single_clk & 0xf);
 
 	return 0;
 }
@@ -1598,9 +1713,7 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 		return 0;
 
 	if (mmdvfs_swrgo) {
-		const u8 vcp_mux_id[MMDVFS_MUX_NUM] = {0, 4, 5, 6, 7, 8, 10, 12};
-
-		if (mux->id >= ARRAY_SIZE(vcp_mux_id)) {
+		if (mux->id >= ARRAY_SIZE(mmdvfs_mux)) {
 			MMDVFS_ERR("invalid mux_id:%hhu user_id:%hhu", mux->id, user->id);
 			return -EINVAL;
 		}
@@ -1615,7 +1728,7 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 			usleep_range(1000, 2000);
 		}
 
-		ret = mmdvfs_vcp_ipi_send(TEST_SET_MUX, vcp_mux_id[mux->id], mux->opp, NULL);
+		ret = mmdvfs_vcp_ipi_send(TEST_SET_MUX, mux->vcp_mux_id, mux->opp, NULL);
 	}
 
 	if (!ret) {
@@ -1773,6 +1886,13 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 		mmdvfs_mux[i].rate = 26000000UL;
 		mmdvfs_mux[i].opp = MAX_OPP;
 		mmdvfs_mux[i].last = MAX_OPP;
+
+		ret = of_property_read_u32_index(node, "mediatek,mmdvfs-vcp-mux-id", i, &j);
+		if (ret) {
+			MMDVFS_ERR("failed:%d i:%d j:%d", ret, i, j);
+			return ret;
+		}
+		mmdvfs_mux[i].vcp_mux_id = j;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++) {
@@ -1830,6 +1950,14 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 
 	if (!vmm_notify_wq)
 		vmm_notify_wq = create_singlethread_workqueue("vmm_notify_wq");
+
+	force_vol = 0xff;
+	of_property_read_u32(node, "force-voltage", &force_vol);
+	force_rc_clk = 0xff;
+	of_property_read_u32(node, "force-rc-clk", &force_rc_clk);
+	force_single_clk = 0xff;
+	of_property_read_u32(node, "force-single-clk", &force_single_clk);
+
 	kthr_vcp = kthread_run(mmdvfs_vcp_init_thread, NULL, "mmdvfs-vcp");
 	return ret;
 }

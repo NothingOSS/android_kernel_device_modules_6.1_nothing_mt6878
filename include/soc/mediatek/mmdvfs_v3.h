@@ -104,6 +104,9 @@ int mmdvfs_set_lp_mode_by_vcp(const bool enable);
 int mmdvfs_get_version(void);
 
 int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp);
+int mmdvfs_force_voltage_by_vcp(const u8 pwr_idx, const s8 opp);
+int mmdvfs_force_rc_clock_by_vcp(const u8 pwr_idx, const s8 opp);
+int mmdvfs_force_single_clock_by_vcp(const u8 mux_idx, const s8 opp);
 int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp);
 
 int mmdvfs_mux_set_opp(const char *name, unsigned long rate);
@@ -127,6 +130,9 @@ static inline void mmdvfs_rc_enable_set_fp(rc_enable fp) { return; }
 static inline int mmdvfs_set_lp_mode_by_vcp(const bool enable) { return 0; }
 static inline int mmdvfs_get_version(void) { return 0; }
 static inline int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp) { return 0; }
+static inline int mmdvfs_force_voltage_by_vcp(const u8 pwr_idx, const s8 opp) { return 0; }
+static inline int mmdvfs_force_rc_clock_by_vcp(const u8 pwr_idx, const s8 opp) { return 0; }
+static inline int mmdvfs_force_single_clock_by_vcp(const u8 mux_idx, const s8 opp) { return 0; }
 static inline int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp) { return 0; }
 static inline int mmdvfs_mux_set_opp(const char *name, unsigned long rate) { return 0; }
 #endif
