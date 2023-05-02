@@ -178,7 +178,7 @@ static long gzvm_vcpu_run(struct gzvm_vcpu *vcpu, void * __user argp)
 	}
 
 	a1 = assemble_vm_vcpu_tuple(vcpu->gzvm->vm_id, vcpu->vcpuid);
-	do {
+	while (!need_userspace && !signal_pending(current)) {
 		gzvm_hypcall_wrapper(MT_HVC_GZVM_RUN, a1, 0, 0, 0, 0, 0, 0,
 				     &res);
 		switch (res.a1) {
@@ -205,11 +205,13 @@ static long gzvm_vcpu_run(struct gzvm_vcpu *vcpu, void * __user argp)
 		}
 
 		gzvm_sync_hwstate(vcpu);
-	} while (!need_userspace);
+	}
 
 out:
 	if (copy_to_user(argp, vcpu->run, sizeof(struct gzvm_vcpu_run)))
 		return -EFAULT;
+	if (signal_pending(current))
+		return -ERESTARTSYS;
 	return 0;
 }
 
