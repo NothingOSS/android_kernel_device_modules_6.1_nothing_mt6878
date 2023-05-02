@@ -2915,6 +2915,15 @@
 		iommus = <&apu_smmu 0xd>;
 	};
 
+	mvpu {
+		compatible = "mediatek, mt6989-mvpu";
+		core-num = <2>;
+		version = <0x0>;
+		mask = /bits/ 64 <0x00000003ffffffff>;
+		mtk,iommu-group = <&apu_iommu_group_0>;
+		iommus = <&apu_smmu 0xf>;
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
