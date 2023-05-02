@@ -7472,6 +7472,113 @@
 			status = "okay";
 		};
 
+		pcie0: pcie@112f0000 {
+			device_type = "pci";
+			compatible = "mediatek,mt6985-pcie",
+				     "mediatek,mt6989-pcie";
+			reg = <0 0x112f0000 0 0x4000>;
+			reg-names = "pcie-mac";
+			#address-cells = <3>;
+			#size-cells = <2>;
+			interrupts = <GIC_SPI 343 IRQ_TYPE_LEVEL_HIGH 0>;
+			bus-range = <0x00 0xff>;
+			ranges = <0x82000000 0 0x30000000
+				  0x0 0x30000000 0 0x4000000>;
+			status = "disabled";
+			linux,pci-domain = <0>;
+			mediatek,peri-reset-dis;
+			mediatek,dvfs-req-dis;
+			mediatek,suspend-mode-l12;
+
+			clocks = <&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_REF>,
+				 <&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_PL_P>,
+				 <&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_TL>,
+				 <&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_AXI>,
+				 <&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_AHB_APB>,
+				 <&pextpcfg_ao_clk CLK_PEXTP_P0_PHY_REF>,
+				 <&pextpcfg_ao_clk CLK_PEXTP_P0_PHY_MCU_BUS>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_MAC0>;
+
+			phys = <&pciephy0>;
+			phy-names = "pcie-phy";
+
+			#interrupt-cells = <1>;
+			interrupt-map-mask = <0 0 0 7>;
+			interrupt-map = <0 0 0 1 &pcie_intc0 0>,
+					<0 0 0 2 &pcie_intc0 1>,
+					<0 0 0 3 &pcie_intc0 2>,
+					<0 0 0 4 &pcie_intc0 3>;
+			pcie_intc0: interrupt-controller {
+				interrupt-controller;
+				#address-cells = <0>;
+				#interrupt-cells = <1>;
+			};
+		};
+
+		pcie1: pcie@112f8000 {
+			device_type = "pci";
+			compatible = "mediatek,mt6985-pcie",
+				     "mediatek,mt6989-pcie";
+			reg = <0 0x112f8000 0 0x4000>;
+			reg-names = "pcie-mac";
+			#address-cells = <3>;
+			#size-cells = <2>;
+			interrupts = <GIC_SPI 344 IRQ_TYPE_LEVEL_HIGH 0>;
+			bus-range = <0x00 0xff>;
+			ranges = <0x82000000 0 0x34000000
+				  0x0 0x34000000 0 0x4000000>;
+			status = "disabled";
+			linux,pci-domain = <1>;
+			mediatek,peri-reset-dis;
+			mediatek,dvfs-req-dis;
+
+			clocks = <&pextpcfg_ao_clk CLK_PEXTP_P1_MAC_REF>,
+				 <&pextpcfg_ao_clk CLK_PEXTP_P1_MAC_PL_P>,
+				 <&pextpcfg_ao_clk CLK_PEXTP_P1_MAC_TL>,
+				 <&pextpcfg_ao_clk CLK_PEXTP_P1_MAC_AXI>,
+				 <&pextpcfg_ao_clk CLK_PEXTP_P1_MAC_AHB_APB>,
+				 <&pextpcfg_ao_clk CLK_PEXTP_P1_PHY_REF>,
+				 <&pextpcfg_ao_clk CLK_PEXTP_P1_PHY_MCU_BUS>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_MAC1>;
+
+			phys = <&pciephy1>;
+			phy-names = "pcie-phy";
+
+			#interrupt-cells = <1>;
+			interrupt-map-mask = <0 0 0 7>;
+			interrupt-map = <0 0 0 1 &pcie_intc1 0>,
+					<0 0 0 2 &pcie_intc1 1>,
+					<0 0 0 3 &pcie_intc1 2>,
+					<0 0 0 4 &pcie_intc1 3>;
+			pcie_intc1: interrupt-controller {
+				interrupt-controller;
+				#address-cells = <0>;
+				#interrupt-cells = <1>;
+			};
+		};
+
+		pciephy0: phy@11100000 {
+			compatible = "mediatek,mt8195-pcie-phy",
+				     "mediatek,mt6989-pcie-phy";
+			#phy-cells = <0>;
+			reg = <0 0x11100000 0 0x10000>;
+			reg-names = "sif";
+			status = "disabled";
+
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_PHY0>;
+		};
+
+		pciephy1: phy@11120000 {
+			compatible = "mediatek,mt8195-pcie-phy",
+				     "mediatek,mt6989-pcie-phy";
+			#phy-cells = <0>;
+			reg = <0 0x11120000 0 0x10000>;
+			reg-names = "sif";
+			status = "disabled";
+
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_PHY1>;
+		};
+
 		dpmaif:dpmaif@10014000 {
 			compatible = "mediatek,dpmaif";
 			reg = <0 0x10014000 0 0x1000>, /*AO_UL*/
