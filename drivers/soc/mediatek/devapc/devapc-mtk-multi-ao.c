@@ -95,16 +95,23 @@ static bool is_devapc_subsys_power_on(int slave_type)
 
 	if (slave_type != DEVAPC_TYPE_ADSP &&
 		slave_type != DEVAPC_TYPE_MMINFRA &&
-		slave_type != DEVAPC_TYPE_MMUP) {
+		slave_type != DEVAPC_TYPE_MMUP &&
+		slave_type != DEVAPC_TYPE_GPU) {
+		pr_info(PFX "%s: skip slave_type %d power check!\n", __func__, slave_type);
 		return true;
 	}
 
 	list_for_each_entry(powercb, &powercb_list, list) {
+
 		if (powercb->type == slave_type) {
+			bool ret = false;
 			if (is_devapc_subsys_enabled(slave_type) && powercb->query_power)
-				return powercb->query_power();
-			else
-				return false;
+				ret = powercb->query_power();
+
+			pr_info(PFX "%s: slave_type %d power status: %d!\n",
+					__func__, slave_type, ret);
+
+			return ret;
 		}
 	}
 
