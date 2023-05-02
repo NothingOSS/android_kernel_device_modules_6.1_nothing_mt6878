@@ -60,7 +60,7 @@
 #define CLK_TOP_AUD_2_SEL				49
 #define CLK_TOP_AUDIO_H_SEL				50
 #define CLK_TOP_ADSP_SEL				51
-#define CLK_TOP_ADPS_UARTHUB_BCLK_SEL			52
+#define CLK_TOP_ADSP_UARTHUB_BCLK_SEL			52
 #define CLK_TOP_DPMAIF_MAIN_SEL				53
 #define CLK_TOP_PWM_SEL					54
 #define CLK_TOP_MCUPM_SEL				55
@@ -335,10 +335,6 @@
 #define CLK_APMIXED_IMGPLL				13
 #define CLK_APMIXED_NR_CLK				14
 
-/* BCRM_PERI_PAR_BUS */
-#define P						0
-#define CLK_BCRM_PERI_PAR_BUS_NR_CLK			1
-
 /* PERICFG_AO */
 #define CLK_PERAOP_UART0				0
 #define CLK_PERAOP_UART1				1
@@ -469,10 +465,6 @@
 #define CLK_IMPC_I2C13					3
 #define CLK_IMPC_SEC_EN					4
 #define CLK_IMPC_NR_CLK					5
-
-/* BCRM_PEXTP_BUS */
-#define P						0
-#define CLK_BCRM_PEXTP_BUS_NR_CLK			1
 
 /* UFSCFG_AO */
 #define CLK_UFSAO_UNIPRO_TX_SYM				0
