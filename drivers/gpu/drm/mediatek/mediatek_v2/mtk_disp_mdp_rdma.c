@@ -294,7 +294,10 @@ static void mtk_mdp_rdma_pattern_config(struct mtk_ddp_comp *comp,
 		DDPINFO("[discrete] create dummy buffer:0x%llx\n", mtk_gem->dma_addr);
 	}
 
-	if (cfg_h != 0) {
+	if (cfg_h == 0) { // only pattern
+		//no config any plane
+		cfg_handle = handle;
+	} else {
 		cfg_handle = mtk_crtc->pending_handle;
 		if (!cfg_handle) {
 			//only config one layer, but not height enough
@@ -304,9 +307,6 @@ static void mtk_mdp_rdma_pattern_config(struct mtk_ddp_comp *comp,
 			DDPINFO("[discrete] create pending hnd:0x%lx", (unsigned long)cfg_handle);
 		}
 		mtk_crtc_wait_comp_done(mtk_crtc, cfg_handle, comp, 0);
-	} else {
-		//no config any plane
-		cfg_handle = handle;
 	}
 
 	addr = mtk_gem->dma_addr;

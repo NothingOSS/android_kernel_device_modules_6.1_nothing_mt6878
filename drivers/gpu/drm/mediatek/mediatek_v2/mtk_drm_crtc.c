@@ -10196,7 +10196,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI) {
 		struct mtk_dsi *dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
 
-		mtk_crtc->skip_frame = dsi->pending_switch;
+		if (!(mtk_crtc->path_data->is_discrete_path))
+			mtk_crtc->skip_frame = dsi->pending_switch;
 	}
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
