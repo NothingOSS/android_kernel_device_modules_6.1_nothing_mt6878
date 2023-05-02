@@ -73,6 +73,7 @@ extern cpumask_t __read_mostly **cpu_array;
 extern void init_cpu_array(void);
 extern void build_cpu_array(void);
 extern void free_cpu_array(void);
+extern void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_index);
 
 struct util_rq {
 	unsigned long util_cfs;

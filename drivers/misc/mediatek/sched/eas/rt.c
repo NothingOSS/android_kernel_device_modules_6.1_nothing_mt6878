@@ -123,13 +123,6 @@ static inline unsigned int mtk_task_cap(struct task_struct *p, int cpu,
 	return  mtk_cpu_util(cpu, cpu_util_cfs(cpu), FREQUENCY_UTIL, p, min_cap, max_cap);
 }
 
-unsigned int sysctl_rt_task_uclamp_min_th = SCHED_CAPACITY_SCALE;
-
-static inline bool mtk_rt_uclamp_boosted(struct task_struct *p)
-{
-	return ((uclamp_eff_value(p, UCLAMP_MIN) > sysctl_rt_task_uclamp_min_th));
-}
-
 unsigned int min_highirq_load[NR_CPUS] = {
 	[0 ... NR_CPUS-1] = SCHED_CAPACITY_SCALE /* default 1024 */
 };
@@ -182,13 +175,14 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	unsigned long max_cap = uclamp_eff_value(p, UCLAMP_MAX);
 	unsigned long best_idle_exit_latency = UINT_MAX;
 	unsigned long cpu_idle_exit_latency = UINT_MAX;
-	bool boost_on_big = mtk_rt_uclamp_boosted(p);
 	int cluster, weight;
-	int order_index = (boost_on_big && num_sched_clusters > 1) ? 1 : 0;
-	int end_index = energy_eval ? 1 : 0;
+	int order_index, end_index;
 	cpumask_t candidates;
 	bool best_cpu_has_lt, cpu_has_lt;
 	unsigned long pwr_eff, this_pwr_eff;
+
+	mtk_get_gear_indicies(p, &order_index, &end_index);
+	end_index = energy_eval ? end_index : 0;
 
 	cpumask_copy(&candidates, lowest_mask);
 	cpumask_clear(&candidates);

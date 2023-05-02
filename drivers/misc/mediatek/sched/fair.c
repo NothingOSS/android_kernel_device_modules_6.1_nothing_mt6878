@@ -1226,7 +1226,7 @@ static inline bool util_fits_capacity(unsigned long cpu_util, unsigned long cpu_
 }
 #endif
 
-static void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_index)
+void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_index)
 {
 	int i = 0;
 	struct task_gear_hints *ghts = &((struct mtk_task *) p->android_vendor_data1)->gear_hints;
