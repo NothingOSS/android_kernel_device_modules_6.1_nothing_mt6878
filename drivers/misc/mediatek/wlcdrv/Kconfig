@@ -1,7 +1,0 @@
-config MTK_WLC
-	tristate "MTK workload classifier feature"
-	help
-	  MTK WLC(Workload Classifier Control) that designed by
-	  Mediatek is the PMU control mechanism according to
-	  pre-trained PMU event number. Use to do the PMU selection
-	  and send IPI to microprocessor for trigger WLC classifier.

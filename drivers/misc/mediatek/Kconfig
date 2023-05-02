@@ -209,7 +209,6 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/pgboost/Kconfig"
 endmenu # Performance
 
 
-source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/wlcdrv/Kconfig"
 
 menu "Config File"
 config BUILD_CONFIG_FILE
