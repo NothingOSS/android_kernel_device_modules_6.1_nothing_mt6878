@@ -579,7 +579,7 @@ arm64.nopauth arm64.nosme arm64.nosve arm64.nomte";
 };
 
 &sound {
-	mediatek,spk-i2s = <3 9>;
+	mediatek,spk-i2s = <25 24>;
 	mediatek,speaker-codec {
 		sound-dai = <&spk1>, <&spk2>;
 	};
