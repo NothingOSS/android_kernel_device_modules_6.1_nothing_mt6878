@@ -18,7 +18,6 @@
 #include "mtk_camera-videodev2.h"
 
 #define CAMSYS_VIDEO_DEV_NR 6
-#define MULTI_PLANE_NUM 2  // same as max exp num,  bayer + w = 1 FD
 
 struct mtk_cam_device;
 struct mtk_cam_resource;
@@ -56,14 +55,9 @@ struct mtk_cam_buffer {
 	struct list_head list;
 
 	unsigned int flags;
-	union {
-		dma_addr_t daddr;
-		dma_addr_t mdaddr[MULTI_PLANE_NUM];
-	};
+	dma_addr_t daddr;
 	dma_addr_t scp_addr;
 	void *vaddr;
-
-	unsigned int valid_mp;
 
 	union {
 		struct mtk_cam_cached_image_info image_info;
@@ -178,16 +172,6 @@ mtk_cam_buf_to_vdev(struct mtk_cam_buffer *buf)
 {
 	WARN_ON(!buf->vbb.vb2_buf.vb2_queue);
 	return mtk_cam_vbq_to_vdev(buf->vbb.vb2_buf.vb2_queue);
-}
-
-static inline bool mtk_cam_buf_is_mp(struct mtk_cam_buffer *buf)
-{
-	return !!buf->valid_mp;
-}
-
-static inline bool mtk_cam_buf_is_valid_mp(struct mtk_cam_buffer *buf)
-{
-	return buf->valid_mp > 1;
 }
 
 const struct v4l2_format *

@@ -119,25 +119,17 @@ int fill_img_out(struct mtkcam_ipi_img_output *io,
 		 struct mtk_cam_buffer *buf,
 		 struct mtk_cam_video_device *node);
 int fill_img_out_w(struct mtkcam_ipi_img_output *io,
-		   struct mtk_cam_buffer *buf,
-		   struct mtk_cam_video_device *node);
-int get_buf_plane(int exp_order_ipi, int exp_seq_num);
-int get_plane_per_exp(bool is_rgbw);
-int get_plane_buf_offset(bool w_path);
-int get_buf_offset_idx(int plane, int plane_per_exp, int plane_buf_offset,
-		       bool is_valid_mp_buf);
-int fill_mp_img_out_hdr(struct mtkcam_ipi_img_output *io,
-			struct mtk_cam_buffer *buf,
-			struct mtk_cam_video_device *node, int id,
-			unsigned int plane,
-			unsigned int plane_per_exp,
-			unsigned int plane_buf_offset);
-int fill_mp_img_in_hdr(struct mtkcam_ipi_img_input *ii,
-		       struct mtk_cam_buffer *buf,
-		       struct mtk_cam_video_device *node, int id,
-		       unsigned int plane,
-		       unsigned int plane_per_exp,
-		       unsigned int plane_buf_offset);
+		 struct mtk_cam_buffer *buf,
+		 struct mtk_cam_video_device *node);
+int fill_img_out_hdr(struct mtkcam_ipi_img_output *io,
+		     struct mtk_cam_buffer *buf,
+		     struct mtk_cam_video_device *node,
+		     int index, int id);
+int get_buf_offset_idx(int exp_order_ipi, int exp_seq_num,
+	bool is_rgbw, bool w_path);
+int fill_img_in_hdr(struct mtkcam_ipi_img_input *ii,
+		    struct mtk_cam_buffer *buf,
+		    struct mtk_cam_video_device *node, int index, int id);
 int fill_img_in_by_exposure(struct req_buffer_helper *helper,
 	struct mtk_cam_buffer *buf,
 	struct mtk_cam_video_device *node);
