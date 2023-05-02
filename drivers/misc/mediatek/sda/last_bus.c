@@ -92,13 +92,6 @@ static void lastbus_init_monitor_v1(struct lastbus_monitor *m, unsigned int time
 	/* de-assert clear bit with DBG_CKEN */
 	writel(LASTBUS_DEBUG_CKEN, base);
 
-	if (m->timeout_count++ > MAX_TIMEOUT_COUNT) {
-		pr_info("Disable lastbus timeout detect because timeout count %d larger max_size.",
-			m->timeout_count);
-		writel(0, base);
-		return;
-	}
-
 	if (timeout_ms == 0xFFFFFFFF) {
 		/* set maximum timeout for 1st edition*/
 		writel(((0xFFFF << TIMEOUT_THRES_SHIFT) | LASTBUS_DEBUG_CKEN |

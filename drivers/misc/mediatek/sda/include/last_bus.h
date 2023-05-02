@@ -19,7 +19,6 @@
 #define LASTBUS_DEBUG_EN          0x0004
 #define LASTBUS_TIMEOUT           0x0001
 
-#define MAX_TIMEOUT_COUNT	0x5
 
 enum LASTBUS_SW_VERSION {
 	LASTBUS_SW_V1 = 1,
@@ -46,7 +45,6 @@ struct lastbus_monitor {
 	struct lastbus_idle_mask idle_masks[NR_MAX_LASTBUS_IDLE_MASK];
 	unsigned int num_bus_status;
 	unsigned int offset_bus_status;
-	unsigned int timeout_count;
 };
 
 struct cfg_lastbus {
