@@ -859,6 +859,25 @@
 		#clock-cells = <1>;
 	};
 
+	efuse: efuse@11f10000 {
+		compatible = "mediatek,devinfo";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		efuse_segment: segment@78 {
+			reg = <0x78 0x4>;
+		};
+		u2_phy_data: u2-phy-data@1cc {
+			reg = <0x1cc 0x4>;
+		};
+		cpu_version: cpu-data@234 {
+			reg = <0x234 0x4>;
+		};
+		lkginfo: lkg@218 {
+			reg = <0x218 0x18>;
+		};
+	};
+
 	mcupm: mcupm@c070000 {
 		compatible = "mediatek,mcupm";
 		mbox-extend = <16>;
