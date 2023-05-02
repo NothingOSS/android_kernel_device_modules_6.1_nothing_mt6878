@@ -4218,6 +4218,30 @@ static void job_dump_engines_debug_status(struct mtk_cam_job *job)
 		mtk_cam_seninf_dump(ctx->seninf, job->frame_seq_no, false);
 }
 
+#define ARR_U64x4_LEN (2 + 10*4 + 3)
+static int arr_u64x4_to_str(char *buff, size_t size,
+			    const u64 arr[4])
+{
+	return scnprintf(buff, size, "(0x%llx,0x%llx,0x%llx,0x%llx)",
+			 arr[0], arr[1], arr[2], arr[3]);
+}
+
+#define AE_DATA_LEN (ARR_U64x4_LEN * 5) /* w.o. '\0' */
+static int ae_data_to_str(char *buff, size_t size,
+			  const struct mtk_ae_debug_data *ae_data)
+{
+	int n = 0;
+
+	buff[0] = '\0';
+	n = arr_u64x4_to_str(buff + n, size - n, ae_data->OBC_R1_Sum);
+	n += arr_u64x4_to_str(buff + n, size - n, ae_data->OBC_R2_Sum);
+	n += arr_u64x4_to_str(buff + n, size - n, ae_data->OBC_R3_Sum);
+	n += arr_u64x4_to_str(buff + n, size - n, ae_data->AA_Sum);
+	n += arr_u64x4_to_str(buff + n, size - n, ae_data->LTM_Sum);
+
+	return n;
+}
+
 static void mtk_cam_aa_dump_work(struct work_struct *work)
 {
 	struct mtk_cam_job *job =
@@ -4229,8 +4253,16 @@ static void mtk_cam_aa_dump_work(struct work_struct *work)
 	struct mtk_ae_debug_data ae_data, ae_data_w;
 	unsigned long submask;
 	int i;
+	char *str_buf;
+	size_t str_buf_size;
+	int n;
 
 	if (WARN_ON(!sink))
+		goto PUT_JOB;
+
+	str_buf = ctx->str_ae_data;
+	str_buf_size = sizeof(ctx->str_ae_data);
+	if (WARN_ON_ONCE(str_buf_size < 2 * AE_DATA_LEN + 2))
 		goto PUT_JOB;
 
 	memset(&ae_data, 0, sizeof(ae_data));
@@ -4261,30 +4293,14 @@ static void mtk_cam_aa_dump_work(struct work_struct *work)
 		}
 	}
 
-	pr_info("%s:%s:ctx(%d),seq(%d),size(%d,%d),(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)|(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)(0x%llx,0x%llx,0x%llx,0x%llx)\n",
+	n = ae_data_to_str(str_buf, str_buf_size, &ae_data);
+	n += scnprintf(str_buf + n, str_buf_size - n, "|");
+	ae_data_to_str(str_buf + n, str_buf_size - n, &ae_data_w);
+
+	pr_info("%s:%s:ctx(%d),seq(%d),size(%d,%d),%s\n",
 		__func__, job->req->req.debug_str,
 		ctx->stream_id, job->req_seq,
-		sink->width, sink->height,
-		ae_data.OBC_R1_Sum[0], ae_data.OBC_R1_Sum[1],
-		ae_data.OBC_R1_Sum[2], ae_data.OBC_R1_Sum[3],
-		ae_data.OBC_R2_Sum[0], ae_data.OBC_R2_Sum[1],
-		ae_data.OBC_R2_Sum[2], ae_data.OBC_R2_Sum[3],
-		ae_data.OBC_R3_Sum[0], ae_data.OBC_R3_Sum[1],
-		ae_data.OBC_R3_Sum[2], ae_data.OBC_R3_Sum[3],
-		ae_data.AA_Sum[0], ae_data.AA_Sum[1],
-		ae_data.AA_Sum[2], ae_data.AA_Sum[3],
-		ae_data.LTM_Sum[0], ae_data.LTM_Sum[1],
-		ae_data.LTM_Sum[2], ae_data.LTM_Sum[3],
-		ae_data_w.OBC_R1_Sum[0], ae_data_w.OBC_R1_Sum[1],
-		ae_data_w.OBC_R1_Sum[2], ae_data_w.OBC_R1_Sum[3],
-		ae_data_w.OBC_R2_Sum[0], ae_data_w.OBC_R2_Sum[1],
-		ae_data_w.OBC_R2_Sum[2], ae_data_w.OBC_R2_Sum[3],
-		ae_data_w.OBC_R3_Sum[0], ae_data_w.OBC_R3_Sum[1],
-		ae_data_w.OBC_R3_Sum[2], ae_data_w.OBC_R3_Sum[3],
-		ae_data_w.AA_Sum[0], ae_data_w.AA_Sum[1],
-		ae_data_w.AA_Sum[2], ae_data_w.AA_Sum[3],
-		ae_data_w.LTM_Sum[0], ae_data_w.LTM_Sum[1],
-		ae_data_w.LTM_Sum[2], ae_data_w.LTM_Sum[3]);
+		sink->width, sink->height, str_buf);
 
 PUT_JOB:
 	mtk_cam_job_put(job);

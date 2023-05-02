@@ -143,6 +143,7 @@ struct mtk_cam_ctx {
 	struct task_struct *done_task;
 	struct kthread_worker done_worker;
 	struct workqueue_struct *aa_dump_wq;
+	char str_ae_data[512];
 
 	struct mtk_cam_device_buf cq_buffer;
 	struct mtk_cam_device_buf ipi_buffer;
