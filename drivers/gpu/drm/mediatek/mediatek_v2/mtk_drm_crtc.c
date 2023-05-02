@@ -62,6 +62,7 @@
 #include "mtk_debug.h"
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
 #include "platform/mtk_drm_platform.h"
+#include "mtk_disp_vidle.h"
 
 /* *****Panel_Master*********** */
 #include "mtk_fbconfig_kdebug.h"
@@ -11064,6 +11065,9 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 
 	/* 9. set CRTC SW status */
 	mtk_crtc_set_status(crtc, true);
+
+	/* 10. v-idle enable */
+	mtk_vidle_enable(priv);
 
 	/* move power off mtcmos to kms init flow for multiple display in LK */
 }

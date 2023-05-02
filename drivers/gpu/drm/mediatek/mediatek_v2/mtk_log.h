@@ -23,6 +23,8 @@ extern unsigned int g_trace_log;
 #define DRM_TRACE_ID 0xFFFF0000
 #endif
 extern void mtk_drm_print_trace(char *fmt, ...);
+extern void mtk_vidle_power_keep(void);
+extern void mtk_vidle_power_release(void);
 
 #define mtk_drm_trace_tag_begin(fmt, args...) do { \
 	if (g_trace_log) { \
@@ -121,6 +123,7 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define DDP_MUTEX_LOCK(lock, name, line)                                       \
 	do {                                                                   \
 		DDPINFO("M_LOCK:%s[%d] +\n", name, line);		   \
+		mtk_vidle_power_keep();		\
 		DRM_MMP_EVENT_START(mutex_lock, (unsigned long)lock,	   \
 				line);	   \
 		mtk_drm_trace_tag_begin("M_LOCK_%s", name);	\
@@ -145,6 +148,7 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		DRM_MMP_EVENT_END(mutex_lock, (unsigned long)lock,	   \
 			line);	   \
 		mtk_drm_trace_tag_end("M_LOCK_%s", name);	\
+		mtk_vidle_power_release();			\
 		DDPINFO("M_ULOCK:%s[%d] -\n", name, line);		   \
 	} while (0)
 

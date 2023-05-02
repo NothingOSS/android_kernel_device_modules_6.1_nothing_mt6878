@@ -61,6 +61,7 @@ mediatek-drm-y := mtk_drm_drv.o \
 		  mtk_lease.o \
 		  platform/mtk_drm_6835.o \
 		  mtk_disp_pq_helper.o \
+		  mtk_disp_vidle.o \
 
 #ccflags-y += -DDRM_CMDQ_DISABLE
 #mediatek-drm-y += mtk_cmdq_dummy.o

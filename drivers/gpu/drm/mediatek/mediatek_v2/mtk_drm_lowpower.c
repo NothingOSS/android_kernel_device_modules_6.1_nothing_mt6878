@@ -20,6 +20,7 @@
 #include "mtk_drm_ddp_comp.h"
 #include "mtk_drm_mmp.h"
 #include "mtk_drm_trace.h"
+#include "mtk_disp_vidle.h"
 
 #define MAX_ENTER_IDLE_RSZ_RATIO 300
 #define MTK_DRM_CPU_MAX_COUNT 8
@@ -1792,6 +1793,9 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_IDLEMGR_ASYNC))
 		atomic_set(&idlemgr->async_enabled, 0);
+
+	/* 15. v-idle enable */
+	mtk_vidle_enable(priv);
 
 	DDPINFO("crtc%d do %s-\n", crtc_id, __func__);
 }
