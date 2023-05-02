@@ -9131,6 +9131,7 @@
 				clocks = <&clk26m>;
 				clock-names = "ref";
 				#phy-cells = <1>;
+				usb2jtag = <&infracfg_ao_clk 1>;
 			};
 
 			u3port0: usb3-phy0@11e43000 {
