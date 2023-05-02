@@ -23,7 +23,7 @@
 
 #include <dt-bindings/power/mt6989-power.h>
 
-#define SCPSYS_BRINGUP			(1)
+#define SCPSYS_BRINGUP			(0)
 #if SCPSYS_BRINGUP
 #define default_cap			(MTK_SCPD_BYPASS_OFF)
 #else
@@ -39,13 +39,11 @@
 #define MT6989_TOP_AXI_PROT_EN_INFRASYS0_CONN_2ND	(BIT(26))
 #define MT6989_TOP_AXI_PROT_EN_CONNSYS0_CONN_2ND	(BIT(0))
 #define MT6989_TOP_AXI_PROT_EN_PERISYS0_PERI_USB0	(BIT(8))
-#define MT6989_VLP_AXI_PROT_EN_UFS0	(BIT(7))
-#define MT6989_TOP_AXI_PROT_EN_PERISYS0_UFS0	(BIT(4))
-#define MT6989_VLP_AXI_PROT_EN_UFS0_2ND	(BIT(8))
 #define MT6989_VLP_AXI_PROT_EN1_PEXTP_MAC0	(BIT(11))
 #define MT6989_VLP_AXI_PROT_EN1_PEXTP_MAC1	(BIT(10))
 #define MT6989_VLP_AXI_PROT_EN1_PEXTP_PHY0	(BIT(13))
 #define MT6989_VLP_AXI_PROT_EN1_PEXTP_PHY1	(BIT(12))
+#define MT6989_TOP_AXI_PROT_EN_PERISYS0_AUDIO	(BIT(5))
 #define MT6989_VLP_AXI_PROT_EN_ADSP_TOP	(BIT(14) | BIT(15) |  \
 			BIT(16) | BIT(17) |  \
 			BIT(18) | BIT(21) |  \
@@ -94,9 +92,9 @@
 #define MT6989_TOP_AXI_PROT_EN_MMSYS2_CAM_SUBC	(BIT(11))
 #define MT6989_TOP_AXI_PROT_EN_MMSYS2_CAM_SUBC_2ND	(BIT(10))
 #define MT6989_TOP_AXI_PROT_EN_MMSYS0_CAM_MAIN	(BIT(16))
+#define MT6989_TOP_AXI_PROT_EN_INFRASYS0_CAM_MAIN	(BIT(27))
 #define MT6989_TOP_AXI_PROT_EN_MMSYS2_CAM_MAIN	(BIT(4))
 #define MT6989_TOP_AXI_PROT_EN_MMSYS2_CAM_VCORE	(BIT(5))
-#define MT6989_TOP_AXI_PROT_EN_INFRASYS0_CAM_VCORE	(BIT(27))
 #define MT6989_TOP_AXI_PROT_EN_MMSYS0_CAM_VCORE	(BIT(17) | BIT(27) |  \
 			BIT(31))
 #define MT6989_TOP_AXI_PROT_EN_MMSYS1_CAM_VCORE	(BIT(19))
@@ -246,27 +244,6 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		},
 		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
-	[MT6989_POWER_DOMAIN_UFS0] = {
-		.name = "ufs0",
-		.ctl_offs = 0xE14,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.bp_table = {
-			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
-				MT6989_VLP_AXI_PROT_EN_UFS0),
-			BUS_PROT_IGN(IFR_TYPE, 0x0e4, 0x0e8, 0x0e0, 0x0ec,
-				MT6989_TOP_AXI_PROT_EN_PERISYS0_UFS0),
-			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
-				MT6989_VLP_AXI_PROT_EN_UFS0_2ND),
-		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_UFS0_PHY] = {
-		.name = "ufs0-phy",
-		.ctl_offs = 0xE18,
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_RTFF_DELAY
-				| default_cap,
-	},
 	[MT6989_POWER_DOMAIN_PEXTP_MAC0] = {
 		.name = "pextp-mac0",
 		.ctl_offs = 0xE1C,
@@ -314,6 +291,10 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.ctl_offs = 0xE2C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.bp_table = {
+			BUS_PROT_IGN(IFR_TYPE, 0x0e4, 0x0e8, 0x0e0, 0x0ec,
+				MT6989_TOP_AXI_PROT_EN_PERISYS0_AUDIO),
+		},
 		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_ADSP_TOP_DORMANT] = {
@@ -541,6 +522,8 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_CAM_MAIN),
+			BUS_PROT_IGN(IFR_TYPE, 0x004, 0x008, 0x000, 0x00c,
+				MT6989_TOP_AXI_PROT_EN_INFRASYS0_CAM_MAIN),
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_CAM_MAIN),
 		},
@@ -552,8 +535,6 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_CAM_VCORE),
-			BUS_PROT_IGN(IFR_TYPE, 0x004, 0x008, 0x000, 0x00c,
-				MT6989_TOP_AXI_PROT_EN_INFRASYS0_CAM_VCORE),
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_CAM_VCORE),
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
@@ -589,7 +570,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_DISP_VCORE),
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_DISP_VCORE),
-			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a4, 0x2ac,
+			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a0, 0x2ac,
 				MT6989_TOP_AXI_PROT_EN_MMSYS3_DISP_VCORE),
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_DISP_VCORE_2ND),
@@ -612,7 +593,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_MML0),
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_MML0),
-			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a4, 0x2ac,
+			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a0, 0x2ac,
 				MT6989_TOP_AXI_PROT_EN_MMSYS3_MML0),
 			BUS_PROT_IGN(IFR_TYPE, 0x124, 0x128, 0x120, 0x12c,
 				MT6989_TOP_AXI_PROT_EN_EMISYS0_MML0),
@@ -629,7 +610,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_MML1),
-			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a4, 0x2ac,
+			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a0, 0x2ac,
 				MT6989_TOP_AXI_PROT_EN_MMSYS3_MML1),
 		},
 		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON
@@ -643,7 +624,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_DIS0),
-			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a4, 0x2ac,
+			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a0, 0x2ac,
 				MT6989_TOP_AXI_PROT_EN_MMSYS3_DIS0),
 			BUS_PROT_IGN(IFR_TYPE, 0x124, 0x128, 0x120, 0x12c,
 				MT6989_TOP_AXI_PROT_EN_EMISYS0_DIS0),
@@ -665,13 +646,13 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_DIS1),
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_DIS1),
-			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a4, 0x2ac,
+			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a0, 0x2ac,
 				MT6989_TOP_AXI_PROT_EN_MMSYS3_DIS1),
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_DIS1_2ND),
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_DIS1_2ND),
-			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a4, 0x2ac,
+			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a0, 0x2ac,
 				MT6989_TOP_AXI_PROT_EN_MMSYS3_DIS1_2ND),
 		},
 		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON
@@ -685,7 +666,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_OVL0),
-			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a4, 0x2ac,
+			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a0, 0x2ac,
 				MT6989_TOP_AXI_PROT_EN_MMSYS3_OVL0),
 		},
 		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON
@@ -701,7 +682,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_OVL1),
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_OVL1),
-			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a4, 0x2ac,
+			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a0, 0x2ac,
 				MT6989_TOP_AXI_PROT_EN_MMSYS3_OVL1),
 		},
 		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON
