@@ -1533,6 +1533,27 @@
 		gpufreq-bringup = <0>;
 	};
 
+	connscp: connscp {
+		compatible = "mediatek,mt6989-conn_scp";
+		scp-shm-size = <0x96000>;
+
+		/* offset from connsys pa */
+		scp-remap-offset = <0x445000>; /* oft from consys pa */
+		scp-remap-size = <0x520000>;
+		scp-remap-addr = <0>;
+
+		batching-buf-size = <0x4b000>; /* no-need */
+		report-buf-offset = <0x445000>; /* oft from consys pa */
+		report-buf-addr = <0>; /* */
+		report-buf-size = <0x4b000>;
+
+		ipi-mbox-size = <64>;
+
+		emi-alignment = <0x100000>; /* defined in consys */
+		emi-min-addr = <0x40000000>; /* defined in consys */
+		emi-max-addr = <0xa0000000>; /* defined in consys */
+	};
+
 	connv3: connv3 {
 		compatible = "mediatek,mt6989-connv3";
 		/* BT, WIFI, GPS, FM */
