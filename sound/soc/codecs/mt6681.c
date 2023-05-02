@@ -2232,6 +2232,11 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 	dev_info(priv->dev, "%s() successfully starts\n", __func__);
 
 	regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x11);
+	if (priv->hp_hifi_mode == 0) {
+		regmap_update_bits(priv->regmap, MT6681_AFE_TOP_DEBUG0,
+				   DL34_DEBUG_SOURCE_SEL_MASK_SFT,
+				   0x1 << DL34_DEBUG_SOURCE_SEL_SFT);
+	}
 
 	if (priv->mux_select[MUX_HP_L] == HP_MUX_HPSPK) {
 		/* Disable handset short-circuit protection */
@@ -3988,7 +3993,7 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		/* 3:hwgain1/2 swap & bypass HWgain1/2 */
-		regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x11);
+		regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x31);
 		regmap_write(priv->regmap, MT6681_AFE_STF_CON1, 0x30);
 		/* HS */
 		/* Step 93: Enable IBIST */
