@@ -147,7 +147,8 @@ static int flt_get_gear_sum_pelt_group_mode2(unsigned int gear_id, int group_id)
 int flt_sched_get_gear_sum_group_eas_mode2(int gear_id, int group_id)
 {
 	unsigned int nr_gear, gear_idx;
-	int flt_util = 0, pelt_util = 0, total_util = 0, res = 0, gear_util = 0;
+	int pelt_util = 0, res = 0;
+	u64 flt_util = 0, gear_util = 0, total_util = 0;
 
 	if (group_id >= GROUP_ID_RECORD_MAX || group_id < 0)
 		return -1;
@@ -165,9 +166,8 @@ int flt_sched_get_gear_sum_group_eas_mode2(int gear_id, int group_id)
 			gear_util	= pelt_util;
 		total_util += pelt_util;
 	}
-
 	if (total_util)
-		res = div64_u64(flt_util * gear_util, total_util);
+		res = (int)div64_u64(flt_util * gear_util, total_util);
 	return res;
 }
 
@@ -186,8 +186,9 @@ static int flt_get_cpu_by_wp_mode2(int cpu)
 
 static int flt_sched_get_cpu_group_eas_mode2(int cpu_idx, int group_id)
 {
-	int flt_util = 0, pelt_util = 0, total_util = 0, res = 0, cpu = 0, cpu_util = 0;
+	int pelt_util = 0, res = 0, cpu = 0;
 	struct rq_group *fsrq;
+	u64 flt_util = 0, total_util = 0, cpu_util = 0;
 
 	if (group_id >= GROUP_ID_RECORD_MAX ||
 		group_id < 0 ||
@@ -204,7 +205,7 @@ static int flt_sched_get_cpu_group_eas_mode2(int cpu_idx, int group_id)
 	}
 
 	if (total_util)
-		res = div64_u64(flt_util * cpu_util, total_util);
+		res = (int)div64_u64(flt_util * cpu_util, total_util);
 
 	return res;
 }
