@@ -1313,12 +1313,14 @@ void __gpufreq_dump_power_tracker_status(void)
 
 	GPUFREQ_LOGI("== [PDC Power Tracker STATUS] ==");
 	GPUFREQ_LOGI("Current Pointer: %d",
-		(int)(DRV_Reg32(MFG_POWER_TRACKER_SETTING) & GENMASK(13, 9)));
+		(int)((DRV_Reg32(MFG_POWER_TRACKER_SETTING) >> 9) & GENMASK(4, 0)));
 
 	for (i = 0; i < 32; i++) {
 		val = DRV_Reg32(MFG_POWER_TRACKER_SETTING);
+		val &= ~GENMASK(8, 4);
 		val |= i << 4;
 		DRV_WriteReg32(MFG_POWER_TRACKER_SETTING, val);
+		udelay(1);
 
 		GPUFREQ_LOGI("[SLOT %d] TIME STAMP: 0x%08x, STATUS0: 0x%08x, STATUS1: 0x%08x",
 			i, DRV_Reg32(MFG_POWER_TRACKER_TIME_STAMP),
