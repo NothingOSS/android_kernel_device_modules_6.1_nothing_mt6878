@@ -1207,13 +1207,6 @@ static int mtk_dloffload_probe(struct platform_device *pdev)
 	offload_dev = &pdev->dev;
 	dsp = (struct mtk_base_dsp *)get_dsp_base();
 
-	if (pdev->dev.of_node) {
-		dev_set_name(&pdev->dev, "%s", "mt-soc-offload-common");
-		pdev->name = pdev->dev.kobj.name;
-	} else {
-		pr_debug("%s(), offload_dev->dev.of_node = NULL!!!\n", __func__);
-	}
-
 	pr_info("%s: dev name %s\n", __func__, dev_name(offload_dev));
 
 	ret = snd_soc_register_component(offload_dev, &mtk_dloffload_soc_platform,
