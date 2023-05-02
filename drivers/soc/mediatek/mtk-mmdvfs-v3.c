@@ -1234,6 +1234,9 @@ static int mmdvfs_vcp_init_thread(void *data)
 	struct iommu_domain *domain;
 	int i, retry = 0;
 
+	if (mmdvfs_init_done)
+		return 0;
+
 	while (mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_INIT)) {
 		if (++retry > 100) {
 			MMDVFS_ERR("vcp is not powered on yet");
@@ -1681,13 +1684,37 @@ static struct dfs_ops mmdvfs_mux_dfs_ops = {
 
 static int mmdvfs_mux_probe(struct platform_device *pdev)
 {
-	struct device_node *node = pdev->dev.of_node;
+	struct device_node *node = pdev->dev.of_node, *larb;
+	struct platform_device *larb_pdev;
 	struct clk_onecell_data *data;
+	struct task_struct *kthr_vcp;
 	const char *name = NULL;
 	int i, j, ret;
 
 	mmdvfs_mux_version = true;
 	mmdvfs_swrgo = of_property_read_bool(node, "mediatek,mmdvfs-swrgo");
+	if (mmdvfs_swrgo) {
+		clkmux_cb.clk_enable = mtk_mmdvfs_clk_enable;
+		clkmux_cb.clk_disable = mtk_mmdvfs_clk_disable;
+		mtk_clk_register_ipi_callback(&clkmux_cb);
+	}
+	mmdvfs_free_run = of_property_read_bool(node, "mediatek,mmdvfs-free-run");
+	of_property_read_s32(node, "mediatek,dpsw-thr", &dpsw_thr);
+	MMDVFS_DBG("version:%d swrgo:%d free_run:%d dpsw_thr:%d",
+		mmdvfs_mux_version, mmdvfs_swrgo, mmdvfs_free_run, dpsw_thr);
+
+	mmdvfs_v3_dev = &pdev->dev;
+	larb = of_parse_phandle(pdev->dev.of_node, "mediatek,larb", 0);
+	if (larb) {
+		larb_pdev = of_find_device_by_node(larb);
+		if (!device_link_add(mmdvfs_v3_dev, &larb_pdev->dev,
+			DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
+			MMDVFS_ERR("device_link_add larb failed");
+			return -EINVAL;
+		}
+		pm_runtime_enable(mmdvfs_v3_dev);
+		of_node_put(larb);
+	}
 
 	for (i = 0; i < ARRAY_SIZE(mmdvfs_mux); i++) {
 		struct device_node *table, *opp = NULL;
@@ -1799,12 +1826,11 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 		MMDVFS_ERR("failed:%d data:%p", ret, data);
 		return ret;
 	}
-
 	mtk_clk_mux_register_callback(&mmdvfs_mux_dfs_ops);
 
 	if (!vmm_notify_wq)
 		vmm_notify_wq = create_singlethread_workqueue("vmm_notify_wq");
-
+	kthr_vcp = kthread_run(mmdvfs_vcp_init_thread, NULL, "mmdvfs-vcp");
 	return ret;
 }
 
