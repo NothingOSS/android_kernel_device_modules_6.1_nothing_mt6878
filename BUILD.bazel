@@ -412,6 +412,7 @@ mgk_64_k61_device_modules = [
     "drivers/misc/mediatek/trusted_mem/trusted_mem.ko",
     "drivers/misc/mediatek/trusty/ise-trusty.ko",
     "drivers/misc/mediatek/trusty/ise-trusty-ipc.ko",
+    "drivers/misc/mediatek/trusty/ise-trusty-log.ko",
     "drivers/misc/mediatek/trusty/ise-trusty-virtio.ko",
     "drivers/misc/mediatek/typec/mux/fusb304.ko",
     "drivers/misc/mediatek/typec/mux/mux_switch.ko",
