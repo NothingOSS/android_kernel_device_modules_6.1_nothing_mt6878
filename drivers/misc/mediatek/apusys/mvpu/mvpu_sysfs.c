@@ -100,7 +100,7 @@ static ssize_t loglevel_store(struct kobject *kobj, struct kobj_attribute *attr,
 	uint64_t ret = 0;
 	int level = 0;
 
-	ret = kstrtoint(cmd, 10, &level);
+	ret = kstrtoint(cmd, 16, &level);
 
 	if (!ret) {
 		pr_info("[MVPU] %s, level= %d\n", __func__, (uint32_t)level);
