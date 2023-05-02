@@ -22,6 +22,9 @@
 #define DISP_REG_MDP_RDMA_EN 0x000
 #define ROT_ENABLE BIT(0)
 
+#define DISP_REG_MDP_RDMA_RESET 0x008
+#define WARM_RESET BIT(0)
+
 #define DISP_REG_MDP_RDMA_INT_ENABLE 0x010
 #define DISP_REG_MDP_RDMA_INT_STATUS 0x018
 #define FRAME_COMPLETE_INT BIT(0)
@@ -29,7 +32,7 @@
 #define UNDERRUN_INT BIT(2)
 
 #define DISP_REG_MDP_RDMA_CON 0x020
-#define OUTPUT_10B BIT(5)
+#define OUTPUT_10B BIT(5)	/* output yuv 10bit */
 
 #define DISP_REG_MDP_RDMA_SRC_CON 0x030
 #define MEM_MODE_INPUT_FORMAT_RGB888 (0x1U)
@@ -214,7 +217,7 @@ static unsigned int mdp_rdma_fmt_convert(unsigned int fmt)
 	case DRM_FORMAT_RGB888:	//0x34324752 for pattern
 		return MEM_MODE_INPUT_FORMAT_RGB888 | BIT_NUMBER_8BIT;
 	case DRM_FORMAT_P010:	//0x30313050
-		/* need use NV12 10bit mode*/
+		/* need use NV12 10bit mode */
 		return MEM_MODE_INPUT_FORMAT_NV12 | BIT_NUMBER_10BIT |
 			LOOSE;
 	case DRM_FORMAT_NV12:	//0x3231564e
@@ -710,6 +713,7 @@ static int mtk_disp_mdp_rdma_remove(struct platform_device *pdev)
 
 static const struct of_device_id mtk_disp_mdp_rdma_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6985-disp-mdp-rdma",},
+	{.compatible = "mediatek,mt6989-disp-mdp-rdma",},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_mdp_rdma_driver_dt_match);
