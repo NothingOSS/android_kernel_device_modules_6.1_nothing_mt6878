@@ -13970,7 +13970,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 #include "mediatek/mt6685.dtsi"
 
 &mt6685_rtc {
-	status = "disabled";
+	status = "okay";
 };
 
 &main_pmic {
