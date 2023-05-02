@@ -6,6 +6,7 @@
 #include <linux/anon_inodes.h>
 #include <linux/file.h>
 #include <linux/irqchip/arm-gic-v3.h>
+#include <linux/ktime.h>
 #include <linux/kvm_host.h>
 #include <linux/mm.h>
 
@@ -154,6 +155,7 @@ static void gzvm_sync_hwstate(struct gzvm_vcpu *vcpu)
 	gzvm_sync_vgic_state(vcpu);
 }
 
+ktime_t exit_start_time;
 /**
  * @brief Handle vcpu run ioctl, entry point to guest and exit point from guest
  *
@@ -170,8 +172,10 @@ static long gzvm_vcpu_run(struct gzvm_vcpu *vcpu, void * __user argp)
 	if (copy_from_user(vcpu->run, argp, sizeof(struct gzvm_vcpu_run)))
 		return -EFAULT;
 
-	if (vcpu->run->immediate_exit == 1)
+	if (vcpu->run->immediate_exit == 1) {
+		exit_start_time = ktime_get();
 		return -EINTR;
+	}
 
 	a1 = assemble_vm_vcpu_tuple(vcpu->gzvm->vm_id, vcpu->vcpuid);
 	do {

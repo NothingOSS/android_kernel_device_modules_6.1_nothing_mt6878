@@ -7,6 +7,7 @@
 #include <linux/arm-smccc.h>
 #include <linux/file.h>
 #include <linux/kdev_t.h>
+#include <linux/ktime.h>
 #include <linux/kvm_host.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
@@ -434,11 +435,14 @@ static void gzvm_destroy_vm(struct gzvm *gzvm)
 	kfree(gzvm);
 }
 
+extern ktime_t exit_start_time;
 static int gzvm_vm_release(struct inode *inode, struct file *filp)
 {
 	struct gzvm *gzvm = filp->private_data;
 
 	gzvm_destroy_vm(gzvm);
+	GZVM_INFO("%s, done exit %lld us", __func__,
+		ktime_us_delta(ktime_get(), exit_start_time));
 	return 0;
 }
 
