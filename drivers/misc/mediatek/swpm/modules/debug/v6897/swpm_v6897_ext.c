@@ -9,6 +9,7 @@
 #include <linux/timer.h>
 #include <linux/slab.h>
 #include <linux/types.h>
+#include <asm/io.h>
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 #include <sspm_reservedmem.h>
@@ -92,46 +93,46 @@ static void swpm_sp_internal_update(void)
 
 	if (share_idx_ref_ext && share_idx_ctrl_ext) {
 
-		if (share_idx_ctrl_ext->clear_flag)
+		if (readl(&share_idx_ctrl_ext->clear_flag))
 			return;
 
-		if (share_idx_ctrl_ext->write_lock) {
+		if (readl(&share_idx_ctrl_ext->write_lock)) {
 			update_interval_ms = RETRY_UPDATE_MS;
 			retry_cnt++;
 			return;
 		}
-		share_idx_ctrl_ext->read_lock = 1;
+		writel(1, &share_idx_ctrl_ext->read_lock);
 
 		for (i = 0; i < NR_CORE_VOLT; i++) {
 			core_vol_duration[i].duration +=
-				CORE_SRAM.acc_time[i] / 1000;
+				readl(&CORE_SRAM.acc_time[i]) / 1000;
 		}
 		for (i = 0; i < NR_DDR_FREQ; i++) {
 			ddr_act_duration[i].active_time +=
-			DDR_SRAM.acc_time[i] / 1000;
+			readl(&DDR_SRAM.acc_time[i]) / 1000;
 		}
 		ddr_sr_pd_duration.sr_time +=
-			DDR_SRAM.acc_sr_time / 1000;
+			readl(&DDR_SRAM.acc_sr_time) / 1000;
 		ddr_sr_pd_duration.pd_time +=
-			DDR_SRAM.acc_pd_time / 1000;
+			readl(&DDR_SRAM.acc_pd_time) / 1000;
 		for (i = 0; i < NR_CORE_IP; i++) {
 			if (!core_ip_stats[i].times)
 				continue;
 			core_ip_sta_ptr = &(CORE_SRAM.pwr_state[i]);
 			core_ip_stats[i].times->active_time +=
-			core_ip_sta_ptr->state[PMSR_ACTIVE] / 1000;
+			readl(&core_ip_sta_ptr->state[PMSR_ACTIVE]) / 1000;
 			core_ip_stats[i].times->idle_time +=
-			core_ip_sta_ptr->state[PMSR_IDLE] / 1000;
+			readl(&core_ip_sta_ptr->state[PMSR_IDLE]) / 1000;
 			core_ip_stats[i].times->off_time +=
-			core_ip_sta_ptr->state[PMSR_OFF] / 1000;
+			readl(&core_ip_sta_ptr->state[PMSR_OFF]) / 1000;
 		}
 		for (i = 0; i < NR_DDR_BC_IP; i++) {
 			if (!ddr_ip_stats[i].bc_stats)
 				continue;
 			ddr_ip_bc_ptr = &(DDR_SRAM.data[i]);
 			for (j = 0; j < NR_DDR_FREQ; j++) {
-				word_H = ddr_ip_bc_ptr->word_cnt_H[j];
-				word_L = ddr_ip_bc_ptr->word_cnt_L[j];
+				word_H = readl(&ddr_ip_bc_ptr->word_cnt_H[j]);
+				word_L = readl(&ddr_ip_bc_ptr->word_cnt_L[j]);
 				ddr_ip_stats[i].bc_stats[j].value +=
 				(((uint64_t) word_H << 32) | word_L) * 8;
 			}
@@ -139,10 +140,10 @@ static void swpm_sp_internal_update(void)
 
 		swpm_v6897_sub_ext_update();
 
-		suspend_time.time_H = SUSPEND_SRAM.time_H;
-		suspend_time.time_L = SUSPEND_SRAM.time_L;
-		duration_time.time_H = DURATION_SRAM.time_H;
-		duration_time.time_L = DURATION_SRAM.time_L;
+		suspend_time.time_H = readl(&SUSPEND_SRAM.time_H);
+		suspend_time.time_L = readl(&SUSPEND_SRAM.time_L);
+		duration_time.time_H = readl(&DURATION_SRAM.time_H);
+		duration_time.time_L = readl(&DURATION_SRAM.time_L);
 		total_suspend_us +=
 			((uint64_t)suspend_time.time_H << 32) |
 			suspend_time.time_L;
@@ -154,16 +155,17 @@ static void swpm_sp_internal_update(void)
 
 		if (spm_res_sig_tbl) {
 			for (i = 0; i < total_spm_res_sig_num; i++) {
-				if (share_spm_sig_ptr->win_len) {
+				if (readl(&share_spm_sig_ptr->win_len)) {
 					spm_res_sig_tbl[i].time +=
-					share_spm_req_cnt[i] * duration_time_temp / 1000
-					/ share_spm_sig_ptr->win_len;
+					readl(&share_spm_req_cnt[i])
+					* duration_time_temp / 1000
+					/ readl(&share_spm_sig_ptr->win_len);
 				}
 			}
 		}
 
-		share_idx_ctrl_ext->clear_flag = 1;
-		share_idx_ctrl_ext->read_lock = 0;
+		writel(1, &share_idx_ctrl_ext->clear_flag);
+		writel(0, &share_idx_ctrl_ext->read_lock);
 	}
 }
 
@@ -375,7 +377,6 @@ void swpm_v6897_ext_init(void)
 		share_idx_ref_ext = NULL;
 		share_idx_ctrl_ext = NULL;
 		share_spm_sig_ptr = NULL;
-
 		share_spm_req_cnt = NULL;
 	}
 
@@ -405,14 +406,14 @@ void swpm_v6897_ext_init(void)
 	for (i = 0; core_swpm_data_ptr && i < NR_CORE_VOLT; i++) {
 		core_vol_duration[i].duration = 0;
 		core_vol_duration[i].vol =
-			core_swpm_data_ptr->core_volt_tbl[i];
+			readl(&core_swpm_data_ptr->core_volt_tbl[i]);
 	}
 
 	/* ddr act duration initialize */
 	for (i = 0; mem_swpm_data_ptr && i < NR_DDR_FREQ; i++) {
 		ddr_act_duration[i].active_time = 0;
 		ddr_act_duration[i].freq =
-		OPP_FREQ_TO_DDR(mem_swpm_data_ptr->ddr_opp_freq[i]);
+		OPP_FREQ_TO_DDR(readl(&mem_swpm_data_ptr->ddr_opp_freq[i]));
 	}
 	/* ddr sr pd duration initialize */
 	ddr_sr_pd_duration.sr_time = 0;
@@ -429,7 +430,7 @@ void swpm_v6897_ext_init(void)
 			     j < NR_DDR_FREQ; j++) {
 				ddr_ip_stats[i].bc_stats[j].value = 0;
 				ddr_ip_stats[i].bc_stats[j].freq =
-				OPP_FREQ_TO_DDR(mem_swpm_data_ptr->ddr_opp_freq[j]);
+				OPP_FREQ_TO_DDR(readl(&mem_swpm_data_ptr->ddr_opp_freq[j]));
 			}
 		}
 	}
@@ -439,25 +440,27 @@ void swpm_v6897_ext_init(void)
 	total_spm_res_sig_num = 0;
 	if (share_spm_sig_ptr) {
 		for (i = 0; i < NR_SPM_GRP; i++)
-			total_spm_res_sig_num += share_spm_sig_ptr->spm_sig_num[i];
-	}
+			total_spm_res_sig_num += readl(&share_spm_sig_ptr->spm_sig_num[i]);
 
-	spm_res_sig_tbl = kmalloc_array(total_spm_res_sig_num, sizeof(struct res_sig), GFP_KERNEL);
-	if (spm_res_sig_tbl) {
-		for (i = 0, k = 0; i < NR_SPM_GRP; i++) {
-			for (j = 0; j < share_spm_sig_ptr->spm_sig_num[i]; j++) {
-				if (k < total_spm_res_sig_num) {
-					spm_res_sig_tbl[k].time = 0;
-					spm_res_sig_tbl[k].sig_id = share_spm_req_cnt[k];
-					spm_res_sig_tbl[k].grp_id = i;
-					k++;
+		spm_res_sig_tbl =
+			kmalloc_array(total_spm_res_sig_num, sizeof(struct res_sig), GFP_KERNEL);
+		if (spm_res_sig_tbl) {
+			for (i = 0, k = 0; i < NR_SPM_GRP; i++) {
+				for (j = 0; j < readl(&share_spm_sig_ptr->spm_sig_num[i]); j++) {
+					if (k < total_spm_res_sig_num) {
+						spm_res_sig_tbl[k].time = 0;
+						spm_res_sig_tbl[k].sig_id =
+							readl(&share_spm_req_cnt[k]);
+						spm_res_sig_tbl[k].grp_id = i;
+						k++;
+					}
 				}
 			}
 		}
 	}
 
 	if (share_idx_ctrl_ext)
-		share_idx_ctrl_ext->clear_flag = 1;
+		writel(1, &share_idx_ctrl_ext->clear_flag);
 
 	swpm_v6897_sub_ext_init();
 
