@@ -84,6 +84,9 @@ static void imgsys_init_handler(void *data, unsigned int len, void *priv)
 int mtk_imgsys_hw_working_buf_pool_reinit(struct mtk_imgsys_dev *imgsys_dev)
 {
 	int i;
+	struct list_head *head = NULL;
+	struct list_head *temp = NULL;
+	struct reqfd_cbinfo_t *reqfdcb_info = NULL;
 
 	spin_lock(&imgsys_dev->imgsys_usedbufferlist.lock);
 	INIT_LIST_HEAD(&imgsys_dev->imgsys_usedbufferlist.list);
@@ -103,6 +106,17 @@ int mtk_imgsys_hw_working_buf_pool_reinit(struct mtk_imgsys_dev *imgsys_dev)
 		imgsys_dev->imgsys_freebufferlist.cnt++;
 	}
 	spin_unlock(&imgsys_dev->imgsys_freebufferlist.lock);
+	mutex_lock(&(reqfd_cbinfo_list.mymutex));
+	list_for_each_safe(head, temp, &(reqfd_cbinfo_list.mylist)) {
+		reqfdcb_info = vlist_node_of(head, struct reqfd_cbinfo_t);
+		reqfdcb_info->cur_cnt += 1;
+		if (reqfdcb_info->cur_cnt == reqfdcb_info->exp_cnt) {
+			list_del(head);
+			reqfd_cbinfo_put_work(reqfdcb_info);
+		}
+	}
+	INIT_LIST_HEAD(&(reqfd_cbinfo_list.mylist));
+	mutex_unlock(&(reqfd_cbinfo_list.mymutex));
 
 	return 0;
 }
@@ -947,6 +961,7 @@ static void imgsys_mdp_cb_func(struct cmdq_cb_data data,
 			swfrminfo_cb->is_earlycb,
 			swfrminfo_cb->is_lastfrm,
 			isLastTaskInReq, lastfrmInMWReq);
+		return;
 	}
 	/**/
 	if (swfrminfo_cb->fail_isHWhang >= 0) {
@@ -1926,7 +1941,10 @@ static void imgsys_scp_handler(void *data, unsigned int len, void *priv)
 			mutex_lock(&(reqfd_cbinfo_list.mymutex));
 			list_for_each_safe(head, temp, &(reqfd_cbinfo_list.mylist)) {
 				reqfdcb_info = vlist_node_of(head, struct reqfd_cbinfo_t);
-				if (reqfdcb_info->req_fd == swfrm_info->request_fd) {
+				if ((reqfdcb_info->req_fd == swfrm_info->request_fd) &&
+					(reqfdcb_info->req_no == swfrm_info->request_no) &&
+					(reqfdcb_info->frm_no == swfrm_info->frame_no) &&
+					(reqfdcb_info->frm_owner == swfrm_info->frm_owner)) {
 					dev_info(imgsys_dev->dev,
 					"%s:remaining(%s/%d/%d/%d) in gcecbcnt list. new enque(%s/%d/%d/%d)\n",
 					__func__, ((char *)&reqfdcb_info->frm_owner),
