@@ -334,4 +334,7 @@
 #define GPUEB_CFGREG_BASE                      (0x13C60000)
 #define GPUEB_CFGREG_SW_RSTN                   (g_gpueb_cfgreg_base + 0x600)       /* 0x13C60600 */
 
+#define MCDI_MBOX_BASE                         (0x0C0DF7E0)                        /* 0x0C0DF7E0 */
+#define MCDI_MBOX_GPU_STA                      (g_mcdi_mbox_base + 0x008)          /* 0x0C0DF7E8 */
+
 #endif /* __GPUFREQ_REG_MT6989_H__ */

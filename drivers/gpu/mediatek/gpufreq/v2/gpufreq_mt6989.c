@@ -218,6 +218,7 @@ static void __iomem *g_nemi_mi32_mi33_smi;
 static void __iomem *g_semi_mi32_mi33_smi;
 static void __iomem *g_gpueb_sram_base;
 static void __iomem *g_gpueb_cfgreg_base;
+static void __iomem *g_mcdi_mbox_base;
 static struct gpufreq_pmic_info *g_pmic;
 static struct gpufreq_clk_info *g_clk;
 static struct gpufreq_status g_gpu;
@@ -4213,6 +4214,11 @@ static int __gpufreq_buck_ctrl(enum gpufreq_power_state power)
 
 	/* power on: VSRAM -> VGPU -> VSTACK */
 	if (power == GPU_PWR_ON) {
+#if GPUFREQ_COVSRAM_CTRL_ENABLE
+		/* notify MCDI task GPU is power-on to keep co-VSRAM state */
+		DRV_WriteReg32(MCDI_MBOX_GPU_STA, 0x1);
+#endif /* GPUFREQ_COVSRAM_CTRL_ENABLE */
+
 		ret = regulator_enable(g_pmic->reg_vgpu);
 		if (ret) {
 			__gpufreq_abort("fail to enable VGPU (%d)", ret);
@@ -4277,10 +4283,17 @@ static int __gpufreq_buck_ctrl(enum gpufreq_power_state power)
 			goto done;
 		}
 		g_gpu.buck_count--;
+
+#if GPUFREQ_COVSRAM_CTRL_ENABLE
+		/* notify MCDI task GPU is power-off to release co-VSRAM state */
+		DRV_WriteReg32(MCDI_MBOX_GPU_STA, 0x2);
+#endif /* GPUFREQ_COVSRAM_CTRL_ENABLE */
 	}
 
-	GPUFREQ_LOGD("power: %d, SPM_SOC_BUCK_ISO_CON: 0x%08x, MFG_RPC_MFG1_PWR_CON: 0x%08x",
-		power, DRV_Reg32(SPM_SOC_BUCK_ISO_CON), DRV_Reg32(MFG_RPC_MFG1_PWR_CON));
+	GPUFREQ_LOGD("power: %d, %s: 0x%08x, %s: 0x%08x, %s: 0x%08x",
+		power, "SOC_BUCK_ISO", DRV_Reg32(SPM_SOC_BUCK_ISO_CON),
+		"MFG1_PWR_CON", DRV_Reg32(MFG_RPC_MFG1_PWR_CON),
+		"MCDI_MBOX_GPU_STA", DRV_Reg32(MCDI_MBOX_GPU_STA));
 
 done:
 	GPUFREQ_TRACE_END();
@@ -5518,6 +5531,18 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 	g_gpueb_cfgreg_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
 	if (unlikely(!g_gpueb_cfgreg_base)) {
 		GPUFREQ_LOGE("fail to ioremap GPUEB_CFGREG: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x0C0DF7E0 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mcdi_mbox");
+	if (unlikely(!res)) {
+		GPUFREQ_LOGE("fail to get resource MCDI_MBOX");
+		goto done;
+	}
+	g_mcdi_mbox_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (unlikely(!g_mcdi_mbox_base)) {
+		GPUFREQ_LOGE("fail to ioremap MCDI_MBOX: 0x%llx", res->start);
 		goto done;
 	}
 
