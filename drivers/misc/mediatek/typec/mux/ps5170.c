@@ -251,11 +251,11 @@ static int ps5170_set_conf(struct ps5170 *ps, u8 new_conf)
 		switch (new_conf) {
 		case 2:
 			/* DP Only mode 4-lane */
-			i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_FLIP_DP);
+			i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_NORMAL_DP);
 			break;
 		case 4:
 			/*  DP 2 lane + USB mode */
-			i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_FLIP_USBDP);
+			i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_NORMAL_USBDP);
 			break;
 		default:
 			break;
@@ -274,11 +274,11 @@ static int ps5170_set_conf(struct ps5170 *ps, u8 new_conf)
 		switch (new_conf) {
 		case 2:
 			/* DP Only mode 4-lane */
-			i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_NORMAL_DP);
+			i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_FLIP_DP);
 			break;
 		case 4:
 			/*  DP 2 lane + USB mode */
-			i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_NORMAL_USBDP);
+			i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_FLIP_USBDP);
 			break;
 		default:
 			break;
