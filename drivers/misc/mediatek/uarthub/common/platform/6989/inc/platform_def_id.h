@@ -88,9 +88,9 @@
 #define PERI_UART_WAKEUP_UART_GPHUB_SEL_SHIFT     4
 
 #define APMIXEDSYS_BASE_ADDR                      0x1000C000
-#define UNIVPLL_CON0                              0x308
-#define UNIVPLL_CON0_UNIVPLL_EN_MASK              (0x1 << 0)
-#define UNIVPLL_CON0_UNIVPLL_EN_SHIFT             0
+#define UNIVPLL_PLLEN_ALL                         0x914
+#define UNIVPLL_PLLEN_ALL_UNIVPLL_EN_MERG_MASK    0x8
+#define UNIVPLL_PLLEN_ALL_UNIVPLL_EN_MERG_SHIFT   3
 
 #define TOPCKGEN_BASE_ADDR                        0x10000000
 #define CLK_CFG_6                                 0x70

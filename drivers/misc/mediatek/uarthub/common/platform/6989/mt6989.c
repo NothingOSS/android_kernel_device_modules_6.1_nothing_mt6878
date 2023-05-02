@@ -194,8 +194,9 @@ int uarthub_get_hwccf_univpll_on_info_mt6989(void)
 		return -1;
 	}
 
-	return (UARTHUB_REG_READ_BIT(apmixedsys_remap_addr_mt6989 + UNIVPLL_CON0,
-		UNIVPLL_CON0_UNIVPLL_EN_MASK) >> UNIVPLL_CON0_UNIVPLL_EN_SHIFT);
+	return (UARTHUB_REG_READ_BIT(apmixedsys_remap_addr_mt6989 + UNIVPLL_PLLEN_ALL,
+		UNIVPLL_PLLEN_ALL_UNIVPLL_EN_MERG_MASK) >>
+		UNIVPLL_PLLEN_ALL_UNIVPLL_EN_MERG_SHIFT);
 #else
 	return 1;
 #endif
@@ -386,9 +387,7 @@ int uarthub_is_uarthub_clk_enable_mt6989(void)
 		return 0;
 	}
 
-	/* UNIVPLL_CON0[0] RG_UNIVPLL_EN */
-	state = (UARTHUB_REG_READ_BIT(apmixedsys_remap_addr_mt6989 + UNIVPLL_CON0,
-		UNIVPLL_CON0_UNIVPLL_EN_MASK) >> UNIVPLL_CON0_UNIVPLL_EN_SHIFT);
+	state = uarthub_get_hwccf_univpll_on_info_mt6989();
 
 	if (state != 0x1) {
 		pr_notice("[%s] UNIVPLL CLK is OFF(0x%x,exp:0x1)\n", __func__, state);

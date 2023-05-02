@@ -13,6 +13,8 @@
 
 #include <linux/regmap.h>
 
+#define SPM_INTERNAL_RESOURCE_CHK_EN 0
+
 static int g_enable_apuart_debug_info;
 
 static int uarthub_get_uart_mux_info_mt6989(void);
@@ -185,8 +187,10 @@ int uarthub_get_spm_res_info_mt6989(
 	if (p_spm_res_26m_off)
 		*p_spm_res_26m_off = spm_res_26m_off;
 
+#if SPM_INTERNAL_RESOURCE_CHK_EN
 	if (spm_res_uarthub != 0x1D || spm_res_internal != 0x17 || spm_res_26m_off != 0x0)
 		return 0;
+#endif
 
 	return 1;
 }
@@ -356,7 +360,7 @@ int uarthub_dump_uartip_debug_info_mt6989(
 	UARTHUB_DEBUG_PRINT_FRACDIV_L(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_FRACDIV_M(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_DMA_EN(def_tag, tag, print_ap, 0);
-	UARTHUB_DEBUG_PRINT_IIR_FCR(def_tag, tag, print_ap, 0);
+	UARTHUB_DEBUG_PRINT_IIR(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_LCR(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_EFR(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_XON1(def_tag, tag, print_ap, 0);

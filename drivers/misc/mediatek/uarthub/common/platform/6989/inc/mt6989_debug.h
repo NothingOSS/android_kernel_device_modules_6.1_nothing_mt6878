@@ -140,9 +140,9 @@
 	UARTHUB_DEBUG_PRINT(UARTHUB_DEBUG_READ_1_REG, UARTHUB_DEBUG_GET_WHOLE_VALUE,\
 	DMA_EN_ADDR, null, "DMA_EN(0x4c)", _print_ap, _def_tag, _tag, "0x%x", _last)
 
-#define UARTHUB_DEBUG_PRINT_IIR_FCR(_def_tag, _tag, _print_ap, _last) \
+#define UARTHUB_DEBUG_PRINT_IIR(_def_tag, _tag, _print_ap, _last) \
 	UARTHUB_DEBUG_PRINT(UARTHUB_DEBUG_READ_1_REG, UARTHUB_DEBUG_GET_WHOLE_VALUE,\
-	IIR_ADDR, null, "IIR_FCR(0x8)", _print_ap, _def_tag, _tag, "0x%x", _last)
+	IIR_ADDR, null, "IIR(0x8)", _print_ap, _def_tag, _tag, "0x%x", _last)
 
 #define UARTHUB_DEBUG_PRINT_LCR(_def_tag, _tag, _print_ap, _last) \
 	UARTHUB_DEBUG_PRINT(UARTHUB_DEBUG_READ_1_REG, UARTHUB_DEBUG_GET_WHOLE_VALUE,\
