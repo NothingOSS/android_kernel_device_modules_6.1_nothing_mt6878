@@ -5,7 +5,6 @@
 
 #include <linux/arm-smccc.h>
 #include <linux/atomic.h>
-#include <linux/freezer.h>
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
@@ -18,6 +17,7 @@
 #include <linux/slab.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/uaccess.h>
+#include <linux/wait.h>
 
 #define ATF_LOG_RESERVED_MEMORY_KEY "mediatek,atf-log-reserved"
 #define DEBUG_BUF_NAME_LEN 16
@@ -282,12 +282,11 @@ static ssize_t runtime_log_read(struct file *file,
 	struct tfa_debug_instance *inst_p = file->private_data;
 	signed long wait_event_ret;
 
-	set_freezable();
 	while (1) {
 		if ((file->f_flags & O_NONBLOCK) &&
 			is_runtime_empty_for_read(file))
 			return -EAGAIN;
-		wait_event_ret = wait_event_freezable_timeout(inst_p->waitq,
+		wait_event_ret = wait_event_interruptible_timeout(inst_p->waitq,
 			!is_runtime_empty_for_read(file), HZ);
 		if (wait_event_ret != 0)
 			break;
