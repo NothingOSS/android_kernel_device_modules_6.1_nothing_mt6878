@@ -1964,9 +1964,10 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 	GPUFREQ_LOGI("[SPM] %s=0x%08x, %s=0x%08x",
 		"SPM2GPUPM_CON", DRV_Reg32(SPM_SPM2GPUPM_CON),
 		"MFG0_PWR_CON", DRV_Reg32(SPM_MFG0_PWR_CON));
-	GPUFREQ_LOGI("[MFG] %s=0x%08lx, %s=0x%08x",
+	GPUFREQ_LOGI("[MFG] %s=0x%08lx, %s=0x%08x, %s=0x%08x",
 		"MFG_0_22_37_PWR_STATUS", MFG_0_22_37_PWR_STATUS,
-		"MFG1_PWR_CON", DRV_Reg32(MFG_RPC_MFG1_PWR_CON));
+		"MFG1_PWR_CON", DRV_Reg32(MFG_RPC_MFG1_PWR_CON),
+		"MFG_DEFAULT_DELSEL", DRV_Reg32(MFG_DEFAULT_DELSEL_00));
 	GPUFREQ_LOGI("[MFG] %s=0x%08x, %s=0x%08x, %s=0x%08x",
 		"GTOP_DREQ", DRV_Reg32(MFG_RPC_GTOP_DREQ_CFG),
 		"SMMU_CR0", DRV_Reg32(MFG_SMMU_CR0),
@@ -3021,7 +3022,8 @@ static unsigned int __gpufreq_get_fmeter_fgpu(void)
 	val = DRV_Reg32(MFG_PLL_FQMTR_CON0);
 	DRV_WriteReg32(MFG_PLL_FQMTR_CON0, (val & GENMASK(23, 0)));
 	/* Enable fmeter & select measure clock PLL_TST_CK */
-	DRV_WriteReg32(MFG_PLL_FQMTR_CON0, (BIT(12) | BIT(15)));
+	/* MFG_PLL_FQMTR_CON0 0x13FA0040 [1:0] = 2'b10, select brisket_out_ck */
+	DRV_WriteReg32(MFG_PLL_FQMTR_CON0, (BIT(1) | BIT(12) | BIT(15)));
 
 	ckgen_load_cnt = DRV_Reg32(MFG_PLL_FQMTR_CON1) >> 16;
 	ckgen_k1 = DRV_Reg32(MFG_PLL_FQMTR_CON0) >> 24;
