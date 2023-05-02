@@ -22,7 +22,8 @@
 #define DCI_RPMB_CMD_GET_WCNT       2
 #define DCI_RPMB_CMD_WRITE_DATA     3
 #define DCI_RPMB_CMD_PROGRAM_KEY    4
-
+#define DCI_RPMB_CMD_PURGE_EN       5
+#define DCI_RPMB_CMD_PURGE_STATUS   6
 
 /*... add more command ids when needed */
 
@@ -68,6 +69,7 @@ struct rpmb_req_t {
 	uint16_t addr;
 	uint16_t blks;
 	uint16_t result;
+	uint8_t region;
 };
 
 /*

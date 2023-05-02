@@ -102,7 +102,18 @@ static int rpmb_request_verify(struct rpmb_dev *rdev, struct rpmb_data *rpmbd)
 		dev_notice(&rdev->dev, "NOTSUPPORTED rpmb resut read = 0x%1x blk = %d\n",
 			req_type, block_count);
 		return -EOPNOTSUPP;
-
+	case RPMB_PURGE_STATUS_READ:
+	case RPMB_PURGE_ENABLE:
+		if (block_count != 1) {
+			dev_notice(&rdev->dev, "rpmb purge ops invalid block_count=%d\n",
+				block_count);
+			return -EINVAL;
+		}
+		if (addr != 0) {
+			dev_notice(&rdev->dev, "rpmb purge ops invalid addr=0x%x\n", addr);
+			return -EINVAL;
+		}
+		break;
 	default:
 		dev_notice(&rdev->dev, "Error rpmb invalid command = 0x%1x blk = %d\n",
 			req_type, block_count);
@@ -231,6 +242,10 @@ int rpmb_cmd_req(struct rpmb_dev *rdev, struct rpmb_data *rpmbd, u8 region)
 		return -EINVAL;
 	}
 
+	/* RPMB allows maximun of 4 regions */
+	if (region > 3)
+		return -EINVAL;
+
 	ret = rpmb_request_verify(rdev, rpmbd);
 	if (ret)
 		return ret;
@@ -260,6 +275,8 @@ int rpmb_cmd_req(struct rpmb_dev *rdev, struct rpmb_data *rpmbd, u8 region)
 		rpmb_cmd_set(&cmd[2], 0, rpmbd->ocmd.frames, cnt_out);
 		ncmds = 3;
 		break;
+	case RPMB_PURGE_STATUS_READ:
+	case RPMB_PURGE_ENABLE:
 	case RPMB_GET_WRITE_COUNTER:
 		cnt_in = 1;
 		cnt_out = 1;

@@ -49,6 +49,8 @@ struct rpmb_frame {
 #define RPMB_WRITE_DATA        0x3    /* Write data to RPMB partition */
 #define RPMB_READ_DATA         0x4    /* Read data from RPMB partition */
 #define RPMB_RESULT_READ       0x5    /* Read result request  (Internal) */
+#define RPMB_PURGE_ENABLE      0x8    /* Purge specified LU */
+#define RPMB_PURGE_STATUS_READ 0x9    /* Read status of purge */
 
 #define RPMB_REQ2RESP(_OP) ((_OP) << 8)
 #define RPMB_RESP2REQ(_OP) ((_OP) >> 8)

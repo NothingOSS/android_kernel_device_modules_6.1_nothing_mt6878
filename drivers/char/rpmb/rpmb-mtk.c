@@ -83,7 +83,6 @@ wait_queue_head_t wait_rpmb;
 static bool rpmb_done_flag;
 struct mutex rpmb_lock;
 
-
 /**
  * struct storage_rpmb_req - request format for STORAGE_RPMB_SEND
  * @reliable_write_size:        size in bytes of reliable write region
@@ -135,6 +134,14 @@ static struct nl_rpmb_send_req nl_rpmb_req;
 #define RPMB_IOCTL_PROGRAM_KEY  1
 #define RPMB_IOCTL_WRITE_DATA   3
 #define RPMB_IOCTL_READ_DATA    4
+
+enum rpmb_region {
+	RPMB_REGION0 = 0,
+	RPMB_REGION1,
+	RPMB_REGION2,
+	RPMB_REGION3,
+	RPMB_MAX_REGION_CNT
+};
 
 struct rpmb_ioc_param {
 	unsigned char *keybytes;
@@ -481,7 +488,7 @@ static int nl_rpmb_cmd_req(const struct rpmb_data *rpmbd)
 #endif
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
-static int rpmb_req_get_wc_ufs(u8 *keybytes, u32 *wc, u8 *frame)
+static int rpmb_req_get_wc_ufs(u8 region, u8 *keybytes, u32 *wc, u8 *frame)
 {
 	struct rpmb_data rpmbdata;
 	struct rpmb_dev *rawdev_ufs_rpmb;
@@ -551,7 +558,7 @@ static int rpmb_req_get_wc_ufs(u8 *keybytes, u32 *wc, u8 *frame)
 		#ifdef __RPMB_KERNEL_NL_SUPPORT
 		ret = nl_rpmb_cmd_req(&rpmbdata);
 		#else
-		ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
+		ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, region);
 		#endif
 
 		if (ret) {
@@ -760,7 +767,82 @@ out:
 	return ret;
 }
 
-int rpmb_req_program_key_ufs(u8 *frame, u32 blk_cnt, u8 region)
+static int rpmb_req_purge_enable(u8 region, u8 *frame)
+{
+	int ret = 0;
+	struct rpmb_data data;
+	struct rpmb_dev *rawdev_ufs_rpmb;
+
+	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
+
+	data.ocmd.nframes = 1;
+	data.ocmd.frames = rpmb_alloc_frames(1);
+
+	if (!data.ocmd.frames)
+		return RPMB_ALLOC_ERROR;
+
+	data.icmd.nframes = 1;
+	data.icmd.frames = (struct rpmb_frame *)frame;
+
+	data.req_type = RPMB_PURGE_ENABLE;
+
+	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &data, region);
+	if (ret)
+		MSG(ERR, "%s: rpmb_cmd_req IO error, ret %d (0x%x)\n",
+			__func__, ret, ret);
+
+	/*
+	 * Microtrust TEE will check write counter in the first frame,
+	 * thus we copy response frame to the first frame.
+	 */
+	memcpy(frame, data.ocmd.frames, RPMB_SZ_FRAME);
+
+	kfree(data.ocmd.frames);
+
+	MSG(DBG_INFO, "%s: ret 0x%x\n", __func__, ret);
+
+	return ret;
+}
+
+static int rpmb_req_read_purge_status(u8 region, u8 *frame)
+{
+	int ret = 0;
+	struct rpmb_data data;
+	struct rpmb_dev *rawdev_ufs_rpmb;
+
+	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
+
+	data.ocmd.nframes = 1;
+	data.ocmd.frames = rpmb_alloc_frames(1);
+
+	if (!data.ocmd.frames)
+		return RPMB_ALLOC_ERROR;
+
+	data.icmd.nframes = 1;
+	data.icmd.frames = (struct rpmb_frame *)frame;
+
+	data.req_type = RPMB_PURGE_STATUS_READ;
+
+	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &data, region);
+	if (ret)
+		MSG(ERR, "%s: rpmb_cmd_req IO error, ret %d (0x%x)\n",
+			__func__, ret, ret);
+
+	/*
+	 * Microtrust TEE will check write counter in the first frame,
+	 * thus we copy response frame to the first frame.
+	 */
+	memcpy(frame, data.ocmd.frames, RPMB_SZ_FRAME);
+
+	kfree(data.ocmd.frames);
+
+	MSG(DBG_INFO, "%s: ret 0x%x\n", __func__, ret);
+
+	return ret;
+}
+
+
+static int rpmb_req_program_key_ufs(u8 region, u8 *frame, u32 blk_cnt)
 {
 	struct rpmb_data data;
 	struct rpmb_dev *rawdev_ufs_rpmb;
@@ -795,8 +877,9 @@ int rpmb_req_program_key_ufs(u8 *frame, u32 blk_cnt, u8 region)
 	 * Microtrust TEE will check write counter in the first frame,
 	 * thus we copy response frame to the first frame.
 	 */
-	if (region == 0)
-		memcpy(frame, data.ocmd.frames, 512);
+	/* TODO: fix for multi region case */
+	if (region == RPMB_REGION0)
+		memcpy(frame, data.ocmd.frames, RPMB_SZ_FRAME);
 
 	if (data.ocmd.frames->result) {
 		MSG(ERR, "%s, result error!!! (%x)\n", __func__,
@@ -874,7 +957,8 @@ static int rpmb_req_ioctl_write_data_ufs(struct rpmb_ioc_param *param)
 		MSG(DBG_INFO, "%s, total_blkcnt = 0x%x, tran_blkcnt = 0x%x\n",
 		    __func__, left_blkcnt, tran_blkcnt);
 
-		ret = rpmb_req_get_wc_ufs(rpmb_key, &wc, NULL);
+		/* TODO: support region select*/
+		ret = rpmb_req_get_wc_ufs(RPMB_REGION0, rpmb_key, &wc, NULL);
 		if (ret) {
 			MSG(ERR, "%s, rpmb_req_get_wc_ufs error!!!(0x%x)\n",
 			    __func__, ret);
@@ -1283,29 +1367,27 @@ static enum mc_result rpmb_gp_execute_ufs(u32 cmdId)
 	switch (cmdId) {
 
 	case DCI_RPMB_CMD_READ_DATA:
-
 		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_READ_DATA\n", __func__);
-
 		ret = rpmb_req_read_data_ufs(rpmb_gp_dci->request.frame,
 					rpmb_gp_dci->request.blks);
-
 		break;
-
 	case DCI_RPMB_CMD_GET_WCNT:
-
 		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_GET_WCNT\n", __func__);
-
-		ret = rpmb_req_get_wc_ufs(NULL, NULL, rpmb_gp_dci->request.frame);
-
+		ret = rpmb_req_get_wc_ufs(rpmb_gp_dci->request.region,
+					NULL, NULL, rpmb_gp_dci->request.frame);
 		break;
-
 	case DCI_RPMB_CMD_WRITE_DATA:
-
 		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_WRITE_DATA\n", __func__);
-
 		ret = rpmb_req_write_data_ufs(rpmb_gp_dci->request.frame,
 					rpmb_gp_dci->request.blks);
-
+		break;
+	case DCI_RPMB_CMD_PURGE_EN:
+		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_PURGE_EN\n", __func__);
+		rpmb_req_purge_enable(rpmb_gp_dci->request.region, rpmb_gp_dci->request.frame);
+		break;
+	case DCI_RPMB_CMD_PURGE_STATUS:
+		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_PURGE_STATUS\n", __func__);
+		rpmb_req_read_purge_status(rpmb_gp_dci->request.region, rpmb_gp_dci->request.frame);
 		break;
 
 	case DCI_RPMB_CMD_PROGRAM_KEY:
@@ -1313,10 +1395,10 @@ static enum mc_result rpmb_gp_execute_ufs(u32 cmdId)
 		rpmb_dump_frame(rpmb_gp_dci->request.frame);
 
 		/* program both region 0 and region 1 key */
-		ret = rpmb_req_program_key_ufs(rpmb_gp_dci->request.frame,
-			1, 1);
-		ret = rpmb_req_program_key_ufs(rpmb_gp_dci->request.frame,
-			1, 0);
+		ret = rpmb_req_program_key_ufs(RPMB_REGION1, rpmb_gp_dci->request.frame,
+			1);
+		ret = rpmb_req_program_key_ufs(RPMB_REGION0, rpmb_gp_dci->request.frame,
+			1);
 
 		break;
 
