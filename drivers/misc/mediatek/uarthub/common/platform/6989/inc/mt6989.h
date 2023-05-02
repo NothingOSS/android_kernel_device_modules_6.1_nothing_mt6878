@@ -7,7 +7,7 @@
 #define MT6989_H
 
 #define UARTHUB_SUPPORT_FPGA          0
-#define UARTHUB_SUPPORT_DVT           1
+#define UARTHUB_SUPPORT_DVT           0
 #define UARTHUB_SUPPORT_UT_API        1
 #define UARTHUB_SUPPORT_UT_CASE       1
 
