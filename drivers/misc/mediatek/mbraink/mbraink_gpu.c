@@ -6,15 +6,16 @@
 #include <linux/module.h>
 #include "mbraink_gpu.h"
 
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
+#include <fpsgo_common.h>
+#include <fstb.h>
+#endif
+
 #define Q2QTIMEOUT 500000000 //500ms
 #define Q2QTIMEOUT_HIST 70000000 //70ms
 static unsigned long long gq2qTimeoutInNs = Q2QTIMEOUT;
 unsigned int TimeoutCounter[10] = {0};
 unsigned int TimeoutRange[10] = {70, 120, 170, 220, 270, 320, 370, 420, 470, 520};
-
-#if (MBRAINK_LANDING_PONSOT_CHECK == 1)
-void (*fpsgo2mbrain_hint_frameinfo_fp)(unsigned long long q2q_time);
-#endif
 
 static void calculateTimeoutCouter(unsigned long long q2qTimeInNS)
 {
@@ -66,14 +67,17 @@ ssize_t getTimeoutCouterReport(char *pBuf)
 	return size;
 }
 
-void fpsgo2mbrain_hint_frameinfo(unsigned long long q2qTimeInNS)
+void fpsgo2mbrain_hint_frameinfo(int pid, unsigned long long bufID,
+	int fps, unsigned long long time)
 {
-	if (q2qTimeInNS > Q2QTIMEOUT_HIST)
-		calculateTimeoutCouter(q2qTimeInNS);
+	if (time > Q2QTIMEOUT_HIST)
+		calculateTimeoutCouter(time);
 
-	if (q2qTimeInNS > gq2qTimeoutInNs) {
-		pr_info("q2q timeout (%llu) ns at timeout limit (%llu) ns\n",
-			q2qTimeInNS,
+	if (time > gq2qTimeoutInNs) {
+		pr_info("q2q (%d) (%llu) (%llu) ns limit (%llu) ns\n",
+			pid,
+			bufID,
+			time,
 			gq2qTimeoutInNs);
 		mbraink_netlink_send_msg(NETLINK_EVENT_Q2QTIMEOUT);
 	}
@@ -81,13 +85,19 @@ void fpsgo2mbrain_hint_frameinfo(unsigned long long q2qTimeInNS)
 
 int mbraink_gpu_init(void)
 {
-	fpsgo2mbrain_hint_frameinfo_fp = fpsgo2mbrain_hint_frameinfo;
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
+	fpsgo_other2fstb_register_info_callback(FPSGO_Q2Q_TIME,
+		fpsgo2mbrain_hint_frameinfo);
+#endif
 	return 0;
 }
 
 int mbraink_gpu_deinit(void)
 {
-	fpsgo2mbrain_hint_frameinfo_fp = NULL;
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
+	fpsgo_other2fstb_unregister_info_callback(FPSGO_Q2Q_TIME,
+		fpsgo2mbrain_hint_frameinfo);
+#endif
 	return 0;
 }
 
