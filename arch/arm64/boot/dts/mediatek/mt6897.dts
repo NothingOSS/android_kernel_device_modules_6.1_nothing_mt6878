@@ -4724,7 +4724,7 @@
 		clock-names = "vcore", "vmm";
 		//vcore-supply = <&mt6363_vbuck5>;
 		//vmm-pmic-supply = <&mt6319_6_vbuck3>;
-		fmeter-id = /bits/ 8 <5 6 7 8 9 10 11 52 53 64 65 86>;
+		fmeter-id = /bits/ 8 <5 6 7 8 9 10 11 52 53 64 65 85>;
 		fmeter-type = /bits/ 8 <2 2 2 2 2 2 2 2 2 2 2 2>;
 		mediatek,mmdvfs-clk = <&mmdvfs_clk>;
 		debug-version = <2>;
