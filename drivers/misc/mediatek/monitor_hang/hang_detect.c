@@ -38,6 +38,7 @@
 #include <asm/stacktrace.h>
 #include <asm/traps.h>
 #include <asm/cacheflush.h>
+#include <asm/kexec.h>
 
 #if IS_ENABLED(CONFIG_ANDROID_DEBUG_SYMBOLS)
 #include <linux/android_debug_symbols.h>
@@ -85,6 +86,9 @@ static int hang_detect_counter = 0x7fffffff;
 static int dump_bt_done;
 static bool reboot_flag;
 static struct name_list *white_list;
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+static struct pt_regs saved_regs;
+#endif
 
 struct hang_callback {
 	struct list_head hc_entry;
@@ -802,9 +806,10 @@ void trigger_hang_db(void)
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+		crash_setup_regs(&saved_regs, NULL);
 		mrdump_regist_hang_bt(NULL);
 		mrdump_common_die(AEE_REBOOT_MODE_HANG_DETECT,
-		"	Hang Detect", NULL);
+		"	Hang Detect", &saved_regs);
 #else
 		panic("hang_detect: system blocked");
 #endif
