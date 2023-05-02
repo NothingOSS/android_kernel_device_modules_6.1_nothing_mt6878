@@ -160,8 +160,8 @@ static void __gpufreq_compute_avs(void);
 static void __gpufreq_init_gpm3_0_table(void);
 static int __gpufreq_init_opp_idx(void);
 static void __gpufreq_init_opp_table(void);
+static void __gpufreq_init_brisket(void);
 static void __gpufreq_init_hbvc(void);
-static void __gpufreq_init_dreq(void);
 static void __gpufreq_init_leakage_info(void);
 static void __gpufreq_init_shader_present(void);
 static void __gpufreq_init_segment_id(void);
@@ -2731,7 +2731,7 @@ static unsigned int __gpufreq_settle_time_vgpu(enum gpufreq_opp_direct direct, i
 		t_settle = (deltaV * 11 / 1250 / 10) + 4 + 2;
 	else if (direct == SCALE_DOWN)
 		/* falling */
-		t_settle = 0;
+		t_settle = (deltaV * 11 / 1250 / 10) + 4 + 2;
 
 	return t_settle; /* us */
 }
@@ -2751,7 +2751,7 @@ static unsigned int __gpufreq_settle_time_vstack(enum gpufreq_opp_direct direct,
 		t_settle = (deltaV * 11 / 2500 / 10) + 4 + 2;
 	else if (direct == SCALE_DOWN)
 		/* falling */
-		t_settle = 0;
+		t_settle = (deltaV * 11 / 625 / 10) + 4 + 2;
 
 	return t_settle; /* us */
 }
@@ -2865,7 +2865,7 @@ static void __gpufreq_volt_check_sram(unsigned int vsram_gpu, unsigned int vsram
 		else if (dreq_ack & DREQ_ST0_VSRAM_ACK)
 			g_stack.cur_vsram = __gpufreq_get_pmic_vsram();
 		else
-			__gpufreq_abort("incorrect DREQ_STACK: 0x%08x", dreq_ack);
+			g_stack.cur_vsram = vsram_stack;
 	} else
 		g_stack.cur_vsram = vsram_stack;
 
@@ -5010,21 +5010,36 @@ static void __iomem *__gpufreq_of_ioremap(const char *node_name, int idx)
 	return base;
 }
 
+/* Brisket: auto voltage frequency correlation */
+static void __gpufreq_init_brisket(void)
+{
+#if GPUFREQ_BRISKET_BYPASS_MODE
+	DRV_WriteReg32(MFG_RPC_BRISKET_TOP_AO_CFG_0, 0x00000003);
+	DRV_WriteReg32(MFG_RPC_BRISKET_ST0_AO_CFG_0, 0x00000003);
+	DRV_WriteReg32(MFG_RPC_BRISKET_ST1_AO_CFG_0, 0x00000003);
+	DRV_WriteReg32(MFG_RPC_BRISKET_ST3_AO_CFG_0, 0x00000003);
+	DRV_WriteReg32(MFG_RPC_BRISKET_ST4_AO_CFG_0, 0x00000003);
+	DRV_WriteReg32(MFG_RPC_BRISKET_ST5_AO_CFG_0, 0x00000003);
+	DRV_WriteReg32(MFG_RPC_BRISKET_ST6_AO_CFG_0, 0x00000003);
+#endif /* GPUFREQ_BRISKET_BYPASS_MODE */
+
+	GPUFREQ_LOGI("%s=0x%x, %s=0x%x, %s=0x%x, %s=0x%x",
+		"BRISKET_TOP", DRV_Reg32(MFG_RPC_BRISKET_TOP_AO_CFG_0),
+		"BRISKET_ST0", DRV_Reg32(MFG_RPC_BRISKET_ST0_AO_CFG_0),
+		"BRISKET_ST1", DRV_Reg32(MFG_RPC_BRISKET_ST1_AO_CFG_0),
+		"BRISKET_ST3", DRV_Reg32(MFG_RPC_BRISKET_ST3_AO_CFG_0));
+	GPUFREQ_LOGI("%s=0x%x, %s=0x%x, %s=0x%x",
+		"BRISKET_ST4", DRV_Reg32(MFG_RPC_BRISKET_ST4_AO_CFG_0),
+		"BRISKET_ST5", DRV_Reg32(MFG_RPC_BRISKET_ST5_AO_CFG_0),
+		"BRISKET_ST6", DRV_Reg32(MFG_RPC_BRISKET_ST6_AO_CFG_0));
+}
+
 /* HBVC: high bandwidth voltage controller, let HW control voltage directly */
 static void __gpufreq_init_hbvc(void)
 {
 #if GPUFREQ_HBVC_ENABLE
 	// todo: HBVC control reg
 #endif /* GPUFREQ_HBVC_ENABLE */
-}
-
-/* DREQ: dual rail equalizer, switching CVCC automatically without SW control */
-static void __gpufreq_init_dreq(void)
-{
-#if GPUFREQ_DREQ_AUTO_ENABLE
-	/* MFG_RPC_GTOP_DREQ_CFG 0x13F91110 [6:0] = 0x3F */
-	DRV_WriteReg32(MFG_RPC_GTOP_DREQ_CFG, GENMASK(5, 0));
-#endif /* GPUFREQ_DREQ_AUTO_ENABLE */
 }
 
 static void __gpufreq_init_leakage_info(void)
@@ -5638,11 +5653,11 @@ static int __gpufreq_pdrv_probe(struct platform_device *pdev)
 	/* init leakage power info */
 	__gpufreq_init_leakage_info();
 
-	/* init DREQ */
-	__gpufreq_init_dreq();
-
 	/* init HBVC */
 	__gpufreq_init_hbvc();
+
+	/* init Brisket */
+	__gpufreq_init_brisket();
 
 	/* power on to init first OPP index */
 	ret = __gpufreq_power_control(GPU_PWR_ON);

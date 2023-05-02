@@ -39,13 +39,14 @@
 #define GPUFREQ_TEMPER_COMP_ENABLE          (0)
 #define GPUFREQ_DEVAPC_CHECK_ENABLE         (0)
 /* MFGSYS New Feature */
-#define GPUFREQ_COVSRAM_CTRL_ENABLE         (0)
-#define GPUFREQ_DREQ_AUTO_ENABLE            (0)
+#define GPUFREQ_COVSRAM_CTRL_ENABLE         (1)
+#define GPUFREQ_DREQ_AUTO_ENABLE            (1)
 #define GPUFREQ_HBVC_ENABLE                 (0)
 #define GPUFREQ_BUS_CLK_DIV2_ENABLE         (0)
 #define GPUFREQ_HW_DELSEL_ENABLE            (0)
 #define GPUFREQ_DFD3_6_ENABLE               (0)
 #define GPUFREQ_SW_BRCAST_ENABLE            (0)
+#define GPUFREQ_BRISKET_BYPASS_MODE         (1)
 
 /**************************************************
  * PMIC Setting
