@@ -155,7 +155,6 @@ int trusty_shm_init_pool(struct device *dev)
 		if (rc < 0) {
 			dev_err(dev, "%s: gen_pool_add_virt failed (%d)\n",
 					__func__, rc);
-			gen_pool_destroy(gpool);
 			goto err_pool_add_virt;
 		}
 
