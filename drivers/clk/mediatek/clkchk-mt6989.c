@@ -1264,12 +1264,30 @@ struct clkchk_fm {
 /* check which fmeter clk you want to get freq */
 enum {
 	CHK_FM_MMPLL2 = 0,
+	CHK_FM_UNIVPLL2,
+	CHK_FM_MAINPLL2,
+	CHK_FM_MMPLL,
+	CHK_FM_UNIVPLL,
+	CHK_FM_IMGPLL,
+	CHK_FM_TVDPLL,
+	CHK_FM_UFS,
+	CHK_FM_IMG1,
+	CHK_FM_IPE,
 	CHK_FM_NUM,
 };
 
 /* fill in the fmeter clk you want to get freq */
 struct  clkchk_fm chk_fm_list[] = {
 	[CHK_FM_MMPLL2] = {"mmpll2", FM_MMPLL2_CKDIV_CK, ABIST_2},
+	[CHK_FM_UNIVPLL2] = {"univpll2", FM_UNIVPLL2_192M_CK, ABIST_2},
+	[CHK_FM_MAINPLL2] = {"mainpll2", FM_MAINPLL2_CKDIV_CK, ABIST_2},
+	[CHK_FM_MMPLL] = {"mmpll", FM_MMPLL_CKDIV_CK, ABIST},
+	[CHK_FM_UNIVPLL] = {"univpll", FM_UNIVPLL_CKDIV_CK, ABIST},
+	[CHK_FM_IMGPLL] = {"imgpll", FM_IMGPLL_CKDIV_CK, ABIST},
+	[CHK_FM_TVDPLL] = {"tvdpll", FM_TVDPLL_CKDIV_CK, ABIST},
+	[CHK_FM_UFS] = {"ufs sel", FM_U_CK, CKGEN},
+	[CHK_FM_IMG1] = {"img1 sel", FM_IMG1_CK, CKGEN_CK2},
+	[CHK_FM_IPE] = {"ipe sel", FM_IPE_CK, CKGEN_CK2},
 	{},
 };
 
@@ -1336,11 +1354,9 @@ static struct regbase rb[] = {
 	[emi_reg1] = REGBASE_V(0x1021d000, emi_reg1, PD_NULL, CLK_NULL),
 	[ssr_top] = REGBASE_V(0x10400000, ssr_top, PD_NULL, CLK_NULL),
 	[bcrm_ssr_bus] = REGBASE_V(0x1070E000, bcrm_ssr_bus, PD_NULL, CLK_NULL),
-	[bcrm_peri_par_bus] = REGBASE_V(0x11035000, bcrm_peri_par_bus, PD_NULL, CLK_NULL),
 	[perao] = REGBASE_V(0x11036000, perao, PD_NULL, CLK_NULL),
 	[afe] = REGBASE_V(0x11050000, afe, MT6989_CHK_PD_AUDIO, CLK_NULL),
 	[impc] = REGBASE_V(0x11284000, impc, PD_NULL, CLK_NULL),
-	[bcrm_pextp_bus] = REGBASE_V(0x112E2000, bcrm_pextp_bus, PD_NULL, CLK_NULL),
 	[ufsao] = REGBASE_V(0x112b8000, ufsao, PD_NULL, CLK_NULL),
 	[ufspdn] = REGBASE_V(0x112bb000, ufspdn, PD_NULL, CLK_NULL),
 	[pext] = REGBASE_V(0x112e0000, pext, PD_NULL, CLK_NULL),
@@ -1525,17 +1541,17 @@ static struct regname rn[] = {
 	REGNAME(ifr_bus, 0x1cc, CONNSYS_PROTECT_RDY_STA_0),
 	REGNAME(ifr_bus, 0x160, MCUSYS_PROTECT_EN_0),
 	REGNAME(ifr_bus, 0x16c, MCUSYS_PROTECT_RDY_STA_0),
+	REGNAME(ifr_bus, 0x200, MMSYS_PROTECT_EN_1),
+	REGNAME(ifr_bus, 0x20c, MMSYS_PROTECT_RDY_STA_1),
 	REGNAME(ifr_bus, 0x0e0, PERISYS_PROTECT_EN_0),
 	REGNAME(ifr_bus, 0x0ec, PERISYS_PROTECT_RDY_STA_0),
 	REGNAME(ifr_bus, 0x220, MMSYS_PROTECT_EN_2),
 	REGNAME(ifr_bus, 0x22c, MMSYS_PROTECT_RDY_STA_2),
 	REGNAME(ifr_bus, 0x1e0, MMSYS_PROTECT_EN_0),
 	REGNAME(ifr_bus, 0x1ec, MMSYS_PROTECT_RDY_STA_0),
-	REGNAME(ifr_bus, 0x200, MMSYS_PROTECT_EN_1),
-	REGNAME(ifr_bus, 0x20c, MMSYS_PROTECT_RDY_STA_1),
 	REGNAME(ifr_bus, 0x260, CCUSYS_PROTECT_EN_0),
 	REGNAME(ifr_bus, 0x26c, CCUSYS_PROTECT_RDY_STA_0),
-	REGNAME(ifr_bus, 0x2a4, MMSYS_PROTECT_EN_3),
+	REGNAME(ifr_bus, 0x2a0, MMSYS_PROTECT_EN_3),
 	REGNAME(ifr_bus, 0x2ac, MMSYS_PROTECT_RDY_STA_3),
 	REGNAME(ifr_bus, 0x1a0, MFGSYS_PROTECT_EN_0),
 	REGNAME(ifr_bus, 0x1ac, MFGSYS_PROTECT_RDY_STA_0),
@@ -1550,9 +1566,6 @@ static struct regname rn[] = {
 	/* BCRM_SSR_BUS register */
 	REGNAME(bcrm_ssr_bus, 0x01c, SPU_SSR_PROTECT_EN),
 	REGNAME(bcrm_ssr_bus, 0x01c, SPU_SSR_PROTECT_EN),
-	/* BCRM_PERI_PAR_BUS register */
-	REGNAME(bcrm_peri_par_bus, 0x008, PERI_PROTECT_EN_0),
-	REGNAME(bcrm_peri_par_bus, 0x00c, PERI_PROTECT_RDY_STA_0),
 	/* PERICFG_AO register */
 	REGNAME(perao, 0x10, PERI_CG_0),
 	REGNAME(perao, 0x14, PERI_CG_1),
@@ -1565,9 +1578,6 @@ static struct regname rn[] = {
 	REGNAME(afe, 0x10, AUDIO_TOP_4),
 	/* IMP_IIC_WRAP_C register */
 	REGNAME(impc, 0xE00, AP_CLOCK_CG),
-	/* BCRM_PEXTP_BUS register */
-	REGNAME(bcrm_pextp_bus, 0x008, PEXTP_PROTECT_EN_0),
-	REGNAME(bcrm_pextp_bus, 0x00c, PEXTP_PROTECT_RDY_STA_0),
 	/* UFSCFG_AO register */
 	REGNAME(ufsao, 0x4, UFS_AO_CG_0),
 	/* UFSCFG_PDN register */
@@ -2069,7 +2079,7 @@ static struct mtk_vf vf_table[] = {
 	MTK_VF_TABLE("aud_2_sel", 196600, 196600, 196600, 196600, 196600, 196600),
 	MTK_VF_TABLE("audio_h_sel", 196600, 196600, 196600, 196600, 196600, 196600),
 	MTK_VF_TABLE("adsp_sel", 800000, 800000, 800000, 800000, 800000, 800000),
-	MTK_VF_TABLE("adps_uarthub_b_sel", 208000, 208000, 208000, 208000, 208000, 208000),
+	MTK_VF_TABLE("adsp_uarthub_b_sel", 208000, 208000, 208000, 208000, 208000, 208000),
 	MTK_VF_TABLE("dpmaif_main_sel", 499200, 436800, 416000, 364000, 273000, 273000),
 	MTK_VF_TABLE("pwm_sel", 78000, 78000, 78000, 78000, 78000, 78000),
 	MTK_VF_TABLE("mcupm_sel", 218400, 218400, 218400, 218400, 218400, 218400),

@@ -208,7 +208,7 @@ static const struct fmeter_clk fclks[] = {
 	FMCLK2(CKGEN, FM_AUD_2_CK, "fm_aud_2_ck", 0x00D0, 31, 1),
 	FMCLK2(CKGEN, FM_AUDIO_H_CK, "fm_audio_h_ck", 0x00E0, 7, 1),
 	FMCLK2(CKGEN, FM_ADSP_CK, "fm_adsp_ck", 0x00E0, 15, 1),
-	FMCLK2(CKGEN, FM_ADPS_UARTHUB_B_CK, "fm_adps_uarthub_b_ck", 0x00E0, 23, 1),
+	FMCLK2(CKGEN, FM_ADSP_UARTHUB_B_CK, "fm_adsp_uarthub_b_ck", 0x00E0, 23, 1),
 	FMCLK2(CKGEN, FM_DPMAIF_MAIN_CK, "fm_dpmaif_main_ck", 0x00E0, 31, 1),
 	FMCLK2(CKGEN, FM_PWM_CK, "fm_pwm_ck", 0x00F0, 7, 1),
 	FMCLK2(CKGEN, FM_MCUPM_CK, "fm_mcupm_ck", 0x00F0, 15, 1),
@@ -290,7 +290,7 @@ static const struct fmeter_clk fclks[] = {
 	FMCLK2(CKGEN_CK2, FM_MMUP_CK, "fm_mmup_ck", 0x0880, 7, 1),
 	/* ABIST_CK2 Part */
 	FMCLK3(ABIST_CK2, FM_MAINPLL2_CKDIV_CK, "fm_mainpll2_ckdiv_ck", 0x0354, 3, 13),
-	FMCLK(ABIST_CK2, FM_UNIVPLL2_192M_CK, "fm_univpll2_192m_ck", 1),
+	FMCLK3(ABIST_CK2, FM_UNIVPLL2_192M_CK, "fm_univpll2_192m_ck", 0x030c, 3, 1),
 	FMCLK3(ABIST_CK2, FM_MMPLL2_CKDIV_CK, "fm_mmpll2_ckdiv_ck", 0x03A4, 3, 13),
 	FMCLK3(ABIST_CK2, FM_IMGPLL_CKDIV_CK, "fm_imgpll_ckdiv_ck", 0x0374, 3, 13),
 	FMCLK3(ABIST_CK2, FM_TVDPLL_CKDIV_CK, "fm_tvdpll_ckdiv_ck", 0x024c, 3, 13),

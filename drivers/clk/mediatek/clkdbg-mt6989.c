@@ -73,7 +73,7 @@ const char * const *get_mt6989_all_clk_names(void)
 		"aud_2_sel",
 		"audio_h_sel",
 		"adsp_sel",
-		"adps_uarthub_b_sel",
+		"adsp_uarthub_b_sel",
 		"dpmaif_main_sel",
 		"pwm_sel",
 		"mcupm_sel",

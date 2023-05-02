@@ -63,7 +63,7 @@
 #define FM_AUD_2_CK				52
 #define FM_AUDIO_H_CK				53
 #define FM_ADSP_CK				54
-#define FM_ADPS_UARTHUB_B_CK			55
+#define FM_ADSP_UARTHUB_B_CK			55
 #define FM_DPMAIF_MAIN_CK			56
 #define FM_PWM_CK				57
 #define FM_MCUPM_CK				58

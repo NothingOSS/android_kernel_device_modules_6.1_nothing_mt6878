@@ -790,8 +790,6 @@ unsigned int pd_list[] = {
 	MT6989_CHK_PD_MD1,
 	MT6989_CHK_PD_CONN,
 	MT6989_CHK_PD_PERI_USB0,
-	MT6989_CHK_PD_UFS0,
-	MT6989_CHK_PD_UFS0_PHY,
 	MT6989_CHK_PD_PEXTP_MAC0,
 	MT6989_CHK_PD_PEXTP_MAC1,
 	MT6989_CHK_PD_PEXTP_PHY0,
@@ -927,8 +925,6 @@ static struct pd_sta pd_pwr_sta[] = {
 	{MT6989_CHK_PD_MD1, spm, 0x0E00, GENMASK(31, 30)},
 	{MT6989_CHK_PD_CONN, spm, 0x0E04, GENMASK(31, 30)},
 	{MT6989_CHK_PD_PERI_USB0, spm, 0x0E10, GENMASK(31, 30)},
-	{MT6989_CHK_PD_UFS0, spm, 0x0E14, GENMASK(31, 30)},
-	{MT6989_CHK_PD_UFS0_PHY, spm, 0x0E18, GENMASK(31, 30)},
 	{MT6989_CHK_PD_PEXTP_MAC0, spm, 0x0E1C, GENMASK(31, 30)},
 	{MT6989_CHK_PD_PEXTP_MAC1, spm, 0x0E20, GENMASK(31, 30)},
 	{MT6989_CHK_PD_PEXTP_PHY0, spm, 0x0E24, GENMASK(31, 30)},
@@ -992,8 +988,6 @@ static u32 get_pd_pwr_status(int pd_id)
 
 static int off_mtcmos_id[] = {
 	MT6989_CHK_PD_PERI_USB0,
-	MT6989_CHK_PD_UFS0,
-	MT6989_CHK_PD_UFS0_PHY,
 	MT6989_CHK_PD_PEXTP_MAC0,
 	MT6989_CHK_PD_PEXTP_MAC1,
 	MT6989_CHK_PD_PEXTP_PHY0,
@@ -1060,7 +1054,6 @@ static bool is_mtcmos_chk_bug_on(void)
 }
 
 static int suspend_allow_id[] = {
-	MT6989_CHK_PD_UFS0,
 	PD_NULL,
 };
 

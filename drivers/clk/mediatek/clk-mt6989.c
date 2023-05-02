@@ -189,7 +189,7 @@
 #define TOP_MUX_AUD_2_SHIFT			20
 #define TOP_MUX_AUDIO_H_SHIFT			21
 #define TOP_MUX_ADSP_SHIFT			22
-#define TOP_MUX_ADPS_UARTHUB_BCLK_SHIFT		23
+#define TOP_MUX_ADSP_UARTHUB_BCLK_SHIFT		23
 #define TOP_MUX_DPMAIF_MAIN_SHIFT		24
 #define TOP_MUX_PWM_SHIFT			25
 #define TOP_MUX_MCUPM_SHIFT			26
@@ -1487,7 +1487,7 @@ static const char * const adsp_parents[] = {
 	"adsppll_ck"
 };
 
-static const char * const adps_uarthub_b_parents[] = {
+static const char * const adsp_uarthub_b_parents[] = {
 	"tck_26m_mx9_ck",
 	"univpll_d6_d4",
 	"univpll_d6_d2"
@@ -2364,10 +2364,10 @@ static const struct mtk_mux top_muxes[] = {
 		adsp_parents/* parent */, CLK_CFG_13, CLK_CFG_13_SET,
 		CLK_CFG_13_CLR/* set parent */, 8/* lsb */, 1/* width */,
 		CLK_CFG_UPDATE1/* upd ofs */, TOP_MUX_ADSP_SHIFT/* upd shift */),
-	MUX_CLR_SET_UPD(CLK_TOP_ADPS_UARTHUB_BCLK_SEL/* dts */, "adps_uarthub_b_sel",
-		adps_uarthub_b_parents/* parent */, CLK_CFG_13, CLK_CFG_13_SET,
+	MUX_CLR_SET_UPD(CLK_TOP_ADSP_UARTHUB_BCLK_SEL/* dts */, "adsp_uarthub_b_sel",
+		adsp_uarthub_b_parents/* parent */, CLK_CFG_13, CLK_CFG_13_SET,
 		CLK_CFG_13_CLR/* set parent */, 16/* lsb */, 2/* width */,
-		CLK_CFG_UPDATE1/* upd ofs */, TOP_MUX_ADPS_UARTHUB_BCLK_SHIFT/* upd shift */),
+		CLK_CFG_UPDATE1/* upd ofs */, TOP_MUX_ADSP_UARTHUB_BCLK_SHIFT/* upd shift */),
 	MUX_CLR_SET_UPD(CLK_TOP_DPMAIF_MAIN_SEL/* dts */, "dpmaif_main_sel",
 		dpmaif_main_parents/* parent */, CLK_CFG_13, CLK_CFG_13_SET,
 		CLK_CFG_13_CLR/* set parent */, 24/* lsb */, 4/* width */,
@@ -2833,11 +2833,11 @@ static const struct mtk_mux top_muxes[] = {
 		CLK_CFG_13_CLR/* set parent */, 8/* lsb */, 1/* width */,
 		15/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
 		TOP_MUX_ADSP_SHIFT/* upd shift */),
-	MUX_GATE_CLR_SET_UPD(CLK_TOP_ADPS_UARTHUB_BCLK_SEL/* dts */, "adps_uarthub_b_sel",
-		adps_uarthub_b_parents/* parent */, CLK_CFG_13, CLK_CFG_13_SET,
+	MUX_GATE_CLR_SET_UPD(CLK_TOP_ADSP_UARTHUB_BCLK_SEL/* dts */, "adsp_uarthub_b_sel",
+		adsp_uarthub_b_parents/* parent */, CLK_CFG_13, CLK_CFG_13_SET,
 		CLK_CFG_13_CLR/* set parent */, 16/* lsb */, 2/* width */,
 		23/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
-		TOP_MUX_ADPS_UARTHUB_BCLK_SHIFT/* upd shift */),
+		TOP_MUX_ADSP_UARTHUB_BCLK_SHIFT/* upd shift */),
 	MUX_GATE_CLR_SET_UPD(CLK_TOP_DPMAIF_MAIN_SEL/* dts */, "dpmaif_main_sel",
 		dpmaif_main_parents/* parent */, CLK_CFG_13, CLK_CFG_13_SET,
 		CLK_CFG_13_CLR/* set parent */, 24/* lsb */, 4/* width */,
