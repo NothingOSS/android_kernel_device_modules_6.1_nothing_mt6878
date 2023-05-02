@@ -59,7 +59,6 @@
 #define I2C_RD_TRANAC_VALUE		0x0001
 #define I2C_SCL_MIS_COMP_VALUE		0x0000
 #define I2C_CHN_CLR_FLAG		0x0000
-#define I2C_DEBUGCTRL_BUS		0x0004
 
 #define I2C_DMA_CON_TX			0x0000
 #define I2C_DMA_CON_RX			0x0001
@@ -565,11 +564,6 @@ static void mtk_i2c_writew(struct mtk_i2c *i2c, u16 val,
 	writew(val, i2c->base + i2c->ch_offset_i2c + i2c->dev_comp->regs[reg]);
 }
 
-static u16 mtk_i2c_readw_shadow(struct mtk_i2c *i2c, enum I2C_REGS_OFFSET reg)
-{
-	return readw(i2c->base + i2c->dev_comp->regs[reg]);
-}
-
 static void mtk_i2c_writew_shadow(struct mtk_i2c *i2c, u16 val,
 			   enum I2C_REGS_OFFSET reg)
 {
@@ -629,7 +623,6 @@ static void mtk_i2c_init_hw(struct mtk_i2c *i2c)
 {
 	u16 control_reg;
 	u16 intr_stat_reg;
-	u16 debugctrl_reg;
 
 	mtk_i2c_writew(i2c, I2C_CHN_CLR_FLAG, OFFSET_START);
 	intr_stat_reg = mtk_i2c_readw(i2c, OFFSET_INTR_STAT);
@@ -656,11 +649,6 @@ static void mtk_i2c_init_hw(struct mtk_i2c *i2c)
 	/* config scp i2c ch2 intr to ap */
 	if (i2c->ch_offset_i2c == I2C_OFFSET_SCP)
 		mtk_i2c_writew(i2c, I2C_CCU_INTR_EN, OFFSET_MCU_INTR);
-	if ((i2c->ch_offset_i2c != I2C_OFFSET_SCP) &&
-		(mtk_i2c_readw_shadow(i2c, OFFSET_DMA_FSM_DEBUG) & I2C_I3C_EN)) {
-		debugctrl_reg = mtk_i2c_readw_shadow(i2c, OFFSET_DEBUGCTRL);
-		mtk_i2c_writew_shadow(i2c, debugctrl_reg & (~I2C_DEBUGCTRL_BUS), OFFSET_DEBUGCTRL);
-	}
 
 	/* Set ioconfig */
 	if (i2c->use_push_pull)
