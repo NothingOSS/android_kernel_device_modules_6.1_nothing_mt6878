@@ -3231,10 +3231,10 @@ void DPE_Config_DVS(struct DPE_Config_V2 *pDpeConfig,
 	((ext1_occWidth & 0x07FF) << 12);
 
 
-	//pConfigToKernel->DVS_SRC_36 = 0x00000180;
-	//pConfigToKernel->DVS_SRC_37 = 0x000001c0;
-	//pConfigToKernel->DVS_SRC_38 = 0x00000180;
-	//pConfigToKernel->DVS_SRC_39 = 0x000001c0;
+	pConfigToKernel->DVS_SRC_36 = pDpeConfig->Dpe_DVSSettings.Tuning_meta_dvs.DVS_SRC_36;
+	pConfigToKernel->DVS_SRC_37 = pDpeConfig->Dpe_DVSSettings.Tuning_meta_dvs.DVS_SRC_37;
+	pConfigToKernel->DVS_SRC_38 = pDpeConfig->Dpe_DVSSettings.Tuning_meta_dvs.DVS_SRC_38;
+	pConfigToKernel->DVS_SRC_39 = pDpeConfig->Dpe_DVSSettings.Tuning_meta_dvs.DVS_SRC_39;
 	pConfigToKernel->DVS_CTRL_ATPG = 0x80000000;
 	//
 	memcpy(&pConfigToKernel->TuningBuf_ME,
@@ -5242,6 +5242,7 @@ static signed int DPE_Dump_kernelReg(struct DPE_Config_V2 *cfg)
 	cfg->DPE_Kernel_DpeConfig.DVS_ME_02 = (unsigned int)DPE_RD32(DVS_ME_02_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_ME_03 = (unsigned int)DPE_RD32(DVS_ME_03_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_ME_04 = (unsigned int)DPE_RD32(DVS_ME_04_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_ME_05 = (unsigned int)DPE_RD32(DVS_ME_05_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_ME_06 = (unsigned int)DPE_RD32(DVS_ME_06_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_ME_07 = (unsigned int)DPE_RD32(DVS_ME_07_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_ME_08 = (unsigned int)DPE_RD32(DVS_ME_08_REG);
@@ -5309,6 +5310,7 @@ static signed int DPE_Dump_kernelReg(struct DPE_Config_V2 *cfg)
 	cfg->DPE_Kernel_DpeConfig.DVS_OCC_PQ_5 = (unsigned int)DPE_RD32(DVS_OCC_PQ_5_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_OCC_PQ_10 = (unsigned int)DPE_RD32(DVS_OCC_PQ_10_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_OCC_PQ_11 = (unsigned int)DPE_RD32(DVS_OCC_PQ_11_REG);
+	cfg->DPE_Kernel_DpeConfig.DVS_OCC_PQ_12 = (unsigned int)DPE_RD32(DVS_OCC_PQ_12_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_OCC_ATPG = (unsigned int)DPE_RD32(DVS_OCC_ATPG_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST0 = (unsigned int)DPE_RD32(DVS_OCC_HIST0_REG);
 	cfg->DPE_Kernel_DpeConfig.DVS_OCC_HIST1 = (unsigned int)DPE_RD32(DVS_OCC_HIST1_REG);
@@ -5733,6 +5735,8 @@ static signed int DPE_DumpReg(void)
 		(unsigned int)DPE_RD32(DVS_ME_03_REG));
 	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_ME_04_HW),
 		(unsigned int)DPE_RD32(DVS_ME_04_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_ME_05_HW),
+		(unsigned int)DPE_RD32(DVS_ME_05_REG));
 	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_ME_06_HW),
 		(unsigned int)DPE_RD32(DVS_ME_06_REG));
 	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_ME_07_HW),
@@ -5835,6 +5839,8 @@ static signed int DPE_DumpReg(void)
 		(unsigned int)DPE_RD32(DVS_OCC_PQ_10_REG));
 	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_PQ_11_HW),
 		(unsigned int)DPE_RD32(DVS_OCC_PQ_11_REG));
+	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_PQ_12_HW),
+		(unsigned int)DPE_RD32(DVS_OCC_PQ_12_REG));
 	LOG_INF("[0x%08X %08X]\n", (unsigned int)(DVS_OCC_ATPG_HW),
 		(unsigned int)DPE_RD32(DVS_OCC_ATPG_REG));
 
