@@ -144,8 +144,8 @@ int32_t get_res_sig_stats(struct res_sig_stats *stats)
 {
 	if (swpm_ext_m.func_ready && stats != NULL)
 		return SWPM_EXT_OPS->res_sig_stats_get(stats);
-
-	return 0;
+	else
+		return -1;
 }
 EXPORT_SYMBOL(get_res_sig_stats);
 
