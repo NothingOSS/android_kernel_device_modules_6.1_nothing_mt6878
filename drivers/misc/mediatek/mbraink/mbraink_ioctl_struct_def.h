@@ -177,6 +177,7 @@ struct mbraink_cpufreq_notify_struct_data {
 
 struct mbraink_suspend_info_struct {
 	unsigned short datatype;
+	int reason;
 	long long timestamp;
 };
 

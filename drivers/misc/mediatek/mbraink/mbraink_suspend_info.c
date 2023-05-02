@@ -30,11 +30,31 @@ void mbraink_set_suspend_info_list_record(unsigned short datatype)
 			(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 		mbraink_suspend_info_list_data[w_idx].datatype =
 			datatype;
-		pr_info("%s: w_idx = %u, timestamp=%lld, datatype=%u\n",
+		if (datatype == 1) {
+			char buf[64] = {'\0'};
+
+			last_resume_reason_show(NULL, NULL, buf);
+			if (strstr(buf, "Abort:"))
+				mbraink_suspend_info_list_data[w_idx].reason = -2;
+			else if (strstr(buf, "-1"))
+				mbraink_suspend_info_list_data[w_idx].reason = -1;
+			else {
+				int irq = -3, size = 0;
+				char sub_buf[64] = {'\0'};
+
+				size = sscanf(buf, "%d %s\n", &irq, sub_buf);
+				if (size < 0)
+					pr_info("%s, sscanf failed\n", __func__);
+				mbraink_suspend_info_list_data[w_idx].reason = irq;
+			}
+		} else
+			mbraink_suspend_info_list_data[w_idx].reason = 0;
+		pr_info("%s: w_idx = %u, timestamp=%lld, datatype=%u, reason=%d\n",
 			__func__,
 			w_idx,
 			mbraink_suspend_info_list_data[w_idx].timestamp,
-			mbraink_suspend_info_list_data[w_idx].datatype);
+			mbraink_suspend_info_list_data[w_idx].datatype,
+			mbraink_suspend_info_list_data[w_idx].reason);
 		mbraink_suspend_info_list_data[w_idx].dirty = true;
 		mbraink_suspend_info_list_p_data.w_idx =
 			(mbraink_suspend_info_list_p_data.w_idx + 1) % SUSPEND_INFO_SZ;
@@ -67,6 +87,8 @@ void mbraink_get_suspend_info_list_record(struct mbraink_suspend_info_struct_dat
 				mbraink_suspend_info_list_data[r_idx].timestamp;
 			buffer->drv_data[buf_idx].datatype =
 				mbraink_suspend_info_list_data[r_idx].datatype;
+			buffer->drv_data[buf_idx].reason =
+				mbraink_suspend_info_list_data[r_idx].reason;
 			pr_info("%s: r_idx = %u, buf_idx=%u, timestamp=%lld, datatype=%u\n",
 				__func__,
 				r_idx, buf_idx,
