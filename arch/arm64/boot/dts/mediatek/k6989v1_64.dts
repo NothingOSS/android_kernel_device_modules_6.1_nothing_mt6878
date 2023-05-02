@@ -544,6 +544,11 @@ arm64.nopauth arm64.nosme arm64.nosve arm64.nomte";
 /* usb typec mux end */
 
 #if 0
+&pdc {
+	pd_vbus_upper_bound = <12000000>;
+};
+#endif
+
 &i2c6 {
 	spk1: speaker_amp@5c {
 		compatible = "richtek,rt5512";
@@ -568,11 +573,6 @@ arm64.nopauth arm64.nosme arm64.nosve arm64.nomte";
 		sound-dai = <&spk1>, <&spk2>;
 	};
 };
-
-&pdc {
-	pd_vbus_upper_bound = <12000000>;
-};
-#endif
 
 #include <k6989v1_64/cust.dtsi>
 #include "mediatek/cust_k6989_connfem.dtsi"
