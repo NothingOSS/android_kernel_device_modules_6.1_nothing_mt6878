@@ -627,7 +627,7 @@ s32 mml_dle_config(struct mml_dle_ctx *ctx, struct mml_submit *submit,
 
 	/* copy per-frame info */
 	task->ctx = ctx;
-	result = frame_buf_to_task_buf(&task->buf.src, &submit->buffer.src, "mml_rdma");
+	result = frame_buf_to_task_buf(&task->buf.src, &submit->buffer.src, "mml_dle_rdma");
 	if (result) {
 		mml_err("[dle]%s get dma buf fail", __func__);
 		goto err_buf_exit;
@@ -637,7 +637,7 @@ s32 mml_dle_config(struct mml_dle_ctx *ctx, struct mml_submit *submit,
 	for (i = 0; i < submit->buffer.dest_cnt; i++) {
 		result = frame_buf_to_task_buf(&task->buf.dest[i],
 				      &submit->buffer.dest[i],
-				      "mml_wrot");
+				      "mml_dle_wrot");
 		if (result) {
 			mml_err("[dle]%s get dma buf fail", __func__);
 			goto err_buf_exit;
