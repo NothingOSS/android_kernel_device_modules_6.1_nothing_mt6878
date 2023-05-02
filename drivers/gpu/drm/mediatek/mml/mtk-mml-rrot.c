@@ -13,6 +13,7 @@
 #include <linux/platform_device.h>
 #include <linux/math64.h>
 #include <soc/mediatek/smi.h>
+#include <mtk-smmu-v3.h>
 
 #include "mtk-mml-driver.h"
 #include "mtk-mml-tile.h"
@@ -161,7 +162,8 @@ static const struct rrot_data mt6989_rrot_data = {
 struct mml_comp_rrot {
 	struct mml_comp comp;
 	const struct rrot_data *data;
-	struct device *dev;	/* for dmabuf to iova */
+	struct device *mmu_dev;	/* for dmabuf to iova */
+	struct device *mmu_dev_sec; /* for secure dmabuf to secure iova */
 
 	u16 event_eof;
 
@@ -342,6 +344,7 @@ static s32 rrot_buf_map(struct mml_comp *comp, struct mml_task *task,
 			const struct mml_path_node *node)
 {
 	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
+	struct mml_frame_config *cfg = task->config;
 	s32 ret = 0;
 
 	mml_trace_ex_begin("%s_rrot%s", __func__, rrot->pipe ? "_2nd" : "");
@@ -352,7 +355,8 @@ static s32 rrot_buf_map(struct mml_comp *comp, struct mml_task *task,
 			((u64)task->job.jobid << 16) | comp->id, 0);
 
 		/* get iova */
-		ret = mml_buf_iova_get(rrot->dev, &task->buf.src);
+		ret = mml_buf_iova_get(cfg->info.src.secure ? rrot->mmu_dev_sec : rrot->mmu_dev,
+			&task->buf.src);
 		if (ret < 0)
 			mml_err("%s iova fail %d", __func__, ret);
 
@@ -1882,11 +1886,18 @@ static int probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, priv);
 	priv->data = of_device_get_match_data(dev);
-	priv->dev = dev;
 
-	ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
-	if (ret)
-		dev_err(dev, "fail to config rrot dma mask %d\n", ret);
+	if (smmu_v3_enabled()) {
+		/* shared smmu device, setup 34bit in dts */
+		priv->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
+		priv->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
+	} else {
+		priv->mmu_dev = dev;
+		priv->mmu_dev_sec = dev;
+		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+		if (ret)
+			mml_err("fail to config rrot dma mask %d", ret);
+	}
 
 	ret = mml_comp_init(pdev, &priv->comp);
 	if (ret) {

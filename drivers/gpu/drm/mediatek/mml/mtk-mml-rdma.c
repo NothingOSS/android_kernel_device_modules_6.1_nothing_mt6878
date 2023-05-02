@@ -10,6 +10,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <cmdq-util.h>
+#include <mtk-smmu-v3.h>
 
 #include "mtk-mml-rdma-golden.h"
 #include "mtk-mml-buf.h"
@@ -624,7 +625,8 @@ static const struct rdma_data mt6989_rdma_data = {
 struct mml_comp_rdma {
 	struct mml_comp comp;
 	const struct rdma_data *data;
-	struct device *dev;	/* for dmabuf to iova */
+	struct device *mmu_dev;	/* for dmabuf to iova */
+	struct device *mmu_dev_sec; /* for secure dmabuf to secure iova */
 
 	u16 event_eof;
 
@@ -687,17 +689,19 @@ static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,
 			const struct mml_path_node *node)
 {
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
+	struct mml_frame_config *cfg = task->config;
 	s32 ret = 0;
 
 	mml_trace_ex_begin("%s", __func__);
 
-	if (task->config->info.mode != MML_MODE_APUDC &&
+	if (cfg->info.mode != MML_MODE_APUDC &&
 		unlikely(task->config->info.mode != MML_MODE_SRAM_READ)) {
 		mml_mmp(buf_map, MMPROFILE_FLAG_START,
 			((u64)task->job.jobid << 16) | comp->id, 0);
 
 		/* get iova */
-		ret = mml_buf_iova_get(rdma->dev, &task->buf.src);
+		ret = mml_buf_iova_get(cfg->info.src.secure ? rdma->mmu_dev_sec : rdma->mmu_dev,
+			&task->buf.src);
 		if (ret < 0)
 			mml_err("%s iova fail %d", __func__, ret);
 
@@ -2338,11 +2342,18 @@ static int probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, priv);
 	priv->data = of_device_get_match_data(dev);
-	priv->dev = dev;
 
-	ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
-	if (ret)
-		dev_err(dev, "fail to config rdma dma mask %d\n", ret);
+	if (smmu_v3_enabled()) {
+		/* shared smmu device, setup 34bit in dts */
+		priv->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
+		priv->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
+	} else {
+		priv->mmu_dev = dev;
+		priv->mmu_dev_sec = dev;
+		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+		if (ret)
+			mml_err("fail to config rdma dma mask %d", ret);
+	}
 
 	ret = mml_comp_init(pdev, &priv->comp);
 	if (ret) {

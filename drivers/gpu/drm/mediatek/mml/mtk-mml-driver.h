@@ -61,6 +61,16 @@ s32 mml_comp_pw_disable(struct mml_comp *comp);
 s32 mml_comp_clk_enable(struct mml_comp *comp);
 s32 mml_comp_clk_disable(struct mml_comp *comp);
 
+/*
+ * mml_comp_get_smmu_node - check if platform use smmu v3 and parse normal/secure smmu shared node
+ *
+ * @comp:	component to parse
+ * @dev:	device node of parent
+ *
+ * Return:	shared device if found, original dev if not
+ */
+struct device *mml_smmu_get_shared_device(struct device *dev, const char *name);
+
 void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 throughput, u32 tput_up);
 void mml_comp_qos_clear(struct mml_comp *comp);

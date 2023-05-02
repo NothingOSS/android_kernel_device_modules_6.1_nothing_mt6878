@@ -14,6 +14,7 @@
 #include <linux/math64.h>
 #include <linux/delay.h>
 #include <soc/mediatek/smi.h>
+#include <mtk-smmu-v3.h>
 
 #include "mtk-mml-buf.h"
 #include "mtk-mml-color.h"
@@ -243,7 +244,8 @@ struct mml_comp_wrot {
 	u16 event_buf_next;	/* notify pipe1 that pipe0 ready new round */
 	int idx;
 
-	struct device *dev;	/* for dmabuf to iova */
+	struct device *mmu_dev;	/* for dmabuf to iova */
+	struct device *mmu_dev_sec; /* for secure dmabuf to secure iova */
 	/* smi register to config sram/dram mode */
 	phys_addr_t smi_larb_con;
 	/* inline rotate base addr */
@@ -592,19 +594,21 @@ static s32 wrot_buf_map(struct mml_comp *comp, struct mml_task *task,
 			const struct mml_path_node *node)
 {
 	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	struct mml_frame_config *cfg = task->config;
 	struct mml_file_buf *dest_buf = &task->buf.dest[node->out_idx];
 	s32 ret = 0;
 
 	mml_trace_ex_begin("%s", __func__);
 
-	if (task->config->info.mode == MML_MODE_RACING) {
+	if (cfg->info.mode == MML_MODE_RACING) {
 	} else {
 
 		mml_mmp(buf_map, MMPROFILE_FLAG_START,
 			((u64)task->job.jobid << 16) | comp->id, 0);
 
 		/* get iova */
-		ret = mml_buf_iova_get(wrot->dev, dest_buf);
+		ret = mml_buf_iova_get(cfg->info.src.secure ? wrot->mmu_dev_sec : wrot->mmu_dev,
+			dest_buf);
 		if (ret < 0)
 			mml_err("%s iova fail %d", __func__, ret);
 
@@ -2436,11 +2440,18 @@ static int probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, priv);
 	priv->data = of_device_get_match_data(dev);
-	priv->dev = dev;
 
-	ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
-	if (ret)
-		dev_err(dev, "fail to config wrot dma mask %d\n", ret);
+	if (smmu_v3_enabled()) {
+		/* shared smmu device, setup 34bit in dts */
+		priv->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
+		priv->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
+	} else {
+		priv->mmu_dev = dev;
+		priv->mmu_dev_sec = dev;
+		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+		if (ret)
+			mml_err("fail to config wrot dma mask %d", ret);
+	}
 
 	ret = mml_comp_init(pdev, &priv->comp);
 	if (ret) {

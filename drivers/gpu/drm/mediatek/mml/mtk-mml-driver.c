@@ -761,6 +761,22 @@ s32 mml_comp_clk_disable(struct mml_comp *comp)
 	return 0;
 }
 
+struct device *mml_smmu_get_shared_device(struct device *dev, const char *name)
+{
+	struct device_node *node;
+	struct platform_device *shared_pdev;
+	struct device *shared_dev = dev;
+
+	node = of_parse_phandle(dev->of_node, name, 0);
+	if (node) {
+		shared_pdev = of_find_device_by_node(node);
+		if (shared_pdev)
+			shared_dev = &shared_pdev->dev;
+	}
+
+	return shared_dev;
+}
+
 void inc_task_cnt(struct mml_dev *mml, bool addon_task)
 {
 	s32 cur_task_cnt = atomic_read(&mml->task_cnt);

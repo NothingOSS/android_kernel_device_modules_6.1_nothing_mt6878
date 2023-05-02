@@ -69,7 +69,7 @@ static inline int dmabuf_to_iova(struct device *dev, struct mml_dma_buf *dma)
 	}
 
 	dma->attach->dma_map_attrs |= DMA_ATTR_SKIP_CPU_SYNC;
-	dma->sgt = dma_buf_map_attachment(dma->attach, DMA_TO_DEVICE);
+	dma->sgt = dma_buf_map_attachment(dma->attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR_OR_NULL(dma->sgt)) {
 		err = PTR_ERR(dma->sgt);
 		mml_err("%s map failed err %d attach %p dev %p",
