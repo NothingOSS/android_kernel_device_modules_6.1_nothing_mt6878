@@ -330,6 +330,8 @@ static s32 sys_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	if (cfg->info.mode == MML_MODE_RACING) {
 		sys_config_frame_racing(comp, task, ccfg);
+		misc_reg = 0x22 << 12;
+		misc_reg_mask = GENMASK(19, 12);
 	} else if (cfg->info.mode == MML_MODE_DDP_ADDON) {
 		/* use hw reset flow */
 		misc_reg_mask = 0x80000000;
@@ -340,11 +342,14 @@ static s32 sys_config_frame(struct mml_comp *comp, struct mml_task *task,
 	} else if (cfg->info.mode == MML_MODE_APUDC) {
 		if (ccfg->pipe == 0)
 			sys_apu_enable(pkt, sys->apu_base, task->buf.src.apu_handle);
+		misc_reg = 0x22 << 12;
+		misc_reg_mask = GENMASK(19, 12);
+	} else {
+		/* enable ddr flag during hw running */
+		misc_reg = 0x22 << 12;
+		misc_reg_mask = GENMASK(19, 12);
 	}
 
-	/* always disable DDREN_DMA_BLOCK_DISABLE */
-	misc_reg = misc_reg | BIT(4);
-	misc_reg_mask = misc_reg_mask | BIT(4);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_MISC_REG, misc_reg, misc_reg_mask);
 
 	/* config aid sel by platform */

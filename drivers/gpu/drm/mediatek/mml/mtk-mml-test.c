@@ -1782,6 +1782,7 @@ static int mml_test_create_src(struct dma_heap *heap, struct mml_ut *cur_case,
 	void *va;
 	struct iosys_map map = {0};
 	int ret;
+	u32 bufsize;
 
 	if (mml_test_alloc_frame(heap, buf, cur_case->cfg_src_format,
 		cur_case->cfg_src_w, cur_case->cfg_src_h) < 0)
@@ -1794,8 +1795,9 @@ static int mml_test_create_src(struct dma_heap *heap, struct mml_ut *cur_case,
 		return -ENOMEM;
 	}
 	va = map.vaddr;
+	bufsize = buf->size[0] + buf->size[1] + buf->size[2];
 
-	mml_log("%s mapped va %llx", __func__, (u64)va);
+	mml_log("%s mapped va %llx buf size %u", __func__, (u64)va, bufsize);
 
 	switch (cur_case->cfg_src_format) {
 	case MML_FMT_RGB888:
@@ -1807,7 +1809,7 @@ static int mml_test_create_src(struct dma_heap *heap, struct mml_ut *cur_case,
 		mml_test_fill_frame_rgba8888(va, cur_case->cfg_src_w, cur_case->cfg_src_h);
 		break;
 	default:
-		if (!mml_test_use_last || mml_test_fill_frame_dumpout(va, buf->size[0]))
+		if (!mml_test_use_last || !mml_test_fill_frame_dumpout(va, bufsize))
 			mml_err("[test]not support src format %#x", cur_case->cfg_src_format);
 		break;
 	}
