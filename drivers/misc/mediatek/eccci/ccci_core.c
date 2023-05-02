@@ -52,11 +52,8 @@ unsigned int get_boot_mode_from_dts(void)
 	u32 bootmode = NORMAL_BOOT_ID;
 	static int ap_boot_mode = -1;
 
-	if (ap_boot_mode >= 0) {
-		CCCI_NORMAL_LOG(-1, CORE,
-			"[%s] bootmode: 0x%x\n", __func__, ap_boot_mode);
+	if (ap_boot_mode >= 0)
 		return ap_boot_mode;
-	}
 
 	np_chosen = of_find_node_by_path("/chosen");
 	if (!np_chosen) {
