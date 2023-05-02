@@ -8911,6 +8911,7 @@
 			mediatek,peri-reset-dis;
 			mediatek,dvfs-req-dis;
 			mediatek,suspend-mode-l12;
+			pextpcfg = <&pextpcfg_ao_clk>;
 
 			clocks = <&pextpcfg_ao_clk CLK_PEXT_MAC0_26M>,
 				 <&pextpcfg_ao_clk CLK_PEXT_MAC0_P1_PCLK_250M>,
@@ -8953,6 +8954,7 @@
 			linux,pci-domain = <1>;
 			mediatek,peri-reset-dis;
 			mediatek,dvfs-req-dis;
+			pextpcfg = <&pextpcfg_ao_clk>;
 
 			clocks = <&pextpcfg_ao_clk CLK_PEXT_MAC1_26M>,
 				 <&pextpcfg_ao_clk CLK_PEXT_MAC1_P1_PCLK_250M>,
