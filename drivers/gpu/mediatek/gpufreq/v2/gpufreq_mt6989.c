@@ -1865,14 +1865,12 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 		GPUFREQ_LOGE("fail to find gpufreq device (ENOENT)");
 		return;
 	}
-
 	/* 0x13000000 */
 	g_mali_base = __gpufreq_of_ioremap("mediatek,mali", 0);
 	if (!g_mali_base) {
 		GPUFREQ_LOGE("fail to ioremap MALI");
 		return;
 	}
-
 	/* 0x13FBF000 */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_top_config");
 	if (!res) {
@@ -1884,7 +1882,6 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 		GPUFREQ_LOGE("fail to ioremap MFG_TOP_CONFIG: 0x%llx", res->start);
 		return;
 	}
-
 	/* 0x13FA0000 */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_pll");
 	if (!res) {
@@ -1896,7 +1893,6 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 		GPUFREQ_LOGE("fail to ioremap MFG_PLL: 0x%llx", res->start);
 		return;
 	}
-
 	/* 0x13FA0400 */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_pll_sc0");
 	if (!res) {
@@ -1908,7 +1904,6 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 		GPUFREQ_LOGE("fail to ioremap MFG_PLL_SC0: 0x%llx", res->start);
 		return;
 	}
-
 	/* 0x13FA0800 */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_pll_sc1");
 	if (!res) {
@@ -1920,7 +1915,6 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 		GPUFREQ_LOGE("fail to ioremap MFG_PLL_SC1: 0x%llx", res->start);
 		return;
 	}
-
 	/* 0x13F90000 */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_rpc");
 	if (!res) {
@@ -1932,7 +1926,6 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 		GPUFREQ_LOGE("fail to ioremap MFG_RPC: 0x%llx", res->start);
 		return;
 	}
-
 	/* 0x1C001000 */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "sleep");
 	if (!res) {
@@ -1944,7 +1937,6 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 		GPUFREQ_LOGE("fail to ioremap SLEEP: 0x%llx", res->start);
 		return;
 	}
-
 	/* 0x10000000 */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "topckgen");
 	if (!res) {
@@ -1957,23 +1949,41 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 		return;
 	}
 
-	GPUFREQ_LOGI("[SPM] SPM_SPM2GPUPM_CON: 0x%08x", DRV_Reg32(SPM_SPM2GPUPM_CON));
-	GPUFREQ_LOGI("[RPC] MFG_0_22_37_PWR_STATUS: 0x%08lx, MFG_RPC_MFG1_PWR_CON: 0x%08x",
-		MFG_0_22_37_PWR_STATUS, DRV_Reg32(MFG_RPC_MFG1_PWR_CON));
-	GPUFREQ_LOGI("[TOP] CON0: 0x%08x, CON1: %d, FMETER: %d, SEL: 0x%08lx, REF_SEL: 0x%08lx",
-		DRV_Reg32(MFG_PLL_CON0), __gpufreq_get_pll_fgpu(), __gpufreq_get_fmeter_fgpu(),
-		DRV_Reg32(MFG_RPC_MFG_CK_FAST_REF_SEL) & MFG_TOP_SEL_BIT,
-		DRV_Reg32(TOPCK_CLK_CFG_5_STA) & MFG_REF_SEL_BIT);
-	GPUFREQ_LOGI("[SC0] CON0: 0x%08x, CON1: %d, FMETER: %d, SEL: 0x%08lx",
-		DRV_Reg32(MFG_PLL_SC0_CON0), __gpufreq_get_pll_fstack0(),
-		__gpufreq_get_fmeter_fstack0(),
-		DRV_Reg32(MFG_RPC_MFG_CK_FAST_REF_SEL) & MFG_SC0_SEL_BIT);
-	GPUFREQ_LOGI("[SC1] CON0: 0x%08x, CON1: %d, FMETER: %d, SEL: 0x%08lx",
-		DRV_Reg32(MFG_PLL_SC1_CON0), __gpufreq_get_pll_fstack1(),
-		__gpufreq_get_fmeter_fstack1(),
-		DRV_Reg32(MFG_RPC_MFG_CK_FAST_REF_SEL) & MFG_SC1_SEL_BIT);
+	GPUFREQ_LOGI("[SPM] %s=0x%08x, %s=0x%08x",
+		"SPM2GPUPM_CON", DRV_Reg32(SPM_SPM2GPUPM_CON),
+		"MFG0_PWR_CON", DRV_Reg32(SPM_MFG0_PWR_CON));
+	GPUFREQ_LOGI("[MFG] %s=0x%08lx, %s=0x%08x, %s=0x%08x",
+		"MFG_0_22_37_PWR_STATUS", MFG_0_22_37_PWR_STATUS,
+		"MFG1_PWR_CON", DRV_Reg32(MFG_RPC_MFG1_PWR_CON),
+		"GTOP_DREQ", DRV_Reg32(MFG_RPC_GTOP_DREQ_CFG));
+	GPUFREQ_LOGI("[MFG] %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"BRISKET_TOP", DRV_Reg32(MFG_RPC_BRISKET_TOP_AO_CFG_0),
+		"BRISKET_ST0", DRV_Reg32(MFG_RPC_BRISKET_ST0_AO_CFG_0),
+		"BRISKET_ST1", DRV_Reg32(MFG_RPC_BRISKET_ST1_AO_CFG_0),
+		"BRISKET_ST3", DRV_Reg32(MFG_RPC_BRISKET_ST3_AO_CFG_0));
+	GPUFREQ_LOGI("[MFG] %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"BRISKET_ST4", DRV_Reg32(MFG_RPC_BRISKET_ST4_AO_CFG_0),
+		"BRISKET_ST5", DRV_Reg32(MFG_RPC_BRISKET_ST5_AO_CFG_0),
+		"BRISKET_ST6", DRV_Reg32(MFG_RPC_BRISKET_ST6_AO_CFG_0));
+	GPUFREQ_LOGI("[TOP] %s=0x%08x, %s=%d, %s=%d, %s=0x%08lx, %s=0x%08lx",
+		"PLL_CON0", DRV_Reg32(MFG_PLL_CON0),
+		"CON1", __gpufreq_get_pll_fgpu(),
+		"FMETER", __gpufreq_get_fmeter_fgpu(),
+		"SEL", DRV_Reg32(MFG_RPC_MFG_CK_FAST_REF_SEL) & MFG_TOP_SEL_BIT,
+		"REF_SEL", DRV_Reg32(TOPCK_CLK_CFG_5_STA) & MFG_REF_SEL_BIT);
+	GPUFREQ_LOGI("[SC0] %s=0x%08x, %s=%d, %s=%d, %s=0x%08lx",
+		"PLL_CON0", DRV_Reg32(MFG_PLL_SC0_CON0),
+		"CON1", __gpufreq_get_pll_fstack0(),
+		"FMETER", __gpufreq_get_fmeter_fstack0(),
+		"SEL", DRV_Reg32(MFG_RPC_MFG_CK_FAST_REF_SEL) & MFG_SC0_SEL_BIT);
+	GPUFREQ_LOGI("[SC1] %s=0x%08x, %s=%d, %s=%d, %s=0x%08lx",
+		"PLL_CON1", DRV_Reg32(MFG_PLL_SC1_CON0),
+		"CON1", __gpufreq_get_pll_fstack1(),
+		"FMETER", __gpufreq_get_fmeter_fstack1(),
+		"SEL", DRV_Reg32(MFG_RPC_MFG_CK_FAST_REF_SEL) & MFG_SC1_SEL_BIT);
 
-	GPUFREQ_LOGI("[GPU] MALI_GPU_ID: 0x%08x", DRV_Reg32(MALI_GPU_ID));
+	GPUFREQ_LOGI("[GPU] %s=0x%08x",
+		"MALI_GPU_ID", DRV_Reg32(MALI_GPU_ID));
 }
 
 static void __gpufreq_update_shared_status_opp_table(void)

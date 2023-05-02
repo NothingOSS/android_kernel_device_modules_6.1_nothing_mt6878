@@ -176,6 +176,13 @@
 #define MFG_RPC_CK_FAST_REF_SEL                (g_mfg_rpc_base + 0x055C)           /* 0x13F9055C */
 #define MFG_RPC_GTOP_DREQ_CFG                  (g_mfg_rpc_base + 0x1110)           /* 0x13F91110 */
 #define MFG_RPC_AO_CLK_CFG                     (g_mfg_rpc_base + 0x1034)           /* 0x13F91034 */
+#define MFG_RPC_BRISKET_TOP_AO_CFG_0           (g_mfg_rpc_base + 0x1100)           /* 0x13F91100 */
+#define MFG_RPC_BRISKET_ST0_AO_CFG_0           (g_mfg_rpc_base + 0x0500)           /* 0x13F90500 */
+#define MFG_RPC_BRISKET_ST1_AO_CFG_0           (g_mfg_rpc_base + 0x0504)           /* 0x13F90504 */
+#define MFG_RPC_BRISKET_ST3_AO_CFG_0           (g_mfg_rpc_base + 0x050C)           /* 0x13F9050C */
+#define MFG_RPC_BRISKET_ST4_AO_CFG_0           (g_mfg_rpc_base + 0x0510)           /* 0x13F90510 */
+#define MFG_RPC_BRISKET_ST5_AO_CFG_0           (g_mfg_rpc_base + 0x0514)           /* 0x13F90514 */
+#define MFG_RPC_BRISKET_ST6_AO_CFG_0           (g_mfg_rpc_base + 0x0518)           /* 0x13F90518 */
 
 #define MFG_AXUSER_BASE                        (0x13FC0000)
 #define MFG_AXUSER_CFG_01                      (g_mfg_axuser_base + 0x704)         /* 0x13FC0704 */
