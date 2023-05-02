@@ -15,6 +15,7 @@
 #include "../common/mtk-afe-fe-dai.h"
 #include "../common/mtk-afe-platform-driver.h"
 
+
 #include "mt6989-afe-common.h"
 
 #define SGEN_TIE_CH1_KCONTROL_NAME "Audio_SineGen_Tie_Ch1"
@@ -288,7 +289,7 @@ static int mt6989_sgen_tmp_set(struct snd_kcontrol *kcontrol,
 		regmap_update_bits(afe->regmap, AFE_SINEGEN_CON1,
 				   INNER_LOOP_BACK_MODE_MASK_SFT,
 				   0x7 << INNER_LOOP_BACK_MODE_SFT);
-		regmap_write(afe->regmap, AFE_SINEGEN_CON0, 0x04702701);
+		regmap_write(afe->regmap, AFE_SINEGEN_CON0, 0x04702702);
 	} else {
 		/* disable sgen */
 		regmap_update_bits(afe->regmap, AFE_SINEGEN_CON0,
