@@ -12,41 +12,42 @@
 #include "eeprom_i2c_custom_driver.h"
 #include "cam_cal_config.h"
 
-static unsigned int do_single_lsc_imx989(struct EEPROM_DRV_FD_DATA *pdata,
+static unsigned int do_single_lsc_imx758(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData);
-static unsigned int do_2a_gain_imx989(struct EEPROM_DRV_FD_DATA *pdata,
+static unsigned int do_2a_gain_imx758(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData);
-static unsigned int do_lens_id_imx989(struct EEPROM_DRV_FD_DATA *pdata,
+static unsigned int do_lens_id_imx758(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData);
 
 static struct STRUCT_CALIBRATION_LAYOUT_STRUCT cal_layout_table = {
-	0x0000000B, 0x010B00FF, CAM_CAL_SINGLE_EEPROM_DATA,
+	0x0000800B, 0x010B00FF, CAM_CAL_SINGLE_EEPROM_DATA,
 	{
-		{0x00000001, 0x00000000, 0x00000000, do_module_version},
-		{0x00000001, 0x00000001, 0x00000002, do_part_number},
-		{0x00000001, 0x000000C3, 0x0000074C, do_single_lsc_imx989},
-		{0x00000001, 0x00000007, 0x0000000E, do_2a_gain_imx989},
-		{0x00000001, 0x00000820, 0x000005F9, do_pdaf},
+		{0x00000001, 0x00008000, 0x00000000, do_module_version},
+		{0x00000001, 0x00008001, 0x00000002, do_part_number},
+		{0x00000001, 0x00008CAC, 0x0000074C, do_single_lsc_imx758},
+		{0x00000001, 0x00000007, 0x0000000E, do_2a_gain_imx758},
+		{0x00000001, 0x00009409, 0x00000600, do_pdaf},
 		{0x00000000, 0x00000000, 0x00000000, do_stereo_data},
 		{0x00000001, 0x00000000, 0x00008000, do_dump_all},
-		{0x00000001, 0x00000008, 0x00000002, do_lens_id_imx989}
+		{0x00000001, 0x00008008, 0x00000002, do_lens_id_imx758}
 	}
 };
 
-struct STRUCT_CAM_CAL_CONFIG_STRUCT imx989_cust_eeprom = {
-	.name = "imx989_cust_eeprom",
+struct STRUCT_CAM_CAL_CONFIG_STRUCT imx758_cust_eeprom = {
+	.name = "imx758_cust_eeprom",
 	.check_layout_function = layout_check,
 	.read_function = Common_read_region,
 	.layout = &cal_layout_table,
-	.sensor_id = IMX989_SENSOR_ID,
-	.i2c_write_id = 0xA0,
-	.max_size = 0x4000,
+	.sensor_id = IMX758_SENSOR_ID,
+	.i2c_write_id = 0xAC,
+	.max_size = 0x8000,
 	.enable_preload = 1,
-	.preload_size = 0x4000,
+	.preload_size = 0x8000,
 	.has_stored_data = 1,
+	.base_address = 0x8000,
 };
 
-static unsigned int do_single_lsc_imx989(struct EEPROM_DRV_FD_DATA *pdata,
+static unsigned int do_single_lsc_imx758(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData)
 {
 	struct STRUCT_CAM_CAL_DATA_STRUCT *pCamCalData =
@@ -109,7 +110,7 @@ static unsigned int do_single_lsc_imx989(struct EEPROM_DRV_FD_DATA *pdata,
 	return err;
 }
 
-static unsigned int do_2a_gain_imx989(struct EEPROM_DRV_FD_DATA *pdata,
+static unsigned int do_2a_gain_imx758(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData)
 {
 	struct STRUCT_CAM_CAL_DATA_STRUCT *pCamCalData =
@@ -148,7 +149,7 @@ static unsigned int do_2a_gain_imx989(struct EEPROM_DRV_FD_DATA *pdata,
 		pCamCalData->Single2A.S2aAwb.rGainSetNum = 0;
 		/* AWB Unit Gain (5100K) */
 		debug_log("5100K AWB\n");
-		awb_offset = 0x8D;
+		awb_offset = 0x808D;
 		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
 				awb_offset, 6, (unsigned char *)&CalGain);
 		if (read_data_size > 0)	{
@@ -193,7 +194,7 @@ static unsigned int do_2a_gain_imx989(struct EEPROM_DRV_FD_DATA *pdata,
 			error_log(
 			"There are something wrong on EEPROM, plz contact module vendor!!\n");
 		/* AWB Golden Gain (5100K) */
-		awb_offset = 0x93;
+		awb_offset = 0x8093;
 		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
 				awb_offset, 6, (unsigned char *)&FacGain);
 		if (read_data_size > 0)	{
@@ -259,7 +260,7 @@ static unsigned int do_2a_gain_imx989(struct EEPROM_DRV_FD_DATA *pdata,
 		CalR = CalGr = CalGb = CalG = CalB = 0;
 		tempMax = 0;
 		debug_log("4000K AWB\n");
-		awb_offset = 0xA5;
+		awb_offset = 0x80A5;
 		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
 				awb_offset, 6, (unsigned char *)&CalGain);
 		if (read_data_size > 0)	{
@@ -306,7 +307,7 @@ static unsigned int do_2a_gain_imx989(struct EEPROM_DRV_FD_DATA *pdata,
 		/* AWB Golden Gain (4000K) */
 		FacR = FacGr = FacGb = FacG = FacB = 0;
 		tempMax = 0;
-		awb_offset = 0xAB;
+		awb_offset = 0x80A5;
 		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
 				awb_offset, 6, (unsigned char *)&FacGain);
 		if (read_data_size > 0)	{
@@ -362,7 +363,7 @@ static unsigned int do_2a_gain_imx989(struct EEPROM_DRV_FD_DATA *pdata,
 		CalR = CalGr = CalGb = CalG = CalB = 0;
 		tempMax = 0;
 		debug_log("3100K AWB\n");
-		awb_offset = 0x99;
+		awb_offset = 0x8099;
 		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
 				awb_offset, 6, (unsigned char *)&CalGain);
 		if (read_data_size > 0)	{
@@ -409,7 +410,7 @@ static unsigned int do_2a_gain_imx989(struct EEPROM_DRV_FD_DATA *pdata,
 		/* AWB Golden Gain (3100K) */
 		FacR = FacGr = FacGb = FacG = FacB = 0;
 		tempMax = 0;
-		awb_offset = 0x9F;
+		awb_offset = 0x809F;
 		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
 				awb_offset, 6, (unsigned char *)&FacGain);
 		if (read_data_size > 0)	{
@@ -465,7 +466,7 @@ static unsigned int do_2a_gain_imx989(struct EEPROM_DRV_FD_DATA *pdata,
 	/* AF Calibration Data*/
 	if (0x2 & AWBAFConfig) {
 		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
-				0x6F, 2, (unsigned char *)&AFInf);
+				0x806F, 2, (unsigned char *)&AFInf);
 		if (read_data_size > 0)
 			err = CAM_CAL_ERR_NO_ERR;
 		else {
@@ -475,7 +476,7 @@ static unsigned int do_2a_gain_imx989(struct EEPROM_DRV_FD_DATA *pdata,
 		}
 
 		read_data_size = read_data(pdata, pCamCalData->sensorID, pCamCalData->deviceID,
-				0x71, 2, (unsigned char *)&AFMacro);
+				0x8071, 2, (unsigned char *)&AFMacro);
 		if (read_data_size > 0)
 			err = CAM_CAL_ERR_NO_ERR;
 		else {
@@ -498,7 +499,7 @@ static unsigned int do_2a_gain_imx989(struct EEPROM_DRV_FD_DATA *pdata,
 	return err;
 }
 
-static unsigned int do_lens_id_imx989(struct EEPROM_DRV_FD_DATA *pdata,
+static unsigned int do_lens_id_imx758(struct EEPROM_DRV_FD_DATA *pdata,
 		unsigned int start_addr, unsigned int block_size, unsigned int *pGetSensorCalData)
 {
 	return do_lens_id_base(pdata, start_addr, block_size, pGetSensorCalData);
