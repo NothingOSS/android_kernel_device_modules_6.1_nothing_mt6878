@@ -231,6 +231,19 @@ loglevel=8 initcall_debug=1";
 			};
 		};
 	};
+	panel3@2 {
+		compatible = "nt37801,cmd,fhd";
+		reg = <2>;
+		pm-enable-gpios = <&pio 64 0>;
+		reset-gpios = <&pio 41 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in3: endpoint {
+				remote-endpoint = <&dsi_out3>;
+			};
+		};
+	};
 	ports {
 		port {
 			dsi_out: endpoint {
@@ -238,6 +251,9 @@ loglevel=8 initcall_debug=1";
 			};
 			dsi_out2: endpoint2 {
 				remote-endpoint = <&panel_in2>;
+			};
+			dsi_out3: endpoint3 {
+				remote-endpoint = <&panel_in3>;
 			};
 		};
 	};
