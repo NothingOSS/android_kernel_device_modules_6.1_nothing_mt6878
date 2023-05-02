@@ -73,8 +73,7 @@
 		id##_funcs,				\
 	}
 
-int mtk_paris_pinctrl_probe(struct platform_device *pdev,
-			    const struct mtk_pin_soc *soc);
+int mtk_paris_pinctrl_probe(struct platform_device *pdev);
 
 int mt63xx_pinctrl_probe(struct platform_device *pdev,
 			    const struct mtk_pin_soc *soc);

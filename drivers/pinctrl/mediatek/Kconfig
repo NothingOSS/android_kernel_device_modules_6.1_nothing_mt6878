@@ -56,16 +56,6 @@ config DEVICE_MODULES_PINCTRL_MT6779
 	  In MTK platform, we support virtual gpio and use it to
 	  map specific eint which doesn't have real gpio pin.
 
-config PINCTRL_MT6853
-	tristate "Mediatek MT6853 pin control"
-	depends on OF || COMPILE_TEST
-	select DEVICE_MODULES_PINCTRL_MTK_PARIS
-
-config PINCTRL_MT6873
-	tristate "Mediatek MT6873 pin control"
-	depends on OF || COMPILE_TEST
-	select DEVICE_MODULES_PINCTRL_MTK_PARIS
-
 config PINCTRL_MT6886
 	tristate "Mediatek MT6886 pin control"
 	depends on OF || COMPILE_TEST
