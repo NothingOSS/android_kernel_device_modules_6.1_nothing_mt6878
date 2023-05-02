@@ -7,6 +7,12 @@ package(
 
 load("//build/bazel_mgk_rules:mgk.bzl", "define_mgk")
 load("//kernel-6.1:modules.bzl", "COMMON_GKI_MODULES_LIST")
+load("//kernel-6.1:mgk_modules.bzl",
+     "mgk_module_outs",
+     "mgk_module_eng_outs",
+     "mgk_module_userdebug_outs",
+     "mgk_module_user_outs"
+)
 
 
 mgk_64_k61_kleaf_modules = [
@@ -58,26 +64,10 @@ mgk_64_k61_kleaf_modules = [
 ]
 
 
-mgk_64_k61_common_modules = COMMON_GKI_MODULES_LIST + [
-    # keep sorted
-    "drivers/firmware/arm_ffa/ffa-module.ko",
-    "drivers/gpu/drm/display/drm_display_helper.ko",
-    "drivers/gpu/drm/drm_dma_helper.ko",
-    "drivers/iio/buffer/industrialio-triggered-buffer.ko",
-    "drivers/iio/buffer/kfifo_buf.ko",
-    "drivers/leds/leds-pwm.ko",
-    "drivers/media/v4l2-core/v4l2-async.ko",
-    "drivers/media/v4l2-core/v4l2-flash-led-class.ko",
-    "drivers/media/v4l2-core/v4l2-fwnode.ko",
-    "drivers/perf/arm_dsu_pmu.ko",
-    "drivers/phy/mediatek/phy-mtk-mipi-dsi-drv.ko",
-    "drivers/power/reset/reboot-mode.ko",
-    "drivers/power/reset/syscon-reboot-mode.ko",
-    "drivers/tee/tee.ko",
-    "drivers/thermal/thermal-generic-adc.ko",
-    "fs/pstore/pstore_blk.ko",
-    "fs/pstore/pstore_zone.ko",
-]
+mgk_64_k61_common_modules = COMMON_GKI_MODULES_LIST + mgk_module_outs
+mgk_64_k61_common_eng_modules = COMMON_GKI_MODULES_LIST + mgk_module_outs + mgk_module_eng_outs
+mgk_64_k61_common_userdebug_modules = COMMON_GKI_MODULES_LIST + mgk_module_outs + mgk_module_userdebug_outs
+mgk_64_k61_common_user_modules = COMMON_GKI_MODULES_LIST + mgk_module_outs + mgk_module_user_outs
 
 
 mgk_64_k61_device_modules = [
@@ -777,6 +767,9 @@ define_mgk(
     name = "mgk_64_k61",
     kleaf_modules = mgk_64_k61_kleaf_modules,
     common_modules = mgk_64_k61_common_modules,
+    common_eng_modules = mgk_64_k61_common_eng_modules,
+    common_userdebug_modules = mgk_64_k61_common_userdebug_modules,
+    common_user_modules = mgk_64_k61_common_user_modules,
     device_modules = mgk_64_k61_device_modules,
     platform_device_modules = mgk_64_k61_platform_device_modules,
     device_eng_modules = mgk_64_k61_device_eng_modules,
