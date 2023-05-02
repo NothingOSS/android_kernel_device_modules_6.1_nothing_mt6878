@@ -15,6 +15,8 @@ ccflags-y += -I$(srctree)/security/selinux/include/
 # flask.h is created in runtime when building gki_kernel, so we have
 # to specially set the path for it. (ugly hack)
 ccflags-y += -I$(OUT_DIR)/../gki_kernel/$(KERNEL_DIR)/security/selinux/
+# https://android-review.googlesource.com/c/kernel/build/+/2512040
+ccflags-y += -Isecurity/selinux/
 obj-$(CONFIG_MTK_SELINUX_AEE_WARNING) += mtk_selinux_aee_warning.o
 
 ifneq ($(wildcard $(DEVICE_MODULES_PATH)/../../vendor/mediatek/internal/selinux_warning_enable),)

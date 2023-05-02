@@ -52,7 +52,10 @@ $(KERNEL_ZIMAGE_OUT): $(GEN_KERNEL_BUILD_CONFIG) $(KERNEL_MAKE_DEPENDENCIES) | k
 	$(hide) cd kernel && CC_WRAPPER=$(PRIVATE_CC_WRAPPER) SKIP_MRPROPER=1 BUILD_CONFIG=$(PRIVATE_KERNEL_BUILD_CONFIG) OUT_DIR=$(PRIVATE_KERNEL_OUT) DIST_DIR=$(PRIVATE_DIST_DIR) $(PRIVATE_KERNEL_BUILD_SCRIPT) && cd ..
 	$(hide) $(call fixup-kernel-cmd-file,$(KERNEL_OUT)/arch/$(KERNEL_TARGET_ARCH)/boot/compressed/.piggy.xzkern.cmd)
 else
-$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG := $(addprefix --//build/bazel_mgk_rules:,kernel_version=$(patsubst kernel-%,%,$(LINUX_KERNEL_VERSION)) $(patsubst %.config,%_config,$(KERNEL_DEFCONFIG_OVERLAYS))) --sandbox_debug
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG := $(addprefix --//build/bazel_mgk_rules:,kernel_version=$(patsubst kernel-%,%,$(LINUX_KERNEL_VERSION)) $(patsubst %.config,%_config,$(KERNEL_DEFCONFIG_OVERLAYS))) --experimental_writable_outputs
+ifneq ($(filter yes no,$(COVERITY_LOCAL_SCAN)),)
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG += --config=local
+endif
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_OUT := $(KERNEL_BAZEL_BUILD_OUT)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_OUT := $(KERNEL_BAZEL_DIST_OUT)
 ifneq ($(wildcard vendor/mediatek/internal),)
@@ -63,8 +66,8 @@ $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_GOAL := //$(patsubst kernel/%,%,$(KERN
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):mgk_customer_dist.$(strip $(KERNEL_BUILD_VARIANT))
 endif
 $(KERNEL_ZIMAGE_OUT): $(KERNEL_MAKE_DEPENDENCIES)
-	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) build $(PRIVATE_BAZEL_BUILD_FLAG) $(PRIVATE_BAZEL_BUILD_GOAL)
-	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) run $(PRIVATE_BAZEL_BUILD_FLAG) $(PRIVATE_BAZEL_DIST_GOAL) -- --dist_dir=$(abspath $(PRIVATE_BAZEL_DIST_OUT))
+	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base build $(PRIVATE_BAZEL_BUILD_FLAG) $(PRIVATE_BAZEL_BUILD_GOAL)
+	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base run $(PRIVATE_BAZEL_BUILD_FLAG) $(PRIVATE_BAZEL_DIST_GOAL) -- --dist_dir=$(abspath $(PRIVATE_BAZEL_DIST_OUT))
 endif
 
 ifneq ($(BUILT_KERNEL_TARGET),$(KERNEL_ZIMAGE_OUT))
@@ -105,7 +108,7 @@ else
 clean-kernel: PRIVATE_BAZEL_BUILD_OUT := $(KERNEL_BAZEL_BUILD_OUT)
 clean-kernel: PRIVATE_BAZEL_DIST_OUT := $(KERNEL_BAZEL_DIST_OUT)
 clean-kernel:
-	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) clean
+	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base clean
 	$(hide) rm -rf $(PRIVATE_BAZEL_BUILD_OUT) $(PRIVATE_BAZEL_DIST_OUT)
 endif
 
