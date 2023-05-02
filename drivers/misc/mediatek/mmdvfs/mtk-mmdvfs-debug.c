@@ -122,7 +122,7 @@ static int mmdvfs_debug_set_vote_step(const char *val,
 	int ret;
 
 	ret = sscanf(val, "%hhu %hhd", &idx, &opp);
-	if (ret != 2 || idx >= PWR_MMDVFS_NUM) {
+	if (ret != 2 || idx > PWR_MMDVFS_NUM) {
 		MMDVFS_DBG("failed:%d idx:%hhu opp:%hhd", ret, idx, opp);
 		return -EINVAL;
 	}

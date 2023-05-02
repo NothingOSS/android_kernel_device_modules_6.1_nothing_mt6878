@@ -665,7 +665,7 @@ int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp)
 	u32 freq = 0;
 	int i, *last, ret = 0;
 
-	if (pwr_idx >= PWR_MMDVFS_NUM || opp >= MAX_OPP) {
+	if (pwr_idx > PWR_MMDVFS_NUM || opp >= MAX_OPP) {
 		MMDVFS_ERR("failed:%d pwr_idx:%hu opp:%hd", ret, pwr_idx, opp);
 		return -EINVAL;
 	}
@@ -1811,13 +1811,13 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 		clkmux_cb.clk_disable = mtk_mmdvfs_clk_disable;
 		mtk_clk_register_ipi_callback(&clkmux_cb);
 	}
-	mmdvfs_free_run = of_property_read_bool(node, "mediatek,mmdvfs-free-run");
-	of_property_read_s32(node, "mediatek,dpsw-thr", &dpsw_thr);
+	mmdvfs_free_run = of_property_read_bool(node, "mediatek,free-run");
+	of_property_read_s32(node, "mediatek,dpsw-thres", &dpsw_thr);
 	MMDVFS_DBG("version:%d swrgo:%d free_run:%d dpsw_thr:%d",
 		mmdvfs_mux_version, mmdvfs_swrgo, mmdvfs_free_run, dpsw_thr);
 
 	mmdvfs_v3_dev = &pdev->dev;
-	larb = of_parse_phandle(pdev->dev.of_node, "mediatek,larb", 0);
+	larb = of_parse_phandle(pdev->dev.of_node, "mediatek,vdec-larb", 0);
 	if (larb) {
 		larb_pdev = of_find_device_by_node(larb);
 		if (!device_link_add(mmdvfs_v3_dev, &larb_pdev->dev,
