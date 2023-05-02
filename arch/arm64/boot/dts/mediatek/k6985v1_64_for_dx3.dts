@@ -612,14 +612,6 @@ initcall_debug=1";
 	status = "disabled";
 };
 
-&pciephy0 {
-	status = "okay";
-};
-
-&pciephy1 {
-	status = "disabled";
-};
-
 &pio {
 	pcie0_pins_default: pcie0-default {
 		pins_cmd_dat {

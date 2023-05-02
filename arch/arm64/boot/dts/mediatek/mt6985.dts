@@ -8918,10 +8918,9 @@
 				 <&pextpcfg_ao_clk CLK_PEXT_MAC0_FMEM>,
 				 <&pextpcfg_ao_clk CLK_PEXT_MAC0_HCLK>,
 				 <&pextpcfg_ao_clk CLK_PEXT_PHY0_REF>;
-			power-domains = <&scpsys MT6985_POWER_DOMAIN_PEXTP_MAC0_SHUTDOWN>;
-
-			phys = <&pciephy0>;
-			phy-names = "pcie-phy";
+			power-domains = <&scpsys MT6985_POWER_DOMAIN_PEXTP_MAC0_SHUTDOWN>,
+					<&scpsys MT6985_POWER_DOMAIN_PEXTP_PHY0>;
+			power-domain-names = "pd_mac", "pd_phy";
 
 			#interrupt-cells = <1>;
 			interrupt-map-mask = <0 0 0 7>;
@@ -8961,10 +8960,9 @@
 				 <&pextpcfg_ao_clk CLK_PEXT_MAC1_FMEM>,
 				 <&pextpcfg_ao_clk CLK_PEXT_MAC1_HCLK>,
 				 <&pextpcfg_ao_clk CLK_PEXT_PHY1_REF>;
-			power-domains = <&scpsys MT6985_POWER_DOMAIN_PEXTP_MAC1_SHUTDOWN>;
-
-			phys = <&pciephy1>;
-			phy-names = "pcie-phy";
+			power-domains = <&scpsys MT6985_POWER_DOMAIN_PEXTP_MAC1_SHUTDOWN>,
+					<&scpsys MT6985_POWER_DOMAIN_PEXTP_PHY1>;
+			power-domain-names = "pd_mac", "pd_phy";
 
 			#interrupt-cells = <1>;
 			interrupt-map-mask = <0 0 0 7>;
@@ -8977,28 +8975,6 @@
 				#address-cells = <0>;
 				#interrupt-cells = <1>;
 			};
-		};
-
-		pciephy0: phy@11100000 {
-			compatible = "mediatek,mt8195-pcie-phy",
-				     "mediatek,mt6985-pcie-phy";
-			#phy-cells = <0>;
-			reg = <0 0x11100000 0 0x10000>;
-			reg-names = "sif";
-			status = "disabled";
-
-			power-domains = <&scpsys MT6985_POWER_DOMAIN_PEXTP_PHY0>;
-		};
-
-		pciephy1: phy@11120000 {
-			compatible = "mediatek,mt8195-pcie-phy",
-				     "mediatek,mt6985-pcie-phy";
-			#phy-cells = <0>;
-			reg = <0 0x11120000 0 0x10000>;
-			reg-names = "sif";
-			status = "disabled";
-
-			power-domains = <&scpsys MT6985_POWER_DOMAIN_PEXTP_PHY1>;
 		};
 
 		spmi: spmi@1c804000 {
