@@ -504,17 +504,22 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	else
 		return -EINVAL;
 
-	if (sdev->mstid == SPMI_MASTER_1)
-		raw_spin_lock_irqsave(&arb->lock_m, flags);
-	else
-		raw_spin_lock_irqsave(&arb->lock_p, flags);
+	if (sdev != NULL) {
+		if (sdev->mstid == SPMI_MASTER_1)
+			raw_spin_lock_irqsave(&arb->lock_m, flags);
+		else
+			raw_spin_lock_irqsave(&arb->lock_p, flags);
 
-	if (sdev->mstid == SPMI_MASTER_1) {
-		arb->base = arb->base_m;
-		arb->spmimst_base = arb->spmimst_base_m;
+		if (sdev->mstid == SPMI_MASTER_1) {
+			arb->base = arb->base_m;
+			arb->spmimst_base = arb->spmimst_base_m;
+		} else {
+			arb->base = arb->base_p;
+			arb->spmimst_base = arb->spmimst_base_p;
+		}
 	} else {
-		arb->base = arb->base_p;
-		arb->spmimst_base = arb->spmimst_base_p;
+		dev_notice(&ctrl->dev, "sdev is NULL in pmif read\n");
+		return -ENODEV;
 	}
 
 	/* Wait for Software Interface FSM state to be IDLE. */
@@ -614,21 +619,24 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		opc = PMIF_CMD_REG_0;
 	else
 		return -EINVAL;
+	if (sdev != NULL) {
+		if (sdev->mstid == SPMI_MASTER_1)
+			raw_spin_lock_irqsave(&arb->lock_m, flags);
+		else
+			raw_spin_lock_irqsave(&arb->lock_p, flags);
 
-	if (sdev->mstid == SPMI_MASTER_1)
-		raw_spin_lock_irqsave(&arb->lock_m, flags);
-	else
-		raw_spin_lock_irqsave(&arb->lock_p, flags);
 
-
-	if (sdev->mstid == SPMI_MASTER_1) {
-		arb->base = arb->base_m;
-		arb->spmimst_base = arb->spmimst_base_m;
+		if (sdev->mstid == SPMI_MASTER_1) {
+			arb->base = arb->base_m;
+			arb->spmimst_base = arb->spmimst_base_m;
+		} else {
+			arb->base = arb->base_p;
+			arb->spmimst_base = arb->spmimst_base_p;
+		}
 	} else {
-		arb->base = arb->base_p;
-		arb->spmimst_base = arb->spmimst_base_p;
+		dev_notice(&ctrl->dev, "sdev is NULL in pmif write\n");
+		return -ENODEV;
 	}
-
 	/* Wait for Software Interface FSM state to be IDLE. */
 	ret = readl_poll_timeout_atomic(arb->base + arb->regs[inf_reg->ch_sta],
 					data, GET_SWINF(data) == SWINF_IDLE,
