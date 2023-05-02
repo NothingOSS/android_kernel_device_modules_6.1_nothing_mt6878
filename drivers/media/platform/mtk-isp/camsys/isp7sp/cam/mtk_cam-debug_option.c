@@ -7,7 +7,7 @@
 #include "mtk_cam-debug_option.h"
 
 #ifdef CONFIG_VIDEO_MTK_ISP_CAMSYS_DUBUG
-static unsigned int debug_opts = 1U << CAM_DEBUG_AA;
+static unsigned int debug_opts = BIT(CAM_DEBUG_JOB_ACTION) | BIT(CAM_DEBUG_AA);
 #else
 static unsigned int debug_opts;
 #endif

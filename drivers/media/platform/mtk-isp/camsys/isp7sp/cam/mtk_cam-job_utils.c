@@ -776,6 +776,8 @@ int update_ufbc_header_param(struct mtk_cam_job *job)
 
 	fp = (struct mtkcam_ipi_frame_param *)job->ipi.vaddr;
 
+	spin_lock(&req->buf_lock);
+
 	list_for_each_entry_safe(buf, buf_next, &req->buf_list, list) {
 		node = mtk_cam_buf_to_vdev(buf);
 
@@ -801,6 +803,8 @@ int update_ufbc_header_param(struct mtk_cam_job *job)
 			break;
 		}
 	}
+
+	spin_unlock(&req->buf_lock);
 
 	return 0;
 }
@@ -1253,8 +1257,8 @@ int fill_sv_fp(
 	out->uid.pipe_id = pipe_id;
 	out->buf[0][0].iova = buf->daddr + buf_ofset;
 
-	pr_info("%s: tag_idx %d, iova %llx",
-			__func__, tag_idx, out->buf[0][0].iova);
+	buf_printk("%s: tag_idx %d, iova %llx",
+		   __func__, tag_idx, out->buf[0][0].iova);
 
 	return ret;
 }

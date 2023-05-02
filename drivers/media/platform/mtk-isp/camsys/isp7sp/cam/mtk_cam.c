@@ -795,27 +795,24 @@ int mtk_cam_dev_req_enqueue(struct mtk_cam_device *cam,
 	return 0;
 }
 
-void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
-			     int pipe_id, int node_id, int buf_state, u64 ts,
-			     bool is_proc)
+/**
+ * mtk_cam_req_collect_vb_bufs
+ * @return:
+ *    1: request has remaining buffers. continue
+ *    0: request is completed
+ */
+static int mtk_cam_req_collect_vb_bufs(struct mtk_cam_request *req,
+				       int pipe_id, int node_id,
+				       bool skip_pure_raw,
+				       struct list_head *done_list,
+				       unsigned long *ids)
 {
-	struct mtk_cam_request *req = job->req;
-	struct mtk_cam_ctx *ctx = job->src_ctx;
-	struct device *dev = req->req.mdev->dev;
 	struct mtk_cam_video_device *node;
 	struct mtk_cam_buffer *buf, *buf_next;
-	struct list_head done_list;
-	bool is_buf_empty;
-	unsigned long ids = 0;
-
-	INIT_LIST_HEAD(&done_list);
-	is_buf_empty = false;
-
-	media_request_get(&req->req);
+	bool pure_raw_skipped = false;
+	int ret;
 
 	spin_lock(&req->buf_lock);
-
-	update_ufbc_header_param(job);
 
 	list_for_each_entry_safe(buf, buf_next, &req->buf_list, list) {
 
@@ -829,33 +826,73 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 			continue;
 
 		/* sv pure raw */
-		if (node_id == -1 && is_sv_pure_raw(job) &&
-		    node->desc.id == MTK_RAW_PURE_RAW_OUT && is_proc) {
-			if (CAM_DEBUG_ENABLED(JOB))
-				dev_info(dev,
-					 "%s: ctx-%d req:%s(%d) pipe_id:%d node_id:%d bypass pure raw node\n",
-					 __func__, ctx->stream_id,
-					 req->req.debug_str,  job->req_seq,
-					 pipe_id, node_id);
+		if (node_id == -1 && skip_pure_raw &&
+		    node->desc.id == MTK_RAW_PURE_RAW_OUT) {
+			pure_raw_skipped = true;
 			continue;
 		}
 
-		ids |= BIT(node->uid.id);
-		list_move_tail(&buf->list, &done_list);
+		list_move_tail(&buf->list, done_list);
+		*ids |= BIT(node->uid.id);
 	}
-	is_buf_empty = list_empty(&req->buf_list);
+
+	ret = list_empty(&req->buf_list) ? 0 : 1;
 
 	spin_unlock(&req->buf_lock);
 
-	dev_info(dev, "%s: ctx-%d req:%s(%d) pipe_id:%d node_id:%d bufs:0x%lx ts:%lld%s\n",
-		 __func__, ctx->stream_id, req->req.debug_str, job->req_seq,
-		 pipe_id, node_id, ids, ts, is_buf_empty ? " (empty)" : "");
+	if (CAM_DEBUG_ENABLED(JOB) && pure_raw_skipped)
+		pr_info("%s: req:%s pipe_id:%d bypass pure raw node\n",
+			__func__, req->req.debug_str, pipe_id);
+	return ret;
+}
+
+static void mark_each_buffer_done(struct list_head *done_list,
+				  int buf_state, u64 ts)
+{
+	struct mtk_cam_buffer *buf, *buf_next;
+
+	list_for_each_entry_safe(buf, buf_next, done_list, list) {
+		buf->vbb.vb2_buf.timestamp = ts;
+		vb2_buffer_done(&buf->vbb.vb2_buf, buf_state);
+	}
+}
+
+void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
+			     int pipe_id, int node_id, int buf_state,
+			     bool is_proc)
+{
+	struct mtk_cam_request *req = job->req;
+	struct device *dev = req->req.mdev->dev;
+	struct list_head done_list;
+	unsigned long ids;
+	bool is_buf_empty;
+	bool do_print;
+
+	media_request_get(&req->req);
+
+	INIT_LIST_HEAD(&done_list);
+	ids = 0;
+	is_buf_empty = !mtk_cam_req_collect_vb_bufs(req,
+				pipe_id, node_id,
+				is_sv_pure_raw(job) && is_proc,
+				&done_list, &ids);
+
+	do_print = node_id == -1 || CAM_DEBUG_ENABLED(V4L2);
+	if (do_print)
+		dev_info(dev, "%s: ctx-%d req:%s(%d) pipe_id:%d node_id:%d bufs:0x%lx ts:%lld%s%s\n",
+			 __func__, job->src_ctx->stream_id,
+			 req->req.debug_str, job->req_seq,
+			 pipe_id, node_id, ids,
+			 job->timestamp,
+			 buf_state == VB2_BUF_STATE_ERROR ? " error" : "",
+			 is_buf_empty ? " (empty)" : "");
 
 	if (unlikely(list_empty(&done_list))) {
 		dev_info(dev,
 			 "%s: req:%s failed to find pipe_id:%d node_id:%d ts:%lld%s\n",
 			 __func__, req->req.debug_str,
-			 pipe_id, node_id, ts, is_buf_empty ? " (empty)" : "");
+			 pipe_id, node_id, job->timestamp,
+			 is_buf_empty ? " (empty)" : "");
 		goto REQ_PUT;
 	}
 
@@ -866,10 +903,7 @@ void mtk_cam_req_buffer_done(struct mtk_cam_job *job,
 		remove_from_running_list(dev_get_drvdata(dev), req);
 	}
 
-	list_for_each_entry_safe(buf, buf_next, &done_list, list) {
-		buf->vbb.vb2_buf.timestamp = ts;
-		vb2_buffer_done(&buf->vbb.vb2_buf, buf_state);
-	}
+	mark_each_buffer_done(&done_list, buf_state, job->timestamp);
 
 	if (is_buf_empty)
 		mtk_cam_req_dump_incomplete_ctrl(req);

@@ -21,9 +21,11 @@
 #define CAM_DEBUG_CTRL		8
 #define CAM_DEBUG_JOB		9
 #define CAM_DEBUG_STATE		10
-#define CAM_DEBUG_MMQOS     11
+#define CAM_DEBUG_MMQOS		11
 
-#define CAM_DEBUG_AA        31
+#define CAM_DEBUG_JOB_ACTION	12
+
+#define CAM_DEBUG_AA		31
 
 unsigned int cam_debug_opts(void);
 

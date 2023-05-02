@@ -215,7 +215,7 @@ static bool update_sv_pure_raw(struct mtk_cam_job *job)
 					get_raw_subdev_idx(job->src_ctx->used_pipe),
 					MTK_RAW_PURE_RAW_OUT,
 					VB2_BUF_STATE_ERROR,
-					job->timestamp, true);
+					true);
 		pr_info("%s [warn] force return pure raw node", __func__);
 	}
 
@@ -593,7 +593,7 @@ _meta1_done(struct mtk_cam_job *job)
 			 mtk_cam_job_state_get(&job->job_state, ISP_STATE));
 
 	mtk_cam_req_buffer_done(job, pipe_id, MTK_RAW_META_OUT_1,
-				VB2_BUF_STATE_DONE, job->timestamp, true);
+				VB2_BUF_STATE_DONE, true);
 
 	return 0;
 }
@@ -683,10 +683,10 @@ handle_raw_frame_done(struct mtk_cam_job *job)
 		if (used_pipe & (1 << i)) {
 			if (is_normal)
 				mtk_cam_req_buffer_done(job, i, -1,
-					VB2_BUF_STATE_DONE, job->timestamp, true);
+					VB2_BUF_STATE_DONE, true);
 			else
 				mtk_cam_req_buffer_done(job, i, -1,
-					VB2_BUF_STATE_ERROR, job->timestamp, true);
+					VB2_BUF_STATE_ERROR, true);
 		}
 	}
 
@@ -717,17 +717,15 @@ handle_sv_frame_done(struct mtk_cam_job *job)
 		pipe_id = get_raw_subdev_idx(ctx->used_pipe);
 		mtk_cam_req_buffer_done(job, pipe_id, MTK_RAW_PURE_RAW_OUT,
 			is_normal ? VB2_BUF_STATE_DONE : VB2_BUF_STATE_ERROR,
-			job->timestamp, true);
+			true);
 	}
 
 	for (i = MTKCAM_SUBDEV_CAMSV_START; i < MTKCAM_SUBDEV_CAMSV_END; i++) {
 		if (used_pipe & (1 << i)) {
-			if (is_normal)
-				mtk_cam_req_buffer_done(job, i, -1,
-					VB2_BUF_STATE_DONE, job->timestamp, true);
-			else
-				mtk_cam_req_buffer_done(job, i, -1,
-					VB2_BUF_STATE_ERROR, job->timestamp, true);
+			mtk_cam_req_buffer_done(job, i, -1,
+				is_normal ? VB2_BUF_STATE_DONE :
+					    VB2_BUF_STATE_ERROR,
+				true);
 		}
 	}
 
@@ -755,13 +753,9 @@ handle_mraw_frame_done(struct mtk_cam_job *job, unsigned int pipe_id)
 			 mtk_cam_job_state_get(&job->job_state, ISP_STATE),
 			 is_normal, job->timestamp, job->timestamp_mono);
 
-	if (is_normal)
-		mtk_cam_req_buffer_done(job, pipe_id, -1,
-			VB2_BUF_STATE_DONE, job->timestamp, true);
-	else
-		mtk_cam_req_buffer_done(job, pipe_id, -1,
-			VB2_BUF_STATE_ERROR, job->timestamp, true);
-
+	mtk_cam_req_buffer_done(job, pipe_id, -1,
+			is_normal ? VB2_BUF_STATE_DONE : VB2_BUF_STATE_ERROR,
+			true);
 	return 0;
 }
 
@@ -1090,8 +1084,10 @@ _apply_sensor(struct mtk_cam_job *job)
 	update_sensor_fmt(job);
 
 	v4l2_ctrl_request_setup(&req->req, job->sensor->ctrl_handler);
-	dev_info(cam->dev, "[%s] ctx:%d seq 0x%x\n",
-		 __func__, ctx->stream_id, job->frame_seq_no);
+
+	if (CAM_DEBUG_ENABLED(JOB_ACTION))
+		dev_info(cam->dev, "[%s] ctx:%d seq 0x%x\n",
+			 __func__, ctx->stream_id, job->frame_seq_no);
 
 	frame_sync_end(job);
 
@@ -1629,6 +1625,9 @@ _compose_done(struct mtk_cam_job *job,
 {
 	job->composed = !compose_ret;
 	job->cq_rst = *cq_ret;
+
+	if (job->composed)
+		update_ufbc_header_param(job);
 
 	if (compose_ret)
 		trigger_error_dump(job, MSG_COMPOSE_ERROR);
@@ -2621,8 +2620,8 @@ static void job_cancel(struct mtk_cam_job *job)
 
 	for (i = 0; i < MTKCAM_SUBDEV_MAX; i++) {
 		if (used_pipe & ipi_pipe_id_to_bit(i))
-			mtk_cam_req_buffer_done(job, i, -1,
-				VB2_BUF_STATE_ERROR, job->timestamp, false);
+			mtk_cam_req_buffer_done(job, i, -1, VB2_BUF_STATE_ERROR,
+						false);
 	}
 }
 
@@ -2688,6 +2687,9 @@ static void compose_done_mstream(struct mtk_cam_job *job,
 	job->composed = !compose_ret;
 	job->cq_rst = *cq_ret;
 	++mjob->composed_idx;
+
+	if (job->composed)
+		update_ufbc_header_param(job);
 
 	/* TODO: add compose failed dump for 1st frame */
 	if (compose_ret)
@@ -2804,12 +2806,19 @@ static int apply_cq_mstream(struct mtk_cam_job *job)
 		container_of(job, struct mtk_cam_mstream_job, job);
 	int ret;
 
-	if (mjob->apply_isp_idx == 0)
+	if (mjob->apply_isp_idx == 0) {
+		if (WARN_ON(!mjob->composed_1st))
+			return -1;
+
 		ret = apply_engines_cq(job, job->frame_seq_no,
 				       &mjob->cq, &mjob->cq_rst);
-	else
+	} else {
+		if (WARN_ON(!job->composed))
+			return -1;
+
 		ret = apply_engines_cq(job, next_frame_seq(job->frame_seq_no),
 				       &job->cq, &job->cq_rst);
+	}
 
 	++mjob->apply_isp_idx;
 	return ret;
