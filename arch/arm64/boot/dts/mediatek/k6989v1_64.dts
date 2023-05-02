@@ -367,6 +367,7 @@ arm64.nopauth arm64.nosme arm64.nosve arm64.nomte";
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&pcie0_pins_default>;
 	pinctrl-1 = <&pcie0_pins_sleep>;
+	max-link-speed = <3>;
 	status = "okay";
 };
 
@@ -379,18 +380,17 @@ arm64.nopauth arm64.nosme arm64.nosve arm64.nomte";
 &pio {
 	pcie0_pins_default: pcie0-default {
 		pins_cmd_dat {
-			/* PINMUX_GPIO231__FUNC_PCIE_WAKEN for Falcon */
-			pinmux = <PINMUX_GPIO230__FUNC_PCIE_PERSTN>,
-				 <PINMUX_GPIO232__FUNC_PCIE_CLKREQN>;
+			/* PINMUX_GPIO144__FUNC_PCIE_WAKEN for Falcon */
+			pinmux = <PINMUX_GPIO143__FUNC_PCIE_PERSTN>,
+				 <PINMUX_GPIO145__FUNC_PCIE_CLKREQN>;
 			bias-pull-up;
 		};
 	};
 
 	pcie0_pins_sleep: pcie0-sleep {
 		pins_cmd_dat {
-			/* PINMUX_GPIO231__FUNC_GPIO231 for Falcon */
-			pinmux = <PINMUX_GPIO230__FUNC_GPIO230>,
-				 <PINMUX_GPIO232__FUNC_GPIO232>;
+			pinmux = <PINMUX_GPIO143__FUNC_GPIO143>,
+				 <PINMUX_GPIO145__FUNC_GPIO145>;
 			bias-pull-down;
 			input-enable;
 		};
@@ -398,9 +398,9 @@ arm64.nopauth arm64.nosme arm64.nosve arm64.nomte";
 
 	pcie1_pins_default: pcie1-default {
 		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO0__FUNC_PCIE_PERSTN_P1>,
-				 <PINMUX_GPIO1__FUNC_PCIE_WAKEN_P1>,
-				 <PINMUX_GPIO2__FUNC_PCIE_CLKREQN_P1>;
+			pinmux = <PINMUX_GPIO2__FUNC_PCIE_CLKREQN_P1>,
+				 <PINMUX_GPIO3__FUNC_PCIE_WAKEN_P1>,
+				 <PINMUX_GPIO4__FUNC_PCIE_PERSTN_P1>;
 			bias-pull-up;
 		};
 	};
