@@ -3093,8 +3093,6 @@ static unsigned int __gpufreq_get_fmeter_freq(enum gpufreq_target target)
 			freq = __gpufreq_get_fmeter_main_fstack();
 		else if (mux_src == 0x0)
 			freq = __gpufreq_get_fmeter_sub_fstack();
-		else
-			freq = 0;
 	} else {
 		/* CLK_CFG_30 0x100001F0 [16] mfg_sel_mfgpll */
 		mux_src = DRV_Reg32(TOPCK_CLK_CFG_30) & MFG_SEL_MFGPLL_MASK;
@@ -3103,8 +3101,6 @@ static unsigned int __gpufreq_get_fmeter_freq(enum gpufreq_target target)
 			freq = __gpufreq_get_fmeter_main_fgpu();
 		else if (mux_src == 0x0)
 			freq = __gpufreq_get_fmeter_sub_fgpu();
-		else
-			freq = 0;
 	}
 
 	return freq;

@@ -2993,16 +2993,12 @@ static unsigned int __gpufreq_get_fmeter_freq(enum gpufreq_target target)
 			freq = __gpufreq_get_fmeter_fstack0();
 		else if (mux_src == 0x0)
 			freq = __gpufreq_get_sub_fstack();
-		else
-			freq = 0;
 	} else if (target == TARGET_GPU) {
 		mux_src = DRV_Reg32(MFG_RPC_MFG_CK_FAST_REF_SEL) & MFG_TOP_SEL_BIT;
 		if (mux_src == MFG_TOP_SEL_BIT)
 			freq = __gpufreq_get_fmeter_fgpu();
 		else if (mux_src == 0x0)
 			freq = __gpufreq_get_sub_fgpu();
-		else
-			freq = 0;
 	}
 
 	return freq;
