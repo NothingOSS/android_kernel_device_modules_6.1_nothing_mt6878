@@ -36,14 +36,10 @@ static const struct mtk_gate_regs ifrao_cg_regs = {
 	}
 
 static const struct mtk_gate ifrao_clks[] = {
-	GATE_IFRAO(CLK_IFRAO_THERM, "ifrao_therm",
-			"axi_ck"/* parent */, 0),
 	GATE_IFRAO(CLK_IFRAO_DPMAIF_MAIN, "ifrao_dpmaif_main",
 			"dpmaif_main_ck"/* parent */, 22),
 	GATE_IFRAO(CLK_IFRAO_RG_MMW_DPMAIF26M, "ifrao_dpmaif_26m",
 			"f26m_ck"/* parent */, 25),
-	GATE_IFRAO(CLK_IFRAO_RG_DEBUGTOP_AO_26M, "ifrao__dbg26m",
-			"f26m_ck"/* parent */, 27),
 	GATE_IFRAO(CLK_IFRAO_RG_SOCSYS_FATB, "ifrao_socsys_fatb",
 			"atb_ck"/* parent */, 28),
 	GATE_IFRAO(CLK_IFRAO_RG_SOCSYS_SDF, "ifrao_socsys_sdf",

@@ -37,12 +37,10 @@ const char * const *get_mt6989_all_clk_names(void)
 		"ap2conn_host_sel",
 		"atb_sel",
 		"cirq_sel",
-		"efuse_sel",
 		"mcu_l3gic_sel",
 		"mcu_infra_sel",
 		"dsp_sel",
 		"mfg_ref_sel",
-		"mfgsc_ref_sel",
 		"mfg_eb_sel",
 		"uart_sel",
 		"spi0_b_sel",
@@ -155,10 +153,8 @@ const char * const *get_mt6989_all_clk_names(void)
 		"apll12_div10",
 
 		/* infracfg_ao */
-		"ifrao_therm",
 		"ifrao_dpmaif_main",
 		"ifrao_dpmaif_26m",
-		"ifrao__dbg26m",
 		"ifrao_socsys_fatb",
 		"ifrao_socsys_sdf",
 
@@ -199,35 +195,13 @@ const char * const *get_mt6989_all_clk_names(void)
 		"peraop_spi5_b",
 		"peraop_spi6_b",
 		"peraop_spi7_b",
-		"peraop_spi0_h",
-		"peraop_spi1_h",
-		"peraop_spi2_h",
-		"peraop_spi3_h",
-		"peraop_spi4_h",
-		"peraop_spi5_h",
-		"peraop_spi6_h",
-		"peraop_spi7_h",
 		"peraop_sflash",
 		"peraop_sflash_f",
 		"peraop_sflash_h",
 		"peraop_sflash_p",
-		"peraop_i2c",
 		"peraop_dma_b",
-		"peraop_ssusb0_pipe",
-		"peraop_ssusb0_ref",
 		"peraop_ssusb0_frmcnt",
-		"peraop_ssusb0_utmi",
-		"peraop_ssusb0_sys",
-		"peraop_ssusb0_xhci",
-		"peraop_ssusb0_f",
-		"peraop_ssusb0_h",
-		"peraop_ssusb1_ref",
 		"peraop_ssusb1_frmcnt",
-		"peraop_ssusb1_utmi",
-		"peraop_ssusb1_sys",
-		"peraop_ssusb1_xhci",
-		"peraop_ssusb1_f",
-		"peraop_ssusb1_h",
 		"peraop_msdc1",
 		"peraop_msdc1_f",
 		"peraop_msdc1_h",
@@ -237,7 +211,6 @@ const char * const *get_mt6989_all_clk_names(void)
 		"peraop_uarthub",
 		"peraop_uarthub_h",
 		"peraop_uarthub_p",
-		"peraop_peri_fmem_sub",
 		"peraop_audio_slv",
 		"peraop_audio_mst",
 		"peraop_audio_intbus",
@@ -386,10 +359,6 @@ const char * const *get_mt6989_all_clk_names(void)
 
 		/* mfgpll_sc1_pll_ctrl */
 		"mfgsc1-ao-mfgpll-sc1",
-
-		/* mfg_top_config */
-		"mfgcfg_bg3d",
-		"mfgcfg_batb",
 
 		/* dispsys_config */
 		"mm_config",
@@ -633,7 +602,6 @@ const char * const *get_mt6989_all_clk_names(void)
 		"vde1_vdec_cken_eng",
 		"vde1_aptv_en",
 		"vde1_aptv_topen",
-		"vde1_dpsw_vdec_en",
 		"vde1_vdec_soc_ips_en",
 
 		/* vdec_gcon_base */
@@ -658,7 +626,6 @@ const char * const *get_mt6989_all_clk_names(void)
 		"ven2_venc",
 		"ven2_jpgenc",
 		"ven2_jpgdec",
-		"ven2_jpgdec_c1",
 		"ven2_gals",
 		"ven2_gals_sram",
 
@@ -666,8 +633,6 @@ const char * const *get_mt6989_all_clk_names(void)
 		"ven_c2_larb",
 		"ven_c2_venc",
 		"ven_c2_jpgenc",
-		"ven_c2_jpgdec",
-		"ven_c2_jpgdec_c1",
 		"ven_c2_gals",
 		"ven_c2_gals_sram",
 
@@ -688,7 +653,6 @@ const char * const *get_mt6989_all_clk_names(void)
 		"vlp_systimer_26m_sel",
 		"vlp_sspm_sel",
 		"vlp_srck_sel",
-		"vlp_sramrc_sel",
 		"vlp_camtg0_sel",
 		"vlp_ips_sel",
 		"vlp_sspm_26m_sel",
@@ -729,13 +693,11 @@ const char * const *get_mt6989_all_clk_names(void)
 		"cam_m_adlrd",
 		"cam_m_adlwr",
 		"cam_m_uisp",
-		"cam_m_fake_eng",
 		"cam_m_cam2mm0_GCON_0",
 		"cam_m_cam2mm1_GCON_0",
 		"cam_m_cam2sys_GCON_0",
 		"cam_m_cam2mm2_GCON_0",
 		"cam_m_ccusys",
-		"cam_m_ips",
 		"cam_m_cam_dpe",
 		"cam_m_cam_asg",
 		"cam_m_camsv_a_con_1",
@@ -754,8 +716,6 @@ const char * const *get_mt6989_all_clk_names(void)
 		"cam_ra_larbx",
 		"cam_ra_cam",
 		"cam_ra_camtg",
-		"cam_ra_raw2mm_gals",
-		"cam_ra_yuv2raw2mm",
 
 		/* camsys_yuva */
 		"cam_ya_larbx",
@@ -771,8 +731,6 @@ const char * const *get_mt6989_all_clk_names(void)
 		"cam_rb_larbx",
 		"cam_rb_cam",
 		"cam_rb_camtg",
-		"cam_rb_raw2mm_gals",
-		"cam_rb_yuv2raw2mm",
 
 		/* camsys_yuvb */
 		"cam_yb_larbx",
@@ -788,8 +746,6 @@ const char * const *get_mt6989_all_clk_names(void)
 		"cam_rc_larbx",
 		"cam_rc_cam",
 		"cam_rc_camtg",
-		"cam_rc_raw2mm_gals",
-		"cam_rc_yuv2raw2mm",
 
 		/* camsys_yuvc */
 		"cam_yc_larbx",
@@ -826,7 +782,6 @@ const char * const *get_mt6989_all_clk_names(void)
 
 		/* mminfra_config */
 		"mminfra_smi",
-		"mminfra_gce_26m",
 
 		/* mminfra_ao_config */
 		"mminfra_ao_gce_d",

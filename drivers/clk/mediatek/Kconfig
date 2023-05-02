@@ -705,15 +705,6 @@ config COMMON_CLK_MT6989_MDPSYS
 	  If you wish to use clock resources from the mdpsys device,
 	  say Y. Otherwise, say N.
 
-config COMMON_CLK_MT6989_MFG
-	tristate "Clock driver for MediaTek MT6989 mfg"
-	depends on COMMON_CLK_MT6989
-	help
-	  This driver supports MediaTek MT6989 mfg clocks,
-	  which is used to control mfg clock output.
-	  If you wish to use clock resources from the mfg device,
-	  say Y. Otherwise, say N.
-
 config COMMON_CLK_MT6989_VLP
 	tristate "Clock driver for MediaTek MT6989 vlp"
 	depends on COMMON_CLK_MT6989

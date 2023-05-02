@@ -115,8 +115,6 @@ static const struct mtk_gate cam_m_clks[] = {
 			"cam_ck"/* parent */, 13),
 	GATE_CAM_M0(CLK_CAM_MAIN_UISP, "cam_m_uisp",
 			"cam_ck"/* parent */, 14),
-	GATE_CAM_M0(CLK_CAM_MAIN_FAKE_ENG, "cam_m_fake_eng",
-			"cam_ck"/* parent */, 15),
 	GATE_CAM_M0(CLK_CAM_MAIN_CAM2MM0_GALS, "cam_m_cam2mm0_GCON_0",
 			"cam_ck"/* parent */, 16),
 	GATE_CAM_M0(CLK_CAM_MAIN_CAM2MM1_GALS, "cam_m_cam2mm1_GCON_0",
@@ -127,8 +125,6 @@ static const struct mtk_gate cam_m_clks[] = {
 			"cam_ck"/* parent */, 19),
 	GATE_CAM_M0(CLK_CAM_MAIN_CCUSYS, "cam_m_ccusys",
 			"ccusys_ck"/* parent */, 20),
-	GATE_CAM_M0(CLK_CAM_MAIN_IPS, "cam_m_ips",
-			"cam_ck"/* parent */, 21),
 	GATE_CAM_M0(CLK_CAM_MAIN_CAM_DPE, "cam_m_cam_dpe",
 			"ipe_ck"/* parent */, 26),
 	GATE_CAM_M0(CLK_CAM_MAIN_CAM_ASG, "cam_m_cam_asg",
@@ -216,10 +212,6 @@ static const struct mtk_gate cam_ra_clks[] = {
 			"cam_ck"/* parent */, 1),
 	GATE_CAM_RA(CLK_CAM_RA_CAMTG, "cam_ra_camtg",
 			"camtm_ck"/* parent */, 2),
-	GATE_CAM_RA(CLK_CAM_RA_RAW2MM_GALS, "cam_ra_raw2mm_gals",
-			"cam_ck"/* parent */, 3),
-	GATE_CAM_RA(CLK_CAM_RA_YUV2RAW2MM_GALS, "cam_ra_yuv2raw2mm",
-			"cam_ck"/* parent */, 4),
 };
 
 static const struct mtk_clk_desc cam_ra_mcd = {
@@ -249,10 +241,6 @@ static const struct mtk_gate cam_rb_clks[] = {
 			"cam_ck"/* parent */, 1),
 	GATE_CAM_RB(CLK_CAM_RB_CAMTG, "cam_rb_camtg",
 			"camtm_ck"/* parent */, 2),
-	GATE_CAM_RB(CLK_CAM_RB_RAW2MM_GALS, "cam_rb_raw2mm_gals",
-			"cam_ck"/* parent */, 3),
-	GATE_CAM_RB(CLK_CAM_RB_YUV2RAW2MM_GALS, "cam_rb_yuv2raw2mm",
-			"cam_ck"/* parent */, 4),
 };
 
 static const struct mtk_clk_desc cam_rb_mcd = {
@@ -282,10 +270,6 @@ static const struct mtk_gate cam_rc_clks[] = {
 			"cam_ck"/* parent */, 1),
 	GATE_CAM_RC(CLK_CAM_RC_CAMTG, "cam_rc_camtg",
 			"camtm_ck"/* parent */, 2),
-	GATE_CAM_RC(CLK_CAM_RC_RAW2MM_GALS, "cam_rc_raw2mm_gals",
-			"cam_ck"/* parent */, 3),
-	GATE_CAM_RC(CLK_CAM_RC_YUV2RAW2MM_GALS, "cam_rc_yuv2raw2mm",
-			"cam_ck"/* parent */, 4),
 };
 
 static const struct mtk_clk_desc cam_rc_mcd = {

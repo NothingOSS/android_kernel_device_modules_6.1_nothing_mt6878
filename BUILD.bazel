@@ -636,7 +636,6 @@ mgk_64_k61_platform_device_modules = {
     "drivers/clk/mediatek/clk-mt6989-cam.ko": "mt6989",
     "drivers/clk/mediatek/clk-mt6989-img.ko": "mt6989",
     "drivers/clk/mediatek/clk-mt6989-mdpsys.ko": "mt6989",
-    "drivers/clk/mediatek/clk-mt6989-mfgcfg.ko": "mt6989",
     "drivers/clk/mediatek/clk-mt6989-mmsys.ko": "mt6989",
     "drivers/clk/mediatek/clk-mt6989-peri.ko": "mt6989",
     "drivers/clk/mediatek/clk-mt6989-vcodec.ko": "mt6989",

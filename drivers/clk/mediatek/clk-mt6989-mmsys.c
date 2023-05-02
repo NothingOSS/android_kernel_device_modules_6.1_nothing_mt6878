@@ -316,43 +316,24 @@ static const struct mtk_clk_desc mminfra_ao_config_mcd = {
 	.num_clks = CLK_MMINFRA_AO_CONFIG_NR_CLK,
 };
 
-static const struct mtk_gate_regs mminfra_config0_cg_regs = {
+static const struct mtk_gate_regs mminfra_config_cg_regs = {
 	.set_ofs = 0x104,
 	.clr_ofs = 0x108,
 	.sta_ofs = 0x100,
 };
 
-static const struct mtk_gate_regs mminfra_config1_cg_regs = {
-	.set_ofs = 0x114,
-	.clr_ofs = 0x118,
-	.sta_ofs = 0x110,
-};
-
-#define GATE_MMINFRA_CONFIG0(_id, _name, _parent, _shift) {	\
+#define GATE_MMINFRA_CONFIG(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
 		.parent_name = _parent,			\
-		.regs = &mminfra_config0_cg_regs,			\
-		.shift = _shift,			\
-		.ops = &mtk_clk_gate_ops_setclr,	\
-	}
-
-#define GATE_MMINFRA_CONFIG1(_id, _name, _parent, _shift) {	\
-		.id = _id,				\
-		.name = _name,				\
-		.parent_name = _parent,			\
-		.regs = &mminfra_config1_cg_regs,			\
+		.regs = &mminfra_config_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_gate_ops_setclr,	\
 	}
 
 static const struct mtk_gate mminfra_config_clks[] = {
-	/* MMINFRA_CONFIG0 */
-	GATE_MMINFRA_CONFIG0(CLK_MMINFRA_SMI, "mminfra_smi",
+	GATE_MMINFRA_CONFIG(CLK_MMINFRA_SMI, "mminfra_smi",
 			"mminfra_ck"/* parent */, 2),
-	/* MMINFRA_CONFIG1 */
-	GATE_MMINFRA_CONFIG1(CLK_MMINFRA_GCE_26M, "mminfra_gce_26m",
-			"mminfra_ck"/* parent */, 17),
 };
 
 static const struct mtk_clk_desc mminfra_config_mcd = {

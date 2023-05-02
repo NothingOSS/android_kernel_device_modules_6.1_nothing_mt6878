@@ -91,12 +91,6 @@ static const struct mtk_gate_regs vde12_cg_regs = {
 };
 
 static const struct mtk_gate_regs vde13_cg_regs = {
-	.set_ofs = 0x1F0,
-	.clr_ofs = 0x1F0,
-	.sta_ofs = 0x1F0,
-};
-
-static const struct mtk_gate_regs vde14_cg_regs = {
 	.set_ofs = 0x200,
 	.clr_ofs = 0x204,
 	.sta_ofs = 0x200,
@@ -135,15 +129,6 @@ static const struct mtk_gate_regs vde14_cg_regs = {
 		.parent_name = _parent,			\
 		.regs = &vde13_cg_regs,			\
 		.shift = _shift,			\
-		.ops = &mtk_clk_gate_ops_no_setclr_inv,	\
-	}
-
-#define GATE_VDE14(_id, _name, _parent, _shift) {	\
-		.id = _id,				\
-		.name = _name,				\
-		.parent_name = _parent,			\
-		.regs = &vde14_cg_regs,			\
-		.shift = _shift,			\
 		.ops = &mtk_clk_gate_ops_setclr_inv,	\
 	}
 
@@ -164,14 +149,11 @@ static const struct mtk_gate vde1_clks[] = {
 	GATE_VDE12(CLK_VDE1_VDEC_SOC_APTV_TOP_EN, "vde1_aptv_topen",
 			"avs_vdec_ck"/* parent */, 1),
 	/* VDE13 */
-	GATE_VDE13(CLK_VDE1_DPSW_VDEC_EN, "vde1_dpsw_vdec_en",
-			"dpsw_26m_ck"/* parent */, 0),
-	/* VDE14 */
-	GATE_VDE14(CLK_VDE1_LAT_CKEN, "vde1_lat_cken",
+	GATE_VDE13(CLK_VDE1_LAT_CKEN, "vde1_lat_cken",
 			"vdec_ck"/* parent */, 0),
-	GATE_VDE14(CLK_VDE1_LAT_ACTIVE, "vde1_lat_active",
+	GATE_VDE13(CLK_VDE1_LAT_ACTIVE, "vde1_lat_active",
 			"vdec_ck"/* parent */, 4),
-	GATE_VDE14(CLK_VDE1_LAT_CKEN_ENG, "vde1_lat_cken_eng",
+	GATE_VDE13(CLK_VDE1_LAT_CKEN_ENG, "vde1_lat_cken_eng",
 			"vdec_ck"/* parent */, 8),
 };
 
@@ -241,8 +223,6 @@ static const struct mtk_gate ven2_clks[] = {
 			"venc_ck"/* parent */, 8),
 	GATE_VEN2(CLK_VEN2_CKE3_JPGDEC, "ven2_jpgdec",
 			"venc_ck"/* parent */, 12),
-	GATE_VEN2(CLK_VEN2_CKE4_JPGDEC_C1, "ven2_jpgdec_c1",
-			"venc_ck"/* parent */, 16),
 	GATE_VEN2(CLK_VEN2_CKE5_GALS, "ven2_gals",
 			"venc_ck"/* parent */, 28),
 	GATE_VEN2(CLK_VEN2_CKE6_GALS_SRAM, "ven2_gals_sram",
@@ -276,10 +256,6 @@ static const struct mtk_gate ven_c2_clks[] = {
 			"venc_ck"/* parent */, 4),
 	GATE_VEN_C2(CLK_VEN_C2_CKE2_JPGENC, "ven_c2_jpgenc",
 			"venc_ck"/* parent */, 8),
-	GATE_VEN_C2(CLK_VEN_C2_CKE3_JPGDEC, "ven_c2_jpgdec",
-			"venc_ck"/* parent */, 12),
-	GATE_VEN_C2(CLK_VEN_C2_CKE4_JPGDEC_C1, "ven_c2_jpgdec_c1",
-			"venc_ck"/* parent */, 16),
 	GATE_VEN_C2(CLK_VEN_C2_CKE5_GALS, "ven_c2_gals",
 			"venc_ck"/* parent */, 28),
 	GATE_VEN_C2(CLK_VEN_C2_CKE6_GALS_SRAM, "ven_c2_gals_sram",

@@ -90,7 +90,6 @@ obj-$(CONFIG_COMMON_CLK_MT6989_MMSYS) += clk-mt6989-mmsys.o
 obj-$(CONFIG_COMMON_CLK_MT6989_PERI) += clk-mt6989-peri.o
 obj-$(CONFIG_COMMON_CLK_MT6989_BUS) += clk-mt6989-bus.o
 obj-$(CONFIG_COMMON_CLK_MT6989_MDPSYS) += clk-mt6989-mdpsys.o
-obj-$(CONFIG_COMMON_CLK_MT6989_MFG) += clk-mt6989-mfgcfg.o
 obj-$(CONFIG_COMMON_CLK_MT6989_VLP) += clk-mt6989-vlp.o
 obj-$(CONFIG_COMMON_CLK_MT6989_VCODEC) += clk-mt6989-vcodec.o
 endif
