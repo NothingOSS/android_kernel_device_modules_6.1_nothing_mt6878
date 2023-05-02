@@ -1765,7 +1765,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 					isDecreasing ? "decreasing" : "increasing",
 					cur_opp_id, ui32NewFreqID, asyncID, 1);
 
-			if (g_async_ratio_support)
+			if (g_async_ratio_support && asyncID >= 0)
 				ui32NewFreqID = asyncID;
 		}
 
@@ -2999,7 +2999,7 @@ GED_ERROR ged_dvfs_system_init(void)
 
 	async_dvfs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_async_ratio");
 	if (unlikely(!async_dvfs_node)) {
-		GED_LOGE("Failed to find async_dvfs_node");
+		GED_LOGI("Failed to find async_dvfs_node");
 	} else {
 		of_property_read_u32(async_dvfs_node, "async-ratio-support",
 							&g_async_ratio_support);
