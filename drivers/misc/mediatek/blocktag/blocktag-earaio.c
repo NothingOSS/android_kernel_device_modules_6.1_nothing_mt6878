@@ -15,9 +15,9 @@
 #include <linux/sched/clock.h>
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
+#include <linux/poll.h>
 #include <linux/proc_fs.h>
-#include <linux/miscdevice.h>
-#include "mtk_blocktag.h"
+#include "blocktag-internal.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
@@ -31,6 +31,17 @@ struct _EARA_IOCTL_PACKAGE {
 
 #define EARA_GETINDEX                _IOW('g', 1, struct _EARA_IOCTL_PACKAGE)
 #define EARA_COLLECT                 _IOW('g', 2, struct _EARA_IOCTL_PACKAGE)
+#define EARA_GETINDEX2               _IOW('g', 3, struct _EARA_IOCTL_PACKAGE)
+#define EARA_SET_PARAM               _IOW('g', 4, struct _EARA_IOCTL_PACKAGE)
+
+#define PARAM_RANDOM_THRESHOLD       0
+#define PARAM_SEQ_R_THRESHOLD        1
+#define PARAM_SEQ_W_THRESHOLD        2
+
+#define ACCEL_NO                     0
+#define ACCEL_NORMAL                 1
+#define ACCEL_RAND                   3
+#define ACCEL_SEQ                    4
 
 struct eara_iostat {
 	int io_wl;
@@ -38,45 +49,210 @@ struct eara_iostat {
 	int io_reqc_r;
 	int io_reqc_w;
 	int io_q_dept;
+	int io_reqsz_r;
+	int io_reqsz_w;
 };
-
-static DEFINE_MUTEX(eara_ioctl_lock);
 
 /* mini context for major embedded storage only */
 #define MICTX_PROC_CMD_BUF_SIZE (16)
-#define PWD_WIDTH_NS 250000000 /* 250ms */
+#define PWD_WIDTH_NS 100000000 /* 100ms */
+
+static DEFINE_MUTEX(eara_ioctl_lock);
 static struct mtk_btag_earaio_control earaio_ctrl;
-static struct miscdevice earaio_obj;
+
+static int earaio_boost_open(struct inode *inode, struct file *file)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&earaio_ctrl.lock, flags);
+	earaio_ctrl.msg_open_cnt++;
+	if (earaio_ctrl.msg_open_cnt == 1)
+		earaio_ctrl.pwd_begin = sched_clock();
+
+	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
+	return 0;
+}
+
+static int earaio_boost_release(struct inode *inode, struct file *file)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&earaio_ctrl.lock, flags);
+	earaio_ctrl.msg_open_cnt--;
+
+	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
+	return 0;
+}
+
+static ssize_t earaio_boost_read(struct file *file, char __user *buf,
+	size_t count, loff_t *ppos)
+{
+	int len = 0;
+
+	if (earaio_ctrl.msg_buf_used_entry == 0) {
+		/* buf empty */
+		return 0;
+	}
+
+	if (access_ok(buf, count)) {
+		len = (count < EARAIO_BOOST_ENTRY_LEN) ?
+			count : EARAIO_BOOST_ENTRY_LEN;
+		(void)__copy_to_user(buf,
+			&earaio_ctrl.msg_buf[earaio_ctrl.msg_buf_start_idx],
+			len);
+		memset(&earaio_ctrl.msg_buf[earaio_ctrl.msg_buf_start_idx], 0,
+			EARAIO_BOOST_ENTRY_LEN);
+		earaio_ctrl.msg_buf_start_idx += EARAIO_BOOST_ENTRY_LEN;
+		if (earaio_ctrl.msg_buf_start_idx == EARAIO_BOOST_BUF_SZ)
+			earaio_ctrl.msg_buf_start_idx = 0;
+		earaio_ctrl.msg_buf_used_entry--;
+	}
+
+	return len;
+}
+
+static unsigned int earaio_boost_pool(struct file *file, poll_table *pt)
+{
+	if (earaio_ctrl.msg_buf_used_entry)
+		return (POLLIN | POLLRDNORM);
+
+	poll_wait(file, &earaio_ctrl.msg_readable, pt);
+
+	if (earaio_ctrl.msg_buf_used_entry)
+		return (POLLIN | POLLRDNORM);
+
+	return 0;
+}
+
+static const struct proc_ops earaio_boost_fops = {
+	.proc_open = earaio_boost_open,
+	.proc_release = earaio_boost_release,
+	.proc_read = earaio_boost_read,
+	.proc_poll = earaio_boost_pool,
+};
+
+static void mtk_btag_earaio_boost_fill(int boost)
+{
+	if (earaio_ctrl.msg_buf_used_entry == EARAIO_BOOST_ENTRY_NUM) {
+		/* buf full */
+		return;
+	}
+
+	earaio_ctrl.earaio_boost_state = boost;
+
+	sprintf(&earaio_ctrl.msg_buf[earaio_ctrl.msg_buf_start_idx], "boost=%d",
+		boost);
+	earaio_ctrl.msg_buf_used_entry++;
+
+	if (boost)
+		wake_up(&earaio_ctrl.msg_readable);
+}
+
+static void mtk_btag_earaio_clear_data(void)
+{
+#ifdef EARAIO_EARLY_NOTIFY
+	earaio_ctrl.req_cnt = 0;
+#endif
+	earaio_ctrl.pwd_begin = sched_clock();
+	earaio_ctrl.pwd_top_pages[BTAG_IO_READ] = 0;
+	earaio_ctrl.pwd_top_pages[BTAG_IO_WRITE] = 0;
+}
 
 #if IS_ENABLED(CONFIG_CGROUP_SCHED)
 static void mtk_btag_eara_get_data(struct eara_iostat *data)
 {
 	struct mtk_btag_mictx_iostat_struct iostat = {0};
+	unsigned long flags;
 
 	WARN_ON(!mutex_is_locked(&eara_ioctl_lock));
 
 	if (mtk_btag_mictx_get_data(earaio_ctrl.mictx_id, &iostat))
 		mtk_btag_mictx_enable(&earaio_ctrl.mictx_id, 1);
+	spin_lock_irqsave(&earaio_ctrl.lock, flags);
+	mtk_btag_earaio_clear_data();
+	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 
 	data->io_wl = iostat.wl;
 	data->io_top = iostat.top;
 	data->io_reqc_r = iostat.reqcnt_r;
 	data->io_reqc_w = iostat.reqcnt_w;
 	data->io_q_dept = iostat.q_depth;
+	data->io_reqsz_r = iostat.reqsize_r;
+	data->io_reqsz_w = iostat.reqsize_w;
+}
+
+#define EARAIO_BOOST_EVAL_THRESHOLD_PAGES ((32 * 1024 * 1024) >> 12)
+static void mtk_btag_earaio_try_boost(bool boost)
+{
+	unsigned long flags;
+	int changed = 0; // 0: not try, 1: try and success, 2: try but fail
+	__u32 *top;
+
+	if (!earaio_ctrl.enabled || !earaio_ctrl.earaio_boost_entry)
+		return;
+
+	spin_lock_irqsave(&earaio_ctrl.lock, flags);
+
+	if (!boost) {
+		/*
+		 * It does not harm to set start_collect as false without
+		 * checking original start_collect
+		 */
+		earaio_ctrl.start_collect = false;
+		earaio_ctrl.earaio_boost_state = ACCEL_NO;
+		earaio_ctrl.boosted = boost;
+		goto end;
+	}
+
+	if (earaio_ctrl.boosted)
+		goto end;
+
+	top = earaio_ctrl.pwd_top_pages;
+	/* Establish threshold */
+	if (top[BTAG_IO_READ] >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES ||
+	    top[BTAG_IO_WRITE] >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES) {
+		if (earaio_ctrl.msg_open_cnt &&
+			!earaio_ctrl.earaio_boost_state) {
+			mtk_btag_earaio_boost_fill(ACCEL_NORMAL);
+			earaio_ctrl.boosted = boost;
+			changed = 1;
+		}
+	}
+
+end:
+	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
+
+	if (boost && changed == 0)
+		mtk_btag_mictx_check_window(earaio_ctrl.mictx_id, false);
 }
 
 static void mtk_btag_eara_start_collect(void)
 {
-	struct eara_iostat data = {0};
+	unsigned long flags;
+
+	spin_lock_irqsave(&earaio_ctrl.lock, flags);
 
 	WARN_ON(!mutex_is_locked(&eara_ioctl_lock));
 
-	mtk_btag_eara_get_data(&data);
+	/*
+	 * Check original start_collect to prevent from calling
+	 * mtk_btag_earaio_clear_data() when original start_collect is true
+	 */
+	if (!earaio_ctrl.start_collect) {
+		earaio_ctrl.start_collect = true;
+		mtk_btag_earaio_clear_data();
+	}
+	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
+	mtk_btag_mictx_check_window(earaio_ctrl.mictx_id, true);
 }
 
 static void mtk_btag_eara_stop_collect(void)
 {
-	mtk_btag_earaio_boost(false);
+	/*
+	 * Set earaio_ctrl.start_collect as false in mtk_btag_earaio_try_boost()
+	 * to avoid get earaio_ctrl.lock twice
+	 */
+	mtk_btag_earaio_try_boost(false);
 
 	WARN_ON(!mutex_is_locked(&eara_ioctl_lock));
 }
@@ -115,6 +291,30 @@ static unsigned long eara_ioctl_copy_from_user(void *pvTo,
 	return ulBytes;
 }
 
+#ifdef EARAIO_EARLY_NOTIFY
+static void mtk_btag_eara_set_param(int cmd)
+{
+	unsigned int param_idx, param_val;
+
+	param_idx = ((unsigned int)cmd) >> 24;
+	param_val = cmd & 0xffffff;
+
+	switch (param_idx) {
+	case PARAM_RANDOM_THRESHOLD:
+		earaio_ctrl.rand_rw_threshold = param_val;
+		break;
+	case PARAM_SEQ_R_THRESHOLD:
+		/* << 8 to convert mb as pages*/
+		earaio_ctrl.seq_r_threshold = param_val << 8;
+		break;
+	case PARAM_SEQ_W_THRESHOLD:
+		/* << 8 to convert mb as pages*/
+		earaio_ctrl.seq_w_threshold = param_val << 8;
+		break;
+	}
+}
+#endif
+
 static unsigned long eara_ioctl_copy_to_user(void __user *pvTo,
 		const void *pvFrom, unsigned long ulBytes)
 {
@@ -131,11 +331,21 @@ static long mtk_btag_eara_ioctl(struct file *filp,
 	struct _EARA_IOCTL_PACKAGE *msgKM = NULL;
 	struct _EARA_IOCTL_PACKAGE *msgUM = (struct _EARA_IOCTL_PACKAGE *)arg;
 	struct _EARA_IOCTL_PACKAGE smsgKM = {0};
+#ifdef EARAIO_EARLY_NOTIFY
+	unsigned long flags;
+#endif
 
 	msgKM = &smsgKM;
 
 	switch (cmd) {
 	case EARA_GETINDEX:
+#ifdef EARAIO_EARLY_NOTIFY
+		spin_lock_irqsave(&earaio_ctrl.lock, flags);
+		if (earaio_ctrl.earaio_boost_state != ACCEL_NORMAL)
+			//fix me: determine shall be 1 or 0
+			earaio_ctrl.earaio_boost_state = ACCEL_NORMAL;
+		spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
+#endif
 		mtk_btag_eara_transfer_data(smsgKM.data,
 				sizeof(struct _EARA_IOCTL_PACKAGE));
 		eara_ioctl_copy_to_user(msgUM, msgKM,
@@ -149,6 +359,22 @@ static long mtk_btag_eara_ioctl(struct file *filp,
 		}
 		mtk_btag_eara_switch_collect(msgKM->cmd);
 		break;
+#ifdef EARAIO_EARLY_NOTIFY
+	case EARA_GETINDEX2:
+		mtk_btag_eara_transfer_data(smsgKM.data,
+				sizeof(struct _EARA_IOCTL_PACKAGE));
+		eara_ioctl_copy_to_user(msgUM, msgKM,
+				sizeof(struct _EARA_IOCTL_PACKAGE));
+		break;
+	case EARA_SET_PARAM:
+		if (eara_ioctl_copy_from_user(msgKM, msgUM,
+				sizeof(struct _EARA_IOCTL_PACKAGE))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+		mtk_btag_eara_set_param(msgKM->cmd);
+		break;
+#endif
 	default:
 		pr_debug("proc_ioctl: unknown cmd %x\n", cmd);
 		ret = -EINVAL;
@@ -178,7 +404,7 @@ static const struct proc_ops mtk_btag_eara_ioctl_fops = {
 	.proc_release = single_release,
 };
 
-static int mtk_btag_eara_ioctl_init(struct proc_dir_entry *parent)
+static int mtk_btag_earaio_init(struct proc_dir_entry *parent)
 {
 	int ret = 0;
 	struct proc_dir_entry *proc_entry;
@@ -189,6 +415,16 @@ static int mtk_btag_eara_ioctl_init(struct proc_dir_entry *parent)
 	if (IS_ERR(proc_entry)) {
 		ret = PTR_ERR(proc_entry);
 		pr_debug("failed to create proc entry (%d)\n", ret);
+	}
+
+	proc_entry = proc_create("eara_io_boost", 0440, parent,
+		&earaio_boost_fops);
+	if (IS_ERR(proc_entry)) {
+		pr_notice("[BLOCK TAG] Creating node eara-io-boost failed\n");
+		ret =  -ENOMEM;
+	} else {
+		earaio_ctrl.earaio_boost_entry = proc_entry;
+		init_waitqueue_head(&earaio_ctrl.msg_readable);
 	}
 
 	return ret;
@@ -216,7 +452,7 @@ static ssize_t mtk_btag_earaio_ctrl_sub_write(struct file *file,
 	cmd[count - 1] = 0;
 
 	if (!strcmp(cmd, "0")) {
-		mtk_btag_earaio_boost(false);
+		mtk_btag_earaio_try_boost(false);
 		earaio_ctrl.enabled = false;
 		pr_info("EARA-IO QoS Disable\n");
 	} else if (!strcmp(cmd, "1")) {
@@ -283,126 +519,50 @@ static const struct proc_ops mtk_btag_earaio_ctrl_sub_fops = {
 	.proc_write		= mtk_btag_earaio_ctrl_sub_write,
 };
 
-static void mtk_btag_earaio_uevt_worker(struct work_struct *work)
-{
-	#define EVT_STR_SIZE 10
-	unsigned long flags;
-	char event_string[EVT_STR_SIZE];
-	char *envp[2];
-	bool boost, restart, quit;
-	int ret;
-
-	envp[0] = event_string;
-	envp[1] = NULL;
-
-start:
-	boost = false;
-	quit = false;
-	restart = false;
-	spin_lock_irqsave(&earaio_ctrl.lock, flags);
-	if (earaio_ctrl.uevt_state != earaio_ctrl.uevt_req)
-		boost = earaio_ctrl.uevt_req;
-	else
-		quit = true;
-	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
-
-	if (quit)
-		return;
-
-	ret = snprintf(event_string, EVT_STR_SIZE, "boost=%d", boost ? 1 : 0);
-	if (!ret)
-		return;
-
-	ret = kobject_uevent_env(
-			&earaio_obj.this_device->kobj,
-			KOBJ_CHANGE, envp);
-	if (ret)
-		pr_info("failed to send uevent %s (%d)\n", event_string, ret);
-	else
-		earaio_ctrl.uevt_state = boost;
-
-	spin_lock_irqsave(&earaio_ctrl.lock, flags);
-	if (earaio_ctrl.uevt_state != earaio_ctrl.uevt_req)
-		restart = true;
-	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
-
-	if (restart)
-		goto start;
-}
-
-static bool mtk_btag_earaio_send_uevt(bool boost)
-{
-	earaio_ctrl.uevt_req = boost;
-	queue_work(earaio_ctrl.uevt_workq, &earaio_ctrl.uevt_work);
-
-	return true;
-}
-
-#define EARAIO_UEVT_THRESHOLD_PAGES ((32 * 1024 * 1024) >> 12)
-//#define EARAIO_UEVT_THRESHOLD_PAGES ((1 * 1024 * 1024) >> 12)
-static int __mtk_btag_earaio_boost(bool boost)
-{
-	int changed = 0;
-	__u32 *top = earaio_ctrl.pwd_top_pages;
-
-	if (!(boost ^ earaio_ctrl.boosted))
-		return changed;
-
-	if (boost) {
-		/* Establish threshold to avoid lousy uevents */
-		if (top[BTAG_IO_READ] >= EARAIO_UEVT_THRESHOLD_PAGES ||
-		    top[BTAG_IO_WRITE] >= EARAIO_UEVT_THRESHOLD_PAGES)
-			changed = mtk_btag_earaio_send_uevt(true);
-
-	} else {
-		changed = mtk_btag_earaio_send_uevt(false);
-		changed = 1;
-	}
-
-	if (changed)
-		earaio_ctrl.boosted = boost;
-	else
-		changed = 2;
-
-	return changed;
-}
-
-void mtk_btag_earaio_boost(bool boost)
-{
-	unsigned long flags;
-	int changed = 0; // 0: not try, 1: try and success, 2: try but fail
-
-	/* Use earaio_obj.minor to indicate if obj is existed */
-	if (!earaio_ctrl.enabled || unlikely(!earaio_obj.minor))
-		return;
-
-	spin_lock_irqsave(&earaio_ctrl.lock, flags);
-	changed = __mtk_btag_earaio_boost(boost);
-	if (boost || changed == 1) {
-		earaio_ctrl.pwd_begin = sched_clock();
-		earaio_ctrl.pwd_top_pages[BTAG_IO_READ] = 0;
-		earaio_ctrl.pwd_top_pages[BTAG_IO_WRITE] = 0;
-	}
-	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
-
-	if ((boost && changed == 2) || (!boost && changed == 1))
-		mtk_btag_mictx_check_window(earaio_ctrl.mictx_id);
-}
-
-static void earaio_check_pwd(void)
-{
-	if ((sched_clock() - earaio_ctrl.pwd_begin) >= PWD_WIDTH_NS)
-		mtk_btag_earaio_boost(true);
-}
-
 void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size)
 {
+	int early_notification = 0;
 	unsigned long flags;
+	__u32 *top = earaio_ctrl.pwd_top_pages;
 
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
-	earaio_ctrl.pwd_top_pages[type] += (size >> 12);
-	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
-	earaio_check_pwd();
+
+	top[type] += (__u32)(size >> 12);
+
+#ifdef EARAIO_EARLY_NOTIFY
+	if (earaio_ctrl.start_collect) {
+		earaio_ctrl.req_cnt++;
+		if (earaio_ctrl.earaio_boost_state != ACCEL_RAND) {
+			if (earaio_ctrl.req_cnt >
+				earaio_ctrl.rand_rw_threshold) {
+				early_notification = ACCEL_RAND;
+				mtk_btag_earaio_boost_fill(ACCEL_RAND);
+			}
+		}
+
+		if (earaio_ctrl.earaio_boost_state != ACCEL_SEQ) {
+			top = earaio_ctrl.pwd_top_pages;
+			if (type == BTAG_IO_READ &&
+			    top[BTAG_IO_READ] > earaio_ctrl.seq_r_threshold) {
+				early_notification = ACCEL_SEQ;
+				mtk_btag_earaio_boost_fill(ACCEL_SEQ);
+			} else if (type == BTAG_IO_WRITE  &&
+			    top[BTAG_IO_WRITE] > earaio_ctrl.seq_w_threshold &&
+			    top[BTAG_IO_READ] == 0) {
+				early_notification = ACCEL_SEQ;
+				mtk_btag_earaio_boost_fill(ACCEL_SEQ);
+			}
+		}
+
+	}
+#endif
+
+		spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
+
+	if (!early_notification) {
+		if ((sched_clock() - earaio_ctrl.pwd_begin) >= PWD_WIDTH_NS)
+			mtk_btag_earaio_try_boost(true);
+	}
 }
 
 void mtk_btag_earaio_init_mictx(
@@ -416,15 +576,14 @@ void mtk_btag_earaio_init_mictx(
 		return;
 
 	if (!earaio_ctrl.enabled) {
-		earaio_ctrl.uevt_workq =
-			alloc_ordered_workqueue("mtk_btag_uevt",
-			WQ_MEM_RECLAIM);
-		INIT_WORK(&earaio_ctrl.uevt_work, mtk_btag_earaio_uevt_worker);
 		spin_lock_init(&earaio_ctrl.lock);
 		earaio_ctrl.enabled = true;
-		earaio_ctrl.pwd_begin = sched_clock();
-		earaio_ctrl.pwd_top_pages[BTAG_IO_READ] = 0;
-		earaio_ctrl.pwd_top_pages[BTAG_IO_WRITE] = 0;
+		mtk_btag_earaio_clear_data();
+#ifdef EARAIO_EARLY_NOTIFY
+		earaio_ctrl.rand_rw_threshold = THRESHOLD_MAX;
+		earaio_ctrl.seq_r_threshold = THRESHOLD_MAX;
+		earaio_ctrl.seq_w_threshold = THRESHOLD_MAX;
+#endif
 		earaio_ctrl.mictx_id.storage = storage_type;
 		strncpy(earaio_ctrl.mictx_id.name, "earaio", BTAG_NAME_LEN - 1);
 	}
@@ -435,40 +594,15 @@ void mtk_btag_earaio_init_mictx(
 	/* Disable Full Logging for earaio by default */
 	mtk_btag_mictx_set_full_logging(earaio_ctrl.mictx_id, false);
 
-	mtk_btag_eara_ioctl_init(btag_proc_root);
-	proc_entry = proc_create("earaio_ctrl", S_IFREG | 0444,
-		btag_proc_root, &mtk_btag_earaio_ctrl_sub_fops);
-}
-
-int mtk_btag_earaio_init(void)
-{
-	int ret = 0;
-
-	earaio_obj.name = "eara-io";
-	earaio_obj.minor = MISC_DYNAMIC_MINOR;
-	ret = misc_register(&earaio_obj);
-	if (ret) {
-		pr_info("failed to register earaio obj (%d)\n", ret);
-		earaio_obj.minor = 0;
-		return ret;
+	if (mtk_btag_earaio_init(btag_proc_root) < 0) {
+		earaio_ctrl.enabled = false;
+	} else {
+		proc_entry = proc_create("earaio_ctrl", S_IFREG | 0444,
+			btag_proc_root, &mtk_btag_earaio_ctrl_sub_fops);
 	}
-
-	ret = kobject_uevent(&earaio_obj.this_device->kobj, KOBJ_ADD);
-	if (ret) {
-		misc_deregister(&earaio_obj);
-		pr_info("failed to add uevent (%d)\n", ret);
-		earaio_obj.minor = 0;
-		return ret;
-	}
-
-	return ret;
 }
 
 #else
-static inline int mtk_btag_earaio_init(void)
-{
-	return -1;
-}
-
 #define mtk_btag_earaio_init_mictx(...)
+
 #endif

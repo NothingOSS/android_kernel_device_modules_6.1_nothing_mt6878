@@ -21,7 +21,7 @@
 #include <linux/time.h>
 #include <linux/vmalloc.h>
 #include "queue.h"
-#include "mtk_blocktag.h"
+#include "blocktag-internal.h"
 #include "blocktag-mmc.h"
 
 /* ring trace for debugfs, eMMC & SD */

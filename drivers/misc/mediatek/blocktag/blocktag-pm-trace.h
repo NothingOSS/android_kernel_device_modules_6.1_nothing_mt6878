@@ -7,7 +7,7 @@
 #define _BLOCKTAG_BLK_PM_TRACE_H
 
 #include <linux/types.h>
-#include "mtk_blocktag.h"
+#include "blocktag-internal.h"
 
 #define BLK_PM_MAX_LOG (4096)
 

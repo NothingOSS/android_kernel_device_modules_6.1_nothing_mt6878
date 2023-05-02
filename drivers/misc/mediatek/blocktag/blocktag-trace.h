@@ -9,7 +9,7 @@
 #define _TRACE_BLOCKTAG_H
 
 #include <linux/tracepoint.h>
-#include "mtk_blocktag.h"
+#include "blocktag-internal.h"
 
 TRACE_EVENT(blocktag_ufs_send,
 	TP_PROTO(__u64 delay, __u32 tid, __u16 qid, __u16 cmd, __u32 len),

@@ -29,7 +29,7 @@
 #include <scsi/scsi_cmnd.h>
 #include <scsi/scsi_proto.h>
 #include "blocktag-trace.h"
-#include "mtk_blocktag.h"
+#include "blocktag-internal.h"
 #include "blocktag-ufs.h"
 
 /* ring trace for debugfs */

@@ -9,7 +9,7 @@
 #include <linux/types.h>
 #include <linux/mmc/core.h>
 #include <linux/mmc/mmc.h>
-#include "mtk_blocktag.h"
+#include "blocktag-internal.h"
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 #define MMC_BIOLOG_RINGBUF_MAX    120

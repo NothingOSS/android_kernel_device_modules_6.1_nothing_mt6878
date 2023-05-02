@@ -8,8 +8,6 @@
 
 #include <linux/types.h>
 
-#include "mtk_blocktag.h"
-
 void fscmd_trace_sys_enter(void *data,
 		struct pt_regs *regs, long id);
 

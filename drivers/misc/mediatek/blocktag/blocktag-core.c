@@ -36,7 +36,7 @@
 #include <mrdump.h>
 #endif
 
-#include "mtk_blocktag.h"
+#include "blocktag-internal.h"
 #if IS_ENABLED(CONFIG_MTK_FSCMD_TRACER)
 #include "fscmd-trace.h"
 #endif
@@ -885,6 +885,8 @@ static void btag_trace_writeback_dirty_folio(void *data,
 					     struct folio *folio,
 					     struct address_space *mapping)
 {
+	short pid = current->pid;
+
 	/*
 	 * Dirty pages may be written by writeback thread later.
 	 * To get real requester of this page, we shall keep it
@@ -893,7 +895,10 @@ static void btag_trace_writeback_dirty_folio(void *data,
 	if (unlikely(!mtk_btag_pagelogger) || unlikely(!folio))
 		return;
 
-	mtk_btag_page_pidlog_set(&folio->page, current->pid);
+	pid = mtk_btag_is_top_task(current) ? -pid : pid;
+	/* mtk_btag_page_pidlog_set(&folio->page, current->pid); */
+	mtk_btag_page_pidlog_set(&folio->page, pid);
+
 }
 
 struct tracepoints_table {
@@ -1127,7 +1132,6 @@ static int __init mtk_btag_init(void)
 	mtk_btag_init_memory();
 	mtk_btag_init_pidlogger();
 	mtk_btag_init_procfs();
-	mtk_btag_earaio_init();
 #if IS_ENABLED(CONFIG_MTK_FSCMD_TRACER)
 	mtk_fscmd_init();
 #endif

@@ -18,6 +18,7 @@
 #include <linux/spinlock.h>
 #include <linux/math64.h>
 #define CREATE_TRACE_POINTS
+#include "blocktag-internal.h"
 #include "blocktag-trace.h"
 #include "mtk_blocktag.h"
 
@@ -73,7 +74,7 @@ static void mictx_reset(struct mtk_btag_mictx *mictx)
 	spin_unlock_irqrestore(&mictx->wl.lock, flags);
 }
 
-void mtk_btag_mictx_check_window(struct mtk_btag_mictx_id mictx_id)
+void mtk_btag_mictx_check_window(struct mtk_btag_mictx_id mictx_id, bool force)
 {
 	struct mtk_blocktag *btag;
 	struct mtk_btag_mictx *mictx;
@@ -89,7 +90,7 @@ void mtk_btag_mictx_check_window(struct mtk_btag_mictx_id mictx_id)
 		return;
 	}
 
-	if (sched_clock() - READ_ONCE(mictx->wl.window_begin) > MICTX_RESET_NS)
+	if (force || (sched_clock() - READ_ONCE(mictx->wl.window_begin) > MICTX_RESET_NS))
 		mictx_reset(mictx);
 
 	rcu_read_unlock();

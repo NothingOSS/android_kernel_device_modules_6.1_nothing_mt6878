@@ -7,7 +7,7 @@
 #define _UFS_MEDIATEK_TRACER_H
 
 #include <linux/types.h>
-#include "mtk_blocktag.h"
+#include "blocktag-internal.h"
 
 #if IS_ENABLED(CONFIG_SCSI_UFS_HPB)
 #include "ufshpb.h"
