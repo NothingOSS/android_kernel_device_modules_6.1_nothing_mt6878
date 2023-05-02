@@ -51,6 +51,10 @@ static int ufs_abort_aee_count;
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#include <linux/sched/cputime.h>
+#include <linux/sched/debug.h>
+#include <sched/sched.h>
+
 static void ufs_mtk_mphy_dump(struct ufs_hba *hba);
 static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage);
 static const u32 mphy_reg_dump[] = {
@@ -3222,6 +3226,10 @@ static int ufs_mtk_unipro_set_lpm(struct ufs_hba *hba, bool lpm)
 
 		/* maybe irq pending */
 		mt_irq_dump_status(hba->irq);
+
+		/* dump CPU3 callstack for debugging */
+		dev_info(hba->dev, "%s: Task dump on CPU3\n", __func__);
+		sched_show_task(cpu_curr(3));
 
 		ret2 = ufshcd_dme_get(hba,
 			UIC_ARG_MIB(VS_UNIPROPOWERDOWNCONTROL), &val);
