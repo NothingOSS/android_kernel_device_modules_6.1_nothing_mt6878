@@ -29,11 +29,10 @@ int uarthub_core_set_host_txrx_request(int dev_index, int trx)
 #endif
 	g_plat_ic_core_ops->uarthub_plat_set_host_trx_request(dev_index, trx);
 
-	/* only for SSPM not support case */
-	if (g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl) {
+	if (g_is_ut_testing == 1) {
 		usleep_range(50, 60);
-		g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(-1);
-		pr_info("[%s] is_ready=[%d]\n", __func__, uarthub_core_dev0_is_uarthub_ready());
+		pr_info("[%s] is_ready=[%d]\n",
+			__func__, uarthub_core_dev0_is_uarthub_ready("HUB_DBG_ut_SetTRX"));
 	}
 
 	return 0;
@@ -58,11 +57,10 @@ int uarthub_core_clear_host_txrx_request(int dev_index, int trx)
 #endif
 	g_plat_ic_core_ops->uarthub_plat_clear_host_trx_request(dev_index, trx);
 
-	/* only for SSPM not support case */
-	if (g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl) {
+	if (g_is_ut_testing == 1) {
 		usleep_range(50, 60);
-		g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(-1);
-		pr_info("[%s] is_ready=[%d]\n", __func__, uarthub_core_dev0_is_uarthub_ready());
+		pr_info("[%s] is_ready=[%d]\n",
+			__func__, uarthub_core_dev0_is_uarthub_ready("HUB_DBG_ut_ClrTRX"));
 	}
 
 	return 0;
@@ -86,233 +84,6 @@ int uarthub_core_is_host_uarthub_ready_state(int dev_index)
 	pr_info("[%s] dev_index=[%d]\n", __func__, dev_index);
 #endif
 	return g_plat_ic_ut_test_ops->uarthub_plat_is_host_uarthub_ready_state(dev_index);
-}
-
-int uarthub_core_request_host_sema_own_sta(int dev_index)
-{
-	if (g_uarthub_disable == 1)
-		return 0;
-
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_request_host_sema_own_sta == NULL)
-		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
-
-	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
-		pr_notice("[%s] apb bus clk disable\n", __func__);
-		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
-	}
-
-#if UARTHUB_INFO_LOG
-	pr_info("[%s] dev_index=[%d]\n", __func__, dev_index);
-#endif
-	return g_plat_ic_ut_test_ops->uarthub_plat_request_host_sema_own_sta(dev_index);
-}
-
-int uarthub_core_set_host_sema_own_rel(int dev_index)
-{
-	int state = 0;
-
-	if (g_uarthub_disable == 1)
-		return 0;
-
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_set_host_sema_own_rel == NULL)
-		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
-
-	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
-		pr_notice("[%s] apb bus clk disable\n", __func__);
-		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
-	}
-
-#if UARTHUB_INFO_LOG
-	pr_info("[%s] dev_index=[%d], dev0_irq_sta=[0x%x]\n",
-		__func__, dev_index, uarthub_core_get_host_irq_sta(dev_index));
-#endif
-	state = g_plat_ic_ut_test_ops->uarthub_plat_set_host_sema_own_rel(dev_index);
-#if UARTHUB_INFO_LOG
-	pr_info("[%s] done >> state=[%d], dev_index=[%d]\n", __func__, state, dev_index);
-#endif
-	return state;
-}
-
-int uarthub_core_get_host_sema_own_rel_irq_sta(int dev_index)
-{
-	struct uarthub_ut_test_ops_struct *ops = g_plat_ic_ut_test_ops;
-	int state = 0;
-
-	if (g_uarthub_disable == 1)
-		return 0;
-
-	if (ops == NULL ||
-		  ops->uarthub_plat_get_host_sema_own_rel_irq_sta == NULL)
-		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
-
-	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
-		pr_notice("[%s] apb bus clk disable\n", __func__);
-		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
-	}
-
-	if (dev_index == 0 && g_is_ut_testing == 1) {
-#if UARTHUB_INFO_LOG
-		pr_info("[%s] dev_index=[%d], g_dev0_sema_own_rel_irq_sta=[0x%x/0x%x]\n",
-			__func__, dev_index, g_dev0_sema_own_rel_irq_sta,
-			ops->uarthub_plat_get_host_sema_own_rel_irq_sta(0));
-#endif
-		return g_dev0_sema_own_rel_irq_sta;
-	}
-
-	state = ops->uarthub_plat_get_host_sema_own_rel_irq_sta(dev_index);
-#if UARTHUB_INFO_LOG
-	pr_info("[%s] dev_index=[%d], uarthub_plat_get_host_sema_own_rel_irq_sta=[0x%x]\n",
-		__func__, dev_index, state);
-#endif
-	return state;
-}
-
-int uarthub_core_clear_host_sema_own_rel_irq(int dev_index)
-{
-	int state = 0;
-
-	if (g_uarthub_disable == 1)
-		return 0;
-
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_clear_host_sema_own_rel_irq == NULL)
-		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
-
-	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
-		pr_notice("[%s] apb bus clk disable\n", __func__);
-		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
-	}
-
-#if UARTHUB_INFO_LOG
-	pr_info("[%s] dev_index=[%d]\n", __func__, dev_index);
-#endif
-
-	state = g_plat_ic_ut_test_ops->uarthub_plat_clear_host_sema_own_rel_irq(dev_index);
-
-	if (dev_index == 0 && g_is_ut_testing == 1)
-		uarthub_core_sync_uarthub_irq_sta(50);
-
-	return state;
-}
-
-int uarthub_core_reset_host_sema_own(int dev_index)
-{
-	if (g_uarthub_disable == 1)
-		return 0;
-
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_reset_host_sema_own == NULL)
-		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
-
-	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
-		pr_notice("[%s] apb bus clk disable\n", __func__);
-		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
-	}
-
-#if UARTHUB_INFO_LOG
-	pr_info("[%s] dev_index=[%d]\n", __func__, dev_index);
-#endif
-	return g_plat_ic_ut_test_ops->uarthub_plat_reset_host_sema_own(dev_index);
-}
-
-int uarthub_core_get_host_sema_own_tmo_irq_sta(int dev_index)
-{
-	int state = 0;
-	struct uarthub_ut_test_ops_struct *ops = g_plat_ic_ut_test_ops;
-
-	if (g_uarthub_disable == 1)
-		return 0;
-
-	if (ops == NULL ||
-		  ops->uarthub_plat_get_host_sema_own_tmo_irq_sta == NULL)
-		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
-
-	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
-		pr_notice("[%s] apb bus clk disable\n", __func__);
-		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
-	}
-
-	if (g_is_ut_testing == 1) {
-		if (dev_index == 0) {
-#if UARTHUB_INFO_LOG
-			pr_info("[%s] dev_index=[%d], g_dev0_sema_own_tmo_irq_sta=[0x%x/0x%x]\n",
-				__func__, dev_index, g_dev0_sema_own_tmo_irq_sta,
-				ops->uarthub_plat_get_host_sema_own_tmo_irq_sta(0));
-#endif
-			return g_dev0_sema_own_tmo_irq_sta;
-		} else if (dev_index == 1) {
-#if UARTHUB_INFO_LOG
-			pr_info("[%s] dev_index=[%d], g_dev1_sema_own_tmo_irq_sta=[0x%x/0x%x]\n",
-				__func__, dev_index, g_dev1_sema_own_tmo_irq_sta,
-				ops->uarthub_plat_get_host_sema_own_tmo_irq_sta(1));
-#endif
-			return g_dev1_sema_own_tmo_irq_sta;
-		}
-
-#if UARTHUB_INFO_LOG
-		pr_info("[%s] dev_index=[%d], g_dev2_sema_own_tmo_irq_sta=[0x%x/0x%x]\n",
-			__func__, dev_index, g_dev2_sema_own_tmo_irq_sta,
-			ops->uarthub_plat_get_host_sema_own_tmo_irq_sta(2));
-#endif
-		return g_dev2_sema_own_tmo_irq_sta;
-	}
-
-	state = ops->uarthub_plat_get_host_sema_own_tmo_irq_sta(dev_index);
-#if UARTHUB_INFO_LOG
-	pr_info("[%s] dev_index=[%d], uarthub_plat_get_host_sema_own_tmo_irq_sta=[0x%x]\n",
-		__func__, dev_index, state);
-#endif
-	return state;
-}
-
-int uarthub_core_clear_host_sema_own_tmo_irq(int dev_index)
-{
-	int state = 0;
-
-	if (g_uarthub_disable == 1)
-		return 0;
-
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_clear_host_sema_own_tmo_irq == NULL)
-		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
-
-	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
-		pr_notice("[%s] apb bus clk disable\n", __func__);
-		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
-	}
-
-#if UARTHUB_INFO_LOG
-	pr_info("[%s] dev_index=[%d]\n", __func__, dev_index);
-#endif
-
-	state = g_plat_ic_ut_test_ops->uarthub_plat_clear_host_sema_own_tmo_irq(dev_index);
-
-	if (dev_index == 0 && g_is_ut_testing == 1)
-		uarthub_core_sync_uarthub_irq_sta(50);
-
-	return state;
-}
-
-int uarthub_core_reset_host_sema_own_tmo(int dev_index)
-{
-	if (g_uarthub_disable == 1)
-		return 0;
-
-	if (g_plat_ic_ut_test_ops == NULL ||
-		  g_plat_ic_ut_test_ops->uarthub_plat_reset_host_sema_own_tmo == NULL)
-		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
-
-	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
-		pr_notice("[%s] apb bus clk disable\n", __func__);
-		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
-	}
-
-#if UARTHUB_INFO_LOG
-	pr_info("[%s] dev_index=[%d]\n", __func__, dev_index);
-#endif
-	return g_plat_ic_ut_test_ops->uarthub_plat_reset_host_sema_own_tmo(dev_index);
 }
 
 int uarthub_core_get_host_irq_sta(int dev_index)
@@ -367,7 +138,7 @@ int uarthub_core_clear_host_irq(int dev_index)
 #if UARTHUB_INFO_LOG
 	pr_info("[%s] dev_index=[%d]\n", __func__, dev_index);
 #endif
-	state = g_plat_ic_ut_test_ops->uarthub_plat_clear_host_irq(dev_index, -1);
+	state = g_plat_ic_ut_test_ops->uarthub_plat_clear_host_irq(dev_index, BIT_0xFFFF_FFFF);
 
 	if (dev_index == 0 && g_is_ut_testing == 1)
 		uarthub_core_sync_uarthub_irq_sta(50);
@@ -932,4 +703,146 @@ int uarthub_core_ut_ip_verify_trx_not_ready(void)
 #endif
 
 	return state;
+}
+
+int uarthub_core_get_intfhub_active_sta(void)
+{
+	int state = 0;
+
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_ut_test_ops == NULL ||
+		  g_plat_ic_ut_test_ops->uarthub_plat_get_intfhub_active_sta == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
+		pr_notice("[%s] apb bus clk disable\n", __func__);
+		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
+	}
+
+	state = g_plat_ic_ut_test_ops->uarthub_plat_get_intfhub_active_sta();
+
+#if UARTHUB_INFO_LOG
+	pr_info("[%s] state=[%d]\n", __func__, state);
+#endif
+
+	return state;
+}
+
+int uarthub_core_sync_uarthub_irq_sta(int delay_us)
+{
+	unsigned char dmp_info_buf[DBG_LOG_LEN];
+	int len = 0;
+	int id = 0;
+	int dev0_irq_sta = 0;
+	int err_type = 0;
+	int err_index = 0;
+	int err_total = 0;
+
+	if (!g_plat_ic_ut_test_ops) {
+		pr_notice("[%s] g_plat_ic_ut_test_ops is NULL\n", __func__);
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+	}
+
+	if (!g_plat_ic_core_ops) {
+		pr_notice("[%s] g_plat_ic_ut_test_ops is NULL\n", __func__);
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+	}
+
+	if (g_plat_ic_ut_test_ops->uarthub_plat_get_host_irq_sta == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	if (delay_us > 0)
+		usleep_range(delay_us, (delay_us + 10));
+
+	dev0_irq_sta = g_plat_ic_ut_test_ops->uarthub_plat_get_host_irq_sta(0);
+	err_type = (dev0_irq_sta & BIT_0x7FFF_FFFF);
+	pr_info("[%s] err_type=[0x%x]\n", __func__, err_type);
+	err_total = 0;
+	for (id = 0; id < irq_err_type_max; id++) {
+		if (((err_type >> id) & 0x1) == 0x1)
+			err_total++;
+	}
+
+	if (err_total > 0) {
+		err_index = 0;
+		for (id = 0; id < irq_err_type_max; id++) {
+			if (((err_type >> id) & 0x1) == 0x1) {
+				err_index++;
+				pr_info("[%s] %d-%d, err_id=[%d], reason=[%s]\n",
+					__func__, err_total, err_index,
+					id, UARTHUB_irq_err_type_str[id]);
+			}
+		}
+#if UARTHUB_INFO_LOG
+		uarthub_core_debug_info_with_tag_worker(__func__);
+#endif
+	}
+
+	g_dev0_irq_sta = g_dev0_irq_sta | dev0_irq_sta;
+	if ((g_dev0_irq_sta & BIT_0x7FFF_FFFF) != 0x0)
+		g_dev0_irq_sta = (g_dev0_irq_sta & BIT_0x7FFF_FFFF);
+
+	len += snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
+		"[%s] irq_sta_dev0=[0x%x]", __func__, g_dev0_irq_sta);
+
+	if (g_plat_ic_ut_test_ops->uarthub_plat_get_inband_irq_sta) {
+		g_dev0_inband_irq_sta =
+			g_plat_ic_ut_test_ops->uarthub_plat_get_inband_irq_sta();
+
+		len += snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
+			", inband_irq_sta=[0x%x]", g_dev0_inband_irq_sta);
+	}
+
+	pr_info("%s\n", dmp_info_buf);
+
+	return 0;
+}
+
+int uarthub_core_handle_ut_test_irq(void)
+{
+	int err_type = -1;
+	int sspm_irq_type = -1;
+
+	if (g_is_ut_testing == 1) {
+		/* mask sspm irq */
+		g_plat_ic_core_ops->uarthub_plat_sspm_irq_mask_ctrl(BIT_0xFFFF_FFFF, 1);
+		/* disable inband irq */
+		if (g_plat_ic_ut_test_ops &&
+				g_plat_ic_ut_test_ops->uarthub_plat_config_inband_irq_enable_ctrl)
+			g_plat_ic_ut_test_ops->uarthub_plat_config_inband_irq_enable_ctrl(0);
+		/* sync irq sta */
+		uarthub_core_sync_uarthub_irq_sta(0);
+		/* handle sspm irq */
+		if (g_plat_ic_ut_test_ops &&
+				g_plat_ic_ut_test_ops->uarthub_plat_sspm_irq_handle &&
+				g_plat_ic_core_ops->uarthub_plat_sspm_irq_get_sta) {
+			err_type = g_plat_ic_core_ops->uarthub_plat_sspm_irq_get_sta();
+			if (err_type > 0)
+				sspm_irq_type =
+					g_plat_ic_ut_test_ops->uarthub_plat_sspm_irq_handle(
+					err_type);
+		}
+		/* clear dev0 irq */
+		g_plat_ic_core_ops->uarthub_plat_irq_clear_ctrl(g_dev0_irq_sta);
+		/* clear sspm irq */
+		g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(BIT_0xFFFF_FFFF);
+		if (sspm_irq_type >= 0)
+			uarthub_core_debug_info_with_tag_worker(__func__);
+		/* clear inband irq */
+		if (g_plat_ic_ut_test_ops &&
+				g_plat_ic_ut_test_ops->uarthub_plat_clear_inband_irq)
+			g_plat_ic_ut_test_ops->uarthub_plat_clear_inband_irq();
+		/* unmask dev0 irq */
+		g_plat_ic_core_ops->uarthub_plat_irq_mask_ctrl(0);
+		/* unmask sspm irq */
+		g_plat_ic_core_ops->uarthub_plat_sspm_irq_mask_ctrl(BIT_0xFFFF_FFFF, 0);
+	  /* enable inband irq */
+		if (g_plat_ic_ut_test_ops &&
+				g_plat_ic_ut_test_ops->uarthub_plat_config_inband_irq_enable_ctrl)
+			g_plat_ic_ut_test_ops->uarthub_plat_config_inband_irq_enable_ctrl(1);
+	}
+
+	return g_is_ut_testing;
 }

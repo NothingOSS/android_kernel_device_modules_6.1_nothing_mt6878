@@ -40,7 +40,7 @@ EXPORT_SYMBOL(UARTHUB_close);
 
 int UARTHUB_dev0_is_uarthub_ready(void)
 {
-	return uarthub_core_dev0_is_uarthub_ready();
+	return uarthub_core_dev0_is_uarthub_ready("HUB_DBG_SetTX_E");
 }
 EXPORT_SYMBOL(UARTHUB_dev0_is_uarthub_ready);
 
@@ -217,54 +217,6 @@ int UARTHUB_clear_host_txrx_request(int dev_index, int trx)
 }
 EXPORT_SYMBOL(UARTHUB_clear_host_txrx_request);
 
-int UARTHUB_request_host_sema_own_sta(int dev_index)
-{
-	return uarthub_core_request_host_sema_own_sta(dev_index);
-}
-EXPORT_SYMBOL(UARTHUB_request_host_sema_own_sta);
-
-int UARTHUB_set_host_sema_own_rel(int dev_index)
-{
-	return uarthub_core_set_host_sema_own_rel(dev_index);
-}
-EXPORT_SYMBOL(UARTHUB_set_host_sema_own_rel);
-
-int UARTHUB_get_host_sema_own_rel_irq_sta(int dev_index)
-{
-	return uarthub_core_get_host_sema_own_rel_irq_sta(dev_index);
-}
-EXPORT_SYMBOL(UARTHUB_get_host_sema_own_rel_irq_sta);
-
-int UARTHUB_clear_host_sema_own_rel_irq(int dev_index)
-{
-	return uarthub_core_clear_host_sema_own_rel_irq(dev_index);
-}
-EXPORT_SYMBOL(UARTHUB_clear_host_sema_own_rel_irq);
-
-int UARTHUB_reset_host_sema_own(int dev_index)
-{
-	return uarthub_core_reset_host_sema_own(dev_index);
-}
-EXPORT_SYMBOL(UARTHUB_reset_host_sema_own);
-
-int UARTHUB_get_host_sema_own_timeout_irq_sta(int dev_index)
-{
-	return uarthub_core_get_host_sema_own_tmo_irq_sta(dev_index);
-}
-EXPORT_SYMBOL(UARTHUB_get_host_sema_own_timeout_irq_sta);
-
-int UARTHUB_clear_host_sema_own_timeout_irq(int dev_index)
-{
-	return uarthub_core_clear_host_sema_own_tmo_irq(dev_index);
-}
-EXPORT_SYMBOL(UARTHUB_clear_host_sema_own_timeout_irq);
-
-int UARTHUB_reset_host_sema_own_timeout(int dev_index)
-{
-	return uarthub_core_reset_host_sema_own_tmo(dev_index);
-}
-EXPORT_SYMBOL(UARTHUB_reset_host_sema_own_timeout);
-
 int UARTHUB_get_host_irq_sta(int dev_index)
 {
 	return uarthub_core_get_host_irq_sta(dev_index);
@@ -420,5 +372,29 @@ int UARTHUB_ut_ip_verify_trx_not_ready(void)
 	return uarthub_core_ut_ip_verify_trx_not_ready();
 }
 EXPORT_SYMBOL(UARTHUB_ut_ip_verify_trx_not_ready);
+
+int UARTHUB_get_intfhub_active_sta(void)
+{
+	return uarthub_core_get_intfhub_active_sta();
+}
+EXPORT_SYMBOL(UARTHUB_get_intfhub_active_sta);
+
+int UARTHUB_debug_monitor_stop(int stop)
+{
+	return uarthub_core_debug_monitor_stop(stop);
+}
+EXPORT_SYMBOL(UARTHUB_debug_monitor_stop);
+
+int UARTHUB_debug_monitor_clr(void)
+{
+	return uarthub_core_debug_monitor_clr();
+}
+EXPORT_SYMBOL(UARTHUB_debug_monitor_clr);
+
+int UARTHUB_debug_byte_cnt_info(const char *tag)
+{
+	return uarthub_core_debug_byte_cnt_info(tag);
+}
+EXPORT_SYMBOL(UARTHUB_debug_byte_cnt_info);
 
 MODULE_LICENSE("GPL");

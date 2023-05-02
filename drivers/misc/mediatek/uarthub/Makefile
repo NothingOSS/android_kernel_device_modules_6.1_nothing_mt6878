@@ -41,7 +41,6 @@ ifneq ($(wildcard $(PATH_TO_UARTHUB_DRV)/common/platform/6989/mt6989.c),)
     $(MODULE_NAME)-objs += common/platform/6989/mt6989_debug.o
     $(MODULE_NAME)-objs += common/platform/6989/mt6989_ut_test.o
     $(MODULE_NAME)-objs += common/platform/6989/mt6989_ut_test_for_ip.o
-    $(MODULE_NAME)-objs += common/platform/6989/mt6989_ut_test_for_dx4.o
 endif
 
 # Otherwise we were called directly from the command line;

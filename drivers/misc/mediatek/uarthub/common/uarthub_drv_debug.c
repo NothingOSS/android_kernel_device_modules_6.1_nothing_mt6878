@@ -22,6 +22,8 @@ static ssize_t uarthub_dbg_read(struct file *filp, char __user *buf, size_t coun
 static int uarthub_dbg_dump_hub_dbg_info(int par1, int par2, int par3, int par4, int par5);
 static int uarthub_dbg_dump_hub_dbg_ctrl(int par1, int par2, int par3, int par4, int par5);
 static int uarthub_dbg_dump_apdma_dbg_info(int par1, int par2, int par3, int par4, int par5);
+static int uarthub_dbg_config_loopback_info(int par1, int par2, int par3, int par4, int par5);
+static int uarthub_dbg_debug_monitor_ctrl(int par1, int par2, int par3, int par4, int par5);
 
 #if UARTHUB_DBG_SUPPORT
 static int uarthub_dbg_ap_reg_read(int par1, int par2, int par3, int par4, int par5);
@@ -44,6 +46,8 @@ static const UARTHUB_DBG_FUNC uarthub_dbg_func[] = {
 	[0x0] = uarthub_dbg_dump_hub_dbg_info,
 	[0x1] = uarthub_dbg_dump_hub_dbg_ctrl,
 	[0x2] = uarthub_dbg_dump_apdma_dbg_info,
+	[0x3] = uarthub_dbg_config_loopback_info,
+	[0x4] = uarthub_dbg_debug_monitor_ctrl,
 
 #if UARTHUB_DBG_SUPPORT
 	[0x21] = uarthub_dbg_ap_reg_read,
@@ -222,6 +226,49 @@ int uarthub_dbg_dump_apdma_dbg_info(int par1, int par2, int par3, int par4, int 
 	pr_info("[%s] par1=[0x%x]\n", __func__, par1);
 
 	return uarthub_core_debug_apdma_uart_info("HUB_DBG_CMD");
+}
+
+int uarthub_dbg_config_loopback_info(int par1, int par2, int par3, int par4, int par5)
+{
+	pr_info("[%s] loopback ctrl, dev_index:[%d],tx_to_rx:[%d],enable:[%d]\n",
+		__func__, par2, par3, par4);
+
+	if (par2 < 0 || par2 > 3) {
+		pr_notice("[%s] not support dev_index(%d)\n", __func__, par2);
+		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
+	}
+
+	if (par2 < 3)
+		uarthub_core_config_host_loopback(par2, par3, par4);
+	else
+		uarthub_core_config_cmm_loopback(par3, par4);
+
+	return 0;
+}
+
+static int uarthub_dbg_debug_monitor_ctrl(int par1, int par2, int par3, int par4, int par5)
+{
+	int enable = par2;
+	int mode = par3;
+	int ctrl = par4;
+
+	if (g_plat_ic_debug_ops == NULL ||
+		  g_plat_ic_debug_ops->uarthub_plat_debug_monitor_ctrl == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	if (mode == 0)
+		pr_info("[%s] dump txrx debug ctrl, enable:[%d],mode:[packet_info_mode],bypass_esp_en:[%d]\n",
+			__func__, enable, ctrl);
+	else if (mode == 1)
+		pr_info("[%s] dump txrx debug ctrl, enable:[%d],mode:[check_data_mode],data_mode:[%s]\n",
+			__func__, enable, ((ctrl == 0) ? "top_16_bytes" : "last_16_bytes"));
+	else if (mode == 2)
+		pr_info("[%s] dump txrx debug ctrl, enable:[%d],mode:[crc_result_mode],rx_crc_data_en:[%d]\n",
+			__func__, enable, ctrl);
+
+	g_plat_ic_debug_ops->uarthub_plat_debug_monitor_ctrl(enable, mode, ctrl);
+
+	return 0;
 }
 
 #if UARTHUB_DBG_SUPPORT
@@ -640,6 +687,9 @@ int uarthub_core_debug_info(const char *tag, int force_dump)
 		g_plat_ic_debug_ops->uarthub_plat_dump_uartip_debug_info(
 			tag, &g_clear_trx_req_lock, force_dump);
 
+	if (g_plat_ic_debug_ops->uarthub_plat_dump_debug_monitor)
+		g_plat_ic_debug_ops->uarthub_plat_dump_debug_monitor(tag);
+
 	pr_info("[%s][%s] ----------------------------------------\n",
 		def_tag, ((tag == NULL) ? "null" : tag));
 
@@ -659,4 +709,44 @@ int uarthub_core_debug_dump_tx_rx_count(const char *tag, int trigger_point)
 
 	return g_plat_ic_debug_ops->uarthub_plat_dump_debug_tx_rx_count(
 		tag, trigger_point);
+}
+
+int uarthub_core_debug_monitor_stop(int stop)
+{
+	int state = 0;
+
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_debug_ops == NULL ||
+		  g_plat_ic_debug_ops->uarthub_plat_debug_monitor_stop == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	state = g_plat_ic_debug_ops->uarthub_plat_debug_monitor_stop(stop);
+
+#if UARTHUB_INFO_LOG
+	pr_info("[%s] stop=[%d], state=[%d]\n", __func__, stop, state);
+#endif
+
+	return state;
+}
+
+int uarthub_core_debug_monitor_clr(void)
+{
+	int state = 0;
+
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (g_plat_ic_debug_ops == NULL ||
+		  g_plat_ic_debug_ops->uarthub_plat_debug_monitor_clr == NULL)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	state = g_plat_ic_debug_ops->uarthub_plat_debug_monitor_clr();
+
+#if UARTHUB_INFO_LOG
+	pr_info("[%s] state=[%d]\n", __func__, state);
+#endif
+
+	return state;
 }

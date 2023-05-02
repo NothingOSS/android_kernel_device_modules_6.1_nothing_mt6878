@@ -154,9 +154,7 @@ struct uarthub_core_ops_struct mt6985_plat_core_data = {
 	.uarthub_plat_deinit_unmap_reg = uarthub_deinit_unmap_reg_mt6985,
 	.uarthub_plat_get_spm_sys_timer = uarthub_get_spm_sys_timer_mt6985,
 #if !(UARTHUB_SUPPORT_SSPM_DRIVER)
-	.uarthub_plat_init_default_config = uarthub_init_default_config_mt6985,
 	.uarthub_plat_sspm_irq_clear_ctrl = uarthub_sspm_irq_clear_ctrl_mt6985,
-	.uarthub_plat_init_trx_timeout = uarthub_init_trx_timeout_mt6985,
 #endif
 };
 
@@ -289,22 +287,14 @@ int uarthub_irq_mask_ctrl_mt6985(int mask)
 
 int uarthub_irq_clear_ctrl_mt6985(int irq_type)
 {
-	if (irq_type < 0)
-		UARTHUB_REG_WRITE(DEV0_IRQ_CLR_ADDR, 0xFFFFFFFF);
-	else
-		UARTHUB_SET_BIT(DEV0_IRQ_CLR_ADDR, irq_type);
-
+	UARTHUB_SET_BIT(DEV0_IRQ_CLR_ADDR, irq_type);
 	return 0;
 }
 
 #if !(UARTHUB_SUPPORT_SSPM_DRIVER)
 int uarthub_sspm_irq_clear_ctrl_mt6985(int irq_type)
 {
-	if (irq_type < 0)
-		UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
-	else
-		UARTHUB_SET_BIT(IRQ_CLR_ADDR, irq_type);
-
+	UARTHUB_SET_BIT(IRQ_CLR_ADDR, irq_type);
 	return 0;
 }
 #endif
@@ -480,8 +470,8 @@ int uarthub_reset_to_ap_enable_only_mt6985(int ap_only)
 		}
 	}
 
-	dev1_fifoe = FCR_RD_GET_FIFOE(dev1_base_remap_addr_mt6985);
-	dev2_fifoe = FCR_RD_GET_FIFOE(dev2_base_remap_addr_mt6985);
+	dev1_fifoe = FCR_RD_GET_FIFOE(FCR_RD_ADDR(dev1_base_remap_addr_mt6985));
+	dev2_fifoe = FCR_RD_GET_FIFOE(FCR_RD_ADDR(dev2_base_remap_addr_mt6985));
 
 	trx_mask = (REG_FLD_MASK(DEV0_STA_SET_FLD_dev0_sw_rx_set) |
 		REG_FLD_MASK(DEV0_STA_SET_FLD_dev0_sw_tx_set));
@@ -704,7 +694,7 @@ int uarthub_assert_state_ctrl_mt6985(int assert_ctrl)
 		UARTHUB_SET_BIT(DBG_ADDR, (0x1 << 0));
 	} else {
 		UARTHUB_CLR_BIT(DBG_ADDR, (0x1 << 0));
-		uarthub_irq_clear_ctrl_mt6985(-1);
+		uarthub_irq_clear_ctrl_mt6985(BIT_0xFFFF_FFFF);
 		uarthub_irq_mask_ctrl_mt6985(0);
 	}
 
@@ -761,11 +751,11 @@ int uarthub_uarthub_init_mt6985(struct platform_device *pdev)
 
 	UARTHUB_SET_BIT(DBG_ADDR, (0x1 << 0));
 #if !(UARTHUB_SUPPORT_SSPM_DRIVER)
+	uarthub_clk_univpll_ctrl_mt6985(1);
+	uarthub_init_default_config_mt6985();
 	CON2_SET_intfhub_bypass(CON2_ADDR, 0);
 	CON2_SET_crc_en(CON2_ADDR, 1);
 	uarthub_init_trx_timeout_mt6985();
-
-	uarthub_clk_univpll_ctrl_mt6985(1);
 
 	/* Switch UART3 to external TOPCK 104M */
 	if (pericfg_ao_remap_addr_mt6985)

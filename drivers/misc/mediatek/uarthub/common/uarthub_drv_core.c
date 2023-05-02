@@ -51,10 +51,6 @@ static int g_last_err_type = -1;
 static struct timespec64 tv_now_assert, tv_end_assert;
 
 int g_dev0_irq_sta;
-int g_dev0_sema_own_rel_irq_sta;
-int g_dev0_sema_own_tmo_irq_sta;
-int g_dev1_sema_own_tmo_irq_sta;
-int g_dev2_sema_own_tmo_irq_sta;
 int g_dev0_inband_irq_sta;
 
 struct mutex g_lock_dump_log;
@@ -76,17 +72,15 @@ static void debug_clk_info_work_worker_handler(struct work_struct *work);
 static int uarthub_fb_notifier_callback(struct notifier_block *nb, unsigned long value, void *v);
 
 #if IS_ENABLED(CONFIG_OF)
-struct uarthub_ops_struct __weak mt6835_plat_data = {};
-struct uarthub_ops_struct __weak mt6886_plat_data = {};
-struct uarthub_ops_struct __weak mt6983_plat_data = {};
+struct uarthub_ops_struct __weak undef_plat_data = {};
 struct uarthub_ops_struct __weak mt6985_plat_data = {};
 struct uarthub_ops_struct __weak mt6989_plat_data = {};
 
 const struct of_device_id apuarthub_of_ids[] = {
-	{ .compatible = "mediatek,mt6835-uarthub", .data = &mt6835_plat_data },
-	{ .compatible = "mediatek,mt6886-uarthub", .data = &mt6886_plat_data },
-	{ .compatible = "mediatek,mt6897-uarthub", .data = &mt6886_plat_data },
-	{ .compatible = "mediatek,mt6983-uarthub", .data = &mt6983_plat_data },
+	{ .compatible = "mediatek,mt6835-uarthub", .data = &undef_plat_data },
+	{ .compatible = "mediatek,mt6886-uarthub", .data = &undef_plat_data },
+	{ .compatible = "mediatek,mt6897-uarthub", .data = &undef_plat_data },
+	{ .compatible = "mediatek,mt6983-uarthub", .data = &undef_plat_data },
 	{ .compatible = "mediatek,mt6985-uarthub", .data = &mt6985_plat_data },
 	{ .compatible = "mediatek,mt6989-uarthub", .data = &mt6989_plat_data },
 	{}
@@ -209,63 +203,6 @@ struct uarthub_ops_struct *uarthub_core_get_platform_ic_ops(struct platform_devi
 	return (struct uarthub_ops_struct *)of_id->data;
 }
 
-int uarthub_core_sync_uarthub_irq_sta(int delay_us)
-{
-	unsigned char dmp_info_buf[DBG_LOG_LEN];
-	int len = 0;
-
-	if (!g_plat_ic_ut_test_ops) {
-		pr_notice("[%s] g_plat_ic_ut_test_ops is NULL\n", __func__);
-		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
-	}
-
-	if (!g_plat_ic_core_ops) {
-		pr_notice("[%s] g_plat_ic_ut_test_ops is NULL\n", __func__);
-		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
-	}
-
-	if (g_plat_ic_ut_test_ops == NULL ||
-		g_plat_ic_ut_test_ops->uarthub_plat_get_host_irq_sta == NULL ||
-		g_plat_ic_ut_test_ops->uarthub_plat_get_host_sema_own_rel_irq_sta == NULL ||
-		g_plat_ic_ut_test_ops->uarthub_plat_get_host_sema_own_tmo_irq_sta == NULL ||
-		g_plat_ic_ut_test_ops->uarthub_plat_get_inband_irq_sta == NULL)
-		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
-
-	if (delay_us > 0)
-		usleep_range(delay_us, (delay_us + 10));
-
-	g_dev0_irq_sta = g_dev0_irq_sta |
-		g_plat_ic_ut_test_ops->uarthub_plat_get_host_irq_sta(0);
-
-	g_dev0_sema_own_rel_irq_sta =
-		g_plat_ic_ut_test_ops->uarthub_plat_get_host_sema_own_rel_irq_sta(0);
-
-	g_dev0_sema_own_tmo_irq_sta =
-		g_plat_ic_ut_test_ops->uarthub_plat_get_host_sema_own_tmo_irq_sta(0);
-	g_dev1_sema_own_tmo_irq_sta =
-		g_plat_ic_ut_test_ops->uarthub_plat_get_host_sema_own_tmo_irq_sta(1);
-	g_dev2_sema_own_tmo_irq_sta =
-		g_plat_ic_ut_test_ops->uarthub_plat_get_host_sema_own_tmo_irq_sta(2);
-
-	g_dev0_inband_irq_sta = g_plat_ic_ut_test_ops->uarthub_plat_get_inband_irq_sta();
-
-	len += snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"[%s] irq_sta_dev0=[0x%x]", __func__, g_dev0_irq_sta);
-	len += snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		", dev0_sema_own_rel_irq_sta=[0x%x]",
-		g_dev0_sema_own_rel_irq_sta);
-	len += snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		", sema_own_tmo_irq_sta=[0x%x-0x%x-0x%x]",
-		g_dev0_sema_own_tmo_irq_sta,
-		g_dev1_sema_own_tmo_irq_sta,
-		g_dev2_sema_own_tmo_irq_sta);
-	len += snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		", inband_irq_sta=[0x%x]", g_dev0_inband_irq_sta);
-	pr_info("%s\n", dmp_info_buf);
-
-	return 0;
-}
-
 static int uarthub_core_init(void)
 {
 	int ret = -1, retry = 0;
@@ -299,9 +236,6 @@ static int uarthub_core_init(void)
 		pr_notice("[%s] g_plat_ic_core_ops is NULL\n", __func__);
 		goto ERROR;
 	}
-
-	if (g_is_ut_testing == 1)
-		g_uarthub_enable_dump_debug = 0;
 
 	uarthub_workqueue = create_singlethread_workqueue("uarthub_wq");
 	if (!uarthub_workqueue) {
@@ -410,48 +344,15 @@ static irqreturn_t uarthub_irq_isr(int irq, void *arg)
 	/* mask dev0 irq */
 	g_plat_ic_core_ops->uarthub_plat_irq_mask_ctrl(1);
 
-	if (g_is_ut_testing == 1) {
-		/* mask sspm irq */
-		g_plat_ic_core_ops->uarthub_plat_sspm_irq_mask_ctrl(-1, 1);
-		/* disable inband irq */
-		if (g_plat_ic_ut_test_ops &&
-				g_plat_ic_ut_test_ops->uarthub_plat_config_inband_irq_enable_ctrl)
-			g_plat_ic_ut_test_ops->uarthub_plat_config_inband_irq_enable_ctrl(0);
-		/* sync irq sta */
-		uarthub_core_sync_uarthub_irq_sta(0);
-		/* handle sspm irq */
-		if (g_plat_ic_ut_test_ops &&
-				g_plat_ic_ut_test_ops->uarthub_plat_sspm_irq_handle &&
-				g_plat_ic_core_ops->uarthub_plat_sspm_irq_get_sta) {
-			err_type = g_plat_ic_core_ops->uarthub_plat_sspm_irq_get_sta();
-			if (err_type > 0)
-				g_plat_ic_ut_test_ops->uarthub_plat_sspm_irq_handle(err_type);
-		}
-		/* clear dev0 irq */
-		g_plat_ic_core_ops->uarthub_plat_irq_clear_ctrl(g_dev0_irq_sta);
-		/* clear sspm irq */
-		g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(-1);
-		/* clear inband irq */
-		if (g_plat_ic_ut_test_ops &&
-				g_plat_ic_ut_test_ops->uarthub_plat_clear_inband_irq)
-			g_plat_ic_ut_test_ops->uarthub_plat_clear_inband_irq();
-		/* unmask dev0 irq */
-		g_plat_ic_core_ops->uarthub_plat_irq_mask_ctrl(0);
-		/* unmask sspm irq */
-		g_plat_ic_core_ops->uarthub_plat_sspm_irq_mask_ctrl(-1, 0);
-	  /* enable inband irq */
-		if (g_plat_ic_ut_test_ops &&
-				g_plat_ic_ut_test_ops->uarthub_plat_config_inband_irq_enable_ctrl)
-			g_plat_ic_ut_test_ops->uarthub_plat_config_inband_irq_enable_ctrl(1);
+	if (uarthub_core_handle_ut_test_irq() == 1)
 		return IRQ_HANDLED;
-	}
 
 	err_type = uarthub_core_check_irq_err_type();
 	if (err_type > 0) {
 		uarthub_core_set_trigger_uarthub_error_worker(err_type);
 	} else {
 		/* clear irq */
-		g_plat_ic_core_ops->uarthub_plat_irq_clear_ctrl(-1);
+		g_plat_ic_core_ops->uarthub_plat_irq_clear_ctrl(BIT_0xFFFF_FFFF);
 		/* unmask irq */
 		g_plat_ic_core_ops->uarthub_plat_irq_mask_ctrl(0);
 	}
@@ -649,7 +550,7 @@ int uarthub_core_close(void)
 	return 0;
 }
 
-int uarthub_core_dev0_is_uarthub_ready(void)
+int uarthub_core_dev0_is_uarthub_ready(const char *tag)
 {
 	int state = 0;
 
@@ -669,23 +570,11 @@ int uarthub_core_dev0_is_uarthub_ready(void)
 
 	if (state == 1) {
 #if UARTHUB_DEBUG_LOG
-		uarthub_core_debug_clk_info("HUB_DBG_SetTX_E");
+		uarthub_core_debug_clk_info(tag);
 #endif
 #if UARTHUB_INFO_LOG
-		uarthub_core_debug_byte_cnt_info("HUB_DBG_SetTX_E");
+		uarthub_core_debug_byte_cnt_info(tag);
 #endif
-
-		/* only for SSPM not support case */
-		if (g_plat_ic_core_ops->uarthub_plat_init_default_config) {
-			if (uarthub_core_is_uarthub_clk_enable() == 1) {
-				g_plat_ic_core_ops->uarthub_plat_init_default_config();
-				if (g_plat_ic_core_ops->uarthub_plat_init_trx_timeout)
-					g_plat_ic_core_ops->uarthub_plat_init_trx_timeout();
-			}
-#if UARTHUB_INFO_LOG
-			pr_info("[%s] UARTHub initialize done\n", __func__);
-#endif
-		}
 	}
 
 	return (state == 1) ? 1 : 0;
@@ -808,8 +697,9 @@ int uarthub_core_dev0_set_tx_request(void)
 
 	/* only for SSPM not support case */
 	if (g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl) {
-		g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(-1);
-		pr_info("[%s] is_ready=[%d]\n", __func__, uarthub_core_dev0_is_uarthub_ready());
+		g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(BIT_0xFFFF_FFFF);
+		pr_info("[%s] is_ready=[%d]\n",
+			__func__, uarthub_core_dev0_is_uarthub_ready("HUB_DBG_SetTX_E"));
 #if UARTHUB_DEBUG_LOG
 		uarthub_core_debug_info(__func__, 0);
 #endif
@@ -878,8 +768,9 @@ int uarthub_core_dev0_set_rx_request(void)
 
 	/* only for SSPM not support case */
 	if (g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl) {
-		g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(-1);
-		pr_info("[%s] is_ready=[%d]\n", __func__, uarthub_core_dev0_is_uarthub_ready());
+		g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(BIT_0xFFFF_FFFF);
+		pr_info("[%s] is_ready=[%d]\n",
+			__func__, uarthub_core_dev0_is_uarthub_ready("HUB_DBG_SetRX_E"));
 #if UARTHUB_DEBUG_LOG
 		uarthub_core_debug_info(__func__, 0);
 #endif
@@ -938,8 +829,9 @@ int uarthub_core_dev0_set_txrx_request(void)
 
 	/* only for SSPM not support case */
 	if (g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl) {
-		g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(-1);
-		pr_info("[%s] is_ready=[%d]\n", __func__, uarthub_core_dev0_is_uarthub_ready());
+		g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(BIT_0xFFFF_FFFF);
+		pr_info("[%s] is_ready=[%d]\n",
+			__func__, uarthub_core_dev0_is_uarthub_ready("HUB_DBG_SetTRX_E"));
 #if UARTHUB_DEBUG_LOG
 		uarthub_core_debug_info(__func__, 0);
 #endif
@@ -995,6 +887,16 @@ int uarthub_core_dev0_clear_tx_request(void)
 	g_plat_ic_core_ops->uarthub_plat_clear_host_trx_request(0, TX);
 	mutex_unlock(&g_uarthub_reset_lock);
 
+	/* only for SSPM not support case */
+	if (g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl) {
+		g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(BIT_0xFFFF_FFFF);
+		pr_info("[%s] is_ready=[%d]\n",
+			__func__, uarthub_core_dev0_is_uarthub_ready("HUB_DBG_ClrTX_E"));
+#if UARTHUB_DEBUG_LOG
+		uarthub_core_debug_info(__func__, 0);
+#endif
+	}
+
 	return 0;
 }
 
@@ -1046,6 +948,16 @@ int uarthub_core_dev0_clear_rx_request(void)
 
 	mutex_unlock(&g_uarthub_reset_lock);
 
+	/* only for SSPM not support case */
+	if (g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl) {
+		g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(BIT_0xFFFF_FFFF);
+		pr_info("[%s] is_ready=[%d]\n",
+			__func__, uarthub_core_dev0_is_uarthub_ready("HUB_DBG_ClrRX_E"));
+#if UARTHUB_DEBUG_LOG
+		uarthub_core_debug_info(__func__, 0);
+#endif
+	}
+
 	return 0;
 }
 
@@ -1096,6 +1008,16 @@ int uarthub_core_dev0_clear_txrx_request(void)
 		mutex_unlock(&g_clear_trx_req_lock);
 
 	mutex_unlock(&g_uarthub_reset_lock);
+
+	/* only for SSPM not support case */
+	if (g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl) {
+		g_plat_ic_core_ops->uarthub_plat_sspm_irq_clear_ctrl(BIT_0xFFFF_FFFF);
+		pr_info("[%s] is_ready=[%d]\n",
+			__func__, uarthub_core_dev0_is_uarthub_ready("HUB_DBG_ClrTRX_E"));
+#if UARTHUB_DEBUG_LOG
+		uarthub_core_debug_info(__func__, 0);
+#endif
+	}
 
 	return 0;
 }
@@ -1661,6 +1583,9 @@ int uarthub_core_is_uarthub_clk_enable(void)
 static void debug_info_worker_handler(struct work_struct *work)
 {
 	struct debug_info_ctrl *queue = container_of(work, struct debug_info_ctrl, debug_info_work);
+
+	if (g_is_ut_testing == 1)
+		mdelay(1);
 
 	uarthub_core_debug_info(queue->tag, 0);
 }

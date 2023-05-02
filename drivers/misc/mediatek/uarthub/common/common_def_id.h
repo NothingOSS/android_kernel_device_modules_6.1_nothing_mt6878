@@ -9,7 +9,9 @@
 #define UARTHUB_INFO_LOG  1
 #define UARTHUB_DEBUG_LOG 0
 
-#define DBG_LOG_LEN 1024
+#define DBG_LOG_LEN    1024
+#define BIT_0xFFFF_FFFF  0xFFFFFFFF
+#define BIT_0x7FFF_FFFF  0x7FFFFFFF
 
 /* CR control definition */
 #define GET_BIT_MASK(value, mask) \
@@ -86,6 +88,14 @@ enum uarthub_trx_type {
 	RX,
 	TRX,
 	TRX_NONE,
+};
+
+enum uarthub_pkt_fmt_type {
+	pkt_fmt_dev0 = 0,
+	pkt_fmt_dev1,
+	pkt_fmt_dev2,
+	pkt_fmt_esp,
+	pkt_fmt_undef,
 };
 
 /* UART_IP CODA definition */

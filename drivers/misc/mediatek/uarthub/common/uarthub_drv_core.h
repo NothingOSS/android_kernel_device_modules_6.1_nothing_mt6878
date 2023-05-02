@@ -27,10 +27,6 @@ extern int g_is_ut_testing;
 extern int g_uarthub_enable_dump_debug;
 
 extern int g_dev0_irq_sta;
-extern int g_dev0_sema_own_rel_irq_sta;
-extern int g_dev0_sema_own_tmo_irq_sta;
-extern int g_dev1_sema_own_tmo_irq_sta;
-extern int g_dev2_sema_own_tmo_irq_sta;
 extern int g_dev0_inband_irq_sta;
 
 extern struct mutex g_lock_dump_log;
@@ -96,6 +92,10 @@ typedef int(*UARTHUB_PLAT_GET_UARTIP_BASE_ADDR) (int dev_index);
 typedef int(*UARTHUB_PLAT_DUMP_UARTIP_DEBUG_INFO) (
 	const char *tag, struct mutex *uartip_lock, int force_dump);
 typedef int(*UARTHUB_PLAT_DUMP_INTFHUB_DEBUG_INFO) (const char *tag);
+typedef int(*UARTHUB_PLAT_DUMP_DEBUG_MONITOR) (const char *tag);
+typedef int(*UARTHUB_PLAT_DEBUG_MONITOR_CTRL) (int enable, int mode, int ctrl);
+typedef int(*UARTHUB_PLAT_DEBUG_MONITOR_STOP) (int stop);
+typedef int(*UARTHUB_PLAT_DEBUG_MONITOR_CLR) (void);
 typedef int(*UARTHUB_PLAT_DUMP_DEBUG_TX_RX_COUNT) (const char *tag, int trigger_point);
 typedef int(*UARTHUB_PLAT_DUMP_DEBUG_CLK_INFO) (const char *tag);
 typedef int(*UARTHUB_PLAT_DUMP_DEBUG_BYTE_CNT_INFO) (const char *tag);
@@ -112,6 +112,10 @@ struct uarthub_debug_ops_struct {
 	UARTHUB_PLAT_GET_UARTIP_BASE_ADDR uarthub_plat_get_uartip_base_addr;
 	UARTHUB_PLAT_DUMP_UARTIP_DEBUG_INFO uarthub_plat_dump_uartip_debug_info;
 	UARTHUB_PLAT_DUMP_INTFHUB_DEBUG_INFO uarthub_plat_dump_intfhub_debug_info;
+	UARTHUB_PLAT_DUMP_DEBUG_MONITOR uarthub_plat_dump_debug_monitor;
+	UARTHUB_PLAT_DEBUG_MONITOR_CTRL uarthub_plat_debug_monitor_ctrl;
+	UARTHUB_PLAT_DEBUG_MONITOR_STOP uarthub_plat_debug_monitor_stop;
+	UARTHUB_PLAT_DEBUG_MONITOR_CLR uarthub_plat_debug_monitor_clr;
 	UARTHUB_PLAT_DUMP_DEBUG_TX_RX_COUNT uarthub_plat_dump_debug_tx_rx_count;
 	UARTHUB_PLAT_DUMP_DEBUG_CLK_INFO uarthub_plat_dump_debug_clk_info;
 	UARTHUB_PLAT_DUMP_DEBUG_BYTE_CNT_INFO uarthub_plat_dump_debug_byte_cnt_info;
@@ -125,8 +129,9 @@ struct uarthub_debug_ops_struct {
 typedef int(*UARTHUB_PLAT_IS_UT_TESTING) (void);
 typedef int(*UARTHUB_PLAT_IS_HOST_UARTHUB_READY_STATE) (int dev_index);
 typedef int(*UARTHUB_PLAT_GET_HOST_IRQ_STA) (int dev_index);
-typedef int(*UARTHUB_PLAT_CLEAR_HOST_IRQ) (int dev_index, int mask_bit);
-typedef int(*UARTHUB_PLAT_MASK_HOST_IRQ) (int dev_index, int mask_bit, int is_mask);
+typedef int(*UARTHUB_PLAT_GET_INTFHUB_ACTIVE_STA) (void);
+typedef int(*UARTHUB_PLAT_CLEAR_HOST_IRQ) (int dev_index, int irq_type);
+typedef int(*UARTHUB_PLAT_MASK_HOST_IRQ) (int dev_index, int irq_type, int is_mask);
 typedef int(*UARTHUB_PLAT_CONFIG_HOST_IRQ_CTRL) (int dev_index, int enable);
 typedef int(*UARTHUB_PLAT_GET_HOST_RX_FIFO_SIZE) (int dev_index);
 typedef int(*UARTHUB_PLAT_GET_CMM_RX_FIFO_SIZE) (void);
@@ -140,14 +145,6 @@ typedef int(*UARTHUB_PLAT_IS_UARTIP_RX_BUF_READY_FOR_READ) (int dev_index);
 typedef int(*UARTHUB_PLAT_IS_UARTIP_THROW_XOFF) (int dev_index);
 typedef int(*UARTHUB_PLAT_CONFIG_UARTIP_RX_FIFO_TRIG_THR) (int dev_index, int size);
 
-typedef int(*UARTHUB_PLAT_REQUEST_HOST_SEMA_OWN_STA) (int dev_index);
-typedef int(*UARTHUB_PLAT_SET_HOST_SEMA_OWN_REL) (int dev_index);
-typedef int(*UARTHUB_PLAT_GET_HOST_SEMA_OWN_REL_IRQ_STA) (int dev_index);
-typedef int(*UARTHUB_PLAT_CLEAR_HOST_SEMA_OWN_REL_IRQ) (int dev_index);
-typedef int(*UARTHUB_PLAT_RESET_HOST_SEMA_OWN) (int dev_index);
-typedef int(*UARTHUB_PLAT_GET_HOST_SEMA_OWN_TMO_IRQ_STA) (int dev_index);
-typedef int(*UARTHUB_PLAT_CLEAR_HOST_SEMA_OWN_TMO_IRQ) (int dev_index);
-typedef int(*UARTHUB_PLAT_RESET_HOST_SEMA_OWN_TMO) (int dev_index);
 typedef int(*UARTHUB_PLAT_CONFIG_INBAND_ESC_CHAR) (int esc_char);
 typedef int(*UARTHUB_PLAT_CONFIG_INBAND_ESC_STA) (int esc_sta);
 typedef int(*UARTHUB_PLAT_CONFIG_INBAND_ENABLE_CTRL) (int enable);
@@ -166,6 +163,7 @@ struct uarthub_ut_test_ops_struct {
 	UARTHUB_PLAT_IS_UT_TESTING uarthub_plat_is_ut_testing;
 	UARTHUB_PLAT_IS_HOST_UARTHUB_READY_STATE uarthub_plat_is_host_uarthub_ready_state;
 	UARTHUB_PLAT_GET_HOST_IRQ_STA uarthub_plat_get_host_irq_sta;
+	UARTHUB_PLAT_GET_INTFHUB_ACTIVE_STA uarthub_plat_get_intfhub_active_sta;
 	UARTHUB_PLAT_CLEAR_HOST_IRQ uarthub_plat_clear_host_irq;
 	UARTHUB_PLAT_MASK_HOST_IRQ uarthub_plat_mask_host_irq;
 	UARTHUB_PLAT_CONFIG_HOST_IRQ_CTRL uarthub_plat_config_host_irq_ctrl;
@@ -180,14 +178,6 @@ struct uarthub_ut_test_ops_struct {
 	UARTHUB_PLAT_IS_UARTIP_THROW_XOFF uarthub_plat_is_uartip_throw_xoff;
 	UARTHUB_PLAT_CONFIG_UARTIP_RX_FIFO_TRIG_THR uarthub_plat_config_uartip_rx_fifo_trig_thr;
 
-	UARTHUB_PLAT_REQUEST_HOST_SEMA_OWN_STA uarthub_plat_request_host_sema_own_sta;
-	UARTHUB_PLAT_SET_HOST_SEMA_OWN_REL uarthub_plat_set_host_sema_own_rel;
-	UARTHUB_PLAT_GET_HOST_SEMA_OWN_REL_IRQ_STA uarthub_plat_get_host_sema_own_rel_irq_sta;
-	UARTHUB_PLAT_CLEAR_HOST_SEMA_OWN_REL_IRQ uarthub_plat_clear_host_sema_own_rel_irq;
-	UARTHUB_PLAT_RESET_HOST_SEMA_OWN uarthub_plat_reset_host_sema_own;
-	UARTHUB_PLAT_GET_HOST_SEMA_OWN_TMO_IRQ_STA uarthub_plat_get_host_sema_own_tmo_irq_sta;
-	UARTHUB_PLAT_CLEAR_HOST_SEMA_OWN_TMO_IRQ uarthub_plat_clear_host_sema_own_tmo_irq;
-	UARTHUB_PLAT_RESET_HOST_SEMA_OWN_TMO uarthub_plat_reset_host_sema_own_tmo;
 	UARTHUB_PLAT_CONFIG_INBAND_ESC_CHAR uarthub_plat_config_inband_esc_char;
 	UARTHUB_PLAT_CONFIG_INBAND_ESC_STA uarthub_plat_config_inband_esc_sta;
 	UARTHUB_PLAT_CONFIG_INBAND_ENABLE_CTRL uarthub_plat_config_inband_enable_ctrl;
@@ -205,7 +195,6 @@ struct uarthub_ut_test_ops_struct {
 
 typedef int(*UARTHUB_PLAT_IS_READY_STATE) (void);
 typedef int(*UARTHUB_PLAT_UARTHUB_INIT) (struct platform_device *pdev);
-typedef int(*UARTHUB_PLAT_INIT_DEFAULT_CONFIG) (void);
 typedef int(*UARTHUB_PLAT_CONFIG_HOST_BAUD_RATE) (int dev_index, int rate_index);
 typedef int(*UARTHUB_PLAT_CONFIG_CMM_BAUD_RATE) (int rate_index);
 typedef int(*UARTHUB_PLAT_IRQ_MASK_CTRL) (int mask);
@@ -213,7 +202,6 @@ typedef int(*UARTHUB_PLAT_IRQ_CLEAR_CTRL) (int irq_type);
 typedef int(*UARTHUB_PLAT_SSPM_IRQ_CLEAR_CTRL) (int irq_type);
 typedef int(*UARTHUB_PLAT_SSPM_IRQ_GET_STA) (void);
 typedef int(*UARTHUB_PLAT_SSPM_IRQ_MASK_CTRL) (int irq_type, int is_mask);
-typedef int(*UARTHUB_PLAT_INIT_TRX_TIMEOUT) (void);
 typedef int(*UARTHUB_PLAT_IS_APB_BUS_CLK_ENABLE) (void);
 typedef int(*UARTHUB_PLAT_IS_UARTHUB_CLK_ENABLE) (void);
 typedef int(*UARTHUB_PLAT_SET_HOST_LOOPBACK_CTRL) (int dev_index, int tx_to_rx, int enable);
@@ -248,7 +236,6 @@ typedef int(*UARTHUB_PLAT_GET_SPM_SYS_TIMER) (uint32_t *hi, uint32_t *lo);
 struct uarthub_core_ops_struct {
 	UARTHUB_PLAT_IS_READY_STATE uarthub_plat_is_ready_state;
 	UARTHUB_PLAT_UARTHUB_INIT uarthub_plat_uarthub_init;
-	UARTHUB_PLAT_INIT_DEFAULT_CONFIG uarthub_plat_init_default_config;
 	UARTHUB_PLAT_CONFIG_HOST_BAUD_RATE uarthub_plat_config_host_baud_rate;
 	UARTHUB_PLAT_CONFIG_CMM_BAUD_RATE uarthub_plat_config_cmm_baud_rate;
 	UARTHUB_PLAT_IRQ_MASK_CTRL uarthub_plat_irq_mask_ctrl;
@@ -256,7 +243,6 @@ struct uarthub_core_ops_struct {
 	UARTHUB_PLAT_SSPM_IRQ_CLEAR_CTRL uarthub_plat_sspm_irq_clear_ctrl;
 	UARTHUB_PLAT_SSPM_IRQ_GET_STA uarthub_plat_sspm_irq_get_sta;
 	UARTHUB_PLAT_SSPM_IRQ_MASK_CTRL uarthub_plat_sspm_irq_mask_ctrl;
-	UARTHUB_PLAT_INIT_TRX_TIMEOUT uarthub_plat_init_trx_timeout;
 	UARTHUB_PLAT_IS_APB_BUS_CLK_ENABLE uarthub_plat_is_apb_bus_clk_enable;
 	UARTHUB_PLAT_IS_UARTHUB_CLK_ENABLE uarthub_plat_is_uarthub_clk_enable;
 	UARTHUB_PLAT_SET_HOST_LOOPBACK_CTRL uarthub_plat_set_host_loopback_ctrl;
@@ -356,6 +342,7 @@ int uarthub_dbg_setup(void);
 int uarthub_dbg_remove(void);
 
 int uarthub_core_sync_uarthub_irq_sta(int delay_us);
+int uarthub_core_handle_ut_test_irq(void);
 
 /*******************************************************************************
  *                              public function
@@ -363,7 +350,7 @@ int uarthub_core_sync_uarthub_irq_sta(int delay_us);
 int uarthub_core_open(void);
 int uarthub_core_close(void);
 
-int uarthub_core_dev0_is_uarthub_ready(void);
+int uarthub_core_dev0_is_uarthub_ready(const char *tag);
 int uarthub_core_get_host_wakeup_status(void);
 int uarthub_core_get_host_set_fw_own_status(void);
 int uarthub_core_dev0_is_txrx_idle(int rx);
@@ -389,19 +376,13 @@ int uarthub_core_config_host_loopback(int dev_index, int tx_to_rx, int enable);
 int uarthub_core_config_cmm_loopback(int tx_to_rx, int enable);
 int uarthub_core_debug_info(const char *tag, int force_dump);
 int uarthub_core_debug_dump_tx_rx_count(const char *tag, int trigger_point);
+int uarthub_core_debug_monitor_stop(int stop);
+int uarthub_core_debug_monitor_clr(void);
 
 /* FPGA test API only */
 int uarthub_core_is_host_uarthub_ready_state(int dev_index);
 int uarthub_core_set_host_txrx_request(int dev_index, int trx);
 int uarthub_core_clear_host_txrx_request(int dev_index, int trx);
-int uarthub_core_request_host_sema_own_sta(int dev_index);
-int uarthub_core_set_host_sema_own_rel(int dev_index);
-int uarthub_core_get_host_sema_own_rel_irq_sta(int dev_index);
-int uarthub_core_clear_host_sema_own_rel_irq(int dev_index);
-int uarthub_core_reset_host_sema_own(int dev_index);
-int uarthub_core_get_host_sema_own_tmo_irq_sta(int dev_index);
-int uarthub_core_clear_host_sema_own_tmo_irq(int dev_index);
-int uarthub_core_reset_host_sema_own_tmo(int dev_index);
 int uarthub_core_get_host_irq_sta(int dev_index);
 int uarthub_core_clear_host_irq(int dev_index);
 int uarthub_core_mask_host_irq(int dev_index, int mask_bit, int is_mask);
@@ -428,5 +409,6 @@ int uarthub_core_is_uartip_throw_xoff(int dev_index);
 int uarthub_core_config_uartip_rx_fifo_trig_thr(int dev_index, int size);
 int uarthub_core_ut_ip_verify_pkt_hdr_fmt(void);
 int uarthub_core_ut_ip_verify_trx_not_ready(void);
+int uarthub_core_get_intfhub_active_sta(void);
 
 #endif /* UARTHUB_DRV_CORE_H */

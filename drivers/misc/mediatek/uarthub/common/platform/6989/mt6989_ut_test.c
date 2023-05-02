@@ -8,6 +8,7 @@
 #include "uarthub_drv_export.h"
 #include "common_def_id.h"
 #include "inc/mt6989.h"
+#include "inc/mt6989_debug.h"
 
 #include <linux/regmap.h>
 
@@ -17,6 +18,7 @@ struct uarthub_ut_test_ops_struct mt6989_plat_ut_test_data = {
 #if UARTHUB_SUPPORT_UT_API
 	.uarthub_plat_is_host_uarthub_ready_state = uarthub_is_host_uarthub_ready_state_mt6989,
 	.uarthub_plat_get_host_irq_sta = uarthub_get_host_irq_sta_mt6989,
+	.uarthub_plat_get_intfhub_active_sta = uarthub_get_intfhub_active_sta_mt6989,
 	.uarthub_plat_clear_host_irq = uarthub_clear_host_irq_mt6989,
 	.uarthub_plat_mask_host_irq = uarthub_mask_host_irq_mt6989,
 	.uarthub_plat_config_host_irq_ctrl = uarthub_config_host_irq_ctrl_mt6989,
@@ -33,30 +35,6 @@ struct uarthub_ut_test_ops_struct mt6989_plat_ut_test_data = {
 	.uarthub_plat_is_uartip_throw_xoff = uarthub_is_uartip_throw_xoff_mt6989,
 	.uarthub_plat_config_uartip_rx_fifo_trig_thr =
 		uarthub_config_uartip_rx_fifo_trig_thr_mt6989,
-#endif
-
-#if UARTHUB_SUPPORT_DX4_FPGA
-	.uarthub_plat_request_host_sema_own_sta = uarthub_request_host_sema_own_sta_mt6989,
-	.uarthub_plat_set_host_sema_own_rel = uarthub_set_host_sema_own_rel_mt6989,
-	.uarthub_plat_get_host_sema_own_rel_irq_sta = uarthub_get_host_sema_own_rel_irq_sta_mt6989,
-	.uarthub_plat_clear_host_sema_own_rel_irq = uarthub_clear_host_sema_own_rel_irq_mt6989,
-	.uarthub_plat_reset_host_sema_own = uarthub_reset_host_sema_own_mt6989,
-	.uarthub_plat_get_host_sema_own_tmo_irq_sta = uarthub_get_host_sema_own_tmo_irq_sta_mt6989,
-	.uarthub_plat_clear_host_sema_own_tmo_irq = uarthub_clear_host_sema_own_tmo_irq_mt6989,
-	.uarthub_plat_reset_host_sema_own_tmo = uarthub_reset_host_sema_own_tmo_mt6989,
-	.uarthub_plat_config_inband_esc_char = uarthub_config_inband_esc_char_mt6989,
-	.uarthub_plat_config_inband_esc_sta = uarthub_config_inband_esc_sta_mt6989,
-	.uarthub_plat_config_inband_enable_ctrl = uarthub_config_inband_enable_ctrl_mt6989,
-	.uarthub_plat_config_inband_irq_enable_ctrl = uarthub_config_inband_irq_enable_ctrl_mt6989,
-	.uarthub_plat_config_inband_trigger = uarthub_config_inband_trigger_mt6989,
-	.uarthub_plat_is_inband_tx_complete = uarthub_is_inband_tx_complete_mt6989,
-	.uarthub_plat_get_inband_irq_sta = uarthub_get_inband_irq_sta_mt6989,
-	.uarthub_plat_clear_inband_irq = uarthub_clear_inband_irq_mt6989,
-	.uarthub_plat_get_received_inband_sta = uarthub_get_received_inband_sta_mt6989,
-	.uarthub_plat_clear_received_inband_sta = uarthub_clear_received_inband_sta_mt6989,
-	.uarthub_plat_ut_ip_verify_pkt_hdr_fmt = uarthub_ut_ip_verify_pkt_hdr_fmt_mt6989,
-	.uarthub_plat_ut_ip_verify_trx_not_ready = uarthub_ut_ip_verify_trx_not_ready_mt6989,
-	.uarthub_plat_sspm_irq_handle = uarthub_sspm_irq_handle_mt6989,
 #endif
 };
 
@@ -93,157 +71,45 @@ int uarthub_is_host_uarthub_ready_state_mt6989(int dev_index)
 #if UARTHUB_SUPPORT_UT_API
 int uarthub_get_host_irq_sta_mt6989(int dev_index)
 {
-	int state = 0;
-#if UARTHUB_SUPPORT_DX4_FPGA
-	int mask = 0;
-#endif
-
-#if UARTHUB_SUPPORT_DX4_FPGA
-	if (dev_index < 0 || dev_index >= UARTHUB_MAX_NUM_DEV_HOST) {
-#else
 	if (dev_index != 0) {
-#endif
 		pr_notice("[%s] not support dev_index(%d)\n", __func__, dev_index);
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
 	}
 
-#if UARTHUB_SUPPORT_DX4_FPGA
-	if (dev_index == 0)
-#endif
-		state = UARTHUB_REG_READ(DEV0_IRQ_STA_ADDR);
-#if UARTHUB_SUPPORT_DX4_FPGA
-	else if (dev_index == 1) {
-		mask = DEV1_IRQ_VAL_dev1_crc_err_for_dev1(1) |
-			DEV1_IRQ_VAL_dev1_tx_timeout_err_for_dev1(1) |
-			DEV1_IRQ_VAL_dev1_tx_pkt_type_err_for_dev1(1) |
-			DEV1_IRQ_VAL_dev1_rx_timeout_err_for_dev1(1) |
-			DEV1_IRQ_VAL_intfhub_dev1_tx_err_for_dev1(1) |
-			DEV1_IRQ_VAL_dev1_sema_own_rel_irq(1) |
-			DEV1_IRQ_VAL_uarthub_to_md_eint_b(1);
-		state = UARTHUB_REG_READ_BIT(DEV1_IRQ_ADDR, mask);
-	} else if (dev_index == 2) {
-		mask = DEV2_IRQ_VAL_dev2_crc_err_for_dev2(1) |
-			DEV2_IRQ_VAL_dev2_tx_timeout_err_for_dev2(1) |
-			DEV2_IRQ_VAL_dev2_tx_pkt_type_err_for_dev2(1) |
-			DEV2_IRQ_VAL_dev2_rx_timeout_err_for_dev2(1) |
-			DEV2_IRQ_VAL_intfhub_dev2_tx_err_for_dev2(1) |
-			DEV2_IRQ_VAL_dev2_sema_own_rel_irq(1) |
-			DEV2_IRQ_VAL_uarthub_to_adsp_eint_b(1);
-		state = UARTHUB_REG_READ_BIT(DEV2_IRQ_ADDR, mask);
-	}
-#endif
-	return state;
+	return UARTHUB_REG_READ(DEV0_IRQ_STA_ADDR);
 }
 #endif /* UARTHUB_SUPPORT_UT_API */
 
 #if UARTHUB_SUPPORT_UT_API
-int uarthub_clear_host_irq_mt6989(int dev_index, int mask_bit)
+int uarthub_get_intfhub_active_sta_mt6989(void)
 {
-#if UARTHUB_SUPPORT_DX4_FPGA
-	int mask = 0;
-#endif
+	return STA0_GET_intfhub_active(STA0_ADDR);
+}
+#endif /* UARTHUB_SUPPORT_UT_API */
 
-#if UARTHUB_SUPPORT_DX4_FPGA
-	if (dev_index < 0 || dev_index >= UARTHUB_MAX_NUM_DEV_HOST) {
-#else
+#if UARTHUB_SUPPORT_UT_API
+int uarthub_clear_host_irq_mt6989(int dev_index, int irq_type)
+{
 	if (dev_index != 0) {
-#endif
 		pr_notice("[%s] not support dev_index(%d)\n", __func__, dev_index);
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
 	}
 
-#if UARTHUB_SUPPORT_DX4_FPGA
-	if (dev_index == 0) {
-#endif
-		if (mask_bit > 0)
-			UARTHUB_REG_WRITE(DEV0_IRQ_CLR_ADDR, mask_bit);
-		else
-			UARTHUB_REG_WRITE(DEV0_IRQ_CLR_ADDR, 0xFFFFFFFF);
-#if UARTHUB_SUPPORT_DX4_FPGA
-	} else if (dev_index == 1) {
-		if (mask_bit > 0)
-			UARTHUB_REG_WRITE(DEV1_IRQ_ADDR, mask_bit);
-		else {
-			mask = DEV1_IRQ_VAL_dev1_crc_err_clr_for_dev1(1) |
-				DEV1_IRQ_VAL_dev1_tx_timeout_err_clr_for_dev1(1) |
-				DEV1_IRQ_VAL_dev1_tx_pkt_type_err_clr_for_dev1(1) |
-				DEV1_IRQ_VAL_dev1_rx_timeout_err_clr_for_dev1(1) |
-				DEV1_IRQ_VAL_intfhub_dev1_tx_err_clr_for_dev1(1) |
-				DEV1_IRQ_VAL_dev1_sema_own_rel_clr(1);
-			UARTHUB_SET_BIT(DEV1_IRQ_ADDR, mask);
-		}
-	} else if (dev_index == 2) {
-		if (mask_bit > 0)
-			UARTHUB_REG_WRITE(DEV2_IRQ_ADDR, mask_bit);
-		else {
-			mask = DEV2_IRQ_VAL_dev2_crc_err_clr_for_dev2(1) |
-				DEV2_IRQ_VAL_dev2_tx_timeout_err_clr_for_dev2(1) |
-				DEV2_IRQ_VAL_dev2_tx_pkt_type_err_clr_for_dev2(1) |
-				DEV2_IRQ_VAL_dev2_rx_timeout_err_clr_for_dev2(1) |
-				DEV2_IRQ_VAL_intfhub_dev2_tx_err_clr_for_dev2(1) |
-				DEV2_IRQ_VAL_dev2_sema_own_rel_clr(1);
-			UARTHUB_SET_BIT(DEV2_IRQ_ADDR, mask);
-		}
-	}
-#endif
-
+	UARTHUB_REG_WRITE(DEV0_IRQ_CLR_ADDR, irq_type);
 	return 0;
 }
 #endif /* UARTHUB_SUPPORT_UT_API */
 
 #if UARTHUB_SUPPORT_UT_API
-int uarthub_mask_host_irq_mt6989(int dev_index, int mask_bit, int is_mask)
+int uarthub_mask_host_irq_mt6989(int dev_index, int irq_type, int is_mask)
 {
-#if UARTHUB_SUPPORT_DX4_FPGA
-	int mask = 0;
-#endif
-
-#if UARTHUB_SUPPORT_DX4_FPGA
-	if (dev_index < 0 || dev_index >= UARTHUB_MAX_NUM_DEV_HOST) {
-#else
 	if (dev_index != 0) {
-#endif
 		pr_notice("[%s] not support dev_index(%d)\n", __func__, dev_index);
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
 	}
 
-#if UARTHUB_SUPPORT_DX4_FPGA
-	if (dev_index == 0) {
-#endif
-		if (mask_bit > 0) {
-			UARTHUB_REG_WRITE_MASK(
-				DEV0_IRQ_MASK_ADDR, ((is_mask == 1) ? mask_bit : 0x0), mask_bit);
-		} else
-			UARTHUB_REG_WRITE(DEV0_IRQ_MASK_ADDR, ((is_mask == 1) ? 0xFFFFFFFF : 0x0));
-#if UARTHUB_SUPPORT_DX4_FPGA
-	} else if (dev_index == 1) {
-		if (mask_bit > 0) {
-			UARTHUB_REG_WRITE_MASK(
-				DEV1_IRQ_ADDR, ((is_mask == 1) ? mask_bit : 0x0), mask_bit);
-		} else {
-			mask = DEV1_IRQ_VAL_dev1_crc_err_mask_for_dev1(1) |
-				DEV1_IRQ_VAL_dev1_tx_timeout_err_mask_for_dev1(1) |
-				DEV1_IRQ_VAL_dev1_tx_pkt_type_err_mask_for_dev1(1) |
-				DEV1_IRQ_VAL_dev1_rx_timeout_err_mask_for_dev1(1) |
-				DEV1_IRQ_VAL_intfhub_dev1_tx_err_mask_for_dev1(1) |
-				DEV1_IRQ_VAL_dev1_sema_own_rel_mask(1);
-			UARTHUB_REG_WRITE_MASK(DEV1_IRQ_ADDR, ((is_mask == 1) ? mask : 0x0), mask);
-		}
-	} else if (dev_index == 2) {
-		if (mask_bit > 0) {
-			UARTHUB_REG_WRITE_MASK(
-				DEV2_IRQ_ADDR, ((is_mask == 1) ? mask_bit : 0x0), mask_bit);
-		} else {
-			mask = DEV2_IRQ_VAL_dev2_crc_err_mask_for_dev2(1) |
-				DEV2_IRQ_VAL_dev2_tx_timeout_err_mask_for_dev2(1) |
-				DEV2_IRQ_VAL_dev2_tx_pkt_type_err_mask_for_dev2(1) |
-				DEV2_IRQ_VAL_dev2_rx_timeout_err_mask_for_dev2(1) |
-				DEV2_IRQ_VAL_intfhub_dev2_tx_err_mask_for_dev2(1) |
-				DEV2_IRQ_VAL_dev2_sema_own_rel_mask(1);
-			UARTHUB_REG_WRITE_MASK(DEV2_IRQ_ADDR, ((is_mask == 1) ? mask : 0x0), mask);
-		}
-	}
-#endif
+	UARTHUB_REG_WRITE_MASK(
+		DEV0_IRQ_MASK_ADDR, ((is_mask == 1) ? irq_type : 0x0), irq_type);
 
 	return 0;
 }
@@ -252,28 +118,12 @@ int uarthub_mask_host_irq_mt6989(int dev_index, int mask_bit, int is_mask)
 #if UARTHUB_SUPPORT_UT_API
 int uarthub_config_host_irq_ctrl_mt6989(int dev_index, int enable)
 {
-#if UARTHUB_SUPPORT_DX4_FPGA
-	if (dev_index < 0 || dev_index >= UARTHUB_MAX_NUM_DEV_HOST) {
-#else
 	if (dev_index != 0) {
-#endif
 		pr_notice("[%s] not support dev_index(%d)\n", __func__, dev_index);
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
 	}
 
-#if UARTHUB_SUPPORT_DX4_FPGA
-	if (dev_index == 0)
-#endif
-		UARTHUB_REG_WRITE(DEV0_IRQ_MASK_ADDR, ((enable == 1) ? 0x0 : 0xFFFFFFFF));
-#if UARTHUB_SUPPORT_DX4_FPGA
-	else if (dev_index == 1)
-		RX_DATA_REQ_MASK_SET_uarthub_to_md_eint_en(
-			RX_DATA_REQ_MASK_ADDR, ((enable == 1) ? 0x1 : 0x0));
-	else if (dev_index == 2)
-		RX_DATA_REQ_MASK_SET_uarthub_to_adsp_eint_en(
-			RX_DATA_REQ_MASK_ADDR, ((enable == 1) ? 0x1 : 0x0));
-#endif
-
+	UARTHUB_REG_WRITE(DEV0_IRQ_MASK_ADDR, ((enable == 1) ? 0x0 : 0xFFFFFFFF));
 	return 0;
 }
 #endif /* UARTHUB_SUPPORT_UT_API */
@@ -281,35 +131,26 @@ int uarthub_config_host_irq_ctrl_mt6989(int dev_index, int enable)
 #if UARTHUB_SUPPORT_UT_API
 int uarthub_get_host_rx_fifo_size_mt6989(int dev_index)
 {
-	int state = 0;
-
 	if (dev_index < 0 || dev_index >= UARTHUB_MAX_NUM_DEV_HOST) {
 		pr_notice("[%s] not support dev_index(%d)\n", __func__, dev_index);
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
 	}
 
-	if (dev_index == 0)
-		state = UARTHUB_REG_READ_BIT(DEBUG_7(dev0_base_remap_addr_mt6989), 0x3F);
-	else if (dev_index == 1)
-		state = UARTHUB_REG_READ_BIT(DEBUG_7(dev1_base_remap_addr_mt6989), 0x3F);
-	else if (dev_index == 2)
-		state = UARTHUB_REG_READ_BIT(DEBUG_7(dev2_base_remap_addr_mt6989), 0x3F);
-
-	return state;
+	return UARTHUB_REG_READ_BIT(DEBUG_7(uartip_base_map[dev_index]), 0x3F);
 }
 #endif /* UARTHUB_SUPPORT_UT_API */
 
 #if UARTHUB_SUPPORT_UT_API
 int uarthub_get_cmm_rx_fifo_size_mt6989(void)
 {
-	return UARTHUB_REG_READ_BIT(DEBUG_7(cmm_base_remap_addr_mt6989), 0x3F);
+	return UARTHUB_REG_READ_BIT(DEBUG_7(uartip_base_map[uartip_id_cmm]), 0x3F);
 }
 #endif /* UARTHUB_SUPPORT_UT_API */
 
 #if UARTHUB_SUPPORT_UT_API
 int uarthub_config_uartip_dma_en_ctrl_mt6989(int dev_index, enum uarthub_trx_type trx, int enable)
 {
-	void __iomem *uarthub_dev_base = dev0_base_remap_addr_mt6989;
+	void __iomem *uarthub_dev_base = uartip_base_map[uartip_id_ap];
 	int i = 0;
 
 	if (dev_index < -1 || dev_index > UARTHUB_MAX_NUM_DEV_HOST) {
@@ -326,14 +167,7 @@ int uarthub_config_uartip_dma_en_ctrl_mt6989(int dev_index, enum uarthub_trx_typ
 		if (dev_index >= 0 && dev_index != i)
 			continue;
 
-		if (i == 0)
-			uarthub_dev_base = dev0_base_remap_addr_mt6989;
-		else if (i == 1)
-			uarthub_dev_base = dev1_base_remap_addr_mt6989;
-		else if (i == 2)
-			uarthub_dev_base = dev2_base_remap_addr_mt6989;
-		else if (i == UARTHUB_MAX_NUM_DEV_HOST)
-			uarthub_dev_base = cmm_base_remap_addr_mt6989;
+		uarthub_dev_base = uartip_base_map[i];
 
 		if (trx == RX)
 			DMA_EN_SET_RX_DMA_EN(DMA_EN_ADDR(uarthub_dev_base),
@@ -343,9 +177,11 @@ int uarthub_config_uartip_dma_en_ctrl_mt6989(int dev_index, enum uarthub_trx_typ
 				((enable == 0) ? 0x0 : 0x1));
 		else if (trx == TRX)
 			UARTHUB_REG_WRITE_MASK(DMA_EN_ADDR(uarthub_dev_base),
-				(DMA_EN_VAL_RX_DMA_EN(((enable == 0) ? 0x0 : 0x1)) |
-					DMA_EN_VAL_TX_DMA_EN(((enable == 0) ? 0x0 : 0x1))),
-				(DMA_EN_VAL_RX_DMA_EN(1) | DMA_EN_VAL_TX_DMA_EN(1)));
+				(enable == 0) ? 0x0 :
+					(REG_FLD_MASK(DMA_EN_FLD_RX_DMA_EN) |
+						REG_FLD_MASK(DMA_EN_FLD_TX_DMA_EN)),
+				(REG_FLD_MASK(DMA_EN_FLD_RX_DMA_EN) |
+					REG_FLD_MASK(DMA_EN_FLD_TX_DMA_EN)));
 	}
 
 	return 0;
@@ -355,17 +191,15 @@ int uarthub_config_uartip_dma_en_ctrl_mt6989(int dev_index, enum uarthub_trx_typ
 #if UARTHUB_SUPPORT_UT_API
 int uarthub_reset_fifo_trx_mt6989(void)
 {
-	UARTHUB_REG_WRITE(FCR_ADDR(dev0_base_remap_addr_mt6989), 0x80);
-	UARTHUB_REG_WRITE(FCR_ADDR(dev1_base_remap_addr_mt6989), 0x80);
-	UARTHUB_REG_WRITE(FCR_ADDR(dev2_base_remap_addr_mt6989), 0x80);
-	UARTHUB_REG_WRITE(FCR_ADDR(cmm_base_remap_addr_mt6989), 0x80);
+	int i = 0;
+
+	for (i = 0; i <= UARTHUB_MAX_NUM_DEV_HOST; i++)
+		UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[i]), 0x80);
 
 	usleep_range(50, 60);
 
-	UARTHUB_REG_WRITE(FCR_ADDR(dev0_base_remap_addr_mt6989), 0x87);
-	UARTHUB_REG_WRITE(FCR_ADDR(dev1_base_remap_addr_mt6989), 0x87);
-	UARTHUB_REG_WRITE(FCR_ADDR(dev2_base_remap_addr_mt6989), 0x87);
-	UARTHUB_REG_WRITE(FCR_ADDR(cmm_base_remap_addr_mt6989), 0x87);
+	for (i = 0; i <= UARTHUB_MAX_NUM_DEV_HOST; i++)
+		UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[i]), 0x87);
 
 	return 0;
 }
@@ -374,17 +208,15 @@ int uarthub_reset_fifo_trx_mt6989(void)
 #if UARTHUB_SUPPORT_UT_API
 int uarthub_reset_intfhub_mt6989(void)
 {
-	UARTHUB_REG_WRITE(FCR_ADDR(dev0_base_remap_addr_mt6989), 0x80);
-	UARTHUB_REG_WRITE(FCR_ADDR(dev1_base_remap_addr_mt6989), 0x80);
-	UARTHUB_REG_WRITE(FCR_ADDR(dev2_base_remap_addr_mt6989), 0x80);
-	UARTHUB_REG_WRITE(FCR_ADDR(cmm_base_remap_addr_mt6989), 0x80);
+	int i = 0;
+
+	for (i = 0; i <= UARTHUB_MAX_NUM_DEV_HOST; i++)
+		UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[i]), 0x80);
 
 	CON4_SET_sw4_rst(CON4_ADDR, 1);
 
-	UARTHUB_REG_WRITE(FCR_ADDR(dev0_base_remap_addr_mt6989), 0x81);
-	UARTHUB_REG_WRITE(FCR_ADDR(dev1_base_remap_addr_mt6989), 0x81);
-	UARTHUB_REG_WRITE(FCR_ADDR(dev2_base_remap_addr_mt6989), 0x81);
-	UARTHUB_REG_WRITE(FCR_ADDR(cmm_base_remap_addr_mt6989), 0x81);
+	for (i = 0; i <= UARTHUB_MAX_NUM_DEV_HOST; i++)
+		UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[i]), 0x81);
 
 	return 0;
 }
@@ -398,15 +230,7 @@ int uarthub_uartip_write_data_to_tx_buf_mt6989(int dev_index, int tx_data)
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
 	}
 
-	if (dev_index == 0)
-		UARTHUB_REG_WRITE(THR_ADDR(dev0_base_remap_addr_mt6989), tx_data);
-	else if (dev_index == 1)
-		UARTHUB_REG_WRITE(THR_ADDR(dev1_base_remap_addr_mt6989), tx_data);
-	else if (dev_index == 2)
-		UARTHUB_REG_WRITE(THR_ADDR(dev2_base_remap_addr_mt6989), tx_data);
-	else if (dev_index == UARTHUB_MAX_NUM_DEV_HOST)
-		UARTHUB_REG_WRITE(THR_ADDR(cmm_base_remap_addr_mt6989), tx_data);
-
+	UARTHUB_REG_WRITE(THR_ADDR(uartip_base_map[dev_index]), tx_data);
 	return 0;
 }
 #endif /* UARTHUB_SUPPORT_UT_API */
@@ -414,96 +238,49 @@ int uarthub_uartip_write_data_to_tx_buf_mt6989(int dev_index, int tx_data)
 #if UARTHUB_SUPPORT_UT_API
 int uarthub_uartip_read_data_from_rx_buf_mt6989(int dev_index)
 {
-	int rx_data = 0;
-
 	if (dev_index < 0 || dev_index > UARTHUB_MAX_NUM_DEV_HOST) {
 		pr_notice("[%s] not support dev_index(%d)\n", __func__, dev_index);
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
 	}
 
-	if (dev_index == 0)
-		rx_data = UARTHUB_REG_READ(RBR_ADDR(dev0_base_remap_addr_mt6989));
-	else if (dev_index == 1)
-		rx_data = UARTHUB_REG_READ(RBR_ADDR(dev1_base_remap_addr_mt6989));
-	else if (dev_index == 2)
-		rx_data = UARTHUB_REG_READ(RBR_ADDR(dev2_base_remap_addr_mt6989));
-	else if (dev_index == UARTHUB_MAX_NUM_DEV_HOST)
-		rx_data = UARTHUB_REG_READ(RBR_ADDR(cmm_base_remap_addr_mt6989));
-
-	return rx_data;
+	return UARTHUB_REG_READ(RBR_ADDR(uartip_base_map[dev_index]));
 }
 #endif /* UARTHUB_SUPPORT_UT_API */
 
 #if UARTHUB_SUPPORT_UT_API
 int uarthub_is_uartip_tx_buf_empty_for_write_mt6989(int dev_index)
 {
-	int is_empty = 0;
-
 	if (dev_index < 0 || dev_index > UARTHUB_MAX_NUM_DEV_HOST) {
 		pr_notice("[%s] not support dev_index(%d)\n", __func__, dev_index);
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
 	}
 
-	if (dev_index == 0)
-		is_empty = LSR_GET_TEMT(LSR_ADDR(dev0_base_remap_addr_mt6989));
-	else if (dev_index == 1)
-		is_empty = LSR_GET_TEMT(LSR_ADDR(dev1_base_remap_addr_mt6989));
-	else if (dev_index == 2)
-		is_empty = LSR_GET_TEMT(LSR_ADDR(dev2_base_remap_addr_mt6989));
-	else if (dev_index == UARTHUB_MAX_NUM_DEV_HOST)
-		is_empty = LSR_GET_TEMT(LSR_ADDR(cmm_base_remap_addr_mt6989));
-
-	return is_empty;
+	return LSR_GET_TEMT(LSR_ADDR(uartip_base_map[dev_index]));
 }
 #endif /* UARTHUB_SUPPORT_UT_API */
 
 #if UARTHUB_SUPPORT_UT_API
 int uarthub_is_uartip_rx_buf_ready_for_read_mt6989(int dev_index)
 {
-	int is_ready = 0;
-
 	if (dev_index < 0 || dev_index > UARTHUB_MAX_NUM_DEV_HOST) {
 		pr_notice("[%s] not support dev_index(%d)\n", __func__, dev_index);
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
 	}
 
-	if (dev_index == 0)
-		is_ready = LSR_GET_DR(LSR_ADDR(dev0_base_remap_addr_mt6989));
-	else if (dev_index == 1)
-		is_ready = LSR_GET_DR(LSR_ADDR(dev1_base_remap_addr_mt6989));
-	else if (dev_index == 2)
-		is_ready = LSR_GET_DR(LSR_ADDR(dev2_base_remap_addr_mt6989));
-	else if (dev_index == UARTHUB_MAX_NUM_DEV_HOST)
-		is_ready = LSR_GET_DR(LSR_ADDR(cmm_base_remap_addr_mt6989));
-
-	return is_ready;
+	return LSR_GET_DR(LSR_ADDR(uartip_base_map[dev_index]));
 }
 #endif /* UARTHUB_SUPPORT_UT_API */
 
 #if UARTHUB_SUPPORT_UT_API
 int uarthub_is_uartip_throw_xoff_mt6989(int dev_index)
 {
-	int is_xoff = 0;
-
 	if (dev_index < 0 || dev_index > UARTHUB_MAX_NUM_DEV_HOST) {
 		pr_notice("[%s] not support dev_index(%d)\n", __func__, dev_index);
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
 	}
 
-	if (dev_index == 0)
-		is_xoff = ((((UARTHUB_REG_READ(
-			DEBUG_1(dev0_base_remap_addr_mt6989)) & 0xE0) >> 5) == 1) ? 0 : 1);
-	else if (dev_index == 1)
-		is_xoff = ((((UARTHUB_REG_READ(
-			DEBUG_1(dev1_base_remap_addr_mt6989)) & 0xE0) >> 5) == 1) ? 0 : 1);
-	else if (dev_index == 2)
-		is_xoff = ((((UARTHUB_REG_READ(
-			DEBUG_1(dev2_base_remap_addr_mt6989)) & 0xE0) >> 5) == 1) ? 0 : 1);
-	else if (dev_index == UARTHUB_MAX_NUM_DEV_HOST)
-		is_xoff = ((((UARTHUB_REG_READ(
-			DEBUG_1(cmm_base_remap_addr_mt6989)) & 0xE0) >> 5) == 1) ? 0 : 1);
-
-	return is_xoff;
+	return ((UARTHUB_DEBUG_GET_XCSTATE_WSEND_XOFF_VAL(
+		uartip_base_map[dev_index]) == 1) ? 0 : 1);
 }
 #endif /* UARTHUB_SUPPORT_UT_API */
 
@@ -515,39 +292,15 @@ int uarthub_config_uartip_rx_fifo_trig_thr_mt6989(int dev_index, int size)
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
 	}
 
-	if (dev_index == 0) {
-		pr_info("[%s] FCR_RD_ADDR_1=[0x%x]\n",
-			__func__, UARTHUB_REG_READ(FCR_RD_ADDR(dev0_base_remap_addr_mt6989)));
-		REG_FLD_RD_SET(FCR_FLD_RFTL1_RFTL0,
-			FCR_RD_ADDR(dev0_base_remap_addr_mt6989),
-			FCR_ADDR(dev0_base_remap_addr_mt6989), size);
-		pr_info("[%s] FCR_RD_ADDR_2=[0x%x]\n",
-			__func__, UARTHUB_REG_READ(FCR_RD_ADDR(dev0_base_remap_addr_mt6989)));
-	} else if (dev_index == 1) {
-		pr_info("[%s] FCR_RD_ADDR_1=[0x%x]\n",
-			__func__, UARTHUB_REG_READ(FCR_RD_ADDR(dev0_base_remap_addr_mt6989)));
-		REG_FLD_RD_SET(FCR_FLD_RFTL1_RFTL0,
-			FCR_RD_ADDR(dev1_base_remap_addr_mt6989),
-			FCR_ADDR(dev1_base_remap_addr_mt6989), size);
-		pr_info("[%s] FCR_RD_ADDR_2=[0x%x]\n",
-			__func__, UARTHUB_REG_READ(FCR_RD_ADDR(dev0_base_remap_addr_mt6989)));
-	} else if (dev_index == 2) {
-		pr_info("[%s] FCR_RD_ADDR_1=[0x%x]\n",
-			__func__, UARTHUB_REG_READ(FCR_RD_ADDR(dev0_base_remap_addr_mt6989)));
-		REG_FLD_RD_SET(FCR_FLD_RFTL1_RFTL0,
-			FCR_RD_ADDR(dev2_base_remap_addr_mt6989),
-			FCR_ADDR(dev2_base_remap_addr_mt6989), size);
-		pr_info("[%s] FCR_RD_ADDR_2=[0x%x]\n",
-			__func__, UARTHUB_REG_READ(FCR_RD_ADDR(dev0_base_remap_addr_mt6989)));
-	} else if (dev_index == UARTHUB_MAX_NUM_DEV_HOST) {
-		pr_info("[%s] FCR_RD_ADDR_1=[0x%x]\n",
-			__func__, UARTHUB_REG_READ(FCR_RD_ADDR(dev0_base_remap_addr_mt6989)));
-		REG_FLD_RD_SET(FCR_FLD_RFTL1_RFTL0,
-			FCR_RD_ADDR(cmm_base_remap_addr_mt6989),
-			FCR_ADDR(cmm_base_remap_addr_mt6989), size);
-		pr_info("[%s] FCR_RD_ADDR_2=[0x%x]\n",
-			__func__, UARTHUB_REG_READ(FCR_RD_ADDR(dev0_base_remap_addr_mt6989)));
-	}
+	pr_info("[%s] FCR_RD_ADDR_1=[0x%x]\n",
+		__func__, UARTHUB_REG_READ(FCR_RD_ADDR(uartip_base_map[dev_index])));
+
+	REG_FLD_RD_SET(FCR_FLD_RFTL1_RFTL0,
+		FCR_RD_ADDR(uartip_base_map[dev_index]),
+		FCR_ADDR(uartip_base_map[dev_index]), size);
+
+	pr_info("[%s] FCR_RD_ADDR_2=[0x%x]\n",
+		__func__, UARTHUB_REG_READ(FCR_RD_ADDR(uartip_base_map[dev_index])));
 
 	return 0;
 }
@@ -631,44 +384,420 @@ int uarthub_uartip_read_rx_data_mt6989(
 #endif /* UARTHUB_SUPPORT_UT_API */
 
 #if UARTHUB_SUPPORT_UT_API
+int uarthub_get_crc(unsigned char *pData, int length, unsigned char *pData_CRC)
+{
+	int i = 0;
+	int crc_result = 0xFFFF;
+
+	while (length--) {
+		crc_result ^= *(unsigned char *)pData++ << 8;
+		for (i = 0; i < 8; i++) {
+			crc_result = ((crc_result & 0x8000) ?
+				((crc_result << 1) ^ 0x1021) : (crc_result << 1));
+		}
+	}
+
+	pData_CRC[0] = (crc_result & 0xFF);
+	pData_CRC[1] = ((crc_result & 0xFF00) >> 8);
+
+	return 0;
+}
+#endif /* UARTHUB_SUPPORT_UT_API */
+
+#if UARTHUB_SUPPORT_UT_API
+enum uarthub_pkt_fmt_type uarthub_check_packet_format(int dev_index, unsigned char byte1)
+{
+	enum uarthub_pkt_fmt_type type = pkt_fmt_undef;
+
+	if (dev_index == 0 && ((byte1 >= 0x1 && byte1 <= 0x5) || byte1 == 0x40 || byte1 == 0x41))
+		type = pkt_fmt_dev0;
+	else if (dev_index == 1 && (byte1 == 0x86 || byte1 == 0x87))
+		type = pkt_fmt_dev1;
+	else if (dev_index == 2 && (byte1 >= 0x81 && byte1 <= 0x85))
+		type = pkt_fmt_dev2;
+	else if (byte1 == 0xff)
+		type = pkt_fmt_esp;
+	else if (dev_index == 3 && (byte1 == 0xf0 || byte1 == 0xf1 || byte1 == 0xf2))
+		type = pkt_fmt_esp;
+
+	return type;
+}
+#endif /* UARTHUB_SUPPORT_UT_API */
+
+#if UARTHUB_SUPPORT_UT_API
+int uarthub_check_packet_is_complete(int dev_index, unsigned char *pData, int length)
+{
+	enum uarthub_pkt_fmt_type type = pkt_fmt_undef;
+	int payload_len = 0;
+	int pkt_len = 0;
+	unsigned char rx_data_crc[2] = { 0 };
+
+	if (pData == NULL || length <= 0)
+		return 0;
+
+	type = uarthub_check_packet_format(dev_index, pData[0]);
+
+	if (type == pkt_fmt_esp)
+		return ((length == 1) ? 1 : 0);
+
+	if (length < 4)
+		return 0;
+
+	if ((type == pkt_fmt_dev0 && pData[0] == 0x1) ||
+			(type == pkt_fmt_dev2 && pData[0] == 0x81)) {
+		if (length < 5)
+			return 0;
+		payload_len = pData[3];
+		pkt_len = payload_len + 4;
+	} else if ((type == pkt_fmt_dev0 && (pData[0] == 0x3 || pData[0] == 0x4)) ||
+			(type == pkt_fmt_dev2 && (pData[0] == 0x83 || pData[0] == 0x84))) {
+		if (length < 4)
+			return 0;
+		payload_len = pData[2];
+		pkt_len = payload_len + 3;
+	} else {
+		if (length < 6)
+			return 0;
+		payload_len = ((pData[4] << 8) | pData[3]);
+		pkt_len = payload_len + 5;
+	}
+
+	if (length == (pkt_len + 2)) {
+		uarthub_get_crc(pData, pkt_len, rx_data_crc);
+		if (pData[length-2] == rx_data_crc[0] && pData[length-1] == rx_data_crc[1])
+			return 1;
+	} else if (length == pkt_len)
+		return 1;
+
+	return 0;
+}
+#endif /* UARTHUB_SUPPORT_UT_API */
+
+#if UARTHUB_SUPPORT_UT_API
+int uarthub_uartip_send_data_internal_mt6989(
+	int dev_index, unsigned char *p_tx_data, int tx_len, int dump_trxlog)
+{
+	int state = 0;
+	int len = 0;
+	int i = 0;
+	enum uarthub_pkt_fmt_type pkt_type = pkt_fmt_undef;
+	unsigned char dmp_info_buf_rx[TRX_BUF_LEN] = { 0 };
+	unsigned char dmp_info_buf_rx_expect[TRX_BUF_LEN] = { 0 };
+	unsigned char dmp_info_buf_tx[TRX_BUF_LEN] = { 0 };
+	unsigned char evtBuf[TRX_BUF_LEN] = { 0 };
+	unsigned char evtBuf_expect[TRX_BUF_LEN] = { 0 };
+	int rx_len = 0;
+	int rx_len_expect = 0;
+	int rx_dev_index = -1;
+	unsigned char rx_data_crc[2] = { 0 };
+	int byte_cnt_tx_0 = 0, byte_cnt_tx_1 = 0, byte_cnt_tx_2 = 0;
+	int byte_cnt_rx_0 = 0, byte_cnt_rx_1 = 0, byte_cnt_rx_2 = 0;
+	int is_pkt_complete = 0;
+	int intfhub_loopback_t2r_sta[4] = { 0 };
+
+	if (p_tx_data == NULL || tx_len <= 0) {
+		pr_notice("[%s] tx_data error, p_tx_data=[NULL], tx_len=[%d]\n",
+			__func__, tx_len);
+		return UARTHUB_ERR_PARA_WRONG;
+	}
+
+	if (dev_index < 0 || dev_index > UARTHUB_MAX_NUM_DEV_HOST) {
+		pr_notice("[%s] not support dev_index(%d)\n", __func__, dev_index);
+		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
+	}
+
+	pkt_type = uarthub_check_packet_format(dev_index, p_tx_data[0]);
+
+	if (pkt_type == pkt_fmt_esp && tx_len != 1) {
+		pr_notice("[%s] tx_data error, pkt_type is 0x%02X, tx_len=[%d]\n",
+			__func__, p_tx_data[0], tx_len);
+		return UARTHUB_ERR_PARA_WRONG;
+	}
+
+	if (dev_index == 3) {
+		if (pkt_type == pkt_fmt_dev0)
+			rx_dev_index = 0;
+		else if (pkt_type == pkt_fmt_dev1)
+			rx_dev_index = 1;
+		else if (pkt_type == pkt_fmt_dev2)
+			rx_dev_index = 2;
+		if (pkt_type == pkt_fmt_esp) {
+			if (p_tx_data[0] == 0xF0)
+				rx_dev_index = 0;
+			else if (p_tx_data[0] == 0xF1)
+				rx_dev_index = 1;
+			else if (p_tx_data[0] == 0xF2)
+				rx_dev_index = 2;
+			else if (p_tx_data[0] == 0xFF)
+				rx_dev_index = -1;
+		} else if (pkt_type == pkt_fmt_undef)
+			rx_dev_index = 0;
+	} else
+		rx_dev_index = 3;
+
+	intfhub_loopback_t2r_sta[0] = LOOPBACK_GET_dev0_tx2rx_loopback(LOOPBACK_ADDR);
+	intfhub_loopback_t2r_sta[1] = LOOPBACK_GET_dev1_tx2rx_loopback(LOOPBACK_ADDR);
+	intfhub_loopback_t2r_sta[2] = LOOPBACK_GET_dev2_tx2rx_loopback(LOOPBACK_ADDR);
+	intfhub_loopback_t2r_sta[3] = LOOPBACK_GET_dev_cmm_tx2rx_loopback(LOOPBACK_ADDR);
+	if (intfhub_loopback_t2r_sta[dev_index] == 0) {
+		if (dev_index == 3)
+			pr_info("[%s] LOOPBACK FAIL: uart_cmm has not set loopback mode (dev[%d],rx_dev=[%d])\n",
+				__func__, dev_index, rx_dev_index);
+		else
+			pr_info("[%s] LOOPBACK FAIL: uart_%d has not set loopback mode (dev[%d],rx_dev=[%d])\n",
+				__func__, dev_index, dev_index, rx_dev_index);
+		return UARTHUB_ERR_PARA_WRONG;
+	}
+
+	if (rx_dev_index != -1 && intfhub_loopback_t2r_sta[rx_dev_index] == 0) {
+		if (rx_dev_index == 3)
+			pr_info("[%s] LOOPBACK FAIL: uart_cmm has not set loopback mode (dev[%d],rx_dev=[%d])\n",
+				__func__, dev_index, rx_dev_index);
+		else
+			pr_info("[%s] LOOPBACK FAIL: uart_%d has not set loopback mode (dev[%d],rx_dev=[%d])\n",
+				__func__, rx_dev_index, dev_index, rx_dev_index);
+		return UARTHUB_ERR_PARA_WRONG;
+	}
+
+	is_pkt_complete = uarthub_check_packet_is_complete(dev_index, p_tx_data, tx_len);
+
+	uarthub_reset_intfhub_mt6989();
+	if (rx_dev_index >= 0)
+		uarthub_config_uartip_dma_en_ctrl_mt6989(rx_dev_index, RX, 0);
+
+	len = 0;
+	for (i = 0; i < tx_len; i++) {
+		len += snprintf(dmp_info_buf_tx + len, TRX_BUF_LEN - len,
+			((i == 0) ? "%02X" : ",%02X"), p_tx_data[i]);
+	}
+
+	if (dump_trxlog == 1) {
+		if (dev_index == 3) {
+			if (pkt_type == pkt_fmt_esp) {
+				if (p_tx_data[0] == 0xFF)
+					pr_info("[%s] uart_cmm send esp [FF] to uarthub, pkt_complete=[%d]\n",
+						__func__, is_pkt_complete);
+				else
+					pr_info("[%s] uart_cmm send esp [%s --> FF] to uart_%d, pkt_complete=[%d]\n",
+						__func__, dmp_info_buf_tx,
+						rx_dev_index, is_pkt_complete);
+			} else if (pkt_type == pkt_fmt_undef)
+				pr_info("[%s] uart_cmm send undef pkt tpye [%s] to uart_%d, pkt_complete=[%d]\n",
+					__func__, dmp_info_buf_tx,
+					rx_dev_index, is_pkt_complete);
+			else
+				pr_info("[%s] uart_cmm send [%s] to uart_%d, pkt_complete=[%d]\n",
+					__func__, dmp_info_buf_tx,
+					rx_dev_index, is_pkt_complete);
+		} else {
+			if (pkt_type == pkt_fmt_esp)
+				pr_info("[%s] uart_%d send esp [%s] to uart_cmm, pkt_complete=[%d]\n",
+					__func__, dev_index,
+					dmp_info_buf_tx, is_pkt_complete);
+			else if (pkt_type == pkt_fmt_undef)
+				pr_info("[%s] uart_%d send undef pkt tpye [%s] to uart_cmm, pkt_complete=[%d]\n",
+					__func__, dev_index,
+					dmp_info_buf_tx, is_pkt_complete);
+			else
+				pr_info("[%s] uart_%d send [%s] to uart_cmm, pkt_complete=[%d]\n",
+					__func__, dev_index,
+					dmp_info_buf_tx, is_pkt_complete);
+		}
+	}
+
+	state = uarthub_uartip_write_tx_data_mt6989(dev_index, p_tx_data, tx_len);
+
+	if (state != 0) {
+		if (dev_index == 3) {
+			if (pkt_type == pkt_fmt_esp) {
+				if (p_tx_data[0] == 0xF0)
+					pr_info("[%s] TX FAIL: uart_cmm send esp [FF] to uarthub, state=[%d] (dev[%d],tx_len=[%d])\n",
+						__func__, state, dev_index, tx_len);
+				else
+					pr_info("[%s] TX FAIL: uart_cmm send esp [%s --> FF] to uart_%d, state=[%d] (dev[%d],tx_len=[%d])\n",
+						__func__, dmp_info_buf_tx,
+						rx_dev_index, state, dev_index, tx_len);
+			}	else if (pkt_type == pkt_fmt_undef)
+				pr_info("[%s] TX FAIL: uart_cmm send undef pkt tpye [%s] to uart_%d, state=[%d] (dev[%d],tx_len=[%d])\n",
+					__func__, dmp_info_buf_tx, rx_dev_index,
+					state, dev_index, tx_len);
+			else
+				pr_info("[%s] TX FAIL: uart_cmm send [%s] to uart_%d, state=[%d] (dev[%d],tx_len=[%d])\n",
+					__func__, dmp_info_buf_tx, rx_dev_index,
+					state, dev_index, tx_len);
+		} else {
+			if (pkt_type == pkt_fmt_esp)
+				pr_info("[%s] TX FAIL: uart_%d send esp [%s] to uart_cmm, state=[%d] (dev[%d],tx_len=[%d])\n",
+					__func__, dev_index, dmp_info_buf_tx,
+					state, dev_index, tx_len);
+			else if (pkt_type == pkt_fmt_undef)
+				pr_info("[%s] TX FAIL: uart_%d send undef pkt tpye [%s] to uart_cmm, state=[%d] (dev[%d],tx_len=[%d])\n",
+					__func__, dev_index, dmp_info_buf_tx,
+					state, dev_index, tx_len);
+			else
+				pr_info("[%s] TX FAIL: uart_%d send [%s] to uart_cmm, state=[%d] (dev[%d],tx_len=[%d])\n",
+					__func__, dev_index, dmp_info_buf_tx,
+					state, dev_index, tx_len);
+		}
+		state = UARTHUB_UT_ERR_TX_FAIL;
+		goto verify_err;
+	}
+
+	rx_len = 0;
+	state = uarthub_uartip_read_rx_data_mt6989(rx_dev_index, evtBuf, TRX_BUF_LEN, &rx_len);
+
+	if (rx_len > 0) {
+		len = 0;
+		for (i = 0; i < rx_len; i++) {
+			len += snprintf(dmp_info_buf_rx + len, TRX_BUF_LEN - len,
+				((i == 0) ? "%02X" : ",%02X"), evtBuf[i]);
+		}
+	}
+
+	rx_len_expect = tx_len;
+	if (is_pkt_complete == 1) {
+		if (rx_dev_index == 3)
+			rx_len_expect += 2;
+		else if (rx_dev_index >= 0)
+			rx_len_expect -= 2;
+	}
+	if (pkt_type == pkt_fmt_esp)
+		rx_len_expect = 1;
+	if (p_tx_data[0] == 0xFF)
+		rx_len_expect = 0;
+
+	if (rx_len_expect < 0) {
+		pr_notice("[%s] rx_len_expect error, rx_len_expect=[%d], rx_len=[%d]\n",
+			__func__, rx_len_expect, rx_len);
+		state = UARTHUB_UT_ERR_RX_FAIL;
+		goto verify_err;
+	}
+
+	if (dump_trxlog == 1) {
+		if (rx_len > 0) {
+			if (rx_dev_index == 3)
+				pr_info("[%s] uart_cmm received [%s] from uart_%d\n",
+					__func__, dmp_info_buf_rx, dev_index);
+			else if (rx_dev_index >= 0)
+				pr_info("[%s] uart_%d received [%s] from uart_cmm\n",
+					__func__, rx_dev_index, dmp_info_buf_rx);
+		} else {
+			if (rx_dev_index == 3)
+				pr_info("[%s] uart_cmm received nothing from uart_%d\n",
+					__func__, dev_index);
+			else
+				pr_info("[%s] uart_%d received nothing from uart_cmm\n",
+					__func__, rx_dev_index);
+		}
+	}
+
+	if (state != 0) {
+		if (rx_dev_index == 3)
+			pr_info("[%s] RX FAIL: uart_cmm received [%s] from uart_%d, size=[%d], state=[%d] (dev[%d],tx_len=[%d])\n",
+				__func__, dmp_info_buf_rx, dev_index,
+				rx_len, state, dev_index, tx_len);
+		else if (rx_dev_index >= 0)
+			pr_info("[%s] RX FAIL: uart_%d received [%s] from uart_cmm, size=[%d], state=[%d] (dev[%d],tx_len=[%d])\n",
+				__func__, rx_dev_index, dmp_info_buf_rx,
+				rx_len, state, dev_index, tx_len);
+		state = UARTHUB_UT_ERR_RX_FAIL;
+		goto verify_err;
+	}
+
+	if (rx_dev_index == -1) {
+		byte_cnt_rx_0 = UARTHUB_DEBUG_GET_OP_RX_REQ_VAL(uartip_base_map[uartip_id_ap]);
+		byte_cnt_tx_0 = UARTHUB_DEBUG_GET_IP_TX_DMA_VAL(uartip_base_map[uartip_id_ap]);
+		byte_cnt_rx_1 = UARTHUB_DEBUG_GET_OP_RX_REQ_VAL(uartip_base_map[uartip_id_md]);
+		byte_cnt_tx_1 = UARTHUB_DEBUG_GET_IP_TX_DMA_VAL(uartip_base_map[uartip_id_md]);
+		byte_cnt_rx_2 = UARTHUB_DEBUG_GET_OP_RX_REQ_VAL(uartip_base_map[uartip_id_adsp]);
+		byte_cnt_tx_2 = UARTHUB_DEBUG_GET_IP_TX_DMA_VAL(uartip_base_map[uartip_id_adsp]);
+
+		if ((byte_cnt_rx_0 + byte_cnt_tx_0 + byte_cnt_rx_1 +
+			byte_cnt_tx_1 + byte_cnt_rx_2 + byte_cnt_tx_2) != 0) {
+			pr_notice("[%s] RX FAIL: uart_cmm send [FF] should not influence dev0/1/2 byte count,dev0=[R:%d,T:%d],dev1=[R:%d,T:%d],dev2=[R:%d,T:%d] (dev[%d],tx_len=[%d])\n",
+				__func__, byte_cnt_rx_0, byte_cnt_tx_0,
+				byte_cnt_rx_1, byte_cnt_tx_1,
+				byte_cnt_rx_2, byte_cnt_tx_2, dev_index, tx_len);
+			state = UARTHUB_UT_ERR_RX_FAIL;
+			goto verify_err;
+		}
+	} else {
+		if (rx_len != rx_len_expect) {
+			if (rx_dev_index == 3)
+				pr_notice("[%s] RX FAIL: uart_cmm received size=[%d] is different with expect size=[%d] (dev[%d],tx_len=[%d])\n",
+					__func__, rx_len,
+					rx_len_expect, dev_index, tx_len);
+			else
+				pr_notice("[%s] RX FAIL: uart_%d received size=[%d] is different with expect size=[%d] (dev[%d],tx_len=[%d])\n",
+					__func__, rx_dev_index, rx_len,
+					rx_len_expect, dev_index, tx_len);
+			state = UARTHUB_UT_ERR_RX_FAIL;
+			goto verify_err;
+		}
+
+		if (pkt_type != pkt_fmt_esp) {
+			for (i = 0; i < tx_len; i++)
+				evtBuf_expect[i] = p_tx_data[i];
+			if (rx_dev_index == 3) {
+				if (is_pkt_complete == 1) {
+					uarthub_get_crc(p_tx_data, tx_len, rx_data_crc);
+					evtBuf_expect[tx_len] = rx_data_crc[0];
+					evtBuf_expect[tx_len + 1] = rx_data_crc[1];
+				}
+			}
+		} else
+			evtBuf_expect[0] = 0xFF;
+
+		len = 0;
+		for (i = 0; i < rx_len_expect; i++) {
+			len += snprintf(dmp_info_buf_rx_expect + len, TRX_BUF_LEN - len,
+				((i == 0) ? "%02X" : ",%02X"), evtBuf_expect[i]);
+		}
+
+		for (i = 0; i < rx_len_expect; i++) {
+			if (evtBuf[i] != evtBuf_expect[i]) {
+				pr_notice("[%s] RX FAIL: uart_cmm received [%s] is different with rx_expect_data=[%s] (dev[%d],tx_len=[%d])\n",
+					__func__, dmp_info_buf_rx,
+					dmp_info_buf_rx_expect,
+					dev_index, tx_len);
+				state = UARTHUB_UT_ERR_RX_FAIL;
+				goto verify_err;
+			}
+		}
+	}
+
+	state = 0;
+verify_err:
+	/* Uninitialize */
+	if (rx_dev_index >= 0)
+		uarthub_config_uartip_dma_en_ctrl_mt6989(rx_dev_index, RX, 1);
+	uarthub_reset_intfhub_mt6989();
+
+	return state;
+}
+#endif
+
+#if UARTHUB_SUPPORT_UT_API
 int uarthub_is_apuart_tx_buf_empty_for_write_mt6989(int port_no)
 {
-	int is_empty = 0;
-
 	if (port_no < 1 || port_no > 3) {
 		pr_notice("[%s] not support port_no(%d)\n", __func__, port_no);
 		return UARTHUB_ERR_PORT_NO_NOT_SUPPORT;
 	}
 
-	if (port_no == 1)
-		is_empty = LSR_GET_TEMT(LSR_ADDR(apuart1_base_remap_addr_mt6989));
-	else if (port_no == 2)
-		is_empty = LSR_GET_TEMT(LSR_ADDR(apuart2_base_remap_addr_mt6989));
-	else if (port_no == 3)
-		is_empty = LSR_GET_TEMT(LSR_ADDR(apuart3_base_remap_addr_mt6989));
-
-	return is_empty;
+	return LSR_GET_TEMT(LSR_ADDR(apuart_base_map[port_no]));
 }
 #endif /* UARTHUB_SUPPORT_UT_API */
 
 #if UARTHUB_SUPPORT_UT_API
 int uarthub_is_apuart_rx_buf_ready_for_read_mt6989(int port_no)
 {
-	int is_ready = 0;
-
 	if (port_no < 1 || port_no > 3) {
 		pr_notice("[%s] not support port_no(%d)\n", __func__, port_no);
 		return UARTHUB_ERR_PORT_NO_NOT_SUPPORT;
 	}
 
-	if (port_no == 1)
-		is_ready = LSR_GET_DR(LSR_ADDR(apuart1_base_remap_addr_mt6989));
-	else if (port_no == 2)
-		is_ready = LSR_GET_DR(LSR_ADDR(apuart2_base_remap_addr_mt6989));
-	else if (port_no == 3)
-		is_ready = LSR_GET_DR(LSR_ADDR(apuart3_base_remap_addr_mt6989));
-
-	return is_ready;
+	return LSR_GET_DR(LSR_ADDR(apuart_base_map[port_no]));
 }
 #endif /* UARTHUB_SUPPORT_UT_API */
 
@@ -680,13 +809,7 @@ int uarthub_apuart_write_data_to_tx_buf_mt6989(int port_no, int tx_data)
 		return UARTHUB_ERR_PORT_NO_NOT_SUPPORT;
 	}
 
-	if (port_no == 1)
-		UARTHUB_REG_WRITE(THR_ADDR(apuart1_base_remap_addr_mt6989), tx_data);
-	else if (port_no == 2)
-		UARTHUB_REG_WRITE(THR_ADDR(apuart2_base_remap_addr_mt6989), tx_data);
-	else if (port_no == 3)
-		UARTHUB_REG_WRITE(THR_ADDR(apuart3_base_remap_addr_mt6989), tx_data);
-
+	UARTHUB_REG_WRITE(THR_ADDR(apuart_base_map[port_no]), tx_data);
 	return 0;
 }
 #endif /* UARTHUB_SUPPORT_UT_API */
@@ -694,21 +817,12 @@ int uarthub_apuart_write_data_to_tx_buf_mt6989(int port_no, int tx_data)
 #if UARTHUB_SUPPORT_UT_API
 int uarthub_apuart_read_data_from_rx_buf_mt6989(int port_no)
 {
-	int rx_data = 0;
-
 	if (port_no < 1 || port_no > 3) {
 		pr_notice("[%s] not support port_no(%d)\n", __func__, port_no);
 		return UARTHUB_ERR_PORT_NO_NOT_SUPPORT;
 	}
 
-	if (port_no == 1)
-		rx_data = UARTHUB_REG_READ(RBR_ADDR(apuart1_base_remap_addr_mt6989));
-	else if (port_no == 2)
-		rx_data = UARTHUB_REG_READ(RBR_ADDR(apuart2_base_remap_addr_mt6989));
-	else if (port_no == 3)
-		rx_data = UARTHUB_REG_READ(RBR_ADDR(apuart3_base_remap_addr_mt6989));
-
-	return rx_data;
+	return UARTHUB_REG_READ(RBR_ADDR(apuart_base_map[port_no]));
 }
 #endif /* UARTHUB_SUPPORT_UT_API */
 
@@ -773,16 +887,7 @@ int uarthub_apuart_read_rx_data_mt6989(
 		}
 
 		if (retry <= 0) {
-			state = 0;
-			if (port_no == 1)
-				state = UARTHUB_REG_READ_BIT(
-					DEBUG_7(apuart1_base_remap_addr_mt6989), 0x3F);
-			else if (port_no == 2)
-				state = UARTHUB_REG_READ_BIT(
-					DEBUG_7(apuart2_base_remap_addr_mt6989), 0x3F);
-			else if (port_no == 3)
-				state = UARTHUB_REG_READ_BIT(
-					DEBUG_7(apuart3_base_remap_addr_mt6989), 0x3F);
+			state = UARTHUB_DEBUG_GET_RX_WOFFSET_VAL(apuart_base_map[port_no]);
 			if (state > 0)
 				retry = 200;
 			else
@@ -798,31 +903,21 @@ int uarthub_apuart_read_rx_data_mt6989(
 int uarthub_init_default_apuart_config_mt6989(void)
 {
 	void __iomem *uarthub_dev_base = NULL;
-	int baud_rate = 0;
+	int baud_rate = 115200;
 	int i = 0;
 
-	if (!apuart1_base_remap_addr_mt6989 || !apuart2_base_remap_addr_mt6989 ||
-			!apuart3_base_remap_addr_mt6989) {
-		pr_notice("[%s] apuart1/2/3_base_remap_addr_mt6989 is not all init\n",
+	if (!apuart_base_map[1] || !apuart_base_map[2] || !apuart_base_map[3]) {
+		pr_notice("[%s] apuart_base_map[1/2/3] is not all init\n",
 			__func__);
 		return -1;
 	}
 
-	uarthub_usb_rx_pin_ctrl_mt6989(apuart1_base_remap_addr_mt6989, 1);
-	uarthub_usb_rx_pin_ctrl_mt6989(apuart2_base_remap_addr_mt6989, 1);
-	uarthub_usb_rx_pin_ctrl_mt6989(apuart3_base_remap_addr_mt6989, 1);
-	baud_rate = 115200;
+	for (i = 1; i < 4; i++)
+		uarthub_usb_rx_pin_ctrl_mt6989(apuart_base_map[i], 1);
 
-	for (i = 0; i < 3; i++) {
-		if (i == 0)
-			uarthub_dev_base = apuart1_base_remap_addr_mt6989;
-		else if (i == 1)
-			uarthub_dev_base = apuart2_base_remap_addr_mt6989;
-		else if (i == 2)
-			uarthub_dev_base = apuart3_base_remap_addr_mt6989;
-
-		if (baud_rate >= 0)
-			uarthub_config_baud_rate_m6989(uarthub_dev_base, baud_rate);
+	for (i = 1; i < 4; i++) {
+		uarthub_dev_base = apuart_base_map[i];
+		uarthub_config_baud_rate_m6989(uarthub_dev_base, baud_rate);
 
 		/* 0x0c = 0x3,  byte length: 8 bit*/
 		UARTHUB_REG_WRITE(LCR_ADDR(uarthub_dev_base), 0x3);
@@ -842,21 +937,31 @@ int uarthub_init_default_apuart_config_mt6989(void)
 		UARTHUB_REG_WRITE(ESCAPE_DAT_ADDR(uarthub_dev_base), 0xdb);
 	}
 
-	uarthub_usb_rx_pin_ctrl_mt6989(apuart1_base_remap_addr_mt6989, 0);
-	uarthub_usb_rx_pin_ctrl_mt6989(apuart2_base_remap_addr_mt6989, 0);
-	uarthub_usb_rx_pin_ctrl_mt6989(apuart3_base_remap_addr_mt6989, 0);
+	for (i = 1; i < 4; i++)
+		uarthub_usb_rx_pin_ctrl_mt6989(apuart_base_map[i], 0);
 
 	usleep_range(2000, 2010);
 
 	/* 0x4c = 0x3,  rx/tx channel dma enable */
-	UARTHUB_REG_WRITE(DMA_EN_ADDR(apuart1_base_remap_addr_mt6989), 0x3);
-	UARTHUB_REG_WRITE(DMA_EN_ADDR(apuart2_base_remap_addr_mt6989), 0x3);
-	UARTHUB_REG_WRITE(DMA_EN_ADDR(apuart3_base_remap_addr_mt6989), 0x3);
+	for (i = 1; i < 4; i++)
+		UARTHUB_REG_WRITE(DMA_EN_ADDR(apuart_base_map[i]), 0x3);
 
 	/* 0x08 = 0x87, fifo control register */
-	UARTHUB_REG_WRITE(FCR_ADDR(apuart1_base_remap_addr_mt6989), 0x87);
-	UARTHUB_REG_WRITE(FCR_ADDR(apuart2_base_remap_addr_mt6989), 0x87);
-	UARTHUB_REG_WRITE(FCR_ADDR(apuart3_base_remap_addr_mt6989), 0x87);
+	for (i = 1; i < 4; i++)
+		UARTHUB_REG_WRITE(FCR_ADDR(apuart_base_map[i]), 0x87);
+
+	return 0;
+}
+#endif /* UARTHUB_SUPPORT_UT_API */
+
+#if UARTHUB_SUPPORT_UT_API
+int uarthub_clear_all_ut_irq_sta_mt6989(void)
+{
+	uarthub_mask_host_irq_mt6989(0, BIT_0xFFFF_FFFF, 1);
+	uarthub_clear_host_irq_mt6989(0, BIT_0xFFFF_FFFF);
+	g_dev0_irq_sta = 0;
+	g_dev0_inband_irq_sta = 0;
+	uarthub_mask_host_irq_mt6989(0, BIT_0xFFFF_FFFF, 0);
 
 	return 0;
 }

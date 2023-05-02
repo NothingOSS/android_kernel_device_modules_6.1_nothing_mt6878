@@ -111,19 +111,13 @@ int UARTHUB_dump_debug_info_with_tag(const char *tag);
 int UARTHUB_config_host_loopback(int dev_index, int tx_to_rx, int enable);
 int UARTHUB_config_cmm_loopback(int tx_to_rx, int enable);
 int UARTHUB_debug_dump_tx_rx_count(const char *tag, enum debug_dump_tx_rx_index trigger_point);
+int UARTHUB_debug_monitor_stop(int stop);
+int UARTHUB_debug_monitor_clr(void);
 
 /* FPGA test only */
 int UARTHUB_is_host_uarthub_ready_state(int dev_index);
 int UARTHUB_set_host_txrx_request(int dev_index, int trx);
 int UARTHUB_clear_host_txrx_request(int dev_index, int trx);
-int UARTHUB_request_host_sema_own_sta(int dev_index);
-int UARTHUB_set_host_sema_own_rel(int dev_index);
-int UARTHUB_get_host_sema_own_rel_irq_sta(int dev_index);
-int UARTHUB_clear_host_sema_own_rel_irq(int dev_index);
-int UARTHUB_reset_host_sema_own(int dev_index);
-int UARTHUB_get_host_sema_own_timeout_irq_sta(int dev_index);
-int UARTHUB_clear_host_sema_own_timeout_irq(int dev_index);
-int UARTHUB_reset_host_sema_own_timeout(int dev_index);
 int UARTHUB_get_host_irq_sta(int dev_index);
 int UARTHUB_clear_host_irq(int dev_index);
 int UARTHUB_mask_host_irq(int dev_index, int mask_bit, int is_mask);
@@ -150,5 +144,7 @@ int UARTHUB_is_uartip_throw_xoff(int dev_index);
 int UARTHUB_config_uartip_rx_fifo_trig_threshold(int dev_index, int size);
 int UARTHUB_ut_ip_verify_pkt_hdr_fmt(void);
 int UARTHUB_ut_ip_verify_trx_not_ready(void);
+int UARTHUB_get_intfhub_active_sta(void);
+int UARTHUB_debug_byte_cnt_info(const char *tag);
 
 #endif /* UARTHUB_DRV_EXPORT_H */
