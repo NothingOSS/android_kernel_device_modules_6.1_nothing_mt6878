@@ -194,6 +194,7 @@ enum FPSGO_FILTER_STATE {
 
 static struct kobject *fbt_kobj;
 
+static int fbt_is_boosting;
 static int uclamp_boost_enable;
 static int bhr;
 static int bhr_opp;
@@ -596,6 +597,24 @@ static int fbt_is_enable(void)
 	mutex_unlock(&fbt_mlock);
 
 	return enable;
+}
+
+void fbt_set_fbt_is_boosting(int is_boosting)
+{
+	mutex_lock(&fbt_mlock);
+	fbt_is_boosting = is_boosting;
+	mutex_unlock(&fbt_mlock);
+}
+
+int fbt_get_fbt_is_boosting(void)
+{
+	int is_boosting;
+
+	mutex_lock(&fbt_mlock);
+	is_boosting = fbt_is_boosting;
+	mutex_unlock(&fbt_mlock);
+
+	return is_boosting;
 }
 
 static int fbt_cluster_X2Y(int cluster, unsigned long input, enum sugov_type in_type,
@@ -5313,6 +5332,11 @@ void fpsgo_comp2fbt_frame_start(struct render_info *thr,
 		return;
 	}
 
+	if (!fbt_is_boosting) {
+		fbt_set_fbt_is_boosting(1);
+		if (fpsgo_notify_fbt_is_boost_fp)
+			fpsgo_notify_fbt_is_boost_fp(fbt_is_boosting);
+	}
 
 	fbt_frame_start(thr, ts);
 }
@@ -5984,6 +6008,12 @@ int fpsgo_ctrl2fbt_switch_fbt(int enable)
 	if (!enable)
 		fbt_setting_exit();
 
+	if (fbt_is_boosting && !enable) {
+		fbt_is_boosting = 0;
+		if (fpsgo_notify_fbt_is_boost_fp)
+			fpsgo_notify_fbt_is_boost_fp(fbt_is_boosting);
+	}
+
 	mutex_unlock(&fbt_mlock);
 
 	if (!enable && !boost_ta)
@@ -6513,6 +6543,34 @@ out:
 static KOBJ_ATTR_RO(table_cap);
 
 #endif  // FPSGO_DYNAMIC_WL
+
+static ssize_t is_fbt_boosting_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	char *temp = NULL;
+	int posi = 0;
+	int length = 0;
+
+	temp = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!temp)
+		goto out;
+
+	mutex_lock(&fbt_mlock);
+	length = scnprintf(temp + posi,
+		FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+		"fbt is boosting = %d\n", fbt_is_boosting);
+	posi += length;
+	mutex_unlock(&fbt_mlock);
+
+	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
+
+out:
+	kfree(temp);
+	return length;
+}
+
+static KOBJ_ATTR_RO(is_fbt_boosting);
 
 static ssize_t enable_uclamp_boost_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -8232,6 +8290,8 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj,
 			&kobj_attr_enable_ceiling);
 	fpsgo_sysfs_remove_file(fbt_kobj,
+			&kobj_attr_is_fbt_boosting);
+	fpsgo_sysfs_remove_file(fbt_kobj,
 			&kobj_attr_enable_uclamp_boost);
 	fpsgo_sysfs_remove_file(fbt_kobj,
 				&kobj_attr_switch_filter_frame);
@@ -8326,6 +8386,7 @@ int __init fbt_cpu_init(void)
 	_gdfrc_fps_limit = TARGET_DEFAULT_FPS;
 	vsync_period = GED_VSYNC_MISS_QUANTUM_NS;
 
+	fbt_is_boosting = 0;
 	fbt_idleprefer_enable = 0;
 	suppress_ceiling = 1;
 	uclamp_boost_enable = 1;
@@ -8454,6 +8515,8 @@ int __init fbt_cpu_init(void)
 				&kobj_attr_limit_rfreq_m);
 		fpsgo_sysfs_create_file(fbt_kobj,
 				&kobj_attr_enable_ceiling);
+		fpsgo_sysfs_create_file(fbt_kobj,
+			&kobj_attr_is_fbt_boosting);
 		fpsgo_sysfs_create_file(fbt_kobj,
 				&kobj_attr_enable_uclamp_boost);
 		fpsgo_sysfs_create_file(fbt_kobj,

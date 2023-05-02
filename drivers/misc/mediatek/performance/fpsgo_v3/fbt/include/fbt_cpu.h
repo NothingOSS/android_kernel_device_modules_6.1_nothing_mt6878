@@ -75,6 +75,8 @@ int fbt_xgff_dep_thread_notify(int pid, int op);
 
 void fbt_set_render_boost_attr(struct render_info *thr);
 void fbt_set_render_last_cb(struct render_info *thr, unsigned long long ts);
+void fbt_set_fbt_is_boosting(int is_boosting);
+int fbt_get_fbt_is_boosting(void);
 
 #else
 static inline void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit) { }
@@ -117,6 +119,8 @@ static inline void fbt_set_render_last_cb(struct render_info *thr, unsigned long
 static inline int fpsgo_ctrl2fbt_buffer_quota(unsigned long long ts, int pid, int quota,
 			unsigned long long identifier) { return 0; }
 static inline void notify_rl_ko_is_ready(void) { }
+static inline void fbt_set_fbt_is_boosting(int is_boosting) { }
+static inline int fbt_get_fbt_is_boosting(void) { return 0; }
 #endif
 
 #endif

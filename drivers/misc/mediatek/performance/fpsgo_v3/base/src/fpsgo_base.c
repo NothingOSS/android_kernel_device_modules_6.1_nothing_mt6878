@@ -1543,6 +1543,7 @@ int fpsgo_check_thread_status(void)
 	int temp_max_pid = 0;
 	unsigned long long temp_max_bufid = 0;
 	int rb_tree_empty = 0;
+	int is_boosting = BY_PASS_TYPE;
 
 	if (ts < TIME_1S)
 		return 0;
@@ -1588,6 +1589,8 @@ int fpsgo_check_thread_status(void)
 			}
 
 		} else {
+			if (iter->frame_type == NON_VSYNC_ALIGNED_TYPE)
+				is_boosting = NON_VSYNC_ALIGNED_TYPE;
 
 			n = rb_next(n);
 
@@ -1598,6 +1601,12 @@ int fpsgo_check_thread_status(void)
 	fpsgo_check_BQid_status();
 	fpsgo_check_acquire_info_status();
 	fpsgo_traverse_linger(ts);
+
+	if (is_boosting == BY_PASS_TYPE && fbt_get_fbt_is_boosting()) {
+		fbt_set_fbt_is_boosting(0);
+		if (fpsgo_notify_fbt_is_boost_fp)
+			fpsgo_notify_fbt_is_boost_fp(0);
+	}
 
 	fpsgo_render_tree_unlock(__func__);
 
