@@ -114,7 +114,6 @@
 			reg = <0x0000>;
 			enable-method = "psci";
 			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-			//			&system_mem &system_pll &system_bus
 			//			&system_vcore &s2idle>;
 		};
 
@@ -123,7 +122,6 @@
 		//	reg = <0x0100>;
 		//	enable-method = "psci";
 		//	cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-		//			&system_mem &system_pll &system_bus
 		//			&system_vcore &s2idle>;
 		//};
 
@@ -132,7 +130,6 @@
 		//	reg = <0x0200>;
 		//	enable-method = "psci";
 		//	cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-		//			&system_mem &system_pll &system_bus
 		//			&system_vcore &s2idle>;
 		//};
 
@@ -141,7 +138,6 @@
 		//	reg = <0x0300>;
 		//	enable-method = "psci";
 		//	cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-		//			&system_mem &system_pll &system_bus
 		//			&system_vcore &s2idle>;
 		//};
 
@@ -150,7 +146,6 @@
 		//	reg = <0x0400>;
 		//	enable-method = "psci";
 		//	cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-		//			&system_mem &system_pll &system_bus
 		//			&system_vcore &s2idle>;
 		//};
 
@@ -159,7 +154,6 @@
 		//	reg = <0x0500>;
 		//	enable-method = "psci";
 		//	cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-		//			&system_mem &system_pll &system_bus
 		//			&system_vcore &s2idle>;
 		//};
 
@@ -168,7 +162,6 @@
 		//	reg = <0x0600>;
 		//	enable-method = "psci";
 		//	cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-		//			&system_mem &system_pll &system_bus
 		//			&system_vcore &s2idle>;
 		//};
 
@@ -177,7 +170,6 @@
 		//	reg = <0x0700>;
 		//	enable-method = "psci";
 		//	cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
-		//			&system_mem &system_pll &system_bus
 		//			&system_vcore &s2idle>;
 		//};
 
@@ -295,30 +287,6 @@
 				entry-latency-us = <524>;
 				exit-latency-us = <337>;
 				min-residency-us = <4570>;
-			};
-			system_mem: system-mem {
-				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0x0201000f>;
-				local-timer-stop;
-				entry-latency-us = <697>;
-				exit-latency-us = <886>;
-				min-residency-us = <5700>;
-			};
-			system_pll: system-pll {
-				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0x0201001f>;
-				local-timer-stop;
-				entry-latency-us = <697>;
-				exit-latency-us = <1436>;
-				min-residency-us = <5700>;
-			};
-			system_bus: system-bus {
-				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0x0201007f>;
-				local-timer-stop;
-				entry-latency-us = <697>;
-				exit-latency-us = <3186>;
-				min-residency-us = <5700>;
 			};
 			system_vcore: system-vcore {
 				compatible = "arm,idle-state";
@@ -8242,8 +8210,7 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 		lpm-kernel-suspend = <0>;
 		suspend-method = "disable";
 
-		logger-enable-states = "mcusysoff_l", "mcusysoff_m", "mcusysoff_b", "system_mem",
-					"system_pll", "system_bus", "system_vcore";
+		logger-enable-states = "mcusysoff_l", "mcusysoff_m", "mcusysoff_b", "system_vcore";
 
 		irq-remain = <&edge_keypad>;
 
