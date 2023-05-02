@@ -895,9 +895,7 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 	}
 
 	/* no pq support for dl mode */
-	if (info->dest[0].pq_config.en_hdr ||
-		info->dest[0].pq_config.en_ccorr ||
-		info->dest[0].pq_config.en_region_pq ||
+	if (info->dest[0].pq_config.en_region_pq ||
 		info->dest[0].pq_config.en_fg) {
 		*reason = mml_query_pqen;
 		goto decouple;
