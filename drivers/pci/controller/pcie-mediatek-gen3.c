@@ -292,6 +292,8 @@ struct mtk_pcie_port {
 	struct reset_control *mac_reset;
 	struct reset_control *phy_reset;
 	struct phy *phy;
+	struct device *genpd_mac;
+	struct device *genpd_phy;
 	struct clk_bulk_data *clks;
 	int num_clks;
 	int max_link_speed;
@@ -1160,6 +1162,24 @@ static int mtk_pcie_parse_port(struct mtk_pcie_port *port)
 	if (port->max_link_speed > 0)
 		dev_info(dev, "max speed to GEN%d\n", port->max_link_speed);
 
+	port->genpd_mac = dev_pm_domain_attach_by_name(dev, "pd_mac");
+	if (IS_ERR(port->genpd_mac)) {
+		ret = PTR_ERR(port->genpd_mac);
+		if (ret != -EPROBE_DEFER)
+			dev_info(dev, "failed to attach MAC genpd\n");
+
+		return ret;
+	}
+
+	port->genpd_phy = dev_pm_domain_attach_by_name(dev, "pd_phy");
+	if (IS_ERR(port->genpd_phy)) {
+		ret = PTR_ERR(port->genpd_phy);
+		if (ret != -EPROBE_DEFER)
+			dev_info(dev, "failed to attach PHY genpd\n");
+
+		return ret;
+	}
+
 	return 0;
 }
 
@@ -1202,6 +1222,7 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 
 	/* PHY power on and enable pipe clock */
 	reset_control_deassert(port->phy_reset);
+	pm_runtime_get_sync(port->genpd_phy);
 
 	err = phy_init(port->phy);
 	if (err) {
@@ -1217,9 +1238,7 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 
 	/* MAC power on and enable transaction layer clocks */
 	reset_control_deassert(port->mac_reset);
-
-	pm_runtime_enable(dev);
-	pm_runtime_get_sync(dev);
+	pm_runtime_get_sync(port->genpd_mac);
 
 	err = clk_bulk_prepare_enable(port->num_clks, port->clks);
 	if (err) {
@@ -1230,13 +1249,13 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 	return 0;
 
 err_clk_init:
-	pm_runtime_put_sync(dev);
-	pm_runtime_disable(dev);
+	pm_runtime_put_sync(port->genpd_mac);
 	reset_control_assert(port->mac_reset);
 	phy_power_off(port->phy);
 err_phy_on:
 	phy_exit(port->phy);
 err_phy_init:
+	pm_runtime_put_sync(port->genpd_phy);
 	reset_control_assert(port->phy_reset);
 
 	return err;
@@ -1245,13 +1264,12 @@ err_phy_init:
 static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 {
 	clk_bulk_disable_unprepare(port->num_clks, port->clks);
-
-	pm_runtime_put_sync(port->dev);
-	pm_runtime_disable(port->dev);
+	pm_runtime_put_sync(port->genpd_mac);
 	reset_control_assert(port->mac_reset);
 
 	phy_power_off(port->phy);
 	phy_exit(port->phy);
+	pm_runtime_put_sync(port->genpd_phy);
 	reset_control_assert(port->phy_reset);
 
 	/* Set PCIe sw reset bit */
@@ -1335,6 +1353,11 @@ static int mtk_pcie_probe(struct platform_device *pdev)
 
 err_probe:
 	pinctrl_pm_select_sleep_state(&pdev->dev);
+	if (port->genpd_mac)
+		dev_pm_domain_detach(port->genpd_mac, true);
+
+	if (port->genpd_phy)
+		dev_pm_domain_detach(port->genpd_phy, true);
 
 	return err;
 }
@@ -1352,6 +1375,9 @@ static int mtk_pcie_remove(struct platform_device *pdev)
 
 	mtk_pcie_irq_teardown(port);
 	mtk_pcie_power_down(port);
+
+	dev_pm_domain_detach(port->genpd_mac, true);
+	dev_pm_domain_detach(port->genpd_phy, true);
 
 	err = pinctrl_pm_select_sleep_state(&pdev->dev);
 	if (err) {
