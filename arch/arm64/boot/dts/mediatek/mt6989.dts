@@ -3372,9 +3372,9 @@
 				<GIC_SPI 674 IRQ_TYPE_LEVEL_HIGH 0>; /* gpu irq */
 		};
 
-		ise_mbox: ise-mbox@10710000 {
+		ise_mbox: ise-mbox@10711000 {
 			compatible = "mediatek,ise-mbox";
-			reg = <0 0x10710000 0 0x1000>;
+			reg = <0 0x10711000 0 0x1000>;
 		};
 
 		tracker: tracker@10208000 {
