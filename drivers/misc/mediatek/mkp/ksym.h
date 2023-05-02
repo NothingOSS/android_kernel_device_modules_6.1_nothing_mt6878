@@ -46,8 +46,7 @@
 #define TT_SIZE		256
 #define NAME_LEN	128
 
-int __init mkp_ka_init(void);
-void __init mkp_get_krn_code(void **p_stext, void **p_etext);
-void __init mkp_get_krn_rodata(void **p_etext, void **p__init_begin);
-void __init mkp_get_krn_info(void **p_stext, void **p_etext, void **p__init_begin);
+void mkp_get_krn_code(void **p_stext, void **p_etext);
+void mkp_get_krn_rodata(void **p_etext, void **p__init_begin);
+void mkp_get_krn_info(void **p_stext, void **p_etext, void **p__init_begin);
 #endif /* _KSYM_H */

@@ -90,9 +90,9 @@ DEFINE_RWLOCK(mkp_rbtree_rwlock);
 
 #if !IS_ENABLED(CONFIG_KASAN_GENERIC) && !IS_ENABLED(CONFIG_KASAN_SW_TAGS)
 #if !IS_ENABLED(CONFIG_GCOV_KERNEL)
-static void __initdata *p_stext;
-static void __initdata *p_etext;
-static void __initdata *p__init_begin;
+static void *p_stext;
+static void *p_etext;
+static void *p__init_begin;
 #endif
 #endif
 
@@ -176,7 +176,11 @@ bool full_kernel_code_2m;
 
 #if !IS_ENABLED(CONFIG_KASAN_GENERIC) && !IS_ENABLED(CONFIG_KASAN_SW_TAGS)
 #if !IS_ENABLED(CONFIG_GCOV_KERNEL)
-static int __init protect_kernel(void)
+static void mkp_protect_kernel_work_fn(struct work_struct *work);
+
+static DECLARE_DELAYED_WORK(mkp_pk_work, mkp_protect_kernel_work_fn);
+static int retry_num = 100;
+static void mkp_protect_kernel_work_fn(struct work_struct *work)
 {
 	int ret = 0;
 	uint32_t policy = 0;
@@ -196,7 +200,43 @@ static int __init protect_kernel(void)
 	if (policy_ctrl[MKP_POLICY_KERNEL_CODE] &&
 		policy_ctrl[MKP_POLICY_KERNEL_RODATA]) {
 		mkp_get_krn_info(&p_stext, &p_etext, &p__init_begin);
+		if (p_stext == NULL || p_etext == NULL || p__init_begin == NULL) {
+			pr_info("%s: retry in 0.1 second", __func__);
+			if (--retry_num >= 0)
+				schedule_delayed_work(&mkp_pk_work, HZ / 10);
+			else
+				MKP_ERR("protect krn failed\n");
+			return;
+		}
 		init = 1;
+	}
+	if (policy_ctrl[MKP_POLICY_KERNEL_CODE] != 0) {
+		if (!init)
+			mkp_get_krn_code(&p_stext, &p_etext);
+		if (p_stext == NULL || p_etext == NULL) {
+			pr_info("%s: retry in 0.1 second", __func__);
+			if (--retry_num >= 0)
+				schedule_delayed_work(&mkp_pk_work, HZ / 10);
+			else
+				MKP_ERR("protect krn failed\n");
+			return;
+		}
+	}
+	if (policy_ctrl[MKP_POLICY_KERNEL_RODATA] != 0) {
+		if (!init)
+			mkp_get_krn_rodata(&p_etext, &p__init_begin);
+		if (p_etext == NULL || p__init_begin == NULL) {
+			pr_info("%s: retry in 0.1 second", __func__);
+			if (--retry_num >= 0)
+				schedule_delayed_work(&mkp_pk_work, HZ / 10);
+			else
+				MKP_ERR("protect krn failed\n");
+			return;
+		}
+	}
+
+	if (policy_ctrl[MKP_POLICY_KERNEL_CODE] &&
+		policy_ctrl[MKP_POLICY_KERNEL_RODATA]) {
 
 #ifdef SUPPORT_FULL_KERNEL_CODE_2M
 		/* It may ONLY take effects when BOTH KERNEL_CODE & KERNEL_RODATA are enabled */
@@ -206,8 +246,6 @@ static int __init protect_kernel(void)
 	}
 
 	if (policy_ctrl[MKP_POLICY_KERNEL_CODE] != 0) {
-		if (!init)
-			mkp_get_krn_code(&p_stext, &p_etext);
 		// round down addr before minus operation
 		addr_start = (unsigned long)p_stext;
 		addr_end = (unsigned long)p_etext;
@@ -240,12 +278,11 @@ static int __init protect_kernel(void)
 		} else {
 			ret = mkp_set_mapping_x(policy, handle);
 			ret = mkp_set_mapping_ro(policy, handle);
+			pr_info("mkp: protect krn code done\n");
 		}
 	}
 
 	if (policy_ctrl[MKP_POLICY_KERNEL_RODATA] != 0) {
-		if (!init)
-			mkp_get_krn_rodata(&p_etext, &p__init_begin);
 		// round down addr before minus operation
 		addr_start = (unsigned long)p_etext;
 		addr_end = (unsigned long)p__init_begin;
@@ -269,16 +306,16 @@ static int __init protect_kernel(void)
 		handle = mkp_create_handle(policy, (unsigned long)phys_addr, nr_pages<<12);
 		if (handle == 0)
 			MKP_ERR("%s:%d: Create handle fail\n", __func__, __LINE__);
-		else
+		else {
 			ret = mkp_set_mapping_ro(policy, handle);
+			pr_info("mkp: protect krn rodata done\n");
+		}
 	}
 
 protect_krn_fail:
 	p_stext = NULL;
 	p_etext = NULL;
 	p__init_begin = NULL;
-
-	return 0;
 }
 #endif
 #endif
@@ -1063,12 +1100,7 @@ int __init mkp_demo_init(void)
 
 #if !IS_ENABLED(CONFIG_KASAN_GENERIC) && !IS_ENABLED(CONFIG_KASAN_SW_TAGS)
 #if !IS_ENABLED(CONFIG_GCOV_KERNEL)
-		ret = mkp_ka_init();
-		if (ret) {
-			MKP_ERR("mkp_ka_init failed: %d", ret);
-			return ret;
-		}
-		ret = protect_kernel();
+	schedule_delayed_work(&mkp_pk_work, 0);
 #endif
 #endif
 	}

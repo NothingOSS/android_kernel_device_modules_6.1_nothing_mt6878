@@ -210,6 +210,7 @@ unsigned long aee_get_stext(void)
 		pr_info("%s failed", __func__);
 	return p_stext;
 }
+EXPORT_SYMBOL(aee_get_stext);
 
 static unsigned long p_etext;
 unsigned long aee_get_etext(void)
@@ -223,6 +224,21 @@ unsigned long aee_get_etext(void)
 		pr_info("%s failed", __func__);
 	return p_etext;
 }
+EXPORT_SYMBOL(aee_get_etext);
+
+static unsigned long p_init_begin;
+unsigned long aee_get_init_begin(void)
+{
+	if (p_init_begin)
+		return p_init_begin;
+
+	p_init_begin = aee_addr_find("__init_begin");
+
+	if (!p_init_begin)
+		pr_info("%s failed", __func__);
+	return p_init_begin;
+}
+EXPORT_SYMBOL(aee_get_init_begin);
 
 static unsigned long p_text;
 unsigned long aee_get_text(void)
@@ -324,14 +340,16 @@ static void aee_base_addrs_init(void)
 		}
 #endif
 
-		if (!p_etext && strcmp(strbuf, "_etext") == 0) {
-			p_etext = mrdump_idx2addr(i);
+		if (strcmp(strbuf, "_etext") == 0) {
+			if (!p_etext)
+				p_etext = mrdump_idx2addr(i);
 			search_num--;
 			continue;
 		}
 
-		if (!p_stext && strcmp(strbuf, "_stext") == 0) {
-			p_stext = mrdump_idx2addr(i);
+		if (strcmp(strbuf, "_stext") == 0) {
+			if (!p_stext)
+				p_stext = mrdump_idx2addr(i);
 			search_num--;
 			continue;
 		}
