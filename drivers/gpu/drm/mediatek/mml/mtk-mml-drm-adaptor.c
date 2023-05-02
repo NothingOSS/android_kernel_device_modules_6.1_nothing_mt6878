@@ -1035,12 +1035,14 @@ err_buf_exit:
 	mml_trace_end();
 	mml_log("%s fail result %d task %p", __func__, result, task);
 	if (task) {
+		bool is_init_state = task->state == MML_TASK_INITIAL;
+
 		mutex_lock(&ctx->config_mutex);
 
 		list_del_init(&task->entry);
 		cfg->await_task_cnt--;
 
-		if (task->state == MML_TASK_INITIAL) {
+		if (is_init_state) {
 			mml_log("dec config %p and del", cfg);
 
 			list_del_init(&cfg->entry);
@@ -1057,7 +1059,9 @@ err_buf_exit:
 
 		mutex_unlock(&ctx->config_mutex);
 		kref_put(&task->ref, task_move_to_destroy);
-		cfg->cfg_ops->put(cfg);
+
+		if (is_init_state)
+			cfg->cfg_ops->put(cfg);
 	}
 	return result;
 }
