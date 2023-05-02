@@ -1006,7 +1006,7 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 			sys->aid_sel[comp_id] = (u8)i / 4;
 			sys->aid_sel_regs[i / 4] = (u16)value;
 			sys->aid_sel_reg_bit[i / 4] = (u16)selbit;
-			sys->aid_sel_reg_bit[i / 4] = (u16)selmask;
+			sys->aid_sel_reg_mask[i / 4] = (u16)selmask;
 		}
 	} else if (sys->data->aidsel_mode == MML_AIDSEL_ENGINE) {
 		cnt = of_property_count_u32_elems(node, "aid-sel-engine");
