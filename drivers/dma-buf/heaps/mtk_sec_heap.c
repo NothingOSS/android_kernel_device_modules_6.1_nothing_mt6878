@@ -1981,7 +1981,7 @@ static int set_heap_dev_dma(struct device *heap_dev)
 
 static int mtk_page_heap_create(void)
 {
-	struct dma_heap_export_info exp_info;
+	struct dma_heap_export_info exp_info = {0};
 	int i, j;
 	int err = 0;
 
