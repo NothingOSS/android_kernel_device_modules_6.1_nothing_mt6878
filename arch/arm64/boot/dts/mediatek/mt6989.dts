@@ -11390,7 +11390,6 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 
 tboard_thermistor1: thermal-ntc1@1cc00554 {
 		compatible = "mediatek,mt6685-tia-ntc";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		reg = <0 0x1cc00554 0 0x4>; /* TIA DATA T0 */
 		temperature-lookup-table =
@@ -11564,7 +11563,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 
 	tboard_thermistor2: thermal-ntc2@1cc00558 {
 		compatible = "mediatek,mt6685-tia-ntc";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		reg = <0 0x1cc00558 0 0x4>; /* TIA DATA T1 */
 		temperature-lookup-table =
@@ -11912,7 +11910,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 
 	tboard_thermistor4: thermal-ntc4 {
 		compatible = "generic-adc-thermal";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		io-channels = <&pmic_adc (ADC_PURES_100K | AUXADC_VIN2)>;
 		io-channel-names = "sensor-channel";
@@ -12087,7 +12084,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 
 	tboard_thermistor5: thermal-ntc5 {
 		compatible = "generic-adc-thermal";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		io-channels = <&pmic_adc (ADC_PURES_100K | AUXADC_VIN3)>;
 		io-channel-names = "sensor-channel";
@@ -12262,7 +12258,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 
 	tboard_thermistor6: thermal-ntc6 {
 		compatible = "generic-adc-thermal";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		io-channels = <&pmic_adc (ADC_PURES_100K | AUXADC_VIN4)>;
 		io-channel-names = "sensor-channel";
@@ -12437,7 +12432,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 
 	tboard_thermistor7: thermal-ntc7 {
 		compatible = "generic-adc-thermal";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		io-channels = <&pmic_adc (ADC_PURES_100K | AUXADC_VIN5)>;
 		io-channel-names = "sensor-channel";
@@ -12612,7 +12606,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 
 	tboard_thermistor8: thermal-ntc8 {
 		compatible = "generic-adc-thermal";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		io-channels = <&pmic_adc (ADC_PURES_100K | AUXADC_VIN6)>;
 		io-channel-names = "sensor-channel";
