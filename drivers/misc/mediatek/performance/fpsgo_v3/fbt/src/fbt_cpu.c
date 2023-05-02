@@ -92,6 +92,18 @@
 #define DEFAULT_BLC_BOOST 0
 #define DEFAULT_HEAVY_TASK_NUM 0
 
+#define FPSGO_TPOLICY_NONE 0
+#define FPSGO_TPOLICY_AFFINITY 1
+#define FPSGO_TPOLICY_AFFINITY_ADJ 2
+#define FPSGO_TPOLICY_MAX 3
+
+#define FPSGO_BAFFINITY_NONE 0
+#define FPSGO_BAFFINITY_B 1
+#define FPSGO_BAFFINITY_B_ADJ 2
+#define FPSGO_BAFFINITY_B_M 3
+#define FPSGO_BAFFINITY_TOTAL 4
+
+
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
@@ -141,21 +153,6 @@ enum FPSGO_JERK {
 	FPSGO_JERK_ENOUGH_BUFFER = 5,
 };
 
-enum FPSGO_TASK_POLICY {
-	FPSGO_TPOLICY_NONE = 0,
-	FPSGO_TPOLICY_AFFINITY,
-	FPSGO_TPOLICY_AFFINITY_ADJ,
-	FPSGO_TPOLICY_MAX,
-};
-
-enum FPSGO_BOOST_AFFINITY {
-	FPSGO_BAFFINITY_NONE = 0,
-	FPSGO_BAFFINITY_B = 1,
-	FPSGO_BAFFINITY_B_ADJ = 2,
-	FPSGO_BAFFINITY_B_M = 3,
-	FPSGO_BAFFINITY_TOTAL,
-};
-
 enum FPSGO_LIMIT_POLICY {
 	FPSGO_LIMIT_NONE = 0,
 	FPSGO_LIMIT_CAPACITY,
@@ -186,13 +183,6 @@ enum FPSGO_JERK_STAGE {
 	FPSGO_JERK_FIRST,
 	FPSGO_JERK_SBE,
 	FPSGO_JERK_SECOND,
-};
-
-enum FPSGO_SCN_TYPE {
-	FPSGO_SCN_CAM = 0,
-	FPSGO_SCN_UX,
-	FPSGO_SCN_GAME,
-	FPSGO_SCN_VIDEO,
 };
 
 enum FPSGO_FILTER_STATE {
@@ -632,7 +622,7 @@ static int fbt_cluster_X2Y(int cluster, unsigned long input, enum sugov_type in_
 	fpsgo_systrace_c_fbt_debug(-100, 0, cluster, "EAS_X2Y_cluster");
 	fpsgo_systrace_c_fbt_debug(-100, 0, input, "EAS_X2Y_input");
 	fpsgo_systrace_c_fbt_debug(-100, 0, in_type, "EAS_X2Y_in_type");
-	fpsgo_systrace_c_fbt_debug(-100, 0, out_type, "EAS_X2Y_in_type");
+	fpsgo_systrace_c_fbt_debug(-100, 0, out_type, "EAS_X2Y_out_type");
 	fpsgo_systrace_c_fbt_debug(-100, 0, output, "EAS_X2Y_in_output");
 	xgf_trace("[%s][%s] clus=%d,cpu=%d,input=%lu,intype=%d,outtype=%d, output=%lu",
 		__func__, caller, cluster, cpu, input, in_type, out_type, output);
@@ -1026,7 +1016,7 @@ static void print_dep(const char *func,
 	char *dep_str = NULL;
 	char temp[MAX_PID_DIGIT] = {"\0"};
 	struct fpsgo_loading *fl;
-	int i;
+	int i, ret;
 
 	if (!xgf_trace_enable)
 		return;
@@ -1040,15 +1030,16 @@ static void print_dep(const char *func,
 		fl = &dep[i];
 
 		if (strlen(dep_str) == 0)
-			snprintf(temp, sizeof(temp), "%d", fl->pid);
+			ret = snprintf(temp, sizeof(temp), "%d", fl->pid);
 		else
-			snprintf(temp, sizeof(temp), ",%d", fl->pid);
+			ret = snprintf(temp, sizeof(temp), ",%d", fl->pid);
 
-		if (strlen(dep_str) + strlen(temp) < MAIN_LOG_SIZE)
+		if (ret > 0 &&
+			(strlen(dep_str) + strlen(temp) < MAIN_LOG_SIZE))
 			strncat(dep_str, temp, strlen(temp));
 	}
-	xgf_trace("%s %s %s %d %d size:%d dep-list %s",
-			__func__, func, tag, pid, buffer_id, size, dep_str);
+	xgf_trace("%s %s %s %d %llu ret=%d size:%d dep-list %s",
+			__func__, func, tag, pid, buffer_id, ret, size, dep_str);
 	kfree(dep_str);
 }
 
@@ -1747,29 +1738,35 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 /*
  * boost_ta should be checked during the flow, not here.
  */
-	int size = 0, size_final = 0, i;
+	int size = 0, i;
 	char *dep_str = NULL;
-	int ret;
+	int ret, print_ret;
 	int heaviest_pid = 0;
 	struct fpsgo_loading *dep_need_set;
 	int temp_size_need_set = 0;
 	char temp[MAX_PID_DIGIT] = {"\0"};
 	int light_thread = 0;
-	int loading_th_final = thr->attr.loading_th_by_pid;
-	int loading_policy_final = thr->attr.light_loading_policy_by_pid;
-	int llf_task_policy_final = thr->attr.llf_task_policy_by_pid;
-	int separate_aa_final = thr->attr.separate_aa_by_pid;
-	int separate_release_sec_final = thr->attr.separate_release_sec_by_pid;
-	int boost_affinity_final = thr->attr.boost_affinity_by_pid;
-	int boost_LR_final = thr->attr.boost_lr_by_pid;
-	struct fpsgo_loading *dep_final_need_set = NULL;
-	int final_size_need_set = 0;
+	int loading_th_final;
+	int loading_policy_final;
+	int llf_task_policy_final;
+	int separate_aa_final;
+	int separate_release_sec_final;
+	int boost_affinity_final;
+	int boost_LR_final;
 
 	if (!uclamp_boost_enable)
 		return;
 
 	if (!thr)
 		return;
+
+	loading_th_final = thr->attr.loading_th_by_pid;
+	loading_policy_final = thr->attr.light_loading_policy_by_pid;
+	llf_task_policy_final = thr->attr.llf_task_policy_by_pid;
+	separate_aa_final = thr->attr.separate_aa_by_pid;
+	separate_release_sec_final = thr->attr.separate_release_sec_by_pid;
+	boost_affinity_final = thr->attr.boost_affinity_by_pid;
+	boost_LR_final = thr->attr.boost_lr_by_pid;
 
 	if (!min_cap) {
 		fbt_clear_min_cap(thr);
@@ -1813,20 +1810,12 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	if (!dep_str)
 		goto EXIT;
 
-	dep_final_need_set = kcalloc(MAX_DEP_NUM, sizeof(struct fpsgo_loading), GFP_KERNEL);
-	if (!dep_final_need_set) {
-		FPSGO_LOGE("ERROR OOM %d\n", __LINE__);
-		goto EXIT;
-	}
-
 	for (i = 0; i < thr->dep_valid_size; i++) {
 		thr->dep_arr[i].rmidx = 0;
 		thr->dep_arr[i].heavyidx = 0;
 	}
 
-	if (thr->pid == max_blc_pid && thr->buffer_id == max_blc_buffer_id)
-		size_final = size;
-	else {
+	if (thr->pid != max_blc_pid || thr->buffer_id != max_blc_buffer_id) {
 		dep_a_except_b(
 			&(thr->dep_arr[0]), thr->dep_valid_size,
 			&max_blc_dep[0], max_blc_dep_num,
@@ -1838,7 +1827,6 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 		print_dep(__func__, "dep_need_set",
 			thr->pid, thr->buffer_id,
 			&dep_need_set[0], temp_size_need_set);
-		size_final = final_size_need_set;
 	}
 
 	if (jerk == FPSGO_JERK_INACTIVE)
@@ -1974,11 +1962,12 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 		}
 
 		if (strlen(dep_str) == 0)
-			snprintf(temp, sizeof(temp), "%d", fl->pid);
+			print_ret = snprintf(temp, sizeof(temp), "%d", fl->pid);
 		else
-			snprintf(temp, sizeof(temp), ",%d", fl->pid);
+			print_ret = snprintf(temp, sizeof(temp), ",%d", fl->pid);
 
-		if (strlen(dep_str) + strlen(temp) < MAIN_LOG_SIZE)
+		if (print_ret > 0 &&
+			(strlen(dep_str) + strlen(temp) < MAIN_LOG_SIZE))
 			strncat(dep_str, temp, strlen(temp));
 	}
 
@@ -1989,7 +1978,6 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 		max_cap,	"perf_idx_max");
 
 EXIT:
-	kfree(dep_final_need_set);
 	kfree(dep_str);
 	kfree(dep_need_set);
 }
@@ -2005,7 +1993,7 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 {
 	struct fpsgo_boost_attr *render_attr;
 #if FPSGO_MW
-	struct fpsgo_attr_by_pid *fpsgo_attr;
+	struct fpsgo_attr_by_pid *fpsgo_attr = NULL, *fpsgo_attr_tid = NULL;
 	struct fpsgo_boost_attr pid_attr;
 #endif  // FPSGO_MW
 
@@ -2182,11 +2170,10 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 			pid_attr.expected_fps_margin_by_pid;
 
 by_tid:
-	fpsgo_attr = NULL;
-	fpsgo_attr = fpsgo_find_attr_by_tid(thr->pid, 0);
-	if (!fpsgo_attr)
+	fpsgo_attr_tid = fpsgo_find_attr_by_tid(thr->pid, 0);
+	if (!fpsgo_attr_tid)
 		return;
-	pid_attr = fpsgo_attr->attr;
+	pid_attr = fpsgo_attr_tid->attr;
 	if (pid_attr.rescue_enable_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->rescue_enable_by_pid =
 			pid_attr.rescue_enable_by_pid;
@@ -2334,20 +2321,19 @@ static int fbt_query_running(int tgid, struct list_head *proc_list)
 	fbt_pidlist_add(gtsk->pid, proc_list);
 
 	list_for_each_entry(tsk, &gtsk->thread_group, thread_group) {
-		if (!tsk)
-			continue;
+		if (tsk) {
+			get_task_struct(tsk);
+			hit = fbt_task_running_locked(tsk);
+			pid = tsk->pid;
+			put_task_struct(tsk);
 
-		get_task_struct(tsk);
-		hit = fbt_task_running_locked(tsk);
-		pid = tsk->pid;
-		put_task_struct(tsk);
+			if (hit) {
+				ret = 1;
+				break;
+			}
 
-		if (hit) {
-			ret = 1;
-			break;
+			fbt_pidlist_add(pid, proc_list);
 		}
-
-		fbt_pidlist_add(pid, proc_list);
 	}
 
 EXIT:
@@ -2726,9 +2712,9 @@ static void fbt_do_jerk_locked(struct render_info *thr, struct fbt_jerk *jerk, i
 	struct cpu_ctrl_data *pld;
 	int temp_blc = 0, temp_blc_b = 0, temp_blc_m = 0;
 	int do_jerk;
-	int rescue_second_enable_final = thr->attr.rescue_second_enable_by_pid;
-	int separate_aa_final = thr->attr.separate_aa_by_pid;
-	int check_buffer_quota_final = thr->attr.check_buffer_quota_by_pid;
+	int rescue_second_enable_final;
+	int separate_aa_final;
+	int check_buffer_quota_final;
 
 	if (!thr)
 		return;
@@ -2736,6 +2722,9 @@ static void fbt_do_jerk_locked(struct render_info *thr, struct fbt_jerk *jerk, i
 	if (thr->boost_info.sbe_rescue != 0)
 		return;
 
+	rescue_second_enable_final = thr->attr.rescue_second_enable_by_pid;
+	separate_aa_final = thr->attr.separate_aa_by_pid;
+	check_buffer_quota_final = thr->attr.check_buffer_quota_by_pid;
 	blc_wt  = thr->boost_info.last_blc;
 	blc_wt_b = thr->boost_info.last_blc_b;
 	blc_wt_m = thr->boost_info.last_blc_m;
@@ -3652,7 +3641,7 @@ static int update_quota(struct fbt_boost_info *boost_info, int target_fps,
 		boost_info->quota_mod = -s32_target_time;
 
 	fpsgo_main_trace(
-		"%s raw[%d]:%d raw[%d]:%d window_cnt:%d target_fpks:%d cnt:%d sum:%d avg:%d std_sqr:%lld quota:%d mod:%d enq:%d enq_avg:%d deq:%d deq_avg:%d",
+		"%s raw[%d]:%lld raw[%d]:%lld window_cnt:%d target_fpks:%d cnt:%d sum:%d avg:%d std_sqr:%lld quota:%d mod:%d enq:%d enq_avg:%d deq:%d deq_avg:%d",
 		__func__, first_idx, boost_info->quota_raw[first_idx],
 		new_idx, boost_info->quota_raw[new_idx], window_cnt, target_fpks,
 		boost_info->quota_cnt, boost_info->quota, avg, std_square, quota_adj,
@@ -4100,19 +4089,19 @@ static int fbt_boost_policy(
 	int isolation_cap = 100, limit_max_cap = 100;
 	int getcap_ret = 0, filter_ret = 0, get_aa_ret = 0;
 	long aa_n, aa_b, aa_m;
-	int is_filter_frame_active = thread_info->attr.filter_frame_enable_by_pid;
-	int ff_window_size = thread_info->attr.filter_frame_window_size_by_pid;
-	int ff_kmin = thread_info->attr.filter_frame_kmin_by_pid;
-	int separate_aa_final = thread_info->attr.separate_aa_by_pid;
+	int is_filter_frame_active;
+	int ff_window_size;
+	int ff_kmin;
+	int separate_aa_final;
 	int max_cap = 100, max_cap_b = 100, max_cap_m = 100;
-	int rescue_enable_final = thread_info->attr.rescue_enable_by_pid;
-	int qr_enable_active = thread_info->attr.qr_enable_by_pid;
-	int gcc_enable_active = thread_info->attr.gcc_enable_by_pid;
-	int qr_t2wnt_x_final = thread_info->attr.qr_t2wnt_x_by_pid;
-	int qr_t2wnt_y_n_final = thread_info->attr.qr_t2wnt_y_n_by_pid;
-	int qr_t2wnt_y_p_final = thread_info->attr.qr_t2wnt_y_p_by_pid;
-	int blc_boost_final = thread_info->attr.blc_boost_by_pid;
-	int expected_fps_margin_final = thread_info->attr.expected_fps_margin_by_pid;
+	int rescue_enable_final;
+	int qr_enable_active;
+	int gcc_enable_active;
+	int qr_t2wnt_x_final;
+	int qr_t2wnt_y_n_final;
+	int qr_t2wnt_y_p_final;
+	int blc_boost_final;
+	int expected_fps_margin_final;
 	int s32_target_time;
 	long filtered_aa_n, filtered_aa_b, filtered_aa_m;
 	int limit_cap_b = 100, limit_cap_m = 100;
@@ -4121,6 +4110,19 @@ static int fbt_boost_policy(
 		FPSGO_LOGE("ERROR %d\n", __LINE__);
 		return 0;
 	}
+
+	is_filter_frame_active = thread_info->attr.filter_frame_enable_by_pid;
+	ff_window_size = thread_info->attr.filter_frame_window_size_by_pid;
+	ff_kmin = thread_info->attr.filter_frame_kmin_by_pid;
+	separate_aa_final = thread_info->attr.separate_aa_by_pid;
+	rescue_enable_final = thread_info->attr.rescue_enable_by_pid;
+	qr_enable_active = thread_info->attr.qr_enable_by_pid;
+	gcc_enable_active = thread_info->attr.gcc_enable_by_pid;
+	qr_t2wnt_x_final = thread_info->attr.qr_t2wnt_x_by_pid;
+	qr_t2wnt_y_n_final = thread_info->attr.qr_t2wnt_y_n_by_pid;
+	qr_t2wnt_y_p_final = thread_info->attr.qr_t2wnt_y_p_by_pid;
+	blc_boost_final = thread_info->attr.blc_boost_by_pid;
+	expected_fps_margin_final = thread_info->attr.expected_fps_margin_by_pid;
 
 	cur_ts = fpsgo_get_time();
 
@@ -4518,6 +4520,8 @@ static void fpsgo_update_cpufreq_to_now(unsigned long long new_ts_100us)
 	if (last_cb_ts != 0 && last_cb_ts < new_ts_100us) {
 		idx = lastest_idx;
 		idx = (idx + 1) >= LOADING_CNT ? 0 : (idx + 1);
+		if (idx < 0)
+			goto SKIP;
 		// unit: 100us
 		lastest_ts[idx] = new_ts_100us;
 		prev_cb_ts[idx] = last_cb_ts;
@@ -4527,8 +4531,6 @@ static void fpsgo_update_cpufreq_to_now(unsigned long long new_ts_100us)
 		xgf_trace("[%s] idx=%d, prev_cb_ts=%llu, lastest_ts=%llu, last_obv=%u",
 			__func__, idx, prev_cb_ts[idx], lastest_ts[idx], lastest_obv[idx]);
 
-		if (idx < 0)
-			goto SKIP;
 		if (lastest_obv_cl[idx] == NULL || lastest_is_cl_isolated[idx] == NULL)
 			goto SKIP;
 
@@ -4694,8 +4696,8 @@ static int fbt_get_cl_loading_exp(int pid, unsigned long long buffer_id,
 	unsigned long long loading_result = 0U;
 	unsigned long long prev_ts, next_ts, new_ts_100us;
 	unsigned long long render_last_cb_ts, freq_last_cb_ts;
-	unsigned long long *cpu_freq_ts_prev, *cpu_freq_ts_next;
-	unsigned int *cpu_obv, *cpu_isolated, cpy_current_cl_obv;
+	unsigned long long *cpu_freq_ts_prev = NULL, *cpu_freq_ts_next = NULL;
+	unsigned int *cpu_obv = NULL, *cpu_isolated = NULL, cpy_current_cl_obv;
 
 	new_ts_100us = ts_100us;
 
@@ -4743,7 +4745,7 @@ static int fbt_get_cl_loading_exp(int pid, unsigned long long buffer_id,
 		__func__, pid, buffer_id, render_last_cb_ts, new_ts_100us);
 
 	if (!render_last_cb_ts) {
-		xgf_trace("[FBT][%s]pid=%d, bufferid=%d new frame!", __func__, pid, buffer_id);
+		xgf_trace("[FBT][%s]pid=%d, bufferid=%llu new frame!", __func__, pid, buffer_id);
 		goto out;
 	}
 	if (!freq_last_cb_ts || !new_ts_100us) {
@@ -4822,6 +4824,7 @@ static unsigned long long fbt_adjust_loading_exp(struct render_info *thr,
 		&loading, new_ts_100us, prev_cb_ts, lastest_ts, lastest_obv, &last_cb_ts,
 		&last_obv);
 	fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id, loading, "q2q_loading");
+	xgf_trace("[FBT][%s] fbt_get_loading_exp ret=%d", __func__, ret);
 
 	if (!adjust_loading || cluster_num == 1) {
 		adjust = FPSGO_ADJ_NONE;
@@ -5038,6 +5041,9 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 	boost = &(thr->boost_info);
 
 	runtime = thr->running_time;
+
+	if (boost->f_iter < 0)
+		boost->f_iter = 0;
 	boost->frame_info[boost->f_iter].running_time = runtime;
 	boost->f_iter = fbt_get_next_frame_iter(boost->f_iter);
 
@@ -5137,6 +5143,8 @@ void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap)
 	if (last_cb_ts != 0) {
 		idx = lastest_idx;
 		idx = (idx + 1) >= LOADING_CNT ? 0 : (idx + 1);
+		if (idx < 0)
+			goto SKIP;
 		// unit: 100us
 		lastest_ts[idx] = new_ts;
 		prev_cb_ts[idx] = last_cb_ts;
@@ -5146,8 +5154,6 @@ void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap)
 		xgf_trace("[%s] idx=%d, prev_cb_ts=%llu, lastest_ts=%llu, last_obv=%u",
 			__func__, idx, prev_cb_ts[idx], lastest_ts[idx], lastest_obv[idx]);
 
-		if (idx < 0)
-			goto SKIP;
 		if (lastest_obv_cl[idx] == NULL || lastest_is_cl_isolated[idx] == NULL)
 			goto SKIP;
 
@@ -5476,12 +5482,13 @@ void fpsgo_base2fbt_set_min_cap(struct render_info *thr, int min_cap,
 	int max_cap = 100, max_cap_b = 100, max_cap_m = 100;
 
 	mutex_lock(&fbt_mlock);
-	fbt_cal_min_max_cap(thr, min_cap, min_cap_b, min_cap_m, FPSGO_JERK_INACTIVE,
-		thr->pid, thr->buffer_id, &min_cap, &min_cap_b, &min_cap_m,
-		&max_cap, &max_cap_b, &max_cap_m);
-	fbt_set_min_cap_locked(thr, min_cap, min_cap_b, min_cap_m, max_cap,
-		max_cap_b, max_cap_m, FPSGO_JERK_INACTIVE);
 	if (thr) {
+		fbt_cal_min_max_cap(thr, min_cap, min_cap_b, min_cap_m, FPSGO_JERK_INACTIVE,
+			thr->pid, thr->buffer_id, &min_cap, &min_cap_b, &min_cap_m,
+			&max_cap, &max_cap_b, &max_cap_m);
+		fbt_set_min_cap_locked(thr, min_cap, min_cap_b, min_cap_m, max_cap,
+			max_cap_b, max_cap_m, FPSGO_JERK_INACTIVE);
+
 		thr->boost_info.last_blc = min_cap;
 		thr->boost_info.last_blc_b = min_cap_b;
 		thr->boost_info.last_blc_m = min_cap_m;
@@ -5498,9 +5505,6 @@ void fpsgo_base2fbt_clear_llf_policy(struct render_info *thr)
 
 	for (i = 0; i < thr->dep_valid_size; i++) {
 		struct fpsgo_loading *fl = &(thr->dep_arr[i]);
-
-		if (!fl)
-			continue;
 
 		if (fl->prefer_type == FPSGO_PREFER_NONE)
 			continue;
@@ -6134,7 +6138,7 @@ struct xgf_thread_loading fbt_xgff_list_loading_add(int pid,
 	obj.loading = 0;
 	obj.last_cb_ts = new_ts;
 
-	xgf_trace("[XGFF][%s] reset pid=%d,buffer_id=%llu,ts=%d", __func__,
+	xgf_trace("[XGFF][%s] reset pid=%d,buffer_id=%llu,ts=%llu", __func__,
 		pid, buffer_id, new_ts);
 	return obj;
 }
@@ -6170,11 +6174,12 @@ long fbt_xgff_get_loading_by_cluster(struct xgf_thread_loading *ploading, unsign
 	}
 
 out:
-	ploading->last_cb_ts = new_ts_100us;
-	fpsgo_systrace_c_fbt_debug(ploading->pid, ploading->buffer_id,
-		new_ts_100us, "xgff_last_cb_ts");
-
-	if (!area)
+	if (ploading) {
+		ploading->last_cb_ts = new_ts_100us;
+		fpsgo_systrace_c_fbt_debug(ploading->pid, ploading->buffer_id,
+			new_ts_100us, "xgff_last_cb_ts");
+	}
+	if (ploading && !area)
 		fpsgo_systrace_c_fbt_debug(ploading->pid, ploading->buffer_id,
 			loading, "xgff_loading");
 
