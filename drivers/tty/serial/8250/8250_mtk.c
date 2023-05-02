@@ -488,7 +488,6 @@ static void mtk_save_uart_reg(struct uart_8250_port *up, unsigned int *reg_buf)
 	reg_buf[8] = serial_in(up, MTK_UART_EFR);
 	reg_buf[9] = serial_in(up, MTK_UART_XON1);
 	reg_buf[10] = serial_in(up, MTK_UART_XOFF1);
-	serial_out(up, MTK_UART_FEATURE_SEL, 0x00);
 	reg_buf[11] = serial_in(up, MTK_UART_DEBUG0);
 	reg_buf[12] = serial_in(up, MTK_UART_DEBUG1);
 	reg_buf[13] = serial_in(up, MTK_UART_DEBUG2);
@@ -502,6 +501,13 @@ static void mtk_save_uart_reg(struct uart_8250_port *up, unsigned int *reg_buf)
 	reg_buf[21] = serial_in(up, UART_IIR);
 	reg_buf[22] = serial_in(up, UART_LSR);
 	reg_buf[23] = serial_in(up, MTK_UART_DMA_EN);
+	reg_buf[24] = serial_in(up, MTK_UART_ESCAPE_DAT);
+	reg_buf[25] = serial_in(up, MTK_UART_ESCAPE_EN);
+	reg_buf[26] = serial_in(up, MTK_UART_XON2);
+	reg_buf[27] = serial_in(up, MTK_UART_XOFF2);
+	reg_buf[28] = serial_in(up, MTK_UART_FCR_RD);
+	reg_buf[29] = serial_in(up, UART_MCR);
+	serial_out(up, MTK_UART_FEATURE_SEL, 0x00);
 	spin_unlock_irqrestore(&up->port.lock, flags);
 }
 
@@ -535,14 +541,13 @@ void mtk8250_data_dump(void)
 		unsigned long long endtime = rx_record.rec[idx].trans_time;
 		unsigned long ns = do_div(endtime, 1000000000);
 
-		pr_info("[%s] [%5lu.%06lu] total=%llu,idx=%d,port_id=%d,len=%d,pos=%d,copy=%d\n",
-			__func__, (unsigned long)endtime, ns / 1000,
+		pr_info("[%s] [%s: %5lu.%06lu] total=%llu,idx=%d,port_id=%d,len=%d,pos=%d,copy=%d\n",
+			__func__, "rx_complete_t", (unsigned long)endtime, ns / 1000,
 			rx_record.rec_total, idx, rx_record.rec[idx].port_id, len_,
 			rx_record.rec[idx].r_rx_pos, rx_record.rec[idx].r_copied);
 
-		pr_info("[%s] [%5lu.%06lu] tty_port: %llu, cpu:%d, pid:%d, comm:%s\n",
-			__func__, (unsigned long)endtime, ns / 1000,
-			rx_record.rec[idx].tty_port_addr, rx_record.rec[idx].cur_cpu,
+		pr_info("[%s] tty_port: 0x%llx, cpu:%d, pid:%d, comm:%s\n",
+			__func__, rx_record.rec[idx].tty_port_addr, rx_record.rec[idx].cur_cpu,
 			rx_record.rec[idx].cur_pid, rx_record.rec[idx].cur_comm);
 
 		if (len_ <= UART_DUMP_BUF_LEN) {
@@ -556,7 +561,7 @@ void mtk8250_data_dump(void)
 					(void)snprintf(raw_buf + 3 * cnt_, 4, "%02X ",
 						ptr[cnt_ + cyc_]);
 				raw_buf[3 * cnt_] = '\0';
-				pr_info("[%d] data=%s\n", cyc_, raw_buf);
+				pr_info("[%s] [dma_rx] Rx[%d] data=%s\n", __func__, cyc_, raw_buf);
 				cyc_ += 256;
 			}
 		}
@@ -655,37 +660,34 @@ int mtk8250_uart_dump(struct tty_struct *tty)
 	mtk8250_uart_hub_dump_with_tag("8250_uarthub");
 #endif
 
-	pr_info("[%s] line=%d,lcr=0x%x,highs=0x%x,count=0x%x,point=0x%x,dll=0x%x,\n"
-		"dlh=0x%x,fre_l=0x%x,fre_m=0x%x,efr=0x%x,xon1=0x%x,xoff1=0x%x\n",
-		__func__, data->line,
-		uart_reg_buf[0], uart_reg_buf[1], uart_reg_buf[2], uart_reg_buf[3],
-		uart_reg_buf[4], uart_reg_buf[5], uart_reg_buf[6], uart_reg_buf[7],
-		uart_reg_buf[8], uart_reg_buf[9], uart_reg_buf[10]);
-	pr_info("[%s] 0x60=0x%x,0x64=0x%x,0x68=0x%x,0x6c=0x%x,\n"
-		"0x70=0x%x,0x74=0x%x,0x78=0x%x,0x7c=0x%x,0x80=0x%x,\n"
-		"ier=0x%x,iir=0x%x, LSR=0x%x, DMA_EN=0x%x\n",
-		__func__, uart_reg_buf[11], uart_reg_buf[12], uart_reg_buf[13],
-		uart_reg_buf[14], uart_reg_buf[15], uart_reg_buf[16],
-		uart_reg_buf[17], uart_reg_buf[18], uart_reg_buf[19],
-		uart_reg_buf[20], uart_reg_buf[21], uart_reg_buf[22],
-		uart_reg_buf[23]);
+	pr_info("[%s] line=%d,lcr=0x%x,hs=0x%x,count=0x%x,point=0x%x,dll=0x%x,dlh=0x%x,frel=0x%x,"
+		"frem=0x%x,efr=0x%x,xon1=0x%x,xoff1=0x%x,ier=0x%x,lsr=0x%x,dma_en=0x%x\n",
+		__func__, data->line, uart_reg_buf[0], uart_reg_buf[1], uart_reg_buf[2],
+		uart_reg_buf[3], uart_reg_buf[4], uart_reg_buf[5], uart_reg_buf[6],
+		uart_reg_buf[7], uart_reg_buf[8], uart_reg_buf[9], uart_reg_buf[10],
+		uart_reg_buf[20], uart_reg_buf[22], uart_reg_buf[23]);
+
+	pr_info("[%s] line=%d,db0=0x%x,db1=0x%x,db2=0x%x,db3=0x%x,db4=0x%x,db5=0x%x,db6=0x%x,"
+		"db7=0x%x,db8=0x%x,iir=0x%x,fcr=0x%x,mcr=0x%x,esc_dat=0x%x,esc_en=0x%x\n",
+		__func__, data->line, uart_reg_buf[11], uart_reg_buf[12], uart_reg_buf[13],
+		uart_reg_buf[14], uart_reg_buf[15], uart_reg_buf[16], uart_reg_buf[17],
+		uart_reg_buf[18], uart_reg_buf[19], uart_reg_buf[21], uart_reg_buf[28],
+		uart_reg_buf[29], uart_reg_buf[24], uart_reg_buf[25]);
+
 #ifdef CONFIG_SERIAL_8250_DMA
-	pr_info("[apdma_rx] int_flag=0x%x,int_en=0x%x,en=0x%x,flush=0x%x,addr=0x%x,\n"
-		"len=0x%x,thre=0x%x,wpt=0x%x,rpt=0x%x,int_buf_size=0x%x\n"
-		"valid_size=0x%x,left_size=0x%x,debug_stat=0x%x\n",
-		apdma_rx_reg_buf[0], apdma_rx_reg_buf[1], apdma_rx_reg_buf[2],
-		apdma_rx_reg_buf[3], apdma_rx_reg_buf[4], apdma_rx_reg_buf[5],
-		apdma_rx_reg_buf[6], apdma_rx_reg_buf[7], apdma_rx_reg_buf[8],
-		apdma_rx_reg_buf[9], apdma_rx_reg_buf[10], apdma_rx_reg_buf[11],
-		apdma_rx_reg_buf[12]);
-	pr_info("[apdma_tx] int_flag=0x%x,int_en=0x%x,en=0x%x,flush=0x%x,addr=0x%x,\n"
-		"len=0x%x,thre=0x%x,wpt=0x%x,rpt=0x%x,int_buf_size=0x%x\n"
-		"valid_size=0x%x,left_size=0x%x,debug_stat=0x%x\n",
-		apdma_tx_reg_buf[0], apdma_tx_reg_buf[1], apdma_tx_reg_buf[2],
-		apdma_tx_reg_buf[3], apdma_tx_reg_buf[4], apdma_tx_reg_buf[5],
-		apdma_tx_reg_buf[6], apdma_tx_reg_buf[7], apdma_tx_reg_buf[8],
-		apdma_tx_reg_buf[9], apdma_tx_reg_buf[10], apdma_tx_reg_buf[11],
-		apdma_tx_reg_buf[12]);
+	pr_info("[%s] [apdma_rx] int_flag=0x%x,int_en=0x%x,en=0x%x,flush=0x%x,addr=0x%x,len=0x%x,"
+		"thre=0x%x,wpt=0x%x,rpt=0x%x,int_sz=0x%x,valid_sz=0x%x,left_sz=0x%x,debug=0x%x\n",
+		__func__, apdma_rx_reg_buf[0], apdma_rx_reg_buf[1], apdma_rx_reg_buf[2],
+		apdma_rx_reg_buf[3], apdma_rx_reg_buf[4], apdma_rx_reg_buf[5], apdma_rx_reg_buf[6],
+		apdma_rx_reg_buf[7], apdma_rx_reg_buf[8], apdma_rx_reg_buf[9], apdma_rx_reg_buf[10],
+		apdma_rx_reg_buf[11], apdma_rx_reg_buf[12]);
+
+	pr_info("[%s] [apdma_tx] int_flag=0x%x,int_en=0x%x,en=0x%x,flush=0x%x,addr=0x%x,len=0x%x,"
+		"thre=0x%x,wpt=0x%x,rpt=0x%x,int_sz=0x%x,valid_sz=0x%x,left_sz=0x%x,debug=0x%x\n",
+		__func__, apdma_tx_reg_buf[0], apdma_tx_reg_buf[1], apdma_tx_reg_buf[2],
+		apdma_tx_reg_buf[3], apdma_tx_reg_buf[4], apdma_tx_reg_buf[5], apdma_tx_reg_buf[6],
+		apdma_tx_reg_buf[7], apdma_tx_reg_buf[8], apdma_tx_reg_buf[9], apdma_tx_reg_buf[10],
+		apdma_tx_reg_buf[11], apdma_tx_reg_buf[12]);
 	mtk8250_uart_apdma_data_dump(up->dma->rxchan);
 	mtk8250_uart_apdma_data_dump(up->dma->txchan);
 #endif
@@ -795,21 +797,19 @@ void mtk8250_uart_end_record(struct tty_struct *tty)
 
 	mtk_save_uart_reg(up, uart_dbg_reg);
 
-	pr_info("[%s] start 0x60=0x%x,0x64=0x%x,0x68=0x%x,0x6c=0x%x,\n"
-		"0x70=0x%x,0x74=0x%x,0x78=0x%x,0x7c=0x%x,0x80=0x%x,LSR=0x%x,\n"
-		"DMA_EN=0x%x\n",
+	pr_info("[%s] start db0=0x%x,db1=0x%x,db2=0x%x,db3=0x%x,db4=0x%x,db5=0x%x,db6=0x%x,"
+		"db7=0x%x,db8=0x%x,lsr=0x%x,dma_en=0x%x,iir=0x%x,ier=0x%x,fcr=0x%x\n",
 		__func__, uart_reg_buf[11], uart_reg_buf[12], uart_reg_buf[13],
-		uart_reg_buf[14], uart_reg_buf[15], uart_reg_buf[16],
-		uart_reg_buf[17], uart_reg_buf[18], uart_reg_buf[19],
-		uart_reg_buf[22], uart_reg_buf[23]);
+		uart_reg_buf[14], uart_reg_buf[15], uart_reg_buf[16], uart_reg_buf[17],
+		uart_reg_buf[18], uart_reg_buf[19], uart_reg_buf[22], uart_reg_buf[23],
+		uart_reg_buf[21], uart_reg_buf[20], uart_reg_buf[28]);
 
-	pr_info("[%s] end 0x60=0x%x,0x64=0x%x,0x68=0x%x,0x6c=0x%x,\n"
-		"0x70=0x%x,0x74=0x%x,0x78=0x%x,0x7c=0x%x,0x80=0x%x,,LSR=0x%x,\n"
-		"DMA_EN=0x%x\n",
+	pr_info("[%s] end   db0=0x%x,db1=0x%x,db2=0x%x,db3=0x%x,db4=0x%x,db5=0x%x,db6=0x%x,"
+		"db7=0x%x,db8=0x%x,lsr=0x%x,dma_en=0x%x,iir=0x%x,ier=0x%x,fcr=0x%x\n",
 		__func__, uart_dbg_reg[11], uart_dbg_reg[12], uart_dbg_reg[13],
-		uart_dbg_reg[14], uart_dbg_reg[15], uart_dbg_reg[16],
-		uart_dbg_reg[17], uart_dbg_reg[18], uart_dbg_reg[19],
-		uart_dbg_reg[22], uart_dbg_reg[23]);
+		uart_dbg_reg[14], uart_dbg_reg[15], uart_dbg_reg[16], uart_dbg_reg[17],
+		uart_dbg_reg[18], uart_dbg_reg[19], uart_dbg_reg[22], uart_dbg_reg[23],
+		uart_dbg_reg[21], uart_dbg_reg[20], uart_dbg_reg[28]);
 
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	KERNEL_UARTHUB_debug_dump_tx_rx_count("mtk8250_uarthub", DUMP1);
@@ -1141,11 +1141,7 @@ static void mtk8250_dma_rx_complete(void *param)
 		memcpy(rx_record.rec[idx].cur_comm, current->comm,
 			sizeof(rx_record.rec[idx].cur_comm));
 		rx_record.rec[idx].cur_comm[15] = 0;
-#if defined(CONFIG_SMP) && defined(CONFIG_THREAD_INFO_IN_TASK)
-		rx_record.rec[idx].cur_cpu = 0xff;
-#else
-		rx_record.rec[idx].cur_cpu = 0xff;
-#endif
+		rx_record.rec[idx].cur_cpu = raw_smp_processor_id();
 	}
 
 	if ((of_device_get_match_data(up->port.dev) != NULL) && !data->support_hub) {
