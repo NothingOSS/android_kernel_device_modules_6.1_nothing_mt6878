@@ -60,6 +60,21 @@ static void log_fmt_ops(struct mtk_cam_video_device *node,
 	}
 }
 
+static bool is_multi_plane_node(struct mtk_cam_video_device *node)
+{
+	if (!node)
+		return false;
+
+	if (1)  /* contorl key */
+		return false;
+
+	if (node->desc.id == MTK_RAW_RAWI_2_IN ||
+	    node->desc.id == MTK_RAW_PURE_RAW_OUT)
+		return true;
+
+	return false;
+}
+
 static int mtk_cam_video_set_fmt(struct mtk_cam_video_device *node,
 				 struct v4l2_format *f);
 
@@ -106,12 +121,16 @@ static int mtk_cam_vb2_queue_setup(struct vb2_queue *vq,
 	if (*num_planes) {
 		if (sizes[0] < size || *num_planes != 1)
 			return -EINVAL;
-	} else {
-		if (node->desc.id == MTK_RAW_PURE_RAW_OUT)
+	} else if (is_multi_plane_node(node)) {
+		*num_planes = MULTI_PLANE_NUM;
+		for (i = 0; i < *num_planes; i++) {
+			sizes[i] = size;
 			dev_dbg(cam->dev,
-				"[PURE-RAW]%s:%s handle multi plane\n",
-				__func__, node->desc.name);
-
+				"[%s] id:%d, name:%s, np:%d, i:%d, size:%d\n",
+				__func__, node->desc.id, node->desc.name,
+				*num_planes, i, sizes[i]);
+		}
+	} else {
 		*num_planes = 1;
 		sizes[0] = size;
 		alloc_devs[0] = cam->smmu_dev;
@@ -133,12 +152,35 @@ static int mtk_cam_vb2_queue_setup(struct vb2_queue *vq,
 	return 0;
 }
 
+static int mtk_cam_vb2_buf_init_mp(struct vb2_buffer *vb)
+{
+	struct mtk_cam_video_device *node = mtk_cam_vbq_to_vdev(vb->vb2_queue);
+	struct device *dev = vb->vb2_queue->dev;
+	struct mtk_cam_buffer *buf;
+	int plane;
+
+	buf = mtk_cam_vb2_buf_to_dev_buf(vb);
+
+	for (plane = 0; plane < vb->num_planes; plane++) {
+		buf->mdaddr[plane] = vb2_dma_contig_plane_dma_addr(vb, plane);
+
+		dev_dbg(dev, "%s:%s map mdaddr[%d]:%pad length:%d\n",
+			__func__, node->desc.name, plane, &buf->mdaddr[plane],
+			vb->planes[plane].length);
+	}
+
+	return 0;
+}
+
 static int mtk_cam_vb2_buf_init(struct vb2_buffer *vb)
 {
 	struct mtk_cam_video_device *node = mtk_cam_vbq_to_vdev(vb->vb2_queue);
 	struct device *dev = vb->vb2_queue->dev;
 	struct mtk_cam_buffer *buf;
 	dma_addr_t addr;
+
+	if (is_multi_plane_node(node))
+		return mtk_cam_vb2_buf_init_mp(vb);
 
 	buf = mtk_cam_vb2_buf_to_dev_buf(vb);
 
@@ -151,11 +193,7 @@ static int mtk_cam_vb2_buf_init(struct vb2_buffer *vb)
 	if (!node->desc.smem_alloc)
 		return 0;
 
-	if (node->desc.id == MTK_RAW_PURE_RAW_OUT)
-		dev_dbg(dev,
-			"[PURE-RAW]%s:%s handle multi plane\n",
-			__func__, node->desc.name);
-
+	/* meta input only */
 	/* Use coherent address to get iova address */
 	addr = dma_map_resource(dev, buf->daddr, vb->planes[0].length,
 				DMA_BIDIRECTIONAL, DMA_ATTR_SKIP_CPU_SYNC);
@@ -383,10 +421,29 @@ static int mtk_cam_vb2_buf_prepare(struct vb2_buffer *vb)
 	else
 		size = fmt->fmt.pix_mp.plane_fmt[0].sizeimage;
 
-	if (node->desc.id == MTK_RAW_PURE_RAW_OUT)
-		dev_dbg(vb->vb2_queue->dev,
-			"[PURE-RAW]%s:%s handle multi plane\n",
-			__func__, node->desc.name);
+	mtk_buf->valid_mp = 0;
+	if (is_multi_plane_node(node)) {
+		for (plane = 0; plane < vb->num_planes; ++plane) {
+			/* check size */
+			if (vb2_plane_size(vb, plane) <= DUMMY_BUF_SIZE) {
+				dev_dbg(vb->vb2_queue->dev,
+					"%s:%s p[%d], dummy vb2_sz:%lu\n",
+					__func__, node->desc.name, plane,
+					vb2_plane_size(vb, plane));
+				continue;
+			}
+			/* set payload */
+			mtk_buf->valid_mp++;
+			v4l2_buf->field = V4L2_FIELD_NONE;
+			vb2_set_plane_payload(vb, plane, size);
+			dev_dbg(vb->vb2_queue->dev,
+				"%s:%s p[%d], vb2/fmt_sz:%lu/%u, payload:%lu\n",
+				__func__, node->desc.name, plane,
+				vb2_plane_size(vb, plane), size,
+				vb2_get_plane_payload(vb, plane));
+		}
+		return 0;
+	}
 
 	if (vb2_plane_size(vb, 0) < size) {
 		dev_info_ratelimited(vb->vb2_queue->dev, "%s: plane size is too small:%lu<%u\n",
@@ -526,11 +583,7 @@ static void mtk_cam_vb2_buf_cleanup(struct vb2_buffer *vb)
 	if (!node->desc.smem_alloc)
 		return;
 
-	if (node->desc.id == MTK_RAW_PURE_RAW_OUT)
-		dev_dbg(vb->vb2_queue->dev,
-			"[PURE-RAW]%s:%s handle multi plane\n",
-			__func__, node->desc.name);
-
+	/* meta input only */
 	buf = mtk_cam_vb2_buf_to_dev_buf(vb);
 	dma_unmap_page_attrs(dev, buf->daddr,
 			     vb->planes[0].length,

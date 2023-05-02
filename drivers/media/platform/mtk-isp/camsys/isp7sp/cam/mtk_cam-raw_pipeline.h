@@ -16,8 +16,8 @@
 /* FIXME: dynamic config image max/min w/h */
 #define IMG_MAX_WIDTH		12000
 #define IMG_MAX_HEIGHT		9000
-#define IMG_MIN_WIDTH		80
-#define IMG_MIN_HEIGHT		60
+#define IMG_MIN_WIDTH		40
+#define IMG_MIN_HEIGHT		30
 #define YUV_GROUP1_MAX_WIDTH	8160
 #define YUV_GROUP1_MAX_HEIGHT	3896
 #define YUV_GROUP2_MAX_WIDTH	3060
@@ -51,6 +51,7 @@
 
 #define IMG_PIX_ALIGN		2
 
+#define DUMMY_BUF_SIZE 4096  /* 1 page size */
 
 #define PREISP
 
