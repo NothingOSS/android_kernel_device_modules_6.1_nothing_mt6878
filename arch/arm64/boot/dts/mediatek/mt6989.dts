@@ -9969,7 +9969,7 @@
 
 	vcp: vcp@1ec00000 {
 		compatible = "mediatek,vcp";
-		vcp-support = <0>;
+		vcp-support = <1>;
 		status = "okay";
 		reg = <0 0x1ea00000 0 0x60000>, /* tcm */
 		      <0 0x1ec24000 0 0x1000>, /* cfg */
@@ -10120,25 +10120,25 @@
 
 	vcp_io2: vcp-iommu-vdec {
 		compatible =  "mediatek,vcp-io-vdec";
-		vcp-support = <0>;
+		vcp-support = <2>;
 		mtk,smmu-shared = <&mm_smmu_mmup_normal>;
 	};
 
 	vcp_io3: vcp-iommu-venc {
 		compatible =  "mediatek,vcp-io-venc";
-		vcp-support = <0>;
+		vcp-support = <3>;
 		mtk,smmu-shared = <&mm_smmu_mmup_normal>;
 	};
 
 	vcp_io4: vcp-iommu-work {
 		compatible = "mediatek,vcp-io-work";
-		vcp-support = <0>;
+		vcp-support = <4>;
 		mtk,smmu-shared = <&mm_smmu_mmup_normal>;
 	};
 
 	vcp_io5: vcp-iommu-sec {
 		compatible =  "mediatek,vcp-io-sec";
-		vcp-support = <0>;
+		vcp-support = <7>;
 		mtk,smmu-shared = <&mm_smmu_mmup_protected>;
 	};
 
