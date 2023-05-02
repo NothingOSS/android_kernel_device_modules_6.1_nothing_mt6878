@@ -2859,9 +2859,135 @@
 			reg = <0 0x1000c000 0 0xe00>;
 		};
 
-		fhctl@1000ce00 {
-			compatible = "mediatek,fhctl";
-			reg = <0 0x1000ce00 0 0x200>;
+		fhctl: fhctl@1000ce00 {
+			/*
+			 *mcupm-supply = <&mcupm>;
+			 *gpueb-supply = <&gpueb>;
+			 */
+			compatible = "mediatek,mt6989-fhctl";
+			reg = <0 0x1000ce00 0 0x200>, //AP FHCTL base
+				<0 0x1000c000 0 0xe00>, //APMIX base
+
+				<0 0x1000ce00 0 0x200>, //vcp base
+				<0 0x1000c000 0 0xe00>, //vcp apmix
+
+				<0 0x13fa0100 0 0x030>, //GPU0 EN
+				<0 0x13fa0000 0 0x100>, //GPU APMIX
+				<0 0x13fa0500 0 0x030>,
+				<0 0x13fa0400 0 0x100>,
+				<0 0x13fa0900 0 0x030>,
+				<0 0x13fa0800 0 0x100>,
+
+				<0 0x0c030100 0 0x030>,//mcupm EN
+				<0 0x0c030000 0 0x100>,//mcupm APMIX
+				<0 0x0c030500 0 0x030>,
+				<0 0x0c030400 0 0x100>,
+				<0 0x0c030900 0 0x030>,
+				<0 0x0c030800 0 0x100>,
+				<0 0x0c030d00 0 0x030>,
+				<0 0x0c030c00 0 0x100>,
+				<0 0x0c034100 0 0x030>,
+				<0 0x0c034000 0 0x100>;
+
+			map0 {
+				domain = "top0";
+				method = "fhctl-ap";
+				mainpll2 {
+					fh-id = <0>;
+					perms = <0x1e>;
+				};
+				mmpll2 {
+					fh-id = <1>;
+					perms = <0x1e>;
+				};
+				mmpll {
+					fh-id = <6>;
+					perms = <0x1e>;
+				};
+				mainpll {
+					fh-id = <7>;
+					perms = <0x1e>;
+				};
+				msdcpll {
+					fh-id = <8>;
+					perms = <0x1e>;
+				};
+				adsppll {
+					fh-id = <9>;
+					perms = <0x1e>;
+				};
+				tvdpll {
+					fh-id = <11>;
+				};
+			};
+
+			map1 {
+				domain = "top1";
+				method = "fhctl-ap";
+				imgpll {
+					fh-id = <10>;
+				};
+			};
+
+			map2 {
+				domain = "gpu0";
+				method = "fhctl-ap";
+				mfg-ao-mfgpll {
+					fh-id = <0>;
+				};
+			};
+
+			map3 {
+				domain = "gpu1";
+				method = "fhctl-ap";
+				mfgsc0-ao-mfgpll-sc0 {
+					fh-id = <0>;
+				};
+			};
+
+			map4 {
+				domain = "gpu2";
+				method = "fhctl-ap";
+				mfgsc1-ao-mfgpll-sc1 {
+					fh-id = <0>;
+				};
+			};
+
+			map5 {
+				domain = "mcu0";
+				method = "fhctl-ap";
+				buspll {
+					fh-id = <0>;
+				};
+			};
+			map6 {
+				domain = "mcu1";
+				method = "fhctl-ap";
+				cpu0pll {
+					fh-id = <0>;
+				};
+			};
+			map7 {
+				domain = "mcu2";
+				method = "fhctl-ap";
+				cpu1pll {
+					fh-id = <0>;
+				};
+			};
+			map8 {
+				domain = "mcu3";
+				method = "fhctl-ap";
+				cpu2pll {
+					fh-id = <0>;
+				};
+			};
+			map9 {
+				domain = "mcu4";
+				method = "fhctl-ap";
+				ptppll {
+					fh-id = <0>;
+				};
+			};
 		};
 
 		fdvfs: fdvfs@c068200 {
