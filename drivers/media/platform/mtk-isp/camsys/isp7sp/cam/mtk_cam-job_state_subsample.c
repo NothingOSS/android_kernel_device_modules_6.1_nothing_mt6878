@@ -117,6 +117,7 @@ static int subsample_send_event(struct mtk_cam_job_state *s,
 	s_acc.s = s;
 	s_acc.seq_no = s->seq_no;
 	s_acc.ops = &_acc_ops;
+	p->s_params = &s->s_params;
 
 	loop_each_transition(&subsample_sensor_tbl,
 				   &s_acc, SENSOR_STATE, p);

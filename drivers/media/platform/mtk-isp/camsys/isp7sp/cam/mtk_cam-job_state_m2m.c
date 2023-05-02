@@ -69,6 +69,7 @@ static int m2m_send_event(struct mtk_cam_job_state *s,
 	s_acc.s = s;
 	s_acc.seq_no = s->seq_no;
 	s_acc.ops = &_acc_ops;
+	p->s_params = &s->s_params;
 
 	ret = loop_each_transition(&m2m_isp_tbl, &s_acc, ISP_STATE, p);
 
