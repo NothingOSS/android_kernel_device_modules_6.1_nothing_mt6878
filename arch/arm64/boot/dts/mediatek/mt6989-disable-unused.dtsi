@@ -465,7 +465,8 @@
 		reg = <0x84>;
 		clocks =
 			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB15>,
-			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_DIP_NR>;
+			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_DIP_NR>,
+			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB39>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_DIP1>;
 	};
 
@@ -958,6 +959,7 @@
 			<&topckgen_clk CLK_TOP_APLL12_CK_DIV_ETDM_IN1>,
 			<&topckgen_clk CLK_TOP_APLL12_CK_DIV_ETDM_OUT1>,
 			<&topckgen_clk CLK_TOP_APLL12_CK_DIV10>,
+			<&topckgen_clk CLK_TOP_EFUSE_SEL>,
 			<&topckgen_clk CLK_TOP_DSP_SEL>,
 			<&topckgen_clk CLK_TOP_SPI0_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_SPI1_BCLK_SEL>,

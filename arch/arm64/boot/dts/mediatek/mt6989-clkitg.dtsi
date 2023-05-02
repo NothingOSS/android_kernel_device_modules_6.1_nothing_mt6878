@@ -10,6 +10,7 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0>;
 		clocks =
+			<&topckgen_clk CLK_TOP_EFUSE_SEL>,
 			<&topckgen_clk CLK_TOP_DSP_SEL>,
 			<&topckgen_clk CLK_TOP_MFG_EB_SEL>,
 			<&topckgen_clk CLK_TOP_SPI0_BCLK_SEL>,
@@ -120,17 +121,6 @@
 			<&infracfg_ao_clk CLK_IFRAO_RG_MMW_DPMAIF26M>,
 			<&infracfg_ao_clk CLK_IFRAO_RG_SOCSYS_FATB>,
 			<&infracfg_ao_clk CLK_IFRAO_RG_SOCSYS_SDF>,
-			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
-			<&apmixedsys_clk CLK_APMIXED_MSDCPLL>,
-			<&apmixedsys_clk CLK_APMIXED_MMPLL>,
-			<&apmixedsys_clk CLK_APMIXED_ADSPPLL>,
-			<&apmixedsys_clk CLK_APMIXED_APLL1>,
-			<&apmixedsys_clk CLK_APMIXED_APLL2>,
-			<&apmixedsys_clk CLK_APMIXED_MAINPLL2>,
-			<&apmixedsys_clk CLK_APMIXED_UNIVPLL2>,
-			<&apmixedsys_clk CLK_APMIXED_MMPLL2>,
-			<&apmixedsys_clk CLK_APMIXED_TVDPLL>,
-			<&apmixedsys_clk CLK_APMIXED_IMGPLL>,
 			<&pericfg_ao_clk CLK_PERAOP_UART0>,
 			<&pericfg_ao_clk CLK_PERAOP_UART1>,
 			<&pericfg_ao_clk CLK_PERAOP_UART2>,
@@ -364,6 +354,7 @@
 			<&dip_nr1_dip1_clk CLK_DIP_NR1_DIP1_DIP_NR1>,
 			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB15>,
 			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_DIP_NR>,
+			<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB39>,
 			<&wpe1_dip1_clk CLK_WPE1_DIP1_LARB11>,
 			<&wpe1_dip1_clk CLK_WPE1_DIP1_WPE>,
 			<&wpe1_dip1_clk CLK_WPE1_DIP1_GALS0>,
