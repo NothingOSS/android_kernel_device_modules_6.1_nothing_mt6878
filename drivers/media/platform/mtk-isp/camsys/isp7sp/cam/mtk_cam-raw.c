@@ -568,7 +568,7 @@ void write_pkt_trigger_apu_frame_mode(struct mtk_raw_device *dev,
 #define RAW_RST_STAT2_CHECK		0x1ff
 #define YUV_RST_STAT_CHECK		0x1efffff
 /* check again for rawi dcif case */
-bool is_dma_idle(struct mtk_raw_device *dev)
+bool is_all_dma_idle(struct mtk_raw_device *dev)
 {
 	u32 chasing_stat = readl(dev->base + REG_DMA_DBG_CHASING_STATUS);
 	u32 chasing_stat2 = readl(dev->base + REG_DMA_DBG_CHASING_STATUS2);
@@ -624,8 +624,8 @@ bool is_dma_idle(struct mtk_raw_device *dev)
 			CAMRAWDMATOP_DC_DBG_CHASING_STATUS2_UFDI_R5) & BIT(0)) == 0)
 		SET_FIELD(&raw_rst_stat, CAMRAWDMATOP_UFDI_R5_SOFT_RST_STAT, 1);
 
-	if (raw_rst_stat == RAW_RST_STAT_CHECK ||
-		raw_rst_stat2 == RAW_RST_STAT2_CHECK ||
+	if (raw_rst_stat == RAW_RST_STAT_CHECK &&
+		raw_rst_stat2 == RAW_RST_STAT2_CHECK &&
 		yuv_rst_stat == YUV_RST_STAT_CHECK)
 		return true;
 
@@ -671,10 +671,10 @@ void reset(struct mtk_raw_device *dev)
 	wmb(); /* make sure committed */
 
 	ret = readx_poll_timeout(readl, dev->base + REG_CAMCTL_SW_CTL, sw_ctl,
-				 sw_ctl & FBIT(CAMCTL_SW_RST_ST),
-				 1 /* delay, us */,
+				 sw_ctl & FBIT(CAMCTL_SW_RST_ST) || is_all_dma_idle(dev),
+				 50 /* delay, us */,
 				 5000 /* timeout, us */);
-	if (ret < 0 && !is_dma_idle(dev)) {
+	if (ret < 0) {
 		dev_info(dev->dev, "%s: error: reset timeout!\n",
 			 __func__);
 		dump_dma_soft_rst_stat(dev);

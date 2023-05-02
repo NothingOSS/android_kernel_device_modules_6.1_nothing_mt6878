@@ -2549,17 +2549,6 @@ void mtk_cam_ctx_engine_off(struct mtk_cam_ctx *ctx)
 		 __func__, ctx->stream_id,
 		 ctx->used_pipe, ctx->used_engine);
 
-	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
-		if (ctx->hw_raw[i]) {
-			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
-
-			if (ctx->enable_hsf_raw)
-				ccu_stream_on(ctx, false);
-			else
-				stream_on(raw_dev, false);
-		}
-	}
-
 	if (ctx->hw_sv) {
 		sv_dev = dev_get_drvdata(ctx->hw_sv);
 		mtk_cam_sv_dev_stream_on(sv_dev, false, 0, 0);
@@ -2571,6 +2560,21 @@ void mtk_cam_ctx_engine_off(struct mtk_cam_ctx *ctx)
 			mtk_cam_mraw_dev_stream_on(mraw_dev, false);
 		}
 	}
+
+	for (i = 0; i < ARRAY_SIZE(ctx->hw_raw); i++) {
+		if (ctx->hw_raw[i]) {
+			raw_dev = dev_get_drvdata(ctx->hw_raw[i]);
+
+			if (raw_dev->is_slave)
+				continue;
+
+			if (ctx->enable_hsf_raw)
+				ccu_stream_on(ctx, false);
+			else
+				stream_on(raw_dev, false);
+		}
+	}
+
 }
 
 void mtk_cam_ctx_engine_disable_irq(struct mtk_cam_ctx *ctx)
