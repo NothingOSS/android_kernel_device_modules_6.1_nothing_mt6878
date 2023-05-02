@@ -154,10 +154,10 @@ void task_check_for_rotation(struct rq *src_rq)
 
 	for_each_possible_cpu(i) {
 		struct rq *rq = cpu_rq(i);
-		struct task_struct *curr_task = rq->curr;
+		struct task_struct *curr_task = READ_ONCE(rq->curr);
 
 		if (curr_task &&
-			!task_fits_capacity(curr_task, cpu_rq(i)->cpu_capacity))
+			!task_fits_capacity(curr_task, READ_ONCE(rq->cpu_capacity)))
 			heavy_task += 1;
 
 		if (heavy_task >= HEAVY_TASK_NUM)
@@ -177,14 +177,14 @@ void task_check_for_rotation(struct rq *src_rq)
 		if (!is_min_capacity_cpu(i))
 			continue;
 
-		if (!rq->misfit_task_load ||
-			(rq->curr->policy != SCHED_NORMAL))
+		if (!READ_ONCE(rq->misfit_task_load) ||
+			(READ_ONCE(rq->curr->policy) != SCHED_NORMAL))
 			continue;
 
 		if (is_reserved(i))
 			continue;
 
-		wait = wc - rq->curr->android_vendor_data1[3];
+		wait = wc - READ_ONCE(rq->curr->android_vendor_data1[3]);
 
 		if (wait > max_wait) {
 			max_wait = wait;
@@ -204,16 +204,16 @@ void task_check_for_rotation(struct rq *src_rq)
 		if (capacity_orig_of(i) <= capacity_orig_of(src_cpu))
 			continue;
 
-		if (rq->curr->policy != SCHED_NORMAL)
+		if (READ_ONCE(rq->curr->policy) != SCHED_NORMAL)
 			continue;
 
-		if (rq->nr_running > 1)
+		if (READ_ONCE(rq->nr_running) > 1)
 			continue;
 
 		if (is_reserved(i))
 			continue;
 
-		run = wc - rq->curr->android_vendor_data1[3];
+		run = wc - READ_ONCE(rq->curr->android_vendor_data1[3]);
 
 		if (run < TASK_ROTATION_THRESHOLD_NS)
 			continue;
