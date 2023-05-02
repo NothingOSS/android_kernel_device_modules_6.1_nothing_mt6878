@@ -198,19 +198,16 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 
 	DDPINFO("%s:%d ++, crtc index:%d\n", __func__, __LINE__, index);
 	mtk_drm_trace_begin("mtk_pq_helper_frame_config");
-	CRTC_MMP_EVENT_START(index, pq_frame_config, (unsigned long)crtc, 0);
 
 	if (!cmds_len || cmds_len > REQUEST_MAX_COUNT || params->data == NULL) {
 		DDPPR_ERR("%s:%d, invalid requests for pq config\n",
 			__func__, __LINE__);
-		CRTC_MMP_MARK(index, pq_frame_config, 0, 1);
 		mtk_drm_trace_end();
 
 		return -1;
 	}
 
 	if (copy_from_user(&requests, params->data, sizeof(struct mtk_drm_pq_param) * cmds_len)) {
-		CRTC_MMP_MARK(index, pq_frame_config, 0, 2);
 		mtk_drm_trace_end();
 
 		return -1;
@@ -218,14 +215,12 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	if (index) {
 		DDPPR_ERR("%s:%d, invalid crtc:0x%p, index:%d\n",
 				__func__, __LINE__, crtc, index);
-		CRTC_MMP_MARK(index, pq_frame_config, 0, 3);
 		mtk_drm_trace_end();
 		return -1;
 	}
 
 	if (!(mtk_crtc->enabled)) {
 		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
-		CRTC_MMP_MARK(index, pq_frame_config, 0, 4);
 		mtk_drm_trace_end();
 
 		return -1;
@@ -237,7 +232,6 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 		pq_cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 		if (!pq_cmdq_handle) {
 			DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
-			CRTC_MMP_MARK(index, pq_frame_config, 0, 5);
 			return -1;
 		}
 
@@ -295,7 +289,6 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 		cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 		if (!cb_data) {
 			DDPPR_ERR("cb data creation failed\n");
-			CRTC_MMP_MARK(index, pq_frame_config, 0, 6);
 			return -1;
 		}
 
@@ -313,7 +306,6 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 			kfree(cb_data);
 			if (user_lock)
 				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-			CRTC_MMP_MARK(index, pq_frame_config, 0, 7);
 			return -1;
 		}
 
@@ -330,7 +322,6 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	}
-	CRTC_MMP_EVENT_END(index, pq_frame_config, 0, 0);
 	DDPINFO("%s:%d --\n", __func__, __LINE__);
 	mtk_drm_trace_end();
 
