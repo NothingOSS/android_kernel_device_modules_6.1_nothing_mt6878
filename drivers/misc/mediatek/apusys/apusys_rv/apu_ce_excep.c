@@ -138,9 +138,7 @@ static void apu_ce_coredump_work_func(struct work_struct *p_work)
 
 	dev_info(dev, "%s +\n", __func__);
 
-#ifdef tmp_patch
 	apu_regdump();//dump CE reg 0x190B0400 to 0x190B09b4
-#endif
 
     //return CE job id
 	ret = apusys_rv_smc_call(dev,
