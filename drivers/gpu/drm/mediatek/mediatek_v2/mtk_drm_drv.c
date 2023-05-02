@@ -846,13 +846,13 @@ static void mtk_atomic_aod_scp_ipi(struct drm_crtc *crtc, bool prepare)
 
 	if (!aod_scp_flag || !aod_scp_ipi.send_ipi || !aod_scp_ipi.module_backup ||
 		!crtc) {
-		DDPMSG("%s directly return due to invalid parameter\n", __func__);
+		DDPDBG("%s directly return due to invalid parameter\n", __func__);
 		return;
 	}
 
 	mtk_state = to_mtk_crtc_state(crtc->state);
 
-	DDPMSG("%s: update AOD-SCP active=%d, doze state=%d, prepare=%d, idle=%d\n", __func__,
+	DDPDBG("%s: update AOD-SCP active=%d, doze state=%d, prepare=%d, idle=%d\n", __func__,
 			crtc->state->active,
 			mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE],
 			prepare,
@@ -881,14 +881,14 @@ static void mtk_atomic_doze_update_dsi_state(struct drm_device *dev,
 
 	if (mtk_state->doze_changed && priv->data->doze_ctrl_pmic) {
 		if (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE] && prepare) {
-			DDPMSG("enter AOD, disable PMIC LPMODE\n");
+			DDPDBG("enter AOD, disable PMIC LPMODE\n");
 			//pmic_ldo_vio18_lp(SRCLKEN0, 0, 1, HW_LP);
 			//pmic_ldo_vio18_lp(SRCLKEN2, 0, 1, HW_LP);
 			/* DWFS, drivers/misc/mediatek/clkbuf/v1/src/mtk_clkbuf_ctl.c */
 			//clk_buf_voter_ctrl_by_id(12, SW_BBLPM);
 		} else if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]
 				&& !prepare) {
-			DDPMSG("exit AOD, enable PMIC LPMODE\n");
+			DDPDBG("exit AOD, enable PMIC LPMODE\n");
 			//pmic_ldo_vio18_lp(SRCLKEN0, 1, 1, HW_LP);
 			//pmic_ldo_vio18_lp(SRCLKEN2, 1, 1, HW_LP);
 			/* DWFS, drivers/misc/mediatek/clkbuf/v1/src/mtk_clkbuf_ctl.c */
