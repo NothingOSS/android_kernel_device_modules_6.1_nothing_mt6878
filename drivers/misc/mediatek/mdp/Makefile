@@ -19,7 +19,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/ \
              -I$(DEVICE_MODULES_PATH)/drivers/iommu \
-             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps

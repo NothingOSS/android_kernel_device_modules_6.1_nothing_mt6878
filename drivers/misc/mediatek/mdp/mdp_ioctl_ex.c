@@ -12,6 +12,7 @@
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <mtk_heap.h>
+#include <mtk-smmu-v3.h>
 
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 #include "mdp_def.h"
@@ -41,6 +42,8 @@
 
 struct mdpsys_con_context {
 	struct device *dev;
+	struct device *mmu_dev;
+	struct device *mmu_dev_sec;
 };
 struct mdpsys_con_context mdpsys_con_ctx;
 
@@ -272,16 +275,26 @@ static void mdp_ion_free_dma_buf(struct dma_buf *buf,
 }
 
 static unsigned long translate_fd(struct op_meta *meta,
-				struct mdp_job_mapping *mapping_job)
+				struct mdp_job_mapping *mapping_job,
+				struct cmdqRecStruct *handle)
 {
 	struct dma_buf *buf = NULL;
 	struct dma_buf_attachment *attach = NULL;
 	struct sg_table *sgt = NULL;
+	struct device *dev = NULL;
 	dma_addr_t ion_addr;
 	u32 i;
 
 	if (!mdpsys_con_ctx.dev) {
 		CMDQ_ERR("%s mdpsys_config not ready\n", __func__);
+		return -EINVAL;
+	}
+
+	dev = mdpsys_con_ctx.mmu_dev;
+	if (handle->secData.is_secure)
+		dev = mdpsys_con_ctx.mmu_dev_sec;
+	if (!dev) {
+		CMDQ_ERR("%s mmu_dev not ready\n", __func__);
 		return -EINVAL;
 	}
 
@@ -295,8 +308,7 @@ static unsigned long translate_fd(struct op_meta *meta,
 			return 0;
 		}
 		/* need to map ion fd to iova */
-		if (!mdp_ion_get_dma_buf(mdpsys_con_ctx.dev, meta->fd, &buf,
-			&attach, &sgt))
+		if (!mdp_ion_get_dma_buf(dev, meta->fd, &buf, &attach, &sgt))
 			return 0;
 
 		ion_addr = sg_dma_address(sgt->sgl);
@@ -336,7 +348,7 @@ static s32 translate_meta(struct op_meta *meta,
 	case CMDQ_MOP_WRITE_FD:
 	{
 		u32 reg_addr_msb = 0;
-		unsigned long mva = translate_fd(meta, mapping_job);
+		unsigned long mva = translate_fd(meta, mapping_job, handle);
 
 		if (!mva) {
 			CMDQ_ERR("%s: op:%u, get mva fail, engine %d, fd 0x%x, fd_offset 0x%x\n",
@@ -393,7 +405,7 @@ static s32 translate_meta(struct op_meta *meta,
 	case CMDQ_MOP_WRITE_FD_RDMA:
 	{
 		u32 src_base_lsb, src_base_msb;
-		unsigned long mva = translate_fd(meta, mapping_job);
+		unsigned long mva = translate_fd(meta, mapping_job, handle);
 		s32 rdma_idx = translate_engine_rdma(meta->engine);
 
 		rdma_idx = translate_engine_rdma(meta->engine);
@@ -1511,6 +1523,22 @@ int mdp_limit_dev_create(struct platform_device *device)
 	return 0;
 }
 
+static struct device *mdp_smmu_get_shared_device(struct device *dev, const char *name)
+{
+	struct device_node *node;
+	struct platform_device *shared_pdev;
+	struct device *shared_dev = dev;
+
+	node = of_parse_phandle(dev->of_node, name, 0);
+	if (node) {
+		shared_pdev = of_find_device_by_node(node);
+		if (shared_pdev)
+			shared_dev = &shared_pdev->dev;
+	}
+
+	return shared_dev;
+}
+
 static int mdpsys_con_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1519,16 +1547,24 @@ static int mdpsys_con_probe(struct platform_device *pdev)
 
 	CMDQ_LOG("%s\n", __func__);
 
-	ret = of_property_read_u32(dev->of_node, "dma_mask_bit",
-		&dma_mask_bit);
-	/* if not assign from dts, give default */
-	if (ret != 0 || !dma_mask_bit)
-		dma_mask_bit = MDP_DEFAULT_MASK_BITS;
-	ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(dma_mask_bit));
-	CMDQ_LOG("%s set dma mask bit:%u result:%d\n",
-		__func__, dma_mask_bit, ret);
-
 	mdpsys_con_ctx.dev = dev;
+
+	if (smmu_v3_enabled()) {
+		CMDQ_ERR("smmu on\n");
+		mdpsys_con_ctx.mmu_dev = mdp_smmu_get_shared_device(dev, "mtk,smmu-shared");
+		mdpsys_con_ctx.mmu_dev_sec = mdp_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
+	} else {
+		CMDQ_ERR("smmu off\n");
+		mdpsys_con_ctx.mmu_dev = dev;
+		ret = of_property_read_u32(dev->of_node, "dma_mask_bit",
+			&dma_mask_bit);
+		/* if not assign from dts, give default */
+		if (ret != 0 || !dma_mask_bit)
+			dma_mask_bit = MDP_DEFAULT_MASK_BITS;
+		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(dma_mask_bit));
+		CMDQ_LOG("%s set dma mask bit:%u result:%d\n",
+			__func__, dma_mask_bit, ret);
+	}
 
 	CMDQ_LOG("%s done\n", __func__);
 
@@ -1540,6 +1576,8 @@ static int mdpsys_con_remove(struct platform_device *pdev)
 	CMDQ_LOG("%s\n", __func__);
 
 	mdpsys_con_ctx.dev = NULL;
+	mdpsys_con_ctx.mmu_dev = NULL;
+	mdpsys_con_ctx.mmu_dev_sec = NULL;
 
 	CMDQ_LOG("%s done\n", __func__);
 
