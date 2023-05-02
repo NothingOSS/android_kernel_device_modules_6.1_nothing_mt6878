@@ -20,6 +20,9 @@
 void *ammu_cmu_top_base;
 void *ammu_rcx_uprv_tcu_base;
 void *ammu_rcx_extm_tcu_base;
+#ifdef SMMU_EN
+void *ammu_vcore_config_base;
+#endif
 
 int apummu_ioremap(void)
 {
@@ -31,11 +34,20 @@ int apummu_ioremap(void)
 	ammu_cmu_top_base	= ioremap(APUMMU_CMU_TOP_REG_BASE, 0x7000);
 	ammu_rcx_uprv_tcu_base = ioremap(APUMMU_RCX_UPRV_TCU_REG_BASE, 0x1000);
 	ammu_rcx_extm_tcu_base = ioremap(APUMMU_RCX_EXTM_TCU_REG_BASE, 0x1000);
+#ifdef SMMU_EN
+	ammu_vcore_config_base = ioremap(APUMMU_VCORE_CONFIG_REGISTER, 0x4);
 
+	printf("ammu remap: CMU(0x%llx), RV TCU(0x%llx), EXTM TCU(0x%llx), SMMU CFG(0x%llx)\n",
+		(uint64_t)ammu_cmu_top_base,
+		(uint64_t)ammu_rcx_uprv_tcu_base,
+		(uint64_t)ammu_rcx_extm_tcu_base,
+		(uint64_t)ammu_vcore_config_base);
+#else
 	printf("ammu remap adr: CMUL(0x%llx), RV TCU(0x%llx) , EXTM TCU(0x%llx)\n",
 		(uint64_t)ammu_cmu_top_base,
 		(uint64_t)ammu_rcx_uprv_tcu_base,
 		(uint64_t)ammu_rcx_extm_tcu_base);
+#endif
 
 	return 0;
 }
@@ -432,8 +444,14 @@ int apummu_add_map(uint32_t vsid_idx, uint8_t seg_idx, uint32_t input_adr, uint3
 		return -3;
 	}
 
+#ifdef SMMU_EN
+#ifdef FPGA
 	sid = 0;
+#else
+	sid = 9;
+#endif
 	smmu_en = 1;
+#endif
 
 	/* fill segment */
 	apummu_set_segment_offset0(vsid_idx, seg_idx, input_adr, 0, page_sel, page_len);
@@ -510,6 +528,10 @@ int apummu_boot_init(void)
 	apummu_topology_init();
 #endif
 
+#ifdef SMMU_EN
+	/* Set SID (8), SSID(0) */
+	DRV_WriteReg32(ammu_vcore_config_base, ((0x8 << 4) | (0x0 << 0)));
+#endif
 	/* enable apummu h/w */
 	apummu_enable();
 
@@ -610,17 +632,21 @@ int apummu_add_rv_boot_map(uint32_t seg_output0, int32_t seg_output1, int32_t se
 }
 
 /* Example func. Before RCX power on */
-int rv_boot(uint32_t seg_output0, uint32_t seg_output1, uint32_t seg_output2, uint8_t hw_thread)
+int rv_boot(uint32_t uP_seg_output, uint8_t uP_hw_thread,
+		uint32_t logger_seg_output, enum eAPUMMUPAGESIZE logger_page_size,
+		uint32_t XPU_seg_output, enum eAPUMMUPAGESIZE XPU_page_size)
 {
 	int ret = 0;
 
 	/* apummu init @ beginning - call this once only */
 	apummu_boot_init();
-	printf("<%s> seg_output0 = 0x%8x seg_output1 = 0x%8x seg_output2 = 0x%8x\n",
-		 __func__, seg_output0, seg_output1, seg_output2);
+	printf("<%s> output addr, uP_seg = 0x%8x logger_seg = 0x%8x XPU_seg = 0x%8x\n",
+		 __func__, uP_seg_output, logger_seg_output, XPU_seg_output);
+	printf("<%s> uP_hw_thread = %u, (logger, XPU) page size = (%u, %u)\n",
+		 __func__, uP_hw_thread, logger_page_size, XPU_page_size);
 
 	/* 1. add rv map - MUST be in-order for rv booting */
-	ret = apummu_add_rv_boot_map(seg_output0, seg_output0, seg_output0);
+	ret = apummu_add_rv_boot_map(uP_seg_output, 0, 0);
 	if (ret) {
 		printf("apummu_add_rv_boot_map fail\n");
 		return ret;
@@ -628,37 +654,37 @@ int rv_boot(uint32_t seg_output0, uint32_t seg_output1, uint32_t seg_output2, ui
 
 	/* bind rv vsid */
 	/* thread: 0:normal, 1:secure, 2:logger?; MP flow should be 1 */
-	ret = apummu_rv_bind_vsid(hw_thread);
+	ret = apummu_rv_bind_vsid(uP_hw_thread);
 	if (ret) {
-		printf("apummu_rv_bind_vsid fail(0)\n");
+		printf("apummu_rv_bind_vsid fail(%u)\n", uP_hw_thread);
 		return ret;
 	}
 
-	ret = apummu_rv_bind_vsid(1);
+	ret = apummu_rv_bind_vsid(uP_hw_thread + 1);
 	if (ret) {
-		printf("apummu_rv_bind_vsid fail(1)\n");
+		printf("apummu_rv_bind_vsid fail(%u)\n", (uP_hw_thread + 1));
 		return ret;
 	}
 
 	/* 2.  add h/w logger map */
-	ret = apummu_add_logger_map(seg_output1/*input*/, seg_output1/*output*/,
-							eAPUMMU_PAGE_LEN_1MB);
+	ret = apummu_add_logger_map(logger_seg_output/*input*/, logger_seg_output/*output*/,
+							logger_page_size);
 	if (ret) {
 		printf("apummu add map for logger fail\n");
 		return ret;
 	}
 
 	/* bind logger vsid */
-	ret = apummu_logger_bind_vsid(2); //thread: 0:normal, 1:secure, 2:logger
+	ret = apummu_logger_bind_vsid(uP_hw_thread+2); //thread: 0:normal, 1:secure, 2:logger
 	if (ret) {
-		printf("apummu_logger_bind_vsid fail(2)\n");
+		printf("apummu_logger_bind_vsid fail(%u)\n", (uP_hw_thread + 2));
 		return ret;
 	}
 
 	/* 3. add apmcu map */
 	virtual_engine_thread();
-	ret = apummu_add_apmcu_map(seg_output2/*input*/, seg_output2/*output*/,
-							eAPUMMU_PAGE_LEN_256KB);
+	ret = apummu_add_apmcu_map(XPU_seg_output/*input*/, XPU_seg_output/*output*/,
+							XPU_page_size);
 	if (ret) {
 		printf("apummu add map for apmcu fail\n");
 		return ret;

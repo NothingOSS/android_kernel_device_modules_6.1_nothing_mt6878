@@ -76,7 +76,7 @@ out:
 }
 
 int apummu_remote_send_stable(void *drvinfo, uint64_t session, uint32_t ammu_stable_addr,
-					uint32_t SRAM_req_size)
+					uint32_t SRAM_req_size, uint32_t table_size)
 {
 	struct apummu_dev_info *adv = NULL;
 	struct apummu_msg req, reply;
@@ -99,6 +99,7 @@ int apummu_remote_send_stable(void *drvinfo, uint64_t session, uint32_t ammu_sta
 	AMMU_RPMSG_write(&session, req.data, sizeof(session), widx);
 	AMMU_RPMSG_write(&ammu_stable_addr, req.data, sizeof(ammu_stable_addr), widx);
 	AMMU_RPMSG_write(&SRAM_req_size, req.data, sizeof(SRAM_req_size), widx);
+	AMMU_RPMSG_write(&table_size, req.data, sizeof(table_size), widx);
 
 	ret = apummu_remote_send_cmd_sync(drvinfo, (void *) &req, (void *) &reply, 0);
 	if (ret) {

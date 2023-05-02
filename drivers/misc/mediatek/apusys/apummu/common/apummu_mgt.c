@@ -454,7 +454,7 @@ int get_session_table(uint64_t session, void **tbl_kva, uint32_t *size)
 		g_ammu_stable_ptr->stable_info.RSV_S_SLB_page_array_start,
 		g_ammu_stable_ptr->stable_info.RSV_S_SLB_page);
 
-	*tbl_kva = (void *) g_ammu_stable_ptr;
+	*tbl_kva = (void *) (&g_ammu_stable_ptr->stable_info);
 	*size = sizeof(struct ammu_stable_info);
 
 out:

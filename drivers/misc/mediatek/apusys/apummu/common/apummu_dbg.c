@@ -247,11 +247,12 @@ static ssize_t apummu_dbg_write_kernel(struct file *file, const char __user *use
 			break;
 		}
 
-		ammu_mem.size = sizeof(size);
+		ammu_mem.size = size;
 		apummu_mem_alloc(adv->dev, &ammu_mem);
 		memcpy((void *) (ammu_mem.kva), tbl_kva, size);
 
-		apummu_remote_send_stable(adv, session, (uint32_t) ammu_mem.iova, (device_va));
+		apummu_remote_send_stable(adv, session, (uint32_t) ammu_mem.iova,
+			(device_va), size);
 		apummu_mem_free(adv->dev, &ammu_mem);
 		break;
 	}

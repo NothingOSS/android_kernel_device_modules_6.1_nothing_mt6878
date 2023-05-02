@@ -15,8 +15,14 @@ static struct apummu_plat mt6897_drv = {
 	.is_general_SLB_support	= false,
 };
 
+static struct apummu_plat mt6989_drv = {
+	.slb_wait_time			= 0,
+	.is_general_SLB_support	= false, // TODO: current disable General SLB
+};
+
 static const struct of_device_id apummu_of_match[] = {
 	{ .compatible = "mediatek,rv-apummu",        .data = &mt6897_drv },
+	{ .compatible = "mediatek,rv-apummu-mt6989", .data = &mt6989_drv },
 	{ /* end of list */ },
 };
 

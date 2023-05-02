@@ -39,6 +39,6 @@ int apummu_remote_mem_add_pool(void *drvinfo);
 int apummu_remote_mem_free_pool(void *drvinfo);
 
 int apummu_remote_send_stable(void *drvinfo, uint64_t session, uint32_t ammu_stable_addr,
-					uint32_t SRAM_req_size);
+					uint32_t SRAM_req_size, uint32_t table_size);
 
 #endif

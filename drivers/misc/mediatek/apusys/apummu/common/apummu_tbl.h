@@ -11,11 +11,15 @@
  * Note the fileds of vsid descirpt between iommu and smmu are different !
  */
 #define linux_ep
+#define SMMU_EN
 
 /* TCU RCX */
 #define APUMMU_CMU_TOP_REG_BASE       0x19067000
 #define APUMMU_RCX_UPRV_TCU_REG_BASE  0x19060000
 #define APUMMU_RCX_EXTM_TCU_REG_BASE  0x19061000
+#ifdef SMMU_EN
+#define APUMMU_VCORE_CONFIG_REGISTER  0x190E0CC0
+#endif
 
 /* VSID SRAM */
 #define APUMMU_VSID_SRAM_SIZE 0x5C00 //15K:Ponsot, 23K: Leroy
@@ -308,12 +312,12 @@ enum eAPUMMUPAGESIZE {
 	(((output_adr) & 0x3fffff) << 10) /* 22bits */
 #define APUMMU_VSID_SEGMENT_04_RESV0(resv0) \
 	(((resv0) & 0xff) << 2)           /* 8bits  */
-#ifdef SSID_ENABLE
-#define APUMMU_VSID_SEGMENT_04_MMU_EN(mmu_en) \
-	(((mmu_en) & 0x1) << 1)         /* 1bits  */
-#else
+#ifdef SMMU_EN
 #define APUMMU_VSID_SEGMENT_04_MMU_EN(mmu_en) \
 	(((!mmu_en) & 0x1) << 1)         /* 1bits  */
+#else
+#define APUMMU_VSID_SEGMENT_04_MMU_EN(mmu_en) \
+	(((mmu_en) & 0x1) << 1)         /* 1bits  */
 #endif
 #define APUMMU_VSID_SEGMENT_04_RESV1(resv1) \
 	(((resv1) & 0x1) << 0)            /* 1bits  */
@@ -449,7 +453,9 @@ struct apummu_vsid_tlb {
 
 #endif  //Endof #ifdef APUUMU_RV
 
-int rv_boot(uint32_t seg_output0, uint32_t seg_output1, uint32_t seg_output2, uint8_t hw_thread);
+int rv_boot(uint32_t uP_seg_output, uint8_t uP_hw_thread,
+		uint32_t logger_seg_output, enum eAPUMMUPAGESIZE logger_page_size,
+		uint32_t XPU_seg_output, enum eAPUMMUPAGESIZE XPU_page_size);
 
 /* got from peter */
 #define APUMMU_INT_D2T_TBL0_OFS 0x40
