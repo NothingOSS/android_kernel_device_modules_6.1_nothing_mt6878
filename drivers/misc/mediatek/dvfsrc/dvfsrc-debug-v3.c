@@ -669,7 +669,10 @@ static char *dvfsrc_dump_mt6873_spm_info(struct mtk_dvfsrc *dvfsrc,
 	p += snprintf(p, buff_end - p, "%-24s: 0x%08x\n",
 			"SPM_DVFS_STA",
 			spm_read(dvfsrc, SPM_DVFS_STA));
-	p += snprintf(p, buff_end - p,
+
+	switch (dvfsrc->dvd->config->ip_version) {
+	case 3:
+		p += snprintf(p, buff_end - p,
 			"%-24s: 0x%08x, 0x%08x, 0x%08x, 0x%08x, 0x%08x\n",
 			"SPM_DVFS_CMD0~4",
 			spm_read(dvfsrc, SPM_DVFS_CMD0),
@@ -677,6 +680,27 @@ static char *dvfsrc_dump_mt6873_spm_info(struct mtk_dvfsrc *dvfsrc,
 			spm_read(dvfsrc, SPM_DVFS_CMD2),
 			spm_read(dvfsrc, SPM_DVFS_CMD3),
 			spm_read(dvfsrc, SPM_DVFS_CMD4));
+	break;
+	case 4:
+		p += snprintf(p, buff_end - p,
+			"%-24s: 0x%08x, 0x%08x, 0x%08x, 0x%08x\n",
+			"SPM_DVFS_CMD0~3",
+			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 0),
+			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 4),
+			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 8),
+			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 12));
+		p += snprintf(p, buff_end - p,
+			"%-24s: 0x%08x, 0x%08x, 0x%08x, 0x%08x\n",
+			"SPM_DVFS_CMD4~7",
+			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 16),
+			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 20),
+			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 24),
+			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 28));
+	break;
+	default:
+	break;
+	}
+
 	return p;
 }
 
