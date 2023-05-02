@@ -7499,7 +7499,7 @@
 			mediatek,peri-reset-dis;
 			mediatek,dvfs-req-dis;
 			mediatek,suspend-mode-l12;
-			mediatek,bringup-mode;
+			pextpcfg = <&pextpcfg_ao_clk>;
 
 			clocks = <&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_REF>,
 				 <&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_PL_P>,
@@ -7544,7 +7544,7 @@
 			linux,pci-domain = <1>;
 			mediatek,peri-reset-dis;
 			mediatek,dvfs-req-dis;
-			mediatek,bringup-mode;
+			pextpcfg = <&pextpcfg_ao_clk>;
 
 			clocks = <&pextpcfg_ao_clk CLK_PEXTP_P1_MAC_REF>,
 				 <&pextpcfg_ao_clk CLK_PEXTP_P1_MAC_PL_P>,
