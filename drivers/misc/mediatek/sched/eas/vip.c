@@ -6,14 +6,15 @@
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <trace/hooks/sched.h>
+#include <trace/hooks/cgroup.h>
 #include "common.h"
 #include "vip.h"
 #include "eas_trace.h"
+#include "eas_plus.h"
 
 bool vip_enable = true;
 
 unsigned int ls_vip_threshold                   =  DEFAULT_VIP_PRIO_THRESHOLD;
-unsigned int group_vip_threshold[VIP_GROUP_NUM];
 
 DEFINE_PER_CPU(struct vip_rq, vip_rq);
 
@@ -82,21 +83,65 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 		struct task_struct *p = vts_to_ts(vts);
 
 		trace_sched_insert_vip_task(p, cpu_of(rq), vts->vip_prio,
-			at_front, prev_pid, next_pid, requeue, is_first_entry, ls_vip_threshold,
-			group_vip_threshold);
+			at_front, prev_pid, next_pid, requeue, is_first_entry);
 	}
 }
+
+void __set_group_vip_prio(struct task_group *tg, unsigned int prio)
+{
+	struct vip_task_group *vtg;
+
+	if (tg == &root_task_group)
+		return;
+
+	vtg = &((struct mtk_tg *) tg->android_vendor_data1)->vtg;
+	vtg->threshold = prio;
+}
+
+int unset_group_vip_prio(unsigned int cpuctl_id)
+{
+	struct task_group *tg = search_tg_by_cpuctl_id(cpuctl_id);
+
+	if (tg == &root_task_group)
+		return 0;
+
+	__set_group_vip_prio(tg, DEFAULT_VIP_PRIO_THRESHOLD);
+	return 1;
+}
+EXPORT_SYMBOL_GPL(unset_group_vip_prio);
+
+void set_group_vip_prio_by_name(char *group_name, unsigned int prio)
+{
+	struct task_group *tg = search_tg_by_name(group_name);
+
+	if (tg == &root_task_group)
+		return;
+
+	__set_group_vip_prio(tg, prio);
+}
+
+int set_group_vip_prio(unsigned int cpuctl_id, unsigned int prio)
+{
+	struct task_group *tg = search_tg_by_cpuctl_id(cpuctl_id);
+
+	if (tg == &root_task_group)
+		return 0;
+
+	__set_group_vip_prio(tg, prio);
+	return 1;
+}
+EXPORT_SYMBOL_GPL(set_group_vip_prio);
 
 /* top-app interface */
 void set_top_app_vip(unsigned int prio)
 {
-	group_vip_threshold[VIP_GROUP_TOPAPP] = prio;
+	set_group_vip_prio_by_name("top-app", prio);
 }
 EXPORT_SYMBOL_GPL(set_top_app_vip);
 
 void unset_top_app_vip(void)
 {
-	group_vip_threshold[VIP_GROUP_TOPAPP] = DEFAULT_VIP_PRIO_THRESHOLD;
+	set_group_vip_prio_by_name("top-app", DEFAULT_VIP_PRIO_THRESHOLD);
 }
 EXPORT_SYMBOL_GPL(unset_top_app_vip);
 /* end of top-app interface */
@@ -104,13 +149,13 @@ EXPORT_SYMBOL_GPL(unset_top_app_vip);
 /* foreground interface */
 void set_foreground_vip(unsigned int prio)
 {
-	group_vip_threshold[VIP_GROUP_FOREGROUND] = prio;
+	set_group_vip_prio_by_name("foreground", prio);
 }
 EXPORT_SYMBOL_GPL(set_foreground_vip);
 
 void unset_foreground_vip(void)
 {
-	group_vip_threshold[VIP_GROUP_FOREGROUND] = DEFAULT_VIP_PRIO_THRESHOLD;
+	set_group_vip_prio_by_name("foreground", DEFAULT_VIP_PRIO_THRESHOLD);
 }
 EXPORT_SYMBOL_GPL(unset_foreground_vip);
 /* end of foreground interface */
@@ -118,38 +163,32 @@ EXPORT_SYMBOL_GPL(unset_foreground_vip);
 /* background interface */
 void set_background_vip(unsigned int prio)
 {
-	group_vip_threshold[VIP_GROUP_BACKGROUND] = prio;
+	set_group_vip_prio_by_name("background", prio);
 }
 EXPORT_SYMBOL_GPL(set_background_vip);
 
 void unset_background_vip(void)
 {
-	group_vip_threshold[VIP_GROUP_BACKGROUND] = DEFAULT_VIP_PRIO_THRESHOLD;
+	set_group_vip_prio_by_name("background", DEFAULT_VIP_PRIO_THRESHOLD);
 }
 EXPORT_SYMBOL_GPL(unset_background_vip);
 /* end of background interface */
 
-int get_group_id(struct task_struct *p)
+int get_group_threshold(struct task_struct *p)
 {
 	struct cgroup_subsys_state *css = task_css(p, cpu_cgrp_id);
-	const char *group_name = css->cgroup->kn->name;
+	struct task_group *tg = container_of(css, struct task_group, css);
+	struct vip_task_group *vtg = &((struct mtk_tg *) tg->android_vendor_data1)->vtg;
 
-	if (!strcmp(group_name, "top-app"))
-		return VIP_GROUP_TOPAPP;
-	else if (!strcmp(group_name, "foreground"))
-		return VIP_GROUP_FOREGROUND;
-	else if (!strcmp(group_name, "background"))
-		return VIP_GROUP_BACKGROUND;
+	if (vtg)
+		return vtg->threshold;
 
 	return -1;
 }
 
 bool is_VIP_task_group(struct task_struct *p)
 {
-	int group_id = get_group_id(p);
-
-	if (group_id >= 0 &&
-			p->prio <= group_vip_threshold[group_id])
+	if (p->prio <= get_group_threshold(p))
 		return true;
 
 	return false;
@@ -244,15 +283,24 @@ bool is_VIP_basic(struct task_struct *p)
 
 inline int get_vip_task_prio(struct task_struct *p)
 {
+	int vip_prio = NOT_VIP;
+
 	/* prio = 1 */
-	if (is_VVIP(p))
-		return VVIP;
+	if (is_VVIP(p)) {
+		vip_prio = VVIP;
+		goto out;
+	}
 
 	/* prio = 0 */
 	if (is_VIP_task_group(p) || is_VIP_latency_sensitive(p) || is_VIP_basic(p))
-		return WORKER_VIP;
+		vip_prio = WORKER_VIP;
 
-	return NOT_VIP;
+out:
+	if (trace_sched_get_vip_task_prio_enabled()) {
+		trace_sched_get_vip_task_prio(p, vip_prio, is_task_latency_sensitive(p),
+			ls_vip_threshold, get_group_threshold(p), is_VIP_basic(p));
+	}
+	return vip_prio;
 }
 
 void vip_enqueue_task(struct rq *rq, struct task_struct *p)
@@ -551,6 +599,31 @@ static void vip_new_tasks(void *unused, struct task_struct *new)
 	init_task_gear_hints(new);
 }
 
+void __init_vip_group(struct cgroup_subsys_state *css)
+{
+	struct task_group *tg = container_of(css, struct task_group, css);
+	struct vip_task_group *vtg = &((struct mtk_tg *) tg->android_vendor_data1)->vtg;
+
+	vtg->threshold = DEFAULT_VIP_PRIO_THRESHOLD;
+}
+
+static void vip_rvh_cpu_cgroup_online(void *unused, struct cgroup_subsys_state *css)
+{
+	__init_vip_group(css);
+}
+
+void init_vip_group(void)
+{
+	struct cgroup_subsys_state *css = &root_task_group.css;
+	struct cgroup_subsys_state *top_css = css;
+
+	rcu_read_lock();
+	__init_vip_group(&root_task_group.css);
+	css_for_each_child(css, top_css)
+		__init_vip_group(css);
+	rcu_read_unlock();
+}
+
 void register_vip_hooks(void)
 {
 	int ret = 0;
@@ -558,6 +631,11 @@ void register_vip_hooks(void)
 	ret = register_trace_android_rvh_wake_up_new_task(vip_new_tasks, NULL);
 	if (ret)
 		pr_info("register wake_up_new_task hooks failed, returned %d\n", ret);
+
+	ret = register_trace_android_rvh_cpu_cgroup_online(vip_rvh_cpu_cgroup_online,
+		NULL);
+	if (ret)
+		pr_info("register cpu_cgroup_online hooks failed, returned %d\n", ret);
 
 	ret = register_trace_android_rvh_check_preempt_wakeup(vip_check_preempt_wakeup, NULL);
 	if (ret)
@@ -580,11 +658,9 @@ void vip_init(void)
 {
 	struct task_struct *g, *p;
 	int cpu;
-	int i;
 
-	for (i = 0; i < VIP_GROUP_NUM; i++) {
-		group_vip_threshold[i] = DEFAULT_VIP_PRIO_THRESHOLD;
-	}
+	/* init vip related value to group*/
+	init_vip_group();
 
 	/* init vip related value to exist tasks */
 	read_lock(&tasklist_lock);

@@ -57,10 +57,15 @@ struct cgrp_tg {
 	int groupid;
 };
 
+struct vip_task_group {
+	unsigned int threshold;
+};
+
 struct mtk_tg {
 	u64 reserved[MTK_TASK_GROUP_FLAG];
 	struct soft_affinity_tg	sa_tg;
 	struct cgrp_tg		cgrp_tg;
+	struct vip_task_group vtg;
 };
 
 extern int num_sched_clusters;
