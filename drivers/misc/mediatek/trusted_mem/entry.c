@@ -242,13 +242,14 @@ static int tmem_core_alloc_chunk_internal(enum TRUSTED_MEM_TYPE mem_type,
 	struct trusted_mem_device *mem_device =
 		get_trusted_mem_device(mem_type);
 	struct trusted_mem_configs *mem_cfg;
-	struct region_mgr_desc *mgr_desc = mem_device->reg_mgr;
+	struct region_mgr_desc *mgr_desc;
 
 	if (unlikely(is_invalid_hooks(mem_device))) {
 		pr_err("%s:%d %d:mem device may not be registered!\n", __func__,
 		       __LINE__, mem_type);
 		return TMEM_OPERATION_NOT_REGISTERED;
 	}
+	mgr_desc = mem_device->reg_mgr;
 
 	if (IS_ZERO(size)) {
 		pr_err("[%d] invalid size: sz:0x%x\n", mem_type, size);
