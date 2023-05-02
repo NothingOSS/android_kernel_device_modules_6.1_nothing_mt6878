@@ -57,7 +57,7 @@ module_param(mml_path_mode, int, 0644);
 int mml_racing;
 module_param(mml_racing, int, 0644);
 
-int mml_dl;
+int mml_dl = 2;
 module_param(mml_dl, int, 0644);
 
 int mml_racing_rsz = 1;
