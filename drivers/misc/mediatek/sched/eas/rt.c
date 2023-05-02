@@ -218,8 +218,12 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			// util = cpu_util(cpu);
 
 			/* RT task skips cpu that runs latency_sensitive or vip tasks */
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+			cpu_has_lt = is_task_latency_sensitive(cpu_rq(cpu)->curr)
+				|| task_is_vip(cpu_rq(cpu)->curr);
+#else
 			cpu_has_lt = is_task_latency_sensitive(cpu_rq(cpu)->curr);
-			//	|| mtk_nr_rtg_high_prio(cpu);
+#endif
 
 			/*
 			 * When the best cpu is suitable and the current is not,
