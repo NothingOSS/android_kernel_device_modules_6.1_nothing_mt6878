@@ -104,12 +104,9 @@ struct mtk_disp_dither_primary {
 };
 
 struct mtk_disp_dither_tile_overhead {
-	unsigned int left_in_width;
-	unsigned int left_overhead;
-	unsigned int left_comp_overhead;
-	unsigned int right_in_width;
-	unsigned int right_overhead;
-	unsigned int right_comp_overhead;
+	unsigned int in_width;
+	unsigned int overhead;
+	unsigned int comp_overhead;
 };
 
 struct mtk_disp_dither {
@@ -305,35 +302,35 @@ static void mtk_disp_dither_config_overhead(struct mtk_ddp_comp *comp,
 	if (cfg->tile_overhead.is_support) {
 		/*set component overhead*/
 		if (!dither_data->is_right_pipe) {
-			dither_data->tile_overhead.left_comp_overhead = 0;
+			dither_data->tile_overhead.comp_overhead = 0;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.left_overhead +=
-				dither_data->tile_overhead.left_comp_overhead;
+				dither_data->tile_overhead.comp_overhead;
 			cfg->tile_overhead.left_in_width +=
-				dither_data->tile_overhead.left_comp_overhead;
+				dither_data->tile_overhead.comp_overhead;
 			/*copy from total overhead info*/
-			dither_data->tile_overhead.left_in_width =
+			dither_data->tile_overhead.in_width =
 					cfg->tile_overhead.left_in_width;
-			dither_data->tile_overhead.left_overhead =
+			dither_data->tile_overhead.overhead =
 					cfg->tile_overhead.left_overhead;
 
 			mtk_chist_set_tile_overhead(comp->mtk_crtc,
-				dither_data->tile_overhead.left_overhead, false);
+				dither_data->tile_overhead.overhead, false);
 		} else {
-			dither_data->tile_overhead.right_comp_overhead = 0;
+			dither_data->tile_overhead.comp_overhead = 0;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.right_overhead +=
-				dither_data->tile_overhead.right_comp_overhead;
+				dither_data->tile_overhead.comp_overhead;
 			cfg->tile_overhead.right_in_width +=
-				dither_data->tile_overhead.right_comp_overhead;
+				dither_data->tile_overhead.comp_overhead;
 			/*copy from total overhead info*/
-			dither_data->tile_overhead.right_in_width =
+			dither_data->tile_overhead.in_width =
 					cfg->tile_overhead.right_in_width;
-			dither_data->tile_overhead.right_overhead =
+			dither_data->tile_overhead.overhead =
 					cfg->tile_overhead.right_overhead;
 
 			mtk_chist_set_tile_overhead(comp->mtk_crtc,
-				dither_data->tile_overhead.right_overhead, true);
+				dither_data->tile_overhead.overhead, true);
 		}
 	}
 }
@@ -350,9 +347,9 @@ static void mtk_dither_config(struct mtk_ddp_comp *comp,
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support) {
 		if (!dither_data->is_right_pipe)
-			width = dither_data->tile_overhead.left_in_width;
+			width = dither_data->tile_overhead.in_width;
 		else
-			width = dither_data->tile_overhead.right_in_width;
+			width = dither_data->tile_overhead.in_width;
 	} else {
 		if (comp->mtk_crtc->is_dual_pipe)
 			width = cfg->w / 2;

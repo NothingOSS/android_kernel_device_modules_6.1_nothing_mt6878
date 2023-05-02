@@ -19,12 +19,9 @@ struct mtk_disp_tdshp_data {
 };
 
 struct mtk_disp_tdshp_tile_overhead {
-	unsigned int left_in_width;
-	unsigned int left_overhead;
-	unsigned int left_comp_overhead;
-	unsigned int right_in_width;
-	unsigned int right_overhead;
-	unsigned int right_comp_overhead;
+	unsigned int in_width;
+	unsigned int overhead;
+	unsigned int comp_overhead;
 };
 
 struct mtk_disp_tdshp_primary {
@@ -35,7 +32,6 @@ struct mtk_disp_tdshp_primary {
 	spinlock_t clock_lock;
 	unsigned int relay_value;
 	struct DISP_TDSHP_REG *tdshp_regs;
-	struct mtk_disp_tdshp_tile_overhead tile_overhead;
 	int *aal_clarity_support;
 };
 
@@ -47,6 +43,7 @@ struct mtk_disp_tdshp {
 	int path_order;
 	struct mtk_ddp_comp *companion;
 	struct mtk_disp_tdshp_primary *primary_data;
+	struct mtk_disp_tdshp_tile_overhead tile_overhead;
 	atomic_t is_clock_on;
 };
 
@@ -462,35 +459,34 @@ static void mtk_disp_tdshp_config_overhead(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg)
 {
 	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
-	struct mtk_disp_tdshp_primary *primary_data = tdshp_data->primary_data;
 
 	DDPINFO("line: %d\n", __LINE__);
 
 	if (cfg->tile_overhead.is_support) {
 		/*set component overhead*/
 		if (!tdshp_data->is_right_pipe) {
-			primary_data->tile_overhead.left_comp_overhead = 3;
+			tdshp_data->tile_overhead.comp_overhead = 3;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.left_overhead +=
-				primary_data->tile_overhead.left_comp_overhead;
+				tdshp_data->tile_overhead.comp_overhead;
 			cfg->tile_overhead.left_in_width +=
-					primary_data->tile_overhead.left_comp_overhead;
+					tdshp_data->tile_overhead.comp_overhead;
 			/*copy from total overhead info*/
-			primary_data->tile_overhead.left_in_width =
+			tdshp_data->tile_overhead.in_width =
 				cfg->tile_overhead.left_in_width;
-			primary_data->tile_overhead.left_overhead =
+			tdshp_data->tile_overhead.overhead =
 				cfg->tile_overhead.left_overhead;
 		} else {
-			primary_data->tile_overhead.right_comp_overhead = 3;
+			tdshp_data->tile_overhead.comp_overhead = 3;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.right_overhead +=
-				primary_data->tile_overhead.right_comp_overhead;
+				tdshp_data->tile_overhead.comp_overhead;
 			cfg->tile_overhead.right_in_width +=
-				primary_data->tile_overhead.right_comp_overhead;
+				tdshp_data->tile_overhead.comp_overhead;
 			/*copy from total overhead info*/
-			primary_data->tile_overhead.right_in_width =
+			tdshp_data->tile_overhead.in_width =
 				cfg->tile_overhead.right_in_width;
-			primary_data->tile_overhead.right_overhead =
+			tdshp_data->tile_overhead.overhead =
 				cfg->tile_overhead.right_overhead;
 		}
 	}
@@ -516,8 +512,8 @@ static void mtk_disp_tdshp_config(struct mtk_ddp_comp *comp,
 		DDPPR_ERR("%s: Invalid bpc: %u\n", __func__, cfg->bpc);
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support) {
-		in_width = primary_data->tile_overhead.left_in_width;
-		out_width = in_width - primary_data->tile_overhead.left_comp_overhead;
+		in_width = tdshp_data->tile_overhead.in_width;
+		out_width = in_width - tdshp_data->tile_overhead.comp_overhead;
 	} else {
 		if (comp->mtk_crtc->is_dual_pipe)
 			in_width = cfg->w / 2;
@@ -543,7 +539,7 @@ static void mtk_disp_tdshp_config(struct mtk_ddp_comp *comp,
 		else
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET,
-				primary_data->tile_overhead.right_comp_overhead << 16 | 0, ~0);
+				tdshp_data->tile_overhead.comp_overhead << 16 | 0, ~0);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, 0x0, ~0);

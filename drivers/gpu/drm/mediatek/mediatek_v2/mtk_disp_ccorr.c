@@ -1263,28 +1263,28 @@ static void mtk_disp_ccorr_config_overhead(struct mtk_ddp_comp *comp,
 	if (cfg->tile_overhead.is_support) {
 		/*set component overhead*/
 		if (!ccorr_data->is_right_pipe) {
-			ccorr_data->ccorr_tile_overhead.left_comp_overhead = 0;
+			ccorr_data->tile_overhead.comp_overhead = 0;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.left_overhead +=
-				ccorr_data->ccorr_tile_overhead.left_comp_overhead;
+				ccorr_data->tile_overhead.comp_overhead;
 			cfg->tile_overhead.left_in_width +=
-				ccorr_data->ccorr_tile_overhead.left_comp_overhead;
+				ccorr_data->tile_overhead.comp_overhead;
 			/*copy from total overhead info*/
-			ccorr_data->ccorr_tile_overhead.left_in_width =
+			ccorr_data->tile_overhead.in_width =
 				cfg->tile_overhead.left_in_width;
-			ccorr_data->ccorr_tile_overhead.left_overhead =
+			ccorr_data->tile_overhead.overhead =
 				cfg->tile_overhead.left_overhead;
 		} else {
-			ccorr_data->ccorr_tile_overhead.right_comp_overhead = 0;
+			ccorr_data->tile_overhead.comp_overhead = 0;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.right_overhead +=
-				ccorr_data->ccorr_tile_overhead.right_comp_overhead;
+				ccorr_data->tile_overhead.comp_overhead;
 			cfg->tile_overhead.right_in_width +=
-				ccorr_data->ccorr_tile_overhead.right_comp_overhead;
+				ccorr_data->tile_overhead.comp_overhead;
 			/*copy from total overhead info*/
-			ccorr_data->ccorr_tile_overhead.right_in_width =
+			ccorr_data->tile_overhead.in_width =
 				cfg->tile_overhead.right_in_width;
-			ccorr_data->ccorr_tile_overhead.right_overhead =
+			ccorr_data->tile_overhead.overhead =
 				cfg->tile_overhead.right_overhead;
 		}
 	}
@@ -1300,9 +1300,9 @@ static void mtk_ccorr_config(struct mtk_ddp_comp *comp,
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support) {
 		if (!ccorr_data->is_right_pipe)
-			width = ccorr_data->ccorr_tile_overhead.left_in_width;
+			width = ccorr_data->tile_overhead.in_width;
 		else
-			width = ccorr_data->ccorr_tile_overhead.right_in_width;
+			width = ccorr_data->tile_overhead.in_width;
 	} else {
 		if (comp->mtk_crtc->is_dual_pipe)
 			width = cfg->w / 2;

@@ -20,12 +20,9 @@ struct ccorr_backup {
 };
 
 struct mtk_disp_ccorr_tile_overhead {
-	unsigned int left_in_width;
-	unsigned int left_overhead;
-	unsigned int left_comp_overhead;
-	unsigned int right_in_width;
-	unsigned int right_overhead;
-	unsigned int right_comp_overhead;
+	unsigned int in_width;
+	unsigned int overhead;
+	unsigned int comp_overhead;
 };
 
 struct mtk_disp_ccorr_primary {
@@ -74,7 +71,7 @@ struct mtk_disp_ccorr {
 	enum drm_disp_ccorr_linear_t is_linear;// each comp property
 	struct mtk_disp_ccorr_primary *primary_data;
 	atomic_t is_clock_on;
-	struct mtk_disp_ccorr_tile_overhead ccorr_tile_overhead;
+	struct mtk_disp_ccorr_tile_overhead tile_overhead;
 	bool bypass_color;
 	struct mtk_ddp_comp *color_comp;
 };

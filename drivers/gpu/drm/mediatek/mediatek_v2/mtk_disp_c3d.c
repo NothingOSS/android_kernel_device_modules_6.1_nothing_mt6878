@@ -1063,35 +1063,34 @@ static void mtk_disp_c3d_config_overhead(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg)
 {
 	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
-	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
 
 	DDPINFO("line: %d\n", __LINE__);
 
 	if (cfg->tile_overhead.is_support) {
 		/*set component overhead*/
 		if (!c3d_data->is_right_pipe) {
-			primary_data->tile_overhead.left_comp_overhead = 0;
+			c3d_data->tile_overhead.comp_overhead = 0;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.left_overhead +=
-				primary_data->tile_overhead.left_comp_overhead;
+				c3d_data->tile_overhead.comp_overhead;
 			cfg->tile_overhead.left_in_width +=
-				primary_data->tile_overhead.left_comp_overhead;
+				c3d_data->tile_overhead.comp_overhead;
 			/*copy from total overhead info*/
-			primary_data->tile_overhead.left_in_width =
+			c3d_data->tile_overhead.in_width =
 				cfg->tile_overhead.left_in_width;
-			primary_data->tile_overhead.left_overhead =
+			c3d_data->tile_overhead.overhead =
 				cfg->tile_overhead.left_overhead;
 		} else if (c3d_data->is_right_pipe) {
-			primary_data->tile_overhead.right_comp_overhead = 0;
+			c3d_data->tile_overhead.comp_overhead = 0;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.right_overhead +=
-				primary_data->tile_overhead.right_comp_overhead;
+				c3d_data->tile_overhead.comp_overhead;
 			cfg->tile_overhead.right_in_width +=
-				primary_data->tile_overhead.right_comp_overhead;
+				c3d_data->tile_overhead.comp_overhead;
 			/*copy from total overhead info*/
-			primary_data->tile_overhead.right_in_width =
+			c3d_data->tile_overhead.in_width =
 				cfg->tile_overhead.right_in_width;
-			primary_data->tile_overhead.right_overhead =
+			c3d_data->tile_overhead.overhead =
 				cfg->tile_overhead.right_overhead;
 		}
 	}
@@ -1103,13 +1102,12 @@ static void mtk_disp_c3d_config(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
-	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
 	unsigned int width;
 
 	C3DFLOW_LOG("line: %d\n", __LINE__);
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support)
-		width = primary_data->tile_overhead.left_in_width;
+		width = c3d_data->tile_overhead.in_width;
 	else {
 		if (comp->mtk_crtc->is_dual_pipe)
 			width = cfg->w / 2;

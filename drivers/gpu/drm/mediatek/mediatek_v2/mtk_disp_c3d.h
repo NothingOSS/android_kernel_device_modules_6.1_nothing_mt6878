@@ -93,12 +93,9 @@ struct mtk_disp_c3d_data {
 };
 
 struct mtk_disp_c3d_tile_overhead {
-	unsigned int left_in_width;
-	unsigned int left_overhead;
-	unsigned int left_comp_overhead;
-	unsigned int right_in_width;
-	unsigned int right_overhead;
-	unsigned int right_comp_overhead;
+	unsigned int in_width;
+	unsigned int overhead;
+	unsigned int comp_overhead;
 };
 
 struct mtk_disp_c3d_primary {
@@ -117,7 +114,6 @@ struct mtk_disp_c3d_primary {
 	bool set_lut_flag;
 	bool update_sram_ignore;
 	bool skip_update_sram;
-	struct mtk_disp_c3d_tile_overhead tile_overhead;
 	spinlock_t c3d_clock_lock;
 	struct mutex c3d_global_lock;
 	struct mutex c3d_power_lock;
@@ -132,6 +128,7 @@ struct mtk_disp_c3d {
 	int path_order;
 	struct mtk_ddp_comp *companion;
 	struct mtk_disp_c3d_primary *primary_data;
+	struct mtk_disp_c3d_tile_overhead tile_overhead;
 	bool pkt_reused;
 	struct cmdq_reuse reuse_c3d[4913 * 2];
 	atomic_t c3d_is_clock_on;
