@@ -18,6 +18,7 @@
 #define DEFAULT_RESET_TOLERENCE 3
 #define FSTB_IDLE_DBNC 10
 #define MAX_FSTB_POLICY_CMD_NUM 10
+#define MAX_Q2Q_TIME_CALLBACK 5
 
 extern void (*ged_kpi_output_gfx_info2_fp)(long long t_gpu,
 	unsigned int cur_freq, unsigned int cur_max_freq, u64 ulID);

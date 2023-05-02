@@ -332,7 +332,7 @@ static int fpsgo_com_check_BQ_type(int *bq_type,
 	int *local_dep_arr = NULL;
 
 	if (!bq_type)
-		goto out;
+		return ret;
 
 	local_bq_type = fpsgo_get_acquire_queue_pair_by_self(pid, buffer_id);
 	if (local_bq_type == ACQUIRE_SELF_TYPE) {

@@ -6,6 +6,17 @@
 #ifndef FSTB_H
 #define FSTB_H
 
+enum FSTB_INFO {
+	FPSGO_Q2Q_TIME,
+	FPSGO_CPU_TIME,
+	FPSGO_GPU_TIME,
+	FPSGO_QUEUE_FPS,
+	FPSGO_TARGET_FPS
+};
+
+typedef void (*time_notify_callback)(int pid, unsigned long long bufID,
+	int fps, unsigned long long time);
+
 int mtk_fstb_exit(void);
 int mtk_fstb_init(void);
 void fpsgo_comp2fstb_queue_time_update(
@@ -19,13 +30,15 @@ int fpsgo_ctrl2fstb_gblock(int tid, int start);
 void fpsgo_ctrl2fstb_get_fps(int *pid, int *fps);
 int fpsgo_ctrl2fstb_wait_fstb_active(void);
 int fpsgo_comp2fstb_do_recycle(void);
+int fpsgo_other2fstb_register_info_callback(int mode, time_notify_callback func_cb);
+int fpsgo_other2fstb_unregister_info_callback(int mode, time_notify_callback func_cb);
 int fpsgo_other2fstb_get_fps(int pid, unsigned long long bufID,
 	int *qfps_arr, int *qfps_num, int max_qfps_num,
 	int *tfps_arr, int *tfps_num, int max_tfps_num);
 int fpsgo_ktf2fstb_add_delete_render_info(int mode, int pid, unsigned long long bufID,
 	int target_fps, int queue_fps);
 
-#if defined(CONFIG_MTK_FPSGO) || defined(CONFIG_MTK_FPSGO_V3)
+#if IS_ENABLED(CONFIG_MTK_FPSGO) || IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 int is_fstb_enable(void);
 int is_fstb_active(long long time_diff);
 int fpsgo_ctrl2fstb_switch_fstb(int value);

@@ -87,12 +87,15 @@ static DEFINE_MUTEX(fstb_fps_active_time);
 static DEFINE_MUTEX(fpsgo2pwr_lock);
 static DEFINE_MUTEX(fstb_ko_lock);
 static DEFINE_MUTEX(fstb_policy_cmd_lock);
+static DEFINE_MUTEX(fstb_info_callback_lock);
 
 static struct kobject *fstb_kobj;
 static struct hrtimer hrt;
 static struct workqueue_struct *wq;
 static struct rb_root fstb_policy_cmd_tree;
 struct FSTB_POWERFPS_LIST powerfps_array[64];
+
+static time_notify_callback q2q_notify_callback_list[MAX_Q2Q_TIME_CALLBACK];
 
 int (*fstb_get_target_fps_fp)(int pid, unsigned long long bufID, int tgid,
 	int dfps_ceiling, int max_dep_path_num, int max_dep_task_num,
@@ -262,6 +265,104 @@ static int fstb_arbitrate_target_fps(int raw_target_fps, int *margin,
 	*margin = local_margin;
 
 	return final_target_fps;
+}
+
+int fpsgo_other2fstb_register_info_callback(int mode, time_notify_callback func_cb)
+{
+	int i;
+	int ret = 0;
+
+	mutex_lock(&fstb_info_callback_lock);
+
+	switch (mode) {
+	case FPSGO_Q2Q_TIME:
+		for (i = 0; i < MAX_Q2Q_TIME_CALLBACK; i++) {
+			if (q2q_notify_callback_list[i] == func_cb) {
+				ret = 2;
+				break;
+			}
+		}
+		break;
+	default:
+		break;
+	}
+
+	if (ret)
+		goto out;
+
+	switch (mode) {
+	case FPSGO_Q2Q_TIME:
+		for (i = 0; i < MAX_Q2Q_TIME_CALLBACK; i++) {
+			if (q2q_notify_callback_list[i] == NULL) {
+				q2q_notify_callback_list[i] = func_cb;
+				ret = 1;
+				break;
+			}
+		}
+		break;
+	default:
+		break;
+	}
+
+out:
+	mutex_unlock(&fstb_info_callback_lock);
+	return ret;
+}
+EXPORT_SYMBOL(fpsgo_other2fstb_register_info_callback);
+
+int fpsgo_other2fstb_unregister_info_callback(int mode, time_notify_callback func_cb)
+{
+	int i;
+	int ret = 0;
+
+	mutex_lock(&fstb_info_callback_lock);
+
+	switch (mode) {
+	case FPSGO_Q2Q_TIME:
+		for (i = 0; i < MAX_Q2Q_TIME_CALLBACK; i++) {
+			if (q2q_notify_callback_list[i] == func_cb) {
+				q2q_notify_callback_list[i] = NULL;
+				ret = 1;
+				break;
+			}
+		}
+		break;
+	default:
+		break;
+	}
+
+	mutex_unlock(&fstb_info_callback_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL(fpsgo_other2fstb_unregister_info_callback);
+
+static int fpsgo_fstb2other_info_update(int pid, unsigned long long bufID,
+		int mode, int fps, unsigned long long time)
+{
+	int i;
+	int ret = 0;
+
+	mutex_lock(&fstb_info_callback_lock);
+
+	switch (mode) {
+	case FPSGO_Q2Q_TIME:
+		for (i = 0; i < MAX_Q2Q_TIME_CALLBACK; i++) {
+			if (q2q_notify_callback_list[i]) {
+				q2q_notify_callback_list[i](pid, bufID, fps, time);
+				ret = 1;
+				mtk_fstb_dprintk("%s %dth function:%ps\n",
+					__func__, i+1, q2q_notify_callback_list[i]);
+			}
+		}
+		break;
+	default:
+		break;
+	}
+
+	mutex_unlock(&fstb_info_callback_lock);
+
+	return ret;
 }
 
 int fpsgo_other2fstb_get_fps(int pid, unsigned long long bufID,
@@ -1101,6 +1202,8 @@ out:
 	if (fpsgo2msync_hint_frameinfo_fp)
 		fpsgo2msync_hint_frameinfo_fp((unsigned int)iter->pid, iter->bufid,
 			iter->target_fps, Q2Q_time, Q2Q_time - enqueue_length - dequeue_length);
+
+	fpsgo_fstb2other_info_update(pid, bufID, FPSGO_Q2Q_TIME, 0, Q2Q_time);
 
 	fpsgo_systrace_c_fstb_man(pid, iter->bufid, (int)cpu_time_ns, "t_cpu");
 	fpsgo_systrace_c_fstb(pid, iter->bufid, (int)max_current_cap,
@@ -2296,6 +2399,18 @@ FSTB_SYSFS_READ(notify_fstb_target_fps_by_pid, 0, 0);
 FSTB_SYSFS_WRITE_POLICY_CMD(notify_fstb_target_fps_by_pid, 2, min_fps_limit, dfps_ceiling);
 static KOBJ_ATTR_RW(notify_fstb_target_fps_by_pid);
 
+void init_fstb_callback(void)
+{
+	int i;
+
+	mutex_lock(&fstb_info_callback_lock);
+
+	for (i = 0; i < MAX_Q2Q_TIME_CALLBACK; i++)
+		q2q_notify_callback_list[i] = NULL;
+
+	mutex_unlock(&fstb_info_callback_lock);
+}
+
 int mtk_fstb_init(void)
 {
 	mtk_fstb_dprintk_always("init\n");
@@ -2346,6 +2461,8 @@ int mtk_fstb_init(void)
 	hrt.function = &mt_fstb;
 
 	fstb_policy_cmd_tree = RB_ROOT;
+
+	init_fstb_callback();
 
 	mtk_fstb_dprintk_always("init done\n");
 

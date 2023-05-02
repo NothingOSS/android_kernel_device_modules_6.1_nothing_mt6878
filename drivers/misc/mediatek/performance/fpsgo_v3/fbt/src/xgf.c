@@ -2448,11 +2448,11 @@ XGF_SYSFS_WRITE_VALUE(xgff_mips_exp_enable, xgff_frames_lock, is_xgff_mips_exp_e
 static KOBJ_ATTR_RW(xgff_mips_exp_enable);
 
 XGF_SYSFS_READ(set_cam_hal_pid, 1, cam_hal_pid);
-XGF_SYSFS_WRITE_VALUE(set_cam_hal_pid, xgf_main_lock, cam_hal_pid, 0, INT_MAX);
+XGF_SYSFS_WRITE_VALUE(set_cam_hal_pid, xgf_main_lock, cam_hal_pid, 0, 65536);
 static KOBJ_ATTR_RW(set_cam_hal_pid);
 
 XGF_SYSFS_READ(set_cam_server_pid, 1, cam_server_pid);
-XGF_SYSFS_WRITE_VALUE(set_cam_server_pid, xgf_main_lock, cam_server_pid, 0, INT_MAX);
+XGF_SYSFS_WRITE_VALUE(set_cam_server_pid, xgf_main_lock, cam_server_pid, 0, 65536);
 static KOBJ_ATTR_RW(set_cam_server_pid);
 
 static ssize_t xgf_ema2_enable_by_pid_show(struct kobject *kobj,
