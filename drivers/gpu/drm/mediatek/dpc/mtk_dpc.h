@@ -47,8 +47,12 @@ enum mtk_dpc_mml_vidle {
 	DPC_MML_VIDLE_RESERVED = 54,
 };
 
+void dpc_enable(bool en);
 void dpc_group_enable(const u16 group, bool en);
 void dpc_config(const enum mtk_dpc_subsys subsys);
 void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
+int mtk_disp_vidle_power_keep(void);
+void mtk_disp_vidle_power_release(void);
+
 
 #endif

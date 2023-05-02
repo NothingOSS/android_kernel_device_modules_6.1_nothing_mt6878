@@ -4,6 +4,7 @@
  */
 
 #include <linux/clk.h>
+#include <linux/iopoll.h>
 #include <linux/component.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
@@ -179,6 +180,26 @@ static void __iomem *dpc_base;
 #define DISP_DPC_DT_EN                                   BIT(1)
 #define DISP_DPC_EN                                      BIT(0)
 
+static void __iomem *vlp_base;	/* 0x1C000000 */
+#define DISPSYS_VLP_SW_VOTE_SET 0x414	/* any bit, need access twice */
+#define DISPSYS_VLP_SW_VOTE_CLR 0x418	/* any bit, need access twice */
+
+#define DISP_VLP_DISP0_PWR_CON 0x1E98
+#define DISP_VLP_DISP1_PWR_CON 0x1E9C
+#define DISP_VLP_OVL0_PWR_CON 0x1EA0
+#define DISP_VLP_OVL1_PWR_CON 0x1EA4
+#define VLP_PWR_ACK BIT(30)
+
+#define VOTE_SET 1
+#define VOTE_CLR 0
+
+/* NOTE: user 0 to 7 only */
+enum mtk_vidle_voter_user {
+	DISP_VIDLE_USER_DISP = 0,
+	DISP_VIDLE_USER_PQ,
+	DISP_VIDLE_USER_OTHER = 7
+};
+
 struct mtk_dpc {
 	struct platform_device *pdev;
 	struct device *dev;
@@ -264,7 +285,6 @@ static struct mtk_dpc_dt_usage mt6989_mml_dt_usage[25] = {
 	{35, DPC_SP_TE,			100,	DPC_MML_VIDLE_MTCMOS},	/* OFF Time 1 */
 };
 
-static void dpc_enable(bool en);
 static void dpc_dt_enable(u16 dt, bool en);
 static void dpc_dt_set(u16 dt, u32 counter);
 static void dpc_dt_sw_trig(u16 dt);
@@ -275,7 +295,7 @@ static void dpc_ddr_force_enable(const bool force);
 static void dpc_infra_force_enable(const u8 infra);
 static void dpc_smi_force_enable(const bool is_hrt, const bool force);
 
-static void dpc_enable(bool en)
+void dpc_enable(bool en)
 {
 	if (en)
 		writel(DISP_DPC_EN | DISP_DPC_DT_EN, dpc_base + DISP_REG_DPC_EN);
@@ -287,6 +307,7 @@ static void dpc_enable(bool en)
 
 	DPCFUNC("en(%u)", en);
 }
+EXPORT_SYMBOL(dpc_enable);
 
 static void dpc_dt_enable(u16 dt, bool en)
 {
@@ -530,6 +551,89 @@ static int dpc_irq_init(struct mtk_dpc *priv)
 	return ret;
 }
 
+void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
+{
+	if (vote_set) {
+		/* need write twice */
+		writel(1 << thread, vlp_base + DISPSYS_VLP_SW_VOTE_SET);
+		writel(1 << thread, vlp_base + DISPSYS_VLP_SW_VOTE_SET);
+	} else {
+		/* need write twice */
+		writel(1 << thread, vlp_base + DISPSYS_VLP_SW_VOTE_CLR);
+		writel(1 << thread, vlp_base + DISPSYS_VLP_SW_VOTE_CLR);
+	}
+}
+
+int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
+{
+	unsigned int value;
+	unsigned int addr = 0;
+	int ret = 0;
+	#define TIMEOUT_CNT 10000	/* ms */
+
+	switch (subsys) {
+	case DPC_SUBSYS_DISP0:
+		addr = DISP_VLP_DISP0_PWR_CON;
+		break;
+	case DPC_SUBSYS_DISP1:
+		addr = DISP_VLP_DISP1_PWR_CON;
+		break;
+	case DPC_SUBSYS_OVL0:
+		addr = DISP_VLP_OVL0_PWR_CON;
+		break;
+	case DPC_SUBSYS_OVL1:
+		addr = DISP_VLP_OVL1_PWR_CON;
+		break;
+	default:
+		/* unknown subsys type */
+		return ret;
+	}
+
+	if (readl_poll_timeout_atomic(vlp_base + addr,
+			value, value & VLP_PWR_ACK, 1, TIMEOUT_CNT)) {
+		DPCERR("wait subsys%d power on timeout\n", subsys);
+		ret = -1;
+	}
+
+	return ret;
+}
+
+int mtk_disp_vidle_power_keep(void)
+{
+	mtk_disp_vlp_vote(VOTE_SET, DISP_VIDLE_USER_DISP);
+
+	/* wait subsys power on */
+	if (mtk_disp_wait_pwr_ack(DPC_SUBSYS_DISP1) &&	/* DISP1 first */
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_DISP0) &&
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL0) &&
+		mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL1)) {
+		/* power on timeout */
+		return -1;
+	}
+
+	/* Vote for power keep */
+	dpc_mtcmos_vote(DPC_SUBSYS_DISP0, DISP_VIDLE_USER_DISP, VOTE_SET);
+	dpc_mtcmos_vote(DPC_SUBSYS_DISP1, DISP_VIDLE_USER_DISP, VOTE_SET);
+	dpc_mtcmos_vote(DPC_SUBSYS_OVL0, DISP_VIDLE_USER_DISP, VOTE_SET);
+	dpc_mtcmos_vote(DPC_SUBSYS_OVL1, DISP_VIDLE_USER_DISP, VOTE_SET);
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_disp_vidle_power_keep);
+
+void mtk_disp_vidle_power_release(void)
+{
+	/* Vote for power release */
+	dpc_mtcmos_vote(DPC_SUBSYS_DISP0, DISP_VIDLE_USER_DISP, VOTE_CLR);
+	dpc_mtcmos_vote(DPC_SUBSYS_DISP1, DISP_VIDLE_USER_DISP, VOTE_CLR);
+	dpc_mtcmos_vote(DPC_SUBSYS_OVL0, DISP_VIDLE_USER_DISP, VOTE_CLR);
+	dpc_mtcmos_vote(DPC_SUBSYS_OVL1, DISP_VIDLE_USER_DISP, VOTE_CLR);
+
+	/* vote for power release DISP/MMInfra MTCMOS */
+	mtk_disp_vlp_vote(VOTE_CLR, DISP_VIDLE_USER_DISP);
+}
+EXPORT_SYMBOL(mtk_disp_vidle_power_release);
+
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 static void process_dbg_opt(const char *opt)
 {
@@ -629,6 +733,8 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 		DPCERR("iomap failed");
 		return ret;
 	}
+
+	vlp_base = (void __iomem *)0x1C000000;
 
 	ret = dpc_irq_init(priv);
 	if (ret)
