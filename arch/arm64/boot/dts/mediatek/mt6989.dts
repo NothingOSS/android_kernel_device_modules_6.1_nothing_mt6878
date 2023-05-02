@@ -8888,6 +8888,7 @@
 			mediatek,dvfs-req-dis;
 			mediatek,suspend-mode-l12;
 			pextpcfg = <&pextpcfg_ao_clk>;
+			max-link-speed = <3>;
 
 			clocks = <&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_REF>,
 				 <&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_PL_P>,
