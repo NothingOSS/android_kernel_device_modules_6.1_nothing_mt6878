@@ -427,11 +427,11 @@ static void mtk_btag_seq_debug_show_ringtrace(char **buff, unsigned long *size,
 
 	spin_lock_irqsave(&rt->lock, flags);
 	end = (rt->index > 0) ? rt->index-1 : rt->max-1;
-	for (i = rt->index;;) {
+	for (i = end;;) {
 		mtk_btag_seq_trace(buff, size, seq, btag->name, &rt->trace[i]);
-		if (i == end)
+		if (i == rt->index)
 			break;
-		i = (i >= rt->max-1) ? 0 : i+1;
+		i = (i > 0) ? i - 1 : rt->max - 1;
 	};
 	spin_unlock_irqrestore(&rt->lock, flags);
 }
