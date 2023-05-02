@@ -158,6 +158,7 @@ int mtk_drm_ioctl_set_chist_config(struct drm_device *dev, void *data,
 	unsigned int crtc_id = config->device_id >> 16 & 0xffff;
 	unsigned int index = config->device_id & 0xffff;
 	int i = 0;
+	int ret = 0;
 
 	if (crtc_id > 0)
 		crtc = drm_crtc_find(dev, file_priv, crtc_id);
@@ -202,8 +203,12 @@ int mtk_drm_ioctl_set_chist_config(struct drm_device *dev, void *data,
 	chist_data->primary_data->present_fence = 0;
 	chist_data->primary_data->need_restore = 1;
 	chist_data->primary_data->pre_frame_width = 0;
+	mtk_drm_idlemgr_kick(__func__, crtc, 1);
+	ret = mtk_crtc_user_cmd(crtc, comp, CHIST_CONFIG, data);
+	mtk_crtc_check_trigger(comp->mtk_crtc, false, true);
 	DDPINFO("%s --\n", __func__);
-	return mtk_crtc_user_cmd(crtc, comp, CHIST_CONFIG, data);
+	return ret;
+
 }
 
 // need dither to call this api
