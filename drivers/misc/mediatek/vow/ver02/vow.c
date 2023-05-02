@@ -2590,7 +2590,6 @@ DEVICE_ATTR(vow_SetMCPS,
 	    VowDrv_GetMCPSflag,
 	    VowDrv_SetMCPSflag);
 
-
 static ssize_t VowDrv_GetPatternInput(struct device *kobj,
 				      struct device_attribute *attr,
 				      char *buf)
@@ -2630,6 +2629,26 @@ DEVICE_ATTR(vow_SetPatternInput,
 	    0644, /*S_IWUSR | S_IRUGO*/
 	    VowDrv_GetPatternInput,
 	    VowDrv_SetPatternInput);
+
+static bool vow_service_NotifyCHREStatus(unsigned int status)
+{
+	bool ret = 0;
+	unsigned int isCHREOpen = status & 0xF;
+
+	if (status == 0) {
+		//do nothing discard msg
+		//never go here
+		return ret;
+	}
+	//check CHRE audio is open or close
+	if (isCHREOpen > CHRE_OPEN) {
+		//never go here
+		VOWDRV_DEBUG("%s(),isCHREOpen=%d\n", __func__, isCHREOpen);
+		ret = 1;
+	}
+	VowDrv_SetFlag(VOW_FLAG_CHRE_STATUS, status);
+	return ret;
+}
 
 static int VowDrv_SetVowEINTStatus(int status)
 {
@@ -2992,6 +3011,11 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		VOWDRV_DEBUG("VOW_SET_VOW_DUAL_CH_TRANSFER(%lu)", arg);
 		vow_service_SetDualChannelTransfer(arg);
 		break;
+	case VOW_NOTIFY_CHRE_STATUS:
+		VOWDRV_DEBUG("VOW_NOTIFY_CHRE_STATUS(%lu)", arg);
+		if (vow_service_NotifyCHREStatus((unsigned int)arg))
+			ret = -EFAULT;
+		break;
 	default:
 		VOWDRV_DEBUG("vow WrongParameter(%lu)", arg);
 		break;
@@ -3023,6 +3047,7 @@ static long VowDrv_compat_ioctl(struct file *fp,
 	case VOW_BARGEIN_ON:
 	case VOW_BARGEIN_OFF:
 	case VOW_GET_GOOGLE_ENGINE_VER:
+	case VOW_NOTIFY_CHRE_STATUS:
 		ret = fp->f_op->unlocked_ioctl(fp, cmd, arg);
 		break;
 	case VOW_MODEL_START:

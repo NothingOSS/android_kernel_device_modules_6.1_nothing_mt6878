@@ -125,6 +125,7 @@
 #define VOW_SET_VOW_DUMP_DATA         _IOW(VOW_IOC_MAGIC, 0x18, unsigned int)
 #define VOW_GET_SCP_RECOVER_STATUS    _IOW(VOW_IOC_MAGIC, 0x19, unsigned int)
 #define VOW_SET_VOW_DUAL_CH_TRANSFER  _IOW(VOW_IOC_MAGIC, 0x1A, unsigned int)
+#define VOW_NOTIFY_CHRE_STATUS        _IOW(VOW_IOC_MAGIC, 0x1B, unsigned int)
 
 #ifdef VOW_ECHO_SW_SRC
 #define VOW_BARGEIN_AFE_MEMIF_SIZE        (0x1E00)
@@ -216,6 +217,7 @@ enum vow_flag_type_t {
 	VOW_FLAG_DUAL_MIC_SWITCH,
 	VOW_FLAG_MCPS,
 	VOW_FLAG_SPEAKER_NUMBER,
+	VOW_FLAG_CHRE_STATUS,
 	NUM_OF_VOW_FLAG_TYPE
 };
 
@@ -286,6 +288,12 @@ enum {
 	VOW_SCP_EVENT_NONE = 0,
 	VOW_SCP_EVENT_STOP = 5,
 	VOW_SCP_EVENT_READY = 6
+};
+
+enum chre_status_t {
+	CHRE_DO_NOTHING = 0,
+	CHRE_CLOSE = 1,
+	CHRE_OPEN = 2
 };
 
 /*****************************************************************************
