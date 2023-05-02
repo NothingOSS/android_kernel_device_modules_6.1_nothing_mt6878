@@ -858,6 +858,14 @@
 		#clock-cells = <1>;
 	};
 
+	flashlight_core: flashlight-core {
+		compatible = "mediatek,flashlight_core";
+	};
+
+	mtk_composite_v4l2_1: mtk-composite-v4l2-1 {
+		compatible = "mediatek,mtk_composite_v4l2_1";
+	};
+
 	ccipll_pll_ctrl_clk: syscon@c030000 {
 		compatible = "mediatek,mt6989-ccipll_pll_ctrl", "syscon";
 		reg = <0 0xc030000 0 0x0400>;
