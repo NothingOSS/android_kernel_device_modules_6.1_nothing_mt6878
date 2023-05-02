@@ -1358,9 +1358,9 @@
 	gpufreq_wrapper: gpufreq-wrapper {
 		compatible = "mediatek,gpufreq_wrapper";
 		gpufreq-version = <2>;
-		dual-buck = <0>;
+		dual-buck = <1>;
 		gpueb-support = <0>;
-		gpufreq-bringup = <1>;
+		gpufreq-bringup = <0>;
 	};
 
 	connv3: connv3 {
@@ -12122,7 +12122,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 				regulator-max-microvolt = <1275000>;
 				regulator-enable-ramp-delay = <256>;
 				regulator-allowed-modes = <0 1 2>;
-				regulator-always-on;
 			};
 		};
 	};
@@ -12696,10 +12695,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 };
 
 &mt6373_vbuck2 {
-	regulator-always-on;
-};
-
-&mt6373_vbuck3 {
 	regulator-always-on;
 };
 

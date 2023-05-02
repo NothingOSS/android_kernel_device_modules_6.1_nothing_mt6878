@@ -11,7 +11,6 @@
 		reg = <0>;
 		clocks =
 			<&topckgen_clk CLK_TOP_DSP_SEL>,
-			<&topckgen_clk CLK_TOP_MFG_REF_SEL>,
 			<&topckgen_clk CLK_TOP_MFG_EB_SEL>,
 			<&topckgen_clk CLK_TOP_SPI0_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_SPI1_BCLK_SEL>,
@@ -217,9 +216,6 @@
 			<&imp_iic_wrap_n_clk CLK_IMPN_I2C0>,
 			<&imp_iic_wrap_n_clk CLK_IMPN_I2C6>,
 			<&imp_iic_wrap_n_clk CLK_IMPN_SEC_EN>,
-			<&mfgpll_pll_ctrl_clk CLK_MFG_AO_MFGPLL>,
-			<&mfgpll_sc0_pll_ctrl_clk CLK_MFGSC0_AO_MFGPLL_SC0>,
-			<&mfgpll_sc1_pll_ctrl_clk CLK_MFGSC1_AO_MFGPLL_SC1>,
 			<&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_SCP_SPI_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_SCP_IIC_SEL>,
