@@ -40,6 +40,7 @@ struct logger_init_info {
 	uint32_t aov_iova;
 	uint32_t aov_iova_h;
 	uint32_t aov_buf_sz;
+	uint32_t lbc_sz;
 } __packed;
 
 struct apummu_init_info {

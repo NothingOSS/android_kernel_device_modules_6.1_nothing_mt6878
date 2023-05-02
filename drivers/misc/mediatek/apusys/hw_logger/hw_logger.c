@@ -75,6 +75,7 @@ static void *apu_rpc;
 #define LOG_R_OFS_MBOX    (apu_mbox + 0x44)
 
 /* hw log buffer related */
+static unsigned int hw_log_lbc_size;
 static char *hw_log_buf;
 static char *aov_hw_log_buf;
 static dma_addr_t hw_log_buf_addr;
@@ -498,6 +499,7 @@ int hw_logger_config_init(struct mtk_apu *apu)
 		st_logger_init_info->iova_h =
 			upper_32_bits(hw_log_buf_addr);
 		apu->apummu_hwlog_buf_da = hw_log_buf_addr;
+		st_logger_init_info->lbc_sz = hw_log_lbc_size;
 	}
 
 	if (aov_hw_log_buf_addr) {
@@ -509,9 +511,10 @@ int hw_logger_config_init(struct mtk_apu *apu)
 			aov_log_buf_sz;
 	}
 
-	HWLOGR_DBG("set st_logger_init_info iova = 0x%x, iova_h = 0x%x\n",
+	HWLOGR_DBG("set st_logger_init_info iova = 0x%x, iova_h = 0x%x, lbc_sz = 0x%x\n",
 		st_logger_init_info->iova,
-		st_logger_init_info->iova_h);
+		st_logger_init_info->iova_h,
+		st_logger_init_info->lbc_sz);
 
 	if (aov_hw_log_buf_addr)
 		HWLOGR_DBG("set st_logger_init_info aov_iova = 0x%x, aov_iova_h = 0x%x\n",
@@ -1773,6 +1776,12 @@ static int hw_logger_probe(struct platform_device *pdev)
 		enable_interrupt = 0;
 	}
 	HWLOGR_INFO("enable_interrupt : %u\n", enable_interrupt);
+
+	if (of_property_read_u32(np, "interrupt-lbc-sz", &hw_log_lbc_size)) {
+		HWLOGR_INFO("get interrupt-lbc-sz failed\n");
+		hw_log_lbc_size = 0;
+	}
+	HWLOGR_INFO("hw_log_lbc_size : %u\n", hw_log_lbc_size);
 
 	ret = hw_logger_create_procfs(dev);
 	if (ret) {
