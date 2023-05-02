@@ -204,26 +204,42 @@ static inline void mtk_iommu_unbind(struct device *dev)
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 
-int dev_is_normal_region(struct device *dev);
+static inline int dev_is_normal_region(struct device *dev)
+{
+	struct mtk_iommu_data *data = dev_iommu_priv_get(dev);
+	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
+	int domid;
+
+	if (!data || !fwspec) {
+		pr_info("%s err, dev(%s) is not iommu-dev\n", __func__, dev_name(dev));
+		return 0;
+	}
+
+	domid = MTK_M4U_TO_DOM(fwspec->ids[0]);
+
+	pr_debug("%s, domid:%d -- %u\n", __func__, domid, data->plat_data->normal_dom);
+	return domid == data->plat_data->normal_dom;
+}
 
 void mtk_iommu_dbg_hang_detect(enum mtk_iommu_type type, int id);
 
 uint64_t mtee_iova_to_phys(unsigned long iova, u32 tab_id, u32 *sr_info,
-				u64 *pa, u32 *type, u32 *lvl);
+			   u64 *pa, u32 *type, u32 *lvl);
 
 #else
 
-int dev_is_normal_region(struct device *dev)
+static inline int dev_is_normal_region(struct device *dev)
 {
 	return 0;
 }
 
-void mtk_iommu_dbg_hang_detect(enum mtk_iommu_type type, int id)
+static inline void mtk_iommu_dbg_hang_detect(enum mtk_iommu_type type, int id)
 {
 }
 
-uint64_t mtee_iova_to_phys(unsigned long iova, u32 tab_id, u32 *sr_info,
-			u64 *pa, u32 *type, u32 *lvl)
+static inline uint64_t mtee_iova_to_phys(unsigned long iova, u32 tab_id,
+					 u32 *sr_info, u64 *pa, u32 *type,
+					 u32 *lvl)
 {
 	return 0;
 }

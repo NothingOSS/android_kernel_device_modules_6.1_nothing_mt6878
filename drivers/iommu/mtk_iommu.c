@@ -1403,25 +1403,6 @@ static irqreturn_t mtk_iommu_isr(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-int dev_is_normal_region(struct device *dev)
-{
-	struct mtk_iommu_data *data;
-	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
-	int domid;
-
-	if (!fwspec) {
-		pr_err("%s err, dev(%s) is not iommu-dev\n", __func__, dev_name(dev));
-		return 0;
-	}
-
-	data = dev_iommu_priv_get(dev);
-	domid = MTK_M4U_TO_DOM(fwspec->ids[0]);
-
-	pr_info("%s, domid:%d -- %u\n", __func__, domid, data->plat_data->normal_dom);
-	return domid == data->plat_data->normal_dom;
-}
-EXPORT_SYMBOL_GPL(dev_is_normal_region);
-
 static int mtk_iommu_get_domain_id(struct device *dev,
 				   const struct mtk_iommu_plat_data *plat_data)
 {
