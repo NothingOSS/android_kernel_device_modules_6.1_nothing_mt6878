@@ -24,6 +24,7 @@
 #include <dt-bindings/interconnect/mtk,mt6873-emi.h>
 #include <dt-bindings/memory/mt6989-larb-port.h>
 #include <dt-bindings/reset/ti-syscon.h>
+#include <dt-bindings/interconnect/mtk,mmqos.h>
 
 / {
 	model = "MT6989";
@@ -2778,6 +2779,45 @@
 				<&mminfra_config_clk CLK_MMINFRA_SMI>,
 				<&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_26M>;
 		clock-names = "clk0", "clk1", "clk2", "clk3";
+	};
+
+	mmqos-wrapper {
+			compatible = "mediatek,mt6989-mmqos-wrapper";
+	};
+	mmqos: interconnect {
+		compatible = "mediatek,mt6989-mmqos";
+		#mtk-interconnect-cells = <1>;
+		mediatek,larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2
+					&smi_larb3 &smi_larb4 &smi_larb5
+					&smi_larb7 &smi_larb8 &smi_larb9
+					&smi_larb10 &smi_larb11 &smi_larb12
+					&smi_larb13 &smi_larb14 &smi_larb15
+					&smi_larb16 &smi_larb17 &smi_larb18
+					&smi_larb19 &smi_larb20 &smi_larb21
+					&smi_larb22 &smi_larb23 &smi_larb24
+					&smi_larb25 &smi_larb26 &smi_larb27
+					&smi_larb28 &smi_larb29 &smi_larb30
+					&smi_larb32 &smi_larb33 &smi_larb34
+					&smi_larb35 &smi_larb36 &smi_larb37
+					&smi_larb38 &smi_larb39 &smi_larb40
+					&smi_larb41 &smi_larb42 &smi_larb43
+					&smi_larb44 &smi_larb45 &smi_larb46
+					&smi_larb47>;
+		mediatek,commons-supply = <&smi_disp_common>, <&smi_mdp_common>;
+		mmqos-state = <0x0>;
+		mmqos-log-level = <0>;
+		clocks = <&topckgen_clk CLK_TOP_MMINFRA_SEL>,
+				<&topckgen_clk CLK_TOP_MMINFRA_SEL>;
+		clock-names = "mm", "mdp";
+		interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
+				<&dvfsrc MT6873_MASTER_HRT_MMSYS
+				&dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
+		interconnect-names = "icc-bw", "icc-hrt-bw";
+		vmmrc-base = <0x1ec00000>;
+		vmmrc-mask = <0x2e814>;
+		vmmrc-mask-bit = <8>;
+		vmmrc-on-table = <0x2e788>;
+		vmmrc-off-table = <0x2e7a8>;
 	};
 
 	soc {
