@@ -489,7 +489,8 @@ static int trusty_probe(struct platform_device *pdev)
 		ret = of_address_to_resource(mem_node, 0, &r);
 		if (ret) {
 			dev_err(&pdev->dev, "Failed to get memory region: %d\n", ret);
-			return ret;
+			ret = -EINVAL;
+			goto err_mem_node;
 		}
 
 		gshm.paddr = r.start;
@@ -498,14 +499,16 @@ static int trusty_probe(struct platform_device *pdev)
 		gshm.vaddr = ioremap_wc(gshm.paddr, gshm.mem_size);
 		if (IS_ERR(gshm.vaddr)) {
 			dev_err(&pdev->dev, "Failed to map memory region: %pa\n", &r.start);
-			return PTR_ERR(gshm.vaddr);
+			ret = -EINVAL;
+			goto err_mem_node;
 		}
 		gshm.ioremap_paddr = page_to_phys(virt_to_page(gshm.vaddr));
 		dev_dbg(&pdev->dev, "pa 0x%llx, ioremap_pa 0x%llx, size 0x%zx, va 0x%lx\n",
 			gshm.paddr, gshm.ioremap_paddr, gshm.mem_size, (uintptr_t)gshm.vaddr);
 	} else {
 		dev_err(&pdev->dev, "mem_node required\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_mem_node;
 	}
 
 	ret = trusty_shm_init_pool(&pdev->dev);
@@ -597,8 +600,9 @@ err_api_version:
 	}
 	device_for_each_child(&pdev->dev, NULL, trusty_remove_child);
 	mutex_destroy(&s->smc_lock);
-	kfree(s);
 err_shm_init_pool:
+err_mem_node:
+	kfree(s);
 err_allocate_state:
 	return ret;
 }
