@@ -72,7 +72,8 @@ void set_afe_dl_irq_target(int scp_enable)
 		&afe->memif[scp_ultra->ultra_mem.ultra_dl_memif_id];
 	struct mtk_base_afe_irq *irqs = &afe->irqs[memif->irq_usage];
 	const struct mtk_base_irq_data *irq_data = irqs->irq_data;
-
+	unsigned int mcu_en = 0;
+	unsigned int mcu_scp_en = 0;
 	if (scp_enable) {
 		regmap_update_bits(afe->regmap,
 				   irq_data->irq_ap_en_reg,
@@ -92,12 +93,14 @@ void set_afe_dl_irq_target(int scp_enable)
 				   0x1 << irq_data->id,
 				   0x1 << irq_data->id);
 	}
-	pr_debug("%s(), scp_en=%d,memif=%d,ap_en_reg:0x%x,scp_en_reg:0x%x\n",
+	regmap_read(afe->regmap, irq_data->irq_ap_en_reg, &mcu_en);
+	regmap_read(afe->regmap, irq_data->irq_scp_en_reg, &mcu_scp_en);
+	pr_debug("%s(), DL:scp_en=%d,memif=%d,ap_en_reg:0x%x,scp_en_reg:0x%x\n",
 		 __func__,
 		 scp_enable,
 		 scp_ultra->ultra_mem.ultra_dl_memif_id,
-		 irq_data->irq_ap_en_reg,
-		 irq_data->irq_scp_en_reg);
+		 mcu_en,
+		 mcu_scp_en);
 }
 void set_afe_ul_irq_target(int scp_enable)
 {
@@ -107,11 +110,12 @@ void set_afe_ul_irq_target(int scp_enable)
 		&afe->memif[scp_ultra->ultra_mem.ultra_ul_memif_id];
 	struct mtk_base_afe_irq *irqs = &afe->irqs[memif->irq_usage];
 	const struct mtk_base_irq_data *irq_data = irqs->irq_data;
-
+	unsigned int mcu_en = 0;
+	unsigned int mcu_scp_en = 0;
 	if (scp_enable) {
 		regmap_update_bits(afe->regmap,
 				   irq_data->irq_ap_en_reg,
-				   0x1 << irq_data->irq_ap_en_shift,
+				   0x1 << irq_data->id,
 				   0x0);
 
 		regmap_update_bits(afe->regmap,
@@ -126,15 +130,17 @@ void set_afe_ul_irq_target(int scp_enable)
 
 		regmap_update_bits(afe->regmap,
 				   irq_data->irq_ap_en_reg,
-				   0x1 << irq_data->irq_ap_en_shift,
-				   0x1 << irq_data->irq_ap_en_shift);
+				   0x1 << irq_data->id,
+				   0x1 << irq_data->id);
 	}
-	pr_debug("%s(),scp_en=%d,memif=%d,ap_en_reg:0x%x,scp_en_reg:0x%x\n",
+	regmap_read(afe->regmap, irq_data->irq_ap_en_reg, &mcu_en);
+	regmap_read(afe->regmap, irq_data->irq_scp_en_reg, &mcu_scp_en);
+	pr_debug("%s(),UL:scp_en=%d,memif=%d,ap_en_reg:0x%x,scp_en_reg:0x%x\n",
 		 __func__,
 		 scp_enable,
 		 scp_ultra->ultra_mem.ultra_ul_memif_id,
-		 irq_data->irq_ap_en_reg,
-		 irq_data->irq_scp_en_reg);
+		 mcu_en,
+		 mcu_scp_en);
 }
 
 int ultra_memif_set_enable(struct mtk_base_afe *afe, int afe_id)
