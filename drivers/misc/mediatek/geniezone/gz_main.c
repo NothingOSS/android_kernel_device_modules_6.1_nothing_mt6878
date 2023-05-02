@@ -1168,8 +1168,6 @@ static int __init gz_main_init(void)
 		return ret;
 	}
 
-	msleep(1000);
-
 	/* ffa driver register, init procedure won't stop when register failed */
 	get_ffa_drv = gz_get_ffa_dev();
 	if (!get_ffa_drv)
@@ -1178,8 +1176,6 @@ static int __init gz_main_init(void)
 	ret = ffa_driver_register(get_ffa_drv, THIS_MODULE, KBUILD_MODNAME);
 	if (ret)
 		KREE_ERR("%s gz_ffa_dev driver register fail, ret=%d\n", __func__, ret);
-
-	msleep(1000);
 
 	return 0;
 }
