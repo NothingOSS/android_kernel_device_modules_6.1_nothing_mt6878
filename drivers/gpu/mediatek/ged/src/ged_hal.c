@@ -29,6 +29,7 @@
 #include "ged_kpi.h"
 #include "ged_global.h"
 #include "ged_dcs.h"
+#include "ged_eb.h"
 
 static struct kobject *hal_kobj;
 
@@ -452,57 +453,55 @@ static ssize_t dvfs_workload_mode_store(struct kobject *kobj,
 
 static KOBJ_ATTR_RW(dvfs_workload_mode);
 
-static ssize_t fastdvfs_mode_show(struct kobject *kobj,
+//-----------------------------------------------------------------------------
+
+static ssize_t reduce_mips_dvfs_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	unsigned int ui32FastDVFSMode;
+	unsigned int reduce_mips_support;
+	unsigned int eb_policy_mode;
 	int pos = 0;
 	int length;
+	static unsigned int init_flag;
 
-	if (false == mtk_get_fastdvfs_mode(&ui32FastDVFSMode)) {
-		ui32FastDVFSMode = 0;
-		length = scnprintf(buf + pos, PAGE_SIZE - pos,
-				"fdvfs is off\n");
-		pos += length;
-	}
+	reduce_mips_support = is_fdvfs_enable();
 
-	if ((ui32FastDVFSMode & 0x00000001) > 0) {
-		length = scnprintf(buf + pos, PAGE_SIZE - pos,
-				"FastDVFS is enabled (%d)\n", ui32FastDVFSMode);
+	if (init_flag == 0 && reduce_mips_support == 1) {
+		eb_policy_mode = 1;
+		init_flag = 1;
 	} else {
-		length = scnprintf(buf + pos, PAGE_SIZE - pos,
-				"FastDVFS is disabled\n");
+		eb_policy_mode = ged_dvfs_get_recude_mips_policy_state();
 	}
+
+	length = scnprintf(buf + pos, PAGE_SIZE - pos,
+				"dvfs recude-mips, eb_policy(%d), dts support(%d)\n",
+			eb_policy_mode, reduce_mips_support);
+
 	pos += length;
 
 	return pos;
 }
 
-static ssize_t fastdvfs_mode_store(struct kobject *kobj,
+static ssize_t reduce_mips_dvfs_store(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		const char *buf, size_t count)
 {
 	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
 	unsigned int u32Value;
-	unsigned int ui32FastDVFSMode;
 
-	if (true == mtk_get_fastdvfs_mode(&ui32FastDVFSMode)) {
-		ui32FastDVFSMode &= 0xFFFFFFFE;
-		if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
-			if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-				if (kstrtouint(acBuffer, 0, &u32Value) == 0) {
-					ui32FastDVFSMode |= (u32Value & 0x1);
-					mtk_set_fastdvfs_mode(ui32FastDVFSMode);
-				}
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtouint(acBuffer, 0, &u32Value) == 0) {
+				if (mips_support_flag)
+					mtk_set_fastdvfs_mode(u32Value);
 			}
 		}
 	}
 
 	return count;
 }
-
-static KOBJ_ATTR_RW(fastdvfs_mode);
+static KOBJ_ATTR_RW(reduce_mips_dvfs);
 
 //-----------------------------------------------------------------------------
 
@@ -1226,9 +1225,9 @@ GED_ERROR ged_hal_init(void)
 	if (fb_register_client(&ged_fb_notifier))
 		GED_LOGE("Register fb_notifier fail!\n");
 
-	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_fastdvfs_mode);
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_reduce_mips_dvfs);
 	if (unlikely(err != GED_OK))
-		GED_LOGE("Failed to create fastdvfs_mode entry!\n");
+		GED_LOGE("Failed to create reduce_mips_dvfs entry!\n");
 
 #ifdef GED_DCS_POLICY
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_mode);
@@ -1317,7 +1316,7 @@ ERROR:
 //-----------------------------------------------------------------------------
 void ged_hal_exit(void)
 {
-	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fastdvfs_mode);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_reduce_mips_dvfs);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dvfs_loading_mode);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dvfs_workload_mode);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_timer_base_dvfs_margin);

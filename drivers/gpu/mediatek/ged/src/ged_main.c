@@ -142,6 +142,8 @@ unsigned int g_ged_segment_id;
 unsigned int g_ged_efuse_id;
 unsigned int g_ged_adaptive_power_policy_support;
 unsigned int g_ged_frame_base_optimize;
+unsigned long g_desire_freq;
+unsigned long g_desire_freq_stack, g_desire_freq_top;
 
 
 /******************************************************************************

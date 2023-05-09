@@ -54,6 +54,15 @@ enum gpu_fastdvfs_counter {
 	FASTDVFS_COUNTER_DCS,
 	FASTDVFS_COUNTER_LAST_COMMIT_IDX,
 	FASTDVFS_COUNTER_LAST_COMMIT_TOP_IDX,
+	FASTDVFS_GPU_EB_DESIRE_FREQ_ID,
+	FASTDVFS_GPU_EB_DESIRE_POLICY_STATE,
+	FASTDVFS_GPU_EB_CUR_LOADING,
+	FASTDVFS_GPU_EB_CUR_VIRTUAL_FREQ,
+	FASTDVFS_GPU_EB_CUR_OPPIDX,
+	FASTDVFS_GPU_EB_MARGIN_HIGH,
+	FASTDVFS_GPU_EB_MARGIN_LOW,
+	FASTDVFS_GPU_EB_MARGIN,
+	FASTDVFS_GPU_EB_CUR_POLICY_STATE,
 
 	NR_FASTDVFS_COUNTER,
 };
@@ -202,6 +211,44 @@ enum gpu_fastdvfs_share_info {
 (                                      \
 (FASTDVFS_TA_3D_COEF*SYSRAM_LOG_SIZE) \
 )
+#define SYSRAM_GPU_EB_DESIRE_FREQ_ID \
+(                                     \
+(FASTDVFS_GPU_EB_DESIRE_FREQ_ID*SYSRAM_LOG_SIZE) \
+)
+#define SYSRAM_GPU_EB_DESIRE_POLICY_STATE \
+(                                          \
+(FASTDVFS_GPU_EB_DESIRE_POLICY_STATE*SYSRAM_LOG_SIZE) \
+)
+/* debug mode on, write dvfs info in sysram */
+#define SYSRAM_GPU_EB_CUR_LOADING \
+(                                  \
+(FASTDVFS_GPU_EB_CUR_LOADING*SYSRAM_LOG_SIZE) \
+)
+#define SYSRAM_GPU_EB_CUR_VIRTUAL_FREQ \
+(                                       \
+(FASTDVFS_GPU_EB_CUR_VIRTUAL_FREQ*SYSRAM_LOG_SIZE) \
+)
+#define SYSRAM_GPU_EB_CUR_OPPIDX  \
+(                                  \
+(FASTDVFS_GPU_EB_CUR_OPPIDX*SYSRAM_LOG_SIZE) \
+)
+#define SYSRAM_GPU_EB_MARGIN_HIGH  \
+(                                   \
+(FASTDVFS_GPU_EB_MARGIN_HIGH*SYSRAM_LOG_SIZE) \
+)
+#define SYSRAM_GPU_EB_MARGIN_LOW  \
+(                                  \
+(FASTDVFS_GPU_EB_MARGIN_LOW*SYSRAM_LOG_SIZE) \
+)
+#define SYSRAM_GPU_EB_MARGIN  \
+(                              \
+(FASTDVFS_GPU_EB_MARGIN*SYSRAM_LOG_SIZE) \
+)
+#define SYSRAM_GPU_EB_CUR_POLICY_STATE	\
+(                                        \
+(FASTDVFS_GPU_EB_CUR_POLICY_STATE*SYSRAM_LOG_SIZE) \
+)
+
 
 enum action_map {
 	ACTION_MAP_FASTDVFS = 0,
@@ -229,6 +276,8 @@ enum {
 	GPUFDVFS_IPI_SET_MODE               = 9,
 	GPUFDVFS_IPI_GET_MODE               = 10,
 	GPUFDVFS_IPI_SET_GED_READY          = 11,
+	GPUFDVFS_IPI_SET_POWER_STATE        = 12,
+	GPUFDVFS_IPI_SET_DVFS_STRESS_TEST   = 13,
 
 	NR_GPUFDVFS_IPI,
 };
@@ -258,11 +307,13 @@ struct fdvfs_ipi_rcv_data {
  **************************************************/
 enum {
 	GPUFDVFS_IPI_EVENT_CLK_CHANGE = 1,
+	GPUFDVFS_IPI_EVENT_DEBUG_MODE_ON = 2,
 
 	NR_GPUFDVFS_IPI_EVENT_CMD,
 };
 
 struct GED_EB_EVENT {
+	int cmd;
 	unsigned int freq_new;
 	struct work_struct sWork;
 	bool bUsed;
@@ -308,10 +359,17 @@ extern unsigned int
 	struct GpuUtilization_Ex util_ex, unsigned int curr_fps);
 extern unsigned int mtk_gpueb_dvfs_get_mode(unsigned int *pAction);
 extern unsigned int mtk_gpueb_dvfs_set_mode(unsigned int action);
+unsigned int mtk_gpueb_set_fallback_mode(int fallback_status);
+unsigned int mtk_gpueb_set_stability_mode(int stability_status);
+void mtk_gpueb_dvfs_get_desire_freq(unsigned long *ui32NewFreqID);
+void mtk_gpueb_dvfs_get_desire_freq_dual(unsigned long *stackNewFreqID,
+	unsigned long *topNewFreqID);
 extern unsigned int is_fdvfs_enable(void);
 extern int mtk_gpueb_power_modle_cmd(unsigned int enable);
 extern void mtk_swpm_gpu_pm_start(void);
 extern int mtk_set_ged_ready(int ged_ready_flag);
+/* DVFS IPI */
+void mtk_gpueb_set_power_state(enum ged_gpu_power_state power_state);
 
 
 extern int fastdvfs_proc_init(void);

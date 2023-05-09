@@ -95,6 +95,9 @@ static int g_async_id_threshold;
 static int g_oppnum_eachmask = 1;
 static struct GpuRawCounter g_counter_hs;
 
+unsigned int mips_support_flag;
+unsigned int g_reduce_mips_support;
+
 unsigned int g_gpu_timer_based_emu;
 
 static unsigned int gpu_pre_loading;
@@ -752,9 +755,17 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		trace_tracing_mark_write(5566, "commit_type", eCommitType);
 
 		policy_state = ged_get_policy_state();
-		ged_set_prev_policy_state(policy_state);
-		trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
 
+		if (is_fdvfs_enable()) {
+			if (eCommitType != GED_DVFS_EB_DESIRE_COMMIT) {
+				if (policy_state != POLICY_STATE_INIT)
+					ged_set_prev_policy_state(policy_state);
+			}
+		} else {
+			if (policy_state != POLICY_STATE_INIT)
+				ged_set_prev_policy_state(policy_state);
+		}
+		trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
 	}
 	return bCommited;
 }
@@ -852,11 +863,49 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	trace_tracing_mark_write(5566, "commit_type", eCommitType);
 
 	policy_state = ged_get_policy_state();
-	if (policy_state != POLICY_STATE_INIT) {
-		ged_set_prev_policy_state(policy_state);
-		trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
+
+	if (is_fdvfs_enable()) {
+		if (eCommitType != GED_DVFS_EB_DESIRE_COMMIT) {
+			if (policy_state != POLICY_STATE_INIT)
+				ged_set_prev_policy_state(policy_state);
+		}
+	} else {
+		if (policy_state != POLICY_STATE_INIT)
+			ged_set_prev_policy_state(policy_state);
 	}
+	trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
+
 	return bCommited;
+}
+
+/* update new oppidx(sysram idx) */
+static void ged_fastdvfs_update_dcs(void)
+{
+	unsigned int opp_num;
+
+	/* get oppidx num */
+	opp_num = ged_get_opp_num();
+
+	if (g_async_ratio_support) {
+		/* get desire oppidx */
+		mtk_gpueb_dvfs_get_desire_freq_dual(&g_desire_freq_stack,
+			&g_desire_freq_top);
+
+		/* commit oppidx */
+		if (g_desire_freq_stack < opp_num && g_desire_freq_top < opp_num) {
+			ged_dvfs_gpu_freq_dual_commit(g_desire_freq_stack,
+				ged_get_freq_by_idx(g_desire_freq_stack),
+				GED_DVFS_EB_DESIRE_COMMIT, g_desire_freq_top);
+		}
+	} else {
+		/* get desire oppidx */
+		mtk_gpueb_dvfs_get_desire_freq(&g_desire_freq);
+
+		/* commit oppidx */
+		if (g_desire_freq < opp_num)
+			ged_dvfs_gpu_freq_commit(g_desire_freq,
+				ged_get_freq_by_idx(g_desire_freq), GED_DVFS_EB_DESIRE_COMMIT);
+	}
 }
 
 unsigned long get_ns_period_from_fps(unsigned int ui32Fps)
@@ -1785,7 +1834,12 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 			gpu_freq_tar, GED_DVFS_FRAME_BASE_COMMIT);
 
 	//t_gpu_target(unit: 100us) *10^5 =nanosecond
-	set_fb_timeout(t_gpu_target * 100000, t_gpu_target_hd * 100000);
+	if (is_fdvfs_enable()) {
+		mtk_gpueb_sysram_write(SYSRAM_GPU_LEFT_TIME, t_gpu_target_hd);
+		set_fb_timeout(t_gpu_target * 100000, t_gpu_target * 200000);
+	} else if (!is_fdvfs_enable())
+		set_fb_timeout(t_gpu_target * 100000, t_gpu_target * 100000);
+
 	ged_set_backup_timer_timeout(fb_timeout);
 	ged_cancel_backup_timer();
 	is_fb_dvfs_triggered = 0;
@@ -2689,6 +2743,10 @@ void ged_dvfs_run(
 			policy_state = ged_get_policy_state();
 			prev_policy_state = ged_get_prev_policy_state();
 
+			/* set loading-based new timeout = target_time */
+			if (is_fdvfs_enable())
+				ged_kpi_set_loading_mode(LB_TIMEOUT_TYPE_REDUCE_MIPS,
+									LB_TIMEOUT_REDUCE_MIPS);
 			// commit new frequency
 			if (freq_change_flag || policy_state != prev_policy_state) {
 				// correct eCommitType in case fallback is triggered in LB
@@ -2700,14 +2758,17 @@ void ged_dvfs_run(
 				else
 					eCommitType = GED_DVFS_FALLBACK_COMMIT;
 
-				if (g_async_ratio_support)
-					ged_dvfs_gpu_freq_dual_commit(g_ui32FreqIDFromPolicy,
-						ged_get_freq_by_idx(g_ui32FreqIDFromPolicy),
-						eCommitType, g_ui32FreqIDFromPolicy);
-				else
-					ged_dvfs_gpu_freq_commit(g_ui32FreqIDFromPolicy,
-						ged_get_freq_by_idx(g_ui32FreqIDFromPolicy),
-						eCommitType);
+				if (!is_fdvfs_enable()) {
+					if (g_async_ratio_support)
+						ged_dvfs_gpu_freq_dual_commit(
+							g_ui32FreqIDFromPolicy,
+							ged_get_freq_by_idx(g_ui32FreqIDFromPolicy),
+							eCommitType, g_ui32FreqIDFromPolicy);
+					else
+						ged_dvfs_gpu_freq_commit(g_ui32FreqIDFromPolicy,
+							ged_get_freq_by_idx(g_ui32FreqIDFromPolicy),
+							eCommitType);
+				}
 			}
 		}
 	}
@@ -2905,9 +2966,16 @@ int ged_dvfs_get_stack_oppidx(void)
 	return FORCE_OPP;
 }
 
+int ged_dvfs_get_recude_mips_policy_state(void)
+{
+	return g_fastdvfs_mode;
+}
+
 GED_ERROR ged_dvfs_system_init(void)
 {
 	struct device_node *async_dvfs_node = NULL;
+	struct device_node *reduce_mips_dvfs_node = NULL;
+
 	mutex_init(&gsDVFSLock);
 	mutex_init(&gsPolicyLock);
 	mutex_init(&gsVSyncOffsetLock);
@@ -2986,16 +3054,28 @@ GED_ERROR ged_dvfs_system_init(void)
 	mtk_dvfs_workload_mode_fp = ged_dvfs_workload_mode;
 	mtk_get_dvfs_workload_mode_fp = ged_get_dvfs_workload_mode;
 
-	if (ged_is_fdvfs_support()) {
-		mtk_set_fastdvfs_mode_fp = ged_set_fastdvfs_mode;
-		mtk_get_fastdvfs_mode_fp = ged_get_fastdvfs_mode;
-	}
+	mtk_set_fastdvfs_mode_fp = ged_set_fastdvfs_mode;
+	mtk_get_fastdvfs_mode_fp = ged_get_fastdvfs_mode;
+	ged_kpi_fastdvfs_update_dcs_fp = ged_fastdvfs_update_dcs;
 
 	ged_get_last_commit_idx_fp = ged_dvfs_get_last_commit_idx;
 	ged_get_last_commit_top_idx_fp = ged_dvfs_get_last_commit_top_idx;
 	ged_get_last_commit_stack_idx_fp = ged_dvfs_get_last_commit_stack_idx;
 
 	spin_lock_init(&g_sSpinLock);
+
+	/* find node to support DVFS new feature */
+	reduce_mips_dvfs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_reduce_mips");
+
+	if (unlikely(!reduce_mips_dvfs_node)) {
+		GED_LOGI("Failed to find reduce_mips_dvfs_node, dts not support");
+	} else {
+		GED_LOGI("Success to find reduce_mips_dvfs_node, dts support");
+		of_property_read_u32(reduce_mips_dvfs_node, "reduce-mips-support",
+								&g_reduce_mips_support);
+	}
+	/* set reduce mips flag */
+	mips_support_flag = g_reduce_mips_support;
 
 	async_dvfs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_async_ratio");
 	if (unlikely(!async_dvfs_node)) {

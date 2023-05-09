@@ -52,6 +52,8 @@ void ged_kpi_set_target_FPS(u64 ulID, int target_FPS);
 void ged_kpi_set_target_FPS_margin(u64 ulID, int target_FPS,
 		int target_FPS_margin, int eara_fps_margin, int cpu_time);
 
+u64 ged_kpi_get_taget_time(void);
+
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
 int ged_kpi_get_fw_idle_mode(void);
 int ged_kpi_is_fw_idle_policy_enable(void);
@@ -71,6 +73,16 @@ struct ged_risky_bq_info {
 
 	unsigned int total_gpu_completed_count;
 };
+
+struct ged_sysram_info {
+	unsigned int last_tgpu_uncompleted;
+	unsigned int uncompleted_count;
+	unsigned long long current_timestamp;
+};
+
+void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info);
+void ged_kpi_set_loading_mode(unsigned int mode, unsigned int stride_size);
+
 GED_ERROR ged_kpi_timer_based_pick_riskyBQ(struct ged_risky_bq_info *info);
 int ged_kpi_get_main_bq_uncomplete_count(void);
 

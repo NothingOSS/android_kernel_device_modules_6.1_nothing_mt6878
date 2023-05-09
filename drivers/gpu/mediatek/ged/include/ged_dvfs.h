@@ -40,6 +40,8 @@
 #define GED_DVFS_SET_LIMIT_COMMIT       6
 #define GED_DVFS_INPUT_BOOST_COMMIT     7
 #define GED_DVFS_DCS_STRESS_COMMIT      8
+#define GED_DVFS_EB_DESIRE_COMMIT       9
+
 #define GED_DVFS_COMMIT_TYPE            int
 
 #define GED_DVFS_DEFAULT                0
@@ -61,6 +63,10 @@
 #define GED_EVENT_LCD              (1 << 10)
 #define GED_EVENT_LOW_LATENCY_MODE (1 << 13)
 #define GED_EVENT_DHWC             (1 << 14)
+
+#define LB_TIMEOUT_TYPE_REDUCE_MIPS     4
+#define LB_TIMEOUT_REDUCE_MIPS          1
+
 
 typedef void (*ged_event_change_fp)(void *private_data, int events);
 
@@ -198,6 +204,7 @@ extern int (*mtk_get_loading_base_dvfs_step_fp)(void);
 
 extern void (*mtk_timer_base_dvfs_margin_fp)(int i32MarginValue);
 extern int (*mtk_get_timer_base_dvfs_margin_fp)(void);
+extern void (*ged_kpi_fastdvfs_update_dcs_fp)(void);
 int ged_dvfs_get_tb_dvfs_margin_cur(void);
 unsigned int ged_dvfs_get_tb_dvfs_margin_mode(void);
 void set_api_sync_flag(int flag);
@@ -228,6 +235,7 @@ extern unsigned int g_gpufreq_v2;
 extern void (*mtk_set_fastdvfs_mode_fp)(unsigned int u32Mode);
 extern unsigned int (*mtk_get_fastdvfs_mode_fp)(void);
 extern unsigned int g_eb_workload;
+extern unsigned int mips_support_flag;
 
 void ged_dvfs_enable_async_ratio(int enableAsync);
 void ged_dvfs_force_top_oppidx(int idx);
@@ -235,5 +243,6 @@ void ged_dvfs_force_stack_oppidx(int idx);
 int ged_dvfs_get_async_ratio_support(void);
 int ged_dvfs_get_top_oppidx(void);
 int ged_dvfs_get_stack_oppidx(void);
+int ged_dvfs_get_recude_mips_policy_state(void);
 
 #endif

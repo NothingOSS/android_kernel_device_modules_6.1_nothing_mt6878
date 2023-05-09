@@ -26,6 +26,7 @@
 #include "ged_dvfs.h"
 #include "ged_dcs.h"
 #include "ged_kpi.h"
+#include "ged_eb.h"
 
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 #include <ged_gpufreq_v2.h>
@@ -103,17 +104,41 @@ u64 ged_get_fallback_time(void)
 {
 	u64 temp = 0;
 
-	if (g_fallback_mode == 0)
-		temp = (u64)g_fallback_time * 1000000;//ms to ns
-	else if (g_fallback_mode == 1)
-		temp = fb_timeout * g_fallback_time / 10;
-	else if (g_fallback_mode == 2)
-		temp = lb_timeout * g_fallback_time / 10;
+	if (is_fdvfs_enable()) {
+		if (g_fallback_mode == ALIGN_INTERVAL)
+			temp = (u64)g_fallback_time * 1000000;   //ms to ns
+		else if (g_fallback_mode == ALIGN_FB)
+			temp = fb_timeout * g_fallback_time / 10;
+		else if (g_fallback_mode == ALIGN_LB)
+			temp = lb_timeout * g_fallback_time / 10;
+		else if (g_fallback_mode == ALIGN_FAST_DVFS)
+			temp = ged_kpi_get_taget_time();
+	} else {
+		if (g_fallback_mode == 0)
+			temp = (u64)g_fallback_time * 1000000;   //ms to ns
+		else if (g_fallback_mode == 1)
+			temp = fb_timeout * g_fallback_time / 10;
+		else if (g_fallback_mode == 2)
+			temp = lb_timeout * g_fallback_time / 10;
+	}
 	return temp;
 }
 
+
 enum gpu_dvfs_policy_state ged_get_policy_state(void)
 {
+	if (is_fdvfs_enable()) {
+		if ((g_policy_state == POLICY_STATE_LB_FALLBACK ||
+			g_policy_state == POLICY_STATE_FORCE_LB_FALLBACK ||
+			g_policy_state == POLICY_STATE_FB_FALLBACK)) {
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_DESIRE_POLICY_STATE, 2);
+		} else if (g_policy_state == POLICY_STATE_FB) {
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_DESIRE_POLICY_STATE, 1);
+		} else if (g_policy_state == POLICY_STATE_LB ||
+			g_policy_state == POLICY_STATE_FORCE_LB) {
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_DESIRE_POLICY_STATE, 0);
+		}
+	}
 	return g_policy_state;
 }
 

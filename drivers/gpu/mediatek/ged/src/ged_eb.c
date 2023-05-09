@@ -50,7 +50,10 @@ uint32_t fdvfs_event_ipi_rcv_msg[4];
 int g_is_fastdvfs_enable;
 int g_is_fulltrace_enable;
 
-unsigned int fastdvfs_mode = 1;
+int g_is_stability_enable;
+unsigned int fastdvfs_mode;
+unsigned int stabiliy_test_mode;
+
 bool need_to_refresh_mode = true;
 static struct hrtimer g_HT_fdvfs_debug;
 #define GED_FDVFS_TIMER_TIMEOUT 1000000 // 1ms
@@ -64,6 +67,7 @@ static int mfg_is_power_on;
 #define FDVFS_IPI_ATTR "ipi_dev:%p, ch:%d, DATA_LEN: %d, TIMEOUT: %d(ms)"
 
 static struct workqueue_struct *g_psEBWorkQueue;
+static struct mutex gsEBLock;
 
 #define MAX_EB_NOTIFY_CNT 120
 struct GED_EB_EVENT eb_notify[MAX_EB_NOTIFY_CNT];
@@ -71,14 +75,48 @@ int eb_notify_index;
 
 static struct work_struct sg_notify_ged_ready_work;
 
+
 static void ged_eb_work_cb(struct work_struct *psWork)
 {
 	struct GED_EB_EVENT *psEBEvent =
 		GED_CONTAINER_OF(psWork, struct GED_EB_EVENT, sWork);
 
-	GPUFDVFS_LOGD("%s@%d top clock: %d (KHz)\n",
-		__func__, __LINE__, psEBEvent->freq_new);
-	mtk_notify_gpu_freq_change(0, psEBEvent->freq_new);
+	/* debug info */
+	unsigned long eb_cur_loading;
+	unsigned long eb_cur_virtual_freq;
+	unsigned long eb_cur_oppidx;
+	unsigned int loading_high;
+	unsigned int loading_low;
+	unsigned int eb_margin;
+	unsigned int eb_policy_state;
+
+	switch (psEBEvent->cmd) {
+	case GPUFDVFS_IPI_EVENT_CLK_CHANGE:
+		GPUFDVFS_LOGD("%s@%d top clock:%d(KHz)\n",
+			__func__, __LINE__, psEBEvent->freq_new);
+		mtk_notify_gpu_freq_change(0, psEBEvent->freq_new);
+	break;
+	case GPUFDVFS_IPI_EVENT_DEBUG_MODE_ON:
+		eb_cur_loading = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_CUR_LOADING);
+		eb_cur_virtual_freq = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_CUR_VIRTUAL_FREQ);
+		eb_cur_oppidx = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_CUR_OPPIDX);
+		loading_high = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_MARGIN_HIGH);
+		loading_low = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_MARGIN_LOW);
+		eb_margin = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_MARGIN);
+		eb_policy_state = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_CUR_POLICY_STATE);
+
+		trace_tracing_mark_write(5566, "eb_loading", eb_cur_loading);
+		trace_tracing_mark_write(5566, "eb_virtual_freq", eb_cur_virtual_freq);
+		trace_tracing_mark_write(5566, "eb_cur_oppidx", eb_cur_oppidx);
+		trace_tracing_mark_write(5566, "eb_loading_high", loading_high);
+		trace_tracing_mark_write(5566, "eb_loading_low", loading_low);
+		trace_tracing_mark_write(5566, "eb_margin", eb_margin);
+		trace_tracing_mark_write(5566, "eb_policy_state", eb_policy_state);
+	break;
+	default:
+		GPUFDVFS_LOGI("(%d), cmd: %d wrong!!!\n", __LINE__, psEBEvent->cmd);
+	break;
+	}
 	psEBEvent->bUsed = false;
 }
 
@@ -101,7 +139,10 @@ static int fast_dvfs_eb_event_handler(unsigned int id, void *prdata, void *data,
 	if (data != NULL && psEBEvent && psEBEvent->bUsed == false) {
 		psEBEvent->freq_new = ((struct fastdvfs_event_data *)data)->u.set_para.arg[0];
 
-		/*get rate from EB*/
+		/* irq cmd type (from gpueb) */
+		psEBEvent->cmd = ((struct fastdvfs_event_data *)data)->cmd;
+
+		/* get rate from EB */
 		psEBEvent->bUsed = true;
 
 		INIT_WORK(&psEBEvent->sWork, ged_eb_work_cb);
@@ -145,6 +186,8 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 	case GPUFDVFS_IPI_SET_FEEDBACK_INFO:
 	case GPUFDVFS_IPI_SET_MODE:
 	case GPUFDVFS_IPI_SET_GED_READY:
+	case GPUFDVFS_IPI_SET_DVFS_STRESS_TEST:
+	case GPUFDVFS_IPI_SET_POWER_STATE:
 		ret = mtk_ipi_send_compl(get_gpueb_ipidev(),
 			g_fast_dvfs_ipi_channel,
 			IPI_SEND_POLLING, ipi_data,
@@ -392,22 +435,83 @@ int mtk_gpueb_dvfs_set_taget_frame_time(unsigned int target_frame_time,
 }
 EXPORT_SYMBOL(mtk_gpueb_dvfs_set_taget_frame_time);
 
+unsigned int mtk_gpueb_set_fallback_mode(int fallback_status)
+{
+	int ret = 0;
+	struct fdvfs_ipi_data ipi_data;
+
+	if (g_is_fastdvfs_enable != fallback_status) {
+		ipi_data.u.set_para.arg[0] = fallback_status;
+		ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_MODE, &ipi_data);
+		g_is_fastdvfs_enable = fallback_status;
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL(mtk_gpueb_set_fallback_mode);
+
+unsigned int mtk_gpueb_set_stability_mode(int stability_status)
+{
+	int ret = 0;
+	struct fdvfs_ipi_data ipi_data;
+
+	ipi_data.u.set_para.arg[0] = stability_status;
+	ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_DVFS_STRESS_TEST, &ipi_data);
+
+	return ret;
+}
+EXPORT_SYMBOL(mtk_gpueb_set_stability_mode);
+
+void mtk_gpueb_dvfs_get_desire_freq(unsigned long *ui32NewFreqID)
+{
+	if (ui32NewFreqID == NULL) {
+		GED_LOGE("%s: ui32NewFreqID is NULL", __func__);
+		return;
+	}
+	/* read desire oppidx from sysram */
+	*ui32NewFreqID = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_DESIRE_FREQ_ID);
+}
+EXPORT_SYMBOL(mtk_gpueb_dvfs_get_desire_freq);
+
+void mtk_gpueb_dvfs_get_desire_freq_dual(unsigned long *stackNewFreqID,
+	unsigned long *topNewFreqID)
+{
+	if (stackNewFreqID == NULL || topNewFreqID == NULL) {
+		GED_LOGE("%s: Stack or Top NewFreqID is NULL", __func__);
+		return;
+	}
+	/* read desire oppidx from sysram */
+	*stackNewFreqID = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_DESIRE_FREQ_ID);
+	*topNewFreqID = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_DESIRE_FREQ_ID);
+}
+EXPORT_SYMBOL(mtk_gpueb_dvfs_get_desire_freq_dual);
+
 unsigned int mtk_gpueb_dvfs_set_mode(unsigned int action)
 {
 	int ret = 0;
 	struct fdvfs_ipi_data ipi_data;
 
 	ipi_data.u.set_para.arg[0] = action;
-	ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_MODE, &ipi_data);
 
 	fastdvfs_mode = action;
+	stabiliy_test_mode = action;
 
-	g_is_fastdvfs_enable =
-		((action & (0x1 << ACTION_MAP_FASTDVFS)))>>ACTION_MAP_FASTDVFS;
-	g_is_fulltrace_enable =
-		((action & (0x1 << ACTION_MAP_FULLTRACE)))>>ACTION_MAP_FULLTRACE;
+	if (fastdvfs_mode > 0)
+		g_fallback_mode = 3;
+	else
+		g_fallback_mode = 0;
 
-	need_to_refresh_mode = true;
+	if (fastdvfs_mode == 0 && g_is_fastdvfs_enable != 0)
+		ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_MODE, &ipi_data);
+
+	if (mips_support_flag == 1) {
+		if (stabiliy_test_mode == 1)
+			mtk_gpueb_set_stability_mode(1);
+		else if (stabiliy_test_mode == 0)
+			mtk_gpueb_set_stability_mode(0);
+		else if (stabiliy_test_mode == 2)
+			mtk_gpueb_set_stability_mode(2);
+	}
 
 	return ret;
 }
@@ -416,10 +520,6 @@ EXPORT_SYMBOL(mtk_gpueb_dvfs_set_mode);
 unsigned int mtk_gpueb_dvfs_get_mode(unsigned int *pAction)
 {
 	int ret = 0;
-	struct fdvfs_ipi_data ipi_data;
-
-	if (need_to_refresh_mode)
-		ret = ged_to_fdvfs_command(GPUFDVFS_IPI_GET_MODE, &ipi_data);
 
 	if (ret > 0) {
 		if (pAction != NULL)
@@ -457,8 +557,24 @@ int mtk_set_ged_ready(int ged_ready_flag)
 	return ret;
 }
 
+void mtk_gpueb_set_power_state(enum ged_gpu_power_state power_state)
+{
+	int ret = 0;
+	struct fdvfs_ipi_data ipi_data;
+
+	ipi_data.u.set_para.arg[0] = power_state;
+	ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_POWER_STATE, &ipi_data);
+}
+EXPORT_SYMBOL(mtk_gpueb_set_power_state);
+
 unsigned int is_fdvfs_enable(void)
 {
+	fastdvfs_mode = mips_support_flag;
+
+	/* set g_fallback_mode flag */
+	if (fastdvfs_mode)
+		g_fallback_mode = 3;
+
 	return fastdvfs_mode & 0x1;
 }
 
@@ -912,12 +1028,15 @@ void fdvfs_init(void)
 	if (g_is_fulltrace_enable == 1)
 		hrtimer_start(&g_HT_fdvfs_debug,
 			ns_to_ktime(GED_FDVFS_TIMER_TIMEOUT), HRTIMER_MODE_REL);
+
+	mutex_init(&gsEBLock);
 }
 
 void fdvfs_exit(void)
 {
 	destroy_workqueue(g_psEBWorkQueue);
 	mtk_unregister_gpu_power_change("fdvfs");
+	mutex_destroy(&gsEBLock);
 }
 
 int fastdvfs_proc_init(void)

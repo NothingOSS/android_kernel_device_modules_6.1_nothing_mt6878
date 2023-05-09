@@ -54,7 +54,9 @@ extern unsigned long g_ulCalResetTS_us;
 extern unsigned long g_ulPreCalResetTS_us;
 // last frame half, t0
 extern unsigned long g_ulWorkingPeriod_us;
-
+extern unsigned long g_desire_freq;
+extern unsigned long g_desire_freq_stack;
+extern unsigned long g_desire_freq_top;
 extern unsigned int g_fastdvfs_mode;
 extern unsigned int g_ged_gpueb_support;
 extern unsigned int g_ged_fdvfs_support;

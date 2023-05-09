@@ -33,6 +33,14 @@ enum gpu_dvfs_policy_state {
 	POLICY_STATE_FORCE_LB_FALLBACK,
 	POLICY_STATE_FB_FALLBACK,
 };
+
+enum gpu_fallback_mode {
+	ALIGN_INTERVAL = 0,
+	ALIGN_FB,
+	ALIGN_LB,
+	ALIGN_FAST_DVFS,
+};
+
 enum gpu_dvfs_policy_state ged_get_policy_state(void);
 enum gpu_dvfs_policy_state ged_get_prev_policy_state(void);
 void ged_set_policy_state(enum gpu_dvfs_policy_state state);
