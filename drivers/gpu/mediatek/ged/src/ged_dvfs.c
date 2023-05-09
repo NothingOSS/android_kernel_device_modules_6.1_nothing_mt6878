@@ -2197,9 +2197,13 @@ static bool ged_dvfs_policy(
 		if (g_ged_frame_base_optimize &&
 				ged_get_policy_state() == POLICY_STATE_FB_FALLBACK &&
 				((u64)t_gpu_uncomplete * 1000) < fb_timeout) {
+			u64 fb_tmp_timer = fb_timeout - ((u64)t_gpu_uncomplete * 1000);
+			u64 timeout_val = ged_get_fallback_time();
+			/* keep minimum value of fallback time*/
+			if (fb_tmp_timer < timeout_val)
+				fb_tmp_timer = timeout_val;
 			ged_set_policy_state(POLICY_STATE_FB);
-			ged_set_backup_timer_timeout(fb_timeout -
-				((u64)t_gpu_uncomplete * 1000));
+			ged_set_backup_timer_timeout(fb_tmp_timer);
 			g_CommitType = MTK_GPU_DVFS_TYPE_VSYNCBASED;
 		} else
 			g_CommitType = MTK_GPU_DVFS_TYPE_FALLBACK;

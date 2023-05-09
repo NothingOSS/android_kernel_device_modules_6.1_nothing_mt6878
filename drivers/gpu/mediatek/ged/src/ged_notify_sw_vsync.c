@@ -604,12 +604,17 @@ void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 			unsigned long long uncomplete_time =
 				g_ns_gpu_on_ts - ged_kpi_get_fb_timestamp();
 			/* get in fallback if uncomplete time is overdue */
-			if (uncomplete_time > fb_timeout) {
+			if (uncomplete_time >= fb_timeout) {
 				ged_set_policy_state(POLICY_STATE_FB_FALLBACK);
 				ged_set_backup_timer_timeout(ged_get_fallback_time());
 			} else {
+				u64 fb_tmp_timeout = fb_timeout - uncomplete_time;
+				u64 timeout_val = ged_get_fallback_time();
+				/* keep minimum value of fallback time*/
+				if (fb_tmp_timeout < timeout_val)
+					fb_tmp_timeout = timeout_val;
 				ged_set_policy_state(POLICY_STATE_FB);
-				ged_set_backup_timer_timeout(fb_timeout - uncomplete_time);
+				ged_set_backup_timer_timeout(fb_tmp_timeout);
 			}
 		}
 		if (g_timer_on) {
@@ -631,13 +636,17 @@ void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 		if (g_ged_frame_base_optimize &&
 			(policy_state == POLICY_STATE_FB ||
 			 policy_state == POLICY_STATE_FB_FALLBACK)) {
+			int timer_flag = 0;
 			mutex_lock(&gsPolicyLock);
 			if (hrtimer_try_to_cancel(&g_HT_hwvsync_emu)) {
 				/* frame base pass power off timer*/
 				hrtimer_cancel(&g_HT_hwvsync_emu);
-				timer_switch(false);
+				timer_flag = 1;
 			}
 			mutex_unlock(&gsPolicyLock);
+			/* avoid multi lock*/
+			if (timer_flag)
+				timer_switch(false);
 		}
 		ged_log_buf_print(ghLogBuf_DVFS, "[GED_K] Buck-off");
 	}

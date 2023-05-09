@@ -1289,7 +1289,8 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 				psTimeStamp->i32FrameID);
 			break;
 		}
-
+		/*only one policy at a time*/
+		mutex_lock(&gsPolicyLock);
 		psKPI->ulMask |= GED_TIMESTAMP_TYPE_2;
 		psKPI->ullTimeStamp2 = psTimeStamp->ullTimeStamp;
 		psKPI->cpu_gpu_info.gpu.tb_dvfs_mode =
@@ -1356,8 +1357,6 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		t_gpu_target = psKPI->t_gpu_target;
 		target_fps_margin = psKPI->target_fps_margin;
 		force_fallback = g_force_gpu_dvfs_fallback;
-		/*only one policy at a time*/
-		mutex_lock(&gsPolicyLock);
 
 		/* In GPU Job Boundary check & commit gpueb desire oppidx */
 		if (is_fdvfs_enable()) {
