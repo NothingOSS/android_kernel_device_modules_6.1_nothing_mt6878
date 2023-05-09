@@ -105,6 +105,7 @@ unsigned int gpu_loading;
 unsigned int gpu_av_loading;
 unsigned int gpu_block;
 unsigned int gpu_idle;
+atomic_t g_gpu_loading_log = ATOMIC_INIT(0);
 unsigned long g_um_gpu_tar_freq;
 
 spinlock_t g_sSpinLock;
@@ -124,10 +125,6 @@ static unsigned long gL_ulCalResetTS_us;
 static unsigned long gL_ulPreCalResetTS_us;
 /* last frame half, t0 */
 static unsigned long gL_ulWorkingPeriod_us;
-
-static unsigned int g_loading2_count;
-static unsigned int g_loading2_sum;
-static DEFINE_SPINLOCK(load_info_lock);
 
 static unsigned long g_policy_tar_freq;
 static int g_mode;
@@ -547,11 +544,7 @@ bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
 				Util_Ex->util_mcu);
 
 			gpu_av_loading = *pui32Loading;
-
-			spin_lock_irqsave(&load_info_lock, ui32IRQFlags);
-			g_loading2_sum += gpu_av_loading;
-			g_loading2_count++;
-			spin_unlock_irqrestore(&load_info_lock, ui32IRQFlags);
+			atomic_set(&g_gpu_loading_log, gpu_av_loading);
 		}
 		return true;
 	}
@@ -1095,11 +1088,7 @@ GED_ERROR ged_dvfs_um_commit(unsigned long gpu_tar_freq, bool bFallback)
 
 	gpu_pre_loading = gpu_av_loading;
 	gpu_av_loading = gpu_loading;
-
-	spin_lock_irqsave(&load_info_lock, ui32IRQFlags);
-	g_loading2_sum += gpu_loading;
-	g_loading2_count += 1;
-	spin_unlock_irqrestore(&load_info_lock, ui32IRQFlags);
+	atomic_set(&g_gpu_loading_log, gpu_av_loading);
 
 	g_ulPreDVFS_TS_us = gL_ulCalResetTS_us;
 
@@ -1930,11 +1919,7 @@ static bool ged_dvfs_policy(
 		gpu_pre_loading = gpu_av_loading;
 		ui32GPULoading = gpu_loading;
 		gpu_av_loading = gpu_loading;
-
-		spin_lock_irqsave(&load_info_lock, ui32IRQFlags);
-		g_loading2_sum += gpu_loading;
-		g_loading2_count += 1;
-		spin_unlock_irqrestore(&load_info_lock, ui32IRQFlags);
+		atomic_set(&g_gpu_loading_log, gpu_av_loading);
 	}
 
 	minfreq_idx = ged_get_min_oppidx();
@@ -2819,25 +2804,9 @@ unsigned long ged_dvfs_get_gpu_commit_opp_freq(void)
 
 unsigned int ged_dvfs_get_gpu_loading(void)
 {
-	return gpu_av_loading;
-}
+	unsigned int loading = 0;
 
-unsigned int ged_dvfs_get_gpu_loading2(int reset)
-{
-	int loading = 0;
-	unsigned long ui32IRQFlags;
-
-	spin_lock_irqsave(&load_info_lock, ui32IRQFlags);
-
-	if (g_loading2_count > 0)
-		loading = g_loading2_sum / g_loading2_count;
-
-	if (reset) {
-		g_loading2_sum = 0;
-		g_loading2_count = 0;
-	}
-
-	spin_unlock_irqrestore(&load_info_lock, ui32IRQFlags);
+	loading = (unsigned int)atomic_read(&g_gpu_loading_log);
 
 	return loading;
 }
