@@ -6064,7 +6064,6 @@
 					<0 0x15710000 0 0x00100>,	/* 20 IMGSYS_TRAW_DIP1 */
 					<0 0x15330000 0 0x10000>;	/* 21 IMGSYS_ME_MMG */
 			mediatek,hcp = <&hcp>;
-			#if 0
 			mediatek,larbs = <&smi_larb9>,
 					<&smi_larb10>,
 					<&smi_larb11>,
@@ -6077,7 +6076,6 @@
 					<&smi_larb40>,
 					<&smi_larb18>,
 					<&smi_larb12>;
-			#endif
 			mediatek,imgsys-cmdq = <&imgsys_cmdq>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			mboxes = <&gce_m 0 3000 CMDQ_THR_PRIO_2>,
@@ -6814,7 +6812,6 @@
 				sw-sync-token-camsys-pool-10 =
 					/bits/ 16 <CMDQ_SYNC_TOKEN_CAMSYS_POOL_10>;
 #endif
-#if 0
 			clocks = <&imgsys_main_clk CLK_IMG_TRAW0>,
 				<&imgsys_main_clk CLK_IMG_TRAW1>,
 				<&imgsys_main_clk CLK_IMG_DIP0>,
@@ -6858,7 +6855,7 @@
 				<&imgsys_main_clk CLK_IMG_IPE>,
 				<&imgsys_main_clk CLK_IMG_ME>,
 				<&imgsys_main_clk CLK_IMG_MMG>,
-				<&mmdvfs_clk CLK_MMDVFS_IMG>;
+				<&mmdvfs_mux MMDVFS_USER_IMG>;
 			clock-names = "IMGSYS_CG_IMG_TRAW0",
 			      "IMGSYS_CG_IMG_TRAW1",
 			      "IMGSYS_CG_IMG_DIP0",
@@ -6902,8 +6899,9 @@
 			      "IMGSYS_CG_IMG_IPE",
 			      "ME_CG",
 			      "MMG_CG",
-			      "mmdvfs_clk";
+			      "mmdvfs_mux";
 			operating-points-v2 = <&opp_table_img>;
+#if 0
 			dvfsrc-vmm-supply = <&vmm_proxy_label>;
 			mediatek,imgsys-qos-sc-motr = <2>;
 			mediatek,imgsys-qos-sc-nums = <2>;
