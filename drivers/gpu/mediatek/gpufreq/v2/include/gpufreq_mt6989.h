@@ -194,16 +194,16 @@ struct gpufreq_core_mask_info g_core_mask_table[SHADER_CORE_NUM] = {
 /**************************************************
  * Power Throttling Setting
  **************************************************/
-#define GPUFREQ_BATT_OC_ENABLE              (0)
+#define GPUFREQ_BATT_OC_ENABLE              (1)
 #define GPUFREQ_BATT_PERCENT_ENABLE         (0)
-#define GPUFREQ_LOW_BATT_ENABLE             (0)
-#define GPUFREQ_BATT_OC_FREQ                (483000)
+#define GPUFREQ_LOW_BATT_ENABLE             (1)
+#define GPUFREQ_BATT_OC_FREQ                (546000)
 #define GPUFREQ_BATT_PERCENT_LV1_FREQ       (780000)
 #define GPUFREQ_BATT_PERCENT_LV2_FREQ       (780000)
 #define GPUFREQ_BATT_PERCENT_LV3_FREQ       (681000)
-#define GPUFREQ_LOW_BATT_LV1_FREQ           (981000)
-#define GPUFREQ_LOW_BATT_LV2_FREQ           (483000)
-#define GPUFREQ_LOW_BATT_LV3_FREQ           (265000)
+#define GPUFREQ_LOW_BATT_LV1_FREQ           (962000)
+#define GPUFREQ_LOW_BATT_LV2_FREQ           (546000)
+#define GPUFREQ_LOW_BATT_LV3_FREQ           (260000)
 
 /**************************************************
  * DVFS Constraint Setting
