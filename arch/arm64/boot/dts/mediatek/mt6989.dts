@@ -10501,7 +10501,7 @@
 
 		dvfs-opp =
 		/* vscp		vsram	dvfsrc_opp	spm_vcore	freq mux resource */
-		< 575000	750000	0xff		0xfff		300  0	0x0>,
+		< 575000	750000	0xff		0xfff		290  0	0x0>,
 		< 650000	750000	0xff		0xfff		500  0	0x0>,
 		< 750000	750000	0xff		0xfff		700  0	0x0>;
 
@@ -10512,15 +10512,15 @@
 		scp-clk-hw-ver = "v1";
 		ulposc-cali-ver = "v2";
 		ulposc-cali-num = <3>;
-		ulposc-cali-target = <300 500 700>;
+		ulposc-cali-target = <290 500 700>;
 		ulposc-cali-config =
 			/* con0		con1	con2 */
-			<0x032292c0	0x2400	0xc>,
-			<0x054a92c0	0x2400	0xc>,
+			<0x02c292c0	0x2400	0xc>,
+			<0x050a92c0	0x2400	0xc>,
 			<0x071292c0	0x2400	0xc>;
 		clk-dbg-ver = "v4";
-		//ccf-fmeter-support;
-		scp-dvfs-flag = "disable"; /* enable/disable */
+		ccf-fmeter-support;
+		scp-dvfs-flag = "enable"; /* enable/disable */
 	};
 
 	watchdog: watchdog@1c00b000 {
