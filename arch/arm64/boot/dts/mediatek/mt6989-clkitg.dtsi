@@ -162,7 +162,6 @@
 			<&imp_iic_wrap_n_clk CLK_IMPN_I2C0>,
 			<&imp_iic_wrap_n_clk CLK_IMPN_I2C6>,
 			<&imp_iic_wrap_n_clk CLK_IMPN_SEC_EN>,
-			<&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_IPS_SEL>,
 			<&scp_clk CLK_SCP_SET_SPI0>,
