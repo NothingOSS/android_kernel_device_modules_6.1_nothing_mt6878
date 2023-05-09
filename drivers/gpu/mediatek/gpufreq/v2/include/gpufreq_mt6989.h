@@ -46,7 +46,9 @@
 #define GPUFREQ_HW_DELSEL_ENABLE            (0)
 #define GPUFREQ_DFD3_6_ENABLE               (0)
 #define GPUFREQ_SW_BRCAST_ENABLE            (0)
+#define GPUFREQ_BRCAST_PARITY_CHECK         (0)
 #define GPUFREQ_BRISKET_BYPASS_MODE         (1)
+#define GPUFREQ_SW_VMETER_ENABLE            (0)
 
 /**************************************************
  * PMIC Setting
@@ -75,6 +77,8 @@
 #define DREQ_ST0_VLOG_ACK                   (BIT(3))
 #define DREQ_ST1_VSRAM_ACK                  (BIT(1))
 #define DREQ_ST1_VLOG_ACK                   (BIT(4))
+#define TOP_HW_DELSEL_MASK                  (BIT(17))
+#define STACK_HW_DELSEL_MASK                (GENMASK(5, 0))
 #define BUCK_ON_SEPARATE_TIME               (100)           /* us */
 #define BUCK_ON_SETTLE_TIME                 (MAX(VGPU_ON_SETTLE_TIME, VSTACK_ON_SETTLE_TIME))
 /*
@@ -204,16 +208,20 @@ struct gpufreq_core_mask_info g_core_mask_table[SHADER_CORE_NUM] = {
 /**************************************************
  * DVFS Constraint Setting
  **************************************************/
+#define SW_VMETER_DELSEL_0_VOLT             (60000)         /* mV x 100 */
+#define SW_VMETER_DELSEL_1_VOLT             (50000)         /* mV x 100 */
 #define NO_DELSEL_FLOOR_VSTACK              (52000)         /* mV x 100 */
 #define PARKING_UPBOUND                     (0)
 #define PARKING_SEGMENT                     (12)
-#define PARKING_CONSTRAINT                  (46)
+#define PARKING_BINNING                     (46)
+#define PARKING_TOP_DELSEL                  (53)
 #define PARKING_LOWBOUND                    (54)
 #define NUM_PARKING_IDX                     ARRAY_SIZE(g_parking_idx)
 static int g_parking_idx[] = {
 	PARKING_UPBOUND,
 	PARKING_SEGMENT,
-	PARKING_CONSTRAINT,
+	PARKING_BINNING,
+	PARKING_TOP_DELSEL,
 	PARKING_LOWBOUND,
 };
 

@@ -118,6 +118,7 @@
 #define MFG_DREQ_TOP_DBG_CON_0                 (g_mfg_top_base + 0x1F0)            /* 0x13FBF1F0 */
 
 #define MFG_CG_CFG_BASE                        (0x13E90000)
+#define MFG_CG_DUMMY_REG                       (g_mfg_cg_base + 0x000)             /* 0x13E90000 */
 #define MFG_CG_HW_DELSEL_SEL_0                 (g_mfg_cg_base + 0x084)             /* 0x13E90084 */
 #define MFG_CG_HW_DELSEL_SEL_1                 (g_mfg_cg_base + 0x088)             /* 0x13E90088 */
 #define MFG_CG_DREQ_CG_DBG_CON_0               (g_mfg_cg_base + 0x08C)             /* 0x13E9008C */
@@ -191,11 +192,26 @@
 #define MFG_AXUSER_R_BYPASS_MRG_BY_HINT_CFG    (g_mfg_axuser_base + 0x820)         /* 0x13FC0820 */
 
 #define MFG_BRCAST_BASE                        (0x13FB1000)
+#define MFG_BRCAST_TEST_MODE_2                 (g_mfg_brcast_base + 0xF20)         /* 0x13FB1F20 */
 #define MFG_BRCAST_CONFIG_1                    (g_mfg_brcast_base + 0xFEC)         /* 0x13FB1FEC */
 #define MFG_BRCAST_CONFIG_4                    (g_mfg_brcast_base + 0xFF8)         /* 0x13FB1FF8 */
 #define MFG_BRCAST_CONFIG_5                    (g_mfg_brcast_base + 0xFFC)         /* 0x13FB1FFC */
+#define MFG_BRCAST_START_ADDR_3                (g_mfg_brcast_base + 0x418)         /* 0x13FB1418 */
+#define MFG_BRCAST_END_ADDR_3                  (g_mfg_brcast_base + 0x41C)         /* 0x13FB141C */
+#define MFG_BRCAST_START_ADDR_4                (g_mfg_brcast_base + 0x420)         /* 0x13FB1420 */
+#define MFG_BRCAST_END_ADDR_4                  (g_mfg_brcast_base + 0x424)         /* 0x13FB1424 */
+#define MFG_BRCAST_START_ADDR_5                (g_mfg_brcast_base + 0x428)         /* 0x13FB1428 */
+#define MFG_BRCAST_END_ADDR_5                  (g_mfg_brcast_base + 0x42C)         /* 0x13FB142C */
+#define MFG_BRCAST_START_ADDR_6                (g_mfg_brcast_base + 0x430)         /* 0x13FB1430 */
+#define MFG_BRCAST_END_ADDR_6                  (g_mfg_brcast_base + 0x434)         /* 0x13FB1434 */
+#define MFG_BRCAST_START_ADDR_7                (g_mfg_brcast_base + 0x438)         /* 0x13FB1438 */
+#define MFG_BRCAST_END_ADDR_7                  (g_mfg_brcast_base + 0x43C)         /* 0x13FB143C */
+#define MFG_BRCAST_START_ADDR_8                (g_mfg_brcast_base + 0x440)         /* 0x13FB1440 */
+#define MFG_BRCAST_END_ADDR_8                  (g_mfg_brcast_base + 0x444)         /* 0x13FB1444 */
 #define MFG_BRCAST_START_ADDR_42               (g_mfg_brcast_base + 0x550)         /* 0x13FB1550 */
 #define MFG_BRCAST_END_ADDR_42                 (g_mfg_brcast_base + 0x554)         /* 0x13FB1554 */
+#define MFG_BRCAST_START_END_ADDR_PTY_0_16     (g_mfg_brcast_base + 0x6A0)         /* 0x13FB16A0 */
+#define MFG_BRCAST_PROG_DATA_114               (g_mfg_brcast_base + 0x9C8)         /* 0x13FB19C8 */
 #define MFG_BRCAST_PROG_DATA_141               (g_mfg_brcast_base + 0xA34)         /* 0x13FB1A34 */
 #define MFG_BRCAST_PROG_DATA_142               (g_mfg_brcast_base + 0xA38)         /* 0x13FB1A38 */
 #define MFG_BRCAST_CMD_SEQ_0_0_LSB             (g_mfg_brcast_base + 0x000)         /* 0x13FB1000 */
@@ -206,6 +222,13 @@
 #define MFG_BRCAST_CMD_SEQ_0_11_MSB            (g_mfg_brcast_base + 0x05C)         /* 0x13FB105C */
 #define MFG_BRCAST_CMD_SEQ_0_12_LSB            (g_mfg_brcast_base + 0x060)         /* 0x13FB1060 */
 #define MFG_BRCAST_CMD_SEQ_0_12_MSB            (g_mfg_brcast_base + 0x064)         /* 0x13FB1064 */
+#define MFG_BRCAST_CMD_SEQ_1_0_LSB             (g_mfg_brcast_base + 0x080)         /* 0x13FB1080 */
+#define MFG_BRCAST_CMD_SEQ_1_0_MSB             (g_mfg_brcast_base + 0x084)         /* 0x13FB1084 */
+#define MFG_BRCAST_CMD_SEQ_0AND1_PTY           (g_mfg_brcast_base + 0x380)         /* 0x13FB1380 */
+
+#define MFG_VGPU_DEVAPC_AO_BASE                (0x13FA1000)
+#define MFG_VGPU_DEVAPC_AO_MAS_SEC_0           (g_mfg_vgpu_devapc_ao_base + 0xA00) /* 0x13FA1A00 */
+#define MFG_VGPU_DEVAPC_AO_APC_CON             (g_mfg_vgpu_devapc_ao_base + 0xF00) /* 0x13FA1F00 */
 
 #define MFG_VGPU_DEVAPC_BASE                   (0x13FA2000)
 #define MFG_VGPU_DEVAPC_D0_VIO_STA_0           (g_mfg_vgpu_devapc_base + 0x400)    /* 0x13FA2400 */
@@ -214,6 +237,27 @@
 #define MFG_SMMU_BASE                          (0x13A00000)
 #define MFG_SMMU_CR0                           (g_mfg_smmu_base + 0x0020)          /* 0x13A00000 */
 #define MFG_SMMU_GBPA                          (g_mfg_smmu_base + 0x0044)          /* 0x13A00000 */
+
+#define BRISKET_TOP_BASE                       (0x13FB0000)
+#define BRISKET_TOP_VOLTAGEEXT                 (g_brisket_top_base + 0x148)        /* 0x13FB0148 */
+
+#define BRISKET_ST0_BASE                       (0x13E1C000)
+#define BRISKET_ST0_VOLTAGEEXT                 (g_brisket_st0_base + 0x148)        /* 0x13E1C148 */
+
+#define BRISKET_ST1_BASE                       (0x13E2C000)
+#define BRISKET_ST1_VOLTAGEEXT                 (g_brisket_st1_base + 0x148)        /* 0x13E2C148 */
+
+#define BRISKET_ST3_BASE                       (0x13E4C000)
+#define BRISKET_ST3_VOLTAGEEXT                 (g_brisket_st3_base + 0x148)        /* 0x13E4C148 */
+
+#define BRISKET_ST4_BASE                       (0x13E5C000)
+#define BRISKET_ST4_VOLTAGEEXT                 (g_brisket_st4_base + 0x148)        /* 0x13E5C148 */
+
+#define BRISKET_ST5_BASE                       (0x13E6C000)
+#define BRISKET_ST5_VOLTAGEEXT                 (g_brisket_st5_base + 0x148)        /* 0x13E6C148 */
+
+#define BRISKET_ST6_BASE                       (0x13E7C000)
+#define BRISKET_ST6_VOLTAGEEXT                 (g_brisket_st6_base + 0x148)        /* 0x13E7C148 */
 
 #define SPM_BASE                               (0x1C001000)
 #define SPM_SPM2GPUPM_CON                      (g_sleep + 0x410)                   /* 0x1C001410 */

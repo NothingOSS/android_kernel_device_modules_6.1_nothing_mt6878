@@ -84,8 +84,11 @@ static int __gpufreq_freq_scale_stack(unsigned int freq_old, unsigned int freq_n
 static int __gpufreq_volt_scale_gpu(unsigned int volt_old, unsigned int volt_new);
 static int __gpufreq_volt_scale_stack(unsigned int volt_old, unsigned int volt_new);
 static void __gpufreq_volt_check_sram(unsigned int volt_old, unsigned int volt_new);
-static void __gpufreq_get_park_by_vstack(enum gpufreq_opp_direct direct,
-	unsigned int cur_vstack, unsigned int *park_vgpu, unsigned int *park_vstack);
+static void __gpufreq_sw_vmeter_config(enum gpufreq_opp_direct direct,
+	unsigned int cur_vgpu, unsigned int cur_vstack);
+static void __gpufreq_get_parking_volt(enum gpufreq_opp_direct direct,
+	unsigned int cur_vgpu, unsigned int cur_vstack,
+	unsigned int *park_vgpu, unsigned int *park_vstack);
 static int __gpufreq_volt_scale(
 	unsigned int vgpu_old, unsigned int vgpu_new,
 	unsigned int vstack_old, unsigned int vstack_new,
@@ -199,8 +202,16 @@ static void __iomem *g_mfg_pll_sc1_base;
 static void __iomem *g_mfg_rpc_base;
 static void __iomem *g_mfg_axuser_base;
 static void __iomem *g_mfg_brcast_base;
+static void __iomem *g_mfg_vgpu_devapc_ao_base;
 static void __iomem *g_mfg_vgpu_devapc_base;
 static void __iomem *g_mfg_smmu_base;
+static void __iomem *g_brisket_top_base;
+static void __iomem *g_brisket_st0_base;
+static void __iomem *g_brisket_st1_base;
+static void __iomem *g_brisket_st3_base;
+static void __iomem *g_brisket_st4_base;
+static void __iomem *g_brisket_st5_base;
+static void __iomem *g_brisket_st6_base;
 static void __iomem *g_sleep;
 static void __iomem *g_topckgen_base;
 static void __iomem *g_nth_emicfg_base;
@@ -228,6 +239,8 @@ static struct gpufreq_volt_sb g_springboard[NUM_PARKING_IDX];
 static int g_temperature;
 static int g_temper_comp_vgpu;
 static int g_temper_comp_vstack;
+static unsigned int g_vmeter_gpu_val;
+static unsigned int g_vmeter_stack_val;
 static unsigned int g_shader_present;
 static unsigned int g_mcl50_load;
 static unsigned int g_aging_load;
@@ -2880,9 +2893,66 @@ static void __gpufreq_volt_check_sram(unsigned int vsram_gpu, unsigned int vsram
 #endif /* GPUFREQ_DREQ_AUTO_ENABLE */
 }
 
+/* SW manually set Vmeter volt to config HW_DELSEL */
+static void __gpufreq_sw_vmeter_config(enum gpufreq_opp_direct direct,
+	unsigned int cur_vgpu, unsigned int cur_vstack)
+{
+#if GPUFREQ_SW_VMETER_ENABLE
+	unsigned int delsel_vgpu = 0, delsel_vstack = 0;
+
+	delsel_vgpu = g_gpu.signed_table[PARKING_TOP_DELSEL].volt;
+	delsel_vstack = g_stack.signed_table[PARKING_BINNING].volt;
+
+	/* high volt use DELSEL=0 */
+	if (direct == SCALE_UP) {
+		if (cur_vgpu == delsel_vgpu) {
+			g_vmeter_gpu_val = ((SW_VMETER_DELSEL_0_VOLT / 100) << 2) | BIT(0);
+			DRV_WriteReg32(BRISKET_TOP_VOLTAGEEXT, g_vmeter_gpu_val);
+		}
+		if (cur_vstack == delsel_vstack) {
+			g_vmeter_stack_val = ((SW_VMETER_DELSEL_0_VOLT / 100) << 2) | BIT(0);
+			DRV_WriteReg32(MFG_BRCAST_PROG_DATA_114, g_vmeter_stack_val);
+			DRV_WriteReg32(BRISKET_ST0_VOLTAGEEXT, g_vmeter_stack_val);
+			DRV_WriteReg32(BRISKET_ST1_VOLTAGEEXT, g_vmeter_stack_val);
+			DRV_WriteReg32(BRISKET_ST3_VOLTAGEEXT, g_vmeter_stack_val);
+			DRV_WriteReg32(BRISKET_ST4_VOLTAGEEXT, g_vmeter_stack_val);
+			DRV_WriteReg32(BRISKET_ST5_VOLTAGEEXT, g_vmeter_stack_val);
+			DRV_WriteReg32(BRISKET_ST6_VOLTAGEEXT, g_vmeter_stack_val);
+		}
+	/* low volt use DELSEL=1 */
+	} else if (direct == SCALE_DOWN) {
+		if (cur_vgpu == delsel_vgpu) {
+			g_vmeter_gpu_val = ((SW_VMETER_DELSEL_1_VOLT / 100) << 2) | BIT(0);
+			DRV_WriteReg32(BRISKET_TOP_VOLTAGEEXT, g_vmeter_gpu_val);
+		}
+		if (cur_vstack == delsel_vstack) {
+			g_vmeter_stack_val = ((SW_VMETER_DELSEL_1_VOLT / 100) << 2) | BIT(0);
+			DRV_WriteReg32(MFG_BRCAST_PROG_DATA_114, g_vmeter_stack_val);
+			DRV_WriteReg32(BRISKET_ST0_VOLTAGEEXT, g_vmeter_stack_val);
+			DRV_WriteReg32(BRISKET_ST1_VOLTAGEEXT, g_vmeter_stack_val);
+			DRV_WriteReg32(BRISKET_ST3_VOLTAGEEXT, g_vmeter_stack_val);
+			DRV_WriteReg32(BRISKET_ST4_VOLTAGEEXT, g_vmeter_stack_val);
+			DRV_WriteReg32(BRISKET_ST5_VOLTAGEEXT, g_vmeter_stack_val);
+			DRV_WriteReg32(BRISKET_ST6_VOLTAGEEXT, g_vmeter_stack_val);
+		}
+	}
+
+	GPUFREQ_LOGD(
+		"[%s] Vgpu: %d, TOP_DELSEL[17]: 0x%08lx, Vstack: %d, STACK_DELSEL[5:0]: 0x%08lx",
+		direct == SCALE_DOWN ? "DOWN" : (direct == SCALE_UP ? "UP" : "STAY"),
+		cur_vgpu, DRV_Reg32(MFG_DUMMY_REG) & TOP_HW_DELSEL_MASK,
+		cur_vstack, DRV_Reg32(MFG_CG_DUMMY_REG) & STACK_HW_DELSEL_MASK);
+#else
+	GPUFREQ_UNREFERENCED(direct);
+	GPUFREQ_UNREFERENCED(cur_vgpu);
+	GPUFREQ_UNREFERENCED(cur_vstack);
+#endif /* GPUFREQ_SW_VMETER_ENABLE */
+}
+
 /* API: use Vstack to find constraint range */
-static void __gpufreq_get_park_by_vstack(enum gpufreq_opp_direct direct,
-	unsigned int cur_vstack, unsigned int *park_vgpu, unsigned int *park_vstack)
+static void __gpufreq_get_parking_volt(enum gpufreq_opp_direct direct,
+	unsigned int cur_vgpu, unsigned int cur_vstack,
+	unsigned int *park_vgpu, unsigned int *park_vstack)
 {
 	int i = 0, parking_num = NUM_PARKING_IDX;
 
@@ -2898,7 +2968,8 @@ static void __gpufreq_get_park_by_vstack(enum gpufreq_opp_direct direct,
 	if (direct == SCALE_UP) {
 		/* find largest volt which is smaller than cur_volt */
 		for (i = 0; i < parking_num ; i++)
-			if (cur_vstack >= g_springboard[i].vstack)
+			if ((cur_vgpu >= g_springboard[i].vgpu) &&
+				(cur_vstack >= g_springboard[i].vstack))
 				break;
 		/* boundary check */
 		i = i < parking_num  ? i : (parking_num  - 1);
@@ -2907,7 +2978,8 @@ static void __gpufreq_get_park_by_vstack(enum gpufreq_opp_direct direct,
 	} else if (direct == SCALE_DOWN) {
 		/* find smallest volt which is larger than cur_volt */
 		for (i = parking_num  - 1; i >= 0; i--)
-			if (cur_vstack <= g_springboard[i].vstack)
+			if ((cur_vgpu <= g_springboard[i].vgpu) &&
+				(cur_vstack <= g_springboard[i].vstack))
 				break;
 		/* boundary check */
 		i = i < 0 ? 0 : i;
@@ -2915,9 +2987,9 @@ static void __gpufreq_get_park_by_vstack(enum gpufreq_opp_direct direct,
 		*park_vstack = g_springboard[i].vstack_down;
 	}
 
-	GPUFREQ_LOGD("Vstack: %d (%s) parking Vgpu: %d, Vstack: %d",
-		cur_vstack, direct == SCALE_DOWN ? "DOWN" : (direct == SCALE_UP ? "UP" : "STAY"),
-		*park_vgpu, *park_vstack);
+	GPUFREQ_LOGD("[%s] parking Vgpu(%d->%d), Vstack(%d->%d)",
+		direct == SCALE_DOWN ? "DOWN" : (direct == SCALE_UP ? "UP" : "STAY"),
+		cur_vgpu, *park_vgpu, cur_vstack, *park_vstack);
 }
 
 /* API: decide DVS order of GPU and STACK */
@@ -2936,10 +3008,12 @@ static int __gpufreq_volt_scale(
 	/* scale-up: Vstack -> Vgpu */
 	if (vstack_new > vstack_old) {
 		while ((vstack_new != vstack_old) || (vgpu_new != vgpu_old)) {
+			/* config SW Vmeter */
+			__gpufreq_sw_vmeter_config(SCALE_UP, vgpu_old, vstack_old);
 			/* find reachable volt fitting DVFS constraint via Vstack */
 			if (vstack_new != vstack_old) {
-				__gpufreq_get_park_by_vstack(SCALE_UP,
-					vstack_old, &park_vgpu, &park_vstack);
+				__gpufreq_get_parking_volt(SCALE_UP,
+					vgpu_old, vstack_old, &park_vgpu, &park_vstack);
 				/* only accept parking with scaling up */
 				if (park_vstack > vstack_old)
 					target_vstack = park_vstack < vstack_new ?
@@ -2970,10 +3044,12 @@ static int __gpufreq_volt_scale(
 	/* else: Vgpu -> Vstack */
 	} else {
 		while ((vstack_new != vstack_old) || (vgpu_new != vgpu_old)) {
+			/* config SW Vmeter */
+			__gpufreq_sw_vmeter_config(SCALE_DOWN, vgpu_old, vstack_old);
 			/* find reachable volt fitting DVFS constraint via Vstack */
 			if (vstack_new != vstack_old) {
-				__gpufreq_get_park_by_vstack(SCALE_DOWN,
-					vstack_old, &park_vgpu, &park_vstack);
+				__gpufreq_get_parking_volt(SCALE_DOWN,
+					vgpu_old, vstack_old, &park_vgpu, &park_vstack);
 				/* only accept parking with scaling down */
 				if (park_vstack < vstack_old)
 					target_vstack = park_vstack > vstack_new ?
@@ -3422,6 +3498,9 @@ static void __gpufreq_bus_clk_div2_config(void)
 /* HW_DELSEL: let HW auto config DELSEL according to operating volt */
 static void __gpufreq_top_hw_delsel_config(void)
 {
+#if GPUFREQ_SW_VMETER_ENABLE
+	DRV_WriteReg32(BRISKET_TOP_VOLTAGEEXT, g_vmeter_gpu_val);
+#endif /* GPUFREQ_SW_VMETER_ENABLE */
 #if GPUFREQ_HW_DELSEL_ENABLE
 	/* MFG_DUMMY_REG 0x13FBF500 (FECO), 550mV/hystereis 10mV */
 	DRV_WriteReg32(MFG_DUMMY_REG, 0x0001160A);
@@ -3654,6 +3733,9 @@ static void __gpufreq_broadcaster_config(void)
 	/* enable internal clock */
 	/* MFG_BRCAST_CONFIG_4 0x13FB1FF8 [0] brcast_en = 1'b1 */
 	DRV_WriteReg32(MFG_BRCAST_CONFIG_4, BIT(0));
+	/* set blocking ack */
+	/* power_turn_on_pause_en[8:3] = 6'b111111, ST0 ~ ST6 */
+	DRV_WriteReg32(MFG_BRCAST_TEST_MODE_2, GENMASK(8, 3));
 	/* reset Broadcaster */
 	/* MFG_BRCAST_CONFIG_4 0x13FB1FF8 [0] brcast_clr = 1'b1 */
 	DRV_WriteReg32(MFG_BRCAST_CONFIG_1, BIT(0));
@@ -3668,17 +3750,55 @@ static void __gpufreq_broadcaster_config(void)
 				DRV_Reg32(MFG_BRCAST_CONFIG_5));
 	} while (DRV_Reg32(MFG_BRCAST_CONFIG_1) & BIT(0));
 
-	/* set Broadcaster target addr: 0x13E90000 */
+	/***** Broadcaster FW START *****/
+
+#if GPUFREQ_SW_VMETER_ENABLE
+	/* unlock Broadcaster to Brisket permission */
+	DRV_WriteReg32(MFG_VGPU_DEVAPC_AO_APC_CON, 0x0);
+	DRV_WriteReg32(MFG_VGPU_DEVAPC_AO_MAS_SEC_0, 0x1);
+	/* set Broadcaster target address */
+	DRV_WriteReg32(MFG_BRCAST_START_ADDR_3, BRISKET_ST0_BASE);
+	DRV_WriteReg32(MFG_BRCAST_END_ADDR_3, BRISKET_ST0_BASE);
+	DRV_WriteReg32(MFG_BRCAST_START_ADDR_4, BRISKET_ST1_BASE);
+	DRV_WriteReg32(MFG_BRCAST_END_ADDR_4, BRISKET_ST1_BASE);
+	DRV_WriteReg32(MFG_BRCAST_START_ADDR_5, BRISKET_ST3_BASE);
+	DRV_WriteReg32(MFG_BRCAST_END_ADDR_5, BRISKET_ST3_BASE);
+	DRV_WriteReg32(MFG_BRCAST_START_ADDR_6, BRISKET_ST4_BASE);
+	DRV_WriteReg32(MFG_BRCAST_END_ADDR_6, BRISKET_ST4_BASE);
+	DRV_WriteReg32(MFG_BRCAST_START_ADDR_7, BRISKET_ST5_BASE);
+	DRV_WriteReg32(MFG_BRCAST_END_ADDR_7, BRISKET_ST5_BASE);
+	DRV_WriteReg32(MFG_BRCAST_START_ADDR_8, BRISKET_ST6_BASE);
+	DRV_WriteReg32(MFG_BRCAST_END_ADDR_8, BRISKET_ST6_BASE);
+	/* set Broadcaster program data content */
+	DRV_WriteReg32(MFG_BRCAST_PROG_DATA_114, g_vmeter_stack_val);
+	/* set Broadcaster write program data and register offset */
+	DRV_WriteReg32(MFG_BRCAST_CMD_SEQ_1_0_LSB, 0x00002072); /* prog_data : 114 */
+	DRV_WriteReg32(MFG_BRCAST_CMD_SEQ_1_0_MSB, 0x98002900); /* reg offset: 0x148 */
+#if GPUFREQ_BRCAST_PARITY_CHECK
+	/* set Broadcaster parity check */
+	DRV_WriteReg32(MFG_BRCAST_START_END_ADDR_PTY_0_16,
+		(DRV_Reg32(MFG_BRCAST_START_END_ADDR_PTY_0_16) | GENMASK(17, 6)));
+	DRV_WriteReg32(MFG_BRCAST_CMD_SEQ_0AND1_PTY,
+		(DRV_Reg32(MFG_BRCAST_CMD_SEQ_0AND1_PTY) | BIT(16)));
+#endif /* GPUFREQ_BRCAST_PARITY_CHECK */
+#endif /* GPUFREQ_SW_VMETER_ENABLE */
+
+#if GPUFREQ_HW_DELSEL_ENABLE
+	/* enable SC0, SC1 HW_DELSEL */
+	/* set Broadcaster target address */
 	DRV_WriteReg32(MFG_BRCAST_START_ADDR_42, MFG_CG_CFG_BASE);
 	DRV_WriteReg32(MFG_BRCAST_END_ADDR_42, MFG_CG_CFG_BASE);
-	/* set Broadcaster target program data */
+	/* set Broadcaster program data content */
 	DRV_WriteReg32(MFG_BRCAST_PROG_DATA_141, 0x0001160A);
 	DRV_WriteReg32(MFG_BRCAST_PROG_DATA_142, 0x0001160A);
-	/* set Broadcaster target offset and corresponded program data */
-	DRV_WriteReg32(MFG_BRCAST_CMD_SEQ_0_0_LSB, 0x0000828D); /* prog_data_141 */
-	DRV_WriteReg32(MFG_BRCAST_CMD_SEQ_0_0_MSB, 0x9C001080); /* 0x84 */
-	DRV_WriteReg32(MFG_BRCAST_CMD_SEQ_0_1_LSB, 0x0000828E); /* prog_data_142 */
-	DRV_WriteReg32(MFG_BRCAST_CMD_SEQ_0_1_MSB, 0x9C001100); /* 0x88 */
+	/* set Broadcaster write program data and register offset */
+	DRV_WriteReg32(MFG_BRCAST_CMD_SEQ_0_0_LSB, 0x0000828D); /* prog_data : 141 */
+	DRV_WriteReg32(MFG_BRCAST_CMD_SEQ_0_0_MSB, 0x9C001080); /* reg offset: 0x084 */
+	DRV_WriteReg32(MFG_BRCAST_CMD_SEQ_0_1_LSB, 0x0000828E); /* prog_data : 142 */
+	DRV_WriteReg32(MFG_BRCAST_CMD_SEQ_0_1_MSB, 0x9C001100); /* reg offset: 0x088 */
+#endif /* GPUFREQ_HW_DELSEL_ENABLE */
+
+	/***** Broadcaster FW END *****/
 
 	/* start Broadcaster */
 	/* MFG_BRCAST_CONFIG_5 0x13FB1FFC [0] boot_set = 1'b1 */
@@ -4911,6 +5031,10 @@ static void __gpufreq_init_opp_table(void)
 	g_stack.cur_volt = __gpufreq_get_pmic_vstack();
 	g_stack.cur_vsram = __gpufreq_get_pmic_vsram();
 
+	/* init SW Vmeter */
+	g_vmeter_gpu_val = ((SW_VMETER_DELSEL_0_VOLT / 100) << 2) | BIT(0);
+	g_vmeter_stack_val = ((SW_VMETER_DELSEL_0_VOLT / 100) << 2) | BIT(0);
+
 	GPUFREQ_LOGI(
 		"preloader init [GPU] Freq: %d, Volt: %d [STACK] Freq: %d, Volt: %d, Vsram: %d",
 		g_gpu.cur_freq, g_gpu.cur_volt,
@@ -5324,6 +5448,18 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 		goto done;
 	}
 
+	/* 0x13FA1000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_vgpu_devapc_ao");
+	if (unlikely(!res)) {
+		GPUFREQ_LOGE("fail to get resource MFG_VGPU_DEVAPC_AO");
+		goto done;
+	}
+	g_mfg_vgpu_devapc_ao_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (unlikely(!g_mfg_vgpu_devapc_ao_base)) {
+		GPUFREQ_LOGE("fail to ioremap MFG_VGPU_DEVAPC_AO: 0x%llx", res->start);
+		goto done;
+	}
+
 	/* 0x13FA2000 */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_vgpu_devapc");
 	if (unlikely(!res)) {
@@ -5345,6 +5481,90 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 	g_mfg_smmu_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
 	if (unlikely(!g_mfg_smmu_base)) {
 		GPUFREQ_LOGE("fail to ioremap MFG_SMMU: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x13FB0000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "brisket_top");
+	if (unlikely(!res)) {
+		GPUFREQ_LOGE("fail to get resource BRISKET_TOP");
+		goto done;
+	}
+	g_brisket_top_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (unlikely(!g_brisket_top_base)) {
+		GPUFREQ_LOGE("fail to ioremap BRISKET_TOP: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x13E1C000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "brisket_st0");
+	if (unlikely(!res)) {
+		GPUFREQ_LOGE("fail to get resource BRISKET_ST0");
+		goto done;
+	}
+	g_brisket_st0_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (unlikely(!g_brisket_st0_base)) {
+		GPUFREQ_LOGE("fail to ioremap BRISKET_ST0: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x13E2C000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "brisket_st1");
+	if (unlikely(!res)) {
+		GPUFREQ_LOGE("fail to get resource BRISKET_ST1");
+		goto done;
+	}
+	g_brisket_st1_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (unlikely(!g_brisket_st1_base)) {
+		GPUFREQ_LOGE("fail to ioremap BRISKET_ST1: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x13E4C000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "brisket_st3");
+	if (unlikely(!res)) {
+		GPUFREQ_LOGE("fail to get resource BRISKET_ST3");
+		goto done;
+	}
+	g_brisket_st3_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (unlikely(!g_brisket_st3_base)) {
+		GPUFREQ_LOGE("fail to ioremap BRISKET_ST3: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x13E5C000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "brisket_st4");
+	if (unlikely(!res)) {
+		GPUFREQ_LOGE("fail to get resource BRISKET_ST4");
+		goto done;
+	}
+	g_brisket_st4_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (unlikely(!g_brisket_st4_base)) {
+		GPUFREQ_LOGE("fail to ioremap BRISKET_ST4: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x13E6C000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "brisket_st5");
+	if (unlikely(!res)) {
+		GPUFREQ_LOGE("fail to get resource BRISKET_ST5");
+		goto done;
+	}
+	g_brisket_st5_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (unlikely(!g_brisket_st5_base)) {
+		GPUFREQ_LOGE("fail to ioremap BRISKET_ST5: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x13E7C000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "brisket_st6");
+	if (unlikely(!res)) {
+		GPUFREQ_LOGE("fail to get resource BRISKET_ST6");
+		goto done;
+	}
+	g_brisket_st6_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (unlikely(!g_brisket_st6_base)) {
+		GPUFREQ_LOGE("fail to ioremap BRISKET_ST6: 0x%llx", res->start);
 		goto done;
 	}
 
