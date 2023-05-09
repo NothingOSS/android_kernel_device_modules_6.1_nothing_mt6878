@@ -236,6 +236,9 @@ static s32 topology_select_path(struct mml_frame_config *cfg)
 #define call_hw_op(_comp, op, ...) \
 	(_comp->hw_ops->op ? _comp->hw_ops->op(_comp, ##__VA_ARGS__) : 0)
 
+#define call_mmlsys_pw(_comp, op, ...) \
+	(_comp->larb_dev ? mml_comp_##op(_comp, ##__VA_ARGS__) : 0)
+
 #define call_dbg_op(_comp, op, ...) \
 	((_comp->debug_ops && _comp->debug_ops->op) ? \
 		_comp->debug_ops->op(_comp, ##__VA_ARGS__) : 0)
@@ -588,10 +591,15 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
+	/* Note: Do manually pw_enable and disable during mml/disp mtcmos on or off,
+	 * cause mminfra must power on before other mtcmos, and must off after it.
+	 */
+	call_mmlsys_pw(path->mmlsys, pw_enable);
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, pw_enable);
 	}
+	call_mmlsys_pw(path->mmlsys, pw_disable);
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
@@ -649,10 +657,12 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
+	call_mmlsys_pw(path->mmlsys, pw_enable);
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, pw_disable);
 	}
+	call_mmlsys_pw(path->mmlsys, pw_disable);
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "cmdq", pipe);

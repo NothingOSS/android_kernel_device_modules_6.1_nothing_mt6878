@@ -78,6 +78,7 @@ struct mml_data {
 		struct mml_comp_config *ccfg);
 	u8 gpr[MML_PIPE_CNT];
 	enum mml_aidsel_mode aidsel_mode;
+	bool pw_mminfra;
 };
 
 enum mml_mux_type {
@@ -924,6 +925,7 @@ static const struct mml_comp_hw_ops sys_hw_ops_aid = {
 	.clk_enable = &mml_sys_comp_clk_enable,
 	.clk_disable = &mml_sys_comp_clk_disable,
 };
+
 #endif
 
 static int sys_comp_init(struct device *dev, struct mml_sys *sys,
@@ -935,6 +937,15 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 	const char *name;
 	const __be32 *p;
 	u32 value, comp_id, selbit, selmask;
+
+	/* This larb_dev represent mmlsys it self for MMINFRA power domain on/off.
+	 * The mml-core will manually do pw_enable/pw_disable by this dev,
+	 * to power on/off mminfra mtcmos.
+	 */
+	if (sys->data->pw_mminfra) {
+		comp->larb_dev = dev;
+		pm_runtime_enable(dev);
+	}
 
 	/* Initialize mux-pins */
 	cnt = of_property_count_elems_of_size(node, "mux-pins",
@@ -1907,6 +1918,8 @@ void mml_sys_destroy(struct platform_device *pdev, struct mml_sys *sys,
 	int i;
 
 	mml_dle_put_context(sys->dle_ctx);
+	if (sys->data->pw_mminfra)
+		pm_runtime_disable(&pdev->dev);
 	for (i = 0; i < sys->comp_cnt; i++)
 		component_del(&pdev->dev, comp_ops);
 	if (sys->ddp_comp_en)
@@ -2130,6 +2143,7 @@ static const struct mml_data mt6989_mml_data = {
 	.aid_sel = sys_config_aid_sel_bits,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.aidsel_mode = MML_AIDSEL_ENGINEBITS,
+	.pw_mminfra = true,
 };
 
 const struct of_device_id mtk_mml_of_ids[] = {
