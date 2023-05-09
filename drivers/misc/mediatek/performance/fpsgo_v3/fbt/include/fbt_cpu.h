@@ -41,8 +41,6 @@ void fpsgo_base2fbt_clear_llf_policy(struct render_info *thr);
 void fpsgo_base2fbt_cancel_jerk(struct render_info *thr);
 int fpsgo_base2fbt_is_finished(struct render_info *thr);
 void fpsgo_base2fbt_stop_boost(struct render_info *thr);
-void fpsgo_sbe2fbt_rescue(struct render_info *thr, int start, int enhance,
-		unsigned long long frame_id);
 void eara2fbt_set_2nd_t2wnt(int pid, unsigned long long buffer_id,
 		unsigned long long t_duration);
 int fpsgo_ctrl2fbt_buffer_quota(unsigned long long ts, int pid, int quota,
@@ -67,11 +65,18 @@ void fbt_set_limit(int cur_pid, unsigned int blc_wt,
 	struct render_info *thread_info, long long runtime);
 int fbt_get_max_cap(int floor, int bhr_opp_local,
 	int bhr_local, int pid, unsigned long long buffer_id);
+void fbt_cal_min_max_cap(struct render_info *thr,
+	int min_cap, int min_cap_b,
+	int min_cap_m, int jerk, int pid, unsigned long long buffer_id,
+	int *final_min_cap, int *final_min_cap_b, int *final_min_cap_m,
+	int *final_max_cap, int *final_max_cap_b, int *final_max_cap_m);
 unsigned int fbt_get_new_base_blc(struct cpu_ctrl_data *pld,
 	int floor, int enhance, int eenhance_opp, int headroom);
 int fbt_limit_capacity(int blc_wt, int is_rescue);
 void fbt_set_ceiling(struct cpu_ctrl_data *pld,
 	int pid, unsigned long long buffer_id);
+void fbt_set_hard_limit_locked(int input,
+	struct cpu_ctrl_data *pld);
 struct fbt_thread_blc *fbt_xgff_list_blc_add(int pid,
 	unsigned long long buffer_id);
 void fbt_xgff_list_blc_del(struct fbt_thread_blc *p_blc);
@@ -83,6 +88,9 @@ void fbt_set_render_boost_attr(struct render_info *thr);
 void fbt_set_render_last_cb(struct render_info *thr, unsigned long long ts);
 int fbt_get_dep_list(struct render_info *thr);
 int fbt_determine_final_dep_list(struct render_info *thr, struct fpsgo_loading *final_dep_arr);
+void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
+			int min_cap_b, int min_cap_m, int max_cap, int max_cap_b,
+			int max_cap_m, int jerk);
 unsigned int fbt_cal_blc(long aa, unsigned long long target_time,
 	unsigned int last_blc_wt, unsigned long long t_q2q, int is_retarget,
 	unsigned int *blc_wt);
@@ -103,6 +111,25 @@ void fpsgo_get_blc_mlock(const char *tag);
 void fpsgo_put_blc_mlock(const char *tag);
 void fbt_set_fbt_is_boosting(int is_boosting);
 int fbt_get_fbt_is_boosting(void);
+void fbt_find_max_blc(unsigned int *temp_blc, int *temp_blc_pid,
+	unsigned long long *temp_blc_buffer_id,
+	int *temp_blc_dep_num, struct fpsgo_loading temp_blc_dep[]);
+
+struct fbt_setting_info {
+	int bhr_opp;
+	int cluster_num;
+	int rescue_enhance_f;
+	int rescue_second_copp;
+	int boost_ta;
+	int max_blc_pid;
+	unsigned long long max_blc_buffer_id;
+};
+
+int fbt_get_rescue_opp_c(void);
+int fbt_get_rescue_opp_f(void);
+void fbt_set_max_blc_stage(int stage);
+void fbt_set_max_blc_cur(unsigned int blc);
+void fbt_get_setting_info(struct fbt_setting_info *sinfo);
 
 #else
 static inline void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit) { }
@@ -136,8 +163,6 @@ static inline void fpsgo_base2fbt_clear_llf_policy(struct render_info *thr) { }
 static inline void fpsgo_base2fbt_cancel_jerk(struct render_info *thr) { }
 static inline int fpsgo_base2fbt_is_finished(struct render_info *thr) { return 0; }
 static inline void fpsgo_base2fbt_stop_boost(struct render_info *thr) { }
-static inline void fpsgo_sbe2fbt_rescue(struct render_info *thr, int start, int enhance,
-			unsigned long long frame_id) { }
 static inline void eara2fbt_set_2nd_t2wnt(int pid, unsigned long long buffer_id,
 			unsigned long long t_duration) { }
 static inline void fbt_set_render_boost_attr(struct render_info *thr) { }

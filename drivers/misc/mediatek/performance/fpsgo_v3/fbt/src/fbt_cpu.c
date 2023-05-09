@@ -686,7 +686,7 @@ static struct fbt_thread_blc *fbt_list_blc_add(int pid,
 	return obj;
 }
 
-static void fbt_find_max_blc(unsigned int *temp_blc, int *temp_blc_pid,
+void fbt_find_max_blc(unsigned int *temp_blc, int *temp_blc_pid,
 	unsigned long long *temp_blc_buffer_id,
 	int *temp_blc_dep_num, struct fpsgo_loading temp_blc_dep[])
 {
@@ -860,7 +860,7 @@ static void fbt_limit_ceiling_locked(struct cpu_ctrl_data *pld, int is_rescue)
 	}
 }
 
-static void fbt_set_hard_limit_locked(int input, struct cpu_ctrl_data *pld)
+void fbt_set_hard_limit_locked(int input, struct cpu_ctrl_data *pld)
 {
 	int set_margin, set_ceiling, is_rescue;
 
@@ -1660,7 +1660,7 @@ static int fbt_get_limit_max_capacity(const struct fpsgo_boost_attr *attr,
 	return ret;
 }
 
-static void fbt_cal_min_max_cap(struct render_info *thr,
+void fbt_cal_min_max_cap(struct render_info *thr,
 	int min_cap, int min_cap_b,
 	int min_cap_m, int jerk, int pid, unsigned long long buffer_id,
 	int *final_min_cap, int *final_min_cap_b, int *final_min_cap_m,
@@ -1791,7 +1791,7 @@ int fbt_determine_final_dep_list(struct render_info *thr,
 	return final_size;
 }
 
-static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
+void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			int min_cap_b, int min_cap_m, int max_cap, int max_cap_b,
 			int max_cap_m, int jerk)
 {
@@ -5068,6 +5068,41 @@ SKIP:
 	loading = fbt_adjust_loading_exp(thr, start_ts, end_ts, adjust);
 
 	return loading;
+}
+
+// [sbe] support function
+int fbt_get_rescue_opp_c(void)
+{
+	rescue_opp_c = clamp(rescue_opp_c, 0, nr_freq_cpu - 1);
+	return rescue_opp_c;
+}
+
+int fbt_get_rescue_opp_f(void)
+{
+	rescue_opp_f = clamp(rescue_opp_f, 0, nr_freq_cpu - 1);
+	return rescue_opp_f;
+}
+
+void fbt_set_max_blc_stage(int stage)
+{
+	max_blc_stage = stage;
+	fpsgo_systrace_c_fbt(-100, 0, max_blc_stage, "max_blc_stage");
+}
+
+void fbt_set_max_blc_cur(unsigned int blc)
+{
+	max_blc_cur = blc;
+}
+
+void fbt_get_setting_info(struct fbt_setting_info *sinfo)
+{
+	sinfo->bhr_opp = bhr_opp;
+	sinfo->cluster_num = cluster_num;
+	sinfo->rescue_enhance_f = rescue_enhance_f;
+	sinfo->rescue_second_copp = rescue_second_copp;
+	sinfo->boost_ta = boost_ta;
+	sinfo->max_blc_pid = max_blc_pid;
+	sinfo->max_blc_buffer_id = max_blc_buffer_id;
 }
 
 void fbt_reset_boost(struct render_info *thr)

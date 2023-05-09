@@ -916,7 +916,7 @@ void fpsgo_ctrl2comp_hint_frame_start(int pid,
 
 	mutex_lock(&f_render->ux_mlock);
 	ux_frame_empty = RB_EMPTY_ROOT(&f_render->ux_frame_info_tree);
-	fpsgo_systrace_c_fbt(pid, identifier, !ux_frame_empty, "[ux]overlep");
+	fpsgo_systrace_c_fbt(pid, identifier, !ux_frame_empty, "[ux]overlap");
 	frame_info = fpsgo_ux_search_and_add_frame_info(f_render, frameID, frame_start_time, 1);
 	mutex_unlock(&f_render->ux_mlock);
 
@@ -983,6 +983,7 @@ void fpsgo_ctrl2comp_hint_frame_end(int pid,
 	fpsgo_frame_end(f_render, frame_start_time, frame_end_time, identifier);
 	if (!ux_frame_empty)
 		fpsgo_frame_start(f_render, frame_end_time, identifier);
+	fpsgo_systrace_c_fbt(pid, identifier, !ux_frame_empty, "[ux]overlap");
 
 	fpsgo_thread_unlock(&f_render->thr_mlock);
 	fpsgo_render_tree_unlock(__func__);
@@ -1025,7 +1026,7 @@ void fpsgo_ctrl2comp_hint_frame_err(int pid,
 			fpsgo_systrace_c_fbt(f_render->pid, identifier, 0, "[ux]sbe_set_ctrl");
 			fbt_ux_frame_err(f_render, time);
 		}
-		// ignore other case now.
+		fpsgo_systrace_c_fbt(pid, identifier, !ux_frame_empty, "[ux]overlap");
 	}
 	mutex_unlock(&f_render->ux_mlock);
 

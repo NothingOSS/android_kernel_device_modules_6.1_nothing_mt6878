@@ -1716,8 +1716,12 @@ int fpsgo_sbe_rescue_traverse(int pid, int start, int enhance, unsigned long lon
 	for (n = rb_first(&render_pid_tree); n != NULL; n = rb_next(n)) {
 		iter = rb_entry(n, struct render_info, render_key_node);
 		fpsgo_thread_lock(&iter->thr_mlock);
-		if (iter->pid == pid && iter->buffer_id == 5566)
-			fpsgo_sbe2fbt_rescue(iter, start, enhance, frame_id);
+		if (iter->pid == pid) {
+			if (iter->buffer_id == 5566)
+				fpsgo_sbe_rescue(iter, start, enhance, frame_id);
+			else
+				fpsgo_sbe_rescue_legacy(iter, start, enhance, frame_id);
+		}
 		fpsgo_thread_unlock(&iter->thr_mlock);
 	}
 	fpsgo_render_tree_unlock(__func__);

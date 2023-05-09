@@ -24,6 +24,21 @@
 
 #define TARGET_UNLIMITED_FPS 240
 #define NSEC_PER_HUSEC 100000
+#define SBE_RESCUE_MODE_UNTIL_QUEUE_END 2
+
+enum FPSGO_HARD_LIMIT_POLICY {
+	FPSGO_HARD_NONE = 0,
+	FPSGO_HARD_MARGIN = 1,
+	FPSGO_HARD_CEILING = 2,
+	FPSGO_HARD_LIMIT = 3,
+};
+
+enum FPSGO_JERK_STAGE {
+	FPSGO_JERK_INACTIVE = 0,
+	FPSGO_JERK_FIRST,
+	FPSGO_JERK_SBE,
+	FPSGO_JERK_SECOND,
+};
 
 static DEFINE_MUTEX(fbt_mlock);
 
@@ -32,7 +47,10 @@ static struct kmem_cache *frame_info_cachep __ro_after_init;
 static int fpsgo_ux_gcc_enable;
 static int sbe_rescue_enable;
 static int sbe_rescuing_frame_id;
+static int sbe_rescuing_frame_id_legacy;
 static int sbe_enhance_f;
+static struct fpsgo_loading temp_blc_dep[MAX_DEP_NUM];
+static struct fbt_setting_info sinfo;
 
 module_param(fpsgo_ux_gcc_enable, int, 0644);
 module_param(sbe_enhance_f, int, 0644);
@@ -363,10 +381,9 @@ void fpsgo_ux_reset(struct render_info *thr)
 
 }
 
-void fpsgo_sbe2fbt_rescue(struct render_info *thr, int start, int enhance,
+void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		unsigned long long frame_id)
 {
-
 	if (!thr || !sbe_rescue_enable)	//thr must find the 5566 one.
 		return;
 
@@ -389,9 +406,145 @@ void fpsgo_sbe2fbt_rescue(struct render_info *thr, int start, int enhance,
 		fbt_ux_set_cap_with_sbe(thr);
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "sbe rescue");
 	}
+leave:
+	mutex_unlock(&fbt_mlock);
+}
+
+void fpsgo_sbe_rescue_legacy(struct render_info *thr, int start, int enhance,
+		unsigned long long frame_id)
+{
+	int floor, blc_wt = 0, blc_wt_b = 0, blc_wt_m = 0;
+	int max_cap = 100, max_cap_b = 100, max_cap_m = 100;
+	struct cpu_ctrl_data *pld;
+	int rescue_opp_c, rescue_opp_f;
+	int new_enhance;
+	unsigned int temp_blc = 0;
+	int temp_blc_pid = 0;
+	unsigned long long temp_blc_buffer_id = 0;
+	int temp_blc_dep_num = 0;
+	int separate_aa;
+
+	if (!thr || !sbe_rescue_enable)
+		return;
+
+	fbt_get_setting_info(&sinfo);
+	pld = kcalloc(sinfo.cluster_num, sizeof(struct cpu_ctrl_data), GFP_KERNEL);
+	if (!pld)
+		return;
+
+	mutex_lock(&fbt_mlock);
+
+	separate_aa = thr->attr.separate_aa_by_pid;
+
+	if (start) {
+		if (frame_id)
+			sbe_rescuing_frame_id_legacy = frame_id;
+		if (thr->boost_info.sbe_rescue != 0)
+			goto leave;
+		floor = thr->boost_info.last_blc;
+		if (!floor)
+			goto leave;
+
+		rescue_opp_c = fbt_get_rescue_opp_c();
+		new_enhance = enhance < 0 ?  sinfo.rescue_enhance_f : sbe_enhance_f;
+
+		if (thr->boost_info.cur_stage == FPSGO_JERK_SECOND)
+			rescue_opp_c = sinfo.rescue_second_copp;
+
+		rescue_opp_f = fbt_get_rescue_opp_f();
+		blc_wt = fbt_get_new_base_blc(pld, floor, new_enhance, rescue_opp_f, rescue_opp_c);
+		if (separate_aa) {
+			blc_wt_b = fbt_get_new_base_blc(pld, floor, new_enhance,
+						rescue_opp_f, rescue_opp_c);
+			blc_wt_m = fbt_get_new_base_blc(pld, floor, new_enhance,
+						rescue_opp_f, rescue_opp_c);
+		}
+
+		if (!blc_wt)
+			goto leave;
+		thr->boost_info.sbe_rescue = 1;
+
+		if (thr->boost_info.cur_stage != FPSGO_JERK_SECOND) {
+			blc_wt = fbt_limit_capacity(blc_wt, 1);
+			if (separate_aa) {
+				blc_wt_b = fbt_limit_capacity(blc_wt_b, 1);
+				blc_wt_m = fbt_limit_capacity(blc_wt_m, 1);
+			}
+			fbt_set_hard_limit_locked(FPSGO_HARD_CEILING, pld);
+
+			thr->boost_info.cur_stage = FPSGO_JERK_SBE;
+
+			if (thr->pid == sinfo.max_blc_pid && thr->buffer_id
+				== sinfo.max_blc_buffer_id)
+				fbt_set_max_blc_stage(FPSGO_JERK_SBE);
+		}
+		fbt_set_ceiling(pld, thr->pid, thr->buffer_id);
+
+		if (sinfo.boost_ta) {
+			fbt_set_boost_value(blc_wt);
+			fbt_set_max_blc_cur(blc_wt);
+		} else {
+			fbt_cal_min_max_cap(thr, blc_wt, blc_wt_b, blc_wt_m, FPSGO_JERK_FIRST,
+				thr->pid, thr->buffer_id, &blc_wt, &blc_wt_b, &blc_wt_m,
+				&max_cap, &max_cap_b, &max_cap_m);
+			fbt_set_min_cap_locked(thr, blc_wt, blc_wt_b, blc_wt_m, max_cap,
+				max_cap_b, max_cap_m, FPSGO_JERK_FIRST);
+		}
+
+		thr->boost_info.last_blc = blc_wt;
+
+		if (separate_aa) {
+			thr->boost_info.last_blc_b = blc_wt_b;
+			thr->boost_info.last_blc_m = blc_wt_m;
+		}
+
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, new_enhance, "sbe rescue legacy");
+
+		/* support mode: sbe rescue until queue end */
+		if (start == SBE_RESCUE_MODE_UNTIL_QUEUE_END) {
+			thr->boost_info.sbe_rescue = 0;
+			sbe_rescuing_frame_id_legacy = -1;
+			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "sbe rescue legacy");
+		}
+
+	} else {
+		if (thr->boost_info.sbe_rescue == 0)
+			goto leave;
+		if (frame_id < sbe_rescuing_frame_id_legacy)
+			goto leave;
+		sbe_rescuing_frame_id_legacy = -1;
+		thr->boost_info.sbe_rescue = 0;
+		blc_wt = thr->boost_info.last_normal_blc;
+		if (separate_aa) {
+			blc_wt_b = thr->boost_info.last_normal_blc_b;
+			blc_wt_m = thr->boost_info.last_normal_blc_m;
+		}
+		if (!blc_wt || (separate_aa && !(blc_wt_b && blc_wt_m)))
+			goto leave;
+
+		/* find max perf index */
+		fbt_find_max_blc(&temp_blc, &temp_blc_pid, &temp_blc_buffer_id,
+				&temp_blc_dep_num, temp_blc_dep);
+		rescue_opp_f = fbt_get_rescue_opp_f();
+		fbt_get_new_base_blc(pld, temp_blc, 0, rescue_opp_f, sinfo.bhr_opp);
+		fbt_set_ceiling(pld, thr->pid, thr->buffer_id);
+		if (sinfo.boost_ta) {
+			fbt_set_boost_value(blc_wt);
+			fbt_set_max_blc_cur(blc_wt);
+		} else {
+			fbt_cal_min_max_cap(thr, blc_wt, blc_wt_b, blc_wt_m, FPSGO_JERK_FIRST,
+				thr->pid, thr->buffer_id, &blc_wt, &blc_wt_b, &blc_wt_m,
+				&max_cap, &max_cap_b, &max_cap_m);
+			fbt_set_min_cap_locked(thr, blc_wt, blc_wt_b, blc_wt_m, max_cap,
+				max_cap_b, max_cap_m, FPSGO_JERK_FIRST);
+		}
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "sbe rescue legacy");
+	}
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, blc_wt, "perf idx");
 
 leave:
 	mutex_unlock(&fbt_mlock);
+	kfree(pld);
 }
 
 void __exit fbt_cpu_ux_exit(void)
@@ -404,6 +557,7 @@ int __init fbt_cpu_ux_init(void)
 	fpsgo_ux_gcc_enable = 0;
 	sbe_rescue_enable = fbt_get_default_sbe_rescue_enable();
 	sbe_rescuing_frame_id = -1;
+	sbe_rescuing_frame_id_legacy = -1;
 	sbe_enhance_f = 50;
 	frame_info_cachep = kmem_cache_create("ux_frame_info",
 		sizeof(struct ux_frame_info), 0, SLAB_HWCACHE_ALIGN, NULL);
