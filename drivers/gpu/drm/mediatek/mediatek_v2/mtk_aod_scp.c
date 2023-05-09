@@ -27,6 +27,8 @@ static int CFG_DISPLAY_VREFRESH;
 #define CFG_DISPLAY_ALIGN_WIDTH   ALIGN_TO(CFG_DISPLAY_WIDTH, MTK_FB_ALIGNMENT)
 
 #define DRAM_ADDR_DIGITS_OFFSET		0x3080000
+#define LK_DGT_SZ_OFFSET		0x1fa40
+#define KN_DGT_SZ_OFFSET		0x20000
 
 #define AOD_BR_DSI0_OFFSET     0xF000
 #define AOD_BR_MIPITX0_OFFSET  0xE000
@@ -75,6 +77,8 @@ struct disp_module_backup_info {
 unsigned int aod_scp_send_data;
 static struct aod_scp_ipi_receive_info aod_scp_msg;
 static int aod_state;
+static unsigned int aod_scp_pic;
+static unsigned int aod_scp_dgt_oft;
 static uint64_t dram_preloader_res_mem;
 static uint64_t dram_addr_digits;
 static struct mtk_aod_scp_cb aod_scp_cb;
@@ -210,6 +214,8 @@ void mtk_prepare_config_map(void)
 	struct disp_frame_config *frame0;
 	struct disp_input_config *input[6];
 	int i;
+	unsigned int aod_scp_pic_sz = 0;
+	unsigned int dst_h = 0, dst_w = 0;
 
 	if (!AOD_STAT_MATCH(AOD_STAT_CONFIGED | AOD_STAT_ACTIVE))
 		DDPMSG("[AOD] %s: invalid state:0x%x\n", __func__, aod_state);
@@ -235,6 +241,14 @@ void mtk_prepare_config_map(void)
 	scp_sh_mem += sizeof(struct disp_input_config);
 	input[4] = (void *)scp_sh_mem;
 
+	if (aod_scp_pic) {
+		dst_w = 180;
+		dst_h = 180;
+	} else {
+		dst_w = 120;
+		dst_h = 200;
+	}
+
 	memset(input[0], 0, sizeof(struct disp_input_config));
 	input[0]->layer	= 0;
 	input[0]->layer_en	= 1;
@@ -256,11 +270,11 @@ void mtk_prepare_config_map(void)
 	input[1]->layer	= 1;
 	input[1]->layer_en	= 1;
 	input[1]->addr	= 0x0;
-	input[1]->src_pitch = 120 * 4;
+	input[1]->src_pitch = dst_w * 4;
 	input[1]->dst_x		= 120 * (2 * (input[1]->layer - 1) + 1);
 	input[1]->dst_y		= 400;
-	input[1]->dst_w		= 120;
-	input[1]->dst_h		= 200;
+	input[1]->dst_w		= dst_w;
+	input[1]->dst_h		= dst_h;
 	input[1]->time_digit = MINUTE_TENS;
 
 	memcpy(input[2], input[1], sizeof(struct disp_input_config));
@@ -292,8 +306,13 @@ void mtk_prepare_config_map(void)
 	frame0->layer_info_addr[4] = frame0->layer_info_addr[3] + sizeof(struct disp_input_config);
 	frame0->layer_info_addr[5] = 0x0;
 
+	if (aod_scp_pic)
+		aod_scp_pic_sz = LK_DGT_SZ_OFFSET;
+	else
+		aod_scp_pic_sz = KN_DGT_SZ_OFFSET;
+
 	for (i = 0; i < 10; i++)
-		frame0->digits_addr[i] = dram_addr_digits + 0x20000 * i;
+		frame0->digits_addr[i] = dram_addr_digits + aod_scp_pic_sz * i;
 }
 
 void mtk_request_slb_buffer(void)
@@ -504,6 +523,7 @@ static int mtk_aod_scp_probe(struct platform_device *pdev)
 	void __iomem *va = 0;
 	unsigned char *digit_color, level;
 	unsigned int i;
+	unsigned int ret = 0;
 
 	DDPMSG("%s+\n", __func__);
 
@@ -543,6 +563,20 @@ static int mtk_aod_scp_probe(struct platform_device *pdev)
 
 		// for 0~9 digit buffer
 		preloader_mem = of_find_compatible_node(NULL, NULL, "mediatek,me_aod-scp_buf");
+		ret = of_property_read_u32(pdev->dev.of_node, "aod_scp_pic", &aod_scp_pic);
+		if (ret) {
+			aod_scp_pic = 0;
+			DDPMSG("%s can't find aod_scp_pic in FDT\n", __func__);
+		} else
+			DDPMSG("%s find aod_scp_pic %d in FDT\n", __func__, aod_scp_pic);
+
+		ret = of_property_read_u32(pdev->dev.of_node, "aod_scp_dgt_oft", &aod_scp_dgt_oft);
+		if (ret) {
+			aod_scp_dgt_oft = DRAM_ADDR_DIGITS_OFFSET;
+			DDPMSG("%s can't find aod_scp_dgt_oft in FDT\n", __func__);
+		} else
+			DDPMSG("%s find aod_scp_dgt_oft 0x%08x in FDT\n",
+				__func__, aod_scp_dgt_oft);
 
 		if (preloader_mem) {
 			rmem = of_reserved_mem_lookup(preloader_mem);
@@ -554,14 +588,17 @@ static int mtk_aod_scp_probe(struct platform_device *pdev)
 			va = ioremap(dram_addr_digits, 0x20000 * 10);
 			digit_color = (char *)va;
 
-			for (i = 0; i < 10 * 0x20000; i++) {
-				level = 28 * (i / 0x20000);
+			if (!aod_scp_pic) {
+				for (i = 0; i < 10 * 0x20000; i++) {
+					level = 28 * (i / 0x20000);
 
-				if (i % 4 == 3)
-					digit_color[i] = 0xff;
-				else
-					digit_color[i] = level;
-			}
+					if (i % 4 == 3)
+						digit_color[i] = 0xff;
+					else
+						digit_color[i] = level;
+				}
+			} else
+				DDPMSG("%s uses aod_scp_pic in LK\n", __func__);
 
 			iounmap(va);
 		} else
