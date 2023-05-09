@@ -431,6 +431,7 @@ struct mtk_smmu_data {
 	struct mutex			group_mutexs;
 	struct arm_smmu_device		smmu;
 	struct iommu_group_data		*iommu_groups;
+	spinlock_t			pmu_lock;
 	struct list_head		pmu_devices;
 	u32				iommu_group_nr;
 	u32				smmu_trans_type;

@@ -1108,6 +1108,7 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	u32 gerror, gerrorn, active;
 	struct smmuv3_pmu_device *pmu_device;
+	unsigned long flags;
 
 	gerror = readl_relaxed(smmu->base + ARM_SMMU_GERROR);
 	gerrorn = readl_relaxed(smmu->base + ARM_SMMU_GERRORN);
@@ -1132,10 +1133,12 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 
 	mtk_smmu_irq_record(data);
 
+	spin_lock_irqsave(&data->pmu_lock, flags);
 	list_for_each_entry(pmu_device, &data->pmu_devices, node) {
 		if (pmu_device->impl && pmu_device->impl->pmu_irq_handler)
 			pmu_device->impl->pmu_irq_handler(irq, pmu_device->dev);
 	}
+	spin_unlock_irqrestore(&data->pmu_lock, flags);
 
 	return IRQ_HANDLED;
 }
@@ -1713,6 +1716,7 @@ static int mtk_smmu_data_init(struct mtk_smmu_data *data)
 	int i, ret;
 
 	mutex_init(&data->group_mutexs);
+	spin_lock_init(&data->pmu_lock);
 	data->plat_data = of_device_get_plat_data(data->smmu.dev);
 	plat_data = data->plat_data;
 
@@ -2587,44 +2591,56 @@ void mtk_smmu_dump_dcm_en(struct device *dev)
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_dump_dcm_en);
 
-int mtk_smmu_register_pmu_device(struct smmuv3_pmu_device *pmu_device)
+static struct arm_smmu_device *get_smmu_dev_for_pmu(struct smmuv3_pmu_device *pmu_device)
 {
 	struct platform_device *smmudev;
 	struct device_node *smmu_node;
-	struct arm_smmu_device *smmu;
-	struct mtk_smmu_data *data;
 	struct device *dev;
 
 	if (!pmu_device || !pmu_device->dev)
-		return -ENOENT;
+		return ERR_PTR(-ENOENT);
 
 	dev = pmu_device->dev;
 	smmu_node = of_parse_phandle(dev->of_node, PMU_SMMU_PROP_NAME, 0);
 	if (!smmu_node) {
-		dev_err(dev, "%s, can't find smmu node for:%s\n",
-			__func__, dev_name(dev));
-		return -EINVAL;
+		dev_info(dev, "%s, can't find smmu node\n", __func__);
+		return ERR_PTR(-EINVAL);
 	}
 
 	smmudev = of_find_device_by_node(smmu_node);
 	if (!smmudev) {
-		dev_err(dev, "%s, can't find smmu dev for:%s\n",
-			__func__, dev_name(dev));
+		dev_info(dev, "%s, can't find smmu dev\n", __func__);
 		of_node_put(smmu_node);
-		return -EINVAL;
+		return ERR_PTR(-EINVAL);
 	}
 
-	smmu = platform_get_drvdata(smmudev);
+	of_node_put(smmu_node);
+	return platform_get_drvdata(smmudev);
+}
+
+int mtk_smmu_register_pmu_device(struct smmuv3_pmu_device *pmu_device)
+{
+	struct arm_smmu_device *smmu;
+	struct mtk_smmu_data *data;
+	unsigned long flags;
+	struct device *dev;
+
+	smmu = get_smmu_dev_for_pmu(pmu_device);
+	if (IS_ERR(smmu))
+		return -ENOENT;
+
 	data = to_mtk_smmu_data(smmu);
+	dev = pmu_device->dev;
+
+	spin_lock_irqsave(&data->pmu_lock, flags);
 	list_add(&pmu_device->node, &data->pmu_devices);
+	spin_unlock_irqrestore(&data->pmu_lock, flags);
 
 	if (pmu_device->impl && pmu_device->impl->late_init)
-		pmu_device->impl->late_init(smmu->base, dev);
+		pmu_device->impl->late_init(smmu->wp_base, dev);
 
 	if (pmu_device->impl && pmu_device->impl->irq_set_up)
 		pmu_device->impl->irq_set_up(smmu->combined_irq, dev);
-
-	pr_info("%s, pmu(%s) register\n", __func__, dev_name(pmu_device->dev));
 
 	return 0;
 }
@@ -2632,8 +2648,21 @@ EXPORT_SYMBOL_GPL(mtk_smmu_register_pmu_device);
 
 void mtk_smmu_unregister_pmu_device(struct smmuv3_pmu_device *pmu_device)
 {
-	if (pmu_device)
+	struct arm_smmu_device *smmu;
+	struct mtk_smmu_data *data;
+	unsigned long flags;
+
+	smmu = get_smmu_dev_for_pmu(pmu_device);
+	if (IS_ERR(smmu))
+		return;
+
+	data = to_mtk_smmu_data(smmu);
+
+	if (pmu_device) {
+		spin_lock_irqsave(&data->pmu_lock, flags);
 		list_del(&pmu_device->node);
+		spin_unlock_irqrestore(&data->pmu_lock, flags);
+	}
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_unregister_pmu_device);
 
