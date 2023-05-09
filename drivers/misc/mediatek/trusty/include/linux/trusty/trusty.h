@@ -11,7 +11,7 @@
 #include <linux/device.h>
 #include <linux/pagemap.h>
 
-#define VIRTIO_ID_TRUSTY_IPC	13 /* virtio trusty ipc */
+#define VIRTIO_ID_TRUSTY_IPC	14 /* virtio trusty ipc */
 
 #if IS_ENABLED(CONFIG_TRUSTY)
 s32 ise_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2);
