@@ -351,11 +351,6 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 		return 0;
 	}
 
-	if (priv->data->mmsys_id == MMSYS_MT6989) {
-		DDPINFO("skip show dal to avoid hwt, bring up ONLY\n");
-		return 0;
-	}
-
 	layer_id = mtk_ovl_layer_num(ovl_comp) - 1;
 	if (layer_id < 0) {
 		DDPPR_ERR("%s invalid layer id:%d\n", __func__, layer_id);
