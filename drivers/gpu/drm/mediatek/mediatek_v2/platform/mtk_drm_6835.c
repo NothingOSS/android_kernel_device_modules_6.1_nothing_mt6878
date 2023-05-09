@@ -163,6 +163,7 @@ const struct mtk_disp_aal_data mt6835_aal_driver_data = {
 const struct mtk_disp_ccorr_data mt6835_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
+	.single_pipe_ccorr_num = 1,
 };
 
 // color

@@ -3289,7 +3289,7 @@ static void mtk_aal_bypass(struct mtk_ddp_comp *comp, int bypass,
 
 	if (bypass == 0) // Enable AAL Histogram
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_AAL_CFG, 0x3 << 1, 0x7);
+			comp->regs_pa + DISP_AAL_CFG, 0x3 << 1, (0x3 << 1));
 
 }
 
@@ -4623,18 +4623,6 @@ static const struct mtk_disp_aal_data mt6886_aal_driver_data = {
 	.bitShift = 16,
 };
 
-static const struct mtk_disp_aal_data mt6989_aal_driver_data = {
-	.support_shadow     = false,
-	.need_bypass_shadow = true,
-	.aal_dre_hist_start = 1536,
-	.aal_dre_hist_end   = 4604,
-	.aal_dre_gain_start = 4608,
-	.aal_dre_gain_end   = 6780,
-	.aal_dre3_curve_sram = true,
-	.aal_dre3_auto_inc = true,
-	.bitShift = 16,
-};
-
 static const struct of_device_id mtk_disp_aal_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6885-disp-aal",
 	  .data = &mt6885_aal_driver_data},
@@ -4660,8 +4648,6 @@ static const struct of_device_id mtk_disp_aal_driver_dt_match[] = {
 	  .data = &mt6835_aal_driver_data},
 	{ .compatible = "mediatek,mt6897-disp-aal",
 	  .data = &mt6897_aal_driver_data},
-	{ .compatible = "mediatek,mt6989-disp-aal",
-	  .data = &mt6989_aal_driver_data},
 	{},
 };
 

@@ -964,7 +964,7 @@ static int mtk_gamma_user_cmd(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
-static void ddp_gamma_backup(struct mtk_ddp_comp *comp)
+static void ddp_dither_backup(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 
@@ -972,7 +972,7 @@ static void ddp_gamma_backup(struct mtk_ddp_comp *comp)
 		readl(comp->regs + DISP_GAMMA_CFG);
 }
 
-static void ddp_gamma_restore(struct mtk_ddp_comp *comp)
+static void ddp_dither_restore(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 
@@ -985,7 +985,7 @@ static void mtk_gamma_prepare(struct mtk_ddp_comp *comp)
 
 	mtk_ddp_comp_clk_prepare(comp);
 	atomic_set(&gamma->primary_data->clock_on, 1);
-	ddp_gamma_restore(comp);
+	ddp_dither_restore(comp);
 }
 
 static void mtk_gamma_unprepare(struct mtk_ddp_comp *comp)
@@ -1002,7 +1002,7 @@ static void mtk_gamma_unprepare(struct mtk_ddp_comp *comp)
 	spin_unlock_irqrestore(&gamma->primary_data->power_lock, flags);
 	DDPINFO("%s @ %d......... spin_unlock_irqrestore ",
 		__func__, __LINE__);
-	ddp_gamma_backup(comp);
+	ddp_dither_backup(comp);
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 
@@ -1456,10 +1456,6 @@ struct mtk_disp_gamma_data mt6897_driver_data = {
 	.support_gammagain = true,
 };
 
-struct mtk_disp_gamma_data mt6989_driver_data = {
-	.support_gammagain = true,
-};
-
 static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6779-disp-gamma",
 	  .data = &legacy_driver_data,},
@@ -1487,8 +1483,6 @@ static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {
 	  .data = &legacy_driver_data,},
 	{ .compatible = "mediatek,mt6897-disp-gamma",
 	  .data = &mt6897_driver_data,},
-	{ .compatible = "mediatek,mt6989-disp-gamma",
-	  .data = &mt6989_driver_data,},
 	{},
 };
 

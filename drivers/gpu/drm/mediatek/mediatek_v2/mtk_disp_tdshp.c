@@ -15,6 +15,7 @@ enum TDSHP_IOCTL_CMD {
 struct mtk_disp_tdshp_data {
 	bool support_shadow;
 	bool need_bypass_shadow;
+	int single_pipe_tdshp_num;
 };
 
 struct mtk_disp_tdshp_tile_overhead {
@@ -962,36 +963,37 @@ static int mtk_disp_tdshp_remove(struct platform_device *pdev)
 static const struct mtk_disp_tdshp_data mt6983_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.single_pipe_tdshp_num = 1,
 };
 
 static const struct mtk_disp_tdshp_data mt6895_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.single_pipe_tdshp_num = 1,
 };
 
 static const struct mtk_disp_tdshp_data mt6879_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.single_pipe_tdshp_num = 1,
 };
 
 static const struct mtk_disp_tdshp_data mt6855_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.single_pipe_tdshp_num = 1,
 };
 
 static const struct mtk_disp_tdshp_data mt6985_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.single_pipe_tdshp_num = 2,
 };
 
 static const struct mtk_disp_tdshp_data mt6897_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
-};
-
-static const struct mtk_disp_tdshp_data mt6989_tdshp_driver_data = {
-	.support_shadow = false,
-	.need_bypass_shadow = true,
+	.single_pipe_tdshp_num = 2,
 };
 
 static const struct of_device_id mtk_disp_tdshp_driver_dt_match[] = {
@@ -1007,8 +1009,6 @@ static const struct of_device_id mtk_disp_tdshp_driver_dt_match[] = {
 	  .data = &mt6985_tdshp_driver_data},
 	{ .compatible = "mediatek,mt6897-disp-tdshp",
 	  .data = &mt6897_tdshp_driver_data},
-	{ .compatible = "mediatek,mt6989-disp-tdshp",
-	  .data = &mt6989_tdshp_driver_data},
 	{},
 };
 

@@ -1765,10 +1765,6 @@ static void mtk_get_ccorr_property(struct mtk_ddp_comp *comp, struct device_node
 	if (ret)
 		DDPPR_ERR("read ccorr_prim_force_linear failed\n");
 
-	ret = of_property_read_u32(node, "ccorr-linear", &(ccorr_data->is_linear));
-	if (ret)
-		DDPPR_ERR("read ccorr-linear failed\n");
-	DDPINFO("%s is_linear %d\n", mtk_dump_comp_str(comp), ccorr_data->is_linear);
 	DDPINFO("%s:ccorr_bit:%d,ccorr_number:%d,ccorr_linear:%d,ccorr0 force linear:%d\n",
 		__func__, primary_data->disp_ccorr_caps.ccorr_bit,
 		primary_data->disp_ccorr_caps.ccorr_number,
@@ -1783,6 +1779,17 @@ static void mtk_get_ccorr_property(struct mtk_ddp_comp *comp, struct device_node
 		primary_data->prim_ccorr_force_linear = false;
 
 	mtk_update_ccorr_base(comp);
+}
+
+static void mtk_ccorr_parse_dts(struct device_node *node, struct mtk_ddp_comp *comp)
+{
+	int ret;
+	struct mtk_disp_ccorr *ccorr = comp_to_ccorr(comp);
+
+	ret = of_property_read_u32(node, "ccorr-linear", &(ccorr->is_linear));
+	if (ret)
+		DDPINFO("read ccorr_linear failed\n");
+	DDPINFO("read ccorr_linear %d\n", ccorr->is_linear);
 }
 
 static int mtk_disp_ccorr_probe(struct platform_device *pdev)
@@ -1823,6 +1830,8 @@ static int mtk_disp_ccorr_probe(struct platform_device *pdev)
 	priv->primary_data->prim_ccorr_force_linear = false;
 	priv->primary_data->prim_ccorr_pq_nonlinear = false;
 	mtk_get_ccorr_property(&priv->ddp_comp, dev->of_node);
+
+	mtk_ccorr_parse_dts(dev->of_node, &priv->ddp_comp);
 
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
 				&mtk_disp_ccorr_funcs);
@@ -1880,66 +1889,73 @@ static int mtk_disp_ccorr_remove(struct platform_device *pdev)
 static const struct mtk_disp_ccorr_data mt6779_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = false,
+	.single_pipe_ccorr_num = 1,
 };
 
 static const struct mtk_disp_ccorr_data mt6885_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = false,
+	.single_pipe_ccorr_num = 1,
 };
 
 static const struct mtk_disp_ccorr_data mt6873_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
+	.single_pipe_ccorr_num = 1,
 };
 
 static const struct mtk_disp_ccorr_data mt6853_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
+	.single_pipe_ccorr_num = 2,
 };
 
 static const struct mtk_disp_ccorr_data mt6833_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
+	.single_pipe_ccorr_num = 1,
 };
 
 static const struct mtk_disp_ccorr_data mt6983_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
+	.single_pipe_ccorr_num = 2,
 };
 
 static const struct mtk_disp_ccorr_data mt6895_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
+	.single_pipe_ccorr_num = 2,
 };
 
 static const struct mtk_disp_ccorr_data mt6879_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
+	.single_pipe_ccorr_num = 2,
 };
 
 static const struct mtk_disp_ccorr_data mt6855_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
+	.single_pipe_ccorr_num = 1,
 };
 
 static const struct mtk_disp_ccorr_data mt6985_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
+	.single_pipe_ccorr_num = 2,
 };
 
 static const struct mtk_disp_ccorr_data mt6897_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
+	.single_pipe_ccorr_num = 2,
 };
 
 static const struct mtk_disp_ccorr_data mt6886_ccorr_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
-};
-
-static const struct mtk_disp_ccorr_data mt6989_ccorr_driver_data = {
-	.support_shadow     = false,
-	.need_bypass_shadow = true,
+	.single_pipe_ccorr_num = 2,
 };
 
 
@@ -1970,9 +1986,6 @@ static const struct of_device_id mtk_disp_ccorr_driver_dt_match[] = {
 	  .data = &mt6835_ccorr_driver_data},
 	{ .compatible = "mediatek,mt6897-disp-ccorr",
 	  .data = &mt6897_ccorr_driver_data},
-	{ .compatible = "mediatek,mt6989-disp-ccorr",
-	  .data = &mt6989_ccorr_driver_data},
-
 	{},
 };
 
