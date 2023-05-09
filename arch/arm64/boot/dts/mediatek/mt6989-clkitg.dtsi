@@ -492,6 +492,30 @@
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ADSP_AO>;
 	};
 
+	bring-up-pd-vde0@d {
+		compatible = "mediatek,scpsys-bring-up";
+		reg = <0xd>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE0>;
+	};
+
+	bring-up-pd-vde1@e {
+		compatible = "mediatek,scpsys-bring-up";
+		reg = <0xe>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE1>;
+	};
+
+	bring-up-pd-vde-vcore0@f {
+		compatible = "mediatek,scpsys-bring-up";
+		reg = <0xf>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE_VCORE0>;
+	};
+
+	bring-up-pd-vde-vcore1@10 {
+		compatible = "mediatek,scpsys-bring-up";
+		reg = <0x10>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE_VCORE1>;
+	};
+
 	bring-up-pd-cam-mraw@14 {
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x14>;
