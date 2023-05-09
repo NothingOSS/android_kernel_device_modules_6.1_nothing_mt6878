@@ -66,6 +66,10 @@ mgk_64_k61_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-v4l2:mtk_imgsensor",
     "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
     "//vendor/mediatek/tests/ktf/kernel:ktf",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsys:imgsys",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp:mtk-hcp",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-ipesys-me:mtk-ipesys-me",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-dpe:mtk-dpe",
 ]
 
 
@@ -167,13 +171,6 @@ mgk_64_k61_device_modules = [
     "drivers/leds/regulator-vibrator.ko",
     "drivers/mailbox/mtk-ise-mailbox.ko",
     "drivers/mailbox/mtk-mbox-mailbox.ko",
-    "drivers/media/platform/mtk-dpe/camera_dpe_isp7sp.ko",
-    "drivers/media/platform/mtk-isp/imgsys/mtk_imgsys_cmdq.ko",
-    "drivers/media/platform/mtk-isp/imgsys/mtk_imgsys_isp7s.ko",
-    "drivers/media/platform/mtk-isp/imgsys/mtk_imgsys_isp7sp.ko",
-    "drivers/media/platform/mtk-isp/imgsys/mtk_imgsys_v4l2.ko",
-    "drivers/media/platform/mtk-isp/mtk-hcp/mtk_hcp.ko",
-    "drivers/media/platform/mtk-isp/mtk-ipesys-me/mtk-ipesys-me.ko",
     "drivers/media/platform/mtk-jpeg/mtk_jpeg.ko",
     "drivers/media/platform/mtk-vcodec/mtk-vcodec-common.ko",
     "drivers/media/platform/mtk-vcodec/mtk-vcodec-dec-v1.ko",
@@ -220,7 +217,6 @@ mgk_64_k61_device_modules = [
     "drivers/misc/mediatek/cache-auditor/cpuqos_v3/cpuqos_v3.ko",
     "drivers/misc/mediatek/cam_cal/src/custom/camera_eeprom.ko",
     "drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp70.ko",
-    "drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp7s.ko",
     "drivers/misc/mediatek/cameraisp/pda/isp_71/camera_pda.ko",
     "drivers/misc/mediatek/camera_mem/camera_mem.ko",
     "drivers/misc/mediatek/cam_timesync/archcounter_timesync.ko",
