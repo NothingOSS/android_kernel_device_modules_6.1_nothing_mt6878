@@ -157,6 +157,10 @@ static const struct mtk_gate mdp1_clks[] = {
 	/* MDP12 */
 	GATE_MDP12(CLK_MDP1_IMG_DL_RELAY0, "mdp1_img_dl_relay0",
 			"mdp_ck"/* parent */, 0),
+	GATE_MDP12(CLK_MDP1_F26M_SLOW, "mdp1_f26m_slow_ck",
+			"mdp_ck"/* parent */, 5),
+	GATE_MDP12(CLK_MDP1_F32K_SLOW, "mdp1_f32k_slow_ck",
+			"mdp_ck"/* parent */, 6),
 	GATE_MDP12(CLK_MDP1_IMG_DL_RELAY1, "mdp1_img_dl_relay1",
 			"mdp_ck"/* parent */, 8),
 };
@@ -303,6 +307,10 @@ static const struct mtk_gate mdp_clks[] = {
 	/* MDP2 */
 	GATE_MDP2(CLK_MDP_IMG_DL_RELAY0, "mdp_img_dl_relay0",
 			"mdp_ck"/* parent */, 0),
+	GATE_MDP2(CLK_MDP_F26M_SLOW, "mdp_f26m_slow_ck",
+			"mdp_ck"/* parent */, 5),
+	GATE_MDP2(CLK_MDP_F32K_SLOW, "mdp_f32k_slow_ck",
+			"mdp_ck"/* parent */, 6),
 	GATE_MDP2(CLK_MDP_IMG_DL_RELAY1, "mdp_img_dl_relay1",
 			"mdp_ck"/* parent */, 8),
 };

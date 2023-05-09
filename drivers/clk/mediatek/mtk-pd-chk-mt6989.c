@@ -653,6 +653,8 @@ struct pd_check_swcg mdpsys_config_swcgs[] = {
 	SWCG("mdp_c3d0"),
 	SWCG("mdp_fg0"),
 	SWCG("mdp_img_dl_relay0"),
+	SWCG("mdp_f26m_slow_ck"),
+	SWCG("mdp_f32k_slow_ck"),
 	SWCG("mdp_img_dl_relay1"),
 	SWCG(NULL),
 };
@@ -702,6 +704,8 @@ struct pd_check_swcg mdpsys1_config_swcgs[] = {
 	SWCG("mdp1_mdp_c3d0"),
 	SWCG("mdp1_mdp_fg0"),
 	SWCG("mdp1_img_dl_relay0"),
+	SWCG("mdp1_f26m_slow_ck"),
+	SWCG("mdp1_f32k_slow_ck"),
 	SWCG("mdp1_img_dl_relay1"),
 	SWCG(NULL),
 };
@@ -732,7 +736,7 @@ struct subsys_cgs_check mtk_subsys_check[] = {
 	{MT6989_CHK_PD_ISP_DIP1, MT6989_CHK_PD_ISP_MAIN, wpe3_dip1_swcgs, wpe3_dip1},
 	{MT6989_CHK_PD_ISP_DIP1, MT6989_CHK_PD_ISP_MAIN, traw_dip1_swcgs, traw_dip1},
 	{MT6989_CHK_PD_ISP_DIP1, MT6989_CHK_PD_ISP_MAIN, traw_cap_dip1_swcgs, traw_cap_dip1},
-	{MT6989_CHK_PD_ISP_VCORE, MT6989_CHK_PD_MM_INFRA, img_vcore_d1a_swcgs, img_v},
+	{MT6989_CHK_PD_ISP_MAIN, MT6989_CHK_PD_ISP_VCORE, img_vcore_d1a_swcgs, img_v},
 	{MT6989_CHK_PD_VDE0, MT6989_CHK_PD_VDE_VCORE0, vdec_soc_gcon_base_swcgs, vde1},
 	{MT6989_CHK_PD_VDE1, MT6989_CHK_PD_VDE_VCORE1, vdec_gcon_base_swcgs, vde2},
 	{MT6989_CHK_PD_VEN0, MT6989_CHK_PD_MM_INFRA, venc_gcon_swcgs, ven1},
@@ -751,7 +755,7 @@ struct subsys_cgs_check mtk_subsys_check[] = {
 	{MT6989_CHK_PD_CAM_MRAW, MT6989_CHK_PD_CAM_MAIN, camsys_mraw_swcgs, cam_mr},
 	{MT6989_CHK_PD_CAM_MRAW, MT6989_CHK_PD_CAM_MAIN, camsys_ipe_swcgs, camsys_ipe},
 	{MT6989_CHK_PD_CAM_CCU, MT6989_CHK_PD_CAM_VCORE, ccu_main_swcgs, ccu},
-	{MT6989_CHK_PD_CAM_VCORE, MT6989_CHK_PD_MM_INFRA, cam_vcore_swcgs, cam_vcore},
+	{MT6989_CHK_PD_CAM_MAIN, MT6989_CHK_PD_CAM_VCORE, cam_vcore_swcgs, cam_vcore},
 	{MT6989_CHK_PD_MM_INFRA, PD_NULL, mminfra_config_swcgs, mminfra_config},
 	{MT6989_CHK_PD_MM_INFRA, PD_NULL, mminfra_ao_config_swcgs, mminfra_ao_config},
 	{MT6989_CHK_PD_MML0, MT6989_CHK_PD_DIS1, mdpsys_config_swcgs, mdp},
@@ -903,12 +907,7 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 }
 
 static enum chk_sys_id log_dump_id[] = {
-	bcrm_infra1_bus,
-	ifr_bus,
-	bcrm_ssr_bus,
-	gpu_eb_rpc,
 	spm,
-	vlpcfg,
 	chk_sys_num,
 };
 

@@ -591,8 +591,6 @@ static const struct mtk_fixed_factor top_divs[] = {
 			"ufs_faxi_sel", 1, 1),
 	FACTOR(CLK_TOP_PEXTP_FAXI, "pextp_faxi_ck",
 			"pextp_faxi_sel", 1, 1),
-	FACTOR(CLK_TOP_P_FMEM_SUB, "peri_fmem_sub_ck",
-			"peri_fmem_sub_sel", 1, 1),
 	FACTOR(CLK_TOP_U_FMEM_SUB, "ufs_fmem_sub_ck",
 			"ufs_fmem_sub_sel", 1, 1),
 	FACTOR(CLK_TOP_PEXTP_FMEM_SUB, "pextp_fmem_sub_ck",
@@ -680,8 +678,6 @@ static const struct mtk_fixed_factor top_divs[] = {
 	FACTOR(CLK_TOP_MDP, "mdp_ck",
 			"mdp_sel", 1, 1),
 	FACTOR(CLK_TOP_AVS_VDEC, "avs_vdec_ck",
-			"tck_26m_mx9_ck", 1, 1),
-	FACTOR(CLK_TOP_DPSW_26M, "dpsw_26m_ck",
 			"tck_26m_mx9_ck", 1, 1),
 };
 
@@ -1590,67 +1586,72 @@ static const char * const smapck_parents[] = {
 	"mainpll_d4_d8"
 };
 
-static const char * const apll_i2s0_m_parents[] = {
+static const char * const apll_i2sin0_m_parents[] = {
 	"aud_1_sel",
 	"aud_2_sel"
 };
 
-static const char * const apll_i2s1_m_parents[] = {
+static const char * const apll_i2sin1_m_parents[] = {
 	"aud_1_sel",
 	"aud_2_sel"
 };
 
-static const char * const apll_i2s2_m_parents[] = {
+static const char * const apll_i2sin2_m_parents[] = {
 	"aud_1_sel",
 	"aud_2_sel"
 };
 
-static const char * const apll_i2s3_m_parents[] = {
+static const char * const apll_i2sin3_m_parents[] = {
 	"aud_1_sel",
 	"aud_2_sel"
 };
 
-static const char * const apll_i2s4_m_parents[] = {
+static const char * const apll_i2sin4_m_parents[] = {
 	"aud_1_sel",
 	"aud_2_sel"
 };
 
-static const char * const apll_i2s5_m_parents[] = {
+static const char * const apll_i2sin6_m_parents[] = {
 	"aud_1_sel",
 	"aud_2_sel"
 };
 
-static const char * const apll_i2s6_m_parents[] = {
+static const char * const apll_i2sout0_m_parents[] = {
 	"aud_1_sel",
 	"aud_2_sel"
 };
 
-static const char * const apll_i2s7_m_parents[] = {
+static const char * const apll_i2sout1_m_parents[] = {
 	"aud_1_sel",
 	"aud_2_sel"
 };
 
-static const char * const apll_i2s8_m_parents[] = {
+static const char * const apll_i2sout2_m_parents[] = {
 	"aud_1_sel",
 	"aud_2_sel"
 };
 
-static const char * const apll_i2s9_m_parents[] = {
+static const char * const apll_i2sout3_m_parents[] = {
 	"aud_1_sel",
 	"aud_2_sel"
 };
 
-static const char * const apll_etdm_in1_m_parents[] = {
+static const char * const apll_i2sout4_m_parents[] = {
 	"aud_1_sel",
 	"aud_2_sel"
 };
 
-static const char * const apll_etdm_out1_m_parents[] = {
+static const char * const apll_i2sout6_m_parents[] = {
 	"aud_1_sel",
 	"aud_2_sel"
 };
 
-static const char * const apll_i2s10_m_parents[] = {
+static const char * const apll_fmi2s_m_parents[] = {
+	"aud_1_sel",
+	"aud_2_sel"
+};
+
+static const char * const apll_tdmout_m_parents[] = {
 	"aud_1_sel",
 	"aud_2_sel"
 };
@@ -3022,105 +3023,112 @@ static const struct mtk_mux top_muxes[] = {
 
 static const struct mtk_composite top_composites[] = {
 	/* CLK_AUDDIV_0 */
-	MUX(CLK_TOP_APLL_I2S0_MCK_SEL/* dts */, "apll_i2s0_m_sel",
-		apll_i2s0_m_parents/* parent */, 0x0320/* ofs */,
+	MUX(CLK_TOP_APLL_I2SIN0_MCK_SEL/* dts */, "apll_i2sin0_m_sel",
+		apll_i2sin0_m_parents/* parent */, 0x0320/* ofs */,
 		16/* lsb */, 1/* width */),
-	MUX(CLK_TOP_APLL_I2S1_MCK_SEL/* dts */, "apll_i2s1_m_sel",
-		apll_i2s1_m_parents/* parent */, 0x0320/* ofs */,
+	MUX(CLK_TOP_APLL_I2SIN1_MCK_SEL/* dts */, "apll_i2sin1_m_sel",
+		apll_i2sin1_m_parents/* parent */, 0x0320/* ofs */,
 		17/* lsb */, 1/* width */),
-	MUX(CLK_TOP_APLL_I2S2_MCK_SEL/* dts */, "apll_i2s2_m_sel",
-		apll_i2s2_m_parents/* parent */, 0x0320/* ofs */,
+	MUX(CLK_TOP_APLL_I2SIN2_MCK_SEL/* dts */, "apll_i2sin2_m_sel",
+		apll_i2sin2_m_parents/* parent */, 0x0320/* ofs */,
 		18/* lsb */, 1/* width */),
-	MUX(CLK_TOP_APLL_I2S3_MCK_SEL/* dts */, "apll_i2s3_m_sel",
-		apll_i2s3_m_parents/* parent */, 0x0320/* ofs */,
+	MUX(CLK_TOP_APLL_I2SIN3_MCK_SEL/* dts */, "apll_i2sin3_m_sel",
+		apll_i2sin3_m_parents/* parent */, 0x0320/* ofs */,
 		19/* lsb */, 1/* width */),
-	MUX(CLK_TOP_APLL_I2S4_MCK_SEL/* dts */, "apll_i2s4_m_sel",
-		apll_i2s4_m_parents/* parent */, 0x0320/* ofs */,
+	MUX(CLK_TOP_APLL_I2SIN4_MCK_SEL/* dts */, "apll_i2sin4_m_sel",
+		apll_i2sin4_m_parents/* parent */, 0x0320/* ofs */,
 		20/* lsb */, 1/* width */),
-	MUX(CLK_TOP_APLL_I2S5_MCK_SEL/* dts */, "apll_i2s5_m_sel",
-		apll_i2s5_m_parents/* parent */, 0x0320/* ofs */,
+	MUX(CLK_TOP_APLL_I2SIN6_MCK_SEL/* dts */, "apll_i2sin6_m_sel",
+		apll_i2sin6_m_parents/* parent */, 0x0320/* ofs */,
 		21/* lsb */, 1/* width */),
-	MUX(CLK_TOP_APLL_I2S6_MCK_SEL/* dts */, "apll_i2s6_m_sel",
-		apll_i2s6_m_parents/* parent */, 0x0320/* ofs */,
+	MUX(CLK_TOP_APLL_I2SOUT0_MCK_SEL/* dts */, "apll_i2sout0_m_sel",
+		apll_i2sout0_m_parents/* parent */, 0x0320/* ofs */,
 		22/* lsb */, 1/* width */),
-	MUX(CLK_TOP_APLL_I2S7_MCK_SEL/* dts */, "apll_i2s7_m_sel",
-		apll_i2s7_m_parents/* parent */, 0x0320/* ofs */,
+	MUX(CLK_TOP_APLL_I2SOUT1_MCK_SEL/* dts */, "apll_i2sout1_m_sel",
+		apll_i2sout1_m_parents/* parent */, 0x0320/* ofs */,
 		23/* lsb */, 1/* width */),
-	MUX(CLK_TOP_APLL_I2S8_MCK_SEL/* dts */, "apll_i2s8_m_sel",
-		apll_i2s8_m_parents/* parent */, 0x0320/* ofs */,
+	MUX(CLK_TOP_APLL_I2SOUT2_MCK_SEL/* dts */, "apll_i2sout2_m_sel",
+		apll_i2sout2_m_parents/* parent */, 0x0320/* ofs */,
 		24/* lsb */, 1/* width */),
-	MUX(CLK_TOP_APLL_I2S9_MCK_SEL/* dts */, "apll_i2s9_m_sel",
-		apll_i2s9_m_parents/* parent */, 0x0320/* ofs */,
+	MUX(CLK_TOP_APLL_I2SOUT3_MCK_SEL/* dts */, "apll_i2sout3_m_sel",
+		apll_i2sout3_m_parents/* parent */, 0x0320/* ofs */,
 		25/* lsb */, 1/* width */),
-	MUX(CLK_TOP_APLL_ETDM_IN1_MCK_SEL/* dts */, "apll_etdm_in1_m_sel",
-		apll_etdm_in1_m_parents/* parent */, 0x0320/* ofs */,
+	MUX(CLK_TOP_APLL_I2SOUT4_MCK_SEL/* dts */, "apll_i2sout4_m_sel",
+		apll_i2sout4_m_parents/* parent */, 0x0320/* ofs */,
 		26/* lsb */, 1/* width */),
-	MUX(CLK_TOP_APLL_ETDM_OUT1_MCK_SEL/* dts */, "apll_etdm_out1_m_sel",
-		apll_etdm_out1_m_parents/* parent */, 0x0320/* ofs */,
+	MUX(CLK_TOP_APLL_I2SOUT6_MCK_SEL/* dts */, "apll_i2sout6_m_sel",
+		apll_i2sout6_m_parents/* parent */, 0x0320/* ofs */,
 		27/* lsb */, 1/* width */),
-	MUX(CLK_TOP_APLL_I2S10_MCK_SEL/* dts */, "apll_i2s10_m_sel",
-		apll_i2s10_m_parents/* parent */, 0x0320/* ofs */,
+	MUX(CLK_TOP_APLL_FMI2S_MCK_SEL/* dts */, "apll_fmi2s_m_sel",
+		apll_fmi2s_m_parents/* parent */, 0x0320/* ofs */,
 		28/* lsb */, 1/* width */),
+	MUX(CLK_TOP_APLL_TDMOUT_MCK_SEL/* dts */, "apll_tdmout_m_sel",
+		apll_tdmout_m_parents/* parent */, 0x0320/* ofs */,
+		29/* lsb */, 1/* width */),
 	/* CLK_AUDDIV_2 */
-	DIV_GATE(CLK_TOP_APLL12_CK_DIV0/* dts */, "apll12_div0"/* ccf */,
-		"apll_i2s0_m_sel"/* parent */, 0x0320/* pdn ofs */,
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_I2SIN0/* dts */, "apll12_div_i2sin0"/* ccf */,
+		"apll_i2sin0_m_sel"/* parent */, 0x0320/* pdn ofs */,
 		0/* pdn bit */, CLK_AUDDIV_2/* ofs */, 8/* width */,
 		0/* lsb */),
-	DIV_GATE(CLK_TOP_APLL12_CK_DIV1/* dts */, "apll12_div1"/* ccf */,
-		"apll_i2s1_m_sel"/* parent */, 0x0320/* pdn ofs */,
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_I2SIN1/* dts */, "apll12_div_i2sin1"/* ccf */,
+		"apll_i2sin1_m_sel"/* parent */, 0x0320/* pdn ofs */,
 		1/* pdn bit */, CLK_AUDDIV_2/* ofs */, 8/* width */,
 		8/* lsb */),
-	DIV_GATE(CLK_TOP_APLL12_CK_DIV2/* dts */, "apll12_div2"/* ccf */,
-		"apll_i2s2_m_sel"/* parent */, 0x0320/* pdn ofs */,
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_I2SIN2/* dts */, "apll12_div_i2sin2"/* ccf */,
+		"apll_i2sin2_m_sel"/* parent */, 0x0320/* pdn ofs */,
 		2/* pdn bit */, CLK_AUDDIV_2/* ofs */, 8/* width */,
 		16/* lsb */),
-	DIV_GATE(CLK_TOP_APLL12_CK_DIV3/* dts */, "apll12_div3"/* ccf */,
-		"apll_i2s3_m_sel"/* parent */, 0x0320/* pdn ofs */,
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_I2SIN3/* dts */, "apll12_div_i2sin3"/* ccf */,
+		"apll_i2sin3_m_sel"/* parent */, 0x0320/* pdn ofs */,
 		3/* pdn bit */, CLK_AUDDIV_2/* ofs */, 8/* width */,
 		24/* lsb */),
 	/* CLK_AUDDIV_3 */
-	DIV_GATE(CLK_TOP_APLL12_CK_DIV4/* dts */, "apll12_div4"/* ccf */,
-		"apll_i2s4_m_sel"/* parent */, 0x0320/* pdn ofs */,
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_I2SIN4/* dts */, "apll12_div_i2sin4"/* ccf */,
+		"apll_i2sin4_m_sel"/* parent */, 0x0320/* pdn ofs */,
 		4/* pdn bit */, CLK_AUDDIV_3/* ofs */, 8/* width */,
 		0/* lsb */),
-	DIV_GATE(CLK_TOP_APLL12_CK_DIVB/* dts */, "apll12_divb"/* ccf */,
-		"apll12_div4"/* parent */, 0x0320/* pdn ofs */,
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_I2SIN6/* dts */, "apll12_div_i2sin6"/* ccf */,
+		"apll_i2sin6_m_sel"/* parent */, 0x0320/* pdn ofs */,
 		5/* pdn bit */, CLK_AUDDIV_3/* ofs */, 8/* width */,
 		8/* lsb */),
-	DIV_GATE(CLK_TOP_APLL12_CK_DIV5/* dts */, "apll12_div5"/* ccf */,
-		"apll_i2s5_m_sel"/* parent */, 0x0320/* pdn ofs */,
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_I2SOUT0/* dts */, "apll12_div_i2sout0"/* ccf */,
+		"apll_i2sout0_m_sel"/* parent */, 0x0320/* pdn ofs */,
 		6/* pdn bit */, CLK_AUDDIV_3/* ofs */, 8/* width */,
 		16/* lsb */),
-	DIV_GATE(CLK_TOP_APLL12_CK_DIV6/* dts */, "apll12_div6"/* ccf */,
-		"apll_i2s6_m_sel"/* parent */, 0x0320/* pdn ofs */,
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_I2SOUT1/* dts */, "apll12_div_i2sout1"/* ccf */,
+		"apll_i2sout1_m_sel"/* parent */, 0x0320/* pdn ofs */,
 		7/* pdn bit */, CLK_AUDDIV_3/* ofs */, 8/* width */,
 		24/* lsb */),
 	/* CLK_AUDDIV_4 */
-	DIV_GATE(CLK_TOP_APLL12_CK_DIV7/* dts */, "apll12_div7"/* ccf */,
-		"apll_i2s7_m_sel"/* parent */, 0x0320/* pdn ofs */,
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_I2SOUT2/* dts */, "apll12_div_i2sout2"/* ccf */,
+		"apll_i2sout2_m_sel"/* parent */, 0x0320/* pdn ofs */,
 		8/* pdn bit */, CLK_AUDDIV_4/* ofs */, 8/* width */,
 		0/* lsb */),
-	DIV_GATE(CLK_TOP_APLL12_CK_DIV8/* dts */, "apll12_div8"/* ccf */,
-		"apll_i2s8_m_sel"/* parent */, 0x0320/* pdn ofs */,
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_I2SOUT3/* dts */, "apll12_div_i2sout3"/* ccf */,
+		"apll_i2sout3_m_sel"/* parent */, 0x0320/* pdn ofs */,
 		9/* pdn bit */, CLK_AUDDIV_4/* ofs */, 8/* width */,
 		8/* lsb */),
-	DIV_GATE(CLK_TOP_APLL12_CK_DIV9/* dts */, "apll12_div9"/* ccf */,
-		"apll_i2s9_m_sel"/* parent */, 0x0320/* pdn ofs */,
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_I2SOUT4/* dts */, "apll12_div_i2sout4"/* ccf */,
+		"apll_i2sout4_m_sel"/* parent */, 0x0320/* pdn ofs */,
 		10/* pdn bit */, CLK_AUDDIV_4/* ofs */, 8/* width */,
 		16/* lsb */),
-	DIV_GATE(CLK_TOP_APLL12_CK_DIV_ETDM_IN1/* dts */, "apll12_div_etdm_in1"/* ccf */,
-		"apll_etdm_in1_m_sel"/* parent */, 0x0320/* pdn ofs */,
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_I2SOUT6/* dts */, "apll12_div_i2sout6"/* ccf */,
+		"apll_i2sout6_m_sel"/* parent */, 0x0320/* pdn ofs */,
 		11/* pdn bit */, CLK_AUDDIV_4/* ofs */, 8/* width */,
 		24/* lsb */),
 	/* CLK_AUDDIV_5 */
-	DIV_GATE(CLK_TOP_APLL12_CK_DIV_ETDM_OUT1/* dts */, "apll12_div_etdm_out1"/* ccf */,
-		"apll_etdm_out1_m_sel"/* parent */, 0x0320/* pdn ofs */,
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_FMI2S/* dts */, "apll12_div_fmi2s"/* ccf */,
+		"apll_fmi2s_m_sel"/* parent */, 0x0320/* pdn ofs */,
 		12/* pdn bit */, CLK_AUDDIV_5/* ofs */, 8/* width */,
 		0/* lsb */),
-	DIV_GATE(CLK_TOP_APLL12_CK_DIV10/* dts */, "apll12_div10"/* ccf */,
-		"apll_i2s9_m_sel"/* parent */, 0x0320/* pdn ofs */,
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_TDMOUT_M/* dts */, "apll12_div_tdmout_m"/* ccf */,
+		"apll_tdmout_m_sel"/* parent */, 0x0320/* pdn ofs */,
 		13/* pdn bit */, CLK_AUDDIV_5/* ofs */, 8/* width */,
 		8/* lsb */),
+	DIV_GATE(CLK_TOP_APLL12_CK_DIV_TDMOUT_B/* dts */, "apll12_div_tdmout_b"/* ccf */,
+		"apll_tdmout_m_sel"/* parent */, 0x0320/* pdn ofs */,
+		14/* pdn bit */, CLK_AUDDIV_5/* ofs */, 8/* width */,
+		16/* lsb */),
 };
 
 
