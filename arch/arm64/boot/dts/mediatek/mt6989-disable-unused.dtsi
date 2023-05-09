@@ -133,7 +133,7 @@
 		reg = <0x68>;
 		clocks =
 			<&cam_vcore_clk CLK_CAM_V_MM0_SUBCOMM>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_VCORE>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
 	};
 
 	disable-unused-clk-ccu@69 {
@@ -930,10 +930,6 @@
 		reg = <0x96>;
 		clocks =
 			<&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_SCP_SPI_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_SCP_IIC_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_SCP_SPI_HIGH_SPD_SEL>,
-			<&vlp_cksys_clk CLK_VLP_CK_SCP_IIC_HIGH_SPD_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 			<&vlp_cksys_clk CLK_VLP_CK_IPS_SEL>;
 	};
@@ -956,7 +952,6 @@
 			<&topckgen_clk CLK_TOP_APLL12_CK_DIV_ETDM_IN1>,
 			<&topckgen_clk CLK_TOP_APLL12_CK_DIV_ETDM_OUT1>,
 			<&topckgen_clk CLK_TOP_APLL12_CK_DIV10>,
-			<&topckgen_clk CLK_TOP_EFUSE_SEL>,
 			<&topckgen_clk CLK_TOP_DSP_SEL>,
 			<&topckgen_clk CLK_TOP_SPI0_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_SPI1_BCLK_SEL>,
@@ -990,7 +985,6 @@
 			<&topckgen_clk CLK_TOP_ADSP_UARTHUB_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_DPMAIF_MAIN_SEL>,
 			<&topckgen_clk CLK_TOP_PWM_SEL>,
-			<&topckgen_clk CLK_TOP_MCUPM_SEL>,
 			<&topckgen_clk CLK_TOP_SFLASH_SEL>,
 			<&topckgen_clk CLK_TOP_IPSEAST_SEL>,
 			<&topckgen_clk CLK_TOP_IPSWEST_SEL>,
@@ -998,14 +992,7 @@
 			<&topckgen_clk CLK_TOP_EMI_INTERFACE_546_SEL>,
 			<&topckgen_clk CLK_TOP_SDF_SEL>,
 			<&topckgen_clk CLK_TOP_UARTHUB_BCLK_SEL>,
-			<&topckgen_clk CLK_TOP_SSR_PKA_SEL>,
-			<&topckgen_clk CLK_TOP_SSR_DMA_SEL>,
-			<&topckgen_clk CLK_TOP_SSR_KDF_SEL>,
-			<&topckgen_clk CLK_TOP_SSR_RNG_SEL>,
 			<&topckgen_clk CLK_TOP_SSR_SEJ_SEL>,
-			<&topckgen_clk CLK_TOP_SPU0_SEL>,
-			<&topckgen_clk CLK_TOP_SPU1_SEL>,
-			<&topckgen_clk CLK_TOP_DXCC_SEL>,
 			<&topckgen_clk CLK_TOP_DPSW_CMP_26M_SEL>,
 			<&topckgen_clk CLK_TOP_SMAPCK_SEL>,
 			<&topckgen_clk CLK_TOP_APLL_I2S0_MCK_SEL>,
