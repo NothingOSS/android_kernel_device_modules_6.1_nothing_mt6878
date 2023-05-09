@@ -6984,14 +6984,14 @@
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>;
 					//<&gce_m_sec 11 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
-			//mediatek,larb = <&smi_larb12>;
+			mediatek,larb = <&smi_larb12>;
 			mediatek,aov = <&aov>;
 			fdvt-frame-done = <CMDQ_EVENT_IMG_IMGSYS_IPE_FDVT0_DONE>;
 			sw-sync-token-tzmp-aie-wait = <CMDQ_SYNC_TOKEN_TZMP_AIE_WAIT>;
 			sw-sync-token-tzmp-aie-set = <CMDQ_SYNC_TOKEN_TZMP_AIE_SET>;
 
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
-#if 0
+
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_MAIN>;
 			clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1>,
 				<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0>,
@@ -7021,7 +7021,6 @@
 				"GALS",
 				"FDVT",
 				"LARB12";
-#endif
 		};
 
 		vdec@16000000 {
