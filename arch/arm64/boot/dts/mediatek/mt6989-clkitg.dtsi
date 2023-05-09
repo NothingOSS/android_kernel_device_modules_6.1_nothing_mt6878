@@ -113,8 +113,6 @@
 			<&topckgen_clk CLK_TOP_APLL12_CK_DIV_ETDM_IN1>,
 			<&topckgen_clk CLK_TOP_APLL12_CK_DIV_ETDM_OUT1>,
 			<&topckgen_clk CLK_TOP_APLL12_CK_DIV10>,
-			<&infracfg_ao_clk CLK_IFRAO_DPMAIF_MAIN>,
-			<&infracfg_ao_clk CLK_IFRAO_RG_MMW_DPMAIF26M>,
 			<&infracfg_ao_clk CLK_IFRAO_RG_SOCSYS_FATB>,
 			<&infracfg_ao_clk CLK_IFRAO_RG_SOCSYS_SDF>,
 			<&pericfg_ao_clk CLK_PERAOP_UART0>,
