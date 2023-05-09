@@ -49,7 +49,9 @@
 #include "vcp_vcpctl.h"
 #include "vcp_status.h"
 #include "vcp.h"
+#ifdef VCP_CLK_FMETER
 #include "clk-fmeter.h"
+#endif
 
 /* SMMU related header file */
 #include "mtk-smmu-v3.h"
@@ -2729,14 +2731,17 @@ static int vcp_device_probe(struct platform_device *pdev)
 	}
 	pr_notice("[VCP] vcpreg.core_nums = %d\n", vcpreg.core_nums);
 
+#ifdef VCP_CLK_FMETER
 	of_property_read_u32(pdev->dev.of_node, "fmeter-ck"
 						, &vcpreg.fmeter_ck);
 	of_property_read_u32(pdev->dev.of_node, "fmeter-type"
 						, &vcpreg.fmeter_type);
+	pr_notice("[VCP] vcpreg.fmeter_ck = %d vcpreg.fmeter_type = %d\n",
+		vcpreg.fmeter_ck, vcpreg.fmeter_type);
+#endif
 	of_property_read_u32(pdev->dev.of_node, "twohart"
 						, &vcpreg.twohart);
-	pr_notice("[VCP] vcpreg.twohart = %d,  vcpreg.fmeter_ck = %d vcpreg.fmeter_type = %d\n",
-		vcpreg.twohart, vcpreg.fmeter_ck, vcpreg.fmeter_type);
+	pr_notice("[VCP] vcpreg.twohart = %d\n", vcpreg.twohart);
 
 	vcp_ee_enable = 0;
 	vcpreg.secure_dump = 0;
