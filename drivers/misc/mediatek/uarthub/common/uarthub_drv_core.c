@@ -42,9 +42,8 @@ static atomic_t g_uarthub_probe_called = ATOMIC_INIT(0);
 struct platform_device *g_uarthub_pdev;
 UARTHUB_CORE_IRQ_CB g_core_irq_callback;
 int g_uarthub_disable;
-int g_uarthub_open;
+static atomic_t g_uarthub_open = ATOMIC_INIT(0);
 int g_is_ut_testing;
-int g_uarthub_enable_dump_debug = 1;
 static struct notifier_block uarthub_fb_notifier;
 struct workqueue_struct *uarthub_workqueue;
 static int g_last_err_type = -1;
@@ -282,6 +281,9 @@ static void uarthub_core_exit(void)
 	if (g_uarthub_disable == 1)
 		return;
 
+	if (g_plat_ic_core_ops->uarthub_plat_uarthub_exit)
+		g_plat_ic_core_ops->uarthub_plat_uarthub_exit();
+
 #if UARTHUB_DBG_SUPPORT
 	uarthub_dbg_remove();
 #endif
@@ -504,7 +506,10 @@ int uarthub_core_open(void)
 		return 0;
 	}
 
-	if (g_uarthub_open == 1) {
+	if (g_plat_ic_core_ops->uarthub_plat_uarthub_open)
+		g_plat_ic_core_ops->uarthub_plat_uarthub_open();
+
+	if (atomic_read(&g_uarthub_open) == 1) {
 		pr_info("[%s] g_uarthub_open=[1]\n", __func__);
 		return 0;
 	}
@@ -519,7 +524,7 @@ int uarthub_core_open(void)
 	if (ret)
 		return -1;
 
-	g_uarthub_open = 1;
+	atomic_set(&g_uarthub_open, 1);
 
 	return 0;
 }
@@ -531,7 +536,7 @@ int uarthub_core_close(void)
 		return 0;
 	}
 
-	if (g_uarthub_open == 0) {
+	if (atomic_read(&g_uarthub_open) == 0) {
 		pr_info("[%s] g_uarthub_open=[0]\n", __func__);
 		return 0;
 	}
@@ -545,7 +550,11 @@ int uarthub_core_close(void)
 	uarthub_core_irq_clear_ctrl(-1);
 
 	uarthub_core_dev0_clear_txrx_request();
-	g_uarthub_open = 0;
+
+	if (g_plat_ic_core_ops->uarthub_plat_uarthub_close)
+		g_plat_ic_core_ops->uarthub_plat_uarthub_close();
+
+	atomic_set(&g_uarthub_open, 0);
 
 	return 0;
 }
@@ -701,7 +710,7 @@ int uarthub_core_dev0_set_tx_request(void)
 		pr_info("[%s] is_ready=[%d]\n",
 			__func__, uarthub_core_dev0_is_uarthub_ready("HUB_DBG_SetTX_E"));
 #if UARTHUB_DEBUG_LOG
-		uarthub_core_debug_info(__func__, 0);
+		uarthub_core_debug_info(__func__);
 #endif
 	}
 
@@ -772,7 +781,7 @@ int uarthub_core_dev0_set_rx_request(void)
 		pr_info("[%s] is_ready=[%d]\n",
 			__func__, uarthub_core_dev0_is_uarthub_ready("HUB_DBG_SetRX_E"));
 #if UARTHUB_DEBUG_LOG
-		uarthub_core_debug_info(__func__, 0);
+		uarthub_core_debug_info(__func__);
 #endif
 	}
 
@@ -833,7 +842,7 @@ int uarthub_core_dev0_set_txrx_request(void)
 		pr_info("[%s] is_ready=[%d]\n",
 			__func__, uarthub_core_dev0_is_uarthub_ready("HUB_DBG_SetTRX_E"));
 #if UARTHUB_DEBUG_LOG
-		uarthub_core_debug_info(__func__, 0);
+		uarthub_core_debug_info(__func__);
 #endif
 	}
 
@@ -893,7 +902,7 @@ int uarthub_core_dev0_clear_tx_request(void)
 		pr_info("[%s] is_ready=[%d]\n",
 			__func__, uarthub_core_dev0_is_uarthub_ready("HUB_DBG_ClrTX_E"));
 #if UARTHUB_DEBUG_LOG
-		uarthub_core_debug_info(__func__, 0);
+		uarthub_core_debug_info(__func__);
 #endif
 	}
 
@@ -954,7 +963,7 @@ int uarthub_core_dev0_clear_rx_request(void)
 		pr_info("[%s] is_ready=[%d]\n",
 			__func__, uarthub_core_dev0_is_uarthub_ready("HUB_DBG_ClrRX_E"));
 #if UARTHUB_DEBUG_LOG
-		uarthub_core_debug_info(__func__, 0);
+		uarthub_core_debug_info(__func__);
 #endif
 	}
 
@@ -1015,7 +1024,7 @@ int uarthub_core_dev0_clear_txrx_request(void)
 		pr_info("[%s] is_ready=[%d]\n",
 			__func__, uarthub_core_dev0_is_uarthub_ready("HUB_DBG_ClrTRX_E"));
 #if UARTHUB_DEBUG_LOG
-		uarthub_core_debug_info(__func__, 0);
+		uarthub_core_debug_info(__func__);
 #endif
 	}
 
@@ -1174,7 +1183,7 @@ int uarthub_core_md_adsp_fifo_ctrl(int enable)
 		g_plat_ic_core_ops->uarthub_plat_config_host_fifoe_ctrl(1, 1);
 		g_plat_ic_core_ops->uarthub_plat_config_host_fifoe_ctrl(2, 1);
 #if UARTHUB_INFO_LOG
-		uarthub_core_debug_info(__func__, 0);
+		uarthub_core_debug_info(__func__);
 #endif
 	}
 
@@ -1416,7 +1425,7 @@ static void trigger_uarthub_error_worker_handler(struct work_struct *work)
 		return;
 	}
 
-	uarthub_core_debug_info(__func__, 0);
+	uarthub_core_debug_info(__func__);
 
 #if ISR_CLEAR_ALL_IRQ
 	uarthub_core_irq_clear_ctrl(-1);
@@ -1587,7 +1596,7 @@ static void debug_info_worker_handler(struct work_struct *work)
 	if (g_is_ut_testing == 1)
 		mdelay(1);
 
-	uarthub_core_debug_info(queue->tag, 0);
+	uarthub_core_debug_info(queue->tag);
 }
 
 static void debug_clk_info_work_worker_handler(struct work_struct *work)

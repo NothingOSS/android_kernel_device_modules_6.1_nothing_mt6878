@@ -20,7 +20,6 @@ static ssize_t uarthub_dbg_write(
 static ssize_t uarthub_dbg_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos);
 
 static int uarthub_dbg_dump_hub_dbg_info(int par1, int par2, int par3, int par4, int par5);
-static int uarthub_dbg_dump_hub_dbg_ctrl(int par1, int par2, int par3, int par4, int par5);
 static int uarthub_dbg_dump_apdma_dbg_info(int par1, int par2, int par3, int par4, int par5);
 static int uarthub_dbg_config_loopback_info(int par1, int par2, int par3, int par4, int par5);
 static int uarthub_dbg_debug_monitor_ctrl(int par1, int par2, int par3, int par4, int par5);
@@ -44,10 +43,9 @@ static int uarthub_dbg_verify_combo_connect_sta(int par1, int par2, int par3, in
 
 static const UARTHUB_DBG_FUNC uarthub_dbg_func[] = {
 	[0x0] = uarthub_dbg_dump_hub_dbg_info,
-	[0x1] = uarthub_dbg_dump_hub_dbg_ctrl,
-	[0x2] = uarthub_dbg_dump_apdma_dbg_info,
-	[0x3] = uarthub_dbg_config_loopback_info,
-	[0x4] = uarthub_dbg_debug_monitor_ctrl,
+	[0x1] = uarthub_dbg_dump_apdma_dbg_info,
+	[0x2] = uarthub_dbg_config_loopback_info,
+	[0x3] = uarthub_dbg_debug_monitor_ctrl,
 
 #if UARTHUB_DBG_SUPPORT
 	[0x21] = uarthub_dbg_ap_reg_read,
@@ -187,37 +185,15 @@ ssize_t uarthub_dbg_read(struct file *filp, char __user *buf, size_t count, loff
 
 int uarthub_dbg_dump_hub_dbg_info(int par1, int par2, int par3, int par4, int par5)
 {
-	int state = 0;
-
-	pr_info("[%s] par1=[0x%x], uartip=[%d], apdma=[%d]\n", __func__, par1, par2, par3);
+	pr_info("[%s] par1=[0x%x]\n", __func__, par1);
 
 	if (g_plat_ic_ut_test_ops == NULL)
 		pr_info("[jlog] g_plat_ic_ut_test_ops == NULL >> ++++++++++++++++++++++++++++++++\n");
 	else
 		pr_info("[jlog] g_plat_ic_ut_test_ops != NULL >> --------------------------------\n");
 
-	if (par3 == 1) {
-		if (g_plat_ic_debug_ops == NULL ||
-				g_plat_ic_debug_ops->uarthub_plat_dump_apuart_debug_ctrl == NULL ||
-				g_plat_ic_debug_ops->uarthub_plat_get_apuart_debug_ctrl_sta == NULL)
-			return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+	uarthub_core_debug_info("HUB_DBG_CMD");
 
-		state = g_plat_ic_debug_ops->uarthub_plat_get_apuart_debug_ctrl_sta();
-		g_plat_ic_debug_ops->uarthub_plat_dump_apuart_debug_ctrl(1);
-	}
-
-	uarthub_core_debug_info("HUB_DBG_CMD", par2);
-
-	if (par3 == 1)
-		g_plat_ic_debug_ops->uarthub_plat_dump_apuart_debug_ctrl(state);
-
-	return 0;
-}
-
-int uarthub_dbg_dump_hub_dbg_ctrl(int par1, int par2, int par3, int par4, int par5)
-{
-	pr_info("[%s] g_uarthub_enable_dump_debug=[%d]\n", __func__, par2);
-	g_uarthub_enable_dump_debug = par2;
 	return 0;
 }
 
@@ -656,7 +632,7 @@ int uarthub_core_debug_clk_info(const char *tag)
 	return g_plat_ic_debug_ops->uarthub_plat_dump_debug_clk_info(tag);
 }
 
-int uarthub_core_debug_info(const char *tag, int force_dump)
+int uarthub_core_debug_info(const char *tag)
 {
 	const char *def_tag = "HUB_DBG";
 
@@ -665,9 +641,6 @@ int uarthub_core_debug_info(const char *tag, int force_dump)
 
 	if (!g_plat_ic_debug_ops)
 		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
-
-	if (!g_uarthub_enable_dump_debug)
-		return 0;
 
 	if (mutex_lock_killable(&g_lock_dump_log)) {
 		pr_notice("[%s] mutex_lock_killable(g_lock_dump_log) fail\n", __func__);
@@ -685,7 +658,7 @@ int uarthub_core_debug_info(const char *tag, int force_dump)
 
 	if (g_plat_ic_debug_ops->uarthub_plat_dump_uartip_debug_info)
 		g_plat_ic_debug_ops->uarthub_plat_dump_uartip_debug_info(
-			tag, &g_clear_trx_req_lock, force_dump);
+			tag, &g_clear_trx_req_lock);
 
 	if (g_plat_ic_debug_ops->uarthub_plat_dump_debug_monitor)
 		g_plat_ic_debug_ops->uarthub_plat_dump_debug_monitor(tag);

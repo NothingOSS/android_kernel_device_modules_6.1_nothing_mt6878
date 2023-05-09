@@ -83,6 +83,7 @@
 #define PERI_UART_FBCLK_CKSEL_MASK                (0x1 << 3)
 #define PERI_UART_FBCLK_CKSEL_SHIFT               3
 #define PERI_UART_FBCLK_CKSEL_UART_CK             0x8
+#define PERI_UART_FBCLK_CKSEL_26M_CK              0x0
 #define PERI_UART_WAKEUP                          0x50
 #define PERI_UART_WAKEUP_UART_GPHUB_SEL_MASK      0x10
 #define PERI_UART_WAKEUP_UART_GPHUB_SEL_SHIFT     4

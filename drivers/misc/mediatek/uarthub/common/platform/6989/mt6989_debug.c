@@ -13,17 +13,11 @@
 
 #include <linux/regmap.h>
 
-#define SPM_INTERNAL_RESOURCE_CHK_EN 0
-
 static int g_enable_apuart_debug_info;
 
-static int uarthub_get_uart_mux_info_mt6989(void);
-static int uarthub_get_uarthub_mux_info_mt6989(void);
 static int uarthub_read_dbg_monitor(int *sel, int *tx_monitor, int *rx_monitor);
 #if !(UARTHUB_SUPPORT_FPGA)
-static int uarthub_get_uarthub_cg_info_mt6989(int *p_topckgen_cg, int *p_peri_cg);
 static int uarthub_get_peri_uart_pad_mode_mt6989(void);
-static int uarthub_get_uart_src_clk_info_mt6989(void);
 static int uarthub_get_gpio_trx_info_mt6989(struct uarthub_gpio_trx_info *info);
 #endif
 
@@ -59,7 +53,10 @@ struct uarthub_debug_ops_struct mt6989_plat_debug_data = {
 	.uarthub_plat_dump_sspm_log = uarthub_dump_sspm_log_mt6989,
 	.uarthub_plat_trigger_fpga_testing = uarthub_trigger_fpga_testing_mt6989,
 	.uarthub_plat_trigger_dvt_testing = uarthub_trigger_dvt_testing_mt6989,
+
+#if UARTHUB_SUPPORT_UT_API
 	.uarthub_plat_verify_combo_connect_sta = uarthub_verify_combo_connect_sta_mt6989,
+#endif
 };
 
 int uarthub_get_uart_mux_info_mt6989(void)
@@ -187,7 +184,7 @@ int uarthub_get_spm_res_info_mt6989(
 	if (p_spm_res_26m_off)
 		*p_spm_res_26m_off = spm_res_26m_off;
 
-#if SPM_INTERNAL_RESOURCE_CHK_EN
+#if SPM_RES_CHK_EN
 	if (spm_res_uarthub != 0x1D || spm_res_internal != 0x17 || spm_res_26m_off != 0x0)
 		return 0;
 #endif
@@ -295,12 +292,9 @@ int uarthub_get_uartip_base_addr_mt6989(int dev_index)
 }
 
 int uarthub_dump_uartip_debug_info_mt6989(
-	const char *tag, struct mutex *uartip_lock, int force_dump)
+	const char *tag, struct mutex *uartip_lock)
 {
 	const char *def_tag = "HUB_DBG_UIP";
-#if !(UARTHUB_SUPPORT_FPGA)
-	int dev0_sta = 0, dev1_sta = 0, dev2_sta = 0;
-#endif
 	int print_ap = 0;
 	char dmp_info_buf[DBG_LOG_LEN] = {'\0'};
 
@@ -313,33 +307,6 @@ int uarthub_dump_uartip_debug_info_mt6989(
 			return UARTHUB_ERR_MUTEX_LOCK_FAIL;
 		}
 	}
-
-#if !(UARTHUB_SUPPORT_FPGA)
-	if (force_dump == 0) {
-		dev0_sta = UARTHUB_REG_READ(DEV0_STA_ADDR);
-		dev1_sta = UARTHUB_REG_READ(DEV1_STA_ADDR);
-		dev2_sta = UARTHUB_REG_READ(DEV2_STA_ADDR);
-		if (dev0_sta == dev1_sta && dev1_sta == dev2_sta) {
-			if (dev0_sta == 0x300 ||  dev0_sta == 0x0) {
-				pr_notice("[%s] all host sta is[0x%x]\n", __func__, dev0_sta);
-				if (uartip_lock)
-					mutex_unlock(uartip_lock);
-				return -1;
-			}
-		}
-	}
-
-	if (force_dump == 0) {
-		uarthub_univpll_clk_ctrl_mt6989(1);
-		if (uarthub_get_hwccf_univpll_on_info_mt6989() == 0) {
-			pr_notice("[%s] uarthub_get_hwccf_univpll_on_info_mt6989=[0]\n", __func__);
-			uarthub_univpll_clk_ctrl_mt6989(0);
-			if (uartip_lock)
-				mutex_unlock(uartip_lock);
-			return -1;
-		}
-	}
-#endif
 
 	if (apuart_base_map[3] != NULL)
 		print_ap = 1;
@@ -372,9 +339,6 @@ int uarthub_dump_uartip_debug_info_mt6989(
 	UARTHUB_DEBUG_PRINT_FCR_RD(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_MCR(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_LSR(def_tag, tag, print_ap, 1);
-
-	if (force_dump == 0)
-		uarthub_univpll_clk_ctrl_mt6989(0);
 
 	if (uartip_lock)
 		mutex_unlock(uartip_lock);
@@ -811,14 +775,19 @@ int uarthub_dump_debug_monitor_check_data_mode_mt6989(const char *tag)
 	if (debug_monitor_sel != 0x1)
 		return 0;
 
-	pr_info("[%s][%s] MODE_SEL=[%d],MON_PTR=[R:%d,T:%d]",
+	pr_info("[%s][%s] CHK_DATA_MON[0:15](%d)=[R(%d):%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X,T(%d):%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X]",
 		def_tag, ((tag == NULL) ? "null" : tag),
 		DEBUG_MODE_CRTL_GET_check_data_mode_select(DEBUG_MODE_CRTL_ADDR),
 		DEBUG_MODE_CRTL_GET_check_data_mode_rx_monitor_pointer(DEBUG_MODE_CRTL_ADDR),
-		DEBUG_MODE_CRTL_GET_check_data_mode_tx_monitor_pointer(DEBUG_MODE_CRTL_ADDR));
-
-	UARTHUB_DEBUG_PRINT_DBG_MONITOR_CHECK_DATA(def_tag, tag, "TX_MON[0:15]", tx_monitor);
-	UARTHUB_DEBUG_PRINT_DBG_MONITOR_CHECK_DATA(def_tag, tag, "RX_MON[0:15]", rx_monitor);
+		UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(rx_monitor[0]),
+		UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(rx_monitor[1]),
+		UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(rx_monitor[2]),
+		UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(rx_monitor[3]),
+		DEBUG_MODE_CRTL_GET_check_data_mode_tx_monitor_pointer(DEBUG_MODE_CRTL_ADDR),
+		UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(tx_monitor[0]),
+		UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(tx_monitor[1]),
+		UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(tx_monitor[2]),
+		UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(tx_monitor[3]));
 
 	return 0;
 }
@@ -999,26 +968,21 @@ int uarthub_dump_debug_tx_rx_count_mt6989(const char *tag, int trigger_point)
 
 	fsm_dbg_sta = UARTHUB_REG_READ(DBG_STATE_ADDR);
 
-	uarthub_univpll_clk_ctrl_mt6989(1);
-	if (uarthub_get_hwccf_univpll_on_info_mt6989() == 1) {
-		UARTHUB_DEBUG_READ_DEBUG_REG(dev0, uartip, uartip_id_ap);
-		UARTHUB_DEBUG_READ_DEBUG_REG(dev1, uartip, uartip_id_md);
-		UARTHUB_DEBUG_READ_DEBUG_REG(dev2, uartip, uartip_id_adsp);
-		UARTHUB_DEBUG_READ_DEBUG_REG(cmm, uartip, uartip_id_cmm);
+	UARTHUB_DEBUG_READ_DEBUG_REG(dev0, uartip, uartip_id_ap);
+	UARTHUB_DEBUG_READ_DEBUG_REG(dev1, uartip, uartip_id_md);
+	UARTHUB_DEBUG_READ_DEBUG_REG(dev2, uartip, uartip_id_adsp);
+	UARTHUB_DEBUG_READ_DEBUG_REG(cmm, uartip, uartip_id_cmm);
 
-		if (apuart_base_map[3] != NULL) {
-			UARTHUB_DEBUG_READ_DEBUG_REG(ap, apuart, 3);
-		} else {
-			debug1.ap = 0;
-			debug2.ap = 0;
-			debug3.ap = 0;
-			debug5.ap = 0;
-			debug6.ap = 0;
-			debug8.ap = 0;
-		}
-	} else
-		pr_notice("[%s] uarthub_get_hwccf_univpll_on_info_mt6989=[0]\n", __func__);
-	uarthub_univpll_clk_ctrl_mt6989(0);
+	if (apuart_base_map[3] != NULL) {
+		UARTHUB_DEBUG_READ_DEBUG_REG(ap, apuart, 3);
+	} else {
+		debug1.ap = 0;
+		debug2.ap = 0;
+		debug3.ap = 0;
+		debug5.ap = 0;
+		debug6.ap = 0;
+		debug8.ap = 0;
+	}
 
 	d0_wait_for_send_xoff = UARTHUB_DEBUG_GET_XCSTATE_WSEND_XOFF(debug1.dev0);
 	d1_wait_for_send_xoff = UARTHUB_DEBUG_GET_XCSTATE_WSEND_XOFF(debug1.dev1);
@@ -1285,13 +1249,6 @@ int uarthub_dump_debug_byte_cnt_info_mt6989(const char *tag)
 	int check_data_mode_sel = 0;
 	int fsm_dbg_sta = 0;
 
-	uarthub_univpll_clk_ctrl_mt6989(1);
-	if (uarthub_get_hwccf_univpll_on_info_mt6989() == 0) {
-		pr_notice("[%s] uarthub_get_hwccf_univpll_on_info_mt6989=[0]\n", __func__);
-		uarthub_univpll_clk_ctrl_mt6989(0);
-		return -1;
-	}
-
 	val = DBG_CTRL_GET_intfhub_dbg_sel(DBG_CTRL_ADDR);
 	len = 0;
 	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
@@ -1322,8 +1279,6 @@ int uarthub_dump_debug_byte_cnt_info_mt6989(const char *tag)
 		debug7.ap = 0;
 		debug8.ap = 0;
 	}
-
-	uarthub_univpll_clk_ctrl_mt6989(0);
 
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug5, 0xF0, 4, debug6, 0x3, 4, ",bcnt=[R:%d-%d-%d-%d-%d");
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug2, 0xF0, 4, debug3, 0x3, 4, ",T:%d-%d-%d-%d-%d]");
@@ -1602,6 +1557,7 @@ int uarthub_trigger_dvt_testing_mt6989(int type)
 	return 0;
 }
 
+#if UARTHUB_SUPPORT_UT_API
 int uarthub_verify_combo_connect_sta_mt6989(int type, int rx_delay_ms)
 {
 	int state = -1;
@@ -1615,6 +1571,7 @@ int uarthub_verify_combo_connect_sta_mt6989(int type, int rx_delay_ms)
 
 	return state;
 }
+#endif
 
 int uarthub_start_sample_baud_rate(int dev_index)
 {

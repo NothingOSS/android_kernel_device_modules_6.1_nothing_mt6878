@@ -169,13 +169,13 @@ EXPORT_SYMBOL(UARTHUB_md_adsp_fifo_ctrl);
 
 int UARTHUB_dump_debug_info(void)
 {
-	return uarthub_core_debug_info(NULL, 0);
+	return uarthub_core_debug_info(NULL);
 }
 EXPORT_SYMBOL(UARTHUB_dump_debug_info);
 
 int UARTHUB_dump_debug_info_with_tag(const char *tag)
 {
-	return uarthub_core_debug_info(tag, 0);
+	return uarthub_core_debug_info(tag);
 }
 EXPORT_SYMBOL(UARTHUB_dump_debug_info_with_tag);
 

@@ -67,7 +67,7 @@ static int uarthub_is_assert_state_mt6985(void);
 static int uarthub_assert_state_ctrl_mt6985(int assert_ctrl);
 static int uarthub_is_bypass_mode_mt6985(void);
 static int uarthub_dump_uartip_debug_info_mt6985(
-	const char *tag, struct mutex *uartip_lock, int force_dump);
+	const char *tag, struct mutex *uartip_lock);
 static int uarthub_dump_intfhub_debug_info_mt6985(const char *tag);
 static int uarthub_dump_debug_tx_rx_count_mt6985(const char *tag, int trigger_point);
 static int uarthub_dump_debug_clk_info_mt6985(const char *tag);
@@ -1147,7 +1147,7 @@ int uarthub_get_peri_uart_pad_mode_mt6985(void)
 }
 
 int uarthub_dump_uartip_debug_info_mt6985(
-	const char *tag, struct mutex *uartip_lock, int force_dump)
+	const char *tag, struct mutex *uartip_lock)
 {
 	const char *def_tag = "HUB_DBG_UIP";
 	struct uarthub_uartip_debug_info debug1 = {0};
@@ -1192,17 +1192,15 @@ int uarthub_dump_uartip_debug_info_mt6985(
 		}
 	}
 
-	if (force_dump == 0) {
-		dev0_sta = UARTHUB_REG_READ(DEV0_STA_ADDR);
-		dev1_sta = UARTHUB_REG_READ(DEV1_STA_ADDR);
-		dev2_sta = UARTHUB_REG_READ(DEV2_STA_ADDR);
-		if (dev0_sta == dev1_sta && dev1_sta == dev2_sta) {
-			if (dev0_sta == 0x300 ||  dev0_sta == 0x0) {
-				pr_notice("[%s] all host sta is[0x%x]\n", __func__, dev0_sta);
-				if (uartip_lock)
-					mutex_unlock(uartip_lock);
-				return -1;
-			}
+	dev0_sta = UARTHUB_REG_READ(DEV0_STA_ADDR);
+	dev1_sta = UARTHUB_REG_READ(DEV1_STA_ADDR);
+	dev2_sta = UARTHUB_REG_READ(DEV2_STA_ADDR);
+	if (dev0_sta == dev1_sta && dev1_sta == dev2_sta) {
+		if (dev0_sta == 0x300 ||  dev0_sta == 0x0) {
+			pr_notice("[%s] all host sta is[0x%x]\n", __func__, dev0_sta);
+			if (uartip_lock)
+				mutex_unlock(uartip_lock);
+			return -1;
 		}
 	}
 

@@ -138,7 +138,7 @@ int uarthub_ut_ip_timeout_init_fsm_ctrl_by_unit_mt6989(
 verify_err:
 	if (state != 0) {
 		uarthub_dump_intfhub_debug_info_mt6989(__func__);
-		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL, 0);
+		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL);
 		uarthub_dump_debug_monitor_mt6989(__func__);
 	}
 
@@ -160,7 +160,7 @@ int uarthub_ut_ip_timeout_init_fsm_ctrl_mt6989(void)
 	/* Initialize */
 	uarthub_set_host_trx_request_mt6989(0, TRX);
 	usleep_range(3000, 3010);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	usleep_range(1000, 1010);
 #endif
@@ -258,7 +258,7 @@ verify_err:
 	uarthub_clear_host_trx_request_mt6989(1, TRX);
 	uarthub_clear_host_trx_request_mt6989(2, TRX);
 	usleep_range(3000, 3010);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	usleep_range(1000, 1010);
 #endif
@@ -283,7 +283,7 @@ int uarthub_ut_ip_clear_rx_data_irq_by_unit_mt6989(int dev_index)
 	/* Initialize */
 	uarthub_set_host_trx_request_mt6989(dev_index, TRX);
 	usleep_range(3000, 3010);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	usleep_range(1000, 1010);
 #endif
@@ -328,14 +328,14 @@ int uarthub_ut_ip_clear_rx_data_irq_by_unit_mt6989(int dev_index)
 verify_err:
 	if (state != 0) {
 		uarthub_dump_intfhub_debug_info_mt6989(__func__);
-		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL, 0);
+		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL);
 		uarthub_dump_debug_monitor_mt6989(__func__);
 	}
 
 	/* Uninitialize */
 	uarthub_clear_host_trx_request_mt6989(dev_index, TRX);
 	usleep_range(3000, 3010);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	usleep_range(1000, 1010);
 #endif
@@ -365,7 +365,7 @@ int uarthub_ut_ip_clear_rx_data_irq_mt6989(void)
 	uarthub_clear_host_trx_request_mt6989(1, TRX);
 	uarthub_clear_host_trx_request_mt6989(2, TRX);
 	usleep_range(3000, 3010);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	usleep_range(1000, 1010);
 #endif
@@ -417,7 +417,7 @@ verify_err:
 	uarthub_clear_host_trx_request_mt6989(1, TRX);
 	uarthub_clear_host_trx_request_mt6989(2, TRX);
 	usleep_range(3000, 3010);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	usleep_range(1000, 1010);
 #endif
@@ -451,7 +451,7 @@ int uarthub_ut_ip_host_tx_packet_loopback_by_unit_mt6989(int dev_index)
 verify_err:
 	if (state != 0) {
 		uarthub_dump_intfhub_debug_info_mt6989(__func__);
-		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL, 0);
+		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL);
 		uarthub_dump_debug_monitor_mt6989(__func__);
 	}
 
@@ -470,7 +470,7 @@ int uarthub_ut_ip_host_tx_packet_loopback_mt6989(void)
 	/* Initialize */
 	uarthub_set_host_trx_request_mt6989(0, TRX);
 	usleep_range(3000, 3010);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	usleep_range(1000, 1010);
 #endif
@@ -532,7 +532,7 @@ verify_err:
 	uarthub_clear_host_trx_request_mt6989(1, TRX);
 	uarthub_clear_host_trx_request_mt6989(2, TRX);
 	usleep_range(3000, 3010);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	usleep_range(1000, 1010);
 #endif
@@ -553,7 +553,7 @@ int uarthub_verify_cmm_loopback_sta_mt6989(void)
 	/* Initialize */
 	uarthub_set_host_trx_request_mt6989(0, TRX);
 	usleep_range(3000, 3010);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	usleep_range(1000, 1010);
 #endif
@@ -588,7 +588,7 @@ verify_err:
 	pr_info("[CMM_LOOPBACK]: %s", ((state != 0) ? "FAIL" : "PASS"));
 	if (state != 0) {
 		uarthub_dump_intfhub_debug_info_mt6989(__func__);
-		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL, 0);
+		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL);
 		uarthub_dump_debug_monitor_mt6989(__func__);
 	}
 	/* Uninitialize */
@@ -602,7 +602,7 @@ verify_err:
 
 	uarthub_clear_host_trx_request_mt6989(0, TRX);
 	usleep_range(3000, 3010);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	usleep_range(1000, 1010);
@@ -634,7 +634,7 @@ int uarthub_verify_cmm_trx_connsys_sta_mt6989(int rx_delay_ms)
 	/* Initialize */
 	uarthub_set_host_trx_request_mt6989(0, TRX);
 	usleep_range(3000, 3010);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	usleep_range(1000, 1010);
 #endif
@@ -728,7 +728,7 @@ verify_err:
 	pr_info("[CMM_TRX_CONN_STA]: %s", ((state != 0) ? "FAIL" : "PASS"));
 	if (state != 0) {
 		uarthub_dump_intfhub_debug_info_mt6989(__func__);
-		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL, 0);
+		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL);
 		uarthub_dump_debug_monitor_mt6989(__func__);
 	}
 	/* Uninitialize */
@@ -743,7 +743,7 @@ verify_err:
 
 	uarthub_clear_host_trx_request_mt6989(0, TRX);
 	usleep_range(3000, 3010);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	usleep_range(1000, 1010);
@@ -890,7 +890,7 @@ int uarthub_ut_ip_verify_debug_monitor_packet_info_mode_mt6989(void)
 
 	uarthub_set_host_trx_request_mt6989(0, TRX);
 	mdelay(3);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	mdelay(1);
 #endif
@@ -1075,7 +1075,7 @@ int uarthub_ut_ip_verify_debug_monitor_packet_info_mode_mt6989(void)
 verify_err:
 	if (state != 0) {
 		uarthub_dump_intfhub_debug_info_mt6989(__func__);
-		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL, 0);
+		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL);
 		uarthub_dump_debug_monitor_mt6989(__func__);
 	}
 
@@ -1095,7 +1095,7 @@ verify_err:
 	uarthub_clear_host_trx_request_mt6989(1, TRX);
 	uarthub_clear_host_trx_request_mt6989(2, TRX);
 	mdelay(3);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	mdelay(1);
 #endif
@@ -1136,7 +1136,7 @@ int uarthub_ut_ip_verify_debug_monitor_check_data_mode_mt6989(void)
 
 	uarthub_set_host_trx_request_mt6989(0, TRX);
 	mdelay(3);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	mdelay(1);
 #endif
@@ -1483,7 +1483,7 @@ int uarthub_ut_ip_verify_debug_monitor_check_data_mode_mt6989(void)
 verify_err:
 	if (state != 0) {
 		uarthub_dump_intfhub_debug_info_mt6989(__func__);
-		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL, 0);
+		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL);
 		uarthub_dump_debug_monitor_mt6989(__func__);
 	}
 
@@ -1503,7 +1503,7 @@ verify_err:
 	uarthub_clear_host_trx_request_mt6989(1, TRX);
 	uarthub_clear_host_trx_request_mt6989(2, TRX);
 	mdelay(3);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	mdelay(1);
 #endif
@@ -1544,7 +1544,7 @@ int uarthub_ut_ip_verify_debug_monitor_crc_result_mode_mt6989(void)
 
 	uarthub_set_host_trx_request_mt6989(0, TRX);
 	mdelay(3);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	mdelay(1);
 #endif
@@ -1819,7 +1819,7 @@ int uarthub_ut_ip_verify_debug_monitor_crc_result_mode_mt6989(void)
 verify_err:
 	if (state != 0) {
 		uarthub_dump_intfhub_debug_info_mt6989(__func__);
-		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL, 0);
+		uarthub_dump_uartip_debug_info_mt6989(__func__, NULL);
 		uarthub_dump_debug_monitor_mt6989(__func__);
 	}
 
@@ -1839,7 +1839,7 @@ verify_err:
 	uarthub_clear_host_trx_request_mt6989(1, TRX);
 	uarthub_clear_host_trx_request_mt6989(2, TRX);
 	mdelay(3);
-#if !(UARTHUB_SUPPORT_SSPM_DRIVER) || (UARTHUB_SUPPORT_FPGA)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	UARTHUB_REG_WRITE(IRQ_CLR_ADDR, 0xFFFFFFFF);
 	mdelay(1);
 #endif

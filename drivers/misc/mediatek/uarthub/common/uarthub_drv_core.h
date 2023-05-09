@@ -24,7 +24,6 @@ extern struct uarthub_ut_test_ops_struct *g_plat_ic_ut_test_ops;
 
 extern int g_uarthub_disable;
 extern int g_is_ut_testing;
-extern int g_uarthub_enable_dump_debug;
 
 extern int g_dev0_irq_sta;
 extern int g_dev0_inband_irq_sta;
@@ -90,7 +89,7 @@ typedef int(*UARTHUB_PLAT_GET_APUART_DEBUG_CTRL_STA) (void);
 typedef int(*UARTHUB_PLAT_GET_INTFHUB_BASE_ADDR) (void);
 typedef int(*UARTHUB_PLAT_GET_UARTIP_BASE_ADDR) (int dev_index);
 typedef int(*UARTHUB_PLAT_DUMP_UARTIP_DEBUG_INFO) (
-	const char *tag, struct mutex *uartip_lock, int force_dump);
+	const char *tag, struct mutex *uartip_lock);
 typedef int(*UARTHUB_PLAT_DUMP_INTFHUB_DEBUG_INFO) (const char *tag);
 typedef int(*UARTHUB_PLAT_DUMP_DEBUG_MONITOR) (const char *tag);
 typedef int(*UARTHUB_PLAT_DEBUG_MONITOR_CTRL) (int enable, int mode, int ctrl);
@@ -195,6 +194,9 @@ struct uarthub_ut_test_ops_struct {
 
 typedef int(*UARTHUB_PLAT_IS_READY_STATE) (void);
 typedef int(*UARTHUB_PLAT_UARTHUB_INIT) (struct platform_device *pdev);
+typedef int(*UARTHUB_PLAT_UARTHUB_EXIT) (void);
+typedef int(*UARTHUB_PLAT_UARTHUB_OPEN) (void);
+typedef int(*UARTHUB_PLAT_UARTHUB_CLOSE) (void);
 typedef int(*UARTHUB_PLAT_CONFIG_HOST_BAUD_RATE) (int dev_index, int rate_index);
 typedef int(*UARTHUB_PLAT_CONFIG_CMM_BAUD_RATE) (int rate_index);
 typedef int(*UARTHUB_PLAT_IRQ_MASK_CTRL) (int mask);
@@ -236,6 +238,9 @@ typedef int(*UARTHUB_PLAT_GET_SPM_SYS_TIMER) (uint32_t *hi, uint32_t *lo);
 struct uarthub_core_ops_struct {
 	UARTHUB_PLAT_IS_READY_STATE uarthub_plat_is_ready_state;
 	UARTHUB_PLAT_UARTHUB_INIT uarthub_plat_uarthub_init;
+	UARTHUB_PLAT_UARTHUB_EXIT uarthub_plat_uarthub_exit;
+	UARTHUB_PLAT_UARTHUB_OPEN uarthub_plat_uarthub_open;
+	UARTHUB_PLAT_UARTHUB_CLOSE uarthub_plat_uarthub_close;
 	UARTHUB_PLAT_CONFIG_HOST_BAUD_RATE uarthub_plat_config_host_baud_rate;
 	UARTHUB_PLAT_CONFIG_CMM_BAUD_RATE uarthub_plat_config_cmm_baud_rate;
 	UARTHUB_PLAT_IRQ_MASK_CTRL uarthub_plat_irq_mask_ctrl;
@@ -374,7 +379,7 @@ int uarthub_core_reset_flow_control(void);
 int uarthub_core_reset(void);
 int uarthub_core_config_host_loopback(int dev_index, int tx_to_rx, int enable);
 int uarthub_core_config_cmm_loopback(int tx_to_rx, int enable);
-int uarthub_core_debug_info(const char *tag, int force_dump);
+int uarthub_core_debug_info(const char *tag);
 int uarthub_core_debug_dump_tx_rx_count(const char *tag, int trigger_point);
 int uarthub_core_debug_monitor_stop(int stop);
 int uarthub_core_debug_monitor_clr(void);

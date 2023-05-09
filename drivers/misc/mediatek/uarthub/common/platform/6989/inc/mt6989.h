@@ -6,28 +6,37 @@
 #ifndef MT6989_H
 #define MT6989_H
 
-#define UARTHUB_SUPPORT_FPGA          0
-#define UARTHUB_SUPPORT_DVT           0
-#define UARTHUB_SUPPORT_UT_API        1
-#define UARTHUB_SUPPORT_UT_CASE       1
+#define UARTHUB_SUPPORT_FPGA           0
+#define UARTHUB_SUPPORT_DVT            0
+#define UARTHUB_SUPPORT_UT_API         0
+#define UARTHUB_SUPPORT_UT_CASE        0
+#define SPM_RES_CHK_EN                 1
 
 #if (UARTHUB_SUPPORT_FPGA) || (UARTHUB_SUPPORT_DVT)
 #ifdef UARTHUB_SUPPORT_UT_CASE
 #undef UARTHUB_SUPPORT_UT_CASE
 #endif
-#define UARTHUB_SUPPORT_UT_CASE       1
+#define UARTHUB_SUPPORT_UT_CASE        1
 #endif
 
 #if UARTHUB_SUPPORT_UT_CASE
 #ifdef UARTHUB_SUPPORT_UT_API
 #undef UARTHUB_SUPPORT_UT_API
 #endif
-#define UARTHUB_SUPPORT_UT_API        1
+#define UARTHUB_SUPPORT_UT_API         1
 #endif
 
-#define UARTHUB_SUPPORT_SSPM_DRIVER   0
-#define UARTHUB_SUPPORT_UNIVPLL_CTRL  1
-#define UARTHUB_ENABLE_MD_CHANNEL     1
+#define SSPM_DRIVER_EN                 1
+#define SSPM_DRIVER_PLL_CLK_CTRL_EN    0
+#define UNIVPLL_CTRL_EN                1
+#define MD_CHANNEL_EN                  1
+
+#if !(UNIVPLL_CTRL_EN)
+#ifdef SSPM_DRIVER_PLL_CLK_CTRL_EN
+#undef SSPM_DRIVER_PLL_CLK_CTRL_EN
+#endif
+#define SSPM_DRIVER_PLL_CLK_CTRL_EN    1
+#endif
 
 #include "INTFHUB_c_header.h"
 #include "UARTHUB_UART0_c_header.h"
@@ -49,6 +58,14 @@ enum uarthub_uartip_id {
 	uartip_id_md,
 	uartip_id_adsp,
 	uartip_id_cmm,
+};
+
+enum uarthub_clk_opp {
+	uarthub_clk_topckgen = 0,
+	uarthub_clk_26m,
+	uarthub_clk_52m,
+	uarthub_clk_104m,
+	uarthub_clk_208m,
 };
 
 #define UARTHUB_MAX_NUM_DEV_HOST   3
@@ -81,6 +98,9 @@ extern struct uarthub_ut_test_ops_struct mt6989_plat_ut_test_data;
 #define TRX_BUF_LEN                64
 
 int uarthub_uarthub_init_mt6989(struct platform_device *pdev);
+int uarthub_uarthub_exit_mt6989(void);
+int uarthub_uarthub_open_mt6989(void);
+int uarthub_uarthub_close_mt6989(void);
 int uarthub_is_apb_bus_clk_enable_mt6989(void);
 int uarthub_get_hwccf_univpll_on_info_mt6989(void);
 int uarthub_set_host_loopback_ctrl_mt6989(int dev_index, int tx_to_rx, int enable);
@@ -91,9 +111,14 @@ int uarthub_clear_host_trx_request_mt6989(int dev_index, enum uarthub_trx_type t
 int uarthub_config_bypass_ctrl_mt6989(int enable);
 int uarthub_config_baud_rate_m6989(void __iomem *dev_base, int rate_index);
 int uarthub_usb_rx_pin_ctrl_mt6989(void __iomem *dev_base, int enable);
-int uarthub_univpll_clk_ctrl_mt6989(int clk_on);
+#if !(UARTHUB_SUPPORT_FPGA)
 int uarthub_get_spm_res_info_mt6989(
 	int *p_spm_res_uarthub, int *p_spm_res_internal, int *p_spm_res_26m_off);
+int uarthub_get_uarthub_cg_info_mt6989(int *p_topckgen_cg, int *p_peri_cg);
+int uarthub_get_uart_src_clk_info_mt6989(void);
+#endif
+int uarthub_get_uart_mux_info_mt6989(void);
+int uarthub_get_uarthub_mux_info_mt6989(void);
 
 /* debug API */
 int uarthub_dump_apuart_debug_ctrl_mt6989(int enable);
@@ -101,7 +126,7 @@ int uarthub_get_apuart_debug_ctrl_sta_mt6989(void);
 int uarthub_get_intfhub_base_addr_mt6989(void);
 int uarthub_get_uartip_base_addr_mt6989(int dev_index);
 int uarthub_dump_uartip_debug_info_mt6989(
-	const char *tag, struct mutex *uartip_lock, int force_dump);
+	const char *tag, struct mutex *uartip_lock);
 int uarthub_dump_intfhub_debug_info_mt6989(const char *tag);
 int uarthub_dump_debug_monitor_mt6989(const char *tag);
 int uarthub_debug_monitor_ctrl_mt6989(int enable, int mode, int ctrl);
@@ -114,11 +139,13 @@ int uarthub_dump_debug_apdma_uart_info_mt6989(const char *tag);
 int uarthub_dump_sspm_log_mt6989(const char *tag);
 int uarthub_trigger_fpga_testing_mt6989(int type);
 int uarthub_trigger_dvt_testing_mt6989(int type);
+#if UARTHUB_SUPPORT_UT_API
 int uarthub_verify_combo_connect_sta_mt6989(int type, int rx_delay_ms);
+#endif
 
 /* UT Test API */
-#if UARTHUB_SUPPORT_UT_API
 int uarthub_is_ut_testing_mt6989(void);
+#if UARTHUB_SUPPORT_UT_API
 int uarthub_is_host_uarthub_ready_state_mt6989(int dev_index);
 int uarthub_get_host_irq_sta_mt6989(int dev_index);
 int uarthub_get_intfhub_active_sta_mt6989(void);
