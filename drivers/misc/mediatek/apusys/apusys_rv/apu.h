@@ -34,6 +34,7 @@ struct mtk_apu_hw_ops {
 	void (*wake_lock)(struct mtk_apu *apu, uint32_t id);
 	void (*wake_unlock)(struct mtk_apu *apu, uint32_t id);
 	void (*debug_info_dump)(struct mtk_apu *apu, struct seq_file *s);
+	int (*polling_rpc_status)(struct mtk_apu *apu, u32 pwr_stat, u32 timeout);
 
 	/* ipi related ops */
 	int (*ipi_send_pre)(struct mtk_apu *apu, uint32_t id, bool is_host_initiated);

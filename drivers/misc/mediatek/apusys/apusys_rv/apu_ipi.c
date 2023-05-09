@@ -695,8 +695,17 @@ int apu_ipi_affin_disable(void)
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 
+#define APU_IPI_UT_MAX_DATA (16)
+enum {
+	CMD_UT = 0,
+	CMD_UT_RANDOM,
+	CMD_GET_PWR_ON_OFF_TIME,
+	MAX_CMD_UT_ID,
+};
+
 struct apu_ipi_ut_ipi_data {
-	uint32_t val;
+	uint32_t cmd_id;
+	uint32_t data[APU_IPI_UT_MAX_DATA];
 };
 
 struct apu_ipi_ut_rpmsg_device {
@@ -708,20 +717,85 @@ struct apu_ipi_ut_rpmsg_device {
 static struct apu_ipi_ut_rpmsg_device apu_ipi_ut_rpm_dev;
 static struct mutex apu_ipi_ut_mtx;
 
-static int apu_ipi_ut_send(uint32_t val)
+static uint32_t rcx_on_ce_ts_last;
+static uint32_t rcx_off_ce_ts_last;
+static uint32_t rcx_on_ce_ts_avg;
+static uint32_t rcx_off_ce_ts_avg;
+static uint32_t rcx_on_ce_ts_max;
+static uint32_t rcx_off_ce_ts_max;
+
+static uint32_t warmboot_on_ts_last;
+static uint32_t dpidle_off_ts_last;
+static uint32_t warmboot_on_ts_avg;
+static uint32_t dpidle_off_ts_avg;
+static uint32_t warmboot_on_ts_max;
+static uint32_t dpidle_off_ts_max;
+
+static uint64_t ut_on_ts_last;
+static uint64_t ut_off_ts_last;
+static uint64_t ut_on_ts_avg;
+static uint64_t ut_off_ts_avg;
+static uint64_t ut_on_ts_max;
+static uint64_t ut_off_ts_max;
+static uint64_t ut_on_ts_cnt;
+static uint64_t ut_off_ts_cnt;
+static uint64_t ut_on_ts_acc;
+static uint64_t ut_off_ts_acc;
+
+static uint32_t boot_count;
+
+static int apu_ipi_ut_send(struct apu_ipi_ut_ipi_data *d, bool wait_ack)
 {
-	int ret = 0;
-	struct apu_ipi_ut_ipi_data data;
+	int ret = 0, ret2 = 0, i = 0;
+	int size = 256, num;
+	uint8_t buf[256], *ptr = buf;
+	struct mtk_apu *apu = g_apu;
+	struct mtk_apu_hw_ops *hw_ops;
+	struct timespec64 ts, te;
+	bool polling_mode = false;
+
+	if (!apu) {
+		pr_info("%s: apu == NULL\n", __func__);
+		return -1;
+	}
+	hw_ops = &apu->platdata->ops;
+
+	if (d->cmd_id == CMD_GET_PWR_ON_OFF_TIME &&
+		hw_ops->polling_rpc_status && d->data[0] == 1)
+		polling_mode = true;
 
 	if (!apu_ipi_ut_rpm_dev.ept) {
 		pr_info("%s: apu_ipi_ut_rpm_dev.ept == NULL\n", __func__);
 		return -1;
 	}
 
-	/* mutex_lock(&apu_ipi_ut_mtx); */
+	if (wait_ack)
+		mutex_lock(&apu_ipi_ut_mtx);
 
-	data.val = val;
-	pr_info("%s: data.val = %d\n", __func__, data.val);
+	num = snprintf(ptr, size, "%s: cmd_id = %d, data = ",
+		__func__, d->cmd_id);
+	if (num <= 0) {
+		pr_info("%s: snprintf return error(num = %d)\n",
+			__func__, num);
+		return num;
+	}
+	size -= num;
+	ptr += num;
+
+	for (i = 0; i < APU_IPI_UT_MAX_DATA; i++) {
+		num = snprintf(ptr, size, "%u ", d->data[i]);
+		if (num <= 0) {
+			pr_info("%s: snprintf return error(num = %d), i = %d\n",
+				__func__, num, i);
+			return num;
+		}
+		size -= num;
+		ptr += num;
+	}
+	pr_info("%s\n", buf);
+
+	if (polling_mode)
+		ktime_get_ts64(&ts);
 
 	/* power on */
 	ret = rpmsg_sendto(apu_ipi_ut_rpm_dev.ept, NULL, 1, 0);
@@ -730,30 +804,47 @@ static int apu_ipi_ut_send(uint32_t val)
 		goto out;
 	}
 
-	ret = rpmsg_send(apu_ipi_ut_rpm_dev.ept, &data, sizeof(data));
+	if (polling_mode) {
+		ret = hw_ops->polling_rpc_status(apu, 1, 1000000);
+		if (ret) {
+			pr_info("%s: polling rpc timeout(%d)\n", __func__, ret);
+		} else {
+			ktime_get_ts64(&te);
+			ts = timespec64_sub(te, ts);
+			pr_info("%s: diff = %llu ns\n", __func__, timespec64_to_ns(&ts));
+			ut_on_ts_cnt++;
+			ut_on_ts_last = timespec64_to_ns(&ts) / 1000;
+			ut_on_ts_max = max(ut_on_ts_max, ut_on_ts_last);
+			ut_on_ts_acc += ut_on_ts_last;
+			if (ut_on_ts_cnt != 0)
+				ut_on_ts_avg = ut_on_ts_acc / ut_on_ts_cnt;
+		}
+	}
+
+	ret = rpmsg_send(apu_ipi_ut_rpm_dev.ept, d, sizeof(*d));
 	if (ret) {
 		pr_info("%s: rpmsg_send fail(%d)\n", __func__, ret);
 		/* power off to restore ref cnt */
-		ret = rpmsg_sendto(apu_ipi_ut_rpm_dev.ept, NULL, 0, 1);
-		if (ret && ret != -EOPNOTSUPP)
-			pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
+		ret2 = rpmsg_sendto(apu_ipi_ut_rpm_dev.ept, NULL, 0, 1);
+		if (ret2 && ret2 != -EOPNOTSUPP)
+			pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret2);
 		goto out;
 	}
 
-	/* wait for receiving ack to ensure uP clear irq status done */
-	/* ret = wait_for_completion_timeout(
-	 *		&apu_ipi_ut_rpm_dev.ack, msecs_to_jiffies(100));
-	 * if (ret == 0) {
-	 *	pr_info("%s: wait for completion timeout\n", __func__);
-	 *	ret = -1;
-	 * } else {
-	 *	ret = 0;
-	 * }
-	 */
-
+	if (wait_ack) {
+		ret = wait_for_completion_timeout(
+				&apu_ipi_ut_rpm_dev.ack, msecs_to_jiffies(1000));
+		if (ret == 0) {
+			pr_info("%s: wait for completion timeout\n", __func__);
+			ret = -1;
+		} else {
+			ret = 0;
+		}
+	}
 
 out:
-	/* mutex_unlock(&apu_ipi_ut_mtx); */
+	if (wait_ack)
+		mutex_unlock(&apu_ipi_ut_mtx);
 
 	return ret;
 }
@@ -776,20 +867,75 @@ static int apu_ipi_ut_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 {
 	int ret;
 	struct apu_ipi_ut_ipi_data *d = data;
-	uint32_t rand_num;
+	uint32_t rand_num = 0;
+	uint32_t val;
+	struct mtk_apu *apu = g_apu;
+	struct mtk_apu_hw_ops *hw_ops;
+	struct timespec64 ts, te;
+	bool polling_mode = false;
 
-	get_random_bytes(&rand_num, sizeof(rand_num));
-	rand_num = rand_num % 100;
+	if (!apu) {
+		pr_info("%s: apu == NULL\n", __func__);
+		return -1;
+	}
+	hw_ops = &apu->platdata->ops;
 
-	msleep(rand_num);
+	if (d->cmd_id == CMD_GET_PWR_ON_OFF_TIME &&
+		hw_ops->polling_rpc_status && d->data[0] == 1)
+		polling_mode = true;
 
-	pr_info("%s: data = %d, rand_num = %u\n", __func__, d->val, rand_num);
-	/* complete(&apu_ipi_ut_rpm_dev.ack); */
+	if (d->cmd_id == CMD_UT_RANDOM) {
+		get_random_bytes(&rand_num, sizeof(rand_num));
+		rand_num = rand_num % 100;
+		/* usleep_range(0, rand_num); */
+		msleep(rand_num);
+	}
+
+	val = d->data[0];
+	pr_info("%s: cmd_id = %u, val = %d, rand_num = %u\n", __func__, d->cmd_id, val, rand_num);
+	if (d->cmd_id != CMD_UT_RANDOM)
+		complete(&apu_ipi_ut_rpm_dev.ack);
+
+	if (d->cmd_id == CMD_GET_PWR_ON_OFF_TIME) {
+		rcx_on_ce_ts_last = d->data[1];
+		rcx_off_ce_ts_last = d->data[2];
+		rcx_on_ce_ts_avg = d->data[3];
+		rcx_off_ce_ts_avg = d->data[4];
+		rcx_on_ce_ts_max = d->data[5];
+		rcx_off_ce_ts_max = d->data[6];
+		warmboot_on_ts_last = d->data[7];
+		dpidle_off_ts_last = d->data[8];
+		warmboot_on_ts_avg = d->data[9];
+		dpidle_off_ts_avg = d->data[10];
+		warmboot_on_ts_max = d->data[11];
+		dpidle_off_ts_max = d->data[12];
+		boot_count = d->data[13];
+	}
+
+	if (polling_mode)
+		ktime_get_ts64(&ts);
 
 	/* power off */
 	ret = rpmsg_sendto(apu_ipi_ut_rpm_dev.ept, NULL, 0, 1);
 	if (ret && ret != -EOPNOTSUPP)
 		pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
+
+	if (polling_mode) {
+		ret = hw_ops->polling_rpc_status(apu, 0, 1000000);
+		if (ret) {
+			pr_info("%s: polling rpc timeout(%d)\n", __func__, ret);
+		} else {
+			ktime_get_ts64(&te);
+			ts = timespec64_sub(te, ts);
+			pr_info("%s: diff = %llu ns\n", __func__, timespec64_to_ns(&ts));
+			ut_off_ts_cnt++;
+			ut_off_ts_last = timespec64_to_ns(&ts) / 1000;
+			ut_off_ts_max = max(ut_off_ts_max, ut_off_ts_last);
+			ut_off_ts_acc += ut_off_ts_last;
+			if (ut_off_ts_cnt != 0)
+				ut_off_ts_avg = ut_off_ts_acc / ut_off_ts_cnt;
+		}
+	}
 
 	return 0;
 }
@@ -820,6 +966,33 @@ static int apu_ipi_dbg_show(struct seq_file *s, void *unused)
 {
 	seq_printf(s, "apu_ipi_ut_val = %d\n", apu_ipi_ut_val);
 
+	seq_printf(s, "rcx_on_ce_ts_last = %u us\n", rcx_on_ce_ts_last);
+	seq_printf(s, "rcx_off_ce_ts_last = %u us\n", rcx_off_ce_ts_last);
+	seq_printf(s, "rcx_on_ce_ts_last = %u us\n", rcx_on_ce_ts_last);
+	seq_printf(s, "rcx_off_ce_ts_last = %u us\n", rcx_off_ce_ts_last);
+	seq_printf(s, "rcx_on_ce_ts_last = %u us\n", rcx_on_ce_ts_last);
+	seq_printf(s, "rcx_off_ce_ts_last = %u us\n", rcx_off_ce_ts_last);
+
+	seq_printf(s, "warmboot_on_ts_last = %u us\n", warmboot_on_ts_last);
+	seq_printf(s, "dpidle_off_ts_last = %u us\n", dpidle_off_ts_last);
+	seq_printf(s, "warmboot_on_ts_avg = %u us\n", warmboot_on_ts_avg);
+	seq_printf(s, "dpidle_off_ts_avg = %u us\n", dpidle_off_ts_avg);
+	seq_printf(s, "warmboot_on_ts_max = %u us\n", warmboot_on_ts_max);
+	seq_printf(s, "dpidle_off_ts_max = %u us\n", dpidle_off_ts_max);
+
+	seq_printf(s, "boot_count = %u\n", boot_count);
+
+	seq_printf(s, "ut_on_ts_last = %llu us\n", ut_on_ts_last);
+	seq_printf(s, "ut_off_ts_last = %llu us\n", ut_off_ts_last);
+	seq_printf(s, "ut_on_ts_avg = %llu us\n", ut_on_ts_avg);
+	seq_printf(s, "ut_off_ts_avg = %llu us\n", ut_off_ts_avg);
+	seq_printf(s, "ut_on_ts_max = %llu us\n", ut_on_ts_max);
+	seq_printf(s, "ut_off_ts_max = %llu us\n", ut_off_ts_max);
+	seq_printf(s, "ut_on_ts_cnt = %llu us\n", ut_on_ts_cnt);
+	seq_printf(s, "ut_off_ts_cnt = %llu us\n", ut_off_ts_cnt);
+	seq_printf(s, "ut_on_ts_acc = %llu us\n", ut_on_ts_acc);
+	seq_printf(s, "ut_off_ts_acc = %llu us\n", ut_off_ts_acc);
+
 	return 0;
 }
 
@@ -828,20 +1001,36 @@ static int apu_ipi_dbg_open(struct inode *inode, struct file *file)
 	return single_open(file, apu_ipi_dbg_show, inode->i_private);
 }
 
-enum {
-	CMD_UT = 0,
-};
-
-static void apu_ipi_dbg_exec_cmd(int cmd, unsigned int *args)
+static int apu_ipi_dbg_exec_cmd(int cmd, unsigned int *args)
 {
+	struct apu_ipi_ut_ipi_data d;
+	int ret = 0;
+
 	switch (cmd) {
 	case CMD_UT:
 		apu_ipi_ut_val = args[0];
-		apu_ipi_ut_send(args[0]);
+		d.cmd_id = cmd;
+		d.data[0] = args[0];
+		ret = apu_ipi_ut_send(&d, true);
+		break;
+	case CMD_UT_RANDOM:
+		apu_ipi_ut_val = args[0];
+		d.cmd_id = cmd;
+		d.data[0] = args[0];
+		ret = apu_ipi_ut_send(&d, false);
+		break;
+	case CMD_GET_PWR_ON_OFF_TIME:
+		apu_ipi_ut_val = args[0];
+		d.cmd_id = cmd;
+		d.data[0] = args[0];
+		ret = apu_ipi_ut_send(&d, false);
 		break;
 	default:
 		pr_info("%s: unknown cmd %d\n", __func__, cmd);
+		ret = -EINVAL;
 	}
+
+	return ret;
 }
 
 #define IPI_DBG_MAX_ARGS	(1)
@@ -870,6 +1059,10 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 	token = strsep(&ptr, " ");
 	if (strcmp(token, "ut") == 0) {
 		cmd = CMD_UT;
+	} else if (strcmp(token, "ut_rand") == 0) {
+		cmd = CMD_UT_RANDOM;
+	} else if (strcmp(token, "get_pwr_time") == 0) {
+		cmd = CMD_GET_PWR_ON_OFF_TIME;
 	} else {
 		ret = -EINVAL;
 		pr_info("%s: unknown ipi dbg cmd: %s\n", __func__, token);
@@ -885,11 +1078,14 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 		}
 	}
 
-	apu_ipi_dbg_exec_cmd(cmd, args);
-	ret = count;
+	ret = apu_ipi_dbg_exec_cmd(cmd, args);
+	if (!ret)
+		ret = count;
 
 out:
 	kfree(tmp);
+
+	pr_info("%s: ret = %d\n", __func__, ret);
 
 	return ret;
 }

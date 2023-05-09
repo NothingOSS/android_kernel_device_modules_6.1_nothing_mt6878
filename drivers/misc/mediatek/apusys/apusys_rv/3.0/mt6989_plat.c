@@ -8,6 +8,7 @@
 #include <linux/device.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
+#include <linux/iopoll.h>
 #include <linux/sched/clock.h>
 #include <linux/of_platform.h>
 #include <linux/pm_runtime.h>
@@ -523,6 +524,20 @@ static int mt6989_cold_boot_power_on(struct mtk_apu *apu)
 	return ret;
 }
 
+static int mt6989_polling_rpc_status(struct mtk_apu *apu, u32 pwr_stat, u32 timeout)
+{
+	int ret = 0;
+	void *addr = 0;
+	uint32_t val = 0;
+
+	addr = apu->apu_rpc + 0x44;
+
+	ret = readl_relaxed_poll_timeout_atomic(addr, val,
+		((val & (0x1UL)) == pwr_stat), 1, timeout);
+
+	return ret;
+}
+
 /* TODO: block power on off after pwr_on_fail_aee_triggered
  *		 or pwr_off_fail_aee_triggered?
  */
@@ -935,6 +950,7 @@ const struct mtk_apu_platdata mt6989_platdata = {
 		.apu_memmap_init = mt6989_apu_memmap_init,
 		.apu_memmap_remove = mt6989_apu_memmap_remove,
 		.power_on_off = mt6989_power_on_off,
+		.polling_rpc_status = mt6989_polling_rpc_status,
 		.wake_lock = mt6989_apu_pwr_wake_lock,
 		.wake_unlock = mt6989_apu_pwr_wake_unlock,
 		.debug_info_dump = mt6989_debug_info_dump,
