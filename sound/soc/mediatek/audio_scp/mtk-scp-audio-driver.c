@@ -148,12 +148,7 @@ static int scp_audio_dev_probe(struct platform_device *pdev)
 	set_scp_audio_base(scp_audio);
 	mtk_scp_audio_init_mem();
 
-	if (pdev->dev.of_node) {
-		dev_set_name(&pdev->dev, "%s", "snd_scp_audio");
-		pdev->name = pdev->dev.kobj.name;
-		pr_info("dev name %s\n", pdev->name);
-	}
-
+	pr_info("dev name %s\n", pdev->name);
 	ret = snd_soc_register_component(&pdev->dev,
 					 &mtk_scp_audio_pcm_platform,
 					 scp_audio->dai_drivers,
