@@ -103,6 +103,8 @@ static void switch_port_to_on(struct ssusb_mtk *ssusb, enum phy_mode mode)
 
 	dev_info(ssusb->dev, "port on (%d)\n", mode);
 
+	pm_runtime_get(ssusb->dev);
+
 	ssusb_clks_enable(ssusb);
 	ssusb_vsvoter_set(ssusb);
 	ssusb_phy_power_on(ssusb);
@@ -120,6 +122,8 @@ static void switch_port_to_off(struct ssusb_mtk *ssusb)
 	ssusb_phy_power_off(ssusb);
 	ssusb_vsvoter_clr(ssusb);
 	ssusb_clks_disable(ssusb);
+
+	pm_runtime_put(ssusb->dev);
 }
 
 static void switch_port_to_host(struct ssusb_mtk *ssusb)
@@ -234,8 +238,11 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 		spin_lock_irqsave(&mtu->lock, flags);
 		mtu3_stop(mtu);
 		/* report disconnect */
-		if (mtu->g.speed != USB_SPEED_UNKNOWN)
+		if (mtu->g.speed != USB_SPEED_UNKNOWN) {
 			mtu3_gadget_disconnect(mtu);
+			if (ssusb->force_vbus)
+				pm_runtime_put(ssusb->dev);
+		}
 		spin_unlock_irqrestore(&mtu->lock, flags);
 		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
 		mtu3_device_disable(mtu);
@@ -461,8 +468,11 @@ static int ssusb_role_sw_register(struct otg_switch_mtk *otg_sx)
 	else
 		otg_sx->default_role = USB_ROLE_HOST;
 
-	if (ssusb->clk_mgr)
+	if (ssusb->clk_mgr) {
+		/* workaround, prevent usage count issue */
+		pm_runtime_get(ssusb->dev);
 		otg_sx->default_role = USB_ROLE_NONE;
+	}
 
 	role_sx_desc.set = ssusb_role_sw_set;
 	role_sx_desc.get = ssusb_role_sw_get;

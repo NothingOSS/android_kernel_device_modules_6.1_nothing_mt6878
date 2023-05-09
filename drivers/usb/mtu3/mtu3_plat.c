@@ -783,7 +783,7 @@ static int mtu3_probe(struct platform_device *pdev)
 	/* enable power domain */
 	pm_runtime_set_active(dev);
 	pm_runtime_use_autosuspend(dev);
-	pm_runtime_set_autosuspend_delay(dev, 4000);
+	pm_runtime_set_autosuspend_delay(dev, 2000);
 	pm_runtime_enable(dev);
 	pm_runtime_get_sync(dev);
 
@@ -851,7 +851,7 @@ static int mtu3_probe(struct platform_device *pdev)
 	device_enable_async_suspend(dev);
 	pm_runtime_mark_last_busy(dev);
 	pm_runtime_put_autosuspend(dev);
-	pm_runtime_forbid(dev);
+	/* pm_runtime_forbid(dev); */
 
 	return 0;
 
