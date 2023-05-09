@@ -177,6 +177,7 @@
 #define MT6989_TOP_AXI_PROT_EN_MMSYS1_MM_INFRA	(BIT(4) | BIT(6) |  \
 			BIT(7))
 #define MT6989_TOP_AXI_PROT_EN_MMSYS2_MM_INFRA	(BIT(12))
+#define MT6989_BCRM_INFRA1_PROT_EN_BCRM_INFRA_AO10_MM_INFRA	(BIT(1))
 #define MT6989_TOP_AXI_PROT_EN_INFRASYS0_MM_INFRA	(BIT(8) | BIT(9))
 #define MT6989_TOP_AXI_PROT_EN_EMISYS0_MM_INFRA	(BIT(21) | BIT(22))
 #define MT6989_TOP_AXI_PROT_EN_EMISYS1_MM_INFRA	(BIT(21) | BIT(22))
@@ -188,12 +189,14 @@ enum regmap_type {
 	INVALID_TYPE = 0,
 	IFR_TYPE = 1,
 	VLP_TYPE = 2,
+	BCRM_INFRA1_TYPE = 3,
 	BUS_TYPE_NUM,
 };
 
 static const char *bus_list[BUS_TYPE_NUM] = {
 	[IFR_TYPE] = "ifr-bus",
 	[VLP_TYPE] = "vlpcfg",
+	[BCRM_INFRA1_TYPE] = "bcrm-infra1-bus",
 };
 
 /*
@@ -734,6 +737,8 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_MM_INFRA),
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_MM_INFRA),
+			BUS_PROT_IGN(BCRM_INFRA1_TYPE, 0x000, 0x004, 0x008, 0x00c,
+				MT6989_BCRM_INFRA1_PROT_EN_BCRM_INFRA_AO10_MM_INFRA),
 			BUS_PROT_IGN(IFR_TYPE, 0x004, 0x008, 0x000, 0x00c,
 				MT6989_TOP_AXI_PROT_EN_INFRASYS0_MM_INFRA),
 			BUS_PROT_IGN(IFR_TYPE, 0x124, 0x128, 0x120, 0x12c,
@@ -850,6 +855,8 @@ static int mt6989_scpsys_probe(struct platform_device *pdev)
 	int i, ret;
 
 	soc = of_device_get_match_data(&pdev->dev);
+	if (!soc)
+		return -EINVAL;
 
 	scp = init_scp(pdev, soc->domains, soc->num_domains, &soc->regs, bus_list, BUS_TYPE_NUM);
 	if (IS_ERR(scp))
