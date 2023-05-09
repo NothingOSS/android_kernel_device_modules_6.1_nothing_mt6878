@@ -24,7 +24,6 @@
 			<&topckgen_clk CLK_TOP_ADSP_UARTHUB_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_DPMAIF_MAIN_SEL>,
 			<&topckgen_clk CLK_TOP_PWM_SEL>,
-			<&topckgen_clk CLK_TOP_SFLASH_SEL>,
 			<&topckgen_clk CLK_TOP_IPSEAST_SEL>,
 			<&topckgen_clk CLK_TOP_IPSWEST_SEL>,
 			<&topckgen_clk CLK_TOP_TL_SEL>,
