@@ -1342,6 +1342,55 @@ int mtk_mipi_tx_ssc_en_mt6886(struct phy *phy, struct mtk_panel_ext *mtk_panel)
 	return 0;
 }
 
+int mtk_mipi_tx_ssc_en_mt6897(struct phy *phy, struct mtk_panel_ext *mtk_panel)
+{
+	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
+	unsigned int data_rate;
+	u16 pdelta1, ssc_prd;
+	u8 txdiv, div3;
+	unsigned int delta1 = 5; /* Delta1 is SSC range, default is 0%~-0.5% */
+
+	DDPINFO("%s+\n", __func__);
+	if (mtk_panel->params->ssc_enable) {
+
+		data_rate = mtk_panel->params->data_rate;
+		if (data_rate >= 2000) {
+			txdiv = 1;
+		} else if (data_rate >= 1000) {
+			txdiv = 2;
+		} else if (data_rate >= 500) {
+			txdiv = 4;
+		} else if (data_rate >= 250) {
+			txdiv = 8;
+		} else if (data_rate >= 125) {
+			txdiv = 16;
+		} else {
+			DDPPR_ERR("data rate is too low\n");
+			return -EINVAL;
+		}
+		div3 = 1;
+		delta1 = (mtk_panel->params->ssc_range == 0) ?
+			delta1 : mtk_panel->params->ssc_range;
+
+		DDPMSG("delta1:%d\n", delta1);
+		pdelta1 = data_rate / 2 * txdiv * div3 * delta1 / 26 * 262144 / 1000 / 433;
+
+		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON3_MT6983,
+						FLD_RG_DSI_PLL_SDM_SSC_DELTA1_MT6983, pdelta1);
+		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON3_MT6983,
+						FLD_RG_DSI_PLL_SDM_SSC_DELTA_MT6983, pdelta1 << 16);
+
+		ssc_prd = 0x1b1;//fix
+		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON2_MT6983,
+						FLD_RG_DSI_PLL_SDM_SSC_PRD_MT6983, ssc_prd << 16);
+		mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_CON2_MT6983,
+						mipi_tx->driver_data->dsi_ssc_en);
+
+		DDPINFO("set ssc enabled\n");
+	}
+	return 0;
+}
+
 void mtk_mipi_tx_sw_control_en(struct phy *phy, bool en)
 {
 #ifndef CONFIG_FPGA_EARLY_PORTING
@@ -5363,6 +5412,7 @@ static const struct mtk_mipitx_data mt6897_mipitx_data = {
 	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
 	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
 	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_mt6983,
+	.mipi_tx_ssc_en = mtk_mipi_tx_ssc_en_mt6897,
 };
 
 static const struct mtk_mipitx_data mt6895_mipitx_data = {

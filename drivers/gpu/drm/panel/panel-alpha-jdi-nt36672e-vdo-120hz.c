@@ -47,6 +47,36 @@ static char bl_tb0[] = { 0x51, 0xff };
 //otherwise voltage will be unstable
 #define BYPASSI2C
 
+#define FHD_FRAME_WIDTH    (1080)
+#define FHD_HFP            (72)
+#define FHD_HSA            (16)
+#define FHD_HBP            (80)
+#define FHD_HTOTAL         (FHD_FRAME_WIDTH + FHD_HFP + FHD_HSA + FHD_HBP)
+#define FHD_FRAME_HEIGHT   (2400)
+#define FHD_VFP_120        (94)
+#define FHD_VFP_90         (927)
+#define FHD_VFP_60         (2578)
+#define FHD_VSA            (10)
+#define FHD_VBP            (10)
+#define FHD_VTOTAL_120     (FHD_FRAME_HEIGHT + FHD_VFP_120 + FHD_VSA + FHD_VBP)
+#define FHD_VTOTAL_90      (FHD_FRAME_HEIGHT + FHD_VFP_90 + FHD_VSA + FHD_VBP)
+#define FHD_VTOTAL_60      (FHD_FRAME_HEIGHT + FHD_VFP_60 + FHD_VSA + FHD_VBP)
+#define FHD_FRAME_TOTAL_120 (FHD_VTOTAL_120 * FHD_HTOTAL)
+#define FHD_FRAME_TOTAL_90  (FHD_VTOTAL_90 * FHD_HTOTAL)
+#define FHD_FRAME_TOTAL_60  (FHD_VTOTAL_60 * FHD_HTOTAL)
+#define FHD_VREFRESH_120   (120)
+#define FHD_VREFRESH_90    (90)
+#define FHD_VREFRESH_60    (60)
+#define FHD_CLK_120_X10    ((FHD_FRAME_TOTAL_120 * FHD_VREFRESH_120) / 100)
+#define FHD_CLK_90_X10     ((FHD_FRAME_TOTAL_90 * FHD_VREFRESH_90) / 100)
+#define FHD_CLK_60_X10     ((FHD_FRAME_TOTAL_60 * FHD_VREFRESH_60) / 100)
+#define FHD_CLK_120		   (((FHD_CLK_120_X10 % 10) != 0) ?             \
+			(FHD_CLK_120_X10 / 10 + 1) : (FHD_CLK_120_X10 / 10))
+#define FHD_CLK_90		   (((FHD_CLK_90_X10 % 10) != 0) ?             \
+				(FHD_CLK_90_X10 / 10 + 1) : (FHD_CLK_90_X10 / 10))
+#define FHD_CLK_60		   (((FHD_CLK_60_X10 % 10) != 0) ?             \
+				(FHD_CLK_60_X10 / 10 + 1) : (FHD_CLK_60_X10 / 10))
+
 #ifndef BYPASSI2C
 /* i2c control start */
 #define LCM_I2C_ID_NAME "I2C_LCD_BIAS"
@@ -873,39 +903,39 @@ static int jdi_enable(struct drm_panel *panel)
 }
 
 static const struct drm_display_mode default_mode = {
-	.clock = 370506,
+	.clock = FHD_CLK_60,
 	.hdisplay = 1080,
 	.hsync_start = 1080 + 76,//HFP
 	.hsync_end = 1080 + 76 + 12,//HSA
 	.htotal = 1080 + 76 + 12 + 80,//HBP
 	.vdisplay = 2400,
-	.vsync_start = 2400 + 2528,//VFP
-	.vsync_end = 2400 + 2528 + 10,//VSA
-	.vtotal = 2400 + 2528 + 10 + 10,//VBP
+	.vsync_start = 2400 + FHD_VFP_60,//VFP
+	.vsync_end = 2400 + FHD_VFP_60 + 10,//VSA
+	.vtotal = 2400 + FHD_VFP_60 + 10 + 10,//VBP
 };
 
 static const struct drm_display_mode performance_mode_90hz = {
-	.clock = 370431,
+	.clock = FHD_CLK_90,
 	.hdisplay = 1080,
 	.hsync_start = 1080 + 76,//HFP
 	.hsync_end = 1080 + 76 + 12,//HSA
 	.htotal = 1080 + 76 + 12 + 80,//HBP
 	.vdisplay = 2400,
-	.vsync_start = 2400 + 878,//VFP
-	.vsync_end = 2400 + 878 + 10,//VSA
-	.vtotal = 2400 + 878 + 10 + 10,//VBP
+	.vsync_start = 2400 + FHD_VFP_90,//VFP
+	.vsync_end = 2400 + FHD_VFP_90 + 10,//VSA
+	.vtotal = 2400 + FHD_VFP_90 + 10 + 10,//VBP
 };
 
 static const struct drm_display_mode performance_mode_120hz = {
-	.clock = 374999,
+	.clock = FHD_CLK_120,
 	.hdisplay = 1080,
 	.hsync_start = 1080 + 76,//HFP
 	.hsync_end = 1080 + 76 + 12,//HSA
 	.htotal = 1080 + 76 + 12 + 80,//HBP
 	.vdisplay = 2400,
-	.vsync_start = 2400 + 84,//VFP
-	.vsync_end = 2400 + 84 + 10,//VSA
-	.vtotal = 2400 + 84 + 10 + 10,//VBP
+	.vsync_start = 2400 + FHD_VFP_120,//VFP
+	.vsync_end = 2400 + FHD_VFP_120 + 10,//VSA
+	.vtotal = 2400 + FHD_VFP_120 + 10 + 10,//VBP
 };
 
 static const struct drm_display_mode performance_mode_30hz = {
@@ -1023,13 +1053,13 @@ static struct mtk_panel_params ext_params = {
 		.pll_clk = 556,
 		.vfp_lp_dyn = 4178,
 		.hfp = 76,
-		.vfp = 2575,
+		.vfp = 2590,
 	},
 };
 
 static struct mtk_panel_params ext_params_90hz = {
 	.pll_clk = 551,
-	.vfp_low_power = 2528,
+	.vfp_low_power = 2578,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
 	.lcm_degree = PROBE_FROM_DTS,
@@ -1103,15 +1133,15 @@ static struct mtk_panel_params ext_params_90hz = {
 	.dyn = {
 		.switch_en = 1,
 		.pll_clk = 556,
-		.vfp_lp_dyn = 2528,
+		.vfp_lp_dyn = 2578,
 		.hfp = 76,
-		.vfp = 905,
+		.vfp = 940,
 	},
 };
 
 static struct mtk_panel_params ext_params_120hz = {
 	.pll_clk = 551,
-	.vfp_low_power = 2528,
+	.vfp_low_power = 2578,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
 	.lcm_degree = PROBE_FROM_DTS,
@@ -1185,9 +1215,9 @@ static struct mtk_panel_params ext_params_120hz = {
 	.dyn = {
 		.switch_en = 1,
 		.pll_clk = 556,
-		.vfp_lp_dyn = 2528,
+		.vfp_lp_dyn = 2578,
 		.hfp = 76,
-		.vfp = 82,
+		.vfp = 116,
 	},
 };
 
