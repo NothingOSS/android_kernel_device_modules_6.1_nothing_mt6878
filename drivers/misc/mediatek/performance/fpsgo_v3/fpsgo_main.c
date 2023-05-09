@@ -46,6 +46,7 @@ enum FPSGO_NOTIFIER_PUSH_TYPE {
 	FPSGO_NOTIFIER_ACQUIRE              = 0x08,
 	FPSGO_NOTIFIER_BUFFER_QUOTA         = 0x09,
 	FPSGO_NOTIFIER_FRAME_HINT			= 0x10,
+	FPSGO_NOTIFIER_SBE_POLICY			= 0x11,
 };
 
 /* TODO: use union*/
@@ -76,6 +77,9 @@ struct FPSGO_NOTIFIER_PUSH_TAG {
 	int consumer_pid;
 	int consumer_tid;
 	int producer_pid;
+
+	char *name;
+	unsigned long mask;
 };
 
 static struct mutex notify_lock;
@@ -375,6 +379,10 @@ static void fpsgo_notifier_wq_cb(void)
 		fpsgo_notifier_wq_cb_hint_frame(vpPush->qudeq_cmd,
 				vpPush->pid, vpPush->frameID,
 				vpPush->cur_ts, vpPush->identifier);
+		break;
+	case FPSGO_NOTIFIER_SBE_POLICY:
+		fpsgo_ctrl2comp_set_sbe_policy(vpPush->pid,
+				vpPush->name, vpPush->mask, vpPush->qudeq_cmd);
 		break;
 	default:
 		FPSGO_LOGE("[FPSGO_CTRL] unhandled push type = %d\n",
@@ -793,12 +801,32 @@ void fpsgo_notify_frame_hint(int qudeq,
 
 void fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask, int start, int *ret)
 {
-	/* *ret = 0;
-	 * *ret = fpsgo_ctrl2comp_set_sbe_policy(pid, name, mask, start);
-	 */
+	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
 
-	xgf_trace("[chi_debug] %s pid:%d name:%s mask:%ld, start:%d ret:%d",
-		__func__, pid, name, mask, start, *ret);
+	if (!fpsgo_is_enable())
+		return;
+
+	vpPush =
+		(struct FPSGO_NOTIFIER_PUSH_TAG *)
+		fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+	if (!vpPush) {
+		FPSGO_LOGE("[FPSGO_CTRL] OOM\n");
+		return;
+	}
+
+	if (!kfpsgo_tsk) {
+		FPSGO_LOGE("[FPSGO_CTRL] NULL WorkQueue\n");
+		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+		return;
+	}
+
+	vpPush->ePushType = FPSGO_NOTIFIER_SBE_POLICY;
+	vpPush->pid = pid;
+	vpPush->name = name;
+	vpPush->mask = mask;
+	vpPush->qudeq_cmd = start;
+	fpsgo_queue_work(vpPush);
+	ret = 0;
 }
 
 void dfrc_fps_limit_cb(unsigned int fps_limit)

@@ -53,6 +53,13 @@ struct _FPSGO_PACKAGE {
 	__u64 identifier;
 };
 
+struct _FPSGO_SBE_PACKAGE {
+	__u32 pid;
+	__u32 start;
+	__u64 mask;
+	__u8 name[16];
+	__s32 value;
+};
 
 struct _XGFFRAME_PACKAGE {
 	__u32 tid;
@@ -112,6 +119,7 @@ struct _XGFFRAME_BOOST_PACKAGE {
 #define FPSGO_BUFFER_QUOTA           _IOW('g', 24, struct _FPSGO_PACKAGE)
 #define FPSGO_GET_CAM_APK_PID        _IOW('g', 25, struct _FPSGO_PACKAGE)
 #define FPSGO_GET_CAM_SERVER_PID     _IOW('g', 26, struct _FPSGO_PACKAGE)
+#define FPSGO_SBE_SET_POLICY         _IOW('g', 27, struct _FPSGO_SBE_PACKAGE)
 #define FPSGO_HINT_FRAME             _IOW('g', 28, struct _FPSGO_PACKAGE)
 
 #define XGFFRAME_START              _IOW('g', 1, struct _XGFFRAME_PACKAGE)

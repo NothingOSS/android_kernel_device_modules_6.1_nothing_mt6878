@@ -403,10 +403,30 @@ static long device_ioctl(struct file *filp,
 {
 	ssize_t ret = 0;
 	int pwr_cmd = -1, value1 = -1, value2 = -1, pwr_pid = -1, pwr_fps = -1;
-	struct _FPSGO_PACKAGE *msgKM = NULL,
-			*msgUM = (struct _FPSGO_PACKAGE *)arg;
+	struct _FPSGO_PACKAGE *msgKM = NULL, *msgUM = NULL;
 	struct _FPSGO_PACKAGE smsgKM;
+	struct _FPSGO_SBE_PACKAGE *msgKM_SBE = NULL, *msgUM_SBE = NULL;
+	struct _FPSGO_SBE_PACKAGE smsgKM_SBE;
 
+	if (cmd == FPSGO_SBE_SET_POLICY) {
+		msgUM_SBE = (struct _FPSGO_SBE_PACKAGE *)arg;
+		msgKM_SBE = &smsgKM_SBE;
+		if (perfctl_copy_from_user(msgKM_SBE, msgUM_SBE,
+					sizeof(struct _FPSGO_SBE_PACKAGE))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+#if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
+		if (fpsgo_notify_sbe_policy_fp) {
+			fpsgo_notify_sbe_policy_fp(msgKM_SBE->pid, msgKM_SBE->name,
+				msgKM_SBE->mask, msgKM_SBE->start, &msgKM_SBE->value);
+			ret = msgKM_SBE->value;
+		}
+#endif
+		goto ret_ioctl;
+	}
+
+	msgUM = (struct _FPSGO_PACKAGE *)arg;
 	msgKM = &smsgKM;
 
 	if (perfctl_copy_from_user(msgKM, msgUM,
