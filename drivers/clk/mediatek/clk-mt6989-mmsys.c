@@ -333,7 +333,7 @@ static const struct mtk_gate_regs mminfra_config_cg_regs = {
 
 static const struct mtk_gate mminfra_config_clks[] = {
 	GATE_MMINFRA_CONFIG(CLK_MMINFRA_SMI, "mminfra_smi",
-			"mminfra_ck"/* parent */, 2),
+			"clk26m"/* parent */, 2),
 };
 
 static const struct mtk_clk_desc mminfra_config_mcd = {
