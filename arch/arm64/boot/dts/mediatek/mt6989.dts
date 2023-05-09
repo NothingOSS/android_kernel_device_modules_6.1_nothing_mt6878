@@ -6998,13 +6998,11 @@
 			      "MMG_CG",
 			      "mmdvfs_mux";
 			operating-points-v2 = <&opp_table_img>;
-#if 0
-			dvfsrc-vmm-supply = <&vmm_proxy_label>;
 			mediatek,imgsys-qos-sc-motr = <2>;
 			mediatek,imgsys-qos-sc-nums = <2>;
-			mediatek,imgsys-qos-sc-id = <7 7>;
+			mediatek,imgsys-qos-sc-id = <19 20>;
 			interconnects =
-				<&mmqos SLAVE_LARB(10)
+				<&mmqos SLAVE_LARB(28)
 					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos SLAVE_LARB(22)
 					&mmqos SLAVE_COMMON(0)>,
@@ -7017,7 +7015,6 @@
 				"l22_common_w_0",
 				"l9_common_r_1",
 				"l15_common_w_1";
-#endif
 		};
 
 		inlinerot0@1460b000 {
