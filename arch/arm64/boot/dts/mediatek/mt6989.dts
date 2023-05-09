@@ -524,9 +524,21 @@
 	};
 
 	ufscfg_ao_clk: syscon@112b8000 {
-		compatible = "mediatek,mt6989-ufscfg_ao", "syscon";
+		compatible = "mediatek,mt6989-ufscfg_ao", "syscon", "simple-mfd";
 		reg = <0 0x112b8000 0 0x1000>;
 		#clock-cells = <1>;
+
+		ufscfgao_rst: reset-controller {
+			compatible = "ti,syscon-reset";
+			#reset-cells = <1>;
+
+			ti,reset-bits = <
+				/* ufs mphy reset */
+				/* 8: mphy */
+				0x48  8 0x4c  8 0 0
+				(ASSERT_SET | DEASSERT_SET | STATUS_NONE)
+				>;
+		};
 	};
 
 	ufscfg_pdn_clk: syscon@112bb000 {
@@ -549,24 +561,6 @@
 				/* 2: ufshci */
 				0x48  2 0x4c  2 0 0
 				(ASSERT_SET | DEASSERT_SET | STATUS_NONE)
-				>;
-		};
-	};
-
-	ufscfg_vlp_clk: syscon@112bd000 {
-		compatible = "mediatek,mt6989-ufscfg_pdn", "syscon", "simple-mfd";
-		reg = <0 0x112bd000 0 0x1000>;
-		#clock-cells = <1>;
-
-		ufscfgvlp_rst: reset-controller {
-			compatible = "ti,syscon-reset";
-			#reset-cells = <1>;
-
-			ti,reset-bits = <
-				/* ufs mphy reset */
-				/* 0: mphy */
-				0x90 0 0x90 0 0 0
-				(ASSERT_SET | DEASSERT_CLEAR | STATUS_NONE)
 				>;
 		};
 	};
@@ -9851,15 +9845,12 @@
 				     <GIC_SPI 296 IRQ_TYPE_LEVEL_HIGH 0>,
 				     <GIC_SPI 297 IRQ_TYPE_LEVEL_HIGH 0>;
 
-#if 0
 			clocks =
 				<&topckgen_clk CLK_TOP_U_SEL>,
-				//<&topckgen_clk CLK_TOP_MAINPLL_D4_D2>,
-				//<&topckgen_clk CLK_TOP_UNIVPLL_D5>,
+				<&topckgen_clk CLK_TOP_MAINPLL_D4_D2>,
+				<&topckgen_clk CLK_TOP_UNIVPLL_D5>,
 				<&topckgen_clk CLK_TOP_AES_UFSFDE_SEL>,
 				<&topckgen_clk CLK_TOP_U_MBIST_SEL>,
-				<&topckgen_clk CLK_TOP_U_FAXI_SEL>,
-				<&topckgen_clk CLK_TOP_U_FMEM_SUB_SEL>,
 				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_TX_SYM>,
 				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM0>,
 				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM1>,
@@ -9873,12 +9864,10 @@
 
 			clock-names =
 				"ufs_sel",
-				//"ufs_sel_min_src",
-				//"ufs_sel_max_src",
+				"ufs_sel_min_src",
+				"ufs_sel_max_src",
 				"ufs_fde",
 				"ufs_mbist",
-				"ufs_faxi_sel",
-				"ufs_fmem_sub_sel",
 				"unipro_tx_sym",
 				"unipro_rx_sym0",
 				"unipro_rx_sym1",
@@ -9891,9 +9880,7 @@
 				"ufshci_aes_axi";
 
 			freq-table-hz =
-				//<273000000 49920000>,
-				//<0 0>,
-				<0 0>,
+				<273000000 49920000>,
 				<0 0>,
 				<0 0>,
 				<0 0>,
@@ -9910,10 +9897,9 @@
 				<0 0>;
 
 			/* for clock scaling bind vcore */
-			//dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			/* 0.65V for clock scale up */
-			//clk-scale-up-vcore-min = <650000>;
-#endif
+			clk-scale-up-vcore-min = <650000>;
 
 			vcc-supply = <&mt6363_vemc>;
 			vccq-supply = <&mt6363_vufs12>;
