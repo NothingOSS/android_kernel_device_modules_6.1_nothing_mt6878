@@ -7841,6 +7841,7 @@
 				<0 0x1a048000 0 0x6000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <0>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBA>;
 			clocks = <&camsys_rmsa_clk CLK_CAMSYS_RMSA_LARBX>,
 				<&camsys_rmsa_clk CLK_CAMSYS_RMSA_CAM>,
 				<&camsys_rmsa_clk CLK_CAMSYS_RMSA_CAMTG>;
@@ -8003,6 +8004,7 @@
 				<0 0x1a088000 0 0x6000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <1>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBB>;
 			clocks = <&camsys_rmsb_clk CLK_CAMSYS_RMSB_LARBX>,
 				<&camsys_rmsb_clk CLK_CAMSYS_RMSB_CAM>,
 				<&camsys_rmsb_clk CLK_CAMSYS_RMSB_CAMTG>;
@@ -8165,6 +8167,7 @@
 				<0 0x1a0c8000 0 0x6000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <2>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBC>;
 			clocks = <&camsys_rmsc_clk CLK_CAMSYS_RMSC_LARBX>,
 				<&camsys_rmsc_clk CLK_CAMSYS_RMSC_CAM>,
 				<&camsys_rmsc_clk CLK_CAMSYS_RMSC_CAMTG>;
