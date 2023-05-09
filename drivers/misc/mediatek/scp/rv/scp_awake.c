@@ -381,7 +381,10 @@ int scp_clr_spm_reg(void *unused)
 	 * scp side write 0x1 to SCP2SPM_IPC_SET to set SPM reg
 	 * scp set        bit[0]
 	 */
-	writel(0x1, SCP_TO_SPM_REG);
+	if (scpreg.secure_ipc)
+		scp_do_spm_clear(0x1);
+	else
+		writel(0x1, SCP_TO_SPM_REG);
 
 	return 0;
 }

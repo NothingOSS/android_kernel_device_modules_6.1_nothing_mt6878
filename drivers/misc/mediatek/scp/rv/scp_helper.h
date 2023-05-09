@@ -135,6 +135,7 @@ struct scp_regs {
 	unsigned int twohart;
 	unsigned int secure_dump;
 	int scp_dram_region;
+	unsigned int secure_ipc;
 	struct scp_bus_tracker_status tracker_status;
 };
 
@@ -280,6 +281,7 @@ enum MTK_TINYSYS_SCP_KERNEL_OP {
 	MTK_TINYSYS_SCP_KERNEL_OP_WDT_SET,
 	MTK_TINYSYS_SCP_KERNEL_OP_HALT_SET,
 	MTK_TINYSYS_SCP_KERNEL_OP_WDT_CLEAR,
+	MTK_TINYSYS_SCP_KERNEL_OP_SPM_CLEAR,
 	MTK_TINYSYS_SCP_KERNEL_OP_NUM,
 };
 
@@ -371,6 +373,16 @@ static inline uint64_t scp_do_wdt_clear(uint64_t coreid)
 	arm_smccc_smc(MTK_SIP_TINYSYS_SCP_CONTROL,
 			MTK_TINYSYS_SCP_KERNEL_OP_WDT_CLEAR,
 			coreid, 0, 0, 0, 0, 0, &res);
+	return res.a0;
+}
+
+static inline uint64_t scp_do_spm_clear(uint64_t val)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_TINYSYS_SCP_CONTROL,
+			MTK_TINYSYS_SCP_KERNEL_OP_SPM_CLEAR,
+			val, 0, 0, 0, 0, 0, &res);
 	return res.a0;
 }
 #endif

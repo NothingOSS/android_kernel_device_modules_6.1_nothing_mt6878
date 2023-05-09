@@ -614,7 +614,10 @@ static void scp_A_notify_ws(struct work_struct *ws)
 	if (scp_notify_flag) {
 		scp_recovery_flag[SCP_A_ID] = SCP_A_RECOVERY_OK;
 
-		writel(0xff, SCP_TO_SPM_REG); /* patch: clear SPM interrupt */
+		if (scpreg.secure_ipc)
+			scp_do_spm_clear(0xff);
+		else
+			writel(0xff, SCP_TO_SPM_REG); /* patch: clear SPM interrupt */
 
 		scp_ready[SCP_A_ID] = 1;
 		/* once scp recovery success reset timeout reset count */
@@ -2565,6 +2568,7 @@ static int scp_device_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device_node *node;
 	const char *scp_pm_notify = NULL;
+	const char *scp_secure_ipc = NULL;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	scpreg.sram = devm_ioremap_resource(dev, res);
@@ -2704,6 +2708,16 @@ static int scp_device_probe(struct platform_device *pdev)
 		if (!strncmp(scp_pm_notify, "enable", strlen("enable"))) {
 			pr_notice("[SCP] scp_pm_notify enabled\n");
 			scp_pm_notify_support = 1;
+		}
+	}
+
+	/* scp secure ipc */
+	scpreg.secure_ipc = 0;
+	if (!of_property_read_string(pdev->dev.of_node,
+				"scp-secure-ipc", &scp_secure_ipc)){
+		if (!strncmp(scp_secure_ipc, "enable", strlen("enable"))) {
+			pr_notice("[SCP] scp_secure_ipc enabled\n");
+			scpreg.secure_ipc = 1;
 		}
 	}
 
