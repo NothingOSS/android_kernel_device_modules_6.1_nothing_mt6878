@@ -124,8 +124,8 @@
 			reg = <0x0000>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <766>;
 		};
 
@@ -134,8 +134,8 @@
 			reg = <0x0100>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-		//	cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-		//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+					&system_vcore &s2idle>;
 			capacity-dmips-mhz = <766>;
 		};
 
@@ -144,8 +144,8 @@
 			reg = <0x0200>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-		//	cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-		//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+					&system_vcore &s2idle>;
 			capacity-dmips-mhz = <766>;
 		};
 
@@ -154,8 +154,8 @@
 			reg = <0x0300>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-		//	cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-		//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+					&system_vcore &s2idle>;
 			capacity-dmips-mhz = <766>;
 		};
 
@@ -164,8 +164,8 @@
 			reg = <0x0400>;
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
-		//	cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-		//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
+					&system_vcore &s2idle>;
 			capacity-dmips-mhz = <958>;
 		};
 
@@ -174,8 +174,8 @@
 			reg = <0x0500>;
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
-		//	cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-		//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
+					&system_vcore &s2idle>;
 			capacity-dmips-mhz = <958>;
 		};
 
@@ -184,8 +184,8 @@
 			reg = <0x0600>;
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
-		//	cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-		//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
+					&system_vcore &s2idle>;
 			capacity-dmips-mhz = <958>;
 		};
 
@@ -194,8 +194,8 @@
 			reg = <0x0700>;
 			performance-domains = <&performance 2>;
 			enable-method = "psci";
-		//	cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
-		//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+					&system_vcore &s2idle>;
 			capacity-dmips-mhz = <1024>;
 		};
 
@@ -246,73 +246,73 @@
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010000>;
 				local-timer-stop;
-				entry-latency-us = <126>;
-				exit-latency-us = <251>;
-				min-residency-us = <5700>;
+				entry-latency-us = <97>;
+				exit-latency-us = <252>;
+				min-residency-us = <5080>;
 			};
 			cpuoff_m: cpuoff-m {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010000>;
 				local-timer-stop;
-				entry-latency-us = <77>;
-				exit-latency-us = <179>;
-				min-residency-us = <2520>;
+				entry-latency-us = <53>;
+				exit-latency-us = <143>;
+				min-residency-us = <2280>;
 			};
 			cpuoff_b: cpuoff-b {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010000>;
 				local-timer-stop;
-				entry-latency-us = <52>;
-				exit-latency-us = <129>;
-				min-residency-us = <1890>;
+				entry-latency-us = <40>;
+				exit-latency-us = <107>;
+				min-residency-us = <2830>;
 			};
 			clusteroff_l: clusteroff-l {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
-				entry-latency-us = <143>;
-				exit-latency-us = <420>;
-				min-residency-us = <5700>;
+				entry-latency-us = <109>;
+				exit-latency-us = <325>;
+				min-residency-us = <5080>;
 			};
 			clusteroff_m: clusteroff-m {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
-				entry-latency-us = <82>;
-				exit-latency-us = <253>;
-				min-residency-us = <3020>;
+				entry-latency-us = <59>;
+				exit-latency-us = <188>;
+				min-residency-us = <2280>;
 			};
 			clusteroff_b: clusteroff-b {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
 				local-timer-stop;
-				entry-latency-us = <46>;
-				exit-latency-us = <150>;
-				min-residency-us = <2460>;
+				entry-latency-us = <43>;
+				exit-latency-us = <138>;
+				min-residency-us = <3020>;
 			};
 			mcusysoff_l: mcusysoff-l {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x02010007>;
 				local-timer-stop;
-				entry-latency-us = <697>;
-				exit-latency-us = <627>;
-				min-residency-us = <5700>;
+				entry-latency-us = <1357>;
+				exit-latency-us = <835>;
+				min-residency-us = <5080>;
 			};
 			mcusysoff_m: mcusysoff-m {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x02010007>;
 				local-timer-stop;
-				entry-latency-us = <563>;
-				exit-latency-us = <486>;
-				min-residency-us = <4100>;
+				entry-latency-us = <1202>;
+				exit-latency-us = <679>;
+				min-residency-us = <2440>;
 			};
 			mcusysoff_b: mcusysoff-b {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x02010007>;
 				local-timer-stop;
-				entry-latency-us = <524>;
-				exit-latency-us = <337>;
-				min-residency-us = <4570>;
+				entry-latency-us = <1143>;
+				exit-latency-us = <611>;
+				min-residency-us = <6150>;
 			};
 			system_vcore: system-vcore {
 				compatible = "arm,idle-state";
@@ -11516,7 +11516,7 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 		cg-shift = <0>; /* cg blocking index */
 		pll-shift = <0>; /* pll blocking index */
 
-		mcusys-cnt-chk = <1>;
+		mcusys-cnt-chk = <0>;
 
 		hwreq = "hw_cg", "peri_req";
 
@@ -11580,7 +11580,7 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 			rc_syspll: rc-syspll {
 				rc-name = "syspll";
 				id = <0x00000002>;
-				value = <0>;
+				value = <1>;
 				cond-info = <1>;
 			};
 			rc_bus26m: rc-bus26m {
