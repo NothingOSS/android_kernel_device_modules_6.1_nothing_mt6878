@@ -9468,8 +9468,6 @@
 			mediatek,force-vbus;
 			mediatek,clk-mgr;
 			mediatek,usb3-drd;
-			mediatek,noise-still-tr;
-			mediatek,gen1-txdeemph;
 			mediatek,hwrscs-vers = <1>;
 			usb-role-switch;
 			cdp-block;
@@ -9510,7 +9508,6 @@
 			maximum-speed = "high-speed";
 			mediatek,force-vbus;
 			mediatek,clk-mgr;
-			mediatek,noise-still-tr;
 			mediatek,hwrscs-vers = <1>;
 			usb-role-switch;
 			port {
@@ -10936,6 +10933,15 @@
 	usb_meta: usb-meta {
 		compatible = "mediatek,usb-meta";
 		udc = <&ssusb>;
+	};
+
+	usb_boost: usb-boost-manager {
+		compatible = "mediatek,usb-boost", "mediatek,mt6989-usb-boost";
+		interconnects = <&dvfsrc MT6873_MASTER_DBGIF &dvfsrc MT6873_SLAVE_DDR_EMI>;
+		interconnect-names = "icc-bw";
+		required-opps = <&dvfsrc_freq_opp0>;
+		usb-audio;
+		small-core = <1250000>;
 	};
 
 	/* ATF logger */
