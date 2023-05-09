@@ -135,7 +135,7 @@ static int mdla_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 	int ret = 0;
 
 	if (d->dir != MDLA_IPI_READ)
-		return 0;
+		goto END;
 
 	if (d->type0 == MDLA_IPI_MICROP_MSG) {
 		mdla_err("Receive uP message -> use the wrong channel!?\n");
@@ -144,11 +144,6 @@ static int mdla_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 		ipi_tx_recv_buf.type1  = d->type1;
 		ipi_tx_recv_buf.dir    = d->dir;
 		ipi_tx_recv_buf.data   = d->data;
-		complete(&mdla_tx_rpm_dev.ack);
-		/* power off to restore ref cnt */
-		ret = rpmsg_sendto(mdla_tx_rpm_dev.ept, NULL, 0, 1);
-		if (ret && ret != -EOPNOTSUPP)
-			mdla_err("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
 	}
 	mdla_verbose("tx rpmsg cb : %d %d, %d, %llu(0x%llx)\n",
 				d->type0,
@@ -156,6 +151,12 @@ static int mdla_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 				d->dir,
 				d->data,
 				d->data);
+END:
+	complete(&mdla_tx_rpm_dev.ack);
+	/* power off to restore ref cnt */
+	ret = rpmsg_sendto(mdla_tx_rpm_dev.ept, NULL, 0, 1);
+	if (ret && ret != -EOPNOTSUPP)
+		mdla_err("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
 	return 0;
 }
 
