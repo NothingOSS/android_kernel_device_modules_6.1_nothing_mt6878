@@ -10011,6 +10011,7 @@
 		mdp-color0 = <&mdp_color0>;
 		mdp-hdr0   = <&mdp_hdr0>;
 		mediatek,larb = <&smi_larb2>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 		mdp-rdma0-sof = <CMDQ_EVENT_MMLSYS0_MDP_RDMA0_SOF>;
 		mdp-wrot0-sof = <CMDQ_EVENT_MMLSYS0_MDP_WROT0_SOF>;
 		mdp-rdma2-sof = <CMDQ_EVENT_MMLSYS0_MDP_RDMA2_SOF>;
@@ -10026,7 +10027,6 @@
 		mdp-wrot0-rst-done = <CMDQ_EVENT_MMLSYS0_MDP_WROT0_SW_RST_DONE_ENG_EVENT>;
 		mdp-rdma2-rst-done = <CMDQ_EVENT_MMLSYS0_MDP_RDMA2_SW_RST_DONE_ENG_EVENT>;
 		mdp-rdma0-rst-done = <CMDQ_EVENT_MMLSYS0_MDP_RDMA0_SW_RST_DONE_ENG_EVENT>;
-#if 0
 		interconnects =
 			<&mmqos MASTER_LARB_PORT(SMMU_L2_P0_MDP_RDMA0)
 				&mmqos SLAVE_COMMON(0)>,
@@ -10038,7 +10038,6 @@
 			"mdp_rdma0",
 			"mdp_rdma2",
 			"mdp_wrot0";
-#endif
 		mdp-opp = <&opp_table_disp>;
 		operating-points-v2 = <&opp_table_disp>;
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
