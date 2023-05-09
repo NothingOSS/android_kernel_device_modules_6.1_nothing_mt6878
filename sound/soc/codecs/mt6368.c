@@ -2885,8 +2885,8 @@ static int mt_pga_l_event(struct snd_soc_dapm_widget *w,
 		return -EINVAL;
 	}
 
-	/* if vow is enabled, always set volume as 4(24dB) */
-	mic_gain_l = priv->vow_enable ? 4 :
+	/* if vow is enabled, always set volume as 3(18dB) */
+	mic_gain_l = priv->vow_enable ? 3 :
 		     priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP1];
 	dev_dbg(priv->dev, "%s(), event = 0x%x, mic_type %d, mic_gain_l %d, mux_pga %d\n",
 		__func__, event, mic_type, mic_gain_l, mux_pga);
@@ -2902,6 +2902,7 @@ static int mt_pga_l_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* set mic pga gain */
+		/* (000) 0dB, (001) 6dB, (010) 12dB, (011) 18dB, (100) 24dB */
 		regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON1,
 				   RG_AUDPREAMPLGAIN_MASK_SFT,
 				   mic_gain_l << RG_AUDPREAMPLGAIN_SFT);
@@ -2950,8 +2951,8 @@ static int mt_pga_r_event(struct snd_soc_dapm_widget *w,
 		return -EINVAL;
 	}
 
-	/* if vow is enabled, always set volume as 4(24dB) */
-	mic_gain_r = priv->vow_enable ? 4 :
+	/* if vow is enabled, always set volume as 3(18dB) */
+	mic_gain_r = priv->vow_enable ? 3 :
 		     priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP2];
 	dev_dbg(priv->dev, "%s(), event = 0x%x, mic_type %d, mic_gain_r %d, mux_pga %d\n",
 		__func__, event, mic_type, mic_gain_r, mux_pga);
@@ -2967,6 +2968,7 @@ static int mt_pga_r_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* set mic pga gain */
+		/* (000) 0dB, (001) 6dB, (010) 12dB, (011) 18dB, (100) 24dB */
 		regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON3,
 				   RG_AUDPREAMPRGAIN_MASK_SFT,
 				   mic_gain_r << RG_AUDPREAMPRGAIN_SFT);
@@ -3012,8 +3014,8 @@ static int mt_pga_3_event(struct snd_soc_dapm_widget *w,
 		return -EINVAL;
 	}
 
-	/* if vow is enabled, always set volume as 4(24dB) */
-	mic_gain_3 = priv->vow_enable ? 4 :
+	/* if vow is enabled, always set volume as 3(18dB) */
+	mic_gain_3 = priv->vow_enable ? 3 :
 		     priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP3];
 
 	dev_dbg(priv->dev, "%s(), event = 0x%x, mic_type %d, mic_gain_3 %d, mux_pga %d\n",
@@ -3030,6 +3032,7 @@ static int mt_pga_3_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* set mic pga gain */
+		/* (000) 0dB, (001) 6dB, (010) 12dB, (011) 18dB, (100) 24dB */
 		regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON5,
 				   RG_AUDPREAMP3GAIN_MASK_SFT,
 				   mic_gain_3 << RG_AUDPREAMP3GAIN_SFT);

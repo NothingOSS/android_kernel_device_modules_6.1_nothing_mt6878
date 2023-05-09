@@ -6212,9 +6212,6 @@ static int mt_pga_l_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* set mic pga gain */
-		/* (0010)  0dB (0011)  3dB (0100)  6dB (0101)  9dB (0110) 12dB
-		 * (0111) 15dB (1000) 18dB (1001) 21dB (1010) 24dB
-		 */
 		regmap_update_bits(priv->regmap, MT6338_AUDENC_PMU_CON1,
 			RG_AUDPREAMPLGAIN_MASK_SFT,
 			mic_gain_l << RG_AUDPREAMPLGAIN_SFT);
@@ -6321,9 +6318,6 @@ static int mt_pga_r_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* set mic pga gain */
-		/* (0010)  0dB (0011)  3dB (0100)  6dB (0101)  9dB (0110) 12dB
-		 * (0111) 15dB (1000) 18dB (1001) 21dB (1010) 24dB
-		 */
 		regmap_update_bits(priv->regmap, MT6338_AUDENC_PMU_CON3,
 			RG_AUDPREAMPRGAIN_MASK_SFT,
 			mic_gain_r << RG_AUDPREAMPRGAIN_SFT);
@@ -6431,9 +6425,6 @@ static int mt_pga_3_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* set mic pga gain */
-		/* (0010)  0dB (0011)  3dB (0100)  6dB (0101)  9dB (0110) 12dB
-		 * (0111) 15dB (1000) 18dB (1001) 21dB (1010) 24dB
-		 */
 		regmap_update_bits(priv->regmap, MT6338_AUDENC_PMU_CON5,
 			RG_AUDPREAMP3GAIN_MASK_SFT,
 			mic_gain_3 << RG_AUDPREAMP3GAIN_SFT);
@@ -6539,9 +6530,6 @@ static int mt_pga_4_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* set mic pga gain */
-		/* (0010)  0dB (0011)  3dB (0100)  6dB (0101)  9dB (0110) 12dB
-		 * (0111) 15dB (1000) 18dB (1001) 21dB (1010) 24dB
-		 */
 		regmap_update_bits(priv->regmap, MT6338_AUDENC_PMU_CON7,
 			RG_AUDPREAMP4GAIN_MASK_SFT,
 			mic_gain_4 << RG_AUDPREAMP4GAIN_SFT);
