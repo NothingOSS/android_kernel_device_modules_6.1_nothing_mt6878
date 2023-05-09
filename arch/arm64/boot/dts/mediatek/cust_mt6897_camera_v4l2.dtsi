@@ -308,7 +308,7 @@
 
 &i2c2 {
 	status = "okay";
-	clock-frequency = <400000>;
+	clock-frequency = <1000000>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 
@@ -397,7 +397,7 @@
 
 &i2c9 {
 	status = "okay";
-	clock-frequency = <400000>;
+	clock-frequency = <1000000>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 
@@ -455,7 +455,7 @@
 
 &i2c8 {
 	status = "okay";
-	clock-frequency = <400000>;
+	clock-frequency = <1000000>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 
@@ -540,7 +540,7 @@
 
 &i2c4 {
 	status = "okay";
-	clock-frequency = <400000>;
+	clock-frequency = <1000000>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 
