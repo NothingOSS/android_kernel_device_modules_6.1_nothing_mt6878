@@ -14012,10 +14012,8 @@
 		oc-max-level = <1>;
 		oc-limit-freq-lv1 = < 900000  900000 900000>;
 
-		soc-max-level = <3>;
-		soc-limit-freq-lv1 = < 900000  900000 1300000>;
-		soc-limit-freq-lv2 = < 900000  900000 1300000>;
-		soc-limit-freq-lv3 = < 900000  900000 1300000>;
+		soc-max-level = <1>;
+		soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
 	};
 
 	md_power_throttling: md-power-throttling {
