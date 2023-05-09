@@ -14474,6 +14474,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 /delete-node/ &mt6363_vbuck1_sshub;
 /delete-node/ &mt6363_vbuck2_sshub;
 /delete-node/ &mt6363_vbuck4_sshub;
+/delete-node/ &mt6373_vbuck6;
 /delete-node/ &mt6373_vmch_eint_low;
 /delete-node/ &mt6373_vmch;
 
