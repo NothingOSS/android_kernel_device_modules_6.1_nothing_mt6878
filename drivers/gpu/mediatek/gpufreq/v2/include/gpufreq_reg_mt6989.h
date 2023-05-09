@@ -114,6 +114,14 @@
 #define MFG_DFD_CON_9                          (g_mfg_top_base + 0xA24)            /* 0x13FBFA24 */
 #define MFG_DFD_CON_10                         (g_mfg_top_base + 0xA28)            /* 0x13FBFA28 */
 #define MFG_DFD_CON_11                         (g_mfg_top_base + 0xA2C)            /* 0x13FBFA2C */
+#define MFG_DFD_CON_20                         (g_mfg_top_base + 0xCD0)            /* 0x13FBFCD0 */
+#define MFG_DFD_CON_21                         (g_mfg_top_base + 0xCD4)            /* 0x13FBFCD4 */
+#define MFG_DFD_CON_22                         (g_mfg_top_base + 0xCD8)            /* 0x13FBFCD8 */
+#define MFG_DFD_CON_23                         (g_mfg_top_base + 0xCDC)            /* 0x13FBFCDC */
+#define MFG_DFD_CON_24                         (g_mfg_top_base + 0xBFC)            /* 0x13FBFBFC */
+#define MFG_DFD_CON_25                         (g_mfg_top_base + 0xF24)            /* 0x13FBFF24 */
+#define MFG_DFD_CON_26                         (g_mfg_top_base + 0xF28)            /* 0x13FBFF28 */
+#define MFG_DFD_CON_27                         (g_mfg_top_base + 0xF2C)            /* 0x13FBFF2C */
 #define MFG_PDCA_BACKDOOR                      (g_mfg_top_base + 0x210)            /* 0x13FBF210 */
 #define MFG_DREQ_TOP_DBG_CON_0                 (g_mfg_top_base + 0x1F0)            /* 0x13FBF1F0 */
 #define MFG_SRAM_FUL_SEL_ULV_TOP               (g_mfg_top_base + 0x084)            /* 0x13FBF084 */
