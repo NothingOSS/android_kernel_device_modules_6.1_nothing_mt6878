@@ -6143,7 +6143,7 @@ register_fp:
 		gpufreq_register_gpufreq_fp(&platform_ap_fp);
 
 	/* init gpu ppm */
-	ret = gpuppm_init(TARGET_STACK, g_gpueb_support, GPUPPM_DEFAULT_IDX);
+	ret = gpuppm_init(TARGET_STACK, g_gpueb_support);
 	if (unlikely(ret)) {
 		GPUFREQ_LOGE("fail to init gpuppm (%d)", ret);
 		goto done;

@@ -663,8 +663,7 @@ void gpuppm_set_shared_status(struct gpufreq_shared_status *shared_status)
 	mutex_unlock(&gpuppm_lock);
 }
 
-int gpuppm_init(enum gpufreq_target target,
-	unsigned int gpueb_support, unsigned int sramrc_vsafe)
+int gpuppm_init(enum gpufreq_target target, unsigned int gpueb_support)
 {
 	int max_oppidx = 0, min_oppidx = 0, opp_num = 0;
 	int ret = GPUFREQ_SUCCESS;
@@ -686,7 +685,6 @@ int gpuppm_init(enum gpufreq_target target,
 
 		/* set basic limit at boot time */
 		gpuppm_set_limit(target, LIMIT_SEGMENT, max_oppidx, min_oppidx, false);
-		gpuppm_set_limit(target, LIMIT_SRAMRC, GPUPPM_KEEP_IDX, sramrc_vsafe, false);
 
 		gpufreq_register_gpuppm_fp(&platform_ap_fp);
 	}

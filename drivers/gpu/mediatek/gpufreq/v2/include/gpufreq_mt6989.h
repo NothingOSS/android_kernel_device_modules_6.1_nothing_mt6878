@@ -211,6 +211,7 @@ struct gpufreq_core_mask_info g_core_mask_table[SHADER_CORE_NUM] = {
 #define SW_VMETER_DELSEL_0_VOLT             (60000)         /* mV x 100 */
 #define SW_VMETER_DELSEL_1_VOLT             (50000)         /* mV x 100 */
 #define NO_DELSEL_FLOOR_VSTACK              (52000)         /* mV x 100 */
+#define NO_GPM3_CEILING_OPP                 (5)
 #define PARKING_UPBOUND                     (0)
 #define PARKING_SEGMENT                     (12)
 #define PARKING_BINNING                     (46)
