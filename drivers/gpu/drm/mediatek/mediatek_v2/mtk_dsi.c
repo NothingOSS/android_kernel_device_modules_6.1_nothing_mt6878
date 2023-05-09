@@ -1357,12 +1357,12 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 			if (dsi->ext->params->is_cphy)
 				if (priv->data->mmsys_id == MMSYS_MT6983 ||
 					priv->data->mmsys_id == MMSYS_MT6985 ||
-					priv->data->mmsys_id == MMSYS_MT6989 ||
 					priv->data->mmsys_id == MMSYS_MT6895 ||
 					priv->data->mmsys_id == MMSYS_MT6886) {
 					mtk_mipi_tx_cphy_lane_config_mt6983(dsi->phy, dsi->ext,
 								     !!dsi->slave_dsi);
-				} else if (priv->data->mmsys_id == MMSYS_MT6897) {
+				} else if (priv->data->mmsys_id == MMSYS_MT6897 ||
+							priv->data->mmsys_id == MMSYS_MT6989) {
 					mtk_mipi_tx_cphy_lane_config_mt6897(dsi->phy, dsi->ext,
 								     !!dsi->slave_dsi, mtk_crtc);
 				} else {
@@ -1372,12 +1372,12 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 			else
 				if (priv->data->mmsys_id == MMSYS_MT6983 ||
 					priv->data->mmsys_id == MMSYS_MT6985 ||
-					priv->data->mmsys_id == MMSYS_MT6989 ||
 					priv->data->mmsys_id == MMSYS_MT6895 ||
 					priv->data->mmsys_id == MMSYS_MT6886) {
 					mtk_mipi_tx_dphy_lane_config_mt6983(dsi->phy, dsi->ext,
 								     !!dsi->slave_dsi);
-				} else if (priv->data->mmsys_id == MMSYS_MT6897) {
+				} else if (priv->data->mmsys_id == MMSYS_MT6897 ||
+							priv->data->mmsys_id == MMSYS_MT6989) {
 					mtk_mipi_tx_dphy_lane_config_mt6897(dsi->phy, dsi->ext,
 								     !!dsi->slave_dsi, mtk_crtc);
 				} else {
@@ -1802,7 +1802,7 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		// LP mode per line  => enables DSI wait data every line in command mode
 			mtk_dsi_mask(dsi, DSI_CON_CTRL, DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN,
 						DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN);
-			if ((ps_wc % 9) == 0)
+			if ((ps_wc % in_width) == 0)
 				rw_times = (ps_wc / in_width) * height;
 			else
 				rw_times = (ps_wc / in_width + 1) * height;
@@ -1816,9 +1816,9 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		}
 
 		if (dsi->ext->params->is_cphy)
-			tmp = 25 * dsi->data_rate * 2 * dsi->lanes / 7 / 18;
+			tmp = 25 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
 		else
-			tmp = 25 * dsi->data_rate * dsi->lanes / 8 / 18;
+			tmp = 25 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
 	} else {
 		if ((ps_wc * height % in_width) == 0)
 			rw_times = ps_wc * height / in_width;
@@ -3443,9 +3443,6 @@ static void mtk_dsi_encoder_disable(struct drm_encoder *encoder)
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT6855:
 		DDPMSG("%s force return\n", __func__);
-		return;
-	case MMSYS_MT6989:
-		DDPMSG("%s mt6989 force return\n", __func__);
 		return;
 	default:
 		break;

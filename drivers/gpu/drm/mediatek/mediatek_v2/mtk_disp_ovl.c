@@ -1072,8 +1072,8 @@ static void mtk_ovl_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_BURST16_EN);
 	if (priv->data->mmsys_id == MMSYS_MT6989) {
 		/* golden setting */
-		SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_EN);
-		SET_VAL_MASK(value, mask, 0, FLD_RDMA_BURST_CON1_DDR_ACK_EN);
+		SET_VAL_MASK(value, mask, 0, FLD_RDMA_BURST_CON1_DDR_EN);
+		SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_ACK_EN);
 	}
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_OVL_RDMA_BURST_CON1,

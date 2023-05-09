@@ -9941,7 +9941,6 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc)
 
 	if (priv->data->mmsys_id == MMSYS_MT6983 ||
 		priv->data->mmsys_id == MMSYS_MT6985 ||
-		priv->data->mmsys_id == MMSYS_MT6989 ||
 		priv->data->mmsys_id == MMSYS_MT6897 ||
 		priv->data->mmsys_id == MMSYS_MT6879 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
@@ -11284,9 +11283,6 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT6855:
 		DDPMSG("%s force return\n", __func__);
-		return;
-	case MMSYS_MT6989:
-		DDPMSG("%s mt6989 force return\n", __func__);
 		return;
 	default:
 		break;

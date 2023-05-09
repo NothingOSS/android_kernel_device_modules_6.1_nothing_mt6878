@@ -20892,18 +20892,21 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 				ddp->ovlsys1_regs + DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
 		}
 
-		/* disp0 DSI0 mutex src should mapping to DSI1, and vice versa */
-		if (val == DDP_MUTEX_SOF_DSI0)
-			val = DDP_MUTEX_SOF_DSI1;
-		else if (val == DDP_MUTEX_SOF_DSI1)
-			val = DDP_MUTEX_SOF_DSI0;
-		else if (val == DDP_MUTEX_SOF_DPI0) {
-			if (mtk_crtc->is_dual_pipe &&
-				(priv->data->mmsys_id == MMSYS_MT6985 ||
-				priv->data->mmsys_id == MMSYS_MT6897))
-				val = DDP_MUTEX_SOF_DPI1;
-		} else if (val == DDP_MUTEX_SOF_DPI1)
-			val = DDP_MUTEX_SOF_DPI0;
+		/* In MT6989, use single pipe, each side listen same SOF*/
+		if (priv->data->mmsys_id != MMSYS_MT6989) {
+			/* disp0 DSI0 mutex src should mapping to DSI1, and vice versa */
+			if (val == DDP_MUTEX_SOF_DSI0)
+				val = DDP_MUTEX_SOF_DSI1;
+			else if (val == DDP_MUTEX_SOF_DSI1)
+				val = DDP_MUTEX_SOF_DSI0;
+			else if (val == DDP_MUTEX_SOF_DPI0) {
+				if (mtk_crtc->is_dual_pipe &&
+					(priv->data->mmsys_id == MMSYS_MT6985 ||
+					priv->data->mmsys_id == MMSYS_MT6897))
+					val = DDP_MUTEX_SOF_DPI1;
+			} else if (val == DDP_MUTEX_SOF_DPI1)
+				val = DDP_MUTEX_SOF_DPI0;
+		}
 
 		DDPINFO("%s, disp1 id:%s, val:0x%x\n", __func__,
 			mtk_dump_comp_str_id(id),
