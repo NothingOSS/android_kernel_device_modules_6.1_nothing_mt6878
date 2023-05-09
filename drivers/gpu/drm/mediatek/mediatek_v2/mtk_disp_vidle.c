@@ -46,7 +46,6 @@ struct mtk_disp_vidle {
 
 static void mtk_vidle_flag_init(struct mtk_drm_private *priv)
 {
-	DDPFUNC();
 	if (priv == NULL)
 		return;
 
@@ -76,7 +75,6 @@ static unsigned int mtk_vidle_enable_check(unsigned int vidle_item)
 
 static void mtk_vidle_dt_enable(unsigned int en)
 {
-	//DDPFUNC();
 	if (disp_dpc_driver.dpc_group_enable == NULL)
 		return;
 
@@ -101,7 +99,6 @@ static void mtk_vidle_dt_enable(unsigned int en)
 
 void mtk_vidle_power_keep(void)
 {
-	//DDPFUNC();
 	if (disp_dpc_driver.vidle_power_keep == NULL)
 		return;
 
@@ -112,7 +109,6 @@ void mtk_vidle_power_keep(void)
 
 void mtk_vidle_power_release(void)
 {
-	//DDPFUNC();
 	if (disp_dpc_driver.vidle_power_release == NULL)
 		return;
 
@@ -123,14 +119,12 @@ void mtk_vidle_power_release(void)
 
 void mtk_vidle_sync_mmdvfsrc_status_rc(unsigned int rc_en)
 {
-	DDPFUNC();
 	mtk_disp_vidle_flag.rc_en = rc_en;
 	/* TODO: action for mmdvfsrc_status_rc */
 }
 
 void mtk_vidle_sync_mmdvfsrc_status_wdt(unsigned int wdt_en)
 {
-	DDPFUNC();
 	mtk_disp_vidle_flag.wdt_en = wdt_en;
 	/* TODO: action for mmdvfsrc_status_wdt */
 }
@@ -170,7 +164,6 @@ void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop)
 
 void mtk_vidle_enable(struct mtk_drm_private *priv)
 {
-	DDPFUNC();
 	if (priv == NULL)
 		return;
 	if (mtk_vidle_enable_check(DISP_VIDLE_TOP_EN))
@@ -188,11 +181,13 @@ void mtk_vidle_enable(struct mtk_drm_private *priv)
 		return;
 	}
 
-	mtk_vidle_dt_enable(mtk_vidle_enable_check(DISP_VIDLE_TOP_EN));
 
-	if (disp_dpc_driver.dpc_enable)
-		disp_dpc_driver.dpc_enable(mtk_vidle_enable_check(DISP_VIDLE_TOP_EN));
+	if (disp_dpc_driver.dpc_enable && mtk_vidle_enable_check(DISP_VIDLE_TOP_EN)) {
+		mtk_vidle_dt_enable(1);
+		disp_dpc_driver.dpc_enable(1);
+	}
 
 	/* TODO: enable timestamp */
 }
+
 
