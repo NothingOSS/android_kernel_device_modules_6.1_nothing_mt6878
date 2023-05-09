@@ -45,6 +45,7 @@
 
 #define SMMU_IRQ_COUNT_MAX		(5)
 #define SMMU_IRQ_DISABLE_TIME		(10) /* 10s */
+#define SMMU_POLL_MAX_ATTEMPTS		(50000)
 
 #define SMMU_TF_IOVA_DUMP_NUM		(5)
 #define SMMU_EVT_DUMP_LEN_MAX		(200)
@@ -136,6 +137,23 @@ static inline int smmu_write_reg_sync(void __iomem *base,
 	smmu_write_reg(base, reg_off, val);
 	return readl_relaxed_poll_timeout(base + ack_off, reg, reg == val,
 					  1, ARM_SMMU_POLL_TIMEOUT_US);
+}
+
+static inline int smmu_read_reg_poll_value(void __iomem *base,
+					   unsigned int offset,
+					   unsigned int val)
+{
+	unsigned int observed, attempts = 0;
+
+	while (attempts++ < SMMU_POLL_MAX_ATTEMPTS) {
+		observed = smmu_read_reg(base, offset);
+		if (val == observed)
+			return 0;
+	}
+
+	pr_info("%s, timeout %p:0x%x, val:0x%x\n", __func__, base, offset, val);
+
+	return -ETIMEDOUT;
 }
 
 static const struct mtk_smmu_plat_data *of_device_get_plat_data(struct device *dev);
@@ -968,8 +986,8 @@ static int mtk_smmu_setup_irqs(struct arm_smmu_device *smmu, bool enable)
 
 	dev_info(smmu->dev, "[%s] Enable:%d IRQs irqen_flags:0x%x\n",
 		 __func__, enable, irqen_flags);
-	ret = smmu_write_reg_sync(smmu->base, irqen_flags, ARM_SMMU_IRQ_CTRL,
-				  ARM_SMMU_IRQ_CTRLACK);
+	smmu_write_reg(smmu->base, ARM_SMMU_IRQ_CTRL, irqen_flags);
+	ret = smmu_read_reg_poll_value(smmu->base, ARM_SMMU_IRQ_CTRLACK, irqen_flags);
 	if (ret) {
 		dev_err(smmu->dev, "[%s] Enable:%d IRQs failed\n", __func__, enable);
 		return ret;
