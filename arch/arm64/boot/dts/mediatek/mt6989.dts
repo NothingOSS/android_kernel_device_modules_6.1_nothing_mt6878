@@ -5039,7 +5039,7 @@
 			compatible = "mediatek,mt6989-disp";
 			//interrupts = <GIC_SPI 437 IRQ_TYPE_LEVEL_HIGH 0>;
 			dispsys-num = <2>;
-			ovlsys-num = <2>;
+			ovlsys-num = <1>;
 			reg = <0 0x14000000 0 0x1000>,
 				  <0 0x14200000 0 0x1000>,
 				  <0 0x14400000 0 0x1000>,
@@ -5052,57 +5052,58 @@
 	//		fake-engine = <&smi_larb0 M4U_PORT_L0_DISP_FAKE0>,
 	//				<&smi_larb1 M4U_PORT_L1_DISP_FAKE1>;
 			#clock-cells = <1>;
-			power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS0_SHUTDOWN>;
-			pd-others = <&disp1_mutex0>, <&disp_ovl0_2l>, <&disp1_ovl0_2l>;
-			pd-names = "side_dispsys", "ovlsys", "side_ovlsys";
-			clocks = <&dispsys_config_clk CLK_MM_CONFIG>,
-				 <&dispsys_config_clk CLK_MM_DISP_MUTEX0>,
-				 <&dispsys_config_clk CLK_MM_DLI_ASYNC0>,
-				 <&dispsys_config_clk CLK_MM_DLI_ASYNC1>,
-				 <&dispsys_config_clk CLK_MM_DLI_ASYNC2>,
-				 <&dispsys_config_clk CLK_MM_DLI_ASYNC3>,
-				 <&dispsys_config_clk CLK_MM_DLI_ASYNC4>,
-				 <&dispsys_config_clk CLK_MM_DLI_ASYNC5>,
-				 <&dispsys_config_clk CLK_MM_DLI_ASYNC6>,
-				 <&dispsys_config_clk CLK_MM_DLI_ASYNC7>,
-				 <&dispsys_config_clk CLK_MM_DLO_ASYNC0>,
-				 <&dispsys_config_clk CLK_MM_DLO_ASYNC1>,
-				 <&dispsys_config_clk CLK_MM_DLO_ASYNC2>,
-				 <&dispsys_config_clk CLK_MM_DLO_ASYNC3>,
-				 <&dispsys_config_clk CLK_MM_DLO_ASYNC4>,
-				 <&dispsys1_config_clk CLK_MM1_DISPSYS1_CONFIG>,
-				 <&dispsys1_config_clk CLK_MM1_DISP_MUTEX0>,
-				 <&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC0>,
-				 <&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC1>,
-				 <&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC2>,
-				 <&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC3>,
-				 <&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC4>,
-				 <&dispsys1_config_clk CLK_MM1_F26M>,
-				 <&ovlsys_config_clk CLK_OVLSYS_CONFIG>,
-				 <&ovlsys_config_clk CLK_OVL_DISP_MUTEX0>,
-				 <&ovlsys_config_clk CLK_OVL_DISP_DLI_ASYNC0>,
-				 <&ovlsys_config_clk CLK_OVL_DISP_DLI_ASYNC1>,
-				 <&ovlsys_config_clk CLK_OVL_DISP_DLI_ASYNC2>,
-				 <&ovlsys_config_clk CLK_OVL_DISP_DL0_ASYNC0>,
-				 <&ovlsys_config_clk CLK_OVL_DISP_DL0_ASYNC1>,
-				 <&ovlsys_config_clk CLK_OVL_DISP_DL0_ASYNC2>,
-				 <&ovlsys_config_clk CLK_OVL_DISP_DL0_ASYNC3>,
-				 <&ovlsys_config_clk CLK_OVL_DISP_DL0_ASYNC4>,
-				 <&ovlsys_config_clk CLK_OVL_DISP_DL0_ASYNC5>,
-				 <&ovlsys_config_clk CLK_OVL_DISP_DL0_ASYNC6>,
-				 <&ovlsys1_config_clk CLK_OVL1_OVLSYS_CONFIG>,
-				 <&ovlsys1_config_clk CLK_OVL1_DISP_MUTEX0>,
-				 <&ovlsys1_config_clk CLK_OVL1_DISP_DLI_ASYNC0>,
-				 <&ovlsys1_config_clk CLK_OVL1_DISP_DLI_ASYNC1>,
-				 <&ovlsys1_config_clk CLK_OVL1_DISP_DLI_ASYNC2>,
-				 <&ovlsys1_config_clk CLK_OVL1_DISP_DL0_ASYNC0>,
-				 <&ovlsys1_config_clk CLK_OVL1_DISP_DL0_ASYNC1>,
-				 <&ovlsys1_config_clk CLK_OVL1_DISP_DL0_ASYNC2>,
-				 <&ovlsys1_config_clk CLK_OVL1_DISP_DL0_ASYNC3>,
-				 <&ovlsys1_config_clk CLK_OVL1_DISP_DL0_ASYNC4>,
-				 <&ovlsys1_config_clk CLK_OVL1_DISP_DL0_ASYNC5>,
-				 <&ovlsys1_config_clk CLK_OVL1_DISP_DL0_ASYNC6>;
-			clock-num = <45>;
+	//		power-domains = <&scpsys MT6985_POWER_DOMAIN_DIS0_SHUTDOWN>;
+			pd-others = <&disp1_mutex0>, <&disp_ovl0_2l>; //<&disp1_ovl0_2l>;
+//			pd-names = "side_dispsys", "ovlsys", "side_ovlsys";
+//			clocks = <&dispsys_config_clk CLK_MM_CONFIG>,
+//				 <&dispsys_config_clk CLK_MM_DISP_MUTEX0>,
+//				 <&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC0>,
+//				 <&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC1>,
+//				 <&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC2>,
+//				 <&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC3>,
+//				 <&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC4>,
+//				 <&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC5>,
+//				 <&dispsys_config_clk CLK_MM_DISP_DLO_ASYNC0>,
+//				 <&dispsys_config_clk CLK_MM_DISP_DLO_ASYNC1>,
+//				 <&dispsys_config_clk CLK_MM_DISP_RELAY0>,
+//				 <&dispsys_config_clk CLK_MM_26M_CLK>,
+//				 <&dispsys1_config_clk CLK_MM1_CONFIG>,
+//				 <&dispsys1_config_clk CLK_MM1_DISP_MUTEX0>,
+//				 <&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC0>,
+//				 <&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC1>,
+//				 <&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC2>,
+//				 <&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC3>,
+//				 <&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC4>,
+//				 <&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC5>,
+//				 <&dispsys1_config_clk CLK_MM1_DISP_DLO_ASYNC0>,
+//				 <&dispsys1_config_clk CLK_MM1_DISP_DLO_ASYNC1>,
+//				 <&dispsys1_config_clk CLK_MM1_DISP_RELAY0>,
+//				 <&dispsys1_config_clk CLK_MM1_26M_CLK>,
+//				 <&ovlsys_config_clk CLK_OVL_CONFIG>,
+//				 <&ovlsys_config_clk CLK_OVL_DISP_MUTEX0>,
+//				 <&ovlsys_config_clk CLK_OVL_DISP_DLI_ASYNC0>,
+//				 <&ovlsys_config_clk CLK_OVL_DISP_DLI_ASYNC1>,
+//				 <&ovlsys_config_clk CLK_OVL_DISP_DLI_ASYNC2>,
+//				 <&ovlsys_config_clk CLK_OVL_DISP_DLO_ASYNC0>,
+//				 <&ovlsys_config_clk CLK_OVL_DISP_DLO_ASYNC1>,
+//				 <&ovlsys_config_clk CLK_OVL_DISP_DLO_ASYNC2>,
+//				 <&ovlsys_config_clk CLK_OVL_DISP_DLO_ASYNC3>,
+//				 <&ovlsys_config_clk CLK_OVL_DISP_DLO_ASYNC4>,
+//				 <&ovlsys_config_clk CLK_OVL_DISP_DLO_ASYNC5>,
+//				 <&ovlsys_config_clk CLK_OVL_DISP_DLO_ASYNC6>,
+//				 <&ovlsys1_config_clk CLK_OVL1_CONFIG>,
+//				 <&ovlsys1_config_clk CLK_OVL1_DISP_MUTEX0>,
+//				 <&ovlsys1_config_clk CLK_OVL1_DISP_DLI_ASYNC0>,
+//				 <&ovlsys1_config_clk CLK_OVL1_DISP_DLI_ASYNC1>,
+//				 <&ovlsys1_config_clk CLK_OVL1_DISP_DLI_ASYNC2>,
+//				 <&ovlsys1_config_clk CLK_OVL1_DISP_DLO_ASYNC0>,
+//				 <&ovlsys1_config_clk CLK_OVL1_DISP_DLO_ASYNC1>,
+//				 <&ovlsys1_config_clk CLK_OVL1_DISP_DLO_ASYNC2>,
+//				 <&ovlsys1_config_clk CLK_OVL1_DISP_DLO_ASYNC3>,
+//				 <&ovlsys1_config_clk CLK_OVL1_DISP_DLO_ASYNC4>,
+//				 <&ovlsys1_config_clk CLK_OVL1_DISP_DLO_ASYNC5>,
+//				 <&ovlsys1_config_clk CLK_OVL1_DISP_DLO_ASYNC6>;
+			clock-num = <48>;
 			condition-num = <2>;
 			//operating-points-v2 = <&opp_table_disp>;
 			//mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
@@ -5300,7 +5301,7 @@
 				"MTK_DRM_OPT_SPHRT",
 				"MTK_DRM_OPT_SDPA_OVL_SWITCH";
 
-			helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
+			helper-value = <1>, /*MTK_DRM_OPT_STAGE*/
 				<1>, /*MTK_DRM_OPT_USE_CMDQ*/
 				<1>, /*MTK_DRM_OPT_USE_M4U*/
 				<0>, /*MTK_DRM_OPT_MMQOS_SUPPORT*/
@@ -5568,19 +5569,18 @@
 //			power-domains = <&scpsys MT6985_POWER_DOMAIN_DIS1_SHUTDOWN>;
 //			mediatek,mml = <&mmlsys_config>;
 			dispsys-num = <2>;
-			ovlsys-num = <2>;
+			ovlsys-num = <1>;
 			reg = <0 0x14201000 0 0x1000>,
 				  <0 0x14001000 0 0x1000>,
 				  <0 0x14401000 0 0x1000>,
 				  <0 0x14601000 0 0x1000>;
 			interrupts = <GIC_SPI 487 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 436 IRQ_TYPE_LEVEL_HIGH 0>,
-					<GIC_SPI 468 IRQ_TYPE_LEVEL_HIGH 0>,
-					<GIC_SPI 516 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&dispsys_config_clk CLK_MM_DISP_MUTEX0>,
-				 <&dispsys1_config_clk CLK_MM1_DISP_MUTEX0>,
-				 <&dispsys_config_clk CLK_OVL_DISP_MUTEX0>,
-				 <&dispsys1_config_clk CLK_OVL1_DISP_MUTEX0>;
+					<GIC_SPI 468 IRQ_TYPE_LEVEL_HIGH 0>;
+//			clocks = <&dispsys_config_clk CLK_MM_DISP_MUTEX0>,
+//				 <&dispsys1_config_clk CLK_MM1_DISP_MUTEX0>,
+//				 <&dispsys_config_clk CLK_OVL_DISP_MUTEX0>,
+//				 <&dispsys1_config_clk CLK_OVL1_DISP_MUTEX0>;
 		};
 
 		disp1-mdp-rdma0@14202000 {
@@ -5613,7 +5613,6 @@
 				"mediatek,mt6989-disp-dsc";
 			reg = <0 0x14206000 0 0x1000>;
 			interrupts = <GIC_SPI 493 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSC_WRAP0>;
 		};
 
 		disp_dsc_wrap1: disp1-dsc-wrap1@14207000 {
@@ -5621,7 +5620,6 @@
 				"mediatek,mt6989-disp-dsc";
 			reg = <0 0x14207000 0 0x1000>;
 			interrupts = <GIC_SPI 495 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSC_WRAP1>;
 		};
 
 		disp_dsc_wrap2: disp1-dsc-wrap2@14208000 {
@@ -5629,7 +5627,6 @@
 				"mediatek,mt6989-disp-dsc";
 			reg = <0 0x14208000 0 0x1000>;
 			interrupts = <GIC_SPI 497 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSC_WRAP2>;
 		};
 
 		disp1_dp_intf0: disp1-dp-intf0@14209000 {
@@ -5643,10 +5640,6 @@
 					"mediatek,mt6989-dsi";
 			reg = <0 0x1420a000 0 0x1000>;
 			interrupts = <GIC_SPI 500 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSI0>,
-					<&dispsys1_config_clk CLK_MM1_MOD1>,
-					<&mipi_tx_config0>;
-			clock-names = "engine", "digital", "hs";
 			phys = <&mipi_tx_config0>;
 			phy-names = "dphy";
 		};
@@ -5656,10 +5649,6 @@
 					//"mediatek,mt6989-dsi";
 			reg = <0 0x1420b000 0 0x1000>;
 			interrupts = <GIC_SPI 501 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSI1>,
-					<&dispsys1_config_clk CLK_MM1_MOD2>,
-					<&mipi_tx_config0>;
-			clock-names = "engine", "digital", "hs";
 			phys = <&mipi_tx_config1>;
 			phy-names = "dphy";
 		};
@@ -5669,7 +5658,6 @@
 					//"mediatek,mt6989-dsi";
 			reg = <0 0x1420c000 0 0x1000>;
 			interrupts = <GIC_SPI 502 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSI2>;
 			phys = <&mipi_tx_config1>;
 			phy-names = "dphy";
 		};
@@ -5833,8 +5821,6 @@
 				"mediatek,mt6989-disp-ovl";
 			reg = <0 0x14402000 0 0x1000>;
 			interrupts = <GIC_SPI 469 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&ovlsys_config_clk CLK_OVL_DISP_OVL0_2L>;
-			power-domains = <&scpsys MT6989_POWER_DOMAIN_OVL0_SHUTDOWN>;
 			//mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			iommus = <&mm_smmu 35>;
 			mtk,iommu-group = <&mm_iommu_group_0>;
@@ -5846,7 +5832,6 @@
 				"mediatek,mt6989-disp-ovl";
 			reg = <0 0x14403000 0 0x1000>;
 			interrupts = <GIC_SPI 470 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&ovlsys_config_clk CLK_OVL_DISP_OVL1_2L>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 		};
 
@@ -5855,7 +5840,6 @@
 				"mediatek,mt6989-disp-ovl";
 			reg = <0 0x14404000 0 0x1000>;
 			interrupts = <GIC_SPI 471 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&ovlsys_config_clk CLK_OVL_DISP_OVL2_2L>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 		};
 
@@ -6065,7 +6049,7 @@
 			compatible = "mediatek,mipi_tx_config0",
 						"mediatek,mt6989-mipi-tx";
 			reg = <0 0x11e90000 0 0x1000>;
-			clocks = <&clk26m>;
+			//clocks = <&clk26m>;
 			#clock-cells = <0>;
 			#phy-cells = <0>;
 			clock-output-names = "mipi_tx0_pll";
@@ -6076,7 +6060,7 @@
 			compatible = "mediatek,mipi_tx_config1",
 						"mediatek,mt6989-mipi-tx";
 			reg = <0 0x11ea0000 0 0x1000>;
-			clocks = <&clk26m>;
+			//clocks = <&clk26m>;
 			#clock-cells = <0>;
 			#phy-cells = <0>;
 			clock-output-names = "mipi_tx1_pll";
