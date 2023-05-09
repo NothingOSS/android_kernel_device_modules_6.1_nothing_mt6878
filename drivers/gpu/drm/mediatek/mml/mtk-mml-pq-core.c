@@ -1504,16 +1504,37 @@ int mml_pq_ir_dc_readback(struct mml_pq_task *pq_task, struct mml_pq_frame_data 
 	return ret;
 }
 
-
-int mml_pq_wrot_callback(struct mml_task *task)
+int mml_pq_ir_wrot_callback(struct mml_pq_task *pq_task, struct mml_pq_frame_data frame_data,
+		u32 mml_jobid, bool dual)
 {
-	struct mml_pq_task *pq_task = task->pq_task;
-	struct mml_pq_sub_task *sub_task = &pq_task->wrot_callback;
-	struct mml_pq_chan *chan = &pq_mbox->wrot_callback_chan;
+	struct mml_pq_sub_task *sub_task = NULL;
+	struct mml_pq_chan *chan = NULL;
 	int ret = 0;
 
 	if (unlikely(!pq_task))
 		return -EINVAL;
+
+	sub_task = &pq_task->wrot_callback;
+	chan = &pq_mbox->wrot_callback_chan;
+
+	mml_pq_msg("%s second outoput done.\n", __func__);
+	ret = set_readback_sub_task(pq_task, sub_task, chan,
+		frame_data, dual, mml_jobid, true);
+	return ret;
+}
+
+int mml_pq_wrot_callback(struct mml_task *task)
+{
+	struct mml_pq_task *pq_task = task->pq_task;
+	struct mml_pq_sub_task *sub_task = NULL;
+	struct mml_pq_chan *chan = NULL;
+	int ret = 0;
+
+	if (unlikely(!pq_task))
+		return -EINVAL;
+
+	sub_task = &pq_task->wrot_callback;
+	chan = &pq_mbox->wrot_callback_chan;
 
 	mml_pq_msg("%s second outoput done.\n", __func__);
 	ret = set_sub_task(task, sub_task, chan, &task->pq_param[1], true);

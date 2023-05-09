@@ -258,8 +258,12 @@ struct mml_comp_wrot {
 	struct mutex sram_mutex;
 	int irq;
 	struct mml_pq_task *pq_task;
-	struct mml_task *task;
-	struct mml_comp_config *ccfg;
+	/* TODO: will remove out in the feature */
+	struct mml_pq_frame_data frame_data;
+	bool dual;
+	u32 jobid;
+	u8 out_idx;
+	u8 dest_cnt;
 	struct workqueue_struct *wrot_ai_callback_wq;
 	struct work_struct wrot_ai_callback_task;
 };
@@ -1117,16 +1121,27 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	mml_msg("use config %p wrot %p", cfg, wrot);
 
-	if (cfg->info.mode == MML_MODE_DDP_ADDON &&
-		task->pq_param[0].src_hdr_video_mode == MML_PQ_AIREGION) {
-		wrot->task = task;
+	if (cfg->info.mode == MML_MODE_DDP_ADDON && ccfg->node->out_idx == MML_MAX_OUTPUTS - 1 &&
+			task->pq_param[0].src_hdr_video_mode == MML_PQ_AIREGION) {
+		/* TODO: need to fix pq_task */
 		wrot->pq_task = task->pq_task;
-		wrot->ccfg = ccfg;
-		/* Enable Frame Done IRQ */
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT_EN, 0x1, VIDO_INT_EN_MASK);
-	} else
-		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT_EN, 0x0, VIDO_INT_EN_MASK);
-
+		wrot->dual = task->config->dual;
+		wrot->out_idx = ccfg->node->out_idx;
+		wrot->jobid = task->job.jobid;
+		wrot->dest_cnt = cfg->info.dest_cnt;
+		wrot->frame_data.size_info.out_rotate[ccfg->node->out_idx] =
+			cfg->out_rotate[ccfg->node->out_idx];
+		memcpy(&wrot->frame_data.pq_param, task->pq_param,
+			MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
+		memcpy(&wrot->frame_data.info, &task->config->info,
+			sizeof(struct mml_frame_info));
+		memcpy(&wrot->frame_data.frame_out, &task->config->frame_out,
+			MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
+		memcpy(&wrot->frame_data.size_info.frame_in_crop_s[0],
+			&cfg->frame_in_crop[0],	MML_MAX_OUTPUTS * sizeof(struct mml_crop));
+		memcpy(&wrot->frame_data.size_info.frame_in_s, &cfg->frame_in,
+			sizeof(struct mml_frame_size));
+	}
 
 	/* Enable engine */
 	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_ROT_EN, 0x01, 0x00000001);
@@ -1742,6 +1757,7 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
 	const struct mml_frame_tile *tout = cfg->frame_tile[ccfg->pipe];
+	u16 tile_cnt = tout->tile_cnt;
 	/* Following data retrieve from tile result */
 	const u32 in_xs = tile->in.xs;
 	const u32 in_xe = tile->in.xe;
@@ -1826,9 +1842,11 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		       (buf_line_num << 8) |
 		       (wrot_frm->filt_v << 4), U32_MAX);
 
-	// Set wrot interrupt bit for debug,
-	// this bit will clear to 0 after wrot done.
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT, 0x1, U32_MAX);
+	/* Set wrot interrupt bit for debug,
+	 * this bit will clear to 0 after wrot done.
+	 *
+	 * cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT, 0x1, U32_MAX);
+	 */
 
 	/* qos accumulate tile pixel */
 	wrot_frm->pixel_acc += wrot_tar_xsize * wrot_tar_ysize;
@@ -1846,6 +1864,20 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 			wrot_frm->datasize += mml_color_get_min_uv_size(dest->data.format,
 				wrot_tar_xsize, wrot_tar_ysize);
 	}
+
+	if (idx == tile_cnt - 1 && cfg->info.mode == MML_MODE_DDP_ADDON &&
+			ccfg->node->out_idx == MML_MAX_OUTPUTS - 1 &&
+			task->pq_param[0].src_hdr_video_mode == MML_PQ_AIREGION) {
+
+		/* Set wrot interrupt status bit for judge if interrupt works,
+		 * this bit will clear to 0 after wrot done.
+		 */
+		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT, 0x1, U32_MAX);
+
+		/* Enable Frame Done IRQ in IR Mode*/
+		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT_EN, 0x1, VIDO_INT_EN_MASK);
+	} else
+		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_INT_EN, 0x0, VIDO_INT_EN_MASK);
 
 	mml_msg("%s min block width: %u min buf line num: %u",
 		__func__, setting.main_blk_width, setting.main_buf_line_num);
@@ -2368,24 +2400,16 @@ static const struct mtk_ddp_comp_funcs ddp_comp_funcs = {
 static struct mml_comp_wrot *dbg_probed_components[4];
 static int dbg_probed_count;
 
-static bool wrot_reg_poll(struct mml_comp *comp, u32 addr, u32 value, u32 mask)
+static bool wrot_reg_read(struct mml_comp *comp, u32 addr, u32 value, u32 mask)
 {
 	bool return_value = false;
 	u32 reg_value = 0;
-	u32 polling_time = 0;
 	void __iomem *base = comp->base;
 
-	do {
-		reg_value = readl(base + addr);
+	reg_value = readl(base + addr);
 
-		if ((reg_value & mask) == value) {
-			return_value = true;
-			break;
-		}
-
-		udelay(WROT_POLL_SLEEP_TIME_US);
-		polling_time += WROT_POLL_SLEEP_TIME_US;
-	} while (polling_time < WROT_MAX_POLL_TIME_US);
+	if ((reg_value & mask) == value)
+		return_value = true;
 
 	return return_value;
 }
@@ -2395,7 +2419,8 @@ static void wrot_callback_work(struct work_struct *work_item)
 	struct mml_comp_wrot *wrot = NULL;
 
 	wrot = container_of(work_item, struct mml_comp_wrot, wrot_ai_callback_task);
-	mml_pq_wrot_callback(wrot->task);
+	mml_pq_ir_wrot_callback(wrot->pq_task, wrot->frame_data,
+		wrot->jobid, wrot->dual);
 }
 
 static irqreturn_t mml_wrot_irq_handler(int irq, void *dev_id)
@@ -2403,24 +2428,15 @@ static irqreturn_t mml_wrot_irq_handler(int irq, void *dev_id)
 	struct mml_comp_wrot *priv = dev_id;
 	struct mml_comp *comp = &priv->comp;
 	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
-	struct mml_comp_config *ccfg = wrot->ccfg;
-	struct mml_frame_config *cfg = NULL;
-	uint8_t dest_cnt = 0;
-	irqreturn_t ret = IRQ_HANDLED;
-	u8 out_idx = 0;
+	uint8_t dest_cnt = wrot->dest_cnt;
+	irqreturn_t ret = IRQ_NONE;
+	u8 out_idx = wrot->out_idx;
 
-	if (wrot_reg_poll(comp, VIDO_INT, 0, (0x1))) {
+	if (wrot_reg_read(comp, VIDO_INT, 0, (0x1))) {
 		writel(1, comp->base + VIDO_INT);
-		if (!IS_ERR_OR_NULL(ccfg) && !IS_ERR_OR_NULL(ccfg->node) &&
-			!IS_ERR_OR_NULL(wrot->task) && !IS_ERR_OR_NULL(wrot->task->config)) {
-			out_idx = ccfg->node->out_idx;
-			cfg = wrot->task->config;
-			dest_cnt = cfg->info.dest_cnt;
-		}
 		if (dest_cnt == MML_MAX_OUTPUTS && out_idx == MML_MAX_OUTPUTS - 1) {
-			if (!IS_ERR_OR_NULL(wrot->task))
-				queue_work(priv->wrot_ai_callback_wq, &priv->wrot_ai_callback_task);
-			return ret;
+			queue_work(priv->wrot_ai_callback_wq, &priv->wrot_ai_callback_task);
+			return IRQ_HANDLED;
 		}
 	}
 	return ret;

@@ -499,6 +499,20 @@ int mml_pq_ir_hdr_readback(struct mml_pq_task *pq_task,
 
 int mml_pq_dc_hdr_readback(struct mml_task *task, u8 pipe, u32 *phist);
 
+/*
+ * mml_pq_ir_wrot_callback - noify from MML core through MML PQ driver
+ *   that second output finished
+ *
+ * @pq_task:	pq task data, include sub_task info
+ * @frame_data: frame related data
+ * @mml_jobid: mml jobid
+ * @dual: dual pipe flag
+ *
+ * Return:	if value < 0, means PQ update failed should debug
+ */
+
+int mml_pq_ir_wrot_callback(struct mml_pq_task *pq_task, struct mml_pq_frame_data frame_data,
+			u32 mml_jobid, bool dual);
 
 /*
  * mml_pq_wrot_callback - noify from MML core through MML PQ driver
@@ -550,6 +564,7 @@ void mml_pq_tdshp_flag_check(bool dual, u8 out_idx);
  *
  * Return:	if value < 0, means PQ update failed should debug
  */
+
 int mml_pq_dc_readback(struct mml_task *task, u8 pipe, u32 *phist);
 
 /*
