@@ -4258,9 +4258,33 @@ static void __gpufreq_mtcmos_ctrl(enum gpufreq_power_state power)
 		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG18_PWR_CON, "MFG18_PWR_CON");
 		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG19_PWR_CON, "MFG19_PWR_CON");
 		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG20_PWR_CON, "MFG20_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG25_PWR_CON, "MFG25_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG26_PWR_CON, "MFG26_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG27_PWR_CON, "MFG27_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG28_PWR_CON, "MFG28_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG29_PWR_CON, "MFG29_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG30_PWR_CON, "MFG30_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG31_PWR_CON, "MFG31_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG32_PWR_CON, "MFG32_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG33_PWR_CON, "MFG33_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG34_PWR_CON, "MFG34_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG35_PWR_CON, "MFG35_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_ON, MFG_RPC_MFG36_PWR_CON, "MFG36_PWR_CON");
 #endif /* GPUFREQ_PDCA_ENABLE */
 	} else if (power == GPU_PWR_OFF) {
 #if !GPUFREQ_PDCA_ENABLE
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG36_PWR_CON, "MFG36_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG35_PWR_CON, "MFG35_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG34_PWR_CON, "MFG34_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG33_PWR_CON, "MFG33_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG32_PWR_CON, "MFG32_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG31_PWR_CON, "MFG31_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG30_PWR_CON, "MFG30_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG29_PWR_CON, "MFG29_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG28_PWR_CON, "MFG28_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG27_PWR_CON, "MFG27_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG26_PWR_CON, "MFG26_PWR_CON");
+		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG25_PWR_CON, "MFG25_PWR_CON");
 		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG20_PWR_CON, "MFG20_PWR_CON");
 		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG19_PWR_CON, "MFG19_PWR_CON");
 		__gpufreq_mfgx_rpc_ctrl(GPU_PWR_OFF, MFG_RPC_MFG18_PWR_CON, "MFG18_PWR_CON");
@@ -4286,6 +4310,9 @@ static void __gpufreq_mtcmos_ctrl(enum gpufreq_power_state power)
 		g_gpu.mtcmos_count--;
 		g_stack.mtcmos_count--;
 	}
+
+	GPUFREQ_LOGD("power: %d, MFG_0_31_PWR_STA: 0x%08lx, MFG_32_37_PWR_STA: 0x%08lx",
+		power, MFG_0_31_PWR_STATUS, MFG_32_37_PWR_STATUS);
 
 	GPUFREQ_TRACE_END();
 }
