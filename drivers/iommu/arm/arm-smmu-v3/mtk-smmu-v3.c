@@ -1860,6 +1860,12 @@ static const struct mtk_smmu_plat_data mt6989_data_soc = {
 	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN,
 };
 
+static const struct mtk_smmu_plat_data mt6989_data_gpu = {
+	.smmu_plat		= SMMU_MT6989,
+	.smmu_type		= GPU_SMMU,
+	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT,
+};
+
 static const struct mtk_smmu_plat_data *of_device_get_plat_data(struct device *dev)
 {
 	const struct device_node *np = dev->of_node;
@@ -1870,6 +1876,8 @@ static const struct mtk_smmu_plat_data *of_device_get_plat_data(struct device *d
 		return &mt6989_data_apu;
 	else if (of_device_is_compatible(np, "mediatek,mt6989-soc-smmu"))
 		return &mt6989_data_soc;
+	else if (of_device_is_compatible(np, "mediatek,mt6989-gpu-smmu"))
+		return &mt6989_data_gpu;
 
 	return NULL;
 }
