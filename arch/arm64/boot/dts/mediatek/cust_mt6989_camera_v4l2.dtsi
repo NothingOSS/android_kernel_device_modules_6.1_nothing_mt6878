@@ -427,6 +427,20 @@
 			output-high;
 		};
 	};
+	camera_pins_cam4_oisen_0: cam4@4 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO189__FUNC_GPIO189>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	camera_pins_cam4_oisen_1: cam4@5 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO189__FUNC_GPIO189>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
 	camera_pins_default: camdefault {
 	};
 };
@@ -541,7 +555,9 @@
 				"rst_low",
 				"rst_high",
 				"dvdd_off",
-				"dvdd_on";
+				"dvdd_on",
+				"oisen_off",
+				"oisen_on";
 		pinctrl-0 = <&camera_pins_cam4_mclk_off>;
 		pinctrl-1 = <&camera_pins_cam4_mclk_2ma>;
 		pinctrl-2 = <&camera_pins_cam4_mclk_4ma>;
@@ -551,10 +567,13 @@
 		pinctrl-6 = <&camera_pins_cam4_rst_1>;
 		pinctrl-7 = <&camera_pins_cam4_dvdd_0>;
 		pinctrl-8 = <&camera_pins_cam4_dvdd_1>;
+		pinctrl-9 = <&camera_pins_cam4_oisen_0>;
+		pinctrl-10 = <&camera_pins_cam4_oisen_1>;
 
 		avdd-supply = <&rt5133_ldo3>;
 		afvdd-supply = <&rt5133_ldo2>;
 		dovdd-supply = <&camera_common_dovdd>;
+		oisvdd-supply = <&rt5133_ldo1>;
 
 		clocks = <&topckgen_clk CLK_TOP_UNIVPLL2_192M_D32>,
 			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D16>,
