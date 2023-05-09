@@ -10672,6 +10672,7 @@
 		pmu-boundary-num = <0>;
 		pmu-dsu-support = <1>;
 		pmu-dsu-type = <10>;
+		pmu-ai-support = <0>;
 	};
 
 	gps: gps@18c00000 {
