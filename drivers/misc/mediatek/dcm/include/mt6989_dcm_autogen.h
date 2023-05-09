@@ -69,6 +69,7 @@ extern unsigned long dcm_vlp_ao_bcrm_base;
 #define MCUSYS_PAR_WRAP_CBIP_CABGEN_2TO5_CONFIG           (MCUSYS_PAR_WRAP_BASE + 0x2b0)
 #define MCUSYS_PAR_WRAP_CBIP_P2P_CONFIG0                  (MCUSYS_PAR_WRAP_BASE + 0x2b4)
 #define MCUSYS_PAR_WRAP_MP_CENTRAL_FABRIC_SUB_CHANNEL_CG  (MCUSYS_PAR_WRAP_BASE + 0x2b8)
+#define MCUSYS_PAR_WRAP_CMN_DIV_CLK_CTRL                  (MCUSYS_PAR_WRAP_BASE + 0x2d8)
 #define MCUSYS_PAR_WRAP_ACP_SLAVE_DCM_EN                  (MCUSYS_PAR_WRAP_BASE + 0x2dc)
 #define MCUSYS_PAR_WRAP_GIC_SPI_SLOW_CK_CFG               (MCUSYS_PAR_WRAP_BASE + 0x2e0)
 #define MCUSYS_PAR_WRAP_EBG_CKE_WRAP_FIFO_CFG             (MCUSYS_PAR_WRAP_BASE + 0x404)
@@ -124,6 +125,8 @@ void dcm_mcusys_par_wrap_mcu_cbip_dcm(int on);
 bool dcm_mcusys_par_wrap_mcu_cbip_dcm_is_on(void);
 void dcm_mcusys_par_wrap_mcu_misc_dcm(int on);
 bool dcm_mcusys_par_wrap_mcu_misc_dcm_is_on(void);
+void dcm_mcusys_par_wrap_mcu_bkr_div_dcm(int on);
+bool dcm_mcusys_par_wrap_mcu_bkr_div_dcm_is_on(void);
 void dcm_mcusys_par_wrap_mcu_dsu_acp_dcm(int on);
 bool dcm_mcusys_par_wrap_mcu_dsu_acp_dcm_is_on(void);
 void dcm_mcusys_par_wrap_mcu_chi_mon_dcm(int on);

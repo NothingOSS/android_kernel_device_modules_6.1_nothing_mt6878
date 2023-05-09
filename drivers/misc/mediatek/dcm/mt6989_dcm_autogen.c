@@ -788,6 +788,36 @@ void dcm_mcusys_par_wrap_mcu_misc_dcm(int on)
 	}
 }
 
+#define MCUSYS_PAR_WRAP_MCU_BKR_DIV_DCM_REG0_MASK ((0x1U << 2))
+#define MCUSYS_PAR_WRAP_MCU_BKR_DIV_DCM_REG0_ON ((0x1U << 2))
+#define MCUSYS_PAR_WRAP_MCU_BKR_DIV_DCM_REG0_OFF ((0x0U << 0))
+
+bool dcm_mcusys_par_wrap_mcu_bkr_div_dcm_is_on(void)
+{
+	bool ret = true;
+
+	ret &= ((reg_read(MCUSYS_PAR_WRAP_CMN_DIV_CLK_CTRL) &
+		MCUSYS_PAR_WRAP_MCU_BKR_DIV_DCM_REG0_MASK) ==
+		MCUSYS_PAR_WRAP_MCU_BKR_DIV_DCM_REG0_ON);
+
+	return ret;
+}
+
+void dcm_mcusys_par_wrap_mcu_bkr_div_dcm(int on)
+{
+	if (on) {
+		reg_write(MCUSYS_PAR_WRAP_CMN_DIV_CLK_CTRL,
+			(reg_read(MCUSYS_PAR_WRAP_CMN_DIV_CLK_CTRL) &
+			~MCUSYS_PAR_WRAP_MCU_BKR_DIV_DCM_REG0_MASK) |
+			MCUSYS_PAR_WRAP_MCU_BKR_DIV_DCM_REG0_ON);
+	} else {
+		reg_write(MCUSYS_PAR_WRAP_CMN_DIV_CLK_CTRL,
+			(reg_read(MCUSYS_PAR_WRAP_CMN_DIV_CLK_CTRL) &
+			~MCUSYS_PAR_WRAP_MCU_BKR_DIV_DCM_REG0_MASK) |
+			MCUSYS_PAR_WRAP_MCU_BKR_DIV_DCM_REG0_OFF);
+	}
+}
+
 #define MCUSYS_PAR_WRAP_MCU_DSU_ACP_DCM_REG0_MASK ((0x1U << 0))
 #define MCUSYS_PAR_WRAP_MCU_DSU_ACP_DCM_REG0_ON ((0x1U << 0))
 #define MCUSYS_PAR_WRAP_MCU_DSU_ACP_DCM_REG0_OFF ((0x0U << 0))

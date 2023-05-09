@@ -18,41 +18,62 @@
 #define INIT_DCM_TYPE_BY_K	0
 #endif
 
-/* #define CTRL_BIGCORE_DCM_IN_KERNEL */
+/* Note: If DCM has states other than DCM_OFF/DCM_ON, define here */
+enum {
+	ARMCORE_DCM_OFF = DCM_OFF,
+	ARMCORE_DCM_MODE1 = DCM_ON,
+	ARMCORE_DCM_MODE2 = DCM_ON+1,
+};
 
-/* #define reg_read(addr)	__raw_readl(IOMEM(addr)) */
-#define reg_read(addr) readl((void *)addr)
-/*#define reg_write(addr, val)	mt_reg_sync_writel((val), ((void *)addr))*/
-#define reg_write(addr, val) \
-	do { writel(val, (void *)addr); wmb(); } while (0) /* sync write */
+/* Note: DCM_TYPE enums is used in DCM init & SMC calls */
+enum {
+	BUSDVT_DCM = 0,
+	INFRA_DCM = 1,
+	MCUSYS_DCM = 2,
+	MCUSYS_ACP_DCM = 3,
+	MCUSYS_ADB_DCM = 4,
+	MCUSYS_APB_DCM = 5,
+	MCUSYS_BUS_DCM = 6,
+	MCUSYS_CBIP_DCM = 7,
+	MCUSYS_CHI_MON_DCM = 8,
+	MCUSYS_CORE_DCM = 9,
+	MCUSYS_CPC_PBI_DCM = 10,
+	MCUSYS_CPC_TURBO_DCM = 11,
+	MCUSYS_DSU_ACP_DCM = 12,
+	MCUSYS_EBG_DCM = 13,
+	MCUSYS_GIC_SPI_DCM = 14,
+	MCUSYS_IO_DCM = 15,
+	MCUSYS_L3C_DCM = 16,
+	MCUSYS_STALL_DCM = 17,
+	PERI_DCM = 18,
+	VLP_DCM = 19,
+};
 
-#if IS_ENABLED(CONFIG_ARM_PSCI) || IS_ENABLED(CONFIG_MTK_PSCI)
-#define MCUSYS_SMC_WRITE(addr, val)  mcusys_smc_write_phy(addr##_PHYS, val)
-#ifndef mcsi_reg_read
-#define mcsi_reg_read(offset) \
-	mt_secure_call(MTK_SIP_KERENL_MCSI_NS_ACCESS, 0, offset, 0)
-#endif
-#ifndef mcsi_reg_write
-#define mcsi_reg_write(val, offset) \
-	mt_secure_call(MTK_SIP_KERENL_MCSI_NS_ACCESS, 1, offset, val)
-#endif
-#define MCSI_SMC_WRITE(addr, val)  mcsi_reg_write(val, (addr##_PHYS & 0xFFFF))
-#define MCSI_SMC_READ(addr)  mcsi_reg_read(addr##_PHYS & 0xFFFF)
-#else
-#define MCUSYS_SMC_WRITE(addr, val)  mcusys_smc_write(addr, val)
-#define MCSI_SMC_WRITE(addr, val)  reg_write(addr, val)
-#define MCSI_SMC_READ(addr)  reg_read(addr)
-#endif
-
-#define REG_DUMP(addr) \
-	dcm_pr_info("%-60s(0x%08lx): 0x%08x\n", #addr, addr, reg_read(addr))
-#define SECURE_REG_DUMP(addr) \
-	dcm_pr_info("%-60s(0x%08lx): 0x%08x\n", \
-	#addr, addr, mcsi_reg_read(addr##_PHYS & 0xFFFF))
+enum {
+	BUSDVT_DCM_TYPE = BIT(BUSDVT_DCM),
+	INFRA_DCM_TYPE = BIT(INFRA_DCM),
+	MCUSYS_DCM_TYPE = BIT(MCUSYS_DCM),
+	MCUSYS_ACP_DCM_TYPE = BIT(MCUSYS_ACP_DCM),
+	MCUSYS_ADB_DCM_TYPE = BIT(MCUSYS_ADB_DCM),
+	MCUSYS_APB_DCM_TYPE = BIT(MCUSYS_APB_DCM),
+	MCUSYS_BUS_DCM_TYPE = BIT(MCUSYS_BUS_DCM),
+	MCUSYS_CBIP_DCM_TYPE = BIT(MCUSYS_CBIP_DCM),
+	MCUSYS_CHI_MON_DCM_TYPE = BIT(MCUSYS_CHI_MON_DCM),
+	MCUSYS_CORE_DCM_TYPE = BIT(MCUSYS_CORE_DCM),
+	MCUSYS_CPC_PBI_DCM_TYPE = BIT(MCUSYS_CPC_PBI_DCM),
+	MCUSYS_CPC_TURBO_DCM_TYPE = BIT(MCUSYS_CPC_TURBO_DCM),
+	MCUSYS_DSU_ACP_DCM_TYPE = BIT(MCUSYS_DSU_ACP_DCM),
+	MCUSYS_EBG_DCM_TYPE = BIT(MCUSYS_EBG_DCM),
+	MCUSYS_GIC_SPI_DCM_TYPE = BIT(MCUSYS_GIC_SPI_DCM),
+	MCUSYS_IO_DCM_TYPE = BIT(MCUSYS_IO_DCM),
+	MCUSYS_L3C_DCM_TYPE = BIT(MCUSYS_L3C_DCM),
+	MCUSYS_STALL_DCM_TYPE = BIT(MCUSYS_STALL_DCM),
+	PERI_DCM_TYPE = BIT(PERI_DCM),
+	VLP_DCM_TYPE = BIT(VLP_DCM),
+};
 
 int mt_dcm_dts_map(void);
 short is_dcm_bringup(void);
 void dcm_array_register(void);
 
 #endif /* #ifndef __MTK_DCM_INTERNAL_H__ */
-
