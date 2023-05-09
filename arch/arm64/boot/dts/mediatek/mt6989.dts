@@ -15208,8 +15208,8 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 	rt5133_gpio1: rt5133-gpio1 {
 		compatible = "regulator-fixed";
 		regulator-name = "rt5133-gpio1";
-		regulator-min-microvolt = <1800000>;
-		regulator-max-microvolt = <1800000>;
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
 		vin-supply = <&rt5133_ldo1>;
 		enable-active-high;
 		gpio = <&rt5133 0 0x0>;
@@ -15218,8 +15218,8 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 	rt5133_gpio2: rt5133-gpio2 {
 		compatible = "regulator-fixed";
 		regulator-name = "rt5133-gpio2";
-		regulator-min-microvolt = <1800000>;
-		regulator-max-microvolt = <1800000>;
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
 		vin-supply = <&rt5133_ldo1>;
 		enable-active-high;
 		gpio = <&rt5133 1 0x0>;
@@ -15228,8 +15228,8 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 	rt5133_gpio3: rt5133-gpio3 {
 		compatible = "regulator-fixed";
 		regulator-name = "rt5133-gpio3";
-		regulator-min-microvolt = <1800000>;
-		regulator-max-microvolt = <1800000>;
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
 		vin-supply = <&rt5133_ldo1>;
 		enable-active-high;
 		gpio = <&rt5133 2 0x0>;
@@ -15255,8 +15255,8 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 			};
 			rt5133_ldo1: LDO1 {
 				regulator-name = "rt5133-ldo1";
-				regulator-min-microvolt = <1800000>;
-				regulator-max-microvolt = <1800000>;
+				regulator-min-microvolt = <2800000>;
+				regulator-max-microvolt = <2800000>;
 				regulator-active-discharge;
 				oc-ptsel = <1>;
 				pgb-ptsel = <1>;
