@@ -530,7 +530,6 @@ mgk_64_k61_device_modules = [
     "drivers/thermal/mediatek/pmic_temp.ko",
     "drivers/thermal/mediatek/soc_temp_lvts.ko",
     "drivers/thermal/mediatek/thermal_interface.ko",
-    "drivers/thermal/mediatek/thermal_jatm.ko",
     "drivers/thermal/mediatek/thermal_trace.ko",
     "drivers/thermal/mediatek/vtskin_temp.ko",
     "drivers/thermal/mediatek/wifi_cooling.ko",
