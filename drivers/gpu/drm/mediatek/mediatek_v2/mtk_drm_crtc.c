@@ -7207,10 +7207,10 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 			mtk_dprec_snapshot();
 			if (priv->data->mmsys_id == MMSYS_MT6985 ||
 				priv->data->mmsys_id == MMSYS_MT6989) {
-				DDPAEE("ovl status error. TS: 0x%08x\n", ovl_status);
+				DDPINFO("ovl status error. TS: 0x%08x\n", ovl_status);
 				mtk_drm_crtc_mini_analysis(crtc);
 				mtk_drm_crtc_mini_dump(crtc);
-				cmdq_dump_pkt(cb_data->cmdq_handle, 0, true);
+				//cmdq_dump_pkt(cb_data->cmdq_handle, 0, true);
 			} else {
 				cmdq_util_hw_trace_dump(0, 0);
 				mtk_drm_crtc_analysis(crtc);
