@@ -145,6 +145,7 @@
 	cache-parity {
 		compatible = "mediatek,mt6985-cache-parity";
 		ecc-irq-support = <1>;
+		bypass-emi-slverr-ecc-err = <1>;
 		arm-complex-ecc-hwirq = <40 41>;
 		arm-dsu-ecc-hwirq = <48>;
 		interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 0 Fault IRQ */
