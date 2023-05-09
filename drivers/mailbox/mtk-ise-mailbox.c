@@ -66,8 +66,10 @@ static uint32_t mailbox_poll(uint32_t addr, uint32_t mask, uint32_t expected_val
 {
 	int retry = MAILBOX_RETRY;
 
-	while ((mlb_read(addr) & mask) != expected_value && retry)
+	while ((mlb_read(addr) & mask) != expected_value && retry) {
+		udelay(1);
 		retry--;
+	}
 
 	if (!retry)
 		return MAILBOX_TIMEOUT;

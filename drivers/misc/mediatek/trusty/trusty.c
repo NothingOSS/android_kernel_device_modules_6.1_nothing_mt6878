@@ -108,6 +108,7 @@ s64 trusty_fast_call64(struct device *dev, u64 smcnr, u64 a0, u64 a1, u64 a2)
 }
 #endif
 
+#if !IS_ENABLED(CONFIG_TRUSTY)
 static ulong trusty_std_call_inner(struct device *dev, ulong smcnr,
 				   ulong a0, ulong a1, ulong a2)
 {
@@ -181,6 +182,7 @@ static void trusty_std_call_cpu_idle(struct trusty_state *s)
 			__func__);
 	}
 }
+#endif
 
 s32 ise_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 {
@@ -190,6 +192,14 @@ s32 ise_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 	BUG_ON(SMC_IS_FASTCALL(smcnr));
 	BUG_ON(SMC_IS_SMC64(smcnr));
 
+#if IS_ENABLED(CONFIG_TRUSTY)
+	mutex_lock(&s->smc_lock);
+	ret = smc(smcnr, a0, a1, a2);
+	mutex_unlock(&s->smc_lock);
+
+	atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_RETURNED, NULL);
+	return ret;
+#else
 	if (smcnr != SMC_SC_NOP) {
 		mutex_lock(&s->smc_lock);
 		reinit_completion(&s->cpu_idle_completion);
@@ -217,6 +227,7 @@ s32 ise_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 		mutex_unlock(&s->smc_lock);
 
 	return ret;
+#endif
 }
 EXPORT_SYMBOL(ise_std_call32);
 
@@ -389,7 +400,7 @@ static void nop_work_func(struct work_struct *work)
 		if (ret == SM_ERR_NOP_INTERRUPTED)
 			next = true;
 		else if (ret != SM_ERR_NOP_DONE)
-			dev_dbg(s->dev, "%s: SMC_SC_NOP failed %d",
+			dev_dbg(s->dev, "%s: SMC_SC_NOP ret %d",
 				__func__, ret);
 	} while (next);
 

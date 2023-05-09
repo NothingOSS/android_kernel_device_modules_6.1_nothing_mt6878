@@ -6,6 +6,7 @@
 #ifndef __MTK_ISE_MAILBOX_H__
 #define __MTK_ISE_MAILBOX_H__
 
+#include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
