@@ -12,6 +12,7 @@
 #if IS_ENABLED(CONFIG_MTK_SLBC)
 #include <slbc_ops.h>
 #endif
+#include <iommu_debug.h>
 
 #include "cmdq-util.h"
 
@@ -353,12 +354,13 @@ static int do_mminfra_imax(const char *val, const struct kernel_param *kp)
 			4, 255, 7, 0, 0, latency, 1);
 	}
 
-	dram_base = dma_alloc_attrs(dev, 1024*1024, &dram_phy_base,
-				GFP_KERNEL, DMA_ATTR_FORCE_CONTIGUOUS);
+	dram_base = dma_alloc_coherent(mtk_smmu_get_shared_device(dev),
+		1024*1024, &dram_phy_base, GFP_KERNEL);
 	if (!dram_base) {
 		mminfra_crit("%s: allocate dram memory failed\n", __func__);
 		return -ENOMEM;
 	}
+	mminfra_crit("%s dram addr = %pa\n", __func__, &dram_phy_base);
 
 	fake_eng_set(DISPSYS_BASE, dispsys_base, 0, dram_phy_base, dram_phy_base,
 		4, 255, 7, 0, 0, latency, 1);
