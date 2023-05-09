@@ -435,6 +435,7 @@ struct mtk_smmu_data {
 	struct list_head		pmu_devices;
 	u32				iommu_group_nr;
 	u32				smmu_trans_type;
+	u32				hw_init_flag;
 
 	u32				irq_cnt;
 	unsigned long			irq_first_jiffies;
@@ -472,6 +473,8 @@ struct mtk_smmu_ops {
 	struct mtk_smmu_data* (*get_smmu_data)(u32 smmu_type);
 	__le64* (*get_cd_ptr)(struct arm_smmu_domain *smmu_domain, u32 ssid);
 	__le64* (*get_step_ptr)(struct arm_smmu_device *smmu, u32 sid);
+	int (*smmu_power_get)(struct arm_smmu_device *smmu);
+	int (*smmu_power_put)(struct arm_smmu_device *smmu);
 };
 
 static inline bool smmu_v3_enabled(void)

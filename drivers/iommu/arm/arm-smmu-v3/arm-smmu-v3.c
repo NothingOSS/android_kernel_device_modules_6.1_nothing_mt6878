@@ -83,7 +83,7 @@ static int arm_smmu_init_structures(struct arm_smmu_device *smmu);
 static void arm_smmu_rmr_install_bypass_ste(struct arm_smmu_device *smmu);
 static int arm_smmu_device_reset(struct arm_smmu_device *smmu, bool bypass);
 static int arm_smmu_rpm_get(struct arm_smmu_device *smmu);
-static void arm_smmu_rpm_put(struct arm_smmu_device *smmu);
+static int arm_smmu_rpm_put(struct arm_smmu_device *smmu);
 
 /*
  * Special value used by SVA when a process dies, to quiesce a CD without
@@ -4170,10 +4170,12 @@ static int arm_smmu_rpm_get(struct arm_smmu_device *smmu)
 	return 0;
 }
 
-static void arm_smmu_rpm_put(struct arm_smmu_device *smmu)
+static int arm_smmu_rpm_put(struct arm_smmu_device *smmu)
 {
 	if (smmu && smmu->impl && smmu->impl->smmu_power_put)
 		return smmu->impl->smmu_power_put(smmu);
+
+	return 0;
 }
 
 static int arm_smmu_runtime_resume(struct device *dev)

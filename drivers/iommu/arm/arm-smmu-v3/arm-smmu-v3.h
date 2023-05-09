@@ -757,7 +757,7 @@ struct arm_smmu_impl {
 	int (*smmu_hw_deinit)(struct arm_smmu_device *smmu);
 	int (*smmu_hw_sec_init)(struct arm_smmu_device *smmu);
 	int (*smmu_power_get)(struct arm_smmu_device *smmu);
-	void (*smmu_power_put)(struct arm_smmu_device *smmu);
+	int (*smmu_power_put)(struct arm_smmu_device *smmu);
 	int (*smmu_runtime_suspend)(struct device *dev);
 	int (*smmu_runtime_resume)(struct device *dev);
 	void (*get_resv_regions)(struct device *dev, struct list_head *head);

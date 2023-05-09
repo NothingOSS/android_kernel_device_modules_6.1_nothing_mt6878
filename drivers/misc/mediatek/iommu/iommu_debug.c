@@ -807,6 +807,32 @@ int mtk_smmu_set_ops(const struct mtk_smmu_ops *ops)
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_set_ops);
 
+static int mtk_smmu_power_get(u32 smmu_type)
+{
+	struct mtk_smmu_data *data;
+
+	if (smmu_ops && smmu_ops->get_smmu_data) {
+		data = smmu_ops->get_smmu_data(smmu_type);
+		if (data != NULL && smmu_ops->smmu_power_get)
+			return smmu_ops->smmu_power_get(&data->smmu);
+	}
+
+	return -1;
+}
+
+static int mtk_smmu_power_put(u32 smmu_type)
+{
+	struct mtk_smmu_data *data;
+
+	if (smmu_ops && smmu_ops->get_smmu_data) {
+		data = smmu_ops->get_smmu_data(smmu_type);
+		if (data != NULL && smmu_ops->smmu_power_put)
+			return smmu_ops->smmu_power_put(&data->smmu);
+	}
+
+	return -1;
+}
+
 static int get_smmu_common_id(u32 smmu_type, u32 tbu_id)
 {
 	int id = -1;
@@ -897,7 +923,7 @@ void mtk_smmu_wpreg_dump(struct seq_file *s, u32 smmu_type)
 
 	if (smmu_ops && smmu_ops->get_smmu_data) {
 		data = smmu_ops->get_smmu_data(smmu_type);
-		if (data != NULL)
+		if (data != NULL && data->hw_init_flag == 1)
 			dump_wrapper_register(s, &data->smmu);
 	}
 }
@@ -1308,7 +1334,7 @@ void mtk_smmu_ste_cd_dump(struct seq_file *s, u32 smmu_type)
 
 	if (smmu_ops && smmu_ops->get_smmu_data) {
 		data = smmu_ops->get_smmu_data(smmu_type);
-		if (data != NULL)
+		if (data != NULL && data->hw_init_flag == 1)
 			dump_ste_info_list(s, &data->smmu);
 	}
 }
@@ -1323,7 +1349,7 @@ void mtk_smmu_ste_cd_info_dump(struct seq_file *s, u32 smmu_type, u32 sid)
 
 	if (smmu_ops && smmu_ops->get_smmu_data) {
 		data = smmu_ops->get_smmu_data(smmu_type);
-		if (data != NULL)
+		if (data != NULL && data->hw_init_flag == 1)
 			smmu = &data->smmu;
 	}
 
@@ -1371,7 +1397,7 @@ void mtk_smmu_pgtable_dump(struct seq_file *s, u32 smmu_type)
 
 	if (smmu_ops && smmu_ops->get_smmu_data) {
 		data = smmu_ops->get_smmu_data(smmu_type);
-		if (data != NULL)
+		if (data != NULL && data->hw_init_flag == 1)
 			smmu_pgtable_dump(s, &data->smmu);
 	}
 }
@@ -1388,6 +1414,16 @@ u64 mtk_smmu_iova_to_iopte(struct io_pgtable_ops *ops, u64 iova)
 	return arm_lpae_iova_to_iopte(ops, iova);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_iova_to_iopte);
+#else /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
+static inline int mtk_smmu_power_get(u32 smmu_type)
+{
+	return -1;
+}
+
+static inline int mtk_smmu_power_put(u32 smmu_type)
+{
+	return -1;
+}
 #endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
 
 /* peri_iommu */
@@ -1653,11 +1689,15 @@ static int mtk_iommu_dump_fops_proc_show(struct seq_file *s, void *unused)
 		int i;
 
 		/* dump all smmu if exist */
-		for (i = 0; i < SMMU_TYPE_NUM; i++)
-			mtk_smmu_wpreg_dump(s, i);
+		for (i = 0; i < SMMU_TYPE_NUM; i++) {
+			if (mtk_smmu_power_get(i) != 0)
+				continue;
 
-		for (i = 0; i < SMMU_TYPE_NUM; i++)
+			mtk_smmu_wpreg_dump(s, i);
 			mtk_smmu_pgtable_dump(s, i);
+
+			mtk_smmu_power_put(i);
+		}
 	}
 	return 0;
 }
@@ -1687,8 +1727,13 @@ static int mtk_smmu_wp_fops_proc_show(struct seq_file *s, void *unused)
 		int i;
 
 		/* dump all smmu if exist */
-		for (i = 0; i < SMMU_TYPE_NUM; i++)
+		for (i = 0; i < SMMU_TYPE_NUM; i++) {
+			if (mtk_smmu_power_get(i) != 0)
+				continue;
+
 			mtk_smmu_wpreg_dump(s, i);
+			mtk_smmu_power_put(i);
+		}
 	}
 	return 0;
 }
@@ -1699,8 +1744,13 @@ static int mtk_smmu_pgtable_fops_proc_show(struct seq_file *s, void *unused)
 		int i;
 
 		/* dump all smmu if exist */
-		for (i = 0; i < SMMU_TYPE_NUM; i++)
+		for (i = 0; i < SMMU_TYPE_NUM; i++) {
+			if (mtk_smmu_power_get(i) != 0)
+				continue;
+
 			mtk_smmu_pgtable_dump(s, i);
+			mtk_smmu_power_put(i);
+		}
 	}
 	return 0;
 }

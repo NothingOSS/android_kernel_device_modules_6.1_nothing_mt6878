@@ -451,6 +451,7 @@ static int mtk_smmu_hw_init(struct arm_smmu_device *smmu)
 
 	/* Make sure ste entries installed before smmu enable */
 	arm_smmu_init_sid_strtab(smmu, 0);
+	data->hw_init_flag = 1;
 
 	ret = smmu_init_wpcfg(smmu);
 
@@ -467,6 +468,8 @@ static int mtk_smmu_hw_deinit(struct arm_smmu_device *smmu)
 		 "[%s] plat_data{smmu_plat:%d, flags:0x%x, smmu:%s}\n",
 		 __func__, plat_data->smmu_plat, plat_data->flags,
 		 get_smmu_name(plat_data->smmu_type));
+
+	data->hw_init_flag = 0;
 
 	ret = smmu_deinit_wpcfg(smmu);
 
@@ -510,15 +513,17 @@ static int mtk_smmu_power_get(struct arm_smmu_device *smmu)
 	return 0;
 }
 
-static void mtk_smmu_power_put(struct arm_smmu_device *smmu)
+static int mtk_smmu_power_put(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	const struct mtk_smmu_plat_data *plat_data = data->plat_data;
 
 	if (MTK_SMMU_HAS_FLAG(plat_data, SMMU_EN_PRE))
-		return;
+		return 0;
 
 	// TODO: smc to release hw semaphore
+
+	return 0;
 }
 
 static int mtk_smmu_runtime_suspend(struct device *dev)
@@ -1498,6 +1503,11 @@ static void smmu_fault_dump(struct arm_smmu_device *smmu)
 	}
 
 	data = to_mtk_smmu_data(smmu);
+	if (data->hw_init_flag != 1) {
+		pr_info("%s, hw not init\n", __func__);
+		return;
+	}
+
 	dev_info(smmu->dev, "[%s] smmu:%s\n", __func__,
 		 get_smmu_name(data->plat_data->smmu_type));
 
@@ -1562,6 +1572,11 @@ void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
 
 	if (!__ratelimit(&hang_rs))
 		return;
+
+	if (data->hw_init_flag != 1) {
+		pr_info("%s, hw not init\n", __func__);
+		return;
+	}
 
 	pr_info("%s, smmu:%s\n", __func__, get_smmu_name(type));
 
@@ -1629,6 +1644,8 @@ static const struct mtk_smmu_ops mtk_smmu_dbg_ops = {
 	.get_smmu_data		= mkt_get_smmu_data,
 	.get_cd_ptr		= arm_smmu_get_cd_ptr,
 	.get_step_ptr		= arm_smmu_get_step_for_sid,
+	.smmu_power_get		= mtk_smmu_power_get,
+	.smmu_power_put		= mtk_smmu_power_put,
 };
 
 static int mtk_smmu_config_translation(struct mtk_smmu_data *data)
@@ -1812,6 +1829,8 @@ skip_smi:
 	populate_iommu_groups(data, dev->of_node);
 
 	mtk_smmu_irq_pause_timer_init(data);
+
+	data->hw_init_flag = 0;
 
 	dev_info(dev, "%s done: %d\n", __func__, ret);
 	return ret;
