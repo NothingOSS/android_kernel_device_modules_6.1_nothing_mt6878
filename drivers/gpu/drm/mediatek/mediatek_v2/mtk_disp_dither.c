@@ -1130,75 +1130,67 @@ static int mtk_disp_dither_remove(struct platform_device *pdev)
 static const struct mtk_disp_dither_data mt6779_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = false,
-	.single_pipe_dither_num = 1,
 };
 
 static const struct mtk_disp_dither_data mt6885_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = false,
-	.single_pipe_dither_num = 1,
 };
 
 static const struct mtk_disp_dither_data mt6873_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
-	.single_pipe_dither_num = 1,
 };
 
 static const struct mtk_disp_dither_data mt6853_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
-	.single_pipe_dither_num = 1,
 };
 
 static const struct mtk_disp_dither_data mt6833_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
-	.single_pipe_dither_num = 1,
 };
 
 static const struct mtk_disp_dither_data mt6983_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
-	.single_pipe_dither_num = 1,
 };
 
 static const struct mtk_disp_dither_data mt6895_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
-	.single_pipe_dither_num = 1,
 };
 
 static const struct mtk_disp_dither_data mt6879_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
-	.single_pipe_dither_num = 1,
 };
 
 static const struct mtk_disp_dither_data mt6855_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
-	.single_pipe_dither_num = 1,
 };
 
 static const struct mtk_disp_dither_data mt6985_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
-	.single_pipe_dither_num = 2,
 };
 
 static const struct mtk_disp_dither_data mt6897_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
-	.single_pipe_dither_num = 2,
 };
 
 static const struct mtk_disp_dither_data mt6886_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = true,
-	.single_pipe_dither_num = 1,
 };
 
+static const struct mtk_disp_dither_data mt6989_dither_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = true,
+};
 
 static const struct of_device_id mtk_disp_dither_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6779-disp-dither",
@@ -1225,8 +1217,8 @@ static const struct of_device_id mtk_disp_dither_driver_dt_match[] = {
 	  .data = &mt6886_dither_driver_data},
 	{ .compatible = "mediatek,mt6835-disp-dither",
 	  .data = &mt6835_dither_driver_data},
-	{ .compatible = "mediatek,mt6897-disp-dither",
-	  .data = &mt6897_dither_driver_data},
+	{ .compatible = "mediatek,mt6989-disp-dither",
+	  .data = &mt6989_dither_driver_data},
 	{},
 };
 
