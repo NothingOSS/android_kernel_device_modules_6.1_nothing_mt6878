@@ -22,6 +22,7 @@
 #include "sched_sys_common.h"
 #include "eas_plus.h"
 #include "eas_trace.h"
+#include "common.h"
 
 DEFINE_PER_CPU(struct task_rotate_work, task_rotate_works);
 bool big_task_rotation_enable = true;
@@ -170,6 +171,7 @@ void task_check_for_rotation(struct rq *src_rq)
 	wc = ktime_get_raw_ns();
 	for_each_possible_cpu(i) {
 		struct rq *rq = cpu_rq(i);
+		struct rot_task_struct *rts;
 
 		if (cpu_paused(i))
 			continue;
@@ -184,7 +186,8 @@ void task_check_for_rotation(struct rq *src_rq)
 		if (is_reserved(i))
 			continue;
 
-		wait = wc - READ_ONCE(rq->curr->android_vendor_data1[3]);
+		rts = &((struct mtk_task *) rq->curr->android_vendor_data1)->rot_task;
+		wait = wc - READ_ONCE(rts->ktime_ns);
 
 		if (wait > max_wait) {
 			max_wait = wait;
@@ -197,6 +200,7 @@ void task_check_for_rotation(struct rq *src_rq)
 
 	for_each_possible_cpu(i) {
 		struct rq *rq = cpu_rq(i);
+		struct rot_task_struct *rts;
 
 		if (cpu_paused(i))
 			continue;
@@ -213,7 +217,8 @@ void task_check_for_rotation(struct rq *src_rq)
 		if (is_reserved(i))
 			continue;
 
-		run = wc - READ_ONCE(rq->curr->android_vendor_data1[3]);
+		rts = &((struct mtk_task *) rq->curr->android_vendor_data1)->rot_task;
+		run = wc - READ_ONCE(rts->ktime_ns);
 
 		if (run < TASK_ROTATION_THRESHOLD_NS)
 			continue;
@@ -280,17 +285,23 @@ EXPORT_SYMBOL_GPL(set_big_task_rotation);
 void rotat_after_enqueue_task(void __always_unused *data, struct rq *rq,
 				struct task_struct *p)
 {
-	p->android_vendor_data1[3] = ktime_get_raw_ns();
+	struct rot_task_struct *rts = &((struct mtk_task *)p->android_vendor_data1)->rot_task;
+
+	WRITE_ONCE(rts->ktime_ns, ktime_get_raw_ns());
 }
 
 void rotat_task_stats(void __always_unused *data,
 				struct task_struct *p)
 {
-	p->android_vendor_data1[3] = ktime_get_raw_ns();
+	struct rot_task_struct *rts = &((struct mtk_task *)p->android_vendor_data1)->rot_task;
+
+	WRITE_ONCE(rts->ktime_ns, ktime_get_raw_ns());
 }
 
 void rotat_task_newtask(void __always_unused *data,
 				struct task_struct *p, unsigned long clone_flags)
 {
-	p->android_vendor_data1[3] = 0;
+	struct rot_task_struct *rts = &((struct mtk_task *)p->android_vendor_data1)->rot_task;
+
+	WRITE_ONCE(rts->ktime_ns, 0);
 }

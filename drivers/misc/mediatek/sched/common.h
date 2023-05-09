@@ -39,6 +39,10 @@ struct sbb_task_struct {
 	int set_group;
 };
 
+struct rot_task_struct {
+	u64 ktime_ns;
+};
+
 struct mtk_task {
 	u64 reserved0[MTK_TASK_FLAG];
 	struct vip_task_struct	vip_task;
@@ -46,6 +50,7 @@ struct mtk_task {
 	struct gp_task_struct	gp_task;
 	struct task_gear_hints  gear_hints;
 	struct sbb_task_struct sbb_task;
+	struct rot_task_struct rot_task;
 };
 
 struct soft_affinity_tg {
