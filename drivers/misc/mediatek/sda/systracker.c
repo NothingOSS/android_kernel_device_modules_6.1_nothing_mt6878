@@ -58,6 +58,7 @@
 enum TRACKER_INST {
 	AP_TRACKER_INST,
 	INFRA_TRACKER_INST,
+	VLP_TRACKER_INST,
 	NR_TRACKER_INST,
 };
 
@@ -186,8 +187,14 @@ static ssize_t tracker_status_show(struct device_driver *driver, char *buf)
 			" ==== AR 1st Stage Timeout IRQ is Enabled: %s =====\n",
 			(wp->irq_en_ops & IRQ_EN_OPS_AR_1ST_TMO) ? "True" : "False");
 		n += snprintf(buf + n, PAGE_SIZE - n,
-			" ==== AW 1st Stage Timeout IRQ is Enabled: %s =====\n\n",
+			" ==== AW 1st Stage Timeout IRQ is Enabled: %s =====\n",
 			(wp->irq_en_ops & IRQ_EN_OPS_AW_1ST_TMO) ? "True" : "False");
+		n += snprintf(buf + n, PAGE_SIZE - n,
+			" ==== AR SLVERR Capture IRQ is Enabled: %s =====\n",
+			(wp->irq_en_ops & IRQ_EN_OPS_AR_SLV_ERR) ? "True" : "False");
+		n += snprintf(buf + n, PAGE_SIZE - n,
+			" ==== AW SLVERR Capture IRQ is Enabled: %s =====\n\n",
+			(wp->irq_en_ops & IRQ_EN_OPS_AW_SLV_ERR) ? "True" : "False");
 
 		if (!(wp->irq_en_ops & IRQ_EN_OPS_ALL))
 			continue;
