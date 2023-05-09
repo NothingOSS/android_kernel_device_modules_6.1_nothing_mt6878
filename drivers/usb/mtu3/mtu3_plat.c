@@ -63,6 +63,9 @@ static void ssusb_hwrscs_req(struct ssusb_mtk *ssusb,
 
 	spm_ctrl = mtu3_readl(ibase, U3D_SSUSB_SPM_CTRL);
 
+	/* Clear FORCE HW Request which is default on since MT6989 */
+	spm_ctrl &= ~SSUSB_SPM_FORCE_HW_REQ_MSK;
+
 	switch (state) {
 	case MTU3_STATE_POWER_OFF:
 		spm_ctrl &= ~SSUSB_SPM_REQ_MSK;
