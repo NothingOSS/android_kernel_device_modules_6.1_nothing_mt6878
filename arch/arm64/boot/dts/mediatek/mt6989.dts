@@ -8748,38 +8748,38 @@
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
 			mediatek,pda2 = <&pda2>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
-#if 0
 			mediatek,larbs = <&smi_larb25>;
-			iommus = <&disp_iommu M4U_L25_P4_PDAI_A_0>,
-				<&disp_iommu M4U_L25_P5_PDAI_A_1>,
-				<&disp_iommu M4U_L25_P6_PDAI_A_2>,
-				<&disp_iommu M4U_L25_P7_PDAI_A_3>,
-				<&disp_iommu M4U_L25_P8_PDAI_A_4>,
-				<&disp_iommu M4U_L25_P9_PDAI_A_0>;
+			mediatek,smmu-dma-axid =
+					<SMMU_L25_P4_PDAI_A_0>,
+					<SMMU_L25_P5_PDAI_A_1>,
+					<SMMU_L25_P6_PDAI_A_2>,
+					<SMMU_L25_P7_PDAI_A_3>,
+					<SMMU_L25_P8_PDAI_A_4>,
+					<SMMU_L25_P9_PDAO_A_0>;
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(M4U_L25_P4_PDAI_A_0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L25_P4_PDAI_A_0)
 						&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L25_P5_PDAI_A_1)
+				<&mmqos MASTER_LARB_PORT(SMMU_L25_P5_PDAI_A_1)
 						&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L25_P6_PDAI_A_2)
+				<&mmqos MASTER_LARB_PORT(SMMU_L25_P6_PDAI_A_2)
 						&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L25_P7_PDAI_A_3)
+				<&mmqos MASTER_LARB_PORT(SMMU_L25_P7_PDAI_A_3)
 						&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L25_P8_PDAI_A_4)
+				<&mmqos MASTER_LARB_PORT(SMMU_L25_P8_PDAI_A_4)
 						&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L25_P9_PDAI_A_0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L25_P9_PDAO_A_0)
 						&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L26_P4_PDAI_B_0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P4_PDAI_B_0)
 						&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L26_P5_PDAI_B_1)
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P5_PDAI_B_1)
 						&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L26_P6_PDAI_B_2)
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P6_PDAI_B_2)
 						&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L26_P7_PDAI_B_3)
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P7_PDAI_B_3)
 						&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L26_P8_PDAI_B_4)
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P8_PDAI_B_4)
 						&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L26_P9_PDAI_B_0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P9_PDAO_B_0)
 						&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "l25_pdai_a0",
 						"l25_pdai_a1",
@@ -8793,7 +8793,6 @@
 						"l26_pdai_b3",
 						"l26_pdai_b4",
 						"l26_pdao_b";
-#endif
 		};
 
 		pda2: pda2@1a181000 {
@@ -8817,15 +8816,14 @@
 					"cam_main_cam_cg_con";
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
-#if 0
 			mediatek,larbs = <&smi_larb26>;
-			iommus = <&mdp_iommu M4U_L26_P4_PDAI_B_0>,
-				<&mdp_iommu M4U_L26_P5_PDAI_B_1>,
-				<&mdp_iommu M4U_L26_P6_PDAI_B_2>,
-				<&mdp_iommu M4U_L26_P7_PDAI_B_3>,
-				<&mdp_iommu M4U_L26_P8_PDAI_B_4>,
-				<&mdp_iommu M4U_L26_P9_PDAI_B_0>;
-#endif
+			mediatek,smmu-dma-axid =
+					<SMMU_L26_P4_PDAI_B_0>,
+					<SMMU_L26_P5_PDAI_B_1>,
+					<SMMU_L26_P6_PDAI_B_2>,
+					<SMMU_L26_P7_PDAI_B_3>,
+					<SMMU_L26_P8_PDAI_B_4>,
+					<SMMU_L26_P9_PDAO_B_0>;
 		};
 
 		dvfsrc: dvfsrc@1c00f000 {
