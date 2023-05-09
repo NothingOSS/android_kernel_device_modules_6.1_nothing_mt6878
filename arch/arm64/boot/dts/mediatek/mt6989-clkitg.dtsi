@@ -119,20 +119,6 @@
 			<&imp_iic_wrap_c_clk CLK_IMPC_I2C12>,
 			<&imp_iic_wrap_c_clk CLK_IMPC_I2C13>,
 			<&imp_iic_wrap_c_clk CLK_IMPC_SEC_EN>,
-			<&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_REF>,
-			<&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_PL_P>,
-			<&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_TL>,
-			<&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_AXI>,
-			<&pextpcfg_ao_clk CLK_PEXTP_P0_MAC_AHB_APB>,
-			<&pextpcfg_ao_clk CLK_PEXTP_P0_PHY_REF>,
-			<&pextpcfg_ao_clk CLK_PEXTP_P0_PHY_MCU_BUS>,
-			<&pextpcfg_ao_clk CLK_PEXTP_P1_MAC_REF>,
-			<&pextpcfg_ao_clk CLK_PEXTP_P1_MAC_PL_P>,
-			<&pextpcfg_ao_clk CLK_PEXTP_P1_MAC_TL>,
-			<&pextpcfg_ao_clk CLK_PEXTP_P1_MAC_AXI>,
-			<&pextpcfg_ao_clk CLK_PEXTP_P1_MAC_AHB_APB>,
-			<&pextpcfg_ao_clk CLK_PEXTP_P1_PHY_REF>,
-			<&pextpcfg_ao_clk CLK_PEXTP_P1_PHY_MCU_BUS>,
 			<&imp_iic_wrap_s_clk CLK_IMPS_I2C1>,
 			<&imp_iic_wrap_s_clk CLK_IMPS_I2C3>,
 			<&imp_iic_wrap_s_clk CLK_IMPS_I2C5>,
@@ -307,30 +293,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x1>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_PERI_USB0>;
-	};
-
-	bring-up-pd-pextp-mac0@2 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x2>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_MAC0>;
-	};
-
-	bring-up-pd-pextp-mac1@3 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x3>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_MAC1>;
-	};
-
-	bring-up-pd-pextp-phy0@4 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x4>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_PHY0>;
-	};
-
-	bring-up-pd-pextp-phy1@5 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x5>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_PHY1>;
 	};
 
 	bring-up-pd-audio@6 {
