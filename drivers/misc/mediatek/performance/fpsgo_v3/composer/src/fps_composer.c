@@ -309,7 +309,8 @@ static int fpsgo_com_check_fps_align(int pid, unsigned long long buffer_id)
 		local_qfps_arr, &local_qfps_arr_num, 1,
 		local_tfps_arr, &local_tfps_arr_num, 1);
 
-	if (local_qfps_arr[0] > local_tfps_arr[0] + fps_align_margin) {
+	if (local_qfps_arr[0] > local_tfps_arr[0] + fps_align_margin ||
+		local_qfps_arr[0] < fps_align_margin) {
 		ret = BY_PASS_TYPE;
 		fpsgo_systrace_c_fbt(pid, buffer_id, 1, "fps_no_align");
 	}
@@ -598,7 +599,8 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 	if (fpsgo_get_acquire_hint_is_enable()) {
 		if (!f_render->sbe_control_flag &&
 			f_render->hwui == RENDER_INFO_HWUI_NONE &&
-			f_render->frame_type == NON_VSYNC_ALIGNED_TYPE)
+			f_render->frame_type == NON_VSYNC_ALIGNED_TYPE &&
+			fpsgo_check_is_cam_apk(f_render->tgid))
 			f_render->frame_type = fpsgo_com_check_BQ_type(&f_render->bq_type,
 						pid, f_render->buffer_id);
 	}
@@ -1634,7 +1636,7 @@ FPSGO_COM_SYSFS_WRITE_VALUE(bypass_non_SF, bypass_non_SF, 0, 1);
 static KOBJ_ATTR_RW(bypass_non_SF);
 
 FPSGO_COM_SYSFS_READ(fps_align_margin, 1, fps_align_margin);
-FPSGO_COM_SYSFS_WRITE_VALUE(fps_align_margin, fps_align_margin, 0, 100);
+FPSGO_COM_SYSFS_WRITE_VALUE(fps_align_margin, fps_align_margin, 0, 10);
 static KOBJ_ATTR_RW(fps_align_margin);
 
 FPSGO_COM_SYSFS_READ(bypass_non_SF_by_pid, 0, 0);

@@ -59,6 +59,7 @@ static int total_fps_control_pid_info_num;
 static int fpsgo_get_acquire_hint_enable;
 static int cond_get_cam_apk_pid;
 static int cond_get_cam_ser_pid;
+static int global_cam_apk_pid;
 
 static struct kobject *base_kobj;
 static struct rb_root render_pid_tree;
@@ -1936,8 +1937,9 @@ int fpsgo_check_all_render_blc(int render_tid, unsigned long long buffer_id)
 
 		if (r_iter->bq_type == ACQUIRE_OTHER_TYPE) {
 			count++;
-			xgf_trace("[base][%d][0x%llx] | bq_type:%d",
-				render_tid, buffer_id, r_iter->bq_type);
+			xgf_trace("[base][%d][0x%llx] | r:%d 0x%llx bq_type:%d",
+				render_tid, buffer_id,
+				r_iter->pid, r_iter->buffer_id, r_iter->bq_type);
 		}
 
 		if (r_iter->boost_info.last_blc > 0) {
@@ -1983,6 +1985,7 @@ struct acquire_info *fpsgo_add_acquire_info(int p_pid, int c_pid, int c_tid,
 			fpsgo2cam_sentcmd(CAMERA_APK, c_pid);
 		if (wq_has_sleeper(&cam_ser_pid_queue))
 			fpsgo2cam_sentcmd(CAMERA_SERVER, p_pid);
+		global_cam_apk_pid = c_pid;
 	}
 
 	while (*p) {
@@ -2041,6 +2044,16 @@ int fpsgo_delete_acquire_info(int mode, int tid, unsigned long long buffer_id)
 				rbn = rb_next(rbn);
 		}
 	}
+
+	return ret;
+}
+
+int fpsgo_check_is_cam_apk(int tgid)
+{
+	int ret = 0;
+
+	if (global_cam_apk_pid > 0 && global_cam_apk_pid == tgid)
+		ret = 1;
 
 	return ret;
 }
@@ -2789,6 +2802,9 @@ static ssize_t fpsgo_get_acquire_hint_enable_store(struct kobject *kobj,
 				goto out;
 		}
 	}
+
+	if (!fpsgo_get_acquire_hint_enable)
+		global_cam_apk_pid = 0;
 
 out:
 	kfree(acBuffer);

@@ -405,6 +405,7 @@ struct acquire_info *fpsgo_add_acquire_info(int p_pid, int c_pid, int c_tid,
 	int api, unsigned long long buffer_id);
 struct acquire_info *fpsgo_search_acquire_info(int tid, unsigned long long buffer_id);
 int fpsgo_delete_acquire_info(int mode, int tid, unsigned long long buffer_id);
+int fpsgo_check_is_cam_apk(int tgid);
 void fpsgo_main_trace(const char *fmt, ...);
 void fpsgo_clear_uclamp_boost(void);
 void fpsgo_clear_llf_cpu_policy(void);
