@@ -269,6 +269,9 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 	case FUNC_MMDVFS_LP_MODE:
 		writel(idx, MEM_MMDVFS_LP_MODE);
 		break;
+	case FUNC_MMDVFS_PROFILE:
+		writel(*data, MEM_PROFILE_TIMES);
+		break;
 	}
 	val = readl(MEM_IPI_SYNC_FUNC);
 	mutex_unlock(&mmdvfs_vcp_ipi_mutex);
@@ -1182,6 +1185,31 @@ static const struct kernel_param_ops mmdvfs_vcp_test_ops = {
 };
 module_param_cb(vcp_test, &mmdvfs_vcp_test_ops, NULL, 0644);
 MODULE_PARM_DESC(vcp_test, "trigger vcp test");
+
+static int mmdvfs_profile_test(const char *val, const struct kernel_param *kp)
+{
+	u8 idx;
+	u32 times;
+	int ret = 0;
+
+	ret = sscanf(val, "%hhu %u", &idx, &times);
+	if (ret != 2) {
+		MMDVFS_ERR("input failed:%d idx:%hu times:%hd", ret, idx, times);
+		return -EINVAL;
+	}
+
+	ret = mmdvfs_vcp_ipi_send(FUNC_MMDVFS_PROFILE, idx, MAX_OPP, &times);
+
+	if (ret || log_level & (1 << log_adb))
+		MMDVFS_DBG("idx:%hhu times:%u ret:%d", idx, times, ret);
+	return ret;
+}
+
+static const struct kernel_param_ops mmdvfs_profile_ops = {
+	.set = mmdvfs_profile_test,
+};
+module_param_cb(profile_test, &mmdvfs_profile_ops, NULL, 0644);
+MODULE_PARM_DESC(profile_test, "trigger mmdvfs profile test");
 
 static inline void mmdvfs_reset_ccu(void)
 {

@@ -36,11 +36,14 @@ struct mtk_mmdvfs_clk {
 /* vcp/.../mmdvfs_private.h */
 enum {
 	LOG_DEBUG_ON,
-	LOG_IPI_IN,
-	LOG_IPI_OUT,
+	LOG_IPI,
 	LOG_CLOCK,
-	LOG_POWER,
 	LOG_HOPPING,
+	LOG_POWER,
+	LOG_MUX,
+	LOG_IRQ,
+	LOG_LEVEL,
+	LOG_PROFILE,
 	LOG_NUM
 };
 
@@ -65,6 +68,7 @@ enum {
 	FUNC_FORCE_VOL,
 	FUNC_FORCE_CLK,
 	FUNC_FORCE_SINGLE_CLK,
+	FUNC_MMDVFS_PROFILE,
 
 	FUNC_NUM
 };
