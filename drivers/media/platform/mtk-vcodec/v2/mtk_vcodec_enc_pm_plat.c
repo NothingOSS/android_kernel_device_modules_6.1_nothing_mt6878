@@ -545,8 +545,8 @@ void mtk_venc_pmqos_monitor(struct mtk_vcodec_dev *dev, u32 state)
 {
 	struct vcodec_dev_qos *qos = &dev->venc_qos;
 
-	u32 data_comm0[MTK_SMI_MAX_MON_REQ];
-	u32 data_comm1[MTK_SMI_MAX_MON_REQ];
+	u32 data_comm0[MTK_SMI_MAX_MON_REQ] = {0};
+	u32 data_comm1[MTK_SMI_MAX_MON_REQ] = {0};
 
 	if (unlikely(!qos->need_smi_monitor || !venc_smi_monitor_mode))
 		return;
@@ -684,6 +684,8 @@ void mtk_venc_pmqos_monitor_reset(struct mtk_vcodec_dev *dev)
 	qos->max_mon_frm_cnt = (venc_smi_monitor_mode > 1) ? venc_max_mon_frm : MTK_SMI_MAX_MON_FRM;
 	qos->monitor_ring_frame_cnt = 0;
 	qos->apply_monitor_config = false;
+	memset(qos->data_total, 0,
+			sizeof(unsigned long long) * SMI_COMMON_NUM * MTK_VCODEC_QOS_TYPE);
 };
 
 static void mtk_venc_pmqos_monitor_debugger(struct mtk_vcodec_dev *dev, u32 *cur_common_bw)
@@ -734,7 +736,7 @@ void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
 		qos->monitor_ring_frame_cnt = 0;
 		qos->apply_monitor_config = false;
 		memset(qos->data_total, 0,
-			sizeof(unsigned long long) * MTK_VCODEC_QOS_GROUP * MTK_VCODEC_QOS_TYPE);
+			sizeof(unsigned long long) * SMI_COMMON_NUM * MTK_VCODEC_QOS_TYPE);
 		mtk_venc_pmqos_monitor_debugger(dev, common_bw);
 	}
 

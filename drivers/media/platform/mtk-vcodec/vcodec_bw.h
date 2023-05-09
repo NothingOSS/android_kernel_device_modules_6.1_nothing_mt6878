@@ -8,7 +8,6 @@
 #include <linux/types.h>
 #include <linux/list.h>
 
-#define MTK_VCODEC_QOS_GROUP 2
 #define MTK_VCODEC_QOS_TYPE 2
 #define MTK_SMI_MAX_MON_REQ 4
 #define MTK_SMI_MAX_MON_FRM 8
