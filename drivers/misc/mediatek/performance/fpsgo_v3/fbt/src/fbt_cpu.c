@@ -70,7 +70,6 @@
 #define DEFAULT_QR_T2WNT_X 0
 #define DEFAULT_QR_T2WNT_Y_P 100
 #define DEFAULT_QR_T2WNT_Y_N 0
-#define DEFAULT_QR_HWUI_HINT 1
 #define DEFAULT_ST2WNT_ADJ 0
 #define DEFAULT_GCC_RESERVED_UP_QUOTA_PCT 100
 #define DEFAULT_GCC_RESERVED_DOWN_QUOTA_PCT 5
@@ -232,7 +231,6 @@ static int qr_enable;
 static int qr_t2wnt_x;
 static int qr_t2wnt_y_p;
 static int qr_t2wnt_y_n;
-static int qr_hwui_hint;
 static int qr_filter_outlier;
 static int qr_mod_frame;
 static int qr_debug;
@@ -303,7 +301,6 @@ module_param(qr_enable, int, 0644);
 module_param(qr_t2wnt_x, int, 0644);
 module_param(qr_t2wnt_y_p, int, 0644);
 module_param(qr_t2wnt_y_n, int, 0644);
-module_param(qr_hwui_hint, int, 0644);
 module_param(qr_filter_outlier, int, 0644);
 module_param(qr_mod_frame, int, 0644);
 module_param(qr_debug, int, 0644);
@@ -1975,8 +1972,8 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 								FPSGO_PREFER_B_M, 1);
 				break;
 			default:
-				if (boost_LR_final && thr->hwui == RENDER_INFO_HWUI_NONE
-					&& fbt_is_R_L_task(fl->pid, heaviest_pid, thr->pid))
+				if (boost_LR_final &&
+					fbt_is_R_L_task(fl->pid, heaviest_pid, thr->pid))
 					fbt_set_task_policy(fl, FPSGO_TPOLICY_NONE,
 									FPSGO_PREFER_NONE, 1);
 				else
@@ -2006,8 +2003,7 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 								FPSGO_PREFER_L_M, 0);
 				break;
 			case FPSGO_BAFFINITY_B_M:
-				if (thr->hwui == RENDER_INFO_HWUI_NONE
-					&& fbt_is_R_L_task(fl->pid, heaviest_pid, thr->pid))
+				if (fbt_is_R_L_task(fl->pid, heaviest_pid, thr->pid))
 					fbt_set_task_policy(fl, FPSGO_TPOLICY_AFFINITY,
 									FPSGO_PREFER_M, 1);
 				else
@@ -2015,8 +2011,7 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 									FPSGO_PREFER_M, fl->action);
 				break;
 			default:
-				if (boost_LR_final && thr->hwui == RENDER_INFO_HWUI_NONE
-					&& fbt_is_R_L_task(fl->pid, heaviest_pid, thr->pid))
+				if (fbt_is_R_L_task(fl->pid, heaviest_pid, thr->pid))
 					fbt_set_task_policy(fl, FPSGO_TPOLICY_NONE,
 							FPSGO_PREFER_NONE, 1);
 				else
@@ -4372,9 +4367,7 @@ static int fbt_boost_policy(
 	mutex_unlock(&blc_mlock);
 
 	if (blc_wt && rescue_enable_final) {
-		 /* ignore hwui hint || not hwui */
-		if (qr_enable_active && (!qr_hwui_hint ||
-			thread_info->hwui != RENDER_INFO_HWUI_TYPE)) {
+		if (qr_enable_active) {
 			rescue_target_t = div64_s64(1000000, target_fps); /* unit:1us */
 
 			/* t2wnt = target_time * (1+x) + quota * y */
@@ -8322,16 +8315,15 @@ int __init fbt_cpu_init(void)
 
 	/* t2wnt = target_time * (1+x) + quota * y_p, if quota > 0 */
 	/* t2wnt = target_time * (1+x) + quota * y_n, if quota < 0 */
-	//qr_enable = fbt_get_default_qr_enable();
+	qr_enable = fbt_get_default_qr_enable();
 	qr_t2wnt_x = DEFAULT_QR_T2WNT_X;
 	qr_t2wnt_y_p = DEFAULT_QR_T2WNT_Y_P;
 	qr_t2wnt_y_n = DEFAULT_QR_T2WNT_Y_N;
-	//qr_hwui_hint = DEFAULT_QR_HWUI_HINT;
 	qr_filter_outlier = 0;
 	qr_mod_frame = 0;
 	qr_debug = 0;
 
-	//gcc_enable = fbt_get_default_gcc_enable();
+	gcc_enable = fbt_get_default_gcc_enable();
 	gcc_reserved_up_quota_pct = DEFAULT_GCC_RESERVED_UP_QUOTA_PCT;
 	gcc_reserved_down_quota_pct = DEFAULT_GCC_RESERVED_DOWN_QUOTA_PCT;
 	gcc_window_size = DEFAULT_GCC_WINDOW_SIZE;
