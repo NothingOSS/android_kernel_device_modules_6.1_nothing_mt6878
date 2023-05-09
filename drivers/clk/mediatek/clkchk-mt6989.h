@@ -81,7 +81,8 @@ enum chk_sys_id {
 	hwv = 70,
 	hwv_ext = 71,
 	hwv_wrt = 72,
-	chk_sys_num = 73,
+	bcrm_infra1_bus = 73,
+	chk_sys_num = 74,
 };
 
 enum chk_pd_id {

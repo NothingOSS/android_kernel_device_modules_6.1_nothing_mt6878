@@ -89,8 +89,6 @@ const char * const *get_mt6989_all_clk_names(void)
 		"ssr_kdf_sel",
 		"ssr_rng_sel",
 		"ssr_sej_sel",
-		"spu0_sel",
-		"spu1_sel",
 		"dxcc_sel",
 		"dpsw_cmp_26m_sel",
 		"smapck_sel",

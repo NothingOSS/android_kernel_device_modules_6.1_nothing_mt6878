@@ -849,6 +849,7 @@ static enum chk_sys_id debug_dump_id[] = {
 	spm,
 	top,
 	apmixed,
+	bcrm_infra1_bus,
 	ifr_bus,
 	bcrm_ssr_bus,
 	gpu_eb_rpc,
@@ -902,6 +903,7 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 }
 
 static enum chk_sys_id log_dump_id[] = {
+	bcrm_infra1_bus,
 	ifr_bus,
 	bcrm_ssr_bus,
 	gpu_eb_rpc,
