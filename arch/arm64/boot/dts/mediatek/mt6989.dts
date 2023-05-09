@@ -9497,8 +9497,14 @@
 			compatible = "mediatek,mt6989-uarthub";
 			reg = <0 0x11005000 0 0x1000>;
 			interrupts = <GIC_SPI 342 IRQ_TYPE_LEVEL_HIGH 0>; /*uarthub irq*/
-			clocks = <&apmixedsys_clk CLK_APMIXED_UNIVPLL>;
-			clock-names = "univpll";
+			clocks = <&topckgen_clk CLK_TOP_UARTHUB_BCLK_SEL>,
+				<&topckgen_clk CLK_TOP_UART_SEL>,
+				<&topckgen_clk CLK_TOP_UNIVPLL_D6_D4>,
+				<&topckgen_clk CLK_TOP_TCK_26M_MX9>;
+			clock-names = "clk_top_uarthub_bclk_sel",
+				"clk_top_uart_sel",
+				"clk_top_univpll_d6_d4_104m",
+				"clk_top_tck_26m_mx9";
 		};
 
 		ssusb: usb0@11201000 {
