@@ -44,6 +44,9 @@
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
 #include <mtk_low_battery_throttling.h>
 #endif
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+#include <linux/soc/mediatek/devapc_public.h>
+#endif
 
 /**
  * ===============================================
@@ -102,6 +105,13 @@ unsigned long (*ged_get_last_commit_top_idx_fp)(void);
 EXPORT_SYMBOL(ged_get_last_commit_top_idx_fp);
 unsigned long (*ged_get_last_commit_stack_idx_fp)(void);
 EXPORT_SYMBOL(ged_get_last_commit_stack_idx_fp);
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+static bool gpufreq_devapc_vio_callback(void);
+struct devapc_power_callbacks devapc_cb = {
+	.type = DEVAPC_TYPE_GPU,
+	.query_power = gpufreq_devapc_vio_callback,
+};
+#endif /* CONFIG_DEVICE_MODULES_MTK_DEVAPC */
 
 /**
  * ===============================================
@@ -1639,6 +1649,24 @@ static void gpufreq_low_batt_callback(enum LOW_BATTERY_LEVEL_TAG low_batt_level,
 }
 #endif /* CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING */
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+static bool gpufreq_devapc_vio_callback(void)
+{
+	enum gpufreq_power_state power_state = gpufreq_get_power_state();
+
+	GPUFREQ_LOGW("DEVAPC violation, power state: %d", power_state);
+
+	if (power_state == GPU_PWR_ON) {
+		if (gpufreq_fp && gpufreq_fp->devapc_vio_handler)
+			gpufreq_fp->devapc_vio_handler();
+		else
+			GPUFREQ_LOGE("null gpufreq platform function pointer (ENOENT)");
+	}
+
+	return power_state;
+}
+#endif /* CONFIG_DEVICE_MODULES_MTK_DEVAPC */
+
 static void gpufreq_init_external_callback(void)
 {
 #if IS_ENABLED(CONFIG_MTK_PBM)
@@ -1674,6 +1702,10 @@ static void gpufreq_init_external_callback(void)
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
 	register_battery_oc_notify(&gpufreq_batt_oc_callback, BATTERY_OC_PRIO_GPU, NULL);
 #endif /* CONFIG_MTK_BATTERY_OC_POWER_THROTTLING */
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+	register_devapc_power_callback(&devapc_cb);
+#endif /* CONFIG_DEVICE_MODULES_MTK_DEVAPC */
 }
 
 void gpufreq_register_gpufreq_fp(struct gpufreq_platform_fp *platform_fp)

@@ -115,7 +115,6 @@ enum gpufreq_config_target {
 	CONFIG_FAKE_MTCMOS_CTRL = 15,
 	CONFIG_MCUETM_CLK       = 16,
 	CONFIG_PTP3             = 17,
-	CONFIG_DEVAPC_HANDLE    = 18,
 };
 
 enum gpufreq_config_value {
@@ -377,6 +376,7 @@ struct gpufreq_platform_fp {
 	int (*fix_custom_freq_volt_dual)(unsigned int fgpu, unsigned int vgpu,
 		unsigned int fstack, unsigned int vstack);
 	void (*update_temperature)(void);
+	void (*devapc_vio_handler)(void);
 	/* GPU */
 	unsigned int (*get_cur_fgpu)(void);
 	unsigned int (*get_cur_vgpu)(void);

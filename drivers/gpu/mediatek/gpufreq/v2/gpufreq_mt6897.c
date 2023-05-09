@@ -68,7 +68,6 @@ static void __gpufreq_fake_mtcmos_control(unsigned int mode);
 static void __gpufreq_set_margin_mode(unsigned int mode);
 static void __gpufreq_set_gpm_mode(unsigned int version, unsigned int mode);
 static void __gpufreq_set_ips_mode(unsigned int mode);
-static void __gpufreq_devapc_vio_handler(void);
 #if GPUFREQ_IPS_ENABLE
 static void __gpufreq_ips_rpc_control(enum gpufreq_power_state power);
 #endif /* GPUFREQ_IPS_ENABLE */
@@ -265,6 +264,7 @@ static struct gpufreq_platform_fp platform_ap_fp = {
 	.update_debug_opp_info = __gpufreq_update_debug_opp_info,
 	.set_shared_status = __gpufreq_set_shared_status,
 	.mssv_commit = __gpufreq_mssv_commit,
+	.devapc_vio_handler = __gpufreq_devapc_vio_handler,
 };
 
 static struct gpufreq_platform_fp platform_eb_fp = {
@@ -273,6 +273,7 @@ static struct gpufreq_platform_fp platform_eb_fp = {
 	.get_dyn_pgpu = __gpufreq_get_dyn_pgpu,
 	.get_core_mask_table = __gpufreq_get_core_mask_table,
 	.get_core_num = __gpufreq_get_core_num,
+	.devapc_vio_handler = __gpufreq_devapc_vio_handler,
 };
 
 /**
@@ -1385,6 +1386,18 @@ int __gpufreq_get_low_batt_idx(int low_batt_level)
 #endif /* GPUFREQ_LOW_BATT_ENABLE && CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING */
 }
 
+/* API: handle DEVAPC violation */
+void __gpufreq_devapc_vio_handler(void)
+{
+#if GPUFREQ_HWDCM_ENABLE
+	/* disable HWDCM */
+	/* (A) MFG_GLOBAL_CON 0x13FBF0B0 [8]  GPU_SOCIF_MST_FREE_RUN = 1'b1 */
+	DRV_WriteReg32(MFG_GLOBAL_CON, DRV_Reg32(MFG_GLOBAL_CON) | BIT(8));
+	/* (C) MFG_RPC_AO_CLK_CFG 0x13F91034 [0] CG_FAXI_CK_SOC_IN_FREE_RUN = 1'b1 */
+	DRV_WriteReg32(MFG_RPC_AO_CLK_CFG, DRV_Reg32(MFG_RPC_AO_CLK_CFG) | BIT(0));
+#endif /* GPUFREQ_HWDCM_ENABLE */
+}
+
 /* API: update debug info to shared memory */
 void __gpufreq_update_debug_opp_info(void)
 {
@@ -1439,9 +1452,6 @@ void __gpufreq_set_mfgsys_config(enum gpufreq_config_target target, enum gpufreq
 		break;
 	case CONFIG_FAKE_MTCMOS_CTRL:
 		__gpufreq_fake_mtcmos_control(val);
-		break;
-	case CONFIG_DEVAPC_HANDLE:
-		__gpufreq_devapc_vio_handler();
 		break;
 	default:
 		GPUFREQ_LOGE("invalid config target: %d", target);
@@ -2156,18 +2166,6 @@ static void __gpufreq_set_ips_mode(unsigned int mode)
 		}
 	}
 #endif /* GPUFREQ_IPS_ENABLE */
-}
-
-/* API: handle DEVAPC violation */
-static void __gpufreq_devapc_vio_handler(void)
-{
-#if GPUFREQ_HWDCM_ENABLE
-	/* disable HWDCM */
-	/* (A) MFG_GLOBAL_CON 0x13FBF0B0 [8]  GPU_SOCIF_MST_FREE_RUN = 1'b1 */
-	DRV_WriteReg32(MFG_GLOBAL_CON, DRV_Reg32(MFG_GLOBAL_CON) | BIT(8));
-	/* (C) MFG_RPC_AO_CLK_CFG 0x13F91034 [0] CG_FAXI_CK_SOC_IN_FREE_RUN = 1'b1 */
-	DRV_WriteReg32(MFG_RPC_AO_CLK_CFG, DRV_Reg32(MFG_RPC_AO_CLK_CFG) | BIT(0));
-#endif /* GPUFREQ_HWDCM_ENABLE */
 }
 
 /* API: apply (enable) / restore (disable) margin */
