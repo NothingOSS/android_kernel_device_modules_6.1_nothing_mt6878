@@ -34,7 +34,7 @@
 #define GPUFREQ_GPM3_0_ENABLE               (0)
 #define GPUFREQ_AXI_MERGER_ENABLE           (0)
 #define GPUFREQ_AXUSER_SLC_ENABLE           (0)
-#define GPUFREQ_DFD2_0_ENABLE               (0)
+#define GPUFREQ_DFD2_0_ENABLE               (1)
 #define GPUFREQ_AVS_ENABLE                  (0)
 #define GPUFREQ_TEMPER_COMP_ENABLE          (0)
 #define GPUFREQ_DEVAPC_CHECK_ENABLE         (0)
