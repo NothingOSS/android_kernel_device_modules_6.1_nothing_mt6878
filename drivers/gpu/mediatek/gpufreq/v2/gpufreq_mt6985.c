@@ -1626,7 +1626,7 @@ void __gpufreq_set_shared_status(struct gpufreq_shared_status *shared_status)
 		g_shared_status->test_mode = true;
 #if GPUFREQ_MSSV_TEST_MODE
 		g_shared_status->reg_stack_sel.addr = 0x13FBF500;
-		g_shared_status->reg_del_sel.addr = 0x13FBF080;
+		g_shared_status->reg_stack_delsel.addr = 0x13FBF080;
 #endif /* GPUFREQ_MSSV_TEST_MODE */
 #if GPUFREQ_ASENSOR_ENABLE
 		g_shared_status->asensor_info = g_asensor_info;
@@ -1689,7 +1689,7 @@ int __gpufreq_mssv_commit(unsigned int target, unsigned int val)
 		} else
 			ret = GPUFREQ_EINVAL;
 		break;
-	case TARGET_MSSV_DEL_SEL:
+	case TARGET_MSSV_STACK_DELSEL:
 		if (val == 1 || val == 0) {
 			__gpufreq_mssv_set_del_sel(val);
 			ret = GPUFREQ_SUCCESS;
@@ -1712,7 +1712,7 @@ int __gpufreq_mssv_commit(unsigned int target, unsigned int val)
 			g_shared_status->cur_vstack = g_stack.cur_volt;
 			g_shared_status->cur_vsram_stack = g_stack.cur_vsram;
 			g_shared_status->reg_stack_sel.val = readl_mfg(MFG_DUMMY_REG);
-			g_shared_status->reg_del_sel.val = readl_mfg(MFG_SRAM_FUL_SEL_ULV);
+			g_shared_status->reg_stack_delsel.val = readl_mfg(MFG_SRAM_FUL_SEL_ULV);
 		}
 	}
 

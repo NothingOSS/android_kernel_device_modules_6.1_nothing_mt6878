@@ -1645,7 +1645,7 @@ void __gpufreq_set_shared_status(struct gpufreq_shared_status *shared_status)
 		g_shared_status->segment_id = g_gpu.segment_id;
 		g_shared_status->test_mode = true;
 #if GPUFREQ_MSSV_TEST_MODE
-		g_shared_status->reg_del_sel.addr = 0x13FBF080;
+		g_shared_status->reg_top_delsel.addr = 0x13FBF080;
 #endif /* GPUFREQ_MSSV_TEST_MODE */
 		__gpufreq_update_shared_status_opp_table();
 		__gpufreq_update_shared_status_adj_table();
@@ -1688,7 +1688,7 @@ int __gpufreq_mssv_commit(unsigned int target, unsigned int val)
 		else
 			ret = __gpufreq_freq_scale_stack(g_stack.cur_freq, val);
 		break;
-	case TARGET_MSSV_DEL_SEL:
+	case TARGET_MSSV_TOP_DELSEL:
 		if (val == 1 || val == 0) {
 			__gpufreq_mssv_set_del_sel(val);
 			ret = GPUFREQ_SUCCESS;
@@ -1708,7 +1708,7 @@ int __gpufreq_mssv_commit(unsigned int target, unsigned int val)
 			g_shared_status->cur_vgpu = g_gpu.cur_volt;
 			g_shared_status->cur_vsram_gpu = g_gpu.cur_vsram;
 			g_shared_status->cur_fstack = g_stack.cur_freq;
-			g_shared_status->reg_del_sel.val = DRV_Reg32(MFG_SRAM_FUL_SEL_ULV);
+			g_shared_status->reg_top_delsel.val = DRV_Reg32(MFG_SRAM_FUL_SEL_ULV);
 		}
 	}
 

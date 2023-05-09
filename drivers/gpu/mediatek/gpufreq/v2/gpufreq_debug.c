@@ -898,12 +898,14 @@ static int mssv_test_proc_show(struct seq_file *m, void *v)
 		g_shared_status->cur_fstack,
 		g_shared_status->cur_vstack,
 		g_shared_status->cur_vsram_stack);
-	seq_printf(m, "%-8s STACK_SEL(0x%08x[31]): %d, DEL_SEL(0x%08x[0]): %d\n",
+	seq_printf(m, "%-8s %s(0x%08x): %d, %s(0x%08x): %d, %s(0x%08x): %d\n",
 		"[SEL]",
-		g_shared_status->reg_stack_sel.addr,
-		(g_shared_status->reg_stack_sel.val & BIT(31)) ? 1 : 0,
-		g_shared_status->reg_del_sel.addr,
-		(g_shared_status->reg_del_sel.val & BIT(0)) ? 1 : 0);
+		"STACK_SEL", g_shared_status->reg_stack_sel.addr,
+		g_shared_status->reg_stack_sel.val,
+		"TOP_DELSEL", g_shared_status->reg_top_delsel.addr,
+		g_shared_status->reg_top_delsel.val,
+		"STACK_DELSEL", g_shared_status->reg_stack_delsel.addr,
+		g_shared_status->reg_stack_delsel.val);
 
 	mutex_unlock(&gpufreq_debug_lock);
 
@@ -927,7 +929,7 @@ static ssize_t mssv_test_proc_write(struct file *file,
 
 	mutex_lock(&gpufreq_debug_lock);
 
-	if (sscanf(buf, "%8s %7d", cmd, &val) == 2) {
+	if (sscanf(buf, "%11s %7d", cmd, &val) == 2) {
 		if (sysfs_streq(cmd, "fgpu"))
 			target = TARGET_MSSV_FGPU;
 		else if (sysfs_streq(cmd, "vgpu"))
@@ -940,8 +942,10 @@ static ssize_t mssv_test_proc_write(struct file *file,
 			target = TARGET_MSSV_VSRAM;
 		else if (sysfs_streq(cmd, "stacksel"))
 			target = TARGET_MSSV_STACK_SEL;
-		else if (sysfs_streq(cmd, "delsel"))
-			target = TARGET_MSSV_DEL_SEL;
+		else if (sysfs_streq(cmd, "topdelsel"))
+			target = TARGET_MSSV_TOP_DELSEL;
+		else if (sysfs_streq(cmd, "stackdelsel"))
+			target = TARGET_MSSV_STACK_DELSEL;
 		else {
 			GPUFREQ_LOGE("invalid MSSV cmd: %s", cmd);
 			ret = GPUFREQ_EINVAL;

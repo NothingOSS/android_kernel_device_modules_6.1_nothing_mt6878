@@ -283,6 +283,7 @@ static struct gpufreq_platform_fp platform_ap_fp = {
 	.fix_target_oppidx_dual = __gpufreq_fix_target_oppidx_dual,
 	.fix_custom_freq_volt_dual = __gpufreq_fix_custom_freq_volt_dual,
 	.update_temperature = __gpufreq_update_temperature,
+	.mssv_commit = __gpufreq_mssv_commit,
 	/* GPU */
 	.get_cur_fgpu = __gpufreq_get_cur_fgpu,
 	.get_cur_vgpu = __gpufreq_get_cur_vgpu,
@@ -1863,6 +1864,8 @@ void __gpufreq_set_shared_status(struct gpufreq_shared_status *shared_status)
 		g_shared_status->temper_comp_norm_stack = g_temper_comp_vstack;
 		g_shared_status->dual_buck = true;
 		g_shared_status->segment_id = g_stack.segment_id;
+		g_shared_status->reg_top_delsel.addr = 0x13FBF084;
+		g_shared_status->reg_stack_delsel.addr = 0x13E90080;
 		g_shared_status->dbg_version = GPUFREQ_DEBUG_VERSION;
 		__gpufreq_update_shared_status_opp_table();
 		__gpufreq_update_shared_status_adj_table();
@@ -1875,10 +1878,102 @@ void __gpufreq_set_shared_status(struct gpufreq_shared_status *shared_status)
 /* API: MSSV test function */
 int __gpufreq_mssv_commit(unsigned int target, unsigned int val)
 {
+#if GPUFREQ_MSSV_TEST_MODE
+	int ret = GPUFREQ_SUCCESS;
+
+	ret = __gpufreq_power_control(GPU_PWR_ON);
+	if (ret < 0)
+		goto done;
+
+#if GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE
+	ret = __gpufreq_active_sleep_control(GPU_PWR_ON);
+	if (ret < 0)
+		goto done;
+#endif /* GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE */
+
+	mutex_lock(&gpufreq_lock);
+
+	switch (target) {
+	case TARGET_MSSV_FGPU:
+		if (val > POSDIV_2_MAX_FREQ || val < POSDIV_16_MIN_FREQ)
+			ret = GPUFREQ_EINVAL;
+		else
+			ret = __gpufreq_freq_scale_gpu(g_gpu.cur_freq, val);
+		break;
+	case TARGET_MSSV_VGPU:
+		if (val > VGPU_MAX_VOLT || val < VGPU_MIN_VOLT)
+			ret = GPUFREQ_EINVAL;
+		else {
+			ret = __gpufreq_volt_scale_gpu(g_gpu.cur_volt, val);
+			g_gpu.cur_vsram = __gpufreq_get_dreq_vsram_gpu();
+		}
+		break;
+	case TARGET_MSSV_FSTACK:
+		if (val > POSDIV_2_MAX_FREQ || val < POSDIV_16_MIN_FREQ)
+			ret = GPUFREQ_EINVAL;
+		else
+			ret = __gpufreq_freq_scale_stack(g_stack.cur_freq, val);
+		break;
+	case TARGET_MSSV_VSTACK:
+		if (val > VSTACK_MAX_VOLT || val < VSTACK_MIN_VOLT)
+			ret = GPUFREQ_EINVAL;
+		else {
+			ret = __gpufreq_volt_scale_stack(g_stack.cur_volt, val);
+			g_stack.cur_vsram = __gpufreq_get_dreq_vsram_stack();
+		}
+		break;
+	case TARGET_MSSV_TOP_DELSEL:
+		if (val == 1 || val == 0) {
+			DRV_WriteReg32(MFG_SRAM_FUL_SEL_ULV_TOP, val);
+			ret = GPUFREQ_SUCCESS;
+		} else
+			ret = GPUFREQ_EINVAL;
+		break;
+	case TARGET_MSSV_STACK_DELSEL:
+		if (val == 1 || val == 0) {
+			DRV_WriteReg32(MFG_CG_SRAM_FUL_SEL_ULV, val);
+			ret = GPUFREQ_SUCCESS;
+		} else
+			ret = GPUFREQ_EINVAL;
+		break;
+	default:
+		ret = GPUFREQ_EINVAL;
+		break;
+	}
+
+	if (ret)
+		GPUFREQ_LOGE("invalid MSSV cmd, target: %d, val: %d", target, val);
+	else {
+		if (g_shared_status) {
+			g_shared_status->cur_fgpu = g_gpu.cur_freq;
+			g_shared_status->cur_vgpu = g_gpu.cur_volt;
+			g_shared_status->cur_vsram_gpu = g_gpu.cur_vsram;
+			g_shared_status->cur_fstack = g_stack.cur_freq;
+			g_shared_status->cur_vstack = g_stack.cur_volt;
+			g_shared_status->cur_vsram_stack = g_stack.cur_vsram;
+			g_shared_status->reg_top_delsel.addr = 0x13FBF084;
+			g_shared_status->reg_top_delsel.val = DRV_Reg32(MFG_SRAM_FUL_SEL_ULV_TOP);
+			g_shared_status->reg_stack_delsel.addr = 0x13E90080;
+			g_shared_status->reg_stack_delsel.val = DRV_Reg32(MFG_CG_SRAM_FUL_SEL_ULV);
+		}
+	}
+
+	mutex_unlock(&gpufreq_lock);
+
+#if GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE
+	__gpufreq_active_sleep_control(GPU_PWR_OFF);
+#endif /* GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE */
+
+	__gpufreq_power_control(GPU_PWR_OFF);
+
+done:
+	return ret;
+#else
 	GPUFREQ_UNREFERENCED(target);
 	GPUFREQ_UNREFERENCED(val);
 
 	return GPUFREQ_EINVAL;
+#endif /* GPUFREQ_MSSV_TEST_MODE */
 }
 
 /**
@@ -3504,9 +3599,10 @@ static void __gpufreq_top_hw_delsel_config(void)
 #if GPUFREQ_HW_DELSEL_ENABLE
 	/* MFG_DUMMY_REG 0x13FBF500 (FECO), 550mV/hystereis 10mV */
 	DRV_WriteReg32(MFG_DUMMY_REG, 0x0001160A);
+#endif /* GPUFREQ_HW_DELSEL_ENABLE */
+
 	/* MFG_DEFAULT_DELSEL_00 0x13FBFC80 = 0x0, choose FECO DELSEL input */
 	DRV_WriteReg32(MFG_DEFAULT_DELSEL_00, 0x0);
-#endif /* GPUFREQ_HW_DELSEL_ENABLE */
 }
 
 /* API: config PDCA to EB MFG2 power change IRQ interface */

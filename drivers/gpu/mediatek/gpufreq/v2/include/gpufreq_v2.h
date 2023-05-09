@@ -336,7 +336,8 @@ struct gpufreq_shared_status {
 	unsigned int power_tracker_mode;
 	struct gpufreq_reg_info reg_mfgsys[GPUFREQ_MAX_REG_NUM];
 	struct gpufreq_reg_info reg_stack_sel;
-	struct gpufreq_reg_info reg_del_sel;
+	struct gpufreq_reg_info reg_top_delsel;
+	struct gpufreq_reg_info reg_stack_delsel;
 	struct gpufreq_asensor_info asensor_info;
 	struct gpufreq_ips_info ips_info;
 	struct gpufreq_opp_info working_table_gpu[GPUFREQ_MAX_OPP_NUM];
