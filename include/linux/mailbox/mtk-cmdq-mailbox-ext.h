@@ -360,6 +360,7 @@ void cmdq_event_verify(void *chan, u16 event_id);
 unsigned long cmdq_get_tracing_mark(void);
 u32 cmdq_thread_timeout_backup(struct cmdq_thread *thread, const u32 ms);
 void cmdq_thread_timeout_restore(struct cmdq_thread *thread, const u32 ms);
+struct dma_pool *cmdq_alloc_user_pool(const char *name, struct device *dev);
 s32 cmdq_mbox_set_hw_id(void *cmdq);
 s32 cmdq_pkt_hw_trace(struct cmdq_pkt *pkt, const u16 event_id);
 

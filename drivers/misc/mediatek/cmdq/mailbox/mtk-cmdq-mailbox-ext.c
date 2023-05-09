@@ -7,6 +7,7 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/dma-mapping.h>
+#include <linux/dmapool.h>
 
 #include <linux/errno.h>
 #include <linux/interrupt.h>
@@ -2183,6 +2184,16 @@ void cmdq_thread_timeout_restore(struct cmdq_thread *thread, const u32 ms)
 	thread->timeout_ms = ms;
 }
 EXPORT_SYMBOL(cmdq_thread_timeout_restore);
+
+struct dma_pool *cmdq_alloc_user_pool(const char *name, struct device *dev)
+{
+	if (unlikely(!name))
+		name = "cmdq";
+
+	return dma_pool_create(name, mtk_smmu_get_shared_device(dev),
+		CMDQ_BUF_ALLOC_SIZE, 0, 0);
+}
+EXPORT_SYMBOL(cmdq_alloc_user_pool);
 
 static struct mbox_chan *cmdq_xlate(struct mbox_controller *mbox,
 		const struct of_phandle_args *sp)
