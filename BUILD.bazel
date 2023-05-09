@@ -288,6 +288,7 @@ mgk_64_k61_device_modules = [
     "drivers/misc/mediatek/lens/vcm/v4l2/main_vcm/main_vcm.ko",
     "drivers/misc/mediatek/lens/vcm/v4l2/main2_vcm/main2_vcm.ko",
     "drivers/misc/mediatek/lens/vcm/v4l2/main3_vcm/main3_vcm.ko",
+    "drivers/misc/mediatek/lens/vcm/v4l2/main4_vcm/main4_vcm.ko",
     "drivers/misc/mediatek/lens/vcm/v4l2/media/camera_af_media.ko",
     "drivers/misc/mediatek/lens/vcm/v4l2/sub_vcm/sub_vcm.ko",
     "drivers/misc/mediatek/log_store/log_store.ko",
