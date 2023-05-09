@@ -13339,14 +13339,15 @@
 				< 3 1  1>,/* IPI_OUT_TEST_0 */
 				< 9 1  2>,/* IPI_OUT_MMDVFS */
 				<11 1  2>,/* IPI_OUT_MMQOS */
-				<13 1  4>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
-				<14 2 18>,/* IPI_OUT_VENC_0 */
-				<16 2  4>,/* IPI_OUT_VCP_MPOOL_0 */
-				<18 3  2>,/* IPI_OUT_C_SLEEP_1 */
-				<19 3  1>,/* IPI_OUT_TEST_1 */
-				<20 3  6>,/* IPI_OUT_LOGGER_CTRL */
-				<21 3  2>,/* IPI_OUT_VCPCTL_1 */
-				<26 4  4>;/* IPI_OUT_VCP_MPOOL_1 */
+				<13 1  2>,/* IPI_OUT_MMDEBUG */
+				<15 1  4>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
+				<16 2 18>,/* IPI_OUT_VENC_0 */
+				<18 2  4>,/* IPI_OUT_VCP_MPOOL_0 */
+				<20 3  2>,/* IPI_OUT_C_SLEEP_1 */
+				<21 3  1>,/* IPI_OUT_TEST_1 */
+				<22 3  6>,/* IPI_OUT_LOGGER_CTRL */
+				<23 3  2>,/* IPI_OUT_VCPCTL_1 */
+				<28 4  4>;/* IPI_OUT_VCP_MPOOL_1 */
 
 			/* id, mbox, recv_size, recv_opt */
 			recv-table =
@@ -13357,15 +13358,16 @@
 				< 6 1  2 0>,/* IPI_IN_VCP_RAM_DUMP_0 */
 				<10 1  2 0>,/* IPI_IN_MMDVFS */
 				<12 1  2 0>,/* IPI_IN_MMQOS */
-				<13 1  4 1>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
-				<15 2 18 0>,/* IPI_IN_VENC_0 */
-				<17 2  4 0>,/* IPI_IN_VCP_MPOOL_0 */
-				<18 3  1 1>,/* IPI_OUT_C_SLEEP_1 */
-				<22 3 10 0>,/* IPI_IN_VCP_ERROR_INFO_1 */
-				<23 3  6 0>,/* IPI_IN_LOGGER_CTRL */
-				<24 3  1 0>,/* IPI_IN_VCP_READY_1 */
-				<25 3  2 0>,/* IPI_IN_VCP_RAM_DUMP_1 */
-				<27 4  4 0>;/* IPI_IN_VCP_MPOOL_1 */
+				<14 1  2 0>,/* IPI_IN_MMDEBUG */
+				<15 1  4 1>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
+				<17 2 18 0>,/* IPI_IN_VENC_0 */
+				<19 2  4 0>,/* IPI_IN_VCP_MPOOL_0 */
+				<20 3  1 1>,/* IPI_OUT_C_SLEEP_1 */
+				<24 3 10 0>,/* IPI_IN_VCP_ERROR_INFO_1 */
+				<25 3  6 0>,/* IPI_IN_LOGGER_CTRL */
+				<26 3  1 0>,/* IPI_IN_VCP_READY_1 */
+				<27 3  2 0>,/* IPI_IN_VCP_RAM_DUMP_1 */
+				<29 4  4 0>;/* IPI_IN_VCP_MPOOL_1 */
 
 			vcp-secure-dump = <1>;   /* enable dump via secure world*/
 			vcp-secure-dump-size = <0x200000>;
