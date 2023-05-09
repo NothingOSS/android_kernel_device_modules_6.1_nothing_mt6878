@@ -491,8 +491,8 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 			regs[i].offset, regs[i].value, regs[i].mask);
 	}
 
-	tdshp_frm->is_clarity_need_readback = result->is_clarity_need_readback;
-	tdshp_frm->is_dc_need_readback = result->is_dc_need_readback;
+	tdshp_frm->is_clarity_need_readback = false;
+	tdshp_frm->is_dc_need_readback = false;
 
 	if ((dest->pq_config.en_dre && dest->pq_config.en_sharp) ||
 		dest->pq_config.en_dc)
@@ -731,8 +731,8 @@ static s32 tdshp_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 		mml_pq_msg("[ds][config][%x] = %#x mask(%#x)",
 			regs[i].offset, regs[i].value, regs[i].mask);
 	}
-	tdshp_frm->is_clarity_need_readback = result->is_clarity_need_readback;
-	tdshp_frm->is_dc_need_readback = result->is_dc_need_readback;
+	tdshp_frm->is_clarity_need_readback = false;
+	tdshp_frm->is_dc_need_readback = false;
 exit:
 	return ret;
 }

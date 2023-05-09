@@ -952,7 +952,7 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 		cmdq_pkt_write(pkt, NULL, base_pa + 0x3b4, 0x18, U32_MAX);
 
 	aal_frm->is_aal_need_readback = result->is_aal_need_readback;
-	aal_frm->is_clarity_need_readback = result->is_clarity_need_readback;
+	aal_frm->is_clarity_need_readback = false;
 
 	tile_config_param = &(result->aal_param[ccfg->node->out_idx]);
 	aal_frm->dre_blk_width = tile_config_param->dre_blk_width;
@@ -1481,7 +1481,7 @@ static s32 aal_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 
 	curve = result->aal_curve;
 	aal_frm->is_aal_need_readback = result->is_aal_need_readback;
-	aal_frm->is_clarity_need_readback = result->is_clarity_need_readback;
+	aal_frm->is_clarity_need_readback = false;
 	task->pq_task->aal_readback.readback_data.cut_pos_x =
 		aal_frm->cut_pos_x;
 	aal_hist_ctrl(comp, task, ccfg, false);
