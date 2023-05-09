@@ -51,6 +51,9 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/isp_7sp/pda_mt6897.c),)
 obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6897.o
 endif
+ifneq ($(wildcard $(srctree)/$(src)/isp_7sp/pda_mt6989.c),)
+obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6989.o
+endif
 
 pda_drv_mt6879-objs := isp_71/camera_pda_mt6879.o
 pda_drv_mt6895-objs := isp_71/camera_pda_mt6895.o
@@ -58,3 +61,4 @@ pda_drv_mt6855-objs := isp_6s/camera_pda.o isp_6s/pda_mt6855.o
 pda_drv_mt6985-objs := isp_7s/camera_pda.o isp_7s/pda_mt6985.o
 pda_drv_mt6886-objs := isp_7s/camera_pda.o isp_7s/pda_mt6886.o
 pda_drv_mt6897-objs := isp_7sp/camera_pda.o isp_7sp/pda_mt6897.o
+pda_drv_mt6989-objs := isp_7sp/camera_pda.o isp_7sp/pda_mt6989.o

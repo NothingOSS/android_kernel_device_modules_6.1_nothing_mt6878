@@ -15,6 +15,8 @@
 
 #include "mtk-interconnect.h"
 
+#include "iommu_debug.h"
+
 // --------- DMA-BUF ----------
 #include <linux/dma-heap.h>
 #include <linux/dma-direction.h>
@@ -74,6 +76,7 @@ void __iomem *CAMSYS_CONFIG_BASE;
 #define PDA_HW_RESET 0x00000004
 
 struct device *g_dev1, *g_dev2;
+struct device *g_smmu_dev1;
 
 static spinlock_t g_PDA_SpinLock;
 
@@ -326,7 +329,7 @@ static int pda_get_dma_buffer(struct pda_mmu *mmu, int fd)
 		return -1;
 
 	mmu->dma_buf = buf;
-	mmu->attach = dma_buf_attach(mmu->dma_buf, g_dev1);
+	mmu->attach = dma_buf_attach(mmu->dma_buf, g_smmu_dev1);
 	if (IS_ERR(mmu->attach))
 		goto err_attach;
 
@@ -2585,6 +2588,19 @@ static int PDA_probe(struct platform_device *pdev)
 			}
 		} else {
 			LOG_INF("PDA1 get IRQ ID Fail or No IRQ: %d\n", PDA_devs[0].irq);
+		}
+	}
+
+	// use iommu
+	g_smmu_dev1 = g_dev1;
+
+	// check smmu or iommu
+	if (smmu_v3_enabled()) {
+		//get smmu shared device
+		g_smmu_dev1 = mtk_smmu_get_shared_device(g_dev1);
+		if (!g_smmu_dev1) {
+			LOG_INF("failed to get pda smmu device\n");
+			return -EINVAL;
 		}
 	}
 
