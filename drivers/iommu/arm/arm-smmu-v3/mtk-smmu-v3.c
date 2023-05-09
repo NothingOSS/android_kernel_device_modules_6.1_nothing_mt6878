@@ -484,13 +484,8 @@ static int mtk_smmu_power_get(struct arm_smmu_device *smmu)
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	const struct mtk_smmu_plat_data *plat_data = data->plat_data;
 
-	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_EN_PRE))
+	if (MTK_SMMU_HAS_FLAG(plat_data, SMMU_EN_PRE))
 		return 0;
-
-	dev_info(smmu->dev,
-		 "[%s] plat_data{smmu_plat:%d, flags:0x%x, smmu:%s\n",
-		 __func__, plat_data->smmu_plat, plat_data->flags,
-		 get_smmu_name(data->plat_data->smmu_type));
 
 	// TODO: smc to take hw semaphore
 
@@ -502,13 +497,8 @@ static void mtk_smmu_power_put(struct arm_smmu_device *smmu)
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	const struct mtk_smmu_plat_data *plat_data = data->plat_data;
 
-	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_EN_PRE))
+	if (MTK_SMMU_HAS_FLAG(plat_data, SMMU_EN_PRE))
 		return;
-
-	dev_info(smmu->dev,
-		 "[%s] plat_data{smmu_plat:%d, flags:0x%x, smmu:%s\n",
-		 __func__, plat_data->smmu_plat, plat_data->flags,
-		 get_smmu_name(plat_data->smmu_type));
 
 	// TODO: smc to release hw semaphore
 }
@@ -1160,16 +1150,16 @@ static void mtk_smmu_evt_dump(u64 *evt)
 
 	switch (FIELD_GET(EVTQ_0_ID, evt[0])) {
 	case EVT_ID_TRANSLATION_FAULT:
-		ptr += sprintf(ptr, "\tEVT_ID_TRANSLATION_FAULT");
+		ptr += sprintf(ptr, "EVT_ID_TRANSLATION_FAULT");
 		break;
 	case EVT_ID_ADDR_SIZE_FAULT:
-		ptr += sprintf(ptr, "\tEVT_ID_ADDR_SIZE_FAULT");
+		ptr += sprintf(ptr, "EVT_ID_ADDR_SIZE_FAULT");
 		break;
 	case EVT_ID_ACCESS_FAULT:
-		ptr += sprintf(ptr, "\tEVT_ID_ACCESS_FAULT");
+		ptr += sprintf(ptr, "EVT_ID_ACCESS_FAULT");
 		break;
 	case EVT_ID_PERMISSION_FAULT:
-		ptr += sprintf(ptr, "\tEVT_ID_PERMISSION_FAULT");
+		ptr += sprintf(ptr, "EVT_ID_PERMISSION_FAULT");
 		break;
 	default:
 		break;
@@ -1213,6 +1203,7 @@ static int mtk_smmu_evt_handler(int irq, void *dev, u64 *evt)
 	static DEFINE_RATELIMIT_STATE(evtq_rs, SMMU_FAULT_RS_INTERVAL,
 				      SMMU_FAULT_RS_BURST);
 	struct arm_smmu_device *smmu = dev;
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	u8 id = FIELD_GET(EVTQ_0_ID, evt[0]);
 	bool ssid_valid = evt[0] & EVTQ_0_SSV;
 	u32 sid = FIELD_GET(EVTQ_0_SID, evt[0]);
@@ -1231,6 +1222,8 @@ static int mtk_smmu_evt_handler(int irq, void *dev, u64 *evt)
 		 ssid_valid, sid, ssid);
 
 	mtk_smmu_evt_dump(evt);
+
+	mtk_smmu_ste_cd_info_dump(NULL, data->plat_data->smmu_type, sid);
 
 	return IRQ_HANDLED;
 }
@@ -1290,19 +1283,6 @@ static void __maybe_unused smmu_dump_reg(void __iomem *base,
 				start + 4 * (i + 3),
 				smmu_read_reg(base, start + 4 * (i + 3)));
 	}
-}
-
-static void smmu_tlb_flush_all(struct arm_smmu_master *master)
-{
-	struct iommu_domain *domain = &master->domain->domain;
-
-	pr_info("[%s] master->dev:%s\n", __func__, dev_name(master->dev));
-
-	if (domain && domain->ops && domain->ops->flush_iotlb_all)
-		domain->ops->flush_iotlb_all(domain);
-	else
-		pr_info("[%s] master->dev:%s, no OPS flush_iotlb_all\n",
-			__func__, dev_name(master->dev));
 }
 
 static phys_addr_t mtee_smmu_iova_to_phys(u64 iova, u32 sid, u32 ssid)
@@ -1426,7 +1406,6 @@ static int mtk_report_device_fault(struct arm_smmu_master *master,
 	/* limit TF handle dump rate */
 	if (!__ratelimit(&fault_rs)) {
 		smmuwp_clear_tf(smmu);
-		smmu_tlb_flush_all(master);
 		return 0;
 	}
 
@@ -1477,8 +1456,6 @@ static int mtk_report_device_fault(struct arm_smmu_master *master,
 						 data->plat_data->smmu_type);
 		}
 #endif
-
-		smmu_tlb_flush_all(master);
 	}
 
 	return 0;
@@ -1902,8 +1879,6 @@ static unsigned int smmuwp_consume_intr(struct arm_smmu_device *smmu,
 	void __iomem *wp_base = smmu->wp_base;
 	unsigned int pend_cnt = 0;
 
-	pr_info("---- %s clear irq_bit:%d ----\n", __func__, irq_bit);
-
 	pend_cnt = smmu_read_reg(wp_base, SMMUWP_IRQ_NS_CNTx(__ffs(irq_bit)));
 	smmu_write_field(wp_base, SMMUWP_IRQ_NS_ACK_CNT, IRQ_NS_ACK_CNT_MSK,
 			 pend_cnt);
@@ -1916,8 +1891,6 @@ static unsigned int smmuwp_consume_intr(struct arm_smmu_device *smmu,
 static void smmuwp_clear_tf(struct arm_smmu_device *smmu)
 {
 	void __iomem *wp_base = smmu->wp_base;
-
-	pr_info("---- %s clear TF mark ----\n", __func__);
 
 	smmu_write_field(wp_base, SMMUWP_GLB_CTL0, CTL0_ABT_CNT_CLR,
 			 CTL0_ABT_CNT_CLR);
@@ -1933,69 +1906,69 @@ static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu)
 	irq_sta = smmu_read_reg(wp_base, SMMUWP_IRQ_NS_STA);
 
 	if (irq_sta > 0) {
-		pr_info("---- %s start, irq_sta(0x%x)=0x%x ----\n",
+		pr_info("%s irq_sta(0x%x)=0x%x\n",
 			__func__, SMMUWP_IRQ_NS_STA, irq_sta);
 	} else {
-		pr_info("---- %s return 0, irq_sta(0x%x)=0x%x ----\n",
+		pr_info("%s return 0, irq_sta(0x%x)=0x%x\n",
 			__func__, SMMUWP_IRQ_NS_STA, irq_sta);
 		return 0;
 	}
 
 	if (irq_sta & STA_NS_TCU_GLB_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_NS_TCU_GLB_INTR);
-		pr_info("\tNon-secure TCU global interrupt detected %d\n", pend_cnt);
+		pr_info("Non-secure TCU global interrupt detected %d\n", pend_cnt);
 	}
 
 	if (irq_sta & STA_NS_TCU_CMD_SYNC_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_NS_TCU_CMD_SYNC_INTR);
-		pr_info("\tNon-secure TCU CMD_SYNC interrupt detected %d\n", pend_cnt);
+		pr_info("Non-secure TCU CMD_SYNC interrupt detected %d\n", pend_cnt);
 	}
 
 	if (irq_sta & STA_NS_TCU_EVTQ_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_NS_TCU_EVTQ_INTR);
-		pr_info("\tNon-secure TCU event queue interrupt detected %d\n",
+		pr_info("Non-secure TCU event queue interrupt detected %d\n",
 			pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_PRI_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_PRI_INTR);
-		pr_info("\tTCU PRI interrupt detected %d\n", pend_cnt);
+		pr_info("TCU PRI interrupt detected %d\n", pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_PMU_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_PMU_INTR);
-		pr_info("\tTCU PMU interrupt detected %d\n", pend_cnt);
+		pr_info("TCU PMU interrupt detected %d\n", pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_RAS_CRI) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_RAS_CRI);
-		pr_info("\tTCU RAS CRI detected %d\n", pend_cnt);
+		pr_info("TCU RAS CRI detected %d\n", pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_RAS_ERI) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_RAS_ERI);
-		pr_info("\tTCU RAS ERI detected %d\n", pend_cnt);
+		pr_info("TCU RAS ERI detected %d\n", pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_RAS_FHI) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_RAS_FHI);
-		pr_info("\tTCU RAS FHI detected %d\n", pend_cnt);
+		pr_info("TCU RAS FHI detected %d\n", pend_cnt);
 	}
 
 	for (i = 0; i < SMMU_TBU_CNT(data->plat_data->smmu_type); i++) {
 		if (irq_sta & STA_TBUx_RAS_CRI(i)) {
 			pend_cnt = smmuwp_consume_intr(smmu, STA_TBUx_RAS_CRI(i));
-			pr_info("\tTBU%d RAS CRI detected %d\n", i, pend_cnt);
+			pr_info("TBU%d RAS CRI detected %d\n", i, pend_cnt);
 		}
 
 		if (irq_sta & STA_TBUx_RAS_ERI(i)) {
 			pend_cnt = smmuwp_consume_intr(smmu, STA_TBUx_RAS_ERI(i));
-			pr_info("\tTBU%d RAS ERI detected %d\n", i, pend_cnt);
+			pr_info("TBU%d RAS ERI detected %d\n", i, pend_cnt);
 		}
 
 		if (irq_sta & STA_TBUx_RAS_FHI(i)) {
 			pend_cnt = smmuwp_consume_intr(smmu, STA_TBUx_RAS_FHI(i));
-			pr_info("\tTBU%d RAS FHI detected %d\n", i, pend_cnt);
+			pr_info("TBU%d RAS FHI detected %d\n", i, pend_cnt);
 		}
 	}
 
@@ -2023,7 +1996,6 @@ static struct mtk_smmu_fault_param *smmuwp_process_tf(
 	u64 fault_iova, fault_pa;
 	bool tf_det = false;
 
-	pr_info("---- %s start ----\n", __func__);
 	for (i = 0; i < SMMU_TBU_CNT(data->plat_data->smmu_type); i++) {
 		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_RTFM0(i));
 		if (!(regval & RTFM0_FAULT_DET))
@@ -2044,7 +2016,7 @@ static struct mtk_smmu_fault_param *smmuwp_process_tf(
 		ssid = FIELD_GET(RTFM2_FAULT_SSID, regval);
 		ssidv = FIELD_GET(RTFM2_FAULT_SSIDV, regval);
 		secsidv = FIELD_GET(RTFM2_FAULT_SECSID, regval);
-		pr_info("\tTBU%d %s TRANSLATION FAULT detected, read, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
+		pr_info("TBU%d %s TRANSLATION FAULT detected, read, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
 			i, STRSEC(secsidv), fault_iova, axiid, sid, ssid, ssidv, secsidv);
 
 		fault_evt->mtk_fault_param[SMMU_TFM_READ][i] = (struct mtk_smmu_fault_param) {
@@ -2083,7 +2055,7 @@ write:
 		ssid = FIELD_GET(WTFM2_FAULT_SSID, regval);
 		ssidv = FIELD_GET(WTFM2_FAULT_SSIDV, regval);
 		secsidv = FIELD_GET(WTFM2_FAULT_SECSID, regval);
-		pr_info("\tTBU%d %s TRANSLATION FAULT detected, write, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
+		pr_info("TBU%d %s TRANSLATION FAULT detected, write, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
 			i, STRSEC(secsidv), fault_iova, axiid, sid, ssid, ssidv, secsidv);
 
 		fault_evt->mtk_fault_param[SMMU_TFM_WRITE][i] = (struct mtk_smmu_fault_param) {
@@ -2104,8 +2076,6 @@ write:
 	}
 
 	smmuwp_clear_tf(smmu);
-
-	pr_info("---- %s end ----\n", __func__);
 
 	return first_fault_param;
 }

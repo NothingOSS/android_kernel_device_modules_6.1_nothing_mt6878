@@ -1314,6 +1314,37 @@ void mtk_smmu_ste_cd_dump(struct seq_file *s, u32 smmu_type)
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_ste_cd_dump);
 
+void mtk_smmu_ste_cd_info_dump(struct seq_file *s, u32 smmu_type, u32 sid)
+{
+	struct arm_smmu_device *smmu = NULL;
+	struct arm_smmu_stream *stream;
+	struct mtk_smmu_data *data;
+	struct rb_node *n;
+
+	if (smmu_ops && smmu_ops->get_smmu_data) {
+		data = smmu_ops->get_smmu_data(smmu_type);
+		if (data != NULL)
+			smmu = &data->smmu;
+	}
+
+	if (smmu == NULL) {
+		pr_info("%s, ERROR\n", __func__);
+		return;
+	}
+
+	for (n = rb_first(&smmu->streams); n; n = rb_next(n)) {
+		stream = rb_entry(n, struct arm_smmu_stream, node);
+		if (stream != NULL && stream->master != NULL &&
+		    stream->master->streams != NULL)
+			/* currently only support one master one sid */
+			if (sid == stream->master->streams[0].id) {
+				dump_ste_cd_info(s, stream->master);
+				return;
+			}
+	}
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_ste_cd_info_dump);
+
 static void smmu_pgtable_dump(struct seq_file *s, struct arm_smmu_device *smmu)
 {
 	struct rb_node *n;
