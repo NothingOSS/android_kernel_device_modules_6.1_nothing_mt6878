@@ -82,6 +82,14 @@
 		enable-active-high;
 		gpio = <&pio 92 0x0>;
 	};
+	camera_common_avdd2: camera-common-avdd2 {
+		compatible = "regulator-fixed";
+		regulator-name = "camera-common-avdd2";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		enable-active-high;
+		gpio = <&pio 93 0x0>;
+	};
 };
 
 /* CAMERA GPIO standardization */
@@ -126,20 +134,6 @@
 	camera_pins_cam0_rst_1: cam0@1 {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO118__FUNC_GPIO118>;
-			slew-rate = <1>;
-			output-high;
-		};
-	};
-	camera_pins_cam0_avdd2_0: cam0@2 {
-		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO93__FUNC_GPIO93>;
-			slew-rate = <1>;
-			output-low;
-		};
-	};
-	camera_pins_cam0_avdd2_1: cam0@3 {
-		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO93__FUNC_GPIO93>;
 			slew-rate = <1>;
 			output-high;
 		};
@@ -614,9 +608,7 @@
 				"mclk_6mA",
 				"mclk_8mA",
 				"rst_low",
-				"rst_high",
-				"avdd2_off",
-				"avdd2_on";
+				"rst_high";
 		pinctrl-0 = <&camera_pins_cam0_mclk_off>;
 		pinctrl-1 = <&camera_pins_cam0_mclk_2ma>;
 		pinctrl-2 = <&camera_pins_cam0_mclk_4ma>;
@@ -624,10 +616,9 @@
 		pinctrl-4 = <&camera_pins_cam0_mclk_8ma>;
 		pinctrl-5 = <&camera_pins_cam0_rst_0>;
 		pinctrl-6 = <&camera_pins_cam0_rst_1>;
-		pinctrl-7 = <&camera_pins_cam0_avdd2_0>;
-		pinctrl-8 = <&camera_pins_cam0_avdd2_1>;
 
 		avdd-supply = <&rt5133_ldo5>;
+		avdd2-supply = <&camera_common_avdd2>;
 		dvdd-supply = <&rt5133_ldo8>;
 		afvdd1-supply = <&rt5133_gpio1>;
 		dovdd-supply = <&camera_common_dovdd>;
@@ -744,9 +735,11 @@
 	sensor2: sensor2@10 {
 		compatible = "mediatek,imgsensor";
 		sensor-names = "imx598_mipi_raw",
-				"imx709_mipi_raw";
+				"imx709_mipi_raw",
+				"imx866_mipi_raw";
 		reg = <0x10>;
-		reindex-match = "imx709_mipi_raw";
+		reindex-match = "imx709_mipi_raw",
+				"imx866_mipi_raw";
 		reindex-to = <0>;
 
 		pinctrl-names = "mclk_off",
@@ -793,9 +786,10 @@
 		pinctrl-20 = <&camera_pins_cam2_eint>;
 
 		avdd-supply = <&rt5133_ldo6>; // AVDD for imx598/imx709
+		avdd3-supply = <&camera_common_avdd2>; // AVDD2 for imx866
 		avdd4-supply = <&rt5133_gpio2>; // AVDD2 for imx598
 		dvdd-supply = <&rt5133_ldo7>; // DVDD for imx598
-		dvdd1-supply = <&rt5133_ldo8>; // DVDD for imx709
+		dvdd2-supply = <&rt5133_ldo8>; // DVDD for imx709
 		afvdd-supply = <&rt5133_ldo2>;
 		dovdd-supply = <&camera_common_dovdd>;
 
