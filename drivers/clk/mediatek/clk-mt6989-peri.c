@@ -262,12 +262,6 @@ static const struct mtk_gate perao_clks[] = {
 			"peri_faxi_ck"/* parent */, 21),
 	GATE_PERAO1(CLK_PERAOP_MSDC2_H, "peraop_msdc2_h",
 			"peri_faxi_ck"/* parent */, 22),
-	GATE_PERAO1(CLK_PERAOP_UARTHUB, "peraop_uarthub",
-			"uarthub_b_ck"/* parent */, 23),
-	GATE_PERAO1(CLK_PERAOP_UARTHUB_H, "peraop_uarthub_h",
-			"peri_faxi_ck"/* parent */, 24),
-	GATE_PERAO1(CLK_PERAOP_UARTHUB_P, "peraop_uarthub_p",
-			"peri_faxi_ck"/* parent */, 25),
 	/* PERAO2 */
 	GATE_PERAO2(CLK_PERAOP_AUDIO_SLV, "peraop_audio_slv",
 			"peri_faxi_ck"/* parent */, 0),
