@@ -3713,6 +3713,15 @@
 			reg = <0 0x10223000 0 0x1000>;
 		};
 
+		mtk_leds: mtk-leds {
+			backlight {
+				label = "lcd-backlight";
+				max-brightness = <2047>;
+				min-brightness = <4>;
+				max-hw-brightness = <2047>;
+			};
+		};
+
 		apdma@10220000 {
 			compatible = "mediatek,apdma";
 			reg = <0 0x10220000 0 0x4000>;
@@ -10575,15 +10584,6 @@
 				<GIC_SPI 414 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 415 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&clk13m>;
-	};
-
-	mtk_leds: mtk-leds {
-			backlight {
-				label = "lcd-backlight";
-				max-brightness = <2047>;
-				min-brightness = <4>;
-				max-hw-brightness = <2047>;
-			};
 	};
 
 	afe: mt6989-afe-pcm@11050000 {
