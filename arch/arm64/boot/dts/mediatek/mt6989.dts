@@ -1552,6 +1552,10 @@
 		compatible = "mediatek,page-based-v2-enabled";
 	};
 
+	mtee_svp: mtee-svp {
+		compatible = "medaitek,svp";
+	};
+
 	mgm: mgm {
 		compatible = "arm,physical-memory-group-manager";
 	};
