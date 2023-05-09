@@ -34,6 +34,7 @@ enum mtk_dpc_disp_vidle {
 	DPC_DISP_VIDLE_MAINPLL_OFF = 23,
 	DPC_DISP_VIDLE_MSYNC2_0 = 26,
 	DPC_DISP_VIDLE_RESERVED = 29,
+	DPC_DISP_VIDLE_MAX = 32,
 };
 
 enum mtk_dpc_mml_vidle {

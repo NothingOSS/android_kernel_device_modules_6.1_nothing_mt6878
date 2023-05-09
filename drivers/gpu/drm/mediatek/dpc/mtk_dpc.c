@@ -341,9 +341,27 @@ static void dpc_disp_group_enable(const enum mtk_dpc_disp_vidle group, bool en)
 
 	DPCFUNC("group(%u) en(%u)", group, en);
 	if (!en) {
-		for (i = 0; i < 32; ++i) {
+		for (i = 0; i < DPC_DISP_VIDLE_MAX; ++i) {
+			/* dt disable */
 			if (group == mt6989_disp_dt_usage[i].group)
 				dpc_dt_enable(mt6989_disp_dt_usage[i].index, false);
+
+			/* sw mode */
+			if (group == DPC_DISP_VIDLE_MTCMOS) {
+				writel(0, dpc_base + DISP_REG_DPC_DISP0_MTCMOS_CFG);
+				writel(0, dpc_base + DISP_REG_DPC_OVL0_MTCMOS_CFG);
+				writel(0, dpc_base + DISP_REG_DPC_OVL1_MTCMOS_CFG);
+			}
+			if (group == DPC_DISP_VIDLE_MTCMOS_DISP1)
+				writel(0, dpc_base + DISP_REG_DPC_DISP1_MTCMOS_CFG);
+			if (group == DPC_DISP_VIDLE_MMINFRA_OFF)
+				writel(0x00181818, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
+			if (group == DPC_DISP_VIDLE_VDISP_DVFS)
+				writel(0x1, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
+			if (group == DPC_DISP_VIDLE_HRT_BW) {
+				writel(0x000C000C, dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);
+				writel(0x00010001, dpc_base + DISP_REG_DPC_DISP_HRTBW_SRTBW_CFG);
+			}
 		}
 		return;
 	}
@@ -368,7 +386,19 @@ static void dpc_disp_group_enable(const enum mtk_dpc_disp_vidle group, bool en)
 		writel(BIT(0) | BIT(4) | BIT(6), dpc_base + DISP_REG_DPC_DISP1_MTCMOS_CFG);
 		break;
 	case DPC_DISP_VIDLE_MMINFRA_OFF:
-		/* TODO: mask release*/
+		/* enable MMINFRA_OFF int */
+		value = readl(dpc_base + DISP_REG_DPC_DISP_INTEN);
+		writel(DISP_DPC_INT_MMINFRA_OFF_START | value, dpc_base + DISP_REG_DPC_DISP_INTEN);
+
+		/* mminfra MTCMOS auto_on_off enable */
+		writel(0x18, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
+		break;
+	case DPC_DISP_VIDLE_VDISP_DVFS:
+		writel(0, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
+		break;
+	case DPC_DISP_VIDLE_HRT_BW:
+		writel(0, dpc_base + DISP_REG_DPC_DISP_HRTBW_SRTBW_CFG);
+		writel(BIT(0) | BIT(16), dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);
 		break;
 	default:
 		break;

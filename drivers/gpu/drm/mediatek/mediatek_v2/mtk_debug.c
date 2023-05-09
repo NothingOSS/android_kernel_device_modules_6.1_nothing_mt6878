@@ -47,6 +47,7 @@
 #include "mtk_drm_arr.h"
 #include "mtk_drm_graphics_base.h"
 #include "mtk_dsi.h"
+#include "mtk_disp_vidle.h"
 
 #define DISP_REG_CONFIG_MMSYS_CG_SET(idx) (0x104 + 0x10 * (idx))
 #define DISP_REG_CONFIG_MMSYS_CG_CLR(idx) (0x108 + 0x10 * (idx))
@@ -3818,6 +3819,22 @@ static void process_dbg_opt(const char *opt)
 		val = *(unsigned int *)(cmdq_buf->va_base + DISP_SLOT_TE1_EN);
 		DDPMSG("[reg_dbg] gce_rd: addr(0x%x) = 0x%x\n", addr, val);
 #endif
+	} else if (strncmp(opt, "vidle_cmd:", strlen("vidle_cmd:")) == 0) {
+		uint32_t en = 0;
+		uint32_t stop = 0;
+		int ret;
+
+		ret = sscanf(opt, "vidle_cmd:%x,%x\n", &en, &stop);
+		DDPMSG("[vidle_dbg] en: 0x%8x, stop: 0x%8x\n", en, stop);
+		if (ret != 2)
+			return;
+
+		mtk_vidle_set_all_flag(en, stop);
+	} else if (strncmp(opt, "vidle_get_flag", strlen("vidle_get_flag")) == 0) {
+		uint32_t en, stop;
+
+		mtk_vidle_get_all_flag(&en, &stop);
+		DDPMSG("[vidle_dbg] en: 0x%8x, stop: 0x%8x\n", en, stop);
 	} else if (strncmp(opt, "pq_dump", 7) == 0) {
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;

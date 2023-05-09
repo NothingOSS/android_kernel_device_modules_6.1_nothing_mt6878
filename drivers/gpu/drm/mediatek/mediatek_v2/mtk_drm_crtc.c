@@ -12346,6 +12346,9 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		goto end;
 	}
 
+	/* V-idle multi crtc stop */
+	mtk_vidle_multi_crtc_stop(crtc_idx);
+
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
 	if (mtk_crtc_state->base.event) {

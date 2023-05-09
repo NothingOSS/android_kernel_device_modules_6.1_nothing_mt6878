@@ -102,6 +102,7 @@ static struct mtk_drm_helper help_info[] = {
 	{MTK_DRM_OPT_VIDLE_DVFS_DT_EN, 0, "MTK_DRM_OPT_VIDLE_DVFS_DT_EN"},
 	{MTK_DRM_OPT_VIDLE_QOS_DT_EN, 0, "MTK_DRM_OPT_VIDLE_QOS_DT_EN"},
 	{MTK_DRM_OPT_VIDLE_GCE_TS_EN, 0, "MTK_DRM_OPT_VIDLE_GCE_TOP_EN"},
+	{MTK_DRM_OPT_DPC_PRE_TE_EN, 0, "MTK_DRM_OPT_DPC_PRE_TE_EN"},
 };
 
 enum DISP_HELPER_STAGE disp_helper_get_stage(void)

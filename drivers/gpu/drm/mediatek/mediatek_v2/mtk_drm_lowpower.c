@@ -1822,6 +1822,10 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"STOP", -1, perf_string, true);
 	/* 16. idle manager performance monitor */
+
+	/* 15. v-idle enable */
+	mtk_vidle_enable(priv);
+
 	if (idlemgr->perf != NULL) {
 		unsigned long long cost;
 
@@ -1842,9 +1846,6 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_IDLEMGR_ASYNC))
 		atomic_set(&idlemgr->async_enabled, 0);
-
-	/* 15. v-idle enable */
-	mtk_vidle_enable(priv);
 
 	DDPINFO("crtc%d do %s-\n", crtc_id, __func__);
 }

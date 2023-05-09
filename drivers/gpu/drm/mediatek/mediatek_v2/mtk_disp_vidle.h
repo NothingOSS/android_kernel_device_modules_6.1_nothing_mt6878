@@ -10,6 +10,8 @@
 
 struct mtk_disp_vidle_para {
 	unsigned int vidle_en;
+	unsigned int vidle_init;
+	unsigned int vidle_stop;
 	unsigned int rc_en;
 	unsigned int wdt_en;
 };
@@ -20,6 +22,11 @@ struct mtk_disp_vidle_para {
 #define DISP_VIDLE_DVFS_DT_EN BIT(3)
 #define DISP_VIDLE_QOS_DT_EN BIT(4)
 #define DISP_VIDLE_GCE_TS_EN BIT(5)
+#define DISP_DPC_PRE_TE_EN BIT(6)
+
+/* V-idle stop case */
+#define VIDLE_STOP_DEBUGE BIT(0)
+#define VIDLE_STOP_MULTI_CRTC BIT(1)
 
 struct mtk_disp_dpc_data {
 	struct mtk_disp_vidle_para *mtk_disp_vidle_flag;
@@ -40,6 +47,10 @@ void mtk_vidle_sync_mmdvfsrc_status_wdt(unsigned int wdt_en);
 void mtk_vidle_enable(struct mtk_drm_private *priv);
 void mtk_vidle_power_keep(void);
 void mtk_vidle_power_release(void);
+void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop);
+void mtk_vidle_set_all_flag(unsigned int en, unsigned int stop);
+void mtk_vidle_get_all_flag(unsigned int *en, unsigned int *stop);
+
 __weak void dpc_enable(bool en)
 {
 	return;

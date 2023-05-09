@@ -64,6 +64,7 @@
 #include "platform/mtk_drm_platform.h"
 #include "mtk_drm_trace.h"
 #include "mtk_disp_pq_helper.h"
+#include "mtk_disp_vidle.h"
 
 #include "mtk_drm_mmp.h"
 /* *******Panel Master******** */
@@ -5424,6 +5425,18 @@ void mtk_drm_top_clk_isr_put(char *master)
 
 		atomic_dec(&top_isr_ref);
 		spin_unlock_irqrestore(&top_clk_lock, flags);
+	}
+}
+
+void mtk_vidle_multi_crtc_stop(unsigned int crtc_id)
+{
+	if (crtc_id == 0) {
+		/* crtc0 case, if no other crtc, vidle work */
+		if (atomic_read(&top_clk_ref) == 1)
+			mtk_set_vidle_stop_flag(VIDLE_STOP_MULTI_CRTC, 0);
+	} else {
+		/* multi crtc, stop vidle */
+		mtk_set_vidle_stop_flag(VIDLE_STOP_MULTI_CRTC, 1);
 	}
 }
 
