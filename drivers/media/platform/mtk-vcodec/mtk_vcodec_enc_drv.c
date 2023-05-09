@@ -26,6 +26,8 @@
 #include "mtk_vcodec_intr.h"
 #include "mtk_vcodec_util.h"
 #include "mtk_vcu.h"
+#include "mtk-smmu-v3.h"
+
 
 module_param(mtk_v4l2_dbg_level, int, 0644); //S_IRUGO | S_IWUSR
 module_param(mtk_vcodec_dbg, bool, 0644); //S_IRUGO | S_IWUSR
@@ -321,12 +323,13 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	unsigned int offset = 0;
 	unsigned int core_id = 0, ram_type = 0, port_id = 0;
 
-	dev = devm_kzalloc(&pdev->dev, sizeof(*dev), GFP_KERNEL);
+	dev = devm_kzalloc(mtk_smmu_get_shared_device(&pdev->dev), sizeof(*dev), GFP_KERNEL);
 	if (!dev)
 		return -ENOMEM;
 
 	INIT_LIST_HEAD(&dev->ctx_list);
 	dev->plat_dev = pdev;
+	dev->smmu_dev = mtk_smmu_get_shared_device(&pdev->dev);
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 	if (VCU_FPTR(vcu_get_plat_device)) {
 		dev->vcu_plat_dev = VCU_FPTR(vcu_get_plat_device)(dev->plat_dev);
@@ -515,15 +518,15 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	}
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
-	dev->io_domain = iommu_get_domain_for_dev(&pdev->dev);
+	dev->io_domain = iommu_get_domain_for_dev(dev->smmu_dev);
 	if (dev->io_domain == NULL) {
 		mtk_v4l2_err("Failed to get io_domain\n");
 		return -EPROBE_DEFER;
 	}
 
-	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(34));
+	ret = dma_set_mask_and_coherent(dev->smmu_dev, DMA_BIT_MASK(34));
 	if (ret) {
-		ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(34));
+		ret = dma_set_mask_and_coherent(dev->smmu_dev, DMA_BIT_MASK(34));
 		if (ret) {
 			dev_info(&pdev->dev, "64-bit DMA enable failed\n");
 			return ret;
@@ -531,10 +534,10 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	}
 	if (!pdev->dev.dma_parms) {
 		pdev->dev.dma_parms =
-			devm_kzalloc(&pdev->dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
+			devm_kzalloc(dev->smmu_dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
 	}
 	if (pdev->dev.dma_parms) {
-		ret = dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(34));
+		ret = dma_set_max_seg_size(dev->smmu_dev, (unsigned int)DMA_BIT_MASK(34));
 		if (ret)
 			dev_info(&pdev->dev, "Failed to set DMA segment size\n");
 	}
@@ -593,6 +596,7 @@ static const struct of_device_id mtk_vcodec_enc_match[] = {
 	{.compatible = "mediatek,mt8195-vcodec-enc",},
 	{.compatible = "mediatek,mt6835-vcodec-enc",},
 	{.compatible = "mediatek,mt6897-vcodec-enc",},
+	{.compatible = "mediatek,mt6989-vcodec-enc",},
 	{.compatible = "mediatek,venc_gcon",},
 	{},
 };

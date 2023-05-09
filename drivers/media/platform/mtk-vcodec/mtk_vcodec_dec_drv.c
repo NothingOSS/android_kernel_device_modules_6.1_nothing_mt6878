@@ -27,6 +27,9 @@
 #include "mtk_vcodec_util.h"
 #include "mtk_vcu.h"
 #include "mtk_vcodec_dec_slc.h"
+/* SMMU related header file */
+#include "mtk-smmu-v3.h"
+
 
 module_param(mtk_v4l2_dbg_level, int, 0644);
 module_param(mtk_vdec_lpw_level, int, 0644);
@@ -134,12 +137,12 @@ static int fops_vcodec_open(struct file *file)
 	mtk_v4l2_debug(4, "general buffer use VCP_IOMMU_VDEC_512MB1 domain");
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 	if (!ctx->general_dev) {
-		ctx->general_dev = &ctx->dev->plat_dev->dev;
+		ctx->general_dev = ctx->dev->smmu_dev;
 		mtk_v4l2_debug(4, "general buffer use plat_dev  domain");
 	}
 #endif
 #else
-	ctx->general_dev = &ctx->dev->plat_dev->dev;
+	ctx->general_dev = ctx->dev->smmu_dev;
 #endif
 	if (IS_ERR((__force void *)ctx->m2m_ctx)) {
 		ret = PTR_ERR((__force void *)ctx->m2m_ctx);
@@ -410,13 +413,13 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	const char *name = NULL;
 	u32 port_id;
 
-	dev = devm_kzalloc(&pdev->dev, sizeof(*dev), GFP_KERNEL);
+	dev = devm_kzalloc(mtk_smmu_get_shared_device(&pdev->dev), sizeof(*dev), GFP_KERNEL);
 	if (!dev)
 		return -ENOMEM;
 
 	INIT_LIST_HEAD(&dev->ctx_list);
 	dev->plat_dev = pdev;
-
+	dev->smmu_dev = mtk_smmu_get_shared_device(&pdev->dev);
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 	if (VCU_FPTR(vcu_get_plat_device)) {
 		dev->vcu_plat_dev = VCU_FPTR(vcu_get_plat_device)(dev->plat_dev);
@@ -613,15 +616,15 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	dev->vdec_buf_wq = create_singlethread_workqueue("vdec_buf_dump");
 	INIT_WORK(&dev->vdec_buf_work, mtk_vdec_uP_TF_dump_handler);
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
-	dev->io_domain = iommu_get_domain_for_dev(&pdev->dev);
+	dev->io_domain = iommu_get_domain_for_dev(dev->smmu_dev);
 	if (dev->io_domain == NULL) {
 		mtk_v4l2_err("Failed to get io_domain\n");
 		return -EPROBE_DEFER;
 	}
 
-	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(34));
+	ret = dma_set_mask_and_coherent(dev->smmu_dev, DMA_BIT_MASK(34));
 	if (ret) {
-		ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(34));
+		ret = dma_set_mask_and_coherent(dev->smmu_dev, DMA_BIT_MASK(34));
 		if (ret) {
 			dev_info(&pdev->dev, "64-bit DMA enable failed\n");
 			return ret;
@@ -629,10 +632,10 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	}
 	if (!pdev->dev.dma_parms) {
 		pdev->dev.dma_parms =
-			devm_kzalloc(&pdev->dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
+			devm_kzalloc(dev->smmu_dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
 	}
 	if (pdev->dev.dma_parms) {
-		ret = dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(34));
+		ret = dma_set_max_seg_size(dev->smmu_dev, (unsigned int)DMA_BIT_MASK(34));
 		if (ret)
 			dev_info(&pdev->dev, "Failed to set DMA segment size\n");
 	}
@@ -699,6 +702,7 @@ static const struct of_device_id mtk_vcodec_match[] = {
 	{.compatible = "mediatek,mt8195-vcodec-dec",},
 	{.compatible = "mediatek,mt6835-vcodec-dec",},
 	{.compatible = "mediatek,mt6897-vcodec-dec",},
+	{.compatible = "mediatek,mt6989-vcodec-dec",},
 	{.compatible = "mediatek,vdec_gcon",},
 	{},
 };

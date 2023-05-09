@@ -380,6 +380,7 @@ void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id)
 #endif
 }
 
+#ifndef FPGA_PWRCLK_API_DISABLE
 static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 {
 	bool timeout_fg, need_break = false;
@@ -496,9 +497,11 @@ static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 	}
 	mtk_v4l2_debug(3, "%s -", __func__);
 }
+#endif
 
 void mtk_vcodec_enc_clock_off(struct mtk_vcodec_ctx *ctx, int core_id)
 {
+#ifndef FPGA_PWRCLK_API_DISABLE
 	struct mtk_vcodec_pm *pm = &ctx->dev->pm;
 	int i;
 	struct mtk_venc_clks_data *clks_data;
@@ -514,7 +517,7 @@ void mtk_vcodec_enc_clock_off(struct mtk_vcodec_ctx *ctx, int core_id)
 	if (ctx->sysram_enable == 1)
 		slbc_power_off(&ctx->sram_data);
 
-#ifndef FPGA_PWRCLK_API_DISABLE
+
 	/* avoid translation fault callback dump reg not done */
 	spin_lock_irqsave(&dev->enc_power_lock[core_id], flags);
 	dev->enc_is_power_on[core_id] = false;

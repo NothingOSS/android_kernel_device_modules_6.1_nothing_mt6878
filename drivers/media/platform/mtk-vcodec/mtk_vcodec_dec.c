@@ -23,6 +23,9 @@
 #include "mtk_vcodec_dec_pm_plat.h"
 #include "vdec_drv_if.h"
 #include "mtk_vcodec_dec_slc.h"
+/* SMMU related header file */
+#include "mtk-smmu-v3.h"
+
 
 #define MTK_VDEC_MIN_W  64U
 #define MTK_VDEC_MIN_H  64U
@@ -3489,25 +3492,22 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 			struct vb2_dc_buf *dc_buf = vb->planes[0].mem_priv;
 			mtk_v4l2_debug(4, "[%d] Cache sync+", ctx->id);
 
-			mtk_dma_sync_sg_range(dc_buf->dma_sgt, &ctx->dev->plat_dev->dev,
+			mtk_dma_sync_sg_range(dc_buf->dma_sgt, ctx->dev->smmu_dev,
 				vb->planes[0].bytesused, DMA_TO_DEVICE);
 
 			src_mem.dma_addr = vb2_dma_contig_plane_dma_addr(vb, 0);
 			src_mem.size = (size_t)vb->planes[0].bytesused;
 
-			mtk_v4l2_debug(4,
-			   "[%d] Cache sync- TD for %pad sz=%d dev %p",
-			   ctx->id,
-			   &src_mem.dma_addr,
-			   (unsigned int)src_mem.size,
-			   &ctx->dev->plat_dev->dev);
+			mtk_v4l2_debug(4, "[%d] Cache sync- TD for %pad sz=%d dev %p", ctx->id,
+				&src_mem.dma_addr, (unsigned int)src_mem.size, ctx->dev->smmu_dev);
 		} else {
 			for (plane = 0; plane < vb->num_planes; plane++) {
 				struct vdec_fb dst_mem;
 				struct vb2_dc_buf *dc_buf = vb->planes[plane].mem_priv;
 				mtk_v4l2_debug(4, "[%d] Cache sync+", ctx->id);
 
-				dma_sync_sg_for_device(&ctx->dev->plat_dev->dev,
+				dma_sync_sg_for_device(
+					ctx->dev->smmu_dev,
 					dc_buf->dma_sgt->sgl,
 					dc_buf->dma_sgt->orig_nents,
 					DMA_TO_DEVICE);
@@ -3516,12 +3516,11 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 					plane);
 				dst_mem.fb_base[plane].size =
 					ctx->picinfo.fb_sz[plane];
-				mtk_v4l2_debug(4,
-				 "[%d] Cache sync- TD for %pad sz=%d dev %p",
-				 ctx->id,
-				 &dst_mem.fb_base[plane].dma_addr,
-				 (unsigned int)dst_mem.fb_base[plane].size,
-				 &ctx->dev->plat_dev->dev);
+				mtk_v4l2_debug(4, "[%d] Cache sync- TD for %pad sz=%d dev %p",
+					ctx->id,
+					&dst_mem.fb_base[plane].dma_addr,
+					(unsigned int)dst_mem.fb_base[plane].size,
+					ctx->dev->smmu_dev);
 			}
 		}
 	}
@@ -3882,20 +3881,18 @@ static void vb2ops_vdec_buf_finish(struct vb2_buffer *vb)
 	if (mtkbuf->frame_buffer.dma_general_buf != 0) {
 		dma_buf_put(mtkbuf->frame_buffer.dma_general_buf);
 		mtkbuf->frame_buffer.dma_general_buf = 0;
-		mtk_v4l2_debug(4,
-		"dma_buf_put general_buf fd=%d, dma_buf=%p, DMA=%pad",
-		mtkbuf->general_user_fd,
-		mtkbuf->frame_buffer.dma_general_buf,
-		&mtkbuf->frame_buffer.dma_general_addr);
+		mtk_v4l2_debug(4, "dma_buf_put general_buf fd=%d, dma_buf=%p, DMA=%pad",
+			mtkbuf->general_user_fd,
+			mtkbuf->frame_buffer.dma_general_buf,
+			&mtkbuf->frame_buffer.dma_general_addr);
 	}
 	if (mtkbuf->frame_buffer.dma_meta_buf != 0) {
 		dma_buf_put(mtkbuf->frame_buffer.dma_meta_buf);
 		mtkbuf->frame_buffer.dma_meta_buf = 0;
-		mtk_v4l2_debug(4,
-		"dma_buf_put meta_buf fd=%d, dma_buf=%p, DMA=%pad",
-		mtkbuf->meta_user_fd,
-		mtkbuf->frame_buffer.dma_meta_buf,
-		&mtkbuf->frame_buffer.dma_meta_addr);
+		mtk_v4l2_debug(4, "dma_buf_put meta_buf fd=%d, dma_buf=%p, DMA=%pad",
+			mtkbuf->meta_user_fd,
+			mtkbuf->frame_buffer.dma_meta_buf,
+			&mtkbuf->frame_buffer.dma_meta_addr);
 	}
 
 	if (vb->vb2_queue->memory == VB2_MEMORY_DMABUF &&
@@ -3907,18 +3904,17 @@ static void vb2ops_vdec_buf_finish(struct vb2_buffer *vb)
 
 			mtk_v4l2_debug(4, "[%d] Cache sync+", ctx->id);
 
-			dma_sync_sg_for_cpu(&ctx->dev->plat_dev->dev, dc_buf->dma_sgt->sgl,
+			dma_sync_sg_for_cpu(ctx->dev->smmu_dev, dc_buf->dma_sgt->sgl,
 				dc_buf->dma_sgt->orig_nents, DMA_FROM_DEVICE);
 			dst_mem.fb_base[plane].dma_addr =
 				vb2_dma_contig_plane_dma_addr(vb, plane);
 			dst_mem.fb_base[plane].size = ctx->picinfo.fb_sz[plane];
 
-			mtk_v4l2_debug(4,
-				"[%d] Cache sync- FD for %pad sz=%d dev %p pfb %p",
+			mtk_v4l2_debug(4, "[%d] Cache sync- FD for %pad sz=%d dev %p pfb %p",
 				ctx->id,
 				&dst_mem.fb_base[plane].dma_addr,
 				(unsigned int)dst_mem.fb_base[plane].size,
-				&ctx->dev->plat_dev->dev,
+				ctx->dev->smmu_dev,
 				&buf->frame_buffer);
 		}
 	}
@@ -5043,12 +5039,12 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	}
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 	if (!src_vq->dev) {
-		src_vq->dev = &ctx->dev->plat_dev->dev;
+		src_vq->dev = ctx->dev->smmu_dev;
 		mtk_v4l2_debug(4, "vcp_get_io_device NULL use plat_dev domain");
 	}
 #endif
 #else
-	src_vq->dev		= &ctx->dev->plat_dev->dev;
+	src_vq->dev		= ctx->dev->smmu_dev;
 #endif
 	src_vq->allow_zero_bytesused = 1;
 
@@ -5068,7 +5064,7 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 
 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	dst_vq->lock            = &ctx->q_mutex;
-	dst_vq->dev             = &ctx->dev->plat_dev->dev;
+	dst_vq->dev             = ctx->dev->smmu_dev;
 	dst_vq->allow_zero_bytesused = 1;
 
 	ret = vb2_queue_init(dst_vq);

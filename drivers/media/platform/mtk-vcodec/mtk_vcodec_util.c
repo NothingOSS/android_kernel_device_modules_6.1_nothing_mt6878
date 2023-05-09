@@ -323,7 +323,6 @@ int mtk_vcodec_mem_alloc(struct mtk_vcodec_ctx *data,
 {
 	unsigned long size;
 	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)data;
-	struct device *dev;
 
 	if (data == NULL || mem == NULL) {
 		mtk_v4l2_err("Invalid arguments, data=0x%lx, mem=0x%lx",
@@ -331,12 +330,11 @@ int mtk_vcodec_mem_alloc(struct mtk_vcodec_ctx *data,
 		return -EINVAL;
 	}
 	size = mem->size;
-	dev = &ctx->dev->plat_dev->dev;
 
-	mem->va = dma_alloc_coherent(dev, size, &mem->dma_addr, GFP_KERNEL);
+	mem->va = dma_alloc_coherent(ctx->dev->smmu_dev, size, &mem->dma_addr, GFP_KERNEL);
 
 	if (!mem->va) {
-		mtk_v4l2_err("%s dma_alloc size=%ld failed!", dev_name(dev),
+		mtk_v4l2_err("%s dma_alloc size=%ld failed!", dev_name(ctx->dev->smmu_dev),
 					 size);
 		return -ENOMEM;
 	}
@@ -357,7 +355,6 @@ void mtk_vcodec_mem_free(struct mtk_vcodec_ctx *data,
 {
 	unsigned long size;
 	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)data;
-	struct device *dev;
 
 	if (data == NULL || mem == NULL) {
 		mtk_v4l2_err("Invalid arguments, data=0x%lx, mem=0x%lx",
@@ -365,10 +362,9 @@ void mtk_vcodec_mem_free(struct mtk_vcodec_ctx *data,
 		return;
 	}
 	size = mem->size;
-	dev = &ctx->dev->plat_dev->dev;
 
 	if (!mem->va) {
-		mtk_v4l2_err("%s dma_free size=%ld failed!", dev_name(dev),
+		mtk_v4l2_err("%s dma_free size=%ld failed!", dev_name(ctx->dev->smmu_dev),
 					 size);
 		return;
 	}
@@ -378,7 +374,7 @@ void mtk_vcodec_mem_free(struct mtk_vcodec_ctx *data,
 				   (unsigned long)mem->dma_addr);
 	mtk_v4l2_debug(4, "[%d]    size = 0x%lx", ctx->id, size);
 
-	dma_free_coherent(dev, size, mem->va, mem->dma_addr);
+	dma_free_coherent(ctx->dev->smmu_dev, size, mem->va, mem->dma_addr);
 	mem->va = NULL;
 	mem->dma_addr = 0;
 	mem->size = 0;

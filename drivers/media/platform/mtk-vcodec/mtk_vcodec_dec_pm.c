@@ -217,6 +217,7 @@ void mtk_vcodec_dec_pw_off(struct mtk_vcodec_pm *pm)
 	}
 }
 
+#ifndef FPGA_PWRCLK_API_DISABLE
 static void mtk_vdec_hw_break_dump(
 	void __iomem *reg_addr, char *debug_str, int off_start, int off_end)
 {
@@ -446,6 +447,7 @@ static void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 		mtk_v4l2_err("hw_id (%d) is unknown or unsupport\n", hw_id);
 	}
 }
+#endif
 
 void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, int hw_id)
 {
