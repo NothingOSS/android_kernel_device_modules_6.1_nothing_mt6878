@@ -4552,6 +4552,7 @@
 			protected-memory-allocator = <&gpu_protected_memory_allocator>;
 			#cooling-cells = <2>;
 			ged-supply = <&ged>;
+			gpu-frame-base-optimize = <0>;
 		};
 
 		gpueb: gpueb@13c00000 {
@@ -4642,6 +4643,34 @@
 			gpueb-mem-name-table =
 				"MEM_ID_GPUFREQ", /* GPUFREQ */
 				"MEM_ID_LOG";     /* LOGGER */
+		};
+
+		gpu_dvfs_async: gpu-async-ratio {
+			compatible = "mediatek,gpu_async_ratio";
+			async-ratio-support = <0>;
+			async-virtual-table-support = <0>;
+			async-oppnum-eachmask = <2>;
+			async-ratio = <170>;
+			async-oppnum-low = <2>;
+			async-ratio-low = <130 100>;
+		};
+
+		gpu_dcs: gpu-dcs {
+			compatible = "mediatek,gpu_dcs";
+			dcs-policy-support = <0>;
+			virtual-opp-support = <0x0>;
+		};
+
+		gpu-fdvfs@117800 {
+			compatible = "mediatek,gpu_fdvfs";
+			reg = <0 0x117800 0 0x400>;
+			fdvfs-policy-support = <0>;
+			gpu-freq-notify-support = <0>;
+		};
+
+		gpu_dvfs_mips: gpu-reduce-mips {
+			compatible = "mediatek,gpu_reduce_mips";
+			reduce-mips-support = <0>;
 		};
 
 		gpufreq: gpufreq@13fbf000 {
