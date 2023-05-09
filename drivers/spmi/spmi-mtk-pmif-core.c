@@ -479,13 +479,12 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 			      u16 addr, u8 *buf, size_t len)
 {
 	struct pmif *arb = spmi_controller_get_drvdata(ctrl);
-	struct spmi_dev *sdev = get_spmi_device(sid);
+	struct spmi_dev *sdev = NULL;
 	struct ch_reg *inf_reg = NULL;
 	int ret;
 	u32 data = 0;
 	u8 bc = len - 1;
 	unsigned long flags_m = 0;
-	unsigned long flags_p = 0;
 
 	/* Check for argument validation. */
 	if (sid & ~(0xf))
@@ -505,12 +504,9 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	else
 		return -EINVAL;
 
+	raw_spin_lock_irqsave(&arb->lock_m, flags_m);
+	sdev = get_spmi_device(sid);
 	if (sdev != NULL) {
-		if (sdev->mstid == SPMI_MASTER_1)
-			raw_spin_lock_irqsave(&arb->lock_m, flags_m);
-		else
-			raw_spin_lock_irqsave(&arb->lock_p, flags_p);
-
 		if (sdev->mstid == SPMI_MASTER_1) {
 			arb->base = arb->base_m;
 			arb->spmimst_base = arb->spmimst_base_m;
@@ -520,6 +516,7 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		}
 	} else {
 		dev_notice(&ctrl->dev, "sdev is NULL in pmif read\n");
+		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 		return -ENODEV;
 	}
 
@@ -537,11 +534,7 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 
 		arb->base = arb->base_m;
 		arb->spmimst_base = arb->spmimst_base_m;
-
-		if (sdev->mstid == SPMI_MASTER_1)
-			raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
-		else
-			raw_spin_unlock_irqrestore(&arb->lock_p, flags_p);
+		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 
 		return ret;
 	}
@@ -566,10 +559,7 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		arb->base = arb->base_m;
 		arb->spmimst_base = arb->spmimst_base_m;
 
-		if (sdev->mstid == SPMI_MASTER_1)
-			raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
-		else
-			raw_spin_unlock_irqrestore(&arb->lock_p, flags_p);
+		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 
 		return ret;
 	}
@@ -581,10 +571,7 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	arb->base = arb->base_m;
 	arb->spmimst_base = arb->spmimst_base_m;
 
-	if (sdev->mstid == SPMI_MASTER_1)
-		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
-	else
-		raw_spin_unlock_irqrestore(&arb->lock_p, flags_p);
+	raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 
 	return 0;
 }
@@ -593,13 +580,12 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 			       u16 addr, const u8 *buf, size_t len)
 {
 	struct pmif *arb = spmi_controller_get_drvdata(ctrl);
-	struct spmi_dev *sdev = get_spmi_device(sid);
+	struct spmi_dev *sdev = NULL;
 	struct ch_reg *inf_reg = NULL;
 	int ret;
 	u32 data = 0;
 	u8 bc = len - 1;
 	unsigned long flags_m = 0;
-	unsigned long flags_p = 0;
 
 	/* Check for argument validation. */
 	if (sid & ~(0xf))
@@ -621,13 +607,10 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		opc = PMIF_CMD_REG_0;
 	else
 		return -EINVAL;
+
+	raw_spin_lock_irqsave(&arb->lock_m, flags_m);
+	sdev = get_spmi_device(sid);
 	if (sdev != NULL) {
-		if (sdev->mstid == SPMI_MASTER_1)
-			raw_spin_lock_irqsave(&arb->lock_m, flags_m);
-		else
-			raw_spin_lock_irqsave(&arb->lock_p, flags_p);
-
-
 		if (sdev->mstid == SPMI_MASTER_1) {
 			arb->base = arb->base_m;
 			arb->spmimst_base = arb->spmimst_base_m;
@@ -637,8 +620,11 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		}
 	} else {
 		dev_notice(&ctrl->dev, "sdev is NULL in pmif write\n");
+		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 		return -ENODEV;
+
 	}
+
 	/* Wait for Software Interface FSM state to be IDLE. */
 	ret = readl_poll_timeout_atomic(arb->base + arb->regs[inf_reg->ch_sta],
 					data, GET_SWINF(data) == SWINF_IDLE,
@@ -654,10 +640,7 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		arb->base = arb->base_m;
 		arb->spmimst_base = arb->spmimst_base_m;
 
-		if (sdev->mstid == SPMI_MASTER_1)
-			raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
-		else
-			raw_spin_unlock_irqrestore(&arb->lock_p, flags_p);
+		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 
 		return ret;
 	}
@@ -674,10 +657,7 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	arb->base = arb->base_m;
 	arb->spmimst_base = arb->spmimst_base_m;
 
-	if (sdev->mstid == SPMI_MASTER_1)
-		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
-	else
-		raw_spin_unlock_irqrestore(&arb->lock_p, flags_p);
+	raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 
 	return 0;
 }
