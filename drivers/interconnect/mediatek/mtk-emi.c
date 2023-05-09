@@ -56,6 +56,7 @@ enum mtk_icc_name {
 	MASTER_HRT_MM_CAM,
 	MASTER_HRT_MM_IMG,
 	MASTER_HRT_MM_MDP,
+	MASTER_HRT_ADSP,
 	MASTER_HRT_DBGIF,
 };
 
@@ -133,6 +134,7 @@ DEFINE_MNODE(hrt_mm_venc, MASTER_HRT_MM_VENC, 0, MASTER_HRT_MMSYS);
 DEFINE_MNODE(hrt_mm_cam, MASTER_HRT_MM_CAM, 0, MASTER_HRT_MMSYS);
 DEFINE_MNODE(hrt_mm_img, MASTER_HRT_MM_IMG, 0, MASTER_HRT_MMSYS);
 DEFINE_MNODE(hrt_mm_mdp, MASTER_HRT_MM_MDP, 0, MASTER_HRT_MMSYS);
+DEFINE_MNODE(hrt_adsp, MASTER_HRT_ADSP, 0, SLAVE_HRT_DDR_EMI);
 DEFINE_MNODE(hrt_dbgif, MASTER_HRT_DBGIF, 0, SLAVE_HRT_DDR_EMI);
 
 static struct mtk_icc_node *mt8183_icc_nodes[] = {
@@ -192,6 +194,7 @@ static struct mtk_icc_node *mt6873_icc_nodes[] = {
 	[MT6873_MASTER_HRT_MM_CAM] = &hrt_mm_cam,
 	[MT6873_MASTER_HRT_MM_IMG] = &hrt_mm_img,
 	[MT6873_MASTER_HRT_MM_MDP] = &hrt_mm_mdp,
+	[MT6873_MASTER_HRT_ADSP] = &hrt_adsp,
 	[MT6873_MASTER_HRT_DBGIF] = &hrt_dbgif,
 };
 
