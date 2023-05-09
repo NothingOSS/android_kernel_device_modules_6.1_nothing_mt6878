@@ -804,18 +804,6 @@ static int mt6989_apu_memmap_init(struct mtk_apu *apu)
 		return -ENOMEM;
 	}
 
-	res = platform_get_resource_byname(
-		pdev, IORESOURCE_MEM, "apu_sctrl_reviser");
-	if (res == NULL) {
-		dev_info(dev, "%s: apu_sctrl_reviser get resource fail\n", __func__);
-		return -ENODEV;
-	}
-	apu->apu_sctrl_reviser = devm_ioremap_resource(dev, res);
-	if (IS_ERR((void const *)apu->apu_sctrl_reviser)) {
-		dev_info(dev, "%s: apu_sctrl_reviser remap base fail\n", __func__);
-		return -ENOMEM;
-	}
-
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "apu_ao_ctl");
 	if (res == NULL) {
 		dev_info(dev, "%s: apu_ao_ctl get resource fail\n", __func__);
