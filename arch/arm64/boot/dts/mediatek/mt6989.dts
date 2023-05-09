@@ -4640,8 +4640,16 @@
 				<0 0x13f90000 0 0x10000>,  /* MFG_RPC */
 				<0 0x13fc0000 0 0x1000>,   /* MFG_AXUSER */
 				<0 0x13fb1000 0 0x1000>,   /* MFG_BRCAST */
+				<0 0x13fa1000 0 0x1000>,   /* MFG_VGPU_DEVAPC_AO */
 				<0 0x13fa2000 0 0x1000>,   /* MFG_VGPU_DEVAPC */
 				<0 0x13a00000 0 0x200000>, /* MFG_SMMU */
+				<0 0x13fb0000 0 0x1000>,   /* BRISKET_TOP */
+				<0 0x13e1c000 0 0x1000>,   /* BRISKET_ST0 */
+				<0 0x13e2c000 0 0x1000>,   /* BRISKET_ST1 */
+				<0 0x13e4c000 0 0x1000>,   /* BRISKET_ST3 */
+				<0 0x13e5c000 0 0x1000>,   /* BRISKET_ST4 */
+				<0 0x13e6c000 0 0x1000>,   /* BRISKET_ST5 */
+				<0 0x13e6c000 0 0x1000>,   /* BRISKET_ST6 */
 				<0 0x1c001000 0 0x1000>,   /* SLEEP */
 				<0 0x10000000 0 0x1000>,   /* TOPCKGEN */
 				<0 0x1002c000 0 0x1000>,   /* IFRBUS_AO */
@@ -4670,8 +4678,16 @@
 				"mfg_rpc",
 				"mfg_axuser",
 				"mfg_brcast",
+				"mfg_vgpu_devapc_ao",
 				"mfg_vgpu_devapc",
 				"mfg_smmu",
+				"brisket_top",
+				"brisket_st0",
+				"brisket_st1",
+				"brisket_st3",
+				"brisket_st4",
+				"brisket_st5",
+				"brisket_st6",
 				"sleep",
 				"topckgen",
 				"ifrbus_ao",
