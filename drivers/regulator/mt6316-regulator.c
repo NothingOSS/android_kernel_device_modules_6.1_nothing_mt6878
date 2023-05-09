@@ -329,24 +329,12 @@ static int mt6316_regulator_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static void mt6316_regulator_shutdown(struct platform_device *pdev)
-{
-	struct mt6316_chip *chip = dev_get_drvdata(&pdev->dev);
-	int ret = 0;
-
-	ret |= regmap_update_bits(chip->regmap, MT6316_TOP_CFG_ELR4, 1, 1);
-	if (ret < 0)
-		dev_err(&pdev->dev, "%s: SLV_%d enable power off sequence failed.\n",
-			__func__, chip->slave_id);
-}
-
 static struct platform_driver mt6316_regulator_driver = {
 	.driver		= {
 		.name	= "mt6316-regulator",
 		.of_match_table = mt6316_of_match,
 	},
 	.probe = mt6316_regulator_probe,
-	.shutdown = mt6316_regulator_shutdown,
 };
 
 module_platform_driver(mt6316_regulator_driver);
