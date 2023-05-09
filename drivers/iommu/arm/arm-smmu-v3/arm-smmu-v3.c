@@ -862,9 +862,6 @@ static int arm_smmu_cmdq_issue_cmdlist(struct arm_smmu_device *smmu,
 					    llq.prod,
 					    readl_relaxed(cmdq->q.prod_reg),
 					    readl_relaxed(cmdq->q.cons_reg));
-
-			if (smmu->impl && smmu->impl->fault_dump)
-				smmu->impl->fault_dump(smmu);
 		}
 
 		/*
