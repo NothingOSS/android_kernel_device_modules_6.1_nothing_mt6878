@@ -376,7 +376,6 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.ctl_offs = 0xE50,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.basic_clk_name = {"vde"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_VDE0),
@@ -390,7 +389,6 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.ctl_offs = 0xE54,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.basic_clk_name = {"vde"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_VDE1),
@@ -402,6 +400,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 	[MT6989_POWER_DOMAIN_VDE_VCORE0] = {
 		.name = "vde-vcore0",
 		.ctl_offs = 0xE58,
+		.basic_clk_name = {"vde"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_VDE_VCORE0),
@@ -795,7 +794,7 @@ static const struct scp_subdomain scp_subdomain_mt6989_spm[] = {
 	{MT6989_POWER_DOMAIN_VDE_VCORE0, MT6989_POWER_DOMAIN_VDE0},
 	{MT6989_POWER_DOMAIN_VDE_VCORE1, MT6989_POWER_DOMAIN_VDE1},
 	{MT6989_POWER_DOMAIN_MM_INFRA, MT6989_POWER_DOMAIN_VDE_VCORE0},
-	{MT6989_POWER_DOMAIN_MM_INFRA, MT6989_POWER_DOMAIN_VDE_VCORE1},
+	{MT6989_POWER_DOMAIN_VDE0, MT6989_POWER_DOMAIN_VDE_VCORE1},
 	{MT6989_POWER_DOMAIN_MM_INFRA, MT6989_POWER_DOMAIN_VEN0},
 	{MT6989_POWER_DOMAIN_VEN0, MT6989_POWER_DOMAIN_VEN1},
 	{MT6989_POWER_DOMAIN_VEN1, MT6989_POWER_DOMAIN_VEN2},
