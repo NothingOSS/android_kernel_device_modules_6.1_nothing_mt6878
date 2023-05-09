@@ -253,7 +253,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0234, 0x0238, 0x0230, 0x0240,
 				MT6989_VLP_AXI_PROT_EN1_PEXTP_MAC0),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_PEXTP_MAC1] = {
 		.name = "pextp-mac1",
@@ -264,7 +264,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0234, 0x0238, 0x0230, 0x0240,
 				MT6989_VLP_AXI_PROT_EN1_PEXTP_MAC1),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_PEXTP_PHY0] = {
 		.name = "pextp-phy0",
@@ -273,7 +273,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0234, 0x0238, 0x0230, 0x0240,
 				MT6989_VLP_AXI_PROT_EN1_PEXTP_PHY0),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_RTFF_DELAY
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
 				| default_cap,
 	},
 	[MT6989_POWER_DOMAIN_PEXTP_PHY1] = {
@@ -283,7 +283,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0234, 0x0238, 0x0230, 0x0240,
 				MT6989_VLP_AXI_PROT_EN1_PEXTP_PHY1),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_RTFF_DELAY
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
 				| default_cap,
 	},
 	[MT6989_POWER_DOMAIN_AUDIO] = {
@@ -291,6 +291,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.ctl_offs = 0xE2C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"aud_bus"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0e4, 0x0e8, 0x0e0, 0x0ec,
 				MT6989_TOP_AXI_PROT_EN_PERISYS0_AUDIO),
@@ -302,6 +303,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.ctl_offs = 0xE34,
 		.sram_slp_bits = GENMASK(9, 9),
 		.sram_slp_ack_bits = GENMASK(13, 13),
+		.basic_clk_name = {"adsp"},
 		.bp_table = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
 				MT6989_VLP_AXI_PROT_EN_ADSP_TOP),
@@ -310,7 +312,8 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x024, 0x028, 0x020, 0x02c,
 				MT6989_TOP_AXI_PROT_EN_INFRASYS1_ADSP_TOP),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_SRAM_SLP | MTK_SCPD_IS_PWR_CON_ON
+				| default_cap,
 	},
 	[MT6989_POWER_DOMAIN_ADSP_AO] = {
 		.name = "adsp-ao",
@@ -322,7 +325,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.ctl_offs = 0xE40,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON  | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_ISP_DIP1] = {
 		.name = "isp-dip1",
@@ -335,13 +338,14 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_ISP_DIP1_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON  | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_ISP_MAIN] = {
 		.name = "isp-main",
 		.ctl_offs = 0xE48,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"img1", "ipe"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_ISP_MAIN),
@@ -352,7 +356,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_ISP_MAIN_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_ISP_VCORE] = {
 		.name = "isp-vcore",
@@ -365,33 +369,35 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_ISP_VCORE),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_VDE0] = {
 		.name = "vde0",
 		.ctl_offs = 0xE50,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"vde"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_VDE0),
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_VDE0),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_VDE1] = {
 		.name = "vde1",
 		.ctl_offs = 0xE54,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"vde"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_VDE1),
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_VDE1),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_VDE_VCORE0] = {
 		.name = "vde-vcore0",
@@ -402,7 +408,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_VDE_VCORE0),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_VDE_VCORE1] = {
 		.name = "vde-vcore1",
@@ -413,13 +419,14 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_VDE_VCORE1),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_VEN0] = {
 		.name = "ven0",
 		.ctl_offs = 0xE60,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"ven"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_VEN0),
@@ -430,13 +437,14 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_VEN0_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_VEN1] = {
 		.name = "ven1",
 		.ctl_offs = 0xE64,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"ven"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_VEN1),
@@ -449,76 +457,83 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_VEN1_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_VEN2] = {
 		.name = "ven2",
 		.ctl_offs = 0xE68,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"ven"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_VEN2),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_MRAW] = {
 		.name = "cam-mraw",
 		.ctl_offs = 0xE6C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.subsys_clk_prefix = "cam_mraw",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_CAM_MRAW),
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_CAM_MRAW_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_SUBA] = {
 		.name = "cam-suba",
 		.ctl_offs = 0xE70,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.subsys_clk_prefix = "cam_suba",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_CAM_SUBA),
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_CAM_SUBA_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_SUBB] = {
 		.name = "cam-subb",
 		.ctl_offs = 0xE74,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.subsys_clk_prefix = "cam_subb",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_CAM_SUBB),
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_CAM_SUBB),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_SUBC] = {
 		.name = "cam-subc",
 		.ctl_offs = 0xE78,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.subsys_clk_prefix = "cam_subc",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_CAM_SUBC),
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_CAM_SUBC_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_MAIN] = {
 		.name = "cam-main",
 		.ctl_offs = 0xE7C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"cam", "dpe"},
+		.subsys_clk_prefix = "cam",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_CAM_MAIN),
@@ -527,11 +542,12 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_CAM_MAIN),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_VCORE] = {
 		.name = "cam-vcore",
 		.ctl_offs = 0xE80,
+		.basic_clk_name = {"ccu_ahb"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_CAM_VCORE),
@@ -542,25 +558,27 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x264, 0x268, 0x260, 0x26c,
 				MT6989_TOP_AXI_PROT_EN_CCUSYS0_CAM_VCORE),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_CCU] = {
 		.name = "cam-ccu",
 		.ctl_offs = 0xE84,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"ccusys"},
+		.subsys_clk_prefix = "ccu",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x264, 0x268, 0x260, 0x26c,
 				MT6989_TOP_AXI_PROT_EN_CCUSYS0_CAM_CCU),
 			BUS_PROT_IGN(IFR_TYPE, 0x264, 0x268, 0x260, 0x26c,
 				MT6989_TOP_AXI_PROT_EN_CCUSYS0_CAM_CCU_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_CCU_AO] = {
 		.name = "cam-ccu-ao",
 		.ctl_offs = 0xE88,
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_DISP_VCORE] = {
 		.name = "disp-vcore",
@@ -581,13 +599,15 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_DISP_VCORE_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_MML0_SHUTDOWN] = {
 		.name = "mml0-shutdown",
 		.ctl_offs = 0xE90,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"mdp"},
+		.subsys_clk_prefix = "mdp",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_MML0),
@@ -600,27 +620,32 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x104, 0x108, 0x100, 0x10c,
 				MT6989_TOP_AXI_PROT_EN_EMISYS1_MML0),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF
+			| default_cap,
 	},
 	[MT6989_POWER_DOMAIN_MML1_SHUTDOWN] = {
 		.name = "mml1-shutdown",
 		.ctl_offs = 0xE94,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"mdp"},
+		.subsys_clk_prefix = "mdp1",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_MML1),
 			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a0, 0x2ac,
 				MT6989_TOP_AXI_PROT_EN_MMSYS3_MML1),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON
-				| default_cap,
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF
+			| default_cap,
 	},
 	[MT6989_POWER_DOMAIN_DIS0_SHUTDOWN] = {
 		.name = "dis0-shutdown",
 		.ctl_offs = 0xE98,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"disp"},
+		.subsys_clk_prefix = "disp",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS1_DIS0),
@@ -631,7 +656,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x104, 0x108, 0x100, 0x10c,
 				MT6989_TOP_AXI_PROT_EN_EMISYS1_DIS0),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF
 				| default_cap,
 	},
 	[MT6989_POWER_DOMAIN_DIS1_SHUTDOWN] = {
@@ -639,6 +664,8 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.ctl_offs = 0xE9C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"disp"},
+		.subsys_clk_prefix = "disp1",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_DIS1),
@@ -655,7 +682,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a0, 0x2ac,
 				MT6989_TOP_AXI_PROT_EN_MMSYS3_DIS1_2ND),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF
 				| default_cap,
 	},
 	[MT6989_POWER_DOMAIN_OVL0_SHUTDOWN] = {
@@ -663,13 +690,15 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.ctl_offs = 0xEA0,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"disp"},
+		.subsys_clk_prefix = "ovl",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6989_TOP_AXI_PROT_EN_MMSYS2_OVL0),
 			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a0, 0x2ac,
 				MT6989_TOP_AXI_PROT_EN_MMSYS3_OVL0),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF
 				| default_cap,
 	},
 	[MT6989_POWER_DOMAIN_OVL1_SHUTDOWN] = {
@@ -677,6 +706,8 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.ctl_offs = 0xEA4,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"disp"},
+		.subsys_clk_prefix = "ovl1",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6989_TOP_AXI_PROT_EN_MMSYS0_OVL1),
@@ -685,7 +716,7 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x2a4, 0x2a8, 0x2a0, 0x2ac,
 				MT6989_TOP_AXI_PROT_EN_MMSYS3_OVL1),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF
 				| default_cap,
 	},
 	[MT6989_POWER_DOMAIN_MM_INFRA] = {
@@ -693,6 +724,8 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.ctl_offs = 0xEA8,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"mm_infra"},
+		.subsys_lp_clk_prefix = "mm_infra_lp",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x024, 0x028, 0x020, 0x02c,
 				MT6989_TOP_AXI_PROT_EN_INFRASYS1_MM_INFRA),
@@ -711,26 +744,27 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
 				MT6989_VLP_AXI_PROT_EN_MM_INFRA),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_DP_TX] = {
 		.name = "dp-tx",
 		.ctl_offs = 0xEB0,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CSI_RX] = {
 		.name = "csi-rx",
 		.ctl_offs = 0xEF4,
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_SSR] = {
 		.name = "ssrsys",
 		.ctl_offs = 0xEF8,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.basic_clk_name = {"ssr_dma"},
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_MFG0_DORMANT] = {
 		.name = "mfg0-dormant",
