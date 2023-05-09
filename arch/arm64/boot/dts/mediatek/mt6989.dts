@@ -12449,7 +12449,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 
 	tboard_thermistor3: thermal-ntc3@1cc0055c {
 		compatible = "mediatek,mt6685-tia-ntc";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		reg = <0 0x1cc0055c 0 0x4>; /* TIA DATA T2 */
 		temperature-lookup-table =
