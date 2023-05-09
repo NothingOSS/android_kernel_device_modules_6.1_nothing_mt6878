@@ -8918,6 +8918,7 @@
 			dlo0-clock-names = "dlo0";
 			dlo2-clock-names = "dlo2";
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P7_MDP_FAKE_ENG0)>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 			/* as mml device */
 			comp-count = <MML_ENGINE_TOTAL>;
 			topology = "mt6989";
