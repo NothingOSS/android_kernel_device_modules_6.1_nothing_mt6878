@@ -5605,6 +5605,8 @@
 					//"mediatek,mt6989-dsi";
 			reg = <0 0x1420b000 0 0x1000>;
 			interrupts = <GIC_SPI 501 IRQ_TYPE_LEVEL_HIGH 0>;
+			phys = <&mipi_tx_config1>;
+			phy-names = "dphy";
 		};
 
 		dsi2: dsi@1420c000 {
@@ -5612,6 +5614,8 @@
 					//"mediatek,mt6989-dsi";
 			reg = <0 0x1420c000 0 0x1000>;
 			interrupts = <GIC_SPI 502 IRQ_TYPE_LEVEL_HIGH 0>;
+			phys = <&mipi_tx_config1>;
+			phy-names = "dphy";
 		};
 
 		disp_merge0: disp1-merge0@1420d000 {
@@ -5967,6 +5971,17 @@
 			#clock-cells = <0>;
 			#phy-cells = <0>;
 			clock-output-names = "mipi_tx0_pll";
+		};
+
+		mipi_tx_config1: mipi-tx-config@11ea0000 {
+			status = "disabled";
+			compatible = "mediatek,mipi_tx_config1",
+						"mediatek,mt6989-mipi-tx";
+			reg = <0 0x11ea0000 0 0x1000>;
+			//clocks = <&clk26m>;
+			#clock-cells = <0>;
+			#phy-cells = <0>;
+			clock-output-names = "mipi_tx1_pll";
 		};
 
 		hcp: hcp@15001000 {
