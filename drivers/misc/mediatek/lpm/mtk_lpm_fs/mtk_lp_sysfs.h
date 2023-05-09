@@ -10,7 +10,7 @@
 #define MTK_LP_SYSFS_HAS_ENTRY		(1)
 
 #define MTK_LP_SYSFS_ENTRY_NAME		"mtk_lpm"
-#define MTK_LP_SYSFS_BUF_READSZ		8192
+#define MTK_LP_SYSFS_BUF_READSZ		12288
 #define MTK_LP_SYSFS_BUF_WRITESZ	512
 
 typedef ssize_t (*f_mtk_idle_sysfs_show)(char *ToUserBuf
