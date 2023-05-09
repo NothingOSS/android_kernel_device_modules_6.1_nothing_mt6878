@@ -1627,6 +1627,7 @@
 			interrupts = <GIC_SPI 938 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 	};
+
 	camisp-l13-1 {
 		compatible = "mediatek,camisp-larb";
 		mediatek,larb-id = <13>;
