@@ -26,6 +26,7 @@
 
 #include "jpeg_drv.h"
 #include "jpeg_drv_reg.h"
+#include "mtk-smmu-v3.h"
 
 #define JPEG_DEVNAME "mtk_jpeg"
 
@@ -109,7 +110,7 @@ static int jpeg_drv_hybrid_dec_start(unsigned int data[],
 		return -1;
 	}
 
-	ret = jpg_dmabuf_get_iova(bufInfo[id].o_dbuf, &obuf_iova, gJpegqDev.pDev[node_id],
+	ret = jpg_dmabuf_get_iova(bufInfo[id].o_dbuf, &obuf_iova, gJpegqDev.smmu_dev[node_id],
 	&bufInfo[id].o_attach, &bufInfo[id].o_sgt);
 	JPEG_LOG(1, "obuf_iova:0x%llx lsb:0x%lx msb:0x%lx", obuf_iova,
 		(unsigned long)(unsigned char *)obuf_iova,
@@ -122,7 +123,7 @@ static int jpeg_drv_hybrid_dec_start(unsigned int data[],
 	jpg_dmabuf_vunmap(bufInfo[id].o_dbuf, &map);
 	*index_buf_fd = jpg_dmabuf_fd(bufInfo[id].o_dbuf);
 
-	ret = jpg_dmabuf_get_iova(bufInfo[id].i_dbuf, &ibuf_iova, gJpegqDev.pDev[node_id],
+	ret = jpg_dmabuf_get_iova(bufInfo[id].i_dbuf, &ibuf_iova, gJpegqDev.smmu_dev[node_id],
 	&bufInfo[id].i_attach, &bufInfo[id].i_sgt);
 	JPEG_LOG(1, "ibuf_iova 0x%llx lsb:0x%lx msb:0x%lx", ibuf_iova,
 		(unsigned long)(unsigned char *)ibuf_iova,
@@ -370,8 +371,8 @@ void jpeg_drv_hybrid_dec_power_off(int id)
 		jpeg_drv_hybrid_dec_end_dvfs(0);
 
 	if (!dec_hwlocked[(id+1)%HW_CORE_NUMBER]/* && !dec_hwlocked[(id+2)%3]*/) {
-		clk_disable_unprepare(gJpegqDev.jpegClk.clk_venc_jpgDec);
 		clk_disable_unprepare(gJpegqDev.jpegClk.clk_venc_jpgDec_c1);
+		clk_disable_unprepare(gJpegqDev.jpegClk.clk_venc_jpgDec);
 		if (gJpegqDev.jpegLarb[0])
 			pm_runtime_put_sync(gJpegqDev.jpegLarb[0]);
 	}
@@ -892,6 +893,7 @@ static int jpeg_probe(struct platform_device *pdev)
 	if (atomic_read(&nodeCount) == 1)
 		memset(&gJpegqDev, 0x0, sizeof(struct JpegDeviceStruct));
 	gJpegqDev.pDev[node_index] = &pdev->dev;
+	gJpegqDev.smmu_dev[node_index] = mtk_smmu_get_shared_device(&pdev->dev);
 
 	node = pdev->dev.of_node;
 
@@ -970,19 +972,22 @@ static int jpeg_probe(struct platform_device *pdev)
 		return -1;
 	}
 
-	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(34));
-	if (ret) {
-		JPEG_LOG(0, "64-bit DMA enable failed");
-		return ret;
-	}
-	if (!pdev->dev.dma_parms) {
-		pdev->dev.dma_parms =
-		devm_kzalloc(&pdev->dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
-	}
-	if (pdev->dev.dma_parms) {
-		ret = dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(34));
-		if (ret)
-			JPEG_LOG(0, "Failed to set DMA segment size\n");
+	if (!smmu_v3_enabled()) {
+		JPEG_LOG(0, "iommu arch");
+		ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(34));
+		if (ret) {
+			JPEG_LOG(0, "64-bit DMA enable failed");
+			return ret;
+		}
+		if (!pdev->dev.dma_parms) {
+			pdev->dev.dma_parms =
+			devm_kzalloc(&pdev->dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
+		}
+		if (pdev->dev.dma_parms) {
+			ret = dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(34));
+			if (ret)
+				JPEG_LOG(0, "Failed to set DMA segment size\n");
+		}
 	}
 	pm_runtime_enable(&pdev->dev);
 

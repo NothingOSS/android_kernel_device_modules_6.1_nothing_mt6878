@@ -18,7 +18,7 @@ int jpg_dmabuf_get_iova(struct dma_buf *dbuf, u64 *iova,
 		return -1;
 	}
 
-	*sgt = dma_buf_map_attachment(*attach, DMA_TO_DEVICE);
+	*sgt = dma_buf_map_attachment(*attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR(*sgt)) {
 		JPEG_LOG(0, "map failed, detach and return");
 		dma_buf_detach(dbuf, *attach);
@@ -37,7 +37,7 @@ void jpg_dmabuf_free_iova(struct dma_buf *dbuf,
 		JPEG_LOG(0, "dbuf or attach or sgt null, not need to free iova");
 		return;
 	}
-	dma_buf_unmap_attachment(attach, sgt, DMA_TO_DEVICE);
+	dma_buf_unmap_attachment(attach, sgt, DMA_BIDIRECTIONAL);
 	dma_buf_detach(dbuf, attach);
 }
 

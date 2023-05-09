@@ -35,6 +35,7 @@ struct JpegClk {
 
 struct JpegDeviceStruct {
 	struct device *pDev[JPEG_LARB_COUNT];
+	struct device *smmu_dev[HW_CORE_NUMBER];
 	long hybriddecRegBaseVA[HW_CORE_NUMBER];
 	uint32_t hybriddecIrqId[HW_CORE_NUMBER];
 	struct JpegClk jpegClk;
