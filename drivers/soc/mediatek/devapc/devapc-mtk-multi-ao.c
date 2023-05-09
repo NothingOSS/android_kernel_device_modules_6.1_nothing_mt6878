@@ -96,7 +96,8 @@ static bool is_devapc_subsys_power_on(int slave_type)
 	if (slave_type != DEVAPC_TYPE_ADSP &&
 		slave_type != DEVAPC_TYPE_MMINFRA &&
 		slave_type != DEVAPC_TYPE_MMUP &&
-		slave_type != DEVAPC_TYPE_GPU) {
+		slave_type != DEVAPC_TYPE_GPU &&
+		slave_type != DEVAPC_TYPE_GPU1) {
 		pr_info(PFX "%s: skip slave_type %d power check!\n", __func__, slave_type);
 		return true;
 	}
