@@ -9504,6 +9504,97 @@
 			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
 		};
 
+		adspsys: adspsys@1e000000 {
+			compatible = "mediatek,mt6989-adspsys";
+			status = "disabled";
+			reg = <0 0x1e000000 0 0x6000>, /* CFG */
+				<0 0x1e00b000 0 0x5000>, /* CFG 2 */
+				<0 0x1e006000 0 0x100>, /* MBOX0 base */
+				<0 0x1e006100 0 0x4>, /* MBOX0 set */
+				<0 0x1e00610c 0 0x4>, /* MBOX0 clr */
+				<0 0x1e007000 0 0x100>, /* MBOX1 base */
+				<0 0x1e007100 0 0x4>, /* MBOX1 set */
+				<0 0x1e00710c 0 0x4>, /* MBOX1 clr */
+				<0 0x1e008000 0 0x100>, /* MBOX2 base */
+				<0 0x1e008100 0 0x4>, /* MBOX2 set */
+				<0 0x1e00810c 0 0x4>, /* MBOX2 clr */
+				<0 0x1e009000 0 0x100>, /* MBOX3 base */
+				<0 0x1e009100 0 0x4>, /* MBOX3 set */
+				<0 0x1e00910c 0 0x4>; /* MBOX3 clr */
+			reg-names = "cfg", "cfg2",
+				"mbox0_base", "mbox0_set", "mbox0_clr",
+				"mbox1_base", "mbox1_set", "mbox1_clr",
+				"mbox2_base", "mbox2_set", "mbox2_clr",
+				"mbox3_base", "mbox3_set", "mbox3_clr";
+
+			interrupts = <GIC_SPI 817 IRQ_TYPE_LEVEL_HIGH 0>, /* MBOX0 */
+				<GIC_SPI 818 IRQ_TYPE_LEVEL_HIGH 0>, /* MBOX1 */
+				<GIC_SPI 819 IRQ_TYPE_LEVEL_HIGH 0>, /* MBOX2 */
+				<GIC_SPI 820 IRQ_TYPE_LEVEL_HIGH 0>, /* MBOX3 */
+				<GIC_SPI 824 IRQ_TYPE_LEVEL_HIGH 0>; /* DEBUG_CTRL */
+			interrupt-names = "mbox0",
+				"mbox1",
+				"mbox2",
+				"mbox3",
+				"debug_ctrl";
+			#mbox-cells = <1>;
+
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_ADSP_TOP_DORMANT>;
+			clocks = <&topckgen_clk CLK_TOP_ADSP_SEL>,
+				 <&topckgen_clk CLK_TOP_ADSP_UARTHUB_BCLK_SEL>,
+				 <&topckgen_clk CLK_TOP_TCK_26M_MX9>,
+				 <&topckgen_clk CLK_TOP_ADSPPLL>,
+				 <&topckgen_clk CLK_TOP_UNIVPLL_D6_D4>,
+				 <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>;
+			clock-names = "clk_top_adsp_sel",
+				      "clk_top_adsp_uarthub_bclk_sel",
+				      "clk_top_clk26m",
+				      "clk_top_adsppll",
+				      "clk_top_univpll_d6_d4",
+				      "clk_top_univpll_d6_d2";
+
+			core-num = <2>;    /* core number */
+			adsp-rsv-ipidma-a = <0x100000>;
+			adsp-rsv-ipidma-b = <0x100000>;
+			adsp-rsv-logger-a = <0x80000>;
+			adsp-rsv-logger-b = <0x80000>;
+			adsp-rsv-c2c = <0x40000>;
+			adsp-rsv-dbg-dump-a = <0x80000>;
+			adsp-rsv-dbg-dump-b = <0x80000>;
+			adsp-rsv-core-dump-a = <0x400>;
+			adsp-rsv-core-dump-b = <0x400>;
+			adsp-rsv-xhci = <0x80000>;
+			adsp-rsv-audio = <0x5c0000>;
+		};
+
+		adsp_core0: adsp-core0@1e050000 {
+			compatible = "mediatek,mt6989-adsp_core_0";
+			status = "disabled";
+			reg = <0 0x1e050000 0 0x9000>, /* ITCM */
+				<0 0x1e020000 0 0x8000>; /* DTCM */
+			system = <0 0x50000000 0 0xc00000>;
+			interrupts = <GIC_SPI 811 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 813 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 815 IRQ_TYPE_LEVEL_HIGH 0>;
+			mboxes = <&adspsys 0>, /*channel 0*/
+				<&adspsys 1>; /*channel 1*/
+			feature-control-bits = /bits/ 64 <0x0000000000000007>;
+		};
+
+		adsp_core1: adsp-core1@1e0c0000 {
+			compatible = "mediatek,mt6989-adsp_core_1";
+			status = "disabled";
+			reg = <0 0x1e0c0000 0 0x9000>, /* ITCM */
+				<0 0x1e090000 0 0x8000>; /* DTCM */
+			system = <0 0x50c00000 0 0xa00000>;
+			interrupts = <GIC_SPI 812 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 814 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 816 IRQ_TYPE_LEVEL_HIGH 0>;
+			mboxes = <&adspsys 2>, /*channel 2*/
+				<&adspsys 3>; /*channel 3*/
+			feature-control-bits = /bits/ 64 <0x0000000000000007>;
+		};
+
 		uarthub: uarthub@11005000 {
 			compatible = "mediatek,mt6989-uarthub";
 			reg = <0 0x11005000 0 0x1000>;
