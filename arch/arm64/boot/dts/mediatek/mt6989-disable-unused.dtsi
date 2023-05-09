@@ -408,7 +408,7 @@
 			<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN>,
 			<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0>,
 			<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_VCORE>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_MAIN>;
 	};
 
 	disable-unused-clk-traw-cap-dip1@7f {
