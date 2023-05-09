@@ -1578,6 +1578,9 @@
 		pinctrl-7 = <&connsys_combo_gpio_init>;
 		pinctrl-8 = <&connsys_combo_gpio_pre_on>;
 		pinctrl-9 = <&connsys_combo_gpio_on>;
+
+		interrupt-parent = <&pio>;
+		interrupts = <158 IRQ_TYPE_EDGE_FALLING>;
 	};
 
 	bt: bt {
@@ -13611,17 +13614,17 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 
 	connsys_pin_pmic_faultb_default: connsys-pin-pmic-faultb-default {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO144__FUNC_GPIO144>;
+			pinmux = <PINMUX_GPIO158__FUNC_GPIO158>;
 			input-enable;
-			bias-pull-down;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
 		};
 	};
 
 	connsys_pin_pmic_faultb_enable: connsys-pin-pmic-faultb-enable {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO144__FUNC_GPIO144>;
+			pinmux = <PINMUX_GPIO158__FUNC_GPIO158>;
 			input-enable;
-			bias-pull-up;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_10>;
 		};
 	};
 
