@@ -199,6 +199,15 @@ void slbc_update_mic_num(unsigned int num)
 }
 EXPORT_SYMBOL_GPL(slbc_update_mic_num);
 
+int slbc_gid_val(enum slc_ach_uid uid)
+{
+	if (common_ops && common_ops->slbc_gid_val)
+		return common_ops->slbc_gid_val(uid);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_gid_val);
+
 int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *d)
 {
 	if (common_ops && common_ops->slbc_gid_request)

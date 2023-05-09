@@ -118,14 +118,16 @@ enum slbc_flag {
 
 /* SLC all cache mode user id */
 enum slc_ach_uid {
-	ID_MD,
-	ID_VDEC_FRAME,
-	ID_VDEC_UBE,
+	ID_PD,
+	ID_CPU,
 	ID_GPU,
 	ID_GPU_W,
 	ID_OVL_R,
-	ID_PD,
-	ID_CPU,
+	ID_VDEC_FRAME,
+	ID_VDEC_UBE,
+	ID_SMMU,
+	ID_MD,
+	ID_ADSP,
 	ID_MAX,
 };
 
@@ -206,6 +208,7 @@ extern void slbc_update_mic_num(unsigned int num);
 extern void slbc_update_inner(unsigned int inner);
 extern void slbc_update_outer(unsigned int outer);
 void slbc_get_gid_for_dma(struct dma_buf *dmabuf);
+int slbc_gid_val(enum slc_ach_uid uid);
 int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data);
 int slbc_gid_release(enum slc_ach_uid uid, int gid);
 int slbc_roi_update(enum slc_ach_uid uid, int gid, struct slbc_gid_data *data);
@@ -253,6 +256,7 @@ __weak void slbc_update_mm_bw(unsigned int bw) {}
 __weak void slbc_update_mic_num(unsigned int num) {}
 __weak void slbc_update_inner(unsigned int inner) {}
 __weak void slbc_update_outer(unsigned int outer) {}
+__weak int slbc_gid_val(enum slc_ach_uid uid) { return -EINVAL; }
 __weak int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data)
 {
 	return -EDISABLED;

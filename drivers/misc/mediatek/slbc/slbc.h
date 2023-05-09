@@ -94,6 +94,7 @@ struct slbc_common_ops {
 	void (*slbc_sram_write)(u32 offset, u32 val);
 	void (*slbc_update_mm_bw)(unsigned int bw);
 	void (*slbc_update_mic_num)(unsigned int num);
+	int (*slbc_gid_val)(enum slc_ach_uid uid);
 	int (*slbc_gid_request)(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data);
 	int (*slbc_gid_release)(enum slc_ach_uid uid, int gid);
 	int (*slbc_roi_update)(enum slc_ach_uid uid, int gid, struct slbc_gid_data *data);

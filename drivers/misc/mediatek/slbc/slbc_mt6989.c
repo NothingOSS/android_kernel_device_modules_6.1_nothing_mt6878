@@ -60,11 +60,16 @@
 
 #define GID_MAX					64
 #define GID_REQ					(-1)
-#define GID_MD					5
-#define GID_GPU					6
-#define GID_GPU_OVL				7
-#define GID_VDEC_FRAME				8
-#define GID_VDEC_UBE				9
+
+enum slc_gid_list {
+	GID_GPU = 7,
+	GID_GPU_OVL,
+	GID_VDEC_FRAME,
+	GID_VDEC_UBE,
+	GID_SMMU,
+	GID_MD,
+	GID_ADSP,
+};
 
 #define BUF_ID_NOT_CARE			0x00000000
 #define BUF_ID_GPU			0x0000000f
@@ -902,15 +907,44 @@ void slbc_update_outer(unsigned int outer)
 	slbc_outer_cmd(outer);
 }
 
+int slbc_gid_val(enum slc_ach_uid uid)
+{
+	int ret = -EINVAL;
+
+	switch (uid) {
+	case ID_MD:
+		ret = GID_MD;
+		break;
+	case ID_VDEC_FRAME:
+		ret = GID_VDEC_FRAME;
+		break;
+	case ID_VDEC_UBE:
+		ret = GID_VDEC_UBE;
+		break;
+	case ID_GPU:
+		ret = GID_GPU;
+		break;
+	case ID_GPU_W:
+	case ID_OVL_R:
+		ret = GID_GPU_OVL;
+		break;
+	default:
+		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "unrecognized uid");
+		break;
+	}
+
+	return ret;
+}
+
 int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data)
 {
 	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "gid:%d", *gid);
 	if (*gid >= GID_MAX)
 		return -EINVAL;
-	if (data->sign != 0x51ca11ca) {
-		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "invalid sign:%#x", data->sign);
-		return -EINVAL;
-	}
+	/* if (data->sign != SLC_DATA_MAGIC) { */
+		/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "invalid sign:%#x", data->sign); */
+		/* return -EINVAL; */
+	/* } */
 
 	switch (uid) {
 	case ID_MD:
@@ -1476,6 +1510,7 @@ static struct slbc_common_ops common_ops = {
 	.slbc_sram_write = slbc_sram_write,
 	.slbc_update_mm_bw = slbc_update_mm_bw,
 	.slbc_update_mic_num = slbc_update_mic_num,
+	.slbc_gid_val = slbc_gid_val,
 	.slbc_gid_request = slbc_gid_request,
 	.slbc_gid_release = slbc_gid_release,
 	.slbc_roi_update = slbc_roi_update,
@@ -1511,6 +1546,10 @@ void slbc_get_gid_for_dma(struct dma_buf *dmabuf_2)
 	SLBC_TRACE_REC(LVL_QOS, TYPE_C, 0, ret, "buffer_fd:%d  producer:%d  consumer:%d",
 			buffer_fd, producer, consumer);
 
+	if (gid_data->sign != SLC_DATA_MAGIC) {
+		SLBC_TRACE_REC(LVL_ERR, TYPE_C, 0, ret, "invalid sign:%#x", gid_data->sign);
+		return;
+	}
 
 	/* mapping producre/consumer to GID */
 	switch (producer) {
