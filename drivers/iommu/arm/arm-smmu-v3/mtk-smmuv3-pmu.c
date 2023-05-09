@@ -122,14 +122,6 @@
 
 #define SMMU_PMCG_EVCNTR_RDONLY         BIT(0)
 
-static irqreturn_t smmu_pmu_handle_irq_impl(int irq_num, struct device *dev);
-static int smmu_pmu_irq_set_up(int irq_num, struct device *dev);
-
-static const struct smmuv3_pmu_impl smmu_pmu_impl = {
-	.pmu_irq_handler = smmu_pmu_handle_irq_impl,
-	.irq_set_up = smmu_pmu_irq_set_up,
-};
-
 static int cpuhp_state_num;
 
 struct smmu_pmu {
@@ -148,6 +140,8 @@ struct smmu_pmu {
 	u32 options;
 	u32 iidr;
 	bool global_filter;
+	spinlock_t pmu_lock;
+	bool delay_init_done;
 	struct smmuv3_pmu_device *pmu_device;
 };
 
@@ -164,6 +158,15 @@ SMMU_PMU_EVENT_ATTR_EXTRACTOR(event, config, 0, 15);
 SMMU_PMU_EVENT_ATTR_EXTRACTOR(filter_stream_id, config1, 0, 31);
 SMMU_PMU_EVENT_ATTR_EXTRACTOR(filter_span, config1, 32, 32);
 SMMU_PMU_EVENT_ATTR_EXTRACTOR(filter_enable, config1, 33, 33);
+
+static irqreturn_t smmu_pmu_handle_irq_impl(int irq_num, struct device *dev);
+static int smmu_pmu_irq_set_up(int irq_num, struct device *dev);
+static void smmu_pmu_delay_init(struct smmu_pmu *smmu_pmu);
+
+static const struct smmuv3_pmu_impl smmu_pmu_impl = {
+	.pmu_irq_handler = smmu_pmu_handle_irq_impl,
+	.irq_set_up = smmu_pmu_irq_set_up,
+};
 
 static inline void smmu_pmu_enable(struct pmu *pmu)
 {
@@ -383,6 +386,7 @@ static int smmu_pmu_event_init(struct perf_event *event)
 	struct device *dev = smmu_pmu->dev;
 	struct perf_event *sibling;
 	int group_num_events = 1;
+	unsigned long flags;
 	u16 event_id;
 
 	if (event->attr.type != event->pmu->type)
@@ -397,6 +401,11 @@ static int smmu_pmu_event_init(struct perf_event *event)
 		dev_dbg(dev, "Per-task mode not supported\n");
 		return -EOPNOTSUPP;
 	}
+
+	spin_lock_irqsave(&smmu_pmu->pmu_lock, flags);
+	if (!smmu_pmu->delay_init_done)
+		smmu_pmu_delay_init(smmu_pmu);
+	spin_unlock_irqrestore(&smmu_pmu->pmu_lock, flags);
 
 	/* Verify specified event is supported on this PMU */
 	event_id = get_event(event);
@@ -563,16 +572,15 @@ static struct attribute *smmu_pmu_events[] = {
 static umode_t smmu_pmu_event_is_visible(struct kobject *kobj,
 					 struct attribute *attr, int unused)
 {
-	struct device *dev = kobj_to_dev(kobj);
-	struct smmu_pmu *smmu_pmu = to_smmu_pmu(dev_get_drvdata(dev));
 	struct perf_pmu_events_attr *pmu_attr;
 
 	pmu_attr = container_of(attr, struct perf_pmu_events_attr, attr.attr);
 
-	if (test_bit(pmu_attr->id, smmu_pmu->supported_events))
-		return attr->mode;
+	/* Set all evnets visible, cannot query because smmu is powered off */
+	if (pmu_attr->id >= SMMU_PMCG_MAX_COUNTERS)
+		return 0;
 
-	return 0;
+	return attr->mode;
 }
 
 static const struct attribute_group smmu_pmu_events_group = {
@@ -822,13 +830,49 @@ static void smmu_pmu_get_iidr(struct smmu_pmu *smmu_pmu)
 	smmu_pmu->iidr = iidr;
 }
 
+static void smmu_pmu_delay_init(struct smmu_pmu *smmu_pmu)
+{
+	struct platform_device *pdev;
+	u32 cfgr, reg_size;
+	u64 ceid_64[2];
+
+	pdev = to_platform_device(smmu_pmu->dev);
+	cfgr = readl_relaxed(smmu_pmu->reg_base + SMMU_PMCG_CFGR);
+
+	/* Determine if page 1 is present */
+	if (cfgr & SMMU_PMCG_CFGR_RELOC_CTRS) {
+		smmu_pmu->reloc_base = devm_platform_ioremap_resource(pdev, 1);
+		if (IS_ERR(smmu_pmu->reloc_base)) {
+			dev_info(smmu_pmu->dev,
+				 "reloc_base error for %s",
+				 smmu_pmu->pmu.name);
+			smmu_pmu->reloc_base = smmu_pmu->reg_base;
+		}
+	} else {
+		smmu_pmu->reloc_base = smmu_pmu->reg_base;
+	}
+
+	ceid_64[0] = readq_relaxed(smmu_pmu->reg_base + SMMU_PMCG_CEID0);
+	ceid_64[1] = readq_relaxed(smmu_pmu->reg_base + SMMU_PMCG_CEID1);
+	bitmap_from_arr32(smmu_pmu->supported_events, (u32 *)ceid_64,
+			  SMMU_PMCG_ARCH_MAX_EVENTS);
+
+	smmu_pmu->num_counters = FIELD_GET(SMMU_PMCG_CFGR_NCTR, cfgr) + 1;
+
+	smmu_pmu->global_filter = !!(cfgr & SMMU_PMCG_CFGR_SID_FILTER_TYPE);
+
+	reg_size = FIELD_GET(SMMU_PMCG_CFGR_SIZE, cfgr);
+	smmu_pmu->counter_mask = GENMASK_ULL(reg_size, 0);
+
+	smmu_pmu_reset(smmu_pmu);
+	smmu_pmu->delay_init_done = true;
+}
+
 static int smmu_pmu_probe(struct platform_device *pdev)
 {
 	struct smmuv3_pmu_device *pmu_device;
 	struct smmu_pmu *smmu_pmu;
 	struct resource *res_0;
-	u32 cfgr, reg_size;
-	u64 ceid_64[2];
 	int irq, err;
 	char *name;
 	struct device *dev = &pdev->dev;
@@ -859,17 +903,7 @@ static int smmu_pmu_probe(struct platform_device *pdev)
 	if (IS_ERR(smmu_pmu->reg_base))
 		return PTR_ERR(smmu_pmu->reg_base);
 
-	cfgr = readl_relaxed(smmu_pmu->reg_base + SMMU_PMCG_CFGR);
-
-	/* Determine if page 1 is present */
-	if (cfgr & SMMU_PMCG_CFGR_RELOC_CTRS) {
-		smmu_pmu->reloc_base = devm_platform_ioremap_resource(pdev, 1);
-		if (IS_ERR(smmu_pmu->reloc_base))
-			return PTR_ERR(smmu_pmu->reloc_base);
-	} else {
-		smmu_pmu->reloc_base = smmu_pmu->reg_base;
-	}
-
+	spin_lock_init(&smmu_pmu->pmu_lock);
 	irq = platform_get_irq_optional(pdev, 0);
 	if (irq > 0)
 		smmu_pmu->irq = irq;
@@ -886,20 +920,6 @@ static int smmu_pmu_probe(struct platform_device *pdev)
 
 		mtk_smmu_register_pmu_device(pmu_device);
 	}
-
-	ceid_64[0] = readq_relaxed(smmu_pmu->reg_base + SMMU_PMCG_CEID0);
-	ceid_64[1] = readq_relaxed(smmu_pmu->reg_base + SMMU_PMCG_CEID1);
-	bitmap_from_arr32(smmu_pmu->supported_events, (u32 *)ceid_64,
-			  SMMU_PMCG_ARCH_MAX_EVENTS);
-
-	smmu_pmu->num_counters = FIELD_GET(SMMU_PMCG_CFGR_NCTR, cfgr) + 1;
-
-	smmu_pmu->global_filter = !!(cfgr & SMMU_PMCG_CFGR_SID_FILTER_TYPE);
-
-	reg_size = FIELD_GET(SMMU_PMCG_CFGR_SIZE, cfgr);
-	smmu_pmu->counter_mask = GENMASK_ULL(reg_size, 0);
-
-	smmu_pmu_reset(smmu_pmu);
 
 	if (irq > 0) {
 		err = smmu_pmu_setup_irq(smmu_pmu);
