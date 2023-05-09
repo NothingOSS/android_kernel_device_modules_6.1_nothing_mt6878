@@ -25,7 +25,6 @@
 
 struct mt6316_regulator_info {
 	struct regulator_desc desc;
-	u32 da_vsel_reg;
 	u32 da_reg;
 	u32 qi;
 	u32 modeset_reg;
@@ -64,7 +63,6 @@ struct mt6316_chip {
 		.enable_mask = BIT(_bid - 1),		\
 		.of_map_mode = mt6316_map_mode,		\
 	},						\
-	.da_vsel_reg = MT6316_VBUCK##_bid##_DBG4,	\
 	.da_reg = MT6316_VBUCK##_bid##_DBG8,		\
 	.qi = BIT(0),					\
 	.lp_mode_reg = MT6316_BUCK_TOP_CON1,		\
@@ -117,23 +115,10 @@ static int mt6316_regulator_set_voltage_sel(struct regulator_dev *rdev, unsigned
 
 static int mt6316_regulator_get_voltage_sel(struct regulator_dev *rdev)
 {
-	struct mt6316_regulator_info *info;
-	int ret = 0, reg_addr = 0, reg_en = 0;
+	int ret = 0;
 	unsigned int reg_val = 0;
 
-	info = container_of(rdev->desc, struct mt6316_regulator_info, desc);
-	ret = regmap_read(rdev->regmap, info->da_reg, &reg_en);
-	if (ret != 0) {
-		dev_notice(&rdev->dev, "Failed to get enable reg: %d\n", ret);
-		return ret;
-	}
-
-	if (reg_en & info->qi)
-		reg_addr = info->da_vsel_reg;
-	else
-		reg_addr = rdev->desc->vsel_reg;
-
-	ret = regmap_bulk_read(rdev->regmap, reg_addr, (u8 *) &reg_val, 2);
+	ret = regmap_bulk_read(rdev->regmap, rdev->desc->vsel_reg, (u8 *) &reg_val, 2);
 	if (ret != 0) {
 		dev_err(&rdev->dev, "Failed to get mt6316 regulator voltage: %d\n", ret);
 		return ret;
@@ -276,10 +261,6 @@ static struct mt6316_init_data mt6316_8_init_data = {
 
 static const struct of_device_id mt6316_of_match[] = {
 	{
-		/* TODO: remove slave 0 */
-		.compatible = "mediatek,mt6316-0-regulator",
-		.data = &mt6316_3_init_data,
-	}, {
 		.compatible = "mediatek,mt6316-3-regulator",
 		.data = &mt6316_3_init_data,
 	}, {
