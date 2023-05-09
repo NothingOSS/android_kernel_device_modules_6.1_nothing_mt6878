@@ -4672,7 +4672,7 @@
 
 		gpueb: gpueb@13c00000 {
 			compatible = "mediatek,gpueb";
-			gpueb-support = <0>;
+			gpueb-support = <1>;
 			gpueb-logger-support = <0>;
 			mbox-count = <1>;
 			mbox-size = <160>; /* 160 slot * 4 = 640 byte */
