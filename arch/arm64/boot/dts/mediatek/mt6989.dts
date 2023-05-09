@@ -4443,6 +4443,16 @@
 			mtk,smmu = <&mm_smmu>;
 		};
 
+		gpu_smmu: smmuv3@13a00000 {
+			#iommu-cells = <1>;
+			compatible = "arm,smmu-v3", "mediatek,smmu", "mtk,smmu-v700",
+					"mediatek,mt6989-gpu-smmu";
+			reg = <0 0x13a00000 0 0x200000>;
+			interrupts = <GIC_SPI 677 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupt-names = "combined";
+			/*dma-coherent;*/
+		};
+
 		dramc-md32-s0-apb@10900000 {
 			compatible = "mediatek,dramc_md32_s0_apb";
 			reg = <0 0x10900000 0 0x40000>;
