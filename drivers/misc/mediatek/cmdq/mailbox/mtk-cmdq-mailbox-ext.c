@@ -1041,9 +1041,8 @@ static void cmdq_thread_dump_pkt_by_pc(struct cmdq_thread *thread, const u64 pc,
 		if (prev)
 			cmdq_dump_pkt(task->pkt, pc, true);
 		list_for_each_entry(buf, &task->pkt->buf, list_entry) {
-			if ((pc >= (CMDQ_BUF_ADDR(buf) & UINT_MAX)) &&
-				(pc < ((CMDQ_BUF_ADDR(buf) +
-				CMDQ_CMD_BUFFER_SIZE) & UINT_MAX))) {
+			if ((pc >= CMDQ_BUF_ADDR(buf)) &&
+				(pc < (CMDQ_BUF_ADDR(buf) + CMDQ_CMD_BUFFER_SIZE))) {
 				if (!prev)
 					cmdq_dump_pkt(task->pkt, pc, true);
 				return;
