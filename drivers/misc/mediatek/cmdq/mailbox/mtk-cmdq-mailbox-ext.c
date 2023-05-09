@@ -1353,7 +1353,9 @@ static int cmdq_irq_handler_thread(void *data)
 		 * read cmdq->err_irq_idx maybe encounter data race.
 		 * use data_race to bypass
 		 */
-		wait_event_interruptible(cmdq->err_irq_wq, data_race(cmdq->err_irq_idx));
+		if (wait_event_interruptible(cmdq->err_irq_wq, data_race(cmdq->err_irq_idx)) < 0)
+			continue;
+
 		spin_lock_irqsave(&cmdq->irq_idx_lock, irq_idx_flag);
 
 		irq = cmdq->err_irq_idx;
