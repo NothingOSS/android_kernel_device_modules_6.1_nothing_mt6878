@@ -1103,14 +1103,16 @@ static irqreturn_t mtk_smmu_sec_irq_process(int irq, void *dev)
 	if (!MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_SEC_EN))
 		return IRQ_NONE;
 
+	/* SOC & GPU SMMU not support secure TF */
+	if (smmu_type == SOC_SMMU || smmu_type == GPU_SMMU)
+		return IRQ_NONE;
+
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 	/* query whether need handle secure TF */
 	ret = mtk_smmu_sec_tf_handler(smmu_type, &need_handle,
 			&fault_iova, &fault_pa, &fault_id);
-	if (ret) {
-		pr_info("[%s] smmu_%u fail\n", __func__, smmu_type);
-		return IRQ_HANDLED;
-	}
+	if (ret)
+		return IRQ_NONE;
 #endif
 
 #ifdef MTK_SMMU_DEBUG
