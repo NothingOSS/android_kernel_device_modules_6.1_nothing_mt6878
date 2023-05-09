@@ -101,6 +101,7 @@ enum apupw_reg {
 enum mode {
 	FPGA,
 	AO,
+	LK2,
 	MP,
 };
 

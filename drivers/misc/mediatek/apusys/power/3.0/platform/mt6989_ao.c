@@ -399,9 +399,9 @@ static void __apu_engine_acc_on(void)
 		apu_setl(1 << 9, (void __iomem *)addr);
 		addr = (ulong)papw->regs[apu_acc] + eng_acc[acc_idx] + APU_ACC_AUTO_STATUS0;
 		ret = readl_relaxed_poll_timeout_atomic((void *)addr, val,
-							(val & (0x1UL << 5)), 50, 10000);
+							(val & (0x1UL << 6)), 50, 10000);
 		if (ret)
-			pr_info("%s %d wait acc-%d on fail, ret = %d\n",
+			pr_info("%s %d wait hacc-%d on fail, ret = %d\n",
 			       __func__, __LINE__, acc_idx, ret);
 	}
 }
@@ -557,10 +557,13 @@ static void __apu_buck_off_cfg(void)
 static void __apu_pcu_init(void)
 {
 	uint32_t cmd_op_w = 0x7;
-	uint32_t pmif_id = 0x0;
+	uint32_t pmif_id = 0x1;
 
 	if (papw->env == FPGA)
 		return;
+
+	// auto buck enable
+	apu_writel((0x1 << 3), papw->regs[apu_pcu] + APU_PCUTOP_CTRL_SET);
 	/*
 	 * Step1. enable cmd operation in auto buck on/off flow
 	 * [0]: enable auto ON cmd0 (set vapu voltage to 0.75v),
@@ -571,15 +574,15 @@ static void __apu_pcu_init(void)
 
 	// Step1. fill-in auto ON cmd0
 	apu_writel((vapu_vosel_offset << 16) | (750000 / 6250),
-		papw->regs[apu_pcu] + APU_PCU_BUCK_ON_DAT1_L);
+		papw->regs[apu_pcu] + APU_PCU_BUCK_ON_DAT0_L);
 	apu_writel((vapu_pmic_slave_id << 4) | (pmif_id << 3) | cmd_op_w,
-		papw->regs[apu_pcu] + APU_PCU_BUCK_ON_DAT1_H);
+		papw->regs[apu_pcu] + APU_PCU_BUCK_ON_DAT0_H);
 
 	// Step2. fill-in auto ON cmd1
 	apu_writel((vapu_en_set_offset << 16) | (0x1U << vapu_en_shift),
-		papw->regs[apu_pcu] + APU_PCU_BUCK_ON_DAT2_L);
+		papw->regs[apu_pcu] + APU_PCU_BUCK_ON_DAT1_L);
 	apu_writel((vapu_pmic_slave_id << 4) | (pmif_id << 3) | cmd_op_w,
-		papw->regs[apu_pcu] + APU_PCU_BUCK_ON_DAT2_H);
+		papw->regs[apu_pcu] + APU_PCU_BUCK_ON_DAT1_H);
 
 	// Step3. fill-in auto OFF cmd0
 	apu_writel((vapu_en_clr_offset << 16) | (0x1U << vapu_en_shift),
@@ -588,10 +591,10 @@ static void __apu_pcu_init(void)
 		papw->regs[apu_pcu] + APU_PCU_BUCK_OFF_DAT0_H);
 
 	// Step4. fill-in settle time for auto ON/OFF cmd
-	apu_writel(0x12C,  papw->regs[apu_pcu] + APU_PCU_BUCK_ON_SLE0); // 300us
-	apu_writel(0x12C,  papw->regs[apu_pcu] + APU_PCU_BUCK_ON_SLE2); // 300us
-	apu_writel(0x12C,  papw->regs[apu_pcu] + APU_PCU_BUCK_OFF_SLE0); // 300us
-	pr_info("PCU init %s %d --\n", __func__, __LINE__);
+	apu_writel(0x1,  papw->regs[apu_pcu] + APU_PCU_BUCK_ON_SLE0); // 300us
+	apu_writel(0xC8,  papw->regs[apu_pcu] + APU_PCU_BUCK_ON_SLE1); // 300us
+	apu_writel(0x1,  papw->regs[apu_pcu] + APU_PCU_BUCK_OFF_SLE0); // 300us
+	pr_info("PCU init %s %d %d--\n", __func__, __LINE__, pmif_id);
 }
 
 static void __apu_rpclite_init(enum t_acx_id acx_idx)
@@ -657,7 +660,7 @@ static void __apu_rpc_init(void)
 	pr_info("RPC init %s %d ++\n", __func__, __LINE__);
 	// Step7. RPC: memory types (sleep or PD type)
 	// RPC: APU TCM set sleep type
-	apu_writel(0x78, papw->regs[apu_rpc] + 0x0200);
+	apu_writel(0x74, papw->regs[apu_rpc] + 0x0200);
 	// Step9. RPCtop initial
 	/* 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 (bit offset)
 	 *  1  0  1  1  1  0  0  0  0  0  0  0  0  0  0  0 --> 0xB800
@@ -931,6 +934,58 @@ static int __apu_are_init(struct device *dev)
 	return 0;
 }
 
+static int __apu_ce_init(struct device *dev)
+{
+	uint32_t entry = 0;
+	char buf[512];
+	int ret = 0;
+	uint32_t kernel_size, idx;
+
+	pr_info("CE init %s, ce_pwr_on_sz = %d, ce_pwr_off_sz = %d\n",
+		__func__, ce_pwr_on_sz, ce_pwr_off_sz);
+
+	/* Disable sMMU by set HW flag 10 */
+	apu_writel(0x1<<10, papw->regs[apu_are] + 0x105D4);
+
+	/* Turn on CE enable */
+	apu_writel(1<<23, papw->regs[apu_are]);
+
+	/* fill in rpc power on/off firmware */
+	kernel_size = ce_pwr_on_sz / 4;
+	for (idx = 0; idx < kernel_size; idx++)
+		apu_writel(ce_pwr_on[idx], papw->regs[apu_are] + 0x2100 + idx * 0x4);
+
+	kernel_size = ce_pwr_off_sz / 4;
+	for (idx = 0; idx < kernel_size; idx++)
+		apu_writel(ce_pwr_off[idx], papw->regs[apu_are] + 0x3000 + idx * 0x4);
+
+	/* fill in entry 4 */
+	entry = (0x3000 / 4) << 16 | (0x2100 / 4);
+	apu_writel(entry, papw->regs[apu_are] + APU_ACE_HW_CONFIG_0);
+
+	memset(buf, 0, sizeof(buf));
+	ret = snprintf(buf, sizeof(buf), "phys 0x%08x ", (u32)(papw->phy_addr[apu_are]));
+	if (!ret)
+		print_hex_dump(KERN_WARNING, buf, DUMP_PREFIX_OFFSET,
+			       16, 4, papw->regs[apu_are], 0x20, 1);
+
+	memset(buf, 0, sizeof(buf));
+	ret = snprintf(buf, sizeof(buf), "phys 0x%08x ", (u32)(papw->phy_addr[apu_are] + 0x2100));
+	if (!ret)
+		print_hex_dump(KERN_WARNING, buf, DUMP_PREFIX_OFFSET,
+			       16, 4, papw->regs[apu_are] + 0x2100, ce_pwr_on_sz, 1);
+
+	memset(buf, 0, sizeof(buf));
+	ret = snprintf(buf, sizeof(buf), "phys 0x%08x ", (u32)(papw->phy_addr[apu_are] + 0x3000));
+	if (!ret)
+		print_hex_dump(KERN_WARNING, buf, DUMP_PREFIX_OFFSET,
+			       16, 4, papw->regs[apu_are] + 0x3000, ce_pwr_off_sz, 1);
+
+	pr_info("ARE init %s %d --\n", __func__, __LINE__);
+
+	return 0;
+}
+
 // backup solution : send request for RPC sleep from APMCU
 static int __apu_off_rpc_rcx(struct device *dev)
 {
@@ -1175,26 +1230,49 @@ static int __apu_wake_rpc_acx(struct device *dev, enum t_acx_id acx_id)
 		__func__, acx_id,
 		(u32)(papw->phy_addr[rpc_lite_base] + APU_RPC_INTF_PWR_RDY),
 		readl(papw->regs[rpc_lite_base] + APU_RPC_INTF_PWR_RDY));
-	dev_info(dev, "%s ACX%d APU_ACX_CONN_CG_CON 0x%x = 0x%x\n",
-		__func__, acx_id,
-		(u32)(papw->phy_addr[acx_base] + APU_ACX_CONN_CG_CON),
-		readl(papw->regs[acx_base] + APU_ACX_CONN_CG_CON));
-	/* clear acx0 CGs */
-	apu_writel(0xFFFFFFFF, papw->regs[acx_base] + APU_ACX_CONN_CG_CLR);
-	dev_info(dev, "%s ACX%d APU_ACX_CONN_CG_CON 0x%x = 0x%x\n",
-		__func__, acx_id,
-		(u32)(papw->phy_addr[acx_base] + 0x3C2B0),
-		readl(papw->regs[acx_base] + 0x3C2B0));
-	dev_info(dev, "%s ACX%d before Spare RG 0x%x = 0x%x\n",
-		__func__, acx_id,
-		(u32)(papw->phy_addr[acx_base] + 0x3C2B0),
-		readl(papw->regs[acx_base] + 0x3C2B0));
-	/* access spare RG */
-	apu_writel(0x12345678, papw->regs[acx_base] + 0x3C2B0);
-	dev_info(dev, "%s ACX%d after Spare RG 0x%x = 0x%x\n",
-		__func__, acx_id,
-		(u32)(papw->phy_addr[acx_base] + 0x3C2B0),
-		readl(papw->regs[acx_base] + 0x3C2B0));
+	if (acx_id == ACX0 || acx_id == ACX1) {
+		dev_info(dev, "%s ACX%d APU_ACX_CONN_CG_CON 0x%x = 0x%x\n",
+			__func__, acx_id,
+			(u32)(papw->phy_addr[acx_base] + APU_ACX_CONN_CG_CON),
+			readl(papw->regs[acx_base] + APU_ACX_CONN_CG_CON));
+		/* clear acx0 CGs */
+		apu_writel(0xFFFFFFFF, papw->regs[acx_base] + APU_ACX_CONN_CG_CLR);
+		dev_info(dev, "%s ACX%d APU_ACX_CONN_CG_CON 0x%x = 0x%x\n",
+			__func__, acx_id,
+			(u32)(papw->phy_addr[acx_base] + APU_ACX_CONN_CG_CON),
+			readl(papw->regs[acx_base] + APU_ACX_CONN_CG_CON));
+		dev_info(dev, "%s ACX%d before Spare RG 0x%x = 0x%x\n",
+			__func__, acx_id,
+			(u32)(papw->phy_addr[acx_base] + 0x3C2B0),
+			readl(papw->regs[acx_base] + 0x3C2B0));
+		/* access spare RG */
+		apu_writel(0x12345678, papw->regs[acx_base] + 0x3C2B0);
+		dev_info(dev, "%s ACX%d after Spare RG 0x%x = 0x%x\n",
+			__func__, acx_id,
+			(u32)(papw->phy_addr[acx_base] + 0x3C2B0),
+			readl(papw->regs[acx_base] + 0x3C2B0));
+	} else {
+		dev_info(dev, "%s ACX%d APU_NCX_CONN_CG_CON 0x%x = 0x%x\n",
+			__func__, acx_id,
+			(u32)(papw->phy_addr[acx_base] + APU_NCX_CONN_CG_CON),
+			readl(papw->regs[acx_base] + APU_NCX_CONN_CG_CON));
+		/* clear acx0 CGs */
+		apu_writel(0xFFFFFFFF, papw->regs[acx_base] + APU_NCX_CONN_CG_CLR);
+		dev_info(dev, "%s ACX%d APU_NCX_CONN_CG_CON 0x%x = 0x%x\n",
+			__func__, acx_id,
+			(u32)(papw->phy_addr[acx_base] + APU_NCX_CONN_CG_CON),
+			readl(papw->regs[acx_base] + APU_NCX_CONN_CG_CON));
+		dev_info(dev, "%s ACX%d before Spare RG 0x%x = 0x%x\n",
+			__func__, acx_id,
+			(u32)(papw->phy_addr[acx_base] + 0x3F2B0),
+			readl(papw->regs[acx_base] + 0x3F2B0));
+		/* access spare RG */
+		apu_writel(0x12345678, papw->regs[acx_base] + 0x3F2B0);
+		dev_info(dev, "%s ACX%d after Spare RG 0x%x = 0x%x\n",
+			__func__, acx_id,
+			(u32)(papw->phy_addr[acx_base] + 0x3F2B0),
+			readl(papw->regs[acx_base] + 0x3F2B0));
+	}
 
 out:
 	return ret;
@@ -1280,8 +1358,13 @@ static int __apu_pwr_ctl_acx_engines(struct device *dev,
 		dev_cg_clr = APU_ACX_MVPU_CG_CLR;
 		break;
 	case DLA0:
-		dev_mtcmos_ctl = (0x1 << 6); //bit[6]
-		dev_mtcmos_chk = 0x40UL; //bit[6]
+		if (acx_id == ACX2) {
+			dev_mtcmos_ctl = (0x1 << 7); //bit[7]
+			dev_mtcmos_chk = 0x80UL; //bit[7]
+		} else {
+			dev_mtcmos_ctl = (0x1 << 6); //bit[6]
+			dev_mtcmos_chk = 0x40UL; //bit[6]
+		}
 		dev_cg_con = APU_ACX_MDLA0_CG_CON;
 		dev_cg_clr = APU_ACX_MDLA0_CG_CLR;
 		break;
@@ -1433,7 +1516,7 @@ static void __apu_aoc_init(void)
 	pr_info("AOC init %s %d ++\n", __func__, __LINE__);
 	/* 1. Manually disable Buck els enable @SOC, vapu_ext_buck_iso */
 	if (papw->env == AO) {
-		apu_setl((0x1 << 4), papw->regs[sys_spm] + 0xFAC);
+		apu_setl((0x1 << 4), papw->regs[sys_spm] + 0xF6C);
 		apu_clearl((0x1 << 1), papw->regs[sys_spm] + 0x414);
 	}
 	/*
@@ -1478,6 +1561,11 @@ static void __apu_aoc_init(void)
 
 static int init_hw_setting(struct device *dev)
 {
+	if (papw->env == LK2) {
+		__apu_ce_init(dev);
+		return 0;
+	}
+
 	__apu_aoc_init();
 	__apu_pcu_init();
 	__apu_rpc_init();
@@ -1511,7 +1599,7 @@ int mt6989_all_on(struct platform_device *pdev, struct apu_power *g_papw)
 {
 	papw = g_papw;
 
-	if (papw->env == AO)
+	if (papw->env == AO || papw->env == LK2)
 		init_plat_pwr_res(pdev);
 	init_hw_setting(&pdev->dev);
 

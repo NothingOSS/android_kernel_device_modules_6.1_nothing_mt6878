@@ -35,7 +35,7 @@ static const char *reg_name[APUPW_MAX_REGS] = {
 };
 
 static struct apu_power apupw = {
-	.env = FPGA,
+	.env = LK2,
 	.rcx = CE_FW,
 };
 
@@ -455,7 +455,7 @@ static int mt6989_apu_top_pb(struct platform_device *pdev)
 	if (!ret) {
 		/* release hw sema before smmu driver init */
 		pr_info("%s release hw sema before smmu driver init\n", __func__);
-		apu_setl(1 << 16, apupw.regs[apu_md32_mbox] + APU_MBOX_SEMA_CTRL0);
+		apu_writel(1 << 16, apupw.regs[apu_md32_mbox] + APU_MBOX_SEMA_CTRL0);
 	}
 
 	mt6989_init_remote_data_sync(apupw.regs[apu_md32_mbox]);
