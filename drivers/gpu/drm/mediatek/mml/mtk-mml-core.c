@@ -1606,6 +1606,8 @@ static void core_config_pipe(struct mml_task *task, u32 pipe)
 	s32 err;
 	struct mml_frame_config *cfg = task->config;
 	struct cmdq_client *tp_clt = cfg->path[pipe]->clt;
+	struct cmdq_client *rb_clt = mml_get_cmdq_clt(cfg->mml,
+		pipe + GCE_THREAD_START);
 
 	mml_trace_ex_begin("%s_%u", __func__, pipe);
 	task->config_pipe_time[pipe] = sched_clock();
@@ -1615,6 +1617,9 @@ static void core_config_pipe(struct mml_task *task, u32 pipe)
 			inc_task_cnt(cfg->mml, false);
 
 		cmdq_check_thread_complete(tp_clt->chan);
+		if (cfg->info.mode == MML_MODE_DDP_ADDON ||
+			cfg->info.mode == MML_MODE_DIRECT_LINK)
+			cmdq_check_thread_complete(rb_clt->chan);
 	}
 
 	err = core_config(task, pipe);

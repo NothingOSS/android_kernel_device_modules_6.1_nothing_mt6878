@@ -35,7 +35,6 @@
 #define HDR_LABEL_CNT_REG	6
 #define HDR_LABEL_CNT_CURVE	7
 #define HDR_LABEL_CNT		(HDR_LABEL_CNT_REG + HDR_LABEL_CNT_CURVE)
-#define GCE_THREAD_START (2)
 
 enum mml_hdr_reg_index {
 	HDR_TOP,
@@ -376,8 +375,9 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			hdr->out_idx = ccfg->node->out_idx;
 
 			if (!(hdr->hdr_hist[ccfg->pipe]))
-				mml_pq_get_readback_buffer(task,
-					ccfg->pipe, &(hdr->hdr_hist[ccfg->pipe]));
+				mml_pq_get_readback_buffer(task, ccfg->pipe,
+					&(hdr->hdr_hist[ccfg->pipe]));
+			hdr->hist_pkts[ccfg->pipe]->no_irq = !task->config->irq;
 			queue_work(hdr->hdr_hist_wq, &hdr->hdr_hist_task);
 		}
 	}
