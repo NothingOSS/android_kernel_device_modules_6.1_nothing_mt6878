@@ -1338,10 +1338,19 @@ static ssize_t vcp_ee_enable_store(struct device *kobj
 	unsigned int value = 0;
 
 	if (kstrtouint(buf, 10, &value) == 0) {
-		vcp_ee_enable = value;
-		vcp_dbg_log = value;
-		pr_debug("[VCP] vcp_ee_enable(vcp_dbg_log) = %d(1:enable, 0:disable)\n"
-				, vcp_ee_enable);
+		if (value == 0)
+			vcp_ee_enable = 0;
+		else if (value == 1)
+			vcp_ee_enable = 1;
+		else if (value == 2)
+			vcp_dbg_log = 0;
+		else if (value == 3)
+			vcp_dbg_log = 1;
+		else
+			pr_notice("[VCP] %s: %d not valied\n", __func__, value);
+
+		pr_debug("[VCP] vcp_ee_enable = %d, vcp_dbg_log = %d (1:enable, 0:disable)\n"
+				, vcp_ee_enable, vcp_dbg_log);
 	}
 	return n;
 }
