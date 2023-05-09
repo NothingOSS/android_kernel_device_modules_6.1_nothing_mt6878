@@ -662,11 +662,15 @@ static ssize_t goodix_ts_irq_info_show(struct device *dev,
 		return -EINVAL;
 
 	desc = irq_to_desc(core_data->irq);
-	offset += r;
-	r = snprintf(&buf[offset], PAGE_SIZE - offset, "disable-depth:%d\n",
-		     desc->depth);
-	if (r < 0)
-		return -EINVAL;
+	if (desc) {
+		offset += r;
+		r = snprintf(&buf[offset], PAGE_SIZE - offset, "disable-depth:%d\n",
+			desc->depth);
+		if (r < 0)
+			return -EINVAL;
+	} else {
+		ts_info("invalid desc!");
+	}
 
 	offset += r;
 	r = snprintf(&buf[offset], PAGE_SIZE - offset, "trigger-count:%zu\n",
@@ -2480,6 +2484,12 @@ static int goodix_ts_probe(struct platform_device *pdev)
 err_out:
 	core_data->init_stage = CORE_INIT_FAIL;
 	core_module_prob_sate = CORE_MODULE_PROB_FAILED;
+#if IS_ENABLED(CONFIG_PINCTRL)
+	if (core_data->pinctrl) {
+		pinctrl_put(core_data->pinctrl);
+		core_data->pinctrl = NULL;
+	}
+#endif
 	ts_err("goodix_ts_core failed, ret:%d", ret);
 	goodix_spi_bus_exit();
 	return ret;
