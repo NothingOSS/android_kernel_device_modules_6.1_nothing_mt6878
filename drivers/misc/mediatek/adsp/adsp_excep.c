@@ -11,6 +11,7 @@
 #include <linux/mutex.h>
 #include <linux/delay.h>
 #include <linux/io.h>
+#include <linux/ktime.h>
 #if IS_ENABLED(CONFIG_PM_WAKELOCKS)
 #include <linux/pm_wakeup.h>
 #endif
@@ -38,6 +39,9 @@
 static char *adsp_ke_buffer;
 static struct adsp_exception_control excep_ctrl;
 static bool suppress_test_ee;
+
+ktime_t adsp_exception_enter_wdt_ts;
+ktime_t adsp_exception_leave_wdt_ts;
 
 /*
  * copy_from_iomem - copy io memory(sram,cfg) to destination memory
@@ -350,6 +354,11 @@ void adsp_aed_worker(struct work_struct *ws)
 						aed_work);
 	struct adsp_priv *pdata = NULL;
 	int cid = 0, ret = 0, retry = 0;
+
+	pr_info("%s, adsp enter wdt[%lld], leave wdt[%lld] during %lld us", __func__,
+		adsp_exception_enter_wdt_ts, adsp_exception_leave_wdt_ts,
+		ktime_us_delta(adsp_exception_leave_wdt_ts, adsp_exception_enter_wdt_ts));
+
 #if IS_ENABLED(CONFIG_PM_WAKELOCKS)
 	/* wake lock AP*/
 	__pm_stay_awake(ctrl->wakeup_lock);
@@ -469,11 +478,13 @@ int deinit_adsp_exception_control(void)
 void adsp_wdt_handler(int irq, void *data, int cid)
 {
 	struct adsp_priv *pdata = (struct adsp_priv *)data;
+	adsp_exception_enter_wdt_ts = ktime_get();
 
 	if (!adsp_aed_dispatch(EXCEP_RUNTIME, data))
 		pr_info("%s, already resetting, ignore core%d wdt",
 			__func__, pdata->id);
 
+	adsp_exception_leave_wdt_ts = ktime_get();
 }
 
 void get_adsp_aee_buffer(unsigned long *vaddr, unsigned long *size)
