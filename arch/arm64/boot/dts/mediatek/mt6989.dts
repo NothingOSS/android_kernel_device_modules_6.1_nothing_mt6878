@@ -7356,9 +7356,7 @@
 				  <0 0x1a038000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <0>;
-#if 0
 			mediatek,larbs = <&smi_larb16>;
-#endif
 			interrupts = <GIC_SPI 560 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBA>;
 			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
@@ -7391,46 +7389,49 @@
 				"topckgen_top_cam_sel",
 				"vlpckgen_vlp_camtg_sel",
 				"topckgen_top_camtm_sel";
-#if 0
-			iommus = <&disp_iommu M4U_L16_P0_CQI_R1_U0>,
-				<&disp_iommu M4U_L16_P1_RAWI_R2_U0>,
-				<&disp_iommu M4U_L16_P2_RAWI_R3_U0>,
-				<&disp_iommu M4U_L16_P4_RAWI_R5_U0>,
-				<&disp_iommu M4U_L16_P5_IMGO_R1_U0>,
-				<&disp_iommu M4U_L16_P7_FPRI_R1_U0>,
-				<&disp_iommu M4U_L16_P8_BPCI_R1_U0>,
-				<&disp_iommu M4U_L16_P10_LSCI_R1_U0>,
-				<&disp_iommu M4U_L16_P11_UFEO_R1_U0>,
-				<&disp_iommu M4U_L16_P12_LTMSO_R1_U0>,
-				<&disp_iommu M4U_L16_P13_DRZB2NO_R1_U0>,
-				<&disp_iommu M4U_L16_P14_AFO_R1_U0>,
-				<&disp_iommu M4U_L16_P15_AAO_R1_U0>;
+			mediatek,smmu-dma-axid =
+				<SMMU_L16_P0_CQI_R1>,
+				<SMMU_L16_P1_RAWI_R2>,
+				<SMMU_L16_P2_RAWI_R3>,
+				<SMMU_L16_P4_RAWI_R5>,
+				<SMMU_L16_P5_IMGO_R1>,
+				<SMMU_L16_P7_FPRI_R1>,
+				<SMMU_L16_P8_BPCI_R1>,
+				<SMMU_L16_P9_BPCI_R4>,
+				<SMMU_L16_P10_LSCI_R1>,
+				<SMMU_L16_P11_UFEO_R1>,
+				<SMMU_L16_P12_LTMSO_R1>,
+				<SMMU_L16_P13_DRZB2NO_R1>,
+				<SMMU_L16_P15_AFO_R1>,
+				<SMMU_L16_P16_AAO_R1>;
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(M4U_L16_P0_CQI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L16_P0_CQI_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L16_P1_RAWI_R2_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L16_P1_RAWI_R2)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L16_P2_RAWI_R3_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L16_P2_RAWI_R3)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L16_P4_RAWI_R5_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L16_P4_RAWI_R5)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L16_P5_IMGO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L16_P5_IMGO_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L16_P7_FPRI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L16_P7_FPRI_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L16_P8_BPCI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L16_P8_BPCI_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L16_P10_LSCI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L16_P9_BPCI_R4)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L16_P11_UFEO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L16_P10_LSCI_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L16_P12_LTMSO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L16_P11_UFEO_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L16_P13_DRZB2NO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L16_P12_LTMSO_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L16_P14_AFO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L16_P13_DRZB2NO_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L16_P15_AAO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L16_P15_AFO_R1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L16_P16_AAO_R1)
 					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names =
 				"cqi_r1",
@@ -7440,13 +7441,13 @@
 				"imgo_r1",
 				"fpri_r1",
 				"bpci_r1",
+				"bpci_r4",
 				"lsci_r1",
 				"ufeo_r1",
 				"ltmso_r1",
 				"drzb2no_r1",
 				"afo_r1",
 				"aao_r1";
-#endif
 		};
 
 		cam-rms-a@1a040000 {
@@ -7469,9 +7470,7 @@
 				  <0 0x1a058000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <0>;
-#if 0
 			mediatek,larbs = <&smi_larb17>;
-#endif
 			interrupts = <GIC_SPI 561 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBA>;
 			clocks = <&camsys_yuva_clk CLK_CAM_YA_LARBX>,
@@ -7480,28 +7479,28 @@
 			clock-names = "camsys_yuva_larbx_cgpdn",
 				"camsys_yuva_cam_cgpdn",
 				"camsys_yuva_camtg_cgpdn";
-#if 0
-			iommus = <&disp_iommu M4U_L17_P0_YUVO_R1_U0>,
-				<&disp_iommu M4U_L17_P1_YUVO_R3_U0>,
-				<&disp_iommu M4U_L17_P2_YUVO_R2_U0>,
-				<&disp_iommu M4U_L17_P3_YUVO_R5_U0>,
-				<&disp_iommu M4U_L17_P4_RGBWI_R1_U0>,
-				<&disp_iommu M4U_L17_P5_TCYSO_R1_U0>,
-				<&disp_iommu M4U_L17_P6_DRZHNO_R3_U0>;
+			mediatek,smmu-dma-axid =
+				<SMMU_L17_P0_YUVO_R1>,
+				<SMMU_L17_P1_YUVO_R3>,
+				<SMMU_L17_P2_YUVO_R2>,
+				<SMMU_L17_P3_YUVO_R5>,
+				<SMMU_L17_P4_RGBWI_R1>,
+				<SMMU_L17_P6_TCYSO_R1>,
+				<SMMU_L17_P7_DRZ4NO_R3>;
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(M4U_L17_P0_YUVO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L17_P0_YUVO_R1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L17_P1_YUVO_R3_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L17_P1_YUVO_R3)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L17_P2_YUVO_R2_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L17_P2_YUVO_R2)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L17_P3_YUVO_R5_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L17_P3_YUVO_R5)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L17_P4_RGBWI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L17_P4_RGBWI_R1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L17_P5_TCYSO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L17_P6_TCYSO_R1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L17_P6_DRZHNO_R3_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L17_P7_DRZ4NO_R3)
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names =
 				"yuvo_r1",
@@ -7510,8 +7509,7 @@
 				"yuvo_r5",
 				"rgbwi_r1",
 				"tcyso_r1",
-				"drzhno_r3";
-#endif
+				"drz4no_r3";
 		};
 
 		cam-raw-b@1a070000 {
@@ -7520,9 +7518,7 @@
 				  <0 0x1a078000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <1>;
-#if 0
-			mediatek,larbs = <&smi_larb36>;
-#endif
+			mediatek,larbs = <&smi_larb43>;
 			interrupts = <GIC_SPI 562 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBB>;
 			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
@@ -7555,46 +7551,49 @@
 				"topckgen_top_cam_sel",
 				"vlpckgen_vlp_camtg_sel",
 				"topckgen_top_camtm_sel";
-#if 0
-			iommus = <&mdp_iommu M4U_L36_P0_CQI_R1_U0>,
-				<&mdp_iommu M4U_L36_P1_RAWI_R2_U0>,
-				<&mdp_iommu M4U_L36_P2_RAWI_R3_U0>,
-				<&mdp_iommu M4U_L36_P4_RAWI_R5_U0>,
-				<&mdp_iommu M4U_L36_P5_IMGO_R1_U0>,
-				<&mdp_iommu M4U_L36_P7_FPRI_R1_U0>,
-				<&mdp_iommu M4U_L36_P8_BPCI_R1_U0>,
-				<&mdp_iommu M4U_L36_P10_LSCI_R1_U0>,
-				<&mdp_iommu M4U_L36_P11_UFEO_R1_U0>,
-				<&mdp_iommu M4U_L36_P12_LTMSO_R1_U0>,
-				<&mdp_iommu M4U_L36_P13_DRZB2NO_R1_U0>,
-				<&mdp_iommu M4U_L36_P14_AFO_R1_U0>,
-				<&mdp_iommu M4U_L36_P15_AAO_R1_U0>;
+			mediatek,smmu-dma-axid =
+				<SMMU_L43_P0_CQI_R1>,
+				<SMMU_L43_P1_RAWI_R2>,
+				<SMMU_L43_P2_RAWI_R3>,
+				<SMMU_L43_P4_RAWI_R5>,
+				<SMMU_L43_P5_IMGO_R1>,
+				<SMMU_L43_P7_FPRI_R1>,
+				<SMMU_L43_P8_BPCI_R1>,
+				<SMMU_L43_P9_BPCI_R4>,
+				<SMMU_L43_P10_LSCI_R1>,
+				<SMMU_L43_P11_UFEO_R1>,
+				<SMMU_L43_P12_LTMSO_R1>,
+				<SMMU_L43_P13_DRZB2NO_R1>,
+				<SMMU_L43_P15_AFO_R1>,
+				<SMMU_L43_P16_AAO_R1>;
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(M4U_L36_P0_CQI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L43_P0_CQI_R1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L36_P1_RAWI_R2_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L43_P1_RAWI_R2)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L36_P2_RAWI_R3_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L43_P2_RAWI_R3)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L36_P4_RAWI_R5_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L43_P4_RAWI_R5)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L36_P5_IMGO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L43_P5_IMGO_R1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L36_P7_FPRI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L43_P7_FPRI_R1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L36_P8_BPCI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L43_P8_BPCI_R1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L36_P10_LSCI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L43_P9_BPCI_R4)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L36_P11_UFEO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L43_P10_LSCI_R1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L36_P12_LTMSO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L43_P11_UFEO_R1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L36_P13_DRZB2NO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L43_P12_LTMSO_R1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L36_P14_AFO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L43_P13_DRZB2NO_R1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L36_P15_AAO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L43_P15_AFO_R1)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L43_P16_AAO_R1)
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names =
 				"cqi_r1",
@@ -7604,13 +7603,13 @@
 				"imgo_r1",
 				"fpri_r1",
 				"bpci_r1",
+				"bpci_r4",
 				"lsci_r1",
 				"ufeo_r1",
 				"ltmso_r1",
 				"drzb2no_r1",
 				"afo_r1",
 				"aao_r1";
-#endif
 		};
 
 		cam-rms-b@1a080000 {
@@ -7633,9 +7632,7 @@
 				  <0 0x1a098000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <1>;
-#if 0
-			mediatek,larbs = <&smi_larb34>;
-#endif
+			mediatek,larbs = <&smi_larb45>;
 			interrupts = <GIC_SPI 563 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBB>;
 			clocks = <&camsys_yuvb_clk CLK_CAM_YB_LARBX>,
@@ -7644,28 +7641,28 @@
 			clock-names = "camsys_yuvb_larbx_cgpdn",
 				"camsys_yuvb_cam_cgpdn",
 				"camsys_yuvb_camtg_cgpdn";
-#if 0
-			iommus = <&disp_iommu M4U_L34_P0_YUVO_R1_U0>,
-				<&disp_iommu M4U_L34_P1_YUVO_R3_U0>,
-				<&disp_iommu M4U_L34_P2_YUVO_R2_U0>,
-				<&disp_iommu M4U_L34_P3_YUVO_R5_U0>,
-				<&disp_iommu M4U_L34_P4_RGBWI_R1_U0>,
-				<&disp_iommu M4U_L34_P5_TCYSO_R1_U0>,
-				<&disp_iommu M4U_L34_P6_DRZHNO_R3_U0>;
+			mediatek,smmu-dma-axid =
+				<SMMU_L45_P0_YUVO_R1>,
+				<SMMU_L45_P1_YUVO_R3>,
+				<SMMU_L45_P2_YUVO_R2>,
+				<SMMU_L45_P3_YUVO_R5>,
+				<SMMU_L45_P4_RGBWI_R1>,
+				<SMMU_L45_P6_TCYSO_R1>,
+				<SMMU_L45_P7_DRZ4NO_R3>;
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(M4U_L34_P0_YUVO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L45_P0_YUVO_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L34_P1_YUVO_R3_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L45_P1_YUVO_R3)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L34_P2_YUVO_R2_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L45_P2_YUVO_R2)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L34_P3_YUVO_R5_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L45_P3_YUVO_R5)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L34_P4_RGBWI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L45_P4_RGBWI_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L34_P5_TCYSO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L45_P6_TCYSO_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L34_P6_DRZHNO_R3_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L45_P7_DRZ4NO_R3)
 					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names =
 				"yuvo_r1",
@@ -7674,8 +7671,7 @@
 				"yuvo_r5",
 				"rgbwi_r1",
 				"tcyso_r1",
-				"drzhno_r3";
-#endif
+				"drz4no_r3";
 		};
 
 		cam-raw-c@1a0b0000 {
@@ -7684,9 +7680,7 @@
 				  <0 0x1a0b8000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <2>;
-#if 0
-			mediatek,larbs = <&smi_larb37>;
-#endif
+			mediatek,larbs = <&smi_larb44>;
 			interrupts = <GIC_SPI 564 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBC>;
 			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
@@ -7719,46 +7713,49 @@
 				"topckgen_top_cam_sel",
 				"vlpckgen_vlp_camtg_sel",
 				"topckgen_top_camtm_sel";
-#if 0
-			iommus = <&disp_iommu M4U_L37_P0_CQI_R1_U0>,
-				<&disp_iommu M4U_L37_P1_RAWI_R2_U0>,
-				<&disp_iommu M4U_L37_P2_RAWI_R3_U0>,
-				<&disp_iommu M4U_L37_P4_RAWI_R5_U0>,
-				<&disp_iommu M4U_L37_P5_IMGO_R1_U0>,
-				<&disp_iommu M4U_L37_P7_FPRI_R1_U0>,
-				<&disp_iommu M4U_L37_P8_BPCI_R1_U0>,
-				<&disp_iommu M4U_L37_P10_LSCI_R1_U0>,
-				<&disp_iommu M4U_L37_P11_UFEO_R1_U0>,
-				<&disp_iommu M4U_L37_P12_LTMSO_R1_U0>,
-				<&disp_iommu M4U_L37_P13_DRZB2NO_R1_U0>,
-				<&disp_iommu M4U_L37_P14_AFO_R1_U0>,
-				<&disp_iommu M4U_L37_P15_AAO_R1_U0>;
+			mediatek,smmu-dma-axid =
+				<SMMU_L44_P0_CQI_R1>,
+				<SMMU_L44_P1_RAWI_R2>,
+				<SMMU_L44_P2_RAWI_R3>,
+				<SMMU_L44_P4_RAWI_R5>,
+				<SMMU_L44_P5_IMGO_R1>,
+				<SMMU_L44_P7_FPRI_R1>,
+				<SMMU_L44_P8_BPCI_R1>,
+				<SMMU_L44_P9_BPCI_R4>,
+				<SMMU_L44_P10_LSCI_R1>,
+				<SMMU_L44_P11_UFEO_R1>,
+				<SMMU_L44_P12_LTMSO_R1>,
+				<SMMU_L44_P13_DRZB2NO_R1>,
+				<SMMU_L44_P15_AFO_R1>,
+				<SMMU_L44_P16_AAO_R1>;
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(M4U_L37_P0_CQI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L44_P0_CQI_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L37_P1_RAWI_R2_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L44_P1_RAWI_R2)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L37_P2_RAWI_R3_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L44_P2_RAWI_R3)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L37_P4_RAWI_R5_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L44_P4_RAWI_R5)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L37_P5_IMGO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L44_P5_IMGO_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L37_P7_FPRI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L44_P7_FPRI_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L37_P8_BPCI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L44_P8_BPCI_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L37_P10_LSCI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L44_P9_BPCI_R4)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L37_P11_UFEO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L44_P10_LSCI_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L37_P12_LTMSO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L44_P11_UFEO_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L37_P13_DRZB2NO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L44_P12_LTMSO_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L37_P14_AFO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L44_P13_DRZB2NO_R1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L37_P15_AAO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L44_P15_AFO_R1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L44_P16_AAO_R1)
 					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names =
 				"cqi_r1",
@@ -7768,13 +7765,13 @@
 				"imgo_r1",
 				"fpri_r1",
 				"bpci_r1",
+				"bpci_r4",
 				"lsci_r1",
 				"ufeo_r1",
 				"ltmso_r1",
 				"drzb2no_r1",
 				"afo_r1",
 				"aao_r1";
-#endif
 		};
 
 		cam-rms-c@1a0c0000 {
@@ -7797,9 +7794,7 @@
 				  <0 0x1a0d8000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <2>;
-#if 0
-			mediatek,larbs = <&smi_larb35>;
-#endif
+			mediatek,larbs = <&smi_larb46>;
 			interrupts = <GIC_SPI 565 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBC>;
 			clocks = <&camsys_yuvc_clk CLK_CAM_YC_LARBX>,
@@ -7808,28 +7803,28 @@
 			clock-names = "camsys_yuvc_larbx_cgpdn",
 				"camsys_yuvc_cam_cgpdn",
 				"camsys_yuvc_camtg_cgpdn";
-#if 0
-			iommus = <&mdp_iommu M4U_L35_P0_YUVO_R1_U0>,
-				<&mdp_iommu M4U_L35_P1_YUVO_R3_U0>,
-				<&mdp_iommu M4U_L35_P2_YUVO_R2_U0>,
-				<&mdp_iommu M4U_L35_P3_YUVO_R5_U0>,
-				<&mdp_iommu M4U_L35_P4_RGBWI_R1_U0>,
-				<&mdp_iommu M4U_L35_P5_TCYSO_R1_U0>,
-				<&mdp_iommu M4U_L35_P6_DRZHNO_R3_U0>;
+			mediatek,smmu-dma-axid =
+				<SMMU_L46_P0_YUVO_R1>,
+				<SMMU_L46_P1_YUVO_R3>,
+				<SMMU_L46_P2_YUVO_R2>,
+				<SMMU_L46_P3_YUVO_R5>,
+				<SMMU_L46_P4_RGBWI_R1>,
+				<SMMU_L46_P6_TCYSO_R1>,
+				<SMMU_L46_P7_DRZ4NO_R3>;
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(M4U_L35_P0_YUVO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L46_P0_YUVO_R1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L35_P1_YUVO_R3_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L46_P1_YUVO_R3)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L35_P2_YUVO_R2_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L46_P2_YUVO_R2)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L35_P3_YUVO_R5_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L46_P3_YUVO_R5)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L35_P4_RGBWI_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L46_P4_RGBWI_R1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L35_P5_TCYSO_R1_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L46_P6_TCYSO_R1)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L35_P6_DRZHNO_R3_U0)
+				<&mmqos MASTER_LARB_PORT(SMMU_L46_P7_DRZ4NO_R3)
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names =
 				"yuvo_r1",
@@ -7838,8 +7833,7 @@
 				"yuvo_r5",
 				"rgbwi_r1",
 				"tcyso_r1",
-				"drzhno_r3";
-#endif
+				"drz4no_r3";
 		};
 		camsv1@1a100000 {
 			compatible = "mediatek,camsv";
