@@ -28,6 +28,10 @@
 #include "mtk_qos_bound.h"
 #include "mmqos-vcp.h"
 
+#if IS_ENABLED(CONFIG_MTK_EMI)
+#include <soc/mediatek/emi.h>
+#endif /* CONFIG_MTK_EMI */
+
 #define CREATE_TRACE_POINTS
 #include "mmqos_events.h"
 
@@ -1323,7 +1327,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	struct larb_node *larb_node;
 	struct larb_port_node *larb_port_node;
 	struct mtk_iommu_data *smi_imu;
-	int i, j, id, num_larbs = 0, ret, ddr_type;
+	int i, j, id, num_larbs = 0, ret, ddr_type, max_freq, chn_cnt;
 	const struct mtk_mmqos_desc *mmqos_desc;
 	const struct mtk_node_desc *node_desc;
 	struct device *larb_dev;
@@ -1606,6 +1610,17 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	else
 		memcpy(hrt, &mmqos_desc->hrt, sizeof(mmqos_desc->hrt));
 	pr_notice("[mmqos] ddr type: %d\n", mtk_dramc_get_ddr_type());
+
+#if IS_ENABLED(CONFIG_MTK_DRAMC) && IS_ENABLED(CONFIG_MTK_EMI)
+	max_freq = mtk_dramc_get_steps_freq(0);
+	chn_cnt = mtk_emicen_get_ch_cnt();
+	if (max_freq > 0 && chn_cnt > 0)
+		hrt->hrt_total_bw = max_freq * chn_cnt * 2;
+	else
+		MMQOS_ERR("dramc or emi not ready, cannot get max frequency or channel count");
+	MMQOS_DBG("max_freq:%d, channel count:%d", max_freq, chn_cnt);
+#endif
+	MMQOS_DBG("hrt_total_bw: %d", hrt->hrt_total_bw);
 
 	hrt->md_scen = mmqos_desc->md_scen;
 	mtk_mmqos_init_hrt(hrt);
