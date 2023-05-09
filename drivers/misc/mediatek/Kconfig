@@ -60,6 +60,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/vmm_spm/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/vmm/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/vdec_fmt/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mminfra/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mmdebug/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/widevine_drm/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/hw_sem/Kconfig"
 endmenu # MultiMedia, Display, Camera
