@@ -3109,6 +3109,8 @@ static void ufs_mtk_mphy_dump(struct ufs_hba *hba)
 				mphy_reg_dump[j], mphy_record[i].record[j],
 				mphy_str[j]);
 		}
+		/* clear mphy record time to avoid to print remaining log */
+		mphy_record[i].time = 0;
 	}
 #endif
 }
