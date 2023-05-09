@@ -19,6 +19,7 @@ enum LOAD_DATA_METHOD {
 	LOAD_ELF_FILE,
 	LOAD_HDR_FILE,
 	LOAD_BIN_FILE,
+	LOAD_PRE_SECURE_BOOT,
 };
 
 static int load_data_method;
@@ -65,7 +66,6 @@ static void mdla_data_free_mem(struct device *dev)
 	cfg1.da = 0;
 }
 
-
 static int mdla_plat_load_elf(struct device *dev, unsigned int *initdata, unsigned int *maindata)
 {
 	return 0;
@@ -104,6 +104,18 @@ static int mdla_plat_load_hdr(struct device *dev, unsigned int *cfg0_data, unsig
 	return ret;
 }
 
+static int mdla_plat_load_pre_secure_boot(
+	struct device *dev,
+	unsigned int *cfg0_data,
+	unsigned int *cfg1_data)
+{
+	if (mdla_data_alloc_mem(dev) < 0)
+		return -1;
+	*cfg0_data = (unsigned int)cfg0.da;
+	*cfg1_data = (unsigned int)cfg1.da;
+	pr_info("%s +\n", __func__);
+	return 0;
+}
 
 int mdla_plat_load_data(struct device *dev, unsigned int *cfg0_data, unsigned int *cfg1_data)
 {
@@ -121,6 +133,8 @@ int mdla_plat_load_data(struct device *dev, unsigned int *cfg0_data, unsigned in
 		load_data_method = LOAD_ELF_FILE;
 	else if (!strcmp(method, "array"))
 		load_data_method = LOAD_HDR_FILE;
+	else if (!strcmp(method, "PreSecureBoot"))
+		load_data_method = LOAD_PRE_SECURE_BOOT;
 
 	switch (load_data_method) {
 	case LOAD_BIN_FILE:
@@ -132,10 +146,12 @@ int mdla_plat_load_data(struct device *dev, unsigned int *cfg0_data, unsigned in
 	case LOAD_HDR_FILE:
 		mdla_plat_load_hdr(dev, cfg0_data, cfg1_data);
 		break;
+	case LOAD_PRE_SECURE_BOOT:
+		mdla_plat_load_pre_secure_boot(dev, cfg0_data, cfg1_data);
+		break;
 	default:
 		break;
 	}
-
 
 	return ret;
 }

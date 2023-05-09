@@ -54,7 +54,6 @@ int mdla_ipi_send(int type_0, int type_1, u64 val)
 	ipi_cmd_send.type1  = type_1;
 	ipi_cmd_send.dir    = MDLA_IPI_WRITE;
 	ipi_cmd_send.data   = val;
-
 	mdla_verbose("send : %d %d, %d, %llu(0x%llx)\n",
 				ipi_cmd_send.type0,
 				ipi_cmd_send.type1,
@@ -151,7 +150,6 @@ static int mdla_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 		if (ret && ret != -EOPNOTSUPP)
 			mdla_err("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
 	}
-
 	mdla_verbose("tx rpmsg cb : %d %d, %d, %llu(0x%llx)\n",
 				d->type0,
 				d->type1,
@@ -187,7 +185,6 @@ static int mdla_rpmsg_rx_cb(struct rpmsg_device *rpdev, void *data,
 	} else {
 		mdla_err("Receive command ack -> use the wrong channel!?\n");
 	}
-
 	mdla_verbose("rpmsg cb : %d %d, %d, %llu(0x%llx)\n",
 				d->type0,
 				d->type1,
