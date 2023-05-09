@@ -1234,6 +1234,9 @@ int mtk_drm_ioctl_get_pq_caps(struct drm_device *dev, void *data,
 			to_mtk_crtc(crtc), MTK_DISP_CCORR, 0);
 	struct mtk_drm_pq_caps_info *pq_info = data;
 
+	if (IS_ERR_OR_NULL(comp))
+		return -EFAULT;
+
 	return mtk_get_ccorr_caps(comp, &pq_info->ccorr_caps);
 }
 

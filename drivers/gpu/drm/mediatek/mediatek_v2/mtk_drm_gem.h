@@ -58,6 +58,8 @@ void mtk_drm_gem_ion_free_handle(struct dma_buf *buf_hnd, const char *name,
 				int line);
 struct dma_buf *mtk_drm_gem_ion_import_handle(int fd);
 struct sg_table *mtk_gem_prime_get_sg_table(struct drm_gem_object *obj);
+struct drm_gem_object *mtk_gem_prime_import(struct drm_device *dev,
+					    struct dma_buf *dma_buf);
 struct drm_gem_object *
 mtk_gem_prime_import_sg_table(struct drm_device *dev,
 			      struct dma_buf_attachment *attach,

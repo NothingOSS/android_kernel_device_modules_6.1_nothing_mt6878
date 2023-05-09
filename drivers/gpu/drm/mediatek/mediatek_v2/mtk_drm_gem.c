@@ -535,6 +535,13 @@ struct sg_table *mtk_gem_prime_get_sg_table(struct drm_gem_object *obj)
 	return sgt;
 }
 
+struct drm_gem_object *mtk_gem_prime_import(struct drm_device *dev,
+					    struct dma_buf *dma_buf)
+{
+	return drm_gem_prime_import_dev(dev, dma_buf,
+		mtk_smmu_get_shared_device(dev->dev));
+}
+
 struct drm_gem_object *
 mtk_gem_prime_import_sg_table(struct drm_device *dev,
 			      struct dma_buf_attachment *attach,
