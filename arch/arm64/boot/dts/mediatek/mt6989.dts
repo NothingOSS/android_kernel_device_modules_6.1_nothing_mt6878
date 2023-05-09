@@ -8909,8 +8909,9 @@
 				<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC0>,
 				<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC2>,
 				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC0>,
-				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC2>;
-			clock-names = "apb_bus", "dli0", "dli2", "dlo0", "dlo2";
+				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC2>,
+				<&mmdvfs_mux MMDVFS_USER_MML>;
+			clock-names = "apb_bus", "dli0", "dli2", "dlo0", "dlo2", "mmdvfs_mux";
 			mmlsys-clock-names = "apb_bus";
 			dli0-clock-names = "dli0";
 			dli2-clock-names = "dli2";
@@ -9050,6 +9051,7 @@
 			dli2-dl-relay = /bits/ 16 <MML_DL_IN_RELAY2_SIZE>;
 			dlo0-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY0_SIZE>;
 			dlo2-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY2_SIZE>;
+			operating-points-v2 = <&opp_table_disp>;
 		};
 
 		mml_mutex0: mml-mutex0@1f801000 {
@@ -9101,6 +9103,11 @@
 				<CMDQ_EVENT_MMLSYS1_MDP_RDMA0_FRAME_DONE>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L3_P0_MDP_RDMA0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MTK_SMMU_PORT_ID(48, 0) &mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "mml_dma", "mml_dma_dpc";
 		};
 
 		mml_hdr0: mml-hdr0@1f805000 {
@@ -9109,8 +9116,7 @@
 			reg = <0 0x1f805000 0 0x1000>;
 			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_HDR0>;
 			clock-names = "hdr0";
-			mediatek,larb = <&smi_larb3
-				MTK_M4U_TO_PORT(SMMU_L3_P7_MDP_FAKE_ENG0)>;
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P7_MDP_FAKE_ENG0)>;
 			comp-ids = <MML_HDR0>;
 			comp-names = "hdr0";
 		};
@@ -9121,8 +9127,7 @@
 			reg = <0 0x1f807000 0 0x1000>;
 			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_AAL0>;
 			clock-names = "aal0";
-			mediatek,larb = <&smi_larb3
-				MTK_M4U_TO_PORT(SMMU_L3_P7_MDP_FAKE_ENG0)>;
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P7_MDP_FAKE_ENG0)>;
 			comp-ids = <MML_AAL0>;
 			comp-names = "aal0";
 			sram-curve-base = /bits/ 32 <4608>;
@@ -9175,6 +9180,11 @@
 			inlinerot = <&inlinerot0>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L3_P1_MDP_WROT0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MTK_SMMU_PORT_ID(48, 1) &mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "mml_dma";
 		};
 
 		mml_rdma2: mml-rdma2@1f811000 {
@@ -9189,6 +9199,10 @@
 				<CMDQ_EVENT_MMLSYS1_MDP_RDMA2_FRAME_DONE>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
+			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L3_P4_MDP_RDMA2)
+					&mmqos SLAVE_COMMON(1)>,
+					<&mmqos MTK_SMMU_PORT_ID(48, 4) &mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "mml_dma", "mml_dma_dpc";
 		};
 
 		mml_rsz2: mml-rsz2@1f813000 {
@@ -9212,6 +9226,11 @@
 				<CMDQ_EVENT_MMLSYS1_MDP_WROT2_FRAME_DONE>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L3_P5_MDP_WROT2)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MTK_SMMU_PORT_ID(48, 5) &mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "mml_dma", "mml_dma_dpc";
 		};
 
 		hre-top-mdpsys@1f817000 {
@@ -9241,6 +9260,11 @@
 				<CMDQ_EVENT_MMLSYS1_MDP_RROT0_FRAME_DONE>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L3_P10_MDP_RROT0_STASH)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MTK_SMMU_PORT_ID(48, 10) &mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "mml_dma", "mml_dma_dpc";
 		};
 
 		mml_rrot0_2nd: mml-rrot0-2nd-bbse@1f81b000 {
@@ -9256,6 +9280,11 @@
 				<CMDQ_EVENT_MMLSYS1_MDP_RROT0_2ND_FRAME_DONE>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L3_P11_MDP_RROT0_2ND_STASH)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MTK_SMMU_PORT_ID(48, 11) &mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "mml_dma", "mml_dma_dpc";
 		};
 
 		mml_merge0: mml-merge0-bcse@1f81c000 {
