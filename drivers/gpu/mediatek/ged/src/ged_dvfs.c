@@ -186,6 +186,7 @@ static int overdue_counter;
 static int FORCE_OPP = -1;
 static int FORCE_TOP_OPP = -1;
 static int g_async_ratio_support;
+unsigned int get_min_oppidx;
 
 void ged_dvfs_last_and_target_cb(int t_gpu_target, int boost_accum_gpu)
 {
@@ -2941,6 +2942,14 @@ int ged_dvfs_get_stack_oppidx(void)
 
 int ged_dvfs_get_recude_mips_policy_state(void)
 {
+	static unsigned int init_flag;
+
+	/* init setting, default eb_pllicy mode = 1 */
+	if (init_flag == 0) {
+		g_fastdvfs_mode = 1;
+		init_flag = 1;
+	}
+
 	return g_fastdvfs_mode;
 }
 
@@ -3037,7 +3046,7 @@ GED_ERROR ged_dvfs_system_init(void)
 
 	spin_lock_init(&g_sSpinLock);
 
-	/* find node to support DVFS new feature */
+	/* find node to support FASTDVFS (reduce mips) feature */
 	reduce_mips_dvfs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_reduce_mips");
 
 	if (unlikely(!reduce_mips_dvfs_node)) {
@@ -3047,8 +3056,15 @@ GED_ERROR ged_dvfs_system_init(void)
 		of_property_read_u32(reduce_mips_dvfs_node, "reduce-mips-support",
 								&g_reduce_mips_support);
 	}
-	/* set reduce mips flag */
+	/* set reduce mips support flag */
 	mips_support_flag = g_reduce_mips_support;
+
+	/* get min oppidx (limit min oppidx in gpueb) */
+	if (mips_support_flag == 1) {
+		get_min_oppidx = ged_get_min_oppidx();
+		mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_MIN_OPPIDX, get_min_oppidx);
+		GED_LOGI("dts support, min_oppidx=%u", get_min_oppidx);
+	}
 
 	async_dvfs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_async_ratio");
 	if (unlikely(!async_dvfs_node)) {

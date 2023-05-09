@@ -29,7 +29,8 @@
  * GPU FAST DVFS SYSRAM Setting
  **************************************************/
 #define FASTDVFS_COUNTER_FIRST_ENTRY NR_BM_COUNTER   // use to offset array
-#define FASTDVFS_FEEDBACK_INFO_FIRST_ENTRY 32   // use to offset array
+#define FASTDVFS_FEEDBACK_INFO_FIRST_ENTRY 35        // use to offset array
+
 #define SYSRAM_LOG_SIZE sizeof(int)
 
 // FDVFS SYSRAM space is allocated after BM, 5~24
@@ -63,6 +64,7 @@ enum gpu_fastdvfs_counter {
 	FASTDVFS_GPU_EB_MARGIN_LOW,
 	FASTDVFS_GPU_EB_MARGIN,
 	FASTDVFS_GPU_EB_CUR_POLICY_STATE,
+	FASTDVFS_GPU_EB_GED_MIN_OPPIDX,
 
 	NR_FASTDVFS_COUNTER,
 };
@@ -244,9 +246,13 @@ enum gpu_fastdvfs_share_info {
 (                              \
 (FASTDVFS_GPU_EB_MARGIN*SYSRAM_LOG_SIZE) \
 )
-#define SYSRAM_GPU_EB_CUR_POLICY_STATE	\
+#define SYSRAM_GPU_EB_CUR_POLICY_STATE  \
 (                                        \
 (FASTDVFS_GPU_EB_CUR_POLICY_STATE*SYSRAM_LOG_SIZE) \
+)
+#define SYSRAM_GPU_EB_GED_MIN_OPPIDX  \
+(									   \
+(FASTDVFS_GPU_EB_GED_MIN_OPPIDX*SYSRAM_LOG_SIZE) \
 )
 
 

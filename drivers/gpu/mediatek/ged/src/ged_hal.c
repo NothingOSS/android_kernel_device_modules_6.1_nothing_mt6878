@@ -463,16 +463,9 @@ static ssize_t reduce_mips_dvfs_show(struct kobject *kobj,
 	unsigned int eb_policy_mode;
 	int pos = 0;
 	int length;
-	static unsigned int init_flag;
 
 	reduce_mips_support = is_fdvfs_enable();
-
-	if (init_flag == 0 && reduce_mips_support == 1) {
-		eb_policy_mode = 1;
-		init_flag = 1;
-	} else {
-		eb_policy_mode = ged_dvfs_get_recude_mips_policy_state();
-	}
+	eb_policy_mode = ged_dvfs_get_recude_mips_policy_state();
 
 	length = scnprintf(buf + pos, PAGE_SIZE - pos,
 				"dvfs recude-mips, eb_policy(%d), dts support(%d)\n",

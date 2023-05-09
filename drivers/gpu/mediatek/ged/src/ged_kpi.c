@@ -1358,7 +1358,7 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		target_fps_margin = psKPI->target_fps_margin;
 		force_fallback = g_force_gpu_dvfs_fallback;
 
-		/* In GPU Job Boundary check & commit gpueb desire oppidx */
+		/* In GPU Job Boundary, ged will check & commit gpueb desire oppidx */
 		if (is_fdvfs_enable()) {
 			if (ged_get_policy_state() != POLICY_STATE_FB)
 				ged_kpi_fastdvfs_update_dcs();
