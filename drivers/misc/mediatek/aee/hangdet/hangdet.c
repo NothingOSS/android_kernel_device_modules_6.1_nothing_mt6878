@@ -765,7 +765,8 @@ static void kwdt_process_kick(int local_bit, int cpu,
 
 	if ((local_bit & (get_check_bit() & s_s2idle)) == (get_check_bit() & s_s2idle)) {
 		all_k_timer_t = sched_clock();
-		del_timer(&aee_dump_timer);
+		if (timer_pending(&aee_dump_timer))
+			del_timer(&aee_dump_timer);
 		aee_dump_timer_t = 0;
 		cpus_skip_bit = 0;
 		msg_buf[5] = 'k';
@@ -843,9 +844,9 @@ static void kwdt_process_kick(int local_bit, int cpu,
 				pm_system_wakeup();
 				aee_dump_timer_t = sched_clock();
 				g_change_tmo = 1;
-				spin_unlock_bh(&lock);
 				aee_dump_timer.expires = jiffies + CHG_TMO_DLY_SEC * HZ;
 				add_timer(&aee_dump_timer);
+				spin_unlock_bh(&lock);
 				return;
 			}
 			spin_unlock_bh(&lock);
@@ -1029,7 +1030,8 @@ static int wdt_pm_notify(struct notifier_block *notify_block,
 		lastsuspend_syst = cnt;
 
 		spin_lock_bh(&lock);
-		del_timer(&aee_dump_timer);
+		if (timer_pending(&aee_dump_timer))
+			del_timer(&aee_dump_timer);
 		aee_dump_timer_t = 0;
 		g_hang_detected = 0;
 		spin_unlock_bh(&lock);
