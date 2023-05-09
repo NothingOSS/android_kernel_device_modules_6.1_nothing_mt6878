@@ -17,6 +17,7 @@
 #include "mtk_drm_mmp.h"
 #include "mtk_drm_gem.h"
 #include "mtk_drm_fb.h"
+#include "mtk_drm_drv.h"
 
 #define DISP_REG_SPR_STA			0x0000
 
@@ -580,6 +581,35 @@
 	#define SPR_CUP_SRAM_RDATA_MSB              REG_FLD_MSB_LSB(15, 0)
 /* MTK SPRv2 Registers define end */
 
+//MT6989 Postalign
+#define MT6989_DISP_REG_POSTALIGN0_EN           0x000
+#define MT6989_DISP_REG_POSTALIGN0_RESET        0x004
+#define MT6989_DISP_REG_POSTALIGN0_INTEN        0x008
+	#define MT6989_IF_END_INT_EN                REG_FLD_MSB_LSB(0, 0)
+	#define MT6989_OF_END_INT_EN                REG_FLD_MSB_LSB(1, 1)
+#define MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL  0x014
+	#define MT6989_FORCE_COMMIT                 REG_FLD_MSB_LSB(0, 0)
+	#define MT6989_BYPASS_SHADOW                REG_FLD_MSB_LSB(1, 1)
+	#define MT6989_READ_WRK_REG                 REG_FLD_MSB_LSB(2, 2)
+#define MT6989_DISP_REG_POSTALIGN0_CFG          0x018
+	#define MT6989_POSTALIGN_SEL                REG_FLD_MSB_LSB(5, 0)
+	#define MT6989_POSTALIGN_6TYPE_MODE         REG_FLD_MSB_LSB(8, 8)
+	#define MT6989_DSC_PADDING_REPEAT_EN        REG_FLD_MSB_LSB(12, 12)
+	#define MT6989_RELAY_MODE                   REG_FLD_MSB_LSB(16, 16)
+	#define MT6989_POSTALIGN_LUT_EN             REG_FLD_MSB_LSB(17, 17)
+	#define MT6989_STALL_CG_ON                  REG_FLD_MSB_LSB(18, 18)
+#define MT6989_DISP_REG_POSTALIGN0_SIZE         0x01C
+	#define MT6989_VSIZE                        REG_FLD_MSB_LSB(12, 0)
+	#define MT6989_HSIZE                        REG_FLD_MSB_LSB(28, 16)
+#define MT6989_DISP_REG_POSTALIGN0_ARRANGE      0x020
+	#define MT6989_SPR_PIXELGROUP               REG_FLD_MSB_LSB(1, 0)
+	#define MT6989_SPR_ARRANGE_UL_P0            REG_FLD_MSB_LSB(6, 4)
+	#define MT6989_SPR_ARRANGE_UL_P1            REG_FLD_MSB_LSB(10, 8)
+	#define MT6989_SPR_ARRANGE_UL_P2            REG_FLD_MSB_LSB(14, 12)
+	#define MT6989_SPR_ARRANGE_DL_P0            REG_FLD_MSB_LSB(18, 16)
+	#define MT6989_SPR_ARRANGE_DL_P1            REG_FLD_MSB_LSB(22, 20)
+	#define MT6989_SPR_ARRANGE_DL_P2            REG_FLD_MSB_LSB(26, 24)
+
 //dispsys
 #define DISP_REG_POSTALIGN0_CON0                0x050
 	#define DISP_POSTALIGN0_ENG_EN              REG_FLD_MSB_LSB(0, 0)
@@ -587,7 +617,7 @@
 	#define DISP_POSTALIGN0_EN                  REG_FLD_MSB_LSB(16, 16)
 	#define DISP_POSTALIGN0_SEL                 REG_FLD_MSB_LSB(25, 20)
 	#define DISP_POSTALIGN0_PADDING_REPEAT_EN   REG_FLD_MSB_LSB(28, 28)
-	#define DISP_POSTALIGN0_6TYPE_MODE          REG_FLD_MSB_LSB(25, 20)
+	#define DISP_POSTALIGN0_6TYPE_MODE          REG_FLD_MSB_LSB(31, 31)
 
 #define DISP_REG_POSTALIGN0_CON1                0x054
 	#define DISP_POSTALIGN0_HSIZE               REG_FLD_MSB_LSB(12, 0)
@@ -1085,13 +1115,21 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 	resource_size_t config_regs_pa;
 	unsigned int crop_hoffset = 0;
 	unsigned int crop_out_hsize = 0;
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+	struct mtk_ddp_comp *postalign_comp;
 
 	if (!comp || !comp->mtk_crtc || !comp->mtk_crtc->panel_ext)
 		return;
 
 	if (comp->id == DDP_COMPONENT_SPR0) {
-		config_regs = comp->mtk_crtc->config_regs;
-		config_regs_pa = comp->mtk_crtc->config_regs_pa;
+		if (priv->data->mmsys_id == MMSYS_MT6989) {
+			postalign_comp = priv->ddp_comp[DDP_COMPONENT_POSTALIGN0];
+			config_regs = postalign_comp->regs;
+			config_regs_pa = postalign_comp->regs_pa;
+		} else {
+			config_regs = comp->mtk_crtc->config_regs;
+			config_regs_pa = comp->mtk_crtc->config_regs_pa;
+		}
 	} else {
 		config_regs = comp->mtk_crtc->side_config_regs;
 		config_regs_pa = comp->mtk_crtc->side_config_regs_pa;
@@ -1154,34 +1192,75 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 
 
 		//disable postalign
-		if (handle)
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				config_regs_pa + DISP_REG_POSTALIGN0_CON0, 0, ~0);
-		else
-			writel_relaxed(0, config_regs + DISP_REG_POSTALIGN0_CON0);
+		if (priv->data->mmsys_id == MMSYS_MT6989) {
+			mtk_ddp_write_relaxed(postalign_comp, 1, MT6989_DISP_REG_POSTALIGN0_EN,
+				handle);
+			mtk_ddp_write_mask(postalign_comp, MT6989_BYPASS_SHADOW,
+				MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
+				MT6989_BYPASS_SHADOW, handle);
+			mtk_ddp_write_mask(postalign_comp, MT6989_RELAY_MODE,
+				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_RELAY_MODE, handle);
+			mtk_ddp_write_mask(postalign_comp, MT6989_POSTALIGN_LUT_EN,
+				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_POSTALIGN_LUT_EN, handle);
+		} else {
+			if (handle)
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					config_regs_pa + DISP_REG_POSTALIGN0_CON0, 0, ~0);
+			else
+				writel_relaxed(0, config_regs + DISP_REG_POSTALIGN0_CON0);
+		}
 
 		return;
 	}
 
 	if (spr_params->enable == 1 && spr_params->relay == 0) {
 		//postalign config
-		reg_val = (!!spr_params->postalign_6type_mode_en << 31) |
-			(!!spr_params->padding_repeat_en << 28) |
-			(!!spr_params->postalign_en << (20 + spr_params->spr_format_type)) |
-			(!!spr_params->postalign_en << 16) | 1;
+		if (priv->data->mmsys_id == MMSYS_MT6989) {
+			mtk_ddp_write_relaxed(postalign_comp, 1, MT6989_DISP_REG_POSTALIGN0_EN,
+				handle);
+			mtk_ddp_write_mask(postalign_comp, MT6989_BYPASS_SHADOW,
+				MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
+				MT6989_BYPASS_SHADOW, handle);
+			mtk_ddp_write_mask(postalign_comp,
+				spr_params->postalign_en << spr_params->spr_format_type,
+				MT6989_DISP_REG_POSTALIGN0_CFG,
+				REG_FLD_MASK(MT6989_POSTALIGN_SEL), handle);
+			mtk_ddp_write_mask(postalign_comp,
+				spr_params->postalign_6type_mode_en << 8,
+				MT6989_DISP_REG_POSTALIGN0_CFG, POSTALIGN_6TYPE_MODE, handle);
+			mtk_ddp_write_mask(postalign_comp, spr_params->padding_repeat_en << 12,
+				MT6989_DISP_REG_POSTALIGN0_CFG,
+				MT6989_DSC_PADDING_REPEAT_EN, handle);
+			mtk_ddp_write_mask(postalign_comp, 0,
+				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_RELAY_MODE, handle);
+			mtk_ddp_write_mask(postalign_comp, MT6989_POSTALIGN_LUT_EN,
+				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_POSTALIGN_LUT_EN, handle);
 
-		if (handle) {
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				config_regs_pa + DISP_REG_POSTALIGN0_CON0,
-				reg_val, ~0);
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				config_regs_pa + DISP_REG_POSTALIGN0_CON1,
-				(height << 16 | postalign_width), ~0);
+			mtk_ddp_write_mask(postalign_comp, height << 0,
+				MT6989_DISP_REG_POSTALIGN0_SIZE,
+				REG_FLD_MASK(MT6989_VSIZE), handle);
+			mtk_ddp_write_mask(postalign_comp, width << 16,
+				MT6989_DISP_REG_POSTALIGN0_SIZE,
+				REG_FLD_MASK(MT6989_HSIZE), handle);
 		} else {
-			writel_relaxed(reg_val,
-				config_regs + DISP_REG_POSTALIGN0_CON0);
-			writel_relaxed((height << 16 | postalign_width),
-				config_regs + DISP_REG_POSTALIGN0_CON1);
+			reg_val = (!!spr_params->postalign_6type_mode_en << 31) |
+				(!!spr_params->padding_repeat_en << 28) |
+				(!!spr_params->postalign_en << (20 + spr_params->spr_format_type)) |
+				(!!spr_params->postalign_en << 16) | 1;
+
+			if (handle) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					config_regs_pa + DISP_REG_POSTALIGN0_CON0,
+					reg_val, ~0);
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					config_regs_pa + DISP_REG_POSTALIGN0_CON1,
+					(height << 16 | postalign_width), ~0);
+			} else {
+				writel_relaxed(reg_val,
+					config_regs + DISP_REG_POSTALIGN0_CON0);
+				writel_relaxed((height << 16 | postalign_width),
+					config_regs + DISP_REG_POSTALIGN0_CON1);
+			}
 		}
 
 		switch (spr_params->spr_format_type) {
@@ -1208,13 +1287,18 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 			break;
 		}
 
-		if (handle)
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				config_regs_pa + DISP_REG_POSTALIGN0_CON2,
-				reg_val, ~0);
-		else
-			writel_relaxed(reg_val,
-				config_regs + DISP_REG_POSTALIGN0_CON2);
+		if (priv->data->mmsys_id == MMSYS_MT6989) {
+			mtk_ddp_write_relaxed(postalign_comp, reg_val,
+				MT6989_DISP_REG_POSTALIGN0_ARRANGE, handle);
+		} else {
+			if (handle)
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					config_regs_pa + DISP_REG_POSTALIGN0_CON2,
+					reg_val, ~0);
+			else
+				writel_relaxed(reg_val,
+					config_regs + DISP_REG_POSTALIGN0_CON2);
+		}
 
 		mtk_ddp_write_relaxed(comp, height << 12 | width,
 		DISP_REG_V2_SPR_IP_CFG_0, handle);
@@ -1252,13 +1336,25 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 			SPR_RELAY_MODE, handle);
 
 		//disable postalign
-		if (handle)
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				config_regs_pa + DISP_REG_POSTALIGN0_CON0,
-				0, ~0);
-		else
-			writel_relaxed(0,
-				config_regs + DISP_REG_POSTALIGN0_CON0);
+		if (priv->data->mmsys_id == MMSYS_MT6989) {
+			mtk_ddp_write_relaxed(postalign_comp, 1, MT6989_DISP_REG_POSTALIGN0_EN,
+				handle);
+			mtk_ddp_write_mask(postalign_comp, MT6989_BYPASS_SHADOW,
+				MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
+				MT6989_BYPASS_SHADOW, handle);
+			mtk_ddp_write_mask(postalign_comp, MT6989_RELAY_MODE,
+				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_RELAY_MODE, handle);
+			mtk_ddp_write_mask(postalign_comp, MT6989_POSTALIGN_LUT_EN,
+				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_POSTALIGN_LUT_EN, handle);
+		} else {
+			if (handle)
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					config_regs_pa + DISP_REG_POSTALIGN0_CON0,
+					0, ~0);
+			else
+				writel_relaxed(0,
+					config_regs + DISP_REG_POSTALIGN0_CON0);
+		}
 	}
 }
 
@@ -1459,6 +1555,13 @@ static const struct mtk_disp_spr_data mt6985_spr_driver_data = {
 	.shrink_cfg = false,
 };
 
+static const struct mtk_disp_spr_data mt6989_spr_driver_data = {
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.version = MTK_SPR_V2,
+	.shrink_cfg = false,
+};
+
 static const struct mtk_disp_spr_data mt6897_spr_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
@@ -1494,6 +1597,8 @@ static const struct of_device_id mtk_disp_spr_driver_dt_match[] = {
 	  .data = &mt6983_spr_driver_data},
 	{ .compatible = "mediatek,mt6985-disp-spr",
 	  .data = &mt6985_spr_driver_data},
+	{ .compatible = "mediatek,mt6989-disp-spr",
+	  .data = &mt6989_spr_driver_data},
 	{ .compatible = "mediatek,mt6897-disp-spr",
 	  .data = &mt6897_spr_driver_data},
 	{ .compatible = "mediatek,mt6895-disp-spr",
