@@ -315,7 +315,7 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 	if (priv->side_ovlsys_dev && pm_runtime_get_if_in_use(priv->side_ovlsys_dev) <= 0)
 		goto done_return;
 
-	DDPFUNC("crtc%d\n", crtc_id);
+	//DDPFUNC("crtc%d\n", crtc_id);
 
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT2701:
@@ -743,7 +743,7 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 	if (priv->side_ovlsys_dev && pm_runtime_get_if_in_use(priv->side_ovlsys_dev) <= 0)
 		goto done_return;
 
-	DDPFUNC("crtc%d\n", crtc_id);
+	//DDPFUNC("crtc%d\n", crtc_id);
 
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT2701:
