@@ -392,21 +392,12 @@ struct mml_comp_aal {
 	u32 curve_sram_idx;
 	u32 hist_sram_idx;
 	u32 hist_read_idx;
-	u16 event_eof;
-	bool hist_cmd_done;
-	struct mutex hist_cmd_lock;
-	struct mml_pq_readback_buffer *clarity_hist[MML_PIPE_CNT];
-	struct cmdq_client *clts[MML_PIPE_CNT];
-	struct cmdq_pkt *hist_pkts[MML_PIPE_CNT];
 	struct workqueue_struct *aal_readback_wq;
 	struct work_struct aal_readback_task;
-	struct workqueue_struct *clarity_hist_wq;
-	struct work_struct clarity_hist_task;
 	struct mml_pq_task *pq_task;
 	struct mml_pq_frame_data frame_data;
 	struct mml_dev *mml;
 	struct mutex irq_wq_lock;
-	struct mml_pq_config pq_config;
 
 	u32 sram_curve_start;
 	u32 sram_hist_start;
@@ -626,46 +617,6 @@ static s8 aal_get_rb_mode(struct mml_comp_aal *aal)
 	}
 }
 
-static void clarity_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
-			    struct mml_comp_config *ccfg, bool readback)
-{
-	struct mml_comp_aal *aal = comp_to_aal(comp);
-	struct mml_frame_config *cfg = task->config;
-	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
-
-	if (!dest->pq_config.en_dre || !dest->pq_config.en_sharp)
-		return;
-
-	if (!aal->clts[ccfg->pipe])
-		aal->clts[ccfg->pipe] = mml_get_cmdq_clt(cfg->mml,
-			ccfg->pipe + GCE_THREAD_START);
-
-	if ((!aal->hist_pkts[ccfg->pipe] && aal->clts[ccfg->pipe]))
-		aal->hist_pkts[ccfg->pipe] =
-			cmdq_pkt_create(aal->clts[ccfg->pipe]);
-
-	if (!aal->clarity_hist[ccfg->pipe])
-		aal->clarity_hist[ccfg->pipe] =
-			kzalloc(sizeof(struct mml_pq_readback_buffer),
-			GFP_KERNEL);
-
-	if (aal->clarity_hist[ccfg->pipe] &&
-		!aal->clarity_hist[ccfg->pipe]->va &&
-		aal->clts[ccfg->pipe]) {
-
-		aal->clarity_hist[ccfg->pipe]->va =
-			(u32 *)cmdq_mbox_buf_alloc(aal->clts[ccfg->pipe],
-			&aal->clarity_hist[ccfg->pipe]->pa);
-	}
-
-	if (aal->clarity_hist[ccfg->pipe] && aal->clarity_hist[ccfg->pipe]->va && readback) {
-		mml_pq_get_pq_task(aal->pq_task);
-		aal->hist_pkts[ccfg->pipe]->no_irq = !task->config->irq;
-		queue_work(aal->clarity_hist_wq,
-			&aal->clarity_hist_task);
-	}
-}
-
 static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			    struct mml_comp_config *ccfg, bool is_config)
 {
@@ -784,10 +735,8 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			mml_update(reuse, aal_frm->labels[2], aal->hist_sram_idx << 6 |
 				aal->hist_read_idx << 5 | 1 << 4);
 
-		mml_pq_msg("%s: hist_sram_idx write to [%d], hist_read_idx change to[%d]",
-			__func__, aal->hist_sram_idx, aal->hist_read_idx);
-
-		clarity_hist_ctrl(comp, task, ccfg, aal_frm->is_clarity_need_readback);
+			mml_pq_msg("%s: hist_sram_idx write to [%d], hist_read_idx change to[%d]",
+				__func__, aal->hist_sram_idx, aal->hist_read_idx);
 	} else {
 		mml_pq_msg("%s: hist_sram_idx [%d] is reading, hist_read_idx [%d]",
 			__func__, aal->hist_sram_idx, aal->hist_read_idx);
@@ -952,7 +901,7 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 		cmdq_pkt_write(pkt, NULL, base_pa + 0x3b4, 0x18, U32_MAX);
 
 	aal_frm->is_aal_need_readback = result->is_aal_need_readback;
-	aal_frm->is_clarity_need_readback = false;
+	aal_frm->is_clarity_need_readback = result->is_clarity_need_readback;
 
 	tile_config_param = &(result->aal_param[ccfg->node->out_idx]);
 	aal_frm->dre_blk_width = tile_config_param->dre_blk_width;
@@ -978,6 +927,7 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 	} else if ((mode == MML_MODE_DDP_ADDON || mode == MML_MODE_DIRECT_LINK) &&
 		!aal->data->is_linear)
 		aal_write_curve(comp, task, ccfg, curve, true);
+
 
 	mml_pq_msg("%s is_aal_need_readback[%d] base_pa[%llx] reuses[%u]",
 		__func__, result->is_aal_need_readback, base_pa,
@@ -1481,7 +1431,7 @@ static s32 aal_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 
 	curve = result->aal_curve;
 	aal_frm->is_aal_need_readback = result->is_aal_need_readback;
-	aal_frm->is_clarity_need_readback = false;
+	aal_frm->is_clarity_need_readback = result->is_clarity_need_readback;
 	task->pq_task->aal_readback.readback_data.cut_pos_x =
 		aal_frm->cut_pos_x;
 	aal_hist_ctrl(comp, task, ccfg, false);
@@ -2104,151 +2054,6 @@ static void aal_readback_work(struct work_struct *work_item)
 
 }
 
-static void clarity_histdone_cb(struct cmdq_cb_data data)
-{
-	struct cmdq_pkt *pkt = (struct cmdq_pkt *)data.data;
-	struct mml_comp_aal *aal = (struct mml_comp_aal *)pkt->user_data;
-	u32 pipe;
-
-	mml_pq_ir_log("%s jobid[%d] hist_pkts[0] = [%p] hdr->hist_pkts[1] = [%p]",
-		__func__, aal->jobid, aal->hist_pkts[0], aal->hist_pkts[1]);
-
-	if (pkt == aal->hist_pkts[0]) {
-		pipe = 0;
-	} else if (pkt == aal->hist_pkts[1]) {
-		pipe = 1;
-	} else {
-		mml_err("%s task %p pkt %p not match both pipe (%p and %p)",
-			__func__, aal, pkt, aal->hist_pkts[0], aal->hist_pkts[1]);
-		return;
-	}
-
-	mml_pq_ir_log("%s hist[0~7]={%08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x}",
-		__func__,
-		aal->clarity_hist[pipe]->va[0],
-		aal->clarity_hist[pipe]->va[1],
-		aal->clarity_hist[pipe]->va[2],
-		aal->clarity_hist[pipe]->va[3],
-		aal->clarity_hist[pipe]->va[4],
-		aal->clarity_hist[pipe]->va[5],
-		aal->clarity_hist[pipe]->va[6],
-		aal->clarity_hist[pipe]->va[7]);
-
-	mml_pq_ir_clarity_readback(aal->pq_task, aal->frame_data, aal->pipe,
-		&(aal->clarity_hist[pipe]->va[0]), aal->jobid, AAL_CLARITY_STATUS_NUM,
-		AAL_CLARITY_HIST_START, aal->dual);
-
-	mml_pq_put_pq_task(aal->pq_task);
-
-	mml_pq_aal_flag_check(aal->dual, aal->out_idx);
-
-	mml_pq_ir_log("%s end jobid[%d] pkt[%p] hdr[%p] pipe[%d]",
-		__func__, aal->jobid, pkt, aal, pipe);
-	mml_trace_end();
-}
-
-
-static void clarity_hist_work(struct work_struct *work_item)
-{
-	struct mml_comp_aal *aal = NULL;
-	struct mml_comp *comp = NULL;
-	struct cmdq_pkt *pkt = NULL;
-	struct cmdq_operand lop, rop;
-	struct mml_pq_task *pq_task = NULL;
-
-	const u16 idx_val = CMDQ_THR_SPR_IDX2;
-	u16 idx_out = 0;
-	u16 idx_out64 = 0;
-
-	u8 pipe = 0;
-	phys_addr_t base_pa = 0;
-	dma_addr_t pa = 0;
-	u32 i = 0;
-
-	aal = container_of(work_item, struct mml_comp_aal, clarity_hist_task);
-
-	if (!aal) {
-		mml_pq_err("%s comp_hdr is null", __func__);
-		return;
-	}
-
-	pipe = aal->pipe;
-	comp = &aal->comp;
-	base_pa = comp->base_pa;
-	pkt = aal->hist_pkts[pipe];
-	idx_out = aal->data->cpr[aal->pipe];
-	pq_task = aal->pq_task;
-
-
-	mml_pq_ir_log("%s job_id[%d] eng_id[%d] cmd_buf_size[%zu] hist_cmd_done[%d]",
-		__func__, aal->jobid, comp->id,
-		pkt->cmd_buf_size, aal->hist_cmd_done);
-
-	idx_out64 = CMDQ_CPR_TO_CPR64(idx_out);
-
-	if (unlikely(!aal->clarity_hist[pipe])) {
-		mml_pq_err("%s job_id[%d] eng_id[%d] pipe[%d] pkt[%p] clarity_hist is null",
-			__func__, aal->jobid, comp->id, pipe,
-			aal->hist_pkts[pipe]);
-		return;
-	}
-
-	mutex_lock(&aal->hist_cmd_lock);
-	if (aal->hist_cmd_done) {
-		mutex_unlock(&aal->hist_cmd_lock);
-		goto aal_hist_cmd_done;
-	}
-
-	cmdq_pkt_wfe(pkt, aal->event_eof);
-
-	pa = aal->clarity_hist[pipe]->pa;
-
-	/* readback to this pa */
-	cmdq_pkt_assign_command(pkt, idx_out, (u32)pa);
-	cmdq_pkt_assign_command(pkt, idx_out + 1, (u32)(pa >> 32));
-
-
-	for (i = 0; i < AAL_CLARITY_STATUS_NUM; i++) {
-		cmdq_pkt_read_addr(pkt,
-			base_pa + aal->data->reg_table[AAL_BILATERAL_STATUS_00] + i * 4,
-			idx_val);
-		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
-
-		lop.reg = true;
-		lop.idx = idx_out;
-		rop.reg = false;
-		rop.value = 4;
-		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
-	}
-
-	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%llx] pkt[%p]",
-		__func__, aal->jobid, comp->id, aal->clarity_hist[pipe]->va,
-		aal->clarity_hist[pipe]->pa, pkt);
-
-	aal->hist_cmd_done = true;
-
-	mml_pq_rb_msg("%s end engine_id[%d] va[%p] pa[%llx] pkt[%p]",
-		__func__, comp->id, aal->clarity_hist[pipe]->va,
-		aal->clarity_hist[pipe]->pa, pkt);
-
-	pkt->user_data = aal;
-	mutex_unlock(&aal->hist_cmd_lock);
-
-aal_hist_cmd_done:
-	if (aal->frame_data.info.dest[0].pq_config.en_hdr)
-		wait_for_completion(&aal->pq_task->hdr_curve_ready[aal->pipe]);
-
-	cmdq_pkt_refinalize(pkt);
-	cmdq_pkt_flush_threaded(pkt, clarity_histdone_cb, (void *)aal->hist_pkts[pipe]);
-
-	mml_pq_ir_log("%s job_id[%d] hist_pkts[%p %p] id[%d] buf_size[%zu] hist_cmd_done[%d]",
-		__func__, aal->jobid,
-		aal->hist_pkts[0], aal->hist_pkts[1], comp->id,
-		pkt->cmd_buf_size, aal->hist_cmd_done);
-
-}
-
-
 static irqreturn_t mml_aal_irq_handler(int irq, void *dev_id)
 {
 	struct mml_comp_aal *priv = dev_id;
@@ -2347,15 +2152,6 @@ static int probe(struct platform_device *pdev)
 
 	priv->hist_read_idx = 1;
 	priv->hist_sram_idx = 1;
-
-	if (of_property_read_u16(dev->of_node, "event-frame-done",
-				 &priv->event_eof))
-		dev_err(dev, "read event frame_done fail\n");
-
-	priv->clarity_hist_wq = create_singlethread_workqueue("clarity_hist_read");
-	INIT_WORK(&priv->clarity_hist_task, clarity_hist_work);
-
-	mutex_init(&priv->hist_cmd_lock);
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 

@@ -76,11 +76,6 @@ struct mml_pq_dev_data {
 	atomic_t hdr_hist_done;
 	atomic_t hdr_hist_read_cnt;
 	u32 hdr_cnt;
-
-	struct mutex tdshp_hist_mutex;
-	atomic_t tdshp_hist_done;
-	atomic_t tdshp_hist_read_cnt;
-	u32 tdshp_cnt;
 };
 
 static struct mutex fg_buf_list_mutex;
@@ -233,9 +228,8 @@ s32 mml_pq_task_create(struct mml_task *task)
 	kref_init(&pq_task->ref);
 	mutex_init(&pq_task->buffer_mutex);
 	mutex_init(&pq_task->fg_buffer_mutex);
-	mutex_init(&pq_task->tdshp_comp_lock);
-
 	mutex_init(&pq_task->ref_lock);
+
 
 	task->pq_task = pq_task;
 	init_sub_task(&pq_task->tile_init);
@@ -1076,15 +1070,15 @@ static bool set_hist(struct mml_pq_sub_task *sub_task,
 	return ready;
 }
 
-static bool check_hist_ready(bool dual, u32 rb_eng_thread_cnt, u32 *count)
+static bool check_hist_ready(bool dual, u32 rb_eng_cnt, u32 *count)
 {
 	bool ready = false;
 
 	*count = *count + 1;
 
 	ready =
-		(dual && *count == rb_eng_thread_cnt*MML_PIPE_CNT) ||
-		(!dual && *count == rb_eng_thread_cnt);
+		(dual && *count == rb_eng_cnt*MML_PIPE_CNT) ||
+		(!dual && *count ==	rb_eng_cnt);
 
 	return ready;
 }
@@ -1149,7 +1143,7 @@ void mml_pq_aal_flag_check(bool dual, u8 out_idx)
 {
 
 	mutex_lock(&dev_data[out_idx]->aal_hist_mutex);
-	if (check_hist_ready(dual, 2, &dev_data[out_idx]->aal_cnt)) {
+	if (check_hist_ready(dual, 1, &dev_data[out_idx]->aal_cnt)) {
 		atomic_set(&dev_data[out_idx]->aal_hist_done, 0);
 		atomic_dec_if_positive(&dev_data[out_idx]->aal_hist_read_cnt);
 	}
@@ -1341,74 +1335,6 @@ int mml_pq_dc_hdr_readback(struct mml_task *task, u8 pipe, u32 *phist)
 	return ret;
 }
 
-void mml_pq_set_tdshp_status(struct mml_pq_task *pq_task, u8 out_idx)
-{
-	mutex_lock(&dev_data[out_idx]->tdshp_hist_mutex);
-
-	mml_pq_ir_log("%s pq_task[%p] hist_read_cnt[%d] hist_done[%d] status[%d] pq_ref[%d]",
-		__func__, pq_task,
-		atomic_read(&dev_data[out_idx]->tdshp_hist_read_cnt),
-		atomic_read(&dev_data[out_idx]->tdshp_hist_done),
-		pq_task->read_status.tdshp_comp,
-		kref_read(&pq_task->ref));
-
-	if (pq_task->read_status.tdshp_comp == MML_PQ_HIST_INIT) {
-		if (!atomic_read(&dev_data[out_idx]->tdshp_hist_done) &&
-			!atomic_read(&dev_data[out_idx]->tdshp_hist_read_cnt)) {
-			pq_task->read_status.tdshp_comp =
-				MML_PQ_HIST_IDLE;
-			dev_data[out_idx]->tdshp_cnt = 0;
-			atomic_inc(&dev_data[out_idx]->tdshp_hist_read_cnt);
-		} else
-			pq_task->read_status.tdshp_comp =
-				MML_PQ_HIST_READING;
-	}
-	mutex_unlock(&dev_data[out_idx]->tdshp_hist_mutex);
-}
-
-bool mml_pq_tdshp_hist_reading(struct mml_pq_task *pq_task, u8 out_idx, u8 pipe)
-{
-	u32 read_value = 0;
-
-	mutex_lock(&dev_data[out_idx]->tdshp_hist_mutex);
-
-	read_value = atomic_read(&dev_data[out_idx]->tdshp_hist_done);
-	mml_pq_ir_log("%s pq_task[%p] hist_read_cnt[%d] hist_done[%d] status[%d] pq_ref[%d]",
-		__func__, pq_task,
-		atomic_read(&dev_data[out_idx]->tdshp_hist_read_cnt),
-		atomic_read(&dev_data[out_idx]->tdshp_hist_done),
-		pq_task->read_status.tdshp_comp,
-		kref_read(&pq_task->ref));
-
-	if (!atomic_read(&dev_data[out_idx]->tdshp_hist_read_cnt)) {
-		mutex_unlock(&dev_data[out_idx]->tdshp_hist_mutex);
-		return true;
-	} else if (read_value & (1 << pipe)) {
-		mutex_unlock(&dev_data[out_idx]->tdshp_hist_mutex);
-		return true;
-	}
-
-	read_value = read_value | (1 << pipe);
-	atomic_set(&dev_data[out_idx]->tdshp_hist_done, read_value);
-
-	mutex_unlock(&dev_data[out_idx]->tdshp_hist_mutex);
-
-	return false;
-
-}
-
-void mml_pq_tdshp_flag_check(bool dual, u8 out_idx)
-{
-
-	mutex_lock(&dev_data[out_idx]->tdshp_hist_mutex);
-	if (check_hist_ready(dual, 1, &dev_data[out_idx]->tdshp_cnt)) {
-		atomic_set(&dev_data[out_idx]->tdshp_hist_done, 0);
-		atomic_dec_if_positive(&dev_data[out_idx]->tdshp_hist_read_cnt);
-	}
-	mutex_unlock(&dev_data[out_idx]->tdshp_hist_mutex);
-}
-
-
 int mml_pq_clarity_readback(struct mml_task *task, u8 pipe, u32 *phist, u32 arr_idx, u32 size)
 {
 	struct mml_pq_task *pq_task = task->pq_task;
@@ -1438,26 +1364,6 @@ int mml_pq_clarity_readback(struct mml_task *task, u8 pipe, u32 *phist, u32 arr_
 	return ret;
 }
 
-int mml_pq_ir_clarity_readback(struct mml_pq_task *pq_task, struct mml_pq_frame_data frame_data,
-			u8 pipe, u32 *phist, u32 mml_jobid, u32 size, u32 arr_idx,
-			bool dual)
-{
-	struct mml_pq_sub_task *sub_task = &pq_task->clarity_readback;
-	struct mml_pq_chan *chan = &pq_mbox->clarity_readback_chan;
-	int ret = 0;
-
-	mml_pq_msg("%s called pipe[%d]\n", __func__, pipe);
-
-	if (set_hist(sub_task, dual, pipe, phist,
-		arr_idx, size, MML_CLARITY_RB_ENG_NUM))
-		ret = set_readback_sub_task(pq_task, sub_task, chan,
-			frame_data, dual, mml_jobid, true);
-
-	mml_pq_msg("%s end pipe[%d]", __func__, pipe);
-	return ret;
-}
-
-
 int mml_pq_dc_readback(struct mml_task *task, u8 pipe, u32 *phist)
 {
 	struct mml_pq_task *pq_task = task->pq_task;
@@ -1476,31 +1382,6 @@ int mml_pq_dc_readback(struct mml_task *task, u8 pipe, u32 *phist)
 		ret = set_sub_task(task, sub_task, chan, &task->pq_param[0], true);
 
 	mml_pq_msg("%s end pipe[%d] job_id[%d]\n", __func__, pipe, task->job.jobid);
-	return ret;
-}
-
-int mml_pq_ir_dc_readback(struct mml_pq_task *pq_task, struct mml_pq_frame_data frame_data,
-			u8 pipe, u32 *phist, u32 mml_jobid, u32 arr_idx,
-			bool dual)
-{
-	struct mml_pq_sub_task *sub_task = &pq_task->dc_readback;
-	struct mml_pq_chan *chan = &pq_mbox->dc_readback_chan;
-	int ret = 0;
-
-	mml_pq_trace_ex_begin("%s pipe[%d]", __func__, pipe);
-	mml_pq_msg("%s called job_id[%d] pipe[%d] sub_task->job_id[%llu]",
-		__func__, mml_jobid, pipe, sub_task->job_id);
-
-	if (unlikely(!pq_task))
-		return -EINVAL;
-
-	if (set_hist(sub_task, dual, pipe, phist, 0,
-		TDSHP_CONTOUR_HIST_NUM, 1))
-		ret = set_readback_sub_task(pq_task, sub_task, chan,
-			frame_data, dual, mml_jobid, true);
-
-	mml_pq_ir_log("%s end job_id[%d]", __func__, mml_jobid);
-	mml_pq_trace_ex_end();
 	return ret;
 }
 
@@ -2754,13 +2635,8 @@ wake_up_dc_readback_task:
 
 void mml_pq_reset_hist_status(struct mml_task *task)
 {
-	u32 i = 0;
 	task->pq_task->read_status.aal_comp = MML_PQ_HIST_INIT;
 	task->pq_task->read_status.hdr_comp = MML_PQ_HIST_INIT;
-	task->pq_task->read_status.tdshp_comp = MML_PQ_HIST_INIT;
-
-	for (i = 0; i < MML_PIPE_CNT; i++)
-		reinit_completion(&task->pq_task->hdr_curve_ready[i]);
 }
 
 static long mml_pq_ioctl(struct file *file, unsigned int cmd,
@@ -2847,7 +2723,6 @@ int mml_pq_core_init(void)
 		}
 		mutex_init(&dev_data[i]->aal_hist_mutex);
 		mutex_init(&dev_data[i]->hdr_hist_mutex);
-		mutex_init(&dev_data[i]->tdshp_hist_mutex);
 	}
 
 	if (ret < 0)
