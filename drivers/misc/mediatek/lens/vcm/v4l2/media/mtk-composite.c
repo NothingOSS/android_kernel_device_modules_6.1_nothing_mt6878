@@ -132,17 +132,6 @@ static int mtk_composite_probe(struct platform_device *dev)
 		goto vdec_end;
 	}
 
-	v4l2_async_nf_init(&pfdev->notifier);
-
-	rc = v4l2_async_nf_parse_fwnode_endpoints
-		(&dev->dev, &pfdev->notifier, sizeof(struct v4l2_async_subdev), NULL);
-	if (rc < 0) {
-		pr_info("no lens endpoint\n");
-		goto mdev_end;
-	}
-	pr_debug("asd %p %p %p\n", pfdev->asd[0], pfdev->asd[1],
-		pfdev->asd[2]);
-
 #if defined(CONFIG_MEDIA_CONTROLLER)
 	pfdev->v4l2_dev.mdev = kzalloc(sizeof(struct media_device),
 		GFP_KERNEL);
@@ -181,13 +170,16 @@ static int mtk_composite_probe(struct platform_device *dev)
 	}
 	platform_set_drvdata(dev, pfdev);
 
-	pfdev->sd = devm_kzalloc(&dev->dev, sizeof(struct v4l2_subdev *) *
-		ARRAY_SIZE(pfdev->asd), GFP_KERNEL);
-	if (!pfdev->sd) {
-		rc = -ENOMEM;
-		pr_info("Unable to devm_kzalloc.\n");
+	v4l2_async_nf_init(&pfdev->notifier);
+
+	rc = v4l2_async_nf_parse_fwnode_endpoints
+		(&dev->dev, &pfdev->notifier, sizeof(struct v4l2_async_subdev), NULL);
+	if (rc < 0) {
+		pr_info("no lens endpoint\n");
 		goto mdev_end;
 	}
+	pr_debug("asd %p %p %p\n", pfdev->asd[0], pfdev->asd[1],
+		pfdev->asd[2]);
 
 	pfdev->notifier.ops = &fl_async_notify_ops;
 
