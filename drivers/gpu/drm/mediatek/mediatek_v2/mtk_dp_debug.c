@@ -197,18 +197,7 @@ void mtk_dp_debug(const char *opt)
 		mtk_dp_clock_debug(clksrc, con1);
 	} else if (strncmp(opt, "dump:", 5) == 0) {
 		dptx_dump_reg();
-	} else if (strncmp(opt, "write_reg:", 10) == 0) {
-		unsigned int offset, value;
-		int ret = 0;
-
-		ret = sscanf(opt, "write_reg:%x,%x\n", &offset, &value);
-		if (ret != 2) {
-			DPTXMSG("ret = %d\n", ret);
-			return;
-		}
-		dptx_write_reg(offset, value);
 	}
-
 }
 
 

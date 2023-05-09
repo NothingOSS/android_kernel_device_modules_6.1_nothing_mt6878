@@ -59,7 +59,6 @@ int mtk_drm_add_cb_data(struct cb_data_store *cb_data, unsigned int crtc_id);
 struct cb_data_store *mtk_drm_get_cb_data(unsigned int crtc_id);
 void mtk_drm_del_cb_data(struct cmdq_cb_data data, unsigned int crtc_id);
 int hrt_lp_switch_get(void);
-void debug_dsi(struct drm_crtc *crtc, unsigned int offset, unsigned int mask);
 void mtk_dprec_snapshot(void);
 #endif
 
