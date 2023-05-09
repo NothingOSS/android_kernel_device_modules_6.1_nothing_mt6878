@@ -5,6 +5,7 @@
 #include <linux/kthread.h>
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
+#include <linux/string.h>
 #include <linux/unistd.h>
 #include <linux/module.h>
 #include <linux/sched.h>
@@ -78,7 +79,7 @@ struct FPSGO_NOTIFIER_PUSH_TAG {
 	int consumer_tid;
 	int producer_pid;
 
-	char *name;
+	char name[16];
 	unsigned long mask;
 };
 
@@ -822,9 +823,9 @@ void fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask, int start,
 
 	vpPush->ePushType = FPSGO_NOTIFIER_SBE_POLICY;
 	vpPush->pid = pid;
-	vpPush->name = name;
 	vpPush->mask = mask;
 	vpPush->qudeq_cmd = start;
+	memcpy(vpPush->name, name, 16);
 	fpsgo_queue_work(vpPush);
 	ret = 0;
 }
