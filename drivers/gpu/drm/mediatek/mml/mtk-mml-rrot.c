@@ -73,6 +73,24 @@
 #define RROT_STASH_ULTRA_TH_CON_3	0x1c8
 #define RROT_STASH_PREULTRA_TH_CON_3	0x1cc
 #define RROT_TRANSFORM_0		0x200
+
+#define RROT_DMABUF_CON_0		0x240
+#define RROT_URGENT_TH_CON_0		0x244
+#define RROT_ULTRA_TH_CON_0		0x248
+#define RROT_PREULTRA_TH_CON_0		0x250
+#define RROT_DMABUF_CON_1		0x254
+#define RROT_URGENT_TH_CON_1		0x258
+#define RROT_ULTRA_TH_CON_1		0x260
+#define RROT_PREULTRA_TH_CON_1		0x264
+#define RROT_DMABUF_CON_2		0x268
+#define RROT_URGENT_TH_CON_2		0x270
+#define RROT_ULTRA_TH_CON_2		0x274
+#define RROT_PREULTRA_TH_CON_2		0x278
+#define RROT_DMABUF_CON_3		0x280
+#define RROT_URGENT_TH_CON_3		0x284
+#define RROT_ULTRA_TH_CON_3		0x288
+#define RROT_PREULTRA_TH_CON_3		0x290
+
 #define RROT_DITHER_CON			0x2a0
 #define RROT_CHKS_EXTR			0x300
 #define RROT_DEBUG_CON			0x380
@@ -120,6 +138,34 @@ enum rrot_golden_fmt {
 	GOLDEN_FMT_HYFBC,
 	GOLDEN_FMT_AFBC,
 	GOLDEN_FMT_TOTAL
+};
+
+static const u16 rrot_dmabuf[] = {
+	RROT_DMABUF_CON_0,
+	RROT_DMABUF_CON_1,
+	RROT_DMABUF_CON_2,
+	RROT_DMABUF_CON_3,
+};
+
+static const u16 rrot_urgent_th[] = {
+	RROT_URGENT_TH_CON_0,
+	RROT_URGENT_TH_CON_1,
+	RROT_URGENT_TH_CON_2,
+	RROT_URGENT_TH_CON_3,
+};
+
+static const u16 rrot_ultra_th[] = {
+	RROT_ULTRA_TH_CON_0,
+	RROT_ULTRA_TH_CON_1,
+	RROT_ULTRA_TH_CON_2,
+	RROT_ULTRA_TH_CON_3,
+};
+
+static const u16 rrot_preultra_th[] = {
+	RROT_PREULTRA_TH_CON_0,
+	RROT_PREULTRA_TH_CON_1,
+	RROT_PREULTRA_TH_CON_2,
+	RROT_PREULTRA_TH_CON_3,
 };
 
 struct rrot_data {
@@ -741,12 +787,10 @@ static void rrot_reset_threshold(struct mml_comp_rrot *rrot,
 
 	/* clear threshold for all plane */
 	for (i = 0; i < DMABUF_CON_CNT; i++) {
-		cmdq_pkt_write(pkt, NULL, base_pa + RROT_STASH_URGENT_TH_CON_0 + i * 0xc,
-			0, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + RROT_STASH_ULTRA_TH_CON_0 + i * 0xc,
-			0, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + RROT_STASH_PREULTRA_TH_CON_0 + i * 0xc,
-			0, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + rrot_dmabuf[i], 0x3, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + rrot_urgent_th[i], 0, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + rrot_ultra_th[i], 0, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + rrot_preultra_th[i], 0, U32_MAX);
 	}
 }
 
@@ -782,20 +826,14 @@ static void rrot_select_threshold_hrt(struct mml_comp_rrot *rrot,
 			break;
 	golden_set = &golden->settings[idx];
 
-	/* line cnt 0/1/2/3 in con1/con2 */
-	cmdq_pkt_write(pkt, NULL, base_pa + RROT_PREFETCH_CONTROL_1,
-		golden_set->con1, U32_MAX);
-	cmdq_pkt_write(pkt, NULL, base_pa + RROT_PREFETCH_CONTROL_2,
-		golden_set->con2, U32_MAX);
-
 	/* config threshold for all plane */
 	for (i = 0; i < DMABUF_CON_CNT; i++) {
-		cmdq_pkt_write(pkt, NULL, base_pa + RROT_STASH_URGENT_TH_CON_0 + i * 0xc,
+		cmdq_pkt_write(pkt, NULL, base_pa + rrot_urgent_th[i],
 			golden_set->plane[i].urgent, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + RROT_STASH_ULTRA_TH_CON_0 + i * 0xc,
-			golden_set->plane[i].urgent, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + RROT_STASH_PREULTRA_TH_CON_0 + i * 0xc,
-			golden_set->plane[i].urgent, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + rrot_ultra_th[i],
+			golden_set->plane[i].ultra, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + rrot_preultra_th[i],
+			golden_set->plane[i].preultra, U32_MAX);
 	}
 }
 
