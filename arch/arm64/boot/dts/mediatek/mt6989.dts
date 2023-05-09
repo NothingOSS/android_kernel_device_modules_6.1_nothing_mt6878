@@ -2893,7 +2893,7 @@
 		reg = <0 0x1e827000 0 0x90>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 		interrupts = <GIC_SPI 538 IRQ_TYPE_LEVEL_HIGH 0>;
-		mminfra-bkrs = <0>;
+		mminfra-bkrs = <1>;
 		bkrs-reg = <0x1e800250>;
 		mminfra-ao-base;
 		init-clk-on;
