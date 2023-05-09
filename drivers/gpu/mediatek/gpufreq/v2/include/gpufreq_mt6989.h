@@ -11,7 +11,7 @@
  **************************************************/
 #define GPUFREQ_DEBUG_VERSION               (0x20230414)
 /* 0 -> power on once then never off and disable DDK power on/off callback */
-#define GPUFREQ_POWER_CTRL_ENABLE           (0)
+#define GPUFREQ_POWER_CTRL_ENABLE           (1)
 /* 0 -> disable DDK runtime active-sleep callback */
 #define GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE    (0)
 /*
