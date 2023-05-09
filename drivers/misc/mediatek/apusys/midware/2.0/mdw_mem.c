@@ -20,11 +20,11 @@
 
 #define mdw_mem_show(m) \
 	mdw_mem_debug("mem(0x%llx/0x%llx/%d/0x%llx/%d/0x%llx/0x%x/0x%llx" \
-	"/0x%x/%u/0x%llx/%d/%p)(%d)\n", \
+	"/0x%llx/0x%x/%u/0x%llx/%d/%p)(%d)(%u)\n", \
 	(uint64_t)m->mpriv, (uint64_t)m, m->handle, (uint64_t)m->dbuf, \
 	m->type, (uint64_t)m->vaddr, m->size, \
-	m->device_va, m->dva_size, m->align, m->flags, m->need_handle, \
-	m->priv, task_pid_nr(current))
+	m->device_va, m->device_iova, m->dva_size, m->align, m->flags, \
+	m->need_handle, m->priv, task_pid_nr(current), m->buf_type)
 
 
 void mdw_mem_put(struct mdw_fpriv *mpriv, struct mdw_mem *m)
@@ -398,22 +398,31 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 		m->dva_size += sg_dma_len(sg);
 	}
 
-	mdw_mem_debug("mdw call apummu_iova2eva buf_type(%u) mpriv(0x%llx) device_va(%llx) dva_size(%u)\n",
-	 m->buf_type, (uint64_t)m->mpriv, m->device_va, m->dva_size);
-	/* APUMMU iova to eva */
-	if (!apummu_iova2eva(m->buf_type, (uint64_t)m->mpriv, m->device_iova, m->dva_size, &eva)) {
-		m->device_va = eva;
-	} else {
-		ret = -EINVAL;
-		goto unmap_dbuf;
-	}
-	/* check dva and size */
-	if (!m->device_va || !m->dva_size) {
-		mdw_drv_err("can't get mem(0x%llx) dva(0x%llx/%u)\n",
+	/* check iova and size */
+	if (!m->device_iova || !m->dva_size) {
+		mdw_drv_err("can't get mem(0x%llx) iova(0x%llx/%u)\n",
 			(uint64_t)m, m->device_va, m->dva_size);
 		ret = -ENOMEM;
 		goto unmap_dbuf;
 	}
+
+	/* handle iova to eva */
+	if (!apummu_iova2eva(m->buf_type, (uint64_t)m->mpriv, m->device_iova, m->dva_size, &eva)) {
+		m->device_va = eva;
+	} else {
+		mdw_drv_err("apummu iova2eva fail s(0x%llx)\n", (uint64_t)m->mpriv);
+		ret = -EINVAL;
+		goto unmap_dbuf;
+	}
+
+	/* check eva */
+	if (!m->device_va) {
+		mdw_drv_err("can't get mem(0x%llx) dva(0x%llx)\n",
+			(uint64_t)m, m->device_va);
+		ret = -ENOMEM;
+		goto unmap_dbuf;
+	}
+	mdw_mem_debug("iova2eva pass s(0x%llx)\n", (uint64_t)m->mpriv);
 
 	map->m = m;
 	m->map = map;
@@ -427,6 +436,8 @@ unmap_dbuf:
 detach_dbuf:
 	dma_buf_detach(m->dbuf, map->attach);
 free_map:
+	mdw_mem_show(m);
+	m->device_iova = 0;
 	m->device_va = 0;
 	m->dva_size = 0;
 	m->map = NULL;
@@ -535,6 +546,7 @@ int mdw_mem_map(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 {
 	struct mdw_mem_invoke *m_invoke = NULL;
 	int ret = 0;
+	uint64_t eva = 0;
 
 	if (IS_ERR_OR_NULL(m->dbuf)) {
 		mdw_drv_err("mem dbuf invalid (0x%llx)\n", (uint64_t) m);
@@ -563,6 +575,23 @@ int mdw_mem_map(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 
 		m->map->put(m->map);
 		goto out;
+	} else {
+		/* handle iova2eva */
+		if (apummu_iova2eva(m->buf_type, (uint64_t)mpriv, m->device_iova,
+				 m->dva_size, &eva)) {
+			mdw_drv_err("apummu iova2eva fail s(0x%llx)\n", (uint64_t)mpriv);
+			ret = -EINVAL;
+			goto out;
+		}
+
+		/* check eva */
+		if (!m->device_va) {
+			mdw_drv_err("can't get mem(0x%llx) dva(0x%llx)\n",
+				(uint64_t)m, m->device_va);
+			ret = -ENOMEM;
+			goto out;
+		}
+		mdw_mem_debug("iova2eva pass s(0x%llx)\n", (uint64_t)mpriv);
 	}
 
 	/* handle invoke */
