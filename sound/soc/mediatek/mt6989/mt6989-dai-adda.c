@@ -593,14 +593,6 @@ static int mtk_adda_mtkaif_cfg_event(struct snd_soc_dapm_widget *w,
 				 afe_priv->mtkaif_chosen_phase[0],
 				 afe_priv->mtkaif_chosen_phase[1]);
 			break;
-		} else if (strcmp(w->name, "ADDA6_MTKAIF_CFG") == 0 &&
-			   afe_priv->mtkaif_chosen_phase[2] < 0) {
-			AUDIO_AEE("adda6 mtkaif calib fail");
-			dev_info(afe->dev,
-				 "%s(), check adda6 mtkaif_chosen_phase[2]:%d\n",
-				 __func__,
-				 afe_priv->mtkaif_chosen_phase[2]);
-			break;
 		}
 
 		/* set delay for ch12 to align phase of miso0 and miso1 */

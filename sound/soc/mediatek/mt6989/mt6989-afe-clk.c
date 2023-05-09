@@ -823,8 +823,6 @@ int mt6989_init_clock(struct mtk_base_afe *afe)
 			afe_priv->clk[i] = NULL;
 		}
 	}
-	if (true)
-		return 0;
 
 	afe_priv->apmixed = syscon_regmap_lookup_by_phandle(afe->dev->of_node,
 			    "apmixedsys");
