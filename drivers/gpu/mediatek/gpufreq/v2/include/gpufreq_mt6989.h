@@ -21,9 +21,9 @@
  * (0, 1) -> DVFS disable but init to CUST_INIT_OPPIDX (do DVFS only onces)
  * (0, 0) -> DVFS disable
  */
-#define GPUFREQ_DVFS_ENABLE                 (0)
-#define GPUFREQ_CUST_INIT_ENABLE            (0)
-#define GPUFREQ_CUST_INIT_OPPIDX            (0)
+#define GPUFREQ_DVFS_ENABLE                 (1)
+#define GPUFREQ_CUST_INIT_ENABLE            (1)
+#define GPUFREQ_CUST_INIT_OPPIDX            (38)
 /* MFGSYS Legacy Feature */
 #define GPUFREQ_HWDCM_ENABLE                (0)
 #define GPUFREQ_ACP_ENABLE                  (0)
@@ -204,6 +204,7 @@ struct gpufreq_core_mask_info g_core_mask_table[SHADER_CORE_NUM] = {
 /**************************************************
  * DVFS Constraint Setting
  **************************************************/
+#define NO_DELSEL_FLOOR_VSTACK              (52000)         /* mV x 100 */
 #define PARKING_UPBOUND                     (0)
 #define PARKING_SEGMENT                     (12)
 #define PARKING_CONSTRAINT                  (46)
