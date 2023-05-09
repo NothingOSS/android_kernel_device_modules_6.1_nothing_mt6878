@@ -150,7 +150,7 @@ extern dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
 #define MML_MAX_PATH_CACHES	32 /* must >= PATH_MML_MAX in all mtk-mml-mtxxxx.c */
 #define MML_MAX_AID_COMPS	10
 #define MML_MAX_CMDQ_CLTS	4
-#define MML_MAX_OPPS		5
+#define MML_MAX_OPPS		6
 #define MML_MAX_TPUT		800
 #define MML_CMDQ_NEXT_SPR	(CMDQ_GPR_CNT_ID + CMDQ_GPR_R09)
 #define MML_CMDQ_NEXT_SPR2	(CMDQ_GPR_CNT_ID + CMDQ_GPR_R11)
