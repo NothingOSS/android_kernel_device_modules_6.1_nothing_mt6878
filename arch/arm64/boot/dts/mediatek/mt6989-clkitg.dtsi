@@ -85,15 +85,12 @@
 			<&topckgen_clk CLK_TOP_SENINF3_SEL>,
 			<&topckgen_clk CLK_TOP_SENINF4_SEL>,
 			<&topckgen_clk CLK_TOP_SENINF5_SEL>,
-			<&topckgen_clk CLK_TOP_CCU_AHB_SEL>,
 			<&topckgen_clk CLK_TOP_IMG1_SEL>,
 			<&topckgen_clk CLK_TOP_IPE_SEL>,
 			<&topckgen_clk CLK_TOP_CAM_SEL>,
 			<&topckgen_clk CLK_TOP_CAMTM_SEL>,
 			<&topckgen_clk CLK_TOP_DPE_SEL>,
 			<&topckgen_clk CLK_TOP_VDEC_SEL>,
-			<&topckgen_clk CLK_TOP_CCUSYS_SEL>,
-			<&topckgen_clk CLK_TOP_CCUTM_SEL>,
 			<&topckgen_clk CLK_TOP_VENC_SEL>,
 			<&topckgen_clk CLK_TOP_DP_CORE_SEL>,
 			<&topckgen_clk CLK_TOP_DP_SEL>,
@@ -401,7 +398,6 @@
 			<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM2SYS_GALS>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM2MM2_GALS>,
-			<&camsys_main_clk CLK_CAM_MAIN_CCUSYS>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM_DPE>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM_ASG>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAMSV_A_CON_1>,
@@ -451,11 +447,6 @@
 			<&camsys_yuvc_clk CLK_CAM_YC_LARBX>,
 			<&camsys_yuvc_clk CLK_CAM_YC_CAM>,
 			<&camsys_yuvc_clk CLK_CAM_YC_CAMTG>,
-			<&ccu_main_clk CLK_CCU_LARB30_CON>,
-			<&ccu_main_clk CLK_CCU_AHB_CON>,
-			<&ccu_main_clk CLK_CCUSYS_CCU0_CON>,
-			<&ccu_main_clk CLK_CCUSYS_CCU1_CON>,
-			<&ccu_main_clk CLK_CCU2MM0_GALS_CON>,
 			<&dispsys1_config_clk CLK_MM1_DISPSYS1_CONFIG>,
 			<&dispsys1_config_clk CLK_MM1_DISP_MUTEX0>,
 			<&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC0>,
@@ -747,18 +738,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x19>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_VCORE>;
-	};
-
-	bring-up-pd-cam-ccu@1a {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1a>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_CCU>;
-	};
-
-	bring-up-pd-cam-ccu-ao@1b {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1b>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_CCU_AO>;
 	};
 
 	bring-up-pd-disp-vcore@1c {
