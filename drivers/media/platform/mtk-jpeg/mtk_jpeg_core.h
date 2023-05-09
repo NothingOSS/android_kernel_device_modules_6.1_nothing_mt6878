@@ -126,6 +126,7 @@ struct mtk_jpeg_dev {
 	int freq_cnt;
 	unsigned long freqs[MTK_JPEG_MAX_FREQ];
 	u32 fake34bits;
+	struct device *smmu_dev;
 };
 
 /**

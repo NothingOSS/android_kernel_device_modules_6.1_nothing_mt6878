@@ -32,6 +32,7 @@
 #include "mtk_jpeg_dec_hw.h"
 #include "mtk_jpeg_core.h"
 #include "mtk_jpeg_dec_parse.h"
+#include "mtk-smmu-v3.h"
 
 static struct mtk_jpeg_fmt mtk_jpeg_enc_formats[] = {
 	{
@@ -1286,7 +1287,7 @@ static int mtk_jpeg_queue_init(void *priv, struct vb2_queue *src_vq,
 	src_vq->mem_ops = &vb2_dma_contig_memops;
 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	src_vq->lock = &ctx->jpeg->lock;
-	src_vq->dev = ctx->jpeg->dev;
+	src_vq->dev = ctx->jpeg->smmu_dev;
 	ret = vb2_queue_init(src_vq);
 	if (ret)
 		return ret;
@@ -1299,7 +1300,7 @@ static int mtk_jpeg_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->mem_ops = &vb2_dma_contig_memops;
 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	dst_vq->lock = &ctx->jpeg->lock;
-	dst_vq->dev = ctx->jpeg->dev;
+	dst_vq->dev = ctx->jpeg->smmu_dev;
 	ret = vb2_queue_init(dst_vq);
 
 	return ret;
@@ -1672,9 +1673,11 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 	int jpeg_irq;
 	int ret;
 
-	jpeg = devm_kzalloc(&pdev->dev, sizeof(*jpeg), GFP_KERNEL);
+	jpeg = devm_kzalloc(mtk_smmu_get_shared_device(&pdev->dev), sizeof(*jpeg), GFP_KERNEL);
 	if (!jpeg)
 		return -ENOMEM;
+
+	jpeg->smmu_dev = mtk_smmu_get_shared_device(&pdev->dev);
 
 	mutex_init(&jpeg->lock);
 	spin_lock_init(&jpeg->hw_lock);
@@ -1767,7 +1770,7 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 		goto err_vfd_jpeg_register;
 	}
 
-	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(34));
+	ret = dma_set_mask_and_coherent(jpeg->smmu_dev, DMA_BIT_MASK(34));
 	if (ret) {
 		dev_info(&pdev->dev, "34-bit DMA enable failed\n");
 		return ret;
