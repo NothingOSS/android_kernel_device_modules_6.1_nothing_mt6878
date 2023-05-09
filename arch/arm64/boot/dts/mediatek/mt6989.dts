@@ -2954,6 +2954,7 @@
 		#size-cells = <2>;
 		compatible = "mediatek, mdla-rv";
 		core-num = <4>;
+		boot-method = "PreSecureBoot";
 		version = <0x69890501>;
 		mtk,iommu-group = <&apu_iommu_group_0>;
 		iommus = <&apu_smmu 0xe>;
