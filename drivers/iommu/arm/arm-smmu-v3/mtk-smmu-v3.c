@@ -50,7 +50,7 @@
 #define SMMU_EVT_DUMP_LEN_MAX		(200)
 
 #define SMMU_FAULT_RS_INTERVAL		DEFAULT_RATELIMIT_INTERVAL
-#define SMMU_FAULT_RS_BURST		DEFAULT_RATELIMIT_BURST
+#define SMMU_FAULT_RS_BURST		(2)
 
 static const char *IOMMU_GROUP_PROP_NAME = "mtk,iommu-group";
 static const char *PMU_SMMU_PROP_NAME = "mtk,smmu";
