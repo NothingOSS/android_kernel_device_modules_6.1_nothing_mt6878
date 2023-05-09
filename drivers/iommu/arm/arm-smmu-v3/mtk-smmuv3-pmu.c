@@ -680,7 +680,14 @@ static irqreturn_t smmu_pmu_handle_irq(int irq_num, void *data)
 	DECLARE_BITMAP(ovs, BITS_PER_TYPE(u64));
 	u64 ovsr;
 	unsigned int idx;
+	unsigned long flags;
 
+	spin_lock_irqsave(&smmu_pmu->pmu_lock, flags);
+	if (!smmu_pmu->delay_init_done) {
+		spin_unlock_irqrestore(&smmu_pmu->pmu_lock, flags);
+		return IRQ_NONE;
+	}
+	spin_unlock_irqrestore(&smmu_pmu->pmu_lock, flags);
 	ovsr = readq(smmu_pmu->reloc_base + SMMU_PMCG_OVSSET0);
 	if (!ovsr)
 		return IRQ_NONE;
