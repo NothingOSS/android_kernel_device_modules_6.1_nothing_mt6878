@@ -154,7 +154,7 @@ int lastbus_dump(int force_dump)
 	unsigned int buf_point = 0;
 	struct lastbus_monitor *m = NULL;
 	u64 local_time = local_clock();
-	bool is_timeout = false;
+	bool is_timeout = false, force_clean = false;
 	void __iomem *base;
 	uint32_t value = 0;
 
@@ -162,12 +162,15 @@ int lastbus_dump(int force_dump)
 	buf_point = check_buf_size(50);
 	dump_buf_size += snprintf(dump_buf + buf_point, DUMP_BUFF_SIZE - buf_point,
 		"dump lastbus %d, kernel time %llu ms.\n", force_dump, local_time);
+	if (force_dump == FORCE_CLEAR) {
+		force_dump = 0;
+		force_clean = true;
+	}
 
 	monitors_num = my_cfg_lastbus.num_used_monitors;
 
 	for (i = 0; i < monitors_num; i++) {
 		is_timeout = false;
-
 		m = &my_cfg_lastbus.monitors[i];
 		base = ioremap(m->base, ((0x408 + m->num_ports * 4) / 0x100 + 1) * 0x100);
 		value = readl(base);
@@ -178,18 +181,20 @@ int lastbus_dump(int force_dump)
 				__func__, m->name, is_timeout, force_dump, value);
 			buf_point = check_buf_size(100);
 			dump_buf_size += snprintf(dump_buf + buf_point, DUMP_BUFF_SIZE - buf_point,
-				"%s lastbus timeout: %d, force_dump: %d, debug status 0x%x.\n",
+				"%s lastbus is_timeout: %d, force_dump: %d, debug status 0x%x.\n",
 				m->name, is_timeout, force_dump, value);
 			lastbus_dump_monitor(m, base);
-
-			if (is_timeout)
-				lastbus_init_monitor_v1(m, my_cfg_lastbus.timeout_ms,
-					my_cfg_lastbus.timeout_type, base);
+		}
+		if (is_timeout || force_clean) {
+			lastbus_init_monitor_v1(m, my_cfg_lastbus.timeout_ms,
+				my_cfg_lastbus.timeout_type, base);
+			pr_info("%s: status after clean...is_timeout: %d, force_clean: %d.\n",
+				__func__, (readl(base) & LASTBUS_TIMEOUT), force_clean);
 		}
 		iounmap(base);
 	}
-
-
+	if (!aee_dump && force_clean)
+		memset(dump_buf, '\0', sizeof(dump_buf));
 	return 1;
 }
 
@@ -211,7 +216,7 @@ static int last_bus_dump_event(struct notifier_block *this,
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 	if (aee_dump != 0)
-		aee_kernel_exception("last_bus_timeout", "last bus timeout detect");
+		aee_kernel_exception("last_bus_timeout", "detect last bus timeout");
 #endif
 
 	return 0;
@@ -395,7 +400,7 @@ static int last_bus_show(struct seq_file *m, void *v)
 			seq_write(m, (char *)dump_buf, point);
 		}
 	} else
-		seq_puts(m, "Last bus monitor not enable.\n");
+		seq_puts(m, "Last bus monitor is not enabled.\n");
 	return 0;
 }
 
@@ -428,6 +433,10 @@ static ssize_t last_bus_write(struct file *filp,
 	case 1:
 		/* force dump last bus timeout information */
 		lastbus_dump(FORCE_DUMP);
+		break;
+	case 2:
+		/* force init lastbus to clean status */
+		lastbus_dump(FORCE_CLEAR);
 		break;
 	default:
 		break;

@@ -55,7 +55,8 @@ struct cfg_lastbus {
 	unsigned int num_used_monitors;
 	struct lastbus_monitor monitors[NR_MAX_LASTBUS_MONITOR];
 };
-#define FORCE_DUMP 1
 #define TIMEOUT_DUMP 0
+#define FORCE_DUMP   1
+#define FORCE_CLEAR  2
 int lastbus_dump(int force_dump);
 #endif
