@@ -7203,9 +7203,18 @@
 		};
 
 		jpgenc@17030000 {
-			compatible = "mediatek,jpgenc";
+			compatible = "mediatek,mtk-jpgenc";
+			mediatek,platform = "platform:mt6989";
 			reg = <0 0x17030000 0 0x10000>;
-			interrupts = <GIC_SPI 547 IRQ_TYPE_NONE 0>;
+			interrupts = <GIC_SPI 547 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&venc_gcon_clk CLK_VEN1_CKE2_JPGENC>,
+				 <&mmdvfs_mux MMDVFS_USER_JPEGENC>;
+			clock-names = "jpgenc", "mmdvfs_clk";
+			power-domains = <&scpsys  MT6989_POWER_DOMAIN_VEN0>;
+			mtk,smmu-shared = <&mm_smmu_srt_normal>;
+			mediatek,larb = <&smi_larb7>;
+			operating-points-v2 = <&opp_table_venc>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		};
 
 		jpgdec@17040000 {
@@ -7231,8 +7240,19 @@
 		};
 
 		jpgenc@17830000 {
-			compatible = "mediatek,jpgenc";
+			compatible = "mediatek,mtk-jpgenc_c0_c1";
+			mediatek,platform = "platform:mt6989";
 			reg = <0 0x17830000 0 0x10000>;
+			interrupts = <GIC_SPI 552 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&venc_gcon_clk CLK_VEN1_CKE2_JPGENC>,
+				     <&venc_gcon_core1_clk  CLK_VEN2_CKE2_JPGENC>,
+					 <&mmdvfs_mux MMDVFS_USER_JPEGENC>;
+			clock-names = "jpgenc", "jpgenc_c1", "mmdvfs_clk";
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
+			mtk,smmu-shared = <&mm_smmu_srt_normal>;
+			mediatek,larb = <&smi_larb7 &smi_larb8>;
+			operating-points-v2 = <&opp_table_venc>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		};
 
 		jpgdec@17840000 {
