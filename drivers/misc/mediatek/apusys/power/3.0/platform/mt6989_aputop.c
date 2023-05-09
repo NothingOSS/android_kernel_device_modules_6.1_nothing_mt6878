@@ -545,6 +545,21 @@ void mt6989_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump)
 				+ APU_ACX_CONN_CG_CON);
 		pr_info("%s ACX0 RPC_PWR_RDY:0x%08x APU_ACX_CONN_CG_CON:0x%08x\n",
 			__func__, status1, status2);
+	} else if (id == ACX1) {
+		status1 = apu_readl(apupw.regs[apu_acx1_rpc_lite]
+				+ APU_RPC_INTF_PWR_RDY);
+		status2 = apu_readl(apupw.regs[apu_acx1]
+				+ APU_ACX_CONN_CG_CON);
+		pr_info("%s ACX1 RPC_PWR_RDY:0x%08x APU_ACX_CONN_CG_CON:0x%08x\n",
+			__func__, status1, status2);
+
+	} else if (id == ACX2) {
+		status1 = apu_readl(apupw.regs[apu_acx2_rpc_lite]
+				+ APU_RPC_INTF_PWR_RDY);
+		status2 = apu_readl(apupw.regs[apu_acx2]
+				+ APU_ACX_CONN_CG_CON);
+		pr_info("%s ACX2 RPC_PWR_RDY:0x%08x APU_NCX_CONN_CG_CON:0x%08x\n",
+			__func__, status1, status2);
 	} else {
 		status1 = apu_readl(apupw.regs[apu_rpc]
 				+ APU_RPC_INTF_PWR_RDY);

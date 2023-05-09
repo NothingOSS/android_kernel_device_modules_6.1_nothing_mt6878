@@ -162,6 +162,16 @@ static int aputop_dbg_set_parameter(int param, int argc, int *args)
 			ret = -EINVAL;
 		}
 		break;
+	case APUPWR_DBG_DUMP_OPP_TBL2:
+		if (argc == 1) {
+			rpmsg_data.cmd = APUTOP_DUMP_OPP_TBL2;
+			rpmsg_data.data0 = args[0]; // pseudo data
+			aputop_send_rpmsg(&rpmsg_data, 100);
+		} else {
+			pr_info("%s invalid param num:%d\n", __func__, argc);
+			ret = -EINVAL;
+		}
+		break;
 	case APUPWR_DBG_CURR_STATUS:
 		if (argc == 1) {
 			rpmsg_data.cmd = APUTOP_CURR_STATUS;
@@ -179,6 +189,30 @@ static int aputop_dbg_set_parameter(int param, int argc, int *args)
 			rpmsg_data.data0 = args[0];
 			// value of allow bit/bitmask
 			rpmsg_data.data1 = args[1]; // allow bitmask
+			aputop_send_rpmsg(&rpmsg_data, 100);
+		} else {
+			pr_info("%s invalid param num:%d\n", __func__, argc);
+			ret = -EINVAL;
+		}
+		break;
+	case APUPWR_DBG_CLK_SET_RATE:
+		if (argc == 4) {
+			rpmsg_data.cmd = APUTOP_CLK_SET_RATE;
+			rpmsg_data.data0 = args[0]; // conn
+			rpmsg_data.data1 = args[1]; // rv33
+			rpmsg_data.data2 = args[2]; // mvpu
+			rpmsg_data.data3 = args[3]; // mdla
+			aputop_send_rpmsg(&rpmsg_data, 100);
+		} else {
+			pr_info("%s invalid param num:%d\n", __func__, argc);
+			ret = -EINVAL;
+		}
+		break;
+	case APUPWR_DBG_BUK_SET_VOLT:
+		if (argc == 2) {
+			rpmsg_data.cmd = APUTOP_BUK_SET_VOLT;
+			rpmsg_data.data0 = args[0]; // vapu target opp
+			rpmsg_data.data1 = args[1]; // vapu target volt
 			aputop_send_rpmsg(&rpmsg_data, 100);
 		} else {
 			pr_info("%s invalid param num:%d\n", __func__, argc);
@@ -406,10 +440,16 @@ ssize_t mt6989_apu_top_dbg_write(
 		param = APUPWR_DBG_DVFS_DEBUG;
 	else if (!strcmp(token, "dump_opp_tbl"))
 		param = APUPWR_DBG_DUMP_OPP_TBL;
+	else if (!strcmp(token, "dump_opp_tbl2"))
+		param = APUPWR_DBG_DUMP_OPP_TBL2;
 	else if (!strcmp(token, "curr_status"))
 		param = APUPWR_DBG_CURR_STATUS;
 	else if (!strcmp(token, "pwr_profiling"))
 		param = APUPWR_DBG_PROFILING;
+	else if (!strcmp(token, "clk_set_rate"))
+		param = APUPWR_DBG_CLK_SET_RATE;
+	else if (!strcmp(token, "buk_set_volt"))
+		param = APUPWR_DBG_BUK_SET_VOLT;
 	else if (!strcmp(token, "are_dump"))
 		param = APUPWR_DBG_ARE;
 	else if (!strcmp(token, "hw_voter_dump"))
@@ -444,6 +484,8 @@ int mt6989_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src)
 	case APUTOP_DEV_CTL:
 	case APUTOP_DEV_SET_OPP:
 	case APUTOP_PWR_PROFILING:
+	case APUTOP_CLK_SET_RATE:
+	case APUTOP_BUK_SET_VOLT:
 		// do nothing
 		break;
 	case APUTOP_DUMP_OPP_TBL:
