@@ -9826,6 +9826,7 @@ static int mt6989_afe_pcm_dev_probe(struct platform_device *pdev)
 		afe->memif[i].const_irq = 1;
 	}
 	afe->memif[MT6989_DEEP_MEMIF].ack = mtk_sp_clean_written_buffer_ack;
+	afe->memif[MT6989_FAST_MEMIF].fast_palyback = 1;
 
 	mutex_init(&afe->irq_alloc_lock);       /* needed when dynamic irq */
 

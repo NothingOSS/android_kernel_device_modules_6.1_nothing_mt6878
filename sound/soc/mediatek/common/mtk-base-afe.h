@@ -246,6 +246,8 @@ struct mtk_base_afe_memif {
 	bool vow_barge_in_using_dram;
 	bool scp_ultra_enable;
 	int use_scp_share_mem;
+	int fast_palyback;
+
 };
 
 struct mtk_base_afe_irq {

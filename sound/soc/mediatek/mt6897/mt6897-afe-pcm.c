@@ -4857,9 +4857,17 @@ static int mt6897_afe_pcm_copy(struct snd_pcm_substream *substream,
 			       void *buf, unsigned long bytes,
 			       mtk_sp_copy_f sp_copy)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_component *component =
+		snd_soc_rtdcom_lookup(rtd, AFE_PCM_NAME);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(component);
 	int ret = 0;
 
+	mt6897_set_audio_int_bus_parent(afe, CLK_TOP_MAINPLL_D4_D4);
+
 	ret = sp_copy(substream, channel, hwoff, buf, bytes);
+
+	mt6897_set_audio_int_bus_parent(afe, CLK_CLK26M);
 
 	return ret;
 }
@@ -11792,6 +11800,7 @@ static int mt6897_afe_pcm_dev_probe(struct platform_device *pdev)
 		afe->memif[i].const_irq = 1;
 	}
 	afe->memif[MT6897_DEEP_MEMIF].ack = mtk_sp_clean_written_buffer_ack;
+	afe->memif[MT6897_FAST_MEMIF].fast_palyback = 1;
 
 	mutex_init(&afe->irq_alloc_lock);       /* needed when dynamic irq */
 
