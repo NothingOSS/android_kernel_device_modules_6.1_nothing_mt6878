@@ -75,6 +75,10 @@
 //			wdma8 = &ovl0_ufbc_wdma0;
 //			wdma9 = &ovl1_ufbc_wdma0;
 //			mdp_rdma0 = &disp_mdp_rdma0;
+			rsz0 = &disp_rsz0;
+			rsz1 = &disp_rsz1;
+			postmask0 = &disp_postmask0;
+			postmask1 = &disp_postmask1;
 //			chist0 = &disp_chist0;
 //			chist1 = &disp_chist1;
 			dsc0 = &disp_dsc_wrap0;
@@ -5491,30 +5495,6 @@
 			reg = <0 0x14016000 0 0x1000>;
 		};
 
-		disp-postmask0@14017000 {
-			compatible = "mediatek,disp_postmask0";
-			reg = <0 0x14017000 0 0x1000>;
-			interrupts = <GIC_SPI 458 IRQ_TYPE_NONE 0>;
-		};
-
-		disp-postmask1@14018000 {
-			compatible = "mediatek,disp_postmask1";
-			reg = <0 0x14018000 0 0x1000>;
-			interrupts = <GIC_SPI 459 IRQ_TYPE_NONE 0>;
-		};
-
-		disp-rsz0@14019000 {
-			compatible = "mediatek,disp_rsz0";
-			reg = <0 0x14019000 0 0x1000>;
-			interrupts = <GIC_SPI 460 IRQ_TYPE_NONE 0>;
-		};
-
-		disp-rsz1@1401a000 {
-			compatible = "mediatek,disp_rsz1";
-			reg = <0 0x1401a000 0 0x1000>;
-			interrupts = <GIC_SPI 461 IRQ_TYPE_NONE 0>;
-		};
-
 		disp-spr0@1401b000 {
 			compatible = "mediatek,disp_spr0";
 			reg = <0 0x1401b000 0 0x1000>;
@@ -5919,6 +5899,44 @@
 					//"mediatek,mt6989-disp-wdma";
 			reg = <0 0x1440a000 0 0x1000>;
 			interrupts = <GIC_SPI 477 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
+		disp_rsz0: disp-rsz0@14019000 {
+			compatible = "mediatek,disp_rsz0",
+					"mediatek,mt6989-disp-rsz";
+			reg = <0 0x14019000 0 0x1000>;
+			interrupts = <GIC_SPI 460 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys_config_clk CLK_MM_DISP_RSZ0>;
+		};
+
+		disp_rsz1: disp-rsz1@1401a000 {
+			compatible = "mediatek,disp_rsz1",
+					"mediatek,mt6989-disp-rsz";
+			reg = <0 0x1401a000 0 0x1000>;
+			interrupts = <GIC_SPI 461 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys_config_clk CLK_MM_DISP_RSZ1>;
+		};
+
+		disp_postmask0: disp-postmask0@14017000 {
+			compatible = "mediatek,disp_postmask0",
+						"mediatek,mt6989-disp-postmask";
+			reg = <0 0x14017000 0 0x1000>;
+			interrupts = <GIC_SPI 458 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys_config_clk CLK_MM_DISP_POSTMASK0>;
+			mediatek,larb = <&smi_larb32>;
+			//mediatek,smi-id = <32>;
+			//iommus = <&disp_iommu M4U_PORT_L32_DISP_POSTMASK0>;
+		};
+
+		disp_postmask1: disp-postmask1@14018000 {
+			compatible = "mediatek,disp_postmask1",
+						"mediatek,mt6989-disp-postmask";
+			reg = <0 0x14018000 0 0x1000>;
+			interrupts = <GIC_SPI 459 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys_config_clk CLK_MM_DISP_POSTMASK1>;
+			mediatek,larb = <&smi_larb32>;
+			//mediatek,smi-id = <33>;
+			//iommus = <&disp_iommu M4U_PORT_L33_DISP_POSTMASK0>;
 		};
 
 		inlinerot0: inlinerot@1440b000 {
