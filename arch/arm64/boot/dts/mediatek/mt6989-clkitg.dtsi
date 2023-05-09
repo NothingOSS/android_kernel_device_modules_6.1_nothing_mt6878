@@ -29,7 +29,6 @@
 			<&topckgen_clk CLK_TOP_IPSWEST_SEL>,
 			<&topckgen_clk CLK_TOP_TL_SEL>,
 			<&topckgen_clk CLK_TOP_EMI_INTERFACE_546_SEL>,
-			<&topckgen_clk CLK_TOP_UARTHUB_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_SSR_SEJ_SEL>,
 			<&topckgen_clk CLK_TOP_DPSW_CMP_26M_SEL>,
 			<&topckgen_clk CLK_TOP_SMAPCK_SEL>,
