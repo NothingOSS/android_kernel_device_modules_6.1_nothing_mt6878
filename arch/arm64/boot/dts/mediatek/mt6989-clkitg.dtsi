@@ -90,8 +90,6 @@
 			<&topckgen_clk CLK_TOP_CAM_SEL>,
 			<&topckgen_clk CLK_TOP_CAMTM_SEL>,
 			<&topckgen_clk CLK_TOP_DPE_SEL>,
-			<&topckgen_clk CLK_TOP_VDEC_SEL>,
-			<&topckgen_clk CLK_TOP_VENC_SEL>,
 			<&topckgen_clk CLK_TOP_DP_CORE_SEL>,
 			<&topckgen_clk CLK_TOP_DP_SEL>,
 			<&topckgen_clk CLK_TOP_DISP_SEL>,
@@ -348,36 +346,6 @@
 			<&traw_dip1_clk CLK_TRAW_DIP1_TRAW>,
 			<&traw_dip1_clk CLK_TRAW_DIP1_GALS>,
 			<&traw_cap_dip1_clk CLK_TRAW_CAP_DIP1_TRAW_CAP>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_LAT_CKEN>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_LAT_ACTIVE>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_LAT_CKEN_ENG>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_ACTIVE>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN_ENG>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_SOC_APTV_EN>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_SOC_APTV_TOP_EN>,
-			<&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_SOC_IPS_EN>,
-			<&vdec_gcon_base_clk CLK_VDE2_LAT_CKEN>,
-			<&vdec_gcon_base_clk CLK_VDE2_LAT_ACTIVE>,
-			<&vdec_gcon_base_clk CLK_VDE2_LAT_CKEN_ENG>,
-			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN>,
-			<&vdec_gcon_base_clk CLK_VDE2_VDEC_ACTIVE>,
-			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_ENG>,
-			<&venc_gcon_clk CLK_VEN1_CKE0_LARB>,
-			<&venc_gcon_clk CLK_VEN1_CKE1_VENC>,
-			<&venc_gcon_clk CLK_VEN1_CKE3_JPGDEC>,
-			<&venc_gcon_clk CLK_VEN1_CKE4_JPGDEC_C1>,
-			<&venc_gcon_clk CLK_VEN1_CKE5_GALS>,
-			<&venc_gcon_clk CLK_VEN1_CKE6_GALS_SRAM>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE3_JPGDEC>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE5_GALS>,
-			<&venc_gcon_core1_clk CLK_VEN2_CKE6_GALS_SRAM>,
-			<&venc_gcon_core2_clk CLK_VEN_C2_CKE0_LARB>,
-			<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC>,
-			<&venc_gcon_core2_clk CLK_VEN_C2_CKE5_GALS>,
-			<&venc_gcon_core2_clk CLK_VEN_C2_CKE6_GALS_SRAM>,
 			<&cam_vcore_clk CLK_CAM_V_MM0_SUBCOMM>,
 			<&camsys_main_clk CLK_CAM_MAIN_LARB13>,
 			<&camsys_main_clk CLK_CAM_MAIN_LARB14>,
@@ -543,24 +511,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x10>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE_VCORE1>;
-	};
-
-	bring-up-pd-ven0@11 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x11>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN0>;
-	};
-
-	bring-up-pd-ven1@12 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x12>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
-	};
-
-	bring-up-pd-ven2@13 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x13>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN2>;
 	};
 
 	bring-up-pd-cam-mraw@14 {
