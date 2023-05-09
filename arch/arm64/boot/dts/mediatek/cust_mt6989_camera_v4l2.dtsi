@@ -459,6 +459,12 @@
 			remote-endpoint = <&main_af_cam2>;
 		};
 	};
+	port@3 {
+		reg = <3>;
+		main_af_cam3_endpoint: endpoint {
+			remote-endpoint = <&main_af_cam3>;
+		};
+	};
 };
 
 &i2c2 {
@@ -723,6 +729,18 @@
 &i2c13 {
 	status = "okay";
 	clock-frequency = <1000000>;
+
+	camera-af-main-four@d {
+		compatible = "mediatek,main4_vcm";
+		reg = <0x0d>;
+		vin-supply = <&rt5133_ldo2>;
+		port {
+			main_af_cam3: endpoint {
+				remote-endpoint = <&main_af_cam3_endpoint>;
+			};
+		};
+	};
+
 	sensor2: sensor2@10 {
 		compatible = "mediatek,imgsensor";
 		sensor-names = "imx598_mipi_raw",
