@@ -291,7 +291,8 @@ s32 cmdq_mdp_get_smi_usage(void)
 static void cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 {
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
-	struct device *larb;
+	struct device *larb, *mdpdev;
+	int ret;
 
 	if (!(engine_flag & cmdq_mdp_get_func()->mdpGetEngLarb())) {
 		CMDQ_ERR("%s engine_flag not include MDP_ENG_LARB\n", __func__);
@@ -299,6 +300,7 @@ static void cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 	}
 
 	larb = cmdq_mdp_get_func()->mdpGetLarbDev();
+	mdpdev = cmdq_mdp_get_func()->mdpGetMdpDev();
 
 	if (!larb) {
 		CMDQ_ERR("%s smi larb not support\n", __func__);
@@ -306,7 +308,13 @@ static void cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 	}
 
 	if (enable) {
-		int ret = pm_runtime_resume_and_get(larb);
+		if (mdpdev) {
+			ret = pm_runtime_resume_and_get(mdpdev);
+			if (ret)
+				CMDQ_ERR("%s enable mminfra power fail ret:%d\n",
+					__func__, ret);
+		}
+		ret = pm_runtime_resume_and_get(larb);
 		cmdq_mdp_get_func()->mdpEnableCommonClock(enable, engine_flag);
 
 		if (ret)
@@ -315,6 +323,12 @@ static void cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 	} else {
 		cmdq_mdp_get_func()->mdpEnableCommonClock(enable, engine_flag);
 		pm_runtime_put_sync(larb);
+		if (mdpdev) {
+			ret = pm_runtime_put_sync(mdpdev);
+			if (ret)
+				CMDQ_ERR("%s disable mminfra power fail ret:%d\n",
+					__func__, ret);
+		}
 	}
 
 	if (cmdq_mdp_get_func()->mdpVcpPQReadbackSupport()) {
@@ -2508,6 +2522,14 @@ static struct device *cmdq_mdp_get_larb_device_virtual(void)
 	return mdp_ctx.larb;
 }
 
+static struct device *cmdq_mdp_get_mdp_device_virtual(void)
+{
+	/* Only allow when enable / disable mminfra by mdp,
+	 *  Controlled in platform code.
+	 */
+	return NULL;
+}
+
 static u32 cmdq_mdp_get_larb_count_virtual(void)
 {
 	return 1;
@@ -3692,6 +3714,7 @@ void cmdq_mdp_virtual_function_setting(void)
 	pFunc->mdpEnableCommonClock = cmdq_mdp_enable_common_clock_virtual;
 	pFunc->mdpGetEngLarb = cmdq_mdp_get_eng_larb_virtual;
 	pFunc->mdpGetLarbDev = cmdq_mdp_get_larb_device_virtual;
+	pFunc->mdpGetMdpDev = cmdq_mdp_get_mdp_device_virtual;
 	pFunc->mdpGetLarbCount = cmdq_mdp_get_larb_count_virtual;
 	pFunc->beginTask = cmdq_mdp_begin_task_virtual;
 	pFunc->endTask = cmdq_mdp_end_task_virtual;

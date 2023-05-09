@@ -97,6 +97,8 @@ typedef u32 (*CmdqMdpGetLarbCount) (void);
 
 typedef struct device *(*CmdqMdpGetLarbDev) (void);
 
+typedef struct device *(*CmdqMdpGetMdpDev) (void);
+
 typedef void (*CmdqCheckHwStatus) (struct cmdqRecStruct *handle);
 
 typedef u64(*CmdqMdpGetSecEngine) (u64 engine_flag);
@@ -182,6 +184,7 @@ struct cmdqMDPFuncStruct {
 	CmdqMdpEnableCommonClock mdpEnableCommonClock;
 	CmdqMdpGetEngLarb mdpGetEngLarb;
 	CmdqMdpGetLarbDev mdpGetLarbDev;
+	CmdqMdpGetMdpDev mdpGetMdpDev;
 	CmdqMdpGetLarbCount mdpGetLarbCount;
 	CmdqBeginTaskCB beginTask;
 	CmdqEndTaskCB endTask;

@@ -33,6 +33,7 @@
 
 /* iommu larbs */
 struct device *larb2;
+struct device *mdpdev;
 
 /* support RDMA prebuilt access */
 int gCmdqRdmaPrebuiltSupport;
@@ -1251,6 +1252,7 @@ void cmdqMdpInitialSetting(struct platform_device *pdev)
 
 	/* must porting in dts */
 	larb2 = mdp_init_larb(pdev, 0);
+	mdpdev = &pdev->dev;
 
 	/* Query vcp pq readback setting in dts */
 	gVcpPQReadbackSupport = of_property_read_bool(pdev->dev.of_node, "vcp_pq_readback");
@@ -1310,6 +1312,11 @@ u64 cmdq_mdp_get_eng_larb(void)
 struct device *cmdq_mdp_get_larb_device(void)
 {
 	return larb2;
+}
+
+struct device *cmdq_mdp_get_mdp_device(void)
+{
+	return mdpdev;
 }
 
 void cmdq_mdp_enable_APB_MUTEX(bool enable, u64 engineFlag)
@@ -1605,6 +1612,7 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->mdpEnableCommonClock = cmdq_mdp_enable_APB_MUTEX;
 	pFunc->mdpGetEngLarb = cmdq_mdp_get_eng_larb;
 	pFunc->mdpGetLarbDev = cmdq_mdp_get_larb_device;
+	pFunc->mdpGetMdpDev = cmdq_mdp_get_mdp_device;
 	pFunc->CheckHwStatus = cmdq_mdp_check_hw_status;
 #ifdef CMDQ_SECURE_PATH_SUPPORT
 	pFunc->mdpGetSecEngine = cmdq_mdp_get_secure_engine;
