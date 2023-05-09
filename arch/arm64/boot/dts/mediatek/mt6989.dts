@@ -7336,10 +7336,10 @@
 			interrupts =
 				<GIC_SPI 510 IRQ_TYPE_LEVEL_HIGH 0>, // adlrd_ipui_rdone
 				<GIC_SPI 511 IRQ_TYPE_LEVEL_HIGH 0>; // adlrd
-#if 0
 			operating-points-v2 = <&opp_table_cam>;
-			clocks = <&mmdvfs_clk CLK_MMDVFS_CAM>;
-			clock-names = "mmdvfs_clk";
+			clocks = <&mmdvfs_mux MMDVFS_USER_CAM>;
+			clock-names = "mmdvfs_mux";
+#if 0
 			mboxes = <&gce_m 24 0 CMDQ_THR_PRIO_1>;
 #endif
 		};
