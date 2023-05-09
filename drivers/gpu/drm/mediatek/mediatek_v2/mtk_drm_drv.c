@@ -3374,6 +3374,39 @@ static const struct mtk_addon_scenario_data mt6985_dual_data_ext[ADDON_SCN_NR] =
 	},
 };
 
+static const struct mtk_addon_scenario_data mt6989_addon_main[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[TRIPLE_DISP] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+};
+
+static const struct mtk_addon_scenario_data mt6989_addon_secondary_path[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+	[TRIPLE_DISP] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+};
+
+static const struct mtk_addon_scenario_data mt6989_addon_discrete_path[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+	[TRIPLE_DISP] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+};
+
 static const struct mtk_addon_scenario_data mt6897_addon_main[ADDON_SCN_NR] = {
 	[NONE] = {
 		.module_num = 0,
@@ -4236,7 +4269,7 @@ static const struct mtk_crtc_path_data mt6989_mtk_main_path_data = {
 //	.dual_path_len[0] = ARRAY_SIZE(mt6989_mtk_ddp_dual_main_bringup),
 //	.wb_path[DDP_MAJOR] = mt6983_mtk_ddp_main_wb_path,
 //	.wb_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6983_mtk_ddp_main_wb_path),
-//	.addon_data = mt6989_addon_main,
+	.addon_data = mt6989_addon_main,
 //	.addon_data_dual = mt6989_addon_main_dual,
 //	.scaling_data = mt6989_scaling_main,
 //	.scaling_data_dual = mt6989_scaling_main_dual,
@@ -4268,7 +4301,7 @@ static const struct mtk_crtc_path_data mt6989_mtk_secondary_path_data = {
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6989_mtk_ddp_secondary),
 //	.dual_path[0] = mt6989_mtk_ddp_dual_secondary_dp,
 //	.dual_path_len[0] = ARRAY_SIZE(mt6989_mtk_ddp_dual_secondary_dp),
-//	.addon_data = mt6989_addon_secondary_path,
+	.addon_data = mt6989_addon_secondary_path,
 //	.addon_data_dual = mt6989_addon_secondary_path_dual,
 };
 
@@ -4278,7 +4311,7 @@ static const struct mtk_crtc_path_data mt6989_mtk_discrete_path_data = {
 	.path_req_hrt[DDP_MAJOR][0] = true,
 //	.dual_path[0] = mt6989_mtk_ddp_dual_discrete_chip,
 //	.dual_path_len[0] = ARRAY_SIZE(mt6989_mtk_ddp_dual_discrete_chip),
-//	.addon_data = mt6983_addon_discrete_path,
+	.addon_data = mt6989_addon_discrete_path,
 //	.addon_data_dual = mt6989_addon_discrete_path_dual,
 	.is_discrete_path = true,
 };
