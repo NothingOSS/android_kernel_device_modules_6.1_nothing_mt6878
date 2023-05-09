@@ -10534,8 +10534,23 @@
 		memory-region = <&mkp_mem>;
 	};
 
+	mtk-sec-dmaheap {
+		compatible = "mediatek,dmaheap-region-base";
+		mtk,smmu-shared = <&mm_smmu_srt_protected>;
+	};
+
 	mtk-iommu-debug {
 		compatible = "mediatek,mt6989-smmu-debug";
+	};
+
+	mtk_dmabufheap_debug0: dmaheap-test0 {
+		compatible = "mediatek, mtk_dmabufheap, iommu0";
+		mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+	};
+
+	mtk_dmabufheap_debug1: dmaheap-test1 {
+		compatible = "mediatek, mtk_dmabufheap, iommu1";
+		mtk,smmu-shared = <&mm_smmu_srt_normal>;
 	};
 
 	soc-smmu-lmu {
