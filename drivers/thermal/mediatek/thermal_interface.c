@@ -36,7 +36,7 @@
 #include <net/genetlink.h>
 #include <linux/netlink.h>
 #include <linux/socket.h>
-#include <linux/leds-mtk.h>
+#include <leds-mtk.h>
 #endif
 
 #define MAX_HEADROOM		(100)
@@ -206,17 +206,33 @@ int _backlight_changed_event(struct notifier_block *nb, unsigned long event,
 
 	switch (event) {
 	case LED_BRIGHTNESS_CHANGED:
-		if (led_conf->cdev.brightness > 0) {
-			if (SCRN_Status.main_scrn_status == 0) {
-				pr_info("Receive notification: screen on\n");
-				SCRN_Status.main_scrn_status = 1;
-				scrn_status_changed = 1;
+		if (led_conf->connector_id == mtk_drm_get_conn_obj_id_from_idx(0, 1)) {
+			if (led_conf->cdev.brightness > 0) {
+				if (SCRN_Status.main_scrn_status == 0) {
+					pr_info("Receive notification: main-screen on\n");
+					SCRN_Status.main_scrn_status = 1;
+					scrn_status_changed = 1;
+				}
+			} else {
+				if (SCRN_Status.main_scrn_status == 1) {
+					pr_info("Receive notification: main-screen off\n");
+					SCRN_Status.main_scrn_status = 0;
+					scrn_status_changed = 1;
+				}
 			}
-		} else {
-			if (SCRN_Status.main_scrn_status == 1) {
-				pr_info("Receive notification: screen off\n");
-				SCRN_Status.main_scrn_status = 0;
-				scrn_status_changed = 1;
+		} else if (led_conf->connector_id == mtk_drm_get_conn_obj_id_from_idx(1, 1)) {
+			if (led_conf->cdev.brightness > 0) {
+				if (SCRN_Status.sub_scrn_status == 0) {
+					pr_info("Receive notification: sub-screen on\n");
+					SCRN_Status.sub_scrn_status = 1;
+					scrn_status_changed = 1;
+				}
+			} else {
+				if (SCRN_Status.sub_scrn_status == 1) {
+					pr_info("Receive notification: sub-screen off\n");
+					SCRN_Status.sub_scrn_status = 0;
+					scrn_status_changed = 1;
+				}
 			}
 		}
 		break;
