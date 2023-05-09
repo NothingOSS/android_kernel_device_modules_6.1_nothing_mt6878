@@ -492,8 +492,7 @@ enum md_scenario get_md1_scenario_by_shm(u32 *share_mem)
 		pr_info("scen_status: 0x%llx, scen_status1: 0x%x, scen_status2: 0x%x\n",
 				scen_status, scen_status1, scen_status2);
 		pr_info("MD1 scenario: %d(%s), scen_status: 0x%llx\n",
-			scenario, mdpm_scen[scenario].scenario_name,
-			scen_status);
+			scenario, mdpm_scen[scenario].scenario_name, scen_status);
 
 	return scenario;
 }
