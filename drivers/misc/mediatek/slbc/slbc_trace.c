@@ -85,13 +85,14 @@ void slbc_trace_rec_write(const char *name, int line, u32 lvl, u32 type, int id,
 	va_list va;
 
 	if (!slbc_trace) {
+		/*
 		va_start(va, fmt);
 		len = vsnprintf(buf, sizeof(buf), (fmt) ? fmt : "null", va);
 		va_end(va);
 
-		/* if (len) */
-			/* pr_info("#@# %s(%d) ret %d, %s\n", name, line, ret, buf); */
-
+		if (len)
+			pr_info("#@# %s(%d) ret %d, %s\n", name, line, ret, buf);
+		*/
 		return;
 	}
 
