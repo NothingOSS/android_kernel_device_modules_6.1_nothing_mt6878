@@ -685,7 +685,7 @@ static int __mt_get_freq2(unsigned int  type, unsigned int id)
 
 	fmeter_lock(flags);
 
-	if (type != FM_VLP_CKSYS && id == FM_PLL_CKDIV_CK) {
+	if (type != FM_VLP_CKSYS) {
 		// check ckdiv_en
 		if (clk_readl(pll_con0) & SUBSYS_CKDIV_EN)
 			ckdiv_en = 1;
@@ -705,7 +705,7 @@ static int __mt_get_freq2(unsigned int  type, unsigned int id)
 	else
 		clk_writel(con0, (clk_readl(con0) & 0x00FFFFF8) | (id << 0));
 	/* set ckgen_load_cnt to 1024 */
-	clk_writel(con1, (clk_readl(con1) & 0xFC00FFFF) | (0x3FF << 16));
+	clk_writel(con1, (clk_readl(con1) & 0xFC00FFFF) | (0x1FF << 16));
 
 	/* sel fqmtr_cksel and set ckgen_k1 to 0(DIV4) */
 	clk_writel(con0, (clk_readl(con0) & 0x00FFFFFF) | (3 << 24));
@@ -731,9 +731,9 @@ static int __mt_get_freq2(unsigned int  type, unsigned int id)
 	}
 
 	temp = clk_readl(con1) & 0xFFFF;
-	output = ((temp * 26000)) / 1024; // Khz
+	output = ((temp * 26000)) / 512; // Khz
 
-	if (type != FM_VLP_CKSYS && id == FM_PLL_CKDIV_CK) {
+	if (type != FM_VLP_CKSYS) {
 		clk_div = (clk_readl(pll_con0) & SUBSYS_CKDIV_MASK) >> SUBSYS_CKDIV_SHIFT;
 		if (ckdiv_en)
 			clk_writel(pll_con0, (clk_readl(pll_con0) & ~(SUBSYS_TST_EN)));
@@ -790,10 +790,7 @@ static unsigned int mt6989_get_subsys_freq(unsigned int ID)
 	if (ID >= FM_SYS_NUM)
 		return 0;
 
-	if (ID == FM_MFGPLL || ID == FM_MFGPLL_SC0 || ID == FM_MFGPLL_SC1)
-		output = __mt_get_freq2(ID, FM_PLL_TST_CK);
-	else
-		output = __mt_get_freq2(ID, FM_PLL_CKDIV_CK);
+	output = __mt_get_freq2(ID, FM_PLL_TST_CK);
 
 	subsys_fmeter_unlock(flags);
 
