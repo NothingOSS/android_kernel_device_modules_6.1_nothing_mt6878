@@ -1534,6 +1534,13 @@
 		compatible = "arm,physical-memory-group-manager";
 	};
 
+	aod_scp: aod-scp {
+		compatible = "mediatek,aod_scp";
+		dsi0 = <&dsi0 0x1000>;
+		dsc0 = <&disp_dsc_wrap0 0x1000>;
+		mipitx0 = <&mipi_tx_config0 0x1000>;
+	};
+
 	ged: ged {
 		compatible = "mediatek,ged";
 		gpufreq-supply = <&gpufreq>;
@@ -10432,7 +10439,8 @@
 				  <10 0x2000 0x0>, /* sensor debug */
 				  <11 0x100 0x0>, /* sensor custom writer */
 				  <12 0x100 0x0>, /* sensor custom reader */
-				  <13 0x780000 0x0>; /* aov */
+				  <13 0x780000 0x0>, /* aov */
+				  <15 0x10000 0x0>; /* aod */
 
 		memorydump = <0x340000>, /* l2tcm */
 				 <0x03c000>, /* l1c */
