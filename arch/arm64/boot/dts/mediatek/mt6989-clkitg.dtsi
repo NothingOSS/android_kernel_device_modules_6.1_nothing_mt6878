@@ -144,9 +144,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_B>,
 			<&pericfg_ao_clk CLK_PERAOP_SSUSB0_FRMCNT>,
 			<&pericfg_ao_clk CLK_PERAOP_SSUSB1_FRMCNT>,
-			<&pericfg_ao_clk CLK_PERAOP_UARTHUB>,
-			<&pericfg_ao_clk CLK_PERAOP_UARTHUB_H>,
-			<&pericfg_ao_clk CLK_PERAOP_UARTHUB_P>,
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO_SLV>,
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO_MST>,
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO_INTBUS>,
@@ -773,18 +770,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x1c>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DISP_VCORE>;
-	};
-
-	bring-up-pd-mml0-shutdown@1d {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1d>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_MML0_SHUTDOWN>;
-	};
-
-	bring-up-pd-mml1-shutdown@1e {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1e>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_MML1_SHUTDOWN>;
 	};
 
 	bring-up-pd-dis0-shutdown@1f {
