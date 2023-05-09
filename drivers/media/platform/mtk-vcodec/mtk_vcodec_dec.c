@@ -1225,7 +1225,7 @@ static void *create_general_buffer_info(struct mtk_vcodec_ctx *ctx, int fd)
 		mtk_v4l2_err("attach fail ret %ld", PTR_ERR(buf_att));
 		return NULL;
 	}
-	sgt = dma_buf_map_attachment(buf_att, DMA_TO_DEVICE);
+	sgt = dma_buf_map_attachment(buf_att, DMA_BIDIRECTIONAL);
 	if (IS_ERR_OR_NULL(sgt)) {
 		mtk_v4l2_err("map attachment fail ret %ld", PTR_ERR(sgt));
 		dma_buf_detach(dmabuf, buf_att);
@@ -1520,7 +1520,7 @@ static void mtk_vdec_reset_decoder(struct mtk_vcodec_ctx *ctx, bool is_drain,
 			struct dma_buf_attachment *buf_att = ctx->dma_buf_list[i].buf_att;
 			struct sg_table *sgt = ctx->dma_buf_list[i].sgt;
 
-			dma_buf_unmap_attachment(buf_att, sgt, DMA_TO_DEVICE);
+			dma_buf_unmap_attachment(buf_att, sgt, DMA_BIDIRECTIONAL);
 			dma_buf_detach(dmabuf, buf_att);
 			dma_buf_vunmap(dmabuf, &map);
 			dma_buf_end_cpu_access(dmabuf,
