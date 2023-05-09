@@ -2213,6 +2213,7 @@ static int cmdq_mdp_init_pq_readback(struct platform_device *pdev)
 void cmdq_mdp_init(struct platform_device *pdev)
 {
 	struct cmdqMDPFuncStruct *mdp_func = cmdq_mdp_get_func();
+	struct device *mdpdev;
 
 	CMDQ_LOG("%s ++\n", __func__);
 
@@ -2254,6 +2255,9 @@ void cmdq_mdp_init(struct platform_device *pdev)
 
 	/* MDP initialization setting */
 	cmdq_mdp_get_func()->mdpInitialSet(pdev);
+	mdpdev = cmdq_mdp_get_func()->mdpGetMdpDev();
+	if (mdpdev)
+		pm_runtime_enable(mdpdev);
 
 	cmdq_mdp_init_pmqos(pdev);
 
