@@ -2157,8 +2157,11 @@
 		mediatek,smi-supply = <&smi_disp_common>;
 		mediatek,common-id = <19>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_MAIN>;
-		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0>;
-		clock-names = "apb";
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP>,
+				<&imgsys_main_clk CLK_IMG_DIP0>;
+		clock-names = "apb", "smi", "gals0", "gals1";
 	};
 
 	smi_img_vcore_sub_comm1: smi-img-vcore-sub-comm1@15782000 {
@@ -2168,8 +2171,11 @@
 		mediatek,smi-supply = <&smi_mdp_common>;
 		mediatek,common-id = <20>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_MAIN>;
-		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1>;
-		clock-names = "apb";
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP>,
+				<&imgsys_main_clk CLK_IMG_DIP0>;
+		clock-names = "apb", "smi", "gals0", "gals1";
 	};
 
 	smi_img_sub_comm0: smi-img-sub-comm0@15002000 {
@@ -2263,11 +2269,12 @@
 		mediatek,smi-supply = <&smi_img_sub_comm1>;
 		mediatek,larb-id = <11>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_DIP1>;
-		clocks = <&imgsys_main_clk CLK_IMG_GALS_RX_WPE0>,
+		clocks = <&imgsys_main_clk CLK_IMG_WPE0>,
+				<&imgsys_main_clk CLK_IMG_GALS_RX_WPE0>,
 				<&wpe1_dip1_clk CLK_WPE1_DIP1_GALS0>,
 				<&wpe1_dip1_clk CLK_WPE1_DIP1_WPE>,
 				<&wpe1_dip1_clk CLK_WPE1_DIP1_LARB11>;
-		clock-names = "apb", "smi", "gals0", "gals1";
+		clock-names = "apb", "smi", "gals0", "gals1", "gals2";
 	};
 
 	smi_larb22: smi-larb22@15530000 {
@@ -2277,11 +2284,12 @@
 		mediatek,smi-supply = <&smi_img_sub_comm0>;
 		mediatek,larb-id = <22>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_DIP1>;
-		clocks = <&imgsys_main_clk CLK_IMG_GALS_RX_WPE1>,
+		clocks = <&imgsys_main_clk CLK_IMG_WPE1>,
+				<&imgsys_main_clk CLK_IMG_GALS_RX_WPE1>,
 				<&wpe2_dip1_clk CLK_WPE2_DIP1_GALS0>,
 				<&wpe2_dip1_clk CLK_WPE2_DIP1_WPE>,
 				<&wpe2_dip1_clk CLK_WPE2_DIP1_LARB11>;
-		clock-names = "apb", "smi", "gals0", "gals1";
+		clock-names = "apb", "smi", "gals0", "gals1", "gals2";
 	};
 
 	smi_larb23: smi-larb23@15630000 {
@@ -2291,11 +2299,12 @@
 		mediatek,smi-supply = <&smi_img_sub_comm4>;
 		mediatek,larb-id = <23>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_DIP1>;
-		clocks = <&imgsys_main_clk CLK_IMG_GALS_RX_WPE2>,
+		clocks =  <&imgsys_main_clk CLK_IMG_WPE2>,
+				<&imgsys_main_clk CLK_IMG_GALS_RX_WPE2>,
 				<&wpe3_dip1_clk CLK_WPE3_DIP1_GALS0>,
 				<&wpe3_dip1_clk CLK_WPE3_DIP1_WPE>,
 				<&wpe3_dip1_clk CLK_WPE3_DIP1_LARB11>;
-		clock-names = "apb", "smi", "gals0", "gals1";
+		clock-names = "apb", "smi", "gals0", "gals1", "gals2";
 	};
 
 	smi_larb12: smi-larb12@15340000 {
@@ -2349,11 +2358,12 @@
 		mediatek,smi-supply = <&smi_img_sub_comm0>;
 		mediatek,larb-id = <28>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_TRAW>;
-		clocks = <&imgsys_main_clk CLK_IMG_GALS_RX_TRAW0>,
+		clocks = <&imgsys_main_clk CLK_IMG_TRAW0>,
+				<&imgsys_main_clk CLK_IMG_GALS_RX_TRAW0>,
 				<&traw_dip1_clk CLK_TRAW_DIP1_GALS>,
 				<&traw_dip1_clk CLK_TRAW_DIP1_TRAW>,
 				<&traw_dip1_clk CLK_TRAW_DIP1_LARB28>;
-		clock-names = "apb", "smi", "gals0", "gals1";
+		clock-names = "apb", "smi", "gals0", "gals1", "gals2";
 	};
 
 	smi_larb38: smi-larb38@15190000 {
@@ -2393,10 +2403,11 @@
 		mediatek,smi-supply = <&smi_img_sub_comm3>;
 		mediatek,larb-id = <40>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_TRAW>;
-		clocks = <&traw_dip1_clk CLK_TRAW_DIP1_GALS>,
+		clocks = <&imgsys_main_clk CLK_IMG_TRAW0>,
+				<&traw_dip1_clk CLK_TRAW_DIP1_GALS>,
 				<&traw_dip1_clk CLK_TRAW_DIP1_LARB40>,
 				<&traw_dip1_clk CLK_TRAW_DIP1_LARB28>;
-		clock-names = "apb", "smi", "gals0";
+		clock-names = "apb", "smi", "gals0", "gals1";
 	};
 
 	smi_cam_sub_comm0: smi-cam-sub-comm0@1a005000 {
