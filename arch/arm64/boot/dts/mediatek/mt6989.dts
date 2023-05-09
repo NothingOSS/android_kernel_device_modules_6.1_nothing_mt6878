@@ -2949,6 +2949,16 @@
 		iommus = <&apu_smmu 0xf>;
 	};
 
+	mdla: mdla {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "mediatek, mdla-rv";
+		core-num = <4>;
+		version = <0x69890501>;
+		mtk,iommu-group = <&apu_iommu_group_0>;
+		iommus = <&apu_smmu 0xe>;
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
