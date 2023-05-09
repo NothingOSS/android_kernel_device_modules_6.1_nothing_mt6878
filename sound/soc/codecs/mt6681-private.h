@@ -179,6 +179,7 @@ enum {
 	SUPPLY_SEQ_UL_SRC,
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
 	SUPPLY_SEQ_VOW_DIG_CFG,
+	SUPPLY_SEQ_VOW_CIC_CFG,
 #endif
 };
 
@@ -318,9 +319,9 @@ enum {
 };
 
 enum {
+	PGA_6_MUX_AIN1,
 	PGA_6_MUX_AIN2,
-	PGA_6_MUX_AIN3,
-	PGA_6_MUX_AIN4,
+	PGA_6_MUX_AIN5,
 	PGA_6_MUX_AIN6,
 };
 
@@ -342,7 +343,18 @@ enum {
 	VOW_AMIC_MUX_ADC_DATA_0 = 0,
 	VOW_AMIC_MUX_ADC_DATA_1,
 	VOW_AMIC_MUX_ADC_DATA_2,
-	VOW_AMIC_MUX_ADC_DATA_3
+	VOW_AMIC_MUX_ADC_DATA_3,
+	VOW_AMIC_MUX_ADC_DATA_4,
+	VOW_AMIC_MUX_ADC_DATA_5
+};
+
+enum {
+	VOW_DMIC_MUX_ADC_DATA_0 = 0,
+	VOW_DMIC_MUX_ADC_DATA_1,
+	VOW_DMIC_MUX_ADC_DATA_2,
+	VOW_DMIC_MUX_ADC_DATA_3,
+	VOW_DMIC_MUX_ADC_DATA_4,
+	VOW_DMIC_MUX_ADC_DATA_5
 };
 
 enum {
@@ -350,6 +362,13 @@ enum {
 	DMIC_MUX_DMIC_DATA1,
 	DMIC_MUX_DMIC_DATA2,
 	DMIC_MUX_DMIC_DATA3,
+};
+
+enum {
+	VOW_PBUF_MUX_CH_0 = 0,
+	VOW_PBUF_MUX_CH_1,
+	VOW_PBUF_MUX_CH_2,
+	VOW_PBUF_MUX_CH_3
 };
 
 enum {
@@ -403,6 +422,17 @@ enum {
 	MT6681_DL_GAIN_NORMAL = 0xf74f,
 	/* SA suggest apply -0.3db to audio/speech path */
 };
+
+enum {
+	VOW_SCP_FIFO = 0,
+	VOW_STANDALONE_CODEC = 1
+};
+
+enum {
+	VOW_DIS_HDR_CONCURRENT = 0,
+	VOW_EN_HDR_CONCURRENT
+};
+
 struct dc_trim_data {
 	bool calibrated;
 	int mic_vinp_mv;
@@ -489,6 +519,7 @@ struct mt6681_priv {
 
 	/* vow control */
 	int vow_enable;
+	int vow_setup;
 	int reg_afe_vow_vad_cfg0;
 	int reg_afe_vow_vad_cfg1;
 	int reg_afe_vow_vad_cfg2;
@@ -497,6 +528,8 @@ struct mt6681_priv {
 	int reg_afe_vow_vad_cfg5;
 	int reg_afe_vow_periodic;
 	unsigned int vow_channel;
+	unsigned int vow_pbuf_active_bit;
+	unsigned int vow_hdr_concurrent;
 	struct mt6681_vow_periodic_on_off_data vow_periodic_param;
 	/* vow dmic low power mode, 1: enable, 0: disable */
 	int vow_dmic_lp;
