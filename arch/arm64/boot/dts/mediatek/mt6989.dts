@@ -4378,7 +4378,9 @@
 					label = "mm_common";
 					#address-cells = <2>;
 					#size-cells = <2>;
-					mtk,iommu-dma-range = <0x0 0x0 0x4 0x0>;
+					mtk,iommu-dma-range = <
+						0x0 0x0 0x0 0xfe000000
+						0x0 0xffff000 0x3 0x00001000>;
 					mtk,smmu-mode = "dma";
 				};
 			};
@@ -5746,7 +5748,7 @@
 			interrupts = <GIC_SPI 469 IRQ_TYPE_LEVEL_HIGH 0>;
 			//mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			iommus = <&mm_smmu 35>;
-			mtk,iommu-dma-range=<0x0 0x0 0x0 0xfe000000 0x0 0xfffff000 0x3 0x00001000>;
+			mtk,iommu-group = <&mm_iommu_group_0>;
 			mtk,smmu-dma-mode = "bypass";
 		};
 
