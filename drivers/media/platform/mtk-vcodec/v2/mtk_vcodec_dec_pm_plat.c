@@ -290,17 +290,17 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 	pdev = dev->plat_dev;
 	INIT_LIST_HEAD(&dev->vdec_dvfs_inst);
 
+	ret = of_property_read_s32(pdev->dev.of_node, "vdec-mmdvfs-in-vcp", &vdec_req);
+	if (ret)
+		mtk_v4l2_debug(0, "[VDEC] Faile get vdec-mmdvfs-in-vcp, default %d", vdec_req);
+	dev->vdec_dvfs_params.mmdvfs_in_vcp = vdec_req;
+
 	ret = dev_pm_opp_of_add_table(&dev->plat_dev->dev);
 	if (ret < 0) {
 		dev->vdec_reg = 0;
 		mtk_v4l2_debug(0, "[VDEC] Failed to get opp table (%d)", ret);
 		return;
 	}
-
-	ret = of_property_read_s32(pdev->dev.of_node, "vdec-mmdvfs-in-vcp", &vdec_req);
-	if (ret)
-		mtk_v4l2_debug(0, "[VDEC] Faile get vdec-mmdvfs-in-vcp, default %d", vdec_req);
-	dev->vdec_dvfs_params.mmdvfs_in_vcp = vdec_req;
 
 	dev->vdec_reg = devm_regulator_get_optional(&dev->plat_dev->dev,
 						"mmdvfs-dvfsrc-vcore");
