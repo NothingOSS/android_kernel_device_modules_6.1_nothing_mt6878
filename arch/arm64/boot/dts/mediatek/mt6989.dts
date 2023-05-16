@@ -12638,7 +12638,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-11 = "MCUPM_PMU_MGR_NON_WFX",
 					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 			node-12 = "MCUPM_WLC_TYPE",
-					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7,sys_type";
 			node-13 = "MCUPM_WLC_PMU0",
 					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 			node-14 = "MCUPM_WLC_PMU1",
