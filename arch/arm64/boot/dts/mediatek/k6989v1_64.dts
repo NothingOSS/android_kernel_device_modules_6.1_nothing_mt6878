@@ -609,6 +609,6 @@ arm64.nopauth arm64.nosme arm64.nosve";
 
 #include <k6989v1_64/cust.dtsi>
 #include "mediatek/cust_k6989_connfem.dtsi"
-#include "mediatek/cust_mt6989_touch_1080x2400.dtsi"
+#include "mediatek/cust_mt6989_touch_1080x2400_mult.dtsi"
 #include "mediatek/cust_mt6989_camera_v4l2.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/
