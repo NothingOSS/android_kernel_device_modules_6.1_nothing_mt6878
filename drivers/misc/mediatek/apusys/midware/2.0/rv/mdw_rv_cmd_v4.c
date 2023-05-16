@@ -62,7 +62,7 @@ struct mdw_rv_msg_sc {
 	uint32_t cmdbuf_start_idx;
 	uint32_t num_cmdbufs;
 	/* history info */
-	uint32_t avg_ip_time;
+	uint32_t history_ip_time;
 } __packed;
 
 struct mdw_rv_msg_cb {
@@ -147,7 +147,7 @@ static void mdw_rv_sc_print(struct mdw_rv_msg_sc *rsc,
 	mdw_cmd_debug(" trigger_type = %u\n", rsc->trigger_type);
 	mdw_cmd_debug(" cmdbuf_start_idx = %u\n", rsc->cmdbuf_start_idx);
 	mdw_cmd_debug(" num_cmdbufs = %u\n", rsc->num_cmdbufs);
-	mdw_cmd_debug(" avg_ip_time = %u\n", rsc->avg_ip_time);
+	mdw_cmd_debug(" history_ip_time = %u\n", rsc->history_ip_time);
 	mdw_cmd_debug("-------------------------\n");
 }
 
@@ -311,8 +311,6 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 		rmsc[i].num_cmdbufs = c->subcmds[i].num_cmdbufs;
 		rmsc[i].cmdbuf_start_idx = acc_cb;
 		rmsc[i].trigger_type = c->subcmds[i].trigger_type;
-		rmsc[i].avg_ip_time = 0;
-		mdw_rv_sc_print(&rmsc[i], rmc->cmd_id, i);
 
 		for (j = 0; j < rmsc[i].num_cmdbufs; j++) {
 			rmcb[acc_cb + j].size =
@@ -351,6 +349,13 @@ reuse:
 	/* clear exec ret */
 	c->einfos->c.ret = 0;
 	c->einfos->c.sc_rets = 0;
+
+	/* update histroy ip time */
+	rmsc = (void *)rmc + rmc->subcmds_offset;
+	for (i = 0; i < c->num_subcmds; i++) {
+		rmsc[i].history_ip_time = c->mpriv->ch_tbl->h_sc_einfo[i].ip_time;
+		mdw_rv_sc_print(&rmsc[i], rmc->cmd_id, i);
+	}
 
 	if (mdw_mem_flush(mpriv, rc->cb))
 		mdw_drv_warn("s(0x%llx) c(0x%llx/0x%llx) flush rv cbs(%u) fail\n",

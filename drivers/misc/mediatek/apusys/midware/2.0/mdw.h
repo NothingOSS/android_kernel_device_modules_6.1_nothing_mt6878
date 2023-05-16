@@ -46,9 +46,9 @@
 /* history parameter */
 #define MDW_NUM_HISTORY 2
 #define MDW_NUM_PREDICT_CMD 16
-#define MDW_POWER_GAIN_TH 7680
-#define MDW_PERIOD_TOLERANCE_PCT (10/100)
-#define MDW_IPTIME_TOLERANCE_PCT (10/100)
+#define MDW_POWER_GAIN_TH 7680 //us
+#define MDW_PERIOD_TOLERANCE_TH(x) (x*10/100) //ms
+#define MDW_IPTIME_TOLERANCE_TH(x) (x*10/100) //ms
 
 /* dtime */
 #define MAX_DTIME (2000) /* 2s */
@@ -330,6 +330,7 @@ struct mdw_cmd_history_tbl {
 
 	/* history cmd time info */
 	uint64_t h_end_ts;
+	uint64_t h_start_ts;
 	uint64_t h_period;
 	uint64_t cmd_cnt;
 
