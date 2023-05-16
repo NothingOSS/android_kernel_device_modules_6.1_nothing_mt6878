@@ -2077,8 +2077,18 @@ static int msdc_tune_data(struct mmc_host *mmc, u32 opcode)
 
 	sdr_set_field(host->base + MSDC_PATCH_BIT, MSDC_INT_DAT_LATCH_CK_SEL,
 		      host->latch_ck);
-	sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
-	sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+	if (!support_new_rx(host->dev_comp->new_rx_ver) &&
+		(mmc->ios.timing == MMC_TIMING_UHS_DDR50 ||
+		 mmc->ios.timing == MMC_TIMING_MMC_DDR52))
+		sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
+	else
+		sdr_clr_bits(host->base + MSDC_PATCH_BIT, MSDC_PATCH_BIT_RD_DAT_SEL);
+
+	if (host->dev_comp->async_fifo || support_new_rx(host->dev_comp->new_rx_ver))
+		sdr_clr_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+	else
+		sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+
 	for (i = 0 ; i < PAD_DELAY_2CELL_MAX; i++) {
 		msdc_set_data_delay(host, i);
 		ret = mmc_send_tuning(mmc, opcode, NULL);
@@ -2091,8 +2101,18 @@ static int msdc_tune_data(struct mmc_host *mmc, u32 opcode)
 	    (final_rise_delay.start == 0 && final_rise_delay.maxlen >= 4))
 		goto skip_fall;
 
-	sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
-	sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+	if (!support_new_rx(host->dev_comp->new_rx_ver) &&
+		(mmc->ios.timing == MMC_TIMING_UHS_DDR50 ||
+		 mmc->ios.timing == MMC_TIMING_MMC_DDR52))
+		sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
+	else
+		sdr_set_bits(host->base + MSDC_PATCH_BIT, MSDC_PATCH_BIT_RD_DAT_SEL);
+
+	if (host->dev_comp->async_fifo || support_new_rx(host->dev_comp->new_rx_ver))
+		sdr_set_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+	else
+		sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+
 	for (i = 0; i < PAD_DELAY_2CELL_MAX; i++) {
 		msdc_set_data_delay(host, i);
 		ret = mmc_send_tuning(mmc, opcode, NULL);
@@ -2104,12 +2124,32 @@ static int msdc_tune_data(struct mmc_host *mmc, u32 opcode)
 skip_fall:
 	final_maxlen = max(final_rise_delay.maxlen, final_fall_delay.maxlen);
 	if (final_maxlen == final_rise_delay.maxlen) {
-		sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
-		sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+		if (!support_new_rx(host->dev_comp->new_rx_ver) &&
+			(mmc->ios.timing == MMC_TIMING_UHS_DDR50 ||
+			 mmc->ios.timing == MMC_TIMING_MMC_DDR52))
+			sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
+		else
+			sdr_clr_bits(host->base + MSDC_PATCH_BIT, MSDC_PATCH_BIT_RD_DAT_SEL);
+
+		if (host->dev_comp->async_fifo || support_new_rx(host->dev_comp->new_rx_ver))
+			sdr_clr_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+		else
+			sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+
 		final_delay = final_rise_delay.final_phase;
 	} else {
-		sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
-		sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+		if (!support_new_rx(host->dev_comp->new_rx_ver) &&
+			(mmc->ios.timing == MMC_TIMING_UHS_DDR50 ||
+			 mmc->ios.timing == MMC_TIMING_MMC_DDR52))
+			sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
+		else
+			sdr_set_bits(host->base + MSDC_PATCH_BIT, MSDC_PATCH_BIT_RD_DAT_SEL);
+
+		if (host->dev_comp->async_fifo || support_new_rx(host->dev_comp->new_rx_ver))
+			sdr_set_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+		else
+			sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+
 		final_delay = final_fall_delay.final_phase;
 	}
 	msdc_set_data_delay(host, final_delay);
@@ -2134,8 +2174,18 @@ static int msdc_tune_together(struct mmc_host *mmc, u32 opcode)
 		      host->latch_ck);
 
 	sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
-	sdr_clr_bits(host->base + MSDC_IOCON,
-		     MSDC_IOCON_DSPL | MSDC_IOCON_W_DSPL);
+	if (!support_new_rx(host->dev_comp->new_rx_ver) &&
+		(mmc->ios.timing == MMC_TIMING_UHS_DDR50 ||
+		 mmc->ios.timing == MMC_TIMING_MMC_DDR52))
+		sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
+	else
+		sdr_clr_bits(host->base + MSDC_PATCH_BIT, MSDC_PATCH_BIT_RD_DAT_SEL);
+
+	if (host->dev_comp->async_fifo || support_new_rx(host->dev_comp->new_rx_ver))
+		sdr_clr_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+	else
+		sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+
 	for (i = 0 ; i < PAD_DELAY_2CELL_MAX; i++) {
 		msdc_set_cmd_delay(host, i);
 		msdc_set_data_delay(host, i);
@@ -2150,8 +2200,18 @@ static int msdc_tune_together(struct mmc_host *mmc, u32 opcode)
 		goto skip_fall;
 
 	sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
-	sdr_set_bits(host->base + MSDC_IOCON,
-		     MSDC_IOCON_DSPL | MSDC_IOCON_W_DSPL);
+	if (!support_new_rx(host->dev_comp->new_rx_ver) &&
+		(mmc->ios.timing == MMC_TIMING_UHS_DDR50 ||
+		 mmc->ios.timing == MMC_TIMING_MMC_DDR52))
+		sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
+	else
+		sdr_set_bits(host->base + MSDC_PATCH_BIT, MSDC_PATCH_BIT_RD_DAT_SEL);
+
+	if (host->dev_comp->async_fifo || support_new_rx(host->dev_comp->new_rx_ver))
+		sdr_set_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+	else
+		sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+
 	for (i = 0; i < PAD_DELAY_2CELL_MAX; i++) {
 		msdc_set_cmd_delay(host, i);
 		msdc_set_data_delay(host, i);
@@ -2165,13 +2225,33 @@ skip_fall:
 	final_maxlen = max(final_rise_delay.maxlen, final_fall_delay.maxlen);
 	if (final_maxlen == final_rise_delay.maxlen) {
 		sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
-		sdr_clr_bits(host->base + MSDC_IOCON,
-			     MSDC_IOCON_DSPL | MSDC_IOCON_W_DSPL);
+		if (!support_new_rx(host->dev_comp->new_rx_ver) &&
+			(mmc->ios.timing == MMC_TIMING_UHS_DDR50 ||
+			 mmc->ios.timing == MMC_TIMING_MMC_DDR52))
+			sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
+		else
+			sdr_clr_bits(host->base + MSDC_PATCH_BIT, MSDC_PATCH_BIT_RD_DAT_SEL);
+
+		if (host->dev_comp->async_fifo || support_new_rx(host->dev_comp->new_rx_ver))
+			sdr_clr_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+		else
+			sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+
 		final_delay = final_rise_delay.final_phase;
 	} else {
 		sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
-		sdr_set_bits(host->base + MSDC_IOCON,
-			     MSDC_IOCON_DSPL | MSDC_IOCON_W_DSPL);
+		if (!support_new_rx(host->dev_comp->new_rx_ver) &&
+			(mmc->ios.timing == MMC_TIMING_UHS_DDR50 ||
+			 mmc->ios.timing == MMC_TIMING_MMC_DDR52))
+			sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
+		else
+			sdr_set_bits(host->base + MSDC_PATCH_BIT, MSDC_PATCH_BIT_RD_DAT_SEL);
+
+		if (host->dev_comp->async_fifo || support_new_rx(host->dev_comp->new_rx_ver))
+			sdr_set_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+		else
+			sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+
 		final_delay = final_fall_delay.final_phase;
 	}
 
@@ -2192,9 +2272,16 @@ static int msdc_tune_ddr50(struct mmc_host *mmc, u32 opcode)
 	u8 final_delay, final_maxlen;
 
 	sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_RSPL);
-	sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
-	sdr_clr_bits(host->base + MSDC_PATCH_BIT, MSDC_PATCH_BIT_RD_DAT_SEL);
-	sdr_clr_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+	if (support_new_rx(host->dev_comp->new_rx_ver))
+		sdr_clr_bits(host->base + MSDC_PATCH_BIT, MSDC_PATCH_BIT_RD_DAT_SEL);
+	else
+		sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
+
+	if (host->dev_comp->async_fifo || support_new_rx(host->dev_comp->new_rx_ver))
+		sdr_clr_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+	else
+		sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+
 	if (host->top_base) {
 		sdr_clr_bits(host->top_base + EMMC_TOP_CONTROL, PAD_DAT_RD_RXDLY);
 		sdr_clr_bits(host->top_base + EMMC_TOP_CONTROL, PAD_DAT_RD_RXDLY2);
@@ -2226,7 +2313,11 @@ static int msdc_tune_ddr50(struct mmc_host *mmc, u32 opcode)
 		sdr_set_bits(host->base + MSDC_PATCH_BIT, MSDC_PATCH_BIT_RD_DAT_SEL);
 	else
 		sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
-	sdr_set_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+
+	if (host->dev_comp->async_fifo || support_new_rx(host->dev_comp->new_rx_ver))
+		sdr_set_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+	else
+		sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
 
 	for (i = 0; i < PAD_DELAY_2CELL_MAX; i++) {
 		msdc_set_data_delay(host, i);
@@ -2243,14 +2334,24 @@ skip_fall:
 			sdr_clr_bits(host->base + MSDC_PATCH_BIT, MSDC_PATCH_BIT_RD_DAT_SEL);
 		else
 			sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
-		sdr_clr_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+
+		if (host->dev_comp->async_fifo || support_new_rx(host->dev_comp->new_rx_ver))
+			sdr_clr_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+		else
+			sdr_clr_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+
 		final_delay = final_rise_delay.final_phase;
 	} else {
 		if (support_new_rx(host->dev_comp->new_rx_ver))
 			sdr_set_bits(host->base + MSDC_PATCH_BIT, MSDC_PATCH_BIT_RD_DAT_SEL);
 		else
 			sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_DSPL);
-		sdr_set_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+
+		if (host->dev_comp->async_fifo || support_new_rx(host->dev_comp->new_rx_ver))
+			sdr_set_bits(host->base + MSDC_PATCH_BIT2, MSDC_PB2_CFGCRCSTSEDGE);
+		else
+			sdr_set_bits(host->base + MSDC_IOCON, MSDC_IOCON_W_DSPL);
+
 		final_delay = final_fall_delay.final_phase;
 	}
 
@@ -2510,6 +2611,10 @@ static int msdc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		if (host->hs400_mode) {
 			sdr_clr_bits(host->base + MSDC_IOCON,
 				     MSDC_IOCON_DSPL | MSDC_IOCON_W_DSPL);
+			/* hs400 for new rx, need clr read data edge bit */
+			if (support_new_rx(host->dev_comp->new_rx_ver))
+				sdr_clr_bits(host->base + MSDC_PATCH_BIT,
+					MSDC_PATCH_BIT_RD_DAT_SEL);
 			msdc_set_data_delay(host, 0);
 		}
 		goto tune_done;
