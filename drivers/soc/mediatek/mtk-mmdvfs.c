@@ -336,9 +336,15 @@ struct mmdvfs_dbg_data *dbg_data;
  */
 void mmdvfs_set_lp_mode(bool lp_mode)
 {
-	struct mmdvfs_drv_data *drv_data = dbg_data->drv_data;
+	struct mmdvfs_drv_data *drv_data;
 	struct mmdvfs_mux_data *mux;
 	int i;
+
+	if (!dbg_data)  {
+		pr_notice("%s: dbg_data is not ready!\n", __func__);
+		return;
+	}
+	drv_data = dbg_data->drv_data;
 
 	mutex_lock(&drv_data->lp_mutex);
 	do {
