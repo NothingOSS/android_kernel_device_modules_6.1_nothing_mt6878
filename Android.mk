@@ -58,7 +58,7 @@ $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG += --config=local
 endif
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_OUT := $(KERNEL_BAZEL_BUILD_OUT)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_OUT := $(KERNEL_BAZEL_DIST_OUT)
-ifneq ($(wildcard vendor/mediatek/internal),)
+ifneq ($(wildcard vendor/mediatek/tests/kernel),)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):mgk_internal_modules_install.$(strip $(KERNEL_BUILD_VARIANT))
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):mgk_internal_dist.$(strip $(KERNEL_BUILD_VARIANT))
 else
