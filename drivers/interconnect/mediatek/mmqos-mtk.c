@@ -321,6 +321,10 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 		trace_mmqos__bw_to_emi(comm_id,
 			icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
 
+	if (log_level & 1 << log_bw)
+		MMQOS_DBG("comm%d avg %d peak %d",
+			comm_id, icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
+
 	MMQOS_SYSTRACE_BEGIN("to EMI avg %d peak %d\n",
 		icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
 	icc_set_bw(comm_node->icc_path, avg_bw, 0);
@@ -437,6 +441,11 @@ void write_register(u32 offset, u32 value)
 
 u32 read_register(u32 offset)
 {
+	if (gmmqos == NULL) {
+		MMQOS_ERR("gmmqos is NULL");
+		return -1;
+	}
+
 	if (mmqos_state & VMMRC_ENABLE)
 		return readl_relaxed(gmmqos->vmmrc_base + offset);
 	return 0;
@@ -458,6 +467,18 @@ static void stop_write_bw(void)
 	write_register(APMCU_MASK_OFFSET, orig | BIT(gmmqos->apmcu_mask_bit));
 }
 
+void clear_reg_value(bool is_on)
+{
+	int i;
+
+	for (i = 0; i < MAX_REG_VALUE_NUM; i++) {
+		if (is_on)
+			on_reg_value[i] = 0;
+		else
+			off_reg_value[i] = 0;
+	}
+}
+
 void set_channel_bw_reg_value(bool is_on)
 {
 	int i, reg_value_idx;
@@ -466,6 +487,7 @@ void set_channel_bw_reg_value(bool is_on)
 	u32 *bw_value;
 	u32 *old_bw_value;
 
+	clear_reg_value(is_on);
 	if (is_on) {
 		reg_value = on_reg_value;
 		bw_value = on_bw_value;
@@ -476,14 +498,15 @@ void set_channel_bw_reg_value(bool is_on)
 		old_bw_value = old_off_bw_value;
 	}
 
-	memset(reg_value, 0, MAX_REG_VALUE_NUM);
 	for (i = 0 ; i < MAX_BW_VALUE_NUM ; i++) {
 		if (bw_value[i] != 0 && is_test)
-			MMQOS_DBG("i:%d, bw_value:%d", i, bw_value[i]);
+			MMQOS_DBG("is_on:%d, i:%d, bw_value:%d",
+				is_on, i, bw_value[i]);
 		reg_value_idx = i/3;
 		reg_value[reg_value_idx] += (bw_value[i] & 0x3FF) << ((i % 3) * 10);
 		if (reg_value[reg_value_idx] != 0 && is_test)
-			MMQOS_DBG("idx:%d, reg_value:%x", reg_value_idx, reg_value[reg_value_idx]);
+			MMQOS_DBG("is_on:%d, idx:%d, reg_value:%#x",
+				is_on, reg_value_idx, reg_value[reg_value_idx]);
 		old_bw_value[i] = bw_value[i];
 	}
 }
@@ -511,7 +534,7 @@ static u32 change_to_unit(u32 bw)
 		MMQOS_ERR("bw is over %d*16MB/s", MAX_BW_UNIT);
 		bw_unit = MAX_BW_UNIT;
 	}
-	if (log_level & 1 << log_comm_freq)
+	if (log_level & 1 << log_comm_freq && bw > 0)
 		MMQOS_DBG("bw:%d, bw_unit:%d", bw, bw_unit);
 
 	return bw_unit;
@@ -1646,7 +1669,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 
 	if (mmqos_state & VMMRC_ENABLE) {
 		of_property_read_u32(pdev->dev.of_node, "vmmrc-base", &base_tmp);
-		mmqos->vmmrc_base = ioremap(base_tmp, 0x1000);
+		mmqos->vmmrc_base = ioremap(base_tmp, 0x40000);
 		of_property_read_u32(pdev->dev.of_node, "vmmrc-mask", &mmqos->apmcu_mask_offset);
 		of_property_read_u32(pdev->dev.of_node, "vmmrc-mask-bit", &mmqos->apmcu_mask_bit);
 		of_property_read_u32(pdev->dev.of_node,

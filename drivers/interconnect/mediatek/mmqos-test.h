@@ -16,8 +16,9 @@ inline void mmqos_kernel_test(u32 test_id)
 #endif /* CONFIG_MTK_MMQOS_VCP*/
 
 enum mmqos_test_id {
-	TEST_CHNN_BW = VCP_TEST_NUM,	//100
-	TEST_VMMRC,			//101
+	TEST_CHNN_BW_DISP_BY_LARB = VCP_TEST_NUM,	//100
+	TEST_CHNN_BW_NO_DISP_BY_LARB,			//101
+	TEST_VMMRC,					//102
 };
 
 

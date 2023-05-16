@@ -157,8 +157,10 @@ static void test_update_channel_bw(bool is_disp_by_larb)
 void mmqos_kernel_test(u32 test_id)
 {
 	switch (test_id) {
-	case TEST_CHNN_BW:
+	case TEST_CHNN_BW_DISP_BY_LARB:
 		test_update_channel_bw(true);
+		break;
+	case TEST_CHNN_BW_NO_DISP_BY_LARB:
 		test_update_channel_bw(false);
 		break;
 	default:
