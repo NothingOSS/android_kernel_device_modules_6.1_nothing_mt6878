@@ -3383,6 +3383,11 @@ static const struct mtk_addon_scenario_data mt6989_addon_main[ADDON_SCN_NR] = {
 		.module_num = 0,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
+	[ONE_SCALING] = {
+		.module_num = ARRAY_SIZE(addon_ovl_rsz_data),
+		.module_data = addon_ovl_rsz_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
 };
 
 static const struct mtk_addon_scenario_data mt6989_addon_secondary_path[ADDON_SCN_NR] = {
