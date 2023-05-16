@@ -107,6 +107,7 @@
 			dsc2 = &disp_dsc_wrap2;
 //			vdcm0 = &disp1_vdcm0;
 //			merge0 = &disp_merge0;
+			oddmr0 = &disp_oddmr0;
 			dsi0 = &dsi0;
 //			dsi1 = &dsi1;
 //			dsi2 = &dsi2;
@@ -5652,6 +5653,11 @@
 			//pre-define-bw = <0xffffffff>, <4200>, <0>;
 			//crtc-ovl-usage = <7>, <4>, <8>;
 
+			default-emi-eff = <8500>;
+			emi-eff-lp5-table =
+				<2964 3648 5110 5795 6388 7066 7215 7849
+				7774 8264 7937 8330 7920 8344 7811 8257>;
+
 			/* define threads, see mt6873-gce.h */
 			mediatek,mailbox-gce = <&gce>;
 			mboxes = <&gce 0 0 CMDQ_THR_PRIO_4>,
@@ -6158,14 +6164,15 @@
 			interrupts = <GIC_SPI 456 IRQ_TYPE_NONE 0>;
 		};
 
-		disp-oddmr-apb0@14015000 {
-			compatible = "mediatek,disp_oddmr_apb0";
-			reg = <0 0x14015000 0 0x1000>;
-		};
-
-		disp-oddmr-apb1@14016000 {
-			compatible = "mediatek,disp_oddmr_apb1";
-			reg = <0 0x14016000 0 0x1000>;
+		disp_oddmr0: disp-oddmr0@14015000 {
+			compatible = "mediatek,disp_oddmr0",
+				"mediatek,mt6989-disp-oddmr";
+			reg = <0 0x14015000 0 0x2000>;
+			interrupts = <GIC_SPI 457 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys_config_clk CLK_MM_DISP_ODDMR0>;
+			mediatek,larb-oddmr-dmrr = <0>;
+			mediatek,larb-oddmr-odr = <1>;
+			mediatek,larb-oddmr-odw = <2>;
 		};
 
 		disp_wdma0: disp-wdma0@1401e000 {
