@@ -3179,16 +3179,12 @@
 		};
 
 		fhctl: fhctl@1000ce00 {
-			/*
-			 *gpueb-supply = <&gpueb>;
-			 */
+
+			gpueb-supply = <&gpueb>;
 			mcupm-supply = <&mcupm>;
 			compatible = "mediatek,mt6989-fhctl";
 			reg = <0 0x1000ce00 0 0x200>, //AP FHCTL base
 				<0 0x1000c000 0 0xe00>, //APMIX base
-
-				<0 0x1000ce00 0 0x200>, //vcp base
-				<0 0x1000c000 0 0xe00>, //vcp apmix
 
 				<0 0x13fa0100 0 0x030>, //GPU0 EN
 				<0 0x13fa0000 0 0x100>, //GPU APMIX
@@ -3240,17 +3236,9 @@
 				};
 			};
 
-			map1 {
-				domain = "top1";
-				method = "fhctl-ap";
-				imgpll {
-					fh-id = <10>;
-				};
-			};
-
 			map2 {
 				domain = "gpu0";
-				method = "fhctl-ap";
+				method = "fhctl-gpueb";
 				mfg-ao-mfgpll {
 					fh-id = <0>;
 				};
@@ -3258,7 +3246,7 @@
 
 			map3 {
 				domain = "gpu1";
-				method = "fhctl-ap";
+				method = "fhctl-gpueb";
 				mfgsc0-ao-mfgpll-sc0 {
 					fh-id = <0>;
 				};
@@ -3266,7 +3254,7 @@
 
 			map4 {
 				domain = "gpu2";
-				method = "fhctl-ap";
+				method = "fhctl-gpueb";
 				mfgsc1-ao-mfgpll-sc1 {
 					fh-id = <0>;
 				};
