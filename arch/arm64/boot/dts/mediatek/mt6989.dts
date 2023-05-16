@@ -4861,6 +4861,14 @@
 			l2-hash-values = <0xb 0xe 0x0>;
 		};
 
+		gpu_qos: gpu-qos@117800 {
+			compatible = "mediatek,gpu_qos";
+			qos-sysram-support = <1>;
+			reg = <0 0x117800 0 0x20>;
+			qos-mode = <0>;
+			qos-value = <0>;
+		};
+
 		gpueb: gpueb@13c00000 {
 			compatible = "mediatek,gpueb";
 			gpueb-support = <1>;
