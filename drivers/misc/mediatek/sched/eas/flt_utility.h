@@ -35,7 +35,8 @@ extern int (*flt_sched_get_cpu_group_eas_api)(int cpu, int grp_id);
 #define WC_LEN		16
 #define WC_MASK	0xffff
 #define GP_DATA_START	(PER_ENTRY * CPU_NUM)
-#define AP_CPU_SETTING_ADDR ((PER_ENTRY * (CPU_NUM + GROUP_ID_RECORD_MAX)) + RESERVED_LEN)
+#define FLT_VALID	(PER_ENTRY * (CPU_NUM + GROUP_ID_RECORD_MAX))
+#define AP_CPU_SETTING_ADDR (FLT_VALID + PER_ENTRY + RESERVED_LEN)
 #define AP_GP_SETTING_STA_ADDR (AP_CPU_SETTING_ADDR + (PER_ENTRY * CPU_NUM))
 #define AP_FLT_CTL (AP_GP_SETTING_STA_ADDR + (PER_ENTRY * GROUP_ID_RECORD_MAX))
 #define AP_WS_CTL (AP_FLT_CTL + PER_ENTRY)
@@ -46,4 +47,8 @@ extern int (*flt_sched_get_cpu_group_eas_api)(int cpu, int grp_id);
 #define CPU_DEFAULT_WP WP_MODE_4
 void flt_mode2_register_api_hooks(void);
 void flt_mode2_init_res(void);
+
+/* interface api */
+void flt_update_data(unsigned int data, unsigned int offset);
+unsigned int flt_get_data(unsigned int offset);
 #endif /* _FLT_UTILITY_H */

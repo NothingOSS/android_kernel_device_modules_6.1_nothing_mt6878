@@ -88,7 +88,7 @@ void  flt_set_mode(u32 mode)
 {
 	flt_mode = mode;
 	if (is_flt_io_enable)
-		flt_update_data(AP_FLT_CTL, mode);
+		flt_update_data(mode, AP_FLT_CTL);
 }
 EXPORT_SYMBOL(flt_set_mode);
 
@@ -448,7 +448,7 @@ int flt_init_res(void)
 		ret = flt_init_ekg();
 		if (ret)
 			return ret;
-		for (ctp = 0; ctp < GKEL; ctp++)
+		for (ctp = 0; ctp < GKEL && ctp < nr_cpu; ctp++)
 			flt_mi(ctp);
 		flt_mode2_register_api_hooks();
 		flt_mode2_init_res();

@@ -29,6 +29,43 @@
 #include "flt_utility.h"
 #include "eas_trace.h"
 
+void flt_update_data(unsigned int data, unsigned int offset)
+{
+	void __iomem *flt_adr;
+	unsigned long long len;
+
+	if (!IS_ALIGNED(offset, PER_ENTRY))
+		return;
+	len = get_flt_xrg_size();
+	flt_adr = get_flt_xrg();
+	if (flt_adr && offset <= len)
+		iowrite32(data, flt_adr + offset);
+}
+
+unsigned int flt_get_data(unsigned int offset)
+{
+	void __iomem *flt_adr;
+	unsigned int res = 0;
+	unsigned long long len;
+
+	if (!IS_ALIGNED(offset, PER_ENTRY))
+		return res;
+	len = get_flt_xrg_size();
+	flt_adr = get_flt_xrg();
+	if (flt_adr && offset <= len)
+		res = ioread32(flt_adr + offset);
+
+	return res;
+}
+
+static int flt_is_valid(void)
+{
+	int res = 0;
+
+	res = flt_get_data(FLT_VALID);
+	return res;
+}
+
 static int flt_get_window_size_mode2(void)
 {
 	int res = 0;
@@ -42,7 +79,7 @@ static int flt_set_window_size_mode2(int ws)
 {
 	int res = 0;
 
-	flt_update_data(AP_WS_CTL, ws);
+	flt_update_data(ws, AP_WS_CTL);
 
 	return res;
 }
@@ -57,8 +94,8 @@ static int flt_sched_set_group_policy_eas_mode2(int grp_id, int ws, int wp, int 
 
 	offset = grp_id * PER_ENTRY;
 	update_data = (wp << WP_LEN) | wc;
-	flt_update_data(AP_WS_CTL, ws);
-	flt_update_data(AP_GP_SETTING_STA_ADDR + offset, update_data);
+	flt_update_data(ws, AP_WS_CTL);
+	flt_update_data(update_data, AP_GP_SETTING_STA_ADDR + offset);
 
 	return res;
 }
@@ -88,8 +125,8 @@ static int flt_sched_set_cpu_policy_eas_mode2(int cpu, int ws, int wp, int wc)
 		return -1;
 	offset = cpu * PER_ENTRY;
 	update_data = (wp << WP_LEN) | wc;
-	flt_update_data(AP_WS_CTL, ws);
-	flt_update_data(AP_CPU_SETTING_ADDR + offset, update_data);
+	flt_update_data(ws, AP_WS_CTL);
+	flt_update_data(update_data, AP_CPU_SETTING_ADDR + offset);
 	return res;
 }
 
@@ -114,7 +151,7 @@ static int flt_get_sum_group_mode2(int grp_id)
 	int res = 0;
 	unsigned int offset;
 
-	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0)
+	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0 || flt_is_valid() != 1)
 		return -1;
 	offset = grp_id * PER_ENTRY;
 	res = flt_get_data(GP_DATA_START + offset);
@@ -176,7 +213,7 @@ static int flt_get_cpu_by_wp_mode2(int cpu)
 	int res = 0;
 	unsigned int offset;
 
-	if (!cpumask_test_cpu(cpu, cpu_possible_mask))
+	if (!cpumask_test_cpu(cpu, cpu_possible_mask) || flt_is_valid() != 1)
 		return -1;
 
 	offset = cpu * PER_ENTRY;
@@ -234,5 +271,5 @@ void flt_mode2_init_res(void)
 		flt_sched_set_cpu_policy_eas(cpu, DEFAULT_WS, CPU_DEFAULT_WP, CPU_DEFAULT_WC);
 	for (i = 0; i < GROUP_ID_RECORD_MAX; i++)
 		flt_sched_set_group_policy_eas(i, DEFAULT_WS, GRP_DEFAULT_WP, GRP_DEFAULT_WC);
-	flt_update_data(AP_FLT_CTL, FLT_MODE2_EN);
+	flt_update_data(FLT_MODE2_EN, AP_FLT_CTL);
 }

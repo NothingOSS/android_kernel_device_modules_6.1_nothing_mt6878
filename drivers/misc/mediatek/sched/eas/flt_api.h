@@ -46,7 +46,4 @@ void flt_resume_notify(void);
 void flt_suspend_notify(void);
 void flt_get_pm_status(struct flt_pm *fltpm);
 
-/* interface api */
-void flt_update_data(unsigned int data, unsigned int offset);
-unsigned int flt_get_data(unsigned int offset);
 #endif /* _FLT_API_H */
