@@ -36,6 +36,7 @@ struct mminfra_dbg {
 	void __iomem *mminfra_base;
 	void __iomem *mminfra_ao_base;
 	void __iomem *gce_base;
+	void __iomem *spm_base;
 	ssize_t ctrl_size;
 	struct device *comm_dev[MAX_SMI_COMM_NUM];
 	struct notifier_block nb;
@@ -69,6 +70,10 @@ static bool mminfra_ao_base;
 
 #define GCED				0
 #define GCEM				1
+
+#define MM_INFRA_AO_PDN_SRAM_CON	(0xf14)
+#define MM_INFRA_SLEEP_SRAM_PDN		BIT(0)
+#define MM_INFRA_SLEEP_SRAM_PDN_ACK	BIT(8)
 
 static bool mminfra_check_scmi_status(void)
 {
@@ -202,6 +207,18 @@ static void mminfra_cg_check(bool on)
 	}
 }
 
+static void mtk_mminfra_gce_sram_en(void)
+{
+	if (!dbg->spm_base) {
+		pr_notice("%s: not support\n", __func__);
+		return;
+	}
+
+	writel(readl(dbg->spm_base + MM_INFRA_AO_PDN_SRAM_CON) & (~MM_INFRA_SLEEP_SRAM_PDN),
+			dbg->spm_base + MM_INFRA_AO_PDN_SRAM_CON);
+	while (readl(dbg->spm_base + MM_INFRA_AO_PDN_SRAM_CON) & MM_INFRA_SLEEP_SRAM_PDN_ACK)
+		;
+}
 
 static int mtk_mminfra_pd_callback(struct notifier_block *nb,
 			unsigned long flags, void *data)
@@ -241,6 +258,7 @@ static int mtk_mminfra_pd_callback(struct notifier_block *nb,
 		writel(0x20002, dbg->gce_base + GCE_GCTL_VALUE);
 		pr_notice("%s: enable gce apsrc: %#x=%#x\n",
 			__func__, GCE_BASE + GCE_GCTL_VALUE, readl(dbg->gce_base + GCE_GCTL_VALUE));
+		mtk_mminfra_gce_sram_en();
 	} else if (flags == GENPD_NOTIFY_PRE_OFF) {
 		writel(0, dbg->gce_base + GCE_GCTL_VALUE);
 		pr_notice("%s: disable gce apsrc: %#x=%#x\n",
@@ -490,7 +508,7 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	struct resource *res;
 	const char *name;
 	struct clk *clk;
-	u32 comm_id;
+	u32 comm_id, spm_base_pa;
 	int ret = 0, i = 0, irq, comm_nr = 0;
 
 	dbg = kzalloc(sizeof(*dbg), GFP_KERNEL);
@@ -531,6 +549,12 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	of_property_read_u32(node, "bkrs-reg", &bkrs_reg_pa);
 	if (!bkrs_reg_pa)
 		bkrs_reg_pa = MMINFRA_BASE + 0x280;
+
+	if (!of_property_read_u32(node, "spm-base", &spm_base_pa)) {
+		pr_notice("[mminfra] spm_base_pa=%#x\n", spm_base_pa);
+		dbg->spm_base = ioremap(bkrs_reg_pa, 0x1000);
+	} else
+		dbg->spm_base = NULL;
 
 	mminfra_check_scmi_status();
 
