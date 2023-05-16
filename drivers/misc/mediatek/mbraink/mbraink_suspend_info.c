@@ -29,6 +29,29 @@ void mbraink_set_suspend_info_list_record(unsigned short datatype)
 	struct timespec64 tv = { 0 };
 	unsigned long flags;
 	unsigned short w_idx = 0;
+	char *buf = NULL;
+	char *sub_buf = NULL;
+
+	if (datatype == 1) {
+		buf = vmalloc(PAGE_SIZE);
+		if (buf == NULL)
+			return;
+
+		memset(buf, 0, PAGE_SIZE);
+
+		sub_buf = vmalloc(PAGE_SIZE);
+		if (sub_buf == NULL) {
+			vfree(buf);
+			return;
+		}
+		memset(sub_buf, 0, PAGE_SIZE);
+	}
+
+	/*Unexpected condition check*/
+	if (datatype == 1 && (!buf || !sub_buf)) {
+		pr_info("%s: buf or sub_buf should not be null\n", __func__);
+		return;
+	}
 
 	spin_lock_irqsave(&suspend_info_list_lock, flags);
 
@@ -41,8 +64,6 @@ void mbraink_set_suspend_info_list_record(unsigned short datatype)
 		mbraink_suspend_info_list_data[w_idx].datatype =
 			datatype;
 		if (datatype == 1) {
-			char buf[64] = {'\0'};
-
 			last_resume_reason_show(NULL, NULL, buf);
 			if (strstr(buf, "Abort:"))
 				mbraink_suspend_info_list_data[w_idx].reason = -2;
@@ -50,7 +71,6 @@ void mbraink_set_suspend_info_list_record(unsigned short datatype)
 				mbraink_suspend_info_list_data[w_idx].reason = -1;
 			else {
 				int irq = -3, size = 0;
-				char sub_buf[64] = {'\0'};
 
 				size = sscanf(buf, "%d %s\n", &irq, sub_buf);
 				if (size < 0)
@@ -71,9 +91,19 @@ void mbraink_set_suspend_info_list_record(unsigned short datatype)
 	} else {
 		pr_notice("buffer is full,  w_idx = %u !!!\n",
 			w_idx);
+		memset(mbraink_suspend_info_list_data,
+			0,
+			SUSPEND_INFO_SZ * sizeof(struct mbraink_suspend_info_list));
+		mbraink_suspend_info_list_p_data.r_idx = 0;
+		mbraink_suspend_info_list_p_data.w_idx = 0;
 	}
 
 	spin_unlock_irqrestore(&suspend_info_list_lock, flags);
+
+	if (datatype == 1) {
+		vfree(buf);
+		vfree(sub_buf);
+	}
 }
 
 void mbraink_get_suspend_info_list_record(struct mbraink_suspend_info_struct_data *buffer, int max)
