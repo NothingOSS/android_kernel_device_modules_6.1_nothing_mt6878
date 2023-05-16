@@ -2725,11 +2725,11 @@ static const struct mtk_mux top_muxes[] = {
 		CLK_CFG_11_CLR/* set parent */, 16/* lsb */, 3/* width */,
 		23/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
 		TOP_MUX_AES_UFSFDE_SHIFT/* upd shift */),
-	MUX_GATE_CLR_SET_UPD(CLK_TOP_U_SEL/* dts */, "ufs_sel",
+	MUX_GATE_CLR_SET_UPD_FLAGS_2(CLK_TOP_U_SEL/* dts */, "ufs_sel",
 		ufs_parents/* parent */, CLK_CFG_11, CLK_CFG_11_SET,
 		CLK_CFG_11_CLR/* set parent */, 24/* lsb */, 3/* width */,
 		31/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
-		TOP_MUX_UFS_SHIFT/* upd shift */),
+		TOP_MUX_UFS_SHIFT/* upd shift */, MUX_ROUND_CLOSEST),
 	/* CLK_CFG_12 */
 	MUX_GATE_CLR_SET_UPD(CLK_TOP_U_MBIST_SEL/* dts */, "ufs_mbist_sel",
 		ufs_mbist_parents/* parent */, CLK_CFG_12, CLK_CFG_12_SET,
