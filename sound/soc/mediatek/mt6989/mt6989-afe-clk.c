@@ -79,6 +79,10 @@ static const char *aud_clks[CLK_NUM] = {
 	[CLK_PERAO_AUDIO_SLV_CK_PERI] = "aud_slv_ck_peri",
 	[CLK_PERAO_AUDIO_MST_CK_PERI] = "aud_mst_ck_peri",
 	[CLK_PERAO_INTBUS_CK_PERI] = "aud_intbus_ck_peri",
+	[CLK_PERAO_ENGEN1_CK] = "aud_engen1_ck_peri",
+	[CLK_PERAO_ENGEN2_CK] = "aud_engen2_ck_peri",
+	[CLK_PERAO_TDMOUT_B_CK] = "aud_tdmout_b_ck_peri",
+	[CLK_PERAO_H_AUD_CK] = "aud_h_peri",
 };
 
 int mt6989_set_audio_int_bus_parent(struct mtk_base_afe *afe,
@@ -159,7 +163,7 @@ static int apll1_mux_setting(struct mtk_base_afe *afe, bool enable)
 				aud_clks[CLK_TOP_APLL1_D4], ret);
 			goto EXIT;
 		}
-		mt6989_set_audio_h_parent(afe, CLK_TOP_APLL1_D2);
+		mt6989_set_audio_h_parent(afe, CLK_TOP_APLL1_CK);
 	} else {
 		ret = clk_set_parent(afe_priv->clk[CLK_TOP_MUX_AUD_ENG1],
 				     afe_priv->clk[CLK_CLK26M]);
@@ -223,7 +227,7 @@ static int apll2_mux_setting(struct mtk_base_afe *afe, bool enable)
 				aud_clks[CLK_TOP_APLL2_D4], ret);
 			goto EXIT;
 		}
-		mt6989_set_audio_h_parent(afe, CLK_TOP_APLL2_D2);
+		mt6989_set_audio_h_parent(afe, CLK_TOP_APLL2_CK);
 	} else {
 		ret = clk_set_parent(afe_priv->clk[CLK_TOP_MUX_AUD_ENG2],
 				     afe_priv->clk[CLK_CLK26M]);
@@ -278,7 +282,43 @@ int mt6989_afe_enable_ao_clock(struct mtk_base_afe *afe)
 			__func__, aud_clks[CLK_PERAO_AUDIO_MST_CK_PERI], ret);
 		goto CLK_PERAO_AUDIO_MST_CK_PERI_ERR;
 	}
+
+	ret = clk_prepare_enable(afe_priv->clk[CLK_PERAO_ENGEN1_CK]);
+	if (ret) {
+		dev_info(afe->dev, "%s() clk_prepare_enable %s fail %d\n",
+			__func__, aud_clks[CLK_PERAO_ENGEN1_CK], ret);
+		goto CLK_PERAO_ENGEN1_CK_ERR;
+	}
+
+	ret = clk_prepare_enable(afe_priv->clk[CLK_PERAO_ENGEN2_CK]);
+	if (ret) {
+		dev_info(afe->dev, "%s() clk_prepare_enable %s fail %d\n",
+			__func__, aud_clks[CLK_PERAO_ENGEN2_CK], ret);
+		goto CLK_PERAO_ENGEN2_CK_ERR;
+	}
+
+	ret = clk_prepare_enable(afe_priv->clk[CLK_PERAO_TDMOUT_B_CK]);
+	if (ret) {
+		dev_info(afe->dev, "%s() clk_prepare_enable %s fail %d\n",
+			__func__, aud_clks[CLK_PERAO_TDMOUT_B_CK], ret);
+		goto CLK_PERAO_TDMOUT_B_CK_ERR;
+	}
+
+	ret = clk_prepare_enable(afe_priv->clk[CLK_PERAO_H_AUD_CK]);
+	if (ret) {
+		dev_info(afe->dev, "%s() clk_prepare_enable %s fail %d\n",
+			__func__, aud_clks[CLK_PERAO_H_AUD_CK], ret);
+		goto CLK_PERAO_H_AUD_CK_ERR;
+	}
 	return 0;
+CLK_PERAO_H_AUD_CK_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_H_AUD_CK]);
+CLK_PERAO_TDMOUT_B_CK_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_TDMOUT_B_CK]);
+CLK_PERAO_ENGEN2_CK_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_ENGEN2_CK]);
+CLK_PERAO_ENGEN1_CK_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_ENGEN1_CK]);
 CLK_PERAO_AUDIO_MST_CK_PERI_ERR:
 	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_AUDIO_MST_CK_PERI]);
 CLK_PERAO_AUDIO_SLV_CK_PERI_ERR:

@@ -522,6 +522,20 @@ static int mtk_adda_pad_top_event(struct snd_soc_dapm_widget *w,
 		else
 			regmap_write(afe->regmap, AFE_AUD_PAD_TOP_CFG0, 0xB0);
 		break;
+	case SND_SOC_DAPM_POST_PMD:
+		regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+				MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
+				0x0 << MTKAIFV4_RXIF_AFE_ON_SFT);
+		regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
+				ADDA6_MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
+				0x0 << ADDA6_MTKAIFV4_RXIF_AFE_ON_SFT);
+		regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_TX_CFG0,
+				MTKAIFV4_TXIF_AFE_ON_MASK_SFT,
+				0x0 << MTKAIFV4_TXIF_AFE_ON_SFT);
+		regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_TX_CFG0,
+				ADDA6_MTKAIFV4_TXIF_AFE_ON_MASK_SFT,
+				0x0 << ADDA6_MTKAIFV4_TXIF_AFE_ON_SFT);
+		break;
 	default:
 		break;
 	}
@@ -1186,7 +1200,7 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 			      AFE_AUD_PAD_TOP_CFG0,
 			      RG_RX_FIFO_ON_SFT, 0,
 			      mtk_adda_pad_top_event,
-			      SND_SOC_DAPM_PRE_PMU),
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("ADDA_MTKAIF_CFG", SUPPLY_SEQ_ADDA_MTKAIF_CFG,
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_adda_mtkaif_cfg_event,
