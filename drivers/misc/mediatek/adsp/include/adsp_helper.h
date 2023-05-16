@@ -187,6 +187,10 @@ extern int adsp_threaded_irq_registration(u32 core_id, u32 irq_id,
 extern int get_adsp_semaphore(unsigned int flags);
 extern int release_adsp_semaphore(unsigned int flags);
 
+/* adsp emi bandwidth */
+extern void set_adsp_icc_bw(uint32_t bw_mbps);
+extern void clear_adsp_icc_bw(void);
+
 /* notify event when adsp crash/recovery */
 extern void adsp_register_notify(struct notifier_block *nb);
 extern void adsp_unregister_notify(struct notifier_block *nb);

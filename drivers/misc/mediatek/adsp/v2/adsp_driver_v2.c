@@ -14,6 +14,7 @@
 #include "adsp_core.h"
 #include "adsp_clk_audio.h"
 #include "adsp_driver_v2.h"
+#include "adsp_qos.h"
 #include "mtk-afe-external.h"
 
 const struct adspsys_description mt6983_adspsys_desc = {
@@ -158,6 +159,13 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	adspsys->cfg2 = devm_ioremap_resource(dev, res);
 	adspsys->cfg2_size = resource_size(res);
+
+	/* adsp bus probe */
+	ret = adsp_qos_probe(pdev);
+	if (ret) {
+		pr_warn("%s(), qos probe fail, %d\n", __func__, ret);
+		goto ERROR;
+	}
 
 	of_property_read_u32(dev->of_node, "core-num", &adspsys->num_cores);
 

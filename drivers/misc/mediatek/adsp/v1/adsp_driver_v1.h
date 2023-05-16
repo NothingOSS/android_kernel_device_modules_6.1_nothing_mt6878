@@ -19,7 +19,6 @@ extern struct mtk_mbox_pin_send *get_adsp_mbox_pin_send(int index);
 extern struct mtk_mbox_pin_recv *get_adsp_mbox_pin_recv(int index);
 
 extern int adsp_mem_device_probe(struct platform_device *pdev);
-extern int adsp_mbox_probe(struct platform_device *pdev);
 
 extern int adsp_after_bootup(struct adsp_priv *pdata);
 extern int adsp_core0_init(struct adsp_priv *pdata);
