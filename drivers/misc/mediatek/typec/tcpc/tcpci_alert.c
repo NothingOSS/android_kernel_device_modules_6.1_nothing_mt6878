@@ -269,8 +269,12 @@ int tcpci_alert_wakeup(struct tcpc_device *tcpc)
 {
 	if (tcpc->tcpc_flags & TCPC_FLAGS_LPM_WAKEUP_WATCHDOG) {
 		TCPC_INFO("Wakeup\n");
-		if (tcpc->typec_lpm)
+		if (tcpc->typec_lpm) {
+			if (tcpc->ops->set_low_power_mode)
+				tcpc->ops->set_low_power_mode(tcpc, false,
+							      TYPEC_CC_OPEN);
 			tcpc_enable_lpm_timer(tcpc, true);
+		}
 	}
 
 	return 0;

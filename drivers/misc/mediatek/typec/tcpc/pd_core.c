@@ -986,7 +986,6 @@ int pd_reset_local_hw(struct pd_port *pd_port)
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
 	pd_notify_pe_transit_to_default(pd_port);
-	pd_unlock_msg_output(pd_port);
 
 	pd_reset_pe_timer(pd_port);
 	pd_set_rx_enable(pd_port, PD_RX_CAP_PE_HARDRESET);
@@ -1369,24 +1368,6 @@ void pd_reset_pe_timer(struct pd_port *pd_port)
 		pd_dpm_start_pps_request(pd_port, false);
 	}
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
-}
-
-void pd_lock_msg_output(struct pd_port *pd_port)
-{
-	if (pd_port->msg_output_lock)
-		return;
-	pd_port->msg_output_lock = true;
-
-	pd_dbg_info_lock();
-}
-
-void pd_unlock_msg_output(struct pd_port *pd_port)
-{
-	if (!pd_port->msg_output_lock)
-		return;
-	pd_port->msg_output_lock = false;
-
-	pd_dbg_info_unlock();
 }
 
 int pd_update_connect_state(struct pd_port *pd_port, uint8_t state)

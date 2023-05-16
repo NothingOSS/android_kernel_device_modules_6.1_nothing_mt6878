@@ -314,7 +314,7 @@
 	 ((custom) & 0x7FFF))
 
 #define VDO_S(svid, ver, cmd_type, cmd, obj)	\
-	VDO(svid, 1, VDO_SVDM_VERS(ver) | VDO_SVDM_VERS_MIN(0) | \
+	VDO(svid, 1, VDO_SVDM_VERS(ver) | VDO_SVDM_VERS_MIN(ver) | \
 		VDO_CMDT(cmd_type) | VDO_OPOS(obj) | cmd)
 
 #define VDO_REPLY(ver, cmd_type, request_vdo)	\
@@ -841,8 +841,6 @@ struct pd_port {
 	struct mutex rxbuf_lock;
 
 	/* PD */
-	bool msg_output_lock;
-
 	uint8_t state_machine;
 	uint8_t pd_connect_state;
 
@@ -1195,9 +1193,6 @@ int pd_reset_local_hw(struct pd_port *pd_port);
 int pd_enable_bist_test_mode(struct pd_port *pd_port, bool en);
 int pd_schedule_wait_request(struct pd_port *pd_port, uint8_t type);
 int pd_cancel_wait_request(struct pd_port *pd_port);
-
-void pd_lock_msg_output(struct pd_port *pd_port);
-void pd_unlock_msg_output(struct pd_port *pd_port);
 
 int pd_update_connect_state(struct pd_port *pd_port, uint8_t state);
 
