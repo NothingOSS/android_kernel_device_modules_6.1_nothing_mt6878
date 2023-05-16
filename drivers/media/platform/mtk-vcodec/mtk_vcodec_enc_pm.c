@@ -643,19 +643,13 @@ void mtk_venc_translation_fault_callback_setting(
 	struct mtk_vcodec_dev *dev)
 {
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
-	int i;
+	int core_id, i;
 
-	for (i = 0; i < dev->venc_ports[0].total_port_num; i++) {
-		mtk_iommu_register_fault_callback(MTK_M4U_ID(7, i),
-			mtk_venc_translation_fault_callback, (void *)dev, false);
-	}
-	for (i = 0; i < dev->venc_ports[1].total_port_num; i++) {
-		mtk_iommu_register_fault_callback(MTK_M4U_ID(8, i),
-			mtk_venc_translation_fault_callback, (void *)dev, false);
-	}
-	for (i = 0; i < dev->venc_ports[2].total_port_num; i++) {
-		mtk_iommu_register_fault_callback(MTK_M4U_ID(37, i),
-			mtk_venc_translation_fault_callback, (void *)dev, false);
+	for (core_id = 0; core_id < MTK_VENC_HW_NUM; core_id++) {
+		for (i = 0; i < dev->venc_ports[core_id].total_port_num; i++) {
+			mtk_iommu_register_fault_callback(dev->venc_ports[core_id].port_id[i],
+				mtk_venc_translation_fault_callback, (void *)dev, false);
+		}
 	}
 #endif
 }
