@@ -6006,9 +6006,30 @@
 
 		disp-dpc@14226000 {
 			compatible = "mediatek,mt6989-disp-dpc";
-			reg = <0 0x14226000 0 0x1000>;
-			interrupts = <GIC_SPI 515 IRQ_TYPE_LEVEL_HIGH 0>, /* DPC_DISP_IRQ_BIT */
-				     <GIC_SPI 514 IRQ_TYPE_LEVEL_HIGH 0>; /* DPC_MML_IRQ_BIT */
+			reg =
+				<0 0x14226000 0 0x1000>,
+				<0 0x1c000000 0 0x1000>,
+				<0 0x1c001000 0 0x1000>,
+				<0 0x1ec45130 0 0x4>,             /* hwvote */
+				<0 0x1ec352b8 0 0x4>,             /* hfrp */
+				<0 0x1c00f000 0 0x4>,             /* dvfsrc_apb */
+				<0 0x1c00f2a0 0 0x4>;             /* dvfsrc_apb */
+			reg-names =
+				"DPC_BASE",
+				"VLP_BASE",
+				"SPM_BASE",
+				"hw_vote_status",
+				"vdisp_dvsrc_debug_sta_7",
+				"dvfsrc_en",
+				"dvfsrc_debug_sta_1";
+			interrupts =
+				<GIC_SPI 515 IRQ_TYPE_LEVEL_HIGH 0>, /* DPC_DISP_IRQ_BIT */
+				<GIC_SPI 514 IRQ_TYPE_LEVEL_HIGH 0>; /* DPC_MML_IRQ_BIT */
+			mboxes = <&gce 26 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+			event-ovl0-off = /bits/ 16 <CMDQ_EVENT_DPC_OVL0_MTCMOS_OFF>;
+			event-ovl0-on = /bits/ 16 <CMDQ_EVENT_DPC_OVL0_MTCMOS_ON>;
+			event-disp1-off = /bits/ 16 <CMDQ_EVENT_DPC_DISP1_MTCMOS_OFF>;
+			event-disp1-on = /bits/ 16 <CMDQ_EVENT_DPC_DISP1_MTCMOS_ON>;
 		};
 
 		reserved@14227000 {
