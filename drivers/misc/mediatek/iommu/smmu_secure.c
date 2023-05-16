@@ -30,6 +30,8 @@ enum smmu_atf_cmd {
 	SMMU_SECURE_INIT,
 	SMMU_SECURE_IRQ_SETUP,
 	SMMU_SECURE_TF_HANDLE,
+	SMMU_SECURE_PM_GET,
+	SMMU_SECURE_PM_PUT,
 	SMMU_SECURE_DUMP_SID,
 	SMMU_SECURE_AID_SID_MAP,
 	SMMU_SECURE_TRIGGER_IRQ,
@@ -151,6 +153,34 @@ int mtk_smmu_sec_tf_handler(u32 smmu_type, bool *need_handle,
 	return SMC_SMMU_SUCCESS;
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_sec_tf_handler);
+
+int mtk_smmu_pm_get(uint32_t smmu_type)
+{
+	int ret;
+
+	ret = mtk_smmu_atf_call_common(smmu_type, SMMU_SECURE_PM_GET);
+	if (ret) {
+		pr_info("%s, smc call fail:%d, type:%u\n", __func__, ret, smmu_type);
+		return SMC_SMMU_FAIL;
+	}
+
+	return SMC_SMMU_SUCCESS;
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_pm_get);
+
+int mtk_smmu_pm_put(uint32_t smmu_type)
+{
+	int ret;
+
+	ret = mtk_smmu_atf_call_common(smmu_type, SMMU_SECURE_PM_PUT);
+	if (ret) {
+		pr_info("%s, smc call fail:%d, type:%u\n", __func__, ret, smmu_type);
+		return SMC_SMMU_FAIL;
+	}
+
+	return SMC_SMMU_SUCCESS;
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_pm_put);
 
 int mtk_smmu_dump_sid(uint32_t smmu_type, uint32_t sid)
 {
