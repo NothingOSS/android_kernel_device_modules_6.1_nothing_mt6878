@@ -91,7 +91,6 @@ EXPORT_SYMBOL(g_vidle_apsrc_debug);
 bool g_profile_log;
 
 bool g_irq_log;
-unsigned int g_trace_log;
 unsigned int mipi_volt;
 unsigned int disp_met_en;
 unsigned int disp_met_condition;
@@ -150,8 +149,10 @@ static bool is_buffer_init;
 static char *debug_buffer;
 #if IS_ENABLED(CONFIG_MTK_DISP_LOGGER)
 static bool logger_enable = 1;
+unsigned int g_trace_log = 1;
 #else
 static bool logger_enable;
+unsigned int g_trace_log;
 #endif
 
 static int draw_RGBA8888_buffer(char *va, int w, int h,
