@@ -11,7 +11,6 @@
 		reg = <0>;
 		clocks =
 			<&topckgen_clk CLK_TOP_DSP_SEL>,
-			<&topckgen_clk CLK_TOP_DPMAIF_MAIN_SEL>,
 			<&topckgen_clk CLK_TOP_EMI_INTERFACE_546_SEL>,
 			<&topckgen_clk CLK_TOP_SSR_SEJ_SEL>,
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
