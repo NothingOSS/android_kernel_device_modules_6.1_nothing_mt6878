@@ -19,12 +19,6 @@
 			<&mminfra_config_clk CLK_MMINFRA_SMI>;
 	};
 
-	bring-up-pd-isp-vcore@c {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0xc>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_VCORE>;
-	};
-
 	bring-up-pd-mm-infra@23 {
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x23>;
