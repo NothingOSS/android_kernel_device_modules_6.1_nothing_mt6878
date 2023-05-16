@@ -58,4 +58,8 @@
 			compatible = "android,nebula-gz-log-v1";
 		};
 	};
+
+	hypervisor: hypervisor {
+		compatible = "mediatek,geniezone-hyp";
+	};
 };
