@@ -1623,6 +1623,8 @@
 		compatible = "mediatek,mt6989-connv3";
 		/* BT, WIFI, GPS, FM */
 		radio-support = "wifi", "bt", "md";
+		/* radio-off-mode: 0 means turn off pmic when all radio off */
+		radio-off-mode = <0>;
 		pinctrl-names = "connsys-pin-pmic-en-default",
 				"connsys-pin-pmic-en-set",
 				"connsys-pin-pmic-en-clr",
