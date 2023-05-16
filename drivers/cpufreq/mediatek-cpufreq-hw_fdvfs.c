@@ -121,7 +121,7 @@ int cpufreq_fdvfs_switch(unsigned int target_f, struct cpufreq_policy *policy)
 
 	target_f = DIV_ROUND_UP(target_f, FDVFS_FREQU);
 	for_each_cpu(cpu, policy->real_cpus) {
-		writel_relaxed(target_f, fdvfs_base + cpu*0x4);
+		writel_relaxed(target_f, fdvfs_reg + cpu*0x4);
 	}
 
 	return 0;
