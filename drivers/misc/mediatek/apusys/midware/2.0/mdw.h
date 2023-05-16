@@ -270,6 +270,8 @@ struct mdw_device {
 	bool support_power_fast_on_off;
 	enum mdw_power_type power_state;
 	uint64_t max_dtime_ts;
+	struct mutex dtime_mtx;
+	struct mutex power_mtx;
 };
 
 struct mdw_fpriv {

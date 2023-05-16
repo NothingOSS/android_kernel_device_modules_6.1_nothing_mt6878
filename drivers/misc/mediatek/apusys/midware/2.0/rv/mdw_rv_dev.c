@@ -48,7 +48,7 @@ static void mdw_rv_dev_power_off(struct work_struct *wk)
 		container_of(wk, struct mdw_rv_dev, power_off_wk);
 	int ret = 0;
 
-	mdw_drv_info("worker call power off\n");
+	mdw_drv_debug("worker call power off\n");
 	ret = mdw_rv_dev_power_onoff(mrdev, MDW_APU_POWER_OFF);  // power off
 	if (ret && ret != -EOPNOTSUPP)
 		mdw_drv_err("rpmsg_sendto(power off) fail(%d)\n", ret);
@@ -71,9 +71,12 @@ int mdw_rv_dev_dtime_handle(struct mdw_rv_dev *mrdev, struct mdw_cmd *c)
 	unsigned long power_dtime = 0;
 
 	/* dtime handle */
+	mutex_lock(&mdev->dtime_mtx);
 	curr_dtime_ts = c->end_ts + c->power_dtime;
 	if (mdev->max_dtime_ts < curr_dtime_ts)
 		mdev->max_dtime_ts = curr_dtime_ts;
+	else
+		goto out;
 
 	power_dtime = msecs_to_jiffies(mdev->max_dtime_ts - c->end_ts);
 
@@ -85,6 +88,8 @@ int mdw_rv_dev_dtime_handle(struct mdw_rv_dev *mrdev, struct mdw_cmd *c)
 	timer_setup(&mrdev->power_off_timer, mdw_rv_dev_timer_callback, 0);
 	mod_timer(&mrdev->power_off_timer, jiffies + power_dtime);
 
+out:
+	mutex_unlock(&mdev->dtime_mtx);
 	return 0;
 }
 
@@ -99,29 +104,46 @@ int mdw_rv_dev_power_onoff(struct mdw_rv_dev *mrdev, enum mdw_power_type power_o
 {
 	struct mdw_device *mdev = mrdev->mdev;
 	uint32_t cnt = 100, i = 0, dst = 0;
-	int ret = 0, len = 0;
+	int ret = 0, len = 0, cmd_running = 0;
 	enum mdw_power_type power_flag = MDW_APU_POWER_OFF;
+
+	mutex_lock(&mdev->power_mtx);
+	if (mdev->support_power_fast_on_off == false) {
+		mdw_drv_debug("platform does NOT support fast off/on\n");
+		ret = -EOPNOTSUPP;
+		goto out;
+	}
 
 	/* set param */
 	if (power_onoff == MDW_APU_POWER_ON) {
-		mdw_drv_info("fast power on\n");
+		mdw_drv_debug("fast power on\n");
 		len = 1;
 	} else {
 		dst = 1;
 		power_flag = MDW_APU_POWER_ON;
-		mdw_drv_info("fast power off\n");
+		mdw_drv_debug("fast power off\n");
+	}
+
+	/* check cmd_running */
+	if (power_onoff == MDW_APU_POWER_OFF) {
+		cmd_running  = atomic_read(&mdev->cmd_running);
+		if (cmd_running) {
+			mdw_drv_debug("cmd_running, skip power off\n");
+			goto out;
+		}
 	}
 
 	/* send & retry */
 	for (i = 0; i < cnt; i++) {
 		/* power api */
-		if ((mdev->support_power_fast_on_off == true)
-			&& (mdev->power_state == power_flag)) {
+		if (mdev->power_state == power_flag) {
 			ret = rpmsg_sendto(mrdev->ept, NULL, len, dst);
 			if (ret && ret != -EOPNOTSUPP)
 				mdw_drv_info("rpmsg_sendto(power) fail(%d)\n", ret);
 			else
 				mdev->power_state = !power_flag;
+		} else {
+			mdw_drv_info("skip power action power_state(%d)\n", power_flag);
 		}
 
 		/* send busy, retry */
@@ -136,11 +158,13 @@ int mdw_rv_dev_power_onoff(struct mdw_rv_dev *mrdev, enum mdw_power_type power_o
 	}
 
 	if (ret == -EOPNOTSUPP) {
-		mdw_drv_info("No support fast power on/off\n");
+		mdw_drv_debug("No support fast power on/off\n");
 		mdev->support_power_fast_on_off = false;
 		mdev->power_state = MDW_APU_POWER_OFF;
 	}
 
+out:
+	mutex_unlock(&mdev->power_mtx);
 	return ret;
 }
 
