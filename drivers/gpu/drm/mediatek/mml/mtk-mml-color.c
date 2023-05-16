@@ -21,6 +21,9 @@
 #define COLOR_WAIT_TIMEOUT_MS (50)
 #define COLOR_REG_NUM (155)
 
+#define REG_NOT_SUPPORT 0xfff
+
+
 enum mml_color_reg_index {
 	COLOR_CFG_MAIN,
 	COLOR_PXL_CNT_MAIN,
@@ -38,6 +41,7 @@ enum mml_color_reg_index {
 	COLOR_CM1_EN,
 	COLOR_CM2_EN,
 	COLOR_SHADOW_CTRL,
+	COLOR_REGIONAL_ENABLE_LENGHTH,
 	COLOR_REG_MAX_COUNT
 };
 
@@ -57,8 +61,30 @@ static const u16 colo_reg_table_mt6983[COLOR_REG_MAX_COUNT] = {
 	[COLOR_INTERNAL_IP_HEIGHT] = 0xc54,
 	[COLOR_CM1_EN] = 0xc60,
 	[COLOR_CM2_EN] = 0xca0,
-	[COLOR_SHADOW_CTRL] = 0xcb0
+	[COLOR_SHADOW_CTRL] = 0xcb0,
+	[COLOR_REGIONAL_ENABLE_LENGHTH] = REG_NOT_SUPPORT,
 };
+
+static const u16 colo_reg_table_mt6989[COLOR_REG_MAX_COUNT] = {
+	[COLOR_CFG_MAIN] = 0x400,
+	[COLOR_PXL_CNT_MAIN] = 0x404,
+	[COLOR_LINE_CNT_MAIN] = 0x408,
+	[COLOR_WIN_X_MAIN] = 0x40c,
+	[COLOR_WIN_Y_MAIN] = 0x410,
+	[COLOR_DBG_CFG_MAIN] = 0x420,
+	[COLOR_START] = 0xc00,
+	[COLOR_INTEN] = 0xc04,
+	[COLOR_INTSTA] = 0xc08,
+	[COLOR_OUT_SEL] = 0xc0c,
+	[COLOR_FRAME_DONE_DEL] = 0xc10,
+	[COLOR_INTERNAL_IP_WIDTH] = 0xc50,
+	[COLOR_INTERNAL_IP_HEIGHT] = 0xc54,
+	[COLOR_CM1_EN] = 0xc60,
+	[COLOR_CM2_EN] = 0xca0,
+	[COLOR_SHADOW_CTRL] = 0xcb0,
+	[COLOR_REGIONAL_ENABLE_LENGHTH] = 0xf08,
+};
+
 
 struct color_data {
 	const u16 *reg_table;
@@ -67,6 +93,11 @@ struct color_data {
 static const struct color_data mt6983_color_data = {
 	.reg_table = colo_reg_table_mt6983,
 };
+
+static const struct color_data mt6989_color_data = {
+	.reg_table = colo_reg_table_mt6989,
+};
+
 
 struct mml_comp_color {
 	struct mtk_ddp_comp ddp_comp;
@@ -175,6 +206,22 @@ static struct mml_pq_comp_config_result *get_color_comp_config_result(
 	return task->pq_task->comp_config.result;
 }
 
+static void color_config_region_pq(struct mml_comp *comp, struct cmdq_pkt *pkt,
+			const phys_addr_t base_pa, const struct mml_pq_config *cfg)
+{
+	struct mml_comp_color *color = comp_to_color(comp);
+
+	if (color->data->reg_table[COLOR_REGIONAL_ENABLE_LENGHTH] != REG_NOT_SUPPORT) {
+		if (!cfg->en_region_pq) {
+			mml_pq_msg("%s:disable region pq", __func__);
+
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + color->data->reg_table[COLOR_REGIONAL_ENABLE_LENGHTH],
+				0, U32_MAX);
+		}
+	}
+}
+
 static s32 color_config_frame(struct mml_comp *comp, struct mml_task *task,
 			      struct mml_comp_config *ccfg)
 {
@@ -197,6 +244,8 @@ static s32 color_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 		return ret;
 	}
+
+	color_config_region_pq(comp, pkt, base_pa, &dest->pq_config);
 
 	cmdq_pkt_write(pkt, NULL, base_pa + color->data->reg_table[COLOR_START], 0x1, U32_MAX);
 
@@ -503,7 +552,7 @@ const struct of_device_id mml_color_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6989-mml_color",
-		.data = &mt6983_color_data,
+		.data = &mt6989_color_data,
 	},
 	{},
 };

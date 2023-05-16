@@ -320,13 +320,22 @@ static void tdshp_config_region_pq(struct mml_comp *comp, struct cmdq_pkt *pkt,
 	struct mml_comp_tdshp *tdshp = comp_to_tdshp(comp);
 
 	if (tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM] != REG_NOT_SUPPORT) {
-		if (!cfg->en_region_pq) {
-			mml_pq_msg("%s:disable region pq", __func__);
 
+		mml_pq_msg("%s:en_region_pq[%d] en_color[%d]", __func__,
+			cfg->en_region_pq, cfg->en_color);
+
+		if (!cfg->en_region_pq && !cfg->en_color)
 			cmdq_pkt_write(pkt, NULL,
 				base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
 				0, U32_MAX);
-		}
+		else if (cfg->en_region_pq && !cfg->en_color)
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
+				0x5C1B0, U32_MAX);
+		else if (cfg->en_region_pq && cfg->en_color)
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
+				0xDC1B0, U32_MAX);
 	}
 }
 
