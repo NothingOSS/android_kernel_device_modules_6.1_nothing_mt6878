@@ -11577,7 +11577,7 @@
 
 	sap: sap@1c710000 {
 		compatible = "mediatek,sap";
-		status = "disable";
+		status = "okay";
 		core-id = <0x02>;
 		l2tcm-offset = <0x00310000>;
 		secure-dump-size = <0x24000>;
