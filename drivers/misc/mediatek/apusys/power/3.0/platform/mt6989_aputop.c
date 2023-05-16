@@ -446,8 +446,8 @@ static int mt6989_apu_top_pb(struct platform_device *pdev)
 	init_reg_base(pdev);
 	if (apupw.env < MP)
 		ret = mt6989_all_on(pdev, &apupw);
-	/* runtime wake up apu_top, let rv close it */
-	pm_runtime_get_sync(&pdev->dev);
+
+	mt6989_apu_top_on(&pdev->dev);
 
 	ret = readl_relaxed_poll_timeout_atomic(
 			(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY),

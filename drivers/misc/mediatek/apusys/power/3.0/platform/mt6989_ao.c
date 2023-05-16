@@ -1643,7 +1643,6 @@ int mt6989_all_on(struct platform_device *pdev, struct apu_power *g_papw)
 	}
 
 	aputop_dump_reg(apu_rpc, 0x0, 0x50);
-	pm_runtime_get_sync(&pdev->dev);
 
 	if (papw->env == AO) {
 		/* wake up ACX*/
