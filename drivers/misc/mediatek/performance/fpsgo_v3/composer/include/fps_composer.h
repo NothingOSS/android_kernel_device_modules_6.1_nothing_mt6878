@@ -83,6 +83,12 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name,
 void fpsgo_base2comp_check_connect_api(void);
 int fpsgo_base2comp_check_connect_api_tree_empty(void);
 int switch_ui_ctrl(int pid, int set_ctrl);
+void fpsgo_set_fpsgo_is_boosting(int is_boosting);
+int fpsgo_get_fpsgo_is_boosting(void);
+int register_get_fpsgo_is_boosting(fpsgo_notify_is_boost_cb func_cb);
+int unregister_get_fpsgo_is_boosting(fpsgo_notify_is_boost_cb func_cb);
+int fpsgo_com2other_notify_fpsgo_is_boosting(int boost);
+void fpsgo_com_notify_fpsgo_is_boost(int enable);
 
 #endif
 

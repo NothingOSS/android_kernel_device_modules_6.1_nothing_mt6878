@@ -1615,7 +1615,7 @@ int fpsgo_check_thread_status(void)
 			}
 
 		} else {
-			if (iter->frame_type == NON_VSYNC_ALIGNED_TYPE)
+			if (iter->frame_type != BY_PASS_TYPE)
 				is_boosting = NON_VSYNC_ALIGNED_TYPE;
 
 			n = rb_next(n);
@@ -1627,12 +1627,6 @@ int fpsgo_check_thread_status(void)
 	fpsgo_check_BQid_status();
 	fpsgo_check_acquire_info_status();
 	fpsgo_traverse_linger(ts);
-
-	if (is_boosting == BY_PASS_TYPE && fbt_get_fbt_is_boosting()) {
-		fbt_set_fbt_is_boosting(0);
-		if (fpsgo_notify_fbt_is_boost_fp)
-			fpsgo_notify_fbt_is_boost_fp(0);
-	}
 
 	fpsgo_render_tree_unlock(__func__);
 
@@ -1649,6 +1643,9 @@ int fpsgo_check_thread_status(void)
 		fpsgo_base2fbt_no_one_render();
 
 	fpsgo_check_all_tree_empty();
+
+	if (is_boosting == BY_PASS_TYPE)
+		fpsgo_com_notify_fpsgo_is_boost(0);
 
 	return rb_tree_empty;
 }

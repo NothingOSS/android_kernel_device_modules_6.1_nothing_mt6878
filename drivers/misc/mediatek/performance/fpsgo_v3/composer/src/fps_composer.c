@@ -14,6 +14,10 @@
 #include <linux/mutex.h>
 #include <linux/sched/task.h>
 #include <linux/sched.h>
+#include <linux/kthread.h>
+#include <linux/irq_work.h>
+#include <linux/cpufreq.h>
+#include "sugov/cpufreq.h"
 
 #include <mt-plat/fpsgo_common.h>
 
@@ -38,6 +42,7 @@
 #define COMP_TAG "FPSGO_COMP"
 #define TIME_1MS  1000000
 #define MAX_CONNECT_API_SIZE 20
+#define MAX_FPSGO_CB_NUM 5
 
 static struct kobject *comp_kobj;
 static struct workqueue_struct *composer_wq;
@@ -53,11 +58,17 @@ static int recycle_idle_cnt;
 static int recycle_active = 1;
 static int fps_align_margin = 5;
 static int total_fpsgo_com_policy_cmd_num;
+static int fpsgo_is_boosting;
 
 static void fpsgo_com_notify_to_do_recycle(struct work_struct *work);
 static DECLARE_WORK(do_recycle_work, fpsgo_com_notify_to_do_recycle);
 static DEFINE_MUTEX(recycle_lock);
 static DEFINE_MUTEX(fpsgo_com_policy_cmd_lock);
+static DEFINE_MUTEX(fpsgo_boost_cb_lock);
+static DEFINE_MUTEX(fpsgo_boost_lock);
+
+static fpsgo_notify_is_boost_cb notify_fpsgo_boost_cb_list[MAX_FPSGO_CB_NUM];
+
 
 static enum hrtimer_restart prepare_do_recycle(struct hrtimer *timer)
 {
@@ -67,6 +78,124 @@ static enum hrtimer_restart prepare_do_recycle(struct hrtimer *timer)
 		schedule_work(&do_recycle_work);
 
 	return HRTIMER_NORESTART;
+}
+
+void fpsgo_set_fpsgo_is_boosting(int is_boosting)
+{
+	mutex_lock(&fpsgo_boost_lock);
+	fpsgo_is_boosting = is_boosting;
+	mutex_unlock(&fpsgo_boost_lock);
+}
+
+int fpsgo_get_fpsgo_is_boosting(void)
+{
+	int is_boosting;
+
+	mutex_lock(&fpsgo_boost_lock);
+	is_boosting = fpsgo_is_boosting;
+	mutex_unlock(&fpsgo_boost_lock);
+
+	return is_boosting;
+}
+
+void init_fpsgo_is_boosting_callback(void)
+{
+	int i;
+
+	mutex_lock(&fpsgo_boost_cb_lock);
+
+	for (i = 0; i < MAX_FPSGO_CB_NUM; i++)
+		notify_fpsgo_boost_cb_list[i] = NULL;
+
+	mutex_unlock(&fpsgo_boost_cb_lock);
+}
+
+/*
+ *	int register_get_fpsgo_is_boosting(fpsgo_notify_is_boost_cb func_cb)
+ *	Users cannot use lock outside register function.
+ */
+int register_get_fpsgo_is_boosting(fpsgo_notify_is_boost_cb func_cb)
+{
+	int i, ret = 1;
+
+	mutex_lock(&fpsgo_boost_cb_lock);
+
+	for (i = 0; i < MAX_FPSGO_CB_NUM; i++) {
+		if (notify_fpsgo_boost_cb_list[i] == NULL) {
+			notify_fpsgo_boost_cb_list[i] = func_cb;
+			ret = 0;
+			break;
+		}
+	}
+	if (ret)
+		fpsgo_main_trace("[%s] Cannot register!, func: %p", __func__, func_cb);
+	else
+		notify_fpsgo_boost_cb_list[i](fpsgo_get_fpsgo_is_boosting());
+
+	mutex_unlock(&fpsgo_boost_cb_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL(register_get_fpsgo_is_boosting);
+
+int unregister_get_fpsgo_is_boosting(fpsgo_notify_is_boost_cb func_cb)
+{
+	int i, ret = 1;
+
+	mutex_lock(&fpsgo_boost_cb_lock);
+
+	for (i = 0; i < MAX_FPSGO_CB_NUM; i++) {
+		if (notify_fpsgo_boost_cb_list[i] == func_cb) {
+			notify_fpsgo_boost_cb_list[i] = NULL;
+			ret = 0;
+			break;
+		}
+	}
+	if (ret) {
+		fpsgo_main_trace("[%s] Cannot unregister!, func: %p",
+			__func__, func_cb);
+	}
+	mutex_unlock(&fpsgo_boost_cb_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL(unregister_get_fpsgo_is_boosting);
+
+int fpsgo_com2other_notify_fpsgo_is_boosting(int boost)
+{
+	int i, ret = 1;
+
+	mutex_lock(&fpsgo_boost_cb_lock);
+
+	for (i = 0; i < MAX_FPSGO_CB_NUM; i++) {
+		if (notify_fpsgo_boost_cb_list[i]) {
+			notify_fpsgo_boost_cb_list[i](boost);
+			fpsgo_main_trace("[%s] Call %d func_cb: %p",
+				__func__, i, notify_fpsgo_boost_cb_list[i]);
+		}
+	}
+
+	mutex_unlock(&fpsgo_boost_cb_lock);
+
+	return ret;
+}
+
+
+void fpsgo_com_notify_fpsgo_is_boost(int enable)
+{
+	mutex_lock(&fpsgo_boost_lock);
+	if (!fpsgo_is_boosting && enable) {
+		fpsgo_is_boosting = 1;
+		fpsgo_com2other_notify_fpsgo_is_boosting(1);
+		if (fpsgo_notify_fbt_is_boost_fp)
+			fpsgo_notify_fbt_is_boost_fp(1);
+	} else if (fpsgo_is_boosting && !enable) {
+		fpsgo_is_boosting = 0;
+		fpsgo_com2other_notify_fpsgo_is_boosting(0);
+		if (fpsgo_notify_fbt_is_boost_fp)
+			fpsgo_notify_fbt_is_boost_fp(0);
+	}
+	mutex_unlock(&fpsgo_boost_lock);
 }
 
 static inline int fpsgo_com_check_is_surfaceflinger(int pid)
@@ -520,6 +649,9 @@ exit:
 	fpsgo_thread_unlock(&f_render->thr_mlock);
 	fpsgo_render_tree_unlock(__func__);
 
+	if (f_render->frame_type == NON_VSYNC_ALIGNED_TYPE)
+		fpsgo_com_notify_fpsgo_is_boost(1);
+
 	mutex_lock(&recycle_lock);
 	if (recycle_idle_cnt) {
 		recycle_idle_cnt = 0;
@@ -926,6 +1058,8 @@ void fpsgo_ctrl2comp_hint_frame_start(int pid,
 
 	fpsgo_thread_unlock(&f_render->thr_mlock);
 	fpsgo_render_tree_unlock(__func__);
+
+	fpsgo_com_notify_fpsgo_is_boost(1);
 
 	mutex_lock(&recycle_lock);
 	if (recycle_idle_cnt) {
@@ -1833,6 +1967,34 @@ out:
 
 static KOBJ_ATTR_RW(fpsgo_control_pid);
 
+static ssize_t is_fpsgo_boosting_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	char *temp = NULL;
+	int posi = 0;
+	int length = 0;
+
+	temp = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!temp)
+		goto out;
+
+	mutex_lock(&fpsgo_boost_lock);
+	length = scnprintf(temp + posi,
+		FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+		"fpsgo is boosting = %d\n", fpsgo_is_boosting);
+	posi += length;
+	mutex_unlock(&fpsgo_boost_lock);
+
+	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
+
+out:
+	kfree(temp);
+	return length;
+}
+
+static KOBJ_ATTR_RO(is_fpsgo_boosting);
+
 void __exit fpsgo_composer_exit(void)
 {
 	hrtimer_cancel(&recycle_hrt);
@@ -1850,6 +2012,7 @@ void __exit fpsgo_composer_exit(void)
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_control_api_mask_by_pid);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_control_hwui_by_pid);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_fpsgo_com_policy_cmd);
+	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_is_fpsgo_boosting);
 
 	fpsgo_sysfs_remove_dir(&comp_kobj);
 }
@@ -1865,6 +2028,9 @@ int __init fpsgo_composer_init(void)
 
 	hrtimer_start(&recycle_hrt, ktime_set(0, NSEC_PER_SEC), HRTIMER_MODE_REL);
 
+	init_fpsgo_is_boosting_callback();
+	fpsgo_set_fpsgo_is_boosting(0);
+
 	if (!fpsgo_sysfs_create_dir(NULL, "composer", &comp_kobj)) {
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_connect_api_info);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_control_hwui);
@@ -1878,6 +2044,7 @@ int __init fpsgo_composer_init(void)
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_control_api_mask_by_pid);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_control_hwui_by_pid);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_fpsgo_com_policy_cmd);
+		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_is_fpsgo_boosting);
 	}
 
 	return 0;

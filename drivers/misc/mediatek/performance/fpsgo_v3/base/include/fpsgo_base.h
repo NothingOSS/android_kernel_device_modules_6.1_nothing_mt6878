@@ -35,6 +35,7 @@ enum {
 	FPSGO_SET_SCHED_RATE = 2,
 };
 
+typedef void (*fpsgo_notify_is_boost_cb)(int fpsgo_is_boosting);
 /* composite key for render_info rbtree */
 struct fbt_render_key {
 	int key1;

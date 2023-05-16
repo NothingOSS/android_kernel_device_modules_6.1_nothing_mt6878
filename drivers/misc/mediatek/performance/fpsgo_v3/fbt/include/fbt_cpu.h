@@ -109,8 +109,6 @@ void fpsgo_get_fbt_mlock(const char *tag);
 void fpsgo_put_fbt_mlock(const char *tag);
 void fpsgo_get_blc_mlock(const char *tag);
 void fpsgo_put_blc_mlock(const char *tag);
-void fbt_set_fbt_is_boosting(int is_boosting);
-int fbt_get_fbt_is_boosting(void);
 void fbt_find_max_blc(unsigned int *temp_blc, int *temp_blc_pid,
 	unsigned long long *temp_blc_buffer_id,
 	int *temp_blc_dep_num, struct fpsgo_loading temp_blc_dep[]);
@@ -170,8 +168,6 @@ static inline void fbt_set_render_last_cb(struct render_info *thr, unsigned long
 static inline int fpsgo_ctrl2fbt_buffer_quota(unsigned long long ts, int pid, int quota,
 			unsigned long long identifier) { return 0; }
 static inline void notify_rl_ko_is_ready(void) { }
-static inline void fbt_set_fbt_is_boosting(int is_boosting) { }
-static inline int fbt_get_fbt_is_boosting(void) { return 0; }
 #endif
 
 #endif

@@ -268,6 +268,9 @@ static void fpsgo_notifier_wq_cb_enable(int enable)
 	FPSGO_LOGI("[FPSGO_CB] fpsgo_enable %d\n",
 			fpsgo_enable);
 	mutex_unlock(&notify_lock);
+
+	if (!enable)
+		fpsgo_com_notify_fpsgo_is_boost(0);
 }
 
 static void fpsgo_notifier_wq_cb_hint_frame(int qudeq,
