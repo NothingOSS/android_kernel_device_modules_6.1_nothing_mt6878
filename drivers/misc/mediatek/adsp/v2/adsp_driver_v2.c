@@ -131,6 +131,11 @@ static const struct of_device_id adsp_core_of_ids[] = {
 	{}
 };
 
+static const struct of_device_id adsp_qos_scene_of_ids[] = {
+	{ .compatible = "mediatek,mt6897-audio-dsp-hrt-bw"},
+	{},
+};
+
 static int adspsys_drv_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -296,6 +301,25 @@ static int adsp_core_drv_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int adsp_qos_scene_probe(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	const struct of_device_id *match;
+
+	match = of_match_node(adsp_qos_scene_of_ids, dev->of_node);
+	if (match)
+		adsp_set_scene_bw(pdev);
+	else
+		pr_info("%s() no qos scene supported\n", __func__);
+
+	return 0;
+}
+
+static int adsp_qos_scene_remove(struct platform_device *pdev)
+{
+	return 0;
+}
+
 static struct platform_driver adspsys_driver = {
 	.probe = adspsys_drv_probe,
 	.remove = adspsys_drv_remove,
@@ -332,10 +356,23 @@ static struct platform_driver adsp_core1_driver = {
 	},
 };
 
+static struct platform_driver adsp_qos_scene_driver = {
+	.probe = adsp_qos_scene_probe,
+	.remove = adsp_qos_scene_remove,
+	.driver = {
+		.name = "audio-dsp-hrt-bw",
+		.owner = THIS_MODULE,
+#if IS_ENABLED(CONFIG_OF)
+		.of_match_table = adsp_qos_scene_of_ids,
+#endif
+	},
+};
+
 static struct platform_driver * const drivers[] = {
 	&adspsys_driver,
 	&adsp_core0_driver,
 	&adsp_core1_driver,
+	&adsp_qos_scene_driver,
 };
 
 int notify_adsp_semaphore_event(struct notifier_block *nb,

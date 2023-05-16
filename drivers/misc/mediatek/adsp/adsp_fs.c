@@ -15,6 +15,7 @@
 #include "adsp_logger.h"
 #include "adsp_excep.h"
 #include "adsp_core.h"
+#include "adsp_qos.h"
 
 /* ----------------------------- sys fs ------------------------------------ */
 static inline ssize_t dev_dump_show(struct device *dev,
@@ -241,6 +242,8 @@ const struct file_operations adsp_debug_ops = {
 	_IOR(AUDIO_DSP_IOC_MAGIC, 1, unsigned int)
 #define AUDIO_DSP_IOCTL_ADSP_RESET_CBK \
 	_IOR(AUDIO_DSP_IOC_MAGIC, 2, unsigned int)
+#define AUDIO_DSP_IOCTL_ADSP_HRT_BW \
+	_IOR(AUDIO_DSP_IOC_MAGIC, 3, unsigned int)
 
 union ioctl_param {
 	struct {
@@ -251,6 +254,10 @@ union ioctl_param {
 		int16_t flag;
 		uint16_t cid;
 	} cmd1;
+	struct {
+		uint16_t set;
+		uint16_t scene;
+	} cmd2;
 };
 
 /* user-space feature reset */
@@ -344,6 +351,15 @@ static long adsp_driver_ioctl(
 			ret = -EFAULT;
 			break;
 		}
+		break;
+	}
+	case AUDIO_DSP_IOCTL_ADSP_HRT_BW: {
+		if (copy_from_user(&t, (void *)arg, sizeof(t))) {
+			ret = -EFAULT;
+			break;
+		}
+
+		ret = adsp_icc_bw_req(t.cmd2.scene, t.cmd2.set);
 		break;
 	}
 	default:

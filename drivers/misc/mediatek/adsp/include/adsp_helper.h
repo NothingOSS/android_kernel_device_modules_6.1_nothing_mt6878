@@ -164,6 +164,11 @@ enum semaphore_id {
 	SEMA_AUDIOREG = 5,
 };
 
+enum adsp_qos_scene {
+	ADSP_QOS_SCENE_PHONECALL = 0,
+	ADSP_QOS_SCENE_NUM,
+};
+
 /* adsp system/feature status */
 extern int is_adsp_ready(u32 cid);
 extern u32 get_adsp_core_total(void);
