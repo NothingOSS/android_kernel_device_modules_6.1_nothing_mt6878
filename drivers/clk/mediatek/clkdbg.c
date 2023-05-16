@@ -475,12 +475,13 @@ static void proc_fclk_freq(fn_fclk_freq_proc proc, void *data)
 
 	ign = strsep(&c, " ");
 	name = strsep(&c, " ");
-	pr_notice("fmeter name: %s\n", name);
 
 	fclk = get_all_fmeter_clks();
 
-	if (fclk == NULL || proc == NULL)
+	if (fclk == NULL || proc == NULL || name == NULL)
 		return;
+
+	pr_notice("fmeter name: %s\n", name);
 
 	fmeter_data = prepare_fmeter();
 
