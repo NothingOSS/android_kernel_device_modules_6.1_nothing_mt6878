@@ -8183,7 +8183,7 @@
 				  <0 0x1a038000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <0>;
-			mediatek,larbs = <&smi_larb16>;
+			mediatek,larbs = <&smi_larb16>, <&smi_larb27>;
 			interrupts = <GIC_SPI 560 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBA>;
 			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
@@ -8346,7 +8346,7 @@
 				  <0 0x1a078000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <1>;
-			mediatek,larbs = <&smi_larb43>;
+			mediatek,larbs = <&smi_larb43>, <&smi_larb27>;
 			interrupts = <GIC_SPI 562 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBB>;
 			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
@@ -8509,7 +8509,7 @@
 				  <0 0x1a0b8000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <2>;
-			mediatek,larbs = <&smi_larb44>;
+			mediatek,larbs = <&smi_larb44>, <&smi_larb27>;
 			interrupts = <GIC_SPI 564 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBC>;
 			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
