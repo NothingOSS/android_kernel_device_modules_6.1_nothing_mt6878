@@ -1144,9 +1144,9 @@ fail_reg_cpu_frequency_entry:
 	gpu_boost_enable_perf = gpu_boost_enable_camera = -1;
 
 	init_fpsgo_common();
-	fbt_cpu_init();
 	mtk_fstb_init();
 	fpsgo_composer_init();
+	fbt_cpu_init();
 
 	if (fpsgo_arch_nr_clusters() > 0)
 		fpsgo_switch_enable(1);

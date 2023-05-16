@@ -29,11 +29,11 @@
 #include "fpsgo_sysfs.h"
 #include "fpsgo_usedext.h"
 #include "fstb.h"
+#include "fps_composer.h"
 
 static DEFINE_MUTEX(xgf_main_lock);
 static DEFINE_MUTEX(xgff_frames_lock);
 static DEFINE_MUTEX(xgf_policy_cmd_lock);
-static atomic_t xgf_ko_enable;
 static atomic_t xgf_event_buffer_idx;
 static atomic_t fstb_event_buffer_idx;
 static int xgf_enable;
@@ -157,7 +157,7 @@ int xgf_atomic_read(int op)
 	int ret = -1;
 
 	if (op == 0)
-		ret = atomic_read(&xgf_ko_enable);
+		ret = 1;
 	else if (op == 1)
 		ret = atomic_read(&xgf_event_buffer_idx);
 	else if (op == 2)
@@ -1905,7 +1905,7 @@ static void xgf_buffer_record_irq_waking_switch(int cpu, int event,
 	int index;
 	struct fpsgo_trace_event *fte;
 
-	if (!atomic_read(&xgf_ko_enable))
+	if (xgf_ko_is_ready() <= 0)
 		return;
 
 Reget:
@@ -1947,7 +1947,7 @@ static void fstb_buffer_record_waking_timer(int cpu, int event,
 	int index;
 	struct fpsgo_trace_event *fte;
 
-	if (!atomic_read(&xgf_ko_enable))
+	if (xgf_ko_is_ready() <= 0)
 		return;
 
 Reget:
@@ -2225,7 +2225,6 @@ fail_reg_irq_handler_entry:
 					xgf_tracepoints[0].func,  NULL);
 	xgf_tracepoints[0].registered = false;
 
-	atomic_set(&xgf_ko_enable, 0);
 	atomic_set(&xgf_event_buffer_idx, 0);
 	atomic_set(&fstb_event_buffer_idx, 0);
 }
@@ -2251,41 +2250,21 @@ static void __nocfi xgf_tracing_unregister(void)
 					xgf_tracepoints[5].func,  NULL);
 	xgf_tracepoints[5].registered = false;
 
-	atomic_set(&xgf_ko_enable, 0);
 	atomic_set(&xgf_event_buffer_idx, 0);
 	atomic_set(&fstb_event_buffer_idx, 0);
 }
 
-static int xgf_stat_xchg(int xgf_enable)
+void fpsgo_comp2xgf_notify_boost(int boost_flag)
 {
-	int ret = -1;
+	if (xgf_ko_is_ready() < 0)
+		return;
 
-	if (xgf_enable) {
+	mutex_lock(&xgf_main_lock);
+	if (boost_flag)
 		xgf_tracing_register();
-		ret = 1;
-		atomic_set(&xgf_ko_enable, 1);
-	} else {
+	else
 		xgf_tracing_unregister();
-		ret = 0;
-		atomic_set(&xgf_ko_enable, 0);
-	}
-
-	return ret;
-}
-
-static void xgf_enter_state_xchg(int enable)
-{
-	int ret = 0;
-
-	if (enable != 0 && enable != 1) {
-		ret = -1;
-		goto out;
-	}
-
-	ret = xgf_stat_xchg(enable);
-
-out:
-	xgf_trace("xgf k2ko xchg ret:%d enable:%d", ret, enable);
+	mutex_unlock(&xgf_main_lock);
 }
 
 void fpsgo_ctrl2xgf_switch_xgf(int val)
@@ -2293,9 +2272,6 @@ void fpsgo_ctrl2xgf_switch_xgf(int val)
 	mutex_lock(&xgf_main_lock);
 	if (val != xgf_enable) {
 		xgf_enable = val;
-
-		if (xgf_ko_is_ready())
-			xgf_enter_state_xchg(xgf_enable);
 
 		mutex_unlock(&xgf_main_lock);
 
@@ -2318,14 +2294,10 @@ int notify_xgf_ko_ready(void)
 		goto out;
 	}
 
-	mutex_lock(&xgf_main_lock);
+	if (!xgf_ko_ready)
+		xgf_ko_ready = 1;
 
-	xgf_ko_ready = 1;
-	if (xgf_is_enable()) {
-		xgf_enter_state_xchg(xgf_enable);
-		ret = 1;
-	}
-	mutex_unlock(&xgf_main_lock);
+	ret = 1;
 out:
 	return ret;
 }
@@ -2358,6 +2330,10 @@ static void clean_xgf_tp(void)
 			xgf_tracepoints[i].registered = false;
 		}
 	}
+
+	atomic_set(&xgf_event_buffer_idx, 0);
+	atomic_set(&fstb_event_buffer_idx, 0);
+	xgf_ko_ready = -1;
 }
 
 int __init init_xgf_ko(void)
@@ -2375,7 +2351,6 @@ int __init init_xgf_ko(void)
 		}
 	}
 
-	atomic_set(&xgf_ko_enable, 1);
 	atomic_set(&xgf_event_buffer_idx, 0);
 	atomic_set(&fstb_event_buffer_idx, 0);
 
@@ -2840,6 +2815,8 @@ int __init init_xgf(void)
 	xgff_frame_startend_fp = xgff_frame_startend;
 	xgff_frame_getdeplist_maxsize_fp = xgff_frame_getdeplist_maxsize;
 
+	register_get_fpsgo_is_boosting(fpsgo_comp2xgf_notify_boost);
+
 	return 0;
 }
 
@@ -2869,6 +2846,8 @@ int __exit exit_xgf(void)
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_set_cam_server_pid);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_filter_dep_task_enable);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_filter_dep_task_enable_by_pid);
+
+	unregister_get_fpsgo_is_boosting(fpsgo_comp2xgf_notify_boost);
 
 	fpsgo_sysfs_remove_dir(&xgf_kobj);
 
