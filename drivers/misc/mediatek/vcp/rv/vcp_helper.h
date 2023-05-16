@@ -194,6 +194,7 @@ extern struct device_attribute dev_attr_vcp_A_status;
 extern struct device_attribute dev_attr_log_filter;
 #endif  //  CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT
 extern struct bin_attribute bin_attr_vcp_dump;
+extern char *halt_user;
 
 /* vcp loggger */
 extern int vcp_logger_init(phys_addr_t start, phys_addr_t limit);

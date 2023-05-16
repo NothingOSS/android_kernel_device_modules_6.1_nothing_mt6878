@@ -1180,9 +1180,11 @@ void vcp_get_log(enum vcp_core_id vcp_id)
 char *vcp_pickup_log_for_aee(void)
 {
 	char *last_log;
-	int i;
+	int i, j;
 	char keyword1[] = "coredump";
 	char keyword2[] = "exception";
+	char *halt_message = "trigger halt from ap task: ";
+	unsigned int halt_len = 0;
 
 	if (vcp_A_last_log == NULL)
 		return NULL;
@@ -1206,6 +1208,18 @@ char *vcp_pickup_log_for_aee(void)
 		if (vcp_A_last_log[i-7] != keyword1[0])
 			continue;
 		last_log = &vcp_A_last_log[i-CMP_SAFT_RANGE];
+
+		if (halt_user) {
+			halt_len = strlen(halt_message) + strlen(halt_user);
+			if (halt_len < CMP_SAFT_RANGE) {
+				for (i = 0; i < strlen(halt_message); i++)
+					last_log[i] = halt_message[i];
+				j = i;
+				for (i = 0; i < strlen(halt_user); i++)
+					last_log[j + i] = halt_user[i];
+				last_log[j + i] = '\n';
+			}
+		}
 		return last_log;
 	}
 
@@ -1229,8 +1243,21 @@ char *vcp_pickup_log_for_aee(void)
 		if (vcp_A_last_log[i-8] != keyword2[0])
 			continue;
 		last_log = &vcp_A_last_log[i-CMP_SAFT_RANGE];
+
+		if (halt_user) {
+			halt_len = strlen(halt_message) + strlen(halt_user);
+			if (halt_len < CMP_SAFT_RANGE) {
+				for (i = 0; i < strlen(halt_message); i++)
+					last_log[i] = halt_message[i];
+				j = i;
+				for (i = 0; i < strlen(halt_user); i++)
+					last_log[j + i] = halt_user[i];
+				last_log[j + i] = '\n';
+			}
+		}
 		return last_log;
 	}
+
 	return last_log;
 }
 

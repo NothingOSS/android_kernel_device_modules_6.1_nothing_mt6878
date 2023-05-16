@@ -114,6 +114,9 @@ unsigned int vcp_recovery_flag[VCP_CORE_TOTAL];
  */
 atomic_t vcp_reset_status = ATOMIC_INIT(RESET_STATUS_STOP);
 unsigned int vcp_reset_by_cmd;
+
+/*halt user name*/
+char *halt_user;
 struct vcp_region_info_st *vcp_region_info;
 /* shadow it due to sram may not access during sleep */
 struct vcp_region_info_st vcp_region_info_copy;
@@ -554,6 +557,7 @@ static void vcp_A_notify_ws(struct work_struct *ws)
 	__pm_relax(vcp_reset_lock);
 #endif
 	vcp_ready[VCP_A_ID] = 1;
+	halt_user = NULL;
 
 	if (vcp_notify_flag) {
 		pr_debug("[VCP] notify blocking call\n");
@@ -722,6 +726,11 @@ void trigger_vcp_halt(enum vcp_core_id id, char *user)
 	}
 
 	if (mmup_enable_count() && vcp_ready[id]) {
+		if (halt_user == NULL) {
+			halt_user = user;
+			pr_notice("[VCP] vcp's first halt is from %s\n", halt_user);
+		}
+
 		vcp_dump_last_regs(mmup_enable_count());
 
 		/* trigger halt isr, force vcp enter wfi */
@@ -3105,6 +3114,7 @@ static int __init vcp_init(void)
 	}
 	vcp_support = 1;
 	vcp_dbg_log = 0;
+	halt_user = NULL;
 
 	/* vco io device initialise */
 	for (i = 0; i < VCP_IOMMU_DEV_NUM; i++)
