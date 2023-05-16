@@ -1272,9 +1272,9 @@ enum {
 
 /* fill in the fmeter clk you want to get freq */
 struct  clkchk_fm chk_fm_list[] = {
-	[CHK_FM_MMPLL2] = {"mmpll2", FM_MMPLL2_CKDIV_CK, ABIST_2},
-	[CHK_FM_UNIVPLL2] = {"univpll2", FM_UNIVPLL2_192M_CK, ABIST_2},
-	[CHK_FM_MAINPLL2] = {"mainpll2", FM_MAINPLL2_CKDIV_CK, ABIST_2},
+	[CHK_FM_MMPLL2] = {"mmpll2", FM_MMPLL2_CKDIV_CK, ABIST_CK2},
+	[CHK_FM_UNIVPLL2] = {"univpll2", FM_UNIVPLL2_192M_CK, ABIST_CK2},
+	[CHK_FM_MAINPLL2] = {"mainpll2", FM_MAINPLL2_CKDIV_CK, ABIST_CK2},
 	[CHK_FM_MMPLL] = {"mmpll", FM_MMPLL_CKDIV_CK, ABIST},
 	[CHK_FM_UNIVPLL] = {"univpll", FM_UNIVPLL_CKDIV_CK, ABIST},
 	[CHK_FM_IMGPLL] = {"imgpll", FM_IMGPLL_CKDIV_CK, ABIST},
@@ -2097,7 +2097,6 @@ static struct mtk_vf vf_table[] = {
 	MTK_VF_TABLE("ssr_sej_sel", 136500, 136500, 136500, 136500, 136500, 136500),
 	MTK_VF_TABLE("dxcc_sel", 273000, 273000, 273000, 273000, 273000, 273000),
 	MTK_VF_TABLE("dpsw_cmp_26m_sel", 26000, 26000, 26000, 26000, 26000, 26000),
-	MTK_VF_TABLE("smapck_sel", 68300, 68300, 68300, 68300, 68300, 68300),
 	MTK_VF_TABLE("camtg1_sel", 52000, 52000, 52000, 52000, 52000, 52000),
 	MTK_VF_TABLE("camtg2_sel", 52000, 52000, 52000, 52000, 52000, 52000),
 	MTK_VF_TABLE("camtg3_sel", 52000, 52000, 52000, 52000, 52000, 52000),
@@ -2301,21 +2300,19 @@ static void devapc_dump(void)
 
 static void serror_dump(void)
 {
-	u32 freq[CHK_FM_NUM];
-	int i;
+	const struct fmeter_clk *fclks;
 
-	for (i = 0; i < CHK_FM_NUM; i++)
-		freq[i] = mt_get_fmeter_freq(chk_fm_list[i].fm_id, chk_fm_list[i].fm_type);
-
-	release_mt6989_hwv_secure();
-	set_subsys_reg_dump_mt6989(devapc_dump_id);
-	for (i = 0; i < CHK_FM_NUM; i++)
-		pr_notice("[%s] %d khz\n", chk_fm_list[i].fm_name, freq[i]);
+	fclks = mt_get_fmeter_clks();
 
 	get_subsys_reg_dump_mt6989();
 
 	dump_clk_event();
 	pdchk_dump_trace_evt();
+	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
+		if (fclks->type != VLPCK && fclks->type != SUBSYS)
+			pr_notice("[%s] %d khz\n", fclks->name,
+				mt_get_fmeter_freq(fclks->id, fclks->type));
+	}
 }
 
 static struct devapc_vio_callbacks devapc_vio_handle = {

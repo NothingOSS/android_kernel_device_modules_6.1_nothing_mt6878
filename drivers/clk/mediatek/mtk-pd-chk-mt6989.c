@@ -831,7 +831,6 @@ unsigned int pd_list[] = {
 	MT6989_CHK_PD_DP_TX,
 	MT6989_CHK_PD_CSI_RX,
 	MT6989_CHK_PD_SSRSYS,
-	MT6989_CHK_PD_MFG0,
 };
 
 static bool is_in_pd_list(unsigned int id)
@@ -963,7 +962,6 @@ static struct pd_sta pd_pwr_sta[] = {
 	{MT6989_CHK_PD_DP_TX, spm, 0x0EB0, GENMASK(31, 30)},
 	{MT6989_CHK_PD_CSI_RX, spm, 0x0EF4, GENMASK(31, 30)},
 	{MT6989_CHK_PD_SSRSYS, spm, 0x0EF8, GENMASK(31, 30)},
-	{MT6989_CHK_PD_MFG0, spm, 0x0F04, GENMASK(31, 30)},
 };
 
 static u32 get_pd_pwr_status(int pd_id)
@@ -1024,7 +1022,6 @@ static int off_mtcmos_id[] = {
 	MT6989_CHK_PD_DP_TX,
 	MT6989_CHK_PD_CSI_RX,
 	MT6989_CHK_PD_SSRSYS,
-	MT6989_CHK_PD_MFG0,
 	PD_NULL,
 };
 

@@ -207,7 +207,6 @@
 #define TOP_MUX_SSR_SEJ_SHIFT			7
 #define TOP_MUX_DXCC_SHIFT			10
 #define TOP_MUX_DPSW_CMP_26M_SHIFT		11
-#define TOP_MUX_SMAPCK_SHIFT			12
 #define TOP_MUX_CAMTG1_SHIFT			0
 #define TOP_MUX_CAMTG2_SHIFT			1
 #define TOP_MUX_CAMTG3_SHIFT			2
@@ -1581,11 +1580,6 @@ static const char * const dpsw_cmp_26m_parents[] = {
 	"osc_d20"
 };
 
-static const char * const smapck_parents[] = {
-	"tck_26m_mx9_ck",
-	"mainpll_d4_d8"
-};
-
 static const char * const apll_i2sin0_m_parents[] = {
 	"aud_1_sel",
 	"aud_2_sel"
@@ -2389,10 +2383,6 @@ static const struct mtk_mux top_muxes[] = {
 		dpsw_cmp_26m_parents/* parent */, CLK_CFG_18, CLK_CFG_18_SET,
 		CLK_CFG_18_CLR/* set parent */, 8/* lsb */, 1/* width */,
 		CLK_CFG_UPDATE2/* upd ofs */, TOP_MUX_DPSW_CMP_26M_SHIFT/* upd shift */),
-	MUX_CLR_SET_UPD(CLK_TOP_SMAPCK_SEL/* dts */, "smapck_sel",
-		smapck_parents/* parent */, CLK_CFG_18, CLK_CFG_18_SET,
-		CLK_CFG_18_CLR/* set parent */, 16/* lsb */, 1/* width */,
-		CLK_CFG_UPDATE2/* upd ofs */, TOP_MUX_SMAPCK_SHIFT/* upd shift */),
 	/* CKSYS2_CLK_CFG_0 */
 	MUX_CLR_SET_UPD(CLK_TOP_CAMTG1_SEL/* dts */, "camtg1_sel",
 		camtg1_parents/* parent */, CKSYS2_CLK_CFG_0, CKSYS2_CLK_CFG_0_SET,
@@ -2856,16 +2846,10 @@ static const struct mtk_mux top_muxes[] = {
 		dxcc_parents/* parent */, CLK_CFG_18, CLK_CFG_18_SET,
 		CLK_CFG_18_CLR/* set parent */, 0/* lsb */, 2/* width */,
 		CLK_CFG_UPDATE2/* upd ofs */, TOP_MUX_DXCC_SHIFT/* upd shift */),
-	MUX_GATE_CLR_SET_UPD(CLK_TOP_DPSW_CMP_26M_SEL/* dts */, "dpsw_cmp_26m_sel",
+	MUX_CLR_SET_UPD(CLK_TOP_DPSW_CMP_26M_SEL/* dts */, "dpsw_cmp_26m_sel",
 		dpsw_cmp_26m_parents/* parent */, CLK_CFG_18, CLK_CFG_18_SET,
 		CLK_CFG_18_CLR/* set parent */, 8/* lsb */, 1/* width */,
-		15/* pdn */, CLK_CFG_UPDATE2/* upd ofs */,
-		TOP_MUX_DPSW_CMP_26M_SHIFT/* upd shift */),
-	MUX_GATE_CLR_SET_UPD(CLK_TOP_SMAPCK_SEL/* dts */, "smapck_sel",
-		smapck_parents/* parent */, CLK_CFG_18, CLK_CFG_18_SET,
-		CLK_CFG_18_CLR/* set parent */, 16/* lsb */, 1/* width */,
-		23/* pdn */, CLK_CFG_UPDATE2/* upd ofs */,
-		TOP_MUX_SMAPCK_SHIFT/* upd shift */),
+		CLK_CFG_UPDATE2/* upd ofs */, TOP_MUX_DPSW_CMP_26M_SHIFT/* upd shift */),
 	/* CKSYS2_CLK_CFG_0 */
 	MUX_GATE_CLR_SET_UPD(CLK_TOP_CAMTG1_SEL/* dts */, "camtg1_sel",
 		camtg1_parents/* parent */, CKSYS2_CLK_CFG_0, CKSYS2_CLK_CFG_0_SET,
