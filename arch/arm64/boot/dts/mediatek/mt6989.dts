@@ -533,6 +533,16 @@
 		reg = <0 0x1002c000 0 0x1000>;
 	};
 
+	nemicfg_ao_mem_prot_reg_bus_clk: syscon@10270000 {
+		compatible = "mediatek,mt6989-nemicfg_ao_mem_prot_reg_bus", "syscon";
+		reg = <0 0x10270000 0 0x1000>;
+	};
+
+	semicfg_ao_mem_prot_reg_bus_clk: syscon@1030e000 {
+		compatible = "mediatek,mt6989-semicfg_ao_mem_prot_reg_bus", "syscon";
+		reg = <0 0x1030e000 0 0x1000>;
+	};
+
 	bcrm_ssr_bus: syscon@1070e000 {
 		compatible = "mediatek,mt6989-bcrm_ssr_bus", "syscon";
 		reg = <0 0x1070e000 0 0x1000>;
@@ -834,6 +844,8 @@
 			"cam_mraw-0", "cam_mraw-1", "cam_mraw-2",
 			"cam_mraw-3", "ccu-0";
 		ifr-bus = <&ifr_bus>;
+		nemicfg-ao-mem-prot-reg-bus = <&nemicfg_ao_mem_prot_reg_bus_clk>;
+		semicfg-ao-mem-prot-reg-bus = <&semicfg_ao_mem_prot_reg_bus_clk>;
 		vlpcfg = <&vlpcfg_bus>;
 	};
 
