@@ -342,3 +342,4 @@ module_platform_driver(clkbuf_driver);
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("MediaTek CLKBUF CTRL Driver");
 MODULE_AUTHOR("Kuan-Hsin Lee <kuan-hsin.lee@mediatek.com>");
+MODULE_SOFTDEP("pre: mt6685-core");
