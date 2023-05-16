@@ -44,6 +44,7 @@ static struct ccci_smem_region md1_noncacheable_tbl[] = {
 	{SMEM_USER_SECURITY_SMEM,	0,	0,	SMF_NCLR_FIRST,},
 	{SMEM_USER_RAW_MDCCCI_DBG,	0,	0,	0},
 	{SMEM_USER_RAW_MDSS_DBG,	0,	0,	0},
+	{SMEM_USER_32K_LOW_POWER,	0,	0,	0},
 	{SMEM_USER_RAW_RESERVED,	0,	0,	0},
 	{SMEM_USER_RAW_RUNTIME_DATA,	0,	0,	0},
 	{SMEM_USER_RAW_FORCE_ASSERT,	0,	0,	0},
