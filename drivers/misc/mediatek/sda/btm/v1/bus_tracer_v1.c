@@ -443,7 +443,7 @@ void enable_etb_for_gpu_mcu(void)
 	pr_notice("%s:%d:[ETB]: GPU/Cotrex-M7\n", __func__, __LINE__);
 	/* funnel setup */
 	CS_UNLOCK(plt->funnel_base);
-	writel(0x320, plt->funnel_base + FUNNEL_CTRL_REG);
+	writel(0x3A0, plt->funnel_base + FUNNEL_CTRL_REG); /* Leroy: port7, others: port 5 */
 	CS_LOCK(plt->funnel_base);
 	dsb(sy);
 
