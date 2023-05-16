@@ -65,21 +65,22 @@ int mvpu_ipi_send(int type_0, u64 val)
 
 	if (ret) {
 		pr_info("%s: rpmsg_send fail(%d)\n", __func__, ret);
-		/* power off to restore ref cnt */
-		ret = rpmsg_sendto(mvpu_tx_rpm_dev.ept, NULL, 0, 1);
-		if (ret && ret != -EOPNOTSUPP)
-			pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
 		retval = -1;
-		goto out;
+		goto POWER_OFF;
 	}
 
 	if (wait_for_completion_interruptible_timeout(
 			&mvpu_tx_rpm_dev.ack,
-			msecs_to_jiffies(10)) == 0) {
+			msecs_to_jiffies(3000)) == 0) {
 		pr_info("%s: timeout\n", __func__);
 		retval = -1;
-		goto out;
 	}
+
+POWER_OFF:
+	/* power off to restore ref cnt */
+	ret = rpmsg_sendto(mvpu_tx_rpm_dev.ept, NULL, 0, 1);
+	if (ret && ret != -EOPNOTSUPP)
+		pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
 
 out:
 	mutex_unlock(&mvpu_ipi_mtx);
@@ -113,23 +114,24 @@ int mvpu_ipi_recv(int type_0, u64 *val)
 
 	if (ret) {
 		pr_info("%s: rpmsg_send fail(%d)\n", __func__, ret);
-		/* power off to restore ref cnt */
-		ret = rpmsg_sendto(mvpu_tx_rpm_dev.ept, NULL, 0, 1);
-		if (ret && ret != -EOPNOTSUPP)
-			pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
 		retval = -1;
-		goto out;
+		goto POWER_OFF;
 	}
 
 	if (wait_for_completion_interruptible_timeout(
 			&mvpu_tx_rpm_dev.ack,
-			msecs_to_jiffies(10)) == 0) {
+			msecs_to_jiffies(3000)) == 0) {
 		pr_info("%s: timeout\n", __func__);
 		retval = -1;
-		goto out;
+	} else {
+		*val  = (u64)ipi_tx_recv_buf.data;
 	}
 
-	*val  = (u64)ipi_tx_recv_buf.data;
+POWER_OFF:
+	/* power off to restore ref cnt */
+	ret = rpmsg_sendto(mvpu_tx_rpm_dev.ept, NULL, 0, 1);
+	if (ret && ret != -EOPNOTSUPP)
+		pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
 
 out:
 	mutex_unlock(&mvpu_ipi_mtx);
@@ -140,10 +142,9 @@ static int mvpu_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 		int len, void *priv, u32 src)
 {
 	struct mvpu_ipi_data *d = (struct mvpu_ipi_data *)data;
-	int ret = 0;
 
 	if (d->dir != MVPU_IPI_READ)
-		return 0;
+		goto out;
 
 	if (d->type0 == MVPU_IPI_MICROP_MSG) {
 		pr_info("Receive uP message -> use the wrong channel!?\n");
@@ -152,13 +153,9 @@ static int mvpu_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 		ipi_tx_recv_buf.dir    = d->dir;
 		ipi_tx_recv_buf.data   = d->data;
 		complete(&mvpu_tx_rpm_dev.ack);
-
-		/* power off */
-		ret = rpmsg_sendto(mvpu_tx_rpm_dev.ept, NULL, 0, 1);
-		if (ret && ret != -EOPNOTSUPP)
-			pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret);
 	}
 
+out:
 	return 0;
 }
 
