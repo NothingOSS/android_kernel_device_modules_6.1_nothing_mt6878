@@ -1409,7 +1409,7 @@
 		tui-size = <0 0x4000000>;
 		wfd-region-based-size = <0 0x2000000>;
 		prot-region-based-size = <0 0x8000000>;
-		sapu-data-shm-size = <0 0x1000000>;
+		sapu-data-shm-size = <0 0x0>;
 	};
 
 	ssmr {
@@ -16731,7 +16731,10 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 &trusty {
 	trusty-sapu {
 		compatible = "mediatek,trusty-sapu";
+		#address-cells = <2>;
+		#size-cells = <2>;
 		power-version = <2>;
+		datamem-size = <0x0 0x1000000>;
 		mtk,iommu-group = <&apu_iommu_group_0>;
 		iommus = <&apu_smmu 0x10>;
 		status = "okay";
