@@ -893,6 +893,10 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 				mml_update_array(reuse, &hdr_frm->reuse_curve, i, j,
 					curve[val_idx]);
 	} else if (mode == MML_MODE_DIRECT_LINK) {
+		hdr->curve_pq_task = task->pq_task;
+		hdr->dual = cfg->dual;
+		hdr->pipe = ccfg->pipe;
+		memcpy(hdr->gain_curve, &curve[0], sizeof(u32)*HDR_CURVE_NUM);
 		queue_work(hdr->hdr_curve_wq, &hdr->hdr_curve_task);
 		hdr_hist_ctrl(comp, task, ccfg, result);
 	}
