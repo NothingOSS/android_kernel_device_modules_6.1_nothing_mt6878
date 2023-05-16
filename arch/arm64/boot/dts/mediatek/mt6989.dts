@@ -10498,6 +10498,7 @@
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 30>;
 		mtk,iommu-group = <&mm_iommu_group_0>;
+		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_srt_normal: mm-smmu-srt-normal {
@@ -10506,6 +10507,7 @@
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 31>;
 		mtk,iommu-group = <&mm_iommu_group_0>;
+		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_mmup_normal: mm-smmu-mmup-normal {
@@ -10530,6 +10532,7 @@
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 40>;
 		mtk,iommu-group = <&mm_iommu_group_0>;
+		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_srt_protected: mm-smmu-srt-protected {
@@ -10538,6 +10541,7 @@
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 41>;
 		mtk,iommu-group = <&mm_iommu_group_0>;
+		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_mmup_protected: mm-smmu-mmup-protected {
@@ -10561,6 +10565,7 @@
 		label = "mm_smmu_hrt_secure";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 50>;
+		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_srt_secure: mm-smmu-srt-secure {
@@ -10568,6 +10573,7 @@
 		label = "mm_smmu_srt_secure";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 51>;
+		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_mmup_inst: mm-smmu-mmup-inst {
@@ -10582,6 +10588,7 @@
 		label = "mm_smmu_gce_inst";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&mm_smmu 53>;
+		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_ccu_inst: mm-smmu-ccu-inst {
