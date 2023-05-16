@@ -115,8 +115,8 @@ enum DEVAPC_IRQ_TYPE {
 };
 
 enum ADSP_MI_SELECT {
-	ADSP_MI13 = 0,
-	ADSP_MI15
+	ADSP_MI12 = 0,
+	ADSP_MI17
 };
 
 /******************************************************************************
@@ -173,11 +173,13 @@ enum ADSP_MI_SELECT {
 
 /* For ADSP Bus Parser */
 #define ADSP_INFRA_START			(0x00000000)
-#define ADSP_INFRA_END				(0x1CFFFFFF)
-#define ADSP_INFRA_1_START			(0x1E200000)
-#define ADSP_INFRA_1_END			(0x4DFFFFFF)
+#define ADSP_INFRA_END				(0x1DFFFFFF)
+#define ADSP_INFRA_1_START			(0x1E280000)
+#define ADSP_INFRA_1_END			(0x3FFFFFFF)
+#define ADSP_INFRA_2_START			(0x4D000000)
+#define ADSP_INFRA_2_END			(0x4DFFFFFF)
 #define ADSP_OTHER_START			(0x1E000000)
-#define ADSP_OTHER_END				(0x1E01FFFF)
+#define ADSP_OTHER_END				(0x1E01F9FF)
 
 /* For MMINFRA Bus Parser */
 #define IMG_START_ADDR				(0x15000000)

@@ -70,20 +70,27 @@ static const struct INFRAAXI_ID_INFO infra_mi_id_to_master[] = {
 	{"STH_EMI_GMC_M",      { 0, 1, 1, 0, 1, 1, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0 } },
 };
 
-static const struct ADSPAXI_ID_INFO ADSP_mi13_id_to_master[] = {
+static const struct ADSPAXI_ID_INFO ADSP_mi12_id_to_master[] = {
 	{"DSP_M1",            { 0, 0, 0, 2, 2, 2, 2, 0  } },
 	{"DMA_M1",            { 0, 0, 1, 2, 0, 0, 0, 0  } },
 	{"DSP_M2",            { 1, 0, 0, 2, 2, 2, 2, 0  } },
 	{"DMA_M2",            { 1, 0, 1, 2, 0, 0, 0, 0  } },
-	{"AFE_M",             { 0, 1, 2, 0, 0, 0, 0, 0  } },
+	{"DMA_AXI_M1",        { 0, 1, 0, 0, 2, 2, 2, 2  } },
+	{"IDMA_M",            { 0, 1, 1, 0, 2, 2, 2, 2  } },
+	{"TINYXNNE",          { 0, 1, 0, 1, 2, 2, 2, 2  } },
+	{"MASRC",             { 1, 1, 0, 2, 2, 2, 2, 0  } },
+	{"AFE_M",             { 1, 1, 1, 2, 0, 0, 0, 0  } },
 };
 
-static const struct ADSPAXI_ID_INFO ADSP_mi15_id_to_master[] = {
-	{"DSP_M1",            { 1, 0, 0, 2, 2, 2, 2, 0  } },
-	{"DMA_M1",            { 1, 0, 1, 2, 0, 0, 0, 0  } },
-	{"DSP_M2",            { 1, 1, 0, 2, 2, 2, 2, 0  } },
-	{"DMA_M2",            { 1, 1, 1, 2, 0, 0, 0, 0  } },
-	{"AFE_M",             { 0, 0, 2, 0, 0, 0, 0, 0  } },
+static const struct ADSPAXI_ID_INFO ADSP_mi17_id_to_master[] = {
+	{"DSP_M1",            { 0, 0, 0, 2, 2, 2, 2, 0  } },
+	{"DMA_M1",            { 0, 0, 1, 2, 0, 0, 0, 0  } },
+	{"DSP_M2",            { 1, 0, 0, 2, 2, 2, 2, 0  } },
+	{"DMA_M2",            { 1, 0, 1, 2, 0, 0, 0, 0  } },
+	{"DMA_AXI_M1",        { 0, 1, 0, 0, 2, 2, 2, 2  } },
+	{"IDMA_M",            { 0, 1, 1, 0, 2, 2, 2, 2  } },
+	{"TINYXNNE",          { 0, 1, 0, 1, 2, 2, 2, 2  } },
+	{"INFRA_M",           { 1, 1, 2, 2, 2, 2, 0, 2  } },
 };
 
 static const char * const adsp_domain[] = {
@@ -138,16 +145,19 @@ static const char *infra_mi_trans(uint32_t bus_id)
 
 static const char *adsp_mi_trans(uint32_t bus_id, int mi)
 {
-	int master_count = ARRAY_SIZE(infra_mi_id_to_master);
+	int master_count = 0;
 	const char *master = "UNKNOWN_MASTER_FROM_ADSP";
 	int i, j;
 
 	const struct ADSPAXI_ID_INFO *ADSP_mi_id_to_master;
 
-	if (mi == ADSP_MI13)
-		ADSP_mi_id_to_master = ADSP_mi13_id_to_master;
-	else
-		ADSP_mi_id_to_master = ADSP_mi15_id_to_master;
+	if (mi == ADSP_MI12) {
+		ADSP_mi_id_to_master = ADSP_mi12_id_to_master;
+		master_count = ARRAY_SIZE(ADSP_mi12_id_to_master);
+	} else {
+		ADSP_mi_id_to_master = ADSP_mi17_id_to_master;
+		master_count = ARRAY_SIZE(ADSP_mi17_id_to_master);
+	}
 
 	for (i = 0; i < master_count; i++) {
 		for (j = 0; j < ADSPAXI_MI_BIT_LENGTH; j++) {
@@ -162,8 +172,8 @@ static const char *adsp_mi_trans(uint32_t bus_id, int mi)
 			pr_debug(PFX "%s %s %s\n",
 				"catch it from ADSPAXI_MI",
 				"Master is:",
-				infra_mi_id_to_master[i].master);
-			master = infra_mi_id_to_master[i].master;
+				ADSP_mi_id_to_master[i].master);
+			master = ADSP_mi_id_to_master[i].master;
 		}
 	}
 	return master;
@@ -224,22 +234,23 @@ static const char *mt6897_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 	} else if (slave_type == SLAVE_TYPE_ADSP) {
 		/* infra slave */
 		if ((vio_addr >= ADSP_INFRA_START && vio_addr <= ADSP_INFRA_END) ||
-			(vio_addr >= ADSP_INFRA_1_START && vio_addr <= ADSP_INFRA_1_END)) {
-			return adsp_mi_trans(bus_id, ADSP_MI13);
+			(vio_addr >= ADSP_INFRA_1_START && vio_addr <= ADSP_INFRA_1_END) ||
+			(vio_addr >= ADSP_INFRA_2_START && vio_addr <= ADSP_INFRA_2_END)) {
+			return adsp_mi_trans(bus_id, ADSP_MI12);
 		/* adsp misc slave */
 		} else if (vio_addr >= ADSP_OTHER_START && vio_addr <= ADSP_OTHER_END) {
 			if ((bus_id & 0x1) == 0x1)
 				return "HRE";
-			else if ((bus_id & 0x7) == 0x4)
+			else if ((bus_id & 0x7) == 0x6)
 				return adsp_domain[domain];
 			else
-				return adsp_mi_trans(bus_id >> 1, ADSP_MI15);
+				return adsp_mi_trans(bus_id >> 1, ADSP_MI17);
 		/* adsp audio_pwr, dsp_pwr slave */
 		} else {
-			if ((bus_id & 0x3) == 0x2)
+			if ((bus_id & 0x3) == 0x3)
 				return adsp_domain[domain];
 			else
-				return adsp_mi_trans(bus_id, ADSP_MI15);
+				return adsp_mi_trans(bus_id, ADSP_MI17);
 		}
 	} else if (slave_type == SLAVE_TYPE_MMINFRA) {
 		/* ISP slave */
