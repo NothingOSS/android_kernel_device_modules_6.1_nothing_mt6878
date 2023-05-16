@@ -119,16 +119,28 @@ static void __maybe_unused led_disp_shutdown(struct platform_device *pdev)
 static int __maybe_unused led_disp_set(struct mt_led_data *mdev,
 		int brightness, unsigned int params, unsigned int params_flag)
 {
-	pr_debug("set brightness %d", brightness);
-	return mtkfb_set_backlight_level(brightness, params, params_flag);
+	int ret = 0;
+
+	ret = mtkfb_set_backlight_level(brightness, params, params_flag);
+	pr_debug("set brightness %d, elvss: %u, flag: %u, return %d",
+		brightness, params, params_flag, ret);
+	if (brightness == 0 && ret == -EINVAL)
+		ret = 0;
+	return ret;
 }
 
 static int __maybe_unused led_disp_conn_set(struct mt_led_data *mdev,
 		       int brightness, unsigned int params, unsigned int params_flag)
 {
-	pr_debug("set connector id %d brightness %d", mdev->conf.connector_id, brightness);
-	return mtk_drm_set_conn_backlight_level(mdev->conf.connector_id, brightness,
+	int ret = 0;
+
+	ret = mtk_drm_set_conn_backlight_level(mdev->conf.connector_id, brightness,
 		params, params_flag);
+	pr_debug("set conn %d brightness %d, elvss: %u, flag: %u, return %d",
+		mdev->conf.connector_id, brightness, params, params_flag, ret);
+	if (brightness == 0 && ret == -EINVAL)
+		ret = 0;
+	return ret;
 }
 
 static int __maybe_unused led_i2c_set(struct mt_led_data *mdev,
