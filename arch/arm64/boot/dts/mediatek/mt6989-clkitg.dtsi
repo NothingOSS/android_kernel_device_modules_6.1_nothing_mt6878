@@ -18,8 +18,6 @@
 			<&topckgen_clk CLK_TOP_AUD_1_SEL>,
 			<&topckgen_clk CLK_TOP_AUD_2_SEL>,
 			<&topckgen_clk CLK_TOP_AUDIO_H_SEL>,
-			<&topckgen_clk CLK_TOP_ADSP_SEL>,
-			<&topckgen_clk CLK_TOP_ADSP_UARTHUB_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_DPMAIF_MAIN_SEL>,
 			<&topckgen_clk CLK_TOP_PWM_SEL>,
 			<&topckgen_clk CLK_TOP_IPSEAST_SEL>,
@@ -300,18 +298,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x6>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_AUDIO>;
-	};
-
-	bring-up-pd-adsp-top-dormant@7 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x7>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_ADSP_TOP_DORMANT>;
-	};
-
-	bring-up-pd-adsp-ao@8 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x8>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_ADSP_AO>;
 	};
 
 	bring-up-pd-isp-vcore@c {
