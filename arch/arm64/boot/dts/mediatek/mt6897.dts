@@ -10835,7 +10835,7 @@
 				  <0 0x1a038000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <0>;
-			mediatek,larbs = <&smi_larb16>;
+			mediatek,larbs = <&smi_larb16>, <&smi_larb27>;
 			interrupts = <GIC_SPI 486 IRQ_TYPE_LEVEL_HIGH 0>;
 			#size-cells = <2>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
@@ -10989,7 +10989,7 @@
 				  <0 0x1a078000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <1>;
-			mediatek,larbs = <&smi_larb36>;
+			mediatek,larbs = <&smi_larb36>, <&smi_larb27>;
 			interrupts = <GIC_SPI 488 IRQ_TYPE_LEVEL_HIGH 0>;
 			#size-cells = <2>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
@@ -11143,7 +11143,7 @@
 				  <0 0x1a0b8000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <2>;
-			mediatek,larbs = <&smi_larb37>;
+			mediatek,larbs = <&smi_larb37>, <&smi_larb27>;
 			interrupts = <GIC_SPI 490 IRQ_TYPE_LEVEL_HIGH 0>;
 			#size-cells = <2>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
