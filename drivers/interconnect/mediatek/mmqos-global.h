@@ -47,11 +47,11 @@ extern u32 mmqos_state;
 
 enum mmqos_log_level {
 	log_bw = 0,
-	log_comm_freq,
-	log_v2_dbg,
-	log_vcp_pwr,
-	log_ipi,
-	log_test,
+	log_comm_freq,		//1
+	log_v2_dbg,		//2
+	log_vcp_pwr,		//3
+	log_ipi,		//4
+	log_debug,		//5
 };
 extern u32 log_level;
 

@@ -1200,7 +1200,7 @@ static const struct of_device_id mtk_mmqos_mt6989_of_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, mtk_mmqos_mt6989_of_ids);
 static struct platform_driver mtk_mmqos_mt6989_driver = {
-	.probe = mtk_mmqos_probe,
+	.probe = mtk_mmqos_v2_probe,
 	.remove = mtk_mmqos_remove,
 	.driver = {
 		.name = "mtk-mt6989-mmqos",

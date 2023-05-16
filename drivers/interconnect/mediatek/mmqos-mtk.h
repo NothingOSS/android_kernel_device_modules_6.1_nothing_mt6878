@@ -160,6 +160,7 @@ struct mtk_mmqos_desc {
 	.link = _link,	\
 	}
 int mtk_mmqos_probe(struct platform_device *pdev);
+int mtk_mmqos_v2_probe(struct platform_device *pdev);
 int mtk_mmqos_remove(struct platform_device *pdev);
 /* For HRT */
 void mtk_mmqos_init_hrt(struct mmqos_hrt *hrt);

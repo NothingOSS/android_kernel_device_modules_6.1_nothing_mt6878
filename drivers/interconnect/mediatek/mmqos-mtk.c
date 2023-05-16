@@ -292,16 +292,16 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 		mutex_lock(&comm_port_node->bw_lock);
 		if (mmqos_state & DPC_ENABLE
 			&& is_disp_comm_port(comm_port_node->hrt_type)) {
-			if (log_level & 1 << log_bw)
+			if (log_level & 1 << log_debug)
 				MMQOS_DBG("ignore disp comm port bw");
 		} else {
 			if (mmqos_state & VCODEC_BW_BYPASS
 				&& comm_port_node->hrt_type == SRT_VDEC) {
-				if (log_level & 1 << log_bw)
+				if (log_level & 1 << log_debug)
 					pr_notice("ignore SRT_VDEC comm port bw\n");
 			} else if (mmqos_state & VCODEC_BW_BYPASS
 				&& comm_port_node->hrt_type == SRT_VENC) {
-				if (log_level & 1 << log_bw)
+				if (log_level & 1 << log_debug)
 					pr_notice("ignore SRT_VENC comm port bw\n");
 			} else {
 				avg_bw += comm_port_node->latest_avg_bw;
@@ -431,23 +431,26 @@ bool is_bw_value_changed(bool is_on)
 
 void write_register(u32 offset, u32 value)
 {
-	if (log_level & (1U << log_test))
+	if (log_level & (1U << log_bw))
 		if (value != 0)
 			MMQOS_DBG("offset:0x%x, value:0x%x", offset, value);
 
-	if (mmqos_state & VMMRC_ENABLE)
-		writel_relaxed(value, gmmqos->vmmrc_base + offset);
+	if (mmqos_state & VMMRC_ENABLE) {
+		if (gmmqos->vmmrc_base == NULL)
+			MMQOS_ERR("write vmmrc fail, vmmrc_base is NULL");
+		else
+			writel_relaxed(value, gmmqos->vmmrc_base + offset);
+	}
 }
 
 u32 read_register(u32 offset)
 {
-	if (gmmqos == NULL) {
-		MMQOS_ERR("gmmqos is NULL");
-		return -1;
+	if (mmqos_state & VMMRC_ENABLE) {
+		if (gmmqos->vmmrc_base == NULL)
+			MMQOS_ERR("read vmmrc fail, vmmrc_base is NULL");
+		else
+			return readl_relaxed(gmmqos->vmmrc_base + offset);
 	}
-
-	if (mmqos_state & VMMRC_ENABLE)
-		return readl_relaxed(gmmqos->vmmrc_base + offset);
 	return 0;
 }
 
@@ -482,7 +485,7 @@ void clear_reg_value(bool is_on)
 void set_channel_bw_reg_value(bool is_on)
 {
 	int i, reg_value_idx;
-	bool is_test = log_level & (1 << log_test);
+	bool is_test = log_level & (1 << log_debug);
 	u32 *reg_value;
 	u32 *bw_value;
 	u32 *old_bw_value;
@@ -945,7 +948,10 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 					pr_notice("ignore SRT_VENC comm port:%#x OSTDL\n", dst->id);
 			} else {
 				if (log_level & 1 << log_bw)
-					pr_notice("set comm port:%d\n", MASK_8(dst->id));
+					pr_notice("comm=%d port=%d larb=%d avg_bw:%d peak_bw:%d\n",
+						comm_id, MASK_8(dst->id), LARB_ID(src->id),
+						icc_to_MBps(src->avg_bw),
+						icc_to_MBps(src->peak_bw));
 				mmqos_update_comm_ostdl(comm_port_node->larb_dev,
 					port_id, mmqos->max_ratio, src);
 			}
@@ -1358,8 +1364,6 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	struct device_node *np;
 	struct platform_device *comm_pdev, *larb_pdev;
 	struct proc_dir_entry *dir, *proc;
-	struct task_struct *kthr_vcp;
-	u32 base_tmp;
 
 	mmqos = devm_kzalloc(&pdev->dev, sizeof(*mmqos), GFP_KERNEL);
 	if (!mmqos)
@@ -1667,24 +1671,6 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	else
 		mmqos->proc = proc;
 
-	if (mmqos_state & VMMRC_ENABLE) {
-		of_property_read_u32(pdev->dev.of_node, "vmmrc-base", &base_tmp);
-		mmqos->vmmrc_base = ioremap(base_tmp, 0x40000);
-		of_property_read_u32(pdev->dev.of_node, "vmmrc-mask", &mmqos->apmcu_mask_offset);
-		of_property_read_u32(pdev->dev.of_node, "vmmrc-mask-bit", &mmqos->apmcu_mask_bit);
-		of_property_read_u32(pdev->dev.of_node,
-			"vmmrc-on-table", &mmqos->apmcu_on_bw_offset);
-		of_property_read_u32(pdev->dev.of_node,
-			"vmmrc-off-table", &mmqos->apmcu_off_bw_offset);
-
-		MMQOS_DBG("vmmrc base=%#x, mask=%#x, bit=%#x, on table=%#x, off table=%#x",
-			base_tmp, mmqos->apmcu_mask_offset, mmqos->apmcu_mask_bit,
-			mmqos->apmcu_on_bw_offset, mmqos->apmcu_off_bw_offset);
-	}
-
-	if (mmqos_state & VCP_ENABLE)
-		kthr_vcp = kthread_run(mmqos_vcp_init_thread, NULL, "mmqos-vcp");
-
 	return 0;
 err:
 	list_for_each_entry_safe(node, temp, &mmqos->prov.nodes, node_list) {
@@ -1695,6 +1681,38 @@ err:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mtk_mmqos_probe);
+
+int mtk_mmqos_v2_probe(struct platform_device *pdev)
+{
+	struct task_struct *kthr_vcp;
+	u32 base_tmp;
+	int ret, probe_ret;
+
+	probe_ret = mtk_mmqos_probe(pdev);
+
+	ret = of_property_read_u32(pdev->dev.of_node, "vmmrc-base", &base_tmp);
+	if (ret >= 0) {
+		gmmqos->vmmrc_base = ioremap(base_tmp, 0x40000);
+		of_property_read_u32(pdev->dev.of_node, "vmmrc-mask", &gmmqos->apmcu_mask_offset);
+		of_property_read_u32(pdev->dev.of_node, "vmmrc-mask-bit", &gmmqos->apmcu_mask_bit);
+		of_property_read_u32(pdev->dev.of_node,
+			"vmmrc-on-table", &gmmqos->apmcu_on_bw_offset);
+		of_property_read_u32(pdev->dev.of_node,
+			"vmmrc-off-table", &gmmqos->apmcu_off_bw_offset);
+
+		MMQOS_DBG("vmmrc base=%#x, mask=%#x, bit=%#x, on table=%#x, off table=%#x",
+			base_tmp, gmmqos->apmcu_mask_offset, gmmqos->apmcu_mask_bit,
+			gmmqos->apmcu_on_bw_offset, gmmqos->apmcu_off_bw_offset);
+	} else {
+		MMQOS_DBG("no vmmrc related property");
+		gmmqos->vmmrc_base = NULL;
+	}
+
+	kthr_vcp = kthread_run(mmqos_vcp_init_thread, NULL, "mmqos-vcp");
+
+	return probe_ret;
+}
+EXPORT_SYMBOL_GPL(mtk_mmqos_v2_probe);
 
 int mtk_mmqos_remove(struct platform_device *pdev)
 {
@@ -1816,7 +1834,7 @@ static int mmqos_set_state(const char *val, const struct kernel_param *kp)
 		return ret;
 	}
 
-	MMQOS_DBG("sync mmqos_state: %d", mmqos_state);
+	MMQOS_DBG("sync mmqos_state: %d -> %d", mmqos_state, state);
 	mmqos_state = state;
 
 	if (mmqos_state & VCP_ENABLE) {
