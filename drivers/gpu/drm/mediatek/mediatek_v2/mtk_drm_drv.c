@@ -3456,6 +3456,21 @@ static const struct mtk_addon_scenario_data mt6989_addon_main[ADDON_SCN_NR] = {
 		.module_data = addon_ovl_rsz_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
+	[MML_RSZ] = {
+		.module_num = ARRAY_SIZE(mt6985_addon_mml_rsz_data),
+		.module_data = mt6985_addon_mml_rsz_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[MML_SRAM_ONLY] = {
+		.module_num = ARRAY_SIZE(addon_mml_sram_only_data),
+		.module_data = addon_mml_sram_only_data,
+		.hrt_type = HRT_TB_TYPE_RPO_L0,
+	},
+	[MML_DL] = {
+		.module_num = ARRAY_SIZE(mt6985_addon_mml_dl_data),
+		.module_data = mt6985_addon_mml_dl_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
 };
 
 static const struct mtk_addon_scenario_data mt6989_addon_secondary_path[ADDON_SCN_NR] = {
