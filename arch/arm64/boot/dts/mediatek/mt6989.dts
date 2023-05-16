@@ -11737,6 +11737,12 @@
 		etdm-ip-mode = <0>; /* 0: One IP multi-channel 1: Multi-IP 2-channel */
 	};
 
+	snd_scp_ultra: snd-scp-ultra {
+		compatible = "mediatek,snd-scp-ultra";
+		scp-ultra-dl-memif-id = <0x7>;
+		scp-ultra-ul-memif-id = <0x14>;
+	};
+
 	audio-sram@11059000 {
 		compatible = "mediatek,audio_sram";
 		reg = <0 0x11059000 0 0x25555>;
