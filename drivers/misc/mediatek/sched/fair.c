@@ -270,7 +270,8 @@ static inline void eenv_init(struct energy_env *eenv,
 		/* Account thermal pressure for the energy estimation */
 		cpu = cpumask_first(cpus);
 		cpu_thermal_cap = arch_scale_cpu_capacity(cpu);
-		cpu_thermal_cap -= arch_scale_thermal_pressure(cpu);
+		/* copy arch_scale_thermal_pressure() code and add read_once to avoid data-racing */
+		cpu_thermal_cap -= READ_ONCE(per_cpu(thermal_pressure, cpu));
 
 		gear_idx = per_cpu(gear_id, cpu);
 		eenv->pds_cpu_cap[gear_idx] = cpu_thermal_cap;
