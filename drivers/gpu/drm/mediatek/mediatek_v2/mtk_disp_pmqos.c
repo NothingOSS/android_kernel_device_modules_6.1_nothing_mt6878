@@ -484,9 +484,10 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 	DDPINFO("%s[%d] final_level(freq=%d, %lu) final_lp_mode:%d\n",
 		__func__, __LINE__, final_level, freq, final_lp_mode);
 
-	if ((vdisp_opp != U8_MAX) && (final_level >= 0)) {
+	if (vdisp_opp != U8_MAX) {
+		vdisp_opp = final_level >= 0 ? final_level : 0;
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP);
-		mtk_vidle_dvfs_set(final_level);
+		mtk_vidle_dvfs_set(vdisp_opp);
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
 		return;
 	}
