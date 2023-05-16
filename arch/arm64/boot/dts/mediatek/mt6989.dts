@@ -3028,6 +3028,15 @@
 		iommus = <&apu_smmu 0xe>;
 	};
 
+	apusys-aov {
+		compatible = "mediatek,apusys_aov-v2";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		mtk,iommu-dma-range = <0xb000000 0x1000000>;
+		iommus = <&apu_smmu 0x11>;
+		ctrl-size = <0x100000>;
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
@@ -16189,3 +16198,13 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 };
 
 #include "mediatek/trusty.dtsi"
+
+&trusty {
+	trusty-sapu {
+		compatible = "mediatek,trusty-sapu";
+		power-version = <2>;
+		mtk,iommu-group = <&apu_iommu_group_0>;
+		iommus = <&apu_smmu 0x10>;
+		status = "okay";
+	};
+};
