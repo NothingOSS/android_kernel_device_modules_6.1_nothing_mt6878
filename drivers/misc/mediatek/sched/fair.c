@@ -918,6 +918,7 @@ inline bool is_task_latency_sensitive(struct task_struct *p)
 
 	return latency_sensitive;
 }
+EXPORT_SYMBOL_GPL(is_task_latency_sensitive);
 
 static inline void compute_effective_softmask(struct task_struct *p,
 		bool *latency_sensitive, struct cpumask *dst_mask)
