@@ -630,7 +630,7 @@
 		wfd-page-based-size = <0 0x4000000>;
 		prot-region-based-size = <0 0x8000000>;
 		prot-page-based-size = <0 0>;
-		sapu-data-shm-size = <0 0x1000000>;
+		sapu-data-shm-size = <0 0x0>;
 	};
 
 	ssmr {
@@ -17223,7 +17223,10 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 &trusty {
 	trusty-sapu {
 		compatible = "mediatek,trusty-sapu";
+		#address-cells = <2>;
+		#size-cells = <2>;
 		power-version = <1>;
+		datamem-size = <0x0 0x1000000>;
 		iommus = <&apu_iommu0 M4U_PORT_L40_APU_CODE>;
 		status = "okay";
 	};
