@@ -11,7 +11,6 @@
 struct mtk_disp_ccorr_data {
 	bool support_shadow;
 	bool need_bypass_shadow;
-	int single_pipe_ccorr_num;
 };
 
 struct ccorr_backup {

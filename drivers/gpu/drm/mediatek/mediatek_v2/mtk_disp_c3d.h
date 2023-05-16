@@ -69,6 +69,9 @@
 #define C3D_SRAM_RW_IF_2                   (0x084)
 #define C3D_SRAM_RW_IF_3                   (0x088)
 #define C3D_SRAM_PINGPONG                  (0x08C)
+#define C3D_R2Y_09                         (0x0C0)
+#define C3D_Y2R_09                         (0x0E8)
+
 
 #define C3D_3DLUT_SIZE_17BIN (17 * 17 * 17 * 3)
 #define C3D_3DLUT_SIZE_9BIN (9 * 9 * 9 * 3)

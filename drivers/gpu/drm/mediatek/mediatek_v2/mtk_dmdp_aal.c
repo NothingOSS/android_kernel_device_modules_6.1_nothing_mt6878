@@ -788,6 +788,12 @@ static const struct mtk_dmdp_aal_data mt6897_dmdp_aal_driver_data = {
 	.block_info_00_mask = 0xFFFFFFFF,
 };
 
+static const struct mtk_dmdp_aal_data mt6989_dmdp_aal_driver_data = {
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.block_info_00_mask = 0xFFFFFFFF,
+};
+
 static const struct of_device_id mtk_dmdp_aal_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6885-dmdp-aal",
 	  .data = &mt6885_dmdp_aal_driver_data},
@@ -801,6 +807,8 @@ static const struct of_device_id mtk_dmdp_aal_driver_dt_match[] = {
 	  .data = &mt6985_dmdp_aal_driver_data},
 	{ .compatible = "mediatek,mt6897-dmdp-aal",
 	  .data = &mt6897_dmdp_aal_driver_data},
+	{ .compatible = "mediatek,mt6989-dmdp-aal",
+	  .data = &mt6989_dmdp_aal_driver_data},
 	{},
 };
 

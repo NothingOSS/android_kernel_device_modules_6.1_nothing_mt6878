@@ -1117,6 +1117,8 @@ static void mtk_disp_c3d_config(struct mtk_ddp_comp *comp,
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + C3D_SIZE, (width << 16) | cfg->h, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_R2Y_09, 0, 0x1);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_Y2R_09, 0, 0x1);
 }
 
 
@@ -1607,6 +1609,14 @@ static const struct mtk_disp_c3d_data mt6886_c3d_driver_data = {
 	.c3d_sram_end_addr = 19648,
 };
 
+static const struct mtk_disp_c3d_data mt6989_c3d_driver_data = {
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.bin_num = 17,
+	.c3d_sram_start_addr = 0,
+	.c3d_sram_end_addr = 19648,
+};
+
 static const struct of_device_id mtk_disp_c3d_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6983-disp-c3d",
 	  .data = &mt6983_c3d_driver_data},
@@ -1620,6 +1630,8 @@ static const struct of_device_id mtk_disp_c3d_driver_dt_match[] = {
 	  .data = &mt6886_c3d_driver_data},
 	{ .compatible = "mediatek,mt6897-disp-c3d",
 	  .data = &mt6897_c3d_driver_data},
+	{ .compatible = "mediatek,mt6989-disp-c3d",
+	  .data = &mt6989_c3d_driver_data},
 	{},
 };
 
