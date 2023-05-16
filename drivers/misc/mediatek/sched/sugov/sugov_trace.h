@@ -56,20 +56,24 @@ TRACE_EVENT(sugov_ext_wl_type,
 );
 
 TRACE_EVENT(sugov_ext_dsu_freq_vote,
-	TP_PROTO(unsigned int gear_id, unsigned int cpu_freq, unsigned int dsu_freq_vote),
-	TP_ARGS(gear_id, cpu_freq, dsu_freq_vote),
+	TP_PROTO(unsigned int wl_type, unsigned int gear_id,
+		unsigned int cpu_freq, unsigned int dsu_freq_vote),
+	TP_ARGS(wl_type, gear_id, cpu_freq, dsu_freq_vote),
 	TP_STRUCT__entry(
+		__field(unsigned int, wl_type)
 		__field(unsigned int, gear_id)
 		__field(unsigned int, cpu_freq)
 		__field(unsigned int, dsu_freq_vote)
 	),
 	TP_fast_assign(
+		__entry->wl_type = wl_type;
 		__entry->gear_id = gear_id;
 		__entry->cpu_freq = cpu_freq;
 		__entry->dsu_freq_vote = dsu_freq_vote;
 	),
 	TP_printk(
-		"gear_id=%u cpu_freq=%u dsu_freq_vote=%u",
+		"wl_type=%u gear_id=%u cpu_freq=%u dsu_freq_vote=%u",
+		__entry->wl_type,
 		__entry->gear_id,
 		__entry->cpu_freq,
 		__entry->dsu_freq_vote)

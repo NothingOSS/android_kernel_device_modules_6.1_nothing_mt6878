@@ -1090,6 +1090,7 @@ static int alloc_capacity_table(void)
 	int nr_caps;
 	int i;
 	struct em_perf_domain *pd;
+	unsigned int nr_cpus;
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	sram_base_addr_freq_scaling =
@@ -1138,12 +1139,13 @@ static int alloc_capacity_table(void)
 	}
 
 	for_each_possible_cpu(cpu) {
-
 		pd = em_cpu_get(cpu);
 		if (!pd) {
 			pr_info("em_cpu_get return NULL for cpu#%d", cpu);
 			continue;
 		}
+		nr_cpus = cpumask_last(to_cpumask(pd->cpus)) -
+			cpumask_first(to_cpumask(pd->cpus)) + 1;
 		if (cpu != cpumask_first(to_cpumask(pd->cpus)))
 			continue;
 
@@ -1165,6 +1167,7 @@ static int alloc_capacity_table(void)
 #endif
 		for (i = 0; i < nr_wl_type; i++) {
 			pd_capacity_tbl = pd_wl_type[i];
+			pd_capacity_tbl[cur_tbl].nr_cpus = nr_cpus;
 			pd_capacity_tbl[cur_tbl].nr_caps = nr_caps;
 			pd_capacity_tbl[cur_tbl].nr_caps_legacy = pd->nr_perf_states;
 			pd_capacity_tbl[cur_tbl].type = i;
@@ -1355,10 +1358,13 @@ EXPORT_SYMBOL_GPL(get_curr_cap);
 void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 		unsigned int *target_freq, unsigned int old_target_freq)
 {
+	struct pd_capacity_info *pd_info;
 	struct mtk_em_perf_state *ps;
-	int cpu = policy->cpu;
+	int cpu = policy->cpu, single_cpu;
 	int offset_dsu_vote;
 	int opp;
+	int i;
+	int target_dsu;
 
 	irq_log_store();
 
@@ -1381,13 +1387,36 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 	irq_log_store();
 
 	if (is_wl_support()) {
+		int wl_type = get_em_wl();
+
 		offset_dsu_vote = per_cpu(gear_id, cpu) << 2;
-		ps = pd_get_freq_ps(get_em_wl(), cpu, *target_freq, &opp);
-		iowrite32(ps->dsu_freq,
+		ps = pd_get_freq_ps(wl_type, cpu, *target_freq, &opp);
+		target_dsu = ps->dsu_freq * 1000;
+		iowrite32(target_dsu,
 			l3ctl_sram_base_addr + DSU_DVFS_VOTE_EAS_1 + offset_dsu_vote);
 		if (trace_sugov_ext_dsu_freq_vote_enabled())
-			trace_sugov_ext_dsu_freq_vote(per_cpu(gear_id, cpu),
-				*target_freq, ps->dsu_freq);
+			trace_sugov_ext_dsu_freq_vote(wl_type, per_cpu(gear_id, cpu),
+				*target_freq, target_dsu);
+
+		for (i = 0; i < pd_count; i++) {
+			pd_info = &pd_capacity_tbl[i];
+			if (i == per_cpu(gear_id, cpu) || pd_info->nr_cpus != 1)
+				continue;
+			single_cpu = cpumask_first(&pd_info->cpus);
+			if (idle_get_state(cpu_rq(single_cpu))) {
+				target_dsu = 0;
+			} else {
+				ps = pd_get_freq_ps(wl_type, single_cpu,
+					curr_freqs[per_cpu(gear_id, single_cpu)], &opp);
+				target_dsu = ps->dsu_freq * 1000;
+			}
+			offset_dsu_vote = i << 2;
+			iowrite32(target_dsu, l3ctl_sram_base_addr +
+				DSU_DVFS_VOTE_EAS_1 + offset_dsu_vote);
+			if (trace_sugov_ext_dsu_freq_vote_enabled())
+				trace_sugov_ext_dsu_freq_vote(wl_type, per_cpu(gear_id, single_cpu),
+					curr_freqs[per_cpu(gear_id, single_cpu)], target_dsu);
+		}
 	}
 }
 
