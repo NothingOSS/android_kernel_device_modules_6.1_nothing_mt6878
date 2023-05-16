@@ -1196,9 +1196,7 @@ int mtk_ddp_comp_init(struct device *dev, struct device_node *node,
 	}
 
 	if (comp_id == DDP_COMPONENT_BLS ||
-		comp_id == DDP_COMPONENT_PWM0 ||
-		comp_id == DDP_COMPONENT_POSTALIGN0 ||
-		comp_id == DDP_COMPONENT_POSTALIGN1) {
+		comp_id == DDP_COMPONENT_PWM0) {
 		comp->regs_pa = 0;
 		comp->regs = NULL;
 		comp->irq = 0;
@@ -1207,7 +1205,14 @@ int mtk_ddp_comp_init(struct device *dev, struct device_node *node,
 
 	if (of_address_to_resource(node, 0, &res) != 0) {
 		dev_err(dev, "Missing reg in %s node\n", node->full_name);
-		return -EINVAL;
+		if (comp_id == DDP_COMPONENT_POSTALIGN0 ||
+			comp_id == DDP_COMPONENT_POSTALIGN1) {
+			comp->regs_pa = 0;
+			comp->regs = NULL;
+			comp->irq = 0;
+			return 0;
+		} else
+			return -EINVAL;
 	}
 
 	comp->regs_pa = res.start;

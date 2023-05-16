@@ -17,6 +17,10 @@
 #include "mtk_drm_mmp.h"
 #include "mtk_drm_gem.h"
 #include "mtk_drm_fb.h"
+#include "mtk_drm_drv.h"
+
+#define MT6989_DISP_REG_POSTALIGN0_CFG          0x018
+	#define MT6989_RELAY_MODE                   REG_FLD_MSB_LSB(16, 16)
 
 struct mtk_disp_postalign_data {
 	bool support_shadow;
@@ -69,32 +73,48 @@ static void mtk_postalign_config(struct mtk_ddp_comp *comp,
 
 void mtk_postalign_dump(struct mtk_ddp_comp *comp)
 {
-	if (!comp->regs) {
-		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
-		return;
-	}
+	void __iomem *baddr;
+	unsigned int i, num;
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
-	if (!comp->regs_pa) {
-		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
-		return;
-	}
+	if (priv->data->mmsys_id == MMSYS_MT6989) {
+		baddr = comp->regs;
 
-	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
+		if (!baddr) {
+			DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+			return;
+		}
+
+		num = 0x50;
+
+		DDPDUMP("== %s REGS:0x%llx ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+		for (i = 0; i < num; i += 16) {
+			DDPDUMP("0x%x: 0x%08x 0x%08x 0x%08x 0x%08x\n", i,
+				readl(baddr + i), readl(baddr + i + 0x4),
+				readl(baddr + i + 0x8), readl(baddr + i + 0xc));
+		}
+	}
 }
 
 int mtk_postalign_analysis(struct mtk_ddp_comp *comp)
 {
-	if (!comp->regs) {
-		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
-		return 0;
+	void __iomem *baddr;
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+
+	if (priv->data->mmsys_id == MMSYS_MT6989) {
+		baddr = comp->regs;
+
+		if (!baddr) {
+			DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+			return 0;
+		}
+
+		DDPDUMP("== %s ANALYSIS:0x%llx ==\n", mtk_dump_comp_str(comp), comp->regs_pa);
+		DDPDUMP("postalign_bypass=%d\n",
+			DISP_REG_GET_FIELD(MT6989_RELAY_MODE,
+				baddr + MT6989_DISP_REG_POSTALIGN0_CFG));
 	}
 
-	if (!comp->regs_pa) {
-		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
-		return 0;
-	}
-
-	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	return 0;
 }
 

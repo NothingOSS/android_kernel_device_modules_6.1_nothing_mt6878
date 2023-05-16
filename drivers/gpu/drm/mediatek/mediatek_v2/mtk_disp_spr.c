@@ -1206,6 +1206,12 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_RELAY_MODE, handle);
 			mtk_ddp_write_mask(postalign_comp, MT6989_POSTALIGN_LUT_EN,
 				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_POSTALIGN_LUT_EN, handle);
+			mtk_ddp_write_mask(postalign_comp, height << 0,
+				MT6989_DISP_REG_POSTALIGN0_SIZE,
+				REG_FLD_MASK(MT6989_VSIZE), handle);
+			mtk_ddp_write_mask(postalign_comp, postalign_width << 16,
+				MT6989_DISP_REG_POSTALIGN0_SIZE,
+				REG_FLD_MASK(MT6989_HSIZE), handle);
 		} else {
 			if (handle)
 				cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1243,7 +1249,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 			mtk_ddp_write_mask(postalign_comp, height << 0,
 				MT6989_DISP_REG_POSTALIGN0_SIZE,
 				REG_FLD_MASK(MT6989_VSIZE), handle);
-			mtk_ddp_write_mask(postalign_comp, width << 16,
+			mtk_ddp_write_mask(postalign_comp, postalign_width << 16,
 				MT6989_DISP_REG_POSTALIGN0_SIZE,
 				REG_FLD_MASK(MT6989_HSIZE), handle);
 		} else {
@@ -1350,6 +1356,12 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_RELAY_MODE, handle);
 			mtk_ddp_write_mask(postalign_comp, MT6989_POSTALIGN_LUT_EN,
 				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_POSTALIGN_LUT_EN, handle);
+			mtk_ddp_write_mask(postalign_comp, height << 0,
+				MT6989_DISP_REG_POSTALIGN0_SIZE,
+				REG_FLD_MASK(MT6989_VSIZE), handle);
+			mtk_ddp_write_mask(postalign_comp, postalign_width << 16,
+				MT6989_DISP_REG_POSTALIGN0_SIZE,
+				REG_FLD_MASK(MT6989_HSIZE), handle);
 		} else {
 			if (handle)
 				cmdq_pkt_write(handle, comp->cmdq_base,

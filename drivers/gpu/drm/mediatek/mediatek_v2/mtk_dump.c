@@ -140,6 +140,9 @@ int mtk_dump_reg(struct mtk_ddp_comp *comp)
 	case DDP_COMPONENT_SPR1:
 		mtk_spr_dump(comp);
 		break;
+	case DDP_COMPONENT_POSTALIGN0:
+		mtk_postalign_dump(comp);
+		break;
 	case DDP_COMPONENT_DSC0:
 		mtk_dsc_dump(comp);
 		break;
@@ -251,6 +254,9 @@ int mtk_dump_analysis(struct mtk_ddp_comp *comp)
 		break;
 	case DDP_COMPONENT_SPR0:
 		mtk_spr_analysis(comp);
+		break;
+	case DDP_COMPONENT_POSTALIGN0:
+		mtk_postalign_analysis(comp);
 		break;
 	case DDP_COMPONENT_DSC0:
 		mtk_dsc_analysis(comp);
