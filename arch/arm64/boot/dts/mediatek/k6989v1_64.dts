@@ -153,6 +153,19 @@ arm64.nopauth arm64.nosme arm64.nosve";
 			};
 		};
 	};
+	panel3@2 {
+		compatible = "nt37801,cmd,fhd";
+		reg = <2>;
+		pm-enable-gpios = <&pio 215 0>;
+		reset-gpios = <&pio 230 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in3: endpoint {
+				remote-endpoint = <&dsi_out3>;
+			};
+		};
+	};
 	ports {
 		port {
 			dsi_out: endpoint {
@@ -161,6 +174,10 @@ arm64.nopauth arm64.nosme arm64.nosve";
 
 			dsi_out2: endpoint2 {
 				remote-endpoint = <&panel_in2>;
+			};
+
+			dsi_out3: endpoint3 {
+				remote-endpoint = <&panel_in3>;
 			};
 		};
 	};
