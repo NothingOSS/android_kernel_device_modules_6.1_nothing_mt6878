@@ -40,11 +40,4 @@
 		reg = <0x23>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 	};
-
-	bring-up-pd-ssrsys@26 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x26>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_SSR>;
-	};
-
 };
