@@ -11031,7 +11031,11 @@
 			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO_SLV>,
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO_MST>,
-			<&pericfg_ao_clk CLK_PERAOP_AUDIO_INTBUS>;
+			<&pericfg_ao_clk CLK_PERAOP_AUDIO_INTBUS>,
+			<&pericfg_ao_clk CLK_PERAOP_AUDIO_ENGEN1>,
+			<&pericfg_ao_clk CLK_PERAOP_AUDIO_ENGEN2>,
+			<&pericfg_ao_clk CLK_PERAOP_AUDIO_TDMOUT_B>,
+			<&pericfg_ao_clk CLK_PERAOP_AUDIO_H_AUD>;
 
 			clock-names = "aud_hopping_clk",
 			"aud_f26m_clk",
@@ -11053,7 +11057,11 @@
 			"top_clk26m_clk",
 			"aud_slv_ck_peri",
 			"aud_mst_ck_peri",
-			"aud_intbus_ck_peri";
+			"aud_intbus_ck_peri",
+			"aud_engen1_ck_peri",
+			"aud_engen2_ck_peri",
+			"aud_tdmout_b_ck_peri",
+			"aud_h_peri";
 		pinctrl-names = "aud-clk-mosi-off",
 			"aud-clk-mosi-on",
 			"aud-dat-mosi-off",
