@@ -152,5 +152,6 @@ void mtk_drm_idlemgr_cpu_control(struct drm_crtc *crtc,
 void mtk_drm_idlemgr_async_control(struct drm_crtc *crtc, bool enable);
 /* enable cmd panel sram sleep function */
 void mtk_drm_idlemgr_sram_control(struct drm_crtc *crtc, bool sleep);
-
+/* enable cmd panel perf aee dump */
+void mtk_drm_idlegmr_perf_aee_control(unsigned int timeout);
 #endif

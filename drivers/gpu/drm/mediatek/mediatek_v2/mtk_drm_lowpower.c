@@ -272,6 +272,13 @@ void mtk_drm_idlemgr_async_control(struct drm_crtc *crtc, bool enable)
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 }
 
+static unsigned int perf_aee_timeout;
+void mtk_drm_idlegmr_perf_aee_control(unsigned int timeout)
+{
+	perf_aee_timeout = timeout;
+	DDPMSG("%s: timeout:%ums\n", __func__, perf_aee_timeout);
+}
+
 void mtk_drm_idlemgr_async_perf_detail_control(bool enable, struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = NULL;
@@ -1831,6 +1838,9 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 
 		end = sched_clock();
 		cost = (end - start) / 1000;
+		CRTC_MMP_MARK((int)drm_crtc_index(crtc),
+				leave_idle, cost, perf_aee_timeout * 1000);
+
 		mtk_drm_idlemgr_perf_update(crtc, false, cost);
 
 		// dump detail performance data when exceed 16ms
@@ -1840,6 +1850,12 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 					atomic_read(&idlemgr->async_enabled),
 					cost, perf_string);
 			kfree(perf_string);
+		}
+
+		if (perf_aee_timeout > 0 && cost > perf_aee_timeout * 1000) {
+			DDPAEE("[IDLE] perf drop:%lluus, timeout:%uus\n",
+				cost, perf_aee_timeout * 1000);
+			perf_aee_timeout = 0;
 		}
 	}
 

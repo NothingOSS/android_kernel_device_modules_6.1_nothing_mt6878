@@ -2748,6 +2748,16 @@ static void process_dbg_opt(const char *opt)
 
 		DDPMSG("%s: idle_cpu_mask:0x%x\n", __func__, value);
 		mtk_drm_idlemgr_cpu_control(crtc, false, value);
+	} else if (strncmp(opt, "idle_perf_aee:", 14) == 0) {
+		int ret, value;
+
+		ret = sscanf(opt + 14, "%d\n", &value);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+		DDPMSG("%s: idle_perf_aee:%ums\n", __func__, value);
+		mtk_drm_idlegmr_perf_aee_control(value);
 	} else if (strncmp(opt, "hrt_bw", 6) == 0) {
 		struct mtk_drm_private *priv = drm_dev->dev_private;
 
