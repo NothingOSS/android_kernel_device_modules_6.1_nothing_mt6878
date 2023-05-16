@@ -4999,7 +4999,7 @@
 				opp-microvolt = <700000>;
 			};
 			opp-5 {
-				opp-hz = /bits/ 64 <980000000>;
+				opp-hz = /bits/ 64 <950000000>;
 				opp-microvolt = <900000>;
 			};
 		};
@@ -5063,26 +5063,22 @@
 		opp_table_disp: opp-table-disp {
 			compatible = "operating-points-v2";
 			opp-0 {
-				opp-hz = /bits/ 64 <218000000>;
-				opp-microvolt = <550000>;
-			};
-			opp-1 {
 				opp-hz = /bits/ 64 <273000000>;
 				opp-microvolt = <575000>;
 			};
-			opp-2 {
+			opp-1 {
 				opp-hz = /bits/ 64 <364000000>;
 				opp-microvolt = <600000>;
 			};
-			opp-3 {
+			opp-2 {
 				opp-hz = /bits/ 64 <458000000>;
 				opp-microvolt = <650000>;
 			};
-			opp-4 {
+			opp-3 {
 				opp-hz = /bits/ 64 <624000000>;
 				opp-microvolt = <700000>;
 			};
-			opp-5 {
+			opp-4 {
 				opp-hz = /bits/ 64 <728000000>;
 				opp-microvolt = <750000>;
 			};
