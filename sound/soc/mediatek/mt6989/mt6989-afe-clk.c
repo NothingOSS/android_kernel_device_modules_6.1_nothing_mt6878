@@ -283,6 +283,26 @@ int mt6989_afe_enable_ao_clock(struct mtk_base_afe *afe)
 		goto CLK_PERAO_AUDIO_MST_CK_PERI_ERR;
 	}
 
+	return 0;
+CLK_PERAO_AUDIO_MST_CK_PERI_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_AUDIO_MST_CK_PERI]);
+CLK_PERAO_AUDIO_SLV_CK_PERI_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_AUDIO_SLV_CK_PERI]);
+CLK_PERAO_INTBUS_CK_PERI_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_INTBUS_CK_PERI]);
+
+	return ret;
+}
+
+
+int mt6989_afe_enable_clock(struct mtk_base_afe *afe)
+{
+	struct mt6989_afe_private *afe_priv = afe->platform_priv;
+	int ret = 0;
+#if !defined(SKIP_SMCC_SB)
+	struct arm_smccc_res res;
+#endif
+	dev_dbg(afe->dev, "%s() successfully start\n", __func__);
 	ret = clk_prepare_enable(afe_priv->clk[CLK_PERAO_ENGEN1_CK]);
 	if (ret) {
 		dev_info(afe->dev, "%s() clk_prepare_enable %s fail %d\n",
@@ -310,34 +330,6 @@ int mt6989_afe_enable_ao_clock(struct mtk_base_afe *afe)
 			__func__, aud_clks[CLK_PERAO_H_AUD_CK], ret);
 		goto CLK_PERAO_H_AUD_CK_ERR;
 	}
-	return 0;
-CLK_PERAO_H_AUD_CK_ERR:
-	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_H_AUD_CK]);
-CLK_PERAO_TDMOUT_B_CK_ERR:
-	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_TDMOUT_B_CK]);
-CLK_PERAO_ENGEN2_CK_ERR:
-	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_ENGEN2_CK]);
-CLK_PERAO_ENGEN1_CK_ERR:
-	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_ENGEN1_CK]);
-CLK_PERAO_AUDIO_MST_CK_PERI_ERR:
-	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_AUDIO_MST_CK_PERI]);
-CLK_PERAO_AUDIO_SLV_CK_PERI_ERR:
-	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_AUDIO_SLV_CK_PERI]);
-CLK_PERAO_INTBUS_CK_PERI_ERR:
-	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_INTBUS_CK_PERI]);
-
-	return ret;
-}
-
-
-int mt6989_afe_enable_clock(struct mtk_base_afe *afe)
-{
-	struct mt6989_afe_private *afe_priv = afe->platform_priv;
-	int ret = 0;
-#if !defined(SKIP_SMCC_SB)
-	struct arm_smccc_res res;
-#endif
-	dev_dbg(afe->dev, "%s() successfully start\n", __func__);
 
 	/* IPM2.0: USE HOPPING & 26M */
 	ret = clk_prepare_enable(afe_priv->clk[CLK_HOPPING]);
@@ -391,6 +383,14 @@ CLK_MUX_AUDIO_H_PARENT_ERR:
 	clk_disable_unprepare(afe_priv->clk[CLK_TOP_MUX_AUDIO_H]);
 CLK_MUX_AUDIO_INTBUS_ERR:
 	clk_disable_unprepare(afe_priv->clk[CLK_MUX_AUDIOINTBUS]);
+CLK_PERAO_H_AUD_CK_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_H_AUD_CK]);
+CLK_PERAO_TDMOUT_B_CK_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_TDMOUT_B_CK]);
+CLK_PERAO_ENGEN2_CK_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_ENGEN2_CK]);
+CLK_PERAO_ENGEN1_CK_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_ENGEN1_CK]);
 /* IPM2.0: Remove CLK_MUX_AUDIO & CLK_CLK26M */
 
 	return ret;
@@ -409,6 +409,10 @@ void mt6989_afe_disable_clock(struct mtk_base_afe *afe)
 	/* IPM2.0: Use HOPPING & 26M */
 	clk_disable_unprepare(afe_priv->clk[CLK_HOPPING]);
 	clk_disable_unprepare(afe_priv->clk[CLK_F26M]);
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_H_AUD_CK]);
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_TDMOUT_B_CK]);
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_ENGEN2_CK]);
+	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_ENGEN1_CK]);
 
 
 	/* IPM2.0: Open AUDIO_TOP_CON4 for un-enabling AP side module clk */
