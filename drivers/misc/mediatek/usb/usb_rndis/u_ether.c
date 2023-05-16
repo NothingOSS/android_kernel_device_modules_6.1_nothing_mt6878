@@ -1094,7 +1094,7 @@ static int eth_stop(struct net_device *net)
 
 	/* ensure there are no more active requests */
 	spin_lock_irqsave(&dev->lock, flags);
-	if (dev->port_usb) {
+	if (dev->port_usb && net->state == 6) {
 		struct gether	*link = dev->port_usb;
 		const struct usb_endpoint_descriptor *in;
 		const struct usb_endpoint_descriptor *out;
