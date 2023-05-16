@@ -26,6 +26,9 @@
 #include "clk-mtk.h"
 #include "mmdvfs_v3.h"
 //#include <dt-bindings/memory/mtk-smi-larb-port.h>
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+#include <mtk-smmu-v3.h>
+#endif
 
 #define DRV_NAME	"mtk-smi-dbg"
 
@@ -362,6 +365,7 @@ struct mtk_smi_dbg_node {
 
 	u8	port_stat[SMI_LARB_OSTD_MON_PORT_NR];
 	atomic_t	mon_ref_cnt[MAX_MON_REQ];
+	atomic_t	is_on;
 };
 
 enum smi_bus_type {
@@ -827,6 +831,50 @@ static int smi_dbg_suspend_cb(struct notifier_block *nb,
 	return 0;
 }
 
+static int mtk_smi_mminfra_get_if_in_use(void)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	int i, ret, is_on = 0;
+
+	for (i = 0; i < ARRAY_SIZE(smi->comm); i++) {
+		if (!smi->comm[i].dev || !(smi->comm[i].smi_type == SMI_COMMON))
+			continue;
+		ret = pm_runtime_get_if_in_use(smi->comm[i].dev);
+		if (ret == 0)
+			continue;
+		else if (ret < 0) {
+			dev_notice(smi->comm[i].dev, "%s:rpm fail, ret=%d\n", __func__, ret);
+			continue;
+		} else {
+			atomic_inc(&smi->comm[i].is_on);
+			is_on = 1;
+		}
+	}
+	return is_on;
+}
+
+static int mtk_smi_mminfra_put(void)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	int i, ref_cnt, ret = 0;
+
+	for (i = 0; i < ARRAY_SIZE(smi->comm); i++) {
+		if (!smi->comm[i].dev || !(smi->comm[i].smi_type == SMI_COMMON))
+			continue;
+		ref_cnt = atomic_read(&smi->comm[i].is_on);
+		if (ref_cnt > 0) {
+			atomic_dec(&smi->comm[i].is_on);
+			ret = pm_runtime_put(smi->comm[i].dev);
+			if (ret < 0) {
+				dev_notice(smi->comm[i].dev, "%s:rpm put fail, ret=%d\n",
+										__func__, ret);
+				return ret;
+			}
+		}
+	}
+	return ret;
+}
+
 #define SC_OSTD_BITS (7)
 #define SSC_OSTD_BITS (6)
 
@@ -854,6 +902,13 @@ static void init_smi_dbg_setting(struct mtk_smi_dbg	*smi)
 	smi->init_setting[SMI_SUB_COMMON].smi_nr = ARRAY_SIZE(smi->comm);
 
 }
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+static const struct mtk_pm_ops mtk_smi_pm_ops = {
+	.pm_get = mtk_smi_mminfra_get_if_in_use,
+	.pm_put = mtk_smi_mminfra_put,
+};
+#endif
 
 static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 {
@@ -906,6 +961,8 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 		for (i = 0; i < MAX_MON_REQ; i++)
 			atomic_set(&smi->comm[id].mon_ref_cnt[i], 0);
 
+		atomic_set(&smi->comm[id].is_on, 0);
+
 		ret = mtk_smi_dbg_parse(pdev, smi->comm, false, id);
 		if (ret)
 			return ret;
@@ -942,6 +999,13 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 
 	smi->suspend_nb.notifier_call = smi_dbg_suspend_cb;
 	mtk_smi_driver_register_notifier(&smi->suspend_nb);
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+	if (smmu_v3_enabled())
+		mtk_smmu_set_pm_ops(MM_SMMU, &mtk_smi_pm_ops);
+	else
+		dev_notice(dev, "smmu not support\n");
+#endif
 
 	smi->probe = true;
 	return 0;
