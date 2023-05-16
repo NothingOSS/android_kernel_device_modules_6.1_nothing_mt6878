@@ -4814,11 +4814,6 @@
 					<&ccu_main_clk CLK_CCU_LARB30_CON>,
 					<&ccu_main_clk CLK_CCU_AHB_CON>,
 					<&ccu_main_clk CLK_CCUSYS_CCU0_CON>,
-					<&camsys_main_clk CLK_CAM_MAIN_CCUSYS_CON_0>,
-					<&camsys_main_clk CLK_CAM_MAIN_CAM2SYS_GALS_CON_0>,
-					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS_CON_0>,
-					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS_CON_0>,
-					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM2_GALS_CON_0>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM_CON_0>,
 					<&cam_vcore_clk CLK_CAM_VCORE_MM0_SUBCOMMON_DCM_DIS>;
 			clock-names = "TOP_CAM",
@@ -4829,11 +4824,6 @@
 					"CCU_LARB",
 					"CCU_AHB",
 					"CCUSYS_CCU0",
-					"CAM_CCUSYS",
-					"CAM_CAM2SYS_GALS",
-					"CAM_CAM2MM1_GALS",
-					"CAM_CAM2MM0_GALS",
-					"CAM_CAM2MM2_GALS",
 					"CAM_CG",
 					"CAM_VCORE_CG";
 			mediatek,ccu_rproc1 = <&ccu_rproc1>;
@@ -4842,13 +4832,11 @@
 			iommus = <&mdp_iommu M4U_L30_P1_CCUO_0>,
 				 <&mdp_iommu M4U_L30_P0_CCUI_0>;
 			interconnects =
-			<&mmqos SLAVE_LARB(41) &mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_L30_P1_CCUO_0)
 				&mmqos SLAVE_COMMON(1)>,
 			<&mmqos MASTER_LARB_PORT(M4U_L30_P0_CCUI_0)
 				&mmqos SLAVE_COMMON(1)>;
 			interconnect-names =
-				"ccu_g",
 				"ccu_o",
 				"ccu_i";
 			secured = "yes";
