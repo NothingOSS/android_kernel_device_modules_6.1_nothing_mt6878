@@ -37,6 +37,7 @@
 #include <mtk_gpu_utility.h>
 #include <gpufreq_history_common.h>
 #include <gpufreq_history_mt6989.h>
+#include <gpu_smmu_common.h>
 
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
 #include <mtk_battery_oc_throttling.h>
@@ -773,79 +774,91 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		}
 		__gpufreq_footprint_power_step(0x05);
 
+#if !GPUFREQ_PDCA_ENABLE
+		/* restore smmu after enable clock */
+		__gpu_smmu_config(GPU_PWR_ON);
+#endif /* GPUFREQ_PDCA_ENABLE */
+		__gpufreq_footprint_power_step(0x06);
+
 		/* config TOP HW_DELSEL */
 		__gpufreq_top_hw_delsel_config();
-		__gpufreq_footprint_power_step(0x06);
+		__gpufreq_footprint_power_step(0x07);
 
 		/* config PDCAv3 */
 		__gpufreq_pdca_config(GPU_PWR_ON);
-		__gpufreq_footprint_power_step(0x07);
+		__gpufreq_footprint_power_step(0x08);
 
 		/* config PDCA IRQ */
 		__gpufreq_pdca_irq_config();
-		__gpufreq_footprint_power_step(0x08);
+		__gpufreq_footprint_power_step(0x09);
 
 		/* config TOP HWDCM */
 		__gpufreq_top_hwdcm_config();
-		__gpufreq_footprint_power_step(0x09);
+		__gpufreq_footprint_power_step(0x0A);
 
 #if !GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE
 		/* config STACK HWDCM */
 		__gpufreq_stack_hwdcm_config();
 #endif /* GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE */
-		__gpufreq_footprint_power_step(0x0A);
+		__gpufreq_footprint_power_step(0x0B);
 
 		/* config ACP */
 		__gpufreq_acp_config();
-		__gpufreq_footprint_power_step(0x0B);
+		__gpufreq_footprint_power_step(0x0C);
 
 		/* config AXI 2to1 */
 		__gpufreq_axi_2to1_config();
-		__gpufreq_footprint_power_step(0x0C);
+		__gpufreq_footprint_power_step(0x0D);
 
 		/* config AXI transaction */
 		__gpufreq_axi_merger_config();
-		__gpufreq_footprint_power_step(0x0D);
+		__gpufreq_footprint_power_step(0x0E);
 
 #if !GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE
 		/* config AxUSER */
 		__gpufreq_axuser_config();
 #endif /* GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE */
-		__gpufreq_footprint_power_step(0x0E);
+		__gpufreq_footprint_power_step(0x0F);
 
 		/* config OpenCL timestamp */
 		__gpufreq_ocl_timestamp_config();
-		__gpufreq_footprint_power_step(0x0F);
+		__gpufreq_footprint_power_step(0x10);
 
 		/* config GPM1.2 */
 		__gpufreq_gpm1_2_config();
-		__gpufreq_footprint_power_step(0x10);
+		__gpufreq_footprint_power_step(0x11);
 
 		/* config DFD */
 		__gpufreq_dfd2_0_config();
-		__gpufreq_footprint_power_step(0x11);
+		__gpufreq_footprint_power_step(0x12);
 
 		/* config Broadcaster if AutoDMA disable */
 		__gpufreq_broadcaster_config();
-		__gpufreq_footprint_power_step(0x12);
+		__gpufreq_footprint_power_step(0x13);
 
 		/* free DVFS when power on */
 		g_dvfs_state &= ~DVFS_POWEROFF;
-		__gpufreq_footprint_power_step(0x13);
-	} else if (power == GPU_PWR_OFF && g_stack.power_count == 0) {
 		__gpufreq_footprint_power_step(0x14);
+	} else if (power == GPU_PWR_OFF && g_stack.power_count == 0) {
+		__gpufreq_footprint_power_step(0x15);
 
 		/* check DEVAPC status before power off */
 		__gpufreq_check_devapc_vio();
-		__gpufreq_footprint_power_step(0x15);
+		__gpufreq_footprint_power_step(0x16);
 
 		/* check all transaction complete before power off */
 		__gpufreq_check_bus_idle();
-		__gpufreq_footprint_power_step(0x16);
+		__gpufreq_footprint_power_step(0x17);
 
 		/* freeze DVFS when power off */
 		g_dvfs_state |= DVFS_POWEROFF;
-		__gpufreq_footprint_power_step(0x17);
+		__gpufreq_footprint_power_step(0x18);
+
+#if !GPUFREQ_PDCA_ENABLE
+		/* backup smmu before disable clock */
+		__gpu_smmu_config(GPU_PWR_OFF);
+#endif /* GPUFREQ_PDCA_ENABLE */
+		__gpufreq_footprint_power_step(0x19);
 
 		/* disable Clock */
 		ret = __gpufreq_clock_ctrl(GPU_PWR_OFF);
@@ -854,11 +867,11 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 			ret = GPUFREQ_EINVAL;
 			goto done_unlock;
 		}
-		__gpufreq_footprint_power_step(0x18);
+		__gpufreq_footprint_power_step(0x1A);
 
 		/* disable MTCMOS */
 		__gpufreq_mtcmos_ctrl(GPU_PWR_OFF);
-		__gpufreq_footprint_power_step(0x19);
+		__gpufreq_footprint_power_step(0x1B);
 
 		/* disable Buck */
 		ret = __gpufreq_buck_ctrl(GPU_PWR_OFF);
@@ -867,7 +880,7 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 			ret = GPUFREQ_EINVAL;
 			goto done_unlock;
 		}
-		__gpufreq_footprint_power_step(0x1A);
+		__gpufreq_footprint_power_step(0x1C);
 	}
 
 	/* return power count if successfully control power */
@@ -890,9 +903,9 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 	}
 
 	if (power == GPU_PWR_ON && g_stack.power_count == 1)
-		__gpufreq_footprint_power_step(0x1B);
+		__gpufreq_footprint_power_step(0x1D);
 	else if (power == GPU_PWR_OFF && g_stack.power_count == 0)
-		__gpufreq_footprint_power_step(0x1C);
+		__gpufreq_footprint_power_step(0x1E);
 
 done_unlock:
 	GPUFREQ_LOGD("- PWR_STATUS: 0x%08lx", MFG_0_22_37_PWR_STATUS);
