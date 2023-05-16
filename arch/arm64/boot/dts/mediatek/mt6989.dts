@@ -1163,6 +1163,12 @@
                 clock-frequency = <13000000>;
         };
 
+	teeperf {
+		compatible = "mediatek,teeperf";
+		cpu-type = <1>; /* 1: CPU_V9_TYPE, 2: CPU_V8_TYPE */
+		cpu-map = <1>; /* 1: CPU_4_3_1_MAP, 2: CPU_6_2_MAP */
+	};
+
 	/* Trustonic Mobicore SW IRQ number 171 = 32 + 139 */
 	mobicore: mobicore {
 		compatible = "trustonic,mobicore";
