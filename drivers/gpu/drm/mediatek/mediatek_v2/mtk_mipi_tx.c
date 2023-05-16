@@ -4929,7 +4929,7 @@ static void refill_mipitx_impedance_mt6897(struct mtk_mipi_tx *mipi_tx)
 	unsigned int i = 0;
 	unsigned int j = 0;
 
-	DDPMSG("%s MIPI_TX\n", __func__);
+	DDPDBG("%s MIPI_TX\n", __func__);
 	for (j = 0; j < 5; j++) {
 		writel(rt_mt6886_code_backup[0][j], mipi_tx->regs +
 				MIPITX_D2P_RTCODE0_MT6886 + j * 0x100);
@@ -4951,7 +4951,7 @@ static void refill_mipitx_impedance_mt6897(struct mtk_mipi_tx *mipi_tx)
 	writel(rt_mt6886_dem_backup[1][5], mipi_tx->regs +
 				MIPITX_D2N_RT_DEM_CODE_MT6886 + j * 0x100);
 	for (i = 0; i < 5; i++) {
-		DDPMSG("[0x%08lx 0x%08lx 0x%08lx 0x%08lx]:0x%08x 0x%08x 0x%08x 0x%08x\n",
+		DDPDBG("[0x%08lx 0x%08lx 0x%08lx 0x%08lx]:0x%08x 0x%08x 0x%08x 0x%08x\n",
 			(unsigned long)mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100,
 			(unsigned long)mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100,
 			(unsigned long)mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100,
@@ -4963,7 +4963,7 @@ static void refill_mipitx_impedance_mt6897(struct mtk_mipi_tx *mipi_tx)
 	}
 	/* CK1 dump */
 	i++;
-	DDPMSG("[0x%08lx 0x%08lx 0x%08lx 0x%08lx]:0x%08x 0x%08x 0x%08x 0x%08x\n",
+	DDPDBG("[0x%08lx 0x%08lx 0x%08lx 0x%08lx]:0x%08x 0x%08x 0x%08x 0x%08x\n",
 			(unsigned long)mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100,
 			(unsigned long)mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100,
 			(unsigned long)mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100,
