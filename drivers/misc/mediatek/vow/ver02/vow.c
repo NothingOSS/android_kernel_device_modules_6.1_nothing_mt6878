@@ -1023,6 +1023,15 @@ static bool vow_service_SetCustomModel(unsigned long arg)
 		return false;
 	}
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+	if (p_info->return_size_addr == 0 || p_info->data_addr == 0) {
+		VOWDRV_DEBUG("vow get cust info fail 2\n");
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)
+		VOWDRV_DEBUG("return_size_addr %lu data_addr %lu",
+		p_info->return_size_addr,
+		p_info->data_addr);
+#endif
+		return false;
+	}
 	p_virt = scp_get_reserve_mem_virt(VOW_MEM_ID);
 	p_mdl_v = p_virt + VOW_CUSTOM_MODEL_OFFSET;
 	if (copy_from_user((void *)&data_size,
@@ -2915,7 +2924,11 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		vow_service_SetModelStatus(VOW_MODEL_STATUS_STOP, arg);
 		break;
 	case VOW_GET_GOOGLE_ENGINE_VER: {
-		if (copy_to_user((void __user *)arg,
+		if (vowserv.google_engine_version == DEFAULT_GOOGLE_ENGINE_VER ||
+			vowserv.google_engine_version == 0) {
+			VOWDRV_DEBUG("%s(), VOW_GET_GOOGLE_ENGINE_VER %d fail",
+				__func__, vowserv.google_engine_version);
+		} else if (copy_to_user((void __user *)arg,
 						 &vowserv.google_engine_version,
 						 sizeof(vowserv.google_engine_version))) {
 			VOWDRV_DEBUG("%s(), copy_to_user fail in VOW_GET_GOOGLE_ENGINE_VER",
@@ -2933,7 +2946,16 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 				 sizeof(struct vow_engine_info_t))) {
 			VOWDRV_DEBUG("%s(), copy_from_user fail", __func__);
 		}
-		if ((unsigned int)cmd == VOW_GET_ALEXA_ENGINE_VER) {
+		if (engine_ver_temp.data_addr == 0 ||
+			engine_ver_temp.return_size_addr == 0) {
+			VOWDRV_DEBUG("%s(), copy_from_user fail 2", __func__);
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_DEBUG_SUPPORT)
+			VOWDRV_DEBUG("%s(), data_addr %lu return_size_addr %lu",
+			__func__,
+			engine_ver_temp.data_addr,
+			engine_ver_temp.return_size_addr);
+#endif
+		} else if ((unsigned int)cmd == VOW_GET_ALEXA_ENGINE_VER) {
 			pr_debug("VOW_GET_ALEXA_ENGINE_VER = %s, %lu, %lu, %d",
 					 vowserv.alexa_engine_version,
 					 engine_ver_temp.data_addr,
@@ -3054,9 +3076,7 @@ static long VowDrv_compat_ioctl(struct file *fp,
 	case VOW_MODEL_STOP: {
 		struct vow_model_start_kernel_t data32 = {};
 		struct vow_model_start_t data = {};
-		long err = -1;
-
-		err = (long)copy_from_user(&data32, compat_ptr(arg),
+		long err = (long)copy_from_user(&data32, compat_ptr(arg),
 			(unsigned long)sizeof(struct vow_model_start_kernel_t));
 
 		if (err != 0L)
@@ -3077,9 +3097,7 @@ static long VowDrv_compat_ioctl(struct file *fp,
 	case VOW_SET_APREG_INFO: {
 		struct vow_model_info_kernel_t data32 = {};
 		struct vow_model_info_t data = {};
-		long err = -1;
-
-		err = (long)copy_from_user(&data32, compat_ptr(arg),
+		long err = (long)copy_from_user(&data32, compat_ptr(arg),
 			(unsigned long)sizeof(struct vow_model_info_kernel_t));
 
 		if (err != 0L)
@@ -3101,9 +3119,7 @@ static long VowDrv_compat_ioctl(struct file *fp,
 	case VOW_GET_ALEXA_ENGINE_VER: {
 		struct vow_engine_info_kernel_t data32 = {};
 		struct vow_engine_info_t data = {};
-		long err = -1;
-
-		err = (long)copy_from_user(&data32, compat_ptr(arg),
+		long err = (long)copy_from_user(&data32, compat_ptr(arg),
 			(unsigned long)sizeof(struct vow_engine_info_kernel_t));
 
 		if (err != 0L)
@@ -3118,9 +3134,7 @@ static long VowDrv_compat_ioctl(struct file *fp,
 	case VOW_SET_PAYLOADDUMP_INFO: {
 		struct vow_payloaddump_info_kernel_t data32 = {};
 		struct vow_payloaddump_info_t data = {};
-		long err = -1;
-
-		err = (long)copy_from_user(&data32, compat_ptr(arg),
+		long err = (long)copy_from_user(&data32, compat_ptr(arg),
 			(unsigned long)sizeof(struct vow_payloaddump_info_kernel_t));
 
 		if (err != 0L)
@@ -3136,9 +3150,7 @@ static long VowDrv_compat_ioctl(struct file *fp,
 	case VOW_GET_SCP_RECOVER_STATUS: {
 		struct vow_scp_recover_info_kernel_t data32 = {};
 		struct vow_scp_recover_info_t data = {};
-		long err = -1;
-
-		err = (long)copy_from_user(&data32, compat_ptr(arg),
+		long err = (long)copy_from_user(&data32, compat_ptr(arg),
 			(unsigned long)sizeof(struct vow_scp_recover_info_kernel_t));
 		if (err != 0L)
 			VOWDRV_DEBUG("%s(), copy data from user fail", __func__);
@@ -3261,9 +3273,6 @@ static ssize_t VowDrv_read(struct file *fp,
 				  sizeof(struct vow_eint_data_struct_t));
 	if (dsp_inform_tx_flag) {
 		/* int i; */
-
-		dsp_inform_tx_flag = false;
-
 		mutex_lock(&vow_extradata_mutex);
 		if (vowserv.extradata_mem_ptr == NULL) {
 			mutex_unlock(&vow_extradata_mutex);
