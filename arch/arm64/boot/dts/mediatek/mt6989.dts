@@ -10015,6 +10015,46 @@
 				"clk_top_tck_26m_mx9";
 		};
 
+		pwm@11008000 {
+			compatible = "mediatek,pwm";
+			reg = <0 0x11008000 0 0x1000>;
+			interrupts = <GIC_SPI 351 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&pericfg_ao_clk CLK_PERAOP_PWM_FB1>,
+				<&pericfg_ao_clk CLK_PERAOP_PWM_FB2>,
+				<&pericfg_ao_clk CLK_PERAOP_PWM_FB3>,
+				<&pericfg_ao_clk CLK_PERAOP_PWM_FB4>,
+				<&pericfg_ao_clk CLK_PERAOP_PWM_H>,
+				<&pericfg_ao_clk CLK_PERAOP_PWM_B>;
+
+			clock-names = "PWM1-main",
+				"PWM2-main",
+				"PWM3-main",
+				"PWM4-main",
+				"PWM-HCLK-main",
+				"PWM-main";
+
+			/* 1. pwm periclk control reg offset */
+			mediatek,pwm-topclk-ctl-reg = <0x20>;
+			/* 2. pwm bclk sw ctrl offset */
+			mediatek,pwm-bclk-sw-ctrl-offset = <4>;
+			/* 3. pwm_x bclk sw ctrl offset */
+			mediatek,pwm1-bclk-sw-ctrl-offset = <12>;
+			mediatek,pwm2-bclk-sw-ctrl-offset = <10>;
+			mediatek,pwm3-bclk-sw-ctrl-offset = <8>;
+			mediatek,pwm4-bclk-sw-ctrl-offset = <6>;
+			/* 4. pwm version */
+			mediatek,pwm-version = <0x3>;
+
+			pwmsrcclk = <&pericfg_ao_clk>;
+		};
+
+		irtx_pwm:irtx-pwm {
+			compatible = "mediatek,irtx-pwm";
+			pwm-ch = <0>; /* GPIO 187 */
+			pwm-data-invert = <0>;
+			pwm-supply = "mt6373_vio28";
+		};
+
 		ssusb: usb0@11201000 {
 			compatible = "mediatek,mtu3";
 			reg = <0 0x11201000 0 0x2e00>,

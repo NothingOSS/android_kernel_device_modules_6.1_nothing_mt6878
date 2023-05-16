@@ -12,19 +12,12 @@
 		clocks =
 			<&topckgen_clk CLK_TOP_DSP_SEL>,
 			<&topckgen_clk CLK_TOP_DPMAIF_MAIN_SEL>,
-			<&topckgen_clk CLK_TOP_PWM_SEL>,
 			<&topckgen_clk CLK_TOP_IPSEAST_SEL>,
 			<&topckgen_clk CLK_TOP_IPSWEST_SEL>,
 			<&topckgen_clk CLK_TOP_EMI_INTERFACE_546_SEL>,
 			<&topckgen_clk CLK_TOP_SSR_SEJ_SEL>,
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 			<&infracfg_ao_clk CLK_IFRAO_RG_SOCSYS_FATB>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_H>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_B>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_FB1>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_FB2>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_FB3>,
-			<&pericfg_ao_clk CLK_PERAOP_PWM_FB4>,
 			<&vlp_cksys_clk CLK_VLP_CK_IPS_SEL>,
 			<&mminfra_config_clk CLK_MMINFRA_SMI>;
 	};
