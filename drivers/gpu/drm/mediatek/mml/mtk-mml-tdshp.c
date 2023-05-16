@@ -28,6 +28,9 @@
 #define REG_NOT_SUPPORT 0xfff
 #define DS_CLARITY_REG_NUM (42)
 #define VALID_CONTOUR_HIST_VALUE (0x07FFFFFF)
+#define call_hw_op(_comp, op, ...) \
+	(_comp->hw_ops->op ? _comp->hw_ops->op(_comp, ##__VA_ARGS__) : 0)
+
 
 enum mml_tdshp_reg_index {
 	TDSHP_00,
@@ -100,6 +103,7 @@ struct tdshp_data {
 	u16 gpr[MML_PIPE_CNT];
 	u16 cpr[MML_PIPE_CNT];
 	const u16 *reg_table;
+	u8 rb_mode;
 };
 
 static const struct tdshp_data mt6893_tdshp_data = {
@@ -107,6 +111,7 @@ static const struct tdshp_data mt6893_tdshp_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = tdshp_reg_table_mt6983,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct tdshp_data mt6983_tdshp_data = {
@@ -114,6 +119,7 @@ static const struct tdshp_data mt6983_tdshp_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = tdshp_reg_table_mt6983,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct tdshp_data mt6879_tdshp_data = {
@@ -121,6 +127,7 @@ static const struct tdshp_data mt6879_tdshp_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = tdshp_reg_table_mt6983,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct tdshp_data mt6895_tdshp_data = {
@@ -128,6 +135,7 @@ static const struct tdshp_data mt6895_tdshp_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = tdshp_reg_table_mt6983,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct tdshp_data mt6985_tdshp_data = {
@@ -135,6 +143,7 @@ static const struct tdshp_data mt6985_tdshp_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = tdshp_reg_table_mt6985,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct tdshp_data mt6886_tdshp_data = {
@@ -142,6 +151,7 @@ static const struct tdshp_data mt6886_tdshp_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = tdshp_reg_table_mt6983,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct tdshp_data mt6989_tdshp_data = {
@@ -149,6 +159,7 @@ static const struct tdshp_data mt6989_tdshp_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = tdshp_reg_table_mt6985,
+	.rb_mode = RB_EOF_MODE,
 };
 
 struct mml_comp_tdshp {
@@ -156,7 +167,24 @@ struct mml_comp_tdshp {
 	struct mml_comp comp;
 	const struct tdshp_data *data;
 	bool ddp_bound;
+	u8 pipe;
+	u8 out_idx;
 	u16 event_eof;
+	u32 jobid;
+	struct mml_pq_task *pq_task;
+	bool dual;
+	bool hist_cmd_done;
+	bool clarity_readback;
+	bool dc_readback;
+	struct mutex hist_cmd_lock;
+	struct mml_pq_readback_buffer *tdshp_hist[MML_PIPE_CNT];
+	struct cmdq_client *clt;
+	struct cmdq_pkt *hist_pkts[MML_PIPE_CNT];
+	struct workqueue_struct *tdshp_hist_wq;
+	struct work_struct tdshp_hist_task;
+	struct mml_pq_config pq_config;
+	struct mml_pq_frame_data frame_data;
+	struct mml_dev *mml;
 };
 
 enum tdshp_label_index {
@@ -315,6 +343,90 @@ static struct mml_pq_comp_config_result *get_tdshp_comp_config_result(
 	return task->pq_task->comp_config.result;
 }
 
+static s32 tdshp_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
+			    struct mml_comp_config *ccfg,
+			    struct mml_pq_comp_config_result *result)
+{
+	struct mml_comp_tdshp *tdshp = comp_to_tdshp(comp);
+	struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	struct tdshp_frame_data *tdshp_frm = tdshp_frm_data(ccfg);
+
+	if (!result->is_dc_need_readback && !result->is_clarity_need_readback)
+		return 0;
+
+	mml_pq_set_tdshp_status(task->pq_task, ccfg->node->out_idx);
+
+	if (task->pq_task->read_status.tdshp_comp == MML_PQ_HIST_IDLE) {
+
+		if (!tdshp->clt)
+			tdshp->clt = mml_get_cmdq_clt(cfg->mml,
+				ccfg->pipe + GCE_THREAD_START);
+
+		if ((!tdshp->hist_pkts[ccfg->pipe] && tdshp->clt))
+			tdshp->hist_pkts[ccfg->pipe] =
+				cmdq_pkt_create(tdshp->clt);
+
+		if (!tdshp->tdshp_hist[ccfg->pipe])
+			tdshp->tdshp_hist[ccfg->pipe] =
+				kzalloc(sizeof(struct mml_pq_readback_buffer),
+				GFP_KERNEL);
+
+		if (tdshp->tdshp_hist[ccfg->pipe] &&
+			!tdshp->tdshp_hist[ccfg->pipe]->va &&
+			tdshp->clt)
+			tdshp->tdshp_hist[ccfg->pipe]->va =
+				(u32 *)cmdq_mbox_buf_alloc(tdshp->clt,
+				&tdshp->tdshp_hist[ccfg->pipe]->pa);
+
+		if (tdshp->hist_pkts[ccfg->pipe] && tdshp->tdshp_hist[ccfg->pipe]->va) {
+
+			tdshp->pq_task = task->pq_task;
+			mml_pq_get_pq_task(tdshp->pq_task);
+
+			tdshp->pipe = ccfg->pipe;
+			tdshp->dual = cfg->dual;
+			tdshp->out_idx = ccfg->node->out_idx;
+			tdshp->jobid = task->job.jobid;
+
+			tdshp->frame_data.size_info.out_rotate[ccfg->node->out_idx] =
+				cfg->out_rotate[ccfg->node->out_idx];
+			memcpy(&tdshp->pq_config, &dest->pq_config,
+				sizeof(struct mml_pq_config));
+			tdshp->clarity_readback = tdshp_frm->is_clarity_need_readback;
+			tdshp->dc_readback = tdshp_frm->is_dc_need_readback;
+			memcpy(&tdshp->frame_data.pq_param, task->pq_param,
+				MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
+			memcpy(&tdshp->frame_data.info, &task->config->info,
+				sizeof(struct mml_frame_info));
+			memcpy(&tdshp->frame_data.frame_out, &task->config->frame_out,
+				MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
+			memcpy(&tdshp->frame_data.size_info.frame_in_crop_s[0],
+				&cfg->frame_in_crop[0],	MML_MAX_OUTPUTS * sizeof(struct mml_crop));
+			memcpy(&tdshp->frame_data.size_info.frame_in_s, &cfg->frame_in,
+				sizeof(struct mml_frame_size));
+
+
+			tdshp->hist_pkts[ccfg->pipe]->no_irq = !task->config->irq;
+
+			if (tdshp->data->rb_mode == RB_EOF_MODE) {
+				mml_clock_lock(task->config->mml);
+				call_hw_op(comp, pw_enable);
+				call_hw_op(comp, clk_enable);
+				mml_clock_unlock(task->config->mml);
+				mml_lock_wake_lock(tdshp->mml, true);
+			}
+
+			queue_work(tdshp->tdshp_hist_wq, &tdshp->tdshp_hist_task);
+		}
+	}
+	mml_pq_ir_log("%s end jobid[%d] pipe[%d] engine[%d]",
+		__func__, task->job.jobid, ccfg->pipe, comp->id);
+
+	return 0;
+}
+
+
 static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 			      struct mml_comp_config *ccfg)
 {
@@ -333,6 +445,7 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 	s32 ret;
 	s32 i;
 	struct mml_pq_reg *regs = NULL;
+	s8 mode = task->config->info.mode;
 
 	mml_pq_msg("%s pipe_id[%d] engine_id[%d] en_sharp[%d]", __func__,
 		ccfg->pipe, comp->id, dest->pq_config.en_sharp);
@@ -398,6 +511,11 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	tdshp_frm->is_clarity_need_readback = result->is_clarity_need_readback;
 	tdshp_frm->is_dc_need_readback = result->is_dc_need_readback;
+
+	if ((mode == MML_MODE_DDP_ADDON || mode == MML_MODE_DIRECT_LINK) &&
+		((dest->pq_config.en_dre && dest->pq_config.en_sharp) ||
+		dest->pq_config.en_dc))
+		tdshp_hist_ctrl(comp, task, ccfg, result);
 
 exit:
 	return ret;
@@ -601,6 +719,7 @@ static s32 tdshp_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	s32 ret = 0;
 	s32 i;
 	struct mml_pq_reg *regs = NULL;
+	s8 mode = task->config->info.mode;
 
 	if (!dest->pq_config.en_sharp && !dest->pq_config.en_dc)
 		return ret;
@@ -632,8 +751,13 @@ static s32 tdshp_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 		mml_pq_msg("[ds][config][%x] = %#x mask(%#x)",
 			regs[i].offset, regs[i].value, regs[i].mask);
 	}
-	tdshp_frm->is_clarity_need_readback = false;
-	tdshp_frm->is_dc_need_readback = false;
+	tdshp_frm->is_clarity_need_readback = result->is_clarity_need_readback;
+	tdshp_frm->is_dc_need_readback = result->is_dc_need_readback;
+
+	if ((mode == MML_MODE_DDP_ADDON || mode == MML_MODE_DIRECT_LINK) &&
+		((dest->pq_config.en_dre && dest->pq_config.en_sharp) ||
+		dest->pq_config.en_dc))
+		tdshp_hist_ctrl(comp, task, ccfg, result);
 exit:
 	return ret;
 }
@@ -790,6 +914,8 @@ exit:
 
 
 static const struct mml_comp_hw_ops tdshp_hw_ops = {
+	.pw_enable = &mml_comp_pw_enable,
+	.pw_disable = &mml_comp_pw_disable,
 	.clk_enable = &mml_comp_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.task_done = tdshp_task_done_readback,
@@ -850,6 +976,7 @@ static int mml_bind(struct device *dev, struct device *master, void *data)
 		if (ret)
 			dev_err(dev, "Failed to register mml component %s: %d\n",
 				dev->of_node->full_name, ret);
+		tdshp->mml = dev_get_drvdata(master);
 	} else {
 		ret = mml_ddp_comp_register(drm_dev, &tdshp->ddp_comp);
 		if (ret)
@@ -885,6 +1012,246 @@ static const struct mtk_ddp_comp_funcs ddp_comp_funcs = {
 static struct mml_comp_tdshp *dbg_probed_components[4];
 static int dbg_probed_count;
 
+static void tdshp_histdone_cb(struct cmdq_cb_data data)
+{
+	struct cmdq_pkt *pkt = (struct cmdq_pkt *)data.data;
+	struct mml_comp_tdshp *tdshp = (struct mml_comp_tdshp *)pkt->user_data;
+	struct mml_comp *comp = &tdshp->comp;
+	u32 pipe;
+
+	mml_pq_ir_log("%s jobid[%d] tdshp->hist_pkts[0] = [%p] hdr->hist_pkts[1] = [%p]",
+		__func__, tdshp->jobid, tdshp->hist_pkts[0], tdshp->hist_pkts[1]);
+
+	if (mml_pq_tdshp_hist_reading(tdshp->pq_task, tdshp->out_idx, tdshp->pipe))
+		return;
+
+	if (pkt == tdshp->hist_pkts[0]) {
+		pipe = 0;
+	} else if (pkt == tdshp->hist_pkts[1]) {
+		pipe = 1;
+	} else {
+		mml_err("%s task %p pkt %p not match both pipe (%p and %p)",
+			__func__, tdshp, pkt, tdshp->hist_pkts[0],
+			tdshp->hist_pkts[1]);
+		return;
+	}
+
+	mml_pq_ir_log("%s hist[0~4]={%08x, %08x, %08x, %08x, %08x}",
+		__func__,
+		tdshp->tdshp_hist[pipe]->va[0],
+		tdshp->tdshp_hist[pipe]->va[1],
+		tdshp->tdshp_hist[pipe]->va[2],
+		tdshp->tdshp_hist[pipe]->va[3],
+		tdshp->tdshp_hist[pipe]->va[4]);
+
+	mml_pq_ir_log("%s hist[5~9]={%08x, %08x, %08x, %08x, %08x}",
+		__func__,
+		tdshp->tdshp_hist[pipe]->va[5],
+		tdshp->tdshp_hist[pipe]->va[6],
+		tdshp->tdshp_hist[pipe]->va[7],
+		tdshp->tdshp_hist[pipe]->va[8],
+		tdshp->tdshp_hist[pipe]->va[9]);
+
+	mml_pq_ir_log("%s hist[10~14]={%08x, %08x, %08x, %08x, %08x}",
+		__func__,
+		tdshp->tdshp_hist[pipe]->va[10],
+		tdshp->tdshp_hist[pipe]->va[11],
+		tdshp->tdshp_hist[pipe]->va[12],
+		tdshp->tdshp_hist[pipe]->va[13],
+		tdshp->tdshp_hist[pipe]->va[14]);
+
+	mml_pq_ir_log("%s hist[15~19]={%08x, %08x, %08x, %08x, %08x}",
+		__func__,
+		tdshp->tdshp_hist[pipe]->va[15],
+		tdshp->tdshp_hist[pipe]->va[16],
+		tdshp->tdshp_hist[pipe]->va[17],
+		tdshp->tdshp_hist[pipe]->va[18],
+		tdshp->tdshp_hist[pipe]->va[19]);
+
+	mml_pq_ir_log("%s hist[20~24]={%08x, %08x, %08x, %08x, %08x}",
+		__func__,
+		tdshp->tdshp_hist[pipe]->va[20],
+		tdshp->tdshp_hist[pipe]->va[21],
+		tdshp->tdshp_hist[pipe]->va[22],
+		tdshp->tdshp_hist[pipe]->va[23],
+		tdshp->tdshp_hist[pipe]->va[24]);
+
+	mml_pq_ir_log("%s hist[25~29]={%08x, %08x, %08x, %08x, %08x}",
+		__func__,
+		tdshp->tdshp_hist[pipe]->va[25],
+		tdshp->tdshp_hist[pipe]->va[26],
+		tdshp->tdshp_hist[pipe]->va[27],
+		tdshp->tdshp_hist[pipe]->va[28],
+		tdshp->tdshp_hist[pipe]->va[29]);
+
+	if (tdshp->dc_readback)
+		mml_pq_ir_dc_readback(tdshp->pq_task, tdshp->frame_data,
+			tdshp->pipe, &(tdshp->tdshp_hist[pipe]->va[0]),
+			tdshp->jobid, 0, tdshp->dual);
+
+	if (tdshp->clarity_readback)
+		mml_pq_ir_clarity_readback(tdshp->pq_task, tdshp->frame_data,
+			tdshp->pipe, &(tdshp->tdshp_hist[pipe]->va[TDSHP_CONTOUR_HIST_NUM]),
+			tdshp->jobid, TDSHP_CLARITY_STATUS_NUM, TDSHP_CLARITY_HIST_START,
+			tdshp->dual);
+
+	if (tdshp->data->rb_mode == RB_EOF_MODE) {
+		mml_clock_lock(tdshp->mml);
+		call_hw_op(comp, clk_disable);
+		call_hw_op(comp, pw_disable);
+		mml_clock_unlock(tdshp->mml);
+		mml_lock_wake_lock(tdshp->mml, false);
+	}
+
+	mml_pq_put_pq_task(tdshp->pq_task);
+
+	mml_pq_tdshp_flag_check(tdshp->dual, tdshp->out_idx);
+
+	mml_pq_ir_log("%s end jobid[%d] pkt[%p] hdr[%p] pipe[%d]",
+		__func__, tdshp->jobid, pkt, tdshp, pipe);
+	mml_trace_end();
+}
+
+static void tdshp_err_dump_cb(struct cmdq_cb_data data)
+{
+	struct cmdq_pkt *pkt = (struct cmdq_pkt *)data.data;
+	struct mml_comp_tdshp *tdshp = (struct mml_comp_tdshp *)pkt->user_data;
+	u32 pipe;
+
+
+	mml_pq_ir_log("%s jobid[%d] tdshp->hist_pkts[0] = [%p] hdr->hist_pkts[1] = [%p]",
+		__func__, tdshp->jobid, tdshp->hist_pkts[0], tdshp->hist_pkts[1]);
+
+	if (pkt == tdshp->hist_pkts[0]) {
+		pipe = 0;
+	} else if (pkt == tdshp->hist_pkts[1]) {
+		pipe = 1;
+	} else {
+		mml_err("%s task %p pkt %p not match both pipe (%p and %p)",
+			__func__, tdshp, pkt, tdshp->hist_pkts[0],
+			tdshp->hist_pkts[1]);
+		return;
+	}
+}
+
+
+static void tdshp_hist_work(struct work_struct *work_item)
+{
+	struct mml_comp_tdshp *tdshp = NULL;
+	struct mml_comp *comp = NULL;
+	struct cmdq_pkt *pkt = NULL;
+	struct cmdq_operand lop, rop;
+	struct mml_pq_task *pq_task = NULL;
+
+	const u16 idx_val = CMDQ_THR_SPR_IDX2;
+	u16 idx_out = 0;
+	u16 idx_out64 = 0;
+
+	u8 pipe = 0;
+	phys_addr_t base_pa = 0;
+	dma_addr_t pa = 0;
+	u32 i = 0;
+
+	tdshp = container_of(work_item, struct mml_comp_tdshp, tdshp_hist_task);
+
+	if (!tdshp) {
+		mml_pq_err("%s comp_tdshp is null", __func__);
+		return;
+	}
+
+	pipe = tdshp->pipe;
+	comp = &tdshp->comp;
+	base_pa = comp->base_pa;
+	pkt = tdshp->hist_pkts[pipe];
+	idx_out = tdshp->data->cpr[tdshp->pipe];
+	pq_task = tdshp->pq_task;
+
+
+	mml_pq_ir_log("%s job_id[%d] eng_id[%d] cmd_buf_size[%zu] hist_cmd_done[%d]",
+		__func__, tdshp->jobid, comp->id,
+		pkt->cmd_buf_size, tdshp->hist_cmd_done);
+
+	idx_out64 = CMDQ_CPR_TO_CPR64(idx_out);
+
+	if (unlikely(!tdshp->tdshp_hist[pipe])) {
+		mml_pq_err("%s job_id[%d] eng_id[%d] pipe[%d] pkt[%p] tdshp_hist is null",
+			__func__, tdshp->jobid, comp->id, pipe,
+			tdshp->hist_pkts[pipe]);
+		return;
+	}
+
+	mutex_lock(&tdshp->hist_cmd_lock);
+	if (tdshp->hist_cmd_done) {
+		mutex_unlock(&tdshp->hist_cmd_lock);
+		goto tdshp_hist_cmd_done;
+	}
+
+	cmdq_pkt_wfe(pkt, tdshp->event_eof);
+
+	pa = tdshp->tdshp_hist[pipe]->pa;
+
+	/* readback to this pa */
+	cmdq_pkt_assign_command(pkt, idx_out, (u32)pa);
+	cmdq_pkt_assign_command(pkt, idx_out + 1, (u32)(pa >> 32));
+
+	/* read contour histogram status */
+	for (i = 0; i < TDSHP_CONTOUR_HIST_NUM; i++) {
+		cmdq_pkt_read_addr(pkt, base_pa +
+			tdshp->data->reg_table[CONTOUR_HIST_00] + i * 4, idx_val);
+		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+
+		lop.reg = true;
+		lop.idx = idx_out;
+		rop.reg = false;
+		rop.value = 4;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+	}
+
+	/* read tdshp clarity status */
+	for (i = 0; i < TDSHP_CLARITY_STATUS_NUM; i++) {
+		cmdq_pkt_read_addr(pkt, base_pa +
+			tdshp->data->reg_table[TDSHP_STATUS_00] + i * 4, idx_val);
+		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+
+		lop.reg = true;
+		lop.idx = idx_out;
+		rop.reg = false;
+		rop.value = 4;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+	}
+
+	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%llx] pkt[%p]",
+		__func__, tdshp->jobid, comp->id, tdshp->tdshp_hist[pipe]->va,
+		tdshp->tdshp_hist[pipe]->pa, pkt);
+
+	tdshp->hist_cmd_done = true;
+
+	mml_pq_rb_msg("%s end engine_id[%d] va[%p] pa[%llx] pkt[%p]",
+		__func__, comp->id, tdshp->tdshp_hist[pipe]->va,
+		tdshp->tdshp_hist[pipe]->pa, pkt);
+
+	pkt->user_data = tdshp;
+	pkt->err_cb.cb = tdshp_err_dump_cb;
+	pkt->err_cb.data = (void *)tdshp;
+
+	mutex_unlock(&tdshp->hist_cmd_lock);
+
+tdshp_hist_cmd_done:
+	if (tdshp->pq_config.en_hdr)
+		wait_for_completion(&tdshp->pq_task->hdr_curve_ready[tdshp->pipe]);
+
+	cmdq_pkt_refinalize(pkt);
+	cmdq_pkt_flush_threaded(pkt, tdshp_histdone_cb, (void *)tdshp->hist_pkts[pipe]);
+
+	mml_pq_ir_log("%s end job_id[%d] pkts[%p %p] id[%d] size[%zu] cmd_done[%d] irq[%d]",
+		__func__, tdshp->jobid,
+		tdshp->hist_pkts[0], tdshp->hist_pkts[1], comp->id,
+		pkt->cmd_buf_size, tdshp->hist_cmd_done,
+		pkt->no_irq);
+
+}
+
+
 static int probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -905,9 +1272,22 @@ static int probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	ret = mml_comp_init_larb(&priv->comp, dev);
+	if (ret) {
+		if (ret == -EPROBE_DEFER)
+			return ret;
+			dev_err(dev, "fail to init component %u larb ret %d",
+				priv->comp.id, ret);
+	}
+
 	if (of_property_read_u16(dev->of_node, "event-frame-done",
 				 &priv->event_eof))
 		dev_err(dev, "read event frame_done fail\n");
+
+	priv->tdshp_hist_wq = create_singlethread_workqueue("tdshp_hist_read");
+	INIT_WORK(&priv->tdshp_hist_task, tdshp_hist_work);
+
+	mutex_init(&priv->hist_cmd_lock);
 
 	/* assign ops */
 	priv->comp.tile_ops = &tdshp_tile_ops;

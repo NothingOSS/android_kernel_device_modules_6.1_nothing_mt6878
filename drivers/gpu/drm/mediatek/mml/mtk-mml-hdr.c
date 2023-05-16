@@ -35,7 +35,8 @@
 #define HDR_LABEL_CNT_REG	6
 #define HDR_LABEL_CNT_CURVE	7
 #define HDR_LABEL_CNT		(HDR_LABEL_CNT_REG + HDR_LABEL_CNT_CURVE)
-#define GCE_THREAD_START (2)
+#define call_hw_op(_comp, op, ...) \
+	(_comp->hw_ops->op ? _comp->hw_ops->op(_comp, ##__VA_ARGS__) : 0)
 
 enum mml_hdr_reg_index {
 	HDR_TOP,
@@ -97,6 +98,7 @@ struct hdr_data {
 	const u16 *reg_table;
 	u8 tile_loss;
 	bool vcp_readback;
+	u8 rb_mode;
 };
 
 static const struct hdr_data mt6983_hdr_data = {
@@ -106,6 +108,7 @@ static const struct hdr_data mt6983_hdr_data = {
 	.vcp_readback = false,
 	.reg_table = hdr_reg_table_mt6983,
 	.tile_loss = 8,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct hdr_data mt6895_hdr_data = {
@@ -115,6 +118,7 @@ static const struct hdr_data mt6895_hdr_data = {
 	.vcp_readback = true,
 	.reg_table = hdr_reg_table_mt6983,
 	.tile_loss = 8,
+	.rb_mode = RB_EOF_MODE,
 };
 
 static const struct hdr_data mt6985_hdr_data = {
@@ -123,11 +127,13 @@ static const struct hdr_data mt6985_hdr_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.vcp_readback = false,
 	.reg_table = hdr_reg_table_mt6983,
+	.rb_mode = RB_EOF_MODE,
 };
 
 struct mml_comp_hdr {
 	struct mtk_ddp_comp ddp_comp;
 	struct mml_comp comp;
+	struct mml_dev *mml;
 	const struct hdr_data *data;
 	bool ddp_bound;
 	u8 pipe;
@@ -376,8 +382,18 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			hdr->out_idx = ccfg->node->out_idx;
 
 			if (!(hdr->hdr_hist[ccfg->pipe]))
-				mml_pq_get_readback_buffer(task,
-					ccfg->pipe, &(hdr->hdr_hist[ccfg->pipe]));
+				mml_pq_get_readback_buffer(task, ccfg->pipe,
+					&(hdr->hdr_hist[ccfg->pipe]));
+			hdr->hist_pkts[ccfg->pipe]->no_irq = !task->config->irq;
+
+			if (hdr->data->rb_mode == RB_EOF_MODE) {
+				mml_clock_lock(task->config->mml);
+				call_hw_op(comp, pw_enable);
+				call_hw_op(comp, clk_enable);
+				mml_clock_unlock(task->config->mml);
+				mml_lock_wake_lock(hdr->mml, true);
+			}
+
 			queue_work(hdr->hdr_hist_wq, &hdr->hdr_hist_task);
 		}
 	}
@@ -1234,6 +1250,7 @@ static int mml_bind(struct device *dev, struct device *master, void *data)
 		if (ret)
 			dev_err(dev, "Failed to register mml component %s: %d\n",
 				dev->of_node->full_name, ret);
+		hdr->mml = dev_get_drvdata(master);
 	} else {
 		ret = mml_ddp_comp_register(drm_dev, &hdr->ddp_comp);
 		if (ret)
@@ -1405,6 +1422,7 @@ static void hdr_histdone_cb(struct cmdq_cb_data data)
 {
 	struct cmdq_pkt *pkt = (struct cmdq_pkt *)data.data;
 	struct mml_comp_hdr *hdr = (struct mml_comp_hdr *)pkt->user_data;
+	struct mml_comp *comp = &hdr->comp;
 	u32 pipe;
 	u32 offset = 0;
 	u32 sum = 0;
@@ -1477,6 +1495,14 @@ static void hdr_histdone_cb(struct cmdq_cb_data data)
 
 	if ((mml_pq_debug_mode & MML_PQ_HIST_CHECK))
 		hdr_ir_histogram_check(hdr);
+
+	if (hdr->data->rb_mode == RB_EOF_MODE) {
+		mml_clock_lock(hdr->mml);
+		call_hw_op(comp, clk_disable);
+		call_hw_op(comp, pw_disable);
+		mml_clock_unlock(hdr->mml);
+		mml_lock_wake_lock(hdr->mml, false);
+	}
 
 	mml_pq_put_pq_task(hdr->pq_task);
 
