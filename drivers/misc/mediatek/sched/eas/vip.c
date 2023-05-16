@@ -666,6 +666,7 @@ void vip_init(void)
 	read_lock(&tasklist_lock);
 	do_each_thread(g, p) {
 		init_vip_task_struct(p);
+		init_task_gear_hints(p);
 	} while_each_thread(g, p);
 	read_unlock(&tasklist_lock);
 
