@@ -274,9 +274,10 @@ static long mbraink_ioctl(struct file *filp,
 			return -EPERM;
 		}
 
-		if (process_memory_buffer.pid > PID_MAX_DEFAULT) {
-			pr_notice("process memory: Invalid pid_idx %u\n",
-				process_memory_buffer.pid);
+		if (process_memory_buffer.pid > PID_MAX_DEFAULT ||
+			process_memory_buffer.pid_count > PID_MAX_DEFAULT) {
+			pr_notice("process memory: Invalid pid_idx %u or pid_count %u\n",
+				process_memory_buffer.pid, process_memory_buffer.pid_count);
 			return -EINVAL;
 		}
 		pid = process_memory_buffer.pid;
