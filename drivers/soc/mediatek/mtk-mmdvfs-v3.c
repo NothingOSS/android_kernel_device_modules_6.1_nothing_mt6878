@@ -1189,19 +1189,19 @@ MODULE_PARM_DESC(vcp_test, "trigger vcp test");
 static int mmdvfs_profile_test(const char *val, const struct kernel_param *kp)
 {
 	u8 idx;
-	u32 times;
+	u32 times[1];
 	int ret = 0;
 
-	ret = sscanf(val, "%hhu %u", &idx, &times);
+	ret = sscanf(val, "%hhu %u", &idx, &times[0]);
 	if (ret != 2) {
-		MMDVFS_ERR("input failed:%d idx:%hu times:%hd", ret, idx, times);
+		MMDVFS_ERR("input failed:%d idx:%hu times:%hd", ret, idx, times[0]);
 		return -EINVAL;
 	}
 
-	ret = mmdvfs_vcp_ipi_send(FUNC_MMDVFS_PROFILE, idx, MAX_OPP, &times);
+	ret = mmdvfs_vcp_ipi_send(FUNC_MMDVFS_PROFILE, idx, MAX_OPP, (u32 *)&times);
 
 	if (ret || log_level & (1 << log_adb))
-		MMDVFS_DBG("idx:%hhu times:%u ret:%d", idx, times, ret);
+		MMDVFS_DBG("idx:%hhu times:%u ret:%d", idx, times[0], ret);
 	return ret;
 }
 
