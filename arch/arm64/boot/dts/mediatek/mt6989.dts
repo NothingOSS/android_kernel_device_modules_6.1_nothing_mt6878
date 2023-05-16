@@ -11961,7 +11961,7 @@
 				  "mbox4";
 
 		mtk,smmu-shared = <&mm_smmu_mmup_normal>;
-		/*mediatek,smi = <&mmsram_smi_2x1_sub_comm4 &smi_mdp_2x1_subcommon>;*/
+		mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;
 
 		core-0 = "enable";
 		vcp-sram-size = <0x00060000>;
@@ -12031,8 +12031,8 @@
 			      <8 0x1000>, /* MMDVFS_MEM_ID 4KB */
 			      <9 0x1000>, /* MMQOS_MEM_ID 4KB */
 			      <10 0x0>; /* secure dump, its size is in secure_dump_size */
+		/*vcp-ao-feature;*/
 
-		vcp-ao-feature;
 	};
 
 	vcp_io2: vcp-iommu-vdec {
