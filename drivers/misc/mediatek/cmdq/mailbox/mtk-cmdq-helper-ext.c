@@ -744,7 +744,8 @@ void cmdq_mbox_buf_free(struct cmdq_client *cl, void *va, dma_addr_t pa)
 	}
 	mbox_dev = cl->chan->mbox->dev;
 
-	cmdq_mbox_buf_free_dev(mbox_dev, va, pa - gce_mminfra);
+	cmdq_mbox_buf_free_dev(mtk_smmu_get_shared_device(mbox_dev),
+		va, pa - gce_mminfra);
 	cmdq_set_buffer_size(cl, false);
 }
 EXPORT_SYMBOL(cmdq_mbox_buf_free);
@@ -940,7 +941,8 @@ void cmdq_pkt_free_buf(struct cmdq_pkt *pkt)
 					CMDQ_BUF_ADDR(buf));
 			}
 		} else if (pkt->dev)
-			cmdq_mbox_buf_free_dev(pkt->dev, buf->va_base,
+			cmdq_mbox_buf_free_dev(
+				mtk_smmu_get_shared_device(pkt->dev), buf->va_base,
 				CMDQ_BUF_ADDR(buf));
 		kfree(buf);
 		cmdq_set_buffer_size(cl, false);
