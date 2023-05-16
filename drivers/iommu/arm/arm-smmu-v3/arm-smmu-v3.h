@@ -689,6 +689,8 @@ struct arm_smmu_device {
 
 	struct rb_root			streams;
 	struct mutex			streams_mutex;
+
+	struct mutex			pm_mutex;
 };
 
 struct arm_smmu_stream {

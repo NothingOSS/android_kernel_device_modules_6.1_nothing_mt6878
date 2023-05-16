@@ -504,26 +504,28 @@ static int mtk_smmu_power_get(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	const struct mtk_smmu_plat_data *plat_data = data->plat_data;
+	int ret = 0;
 
-	if (MTK_SMMU_HAS_FLAG(plat_data, SMMU_EN_PRE))
+	if (MTK_SMMU_HAS_FLAG(plat_data, SMMU_CLK_AO_EN))
 		return 0;
 
-	// TODO: smc to take hw semaphore
+	ret = mtk_smmu_pm_get(plat_data->smmu_type);
 
-	return 0;
+	return ret;
 }
 
 static int mtk_smmu_power_put(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	const struct mtk_smmu_plat_data *plat_data = data->plat_data;
+	int ret = 0;
 
-	if (MTK_SMMU_HAS_FLAG(plat_data, SMMU_EN_PRE))
+	if (MTK_SMMU_HAS_FLAG(plat_data, SMMU_CLK_AO_EN))
 		return 0;
 
-	// TODO: smc to release hw semaphore
+	ret = mtk_smmu_pm_put(plat_data->smmu_type);
 
-	return 0;
+	return ret;
 }
 
 static int mtk_smmu_runtime_suspend(struct device *dev)
@@ -1019,20 +1021,36 @@ static inline void mtk_smmu_irq_setup(struct mtk_smmu_data *data, bool enable)
 {
 	struct arm_smmu_device *smmu = &data->smmu;
 
-	mtk_smmu_power_get(smmu);
+	pr_info("[%s] enable:%d smmu:%s\n", __func__, enable,
+		get_smmu_name(data->plat_data->smmu_type));
+
 	mtk_smmu_setup_irqs(smmu, enable);
 	mtk_smmu_sec_setup_irqs(smmu, enable);
-	mtk_smmu_power_put(smmu);
 }
 
 static void mtk_smmu_irq_restart(struct timer_list *t)
 {
 	struct mtk_smmu_data *data = from_timer(data, t, irq_pause_timer);
+	struct arm_smmu_device *smmu;
+	int ret;
 
 	pr_info("[%s] smmu:%s\n", __func__,
 		get_smmu_name(data->plat_data->smmu_type));
 
+	smmu = &data->smmu;
+	mutex_lock(&smmu->pm_mutex);
+	ret = mtk_smmu_power_get(smmu);
+	if (ret)
+		goto out_unlock;
+
 	mtk_smmu_irq_setup(data, true);
+
+	mtk_smmu_power_put(smmu);
+
+out_unlock:
+	mutex_unlock(&smmu->pm_mutex);
+	if (ret)
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 
 #ifdef MTK_SMMU_DEBUG
 	mtk_iommu_debug_reset();
@@ -1069,6 +1087,8 @@ static int mtk_smmu_irq_pause(struct mtk_smmu_data *data, int delay)
 
 static void mtk_smmu_irq_record(struct mtk_smmu_data *data)
 {
+	pr_info("[%s] smmu:%s\n", __func__, get_smmu_name(data->plat_data->smmu_type));
+
 	/* we allow one irq in 1s, or we will disable them after irq_cnt s. */
 	if (!data->irq_cnt ||
 	    time_after(jiffies, data->irq_first_jiffies + data->irq_cnt * HZ)) {
@@ -1426,6 +1446,8 @@ static int mtk_report_device_fault(struct arm_smmu_master *master,
 
 	/* limit TF handle dump rate */
 	if (!__ratelimit(&fault_rs)) {
+		dev_dbg(master->dev, "[%s] smmu:%s, fault ratelimit...\n",
+			__func__, get_smmu_name(data->plat_data->smmu_type));
 		smmuwp_clear_tf(smmu);
 		return 0;
 	}
@@ -1488,6 +1510,7 @@ static void smmu_fault_dump(struct arm_smmu_device *smmu)
 	static DEFINE_RATELIMIT_STATE(fault_rs, SMMU_FAULT_RS_INTERVAL,
 				      SMMU_FAULT_RS_BURST);
 	struct mtk_smmu_data *data;
+	int ret;
 
 	if (!__ratelimit(&fault_rs))
 		return;
@@ -1506,9 +1529,21 @@ static void smmu_fault_dump(struct arm_smmu_device *smmu)
 	dev_info(smmu->dev, "[%s] smmu:%s\n", __func__,
 		 get_smmu_name(data->plat_data->smmu_type));
 
+	mutex_lock(&smmu->pm_mutex);
+	ret = mtk_smmu_power_get(smmu);
+	if (ret)
+		goto out_unlock;
+
 	dump_global_register(smmu);
 	mtk_smmu_wpreg_dump(NULL, data->plat_data->smmu_type);
 	mtk_smmu_ste_cd_dump(NULL, data->plat_data->smmu_type);
+
+	mtk_smmu_power_put(smmu);
+
+out_unlock:
+	mutex_unlock(&smmu->pm_mutex);
+	if (ret)
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 #endif
 }
 
@@ -1561,6 +1596,8 @@ void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
 	static DEFINE_RATELIMIT_STATE(hang_rs, SMMU_FAULT_RS_INTERVAL,
 				      SMMU_FAULT_RS_BURST);
 	struct mtk_smmu_data *data = mkt_get_smmu_data(type);
+	struct arm_smmu_device *smmu;
+	int ret;
 
 	if (!data)
 		return;
@@ -1575,6 +1612,12 @@ void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
 
 	pr_info("%s, smmu:%s\n", __func__, get_smmu_name(type));
 
+	smmu = &data->smmu;
+	mutex_lock(&smmu->pm_mutex);
+	ret = mtk_smmu_power_get(smmu);
+	if (ret)
+		goto out_unlock;
+
 	dump_global_register(&data->smmu);
 	mtk_smmu_wpreg_dump(NULL, data->plat_data->smmu_type);
 	mtk_smmu_ste_cd_dump(NULL, data->plat_data->smmu_type);
@@ -1582,6 +1625,13 @@ void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
 	smmuwp_dump_outstanding_monitor(&data->smmu);
 	smmuwp_dump_io_interface_signals(&data->smmu);
 	smmuwp_dump_dcm_en(&data->smmu);
+
+	mtk_smmu_power_put(smmu);
+
+out_unlock:
+	mutex_unlock(&smmu->pm_mutex);
+	if (ret)
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_dbg_hang_detect);
 
@@ -1877,7 +1927,7 @@ struct arm_smmu_device *mtk_smmu_v3_impl_init(struct arm_smmu_device *smmu)
 static const struct mtk_smmu_plat_data mt6989_data_mm = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= MM_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN,
+	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN | SMMU_CLK_AO_EN,
 };
 
 static const struct mtk_smmu_plat_data mt6989_data_apu = {
@@ -1889,7 +1939,7 @@ static const struct mtk_smmu_plat_data mt6989_data_apu = {
 static const struct mtk_smmu_plat_data mt6989_data_soc = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= SOC_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN,
+	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN | SMMU_CLK_AO_EN,
 };
 
 static const struct mtk_smmu_plat_data mt6989_data_gpu = {
@@ -2548,11 +2598,22 @@ static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu)
 int mtk_smmu_start_transaction_counter(struct device *dev)
 {
 	struct arm_smmu_device *smmu = get_smmu_device(dev);
+	int ret = -1;
 
 	if (!smmu)
 		return -1;
 
-	return smmuwp_start_transaction_counter(smmu);
+	mutex_lock(&smmu->pm_mutex);
+	if (mtk_smmu_power_get(smmu))
+		goto out_unlock;
+
+	ret = smmuwp_start_transaction_counter(smmu);
+
+	mtk_smmu_power_put(smmu);
+
+out_unlock:
+	mutex_unlock(&smmu->pm_mutex);
+	return ret;
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_start_transaction_counter);
 
@@ -2565,7 +2626,16 @@ void mtk_smmu_end_transaction_counter(struct device *dev,
 	if (!smmu)
 		return;
 
+	mutex_lock(&smmu->pm_mutex);
+	if (mtk_smmu_power_get(smmu))
+		goto out_unlock;
+
 	smmuwp_end_transaction_counter(smmu, tcu_tot, tbu_tot);
+
+	mtk_smmu_power_put(smmu);
+
+out_unlock:
+	mutex_unlock(&smmu->pm_mutex);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_end_transaction_counter);
 
@@ -2574,11 +2644,22 @@ int mtk_smmu_start_latency_monitor(struct device *dev,
 				   int lat_spec)
 {
 	struct arm_smmu_device *smmu = get_smmu_device(dev);
+	int ret = -1;
 
 	if (!smmu)
 		return -1;
 
-	return smmuwp_start_latency_monitor(smmu, mon_axiid, lat_spec);
+	mutex_lock(&smmu->pm_mutex);
+	if (mtk_smmu_power_get(smmu))
+		goto out_unlock;
+
+	ret = smmuwp_start_latency_monitor(smmu, mon_axiid, lat_spec);
+
+	mtk_smmu_power_put(smmu);
+
+out_unlock:
+	mutex_unlock(&smmu->pm_mutex);
+	return ret;
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_start_latency_monitor);
 
@@ -2593,8 +2674,17 @@ void mtk_smmu_end_latency_monitor(struct device *dev,
 	if (!smmu)
 		return;
 
-	return smmuwp_end_latency_monitor(smmu, maxlat_axiid,
+	mutex_lock(&smmu->pm_mutex);
+	if (mtk_smmu_power_get(smmu))
+		goto out_unlock;
+
+	smmuwp_end_latency_monitor(smmu, maxlat_axiid,
 			tcu_rlat_tots, tbu_lat_tots, oos_trans_tot);
+
+	mtk_smmu_power_put(smmu);
+
+out_unlock:
+	mutex_unlock(&smmu->pm_mutex);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_end_latency_monitor);
 
@@ -2605,7 +2695,16 @@ void mtk_smmu_dump_outstanding_monitor(struct device *dev)
 	if (!smmu)
 		return;
 
+	mutex_lock(&smmu->pm_mutex);
+	if (mtk_smmu_power_get(smmu))
+		goto out_unlock;
+
 	smmuwp_dump_outstanding_monitor(smmu);
+
+	mtk_smmu_power_put(smmu);
+
+out_unlock:
+	mutex_unlock(&smmu->pm_mutex);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_dump_outstanding_monitor);
 
@@ -2616,7 +2715,16 @@ void mtk_smmu_dump_io_interface_signals(struct device *dev)
 	if (!smmu)
 		return;
 
+	mutex_lock(&smmu->pm_mutex);
+	if (mtk_smmu_power_get(smmu))
+		goto out_unlock;
+
 	smmuwp_dump_io_interface_signals(smmu);
+
+	mtk_smmu_power_put(smmu);
+
+out_unlock:
+	mutex_unlock(&smmu->pm_mutex);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_dump_io_interface_signals);
 
@@ -2627,7 +2735,16 @@ void mtk_smmu_dump_dcm_en(struct device *dev)
 	if (!smmu)
 		return;
 
+	mutex_lock(&smmu->pm_mutex);
+	if (mtk_smmu_power_get(smmu))
+		goto out_unlock;
+
 	smmuwp_dump_dcm_en(smmu);
+
+	mtk_smmu_power_put(smmu);
+
+out_unlock:
+	mutex_unlock(&smmu->pm_mutex);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_dump_dcm_en);
 
