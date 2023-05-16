@@ -4867,7 +4867,7 @@
 			protected-memory-allocator = <&gpu_protected_memory_allocator>;
 			#cooling-cells = <2>;
 			ged-supply = <&ged>;
-			gpu-frame-base-optimize = <0>;
+			gpu-frame-base-optimize = <1>;
 			l2-hash-values = <0xb 0xe 0x0>;
 		};
 
