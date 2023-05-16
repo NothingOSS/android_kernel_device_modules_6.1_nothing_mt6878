@@ -1747,10 +1747,11 @@ static irqreturn_t arm_smmu_combined_irq_thread(int irq, void *dev)
 	struct arm_smmu_device *smmu = dev;
 	int ret;
 
-	mutex_lock(&smmu->pm_mutex);
 	ret = arm_smmu_rpm_get(smmu);
-	if (ret)
-		goto out_unlock;
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return IRQ_HANDLED;
+	}
 
 	arm_smmu_evtq_thread(irq, dev);
 	if (smmu->features & ARM_SMMU_FEAT_PRI)
@@ -1758,10 +1759,6 @@ static irqreturn_t arm_smmu_combined_irq_thread(int irq, void *dev)
 
 	arm_smmu_rpm_put(smmu);
 
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
-	if (ret)
-		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 	return IRQ_HANDLED;
 }
 
@@ -1771,8 +1768,10 @@ static irqreturn_t arm_smmu_combined_irq_handler(int irq, void *dev)
 	int ret;
 
 	ret = arm_smmu_rpm_get(smmu);
-	if (ret)
-		goto out;
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return IRQ_WAKE_THREAD;
+	}
 
 	arm_smmu_gerror_handler(irq, dev);
 
@@ -1781,9 +1780,6 @@ static irqreturn_t arm_smmu_combined_irq_handler(int irq, void *dev)
 
 	arm_smmu_rpm_put(smmu);
 
-out:
-	if (ret)
-		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 	return IRQ_WAKE_THREAD;
 }
 
