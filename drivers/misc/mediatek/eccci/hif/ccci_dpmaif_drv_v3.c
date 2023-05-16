@@ -1459,7 +1459,9 @@ static void drv3_hw_reset_v1(void)
 	/* DPMAIF HW reset */
 	CCCI_DEBUG_LOG(0, TAG, "%s:rst dpmaif\n", __func__);
 	/* reset dpmaif hw: PD Domain */
-	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 || g_plat_inf == 6989)
+	if (g_plat_inf == 6989)
+		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<0);
+	else if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897)
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<14);
 	else
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<22);
@@ -1471,7 +1473,9 @@ static void drv3_hw_reset_v1(void)
 	udelay(500);
 
 	/* reset dpmaif hw: AO Domain */
-	if (g_plat_inf == 6835)
+	if (g_plat_inf == 6989)
+		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x130, 1<<2);
+	else if (g_plat_inf == 6835)
 		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x130, 1<<11);
 	else
 		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x130, 1<<0);
@@ -1486,7 +1490,9 @@ static void drv3_hw_reset_v1(void)
 	udelay(500);
 
 	/* reset dpmaif clr */
-	if (g_plat_inf == 6835)
+	if (g_plat_inf == 6989)
+		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x134, 1<<2);
+	else if (g_plat_inf == 6835)
 		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x134, 1<<11);
 	else
 		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x134, 1<<0);
@@ -1502,7 +1508,9 @@ static void drv3_hw_reset_v1(void)
 	udelay(500);
 
 	/* reset dpmaif clr */
-	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 || g_plat_inf == 6989)
+	if (g_plat_inf == 6989)
+		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<0);
+	else if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897)
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<14);
 	else
 		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<22);
