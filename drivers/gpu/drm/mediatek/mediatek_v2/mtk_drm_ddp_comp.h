@@ -687,6 +687,9 @@ enum mtk_ddp_io_cmd {
 	OVL_SET_PQ_OUT,
 	PQ_FILL_COMP_PIPE_INFO,
 	DSI_NULL_PKT_SET,
+	/*AOD-SCP cmd start*/
+	DSI_AOD_SCP_GET_DSI_PARAM,
+	/*AOD-SCP cmd end*/
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {
