@@ -176,8 +176,12 @@ static int mtk_ccu_mmap(struct file *flip,
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 
-	ret = dma_mmap_attrs(ccu->dev, vma, ccu->ext_buf.meminfo.va,
-		ccu->ext_buf.meminfo.mva, length, DMA_ATTR_WRITE_COMBINE);
+	if (ccu->smmu_enabled)
+		ret = dma_buf_mmap(ccu->ext_buf.dmabuf, vma, vma->vm_pgoff);
+	else
+		ret = dma_mmap_attrs(ccu->dev, vma, ccu->ext_buf.meminfo.va,
+			ccu->ext_buf.meminfo.mva, length, DMA_ATTR_WRITE_COMBINE);
+
 	if (ret)
 		dev_err(ccu->dev, "Remapping memory failed, error: %d\n", ret);
 	return ret;

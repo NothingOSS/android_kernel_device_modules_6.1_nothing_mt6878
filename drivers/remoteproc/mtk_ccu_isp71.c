@@ -8,6 +8,10 @@
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/dma-buf.h>
+#include <linux/dma-heap.h>
+#include <uapi/linux/dma-heap.h>
+#include <linux/dma-direction.h>
+#include <linux/scatterlist.h>
 #include <linux/uaccess.h>
 #include <linux/of_platform.h>
 #include <linux/of_irq.h>
@@ -34,6 +38,7 @@
 #include "mtk_ccu_common.h"
 #include "mtk-interconnect.h"
 #include "remoteproc_internal.h"
+#include <mtk-smmu-v3.h>
 
 #define CCU_SET_MMQOS
 /* #define CCU1_DEVICE */
@@ -77,11 +82,6 @@ struct mtk_ccu_clk_name ccu_clk_name_isp7sp[] = {
 	{true, "CCU_LARB"},
 	{true, "CCU_AHB"},
 	{true, "CCUSYS_CCU0"},
-	{true, "CAM_CCUSYS"},
-	{true, "CAM_CAM2SYS_GALS"},
-	{true, "CAM_CAM2MM1_GALS"},
-	{true, "CAM_CAM2MM0_GALS"},
-	{true, "CAM_CAM2MM2_GALS"},
 	{true, "CAM_CG"},
 	{true, "CAM_VCORE_CG"},
 	{false, ""}};
@@ -102,10 +102,59 @@ static void mtk_ccu_put_power(struct mtk_ccu *ccu, struct device *dev);
 static int mtk_ccu_stopx(struct rproc *rproc, bool normal_stop);
 
 static int
-mtk_ccu_allocate_mem(struct device *dev, struct mtk_ccu_mem_handle *memHandle)
+mtk_ccu_deallocate_mem(struct device *dev, struct mtk_ccu_mem_handle *memHandle, bool smmu)
 {
+	if ((!dev) || (!memHandle))
+		return -EINVAL;
+
+	if (smmu)
+		goto dealloc_with_smmu;
+
+	dma_free_attrs(dev, memHandle->meminfo.size, memHandle->meminfo.va,
+		memHandle->meminfo.mva, DMA_ATTR_WRITE_COMBINE);
+
+	goto dealloc_end;
+
+dealloc_with_smmu:
+	if ((memHandle->dmabuf) && (memHandle->meminfo.va)) {
+		dma_buf_vunmap(memHandle->dmabuf, &memHandle->map);
+		memHandle->meminfo.va = NULL;
+	}
+	if ((memHandle->attach) && (memHandle->sgt)) {
+		dma_buf_unmap_attachment(memHandle->attach, memHandle->sgt,
+			DMA_FROM_DEVICE);
+		memHandle->sgt = NULL;
+	}
+	if ((memHandle->dmabuf) && (memHandle->attach)) {
+		dma_buf_detach(memHandle->dmabuf, memHandle->attach);
+		memHandle->attach = NULL;
+	}
+	if (memHandle->dmabuf) {
+		dma_heap_buffer_free(memHandle->dmabuf);
+		memHandle->dmabuf = NULL;
+	}
+
+dealloc_end:
+	memset(memHandle, 0, sizeof(struct mtk_ccu_mem_handle));
+
+	return 0;
+}
+
+static int
+mtk_ccu_allocate_mem(struct device *dev, struct mtk_ccu_mem_handle *memHandle, bool smmu)
+{
+	struct dma_heap *dmaheap;
+	struct device *sdev;
+	int ret;
+
+	if ((!dev) || (!memHandle))
+		return -EINVAL;
+
 	if (memHandle->meminfo.size <= 0)
 		return -EINVAL;
+
+	if (smmu)
+		goto alloc_with_smmu;
 
 	/* get buffer virtual address */
 	memHandle->meminfo.va = dma_alloc_attrs(dev, memHandle->meminfo.size,
@@ -116,20 +165,67 @@ mtk_ccu_allocate_mem(struct device *dev, struct mtk_ccu_mem_handle *memHandle)
 		return -EINVAL;
 	}
 
+	goto alloc_show;
+
+alloc_with_smmu:
+	LOG_DBG("alloc by DMA-BUF\n");
+
+	/* dma_heap_find() will fail if mtk_ccu.ko is in ramdisk. */
+	dmaheap = dma_heap_find("mtk_mm-uncached");
+	if (!dmaheap) {
+		dev_err(dev, "fail to find dma_heap");
+		return -EINVAL;
+	}
+
+	memHandle->dmabuf = dma_heap_buffer_alloc(dmaheap, memHandle->meminfo.size,
+		O_RDWR | O_CLOEXEC, DMA_HEAP_VALID_HEAP_FLAGS);
+	dma_heap_put(dmaheap);
+	if (IS_ERR(memHandle->dmabuf)) {
+		dev_err(dev, "fail to alloc dma_buf");
+		memHandle->dmabuf = NULL;
+		goto err_out;
+	}
+
+	sdev = mtk_smmu_get_shared_device(dev);
+	if (!sdev) {
+		dev_err(dev, "fail to mtk_smmu_get_shared_device()");
+		goto err_out;
+	}
+
+	memHandle->attach = dma_buf_attach(memHandle->dmabuf, sdev);
+	if (IS_ERR(memHandle->attach)) {
+		dev_err(dev, "fail to attach dma_buf");
+		memHandle->attach = NULL;
+		goto err_out;
+	}
+
+	memHandle->sgt = dma_buf_map_attachment(memHandle->attach, DMA_FROM_DEVICE);
+	if (IS_ERR(memHandle->sgt)) {
+		dev_err(dev, "fail to map attachment");
+		memHandle->sgt = NULL;
+		goto err_out;
+	}
+
+	memHandle->meminfo.mva = sg_dma_address(memHandle->sgt->sgl);
+
+	ret = dma_buf_vmap(memHandle->dmabuf, &memHandle->map);
+	memHandle->meminfo.va = memHandle->map.vaddr;
+	if ((ret) || (memHandle->meminfo.va == NULL)) {
+		dev_err(dev, "fail to map va");
+		memHandle->meminfo.va = NULL;
+		goto err_out;
+	}
+
+alloc_show:
 	dev_info(dev, "success: size(%x), va(%lx), mva(%pad)\n",
-	memHandle->meminfo.size, (unsigned long)memHandle->meminfo.va, &memHandle->meminfo.mva);
+		memHandle->meminfo.size, (unsigned long)memHandle->meminfo.va,
+		&memHandle->meminfo.mva);
 
 	return 0;
-}
 
-static int
-mtk_ccu_deallocate_mem(struct device *dev, struct mtk_ccu_mem_handle *memHandle)
-{
-	dma_free_attrs(dev, memHandle->meminfo.size, memHandle->meminfo.va,
-		memHandle->meminfo.mva, DMA_ATTR_WRITE_COMBINE);
-	memset(memHandle, 0, sizeof(struct mtk_ccu_mem_handle));
-
-	return 0;
+err_out:
+	mtk_ccu_deallocate_mem(dev, memHandle, smmu);
+	return -EINVAL;
 }
 
 static void mtk_ccu_set_log_memory_address(struct mtk_ccu *ccu)
@@ -387,9 +483,14 @@ static int mtk_ccu_start(struct rproc *rproc)
 	writel((uint32_t)((ccu->log_info[2].mva) >> 8), ccu_base + MTK_CCU_SPARE_REG07);
 
 #if defined(CCU_SET_MMQOS)
-	mtk_icc_set_bw(ccu->path_ccuo, MBps_to_icc(20), MBps_to_icc(30));
-	mtk_icc_set_bw(ccu->path_ccui, MBps_to_icc(10), MBps_to_icc(30));
-	mtk_icc_set_bw(ccu->path_ccug, MBps_to_icc(30), MBps_to_icc(30));
+	if (ccu->ccu_version < CCU_VER_ISP7SP) {
+		mtk_icc_set_bw(ccu->path_ccuo, MBps_to_icc(20), MBps_to_icc(30));
+		mtk_icc_set_bw(ccu->path_ccui, MBps_to_icc(10), MBps_to_icc(30));
+		mtk_icc_set_bw(ccu->path_ccug, MBps_to_icc(30), MBps_to_icc(30));
+	} else {
+		mtk_icc_set_bw(ccu->path_ccuo, MBps_to_icc(50), MBps_to_icc(60));
+		mtk_icc_set_bw(ccu->path_ccui, MBps_to_icc(40), MBps_to_icc(60));
+	}
 #endif
 
 	LOG_DBG("LogBuf_mva[0](0x%pad)(0x%x << 8)\n",
@@ -496,7 +597,7 @@ static int mtk_ccu_stopx(struct rproc *rproc, bool normal_stop)
 
 #if !defined(SECURE_CCU)
 	ret = mtk_ccu_deallocate_mem(ccu->dev,
-		&ccu->buffer_handle[MTK_CCU_DDR]);
+		&ccu->buffer_handle[MTK_CCU_DDR], ccu->smmu_enabled);
 #endif
 
 #if defined(SECURE_CCU)
@@ -533,7 +634,8 @@ static int mtk_ccu_stopx(struct rproc *rproc, bool normal_stop)
 #if defined(CCU_SET_MMQOS)
 	mtk_icc_set_bw(ccu->path_ccuo, MBps_to_icc(0), MBps_to_icc(0));
 	mtk_icc_set_bw(ccu->path_ccui, MBps_to_icc(0), MBps_to_icc(0));
-	mtk_icc_set_bw(ccu->path_ccug, MBps_to_icc(0), MBps_to_icc(0));
+	if (ccu->ccu_version < CCU_VER_ISP7SP)
+		mtk_icc_set_bw(ccu->path_ccug, MBps_to_icc(0), MBps_to_icc(0));
 #endif
 
 #ifdef REQUEST_IRQ_IN_INIT
@@ -704,7 +806,8 @@ static int mtk_ccu_load(struct rproc *rproc, const struct firmware *fw)
 	/*2. allocate CCU's dram memory if needed*/
 	ccu->buffer_handle[MTK_CCU_DDR].meminfo.size = MTK_CCU_CACHE_SIZE;
 	ccu->buffer_handle[MTK_CCU_DDR].meminfo.cached	= false;
-	ret = mtk_ccu_allocate_mem(ccu->dev, &ccu->buffer_handle[MTK_CCU_DDR]);
+	ret = mtk_ccu_allocate_mem(ccu->dev, &ccu->buffer_handle[MTK_CCU_DDR],
+		ccu->smmu_enabled);
 	if (ret) {
 		dev_err(ccu->dev, "alloc mem failed\n");
 		goto ccu_load_err;
@@ -713,7 +816,8 @@ static int mtk_ccu_load(struct rproc *rproc, const struct firmware *fw)
 	/*3. load binary*/
 	ret = ccu_elf_load_segments(rproc, fw);
 	if (ret) {
-		mtk_ccu_deallocate_mem(ccu->dev, &ccu->buffer_handle[MTK_CCU_DDR]);
+		mtk_ccu_deallocate_mem(ccu->dev, &ccu->buffer_handle[MTK_CCU_DDR],
+			ccu->smmu_enabled);
 		goto ccu_load_err;
 	}
 #endif
@@ -978,7 +1082,8 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 	LOG_DBG("CCU got %d clocks\n", clki);
 
 #if defined(CCU_SET_MMQOS)
-	ccu->path_ccug = of_mtk_icc_get(ccu->dev, "ccu_g");
+	if (ccu->ccu_version < CCU_VER_ISP7SP)
+		ccu->path_ccug = of_mtk_icc_get(ccu->dev, "ccu_g");
 	ccu->path_ccuo = of_mtk_icc_get(ccu->dev, "ccu_o");
 	ccu->path_ccui = of_mtk_icc_get(ccu->dev, "ccu_i");
 #endif
@@ -1033,9 +1138,11 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 
 	dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
 
+	ccu->smmu_enabled = smmu_v3_enabled();
+
 	ccu->ext_buf.meminfo.size = MTK_CCU_DRAM_LOG_BUF_SIZE * 4;
 	ccu->ext_buf.meminfo.cached = false;
-	ret = mtk_ccu_allocate_mem(ccu->dev, &ccu->ext_buf);
+	ret = mtk_ccu_allocate_mem(ccu->dev, &ccu->ext_buf, ccu->smmu_enabled);
 	if (ret) {
 		dev_err(ccu->dev, "alloc mem failed\n");
 		return ret;
@@ -1047,7 +1154,7 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	ccu->mrdump_buf = kmalloc(MTK_CCU_MRDUMP_BUF_SIZE, GFP_ATOMIC);
 	if (!ccu->mrdump_buf) {
-		mtk_ccu_deallocate_mem(ccu->dev, &ccu->ext_buf);
+		mtk_ccu_deallocate_mem(ccu->dev, &ccu->ext_buf, ccu->smmu_enabled);
 		return -EINVAL;
 	}
 
@@ -1072,7 +1179,7 @@ static int mtk_ccu_remove(struct platform_device *pdev)
 	mrdump_set_extra_dump(AEE_EXTRA_FILE_CCU, NULL);
 	kfree(ccu->mrdump_buf);
 #endif
-	mtk_ccu_deallocate_mem(ccu->dev, &ccu->ext_buf);
+	mtk_ccu_deallocate_mem(ccu->dev, &ccu->ext_buf, ccu->smmu_enabled);
 #if defined(REQUEST_IRQ_IN_INIT)
 	devm_free_irq(ccu->dev, ccu->irq_num, ccu);
 #endif
@@ -1108,6 +1215,11 @@ static int mtk_ccu_read_platform_info_from_dt(struct device_node
 	ccu->ccu_sram_offset = (ret < 0) ?
 		((ccu->ccu_version == CCU_VER_ISP7SP) ?
 		MTK_CCU_CORE_DMEM_BASE_ISP7SP : MTK_CCU_CORE_DMEM_BASE) : reg[0];
+
+	if (ccu->ccu_version == CCU_VER_ISP7SP) {
+		ret = of_property_read_u32(node, "ccu-sramcon-offset", reg);
+		ccu->ccu_sram_con_offset = (ret < 0) ? CCU_SLEEP_SRAM_CON : reg[0];
+	}
 
 	return 0;
 }
@@ -1147,7 +1259,7 @@ static int mtk_ccu_get_power(struct mtk_ccu *ccu, struct device *dev)
 		LOG_DBG("CCU power-on cammainpwr %d\n", rc);
 		ccu->cammainpwr_powered = (rc == 0);
 
-		sram_con = ((uint8_t *)ccu->spm_base)+CCU_SLEEP_SRAM_CON;
+		sram_con = ((uint8_t *)ccu->spm_base)+ccu->ccu_sram_con_offset;
 		writel(readl(sram_con) & ~CCU_SLEEP_SRAM_PDN, sram_con);
 	}
 
@@ -1160,7 +1272,7 @@ static void mtk_ccu_put_power(struct mtk_ccu *ccu, struct device *dev)
 	int ret;
 
 	if (ccu->ccu_version == CCU_VER_ISP7SP) {
-		sram_con = ((uint8_t *)ccu->spm_base)+CCU_SLEEP_SRAM_CON;
+		sram_con = ((uint8_t *)ccu->spm_base)+ccu->ccu_sram_con_offset;
 		writel(readl(sram_con) | CCU_SLEEP_SRAM_PDN, sram_con);
 
 		if (ccu->cammainpwr_powered) {
@@ -1229,6 +1341,8 @@ static void __exit ccu_exit(void)
 
 module_init(ccu_init);
 module_exit(ccu_exit);
+
+MODULE_IMPORT_NS(DMA_BUF);
 
 MODULE_DESCRIPTION("MTK CCU Rproc Driver");
 MODULE_LICENSE("GPL v2");

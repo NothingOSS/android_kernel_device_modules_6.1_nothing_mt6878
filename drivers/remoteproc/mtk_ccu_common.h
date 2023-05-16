@@ -10,6 +10,8 @@
 #include <linux/cdev.h>
 #include <linux/remoteproc/mtk_ccu.h>
 #include <linux/spinlock.h>
+#include <linux/dma-buf.h>
+#include <linux/iosys-map.h>
 
 #define SECURE_CCU
 /*
@@ -82,6 +84,7 @@ struct mtk_ccu_mem_handle {
 	struct dma_buf_attachment *attach;
 	struct sg_table *sgt;
 	struct mtk_ccu_mem_info meminfo;
+	struct iosys_map map;
 };
 
 struct mtk_ccu_buffer {
@@ -142,6 +145,7 @@ struct mtk_ccu {
 	uint32_t ccu_version;
 	uint32_t ccu_sram_size;
 	uint32_t ccu_sram_offset;
+	uint32_t ccu_sram_con_offset;
 	void __iomem *ccu_base;
 	void __iomem *bin_base;
 	void __iomem *dmem_base;
@@ -163,6 +167,7 @@ struct mtk_ccu {
 	struct clk *ccu_clk_pwr_ctrl[MTK_CCU_CLK_PWR_NUM];
 	struct mtk_ccu_mem_handle buffer_handle[MTK_CCU_BUF_MAX];
 	struct mtk_ccu_mem_handle ext_buf;
+	bool smmu_enabled;
 	void *mrdump_buf;
 	struct mtk_ccu_mailbox *mb;
 	struct mtk_ccu_buffer log_info[MTK_CCU_DRAM_LOG_BUF_CNT];
