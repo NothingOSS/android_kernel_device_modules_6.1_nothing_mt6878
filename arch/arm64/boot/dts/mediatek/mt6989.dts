@@ -3055,7 +3055,7 @@
 		#size-cells = <1>;
 		mtk,iommu-dma-range = <0xb000000 0x1000000>;
 		iommus = <&apu_smmu 0x11>;
-		ctrl-size = <0x100000>;
+		ctrl-size = <0x200000>;
 	};
 
 	soc {
