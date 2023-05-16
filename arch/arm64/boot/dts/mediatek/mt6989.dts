@@ -3768,6 +3768,41 @@
 			clear-md = <0x1fc 0x80000000 1>;
 		};
 
+		emi-fake-eng@1026c000 {
+			compatible = "mediatek,emi-fake-engine";
+			reg = <0 0x1026c000 0 0x1000>,   /* FAKE_ENG_0 */
+					<0 0x10310000 0 0x1000>, /* FAKE_ENG_1 */
+					<0 0x1026d000 0 0x1000>, /* FAKE_ENG_2 */
+					<0 0x10311000 0 0x1000>; /* FAKE_ENG_3 */
+			mediatek,emi-reg = <&emicen>;
+			pre-setting {
+				setting1 {
+					reg-name = "SLEEP_PROT_EN_8";
+					addr = <0x1002c100>;
+					mask-value = <0x1800>;
+					set-value = <0x0>;
+				};
+				setting2 {
+					reg-name = "SLEEP_PROT_EN_9";
+					addr = <0x1002c120>;
+					mask-value = <0x1800>;
+					set-value = <0x0>;
+				};
+				setting3 {
+					reg-name = "N_DCM_FR";
+					addr = <0x10270300>;
+					mask-value = <0x0>;
+					set-value = <0xff>;
+				};
+				setting4 {
+					reg-name = "S_DCM_FR";
+					addr = <0x1030e300>;
+					mask-value = <0x0>;
+					set-value = <0xff>;
+				};
+			};
+		};
+
 		emiisu {
 			compatible = "mediatek,common-emiisu";
 			ctrl-intf = <1>;
