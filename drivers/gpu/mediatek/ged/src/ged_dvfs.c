@@ -752,14 +752,17 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 
 		if (is_fdvfs_enable()) {
 			if (eCommitType != GED_DVFS_EB_DESIRE_COMMIT) {
-				if (policy_state != POLICY_STATE_INIT)
+				if (policy_state != POLICY_STATE_INIT) {
 					ged_set_prev_policy_state(policy_state);
+					trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
+				}
 			}
 		} else {
-			if (policy_state != POLICY_STATE_INIT)
+			if (policy_state != POLICY_STATE_INIT) {
 				ged_set_prev_policy_state(policy_state);
+				trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
+			}
 		}
-		trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
 	}
 	return bCommited;
 }
@@ -860,14 +863,17 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 
 	if (is_fdvfs_enable()) {
 		if (eCommitType != GED_DVFS_EB_DESIRE_COMMIT) {
-			if (policy_state != POLICY_STATE_INIT)
+			if (policy_state != POLICY_STATE_INIT) {
 				ged_set_prev_policy_state(policy_state);
+				trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
+			}
 		}
 	} else {
-		if (policy_state != POLICY_STATE_INIT)
+		if (policy_state != POLICY_STATE_INIT) {
 			ged_set_prev_policy_state(policy_state);
+			trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
+		}
 	}
-	trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
 
 	return bCommited;
 }

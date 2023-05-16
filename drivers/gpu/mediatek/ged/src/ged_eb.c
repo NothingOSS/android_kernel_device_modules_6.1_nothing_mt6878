@@ -519,18 +519,8 @@ EXPORT_SYMBOL(mtk_gpueb_dvfs_set_mode);
 
 unsigned int mtk_gpueb_dvfs_get_mode(unsigned int *pAction)
 {
-	int ret = 0;
-
-	if (ret > 0) {
-		if (pAction != NULL)
-			*pAction = ret;
-
-		fastdvfs_mode = ret;
-		need_to_refresh_mode = false;
-	} else {
-		if (pAction != NULL)
-			*pAction = fastdvfs_mode;
-	}
+	if (pAction != NULL)
+		*pAction = fastdvfs_mode;
 
 	return fastdvfs_mode;
 }

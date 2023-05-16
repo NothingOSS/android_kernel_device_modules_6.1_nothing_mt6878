@@ -1050,10 +1050,13 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 	struct ged_risky_bq_info info_kpi;
 	struct ged_sysram_info info_sysram;
 	GED_ERROR ret_bq_state;
-	int t_gpu_complete_eb, t_gpu_uncomplete_eb;
-	int t_gpu_target_eb_uncomplete, t_gpu_target_eb_complete;
-	unsigned int gpu_completed_counteb;
-	unsigned long long risk_completed_eb, risk_uncompleted_eb;
+	int t_gpu_complete_eb = 0;
+	int t_gpu_uncomplete_eb = 0;
+	int t_gpu_target_eb_uncomplete = 0;
+	int t_gpu_target_eb_complete = 0;
+	unsigned int gpu_completed_counteb = 0;
+	unsigned long long risk_completed_eb = 0;
+	unsigned long long risk_uncompleted_eb = 0;
 	enum gpu_dvfs_policy_state policy_state;
 	/* ================== */
 
@@ -1395,10 +1398,12 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		gpu_freq_pre = ged_kpi_gpu_dvfs(t_gpu, t_gpu_target,
 			target_fps_margin, force_fallback);
 
+		// update prev policy in gpu job boundary
 		if (is_fdvfs_enable()) {
-			// update prev policy in gpu job boundary
 			policy_state = ged_get_policy_state();
-			ged_set_prev_policy_state(policy_state);
+			// set prev policy
+			if (policy_state != POLICY_STATE_INIT)
+				ged_set_prev_policy_state(policy_state);
 		}
 
 		mutex_unlock(&gsPolicyLock);
@@ -1595,7 +1600,6 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 			t_gpu_complete_eb = -1;
 			t_gpu_uncomplete_eb = -1;
 		}
-
 		/* write info in sysram */
 		mtk_gpueb_sysram_write(SYSRAM_GPU_CURR_FREQ, ret_bq_state);
 		mtk_gpueb_sysram_write(SYSRAM_GPU_PRED_FREQ, t_gpu_complete_eb);
@@ -2035,9 +2039,12 @@ void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info)
 	unsigned long long current_timestamp;
 	unsigned long ulIRQFlags;
 
-	if (info != NULL)
-		memset(info, 0, sizeof(struct ged_sysram_info));
+	if (info == NULL) {
+		GED_LOGD("ged sysram is null pointer");
+		return;
+	}
 
+	memset(info, 0, sizeof(struct ged_sysram_info));
 	info->current_timestamp = ged_get_time();
 	spin_lock_irqsave(&gs_hashtableLock, ulIRQFlags);
 	ged_hashtable_iterator(gs_hashtable,
