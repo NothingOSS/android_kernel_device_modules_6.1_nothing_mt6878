@@ -74,6 +74,7 @@ struct freq_qos_request *freq_max_request;
 // ADPF
 #define ADPF_MAX_SESSION 64
 #define ADPF_MAX_CALLBACK 64
+static int adpf_enable = 1;
 static struct _SESSION *sessionList[ADPF_MAX_SESSION];
 static adpfCallback adpfCallbackList[ADPF_MAX_CALLBACK];
 static DEFINE_MUTEX(adpf_mutex);
@@ -359,11 +360,51 @@ out:
 	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
 }
 
+static ssize_t perfmgr_adpf_enable_proc_write(struct file *filp,
+		const char *ubuf, size_t cnt, loff_t *data)
+{
+	char buf[64];
+	int value;
+	int ret;
+
+	if (cnt >= sizeof(buf) || copy_from_user(buf, ubuf, cnt))
+		return -EINVAL;
+
+	buf[cnt] = 0;
+	ret = kstrtoint(buf, 10, &value);
+	if (ret < 0)
+		return ret;
+
+	adpf_enable = value;
+
+	return cnt;
+}
+
+static ssize_t perfmgr_adpf_enable_proc_show(struct file *file,
+		char __user *ubuf, size_t count, loff_t *ppos)
+{
+	int n = 0;
+	char buffer[64];
+
+	if (*ppos != 0)
+		goto out;
+	n = scnprintf(buffer, 64, "%d\n", adpf_enable);
+out:
+	if (n < 0)
+		return -EINVAL;
+
+	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
+}
+
 PROC_FOPS_RW(perfserv_freq);
+PROC_FOPS_RW(adpf_enable);
 
 int adpf_register_callback(adpfCallback callback)
 {
 	int i = 0;
+
+	if (!adpf_enable)
+		return 0;
 
 	mutex_lock(&adpf_mutex);
 	while (i < ADPF_MAX_CALLBACK) {
@@ -386,9 +427,13 @@ EXPORT_SYMBOL(adpf_register_callback);
 
 int adpf_unregister_callback(int idx)
 {
+	if (!adpf_enable)
+		return 0;
+
 	mutex_lock(&adpf_mutex);
 	if (idx < 0 || idx >= ADPF_MAX_CALLBACK) {
 		pr_debug("%s error: %d", __func__, idx);
+		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
 
@@ -404,9 +449,13 @@ int adpf_notify_callback(unsigned int cmd, unsigned int sid)
 	int i = 0;
 	struct _SESSION session;
 
+	if (!adpf_enable)
+		return 0;
+
 	mutex_lock(&adpf_mutex);
 	if (sid >= ADPF_MAX_SESSION || sessionList[sid] == NULL) {
 		pr_debug("[%s] error",  __func__);
+		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
 
@@ -436,9 +485,13 @@ int adpf_create_session_hint(unsigned int sid, unsigned int tgid,
 {
 	char log[256];
 
+	if (!adpf_enable)
+		return 0;
+
 	mutex_lock(&adpf_mutex);
 	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_USED) {
 		pr_debug("[%s] sid error: %d",  __func__, sid);
+		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
 
@@ -478,9 +531,13 @@ int adpf_update_work_duaration(unsigned int sid, long targetDurationNanos)
 {
 	char log[256];
 
+	if (!adpf_enable)
+		return 0;
+
 	mutex_lock(&adpf_mutex);
 	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
 		pr_debug("[%s] sid error: %d", __func__, sid);
+		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
 
@@ -507,19 +564,24 @@ int adpf_report_actual_work_duaration(unsigned int sid,
 	int i = 0;
 	char log[256];
 
+	if (!adpf_enable)
+		return 0;
+
+	mutex_lock(&adpf_mutex);
 	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
 		pr_debug("[%s] sid error: %d", __func__, sid);
+		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
 
 	if (sprintf(log, "sid: %d, ", sid) < 0) {
 		pr_debug("[%s] sprintf failed!", __func__);
+		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
 
 	pr_debug("[%s], sid: %d", __func__, sid);
 
-	mutex_lock(&adpf_mutex);
 	for (i = 0; i < work_duration_size; i++) {
 		sessionList[sid]->workDuration[i]->timeStampNanos = workDuration[i].timeStampNanos;
 		sessionList[sid]->workDuration[i]->durationNanos = workDuration[i].durationNanos;
@@ -530,6 +592,7 @@ int adpf_report_actual_work_duaration(unsigned int sid,
 				i, workDuration[i].timeStampNanos,
 				i, workDuration[i].durationNanos) < 0) {
 			pr_debug("[%s] sprintf failed!", __func__);
+			mutex_unlock(&adpf_mutex);
 			return -1;
 		}
 	}
@@ -548,10 +611,16 @@ int adpf_pause(unsigned int sid)
 {
 	char log[256];
 
+	if (!adpf_enable)
+		return 0;
+
+	mutex_lock(&adpf_mutex);
 	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
 		pr_debug("[%s] sid error: %d", __func__, sid);
+		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
+	mutex_unlock(&adpf_mutex);
 
 	pr_debug("[%s], sid: %d", __func__, sid);
 
@@ -571,10 +640,16 @@ int adpf_resume(unsigned int sid)
 {
 	char log[256];
 
+	if (!adpf_enable)
+		return 0;
+
+	mutex_lock(&adpf_mutex);
 	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
 		pr_debug("[%s] sid error: %d", __func__, sid);
+		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
+	mutex_unlock(&adpf_mutex);
 
 	pr_debug("[%s], sid: %d", __func__, sid);
 
@@ -594,14 +669,18 @@ int adpf_close(unsigned int sid)
 {
 	char log[256];
 
+	if (!adpf_enable)
+		return 0;
+
+	mutex_lock(&adpf_mutex);
 	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
 		pr_debug("[%s] sid error: %d", __func__, sid);
+		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
 
 	pr_debug("[%s], sid: %d", __func__, sid);
 
-	mutex_lock(&adpf_mutex);
 	sessionList[sid]->used = SESSION_UNUSED;
 	mutex_unlock(&adpf_mutex);
 
@@ -621,14 +700,18 @@ int adpf_sent_hint(unsigned int sid, int hint)
 {
 	char log[256];
 
+	if (!adpf_enable)
+		return 0;
+
+	mutex_lock(&adpf_mutex);
 	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
 		pr_debug("[%s] sid error: %d", __func__, sid);
+		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
 
 	pr_debug("[%s], sid: %d, hint: %d", __func__, sid, hint);
 
-	mutex_lock(&adpf_mutex);
 	sessionList[sid]->hint = hint;
 	mutex_unlock(&adpf_mutex);
 
@@ -648,19 +731,24 @@ int adpf_set_threads(unsigned int sid, int *threadIds, int threadIds_size)
 {
 	char log[256];
 
+	if (!adpf_enable)
+		return 0;
+
+	mutex_lock(&adpf_mutex);
 	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
 		pr_debug("[%s] sid error: %d", __func__, sid);
+		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
 
 	if (sid >= ADPF_MAX_SESSION) {
 		pr_debug("[%s] sid error: %d", __func__, sid);
+		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
 
 	pr_debug("[%s] sid: %d, threads_size: %d", __func__, sid, threadIds_size);
 
-	mutex_lock(&adpf_mutex);
 	if (sessionList[sid] != NULL) {
 		memset(sessionList[sid]->threadIds, 0,
 			sessionList[sid]->threadIds_size*sizeof(int));
@@ -701,6 +789,7 @@ static int __init powerhal_cpu_ctrl_init(void)
 	};
 	const struct pentry entries[] = {
 		PROC_ENTRY(perfserv_freq),
+		PROC_ENTRY(adpf_enable),
 	};
 
 	lt_dir = proc_mkdir("powerhal_cpu_ctrl", parent);
