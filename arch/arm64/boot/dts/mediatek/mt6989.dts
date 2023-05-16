@@ -1556,6 +1556,11 @@
 		compatible = "medaitek,svp";
 	};
 
+	drm_wv: drm-wv {
+		compatible = "mediatek,drm_wv";
+		status = "okay";
+	};
+
 	mgm: mgm {
 		compatible = "arm,physical-memory-group-manager";
 	};
