@@ -182,8 +182,6 @@
 #define MT6989_TOP_AXI_PROT_EN_EMISYS0_MM_INFRA	(BIT(21) | BIT(22))
 #define MT6989_TOP_AXI_PROT_EN_EMISYS1_MM_INFRA	(BIT(21) | BIT(22))
 #define MT6989_VLP_AXI_PROT_EN_MM_INFRA	(BIT(11) | BIT(12))
-#define MT6989_TOP_AXI_PROT_EN_MFGSYS0_MFG0	(BIT(4))
-#define MT6989_TOP_AXI_PROT_EN_INFRASYS0_MFG0	(BIT(17))
 
 enum regmap_type {
 	INVALID_TYPE = 0,
@@ -744,7 +742,8 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
 				MT6989_VLP_AXI_PROT_EN_MM_INFRA),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_CLK
+				| default_cap,
 	},
 	[MT6989_POWER_DOMAIN_DP_TX] = {
 		.name = "dp-tx",
@@ -765,20 +764,6 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.basic_clk_name = {"ssr_dma"},
 		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
-	},
-	[MT6989_POWER_DOMAIN_MFG0_DORMANT] = {
-		.name = "mfg0-dormant",
-		.ctl_offs = 0xF04,
-		.sram_slp_bits = GENMASK(9, 9),
-		.sram_slp_ack_bits = GENMASK(13, 13),
-		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x1a4, 0x1a8, 0x1a0, 0x1ac,
-				MT6989_TOP_AXI_PROT_EN_MFGSYS0_MFG0),
-			BUS_PROT_IGN(IFR_TYPE, 0x004, 0x008, 0x000, 0x00c,
-				MT6989_TOP_AXI_PROT_EN_INFRASYS0_MFG0),
-		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_SRAM_SLP |
-				MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_APU] = {
 		.name = "apu",

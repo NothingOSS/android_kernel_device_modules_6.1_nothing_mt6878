@@ -635,6 +635,9 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
 	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_NON_CPU_RTFF)) {
 		val = readl(ctl_addr);
 		if (val & PWR_RTFF_SAVE_FLAG) {
+			val &= ~PWR_RTFF_SAVE_FLAG;
+			writel(val, ctl_addr);
+
 			val |= PWR_RTFF_CLK_DIS;
 			writel(val, ctl_addr);
 
@@ -650,6 +653,9 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
 	} else if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PEXTP_PHY_RTFF)) {
 		val = readl(ctl_addr);
 		if (val & PWR_RTFF_SAVE_FLAG) {
+			val &= ~PWR_RTFF_SAVE_FLAG;
+			writel(val, ctl_addr);
+
 			val &= ~PWR_RTFF_NRESTORE;
 			writel(val, ctl_addr);
 
@@ -2520,6 +2526,8 @@ static int scpsys_probe(struct platform_device *pdev)
 	int i, ret;
 
 	soc = of_device_get_match_data(&pdev->dev);
+	if (!soc)
+		return -EINVAL;
 
 	scp = init_scp(pdev, soc->domains, soc->num_domains, &soc->regs, bus_list, BUS_TYPE_NUM);
 	if (IS_ERR(scp))
