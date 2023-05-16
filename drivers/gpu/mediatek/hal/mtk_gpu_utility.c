@@ -27,6 +27,21 @@ bool mtk_get_gpu_memory_usage(unsigned int *pMemUsage)
 }
 EXPORT_SYMBOL(mtk_get_gpu_memory_usage);
 
+size_t (*mtk_get_gpu_memory_pool_fp)(void) = NULL;
+EXPORT_SYMBOL(mtk_get_gpu_memory_pool_fp);
+
+bool mtk_get_gpu_memory_pool(size_t *pMemPool)
+{
+	if (mtk_get_gpu_memory_pool_fp != NULL) {
+		if (pMemPool) {
+			*pMemPool = mtk_get_gpu_memory_pool_fp();
+			return true;
+		}
+	}
+	return false;
+}
+EXPORT_SYMBOL(mtk_get_gpu_memory_pool);
+
 unsigned int (*mtk_get_gpu_loading_fp)(void) = NULL;
 EXPORT_SYMBOL(mtk_get_gpu_loading_fp);
 

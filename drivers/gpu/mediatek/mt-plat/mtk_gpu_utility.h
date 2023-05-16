@@ -43,6 +43,7 @@ extern "C"
 
 /* unit: x bytes */
 bool mtk_get_gpu_memory_usage(unsigned int *pMemUsage);
+bool mtk_get_gpu_memory_pool(size_t *pMemPool);
 
 /* unit: 0~100 % */
 bool mtk_get_gpu_loading(unsigned int *pLoading);
