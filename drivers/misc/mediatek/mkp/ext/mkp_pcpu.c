@@ -38,7 +38,7 @@ static int start_protect(void)
 
 	/* Try to get __per_cpu_start */
 	//p__per_cpu_start = android_debug_symbol(ADS_PER_CPU_START);
-	if (IS_ERR(p__per_cpu_start))
+	if (IS_ERR_OR_NULL(p__per_cpu_start))
 		return -EFAULT;
 
 	for_each_possible_cpu(i) {
