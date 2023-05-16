@@ -397,6 +397,11 @@ static void fpsgo_notifier_wq_cb(void)
 
 }
 
+struct task_struct *fpsgo_get_kfpsgo(void)
+{
+	return kfpsgo_tsk ? kfpsgo_tsk : NULL;
+}
+
 static int kfpsgo(void *arg)
 {
 	struct sched_attr attr = {};

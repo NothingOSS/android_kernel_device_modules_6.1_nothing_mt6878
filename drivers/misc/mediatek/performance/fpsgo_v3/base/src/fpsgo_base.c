@@ -60,6 +60,7 @@ static int fpsgo_get_acquire_hint_enable;
 static int cond_get_cam_apk_pid;
 static int cond_get_cam_ser_pid;
 static int global_cam_apk_pid;
+static int global_kfps_mask = 0xFFF;
 
 static struct kobject *base_kobj;
 static struct rb_root render_pid_tree;
@@ -2919,6 +2920,59 @@ out:
 
 static KOBJ_ATTR_RO(render_loading);
 
+static ssize_t kfps_cpu_mask_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n", global_kfps_mask);
+}
+
+static ssize_t kfps_cpu_mask_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char *acBuffer = NULL;
+	int arg = -1;
+	int cpu;
+	struct cpumask local_mask;
+	struct task_struct *tsk = NULL;
+
+	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!acBuffer)
+		goto out;
+
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) != 0)
+				goto out;
+		}
+	}
+
+	global_kfps_mask = arg;
+
+	cpumask_clear(&local_mask);
+	for_each_possible_cpu(cpu) {
+		if (global_kfps_mask & (1 << cpu))
+			cpumask_set_cpu(cpu, &local_mask);
+	}
+	FPSGO_LOGE("%s mask:%d %*pbl\n", __func__,
+		global_kfps_mask, cpumask_pr_args(&local_mask));
+
+	tsk = fpsgo_get_kfpsgo();
+	if (!tsk)
+		goto out;
+
+	if (fpsgo_sched_setaffinity(tsk->pid, &local_mask))
+		FPSGO_LOGE("%s setaffinity fail\n", __func__);
+	else
+		FPSGO_LOGE("%s setaffinity success\n", __func__);
+
+out:
+	kfree(acBuffer);
+	return count;
+}
+
+static KOBJ_ATTR_RW(kfps_cpu_mask);
+
 int init_fpsgo_common(void)
 {
 	render_pid_tree = RB_ROOT;
@@ -2946,6 +3000,7 @@ int init_fpsgo_common(void)
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_render_attr_params);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_render_attr_params_tid);
 		#endif
+		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_kfps_cpu_mask);
 	}
 
 	fpsgo_update_tracemark();
