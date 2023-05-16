@@ -165,6 +165,17 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		g_shared_status->temper_comp_norm_stack,
 		g_shared_status->temper_comp_high_stack);
 	seq_printf(m,
+		"%-16s inFreq: %d/%d, outFreq: %d/%d, CC:%d/%d, FC:%d/%d\n",
+		"[MFGSYS Config]",
+		g_shared_status->ptp3_info.infreq0,
+		g_shared_status->ptp3_info.infreq1,
+		g_shared_status->ptp3_info.outfreq0,
+		g_shared_status->ptp3_info.outfreq1,
+		g_shared_status->ptp3_info.hw_cc,
+		g_shared_status->ptp3_info.sw_cc,
+		g_shared_status->ptp3_info.hw_fc,
+		g_shared_status->ptp3_info.sw_fc);
+	seq_printf(m,
 		"%-16s DBGVer: 0x%08x, PTPVer: 0x%04x, SBVer: 0x%04x\n",
 		"[MFGSYS Config]",
 		g_shared_status->dbg_version,

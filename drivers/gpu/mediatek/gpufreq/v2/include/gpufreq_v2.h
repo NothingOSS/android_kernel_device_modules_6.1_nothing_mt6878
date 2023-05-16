@@ -253,6 +253,17 @@ struct gpufreq_reg_info {
 	unsigned int val;
 };
 
+struct gpu_ptp3_info {
+	unsigned int infreq0;
+	unsigned int outfreq0;
+	unsigned int infreq1;
+	unsigned int outfreq1;
+	unsigned int hw_cc;
+	unsigned int hw_fc;
+	unsigned int sw_cc;
+	unsigned int sw_fc;
+};
+
 /**************************************************
  * Shared Status
  **************************************************/
@@ -349,6 +360,7 @@ struct gpufreq_shared_status {
 	struct gpufreq_adj_info avs_table_gpu[GPUFREQ_MAX_ADJ_NUM];
 	struct gpufreq_adj_info avs_table_stack[GPUFREQ_MAX_ADJ_NUM];
 	struct gpufreq_gpm3_info gpm3_table[GPUFREQ_MAX_GPM3_NUM];
+	struct gpu_ptp3_info ptp3_info;
 };
 
 /**************************************************

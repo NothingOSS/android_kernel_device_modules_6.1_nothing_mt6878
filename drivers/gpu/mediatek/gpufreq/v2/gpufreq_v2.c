@@ -1574,6 +1574,15 @@ static void gpufreq_dump_dvfs_status(void)
 		GPUFREQ_LOGI("PowerCount: %d, AgingMargin: %d, AVSMargin: %d",
 			g_shared_status->power_count, g_shared_status->aging_margin,
 			g_shared_status->avs_margin);
+		GPUFREQ_LOGI("inFreq: %d/%d, outFreq: %d/%d, CC:%d/%d, FC:%d/%d",
+			g_shared_status->ptp3_info.infreq0,
+			g_shared_status->ptp3_info.infreq1,
+			g_shared_status->ptp3_info.outfreq0,
+			g_shared_status->ptp3_info.outfreq1,
+			g_shared_status->ptp3_info.hw_cc,
+			g_shared_status->ptp3_info.sw_cc,
+			g_shared_status->ptp3_info.hw_fc,
+			g_shared_status->ptp3_info.sw_fc);
 		GPUFREQ_LOGI("GPU_SB_Version: 0x%04x, GPU_PTP_Version: 0x%04x",
 			g_shared_status->sb_version, g_shared_status->ptp_version);
 	}
