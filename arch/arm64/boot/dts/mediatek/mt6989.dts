@@ -3158,6 +3158,35 @@
 				"vlp_ao_bcrm";
 		};
 
+		dfd_mcu: dfd-mcu {
+			compatible = "mediatek,dfd_mcu";
+			enabled = <1>;
+			hw-version = <35>;
+			sw-version = <1>;
+			dfd-timeout = <0x2710>;
+			buf-addr-align = <0x1000000>;
+			buf-addr-max = <0xffffffff>;
+			buf-length = <0x280000>;
+			nr-max-core = <8>;
+			nr-big-core = <4>;
+			nr-rs-entry-little = <16>;
+			nr-rs-entry-big = <32>;
+			nr-header-row = <4>;
+			chip-id-offset = <0x38>;
+			check-pattern-offset = <0x20>;
+			dfd-disable-efuse = <25 12>;
+			/* dfd-disable-efuse = <(-1) (-1)>; */
+			dfd_cache: dfd-cache {
+				enabled = <1>;
+				/* dfd-timeout = <0x1d4c0>; */ /* 60 sec for full cache dump */
+				dfd-timeout = <0x6000>; /* 12.3 sec */
+				/* buf-length = <0x2000000>; */ /* for full cache dump */
+				buf-length = <0x280000>;
+				/* tap-en = <0x80fffff>; */ /* for full cache dump */
+				tap-en = <0x8000000>;
+			};
+		};
+
 		eint: apirq@11de0000 {
 			compatible = "mediatek,mt6983-eint";
 			reg = <0 0x11de0000 0 0x1000>,
