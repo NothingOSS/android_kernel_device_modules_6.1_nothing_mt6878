@@ -41,7 +41,11 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 	{"I2SOUT2_CH1", "ADDA_UL_CH1", "Hostless LPBK DL"},
 	{"I2SOUT2_CH2", "ADDA_UL_CH2", "Hostless LPBK DL"},
 	{"I2SOUT4_CH1", "ADDA_UL_CH1", "Hostless LPBK DL"},
+	{"I2SOUT4_CH1", "ADDA_UL_CH2", "Hostless LPBK DL"},
+	{"I2SOUT4_CH1", "ADDA_UL_CH3", "Hostless LPBK DL"},
+	{"I2SOUT4_CH2", "ADDA_UL_CH1", "Hostless LPBK DL"},
 	{"I2SOUT4_CH2", "ADDA_UL_CH2", "Hostless LPBK DL"},
+	{"I2SOUT4_CH2", "ADDA_UL_CH3", "Hostless LPBK DL"},
 	{"I2SOUT6_CH1", "ADDA_UL_CH1", "Hostless LPBK DL"},
 	{"I2SOUT6_CH2", "ADDA_UL_CH2", "Hostless LPBK DL"},
 	{"Hostless LPBK UL", NULL, "ADDA_UL_Mux"},
@@ -121,13 +125,18 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 	{"PCM_0_PB_CH4", "I2SIN0_CH2", "Hostless_Sph_Echo_Ref_DL"},
 	{"PCM_0_PB_CH4", "I2SIN1_CH1", "Hostless_Sph_Echo_Ref_DL"},
 	{"PCM_0_PB_CH4", "I2SIN1_CH2", "Hostless_Sph_Echo_Ref_DL"},
+	{"PCM_0_PB_CH4", "I2SIN4_CH1", "Hostless_Sph_Echo_Ref_DL"},
+	{"PCM_0_PB_CH4", "I2SIN4_CH2", "Hostless_Sph_Echo_Ref_DL"},
 
 	{"PCM_1_PB_CH4", "I2SIN0_CH1", "Hostless_Sph_Echo_Ref_DL"},
 	{"PCM_1_PB_CH4", "I2SIN0_CH2", "Hostless_Sph_Echo_Ref_DL"},
 	{"PCM_1_PB_CH4", "I2SIN1_CH1", "Hostless_Sph_Echo_Ref_DL"},
 	{"PCM_1_PB_CH4", "I2SIN1_CH2", "Hostless_Sph_Echo_Ref_DL"},
+	{"PCM_1_PB_CH4", "I2SIN4_CH1", "Hostless_Sph_Echo_Ref_DL"},
+	{"PCM_1_PB_CH4", "I2SIN4_CH2", "Hostless_Sph_Echo_Ref_DL"},
 	{"PCM_1_PB_CH5", "I2SIN0_CH2", "Hostless_Sph_Echo_Ref_DL"},
 	{"PCM_1_PB_CH5", "I2SIN1_CH2", "Hostless_Sph_Echo_Ref_DL"},
+	{"PCM_1_PB_CH5", "I2SIN4_CH2", "Hostless_Sph_Echo_Ref_DL"},
 	{"PCM_1_PB_CH4", "HW_SRC_1_OUT_CH1", "Hostless_Sph_Echo_Ref_DL"},
 	{"PCM_1_PB_CH5", "HW_SRC_1_OUT_CH2", "Hostless_Sph_Echo_Ref_DL"},
 	{"PCM_1_PB_CH4", "HW_SRC_2_OUT_CH1", "Hostless_Sph_Echo_Ref_DL"},
@@ -135,6 +144,7 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 
 	{"Hostless_Sph_Echo_Ref_UL", NULL, "I2SIN0"},
 	{"Hostless_Sph_Echo_Ref_UL", NULL, "I2SIN1"},
+	{"Hostless_Sph_Echo_Ref_UL", NULL, "I2SIN4"},
 
 	/* Hostless_Spk_Init_DAI */
 	{"I2SOUT0", NULL, "Hostless_Spk_Init_DL"},
@@ -198,6 +208,8 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 	/* Hostless SRC 1 */
 	{"HW_SRC_1_IN_CH1", "I2SIN0_CH1", "Hostless_SRC_1_DL"},
 	{"HW_SRC_1_IN_CH2", "I2SIN0_CH2", "Hostless_SRC_1_DL"},
+	{"HW_SRC_1_IN_CH1", "I2SIN4_CH1", "Hostless_SRC_1_DL"},
+	{"HW_SRC_1_IN_CH2", "I2SIN4_CH2", "Hostless_SRC_1_DL"},
 	{"Hostless_SRC_1_UL", NULL, "HW_SRC_1_Out"},
 	{"Hostless_HW_SRC_1_IN_UL", NULL, "HW_SRC_1_Out"},
 
@@ -221,12 +233,17 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 	{"HW_SRC_2_IN_CH2", "DL_24CH_CH2", "Hostless_HW_SRC_2_OUT_DL"},
 	{"I2SOUT0_CH1", "HW_SRC_2_OUT_CH1", "Hostless_HW_SRC_2_IN_DL"},
 	{"I2SOUT0_CH2", "HW_SRC_2_OUT_CH2", "Hostless_HW_SRC_2_IN_DL"},
+	{"I2SOUT4_CH1", "HW_SRC_2_OUT_CH1", "Hostless_HW_SRC_2_IN_DL"},
+	{"I2SOUT4_CH2", "HW_SRC_2_OUT_CH2", "Hostless_HW_SRC_2_IN_DL"},
 	{"Hostless_HW_SRC_2_IN_UL", NULL, "HW_SRC_2_Out"},
 
 	/* Hostless_SRC_bargein */
 	{"HW_SRC_0_IN_CH1", "I2SIN0_CH1", "Hostless_SRC_Bargein_DL"},
 	{"HW_SRC_0_IN_CH2", "I2SIN0_CH2", "Hostless_SRC_Bargein_DL"},
+	{"HW_SRC_0_IN_CH1", "I2SIN4_CH1", "Hostless_SRC_Bargein_DL"},
+	{"HW_SRC_0_IN_CH2", "I2SIN4_CH2", "Hostless_SRC_Bargein_DL"},
 	{"Hostless_SRC_Bargein_UL", NULL, "I2SOUT0"},
+	{"Hostless_SRC_Bargein_UL", NULL, "I2SOUT4"},
 
 	/* Hostless AAudio */
 	{"Hostless HW Gain AAudio In", NULL, "HW Gain 1 In"},
@@ -655,7 +672,7 @@ static struct snd_soc_dai_driver mtk_dai_hostless_driver[] = {
 		.name = "Hostless_UL4 DAI",
 		.id = MT6989_DAI_HOSTLESS_UL4,
 		.capture = {
-			.stream_name = "Hostless_UL6 UL",
+			.stream_name = "Hostless_UL4 UL",
 			.channels_min = 1,
 			.channels_max = 2,
 			.rates = MTK_HOSTLESS_RATES,

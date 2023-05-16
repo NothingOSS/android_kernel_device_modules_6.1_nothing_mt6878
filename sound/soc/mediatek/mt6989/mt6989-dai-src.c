@@ -708,6 +708,8 @@ static const struct snd_kcontrol_new mtk_hw_src_0_in_ch1_mix[] = {
 				    I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN0_CH1", AFE_CONN180_4,
 				    I_I2SIN0_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH1", AFE_CONN180_4,
+				    I_I2SIN4_CH1, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_src_0_in_ch2_mix[] = {
@@ -729,10 +731,12 @@ static const struct snd_kcontrol_new mtk_hw_src_0_in_ch2_mix[] = {
 				    I_DL_24CH_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN181_2,
 				    I_DL24_CH2, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN180_0,
+	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN181_0,
 				    I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN0_CH2", AFE_CONN181_4,
 				    I_I2SIN0_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH2", AFE_CONN181_4,
+				    I_I2SIN4_CH2, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_src_1_in_ch1_mix[] = {
@@ -760,6 +764,8 @@ static const struct snd_kcontrol_new mtk_hw_src_1_in_ch1_mix[] = {
 				    I_I2SIN0_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN2_CH1", AFE_CONN182_4,
 				    I_I2SIN2_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH1", AFE_CONN182_4,
+				    I_I2SIN4_CH1, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_src_1_in_ch2_mix[] = {
@@ -787,6 +793,8 @@ static const struct snd_kcontrol_new mtk_hw_src_1_in_ch2_mix[] = {
 				    I_I2SIN0_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN2_CH2", AFE_CONN183_4,
 				    I_I2SIN2_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH2", AFE_CONN183_4,
+				    I_I2SIN4_CH2, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_src_2_in_ch1_mix[] = {
@@ -1087,6 +1095,8 @@ static const struct snd_soc_dapm_route mtk_dai_src_routes[] = {
 
 	{"HW_SRC_1_IN_CH1", "I2SIN0_CH1", "I2SIN0"},
 	{"HW_SRC_1_IN_CH2", "I2SIN0_CH2", "I2SIN0"},
+	{"HW_SRC_1_IN_CH1", "I2SIN4_CH1", "I2SIN4"},
+	{"HW_SRC_1_IN_CH2", "I2SIN4_CH2", "I2SIN4"},
 
 	{"HW_SRC_0_In", NULL, "HW_SRC_0_IN_CH1"},
 	{"HW_SRC_0_In", NULL, "HW_SRC_0_IN_CH2"},

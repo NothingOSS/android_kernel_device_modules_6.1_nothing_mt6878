@@ -1738,6 +1738,8 @@ static const struct snd_kcontrol_new memif_ul1_ch1_mix[] = {
 				    I_I2SIN0_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH1", AFE_CONN020_4,
 				    I_I2SIN1_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH1", AFE_CONN020_4,
+				    I_I2SIN4_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_0_OUT_CH1", AFE_CONN020_6,
 				    I_SRC_0_OUT_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_2_OUT_CH1", AFE_CONN020_6,
@@ -1779,6 +1781,8 @@ static const struct snd_kcontrol_new memif_ul1_ch2_mix[] = {
 				    I_I2SIN0_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH2", AFE_CONN021_4,
 				    I_I2SIN1_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH2", AFE_CONN021_4,
+				    I_I2SIN4_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_0_OUT_CH2", AFE_CONN021_6,
 				    I_SRC_0_OUT_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_2_OUT_CH2", AFE_CONN021_6,
@@ -1822,6 +1826,8 @@ static const struct snd_kcontrol_new memif_ul3_ch1_mix[] = {
 				    I_I2SIN0_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH1", AFE_CONN024_4,
 				    I_I2SIN1_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH1", AFE_CONN024_4,
+				    I_I2SIN4_CH1, 1, 0),
 };
 
 static const struct snd_kcontrol_new memif_ul3_ch2_mix[] = {
@@ -1831,11 +1837,13 @@ static const struct snd_kcontrol_new memif_ul3_ch2_mix[] = {
 				    I_I2SIN0_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH2", AFE_CONN025_4,
 				    I_I2SIN1_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH2", AFE_CONN025_4,
+				    I_I2SIN4_CH2, 1, 0),
 };
 
 static const struct snd_kcontrol_new memif_ul4_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN026_0,
-					I_ADDA_UL_CH1, 1, 0),
+				    I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL0_CH1", AFE_CONN026_1,
 				    I_DL0_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL1_CH1", AFE_CONN026_1,
@@ -2564,6 +2572,8 @@ static const struct snd_soc_dapm_route mt6989_memif_routes[] = {
 	{"UL1_CH2", "I2SIN0_CH2", "I2SIN0"},
 	{"UL1_CH1", "I2SIN1_CH1", "I2SIN1"},
 	{"UL1_CH2", "I2SIN1_CH2", "I2SIN1"},
+	{"UL1_CH1", "I2SIN4_CH1", "I2SIN4"},
+	{"UL1_CH2", "I2SIN4_CH2", "I2SIN4"},
 
 	{"UL1_CH1", "PCM_0_CAP_CH1", "PCM 0 Capture"},
 	{"UL1_CH2", "PCM_0_CAP_CH1", "PCM 0 Capture"},
@@ -2601,6 +2611,8 @@ static const struct snd_soc_dapm_route mt6989_memif_routes[] = {
 	{"UL3_CH2", "I2SIN0_CH2", "I2SIN0"},
 	{"UL3_CH1", "I2SIN1_CH1", "I2SIN1"},
 	{"UL3_CH2", "I2SIN1_CH2", "I2SIN1"},
+	{"UL3_CH1", "I2SIN4_CH1", "I2SIN4"},
+	{"UL3_CH2", "I2SIN4_CH2", "I2SIN4"},
 
 	{"UL4", NULL, "UL4_CH1"},
 	{"UL4", NULL, "UL4_CH2"},
