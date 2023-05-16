@@ -13217,6 +13217,41 @@
 				 "clk_top_camtm",
 				 "clk_top_univpll_d4_d2",
 				 "clk_mmdvfs";
+
+			clk-fmeter-isp {
+				fmeter-type = "CKGEN";
+				fmeter-no = <85>;
+			};
+
+			clk-fmeter-csi0 {
+				fmeter-type = "CKGEN";
+				fmeter-no = <34>;
+			};
+
+			clk-fmeter-csi1 {
+				fmeter-type = "CKGEN";
+				fmeter-no = <35>;
+			};
+
+			clk-fmeter-csi2 {
+				fmeter-type = "CKGEN";
+				fmeter-no = <36>;
+			};
+
+			clk-fmeter-csi3 {
+				fmeter-type = "CKGEN";
+				fmeter-no = <37>;
+			};
+
+			clk-fmeter-csi4 {
+				fmeter-type = "CKGEN";
+				fmeter-no = <38>;
+			};
+
+			clk-fmeter-csi5 {
+				fmeter-type = "CKGEN";
+				fmeter-no = <39>;
+			};
 		};
 
 		disp_merge0: disp-merge0@14011000 {
