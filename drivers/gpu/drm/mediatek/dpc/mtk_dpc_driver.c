@@ -679,7 +679,8 @@ static int dpc_irq_init(struct mtk_dpc *priv)
 	if (priv->disp_irq > 0) {
 		writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG);
 		writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INTSTA);
-		ret = devm_request_irq(priv->dev, priv->disp_irq, mtk_dpc_disp_irq_handler,
+		if (0) //WA for irq burst while display resume
+			ret = devm_request_irq(priv->dev, priv->disp_irq, mtk_dpc_disp_irq_handler,
 				       IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(priv->dev), priv);
 		if (ret)
 			DPCERR("devm_request_irq %d fail: %d", priv->disp_irq, ret);
