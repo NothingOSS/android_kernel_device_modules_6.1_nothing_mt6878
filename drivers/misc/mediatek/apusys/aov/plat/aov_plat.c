@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2022 MediaTek Inc.
+ * Copyright (c) 2023 MediaTek Inc.
  */
 
 #include <linux/module.h>
@@ -14,7 +14,7 @@
 #include "v2/aov_recovery_v2.h"
 #include "v2/aov_mem_service_v2.h"
 
-int aov_plat_init(unsigned int version)
+int aov_plat_init(struct platform_device *pdev, unsigned int version)
 {
 	int ret = 0;
 
@@ -39,12 +39,12 @@ int aov_plat_init(unsigned int version)
 		break;
 	case 2:
 	{
-		ret = aov_mem_service_v2_init();
+		ret = aov_mem_service_v2_init(pdev);
 		if (ret) {
 			pr_info("%s Failed to init mem service v2, ret %d\n", __func__, ret);
 			return ret;
 		}
-		ret = aov_recovery_v2_init();
+		ret = aov_recovery_v2_init(pdev);
 		if (ret) {
 			pr_info("%s Failed to init apu recovery v2, ret %d\n", __func__, ret);
 			return ret;
@@ -61,7 +61,7 @@ int aov_plat_init(unsigned int version)
 	return 0;
 }
 
-void aov_plat_exit(unsigned int version)
+void aov_plat_exit(struct platform_device *pdev, unsigned int version)
 {
 	switch (version) {
 	case 0:
@@ -70,8 +70,8 @@ void aov_plat_exit(unsigned int version)
 		aov_recovery_v1_exit();
 		break;
 	case 2:
-		aov_mem_service_v2_exit();
-		aov_recovery_v2_exit();
+		aov_mem_service_v2_exit(pdev);
+		aov_recovery_v2_exit(pdev);
 		break;
 	default:
 		pr_info("%s Not supported version %d\n", __func__, version);

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2020 MediaTek Inc.
+ * Copyright (c) 2023 MediaTek Inc.
  */
 
 #ifndef __NPU_SCP_IPI_H__

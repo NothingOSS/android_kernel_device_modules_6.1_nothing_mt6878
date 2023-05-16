@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2021 MediaTek Inc.
+ * Copyright (c) 2023 MediaTek Inc.
  */
 
 #include <linux/module.h>
@@ -31,14 +31,14 @@ static struct notifier_block aov_recovery_scp_notifier = {
 	.notifier_call = aov_recovery_scp_notifier_call,
 };
 
-int aov_recovery_v2_init(void)
+int aov_recovery_v2_init(struct platform_device *pdev)
 {
 	scp_A_register_notify(&aov_recovery_scp_notifier);
 
 	return 0;
 }
 
-void aov_recovery_v2_exit(void)
+void aov_recovery_v2_exit(struct platform_device *pdev)
 {
 	scp_A_unregister_notify(&aov_recovery_scp_notifier);
 }

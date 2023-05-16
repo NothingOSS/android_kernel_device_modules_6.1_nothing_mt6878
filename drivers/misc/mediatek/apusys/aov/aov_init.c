@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2020 MediaTek Inc.
+ * Copyright (c) 2023 MediaTek Inc.
  */
 
 #include <asm-generic/errno-base.h>
@@ -518,7 +518,7 @@ static int apusys_aov_probe(struct platform_device *pdev)
 		return -EFAULT;
 	}
 
-	ret = aov_plat_init(*ctx->version);
+	ret = aov_plat_init(pdev, *ctx->version);
 	if (ret) {
 		dev_info(&pdev->dev, "%s Failed to init apusys aov platform, ret %d\n",
 			__func__, ret);
@@ -535,7 +535,7 @@ static int apusys_aov_remove(struct platform_device *pdev)
 	struct apusys_aov_ctx *ctx = platform_get_drvdata(pdev);
 
 	if (ctx->version)
-		aov_plat_exit(*ctx->version);
+		aov_plat_exit(pdev, *ctx->version);
 
 	npu_scp_ipi_unregister_handler(NPU_SCP_RESPONSE);
 	npu_scp_ipi_unregister_handler(NPU_SCP_SYSTEM);
