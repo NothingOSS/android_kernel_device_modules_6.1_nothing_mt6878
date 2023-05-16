@@ -44,7 +44,9 @@ int uarthub_dev_baud_rate[UARTHUB_MAX_NUM_DEV_HOST + 1] = {
 };
 
 unsigned long INTFHUB_BASE_MT6989;
+#if !(SSPM_DRIVER_PLL_CLK_CTRL_EN)
 static atomic_t g_uarthub_pll_clk_on = ATOMIC_INIT(0);
+#endif
 
 #if UNIVPLL_CTRL_EN
 static struct clk *clk_top_uarthub_bclk_sel;
@@ -82,7 +84,7 @@ static int uarthub_deinit_unmap_reg_mt6989(void);
 #if !(UARTHUB_SUPPORT_FPGA)
 static int uarthub_get_spm_sys_timer_mt6989(uint32_t *hi, uint32_t *lo);
 #endif
-static int uarthub_pll_clk_on_mt6989(int on);
+static int uarthub_pll_clk_on_mt6989(int on, const char *tag);
 
 #if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 static int uarthub_init_default_config_mt6989(void);
@@ -90,10 +92,12 @@ static int uarthub_init_trx_timeout_mt6989(void);
 static int uarthub_init_debug_monitor_mt6989(void);
 #endif
 
+#if !(SSPM_DRIVER_PLL_CLK_CTRL_EN)
 static int uarthub_uart_src_clk_ctrl(enum uarthub_clk_opp clk_opp);
-static int uarthub_uart_mux_sel_ctrl(enum uarthub_clk_opp clk_opp);
 static int uarthub_uarthub_mux_sel_ctrl(enum uarthub_clk_opp clk_opp);
+#endif
 
+static int uarthub_uart_mux_sel_ctrl(enum uarthub_clk_opp clk_opp);
 static int uarthub_univpll_clk_init(struct platform_device *pdev);
 static int uarthub_univpll_clk_exit(void);
 
@@ -797,7 +801,7 @@ int uarthub_uarthub_exit_mt6989(void)
 	return 0;
 }
 
-int uarthub_pll_clk_on_mt6989(int on)
+int uarthub_pll_clk_on_mt6989(int on, const char *tag)
 {
 #if !(SSPM_DRIVER_PLL_CLK_CTRL_EN)
 	if (on != 0 && on != 1) {
@@ -823,7 +827,7 @@ int uarthub_pll_clk_on_mt6989(int on)
 	atomic_set(&g_uarthub_pll_clk_on, on);
 
 #if UARTHUB_INFO_LOG
-	uarthub_dump_debug_clk_info_mt6989(__func__);
+	uarthub_dump_debug_clk_info_mt6989(tag);
 #endif
 #endif
 
@@ -832,14 +836,15 @@ int uarthub_pll_clk_on_mt6989(int on)
 
 int uarthub_uarthub_open_mt6989(void)
 {
-	return uarthub_pll_clk_on_mt6989(1);
+	return uarthub_pll_clk_on_mt6989(1, __func__);
 }
 
 int uarthub_uarthub_close_mt6989(void)
 {
-	return uarthub_pll_clk_on_mt6989(0);
+	return uarthub_pll_clk_on_mt6989(0, __func__);
 }
 
+#if !(SSPM_DRIVER_PLL_CLK_CTRL_EN)
 int uarthub_uart_src_clk_ctrl(enum uarthub_clk_opp clk_opp)
 {
 	if (!pericfg_ao_remap_addr_mt6989) {
@@ -858,6 +863,7 @@ int uarthub_uart_src_clk_ctrl(enum uarthub_clk_opp clk_opp)
 
 	return 0;
 }
+#endif
 
 int uarthub_uart_mux_sel_ctrl(enum uarthub_clk_opp clk_opp)
 {
@@ -898,6 +904,7 @@ int uarthub_uart_mux_sel_ctrl(enum uarthub_clk_opp clk_opp)
 #endif
 }
 
+#if !(SSPM_DRIVER_PLL_CLK_CTRL_EN)
 int uarthub_uarthub_mux_sel_ctrl(enum uarthub_clk_opp clk_opp)
 {
 #if UNIVPLL_CTRL_EN
@@ -936,6 +943,7 @@ int uarthub_uarthub_mux_sel_ctrl(enum uarthub_clk_opp clk_opp)
 	return 0;
 #endif
 }
+#endif
 
 int uarthub_univpll_clk_init(struct platform_device *pdev)
 {
@@ -1347,7 +1355,7 @@ int uarthub_set_host_trx_request_mt6989(int dev_index, enum uarthub_trx_type trx
 		return UARTHUB_ERR_ENUM_NOT_SUPPORT;
 	}
 
-	uarthub_pll_clk_on_mt6989(1);
+	uarthub_pll_clk_on_mt6989(1, __func__);
 
 	if (dev_index == 0) {
 		if (trx == RX) {

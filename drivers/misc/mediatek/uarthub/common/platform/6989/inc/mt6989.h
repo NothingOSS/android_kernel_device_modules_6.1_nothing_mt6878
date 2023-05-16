@@ -27,7 +27,7 @@
 #endif
 
 #define SSPM_DRIVER_EN                 1
-#define SSPM_DRIVER_PLL_CLK_CTRL_EN    0
+#define SSPM_DRIVER_PLL_CLK_CTRL_EN    1
 #define UNIVPLL_CTRL_EN                1
 #define MD_CHANNEL_EN                  1
 
