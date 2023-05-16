@@ -7,6 +7,7 @@
 #define _MTK_DRM_LOWPOWER_H_
 
 #include <drm/drm_crtc.h>
+#include <linux/pm_qos.h>
 #include "mtk_drm_crtc.h"
 
 struct mtk_idle_private_data {
@@ -14,6 +15,8 @@ struct mtk_idle_private_data {
 	unsigned int cpu_mask;
 	//min freq settings, unit of HZ
 	unsigned int cpu_freq;
+	//cpu dma latency control of c-state
+	int cpu_dma_latency;
 	//vblank off async is supported or not
 	bool hw_async;
 	bool vblank_async;
@@ -64,6 +67,7 @@ struct mtk_drm_idlemgr {
 	struct list_head async_cb_list;
 	//async_cb_list length
 	unsigned int async_cb_count;
+	struct pm_qos_request cpu_qos_req;
 	struct mtk_drm_idlemgr_context *idlemgr_ctx;
 	struct mtk_drm_idlemgr_perf *perf;
 };
@@ -91,6 +95,12 @@ enum mtk_drm_async_user_id {
 	USER_STOP_CRTC,
 	USER_ATF_INSTR,
 	USER_VBLANK_OFF, //0xf00a
+};
+
+enum mtk_drm_cpu_cmd {
+	MTK_DRM_CPU_CMD_FREQ,
+	MTK_DRM_CPU_CMD_MASK,
+	MTK_DRM_CPU_CMD_LATENCY,
 };
 
 //check if async is enabled
@@ -147,7 +157,7 @@ void mtk_drm_idlemgr_async_perf_detail_control(bool enable,
 				struct drm_crtc *crtc);
 /* adjust cmd panel idle thread cpu settings */
 void mtk_drm_idlemgr_cpu_control(struct drm_crtc *crtc,
-				bool freq, unsigned int data);
+				int cmd, unsigned int data);
 /* enable cmd panel idle async function */
 void mtk_drm_idlemgr_async_control(struct drm_crtc *crtc, bool enable);
 /* enable cmd panel sram sleep function */
