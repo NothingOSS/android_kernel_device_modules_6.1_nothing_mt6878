@@ -1019,7 +1019,7 @@ void fpsgo_ctrl2comp_hint_frame_start(int pid,
 {
 	struct render_info *f_render;
 	struct ux_frame_info *frame_info;
-	int ux_frame_empty = 0;
+	int ux_frame_cnt = 0;
 
 	FPSGO_COM_TRACE("%s pid[%d] id %llu", __func__, pid, identifier);
 	fpsgo_render_tree_lock(__func__);
@@ -1045,13 +1045,13 @@ void fpsgo_ctrl2comp_hint_frame_start(int pid,
 		fpsgo_base2fbt_node_init(f_render);
 
 	mutex_lock(&f_render->ux_mlock);
-	ux_frame_empty = RB_EMPTY_ROOT(&f_render->ux_frame_info_tree);
-	fpsgo_systrace_c_fbt(pid, identifier, !ux_frame_empty, "[ux]overlap");
 	frame_info = fpsgo_ux_search_and_add_frame_info(f_render, frameID, frame_start_time, 1);
+	ux_frame_cnt = fpsgo_ux_count_frame_info(f_render);
+	fpsgo_systrace_c_fbt(pid, identifier, ux_frame_cnt, "[ux]ux_frame_cnt");
 	mutex_unlock(&f_render->ux_mlock);
 
 	// if not overlap, call frame start.
-	if (ux_frame_empty)
+	if (ux_frame_cnt == 1)
 		fpsgo_frame_start(f_render, frame_start_time, identifier);
 
 	fpsgo_thread_unlock(&f_render->thr_mlock);
@@ -1078,7 +1078,7 @@ void fpsgo_ctrl2comp_hint_frame_end(int pid,
 	struct render_info *f_render;
 	struct ux_frame_info *frame_info;
 	unsigned long long frame_start_time = 0;
-	int ux_frame_empty = 0;
+	int ux_frame_cnt = 0;
 
 	FPSGO_COM_TRACE("%s pid[%d] id %llu", __func__, pid, identifier);
 	fpsgo_render_tree_lock(__func__);
@@ -1108,14 +1108,14 @@ void fpsgo_ctrl2comp_hint_frame_end(int pid,
 		fpsgo_ux_delete_frame_info(f_render, frame_info);
 	}
 
-	ux_frame_empty = RB_EMPTY_ROOT(&f_render->ux_frame_info_tree);
+	ux_frame_cnt = fpsgo_ux_count_frame_info(f_render);
 	mutex_unlock(&f_render->ux_mlock);
 
 	// frame end.
 	fpsgo_frame_end(f_render, frame_start_time, frame_end_time, identifier);
-	if (!ux_frame_empty)
+	if (ux_frame_cnt == 1)
 		fpsgo_frame_start(f_render, frame_end_time, identifier);
-	fpsgo_systrace_c_fbt(pid, identifier, !ux_frame_empty, "[ux]overlap");
+	fpsgo_systrace_c_fbt(pid, identifier, ux_frame_cnt, "[ux]ux_frame_cnt");
 
 	fpsgo_thread_unlock(&f_render->thr_mlock);
 	fpsgo_render_tree_unlock(__func__);
@@ -1128,7 +1128,7 @@ void fpsgo_ctrl2comp_hint_frame_err(int pid,
 {
 	struct render_info *f_render;
 	struct ux_frame_info *frame_info;
-	int ux_frame_empty = 0;
+	int ux_frame_cnt = 0;
 
 	FPSGO_COM_TRACE("%s pid[%d] id %llu", __func__, pid, identifier);
 	fpsgo_render_tree_lock(__func__);
@@ -1153,12 +1153,12 @@ void fpsgo_ctrl2comp_hint_frame_err(int pid,
 		fpsgo_systrace_c_fbt(pid, identifier, 0, "[ux]start_not_found");
 	} else {
 		fpsgo_ux_delete_frame_info(f_render, frame_info);
-		ux_frame_empty = RB_EMPTY_ROOT(&f_render->ux_frame_info_tree);
-		if (ux_frame_empty) {
+		ux_frame_cnt = fpsgo_ux_count_frame_info(f_render);
+		if (ux_frame_cnt == 0) {
 			fpsgo_systrace_c_fbt(f_render->pid, identifier, 0, "[ux]sbe_set_ctrl");
 			fbt_ux_frame_err(f_render, time);
 		}
-		fpsgo_systrace_c_fbt(pid, identifier, !ux_frame_empty, "[ux]overlap");
+		fpsgo_systrace_c_fbt(pid, identifier, ux_frame_cnt, "[ux]ux_frame_cnt");
 	}
 	mutex_unlock(&f_render->ux_mlock);
 

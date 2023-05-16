@@ -101,18 +101,6 @@ static int fbt_ux_cal_perf(
 	t_Q2Q = nsec_to_100usec(t_Q2Q);
 	aa_n = aa;
 
-	if (fpsgo_ux_gcc_enable == 2) {
-		fbt_cal_target_time_ns(thread_info->pid, thread_info->buffer_id,
-			fbt_get_rl_ko_is_ready(), 2, target_fps, cooler_on, target_fpks,
-			target_time, boost_info->last_target_time_ns, thread_info->Q2Q_time,
-			thread_info->t_last_start + target_time, 0,
-			thread_info->attr.expected_fps_margin_by_pid, 10, 10,
-			0, 0, aa_n, aa_n, aa_n, 100, 100, 100, &t2);
-		boost_info->last_target_time_ns = t2;
-	}
-
-	t2 = nsec_to_100usec(t2);
-
 	if (aa_n < 0) {
 		fpsgo_get_blc_mlock(__func__);
 		if (thread_info->p_blc)
@@ -121,6 +109,18 @@ static int fbt_ux_cal_perf(
 		aa_n = 0;
 	} else {
 		fbt_cal_aa(aa, t1, t_Q2Q, &aa_n);
+
+		if (fpsgo_ux_gcc_enable == 2) {
+			fbt_cal_target_time_ns(thread_info->pid, thread_info->buffer_id,
+				fbt_get_rl_ko_is_ready(), 2, target_fps, cooler_on, target_fpks,
+				target_time, boost_info->last_target_time_ns, thread_info->Q2Q_time,
+				0, 0, thread_info->attr.expected_fps_margin_by_pid, 10, 10,
+				0, 0, aa_n, aa_n, aa_n, 100, 100, 100, &t2);
+			boost_info->last_target_time_ns = t2;
+		}
+
+		t2 = nsec_to_100usec(t2);
+
 		fbt_cal_blc(aa_n, t2, thread_info->p_blc->blc, t_Q2Q, 0, &blc_wt);
 	}
 
@@ -359,6 +359,56 @@ struct ux_frame_info *fpsgo_ux_search_and_add_frame_info(struct render_info *thr
 	rb_insert_color(&tmp->entry, &(thr->ux_frame_info_tree));
 
 	return tmp;
+}
+
+static struct ux_frame_info *fpsgo_ux_find_earliest_frame_info
+	(struct render_info *thr)
+{
+	struct rb_node *cur;
+	struct ux_frame_info *tmp = NULL, *ret = NULL;
+	unsigned long long min_ts = ULLONG_MAX;
+
+	cur = rb_first(&(thr->ux_frame_info_tree));
+
+	while (cur) {
+		tmp = rb_entry(cur, struct ux_frame_info, entry);
+		if (tmp->start_ts < min_ts) {
+			min_ts = tmp->start_ts;
+			ret = tmp;
+		}
+		cur = rb_next(cur);
+	}
+	return ret;
+
+}
+
+int fpsgo_ux_count_frame_info(struct render_info *thr)
+{
+	struct rb_node *cur;
+	struct ux_frame_info *tmp = NULL;
+	int ret = 0;
+	int remove = 0;
+
+	if (RB_EMPTY_ROOT(&thr->ux_frame_info_tree) == 1)
+		return ret;
+
+	cur = rb_first(&(thr->ux_frame_info_tree));
+	while (cur) {
+		cur = rb_next(cur);
+		ret += 1;
+	}
+	/* error handling */
+	while (ret > 2) {
+		tmp = fpsgo_ux_find_earliest_frame_info(thr);
+		if (!tmp)
+			break;
+
+		fpsgo_ux_delete_frame_info(thr, tmp);
+		ret -= 1;
+		remove += 1;
+	}
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, remove, "[ux]rb_err_remove");
+	return ret;
 }
 
 void fpsgo_ux_reset(struct render_info *thr)
