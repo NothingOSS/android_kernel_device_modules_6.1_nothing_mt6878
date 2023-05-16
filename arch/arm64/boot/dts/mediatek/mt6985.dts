@@ -9305,9 +9305,10 @@
 			afs-policy-support = <1>;
 		};
 
-		gpu_qos: gpu-qos {
+		gpu_qos: gpu-qos@112000 {
 			compatible = "mediatek,gpu_qos";
 			qos-sysram-support = <1>;
+			reg = <0 0x112000 0 0x20>;
 			qos-mode = <0>;
 			qos-value = <0>;
 		};
