@@ -49,9 +49,9 @@ static int _mgq_proc_show(struct seq_file *m, void *v)
 			_mgq_proc_show_v1(m);
 		else
 			seq_printf(m, "unknown version: 0x%x\n", version);
-	} else {
+	} else
 		seq_puts(m, "gpu_info_buf == null\n");
-	}
+
 	return 0;
 }
 
@@ -284,12 +284,14 @@ static void _MTKGPUQoS_init(void)
 	struct device_node *gpu_bm_node = NULL;
 	bool enable_mode = false;
 
+	/* get GPU QoS pre-defined device node from dts */
 	gpu_bm_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_qos");
-	if (unlikely(!gpu_bm_node)) {
+	if (unlikely(!gpu_bm_node))
 		pr_info("@%s: Failed to find gpu_qos node\n", __func__);
-	} else {
+	else {
+		/* check and get qos mode & value by getting qos-mode & qos-value property */
 		enable_mode = of_property_read_bool(gpu_bm_node, "qos-mode");
-		if (enable_mode) {
+		if (likely(enable_mode)) {
 			of_property_read_u32(gpu_bm_node, "qos-mode", &g_mode);
 			of_property_read_u32(gpu_bm_node, "qos-value", &g_value);
 			pr_info("@%s: g_mode: %d, g_value: %d\n", __func__, g_mode, g_value);

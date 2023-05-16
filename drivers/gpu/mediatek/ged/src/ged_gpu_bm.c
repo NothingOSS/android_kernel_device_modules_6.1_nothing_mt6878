@@ -44,23 +44,26 @@ static int add_check_ovf(int v1, int v2)
 
 static void __iomem *_gpu_bm_of_ioremap(void)
 {
+	struct resource res = {};
 	struct device_node *node = NULL;
 	void __iomem *mapped_addr = NULL;
-	struct resource res;
 	int ret = 0;
 
-	node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_fdvfs");
-	if (node) {
+	/* get GPU QoS pre-defined device node from dts */
+	node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_qos");
+
+	if (unlikely(!node))
+		GED_LOGE("[GPU_QOS]Cannot find [gpu_qos] of_node");
+	else {
 		mapped_addr = of_iomap(node, 0);
 		GED_LOGI("[GPU_QOS]mapped_addr: %p", mapped_addr);
 		of_node_put(node);
+		/* get sysram address from "reg" property then translate into a resource */
 		ret = of_address_to_resource(node, 0, &res);
 		rec_phys_addr = res.start;
 		if (ret)
 			GED_LOGE("[GPU_QOS]Cannot get physical memory addr");
 		GED_LOGI("[GPU_QOS] get physical memory addr: %x", (unsigned int)rec_phys_addr);
-	} else {
-		GED_LOGE("[GPU_QOS]Cannot find [gpu_fdvfs] of_node");
 	}
 
 	return mapped_addr;
@@ -72,9 +75,10 @@ static void check_sysram_support(void)
 	int ret = 0;
 
 	gpu_qos_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_qos");
-	if (unlikely(!gpu_qos_node)) {
+	if (unlikely(!gpu_qos_node))
 		GED_LOGE("[GPU_QOS]Failed to find gpu_qos node");
-	} else {
+	else {
+		/* check if sysram support by getting qos-sysram-support property */
 		of_property_read_u32(gpu_qos_node, "qos-sysram-support", &g_qos_sysram_support);
 		if (!g_qos_sysram_support)
 			GED_LOGI("[GPU_QOS] sysram not support");
@@ -90,17 +94,22 @@ static void get_rec_addr(void)
 
 	check_sysram_support();
 	if (!g_qos_sysram_support) {
-		GED_LOGI("[GPU_QOS] DRAM");
-		/* get sspm reserved mem */
+		/* get physical addr, virtual addr and size from sspm reserved mem */
 		rec_phys_addr = sspm_reserve_mem_get_phys(GPU_MEM_ID);
 		rec_virt_addr = sspm_reserve_mem_get_virt(GPU_MEM_ID);
 		rec_size = sspm_reserve_mem_get_size(GPU_MEM_ID);
+		GED_LOGI("[GPU_QOS] DRAM physical memory addr= %x\n",
+			(unsigned int)rec_phys_addr);
+		GED_LOGI("[GPU_QOS] DRAM virtual memory addr= %x size= %llu\n",
+			(unsigned int)rec_virt_addr, rec_size);
 	} else {
-		/* get sysram address (with fastdvfs and power_model) */
-		GED_LOGI("[GPU_QOS] SYSRAM");
+		/* get sysram address (with gpu-qos and power_model) */
 		mtk_sspm_bm_sysram_base_addr = _gpu_bm_of_ioremap();
+		/* Transfer physical addr to virtual addr */
 		rec_virt_addr = (phys_addr_t)mtk_sspm_bm_sysram_base_addr;
 		rec_size = NR_BM_COUNTER;
+		GED_LOGI("[GPU_QOS] SYSRAM virtual memory addr= %x size= %llu\n",
+			(unsigned int)rec_virt_addr, rec_size);
 	}
 
 	if (rec_virt_addr) {
