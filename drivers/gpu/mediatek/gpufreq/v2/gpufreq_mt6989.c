@@ -6053,14 +6053,16 @@ register_fp:
 		goto done;
 	}
 
+	if (!g_gpueb_support) {
 #if !GPUFREQ_HW_DELSEL_ENABLE
-	gpuppm_set_limit(TARGET_STACK, LIMIT_SRAMRC,
-		GPUPPM_DEFAULT_IDX, NO_DELSEL_FLOOR_VSTACK, false);
+		gpuppm_set_limit(TARGET_STACK, LIMIT_SRAMRC,
+			GPUPPM_DEFAULT_IDX, NO_DELSEL_FLOOR_VSTACK, false);
 #endif /* GPUFREQ_HW_DELSEL_ENABLE */
 #if !GPUFREQ_GPM3_0_ENABLE
-	gpuppm_set_limit(TARGET_STACK, LIMIT_GPM3,
-		NO_GPM3_CEILING_OPP, GPUPPM_DEFAULT_IDX, false);
+		gpuppm_set_limit(TARGET_STACK, LIMIT_GPM3,
+			NO_GPM3_CEILING_OPP, GPUPPM_DEFAULT_IDX, false);
 #endif /* GPUFREQ_GPM3_0_ENABLE */
+	}
 
 	g_gpufreq_ready = true;
 	GPUFREQ_LOGI("gpufreq platform driver probe done");
