@@ -180,6 +180,10 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 		goto ERROR;
 	}
 
+	ret = adsp_uart_clk_probe(pdev, &adspsys->uart_clk_ops);
+	if (ret)
+		pr_warn("%s(), uart_clk probe fail, %d\n", __func__, ret);
+
 	ret = adsp_mem_device_probe(pdev);
 	if (ret) {
 		pr_info("%s(), memory probe fail, %d\n", __func__, ret);

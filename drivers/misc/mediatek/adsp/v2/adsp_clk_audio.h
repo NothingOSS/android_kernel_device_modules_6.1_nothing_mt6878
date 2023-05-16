@@ -13,4 +13,8 @@ int adsp_clk_probe(struct platform_device *pdev,
 			  struct adsp_clk_operations *ops);
 void adsp_clk_remove(void *dev);
 
+int adsp_uart_clk_probe(struct platform_device *pdev,
+			 struct adsp_clk_operations *ops);
+void adsp_uart_clk_remove(void *dev);
+
 #endif /* ADSP_CLK_AUDIO_H */

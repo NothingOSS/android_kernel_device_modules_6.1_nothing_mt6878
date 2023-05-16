@@ -19,6 +19,8 @@ struct adsp_feature_control {
 	int delay_ms;
 	int (*suspend)(void);
 	int (*resume)(void);
+
+	u32 total_btaud;
 };
 
 ssize_t adsp_dump_feature_state(u32 cid, char *buffer, int size);

@@ -435,6 +435,26 @@ void adsp_disable_clock(void)
 		adspsys->clk_ops.disable();
 }
 
+void adsp_select_uart_clock_mode(enum adsp_clk_mode mode)
+{
+	if (adspsys && adspsys->uart_clk_ops.select)
+		adspsys->uart_clk_ops.select(mode);
+}
+
+int adsp_enable_uart_clock(void)
+{
+	if (adspsys && adspsys->uart_clk_ops.enable)
+		return adspsys->uart_clk_ops.enable();
+	else
+		return 0;
+}
+
+void adsp_disable_uart_clock(void)
+{
+	if (adspsys && adspsys->uart_clk_ops.disable)
+		adspsys->uart_clk_ops.disable();
+}
+
 void switch_adsp_power(bool on)
 {
 	if (on) {
