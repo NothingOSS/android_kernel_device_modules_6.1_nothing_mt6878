@@ -1557,6 +1557,75 @@ static int mt6681_snd_soc_put_volsw(struct snd_kcontrol *kcontrol,
 	return err;
 }
 
+static int mt6681_get_cara(unsigned int ana_gain, struct mt6681_priv *priv)
+{
+	unsigned int pga_cara = 0;
+
+	if (priv->mic_hifi_mode) {
+		switch (ana_gain) {
+		case 0x4:
+			pga_cara = 0x2;
+			break;
+		case 0x8:
+			pga_cara = 0x4;
+			break;
+		case 0xc:
+			pga_cara = 0x8;
+			break;
+		case 0x10:
+			pga_cara = 0x10;
+			break;
+		case 0x14:
+			pga_cara = 0x20;
+			break;
+		default:
+			pga_cara = 0;
+			break;
+		}
+	} else {
+		switch (ana_gain) {
+		case 0x4:
+			pga_cara = 0x2;
+			break;
+		case 0x8:
+			pga_cara = 0x4;
+			break;
+		case 0xc:
+			pga_cara = 0x8;
+			break;
+		case 0x10:
+			pga_cara = 0x10;
+			break;
+		case 0x14:
+			pga_cara = 0x20;
+			break;
+		default:
+			pga_cara = 0;
+			break;
+		}
+	}
+	return pga_cara;
+}
+
+static unsigned int get_hifi_index(unsigned int non_hifi_index, struct mt6681_priv *priv)
+{
+	int hifi_index = 0;
+
+	if (non_hifi_index >= 0x0 && non_hifi_index <= 0x14) {
+		hifi_index = non_hifi_index + 4;
+	} else if (non_hifi_index >= 0x20 && non_hifi_index <= 0x80 && !(non_hifi_index % 0x20)) {
+		hifi_index = 4 - (non_hifi_index / 0x20);
+	} else if (non_hifi_index >= 0xa0 && non_hifi_index <= 0xc0 && !(non_hifi_index % 0x20)) {
+		hifi_index = 0x20 + (non_hifi_index - 0xa0);
+	} else {
+		hifi_index = 4;
+		dev_info(priv->dev,
+			"%s(), invalid non_hifi_index = 0x%x, use default val = 4\n",
+			__func__, hifi_index);
+	}
+	return hifi_index;
+}
+
 static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 			    struct snd_ctl_elem_value *ucontrol)
 {
@@ -1569,6 +1638,7 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 	int index = ucontrol->value.integer.value[0];
 	int indexR = ucontrol->value.integer.value[1];
 	int ret;
+	unsigned int pga_cara = 0;
 
 	dev_dbg(priv->dev,
 		"%s(), name %s, reg(0x%x) = 0x%x, set index = %x indeR = %x\n",
@@ -1585,21 +1655,29 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 			ucontrol->value.integer.value[1] = 1;
 		}
 		break;
-	case MT6681_AUDENC_PMU_CON1:
+	case MT6681_AUDENC_2_2_PMU_CON0:
 		if (priv->mic_hifi_mode)
-			ucontrol->value.integer.value[0] = index + 2;
+			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
 		break;
-	case MT6681_AUDENC_PMU_CON3:
+	case MT6681_AUDENC_2_2_PMU_CON1:
 		if (priv->mic_hifi_mode)
-			ucontrol->value.integer.value[0] = index + 2;
+			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
 		break;
-	case MT6681_AUDENC_PMU_CON5:
+	case MT6681_AUDENC_2_2_PMU_CON2:
 		if (priv->mic_hifi_mode)
-			ucontrol->value.integer.value[0] = index + 2;
+			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
 		break;
-	case MT6681_AUDENC_PMU_CON7:
+	case MT6681_AUDENC_2_2_PMU_CON3:
 		if (priv->mic_hifi_mode)
-			ucontrol->value.integer.value[0] = index + 2;
+			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
+		break;
+	case MT6681_AUDENC_2_2_PMU_CON4:
+		if (priv->mic_hifi_mode)
+			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
+		break;
+	case MT6681_AUDENC_2_2_PMU_CON5:
+		if (priv->mic_hifi_mode)
+			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
 		break;
 	}
 
@@ -1631,35 +1709,47 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 		priv->ana_gain[AUDIO_ANALOG_VOLUME_HSOUTL] =
 			(reg >> RG_AUDHSGAIN_SFT) & RG_AUDHSGAIN_MASK;
 		break;
-	case MT6681_AUDENC_PMU_CON1:
-		regmap_read(priv->regmap, MT6681_AUDENC_PMU_CON1, &reg);
+	case MT6681_AUDENC_2_2_PMU_CON0:
+		regmap_read(priv->regmap, MT6681_AUDENC_2_2_PMU_CON0, &reg);
 		priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP1] =
-			(reg >> RG_AUDPREAMPLGAIN_SFT) & RG_AUDPREAMPLGAIN_MASK;
+			(reg >> RG_AUDPREAMPLGAIN_1P5_SFT) & RG_AUDPREAMPLGAIN_1P5_MASK;
+		pga_cara = mt6681_get_cara(priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP1], priv);
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON7, pga_cara);
 		break;
-	case MT6681_AUDENC_PMU_CON3:
-		regmap_read(priv->regmap, MT6681_AUDENC_PMU_CON3, &reg);
+	case MT6681_AUDENC_2_2_PMU_CON1:
+		regmap_read(priv->regmap, MT6681_AUDENC_2_2_PMU_CON1, &reg);
 		priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP2] =
-			(reg >> RG_AUDPREAMPRGAIN_SFT) & RG_AUDPREAMPRGAIN_MASK;
+			(reg >> RG_AUDPREAMPRGAIN_1P5_SFT) & RG_AUDPREAMPRGAIN_1P5_MASK;
+		pga_cara = mt6681_get_cara(priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP2], priv);
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON8, pga_cara);
 		break;
-	case MT6681_AUDENC_PMU_CON5:
-		regmap_read(priv->regmap, MT6681_AUDENC_PMU_CON5, &reg);
+	case MT6681_AUDENC_2_2_PMU_CON2:
+		regmap_read(priv->regmap, MT6681_AUDENC_2_2_PMU_CON2, &reg);
 		priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP3] =
-			(reg >> RG_AUDPREAMP3GAIN_SFT) & RG_AUDPREAMP3GAIN_MASK;
+			(reg >> RG_AUDPREAMP3GAIN_1P5_SFT) & RG_AUDPREAMP3GAIN_1P5_MASK;
+		pga_cara = mt6681_get_cara(priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP3], priv);
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON9, pga_cara);
 		break;
-	case MT6681_AUDENC_PMU_CON7:
-		regmap_read(priv->regmap, MT6681_AUDENC_PMU_CON7, &reg);
+	case MT6681_AUDENC_2_2_PMU_CON3:
+		regmap_read(priv->regmap, MT6681_AUDENC_2_2_PMU_CON3, &reg);
 		priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP4] =
-			(reg >> RG_AUDPREAMP4GAIN_SFT) & RG_AUDPREAMP4GAIN_MASK;
+			(reg >> RG_AUDPREAMP4GAIN_1P5_SFT) & RG_AUDPREAMP4GAIN_1P5_MASK;
+		pga_cara = mt6681_get_cara(priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP4], priv);
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON10, pga_cara);
 		break;
-	case MT6681_AUDENC_2_PMU_CON3:
-		regmap_read(priv->regmap, MT6681_AUDENC_2_PMU_CON3, &reg);
+	case MT6681_AUDENC_2_2_PMU_CON4:
+		regmap_read(priv->regmap, MT6681_AUDENC_2_2_PMU_CON4, &reg);
 		priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP5] =
-			(reg >> RG_AUDPREAMP5GAIN_SFT) & RG_AUDPREAMP5GAIN_MASK;
+			(reg >> RG_AUDPREAMP5GAIN_1P5_SFT) & RG_AUDPREAMP5GAIN_1P5_MASK;
+		pga_cara = mt6681_get_cara(priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP5], priv);
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON11, pga_cara);
 		break;
-	case MT6681_AUDENC_2_PMU_CON5:
-		regmap_read(priv->regmap, MT6681_AUDENC_2_PMU_CON5, &reg);
+	case MT6681_AUDENC_2_2_PMU_CON5:
+		regmap_read(priv->regmap, MT6681_AUDENC_2_2_PMU_CON5, &reg);
 		priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP6] =
-			(reg >> RG_AUDPREAMP6GAIN_SFT) & RG_AUDPREAMP6GAIN_MASK;
+			(reg >> RG_AUDPREAMP6GAIN_1P5_SFT) & RG_AUDPREAMP6GAIN_1P5_MASK;
+		pga_cara = mt6681_get_cara(priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP6], priv);
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON12, pga_cara);
 		break;
 	case MT6681_AUDENC_PMU_CON10:
 		regmap_read(priv->regmap, MT6681_AUDENC_PMU_CON10, &reg);
@@ -1718,23 +1808,23 @@ static const struct snd_kcontrol_new mt6681_snd_controls[] = {
 			   snd_soc_get_volsw, mt6681_put_volsw, playback_tlv),
 
 	/* ul pga gain */
-	SOC_SINGLE_EXT_TLV("PGA1 Volume", MT6681_AUDENC_PMU_CON1,
-			   RG_AUDPREAMPLGAIN_SFT, 0xa, 0, snd_soc_get_volsw,
+	SOC_SINGLE_EXT_TLV("PGA1 Volume", MT6681_AUDENC_2_2_PMU_CON0,
+			   RG_AUDPREAMPLGAIN_1P5_SFT, 0xc0, 0, snd_soc_get_volsw,
 			   mt6681_put_volsw, capture_tlv),
-	SOC_SINGLE_EXT_TLV("PGA2 Volume", MT6681_AUDENC_PMU_CON3,
-			   RG_AUDPREAMPRGAIN_SFT, 0xa, 0, snd_soc_get_volsw,
+	SOC_SINGLE_EXT_TLV("PGA2 Volume", MT6681_AUDENC_2_2_PMU_CON1,
+			   RG_AUDPREAMPRGAIN_1P5_SFT, 0xc0, 0, snd_soc_get_volsw,
 			   mt6681_put_volsw, capture_tlv),
-	SOC_SINGLE_EXT_TLV("PGA3 Volume", MT6681_AUDENC_PMU_CON5,
-			   RG_AUDPREAMP3GAIN_SFT, 0xa, 0, snd_soc_get_volsw,
+	SOC_SINGLE_EXT_TLV("PGA3 Volume", MT6681_AUDENC_2_2_PMU_CON2,
+			   RG_AUDPREAMP3GAIN_1P5_SFT, 0xc0, 0, snd_soc_get_volsw,
 			   mt6681_put_volsw, capture_tlv),
-	SOC_SINGLE_EXT_TLV("PGA4 Volume", MT6681_AUDENC_PMU_CON7,
-			   RG_AUDPREAMP4GAIN_SFT, 0xa, 0, snd_soc_get_volsw,
+	SOC_SINGLE_EXT_TLV("PGA4 Volume", MT6681_AUDENC_2_2_PMU_CON3,
+			   RG_AUDPREAMP4GAIN_1P5_SFT, 0xc0, 0, snd_soc_get_volsw,
 			   mt6681_put_volsw, capture_tlv),
-	SOC_SINGLE_EXT_TLV("PGA5 Volume", MT6681_AUDENC_2_PMU_CON3,
-			   RG_AUDPREAMP5GAIN_SFT, 0xa, 0, snd_soc_get_volsw,
+	SOC_SINGLE_EXT_TLV("PGA5 Volume", MT6681_AUDENC_2_2_PMU_CON4,
+			   RG_AUDPREAMP5GAIN_1P5_SFT, 0xc0, 0, snd_soc_get_volsw,
 			   mt6681_put_volsw, capture_tlv),
-	SOC_SINGLE_EXT_TLV("PGA6 Volume", MT6681_AUDENC_2_PMU_CON5,
-			   RG_AUDPREAMP6GAIN_SFT, 0xa, 0, snd_soc_get_volsw,
+	SOC_SINGLE_EXT_TLV("PGA6 Volume", MT6681_AUDENC_2_2_PMU_CON5,
+			   RG_AUDPREAMP6GAIN_1P5_SFT, 0xc0, 0, snd_soc_get_volsw,
 			   mt6681_put_volsw, capture_tlv),
 
 	/* ul pga neg gain */
@@ -8630,15 +8720,7 @@ static int mt_pga_l_event(struct snd_soc_dapm_widget *w,
 		 */
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON0,
 				   RG_AUDPREAMPLGAIN_1P5_MASK_SFT,
-				   0xc << RG_AUDPREAMPLGAIN_1P5_SFT);
-		/*
-		 * Audio L preamplifier CARA 18dB (non-HIFI):
-		 * 0 disable
-		 * 1 enable
-		 */
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON7,
-				   RG_AUDPREAMPL_CARA2ND_18_MASK_SFT,
-				   0x1 << RG_AUDPREAMPL_CARA2ND_18_SFT);
+				   mic_gain_l << RG_AUDPREAMPLGAIN_1P5_SFT);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* set mic pga gain */
@@ -8729,15 +8811,7 @@ static int mt_pga_r_event(struct snd_soc_dapm_widget *w,
 		 */
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON1,
 				   RG_AUDPREAMPRGAIN_1P5_MASK_SFT,
-				   0xc << RG_AUDPREAMPRGAIN_1P5_SFT);
-		/*
-		 * Audio R preamplifier CARA 18dB (non-HIFI):
-		 * 0 disable
-		 * 1 enable
-		 */
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON8,
-				   RG_AUDPREAMPR_CARA2ND_18_MASK_SFT,
-				   0x1 << RG_AUDPREAMPR_CARA2ND_18_SFT);
+				   mic_gain_r << RG_AUDPREAMPRGAIN_1P5_SFT);
 		if (IS_DCC_BASE(mic_type)) {
 			/* Audio R preamplifier DCC precharge */
 			regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON2,
@@ -8871,15 +8945,7 @@ static int mt_pga_3_event(struct snd_soc_dapm_widget *w,
 		 */
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON2,
 				   RG_AUDPREAMP3GAIN_1P5_MASK_SFT,
-				   0xc << RG_AUDPREAMP3GAIN_1P5_SFT);
-		/*
-		 * Audio 3 preamplifier CARA 18dB (non-HIFI):
-		 * 0 disable
-		 * 1 enable
-		 */
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON9,
-				   RG_AUDPREAMP3_CARA2ND_18_MASK_SFT,
-				   0x1 << RG_AUDPREAMP3_CARA2ND_18_SFT);
+				   mic_gain_3 << RG_AUDPREAMP3GAIN_1P5_SFT);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* set mic pga gain */
@@ -8989,15 +9055,7 @@ static int mt_pga_4_event(struct snd_soc_dapm_widget *w,
 		 */
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON3,
 				   RG_AUDPREAMP4GAIN_1P5_MASK_SFT,
-				   0xc << RG_AUDPREAMP4GAIN_1P5_SFT);
-		/*
-		 * Audio 4 preamplifier CARA 18dB (non-HIFI):
-		 * 0 disable
-		 * 1 enable
-		 */
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON10,
-				   RG_AUDPREAMP4_CARA2ND_18_MASK_SFT,
-				   0x1 << RG_AUDPREAMP4_CARA2ND_18_SFT);
+				   mic_gain_4 << RG_AUDPREAMP4GAIN_1P5_SFT);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* set mic pga gain */
@@ -9117,15 +9175,7 @@ static int mt_pga_5_event(struct snd_soc_dapm_widget *w,
 		 */
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON4,
 				   RG_AUDPREAMP5GAIN_1P5_MASK_SFT,
-				   0xc << RG_AUDPREAMP5GAIN_1P5_SFT);
-		/*
-		 * Audio 5 preamplifier CARA 18dB (non-HIFI):
-		 * 0 disable
-		 * 1 enable
-		 */
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON11,
-				   RG_AUDPREAMP5_CARA2ND_18_MASK_SFT,
-				   0x1 << RG_AUDPREAMP5_CARA2ND_18_SFT);
+				   mic_gain_5 << RG_AUDPREAMP5GAIN_1P5_SFT);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* set mic pga gain */
@@ -9247,15 +9297,7 @@ static int mt_pga_6_event(struct snd_soc_dapm_widget *w,
 		 */
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON5,
 				   RG_AUDPREAMP6GAIN_1P5_MASK_SFT,
-				   0xc << RG_AUDPREAMP6GAIN_1P5_SFT);
-		/*
-		 * Audio 6 preamplifier CARA 18dB (non-HIFI):
-		 * 0 disable
-		 * 1 enable
-		 */
-		regmap_update_bits(priv->regmap, MT6681_AUDENC_2_2_PMU_CON12,
-				   RG_AUDPREAMP6_CARA2ND_18_MASK_SFT,
-				   0x1 << RG_AUDPREAMP6_CARA2ND_18_SFT);
+				   mic_gain_6 << RG_AUDPREAMP6GAIN_1P5_SFT);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
 		/* set mic pga gain */
