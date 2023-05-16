@@ -98,9 +98,9 @@ static inline unsigned long uclamp_task_util(struct task_struct *p)
 }
 #endif
 
-int task_fits_capacity(struct task_struct *p, long capacity, unsigned int margin)
+int task_fits_capacity(struct task_struct *p, long capacity)
 {
-	return fits_capacity(uclamp_task_util(p), capacity, margin);
+	return fits_capacity(uclamp_task_util(p), capacity);
 }
 
 unsigned long capacity_of(int cpu)
@@ -1058,7 +1058,7 @@ static inline bool task_can_skip_this_cpu(struct task_struct *p, unsigned long p
 
 	cpu_in_bcpus = cpumask_test_cpu(cpu, bcpus);
 	task_util = task_util_est(p);
-	if (!cpu_in_bcpus || !fits_capacity(task_util, util_Th, get_adaptive_margin(cpu)))
+	if (!cpu_in_bcpus || !fits_capacity(task_util, util_Th))
 		return 0;
 
 	return 1;
@@ -1108,14 +1108,11 @@ EXPORT_SYMBOL_GPL(set_gear_indices);
 #if IS_ENABLED(CONFIG_MTK_SCHED_UPDOWN_MIGRATE)
 
 /* Default Migration margin */
-bool adaptive_margin_enabled[MAX_NR_CPUS] = {
-			[0 ... MAX_NR_CPUS-1] = true /* default on */
-};
 unsigned int sched_capacity_up_margin[MAX_NR_CPUS] = {
-			[0 ... MAX_NR_CPUS-1] = 1024 /* ~0% margin */
+			[0 ... MAX_NR_CPUS-1] = 1280 /* ~20% margin */
 };
 unsigned int sched_capacity_down_margin[MAX_NR_CPUS] = {
-			[0 ... MAX_NR_CPUS-1] = 1024 /* ~0% margin */
+			[0 ... MAX_NR_CPUS-1] = 1280 /* ~20% margin */
 };
 
 int set_updown_migrate_pct(int gear_idx, int dn_pct, int up_pct)
@@ -1145,7 +1142,6 @@ int set_updown_migrate_pct(int gear_idx, int dn_pct, int up_pct)
 			SCHED_CAPACITY_SCALE * 100 / up_pct;
 		sched_capacity_down_margin[cpu] =
 			SCHED_CAPACITY_SCALE * 100 / dn_pct;
-		adaptive_margin_enabled[cpu] = false;
 	}
 	ret = 1;
 
@@ -1169,9 +1165,8 @@ int unset_updown_migrate_pct(int gear_idx)
 
 	cpus = get_gear_cpumask(gear_idx);
 	for_each_cpu(cpu, cpus) {
-		sched_capacity_up_margin[cpu] = 1024;
-		sched_capacity_down_margin[cpu] = 1024;
-		adaptive_margin_enabled[cpu] = true;
+		sched_capacity_up_margin[cpu] = 1078;
+		sched_capacity_down_margin[cpu] = 1205;
 	}
 	ret = 1;
 
@@ -1186,8 +1181,6 @@ static inline bool task_demand_fits(struct task_struct *p, int dst_cpu)
 {
 	int src_cpu = task_cpu(p);
 	unsigned int margin;
-	bool AM_enabled;
-	unsigned int sugov_margin;
 	unsigned long dst_capacity = capacity_orig_of(dst_cpu);
 	unsigned long src_capacity = capacity_orig_of(src_cpu);
 
@@ -1197,34 +1190,25 @@ static inline bool task_demand_fits(struct task_struct *p, int dst_cpu)
 	/*
 	 * Derive upmigration/downmigration margin wrt the src/dst CPU.
 	 */
-	if (src_capacity > dst_capacity) {
+	if (src_capacity > dst_capacity)
 		margin = sched_capacity_down_margin[dst_cpu];
-		AM_enabled = adaptive_margin_enabled[dst_cpu];
-	} else {
+	else
 		margin = sched_capacity_up_margin[src_cpu];
-		AM_enabled = adaptive_margin_enabled[src_cpu];
-	}
 
-	/* bypass adaptive margin if capacity_updown_margin is enabled */
-	sugov_margin = AM_enabled ? get_adaptive_margin(dst_cpu) : SCHED_CAPACITY_SCALE;
-
-	return (dst_capacity * SCHED_CAPACITY_SCALE * SCHED_CAPACITY_SCALE
-				> uclamp_task_util(p) * margin * sugov_margin);
+	return dst_capacity * SCHED_CAPACITY_SCALE > uclamp_task_util(p) * margin;
 }
 
 static inline bool util_fits_capacity(unsigned long cpu_util, unsigned long cpu_cap, int cpu)
 {
 	unsigned long ceiling;
-	bool AM_enabled = adaptive_margin_enabled[cpu];
-	unsigned int sugov_margin = AM_enabled ? get_adaptive_margin(cpu) : SCHED_CAPACITY_SCALE;
 
-	ceiling = SCHED_CAPACITY_SCALE * capacity_orig_of(cpu) / sched_capacity_up_margin[cpu];
+	ceiling = sched_capacity_up_margin[cpu] * capacity_orig_of(cpu) / SCHED_CAPACITY_SCALE;
 
 	if (trace_sched_fits_cap_ceiling_enabled())
-		trace_sched_fits_cap_ceiling(cpu, cpu_util, cpu_cap, ceiling,
-			sugov_margin, sched_capacity_up_margin[cpu], AM_enabled);
+		trace_sched_fits_cap_ceiling(cpu, cpu_util, cpu_cap,
+			ceiling, sched_capacity_up_margin[cpu]);
 
-	return min(ceiling, cpu_cap) * SCHED_CAPACITY_SCALE >= cpu_util * sugov_margin;
+	return min(ceiling, cpu_cap) >= cpu_util;
 }
 
 #else
@@ -1235,12 +1219,12 @@ static inline bool task_demand_fits(struct task_struct *p, int cpu)
 	if (capacity == SCHED_CAPACITY_SCALE)
 		return true;
 
-	return task_fits_capacity(p, capacity, get_adaptive_margin(cpu));
+	return task_fits_capacity(p, capacity);
 }
 
 static inline bool util_fits_capacity(unsigned long cpu_util, unsigned long cpu_cap, int cpu)
 {
-	return fits_capacity(cpu_util, cpu_cap, get_adaptive_margin(cpu));
+	return fits_capacity(cpu_util, cpu_cap);
 }
 #endif
 
@@ -1528,7 +1512,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 	if (sync && cpu_rq(this_cpu)->nr_running == 1 &&
 	    cpumask_test_cpu(this_cpu, p->cpus_ptr) &&
-	    task_fits_capacity(p, capacity_of(this_cpu), get_adaptive_margin(this_cpu)) &&
+	    task_fits_capacity(p, capacity_of(this_cpu)) &&
 	    !(latency_sensitive && !cpumask_test_cpu(this_cpu, &effective_softmask))) {
 		rcu_read_unlock();
 		*new_cpu = this_cpu;
@@ -1662,7 +1646,7 @@ unlock:
 
 	irq_log_store();
 
-	/* All cpu failed, even sys_max_spare_cap_cpu is not captured for in_irq */
+	/* All cpu failed, even sys_max_spare_cap_cpu is not captured for in_irq*/
 
 	if (unlikely(in_irq)) {
 		if (cpumask_test_cpu(prev_cpu, &allowed_cpu_mask)) {
@@ -1919,6 +1903,7 @@ void mtk_sched_newidle_balance(void *data, struct rq *this_rq, struct rq_flags *
 			rq_unlock_irqrestore(src_rq, &src_rf);
 			continue;
 		}
+
 		if ((src_rq->misfit_task_load > misfit_load) &&
 			(cpu_cap_ceiling(this_cpu) > cpu_cap_ceiling(cpu))) {
 			p = src_rq->curr;

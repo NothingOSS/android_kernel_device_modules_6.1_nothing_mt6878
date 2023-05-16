@@ -73,7 +73,7 @@ static inline bool check_has_overutilize_cpu(struct cpumask *grp)
 
 	for_each_cpu(cpu, grp) {
 		if (cpu_rq(cpu)->nr_running >= 2 &&
-			!fits_capacity(cpu_util(cpu), capacity_of(cpu), get_adaptive_margin(cpu)))
+			!fits_capacity(cpu_util(cpu), capacity_of(cpu)))
 			return true;
 	}
 	return false;
@@ -152,7 +152,7 @@ void mtk_cpu_overutilized(void *data, int cpu, int *overutilized)
 	}
 
 
-	*overutilized = !fits_capacity(sum_util, sum_cap, get_adaptive_margin(cpu));
+	*overutilized = !fits_capacity(sum_util, sum_cap);
 	trace_sched_cpu_overutilized(cpu, perf_domain_span(pd), sum_util, sum_cap, *overutilized);
 
 	rcu_read_unlock();

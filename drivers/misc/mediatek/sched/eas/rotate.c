@@ -23,7 +23,6 @@
 #include "eas_plus.h"
 #include "eas_trace.h"
 #include "common.h"
-#include "sugov/cpufreq.h"
 
 DEFINE_PER_CPU(struct task_rotate_work, task_rotate_works);
 bool big_task_rotation_enable = true;
@@ -159,8 +158,7 @@ void task_check_for_rotation(struct rq *src_rq)
 		struct task_struct *curr_task = READ_ONCE(rq->curr);
 
 		if (curr_task &&
-			!task_fits_capacity(curr_task, READ_ONCE(rq->cpu_capacity),
-					get_adaptive_margin(i)))
+			!task_fits_capacity(curr_task, READ_ONCE(rq->cpu_capacity)))
 			heavy_task += 1;
 
 		if (heavy_task >= HEAVY_TASK_NUM)

@@ -97,10 +97,10 @@ TRACE_EVENT(sched_find_cpu_in_irq,
 TRACE_EVENT(sched_fits_cap_ceiling,
 
 	TP_PROTO(int cpu, unsigned long cpu_util,
-		unsigned long cup_cap, unsigned long ceiling, unsigned int sugov_margin,
-		unsigned int capacity_up_margin, bool AM_enabled),
+		unsigned long cup_cap, unsigned long ceiling,
+		unsigned int capacity_up_margin),
 
-	TP_ARGS(cpu, cpu_util, cup_cap, ceiling, sugov_margin, capacity_up_margin, AM_enabled),
+	TP_ARGS(cpu, cpu_util, cup_cap, ceiling, capacity_up_margin),
 
 	TP_STRUCT__entry(
 		__field(int, cpu)
@@ -108,9 +108,7 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 		__field(unsigned long,   cup_cap)
 		__field(unsigned long,   ceiling)
 		__field(unsigned int,   capacity_up_margin)
-		__field(unsigned int,   sugov_margin)
 		__field(unsigned long,   capacity_orig)
-		__field(bool,			AM_enabled)
 		),
 
 	TP_fast_assign(
@@ -119,21 +117,17 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 		__entry->cup_cap			= cup_cap;
 		__entry->ceiling			= ceiling;
 		__entry->capacity_up_margin	= capacity_up_margin;
-		__entry->sugov_margin	= sugov_margin;
 		__entry->capacity_orig		= capacity_orig_of(cpu);
-		__entry->AM_enabled			= AM_enabled;
 		),
 
 	TP_printk(
-		"cpu=%d cpu_util=%ld cup_cap=%ld ceiling=%ld capacity_up_margin=%d sugov_margin=%d capacity_orig=%ld adaptive_margin_ctrl=%d",
+		"cpu=%d cpu_util=%ld cup_cap=%ld ceiling=%ld capacity_up_margin=%d capacity_orig=%ld",
 		__entry->cpu,
 		__entry->cpu_util,
 		__entry->cup_cap,
 		__entry->ceiling,
 		__entry->capacity_up_margin,
-		__entry->sugov_margin,
-		__entry->capacity_orig,
-		__entry->AM_enabled)
+		__entry->capacity_orig)
 );
 #endif
 
