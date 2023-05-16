@@ -3124,6 +3124,12 @@
 			share-buck = <1>;
 		};
 
+		flt: flt@c0d4270 {
+			compatible = "mediatek,flt";
+			reg = <0 0xc0d4270 0 0x91c>;
+			mode = <2>;
+		};
+
 		cpu_mcucfg: mcusys-ao-cfg@c530000 {
 			reg = <0 0x0c000000 0 0x10000>; /* 64KB */
 		};
