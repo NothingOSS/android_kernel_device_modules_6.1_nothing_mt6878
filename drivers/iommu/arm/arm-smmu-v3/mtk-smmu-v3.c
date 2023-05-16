@@ -42,6 +42,7 @@
 #define SAME_SUBSYS			BIT(4)
 #define SMMU_DELAY_HW_INIT		BIT(5)
 #define SMMU_SEC_EN			BIT(6)
+#define SMMU_SKIP_SHUTDOWN		BIT(7)
 
 #define SMMU_IRQ_COUNT_MAX		(5)
 #define SMMU_IRQ_DISABLE_TIME		(10) /* 10s */
@@ -1566,6 +1567,16 @@ void mtk_smmu_fault_dump(struct arm_smmu_device *smmu)
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_fault_dump);
 
+static bool mtk_smmu_skip_shutdown(struct arm_smmu_device *smmu)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	bool skip_shutdown;
+
+	skip_shutdown = MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_SKIP_SHUTDOWN);
+
+	return skip_shutdown;
+}
+
 static const struct arm_smmu_impl mtk_smmu_impl = {
 	.device_group = mtk_smmu_device_group,
 	.delay_hw_init = mtk_delay_hw_init,
@@ -1589,6 +1600,7 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.dev_enable_feature = mtk_smmu_dev_enable_feature,
 	.dev_disable_feature = mtk_smmu_dev_disable_feature,
 	.fault_dump = mtk_smmu_fault_dump,
+	.skip_shutdown = mtk_smmu_skip_shutdown,
 };
 
 void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
@@ -1933,7 +1945,8 @@ static const struct mtk_smmu_plat_data mt6989_data_mm = {
 static const struct mtk_smmu_plat_data mt6989_data_apu = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= APU_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN,
+	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN |
+				  SMMU_SKIP_SHUTDOWN,
 };
 
 static const struct mtk_smmu_plat_data mt6989_data_soc = {

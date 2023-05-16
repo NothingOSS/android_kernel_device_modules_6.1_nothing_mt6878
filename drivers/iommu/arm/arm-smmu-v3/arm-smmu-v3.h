@@ -785,6 +785,7 @@ struct arm_smmu_impl {
 			  unsigned long iova,
 			  size_t size);
 	void (*fault_dump)(struct arm_smmu_device *smmu);
+	bool (*skip_shutdown)(struct arm_smmu_device *smmu);
 };
 
 struct arm_smmu_device *arm_smmu_v3_impl_init(struct arm_smmu_device *smmu);

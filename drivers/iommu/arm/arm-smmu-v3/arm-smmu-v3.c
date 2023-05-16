@@ -4264,8 +4264,27 @@ out_unlock:
 static void arm_smmu_device_shutdown(struct platform_device *pdev)
 {
 	struct arm_smmu_device *smmu = platform_get_drvdata(pdev);
+	int ret;
+
+	if (smmu->impl && smmu->impl->skip_shutdown &&
+	    smmu->impl->skip_shutdown(smmu)) {
+		pr_info("%s skip", __func__);
+		return;
+	}
+
+	mutex_lock(&smmu->pm_mutex);
+	ret = arm_smmu_rpm_get(smmu);
+	if (ret)
+		goto out_unlock;
 
 	arm_smmu_device_disable(smmu);
+
+	arm_smmu_rpm_put(smmu);
+
+out_unlock:
+	mutex_unlock(&smmu->pm_mutex);
+	if (ret)
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 }
 
 static int arm_smmu_rpm_get(struct arm_smmu_device *smmu)
