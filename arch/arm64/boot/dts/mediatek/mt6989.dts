@@ -3539,7 +3539,7 @@
 			compatible = "mediatek,dfd_soc";
 			enabled = <1>;
 			dfd-timeout = <0x1000>;
-			buf-length = <0x300000>;
+			buf-length = <0x200000>;
 			buf-addr-align = <0x400000>;
 			buf-addr-max = <0xffffffff>;
 		};
