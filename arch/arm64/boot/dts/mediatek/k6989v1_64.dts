@@ -10,9 +10,8 @@
 #include <dt-bindings/phy/phy.h>
 
 &chosen {
-bootargs_ext = "kmemleak=off kasan=off \
-loglevel=8 initcall_debug=1 \
-arm64.nopauth arm64.nosme arm64.nosve arm64.nomte";
+bootargs_ext = "loglevel=8 initcall_debug=1 \
+arm64.nopauth arm64.nosme arm64.nosve";
 };
 
 &mtk_leds {
