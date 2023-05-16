@@ -102,6 +102,8 @@
 	};
 
 	clkbuf_ctrl: clkbuf-ctrl {
+		pmic-supply = <&mt6685_clkbuf>;
+
 		compatible = "mediatek,mt6989-clkbuf";
 		pmic = <&mt6685_clkbuf>;
 		srclken-rc = <&srclken_rc>;
