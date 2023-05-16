@@ -4572,6 +4572,16 @@
 			interrupts = <GIC_SPI 950 IRQ_TYPE_EDGE_RISING 0>;
 			interrupt-names = "combined";
 			#iommu-cells = <1>;
+
+			iommu-groups {
+				soc_iommu_group_0: soc-iommu-group-common {
+					label = "soc_common";
+					#address-cells = <2>;
+					#size-cells = <2>;
+					mtk,iommu-dma-range = <0x0 0x0 0x4 0x0>;
+					mtk,smmu-mode = "dma";
+				};
+			};
 		};
 
 		soc_smmu_tbu_0_pmu: smmu-pmu@10542000 {
@@ -11675,6 +11685,46 @@
 	mm-smmu-lmu {
 		compatible = "mtk,smmu-v3-lmu";
 		mtk,smmu = <&mm_smmu>;
+	};
+
+	/* smmu test devices */
+	smmu-test-ktf1 {
+		compatible = "mediatek,soc-smmu-test-ktf1";
+		dma-mmap-reg = <0x10212000 0x1000>;
+		mtk,iommu-group = <&soc_iommu_group_0>;
+		iommus = <&soc_smmu 0xf0>;
+	};
+
+	smmu-test-ktf2 {
+		compatible = "mediatek,soc-smmu-test-ktf2";
+		mtk,iommu-group = <&soc_iommu_group_0>;
+		iommus = <&soc_smmu 0xf1>;
+	};
+
+	smmu-test-ktf3 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "mediatek,soc-smmu-test-ktf3";
+		iommus = <&soc_smmu 0xf2>;
+		mtk,iommu-dma-range = <0x40000000 0x10000000>;
+		mtk,smmu-dma-mode = "bypass";
+	};
+
+	smmu-test-ktf4 {
+		compatible = "mediatek,soc-smmu-test-ktf4";
+		mtk,smmu-dma-mode = "disable";
+		iommus = <&soc_smmu 0xf3>;
+	};
+
+	smmu-test-ktf5 {
+		compatible = "mediatek,mm-smmu-test-ktf1";
+		dma-mmap-reg = <0x14400000 0x1000>;
+		mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+	};
+
+	smmu-test-ktf6 {
+		compatible = "mediatek,mm-smmu-test-ktf2";
+		mtk,smmu-shared = <&mm_smmu_srt_normal>;
 	};
 
 	swpm: swpm {
