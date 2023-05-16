@@ -197,37 +197,74 @@ static void thermal_info_work(struct work_struct *work)
 
 static void get_cpu_info(void)
 {
-	cpu_info.ttj = sign_extend32(
-			readl(thermal_csram_base + CPU_TTJ_OFFSET), 31);
-	cpu_info.limit_powerbudget = sign_extend32(
-			readl(thermal_csram_base + CPU_POWERBUDGET_OFFSET), 31);
-	cpu_info.LL_min_opp_hint = sign_extend32(
-			readl(thermal_csram_base + CPU_LL_MIN_OPP_HINT_OFFSET), 31);
-	cpu_info.BL_min_opp_hint = sign_extend32(
-			readl(thermal_csram_base + CPU_BL_MIN_OPP_HINT_OFFSET), 31);
-	cpu_info.B_min_opp_hint = sign_extend32(
-			readl(thermal_csram_base + CPU_B_MIN_OPP_HINT_OFFSET), 31);
-	cpu_info.LL_limit_opp = sign_extend32(
-			readl(thermal_csram_base + CPU_LL_LIMIT_OPP_OFFSET), 31);
-	cpu_info.BL_limit_opp = sign_extend32(
-			readl(thermal_csram_base + CPU_BL_LIMIT_OPP_OFFSET), 31);
-	cpu_info.B_limit_opp = sign_extend32(
-			readl(thermal_csram_base + CPU_B_LIMIT_OPP_OFFSET), 31);
-	cpu_info.LL_limit_freq = readl(thermal_csram_base + CPU_LL_LIMIT_FREQ_OFFSET);
-	cpu_info.BL_limit_freq = readl(thermal_csram_base + CPU_BL_LIMIT_FREQ_OFFSET);
-	cpu_info.B_limit_freq = readl(thermal_csram_base + CPU_B_LIMIT_FREQ_OFFSET);
-	cpu_info.LL_cur_freq = readl(thermal_csram_base + CPU_LL_CUR_FREQ_OFFSET);
-	cpu_info.BL_cur_freq = readl(thermal_csram_base + CPU_BL_CUR_FREQ_OFFSET);
-	cpu_info.B_cur_freq = readl(thermal_csram_base + CPU_B_CUR_FREQ_OFFSET);
-	cpu_info.LL_max_temp = sign_extend32(
-			readl(thermal_csram_base + CPU_LL_MAX_TEMP_OFFSET), 31);
-	cpu_info.BL_max_temp = sign_extend32(
-			readl(thermal_csram_base + CPU_BL_MAX_TEMP_OFFSET), 31);
-	cpu_info.B_max_temp = sign_extend32(
-			readl(thermal_csram_base + CPU_B_MAX_TEMP_OFFSET), 31);
+	int is_tcm_ready = 0;
+
+	if (thermal_cputcm_base)
+		is_tcm_ready = readl(thermal_cputcm_base + TCM_BUF_OFFSET);
+
+	if (is_tcm_ready) {
+		cpu_info.ttj = sign_extend32(
+				readl(thermal_cputcm_base + CPU_TTJ_TCM_OFFSET), 31);
+		cpu_info.limit_powerbudget = sign_extend32(
+				readl(thermal_cputcm_base + CPU_POWERBUDGET_TCM_OFFSET), 31);
+		cpu_info.LL_min_opp_hint = sign_extend32(
+				readl(thermal_cputcm_base + CPU_LL_MIN_OPP_HINT_TCM_OFFSET), 31);
+		cpu_info.BL_min_opp_hint = sign_extend32(
+				readl(thermal_cputcm_base + CPU_BL_MIN_OPP_HINT_TCM_OFFSET), 31);
+		cpu_info.B_min_opp_hint = sign_extend32(
+				readl(thermal_cputcm_base + CPU_B_MIN_OPP_HINT_TCM_OFFSET), 31);
+		cpu_info.LL_limit_opp = sign_extend32(
+				readl(thermal_cputcm_base + CPU_LL_LIMIT_OPP_TCM_OFFSET), 31);
+		cpu_info.BL_limit_opp = sign_extend32(
+				readl(thermal_cputcm_base + CPU_BL_LIMIT_OPP_TCM_OFFSET), 31);
+		cpu_info.B_limit_opp = sign_extend32(
+				readl(thermal_cputcm_base + CPU_B_LIMIT_OPP_TCM_OFFSET), 31);
+		cpu_info.LL_limit_freq = readl(thermal_cputcm_base + CPU_LL_LIMIT_FREQ_TCM_OFFSET);
+		cpu_info.BL_limit_freq = readl(thermal_cputcm_base + CPU_BL_LIMIT_FREQ_TCM_OFFSET);
+		cpu_info.B_limit_freq = readl(thermal_cputcm_base + CPU_B_LIMIT_FREQ_TCM_OFFSET);
+		cpu_info.LL_cur_freq = readl(thermal_cputcm_base + CPU_LL_CUR_FREQ_TCM_OFFSET);
+		cpu_info.BL_cur_freq = readl(thermal_cputcm_base + CPU_BL_CUR_FREQ_TCM_OFFSET);
+		cpu_info.B_cur_freq = readl(thermal_cputcm_base + CPU_B_CUR_FREQ_TCM_OFFSET);
+		cpu_info.LL_max_temp = sign_extend32(
+				readl(thermal_cputcm_base + CPU_LL_MAX_TEMP_TCM_OFFSET), 31);
+		cpu_info.BL_max_temp = sign_extend32(
+				readl(thermal_cputcm_base + CPU_BL_MAX_TEMP_TCM_OFFSET), 31);
+		cpu_info.B_max_temp = sign_extend32(
+				readl(thermal_cputcm_base + CPU_B_MAX_TEMP_TCM_OFFSET), 31);
+	} else {
+		cpu_info.ttj = sign_extend32(
+				readl(thermal_csram_base + CPU_TTJ_OFFSET), 31);
+		cpu_info.limit_powerbudget = sign_extend32(
+				readl(thermal_csram_base + CPU_POWERBUDGET_OFFSET), 31);
+		cpu_info.LL_min_opp_hint = sign_extend32(
+				readl(thermal_csram_base + CPU_LL_MIN_OPP_HINT_OFFSET), 31);
+		cpu_info.BL_min_opp_hint = sign_extend32(
+				readl(thermal_csram_base + CPU_BL_MIN_OPP_HINT_OFFSET), 31);
+		cpu_info.B_min_opp_hint = sign_extend32(
+				readl(thermal_csram_base + CPU_B_MIN_OPP_HINT_OFFSET), 31);
+		cpu_info.LL_limit_opp = sign_extend32(
+				readl(thermal_csram_base + CPU_LL_LIMIT_OPP_OFFSET), 31);
+		cpu_info.BL_limit_opp = sign_extend32(
+				readl(thermal_csram_base + CPU_BL_LIMIT_OPP_OFFSET), 31);
+		cpu_info.B_limit_opp = sign_extend32(
+				readl(thermal_csram_base + CPU_B_LIMIT_OPP_OFFSET), 31);
+		cpu_info.LL_limit_freq = readl(thermal_csram_base + CPU_LL_LIMIT_FREQ_OFFSET);
+		cpu_info.BL_limit_freq = readl(thermal_csram_base + CPU_BL_LIMIT_FREQ_OFFSET);
+		cpu_info.B_limit_freq = readl(thermal_csram_base + CPU_B_LIMIT_FREQ_OFFSET);
+		cpu_info.LL_cur_freq = readl(thermal_csram_base + CPU_LL_CUR_FREQ_OFFSET);
+		cpu_info.BL_cur_freq = readl(thermal_csram_base + CPU_BL_CUR_FREQ_OFFSET);
+		cpu_info.B_cur_freq = readl(thermal_csram_base + CPU_B_CUR_FREQ_OFFSET);
+		cpu_info.LL_max_temp = sign_extend32(
+				readl(thermal_csram_base + CPU_LL_MAX_TEMP_OFFSET), 31);
+		cpu_info.BL_max_temp = sign_extend32(
+				readl(thermal_csram_base + CPU_BL_MAX_TEMP_OFFSET), 31);
+		cpu_info.B_max_temp = sign_extend32(
+				readl(thermal_csram_base + CPU_B_MAX_TEMP_OFFSET), 31);
+	}
 }
 static void get_gpu_info(void)
 {
+
 	gpu_info.ttj = sign_extend32(
 			readl(thermal_csram_base + GPU_TTJ_OFFSET), 31);
 	gpu_info.limit_powerbudget = sign_extend32(
@@ -247,8 +284,10 @@ static void get_gpu_info(void)
 	gpu_info.ppm_limiter = readl(thermal_csram_base + GPU_PPM_LIMITER_OFFSET);
 	gpu_info.ppm_limit_freq = readl(thermal_csram_base + GPU_PPM_LIMIT_OFFSET);
 }
+
 static void get_apu_info(void)
 {
+
 	if (thermal_apu_mbox_base) {
 		apu_info.ttj = sign_extend32(
 				readl(thermal_apu_mbox_base + APUMBOX_TTJ_OFFSET), 31);
@@ -279,24 +318,47 @@ static enum hrtimer_restart thermal_trace_work(struct hrtimer *timer)
 	ktime_t ktime;
 	int i;
 	struct headroom_info hr_info[NR_CPUS];
+	int is_tcm_ready = 0;
 
 	if (!thermal_csram_base)
 		goto skip;
 
+	if (thermal_cputcm_base)
+		is_tcm_ready = readl(thermal_cputcm_base + TCM_BUF_OFFSET);
+
 	/* parse hr info */
 	for_each_possible_cpu(i) {
-		hr_info[i].temp = sign_extend32(
-			readl(thermal_csram_base + CPU_TEMP_OFFSET + 4 * i), 31);
-		hr_info[i].predict_temp = sign_extend32(
-			readl(thermal_csram_base + CPU_PREDICT_TEMP_OFFSET + 4 * i), 31);
-		hr_info[i].headroom = sign_extend32(
-			readl(thermal_csram_base + CPU_HEADROOM_OFFSET + 4 * i), 31);
-		hr_info[i].ratio = readl(thermal_csram_base + CPU_HEADROOM_RATIO_OFFSET + 4 * i);
-
+		if (is_tcm_ready) {
+			hr_info[i].temp = sign_extend32(
+				readl(thermal_cputcm_base +
+				CPU_TEMP_TCM_OFFSET + 4 * i), 31);
+			hr_info[i].predict_temp = sign_extend32(
+				readl(thermal_cputcm_base +
+				CPU_PREDICT_TEMP_TCM_OFFSET + 4 * i), 31);
+			hr_info[i].headroom = sign_extend32(
+				readl(thermal_cputcm_base +
+				CPU_HEADROOM_TCM_OFFSET + 4 * i), 31);
+			hr_info[i].ratio = readl(thermal_cputcm_base +
+				CPU_HEADROOM_RATIO_TCM_OFFSET + 4 * i);
+		} else {
+			hr_info[i].temp = sign_extend32(
+				readl(thermal_csram_base +
+				CPU_TEMP_OFFSET + 4 * i), 31);
+			hr_info[i].predict_temp = sign_extend32(
+				readl(thermal_csram_base +
+				CPU_PREDICT_TEMP_OFFSET + 4 * i), 31);
+			hr_info[i].headroom = sign_extend32(
+				readl(thermal_csram_base +
+				CPU_HEADROOM_OFFSET + 4 * i), 31);
+			hr_info[i].ratio = readl(thermal_csram_base +
+				CPU_HEADROOM_RATIO_OFFSET + 4 * i);
+		}
 		pr_debug("[%d] temp=%d, predict_temp=%d, headroom=%d, ratio=%d\n", i,
-			hr_info[i].temp, hr_info[i].predict_temp, hr_info[i].headroom,
-			hr_info[i].ratio);
+		hr_info[i].temp, hr_info[i].predict_temp, hr_info[i].headroom,
+		hr_info[i].ratio);
 	}
+
+
 
 	get_cpu_info();
 	get_gpu_info();

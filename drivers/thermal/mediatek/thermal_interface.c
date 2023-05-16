@@ -70,6 +70,7 @@ static int scrn_status_changed;
 struct therm_intf_info {
 	int sw_ready;
 	unsigned int cpu_cluster_num;
+	int is_cputcm;
 	struct device *dev;
 	struct mutex lock;
 	struct dentry *debug_dir;
@@ -79,6 +80,8 @@ struct therm_intf_info {
 static struct therm_intf_info tm_data;
 void __iomem *thermal_csram_base;
 EXPORT_SYMBOL(thermal_csram_base);
+void __iomem *thermal_cputcm_base;
+EXPORT_SYMBOL(thermal_cputcm_base);
 void __iomem *thermal_apu_mbox_base;
 EXPORT_SYMBOL(thermal_apu_mbox_base);
 struct frs_info frs_data;
@@ -281,6 +284,27 @@ static void therm_intf_write_csram(unsigned int val, int offset)
 	writel(val, (void __iomem *)(thermal_csram_base + offset));
 }
 
+static int therm_intf_read_cputcm_s32(int offset)
+{
+	void __iomem *addr_cputcm = thermal_cputcm_base + offset;
+
+	return sign_extend32(readl(addr_cputcm), 31);
+}
+
+static int therm_intf_read_cputcm(int offset)
+{
+	void __iomem *addr_cputcm = thermal_cputcm_base + offset;
+
+	return readl(addr_cputcm);
+}
+
+static void therm_intf_write_cputcm(unsigned int val, int offset)
+{
+	if (thermal_cputcm_base)
+		writel(val, (void __iomem *)(thermal_cputcm_base + offset));
+}
+
+
 static int therm_intf_read_apu_mbox_s32(int offset)
 {
 	void __iomem *addr = thermal_apu_mbox_base + offset;
@@ -302,10 +326,17 @@ int get_thermal_headroom(enum headroom_id id)
 		return MAX_HEADROOM;
 
 	if (id >= SOC_CPU0 && id < SOC_CPU0 + num_possible_cpus()) {
-		headroom = therm_intf_read_csram_s32(CPU_HEADROOM_OFFSET + 4 * id);
+		if (tm_data.is_cputcm)
+			headroom = therm_intf_read_cputcm_s32(CPU_HEADROOM_TCM_OFFSET + 4 * id);
+		else
+			headroom = therm_intf_read_csram_s32(CPU_HEADROOM_OFFSET + 4 * id);
 	} else if (id == PCB_AP) {
 		mutex_lock(&tm_data.lock);
-		headroom = therm_intf_read_csram_s32(AP_NTC_HEADROOM_OFFSET);
+		if (tm_data.is_cputcm)
+			headroom = therm_intf_read_cputcm_s32(AP_NTC_HEADROOM_TCM_OFFSET);
+		else
+			headroom = therm_intf_read_csram_s32(AP_NTC_HEADROOM_OFFSET);
+
 		mutex_unlock(&tm_data.lock);
 	}
 
@@ -321,7 +352,10 @@ int set_cpu_min_opp(int gear, int opp)
 	if (gear >= tm_data.cpu_cluster_num)
 		return -EINVAL;
 
-	therm_intf_write_csram(opp, CPU_MIN_OPP_HINT_OFFSET + 4 * gear);
+	if (tm_data.is_cputcm)
+		therm_intf_write_cputcm(opp, CPU_MIN_OPP_HINT_TCM_OFFSET + 4 * gear);
+	else
+		therm_intf_write_csram(opp, CPU_MIN_OPP_HINT_OFFSET + 4 * gear);
 
 	return 0;
 }
@@ -332,7 +366,10 @@ int set_cpu_active_bitmask(int mask)
 	if (!tm_data.sw_ready)
 		return -ENODEV;
 
-	therm_intf_write_csram(mask, CPU_ACTIVE_BITMASK_OFFSET);
+	if (tm_data.is_cputcm)
+		therm_intf_write_cputcm(mask, CPU_ACTIVE_BITMASK_TCM_OFFSET);
+	else
+		therm_intf_write_csram(mask, CPU_ACTIVE_BITMASK_OFFSET);
 
 	return 0;
 }
@@ -345,7 +382,11 @@ int get_cpu_temp(int cpu_id)
 	if (!tm_data.sw_ready || cpu_id >= num_possible_cpus())
 		return temp;
 
-	temp = therm_intf_read_csram_s32(CPU_TEMP_OFFSET + 4 * cpu_id);
+	if (tm_data.is_cputcm)
+		temp = therm_intf_read_cputcm_s32(CPU_TEMP_TCM_OFFSET + 4 * cpu_id);
+	else
+		temp = therm_intf_read_csram_s32(CPU_TEMP_OFFSET + 4 * cpu_id);
+
 
 	return temp;
 }
@@ -358,7 +399,10 @@ int get_dsu_temp(void)
 	if (!tm_data.sw_ready)
 		return temp;
 
-	temp = therm_intf_read_csram_s32(DSU_AVG_TEMP_BASE_ADDR_OFFSET);
+	if (tm_data.is_cputcm)
+		temp = therm_intf_read_cputcm_s32(DSU_AVG_TEMP_BASE_ADDR_TCM_OFFSET);
+	else
+		temp = therm_intf_read_csram_s32(DSU_AVG_TEMP_BASE_ADDR_OFFSET);
 
 	return temp;
 }
@@ -422,12 +466,22 @@ static void write_ttj(int user, unsigned int cpu_ttj, unsigned int gpu_ttj,
 	}
 
 	if (tm_data.tj_info.jatm_on == 1) {
-		therm_intf_write_csram(cpu_ttj, TTJ_OFFSET);
+		if (tm_data.is_cputcm)
+			therm_intf_write_cputcm(cpu_ttj, TTJ_TCM_OFFSET);
+		else
+			therm_intf_write_csram(cpu_ttj, TTJ_OFFSET);
+
 		therm_intf_write_csram(gpu_ttj, TTJ_OFFSET + 4);
 		therm_intf_write_csram(apu_ttj, TTJ_OFFSET + 8);
 		therm_intf_write_apu_mbox(apu_ttj, APU_MBOX_TTJ_OFFSET);
 	} else {
-		therm_intf_write_csram(tm_data.tj_info.catm_cpu_ttj, TTJ_OFFSET);
+		if (tm_data.is_cputcm)
+			therm_intf_write_cputcm(tm_data.tj_info.catm_cpu_ttj,
+				TTJ_TCM_OFFSET);
+		else
+			therm_intf_write_csram(tm_data.tj_info.catm_cpu_ttj,
+				TTJ_OFFSET);
+
 		therm_intf_write_csram(tm_data.tj_info.catm_gpu_ttj, TTJ_OFFSET + 4);
 		therm_intf_write_csram(tm_data.tj_info.catm_apu_ttj, TTJ_OFFSET + 8);
 		therm_intf_write_apu_mbox(tm_data.tj_info.catm_apu_ttj, APU_MBOX_TTJ_OFFSET);
@@ -463,7 +517,11 @@ EXPORT_SYMBOL(set_ttj);
 
 void write_jatm_suspend(int jatm_suspend)
 {
-	therm_intf_write_csram(jatm_suspend, CPU_JATM_SUSPEND_OFFSET);
+	if (tm_data.is_cputcm)
+		therm_intf_write_cputcm(jatm_suspend, CPU_JATM_SUSPEND_TCM_OFFSET);
+	else
+		therm_intf_write_csram(jatm_suspend, CPU_JATM_SUSPEND_OFFSET);
+
 	therm_intf_write_csram(jatm_suspend, GPU_JATM_SUSPEND_OFFSET);
 }
 EXPORT_SYMBOL(write_jatm_suspend);
@@ -473,7 +531,11 @@ int get_jatm_suspend(void)
 	int cpu_jatm_suspend;
 	int gpu_jatm_suspend;
 
-	cpu_jatm_suspend = therm_intf_read_csram_s32(CPU_JATM_SUSPEND_OFFSET);
+	if (tm_data.is_cputcm)
+		cpu_jatm_suspend = therm_intf_read_cputcm_s32(CPU_JATM_SUSPEND_TCM_OFFSET);
+	else
+		cpu_jatm_suspend = therm_intf_read_csram_s32(CPU_JATM_SUSPEND_OFFSET);
+
 	gpu_jatm_suspend = therm_intf_read_csram_s32(GPU_JATM_SUSPEND_OFFSET);
 
 	return (cpu_jatm_suspend || gpu_jatm_suspend);
@@ -499,11 +561,17 @@ static ssize_t ttj_show(struct kobject *kobj,
 {
 	int len = 0;
 
-	len += snprintf(buf + len, PAGE_SIZE - len, "%u, %u, %u\n",
-		therm_intf_read_csram_s32(TTJ_OFFSET),
-		therm_intf_read_csram_s32(TTJ_OFFSET + 4),
-		therm_intf_read_csram_s32(TTJ_OFFSET + 8));
-
+	if (tm_data.is_cputcm) {
+		len += snprintf(buf + len, PAGE_SIZE - len, "%u, %u, %u\n",
+			therm_intf_read_cputcm_s32(TTJ_TCM_OFFSET),
+			therm_intf_read_csram_s32(TTJ_OFFSET + 4),
+			therm_intf_read_csram_s32(TTJ_OFFSET + 8));
+	} else {
+		len += snprintf(buf + len, PAGE_SIZE - len, "%u, %u, %u\n",
+			therm_intf_read_csram_s32(TTJ_OFFSET),
+			therm_intf_read_csram_s32(TTJ_OFFSET + 4),
+			therm_intf_read_csram_s32(TTJ_OFFSET + 8));
+	}
 	return len;
 }
 
@@ -596,11 +664,20 @@ static ssize_t min_throttle_freq_show(struct kobject *kobj,
 {
 	int len = 0;
 
-	len += snprintf(buf + len, PAGE_SIZE - len, "%d, %d, %d %d\n",
-		therm_intf_read_csram_s32(MIN_THROTTLE_FREQ_OFFSET),
-		therm_intf_read_csram_s32(MIN_THROTTLE_FREQ_OFFSET + 4),
-		therm_intf_read_csram_s32(MIN_THROTTLE_FREQ_OFFSET + 8),
-		therm_intf_read_csram_s32(MIN_THROTTLE_FREQ_OFFSET + 12));
+
+	if (tm_data.is_cputcm) {
+		len += snprintf(buf + len, PAGE_SIZE - len, "%d, %d, %d %d\n",
+			therm_intf_read_cputcm_s32(MIN_THROTTLE_FREQ_TCM_OFFSET),
+			therm_intf_read_cputcm_s32(MIN_THROTTLE_FREQ_TCM_OFFSET + 4),
+			therm_intf_read_cputcm_s32(MIN_THROTTLE_FREQ_TCM_OFFSET + 8),
+			therm_intf_read_csram_s32(MIN_THROTTLE_FREQ_OFFSET + 12));
+	} else {
+		len += snprintf(buf + len, PAGE_SIZE - len, "%d, %d, %d %d\n",
+			therm_intf_read_csram_s32(MIN_THROTTLE_FREQ_OFFSET),
+			therm_intf_read_csram_s32(MIN_THROTTLE_FREQ_OFFSET + 4),
+			therm_intf_read_csram_s32(MIN_THROTTLE_FREQ_OFFSET + 8),
+			therm_intf_read_csram_s32(MIN_THROTTLE_FREQ_OFFSET + 12));
+	}
 
 	return len;
 }
@@ -620,11 +697,26 @@ static ssize_t min_throttle_freq_store(struct kobject *kobj,
 		&cluster2_min_freq,
 		&gpu_min_freq)
 		== 5) {
+
 		if (strncmp(cmd, "MIN_FREQ", 8) == 0) {
-			therm_intf_write_csram(cluster0_min_freq, MIN_THROTTLE_FREQ_OFFSET);
-			therm_intf_write_csram(cluster1_min_freq, MIN_THROTTLE_FREQ_OFFSET + 4);
-			therm_intf_write_csram(cluster2_min_freq, MIN_THROTTLE_FREQ_OFFSET + 8);
-			therm_intf_write_csram(gpu_min_freq, MIN_THROTTLE_FREQ_OFFSET + 12);
+			if (tm_data.is_cputcm) {
+				therm_intf_write_cputcm(cluster0_min_freq,
+					MIN_THROTTLE_FREQ_TCM_OFFSET);
+				therm_intf_write_cputcm(cluster1_min_freq,
+					MIN_THROTTLE_FREQ_TCM_OFFSET + 4);
+				therm_intf_write_cputcm(cluster2_min_freq,
+					MIN_THROTTLE_FREQ_TCM_OFFSET + 8);
+			} else {
+				therm_intf_write_csram(cluster0_min_freq,
+					MIN_THROTTLE_FREQ_OFFSET);
+				therm_intf_write_csram(cluster1_min_freq,
+					MIN_THROTTLE_FREQ_OFFSET + 4);
+				therm_intf_write_csram(cluster2_min_freq,
+					MIN_THROTTLE_FREQ_OFFSET + 8);
+			}
+			therm_intf_write_csram(gpu_min_freq,
+				MIN_THROTTLE_FREQ_OFFSET + 12);
+
 			return count;
 		}
 	}
@@ -637,7 +729,12 @@ static ssize_t min_throttle_freq_store(struct kobject *kobj,
 static void write_power_budget(unsigned int cpu_pb, unsigned int gpu_pb,
 	unsigned int apu_pb)
 {
-	therm_intf_write_csram(cpu_pb, POWER_BUDGET_OFFSET);
+
+	if (tm_data.is_cputcm)
+		therm_intf_write_csram(cpu_pb, POWER_BUDGET_TCM_OFFSET);
+	else
+		therm_intf_write_csram(cpu_pb, POWER_BUDGET_OFFSET);
+
 	therm_intf_write_csram(gpu_pb, POWER_BUDGET_OFFSET + 4);
 	therm_intf_write_csram(apu_pb, POWER_BUDGET_OFFSET + 8);
 
@@ -649,10 +746,16 @@ static ssize_t power_budget_show(struct kobject *kobj,
 {
 	int len = 0;
 
-	len += snprintf(buf + len, PAGE_SIZE - len, "%u, %u, %u\n",
-		therm_intf_read_csram_s32(POWER_BUDGET_OFFSET),
-		therm_intf_read_csram_s32(POWER_BUDGET_OFFSET + 4),
-		therm_intf_read_csram_s32(POWER_BUDGET_OFFSET + 8));
+	if (tm_data.is_cputcm)
+		len += snprintf(buf + len, PAGE_SIZE - len, "%u, %u, %u\n",
+			therm_intf_read_cputcm_s32(POWER_BUDGET_TCM_OFFSET),
+			therm_intf_read_csram_s32(POWER_BUDGET_OFFSET + 4),
+			therm_intf_read_csram_s32(POWER_BUDGET_OFFSET + 8));
+	else
+		len += snprintf(buf + len, PAGE_SIZE - len, "%u, %u, %u\n",
+			therm_intf_read_csram_s32(POWER_BUDGET_OFFSET),
+			therm_intf_read_csram_s32(POWER_BUDGET_OFFSET + 4),
+			therm_intf_read_csram_s32(POWER_BUDGET_OFFSET + 8));
 
 	return len;
 }
@@ -680,19 +783,35 @@ static ssize_t cpu_info_show(struct kobject *kobj,
 {
 	int len = 0;
 
-	len += snprintf(buf + len, PAGE_SIZE - len, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
-		therm_intf_read_csram_s32(CPU_MIN_OPP_HINT_OFFSET),
-		therm_intf_read_csram_s32(CPU_MIN_OPP_HINT_OFFSET + 4),
-		therm_intf_read_csram_s32(CPU_MIN_OPP_HINT_OFFSET + 8),
-		therm_intf_read_csram(CPU_LIMIT_FREQ_OFFSET),
-		therm_intf_read_csram(CPU_LIMIT_FREQ_OFFSET + 4),
-		therm_intf_read_csram(CPU_LIMIT_FREQ_OFFSET + 8),
-		therm_intf_read_csram(CPU_CUR_FREQ_OFFSET),
-		therm_intf_read_csram(CPU_CUR_FREQ_OFFSET + 4),
-		therm_intf_read_csram(CPU_CUR_FREQ_OFFSET + 8),
-		therm_intf_read_csram_s32(CPU_MAX_TEMP_OFFSET),
-		therm_intf_read_csram_s32(CPU_MAX_TEMP_OFFSET + 4),
-		therm_intf_read_csram_s32(CPU_MAX_TEMP_OFFSET + 8));
+
+	if (tm_data.is_cputcm)
+		len += snprintf(buf + len, PAGE_SIZE - len, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+			therm_intf_read_cputcm_s32(CPU_MIN_OPP_HINT_TCM_OFFSET),
+			therm_intf_read_cputcm_s32(CPU_MIN_OPP_HINT_TCM_OFFSET + 4),
+			therm_intf_read_cputcm_s32(CPU_MIN_OPP_HINT_TCM_OFFSET + 8),
+			therm_intf_read_cputcm(CPU_LIMIT_FREQ_TCM_OFFSET),
+			therm_intf_read_cputcm(CPU_LIMIT_FREQ_TCM_OFFSET + 4),
+			therm_intf_read_cputcm(CPU_LIMIT_FREQ_TCM_OFFSET + 8),
+			therm_intf_read_cputcm(CPU_CUR_FREQ_TCM_OFFSET),
+			therm_intf_read_cputcm(CPU_CUR_FREQ_TCM_OFFSET + 4),
+			therm_intf_read_cputcm(CPU_CUR_FREQ_TCM_OFFSET + 8),
+			therm_intf_read_cputcm_s32(CPU_MAX_TEMP_TCM_OFFSET),
+			therm_intf_read_cputcm_s32(CPU_MAX_TEMP_TCM_OFFSET + 4),
+			therm_intf_read_cputcm_s32(CPU_MAX_TEMP_TCM_OFFSET + 8));
+	else
+		len += snprintf(buf + len, PAGE_SIZE - len, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+			therm_intf_read_csram_s32(CPU_MIN_OPP_HINT_OFFSET),
+			therm_intf_read_csram_s32(CPU_MIN_OPP_HINT_OFFSET + 4),
+			therm_intf_read_csram_s32(CPU_MIN_OPP_HINT_OFFSET + 8),
+			therm_intf_read_csram(CPU_LIMIT_FREQ_OFFSET),
+			therm_intf_read_csram(CPU_LIMIT_FREQ_OFFSET + 4),
+			therm_intf_read_csram(CPU_LIMIT_FREQ_OFFSET + 8),
+			therm_intf_read_csram(CPU_CUR_FREQ_OFFSET),
+			therm_intf_read_csram(CPU_CUR_FREQ_OFFSET + 4),
+			therm_intf_read_csram(CPU_CUR_FREQ_OFFSET + 8),
+			therm_intf_read_csram_s32(CPU_MAX_TEMP_OFFSET),
+			therm_intf_read_csram_s32(CPU_MAX_TEMP_OFFSET + 4),
+			therm_intf_read_csram_s32(CPU_MAX_TEMP_OFFSET + 8));
 
 	return len;
 }
@@ -754,7 +873,13 @@ static ssize_t is_cpu_limit_show(struct kobject *kobj,
 	int len = 0, i, is_limit = 0, limit_opp;
 
 	for (i = 0; i < tm_data.cpu_cluster_num; i++) {
-		limit_opp = therm_intf_read_csram_s32(CPU_LIMIT_OPP_OFFSET + 4 * i);
+		if (tm_data.is_cputcm)
+			limit_opp =
+				therm_intf_read_cputcm_s32(CPU_LIMIT_OPP_TCM_OFFSET + 4 * i);
+		else
+			limit_opp =
+				therm_intf_read_csram_s32(CPU_LIMIT_OPP_OFFSET + 4 * i);
+
 		if (is_opp_limited(limit_opp)) {
 			is_limit = 1;
 			break;
@@ -827,14 +952,21 @@ static ssize_t frs_info_store(struct kobject *kobj,
 		&target_fps, &diff, &tpcb, &tpcb_slope, &ap_headroom, &n_sec_to_ttpcb,
 		&frs_target_fps, &real_fps, &target_tpcb, &ptime) == 13) {
 		if ((ap_headroom >= -1000) && (ap_headroom <= 1000)) {
-			therm_intf_write_csram(ap_headroom, AP_NTC_HEADROOM_OFFSET);
+			if (tm_data.is_cputcm)
+				therm_intf_write_cputcm(ap_headroom, AP_NTC_HEADROOM_TCM_OFFSET);
+			else
+				therm_intf_write_csram(ap_headroom, AP_NTC_HEADROOM_OFFSET);
 			frs_data.ap_headroom = ap_headroom;
 		} else {
 			pr_info("[%s] invalid ap head room input\n", __func__);
 			return -EINVAL;
 		}
 
-		therm_intf_write_csram(tpcb, TPCB_OFFSET);
+		if (tm_data.is_cputcm)
+			therm_intf_write_cputcm(tpcb, TPCB_TCM_OFFSET);
+		else
+			therm_intf_write_csram(tpcb, TPCB_OFFSET);
+
 		frs_data.enable = enable;
 		frs_data.activated = act;
 		frs_data.tpcb = tpcb;
@@ -913,7 +1045,12 @@ static ssize_t target_tpcb_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
 	int len = 0;
-	int target_tpcb = therm_intf_read_csram_s32(TARGET_TPCB_OFFSET);
+	int target_tpcb = 0;
+
+	if (tm_data.is_cputcm)
+		therm_intf_read_cputcm_s32(TARGET_TPCB_TCM_OFFSET);
+	else
+		therm_intf_read_csram_s32(TARGET_TPCB_OFFSET);
 
 	len += snprintf(buf + len, PAGE_SIZE - len, "%d\n", target_tpcb);
 
@@ -926,7 +1063,10 @@ static ssize_t target_tpcb_store(struct kobject *kobj,
 	int target_tpcb = 0;
 
 	if (kstrtoint(buf, 10, &target_tpcb) == 0)
-		therm_intf_write_csram(target_tpcb, TARGET_TPCB_OFFSET);
+		if (tm_data.is_cputcm)
+			therm_intf_write_cputcm(target_tpcb, TARGET_TPCB_TCM_OFFSET);
+		else
+			therm_intf_write_csram(target_tpcb, TARGET_TPCB_OFFSET);
 	else {
 		pr_info("[%s] invalid input\n", __func__);
 		return -EINVAL;
@@ -1109,8 +1249,27 @@ static ssize_t utc_count_show(struct kobject *kobj,
 {
 	int len = 0;
 
-	len += snprintf(buf + len, PAGE_SIZE - len, "%d\n",
-		therm_intf_read_csram_s32(UTC_COUNT_OFFSET));
+	if (tm_data.is_cputcm)
+		len += snprintf(buf + len, PAGE_SIZE - len, "%d\n",
+			therm_intf_read_cputcm_s32(UTC_COUNT_TCM_OFFSET));
+	else
+		len += snprintf(buf + len, PAGE_SIZE - len, "%d\n",
+			therm_intf_read_csram_s32(UTC_COUNT_OFFSET));
+
+	return len;
+}
+
+static ssize_t dsu_ceiling_freq_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	if (tm_data.is_cputcm)
+		len += snprintf(buf + len, PAGE_SIZE - len, "%d\n",
+			therm_intf_read_cputcm_s32(DSU_CEILING_FREQ_TCM_OFFSET));
+	else
+		len += snprintf(buf + len, PAGE_SIZE - len, "%d\n",
+			therm_intf_read_csram_s32(DSU_CEILING_FREQ_OFFSET));
 
 	return len;
 }
@@ -1417,6 +1576,7 @@ static struct kobj_attribute md_sensor_info_attr = __ATTR_RW(md_sensor_info);
 static struct kobj_attribute md_actuator_info_attr = __ATTR_RW(md_actuator_info);
 static struct kobj_attribute info_b_attr = __ATTR_RO(info_b);
 static struct kobj_attribute utc_count_attr = __ATTR_RO(utc_count);
+static struct kobj_attribute dsu_ceiling_freq_attr = __ATTR_RO(dsu_ceiling_freq);
 static struct kobj_attribute max_ttj_attr = __ATTR_RW(max_ttj);
 static struct kobj_attribute min_ttj_attr = __ATTR_RW(min_ttj);
 static struct kobj_attribute min_throttle_freq_attr =
@@ -1451,6 +1611,7 @@ static struct attribute *thermal_attrs[] = {
 	&max_ttj_attr.attr,
 	&min_ttj_attr.attr,
 	&utc_count_attr.attr,
+	&dsu_ceiling_freq_attr.attr,
 	&min_throttle_freq_attr.attr,
 	&sports_mode_attr.attr,
 	&vtskin_info_attr.attr,
@@ -1468,11 +1629,19 @@ static struct attribute_group thermal_attr_group = {
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 static int emul_temp_show(struct seq_file *m, void *unused)
 {
-	seq_printf(m, "%d,%d,%d,%d\n",
-		therm_intf_read_csram_s32(EMUL_TEMP_OFFSET),
-		therm_intf_read_csram_s32(EMUL_TEMP_OFFSET + 4),
-		therm_intf_read_csram_s32(EMUL_TEMP_OFFSET + 8),
-		therm_intf_read_csram_s32(EMUL_TEMP_OFFSET + 12));
+
+	if (tm_data.is_cputcm)
+		seq_printf(m, "%d,%d,%d,%d\n",
+			therm_intf_read_cputcm_s32(EMUL_TEMP_TCM_OFFSET),
+			therm_intf_read_csram_s32(EMUL_TEMP_OFFSET + 4),
+			therm_intf_read_csram_s32(EMUL_TEMP_OFFSET + 8),
+			therm_intf_read_csram_s32(EMUL_TEMP_OFFSET + 12));
+	else
+		seq_printf(m, "%d,%d,%d,%d\n",
+			therm_intf_read_csram_s32(EMUL_TEMP_OFFSET),
+			therm_intf_read_csram_s32(EMUL_TEMP_OFFSET + 4),
+			therm_intf_read_csram_s32(EMUL_TEMP_OFFSET + 8),
+			therm_intf_read_csram_s32(EMUL_TEMP_OFFSET + 12));
 
 	return 0;
 }
@@ -1501,7 +1670,11 @@ static ssize_t emul_temp_write(struct file *flip,
 	}
 
 	if (strncmp(target, "cpu", 3) == 0) {
-		therm_intf_write_csram(temp, EMUL_TEMP_OFFSET);
+		if (tm_data.is_cputcm)
+			therm_intf_write_cputcm(temp, EMUL_TEMP_TCM_OFFSET);
+		else
+			therm_intf_write_csram(temp, EMUL_TEMP_OFFSET);
+
 	} else if (strncmp(target, "gpu", 3) == 0) {
 		therm_intf_write_csram(temp, EMUL_TEMP_OFFSET + 4);
 	} else if (strncmp(target, "apu", 3) == 0) {
@@ -1536,19 +1709,35 @@ static const struct file_operations emul_temp_fops = {
 
 static int cpu_cooler_show(struct seq_file *m, void *unused)
 {
-	seq_printf(m, "%d, %d, %d, %d, %d ,%d, %d, %d, %d, %d, %d, %d\n",
-		therm_intf_read_csram(CPU_COOLER_BASE),
-		therm_intf_read_csram(CPU_COOLER_BASE + 4),
-		therm_intf_read_csram(CPU_COOLER_BASE + 8),
-		therm_intf_read_csram(CPU_COOLER_BASE + 12),
-		therm_intf_read_csram(CPU_COOLER_BASE + 16),
-		therm_intf_read_csram(CPU_COOLER_BASE + 20),
-		therm_intf_read_csram(CPU_COOLER_BASE + 24),
-		therm_intf_read_csram(CPU_COOLER_BASE + 28),
-		therm_intf_read_csram(CPU_COOLER_BASE + 32),
-		therm_intf_read_csram(CPU_COOLER_BASE + 36),
-		therm_intf_read_csram(CPU_COOLER_BASE + 40),
-		therm_intf_read_csram(CPU_COOLER_BASE + 44));
+
+	if (tm_data.is_cputcm)
+		seq_printf(m, "%d, %d, %d, %d, %d ,%d, %d, %d, %d, %d, %d, %d\n",
+			therm_intf_read_cputcm(CPU_COOLER_TCM_BASE),
+			therm_intf_read_cputcm(CPU_COOLER_TCM_BASE + 4),
+			therm_intf_read_cputcm(CPU_COOLER_TCM_BASE + 8),
+			therm_intf_read_cputcm(CPU_COOLER_TCM_BASE + 12),
+			therm_intf_read_cputcm(CPU_COOLER_TCM_BASE + 16),
+			therm_intf_read_cputcm(CPU_COOLER_TCM_BASE + 20),
+			therm_intf_read_cputcm(CPU_COOLER_TCM_BASE + 24),
+			therm_intf_read_cputcm(CPU_COOLER_TCM_BASE + 28),
+			therm_intf_read_cputcm(CPU_COOLER_TCM_BASE + 32),
+			therm_intf_read_cputcm(CPU_COOLER_TCM_BASE + 36),
+			therm_intf_read_cputcm(CPU_COOLER_TCM_BASE + 40),
+			therm_intf_read_cputcm(CPU_COOLER_TCM_BASE + 44));
+	else
+		seq_printf(m, "%d, %d, %d, %d, %d ,%d, %d, %d, %d, %d, %d, %d\n",
+			therm_intf_read_csram(CPU_COOLER_BASE),
+			therm_intf_read_csram(CPU_COOLER_BASE + 4),
+			therm_intf_read_csram(CPU_COOLER_BASE + 8),
+			therm_intf_read_csram(CPU_COOLER_BASE + 12),
+			therm_intf_read_csram(CPU_COOLER_BASE + 16),
+			therm_intf_read_csram(CPU_COOLER_BASE + 20),
+			therm_intf_read_csram(CPU_COOLER_BASE + 24),
+			therm_intf_read_csram(CPU_COOLER_BASE + 28),
+			therm_intf_read_csram(CPU_COOLER_BASE + 32),
+			therm_intf_read_csram(CPU_COOLER_BASE + 36),
+			therm_intf_read_csram(CPU_COOLER_BASE + 40),
+			therm_intf_read_csram(CPU_COOLER_BASE + 44));
 
 	return 0;
 }
@@ -1577,8 +1766,12 @@ static ssize_t cpu_cooler_write(struct file *flip,
 		&values[4], &values[5], &values[6], &values[7],
 		&values[8], &values[9], &values[10], &values[11]);
 
-	for (i = 0; i < len; i++)
-		therm_intf_write_csram(values[i], CPU_COOLER_BASE + (i * 4));
+	for (i = 0; i < len; i++) {
+		if (tm_data.is_cputcm)
+			therm_intf_write_cputcm(values[i], CPU_COOLER_TCM_BASE + (i * 4));
+		else
+			therm_intf_write_csram(values[i], CPU_COOLER_BASE + (i * 4));
+	}
 
 	ret = cnt;
 
@@ -1746,7 +1939,11 @@ static void therm_intf_debugfs_init(void)
 	debugfs_create_file("gpu_temp_check", 0640, tm_data.debug_dir, NULL, &gpu_temp_debug_fops);
 	debugfs_create_file("cpu_cooler_debug", 0640, tm_data.debug_dir, NULL, &cpu_cooler_fops);
 
-	therm_intf_write_csram(THERMAL_TEMP_INVALID, EMUL_TEMP_OFFSET);
+	if (tm_data.is_cputcm)
+		therm_intf_write_cputcm(THERMAL_TEMP_INVALID, EMUL_TEMP_TCM_OFFSET);
+	else
+		therm_intf_write_csram(THERMAL_TEMP_INVALID, EMUL_TEMP_OFFSET);
+
 	therm_intf_write_csram(THERMAL_TEMP_INVALID, EMUL_TEMP_OFFSET + 4);
 	therm_intf_write_csram(THERMAL_TEMP_INVALID, EMUL_TEMP_OFFSET + 8);
 	therm_intf_write_csram(THERMAL_TEMP_INVALID, EMUL_TEMP_OFFSET + 12);
@@ -1792,6 +1989,26 @@ static int therm_intf_probe(struct platform_device *pdev)
 		return PTR_ERR(addr);
 
 	thermal_csram_base = addr;
+
+	/* Some projects don't support CPU TCM */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "therm_cputcm");
+	if (res) {
+		addr = devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(addr))
+			return PTR_ERR(addr);
+
+		thermal_cputcm_base = addr;
+		tm_data.is_cputcm = 1;
+
+		therm_intf_write_csram(1, TCM_BUF_OFFSET);
+
+		dev_info(&pdev->dev, "cpu tcm resource ready\n");
+	} else {
+		dev_info(&pdev->dev, "Failed to get cpu tcm resource\n");
+		tm_data.is_cputcm = 0;
+		therm_intf_write_csram(0, TCM_BUF_OFFSET);
+	}
+
 
 	/* Some projects don't support APU */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "apu_mbox");

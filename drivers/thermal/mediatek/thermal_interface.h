@@ -5,7 +5,7 @@
 
 #ifndef __THERMAL_INTERFACE_H__
 #define __THERMAL_INTERFACE_H__
-
+/*SYSRAM offset*/
 #define CPU_TEMP_OFFSET             (0)
 #define CPU_HEADROOM_OFFSET         (0x20)
 #define CPU_HEADROOM_RATIO_OFFSET   (0x40)
@@ -15,28 +15,32 @@
 #define TARGET_TPCB_OFFSET          (0x88)
 #define SPORTS_MODE_ENABLE          (0x90)
 #define VTSKIN                      (0x94)
-#define TTJ_OFFSET                 (0x100)
-#define POWER_BUDGET_OFFSET        (0x110)
-#define CPU_MIN_OPP_HINT_OFFSET    (0x120)
-#define CPU_ACTIVE_BITMASK_OFFSET  (0x130)
-#define CPU_JATM_SUSPEND_OFFSET    (0x140)
-#define GPU_JATM_SUSPEND_OFFSET    (0x144)
+#define DSU_AVG_TEMP_BASE_ADDR_OFFSET       (0x98)
+#define CG_POLICY_MODE_OFFSET       (0x9C)
+#define DSU_CEILING_FREQ_OFFSET     (0xC4)
+#define TCM_BUF_OFFSET              (0xC8)
+#define TTJ_OFFSET                  (0x100)
+#define POWER_BUDGET_OFFSET         (0x110)
+#define CPU_MIN_OPP_HINT_OFFSET     (0x120)
+#define CPU_ACTIVE_BITMASK_OFFSET   (0x130)
+#define CPU_JATM_SUSPEND_OFFSET     (0x140)
+#define GPU_JATM_SUSPEND_OFFSET     (0x144)
 #define MIN_THROTTLE_FREQ_OFFSET    (0x14C)
-#define GPU_TEMP_OFFSET            (0x180)
-#define APU_TEMP_OFFSET            (0x190)
-#define EMUL_TEMP_OFFSET           (0x1B0)
-#define CPU_LIMIT_FREQ_OFFSET      (0x200)
-#define CPU_CUR_FREQ_OFFSET        (0x210)
-#define CPU_MAX_TEMP_OFFSET        (0x220)
-#define CPU_LIMIT_OPP_OFFSET       (0x260)
-#define CPU_ATC_OFFSET                 (0x280)
-#define GPU_ATC_OFFSET                 (0x2C8)
-#define APU_ATC_OFFSET                 (0x2D4)
-#define CPU_ATC_NUM                   (17)
-#define GPU_ATC_NUM                   (3)
-#define APU_ATC_NUM                   (3)
-#define UTC_COUNT_OFFSET           (0x27C)
-#define INFOB_OFFSET               (0x2C4)
+#define GPU_TEMP_OFFSET             (0x180)
+#define APU_TEMP_OFFSET             (0x190)
+#define EMUL_TEMP_OFFSET            (0x1B0)
+#define CPU_LIMIT_FREQ_OFFSET       (0x200)
+#define CPU_CUR_FREQ_OFFSET         (0x210)
+#define CPU_MAX_TEMP_OFFSET         (0x220)
+#define CPU_LIMIT_OPP_OFFSET        (0x260)
+#define CPU_ATC_OFFSET              (0x280)
+#define GPU_ATC_OFFSET              (0x2C8)
+#define APU_ATC_OFFSET              (0x2D4)
+#define CPU_ATC_NUM                 (17)
+#define GPU_ATC_NUM                 (3)
+#define APU_ATC_NUM                 (3)
+#define UTC_COUNT_OFFSET            (0x27C)
+#define INFOB_OFFSET                (0x2C4)
 #define REBOOT_TEMPERATURE_ADDR_OFFSET (0x39c)
 #define GPU_COOLER_BASE             (0x3A0)
 #define CPU_COOLER_BASE             (0x3D0)
@@ -50,6 +54,58 @@
 #define APU_MBOX_CUR_OPP_OFFSET    (0x710)
 #define APU_MBOX_EMUL_TEMP_OFFSET  (0x714)
 #define APU_MBOX_ATC_MAX_TTJ_ADDR  (0x718)
+
+
+/*TCM offset*/
+#define CPU_TEMP_TCM_OFFSET             (0)
+#define CPU_HEADROOM_TCM_OFFSET         (0x20)
+#define CPU_HEADROOM_RATIO_TCM_OFFSET   (0x40)
+#define CPU_PREDICT_TEMP_TCM_OFFSET     (0x60)
+#define AP_NTC_HEADROOM_TCM_OFFSET      (0x80)
+#define TPCB_TCM_OFFSET                 (0x84)
+#define TARGET_TPCB_TCM_OFFSET          (0x88)
+#define SPORTS_MODE_TCM_ENABLE          (0x90)
+#define VTSKIN_TCM                      (0x94)
+#define DSU_AVG_TEMP_BASE_ADDR_TCM_OFFSET       (0x98)
+
+/*TTJ*/
+#define TTJ_TCM_OFFSET                  (0xA0)
+
+/*power budget*/
+#define POWER_BUDGET_TCM_OFFSET         (0xA4)
+
+/*min opp hint*/
+#define CPU_MIN_OPP_HINT_TCM_OFFSET     (0xA8)
+#define CPU_ACTIVE_BITMASK_TCM_OFFSET   (0xB8)
+#define CPU_JATM_SUSPEND_TCM_OFFSET     (0xBC)
+#define MIN_THROTTLE_FREQ_TCM_OFFSET    (0xC0)
+
+#define EMUL_TEMP_TCM_OFFSET            (0xD0)
+#define CPU_LIMIT_FREQ_TCM_OFFSET       (0xD4)
+#define CPU_CUR_FREQ_TCM_OFFSET         (0xE4)
+#define CPU_MAX_TEMP_TCM_OFFSET         (0xF4)
+#define CPU_LIMIT_OPP_TCM_OFFSET        (0x124)
+#define UTC_COUNT_TCM_OFFSET            (0x134)
+
+/*monitor Tj*/
+/*LVTS1~LVTS16, 0x178~0x184 reserved*/
+#define MONITOR_TJ_LVTS_TCM_OFFSET      (0x138)
+
+/*CORE0~CORE7, 0x1A8,0x1AC reserved*/
+#define MONITOR_TJ_CORE_TEMP_TCM_OFFSET (0x188)
+
+#define CPU_COOLER_TCM_BASE             (0x1B0)
+
+
+#define DSU_CEILING_FREQ_TCM_OFFSET     (0x220)
+
+
+/*monitor Tj*/
+/*LVTS1~LVTS16,0x134~0x170; 0x174~0x180 reserved*/
+#define CPU_LVTS_TEMP_MA_TCM_ADDR                 (0x134)
+
+/*CORE0~CORE7,0x184~0x200, 0x204,0x208 reserved*/
+#define CPU_CORE_TEMP_MA_TCM_ADDR                 (0x184)
 
 struct headroom_info {
 	int temp;
@@ -158,10 +214,12 @@ extern int set_cold_interrupt_enable_addr(int val);
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 extern void __iomem *thermal_csram_base;
+extern void __iomem *thermal_cputcm_base;
 extern void __iomem *thermal_apu_mbox_base;
 extern struct frs_info frs_data;
 #else
 void __iomem *thermal_csram_base;
+void __iomem *thermal_cputcm_base;
 void __iomem *thermal_apu_mbox_base;
 struct frs_info frs_data;
 #endif
