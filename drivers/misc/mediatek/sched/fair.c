@@ -1072,10 +1072,10 @@ static inline bool is_target_max_spare_cpu(bool is_vip, int num_vip, int min_num
 			return false;
 
 		if (num_vip == min_num_vip &&
-				spare_cap <= target_max_spare_cap)
+				spare_cap < target_max_spare_cap)
 			return false;
 	} else {
-		if (spare_cap <= target_max_spare_cap)
+		if (spare_cap < target_max_spare_cap)
 			return false;
 	}
 
