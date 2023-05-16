@@ -99,12 +99,12 @@ struct rt_energy_aware_output {
  *
  * (default: ~20%)
  */
-#define fits_capacity(cap, max) ((cap) * 1280 < (max) * 1024)
+#define fits_capacity(cap, max, margin) ((cap) * margin < (max) * 1024)
 unsigned long capacity_of(int cpu);
 #endif
 
 extern unsigned long cpu_util(int cpu);
-extern int task_fits_capacity(struct task_struct *p, long capacity);
+extern int task_fits_capacity(struct task_struct *p, long capacity, unsigned int margin);
 extern struct perf_domain *find_pd(struct perf_domain *pd, int cpu);
 
 #if IS_ENABLED(CONFIG_MTK_EAS)
