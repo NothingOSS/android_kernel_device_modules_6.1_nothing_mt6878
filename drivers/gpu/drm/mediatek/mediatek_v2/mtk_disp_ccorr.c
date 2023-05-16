@@ -1200,6 +1200,9 @@ int mtk_drm_ioctl_support_color_matrix(struct drm_device *dev, void *data,
 	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
 			to_mtk_crtc(crtc), MTK_DISP_CCORR, 0);
 
+	if (IS_ERR_OR_NULL(comp))
+		return -EFAULT;
+
 	return mtk_drm_ioctl_support_color_matrix_impl(comp, data);
 }
 
