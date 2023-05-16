@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clocksource
 
 ccflags-y += -I$(srctree)/drivers/clocksource
 

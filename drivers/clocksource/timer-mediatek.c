@@ -20,6 +20,9 @@
 #include <linux/slab.h>
 #include "timer-of.h"
 
+#define CREATE_TRACE_POINTS
+#include "timer-mediatek-trace.h"
+
 #define TIMER_CLK_EVT           (1)
 #define TIMER_CLK_SRC           (2)
 
@@ -106,6 +109,8 @@ static int mtk_syst_clkevt_next_event(unsigned long ticks,
 	 * after timeout ticks are updated.
 	 */
 	writel(ticks, SYST_VAL_REG(to));
+
+	trace_timer_set_next_event(ticks);
 
 	/* Enable interrupt */
 	writel(SYST_CON_EN | SYST_CON_IRQ_EN, SYST_CON_REG(to));
