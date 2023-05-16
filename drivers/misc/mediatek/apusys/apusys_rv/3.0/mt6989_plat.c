@@ -366,9 +366,10 @@ static int apu_hw_sema_ctl(struct mtk_apu *apu,
 		return -EINVAL;
 	}
 
-	dev_info(dev, "%s ++ usr_bit:%d ctl:%d (APU_SEMA_CTRL0 = 0x%08x)\n",
-			__func__, usr_bit, ctl,
-			ioread32(apu->apu_mbox + APU_SEMA_CTRL0));
+	/* dev_info(dev, "%s ++ usr_bit:%d ctl:%d (APU_SEMA_CTRL0 = 0x%08x)\n",
+	 *		__func__, usr_bit, ctl,
+	 *		ioread32(apu->apu_mbox + APU_SEMA_CTRL0));
+	 */
 
 	iowrite32(BIT(ctl_bit), apu->apu_mbox + APU_SEMA_CTRL0);
 
@@ -553,24 +554,24 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 			return -EBUSY;
 		/* pwr on */
 		if (apu->ipi_pwr_ref_cnt[id] == U32_MAX) {
-			dev_info(dev, "%s: ipi_pwr_ref_cnt[%u] == U32_MAX", __func__, id);
+			dev_info(dev, "%s: ipi_pwr_ref_cnt[%u] == U32_MAX\n", __func__, id);
 			ret = -EINVAL;
 		} else {
 			apu->ipi_pwr_ref_cnt[id]++;
 			apu->local_pwr_ref_cnt++;
+			mt6989_apu_pwr_wake_lock(apu, id);
 			if (apu->local_pwr_ref_cnt == 1) {
 				rpc_state = ioread32(apu->apu_rpc + APU_RPC_STATUS_1) & 0x1;
 				/* rpc_state == 1 means in lp mode, need to retry
 				 * only APU_IPI_SCP_NP_RECOVER can bypass the check
 				 */
 				if (id != APU_IPI_SCP_NP_RECOVER && rpc_state == 1) {
-					dev_info(dev, "%s(%d): APU_RPC_STATUS_1 = 0x%x",
+					dev_info(dev, "%s(%d): APU_RPC_STATUS_1 = 0x%x\n",
 						__func__, ret,
 						ioread32(apu->apu_rpc + APU_RPC_STATUS_1));
 					return -EBUSY;
 				}
 
-				mt6989_apu_pwr_wake_lock(apu, id);
 				/* apu->conf_buf->time_offset = sched_clock(); */
 				timesync_update(apu);
 				ret = apu_power_ctrl(apu, 1);
@@ -586,24 +587,19 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 					apu->ipi_pwr_ref_cnt[id]--;
 					apu->local_pwr_ref_cnt--;
 					dev_info(dev, "%s: power on fail(%d)\n", __func__, ret);
-					if (!pwr_on_fail_aee_triggered) {
-						apusys_rv_aee_warn("APUSYS_RV",
-							"APUSYS_RV_POWER_ON_FAIL");
-						pwr_on_fail_aee_triggered = true;
-					}
 				}
 			}
 		}
 	} else if (on == 0 && off == 1) {
 		/* pwr off */
 		if (apu->ipi_pwr_ref_cnt[id] == 0) {
-			dev_info(dev, "%s: ipi_pwr_ref_cnt[%u] == 0", __func__, id);
+			dev_info(dev, "%s: ipi_pwr_ref_cnt[%u] == 0\n", __func__, id);
 			ret = -EINVAL;
 		} else {
 			apu->ipi_pwr_ref_cnt[id]--;
 			apu->local_pwr_ref_cnt--;
+			mt6989_apu_pwr_wake_unlock(apu, id);
 			if (apu->local_pwr_ref_cnt == 0) {
-				mt6989_apu_pwr_wake_unlock(apu, id);
 				ret = apu_power_ctrl(apu, 0);
 				if (!ret) {
 					/* clear status & cancel timeout worker */
@@ -612,15 +608,10 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 					if (id == APU_IPI_SCP_NP_RECOVER)
 						is_under_lp_scp_recovery_flow = false;
 				} else {
-					/* mt6989_apu_pwr_wake_lock(apu, id); */
+					mt6989_apu_pwr_wake_lock(apu, id);
 					apu->ipi_pwr_ref_cnt[id]++;
 					apu->local_pwr_ref_cnt++;
 					dev_info(dev, "%s: power off fail(%d)\n", __func__, ret);
-					if (!pwr_off_fail_aee_triggered) {
-						apusys_rv_aee_warn("APUSYS_RV",
-							"APUSYS_RV_POWER_OFF_FAIL");
-						pwr_off_fail_aee_triggered = true;
-					}
 				}
 			}
 		}
@@ -664,11 +655,23 @@ static int mt6989_power_on_off(struct mtk_apu *apu, u32 id, u32 on, u32 off)
 		break;
 	}
 
+	if (ret) {
+		if (on == 1 && off == 0 && !pwr_on_fail_aee_triggered) {
+			apusys_rv_aee_warn("APUSYS_RV",
+				"APUSYS_RV_POWER_ON_FAIL");
+			pwr_on_fail_aee_triggered = true;
+		} else if (on == 0 && off == 1 && !pwr_off_fail_aee_triggered) {
+			apusys_rv_aee_warn("APUSYS_RV",
+				"APUSYS_RV_POWER_OFF_FAIL");
+			pwr_off_fail_aee_triggered = true;
+		}
+	}
+
 	ktime_get_ts64(&te);
 	ts = timespec64_sub(te, ts);
 
 	dev_info(dev,
-		"%s(%d/%d/%d): local_pwr_ref_cnt = %d, ipi_pwr_ref_cnt = %d, time = %lld ns",
+		"%s(%d/%d/%d): local_pwr_ref_cnt = %d, ipi_pwr_ref_cnt = %d, time = %lld ns\n",
 		__func__, id, on, off, apu->local_pwr_ref_cnt,
 		apu->ipi_pwr_ref_cnt[id], timespec64_to_ns(&ts));
 
@@ -929,7 +932,7 @@ static int mt6989_rproc_exit(struct mtk_apu *apu)
 const struct mtk_apu_platdata mt6989_platdata = {
 	.flags		= F_AUTO_BOOT | F_FAST_ON_OFF | F_APU_IPI_UT_SUPPORT |
 					F_TCM_WA | F_SMMU_SUPPORT | F_DEBUG_LOG_ON |
-					F_BRINGUP | F_PRELOAD_FIRMWARE,
+					F_APUSYS_RV_TAG_SUPPORT | F_PRELOAD_FIRMWARE,
 	.ops		= {
 		.init	= mt6989_rproc_init,
 		.exit	= mt6989_rproc_exit,

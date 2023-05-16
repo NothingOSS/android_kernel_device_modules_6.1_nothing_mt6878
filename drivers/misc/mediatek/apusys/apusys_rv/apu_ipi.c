@@ -574,7 +574,7 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 		dev_info(dev, "%s: power off fail, ipi(%d) usage cnt(%d) not zero!\n",
 			__func__, id, ipi->usage_cnt);
 		spin_unlock(&apu->usage_cnt_lock);
-		apusys_rv_aee_warn("APUSYS_RV", "apu_power_on_off fail");
+		apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_OFF_FAIL");
 		return -EINVAL;
 	}
 	spin_unlock(&apu->usage_cnt_lock);
