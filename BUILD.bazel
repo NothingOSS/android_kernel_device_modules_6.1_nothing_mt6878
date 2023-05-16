@@ -72,6 +72,8 @@ mgk_64_k61_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp:mtk-hcp",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-ipesys-me:mtk-ipesys-me",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-dpe:mtk-dpe",
+    "//vendor/mediatek/kernel_modules/msync2_frd_int:msync2_frd_int",
+    "//vendor/mediatek/kernel_modules/msync2_frd_cus:msync2_frd_cus",
 ]
 
 
