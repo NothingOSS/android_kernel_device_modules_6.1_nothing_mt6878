@@ -8766,6 +8766,152 @@
 				"l26_imgo_m1_3";
 #endif
 		};
+
+		dvs: dvs@1a1a0000 {
+			compatible = "mediatek,dvs";
+			reg = <0 0x1a1a0000 0 0x1000>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
+			//mediatek-larb-supply = <&smi_larb19>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			interrupts = <GIC_SPI 591 IRQ_TYPE_LEVEL_HIGH 0>;
+			mboxes = <&gce_m 21 1000 CMDQ_THR_PRIO_1>;
+			dvsdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVS_CMQ_EVENT>;
+			clocks = <&topckgen_clk CLK_TOP_DPE_SEL>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAM>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAM_DPE>,
+			<&camsys_mraw_clk CLK_CAM_MR_LARBX>,
+			<&camsys_mraw_clk CLK_CAM_MR_GALS>,
+			<&camsys_mraw_clk CLK_CAM_MR_CAMTG>,
+			<&camsys_mraw_clk CLK_CAM_MR_MRAW0>,
+			<&camsys_mraw_clk CLK_CAM_MR_MRAW1>,
+			<&camsys_mraw_clk CLK_CAM_MR_MRAW2>,
+			<&camsys_mraw_clk CLK_CAM_MR_MRAW3>,
+			<&camsys_mraw_clk CLK_CAM_MR_PDA0>,
+			<&camsys_mraw_clk CLK_CAM_MR_PDA1>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_DPE>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_FUS>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_DHZE>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_GALS>;
+			clock-names = "CLK_TOP_DPE_SEL",
+			"CLK_CAM_MAIN_CON_0",
+			"CLK_CAM_MRAW_CON_0",
+			"CLK_CAM_DPE_CON_0",
+			"CLK_CAM_LARBX",
+			"CLK_CAM_GALS",
+			"CLK_CAM_CAMTG",
+			"CLK_CAM_MRAW0",
+			"CLK_CAM_MRAW1",
+			"CLK_CAM_MRAW2",
+			"CLK_CAM_MRAW3",
+			"CLK_CAM_PDA0",
+			"CLK_CAM_PDA1",
+			"IPE_LARB19",
+			"CLK_CAMSYS_DPE",
+			"CLK_CAMSYS_FUS",
+			"CLK_CAMSYS_DHZE",
+			"CLK_CAMSYS_CLAS";
+		};
+
+		dvp: dvp@1a1a0800 {
+			compatible = "mediatek,dvp";
+			reg = <0 0x1a1a0800 0 0x1000>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
+			//mediatek-larb-supply = <&smi_larb19>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			mboxes = <&gce_m 21 1000 CMDQ_THR_PRIO_1>;
+			interrupts = <GIC_SPI 592 IRQ_TYPE_LEVEL_HIGH 0>;
+			dvpdoneasyncshot = <CMDQ_EVENT_CAM_DPE_DVP_CMQ_EVENT>;
+			clocks = <&topckgen_clk CLK_TOP_DPE_SEL>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAM>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAM_DPE>,
+			<&camsys_mraw_clk CLK_CAM_MR_LARBX>,
+			<&camsys_mraw_clk CLK_CAM_MR_GALS>,
+			<&camsys_mraw_clk CLK_CAM_MR_CAMTG>,
+			<&camsys_mraw_clk CLK_CAM_MR_MRAW0>,
+			<&camsys_mraw_clk CLK_CAM_MR_MRAW1>,
+			<&camsys_mraw_clk CLK_CAM_MR_MRAW2>,
+			<&camsys_mraw_clk CLK_CAM_MR_MRAW3>,
+			<&camsys_mraw_clk CLK_CAM_MR_PDA0>,
+			<&camsys_mraw_clk CLK_CAM_MR_PDA1>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_DPE>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_FUS>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_DHZE>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_GALS>;
+			clock-names = "CLK_TOP_DPE_SEL",
+			"CLK_CAM_MAIN_CON_0",
+			"CLK_CAM_MRAW_CON_0",
+			"CLK_CAM_DPE_CON_0",
+			"CLK_CAM_LARBX",
+			"CLK_CAM_GALS",
+			"CLK_CAM_CAMTG",
+			"CLK_CAM_MRAW0",
+			"CLK_CAM_MRAW1",
+			"CLK_CAM_MRAW2",
+			"CLK_CAM_MRAW3",
+			"CLK_CAM_PDA0",
+			"CLK_CAM_PDA1",
+			"IPE_LARB19",
+			"CLK_CAMSYS_DPE",
+			"CLK_CAMSYS_FUS",
+			"CLK_CAMSYS_DHZE",
+			"CLK_CAMSYS_CLAS";
+		};
+
+		dvgf: dvgf@1a1a0c00 {
+			compatible = "mediatek,dvgf";
+			reg = <0 0x1a1a0c00 0 0x1000>;
+			#size-cells = <2>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
+			//mediatek-larb-supply = <&smi_larb19>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			interrupts = <GIC_SPI 620 IRQ_TYPE_LEVEL_HIGH 0>;
+			mboxes = <&gce_m 21 1000 CMDQ_THR_PRIO_1>;
+			dvgfdoneasyncshot = <CMDQ_EVENT_CAM_DVGF_CMQ_EVENT>;
+			//dvgfdoneasyncshot = <CMDQ_EVENT_CAM_CAM_EVENT_89>;
+			clocks = <&topckgen_clk CLK_TOP_DPE_SEL>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAM>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAM_DPE>,
+			<&camsys_mraw_clk CLK_CAM_MR_LARBX>,
+			<&camsys_mraw_clk CLK_CAM_MR_GALS>,
+			<&camsys_mraw_clk CLK_CAM_MR_CAMTG>,
+			<&camsys_mraw_clk CLK_CAM_MR_MRAW0>,
+			<&camsys_mraw_clk CLK_CAM_MR_MRAW1>,
+			<&camsys_mraw_clk CLK_CAM_MR_MRAW2>,
+			<&camsys_mraw_clk CLK_CAM_MR_MRAW3>,
+			<&camsys_mraw_clk CLK_CAM_MR_PDA0>,
+			<&camsys_mraw_clk CLK_CAM_MR_PDA1>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_DPE>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_FUS>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_DHZE>,
+			<&camsys_ipe_clk CLK_CAMSYS_IPE_GALS>;
+			clock-names = "CLK_TOP_DPE_SEL",
+			"CLK_CAM_MAIN_CON_0",
+			"CLK_CAM_MRAW_CON_0",
+			"CLK_CAM_DPE_CON_0",
+			"CLK_CAM_LARBX",
+			"CLK_CAM_GALS",
+			"CLK_CAM_CAMTG",
+			"CLK_CAM_MRAW0",
+			"CLK_CAM_MRAW1",
+			"CLK_CAM_MRAW2",
+			"CLK_CAM_MRAW3",
+			"CLK_CAM_PDA0",
+			"CLK_CAM_PDA1",
+			"IPE_LARB19",
+			"CLK_CAMSYS_DPE",
+			"CLK_CAMSYS_FUS",
+			"CLK_CAMSYS_DHZE",
+			"CLK_CAMSYS_CLAS";
+		};
 		consys: consys@18000000 {
 			compatible = "mediatek,mt6989-consys";
 			reg = <0 0x18000000 0 0x480>, /* 0 conn_infra_rgu_on */
