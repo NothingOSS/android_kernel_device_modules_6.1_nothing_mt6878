@@ -963,6 +963,7 @@ static int __apu_are_init(struct device *dev)
 	return 0;
 }
 
+#ifdef BYPASS_CE_ENABLE
 static int __apu_ce_init(struct device *dev)
 {
 	uint32_t entry = 0;
@@ -1014,6 +1015,7 @@ static int __apu_ce_init(struct device *dev)
 
 	return 0;
 }
+#endif
 
 // backup solution : send request for RPC sleep from APMCU
 static int __apu_off_rpc_rcx(struct device *dev)
@@ -1591,7 +1593,9 @@ static void __apu_aoc_init(void)
 static int init_hw_setting(struct device *dev)
 {
 	if (papw->env == LK2) {
+		#ifdef BYPASS_CE_ENABLE
 		__apu_ce_init(dev);
+		#endif
 		return 0;
 	}
 
