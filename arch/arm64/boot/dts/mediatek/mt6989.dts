@@ -3039,6 +3039,60 @@
 		ranges;
 		dma-ranges = <0x0 0x0 0x0 0x0 0x10 0x0>;
 
+		ccu_rproc: ccu_rproc@1b080000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "mediatek,ccu_rproc";
+			reg = <0 0x1b080000 0 0x9000>;
+			interrupts = <GIC_SPI 590 IRQ_TYPE_LEVEL_HIGH 0>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_CCU_AO>;
+			mediatek,larbs = <&smi_larb30>;
+			clocks = <&topckgen_clk CLK_TOP_CAM_SEL>,
+					<&topckgen_clk CLK_TOP_CCU_AHB_SEL>,
+					<&topckgen_clk CLK_TOP_CCUSYS_SEL>,
+					<&topckgen_clk CLK_TOP_CCUTM_SEL>,
+					<&ccu_main_clk CLK_CCU2MM0_GALS_CON>,
+					<&ccu_main_clk CLK_CCU_LARB30_CON>,
+					<&ccu_main_clk CLK_CCU_AHB_CON>,
+					<&ccu_main_clk CLK_CCUSYS_CCU0_CON>,
+					<&camsys_main_clk CLK_CAM_MAIN_CAM>,
+					<&cam_vcore_clk CLK_CAM_V_MM0_SUBCOMM>;
+			clock-names = "TOP_CAM",
+					"TOP_CCU_AHB",
+					"VLP_CCUSYS",
+					"VLP_CCUTM",
+					"CCU2MM0_GALS",
+					"CCU_LARB",
+					"CCU_AHB",
+					"CCUSYS_CCU0",
+					"CAM_CG",
+					"CAM_VCORE_CG";
+			mediatek,ccu_rproc1 = <&ccu_rproc1>;
+			mediatek,cammainpwr = <&camisp>;
+			mtk,smmu-shared = <&mm_smmu_ccu_normal>;
+			interconnects =
+			<&mmqos MASTER_LARB_PORT(SMMU_L30_P1_CCUO_0)
+				&mmqos SLAVE_COMMON(1)>,
+			<&mmqos MASTER_LARB_PORT(SMMU_L30_P0_CCUI_0)
+				&mmqos SLAVE_COMMON(1)>;
+			interconnect-names =
+				"ccu_o",
+				"ccu_i";
+			secured = "yes";
+			ccu_version = <73>;
+			ccu_sramSize = <0x00010000>;
+			ccu_sramOffset = <0x00040000>;
+			ccu_dramSize = <0x00200000>;
+			ccu_dramAddr = <0x80000000>;
+			ccu_emiRegion = <20>;
+			ccu-sramcon-offset = <0x00000f10>;
+		};
+
+		ccu_rproc1: ccu_rproc1 {
+			compatible = "mediatek,ccu_rproc1";
+			mtk,smmu-shared = <&mm_smmu_ccu_protected>;
+		};
+
 		lkg: lkg@c0de750 {
 			compatible = "mediatek,mtk-lkg";
 			reg = <0 0x0c0de750 0 0xc00>;
@@ -10520,10 +10574,13 @@
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_ccu_normal: mm-smmu-ccu-normal {
+		#address-cells = <2>;
+		#size-cells = <2>;
 		compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_ccu_normal";
-		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
+		mtk,iommu-dma-range = <0x1 0x8000000 0x0 0x4000000>;
 		iommus = <&mm_smmu 33>;
+		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_hrt_protected: mm-smmu-hrt-protected {
@@ -10554,10 +10611,13 @@
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_ccu_protected: mm-smmu-ccu-protected {
+		#address-cells = <2>;
+		#size-cells = <2>;
 		compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_ccu_protected";
-		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
+		mtk,iommu-dma-range = <0x1 0xc000000 0x0 0x4000000>;
 		iommus = <&mm_smmu 43>;
+		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_hrt_secure: mm-smmu-hrt-secure {
@@ -10595,7 +10655,7 @@
 		compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_ccu_inst";
 		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
-		iommus = <&mm_smmu 55>;
+		iommus = <&mm_smmu 54>;
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_ccu_data: mm-smmu-ccu-data {
