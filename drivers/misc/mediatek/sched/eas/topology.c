@@ -39,7 +39,8 @@ static int freq_limit_max_notifier_call(struct notifier_block *nb,
 
 	for_each_possible_cpu(cpu) {
 		if (per_cpu(gear_id, cpu) == gear_idx)
-			per_cpu(max_freq_scale, cpu) = pd_get_freq_util(cpu, freq_limit_max);
+			WRITE_ONCE(per_cpu(max_freq_scale, cpu),
+				pd_get_freq_util(cpu, freq_limit_max));
 	}
 
 	return 0;
@@ -106,13 +107,13 @@ void mtk_update_cpu_capacity(void *data, int cpu, unsigned long *capacity)
 {
 	unsigned long cap_ceiling;
 
-	cap_ceiling = per_cpu(max_freq_scale, cpu);
+	cap_ceiling = READ_ONCE(per_cpu(max_freq_scale, cpu));
 	*capacity = min(cap_ceiling, *capacity);
 }
 
 unsigned long cpu_cap_ceiling(int cpu)
 {
-	return min(capacity_orig_of(cpu), per_cpu(max_freq_scale, cpu));
+	return min(capacity_orig_of(cpu), READ_ONCE(per_cpu(max_freq_scale, cpu)));
 }
 
 #endif
