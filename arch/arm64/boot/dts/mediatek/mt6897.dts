@@ -6865,6 +6865,7 @@
 			status = "okay";
 			reg = <0 0x1e000000 0 0x6000>, /* CFG */
 				<0 0x1e00b000 0 0xb000>, /* CFG 2 */
+				<0 0x1002c904 0 0x4>, /* IFRBUS_AO HRT CFG */
 				<0 0x1e006000 0 0x100>, /* MBOX0 base */
 				<0 0x1e006100 0 0x4>, /* MBOX0 set */
 				<0 0x1e00610c 0 0x4>, /* MBOX0 clr */
@@ -6877,7 +6878,7 @@
 				<0 0x1e009000 0 0x100>, /* MBOX3 base */
 				<0 0x1e009100 0 0x4>, /* MBOX3 set */
 				<0 0x1e00910c 0 0x4>; /* MBOX3 clr */
-			reg-names = "cfg", "cfg2",
+			reg-names = "cfg", "cfg2", "cfg_hrt",
 				"mbox0_base", "mbox0_set", "mbox0_clr",
 				"mbox1_base", "mbox1_set", "mbox1_clr",
 				"mbox2_base", "mbox2_set", "mbox2_clr",
@@ -6894,7 +6895,7 @@
 				"mbox3",
 				"debug_ctrl";
 			#mbox-cells = <1>;
-
+			hrt-ctrl-bits = <0x60000000>;
 
 			power-domains = <&scpsys MT6897_POWER_DOMAIN_ADSP_TOP_DORMANT>;
 			clocks = <&topckgen_clk CLK_TOP_ADSP_SEL>,
@@ -6903,6 +6904,9 @@
 			clock-names = "clk_top_adsp_sel",
 				      "clk_top_clk26m",
 				      "clk_top_adsppll";
+			interconnects = <&dvfsrc MT6873_MASTER_HRT_ADSP
+					 &dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
+			interconnect-names = "icc-hrt-bw";
 
 			core-num = <2>;    /* core number */
 			adsp-rsv-ipidma-a = <0x100000>;
@@ -15055,6 +15059,12 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 		mtk-dsp-mem-afe = <0x1 0x40000>;
 		mtk-dsp-btdl = <0x0 0x9 0xffffffff 0xffffffff 0x30000>;
 		mtk-dsp-btul = <0x0 0xffffffff 0x19 0xe 0x20000>;
+	};
+
+	/* scene: $enable $bandwidth */
+	audio_dsp_hrt_bw: audio-dsp-hrt-bw {
+		compatible = "mediatek,mt6897-audio-dsp-hrt-bw";
+		adsp-qos-scene-phone-call = <0x1 500>;
 	};
 
 	speech_usip_mem: speech-usip-mem {
