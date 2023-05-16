@@ -3238,7 +3238,7 @@ static int mtk_dsi_wait_cmd_frame_done(struct mtk_dsi *dsi,
 	}
 
 	/* Waiting CLIENT_DSI_CFG thread done */
-	if (mtk_crtc && mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]) {
+	if (mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]) {
 		mtk_crtc_pkt_create(&handle, &mtk_crtc->base,
 				mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
 		cmdq_pkt_flush(handle);
