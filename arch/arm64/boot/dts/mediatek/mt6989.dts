@@ -1594,7 +1594,7 @@
 		compatible = "mediatek,gpufreq_wrapper";
 		gpufreq-version = <2>;
 		dual-buck = <1>;
-		gpueb-support = <0>;
+		gpueb-support = <1>;
 		gpufreq-bringup = <0>;
 	};
 
@@ -5054,16 +5054,6 @@
 				"gpueb_sram",
 				"gpueb_cfgreg",
 				"mcdi_mbox";
-			clocks =
-				<&mfgpll_pll_ctrl_clk CLK_MFG_AO_MFGPLL>,
-				<&mfgpll_sc0_pll_ctrl_clk CLK_MFGSC0_AO_MFGPLL_SC0>,
-				<&mfgpll_sc1_pll_ctrl_clk CLK_MFGSC1_AO_MFGPLL_SC1>,
-				<&topckgen_clk CLK_TOP_MFG_REF_SEL>;
-			clock-names =
-				"clk_mfg_top_pll",
-				"clk_mfg_sc0_pll",
-				"clk_mfg_sc1_pll",
-				"clk_mfg_ref_sel";
 			vgpu-supply = <&mt6373_vbuck3>;
 			vstack-supply = <&mt6316_7_vbuck1>;
 			vsram-supply = <&mt6373_vbuck4>;
@@ -15380,6 +15370,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 				regulator-max-microvolt = <1275000>;
 				regulator-enable-ramp-delay = <256>;
 				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
 			};
 		};
 	};
@@ -15952,6 +15943,10 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 };
 
 &mt6373_vbuck2 {
+	regulator-always-on;
+};
+
+&mt6373_vbuck3 {
 	regulator-always-on;
 };
 
