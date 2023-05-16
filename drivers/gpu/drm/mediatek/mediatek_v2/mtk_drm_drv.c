@@ -1377,6 +1377,8 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 
 		submit_kernel->buffer.src.use_dma = true;
 		submit_kernel->buffer.src.dmabuf[i] = fd_to_dma_buf(fd);
+		if (submit_kernel->buffer.src.dmabuf[i] == NULL)
+			goto err_fd_to_dma;
 	}
 
 	mml_drm_split_info(submit_kernel, submit_pq);
@@ -1460,6 +1462,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 err_submit:
 err_copy_submit:
 err_alloc_submit_kernel:
+err_fd_to_dma:
 	mtk_free_mml_submit(submit_kernel);
 err_alloc_submit_pq:
 	mtk_free_mml_submit(submit_pq);
