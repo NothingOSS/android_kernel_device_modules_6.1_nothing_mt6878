@@ -165,8 +165,6 @@ int fpsgo_com2other_notify_fpsgo_is_boosting(int boost)
 {
 	int i, ret = 1;
 
-	mutex_lock(&fpsgo_boost_cb_lock);
-
 	for (i = 0; i < MAX_FPSGO_CB_NUM; i++) {
 		if (notify_fpsgo_boost_cb_list[i]) {
 			notify_fpsgo_boost_cb_list[i](boost);
@@ -175,14 +173,13 @@ int fpsgo_com2other_notify_fpsgo_is_boosting(int boost)
 		}
 	}
 
-	mutex_unlock(&fpsgo_boost_cb_lock);
-
 	return ret;
 }
 
 
 void fpsgo_com_notify_fpsgo_is_boost(int enable)
 {
+	mutex_lock(&fpsgo_boost_cb_lock);
 	mutex_lock(&fpsgo_boost_lock);
 	if (!fpsgo_is_boosting && enable) {
 		fpsgo_is_boosting = 1;
@@ -196,6 +193,7 @@ void fpsgo_com_notify_fpsgo_is_boost(int enable)
 			fpsgo_notify_fbt_is_boost_fp(0);
 	}
 	mutex_unlock(&fpsgo_boost_lock);
+	mutex_unlock(&fpsgo_boost_cb_lock);
 }
 
 static inline int fpsgo_com_check_is_surfaceflinger(int pid)
