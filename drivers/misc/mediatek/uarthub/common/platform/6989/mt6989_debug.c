@@ -363,8 +363,8 @@ int uarthub_dump_intfhub_debug_info_mt6989(const char *tag)
 	val = DBG_CTRL_GET_intfhub_dbg_sel(DBG_CTRL_ADDR);
 	len = 0;
 	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"[%s][%s] IDBG=[0x%x]",
-		def_tag, ((tag == NULL) ? "null" : tag), val);
+		"[%s][%s][%s] IDBG=[0x%x]",
+		def_tag, ((tag == NULL) ? "null" : tag), MT6989_UARTHUB_DUMP_VERSION, val);
 	if (ret > 0)
 		len += ret;
 
@@ -482,7 +482,6 @@ int uarthub_dump_intfhub_debug_info_mt6989(const char *tag)
 		len += ret;
 
 	pr_info("%s\n", dmp_info_buf);
-#endif
 
 	len = 0;
 	dev0_sta = UARTHUB_REG_READ(DEV0_STA_ADDR);
@@ -494,6 +493,18 @@ int uarthub_dump_intfhub_debug_info_mt6989(const char *tag)
 		dev0_sta, dev1_sta, dev2_sta);
 	if (ret > 0)
 		len += ret;
+#else
+	len = 0;
+	dev0_sta = UARTHUB_REG_READ(DEV0_STA_ADDR);
+	dev1_sta = UARTHUB_REG_READ(DEV1_STA_ADDR);
+	dev2_sta = UARTHUB_REG_READ(DEV2_STA_ADDR);
+	ret = snprintf(dmp_info_buf, DBG_LOG_LEN,
+		"[%s][%s][%s] IDEVx_STA(0x0/0x40/0x80)=[0x%x-0x%x-0x%x]",
+		def_tag, ((tag == NULL) ? "null" : tag), MT6989_UARTHUB_DUMP_VERSION,
+		dev0_sta, dev1_sta, dev2_sta);
+	if (ret > 0)
+		len += ret;
+#endif
 
 	dev0_sta = UARTHUB_REG_READ(DEV0_PKT_CNT_ADDR);
 	dev1_sta = UARTHUB_REG_READ(DEV1_PKT_CNT_ADDR);
@@ -1293,11 +1304,21 @@ int uarthub_dump_debug_byte_cnt_info_mt6989(const char *tag)
 	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug1, 0xE0, 5, ",wsend_xoff=[%d-%d-%d-%d-%d]");
 	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug8, 0x8, 3, ",det_xoff=[%d-%d-%d-%d-%d]");
 
+#if !(UARTHUB_SUPPORT_FPGA)
 	val = uarthub_get_hwccf_univpll_on_info_mt6989();
 	if (val >= 0) {
 		/* the expect value is 0x1 */
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
 			",UNIVPLL=[%d]", val);
+		if (ret > 0)
+			len += ret;
+	}
+
+	val = uarthub_get_uart_src_clk_info_mt6989();
+	if (val >= 0) {
+		/* the expect value is 0x1 */
+		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
+			",UART_SRC_CLK=[0x%x(%s)]", val, ((val == 0) ? "26M" : "TOPCK"));
 		if (ret > 0)
 			len += ret;
 	}
@@ -1322,6 +1343,7 @@ int uarthub_dump_debug_byte_cnt_info_mt6989(const char *tag)
 		if (ret > 0)
 			len += ret;
 	}
+#endif
 
 	dev0_sta = UARTHUB_REG_READ(DEV0_STA_ADDR);
 	dev1_sta = UARTHUB_REG_READ(DEV1_STA_ADDR);

@@ -6,37 +6,27 @@
 #ifndef MT6989_H
 #define MT6989_H
 
+#define MT6989_UARTHUB_DUMP_VERSION    "20230511"
+
 #define UARTHUB_SUPPORT_FPGA           0
 #define UARTHUB_SUPPORT_DVT            0
-#define UARTHUB_SUPPORT_UT_API         0
-#define UARTHUB_SUPPORT_UT_CASE        0
 #define SPM_RES_CHK_EN                 1
 
 #if (UARTHUB_SUPPORT_FPGA) || (UARTHUB_SUPPORT_DVT)
-#ifdef UARTHUB_SUPPORT_UT_CASE
-#undef UARTHUB_SUPPORT_UT_CASE
-#endif
 #define UARTHUB_SUPPORT_UT_CASE        1
+#else
+#define UARTHUB_SUPPORT_UT_CASE        0
 #endif
 
 #if UARTHUB_SUPPORT_UT_CASE
-#ifdef UARTHUB_SUPPORT_UT_API
-#undef UARTHUB_SUPPORT_UT_API
-#endif
 #define UARTHUB_SUPPORT_UT_API         1
+#else
+#define UARTHUB_SUPPORT_UT_API         0
 #endif
 
-#define SSPM_DRIVER_EN                 1
-#define SSPM_DRIVER_PLL_CLK_CTRL_EN    1
+#define SSPM_DRIVER_EN                 0
 #define UNIVPLL_CTRL_EN                1
 #define MD_CHANNEL_EN                  1
-
-#if !(UNIVPLL_CTRL_EN)
-#ifdef SSPM_DRIVER_PLL_CLK_CTRL_EN
-#undef SSPM_DRIVER_PLL_CLK_CTRL_EN
-#endif
-#define SSPM_DRIVER_PLL_CLK_CTRL_EN    1
-#endif
 
 #include "INTFHUB_c_header.h"
 #include "UARTHUB_UART0_c_header.h"
