@@ -35,7 +35,7 @@ static const char *reg_name[APUPW_MAX_REGS] = {
 };
 
 static struct apu_power apupw = {
-	.env = LK2,
+	.env = MP,
 	.rcx = CE_FW,
 };
 
@@ -113,6 +113,7 @@ static uint32_t apusys_pwr_smc_call(struct device *dev, uint32_t smc_id,
  *      0x1 - acquire hw semaphore
  *      0x0 - release hw semaphore
  */
+#if APU_HW_SEMA_CTRL
 static int apu_hw_sema_ctl(struct device *dev, uint32_t sema_offset,
 		uint8_t usr_bit, uint8_t ctl, int32_t timeout)
 {
@@ -175,7 +176,7 @@ static int apu_hw_sema_ctl(struct device *dev, uint32_t sema_offset,
 
 	return 0;
 }
-
+#endif
 /*
  * APU_PCU_SEMA_READ
  * [15:00]      SEMA_KEY_SET    Each bit corresponds to different user.
@@ -308,8 +309,8 @@ static int __apu_wake_rpc_rcx(struct device *dev)
 			     readl(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY));
 	/* polling FSM @RPC-lite to ensure RPC is in on/off stage */
 	ret |= readl_relaxed_poll_timeout_atomic(
-			(apupw.regs[apu_rpc] + APU_RPC_STATUS),
-			val, (val & (0x1 << 29)), 50, 10000);
+			(apupw.regs[apu_rpc] + APU_RPC_STATUS_1),
+			val, (val & (0x1 << 13)), 50, 10000);
 
 	if (ret) {
 		pr_info("%s polling ARE FSM timeout, ret %d\n", __func__, ret);
@@ -339,7 +340,9 @@ static int mt6989_apu_top_on(struct device *dev)
 	if (log_lvl)
 		pr_info("%s +\n", __func__);
 	// acquire hw sema
+#if APU_HW_SEMA_CTRL
 	apu_hw_sema_ctl(dev, APU_HW_SEMA_PWR_CTL, SYS_APMCU, 1, -1);
+#endif
 	ret = __apu_wake_rpc_rcx(dev);
 
 	if (ret) {
@@ -430,8 +433,9 @@ static int mt6989_apu_top_off(struct device *dev)
 		return -1;
 	}
 	// release hw sema
+#if APU_HW_SEMA_CTRL
 	apu_hw_sema_ctl(dev, APU_HW_SEMA_PWR_CTL, SYS_APMCU, 0, -1);
-
+#endif
 	if (log_lvl)
 		pr_info("%s -\n", __func__);
 

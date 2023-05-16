@@ -17,7 +17,7 @@
 #define DEBUG_DUMP_REG		(0)	// dump overall apu registers for debug
 #define APMCU_REQ_RPC_SLEEP	(0)	// rpm suspend trigger sleep req to rpc
 #define APUPW_DUMP_FROM_APMCU	(0)	// 1: dump reg from APMCU, 0: from ATF
-#define SUPPORT_VSRAM_0P75_VB	(1)
+#define APU_HW_SEMA_CTRL	(0)
 
 #define VAPU_DEF_VOLT		(750000)	// 0.75v
 
