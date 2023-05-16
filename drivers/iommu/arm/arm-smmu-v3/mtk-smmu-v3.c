@@ -510,6 +510,17 @@ static int mtk_smmu_power_get(struct arm_smmu_device *smmu)
 	if (MTK_SMMU_HAS_FLAG(plat_data, SMMU_CLK_AO_EN))
 		return 0;
 
+	if (data->pm_ops && data->pm_ops->pm_get) {
+		ret = data->pm_ops->pm_get();
+		if (ret <= 0) {
+			dev_info(smmu->dev, "[%s] failed ret:%d, smmu:%s\n",
+				 __func__, ret, get_smmu_name(plat_data->smmu_type));
+			return -1;
+		} else {
+			return 0;
+		}
+	}
+
 	ret = mtk_smmu_pm_get(plat_data->smmu_type);
 
 	return ret;
@@ -523,6 +534,17 @@ static int mtk_smmu_power_put(struct arm_smmu_device *smmu)
 
 	if (MTK_SMMU_HAS_FLAG(plat_data, SMMU_CLK_AO_EN))
 		return 0;
+
+	if (data->pm_ops && data->pm_ops->pm_put) {
+		ret = data->pm_ops->pm_put();
+		if (ret < 0) {
+			dev_info(smmu->dev, "[%s] failed ret:%d, smmu:%s\n",
+				 __func__, ret, get_smmu_name(plat_data->smmu_type));
+			return -1;
+		} else {
+			return 0;
+		}
+	}
 
 	ret = mtk_smmu_pm_put(plat_data->smmu_type);
 
@@ -1939,7 +1961,7 @@ struct arm_smmu_device *mtk_smmu_v3_impl_init(struct arm_smmu_device *smmu)
 static const struct mtk_smmu_plat_data mt6989_data_mm = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= MM_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN | SMMU_CLK_AO_EN,
+	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN,
 };
 
 static const struct mtk_smmu_plat_data mt6989_data_apu = {

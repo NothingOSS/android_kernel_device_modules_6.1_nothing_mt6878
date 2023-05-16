@@ -425,8 +425,14 @@ struct mtk_smmu_plat_data {
 	enum mtk_smmu_type		smmu_type;
 };
 
+struct mtk_pm_ops {
+	int (*pm_get)(void);
+	int (*pm_put)(void);
+};
+
 struct mtk_smmu_data {
 	const struct mtk_smmu_plat_data *plat_data;
+	const struct mtk_pm_ops		*pm_ops;
 	struct mtk_smi_larb_iommu	larb_imu[MTK_LARB_NR_MAX];
 	struct mutex			group_mutexs;
 	struct arm_smmu_device		smmu;
@@ -590,6 +596,57 @@ static inline struct device *mtk_smmu_get_shared_device(struct device *dev)
 	}
 
 	return shared_dev;
+}
+
+static inline struct mtk_smmu_data *get_smmu_data(u32 smmu_type)
+{
+	struct platform_device *smmu_pdev;
+	struct device_node *smmu_node;
+	struct arm_smmu_device *smmu;
+	struct mtk_smmu_data *data;
+
+	if (!IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3))
+		return NULL;
+
+	if (smmu_type >= SMMU_TYPE_NUM) {
+		pr_info("%s invalid smmu_type %u\n", __func__, smmu_type);
+		return NULL;
+	}
+
+	for_each_compatible_node(smmu_node, NULL, "arm,smmu-v3") {
+		smmu_pdev = of_find_device_by_node(smmu_node);
+		of_node_put(smmu_node);
+		if (!smmu_pdev) {
+			pr_info("%s, can't find smmu pdev\n", __func__);
+			return NULL;
+		}
+
+		smmu = platform_get_drvdata(smmu_pdev);
+		if (!smmu) {
+			pr_info("%s, can't find smmu device\n", __func__);
+			return NULL;
+		}
+
+		data = to_mtk_smmu_data(smmu);
+		if (smmu_type == data->plat_data->smmu_type)
+			return data;
+	}
+
+	return NULL;
+}
+
+static inline int mtk_smmu_set_pm_ops(u32 smmu_type, const struct mtk_pm_ops *ops)
+{
+	struct mtk_smmu_data *data = get_smmu_data(smmu_type);
+
+	if (data == NULL) {
+		pr_info("%s can't find smmu data, smmu_type %u\n", __func__, smmu_type);
+		return -1;
+	}
+
+	data->pm_ops = ops;
+
+	return 0;
 }
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
