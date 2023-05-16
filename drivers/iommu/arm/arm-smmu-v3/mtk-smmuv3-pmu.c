@@ -994,13 +994,6 @@ static int smmu_pmu_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static void smmu_pmu_shutdown(struct platform_device *pdev)
-{
-	struct smmu_pmu *smmu_pmu = platform_get_drvdata(pdev);
-
-	smmu_pmu_disable(&smmu_pmu->pmu);
-}
-
 static irqreturn_t smmu_pmu_handle_irq_impl(int irq_num, struct device *dev)
 {
 	return smmu_pmu_handle_irq(irq_num, dev_get_drvdata(dev));
@@ -1031,7 +1024,6 @@ static struct platform_driver smmu_pmu_driver = {
 	},
 	.probe = smmu_pmu_probe,
 	.remove = smmu_pmu_remove,
-	.shutdown = smmu_pmu_shutdown,
 };
 
 static int __init arm_smmu_pmu_init(void)
