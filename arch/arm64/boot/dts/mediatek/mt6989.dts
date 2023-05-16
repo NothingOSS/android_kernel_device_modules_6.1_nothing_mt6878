@@ -4858,6 +4858,7 @@
 			#cooling-cells = <2>;
 			ged-supply = <&ged>;
 			gpu-frame-base-optimize = <0>;
+			l2-hash-values = <0xb 0xe 0x0>;
 		};
 
 		gpueb: gpueb@13c00000 {
