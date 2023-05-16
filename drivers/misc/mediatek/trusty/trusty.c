@@ -18,6 +18,7 @@
 #include <linux/trusty/trusty.h>
 #include <linux/trusty/trusty_shm.h>
 #include <linux/soc/mediatek/mtk-ise-mbox.h>
+#include <linux/soc/mediatek/mtk_sip_svc.h>
 
 struct trusty_state;
 
@@ -43,6 +44,14 @@ struct trusty_state *tstate;
 static struct workqueue_struct *notif_call_wq;
 static struct work_struct notif_call_work;
 static u32 real_drv;
+static phys_addr_t mcia_paddr;
+static size_t mcia_size;
+
+enum ise_type {
+	ISE_TYPE_SHM = 0,
+	ISE_TYPE_MCIA,
+	ISE_TYPE_NUM,
+};
 
 #if IS_ENABLED(CONFIG_ARM64)
 #define SMC_ARG0		"x0"
@@ -451,6 +460,14 @@ static int trusty_init(struct device *dev)
 			0);
 }
 
+static int trusty_mcia_init(struct device *dev)
+{
+	return ise_fast_call32(dev, SMC_FC_MCIA_PA_INFO,
+			(u32)mcia_paddr,
+			(u32)(mcia_paddr >> 32),
+			(u32)mcia_size);
+}
+
 static void notif_call_work_func(struct work_struct *work)
 {
 	atomic_notifier_call_chain(&tstate->notifier, TRUSTY_CALL_RETURNED, NULL);
@@ -475,8 +492,7 @@ static int trusty_probe(struct platform_device *pdev)
 	work_func_t work_func;
 	struct trusty_state *s;
 	struct device_node *node = pdev->dev.of_node;
-	struct device_node *mem_node;
-	struct resource r;
+	struct arm_smccc_res res;
 
 	if (!node) {
 		dev_err(&pdev->dev, "of_node required\n");
@@ -495,32 +511,34 @@ static int trusty_probe(struct platform_device *pdev)
 		goto err_allocate_state;
 	}
 
-	mem_node = of_parse_phandle(node, "memory-region", 0);
-	if (mem_node) {
-		ret = of_address_to_resource(mem_node, 0, &r);
-		if (ret) {
-			dev_err(&pdev->dev, "Failed to get memory region: %d\n", ret);
-			ret = -EINVAL;
-			goto err_mem_node;
-		}
-
-		gshm.paddr = r.start;
-		gshm.mem_size = resource_size(&r);
-		/* PROT_NORMAL_NC, normal uncached memory */
-		gshm.vaddr = ioremap_wc(gshm.paddr, gshm.mem_size);
-		if (IS_ERR(gshm.vaddr)) {
-			dev_err(&pdev->dev, "Failed to map memory region: %pa\n", &r.start);
-			ret = -EINVAL;
-			goto err_mem_node;
-		}
-		gshm.ioremap_paddr = page_to_phys(virt_to_page(gshm.vaddr));
-		dev_dbg(&pdev->dev, "pa 0x%llx, ioremap_pa 0x%llx, size 0x%zx, va 0x%lx\n",
-			gshm.paddr, gshm.ioremap_paddr, gshm.mem_size, (uintptr_t)gshm.vaddr);
-	} else {
-		dev_err(&pdev->dev, "mem_node required\n");
+	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL, ISE_TYPE_SHM, 0, 0, 0, 0, 0, 0, &res);
+	if (res.a0) {
+		dev_err(&pdev->dev, "Failed to get shm memory region: 0x%lx\n", res.a0);
 		ret = -EINVAL;
-		goto err_mem_node;
+		goto err_mem;
 	}
+
+	gshm.paddr = res.a1;
+	gshm.mem_size = res.a2;
+	/* PROT_NORMAL_NC, normal uncached memory */
+	gshm.vaddr = ioremap_wc(gshm.paddr, gshm.mem_size);
+	if (IS_ERR(gshm.vaddr)) {
+		dev_err(&pdev->dev, "Failed to map shm memory region: 0x%lx\n", res.a1);
+		ret = -EINVAL;
+		goto err_mem;
+	}
+	gshm.ioremap_paddr = page_to_phys(virt_to_page(gshm.vaddr));
+	dev_dbg(&pdev->dev, "pa 0x%llx, ioremap_pa 0x%llx, size 0x%zx, va 0x%lx\n",
+		gshm.paddr, gshm.ioremap_paddr, gshm.mem_size, (uintptr_t)gshm.vaddr);
+
+	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL, ISE_TYPE_MCIA, 0, 0, 0, 0, 0, 0, &res);
+	if (res.a0) {
+		dev_err(&pdev->dev, "Failed to get mcia memory region: 0x%lx\n", res.a0);
+		ret = -EINVAL;
+		goto err_mem;
+	}
+	mcia_paddr = res.a1;
+	mcia_size = res.a2;
 
 	ret = trusty_shm_init_pool(&pdev->dev);
 	if (ret < 0)
@@ -547,6 +565,10 @@ static int trusty_probe(struct platform_device *pdev)
 	ret = trusty_shm_init(&pdev->dev);
 	if (ret < 0)
 		goto err_shm_init;
+
+	ret = trusty_mcia_init(&pdev->dev);
+	if (ret < 0)
+		goto err_mcia_init;
 
 	s->nop_wq = alloc_workqueue("trusty-nop-wq", WQ_CPU_INTENSIVE, 0);
 	if (!s->nop_wq) {
@@ -602,6 +624,7 @@ err_alloc_works:
 	destroy_workqueue(s->nop_wq);
 err_create_nop_wq:
 	trusty_shm_destroy_pool(&pdev->dev);
+err_mcia_init:
 err_shm_init:
 err_init:
 err_api_version:
@@ -612,7 +635,7 @@ err_api_version:
 	device_for_each_child(&pdev->dev, NULL, trusty_remove_child);
 	mutex_destroy(&s->smc_lock);
 err_shm_init_pool:
-err_mem_node:
+err_mem:
 	kfree(s);
 err_allocate_state:
 	return ret;
