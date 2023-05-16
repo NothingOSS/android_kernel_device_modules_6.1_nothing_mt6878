@@ -6066,6 +6066,7 @@
 
 		apusys-aov {
 			compatible = "mediatek,apusys_aov";
+			ctrl-size = <0x100000>;
 		};
 
 		i2c0: i2c@11f00000 {
