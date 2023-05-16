@@ -675,7 +675,9 @@ int uarthub_read_dbg_monitor(int *sel, int *tx_monitor, int *rx_monitor)
 	}
 
 	*sel = DEBUG_MODE_CRTL_GET_intfhub_debug_monitor_sel(DEBUG_MODE_CRTL_ADDR);
+#if UARTHUB_DEBUG_LOG
 	pr_info("%s sel = %d\n", __func__, *sel);
+#endif
 
 	tx_monitor[0] = DEBUG_TX_MOINTOR_0_GET_intfhub_debug_tx_monitor0(DEBUG_TX_MOINTOR_0_ADDR);
 	tx_monitor[1] = DEBUG_TX_MOINTOR_1_GET_intfhub_debug_tx_monitor1(DEBUG_TX_MOINTOR_1_ADDR);
