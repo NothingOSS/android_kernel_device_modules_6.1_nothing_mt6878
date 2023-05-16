@@ -21555,6 +21555,12 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 	DDPIRQ("MM_MUTEX irq, val:0x%x\n", val);
 
 	writel(~val, ddp->regs + DISP_REG_MUTEX_INTSTA);
+	if (likely(ddp->side_regs))
+		writel(0, ddp->side_regs + DISP_REG_MUTEX_INTSTA);
+	if (likely(ddp->ovlsys0_regs))
+		writel(0, ddp->ovlsys0_regs + DISP_REG_MUTEX_INTSTA);
+	if (likely(ddp->ovlsys1_regs))
+		writel(0, ddp->ovlsys1_regs + DISP_REG_MUTEX_INTSTA);
 
 	for (m_id = 0; m_id < DISP_MUTEX_DDP_COUNT; m_id++) {
 		if (val & (0x1 << (m_id + DISP_MUTEX_TOTAL))) {

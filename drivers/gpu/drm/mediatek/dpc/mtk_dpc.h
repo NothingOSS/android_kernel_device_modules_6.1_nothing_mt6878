@@ -6,12 +6,6 @@
 #ifndef __MTK_DPC_H__
 #define __MTK_DPC_H__
 
-#define DPCFUNC(fmt, args...) \
-	pr_info("[dpc] %s:%d " fmt "\n", __func__, __LINE__, ##args)
-
-#define DPCERR(fmt, args...) \
-	pr_info("[dpc][err] %s:%d " fmt "\n", __func__, __LINE__, ##args)
-
 enum mtk_dpc_subsys {
 	DPC_SUBSYS_DISP = 0,
 	DPC_SUBSYS_DISP0 = 0,
@@ -20,7 +14,6 @@ enum mtk_dpc_subsys {
 	DPC_SUBSYS_OVL1 = 3,
 	DPC_SUBSYS_MML = 4,
 	DPC_SUBSYS_MML1 = 4,
-	DPC_SUBSYS_TOTAL,
 };
 
 enum mtk_dpc_disp_vidle {
@@ -50,10 +43,12 @@ enum mtk_dpc_mml_vidle {
 
 void dpc_enable(bool en);
 void dpc_group_enable(const u16 group, bool en);
-void dpc_config(const enum mtk_dpc_subsys subsys);
+void dpc_config(const enum mtk_dpc_subsys subsys, bool en);
 void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
+void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
+void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
+void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level);
 int mtk_disp_vidle_power_keep(void);
 void mtk_disp_vidle_power_release(void);
-
 
 #endif

@@ -16,7 +16,6 @@
 #endif
 
 #include "mtk_disp_vidle.h"
-#include "../drivers/gpu/drm/mediatek/dpc/mtk_dpc.h"
 //#include "mtk_drm_ddp_comp.h"
 //#include "mtk_dump.h"
 //#include "mtk_drm_mmp.h"
@@ -37,6 +36,9 @@ struct dpc_driver disp_dpc_driver = {
 	.dpc_group_enable = dpc_group_enable,
 	.vidle_power_keep = mtk_disp_vidle_power_keep,
 	.vidle_power_release = mtk_disp_vidle_power_release,
+	.dpc_hrt_bw_set = dpc_hrt_bw_set,
+	.dpc_srt_bw_set = dpc_srt_bw_set,
+	.dpc_dvfs_set = dpc_dvfs_set,
 };
 
 struct mtk_disp_vidle {
@@ -46,6 +48,7 @@ struct mtk_disp_vidle {
 
 static void mtk_vidle_flag_init(struct mtk_drm_private *priv)
 {
+	/* TODO: CHECK LCM_IS_CONNECTED, if not, auto mtcmos cannot be enabled */
 	if (priv == NULL)
 		return;
 
@@ -190,4 +193,28 @@ void mtk_vidle_enable(struct mtk_drm_private *priv)
 	/* TODO: enable timestamp */
 }
 
+void mtk_vidle_hrt_bw_set(const u32 bw_in_mb)
+{
+	if (disp_dpc_driver.dpc_hrt_bw_set)
+		disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb);
+}
+void mtk_vidle_srt_bw_set(const u32 bw_in_mb)
+{
+	if (disp_dpc_driver.dpc_srt_bw_set)
+		disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb);
+}
+void mtk_vidle_dvfs_set(const u8 level)
+{
+	if (disp_dpc_driver.dpc_dvfs_set)
+		disp_dpc_driver.dpc_dvfs_set(DPC_SUBSYS_DISP, level);
+}
 
+__weak void dpc_enable(bool en) {}
+__weak void dpc_group_enable(const u16 group, bool en) {}
+__weak void dpc_config(const enum mtk_dpc_subsys subsys, bool en) {}
+__weak void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en) {}
+__weak void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb) {}
+__weak void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb) {}
+__weak void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level) {}
+__weak int mtk_disp_vidle_power_keep(void) { return 0; }
+__weak void mtk_disp_vidle_power_release(void) {}

@@ -9,6 +9,9 @@
 #include "mtk_drm_mmp.h"
 #include "mtk_drm_drv.h"
 #include "mtk_dump.h"
+
+#include "mtk_disp_vidle.h"
+
 #include <linux/clk.h>
 #include <linux/pm_opp.h>
 #include <linux/regulator/consumer.h>
@@ -20,7 +23,7 @@
 #define CRTC_NUM		4
 static struct drm_crtc *dev_crtc;
 /* add for mm qos */
-static struct clk *mm_clk;
+static u8 vdisp_opp = U8_MAX;
 static struct regulator *mm_freq_request;
 static unsigned long *g_freq_steps;
 static unsigned int lp_freq;
@@ -222,6 +225,7 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 		mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(1));
 	else
 		mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(total));
+	mtk_vidle_hrt_bw_set(total);
 
 	DRM_MMP_MARK(hrt_bw, 0, tmp);
 
@@ -391,18 +395,19 @@ static void mtk_drm_mmdvfs_get_avail_freq(struct device *dev)
 void mtk_drm_mmdvfs_init(struct device *dev)
 {
 	struct device_node *node = dev->of_node;
-	unsigned int index;
 	int ret = 0;
 
 	dev_pm_opp_of_add_table(dev);
 	mtk_drm_mmdvfs_get_avail_freq(dev);
 
-	/* MMDVFS V3 */
-	ret = of_property_read_u32(node, "dvfs-clk-idx", &index);
+	/* support DPC and VDISP */
+	ret = of_property_read_u8(node, "vdisp-dvfs-opp", &vdisp_opp);
 	if (ret == 0) {
-		mm_clk = of_clk_get(node, index);
-		if (IS_ERR_OR_NULL(mm_clk))
-			DDPPR_ERR("%s get dvfs clk failed\n", __func__);
+		if (unlikely(mmdvfs_get_version() == 0)) {
+			DDPMSG("%s use VDISP but mmdvfs is not v3\n", __func__);
+			vdisp_opp = U8_MAX;
+		} else
+			DDPMSG("%s VDISP_OPP(%u)\n", __func__, vdisp_opp);
 		return;
 	}
 
@@ -479,16 +484,10 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 	DDPINFO("%s[%d] final_level(freq=%d, %lu) final_lp_mode:%d\n",
 		__func__, __LINE__, final_level, freq, final_lp_mode);
 
-	if (!IS_ERR_OR_NULL(mm_clk)) {
-		if (mmdvfs_get_version()) {
-			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP);
-			mmdvfs_set_lp_mode_by_vcp(final_lp_mode);
-		}
-		ret = clk_set_rate(mm_clk, freq);
-		if (ret)
-			DDPPR_ERR("%s:clk_set_rate fail\n", __func__);
-		if (mmdvfs_get_version())
-			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
+	if ((vdisp_opp != U8_MAX) && (final_level >= 0)) {
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP);
+		mtk_vidle_dvfs_set(final_level);
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
 		return;
 	}
 

@@ -9165,9 +9165,11 @@ void mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc)
 		drm_set_dal(&mtk_crtc->base, cmdq_handle);
 
 	/* Update QOS BW*/
+	mtk_crtc->total_srt = 0;	/* reset before PMQOS_UPDATE_BW sum all srt bw */
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 			PMQOS_UPDATE_BW, NULL);
+	mtk_vidle_srt_bw_set(mtk_crtc->total_srt);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_IDLEMGR_ASYNC)) {
@@ -9824,9 +9826,11 @@ skip:
 	mtk_crtc_stop_ddp(mtk_crtc, cmdq_handle);
 
 	/* 3. Reset QOS BW after CRTC stop */
+	mtk_crtc->total_srt = 0;	/* reset before PMQOS_UPDATE_BW sum all srt bw */
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 			PMQOS_UPDATE_BW, NULL);
+	mtk_vidle_srt_bw_set(mtk_crtc->total_srt);
 
 	/* 3.1 stop the last mml pkt */
 	if (kref_read(&mtk_crtc->mml_ir_sram.ref)) {
@@ -13975,6 +13979,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	}
 
 	if (!only_output) {
+		mtk_crtc->total_srt = 0;	/* reset before PMQOS_UPDATE_BW sum all srt bw */
 		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 			if (crtc->state->color_mgmt_changed)
 				mtk_ddp_gamma_set(comp, crtc->state, cmdq_handle);
@@ -13997,6 +14002,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 						FRAME_DIRTY, NULL);
 			}
 		}
+		mtk_vidle_srt_bw_set(mtk_crtc->total_srt);
 	}
 
 	if ((priv->data->shadow_register) == true) {

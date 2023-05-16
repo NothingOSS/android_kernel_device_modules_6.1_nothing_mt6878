@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2023 MediaTek Inc.
+ */
+
+#include "mtk_dpc_mmp.h"
+
+#if IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
+#else
+
+static struct dpc_mmp_events_t dpc_mmp_events;
+
+struct dpc_mmp_events_t *dpc_mmp_get_event(void)
+{
+	return &dpc_mmp_events;
+}
+
+void dpc_mmp_init(void)
+{
+	mmp_event folder;
+
+	if (dpc_mmp_events.folder)
+		return;
+
+	mmprofile_enable(1);
+	folder = mmprofile_register_event(MMP_ROOT_EVENT, "DPC");
+	dpc_mmp_events.folder = folder;
+	dpc_mmp_events.disp_on = mmprofile_register_event(folder, "disp_on");
+	dpc_mmp_events.disp_off = mmprofile_register_event(folder, "disp_off");
+	dpc_mmp_events.prete = mmprofile_register_event(folder, "prete");
+	dpc_mmp_events.mminfra = mmprofile_register_event(folder, "mminfra");
+	dpc_mmp_events.vlp_vote = mmprofile_register_event(folder, "vlp_vote");
+	dpc_mmp_events.mml_rrot_done = mmprofile_register_event(folder, "mml_rrot_done");
+	dpc_mmp_events.mtcmos_ovl0 = mmprofile_register_event(folder, "mtcmos_ovl0");
+	dpc_mmp_events.mtcmos_ovl1 = mmprofile_register_event(folder, "mtcmos_ovl1");
+	dpc_mmp_events.mtcmos_disp0 = mmprofile_register_event(folder, "mtcmos_disp0");
+	dpc_mmp_events.mtcmos_disp1 = mmprofile_register_event(folder, "mtcmos_disp1");
+	dpc_mmp_events.mtcmos_mml1 = mmprofile_register_event(folder, "mtcmos_mml1");
+
+	mmprofile_enable_event_recursive(folder, 1);
+	mmprofile_start(1);
+}
+
+#endif

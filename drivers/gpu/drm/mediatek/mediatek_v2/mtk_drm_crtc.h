@@ -987,6 +987,8 @@ struct mtk_drm_crtc {
 	bool dsi_null_pkt_postpone;
 
 	int dli_relay_1tnp;
+
+	unsigned int total_srt;
 };
 
 struct mtk_crtc_state {
