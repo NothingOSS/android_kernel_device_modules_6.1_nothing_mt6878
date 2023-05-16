@@ -4775,8 +4775,7 @@ void cmdq_core_initialize(void)
 	if (unlikely(!cmdq_mbox_dev_get()))
 		CMDQ_ERR("%s mbox device is not exist!!!\n", __func__);
 
-	mdp_rb_pool = dma_pool_create("mdp_rb", cmdq_mbox_dev_get(),
-		CMDQ_BUF_ALLOC_SIZE, 0, 0);
+	mdp_rb_pool = cmdq_alloc_user_pool("mdp_rb", cmdq_mbox_dev_get());
 	if (unlikely(!mdp_rb_pool))
 		CMDQ_ERR("%s mdp_rb_pool is not exist!!!\n", __func__);
 
