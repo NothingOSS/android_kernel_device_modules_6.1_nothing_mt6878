@@ -36,6 +36,7 @@ enum smmu_atf_cmd {
 	SMMU_SECURE_AID_SID_MAP,
 	SMMU_SECURE_TRIGGER_IRQ,
 	SMMU_SECURE_TEST,
+	SMMU_SECURE_CONFIG_CQDMA,
 	SMMU_CMD_NUM
 };
 
@@ -242,6 +243,22 @@ static int mtk_smmu_sec_test(u32 smmu_type)
 
 	return SMC_SMMU_SUCCESS;
 }
+
+int mtk_smmu_sec_config_cqdma(bool enable)
+{
+	unsigned long cmd = SMMU_ATF_SET_CMD(SOC_SMMU, 0, SMMU_SECURE_CONFIG_CQDMA);
+	unsigned long en = enable ? 1 : 0;
+	int ret;
+
+	ret = mtk_smmu_atf_call(SOC_SMMU, cmd, en, 0, 0, 0, 0, 0);
+	if (ret) {
+		pr_info("%s, smc call fail:%d, type:%u\n", __func__, ret, SOC_SMMU);
+		return SMC_SMMU_FAIL;
+	}
+
+	return SMC_SMMU_SUCCESS;
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_sec_config_cqdma);
 
 #define DEBUG_SET_PARAM_CMD		GENMASK_ULL(3, 0)
 #define DEBUG_SET_PARAM_SMMU		GENMASK_ULL(5, 4)
