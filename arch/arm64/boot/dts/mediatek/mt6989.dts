@@ -3574,7 +3574,7 @@
 
 		dfd_soc: dfd-soc {
 			compatible = "mediatek,dfd_soc";
-			enabled = <1>;
+			enabled = <0>;
 			dfd-timeout = <0x1000>;
 			buf-length = <0x200000>;
 			buf-addr-align = <0x400000>;
