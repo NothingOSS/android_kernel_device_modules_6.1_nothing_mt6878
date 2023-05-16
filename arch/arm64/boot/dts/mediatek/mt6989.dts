@@ -11082,7 +11082,6 @@
 			clk-scale-up-vcore-min = <650000>;
 
 			vcc-supply = <&mt6363_vemc>;
-			vccq-supply = <&mt6363_vufs12>;
 
 			resets =	<&ufscfgpdn_rst 0>,
 					<&ufscfgpdn_rst 1>,
