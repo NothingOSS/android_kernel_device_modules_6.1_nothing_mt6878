@@ -1115,10 +1115,14 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 	resource_size_t config_regs_pa;
 	unsigned int crop_hoffset = 0;
 	unsigned int crop_out_hsize = 0;
-	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+	struct mtk_drm_private *priv;
 	struct mtk_ddp_comp *postalign_comp;
 
 	if (!comp || !comp->mtk_crtc || !comp->mtk_crtc->panel_ext)
+		return;
+
+	priv = comp->mtk_crtc->base.dev->dev_private;
+	if (priv == NULL)
 		return;
 
 	if (comp->id == DDP_COMPONENT_SPR0) {
