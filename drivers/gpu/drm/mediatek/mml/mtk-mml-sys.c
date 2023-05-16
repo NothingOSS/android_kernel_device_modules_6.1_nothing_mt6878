@@ -948,8 +948,13 @@ static s32 mml_comp_clk_aid_enable(struct mml_comp *comp)
 	if (ret < 0)
 		return ret;
 
-	if (comp->clk_cnt == 1)
+	if (comp->clk_cnt == 1) {
 		mml_set_uid(&sys->mml_scmi);
+
+#ifndef MML_FPGA
+		cmdq_util_set_mml_aid_selmode();
+#endif
+	}
 
 	return 0;
 }
