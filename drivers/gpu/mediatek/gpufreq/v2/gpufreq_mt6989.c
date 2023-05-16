@@ -774,10 +774,10 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		}
 		__gpufreq_footprint_power_step(0x05);
 
-#if !GPUFREQ_PDCA_ENABLE
+#if !GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE
 		/* restore smmu after enable clock */
 		__gpu_smmu_config(GPU_PWR_ON);
-#endif /* GPUFREQ_PDCA_ENABLE */
+#endif /* GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE */
 		__gpufreq_footprint_power_step(0x06);
 
 		/* config TOP HW_DELSEL */
@@ -854,10 +854,10 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		g_dvfs_state |= DVFS_POWEROFF;
 		__gpufreq_footprint_power_step(0x18);
 
-#if !GPUFREQ_PDCA_ENABLE
+#if !GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE
 		/* backup smmu before disable clock */
 		__gpu_smmu_config(GPU_PWR_OFF);
-#endif /* GPUFREQ_PDCA_ENABLE */
+#endif /* GPUFREQ_ACTIVE_SLEEP_CTRL_ENABLE */
 		__gpufreq_footprint_power_step(0x19);
 
 		/* disable Clock */
@@ -961,11 +961,15 @@ int __gpufreq_active_sleep_control(enum gpufreq_power_state power)
 		__gpufreq_clksrc_ctrl(TARGET_GPU, CLOCK_MAIN);
 		/* switch STACK MUX to PLL */
 		__gpufreq_clksrc_ctrl(TARGET_STACK, CLOCK_MAIN);
+		/* config SMMU */
+		__gpu_smmu_config(GPU_PWR_ON);
 		/* free DVFS when active */
 		g_dvfs_state &= ~DVFS_SLEEP;
 	} else if (power == GPU_PWR_OFF && g_stack.active_count == 0) {
 		/* freeze DVFS when idle */
 		g_dvfs_state |= DVFS_SLEEP;
+		/* config SMMU */
+		__gpu_smmu_config(GPU_PWR_OFF);
 		/* switch STACK MUX to REF_SEL */
 		__gpufreq_clksrc_ctrl(TARGET_STACK, CLOCK_SUB);
 		/* switch GPU MUX to REF_SEL */
