@@ -8503,6 +8503,7 @@
 			clock-names = "tdshp0";
 			comp-ids = <MML_TDSHP0>;
 			comp-names = "tdshp0";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA0)>;
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS1_MDP_TDSHP0_FRAME_DONE>;
 		};
@@ -8515,6 +8516,7 @@
 			clock-names = "tdshp1";
 			comp-ids = <MML_TDSHP1>;
 			comp-names = "tdshp1";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA0)>;
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS1_MDP_TDSHP1_FRAME_DONE>;
 		};
