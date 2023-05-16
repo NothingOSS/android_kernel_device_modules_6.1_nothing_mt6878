@@ -26,6 +26,7 @@
 #include <linux/firmware.h>
 #include <linux/slab.h>
 #include <asm/unaligned.h>
+#include <linux/atomic.h>
 #include <linux/vmalloc.h>
 #include <linux/kthread.h>
 #include <linux/version.h>
@@ -456,6 +457,7 @@ struct gt9896s_ts_core {
 	struct pinctrl_state *pin_rst_sta_active;
 	struct pinctrl_state *pin_rst_sta_suspend;
 #endif
+	atomic64_t timestamp;
 	struct gt9896s_ts_event ts_event;
 	int power_on;
 	int irq;

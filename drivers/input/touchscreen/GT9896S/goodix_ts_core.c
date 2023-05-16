@@ -1107,7 +1107,17 @@ void gt9896s_ts_report_finger(struct input_dev *dev,
 		else if (touch_data->keys[i].status == TS_RELEASE)
 			input_report_key(dev, touch_data->keys[i].code, 0);
 	}
+	input_set_timestamp(dev,
+		ns_to_ktime(atomic64_read(&ts_core->timestamp)));
 	input_sync(dev);
+}
+
+static irqreturn_t gt9896s_ts_interrupt_func(int irq, void *data)
+{
+	struct gt9896s_ts_core *core_data = data;
+
+	atomic64_set(&core_data->timestamp, ktime_to_ns(ktime_get()));
+	return IRQ_WAKE_THREAD;
 }
 
 /**
@@ -1182,7 +1192,8 @@ int gt9896s_ts_irq_setup(struct gt9896s_ts_core *core_data)
 
 	ts_info("IRQ:%u,flags:%d", core_data->irq, (int)ts_bdata->irq_flags);
 	r = devm_request_threaded_irq(&core_data->pdev->dev,
-				      core_data->irq, NULL,
+				      core_data->irq,
+				      gt9896s_ts_interrupt_func,
 				      gt9896s_ts_threadirq_func,
 				      ts_bdata->irq_flags | IRQF_ONESHOT,
 				      GOODIX_CORE_DRIVER_NAME,

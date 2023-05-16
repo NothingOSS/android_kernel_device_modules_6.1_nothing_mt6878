@@ -1269,7 +1269,7 @@ void goodix_ts_report_finger(struct input_dev *dev,
 
 	input_report_key(dev, BTN_TOUCH, touch_num > 0 ? 1 : 0);
 	input_set_timestamp(dev,
-		ns_to_ktime(atomic64_read(&touch_data->timestamp)));
+		ns_to_ktime(atomic64_read(&ts_core->timestamp)));
 	input_sync(dev);
 
 	mutex_unlock(&dev->mutex);
@@ -1301,8 +1301,7 @@ static irqreturn_t goodix_ts_interrupt_func(int irq, void *data)
 {
 	struct goodix_ts_core *core_data = data;
 
-	atomic64_set(&core_data->ts_event.touch_data.timestamp,
-		ktime_to_ns(ktime_get()));
+	atomic64_set(&core_data->timestamp, ktime_to_ns(ktime_get()));
 	return IRQ_WAKE_THREAD;
 }
 

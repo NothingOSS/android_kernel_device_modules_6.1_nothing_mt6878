@@ -398,7 +398,6 @@ struct goodix_pen_coords {
 /* touch event data */
 struct goodix_touch_data {
 	int touch_num;
-	atomic64_t timestamp;
 	struct goodix_ts_coords coords[GOODIX_MAX_TOUCH];
 };
 
@@ -512,6 +511,7 @@ struct goodix_ts_core {
 	struct input_dev *input_dev;
 	struct input_dev *pen_dev;
 	/* TODO counld we remove this from core data? */
+	atomic64_t timestamp;
 	struct goodix_ts_event ts_event;
 
 	/* every pointer of this array represent a kind of config */
