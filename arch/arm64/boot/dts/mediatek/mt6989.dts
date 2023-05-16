@@ -2951,6 +2951,7 @@
 		interrupts = <GIC_SPI 538 IRQ_TYPE_LEVEL_HIGH 0>;
 		mminfra-bkrs = <1>;
 		bkrs-reg = <0x1e800250>;
+		spm-base = <0x1c001000>;
 		mminfra-ao-base;
 		init-clk-on;
 		clocks = <&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_D>,
