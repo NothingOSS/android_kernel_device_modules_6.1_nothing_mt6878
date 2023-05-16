@@ -3538,6 +3538,15 @@
 			reg = <0 0x1000d000 0 0x1000>;
 		};
 
+		dfd_soc: dfd-soc {
+			compatible = "mediatek,dfd_soc";
+			enabled = <1>;
+			dfd-timeout = <0x1000>;
+			buf-length = <0x300000>;
+			buf-addr-align = <0x400000>;
+			buf-addr-max = <0xffffffff>;
+		};
+
 		bcrm-infra-ao1-apb@1002a000 {
 			compatible = "mediatek,bcrm_infra_ao1_apb";
 			reg = <0 0x1002a000 0 0x1000>;
