@@ -316,6 +316,12 @@
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ADSP_AO>;
 	};
 
+	bring-up-pd-isp-vcore@c {
+		compatible = "mediatek,scpsys-bring-up";
+		reg = <0xc>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_VCORE>;
+	};
+
 	bring-up-pd-disp-vcore@1c {
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x1c>;
