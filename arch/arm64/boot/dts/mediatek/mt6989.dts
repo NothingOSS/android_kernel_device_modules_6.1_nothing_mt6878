@@ -52,6 +52,11 @@
 			mml-wrot0 = &mml_wrot0;
 			mml-wrot2 = &mml_wrot2;
 			inlinerotate0 = &inlinerot0;
+			inlinerotate1 = &inlinerot1;
+			dli-async12 = &ovl_dli_async0;
+			dli-async15 = &ovl1_dli_async0;
+			dlo-async8 = &ovl_dlo_async0;
+			dlo-async15 = &ovl1_dlo_async0;
 			mmlsys-cfg = &mmlsys_config;
 			mml-mutex = &mml_mutex0;
 			ovl3 = &disp_ovl0_2l;
@@ -5585,6 +5590,7 @@
 
 		dispsys_config: dispsys-config@14000000 {
 			compatible = "mediatek,mt6989-disp";
+			mediatek,mml = <&mmlsys_config>;
 			//interrupts = <GIC_SPI 437 IRQ_TYPE_LEVEL_HIGH 0>;
 			dispsys-num = <2>;
 			ovlsys-num = <2>;
@@ -5907,10 +5913,10 @@
 				<0>, /*MTK_DRM_OPT_DYN_MIPI_CHANGE*/
 				<0>, /*MTK_DRM_OPT_PRIM_DUAL_PIPE*/
 				<0>, /*MTK_DRM_OPT_MSYNC2_0*/
-				<0>, /*MTK_DRM_OPT_MML_PRIMARY*/
-				<0>, /*MTK_DRM_OPT_MML_SUPPORT_CMD_MODE*/
-				<0>, /*MTK_DRM_OPT_MML_PQ*/
-				<0>, /*MTK_DRM_OPT_MML_IR*/
+				<1>, /*MTK_DRM_OPT_MML_PRIMARY*/
+				<1>, /*MTK_DRM_OPT_MML_SUPPORT_CMD_MODE*/
+				<1>, /*MTK_DRM_OPT_MML_PQ*/
+				<1>, /*MTK_DRM_OPT_MML_IR*/
 				<0>, /*MTK_DRM_OPT_DUAL_TE*/
 				<0>, /*MTK_DRM_OPT_RES_SWITCH*/
 				<0>, /*MTK_DRM_OPT_PREFETCH_TE*/
@@ -6241,7 +6247,7 @@
 			compatible = "mediatek,disp_mutex0",
 						"mediatek,mt6989-disp-mutex";
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS0_SHUTDOWN>;
-//			mediatek,mml = <&mmlsys_config>;
+			mediatek,mml = <&mmlsys_config>;
 			dispsys-num = <2>;
 			ovlsys-num = <2>;
 			reg = <0 0x14201000 0 0x1000>,
@@ -6685,9 +6691,45 @@
 		};
 
 		inlinerot0: inlinerot@1440b000 {
-			compatible = "mediatek,inlinerot0";
+			compatible = "mediatek,inlinerot",
+				"mediatek,mt6989-disp-inlinerotate";
+			clocks = <&ovlsys_config_clk CLK_OVL_INLINEROT0>;
 			reg = <0 0x1440b000 0 0x1000>;
-			interrupts = <GIC_SPI 479 IRQ_TYPE_NONE 0>;
+		};
+
+		inlinerot1: inlinerot@1460b000 {
+			compatible = "mediatek,inlinerot",
+				"mediatek,mt6989-disp-inlinerotate";
+			clocks =  <&ovlsys1_config_clk CLK_OVL1_INLINEROT0>;
+			reg = <0 0x1460b000 0 0x1000>;
+		};
+
+		ovl_dli_async0: ovl-dli-async0@14400000 {
+			compatible = "mediatek,ovl_dli_async0",
+				"mediatek,mt6989-disp-dli-async";
+			reg = <0 0x14400000 0 0x1000>;
+			clocks = <&ovlsys_config_clk CLK_OVL_DISP_DLI_ASYNC0>;
+		};
+
+		ovl1_dli_async0: ovl1-dli-async0@14600000 {
+			compatible = "mediatek,ovl1_dli_async0",
+				"mediatek,mt6989-disp-dli-async";
+			reg = <0 0x14600000 0 0x1000>;
+			clocks = <&ovlsys1_config_clk CLK_OVL1_DISP_DLI_ASYNC0>;
+		};
+
+		ovl_dlo_async0: ovl-dlo-async0@14400000 {
+			compatible = "mediatek,ovl_dlo_async0",
+				"mediatek,mt6989-disp-dlo-async";
+			reg = <0 0x14400000 0 0x1000>;
+			clocks = <&ovlsys_config_clk CLK_OVL_DISP_DL0_ASYNC0>;
+		};
+
+		ovl1_dlo_async0: ovl1-dlo-async0@14600000 {
+			compatible = "mediatek,ovl1_dlo_async0",
+				"mediatek,mt6989-disp-dlo-async";
+			clocks = <&ovlsys1_config_clk CLK_OVL1_DISP_DL0_ASYNC0>;
+			reg = <0 0x14600000 0 0x1000>;
 		};
 
 		ovl-smi-larb0@1440c000 {
@@ -7754,12 +7796,6 @@
 				"l22_common_w_0",
 				"l9_common_r_1",
 				"l15_common_w_1";
-		};
-
-		inlinerot0@1460b000 {
-			compatible = "mediatek,inlinerot0";
-			reg = <0 0x1460b000 0 0x1000>;
-			interrupts = <GIC_SPI 480 IRQ_TYPE_NONE 0>;
 		};
 
 		ovl-smi-larb0@1460c000 {
