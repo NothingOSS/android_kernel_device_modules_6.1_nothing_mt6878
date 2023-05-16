@@ -104,6 +104,7 @@ struct mml_dbg_reg {
 struct mml_sys {
 	/* Device data and component bindings */
 	const struct mml_data *data;
+	struct device *dev;
 	struct mtk_ddp_comp ddp_comps[MML_MAX_SYS_COMPONENTS];
 	/* DDP component flags */
 	u32 ddp_comp_en;
@@ -875,6 +876,70 @@ static const struct mml_comp_debug_ops sys_debug_ops = {
 };
 
 #ifndef MML_FPGA
+s32 mml_sys_pw_enable(struct mml_comp *comp)
+{
+	struct mml_sys *sys = comp_to_sys(comp);
+	int ret = 0;
+
+	comp->pw_cnt++;
+	if (comp->pw_cnt > 1)
+		return 0;
+	if (comp->pw_cnt <= 0) {
+		mml_err("%s comp %u %s cnt %d",
+			__func__, comp->id, comp->name, comp->pw_cnt);
+		return -EINVAL;
+	}
+
+	if (!comp->larb_dev) {
+		mml_err("%s no larb for comp %u", __func__, comp->id);
+		return 0;
+	}
+
+	/* Note: Do manually pw_enable and disable during mml/disp mtcmos on or off,
+	 * cause mminfra must power on before other mtcmos, and must off after it.
+	 */
+	ret = pm_runtime_resume_and_get(sys->dev);
+	if (ret)
+		mml_err("%s enable pw-domain fail ret:%d", __func__, ret);
+
+	ret = pm_runtime_resume_and_get(comp->larb_dev);
+	if (ret)
+		mml_err("%s enable larb pm fail ret:%d", __func__, ret);
+
+	/* turn off mminfra */
+	pm_runtime_put_sync(sys->dev);
+
+	return ret;
+}
+
+s32 mml_sys_pw_disable(struct mml_comp *comp)
+{
+	struct mml_sys *sys = comp_to_sys(comp);
+	int ret;
+
+	comp->pw_cnt--;
+	if (comp->pw_cnt > 0)
+		return 0;
+	if (comp->pw_cnt < 0) {
+		mml_err("%s comp %u %s cnt %d",
+			__func__, comp->id, comp->name, comp->pw_cnt);
+		return -EINVAL;
+	}
+
+	if (!comp->larb_dev) {
+		mml_err("%s no larb for comp %u", __func__, comp->id);
+		return 0;
+	}
+
+	ret = pm_runtime_resume_and_get(sys->dev);
+	if (ret)
+		mml_err("%s enable pw-domain fail ret:%d", __func__, ret);
+	pm_runtime_put_sync(comp->larb_dev);
+	pm_runtime_put_sync(sys->dev);
+
+	return 0;
+}
+
 static s32 mml_comp_clk_aid_enable(struct mml_comp *comp)
 {
 	struct mml_sys *sys = comp_to_sys(comp);
@@ -926,6 +991,13 @@ static const struct mml_comp_hw_ops sys_hw_ops_aid = {
 	.clk_disable = &mml_sys_comp_clk_disable,
 };
 
+static const struct mml_comp_hw_ops sys_hw_ops = {
+	.pw_enable = &mml_sys_pw_enable,
+	.pw_disable = &mml_sys_pw_disable,
+	.clk_enable = &mml_comp_clk_enable,
+	.clk_disable = &mml_comp_clk_disable,
+};
+
 #endif
 
 static int sys_comp_init(struct device *dev, struct mml_sys *sys,
@@ -943,8 +1015,9 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 	 * to power on/off mminfra mtcmos.
 	 */
 	if (sys->data->pw_mminfra) {
-		comp->larb_dev = dev;
+		sys->dev = dev;
 		pm_runtime_enable(dev);
+		mml_comp_init_larb(comp, dev);
 	}
 
 	/* Initialize mux-pins */
@@ -1064,6 +1137,8 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 	/* scmi(sspm) config aid/uid support */
 	if (of_property_read_bool(dev->of_node, "sspm-aid-enable"))
 		comp->hw_ops = &sys_hw_ops_aid;
+	else if (sys->data->pw_mminfra)
+		comp->hw_ops = &sys_hw_ops;
 #endif
 	return 0;
 }
