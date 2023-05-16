@@ -1770,10 +1770,9 @@ static irqreturn_t arm_smmu_combined_irq_handler(int irq, void *dev)
 	struct arm_smmu_device *smmu = dev;
 	int ret;
 
-	mutex_lock(&smmu->pm_mutex);
 	ret = arm_smmu_rpm_get(smmu);
 	if (ret)
-		goto out_unlock;
+		goto out;
 
 	arm_smmu_gerror_handler(irq, dev);
 
@@ -1782,8 +1781,7 @@ static irqreturn_t arm_smmu_combined_irq_handler(int irq, void *dev)
 
 	arm_smmu_rpm_put(smmu);
 
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
+out:
 	if (ret)
 		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 	return IRQ_WAKE_THREAD;
