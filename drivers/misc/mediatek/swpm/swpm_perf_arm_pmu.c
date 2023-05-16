@@ -13,11 +13,14 @@
 
 #include <swpm_perf_arm_pmu.h>
 
+#define PMU_AI_EN 1
+
 static unsigned int swpm_arm_pmu_status;
 static unsigned int swpm_arm_dsu_pmu_status;
 static unsigned int boundary;
 static unsigned int pmu_dsu_support;
 static unsigned int pmu_dsu_type;
+static unsigned int pmu_ai_support;
 
 static DEFINE_PER_CPU(struct perf_event *, l3dc_events);
 static DEFINE_PER_CPU(struct perf_event *, inst_spec_events);
@@ -27,13 +30,36 @@ static DEFINE_PER_CPU(int, l3dc_idx);
 static DEFINE_PER_CPU(int, inst_spec_idx);
 static DEFINE_PER_CPU(int, cycle_idx);
 
+#if PMU_AI_EN
+static DEFINE_PER_CPU(struct perf_event *, pmu_event_3);
+static DEFINE_PER_CPU(struct perf_event *, pmu_event_4);
+static DEFINE_PER_CPU(struct perf_event *, pmu_event_5);
+static DEFINE_PER_CPU(struct perf_event *, pmu_event_6);
+static DEFINE_PER_CPU(struct perf_event *, pmu_event_7);
+static DEFINE_PER_CPU(struct perf_event *, pmu_event_8);
+static DEFINE_PER_CPU(struct perf_event *, pmu_event_9);
+static DEFINE_PER_CPU(struct perf_event *, pmu_event_10);
+static DEFINE_PER_CPU(struct perf_event *, pmu_event_11);
+
+static DEFINE_PER_CPU(int, pmu_idx_3);
+static DEFINE_PER_CPU(int, pmu_idx_4);
+static DEFINE_PER_CPU(int, pmu_idx_5);
+static DEFINE_PER_CPU(int, pmu_idx_6);
+static DEFINE_PER_CPU(int, pmu_idx_7);
+static DEFINE_PER_CPU(int, pmu_idx_8);
+static DEFINE_PER_CPU(int, pmu_idx_9);
+static DEFINE_PER_CPU(int, pmu_idx_10);
+static DEFINE_PER_CPU(int, pmu_idx_11);
+
+#endif
+
 struct perf_event *dsu_cycle_events;
 static int dsu_cycle_idx;
 
 static struct perf_event_attr l3dc_event_attr = {
 	.type           = PERF_TYPE_RAW,
 /*	.config         = 0x2B, */
-	.config		= ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
 	.size           = sizeof(struct perf_event_attr),
 	.pinned         = 1,
 /*	.disabled       = 1, */
@@ -41,7 +67,7 @@ static struct perf_event_attr l3dc_event_attr = {
 static struct perf_event_attr inst_spec_event_attr = {
 	.type           = PERF_TYPE_RAW,
 /*	.config         = 0x1B, */
-	.config		= ARMV8_PMUV3_PERFCTR_INST_SPEC, /* 0x1B */
+	.config         = ARMV8_PMUV3_PERFCTR_INST_SPEC, /* 0x1B */
 	.size           = sizeof(struct perf_event_attr),
 	.pinned         = 1,
 /*	.disabled       = 1, */
@@ -60,6 +86,81 @@ static struct perf_event_attr dsu_cycle_event_attr = {
 	.pinned         = 1,
 /*	.disabled       = 1, */
 };
+
+#if PMU_AI_EN
+static struct perf_event_attr pmu_event_3_attr = {
+	.type           = PERF_TYPE_RAW,
+/*	.config         = 0x2B, */
+	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
+static struct perf_event_attr pmu_event_4_attr = {
+	.type           = PERF_TYPE_RAW,
+/*	.config         = 0x2B, */
+	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
+static struct perf_event_attr pmu_event_5_attr = {
+	.type           = PERF_TYPE_RAW,
+/*	.config         = 0x2B, */
+	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
+static struct perf_event_attr pmu_event_6_attr = {
+	.type           = PERF_TYPE_RAW,
+/*	.config         = 0x2B, */
+	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
+static struct perf_event_attr pmu_event_7_attr = {
+	.type           = PERF_TYPE_RAW,
+/*	.config         = 0x2B, */
+	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
+static struct perf_event_attr pmu_event_8_attr = {
+	.type           = PERF_TYPE_RAW,
+/*	.config         = 0x2B, */
+	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
+static struct perf_event_attr pmu_event_9_attr = {
+	.type           = PERF_TYPE_RAW,
+/*	.config         = 0x2B, */
+	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
+static struct perf_event_attr pmu_event_10_attr = {
+	.type           = PERF_TYPE_RAW,
+/*	.config         = 0x2B, */
+	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
+static struct perf_event_attr pmu_event_11_attr = {
+	.type           = PERF_TYPE_RAW,
+/*	.config         = 0x2B, */
+	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
+#endif
 
 static void swpm_dsu_pmu_start(void)
 {
@@ -87,6 +188,7 @@ static void swpm_pmu_start(int cpu)
 	struct perf_event *i_event = per_cpu(inst_spec_events, cpu);
 	struct perf_event *c_event = per_cpu(cycle_events, cpu);
 
+
 	if (l3_event) {
 		perf_event_enable(l3_event);
 		per_cpu(l3dc_idx, cpu) = l3_event->hw.idx;
@@ -99,6 +201,55 @@ static void swpm_pmu_start(int cpu)
 		perf_event_enable(c_event);
 		per_cpu(cycle_idx, cpu) = c_event->hw.idx;
 	}
+
+	if (pmu_ai_support) {
+		struct perf_event *p3_event = per_cpu(pmu_event_3, cpu);
+		struct perf_event *p4_event = per_cpu(pmu_event_4, cpu);
+		struct perf_event *p5_event = per_cpu(pmu_event_5, cpu);
+		struct perf_event *p6_event = per_cpu(pmu_event_6, cpu);
+		struct perf_event *p7_event = per_cpu(pmu_event_7, cpu);
+		struct perf_event *p8_event = per_cpu(pmu_event_8, cpu);
+		struct perf_event *p9_event = per_cpu(pmu_event_9, cpu);
+		struct perf_event *p10_event = per_cpu(pmu_event_10, cpu);
+		struct perf_event *p11_event = per_cpu(pmu_event_11, cpu);
+
+		if (p3_event) {
+			perf_event_enable(p3_event);
+			per_cpu(pmu_idx_3, cpu) = p3_event->hw.idx;
+		}
+		if (p4_event) {
+			perf_event_enable(p4_event);
+			per_cpu(pmu_idx_4, cpu) = p4_event->hw.idx;
+		}
+		if (p5_event) {
+			perf_event_enable(p5_event);
+			per_cpu(pmu_idx_5, cpu) = p5_event->hw.idx;
+		}
+		if (p6_event) {
+			perf_event_enable(p6_event);
+			per_cpu(pmu_idx_6, cpu) = p6_event->hw.idx;
+		}
+		if (p7_event) {
+			perf_event_enable(p7_event);
+			per_cpu(pmu_idx_7, cpu) = p7_event->hw.idx;
+		}
+		if (p8_event) {
+			perf_event_enable(p8_event);
+			per_cpu(pmu_idx_8, cpu) = p8_event->hw.idx;
+		}
+		if (p9_event) {
+			perf_event_enable(p9_event);
+			per_cpu(pmu_idx_9, cpu) = p9_event->hw.idx;
+		}
+		if (p10_event) {
+			perf_event_enable(p10_event);
+			per_cpu(pmu_idx_10, cpu) = p10_event->hw.idx;
+		}
+		if (p11_event) {
+			perf_event_enable(p11_event);
+			per_cpu(pmu_idx_11, cpu) = p11_event->hw.idx;
+		}
+	}
 }
 
 static void swpm_pmu_stop(int cpu)
@@ -106,6 +257,7 @@ static void swpm_pmu_stop(int cpu)
 	struct perf_event *l3_event = per_cpu(l3dc_events, cpu);
 	struct perf_event *i_event = per_cpu(inst_spec_events, cpu);
 	struct perf_event *c_event = per_cpu(cycle_events, cpu);
+
 
 	if (l3_event) {
 		perf_event_disable(l3_event);
@@ -119,6 +271,55 @@ static void swpm_pmu_stop(int cpu)
 		perf_event_disable(c_event);
 		per_cpu(cycle_idx, cpu) = -1;
 	}
+	if (pmu_ai_support) {
+		struct perf_event *p3_event = per_cpu(pmu_event_3, cpu);
+		struct perf_event *p4_event = per_cpu(pmu_event_4, cpu);
+		struct perf_event *p5_event = per_cpu(pmu_event_5, cpu);
+		struct perf_event *p6_event = per_cpu(pmu_event_6, cpu);
+		struct perf_event *p7_event = per_cpu(pmu_event_7, cpu);
+		struct perf_event *p8_event = per_cpu(pmu_event_8, cpu);
+		struct perf_event *p9_event = per_cpu(pmu_event_9, cpu);
+		struct perf_event *p10_event = per_cpu(pmu_event_10, cpu);
+		struct perf_event *p11_event = per_cpu(pmu_event_11, cpu);
+
+		if (p3_event) {
+			perf_event_disable(p3_event);
+			per_cpu(pmu_idx_3, cpu) = -1;
+		}
+		if (p4_event) {
+			perf_event_disable(p4_event);
+			per_cpu(pmu_idx_4, cpu) = -1;
+		}
+		if (p5_event) {
+			perf_event_disable(p5_event);
+			per_cpu(pmu_idx_5, cpu) = -1;
+		}
+		if (p6_event) {
+			perf_event_disable(p6_event);
+			per_cpu(pmu_idx_6, cpu) = -1;
+		}
+		if (p7_event) {
+			perf_event_disable(p7_event);
+			per_cpu(pmu_idx_7, cpu) = -1;
+		}
+		if (p8_event) {
+			perf_event_disable(p8_event);
+			per_cpu(pmu_idx_8, cpu) = -1;
+		}
+		if (p9_event) {
+			perf_event_disable(p9_event);
+			per_cpu(pmu_idx_9, cpu) = -1;
+		}
+		if (p10_event) {
+			perf_event_disable(p10_event);
+			per_cpu(pmu_idx_10, cpu) = -1;
+		}
+		if (p11_event) {
+			perf_event_disable(p11_event);
+			per_cpu(pmu_idx_11, cpu) = -1;
+		}
+	}
+
 }
 
 static void dummy_handler(struct perf_event *event, struct perf_sample_data *data,
@@ -168,6 +369,7 @@ static int swpm_arm_pmu_enable(int cpu, int enable)
 	struct perf_event *i_event = per_cpu(inst_spec_events, cpu);
 	struct perf_event *c_event = per_cpu(cycle_events, cpu);
 
+
 	if (enable) {
 		if (!l3_event) {
 			event = perf_event_create_kernel_counter(
@@ -199,6 +401,108 @@ static int swpm_arm_pmu_enable(int cpu, int enable)
 			}
 			per_cpu(cycle_events, cpu) = event;
 		}
+		if (pmu_ai_support) {
+			struct perf_event *p3_event = per_cpu(pmu_event_3, cpu);
+			struct perf_event *p4_event = per_cpu(pmu_event_4, cpu);
+			struct perf_event *p5_event = per_cpu(pmu_event_5, cpu);
+			struct perf_event *p6_event = per_cpu(pmu_event_6, cpu);
+			struct perf_event *p7_event = per_cpu(pmu_event_7, cpu);
+			struct perf_event *p8_event = per_cpu(pmu_event_8, cpu);
+			struct perf_event *p9_event = per_cpu(pmu_event_9, cpu);
+			struct perf_event *p10_event = per_cpu(pmu_event_10, cpu);
+			struct perf_event *p11_event = per_cpu(pmu_event_11, cpu);
+
+			if (!p3_event && cpu >= boundary) {
+				event = perf_event_create_kernel_counter(
+					&pmu_event_3_attr, cpu, NULL, NULL, NULL);
+				if (IS_ERR(event)) {
+					pr_notice("create (%d) p3_event error (%d)\n",
+						  cpu, (int)PTR_ERR(event));
+					goto FAIL;
+				}
+				per_cpu(pmu_event_3, cpu) = event;
+			}
+			if (!p4_event && cpu >= boundary) {
+				event = perf_event_create_kernel_counter(
+					&pmu_event_4_attr, cpu, NULL, NULL, NULL);
+				if (IS_ERR(event)) {
+					pr_notice("create (%d) p4_event error (%d)\n",
+						  cpu, (int)PTR_ERR(event));
+					goto FAIL;
+				}
+				per_cpu(pmu_event_4, cpu) = event;
+			}
+			if (!p5_event && cpu >= boundary) {
+				event = perf_event_create_kernel_counter(
+					&pmu_event_5_attr, cpu, NULL, NULL, NULL);
+				if (IS_ERR(event)) {
+					pr_notice("create (%d) p5_event error (%d)\n",
+						  cpu, (int)PTR_ERR(event));
+					goto FAIL;
+				}
+				per_cpu(pmu_event_5, cpu) = event;
+			}
+			if (!p6_event && cpu >= boundary) {
+				event = perf_event_create_kernel_counter(
+					&pmu_event_6_attr, cpu, NULL, NULL, NULL);
+				if (IS_ERR(event)) {
+					pr_notice("create (%d) p6_event error (%d)\n",
+						  cpu, (int)PTR_ERR(event));
+					goto FAIL;
+				}
+				per_cpu(pmu_event_6, cpu) = event;
+			}
+			if (!p7_event && cpu >= boundary) {
+				event = perf_event_create_kernel_counter(
+					&pmu_event_7_attr, cpu, NULL, NULL, NULL);
+				if (IS_ERR(event)) {
+					pr_notice("create (%d) p7_event error (%d)\n",
+						  cpu, (int)PTR_ERR(event));
+					goto FAIL;
+				}
+				per_cpu(pmu_event_7, cpu) = event;
+			}
+			if (!p8_event && cpu >= boundary) {
+				event = perf_event_create_kernel_counter(
+					&pmu_event_8_attr, cpu, NULL, NULL, NULL);
+				if (IS_ERR(event)) {
+					pr_notice("create (%d) p8_event error (%d)\n",
+						  cpu, (int)PTR_ERR(event));
+					goto FAIL;
+				}
+				per_cpu(pmu_event_8, cpu) = event;
+			}
+			if (!p9_event && cpu >= boundary) {
+				event = perf_event_create_kernel_counter(
+					&pmu_event_9_attr, cpu, NULL, NULL, NULL);
+				if (IS_ERR(event)) {
+					pr_notice("create (%d) p9_event error (%d)\n",
+						  cpu, (int)PTR_ERR(event));
+					goto FAIL;
+				}
+				per_cpu(pmu_event_9, cpu) = event;
+			}
+			if (!p10_event && cpu >= boundary) {
+				event = perf_event_create_kernel_counter(
+					&pmu_event_10_attr, cpu, NULL, NULL, NULL);
+				if (IS_ERR(event)) {
+					pr_notice("create (%d) p10_event error (%d)\n",
+						  cpu, (int)PTR_ERR(event));
+					goto FAIL;
+				}
+				per_cpu(pmu_event_10, cpu) = event;
+			}
+			if (!p11_event && cpu >= boundary) {
+				event = perf_event_create_kernel_counter(
+					&pmu_event_11_attr, cpu, NULL, NULL, NULL);
+				if (IS_ERR(event)) {
+					pr_notice("create (%d) p11_event error (%d)\n",
+						  cpu, (int)PTR_ERR(event));
+					goto FAIL;
+				}
+				per_cpu(pmu_event_11, cpu) = event;
+			}
+		}
 
 		swpm_pmu_start(cpu);
 	} else {
@@ -215,6 +519,54 @@ static int swpm_arm_pmu_enable(int cpu, int enable)
 		if (c_event) {
 			perf_event_release_kernel(c_event);
 			per_cpu(cycle_events, cpu) = NULL;
+		}
+		if (pmu_ai_support) {
+			struct perf_event *p3_event = per_cpu(pmu_event_3, cpu);
+			struct perf_event *p4_event = per_cpu(pmu_event_4, cpu);
+			struct perf_event *p5_event = per_cpu(pmu_event_5, cpu);
+			struct perf_event *p6_event = per_cpu(pmu_event_6, cpu);
+			struct perf_event *p7_event = per_cpu(pmu_event_7, cpu);
+			struct perf_event *p8_event = per_cpu(pmu_event_8, cpu);
+			struct perf_event *p9_event = per_cpu(pmu_event_9, cpu);
+			struct perf_event *p10_event = per_cpu(pmu_event_10, cpu);
+			struct perf_event *p11_event = per_cpu(pmu_event_11, cpu);
+
+			if (p3_event) {
+				perf_event_release_kernel(p3_event);
+				per_cpu(pmu_event_3, cpu) = NULL;
+			}
+			if (p4_event) {
+				perf_event_release_kernel(p4_event);
+				per_cpu(pmu_event_4, cpu) = NULL;
+			}
+			if (p5_event) {
+				perf_event_release_kernel(p5_event);
+				per_cpu(pmu_event_5, cpu) = NULL;
+			}
+			if (p6_event) {
+				perf_event_release_kernel(p6_event);
+				per_cpu(pmu_event_6, cpu) = NULL;
+			}
+			if (p7_event) {
+				perf_event_release_kernel(p7_event);
+				per_cpu(pmu_event_7, cpu) = NULL;
+			}
+			if (p8_event) {
+				perf_event_release_kernel(p8_event);
+				per_cpu(pmu_event_8, cpu) = NULL;
+			}
+			if (p9_event) {
+				perf_event_release_kernel(p9_event);
+				per_cpu(pmu_event_9, cpu) = NULL;
+			}
+			if (p10_event) {
+				perf_event_release_kernel(p10_event);
+				per_cpu(pmu_event_10, cpu) = NULL;
+			}
+			if (p11_event) {
+				perf_event_release_kernel(p11_event);
+				per_cpu(pmu_event_11, cpu) = NULL;
+			}
 		}
 	}
 
@@ -234,6 +586,29 @@ int swpm_arm_pmu_get_idx(unsigned int evt_id, unsigned int cpu)
 		return per_cpu(cycle_idx, cpu);
 	case DSU_CYCLES_EVT:
 		return dsu_cycle_idx;
+	}
+
+	if (pmu_ai_support) {
+		switch (evt_id) {
+		case PMU_3_EVT:
+			return per_cpu(pmu_idx_3, cpu);
+		case PMU_4_EVT:
+			return per_cpu(pmu_idx_4, cpu);
+		case PMU_5_EVT:
+			return per_cpu(pmu_idx_5, cpu);
+		case PMU_6_EVT:
+			return per_cpu(pmu_idx_6, cpu);
+		case PMU_7_EVT:
+			return per_cpu(pmu_idx_7, cpu);
+		case PMU_8_EVT:
+			return per_cpu(pmu_idx_8, cpu);
+		case PMU_9_EVT:
+			return per_cpu(pmu_idx_9, cpu);
+		case PMU_10_EVT:
+			return per_cpu(pmu_idx_10, cpu);
+		case PMU_11_EVT:
+			return per_cpu(pmu_idx_11, cpu);
+		}
 	}
 
 	return -1;
@@ -339,11 +714,29 @@ int __init swpm_arm_pmu_init(void)
 	}
 	dsu_cycle_event_attr.type = pmu_dsu_type;
 
+	/* device node, device name, offset, variable */
+	pmu_ai_support = 0;
+	ret = of_property_read_u32_index(node, "pmu-ai-support",
+					 0, &pmu_ai_support);
+	if (ret)
+		pr_notice("failed to get pmu_dsu_type index from dts\n");
+
 END:
 	for (i = 0; i < num_possible_cpus(); i++) {
 		per_cpu(l3dc_idx, i) = -1;
 		per_cpu(inst_spec_idx, i) = -1;
 		per_cpu(cycle_idx, i) = -1;
+		if (pmu_ai_support) {
+			per_cpu(pmu_idx_3, i) = -1;
+			per_cpu(pmu_idx_4, i) = -1;
+			per_cpu(pmu_idx_5, i) = -1;
+			per_cpu(pmu_idx_6, i) = -1;
+			per_cpu(pmu_idx_7, i) = -1;
+			per_cpu(pmu_idx_8, i) = -1;
+			per_cpu(pmu_idx_9, i) = -1;
+			per_cpu(pmu_idx_10, i) = -1;
+			per_cpu(pmu_idx_11, i) = -1;
+		}
 	}
 	dsu_cycle_idx = -1;
 

@@ -11,6 +11,15 @@ enum swpm_perf_evt_id {
 	INST_SPEC_EVT,
 	CYCLES_EVT,
 	DSU_CYCLES_EVT,
+	PMU_3_EVT,
+	PMU_4_EVT,
+	PMU_5_EVT,
+	PMU_6_EVT,
+	PMU_7_EVT,
+	PMU_8_EVT,
+	PMU_9_EVT,
+	PMU_10_EVT,
+	PMU_11_EVT,
 };
 
 extern unsigned int swpm_arm_pmu_get_status(void);
