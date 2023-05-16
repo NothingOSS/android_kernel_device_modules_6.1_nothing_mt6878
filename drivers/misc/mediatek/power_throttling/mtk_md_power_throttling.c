@@ -11,13 +11,17 @@
 #include "mtk_battery_oc_throttling.h"
 #include "mtk_low_battery_throttling.h"
 #include "mtk_bp_thl.h"
+#include "pmic_lbat_service.h"
+
 #define MD_TX_REDUCE 6
 struct md_pt_priv {
 	char max_lv_name[32];
 	char limit_name[32];
 	u32 max_lv;
 	u32 *reduce_tx;
+	u32 *threshold;
 };
+
 static struct md_pt_priv md_pt_info[POWER_THROTTLING_TYPE_MAX] = {
 	[LBAT_POWER_THROTTLING] = {
 		.max_lv_name = "lbat-max-level",
@@ -30,6 +34,7 @@ static struct md_pt_priv md_pt_info[POWER_THROTTLING_TYPE_MAX] = {
 		.max_lv = BATTERY_OC_LEVEL_NUM - 1,
 	}
 };
+
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
 static void md_pt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 {
@@ -37,7 +42,8 @@ static void md_pt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 	int ret, intensity;
 	if (level > md_pt_info[LBAT_POWER_THROTTLING].max_lv)
 		return;
-	if (level <= LOW_BATTERY_LEVEL_2) {
+
+	if (level <= LOW_BATTERY_LEVEL_3) {
 		if (level != LOW_BATTERY_LEVEL_0)
 			intensity = md_pt_info[LBAT_POWER_THROTTLING].reduce_tx[level-1];
 		else
@@ -46,11 +52,34 @@ static void md_pt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 			PT_LOW_BATTERY_VOLTAGE << 16 | intensity << 24;
 		ret = exec_ccci_kern_func(ID_THROTTLING_CFG,
 			(char *)&md_throttle_cmd, 4);
+
+		pr_notice("%s: send cmd to CCCI ret=%d, cmd=0x%x\n", __func__, ret,
+						md_throttle_cmd);
+
 		if (ret)
 			pr_notice("%s: error, ret=%d, cmd=0x%x l=%d\n", __func__, ret,
 				md_throttle_cmd, level);
 	}
 }
+
+static void md_lbat_dedicate_callback(unsigned int thd)
+{
+	int i = 0, lv = -1;
+	struct md_pt_priv *priv;
+
+	priv = &md_pt_info[LBAT_POWER_THROTTLING];
+
+	for (i = 0; i <= priv->max_lv; i++) {
+		if (thd == priv->threshold[i]) {
+			lv = i;
+			break;
+		}
+	}
+
+	if (lv >= 0)
+		md_pt_low_battery_cb(lv, NULL);
+}
+
 #endif
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
 static void md_pt_over_current_cb(enum BATTERY_OC_LEVEL_TAG level, void *data)
@@ -134,6 +163,28 @@ static int parse_md_limit_table(struct device *dev)
 			if (ret < 0)
 				pr_notice("%s: get lbat cpu limit fail %d\n", __func__, ret);
 		}
+		if (i == LBAT_POWER_THROTTLING) {
+			num = of_property_count_elems_of_size(np, "lbat-dedicate-volts",
+				sizeof(u32));
+			if (num != pt_info_p->max_lv + 1) {
+				pr_info("lbat-dedicate-volts num error: volt array=%d, max_lv=%d\n",
+					num, pt_info_p->max_lv);
+				continue;
+			}
+
+			pt_info_p->threshold = kcalloc(num, sizeof(u32), GFP_KERNEL);
+			if (!pt_info_p->threshold)
+				return -ENOMEM;
+
+			ret = of_property_read_u32_array(np, "lbat-dedicate-volts",
+				pt_info_p->threshold, num);
+			if (ret) {
+				pr_notice("get lbat-dedicate-volts error %d\n", ret);
+				kfree(pt_info_p->threshold);
+				pt_info_p->threshold = NULL;
+				continue;
+			}
+		}
 	}
 
 	return 0;
@@ -141,12 +192,23 @@ static int parse_md_limit_table(struct device *dev)
 static int mtk_md_power_throttling_probe(struct platform_device *pdev)
 {
 	int ret;
+	struct md_pt_priv *priv;
+
 	ret = parse_md_limit_table(&pdev->dev);
 	if (ret != 0)
 		return ret;
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
-	if (md_pt_info[LBAT_POWER_THROTTLING].max_lv > 0)
-		register_low_battery_notify(&md_pt_low_battery_cb, LOW_BATTERY_PRIO_MD, NULL);
+	if (md_pt_info[LBAT_POWER_THROTTLING].max_lv > 0) {
+		priv = &md_pt_info[LBAT_POWER_THROTTLING];
+		if (priv->threshold) {
+			lbat_user_register_ext("md pa dedicate throttle", priv->threshold,
+				priv->max_lv + 1, md_lbat_dedicate_callback);
+			pr_info("%s: dedicate voltge throttle\n", __func__);
+		} else {
+			register_low_battery_notify(&md_pt_low_battery_cb, LOW_BATTERY_PRIO_MD,
+				NULL);
+		}
+	}
 #endif
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
 	if (md_pt_info[OC_POWER_THROTTLING].max_lv > 0)
