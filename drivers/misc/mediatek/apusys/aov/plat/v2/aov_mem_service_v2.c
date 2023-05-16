@@ -63,7 +63,7 @@ static int query_aov_reserved_iova(enum npu_scp_mem_service_action act, uint64_t
 				return -EINVAL;
 			}
 
-			ret = of_property_read_u32_array(aov_node, "reg", reg, 2);
+			ret = of_property_read_u32_array(aov_node, "mtk,iommu-dma-range", reg, 2);
 			if (ret < 0) {
 				pr_info("%s - of_property_read_u32_array err : %d\n",
 					__func__, ret);
@@ -190,13 +190,17 @@ static int service_worker_func(void *data)
 		received_act = ctx->received_act;
 		received_pa = ctx->received_pa;
 
+		// reset
+		ctx->received_pa = 0;
+		ctx->received_act = 0;
+		spin_unlock_irqrestore(&ctx->lock, flags);
+
 		pr_info("%s get action %d pa 0x%llx\n", __func__,
 			received_act, received_pa); //should delete
 
 		ret = query_aov_reserved_mblock(received_act, &mem_pa, &mem_size);
 		if (ret) {
 			pr_info("%s Failed to query AOV reserved memory\n", __func__);
-			spin_unlock_irqrestore(&ctx->lock, flags);
 			mem_service_reply_error(received_act, ret);
 			continue;
 		}
@@ -204,7 +208,6 @@ static int service_worker_func(void *data)
 		ret = query_aov_reserved_iova(received_act, mem_pa, &mem_iova);
 		if (ret) {
 			pr_info("%s Failed to query IOVA of AOV reserved memory\n", __func__);
-			spin_unlock_irqrestore(&ctx->lock, flags);
 			mem_service_reply_error(received_act, ret);
 			continue;
 		}
@@ -251,11 +254,6 @@ static int service_worker_func(void *data)
 			ret = -EINVAL;
 			break;
 		}
-
-		// reset
-		ctx->received_pa = 0;
-		ctx->received_act = 0;
-		spin_unlock_irqrestore(&ctx->lock, flags);
 
 		if (ret == 0) {
 			ret = npu_scp_ipi_send(&send_msg, NULL, SCP_IPI_TIMEOUT_MS);
