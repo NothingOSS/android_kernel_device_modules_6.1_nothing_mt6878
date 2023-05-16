@@ -1461,22 +1461,24 @@ static void __init mt_pmic_sshub_init(void)
 
 static_assert(CAL_BITS + CAL_EXT_BITS <= 8 * sizeof(unsigned short),
 "error: there are only 16bits available in IPI\n");
-void sync_ulposc_cali_data_to_scp(void)
+bool sync_ulposc_cali_data_to_scp(void)
 {
 	unsigned int sel_clk = 0;
 	unsigned int ipi_data[2];
 	unsigned short *p = (unsigned short *)&ipi_data[1];
 	int i, ret;
+	bool cali_ok = true;
 
 	if (!g_dvfs_dev.ulposc_hw.do_ulposc_cali) {
 		pr_notice("[%s]: ulposc2 calibration is not done by AP\n",
 			__func__);
-		return;
+		/* u2 is usable, return true */
+		return true;
 	}
 
 	if (g_dvfs_dev.ulposc_hw.cali_failed) {
 		pr_notice("[%s]: ulposc2 calibration failed\n", __func__);
-		return;
+		return false;
 	}
 
 	if (!g_dvfs_dev.sleep_init_done)
@@ -1508,6 +1510,7 @@ void sync_ulposc_cali_data_to_scp(void)
 				g_dvfs_dev.ulposc_hw.cali_freq[i],
 				*(p + 1));
 			WARN_ON(1);
+			cali_ok = false;
 		}
 	}
 
@@ -1517,6 +1520,7 @@ void sync_ulposc_cali_data_to_scp(void)
 		pr_notice("[%s]:ERROR scp is not switched to ULPOSC, CLK_SW_SEL=0x%x\n",
 			__func__, sel_clk);
 		WARN_ON(1);
+		cali_ok = false;
 	} else {
 		/*
 		 * After syncing, scp will be changed to default freq, which is not set by kernel.
@@ -1525,6 +1529,7 @@ void sync_ulposc_cali_data_to_scp(void)
 		last_scp_expected_freq = 0;
 		last_sap_expected_freq = 0;
 	}
+	return cali_ok;
 }
 
 static inline bool __init is_ulposc_cali_pass(unsigned int cur,
