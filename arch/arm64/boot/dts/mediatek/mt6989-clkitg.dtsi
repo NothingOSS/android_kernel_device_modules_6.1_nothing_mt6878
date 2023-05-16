@@ -12,7 +12,6 @@
 		clocks =
 			<&topckgen_clk CLK_TOP_DSP_SEL>,
 			<&topckgen_clk CLK_TOP_AUD_INTBUS_SEL>,
-			<&topckgen_clk CLK_TOP_DISP_PWM_SEL>,
 			<&topckgen_clk CLK_TOP_AUD_ENGEN1_SEL>,
 			<&topckgen_clk CLK_TOP_AUD_ENGEN2_SEL>,
 			<&topckgen_clk CLK_TOP_AUD_1_SEL>,
@@ -24,8 +23,6 @@
 			<&topckgen_clk CLK_TOP_IPSWEST_SEL>,
 			<&topckgen_clk CLK_TOP_EMI_INTERFACE_546_SEL>,
 			<&topckgen_clk CLK_TOP_SSR_SEJ_SEL>,
-			<&topckgen_clk CLK_TOP_DPSW_CMP_26M_SEL>,
-			<&topckgen_clk CLK_TOP_SMAPCK_SEL>,
 			<&topckgen_clk CLK_TOP_APLL_I2SIN0_MCK_SEL>,
 			<&topckgen_clk CLK_TOP_APLL_I2SIN1_MCK_SEL>,
 			<&topckgen_clk CLK_TOP_APLL_I2SIN2_MCK_SEL>,
@@ -66,8 +63,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_PWM_FB2>,
 			<&pericfg_ao_clk CLK_PERAOP_PWM_FB3>,
 			<&pericfg_ao_clk CLK_PERAOP_PWM_FB4>,
-			<&pericfg_ao_clk CLK_PERAOP_DISP_PWM0>,
-			<&pericfg_ao_clk CLK_PERAOP_DISP_PWM1>,
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO_SLV>,
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO_MST>,
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO_INTBUS>,
@@ -352,12 +347,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x26>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_SSR>;
-	};
-
-	bring-up-pd-mfg0-dormant@27 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x27>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_MFG0_DORMANT>;
 	};
 
 };

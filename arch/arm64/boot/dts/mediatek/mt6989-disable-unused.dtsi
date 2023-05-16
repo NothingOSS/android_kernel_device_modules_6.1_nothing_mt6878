@@ -994,8 +994,6 @@
 			<&topckgen_clk CLK_TOP_SDF_SEL>,
 			<&topckgen_clk CLK_TOP_UARTHUB_BCLK_SEL>,
 			<&topckgen_clk CLK_TOP_SSR_SEJ_SEL>,
-			<&topckgen_clk CLK_TOP_DPSW_CMP_26M_SEL>,
-			<&topckgen_clk CLK_TOP_SMAPCK_SEL>,
 			<&topckgen_clk CLK_TOP_APLL_I2SIN0_MCK_SEL>,
 			<&topckgen_clk CLK_TOP_APLL_I2SIN1_MCK_SEL>,
 			<&topckgen_clk CLK_TOP_APLL_I2SIN2_MCK_SEL>,
