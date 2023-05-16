@@ -82,6 +82,7 @@ static int uarthub_deinit_unmap_reg_mt6989(void);
 #if !(UARTHUB_SUPPORT_FPGA)
 static int uarthub_get_spm_sys_timer_mt6989(uint32_t *hi, uint32_t *lo);
 #endif
+static int uarthub_pll_clk_on_mt6989(int on);
 
 #if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 static int uarthub_init_default_config_mt6989(void);
@@ -796,24 +797,30 @@ int uarthub_uarthub_exit_mt6989(void)
 	return 0;
 }
 
-int uarthub_uarthub_open_mt6989(void)
+int uarthub_pll_clk_on_mt6989(int on)
 {
 #if !(SSPM_DRIVER_PLL_CLK_CTRL_EN)
-	if (atomic_read(&g_uarthub_pll_clk_on) == 1) {
-		pr_info("[%s] g_uarthub_pll_clk_on=[1]\n", __func__);
+	if (on != 0 && on != 1) {
+		pr_info("[%s] parameter error, on=[%d]\n", __func__, on);
+		return UARTHUB_ERR_PARA_WRONG;
+	}
+
+	if (atomic_read(&g_uarthub_pll_clk_on) == on) {
+		pr_info("[%s] on=[%d], g_uarthub_pll_clk_on=[%d]\n",
+			__func__, on, atomic_read(&g_uarthub_pll_clk_on));
 		return 0;
 	}
 
 	/* config ap_uart source clock to TOPCKGEN */
-	uarthub_uart_src_clk_ctrl(uarthub_clk_topckgen);
+	uarthub_uart_src_clk_ctrl((on == 1) ? uarthub_clk_topckgen : uarthub_clk_26m);
 
 	/* config TOPCKGEN ap_uart mux to 104m */
-	uarthub_uart_mux_sel_ctrl(uarthub_clk_104m);
+	uarthub_uart_mux_sel_ctrl((on == 1) ? uarthub_clk_104m : uarthub_clk_26m);
 
 	/* config TOPCKGEN uarthub mux to 104m */
-	uarthub_uarthub_mux_sel_ctrl(uarthub_clk_104m);
+	uarthub_uarthub_mux_sel_ctrl((on == 1) ? uarthub_clk_104m : uarthub_clk_26m);
 
-	atomic_set(&g_uarthub_pll_clk_on, 1);
+	atomic_set(&g_uarthub_pll_clk_on, on);
 
 #if UARTHUB_INFO_LOG
 	uarthub_dump_debug_clk_info_mt6989(__func__);
@@ -823,31 +830,14 @@ int uarthub_uarthub_open_mt6989(void)
 	return 0;
 }
 
+int uarthub_uarthub_open_mt6989(void)
+{
+	return uarthub_pll_clk_on_mt6989(1);
+}
+
 int uarthub_uarthub_close_mt6989(void)
 {
-#if !(SSPM_DRIVER_PLL_CLK_CTRL_EN)
-	if (atomic_read(&g_uarthub_pll_clk_on) == 0) {
-		pr_info("[%s] g_uarthub_pll_clk_on=[0]\n", __func__);
-		return 0;
-	}
-
-	/* config ap_uart source clock to internal 26m */
-	uarthub_uart_src_clk_ctrl(uarthub_clk_26m);
-
-	/* config TOPCKGEN ap_uart mux to 26m */
-	uarthub_uart_mux_sel_ctrl(uarthub_clk_26m);
-
-	/* config TOPCKGEN uarthub mux to 26m */
-	uarthub_uarthub_mux_sel_ctrl(uarthub_clk_26m);
-
-	atomic_set(&g_uarthub_pll_clk_on, 0);
-
-#if UARTHUB_INFO_LOG
-	uarthub_dump_debug_clk_info_mt6989(__func__);
-#endif
-#endif
-
-	return 0;
+	return uarthub_pll_clk_on_mt6989(0);
 }
 
 int uarthub_uart_src_clk_ctrl(enum uarthub_clk_opp clk_opp)
@@ -1356,6 +1346,8 @@ int uarthub_set_host_trx_request_mt6989(int dev_index, enum uarthub_trx_type trx
 		pr_notice("[%s] not support trx_type(%d)\n", __func__, trx);
 		return UARTHUB_ERR_ENUM_NOT_SUPPORT;
 	}
+
+	uarthub_pll_clk_on_mt6989(1);
 
 	if (dev_index == 0) {
 		if (trx == RX) {
