@@ -1,3 +1,0 @@
-obj-y += isp7_1/
-obj-y += isp7s/
-obj-y += isp7sp/
