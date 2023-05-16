@@ -7420,6 +7420,8 @@
 			compatible = "mediatek,mt6985-connv3";
 			/* BT, WIFI, GPS, FM */
 			radio-support = "wifi", "bt", "md";
+			/* radio-off-mode: 1 means enter UDS when all radio off */
+			radio-off-mode = <1>;
 			pinctrl-names = "connsys-pin-ext32k-en-default",
 					"connsys-pin-ext32k-en-set",
 					"connsys-pin-ext32k-en-clr",
