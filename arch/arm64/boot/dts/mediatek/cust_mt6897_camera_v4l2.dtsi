@@ -334,8 +334,7 @@
 
 		reindex-match = "imx766_mipi_raw",
 				"imx709_mipi_raw",
-				"imx866_mipi_raw",
-				"imx598_mipi_raw";
+				"imx866_mipi_raw";
 
 		reindex-to = <0>;
 
