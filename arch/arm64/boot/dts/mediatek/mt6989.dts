@@ -9766,29 +9766,35 @@
 				regulator-always-on;
 			};
 
-			dvfsrc_freq_opp8: opp8 {
+			dvfsrc_freq_opp10: opp10 {
 				opp-peak-KBps = <0>;
 			};
-			dvfsrc_freq_opp7: opp7 {
+			dvfsrc_freq_opp9: opp9 {
 				opp-peak-KBps = <3700000>;
 			};
-			dvfsrc_freq_opp6: opp6 {
+			dvfsrc_freq_opp8: opp8 {
 				opp-peak-KBps = <4800000>;
 			};
-			dvfsrc_freq_opp5: opp5 {
+			dvfsrc_freq_opp7: opp7 {
 				opp-peak-KBps = <9800000>;
 			};
-			dvfsrc_freq_opp4: opp4 {
+			dvfsrc_freq_opp6: opp6 {
+				opp-peak-KBps = <9800000>;
+			};
+			dvfsrc_freq_opp5: opp5 {
 				opp-peak-KBps = <13200000>;
 			};
-			dvfsrc_freq_opp3: opp3 {
+			dvfsrc_freq_opp4: opp4 {
 				opp-peak-KBps = <19700000>;
 			};
-			dvfsrc_freq_opp2: opp2 {
+			dvfsrc_freq_opp3: opp3 {
 				opp-peak-KBps = <26900000>;
 			};
-			dvfsrc_freq_opp1: opp1 {
+			dvfsrc_freq_opp2: opp2 {
 				opp-peak-KBps = <35000000>;
+			};
+			dvfsrc_freq_opp1: opp1 {
+				opp-peak-KBps = <40700000>;
 			};
 			dvfsrc_freq_opp0: opp0 {
 				opp-peak-KBps = <40700000>;
@@ -9812,7 +9818,9 @@
 						<&dvfsrc_freq_opp4>,
 						<&dvfsrc_freq_opp5>,
 						<&dvfsrc_freq_opp6>,
-						<&dvfsrc_freq_opp7>;
+						<&dvfsrc_freq_opp7>,
+						<&dvfsrc_freq_opp8>,
+						<&dvfsrc_freq_opp9>;
 			};
 
 			dvfsrc-met {
