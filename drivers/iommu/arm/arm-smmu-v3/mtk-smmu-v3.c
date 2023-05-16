@@ -582,6 +582,7 @@ static int insert_dma_range(const __be32 *p, int naddr, int nsize,
 		if (end >= region->start && start <= region_end) {
 			pr_info("overlapped, (0x%llx~0x%llx) to (0x%llx~0x%llx)\n",
 				start, end, region->start, region_end);
+			WARN_ON(1);
 			return -EINVAL;
 		}
 
@@ -729,15 +730,7 @@ int collect_smmu_dma_regions(struct device *dev, struct list_head *head)
 	}
 	property_end = p + len;
 
-	dev_info(dev, "[%s] %s: len:%d, naddr:%d, nsize:%d, p:0x%llx, property_end:0x%llx\n",
-		 __func__, propname, len, naddr, nsize, (unsigned long long)p,
-		 (unsigned long long)property_end);
-
 	while (p < property_end) {
-		dev_info(dev, "[%s] %s: len:%d, naddr:%d, nsize:%d, p:0x%llx, property_end:0x%llx\n",
-			 __func__, propname, len, naddr, nsize, (unsigned long long)p,
-			 (unsigned long long)property_end);
-
 		ret = insert_dma_range(p, naddr, nsize, head);
 		if (ret) {
 			dev_info(dev, "%s, insert dma range fail\n", __func__);
