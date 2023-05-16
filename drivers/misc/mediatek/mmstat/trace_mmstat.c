@@ -89,6 +89,7 @@ static unsigned int proc_switch = SWITCH_ON;
 static int min_adj = OOM_SCORE_ADJ_MIN;
 static int max_adj = OOM_SCORE_ADJ_MAX;
 static int limit_pid = -1;
+static int native_pid = -1;
 
 /* Refinement for analyses */
 #define TRACE_HUNGER_PERCENTAGE	(50)
@@ -279,7 +280,8 @@ static bool filter_out_process(struct task_struct *p, pid_t pid,
 	/* by ppid, bypass process whose parent is init */
 	if (pid_alive(p)) {
 		if (task_pid_nr(rcu_dereference(p->real_parent)) == 1)
-			return true;
+			if (pid != native_pid)
+				return true;
 	} else {
 		return true;
 	}
@@ -372,6 +374,7 @@ static void trace_mmstat_entry(void)
 module_param(min_adj, int, 0644);
 module_param(max_adj, int, 0644);
 module_param(limit_pid, int, 0644);
+module_param(native_pid, int, 0644);
 
 static int do_switch_handler(const char *val, const struct kernel_param *kp)
 {
