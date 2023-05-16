@@ -97,6 +97,7 @@ static unsigned int __hw_log_r_reg;
 
 static unsigned int access_rcx_in_atf;
 static unsigned int enable_interrupt;
+static int hw_logger_irq_number;
 
 #ifdef HW_LOG_SYSFS_BIN
 /* for sysfs normal dump */
@@ -1810,8 +1811,11 @@ static int hw_logger_probe(struct platform_device *pdev)
 	}
 
 	if (enable_interrupt) {
+		hw_logger_irq_number = platform_get_irq_byname(pdev, "apu_logtop");
+		HWLOGR_INFO("hw_logger_irq_number = %d\n", hw_logger_irq_number);
+
 		ret = devm_request_threaded_irq(dev,
-			platform_get_irq_byname(pdev, "apu_logtop"),
+			hw_logger_irq_number,
 			NULL, apu_logtop_irq_handler, IRQF_ONESHOT,
 			pdev->name, NULL);
 		if (ret) {
@@ -1870,6 +1874,11 @@ static int hw_logger_remove(struct platform_device *pdev)
 
 	HWLOGR_INFO("in\n");
 
+	if (enable_interrupt && hw_logger_irq_number) {
+		HWLOGR_INFO("disable hw logger irq\n");
+		disable_irq(hw_logger_irq_number);
+	}
+
 	if (!enable_interrupt) {
 		flush_workqueue(apusys_hwlog_wq);
 		destroy_workqueue(apusys_hwlog_wq);
@@ -1902,6 +1911,16 @@ static int hw_logger_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void hw_logger_shutdown(struct platform_device *pdev)
+{
+	HWLOGR_INFO("in\n");
+
+	if (enable_interrupt && hw_logger_irq_number) {
+		HWLOGR_INFO("disable hw logger irq\n");
+		disable_irq(hw_logger_irq_number);
+	}
+}
+
 static const struct of_device_id apusys_hw_logger_of_match[] = {
 	{ .compatible = "mediatek,apusys_hw_logger"},
 	{},
@@ -1910,6 +1929,7 @@ static const struct of_device_id apusys_hw_logger_of_match[] = {
 static struct platform_driver hw_logger_driver = {
 	.probe = hw_logger_probe,
 	.remove = hw_logger_remove,
+	.shutdown = hw_logger_shutdown,
 	.driver = {
 		.name = HW_LOGGER_DEV_NAME,
 		.of_match_table = of_match_ptr(apusys_hw_logger_of_match),
