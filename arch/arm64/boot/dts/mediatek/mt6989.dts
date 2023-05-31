@@ -9905,6 +9905,7 @@
 			clock-names = "MDP_APB_BUS";
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
+			dma-mask-bit = <34>;
 		};
 
 		mdp_mutex0: mdp-mutex0@1f001000 {
