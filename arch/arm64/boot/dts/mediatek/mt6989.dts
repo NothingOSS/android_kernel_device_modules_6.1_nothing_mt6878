@@ -13808,23 +13808,23 @@ FLL_top_cc4";
 		resource-ctrl-list {
 			bus26m: bus26m {
 				id = <0x00000000>;
-				value = <1>;
+				value = <0>;
 			};
 			infra: infra {
 				id = <0x00000001>;
-				value = <1>;
+				value = <0>;
 			};
 			syspll: syspll {
 				id = <0x00000002>;
-				value = <1>;
+				value = <0>;
 			};
 			dram_s0: dram-s0 {
 				id = <0x00000003>;
-				value = <1>;
+				value = <0>;
 			};
 			dram_s1: dram-s1 {
 				id = <0x00000004>;
-				value = <1>;
+				value = <0>;
 			};
 			spm_vcore: spm-vcore {
 				id = <0x00000005>;
@@ -13832,11 +13832,11 @@ FLL_top_cc4";
 			};
 			spm_emi: spm-emi {
 				id = <0x00000006>;
-				value = <1>;
+				value = <0>;
 			};
 			spm_pmic: spm-pmic {
 				id = <0x00000007>;
-				value = <1>;
+				value = <0>;
 			};
 		};
 		constraint-list {
@@ -13849,7 +13849,7 @@ FLL_top_cc4";
 			rc_bus26m: rc-bus26m {
 				rc-name = "bus26m";
 				id = <0x00000001>;
-				value = <0>;
+				value = <1>;
 				cond-info = <1>;
 			};
 			rc_vcore: rc-vcore {
