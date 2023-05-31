@@ -13166,7 +13166,7 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
-		lpm-kernel-suspend = <1>;
+		lpm-kernel-suspend = <0>;
 		suspend-method = "enable";
 		common-sodi = <0>;
 
