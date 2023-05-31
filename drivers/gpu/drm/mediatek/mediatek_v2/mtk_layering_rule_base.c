@@ -4024,12 +4024,6 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 
 	mml_info->act_time = mml_info->dest[0].data.height * line_time_ns;
 
-	if (!(mtk_crtc->mml_debug & DISP_MML_MMCLK_UNLIMIT)) {
-		/* ratio boundary is 194 for IR, 225 for DL */
-		if (calc_mml_rsz_ratio(mml_info) >= 110)
-			mml_info->mode = MML_MODE_MML_DECOUPLE;
-	}
-
 	/* set to DC if another display is on */
 	drm_for_each_crtc(crtcx, dev) {
 		if (crtcx && (drm_crtc_index(crtcx) != 0)) {
