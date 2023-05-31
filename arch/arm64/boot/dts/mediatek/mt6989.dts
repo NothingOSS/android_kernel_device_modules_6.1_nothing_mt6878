@@ -5250,7 +5250,7 @@
 			compatible = "mediatek,gpu_fdvfs";
 			reg = <0 0x117800 0 0x400>;
 			fdvfs-policy-support = <0>;
-			gpu-freq-notify-support = <0>;
+			gpu-freq-notify-support = <1>;
 		};
 
 		gpu_dvfs_mips: gpu-reduce-mips {
