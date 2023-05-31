@@ -42,6 +42,7 @@ static void print_out_dwork_fn(struct work_struct *work)
 	struct delayed_work *dwork = to_delayed_work(work);
 	struct msg_node *mn = NULL;
 	unsigned long j = jiffies;
+	bool empty = false;
 	static unsigned long begin;
 	static int printed;
 
@@ -58,22 +59,26 @@ static void print_out_dwork_fn(struct work_struct *work)
 		printed = 0;
 	}
 
-	if (dbg_log_limit) {
-		if (printed >= dbg_log_limit) {
-			schedule_delayed_work(dwork, begin + HZ - j + 1);
-			return;
-		}
-		printed++;
+	if (dbg_log_limit && printed >= dbg_log_limit) {
+		mod_delayed_work(system_wq, dwork, begin + HZ - j + 1);
+		return;
 	}
 
 	mutex_lock(&list_lock);
+	if (list_empty(&msg_list))
+		goto list_unlock;
 	mn = list_first_entry(&msg_list, struct msg_node, list);
 	list_del(&mn->list);
-	if (!list_empty(&msg_list))
-		schedule_delayed_work(dwork, 0);
+	empty = list_empty(&msg_list);
+list_unlock:
 	mutex_unlock(&list_lock);
+	if (!mn)
+		return;
+	if (!empty)
+		schedule_delayed_work(dwork, 0);
 
 	pr_notice("%s", mn->msg);
+	printed++;
 	kfree(mn);
 }
 

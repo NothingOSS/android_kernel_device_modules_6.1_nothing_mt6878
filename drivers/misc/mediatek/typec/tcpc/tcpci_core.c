@@ -25,7 +25,7 @@
 #endif /* CONFIG_USB_POWER_DELIVERY */
 #include "inc/rt-regmap.h"
 
-#define TCPC_CORE_VERSION		"2.0.19_MTK"
+#define TCPC_CORE_VERSION		"2.0.20_MTK"
 
 static ssize_t tcpc_show_property(struct device *dev,
 				  struct device_attribute *attr, char *buf);
@@ -862,6 +862,9 @@ MODULE_VERSION(TCPC_CORE_VERSION);
 MODULE_LICENSE("GPL");
 
 /* Release Version
+ * 2.0.20_MTK
+ * (1) Revise pd_dbg_info
+ *
  * 2.0.19_MTK
  * (1) Revise low power mode
  * (2) Remove unused members in struct tcpc_device
