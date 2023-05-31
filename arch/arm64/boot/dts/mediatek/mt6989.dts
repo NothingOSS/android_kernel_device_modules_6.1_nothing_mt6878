@@ -62,21 +62,21 @@
 			ovl3 = &disp_ovl0_2l;
 			ovl4 = &disp_ovl1_2l;
 			ovl5 = &disp_ovl2_2l;
-//			ovl6 = &disp1_ovl0_2l;
-//			ovl11 = &disp1_ovl1_2l;
-//			ovl12 = &disp1_ovl2_2l;
+			ovl6 = &disp1_ovl0_2l;
+			ovl11 = &disp1_ovl1_2l;
+			ovl12 = &disp1_ovl2_2l;
 //			ovl-mdp-rsz0 = &ovl_mdp_rsz0;
 //			ovl-mdp-rsz1 = &ovl1_mdp_rsz0;
 //			wdma0 = &disp_wdma0;
 //			wdma1 = &disp_wdma1;
 //			wdma2 = &disp_wdma2;
 //			wdma3 = &disp_wdma3;
-//			wdma4 = &ovl_wdma0;
-//			wdma5 = &ovl_wdma1;
-//			wdma6 = &ovl1_wdma0;
-//			wdma7 = &ovl1_wdma1;
-//			wdma8 = &ovl0_ufbc_wdma0;
-//			wdma9 = &ovl1_ufbc_wdma0;
+//			wdma10 = &ovl_wdma0;
+//			wdma11 = &ovl_wdma1;
+			wdma12 = &ovl1_wdma0;
+//			wdma13 = &ovl1_wdma1;
+//			wdma14 = &ovl0_ufbc_wdma0;
+//			wdma15 = &ovl1_ufbc_wdma0;
 			tdshp0 = &disp_tdshp0;
 			tdshp1 = &disp_tdshp1;
 			color0 = &disp_color0;
@@ -5952,7 +5952,7 @@
 				<0>, /*MTK_DRM_OPT_DSI_UNDERRUN_AEE*/
 				<0>, /*MTK_DRM_OPT_ODDMR_UNDERRUN_AEE*/
 				<1>, /*MTK_DRM_OPT_HRT*/
-				<0>, /*MTK_DRM_OPT_HRT_MODE*/
+				<1>, /*MTK_DRM_OPT_HRT_MODE*/
 				<0>, /*MTK_DRM_OPT_DELAYED_TRIGGER*/
 				<0>, /*MTK_DRM_OPT_OVL_EXT_LAYER*/
 				<0>, /*MTK_DRM_OPT_AOD*/
@@ -6000,6 +6000,10 @@
 				<0>, /*MTK_DRM_OPT_VIDLE_QOS_DT_EN*/
 				<0>, /*MTK_DRM_OPT_VIDLE_GCE_TS_EN*/
 				<0>; /*MTK_DRM_OPT_DPC_PRE_TE_EN*/
+		};
+
+		disp-sec {
+			compatible = "mediatek,disp-sec-aidctl";
 		};
 
 		disp-mutex0@14001000 {
@@ -6268,6 +6272,16 @@
 			compatible = "mediatek,disp_wdma0";
 					//"mediatek,mt6989-disp-wdma";
 			reg = <0 0x1401e000 0 0x1000>;
+			interrupts = <GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys_config_clk CLK_MM_DISP_WDMA1>;
+			fifo-size-1plane = <2176>;
+			fifo-size-2plane = <1446>;
+			fifo-size-uv-2plane = <723>;
+			fifo-size-3plane = <1443>;
+			fifo-size-uv-3plane = <360>;
+			mediatek,larb = <&smi_larb32>;
+			mediatek,smi-id = <32>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 		};
 
 		dispsys1-config@1401f000 {
@@ -6452,6 +6466,15 @@
 					//"mediatek,mt6989-disp-wdma";
 			reg = <0 0x1420e000 0 0x1000>;
 			interrupts = <GIC_SPI 504 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_WDMA0>;
+			fifo-size-1plane = <1208>;
+			fifo-size-2plane = <800>;
+			fifo-size-uv-2plane = <400>;
+			fifo-size-3plane = <797>;
+			fifo-size-uv-3plane = <198>;
+			mediatek,larb = <&smi_larb33>;
+			mediatek,smi-id = <33>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 		};
 
 		disp1-smi-larb0@1420f000 {
@@ -6499,12 +6522,32 @@
 			compatible = "mediatek,disp1_disp_wdma1";
 					//"mediatek,mt6989-disp-wdma";
 			reg = <0 0x14217000 0 0x1000>;
+			interrupts = <GIC_SPI 505 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_WDMA1>;
+			fifo-size-1plane = <217>;
+			fifo-size-2plane = <140>;
+			fifo-size-uv-2plane = <70>;
+			fifo-size-3plane = <137>;
+			fifo-size-uv-3plane = <33>;
+			mediatek,larb = <&smi_larb33>;
+			mediatek,smi-id = <33>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 		};
 
 		disp_wdma3: disp1-disp-wdma2@14218000 {
 			compatible = "mediatek,disp1_disp_wdma2";
 					//"mediatek,mt6989-disp-wdma";
 			reg = <0 0x14218000 0 0x1000>;
+			interrupts = <GIC_SPI 506 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_WDMA2>;
+			fifo-size-1plane = <217>;
+			fifo-size-2plane = <0>;
+			fifo-size-uv-2plane = <0>;
+			fifo-size-3plane = <0>;
+			fifo-size-uv-3plane = <0>;
+			mediatek,larb = <&smi_larb33>;
+			mediatek,smi-id = <33>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 		};
 
 		disp1-disp-gdma0@14219000 {
@@ -6705,6 +6748,15 @@
 					//"mediatek,mt6989-disp-wdma";
 			reg = <0 0x14408000 0 0x1000>;
 			interrupts = <GIC_SPI 475 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&ovlsys_config_clk CLK_OVL_DISP_WDMA0>;
+			fifo-size-1plane = <961>;
+			fifo-size-2plane = <636>;
+			fifo-size-uv-2plane = <318>;
+			fifo-size-3plane = <633>;
+			fifo-size-uv-3plane = <157>;
+			mediatek,larb = <&smi_larb21>;
+			mediatek,smi-id = <21>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 		};
 
 		ovl0_ufbc_wdma0: disp-ufbc-wdma0@14409000 {
@@ -6713,6 +6765,7 @@
 					//"mediatek,mt6989-disp-wdma";
 			reg = <0 0x14409000 0 0x1000>;
 			interrupts = <GIC_SPI 476 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&ovlsys_config_clk CLK_OVL_DISP_UFBC_WDMA0>;
 		};
 
 		ovl_wdma1: disp-wdma2@1440a000 {
@@ -6720,6 +6773,15 @@
 					//"mediatek,mt6989-disp-wdma";
 			reg = <0 0x1440a000 0 0x1000>;
 			interrupts = <GIC_SPI 477 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&ovlsys_config_clk CLK_OVL_DISP_WDMA2>;
+			fifo-size-1plane = <217>;
+			fifo-size-2plane = <0>;
+			fifo-size-uv-2plane = <0>;
+			fifo-size-3plane = <0>;
+			fifo-size-uv-3plane = <0>;
+			mediatek,larb = <&smi_larb1>;
+			mediatek,smi-id = <1>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 		};
 
 		disp_rsz0: disp-rsz0@14019000 {
@@ -6865,9 +6927,13 @@
 		};
 
 		disp1_ovl0_2l: disp1-ovl0-2l@14602000 {
-			compatible = "mediatek,disp1_ovl0_2l";
-				//"mediatek,mt6989-disp-ovl";
+			compatible = "mediatek,disp1_ovl0_2l",
+				"mediatek,mt6989-disp-ovl";
 			reg = <0 0x14602000 0 0x1000>;
+			interrupts = <GIC_SPI 517 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&ovlsys1_config_clk CLK_OVL1_DISP_OVL0_2L>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_OVL1_SHUTDOWN>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			mediatek,larb = <&smi_larb34 SMMU_L34_P1_OVL_RDMA0_0>,
 					<&smi_larb35 SMMU_L35_P0_OVL_RDMA0_1>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L34_P1_OVL_RDMA0_0)
@@ -6882,9 +6948,12 @@
 		};
 
 		disp1_ovl1_2l: disp1-ovl1-2l@14603000 {
-			compatible = "mediatek,disp1_ovl1_2l";
-				//"mediatek,mt6989-disp-ovl";
+			compatible = "mediatek,disp1_ovl1_2l",
+				"mediatek,mt6989-disp-ovl";
 			reg = <0 0x14603000 0 0x1000>;
+			interrupts = <GIC_SPI 518 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&ovlsys1_config_clk CLK_OVL1_DISP_OVL1_2L>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			mediatek,larb = <&smi_larb36 SMMU_L36_P1_OVL_RDMA1_0>,
 					<&smi_larb37 SMMU_L37_P0_OVL_RDMA1_1>;
 			interconnects =	<&mmqos MASTER_LARB_PORT(SMMU_L36_P1_OVL_RDMA1_0)
@@ -6899,9 +6968,12 @@
 		};
 
 		disp1_ovl2_2l: disp1-ovl2-2l@14604000 {
-			compatible = "mediatek,disp1_ovl2_2l";
-				//"mediatek,mt6989-disp-ovl";
+			compatible = "mediatek,disp1_ovl2_2l",
+				"mediatek,mt6989-disp-ovl";
 			reg = <0 0x14604000 0 0x1000>;
+			interrupts = <GIC_SPI 519 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&ovlsys1_config_clk CLK_OVL1_DISP_OVL2_2L>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			mediatek,larb = <&smi_larb34 SMMU_L34_P3_OVL_RDMA2_0>,
 					<&smi_larb35 SMMU_L35_P1_OVL_RDMA2_1>;
 			interconnects =	<&mmqos MASTER_LARB_PORT(SMMU_L34_P3_OVL_RDMA2_0)
@@ -6934,9 +7006,19 @@
 		};
 
 		ovl1_wdma0: disp-wdma0@14608000 {
-			compatible = "mediatek,disp_wdma0";
-					//"mediatek,mt6989-disp-wdma";
+			compatible = "mediatek,disp_wdma0",
+					"mediatek,mt6989-disp-wdma";
 			reg = <0 0x14608000 0 0x1000>;
+			interrupts = <GIC_SPI 523 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&ovlsys1_config_clk CLK_OVL1_DISP_WDMA0>;
+			fifo-size-1plane = <961>;
+			fifo-size-2plane = <636>;
+			fifo-size-uv-2plane = <318>;
+			fifo-size-3plane = <633>;
+			fifo-size-uv-3plane = <157>;
+			mediatek,larb = <&smi_larb37>;
+			mediatek,smi-id = <37>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 		};
 
 		ovl1_ufbc_wdma0: disp-ufbc-wdma0@14609000 {
@@ -6944,12 +7026,24 @@
 			compatible = "mediatek,disp_ufbc_wdma0";
 					//"mediatek,mt6989-disp-wdma";
 			reg = <0 0x14609000 0 0x1000>;
+			interrupts = <GIC_SPI 524 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&ovlsys1_config_clk CLK_OVL1_DISP_UFBC_WDMA0>;
 		};
 
 		ovl1_wdma1: disp-wdma2@1460a000 {
 			compatible = "mediatek,disp_wdma2";
 					//"mediatek,mt6989-disp-wdma";
 			reg = <0 0x1460a000 0 0x1000>;
+			interrupts = <GIC_SPI 525 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&ovlsys1_config_clk CLK_OVL1_DISP_WDMA2>;
+			fifo-size-1plane = <217>;
+			fifo-size-2plane = <0>;
+			fifo-size-uv-2plane = <0>;
+			fifo-size-3plane = <0>;
+			fifo-size-uv-3plane = <0>;
+			mediatek,larb = <&smi_larb35>;
+			mediatek,smi-id = <35>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 		};
 
 		mipi_tx_config0: mipi-tx-config@11e90000 {
