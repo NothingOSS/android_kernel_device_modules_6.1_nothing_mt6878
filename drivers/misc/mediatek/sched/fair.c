@@ -1079,22 +1079,36 @@ static inline bool task_can_skip_this_cpu(struct task_struct *p, unsigned long p
 	return 1;
 }
 
-static inline bool is_target_max_spare_cpu(bool is_vip, int num_vip, int min_num_vip,
-			long spare_cap, long target_max_spare_cap)
+static inline bool is_target_max_spare_cpu(bool is_vip, unsigned int num_vip, unsigned int min_num_vip,
+			long spare_cap, long target_max_spare_cap,
+			int best_cpu, int new_cpu, const char *type)
 {
+	bool replace = true;
+
 	if (is_vip) {
-		if (num_vip > min_num_vip)
-			return false;
+		if (num_vip > min_num_vip) {
+			replace = false;
+			goto out;
+		}
 
 		if (num_vip == min_num_vip &&
-				spare_cap <= target_max_spare_cap)
-			return false;
+				spare_cap <= target_max_spare_cap) {
+			replace = false;
+			goto out;
+		}
 	} else {
-		if (spare_cap <= target_max_spare_cap)
-			return false;
+		if (spare_cap <= target_max_spare_cap) {
+			replace = false;
+			goto out;
+		}
 	}
 
-	return true;
+out:
+	if (trace_sched_target_max_spare_cpu_enabled())
+		trace_sched_target_max_spare_cpu(type, best_cpu, new_cpu, replace,
+			is_vip, num_vip, min_num_vip, spare_cap, target_max_spare_cap);
+
+	return replace;
 }
 
 bool gear_hints_enable;
@@ -1536,7 +1550,8 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 				spare_cap += spare_cap >> 6;
 
 			if (is_target_max_spare_cpu(is_vip, num_vip, prev_min_num_vip,
-					spare_cap_without_p, sys_max_spare_cap)) {
+					spare_cap_without_p, sys_max_spare_cap,
+					*sys_max_spare_cap_cpu, cpu, "sys_max_spare")) {
 				sys_max_spare_cap = spare_cap_without_p;
 				*sys_max_spare_cap_cpu = cpu;
 			}
@@ -1549,7 +1564,8 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			 */
 			if (latency_sensitive && available_idle_cpu(cpu)) {
 				if (is_target_max_spare_cpu(is_vip, num_vip, prev_min_num_vip,
-						spare_cap_without_p, idle_max_spare_cap)) {
+					spare_cap_without_p, idle_max_spare_cap,
+					*idle_max_spare_cap_cpu, cpu, "idle_max_spare")) {
 					idle_max_spare_cap = spare_cap_without_p;
 					*idle_max_spare_cap_cpu = cpu;
 				}
@@ -1578,7 +1594,8 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			 * the performance domain
 			 */
 			if (!latency_sensitive && is_target_max_spare_cpu(is_vip, num_vip,
-					prev_min_num_vip, spare_cap, pd_max_spare_cap)) {
+					prev_min_num_vip, spare_cap, pd_max_spare_cap,
+					pd_max_spare_cap_cpu, cpu, "pd_max_spare")) {
 				pd_max_spare_cap = spare_cap;
 				pd_max_spare_cap_cpu = cpu;
 			}
@@ -1600,7 +1617,8 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 #endif
 
 				if (!is_target_max_spare_cpu(is_vip, num_vip, prev_min_num_vip,
-						spare_cap, pd_max_spare_cap_ls_idle))
+					spare_cap, pd_max_spare_cap_ls_idle,
+					pd_max_spare_cap_cpu_ls_idle, cpu, "pd_max_spare_is_idle"))
 					continue;
 
 				pd_min_exit_lat = idle ? idle->exit_latency : 0;
