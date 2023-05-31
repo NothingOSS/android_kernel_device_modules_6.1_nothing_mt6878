@@ -78,6 +78,7 @@ static long long active_time = TOUCH_FSTB_ACTIVE_MS;
 static long long boost_duration = TOUCH_TIMEOUT_MS;
 static struct hrtimer hrt1;
 static int my_tid = -1;
+static int touch_boost_on;
 
 static void _cpu_ctrl_systrace(int val, const char *fmt, ...)
 {
@@ -208,6 +209,8 @@ static void notify_touch_up_timeout(struct work_struct *work)
 	for (i = 0 ; i < policy_num ; i++)
 		ret = _update_userlimit_cpufreq_min(i, 0);
 
+	touch_boost_on = 0;
+
 	send_boost_cmd(0);
 }
 
@@ -264,6 +267,8 @@ void touch_boost(void)
 		}
 	}
 
+	touch_boost_on = 1;
+
 	send_boost_cmd(1);
 }
 
@@ -281,6 +286,21 @@ static int ktchboost_thread(void *ptr)
 		event = ktchboost.touch_event;
 		_cpu_ctrl_systrace(event, "touch_down");
 		touch_boost();
+	}
+	return 0;
+}
+
+static int ktchboost_interrupt_thread(void *ptr)
+{
+	while (!kthread_should_stop()) {
+		if(fpsgo_wait_fstb_active_fp)
+			fpsgo_wait_fstb_active_fp();
+
+		_cpu_ctrl_systrace(1, "fpsgo_wait_fstb_active");
+		if (touch_boost_on == 1)
+			_force_stop_touch_boost();
+
+		_cpu_ctrl_systrace(0, "fpsgo_wait_fstb_active");
 	}
 	return 0;
 }
@@ -445,8 +465,10 @@ static ssize_t perfmgr_force_stop_boost_proc_write(struct file *filp,
 		return ret;
 
 	force_stop_boost = value;
+	_cpu_ctrl_systrace(1, "touch_boost_force_stop");
 	if (force_stop_boost == 1)
 		_force_stop_touch_boost();
+	_cpu_ctrl_systrace(0, "touch_boost_force_stop");
 
 	return cnt;
 }
@@ -1071,6 +1093,11 @@ static int __init touch_boost_init(void)
 	ktchboost.thread = (struct task_struct *)kthread_run(ktchboost_thread,
 			&ktchboost, "touch_boost");
 	if (IS_ERR(ktchboost.thread))
+		return -EINVAL;
+
+	ktchboost.thread_interrupt = (struct task_struct *)kthread_run(ktchboost_interrupt_thread,
+			&ktchboost, "touch_boost_interrupt");
+	if (IS_ERR(ktchboost.thread_interrupt))
 		return -EINVAL;
 
 	touch_boost_get_cmd_fp = touch_boost_get_cmd;
