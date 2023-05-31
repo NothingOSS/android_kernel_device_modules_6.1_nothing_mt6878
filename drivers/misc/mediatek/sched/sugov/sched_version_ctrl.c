@@ -18,6 +18,7 @@
 bool vip_enable;
 bool gear_hints_enable;
 bool updown_migration_enable;
+bool skip_hiIRQ_enable;
 int init_sched_ctrl(void)
 {
 	struct device_node *eas_node;
@@ -39,6 +40,7 @@ int init_sched_ctrl(void)
 		// TODO
 		gear_hints_enable = false;
 		updown_migration_enable = false;
+		skip_hiIRQ_enable = false;
 		break;
 	case EAS_5_5_1:
 		am_support = 0;
@@ -46,6 +48,7 @@ int init_sched_ctrl(void)
 		// TODO
 		gear_hints_enable = false;
 		updown_migration_enable = true;
+		skip_hiIRQ_enable = false;
 		break;
 	case EAS_6_1:
 		am_support = 1;
@@ -53,6 +56,7 @@ int init_sched_ctrl(void)
 		// TODO
 		gear_hints_enable = true;
 		updown_migration_enable = true;
+		skip_hiIRQ_enable = true;
 		break;
 	default:
 		am_support = 0;
@@ -60,6 +64,7 @@ int init_sched_ctrl(void)
 		// TODO
 		gear_hints_enable = false;
 		updown_migration_enable = false;
+		skip_hiIRQ_enable = false;
 		break;
 	}
 	return 0;
@@ -82,3 +87,9 @@ bool sched_updown_migration_enable_get(void)
 	return updown_migration_enable;
 }
 EXPORT_SYMBOL_GPL(sched_updown_migration_enable_get);
+
+bool sched_skip_hiIRQ_enable_get(void)
+{
+	return skip_hiIRQ_enable;
+}
+EXPORT_SYMBOL_GPL(sched_skip_hiIRQ_enable_get);

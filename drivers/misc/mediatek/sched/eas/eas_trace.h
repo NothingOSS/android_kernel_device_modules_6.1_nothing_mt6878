@@ -417,9 +417,9 @@ out:
 #endif
 
 TRACE_EVENT(sched_cpu_util,
-	TP_PROTO(struct task_struct *p, int cpu,
+	TP_PROTO(struct task_struct *p, int cpu, bool skip_hiIRQ_enable,
 		unsigned long min_cap, unsigned long max_cap),
-	TP_ARGS(p, cpu, min_cap, max_cap),
+	TP_ARGS(p, cpu, skip_hiIRQ_enable, min_cap, max_cap),
 	TP_STRUCT__entry(
 		__field(unsigned int,	cpu)
 		__field(unsigned int,	nr_running)
@@ -431,6 +431,7 @@ TRACE_EVENT(sched_cpu_util,
 		__field(int,		online)
 		__field(int,		paused)
 		__field(unsigned int,	nr_rtg_high_prio_tasks)
+		__field(int,		high_irq_ctrl)
 		__field(int,		high_irq_load)
 		__field(long,		irqload)
 		__field(unsigned int,	min_highirq_load)
@@ -447,12 +448,13 @@ TRACE_EVENT(sched_cpu_util,
 		__entry->online			= cpu_online(cpu);
 		__entry->paused			= cpu_paused(cpu);
 		__entry->nr_rtg_high_prio_tasks = 0;
+		__entry->high_irq_ctrl	= skip_hiIRQ_enable;
 		__entry->high_irq_load	= cpu_high_irqload(cpu);
 		__entry->irqload		= cpu_util_irq(cpu_rq(cpu));
 		__entry->min_highirq_load	= get_cpu_irqUtil_threshold(cpu);
 		__entry->irq_ratio			= get_cpu_irqRatio_threshold(cpu);
 	),
-	TP_printk("cpu=%d nr_running=%d cpu_util=%ld cpu_max_util=%ld capacity=%u capacity_orig=%u idle_exit_latency=%u online=%u paused=%u nr_rtg_hp=%u high_irq_load=%u irqload=%ld min_highirq_load=%u irq_ratio=%u",
+	TP_printk("cpu=%d nr_running=%d cpu_util=%ld cpu_max_util=%ld capacity=%u capacity_orig=%u idle_exit_latency=%u online=%u paused=%u nr_rtg_hp=%u high_irq_ctrl=%d high_irq_load=%u irqload=%ld min_highirq_load=%u irq_ratio=%u",
 		__entry->cpu,
 		__entry->nr_running,
 		__entry->cpu_util,
@@ -463,6 +465,7 @@ TRACE_EVENT(sched_cpu_util,
 		__entry->online,
 		__entry->paused,
 		__entry->nr_rtg_high_prio_tasks,
+		__entry->high_irq_ctrl,
 		__entry->high_irq_load,
 		__entry->irqload,
 		__entry->min_highirq_load,

@@ -549,6 +549,8 @@ static int __init mtk_scheduler_init(void)
 	vip_init();
 #endif
 
+	init_skip_hiIRQ();
+
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	init_flt_platform();
 	flt_init_res();

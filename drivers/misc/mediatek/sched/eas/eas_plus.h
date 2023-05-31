@@ -230,6 +230,8 @@ extern int mtk_sched_asym_cpucapacity;
 extern void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowest_mask,
 				int ret, int *lowest_cpu);
 
+extern bool sched_skip_hiIRQ_enable_get(void);
+extern void init_skip_hiIRQ(void);
 extern int cpu_high_irqload(int cpu);
 extern unsigned int mtk_get_idle_exit_latency(int cpu, struct rt_energy_aware_output *rt_ea_output);
 extern unsigned long mtk_sched_cpu_util(int cpu);

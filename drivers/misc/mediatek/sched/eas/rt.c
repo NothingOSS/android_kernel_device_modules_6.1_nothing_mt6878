@@ -12,6 +12,12 @@
 #include "vip.h"
 #include <mt-plat/mtk_irq_mon.h>
 
+bool skip_hiIRQ_enable;
+void init_skip_hiIRQ(void)
+{
+	skip_hiIRQ_enable = sched_skip_hiIRQ_enable_get();
+}
+
 static inline void rt_energy_aware_output_init(struct rt_energy_aware_output *rt_ea_output,
 			struct task_struct *p)
 {
@@ -160,6 +166,10 @@ int set_cpu_irqUtil_threshold(int cpu, int min_util)
 {
 	int ret = 0;
 
+	/* check feature is enabled */
+	if (!skip_hiIRQ_enable)
+		goto done;
+
 	/* check cpu validity */
 	if (cpu < 0 || cpu > MAX_NR_CPUS-1)
 		goto done;
@@ -180,6 +190,10 @@ int unset_cpu_irqUtil_threshold(int cpu)
 {
 	int ret = 0;
 
+	/* check feature is enabled */
+	if (!skip_hiIRQ_enable)
+		goto done;
+
 	/* check cpu validity */
 	if (cpu < 0 || cpu > MAX_NR_CPUS-1)
 		goto done;
@@ -196,6 +210,10 @@ int get_cpu_irqUtil_threshold(int cpu)
 {
 	int val = -1;
 
+	/* check feature is enabled */
+	if (!skip_hiIRQ_enable)
+		goto done;
+
 	/* check cpu validity */
 	if (cpu < 0 || cpu > MAX_NR_CPUS-1)
 		goto done;
@@ -210,6 +228,10 @@ EXPORT_SYMBOL_GPL(get_cpu_irqUtil_threshold);
 int set_cpu_irqRatio_threshold(int cpu, int min_ratio)
 {
 	int ret = 0;
+
+	/* check feature is enabled */
+	if (!skip_hiIRQ_enable)
+		goto done;
 
 	/* check cpu validity */
 	if (cpu < 0 || cpu > MAX_NR_CPUS-1)
@@ -231,6 +253,10 @@ int unset_cpu_irqRatio_threshold(int cpu)
 {
 	int ret = 0;
 
+	/* check feature is enabled */
+	if (!skip_hiIRQ_enable)
+		goto done;
+
 	/* check cpu validity */
 	if (cpu < 0 || cpu > MAX_NR_CPUS-1)
 		goto done;
@@ -247,6 +273,10 @@ int get_cpu_irqRatio_threshold(int cpu)
 {
 	int val = -1;
 
+	/* check feature is enabled */
+	if (!skip_hiIRQ_enable)
+		goto done;
+
 	/* check cpu validity */
 	if (cpu < 0 || cpu > MAX_NR_CPUS-1)
 		goto done;
@@ -261,6 +291,9 @@ EXPORT_SYMBOL_GPL(get_cpu_irqRatio_threshold);
 inline int cpu_high_irqload(int cpu)
 {
 	unsigned long irq_util, cpu_util;
+
+	if (!skip_hiIRQ_enable)
+		return 0;
 
 	irq_util = cpu_util_irq(cpu_rq(cpu));
 	cpu_util = mtk_sched_cpu_util(cpu);
@@ -319,7 +352,7 @@ void track_sched_cpu_util(struct task_struct *p, int cpu,
 			unsigned long min_cap, unsigned long max_cap)
 {
 	if (trace_sched_cpu_util_enabled())
-		trace_sched_cpu_util(p, cpu, min_cap, max_cap);
+		trace_sched_cpu_util(p, cpu, skip_hiIRQ_enable, min_cap, max_cap);
 }
 
 static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
