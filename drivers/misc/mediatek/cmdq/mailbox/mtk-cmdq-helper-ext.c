@@ -1051,6 +1051,46 @@ static void cmdq_pkt_destroy_work(struct work_struct *work_item)
 	kfree(pkt);
 }
 
+void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt)
+{
+	struct cmdq_client *client = pkt->cl;
+	u64 start = sched_clock(), diff;
+
+	cmdq_log("%s pkt:%p ", __func__, pkt);
+	if (client)
+		mutex_lock(&client->chan_mutex);
+#if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
+	if (cmdq_pkt_is_exec(pkt)) {
+		if (client && client->chan) {
+			s32 thread_id = cmdq_mbox_chan_id(client->chan);
+
+			cmdq_err("invalid destroy, pkt:%p thd:%d", pkt, thread_id);
+		} else
+			cmdq_err("invalid pkt_destroy, pkt:0x%p", pkt);
+		dump_stack();
+	}
+#endif
+	if (client)
+		mutex_unlock(&client->chan_mutex);
+
+	pkt->task_alive = false;
+
+	cmdq_pkt_free_buf(pkt);
+	kfree(pkt->flush_item);
+#if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
+#ifdef CMDQ_SECURE_SUPPORT
+	if (pkt->sec_data)
+		cmdq_sec_helper->sec_pkt_free_data_fp(pkt);
+#endif
+#endif
+	kfree(pkt);
+
+	diff = sched_clock() - start;
+	if (diff >= 4000000) /* 4 ms*/
+		cmdq_msg("%s cost time %llu ms ", __func__, div_u64(diff, 1000000));
+}
+EXPORT_SYMBOL(cmdq_pkt_destroy_no_wq);
+
 void cmdq_pkt_destroy(struct cmdq_pkt *pkt)
 {
 	struct cmdq_client *client = pkt->cl;
