@@ -278,7 +278,7 @@ GED_ERROR ged_gpufreq_init(void)
 		}
 
 		for (i = 0; i < g_virtual_async_oppnum; i++) {
-			ged_log_buf_print(ghLogBuf_DVFS,
+			GED_LOGD_IF(g_default_log_level,
 				"[DVFS_ASYNC][%02d*] topFreq: %d, topRealOpp: %d, scFreq: %d, scRealOpp: %d",
 				i, g_virtual_async_table[i].topFreq,
 				g_virtual_async_table[i].topRealOpp,

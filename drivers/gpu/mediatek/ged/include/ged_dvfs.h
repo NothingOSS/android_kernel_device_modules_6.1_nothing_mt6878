@@ -240,9 +240,11 @@ extern unsigned int mips_support_flag;
 void ged_dvfs_enable_async_ratio(int enableAsync);
 void ged_dvfs_force_top_oppidx(int idx);
 void ged_dvfs_force_stack_oppidx(int idx);
+void ged_dvfs_set_async_log_level(unsigned int level);
 int ged_dvfs_get_async_ratio_support(void);
 int ged_dvfs_get_top_oppidx(void);
 int ged_dvfs_get_stack_oppidx(void);
 int ged_dvfs_get_recude_mips_policy_state(void);
+unsigned int ged_dvfs_get_async_log_level(void);
 
 #endif

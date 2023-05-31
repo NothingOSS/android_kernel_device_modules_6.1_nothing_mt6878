@@ -77,6 +77,7 @@ static unsigned int g_cust_boost_freq_id;
 #define LIMITER_FPSGO 0
 #define LIMITER_APIBOOST 1
 #define ENABLE_ASYNC_RATIO 1
+#define ASYNC_LOG_LEVEL (g_async_log_level|g_default_log_level)
 
 /**
  * Define some global variable for async ratio.
@@ -94,6 +95,7 @@ static bool g_same_stack_in_opp;
 static int g_async_id_threshold;
 static int g_oppnum_eachmask = 1;
 static struct GpuRawCounter g_counter_hs;
+static unsigned int g_async_log_level;
 
 unsigned int mips_support_flag;
 unsigned int g_reduce_mips_support;
@@ -1242,11 +1244,11 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 	long perf = 0;
 
 	if (!ratio) {
-		ged_log_buf_print(ghLogBuf_DVFS, "[DVFS_ASYNC] - %s: ratio is zero", __func__);
+		GED_LOGE("[DVFS_ASYNC] - %s: ratio is zero", __func__);
 		return (unsigned int)perf;
 	}
 	if (ratio == 100) {
-		ged_log_buf_print(ghLogBuf_DVFS,
+		GED_LOGD_IF(ASYNC_LOG_LEVEL,
 			"[DVFS_ASYNC] - %s: ratio is 100, no need to calculate performance",
 			__func__);
 		return 100;
@@ -1266,8 +1268,7 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 	perf += counters->gpuactive * async_coeff[10];
 
 	if (perf <= 0) {
-		ged_log_buf_print(ghLogBuf_DVFS,
-				"[DVFS_ASYNC] - %s: perf result(%ld) is unreasonable",
+		GED_LOGE("[DVFS_ASYNC] - %s: perf result(%ld) is unreasonable",
 				__func__, perf);
 		perf = 0;
 		return (unsigned int)perf;
@@ -1317,8 +1318,8 @@ static int get_async_counters(struct async_counter *counters)
 	 * 029:MemSysCounters.L2_EXT_READ
 	 * 054:CSHWCounters.CSHWIF1_IRQ_ACTIVE
 	 */
-	counters->gpuactive = (long)(g_counter_hs.util_iter_raw > g_Util_Ex.util_mcu_raw ?
-					g_counter_hs.util_iter_raw : g_Util_Ex.util_mcu_raw);
+	counters->gpuactive = (long)(g_counter_hs.util_iter_raw > g_counter_hs.util_mcu_raw ?
+					g_counter_hs.util_iter_raw : g_counter_hs.util_mcu_raw);
 	counters->iter		= (long)g_counter_hs.util_iter_raw;
 	counters->compute	= (long)(g_counter_hs.util_sc_comp_raw / shader_conter_scale);
 	counters->l2ext		= (long)g_counter_hs.util_l2ext_raw / memory_conter_scale;
@@ -1327,14 +1328,14 @@ static int get_async_counters(struct async_counter *counters)
 	// reset counter value after get
 	reset_async_counters();
 
-	ged_log_buf_print(ghLogBuf_DVFS,
+	GED_LOGD_IF(ASYNC_LOG_LEVEL,
 			"[DVFS_ASYNC] - %s: Async counters [gpuactive/iter/compute/l2ext/irq]: [%ld/%ld/%ld/%ld/%ld]\n",
 			__func__, counters->gpuactive,
 			counters->iter, counters->compute, counters->l2ext, counters->irq);
 	// MET
 	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Counter(
 		counters->gpuactive, counters->iter, counters->compute,
-		counters->l2ext, counters->irq, g_Util_Ex.util_mcu_raw);
+		counters->l2ext, counters->irq, g_counter_hs.util_mcu_raw);
 
 	if ((counters->gpuactive < 0) || (counters->iter < 0) ||
 		(counters->compute < 0) || (counters->l2ext < 0) ||
@@ -1366,8 +1367,7 @@ static int ged_async_ratio_perf_model(int oppidx, int tar_freq, bool is_decreasi
 
 	//1. get counters from IPA
 	if (get_async_counters(&asyncCounter) == ASYNC_ERROR) {
-		ged_log_buf_print(ghLogBuf_DVFS,
-				"[DVFS_ASYNC] - %s: get counters fail\n", __func__);
+		GED_LOGE("[DVFS_ASYNC] - %s: get counters fail\n", __func__);
 		return tar_opp;
 	}
 
@@ -1382,7 +1382,7 @@ static int ged_async_ratio_perf_model(int oppidx, int tar_freq, bool is_decreasi
 						ged_get_top_freq_by_virt_opp(oppidx);
 		perf_improve = calculate_performance(&asyncCounter, adjust_ratio);
 		if (perf_improve > 100 || perf_improve == 0) {
-			ged_log_buf_print(ghLogBuf_DVFS,
+			GED_LOGD_IF(ASYNC_LOG_LEVEL,
 				"[DVFS_ASYNC] - %s: perf_improve(%d) is unreasonable\n",
 				__func__, perf_improve);
 			goto decreaseEnd;
@@ -1406,7 +1406,7 @@ static int ged_async_ratio_perf_model(int oppidx, int tar_freq, bool is_decreasi
 			}
 		}
 decreaseEnd:
-		ged_log_buf_print(ghLogBuf_DVFS,
+		GED_LOGD_IF(ASYNC_LOG_LEVEL,
 			"[DVFS_ASYNC] - %s: isDecreasing: fb_oppidx(%d), tar_freq(%d), tar_opp(%d), adjust_ratio(%d), perf_improve(%d), perf_toler(%d)\n",
 			__func__, oppidx, tar_freq, tar_opp, adjust_ratio,
 			perf_improve, perf_toler);
@@ -1423,7 +1423,7 @@ decreaseEnd:
 						ged_get_top_freq_by_virt_opp(cur_opp_id);
 		perf_improve = calculate_performance(&asyncCounter, adjust_ratio);
 		if (perf_improve <= 100) {
-			ged_log_buf_print(ghLogBuf_DVFS,
+			GED_LOGD_IF(ASYNC_LOG_LEVEL,
 				"[DVFS_ASYNC] - %s: perf_improve(%d) is unreasonable\n",
 				__func__, perf_improve);
 			goto increaseEnd;
@@ -1442,7 +1442,7 @@ decreaseEnd:
 						ged_get_top_freq_by_virt_opp(cur_opp_id);
 				perf_improve = calculate_performance(&asyncCounter, adjust_ratio);
 				if (perf_improve <= 100) {
-					ged_log_buf_print(ghLogBuf_DVFS,
+					GED_LOGD_IF(ASYNC_LOG_LEVEL,
 						"[DVFS_ASYNC] - %s: perf_improve(%d) is unreasonable\n",
 						__func__, perf_improve);
 					goto increaseEnd;
@@ -1459,7 +1459,7 @@ decreaseEnd:
 		}
 
 increaseEnd:
-		ged_log_buf_print(ghLogBuf_DVFS,
+		GED_LOGD_IF(ASYNC_LOG_LEVEL,
 			"[DVFS_ASYNC] - %s: isIncreasing, fb_oppidx(%d), tar_freq(%d), tar_opp(%d), adjust_ratio(%d), perf_improve(%d), perf_require(%d)\n",
 			__func__, oppidx, tar_freq, tar_opp, adjust_ratio,
 			perf_improve, perf_require);
@@ -1816,7 +1816,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 			isDecreasing = determine_async_policy(cur_opp_id, ui32NewFreqID);
 			asyncID = ged_async_ratio_perf_model(
 						ui32NewFreqID, gpu_freq_tar, isDecreasing);
-			ged_log_buf_print(ghLogBuf_DVFS,
+			GED_LOGD_IF(ASYNC_LOG_LEVEL,
 				"[DVFS_ASYNC] GPU freq %s: cur_opp_id(%d) ui32NewFreqID(%d) asyncID(%d) applyAsyncPolicy(%d)",
 					isDecreasing ? "decreasing" : "increasing",
 					cur_opp_id, ui32NewFreqID, asyncID, 1);
@@ -2942,6 +2942,12 @@ void ged_dvfs_force_stack_oppidx(int idx)
 	FORCE_OPP = idx;
 }
 
+void ged_dvfs_set_async_log_level(unsigned int level)
+{
+	GED_LOGI("[DVFS_ASYNC] set async log level (%d) in ged_dvfs", level);
+	g_async_log_level = level;
+}
+
 int ged_dvfs_get_async_ratio_support(void)
 {
 	return g_async_ratio_support;
@@ -2955,6 +2961,11 @@ int ged_dvfs_get_top_oppidx(void)
 int ged_dvfs_get_stack_oppidx(void)
 {
 	return FORCE_OPP;
+}
+
+unsigned int ged_dvfs_get_async_log_level(void)
+{
+	return g_async_log_level;
 }
 
 int ged_dvfs_get_recude_mips_policy_state(void)

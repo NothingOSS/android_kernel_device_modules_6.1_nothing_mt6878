@@ -16,6 +16,9 @@
 #else
 	#define GED_LOGD(fmt, args...) do {} while (0)
 #endif /* GED_DEBUG_LOG */
+
+#define GED_LOGD_IF(cond, ...)  do { if (cond) GED_LOGDD(__VA_ARGS__); } while (0)
+#define GED_LOGDD(fmt, args...) pr_info(GED_TAG"[D]@%s: "fmt"\n", __func__, ##args)
 #define GED_LOGI(fmt, args...) pr_info(GED_TAG"[INFO]@%s: "fmt"\n", __func__, ##args)
 #define GED_LOGE(fmt, args...) pr_info(GED_TAG"[ERROR]@%s: "fmt"\n", __func__, ##args)
 #define GED_CONTAINER_OF(ptr, type, member) \

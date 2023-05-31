@@ -76,6 +76,7 @@ extern unsigned int g_frame_target_time;
 extern unsigned int g_ged_adaptive_power_policy_support;
 extern unsigned int g_ged_frame_base_optimize;
 extern unsigned int g_ged_pre_fence_chk;
+extern unsigned int g_default_log_level;
 
 extern u64 fb_timeout;
 extern u64 lb_timeout;

@@ -145,6 +145,7 @@ unsigned int g_ged_frame_base_optimize;
 unsigned long g_desire_freq;
 unsigned long g_desire_freq_stack, g_desire_freq_top;
 unsigned int g_ged_pre_fence_chk;
+unsigned int g_default_log_level;
 
 
 /******************************************************************************

@@ -1068,16 +1068,18 @@ static ssize_t dvfs_async_ratio_show(struct kobject *kobj,
 		char *buf)
 {
 	int async_ratio_support, force_stack_opp, force_top_opp;
+	unsigned int log_level;
 	int pos = 0;
 	int length;
 
 	async_ratio_support = ged_dvfs_get_async_ratio_support();
 	force_stack_opp = ged_dvfs_get_stack_oppidx();
 	force_top_opp = ged_dvfs_get_top_oppidx();
+	log_level = ged_dvfs_get_async_log_level();
 
 	length = scnprintf(buf + pos, PAGE_SIZE - pos,
-				"dvfs_async test, force stack opp(%d), force top opp(%d), enable async(%d)\n",
-			force_stack_opp, force_top_opp, async_ratio_support);
+				"dvfs_async test, force stack opp(%d), force top opp(%d), enable log(%d), enable async(%d)\n",
+			force_stack_opp, force_top_opp, log_level, async_ratio_support);
 
 	pos += length;
 
@@ -1090,11 +1092,15 @@ static ssize_t dvfs_async_ratio_store(struct kobject *kobj,
 {
 	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
 	int i32Value, FORCE_TOP_OPP;
+	unsigned int log_level;
 
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
-				if (i32Value & (0x1 << 7)) {
+				if (i32Value & (0x1 << 9)) {
+					log_level = i32Value & 0xF;
+					ged_dvfs_set_async_log_level(log_level);
+				} else if (i32Value & (0x1 << 7)) {
 					if (i32Value & 0x1)
 						ged_dvfs_enable_async_ratio(1);
 					else
@@ -1118,6 +1124,43 @@ static ssize_t dvfs_async_ratio_store(struct kobject *kobj,
 }
 
 static KOBJ_ATTR_RW(dvfs_async_ratio);
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+static ssize_t ged_log_level_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int pos = 0;
+	int length;
+
+	length = scnprintf(buf + pos, PAGE_SIZE - pos,
+				"GED log level: %d\n", g_default_log_level);
+
+	pos += length;
+
+	return pos;
+}
+
+static ssize_t ged_log_level_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
+				if (i32Value >= 0)
+					g_default_log_level = i32Value;
+			}
+		}
+	}
+
+	return count;
+}
+
+static KOBJ_ATTR_RW(ged_log_level);
 //-----------------------------------------------------------------------------
 unsigned int g_loading_slide_window_size = GED_DEFAULT_SLIDE_WINDOW_SIZE;
 
@@ -1328,6 +1371,13 @@ GED_ERROR ged_hal_init(void)
 		goto ERROR;
 	}
 
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_ged_log_level);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE(
+			"Failed to create ged_log_level entry!\n");
+		goto ERROR;
+	}
+
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_frame_base_optimize);
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE(
@@ -1377,6 +1427,7 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fallback_window_size);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fallback_frequency_adjust);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dvfs_async_ratio);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_ged_log_level);
 #ifdef GED_DCS_POLICY
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_mode);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_stress);
