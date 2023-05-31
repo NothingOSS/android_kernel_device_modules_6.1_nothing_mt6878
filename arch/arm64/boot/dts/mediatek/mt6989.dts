@@ -16895,6 +16895,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 
 &rt6160_bus5 {
 	regulator-min-microvolt = <3100000>;
+	regulator-max-microvolt = <3100000>;
 };
 
 &i2c1 {
@@ -16904,7 +16905,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 		//enable-gpios = <&gpio26 2 0>;
 		regulator-name = "rt6160-buckboost-1";
 		regulator-min-microvolt = <3250000>;
-		regulator-max-microvolt = <5200000>;
+		regulator-max-microvolt = <3250000>;
 		regulator-always-on;
 
 		dbg {
