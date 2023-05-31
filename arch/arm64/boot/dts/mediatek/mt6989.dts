@@ -13363,6 +13363,8 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 				<&dram_s0 &dram_s1 &spm_emi>,
 				<&spm_pmic &spm_vcore>;
 		constraints = <&rc_vcore &rc_bus26m &rc_syspll>;
+		lpm-gov-enable = <1>;
+		cpu-gov-info = <&cpul &cpum &cpub>;
 		cg-shift = <0>; /* cg blocking index */
 		pll-shift = <0>; /* pll blocking index */
 
@@ -13444,6 +13446,21 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 				id = <0x00000000>;
 				value = <0>;
 				cond-info = <1>;
+			};
+		};
+
+		cpu-gov-info-list {
+			cpul: cpul {
+				last-idle-state = "system-vcore";
+				hidden-state = "wfi", "cpuoff-l";
+			};
+			cpum: cpum {
+				last-idle-state = "system-vcore";
+				hidden-state = "wfi", "cpuoff-m";
+			};
+			cpub: cpub {
+				last-idle-state = "system-vcore";
+				hidden-state = "wfi", "cpuoff-b";
 			};
 		};
 
