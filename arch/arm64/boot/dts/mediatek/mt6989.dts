@@ -16131,6 +16131,15 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 	touch_tui0: touch-tui0 {
 		compatible = "mediatek,tui_common";
 	};
+
+	wl_info: wl-info@c0d3bb0 {
+		compatible = "mediatek,wl-info";
+		wl-support = <1>;
+		reg = <0 0x0c0d3bb0 0 0x10>, /*tcm sram base*/
+			<0 0x0c0d4e30 0 0x1520>; /*tcm wl-base sram*/
+		reg-names = "wl_sram_base",
+			"wl_tbl_base";
+	 };
 };
 
 /* PCIe pinmux start */
