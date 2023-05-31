@@ -603,6 +603,9 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 	int this_cpu = smp_processor_id();
 	cpumask_t avail_lowest_mask;
 	int target = -1, select_reason = -1;
+	struct rt_energy_aware_output rt_ea_output;
+
+	rt_energy_aware_output_init(&rt_ea_output, p);
 
 	irq_log_store();
 
@@ -616,7 +619,7 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 
 	irq_log_store();
 
-	mtk_rt_energy_aware_wake_cpu(p, &avail_lowest_mask, ret, &target, false, NULL);
+	mtk_rt_energy_aware_wake_cpu(p, &avail_lowest_mask, ret, &target, false, &rt_ea_output);
 
 	irq_log_store();
 
@@ -624,6 +627,18 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 	if (target != -1) {
 		*lowest_cpu = target;
 		select_reason = LB_RT_IDLE;
+		goto out;
+	}
+
+	if (rt_ea_output.cfs_lowest_cpu != -1) {
+		*lowest_cpu = rt_ea_output.cfs_lowest_cpu;
+		select_reason = LB_RT_LOWEST_PRIO_NORMAL;
+		goto out;
+	}
+
+	if (rt_ea_output.rt_lowest_cpu != -1) {
+		*lowest_cpu = rt_ea_output.rt_lowest_cpu;
+		select_reason = LB_RT_LOWEST_PRIO_RT;
 		goto out;
 	}
 
