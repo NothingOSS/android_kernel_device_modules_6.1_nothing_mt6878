@@ -2042,7 +2042,7 @@ static SOC_VALUE_ENUM_SINGLE_DECL(miso5_mux_map_enum,
 				  miso_mux_map, miso_mux_map_value);
 
 static const struct snd_kcontrol_new miso5_mux_control =
-	SOC_DAPM_ENUM("MIS0_MUX Select", miso3_mux_map_enum);
+	SOC_DAPM_ENUM("MIS0_MUX Select", miso5_mux_map_enum);
 
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
 /* VOW PBUF MUX */
