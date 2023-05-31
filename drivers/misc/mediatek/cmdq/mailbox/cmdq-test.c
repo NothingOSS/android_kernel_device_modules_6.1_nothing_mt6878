@@ -61,6 +61,7 @@ struct cmdq_test {
 	struct test_node	gce;
 	struct test_node	mmsys;
 	struct cmdq_client	*clt;
+	struct cmdq_client	*clt2;
 	struct cmdq_client	*loop;
 	struct cmdq_client	*sec;
 	u32			iter;
@@ -1789,16 +1790,22 @@ static int cmdq_test_probe(struct platform_device *pdev)
 			return -ENXIO;
 	}
 	*/
+	// clt2
+	test->clt2 = cmdq_mbox_create(&pdev->dev, 2);
+	if (IS_ERR(test->clt2) || !test->clt2) {
+		if (!test->clt2)
+			cmdq_err("no test->clt2");
+	}
 
 #ifdef CMDQ_SECURE_SUPPORT
-	test->sec = cmdq_mbox_create(&pdev->dev, 2);
+	test->sec = cmdq_mbox_create(&pdev->dev, 3);
 	if (IS_ERR(test->sec) || !test->sec) {
 		if (!test->sec)
 			cmdq_err("no test->sec");
 	}
 #endif
-	cmdq_msg("%s test:%p dev:%p clt:%p loop:%p sec:%p",
-		__func__, test, test->dev, test->clt, test->loop, test->sec);
+	cmdq_msg("%s test:%p dev:%p clt:%p clt2:%p loop:%p sec:%p",
+		__func__, test, test->dev, test->clt, test->clt2, test->loop, test->sec);
 
 	// subsys
 	i = of_property_count_u32_elems(
