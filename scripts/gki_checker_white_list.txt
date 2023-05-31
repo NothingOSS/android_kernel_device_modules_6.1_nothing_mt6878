@@ -103,8 +103,6 @@ f mm/page_alloc.c
 f mm/memory.c
 f mm/mempool.c
 f net/core/rtnetlink.c
-f net/ipv6/udp.c
-f net/socket.c
 f security/selinux/avc.c
 f security/selinux/include/avc.h
 f include/linux/dma-buf.h
