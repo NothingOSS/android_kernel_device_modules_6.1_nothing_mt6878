@@ -975,6 +975,11 @@ static int mdw_cmd_record(struct mdw_cmd *c)
 		h_iptime = ch_tbl->h_sc_einfo[i].ip_time;
 		c_iptime = sc_einfo[i].ip_time;
 
+		if (sc_einfo[i].was_preempted) {
+			mdw_flw_debug("sc was preempted, skip this iptime\n");
+			continue;
+		}
+
 		if (mdw_cmd_iptime_check(h_iptime, c_iptime)) {
 			ch_tbl->h_sc_einfo[i].ip_time =
 				mdw_cmd_iptime_cal(h_iptime, c_iptime);
@@ -1074,7 +1079,7 @@ static bool mdw_cmd_predict(struct mdw_cmd *c)
 
 	/* check predict idle time */
 	predict_idle = (predict_start_ts - c->end_ts) / 1000;
-	if (predict_idle > MDW_POWER_GAIN_TH) {
+	if (predict_idle > mdev->power_gain_time_us) {
 		cmd_running  = atomic_read(&mdev->cmd_running);
 		if (cmd_running) {
 			mdw_flw_debug("Disable fast power off\n");

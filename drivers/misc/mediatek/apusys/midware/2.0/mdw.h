@@ -273,6 +273,7 @@ struct mdw_device {
 	uint64_t max_dtime_ts;
 	struct mutex dtime_mtx;
 	struct mutex power_mtx;
+	uint32_t power_gain_time_us;
 };
 
 struct mdw_fpriv {
