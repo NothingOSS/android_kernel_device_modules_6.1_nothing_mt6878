@@ -90,6 +90,14 @@
 		enable-active-high;
 		gpio = <&pio 93 0x0>;
 	};
+	camera_common_oisvdd: camera-common-oisvdd {
+		compatible = "regulator-fixed";
+		regulator-name = "camera-common-oisvdd";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		enable-active-high;
+		gpio = <&pio 94 0x0>;
+	};
 };
 
 /* CAMERA GPIO standardization */
@@ -383,6 +391,20 @@
 			output-high;
 		};
 	};
+	camera_pins_cam3_oisen_0: cam0@10 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO223__FUNC_GPIO223>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	camera_pins_cam3_oisen_1: cam0@11 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO223__FUNC_GPIO223>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
 	camera_pins_cam4_mclk_off: camera-pins-cam4-mclk-off {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO125__FUNC_GPIO125>;
@@ -485,6 +507,18 @@
 		reg = <3>;
 		main_af_cam3_endpoint: endpoint {
 			remote-endpoint = <&main_af_cam3>;
+		};
+	};
+	port@4 {
+		reg = <4>;
+		main_ois_cam1_endpoint: endpoint {
+			remote-endpoint = <&main_ois_cam1>;
+		};
+	};
+	port@5 {
+		reg = <5>;
+		main_ois_cam2_endpoint: endpoint {
+			remote-endpoint = <&main_ois_cam2>;
 		};
 	};
 };
@@ -612,6 +646,19 @@
 		reg = <0x50>;
 		status = "okay";
 	};
+
+	/* ois */
+	camera-ois-main@e {
+		compatible = "mediatek,dw9781c";
+		reg = <0x0e>;
+		vdd-supply = <&rt5133_ldo1>;
+		rst-supply = <&camera_common_dovdd>;
+		port {
+			main_ois_cam1: endpoint {
+				remote-endpoint = <&main_ois_cam1_endpoint>;
+			};
+		};
+	};
 };
 
 &i2c7 {
@@ -714,7 +761,8 @@
 				"rst_high",
 				"dvdd_off",
 				"dvdd_on",
-				"dovdd_off";
+				"oisen_off",
+				"oisen_on";
 		pinctrl-0 = <&camera_pins_cam3_mclk_off>;
 		pinctrl-1 = <&camera_pins_cam3_mclk_2ma>;
 		pinctrl-2 = <&camera_pins_cam3_mclk_4ma>;
@@ -724,10 +772,13 @@
 		pinctrl-6 = <&camera_pins_cam3_rst_1>;
 		pinctrl-7 = <&camera_pins_cam3_dvdd_0>;
 		pinctrl-8 = <&camera_pins_cam3_dvdd_1>;
+		pinctrl-9 = <&camera_pins_cam3_oisen_0>;
+		pinctrl-10 = <&camera_pins_cam3_oisen_1>;
 
 		avdd-supply = <&rt5133_ldo4>;
 		afvdd1-supply = <&rt5133_gpio1>;
 		dovdd-supply = <&camera_common_dovdd>;
+		oisvdd-supply = <&camera_common_oisvdd>;
 
 		clocks = <&topckgen_clk CLK_TOP_UNIVPLL2_192M_D32>,
 			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D16>,
@@ -751,6 +802,19 @@
 		compatible = "mediatek,camera_eeprom";
 		reg = <0x50>;
 		status = "okay";
+	};
+
+	/* ois */
+	camera-ois-main2@f {
+		compatible = "mediatek,dw9781d";
+		reg = <0x0f>;
+		vdd-supply = <&camera_common_oisvdd>;
+		rst-supply = <&camera_common_dovdd>;
+		port {
+			main_ois_cam2: endpoint {
+				remote-endpoint = <&main_ois_cam2_endpoint>;
+			};
+		};
 	};
 };
 
