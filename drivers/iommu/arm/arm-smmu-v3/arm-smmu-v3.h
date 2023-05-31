@@ -52,6 +52,7 @@
 #define IDR1_SIDSIZE			GENMASK(5, 0)
 
 #define ARM_SMMU_IDR3			0xc
+#define IDR3_MPAM			(1 << 7)
 #define IDR3_RIL			(1 << 10)
 
 #define ARM_SMMU_IDR5			0x14
@@ -152,6 +153,11 @@
 #define ARM_SMMU_PRIQ_IRQ_CFG0		0xd0
 #define ARM_SMMU_PRIQ_IRQ_CFG1		0xd8
 #define ARM_SMMU_PRIQ_IRQ_CFG2		0xdc
+
+/* SMMU MPAM */
+ #define ARM_SMMU_MPAMIDR		0x130
+ #define SMMU_MPAMIDR_PARTID_MAX	GENMASK(15, 0)
+ #define SMMU_MPAMIDR_PMG_MAX		GENMASK(23, 16)
 
 #define ARM_SMMU_REG_SZ			0xe00
 #define SMMUWP_REG_SZ			0x800
@@ -258,6 +264,10 @@
 #define STRTAB_STE_2_S2R		(1UL << 58)
 
 #define STRTAB_STE_3_S2TTB_MASK		GENMASK_ULL(51, 4)
+
+#define STRTAB_STE_4_PARTID		GENMASK_ULL(31, 16)
+
+#define STRTAB_STE_5_PMG		GENMASK_ULL(7, 0)
 
 /*
  * Context descriptors.
@@ -652,6 +662,7 @@ struct arm_smmu_device {
 #define ARM_SMMU_FEAT_BTM		(1 << 16)
 #define ARM_SMMU_FEAT_SVA		(1 << 17)
 #define ARM_SMMU_FEAT_E2H		(1 << 18)
+#define ARM_SMMU_FEAT_MPAM		(1 << 19)
 	u32				features;
 
 #define ARM_SMMU_OPT_SKIP_PREFETCH	(1 << 0)
@@ -808,6 +819,11 @@ int arm_smmu_atc_inv_domain(struct arm_smmu_domain *smmu_domain, int ssid,
 void arm_smmu_sync_ste_for_sid(struct arm_smmu_device *smmu, u32 sid);
 int arm_smmu_cmdq_issue_cmd(struct arm_smmu_device *smmu,
 			    struct arm_smmu_cmdq_ent *ent);
+void arm_smmu_cmdq_batch_add(struct arm_smmu_device *smmu,
+			     struct arm_smmu_cmdq_batch *cmds,
+			     struct arm_smmu_cmdq_ent *cmd);
+int arm_smmu_cmdq_batch_submit(struct arm_smmu_device *smmu,
+			       struct arm_smmu_cmdq_batch *cmds);
 int arm_smmu_init_sid_strtab(struct arm_smmu_device *smmu, u32 sid);
 
 #ifdef CONFIG_ARM_SMMU_V3_SVA

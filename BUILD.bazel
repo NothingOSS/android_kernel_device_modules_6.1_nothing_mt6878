@@ -169,6 +169,7 @@ mgk_64_k61_device_modules = [
     "drivers/iommu/arm/arm-smmu-v3/arm_smmu_v3.ko",
     "drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-lmu.ko",
     "drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-pmu.ko",
+    "drivers/iommu/arm/arm-smmu-v3/mtk-smmuv3-mpam-mon.ko",
     "drivers/iommu/mtk_iommu.ko",
     "drivers/leds/leds-mt6360.ko",
     "drivers/leds/leds-mtk-disp.ko",

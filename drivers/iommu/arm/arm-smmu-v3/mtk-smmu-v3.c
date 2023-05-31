@@ -58,6 +58,8 @@
 #define SMMU_FAULT_RS_BURST		(2)
 
 static const char *IOMMU_GROUP_PROP_NAME = "mtk,iommu-group";
+static const char *SMMU_MPAM_CONFIG = "mtk,mpam-cfg";
+static const char *SMMU_MPAM_CMAX = "mtk,mpam-cmax";
 static const char *PMU_SMMU_PROP_NAME = "mtk,smmu";
 
 enum iova_type {
@@ -80,6 +82,19 @@ struct dma_range_cb_data {
 	void *arg;
 };
 
+struct ste_mpam_config {
+	u32	sid;
+	u32	partid;
+	u32	pmg;
+};
+
+struct ste_mpam_cmax {
+	u32	txu_id;
+	u32	ris;
+	u32	partid;
+	u32	cmax;
+};
+
 static struct mtk_smmu_data *mtk_smmu_datas[SMMU_TYPE_NUM];
 static unsigned int smmuwp_consume_intr(struct arm_smmu_device *smmu,
 					unsigned int irq_bit);
@@ -93,6 +108,8 @@ static void smmuwp_dump_io_interface_signals(struct arm_smmu_device *smmu);
 static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu);
 static void dump_global_register(struct arm_smmu_device *smmu);
 static void smmu_fault_dump(struct arm_smmu_device *smmu);
+static __le64 *arm_smmu_get_step_for_sid(struct arm_smmu_device *smmu,
+					 u32 sid);
 
 #define STRSEC(sec)	((sec) ? "SECURE" : "NORMAL")
 
@@ -442,6 +459,323 @@ static int smmu_deinit_wpcfg(struct arm_smmu_device *smmu)
 	return ret;
 }
 
+static void smmu_mpam_config_set(struct arm_smmu_device *smmu)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	struct device_node *np;
+	struct ste_mpam_config *mpam_cfgs;
+	unsigned int mpam_cfgs_cnt;
+	struct arm_smmu_cmdq_batch cmds;
+	struct arm_smmu_cmdq_ent cmd = {
+		.opcode = CMDQ_OP_CFGI_STE,
+		.cfgi = {
+			.leaf = true,
+		}
+	};
+	u64 sid_max = 1ULL << smmu->sid_bits;
+	__le64 *step;
+	u32 sid;
+	int ret, n;
+
+	np = smmu->dev->of_node;
+	/* One mpam config consist of sid/partid/pmg three u32 */
+	n = of_property_count_elems_of_size(np, SMMU_MPAM_CONFIG, sizeof(u32));
+	if (n <= 0 || n % 3)
+		return;
+
+	mpam_cfgs_cnt = n / 3;
+	mpam_cfgs = kcalloc(mpam_cfgs_cnt, sizeof(*mpam_cfgs), GFP_KERNEL);
+	if (!mpam_cfgs)
+		return;
+
+	for (n = 0; n < mpam_cfgs_cnt; n++) {
+		ret =  of_property_read_u32_index(np, SMMU_MPAM_CONFIG,
+						  n * 3,
+						  &mpam_cfgs[n].sid);
+		if (ret)
+			goto out_free;
+
+		ret =  of_property_read_u32_index(np, SMMU_MPAM_CONFIG,
+						  n * 3 + 1,
+						  &mpam_cfgs[n].partid);
+		if (ret)
+			goto out_free;
+
+		ret =  of_property_read_u32_index(np, SMMU_MPAM_CONFIG,
+						  n * 3 + 2,
+						  &mpam_cfgs[n].pmg);
+		if (ret)
+			goto out_free;
+
+		if (mpam_cfgs[n].sid > sid_max) {
+			WARN_ON(1);
+			mpam_cfgs[n].sid = 0;
+		}
+		if (mpam_cfgs[n].partid > data->partid_max) {
+			WARN_ON(1);
+			mpam_cfgs[n].partid = 0;
+		}
+		if (mpam_cfgs[n].pmg > data->pmg_max) {
+			WARN_ON(1);
+			mpam_cfgs[n].pmg = 0;
+		}
+	}
+
+	cmds.num = 0;
+	for (n = 0; n < mpam_cfgs_cnt; n++) {
+		sid = mpam_cfgs[n].sid;
+		// make sure ste is ready
+		ret = arm_smmu_init_sid_strtab(smmu, sid);
+		if (ret) {
+			dev_err(smmu->dev, "%s init sid(0x%x) failed\n",
+				__func__, sid);
+			continue;
+		}
+		step = arm_smmu_get_step_for_sid(smmu, sid);
+		step[4] = FIELD_PREP(STRTAB_STE_4_PARTID, mpam_cfgs[n].partid);
+		step[5] = FIELD_PREP(STRTAB_STE_5_PMG, mpam_cfgs[n].pmg);
+
+		cmd.cfgi.sid = sid;
+		arm_smmu_cmdq_batch_add(smmu, &cmds, &cmd);
+
+		pr_info("%s, sid:%d, partid:%d, pmg:%d, sid_max:%llu\n",
+			__func__, sid, mpam_cfgs[n].partid,
+			mpam_cfgs[n].pmg, sid_max);
+	}
+	if (cmds.num > 0)
+		arm_smmu_cmdq_batch_submit(smmu, &cmds);
+
+out_free:
+	kfree(mpam_cfgs);
+}
+
+static void mpam_set_txu_cmax(struct arm_smmu_device *smmu,
+			      u32 txu_id, u32 partid, u32 ris, u32 cmax)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	struct txu_mpam_data mpam_data;
+	u32 val;
+
+	mpam_data = data->txu_mpam_data[txu_id];
+
+	val = FIELD_PREP(PART_SEL_PARTID_SEL, partid);
+	smmu_write_field(mpam_data.mpam_base,
+			 MPAMCFG_PART_SEL,
+			 PART_SEL_PARTID_SEL,
+			 val);
+
+	val = FIELD_PREP(PART_SEL_RIS, ris);
+	smmu_write_field(mpam_data.mpam_base,
+			 MPAMCFG_PART_SEL,
+			 PART_SEL_RIS,
+			 val);
+
+	val = FIELD_PREP(MPAMCFG_CMAX_CMAX, cmax);
+	smmu_write_field(mpam_data.mpam_base,
+			 MPAMCFG_CMAX,
+			 MPAMCFG_CMAX_CMAX,
+			 val);
+
+	if (mpam_data.has_cmax_softlim) {
+		val = FIELD_PREP(MPAMCFG_CMAX_SOFTLIM,
+				 1);
+		smmu_write_field(mpam_data.mpam_base,
+				 MPAMCFG_CMAX,
+				 MPAMCFG_CMAX_SOFTLIM,
+				 val);
+	}
+	pr_info("%s, txu_id:%d, partid:%d, ris:%d, cmx:0x%x\n",
+		__func__, txu_id, partid, ris, cmax);
+}
+
+static void smmu_mpam_cmax_set(struct arm_smmu_device *smmu)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	struct device_node *np;
+	unsigned int mpam_cmax_cnt;
+	struct ste_mpam_cmax *mpam_cmax;
+	struct txu_mpam_data *txu_mpam_data;
+	int ret, n;
+
+	np = smmu->dev->of_node;
+	/* One mpam cmax config consist of txu_id/ris/partid/cmax two u32 */
+	n = of_property_count_elems_of_size(np, SMMU_MPAM_CMAX, sizeof(u32));
+	if (n <= 0 || n % 4)
+		return;
+
+	mpam_cmax_cnt = n / 4;
+	mpam_cmax = kcalloc(mpam_cmax_cnt, sizeof(*mpam_cmax), GFP_KERNEL);
+	if (!mpam_cmax)
+		return;
+
+	for (n = 0; n < mpam_cmax_cnt; n++) {
+		ret =  of_property_read_u32_index(np, SMMU_MPAM_CMAX,
+						  n * 4,
+						  &mpam_cmax[n].txu_id);
+		if (ret)
+			goto out_free;
+
+		ret =  of_property_read_u32_index(np, SMMU_MPAM_CMAX,
+						  n * 4 + 1,
+						  &mpam_cmax[n].ris);
+		if (ret)
+			goto out_free;
+
+		ret =  of_property_read_u32_index(np, SMMU_MPAM_CMAX,
+						  n * 4 + 2,
+						  &mpam_cmax[n].partid);
+		if (ret)
+			goto out_free;
+
+		ret =  of_property_read_u32_index(np, SMMU_MPAM_CMAX,
+						  n * 4 + 3,
+						  &mpam_cmax[n].cmax);
+		if (ret)
+			goto out_free;
+
+		if (mpam_cmax[n].txu_id >= data->txu_mpam_data_cnt) {
+			pr_info("%s, idx:%d, txu_id:%d, cnt:%d",
+				__func__, n, mpam_cmax[n].txu_id,
+				data->txu_mpam_data_cnt);
+			WARN_ON(1);
+			mpam_cmax[n].txu_id = 0;
+			continue;
+		}
+		txu_mpam_data = &data->txu_mpam_data[mpam_cmax[n].txu_id];
+
+		if (mpam_cmax[n].ris > txu_mpam_data->ris_max) {
+			pr_info("%s, idx:%d, ris:%d, ris_max:%d",
+				__func__, n, mpam_cmax[n].ris,
+				txu_mpam_data->ris_max);
+			WARN_ON(1);
+			mpam_cmax[n].ris = 0;
+			continue;
+		}
+
+		if (mpam_cmax[n].partid > txu_mpam_data->partid_max) {
+			pr_info("%s, idx:%d, partid:%d, partid_max:%d",
+				__func__, n, mpam_cmax[n].partid,
+				txu_mpam_data->partid_max);
+			WARN_ON(1);
+			mpam_cmax[n].partid = 0;
+			continue;
+		}
+
+		// use tcu camx_wd to check dts's cmax value
+		if (mpam_cmax[n].cmax > txu_mpam_data->cmax_max_int) {
+			pr_info("%s, idx:%d, cmax:%d, cmax_max_int:%d",
+				__func__, n, mpam_cmax[n].cmax,
+				txu_mpam_data->cmax_max_int);
+			WARN_ON(1);
+			mpam_cmax[n].cmax = 0;
+			continue;
+		}
+	}
+
+	for (n = 0; n < mpam_cmax_cnt; n++)
+		mpam_set_txu_cmax(smmu, mpam_cmax[n].txu_id,
+				  mpam_cmax[n].partid,
+				  mpam_cmax[n].ris,
+				  mpam_cmax[n].cmax);
+
+out_free:
+	kfree(mpam_cmax);
+}
+
+static void __iomem *smmu_ioremap(struct device *dev, resource_size_t start,
+				      resource_size_t size)
+{
+	struct resource res = DEFINE_RES_MEM(start, size);
+
+	return devm_ioremap_resource(dev, &res);
+}
+
+static void smmu_mpam_register(struct arm_smmu_device *smmu)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	struct txu_mpam_data *mpam_data;
+	struct resource *res;
+	resource_size_t ioaddr;
+	int i, tbu_cnt;
+	u32 reg;
+
+	reg = readl_relaxed(smmu->base + ARM_SMMU_IDR3);
+	if (!FIELD_GET(IDR3_MPAM, reg))
+		goto out_free;
+
+	smmu->features |= ARM_SMMU_FEAT_MPAM;
+	tbu_cnt = SMMU_TBU_CNT(data->plat_data->smmu_type);
+	/* TCU + n TBUs all need remap */
+	data->txu_mpam_data = kcalloc(tbu_cnt + 1, sizeof(*data->txu_mpam_data),
+				      GFP_KERNEL);
+	if (!data->txu_mpam_data)
+		return;
+
+	data->txu_mpam_data_cnt = tbu_cnt + 1;
+	res = platform_get_resource(to_platform_device(smmu->dev),
+				    IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_info(smmu->dev, "%s get io resource fail\n", __func__);
+		goto out_free;
+	}
+
+	ioaddr = res->start;
+	mpam_data = &data->txu_mpam_data[0];
+	mpam_data->mpam_base = smmu_ioremap(smmu->dev,
+					    ioaddr + SMMU_MPAM_TCU_OFFSET,
+					    SMMU_MPAM_REG_SZ);
+
+	if (IS_ERR(mpam_data->mpam_base)) {
+		dev_info(smmu->dev, "%s mpam[0] base err\n", __func__);
+		goto out_free;
+	}
+
+	for (i = 0; i < tbu_cnt; i++) {
+		mpam_data = &data->txu_mpam_data[i + 1];
+		mpam_data->mpam_base
+			= smmu_ioremap(smmu->dev,
+				       ioaddr + SMMU_MPAM_TBUx_OFFSET(i),
+				       SMMU_MPAM_REG_SZ);
+		if (IS_ERR(mpam_data->mpam_base)) {
+			dev_info(smmu->dev,
+				 "%s mpam[%d] base err\n", __func__, i + 1);
+			goto out_free;
+		}
+	}
+
+	reg = readl_relaxed(smmu->base + ARM_SMMU_MPAMIDR);
+	data->partid_max = FIELD_GET(SMMU_MPAMIDR_PARTID_MAX, reg);
+	data->pmg_max = FIELD_GET(SMMU_MPAMIDR_PMG_MAX, reg);
+
+	for (i = 0; i < data->txu_mpam_data_cnt; i++) {
+		mpam_data = &data->txu_mpam_data[i];
+
+		reg = readl_relaxed(mpam_data->mpam_base + MPAMF_IDR_LO);
+		mpam_data->partid_max = FIELD_GET(MPAMF_IDR_LO_PARTID_MAX, reg);
+		mpam_data->pmg_max= FIELD_GET(MPAMF_IDR_LO_PMG_MAX, reg);
+		mpam_data->has_ccap_part= FIELD_GET(MPAMF_IDR_LO_HAS_CCAP_PART, reg);
+		mpam_data->has_msmon= FIELD_GET(MPAMF_IDR_LO_HAS_MSMON, reg);
+
+		reg = readl_relaxed(mpam_data->mpam_base + MPAMF_IDR_HI);
+		mpam_data->has_ris = FIELD_GET(MPAMF_IDR_HI_HAS_RIS, reg);
+		mpam_data->ris_max = FIELD_GET(MPAMF_IDR_HI_RIS_MAX, reg);
+
+		reg = readl_relaxed(mpam_data->mpam_base + MPAMF_CCAP_IDR);
+		mpam_data->cmax_max_int = (2 << FIELD_GET(CCAP_IDR_CMAX_WD, reg)) - 1;
+		mpam_data->has_cmax_softlim = FIELD_GET(CCAP_IDR_HAS_CMAX_SOFTLIM, reg);
+	}
+
+	smmu_mpam_config_set(smmu);
+
+	smmu_mpam_cmax_set(smmu);
+
+	return;
+
+out_free:
+	kfree(data->txu_mpam_data);
+	data->txu_mpam_data_cnt= 0;
+}
+
 static int mtk_smmu_hw_init(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
@@ -458,6 +792,8 @@ static int mtk_smmu_hw_init(struct arm_smmu_device *smmu)
 	data->hw_init_flag = 1;
 
 	ret = smmu_init_wpcfg(smmu);
+
+	smmu_mpam_register(smmu);
 
 	return ret;
 }

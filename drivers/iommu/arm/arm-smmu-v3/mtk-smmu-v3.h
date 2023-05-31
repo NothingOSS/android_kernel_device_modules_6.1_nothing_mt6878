@@ -363,6 +363,55 @@
 #define SMMUWP_TF_TBU(tbu)		FIELD_PREP(SMMUWP_TF_TBU_MSK, tbu)
 #define SMMUWP_TF_TBU_VAL(id)		FIELD_GET(SMMUWP_TF_TBU_MSK, id)
 
+/* SMMU MPAM */
+#define SMMU_MPAM_TCU_OFFSET		0x3000
+#define SMMU_MPAM_TBUx_OFFSET(tbu)	(0x43000 + 0x20000 * (tbu))
+#define SMMU_MPAM_REG_SZ		0x1000
+
+#define MPAMF_IDR_LO			0x0
+#define MPAMF_IDR_LO_PARTID_MAX		GENMASK(15, 0)
+#define MPAMF_IDR_LO_PMG_MAX		GENMASK(23, 16)
+#define MPAMF_IDR_LO_HAS_CCAP_PART	BIT(24)
+#define MPAMF_IDR_LO_HAS_MSMON		BIT(30)
+
+#define MPAMF_IDR_HI			0x4
+#define MPAMF_IDR_HI_HAS_RIS		BIT(0)
+#define MPAMF_IDR_HI_RIS_MAX		GENMASK(27, 24)
+
+#define MPAMF_CCAP_IDR			0x38
+#define CCAP_IDR_CMAX_WD		GENMASK(5, 0)
+#define CCAP_IDR_HAS_CMAX_SOFTLIM	BIT(31)
+
+#define MPAMF_CSUMON_IDR		0x88
+#define CSUMON_IDR_NUM_MON		GENMASK(15, 0)
+#define CSUMON_IDR_HAS_CAPTURE		BIT(31)
+
+#define MPAMCFG_PART_SEL		0x0100
+#define PART_SEL_PARTID_SEL		GENMASK(15, 0)
+#define PART_SEL_INTERNAL		BIT(16)
+#define PART_SEL_RIS			GENMASK(27, 24)
+
+#define MPAMCFG_CMAX			0x0108
+#define MPAMCFG_CMAX_CMAX		GENMASK(15, 8)
+#define MPAMCFG_CMAX_SOFTLIM		BIT(31)
+
+#define MSMON_CFG_MON_SEL		0x800
+#define CFG_MON_SEL_MON_SEL		GENMASK(1, 0)
+#define CFG_MON_SEL_RIS			GENMASK(27, 24)
+
+#define MSMON_CFG_CSU_FLT		0x810
+#define CSU_FLT_PARTID			GENMASK(15, 0)
+#define CSU_FLT_PMG			GENMASK(23, 16)
+
+#define MSMON_CFG_CSU_CTL		0x818
+#define CSU_CTL_MATCH_PARTID		BIT(16)
+#define CSU_CTL_MATCH_PMG		BIT(17)
+#define CSU_CTL_EN			BIT(31)
+
+#define MSMON_CSU			0x840
+#define MSMON_CSU_VALUE			GENMASK(30, 0)
+#define MSMON_NRDY			BIT(31)
+
 enum mtk_smmu_type {
 	MM_SMMU,
 	APU_SMMU,
@@ -419,6 +468,18 @@ struct mtk_smmu_plat_data {
 	enum mtk_smmu_type		smmu_type;
 };
 
+struct txu_mpam_data {
+	void __iomem			*mpam_base;
+	u32				cmax_max_int;
+	bool				has_cmax_softlim;
+	u16				partid_max;
+	u8				pmg_max;
+	bool				has_ccap_part;
+	bool				has_msmon;
+	bool				has_ris;
+	u32				ris_max;
+};
+
 struct mtk_pm_ops {
 	int (*pm_get)(void);
 	int (*pm_put)(void);
@@ -436,6 +497,10 @@ struct mtk_smmu_data {
 	u32				iommu_group_nr;
 	u32				smmu_trans_type;
 	u32				hw_init_flag;
+	struct txu_mpam_data		*txu_mpam_data;
+	u32				txu_mpam_data_cnt;
+	u32				partid_max;
+	u32				pmg_max;
 
 	u32				irq_cnt;
 	unsigned long			irq_first_jiffies;

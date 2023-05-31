@@ -9,3 +9,4 @@ arm_smmu_v3-objs := $(arm_smmu_v3-objs-y)
 
 obj-$(CONFIG_DEVICE_MODULES_MTK_SMMU_V3_PMU) += mtk-smmuv3-pmu.o
 obj-$(CONFIG_DEVICE_MODULES_MTK_SMMU_V3_LMU) += mtk-smmuv3-lmu.o
+obj-$(CONFIG_DEVICE_MODULES_MTK_SMMU_V3_MPAM_MON) += mtk-smmuv3-mpam-mon.o

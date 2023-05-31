@@ -51,4 +51,15 @@ config DEVICE_MODULES_MTK_SMMU_V3_LMU
 
 	  If unsure, say N here.
 
+config DEVICE_MODULES_MTK_SMMU_V3_MPAM_MON
+	tristate "MediaTek SMMUV3 MPAM Resource Monitor Support"
+	depends on DEVICE_MODULES_ARM_SMMU_V3
+
+	help
+	  Support for the SMMU v3 MPAM resource monitor on mediatek SOCs.
+	  MPAM resource monitor is used to monitor the cache storage usage
+	  in the SMMU TCU and TBUs.
+
+	  If unsure, say N here.
+
 endif # IOMMU_SUPPORT
