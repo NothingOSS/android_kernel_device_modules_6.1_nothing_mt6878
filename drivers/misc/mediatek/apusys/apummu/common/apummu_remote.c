@@ -90,7 +90,7 @@ int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint3
 	g_ammu_msg->send_sn++;
 
 	ptr = (uint32_t *)request;
-	AMMU_LOG_INFO("Send [%x][%x][%x][%x][%x][%x][%x][%x]\n",
+	AMMU_LOG_VERBO("Send [%x][%x][%x][%x][%x][%x][%x][%x]\n",
 			ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5], ptr[6], ptr[7]);
 
 	/* power on */
@@ -130,7 +130,7 @@ int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint3
 		}
 	}
 
-	AMMU_LOG_INFO("Wait for Getting cmd\n");
+	// AMMU_LOG_INFO("Wait for Getting cmd\n");
 	do {
 		ret = wait_event_interruptible_timeout(
 				g_ammu_msg->lock.wait_rx,
@@ -155,7 +155,7 @@ int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint3
 		list_del(pos);
 		g_ammu_msg->count--;
 		rmesg = (struct apummu_msg *) &item->msg;
-		AMMU_LOG_INFO("item sn(%d) cmd(%x) option(%x) ack (%x)\n",
+		AMMU_LOG_VERBO("item sn(%d) cmd(%x) option(%x) ack (%x)\n",
 				rmesg->sn, rmesg->cmd, rmesg->option, rmesg->ack);
 
 		memcpy(reply, rmesg, sizeof(struct apummu_msg));
@@ -200,7 +200,7 @@ int apummu_remote_rx_cb(void *drvinfo, void *data, int len)
 	memcpy(&item->msg, data, len);
 
 	ptr = (uint32_t *)data;
-	AMMU_LOG_INFO("Rcv [%x][%x][%x][%x][%x][%x][%x][%x]\n",
+	AMMU_LOG_VERBO("Rcv [%x][%x][%x][%x][%x][%x][%x][%x]\n",
 			ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5], ptr[6], ptr[7]);
 
 	spin_lock_irqsave(&g_ammu_msg->lock.lock_rx, flags);
