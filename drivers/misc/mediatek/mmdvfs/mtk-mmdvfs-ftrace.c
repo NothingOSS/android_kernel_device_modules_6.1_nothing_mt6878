@@ -31,6 +31,12 @@ void ftrace_user_opp_v3_vmm(unsigned long user, unsigned long opp)
 }
 EXPORT_SYMBOL_GPL(ftrace_user_opp_v3_vmm);
 
+void ftrace_user_opp_v3(unsigned long user, unsigned long opp)
+{
+	trace_mmdvfs__user_opp_v3(user, opp);
+}
+EXPORT_SYMBOL_GPL(ftrace_user_opp_v3);
+
 MODULE_DESCRIPTION("MMDVFS FTRACE");
 MODULE_AUTHOR("Anthony Huang<anthony.huang@mediatek.com>");
 MODULE_LICENSE("GPL");

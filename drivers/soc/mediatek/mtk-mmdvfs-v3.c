@@ -1418,7 +1418,7 @@ static int mmdvfs_vcp_init_thread(void *data)
 		writel_relaxed(MAX_OPP, MEM_MUX_MIN(i));
 		writel_relaxed(MAX_OPP, MEM_FORCE_CLK(i));
 	}
-	for (i = 0; i < MMDVFS_VCP_USER_NUM; i++)
+	for (i = 0; i < MMDVFS_USER_NUM; i++)
 		writel_relaxed(MAX_OPP, MEM_USR_OPP(i));
 
 	if (mmdvfs_lp_mode)
@@ -1729,8 +1729,6 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 
 	user->rate = rate;
 	mux->rate = 0ULL;
-	if (MEM_BASE)
-		writel_relaxed(rate, MEM_AP_USR_FREQ(user->id));
 
 	for (i = 0; i < mux->user_num; i++)
 		if (mux->rate < mux->user[i]->rate)
@@ -1741,6 +1739,12 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 			break;
 
 	mux->opp = (mux->freq_num - ((i == mux->freq_num) ? (i - 1) : i) - 1);
+
+	if (MEM_BASE) {
+		writel_relaxed(rate, MEM_USR_FREQ(user->id));
+		writel_relaxed(mux->opp, MEM_USR_OPP(user->id));
+	}
+
 	if (mux->opp == mux->last)
 		return 0;
 

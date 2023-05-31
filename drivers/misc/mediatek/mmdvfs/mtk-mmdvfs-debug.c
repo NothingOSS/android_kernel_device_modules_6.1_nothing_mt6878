@@ -243,16 +243,11 @@ static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 		seq_printf(file, "power: %u opp: %u gear: %u\n",
 			i, readl(MEM_PWR_OPP(i)), readl(MEM_PWR_CUR_GEAR(i)));
 
-	//ap user latest request freq
-	seq_puts(file, "ap user latest request freq\n");
+	//user latest request freq/opp
+	seq_puts(file, "user latest request freq/opp\n");
 	for (i = 0; i < MMDVFS_USER_NUM; i++)
-		if (readl(MEM_AP_USR_FREQ(i)))
-			seq_printf(file, "ap_user: %u freq: %u\n", i, readl(MEM_AP_USR_FREQ(i)));
-
-	//vcp user latest request opp
-	seq_puts(file, "vcp user latest request opp\n");
-	for (i = 0; i < MMDVFS_VCP_USER_NUM; i++)
-		seq_printf(file, "vcp_user: %u opp: %u\n", i, readl(MEM_USR_OPP(i)));
+		seq_printf(file, "user: %u freq: %u opp: %u\n",
+			i, readl(MEM_USR_FREQ(i)), readl(MEM_USR_OPP(i)));
 
 	// mux opp records
 	i = readl(MEM_REC_MUX_CNT) % MEM_REC_CNT_MAX;
@@ -408,41 +403,42 @@ static int mmdvfs_v1_dbg_ftrace_thread(void *data)
 
 static int mmdvfs_v3_dbg_ftrace_thread(void *data)
 {
-	int retry = 0;
 	s32 i;
 
-	if (!g_mmdvfs || !g_mmdvfs->release_step0) {
+	if (!g_mmdvfs || !mmdvfs_is_init_done()) {
 		ftrace_v3_ena = false;
 		return 0;
 	}
 
-	MMDVFS_DBG("mmdvfs_v3 init not ready");
-	while (!mmdvfs_is_init_done()) {
-		if (++retry > 20) {
-			ftrace_v3_ena = false;
-			MMDVFS_DBG("mmdvfs_v3 init not ready");
-			return 0;
-		}
-		ssleep(2);
-	}
-
+	MMDVFS_DBG("wait mmdvfs_v3 ready");
 	if (!MEM_BASE) {
+		MMDVFS_DBG("mmdvfs_v3 MEM_BASE not ready");
 		ftrace_v3_ena = false;
 		return 0;
 	}
 
 	MMDVFS_DBG("mmdvfs_v3 init & MEM_BASE ready");
 	while (!kthread_should_stop()) {
-		// power opp
-		for (i = 0; i <= PWR_MMDVFS_VMM; i++)
-			ftrace_pwr_opp_v3(i, readl(MEM_VOTE_OPP_PWR(i)));
+		if (mmdvfs_get_version()) {  //mmdvfs v3.5
+			// power opp
+			for (i = 0; i < PWR_MMDVFS_NUM; i++)
+				ftrace_pwr_opp_v3(i, readl(MEM_PWR_OPP(i)));
 
-		// user opp
-		for (i = 0; i < USER_NUM; i++) {
-			if (g_mmdvfs->user_pwr[i] == PWR_MMDVFS_VCORE)
-				ftrace_user_opp_v3_vcore(i, readl(MEM_VOTE_OPP_USR(i)));
-			if (g_mmdvfs->user_pwr[i] == PWR_MMDVFS_VMM)
-				ftrace_user_opp_v3_vmm(i, readl(MEM_VOTE_OPP_USR(i)));
+			// user opp
+			for (i = 0; i < MMDVFS_USER_NUM; i++)
+				ftrace_user_opp_v3(i, readl(MEM_USR_OPP(i)));
+		} else {                     //mmdvfs v3.0
+			// power opp
+			for (i = 0; i <= PWR_MMDVFS_VMM; i++)
+				ftrace_pwr_opp_v3(i, readl(MEM_VOTE_OPP_PWR(i)));
+
+			// user opp
+			for (i = 0; i < USER_NUM; i++) {
+				if (g_mmdvfs->user_pwr[i] == PWR_MMDVFS_VCORE)
+					ftrace_user_opp_v3_vcore(i, readl(MEM_VOTE_OPP_USR(i)));
+				if (g_mmdvfs->user_pwr[i] == PWR_MMDVFS_VMM)
+					ftrace_user_opp_v3_vmm(i, readl(MEM_VOTE_OPP_USR(i)));
+			}
 		}
 
 		msleep(1);
