@@ -6936,7 +6936,7 @@
 				<GIC_SPI 737 IRQ_TYPE_LEVEL_HIGH 0>;
 			mboxes = <&adspsys 0>, /*channel 0*/
 				<&adspsys 1>; /*channel 1*/
-			feature-control-bits = /bits/ 64 <0x0000000028e78fff>;
+			feature-control-bits = /bits/ 64 <0x00000000a8e78fff>;
 		};
 
 		adsp_core1: adsp-core1@1e0c0000 {
@@ -15067,7 +15067,7 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 		mtk-dsp-dataprovider = <0x0 0xffffffff 0x14 0xffffffff 0x30000>;
 		mtk-dsp-call-final = <0x5 0xc 0x11 0x10 0x18000>;
 		mtk-dsp-fast = <0x5 0xffffffff 0xffffffff 0xffffffff 0x5000>;
-		mtk-dsp-spatializer = <0x0 0xffffffff 0xffffffff 0xffffffff 0x5000>;
+		mtk-dsp-spatializer = <0x1f 0xffffffff 0xffffffff 0xffffffff 0x5000>;
 		mtk-dsp-ktv = <0x1 0x5 0x12 0xffffffff 0x10000>;
 		mtk-dsp-capture-raw = <0x1 0xffffffff 0xffffffff 0xffffffff 0x20000>;
 		mtk-dsp-fm = <0x1 0xffffffff 0x11 0xffffffff 0x10000>;
