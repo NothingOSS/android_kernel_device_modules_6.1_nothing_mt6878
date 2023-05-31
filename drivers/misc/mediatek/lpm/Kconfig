@@ -113,3 +113,11 @@ config MTK_CPU_IDLE_IPI_SUPPORT
 	  Mediatek cpuidle ipi prediction policy.
 	  The mechanism is based on ipi duration to
 	  predict this cpu idle time.
+
+config MTK_SYS_RES_DBG_SUPPORT
+	tristate "Meditaek System Resource Debug Info Support"
+	help
+	  Select MTK_SYS_RES_DBG_SUPPORT to enable
+	  MediaTek system resource debug information dump.
+	  Select "m" if you want to enable.
+	  Select "n" if unsure.

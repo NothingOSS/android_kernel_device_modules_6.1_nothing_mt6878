@@ -14,6 +14,7 @@
 #include <linux/wakeup_reason.h>
 #include <linux/syscore_ops.h>
 #include <linux/suspend.h>
+#include <linux/spinlock.h>
 
 #include <lpm.h>
 #include <lpm_module.h>
@@ -29,6 +30,12 @@
 #include <lpm_timer.h>
 #include <mtk_lpm_sysfs.h>
 #include <mtk_cpupm_dbg.h>
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+#include <lpm_sys_res.h>
+#include <lpm_sys_res_plat.h>
+#include <lpm_sys_res_mbrain_dbg.h>
+#include <lpm_sys_res_mbrain_plat.h>
+#endif
 
 #define PCM_32K_TICKS_PER_SEC		(32768)
 #define PCM_TICK_TO_SEC(TICK)	(TICK / PCM_32K_TICKS_PER_SEC)
@@ -569,6 +576,15 @@ static void suspend_show_detailed_wakeup_reason
 {
 }
 
+#define SPM_SYS_RES_VCORE_INDEX (288)
+#define SPM_SYS_RES_PMIC_INDEX  (289)
+#define SPM_SYS_RES_26M_INDEX   (290)
+#define SPM_SYS_RES_INFRA_INDEX (291)
+#define SPM_SYS_RES_BUSPLL_INDEX    (292)
+#define SPM_SYS_RES_EMI_INDEX   (293)
+#define SPM_SYS_RES_APSRC_INDEX (287)
+
+
 static int lpm_show_message(int type, const char *prefix, void *data)
 {
 	struct lpm_spm_wake_status *wakesrc = log_help.wakesrc;
@@ -588,7 +604,15 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 	int i = 0, log_size = 0, log_type = 0;
 	unsigned int wr = WR_UNKNOWN;
 	const char *scenario = prefix ?: "UNKNOWN";
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+	unsigned long flag;
+	struct lpm_sys_res_ops *sys_res_ops;
+	struct sys_res_record *sys_res_record;
+	uint64_t suspend_time, sys_index, threshold, ratio;
+	int j;
 
+	sys_res_ops = get_lpm_sys_res_ops();
+#endif
 	log_type = ((struct lpm_issuer *)data)->log_type;
 
 	if (log_type == LOG_MCUSYS_NOT_OFF) {
@@ -827,6 +851,50 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 			PCM_TICK_TO_SEC((wakesrc->timer_out %
 				PCM_32K_TICKS_PER_SEC)
 			* 1000));
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+		if (sys_res_ops && sys_res_ops->update) {
+			spin_lock_irqsave(&sys_res_ops->lock, flag);
+			sys_res_ops->update();
+			spin_unlock_irqrestore(&sys_res_ops->lock, flag);
+		}
+
+		if (sys_res_ops && sys_res_ops->get_last_suspend) {
+			spin_lock_irqsave(&sys_res_ops->lock, flag);
+			sys_res_record = sys_res_ops->get_last_suspend();
+			suspend_time = sys_res_ops->get_detail(sys_res_record, SYS_RES_SUSPEND_TIME, 0);
+			pr_info("[name:spm&][SPM] ms suspend %llu, Vcore %llu, 26M %llu, pmic %llu, infra %llu, buspll %llu, emi %llu, apsrc %llu",
+			suspend_time,
+			sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_TIME, SPM_SYS_RES_VCORE_INDEX),
+			sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_TIME, SPM_SYS_RES_26M_INDEX),
+			sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_TIME, SPM_SYS_RES_PMIC_INDEX),
+			sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_TIME, SPM_SYS_RES_INFRA_INDEX),
+			sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_TIME, SPM_SYS_RES_BUSPLL_INDEX),
+			sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_TIME, SPM_SYS_RES_EMI_INDEX),
+			sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_TIME, SPM_SYS_RES_APSRC_INDEX));
+
+			for (i = 0; i <= VCORE_REQ; i++){
+				local_ptr = sys_res_group_info[i].name;
+				sys_index = sys_res_group_info[i].sys_index;
+				threshold = sys_res_group_info[i].threshold;
+				ratio = sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_SUSPEND_RATIO, sys_index);
+				pr_info("[name:spm&][SPM] sys %s, threshold %llu active ratio %llu\n",
+					local_ptr, threshold, ratio);
+				if (ratio < threshold)
+					continue;
+				for (j = 0; j < sys_res_group_info[i].group_num; j++) {
+					pr_info("[name:spm&][SPM] group id %d, sig id 0x%llx active ratio %llu\n",
+						i,
+						sys_res_ops->get_detail(sys_res_record,
+									SYS_RES_SIG_ID,
+									j + sys_res_group_info[i].sig_table_index),
+						sys_res_ops->get_detail(sys_res_record,
+									SYS_RES_SIG_SUSPEND_RATIO,
+									j + sys_res_group_info[i].sig_table_index));
+				}
+			}
+			spin_unlock_irqrestore(&sys_res_ops->lock, flag);
+		}
+#endif
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 		log_md_sleep_info();
 #endif
@@ -863,7 +931,13 @@ static int __init mt6989_dbg_device_initcall(void)
 		pr_info("[name:spm&][SPM] Failed to register dbg plat ops notifier.\n");
 
 	lpm_spm_fs_init(pwr_ctrl_str, PW_MAX_COUNT);
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+	ret = lpm_sys_res_plat_init();
+	if(ret)
+		pr_info("[name:spm&][SPM] Failed to init sys_res plat\n");
 
+	lpm_sys_res_mbrain_plat_init();
+#endif
 	return 0;
 }
 
@@ -895,6 +969,10 @@ mt6989_dbg_init_fail:
 void __exit mt6989_dbg_exit(void)
 {
 	lpm_trace_event_deinit();
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+	lpm_sys_res_plat_deinit();
+	lpm_sys_res_mbrain_plat_deinit();
+#endif
 }
 
 module_init(mt6989_dbg_init);

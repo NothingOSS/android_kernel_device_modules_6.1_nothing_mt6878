@@ -12,6 +12,9 @@
 #include <lpm_module.h>
 #include <lpm_dbg_fs_common.h>
 #include <lpm_dbg_logger.h>
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+#include <lpm_sys_res.h>
+#endif
 
 static int __init dbg_early_initcall(void)
 {
@@ -63,7 +66,9 @@ int __init lpm_dbg_init(void)
 
 	if (ret)
 		goto dbg_init_fail;
-
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+	lpm_sys_res_init();
+#endif
 	return 0;
 
 dbg_init_fail:
@@ -77,6 +82,9 @@ void __exit lpm_dbg_exit(void)
 	lpm_dbg_fs_exit();
 	mtk_cpupm_dbg_exit();
 	lpm_logger_deinit();
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+	lpm_sys_res_exit();
+#endif
 }
 
 module_init(lpm_dbg_init);

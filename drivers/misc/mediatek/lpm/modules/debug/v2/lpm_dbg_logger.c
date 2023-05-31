@@ -15,6 +15,7 @@
 #include <linux/suspend.h>
 #include <linux/syscore_ops.h>
 #include <linux/ctype.h>
+#include <linux/spinlock.h>
 
 #include <lpm.h>
 #include <lpm_timer.h>
@@ -25,6 +26,9 @@
 #include <lpm_dbg_syssram_v1.h>
 #include <lpm_dbg_logger.h>
 #include <lpm_dbg_fs_common.h>
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+#include <lpm_sys_res.h>
+#endif
 
 #define plat_mmio_read(offset)	__raw_readl(lpm_spm_base + offset)
 
@@ -479,6 +483,10 @@ static int lpm_log_timer_func(unsigned long long dur, void *priv)
 	unsigned long smc_fired = lpm_smc_cpu_pm_lp(CPU_PM_RECORD_CTRL,
 			MT_LPM_SMC_ACT_GET, 0, 0);
 	unsigned long name_val = 0;
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+	unsigned long flag;
+	struct lpm_sys_res_ops *sys_res_ops;
+#endif
 	#define STATE_NAME_LEN         (16)
 	char state_name[STATE_NAME_LEN] = {0};
 
@@ -520,6 +528,14 @@ static int lpm_log_timer_func(unsigned long long dur, void *priv)
 	pm_get_active_wakeup_sources(wakeup_sources, MAX_SUSPEND_ABORT_LEN);
 	pr_info("[name:spm&] %s\n", wakeup_sources);
 
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+	sys_res_ops = get_lpm_sys_res_ops();
+	if (sys_res_ops && sys_res_ops->update) {
+		spin_lock_irqsave(&sys_res_ops->lock, flag);
+		sys_res_ops->update();
+		spin_unlock_irqrestore(&sys_res_ops->lock, flag);
+	}
+#endif
 	timer->fired = smc_fired;
 	return 0;
 }
