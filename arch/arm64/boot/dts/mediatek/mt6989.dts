@@ -11559,6 +11559,8 @@
 		scp-pm-notify = "disable";
 		scp-thermal-wq = "disable";
 		scp-secure-ipc = "enable";
+		scp-low-pwr-dbg = "enable";
+
 		//scp_aovmem_key = "mediatek,scp_aov_reserved";
 		scp-mem-key = "mediatek,reserve-memory-scp_share";
 
@@ -11576,7 +11578,8 @@
 				  <11 0x100 0x0>, /* sensor custom writer */
 				  <12 0x100 0x0>, /* sensor custom reader */
 				  <13 0x780000 0x0>, /* aov */
-				  <15 0x10000 0x0>; /* aod */
+				  <15 0x10000 0x0>, /* aod */
+				  <19 0x100 0x0>;  /* low power debug */
 
 		memorydump = <0x340000>, /* l2tcm */
 				 <0x03c000>, /* l1c */
