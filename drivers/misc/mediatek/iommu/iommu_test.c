@@ -1643,7 +1643,7 @@ static int smmu_test_cqdma_tf(int dma_engine, struct platform_device *pdev)
 		mtk_smmu_wpreg_dump(NULL, i);
 
 	for (i = 0; i < SMMU_TYPE_NUM; i++)
-		mtk_smmu_pgtable_dump(NULL, i);
+		mtk_smmu_pgtable_dump(NULL, i, true);
 
 	/* backup dma_addr */
 	dma_addr0 = res[0].dma_addr;

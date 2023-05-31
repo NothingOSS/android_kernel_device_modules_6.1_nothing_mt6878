@@ -87,7 +87,7 @@ void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
 void mtk_smmu_wpreg_dump(struct seq_file *s, u32 smmu_type);
 void mtk_smmu_ste_cd_dump(struct seq_file *s, u32 smmu_type);
 void mtk_smmu_ste_cd_info_dump(struct seq_file *s, u32 smmu_type, u32 sid);
-void mtk_smmu_pgtable_dump(struct seq_file *s, u32 smmu_type);
+void mtk_smmu_pgtable_dump(struct seq_file *s, u32 smmu_type, bool dump_rawdata);
 void mtk_smmu_pgtable_ops_dump(struct seq_file *s, struct io_pgtable_ops *ops);
 u64 mtk_smmu_iova_to_iopte(struct io_pgtable_ops *ops, u64 iova);
 #else /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
@@ -113,7 +113,7 @@ static inline void mtk_smmu_ste_cd_info_dump(struct seq_file *s, u32 smmu_type, 
 {
 }
 
-static inline void mtk_smmu_pgtable_dump(struct seq_file *s, u32 smmu_type)
+static inline void mtk_smmu_pgtable_dump(struct seq_file *s, u32 smmu_type, bool dump_rawdata)
 {
 }
 
