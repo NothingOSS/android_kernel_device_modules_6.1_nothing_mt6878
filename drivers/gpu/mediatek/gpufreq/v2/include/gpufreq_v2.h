@@ -81,6 +81,7 @@ enum gpufreq_dvfs_state {
 	DVFS_AGING_KEEP    = BIT(4), /* 0001 0000 */
 	DVFS_SLEEP         = BIT(5), /* 0010 0000 */
 	DVFS_MSSV_TEST     = BIT(6), /* 0100 0000 */
+	DVFS_VMETER_CALI   = BIT(7), /* 1000 0000 */
 };
 
 enum gpufreq_target {
@@ -169,6 +170,28 @@ enum gpufreq_opp_direct {
 	SCALE_STAY,
 };
 
+enum gpufreq_dvfs_mode {
+	LEGACY_SW_DVFS    = 0, /* default */
+	SW_DUAL_LOOP_DVFS = 1,
+	HW_DUAL_LOOP_DVFS = 2,
+};
+
+enum gpufreq_delsel_mode {
+	SW_DELSEL = 0, /* default */
+	HW_DELSEL = 1,
+};
+
+enum gpufreq_gpm3_prot_mode {
+	GPM3_DISABLE     = 0, /* default */
+	GPM3_0_IMAX_PROT = 1,
+	GPM3_5_IMAX_PROT = 2,
+};
+
+enum gpufreq_brcast_mode {
+	BRCAST_SW_REFILLED   = 0, /* default */
+	BRCAST_WITH_AUTO_DMA = 1,
+};
+
 /**************************************************
  * Structure
  **************************************************/
@@ -251,6 +274,24 @@ struct gpufreq_gpm3_info {
 struct gpufreq_reg_info {
 	unsigned int addr;
 	unsigned int val;
+};
+
+struct gpufreq_ptp3_shared_status {
+	enum gpufreq_dvfs_mode dvfs_mode;
+	enum gpufreq_gpm3_prot_mode gpm3_prot_mode;
+	enum gpufreq_brcast_mode brcast_mode;
+	enum gpufreq_delsel_mode delsel_mode;
+	unsigned int hbvc_freq_ctrl_support;
+	unsigned int hbvc_volt_ctrl_support;
+	unsigned int hbvc_preoc_support;
+	unsigned int hbvc_preoc_mode;
+	unsigned int brisket_fll_mode;
+	unsigned int brisket_atmc_mode;
+	unsigned int brisket_vmeter_mode;
+	unsigned int brisket_tmeter_mode;
+	unsigned int brisket_cpmeter_mode;
+	unsigned int auto_dma_refill_top_brisket;
+	unsigned int auto_dma_refill_top_gpm;
 };
 
 struct gpu_ptp3_info {
@@ -360,6 +401,7 @@ struct gpufreq_shared_status {
 	struct gpufreq_adj_info avs_table_gpu[GPUFREQ_MAX_ADJ_NUM];
 	struct gpufreq_adj_info avs_table_stack[GPUFREQ_MAX_ADJ_NUM];
 	struct gpufreq_gpm3_info gpm3_table[GPUFREQ_MAX_GPM3_NUM];
+	struct gpufreq_ptp3_shared_status ptp3_status;
 	struct gpu_ptp3_info ptp3_info;
 };
 

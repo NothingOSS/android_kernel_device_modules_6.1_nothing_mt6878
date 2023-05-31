@@ -53,6 +53,7 @@ static DEFINE_MUTEX(gpufreq_debug_lock);
 static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 {
 	unsigned long long power_time = 0;
+	struct gpufreq_ptp3_shared_status ptp3_status = {};
 
 	mutex_lock(&gpufreq_debug_lock);
 
@@ -165,22 +166,43 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		g_shared_status->temper_comp_norm_stack,
 		g_shared_status->temper_comp_high_stack);
 	seq_printf(m,
-		"%-16s inFreq: %d/%d, outFreq: %d/%d, CC:%d/%d, FC:%d/%d\n",
-		"[MFGSYS Config]",
-		g_shared_status->ptp3_info.infreq0,
-		g_shared_status->ptp3_info.infreq1,
-		g_shared_status->ptp3_info.outfreq0,
-		g_shared_status->ptp3_info.outfreq1,
-		g_shared_status->ptp3_info.hw_cc,
-		g_shared_status->ptp3_info.sw_cc,
-		g_shared_status->ptp3_info.hw_fc,
-		g_shared_status->ptp3_info.sw_fc);
-	seq_printf(m,
 		"%-16s DBGVer: 0x%08x, PTPVer: 0x%04x, SBVer: 0x%04x\n",
 		"[MFGSYS Config]",
 		g_shared_status->dbg_version,
 		g_shared_status->ptp_version,
 		g_shared_status->sb_version);
+
+	ptp3_status = g_shared_status->ptp3_status;
+	seq_printf(m,
+		"%-16s DVFSMode: %s, ImaxProt: %s, HBVCFreqCtrl: %s, HBVCVoltCtrl: %s\n",
+		"[PTP3 Config]",
+		(ptp3_status.dvfs_mode == HW_DUAL_LOOP_DVFS ? "HW_LOOP" :
+		(ptp3_status.dvfs_mode == SW_DUAL_LOOP_DVFS ? "SW_LOOP" : "LEGACY")),
+		(ptp3_status.gpm3_prot_mode == GPM3_5_IMAX_PROT ? "3.5" :
+		(ptp3_status.gpm3_prot_mode == GPM3_0_IMAX_PROT ? "3.0" : "Disable")),
+		ptp3_status.hbvc_freq_ctrl_support ? "Enable" : "Disable",
+		ptp3_status.hbvc_volt_ctrl_support ? "Enable" : "Disable");
+	seq_printf(m,
+		"%-16s BRCAST: %s, DELSEL: %s, PreOC: %s\n",
+		"[PTP3 Config]",
+		ptp3_status.brcast_mode == BRCAST_WITH_AUTO_DMA ? "AutoDMA" : "SW",
+		ptp3_status.delsel_mode == HW_DELSEL ? "HW" : "SW",
+		ptp3_status.hbvc_preoc_mode ? "Enable" : "Disable");
+	seq_printf(m,
+		"%-16s FLL: %s, ATMC: %s, Vmeter: %s, Tmeter: %s, CPmeter: %s\n",
+		"[PTP3 Config]",
+		ptp3_status.brisket_fll_mode ? "Enable" : "Disable",
+		ptp3_status.brisket_atmc_mode ? "Enable" : "Disable",
+		ptp3_status.brisket_vmeter_mode ? "Enable" : "Disable",
+		ptp3_status.brisket_tmeter_mode ? "Enable" : "Disable",
+		ptp3_status.brisket_cpmeter_mode ? "Enable" : "Disable");
+	seq_printf(m,
+		"%-16s inFreq: %d/%d, outFreq: %d/%d, CC: %d/%d, FC: %d/%d\n",
+		"[PTP3 Config]",
+		g_shared_status->ptp3_info.infreq0, g_shared_status->ptp3_info.infreq1,
+		g_shared_status->ptp3_info.outfreq0, g_shared_status->ptp3_info.outfreq1,
+		g_shared_status->ptp3_info.hw_cc, g_shared_status->ptp3_info.sw_cc,
+		g_shared_status->ptp3_info.hw_fc, g_shared_status->ptp3_info.sw_fc);
 
 	mutex_unlock(&gpufreq_debug_lock);
 
