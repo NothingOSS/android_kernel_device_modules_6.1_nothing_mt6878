@@ -874,8 +874,10 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 	dcache_inval_poc((unsigned long)buf->va_base,
 		(unsigned long)(buf->va_base + CMDQ_BUF_ALLOC_SIZE));
 #endif
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	*((u64 *)buf->va_base) = CMDQ_BUF_INIT_VAL;
 	*((u64 *)buf->va_base + 1) = CMDQ_BUF_INIT_VAL;
+#endif
 	buf->alloc_time = sched_clock();
 	list_add_tail(&buf->list_entry, &pkt->buf);
 	pkt->buf_cnt += 1;
@@ -978,8 +980,9 @@ s32 cmdq_pkt_add_cmd_buffer(struct cmdq_pkt *pkt)
 	prev_va = (u64 *)(prev->va_base + CMDQ_CMD_BUFFER_SIZE -
 		CMDQ_INST_SIZE);
 	*((u64 *)buf->va_base) = *prev_va;
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	*((u64 *)buf->va_base + 1) = CMDQ_BUF_INIT_VAL;
-
+#endif
 	/* insert jump to jump start of new buffer.
 	 * jump to absolute addr
 	 */
@@ -1240,7 +1243,7 @@ s32 cmdq_pkt_append_command(struct cmdq_pkt *pkt, u16 arg_c, u16 arg_b,
 
 	buf = list_last_entry(&pkt->buf, typeof(*buf), list_entry);
 	va = buf->va_base + CMDQ_CMD_BUFFER_SIZE - pkt->avail_buf_size;
-
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	if (pkt->avail_buf_size >= CMDQ_CMD_BUFFER_SIZE - CMDQ_INST_SIZE &&
 		!buf->copy && *((u64 *)va) != CMDQ_BUF_INIT_VAL) {
 		struct cmdq_client *client = pkt->cl;
@@ -1254,7 +1257,7 @@ s32 cmdq_pkt_append_command(struct cmdq_pkt *pkt, u16 arg_c, u16 arg_b,
 		if (pkt->cl)
 			cmdq_mbox_check_buffer(client->chan, buf);
 	}
-
+#endif
 	cmdq_pkt_instr_encoder(va, arg_c, arg_b, arg_a, s_op, arg_c_type,
 		arg_b_type, arg_a_type, code);
 	pkt->cmd_buf_size += CMDQ_INST_SIZE;
