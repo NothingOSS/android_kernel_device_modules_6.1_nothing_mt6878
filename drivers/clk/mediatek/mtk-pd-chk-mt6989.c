@@ -986,7 +986,6 @@ static u32 get_pd_pwr_status(int pd_id)
 }
 
 static int off_mtcmos_id[] = {
-	MT6989_CHK_PD_PERI_USB0,
 	MT6989_CHK_PD_ADSP_AO,
 	MT6989_CHK_PD_ISP_TRAW,
 	MT6989_CHK_PD_ISP_DIP1,
@@ -1030,6 +1029,7 @@ static int notice_mtcmos_id[] = {
 	MT6989_CHK_PD_PEXTP_MAC1,
 	MT6989_CHK_PD_PEXTP_PHY0,
 	MT6989_CHK_PD_PEXTP_PHY1,
+	MT6989_CHK_PD_PERI_USB0,
 	PD_NULL,
 };
 
