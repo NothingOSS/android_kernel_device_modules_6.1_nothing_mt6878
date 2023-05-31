@@ -4043,7 +4043,7 @@ int fbt_get_rl_ko_is_ready(void)
 int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 	int rl_is_ready, int rl_active, unsigned int target_fps,
 	int cooler_on, unsigned int eara_target_fpks, unsigned long long target_t,
-	unsigned long long last_target_t_ns, unsigned long long t_q2q_ns,
+	int target_fps_margin, unsigned long long last_target_t_ns, unsigned long long t_q2q_ns,
 	unsigned long long t_queue_end, unsigned long long next_vsync,
 	int expected_fps_margin, int learning_rate_p, int learning_rate_n, int quota_clamp_max,
 	int separate_aa_active, long aa_n, long aa_b,
@@ -4091,19 +4091,13 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 					rl_target_t < last_target_t_ns))
 					rl_target_t = last_target_t_ns;
 			}
-			/*
-			 * ToDo (Ann)
-			 * If fps_margin != 0 (target fps V2 is trying to increase.),
-			 *	target_time of closed loop cannot go up.
-			 *	Don't get the lower aa.
-			 */
-			/*
-			 *	if (fps_margin && last_target_t_ns) {
-			 *		if (rl_target_t > last_target_t_ns) {
-			 *			rl_target_t = last_target_t_ns;
-			 *		}
-			 *	}
-			 */
+			if (target_fps_margin > 0) {
+				if (rl_target_t > last_target_t_ns) {
+					rl_target_t = last_target_t_ns;
+					fpsgo_main_trace("[%s] target_fps_margin=%d,",
+						__func__, target_fps_margin);
+				}
+			}
 		}
 
 		if (!ret && out_target_t_ns)
@@ -4220,7 +4214,7 @@ static int fbt_boost_policy(
 
 	next_vsync = fbt_get_next_vsync_locked(ts);
 	fbt_cal_target_time_ns(pid, buffer_id, rl_ko_is_ready, gcc_enable_active, target_fps,
-		cooler_on, target_fpks, target_time, boost_info->last_target_time_ns,
+		cooler_on, target_fpks, target_time, fps_margin, boost_info->last_target_time_ns,
 		thread_info->Q2Q_time, ts, next_vsync, expected_fps_margin_final,
 		rl_learning_rate_p, rl_learning_rate_n, quota_v2_clamp_max, separate_aa_final,
 		filtered_aa_n, filtered_aa_b, filtered_aa_m,
@@ -5214,7 +5208,7 @@ void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap)
 	unsigned long spinlock_flag_freq, spinlock_flag_loading;
 	unsigned int curr_obv = 0U;
 	unsigned long long curr_cb_ts;
-	int new_ts;
+	unsigned long long new_ts;
 	int i, idx;
 
 	if (!fbt_enable)
@@ -5224,7 +5218,7 @@ void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap)
 		return;
 
 	curr_cb_ts = fpsgo_get_time();
-	new_ts = nsec_to_100usec(curr_cb_ts);
+	new_ts = nsec_to_100usec_ull(curr_cb_ts);
 
 	curr_obv = cap * 100 >> 10;
 
@@ -5289,7 +5283,7 @@ void fpsgo_ctrl2fbt_cpufreq_cb_exp(int cid, unsigned long freq)
 	unsigned long spinlock_flag_freq, spinlock_flag_loading;
 	unsigned int curr_obv = 0U;
 	unsigned long long curr_cb_ts;
-	int new_ts;
+	unsigned long long new_ts;
 	int i, idx;
 	int opp;
 
@@ -5300,7 +5294,7 @@ void fpsgo_ctrl2fbt_cpufreq_cb_exp(int cid, unsigned long freq)
 		return;
 
 	curr_cb_ts = fpsgo_get_time();
-	new_ts = nsec_to_100usec(curr_cb_ts);
+	new_ts = nsec_to_100usec_ull(curr_cb_ts);
 
 	for (opp = (nr_freq_cpu - 1); opp > 0; opp--) {
 		if (cpu_dvfs[cid].power[opp] >= freq)
