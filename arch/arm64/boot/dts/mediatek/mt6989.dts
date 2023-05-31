@@ -11790,7 +11790,7 @@
 		scp-pm-notify = "disable";
 		scp-thermal-wq = "disable";
 		scp-secure-ipc = "enable";
-		scp-low-pwr-dbg = "enable";
+		scp-low-pwr-dbg = "disable";
 
 		//scp_aovmem_key = "mediatek,scp_aov_reserved";
 		scp-mem-key = "mediatek,reserve-memory-scp_share";
