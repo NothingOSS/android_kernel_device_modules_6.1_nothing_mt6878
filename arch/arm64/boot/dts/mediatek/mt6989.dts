@@ -1210,6 +1210,17 @@
 		reg = <0 0x0c400000 0 0x40000>, /* distributor */
 		      <0 0x0c440000 0 0x200000>; /* redistributor */
 		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH 0>;
+		ppi-partitions {
+			ppi_cluster0: interrupt-partition-0 {
+				affinity = <&cpu0 &cpu1 &cpu2 &cpu3>;
+			};
+			ppi_cluster1: interrupt-partition-1 {
+				affinity = <&cpu4 &cpu5 &cpu6>;
+			};
+			ppi_cluster2: interrupt-partition-2 {
+				affinity = <&cpu7>;
+			};
+		};
 	};
 
 	logstore: logstore {
@@ -1267,6 +1278,28 @@
 		compatible = "mediatek,teeperf";
 		cpu-type = <1>; /* 1: CPU_V9_TYPE, 2: CPU_V8_TYPE */
 		cpu-map = <1>; /* 1: CPU_4_3_1_MAP, 2: CPU_6_2_MAP */
+	};
+
+	pmu-x4 {
+		compatible = "arm,armv8-pmuv3";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH &ppi_cluster2>;
+	};
+	pmu-Hunter-ELP {
+		compatible = "arm,armv8-pmuv3";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH &ppi_cluster1>;
+	};
+	pmu-Hunter {
+		compatible = "arm,armv8-pmuv3";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH &ppi_cluster0>;
+	};
+	dsu-pmu-0 {
+		compatible = "arm,dsu-pmu";
+		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH 0>;
+		cpus = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>,
+			<&cpu4>, <&cpu5>, <&cpu6>, <&cpu7>;
 	};
 
 	/* Trustonic Mobicore SW IRQ number 171 = 32 + 139 */
