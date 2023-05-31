@@ -1092,7 +1092,7 @@ int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp)
 	struct mmdvfs_mux *mux;
 	u8 idx = pwr_idx + MMDVFS_USER_VCORE;
 	s8 level;
-	int ret;
+	int ret, *last;
 
 	if (!mmdvfs_mux_version || idx >= ARRAY_SIZE(mmdvfs_user)) {
 		MMDVFS_ERR("invalid:%d pwr_idx:%hhu idx:%hhu", mmdvfs_mux_version, pwr_idx, idx);
@@ -1107,15 +1107,17 @@ int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp)
 	}
 	level = mux->freq_num - 1 - opp;
 
+	last = &last_vote_step[pwr_idx];
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_VOTE);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-		opp < dpsw_thr && mux->last >= dpsw_thr)
+		opp < dpsw_thr && *last >= dpsw_thr)
 		mtk_mmdvfs_enable_vmm(true);
 	ret = clk_set_rate(mmdvfs_user_clk[idx], mux->freq[level]);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-		opp >= dpsw_thr && mux->last < dpsw_thr)
+		opp >= dpsw_thr && *last < dpsw_thr)
 		mtk_mmdvfs_enable_vmm(false);
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
+	*last = opp;
 
 	if (ret || log_level & (1 << log_adb))
 		MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd level:%hhd",
@@ -2023,6 +2025,10 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 	if (!vmm_notify_wq)
 		vmm_notify_wq = create_singlethread_workqueue("vmm_notify_wq");
 
+	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
+		last_vote_step[i] = MAX_OPP;
+		last_force_step[i] = MAX_OPP;
+	}
 	force_vol = 0xff;
 	of_property_read_u32(node, "force-voltage", &force_vol);
 	force_rc_clk = 0xff;
