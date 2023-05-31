@@ -26,10 +26,8 @@
 #include <linux/of_address.h>
 #include "ccci_config.h"
 #include "ccci_common_config.h"
-#include <linux/arm-smccc.h>
-#include <linux/soc/mediatek/mtk_sip_svc.h>
+#include <linux/random.h>
 
-#define TRNG_MAGIC		0x74726e67
 #ifdef FEATURE_INFORM_NFC_VSIM_CHANGE
 #include <mach/mt6605.h>
 #endif
@@ -1186,7 +1184,7 @@ static void ccci_rpc_work_helper(struct port_t *port, struct rpc_pkt *pkt,
 		break;
 	case IPC_RPC_TRNG:
 		{
-			struct arm_smccc_res res = {0};
+			unsigned int seed;
 
 			if (pkt_num != 1) {
 				CCCI_ERROR_LOG(0, RPC,
@@ -1200,11 +1198,10 @@ static void ccci_rpc_work_helper(struct port_t *port, struct rpc_pkt *pkt,
 				pkt[pkt_num++].buf = (void *)&tmp_data[0];
 				break;
 			}
-			arm_smccc_smc(MTK_SIP_KERNEL_GET_RND,
-				TRNG_MAGIC, 0, 0, 0, 0, 0, 0, &res);
+			seed = get_random_u32();
 			pkt_num = 0;
 			tmp_data[0] = 0;
-			tmp_data[1] = res.a0;
+			tmp_data[1] = seed;
 			pkt[pkt_num].len = sizeof(unsigned int);
 			pkt[pkt_num++].buf = (void *)&tmp_data[0];
 			pkt[pkt_num].len = sizeof(unsigned int);
