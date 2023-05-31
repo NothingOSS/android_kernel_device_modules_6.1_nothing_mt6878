@@ -43,7 +43,7 @@ const char * const meminfo_text[] = {
 	"active",	/* (LRU) user pages */
 	"inactive",
 	"unevictable",
-	"shmem",	/* kernel memory */
+	"cmafr",	/* kernel memory */
 	"slab",
 	"kernel_stack",
 	"page_table",
@@ -51,7 +51,7 @@ const char * const meminfo_text[] = {
 #if IS_ENABLED(CONFIG_MTK_ION)
 	"ion",
 #else
-	"kernel_misc_reclaimable",
+	"dmabuf_pool",
 #endif
 	"zram",		/* misc */
 };
@@ -174,7 +174,7 @@ static void mmstat_trace_meminfo(void)
 	meminfo[num_entries++] = P2K(global_node_page_state(NR_UNEVICTABLE));
 
 	/* kernel memory usage */
-	meminfo[num_entries++] = P2K(global_node_page_state(NR_SHMEM));
+	meminfo[num_entries++] = P2K(global_zone_page_state(NR_FREE_CMA_PAGES));
 	meminfo[num_entries++] =
 		P2K(global_node_page_state_pages(NR_SLAB_UNRECLAIMABLE_B) +
 		    global_node_page_state_pages(NR_SLAB_RECLAIMABLE_B));
