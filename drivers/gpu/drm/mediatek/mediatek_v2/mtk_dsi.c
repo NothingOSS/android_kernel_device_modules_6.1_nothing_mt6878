@@ -9916,6 +9916,7 @@ static const struct mtk_dsi_driver_data mt6989_dsi_driver_data = {
 	.urgent_hi_fifo_us = 15,
 	.max_vfp = 0xffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
+	.n_verion = VER_N4,
 };
 
 static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {
