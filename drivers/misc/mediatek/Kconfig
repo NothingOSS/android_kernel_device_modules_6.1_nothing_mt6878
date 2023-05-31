@@ -72,6 +72,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/trusty/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/gzvm/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mkp/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/masp/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/ise_lpm/Kconfig"
 endmenu # Security
 
 menu "Tinysys"

@@ -1,0 +1,322 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2023 MediaTek Inc.
+ */
+
+#include <asm/compiler.h>
+#include <linux/delay.h>
+#include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
+#include <linux/of_platform.h>
+#include <linux/platform_device.h>
+#include <linux/slab.h>
+#include <linux/stat.h>
+#include <linux/string.h>
+#include <linux/proc_fs.h>
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+#include <linux/scmi_protocol.h>
+#include <tinysys-scmi.h>
+#endif
+
+#include <mtk_ise_lpm.h>
+
+/* scmi cmd */
+#define SCMI_MBOX_CMD_ISE_PWR_ON		(0x1)
+#define SCMI_MBOX_CMD_ISE_PWR_OFF		(0x2)
+
+/* scmi ack data*/
+#define SCMI_MBOX_ACK_ISE_PWR_ON_DONE		(0x1)
+#define SCMI_MBOX_ACK_ISE_PWR_OFF_DONE		(0x2)
+
+enum ise_power_state {
+	ISE_NO_DEFINE = 0x0,
+	ISE_ACTIVE,
+	ISE_SLEEP,
+	ISE_STAND_BY,
+	ISE_POWER_OFF
+};
+
+struct ise_scmi_data_t {
+	uint32_t cmd;
+};
+
+enum ise_pwr_ut_id_enum {
+	ISE_AWAKE_LOCK = 1,
+	ISE_AWAKE_UNLOCK,
+	ISE_LOWPOWER_UT
+};
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+static int ise_scmi_id;
+static uint32_t ise_awake_cnt;
+static struct scmi_tinysys_info_st *_tinfo;
+#endif
+
+static uint32_t ise_wakelock_en;
+static uint32_t ise_awake_user_list[ISE_AWAKE_ID_NUM];
+
+static void ise_power_on(void);
+static void ise_power_off(void);
+static void ise_scmi_init(void);
+
+static void inc_ise_awake_cnt(enum mtk_ise_awake_id_t mtk_ise_awake_id)
+{
+	ise_awake_user_list[mtk_ise_awake_id]++;
+	ise_awake_cnt++;
+}
+
+static void dec_ise_awake_cnt(enum mtk_ise_awake_id_t mtk_ise_awake_id)
+{
+	ise_awake_user_list[mtk_ise_awake_id]--;
+	ise_awake_cnt--;
+}
+
+enum mtk_ise_awake_ack_t mtk_ise_awake_lock(enum mtk_ise_awake_id_t mtk_ise_awake_id)
+{
+	if (!ise_wakelock_en) {
+		pr_notice("ise wakelock disable!!\n");
+		return ISE_ERR_WAKELOCK_DISABLE;
+	}
+	if (mtk_ise_awake_id >= ISE_AWAKE_ID_NUM) {
+		pr_notice("err id %d\n", mtk_ise_awake_id);
+		return ISE_ERR_UID;
+	}
+
+	inc_ise_awake_cnt(mtk_ise_awake_id);
+	if (ise_awake_cnt == 1)
+		ise_power_on();
+	else
+		pr_info("ise still awake, cnt = %d\n", ise_awake_cnt);
+
+	return ISE_SUCCESS;
+}
+EXPORT_SYMBOL_GPL(mtk_ise_awake_lock);
+
+enum mtk_ise_awake_ack_t mtk_ise_awake_unlock(enum mtk_ise_awake_id_t mtk_ise_awake_id)
+{
+	if (!ise_wakelock_en) {
+		pr_notice("ise wakelock disable!!\n");
+		return ISE_ERR_WAKELOCK_DISABLE;
+	}
+	if (mtk_ise_awake_id >= ISE_AWAKE_ID_NUM) {
+		pr_notice("err id %d\n", mtk_ise_awake_id);
+		return ISE_ERR_UID;
+	}
+	if (ise_awake_user_list[mtk_ise_awake_id] == 0) {
+		pr_notice("unlock err id %d\n", mtk_ise_awake_id);
+		return ISE_ERR_UNLOCK_BEFORE_LOCK;
+	}
+	if (ise_awake_cnt == 0) {
+		pr_notice("ref cnt err id %d\n", mtk_ise_awake_id);
+		return ISE_ERR_REF_CNT;
+	}
+
+	dec_ise_awake_cnt(mtk_ise_awake_id);
+	if (ise_awake_cnt == 0)
+		ise_power_off();
+	else
+		pr_info("ise still awake, cnt = %d\n", ise_awake_cnt);
+
+	return ISE_SUCCESS;
+}
+EXPORT_SYMBOL_GPL(mtk_ise_awake_unlock);
+
+static void ise_power_on(void)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	struct scmi_tinysys_status rvalue;
+	struct ise_scmi_data_t ise_scmi_data;
+	uint32_t ret = 0, retry = 20;
+
+	ise_scmi_data.cmd = SCMI_MBOX_CMD_ISE_PWR_ON;
+	do {
+		ret = scmi_tinysys_common_get(_tinfo->ph, ise_scmi_id,
+				ise_scmi_data.cmd, &rvalue);
+		pr_debug("scmi ack r1,r2,r3 = 0x%08x, 0x%08x, 0x%08x\n",
+				rvalue.r1,
+				rvalue.r2,
+				rvalue.r3);
+		if (ret)
+			pr_notice("mailbox scmi cmd %d send fail, ret = %d\n",
+					ise_scmi_data.cmd, ret);
+		if (rvalue.r1 == (uint32_t)ISE_ACTIVE) {
+			pr_info("[mailbox]iSE power on done\n");
+			break;
+		}
+		udelay(500);
+	} while (--retry);
+
+	if(retry == 0)
+		pr_notice("[mailbox]iSE power on failed\n");
+#endif
+}
+
+static void ise_power_off(void)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	struct scmi_tinysys_status rvalue;
+	struct ise_scmi_data_t ise_scmi_data;
+	uint32_t ret = 0, retry = 20;
+
+	ise_scmi_data.cmd = SCMI_MBOX_CMD_ISE_PWR_OFF;
+	do {
+		ret = scmi_tinysys_common_get(_tinfo->ph, ise_scmi_id,
+				ise_scmi_data.cmd, &rvalue);
+		pr_debug("scmi ack r1,r2,r3 = 0x%08x, 0x%08x, 0x%08x\n",
+				rvalue.r1,
+				rvalue.r2,
+				rvalue.r3);
+		if (ret)
+			pr_notice("[mailbox]mailbox scmi cmd %d send fail, ret = %d\n",
+					ise_scmi_data.cmd, ret);
+		if (rvalue.r1 == (uint32_t)ISE_POWER_OFF) {
+			pr_info("[mailbox]iSE power off done\n");
+			break;
+		}
+		udelay(500);
+	} while (--retry);
+
+	if(retry == 0)
+		pr_notice("[mailbox]iSE power off failed\n");
+#endif
+}
+
+
+static void ise_scmi_init(void)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	unsigned int ret;
+
+	_tinfo = get_scmi_tinysys_info();
+	ret = of_property_read_u32(_tinfo->sdev->dev.of_node, "scmi-ise",
+			&ise_scmi_id);
+	if (ret) {
+		pr_notice("get scmi-ise fail, ret %d\n", ret);
+		return;
+	}
+	pr_info("#@# %s(%d) scmi-ise_id %d\n", __func__, __LINE__, ise_scmi_id);
+#endif
+}
+
+ssize_t ise_lpm_dbg(struct file *file, const char __user *buffer,
+			size_t count, loff_t *data)
+{
+	char *parm_str, *cmd_str, *pinput;
+	char input[32] = {0};
+	long param;
+	uint32_t len;
+	int err;
+
+	len = (count < (sizeof(input) - 1)) ? count : (sizeof(input) - 1);
+	if (copy_from_user(input, buffer, len)) {
+		pr_notice("%s: copy from user failed\n", __func__);
+		return -EFAULT;
+	}
+
+	input[len] = '\0';
+	pinput = input;
+
+	cmd_str = strsep(&pinput, " ");
+
+	if (!cmd_str)
+		return -EINVAL;
+
+	parm_str = strsep(&pinput, " ");
+
+	if (!parm_str)
+		return -EINVAL;
+
+	err = kstrtol(parm_str, 10, &param);
+
+	if (err)
+		return err;
+
+	if (!strncmp(cmd_str, "ise_pwr", sizeof("ise_pwr"))) {
+		if (param == ISE_AWAKE_LOCK)
+			mtk_ise_awake_lock(ISE_PM_UT);
+		else if (param == ISE_AWAKE_UNLOCK)
+			mtk_ise_awake_unlock(ISE_PM_UT);
+		else if (param == ISE_LOWPOWER_UT) {
+			mtk_ise_awake_lock(ISE_PM_UT);
+			/* Do iSE jobs here */
+			mtk_ise_awake_unlock(ISE_PM_UT);
+		} else
+			pr_notice("%s unknown pwr ut\n", __func__);
+	} else {
+		return -EINVAL;
+	}
+
+	return count;
+}
+
+static const struct proc_ops ise_lpm_dbg_fops = {
+	.proc_write = ise_lpm_dbg,
+};
+
+static int ise_lpm_probe(struct platform_device *pdev)
+{
+	struct device_node *node = pdev->dev.of_node;
+
+	if (!node) {
+		dev_info(&pdev->dev, "of_node required\n");
+		return -EINVAL;
+	}
+
+	ise_wakelock_en = 0;
+	if (!of_property_read_u32(pdev->dev.of_node, "ise-wakelock", &ise_wakelock_en)) {
+		if (ise_wakelock_en)
+			pr_notice("ise-wakelock %d\n", ise_wakelock_en);
+		else
+			pr_notice("ise-wakelock %d\n", ise_wakelock_en);
+	}
+
+	if (ise_wakelock_en) {
+		/*
+		 * Since iSE already boot up at BL2 phase,
+		 * so ise_awake_cnt inited as 1.
+		 */
+		ise_awake_cnt = 1;
+		ise_scmi_init();
+		proc_create("ise_lpm_dbg", 0664, NULL, &ise_lpm_dbg_fops);
+	}
+
+	return 0;
+}
+
+static int ise_lpm_remove(struct platform_device *pdev)
+{
+	return 0;
+}
+
+static const struct of_device_id ise_lpm_of_match[] = {
+	{ .compatible = "mediatek,ise-lpm", },
+	{},
+};
+
+static struct platform_driver ise_lpm_driver = {
+	.probe = ise_lpm_probe,
+	.remove = ise_lpm_remove,
+	.driver	= {
+		.name = "ise-lpm",
+		.owner = THIS_MODULE,
+		.of_match_table = ise_lpm_of_match,
+	},
+};
+
+static int __init ise_lpm_driver_init(void)
+{
+	return platform_driver_register(&ise_lpm_driver);
+}
+
+static void __exit ise_lpm_driver_exit(void)
+{
+	platform_driver_unregister(&ise_lpm_driver);
+}
+device_initcall_sync(ise_lpm_driver_init);
+module_exit(ise_lpm_driver_exit);
+
+MODULE_DESCRIPTION("MEDIATEK Module iSE_lpm driver");
+MODULE_AUTHOR("Mediatek");
+MODULE_LICENSE("GPL");
