@@ -2590,6 +2590,9 @@ static int ufs_mtk_system_suspend(struct device *dev)
 
 	ret = ufshcd_system_suspend(dev);
 
+	if (pm_runtime_suspended(hba->dev))
+		goto out;
+
 	if (!ret)
 		ufs_mtk_dev_vreg_set_lpm(hba, true);
 
@@ -2609,11 +2612,15 @@ static int ufs_mtk_system_resume(struct device *dev)
 	struct ufs_mtk_host *host;
 	struct arm_smccc_res res;
 
+	if (pm_runtime_suspended(hba->dev))
+		goto out;
+
 	if (ufs_mtk_is_rtff_mtcmos(hba))
 		ufs_mtk_mtcmos_ctrl(true, res);
 
 	ufs_mtk_dev_vreg_set_lpm(hba, false);
 
+out:
 	ret = ufshcd_system_resume(dev);
 
 	host = ufshcd_get_variant(hba);
