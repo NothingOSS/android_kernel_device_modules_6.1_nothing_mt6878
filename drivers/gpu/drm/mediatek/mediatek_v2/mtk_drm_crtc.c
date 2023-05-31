@@ -4133,7 +4133,6 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_plane_comp_state *comp_state;
 	int i, j, k;
-	int mml_transition_lye = -1;
 
 	for (i = mtk_crtc->layer_nr - 1; i >= 0; i--) {
 		struct drm_plane *plane = &mtk_crtc->planes[i].base;
@@ -4181,14 +4180,6 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 		plane_state->crtc = crtc;
 
 		mtk_plane_get_comp_state(plane, &plane_state->comp_state, crtc, 0);
-
-		if (plane_state->comp_state.layer_caps & MTK_MML_DISP_MDP_LAYER)
-			mml_transition_lye = i;
-	}
-
-	if (mml_transition_lye >= 0) {
-		drm_trigger_repaint(DRM_REPAINT_FOR_SWITCH_DECOUPLE_MIRROR, crtc->dev);
-		CRTC_MMP_MARK(0, mml_dbg, mml_transition_lye, MMP_MML_REPAINT);
 	}
 }
 unsigned int mtk_drm_primary_frame_bw(struct drm_crtc *crtc)
@@ -14132,6 +14123,11 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	/* need to check mml is submit done */
 	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl)
 		mtk_drm_wait_mml_submit_done(&(mtk_crtc->mml_cb));
+
+	if (mtk_crtc_state->lye_state.need_repaint) {
+		drm_trigger_repaint(DRM_REPAINT_FOR_SWITCH_DECOUPLE_MIRROR, crtc->dev);
+		CRTC_MMP_MARK(0, mml_dbg, cb_data->hrt_idx, MMP_MML_REPAINT);
+	}
 
 #if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
 	if (g_wr_reg.after_commit == 1) {

@@ -85,6 +85,7 @@ struct mtk_lye_ddp_state {
 	u32 rpo_lye;
 	u32 mml_ir_lye;
 	u32 mml_dl_lye;
+	bool need_repaint;
 };
 
 struct mtk_addon_path_data {

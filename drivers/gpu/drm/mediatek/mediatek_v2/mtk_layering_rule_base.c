@@ -3199,6 +3199,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			if (last_mml_ir_lye && (last_mml_ir_lye != lye_state->mml_ir_lye)) {
 				DDPMSG("MML layer changed\n");
 				transition = true;
+				disp_info->disp_caps[disp_idx] |= MTK_NEED_REPAINT;
 			}
 			if (rpo_comp == comp_state.comp_id) {
 				DDPMSG("MML RPO use the same OVL\n");
@@ -3666,6 +3667,9 @@ void lye_add_blob_ids(struct drm_mtk_layering_info *l_info,
 	}
 	lye_state->lc_tgt_layer = 0;
 	l_rule_info->bk_mml_dl_lye = lye_state->mml_dl_lye;
+
+	lye_state->need_repaint = l_rule_info->need_repaint;
+	l_rule_info->need_repaint = false;
 
 	if (get_layering_opt(LYE_OPT_SPHRT))
 		disp_idx = l_info->disp_idx;
@@ -4168,13 +4172,15 @@ static void check_is_mml_layer(const int disp_idx,
 				    (mml_capacity ? mml_capacity : MTK_MML_DISP_NOT_SUPPORT);
 			}
 		}
-
-		if ((MTK_MML_DISP_DECOUPLE_LAYER & c->layer_caps) &&
+		if ((MTK_MML_DISP_MDP_LAYER & c->layer_caps) ||
+		    ((MTK_MML_DISP_DECOUPLE_LAYER & c->layer_caps) &&
 		    (kref_read(&mtk_crtc->mml_ir_sram.ref) ||
 		     (mtk_crtc->mml_link_state == MML_IR_IDLE) ||
-		     mtk_crtc->is_mml_dl || l_rule_info->bk_mml_dl_lye)) {
+		     mtk_crtc->is_mml_dl || l_rule_info->bk_mml_dl_lye))) {
 			c->layer_caps &= ~MTK_MML_DISP_DECOUPLE_LAYER;
 			c->layer_caps |= MTK_MML_DISP_MDP_LAYER;
+			l_rule_info->need_repaint = true;
+			disp_info->disp_caps[disp_idx] |= MTK_NEED_REPAINT;
 			DDPINFO("Use MDP for %s-DC transition\n",
 				mtk_crtc->is_mml_dl ? "DL" : "IR");
 			DRM_MMP_MARK(layering, 0x331, __LINE__);
