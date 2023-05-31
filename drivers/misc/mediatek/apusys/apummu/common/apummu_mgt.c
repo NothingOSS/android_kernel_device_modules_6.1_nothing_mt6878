@@ -168,8 +168,8 @@ static int session_table_alloc(void)
 	list_add_tail(&sTable_ptr->list, &g_ammu_table_set.g_stable_head);
 	g_ammu_stable_ptr = sTable_ptr;
 
-	if (!g_ammu_table_set.is_stable_exist) {
-	#if DRAM_FALL_BACK_IN_RUNTIME
+#if DRAM_FALL_BACK_IN_RUNTIME
+	if (!(g_adv->remote.is_dram_IOVA_alloc)) {
 		ret = apummu_dram_remap_runtime_alloc(g_adv);
 		if (ret)
 			goto out;
@@ -185,11 +185,16 @@ static int session_table_alloc(void)
 				goto free_DRAM;
 			}
 		}
-	#endif
-		if (!(apummu_alloc_general_SLB(g_adv)))
-			if (apummu_remote_mem_add_pool(g_adv))
-				goto free_general_SLB;
+	}
+#endif
 
+	if (!(g_adv->remote.is_general_SLB_alloc)) { // SLB retry
+		if (!(apummu_alloc_general_SLB(g_adv))) // alloc SLB
+			if (apummu_remote_mem_add_pool(g_adv)) // send to RV
+				goto free_general_SLB;
+	}
+
+	if (!g_ammu_table_set.is_stable_exist) {
 		AMMU_LOG_VERBO("kref init\n");
 		kref_init(&g_ammu_table_set.session_tbl_cnt);
 		g_ammu_table_set.is_stable_exist = true;
@@ -214,7 +219,7 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 {
 	int ret = 0;
 	uint64_t ret_eva;
-	uint32_t cross_page_array_num = 0;
+	uint32_t SLB_type, cross_page_array_num = 0;
 	uint8_t mask_idx;
 
 	if (g_adv == NULL) {
@@ -229,15 +234,35 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 		goto out_before_lock;
 	}
 
+	AMMU_LOG_VERBO("session = 0x%llx, device_va = 0x%llx, size = 0x%x\n",
+		session, device_va, buf_size);
+
 	if (device_va < 0x40000000) {
-		if (!((device_va >= g_adv->remote.vlm_addr) &&
+		if (((device_va >= g_adv->remote.vlm_addr) &&
 			(device_va <= (g_adv->remote.vlm_addr + g_adv->remote.vlm_size)))) {
+			ret_eva = device_va;
+			goto out;
+		} else if ((device_va >= g_adv->remote.SLB_base_addr) &&
+			((device_va < (g_adv->remote.SLB_base_addr + g_adv->remote.SLB_size)))) {
+			SLB_type = (device_va == g_adv->rsc.internal_SLB.iova)
+				? APUMMU_MEM_TYPE_RSV_S
+				: APUMMU_MEM_TYPE_EXT;
+
+			ret = ammu_session_table_add_SLB(session, SLB_type);
+			if (ret) {
+				AMMU_LOG_ERR("IOVA 2 EVA SLB fail!!\n");
+				goto out_before_lock;
+			}
+
+			ret_eva = (device_va == g_adv->rsc.internal_SLB.iova)
+				? g_adv->remote.vlm_addr
+				: device_va;
+
+			goto out;
+		} else {
 			AMMU_LOG_ERR("Invalid input VA 0x%llx\n", device_va);
 			ret = -EINVAL;
 			goto out_before_lock;
-		} else {
-			ret_eva = device_va;
-			goto out;
 		}
 	}
 
@@ -245,12 +270,6 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 	ret = addr_encode(device_va, type, &ret_eva);
 	if (ret)
 		goto out_before_lock;
-
-	AMMU_LOG_VERBO("session   = 0x%llx\n", session);
-	AMMU_LOG_VERBO("device_va = 0x%llx\n", device_va);
-	AMMU_LOG_VERBO("buf_size  = 0x%x\n", buf_size);
-	AMMU_LOG_VERBO("ret_eva   = 0x%llx\n", ret_eva);
-	AMMU_LOG_VERBO("type      = %u\n", type);
 
 	/* lock for g_ammu_stable_ptr */
 	mutex_lock(&g_ammu_table_set.table_lock);
@@ -270,8 +289,6 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 	if ((device_va >> SHIFT_BITS) & 0x300000) { // mask for 34-bit
 		cross_page_array_num = (((device_va + buf_size) / (0x20000000))
 							- ((device_va) / (0x20000000)));
-		AMMU_LOG_VERBO("DBG footprint 4~16G, cross_page_array_num = %u\n",
-					cross_page_array_num);
 		do {
 			/* >> 29 = 512M / 0x20000000 */
 			mask_idx = ((device_va >> 29) + cross_page_array_num) &
@@ -286,8 +303,6 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 	} else {
 		cross_page_array_num =
 			(((device_va + buf_size) / (0x8000000)) - ((device_va) / (0x8000000)));
-		AMMU_LOG_VERBO("DBG footprint 1~4G, cross_page_array_num = %u\n",
-				cross_page_array_num);
 		do {
 		#if IOVA2EVA_ENCODE_EN
 			/* - (0x40000000) because mapping start from 1G */
@@ -307,13 +322,6 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 		g_ammu_stable_ptr->stable_info.mem_mask |= (1 << DRAM_1_4G);
 	}
 
-	AMMU_LOG_VERBO("g_ammu_stable_ptr->DRAM_page_array_mask[0] = 0x%08x\n",
-			g_ammu_stable_ptr->stable_info.DRAM_page_array_mask[0]);
-	AMMU_LOG_VERBO("g_ammu_stable_ptr->DRAM_page_array_mask[1] = 0x%08x\n",
-			g_ammu_stable_ptr->stable_info.DRAM_page_array_mask[1]);
-	AMMU_LOG_VERBO("g_ammu_stable_ptr->mem_mask = 0x%08x\n",
-			g_ammu_stable_ptr->stable_info.mem_mask);
-
 out:
 	*eva = ret_eva;
 
@@ -323,80 +331,6 @@ out:
 out_after_lock:
 	mutex_unlock(&g_ammu_table_set.table_lock);
 out_before_lock:
-	return ret;
-}
-
-int apummu_stable_buffer_remove(uint64_t session, uint64_t device_va, uint32_t buf_size)
-{
-	int ret = 0;
-	uint32_t cross_page_array_num = 0;
-	uint8_t mask_idx;
-	bool is_34bit;
-
-	if (device_va < 0x40000000) {
-		if (!((device_va >= g_adv->remote.vlm_addr)
-			&& (device_va <= (g_adv->remote.vlm_addr + g_adv->remote.vlm_size)))) {
-			AMMU_LOG_ERR("Invalid input VA 0x%llx\n", device_va);
-			ret = -EINVAL;
-		}
-
-		goto out;
-	}
-
-	mutex_lock(&g_ammu_table_set.table_lock);
-
-	if (!is_session_table_exist(session)) {
-		AMMU_LOG_ERR("Session table NOT exist!!!(0x%llx)\n", session);
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	is_34bit = device_va & (0x300000000);
-
-	if (is_34bit) {
-		cross_page_array_num = (((device_va + buf_size) / (0x20000000))
-							- ((device_va) / (0x20000000)));
-		do {
-			/* >> 29 = 512M / 0x20000000 */
-			mask_idx = ((device_va >> 29) + cross_page_array_num) &
-						(0x1f);
-
-			g_ammu_stable_ptr->DRAM_4_16G_mask_cnter[mask_idx] -= 1;
-			if (g_ammu_stable_ptr->DRAM_4_16G_mask_cnter[mask_idx] == 0) {
-				g_ammu_stable_ptr->stable_info.DRAM_page_array_mask[1] &=
-					~(1 << mask_idx);
-			}
-		} while (cross_page_array_num--);
-
-		if (g_ammu_stable_ptr->stable_info.DRAM_page_array_mask[1] == 0)
-			g_ammu_stable_ptr->stable_info.mem_mask &= ~(1 << DRAM_4_16G);
-	} else {
-		cross_page_array_num =
-			(((device_va + buf_size) / (0x8000000)) - ((device_va) / (0x8000000)));
-		do {
-		#if IOVA2EVA_ENCODE_EN
-			/* - (0x40000000) because mapping start from 1G */
-			/* >> 27 = 128M / 0x20000000 */
-			mask_idx = (((device_va - (0x40000000)) >> 27)
-						+ cross_page_array_num) & (0x1f);
-		#else
-			mask_idx = ((device_va >> 27) + cross_page_array_num) &
-						(0x1f);
-		#endif
-
-			g_ammu_stable_ptr->DRAM_1_4G_mask_cnter[mask_idx] -= 1;
-			if (g_ammu_stable_ptr->DRAM_1_4G_mask_cnter[mask_idx] == 0) {
-				g_ammu_stable_ptr->stable_info.DRAM_page_array_mask[0] &=
-					~(1 << mask_idx);
-			}
-		} while (cross_page_array_num--);
-
-		if (g_ammu_stable_ptr->stable_info.DRAM_page_array_mask[0] == 0)
-			g_ammu_stable_ptr->stable_info.mem_mask &= ~(1 << DRAM_1_4G);
-	}
-
-out:
-	mutex_unlock(&g_ammu_table_set.table_lock);
 	return ret;
 }
 
@@ -596,6 +530,95 @@ out:
 	return ret;
 }
 
+
+int apummu_stable_buffer_remove(uint64_t session, uint64_t device_va, uint32_t buf_size)
+{
+	int ret = 0;
+	uint32_t SLB_type, cross_page_array_num = 0;
+	uint8_t mask_idx;
+	bool is_34bit;
+
+	if (device_va < 0x40000000) {
+		if (((device_va >= g_adv->remote.vlm_addr) &&
+			(device_va <= (g_adv->remote.vlm_addr + g_adv->remote.vlm_size))))
+			goto out;
+		else if ((device_va >= g_adv->remote.SLB_base_addr) &&
+			((device_va < (g_adv->remote.SLB_base_addr + g_adv->remote.SLB_size)))) {
+			SLB_type = (device_va == g_adv->rsc.internal_SLB.iova)
+				? APUMMU_MEM_TYPE_RSV_S
+				: APUMMU_MEM_TYPE_EXT;
+
+			ret = ammu_session_table_remove_SLB(session, SLB_type);
+			if (ret) {
+				AMMU_LOG_ERR("Remove SLB buffer fail!!\n");
+				goto out;
+			}
+
+			goto out;
+		} else {
+			AMMU_LOG_ERR("Invalid input VA 0x%llx\n", device_va);
+			ret = -EINVAL;
+			goto out;
+		}
+	}
+
+	mutex_lock(&g_ammu_table_set.table_lock);
+
+	if (!is_session_table_exist(session)) {
+		AMMU_LOG_ERR("Session table NOT exist!!!(0x%llx)\n", session);
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	is_34bit = device_va & (0x300000000);
+
+	if (is_34bit) {
+		cross_page_array_num = (((device_va + buf_size) / (0x20000000))
+							- ((device_va) / (0x20000000)));
+		do {
+			/* >> 29 = 512M / 0x20000000 */
+			mask_idx = ((device_va >> 29) + cross_page_array_num) &
+						(0x1f);
+
+			g_ammu_stable_ptr->DRAM_4_16G_mask_cnter[mask_idx] -= 1;
+			if (g_ammu_stable_ptr->DRAM_4_16G_mask_cnter[mask_idx] == 0) {
+				g_ammu_stable_ptr->stable_info.DRAM_page_array_mask[1] &=
+					~(1 << mask_idx);
+			}
+		} while (cross_page_array_num--);
+
+		if (g_ammu_stable_ptr->stable_info.DRAM_page_array_mask[1] == 0)
+			g_ammu_stable_ptr->stable_info.mem_mask &= ~(1 << DRAM_4_16G);
+	} else {
+		cross_page_array_num =
+			(((device_va + buf_size) / (0x8000000)) - ((device_va) / (0x8000000)));
+		do {
+		#if IOVA2EVA_ENCODE_EN
+			/* - (0x40000000) because mapping start from 1G */
+			/* >> 27 = 128M / 0x20000000 */
+			mask_idx = (((device_va - (0x40000000)) >> 27)
+						+ cross_page_array_num) & (0x1f);
+		#else
+			mask_idx = ((device_va >> 27) + cross_page_array_num) &
+						(0x1f);
+		#endif
+
+			g_ammu_stable_ptr->DRAM_1_4G_mask_cnter[mask_idx] -= 1;
+			if (g_ammu_stable_ptr->DRAM_1_4G_mask_cnter[mask_idx] == 0) {
+				g_ammu_stable_ptr->stable_info.DRAM_page_array_mask[0] &=
+					~(1 << mask_idx);
+			}
+		} while (cross_page_array_num--);
+
+		if (g_ammu_stable_ptr->stable_info.DRAM_page_array_mask[0] == 0)
+			g_ammu_stable_ptr->stable_info.mem_mask &= ~(1 << DRAM_1_4G);
+	}
+
+out:
+	mutex_unlock(&g_ammu_table_set.table_lock);
+	return ret;
+}
+
 int ammu_session_table_remove_SLB(uint64_t session, uint32_t type)
 {
 	int ret = 0;
@@ -632,8 +655,8 @@ void ammu_session_table_check_SLB(uint32_t type)
 
 		if (type == APUMMU_MEM_TYPE_EXT) {
 			if (g_ammu_stable_ptr->stable_info.EXT_SLB_addr != 0) {
-				AMMU_LOG_WRN("0x%llx is still using EXT_SLB after free\n",
-						g_ammu_stable_ptr->session);
+				// AMMU_LOG_WRN("0x%llx is still using EXT_SLB after free\n",
+				//		g_ammu_stable_ptr->session);
 
 				ret = ammu_remove_stable_SLB_status(APUMMU_MEM_TYPE_EXT);
 				if (ret)
@@ -641,8 +664,8 @@ void ammu_session_table_check_SLB(uint32_t type)
 			}
 		} else if (type == APUMMU_MEM_TYPE_RSV_S) {
 			if (g_ammu_stable_ptr->stable_info.RSV_S_SLB_page_array_start != 0) {
-				AMMU_LOG_WRN("0x%llx is still using RSV_S_SLB after free\n",
-						g_ammu_stable_ptr->session);
+				// AMMU_LOG_WRN("0x%llx is still using RSV_S_SLB after free\n",
+				//		g_ammu_stable_ptr->session);
 
 				ret = ammu_remove_stable_SLB_status(APUMMU_MEM_TYPE_RSV_S);
 				if (ret)

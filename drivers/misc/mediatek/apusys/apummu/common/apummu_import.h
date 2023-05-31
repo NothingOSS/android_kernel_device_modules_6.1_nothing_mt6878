@@ -11,6 +11,6 @@
 #include "apummu_mem_def.h"
 
 int apummu_alloc_slb(uint32_t type, uint32_t size, uint32_t slb_wait_time,
-			uint64_t *ret_addr, uint64_t *ret_size, bool general_SLB_support);
+			uint64_t *ret_addr, uint64_t *ret_size);
 int apummu_free_slb(uint32_t type);
 #endif

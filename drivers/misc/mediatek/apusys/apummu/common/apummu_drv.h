@@ -28,6 +28,7 @@ struct apummu_remote_data {
 
 	uint32_t SLB_base_addr;
 	uint32_t SLB_EXT_addr;
+	uint32_t SLB_size;
 
 	uint32_t TCM_base_addr;
 	uint32_t general_SRAM_size; // TCM + general SLB

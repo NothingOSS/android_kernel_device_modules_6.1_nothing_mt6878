@@ -26,4 +26,6 @@ int apummu_dram_remap_runtime_free(void *drvinfo);
 int apummu_alloc_general_SLB(void *drvinfo);
 int apummu_free_general_SLB(void *drvinfo);
 
+void apummu_mem_init(void);
+
 #endif

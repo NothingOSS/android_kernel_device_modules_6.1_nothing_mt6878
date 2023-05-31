@@ -17,7 +17,7 @@ static struct apummu_plat mt6897_drv = {
 
 static struct apummu_plat mt6989_drv = {
 	.slb_wait_time			= 0,
-	.is_general_SLB_support	= false, // TODO: current disable General SLB
+	.is_general_SLB_support	= true,
 };
 
 static const struct of_device_id apummu_of_match[] = {

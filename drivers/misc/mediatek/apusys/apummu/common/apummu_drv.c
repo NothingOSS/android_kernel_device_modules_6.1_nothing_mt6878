@@ -333,6 +333,7 @@ static int apummu_probe(struct platform_device *pdev)
 	apummu_dbg_init(adv, g_apusys->dbg_root);
 
 	apummu_mgt_init();
+	apummu_mem_init();
 	g_adv = adv;
 
 	adv->init_done = true;

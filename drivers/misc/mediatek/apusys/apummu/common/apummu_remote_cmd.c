@@ -163,10 +163,11 @@ int apummu_remote_handshake(void *drvinfo, void *remote)
 			sizeof(adv->remote.SLB_base_addr), ridx);
 	AMMU_RPMSG_RAED(&adv->remote.SLB_EXT_addr, reply.data,
 			sizeof(adv->remote.SLB_EXT_addr), ridx);
-	AMMU_RPMSG_RAED(&adv->remote.TCM_base_addr, reply.data,
-			sizeof(adv->remote.TCM_base_addr), ridx);
-	AMMU_RPMSG_RAED(&adv->remote.general_SRAM_size, reply.data,
-			sizeof(adv->remote.general_SRAM_size), ridx);
+	AMMU_RPMSG_RAED(&adv->remote.SLB_size, reply.data,
+			sizeof(adv->remote.SLB_size), ridx);
+
+	adv->remote.TCM_base_addr = adv->remote.vlm_addr;
+	adv->remote.general_SRAM_size = adv->remote.vlm_size;
 
 	apummu_remote_sync_sn(drvinfo, reply.sn);
 out:

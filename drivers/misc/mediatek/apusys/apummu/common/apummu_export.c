@@ -32,8 +32,7 @@ int apummu_alloc_mem(uint32_t type, uint32_t size, uint64_t *addr, uint32_t *sid
 	case APUMMU_MEM_TYPE_EXT:
 	case APUMMU_MEM_TYPE_RSV_S:
 		ret = apummu_alloc_slb(type, size, g_adv->plat.slb_wait_time,
-							&ret_addr, &ret_size,
-							g_adv->plat.is_general_SLB_support);
+							&ret_addr, &ret_size);
 		if (ret)
 			goto err;
 
@@ -222,8 +221,8 @@ int apummu_map_mem(uint64_t session, uint32_t sid, uint64_t *addr)
 			goto err;
 
 		ret_addr = (type == APUMMU_MEM_TYPE_EXT)
-				? g_adv->remote.SLB_EXT_addr
-				: g_adv->remote.vlm_addr;
+				? g_adv->rsc.external_SLB.iova
+				: g_adv->rsc.internal_SLB.iova;
 
 		break;
 	case APUMMU_MEM_TYPE_VLM:
