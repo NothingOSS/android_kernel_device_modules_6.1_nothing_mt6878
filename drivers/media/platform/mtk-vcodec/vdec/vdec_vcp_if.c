@@ -1313,8 +1313,7 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 
 	inst->vsi->dec.queued_frame_buf_count =
 		inst->ctx->dec_params.queued_frame_buf_count;
-	inst->vsi->dec.timestamp =
-		inst->ctx->dec_params.timestamp;
+	inst->vsi->dec.timestamp = inst->ctx->timestamp;
 
 	mtk_vcodec_debug(inst, "+ FB y_fd=%llx c_fd=%llx BS fd=%llx format=%c%c%c%c",
 		inst->vsi->dec.fb_fd[0], inst->vsi->dec.fb_fd[1],
@@ -1579,16 +1578,39 @@ static int vdec_vcp_set_param(unsigned long h_vdec,
 		ret = vdec_vcp_set_frame_buffer(inst, in);
 		break;
 	case SET_PARAM_FRAME_SIZE:
+		inst->vsi->dec_params.frame_size_width = (__u32)(*param_ptr);
+		inst->vsi->dec_params.frame_size_height = (__u32)(*(param_ptr + 1));
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_FRAME_SIZE;
+		break;
 	case SET_PARAM_SET_FIXED_MAX_OUTPUT_BUFFER:
-		msg.data[0] = (__u32)(*param_ptr);
-		msg.data[1] = (__u32)(*(param_ptr + 1));
-		vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
+		inst->vsi->dec_params.fixed_max_frame_size_width = (__u32)(*param_ptr);
+		inst->vsi->dec_params.fixed_max_frame_size_height = (__u32)(*(param_ptr + 1));
+		inst->vsi->dec_params.fixed_max_frame_buffer_mode = (__u32)(*(param_ptr + 2));
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_FIXED_MAX_FRAME_SIZE;
 		break;
 	case SET_PARAM_DECODE_MODE:
+		inst->vsi->dec_params.decode_mode = (__u32)(*param_ptr);
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_DECODE_MODE;
+		break;
 	case SET_PARAM_NAL_SIZE_LENGTH:
+		inst->vsi->dec_params.nal_size_length = (__u32)(*param_ptr);
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_NAL_SIZE_LENGTH;
+		break;
 	case SET_PARAM_WAIT_KEY_FRAME:
+		inst->vsi->dec_params.wait_key_frame = (__u32)(*param_ptr);
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_WAIT_KEY_FRAME;
+		break;
 	case SET_PARAM_DECODE_ERROR_HANDLE_MODE:
+		inst->vsi->dec_params.decode_error_handle_mode = (__u32)(*param_ptr);
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE;
+		break;
 	case SET_PARAM_OPERATING_RATE:
+		inst->vsi->dec_params.operating_rate = (__u32)(*param_ptr);
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_OPERATING_RATE;
+		break;
+	case SET_PARAM_DEC_PARAMS:
+		vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
+		break;
 	case SET_PARAM_TOTAL_FRAME_BUFQ_COUNT:
 		msg.data[0] = (__u32)(*param_ptr);
 		vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);

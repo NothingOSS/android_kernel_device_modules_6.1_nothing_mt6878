@@ -236,8 +236,7 @@ static int vdec_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 
 	inst->vsi->dec.queued_frame_buf_count =
 		inst->ctx->dec_params.queued_frame_buf_count;
-	inst->vsi->dec.timestamp =
-		inst->ctx->dec_params.timestamp;
+	inst->vsi->dec.timestamp = inst->ctx->timestamp;
 	memcpy(&inst->vsi->hdr10plus_buf, bs->hdr10plus_buf, sizeof(struct hdr10plus_info));
 
 	mtk_vcodec_debug(inst, "+ FB y_fd=%llx c_fd=%llx BS fd=%llx format=%c%c%c%c",
@@ -636,6 +635,7 @@ static int vdec_set_param(unsigned long h_vdec,
 {
 	struct vdec_inst *inst = (struct vdec_inst *)h_vdec;
 	uint64_t size;
+	unsigned long *param_ptr = (unsigned long *)in;
 	int ret = 0;
 
 	if (inst == NULL)
@@ -646,24 +646,45 @@ static int vdec_set_param(unsigned long h_vdec,
 		vcu_dec_set_frame_buffer(&inst->vcu, in);
 		break;
 	case SET_PARAM_FRAME_SIZE:
-		vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 2U);
+		inst->vsi->dec_params.frame_size_width = (__u32)(*param_ptr);
+		inst->vsi->dec_params.frame_size_height = (__u32)(*(param_ptr + 1));
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_FRAME_SIZE;
 		break;
 	case SET_PARAM_SET_FIXED_MAX_OUTPUT_BUFFER:
-		vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 3U);
+		inst->vsi->dec_params.fixed_max_frame_size_width = (__u32)(*param_ptr);
+		inst->vsi->dec_params.fixed_max_frame_size_height = (__u32)(*(param_ptr + 1));
+		inst->vsi->dec_params.fixed_max_frame_buffer_mode = (__u32)(*(param_ptr + 2));
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_FIXED_MAX_FRAME_SIZE;
 		break;
 	case SET_PARAM_DECODE_MODE:
+		inst->vsi->dec_params.decode_mode = (__u32)(*param_ptr);
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_DECODE_MODE;
+		break;
 	case SET_PARAM_NAL_SIZE_LENGTH:
+		inst->vsi->dec_params.nal_size_length = (__u32)(*param_ptr);
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_NAL_SIZE_LENGTH;
+		break;
 	case SET_PARAM_WAIT_KEY_FRAME:
+		inst->vsi->dec_params.wait_key_frame = (__u32)(*param_ptr);
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_WAIT_KEY_FRAME;
+		break;
 	case SET_PARAM_DECODE_ERROR_HANDLE_MODE:
+		inst->vsi->dec_params.decode_error_handle_mode = (__u32)(*param_ptr);
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE;
+		break;
 	case SET_PARAM_OPERATING_RATE:
+		inst->vsi->dec_params.operating_rate = (__u32)(*param_ptr);
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_OPERATING_RATE;
+		break;
+	case SET_PARAM_DEC_PARAMS:
+	case SET_PARAM_PUT_FB:
+		vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 0);
+		break;
 	case SET_PARAM_TOTAL_FRAME_BUFQ_COUNT:
 	case SET_PARAM_TOTAL_BITSTREAM_BUFQ_COUNT:
 	case SET_PARAM_SET_DV:
 	case SET_PARAM_NO_REORDER:
 		vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 1U);
-		break;
-	case SET_PARAM_PUT_FB:
-		vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 0);
 		break;
 	case SET_PARAM_UFO_MODE:
 		break;

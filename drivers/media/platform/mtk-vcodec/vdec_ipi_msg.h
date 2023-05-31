@@ -182,6 +182,7 @@ enum vdec_set_param_type {
 	SET_PARAM_TRICK_MODE,
 	SET_PARAM_NO_REORDER,
 	SET_PARAM_DECODE_ERROR_HANDLE_MODE,
+	SET_PARAM_DEC_PARAMS,
 	SET_PARAM_MMDVFS,
 	/** only for kernel **/
 	SET_PARAM_VDEC_VCU_VPUD_LOG,
@@ -432,6 +433,7 @@ struct vdec_vsi {
 	struct ring_bs_list list_free_bs;
 	struct ring_fb_list list_free;
 	struct ring_fb_list list_disp;
+	struct mtk_dec_params dec_params;
 	struct vdec_dec_info dec;
 	struct vdec_pic_info pic;
 	struct mtk_color_desc color_desc;

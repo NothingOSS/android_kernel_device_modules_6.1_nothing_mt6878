@@ -214,6 +214,46 @@ struct inputqueue_dynamic_info {
 };
 
 
+enum mtk_dec_param {
+	MTK_DEC_PARAM_NONE = 0,
+	MTK_DEC_PARAM_DECODE_MODE = (1 << 0),
+	MTK_DEC_PARAM_FRAME_SIZE = (1 << 1),
+	MTK_DEC_PARAM_FIXED_MAX_FRAME_SIZE = (1 << 2),
+	MTK_DEC_PARAM_CRC_PATH = (1 << 3),
+	MTK_DEC_PARAM_GOLDEN_PATH = (1 << 4),
+	MTK_DEC_PARAM_WAIT_KEY_FRAME = (1 << 5),
+	MTK_DEC_PARAM_NAL_SIZE_LENGTH = (1 << 6),
+	MTK_DEC_PARAM_OPERATING_RATE = (1 << 7),
+	MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE = (1 << 8)
+};
+
+struct mtk_dec_params {
+	__u32	dec_param_change;
+	__u32	decode_mode;
+	__u32	frame_size_width;
+	__u32	frame_size_height;
+	__u32	fixed_max_frame_size_width;
+	__u32	fixed_max_frame_size_height;
+	__u32	fixed_max_frame_buffer_mode;
+	union {
+		char	*crc_path;
+		__u64	crc_path_64;
+	};
+	union {
+		char	*golden_path;
+		__u64	golden_path_64;
+	};
+	__u32	wait_key_frame;
+	__u32	nal_size_length;
+	__u32	svp_mode;
+	__u32	operating_rate;
+	__u32	decode_error_handle_mode;
+	__u32	queued_frame_buf_count;
+	__s32	priority;
+	__s32	slice_count;
+	__u32	vpeek;
+};
+
 /**
  * struct vdec_pic_info  - picture size information
  * @pic_w: picture width
@@ -264,11 +304,9 @@ struct vdec_dec_info {
 	__u64 vdec_fb_va;
 	__u32 fb_num_planes;
 	__u32 index;
-	__u32 wait_key_frame;
 	__u32 error_map;
 	__u64 timestamp;
 	__u32 queued_frame_buf_count;
-	__u32 vpeek;
 };
 
 #define HDR10_PLUS_MAX_SIZE              (128)

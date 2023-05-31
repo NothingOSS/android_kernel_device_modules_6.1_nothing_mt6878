@@ -277,7 +277,7 @@ static void mtk_vdec_ts_reset(struct mtk_vcodec_ctx *ctx)
 	struct mtk_detect_ts_param *param = &ctx->detect_ts_param;
 
 	mutex_lock(&param->lock);
-	if (ctx->dec_params.enable_detect_ts)
+	if (ctx->detect_ts_param.enable_detect_ts)
 		param->mode = MTK_TS_MODE_DETECTING;
 	else
 		param->mode = MTK_TS_MODE_PTS;
@@ -1961,7 +1961,7 @@ static void mtk_vdec_worker(struct work_struct *work)
 	}
 	ctx->bs_list[buf->index + 1] = (uintptr_t)buf;
 
-	ctx->dec_params.timestamp = src_buf_info->vb.vb2_buf.timestamp;
+	ctx->timestamp = src_buf_info->vb.vb2_buf.timestamp;
 	mtk_v4l2_debug(1, "[%d] Bs VA=%p DMA=%lx Size=%zx Len=%zx ion_buf = %p vb=%p eos=%d pts=%llu",
 		ctx->id, buf->va, (unsigned long)buf->dma_addr,
 		buf->size, buf->length, buf->dmabuf, src_buf,
@@ -2007,7 +2007,7 @@ static void mtk_vdec_worker(struct work_struct *work)
 	}
 
 	if (src_buf_info->used == false)
-		mtk_vdec_ts_insert(ctx, ctx->dec_params.timestamp);
+		mtk_vdec_ts_insert(ctx, ctx->timestamp);
 	src_buf_info->used = true;
 	if (!ctx->input_driven && !ctx->use_fence)
 		v4l2_m2m_dst_buf_remove(ctx->m2m_ctx);
@@ -2500,26 +2500,27 @@ void mtk_vcodec_dec_set_default_params(struct mtk_vcodec_ctx *ctx)
 static int mtk_vdec_set_param(struct mtk_vcodec_ctx *ctx)
 {
 	unsigned long in[8] = {0};
+	bool need_set_param = (ctx->dec_params.dec_param_change != 0);
 
 	mtk_v4l2_debug(4,
 		"[%d] param change 0x%x decode mode %d frame width %d frame height %d max width %d max height %d",
-		ctx->id, ctx->dec_param_change,
+		ctx->id, ctx->dec_params.dec_param_change,
 		ctx->dec_params.decode_mode,
 		ctx->dec_params.frame_size_width,
 		ctx->dec_params.frame_size_height,
 		ctx->dec_params.fixed_max_frame_size_width,
 		ctx->dec_params.fixed_max_frame_size_height);
 
-	if (ctx->dec_param_change & MTK_DEC_PARAM_DECODE_MODE) {
+	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_DECODE_MODE) {
 		in[0] = ctx->dec_params.decode_mode;
 		if (vdec_if_set_param(ctx, SET_PARAM_DECODE_MODE, in) != 0) {
 			mtk_v4l2_err("[%d] Error!! Cannot set param", ctx->id);
 			return -EINVAL;
 		}
-		ctx->dec_param_change &= (~MTK_DEC_PARAM_DECODE_MODE);
+		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_DECODE_MODE);
 	}
 
-	if (ctx->dec_param_change & MTK_DEC_PARAM_FRAME_SIZE) {
+	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_FRAME_SIZE) {
 		in[0] = ctx->dec_params.frame_size_width;
 		in[1] = ctx->dec_params.frame_size_height;
 		if (in[0] != 0 && in[1] != 0) {
@@ -2530,11 +2531,10 @@ static int mtk_vdec_set_param(struct mtk_vcodec_ctx *ctx)
 				return -EINVAL;
 			}
 		}
-		ctx->dec_param_change &= (~MTK_DEC_PARAM_FRAME_SIZE);
+		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_FRAME_SIZE);
 	}
 
-	if (ctx->dec_param_change &
-		MTK_DEC_PARAM_FIXED_MAX_FRAME_SIZE) {
+	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_FIXED_MAX_FRAME_SIZE) {
 		in[0] = ctx->dec_params.fixed_max_frame_size_width;
 		in[1] = ctx->dec_params.fixed_max_frame_size_height;
 		in[2] = ctx->dec_params.fixed_max_frame_buffer_mode;
@@ -2547,62 +2547,69 @@ static int mtk_vdec_set_param(struct mtk_vcodec_ctx *ctx)
 				return -EINVAL;
 			}
 		}
-		ctx->dec_param_change &= (~MTK_DEC_PARAM_FIXED_MAX_FRAME_SIZE);
+		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_FIXED_MAX_FRAME_SIZE);
 	}
 
-	if (ctx->dec_param_change & MTK_DEC_PARAM_CRC_PATH) {
+	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_CRC_PATH) {
 		in[0] = (unsigned long)ctx->dec_params.crc_path;
 		if (vdec_if_set_param(ctx, SET_PARAM_CRC_PATH, in) != 0) {
 			mtk_v4l2_err("[%d] Error!! Cannot set param", ctx->id);
 			return -EINVAL;
 		}
-		ctx->dec_param_change &= (~MTK_DEC_PARAM_CRC_PATH);
+		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_CRC_PATH);
 	}
 
-	if (ctx->dec_param_change & MTK_DEC_PARAM_GOLDEN_PATH) {
+	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_GOLDEN_PATH) {
 		in[0] = (unsigned long)ctx->dec_params.golden_path;
 		if (vdec_if_set_param(ctx, SET_PARAM_GOLDEN_PATH, in) != 0) {
 			mtk_v4l2_err("[%d] Error!! Cannot set param", ctx->id);
 			return -EINVAL;
 		}
-		ctx->dec_param_change &= (~MTK_DEC_PARAM_GOLDEN_PATH);
+		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_GOLDEN_PATH);
 	}
 
-	if (ctx->dec_param_change & MTK_DEC_PARAM_WAIT_KEY_FRAME) {
+	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_WAIT_KEY_FRAME) {
 		in[0] = (unsigned long)ctx->dec_params.wait_key_frame;
 		if (vdec_if_set_param(ctx, SET_PARAM_WAIT_KEY_FRAME, in) != 0) {
 			mtk_v4l2_err("[%d] Error!! Cannot set param", ctx->id);
 			return -EINVAL;
 		}
-		ctx->dec_param_change &= (~MTK_DEC_PARAM_WAIT_KEY_FRAME);
+		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_WAIT_KEY_FRAME);
 	}
 
-	if (ctx->dec_param_change & MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE) {
+	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE) {
 		in[0] = (unsigned long)ctx->dec_params.decode_error_handle_mode;
 		if (vdec_if_set_param(ctx, SET_PARAM_DECODE_ERROR_HANDLE_MODE, in) != 0) {
 			mtk_v4l2_err("[%d] Error!! Cannot set param", ctx->id);
 			return -EINVAL;
 		}
-		ctx->dec_param_change &= (~MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE);
+		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE);
 	}
 
-	if (ctx->dec_param_change & MTK_DEC_PARAM_NAL_SIZE_LENGTH) {
+	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_NAL_SIZE_LENGTH) {
 		in[0] = (unsigned long)ctx->dec_params.wait_key_frame;
 		if (vdec_if_set_param(ctx, SET_PARAM_NAL_SIZE_LENGTH,
 					in) != 0) {
 			mtk_v4l2_err("[%d] Error!! Cannot set param", ctx->id);
 			return -EINVAL;
 		}
-		ctx->dec_param_change &= (~MTK_DEC_PARAM_NAL_SIZE_LENGTH);
+		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_NAL_SIZE_LENGTH);
 	}
 
-	if (ctx->dec_param_change & MTK_DEC_PARAM_OPERATING_RATE) {
+	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_OPERATING_RATE) {
 		in[0] = (unsigned long)ctx->dec_params.operating_rate;
 		if (vdec_if_set_param(ctx, SET_PARAM_OPERATING_RATE, in) != 0) {
 			mtk_v4l2_err("[%d] Error!! Cannot set param", ctx->id);
 			return -EINVAL;
 		}
-		ctx->dec_param_change &= (~MTK_DEC_PARAM_OPERATING_RATE);
+		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_OPERATING_RATE);
+	}
+
+	if (need_set_param) {
+		if (vdec_if_set_param(ctx, SET_PARAM_DEC_PARAMS, NULL) != 0) {
+			mtk_v4l2_err("[%d] Error!! Cannot set param", ctx->id);
+			return -EINVAL;
+		}
 	}
 
 	if (vdec_if_get_param(ctx, GET_PARAM_INPUT_DRIVEN, &ctx->input_driven)) {
@@ -2663,9 +2670,9 @@ static int vidioc_vdec_qbuf(struct file *file, void *priv,
 	mtkbuf = container_of(vb2_v4l2, struct mtk_video_dec_buf, vb);
 
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
-		memcpy(&mtkbuf->hdr10plus_buf, &ctx->dec_params.hdr10plus_buf,
+		memcpy(&mtkbuf->hdr10plus_buf, &ctx->hdr10plus_buf,
 			sizeof(struct hdr10plus_info));
-		memset(&ctx->dec_params.hdr10plus_buf, 0,
+		memset(&ctx->hdr10plus_buf, 0,
 			sizeof(struct hdr10plus_info)); // invalidate
 		ctx->input_max_ts =
 			(timeval_to_ns(&buf->timestamp) > ctx->input_max_ts) ?
@@ -3728,14 +3735,14 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 	src_mem->flags = vb2_v4l2->flags;
 	src_mem->index = vb->index;
 	src_mem->hdr10plus_buf = &buf->hdr10plus_buf;
-	ctx->dec_params.timestamp = src_vb2_v4l2->vb2_buf.timestamp;
+	ctx->timestamp = src_vb2_v4l2->vb2_buf.timestamp;
 
 	mtk_v4l2_debug(2,
 		"[%d] buf id=%d va=%p DMA=%lx size=%zx length=%zu dmabuf=%p pts %llu",
 		ctx->id, src_buf->index,
 		src_mem->va, (unsigned long)src_mem->dma_addr,
 		src_mem->size, src_mem->length,
-		src_mem->dmabuf, ctx->dec_params.timestamp);
+		src_mem->dmabuf, ctx->timestamp);
 
 	if (src_mem->va != NULL) {
 		SPRINTF(debug_bs, "%02x %02x %02x %02x %02x %02x %02x %02x %02x",
@@ -3748,9 +3755,9 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 	frame_size[1] = ctx->dec_params.frame_size_height;
 
 	vdec_if_set_param(ctx, SET_PARAM_FRAME_SIZE, frame_size);
-
-	if (ctx->dec_param_change & MTK_DEC_PARAM_DECODE_MODE)
+	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_DECODE_MODE)
 		vdec_if_set_param(ctx, SET_PARAM_DECODE_MODE, &ctx->dec_params.decode_mode);
+	vdec_if_set_param(ctx, SET_PARAM_DEC_PARAMS, NULL);
 
 	ret = vdec_if_decode(ctx, src_mem, NULL, &src_chg);
 	mtk_vdec_set_param(ctx);
@@ -4294,7 +4301,7 @@ static int vdec_set_hdr10plus_data(struct mtk_vcodec_ctx *ctx,
 				   struct v4l2_vdec_hdr10plus_data *hdr10plus_data)
 {
 	struct __u8 __user *buffer = u64_to_user_ptr(hdr10plus_data->addr);
-	struct hdr10plus_info *hdr10plus_buf = &ctx->dec_params.hdr10plus_buf;
+	struct hdr10plus_info *hdr10plus_buf = &ctx->hdr10plus_buf;
 
 	mtk_v4l2_debug(4, "hdr10plus_data size %d", hdr10plus_data->size);
 	hdr10plus_buf->size = hdr10plus_data->size;
@@ -4435,7 +4442,7 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 	switch (ctrl->id) {
 	case V4L2_CID_MPEG_MTK_DECODE_MODE:
 		ctx->dec_params.decode_mode = ctrl->val;
-		ctx->dec_param_change |= MTK_DEC_PARAM_DECODE_MODE;
+		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_DECODE_MODE;
 		break;
 	case V4L2_CID_MPEG_MTK_SEC_DECODE: {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
@@ -4452,7 +4459,6 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 		}
 #endif
 		ctx->dec_params.svp_mode = ctrl->val;
-		ctx->dec_param_change |= MTK_DEC_PARAM_SEC_DECODE;
 		mtk_v4l2_debug(ctrl->val ? 0 : 1, "[%d] V4L2_CID_MPEG_MTK_SEC_DECODE id %d val %d",
 			ctx->id, ctrl->id, ctrl->val);
 		break;
@@ -4464,38 +4470,38 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 			ctx->dec_params.frame_size_height = ctrl->val;
 		else if (ctx->dec_params.fixed_max_frame_buffer_mode == 0)
 			ctx->dec_params.fixed_max_frame_buffer_mode = ctrl->val;
-		ctx->dec_param_change |= MTK_DEC_PARAM_FRAME_SIZE;
+		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_FRAME_SIZE;
 		break;
 	case V4L2_CID_MPEG_MTK_FIXED_MAX_FRAME_BUFFER:
 		if (ctx->dec_params.fixed_max_frame_size_width == 0)
 			ctx->dec_params.fixed_max_frame_size_width = ctrl->val;
 		else if (ctx->dec_params.fixed_max_frame_size_height == 0)
 			ctx->dec_params.fixed_max_frame_size_height = ctrl->val;
-		ctx->dec_param_change |= MTK_DEC_PARAM_FIXED_MAX_FRAME_SIZE;
+		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_FIXED_MAX_FRAME_SIZE;
 		break;
 	case V4L2_CID_MPEG_MTK_CRC_PATH:
 		ctx->dec_params.crc_path = ctrl->p_new.p_char;
-		ctx->dec_param_change |= MTK_DEC_PARAM_CRC_PATH;
+		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_CRC_PATH;
 		break;
 	case V4L2_CID_MPEG_MTK_GOLDEN_PATH:
 		ctx->dec_params.golden_path = ctrl->p_new.p_char;
-		ctx->dec_param_change |= MTK_DEC_PARAM_GOLDEN_PATH;
+		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_GOLDEN_PATH;
 		break;
 	case V4L2_CID_MPEG_MTK_SET_WAIT_KEY_FRAME:
 		ctx->dec_params.wait_key_frame = ctrl->val;
-		ctx->dec_param_change |= MTK_DEC_PARAM_WAIT_KEY_FRAME;
+		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_WAIT_KEY_FRAME;
 		break;
 	case V4L2_CID_MPEG_MTK_SET_DECODE_ERROR_HANDLE_MODE:
 		ctx->dec_params.decode_error_handle_mode = ctrl->val;
-		ctx->dec_param_change |= MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE;
+		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE;
 		break;
 	case V4L2_CID_MPEG_MTK_SET_NAL_SIZE_LENGTH:
 		ctx->dec_params.nal_size_length = ctrl->val;
-		ctx->dec_param_change |= MTK_DEC_PARAM_NAL_SIZE_LENGTH;
+		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_NAL_SIZE_LENGTH;
 		break;
 	case V4L2_CID_MPEG_MTK_OPERATING_RATE:
 		ctx->dec_params.operating_rate = ctrl->val;
-		ctx->dec_param_change |= MTK_DEC_PARAM_OPERATING_RATE;
+		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_OPERATING_RATE;
 		break;
 	case V4L2_CID_MPEG_MTK_REAL_TIME_PRIORITY:
 		ctx->dec_params.priority = ctrl->val;
@@ -4513,7 +4519,7 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 			ctx, ctx->dev, ctrl->p_new.p_char, MTK_VCODEC_LOG_INDEX_PROP, NULL);
 		break;
 	case V4L2_CID_VDEC_DETECT_TIMESTAMP:
-		ctx->dec_params.enable_detect_ts = ctrl->val;
+		ctx->detect_ts_param.enable_detect_ts = ctrl->val;
 		break;
 	case V4L2_CID_VDEC_SLICE_COUNT:
 		ctx->dec_params.slice_count = ctrl->val;

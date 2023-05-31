@@ -270,48 +270,8 @@ struct mtk_q_data {
 	struct mtk_video_fmt    *fmt;
 };
 
-enum mtk_dec_param {
-	MTK_DEC_PARAM_NONE = 0,
-	MTK_DEC_PARAM_DECODE_MODE = (1 << 0),
-	MTK_DEC_PARAM_FRAME_SIZE = (1 << 1),
-	MTK_DEC_PARAM_FIXED_MAX_FRAME_SIZE = (1 << 2),
-	MTK_DEC_PARAM_CRC_PATH = (1 << 3),
-	MTK_DEC_PARAM_GOLDEN_PATH = (1 << 4),
-	MTK_DEC_PARAM_WAIT_KEY_FRAME = (1 << 5),
-	MTK_DEC_PARAM_NAL_SIZE_LENGTH = (1 << 6),
-	MTK_DEC_PARAM_FIXED_MAX_OUTPUT_BUFFER = (1 << 7),
-	MTK_DEC_PARAM_SEC_DECODE = (1 << 8),
-	MTK_DEC_PARAM_OPERATING_RATE = (1 << 9),
-	MTK_DEC_PARAM_DV = (1 << 10),
-	MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE = (1 << 11)
-};
-
-struct mtk_dec_params {
-	unsigned int    decode_mode;
-	unsigned int    frame_size_width;
-	unsigned int    frame_size_height;
-	unsigned int    fixed_max_frame_size_width;
-	unsigned int    fixed_max_frame_size_height;
-	unsigned int    fixed_max_frame_buffer_mode;
-	char            *crc_path;
-	char            *golden_path;
-	unsigned int    fb_num_planes;
-	unsigned int	wait_key_frame;
-	unsigned int	decode_error_handle_mode;
-	unsigned int	nal_size_length;
-	unsigned int	svp_mode;
-	unsigned int	operating_rate;
-	u64	timestamp;
-	unsigned int	total_frame_bufq_count;
-	unsigned int	queued_frame_buf_count;
-	int		priority;
-	int vpeek;
-	bool		enable_detect_ts;
-	int          slice_count;
-	struct hdr10plus_info hdr10plus_buf;
-};
-
 struct mtk_detect_ts_param {
+	bool enable_detect_ts;
 	enum mtk_ts_mode mode;
 	struct mutex lock;
 	u64 first_disp_ts;
@@ -604,8 +564,8 @@ struct mtk_vcodec_ctx {
 	enum mtk_instance_state state;
 	bool is_unsupport;
 	spinlock_t state_lock;
-	enum mtk_dec_param dec_param_change;
 	struct mtk_dec_params dec_params;
+	struct hdr10plus_info hdr10plus_buf;
 	enum mtk_encode_param param_change;
 	struct mtk_enc_params enc_params;
 
@@ -622,6 +582,7 @@ struct mtk_vcodec_ctx {
 	int last_is_hdr;
 	unsigned int errormap_info[VB2_MAX_FRAME];
 	u32 err_msg;
+	u64 timestamp;
 	s64 input_max_ts;
 	struct mtk_detect_ts_param detect_ts_param;
 
