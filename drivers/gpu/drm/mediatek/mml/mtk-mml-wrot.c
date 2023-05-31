@@ -2072,6 +2072,9 @@ static void wrot_backup_crc_update(struct mml_comp *comp, struct mml_task *task,
 	dma_addr_t pa_addr;
 	u32 *inst;
 
+	if (!mml_wrot_crc || !wrot_crc_pa[ccfg->pipe] || !wrot_frm->crc_inst_offset)
+		return;
+
 	pa_addr = wrot_crc_pa[ccfg->pipe] + wrot_crc_idx[ccfg->pipe] * 4;
 	task->wrot_crc_idx[ccfg->pipe] =  wrot_crc_idx[ccfg->pipe]++;
 	if (wrot_crc_idx[ccfg->pipe] >= WROT_CRC_CNT)
