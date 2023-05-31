@@ -705,7 +705,7 @@ int ged_gpufreq_commit(int oppidx, int commit_type, int *bCommited)
 	/* scaling cores to max if freq. is fixed */
 	dvfs_state = gpufreq_get_dvfs_state();
 
-	if (dvfs_state == DVFS_FIX_OPP || dvfs_state == DVFS_FIX_FREQ_VOLT) {
+	if (dvfs_state & DVFS_FIX_OPP || dvfs_state & DVFS_FIX_FREQ_VOLT) {
 		mask_idx = 0;
 		oppidx_tar = oppidx;
 	}
@@ -810,7 +810,7 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 	/* scaling cores to max if freq. is fixed */
 	dvfs_state = gpufreq_get_dvfs_state();
 
-	if (dvfs_state == DVFS_FIX_OPP || dvfs_state == DVFS_FIX_FREQ_VOLT) {
+	if (dvfs_state & DVFS_FIX_OPP || dvfs_state & DVFS_FIX_FREQ_VOLT) {
 		mask_idx = 0;
 		oppidx_tar = stack_oppidx;
 	}
