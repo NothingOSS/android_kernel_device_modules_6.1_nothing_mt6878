@@ -2018,10 +2018,11 @@ static void arm_smmu_tlb_inv_range_domain(unsigned long iova, size_t size,
 	};
 	int ret;
 
-	mutex_lock(&smmu_domain->smmu->pm_mutex);
 	ret = arm_smmu_rpm_get(smmu_domain->smmu);
-	if (ret)
-		goto out_unlock;
+	if (ret) {
+		dev_info(smmu_domain->smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return;
+	}
 
 	if (smmu_domain->stage == ARM_SMMU_DOMAIN_S1) {
 		cmd.opcode	= smmu_domain->smmu->features & ARM_SMMU_FEAT_E2H ?
@@ -2040,11 +2041,6 @@ static void arm_smmu_tlb_inv_range_domain(unsigned long iova, size_t size,
 	arm_smmu_atc_inv_domain(smmu_domain, 0, iova, size);
 
 	arm_smmu_rpm_put(smmu_domain->smmu);
-
-out_unlock:
-	mutex_unlock(&smmu_domain->smmu->pm_mutex);
-	if (ret)
-		dev_info(smmu_domain->smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 }
 
 void arm_smmu_tlb_inv_range_asid(unsigned long iova, size_t size, int asid,
@@ -2061,19 +2057,15 @@ void arm_smmu_tlb_inv_range_asid(unsigned long iova, size_t size, int asid,
 	};
 	int ret;
 
-	mutex_lock(&smmu_domain->smmu->pm_mutex);
 	ret = arm_smmu_rpm_get(smmu_domain->smmu);
-	if (ret)
-		goto out_unlock;
+	if (ret) {
+		dev_info(smmu_domain->smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return;
+	}
 
 	__arm_smmu_tlb_inv_range(&cmd, iova, size, granule, smmu_domain);
 
 	arm_smmu_rpm_put(smmu_domain->smmu);
-
-out_unlock:
-	mutex_unlock(&smmu_domain->smmu->pm_mutex);
-	if (ret)
-		dev_info(smmu_domain->smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 }
 
 static void arm_smmu_tlb_inv_page_nosync(struct iommu_iotlb_gather *gather,
@@ -2518,10 +2510,11 @@ static void arm_smmu_detach_dev(struct arm_smmu_master *master)
 	if (!smmu_domain)
 		return;
 
-	mutex_lock(&master->smmu->pm_mutex);
 	ret = arm_smmu_rpm_get(master->smmu);
-	if (ret)
-		goto out_unlock;
+	if (ret) {
+		dev_info(smmu_domain->smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return;
+	}
 
 	arm_smmu_disable_ats(master);
 
@@ -2534,11 +2527,6 @@ static void arm_smmu_detach_dev(struct arm_smmu_master *master)
 	arm_smmu_install_ste_for_dev(master);
 
 	arm_smmu_rpm_put(master->smmu);
-
-out_unlock:
-	mutex_unlock(&master->smmu->pm_mutex);
-	if (ret)
-		dev_info(master->smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 }
 
 static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
@@ -2573,10 +2561,11 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
 	arm_smmu_detach_dev(master);
 
 	mutex_lock(&smmu_domain->init_mutex);
-	mutex_lock(&smmu->pm_mutex);
 	ret = arm_smmu_rpm_get(smmu);
-	if (ret)
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 		goto out_unlock;
+	}
 
 	if (!smmu_domain->smmu) {
 		smmu_domain->smmu = smmu;
@@ -2638,10 +2627,7 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
 	arm_smmu_rpm_put(smmu);
 
 out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
 	mutex_unlock(&smmu_domain->init_mutex);
-	if (ret)
-		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 	return ret;
 }
 
@@ -2858,7 +2844,7 @@ static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 	/* Specific to Mediatek */
 	if (smmu->impl && smmu->impl->delay_hw_init &&
 	    smmu->impl->delay_hw_init(smmu)) {
-		mutex_lock(&smmu->pm_mutex);
+		mutex_lock(&smmu->init_mutex);
 		if (smmu->streams.rb_node == NULL) {
 			dev_info(smmu->dev, "[%s] delay_hw_init dev:%s, start\n",
 				 __func__, dev_name(dev));
@@ -2901,7 +2887,7 @@ static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 			dev_info(smmu->dev, "[%s] delay_hw_init dev:%s, done\n",
 				 __func__, dev_name(dev));
 		}
-		mutex_unlock(&smmu->pm_mutex);
+		mutex_unlock(&smmu->init_mutex);
 	}
 
 	master = kzalloc(sizeof(*master), GFP_KERNEL);
@@ -2947,7 +2933,7 @@ static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 out_runtime_put:
 	arm_smmu_rpm_put(smmu);
 out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
+	mutex_unlock(&smmu->init_mutex);
 	dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 	return ERR_PTR(ret);
 
@@ -3054,11 +3040,8 @@ static int arm_smmu_dev_enable_feature(struct device *dev,
 		return -ENODEV;
 
 	smmu = master->smmu;
-	mutex_lock(&smmu->pm_mutex);
-	if (arm_smmu_rpm_get(smmu)) {
-		mutex_unlock(&smmu->pm_mutex);
+	if (arm_smmu_rpm_get(smmu))
 		return -EINVAL;
-	}
 
 	if (smmu->impl && smmu->impl->dev_has_feature &&
 	    smmu->impl->dev_has_feature(dev, feat) &&
@@ -3066,7 +3049,6 @@ static int arm_smmu_dev_enable_feature(struct device *dev,
 	    !smmu->impl->dev_feature_enabled(dev, feat)) {
 		ret = smmu->impl->dev_enable_feature(dev, feat);
 		arm_smmu_rpm_put(smmu);
-		mutex_unlock(&smmu->pm_mutex);
 		return ret;
 	}
 
@@ -3100,11 +3082,8 @@ static int arm_smmu_dev_disable_feature(struct device *dev,
 		return -EINVAL;
 
 	smmu = master->smmu;
-	mutex_lock(&smmu->pm_mutex);
-	if (arm_smmu_rpm_get(smmu)) {
-		mutex_unlock(&smmu->pm_mutex);
+	if (arm_smmu_rpm_get(smmu))
 		return -EINVAL;
-	}
 
 	if (smmu->impl && smmu->impl->dev_has_feature &&
 	    smmu->impl->dev_has_feature(dev, feat) &&
@@ -3112,7 +3091,6 @@ static int arm_smmu_dev_disable_feature(struct device *dev,
 	    smmu->impl->dev_feature_enabled(dev, feat)) {
 		ret = smmu->impl->dev_disable_feature(dev, feat);
 		arm_smmu_rpm_put(smmu);
-		mutex_unlock(&smmu->pm_mutex);
 		return ret;
 	}
 
@@ -4138,7 +4116,7 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 	if (IS_ERR(smmu))
 		return PTR_ERR(smmu);
 
-	mutex_init(&smmu->pm_mutex);
+	mutex_init(&smmu->init_mutex);
 
 	/* Interrupt lines */
 
@@ -4166,10 +4144,11 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 	dev_info(smmu->dev, "[%s] delay_hw_init:%d\n", __func__, delay_hw_init);
 
 	if (!delay_hw_init) {
-		mutex_lock(&smmu->pm_mutex);
 		ret = arm_smmu_rpm_get(smmu);
-		if (ret)
-			goto out_unlock;
+		if (ret) {
+			dev_info(smmu->dev, "[%s] pm get failed ret:%d\n", __func__, ret);
+			return ret;
+		}
 
 		/* Probe the h/w */
 		ret = arm_smmu_device_hw_probe(smmu);
@@ -4207,7 +4186,6 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 		}
 
 		arm_smmu_rpm_put(smmu);
-		mutex_unlock(&smmu->pm_mutex);
 	}
 
 	/* And we're up. Go go go! */
@@ -4227,8 +4205,6 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 
 out_runtime_put:
 	arm_smmu_rpm_put(smmu);
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
 	dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 	return ret;
 }
@@ -4241,10 +4217,11 @@ static int arm_smmu_device_remove(struct platform_device *pdev)
 	iommu_device_unregister(&smmu->iommu);
 	iommu_device_sysfs_remove(&smmu->iommu);
 
-	mutex_lock(&smmu->pm_mutex);
 	ret = arm_smmu_rpm_get(smmu);
-	if (ret)
-		goto out_unlock;
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return ret;
+	}
 
 	arm_smmu_device_disable(smmu);
 	iopf_queue_free(smmu->evtq.iopf);
@@ -4254,11 +4231,7 @@ static int arm_smmu_device_remove(struct platform_device *pdev)
 
 	arm_smmu_rpm_put(smmu);
 
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
-	if (ret)
-		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
-	return ret;
+	return 0;
 }
 
 static void arm_smmu_device_shutdown(struct platform_device *pdev)
@@ -4272,19 +4245,15 @@ static void arm_smmu_device_shutdown(struct platform_device *pdev)
 		return;
 	}
 
-	mutex_lock(&smmu->pm_mutex);
 	ret = arm_smmu_rpm_get(smmu);
-	if (ret)
-		goto out_unlock;
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return;
+	}
 
 	arm_smmu_device_disable(smmu);
 
 	arm_smmu_rpm_put(smmu);
-
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
-	if (ret)
-		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 }
 
 static int arm_smmu_rpm_get(struct arm_smmu_device *smmu)

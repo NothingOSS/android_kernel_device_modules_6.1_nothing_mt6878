@@ -1061,19 +1061,15 @@ static void mtk_smmu_irq_restart(struct timer_list *t)
 		get_smmu_name(data->plat_data->smmu_type));
 
 	smmu = &data->smmu;
-	mutex_lock(&smmu->pm_mutex);
 	ret = mtk_smmu_power_get(smmu);
-	if (ret)
-		goto out_unlock;
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return;
+	}
 
 	mtk_smmu_irq_setup(data, true);
 
 	mtk_smmu_power_put(smmu);
-
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
-	if (ret)
-		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 
 #ifdef MTK_SMMU_DEBUG
 	mtk_iommu_debug_reset();
@@ -1469,8 +1465,6 @@ static int mtk_report_device_fault(struct arm_smmu_master *master,
 
 	/* limit TF handle dump rate */
 	if (!__ratelimit(&fault_rs)) {
-		dev_dbg(master->dev, "[%s] smmu:%s, fault ratelimit...\n",
-			__func__, get_smmu_name(data->plat_data->smmu_type));
 		smmuwp_clear_tf(smmu);
 		return 0;
 	}
@@ -1503,9 +1497,9 @@ static int mtk_report_device_fault(struct arm_smmu_master *master,
 	ret = iommu_report_device_fault(master->dev, &mtk_fault_evt.fault_evt);
 	if (ret) {
 		if (!param || !param->fault_param || !param->fault_param->handler) {
-			dev_info(master->dev,
-				 "[%s] ret:%d, dev:%s not register device fault handler",
-				 __func__, ret, dev_name(master->dev));
+			dev_dbg(master->dev,
+				"[%s] ret:%d, dev:%s not register device fault handler",
+				__func__, ret, dev_name(master->dev));
 		}
 	}
 
@@ -1552,21 +1546,17 @@ static void smmu_fault_dump(struct arm_smmu_device *smmu)
 	dev_info(smmu->dev, "[%s] smmu:%s\n", __func__,
 		 get_smmu_name(data->plat_data->smmu_type));
 
-	mutex_lock(&smmu->pm_mutex);
 	ret = mtk_smmu_power_get(smmu);
-	if (ret)
-		goto out_unlock;
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return;
+	}
 
 	dump_global_register(smmu);
 	mtk_smmu_wpreg_dump(NULL, data->plat_data->smmu_type);
 	mtk_smmu_ste_cd_dump(NULL, data->plat_data->smmu_type);
 
 	mtk_smmu_power_put(smmu);
-
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
-	if (ret)
-		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 #endif
 }
 
@@ -1647,10 +1637,11 @@ void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
 	pr_info("%s, smmu:%s\n", __func__, get_smmu_name(type));
 
 	smmu = &data->smmu;
-	mutex_lock(&smmu->pm_mutex);
 	ret = mtk_smmu_power_get(smmu);
-	if (ret)
-		goto out_unlock;
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return;
+	}
 
 	dump_global_register(&data->smmu);
 	mtk_smmu_wpreg_dump(NULL, data->plat_data->smmu_type);
@@ -1661,11 +1652,6 @@ void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
 	smmuwp_dump_dcm_en(&data->smmu);
 
 	mtk_smmu_power_put(smmu);
-
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
-	if (ret)
-		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_dbg_hang_detect);
 
@@ -2633,21 +2619,21 @@ static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu)
 int mtk_smmu_start_transaction_counter(struct device *dev)
 {
 	struct arm_smmu_device *smmu = get_smmu_device(dev);
-	int ret = -1;
+	int ret;
 
 	if (!smmu)
 		return -1;
 
-	mutex_lock(&smmu->pm_mutex);
-	if (mtk_smmu_power_get(smmu))
-		goto out_unlock;
+	ret = mtk_smmu_power_get(smmu);
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return -1;
+	}
 
 	ret = smmuwp_start_transaction_counter(smmu);
 
 	mtk_smmu_power_put(smmu);
 
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_start_transaction_counter);
@@ -2657,20 +2643,20 @@ void mtk_smmu_end_transaction_counter(struct device *dev,
 				      unsigned long *tbu_tot)
 {
 	struct arm_smmu_device *smmu = get_smmu_device(dev);
+	int ret;
 
 	if (!smmu)
 		return;
 
-	mutex_lock(&smmu->pm_mutex);
-	if (mtk_smmu_power_get(smmu))
-		goto out_unlock;
+	ret = mtk_smmu_power_get(smmu);
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return;
+	}
 
 	smmuwp_end_transaction_counter(smmu, tcu_tot, tbu_tot);
 
 	mtk_smmu_power_put(smmu);
-
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_end_transaction_counter);
 
@@ -2679,21 +2665,21 @@ int mtk_smmu_start_latency_monitor(struct device *dev,
 				   int lat_spec)
 {
 	struct arm_smmu_device *smmu = get_smmu_device(dev);
-	int ret = -1;
+	int ret;
 
 	if (!smmu)
 		return -1;
 
-	mutex_lock(&smmu->pm_mutex);
-	if (mtk_smmu_power_get(smmu))
-		goto out_unlock;
+	ret = mtk_smmu_power_get(smmu);
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return -1;
+	}
 
 	ret = smmuwp_start_latency_monitor(smmu, mon_axiid, lat_spec);
 
 	mtk_smmu_power_put(smmu);
 
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_start_latency_monitor);
@@ -2705,81 +2691,81 @@ void mtk_smmu_end_latency_monitor(struct device *dev,
 				  unsigned long *oos_trans_tot)
 {
 	struct arm_smmu_device *smmu = get_smmu_device(dev);
+	int ret;
 
 	if (!smmu)
 		return;
 
-	mutex_lock(&smmu->pm_mutex);
-	if (mtk_smmu_power_get(smmu))
-		goto out_unlock;
+	ret = mtk_smmu_power_get(smmu);
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return;
+	}
 
 	smmuwp_end_latency_monitor(smmu, maxlat_axiid,
 			tcu_rlat_tots, tbu_lat_tots, oos_trans_tot);
 
 	mtk_smmu_power_put(smmu);
-
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_end_latency_monitor);
 
 void mtk_smmu_dump_outstanding_monitor(struct device *dev)
 {
 	struct arm_smmu_device *smmu = get_smmu_device(dev);
+	int ret;
 
 	if (!smmu)
 		return;
 
-	mutex_lock(&smmu->pm_mutex);
-	if (mtk_smmu_power_get(smmu))
-		goto out_unlock;
+	ret = mtk_smmu_power_get(smmu);
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return;
+	}
 
 	smmuwp_dump_outstanding_monitor(smmu);
 
 	mtk_smmu_power_put(smmu);
-
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_dump_outstanding_monitor);
 
 void mtk_smmu_dump_io_interface_signals(struct device *dev)
 {
 	struct arm_smmu_device *smmu = get_smmu_device(dev);
+	int ret;
 
 	if (!smmu)
 		return;
 
-	mutex_lock(&smmu->pm_mutex);
-	if (mtk_smmu_power_get(smmu))
-		goto out_unlock;
+	ret = mtk_smmu_power_get(smmu);
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return;
+	}
 
 	smmuwp_dump_io_interface_signals(smmu);
 
 	mtk_smmu_power_put(smmu);
-
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_dump_io_interface_signals);
 
 void mtk_smmu_dump_dcm_en(struct device *dev)
 {
 	struct arm_smmu_device *smmu = get_smmu_device(dev);
+	int ret;
 
 	if (!smmu)
 		return;
 
-	mutex_lock(&smmu->pm_mutex);
-	if (mtk_smmu_power_get(smmu))
-		goto out_unlock;
+	ret = mtk_smmu_power_get(smmu);
+	if (ret) {
+		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		return;
+	}
 
 	smmuwp_dump_dcm_en(smmu);
 
 	mtk_smmu_power_put(smmu);
-
-out_unlock:
-	mutex_unlock(&smmu->pm_mutex);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_dump_dcm_en);
 
