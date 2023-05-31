@@ -38,6 +38,8 @@ struct mdw_rv_msg_cmd {
 	/* history params */
 	uint32_t inference_ms;
 	uint32_t tolerance_ms;
+	/* cmd done */
+	uint32_t cmd_done;
 } __packed;
 
 struct mdw_rv_msg_sc {

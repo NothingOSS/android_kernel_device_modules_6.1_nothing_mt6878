@@ -393,6 +393,8 @@ struct mdw_cmd {
 	uint32_t tolerance_ms;
 	/* set dtime */
 	uint64_t is_dtime_set;
+	/* polling cmd result */
+	uint32_t cmd_done;
 };
 
 struct mdw_dev_func {

@@ -54,6 +54,7 @@ struct mdw_ipi_handshake {
 			uint64_t mem_bmp;
 			uint64_t stat_iova;
 			uint32_t stat_size;
+			uint32_t power_gain_time;
 		} basic;
 		struct {
 			uint32_t type;

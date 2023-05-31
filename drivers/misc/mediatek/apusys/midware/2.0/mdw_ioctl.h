@@ -181,6 +181,9 @@ struct mdw_subcmd_exec_info {
 	uint32_t boost;
 	uint32_t tcm_usage;
 	int32_t ret;
+	uint32_t was_preempted;
+	uint32_t executed_core_bitmap;
+	uint32_t reserved;
 };
 
 struct mdw_cmd_exec_info {
@@ -264,6 +267,7 @@ struct mdw_cmd_out {
 		struct {
 			uint64_t id;
 			uint64_t fence;
+			uint64_t cmd_done_usr;
 		} exec;
 	};
 };
