@@ -38,7 +38,8 @@ static int (*subsys_init[])(struct pll_dts *array) = {
 static bool _inited;
 static struct pll_dts *_array;
 static void set_dts_array(struct pll_dts *array) {_array = array; }
-static struct pll_dts *get_dts_array(void) {return _array; }
+static struct pll_dts *NO_OPTIMIZE get_dts_array(void) { return _array; }
+
 
 static bool mtk_fh_set_rate(const char *pll_name, unsigned long dds, int postdiv)
 {

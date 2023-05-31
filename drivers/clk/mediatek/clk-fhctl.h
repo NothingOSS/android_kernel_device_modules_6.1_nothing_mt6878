@@ -6,6 +6,16 @@
 #ifndef __CLK_FHCTL_H
 #define __CLK_FHCTL_H
 
+#if IS_ENABLED(CONFIG_KALLSYMS_ALL)
+#if defined(__clang__)
+#define NO_OPTIMIZE __attribute__((optnone))
+#elif defined(__GNUC__) || defined(__GNUG__)
+#define NO_OPTIMIZE __attribute__((optimize(0)))
+#else
+#define NO_OPTIMIZE
+#endif
+#endif
+
 struct fh_operation {
 	int (*hopping)(void *data,
 			char *domain, unsigned int fh_id,
