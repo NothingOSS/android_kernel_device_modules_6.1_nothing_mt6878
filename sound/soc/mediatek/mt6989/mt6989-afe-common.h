@@ -22,12 +22,12 @@
 #define SKIP_SB_BTCVSD
 #define SKIP_SB_OFFLOAD
 #define SKIP_SB_VOW
+#define SKIP_SB_ULTRA
 #define SKIP_SB_AUDIO
 #define SKIP_SMCC_SB
 #else
 /* delete define below if your feature don't want to skip */
 #define SKIP_SB_BTCVSD
-#define SKIP_SB_ULTRA
 #define SKIP_SB_AUDIO
 #endif
 
