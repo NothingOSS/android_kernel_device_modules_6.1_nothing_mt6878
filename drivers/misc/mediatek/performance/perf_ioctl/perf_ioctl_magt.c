@@ -14,13 +14,23 @@ static int fpsdrop_aware_threshold = -1;
 static int advice_bat_avg_current = -1;
 static int advice_bat_max_current = -1;
 static int targetfps_throttling_temp = -1;
+static int thermal_aware_light_threshold = -1;
 
 module_param(thermal_aware_threshold, int, 0644);
 module_param(fpsdrop_aware_threshold, int, 0644);
 module_param(advice_bat_avg_current, int, 0644);
 module_param(advice_bat_max_current, int, 0644);
 module_param(targetfps_throttling_temp, int, 0644);
+module_param(thermal_aware_light_threshold, int, 0644);
 
+static unsigned long perfctl_copy_from_user(void *pvTo,
+		const void __user *pvFrom, unsigned long ulBytes)
+{
+	if (access_ok(pvFrom, ulBytes))
+		return __copy_from_user(pvTo, pvFrom, ulBytes);
+
+	return ulBytes;
+}
 static unsigned long perfctl_copy_to_user(void __user *pvTo,
 		const void *pvFrom, unsigned long ulBytes)
 {
@@ -209,28 +219,96 @@ int get_perf_index(struct cpu_info *_ci)
 }
 EXPORT_SYMBOL(get_perf_index);
 
+/*--------------------XGF SET DEPLIST------------------------*/
+int (*magt2fpsgo_notify_dep_list_fp)(int pid,
+		int *user_dep_arr,
+		int user_dep_num);
+EXPORT_SYMBOL(magt2fpsgo_notify_dep_list_fp);
+
+/*--------------------FSTB SET TARGET FPS------------------------*/
+int (*magt2fpsgo_notify_target_fps_fp)(int *pid_arr,
+		int *tid_arr,
+		int *tfps_arr,
+		int num);
+EXPORT_SYMBOL(magt2fpsgo_notify_target_fps_fp);
+
 /*--------------------MAGT IOCTL------------------------*/
 static long magt_ioctl(struct file *filp,
 		unsigned int cmd, unsigned long arg)
 {
 	ssize_t ret = 0;
-	struct cpu_info *ciUM = (struct cpu_info *)arg, *ciKM = &ci;
+	struct cpu_info *ciUM, *ciKM = &ci;
+	struct target_fps_info *tfiKM = NULL, *tfiUM = NULL;
+	struct target_fps_info tfi;
+	struct dep_list_info *dliKM = NULL, *dliUM = NULL;
+	struct dep_list_info dli;
 
 	switch (cmd) {
-	case GET_CPU_LOADING:
+	case MAGT_GET_CPU_LOADING:
 		ret = get_cpu_loading(ciKM);
 		if (ret < 0)
 			goto ret_ioctl;
+		ciUM = (struct cpu_info *)arg;
 		perfctl_copy_to_user(ciUM, ciKM,
 			sizeof(struct cpu_info));
 		break;
-	case GET_PERF_INDEX:
+
+	case MAGT_GET_PERF_INDEX:
 		ret = get_perf_index(ciKM);
 		if (ret < 0)
 			goto ret_ioctl;
+		ciUM = (struct cpu_info *)arg;
 		perfctl_copy_to_user(ciUM, ciKM,
 			sizeof(struct cpu_info));
 		break;
+
+	case MAGT_SET_TARGET_FPS:
+		if (!magt2fpsgo_notify_target_fps_fp) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+		tfiUM = (struct target_fps_info *)arg;
+
+		tfiKM = &tfi;
+		if (perfctl_copy_from_user(tfiKM, tfiUM,
+				sizeof(struct target_fps_info))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
+		if (tfiKM->num > MAX_MAGT_TARGET_FPS_NUM ) {
+			ret = -EINVAL;
+			goto ret_ioctl;
+		}
+
+		ret = magt2fpsgo_notify_target_fps_fp(tfiKM->pid_arr,
+			tfiKM->tid_arr, tfiKM->tfps_arr, tfiKM->num);
+		break;
+
+	case MAGT_SET_DEP_LIST:
+		if (!magt2fpsgo_notify_dep_list_fp) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		dliUM = (struct dep_list_info *)arg;
+		dliKM = &dli;
+
+		if (perfctl_copy_from_user(dliKM, dliUM,
+				sizeof(struct dep_list_info))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
+		if (dliKM->user_dep_num > MAGT_DEP_LIST_NUM ) {
+			ret = -EINVAL;
+			goto ret_ioctl;
+		}
+
+		ret = magt2fpsgo_notify_dep_list_fp(dliKM->pid,
+			dliKM->user_dep_arr, dliKM->user_dep_num);
+		break;
+
 	default:
 		pr_debug(TAG "%s %d: unknown cmd %x\n",
 			__FILE__, __LINE__, cmd);
