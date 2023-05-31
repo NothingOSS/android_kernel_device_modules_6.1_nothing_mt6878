@@ -30,6 +30,7 @@ static struct attribute *sched_ctl_attrs[] = {
 	&sched_core_pause_info_attr.attr,
 	&sched_turn_point_freq_attr.attr,
 	&sched_target_margin_attr.attr,
+	&sched_target_margin_low_attr.attr,
 	&sched_util_est_ctrl.attr,
 #endif
 	NULL,
@@ -87,7 +88,7 @@ static ssize_t show_sched_target_margin(struct kobject *kobj,
 
 	for (i = 0; i < pd_count; i++)
 		len += snprintf(buf+len, max_len-len,
-			"C%d=%d ", i, get_target_margin(i));
+			"C%d=%d low:C%d=%d ", i, get_target_margin(i), i, get_target_margin_low(i));
 	len += snprintf(buf + len, max_len-len, "\n");
 	return len;
 }
@@ -131,6 +132,18 @@ const char __user *buf, size_t cnt)
 	return cnt;
 }
 
+ssize_t store_sched_target_margin_low(struct kobject *kobj, struct kobj_attribute *attr,
+const char __user *buf, size_t cnt)
+{
+	int cluster;
+	int value;
+
+	if (sscanf(buf, "%d %d", &cluster, &value) != 2)
+		return -EINVAL;
+	set_target_margin_low(cluster, value);
+	return cnt;
+}
+
 extern bool sysctl_util_est;
 ssize_t store_sched_util_est_ctrl(struct kobject *kobj, struct kobj_attribute *attr,
 const char __user *buf, size_t cnt)
@@ -160,5 +173,7 @@ struct kobj_attribute sched_turn_point_freq_attr =
 __ATTR(sched_turn_point_freq, 0644, show_sched_turn_point_freq, store_sched_turn_point_freq);
 struct kobj_attribute sched_target_margin_attr =
 __ATTR(sched_target_margin, 0644, show_sched_target_margin, store_sched_target_margin);
+struct kobj_attribute sched_target_margin_low_attr =
+__ATTR(sched_target_margin_low, 0644, show_sched_target_margin, store_sched_target_margin_low);
 struct kobj_attribute sched_util_est_ctrl =
 __ATTR(sched_util_est_ctrl, 0644, show_sched_util_est_ctrl, store_sched_util_est_ctrl);

@@ -1497,6 +1497,7 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 
 	for (i = 0; i < pd_count; i++) {
 		set_target_margin(i, 20);
+		set_target_margin_low(i, 20);
 		set_turn_point_freq(i, 0);
 	}
 
@@ -1603,6 +1604,7 @@ unsigned int util_scale = 1280;
 unsigned int sysctl_sched_capacity_margin_dvfs = 20;
 unsigned int turn_point_util[MAX_NR_CPUS];
 unsigned int target_margin[MAX_NR_CPUS];
+unsigned int target_margin_low[MAX_NR_CPUS];
 /*
  * set sched capacity margin for DVFS, Default = 20
  */
@@ -1637,11 +1639,29 @@ int set_target_margin(int gearid, int margin)
 }
 EXPORT_SYMBOL_GPL(set_target_margin);
 
+int set_target_margin_low(int gearid, int margin)
+{
+	if (gearid < 0 || gearid > pd_count)
+		return -1;
+
+	if (margin < 0 || margin > 95)
+		return -1;
+	target_margin_low[gearid] = (SCHED_CAPACITY_SCALE * 100 / (100 - margin));
+	return 0;
+}
+EXPORT_SYMBOL_GPL(set_target_margin_low);
+
 unsigned int get_target_margin(int gearid)
 {
 	return (100 - (SCHED_CAPACITY_SCALE * 100)/target_margin[gearid]);
 }
 EXPORT_SYMBOL_GPL(get_target_margin);
+
+unsigned int get_target_margin_low(int gearid)
+{
+	return (100 - (SCHED_CAPACITY_SCALE * 100)/target_margin_low[gearid]);
+}
+EXPORT_SYMBOL_GPL(get_target_margin_low);
 
 /*
  *for vonvenient, pass freq, but converty to util
@@ -1918,6 +1938,10 @@ void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struc
 	if (turn_point_util[gearid] &&
 		util > turn_point_util[gearid])
 		util = max(turn_point_util[gearid], orig_util * target_margin[gearid]
+					>> SCHED_CAPACITY_SHIFT);
+	else if (turn_point_util[gearid] &&
+		util < turn_point_util[gearid])
+		util = min(turn_point_util[gearid], orig_util * target_margin_low[gearid]
 					>> SCHED_CAPACITY_SHIFT);
 
 	*next_freq = pd_X2Y(cpu, util, CAP, FREQ, false);

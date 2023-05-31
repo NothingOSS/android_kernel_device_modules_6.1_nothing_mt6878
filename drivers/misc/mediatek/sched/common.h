@@ -142,6 +142,7 @@ static inline int rt_rq_throttled(struct rt_rq *rt_rq)
 #endif
 
 extern int set_target_margin(int gearid, int margin);
+extern int set_target_margin_low(int gearid, int margin);
 extern int set_turn_point_freq(int gearid, unsigned long freq);
 
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER)

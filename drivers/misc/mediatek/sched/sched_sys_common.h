@@ -28,8 +28,11 @@ extern unsigned long get_turn_point_freq(int gearid);
 extern int set_turn_point_freq(int gearid, unsigned long freq);
 extern int set_target_margin(int gearid, int margin);
 extern unsigned int get_target_margin(int gearid);
+extern int set_target_margin_low(int gearid, int margin);
+extern unsigned int get_target_margin_low(int gearid);
 extern struct kobj_attribute sched_turn_point_freq_attr;
 extern struct kobj_attribute sched_target_margin_attr;
+extern struct kobj_attribute sched_target_margin_low_attr;
 extern struct kobj_attribute sched_util_est_ctrl;
 extern int set_util_est_ctrl(bool enable);
 
