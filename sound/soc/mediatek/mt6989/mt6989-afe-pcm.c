@@ -5104,7 +5104,7 @@ static ssize_t afe_sysfs_debug_write(struct file *filep, struct kobject *kobj,
 		goto exit;
 	}
 
-	if (size > MAX_DEBUG_WRITE_INPUT)
+	if (size >= MAX_DEBUG_WRITE_INPUT)
 		size = MAX_DEBUG_WRITE_INPUT - 1;
 
 	memset((void *)input, 0, MAX_DEBUG_WRITE_INPUT);

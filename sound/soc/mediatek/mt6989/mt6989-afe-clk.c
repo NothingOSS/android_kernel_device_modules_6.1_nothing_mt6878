@@ -413,11 +413,6 @@ void mt6989_afe_disable_clock(struct mtk_base_afe *afe)
 	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_TDMOUT_B_CK]);
 	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_ENGEN2_CK]);
 	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_ENGEN1_CK]);
-
-
-	/* IPM2.0: Open AUDIO_TOP_CON4 for un-enabling AP side module clk */
-	/* Please remove this after bringup */
-	regmap_write(afe->regmap, AUDIO_TOP_CON4, 0x3FFF);
 }
 
 int mt6989_afe_dram_request(struct device *dev)
