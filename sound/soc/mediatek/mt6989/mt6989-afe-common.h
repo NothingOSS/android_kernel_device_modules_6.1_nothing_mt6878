@@ -30,7 +30,6 @@
 #define SKIP_SB_OFFLOAD
 #define SKIP_SB_ULTRA
 #define SKIP_SB_AUDIO
-#define SKIP_SMCC_SB
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
