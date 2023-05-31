@@ -361,7 +361,7 @@ static int gzvm_irqfd_assign(struct gzvm *gzvm, struct gzvm_irqfd *args)
 		if (irqfd->eventfd != tmp->eventfd)
 			continue;
 		/* This fd is used for another irq already. */
-		pr_info("already used: gsi=%d fd=%d\n", args->gsi, args->fd);
+		GZVM_ERR("already used: gsi=%d fd=%d\n", args->gsi, args->fd);
 		ret = -EBUSY;
 		spin_unlock_irq(&gzvm->irqfds.lock);
 		goto fail;

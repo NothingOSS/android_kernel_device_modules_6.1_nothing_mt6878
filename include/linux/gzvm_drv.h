@@ -12,6 +12,7 @@
 #include <linux/platform_device.h>
 #include <linux/gzvm.h>
 #include <linux/srcu.h>
+#include <linux/ktime.h>
 
 #define MODULE_NAME	"gzvm"
 #define GZVM_VCPU_MMAP_SIZE  PAGE_SIZE
@@ -101,6 +102,9 @@ struct gzvm {
 	struct srcu_struct irq_srcu;
 	/* lock for irq injection */
 	struct mutex irq_lock;
+
+	/* record time spent in exit*/
+	ktime_t exit_start_time;
 };
 
 long gzvm_dev_ioctl_check_extension(struct gzvm *gzvm, unsigned long args);
@@ -152,5 +156,9 @@ bool gzvm_ioevent_write(struct gzvm_vcpu *vcpu, __u64 addr, int len,
 void eventfd_ctx_do_read(struct eventfd_ctx *ctx, __u64 *cnt);
 struct vm_area_struct *vma_lookup(struct mm_struct *mm, unsigned long addr);
 void add_wait_queue_priority(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry);
+
+#define GZVM_INFO(fmt...) pr_info("[GZVM]" fmt)
+#define GZVM_DEBUG(fmt...) pr_info("[GZVM][DBG]" fmt)
+#define GZVM_ERR(fmt...) pr_info("[GZVM][ERR]" fmt)
 
 #endif /* __GZVM_DRV_H__ */

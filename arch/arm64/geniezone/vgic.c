@@ -52,8 +52,8 @@ static int gzvm_vgic_inject_irq(struct gzvm *gzvm, unsigned int vcpu_idx, u32 ir
 	gzvm_hypcall_wrapper(MT_HVC_GZVM_IRQ_LINE, a1, irq, level,
 			     0, 0, 0, 0, &res);
 	if (res.a0) {
-		pr_info("Failed to set IRQ level (%d) to irq#%u on vcpu %d with ret=%d\n",
-		       level, irq, vcpu_idx, (int)res.a0);
+		GZVM_ERR("Failed to set IRQ level (%d) to irq#%u on vcpu %d with ret=%d\n",
+			 level, irq, vcpu_idx, (int)res.a0);
 		return -EFAULT;
 	}
 

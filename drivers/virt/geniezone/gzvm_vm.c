@@ -409,6 +409,9 @@ static void gzvm_destroy_vm(struct gzvm *gzvm)
 	list_del(&gzvm->vm_list);
 	mutex_unlock(&gzvm_list_lock);
 
+	GZVM_INFO("%s, done exit %lld us", __func__,
+		  ktime_us_delta(ktime_get(), gzvm->exit_start_time));
+
 	mutex_unlock(&gzvm->lock);
 
 	kfree(gzvm);
@@ -419,6 +422,7 @@ static int gzvm_vm_release(struct inode *inode, struct file *filp)
 	struct gzvm *gzvm = filp->private_data;
 
 	gzvm_destroy_vm(gzvm);
+
 	return 0;
 }
 
@@ -467,7 +471,7 @@ static struct gzvm *gzvm_create_vm(unsigned long vm_type)
 	list_add(&gzvm->vm_list, &gzvm_list);
 	mutex_unlock(&gzvm_list_lock);
 
-	pr_info("VM-%u is created\n", gzvm->vm_id);
+	GZVM_INFO("VM-%u is created\n", gzvm->vm_id);
 
 	return gzvm;
 }

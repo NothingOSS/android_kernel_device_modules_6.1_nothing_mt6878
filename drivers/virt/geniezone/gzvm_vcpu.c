@@ -86,8 +86,10 @@ static long gzvm_vcpu_run(struct gzvm_vcpu *vcpu, void * __user argp)
 	if (copy_from_user(vcpu->run, argp, sizeof(struct gzvm_vcpu_run)))
 		return -EFAULT;
 
-	if (vcpu->run->immediate_exit == 1)
+	if (vcpu->run->immediate_exit == 1) {
+		vcpu->gzvm->exit_start_time = ktime_get();
 		return -EINTR;
+	}
 
 	while (!need_userspace && !signal_pending(current)) {
 		gzvm_arch_vcpu_run(vcpu, &exit_reason);
@@ -130,8 +132,11 @@ static long gzvm_vcpu_run(struct gzvm_vcpu *vcpu, void * __user argp)
 out:
 	if (copy_to_user(argp, vcpu->run, sizeof(struct gzvm_vcpu_run)))
 		return -EFAULT;
-	if (signal_pending(current))
+
+	if (signal_pending(current)) {
+		vcpu->gzvm->exit_start_time = ktime_get();
 		return -ERESTARTSYS;
+	}
 	return 0;
 }
 
