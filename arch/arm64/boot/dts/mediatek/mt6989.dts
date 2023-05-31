@@ -11832,7 +11832,8 @@
 			  <0 0x1cbff000 0 0x100>, /* mbox4 base */
 			  <0 0x1cbff100 0 0x4>, /* mbox4 set */
 			  <0 0x1cbff10c 0 0x4>, /* mbox4 clr */
-			  <0 0x1cba5030 0 0x4>; /* mbox4 init */
+			  <0 0x1cba5030 0 0x4>, /* mbox4 init */
+			  <0 0x1cb54000 0 0x1000>; /* cfg ap*/
 
 		reg-names = "scp_sram_base",
 				"scp_cfgreg",
@@ -11861,7 +11862,8 @@
 				"mbox4_base",
 				"mbox4_set",
 				"mbox4_clr",
-				"mbox4_init";
+				"mbox4_init",
+				"scp_cfgreg_ap";
 
 		interrupts = <GIC_SPI 792 IRQ_TYPE_LEVEL_HIGH 0>,
 				 <GIC_SPI 793 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -11972,9 +11974,9 @@
 		secure-dump-size = <0x580000>;
 		scp-pm-notify = "disable";
 		scp-thermal-wq = "disable";
-		scp-secure-ipc = "enable";
 		scp-low-pwr-dbg = "disable";
-
+		scp-cfgreg-ap-en = "enable";
+		scp-ipc-wa = "enable";
 		//scp_aovmem_key = "mediatek,scp_aov_reserved";
 		scp-mem-key = "mediatek,reserve-memory-scp_share";
 
