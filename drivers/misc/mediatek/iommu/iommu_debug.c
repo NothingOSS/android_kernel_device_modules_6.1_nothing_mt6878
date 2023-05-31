@@ -359,7 +359,6 @@ void mtk_iova_unmap(u64 tab_id, u64 iova, size_t size)
 	list_for_each_entry_safe(plist, tmp_plist, &map_list.head[id], list_node) {
 		i++;
 		if (plist->iova == iova &&
-		    plist->size == size &&
 		    plist->tab_id == tab_id) {
 			list_del(&plist->list_node);
 			kfree(plist);
@@ -375,8 +374,8 @@ void mtk_iova_unmap(u64 tab_id, u64 iova, size_t size)
 			__func__, iova, i, (end_t - start_t));
 
 	if (!find_iova)
-		pr_info("%s warnning, iova:0x%llx is not find in %d\n",
-			__func__, iova, i);
+		pr_info("%s warnning, iova:[0x%llx 0x%llx 0x%zx] not find in %d\n",
+			__func__, tab_id, iova, size, i);
 
 iova_trace:
 	mtk_iommu_iova_trace(IOMMU_UNMAP, iova, size, tab_id, NULL);
@@ -544,6 +543,11 @@ void mtk_iommu_debug_reset(void)
 	iommu_globals.enable = 1;
 }
 EXPORT_SYMBOL_GPL(mtk_iommu_debug_reset);
+
+static inline const char *get_power_status_str(int status)
+{
+	return (status == 0 ? "Power On" : "Power Off");
+}
 
 /**
  * Get mtk_iommu_port list index.
@@ -1060,7 +1064,7 @@ static void arm_lpae_ops_dump(struct seq_file *s, struct io_pgtable_ops *ops)
 	struct arm_lpae_io_pgtable *data = io_pgtable_ops_to_data(ops);
 	struct io_pgtable_cfg *cfg = &data->iop.cfg;
 
-	iommu_dump(s, "SMMU OPS values:");
+	iommu_dump(s, "SMMU OPS values:\n");
 	iommu_dump(s,
 		   "ops cfg: quirks 0x%lx, pgsize_bitmap 0x%lx, ias %u-bit, oas %u-bit, coherent_walk:%d\n",
 		   cfg->quirks, cfg->pgsize_bitmap, cfg->ias, cfg->oas, cfg->coherent_walk);
@@ -1073,7 +1077,7 @@ static void arm_lpae_ops_dump(struct seq_file *s, struct io_pgtable_ops *ops)
 static void dump_pgtable_ops(struct seq_file *s, struct arm_smmu_master *master)
 {
 	if (!master || !master->domain || !master->domain->pgtbl_ops) {
-		pr_info("%s, ERROR", __func__);
+		iommu_dump(s, "Not do arm_smmu_domain_finalise\n");
 		return;
 	}
 
@@ -1094,12 +1098,15 @@ static void ste_dump(struct seq_file *s, u32 sid, __le64 *ste)
 {
 	int i;
 
+	if (ste == NULL)
+		return;
+
 	if (!is_valid_ste(ste)) {
-		pr_info("Failed to valid ste(sid:%u):%d\n", sid, (ste == NULL));
+		iommu_dump(s, "Failed to valid ste(sid:%u)\n", sid);
 		return;
 	}
 
-	iommu_dump(s, "SMMU STE values:");
+	iommu_dump(s, "SMMU STE values:\n");
 	for (i = 0; i < STRTAB_STE_DWORDS; i++) {
 		iommu_dump(s, "u64[%d]:0x%016llx\n", i, *ste);
 		ste++;
@@ -1110,8 +1117,11 @@ static void cd_dump(struct seq_file *s, u32 ssid, __le64 *cd)
 {
 	int i;
 
+	if (cd == NULL)
+		return;
+
 	if (!is_valid_cd(cd)) {
-		pr_info("Failed to valid cd(ssid:%u):%d\n", ssid, (cd == NULL));
+		iommu_dump(s, "Failed to valid cd(ssid:%u)\n", ssid);
 		return;
 	}
 
@@ -1702,6 +1712,7 @@ static int mtk_iommu_dump_fops_proc_show(struct seq_file *s, void *unused)
 		/* dump all smmu if exist */
 		for (i = 0; i < SMMU_TYPE_NUM; i++) {
 			ret = mtk_smmu_power_get(i);
+			iommu_dump(s, "\nsmmu_%d: %s\n", i, get_power_status_str(ret));
 			if (ret) {
 				pr_info("[%s] smmu_%d, failed ret:%d\n", __func__, i, ret);
 				continue;
@@ -1745,6 +1756,7 @@ static int mtk_smmu_wp_fops_proc_show(struct seq_file *s, void *unused)
 		/* dump all smmu if exist */
 		for (i = 0; i < SMMU_TYPE_NUM; i++) {
 			ret = mtk_smmu_power_get(i);
+			iommu_dump(s, "smmu_%d: %s\n", i, get_power_status_str(ret));
 			if (ret) {
 				pr_info("[%s] smmu_%d, failed ret:%d\n", __func__, i, ret);
 				continue;
@@ -1765,6 +1777,7 @@ static int mtk_smmu_pgtable_fops_proc_show(struct seq_file *s, void *unused)
 		/* dump all smmu if exist */
 		for (i = 0; i < SMMU_TYPE_NUM; i++) {
 			ret = mtk_smmu_power_get(i);
+			iommu_dump(s, "smmu_%d: %s\n", i, get_power_status_str(ret));
 			if (ret) {
 				pr_info("[%s] smmu_%d, failed ret:%d\n", __func__, i, ret);
 				continue;
