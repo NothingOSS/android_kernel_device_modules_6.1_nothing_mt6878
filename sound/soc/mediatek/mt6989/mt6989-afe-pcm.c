@@ -24,6 +24,7 @@
 #include "../common/mtk-sp-pcm-ops.h"
 #include "../common/mtk-sram-manager.h"
 #include "../common/mtk-mmap-ion.h"
+#include "../common/mtk-usb-offload-ops.h"
 
 #include "mt6989-afe-cm.h"
 #include "mt6989-afe-common.h"
@@ -9985,6 +9986,11 @@ static int mt6989_afe_pcm_dev_probe(struct platform_device *pdev)
 					   S_IFREG | 0444, NULL,
 					   afe, &mt6989_debugfs_ops);
 #endif
+	/* usb audio offload hook */
+	ret = mtk_audio_usb_offload_afe_hook(afe);
+	if (ret)
+		dev_info(dev, "Hook usb offload interface err: %d\n", ret);
+
 	/* register component */
 	ret = devm_snd_soc_register_component(&pdev->dev,
 					      &mt6989_afe_component,
@@ -10031,6 +10037,9 @@ static int mt6989_afe_pcm_dev_remove(struct platform_device *pdev)
 	pm_runtime_disable(&pdev->dev);
 	if (!pm_runtime_status_suspended(&pdev->dev))
 		mt6989_afe_runtime_suspend(&pdev->dev);
+
+	/* usb audio offload unhook */
+	mtk_audio_usb_offload_afe_hook(NULL);
 
 	/* disable afe clock */
 	mt6989_afe_disable_clock(afe);
