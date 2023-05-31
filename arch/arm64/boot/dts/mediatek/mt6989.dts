@@ -3091,7 +3091,7 @@
 					&smi_larb44 &smi_larb45 &smi_larb46
 					&smi_larb47>;
 		mediatek,commons-supply = <&smi_disp_common>, <&smi_mdp_common>;
-		mmqos-state = <0x0>;
+		mmqos-state = <0x1fd>;
 		mmqos-log-level = <0>;
 		clocks = <&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 				<&topckgen_clk CLK_TOP_MMINFRA_SEL>;
