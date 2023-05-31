@@ -433,6 +433,11 @@ enum {
 	VOW_EN_HDR_CONCURRENT
 };
 
+enum {
+	VOW_LEGACY_CIC = 0,
+	VOW_NEW_CIC
+};
+
 struct dc_trim_data {
 	bool calibrated;
 	int mic_vinp_mv;
@@ -530,6 +535,7 @@ struct mt6681_priv {
 	unsigned int vow_channel;
 	unsigned int vow_pbuf_active_bit;
 	unsigned int vow_hdr_concurrent;
+	unsigned int vow_cic_type;
 	struct mt6681_vow_periodic_on_off_data vow_periodic_param;
 	/* vow dmic low power mode, 1: enable, 0: disable */
 	int vow_dmic_lp;

@@ -540,6 +540,17 @@ static int vow_codec_type_get(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
+
+static int vow_cic_type_get(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned int vow_cic_type = 0; // VOW Legacy CIC
+
+	ucontrol->value.integer.value[0] = vow_cic_type;
+
+	return 0;
+}
+
 #endif
 
 static int mt6368_snd_soc_put_volsw(struct snd_kcontrol *kcontrol,
@@ -5796,6 +5807,7 @@ static const struct snd_kcontrol_new mt6368_snd_misc_controls[] = {
 	SOC_ENUM_EXT("DMic Used", misc_control_enum[0], dmic_used_get, NULL),
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
 	SOC_ENUM_EXT("VOW codec type", misc_control_enum[0], vow_codec_type_get, NULL),
+	SOC_ENUM_EXT("VOW CIC type", misc_control_enum[0], vow_cic_type_get, NULL),
 #endif
 };
 
