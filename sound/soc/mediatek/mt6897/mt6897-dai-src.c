@@ -761,6 +761,8 @@ static const struct snd_kcontrol_new mtk_hw_src_1_in_ch1_mix[] = {
 				    I_GAIN1_OUT_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN0_CH1", AFE_CONN182_4,
 				    I_I2SIN0_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH1", AFE_CONN182_4,
+				    I_I2SIN1_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN2_CH1", AFE_CONN182_4,
 				    I_I2SIN2_CH1, 1, 0),
 };
@@ -788,6 +790,8 @@ static const struct snd_kcontrol_new mtk_hw_src_1_in_ch2_mix[] = {
 				    I_GAIN1_OUT_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN0_CH2", AFE_CONN183_4,
 				    I_I2SIN0_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH2", AFE_CONN183_4,
+				    I_I2SIN1_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN2_CH2", AFE_CONN183_4,
 				    I_I2SIN2_CH2, 1, 0),
 };
@@ -1091,6 +1095,8 @@ static const struct snd_soc_dapm_route mtk_dai_src_routes[] = {
 
 	{"HW_SRC_1_IN_CH1", "I2SIN0_CH1", "I2SIN0"},
 	{"HW_SRC_1_IN_CH2", "I2SIN0_CH2", "I2SIN0"},
+	{"HW_SRC_1_IN_CH1", "I2SIN1_CH1", "I2SIN1"},
+	{"HW_SRC_1_IN_CH2", "I2SIN1_CH2", "I2SIN1"},
 
 	{"HW_SRC_0_In", NULL, "HW_SRC_0_IN_CH1"},
 	{"HW_SRC_0_In", NULL, "HW_SRC_0_IN_CH2"},
