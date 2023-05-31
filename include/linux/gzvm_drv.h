@@ -6,6 +6,7 @@
 #ifndef __GZVM_DRV_H__
 #define __GZVM_DRV_H__
 
+#include <linux/eventfd.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
@@ -91,6 +92,8 @@ struct gzvm {
 		struct mutex      resampler_lock;
 	} irqfds;
 
+	struct list_head ioevents;
+
 	struct list_head vm_list;
 	gzvm_id_t vm_id;
 
@@ -141,5 +144,13 @@ void gzvm_vm_irqfd_release(struct gzvm *gzvm);
 void gzvm_sync_hwstate(struct gzvm_vcpu *vcpu);
 
 extern struct platform_device *gzvm_debug_dev;
+
+int gzvm_init_ioeventfd(struct gzvm *gzvm);
+int gzvm_ioeventfd(struct gzvm *gzvm, struct gzvm_ioeventfd *args);
+bool gzvm_ioevent_write(struct gzvm_vcpu *vcpu, __u64 addr, int len,
+			const void *val);
+void eventfd_ctx_do_read(struct eventfd_ctx *ctx, __u64 *cnt);
+struct vm_area_struct *vma_lookup(struct mm_struct *mm, unsigned long addr);
+void add_wait_queue_priority(struct wait_queue_head *wq_head, struct wait_queue_entry *wq_entry);
 
 #endif /* __GZVM_DRV_H__ */
