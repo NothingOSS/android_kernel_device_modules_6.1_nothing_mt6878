@@ -2081,6 +2081,75 @@ int migrate_running_task(int this_cpu, struct task_struct *p, struct rq *target,
 	return active_balance;
 }
 
+void try_to_pull_VVIP(int this_cpu, bool *had_pull_vvip, struct rq_flags *src_rf)
+{
+	struct root_domain *rd;
+	struct perf_domain *pd;
+	struct rq *src_rq, *this_rq;
+	struct task_struct *p;
+	int cpu;
+
+	if (!cpumask_test_cpu(this_cpu, &bcpus))
+		return;
+
+	if (cpu_paused(this_cpu))
+		return;
+
+	if (!cpu_active(this_cpu))
+		return;
+
+	this_rq = cpu_rq(this_cpu);
+	rd = this_rq->rd;
+	rcu_read_lock();
+	pd = rcu_dereference(rd->pd);
+	if (!pd)
+		goto unlock;
+
+	for (; pd; pd = pd->next) {
+		for_each_cpu(cpu, perf_domain_span(pd)) {
+
+			if (cpu_paused(cpu))
+				continue;
+
+			if (!cpu_active(cpu))
+				continue;
+
+			if (cpu == this_cpu)
+				continue;
+
+			src_rq = cpu_rq(cpu);
+
+			if (num_vvip_in_cpu(cpu) < 1)
+				continue;
+
+			else if (num_vvip_in_cpu(cpu) == 1) {
+				/* the only one VVIP in cpu is running */
+				if (src_rq->curr && task_is_vip(src_rq->curr, VVIP))
+					continue;
+			}
+
+			/* There are runnables in cpu */
+			rq_lock_irqsave(src_rq, src_rf);
+			if (src_rq->curr)
+				update_rq_clock(src_rq);
+			p = next_vip_runnable_in_cpu(src_rq, VVIP);
+			if (p && cpumask_test_cpu(this_cpu, p->cpus_ptr)) {
+				deactivate_task(src_rq, p, DEQUEUE_NOCLOCK);
+				set_task_cpu(p, this_cpu);
+				rq_unlock_irqrestore(src_rq, src_rf);
+
+				trace_sched_force_migrate(p, this_cpu, MIGR_IDLE_PULL_VIP_RUNNABLE);
+				attach_one_task(this_rq, p);
+				*had_pull_vvip = true;
+				goto unlock;
+			}
+			rq_unlock_irqrestore(src_rq, src_rf);
+		}
+	}
+unlock:
+	rcu_read_unlock();
+}
+
 #if IS_ENABLED(CONFIG_MTK_EAS)
 static DEFINE_PER_CPU(u64, next_update_new_balance_time_ns);
 void mtk_sched_newidle_balance(void *data, struct rq *this_rq, struct rq_flags *rf,
@@ -2095,6 +2164,7 @@ void mtk_sched_newidle_balance(void *data, struct rq *this_rq, struct rq_flags *
 	u64 now_ns;
 	bool latency_sensitive = false;
 	struct cpumask effective_softmask;
+	bool had_pull_vvip = false;
 
 	if (cpu_paused(this_cpu)) {
 		*done = 1;
@@ -2140,6 +2210,12 @@ void mtk_sched_newidle_balance(void *data, struct rq *this_rq, struct rq_flags *
 	raw_spin_rq_unlock(this_rq);
 
 	this_cpu = this_rq->cpu;
+
+	/* try to pull runnable VVIP if this_cpu is in big gear */
+	try_to_pull_VVIP(this_cpu, &had_pull_vvip, &src_rf);
+	if (had_pull_vvip)
+		goto out;
+
 	for_each_cpu(cpu, cpu_active_mask) {
 		if (cpu == this_cpu)
 			continue;
@@ -2198,6 +2274,7 @@ void mtk_sched_newidle_balance(void *data, struct rq *this_rq, struct rq_flags *
 					misfit_task_rq, MIGR_IDLE_PULL_MISFIT_RUNNING);
 	if (best_running_task)
 		put_task_struct(best_running_task);
+out:
 	raw_spin_rq_lock(this_rq);
 	/*
 	 * While browsing the domains, we released the rq lock, a task could

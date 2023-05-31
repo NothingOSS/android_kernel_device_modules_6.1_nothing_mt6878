@@ -42,6 +42,7 @@ extern inline unsigned int num_vip_in_cpu(int cpu);
 extern inline unsigned int num_vvip_in_cpu(int cpu);
 extern inline bool is_task_latency_sensitive(struct task_struct *p);
 extern int find_imbalanced_vvip_gear(void);
+extern struct task_struct *next_vip_runnable_in_cpu(struct rq *rq, int type);
 
 extern void vip_enqueue_task(struct rq *rq, struct task_struct *p);
 

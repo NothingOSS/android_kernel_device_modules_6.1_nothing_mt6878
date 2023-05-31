@@ -30,6 +30,45 @@ inline unsigned int num_vip_in_cpu(int cpu)
 	return vrq->num_vip_tasks;
 }
 
+struct task_struct *vts_to_ts(struct vip_task_struct *vts)
+{
+	struct mtk_task *mts = container_of(vts, struct mtk_task, vip_task);
+	struct task_struct *ts = mts_to_ts(mts);
+	return ts;
+}
+
+pid_t list_head_to_pid(struct list_head *lh)
+{
+	pid_t pid = vts_to_ts(container_of(lh, struct vip_task_struct, vip_list))->pid;
+
+	/* means list_head is from rq */
+	if (!pid)
+		pid = 0;
+	return pid;
+}
+
+struct task_struct *next_vip_runnable_in_cpu(struct rq *rq, int type)
+{
+	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
+	struct list_head *pos;
+	struct task_struct *p;
+
+	list_for_each(pos, &vrq->vip_tasks) {
+		struct vip_task_struct *tmp_vts = container_of(pos, struct vip_task_struct,
+								vip_list);
+
+		if (tmp_vts->vip_prio != type)
+			continue;
+
+		p = vts_to_ts(tmp_vts);
+		/* we should pull runnable here, so don't pull curr*/
+		if (!rq->curr || p->pid != rq->curr->pid)
+			return p;
+	}
+
+	return NULL;
+}
+
 int find_imbalanced_vvip_gear(void)
 {
 	int gear = -1;
@@ -70,23 +109,6 @@ int find_imbalanced_vvip_gear(void)
 out:
 	rcu_read_unlock();
 	return gear;
-}
-
-struct task_struct *vts_to_ts(struct vip_task_struct *vts)
-{
-	struct mtk_task *mts = container_of(vts, struct mtk_task, vip_task);
-	struct task_struct *ts = mts_to_ts(mts);
-	return ts;
-}
-
-pid_t list_head_to_pid(struct list_head *lh)
-{
-	pid_t pid = vts_to_ts(container_of(lh, struct vip_task_struct, vip_list))->pid;
-
-	/* means list_head is from rq */
-	if (!pid)
-		pid = 0;
-	return pid;
 }
 
 bool task_is_vip(struct task_struct *p, int type)
@@ -362,6 +384,9 @@ void vip_enqueue_task(struct rq *rq, struct task_struct *p)
 {
 	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 
+	if (vts->vip_prio == NOT_VIP)
+		vts->vip_prio = get_vip_task_prio(p);
+
 	if (unlikely(!vip_enable))
 		return;
 
@@ -399,8 +424,6 @@ static void deactivate_vip_task(struct task_struct *p, struct rq *rq)
 		vrq->num_vvip_tasks -= 1;
 	vts->vip_prio = NOT_VIP;
 	vrq->num_vip_tasks -= 1;
-	vts->basic_vip = false;
-	vts->vvip = false;
 
 	if (trace_sched_deactivate_vip_task_enabled()) {
 		pid_t prev_pid = list_head_to_pid(prev);
@@ -590,8 +613,10 @@ void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct 
 		return;
 
 	/* We don't have VIP tasks queued */
-	if (list_empty(&vrq->vip_tasks))
+	if (list_empty(&vrq->vip_tasks)) {
+		/* we should pull VIPs from other CPU */
 		return;
+	}
 
 	/* Return the first task from VIP queue */
 	vts = list_first_entry(&vrq->vip_tasks, struct vip_task_struct, vip_list);
@@ -625,8 +650,11 @@ void vip_dequeue_task(void *unused, struct rq *rq, struct task_struct *p, int fl
 	 * runqueue.
 	 */
 
-	if (READ_ONCE(p->__state) != TASK_RUNNING)
+	if (READ_ONCE(p->__state) != TASK_RUNNING) {
 		vts->total_exec = 0;
+		vts->basic_vip = false;
+		vts->vvip = false;
+	}
 }
 
 inline bool vip_fair_task(struct task_struct *p)
@@ -732,13 +760,20 @@ void vip_init(void)
 	} while_each_thread(g, p);
 	read_unlock(&tasklist_lock);
 
-	/* init vip related value to idle thread */
+	/* init vip related value to each rq */
 	for_each_possible_cpu(cpu) {
 		struct vip_rq *vrq = &per_cpu(vip_rq, cpu);
 
 		INIT_LIST_HEAD(&vrq->vip_tasks);
 		vrq->num_vip_tasks = 0;
 		vrq->num_vvip_tasks = 0;
+
+		/*
+		 * init vip related value to idle thread.
+		 * some times we'll reference VIP variables from idle process,
+		 * so initial it's value to prevent KE.
+		 */
+		init_vip_task_struct(cpu_rq(cpu)->idle);
 	}
 
 	/* init vip related value to newly forked tasks */
