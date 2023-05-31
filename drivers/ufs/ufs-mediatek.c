@@ -2463,6 +2463,21 @@ static int ufs_mtk_config_esi(struct ufs_hba *hba)
 	return ufs_mtk_config_mcq(hba, true);
 }
 
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+static int ufs_mtk_config_cqid(struct ufs_hba *hba)
+{
+	struct ufs_hw_queue *hwq;
+	int i;
+
+	for (i = 0; i < hba->nr_hw_queues; i++) {
+		hwq = &hba->uhq[i];
+		hwq->cqid = 3;
+	}
+
+	return 0;
+}
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG) && IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
 static void ufs_mtk_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 				    enum ufs_notify_change_status status)
@@ -2502,6 +2517,9 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.op_runtime_config   = ufs_mtk_op_runtime_config,
 	.mcq_config_resource = ufs_mtk_mcq_config_resource,
 	.config_esi          = ufs_mtk_config_esi,
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+	.config_cqid         = ufs_mtk_config_cqid,
+#endif
 };
 
 /**
