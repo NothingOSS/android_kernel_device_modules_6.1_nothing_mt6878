@@ -396,12 +396,12 @@ static const struct mtk_gate_regs mminfra_ao_config1_hwv_regs = {
 
 static const struct mtk_gate mminfra_ao_config_clks[] = {
 	/* MMINFRA_AO_CONFIG0 */
-	GATE_MMINFRA_AO_CONFIG0_DUMMY(CLK_MMINFRA_AO_GCE_D, "mminfra_ao_gce_d",
+	GATE_MMINFRA_AO_CONFIG0(CLK_MMINFRA_AO_GCE_D, "mminfra_ao_gce_d",
 			"mminfra_ck"/* parent */, 0),
-	GATE_MMINFRA_AO_CONFIG0_DUMMY(CLK_MMINFRA_AO_GCE_M, "mminfra_ao_gce_m",
+	GATE_MMINFRA_AO_CONFIG0(CLK_MMINFRA_AO_GCE_M, "mminfra_ao_gce_m",
 			"mminfra_ck"/* parent */, 1),
 	/* MMINFRA_AO_CONFIG1 */
-	GATE_MMINFRA_AO_CONFIG1_DUMMY(CLK_MMINFRA_AO_GCE_26M, "mminfra_ao_gce_26m",
+	GATE_MMINFRA_AO_CONFIG1(CLK_MMINFRA_AO_GCE_26M, "mminfra_ao_gce_26m",
 			"mminfra_ck"/* parent */, 17),
 };
 
@@ -441,8 +441,8 @@ static const struct mtk_gate_regs mminfra_config_hwv_regs = {
 	}
 
 static const struct mtk_gate mminfra_config_clks[] = {
-	GATE_MMINFRA_CONFIG_DUMMY(CLK_MMINFRA_SMI, "mminfra_smi",
-			"mminfra_ck"/* parent */, 2),
+	GATE_MMINFRA_CONFIG(CLK_MMINFRA_SMI, "mminfra_smi",
+			"clk26m"/* parent */, 2),
 };
 
 static const struct mtk_clk_desc mminfra_config_mcd = {

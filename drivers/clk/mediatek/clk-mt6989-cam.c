@@ -272,7 +272,7 @@ static const struct mtk_gate_regs cam_ra_cg_regs = {
 	}
 
 static const struct mtk_gate cam_ra_clks[] = {
-	GATE_CAM_RA_DUMMY(CLK_CAM_RA_LARBX, "cam_ra_larbx",
+	GATE_CAM_RA(CLK_CAM_RA_LARBX, "cam_ra_larbx",
 			"cam_ck"/* parent */, 0),
 	GATE_CAM_RA(CLK_CAM_RA_CAM, "cam_ra_cam",
 			"cam_ck"/* parent */, 1),
@@ -310,7 +310,7 @@ static const struct mtk_gate_regs cam_rb_cg_regs = {
 	}
 
 static const struct mtk_gate cam_rb_clks[] = {
-	GATE_CAM_RB_DUMMY(CLK_CAM_RB_LARBX, "cam_rb_larbx",
+	GATE_CAM_RB(CLK_CAM_RB_LARBX, "cam_rb_larbx",
 			"cam_ck"/* parent */, 0),
 	GATE_CAM_RB(CLK_CAM_RB_CAM, "cam_rb_cam",
 			"cam_ck"/* parent */, 1),
@@ -348,7 +348,7 @@ static const struct mtk_gate_regs cam_rc_cg_regs = {
 	}
 
 static const struct mtk_gate cam_rc_clks[] = {
-	GATE_CAM_RC_DUMMY(CLK_CAM_RC_LARBX, "cam_rc_larbx",
+	GATE_CAM_RC(CLK_CAM_RC_LARBX, "cam_rc_larbx",
 			"cam_ck"/* parent */, 0),
 	GATE_CAM_RC(CLK_CAM_RC_CAM, "cam_rc_cam",
 			"cam_ck"/* parent */, 1),
@@ -473,7 +473,7 @@ static const struct mtk_gate_regs cam_ya_cg_regs = {
 	}
 
 static const struct mtk_gate cam_ya_clks[] = {
-	GATE_CAM_YA_DUMMY(CLK_CAM_YA_LARBX, "cam_ya_larbx",
+	GATE_CAM_YA(CLK_CAM_YA_LARBX, "cam_ya_larbx",
 			"cam_ck"/* parent */, 0),
 	GATE_CAM_YA(CLK_CAM_YA_CAM, "cam_ya_cam",
 			"cam_ck"/* parent */, 1),
@@ -511,7 +511,7 @@ static const struct mtk_gate_regs cam_yb_cg_regs = {
 	}
 
 static const struct mtk_gate cam_yb_clks[] = {
-	GATE_CAM_YB_DUMMY(CLK_CAM_YB_LARBX, "cam_yb_larbx",
+	GATE_CAM_YB(CLK_CAM_YB_LARBX, "cam_yb_larbx",
 			"cam_ck"/* parent */, 0),
 	GATE_CAM_YB(CLK_CAM_YB_CAM, "cam_yb_cam",
 			"cam_ck"/* parent */, 1),
@@ -549,7 +549,7 @@ static const struct mtk_gate_regs cam_yc_cg_regs = {
 	}
 
 static const struct mtk_gate cam_yc_clks[] = {
-	GATE_CAM_YC_DUMMY(CLK_CAM_YC_LARBX, "cam_yc_larbx",
+	GATE_CAM_YC(CLK_CAM_YC_LARBX, "cam_yc_larbx",
 			"cam_ck"/* parent */, 0),
 	GATE_CAM_YC(CLK_CAM_YC_CAM, "cam_yc_cam",
 			"cam_ck"/* parent */, 1),
