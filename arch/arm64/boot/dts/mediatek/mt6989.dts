@@ -4256,6 +4256,7 @@
 		spi0: spi0@11010000 {
 			compatible = "mediatek,mt6989-spi";
 			mediatek,pad-select = <0>;
+			mediatek,tickdly = <2>, <0>;
 			reg = <0 0x11010000 0 0x100>;
 			interrupts = <GIC_SPI 265 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>,
@@ -4267,6 +4268,7 @@
 		spi1: spi1@11011000 {
 			compatible = "mediatek,mt6989-spi";
 			mediatek,pad-select = <0>;
+			mediatek,tickdly = <3>, <0>;
 			reg = <0 0x11011000 0 0x100>;
 			interrupts = <GIC_SPI 266 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>,
@@ -4278,6 +4280,7 @@
 		spi2: spi2@11012000 {
 			compatible = "mediatek,mt6989-spi";
 			mediatek,pad-select = <1>;
+			mediatek,tickdly = <3>, <3>;
 			reg = <0 0x11012000 0 0x100>;
 			interrupts = <GIC_SPI 267 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>,
@@ -4289,6 +4292,7 @@
 		spi3: spi3@11013000 {
 			compatible = "mediatek,mt6989-spi";
 			mediatek,pad-select = <0>;
+			mediatek,tickdly = <2>, <2>;
 			reg = <0 0x11013000 0 0x100>;
 			interrupts = <GIC_SPI 268 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>,
@@ -4300,6 +4304,7 @@
 		spi4: spi4@11014000 {
 			compatible = "mediatek,mt6989-spi";
 			mediatek,pad-select = <0>;
+			mediatek,tickdly = <2>, <2>;
 			reg = <0 0x11014000 0 0x100>;
 			interrupts = <GIC_SPI 269 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>,
@@ -4311,6 +4316,7 @@
 		spi5: spi5@11015000 {
 			compatible = "mediatek,mt6989-spi";
 			mediatek,pad-select = <0>;
+			mediatek,tickdly = <3>, <0>;
 			reg = <0 0x11015000 0 0x100>;
 			interrupts = <GIC_SPI 270 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>,
@@ -4322,6 +4328,7 @@
 		spi6: spi6@11016000 {
 			compatible = "mediatek,mt6989-spi";
 			mediatek,pad-select = <1>;
+			mediatek,tickdly = <2>, <2>;
 			reg = <0 0x11016000 0 0x100>;
 			interrupts = <GIC_SPI 271 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>,
@@ -4333,6 +4340,7 @@
 		spi7: spi7@11017000 {
 			compatible = "mediatek,mt6989-spi";
 			mediatek,pad-select = <0>;
+			mediatek,tickdly = <2>, <2>;
 			reg = <0 0x11017000 0 0x100>;
 			interrupts = <GIC_SPI 272 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>,
