@@ -15,6 +15,7 @@
 #include <linux/seq_file.h>
 #include <linux/sched/clock.h>
 #include <dt-bindings/memory/mtk-memory-port.h>
+#include <uapi/linux/dma-buf.h>
 
 #define P2K(x) ((x) << (PAGE_SHIFT - 10))	/* Converts #Pages to KB */
 #define P2M(x) ((x) >> (20 - PAGE_SHIFT))	/* Converts #Pages to MB */
@@ -148,6 +149,32 @@ static void __maybe_unused dmabuf_release_check(const struct dma_buf *dmabuf)
 		dmabuf_dump(NULL, "Total %d devices attached\n\n", attach_cnt);
 	}
 	dma_resv_unlock(dmabuf->resv);
+}
+
+static inline long dmabuf_name_check(struct dma_buf *dmabuf, struct device *dev)
+{
+	char *name = NULL;
+
+	if (IS_ERR_OR_NULL(dmabuf) || IS_ERR_OR_NULL(dev))
+		return -EINVAL;
+
+	spin_lock(&dmabuf->name_lock);
+	if (dmabuf->name) {
+		spin_unlock(&dmabuf->name_lock);
+		return 0;
+	}
+
+	/* dma_buf set default name is device name if not set name */
+	name = kstrndup(dev_name(dev), DMA_BUF_NAME_LEN - 1, GFP_ATOMIC);
+	if (IS_ERR_OR_NULL(name)) {
+		spin_unlock(&dmabuf->name_lock);
+		return -ENOMEM;
+	}
+
+	dmabuf->name = name;
+	spin_unlock(&dmabuf->name_lock);
+
+	return 0;
 }
 
 #endif /* _MTK_DMABUFHEAP_PRIV_H */

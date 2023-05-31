@@ -265,6 +265,8 @@ static int system_heap_attach(struct dma_buf *dmabuf,
 		return -ENOMEM;
 	}
 
+	dmabuf_name_check(dmabuf, attachment->dev);
+
 	a->table = table;
 	a->dev = attachment->dev;
 	INIT_LIST_HEAD(&a->list);
