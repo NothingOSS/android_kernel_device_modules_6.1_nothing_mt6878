@@ -1896,7 +1896,8 @@ static int get_layer_weight(struct drm_device *dev, int disp_idx,
 		do_div(weight, 100);
 	}
 
-	if (priv->data->mmsys_id == MMSYS_MT6897)
+	if ((priv->data->mmsys_id == MMSYS_MT6897) ||
+		(priv->data->mmsys_id == MMSYS_MT6989))
 		return (weight * bpp * 10000)/default_emi_eff;
 
 	return weight * bpp;
