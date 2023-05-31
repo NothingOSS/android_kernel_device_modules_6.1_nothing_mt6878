@@ -577,9 +577,10 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 				ret = apu_power_ctrl(apu, 1);
 				if (!ret) {
 					/* for power timeout detection */
-					queue_delayed_work(apu_workq,
-						&timeout_work,
-						msecs_to_jiffies(APU_PWROFF_TIMEOUT_MS));
+					if ((apu->platdata->flags & F_BRINGUP) == 0)
+						queue_delayed_work(apu_workq,
+							&timeout_work,
+							msecs_to_jiffies(APU_PWROFF_TIMEOUT_MS));
 					if (id == APU_IPI_SCP_NP_RECOVER && rpc_state == 1)
 						is_under_lp_scp_recovery_flow = true;
 				} else {
@@ -604,7 +605,8 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 				if (!ret) {
 					/* clear status & cancel timeout worker */
 					apu->bypass_pwr_off_chk = false;
-					cancel_delayed_work_sync(&timeout_work);
+					if ((apu->platdata->flags & F_BRINGUP) == 0)
+						cancel_delayed_work_sync(&timeout_work);
 					if (id == APU_IPI_SCP_NP_RECOVER)
 						is_under_lp_scp_recovery_flow = false;
 				} else {
