@@ -1704,7 +1704,7 @@
 		svp-region-based-size = <0 0x6000000>;
 		tui-size = <0 0x4000000>;
 		wfd-region-based-size = <0 0x2000000>;
-		prot-region-based-size = <0 0x8000000>;
+		prot-region-based-size = <0 0x2000000>;
 		sapu-data-shm-size = <0 0x0>;
 	};
 
