@@ -190,3 +190,17 @@ int mt6989_adda_dl_gain_control(bool mute)
 }
 EXPORT_SYMBOL(mt6989_adda_dl_gain_control);
 
+struct audio_swpm_data mt6989_aud_get_power_scenario(void)
+{
+	struct audio_swpm_data test;
+
+	test.adda_mode = 1;
+	test.afe_on = 1;
+	test.channel_num = 2;
+	test.input_device = 8;
+	test.output_device = 16;
+	test.sample_rate = 4;
+	test.user_case = 1;
+	return test;
+}
+EXPORT_SYMBOL_GPL(mt6989_aud_get_power_scenario);

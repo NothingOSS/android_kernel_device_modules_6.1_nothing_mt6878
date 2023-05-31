@@ -626,6 +626,16 @@ struct mt6989_afe_private {
 	int speech_cust_param_init;
 };
 
+struct audio_swpm_data {
+	unsigned int afe_on;
+	unsigned int user_case;
+	unsigned int output_device;
+	unsigned int input_device;
+	unsigned int adda_mode;
+	unsigned int sample_rate;
+	unsigned int channel_num;
+};
+
 int mt6989_dai_adda_register(struct mtk_base_afe *afe);
 int mt6989_dai_i2s_register(struct mtk_base_afe *afe);
 int mt6989_dai_hw_gain_register(struct mtk_base_afe *afe);
