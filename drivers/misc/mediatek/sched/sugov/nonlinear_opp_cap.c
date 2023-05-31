@@ -49,7 +49,12 @@ static int busy_tick_boost_all;
 static int sbb_active_ratio = 100;
 static unsigned int wl_type_delay_update_tick = 2;
 
-static int fpsgo_boosting = 1; //0 : enable, 1 : disable
+static int fpsgo_boosting; //0 : disable, 1 : enable
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+void (*flt_get_fpsgo_boosting)(int fpsgo_flag);
+EXPORT_SYMBOL(flt_get_fpsgo_boosting);
+#endif
+
 
 /* group aware dvfs */
 int grp_dvfs_support_mode;
@@ -894,6 +899,9 @@ EXPORT_SYMBOL_GPL(pd_get_opp_leakage);
 void Adaptive_module_bypass(int fpsgo_flag)
 {
 	fpsgo_boosting = fpsgo_flag;
+	set_grp_dvfs_ctrl(!fpsgo_boosting);
+	if (flt_get_fpsgo_boosting)
+		flt_get_fpsgo_boosting(!fpsgo_boosting);
 }
 EXPORT_SYMBOL_GPL(Adaptive_module_bypass);
 
