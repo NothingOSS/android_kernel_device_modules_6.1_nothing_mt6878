@@ -3223,6 +3223,11 @@
 		iommus = <&apu_smmu 0x10>;
 	};
 
+	camera-camsys-ccu {
+		compatible = "mediatek,camera-camsys-ccu";
+		mediatek,ccu-rproc = <&ccu_rproc>;
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
