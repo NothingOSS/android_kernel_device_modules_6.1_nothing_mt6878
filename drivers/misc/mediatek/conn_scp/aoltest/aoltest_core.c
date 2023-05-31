@@ -29,6 +29,8 @@ enum aoltest_core_opid {
 	AOLTEST_OPID_SCP_UNREGISTER = 2,
 	AOLTEST_OPID_SEND_MSG  = 3,
 	AOLTEST_OPID_RECV_MSG  = 4,
+	AOLTEST_OPID_SEND_DBG_MSG  = 5,
+
 	AOLTEST_OPID_MAX
 };
 
@@ -50,6 +52,13 @@ struct aoltest_core_ctx {
 	struct msg_thread_ctx msg_ctx;
 	struct conap_scp_drv_cb scp_test_cb;
 	int status;
+	bool conap_init;
+};
+
+struct aoltest_dbg_param {
+	uint32_t param0;
+	uint32_t param1;
+	uint32_t param2;
 };
 
 /*******************************************************************************/
@@ -74,6 +83,7 @@ static int opfunc_scp_register(struct msg_op_data *op);
 static int opfunc_scp_unregister(struct msg_op_data *op);
 static int opfunc_send_msg(struct msg_op_data *op);
 static int opfunc_recv_msg(struct msg_op_data *op);
+static int opfunc_send_dbg_msg(struct msg_op_data *op);
 
 static void aoltest_core_state_change(int state);
 static void aoltest_core_msg_notify(unsigned int msg_id, unsigned int *buf, unsigned int size);
@@ -83,6 +93,7 @@ static const msg_opid_func aoltest_core_opfunc[] = {
 	[AOLTEST_OPID_SCP_UNREGISTER] = opfunc_scp_unregister,
 	[AOLTEST_OPID_SEND_MSG] = opfunc_send_msg,
 	[AOLTEST_OPID_RECV_MSG] = opfunc_recv_msg,
+	[AOLTEST_OPID_SEND_DBG_MSG] = opfunc_send_dbg_msg,
 };
 
 /*******************************************************************************/
@@ -152,11 +163,16 @@ static int opfunc_scp_register(struct msg_op_data *op)
 	int ret = 0;
 	struct aoltest_core_ctx *ctx = &g_aoltest_ctx;
 
+	if (ctx->conap_init)
+		return ret;
+
 	ret = conap_scp_register_drv(ctx->drv_type, &ctx->scp_test_cb);
 	pr_info("SCP register drv_type=[%d], ret=[%d]", ctx->drv_type, ret);
 
 	// Create ring buffer
 	aoltest_core_rb_init(&g_rb);
+
+	ctx->conap_init = true;
 
 	return ret;
 }
@@ -264,6 +280,36 @@ static int opfunc_recv_msg(struct msg_op_data *op)
 	return ret;
 }
 
+static int opfunc_send_dbg_msg(struct msg_op_data *op)
+{
+	int ret = 0;
+	struct aoltest_core_ctx *ctx = &g_aoltest_ctx;
+	struct aoltest_dbg_param param;
+
+	if (!g_is_scp_ready) {
+		ret = is_scp_ready();
+		pr_info("[%s] is ready=[%d] ret=[%d]", __func__, g_is_scp_ready, ret);
+
+		if (ret <= 0)
+			return -1;
+	}
+	ret = opfunc_scp_register(op);
+	if (ret < 0)
+		return ret;
+
+	param.param0 = (unsigned int)op->op_data[0];
+	param.param1 = (unsigned int)op->op_data[1];
+	param.param2 = (unsigned int)op->op_data[2];
+
+	ret = conap_scp_send_message(ctx->drv_type, AOLTEST_CMD_DBG,
+					(unsigned char *)&param, sizeof(param));
+
+	pr_info("[%s] send dbg msg [%x][%x][%x] ret=[%d]",
+					__func__, (uint32_t)op->op_data[0],
+					(uint32_t)op->op_data[1], (uint32_t)op->op_data[2], ret);
+	return ret;
+}
+
 /*******************************************************************************/
 /*      C H R E T E S T     F U N C T I O N S                                  */
 /*******************************************************************************/
@@ -361,24 +407,7 @@ static int aoltest_core_bind(void)
 	int ret = 0;
 	struct aoltest_core_ctx *ctx = &g_aoltest_ctx;
 
-	memset(&g_aoltest_ctx, 0, sizeof(struct aoltest_core_ctx));
-
-	// Create EM test thread
-	ret = msg_thread_init(&ctx->msg_ctx, "em_test_thread",
-					aoltest_core_opfunc, AOLTEST_OPID_MAX);
-
-	if (ret) {
-		pr_info("EM test thread init fail, ret=[%d]\n", ret);
-		return -1;
-	}
-
-	ctx->drv_type = DRV_TYPE_EM;
-	ctx->status = AOLTEST_ACTIVE;
-	ctx->scp_test_cb.conap_scp_msg_notify_cb = aoltest_core_msg_notify;
-	ctx->scp_test_cb.conap_scp_state_notify_cb = aoltest_core_state_change;
-
 	ret = msg_thread_send(&ctx->msg_ctx, AOLTEST_OPID_SCP_REGISTER);
-
 	if (ret)
 		pr_info("[%s] Send to msg thread fail, ret=[%d]\n", __func__, ret);
 
@@ -392,14 +421,46 @@ static int aoltest_core_unbind(void)
 	return 0;
 }
 
+
+int aoltest_core_send_dbg_msg(uint32_t param0, uint32_t param1)
+{
+	int ret;
+	struct aoltest_core_ctx *ctx = &g_aoltest_ctx;
+
+	ret = msg_thread_send_wait_2(&ctx->msg_ctx, AOLTEST_OPID_SEND_DBG_MSG,
+					MSG_OP_TIMEOUT, param0, param1);
+	if (ret)
+		pr_notice("[%s] send msg fail ret=[%d]", __func__, ret);
+	return 0;
+}
+
 int aoltest_core_init(void)
 {
 	struct netlink_event_cb nl_cb;
+	struct aoltest_core_ctx *ctx = &g_aoltest_ctx;
+	int ret = 0;
 
-	// Init netlink
+	memset(&g_aoltest_ctx, 0, sizeof(struct aoltest_core_ctx));
+
+	/* Create EM test thread */
+	ret = msg_thread_init(&ctx->msg_ctx, "em_test_thread",
+					aoltest_core_opfunc, AOLTEST_OPID_MAX);
+	if (ret) {
+		pr_info("EM test thread init fail, ret=[%d]\n", ret);
+		return -1;
+	}
+
+	ctx->drv_type = DRV_TYPE_EM;
+	ctx->status = AOLTEST_ACTIVE;
+	ctx->scp_test_cb.conap_scp_msg_notify_cb = aoltest_core_msg_notify;
+	ctx->scp_test_cb.conap_scp_state_notify_cb = aoltest_core_state_change;
+
+
+	/* Init netlink */
 	nl_cb.aoltest_bind = aoltest_core_bind;
 	nl_cb.aoltest_unbind = aoltest_core_unbind;
 	nl_cb.aoltest_handler = aoltest_core_handler;
+
 	return aoltest_netlink_init(&nl_cb);
 }
 

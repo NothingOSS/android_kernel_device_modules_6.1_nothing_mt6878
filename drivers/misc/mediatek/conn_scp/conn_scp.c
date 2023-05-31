@@ -25,6 +25,7 @@
 #ifdef AOLTEST_SUPPORT
 #include "aoltest_core.h"
 #include "aoltestv2_core.h"
+#include "conn_scp_dbg.h"
 #endif
 #include "aol_flp.h"
 #include "aol_geofence.h"
@@ -95,6 +96,7 @@ int conn_scp_init(void)
 #ifdef AOLTEST_SUPPORT
 	aoltest_core_init();
 	aoltestv2_core_init();
+	conn_scp_dbg_init();
 #endif
 	aol_flp_init();
 	aol_geofence_init();
@@ -125,6 +127,7 @@ void conn_scp_exit(void)
 #ifdef AOLTEST_SUPPORT
 	aoltest_core_deinit();
 	aoltestv2_core_deinit();
+	conn_scp_dbg_deinit();
 #endif
 	conap_scp_deinit();
 
