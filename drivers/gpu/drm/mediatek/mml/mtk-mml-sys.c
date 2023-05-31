@@ -79,6 +79,7 @@ struct mml_data {
 	u8 gpr[MML_PIPE_CNT];
 	enum mml_aidsel_mode aidsel_mode;
 	bool pw_mminfra;
+	bool set_mml_uid;
 };
 
 enum mml_mux_type {
@@ -949,7 +950,8 @@ static s32 mml_comp_clk_aid_enable(struct mml_comp *comp)
 		return ret;
 
 	if (comp->clk_cnt == 1) {
-		mml_set_uid(&sys->mml_scmi);
+		if (sys->data->set_mml_uid)
+			mml_set_uid(&sys->mml_scmi);
 
 #ifndef MML_FPGA
 		cmdq_util_set_mml_aid_selmode();
@@ -991,12 +993,12 @@ static s32 mml_sys_comp_clk_disable(struct mml_comp *comp)
 	return 0;
 }
 
-static const struct mml_comp_hw_ops sys_hw_ops_aid = {
+static const struct mml_comp_hw_ops sys_hw_ops = {
 	.clk_enable = &mml_sys_comp_clk_enable,
 	.clk_disable = &mml_sys_comp_clk_disable,
 };
 
-static const struct mml_comp_hw_ops sys_hw_ops = {
+static const struct mml_comp_hw_ops sys_hw_ops_mminfra = {
 	.pw_enable = &mml_sys_pw_enable,
 	.pw_disable = &mml_sys_pw_disable,
 	.clk_enable = &mml_comp_clk_enable,
@@ -1144,9 +1146,9 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 
 #ifndef MML_FPGA
 	/* scmi(sspm) config aid/uid support */
-	if (of_property_read_bool(dev->of_node, "sspm-aid-enable"))
-		comp->hw_ops = &sys_hw_ops_aid;
-	else if (sys->data->pw_mminfra)
+	if (sys->data->pw_mminfra)
+		comp->hw_ops = &sys_hw_ops_mminfra;
+	else
 		comp->hw_ops = &sys_hw_ops;
 #endif
 	return 0;
@@ -2211,6 +2213,23 @@ static const struct mml_data mt6985_mml_data = {
 	.aid_sel = sys_config_aid_sel_engine,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.aidsel_mode = MML_AIDSEL_ENGINE,
+	.set_mml_uid = true,
+};
+
+static const struct mml_data mt6897_mml_data = {
+	.comp_inits = {
+		[MML_CT_SYS] = &sys_comp_init,
+		[MML_CT_DL_IN] = &dli_comp_init,
+		[MML_CT_DL_OUT] = &dlo_comp_init,
+	},
+	.ddp_comp_funcs = {
+		[MML_CT_SYS] = &sys_ddp_funcs,
+		[MML_CT_DL_IN] = &dl_ddp_funcs,
+		[MML_CT_DL_OUT] = &dl_ddp_funcs,
+	},
+	.aid_sel = sys_config_aid_sel_engine,
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.aidsel_mode = MML_AIDSEL_ENGINE,
 };
 
 static const struct mml_data mt6989_mml_data = {
@@ -2253,11 +2272,11 @@ const struct of_device_id mtk_mml_of_ids[] = {
 	},
 	{
 		.compatible = "mediatek,mt6886-mml",
-		.data = &mt6985_mml_data,
+		.data = &mt6897_mml_data,
 	},
 	{
 		.compatible = "mediatek,mt6897-mml",
-		.data = &mt6985_mml_data,
+		.data = &mt6897_mml_data,
 	},
 	{
 		.compatible = "mediatek,mt6989-mml",
