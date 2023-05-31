@@ -61,5 +61,6 @@
 
 	hypervisor: hypervisor {
 		compatible = "mediatek,geniezone-hyp";
+		status = "disabled";
 	};
 };
