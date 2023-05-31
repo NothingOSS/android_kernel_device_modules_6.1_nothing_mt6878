@@ -19,12 +19,10 @@ TRACE_EVENT(cpuqos_cpu_pd,
 
 	TP_PROTO(int cpu, int pid, int css_id,
 		int old_pd, int new_pd,
-		u64 v1, u64 v2,
 		int rank, int cpuqos_perf_mode),
 
 	TP_ARGS(cpu, pid, css_id,
 		old_pd, new_pd,
-		v1, v2,
 		rank, cpuqos_perf_mode),
 
 	TP_STRUCT__entry(
@@ -33,8 +31,6 @@ TRACE_EVENT(cpuqos_cpu_pd,
 		__field(int, css_id)
 		__field(int, old_pd)
 		__field(int, new_pd)
-		__field(u64, v1)
-		__field(u64, v2)
 		__field(int, rank)
 		__field(int, cpuqos_perf_mode)
 	),
@@ -45,16 +41,13 @@ TRACE_EVENT(cpuqos_cpu_pd,
 		__entry->css_id		= css_id;
 		__entry->old_pd		= old_pd;
 		__entry->new_pd		= new_pd;
-		__entry->v1		= v1;
-		__entry->v2		= v2;
 		__entry->rank		= rank;
 		__entry->cpuqos_perf_mode = cpuqos_perf_mode;
 	),
 
-	TP_printk("cpu=%d, p=%d, css_id=%d, old_part=%d, new_part=%d, v1=0x%llx, v2=0x%llx, rank=%d, mode=%d",
+	TP_printk("cpu=%d, p=%d, css_id=%d, old_part=%d, new_part=%d, rank=%d, mode=%d",
 		__entry->cpu, __entry->pid, __entry->css_id,
 		__entry->old_pd, __entry->new_pd,
-		__entry->v1, __entry->v2,
 		__entry->rank, __entry->cpuqos_perf_mode)
 );
 

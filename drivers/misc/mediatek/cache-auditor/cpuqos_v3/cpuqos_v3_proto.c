@@ -19,6 +19,7 @@
 #include <sched/sched.h>
 #include "cpuqos_v3.h"
 #include "cpuqos_sys_common.h"
+#include "common.h"
 
 #if IS_ENABLED(CONFIG_MTK_SLBC)
 #include <mtk_slbc_sram.h>
@@ -111,7 +112,13 @@ enum pd_grp {
 	PD0,
 	PD1,
 	PD2,
-	PD3
+	PD3,
+	PD4,
+	PD5,
+	PD6,
+	PD7,
+	PD8,
+	PD9
 };
 
 enum pd_rank {
@@ -136,8 +143,9 @@ int task_curr_clone(const struct task_struct *p)
 unsigned int get_task_pd(struct task_struct *p)
 {
 	unsigned int pd;
+	struct cpuqos_task_struct *cqts = &((struct mtk_task *)p->android_vendor_data1)->cpuqos_task;
 
-	pd = (unsigned int)p->android_vendor_data1[1];
+	pd = READ_ONCE(cqts->pd);
 
 	return pd;
 }
@@ -145,8 +153,9 @@ unsigned int get_task_pd(struct task_struct *p)
 unsigned int get_task_rank(struct task_struct *p)
 {
 	unsigned int rank;
+	struct cpuqos_task_struct *cqts = &((struct mtk_task *)p->android_vendor_data1)->cpuqos_task;
 
-	rank = (unsigned int)p->android_vendor_data1[2];
+	rank = READ_ONCE(cqts->rank);
 
 	return rank;
 }
@@ -271,7 +280,6 @@ static void cpuqos_v3_sync_task(struct task_struct *p)
 {
 	struct cgroup_subsys_state *css;
 	int old_pd = this_cpu_read(cpuqos_v3_local_pd);
-	u64 v1, v2;
 
 	rcu_read_lock();
 	css = task_css(p, cpuqos_subsys_id);
@@ -279,13 +287,9 @@ static void cpuqos_v3_sync_task(struct task_struct *p)
 
 	cpuqos_v3_write_pd(cpuqos_v3_map_task_pd(p));
 
-	__asm__ volatile ("mrs %0, s3_0_c10_c5_1" : "=r" (v1));
-	__asm__ volatile ("mrs %0, s3_0_c10_c5_0" : "=r" (v2));
-
 	trace_cpuqos_cpu_pd(smp_processor_id(), p->pid,
 				css->id, old_pd,
 				this_cpu_read(cpuqos_v3_local_pd),
-				v1, v2,
 				get_task_rank(p),
 				cpuqos_perf_mode);
 
@@ -334,8 +338,10 @@ static void cpuqos_v3_sync_current_mb(void *task)
 
 static void cpuqos_v3_kick_task(struct task_struct *p, int pd)
 {
+	struct cpuqos_task_struct *cqts = &((struct mtk_task *)p->android_vendor_data1)->cpuqos_task;
+
 	if (pd >= 0)
-		p->android_vendor_data1[1] = pd;
+		WRITE_ONCE(cqts->pd, pd);
 
 	/*
 	 * If @p is no longer on the task_cpu(p) we see here when the smp_call
@@ -415,6 +421,7 @@ int set_task_pd(int pid, int pd)
 	struct cgroup_subsys_state *css;
 	int old_pd;
 	int new_pd;
+	struct cpuqos_task_struct *cqts;
 
 	if (cpuqos_perf_mode == DISABLE || (plat_enable == 0) || (pid <= 0))
 		return -1;
@@ -422,8 +429,10 @@ int set_task_pd(int pid, int pd)
 	rcu_read_lock();
 	p = find_task_by_vpid(pid);
 
-	if (p)
+	if (p) {
 		get_task_struct(p);
+		cqts = &((struct mtk_task *)p->android_vendor_data1)->cpuqos_task;
+	}
 	rcu_read_unlock();
 
 	if (!p)
@@ -436,10 +445,10 @@ int set_task_pd(int pid, int pd)
 	old_pd = cpuqos_v3_map_task_pd(p); /* before rank change */
 
 	if (pd >= 0) { /* set task is critical task */
-		p->android_vendor_data1[2] = TASK_RANK;
+		WRITE_ONCE(cqts->rank, TASK_RANK);
 		new_pd = pd;
 	} else { /* reset to group setting */
-		p->android_vendor_data1[2] = GROUP_RANK;
+		WRITE_ONCE(cqts->rank, GROUP_RANK);
 		new_pd = cpuqos_v3_map_task_pd(p); /* after rank change */
 	}
 
@@ -709,8 +718,10 @@ static void cpuqos_v3_hook_switch(void __always_unused *data,
 static void cpuqos_v3_task_newtask(void __always_unused *data,
 				struct task_struct *p, unsigned long clone_flags)
 {
-	p->android_vendor_data1[1] = PD3; /* pd */
-	p->android_vendor_data1[2] = GROUP_RANK; /* rank */
+	struct cpuqos_task_struct *cqts = &((struct mtk_task *)p->android_vendor_data1)->cpuqos_task;
+
+	WRITE_ONCE(cqts->pd, PD3); /* pd */
+	WRITE_ONCE(cqts->rank, GROUP_RANK); /* rank */
 }
 
 /* Check if css' path matches any in cpuqos_v3_path_pd_map and cache that */

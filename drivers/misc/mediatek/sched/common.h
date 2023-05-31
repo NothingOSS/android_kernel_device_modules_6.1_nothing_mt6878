@@ -81,6 +81,11 @@ struct flt_task_struct {
 	int	prev_on_rq_cpu;
 };
 
+struct cpuqos_task_struct {
+	int pd;
+	int rank;
+};
+
 struct mtk_task {
 	u64 reserved0[MTK_TASK_FLAG];
 	struct vip_task_struct	vip_task;
@@ -93,6 +98,7 @@ struct mtk_task {
 	struct cc_task_struct cc_task;
 	struct task_turbo_t turbo_data;
 	struct flt_task_struct flt_task;
+	struct cpuqos_task_struct cpuqos_task;
 };
 
 struct soft_affinity_tg {

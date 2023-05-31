@@ -6,6 +6,7 @@
 #ifndef CPUQOS_V3_H
 #define CPUQOS_V3_H
 #include <linux/ioctl.h>
+#include "common.h"
 
 #if IS_ENABLED(CONFIG_MTK_SLBC)
 extern u32 slbc_sram_read(u32 offset);
