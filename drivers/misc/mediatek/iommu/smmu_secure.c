@@ -233,19 +233,6 @@ static int mtk_smmu_trigger_irq(u32 smmu_type, u32 sec)
 	return SMC_SMMU_SUCCESS;
 }
 
-static int mtk_smmu_sec_test(u32 smmu_type)
-{
-	int ret;
-
-	ret = mtk_smmu_atf_call_common(smmu_type, SMMU_SECURE_TEST);
-	if (ret) {
-		pr_info("%s, smc call fail:%d, type:%u\n", __func__, ret, smmu_type);
-		return SMC_SMMU_FAIL;
-	}
-
-	return SMC_SMMU_SUCCESS;
-}
-
 static int mtk_smmu_sec_dump_reg(u32 smmu_type)
 {
 	int ret;
@@ -289,6 +276,20 @@ int mtk_smmu_sec_config_cqdma(bool enable)
 	return SMC_SMMU_SUCCESS;
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_sec_config_cqdma);
+
+int mtk_smmu_sec_test(u32 smmu_type)
+{
+	int ret;
+
+	ret = mtk_smmu_atf_call_common(smmu_type, SMMU_SECURE_TEST);
+	if (ret) {
+		pr_info("%s, smc call fail:%d, type:%u\n", __func__, ret, smmu_type);
+		return SMC_SMMU_FAIL;
+	}
+
+	return SMC_SMMU_SUCCESS;
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_sec_test);
 
 #define DEBUG_SET_PARAM_CMD		GENMASK_ULL(3, 0)
 #define DEBUG_SET_PARAM_SMMU		GENMASK_ULL(5, 4)
@@ -341,10 +342,6 @@ static int mtk_smmu_sec_debug_set(void *data, u64 input)
 	case SMMU_SECURE_TRIGGER_IRQ:
 		pr_info("%s, SMMU_SECURE_TRIGGER_IRQ:\n", __func__);
 		ret = mtk_smmu_trigger_irq(smmu_type, sec);
-		break;
-	case SMMU_SECURE_TEST:
-		pr_info("%s, SMMU_SECURE_TEST\n", __func__);
-		ret = mtk_smmu_sec_test(smmu_type);
 		break;
 	case SMMU_SECURE_DUMP_REG:
 		pr_info("%s, SMMU_SECURE_DUMP_REG\n", __func__);
