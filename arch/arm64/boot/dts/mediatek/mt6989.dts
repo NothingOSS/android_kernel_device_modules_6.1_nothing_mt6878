@@ -4964,6 +4964,7 @@
 			ged-supply = <&ged>;
 			gpu-frame-base-optimize = <1>;
 			l2-hash-values = <0xb 0xe 0x0>;
+			sleep-mode-enable = <1>;
 		};
 
 		gpu_mali_opp: opp-table0 {
