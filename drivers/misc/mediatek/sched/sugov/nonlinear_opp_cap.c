@@ -1823,14 +1823,20 @@ int group_aware_dvfs_util(struct cpumask *cpumask)
 	unsigned long umax;
 	int cpu;
 	struct rq *rq;
+	int am = 0;
 
 	for_each_cpu(cpu, cpumask) {
+		am = get_adaptive_margin(cpu);
+
 		cpu_util = flt_get_cpu_util_hook(cpu);
 		rq = cpu_rq(cpu);
 		umax = rq->uclamp[UCLAMP_MAX].value;
 		ret_util = min_t(unsigned long,
-			cpu_util, umax * get_adaptive_margin(cpu) >> SCHED_CAPACITY_SHIFT);
+			cpu_util, umax * am >> SCHED_CAPACITY_SHIFT);
 		max_ret_util = max(max_ret_util, ret_util);
+
+		if (trace_sugov_ext_tar_enabled())
+			trace_sugov_ext_tar(cpu, ret_util, cpu_util, umax, am);
 	}
 
 	return max_ret_util;

@@ -46,8 +46,22 @@ void grp_awr_update_grp_awr_util(void)
 		}
 	}
 
+	if (trace_sugov_ext_pger_pgrp_u_enabled()) {
+		for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++) {
+			if (map_cpu_ger[cpu_idx] == tmp)
+				continue;
+			tmp = map_cpu_ger[cpu_idx];
+			trace_sugov_ext_pger_pgrp_u(map_cpu_ger[cpu_idx],
+				cpu_idx, pger_pgrp_u[map_cpu_ger[cpu_idx]]);
+		}
+	}
+
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++)
 		pgrp_hint[grp_idx] = flt_get_gp_hint(grp_idx);
+
+	if (trace_sugov_ext_pgrp_hint_enabled())
+		trace_sugov_ext_pgrp_hint(pgrp_hint);
+
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		pcpu_o_u[cpu_idx] = flt_get_cpu_o(cpu_idx);
 
@@ -55,6 +69,12 @@ void grp_awr_update_grp_awr_util(void)
 		grp_awr_update_group_util_hook(FLT_NR_CPUS, GROUP_ID_RECORD_MAX,
 			pcpu_pgrp_u, pger_pgrp_u, pgrp_hint,
 			pcpu_pgrp_marg, pcpu_pgrp_adpt_rto, pcpu_pgrp_tar_u, map_cpu_ger);
+
+	if (trace_sugov_ext_pcpu_pgrp_u_rto_marg_enabled()) {
+		for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
+			trace_sugov_ext_pcpu_pgrp_u_rto_marg(cpu_idx, pcpu_pgrp_u[cpu_idx],
+				pcpu_pgrp_adpt_rto[cpu_idx], pcpu_pgrp_marg[cpu_idx], pcpu_o_u[cpu_idx]);
+	}
 }
 
 void grp_awr_update_cpu_tar_util(int cpu)
@@ -66,6 +86,10 @@ void grp_awr_update_cpu_tar_util(int cpu)
 	if (grp_awr_update_cpu_tar_util_hook)
 		grp_awr_update_cpu_tar_util_hook(cpu, GROUP_ID_RECORD_MAX, &fsrq->cpu_tar_util,
 		fsrq->group_nr_running, pcpu_pgrp_tar_u, pcpu_o_u);
+
+	if (trace_sugov_ext_tar_cal_enabled())
+		trace_sugov_ext_tar_cal(cpu, fsrq->cpu_tar_util,
+		fsrq->group_nr_running, pcpu_pgrp_tar_u[cpu], pcpu_o_u[cpu]);
 }
 
 void set_group_target_active_ratio(int grp_idx, int val)
@@ -78,6 +102,7 @@ int grp_awr_init(void)
 {
 	int cpu_idx, grp_idx;
 
+	pr_info("group aware init\n");
 	/* per cpu per group data*/
 	pcpu_pgrp_u = kcalloc(FLT_NR_CPUS, sizeof(int *), GFP_KERNEL);
 	pger_pgrp_u = kcalloc(FLT_NR_CPUS, sizeof(int *), GFP_KERNEL);

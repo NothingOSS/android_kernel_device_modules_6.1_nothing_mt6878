@@ -182,40 +182,30 @@ TRACE_EVENT(sugov_ext_adaptive_margin,
 );
 
 TRACE_EVENT(sugov_ext_tar,
-	TP_PROTO(int cpu, unsigned long cpu_util, unsigned long group_util,
-		unsigned long others_util, unsigned long ratio_ori, unsigned long ratio,
-		unsigned long ret_util, unsigned long umax),
-	TP_ARGS(cpu, cpu_util, group_util, others_util, ratio_ori, ratio, ret_util, umax),
+	TP_PROTO(int cpu, unsigned long ret_util,
+		unsigned long cpu_util, unsigned long umax, int am),
+	TP_ARGS(cpu, ret_util, cpu_util, umax, am),
 	TP_STRUCT__entry(
 		__field(int, cpu)
-		__field(unsigned long, cpu_util)
-		__field(unsigned long, group_util)
-		__field(unsigned long, others_util)
-		__field(unsigned long, ratio_ori)
-		__field(unsigned long, ratio)
 		__field(unsigned long, ret_util)
+		__field(unsigned long, cpu_util)
 		__field(unsigned long, umax)
+		__field(int, am)
 	),
 	TP_fast_assign(
 		__entry->cpu = cpu;
-		__entry->cpu_util = cpu_util;
-		__entry->group_util = group_util;
-		__entry->others_util = others_util;
-		__entry->ratio_ori = ratio_ori;
-		__entry->ratio = ratio;
 		__entry->ret_util = ret_util;
+		__entry->cpu_util = cpu_util;
 		__entry->umax = umax;
+		__entry->am = am;
 	),
 	TP_printk(
-		"cpu_idx=%d cpu=%lu group=%lu others=%lu ratio_ori=%lu ratio=%lu ret=%lu umax=%lu",
+		"cpu=%d ret_util=%ld cpu_util=%ld umax=%ld am=%d",
 		__entry->cpu,
-		__entry->cpu_util,
-		__entry->group_util,
-		__entry->others_util,
-		__entry->ratio_ori,
-		__entry->ratio,
 		__entry->ret_util,
-		__entry->umax)
+		__entry->cpu_util,
+		__entry->umax,
+		__entry->am)
 );
 
 TRACE_EVENT(sugov_ext_group_dvfs,
