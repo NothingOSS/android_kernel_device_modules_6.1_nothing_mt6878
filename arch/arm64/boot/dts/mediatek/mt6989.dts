@@ -1050,7 +1050,7 @@
 		reg = <0 0x0011bb00 0 0x100>,
 			<0 0x0011b9c0 0 0x140>;
 		reg-names = "sram", "share_sram";
-		mediatek,enable = <0>;
+		mediatek,enable = <1>;
 	};
 
 	ptppll_pll_ctrl_clk: syscon@c034000 {
@@ -12785,7 +12785,11 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"apubw_mon_edma0,apubw_mon_edma1,",
 				"apulat_mon_vpu0,apulat_mon_vpu1,apulat_mon_mdla0,",
 				"apulat_mon_mdla1,apulat_mon_mdla2,apulat_mon_mdla3,",
-				"apulat_mon_edma0,apulat_mon_edma1";
+				"apulat_mon_edma0,apulat_mon_edma1,",
+				"ddr_lv,",
+				"PMQOS_BW0,PMQOS_BW1,PMQOS_BW2,PMQOS_BW3,PMQOS_BW4,PMQOS_BW_TOTAL,",
+				"EMI_Occupy_TOTAL,",
+				"EMI_data_CPU,EMI_data_GPU,EMI_data_MM,EMI_data_MD,EMI_data_TOTAL";
 
 			node-3 = "SSPM_CM_MGR_NON_WFX",
 				"non_wfx_0,non_wfx_1,non_wfx_2,non_wfx_3,",
