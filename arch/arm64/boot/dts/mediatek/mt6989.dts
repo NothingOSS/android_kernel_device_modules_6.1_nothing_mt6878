@@ -12045,7 +12045,7 @@
 		compatible = "mediatek,audio_sram";
 		reg = <0 0x11059000 0 0x25555>;
 		prefer-mode = <0>;
-		mode-size = <0x1c000 0x25555>;
+		mode-size = <0x17000 0x1eaa8>;
 		block-size = <0x1000>;
 	};
 
@@ -16933,7 +16933,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 /* AUDIO GPIO standardization end */
 
 &scp_i2c1{
-	clock-frequency = <400000>;
+	clock-frequency = <1000000>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 	mt6681_pmic: mt6681-pmic@6b {
