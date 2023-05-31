@@ -159,14 +159,18 @@ enum ged_gpu_power_state {
 };
 void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state);
 
+unsigned int ged_gpu_adaptive_power_support(void);
 void ged_get_active_time(void);
 void ged_get_idle_time(void);
 void ged_check_power_duration(void);
+unsigned long long ged_get_power_duration_ns(void);
+void ged_gpu_adaptive_power_reset(void);
 bool ged_gpu_adaptive_power_notify(void);
 
 void ged_get_predict_active_time(void);
 void ged_get_predict_idle_time(void);
 void ged_check_predict_power_duration(void);
+void ged_gpu_predict_adaptive_power_reset(void);
 bool ged_gpu_predict_adaptive_power_notify(void);
 
 GED_ERROR ged_dvfs_system_init(void);
