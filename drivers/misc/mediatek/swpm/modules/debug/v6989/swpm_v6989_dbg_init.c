@@ -259,7 +259,7 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 
 	for (i = 0; i < core_ip_num; i++) {
 		core_ip_stats_ptr[i].times =
-		kzalloc(sizeof(struct ip_vol_times), GFP_KERNEL);
+		kzalloc(sizeof(struct ip_times), GFP_KERNEL);
 		if (!core_ip_stats_ptr[i].times)
 			goto End;
 	}
