@@ -24,7 +24,7 @@
 #define UARTHUB_SUPPORT_UT_API         0
 #endif
 
-#define SSPM_DRIVER_EN                 0
+#define SSPM_DRIVER_EN                 1
 #define UNIVPLL_CTRL_EN                1
 #define MD_CHANNEL_EN                  1
 
