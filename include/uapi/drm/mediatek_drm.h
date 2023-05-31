@@ -1535,6 +1535,7 @@ struct mtk_drm_panels_info {
 	int connector_cnt;
 	int default_connector_id;
 	unsigned int *connector_obj_id;
+	unsigned int **possible_crtc;
 	char **panel_name;
 	unsigned int *panel_id;
 };
