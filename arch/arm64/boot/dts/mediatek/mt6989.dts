@@ -9987,7 +9987,7 @@
 			"CLK_CAMSYS_CLAS";
 		};
 		consys: consys@18000000 {
-			compatible = "mediatek,mt6989-consys";
+			compatible = "mediatek,mt6989-consys-atf";
 			reg = <0 0x18000000 0 0x480>, /* 0 conn_infra_rgu_on */
 				<0 0x18001000 0 0x658>,   /* 1 conn_infra_cfg_on */
 				<0 0x18003000 0 0x204>,   /* 2 conn_wt_slp_ctl_reg */
