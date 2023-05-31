@@ -31,6 +31,7 @@
 #include "xgf.h"
 #include "mtk_drm_arr.h"
 #include "powerhal_cpu_ctrl.h"
+#include "gbe_common.h"
 
 #define CREATE_TRACE_POINTS
 
@@ -1222,6 +1223,7 @@ static void __exit fpsgo_exit(void)
 	fpsgo_composer_exit();
 	fpsgo_sysfs_exit();
 
+	exit_gbe_common();
 }
 
 static int __init fpsgo_init(void)
@@ -1269,6 +1271,8 @@ fail_reg_cpu_frequency_entry:
 	mtk_fstb_init();
 	fpsgo_composer_init();
 	fbt_cpu_init();
+
+	init_gbe_common();
 
 	if (fpsgo_arch_nr_clusters() > 0)
 		fpsgo_switch_enable(1);

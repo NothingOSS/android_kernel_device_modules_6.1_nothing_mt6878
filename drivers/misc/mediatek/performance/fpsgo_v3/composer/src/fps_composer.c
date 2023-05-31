@@ -30,6 +30,7 @@
 #include "fstb.h"
 #include "xgf.h"
 #include "mini_top.h"
+#include "gbe2.h"
 
 /*#define FPSGO_COM_DEBUG*/
 
@@ -770,6 +771,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 			f_render->api,
 			f_render->hwui);
 		fpsgo_comp2minitop_queue_update(enqueue_end_time);
+		fpsgo_comp2gbe_frame_update(f_render->pid, f_render->buffer_id);
 
 		fpsgo_systrace_c_fbt_debug(-300, 0, f_render->enqueue_length,
 			"%d_%d-enqueue_length", pid, f_render->frame_type);

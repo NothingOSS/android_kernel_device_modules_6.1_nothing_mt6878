@@ -89,6 +89,8 @@ static DEFINE_MUTEX(fstb_ko_lock);
 static DEFINE_MUTEX(fstb_policy_cmd_lock);
 static DEFINE_MUTEX(fstb_info_callback_lock);
 
+void (*gbe_fstb2gbe_poll_fp)(struct hlist_head *list);
+
 static struct kobject *fstb_kobj;
 static struct hrtimer hrt;
 static struct workqueue_struct *wq;
@@ -1788,6 +1790,9 @@ static void fstb_fps_stats(struct work_struct *work)
 		kfree(work);
 
 	mutex_lock(&fstb_lock);
+
+	if (gbe_fstb2gbe_poll_fp)
+		gbe_fstb2gbe_poll_fp(&fstb_frame_infos);
 
 	hlist_for_each_entry_safe(iter, n, &fstb_frame_infos, hlist) {
 		if (test_bit(ADPF_TYPE, &iter->master_type))

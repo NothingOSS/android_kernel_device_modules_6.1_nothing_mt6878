@@ -67,6 +67,10 @@ void __fpsgo_systrace_e(int type);
 	__fpsgo_systrace_c(FPSGO_DEBUG_MANDATORY, powerhal_tid, 0, val, fmt)
 #define __cpu_ctrl_systrace_debug(val, fmt...) \
 	__fpsgo_systrace_c(FPSGO_DEBUG_FBT_CTRL, powerhal_tid, 0, val, fmt)
+#define gbe_trace_count(pid, bufID, val, fmt...) \
+	fpsgo_systrace_c_fbt(pid, bufID, val, fmt)
+#define gbe_trace_count_debug(pid, bufID, val, fmt...) \
+	fpsgo_systrace_c_fbt_debug(pid, bufID, val, fmt)
 
 int fpsgo_is_fstb_enable(void);
 int fpsgo_switch_fstb(int enable);
@@ -113,6 +117,10 @@ static inline int fbt_cpu_set_bhr_opp(int new_opp) { return 0; }
 static inline int fbt_cpu_set_rescue_opp_c(int new_opp) { return 0; }
 static inline int fbt_cpu_set_rescue_opp_f(int new_opp) { return 0; }
 static inline int fbt_cpu_set_rescue_percent(int percent) { return 0; }
+static inline void gbe_trace_count(pid_t id,
+	unsigned long long bufID, int val, const char *s, ...) { }
+static inline void gbe_trace_count_debug(pid_t id,
+	unsigned long long bufID, int val, const char *s, ...) { }
 #endif
 
 #if defined(CONFIG_MTK_FPSGO_V3)

@@ -22,6 +22,8 @@ void (*fpsgo_get_fps_fp)(int *pid, int *fps);
 EXPORT_SYMBOL_GPL(fpsgo_get_fps_fp);
 void (*fpsgo_get_cmd_fp)(int *cmd, int *value1, int *value2);
 EXPORT_SYMBOL_GPL(fpsgo_get_cmd_fp);
+void (*gbe_get_cmd_fp)(int *cmd, int *value1, int *value2);
+EXPORT_SYMBOL_GPL(gbe_get_cmd_fp);
 int (*fpsgo_get_fstb_active_fp)(long long time_diff);
 EXPORT_SYMBOL_GPL(fpsgo_get_fstb_active_fp);
 int (*fpsgo_wait_fstb_active_fp)(void);
@@ -490,6 +492,17 @@ static long device_ioctl(struct file *filp,
 		perfctl_copy_to_user(msgUM, msgKM,
 				sizeof(struct _FPSGO_PACKAGE));
 		break;
+	case FPSGO_GBE_GET_CMD:
+		if (gbe_get_cmd_fp) {
+			gbe_get_cmd_fp(&pwr_cmd, &value1, &value2);
+			msgKM->cmd = pwr_cmd;
+			msgKM->value1 = value1;
+			msgKM->value2 = value2;
+		} else
+			ret = -1;
+		perfctl_copy_to_user(msgUM, msgKM,
+				sizeof(struct _FPSGO_PACKAGE));
+		break;
 	case FPSGO_GET_FSTB_ACTIVE:
 		if (fpsgo_get_fstb_active_fp)
 			msgKM->active = fpsgo_get_fstb_active_fp(msgKM->time_diff);
@@ -552,6 +565,8 @@ static long device_ioctl(struct file *filp,
 	case FPSGO_GET_FPS:
 		 [[fallthrough]];
 	case FPSGO_GET_CMD:
+		 [[fallthrough]];
+	case FPSGO_GBE_GET_CMD:
 		 [[fallthrough]];
 	case FPSGO_GET_FSTB_ACTIVE:
 		[[fallthrough]];

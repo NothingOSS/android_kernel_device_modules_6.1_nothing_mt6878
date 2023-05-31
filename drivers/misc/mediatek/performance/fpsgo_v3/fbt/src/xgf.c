@@ -31,6 +31,7 @@
 #include "fpsgo_trace_event.h"
 #include "fstb.h"
 #include "fps_composer.h"
+#include "gbe2_usedext.h"
 
 static DEFINE_MUTEX(xgf_main_lock);
 static DEFINE_MUTEX(xgff_frames_lock);
@@ -871,6 +872,38 @@ int fpsgo_comp2xgf_get_dep_list(int pid, int count,
 		if (index < count)
 			arr[index] = xd_iter->tid;
 		index++;
+	}
+
+	mutex_unlock(&xgf_main_lock);
+
+	return index;
+}
+
+int gbe2xgf_get_dep_list(int pid, int count,
+	struct gbe_runtime *arr, unsigned long long bufID)
+{
+	int index = 0;
+	struct xgf_render_if *render_iter = NULL;
+	struct xgf_dep *xd_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	if (count <= 0 || !arr)
+		return 0;
+
+	mutex_lock(&xgf_main_lock);
+
+	render_iter = xgf_get_render_if(pid, bufID, 0, 0, 0);
+	if (!render_iter) {
+		mutex_unlock(&xgf_main_lock);
+		return index;
+	}
+
+	for (rbn = rb_first(&render_iter->dep_list); rbn; rbn = rb_next(rbn)) {
+		xd_iter = rb_entry(rbn, struct xgf_dep, rb_node);
+		if (index < count) {
+			arr[index].pid = xd_iter->tid;
+			index++;
+		}
 	}
 
 	mutex_unlock(&xgf_main_lock);
