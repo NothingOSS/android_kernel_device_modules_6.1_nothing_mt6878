@@ -4214,6 +4214,10 @@
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
 		};
 
+		goodix_fp: fingerprint {
+			compatible = "mediatek,goodix-fp";
+		};
+
 		m4u@10224000 {
 			compatible = "mediatek,m4u";
 			reg = <0 0x10224000 0 0x1000>;
