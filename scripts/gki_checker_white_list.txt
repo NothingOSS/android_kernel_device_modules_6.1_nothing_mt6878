@@ -57,9 +57,9 @@ f drivers/pinctrl/pinmux.c
 f drivers/remoteproc/remoteproc_core.c
 f drivers/scsi/scsi_lib.c
 f drivers/scsi/scsi_scan.c
-f drivers/scsi/ufs/ufshcd.c
-f drivers/scsi/ufs/ufshcd.h
-f drivers/scsi/ufs/unipro.h
+f drivers/ufs/ufshcd.c
+f drivers/ufs/ufshcd.h
+f drivers/ufs/unipro.h
 f drivers/tty/serial/8250/8250_core.c
 f drivers/tty/serial/8250/8250_port.c
 f fs/coredump.c

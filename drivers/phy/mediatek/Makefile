@@ -3,9 +3,9 @@
 # Makefile for the phy drivers.
 #
 
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/scsi/ufs/vendor
-ccflags-y += -I$(srctree)/drivers/scsi/ufs
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/vendor
+ccflags-y += -I$(srctree)/drivers/ufs
 
 obj-$(CONFIG_PHY_MTK_FPGAPHY)		+= phy-mtk-fpgaphy.o
 obj-$(CONFIG_DEVICE_MODULES_PHY_MTK_PCIE)		+= phy-mtk-pcie.o

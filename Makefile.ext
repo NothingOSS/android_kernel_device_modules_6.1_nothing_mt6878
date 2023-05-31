@@ -18,7 +18,7 @@ obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/nvmem/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/dma/mediatek/
 
-obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/scsi/ufs/
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/ufs/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/char/
 

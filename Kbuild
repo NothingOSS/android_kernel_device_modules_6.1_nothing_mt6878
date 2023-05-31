@@ -18,7 +18,7 @@ obj-y += drivers/nvmem/
 
 obj-y += drivers/dma/mediatek/
 
-obj-y += drivers/scsi/ufs/
+obj-y += drivers/ufs/
 
 obj-y += drivers/char/
 
