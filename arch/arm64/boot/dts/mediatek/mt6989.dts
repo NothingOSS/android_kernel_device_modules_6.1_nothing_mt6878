@@ -1375,6 +1375,7 @@
 				scmi-cm = <9>;
 				scmi-slbc = <10>;
 				scmi-ssc = <11>;
+				scmi-ise = <12>;
 			};
 		};
 	};
@@ -1832,6 +1833,10 @@
 
 	connfem: connfem {
 		compatible = "mediatek,mt6989-connfem";
+	};
+
+	ise_lpm: ise-lpm {
+		compatible = "mediatek,ise-lpm";
 	};
 
 	ise_trusty: ise-trusty {
