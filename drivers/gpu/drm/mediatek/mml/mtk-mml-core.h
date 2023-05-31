@@ -777,10 +777,12 @@ struct mml_frm_dump_data *mml_core_get_frame_out(void);
  * mml_core_get_dump_inst - return debug dump buffer with current buf size
  *
  * @size:	buffer size in bytes
+ * @raw:	buffer for readable instruction dump
+ * @size_raw:	raw buffer size
  *
  * Return:	The inst buffer in string.
  */
-char *mml_core_get_dump_inst(u32 *size);
+char *mml_core_get_dump_inst(u32 *size, void **raw, u32 *size_raw);
 
 /**
  * mml_core_create_task -

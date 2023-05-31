@@ -13,6 +13,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/sched/clock.h>
+#include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #include <linux/sync_file.h>
 #include <uapi/linux/dma-heap.h>
 
@@ -1928,12 +1929,21 @@ module_param_cb(mml_test_ut, &krun_ops, NULL, 0644);
 
 static int mml_test_inst_print(struct seq_file *seq, void *data)
 {
-	u32 size;
-	char *insts = mml_core_get_dump_inst(&size);
+	u32 size, raw_size, parsed_sz;
+	void *raw;
+	void *parsed;
 
-	mml_log("[test]%s dump inst buf size %u", __func__, size);
+	mml_core_get_dump_inst(&size, &raw, &raw_size);
 
-	seq_printf(seq, "%s\n", insts);
+	parsed_sz = raw_size * 10;
+	parsed = vmalloc(parsed_sz);
+	mml_log("[test]%s dump inst buf size %u vbuf %p sz %u", __func__, size, parsed, parsed_sz);
+
+	parsed_sz = cmdq_buf_cmd_parse_buf((u64 *)raw, raw_size / 8, 0, 0,
+		NULL, NULL, parsed, parsed_sz);
+	mml_log("[test]parsed size %u", parsed_sz);
+	seq_printf(seq, "%s", (char *)parsed);
+	vfree(parsed);
 
 	return 0;
 }

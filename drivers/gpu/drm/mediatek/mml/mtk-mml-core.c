@@ -37,6 +37,9 @@ module_param(mml_cmdq_err, int, 0644);
 int mml_pkt_dump;
 module_param(mml_pkt_dump, int, 0644);
 
+int mml_pkt_dump_p;
+module_param(mml_pkt_dump_p, int, 0644);
+
 int mml_comp_dump;
 module_param(mml_comp_dump, int, 0644);
 
@@ -103,6 +106,8 @@ static struct mml_frm_dump_data mml_frm_dumps[2] = {
 
 static char *mml_inst_dump;
 u32 mml_inst_dump_sz;
+static void *mml_inst_raw;
+u32 mml_inst_raw_sz;
 #endif	/* CONFIG_MTK_MML_DEBUG */
 
 struct topology_ip_node {
@@ -1102,12 +1107,17 @@ struct mml_frm_dump_data *mml_core_get_frame_out(void)
 static void core_dump_inst(struct cmdq_pkt *pkt)
 {
 	kfree(mml_inst_dump);
-	mml_inst_dump = cmdq_pkt_parse_buf(pkt, &mml_inst_dump_sz);
+	kfree(mml_inst_raw);
+	mml_inst_dump = cmdq_pkt_parse_buf(pkt, &mml_inst_dump_sz, &mml_inst_raw, &mml_inst_raw_sz);
+
+	mml_log("%s raw buffer %p size %u", __func__, mml_inst_raw, mml_inst_raw_sz);
 }
 
-char *mml_core_get_dump_inst(u32 *size)
+char *mml_core_get_dump_inst(u32 *size, void **raw, u32 *size_raw)
 {
 	*size = mml_inst_dump_sz;
+	*raw = mml_inst_raw;
+	*size_raw = mml_inst_raw_sz;
 	return mml_inst_dump;
 }
 
@@ -1651,15 +1661,21 @@ static void core_config_pipe(struct mml_task *task, u32 pipe)
 		core_taskdone_check(task);
 	}
 
-	if (mml_pkt_dump == 1)
-		cmdq_pkt_dump_buf(task->pkts[pipe], 0);
+	if (mml_pkt_dump && pipe == mml_pkt_dump_p) {
+		mml_clock_lock(task->config->mml);
+
+		if (mml_pkt_dump == 1)
+			cmdq_pkt_dump_buf(task->pkts[pipe], 0);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	if (mml_pkt_dump == 2) {
-		core_dump_inst(task->pkts[pipe]);
-		mml_pkt_dump = 0; /* avoid impact performance */
-	}
+		if (mml_pkt_dump == 2) {
+			core_dump_inst(task->pkts[pipe]);
+			mml_pkt_dump = 0; /* avoid impact performance */
+		}
 #endif
+
+		mml_clock_unlock(task->config->mml);
+	}
 
 	mml_msg("%s task %p job %u pipe %u pkt %p done",
 		__func__, task, task->job.jobid, pipe, task->pkts[pipe]);
