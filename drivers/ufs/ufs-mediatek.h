@@ -164,6 +164,9 @@ struct ufs_mtk_clk {
 	struct ufs_clk_info *ufs_sel_clki; // mux
 	struct ufs_clk_info *ufs_sel_max_clki; // max src
 	struct ufs_clk_info *ufs_sel_min_clki; // min src
+	struct ufs_clk_info *ufs_fde_clki; // mux
+	struct ufs_clk_info *ufs_fde_max_clki; // max src
+	struct ufs_clk_info *ufs_fde_min_clki; // min src
 	struct regulator *reg_vcore;
 	int vcore_volt;
 };
