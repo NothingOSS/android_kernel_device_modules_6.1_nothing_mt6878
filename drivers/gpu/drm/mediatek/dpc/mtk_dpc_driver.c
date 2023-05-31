@@ -28,8 +28,8 @@ int debug_mmp = 1;
 module_param(debug_mmp, int, 0644);
 int debug_force_power = 1;
 module_param(debug_force_power, int, 0644);
-int debug_bw;
-module_param(debug_bw, int, 0644);
+int debug_dvfs;
+module_param(debug_dvfs, int, 0644);
 int debug_check_reg;
 module_param(debug_check_reg, int, 0644);
 int debug_check_rtff;
@@ -43,7 +43,8 @@ module_param(debug_mtcmos_off, int, 0644);
 #define SPM_REQ_STA_4 0x85C	/* D1: BIT30 APSRC_REQ, DDRSRC_REQ */
 #define SPM_REQ_STA_5 0x860	/* D2: BIT0 EMI_REQ, D3: BIT4 MAINPLL_REQ, D4: MMINFRA_REQ */
 #define SPM_MMINFRA_PWR_CON 0xEA8
-#define SPM_PWR_ACK BIT(30)
+#define SPM_DISP_VCORE_PWR_CON 0xE8C
+#define SPM_PWR_ACK BIT(30)	/* mt_spm_reg.h */
 
 #define DPC_DEBUG_RTFF_CNT 10
 static void __iomem *debug_rtff[DPC_DEBUG_RTFF_CNT];
@@ -357,53 +358,66 @@ void dpc_enable(bool en)
 }
 EXPORT_SYMBOL(dpc_enable);
 
-void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb)
+void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force)
 {
-	u32 addr = 0;
+	u32 addr1 = 0, addr2 = 0;
 
-	if (subsys == DPC_SUBSYS_DISP)
-		addr = DISP_REG_DPC_DISP_HIGH_HRT_BW;
-	else if (subsys == DPC_SUBSYS_MML)
-		addr = DISP_REG_DPC_MML_SW_HRT_BW;
+	if (subsys == DPC_SUBSYS_DISP) {
+		addr1 = DISP_REG_DPC_DISP_HIGH_HRT_BW;
+		addr2 = DISP_REG_DPC_DISP_HRTBW_SRTBW_CFG;
+	} else if (subsys == DPC_SUBSYS_MML) {
+		addr1 = DISP_REG_DPC_MML_SW_HRT_BW;
+		addr2 = DISP_REG_DPC_MML_HRTBW_SRTBW_CFG;
+	}
+	writel(bw_in_mb / 30 + 1, dpc_base + addr1); /* 30MB unit */
+	writel(force ? 0x00010001 : 0, dpc_base + addr2);
 
-	/* 30MB unit */
-	writel(bw_in_mb / 30 + 1, dpc_base + addr);
-	if (unlikely(debug_bw))
-		DPCFUNC("subsys(%u) hrt bw(%u)MB", subsys, bw_in_mb);
+	if (unlikely(debug_dvfs))
+		DPCFUNC("subsys(%u) hrt bw(%u)MB force(%u)", subsys, bw_in_mb, force);
 }
 EXPORT_SYMBOL(dpc_hrt_bw_set);
 
-void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb)
+void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force)
 {
-	u32 addr = 0;
+	u32 addr1 = 0, addr2 = 0;
 
-	if (subsys == DPC_SUBSYS_DISP)
-		addr = DISP_REG_DPC_DISP_SW_SRT_BW;
-	else if (subsys == DPC_SUBSYS_MML)
-		addr = DISP_REG_DPC_MML_SW_SRT_BW;
+	if (subsys == DPC_SUBSYS_DISP) {
+		addr1 = DISP_REG_DPC_DISP_SW_SRT_BW;
+		addr2 = DISP_REG_DPC_DISP_HRTBW_SRTBW_CFG;
+	} else if (subsys == DPC_SUBSYS_MML) {
+		addr1 = DISP_REG_DPC_MML_SW_SRT_BW;
+		addr2 = DISP_REG_DPC_MML_HRTBW_SRTBW_CFG;
+	}
+	writel(bw_in_mb / 100 + 1, dpc_base + addr1); /* 100MB unit */
+	writel(force ? 0x00010001 : 0, dpc_base + addr2);
 
-	/* 100MB unit */
-	writel(bw_in_mb / 100 + 1, dpc_base + addr);
-	if (unlikely(debug_bw))
-		DPCFUNC("subsys(%u) srt bw(%u)MB", subsys, bw_in_mb);
+	if (unlikely(debug_dvfs))
+		DPCFUNC("subsys(%u) srt bw(%u)MB force(%u)", subsys, bw_in_mb, force);
 }
 EXPORT_SYMBOL(dpc_srt_bw_set);
 
-void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level)
+void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force)
 {
-	u32 addr = 0;
+	u32 addr1 = 0, addr2 = 0;
 
-	if (subsys == DPC_SUBSYS_DISP)
-		addr = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
-	else if (subsys == DPC_SUBSYS_MML)
-		addr = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
+	if (subsys == DPC_SUBSYS_DISP) {
+		addr1 = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
+		addr2 = DISP_REG_DPC_DISP_VDISP_DVFS_CFG;
+	} else if (subsys == DPC_SUBSYS_MML) {
+		addr1 = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
+		addr2 = DISP_REG_DPC_MML_VDISP_DVFS_CFG;
+	}
 
 	/* support 575, 600, 650, 700, 750 mV */
 	if (level > 4) {
 		DPCERR("vdisp support only 5 levels");
 		return;
 	}
-	writel(level, dpc_base + addr);
+	writel(level, dpc_base + addr1);
+	writel(force ? 1 : 0, dpc_base + addr2);
+
+	if (unlikely(debug_dvfs))
+		DPCFUNC("subsys(%u) vdisp level(%u) force(%u)", subsys, level, force);
 }
 EXPORT_SYMBOL(dpc_dvfs_set);
 
@@ -484,6 +498,9 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 	u32 status;
 
 	if (IS_ERR_OR_NULL(priv))
+		return IRQ_NONE;
+
+	if (!(readl(g_priv->spm_base + SPM_DISP_VCORE_PWR_CON) & SPM_PWR_ACK))
 		return IRQ_NONE;
 
 	status = readl(dpc_base + DISP_REG_DPC_DISP_INTSTA);
@@ -596,6 +613,9 @@ irqreturn_t mtk_dpc_mml_irq_handler(int irq, void *dev_id)
 	if (IS_ERR_OR_NULL(priv))
 		return IRQ_NONE;
 
+	if (!(readl(g_priv->spm_base + SPM_DISP_VCORE_PWR_CON) & SPM_PWR_ACK))
+		return IRQ_NONE;
+
 	status = readl(dpc_base + DISP_REG_DPC_MML_INTSTA);
 	if (!status)
 		return IRQ_NONE;
@@ -679,17 +699,12 @@ static int dpc_irq_init(struct mtk_dpc *priv)
 	}
 
 	if (priv->disp_irq > 0) {
-		writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG);
-		writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INTSTA);
-		if (0) //WA for irq burst while display resume
-			ret = devm_request_irq(priv->dev, priv->disp_irq, mtk_dpc_disp_irq_handler,
+		ret = devm_request_irq(priv->dev, priv->disp_irq, mtk_dpc_disp_irq_handler,
 				       IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(priv->dev), priv);
 		if (ret)
 			DPCERR("devm_request_irq %d fail: %d", priv->disp_irq, ret);
 	}
 	if (priv->mml_irq > 0) {
-		writel(0, dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG);
-		writel(0, dpc_base + DISP_REG_DPC_MERGE_MML_INTSTA);
 		ret = devm_request_irq(priv->dev, priv->mml_irq, mtk_dpc_mml_irq_handler,
 				       IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(priv->dev), priv);
 		if (ret)
@@ -899,6 +914,8 @@ static void process_dbg_opt(const char *opt)
 		dpc_config(DPC_SUBSYS_MML, (bool)val);
 	} else if (strncmp(opt, "event", 5) == 0) {
 		dpc_debug_event();
+	} else if (strncmp(opt, "irq", 3) == 0) {
+		dpc_irq_init(g_priv);
 	} else if (strncmp(opt, "swmode:", 7) == 0) {
 		ret = sscanf(opt, "swmode:%u\n", &val);
 		if (ret != 1)
@@ -917,7 +934,7 @@ static void process_dbg_opt(const char *opt)
 		ret = sscanf(opt, "vdisp:%u\n", &val);
 		if (ret != 1)
 			goto err;
-		dpc_dvfs_set(DPC_SUBSYS_DISP, val);
+		dpc_dvfs_set(DPC_SUBSYS_DISP, val, true);
 	} else if (strncmp(opt, "dt:", 3) == 0) {
 		ret = sscanf(opt, "dt:%u,%u\n", &v1, &v2);
 		if (ret != 2)
@@ -972,7 +989,7 @@ static const struct file_operations debug_fops = {
 };
 #endif
 
-static const struct dpc_driver dpc_funcs = {
+static const struct dpc_funcs funcs = {
 	.dpc_enable = dpc_enable,
 	.dpc_group_enable = dpc_group_enable,
 	.vidle_power_keep = mtk_disp_vidle_power_keep,
@@ -1003,9 +1020,14 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	ret = dpc_irq_init(priv);
-	if (ret)
-		return ret;
+	/* disable merge irq */
+	writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG);
+	writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INTSTA);
+	writel(0, dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG);
+	writel(0, dpc_base + DISP_REG_DPC_MERGE_MML_INTSTA);
+	// ret = dpc_irq_init(priv);
+	// if (ret)
+		// return ret;
 
 	/* enable external signal from DSI and TE */
 	writel(0x1F, dpc_base + DISP_REG_DPC_DISP_EXT_INPUT_EN);
@@ -1017,9 +1039,8 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	writel(0x1A1A1A, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
 	writel(0x1A1A1A, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
 
-	/* keep 0.725V */
+	/* keep vdisp opp */
 	writel(0x1, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
-	writel(0x4, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL);
 
 	/* keep HRT and SRT BW */
 	writel(0x00010001, dpc_base + DISP_REG_DPC_DISP_HRTBW_SRTBW_CFG);
@@ -1033,7 +1054,7 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 
 	dpc_mmp_init();
 
-	mtk_vidle_register(&dpc_funcs);
+	mtk_vidle_register(&funcs);
 
 	DPCFUNC("-");
 	return ret;

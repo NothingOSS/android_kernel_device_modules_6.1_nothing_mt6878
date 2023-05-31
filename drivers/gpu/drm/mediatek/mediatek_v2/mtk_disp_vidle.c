@@ -32,7 +32,7 @@ struct mtk_disp_vidle_para mtk_disp_vidle_flag = {
 	0,	/* wdt_en */
 };
 
-struct dpc_driver disp_dpc_driver;
+struct dpc_funcs disp_dpc_driver;
 
 struct mtk_disp_vidle {
 	const struct mtk_disp_vidle_data *data;
@@ -211,20 +211,21 @@ void mtk_vidle_enable(void *_crtc)
 void mtk_vidle_hrt_bw_set(const u32 bw_in_mb)
 {
 	if (disp_dpc_driver.dpc_hrt_bw_set)
-		disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb);
+		disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, true);
+	/* TODO: false if auto mode */
 }
 void mtk_vidle_srt_bw_set(const u32 bw_in_mb)
 {
 	if (disp_dpc_driver.dpc_srt_bw_set)
-		disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb);
+		disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, true);
 }
 void mtk_vidle_dvfs_set(const u8 level)
 {
 	if (disp_dpc_driver.dpc_dvfs_set)
-		disp_dpc_driver.dpc_dvfs_set(DPC_SUBSYS_DISP, level);
+		disp_dpc_driver.dpc_dvfs_set(DPC_SUBSYS_DISP, level, true);
 }
 
-void mtk_vidle_register(const struct dpc_driver *funcs)
+void mtk_vidle_register(const struct dpc_funcs *funcs)
 {
 	disp_dpc_driver.dpc_enable = funcs->dpc_enable;
 	disp_dpc_driver.dpc_group_enable = funcs->dpc_group_enable;

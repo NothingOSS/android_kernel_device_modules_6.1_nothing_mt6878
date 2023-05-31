@@ -45,10 +45,22 @@ void dpc_enable(bool en);
 void dpc_group_enable(const u16 group, bool en);
 void dpc_config(const enum mtk_dpc_subsys subsys, bool en);
 void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
-void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
-void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
-void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level);
+void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
+void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
+void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force);
 int mtk_disp_vidle_power_keep(void);
 void mtk_disp_vidle_power_release(void);
+
+struct dpc_funcs {
+	void (*dpc_enable)(bool en);
+	void (*dpc_group_enable)(const u16 group, bool en);
+	void (*dpc_config)(const enum mtk_dpc_subsys subsys, bool en);
+	void (*dpc_mtcmos_vote)(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
+	int (*vidle_power_keep)(void);
+	void (*vidle_power_release)(void);
+	void (*dpc_hrt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
+	void (*dpc_srt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
+	void (*dpc_dvfs_set)(const enum mtk_dpc_subsys subsys, const u8 level, bool force);
+};
 
 #endif

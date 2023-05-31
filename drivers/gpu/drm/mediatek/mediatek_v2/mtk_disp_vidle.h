@@ -12,9 +12,9 @@ extern void dpc_enable(bool en);
 extern void dpc_group_enable(const u16 group, bool en);
 extern void dpc_config(const enum mtk_dpc_subsys subsys, bool en);
 extern void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
-extern void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
-extern void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
-extern void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level);
+extern void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
+extern void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
+extern void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force);
 extern int mtk_disp_vidle_power_keep(void);
 extern void mtk_disp_vidle_power_release(void);
 
@@ -43,17 +43,6 @@ struct mtk_disp_dpc_data {
 	struct mtk_disp_vidle_para *mtk_disp_vidle_flag;
 };
 
-struct dpc_driver {
-	void (*dpc_enable)(bool en);
-	void (*dpc_group_enable)(const u16 group, bool en);
-	void (*dpc_config)(const enum mtk_dpc_subsys subsys, bool en);
-	void (*dpc_mtcmos_vote)(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
-	int (*vidle_power_keep)(void);
-	void (*vidle_power_release)(void);
-	void (*dpc_hrt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
-	void (*dpc_srt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
-	void (*dpc_dvfs_set)(const enum mtk_dpc_subsys subsys, const u8 level);
-};
 
 void mtk_vidle_sync_mmdvfsrc_status_rc(unsigned int rc_en);
 void mtk_vidle_sync_mmdvfsrc_status_wdt(unsigned int wdt_en);
@@ -66,6 +55,6 @@ void mtk_vidle_get_all_flag(unsigned int *en, unsigned int *stop);
 void mtk_vidle_hrt_bw_set(const u32 bw_in_mb);
 void mtk_vidle_srt_bw_set(const u32 bw_in_mb);
 void mtk_vidle_dvfs_set(const u8 level);
-void mtk_vidle_register(const struct dpc_driver *funcs);
+void mtk_vidle_register(const struct dpc_funcs *funcs);
 
 #endif
