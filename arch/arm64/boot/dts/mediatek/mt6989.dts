@@ -8391,11 +8391,13 @@
 
 			interrupts = <GIC_SPI 690 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 710 IRQ_TYPE_LEVEL_HIGH 0>,
-					<GIC_SPI 711 IRQ_TYPE_LEVEL_HIGH 0>;
+					<GIC_SPI 711 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 720 IRQ_TYPE_LEVEL_HIGH 0>;
 
 			interrupt-names = "apu_wdt",
 					"mbox0_irq",
-					"mbox1_irq";
+					"mbox1_irq",
+					"ce_exp_irq";
 
 			up-code-buf-sz = <0x100000>;
 			up-coredump-buf-sz = <0x180000>;
