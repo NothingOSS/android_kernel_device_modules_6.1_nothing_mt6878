@@ -27,6 +27,7 @@
 #define TIMEOUT_USEC			300000
 #define REG_FREQ_SCALING		0x4cc
 #define REG_QOS_OFF			0x20
+#define CHECK_VAL			0X55AA55AA
 
 enum {
 	REG_FREQ_LUT_TABLE,
@@ -52,7 +53,7 @@ static const u16 cpufreq_mtk_offsets[REG_ARRAY_SIZE] = {
 	[REG_FREQ_LUT_TABLE]	= 0x0,
 	[REG_FREQ_ENABLE]	= 0x84,
 	[REG_FREQ_PERF_STATE]	= 0x88,
-	[REG_FREQ_HW_STATE]	= 0x8c,
+	[REG_FREQ_HW_STATE]	= 0x8C,
 	[REG_EM_POWER_TBL]	= 0x90,
 	[REG_FREQ_LATENCY]	= 0x114,
 };
@@ -425,7 +426,7 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	if (!request_mem_region(csram_res->start + REG_FREQ_SCALING, LUT_ROW_SIZE,
+	if (!request_mem_region(csram_res->start, resource_size(csram_res),
 			csram_res->name)) {
 		pr_notice("failed to request resource %pR\n", csram_res);
 		return -EBUSY;
@@ -443,17 +444,21 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 		static void __iomem *csram_sys_base;
 
 		csram_sys_base = of_iomap(csram_sys_node, 0);
-		if (!readl_relaxed(csram_sys_base + cpufreq_mtk_offsets[3])) {
+		if (readl_relaxed(csram_sys_base) != CHECK_VAL ||
+		    !readl_relaxed(csram_sys_base + 0x10 + cpufreq_mtk_offsets[3])) {
 			pr_notice("%s: cpufreq hardware not enable\n", __func__);
 			ret = -ENOMEM;
+			iounmap(csram_base);
 			goto release_region;
 		}
 		pr_notice("%s: cpufreq hardware enable\n", __func__);
 	}
 
-	if (readl_relaxed(csram_base + REG_FREQ_SCALING))
+	if (readl_relaxed(csram_base + REG_FREQ_SCALING)){
 		freq_scaling_disabled = false;
-
+		iounmap(csram_base);
+		release_mem_region(csram_res->start, resource_size(csram_res));
+	}
 	fdvfs_enabled = check_fdvfs_support() == 1 ? true : false;
 
 	qos_node = of_find_node_by_name(NULL, "cpuqos-v3");
@@ -509,7 +514,7 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 	return 0;
 
 release_region:
-	release_mem_region(csram_res->start, resource_size(csram_base));
+	release_mem_region(csram_res->start, resource_size(csram_res));
 	return ret;
 }
 
