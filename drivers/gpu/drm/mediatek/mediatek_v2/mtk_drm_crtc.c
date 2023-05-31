@@ -2709,6 +2709,7 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 	struct mml_pq_param _pq_param[MML_MAX_OUTPUTS];
 	struct mtk_addon_mml_config *c = &addon_config->addon_mml_config;
 	const struct mtk_addon_module_data *m[] = {addon_module, addon_module_dual};
+	u32 tgt_comp[2];
 
 	if (unlikely(!mtk_crtc->mml_cfg_pq)) {
 		DDPMSG("%s:%d mml_cfg_pq is NULL\n", __func__, __LINE__);
@@ -2737,8 +2738,13 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 	/* call mml_calc_cfg to calc how to split for rsz dual pipe */
 	calc_mml_config(crtc, addon_config, crtc_state);
 
+	tgt_comp[0] = c->config_type.tgt_comp;
+	if (mtk_crtc->is_dual_pipe)
+		tgt_comp[1] = dual_pipe_comp_mapping(mtk_get_mmsys_id(crtc), tgt_comp[0]);
+
 	for (i = 0; i <= (mtk_crtc->is_dual_pipe && addon_module_dual); ++i) {
 		c->pipe = i;
+		c->config_type.tgt_comp = tgt_comp[i];
 		if (addon_module->type == ADDON_BETWEEN) {
 			c->is_yuv = MML_FMT_IS_YUV(c->submit.info.src.format);
 			mtk_addon_connect_between(crtc, ddp_mode, m[i], addon_config, cmdq_handle);
@@ -2749,10 +2755,6 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 			c->is_yuv = (c->submit.info.dest[0].data.format == MML_FMT_YUVA1010102);
 			mtk_addon_connect_before(crtc, ddp_mode, m[i], addon_config, cmdq_handle);
 		}
-
-		if (i == 0)
-			c->config_type.tgt_comp = dual_pipe_comp_mapping(mtk_get_mmsys_id(crtc),
-									 c->config_type.tgt_comp);
 	}
 }
 
@@ -2770,6 +2772,7 @@ static void mml_addon_module_disconnect(struct drm_crtc *crtc,
 	struct mtk_rect ovl_roi = {0, 0, w, h};
 	unsigned int i = 0;
 	const struct mtk_addon_module_data *m[] = {addon_module, addon_module_dual};
+	u32 tgt_comp[2];
 
 	addon_config->config_type.type = ADDON_DISCONNECT;
 	addon_config->config_type.module = addon_module->module;
@@ -2799,8 +2802,13 @@ static void mml_addon_module_disconnect(struct drm_crtc *crtc,
 
 	mtk_crtc_attach_addon_path_comp(crtc, addon_module, true);
 
+	tgt_comp[0] = addon_config->config_type.tgt_comp;
+	if (mtk_crtc->is_dual_pipe)
+		tgt_comp[1] = dual_pipe_comp_mapping(mtk_get_mmsys_id(crtc), tgt_comp[0]);
+
 	for (i = 0; i <= (mtk_crtc->is_dual_pipe && addon_module_dual); ++i) {
 		addon_config->addon_mml_config.pipe = i;
+		addon_config->config_type.tgt_comp = tgt_comp[i];
 		if (addon_module->type == ADDON_BETWEEN)
 			mtk_addon_disconnect_between(crtc, ddp_mode, m[i],
 						     addon_config, cmdq_handle);
@@ -2810,11 +2818,6 @@ static void mml_addon_module_disconnect(struct drm_crtc *crtc,
 		else if (addon_module->type == ADDON_BEFORE)
 			mtk_addon_disconnect_before(crtc, ddp_mode, m[i],
 						    addon_config, cmdq_handle);
-
-		if (i == 0)
-			addon_config->config_type.tgt_comp =
-				dual_pipe_comp_mapping(mtk_get_mmsys_id(crtc),
-						       addon_config->config_type.tgt_comp);
 	}
 }
 
