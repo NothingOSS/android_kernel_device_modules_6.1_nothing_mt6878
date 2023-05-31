@@ -5157,7 +5157,7 @@
 			interrupts = <GIC_SPI 286 IRQ_TYPE_LEVEL_HIGH 0>;
 			dump = <0xd14 0xd18 0xd1c 0xd20 0xd24>;
 			clear = <0x680 0x80000000 1>;
-			mpu_base_clear = <1>;
+			mpu-base-clear = <1>;
 		};
 
 		nemi_hre_emi_apb@10344000 {
