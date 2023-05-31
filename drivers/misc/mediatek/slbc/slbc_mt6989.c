@@ -938,13 +938,15 @@ int slbc_gid_val(enum slc_ach_uid uid)
 
 int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data)
 {
-	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "gid:%d", *gid);
 	if (*gid >= GID_MAX)
 		return -EINVAL;
-	/* if (data->sign != SLC_DATA_MAGIC) { */
+
+	if (data->sign != SLC_DATA_MAGIC) {
 		/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "invalid sign:%#x", data->sign); */
-		/* return -EINVAL; */
-	/* } */
+		return -EINVAL;
+	}
+
+	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "gid:%d", *gid);
 
 	switch (uid) {
 	case ID_MD:
@@ -979,19 +981,22 @@ int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data)
 		return -EINVAL;
 	}
 
-	gid_ref[*gid]++;
+	if (gid_ref[*gid] == 0) {
+		/* Set M/G and G/P tables */
+		_slbc_ach_scmi(IPI_SLBC_GID_REQUEST_FROM_AP, uid, *gid, data);
+	}
 
-	/* Set M/G and G/P tables */
-	_slbc_ach_scmi(IPI_SLBC_GID_REQUEST_FROM_AP, uid, *gid, data);
+	gid_ref[*gid]++;
 
 	return 0;
 }
 
 int slbc_gid_release(enum slc_ach_uid uid, int gid)
 {
-	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "gid:%d", gid);
 	if (gid >= GID_MAX)
 		return -EINVAL;
+
+	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "gid:%d", gid);
 
 	switch (uid) {
 	case ID_MD:
@@ -1020,10 +1025,12 @@ int slbc_gid_release(enum slc_ach_uid uid, int gid)
 		return -EINVAL;
 	}
 
-	gid_ref[gid]--;
+	if (gid_ref[gid] == 0) {
+		/* Clear M/G and G/P tables */
+		_slbc_ach_scmi(IPI_SLBC_GID_RELEASE_FROM_AP, uid, gid, NULL);
+	}
 
-	/* Clear M/G and G/P tables */
-	_slbc_ach_scmi(IPI_SLBC_GID_RELEASE_FROM_AP, uid, gid, NULL);
+	gid_ref[gid]--;
 
 	return 0;
 }
@@ -1040,24 +1047,30 @@ int slbc_roi_update(enum slc_ach_uid uid, int gid, struct slbc_gid_data *data)
 
 int slbc_validate(enum slc_ach_uid uid, int gid)
 {
-	SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "gid:%d", gid);
 	if (gid >= GID_MAX)
 		return -EINVAL;
 
+	SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "gid:%d", gid);
+
+	if (gid_vld_cnt[gid] == 0)
+		_slbc_ach_scmi(IPI_SLBC_GID_VALID_FROM_AP, uid, gid, NULL);
+
 	gid_vld_cnt[gid]++;
-	_slbc_ach_scmi(IPI_SLBC_GID_VALID_FROM_AP, uid, gid, NULL);
 
 	return 0;
 }
 
 int slbc_invalidate(enum slc_ach_uid uid, int gid)
 {
-	SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "gid:%d", gid);
 	if (gid >= GID_MAX)
 		return -EINVAL;
 
+	SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "gid:%d", gid);
+
+	if (gid_vld_cnt[gid] == 1)
+		_slbc_ach_scmi(IPI_SLBC_GID_INVALID_FROM_AP, uid, gid, NULL);
+
 	gid_vld_cnt[gid]--;
-	_slbc_ach_scmi(IPI_SLBC_GID_INVALID_FROM_AP, uid, gid, NULL);
 
 	return 0;
 }
@@ -1547,7 +1560,7 @@ void slbc_get_gid_for_dma(struct dma_buf *dmabuf_2)
 			buffer_fd, producer, consumer);
 
 	if (gid_data->sign != SLC_DATA_MAGIC) {
-		SLBC_TRACE_REC(LVL_ERR, TYPE_C, 0, ret, "invalid sign:%#x", gid_data->sign);
+		/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, 0, ret, "invalid sign:%#x", gid_data->sign); */
 		goto err1;
 	}
 
