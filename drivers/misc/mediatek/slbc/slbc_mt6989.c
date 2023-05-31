@@ -496,22 +496,13 @@ static int slbc_request_status(struct slbc_data *d)
 {
 	int ret = 0;
 	int uid = d->uid;
-	int sid;
-	struct slbc_config *config;
 
 	/* slbc_debug_log("%s: TP_BUFFER\n", __func__); */
 
 	if (uid <= UID_ZERO || uid > UID_MAX)
-		d->config = NULL;
-	else {
-		sid = slbc_get_sid_by_uid((enum slbc_uid)uid);
-		if (sid != SID_NOT_FOUND) {
-			d->sid = sid;
-			d->config = &p_config[sid];
-			config = (struct slbc_config *)d->config;
-			ret = _slbc_buffer_status_scmi(d);
-		}
-	}
+		ret = -EINVAL;
+	else
+		ret = _slbc_buffer_status_scmi(d);
 
 	return ret;
 }
