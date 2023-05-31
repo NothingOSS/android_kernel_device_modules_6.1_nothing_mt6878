@@ -28,7 +28,7 @@ extern void (*fpsgo_notify_acquire_fp)(int c_pid, int p_pid,
 	int connectedAPI, unsigned long long buffer_id);
 extern void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota,
 		unsigned long long identifier);
-extern void (*fpsgo_get_pid_fp)(int cmd, int *pid);
+extern void (*fpsgo_get_pid_fp)(int cmd, int *pid, int op);
 extern void (*fpsgo_notify_sbe_policy_fp)(int pid,  char *name,
 	unsigned long mask, int start, int *ret);
 

@@ -770,12 +770,15 @@ int fpsgo_wait_fstb_active(void)
 	return fpsgo_ctrl2fstb_wait_fstb_active();
 }
 
-void fpsgo_get_pid(int cmd, int *pid)
+void fpsgo_get_pid(int cmd, int *pid, int op)
 {
 	if (!pid)
 		return;
 
-	fpsgo_ctrl2base_wait_cam(cmd, pid);
+	if (op)
+		fpsgo_ctrl2base_wait_cam(cmd, pid);
+	else
+		fpsgo_ctrl2base_get_cam_pid(cmd, pid);
 }
 
 #if FPSGO_DYNAMIC_WL

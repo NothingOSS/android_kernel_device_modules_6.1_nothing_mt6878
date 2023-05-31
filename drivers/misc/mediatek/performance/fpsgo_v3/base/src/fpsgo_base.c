@@ -406,6 +406,64 @@ void fpsgo_ctrl2base_wait_cam(int cmd, int *pid)
 	}
 }
 
+static void fpsgo_get_cam_pid(int cmd, int *pid)
+{
+	int local_camera_server_pid = 0;
+	struct render_info *r_iter = NULL;
+	struct acquire_info *a_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	if (!pid)
+		return;
+
+	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
+		r_iter = rb_entry(rbn, struct render_info, render_key_node);
+		fpsgo_thread_lock(&r_iter->thr_mlock);
+		if (r_iter->api == NATIVE_WINDOW_API_CAMERA) {
+			local_camera_server_pid = r_iter->tgid;
+			fpsgo_thread_unlock(&r_iter->thr_mlock);
+			break;
+		}
+		fpsgo_thread_unlock(&r_iter->thr_mlock);
+	}
+
+	if (!local_camera_server_pid)
+		return;
+
+	for (rbn = rb_first(&acquire_info_tree); rbn; rbn = rb_next(rbn)) {
+		a_iter = rb_entry(rbn, struct acquire_info, entry);
+		if (a_iter->api == NATIVE_WINDOW_API_CAMERA) {
+			switch (cmd) {
+			case CAMERA_APK:
+				if (a_iter->p_pid == local_camera_server_pid) {
+					*pid = a_iter->c_pid;
+					global_cam_apk_pid = a_iter->c_pid;
+				} else {
+					*pid = a_iter->p_pid;
+					global_cam_apk_pid = a_iter->p_pid;
+				}
+				break;
+			case CAMERA_SERVER:
+				*pid = local_camera_server_pid;
+				break;
+			default:
+				break;
+			}
+			break;
+		}
+	}
+}
+
+void fpsgo_ctrl2base_get_cam_pid(int cmd, int *pid)
+{
+	if (!pid)
+		return;
+
+	fpsgo_render_tree_lock(__func__);
+	fpsgo_get_cam_pid(cmd, pid);
+	fpsgo_render_tree_unlock(__func__);
+}
+
 int fpsgo_get_acquire_hint_is_enable(void)
 {
 	return fpsgo_get_acquire_hint_enable;
@@ -1667,6 +1725,11 @@ int fpsgo_check_thread_status(void)
 	fpsgo_traverse_linger(ts);
 	fpsgo_check_adpf_render_status();
 
+	if (fpsgo_get_acquire_hint_is_enable())
+		fpsgo_get_cam_pid(CAMERA_APK, &global_cam_apk_pid);
+	else
+		global_cam_apk_pid = 0;
+
 	fpsgo_render_tree_unlock(__func__);
 
 	fpsgo_base2comp_check_connect_api();
@@ -2025,7 +2088,6 @@ struct acquire_info *fpsgo_add_acquire_info(int p_pid, int c_pid, int c_tid,
 			fpsgo2cam_sentcmd(CAMERA_APK, c_pid);
 		if (wq_has_sleeper(&cam_ser_pid_queue))
 			fpsgo2cam_sentcmd(CAMERA_SERVER, p_pid);
-		global_cam_apk_pid = c_pid;
 	}
 
 	while (*p) {
