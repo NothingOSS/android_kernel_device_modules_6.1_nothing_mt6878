@@ -677,7 +677,7 @@ static int init_public_table(void)
 				if (is_wl_support()) {
 					/* Init for CPU to DSU relationship */
 					pd_public->wl_table[type][opp].dsu_freq =
-						ioread16(wl_base + wl_offset);
+						ioread16(wl_base + wl_offset) * 1000;
 					pd_public->wl_table[type][opp].capacity =
 						ioread16(wl_base + wl_offset + 0x2);
 					pd_public->wl_table[type][opp].dyn_pwr =

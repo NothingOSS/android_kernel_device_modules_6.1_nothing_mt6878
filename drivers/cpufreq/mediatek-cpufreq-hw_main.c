@@ -161,8 +161,7 @@ static unsigned int mtk_cpufreq_hw_fast_switch(struct cpufreq_policy *policy,
 		if(qos_base && c->sb_ch) {
 			c->sb_ch == -1 ?
 			writel_relaxed(0, qos_base + REG_QOS_OFF):
-			writel_relaxed(c->sb_ch * 1000,
-					qos_base + REG_QOS_OFF);
+			writel_relaxed(c->sb_ch, qos_base + REG_QOS_OFF);
 		}
 		if (!freq_scaling_disabled) // Frequency scaling enabled
 			writel_relaxed(target_freq, c->reg_bases[REG_FREQ_PERF_STATE]);
