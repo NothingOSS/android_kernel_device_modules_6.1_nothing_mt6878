@@ -11457,7 +11457,6 @@
 					"crypto_rst",
 					"hci_rst";
 
-			mediatek,ufs-disable-mcq;
 			mediatek,ufs-qos;
 			mediatek,ufs-pmc-via-fastauto;
 			mediatek,ufs-mphy-debug;
