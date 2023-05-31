@@ -379,7 +379,7 @@ static char *pwr_ctrl_str[PW_MAX_COUNT] = {
 	[PW_REG_SSRSYS_INFRA_REQ_MASK_B] = "reg_ssrsys_infra_req_mask_b",
 
 	/* SPM_SRC_MASK_11 */
-	[PW_REG_SSRSYS_PMIC_REQ_MASK_B] = "reg_ssrsys_pmic_req_mask_b,",
+	[PW_REG_SSRSYS_PMIC_REQ_MASK_B] = "reg_ssrsys_pmic_req_mask_b",
 	[PW_REG_SSRSYS_SRCCLKENA_MASK_B] = "reg_ssrsys_srcclkena_mask_b",
 	[PW_REG_SSRSYS_VRF18_REQ_MASK_B] = "reg_ssrsys_vrf18_req_mask_b",
 	[PW_REG_UART_HUB_INFRA_REQ_MASK_B] = "reg_uart_hub_infra_req_mask_b",
