@@ -2161,6 +2161,11 @@
 		clock-names = "apb", "smi";
 	};
 
+	smi-test {
+		compatible = "mediatek,smi-testcase";
+		mediatek,larbs = <&smi_larb2>;
+	};
+
 	smi_larb2: smi-larb2@1f002000 {
 		compatible = "mediatek,smi_larb2",
 			"mediatek,mt6989-smi-larb", "mediatek,smi-larb";
