@@ -3311,7 +3311,7 @@
 			#thermal-sensor-cells = <1>;
 			reg = <0 0x10315000 0 0x1000>,
 				  <0 0x10316000 0 0x1000>,
-				  <0 0x19040000 0 0x1000>,
+				  <0 0x19004000 0 0x1000>,
 				  <0 0x13ff0000 0 0x1000>;
 			interrupts = <GIC_SPI 359 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 360 IRQ_TYPE_LEVEL_HIGH 0>,
