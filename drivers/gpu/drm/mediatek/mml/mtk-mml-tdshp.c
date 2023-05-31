@@ -324,7 +324,7 @@ static void tdshp_config_region_pq(struct mml_comp *comp, struct cmdq_pkt *pkt,
 		mml_pq_msg("%s:en_region_pq[%d] en_color[%d]", __func__,
 			cfg->en_region_pq, cfg->en_color);
 
-		if (!cfg->en_region_pq && !cfg->en_color)
+		if (!cfg->en_region_pq)
 			cmdq_pkt_write(pkt, NULL,
 				base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
 				0, U32_MAX);
