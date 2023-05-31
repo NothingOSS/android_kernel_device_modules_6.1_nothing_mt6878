@@ -687,7 +687,8 @@
 	sensor0: sensor0@10 {
 		compatible = "mediatek,imgsensor";
 		sensor-names = "ov48b_mipi_raw",
-				"imx989_mipi_raw";
+				"imx989_mipi_raw",
+				"s5khp3sp_mipi_raw";
 		reg = <0x10>;
 
 		pinctrl-names = "mclk_off",
