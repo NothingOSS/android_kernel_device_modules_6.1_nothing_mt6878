@@ -1897,8 +1897,8 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	if (is_fdvfs_enable()) {
 		mtk_gpueb_sysram_write(SYSRAM_GPU_LEFT_TIME, t_gpu_target_hd);
 		set_fb_timeout(t_gpu_target * 100000, t_gpu_target * 200000);
-	} else if (!is_fdvfs_enable())
-		set_fb_timeout(t_gpu_target * 100000, t_gpu_target * 100000);
+	} else
+		set_fb_timeout(t_gpu_target * 100000, t_gpu_target_hd * 100000);
 
 	ged_set_backup_timer_timeout(fb_timeout);
 	ged_cancel_backup_timer();
