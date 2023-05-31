@@ -78,7 +78,7 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 	u32 crop_subpix_w = in->crop.w_sub_px;
 	u32 crop_height = in->crop.r.height;
 	u32 crop_subpix_h = in->crop.h_sub_px;
-	s32 alg;
+	u32 alg;
 
 	if (is_hor)
 		alg = out->hori_algo;
@@ -216,13 +216,13 @@ static void rsz_auto_align(struct rsz_fw_in *in, struct rsz_fw_out *out,
 	bool is_hor, struct rsz_cal_param *cal_param)
 {
 	s32 prec, max_nm, max_nm_prec, offset = 0;
-	u32 dst_width = in->out_width;
-	u32 dst_height = in->out_height;
-	u32 crop_width = in->crop.r.width;
-	u32 crop_subpix_w = in->crop.w_sub_px;
-	u32 crop_height = in->crop.r.height;
-	u32 crop_subpix_h = in->crop.h_sub_px;
-	s32 alg;
+	s64 dst_width = in->out_width;
+	s64 dst_height = in->out_height;
+	s64 crop_width = in->crop.r.width;
+	s64 crop_subpix_w = in->crop.w_sub_px;
+	s64 crop_height = in->crop.r.height;
+	s64 crop_subpix_h = in->crop.h_sub_px;
+	u32 alg;
 
 	if (is_hor)
 		alg = out->hori_algo;

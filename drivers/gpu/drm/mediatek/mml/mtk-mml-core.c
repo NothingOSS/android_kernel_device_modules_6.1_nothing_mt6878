@@ -1884,11 +1884,12 @@ static void core_update_config(struct mml_frame_config *cfg)
 {
 	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest;
+	const struct mml_crop *crop;
 	u32 i;
 
 	cfg->frame_in.width = src->width;
 	cfg->frame_in.height = src->height;
-	for (i = 0; i < MML_MAX_OUTPUTS; i++) {
+	for (i = 0; i < cfg->info.dest_cnt; i++) {
 		dest = &cfg->info.dest[i];
 		cfg->frame_in_crop[i] = dest->crop;
 		cfg->out_rotate[i] = dest->rotate;
@@ -1900,6 +1901,26 @@ static void core_update_config(struct mml_frame_config *cfg)
 			cfg->frame_out[i].width = dest->compose.height;
 			cfg->frame_out[i].height = dest->compose.width;
 		}
+	}
+
+	dest = &cfg->info.dest[0];
+	crop = &dest->crop;
+	if ((cfg->info.dest_cnt == 1 ||
+	     !memcmp(crop, &dest[1].crop, sizeof(struct mml_crop))) &&
+	    (crop->r.width != src->width || crop->r.height != src->height)) {
+		u32 in_crop_w = crop->r.width;
+		u32 in_crop_h = crop->r.height;
+
+		if (in_crop_w + crop->r.left > src->width)
+			in_crop_w = src->width - crop->r.left;
+		if (in_crop_h + crop->r.top > src->height)
+			in_crop_h = src->height - crop->r.top;
+
+		cfg->frame_tile_sz.width = in_crop_w;
+		cfg->frame_tile_sz.height = in_crop_h;
+	} else {
+		cfg->frame_tile_sz.width = src->width;
+		cfg->frame_tile_sz.height = src->height;
 	}
 }
 

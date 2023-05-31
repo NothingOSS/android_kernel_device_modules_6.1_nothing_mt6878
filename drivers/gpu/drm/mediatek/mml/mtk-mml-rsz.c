@@ -238,8 +238,8 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	if (!rsz_frm->relay_mode) {
 		if (mml_rsz_fw_comb) {
-			fw_in.in_width = crop->r.width; /* was src->width; */
-			fw_in.in_height = crop->r.height; /* was src->height; */
+			fw_in.in_width = cfg->frame_tile_sz.width;
+			fw_in.in_height = cfg->frame_tile_sz.height;
 			fw_in.out_width = frame_out->width;
 			fw_in.out_height = frame_out->height;
 			fw_in.crop = *crop;
@@ -251,6 +251,14 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 				fw_in.power_saving = true;
 
 			fw_in.use121filter = rsz_frm->use121filter;
+
+			mml_msg("rsz fw in %u %u crop %u.%u %u.%u %u.%u %u.%u out %u %u",
+				fw_in.in_width, fw_in.in_height,
+				crop->r.left, crop->x_sub_px,
+				crop->r.top, crop->y_sub_px,
+				crop->r.width, crop->w_sub_px,
+				crop->r.height, crop->h_sub_px,
+				fw_in.out_width, fw_in.out_height);
 
 			rsz_fw(&fw_in, &rsz_frm->fw_out, dest->pq_config.en_ur);
 		} else {
@@ -364,21 +372,12 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	func->enable_flag = !rsz_frm->relay_mode;
 
 	if ((cfg->info.dest_cnt == 1 ||
-	     !memcmp(&cfg->info.dest[0].crop,
-		     &cfg->info.dest[1].crop,
-		     sizeof(struct mml_crop))) &&
-	    (crop->r.width != frame_in->width ||
-	     crop->r.height != frame_in->height)) {
-		u32 in_crop_w, in_crop_h;
+	     !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop,
+	     sizeof(struct mml_crop))) &&
+	    (crop->r.width != frame_in->width || crop->r.height != frame_in->height)) {
+		func->full_size_x_in = cfg->frame_tile_sz.width;
+		func->full_size_y_in = cfg->frame_tile_sz.height;
 
-		in_crop_w = crop->r.width;
-		in_crop_h = crop->r.height;
-		if (in_crop_w + crop->r.left > frame_in->width)
-			in_crop_w = frame_in->width - crop->r.left;
-		if (in_crop_h + crop->r.top > frame_in->height)
-			in_crop_h = frame_in->height - crop->r.top;
-		func->full_size_x_in = in_crop_w;
-		func->full_size_y_in = in_crop_h;
 		data->rsz.crop.r.left -= crop->r.left;
 		data->rsz.crop.r.top -= crop->r.top;
 	} else {
@@ -392,6 +391,14 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 		func->full_size_x_out = dest->data.width;
 		func->full_size_y_out = dest->data.height;
 	}
+
+	mml_msg("%s rsz full in %u %u crop %u.%u %u.%u %u.%u %u.%u",
+		__func__,
+		func->full_size_x_in, func->full_size_y_in,
+		data->rsz.crop.r.left, data->rsz.crop.x_sub_px,
+		data->rsz.crop.r.top, data->rsz.crop.y_sub_px,
+		data->rsz.crop.r.width, data->rsz.crop.w_sub_px,
+		data->rsz.crop.r.height, data->rsz.crop.h_sub_px);
 
 	mml_trace_ex_end();
 	return 0;

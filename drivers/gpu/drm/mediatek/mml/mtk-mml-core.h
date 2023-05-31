@@ -326,6 +326,7 @@ struct mml_frame_config {
 	struct mml_frame_size frame_in;
 	struct mml_frame_size rrot_out[MML_PIPE_CNT];
 	struct mml_crop frame_in_crop[MML_MAX_OUTPUTS];
+	struct mml_frame_size frame_tile_sz;
 	/* binning level config by: 2'd0: 1; 2'd1: 2; 2'd2: 4; 2'd3: 8 */
 	u8 bin_x;
 	u8 bin_y;

@@ -361,6 +361,10 @@ static void calc_binning_crop(u32 *crop, u32 *frac)
 	*crop = *crop >> 1;
 }
 
+#define calc_tile_subpx(_start_sub, sz, sz_sub) \
+	((_start_sub + (sz << MML_SUBPIXEL_BITS) + \
+		sz_sub + (1 << MML_SUBPIXEL_BITS) - 1) >> MML_SUBPIXEL_BITS)
+
 static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_config *ccfg)
 {
 	const struct mml_frame_data *src = &cfg->info.src;
@@ -377,7 +381,7 @@ static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_confi
 	if (binning && (w >> 1) >= outw) {
 		cfg->frame_in.width = (src->width + 1) >> 1;
 		cfg->bin_x = 1;
-		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
+		for (i = 0; i < cfg->info.dest_cnt; i++) {
 			crop = &cfg->frame_in_crop[i];
 			calc_binning_crop(&crop->r.width, &crop->w_sub_px);
 			calc_binning_crop(&crop->r.left, &crop->x_sub_px);
@@ -386,16 +390,33 @@ static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_confi
 	if (binning && (h >> 1) >= outh) {
 		cfg->frame_in.height = (src->height + 1) >> 1;
 		cfg->bin_y = 1;
-		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
+		for (i = 0; i < cfg->info.dest_cnt; i++) {
 			crop = &cfg->frame_in_crop[i];
 			calc_binning_crop(&crop->r.height, &crop->h_sub_px);
 			calc_binning_crop(&crop->r.top, &crop->y_sub_px);
+
 		}
+	}
+
+	if ((cfg->info.dest_cnt == 1 ||
+	     !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop,
+		     sizeof(struct mml_crop))) &&
+	     (dest->crop.r.width != src->width || dest->crop.r.height != src->height)) {
+		crop = &cfg->frame_in_crop[0];
+		/* calculate tile full size from rrot out to rsz in, with roundup sub pixel */
+		cfg->frame_tile_sz.width =
+			calc_tile_subpx(crop->x_sub_px, crop->r.width, crop->w_sub_px);
+		cfg->frame_tile_sz.height =
+			calc_tile_subpx(crop->y_sub_px, crop->r.height, crop->h_sub_px);
+	} else {
+		cfg->frame_tile_sz.width = cfg->frame_in.width;
+		cfg->frame_tile_sz.height = cfg->frame_in.height;
 	}
 
 	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270) {
 		swap(cfg->frame_in.width, cfg->frame_in.height);
-		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
+		swap(cfg->frame_tile_sz.width, cfg->frame_tile_sz.height);
+		for (i = 0; i < cfg->info.dest_cnt; i++) {
 			crop = &cfg->frame_in_crop[i];
 			swap(crop->r.left, crop->r.top);
 			swap(crop->r.width, crop->r.height);
@@ -407,9 +428,19 @@ static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_confi
 		}
 	} else {
 		/* rotate 0 or 180, clear both rotation and flip value but keep others */
-		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
+		for (i = 0; i < cfg->info.dest_cnt; i++) {
 			cfg->out_rotate[i] = 0;
 			cfg->out_flip[i] = false;
+		}
+	}
+
+	if (cfg->bin_x || cfg->bin_y) {
+		for (i = 0; i < cfg->info.dest_cnt; i++) {
+			crop = &cfg->frame_in_crop[i];
+			rrot_msg("%s crop%u %u.%u %u.%u %u.%u %u.%u",
+				__func__, i,
+				crop->r.left, crop->x_sub_px, crop->r.top, crop->y_sub_px,
+				crop->r.width, crop->w_sub_px, crop->r.height, crop->h_sub_px);
 		}
 	}
 }
@@ -503,26 +534,15 @@ s32 rrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	func->full_size_x_in = cfg->frame_in.width;
 	func->full_size_y_in = cfg->frame_in.height;
-	func->full_size_x_out = cfg->frame_in.width;
-	func->full_size_y_out = cfg->frame_in.height;
+	func->full_size_x_out = cfg->frame_tile_sz.width;
+	func->full_size_y_out = cfg->frame_tile_sz.height;
 
 	if (cfg->info.dest_cnt == 1 ||
 	     !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop, sizeof(struct mml_crop))) {
-		struct mml_frame_dest *dest = &cfg->info.dest[0];
-		u32 in_crop_w, in_crop_h;
-
-		data->rdma.crop = cfg->frame_in_crop[ccfg->pipe].r;
-		in_crop_w = data->rdma.crop.width;
-		in_crop_h = data->rdma.crop.height;
-		if (in_crop_w + data->rdma.crop.left > cfg->frame_in.width)
-			in_crop_w = cfg->frame_in.width - data->rdma.crop.left;
-		if (in_crop_h + data->rdma.crop.top > cfg->frame_in.height)
-			in_crop_h = cfg->frame_in.height - data->rdma.crop.top;
-
-		if (dest->crop.r.width != src->width || dest->crop.r.height != src->height) {
-			func->full_size_x_out = in_crop_w;
-			func->full_size_y_out = in_crop_h;
-		}
+		data->rdma.crop.left = cfg->frame_in_crop[0].r.left;
+		data->rdma.crop.top = cfg->frame_in_crop[0].r.top;
+		data->rdma.crop.width = cfg->frame_tile_sz.width;
+		data->rdma.crop.height = cfg->frame_tile_sz.height;
 
 		rrot_frm->crop_off_l = data->rdma.crop.left;
 		rrot_frm->crop_off_t = data->rdma.crop.top;
@@ -533,7 +553,7 @@ s32 rrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 		data->rdma.crop.height = cfg->frame_in.height;
 	}
 
-	rrot_msg("%s size %u %u %u %u crop off %u %u",
+	rrot_msg("%s size in %u %u out %u %u crop off %u %u",
 		__func__,
 		func->full_size_x_in, func->full_size_y_in,
 		func->full_size_x_out, func->full_size_y_out,

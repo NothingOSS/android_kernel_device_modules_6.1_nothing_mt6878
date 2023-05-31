@@ -800,32 +800,15 @@ static s32 rdma_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	func->full_size_x_in = src->width;
 	func->full_size_y_in = src->height;
-	func->full_size_x_out = src->width;
-	func->full_size_y_out = src->height;
+	func->full_size_x_out = cfg->frame_tile_sz.width;
+	func->full_size_y_out = cfg->frame_tile_sz.height;
 
 	if (cfg->info.dest_cnt == 1 ||
-	     !memcmp(&cfg->info.dest[0].crop,
-		     &cfg->info.dest[1].crop,
-		     sizeof(struct mml_crop))) {
+	     !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop, sizeof(struct mml_crop))) {
 		struct mml_frame_dest *dest = &cfg->info.dest[0];
-		u32 in_crop_w, in_crop_h;
 		struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 
 		data->rdma.crop = dest->crop.r;
-
-		in_crop_w = dest->crop.r.width;
-		in_crop_h = dest->crop.r.height;
-		if (in_crop_w + dest->crop.r.left > src->width)
-			in_crop_w = src->width - dest->crop.r.left;
-		if (in_crop_h + dest->crop.r.top > src->height)
-			in_crop_h = src->height - dest->crop.r.top;
-
-		if (dest->crop.r.width != src->width ||
-		    dest->crop.r.height != src->height) {
-			func->full_size_x_out = in_crop_w;
-			func->full_size_y_out = in_crop_h;
-		}
-
 		rdma_frm->crop_off_l = data->rdma.crop.left;
 		rdma_frm->crop_off_t = data->rdma.crop.top;
 	} else {

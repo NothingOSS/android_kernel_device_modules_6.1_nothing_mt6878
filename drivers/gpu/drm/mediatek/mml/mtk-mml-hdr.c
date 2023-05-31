@@ -234,34 +234,14 @@ static s32 hdr_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 {
 	const struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
-	const struct mml_frame_size *frame_in = &cfg->frame_in;
-	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
 	const struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	bool relay_mode = !dest->pq_config.en_hdr;
 
 	func->for_func = tile_crop_for;
 	func->enable_flag = dest->pq_config.en_hdr;
 
-	if ((cfg->info.dest_cnt == 1 ||
-	     !memcmp(&cfg->info.dest[0].crop,
-		     &cfg->info.dest[1].crop,
-		     sizeof(struct mml_crop))) &&
-	    (crop->r.width != frame_in->width ||
-	    crop->r.height != frame_in->height)) {
-		u32 in_crop_w, in_crop_h;
-
-		in_crop_w = crop->r.width;
-		in_crop_h = crop->r.height;
-		if (in_crop_w + crop->r.left > frame_in->width)
-			in_crop_w = frame_in->width - crop->r.left;
-		if (in_crop_h + crop->r.top > frame_in->height)
-			in_crop_h = frame_in->height - crop->r.top;
-		func->full_size_x_in = in_crop_w;
-		func->full_size_y_in = in_crop_h;
-	} else {
-		func->full_size_x_in = frame_in->width;
-		func->full_size_y_in = frame_in->height;
-	}
+	func->full_size_x_in = cfg->frame_tile_sz.width;
+	func->full_size_y_in = cfg->frame_tile_sz.height;
 	func->full_size_x_out = func->full_size_x_in;
 	func->full_size_y_out = func->full_size_y_in;
 
