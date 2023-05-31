@@ -10,8 +10,7 @@
 #include <dt-bindings/phy/phy.h>
 
 &chosen {
-bootargs_ext = "8250.nr_uarts=4 \
-loglevel=8 initcall_debug=1";
+bootargs_ext = "8250.nr_uarts=4";
 };
 
 &mtk_leds {
