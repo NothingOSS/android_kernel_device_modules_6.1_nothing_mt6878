@@ -954,9 +954,14 @@ void mtk_can_migrate_task(void *data, struct task_struct *p,
 	bool latency_sensitive;
 	struct cpumask eff_mask;
 
+	if (READ_ONCE(cpu_rq(task_cpu(p))->rd->overutilized)) {
+		*can_migrate = 1;
+		return;
+	}
+
 	compute_effective_softmask(p, &latency_sensitive, &eff_mask);
 	if (latency_sensitive && !(cpumask_test_cpu(dst_cpu, &eff_mask)))
-		*can_migrate = false;
+		*can_migrate = 0;
 }
 
 __read_mostly int num_sched_clusters;
