@@ -7417,6 +7417,8 @@
 				<&topckgen_clk CLK_TOP_MAINPLL_D4_D2>,
 				<&topckgen_clk CLK_TOP_MMPLL_D6>,
 				<&topckgen_clk CLK_TOP_AES_UFSFDE_SEL>,
+				<&topckgen_clk CLK_TOP_UNIVPLL_D6>,
+				<&topckgen_clk CLK_TOP_MAINPLL_D4>,
 				<&ufscfg_ao_clk CLK_UFSCFG_AO_UNIPRO_TX_SYMBOLCLK>,
 				<&ufscfg_ao_clk CLK_UFSCFG_AO_UNIPRO_RX_SYMBOLCLK0>,
 				<&ufscfg_ao_clk CLK_UFSCFG_AO_UNIPRO_RX_SYMBOLCLK1>,
@@ -7429,6 +7431,8 @@
 				"ufs_sel_min_src",
 				"ufs_sel_max_src",
 				"ufs_fde",
+				"ufs_fde_min_src",
+				"ufs_fde_max_src",
 				"unipro_tx_sym",
 				"unipro_rx_sym0",
 				"unipro_rx_sym1",
@@ -7438,6 +7442,8 @@
 
 			freq-table-hz =
 				<273000000 458333313>,
+				<0 0>,
+				<0 0>,
 				<0 0>,
 				<0 0>,
 				<0 0>,
