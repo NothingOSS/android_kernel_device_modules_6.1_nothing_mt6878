@@ -801,7 +801,11 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 #ifdef CMDQ_DCACHE_INVAL
 	void *va;
 #endif
-	struct device *device = pkt->share_dev;
+	struct device *device;
+
+	if (!pkt->share_dev && pkt->dev)
+		pkt->share_dev = mtk_smmu_get_shared_device(pkt->dev);
+	device = pkt->share_dev;
 
 	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
 	if (!buf)
