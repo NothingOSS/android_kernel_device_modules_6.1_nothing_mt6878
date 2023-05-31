@@ -31,6 +31,7 @@
 #define MTK_SCPD_RTFF_DELAY		BIT(16)
 #define MTK_SCPD_REMOVE_MD_RSTB		BIT(17)
 #define MTK_SCPD_MMINFRA_HWV_OPS	BIT(18)
+#define MTK_SCPD_IRQ_SAVE		BIT(19)
 
 #define MAX_CLKS	5
 #define MAX_SUBSYS_CLKS 20
@@ -77,6 +78,7 @@ struct scp_domain_data {
 	u32 sta_mask;
 	int ctl_offs;
 	u32 hwv_done_ofs;
+	u32 hwv_ofs;
 	u32 hwv_set_ofs;
 	u32 hwv_clr_ofs;
 	u32 hwv_en_ofs;
@@ -98,6 +100,7 @@ struct scp_domain_data {
 	struct bus_prot bp_table[MAX_STEPS];
 	struct sram_ctl sram_table[MAX_SRAM_STEPS];
 	u32 child[MAX_CHILDREN];
+	spinlock_t *lock;
 };
 
 struct scp;

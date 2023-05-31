@@ -186,6 +186,115 @@
 			BIT(9))
 #define MT6989_SEMICFG_AO_MEM_PROT_REG_PROT_EN_GLITCH_MM_INFRA	(BIT(4) | BIT(5))
 #define MT6989_VLP_AXI_PROT_EN_MM_INFRA	(BIT(11) | BIT(12))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_ISP_DIP1	(BIT(2))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_ISP_DIP1_2ND	(BIT(3))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_ISP_MAIN	(BIT(3))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_ISP_MAIN_2ND	(BIT(5))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_ISP_MAIN	(BIT(0))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_ISP_MAIN_2ND	(BIT(1))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_ISP_VCORE	(BIT(14))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_ISP_VCORE_2ND	(BIT(15) | BIT(25))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_VDE0	(BIT(10))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_VDE0	(BIT(30))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_VDE0_2ND	(BIT(28))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_VDE0_2ND	(BIT(11))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_VDE1	(BIT(20))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_VDE1	(BIT(26))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_VDE1_2ND	(BIT(24))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_VDE1_2ND	(BIT(21))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_VEN0	(BIT(12))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_VEN0	(BIT(14))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_VEN0_2ND	(BIT(13))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_VEN0_2ND	(BIT(15))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_VEN1	(BIT(18) | BIT(19))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_VEN1	(BIT(22))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_VEN1	(BIT(16))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_VEN1_2ND	(BIT(23))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_VEN1_2ND	(BIT(17))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_VEN2	(BIT(18) | BIT(19))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_CAM_MRAW	(BIT(7))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_CAM_MRAW_2ND	(BIT(26))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_CAM_SUBA	(BIT(9))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_CAM_SUBA_2ND	(BIT(6))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_CAM_SUBB	(BIT(9))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_CAM_SUBB	(BIT(8))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_CAM_SUBC	(BIT(11))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_CAM_SUBC_2ND	(BIT(10))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_CAM_MAIN	(BIT(16))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_CAM_MAIN	(BIT(4))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_CAM_VCORE	(BIT(5))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_CAM_VCORE	(BIT(17) | BIT(27) |  \
+			BIT(31))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_CAM_VCORE	(BIT(19))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS4_CAM_VCORE	(BIT(12))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS4_CAM_CCU	(BIT(10) | BIT(15))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS4_CAM_CCU_2ND	(BIT(11) | BIT(14))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_DISP_VCORE	(BIT(23) | BIT(25) |  \
+			BIT(27) | BIT(29))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_DISP_VCORE	(BIT(16) | BIT(17))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS3_DISP_VCORE	(BIT(22) | BIT(23) |  \
+			BIT(24) | BIT(25) |  \
+			BIT(26) | BIT(27))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_DISP_VCORE_2ND	(BIT(2) | BIT(10) |  \
+			BIT(12) | BIT(13) |  \
+			BIT(20) | BIT(22))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_DISP_VCORE	(BIT(1))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_DISP_VCORE_3RD	(BIT(1) | BIT(3) |  \
+			BIT(11))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_DISP_VCORE_2ND	(BIT(13) | BIT(27))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_MML0	(BIT(0))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_MML0	(BIT(31))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS3_MML0	(BIT(16) | BIT(17))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_MML1	(BIT(29) | BIT(30))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS3_MML1	(BIT(18) | BIT(19))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_DIS0	(BIT(18) | BIT(21))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS3_DIS0	(BIT(20) | BIT(21))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_DIS1	(BIT(8) | BIT(18) |  \
+			BIT(19) | BIT(24) |  \
+			BIT(28) | BIT(29) |  \
+			BIT(30))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_DIS1	(BIT(0) | BIT(8) |  \
+			BIT(18) | BIT(21))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_DIS1	(BIT(20) | BIT(21) |  \
+			BIT(22) | BIT(23) |  \
+			BIT(24) | BIT(25) |  \
+			BIT(26) | BIT(28) |  \
+			BIT(29) | BIT(30) |  \
+			BIT(31))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS3_DIS1	(BIT(0) | BIT(1) |  \
+			BIT(2) | BIT(3) |  \
+			BIT(4) | BIT(5) |  \
+			BIT(6) | BIT(7) |  \
+			BIT(8) | BIT(9) |  \
+			BIT(10) | BIT(11) |  \
+			BIT(12) | BIT(13) |  \
+			BIT(14) | BIT(15) |  \
+			BIT(16) | BIT(17) |  \
+			BIT(18) | BIT(19) |  \
+			BIT(20) | BIT(21))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_DIS1_2ND	(BIT(23) | BIT(25) |  \
+			BIT(27) | BIT(29))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_DIS1_2ND	(BIT(16) | BIT(17))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS3_DIS1_2ND	(BIT(22) | BIT(23) |  \
+			BIT(24) | BIT(25) |  \
+			BIT(26) | BIT(27))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS2_OVL0	(BIT(20) | BIT(21) |  \
+			BIT(22) | BIT(23) |  \
+			BIT(24) | BIT(25) |  \
+			BIT(26) | BIT(28))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS3_OVL0	(BIT(0) | BIT(1) |  \
+			BIT(2) | BIT(3) |  \
+			BIT(4) | BIT(5) |  \
+			BIT(6) | BIT(7))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS0_OVL1	(BIT(8) | BIT(18) |  \
+			BIT(19) | BIT(24) |  \
+			BIT(28) | BIT(29) |  \
+			BIT(30))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS1_OVL1	(BIT(8))
+#define MT6989_HFRP_1_PROT_EN_HFRP_MMSYS3_OVL1	(BIT(8) | BIT(9) |  \
+			BIT(10) | BIT(11) |  \
+			BIT(12) | BIT(13) |  \
+			BIT(14) | BIT(15))
 
 enum regmap_type {
 	INVALID_TYPE = 0,
@@ -773,11 +882,499 @@ static const struct scp_domain_data scp_domain_mt6989_spm_data[] = {
 	},
 	[MT6989_POWER_DOMAIN_SSR] = {
 		.name = "ssrsys",
-		.ctl_offs = 0xEF8,
+		.hwv_comp = "hw-voter-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 0,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_APU] = {
+		.name = "apu",
+		.caps = MTK_SCPD_APU_OPS | MTK_SCPD_BYPASS_INIT_ON,
+	},
+};
+
+static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
+	[MT6989_POWER_DOMAIN_MD] = {
+		.name = "md",
+		.ctl_offs = 0xE00,
+		.extb_iso_offs = 0xF60,
+		.extb_iso_bits = 0x3,
+		.bp_table = {
+			BUS_PROT_IGN(IFR_TYPE, 0x024, 0x028, 0x020, 0x02c,
+				MT6989_TOP_AXI_PROT_EN_INFRASYS1_MD),
+			BUS_PROT_IGN(IFR_TYPE, 0x004, 0x008, 0x000, 0x00c,
+				MT6989_TOP_AXI_PROT_EN_INFRASYS0_MD),
+			BUS_PROT_IGN(IFR_TYPE, 0x124, 0x128, 0x120, 0x12c,
+				MT6989_TOP_AXI_PROT_EN_EMISYS0_MD),
+			BUS_PROT_IGN(IFR_TYPE, 0x104, 0x108, 0x100, 0x10c,
+				MT6989_TOP_AXI_PROT_EN_EMISYS1_MD),
+		},
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_MD_OPS | MTK_SCPD_BYPASS_INIT_ON,
+	},
+	[MT6989_POWER_DOMAIN_CONN] = {
+		.name = "conn",
+		.ctl_offs = 0xE04,
+		.bp_table = {
+			BUS_PROT_IGN(IFR_TYPE, 0x004, 0x008, 0x000, 0x00c,
+				MT6989_TOP_AXI_PROT_EN_INFRASYS0_CONN),
+			BUS_PROT_IGN(IFR_TYPE, 0x1c4, 0x1c8, 0x1c0, 0x1cc,
+				MT6989_TOP_AXI_PROT_EN_CONNSYS0_CONN),
+			BUS_PROT_IGN(IFR_TYPE, 0x004, 0x008, 0x000, 0x00c,
+				MT6989_TOP_AXI_PROT_EN_INFRASYS0_CONN_2ND),
+			BUS_PROT_IGN(IFR_TYPE, 0x1c4, 0x1c8, 0x1c0, 0x1cc,
+				MT6989_TOP_AXI_PROT_EN_CONNSYS0_CONN_2ND),
+		},
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON,
+	},
+	[MT6989_POWER_DOMAIN_PERI_USB0] = {
+		.name = "peri-usb0",
+		.ctl_offs = 0xE10,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.basic_clk_name = {"ssr_dma"},
+		.bp_table = {
+			BUS_PROT_IGN(IFR_TYPE, 0x0e4, 0x0e8, 0x0e0, 0x0ec,
+				MT6989_TOP_AXI_PROT_EN_PERISYS0_PERI_USB0),
+		},
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_PEXTP_MAC0] = {
+		.name = "pextp-mac0",
+		.ctl_offs = 0xE1C,
+		.sram_pdn_bits = GENMASK(8, 8),
+		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.bp_table = {
+			BUS_PROT_IGN(VLP_TYPE, 0x0234, 0x0238, 0x0230, 0x0240,
+				MT6989_VLP_AXI_PROT_EN1_PEXTP_MAC0),
+		},
 		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_PEXTP_MAC1] = {
+		.name = "pextp-mac1",
+		.ctl_offs = 0xE20,
+		.sram_pdn_bits = GENMASK(8, 8),
+		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.bp_table = {
+			BUS_PROT_IGN(VLP_TYPE, 0x0234, 0x0238, 0x0230, 0x0240,
+				MT6989_VLP_AXI_PROT_EN1_PEXTP_MAC1),
+		},
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_PEXTP_PHY0] = {
+		.name = "pextp-phy0",
+		.ctl_offs = 0xE24,
+		.bp_table = {
+			BUS_PROT_IGN(VLP_TYPE, 0x0234, 0x0238, 0x0230, 0x0240,
+				MT6989_VLP_AXI_PROT_EN1_PEXTP_PHY0),
+		},
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
+				| default_cap,
+	},
+	[MT6989_POWER_DOMAIN_PEXTP_PHY1] = {
+		.name = "pextp-phy1",
+		.ctl_offs = 0xE28,
+		.bp_table = {
+			BUS_PROT_IGN(VLP_TYPE, 0x0234, 0x0238, 0x0230, 0x0240,
+				MT6989_VLP_AXI_PROT_EN1_PEXTP_PHY1),
+		},
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PEXTP_PHY_RTFF | MTK_SCPD_RTFF_DELAY
+				| default_cap,
+	},
+	[MT6989_POWER_DOMAIN_AUDIO] = {
+		.name = "audio",
+		.ctl_offs = 0xE2C,
+		.sram_pdn_bits = GENMASK(8, 8),
+		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"aud_bus"},
+		.bp_table = {
+			BUS_PROT_IGN(IFR_TYPE, 0x0e4, 0x0e8, 0x0e0, 0x0ec,
+				MT6989_TOP_AXI_PROT_EN_PERISYS0_AUDIO),
+		},
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_ADSP_TOP_DORMANT] = {
+		.name = "adsp-top-dormant",
+		.ctl_offs = 0xE34,
+		.sram_slp_bits = GENMASK(9, 9),
+		.sram_slp_ack_bits = GENMASK(13, 13),
+		.basic_clk_name = {"adsp"},
+		.bp_table = {
+			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
+				MT6989_VLP_AXI_PROT_EN_ADSP_TOP),
+			BUS_PROT_IGN(VLP_TYPE, 0x0234, 0x0238, 0x0230, 0x0240,
+				MT6989_VLP_AXI_PROT_EN1_ADSP_TOP),
+			BUS_PROT_IGN(IFR_TYPE, 0x024, 0x028, 0x020, 0x02c,
+				MT6989_TOP_AXI_PROT_EN_INFRASYS1_ADSP_TOP),
+		},
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_SRAM_SLP | MTK_SCPD_IS_PWR_CON_ON
+				| default_cap,
+	},
+	[MT6989_POWER_DOMAIN_ADSP_AO] = {
+		.name = "adsp-ao",
+		.ctl_offs = 0xE3C,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_MM_INFRA] = {
+		.name = "mm-infra",
+		.hwv_comp = "mminfra-hwv-regmap",
+		.hwv_ofs = 0x400,
+		.hwv_set_ofs = 0x0404,
+		.hwv_clr_ofs = 0x0408,
+		.hwv_done_ofs = 0x091C,
+		.hwv_shift = 0,
+		.caps = MTK_SCPD_MMINFRA_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_ISP_TRAW] = {
+		.name = "isp-traw",
+		.hwv_comp = "hw-voter-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 4,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_ISP_DIP1] = {
+		.name = "isp-dip1",
+		.hwv_comp = "hw-voter-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 5,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_ISP_MAIN] = {
+		.name = "isp-main",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 7,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_ISP_VCORE] = {
+		.name = "isp-vcore",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 2,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_VDE0] = {
+		.name = "vde0",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 8,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_VDE1] = {
+		.name = "vde1",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 26,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_VDE_VCORE0] = {
+		.name = "vde-vcore0",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 3,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_VDE_VCORE1] = {
+		.name = "vde-vcore1",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 13,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_VEN0] = {
+		.name = "ven0",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 4,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_VEN1] = {
+		.name = "ven1",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 9,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_VEN2] = {
+		.name = "ven2",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 14,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_CAM_MRAW] = {
+		.name = "cam-mraw",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 16,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_CAM_SUBA] = {
+		.name = "cam-suba",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 17,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_CAM_SUBB] = {
+		.name = "cam-subb",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 18,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_CAM_SUBC] = {
+		.name = "cam-subc",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 19,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_CAM_MAIN] = {
+		.name = "cam-main",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 11,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_CAM_VCORE] = {
+		.name = "cam-vcore",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 5,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_CAM_CCU] = {
+		.name = "cam-ccu",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 10,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_CAM_CCU_AO] = {
+		.name = "cam-ccu-ao",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 15,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_DISP_VCORE] = {
+		.name = "disp-vcore",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 6,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_MML0_SHUTDOWN] = {
+		.name = "mml0-shutdown",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 23,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_MML1_SHUTDOWN] = {
+		.name = "mml1-shutdown",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 24,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_DIS0_SHUTDOWN] = {
+		.name = "dis0-shutdown",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 25,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_DIS1_SHUTDOWN] = {
+		.name = "dis1-shutdown",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 12,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_OVL0_SHUTDOWN] = {
+		.name = "ovl0-shutdown",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 20,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_OVL1_SHUTDOWN] = {
+		.name = "ovl1-shutdown",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 21,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_DP_TX] = {
+		.name = "dp-tx",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 22,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_CSI_RX] = {
+		.name = "csi-rx",
+		.hwv_comp = "mm-hw-ccf-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 1,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
+	},
+	[MT6989_POWER_DOMAIN_SSR] = {
+		.name = "ssrsys",
+		.hwv_comp = "hw-voter-regmap",
+		.hwv_set_ofs = 0x0198,
+		.hwv_clr_ofs = 0x019C,
+		.hwv_done_ofs = 0x141C,
+		.hwv_en_ofs = 0x1410,
+		.hwv_set_sta_ofs = 0x146C,
+		.hwv_clr_sta_ofs = 0x1470,
+		.hwv_shift = 0,
+		.caps = MTK_SCPD_HWV_OPS | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_APU] = {
 		.name = "apu",
@@ -828,6 +1425,17 @@ static const struct scp_soc_data mt6989_spm_data = {
 	}
 };
 
+static const struct scp_soc_data mt6989_hwv_data = {
+	.domains = scp_domain_mt6989_hwv_data,
+	.num_domains = MT6989_SPM_POWER_DOMAIN_NR,
+	.subdomains = scp_subdomain_mt6989_spm,
+	.num_subdomains = ARRAY_SIZE(scp_subdomain_mt6989_spm),
+	.regs = {
+		.pwr_sta_offs = 0xF70,
+		.pwr_sta2nd_offs = 0xF74,
+	}
+};
+
 /*
  * scpsys driver init
  */
@@ -836,6 +1444,9 @@ static const struct of_device_id of_scpsys_match_tbl[] = {
 	{
 		.compatible = "mediatek,mt6989-scpsys",
 		.data = &mt6989_spm_data,
+	}, {
+		.compatible = "mediatek,mt6989-scpsys-hwv",
+		.data = &mt6989_hwv_data,
 	}, {
 		/* sentinel */
 	}

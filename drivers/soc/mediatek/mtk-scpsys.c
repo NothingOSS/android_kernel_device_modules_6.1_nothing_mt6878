@@ -15,6 +15,7 @@
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
+#include <linux/pm_runtime.h>
 
 #include "scpsys.h"
 #include "mtk-scpsys.h"
@@ -86,8 +87,7 @@
 #define PWR_ACK				BIT(30)
 #define PWR_ACK_2ND			BIT(31)
 
-#define MMINFRA_ON_STA			BIT(0)
-#define MMINFRA_OFF_STA			BIT(1)
+#define MMINFRA_DONE_STA		BIT(0)
 
 #define PWR_STATUS_CONN			BIT(1)
 #define PWR_STATUS_DISP			BIT(3)
@@ -109,6 +109,14 @@
 #define PWR_STATUS_HIF0			BIT(25)	/* MT7622 */
 #define PWR_STATUS_HIF1			BIT(26)	/* MT7622 */
 #define PWR_STATUS_WB			BIT(27)	/* MT7622 */
+
+#define MMINFRA_DONE_OFS		0x91c
+
+enum {
+	SSPM_DOMAIN = 0,
+	HFRP_DOMAIN,
+	VIP_DOMAIN_NUM,
+};
 
 enum regmap_type {
 	INVALID_TYPE = 0,
@@ -402,7 +410,7 @@ static int scpsys_sram_table_disable(struct scp_domain *scpd)
 
 static int set_bus_protection(struct regmap *map, struct bus_prot *bp)
 {
-	u32 val;
+	u32 val = 0;
 	u32 set_ofs = bp->set_ofs;
 	u32 en_ofs = bp->en_ofs;
 	u32 sta_ofs = bp->sta_ofs;
@@ -439,7 +447,7 @@ static int set_bus_protection(struct regmap *map, struct bus_prot *bp)
 
 static int clear_bus_protection(struct regmap *map, struct bus_prot *bp)
 {
-	u32 val;
+	u32 val = 0;
 	u32 clr_ofs = bp->clr_ofs;
 	u32 en_ofs = bp->en_ofs;
 	u32 sta_ofs = bp->sta_ofs;
@@ -471,11 +479,15 @@ static int scpsys_bus_protect_disable(struct scp_domain *scpd, unsigned int inde
 {
 	struct scp *scp = scpd->scp;
 	const struct bus_prot *bp_table = scpd->data->bp_table;
+	unsigned long flags = 0;
+	int ret = 0;
 	int i;
+
+	if (scpd->data->lock)
+		spin_lock_irqsave(scpd->data->lock, flags);
 
 	for (i = index; i >= 0; i--) {
 		struct regmap *map;
-		int ret;
 		struct bus_prot bp = bp_table[i];
 
 		if (bp.type > INVALID_TYPE && bp.type < scp->num_bus_type)
@@ -500,22 +512,30 @@ static int scpsys_bus_protect_disable(struct scp_domain *scpd, unsigned int inde
 			ret = clear_bus_protection(map, &bp);
 
 			if (ret)
-				return ret;
+				goto ERR;
 		}
 	}
 
-	return 0;
+ERR:
+	if (scpd->data->lock)
+		spin_unlock_irqrestore(scpd->data->lock, flags);
+
+	return ret;
 }
 
 static int scpsys_bus_protect_enable(struct scp_domain *scpd)
 {
 	struct scp *scp = scpd->scp;
 	const struct bus_prot *bp_table = scpd->data->bp_table;
+	unsigned long flags = 0;
+	int ret = 0;
 	int i;
+
+	if (scpd->data->lock)
+		spin_lock_irqsave(scpd->data->lock, flags);
 
 	for (i = 0; i < MAX_STEPS; i++) {
 		struct regmap *map;
-		int ret;
 		struct bus_prot bp = bp_table[i];
 
 		if (bp.type > INVALID_TYPE && bp.type < scp->num_bus_type)
@@ -528,12 +548,17 @@ static int scpsys_bus_protect_enable(struct scp_domain *scpd)
 		ret = set_bus_protection(map, &bp);
 
 		if (ret) {
+			if (scpd->data->lock)
+				spin_unlock_irqrestore(scpd->data->lock, flags);
 			scpsys_bus_protect_disable(scpd, i);
 			return ret;
 		}
 	}
 
-	return 0;
+	if (scpd->data->lock)
+		spin_unlock_irqrestore(scpd->data->lock, flags);
+
+	return ret;
 }
 
 static void scpsys_extb_iso_down(struct scp_domain *scpd)
@@ -1215,45 +1240,13 @@ err_lp_clk:
 	return ret;
 }
 
-static int mtk_mminfra_hwv_is_done(struct scp_domain *scpd)
+static int mtk_mminfra_hwv_is_enable_done(struct scp_domain *scpd)
 {
 	u32 val = 0;
 
-	regmap_read(scpd->hwv_regmap, scpd->data->hwv_en_ofs, &val);
+	regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
 
-	if ((val & (MMINFRA_ON_STA | MMINFRA_OFF_STA)) == 0)
-		return 1;
-
-	return 0;
-}
-
-static int mtk_mminfra_hwv_is_enable_done(struct scp_domain *scpd)
-{
-	struct regmap *hwv_regmap;
-	u32 val = 0, val2 = 0;
-
-	hwv_regmap = scpd->hwv_regmap;
-
-	regmap_read(hwv_regmap, scpd->data->hwv_done_ofs, &val);
-	regmap_read(hwv_regmap, scpd->data->hwv_en_ofs, &val2);
-
-	if ((val & BIT(scpd->data->hwv_shift)) && ((val2 & MMINFRA_ON_STA) == 0))
-		return 1;
-
-	return 0;
-}
-
-static int mtk_mminfra_hwv_is_disable_done(struct scp_domain *scpd)
-{
-	struct regmap *hwv_regmap;
-	u32 val = 0, val2 = 0;
-
-	hwv_regmap = scpd->hwv_regmap;
-
-	regmap_read(hwv_regmap, scpd->data->hwv_done_ofs, &val);
-	regmap_read(hwv_regmap, scpd->data->hwv_en_ofs, &val2);
-
-	if ((val2 & MMINFRA_OFF_STA) == 0)
+	if ((val & MMINFRA_DONE_STA) == 1)
 		return 1;
 
 	return 0;
@@ -1263,6 +1256,7 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 			 struct device *dev, const char *name, bool onoff)
 {
 	u32 vote_ofs;
+	u32 vote_sta;
 	u32 vote_msk;
 	u32 vote_ack;
 	u32 val = 0;
@@ -1270,14 +1264,9 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 	int tmp;
 	int i = 0;
 
-	/* wait for irq status idle */
-	ret = readx_poll_timeout_atomic(mtk_mminfra_hwv_is_done, scpd, tmp, tmp > 0,
-			MTK_POLL_DELAY_US, MTK_POLL_IRQ_TIMEOUT);
-	if (ret < 0)
-		goto err_hwv_prepare;
-
 	val = BIT(scpd->data->hwv_shift);
 	vote_msk = BIT(scpd->data->hwv_shift);
+	vote_sta = scpd->data->hwv_ofs;
 	if (onoff) {
 		vote_ofs = scpd->data->hwv_set_ofs;
 		vote_ack = BIT(scpd->data->hwv_shift);
@@ -1285,9 +1274,12 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 		vote_ofs = scpd->data->hwv_clr_ofs;
 		vote_ack = 0x0;
 	}
+
+	/* write twice to prevent clk idle */
+	regmap_write(regmap, vote_ofs, val);
 	regmap_write(regmap, vote_ofs, val);
 	do {
-		regmap_read(regmap, vote_ofs, &val);
+		regmap_read(regmap, vote_sta, &val);
 		if ((val & vote_msk) == vote_ack)
 			break;
 
@@ -1304,12 +1296,6 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 				MTK_POLL_DELAY_US, MTK_POLL_100MS_TIMEOUT);
 		if (ret < 0)
 			goto err_hwv_done;
-	} else {
-		/* wait until VOTER_ACK = 0 */
-		ret = readx_poll_timeout_atomic(mtk_mminfra_hwv_is_disable_done, scpd, tmp, tmp > 0,
-				MTK_POLL_DELAY_US, MTK_POLL_100MS_TIMEOUT);
-		if (ret < 0)
-			goto err_hwv_done;
 	}
 
 	return 0;
@@ -1318,10 +1304,6 @@ err_hwv_done:
 	dev_err(dev, "Failed to hwv done timeout %s(%d)\n", name, ret);
 err_hwv_vote:
 	dev_err(dev, "Failed to hwv vote timeout %s(%d %x)\n", name, ret, val);
-err_hwv_prepare:
-	regmap_read(regmap, scpd->data->hwv_done_ofs, &val);
-	dev_err(dev, "Failed to hwv %s timeout %s(%d %x)\n",
-			onoff ? "prepare" : "unprepare", name, ret, val);
 
 	return ret;
 }
@@ -1605,6 +1587,8 @@ struct scp *init_scp(struct platform_device *pdev,
 			genpd->flags |= GENPD_FLAG_ACTIVE_WAKEUP;
 		if (MTK_SCPD_CAPS(scpd, MTK_SCPD_ALWAYS_ON))
 			genpd->flags |= GENPD_FLAG_ALWAYS_ON;
+		if (MTK_SCPD_CAPS(scpd, MTK_SCPD_IRQ_SAVE))
+			genpd->flags |= GENPD_FLAG_IRQ_SAFE;
 
 		/* Add opp table check first to avoid OF runtime parse failed */
 		if (of_count_phandle_with_args(pdev->dev.of_node,
