@@ -26,17 +26,14 @@
 #define ERR_NOT_IMPLEMENTED     (-27)
 #define ERR_FAULT               (-40)
 
-static inline gzvm_id_t get_vmid_from_tuple(unsigned int tuple)
-{
-	return (gzvm_id_t)(tuple >> 16);
-}
-
-/**
+/*
  * The following data structures are for data transferring between driver and
  * hypervisor, and they're aligned with hypervisor definitions
  */
 #define GZVM_MAX_VCPUS		 8
 #define GZVM_MAX_MEM_REGION	10
+
+#define GZVM_VCPU_RUN_MAP_SIZE		(PAGE_SIZE * 2)
 
 /* struct mem_region_addr_range - Identical to ffa memory constituent */
 struct mem_region_addr_range {
@@ -65,7 +62,16 @@ struct gzvm_memslot {
 	u32 slot_id;
 };
 
+struct gzvm_vcpu {
+	struct gzvm *gzvm;
+	int vcpuid;
+	/* lock of vcpu*/
+	struct mutex lock;
+	struct gzvm_vcpu_run *run;
+};
+
 struct gzvm {
+	struct gzvm_vcpu *vcpus[GZVM_MAX_VCPUS];
 	/* userspace tied to this vm */
 	struct mm_struct *mm;
 	struct gzvm_memslot memslot[GZVM_MAX_MEM_REGION];
@@ -82,6 +88,8 @@ int gz_err_to_errno(unsigned long err);
 
 void destroy_all_vm(void);
 
+void gzvm_destroy_vcpus(struct gzvm *gzvm);
+
 /* arch-dependant functions */
 int gzvm_arch_probe(void);
 int gzvm_arch_set_memregion(gzvm_id_t vm_id, size_t buf_size,
@@ -93,6 +101,13 @@ int gzvm_vm_ioctl_arch_enable_cap(struct gzvm *gzvm,
 				  struct gzvm_enable_cap *cap,
 				  void __user *argp);
 u64 hva_to_pa_arch(u64 hva);
+
+int gzvm_vm_ioctl_create_vcpu(struct gzvm *gzvm, u32 cpuid);
+int gzvm_arch_vcpu_update_one_reg(struct gzvm_vcpu *vcpu, __u64 reg_id,
+				  bool is_write, __u64 *data);
+int gzvm_arch_create_vcpu(gzvm_id_t vm_id, int vcpuid, void *run);
+int gzvm_arch_vcpu_run(struct gzvm_vcpu *vcpu, __u64 *exit_reason);
+int gzvm_arch_destroy_vcpu(gzvm_id_t vm_id, int vcpuid);
 
 extern struct platform_device *gzvm_debug_dev;
 
