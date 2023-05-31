@@ -1308,8 +1308,13 @@ static ssize_t sports_mode_store(struct kobject *kobj,
 {
 	int enable = 0;
 
-	if (!kstrtoint(buf, 10, &enable))
+	if (!kstrtoint(buf, 10, &enable)) {
 		therm_intf_write_csram(enable, SPORTS_MODE_ENABLE);
+		if (tm_data.is_cputcm) {
+			therm_intf_write_cputcm(enable, SPORTS_MODE_TCM_ENABLE);
+			pr_info("%s: set tcm sport mode\n", __func__);
+		}
+	}
 	else {
 		pr_info("%s: invalid input\n", __func__);
 		return -EINVAL;
