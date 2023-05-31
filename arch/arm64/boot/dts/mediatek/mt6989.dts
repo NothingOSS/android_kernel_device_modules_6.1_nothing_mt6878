@@ -10950,6 +10950,8 @@
 			mediatek,clk-mgr;
 			mediatek,usb3-drd;
 			mediatek,hwrscs-vers = <1>;
+			mediatek,syscon-wakeup = <&pericfg_ao_clk 0x200 103>;
+			wakeup-source;
 			usb-role-switch;
 			cdp-block;
 			port {
