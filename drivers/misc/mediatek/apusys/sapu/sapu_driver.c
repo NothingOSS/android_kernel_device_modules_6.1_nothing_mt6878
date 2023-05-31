@@ -3,6 +3,7 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 #include "sapu_plat.h"
+#include "mtk-smmu-v3.h"
 
 int sapu_ha_bridge(struct sapu_datamem_info *datamem_info, struct sapu_ha_tranfer *ha_transfer)
 {
@@ -52,9 +53,12 @@ long apusys_sapu_internal_ioctl(struct file *filep, unsigned int cmd, void __use
 	struct dma_buf *dmem_dmabuf = NULL;
 	struct dma_buf_attachment *dmem_attach;
 	struct device *dmem_device;
+	struct device_node *sapu_node;
+	struct device_node *smmu_node = NULL;
 	struct sg_table *dmem_sgt;
-	struct platform_device *pdev;
 	struct sapu_private *sapu;
+	struct platform_device *pdev;
+	struct platform_device *smmu_dev = NULL;
 
 	struct sapu_datamem_info datamem_info;
 	struct sapu_ha_tranfer ha_transfer;
@@ -113,9 +117,31 @@ long apusys_sapu_internal_ioctl(struct file *filep, unsigned int cmd, void __use
 			goto datamem_dmabuf_put;
 		}
 
-		dmem_attach = dma_buf_attach(dmem_dmabuf, dmem_device);
+		if (smmu_v3_enabled()) {
+			sapu_node = dmem_device->of_node;
+			if (!sapu_node) {
+				pr_info("%s sapu_node is NULL\n", __func__);
+				return -ENODEV;
+			}
+
+			smmu_node = of_parse_phandle(sapu_node, "smmu-device", 0);
+			if (!smmu_node) {
+				pr_info("%s get smmu_node failed\n", __func__);
+				return -ENODEV;
+			}
+
+			smmu_dev = of_find_device_by_node(smmu_node);
+			if (!smmu_node) {
+				pr_info("%s get smmu_dev failed\n", __func__);
+				return -ENODEV;
+			}
+
+			dmem_attach = dma_buf_attach(dmem_dmabuf, &smmu_dev->dev);
+		} else {
+			dmem_attach = dma_buf_attach(dmem_dmabuf, dmem_device);
+		}
 		if (IS_ERR(dmem_attach)) {
-			pr_info("dmem_attach fail\n");
+			pr_info("%s dmem_attach fail\n", __func__);
 			ret = -EINVAL;
 			goto datamem_dmabuf_put;
 		}
@@ -123,7 +149,7 @@ long apusys_sapu_internal_ioctl(struct file *filep, unsigned int cmd, void __use
 		dmem_sgt = dma_buf_map_attachment(dmem_attach,
 					DMA_BIDIRECTIONAL);
 		if (IS_ERR(dmem_sgt)) {
-			pr_info("map failed, detach and return\n");
+			pr_info("%s map failed, detach and return\n", __func__);
 			ret = -EINVAL;
 			goto datamem_dmabuf_detach;
 		}
@@ -135,7 +161,7 @@ long apusys_sapu_internal_ioctl(struct file *filep, unsigned int cmd, void __use
 		/* Call to HA with params */
 		ret = sapu_ha_bridge(&datamem_info, &ha_transfer);
 		if (ret)
-			pr_info("call to HA failed, ret = %d\n", ret);
+			pr_info("%s call to HA failed (%d)\n", __func__, ret);
 
 		dma_buf_unmap_attachment(dmem_attach,
 					dmem_sgt, DMA_BIDIRECTIONAL);

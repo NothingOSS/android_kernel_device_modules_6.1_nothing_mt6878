@@ -35,6 +35,8 @@ static struct aov_mem_service_ctx *ctx;
 static int query_aov_reserved_iova(enum npu_scp_mem_service_action act, uint64_t pa, uint64_t *iova)
 {
 	struct device_node *aov_node = NULL;
+	struct device_node *smmu_node = NULL;
+	struct platform_device *smmu_dev = NULL;
 	struct arm_smccc_res res;
 	struct iommu_domain *smmu_domain;
 	int ret = 0;
@@ -63,7 +65,13 @@ static int query_aov_reserved_iova(enum npu_scp_mem_service_action act, uint64_t
 				return -EINVAL;
 			}
 
-			ret = of_property_read_u32_array(aov_node, "mtk,iommu-dma-range", reg, 2);
+			smmu_node = of_parse_phandle(aov_node, "smmu-device", 0);
+			if (!smmu_node){
+				pr_info("%s Failed to get smmu_node smmu-device\n", __func__);
+				return -ENODEV;
+			}
+
+			ret = of_property_read_u32_array(smmu_node, "mtk,iommu-dma-range", reg, 2);
 			if (ret < 0) {
 				pr_info("%s - of_property_read_u32_array err : %d\n",
 					__func__, ret);
@@ -72,7 +80,19 @@ static int query_aov_reserved_iova(enum npu_scp_mem_service_action act, uint64_t
 			base = reg[0];
 			size = reg[1];
 
-			smmu_domain = iommu_get_domain_for_dev(&ctx->parent_pdev->dev);
+			smmu_dev = of_find_device_by_node(smmu_node);
+			if (!smmu_node){
+				pr_info("%s Failed to get smmu_dev\n", __func__);
+				return -ENODEV;
+			}
+
+			smmu_domain = iommu_get_domain_for_dev(&smmu_dev->dev);
+			if (!smmu_domain) {
+				pr_info("%s Failed to get smmu\n", __func__);
+				return -ENODEV;
+			}
+			pr_info("%s smmu_domain %p, base 0x%x, pa 0x%llx, size %d\n", __func__,
+				smmu_domain, base, pa, size - ctrl_size);
 			iommu_map(smmu_domain, base, pa, size - ctrl_size, IOMMU_READ|IOMMU_WRITE);
 			*iova = base;
 			pr_info("%s data iova = %x (smmu)\n", __func__, base);

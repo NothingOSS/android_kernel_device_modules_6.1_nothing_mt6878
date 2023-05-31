@@ -302,6 +302,9 @@ obj-$(CONFIG_MTK_APUSYS_SUPPORT) += sapu/
 # hw_sema
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/inc/
 
+# smmu device driver
+apusys-objs += secure_mem/smmu_device.o
+
 # aov
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/aov
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/include

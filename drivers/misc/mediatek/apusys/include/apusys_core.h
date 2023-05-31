@@ -42,6 +42,8 @@ int hw_logger_init(struct apusys_core_info *info);
 void hw_logger_exit(void);
 int apu_rproc_init(struct apusys_core_info *info);
 void apu_rproc_exit(void);
+int apu_smmu_device_init(struct apusys_core_info *info);
+void apu_smmu_device_exit(void);
 
 /*
  * init function at other modulses
@@ -68,6 +70,7 @@ static int (*apusys_init_func[])(struct apusys_core_info *) = {
 	debug_init,
 #endif
 	mvpu_init,
+	apu_smmu_device_init,
 	apu_rproc_init,
 };
 
@@ -77,6 +80,7 @@ static int (*apusys_init_func[])(struct apusys_core_info *) = {
  */
 static void (*apusys_exit_func[])(void) = {
 	apu_rproc_exit,
+	apu_smmu_device_exit,
 #if IS_ENABLED(CONFIG_MTK_APUSYS_DEBUG)
 	mvpu_exit,
 	debug_exit,
