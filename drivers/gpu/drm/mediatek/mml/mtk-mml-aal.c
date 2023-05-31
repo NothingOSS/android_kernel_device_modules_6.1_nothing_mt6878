@@ -38,6 +38,12 @@
 #define REG_NOT_SUPPORT 0xfff
 #define BLK_WIDTH_DEFAULT (120)
 #define BLK_HEIGH_DEFAULT (135)
+#define MIN_HIST_CHECK_SRC_WIDTH (480)
+#define MAX_HIST_CHECK_BLK_X_NUM (16)
+#define MIN_HIST_CHECK_BLK_X_NUM (1)
+#define MAX_HIST_CHECK_BLK_Y_NUM (8)
+#define MIN_HIST_CHECK_BLK_Y_NUM (1)
+#define MIN_HIST_CHECK_BLK_HEIGHT (80)
 
 /* min of label count for aal curve
  *	(AAL_CURVE_NUM * 7 / CMDQ_NUM_CMD(CMDQ_CMD_BUFFER_SIZE) + 1)
@@ -1676,7 +1682,12 @@ static bool get_dre_block(u32 *phist, const int block_x, const int block_y,
 	for (i = 0; i < AAL_HIST_BIN; i++)
 		sum += aal_hist[i];
 
+	mml_pq_rb_msg("%s block_x[%u] block_y[%u] dre_blk_x_num[%u] sum[%u]",
+		__func__, block_x, block_y, dre_blk_x_num, sum);
+
 	if (sum >= error_sum) {
+		mml_pq_err("block num block_y = %d, block_x = %d histogram over threshold",
+			block_y, block_x);
 		mml_pq_err("hist[0-8] = (%d %d %d %d %d %d %d %d %d)",
 			aal_hist[0], aal_hist[1], aal_hist[2], aal_hist[3],
 			aal_hist[4], aal_hist[5], aal_hist[6], aal_hist[7],
@@ -1689,6 +1700,80 @@ static bool get_dre_block(u32 *phist, const int block_x, const int block_y,
 		return true;
 }
 
+static void aal_hist_blk_calc(struct mml_comp_aal *aal, u32 *dre_blk_x_num,
+			u32 *dre_blk_y_num)
+{
+	u32 src_width = aal->frame_data.size_info.frame_in_s.width;
+	u32 src_height = aal->frame_data.size_info.frame_in_s.height;
+	u32 blk_height = 1;
+	u32 j = MAX_HIST_CHECK_BLK_Y_NUM;
+
+	mml_pq_rb_msg("%s jobid[%d] src_width[%u] src_height[%u]", __func__,
+				aal->jobid, src_width, src_height);
+
+	if (src_width < MIN_HIST_CHECK_SRC_WIDTH) {
+		*dre_blk_x_num = MIN_HIST_CHECK_BLK_X_NUM;
+	} else {
+		*dre_blk_x_num = src_width / BLK_WIDTH_DEFAULT;
+		*dre_blk_x_num =
+			*dre_blk_x_num > MAX_HIST_CHECK_BLK_X_NUM ?
+			MAX_HIST_CHECK_BLK_X_NUM : *dre_blk_x_num;
+	}
+	if (*dre_blk_x_num == MIN_HIST_CHECK_BLK_X_NUM) {
+		*dre_blk_y_num = MIN_HIST_CHECK_BLK_Y_NUM;
+	} else {
+		*dre_blk_y_num = MAX_HIST_CHECK_BLK_Y_NUM;
+		for (j = MAX_HIST_CHECK_BLK_Y_NUM; j > 0; j--) {
+			*dre_blk_y_num = j;
+			blk_height = src_height / (*dre_blk_y_num);
+			if (blk_height < MIN_HIST_CHECK_BLK_HEIGHT)
+				continue;
+			else
+				break;
+		}
+	}
+}
+static bool aal_ir_hist_check(struct mml_comp_aal *aal)
+{
+	u32 blk_x_num = 0, blk_y_num = 0, blk_x_start = 0, blk_x_cut = 0, blk_x_comp = 0,
+		blk_x = 0, blk_y = 0;
+	u32 blk_width = aal->dre_blk_width;
+	u32 blk_cut_pos_x = aal->cut_pos_x;
+	bool is_cut_on_line = false;
+	bool dual = aal->dual;
+	u8 pipe = aal->pipe;
+	u32 *phist = aal->phist;
+
+	aal_hist_blk_calc(aal, &blk_x_num, &blk_y_num);
+	blk_x_cut = (blk_cut_pos_x + 1) / blk_width;
+	blk_x_cut = min(blk_x_cut, (blk_x_num - 1));
+	is_cut_on_line = ((blk_cut_pos_x + 1) % blk_width) == 0 ? true : false;
+	if (dual) {
+		if (pipe == 1) {
+			blk_x_start = is_cut_on_line ? blk_x_cut : blk_x_cut + 1;
+			blk_x_comp = blk_x_num - 1;
+		} else {
+			blk_x_start = 0;
+			blk_x_comp = blk_x_cut - 1;
+		}
+	} else {
+		blk_x_comp = blk_x_num - 1;
+	}
+
+	mml_pq_rb_msg("%s dual[%d] pipe[%d] cut_pos_x[%u] blk_width[%u]",
+		__func__, dual, pipe, blk_cut_pos_x, blk_width);
+
+	mml_pq_rb_msg("%s blk_x_num[%u] blk_y_num[%u] blk_x_start[%u] blk_x_comp[%u]",
+		__func__, blk_x_num, blk_y_num, blk_x_start, blk_x_comp);
+
+	for (blk_y = 0; blk_y < blk_y_num; blk_y++) {
+		for (blk_x = blk_x_start; blk_x <= blk_x_comp; blk_x++) {
+			if (!get_dre_block(phist, blk_x, blk_y, blk_x_num))
+				return false;
+		}
+	}
+	return true;
+}
 
 static bool aal_hist_check(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg, u32 *phist)
@@ -1811,6 +1896,16 @@ static bool aal_hist_read(struct mml_comp_aal *aal)
 	}
 	mml_pq_ir_aal_readback(aal->pq_task, aal->frame_data, aal->pipe, aal->phist,
 		aal->jobid, aal->dual);
+
+	if (mml_pq_debug_mode & MML_PQ_HIST_CHECK) {
+		if (!aal_ir_hist_check(aal)) {
+			mml_pq_err("%s hist error", __func__);
+			mml_pq_util_aee("MML_PQ_AAL_Histogram Error",
+				"AAL Histogram error need to check jobid:%d",
+				aal->jobid);
+		}
+	}
+
 	return true;
 }
 
