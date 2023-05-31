@@ -474,6 +474,11 @@
 		};
 	};
 
+	hwv: syscon@10320000 {
+		compatible = "mediatek,mt6989-hwv", "syscon";
+		reg = <0 0x10320000 0 0x2000>;
+	};
+
 	dbg-error-flag {
 		compatible = "mediatek,dbg-error-flag";
 		mediatek,error-flag = <&soc_dbg_error_flag>;
@@ -525,6 +530,7 @@
 	apmixedsys_clk: syscon@1000c000 {
 		compatible = "mediatek,mt6989-apmixedsys", "syscon";
 		reg = <0 0x1000c000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
