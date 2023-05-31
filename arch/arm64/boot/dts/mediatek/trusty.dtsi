@@ -37,7 +37,7 @@
 		};
 	};
 
-	nebula {
+	nebula:nebula {
 		compatible = "android,nebula-smc-v1";
 		ranges;
 		#address-cells = <2>;
