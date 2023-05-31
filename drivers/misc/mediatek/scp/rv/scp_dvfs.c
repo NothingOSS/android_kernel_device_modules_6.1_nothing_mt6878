@@ -99,6 +99,7 @@
 #define FM_FREQ2CNT(freq)	(freq * CALI_DIV_VAL / 26)
 
 unsigned int scp_ipi_ackdata0, scp_ipi_ackdata1;
+struct slp_ack_t *addr[2];
 struct ipi_tx_data_t {
 	unsigned int arg1;
 	unsigned int arg2;
@@ -272,6 +273,7 @@ static bool is_core_online(uint32_t core_id)
 static void slp_ipi_init(void)
 {
 	int ret;
+	size_t size;
 
 	ret = mtk_ipi_register(&scp_ipidev, IPI_OUT_C_SLEEP_0,
 		NULL, NULL, &scp_ipi_ackdata0);
@@ -288,6 +290,15 @@ static void slp_ipi_init(void)
 	}
 	if (!ret)
 		g_dvfs_dev.sleep_init_done = true;
+
+	if (scpreg.low_pwr_dbg) {
+		addr[0] = (struct slp_ack_t *)scp_get_reserve_mem_virt(SCP_LOW_PWR_DBG_MEM_ID);
+		size = scp_get_reserve_mem_size(SCP_LOW_PWR_DBG_MEM_ID);
+		if (!addr[0])
+			pr_notice("scp get reserve mem failed\n");
+		memset(addr[0], 0, size);
+		addr[1] = addr[0] + 0x40;
+	}
 }
 
 static int scp_get_vcore_table(unsigned int gear)
@@ -2214,6 +2225,92 @@ static int __init mt_scp_dts_get_cali_hw_regs(struct device_node *node,
 	return ret;
 }
 
+static void mt_scp_start_res_prof(void)
+{
+	struct ipi_tx_data_t ipi_data;
+	int ret = 0;
+
+	ipi_data.arg1 = SCP_SLEEP_START_RES_PROF;
+	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_0,
+		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+	if (ret != IPI_ACTION_DONE) {
+		pr_notice("[SCP] [%s:%d] - scp ipi failed, ret = %d\n",
+			__func__, __LINE__, ret);
+		return;
+	}
+
+	if (!is_core_online(SCP_CORE_1))
+		return;
+
+	/* if there are core0 & core1 */
+	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_1,
+		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_1, 500);
+	if (ret != IPI_ACTION_DONE) {
+		pr_notice("[SCP] [%s:%d] - scp ipi failed, ret = %d\n",
+			__func__, __LINE__, ret);
+		return;
+	}
+}
+
+static void mt_scp_stop_res_prof(void)
+{
+	struct wlock_duration_t wlock;
+	struct res_duration_t res;
+	struct ipi_tx_data_t ipi_data;
+	int ret = 0;
+
+	ipi_data.arg1 = SCP_SLEEP_STOP_RES_PROF;
+	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_0,
+		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+	if (ret != IPI_ACTION_DONE) {
+		pr_notice("[SCP] [%s:%d] - scp ipi failed, ret = %d\n",
+			__func__, __LINE__, ret);
+		return;
+	}
+
+	wlock = addr[SCP_CORE_0]->wlock;
+	res = addr[SCP_CORE_0]->res;
+
+	if (wlock.total_duration) {
+		pr_notice("[SCP] [%s:%d] [%d] [wakelock] total: %llums, lock %s: %llums\n",
+				__func__, __LINE__, SCP_CORE_0, wlock.total_duration,
+				wlock.pcLockName, wlock.duration);
+	}
+
+	if (res.total_duration) {
+		pr_notice("[SCP] [%s:%d] [%d] [26M] total: %llums, user %d: %llums\n",
+				__func__, __LINE__, SCP_CORE_0, res.total_duration,
+				res.user, res.duration);
+	}
+
+	if (!is_core_online(SCP_CORE_1))
+		return;
+
+	/* if there are core0 & core1 */
+	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_1,
+		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_1, 500);
+	if (ret != IPI_ACTION_DONE) {
+		pr_notice("[SCP] [%s:%d] - scp ipi failed, ret = %d\n",
+			__func__, __LINE__, ret);
+		return;
+	}
+
+	wlock = addr[SCP_CORE_1]->wlock;
+	res = addr[SCP_CORE_1]->res;
+
+	if (wlock.total_duration) {
+		pr_notice("[SCP] [%s:%d] [%d] [wakelock] total: %llums, lock %s: %llums\n",
+			    __func__, __LINE__, SCP_CORE_1, wlock.total_duration,
+				wlock.pcLockName, wlock.duration);
+	}
+
+	if (res.total_duration) {
+		pr_notice("[SCP] [%s:%d] [%d] [26M] total: %llums, user %d: %llums\n",
+				__func__, __LINE__, SCP_CORE_1, res.total_duration,
+				res.user, res.duration);
+	}
+}
+
 #if IS_ENABLED(CONFIG_PM)
 static int mt_scp_dump_sleep_count(void)
 {
@@ -2266,9 +2363,16 @@ static int scp_pm_event(struct notifier_block *notifier,
 	case PM_POST_HIBERNATION:
 		return NOTIFY_DONE;
 	case PM_SUSPEND_PREPARE:
+		mt_scp_dvfs_state_dump();
+		mt_scp_dump_sleep_count();
+		if (scpreg.low_pwr_dbg)
+			mt_scp_start_res_prof();
+		return NOTIFY_DONE;
 	case PM_POST_SUSPEND:
 		mt_scp_dvfs_state_dump();
 		mt_scp_dump_sleep_count();
+		if (scpreg.low_pwr_dbg)
+			mt_scp_stop_res_prof();
 		return NOTIFY_DONE;
 	}
 	return NOTIFY_OK;

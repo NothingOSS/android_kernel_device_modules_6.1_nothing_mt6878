@@ -2585,6 +2585,7 @@ static int scp_device_probe(struct platform_device *pdev)
 	struct device_node *node;
 	const char *scp_pm_notify = NULL;
 	const char *scp_secure_ipc = NULL;
+	const char *scp_low_pwr_dbg = NULL;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	scpreg.sram = devm_ioremap_resource(dev, res);
@@ -2734,6 +2735,16 @@ static int scp_device_probe(struct platform_device *pdev)
 		if (!strncmp(scp_secure_ipc, "enable", strlen("enable"))) {
 			pr_notice("[SCP] scp_secure_ipc enabled\n");
 			scpreg.secure_ipc = 1;
+		}
+	}
+
+	/* scp low power debug */
+	scpreg.low_pwr_dbg = 0;
+	if (!of_property_read_string(pdev->dev.of_node,
+				"scp-low-pwr-dbg", &scp_low_pwr_dbg)){
+		if (!strncmp(scp_low_pwr_dbg, "enable", strlen("enable"))) {
+			pr_notice("[SCP] scp_low_pwr_dbg enabled\n");
+			scpreg.low_pwr_dbg = 1;
 		}
 	}
 

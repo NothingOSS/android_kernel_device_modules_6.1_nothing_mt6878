@@ -118,6 +118,8 @@ enum scp_ipi_cmd {
 	SCP_SLEEP_BLOCK_BY_SLP_DISABLED_CNT,
 	SCP_SLEEP_BLOCK_BY_SLP_BUSY_CNT,
 	SCP_SLEEP_BLOCK_BY_HARD1_BUSY_CNT,
+	SCP_SLEEP_START_RES_PROF,
+	SCP_SLEEP_STOP_RES_PROF,
 	SCP_SLEEP_CMD_MAX,
 };
 
@@ -265,6 +267,26 @@ struct scp_dvfs_hw {
 	u32 core_online_msk;
 	unsigned int secure_access_scp;
 	bool bypass_pmic_rg_access;
+};
+
+#define RES_TYPE_MAX 8
+#define configMAX_LOCK_NAME_LEN 7
+
+struct res_duration_t {
+	uint8_t user;
+	uint64_t duration; // ms
+	uint64_t total_duration; // ms
+};
+
+struct wlock_duration_t {
+	char pcLockName[configMAX_LOCK_NAME_LEN];
+	uint64_t duration; // ms
+	uint64_t total_duration; // ms
+};
+
+struct slp_ack_t {
+	struct wlock_duration_t wlock;
+	struct res_duration_t res;
 };
 
 extern int scp_pll_ctrl_set(unsigned int pll_ctrl_flag, unsigned int pll_sel);

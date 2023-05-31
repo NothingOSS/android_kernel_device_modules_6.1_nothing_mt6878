@@ -165,6 +165,7 @@ enum scp_reserve_mem_id_t {
 	SCP_CONNSYS_MEM_ID,
 	SCP_CHRE_FROM_MEM_ID,
 	SCP_CHRE_TO_MEM_ID,
+	SCP_LOW_PWR_DBG_MEM_ID,
 	NUMS_MEM_ID,
 };
 

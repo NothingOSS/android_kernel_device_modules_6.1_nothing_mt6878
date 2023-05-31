@@ -138,7 +138,13 @@ static struct scp_reserve_mblock scp_reserve_mblock[] = {
 		.start_virt = 0x0,
 		.size = 0x0,
 	},
-
+	{
+		.num = SCP_LOW_PWR_DBG_MEM_ID,
+		.alignment = 0,
+		.start_phys = 0x0,
+		.start_virt = 0x0,
+		.size = 0x0,
+	},
 };
 
 
