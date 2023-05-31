@@ -26,6 +26,7 @@ static inline void *mmqos_get_vcp_base(phys_addr_t *pa)
 #define MEM_IPI_SYNC_DATA	(MEM_BASE + 0x10)
 /* skip : 0x14 */
 #define MEM_TOTAL_BW		(MEM_BASE + 0x50)
+#define MEM_SMI_LOG_FLAG	(MEM_BASE + 0x54)
 
 #endif
 

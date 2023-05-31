@@ -25,7 +25,8 @@ static DEFINE_MUTEX(mmqos_vcp_pwr_mutex);
 
 static int mmqos_ipi_status;
 static DEFINE_MUTEX(mmqos_vcp_ipi_mutex);
-static int vcp_log;
+static int vcp_mmqos_log;
+static int vcp_smi_log;
 
 void *mmqos_get_vcp_base(phys_addr_t *pa)
 {
@@ -53,7 +54,8 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 		return -ENODEV;
 
 	mutex_lock(&mmqos_vcp_ipi_mutex);
-	writel(vcp_log, MEM_LOG_FLAG);
+	writel(vcp_mmqos_log, MEM_LOG_FLAG);
+	writel(vcp_smi_log, MEM_SMI_LOG_FLAG);
 	writel(mmqos_state, MEM_MMQOS_STATE);
 	switch (func) {
 	case FUNC_MMQOS_INIT:
@@ -253,7 +255,7 @@ int mmqos_vcp_init_thread(void *data)
 }
 EXPORT_SYMBOL_GPL(mmqos_vcp_init_thread);
 
-int mmqos_get_vcp_log(char *buf, const struct kernel_param *kp)
+int mmqos_get_vcp_mmqos_log(char *buf, const struct kernel_param *kp)
 {
 	int len = 0, ret;
 
@@ -265,7 +267,7 @@ int mmqos_get_vcp_log(char *buf, const struct kernel_param *kp)
 	return len;
 }
 
-int mmqos_set_vcp_log(const char *val, const struct kernel_param *kp)
+int mmqos_set_vcp_mmqos_log(const char *val, const struct kernel_param *kp)
 {
 	u32 log = 0;
 	int ret;
@@ -279,17 +281,59 @@ int mmqos_set_vcp_log(const char *val, const struct kernel_param *kp)
 		return ret;
 	}
 
-	writel(log, MEM_LOG_FLAG);
-	vcp_log = log;
+	vcp_mmqos_log = log;
+	mtk_mmqos_enable_vcp(true);
+	mtk_mmqos_enable_vcp(false);
 	return 0;
 }
 
-static const struct kernel_param_ops mmqos_set_vcp_log_ops = {
-	.get = mmqos_get_vcp_log,
-	.set = mmqos_set_vcp_log,
+static const struct kernel_param_ops mmqos_set_vcp_mmqos_log_ops = {
+	.get = mmqos_get_vcp_mmqos_log,
+	.set = mmqos_set_vcp_mmqos_log,
 };
-module_param_cb(vcp_log, &mmqos_set_vcp_log_ops, NULL, 0644);
-MODULE_PARM_DESC(vcp_log, "mmqos vcp log");
+
+module_param_cb(vcp_mmqos_log, &mmqos_set_vcp_mmqos_log_ops, NULL, 0644);
+MODULE_PARM_DESC(vcp_mmqos_log, "mmqos vcp log");
+
+int mmqos_get_vcp_smi_log(char *buf, const struct kernel_param *kp)
+{
+	int len = 0, ret;
+
+	if (!mmqos_is_init_done())
+		return 0;
+
+	ret = readl(MEM_SMI_LOG_FLAG);
+	len += snprintf(buf + len, PAGE_SIZE - len, "MEM_SMI_LOG_FLAG:%#x", ret);
+	return len;
+}
+
+int mmqos_set_vcp_smi_log(const char *val, const struct kernel_param *kp)
+{
+	u32 log = 0;
+	int ret;
+
+	if (!mmqos_is_init_done())
+		return 0;
+
+	ret = kstrtou32(val, 0, &log);
+	if (ret) {
+		MMQOS_ERR("failed:%d log:%#x", ret, log);
+		return ret;
+	}
+
+	vcp_smi_log = log;
+	mtk_mmqos_enable_vcp(true);
+	mtk_mmqos_enable_vcp(false);
+
+	return 0;
+}
+
+static const struct kernel_param_ops mmqos_set_vcp_smi_log_ops = {
+	.get = mmqos_get_vcp_smi_log,
+	.set = mmqos_set_vcp_smi_log,
+};
+module_param_cb(vcp_smi_log, &mmqos_set_vcp_smi_log_ops, NULL, 0644);
+MODULE_PARM_DESC(vcp_smi_log, "smi vcp log");
 
 void mmqos_start_test_id(u32 test_id)
 {
