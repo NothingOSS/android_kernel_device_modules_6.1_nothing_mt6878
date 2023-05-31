@@ -1291,6 +1291,8 @@ fail_reg_cpu_frequency_entry:
 	fpsgo_wait_fstb_active_fp = fpsgo_wait_fstb_active;
 	fpsgo_notify_buffer_quota_fp = fpsgo_notify_buffer_quota;
 	fpsgo_get_pid_fp = fpsgo_get_pid;
+	register_get_fpsgo_is_boosting_fp = register_get_fpsgo_is_boosting;
+	unregister_get_fpsgo_is_boosting_fp = unregister_get_fpsgo_is_boosting;
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_register_fps_chg_callback(dfrc_fps_limit_cb);

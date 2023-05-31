@@ -38,6 +38,8 @@ enum {
 };
 
 typedef void (*fpsgo_notify_is_boost_cb)(int fpsgo_is_boosting);
+extern int (*register_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
+extern int (*unregister_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
 /* composite key for render_info rbtree */
 struct fbt_render_key {
 	int key1;
