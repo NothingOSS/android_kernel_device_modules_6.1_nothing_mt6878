@@ -90,3 +90,26 @@ config MTK_LPM_MT6989
 	  for power management.
 	  Set Y to select this feature for specific platform-mt6989.
 	  If unsure, set N to disable.
+
+config MTK_CPU_IDLE_GOV
+	tristate "Meditaek cpuidle governor support"
+	help
+	  For MediaTek cpuidle policy.
+	  The policy is used to select suitable cpu idle state.
+	  Select "y/m" if you want to enable mtk cpuidle policy.
+	  Select "n" if unsure.
+
+config MTK_CPU_IDLE_GOV_VERSION
+	string "Meditaek Idle governor version"
+	default "MHSP"
+	help
+	  Set MTK_IDLE_GOV_VERSION for Mediatek cpuidle policy.
+
+config MTK_CPU_IDLE_IPI_SUPPORT
+	bool "Meditaek Idle governor support ipi prediction"
+	default n
+	help
+	  Set MTK_CPU_IDLE_IPI_SUPPORT for
+	  Mediatek cpuidle ipi prediction policy.
+	  The mechanism is based on ipi duration to
+	  predict this cpu idle time.
