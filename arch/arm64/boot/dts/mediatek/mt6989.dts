@@ -877,6 +877,7 @@
 		nemicfg-ao-mem-prot-reg-bus = <&nemicfg_ao_mem_prot_reg_bus_clk>;
 		semicfg-ao-mem-prot-reg-bus = <&semicfg_ao_mem_prot_reg_bus_clk>;
 		vlpcfg = <&vlpcfg_bus>;
+		dis1-shutdown-supply = <&mt6363_vbuck1>;
 	};
 
 	vlpcfg_bus: syscon@1c00c000 {
@@ -1003,6 +1004,13 @@
 			"HFRP_BASE";
 
 		vmm-pmic-supply = <&mt6363_vbuck2>;
+	};
+
+	vdisp-ctrl@0 {
+		compatible = "mediatek,mt6989-vdisp-ctrl";
+		reg = <0 0x1c001000 0 0x1000>;
+		reg-names = "SPM_BASE";
+		dis1-shutdown-supply = <&mt6363_vbuck1>;
 	};
 
 	mminfra_config_clk: syscon@1e800000 {
@@ -5854,9 +5862,8 @@
 			clock-num = <48>;
 			condition-num = <2>;
 			operating-points-v2 = <&opp_table_disp>;
-			//mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-			lp-mmclk-freq = <218000000>;
-			vdisp-dvfs-opp = <3>;
+			vdisp-dvfs-opp = /bits/ 8 <3>;
+			dis1-shutdown-supply = <&mt6363_vbuck1>;
 			interconnects = <&mmqos SLAVE_LARB(51) &mmqos SLAVE_COMMON(0)>,
 					<&mmqos SLAVE_LARB(52) &mmqos SLAVE_COMMON(1)>,
 					<&mmqos SLAVE_LARB(53) &mmqos SLAVE_COMMON(1)>;
@@ -16815,10 +16822,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 			compatible = "richtek,rt6160-dbg";
 		};
 	};
-};
-
-&mt6363_vbuck1 {
-	regulator-always-on;
 };
 
 &mt6363_vbuck2 {
