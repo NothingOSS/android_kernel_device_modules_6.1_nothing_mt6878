@@ -24,6 +24,7 @@
 #include <linux/cpufreq.h>
 #include <linux/pm_qos.h>
 #include <linux/sort.h>
+#include <linux/delay.h>
 #include "perf_ioctl.h"
 #include "touch_boost.h"
 
@@ -295,6 +296,8 @@ static int ktchboost_interrupt_thread(void *ptr)
 	while (!kthread_should_stop()) {
 		if(fpsgo_wait_fstb_active_fp)
 			fpsgo_wait_fstb_active_fp();
+		else
+			msleep(60000);
 
 		_cpu_ctrl_systrace(1, "fpsgo_wait_fstb_active");
 		if (touch_boost_on == 1)
