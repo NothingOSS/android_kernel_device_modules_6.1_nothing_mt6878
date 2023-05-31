@@ -15495,8 +15495,10 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 
 	therm_intf: therm-intf@114000 {
 		compatible = "mediatek,therm_intf";
-		reg = <0 0x00114000 0 0x400>;
-		reg-names = "therm_sram";
+		reg = <0 0x00114000 0 0x400>,
+			<0 0x0c0dcf50 0 0x400>;
+		reg-names = "therm_sram",
+					"therm_cputcm";
 	};
 
 	thermal_zones: thermal-zones {
