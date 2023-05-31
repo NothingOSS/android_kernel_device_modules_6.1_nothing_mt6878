@@ -32,15 +32,23 @@ int init_sched_ctrl(void)
 	}
 	switch(sched_ctrl) {
 	case EAS_5_5:
+		am_support = 0;
+		grp_dvfs_support_mode = 0;
 		// TODO
 		break;
 	case EAS_5_5_1:
+		am_support = 0;
+		grp_dvfs_support_mode = 0;
 		// TODO
 		break;
 	case EAS_6_1:
+		am_support = 0;
+		grp_dvfs_support_mode = 0;
 		// TODO
 		break;
 	default:
+		am_support = 0;
+		grp_dvfs_support_mode = 0;
 		// TODO
 		break;
 	}

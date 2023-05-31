@@ -201,14 +201,17 @@ extern void set_eas_dsu_ctrl(bool set);
 extern struct cpu_dsu_freq_state *get_dsu_freq_state(void);
 
 /* adaptive margin */
+extern int am_support;
 extern int get_am_ctrl(void);
 extern void set_am_ctrl(int set);
 extern unsigned int get_adaptive_margin(int cpu);
 extern int get_adaptive_ratio(int cpu, int target);
+extern void update_active_ratio_all(void);
 extern void set_am_ceiling(int val);
 extern int get_am_ceiling(void);
 
 /* group aware dvfs */
+extern int grp_dvfs_support_mode;
 extern int get_grp_dvfs_ctrl(void);
 extern void set_grp_dvfs_ctrl(int set);
 
