@@ -244,9 +244,10 @@ static s32 tdshp_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 			      struct tile_func_block *func,
 			      union mml_tile_data *data)
 {
-	struct mml_frame_config *cfg = task->config;
-	struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
-	struct mml_comp_tdshp *tdshp = comp_to_tdshp(comp);
+	const struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_comp_tdshp *tdshp = comp_to_tdshp(comp);
+	const u8 rotate = cfg->out_rotate[ccfg->node->out_idx];
 
 	data->tdshp.relay_mode = dest->pq_config.en_sharp ? false : true;
 	data->tdshp.max_width = tdshp->data->tile_width;
@@ -260,8 +261,7 @@ static s32 tdshp_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 			    (cfg->info.mode == MML_MODE_DDP_ADDON ||
 			    cfg->info.mode == MML_MODE_DIRECT_LINK);
 
-	if (dest->rotate == MML_ROT_90 ||
-	    dest->rotate == MML_ROT_270) {
+	if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
 		func->full_size_x_in = dest->data.height;
 		func->full_size_y_in = dest->data.width;
 		func->full_size_x_out = dest->data.height;
@@ -544,7 +544,7 @@ static s32 tdshp_config_tile(struct mml_comp *comp, struct mml_task *task,
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
 	struct mml_comp_tdshp *tdshp = comp_to_tdshp(comp);
 	u16 tile_cnt = cfg->frame_tile[ccfg->pipe]->tile_cnt;
-	struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
 
 	u32 tdshp_input_w = 0;
 	u32 tdshp_input_h = 0;
@@ -568,9 +568,9 @@ static s32 tdshp_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	if (!idx) {
 		if (task->config->dual)
-			tdshp_frm->cut_pos_x = dest->crop.r.width / 2;
+			tdshp_frm->cut_pos_x = crop->r.width / 2;
 		else
-			tdshp_frm->cut_pos_x = dest->crop.r.width;
+			tdshp_frm->cut_pos_x = crop->r.width;
 		if (ccfg->pipe)
 			tdshp_frm->out_hist_xs = tdshp_frm->cut_pos_x;
 	}

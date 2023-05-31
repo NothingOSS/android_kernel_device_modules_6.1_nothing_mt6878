@@ -235,7 +235,7 @@ static s32 hdr_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	const struct mml_frame_size *frame_in = &cfg->frame_in;
 	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
-	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
+	const struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	bool relay_mode = !dest->pq_config.en_hdr;
 
 	func->for_func = tile_crop_for;
@@ -1079,9 +1079,8 @@ static void hdr_histogram_check(struct mml_comp *comp, struct mml_task *task, u3
 				crop_height * hdr_frm->cut_pos_x * 8;
 		}
 	} else {
-		expect_value_letter =
-			(letter_height+1) *	crop_width * 8;
-		expect_value_crop =	crop_height * crop_width * 8;
+		expect_value_letter = (letter_height+1) * crop_width * 8;
+		expect_value_crop = crop_height * crop_width * 8;
 	}
 
 	mml_pq_rb_msg("%s sum[%u] expect_value[%u %u %u] job_id[%d] pipe[%d]",

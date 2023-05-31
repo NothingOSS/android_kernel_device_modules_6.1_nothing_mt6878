@@ -322,7 +322,7 @@ struct mml_pipe_cache {
 struct mml_frame_config {
 	struct list_head entry;
 	struct mml_frame_info info;
-	/* frame size that after rrot binning and rotate */
+	/* frame input pixel size after rrot binning and rotate */
 	struct mml_frame_size frame_in;
 	struct mml_frame_size rrot_out[MML_PIPE_CNT];
 	struct mml_crop frame_in_crop[MML_MAX_OUTPUTS];

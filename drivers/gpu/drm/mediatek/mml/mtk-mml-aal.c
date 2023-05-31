@@ -489,7 +489,7 @@ static s32 aal_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	const struct mml_frame_size *frame_in = &cfg->frame_in;
 	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
-	struct mml_comp_aal *aal = comp_to_aal(comp);
+	const struct mml_comp_aal *aal = comp_to_aal(comp);
 
 	func->for_func = tile_aal_for;
 	func->enable_flag = dest->pq_config.en_dre &&

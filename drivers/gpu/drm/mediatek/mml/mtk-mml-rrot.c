@@ -330,41 +330,51 @@ static u32 rrot_get_latency(struct mml_frame_config *cfg)
 	return line;
 }
 
+static void calc_binning_crop(u32 *crop, u32 *frac)
+{
+	*frac = (*frac + (*crop & 0x1 ? (1 << MML_SUBPIXEL_BITS) : 0)) >> 1;
+	*crop = *crop >> 1;
+}
+
 static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_config *ccfg)
 {
 	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 	u32 w = dest->crop.r.width, h = dest->crop.r.height, i;
 	u32 outw = dest->data.width, outh = dest->data.height;
+	struct mml_crop *crop;
 
 	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
 		swap(outw, outh);
 
 	if ((w >> 1) >= outw) {
-		cfg->frame_in.width = src->width >> 1;
+		cfg->frame_in.width = (src->width + 1) >> 1;
 		cfg->bin_x = 1;
 		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
-			cfg->frame_in_crop[i].r.width = cfg->frame_in_crop[i].r.width >> 1;
-			cfg->frame_in_crop[i].r.left = cfg->frame_in_crop[i].r.left >> 1;
+			crop = &cfg->frame_in_crop[i];
+			calc_binning_crop(&crop->r.width, &crop->w_sub_px);
+			calc_binning_crop(&crop->r.left, &crop->x_sub_px);
 		}
 	}
 	if ((h >> 1) >= outh) {
-		cfg->frame_in.height = src->height >> 1;
+		cfg->frame_in.height = (src->height + 1) >> 1;
 		cfg->bin_y = 1;
 		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
-			cfg->frame_in_crop[i].r.height = cfg->frame_in_crop[i].r.height >> 1;
-			cfg->frame_in_crop[i].r.top = cfg->frame_in_crop[i].r.top >> 1;
+			crop = &cfg->frame_in_crop[i];
+			calc_binning_crop(&crop->r.height, &crop->h_sub_px);
+			calc_binning_crop(&crop->r.top, &crop->y_sub_px);
 		}
 	}
 
 	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270) {
 		swap(cfg->frame_in.width, cfg->frame_in.height);
 		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
+			crop = &cfg->frame_in_crop[i];
+			swap(crop->r.left, crop->r.top);
+			swap(crop->r.width, crop->r.height);
+			swap(crop->x_sub_px, crop->y_sub_px);
+			swap(crop->w_sub_px, crop->h_sub_px);
 			swap(cfg->frame_out[i].width, cfg->frame_out[i].height);
-			swap(cfg->frame_in_crop[i].r.left, cfg->frame_in_crop[i].r.top);
-			swap(cfg->frame_in_crop[i].r.width, cfg->frame_in_crop[i].r.height);
-			swap(cfg->frame_in_crop[i].x_sub_px, cfg->frame_in_crop[i].y_sub_px);
-			swap(cfg->frame_in_crop[i].w_sub_px, cfg->frame_in_crop[i].h_sub_px);
 			cfg->out_rotate[i] = 0;
 			cfg->out_flip[i] = false;
 		}

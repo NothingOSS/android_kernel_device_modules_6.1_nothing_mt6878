@@ -8,9 +8,10 @@
 #include <linux/printk.h>
 #include <linux/types.h>
 #include <linux/bug.h>
+#include "mtk-mml.h"
 #include "mtk-mml-color.h"
 
-#define TILE_SCALER_SUBPIXEL_SHIFT  (20)
+#define TILE_SCALER_SUBPIXEL_SHIFT	MML_SUBPIXEL_BITS
 
 #ifndef ASSERT
 #define ASSERT(expr) \

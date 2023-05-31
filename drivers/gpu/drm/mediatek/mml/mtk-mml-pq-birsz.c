@@ -40,8 +40,6 @@
 #define BIRSZ_DGB_SEL		0x054
 #define BIRSZ_DBG_RDATA		0x058
 
-#define TILE_SCALER_SUBPIXEL_SHIFT	20
-
 struct birsz_data {
 	u32 tile_width;
 	bool add_ddp;
@@ -91,7 +89,7 @@ static void birsz_first_6_taps(s32 out_start,
 		crop_subpixel = -0xfffff;
 
 	/* Normalize */
-	crop_subpixel = ((s64)crop_subpixel * precision) >> TILE_SCALER_SUBPIXEL_SHIFT;
+	crop_subpixel = ((s64)crop_subpixel * precision) >> MML_SUBPIXEL_BITS;
 
 	startTemp = (s64)out_start * coef_step + (s64)crop_offset * precision + crop_subpixel;
 	if (startTemp < (s64)3 * precision)
@@ -137,7 +135,7 @@ static void birsz_second_6_taps(s32 in_start,
 		crop_subpixel = -0xfffff;
 
 	/* Normalize */
-	crop_subpixel = ((s64)crop_subpixel * precision) >> TILE_SCALER_SUBPIXEL_SHIFT;
+	crop_subpixel = ((s64)crop_subpixel * precision) >> MML_SUBPIXEL_BITS;
 
 	offset_cal_start = back_out_start;
 
@@ -263,12 +261,10 @@ static s32 birsz_prepare(struct mml_comp *comp, struct mml_task *task,
 				   struct mml_comp_config *ccfg)
 {
 	struct birsz_frame_data *birsz_frm = NULL;
-	struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_data *src = &cfg->info.seg_map;
-	const struct mml_frame_dest *dest = &cfg->info.dest[0];
-	s32 ret = 0;
+	const struct mml_frame_size *frame_out = &cfg->frame_out[0];
 	struct birsz_fw_in fw_in;
-	struct birsz_fw_out fw_out;
 
 	birsz_frm = kzalloc(sizeof(*birsz_frm), GFP_KERNEL);
 	if (!birsz_frm)
@@ -277,28 +273,17 @@ static s32 birsz_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	fw_in.in_width = src->width;
 	fw_in.in_height = src->height;
-	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270) {
-		fw_in.out_width = dest->data.height;
-		fw_in.out_height = dest->data.width;
-	} else {
-		fw_in.out_width = dest->data.width;
-		fw_in.out_height = dest->data.height;
-	}
+	fw_in.out_width = frame_out->width;
+	fw_in.out_height = frame_out->height;
 
-	birsz_fw(&fw_in, &fw_out);
-	birsz_frm->fw_out.precision = fw_out.precision;
-	birsz_frm->fw_out.hori_step = fw_out.hori_step;
-	birsz_frm->fw_out.hori_int_ofst = fw_out.hori_int_ofst;
+	birsz_fw(&fw_in, &birsz_frm->fw_out);
 	birsz_frm->fw_out.hori_sub_ofst =
-		((s64)fw_out.hori_sub_ofst << TILE_SCALER_SUBPIXEL_SHIFT) /
-		fw_out.precision;
-	birsz_frm->fw_out.vert_step = fw_out.vert_step;
-	birsz_frm->fw_out.vert_int_ofst = fw_out.vert_int_ofst;
+		((s64)birsz_frm->fw_out.hori_sub_ofst << MML_SUBPIXEL_BITS) /
+		birsz_frm->fw_out.precision;
 	birsz_frm->fw_out.vert_sub_ofst =
-		((s64)fw_out.vert_sub_ofst << TILE_SCALER_SUBPIXEL_SHIFT) /
-		fw_out.precision;
-
-	return ret;
+		((s64)birsz_frm->fw_out.vert_sub_ofst << MML_SUBPIXEL_BITS) /
+		birsz_frm->fw_out.precision;
+	return 0;
 }
 
 static void birsz_init(struct cmdq_pkt *pkt, const phys_addr_t base_pa)

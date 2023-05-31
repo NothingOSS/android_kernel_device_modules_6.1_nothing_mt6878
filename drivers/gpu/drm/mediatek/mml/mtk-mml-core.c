@@ -1880,13 +1880,18 @@ void mml_core_deinit_config(struct mml_frame_config *cfg)
 	core_destroy_wq(&cfg->wq_done);
 }
 
-static void core_update_out(struct mml_frame_config *cfg)
+static void core_update_config(struct mml_frame_config *cfg)
 {
+	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest;
 	u32 i;
 
+	cfg->frame_in.width = src->width;
+	cfg->frame_in.height = src->height;
 	for (i = 0; i < MML_MAX_OUTPUTS; i++) {
 		dest = &cfg->info.dest[i];
+		cfg->frame_in_crop[i] = dest->crop;
+		cfg->out_rotate[i] = dest->rotate;
 		if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180) {
 			cfg->frame_out[i].width = dest->compose.width;
 			cfg->frame_out[i].height = dest->compose.height;
@@ -1897,25 +1902,23 @@ static void core_update_out(struct mml_frame_config *cfg)
 	}
 }
 
-void mml_core_config_task(struct mml_frame_config *cfg, struct mml_task *task)
+static void core_reinit_task(struct mml_frame_config *cfg, struct mml_task *task)
 {
 	/* reset to 0 in case reuse task */
 	atomic_set(&task->pipe_done, 0);
-
 	if (task->state == MML_TASK_INITIAL)
-		core_update_out(cfg);
+		core_update_config(cfg);
+}
 
+void mml_core_config_task(struct mml_frame_config *cfg, struct mml_task *task)
+{
+	core_reinit_task(cfg, task);
 	core_config_task(task);
 }
 
 void mml_core_submit_task(struct mml_frame_config *cfg, struct mml_task *task)
 {
-	/* reset to 0 in case reuse task */
-	atomic_set(&task->pipe_done, 0);
-
-	if (task->state == MML_TASK_INITIAL)
-		core_update_out(cfg);
-
+	core_reinit_task(cfg, task);
 	cfg->task_ops->queue(task, 0);
 }
 

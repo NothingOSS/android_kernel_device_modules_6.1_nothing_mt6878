@@ -187,7 +187,7 @@ static inline struct mml_comp_rsz *comp_to_rsz(struct mml_comp *comp)
 	return container_of(comp, struct mml_comp_rsz, comp);
 }
 
-static bool rsz_can_relay(struct mml_frame_config *cfg,
+static bool rsz_can_relay(const struct mml_frame_config *cfg,
 			  const struct mml_frame_data *src,
 			  const struct mml_frame_dest *dest,
 			  const struct mml_crop *crop,
@@ -215,7 +215,7 @@ static bool rsz_can_relay(struct mml_frame_config *cfg,
 static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 		       struct mml_comp_config *ccfg)
 {
-	struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	const struct mml_frame_size *frame_out = &cfg->frame_out[ccfg->node->out_idx];
@@ -316,13 +316,13 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 			    struct tile_func_block *func,
 			    union mml_tile_data *data)
 {
-	struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
+	const struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
 	const struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	const struct mml_frame_size *frame_in = &cfg->frame_in;
 	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
-	struct mml_comp_rsz *rsz = comp_to_rsz(comp);
-	u32 rotate = cfg->out_rotate[ccfg->node->out_idx];
+	const struct mml_comp_rsz *rsz = comp_to_rsz(comp);
+	const u8 rotate = cfg->out_rotate[ccfg->node->out_idx];
 
 	mml_trace_ex_begin("%s", __func__);
 
@@ -517,7 +517,7 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 	const struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	const phys_addr_t base_pa = comp->base_pa;
-	const enum mml_orientation rotate = cfg->out_rotate[ccfg->node->out_idx];
+	const u8 rotate = cfg->out_rotate[ccfg->node->out_idx];
 
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
 

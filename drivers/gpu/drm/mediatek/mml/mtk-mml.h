@@ -185,6 +185,8 @@ struct mml_rect {
 	uint32_t height;
 };
 
+#define MML_SUBPIXEL_BITS	20
+
 struct mml_crop {
 	struct mml_rect r;
 	uint32_t x_sub_px;
