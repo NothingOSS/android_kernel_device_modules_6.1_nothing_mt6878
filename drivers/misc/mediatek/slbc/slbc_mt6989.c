@@ -66,7 +66,10 @@ enum slc_gid_list {
 	GID_GPU_OVL,
 	GID_VDEC_FRAME,
 	GID_VDEC_UBE,
-	GID_SMMU,
+	GID_SMMU_0,
+	GID_SMMU_1,
+	GID_SMMU_2,
+	GID_SMMU_3,
 	GID_MD,
 	GID_ADSP,
 };
@@ -1575,7 +1578,7 @@ void slbc_get_gid_for_dma(struct dma_buf *dmabuf_2)
 	buffer_fd = gid_data->buffer_fd;
 	producer = gid_data->producer;
 	consumer = gid_data->consumer;
-	SLBC_TRACE_REC(LVL_QOS, TYPE_C, 0, ret, "buffer_fd:%d  producer:%d  consumer:%d",
+	SLBC_TRACE_REC(LVL_QOS, TYPE_C, 0, ret, "buffer_fd:%d  producer:0x%x  consumer:0x%x",
 			buffer_fd, producer, consumer);
 
 	if (gid_data->sign != SLC_DATA_MAGIC) {
