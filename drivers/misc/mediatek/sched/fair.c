@@ -1159,6 +1159,34 @@ int unset_gear_indices(int pid)
 }
 EXPORT_SYMBOL_GPL(unset_gear_indices);
 
+void __get_gear_indices(struct task_struct *p, int *gear_start, int *num_gear, int *reverse)
+{
+	struct task_gear_hints *ghts = &((struct mtk_task *) p->android_vendor_data1)->gear_hints;
+
+	*gear_start = ghts->gear_start;
+	*num_gear = ghts->num_gear;
+	*reverse = ghts->reverse;
+}
+
+int get_gear_indices(int pid, int *gear_start, int *num_gear, int *reverse)
+{
+	struct task_struct *p;
+	int ret = 0;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		__get_gear_indices(p, gear_start, num_gear, reverse);
+		put_task_struct(p);
+		ret = 1;
+	}
+	rcu_read_unlock();
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(get_gear_indices);
+
 #if IS_ENABLED(CONFIG_MTK_SCHED_UPDOWN_MIGRATE)
 
 /* Default Migration margin */
