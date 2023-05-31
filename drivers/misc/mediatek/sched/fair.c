@@ -1825,14 +1825,17 @@ done:
 static struct task_struct *detach_a_hint_task(struct rq *src_rq, int dst_cpu)
 {
 	struct task_struct *p, *best_task = NULL, *backup = NULL;
-	int dst_capacity;
+	int dst_capacity, src_capacity;
 	unsigned int task_util;
-	bool latency_sensitive = false;
+	bool latency_sensitive = false, in_many_heavy_tasks;
 	struct cpumask effective_softmask;
+	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
 
 	lockdep_assert_rq_held(src_rq);
 
 	rcu_read_lock();
+	in_many_heavy_tasks = rd->android_vendor_data1[0];
+	src_capacity = capacity_orig_of(src_rq->cpu);
 	dst_capacity = cpu_cap_ceiling(dst_cpu);
 	list_for_each_entry_reverse(p,
 			&src_rq->cfs_tasks, se.group_node) {
@@ -1850,7 +1853,12 @@ static struct task_struct *detach_a_hint_task(struct rq *src_rq, int dst_cpu)
 		if (latency_sensitive && !cpumask_test_cpu(dst_cpu, &effective_softmask))
 			continue;
 
-		if (latency_sensitive &&
+		if (in_many_heavy_tasks &&
+			!fits_capacity(task_util, src_capacity, get_adaptive_margin(src_rq->cpu))) {
+			/* when too many big task, pull misfit runnable task */
+			best_task = p;
+			break;
+		} else if (latency_sensitive &&
 			task_util <= dst_capacity) {
 			best_task = p;
 			break;

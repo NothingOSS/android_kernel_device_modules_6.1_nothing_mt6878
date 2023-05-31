@@ -149,6 +149,31 @@ void task_rotate_init(void)
 	task_rotate_work_init();
 }
 
+bool system_has_many_heavy_task(void)
+{
+	int i, heavy_task = 0;
+
+	irq_log_store();
+	for_each_possible_cpu(i) {
+		struct rq *rq = cpu_rq(i);
+		struct task_struct *curr_task = READ_ONCE(rq->curr);
+
+		if (curr_task &&
+			!task_fits_capacity(curr_task, READ_ONCE(rq->cpu_capacity),
+						get_adaptive_margin(i)))
+			heavy_task += 1;
+
+		if (heavy_task >= HEAVY_TASK_NUM)
+			break;
+	}
+	irq_log_store();
+
+	if (heavy_task < HEAVY_TASK_NUM)
+		return 0;
+
+	return 1;
+}
+
 void task_check_for_rotation(struct rq *src_rq)
 {
 	u64 wc, wait, max_wait = 0, run, max_run = 0;
@@ -156,7 +181,7 @@ void task_check_for_rotation(struct rq *src_rq)
 	int i, src_cpu = cpu_of(src_rq);
 	struct rq *dst_rq;
 	struct task_rotate_work *wr = NULL;
-	int heavy_task = 0;
+	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
 	int force = 0;
 
 	irq_log_store();
@@ -176,22 +201,7 @@ void task_check_for_rotation(struct rq *src_rq)
 		return;
 	}
 
-	irq_log_store();
-	for_each_possible_cpu(i) {
-		struct rq *rq = cpu_rq(i);
-		struct task_struct *curr_task = READ_ONCE(rq->curr);
-
-		if (curr_task &&
-			!task_fits_capacity(curr_task, READ_ONCE(rq->cpu_capacity),
-					get_adaptive_margin(i)))
-			heavy_task += 1;
-
-		if (heavy_task >= HEAVY_TASK_NUM)
-			break;
-	}
-	irq_log_store();
-
-	if (heavy_task < HEAVY_TASK_NUM) {
+	if (!(rd->android_vendor_data1[0])) {
 		irq_log_store();
 		return;
 	}
