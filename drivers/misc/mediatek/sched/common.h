@@ -89,7 +89,6 @@ struct cpuqos_task_struct {
 };
 
 struct mtk_task {
-	u64 reserved0[MTK_TASK_FLAG];
 	struct vip_task_struct	vip_task;
 	struct soft_affinity_task sa_task;
 	struct gp_task_struct	gp_task;
@@ -117,7 +116,6 @@ struct vip_task_group {
 };
 
 struct mtk_tg {
-	u64 reserved[MTK_TASK_GROUP_FLAG];
 	struct soft_affinity_tg	sa_tg;
 	struct cgrp_tg		cgrp_tg;
 	struct vip_task_group vtg;
