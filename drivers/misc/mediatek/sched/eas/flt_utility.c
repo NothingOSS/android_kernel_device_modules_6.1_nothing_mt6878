@@ -29,6 +29,10 @@
 #include "flt_utility.h"
 #include "flt_cal.h"
 #include "eas_trace.h"
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+int (*grp_cal_tra)(int x, unsigned int y);
+EXPORT_SYMBOL(grp_cal_tra);
+#endif
 
 void flt_update_data(unsigned int data, unsigned int offset)
 {
@@ -253,9 +257,9 @@ static int flt_get_cpu_by_wp_mode2(int cpu)
 
 static int flt_sched_get_cpu_group_eas_mode2(int cpu_idx, int group_id)
 {
-	int res = 0;
+	int res = 0, flt_util = 0;
 	struct flt_rq *fsrq;
-	u64 flt_util = 0, util_ratio = 0;
+	u32 util_ratio = 0;
 
 	if (group_id >= GROUP_ID_RECORD_MAX ||
 		group_id < 0 ||
@@ -266,8 +270,10 @@ static int flt_sched_get_cpu_group_eas_mode2(int cpu_idx, int group_id)
 
 	fsrq = &per_cpu(flt_rq, cpu_idx);
 	util_ratio = READ_ONCE(fsrq->group_util_ratio[group_id]);
-
-	res = (flt_util * util_ratio) >> SCHED_CAPACITY_SHIFT;
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+	if (grp_cal_tra)
+		res = grp_cal_tra(flt_util, util_ratio);
+#endif
 	res = clamp_t(int, res, 0, cpu_cap_ceiling(cpu_idx));
 
 	return res;
@@ -275,10 +281,10 @@ static int flt_sched_get_cpu_group_eas_mode2(int cpu_idx, int group_id)
 
 static int flt_get_o_util_mode2(int cpu)
 {
-	int cpu_r = 0, grp_idx = 0, res;
+	int cpu_r = 0, grp_idx = 0, res, flt_util = 0;
 	struct rq *rq;
 	struct flt_rq *fsrq;
-	u64 util_ratio[GROUP_ID_RECORD_MAX] = {0}, grp_r[GROUP_ID_RECORD_MAX] = {0}, total = 0;
+	u32 util_ratio[GROUP_ID_RECORD_MAX] = {0}, grp_r[GROUP_ID_RECORD_MAX] = {0}, total = 0;
 
 	rq = cpu_rq(cpu);
 	fsrq = &per_cpu(flt_rq, cpu);
@@ -287,8 +293,11 @@ static int flt_get_o_util_mode2(int cpu)
 
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
 		util_ratio[grp_idx] = READ_ONCE(fsrq->group_util_rtratio[grp_idx]);
-		grp_r[grp_idx] = (flt_get_gp_r(grp_idx) * util_ratio[grp_idx])
-				>> SCHED_CAPACITY_SHIFT;
+		flt_util = flt_get_gp_r(grp_idx);
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+		if (grp_cal_tra)
+			grp_r[grp_idx] = grp_cal_tra(flt_util, util_ratio[grp_idx]);
+#endif
 		total += grp_r[grp_idx];
 	}
 	res = cpu_r - total;

@@ -13,7 +13,10 @@
 #define CPU_DEFAULT_WIN_SIZE DEFAULT_SCHED_RAVG_WINDOW
 #define CPU_DEFAULT_WIN_CNT 5
 #define CPU_DEFAULT_WEIGHT_POLICY WP_MODE_4
-
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+unsigned int (*grp_cal_rat)(unsigned long long x, unsigned long long y);
+EXPORT_SYMBOL(grp_cal_rat);
+#endif
 const char *task_event_names[] = {
 	"PUT_PREV_TASK",
 	"PICK_NEXT_TASK",
@@ -1039,10 +1042,14 @@ static int flt_sync_all_cpu(void)
 		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
 			res = READ_ONCE(fsrq->group_util_ratio[grp_idx])
 				<< SCHED_CAPACITY_SHIFT;
-			if (total_sum[grp_idx])
-				res = (u32)div64_u64(res, total_sum[grp_idx]);
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+			if (grp_cal_rat)
+				res = grp_cal_rat(res, total_sum[grp_idx]);
 			else
 				res = 0;
+#else
+			res = 0;
+#endif
 			WRITE_ONCE(fsrq->group_util_ratio[grp_idx], res);
 		}
 	}
@@ -1061,10 +1068,14 @@ static int flt_sync_all_cpu(void)
 		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
 			res = READ_ONCE(fsrq->group_util_history[0][grp_idx])
 				<< SCHED_CAPACITY_SHIFT;
-			if (rt_total[grp_idx])
-				res = (u32)div64_u64(res, rt_total[grp_idx]);
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+			if (grp_cal_rat)
+				res = grp_cal_rat(res, rt_total[grp_idx]);
 			else
 				res = 0;
+#else
+			res = 0;
+#endif
 			WRITE_ONCE(fsrq->group_util_rtratio[grp_idx], res);
 		}
 	}
