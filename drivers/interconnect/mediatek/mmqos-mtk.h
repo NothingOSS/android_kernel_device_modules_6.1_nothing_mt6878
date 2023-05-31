@@ -12,7 +12,6 @@
 #include <linux/workqueue.h>
 #include <soc/mediatek/mmqos.h>
 #include <linux/kernel.h>
-#include "mmqos-global.h"
 
 #define MMQOS_NO_LINK			(0xffffffff)
 #define MMQOS_MAX_COMM_NUM		(3)
@@ -188,6 +187,8 @@ void check_disp_chnn_bw(int i, int j, const int *ans);
 void check_chnn_bw(int i, int j, int srt_r, int srt_w, int hrt_r, int hrt_w);
 struct common_port_node *create_fake_comm_port_node(int hrt_type,
 	int srt_r, int srt_w, int hrt_r, int hrt_w);
+void set_mmqos_state(const u32 new_state);
+int get_mmqos_state(void);
 
 /* For MET */
 bool mmqos_met_enabled(void);

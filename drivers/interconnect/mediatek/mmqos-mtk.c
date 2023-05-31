@@ -723,6 +723,10 @@ void update_channel_bw(const u32 comm_id, const u32 chnn_id,
 	u32 half_hrt_r;
 
 	comm_port_node = (struct common_port_node *)src->data;
+	if (comm_port_node == NULL) {
+		MMQOS_ERR("fail, comm_port_node is NULL");
+		return;
+	}
 	if (mmqos_state & DISP_BY_LARB_ENABLE
 		&& comm_port_node->hrt_type == HRT_DISP) {
 		if (log_level & 1 << log_bw)
@@ -803,6 +807,7 @@ void update_channel_bw(const u32 comm_id, const u32 chnn_id,
 			chn_srt_w_bw[comm_id][chnn_id],
 			chn_srt_r_bw[comm_id][chnn_id]);
 }
+EXPORT_SYMBOL_GPL(update_channel_bw);
 
 static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 {
@@ -1789,6 +1794,7 @@ void clear_chnn_bw(void)
 		}
 	}
 }
+EXPORT_SYMBOL_GPL(clear_chnn_bw);
 
 void check_disp_chnn_bw(int i, int j, const int *ans)
 {
@@ -1799,6 +1805,7 @@ void check_disp_chnn_bw(int i, int j, const int *ans)
 		_assert_eq(disp_hrt_w_bw[i][j], ans[3], "disp_hrt_w");
 	}
 }
+EXPORT_SYMBOL_GPL(check_disp_chnn_bw);
 
 void check_chnn_bw(int i, int j, int srt_r, int srt_w, int hrt_r, int hrt_w)
 {
@@ -1809,6 +1816,7 @@ void check_chnn_bw(int i, int j, int srt_r, int srt_w, int hrt_r, int hrt_w)
 		_assert_eq(chn_hrt_w_bw[i][j], hrt_w, "chn_hrt_w");
 	}
 }
+EXPORT_SYMBOL_GPL(check_chnn_bw);
 
 struct common_port_node *create_fake_comm_port_node(int hrt_type,
 	int srt_r, int srt_w, int hrt_r, int hrt_w)
@@ -1826,6 +1834,7 @@ struct common_port_node *create_fake_comm_port_node(int hrt_type,
 
 	return cpn;
 }
+EXPORT_SYMBOL_GPL(create_fake_comm_port_node);
 
 bool mmqos_met_enabled(void)
 {
@@ -1860,6 +1869,18 @@ noinline int tracing_mark_write(char *fmt, ...)
 
 module_param(log_level, uint, 0644);
 MODULE_PARM_DESC(log_level, "mmqos log level");
+
+void set_mmqos_state(const u32 new_state)
+{
+	mmqos_state = new_state;
+}
+EXPORT_SYMBOL_GPL(set_mmqos_state);
+
+int get_mmqos_state(void)
+{
+	return mmqos_state;
+}
+EXPORT_SYMBOL_GPL(get_mmqos_state);
 
 static int mmqos_set_state(const char *val, const struct kernel_param *kp)
 {
