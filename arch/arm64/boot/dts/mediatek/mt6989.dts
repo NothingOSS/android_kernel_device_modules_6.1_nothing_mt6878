@@ -12494,7 +12494,7 @@
 		fmeter-ck = <29>;	/* clk table fmeter f_fmmup_ck */
 		fmeter-type = <5>;	/* fmeter type */
 		mbox-count = <5>;
-		vcp-ee-enable = <0>;
+		vcp-ee-enable = <1>;
 		/* id, mbox, send_size*/
 		send-table =
 		< 0 0 18>,/* IPI_OUT_VDEC_1 */
@@ -12532,7 +12532,7 @@
 		<27 3  2 0>,/* IPI_IN_VCP_RAM_DUMP_1 */
 		<29 4  4 0>;/* IPI_IN_VCP_MPOOL_1 */
 
-		vcp-secure-dump = <0>;   /* enable dump via secure world*/
+		vcp-secure-dump = <1>;   /* enable dump via secure world*/
 		vcp-secure-dump-size = <0x200000>;
 		vcp-secure-dump-offset = <0x600000>;
 		vcp-sec-dump-key = "mediatek,me_vcp_reserved";
