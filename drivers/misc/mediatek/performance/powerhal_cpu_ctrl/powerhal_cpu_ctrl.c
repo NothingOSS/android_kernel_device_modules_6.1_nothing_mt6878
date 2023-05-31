@@ -153,7 +153,7 @@ void notify_cpu_is_boost(int is_boosting)
 	send_boost_cmd(CPUFREQ_BOOST, is_boosting);
 }
 
-static void _adpf_systrace(int val, const char *fmt, ...)
+static void _adpf_systrace(int tgid, long val, const char *fmt, ...)
 {
 	char log[256];
 	va_list args;
@@ -170,7 +170,7 @@ static void _adpf_systrace(int val, const char *fmt, ...)
 	else if (unlikely(len == 256))
 		log[255] = '\0';
 
-	len = snprintf(buf, sizeof(buf), "C|%d|%s|%d\n", current->pid, log, val);
+	len = snprintf(buf, sizeof(buf), "C|%d|%s|%ld\n", tgid, log, val);
 	if (unlikely(len < 0))
 		return;
 	else if (unlikely(len == 256))
@@ -649,12 +649,19 @@ int adpf_create_session_hint(unsigned int sid, unsigned int tgid,
 
 	adpf_notify_callback(ADPF_CREATE_HINT_SESSION, sid);
 
-	if (sprintf(log, "adpf sid: %d, tgid: %d, uid: %d", sid, tgid, uid) < 0) {
+	if (sprintf(log, "adpf_status") < 0) {
 		pr_debug("[%s] sprintf failed!",  __func__);
 		return -1;
 	}
 
-	_adpf_systrace(ADPF_CREATE_HINT_SESSION, log);
+	_adpf_systrace(tgid, ADPF_CREATE_HINT_SESSION, log);
+
+	if (sprintf(log, "adpf_target") < 0) {
+		pr_debug("[%s] sprintf failed!",  __func__);
+		return -1;
+	}
+
+	_adpf_systrace(tgid, durationNanos, log);
 
 	return 0;
 }
@@ -669,6 +676,7 @@ int adpf_get_hint_session_preferred_rate(long long *preferredRate)
 int adpf_update_work_duaration(unsigned int sid, long targetDurationNanos)
 {
 	char log[256];
+	int tgid = 0;
 
 	if (!adpf_enable)
 		return 0;
@@ -683,16 +691,17 @@ int adpf_update_work_duaration(unsigned int sid, long targetDurationNanos)
 	pr_debug("[%s], sid: %d, targetDurationNanos: %ld", __func__, sid, targetDurationNanos);
 
 	sessionList[sid]->targetDurationNanos = targetDurationNanos;
+	tgid = sessionList[sid]->tgid;
 	mutex_unlock(&adpf_mutex);
 
 	adpf_notify_callback(ADPF_UPDATE_TARGET_WORK_DURATION, sid);
 
-	if (sprintf(log, "adpf sid: %d, targetDurationNanos: %ld", sid, targetDurationNanos) < 0) {
+	if (sprintf(log, "adpf_target") < 0) {
 		pr_debug("[%s] sprintf failed!",  __func__);
 		return -1;
 	}
 
-	_adpf_systrace(ADPF_UPDATE_TARGET_WORK_DURATION, log);
+	_adpf_systrace(tgid ,targetDurationNanos, log);
 
 	return 0;
 }
@@ -700,8 +709,9 @@ int adpf_update_work_duaration(unsigned int sid, long targetDurationNanos)
 int adpf_report_actual_work_duaration(unsigned int sid,
 		struct _ADPF_WORK_DURATION *workDuration, int work_duration_size)
 {
-	int i = 0;
+	int i = 0, tgid = 0;
 	char log[256];
+	long ts = 0, wd = 0;
 
 	if (!adpf_enable)
 		return 0;
@@ -713,13 +723,9 @@ int adpf_report_actual_work_duaration(unsigned int sid,
 		return -1;
 	}
 
-	if (sprintf(log, "sid: %d, ", sid) < 0) {
-		pr_debug("[%s] sprintf failed!", __func__);
-		mutex_unlock(&adpf_mutex);
-		return -1;
-	}
-
 	pr_debug("[%s], sid: %d", __func__, sid);
+
+	tgid = sessionList[sid]->tgid;
 
 	for (i = 0; i < work_duration_size; i++) {
 		sessionList[sid]->workDuration[i]->timeStampNanos = workDuration[i].timeStampNanos;
@@ -743,12 +749,27 @@ int adpf_report_actual_work_duaration(unsigned int sid,
 
 	adpf_notify_callback(ADPF_REPORT_ACTUAL_WORK_DURATION, sid);
 
+	if (sprintf(log, "adpf_timeStamp") < 0) {
+		pr_debug("[%s] sprintf failed!",  __func__);
+		return -1;
+	}
+
+	_adpf_systrace(tgid, ts, log);
+
+	if (sprintf(log, "adpf_workDuration") < 0) {
+		pr_debug("[%s] sprintf failed!",  __func__);
+		return -1;
+	}
+
+	_adpf_systrace(tgid, wd, log);
+
 	return 0;
 }
 
 int adpf_pause(unsigned int sid)
 {
 	char log[256];
+	int tgid = 0;
 
 	if (!adpf_enable)
 		return 0;
@@ -759,18 +780,20 @@ int adpf_pause(unsigned int sid)
 		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
+
+	tgid = sessionList[sid]->tgid;
 	mutex_unlock(&adpf_mutex);
 
 	pr_debug("[%s], sid: %d", __func__, sid);
 
 	adpf_notify_callback(ADPF_PAUSE, sid);
 
-	if (sprintf(log, "adpf sid: %d", sid) < 0) {
+	if (sprintf(log, "adpf_status") < 0) {
 		pr_debug("[%s] sprintf failed!",  __func__);
 		return -1;
 	}
 
-	_adpf_systrace(ADPF_PAUSE, log);
+	_adpf_systrace(tgid, ADPF_PAUSE, log);
 
 	return 0;
 }
@@ -778,6 +801,7 @@ int adpf_pause(unsigned int sid)
 int adpf_resume(unsigned int sid)
 {
 	char log[256];
+	int tgid = 0;
 
 	if (!adpf_enable)
 		return 0;
@@ -788,18 +812,20 @@ int adpf_resume(unsigned int sid)
 		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
+
+	tgid = sessionList[sid]->tgid;
 	mutex_unlock(&adpf_mutex);
 
 	pr_debug("[%s], sid: %d", __func__, sid);
 
 	adpf_notify_callback(ADPF_RESUME, sid);
 
-	if (sprintf(log, "adpf sid: %d", sid) < 0) {
+	if (sprintf(log, "adpf_status") < 0) {
 		pr_debug("[%s] sprintf failed!",  __func__);
 		return -1;
 	}
 
-	_adpf_systrace(ADPF_RESUME, log);
+	_adpf_systrace(tgid, ADPF_RESUME, log);
 
 	return 0;
 }
@@ -807,6 +833,7 @@ int adpf_resume(unsigned int sid)
 int adpf_close(unsigned int sid)
 {
 	char log[256];
+	int tgid = 0;
 
 	if (!adpf_enable)
 		return 0;
@@ -825,12 +852,12 @@ int adpf_close(unsigned int sid)
 
 	adpf_notify_callback(ADPF_CLOSE, sid);
 
-	if (sprintf(log, "adpf sid: %d", sid) < 0) {
+	if (sprintf(log, "adpf_status") < 0) {
 		pr_debug("[%s] sprintf failed!",  __func__);
 		return -1;
 	}
 
-	_adpf_systrace(ADPF_CLOSE, log);
+	_adpf_systrace(tgid, ADPF_CLOSE, log);
 
 	return 0;
 }
@@ -838,6 +865,7 @@ int adpf_close(unsigned int sid)
 int adpf_sent_hint(unsigned int sid, int hint)
 {
 	char log[256];
+	int tgid = 0;
 
 	if (!adpf_enable)
 		return 0;
@@ -852,16 +880,24 @@ int adpf_sent_hint(unsigned int sid, int hint)
 	pr_debug("[%s], sid: %d, hint: %d", __func__, sid, hint);
 
 	sessionList[sid]->hint = hint;
+	tgid = sessionList[sid]->tgid;
 	mutex_unlock(&adpf_mutex);
 
 	adpf_notify_callback(ADPF_SENT_HINT, sid);
 
-	if (sprintf(log, "adpf sid: %d hint: %d", sid, hint) < 0) {
+	if (sprintf(log, "adpf_status") < 0) {
 		pr_debug("[%s] sprintf failed!",  __func__);
 		return -1;
 	}
 
-	_adpf_systrace(ADPF_SENT_HINT, log);
+	_adpf_systrace(tgid ,ADPF_SENT_HINT, log);
+
+	if (sprintf(log, "adpf_hint") < 0) {
+		pr_debug("[%s] sprintf failed!",  __func__);
+		return -1;
+	}
+
+	_adpf_systrace(tgid ,hint, log);
 
 	return 0;
 }
@@ -869,6 +905,7 @@ int adpf_sent_hint(unsigned int sid, int hint)
 int adpf_set_threads(unsigned int sid, int *threadIds, int threadIds_size)
 {
 	char log[256];
+	int tgid = 0;
 
 	if (!adpf_enable)
 		return 0;
@@ -888,6 +925,8 @@ int adpf_set_threads(unsigned int sid, int *threadIds, int threadIds_size)
 
 	pr_debug("[%s] sid: %d, threads_size: %d", __func__, sid, threadIds_size);
 
+	tgid = sessionList[sid]->tgid;
+
 	if (sessionList[sid] != NULL) {
 		memset(sessionList[sid]->threadIds, 0,
 			sessionList[sid]->threadIds_size*sizeof(int));
@@ -903,12 +942,12 @@ int adpf_set_threads(unsigned int sid, int *threadIds, int threadIds_size)
 
 	adpf_notify_callback(ADPF_SET_THREADS, sid);
 
-	if (sprintf(log, "adpf sid: %d", sid) < 0) {
+	if (sprintf(log, "adpf_status") < 0) {
 		pr_debug("[%s] sprintf failed!",  __func__);
 		return -1;
 	}
 
-	_adpf_systrace(ADPF_SET_THREADS, log);
+	_adpf_systrace(tgid, ADPF_SET_THREADS, log);
 
 	return 0;
 }
