@@ -1141,183 +1141,183 @@
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ADSP_AO>;
 	};
 
-	disable-unused-pd-isp-traw@a6 {
+	disable-unused-pd-mm-infra@a6 {
 		compatible = "mediatek,scpsys-disable-unused";
 		reg = <0xa6>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_TRAW>;
-	};
-
-	disable-unused-pd-isp-dip1@a7 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xa7>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_DIP1>;
-	};
-
-	disable-unused-pd-isp-main@a8 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xa8>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_MAIN>;
-	};
-
-	disable-unused-pd-isp-vcore@a9 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xa9>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_VCORE>;
-	};
-
-	disable-unused-pd-vde0@aa {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xaa>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE0>;
-	};
-
-	disable-unused-pd-vde1@ab {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xab>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE1>;
-	};
-
-	disable-unused-pd-vde-vcore0@ac {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xac>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE_VCORE0>;
-	};
-
-	disable-unused-pd-vde-vcore1@ad {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xad>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE_VCORE1>;
-	};
-
-	disable-unused-pd-ven0@ae {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xae>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN0>;
-	};
-
-	disable-unused-pd-ven1@af {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xaf>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
-	};
-
-	disable-unused-pd-ven2@b0 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb0>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN2>;
-	};
-
-	disable-unused-pd-cam-mraw@b1 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb1>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
-	};
-
-	disable-unused-pd-cam-suba@b2 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb2>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBA>;
-	};
-
-	disable-unused-pd-cam-subb@b3 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb3>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBB>;
-	};
-
-	disable-unused-pd-cam-subc@b4 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb4>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBC>;
-	};
-
-	disable-unused-pd-cam-main@b5 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb5>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
-	};
-
-	disable-unused-pd-cam-vcore@b6 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb6>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_VCORE>;
-	};
-
-	disable-unused-pd-cam-ccu@b7 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb7>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_CCU>;
-	};
-
-	disable-unused-pd-cam-ccu-ao@b8 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb8>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_CCU_AO>;
-	};
-
-	disable-unused-pd-disp-vcore@b9 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xb9>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_DISP_VCORE>;
-	};
-
-	disable-unused-pd-mml0-shutdown@ba {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xba>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_MML0_SHUTDOWN>;
-	};
-
-	disable-unused-pd-mml1-shutdown@bb {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xbb>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_MML1_SHUTDOWN>;
-	};
-
-	disable-unused-pd-dis0-shutdown@bc {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xbc>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS0_SHUTDOWN>;
-	};
-
-	disable-unused-pd-dis1-shutdown@bd {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xbd>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS1_SHUTDOWN>;
-	};
-
-	disable-unused-pd-ovl0-shutdown@be {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xbe>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_OVL0_SHUTDOWN>;
-	};
-
-	disable-unused-pd-ovl1-shutdown@bf {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xbf>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_OVL1_SHUTDOWN>;
-	};
-
-	disable-unused-pd-mm-infra@c0 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xc0>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 	};
 
-	disable-unused-pd-dp-tx@c1 {
+	disable-unused-pd-ssrsys@a7 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xa7>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_SSR>;
+	};
+
+	disable-unused-pd-isp-traw@a8 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xa8>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_TRAW>;
+	};
+
+	disable-unused-pd-isp-dip1@a9 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xa9>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_DIP1>;
+	};
+
+	disable-unused-pd-isp-main@aa {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xaa>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_MAIN>;
+	};
+
+	disable-unused-pd-isp-vcore@ab {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xab>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_VCORE>;
+	};
+
+	disable-unused-pd-vde0@ac {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xac>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE0>;
+	};
+
+	disable-unused-pd-vde1@ad {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xad>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE1>;
+	};
+
+	disable-unused-pd-vde-vcore0@ae {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xae>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE_VCORE0>;
+	};
+
+	disable-unused-pd-vde-vcore1@af {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xaf>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE_VCORE1>;
+	};
+
+	disable-unused-pd-ven0@b0 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xb0>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN0>;
+	};
+
+	disable-unused-pd-ven1@b1 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xb1>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
+	};
+
+	disable-unused-pd-ven2@b2 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xb2>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN2>;
+	};
+
+	disable-unused-pd-cam-mraw@b3 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xb3>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
+	};
+
+	disable-unused-pd-cam-suba@b4 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xb4>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBA>;
+	};
+
+	disable-unused-pd-cam-subb@b5 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xb5>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBB>;
+	};
+
+	disable-unused-pd-cam-subc@b6 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xb6>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBC>;
+	};
+
+	disable-unused-pd-cam-main@b7 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xb7>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
+	};
+
+	disable-unused-pd-cam-vcore@b8 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xb8>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_VCORE>;
+	};
+
+	disable-unused-pd-cam-ccu@b9 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xb9>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_CCU>;
+	};
+
+	disable-unused-pd-cam-ccu-ao@ba {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xba>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_CCU_AO>;
+	};
+
+	disable-unused-pd-disp-vcore@bb {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xbb>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_DISP_VCORE>;
+	};
+
+	disable-unused-pd-mml0-shutdown@bc {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xbc>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_MML0_SHUTDOWN>;
+	};
+
+	disable-unused-pd-mml1-shutdown@bd {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xbd>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_MML1_SHUTDOWN>;
+	};
+
+	disable-unused-pd-dis0-shutdown@be {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xbe>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS0_SHUTDOWN>;
+	};
+
+	disable-unused-pd-dis1-shutdown@bf {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xbf>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS1_SHUTDOWN>;
+	};
+
+	disable-unused-pd-ovl0-shutdown@c0 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xc0>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_OVL0_SHUTDOWN>;
+	};
+
+	disable-unused-pd-ovl1-shutdown@c1 {
 		compatible = "mediatek,scpsys-disable-unused";
 		reg = <0xc1>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_OVL1_SHUTDOWN>;
+	};
+
+	disable-unused-pd-dp-tx@c2 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xc2>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DP_TX>;
 	};
 
-	disable-unused-pd-csi-rx@c2 {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xc2>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_CSI_RX>;
-	};
-
-	disable-unused-pd-ssrsys@c3 {
+	disable-unused-pd-csi-rx@c3 {
 		compatible = "mediatek,scpsys-disable-unused";
 		reg = <0xc3>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_SSR>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_CSI_RX>;
 	};
 };

@@ -500,6 +500,11 @@
 		reg = <0 0x10320000 0 0x2000>;
 	};
 
+	mm_hwv: syscon@1ec3a000 {
+		compatible = "mediatek,mt6989-mm_hwv", "syscon";
+		reg = <0 0x1ec3a000 0 0x2000>;
+	};
+
 	dbg-error-flag {
 		compatible = "mediatek,dbg-error-flag";
 		mediatek,error-flag = <&soc_dbg_error_flag>;
@@ -884,6 +889,10 @@
 		nemicfg-ao-mem-prot-reg-bus = <&nemicfg_ao_mem_prot_reg_bus_clk>;
 		semicfg-ao-mem-prot-reg-bus = <&semicfg_ao_mem_prot_reg_bus_clk>;
 		vlpcfg = <&vlpcfg_bus>;
+		hfrp-2-bus = <&hfrp_2_bus>;
+		hfrp-1-bus = <&hfrp_1_bus>;
+		hw-voter-regmap = <&hwv>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		dis1-shutdown-supply = <&mt6363_vbuck1>;
 	};
 
@@ -915,6 +924,16 @@
 		compatible = "mediatek,mt6989-scp_fast_iic", "syscon";
 		reg = <0 0x1cbe1000 0 0x1000>;
 		#clock-cells = <1>;
+	};
+
+	hfrp_2_bus: syscon@1ec24000 {
+		compatible = "mediatek,mt6989-hfrp_2_bus", "syscon";
+		reg = <0 0x1ec24000 0 0x1000>;
+	};
+
+	hfrp_1_bus: syscon@1eca5000 {
+		compatible = "mediatek,mt6989-hfrp_1_bus", "syscon";
+		reg = <0 0x1eca5000 0 0x1000>;
 	};
 
 	camsys_main_clk: syscon@1a000000 {
