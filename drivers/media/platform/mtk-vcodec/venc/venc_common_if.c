@@ -490,6 +490,27 @@ static int venc_set_param(unsigned long handle,
 		inst->vsi->config.temporal_layer_pcount = enc_prm->temporal_layer_pcount;
 		inst->vsi->config.temporal_layer_bcount = enc_prm->temporal_layer_bcount;
 		inst->vsi->config.max_ltr_num = enc_prm->max_ltr_num;
+		inst->vsi->config.qpvbr_enable = enc_prm->qpvbr_enable;
+		inst->vsi->config.qpvbr_qpthreshold = enc_prm->qpvbr_qpthreshold;
+		inst->vsi->config.qpvbr_qpbrratio = enc_prm->qpvbr_qpbrratio;
+		inst->vsi->config.cb_qp_offset = enc_prm->cb_qp_offset;
+		inst->vsi->config.cr_qp_offset = enc_prm->cr_qp_offset;
+		inst->vsi->config.mbrc_tk_spd = enc_prm->mbrc_tk_spd;
+		inst->vsi->config.ifrm_q_ltr = enc_prm->ifrm_q_ltr;
+		inst->vsi->config.pfrm_q_ltr = enc_prm->pfrm_q_ltr;
+		inst->vsi->config.bfrm_q_ltr = enc_prm->bfrm_q_ltr;
+
+		if (enc_prm->visual_quality) {
+			memcpy(&inst->vsi->config.visual_quality,
+				enc_prm->visual_quality,
+				sizeof(struct mtk_venc_visual_quality));
+		}
+
+		if (enc_prm->init_qp) {
+			memcpy(&inst->vsi->config.init_qp,
+				enc_prm->init_qp,
+				sizeof(struct mtk_venc_init_qp));
+		}
 
 		if (enc_prm->color_desc) {
 			memcpy(&inst->vsi->config.color_desc,
@@ -561,6 +582,20 @@ static int venc_set_param(unsigned long handle,
 		break;
 	case VENC_SET_PARAM_VCU_VPUD_LOG:
 		ret = VCU_FPTR(vcu_set_log)(enc_prm->log);
+		break;
+	case VENC_SET_PARAM_VISUAL_QUALITY:
+		if (inst->vsi == NULL)
+			return -EINVAL;
+		memcpy(&inst->vsi->config.visual_quality, enc_prm->visual_quality,
+			sizeof(struct mtk_venc_visual_quality));
+		ret = vcu_enc_set_param(&inst->vcu_inst, type, enc_prm);
+		break;
+	case VENC_SET_PARAM_INIT_QP:
+		if (inst->vsi == NULL)
+			return -EINVAL;
+		memcpy(&inst->vsi->config.init_qp, enc_prm->init_qp,
+			sizeof(struct mtk_venc_init_qp));
+		ret = vcu_enc_set_param(&inst->vcu_inst, type, enc_prm);
 		break;
 	default:
 		if (inst->vsi == NULL)

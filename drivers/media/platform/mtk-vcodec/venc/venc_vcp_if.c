@@ -1668,6 +1668,12 @@ int vcp_enc_set_param(struct venc_inst *inst,
 		has_lock_dvfs = true;
 		mtk_v4l2_debug(4, "[VDVFS][VENC] data VENC_SET_PARAM_MMDVFS");
 		break;
+	case VENC_SET_PARAM_VISUAL_QUALITY:
+		out.data_item = 0; // passed via vsi
+		break;
+	case VENC_SET_PARAM_INIT_QP:
+		out.data_item = 0; // passed via vsi
+		break;
 	default:
 		mtk_vcodec_err(inst, "id %d not supported", id);
 		return -EINVAL;
@@ -1748,6 +1754,27 @@ static int venc_vcp_set_param(unsigned long handle,
 		inst->vsi->config.priority = enc_prm->priority;
 		inst->vsi->config.codec_fmt = enc_prm->codec_fmt;
 
+		inst->vsi->config.qpvbr_enable = enc_prm->qpvbr_enable;
+		inst->vsi->config.qpvbr_qpthreshold = enc_prm->qpvbr_qpthreshold;
+		inst->vsi->config.qpvbr_qpbrratio = enc_prm->qpvbr_qpbrratio;
+		inst->vsi->config.cb_qp_offset = enc_prm->cb_qp_offset;
+		inst->vsi->config.cr_qp_offset = enc_prm->cr_qp_offset;
+		inst->vsi->config.mbrc_tk_spd = enc_prm->mbrc_tk_spd;
+		inst->vsi->config.ifrm_q_ltr = enc_prm->ifrm_q_ltr;
+		inst->vsi->config.pfrm_q_ltr = enc_prm->pfrm_q_ltr;
+		inst->vsi->config.bfrm_q_ltr = enc_prm->bfrm_q_ltr;
+
+		if (enc_prm->visual_quality) {
+			memcpy(&inst->vsi->config.visual_quality,
+				enc_prm->visual_quality,
+				sizeof(struct mtk_venc_visual_quality));
+		}
+
+		if (enc_prm->init_qp) {
+			memcpy(&inst->vsi->config.init_qp,
+				enc_prm->init_qp,
+				sizeof(struct mtk_venc_init_qp));
+		}
 
 		if (enc_prm->color_desc) {
 			memcpy(&inst->vsi->config.color_desc,
@@ -1826,6 +1853,20 @@ static int venc_vcp_set_param(unsigned long handle,
 		break;
 	case VENC_SET_PARAM_MMDVFS:
 		mtk_v4l2_debug(4, "[VDVFS][VENC] VENC_SET_PARAM_MMDVFS");
+		ret = vcp_enc_set_param(inst, type, enc_prm);
+		break;
+	case VENC_SET_PARAM_VISUAL_QUALITY:
+		if (inst->vsi == NULL)
+			return -EINVAL;
+		memcpy(&inst->vsi->config.visual_quality, enc_prm->visual_quality,
+			sizeof(struct mtk_venc_visual_quality));
+		ret = vcp_enc_set_param(inst, type, enc_prm);
+		break;
+	case VENC_SET_PARAM_INIT_QP:
+		if (inst->vsi == NULL)
+			return -EINVAL;
+		memcpy(&inst->vsi->config.init_qp, enc_prm->init_qp,
+			sizeof(struct mtk_venc_init_qp));
 		ret = vcp_enc_set_param(inst, type, enc_prm);
 		break;
 	default:

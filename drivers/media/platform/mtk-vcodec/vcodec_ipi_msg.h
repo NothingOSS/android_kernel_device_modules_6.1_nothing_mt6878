@@ -345,4 +345,16 @@ struct vcodec_mem_obj {
 	__u64 va;
 };
 
+struct mtk_venc_visual_quality {
+	__s32	quant;
+	__s32	psyrd;
+};
+
+struct mtk_venc_init_qp {
+	__s32	enable;
+	__s32	qpi;
+	__s32	qpp;
+	__s32	qpb;
+};
+
 #endif

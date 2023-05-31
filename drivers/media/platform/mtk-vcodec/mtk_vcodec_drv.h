@@ -159,7 +159,9 @@ enum mtk_encode_param {
 	MTK_ENCODE_PARAM_DUMMY_NAL = (1 << 24),
 	MTK_ENCODE_PARAM_FRAME_LEVEL_QP = (1 << 25),
 	MTK_ENCODE_PARAM_LOW_LATENCY_WFD = (1 << 26),
-	MTK_ENCODE_PARAM_SLICE_CNT = (1 << 27)
+	MTK_ENCODE_PARAM_SLICE_CNT = (1 << 27),
+	MTK_ENCODE_PARAM_VISUAL_QUALITY = (1 << 28),
+	MTK_ENCODE_PARAM_INIT_QP = (1 << 29)
 };
 
 /*
@@ -355,6 +357,17 @@ struct mtk_enc_params {
 	unsigned int    max_ltr_num;
 	unsigned int    slice_header_spacing;
 	struct mtk_venc_vui_info vui_info; //data from userspace
+	int             qpvbr_enable;
+	int             qpvbr_qpthreshold;
+	int             qpvbr_qpbrratio;
+	int             cb_qp_offset;
+	int             cr_qp_offset;
+	int             mbrc_tk_spd;
+	int             ifrm_q_ltr;
+	int             pfrm_q_ltr;
+	int             bfrm_q_ltr;
+	struct mtk_venc_visual_quality visual_quality;
+	struct mtk_venc_init_qp init_qp;
 };
 
 /*
@@ -434,6 +447,17 @@ struct venc_enc_param {
 	struct mtk_venc_multi_ref *multi_ref;
 	struct mtk_venc_vui_info *vui_info;
 	char *log;
+	int qpvbr_enable;
+	int qpvbr_qpthreshold;
+	int qpvbr_qpbrratio;
+	int cb_qp_offset;
+	int cr_qp_offset;
+	int mbrc_tk_spd;
+	int ifrm_q_ltr;
+	int pfrm_q_ltr;
+	int bfrm_q_ltr;
+	struct mtk_venc_visual_quality *visual_quality;
+	struct mtk_venc_init_qp *init_qp;
 };
 
 /*

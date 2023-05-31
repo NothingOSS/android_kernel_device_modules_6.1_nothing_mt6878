@@ -126,6 +126,8 @@ enum venc_set_param_type {
 	VENC_SET_PARAM_ENABLE_LOW_LATENCY_WFD,
 	VENC_SET_PARAM_MMDVFS,
 	VENC_SET_PARAM_SLICE_CNT,
+	VENC_SET_PARAM_VISUAL_QUALITY,
+	VENC_SET_PARAM_INIT_QP,
 };
 
 #define VENC_MSG_AP_SEND_PREFIX	\
@@ -499,6 +501,17 @@ struct venc_vcu_config {
 	struct mtk_venc_multi_ref multi_ref;
 	struct mtk_venc_vui_info vui_info;
 	struct venc_monitor_bw monitor_bw;
+	__s32 qpvbr_enable;
+	__s32 qpvbr_qpthreshold;
+	__s32 qpvbr_qpbrratio;
+	__s32 cb_qp_offset;
+	__s32 cr_qp_offset;
+	__s32 mbrc_tk_spd;
+	__s32 ifrm_q_ltr;
+	__s32 pfrm_q_ltr;
+	__s32 bfrm_q_ltr;
+	struct mtk_venc_visual_quality visual_quality;
+	struct mtk_venc_init_qp init_qp;
 };
 
 /**
