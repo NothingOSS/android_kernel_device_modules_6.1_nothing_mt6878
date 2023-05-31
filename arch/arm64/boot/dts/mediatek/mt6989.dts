@@ -6167,7 +6167,6 @@
 			mtk-aal-support = <1>;
 			mtk-dre30-support = <1>;
 			mtk-aal-clarity-support = <1>;
-			mtk-mdp-aal-ghist = <1>;
 		};
 
 		disp_aal1: disp-aal1@14003000 {
@@ -6180,7 +6179,6 @@
 			mtk-aal-support = <1>;
 			mtk-dre30-support = <1>;
 			mtk-aal-clarity-support = <1>;
-			mtk-mdp-aal-ghist = <1>;
 		};
 
 		disp_c3d0: disp-c3d0@14004000 {
