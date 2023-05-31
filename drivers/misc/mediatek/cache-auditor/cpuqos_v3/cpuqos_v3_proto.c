@@ -869,8 +869,14 @@ static ssize_t show_l3m_status(struct kobject *kobj,
 		css_id = cpuqos_v3_group_css_map[i];
 		if ((css_id < 0) || (css_id >= CSS_MAX))
 			continue;
-		if (cpuqos_v3_css_pd_map[css_id] == PD2)
+		switch (cpuqos_v3_css_pd_map[css_id]) {
+		case PD2:
+		case PD6:
+		case PD7:
+		case PD8:
+		case PD9:
 			len += snprintf(buf+len, max_len-len, "%s ", cpuqos_v3_path_pd_map[i]);
+		}
 	}
 
 	if (q_pid > -1) {
