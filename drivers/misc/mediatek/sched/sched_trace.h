@@ -390,10 +390,11 @@ TRACE_EVENT(sched_select_task_rq,
 
 TRACE_EVENT(sched_effective_mask,
 
-	TP_PROTO(int pid, int target_cpu, bool prefer, struct cpumask *effective_softmask,
-			struct cpumask *tsk_softmask, struct cpumask *tg_softmask),
+	TP_PROTO(struct task_struct *tsk, int target_cpu, bool prefer,
+			struct cpumask *effective_softmask, struct cpumask *tsk_softmask,
+			struct cpumask *tg_softmask),
 
-	TP_ARGS(pid, target_cpu, prefer, effective_softmask, tsk_softmask, tg_softmask),
+	TP_ARGS(tsk, target_cpu, prefer, effective_softmask, tsk_softmask, tg_softmask),
 
 	TP_STRUCT__entry(
 		__field(int, pid)
@@ -402,25 +403,28 @@ TRACE_EVENT(sched_effective_mask,
 		__field(long, effective_softmask)
 		__field(long, tsk_softmask)
 		__field(long, tg_softmask)
+		__field(int, cpuctl)
 		),
 
 	TP_fast_assign(
-		__entry->pid = pid;
+		__entry->pid = tsk->pid;
 		__entry->target_cpu = target_cpu;
 		__entry->prefer         = prefer;
 		__entry->effective_softmask = effective_softmask->bits[0];
 		__entry->tsk_softmask = tsk_softmask->bits[0];
 		__entry->tg_softmask = tg_softmask->bits[0];
+		__entry->cpuctl = sched_cgroup_state(tsk, cpu_cgrp_id);
 		),
 
 	TP_printk(
-		"pid=%4d target=%d latency_sensitive=%d eff_softmask=0x%lx tsk_softmask=0x%lx tg_softmask=0x%lx",
+		"pid=%4d target=%d latency_sensitive=%d eff_softmask=0x%lx tsk_softmask=0x%lx tg_softmask=0x%lx, cpuctl=%d",
 		__entry->pid,
 		__entry->target_cpu,
 		__entry->prefer,
 		__entry->effective_softmask,
 		__entry->tsk_softmask,
-		__entry->tg_softmask)
+		__entry->tg_softmask,
+		__entry->cpuctl)
 );
 
 TRACE_EVENT(sched_energy_init,

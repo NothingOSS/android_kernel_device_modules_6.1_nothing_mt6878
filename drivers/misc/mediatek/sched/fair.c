@@ -1896,7 +1896,7 @@ done:
 		struct soft_affinity_tg *sa_tg = &((struct mtk_tg *)
 			tg->android_vendor_data1)->sa_tg;
 
-			trace_sched_effective_mask(p->pid, *new_cpu, latency_sensitive,
+			trace_sched_effective_mask(p, *new_cpu, latency_sensitive,
 				&effective_softmask, &sa_task->soft_cpumask, &sa_tg->soft_cpumask);
 	}
 
