@@ -66,9 +66,9 @@ void adsp_mt6989_select_uart_clock_mode(enum adsp_clk_mode mode)
 {
 	switch (mode) {
 	case CLK_LOW_POWER:
-	case CLK_DEFAULT_INIT:
-		adsp_set_uart_top_mux(CLK_TOP_UART_CLK26M);
+		adsp_set_uart_top_mux(CLK_TOP_UNIVPLL_D6_D4);
 		break;
+	case CLK_DEFAULT_INIT:
 	case CLK_HIGH_PERFORM:
 		adsp_set_uart_top_mux(CLK_TOP_UNIVPLL_D6_D2);
 		break;

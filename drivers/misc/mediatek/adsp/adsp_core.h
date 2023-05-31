@@ -70,5 +70,6 @@ int adsp_awake_unlock(u32 cid);
 /* mt6989 uart clock */
 int adsp_enable_uart_clock(void);
 void adsp_disable_uart_clock(void);
+void adsp_select_uart_clock_mode(enum adsp_clk_mode mode);
 
 #endif

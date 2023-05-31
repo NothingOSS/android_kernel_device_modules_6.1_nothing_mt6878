@@ -151,9 +151,10 @@ int _adsp_register_feature(u32 cid, u32 fid, u32 opt)
 	}
 
 	if (is_adsp_btaudio_feature(fid)) {
-		if (ctrl->total_btaud == 0)
+		if (ctrl->total_btaud == 0) {
 			adsp_enable_uart_clock();
-
+			adsp_select_uart_clock_mode(CLK_LOW_POWER);
+		}
 		ctrl->total_btaud += 1;
 	}
 
@@ -180,9 +181,10 @@ int _adsp_deregister_feature(u32 cid, u32 fid, u32 opt)
 
 	if (is_adsp_btaudio_feature(fid)) {
 		ctrl->total_btaud -= 1;
-
-		if (ctrl->total_btaud == 0)
+		if (ctrl->total_btaud == 0) {
+			adsp_select_uart_clock_mode(CLK_DEFAULT_INIT);
 			adsp_disable_uart_clock();
+		}
 	}
 
 	if (item->counter[cid] == 0) {
