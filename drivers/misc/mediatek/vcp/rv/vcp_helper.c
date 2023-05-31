@@ -1226,13 +1226,20 @@ static inline ssize_t vcp_register_on_store(struct device *kobj
 		, struct device_attribute *attr, const char *buf, size_t count)
 {
 	unsigned int value = 0;
+	unsigned int i;
 
 	if (!buf || count == 0)
 		return count;
 
-	if (kstrtouint(buf, 10, &value) == 0)
+	if (kstrtouint(buf, 10, &value) == 0) {
 		if (value == 666)
 			vcp_register_feature(RTOS_FEATURE_ID);
+		if (value == 555) {
+			for (i = 0; i < NUM_FEATURE_ID; i++)
+				pr_notice("[VCP] %s Check feature id %d enable cnt %d\n",
+					__func__, feature_table[i].feature, feature_table[i].enable);
+		}
+	}
 
 	return count;
 }
