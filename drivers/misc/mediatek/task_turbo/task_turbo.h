@@ -8,8 +8,10 @@
 #include <linux/list.h>
 #include <linux/smp.h>
 #include <linux/list_sort.h>
+#include <common.h>
+
 #define get_task_turbo_t(p)	\
-	((struct task_turbo_t *)&(p)->android_vendor_data1)
+	(&((struct mtk_task *)&(p)->android_vendor_data1)->turbo_data)
 #define get_inherit_task(parent)	\
 	((struct task_struct *)((u64)(parent)->android_vendor_data1))
 
@@ -27,14 +29,6 @@ enum {
 	SUB_FEAT_BINDER		= 1U << 1,
 	SUB_FEAT_SCHED		= 1U << 2,
 	SUB_FEAT_FLAVOR_BIGCORE = 1U << 3,
-};
-
-struct task_turbo_t {
-	unsigned char turbo:1;
-	unsigned char render:1;
-	unsigned short inherit_cnt:14;
-	short nice_backup;
-	atomic_t inherit_types;
 };
 
 enum rwsem_waiter_type {

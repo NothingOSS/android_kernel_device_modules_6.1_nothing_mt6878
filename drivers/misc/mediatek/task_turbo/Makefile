@@ -12,4 +12,5 @@
 #
 ccflags-y += -I$(srctree)
 ccflags-y += -I$(srctree)/$(src)              # needed for trace events
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/
 obj-$(CONFIG_MTK_TASK_TURBO) += task_turbo.o

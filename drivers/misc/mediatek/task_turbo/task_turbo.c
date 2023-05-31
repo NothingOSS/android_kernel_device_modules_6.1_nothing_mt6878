@@ -151,19 +151,6 @@ static unsigned long cpu_util_next(int cpu, struct task_struct *p, int dst_cpu);
 static inline unsigned long task_util(struct task_struct *p);
 static inline unsigned long _task_util_est(struct task_struct *p);
 
-#if IS_ENABLED(CONFIG_MTK_SCHEDULER)
-extern bool sysctl_util_est;
-#endif
-
-bool is_util_est_enable(void)
-{
-#if IS_ENABLED(CONFIG_MTK_SCHEDULER)
-	return sysctl_util_est;
-#else
-	return true;
-#endif
-}
-
 static void probe_android_rvh_prepare_prio_fork(void *ignore, struct task_struct *p)
 {
 	struct task_turbo_t *turbo_data;

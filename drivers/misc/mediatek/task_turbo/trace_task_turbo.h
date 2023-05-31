@@ -25,7 +25,7 @@ TRACE_EVENT(turbo_set,
 	TP_fast_assign(
 		__entry->pid = p->pid;
 		__entry->prio = p->prio;
-		__entry->turbo = ((struct task_turbo_t *)&(p)->android_vendor_data1)->turbo;
+		__entry->turbo = get_task_turbo_t(p)->turbo;
 	),
 	TP_printk("pid=%d prio=%d turbo=%d",
 		__entry->pid,
@@ -73,15 +73,11 @@ TRACE_EVENT(turbo_inherit_start,
 	TP_fast_assign(
 		__entry->fpid		 = from->pid;
 		__entry->fprio		 = from->prio;
-		__entry->f_turbo	 =
-		((struct task_turbo_t *)&(from)->android_vendor_data1)->turbo;
-		__entry->f_inherit_types =
-		atomic_read(&((struct task_turbo_t *)&(from)->android_vendor_data1)->inherit_types);
+		__entry->f_turbo	 = get_task_turbo_t(from)->turbo;
+		__entry->f_inherit_types = atomic_read(&get_task_turbo_t(from)->inherit_types);
 		__entry->tprio		 = to->prio;
-		__entry->t_turbo	 =
-		((struct task_turbo_t *)&(to)->android_vendor_data1)->turbo;
-		__entry->t_inherit_types =
-		atomic_read(&((struct task_turbo_t *)&(to)->android_vendor_data1)->inherit_types);
+		__entry->t_turbo	 = get_task_turbo_t(to)->turbo;
+		__entry->t_inherit_types = atomic_read(&get_task_turbo_t(to)->inherit_types);
 	),
 	TP_printk("pid=%d prio=%d turbo=%d inh=%d => prio=%d turbo=%d inh=%d",
 		__entry->fpid,
@@ -106,10 +102,8 @@ TRACE_EVENT(turbo_inherit_end,
 	TP_fast_assign(
 		__entry->pid		 = p->pid;
 		__entry->prio		 = p->prio;
-		__entry->turbo		 =
-		((struct task_turbo_t *)&(p)->android_vendor_data1)->turbo;
-		__entry->inherit_types	 =
-		atomic_read(&((struct task_turbo_t *)&(p)->android_vendor_data1)->inherit_types);
+		__entry->turbo		 = get_task_turbo_t(p)->turbo;
+		__entry->inherit_types	 = atomic_read(&get_task_turbo_t(p)->inherit_types);
 	),
 	TP_printk("pid=%d prio=%d turbo=%d inherit_types=%d",
 		__entry->pid,

@@ -47,6 +47,14 @@ struct cc_task_struct {
 	u64 over_type;
 };
 
+struct task_turbo_t {
+	unsigned char turbo:1;
+	unsigned char render:1;
+	unsigned short inherit_cnt:14;
+	short nice_backup;
+	atomic_t inherit_types;
+};
+
 struct mtk_task {
 	u64 reserved0[MTK_TASK_FLAG];
 	struct vip_task_struct	vip_task;
@@ -56,6 +64,7 @@ struct mtk_task {
 	struct sbb_task_struct sbb_task;
 	struct rot_task_struct rot_task;
 	struct cc_task_struct cc_task;
+	struct task_turbo_t turbo_data;
 };
 
 struct soft_affinity_tg {
