@@ -21624,7 +21624,8 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 			if (m_id == 0)
 				drm_trace_tag_mark("mutex0_eof");
 			if (mtk_crtc0 && mtk_crtc0->esd_ctx) {
-				if (priv && priv->data->mmsys_id == MMSYS_MT6985)
+				if (priv && (priv->data->mmsys_id == MMSYS_MT6985
+						|| priv->data->mmsys_id == MMSYS_MT6897))
 					atomic_set(&mtk_crtc0->esd_ctx->target_time, 0);
 			}
 #ifndef DRM_BYPASS_PQ
