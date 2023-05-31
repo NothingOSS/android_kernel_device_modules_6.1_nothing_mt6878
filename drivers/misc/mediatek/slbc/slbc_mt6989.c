@@ -1238,9 +1238,14 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 		if (!ret)
 			seq_printf(m, " [%d]%d, %d, %d", i, test_d.type, test_d.flag, test_d.timeout);//hit,quota,total
 	}
-
 	seq_puts(m, "\n");
 
+	seq_puts(m, "emi_slc_all_cache_mode:\n");
+	ret = emi_slc_test_result();
+	seq_printf(m, "AXI2GID %s\n",(ret & 0x1) ? "PASS" : "FAIL");
+	seq_printf(m, "PROI/QUOTA %s\n",(ret & 0x2) ? "PASS" : "FAIL");
+
+	seq_puts(m, "\n");
 	return 0;
 }
 

@@ -328,6 +328,26 @@ int emi_gid_pmu_read_counter(void *ptr)
 }
 EXPORT_SYMBOL_GPL(emi_gid_pmu_read_counter);
 
+int emi_slc_test_result(void)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+	struct scmi_tinysys_status rvalue = {0};
+	int ret = 0;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = SLBC_IPI(IPI_EMI_SLC_TEST_RESULT, 0);
+
+	ret = slbc_scmi_get(&slbc_ipi_d, &rvalue);
+	if (ret) {
+		pr_info("#@# %s(%d) return fail(%d)\n",
+			__func__, __LINE__, ret);
+		return  -1;
+	}
+
+	return rvalue.r1;
+}
+EXPORT_SYMBOL_GPL(emi_slc_test_result);
+
 int _slbc_request_cache_scmi(void *ptr)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)

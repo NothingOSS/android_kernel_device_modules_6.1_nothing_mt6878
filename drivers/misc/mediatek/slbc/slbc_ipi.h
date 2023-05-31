@@ -58,6 +58,7 @@ enum {
 	IPI_EMI_GID_PMU_COUNTER,
 	IPI_EMI_PMU_READ_COUNTER,
 	IPI_EMI_GID_PMU_READ_COUNTER,
+	IPI_EMI_SLC_TEST_RESULT,
 	NR_IPI_SLBC,
 };
 
@@ -115,6 +116,7 @@ extern int emi_pmu_set_ctrl(int argv1, int argv2, int argv3);
 extern int emi_gid_pmu_counter(int argv1, int argv2);
 extern int emi_pmu_read_counter(int idx);
 extern int emi_gid_pmu_read_counter(void *ptr);
+extern int emi_slc_test_result(void);
 extern int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid,
 			struct slbc_gid_data *data);
 
@@ -151,6 +153,7 @@ __weak int emi_pmu_set_ctrl(int argv1, int argv2, int argv3) {}
 __weak int emi_gid_pmu_counter(int argv1, int argv2) {}
 __weak int emi_pmu_read_counter(int idx) {}
 __weak int emi_gid_pmu_read_counter(void *ptr) {}
+__weak int emi_slc_test_result(void) {}
 __weak int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid,
 			struct slbc_gid_data *data)
 {
