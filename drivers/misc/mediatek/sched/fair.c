@@ -436,7 +436,7 @@ int init_share_buck(void)
 
 	/* Default share buck gear_idx=0 */
 	share_buck.gear_idx = 0;
-	eas_node = of_find_node_by_name(NULL, "eas_info");
+	eas_node = of_find_node_by_name(NULL, "eas-info");
 	if (eas_node == NULL)
 		pr_info("failed to find node @ %s\n", __func__);
 	else {
