@@ -5146,6 +5146,7 @@
 			default-glb-pwroff-timeout-us = <80>;
 			autosuspend-delay-ms = <25>;
 			adaptive-power-policy = <1>;
+			system-coherency = <0>;
 		};
 
 		gpu_mali_opp: opp-table0 {
