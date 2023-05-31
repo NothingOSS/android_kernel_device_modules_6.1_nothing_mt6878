@@ -229,7 +229,7 @@ void mtk_prepare_config_map(void)
 	if (!AOD_STAT_MATCH(AOD_STAT_CONFIGED | AOD_STAT_ACTIVE))
 		DDPMSG("[AOD] %s: invalid state:0x%x\n", __func__, aod_state);
 
-	DDPMSG("%s: scp rsv mem 0x%llx(0x%llx), size 0x%llx\n", __func__,
+	DDPMSG("%s: aod:%d scp rsv mem 0x%llx(0x%llx), size 0x%llx\n", __func__, SCP_AOD_MEM_ID,
 		scp_get_reserve_mem_virt(SCP_AOD_MEM_ID), scp_get_reserve_mem_phys(SCP_AOD_MEM_ID),
 		scp_get_reserve_mem_size(SCP_AOD_MEM_ID));
 
@@ -363,19 +363,19 @@ int mtk_aod_scp_set_semaphore(bool lock)
 	bool key = false;
 	void __iomem *SPM_SEMA_AP = NULL, *SPM_SEMA_SCP = NULL;
 
-	if (!spm_base)
+	if (!spm_base) {
+		DDPPR_ERR("%s, invalid spm base\n", __func__);
 		goto fail;
+	}
 
 	SPM_SEMA_AP = spm_base + OFST_M6_AP;
 	SPM_SEMA_SCP = spm_base + OFST_M2_SCP;
 
 	mutex_lock(&spm_sema_lock);
 
-	DDPMSG("%s, sema: 0x%x, lock = %d\n", __func__, readl(SPM_SEMA_AP), lock);
-
 	key = ((readl(SPM_SEMA_AP) & KEY_HOLE) == KEY_HOLE);
 	if (key == lock) {
-		DDPMSG("%s, skip set sema:\n", __func__);
+		DDPINFO("%s, skip %s sema\n", __func__, lock ? "get" : "put");
 		mutex_unlock(&spm_sema_lock);
 		return 1;
 	}
@@ -398,12 +398,13 @@ int mtk_aod_scp_set_semaphore(bool lock)
 		} while (readl(SPM_SEMA_AP) & KEY_HOLE);
 	}
 
-	DDPMSG("%s, sema: 0x%x\n", __func__, readl(SPM_SEMA_AP));
-
 	mutex_unlock(&spm_sema_lock);
-
 	return 1;
+
 fail:
+	DDPPR_ERR("%s: %s sema:0x%lx/0x%lx fail(0x%x), retry:%d\n",
+		__func__, lock ? "get" : "put", (unsigned long)SPM_SEMA_AP,
+		(unsigned long)SPM_SEMA_SCP, readl(SPM_SEMA_AP), i);
 	return 0;
 }
 
@@ -413,19 +414,19 @@ int mtk_aod_scp_set_semaphore_noirq(bool lock)
 	bool key = false;
 	void __iomem *SPM_SEMA_AP = NULL, *SPM_SEMA_SCP = NULL;
 
-	if (!spm_base)
+	if (!spm_base) {
+		DDPPR_ERR("%s, invalid spm base\n", __func__);
 		goto fail;
+	}
 
 	SPM_SEMA_AP = spm_base + OFST_M6_AP;
 	SPM_SEMA_SCP = spm_base + OFST_M2_SCP;
 
 	//mutex_lock(&spm_sema_lock);
 
-	//DDPMSG("%s, sema: 0x%x, lock = %d\n", __func__, readl(SPM_SEMA_AP), lock);
-
 	key = ((readl(SPM_SEMA_AP) & KEY_HOLE) == KEY_HOLE);
 	if (key == lock) {
-		//DDPMSG("%s, skip set sema:\n", __func__);
+		DDPINFO("%s, skip %s sema\n", __func__, lock ? "get" : "put");
 		//mutex_unlock(&spm_sema_lock);
 		return 1;
 	}
@@ -452,7 +453,9 @@ int mtk_aod_scp_set_semaphore_noirq(bool lock)
 
 	return 1;
 fail:
-	DDPMSG("%s: get sema fail(0x%x)\n", __func__, readl(SPM_SEMA_AP));
+	DDPPR_ERR("%s: %s sema:0x%lx/0x%lx fail(0x%x), retry:%d\n",
+		__func__, lock ? "get" : "put", (unsigned long)SPM_SEMA_AP,
+		(unsigned long)SPM_SEMA_SCP, readl(SPM_SEMA_AP), i);
 	return 0;
 }
 
@@ -476,8 +479,6 @@ int mtk_aod_scp_ipi_send(int value)
 	unsigned int retry_cnt = 0;
 	int ret;
 
-	DDPMSG("%s+\n", __func__);
-
 	for (retry_cnt = 0; retry_cnt <= 10; retry_cnt++) {
 		ret = mtk_ipi_send(&scp_ipidev, IPI_OUT_SCP_AOD,
 					0, &aod_scp_send_data, 1, 0);
@@ -490,8 +491,6 @@ int mtk_aod_scp_ipi_send(int value)
 
 	if (ret != IPI_ACTION_DONE)
 		DDPMSG("%s ipi send msg fail:%d\n", __func__, ret);
-
-	DDPMSG("%s-\n", __func__);
 
 	return ret;
 }
@@ -507,8 +506,6 @@ static int mtk_aod_scp_ipi_register(void)
 {
 	int ret;
 
-	DDPMSG("%s+\n", __func__);
-
 	ret = mtk_ipi_register(&scp_ipidev, IPI_IN_SCP_AOD,
 			(void *)mtk_aod_scp_recv_handler, NULL, &aod_scp_msg);
 
@@ -516,8 +513,6 @@ static int mtk_aod_scp_ipi_register(void)
 		DDPMSG("%s resigter ipi fail: %d\n", __func__, ret);
 	else
 		DDPMSG("%s register ipi done\n", __func__);
-
-	DDPMSG("%s-\n", __func__);
 
 	return ret;
 }
@@ -553,14 +548,16 @@ static int mtk_aod_scp_probe(struct platform_device *pdev)
 		if (smp_node) {
 			spm_pdev = of_find_device_by_node(smp_node);
 			of_node_put(smp_node);
-			if (!spm_pdev)
+			if (!spm_pdev) {
+				DDPPR_ERR("%s: invalid spm device\n", __func__);
 				return 0;
+			}
 
 			res = platform_get_resource(spm_pdev, IORESOURCE_MEM, 0);
 
 			spm_base = devm_ioremap(&spm_pdev->dev, res->start, resource_size(res));
 			if (unlikely(!spm_base)) {
-				DDPMSG("%s: fail to ioremap SPM: 0x%llx", __func__, res->start);
+				DDPPR_ERR("%s: fail to ioremap SPM: 0x%llx", __func__, res->start);
 				return 0;
 			}
 		}
@@ -616,9 +613,9 @@ static int mtk_aod_scp_probe(struct platform_device *pdev)
 
 		mtk_request_slb_buffer();
 
-		DDPMSG("w/ mtk_aod_scp_ipi_register\n");
+		DDPMSG("%s: w/ mtk_aod_scp_ipi_register\n", __func__);
 	}	else
-		DDPMSG("w/o mtk_aod_scp_ipi_register\n");
+		DDPMSG("%s: w/o mtk_aod_scp_ipi_register\n", __func__);
 
 	DDPMSG("%s-\n", __func__);
 
@@ -648,7 +645,8 @@ static int aod_scp_suspend_noirq(struct device *dev)
 
 static int aod_scp_resume_noirq(struct device *dev)
 {
-	mtk_aod_scp_set_semaphore_noirq(1);
+	if (mtk_aod_scp_set_semaphore_noirq(1) == 0)
+		DDPAEE("[AOD]:failed to get semaphore\n");
 	return 0;
 }
 
@@ -676,20 +674,17 @@ struct platform_driver mtk_aod_scp_driver = {
 
 static int __init mtk_aod_scp_init(void)
 {
-	DDPMSG("%s+\n", __func__);
+	int ret = 0;
 
-	platform_driver_register(&mtk_aod_scp_driver);
-
-	DDPMSG("%s-\n", __func__);
+	ret = platform_driver_register(&mtk_aod_scp_driver);
+	if (ret < 0)
+		DDPPR_ERR("Failed to register aod driver: %d\n", ret);
 
 	return 0;
 }
 
 static void __exit mtk_aod_scp_exit(void)
 {
-	DDPMSG("%s+\n", __func__);
-
-	DDPMSG("%s-\n", __func__);
 }
 
 module_init(mtk_aod_scp_init);
