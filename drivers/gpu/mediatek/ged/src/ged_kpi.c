@@ -169,7 +169,7 @@ struct GED_KPI {
 	unsigned long long ullTimeStampD;   // dequeue timestamp
 	unsigned long long ullTimeStamp1;   // queue timestamp
 	unsigned long long ullTimeStamp2;   // acquire fence signaled timestamp
-	unsigned long long ullTimeStampP;   // (X) release fence signaled timestamp
+	unsigned long long ullTimeStampP;   // release fence signaled timestamp
 	unsigned long long ullTimeStampS;   // (* set to queue) acquire timestamp
 	unsigned long long ullTimeStampH;   // (X) HWVSYNC timestamp
 	unsigned int gpu_freq; /* in MHz*/
@@ -1307,7 +1307,8 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		// default GPU completion start time is queue
 		ullTimeStampTemp = psKPI->ullTimeStamp1;
 		// release fence is signaled after queue
-		if (psKPI->ullTimeStampP > ullTimeStampTemp)
+		if (g_ged_pre_fence_chk == 1 &&
+			psKPI->ullTimeStampP > ullTimeStampTemp)
 			ullTimeStampTemp = psKPI->ullTimeStampP;
 		// previous frame's acquire fence is signaled after queue and release
 		if (psHead->last_TimeStamp2 > ullTimeStampTemp)
@@ -1479,17 +1480,16 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 
 		if (psKPI) {
 			long long pre_fence_delay;
-
 			pre_fence_delay = psTimeStamp->ullTimeStamp - psKPI->ullTimeStamp1;
-			trace_tracing_mark_write(psTimeStamp->pid, "t_pre_fence_delay",
-				pre_fence_delay);
 			psKPI->ulMask |= GED_TIMESTAMP_TYPE_P;
 			psKPI->ullTimeStampP = psTimeStamp->ullTimeStamp;
+			/* show prefence time */
+			trace_tracing_mark_write(5566, "t_pre_fence_delay", pre_fence_delay);
 		} else {
-			trace_tracing_mark_write(psTimeStamp->pid, "t_pre_fence_delay", 0);
 			GED_LOGD("[Exception] TYPE_P: psKPI NULL, frameID: %lu",
 				psTimeStamp->i32FrameID);
-			}
+		}
+
 		break;
 
 	/* acquire buffer scope (deprecated) */
@@ -1815,7 +1815,7 @@ GED_ERROR ged_kpi_dequeue_buffer_ts(int pid, u64 ullWdnd, int i32FrameID,
 					int fence_fd, int isSF)
 {
 #ifdef MTK_GED_KPI
-	int ret;
+	int ret = GED_OK;
 
 #if defined(MTK_GPU_BM_2)
 	mtk_bandwidth_check_SF(pid, isSF);

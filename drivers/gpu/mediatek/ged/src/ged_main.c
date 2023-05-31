@@ -144,6 +144,7 @@ unsigned int g_ged_adaptive_power_policy_support;
 unsigned int g_ged_frame_base_optimize;
 unsigned long g_desire_freq;
 unsigned long g_desire_freq_stack, g_desire_freq_top;
+unsigned int g_ged_pre_fence_chk;
 
 
 /******************************************************************************
@@ -602,6 +603,8 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 	g_ged_gpu_freq_notify_support = 0;
 	g_fastdvfs_mode		= 0;
 	g_fastdvfs_margin   = 0;
+	g_ged_pre_fence_chk = 0;
+
 	err = check_eb_config();
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE("Failed to check ged config!\n");

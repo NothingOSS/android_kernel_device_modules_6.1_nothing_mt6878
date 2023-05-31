@@ -535,6 +535,43 @@ static KOBJ_ATTR_RW(frame_base_optimize);
 
 //-----------------------------------------------------------------------------
 
+static ssize_t pre_fence_chk_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	unsigned int ui32FastDVFSMode;
+	int pos = 0;
+	int length;
+
+	length = scnprintf(buf + pos, PAGE_SIZE - pos,
+				"%d\n", g_ged_pre_fence_chk);
+
+	pos += length;
+
+	return pos;
+}
+
+static ssize_t pre_fence_chk_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				g_ged_pre_fence_chk = i32Value;
+		}
+	}
+
+	return count;
+
+}
+static KOBJ_ATTR_RW(pre_fence_chk);
+
+//-----------------------------------------------------------------------------
+
 static struct notifier_block ged_fb_notifier;
 
 static int ged_fb_notifier_callback(struct notifier_block *self,
@@ -1295,6 +1332,13 @@ GED_ERROR ged_hal_init(void)
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE(
 			"Failed to create frame_base_optimize entry!\n");
+		goto ERROR;
+	}
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_pre_fence_chk);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE(
+			"Failed to create pre_fence_chk entry!\n");
 		goto ERROR;
 	}
 
