@@ -3,6 +3,7 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 #include <linux/kernel.h>
+#include <linux/sched/clock.h>
 
 #include "uarthub_drv_core.h"
 #include "uarthub_drv_export.h"
@@ -739,6 +740,7 @@ int uarthub_core_sync_uarthub_irq_sta(int delay_us)
 	int err_type = 0;
 	int err_index = 0;
 	int err_total = 0;
+	unsigned long err_ts, rem_nsec;
 
 	if (!g_plat_ic_ut_test_ops) {
 		pr_notice("[%s] g_plat_ic_ut_test_ops is NULL\n", __func__);
@@ -758,7 +760,11 @@ int uarthub_core_sync_uarthub_irq_sta(int delay_us)
 
 	dev0_irq_sta = g_plat_ic_ut_test_ops->uarthub_plat_get_host_irq_sta(0);
 	err_type = (dev0_irq_sta & BIT_0x7FFF_FFFF);
-	pr_info("[%s] err_type=[0x%x]\n", __func__, err_type);
+	err_ts = sched_clock();
+	rem_nsec = do_div(err_ts, 1000000000);
+
+	pr_info("[%s] err_type=[0x%x] err_time=[%5lu.%06lu]\n",
+		__func__, err_type, err_ts, (rem_nsec/1000));
 	err_total = 0;
 	for (id = 0; id < irq_err_type_max; id++) {
 		if (((err_type >> id) & 0x1) == 0x1)

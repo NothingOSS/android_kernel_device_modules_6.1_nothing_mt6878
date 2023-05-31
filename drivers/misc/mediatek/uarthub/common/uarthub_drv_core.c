@@ -19,6 +19,7 @@
 #include <linux/cdev.h>
 #include <linux/clk.h>
 #include <linux/regmap.h>
+#include <linux/sched/clock.h>
 
 /*device tree mode*/
 #if IS_ENABLED(CONFIG_OF)
@@ -334,6 +335,7 @@ static int uarthub_fb_notifier_callback(struct notifier_block *nb, unsigned long
 static irqreturn_t uarthub_irq_isr(int irq, void *arg)
 {
 	int err_type = -1;
+	unsigned long err_ts;
 
 	if (uarthub_core_is_apb_bus_clk_enable() == 0)
 		return IRQ_HANDLED;
@@ -350,8 +352,9 @@ static irqreturn_t uarthub_irq_isr(int irq, void *arg)
 		return IRQ_HANDLED;
 
 	err_type = uarthub_core_check_irq_err_type();
+	err_ts = sched_clock();
 	if (err_type > 0) {
-		uarthub_core_set_trigger_uarthub_error_worker(err_type);
+		uarthub_core_set_trigger_uarthub_error_worker(err_type, err_ts);
 	} else {
 		/* clear irq */
 		g_plat_ic_core_ops->uarthub_plat_irq_clear_ctrl(BIT_0xFFFF_FFFF);
@@ -1333,9 +1336,10 @@ int uarthub_core_config_external_baud_rate(int rate_index)
 		rate_index);
 }
 
-void uarthub_core_set_trigger_uarthub_error_worker(int err_type)
+void uarthub_core_set_trigger_uarthub_error_worker(int err_type, unsigned long err_ts)
 {
 	uarthub_assert_ctrl.err_type = err_type;
+	uarthub_assert_ctrl.err_ts = err_ts;
 	queue_work(uarthub_workqueue, &uarthub_assert_ctrl.trigger_assert_work);
 }
 
@@ -1343,6 +1347,8 @@ static void trigger_uarthub_error_worker_handler(struct work_struct *work)
 {
 	struct assert_ctrl *queue = container_of(work, struct assert_ctrl, trigger_assert_work);
 	int err_type = (int) queue->err_type;
+	unsigned long err_ts = (unsigned long) queue->err_ts;
+	unsigned long rem_nsec;
 	int id = 0;
 	int err_total = 0;
 	int err_index = 0;
@@ -1371,8 +1377,10 @@ static void trigger_uarthub_error_worker_handler(struct work_struct *work)
 
 	tv_end_assert = tv_now_assert;
 	tv_end_assert.tv_sec += 1;
+	rem_nsec = do_div(err_ts, 1000000000);
 
-	pr_info("[%s] err_type=[0x%x]\n", __func__, err_type);
+	pr_info("[%s] err_type=[0x%x] err_time=[%5lu.%06lu]\n",
+		__func__, err_type, err_ts, (rem_nsec/1000));
 	err_total = 0;
 	for (id = 0; id < irq_err_type_max; id++) {
 		if (((err_type >> id) & 0x1) == 0x1)

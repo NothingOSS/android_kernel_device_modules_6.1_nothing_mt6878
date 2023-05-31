@@ -43,6 +43,7 @@ struct uarthub_reg_base_addr {
 
 struct assert_ctrl {
 	int err_type;
+	unsigned long err_ts;
 	struct work_struct trigger_assert_work;
 };
 
@@ -334,7 +335,7 @@ int uarthub_core_rx_error_crc_info(int dev_index, int *p_crc_error_data, int *p_
 int uarthub_core_timeout_info(int dev_index, int rx, int *p_timeout_counter, int *p_pkt_counter);
 int uarthub_core_config_baud_rate(void __iomem *uarthub_dev_base, int rate_index);
 int uarthub_core_reset_to_ap_enable_only(int ap_only);
-void uarthub_core_set_trigger_uarthub_error_worker(int err_type);
+void uarthub_core_set_trigger_uarthub_error_worker(int err_type, unsigned long err_ts);
 int uarthub_core_is_apb_bus_clk_enable(void);
 int uarthub_core_is_uarthub_clk_enable(void);
 int uarthub_core_debug_apdma_uart_info(const char *tag);
