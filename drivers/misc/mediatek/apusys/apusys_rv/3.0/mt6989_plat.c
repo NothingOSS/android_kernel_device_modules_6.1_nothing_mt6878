@@ -284,13 +284,12 @@ static void apu_start_mp(struct mtk_apu *apu)
 		iowrite32(0x0, apu->apu_ao_ctl + MD32_RUNSTALL);
 		spin_unlock_irqrestore(&apu->reg_lock, flags);
 
-		if ((apu->platdata->flags & F_SECURE_BOOT) == 0)
-			for (i = 0; i < 20; i++) {
-				dev_info(dev, "apu boot: pc=%08x, sp=%08x\n",
-				ioread32(apu->md32_sysctrl + 0x838),
-						ioread32(apu->md32_sysctrl+0x840));
-				usleep_range(0, 20);
-			}
+		for (i = 0; i < 20; i++) {
+			dev_info(dev, "apu boot: pc=%08x, sp=%08x\n",
+			ioread32(apu->md32_sysctrl + 0x838),
+				ioread32(apu->md32_sysctrl+0x840));
+			usleep_range(0, 20);
+		}
 	}
 }
 
@@ -1000,7 +999,8 @@ static int mt6989_rproc_exit(struct mtk_apu *apu)
 const struct mtk_apu_platdata mt6989_platdata = {
 	.flags		= F_AUTO_BOOT | F_FAST_ON_OFF | F_APU_IPI_UT_SUPPORT |
 					F_TCM_WA | F_SMMU_SUPPORT | F_DEBUG_LOG_ON |
-					F_APUSYS_RV_TAG_SUPPORT | F_PRELOAD_FIRMWARE,
+					F_APUSYS_RV_TAG_SUPPORT | F_PRELOAD_FIRMWARE |
+					F_SECURE_BOOT | F_SECURE_COREDUMP,
 	.ops		= {
 		.init	= mt6989_rproc_init,
 		.exit	= mt6989_rproc_exit,
