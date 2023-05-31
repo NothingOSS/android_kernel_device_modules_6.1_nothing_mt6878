@@ -607,6 +607,14 @@ arm64.nopauth arm64.nosme arm64.nosve";
 	};
 };
 
+&wifi {
+	flavor-bin = "dx3";
+};
+
+&bt {
+	flavor-bin = "dx3";
+};
+
 #include <k6989v1_64/cust.dtsi>
 #include "mediatek/cust_k6989_connfem.dtsi"
 #include "mediatek/cust_mt6989_touch_1080x2400_mult.dtsi"
