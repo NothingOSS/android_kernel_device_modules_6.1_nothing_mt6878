@@ -2,7 +2,6 @@
 /*
  * Copyright (c) 2019 MediaTek Inc.
  */
-
 #include <linux/semaphore.h>
 #include <linux/time.h>
 #include <linux/jiffies.h>
@@ -221,6 +220,7 @@ struct GED_KPI_GPU_TS {
 	unsigned long i32FrameID;
 	struct dma_fence_cb sSyncWaiter;
 	struct dma_fence *psSyncFence;
+	struct work_struct sWork;
 } GED_KPI_GPU_TS;
 
 struct GED_KPI_MEOW_DVFS_FREQ_PRED {
@@ -251,6 +251,8 @@ static int target_fps_4_main_head = 60;
 static long long vsync_period = GED_KPI_SEC_DIVIDER / GED_KPI_MAX_FPS;
 static GED_LOG_BUF_HANDLE ghLogBuf_KPI;
 static struct workqueue_struct *g_psWorkQueue;
+static struct workqueue_struct *g_FenceWorkQueue;
+
 static GED_HASHTABLE_HANDLE gs_hashtable;
 
 static spinlock_t gs_hashtableLock;
@@ -1726,7 +1728,24 @@ static GED_ERROR ged_kpi_timeS(int pid, u64 ullWdnd, int i32FrameID)
 		ullWdnd, i32FrameID, -1, -1, NULL);
 }
 /* ------------------------------------------------------------------- */
+/* To prevent deadlock from fence_signal_lock when fence refcount
+ * might be decreased to 0 in our fence callback function,
+ * we decrease refcount by creating a new workqueue job.
+ */
+static void ged_kpi_fence_put_cb(struct work_struct *psWork)
+{
+	struct GED_KPI_GPU_TS *psMonitor;
+
+	psMonitor =
+	GED_CONTAINER_OF(psWork, struct GED_KPI_GPU_TS, sWork);
+
+	if (psMonitor != NULL) {
+		dma_fence_put(psMonitor->psSyncFence);
+		ged_free(psMonitor, sizeof(struct GED_KPI_GPU_TS));
+	}
+}
 static
+/* ------------------------------------------------------------------- */
 void ged_kpi_pre_fence_sync_cb(struct dma_fence *sFence,
 	struct dma_fence_cb *waiter)
 {
@@ -1738,8 +1757,8 @@ void ged_kpi_pre_fence_sync_cb(struct dma_fence *sFence,
 	ged_kpi_timeP(psMonitor->pid, psMonitor->ullWdnd,
 		psMonitor->i32FrameID);
 
-	dma_fence_put(psMonitor->psSyncFence);
-	ged_free(psMonitor, sizeof(struct GED_KPI_GPU_TS));
+	INIT_WORK(&psMonitor->sWork, ged_kpi_fence_put_cb);
+	queue_work(g_FenceWorkQueue, &psMonitor->sWork);
 }
 /* ------------------------------------------------------------------- */
 static
@@ -1766,8 +1785,8 @@ void ged_kpi_gpu_3d_fence_sync_cb(struct dma_fence *sFence,
 	ged_kpi_time2(psMonitor->pid, psMonitor->ullWdnd,
 		psMonitor->i32FrameID);
 
-	dma_fence_put(psMonitor->psSyncFence);
-	ged_free(psMonitor, sizeof(struct GED_KPI_GPU_TS));
+	INIT_WORK(&psMonitor->sWork, ged_kpi_fence_put_cb);
+	queue_work(g_FenceWorkQueue, &psMonitor->sWork);
 }
 #endif /* MTK_GED_KPI */
 /* ------------------------------------------------------------------- */
@@ -1802,19 +1821,21 @@ GED_ERROR ged_kpi_dequeue_buffer_ts(int pid, u64 ullWdnd, int i32FrameID,
 	mtk_bandwidth_check_SF(pid, isSF);
 #endif /* MTK_GPU_BM_2 */
 
-	/* For kernel 5.4, pre_fence_sync_cb will cause deadlock
-	 * due to refcount = 0 after calling dma_fence_put().
-	 * We remove this fence callback usage since linux community
-	 * claimed the clients need to main fence_fd lifecyle
-	 * themselves, while shouldn't be implemented in our kernel module
-	 * Regarding the feature, "ged_kpi_timeP" refer to the feature
-	 * "pre_fence_delay" and could be replaced by
-	 * "wait for HWC release" in systrace provides by AOSP
-	 */
-	/* psSyncFence = sync_file_get_fence(fence_fd); */
+	struct GED_KPI_GPU_TS *psMonitor;
+	struct dma_fence *psSyncFence;
+
+	psSyncFence = sync_file_get_fence(fence_fd);
+
+	psMonitor =
+	(struct GED_KPI_GPU_TS *)ged_alloc(sizeof(struct GED_KPI_GPU_TS));
+
+	if (!psMonitor) {
+		pr_info("[GED_KPI]: GED_ERROR_OOM in %s\n",
+			__func__);
+		return GED_ERROR_OOM;
+	}
 
 	ged_kpi_timeD(pid, ullWdnd, i32FrameID, isSF);
-	ret = ged_kpi_timeP(pid, ullWdnd, i32FrameID);
 
 	if (isSF == -1 && pid != pid_sysui)
 		pid_sysui = pid;
@@ -1822,6 +1843,24 @@ GED_ERROR ged_kpi_dequeue_buffer_ts(int pid, u64 ullWdnd, int i32FrameID,
 	if (isSF == 1 && pid != pid_sf)
 		pid_sf = pid;
 
+	psMonitor->psSyncFence = psSyncFence;
+	psMonitor->pid = pid;
+	psMonitor->ullWdnd = ullWdnd;
+	psMonitor->i32FrameID = i32FrameID;
+
+	if (psMonitor->psSyncFence == NULL) {
+		ged_free(psMonitor, sizeof(struct GED_KPI_GPU_TS));
+		ret = ged_kpi_timeP(pid, ullWdnd, i32FrameID);
+	} else {
+		ret = dma_fence_add_callback(psMonitor->psSyncFence,
+			&psMonitor->sSyncWaiter, ged_kpi_pre_fence_sync_cb);
+
+		if (ret < 0) {
+			dma_fence_put(psMonitor->psSyncFence);
+			ged_free(psMonitor, sizeof(struct GED_KPI_GPU_TS));
+			ret = ged_kpi_timeP(pid, ullWdnd, i32FrameID);
+		}
+	}
 	return ret;
 #else
 	return GED_OK;
@@ -2111,7 +2150,10 @@ GED_ERROR ged_kpi_system_init(void)
 	g_psWorkQueue =
 		alloc_ordered_workqueue("ged_kpi",
 			WQ_FREEZABLE | WQ_MEM_RECLAIM);
-	if (g_psWorkQueue) {
+	g_FenceWorkQueue =
+		alloc_ordered_workqueue("ged_fence",
+			WQ_FREEZABLE | WQ_MEM_RECLAIM);
+	if (g_psWorkQueue && g_FenceWorkQueue) {
 		int i;
 
 		memset(g_asKPI, 0, sizeof(g_asKPI));
@@ -2141,6 +2183,7 @@ void ged_kpi_system_exit(void)
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_unregister_fps_chg_callback(ged_dfrc_fps_limit_cb);
 #endif
+	destroy_workqueue(g_FenceWorkQueue);
 	ged_thread_destroy(ghThread);
 #ifndef GED_BUFFER_LOG_DISABLE
 	ged_log_buf_free(ghLogBuf_KPI);
