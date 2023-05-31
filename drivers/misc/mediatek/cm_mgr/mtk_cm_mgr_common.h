@@ -85,7 +85,6 @@ extern int cm_mgr_common_init(void);
 extern void cm_mgr_common_exit(void);
 
 extern int cm_mgr_get_enable(void);
-extern void cm_mgr_set_enable(int enable);
 extern void cm_mgr_set_pdev(struct platform_device *pdev);
 extern int cm_mgr_get_num_array(void);
 extern void cm_mgr_set_num_array(int num);
@@ -114,5 +113,9 @@ extern void cm_mgr_unregister_hook(struct cm_mgr_hook *hook);
 extern void cm_mgr_set_dram_opp_ceiling(int opp);
 extern void cm_mgr_set_dram_opp_floor(int opp);
 extern int cm_mgr_get_latency_awareness_model_info(unsigned int *buf);
+extern void cm_mgr_set_perf_mode_enable(int enable);
+extern int cm_mgr_get_perf_mode_enable(void);
+extern void cm_mgr_set_perf_mode_ceiling_opp(int opp);
+extern int cm_mgr_get_perf_mode_ceiling_opp(void);
 
 #endif /* __MTK_CM_MGR_H__ */

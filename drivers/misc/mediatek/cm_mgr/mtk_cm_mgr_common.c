@@ -101,6 +101,8 @@ static int light_load_cps = 1000;
 
 static unsigned int cm_hint;
 static unsigned int cm_mgr_sspm_version;
+static unsigned int cm_perf_mode_enable;
+static unsigned int cm_perf_mode_ceiling_opp;
 static unsigned int *cpu_power_ratio_down;
 static unsigned int *cpu_power_ratio_up;
 static unsigned int *vcore_power_ratio_down;
@@ -143,12 +145,6 @@ int cm_mgr_get_enable(void)
 	return cm_mgr_enable;
 }
 EXPORT_SYMBOL_GPL(cm_mgr_get_enable);
-
-void cm_mgr_set_enable(int enable)
-{
-	cm_mgr_enable = enable;
-}
-EXPORT_SYMBOL_GPL(cm_mgr_set_enable);
 
 int get_cm_step_num(void)
 {
@@ -296,6 +292,30 @@ void cm_mgr_perf_set_status(int enable)
 		hk.cm_mgr_perf_set_status(enable);
 }
 EXPORT_SYMBOL_GPL(cm_mgr_perf_set_status);
+
+void cm_mgr_set_perf_mode_enable(int enable)
+{
+	cm_perf_mode_enable = enable;
+}
+EXPORT_SYMBOL_GPL(cm_mgr_set_perf_mode_enable);
+
+int cm_mgr_get_perf_mode_enable(void)
+{
+	return cm_perf_mode_enable;
+}
+EXPORT_SYMBOL_GPL(cm_mgr_get_perf_mode_enable);
+
+void cm_mgr_set_perf_mode_ceiling_opp(int opp)
+{
+	cm_perf_mode_ceiling_opp = opp;
+}
+EXPORT_SYMBOL_GPL(cm_mgr_set_perf_mode_ceiling_opp);
+
+int cm_mgr_get_perf_mode_ceiling_opp(void)
+{
+	return cm_perf_mode_ceiling_opp;
+}
+EXPORT_SYMBOL_GPL(cm_mgr_get_perf_mode_ceiling_opp);
 
 void cm_mgr_register_hook(struct cm_mgr_hook *hook)
 {
@@ -512,6 +532,10 @@ static ssize_t dbg_cm_mgr_show(struct kobject *kobj,
 	}
 	len += cm_mgr_print("cm_dbg_info %d\n", cm_dbg_info);
 	len += cm_mgr_print("cm_passive %d\n", cm_passive);
+	len += cm_mgr_print("cm_perf_mode_enable %d\n",
+		    cm_mgr_get_perf_mode_enable());
+	len += cm_mgr_print("cm_perf_mode_ceiling_opp %d\n",
+		    cm_mgr_get_perf_mode_ceiling_opp());
 	len += cm_mgr_print("cpu_power_ratio_up");
 	for (i = 0; i < cm_mgr_num_array; i++)
 		len += cm_mgr_print(" %d", cpu_power_ratio_up[i]);
@@ -724,6 +748,7 @@ static ssize_t dbg_cm_mgr_store(struct kobject *kobj,
 	} else if (!strcmp(cmd, "cm_mgr_cpu_map_dram_enable")) {
 		cm_mgr_cpu_map_dram_enable = !!val_1;
 		cm_mgr_disable_fb = !val_1;
+		cm_mgr_to_sspm_command(IPI_CM_MGR_CPU_MAP_DRAM_ENABLE, val_1);
 	} else if (!strcmp(cmd, "cm_mgr_cpu_map_skip_cpu_opp")) {
 		cm_mgr_cpu_map_skip_cpu_opp = val_1;
 		cm_mgr_cpu_map_update_table();
@@ -757,9 +782,18 @@ static ssize_t dbg_cm_mgr_store(struct kobject *kobj,
 	} else if (!strcmp(cmd, "cm_mgr_dram_opp_floor")) {
 		cm_mgr_dram_opp_floor = val_1;
 		cm_mgr_to_sspm_command(IPI_CM_MGR_DRAM_OPP_FLOOR, val_1);
+	} else if (!strcmp(cmd, "cm_perf_mode_enable")) {
+		cm_mgr_set_perf_mode_enable(val_1);
+		cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_ENABLE, val_1);
+	} else if (!strcmp(cmd, "cm_perf_mode_ceiling_opp")) {
+		cm_mgr_set_perf_mode_ceiling_opp(val_1);
+		cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_CEILING_OPP, val_1);
 #endif
 	} else if (!strcmp(cmd, "cm_dbg_info")) {
 		cm_dbg_info = val_1;
+	} else if (!strcmp(cmd, "cm_test_fpsgo_perf_hint")) {
+		if (hk.cm_mgr_perf_set_status)
+			hk.cm_mgr_perf_set_status(val_1);
 	}
 
 out:

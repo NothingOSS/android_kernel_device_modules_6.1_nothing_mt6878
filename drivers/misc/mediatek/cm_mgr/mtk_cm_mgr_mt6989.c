@@ -330,6 +330,29 @@ static int cm_mgr_check_dts_setting_mt6989(struct platform_device *pdev)
 	} else
 		cm_mgr_set_bw_path(bw_path);
 
+	ret = of_property_read_u32(node, "cm-perf-mode-enable", &temp);
+	if (ret) {
+		pr_info("%s(%d): fail to get cm_perf_mode_enable from dts. ret %d\n",
+			__func__, __LINE__, ret);
+		goto ERROR;
+	} else {
+		cm_mgr_set_perf_mode_enable(temp);
+		pr_info("%s(%d): cm_perf_mode_enable %d\n", __func__, __LINE__,
+			cm_mgr_get_perf_mode_enable());
+	}
+
+	ret = of_property_read_u32(node, "cm-perf-mode-ceiling-opp", &temp);
+	if (ret) {
+		pr_info("%s(%d): fail to get cm_perf_mode_ceiling_opp from dts. ret %d\n",
+			__func__, __LINE__, ret);
+		goto ERROR;
+	} else {
+		cm_mgr_set_perf_mode_ceiling_opp(temp);
+		pr_info("%s(%d): cm_perf_mode_ceiling_opp %d\n", __func__, __LINE__,
+			cm_mgr_get_perf_mode_ceiling_opp());
+	}
+
+
 	return 0;
 
 ERROR:
@@ -389,6 +412,8 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 
 	cm_mgr_get_sspm_version();
 
+	cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_ENABLE, cm_mgr_get_perf_mode_enable());
+	cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_CEILING_OPP, cm_mgr_get_perf_mode_ceiling_opp());
 	cm_mgr_to_sspm_command(IPI_CM_MGR_ENABLE, cm_mgr_get_enable());
 
 	pr_info("%s(%d): platform-cm_mgr_probe Done.\n", __func__, __LINE__);
