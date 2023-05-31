@@ -15429,7 +15429,7 @@ static int mtk_ddp_mout_en_MT6989(const struct mtk_mmsys_reg_data *data,
 		value = MT6989_DISP_DLI_RELAY0_TO_RSZ0;
 		if (MT6989_CHIST_PATH_CONNECT & DISP_CHIST_BEFORE_PQ)
 			value |= MT6989_DISP_DLI_RELAY0_TO_PQ_OUT_CROSSBAR4;
-	} else if ((cur == DDP_COMPONENT_MDP_RDMA0 &&
+	} else if ((cur == DDP_COMPONENT_Y2R0 &&
 		next == DDP_COMPONENT_PQ0_OUT_CB7)){
 		/* discrete PQ_IN_CROSSBAR */
 		*addr = MT6989_PQ_IN_CROSSBAR8_MOUT_EN;
@@ -15533,6 +15533,11 @@ static int mtk_ddp_mout_en_MT6989(const struct mtk_mmsys_reg_data *data,
 		/* discrete COMP_OUT_CROSSBAR */
 		*addr = MT6989_COMP_OUT_CROSSBAR8_MOUT_EN;
 		value = MT6989_DISP_COMP_IN_CROSSBAR11_TO_MERGE_OUT_CROSSBAR5;
+	} else if ((cur == DDP_COMPONENT_COMP0_OUT_CB8 &&
+		next == DDP_COMPONENT_MERGE0_OUT_CB4)) {
+		/* discrete COMP_OUT_CROSSBAR */
+		*addr = MT6989_COMP_OUT_CROSSBAR8_MOUT_EN;
+		value = MT6989_DISP_COMP_IN_CROSSBAR11_TO_MERGE_OUT_CROSSBAR4;
 	} else if ((cur == DDP_COMPONENT_COMP0_OUT_CB6 &&
 		next == DDP_COMPONENT_MERGE0_OUT_CB2)) {
 		/* dsi1 COMP_OUT_CROSSBAR */
@@ -15548,6 +15553,16 @@ static int mtk_ddp_mout_en_MT6989(const struct mtk_mmsys_reg_data *data,
 		/* discrete MERGE_OUT_CROSSBAR */
 		*addr = MT6989_MERGE_OUT_CROSSBAR5_MOUT_EN;
 		value = MT6989_DISP_COMP_OUT_CROSSBAR5_TO_DSI2_0;
+	} else if ((cur == DDP_COMPONENT_MERGE0_OUT_CB5 &&
+		next == DDP_COMPONENT_DSI1)) {
+		/* discrete MERGE_OUT_CROSSBAR */
+		*addr = MT6989_MERGE_OUT_CROSSBAR5_MOUT_EN;
+		value = MT6989_DISP_COMP_OUT_CROSSBAR5_TO_DSI1_0;
+	} else if ((cur == DDP_COMPONENT_MERGE0_OUT_CB4 &&
+		next == DDP_COMPONENT_DSI1)) {
+		/* discrete MERGE_OUT_CROSSBAR */
+		*addr = MT6989_MERGE_OUT_CROSSBAR4_MOUT_EN;
+		value = MT6989_DISP_COMP_OUT_CROSSBAR4_TO_DSI1_0;
 	} else if ((cur == DDP_COMPONENT_MERGE0_OUT_CB2 &&
 		next == DDP_COMPONENT_DSI1)) {
 		/* dsi1 MERGE_OUT_CROSSBAR */

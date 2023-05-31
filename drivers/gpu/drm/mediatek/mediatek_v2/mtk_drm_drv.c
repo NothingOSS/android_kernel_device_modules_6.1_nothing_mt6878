@@ -2882,15 +2882,15 @@ static const enum mtk_ddp_comp_id mt6989_mtk_ddp_secondary[] = {
 
 static const enum mtk_ddp_comp_id mt6989_mtk_ddp_discrete_chip[] = {
 	DDP_COMPONENT_MDP_RDMA0,
-//	DDP_COMPONENT_Y2R0,
+	DDP_COMPONENT_Y2R0,
 	DDP_COMPONENT_PQ0_OUT_CB7,
 	DDP_COMPONENT_PANEL0_COMP_OUT_CB4,
 	DDP_COMPONENT_DLO_ASYNC4,
 	DDP_COMPONENT_DLI_ASYNC12,
 	DDP_COMPONENT_COMP0_IN_CB8,
 	DDP_COMPONENT_COMP0_OUT_CB8,
-	DDP_COMPONENT_MERGE0_OUT_CB5,
-	DDP_COMPONENT_DSI2,
+	DDP_COMPONENT_MERGE0_OUT_CB4,
+	DDP_COMPONENT_DSI1,
 };
 
 static const enum mtk_ddp_comp_id mt6989_mtk_ddp_mem_dp_wo_tdshp[] = {

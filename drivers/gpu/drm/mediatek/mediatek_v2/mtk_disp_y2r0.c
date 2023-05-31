@@ -48,6 +48,7 @@
 struct mtk_disp_y2r {
 	struct mtk_ddp_comp ddp_comp;
 };
+
 void mtk_mt6989_y2r_dump(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
@@ -66,10 +67,12 @@ void mtk_mt6989_y2r_dump(struct mtk_ddp_comp *comp)
 		readl(baddr + 0x024), readl(baddr + 0x028), readl(baddr + 0x02C));
 	DDPDUMP("0x030: 0x%08x\n", readl(baddr + 0x030));
 }
+
 static inline struct mtk_disp_y2r *comp_to_y2r(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_y2r, ddp_comp);
 }
+
 static void mtk_y2r_mt6989_config(struct mtk_drm_crtc *mtk_crtc,
 				 struct mtk_ddp_comp *comp,
 				 union mtk_addon_config *addon_config,
@@ -79,13 +82,6 @@ static void mtk_y2r_mt6989_config(struct mtk_drm_crtc *mtk_crtc,
 
 	DDPINFO("%s + yuv:%d\n", __func__, addon_config->addon_mml_config.is_yuv);
 
-	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-			comp->regs_pa
-			+ MT6989_DISP_REG_DISP_Y2R0_EN, MT6989_Y2R0_EN, MT6989_Y2R0_EN);
-	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-			comp->regs_pa
-			+ MT6989_DISP_REG_DISP_Y2R0_1TNP, MT6989_DISP_1T2P, MT6989_DISP_1T2P);
-
 	if (mtk_crtc->mml_cfg) {
 		int hsize = 0, vsize = 0;
 		int profile = 5;
@@ -94,8 +90,8 @@ static void mtk_y2r_mt6989_config(struct mtk_drm_crtc *mtk_crtc,
 		vsize = mtk_crtc->mml_cfg->dl_out[0].height & 0x1FFF;
 
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-				comp->regs_pa
-				+ MT6989_DISP_REG_DISP_Y2R0_SIZE, ((hsize << 16) | vsize), ~0);
+				comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_SIZE,
+				((hsize << 16) | vsize), ~0);
 
 		/*follow mml output mml_ycbcr_profile*/
 		switch (mtk_crtc->mml_cfg->info.dest[0].data.profile) {
@@ -122,13 +118,21 @@ static void mtk_y2r_mt6989_config(struct mtk_drm_crtc *mtk_crtc,
 	if (!(addon_config->addon_mml_config.is_yuv)) {
 		DDPINFO("relay\n");
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-			comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_CFG, MT6989_DISP_REG_DISP_Y2R0_RELAY_MODE, ~0);
+			comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_CFG,
+			MT6989_DISP_REG_DISP_Y2R0_RELAY_MODE, ~0);
 	} else {
 		disp_y2r_cfg |= ~MT6989_DISP_REG_DISP_Y2R0_RELAY_MODE;
 		DDPINFO("disp_y2r_cfg: 0x%x\n",disp_y2r_cfg);
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 			comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_CFG, disp_y2r_cfg, ~0);
 	}
+
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_1TNP,
+			MT6989_DISP_1T2P, MT6989_DISP_1T2P);
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_EN,
+			MT6989_Y2R0_EN, MT6989_Y2R0_EN);
 
 	DDPINFO("%s -\n", __func__);
 }
@@ -140,9 +144,6 @@ static void mtk_y2r_config(struct mtk_drm_crtc *mtk_crtc,
 {
 	DDPINFO("%s +\n", __func__);
 
-	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-			comp->regs_pa
-			+ DISP_REG_DISP_Y2R0_EN, addon_config->addon_mml_config.is_yuv, ~0);
 	if (mtk_crtc->mml_cfg) {
 		/*follow mml output prefile*/
 		int profile = 5;
@@ -165,11 +166,14 @@ static void mtk_y2r_config(struct mtk_drm_crtc *mtk_crtc,
 				comp->regs_pa + DISP_REG_DISP_Y2R0_CON0, profile, ~0);
 	} else
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-				comp->regs_pa
-				+ DISP_REG_DISP_Y2R0_CON0,
+				comp->regs_pa + DISP_REG_DISP_Y2R0_CON0,
 				DISP_REG_DISP_Y2R0_MATRIX_SEL_FULL_RANGE_BT709_RGB, ~0);
-	DDPINFO("%s -\n", __func__);
 
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			comp->regs_pa + DISP_REG_DISP_Y2R0_EN,
+			addon_config->addon_mml_config.is_yuv, ~0);
+
+	DDPINFO("%s -\n", __func__);
 }
 static void mtk_y2r_addon_config(struct mtk_ddp_comp *comp,
 				 enum mtk_ddp_comp_id prev,
@@ -227,23 +231,43 @@ int mtk_y2r_analysis(struct mtk_ddp_comp *comp)
 
 static void mtk_y2r_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
-	DDPDBG("%s+\n", __func__);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
+
+	priv = mtk_crtc->base.dev->dev_private;
+	DDPDBG("%s, comp->regs_pa=0x%llx\n", __func__, comp->regs_pa);
+	if (priv->data->mmsys_id == MMSYS_MT6989) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_1TNP,
+				MT6989_DISP_1T2P, MT6989_DISP_1T2P);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_EN,
+				MT6989_Y2R0_EN, MT6989_Y2R0_EN);
+	}
 }
 
 static void mtk_y2r_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
-	DDPDBG("%s+\n", __func__);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
+
+	priv = mtk_crtc->base.dev->dev_private;
+	DDPDBG("%s, comp->regs_pa=0x%llx\n", __func__, comp->regs_pa);
+	if (priv->data->mmsys_id == MMSYS_MT6989)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_EN,
+				0, MT6989_Y2R0_EN);
 }
 
 static void mtk_y2r_prepare(struct mtk_ddp_comp *comp)
 {
-	DDPINFO("%s\n", __func__);
+	DDPINFO("%s, comp->regs_pa=0x%llx\n", __func__, comp->regs_pa);
 	mtk_ddp_comp_clk_prepare(comp);
 }
 
 static void mtk_y2r_unprepare(struct mtk_ddp_comp *comp)
 {
-	DDPINFO("%s\n", __func__);
+	DDPINFO("%s, comp->regs_pa=0x%llx\n", __func__, comp->regs_pa);
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 
