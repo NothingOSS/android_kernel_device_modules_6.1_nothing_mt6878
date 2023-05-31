@@ -731,8 +731,9 @@ initcall_debug=1";
 &mali {
 	sleep-mode-enable = <1>;
 	adaptive-power-policy = <1>;
-	default-glb-pwroff-timeout-us = <300>;
+	default-glb-pwroff-timeout-us = <80>;
 	gpu-frame-base-optimize = <1>;
+	autosuspend-delay-ms = <25>;
 };
 
 #include "mediatek/cust_mt6985_camera_v4l2.dtsi"
