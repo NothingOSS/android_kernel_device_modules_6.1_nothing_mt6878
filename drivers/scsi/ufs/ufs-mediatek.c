@@ -866,7 +866,7 @@ static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, stru
 	if (!cmd)
 		return;
 
-	ufs_mtk_btag_send_command(hba, lrbp);
+	ufs_mtk_btag_compl_command(hba, lrbp);
 }
 
 static void ufs_mtk_trace_vh_update_sdev(void *data, struct scsi_device *sdev)
