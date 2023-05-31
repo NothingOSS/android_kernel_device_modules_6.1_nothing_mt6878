@@ -683,9 +683,12 @@ int ged_gpufreq_commit(int oppidx, int commit_type, int *bCommited)
 		freqScaleUpFlag = true;
 
 	/* convert virtual opp to working opp with corresponding core mask */
-	if (oppidx > g_min_working_oppidx) {
+	if (oppidx > g_min_working_oppidx && g_async_ratio_support) {
 		mask_idx = g_avail_mask_num - 1;
 		oppidx_tar = g_min_working_oppidx - (g_min_virtual_oppidx - oppidx);
+	} else if (oppidx > g_min_working_oppidx) {
+		mask_idx = g_avail_mask_num - 1;
+		oppidx_tar = g_min_stack_oppidx;
 	} else {
 		mask_idx = 0;
 		oppidx_tar = oppidx;
@@ -776,9 +779,12 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 		freqScaleUpFlag = true;
 
 	/* convert virtual opp to working opp with corresponding core mask */
-	if (stack_oppidx > g_min_working_oppidx) {
+	if (stack_oppidx > g_min_working_oppidx && g_async_ratio_support) {
 		mask_idx = g_avail_mask_num - 1;
 		oppidx_tar = g_min_working_oppidx - (g_min_virtual_oppidx - stack_oppidx);
+	} else if (stack_oppidx > g_min_working_oppidx) {
+		mask_idx = g_avail_mask_num - 1;
+		oppidx_tar = g_min_stack_oppidx;
 	} else {
 		mask_idx = 0;
 		oppidx_tar = stack_oppidx;
