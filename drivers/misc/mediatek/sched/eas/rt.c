@@ -108,7 +108,13 @@ static inline bool rt_task_fits_capacity(struct task_struct *p, int cpu)
 static inline unsigned int mtk_task_cap(struct task_struct *p, int cpu,
 					unsigned long min_cap, unsigned long max_cap)
 {
-	return  mtk_cpu_util(cpu, cpu_util_cfs(cpu), FREQUENCY_UTIL, p, min_cap, max_cap);
+	unsigned int util;
+
+	irq_log_store();
+	util = mtk_cpu_util(cpu, cpu_util_cfs(cpu), FREQUENCY_UTIL, p, min_cap, max_cap);
+	irq_log_store();
+
+	return util;
 }
 
 unsigned int min_highirq_load[NR_CPUS] = {
@@ -192,12 +198,15 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	bool best_cpu_has_lt, cpu_has_lt;
 	unsigned long pwr_eff, this_pwr_eff;
 
+	irq_log_store();
 	mtk_get_gear_indicies(p, &order_index, &end_index);
+	irq_log_store();
 	end_index = energy_eval ? end_index : 0;
 
 	cpumask_copy(&candidates, lowest_mask);
 	cpumask_clear(&candidates);
 
+	irq_log_store();
 	/* No targets found */
 	if (!ret)
 		return;
@@ -245,7 +254,9 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			 * conditions are same, select the least cumulative
 			 * window demand CPU.
 			 */
+			irq_log_store();
 			cpu_idle_exit_latency = mtk_get_idle_exit_latency(cpu, rt_ea_output);
+			irq_log_store();
 
 			if (cpu_idle_exit_latency == UINT_MAX)
 				continue;
@@ -263,6 +274,9 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			best_idle_cpu_cluster = cpu;
 			best_cpu_has_lt = cpu_has_lt;
 		}
+
+		irq_log_store();
+
 		if (best_idle_cpu_cluster != -1)
 			cpumask_set_cpu(best_idle_cpu_cluster, &candidates);
 
@@ -271,6 +285,8 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	}
 
 	weight = cpumask_weight(&candidates);
+	irq_log_store();
+
 	if (!weight)
 		goto unlock;
 
@@ -283,7 +299,9 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 		/* compare pwr_eff among clusters */
 		for_each_cpu(cpu, &candidates) {
 			cpu_util_cum = util_cum[cpu];
+			irq_log_store();
 			this_pwr_eff = calc_pwr_eff(cpu, cpu_util_cum);
+			irq_log_store();
 
 			if (trace_sched_aware_energy_rt_enabled()) {
 				trace_sched_aware_energy_rt(cpu, this_pwr_eff,
@@ -299,6 +317,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 
 unlock:
 	rcu_read_unlock();
+	irq_log_store();
 }
 
 DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_rt_mask);
@@ -357,6 +376,8 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 				lowest_mask, rt_task_fits_capacity);
 
 	cpumask_andnot(lowest_mask, lowest_mask, cpu_pause_mask);
+
+	irq_log_store();
 	mtk_rt_energy_aware_wake_cpu(p, lowest_mask, ret, &target, true, &rt_ea_output);
 
 	if (target != -1 &&
