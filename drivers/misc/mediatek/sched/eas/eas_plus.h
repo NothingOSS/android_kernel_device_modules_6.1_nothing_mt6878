@@ -166,6 +166,10 @@ extern void unset_task_ls(int pid);
 extern struct task_struct *next_vvip_runable_in_cpu(struct rq *rq);
 extern struct task_group *search_tg_by_cpuctl_id(unsigned int cpuctl_id);
 extern struct task_group *search_tg_by_name(char *group_name);
+extern inline void compute_effective_softmask(struct task_struct *p,
+		bool *latency_sensitive, struct cpumask *dst_mask);
+extern void mtk_can_migrate_task(void *data, struct task_struct *p,
+	int dst_cpu, int *can_migrate);
 
 extern void get_most_powerful_pd_and_util_Th(void);
 

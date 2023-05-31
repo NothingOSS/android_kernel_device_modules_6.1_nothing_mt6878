@@ -183,6 +183,10 @@ void task_check_for_rotation(struct rq *src_rq)
 	struct task_rotate_work *wr = NULL;
 	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
 	int force = 0;
+	struct cpumask src_eff;
+	struct cpumask dst_eff;
+	bool src_ls;
+	bool dst_ls;
 
 	irq_log_store();
 
@@ -226,6 +230,10 @@ void task_check_for_rotation(struct rq *src_rq)
 		if (is_reserved(i))
 			continue;
 
+		compute_effective_softmask(rq->curr, &dst_ls, &dst_eff);
+		if (dst_ls && !cpumask_test_cpu(src_cpu, &dst_eff))
+			continue;
+
 		rts = &((struct mtk_task *) rq->curr->android_vendor_data1)->rot_task;
 		wait = wc - READ_ONCE(rts->ktime_ns);
 
@@ -258,6 +266,10 @@ void task_check_for_rotation(struct rq *src_rq)
 			continue;
 
 		if (is_reserved(i))
+			continue;
+
+		compute_effective_softmask(rq->curr, &dst_ls, &dst_eff);
+		if (dst_ls && !cpumask_test_cpu(src_cpu, &dst_eff))
 			continue;
 
 		rts = &((struct mtk_task *) rq->curr->android_vendor_data1)->rot_task;
@@ -296,6 +308,18 @@ void task_check_for_rotation(struct rq *src_rq)
 		if (cpu_paused(src_cpu) || cpu_paused(dst_cpu)) {
 			double_rq_unlock(src_rq, dst_rq);
 			irq_log_store();
+			return;
+		}
+
+		compute_effective_softmask(dst_rq->curr, &dst_ls, &dst_eff);
+		if (dst_ls && !cpumask_test_cpu(src_cpu, &dst_eff)) {
+			double_rq_unlock(src_rq, dst_rq);
+			return;
+		}
+
+		compute_effective_softmask(src_rq->curr, &src_ls, &src_eff);
+		if (src_ls && !cpumask_test_cpu(dst_cpu, &src_eff)) {
+			double_rq_unlock(src_rq, dst_rq);
 			return;
 		}
 

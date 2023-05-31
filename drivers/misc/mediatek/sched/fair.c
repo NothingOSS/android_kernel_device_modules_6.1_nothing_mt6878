@@ -922,7 +922,7 @@ inline bool is_task_latency_sensitive(struct task_struct *p)
 }
 EXPORT_SYMBOL_GPL(is_task_latency_sensitive);
 
-static inline void compute_effective_softmask(struct task_struct *p,
+inline void compute_effective_softmask(struct task_struct *p,
 		bool *latency_sensitive, struct cpumask *dst_mask)
 {
 	struct cgroup_subsys_state *css;
@@ -946,6 +946,17 @@ static inline void compute_effective_softmask(struct task_struct *p,
 		cpumask_copy(dst_mask, tg_mask);
 		return;
 	}
+}
+
+void mtk_can_migrate_task(void *data, struct task_struct *p,
+	int dst_cpu, int *can_migrate)
+{
+	bool latency_sensitive;
+	struct cpumask eff_mask;
+
+	compute_effective_softmask(p, &latency_sensitive, &eff_mask);
+	if (latency_sensitive && !(cpumask_test_cpu(dst_cpu, &eff_mask)))
+		*can_migrate = false;
 }
 
 __read_mostly int num_sched_clusters;
