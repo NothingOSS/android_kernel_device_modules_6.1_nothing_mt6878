@@ -29,6 +29,9 @@
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 #include "smmu_secure.h"
 #endif
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
+#include "../../../misc/mediatek/smi/mtk-smi-dbg.h"
+#endif
 
 #include "arm-smmu-v3.h"
 #include "mtk-smmu-v3.h"
@@ -1615,7 +1618,7 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.skip_shutdown = mtk_smmu_skip_shutdown,
 };
 
-void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
+static void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
 {
 	static DEFINE_RATELIMIT_STATE(hang_rs, SMMU_FAULT_RS_INTERVAL,
 				      SMMU_FAULT_RS_BURST);
@@ -1643,19 +1646,17 @@ void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
 		return;
 	}
 
-	dump_global_register(&data->smmu);
-	mtk_smmu_wpreg_dump(NULL, data->plat_data->smmu_type);
-	mtk_smmu_ste_cd_dump(NULL, data->plat_data->smmu_type);
+	dump_global_register(smmu);
+	mtk_smmu_wpreg_dump(NULL, type);
 
-	smmuwp_dump_outstanding_monitor(&data->smmu);
-	smmuwp_dump_io_interface_signals(&data->smmu);
-	smmuwp_dump_dcm_en(&data->smmu);
+	smmuwp_dump_outstanding_monitor(smmu);
+	smmuwp_dump_io_interface_signals(smmu);
+	smmuwp_dump_dcm_en(smmu);
 
 	mtk_smmu_power_put(smmu);
 }
-EXPORT_SYMBOL_GPL(mtk_smmu_dbg_hang_detect);
 
-#if IS_ENABLED(CONFIG_MTK_SMI) && !FPGA_EARLY_PORTING
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 static int mtk_smmu_dbg_hang_cb(struct notifier_block *nb,
 				unsigned long action, void *data)
 {
@@ -1882,7 +1883,7 @@ skip_smi:
 			goto out_link_remove;
 	}
 
-#if IS_ENABLED(CONFIG_MTK_SMI) && !FPGA_EARLY_PORTING
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 	if (data->plat_data->smmu_type == MM_SMMU) {
 		if (register_dbg_notifier != 1) {
 			mtk_smi_dbg_register_notifier(&mtk_smmu_dbg_hang_nb);

@@ -15,15 +15,9 @@
 #include <dt-bindings/memory/mtk-memory-port.h>
 #include "arm-smmu-v3.h"
 
-#define FPGA_EARLY_PORTING	(1)
-
 #if (IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3) && \
 	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG))
 #define MTK_SMMU_DEBUG		(1)
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_SMI) && !FPGA_EARLY_PORTING
-#include "../../../misc/mediatek/smi/mtk-smi-dbg.h"
 #endif
 
 #define SMMU_TRANS_S1		(1 << 0)
