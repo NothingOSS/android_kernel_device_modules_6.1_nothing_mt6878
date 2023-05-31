@@ -168,6 +168,11 @@ int mtk_mipi_tx_dphy_lane_config_mt6897(struct phy *phy,
 int mtk_mipi_tx_cphy_lane_config_mt6897(struct phy *phy,
 	struct mtk_panel_ext *mtk_panel, bool is_master, struct mtk_drm_crtc *mtk_crtc);
 
+int mtk_mipi_tx_dphy_lane_config_mt6989(struct phy *phy,
+	struct mtk_panel_ext *mtk_panel, bool is_master, struct mtk_drm_crtc *mtk_crtc);
+int mtk_mipi_tx_cphy_lane_config_mt6989(struct phy *phy,
+	struct mtk_panel_ext *mtk_panel, bool is_master, struct mtk_drm_crtc *mtk_crtc);
+
 int mtk_mipi_tx_ssc_en(struct phy *phy,
 	struct mtk_panel_ext *mtk_panel);
 int mtk_mipi_tx_ssc_en_N6(struct phy *phy,

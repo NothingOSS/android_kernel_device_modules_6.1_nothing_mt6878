@@ -1362,9 +1362,11 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 					priv->data->mmsys_id == MMSYS_MT6886) {
 					mtk_mipi_tx_cphy_lane_config_mt6983(dsi->phy, dsi->ext,
 								     !!dsi->slave_dsi);
-				} else if (priv->data->mmsys_id == MMSYS_MT6897 ||
-							priv->data->mmsys_id == MMSYS_MT6989) {
+				} else if (priv->data->mmsys_id == MMSYS_MT6897) {
 					mtk_mipi_tx_cphy_lane_config_mt6897(dsi->phy, dsi->ext,
+								     !!dsi->slave_dsi, mtk_crtc);
+				} else if (priv->data->mmsys_id == MMSYS_MT6989) {
+					mtk_mipi_tx_cphy_lane_config_mt6989(dsi->phy, dsi->ext,
 								     !!dsi->slave_dsi, mtk_crtc);
 				} else {
 					mtk_mipi_tx_cphy_lane_config(dsi->phy, dsi->ext,
@@ -1377,9 +1379,11 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 					priv->data->mmsys_id == MMSYS_MT6886) {
 					mtk_mipi_tx_dphy_lane_config_mt6983(dsi->phy, dsi->ext,
 								     !!dsi->slave_dsi);
-				} else if (priv->data->mmsys_id == MMSYS_MT6897 ||
-							priv->data->mmsys_id == MMSYS_MT6989) {
+				} else if (priv->data->mmsys_id == MMSYS_MT6897) {
 					mtk_mipi_tx_dphy_lane_config_mt6897(dsi->phy, dsi->ext,
+								     !!dsi->slave_dsi, mtk_crtc);
+				} else if (priv->data->mmsys_id == MMSYS_MT6989) {
+					mtk_mipi_tx_dphy_lane_config_mt6989(dsi->phy, dsi->ext,
 								     !!dsi->slave_dsi, mtk_crtc);
 				} else {
 					mtk_mipi_tx_dphy_lane_config(dsi->phy, dsi->ext,
