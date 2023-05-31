@@ -322,6 +322,7 @@ static int do_mminfra_imax(const char *val, const struct kernel_param *kp)
 #if IS_ENABLED(CONFIG_MTK_SLBC)
 	struct slbc_data sram_data;
 #endif
+	u64 dma_mask;
 
 	ret = sscanf(val, "%u %u", &latency, &is_sram);
 	if (ret != 2) {
@@ -354,8 +355,11 @@ static int do_mminfra_imax(const char *val, const struct kernel_param *kp)
 			4, 255, 7, 0, 0, latency, 1);
 	}
 
+	dma_mask = dma_get_mask(mtk_smmu_get_shared_device(dev));
+	dma_set_mask_and_coherent(mtk_smmu_get_shared_device(dev), DMA_BIT_MASK(32));
 	dram_base = dma_alloc_coherent(mtk_smmu_get_shared_device(dev),
 		1024*1024, &dram_phy_base, GFP_KERNEL);
+	dma_set_mask_and_coherent(mtk_smmu_get_shared_device(dev), dma_mask);
 	if (!dram_base) {
 		mminfra_crit("%s: allocate dram memory failed\n", __func__);
 		return -ENOMEM;
