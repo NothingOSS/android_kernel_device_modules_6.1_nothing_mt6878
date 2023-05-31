@@ -371,6 +371,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	cpumask_t candidates;
 	bool best_cpu_has_lt, cpu_has_lt;
 	unsigned long pwr_eff, this_pwr_eff;
+	struct perf_domain *target_pd, *pd;
 
 	irq_log_store();
 	mtk_get_gear_indicies(p, &order_index, &end_index, &reverse);
@@ -386,10 +387,22 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 		return;
 
 	rcu_read_lock();
+
+	pd = rcu_dereference((cpu_rq(smp_processor_id())->rd)->pd);
+	/* pd not existed */
+	if (!pd)
+		goto unlock;
+
 	for (cluster = 0; cluster < num_sched_clusters; cluster++) {
 		best_idle_exit_latency = UINT_MAX;
 		best_idle_cpu_cluster = -1;
 		best_cpu_has_lt = true;
+
+		target_pd = rcu_dereference(pd);
+		target_pd = find_pd(target_pd,
+				cpumask_first(&cpu_array[order_index][cluster][reverse]));
+		if (!target_pd)
+			continue;
 
 		for_each_cpu_and(cpu, lowest_mask, &cpu_array[order_index][cluster][reverse]) {
 
