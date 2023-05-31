@@ -47,6 +47,7 @@
 
 #include "arm-smmu-v3.h"
 #include "mtk-smmu-v3.h"
+#include "smmu_secure.h"
 
 #define SMMU_LME_MAX_COUNTERS		14
 
@@ -88,6 +89,7 @@ struct smmu_lmu {
 	enum mtk_smmu_type smmu_type;
 	raw_spinlock_t counter_lock;
 	ktime_t last_read;
+	bool take_power;
 };
 
 #define to_smmu_lmu(p) (container_of(p, struct smmu_lmu, pmu))
@@ -519,6 +521,7 @@ static int smmu_lmu_event_add(struct perf_event *event, int flags)
 	struct hw_perf_event *hwc = &event->hw;
 	unsigned long irq_flags;
 	int idx;
+	int err;
 
 	raw_spin_lock_irqsave(&smmu_lmu->counter_lock, irq_flags);
 	idx = smmu_lmu_get_event_idx(smmu_lmu, event);
@@ -527,6 +530,21 @@ static int smmu_lmu_event_add(struct perf_event *event, int flags)
 		pr_info("%s called with error, event id:%d, idx:%d\n",
 			__func__, get_event(event), idx);
 		return -EAGAIN;
+	}
+
+	if (smmu_lmu->used_counters == 0) {
+		err = smmu_lmu->smmu_type == SOC_SMMU ? 0 :
+		      mtk_smmu_pm_get(smmu_lmu->smmu_type);
+		if (err) {
+			raw_spin_unlock_irqrestore(&smmu_lmu->counter_lock,
+						   irq_flags);
+			pr_info("%s, pm get fail, smmu:%d.\n",
+				__func__, smmu_lmu->smmu_type);
+			return -EPERM;
+		}
+		smmu_lmu->take_power = true;
+		pr_info("%s, pm get ok, smmu:%d.\n",
+			__func__, smmu_lmu->smmu_type);
 	}
 
 	hwc->idx = idx;
@@ -557,6 +575,7 @@ static void smmu_lmu_event_del(struct perf_event *event, int flags)
 	struct hw_perf_event *hwc = &event->hw;
 	unsigned long irq_flags;
 	int idx = hwc->idx;
+	int err = 0;
 
 	if (idx < 0 || idx >= SMMU_LME_MAX_COUNTERS) {
 		dev_dbg(smmu_lmu->dev, "ignore non-lmu event while delete\n");
@@ -572,6 +591,17 @@ static void smmu_lmu_event_del(struct perf_event *event, int flags)
 		smmu_lmu_counter_disable(smmu_lmu);
 		smmu_lmu_reset_event_filter(smmu_lmu);
 		smmu_lmu_reset_counters(smmu_lmu);
+
+		if (smmu_lmu->smmu_type != SOC_SMMU && smmu_lmu->take_power) {
+			err = mtk_smmu_pm_put(smmu_lmu->smmu_type);
+			smmu_lmu->take_power = false;
+			if (err)
+				pr_info("%s, pm put fail, smmu:%d, err:%d\n",
+					__func__, smmu_lmu->smmu_type, err);
+			else
+				pr_info("%s, pm put ok, smmu:%d.\n",
+					__func__, smmu_lmu->smmu_type);
+		}
 	}
 	raw_spin_unlock_irqrestore(&smmu_lmu->counter_lock, irq_flags);
 
@@ -760,6 +790,7 @@ static int smmu_lmu_probe(struct platform_device *pdev)
 	plat_data = data->plat_data;
 	smmu_lmu->smmu = smmu;
 	smmu_lmu->smmu_type = plat_data->smmu_type;
+	smmu_lmu->take_power = false;
 
 	/* assmue only support 16 counter */
 	smmu_lmu->num_counters = 14;

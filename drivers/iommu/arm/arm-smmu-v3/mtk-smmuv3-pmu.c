@@ -59,6 +59,7 @@
 #include <linux/types.h>
 
 #include "mtk-smmu-v3.h"
+#include "smmu_secure.h"
 
 #define SMMU_PMCG_EVCNTR0               0x0
 #define SMMU_PMCG_EVCNTR(n, stride)     (SMMU_PMCG_EVCNTR0 + (n) * (stride))
@@ -122,6 +123,7 @@
 
 #define SMMU_PMCG_EVCNTR_RDONLY         BIT(0)
 
+static const char *PMU_SMMU_PROP_NAME = "mtk,smmu";
 static int cpuhp_state_num;
 
 struct smmu_pmu {
@@ -143,6 +145,9 @@ struct smmu_pmu {
 	spinlock_t pmu_lock;
 	bool delay_init_done;
 	struct smmuv3_pmu_device *pmu_device;
+	struct arm_smmu_device *smmu;
+	enum mtk_smmu_type smmu_type;
+	bool take_power;
 };
 
 #define to_smmu_pmu(p) (container_of(p, struct smmu_pmu, pmu))
@@ -346,11 +351,29 @@ static int smmu_pmu_get_event_idx(struct smmu_pmu *smmu_pmu,
 {
 	int idx, err;
 	unsigned int num_ctrs = smmu_pmu->num_counters;
+	unsigned long flags;
 
+	spin_lock_irqsave(&smmu_pmu->pmu_lock, flags);
 	idx = find_first_zero_bit(smmu_pmu->used_counters, num_ctrs);
-	if (idx == num_ctrs)
+	if (idx == num_ctrs) {
+		spin_unlock_irqrestore(&smmu_pmu->pmu_lock, flags);
 		/* The counters are all in use. */
 		return -EAGAIN;
+	}
+	if (idx == 0) {
+		err = smmu_pmu->smmu_type == SOC_SMMU ? 0 :
+		      mtk_smmu_pm_get(smmu_pmu->smmu_type);
+		if (err) {
+			spin_unlock_irqrestore(&smmu_pmu->pmu_lock, flags);
+			pr_info("%s, pm get fail, smmu:%d.\n",
+				__func__, smmu_pmu->smmu_type);
+			return -EPERM;
+		}
+		smmu_pmu->take_power = true;
+		pr_info("%s, pm get ok, smmu:%d.\n",
+			__func__, smmu_pmu->smmu_type);
+	}
+	spin_unlock_irqrestore(&smmu_pmu->pmu_lock, flags);
 
 	err = smmu_pmu_apply_event_filter(smmu_pmu, event, idx);
 	if (err)
@@ -505,11 +528,29 @@ static void smmu_pmu_event_del(struct perf_event *event, int flags)
 	struct hw_perf_event *hwc = &event->hw;
 	struct smmu_pmu *smmu_pmu = to_smmu_pmu(event->pmu);
 	int idx = hwc->idx;
+	unsigned long irq_flags;
+	unsigned int cur_idx, num_ctrs = smmu_pmu->num_counters;
+	int err;
 
 	smmu_pmu_event_stop(event, flags | PERF_EF_UPDATE);
 	smmu_pmu_interrupt_disable(smmu_pmu, idx);
 	smmu_pmu->events[idx] = NULL;
+
+	spin_lock_irqsave(&smmu_pmu->pmu_lock, irq_flags);
 	clear_bit(idx, smmu_pmu->used_counters);
+	cur_idx = find_first_bit(smmu_pmu->used_counters, num_ctrs);
+	if (cur_idx == num_ctrs && smmu_pmu->smmu_type != SOC_SMMU &&
+	    smmu_pmu->take_power) {
+		err = mtk_smmu_pm_put(smmu_pmu->smmu_type);
+		smmu_pmu->take_power = false;
+		if (err)
+			pr_info("%s, pm put fail, smmu:%d.\n",
+				__func__, smmu_pmu->smmu_type);
+		else
+			pr_info("%s, pm put ok, smmu:%d.\n",
+				__func__, smmu_pmu->smmu_type);
+	}
+	spin_unlock_irqrestore(&smmu_pmu->pmu_lock, irq_flags);
 
 	perf_event_update_userpage(event);
 }
@@ -872,6 +913,11 @@ static int smmu_pmu_probe(struct platform_device *pdev)
 	int irq, err;
 	char *name;
 	struct device *dev = &pdev->dev;
+	const struct mtk_smmu_plat_data *plat_data;
+	struct platform_device *smmudev;
+	struct arm_smmu_device *smmu;
+	struct device_node *smmu_node;
+	struct mtk_smmu_data *data;
 
 	smmu_pmu = devm_kzalloc(dev, sizeof(*smmu_pmu), GFP_KERNEL);
 	if (!smmu_pmu)
@@ -894,6 +940,26 @@ static int smmu_pmu_probe(struct platform_device *pdev)
 		.attr_groups	= smmu_pmu_attr_grps,
 		.capabilities	= PERF_PMU_CAP_NO_EXCLUDE,
 	};
+
+	smmu_node = of_parse_phandle(dev->of_node, PMU_SMMU_PROP_NAME, 0);
+	if (!smmu_node) {
+		dev_err(dev, "Can't find smmu node\n");
+		return -EINVAL;
+	}
+
+	smmudev = of_find_device_by_node(smmu_node);
+	if (!smmudev) {
+		dev_err(dev, "Can't find smmu dev\n");
+		of_node_put(smmu_node);
+		return -EINVAL;
+	}
+
+	smmu = platform_get_drvdata(smmudev);
+	data = to_mtk_smmu_data(smmu);
+	plat_data = data->plat_data;
+	smmu_pmu->smmu = smmu;
+	smmu_pmu->smmu_type = plat_data->smmu_type;
+	smmu_pmu->take_power = false;
 
 	smmu_pmu->reg_base = devm_platform_get_and_ioremap_resource(pdev, 0, &res_0);
 	if (IS_ERR(smmu_pmu->reg_base))
