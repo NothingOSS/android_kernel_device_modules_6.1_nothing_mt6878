@@ -154,7 +154,58 @@ static int flt_get_sum_group_mode2(int grp_id)
 	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0 || flt_is_valid() != 1)
 		return -1;
 	offset = grp_id * PER_ENTRY;
-	res = flt_get_data(GP_DATA_START + offset);
+	res = flt_get_data(GP_NIDWP + offset);
+
+	return res;
+}
+
+static int flt_get_total_group_mode2(void)
+{
+	int res = 0;
+
+	if (flt_is_valid() != 1)
+		goto out;
+
+	res = flt_get_data(GP_NIDS);
+out:
+	return res;
+}
+
+static int flt_get_grp_hint_mode2(int grp_id)
+{
+	int res = 0;
+	unsigned int offset;
+
+	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0 || flt_is_valid() != 1)
+		return -1;
+	offset = grp_id * PER_ENTRY;
+	res = flt_get_data(GP_H + offset);
+
+	return res;
+}
+
+static int flt_get_cpu_r_mode2(int cpu)
+{
+	int res = 0;
+	unsigned int offset;
+
+	if (!cpumask_test_cpu(cpu, cpu_possible_mask) || flt_is_valid() != 1)
+		return -1;
+
+	offset = cpu * PER_ENTRY;
+	res = flt_get_data(CPU_R + offset);
+	return res;
+}
+
+static int flt_get_grp_r_mode2(int grp_id)
+{
+	int res = 0;
+	unsigned int offset;
+
+	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0 || flt_is_valid() != 1)
+		return -1;
+	offset = grp_id * PER_ENTRY;
+	res = flt_get_data(GP_R + offset);
 
 	return res;
 }
@@ -217,7 +268,7 @@ static int flt_get_cpu_by_wp_mode2(int cpu)
 		return -1;
 
 	offset = cpu * PER_ENTRY;
-	res = flt_get_data(offset);
+	res = flt_get_data(CPU_S + offset);
 	return res;
 }
 
@@ -260,6 +311,10 @@ void flt_mode2_register_api_hooks(void)
 	flt_sched_get_gear_sum_group_eas_api = flt_sched_get_gear_sum_group_eas_mode2;
 	flt_get_cpu_by_wp_api = flt_get_cpu_by_wp_mode2;
 	flt_sched_get_cpu_group_eas_api = flt_sched_get_cpu_group_eas_mode2;
+	flt_get_grp_h_eas_api = flt_get_grp_hint_mode2;
+	flt_get_cpu_r_api = flt_get_cpu_r_mode2;
+	flt_get_total_gp_api = flt_get_total_group_mode2;
+	flt_get_grp_r_eas_api = flt_get_grp_r_mode2;
 }
 
 void flt_mode2_init_res(void)

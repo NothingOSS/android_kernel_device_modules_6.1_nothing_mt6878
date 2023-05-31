@@ -63,6 +63,15 @@ int (*flt_get_cpu_by_wp_api)(int cpu);
 EXPORT_SYMBOL(flt_get_cpu_by_wp_api);
 int (*flt_get_task_by_wp_api)(struct task_struct *p, int wc, int task_wp);
 EXPORT_SYMBOL(flt_get_task_by_wp_api);
+int (*flt_get_grp_h_eas_api)(int grp_id);
+EXPORT_SYMBOL(flt_get_grp_h_eas_api);
+int (*flt_get_cpu_r_api)(int cpu);
+EXPORT_SYMBOL(flt_get_cpu_r_api);
+int (*flt_get_total_gp_api)(void);
+EXPORT_SYMBOL(flt_get_total_gp_api);
+int (*flt_get_grp_r_eas_api)(int grp_id);
+EXPORT_SYMBOL(flt_get_grp_r_eas_api);
+
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 extern unsigned long (*flt_get_cpu_util_hook)(int cpu);
@@ -291,6 +300,50 @@ out:
 	return gp_demand;
 }
 EXPORT_SYMBOL(flt_sched_get_cpu_group);
+
+int flt_get_gp_hint(int grp_id)
+{
+	if (unlikely(flt_get_mode() == FLT_MODE_0))
+		return -1;
+	else if (flt_get_grp_h_eas_api)
+		return flt_get_grp_h_eas_api(grp_id);
+	else
+		return -1;
+}
+EXPORT_SYMBOL(flt_get_gp_hint);
+
+int flt_get_cpu_r(int cpu)
+{
+	if (unlikely(flt_get_mode() == FLT_MODE_0))
+		return -1;
+	else if (flt_get_cpu_r_api)
+		return flt_get_cpu_r_api(cpu);
+	else
+		return -1;
+}
+EXPORT_SYMBOL(flt_get_cpu_r);
+
+int flt_get_total_gp(void)
+{
+	if (unlikely(flt_get_mode() == FLT_MODE_0))
+		return -1;
+	else if (flt_get_total_gp_api)
+		return flt_get_total_gp_api();
+	else
+		return -1;
+}
+EXPORT_SYMBOL(flt_get_total_gp);
+
+int flt_get_gp_r(int grp_id)
+{
+	if (unlikely(flt_get_mode() == FLT_MODE_0))
+		return -1;
+	else if (flt_get_grp_r_eas_api)
+		return flt_get_grp_r_eas_api(grp_id);
+	else
+		return -1;
+}
+EXPORT_SYMBOL(flt_get_gp_r);
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 void register_sugov_hooks(void)

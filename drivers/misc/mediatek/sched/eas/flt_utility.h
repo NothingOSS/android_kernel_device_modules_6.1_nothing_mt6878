@@ -20,22 +20,24 @@ extern int (*flt_sched_get_gear_sum_group_eas_api)(int gear_id, int grp_id);
 extern int (*flt_get_cpu_by_wp_api)(int cpu);
 extern int (*flt_get_task_by_wp_api)(struct task_struct *p, int wc, int task_wp);
 extern int (*flt_sched_get_cpu_group_eas_api)(int cpu, int grp_id);
+extern int (*flt_get_grp_h_eas_api)(int grp_id);
+extern int (*flt_get_cpu_r_api)(int cpu);
+extern int (*flt_get_total_gp_api)(void);
+extern int (*flt_get_grp_r_eas_api)(int grp_id);
 
-/*-----------------------------------------------------------
- * AP setting data
- * (cpu0~7) wp/wc (wp:16/wc:16)
- * (gp1~4) wp/wc (wp:16/wc:16)
- * enable/disable
- * ws
- */
 #define CPU_NUM		8
 #define PER_ENTRY	4
-#define RESERVED_LEN	32
+#define RESERVED_LEN	112
 #define WP_LEN		16
 #define WC_LEN		16
 #define WC_MASK	0xffff
-#define GP_DATA_START	(PER_ENTRY * CPU_NUM)
-#define FLT_VALID	(PER_ENTRY * (CPU_NUM + GROUP_ID_RECORD_MAX))
+#define CPU_S		(0)
+#define GP_NIDS		(CPU_S + (PER_ENTRY * CPU_NUM))
+#define GP_NIDWP	(GP_NIDS + (PER_ENTRY))
+#define CPU_R		(GP_NIDWP + (PER_ENTRY * GROUP_ID_RECORD_MAX))
+#define GP_R		(CPU_R + (PER_ENTRY * CPU_NUM))
+#define GP_H		(GP_R + (PER_ENTRY * GROUP_ID_RECORD_MAX))
+#define FLT_VALID	(GP_H + (PER_ENTRY *GROUP_ID_RECORD_MAX))
 #define AP_CPU_SETTING_ADDR (FLT_VALID + PER_ENTRY + RESERVED_LEN)
 #define AP_GP_SETTING_STA_ADDR (AP_CPU_SETTING_ADDR + (PER_ENTRY * CPU_NUM))
 #define AP_FLT_CTL (AP_GP_SETTING_STA_ADDR + (PER_ENTRY * GROUP_ID_RECORD_MAX))
