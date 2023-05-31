@@ -58,7 +58,7 @@ static struct mmc_host *mtk_mmc_host[] = {NULL};
 
 /* #define __RPMB_MTK_DEBUG_MSG */
 /* #define __RPMB_MTK_DEBUG_HMAC_VERIFY */
-/* #define __RPMB_KERNEL_NL_SUPPORT */
+#define __RPMB_KERNEL_NL_SUPPORT
 #define __RPMB_IOCTL_SUPPORT
 
 /* TEE usage */
@@ -77,7 +77,7 @@ static struct dciMessage_t *rpmb_gp_dci;
 #ifdef __RPMB_KERNEL_NL_SUPPORT
 struct sock *rpmb_mtk_sock;
 static u32 nl_pid = 100;
-#define NETLINK_RPMB_MTK 30
+#define NETLINK_RPMB_MTK 27
 
 wait_queue_head_t wait_rpmb;
 static bool rpmb_done_flag;
@@ -99,8 +99,10 @@ struct nl_rpmb_send_req {
 	u32 reliable_write_size;
 	u32 write_size;
 	u32 read_size;
-	u32 __reserved;
-	u8  payload[MAX_RPMB_REQUEST_SIZE+512];
+	u8  region;
+	u8 __reserved1;
+	u16 __reserved2;
+	u8  payload[MAX_RPMB_REQUEST_SIZE + 512];
 };
 
 static struct nl_rpmb_send_req nl_rpmb_req;
@@ -395,7 +397,7 @@ static struct rpmb_frame *rpmb_alloc_frames(unsigned int cnt)
 }
 
 #ifdef __RPMB_KERNEL_NL_SUPPORT
-static int nl_rpmb_cmd_req(const struct rpmb_data *rpmbd)
+static int nl_rpmb_cmd_req(const struct rpmb_data *rpmbd, u8 region)
 {
 	int ret = 0;
 
@@ -409,6 +411,7 @@ static int nl_rpmb_cmd_req(const struct rpmb_data *rpmbd)
 	cnt_out = rpmbd->ocmd.nframes;
 	type = rpmbd->req_type;
 	write_buf = req->payload;
+	req->region = region;
 
 	mutex_lock(&rpmb_lock);
 
@@ -434,6 +437,8 @@ static int nl_rpmb_cmd_req(const struct rpmb_data *rpmbd)
 		req->read_size = cnt_out * 512;
 		break;
 
+	case RPMB_PURGE_ENABLE:
+	case RPMB_PURGE_STATUS_READ:
 	case RPMB_GET_WRITE_COUNTER:
 		cnt_in = 1;
 		cnt_out = 1;
@@ -556,7 +561,7 @@ static int rpmb_req_get_wc_ufs(u8 region, u8 *keybytes, u32 *wc, u8 *frame)
 		rpmbdata.ocmd.nframes = 1;
 
 		#ifdef __RPMB_KERNEL_NL_SUPPORT
-		ret = nl_rpmb_cmd_req(&rpmbdata);
+		ret = nl_rpmb_cmd_req(&rpmbdata, region);
 		#else
 		ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, region);
 		#endif
@@ -675,7 +680,7 @@ static int rpmb_req_read_data_ufs(u8 *frame, u32 blk_cnt)
 	rpmbdata.ocmd.frames = (struct rpmb_frame *)frame;
 
 	#ifdef __RPMB_KERNEL_NL_SUPPORT
-	ret = nl_rpmb_cmd_req(&rpmbdata);
+	ret = nl_rpmb_cmd_req(&rpmbdata, 0);
 	#else
 	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
 	#endif
@@ -738,7 +743,7 @@ static int rpmb_req_write_data_ufs(u8 *frame, u32 blk_cnt)
 #endif
 
 	#ifdef __RPMB_KERNEL_NL_SUPPORT
-	ret = nl_rpmb_cmd_req(&rpmbdata);
+	ret = nl_rpmb_cmd_req(&rpmbdata, 0);
 	#else
 	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
 	#endif
@@ -786,7 +791,12 @@ static int rpmb_req_purge_enable(u8 region, u8 *frame)
 
 	data.req_type = RPMB_PURGE_ENABLE;
 
+#ifdef __RPMB_KERNEL_NL_SUPPORT
+	ret = nl_rpmb_cmd_req(&data, region);
+#else
 	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &data, region);
+#endif
+
 	if (ret)
 		MSG(ERR, "%s: rpmb_cmd_req IO error, ret %d (0x%x)\n",
 			__func__, ret, ret);
@@ -823,7 +833,11 @@ static int rpmb_req_read_purge_status(u8 region, u8 *frame)
 
 	data.req_type = RPMB_PURGE_STATUS_READ;
 
+#ifdef __RPMB_KERNEL_NL_SUPPORT
+	ret = nl_rpmb_cmd_req(&data, region);
+#else
 	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &data, region);
+#endif
 	if (ret)
 		MSG(ERR, "%s: rpmb_cmd_req IO error, ret %d (0x%x)\n",
 			__func__, ret, ret);
@@ -867,8 +881,11 @@ static int rpmb_req_program_key_ufs(u8 region, u8 *frame, u32 blk_cnt)
 	data.icmd.nframes = 1;
 	data.icmd.frames = (struct rpmb_frame *)frame;
 
+#ifdef __RPMB_KERNEL_NL_SUPPORT
+	ret = nl_rpmb_cmd_req(&data, region);
+#else
 	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &data, region);
-
+#endif
 	if (ret)
 		MSG(ERR, "%s: rpmb_cmd_req IO error, ret %d (0x%x)\n",
 			__func__, ret, ret);
@@ -1071,7 +1088,7 @@ static int rpmb_req_ioctl_write_data_ufs(struct rpmb_ioc_param *param)
 		 * Send write data request.
 		 */
 		#ifdef __RPMB_KERNEL_NL_SUPPORT
-		ret = nl_rpmb_cmd_req(&rpmbdata);
+		ret = nl_rpmb_cmd_req(&rpmbdata, 0);
 		#else
 		ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
 		#endif
@@ -1246,7 +1263,7 @@ static int rpmb_req_ioctl_read_data_ufs(struct rpmb_ioc_param *param)
 		rpmbdata.ocmd.nframes = tran_blkcnt;
 
 		#ifdef __RPMB_KERNEL_NL_SUPPORT
-		ret = nl_rpmb_cmd_req(&rpmbdata);
+		ret = nl_rpmb_cmd_req(&rpmbdata, 0);
 		#else
 		ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
 		#endif
@@ -2776,7 +2793,7 @@ static int rpmb_mtk_snd_msg(void *pbuf, u16 len)
 		MSG(ERR, "%s nlmsg_put failure\n", __func__);
 		ret = -ENOBUFS;
 		nlmsg_free(skb);
-		goto send_fail_skb;
+		goto send_fail;
 	}
 
 	memcpy(nlmsg_data(nlh), pbuf, len);
@@ -2789,9 +2806,6 @@ static int rpmb_mtk_snd_msg(void *pbuf, u16 len)
 	}
 
 	return 0;
-
-send_fail_skb:
-	kfree_skb(skb);
 
 send_fail:
 	return ret;
