@@ -55,6 +55,8 @@ static struct ccci_md_regulator md_reg_table[] = {
 	{ NULL, "md-vdigrf", 700000, 700000},
 };
 
+static unsigned int ap_plat_info;
+
 static struct ccci_plat_val md_cd_plat_val_ptr;
 
 static struct ccci_clk_node clk_table[] = {
@@ -252,12 +254,14 @@ static void md_cd_dump_debug_register(struct ccci_modem *md, bool isr_skip_dump)
 	if ((reg_value[0] == 0) && (ccif_sram[1] == 0)) {
 		CCCI_MEM_LOG_TAG(0, TAG,
 			"((reg_value[0] == 0) && (ccif_sram[1] == 0))\n");
-		return;
+		if (ap_plat_info != 6989)
+			return;
 	} else if (!((reg_value[0] == boot_status_val) || (reg_value[0] == 0) ||
 		(reg_value[0] >= 0x53310000 && reg_value[0] <= 0x533100FF))) {
 		CCCI_MEM_LOG_TAG(0, TAG,
 			"get 0x%X, expect 0x%X, no dump\n", reg_value[0], boot_status_val);
-		return;
+		if (ap_plat_info != 6989)
+			return;
 	}
 	if (in_interrupt() && isr_skip_dump) {
 		CCCI_MEM_LOG_TAG(0, TAG,
@@ -752,6 +756,7 @@ static int md_start_platform(struct ccci_modem *md)
 	if (ret != 0) {
 		/* BROM */
 		CCCI_ERROR_LOG(0, TAG, "BROM Failed\n");
+		md_cd_dump_debug_register(md, true);
 	}
 
 	md_cd_power_off(md, 0);
@@ -1163,6 +1168,14 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 		CCCI_ERROR_LOG(0, TAG, "modem is not enabled, exit\n");
 		return -1;
 	}
+
+	ret = of_property_read_u32(dev_ptr->dev.of_node,
+		"mediatek,ap-plat-info", &ap_plat_info);
+	if (ret < 0)
+		CCCI_ERROR_LOG(0, TAG, "%s: get DTS: ap-plat-info fail\n", __func__);
+	else
+		CCCI_NORMAL_LOG(0, TAG, "ap_plat_info: %u\n", ap_plat_info);
+
 
 	memset(dev_cfg, 0, sizeof(struct ccci_dev_cfg));
 
