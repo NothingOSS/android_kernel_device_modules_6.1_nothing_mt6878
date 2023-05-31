@@ -1191,7 +1191,6 @@ static void check_heaviest_util(void)
 static inline void core_ctl_main_algo(void)
 {
 	unsigned int index = 0;
-	unsigned int big_cpu_ts = 0;
 	struct cluster_data *cluster;
 	unsigned int orig_need_cpu[MAX_CLUSTERS] = {0};
 	struct cpumask active_cpus;
