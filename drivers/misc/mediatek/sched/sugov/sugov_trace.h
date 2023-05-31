@@ -150,11 +150,11 @@ TRACE_EVENT(sugov_ext_adaptive_margin,
 		__entry->ratio)
 );
 
-TRACE_EVENT(sugov_ext_group_dvfs_util,
+TRACE_EVENT(sugov_ext_tar,
 	TP_PROTO(int cpu, unsigned long cpu_util, unsigned long group_util,
 		unsigned long others_util, unsigned long ratio_ori, unsigned long ratio,
-		unsigned long ret_util, unsigned long pelt_util),
-	TP_ARGS(cpu, cpu_util, group_util, others_util, ratio_ori, ratio, ret_util, pelt_util),
+		unsigned long ret_util, unsigned long umax),
+	TP_ARGS(cpu, cpu_util, group_util, others_util, ratio_ori, ratio, ret_util, umax),
 	TP_STRUCT__entry(
 		__field(int, cpu)
 		__field(unsigned long, cpu_util)
@@ -163,7 +163,7 @@ TRACE_EVENT(sugov_ext_group_dvfs_util,
 		__field(unsigned long, ratio_ori)
 		__field(unsigned long, ratio)
 		__field(unsigned long, ret_util)
-		__field(unsigned long, pelt_util)
+		__field(unsigned long, umax)
 	),
 	TP_fast_assign(
 		__entry->cpu = cpu;
@@ -173,10 +173,10 @@ TRACE_EVENT(sugov_ext_group_dvfs_util,
 		__entry->ratio_ori = ratio_ori;
 		__entry->ratio = ratio;
 		__entry->ret_util = ret_util;
-		__entry->pelt_util = pelt_util;
+		__entry->umax = umax;
 	),
 	TP_printk(
-		"cpu=,%d, cpu_util=,%lu, group_util=,%lu, others_util=,%lu, ratio_ori=,%lu, ratio=,%lu, ret_util=,%lu, pelt_util=,%lu,",
+		"cpu_idx=%d cpu=%lu group=%lu others=%lu ratio_ori=%lu ratio=%lu ret=%lu umax=%lu",
 		__entry->cpu,
 		__entry->cpu_util,
 		__entry->group_util,
@@ -184,7 +184,41 @@ TRACE_EVENT(sugov_ext_group_dvfs_util,
 		__entry->ratio_ori,
 		__entry->ratio,
 		__entry->ret_util,
-		__entry->pelt_util)
+		__entry->umax)
+);
+
+TRACE_EVENT(sugov_ext_group_dvfs,
+	TP_PROTO(int gearid, unsigned long util, unsigned long pelt_util_with_margin,
+		unsigned long flt_util, unsigned long pelt_util, unsigned long pelt_margin,
+		unsigned long freq),
+	TP_ARGS(gearid, util, pelt_util_with_margin, flt_util, pelt_util, pelt_margin, freq),
+	TP_STRUCT__entry(
+		__field(int, gearid)
+		__field(unsigned long, util)
+		__field(unsigned long, pelt_util_with_margin)
+		__field(unsigned long, flt_util)
+		__field(unsigned long, pelt_util)
+		__field(unsigned long, pelt_margin)
+		__field(unsigned long, freq)
+	),
+	TP_fast_assign(
+		__entry->gearid = gearid;
+		__entry->util = util;
+		__entry->pelt_util_with_margin = pelt_util_with_margin;
+		__entry->flt_util = flt_util;
+		__entry->pelt_util = pelt_util;
+		__entry->pelt_margin = pelt_margin;
+		__entry->freq = freq;
+	),
+	TP_printk(
+		"gearid=%d ret=%lu pelt_with_margin=%lu tar=%lu pelt=%lu pelt_margin=%lu freq=%lu",
+		__entry->gearid,
+		__entry->util,
+		__entry->pelt_util_with_margin,
+		__entry->flt_util,
+		__entry->pelt_util,
+		__entry->pelt_margin,
+		__entry->freq)
 );
 
 TRACE_EVENT(sugov_ext_turn_point_margin,
