@@ -1345,16 +1345,18 @@ static inline bool task_demand_fits(struct task_struct *p, int dst_cpu)
 static inline bool util_fits_capacity(unsigned long cpu_util, unsigned long cpu_cap, int cpu)
 {
 	unsigned long ceiling;
-	bool AM_enabled = adaptive_margin_enabled[cpu];
+	bool AM_enabled = adaptive_margin_enabled[cpu], fit;
 	unsigned int sugov_margin = AM_enabled ? get_adaptive_margin(cpu) : SCHED_CAPACITY_SCALE;
 
 	ceiling = SCHED_CAPACITY_SCALE * capacity_orig_of(cpu) / sched_capacity_up_margin[cpu];
 
+	fit = (min(ceiling, cpu_cap) * SCHED_CAPACITY_SCALE >= cpu_util * sugov_margin);
+
 	if (trace_sched_fits_cap_ceiling_enabled())
-		trace_sched_fits_cap_ceiling(cpu, cpu_util, cpu_cap, ceiling,
+		trace_sched_fits_cap_ceiling(fit, cpu, cpu_util, cpu_cap, ceiling,
 			sugov_margin, sched_capacity_up_margin[cpu], AM_enabled);
 
-	return min(ceiling, cpu_cap) * SCHED_CAPACITY_SCALE >= cpu_util * sugov_margin;
+	return fit;
 }
 
 #else
@@ -1578,13 +1580,18 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			 * much capacity we can get out of the CPU; this is
 			 * aligned with effective_cpu_util().
 			 */
+			uint_cpu = cpu;
+			/* record pre-clamping cpu_util */
+			cpu_utils[uint_cpu] = cpu_util;
 			cpu_util = mtk_uclamp_rq_util_with(cpu_rq(cpu), cpu_util, p,
 							min_cap, max_cap);
-			uint_cpu = cpu;
-			cpu_utils[uint_cpu] = cpu_util;
+
 			if (trace_sched_util_fits_cpu_enabled())
-				trace_sched_util_fits_cpu(cpu, cpu_util, cpu_cap,
+				trace_sched_util_fits_cpu(cpu, cpu_utils[uint_cpu], cpu_util, cpu_cap,
 						min_cap, max_cap, cpu_rq(cpu));
+
+			/* replace with post-clamping cpu_util */
+			cpu_utils[uint_cpu] = cpu_util;
 
 			if (!util_fits_capacity(cpu_util, cpu_cap, cpu))
 				continue;

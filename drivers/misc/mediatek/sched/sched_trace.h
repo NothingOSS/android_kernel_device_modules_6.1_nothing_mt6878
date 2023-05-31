@@ -96,13 +96,14 @@ TRACE_EVENT(sched_find_cpu_in_irq,
 #if IS_ENABLED(CONFIG_MTK_SCHED_UPDOWN_MIGRATE)
 TRACE_EVENT(sched_fits_cap_ceiling,
 
-	TP_PROTO(int cpu, unsigned long cpu_util,
+	TP_PROTO(bool fit, int cpu, unsigned long cpu_util,
 		unsigned long cup_cap, unsigned long ceiling, unsigned int sugov_margin,
 		unsigned int capacity_up_margin, bool AM_enabled),
 
-	TP_ARGS(cpu, cpu_util, cup_cap, ceiling, sugov_margin, capacity_up_margin, AM_enabled),
+	TP_ARGS(fit, cpu, cpu_util, cup_cap, ceiling, sugov_margin, capacity_up_margin, AM_enabled),
 
 	TP_STRUCT__entry(
+		__field(bool, fit)
 		__field(int, cpu)
 		__field(unsigned long,   cpu_util)
 		__field(unsigned long,   cup_cap)
@@ -114,6 +115,7 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 		),
 
 	TP_fast_assign(
+		__entry->fit				= fit;
 		__entry->cpu				= cpu;
 		__entry->cpu_util			= cpu_util;
 		__entry->cup_cap			= cup_cap;
@@ -125,7 +127,8 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 		),
 
 	TP_printk(
-		"cpu=%d cpu_util=%ld cup_cap=%ld ceiling=%ld capacity_up_margin=%d sugov_margin=%d capacity_orig=%ld adaptive_margin_ctrl=%d",
+		"fit=%d cpu=%d cpu_util=%ld cup_cap=%ld ceiling=%ld capacity_up_margin=%d sugov_margin=%d capacity_orig=%ld adaptive_margin_ctrl=%d",
+		__entry->fit,
 		__entry->cpu,
 		__entry->cpu_util,
 		__entry->cup_cap,
@@ -195,14 +198,15 @@ TRACE_EVENT(sched_get_gear_indices,
 
 TRACE_EVENT(sched_util_fits_cpu,
 
-	TP_PROTO(int cpu, unsigned long util, unsigned long cpu_cap,
-		unsigned long min_cap, unsigned long max_cap, struct rq *rq),
+	TP_PROTO(int cpu, unsigned long pre_clamped_util, unsigned long clamped_util,
+		unsigned long cpu_cap, unsigned long min_cap, unsigned long max_cap, struct rq *rq),
 
-	TP_ARGS(cpu, util, cpu_cap, min_cap, max_cap, rq),
+	TP_ARGS(cpu, pre_clamped_util, clamped_util, cpu_cap, min_cap, max_cap, rq),
 
 	TP_STRUCT__entry(
 		__field(int,	cpu)
-		__field(unsigned long,	util)
+		__field(unsigned long,	pre_clamped_util)
+		__field(unsigned long,	clamped_util)
 		__field(unsigned long,   cpu_cap)
 		__field(unsigned long,   task_min_cap)
 		__field(unsigned long,   task_max_cap)
@@ -212,7 +216,8 @@ TRACE_EVENT(sched_util_fits_cpu,
 
 	TP_fast_assign(
 		__entry->cpu				= cpu;
-		__entry->util				= util;
+		__entry->pre_clamped_util	= pre_clamped_util;
+		__entry->clamped_util		= clamped_util;
 		__entry->cpu_cap			= cpu_cap;
 		__entry->task_min_cap		= min_cap;
 		__entry->task_max_cap		= max_cap;
@@ -221,9 +226,10 @@ TRACE_EVENT(sched_util_fits_cpu,
 		),
 
 	TP_printk(
-		"cpu=%d util=%ld cpu_cap=%ld task_min_cap=%ld task_max_cap=%ld rq_min_cap=%ld rq_max_cap=%ld",
+		"cpu=%d pre_clamped_util=%ld clamped_util=%ld cpu_cap=%ld task_min_cap=%ld task_max_cap=%ld rq_min_cap=%ld rq_max_cap=%ld",
 		__entry->cpu,
-		__entry->util,
+		__entry->pre_clamped_util,
+		__entry->clamped_util,
 		__entry->cpu_cap,
 		__entry->task_min_cap,
 		__entry->task_max_cap,
