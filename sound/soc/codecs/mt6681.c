@@ -90,6 +90,32 @@ static int mt6681_key_set(struct snd_kcontrol *kcontrol,
 		keylock_reset(priv);
 	return 0;
 }
+#if IS_ENABLED(CONFIG_MT6681_EFUSE)
+static int mt6681_hw_version_get(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(component);
+
+	ucontrol->value.integer.value[0] = priv->hw_ver;
+	dev_dbg(priv->dev, "%s(), value = %ld\n",
+		__func__, ucontrol->value.integer.value[0]);
+	return 0;
+}
+static int mt6681_fab_code_get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(component);
+	unsigned long efuse_val = 0;
+
+	nvmem_device_read(priv->hp_efuse, 0xE, 1, &efuse_val);
+	ucontrol->value.integer.value[0] = (efuse_val >> 5) & 0x7;
+	dev_dbg(priv->dev, "%s(), value = %ld\n",
+		__func__, ucontrol->value.integer.value[0]);
+	return 0;
+}
+#endif
 
 unsigned int mt6681_etdm_rate_transform(unsigned int rate)
 {
@@ -196,10 +222,10 @@ static void mt6681_get_hw_ver(struct mt6681_priv *priv)
 	unsigned short efuse_val = 0;
 
 	ret = nvmem_device_read(priv->hp_efuse, 0x8, 1, &efuse_val);
-	value = (efuse_val >> 5) & 0x3;
+	value = (efuse_val >> 5) & 0x7;
 
 	ret = nvmem_device_read(priv->hp_efuse, 0xE, 1, &efuse_val);
-	fab = (efuse_val >> 5) & 0x3;
+	fab = (efuse_val >> 5) & 0x7;
 
 	priv->hw_ver = value;
 	pr_info("%s() mt6681 fab=%d, hw_ver= %d\n", __func__, fab,
@@ -1840,7 +1866,12 @@ static const struct snd_kcontrol_new mt6681_snd_controls[] = {
 	/* debug */
 	SOC_SINGLE_EXT("Codec keylock", SND_SOC_NOPM, 0, 0x1, 0, mt6681_key_get,
 		       mt6681_key_set),
-
+#if IS_ENABLED(CONFIG_MT6681_EFUSE)
+	SOC_SINGLE_EXT("Codec Chip ID", SND_SOC_NOPM, 0, 0xff, 0,
+		       mt6681_hw_version_get, NULL),
+	SOC_SINGLE_EXT("Codec Fab code", SND_SOC_NOPM, 0, 0xff, 0,
+		       mt6681_fab_code_get, NULL),
+#endif
 };
 
 /* LOL MUX */
