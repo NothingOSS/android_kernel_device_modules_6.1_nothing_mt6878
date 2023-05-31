@@ -270,6 +270,7 @@ static int fstb_arbitrate_target_fps(int raw_target_fps, int *margin,
 int fpsgo_other2fstb_register_info_callback(int mode, time_notify_callback func_cb)
 {
 	int i;
+	int empty_idx = -1;
 	int ret = 0;
 
 	mutex_lock(&fstb_info_callback_lock);
@@ -277,34 +278,22 @@ int fpsgo_other2fstb_register_info_callback(int mode, time_notify_callback func_
 	switch (mode) {
 	case FPSGO_Q2Q_TIME:
 		for (i = 0; i < MAX_Q2Q_TIME_CALLBACK; i++) {
-			if (q2q_notify_callback_list[i] == func_cb) {
-				ret = 2;
+			if (q2q_notify_callback_list[i] == func_cb)
 				break;
-			}
+			if (q2q_notify_callback_list[i] == NULL && empty_idx == -1)
+				empty_idx = i;
+		}
+		if (i >= MAX_Q2Q_TIME_CALLBACK) {
+			if (empty_idx < 0 || empty_idx >= MAX_Q2Q_TIME_CALLBACK)
+				ret = -ENOMEM;
+			else
+				q2q_notify_callback_list[empty_idx] = func_cb;
 		}
 		break;
 	default:
 		break;
 	}
 
-	if (ret)
-		goto out;
-
-	switch (mode) {
-	case FPSGO_Q2Q_TIME:
-		for (i = 0; i < MAX_Q2Q_TIME_CALLBACK; i++) {
-			if (q2q_notify_callback_list[i] == NULL) {
-				q2q_notify_callback_list[i] = func_cb;
-				ret = 1;
-				break;
-			}
-		}
-		break;
-	default:
-		break;
-	}
-
-out:
 	mutex_unlock(&fstb_info_callback_lock);
 	return ret;
 }
@@ -313,7 +302,7 @@ EXPORT_SYMBOL(fpsgo_other2fstb_register_info_callback);
 int fpsgo_other2fstb_unregister_info_callback(int mode, time_notify_callback func_cb)
 {
 	int i;
-	int ret = 0;
+	int ret = -ESPIPE;
 
 	mutex_lock(&fstb_info_callback_lock);
 
@@ -322,7 +311,7 @@ int fpsgo_other2fstb_unregister_info_callback(int mode, time_notify_callback fun
 		for (i = 0; i < MAX_Q2Q_TIME_CALLBACK; i++) {
 			if (q2q_notify_callback_list[i] == func_cb) {
 				q2q_notify_callback_list[i] = NULL;
-				ret = 1;
+				ret = 0;
 				break;
 			}
 		}
@@ -529,7 +518,7 @@ static void switch_fstb_active(void)
 }
 
 static struct FSTB_FRAME_INFO *add_new_frame_info(int pid, unsigned long long bufID,
-	int hwui_flag)
+	int hwui_flag, unsigned long master_type)
 {
 	struct task_struct *tsk = NULL, *gtsk = NULL;
 	struct FSTB_FRAME_INFO *new_frame_info;
@@ -560,8 +549,15 @@ static struct FSTB_FRAME_INFO *add_new_frame_info(int pid, unsigned long long bu
 	new_frame_info->render_idle_cnt = 0;
 	new_frame_info->hwui_flag = hwui_flag;
 	new_frame_info->sbe_state = 0;
+	new_frame_info->target_time = 0;
 	new_frame_info->self_ctrl_fps_enable = 0;
 	new_frame_info->notify_target_fps = 0;
+	new_frame_info->master_type = master_type;
+
+	if (test_bit(ADPF_TYPE, &master_type)) {
+		strcpy(new_frame_info->proc_name, "ADPF");
+		goto out;
+	}
 
 	rcu_read_lock();
 	tsk = find_task_by_vpid(pid);
@@ -1193,9 +1189,14 @@ out:
 			iter->cpu_time > Target_time && iter->cpu_time > iter->gpu_time)
 		local_final_tfps = iter->target_fps;
 
-	local_final_tfps = fstb_arbitrate_target_fps(local_final_tfps, &tolerence_fps, iter);
-	fstb_post_process_target_fps(local_final_tfps, tolerence_fps, iter->target_fps_diff,
-			&local_final_tfps, NULL, NULL);
+	if (test_bit(ADPF_TYPE, &iter->master_type))
+		local_final_tfps = div64_u64(1000000000ULL, iter->target_time);
+	else {
+		local_final_tfps = fstb_arbitrate_target_fps(local_final_tfps,
+				&tolerence_fps, iter);
+		fstb_post_process_target_fps(local_final_tfps, tolerence_fps, iter->target_fps_diff,
+				&local_final_tfps, NULL, NULL);
+	}
 	ged_kpi_set_target_FPS_margin(iter->bufid, local_final_tfps, tolerence_fps,
 		iter->target_fps_diff, iter->cpu_time);
 
@@ -1426,6 +1427,7 @@ void fpsgo_comp2fstb_queue_time_update(int pid, unsigned long long bufID,
 	int frame_type, unsigned long long ts,
 	int api, int hwui_flag)
 {
+	unsigned long local_master_type = 0;
 	struct FSTB_FRAME_INFO *iter;
 	struct FSTB_POLICY_CMD *policy;
 	ktime_t cur_time;
@@ -1459,7 +1461,8 @@ void fpsgo_comp2fstb_queue_time_update(int pid, unsigned long long bufID,
 	if (iter == NULL) {
 		struct FSTB_FRAME_INFO *new_frame_info;
 
-		new_frame_info = add_new_frame_info(pid, bufID, hwui_flag);
+		set_bit(FPSGO_TYPE, &local_master_type);
+		new_frame_info = add_new_frame_info(pid, bufID, hwui_flag, local_master_type);
 		if (new_frame_info == NULL)
 			goto out;
 
@@ -1657,6 +1660,11 @@ void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,
 		(*quantile_gpu_time) = -1;
 		fstb_post_process_target_fps(dfps_ceiling, 0, 0,
 			&local_final_tfps, &local_final_tfpks, &total_time);
+	} else if (test_bit(ADPF_TYPE, &iter->master_type)) {
+		local_final_tfpks = div64_u64(1000000000000ULL, iter->target_time);
+		local_final_tfps = local_final_tfpks / 1000;
+		tolerence_fps = 0;
+		total_time = iter->target_time;
 	} else {
 		if (iter->target_fps_diff) {
 			*cooler_on = 1;
@@ -1674,6 +1682,7 @@ void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,
 		local_tfps = fstb_arbitrate_target_fps(local_tfps, &tolerence_fps, iter);
 		fstb_post_process_target_fps(local_tfps, tolerence_fps, iter->target_fps_diff,
 			&local_final_tfps, &local_final_tfpks, &total_time);
+		iter->target_time = total_time;
 	}
 
 	*target_fps = local_final_tfps;
@@ -1737,6 +1746,9 @@ void fstb_cal_powerhal_fps(void)
 
 	memset(powerfps_array, 0, 64 * sizeof(struct FSTB_POWERFPS_LIST));
 	hlist_for_each_entry(iter, &fstb_frame_infos, hlist) {
+		if (i < 0 || i >= 64)
+			break;
+
 		powerfps_array[i].pid = iter->proc_id;
 		powerfps_array[i].fps = fpsgo_power2fstb_get_final_target_fps(iter);
 
@@ -1746,6 +1758,10 @@ void fstb_cal_powerhal_fps(void)
 			break;
 		}
 	}
+
+	if (i < 0 || i >= 64)
+		return;
+
 	powerfps_array[i].pid = -1;
 
 	sort(powerfps_array, i, sizeof(struct FSTB_POWERFPS_LIST), cmp_powerfps, NULL);
@@ -1774,6 +1790,9 @@ static void fstb_fps_stats(struct work_struct *work)
 	mutex_lock(&fstb_lock);
 
 	hlist_for_each_entry_safe(iter, n, &fstb_frame_infos, hlist) {
+		if (test_bit(ADPF_TYPE, &iter->master_type))
+			continue;
+
 		if (fps_update(iter)) {
 
 			idle = 0;
@@ -1894,18 +1913,71 @@ out:
 	return ret;
 }
 
-int fpsgo_ktf2fstb_add_delete_render_info(int mode, int pid, unsigned long long bufID,
-	int target_fps, int queue_fps)
+int fpsgo_comp2fstb_adpf_set_target_time(int tgid, int rtid, unsigned long long bufID,
+	unsigned long long target_time, int op)
 {
-	int ret = 0;
+	unsigned long local_master_type = 0;
 	struct FSTB_FRAME_INFO *iter = NULL;
 	struct hlist_node *h = NULL;
 
 	mutex_lock(&fstb_lock);
 
+	hlist_for_each_entry_safe(iter, h, &fstb_frame_infos, hlist) {
+		if (iter->pid == rtid && iter->bufid == bufID)
+			break;
+	}
+
+	if (op == -1) {
+		if (iter) {
+			hlist_del(&iter->hlist);
+			vfree(iter);
+		}
+		goto out;
+	}
+
+	if (!iter) {
+		if (!op)
+			goto malloc_err;
+
+		set_bit(ADPF_TYPE, &local_master_type);
+		iter = add_new_frame_info(rtid, bufID, RENDER_INFO_HWUI_NONE, local_master_type);
+		if (!iter)
+			goto malloc_err;
+		iter->proc_id = tgid;
+
+		hlist_add_head(&iter->hlist, &fstb_frame_infos);
+	}
+
+	iter->target_fps = div64_u64(1000000000ULL, target_time);
+	iter->target_time = target_time;
+
+	xgf_trace("[adpf][fstb][%d][0x%llx] | create target_time:%llu target_fps:%d",
+		rtid, bufID, target_time, iter->target_fps);
+
+out:
+	mutex_unlock(&fstb_lock);
+	return 0;
+
+malloc_err:
+	mutex_unlock(&fstb_lock);
+	return -ENOMEM;
+}
+
+int fpsgo_ktf2fstb_add_delete_render_info(int mode, int pid, unsigned long long bufID,
+	int target_fps, int queue_fps)
+{
+	int ret = 0;
+	unsigned long local_master_type = 0;
+	struct FSTB_FRAME_INFO *iter = NULL;
+	struct hlist_node *h = NULL;
+
+	mutex_lock(&fstb_lock);
+
+	set_bit(KTF_TYPE, &local_master_type);
+
 	switch (mode) {
 	case 0:
-		iter = add_new_frame_info(pid, bufID, RENDER_INFO_HWUI_NONE);
+		iter = add_new_frame_info(pid, bufID, RENDER_INFO_HWUI_NONE, local_master_type);
 		if (iter) {
 			iter->target_fps = target_fps;
 			iter->target_fps_v2 = target_fps;
@@ -2313,7 +2385,7 @@ static ssize_t fpsgo_status_show(struct kobject *kobj,
 	hlist_for_each_entry(iter, &fstb_frame_infos, hlist) {
 		if (iter) {
 			length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-					"%d\t0x%llx\t%s\t%d\t\t%d\t\t%d\t\t%d\t\t%d\t%lld\t\t(%d,%d)\n",
+					"%d\t0x%llx\t%s\t%d\t\t%d\t\t%d\t\t%d\t\t%d\t%lld\t\t(%d,%d,%lu)\n",
 					iter->pid,
 					iter->bufid,
 					iter->proc_name,
@@ -2327,7 +2399,8 @@ static ssize_t fpsgo_status_show(struct kobject *kobj,
 					iter->hwui_flag,
 					iter->gpu_time,
 					iter->self_ctrl_fps_enable,
-					iter->notify_target_fps);
+					iter->notify_target_fps,
+					iter->master_type);
 			pos += length;
 		}
 	}
@@ -2345,6 +2418,47 @@ out:
 	return length;
 }
 static KOBJ_ATTR_ROO(fpsgo_status);
+
+static ssize_t fstb_tfps_info_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	char *temp = NULL;
+	int i = 1;
+	int pos = 0;
+	int length = 0;
+	struct FSTB_FRAME_INFO *iter;
+	struct hlist_node *h = NULL;
+
+	temp = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!temp)
+		goto out;
+
+	mutex_lock(&fstb_lock);
+
+	hlist_for_each_entry_safe(iter, h, &fstb_frame_infos, hlist) {
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+			"%dth\t[%d][0x%llx]\ttarget_fps:%d\ttarget_time:%llu\n",
+			i,
+			iter->pid,
+			iter->bufid,
+			iter->self_ctrl_fps_enable ? iter->target_fps_v2 : iter->target_fps,
+			iter->target_time);
+		pos += length;
+		i++;
+	}
+
+	mutex_unlock(&fstb_lock);
+
+	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
+
+out:
+	kfree(temp);
+	return length;
+}
+
+static KOBJ_ATTR_RO(fstb_tfps_info);
 
 static ssize_t fstb_policy_cmd_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -2461,6 +2575,8 @@ int mtk_fstb_init(void)
 				&kobj_attr_notify_fstb_target_fps_by_pid);
 		fpsgo_sysfs_create_file(fstb_kobj,
 				&kobj_attr_fstb_soft_level);
+		fpsgo_sysfs_create_file(fstb_kobj,
+				&kobj_attr_fstb_tfps_info);
 	}
 
 	wq = alloc_ordered_workqueue("%s", WQ_MEM_RECLAIM | WQ_HIGHPRI, "mt_fstb");
@@ -2520,6 +2636,8 @@ int __exit mtk_fstb_exit(void)
 			&kobj_attr_notify_fstb_target_fps_by_pid);
 	fpsgo_sysfs_remove_file(fstb_kobj,
 			&kobj_attr_fstb_soft_level);
+	fpsgo_sysfs_remove_file(fstb_kobj,
+			&kobj_attr_fstb_tfps_info);
 
 	fpsgo_sysfs_remove_dir(&fstb_kobj);
 

@@ -249,6 +249,7 @@ struct render_info {
 	int sbe_control_flag;
 	int control_pid_flag;
 	unsigned long long render_last_cb_ts;
+	unsigned long master_type;
 
 	/*render queue/dequeue/frame time info*/
 	unsigned long long t_enqueue_start;
@@ -466,6 +467,13 @@ enum FPSGO_ACQUIRE_TYPE {
 enum FPSGO_GET_PID_CMD {
 	CAMERA_APK = 0,
 	CAMERA_SERVER = 1
+};
+
+enum FPSGO_MASTER_TYPE {
+	FPSGO_TYPE,
+	ADPF_TYPE,
+	MAGT_TYPE,
+	KTF_TYPE
 };
 
 #endif

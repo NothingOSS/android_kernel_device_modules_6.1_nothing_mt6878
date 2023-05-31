@@ -803,6 +803,7 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 	struct render_info *iter_thr = NULL;
 	int tgid;
 	struct fbt_render_key render_key;
+	unsigned long local_master_type = 0;
 
 	render_key.key1 = pid;
 	render_key.key2 = identifier;
@@ -843,6 +844,8 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 	iter_thr->ux_frame_info_tree = RB_ROOT;
 	iter_thr->sbe_enhance = 0;
 	iter_thr->t_last_start = 0;
+	set_bit(FPSGO_TYPE, &local_master_type);
+	iter_thr->master_type = local_master_type;
 
 	fbt_set_render_boost_attr(iter_thr);
 
@@ -1465,6 +1468,35 @@ static void fpsgo_check_acquire_info_status(void)
 	}
 }
 
+static void fpsgo_check_adpf_render_status(void)
+{
+	int local_tgid = 0;
+	struct render_info *iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	rbn = rb_first(&render_pid_tree);
+	while (rbn) {
+		iter = rb_entry(rbn, struct render_info, render_key_node);
+		fpsgo_thread_lock(&iter->thr_mlock);
+		if (!test_bit(ADPF_TYPE, &iter->master_type)) {
+			rbn = rb_next(rbn);
+			fpsgo_thread_unlock(&iter->thr_mlock);
+			continue;
+		}
+
+		local_tgid = fpsgo_get_tgid(iter->tgid);
+		if (local_tgid) {
+			rbn = rb_next(rbn);
+			fpsgo_thread_unlock(&iter->thr_mlock);
+		} else {
+			rb_erase(rbn, &render_pid_tree);
+			fpsgo_thread_unlock(&iter->thr_mlock);
+			kfree(iter);
+			rbn = rb_first(&render_pid_tree);
+		}
+	}
+}
+
 void fpsgo_clear_llf_cpu_policy(void)
 {
 	struct rb_node *n;
@@ -1585,7 +1617,8 @@ int fpsgo_check_thread_status(void)
 
 		fpsgo_thread_lock(&iter->thr_mlock);
 
-		if (iter->t_enqueue_start < expire_ts) {
+		if (iter->t_enqueue_start < expire_ts &&
+			!test_bit(ADPF_TYPE, &iter->master_type)) {
 			if (iter->pid == temp_max_pid &&
 				iter->buffer_id == temp_max_bufid)
 				check_max_blc = 1;
@@ -1619,6 +1652,10 @@ int fpsgo_check_thread_status(void)
 			if (iter->frame_type != BY_PASS_TYPE)
 				is_boosting = NON_VSYNC_ALIGNED_TYPE;
 
+			if (test_bit(ADPF_TYPE, &iter->master_type) &&
+				iter->t_enqueue_end < expire_ts)
+				fpsgo_stop_boost_by_render(iter);
+
 			n = rb_next(n);
 
 			fpsgo_thread_unlock(&iter->thr_mlock);
@@ -1628,6 +1665,7 @@ int fpsgo_check_thread_status(void)
 	fpsgo_check_BQid_status();
 	fpsgo_check_acquire_info_status();
 	fpsgo_traverse_linger(ts);
+	fpsgo_check_adpf_render_status();
 
 	fpsgo_render_tree_unlock(__func__);
 

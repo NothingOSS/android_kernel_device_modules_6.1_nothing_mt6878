@@ -581,7 +581,7 @@ void xgf_ema2_dump_info_frames(long long *L, int n, char *buffer)
 EXPORT_SYMBOL(xgf_ema2_dump_info_frames);
 
 static struct xgf_render_if *xgf_get_render_if(int pid, unsigned long long bufID,
-	unsigned long long ts, int create)
+	unsigned long master_type, unsigned long long ts, int create)
 {
 	int tgid;
 	struct xgf_render_if *iter = NULL;
@@ -613,6 +613,7 @@ static struct xgf_render_if *xgf_get_render_if(int pid, unsigned long long bufID
 	iter->dep_list_size = 0;
 	iter->ema2_enable = 0;
 	iter->filter_dep_task_enable = 0;
+	iter->master_type = master_type;
 
 	hlist_add_head(&iter->hlist, &xgf_render_if_list);
 
@@ -660,7 +661,7 @@ static struct xgf_dep *xgf_add_dep_task(int tid, struct xgf_render_if *render, i
 		return NULL;
 
 	iter->tid = tid;
-	iter->action = 0;
+	iter->action = XGF_ADD_DEP;
 
 	rb_link_node(&iter->rb_node, parent, p);
 	rb_insert_color(&iter->rb_node, r);
@@ -708,7 +709,7 @@ static void xgf_wspid_list_add2prev(struct xgf_render_if *render)
 	hlist_for_each_entry_safe(xgf_spid_iter, t, &xgf_wspid_list, hlist) {
 		if (xgf_spid_iter->rpid == render->pid
 			&& xgf_spid_iter->bufID == render->bufid) {
-			if (xgf_spid_iter->action == -1)
+			if (xgf_spid_iter->action == XGF_DEL_DEP)
 				xgf_del_pid2prev_dep(render, xgf_spid_iter->tid);
 			else
 				xgf_add_pid2prev_dep(render, xgf_spid_iter->tid,
@@ -801,7 +802,7 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 
 	mutex_lock(&xgf_main_lock);
 
-	render_iter = xgf_get_render_if(pid, bufID, 0, 0);
+	render_iter = xgf_get_render_if(pid, bufID, 0, 0, 0);
 	if (!render_iter) {
 		mutex_unlock(&xgf_main_lock);
 		return index;
@@ -834,7 +835,7 @@ int fpsgo_comp2xgf_get_dep_list_num(int pid, unsigned long long bufID)
 
 	mutex_lock(&xgf_main_lock);
 
-	render_iter = xgf_get_render_if(pid, bufID, 0, 0);
+	render_iter = xgf_get_render_if(pid, bufID, 0, 0, 0);
 	if (!render_iter) {
 		mutex_unlock(&xgf_main_lock);
 		return 0;
@@ -860,7 +861,7 @@ int fpsgo_comp2xgf_get_dep_list(int pid, int count,
 
 	mutex_lock(&xgf_main_lock);
 
-	render_iter = xgf_get_render_if(pid, bufID, 0, 0);
+	render_iter = xgf_get_render_if(pid, bufID, 0, 0, 0);
 	if (!render_iter) {
 		mutex_unlock(&xgf_main_lock);
 		return index;
@@ -981,6 +982,9 @@ int fpsgo_comp2xgf_do_recycle(void)
 	}
 
 	hlist_for_each_entry_safe(r_iter, r_t, &xgf_render_if_list, hlist) {
+		if (test_bit(ADPF_TYPE, &r_iter->master_type))
+			continue;
+
 		diff = now_ts - r_iter->cur_queue_end_ts;
 		if (diff >= NSEC_PER_SEC)
 			xgf_reset_render(r_iter);
@@ -1356,6 +1360,7 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 	int local_dep_list_num = 0, raw_dep_list_num = 0;
 	int max_local_dep_list_num = MAX_DEP_NUM;
 	int max_raw_dep_list_num = 0;
+	unsigned long local_master_type = 0;
 	unsigned long long t_dequeue_time = 0;
 	unsigned long long local_raw_t_cpu = 0;
 	unsigned long long local_ema_t_cpu = 0;
@@ -1377,7 +1382,8 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 		return;
 	}
 
-	iter = xgf_get_render_if(pid, bufID, t_enqueue_end, 1);
+	set_bit(FPSGO_TYPE, &local_master_type);
+	iter = xgf_get_render_if(pid, bufID, local_master_type, t_enqueue_end, 1);
 	if (!iter)
 		return;
 
@@ -1462,6 +1468,48 @@ by_pass_skip:
 	mutex_unlock(&xgf_main_lock);
 }
 
+int fpsgo_comp2xgf_adpf_set_dep_list(int tgid, int rtid, unsigned long long bufID,
+	int *dep_arr, int dep_num, int op)
+{
+	int i;
+	unsigned long local_master_type = 0;
+	unsigned long long ts = fpsgo_get_time();
+	struct xgf_render_if *r_iter = NULL;
+	struct xgf_dep *xd = NULL;
+
+	mutex_lock(&xgf_main_lock);
+
+	if (op == -1) {
+		r_iter = xgf_get_render_if(rtid, bufID, local_master_type, ts, 0);
+		if (r_iter)
+			xgf_reset_render(r_iter);
+		goto out;
+	}
+
+	set_bit(ADPF_TYPE, &local_master_type);
+	r_iter = xgf_get_render_if(rtid, bufID, local_master_type, ts, op);
+	if (!r_iter)
+		goto malloc_err;
+	r_iter->tgid = tgid;
+
+	xgf_reset_render_dep_list(r_iter);
+	for (i = 0; i < dep_num; i++) {
+		xd = xgf_add_dep_task(dep_arr[i], r_iter, 1);
+		if (!xd)
+			goto malloc_err;
+		xgf_trace("[adpf][xgf][%d][0x%llx] | create dep_task[%d]:%d",
+			rtid, bufID, i, dep_arr[i]);
+	}
+
+out:
+	mutex_unlock(&xgf_main_lock);
+	return 0;
+
+malloc_err:
+	mutex_unlock(&xgf_main_lock);
+	return -ENOMEM;
+}
+
 int fpsgo_ktf2xgf_atomic_set(int op, int value)
 {
 	int ret = 0;
@@ -1488,15 +1536,18 @@ EXPORT_SYMBOL(fpsgo_ktf2xgf_atomic_set);
 int fpsgo_ktf2xgf_add_delete_render_info(int mode, int pid, unsigned long long bufID)
 {
 	int ret = 0;
+	unsigned long local_master_type = 0;
 	unsigned long long ts = fpsgo_get_time();
 	struct xgf_render_if *r_iter = NULL;
 	struct xgf_dep *xd_iter = NULL;
 
 	mutex_lock(&xgf_main_lock);
 
+	set_bit(KTF_TYPE, &local_master_type);
+
 	switch (mode) {
 	case 0:
-		r_iter = xgf_get_render_if(pid, bufID, ts, 1);
+		r_iter = xgf_get_render_if(pid, bufID, local_master_type, ts, 1);
 		if (r_iter) {
 			xd_iter = xgf_add_dep_task(pid, r_iter, 1);
 			if (xd_iter)
@@ -1505,7 +1556,7 @@ int fpsgo_ktf2xgf_add_delete_render_info(int mode, int pid, unsigned long long b
 		break;
 
 	case 1:
-		r_iter = xgf_get_render_if(pid, bufID, ts, 0);
+		r_iter = xgf_get_render_if(pid, bufID, local_master_type, ts, 0);
 		if (r_iter) {
 			xgf_reset_render(r_iter);
 			ret = 1;

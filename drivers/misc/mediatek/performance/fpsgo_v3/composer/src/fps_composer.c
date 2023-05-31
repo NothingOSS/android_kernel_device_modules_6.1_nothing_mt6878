@@ -66,9 +66,9 @@ static DEFINE_MUTEX(recycle_lock);
 static DEFINE_MUTEX(fpsgo_com_policy_cmd_lock);
 static DEFINE_MUTEX(fpsgo_boost_cb_lock);
 static DEFINE_MUTEX(fpsgo_boost_lock);
+static DEFINE_MUTEX(adpf_hint_lock);
 
 static fpsgo_notify_is_boost_cb notify_fpsgo_boost_cb_list[MAX_FPSGO_CB_NUM];
-
 
 static enum hrtimer_restart prepare_do_recycle(struct hrtimer *timer)
 {
@@ -1396,6 +1396,219 @@ out:
 	return ret;
 }
 
+static void fpsgo_adpf_boost(int render_tid, unsigned long long buffer_id,
+	unsigned long long tcpu, unsigned long long ts, int skip)
+{
+	struct render_info *iter = NULL;
+
+	fpsgo_render_tree_lock(__func__);
+	iter = fpsgo_search_and_add_render_info(render_tid, buffer_id, 0);
+	if (!iter)
+		goto out;
+
+	fpsgo_thread_lock(&iter->thr_mlock);
+	iter->enqueue_length = 0;
+	iter->enqueue_length_real = 0;
+	iter->dequeue_length = 0;
+	if (iter->t_enqueue_end && !skip) {
+		iter->running_time = tcpu;
+		iter->Q2Q_time = ts - iter->t_enqueue_end;
+		fpsgo_comp2fbt_frame_start(iter, ts);
+	}
+	iter->t_enqueue_end = ts;
+	fpsgo_thread_unlock(&iter->thr_mlock);
+
+out:
+	fpsgo_render_tree_unlock(__func__);
+}
+
+static void fpsgo_adpf_deboost(int render_tid, unsigned long long buffer_id)
+{
+	struct render_info *iter = NULL;
+
+	fpsgo_render_tree_lock(__func__);
+	iter = fpsgo_search_and_add_render_info(render_tid, buffer_id, 0);
+	if (!iter)
+		goto out;
+	fpsgo_thread_lock(&iter->thr_mlock);
+	fpsgo_stop_boost_by_render(iter);
+	fpsgo_thread_unlock(&iter->thr_mlock);
+
+out:
+	fpsgo_render_tree_unlock(__func__);
+}
+
+int fpsgo_ctrl2comp_set_target_time(int tgid, int render_tid,
+	unsigned long long buffer_id, unsigned long long target_time)
+{
+	int ret = 0;
+
+	if (!target_time)
+		return -EINVAL;
+
+	mutex_lock(&adpf_hint_lock);
+
+	fpsgo_systrace_c_fbt(render_tid, buffer_id,
+		target_time, "adpf_update_target_work_duration");
+	ret = fpsgo_comp2fstb_adpf_set_target_time(tgid, render_tid, buffer_id, target_time, 0);
+	xgf_trace("[comp][%d][0x%llx] %s ret:%d", render_tid, buffer_id, __func__, ret);
+	fpsgo_systrace_c_fbt(render_tid, buffer_id,
+		0, "adpf_update_target_work_duration");
+
+	mutex_unlock(&adpf_hint_lock);
+
+	return ret;
+}
+
+int fpsgo_ctrl2comp_adpf_set_dep_list(int tgid, int render_tid,
+	unsigned long long buffer_id, int *dep_arr, int dep_num)
+{
+	int ret = 0;
+
+	if (!dep_arr)
+		return -EFAULT;
+
+	mutex_lock(&adpf_hint_lock);
+
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, dep_num, "adpf_set_threads");
+	ret = fpsgo_comp2xgf_adpf_set_dep_list(tgid, render_tid, buffer_id, dep_arr, dep_num, 0);
+	xgf_trace("[comp][%d][0x%llx] %s ret:%d", render_tid, buffer_id, __func__, ret);
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, 0, "adpf_set_threads");
+
+	mutex_unlock(&adpf_hint_lock);
+
+	return ret;
+}
+
+void fpsgo_ctrl2comp_adpf_resume(int render_tid, unsigned long long buffer_id)
+{
+	unsigned long long ts = fpsgo_get_time();
+
+	mutex_lock(&adpf_hint_lock);
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, 1, "adpf_resume");
+	fpsgo_adpf_boost(render_tid, buffer_id, 0, ts, 1);
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, 0, "adpf_resume");
+	mutex_unlock(&adpf_hint_lock);
+}
+
+void fpsgo_ctrl2comp_adpf_pause(int render_tid, unsigned long long buffer_id)
+{
+	mutex_lock(&adpf_hint_lock);
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, 1, "adpf_pause");
+	fpsgo_adpf_deboost(render_tid, buffer_id);
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, 0, "adpf_pause");
+	mutex_unlock(&adpf_hint_lock);
+}
+
+void fpsgo_ctrl2comp_adpf_close(int tgid, int render_tid, unsigned long long buffer_id)
+{
+	mutex_lock(&adpf_hint_lock);
+
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, 1, "adpf_close");
+
+	fpsgo_comp2xgf_adpf_set_dep_list(tgid, render_tid, buffer_id, NULL, 0, -1);
+	fpsgo_comp2fstb_adpf_set_target_time(tgid, render_tid, buffer_id, 0, -1);
+
+	fpsgo_adpf_deboost(render_tid, buffer_id);
+
+	fpsgo_render_tree_lock(__func__);
+	fpsgo_delete_render_info(render_tid, buffer_id, buffer_id);
+	fpsgo_render_tree_unlock(__func__);
+
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, 0, "adpf_close");
+
+	mutex_unlock(&adpf_hint_lock);
+}
+
+int fpsgo_ctrl2comp_adpf_create_session(int tgid, int render_tid, unsigned long long buffer_id,
+	int *dep_arr, int dep_num, unsigned long long target_time)
+{
+	int ret = 0;
+	unsigned long local_master_type = 0;
+	struct render_info *iter = NULL;
+
+	if (!dep_arr)
+		return -EFAULT;
+	if (!target_time)
+		return -EINVAL;
+
+	mutex_lock(&adpf_hint_lock);
+
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, 1, "adpf_create_session");
+
+	ret = fpsgo_comp2xgf_adpf_set_dep_list(tgid, render_tid, buffer_id, dep_arr, dep_num, 1);
+	if (ret)
+		goto out;
+
+	ret = fpsgo_comp2fstb_adpf_set_target_time(tgid, render_tid, buffer_id, target_time, 1);
+	if (ret) {
+		fpsgo_comp2xgf_adpf_set_dep_list(tgid, render_tid, buffer_id, NULL, 0, -1);
+		goto out;
+	}
+
+	fpsgo_render_tree_lock(__func__);
+	iter = fpsgo_search_and_add_render_info(render_tid, buffer_id, 1);
+	if (iter) {
+		fpsgo_thread_lock(&iter->thr_mlock);
+		iter->tgid = tgid;
+		iter->buffer_id = buffer_id;
+		iter->api = NATIVE_WINDOW_API_EGL;
+		iter->frame_type = NON_VSYNC_ALIGNED_TYPE;
+		set_bit(ADPF_TYPE, &local_master_type);
+		iter->master_type = local_master_type;
+		if (!iter->p_blc)
+			fpsgo_base2fbt_node_init(iter);
+		fpsgo_thread_unlock(&iter->thr_mlock);
+	} else {
+		fpsgo_comp2xgf_adpf_set_dep_list(tgid, render_tid, buffer_id, NULL, 0, -1);
+		fpsgo_comp2fstb_adpf_set_target_time(tgid, render_tid, buffer_id, 0, -1);
+	}
+	fpsgo_render_tree_unlock(__func__);
+
+out:
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, 0, "adpf_create_session");
+	mutex_unlock(&adpf_hint_lock);
+	return ret;
+}
+
+int fpsgo_ctrl2comp_report_workload(int tgid, int render_tid, unsigned long long buffer_id,
+	unsigned long long *tcpu_arr, unsigned long long *ts_arr, int num)
+{
+	int i;
+	int ret = 0;
+	unsigned long long local_tcpu = 0;
+	unsigned long long local_ts = 0;
+
+	mutex_lock(&adpf_hint_lock);
+
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, 1, "adpf_report_actual_work_duration");
+
+	if (num > 1) {
+		for (i = 0; i < num; i++) {
+			if (local_ts < ts_arr[i])
+				local_ts = ts_arr[i];
+			local_tcpu += tcpu_arr[i];
+			xgf_trace("[adpf][xgf][%d][0x%llx] | %dth t_cpu:%llu ts:%llu",
+				render_tid, buffer_id, i, tcpu_arr[i], ts_arr[i]);
+		}
+	} else if (num == 1) {
+		local_tcpu = tcpu_arr[0];
+		local_ts = ts_arr[0];
+	} else {
+		ret = -EINVAL;
+		goto out;
+	}
+	xgf_trace("[adpf][xgf][%d][0x%llx] | local_tcpu:%llu local_ts:%llu",
+		render_tid, buffer_id, local_tcpu, local_ts);
+
+	fpsgo_adpf_boost(render_tid, buffer_id, local_tcpu, local_ts, 0);
+
+out:
+	fpsgo_systrace_c_fbt(render_tid, buffer_id, 0, "adpf_report_actual_work_duration");
+	mutex_unlock(&adpf_hint_lock);
+	return ret;
+}
+
 void fpsgo_base2comp_check_connect_api(void)
 {
 	struct rb_node *n;
@@ -1828,8 +2041,6 @@ out:
 }
 
 static KOBJ_ATTR_RO(fpsgo_com_policy_cmd);
-
-//FPSGO_COM_SYSFS_READ(set_ui_ctrl, 0, 0);
 
 static ssize_t set_ui_ctrl_show(struct kobject *kobj,
 		struct kobj_attribute *attr,

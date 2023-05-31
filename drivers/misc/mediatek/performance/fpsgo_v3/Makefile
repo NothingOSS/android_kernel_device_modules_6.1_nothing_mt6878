@@ -23,6 +23,7 @@ ccflags-y += \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/ \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
         -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/powerhal_cpu_ctrl/ \
 
 subdir-ccflags-y += \
         -I$(srctree)/include/ \
@@ -38,6 +39,7 @@ subdir-ccflags-y += \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/ \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
         -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/powerhal_cpu_ctrl/ \
 
 
 #fpsgo_main

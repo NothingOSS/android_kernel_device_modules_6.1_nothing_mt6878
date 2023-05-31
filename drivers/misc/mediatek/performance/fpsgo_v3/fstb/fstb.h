@@ -30,6 +30,8 @@ int fpsgo_ctrl2fstb_gblock(int tid, int start);
 void fpsgo_ctrl2fstb_get_fps(int *pid, int *fps);
 int fpsgo_ctrl2fstb_wait_fstb_active(void);
 int fpsgo_comp2fstb_do_recycle(void);
+int fpsgo_comp2fstb_adpf_set_target_time(int tgid, int rtid, unsigned long long bufID,
+	unsigned long long target_time, int create);
 int fpsgo_other2fstb_register_info_callback(int mode, time_notify_callback func_cb);
 int fpsgo_other2fstb_unregister_info_callback(int mode, time_notify_callback func_cb);
 int fpsgo_other2fstb_get_fps(int pid, unsigned long long bufID,

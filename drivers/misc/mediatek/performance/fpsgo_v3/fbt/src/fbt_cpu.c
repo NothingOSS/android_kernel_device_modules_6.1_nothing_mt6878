@@ -1921,8 +1921,8 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 		light_thread = fbt_is_light_loading(fl->loading, loading_th_final);
 
 		if ((light_thread &&
-			bhr_opp != (nr_freq_cpu - 1) && fl->action == 0) ||
-			(fl->action == 2)) {
+			bhr_opp != (nr_freq_cpu - 1) && fl->action == XGF_ADD_DEP) ||
+			(fl->action == XGF_ADD_DEP_FORCE_LLF)) {
 			fbt_set_per_task_cap(fl->pid,
 				(!loading_policy_final) ? 0
 				: min_cap * loading_policy_final / 100, max_cap);
@@ -5130,7 +5130,7 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 	unsigned int limited_cap = 0;
 	int blc_wt = 0;
 	long loading = 0L;
-	int q_c_time, q_g_time;
+	int q_c_time = 0, q_g_time = 0;
 
 	if (!thr)
 		return;

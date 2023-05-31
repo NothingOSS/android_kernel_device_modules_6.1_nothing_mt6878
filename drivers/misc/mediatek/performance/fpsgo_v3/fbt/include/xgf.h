@@ -22,6 +22,13 @@
 #define DEFAULT_MAX_DEP_TASK_NUM 100
 #define MAX_XGF_POLICY_CMD_NUM 10
 
+enum XGF_ACTION {
+	XGF_DEL_DEP = -1,
+	XGF_ADD_DEP = 0,
+	XGF_ADD_DEP_NO_LLF = 1,
+	XGF_ADD_DEP_FORCE_LLF = 2
+};
+
 enum XGF_EVENT {
 	IRQ_ENTRY,
 	IRQ_EXIT,
@@ -62,6 +69,8 @@ struct xgf_render_if {
 
 	int ema2_enable;
 	int filter_dep_task_enable;
+
+	unsigned long master_type;
 };
 
 struct xgf_dep {
@@ -134,6 +143,8 @@ int fpsgo_comp2xgf_do_recycle(void);
 int fpsgo_comp2xgf_get_dep_list_num(int pid, unsigned long long bufID);
 int fpsgo_comp2xgf_get_dep_list(int pid, int count,
 	int *arr, unsigned long long bufID);
+int fpsgo_comp2xgf_adpf_set_dep_list(int tgid, int rtid, unsigned long long bufID,
+	int *dep_arr, int dep_num, int op);
 int has_xgf_dep(pid_t tid);
 int fpsgo_ktf2xgf_add_delete_render_info(int mode, int pid, unsigned long long bufID);
 struct xgf_thread_loading fbt_xgff_list_loading_add(int pid,

@@ -40,6 +40,7 @@ struct FSTB_FRAME_INFO {
 	int target_fps_diff;
 	int target_fps_notifying;
 	int sbe_state; /*0: free run, 1: max_fps*/
+	unsigned long long target_time;
 
 	long long cpu_time;
 	long long gpu_time;
@@ -65,6 +66,8 @@ struct FSTB_FRAME_INFO {
 	int hwui_flag;
 	int self_ctrl_fps_enable;
 	int notify_target_fps;
+
+	unsigned long master_type;
 };
 
 struct FSTB_RENDER_TARGET_FPS {
