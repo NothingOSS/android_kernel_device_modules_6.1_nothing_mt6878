@@ -102,6 +102,4 @@ source "$(KCONFIG_EXT_PREFIX)drivers/pinctrl/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/scsi/Kconfig"
 
-source "$(KCONFIG_EXT_PREFIX)drivers/net/network/Kconfig"
-
 source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/mtk-isp/Kconfig"
