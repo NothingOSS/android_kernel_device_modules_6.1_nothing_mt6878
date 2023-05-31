@@ -5540,7 +5540,7 @@
 
 		gpu_dvfs_async: gpu-async-ratio {
 			compatible = "mediatek,gpu_async_ratio";
-			async-ratio-support = <0>;
+			async-ratio-support = <1>;
 			async-virtual-table-support = <0>;
 			async-oppnum-eachmask = <2>;
 			async-ratio = <170>;
