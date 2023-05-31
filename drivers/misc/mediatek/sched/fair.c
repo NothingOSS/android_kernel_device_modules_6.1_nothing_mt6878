@@ -1404,7 +1404,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	int cluster, cpu;
 	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_fbc_mask);
 	unsigned long target_cap = 0;
-	unsigned long cpu_cap, cpu_util;
+	unsigned long cpu_cap, cpu_util, cpu_util_without_p;
 	bool not_in_softmask;
 	struct cpuidle_state *idle;
 	long sys_max_spare_cap = LONG_MIN, idle_max_spare_cap = LONG_MIN;
@@ -1432,7 +1432,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	/* find best candidate */
 	for (cluster = 0; cluster < num_sched_clusters; cluster++) {
 		unsigned int uint_cpu;
-		long spare_cap, pd_max_spare_cap = LONG_MIN;
+		long spare_cap, spare_cap_without_p, pd_max_spare_cap = LONG_MIN;
 		long pd_max_spare_cap_ls_idle = LONG_MIN;
 		unsigned int pd_min_exit_lat = UINT_MAX;
 		int pd_max_spare_cap_cpu = -1;
@@ -1472,9 +1472,12 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 				continue;
 
 			cpu_util = cpu_util_next(cpu, p, cpu);
+			cpu_util_without_p = cpu_util_next(cpu, p, -1);
 			cpu_cap = capacity_of(cpu);
 			spare_cap = cpu_cap;
+			spare_cap_without_p = cpu_cap;
 			lsub_positive(&spare_cap, cpu_util);
+			lsub_positive(&spare_cap_without_p, cpu_util_without_p);
 			not_in_softmask = (latency_sensitive &&
 						!cpumask_test_cpu(cpu, effective_softmask));
 
@@ -1496,8 +1499,8 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 				spare_cap += spare_cap >> 6;
 
 			if (is_target_max_spare_cpu(is_vip, num_vip, prev_min_num_vip,
-					spare_cap, sys_max_spare_cap)) {
-				sys_max_spare_cap = spare_cap;
+					spare_cap_without_p, sys_max_spare_cap)) {
+				sys_max_spare_cap = spare_cap_without_p;
 				*sys_max_spare_cap_cpu = cpu;
 			}
 
@@ -1509,8 +1512,8 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			 */
 			if (latency_sensitive && available_idle_cpu(cpu)) {
 				if (is_target_max_spare_cpu(is_vip, num_vip, prev_min_num_vip,
-						spare_cap, idle_max_spare_cap)) {
-					idle_max_spare_cap = spare_cap;
+						spare_cap_without_p, idle_max_spare_cap)) {
+					idle_max_spare_cap = spare_cap_without_p;
 					*idle_max_spare_cap_cpu = cpu;
 				}
 			}
