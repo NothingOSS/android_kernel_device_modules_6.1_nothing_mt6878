@@ -14,6 +14,19 @@
 
 #include "eas_plus.h"
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#include "common.h"
+#include "group.h"
+#include "flt_cal.h"
+extern const char *task_event_names[];
+extern const char *add_task_demand_names[];
+extern const char *history_event_names[];
+extern const char *cpu_event_names[];
+struct rq;
+struct flt_task_struct;
+struct flt_rq;
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)
 /*
  * Tracepoint for big task rotation
@@ -795,6 +808,26 @@ TRACE_EVENT(sched_find_lowest_rq,
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+TRACE_EVENT(sched_flt_set_cpu,
+
+	TP_PROTO(int cpu, int util),
+
+	TP_ARGS(cpu, util),
+
+	TP_STRUCT__entry(
+		__field(int,		cpu)
+		__field(int,		util)
+	),
+
+	TP_fast_assign(
+		__entry->cpu		= cpu;
+		__entry->util		= util;
+	),
+
+	TP_printk("cpu=%d util=%d",
+		__entry->cpu, __entry->util)
+);
+
 TRACE_EVENT(sched_flt_get_cpu,
 
 	TP_PROTO(int cpu, int util),
@@ -924,6 +957,558 @@ TRACE_EVENT(sched_task_to_grp,
 			__entry->grp_id, __entry->ret,
 			__entry->type)
 
+);
+
+TRACE_EVENT(sched_update_history,
+
+	TP_PROTO(struct rq *rq, struct task_struct *p, u32 runtime, int samples,
+		enum task_event evt, struct flt_rq *fsrq, struct flt_task_struct *fts,
+		enum history_event hisevt),
+
+	TP_ARGS(rq, p, runtime, samples, evt, fsrq, fts, hisevt),
+
+	TP_STRUCT__entry(
+		__array(char,			comm, TASK_COMM_LEN)
+		__field(pid_t,			pid)
+		__field(unsigned long,		util_avg)
+		__field(unsigned int,		ewma)
+		__field(unsigned int,		enqueued)
+		__field(unsigned int,		demand)
+		__field(u32,			util_demand)
+		__field(unsigned int,		runtime)
+		__field(int,			samples)
+		__field(enum task_event,		evt)
+		__field(enum history_event,		hisevt)
+		__field(u32,			hist0)
+		__field(u32,			hist1)
+		__field(u32,			hist2)
+		__field(u32,			hist3)
+		__field(u32,			hist4)
+		__field(u32,			util_sum_hist0)
+		__field(u32,			util_sum_hist1)
+		__field(u32,			util_sum_hist2)
+		__field(u32,			util_sum_hist3)
+		__field(u32,			util_sum_hist4)
+		__field(u32,			util_avg_history0)
+		__field(u32,			util_avg_history1)
+		__field(u32,			util_avg_history2)
+		__field(u32,			util_avg_history3)
+		__field(u32,			util_avg_history4)
+	),
+
+	TP_fast_assign(
+		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+		__entry->pid		= p->pid;
+		__entry->util_avg		= p->se.avg.util_avg;
+		__entry->ewma		= p->se.avg.util_est.ewma;
+		__entry->enqueued	= p->se.avg.util_est.enqueued;
+		__entry->demand		= fts->demand;
+		__entry->util_demand	= fts->util_demand;
+		__entry->runtime		= runtime;
+		__entry->samples		= samples;
+		__entry->evt		= evt;
+		__entry->hisevt		= hisevt;
+		__entry->hist0	= fts->sum_history[0];
+		__entry->hist1	= fts->sum_history[1];
+		__entry->hist2	= fts->sum_history[2];
+		__entry->hist3	= fts->sum_history[3];
+		__entry->hist4	= fts->sum_history[4];
+		__entry->util_sum_hist0	= fts->util_sum_history[0];
+		__entry->util_sum_hist1	= fts->util_sum_history[1];
+		__entry->util_sum_hist2	= fts->util_sum_history[2];
+		__entry->util_sum_hist3	= fts->util_sum_history[3];
+		__entry->util_sum_hist4	= fts->util_sum_history[4];
+		__entry->util_avg_history0	= fts->util_avg_history[0];
+		__entry->util_avg_history1	= fts->util_avg_history[1];
+		__entry->util_avg_history2	= fts->util_avg_history[2];
+		__entry->util_avg_history3	= fts->util_avg_history[3];
+		__entry->util_avg_history4	= fts->util_avg_history[4];
+	),
+
+	TP_printk("pid=%d name=%s: runtime=%u samples=%d event=%s hisevt=%s demand=%u util_demand=%u (hist[0]=%u hist[1]=%u hist[2]=%u hist[3]=%u hist[4]=%u) (util_sum_hist[0]=%u util_sum_hist[1]=%u util_sum_hist[2]=%u util_sum_hist[3]=%u util_sum_hist[4]=%u) (util_avg_history[0]=%u util_avg_history[1]=%u util_avg_history[2]=%u util_avg_history[3]=%u util_avg_history[4]=%u) pelt(util=%lu util_enqueued=%u util_ewma=%u)",
+		__entry->pid, __entry->comm,
+		__entry->runtime, __entry->samples,
+		task_event_names[__entry->evt], history_event_names[__entry->hisevt],
+		__entry->demand, __entry->util_demand,
+		__entry->hist0, __entry->hist1,
+		__entry->hist2, __entry->hist3,
+		__entry->hist4,
+		__entry->util_sum_hist0, __entry->util_sum_hist1,
+		__entry->util_sum_hist2, __entry->util_sum_hist3,
+		__entry->util_sum_hist4,
+		__entry->util_avg_history0, __entry->util_avg_history1,
+		__entry->util_avg_history2, __entry->util_avg_history3,
+		__entry->util_avg_history4,
+		__entry->util_avg,
+		__entry->enqueued,
+		__entry->ewma)
+);
+
+TRACE_EVENT(sched_update_task_ravg,
+
+	TP_PROTO(struct rq *rq, struct task_struct *p, u64 wallclock,
+		enum task_event evt, struct flt_rq *fsrq,
+		struct flt_task_struct *fts, int group_id, u64 irqtime),
+
+	TP_ARGS(rq, p, wallclock, evt, fsrq, fts, group_id, irqtime),
+
+	TP_STRUCT__entry(
+		__field(pid_t,		pid)
+		__array(char,		comm, TASK_COMM_LEN)
+		__field(enum task_event,	evt)
+		__field(u64,		irqtime)
+		__field(int,		group_id)
+		__field(u64,		wallclock)
+		__field(u64,		mark_start)
+		__field(u64,		window_start)
+		__field(int,		cpu)
+		__field(u64,		prev_runnable_sum)
+		__field(u64,		curr_runnable_sum)
+	),
+
+	TP_fast_assign(
+		__entry->pid			= p->pid;
+		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+		__entry->evt			= evt;
+		__entry->irqtime			= irqtime;
+		__entry->group_id			= group_id;
+		__entry->wallclock		= wallclock;
+		__entry->mark_start		= fts->mark_start;
+		__entry->window_start		= fsrq->window_start;
+		__entry->cpu			= rq->cpu;
+		__entry->prev_runnable_sum	= fsrq->prev_runnable_sum;
+		__entry->curr_runnable_sum	= fsrq->curr_runnable_sum;
+	),
+
+	TP_printk("pid=%d name =%s event=%s flt_groupid=%d irqtime=%llu wc=%llu ms=%llu ws = %llu cpu=%d prev=%llu curr=%llu",
+		__entry->pid, __entry->comm, task_event_names[__entry->evt],
+		__entry->group_id, __entry->irqtime,
+		__entry->wallclock, __entry->mark_start, __entry->window_start,
+		__entry->cpu, __entry->prev_runnable_sum, __entry->curr_runnable_sum)
+);
+
+TRACE_EVENT(sched_add_to_task_demand,
+
+	TP_PROTO(struct rq *rq, struct task_struct *p,
+		struct flt_task_struct *fts, u64 delta,
+		unsigned long cie, unsigned long fie,
+		u64 util_sum, enum win_event evt),
+
+	TP_ARGS(rq, p, fts, delta, cie, fie, util_sum, evt),
+
+	TP_STRUCT__entry(
+		__field(pid_t,			pid)
+		__array(char,			comm, TASK_COMM_LEN)
+		__field(enum win_event,		evt)
+		__field(u64,			delta)
+		__field(u64,			util_sum)
+		__field(unsigned long,		cie)
+		__field(unsigned long,		fie)
+	),
+
+	TP_fast_assign(
+		__entry->pid		= p->pid;
+		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+		__entry->evt		= evt;
+		__entry->delta		= delta;
+		__entry->util_sum		= util_sum;
+		__entry->cie		= cie;
+		__entry->fie		= fie;
+	),
+
+	TP_printk("pid=%d name=%s: event=%s delta = %llu util_sum = %llu CIE = %lu FIE = %lu",
+		__entry->pid, __entry->comm,
+		add_task_demand_names[__entry->evt], __entry->delta,
+		__entry->util_sum, __entry->cie, __entry->fie)
+);
+
+TRACE_EVENT(sched_update_cpu_busy_time,
+
+	TP_PROTO(struct rq *rq, struct task_struct *p,
+		struct flt_task_struct *fts, enum cpu_update_event evt,
+		u64 prev_delta, u64 curr_delta),
+
+	TP_ARGS(rq, p, fts, evt, prev_delta, curr_delta),
+
+	TP_STRUCT__entry(
+		__field(int,			cpu)
+		__field(pid_t,			pid)
+		__array(char,			comm, TASK_COMM_LEN)
+		__field(enum cpu_update_event,	evt)
+		__field(u64,			prev_delta)
+		__field(u64,			curr_delta)
+
+	),
+
+	TP_fast_assign(
+		__entry->cpu		= rq->cpu;
+		__entry->pid		= p->pid;
+		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+		__entry->evt		= evt;
+		__entry->prev_delta	= prev_delta;
+		__entry->curr_delta	= curr_delta;
+	),
+
+	TP_printk("cpu=%d pid=%d name=%s event=%s prev_delta = %llu curr_delta = %llu",
+		__entry->cpu, __entry->pid, __entry->comm,
+		cpu_event_names[__entry->evt], __entry->prev_delta, __entry->curr_delta)
+);
+
+TRACE_EVENT(sched_update_cpu_history,
+
+	TP_PROTO(struct rq *rq, struct flt_rq *fsrq, u32 samples, u64 runtime),
+
+	TP_ARGS(rq, fsrq, samples, runtime),
+
+	TP_STRUCT__entry(
+		__field(int,			cpu)
+		__field(u32,			samples)
+		__field(u64,			runtime)
+		__field(u32,			sum_hist0)
+		__field(u32,			sum_hist1)
+		__field(u32,			sum_hist2)
+		__field(u32,			sum_hist3)
+		__field(u32,			sum_hist4)
+		__field(u32,			util_hist0)
+		__field(u32,			util_hist1)
+		__field(u32,			util_hist2)
+		__field(u32,			util_hist3)
+		__field(u32,			util_hist4)
+		__field(u32,			group_sum_hist0)
+		__field(u32,			group_sum_hist1)
+		__field(u32,			group_sum_hist2)
+		__field(u32,			group_sum_hist3)
+		__field(u32,			group_sum_hist4)
+		__field(u32,			group_sum_hist5)
+		__field(u32,			group_sum_hist6)
+		__field(u32,			group_sum_hist7)
+		__field(u32,			group_sum_hist8)
+		__field(u32,			group_sum_hist9)
+		__field(u32,			group_sum_hist10)
+		__field(u32,			group_sum_hist11)
+		__field(u32,			group_sum_hist12)
+		__field(u32,			group_sum_hist13)
+		__field(u32,			group_sum_hist14)
+		__field(u32,			group_sum_hist15)
+		__field(u32,			group_sum_hist16)
+		__field(u32,			group_sum_hist17)
+		__field(u32,			group_sum_hist18)
+		__field(u32,			group_sum_hist19)
+		__field(u32,			grp_util_his0)
+		__field(u32,			grp_util_his1)
+		__field(u32,			grp_util_his2)
+		__field(u32,			grp_util_his3)
+		__field(u32,			grp_util_his4)
+		__field(u32,			grp_util_his5)
+		__field(u32,			grp_util_his6)
+		__field(u32,			grp_util_his7)
+		__field(u32,			grp_util_his8)
+		__field(u32,			grp_util_his9)
+		__field(u32,			grp_util_his10)
+		__field(u32,			grp_util_his11)
+		__field(u32,			grp_util_his12)
+		__field(u32,			grp_util_his13)
+		__field(u32,			grp_util_his14)
+		__field(u32,			grp_util_his15)
+		__field(u32,			grp_util_his16)
+		__field(u32,			grp_util_his17)
+		__field(u32,			grp_util_his18)
+		__field(u32,			grp_util_his19)
+		__field(u32,			grp_util_act_his0)
+		__field(u32,			grp_util_act_his1)
+		__field(u32,			grp_util_act_his2)
+		__field(u32,			grp_util_act_his3)
+		__field(u32,			grp_util_act_his4)
+		__field(u32,			grp_util_act_his5)
+		__field(u32,			grp_util_act_his6)
+		__field(u32,			grp_util_act_his7)
+		__field(u32,			grp_util_act_his8)
+		__field(u32,			grp_util_act_his9)
+		__field(u32,			grp_util_act_his10)
+		__field(u32,			grp_util_act_his11)
+		__field(u32,			grp_util_act_his12)
+		__field(u32,			grp_util_act_his13)
+		__field(u32,			grp_util_act_his14)
+		__field(u32,			grp_util_act_his15)
+		__field(u32,			grp_util_act_his16)
+		__field(u32,			grp_util_act_his17)
+		__field(u32,			grp_util_act_his18)
+		__field(u32,			grp_util_act_his19)
+	),
+
+	TP_fast_assign(
+		__entry->cpu		= rq->cpu;
+		__entry->samples		= samples;
+		__entry->runtime		= runtime;
+		__entry->sum_hist0	= fsrq->sum_history[0];
+		__entry->sum_hist1	= fsrq->sum_history[1];
+		__entry->sum_hist2	= fsrq->sum_history[2];
+		__entry->sum_hist3	= fsrq->sum_history[3];
+		__entry->sum_hist4	= fsrq->sum_history[4];
+		__entry->util_hist0	= fsrq->util_history[0];
+		__entry->util_hist1	= fsrq->util_history[1];
+		__entry->util_hist2	= fsrq->util_history[2];
+		__entry->util_hist3	= fsrq->util_history[3];
+		__entry->util_hist4	= fsrq->util_history[4];
+		__entry->group_sum_hist0	= fsrq->group_sum_history[0][0];
+		__entry->group_sum_hist1	= fsrq->group_sum_history[0][1];
+		__entry->group_sum_hist2	= fsrq->group_sum_history[0][2];
+		__entry->group_sum_hist3	= fsrq->group_sum_history[0][3];
+		__entry->group_sum_hist4	= fsrq->group_sum_history[1][0];
+		__entry->group_sum_hist5	= fsrq->group_sum_history[1][1];
+		__entry->group_sum_hist6	= fsrq->group_sum_history[1][2];
+		__entry->group_sum_hist7	= fsrq->group_sum_history[1][3];
+		__entry->group_sum_hist8	= fsrq->group_sum_history[2][0];
+		__entry->group_sum_hist9	= fsrq->group_sum_history[2][1];
+		__entry->group_sum_hist10	= fsrq->group_sum_history[2][2];
+		__entry->group_sum_hist11	= fsrq->group_sum_history[2][3];
+		__entry->group_sum_hist12	= fsrq->group_sum_history[3][0];
+		__entry->group_sum_hist13	= fsrq->group_sum_history[3][1];
+		__entry->group_sum_hist14	= fsrq->group_sum_history[3][2];
+		__entry->group_sum_hist15	= fsrq->group_sum_history[3][3];
+		__entry->group_sum_hist16	= fsrq->group_sum_history[4][0];
+		__entry->group_sum_hist17	= fsrq->group_sum_history[4][1];
+		__entry->group_sum_hist18	= fsrq->group_sum_history[4][2];
+		__entry->group_sum_hist19	= fsrq->group_sum_history[4][3];
+		__entry->grp_util_his0	= fsrq->group_util_history[0][0];
+		__entry->grp_util_his1	= fsrq->group_util_history[0][1];
+		__entry->grp_util_his2	= fsrq->group_util_history[0][2];
+		__entry->grp_util_his3	= fsrq->group_util_history[0][3];
+		__entry->grp_util_his4	= fsrq->group_util_history[1][0];
+		__entry->grp_util_his5	= fsrq->group_util_history[1][1];
+		__entry->grp_util_his6	= fsrq->group_util_history[1][2];
+		__entry->grp_util_his7	= fsrq->group_util_history[1][3];
+		__entry->grp_util_his8	= fsrq->group_util_history[2][0];
+		__entry->grp_util_his9	= fsrq->group_util_history[2][1];
+		__entry->grp_util_his10	= fsrq->group_util_history[2][2];
+		__entry->grp_util_his11	= fsrq->group_util_history[2][3];
+		__entry->grp_util_his12	= fsrq->group_util_history[3][0];
+		__entry->grp_util_his13	= fsrq->group_util_history[3][1];
+		__entry->grp_util_his14	= fsrq->group_util_history[3][2];
+		__entry->grp_util_his15	= fsrq->group_util_history[3][3];
+		__entry->grp_util_his16	= fsrq->group_util_history[4][0];
+		__entry->grp_util_his17	= fsrq->group_util_history[4][1];
+		__entry->grp_util_his18	= fsrq->group_util_history[4][2];
+		__entry->grp_util_his19	= fsrq->group_util_history[4][3];
+		__entry->grp_util_act_his0	= fsrq->group_util_active_history[0][0];
+		__entry->grp_util_act_his1	= fsrq->group_util_active_history[0][1];
+		__entry->grp_util_act_his2	= fsrq->group_util_active_history[0][2];
+		__entry->grp_util_act_his3	= fsrq->group_util_active_history[0][3];
+		__entry->grp_util_act_his4	= fsrq->group_util_active_history[0][4];
+		__entry->grp_util_act_his5	= fsrq->group_util_active_history[1][0];
+		__entry->grp_util_act_his6	= fsrq->group_util_active_history[1][1];
+		__entry->grp_util_act_his7	= fsrq->group_util_active_history[1][2];
+		__entry->grp_util_act_his8	= fsrq->group_util_active_history[1][3];
+		__entry->grp_util_act_his9	= fsrq->group_util_active_history[1][4];
+		__entry->grp_util_act_his10	= fsrq->group_util_active_history[2][0];
+		__entry->grp_util_act_his11	= fsrq->group_util_active_history[2][1];
+		__entry->grp_util_act_his12	= fsrq->group_util_active_history[2][2];
+		__entry->grp_util_act_his13	= fsrq->group_util_active_history[2][3];
+		__entry->grp_util_act_his14	= fsrq->group_util_active_history[2][4];
+		__entry->grp_util_act_his15	= fsrq->group_util_active_history[3][0];
+		__entry->grp_util_act_his16	= fsrq->group_util_active_history[3][1];
+		__entry->grp_util_act_his17	= fsrq->group_util_active_history[3][2];
+		__entry->grp_util_act_his18	= fsrq->group_util_active_history[3][3];
+		__entry->grp_util_act_his19	= fsrq->group_util_active_history[3][4];
+	),
+
+	TP_printk("cpu=%d, sa=%u rt=%llu rqs[0]=%u rqs[1]=%u rqs[2]=%u rqs[3]=%u rqs[4]=%u  rqu[0]=%u rqu[1]=%u rqu[2]=%u rqu[3]=%u rqu[4]=%u grp1s[0]=%u grp1s[1]=%u grp1s[2]=%u grp1s[3]=%u grp1s[4]=%u grp2s[0]=%u grp2s[1]=%u grp2s[2]=%u grp2s[3]=%u grp2s[4]=%u grp3s[0]=%u grp3s[1]=%u grp3s[2]=%u grp3s[3]=%u grp3s[4]=%u grp4s[0]=%u grp4s[1]=%u grp4s[2]=%u grp4s[3]=%u grp4s[4]=%u  grp1u[0]=%u grp1u[1]=%u grp1u[2]=%u grp1u[3]=%u grp1u[4]=%u grp2u[0]=%u grp2u[1]=%u grp2u[2]=%u grp2u[3]=%u grp2u[4]=%u grp3u[0]=%u grp3u[1]=%u grp3u[2]=%u grp3u[3]=%u grp3u[4]=%u grp4u[0]=%u grp4u[1]=%u grp4u[2]=%u grp4u[3]=%u grp4u[4]=%u grp1a[0]=%u grp1a[1]=%u grp1a[2]=%u grp1a[3]=%u grp1a[4]=%u grp2a[0]=%u grp2a[1]=%u grp2a[2]=%u grp2a[3]=%u grp2a[4]=%u grp3a[0]=%u grp3a[1]=%u grp3a[2]=%u grp3a[3]=%u grp3a[4]=%u grp4a[0]=%u grp4a[1]=%u grp4a[2]=%u grp4a[3]=%u grp4a[4]=%u",
+		__entry->cpu, __entry->samples,  __entry->runtime,
+		__entry->sum_hist0, __entry->sum_hist1,
+		__entry->sum_hist2, __entry->sum_hist3,
+		__entry->sum_hist4,
+		__entry->util_hist0, __entry->util_hist1,
+		__entry->util_hist2, __entry->util_hist3,
+		__entry->util_hist4,
+		__entry->group_sum_hist0, __entry->group_sum_hist4,
+		__entry->group_sum_hist8, __entry->group_sum_hist12,
+		__entry->group_sum_hist16,
+		__entry->group_sum_hist1, __entry->group_sum_hist5,
+		__entry->group_sum_hist9, __entry->group_sum_hist13,
+		__entry->group_sum_hist17,
+		__entry->group_sum_hist2, __entry->group_sum_hist6,
+		__entry->group_sum_hist10, __entry->group_sum_hist14,
+		__entry->group_sum_hist18,
+		__entry->group_sum_hist3, __entry->group_sum_hist7,
+		__entry->group_sum_hist11, __entry->group_sum_hist15,
+		__entry->group_sum_hist19,
+		__entry->grp_util_his0, __entry->grp_util_his4,
+		__entry->grp_util_his8, __entry->grp_util_his12,
+		__entry->grp_util_his16,
+		__entry->grp_util_his1, __entry->grp_util_his5,
+		__entry->grp_util_his9, __entry->grp_util_his13,
+		__entry->grp_util_his17,
+		__entry->grp_util_his2, __entry->grp_util_his6,
+		__entry->grp_util_his10, __entry->grp_util_his14,
+		__entry->grp_util_his18,
+		__entry->grp_util_his3, __entry->grp_util_his7,
+		__entry->grp_util_his11, __entry->grp_util_his15,
+		__entry->grp_util_his19,
+		__entry->grp_util_act_his0, __entry->grp_util_act_his1,
+		__entry->grp_util_act_his2, __entry->grp_util_act_his3,
+		__entry->grp_util_act_his4,
+		__entry->grp_util_act_his5, __entry->grp_util_act_his6,
+		__entry->grp_util_act_his7, __entry->grp_util_act_his8,
+		__entry->grp_util_act_his9,
+		__entry->grp_util_act_his10, __entry->grp_util_act_his11,
+		__entry->grp_util_act_his12, __entry->grp_util_act_his13,
+		__entry->grp_util_act_his14,
+		__entry->grp_util_act_his15, __entry->grp_util_act_his16,
+		__entry->grp_util_act_his17, __entry->grp_util_act_his18,
+		__entry->grp_util_act_his19)
+);
+
+TRACE_EVENT(sched_rollover_task_window,
+
+	TP_PROTO(struct task_struct *p, struct flt_task_struct *fts, bool full_window),
+
+	TP_ARGS(p, fts, full_window),
+
+	TP_STRUCT__entry(
+		__field(pid_t,			pid)
+		__array(char,			comm, TASK_COMM_LEN)
+		__field(bool,			full_window)
+		__field(u32,			prev_window)
+		__field(u32,			curr_window)
+	),
+
+	TP_fast_assign(
+		__entry->pid			= p->pid;
+		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+		__entry->full_window		= full_window;
+		__entry->prev_window		= fts->prev_window;
+		__entry->curr_window		= fts->curr_window;
+	),
+
+	TP_printk("pid=%d name=%s  full_window=%d prev_window=%u curr_window=%u",
+		__entry->pid, __entry->comm, __entry->full_window,
+		__entry->prev_window, __entry->curr_window)
+);
+
+TRACE_EVENT(sched_enq_deq_task,
+
+	TP_PROTO(struct task_struct *p, bool enqueue,
+			unsigned int cpus_allowed, struct flt_rq *fsrq),
+
+	TP_ARGS(p, enqueue, cpus_allowed, fsrq),
+
+	TP_STRUCT__entry(
+		__array(char,		comm, TASK_COMM_LEN)
+		__field(pid_t,		pid)
+		__field(int,		prio)
+		__field(int,		cpu)
+		__field(int,		gp0_cnt)
+		__field(int,		gp1_cnt)
+		__field(int,		gp2_cnt)
+		__field(int,		gp3_cnt)
+		__field(bool,		enqueue)
+		__field(unsigned int,	nr_running)
+		__field(unsigned int,	rt_nr_running)
+		__field(unsigned int,	cpus_allowed)
+		__field(u64,		flt_cpu_util)
+		__field(unsigned long,	cfs_util)
+		__field(unsigned long,	rt_util)
+	),
+
+	TP_fast_assign(
+		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+		__entry->pid		= p->pid;
+		__entry->prio		= p->prio;
+		__entry->cpu		= task_cpu(p);
+		__entry->enqueue		= enqueue;
+		__entry->nr_running	= task_rq(p)->nr_running;
+		__entry->rt_nr_running	= task_rq(p)->rt.rt_nr_running;
+		__entry->cpus_allowed	= cpus_allowed;
+		__entry->gp0_cnt		= fsrq->group_nr_running[0];
+		__entry->gp1_cnt		= fsrq->group_nr_running[1];
+		__entry->gp2_cnt		= fsrq->group_nr_running[2];
+		__entry->gp3_cnt		= fsrq->group_nr_running[3];
+		__entry->cfs_util		= cpu_util_cfs(task_rq(p)->cpu);
+		__entry->rt_util		= cpu_util_rt(task_rq(p));
+	),
+
+	TP_printk("cpu=%d name=%s comm=%s pid=%d prio=%d nr_running=%u rt_nr_running=%u affine=%x cfs_util=%lu rt_util=%lu gp0=[%d] gp1=[%d] gp2=[%d] gp3=[%d]",
+		__entry->cpu,
+		__entry->enqueue ? "enqueue" : "dequeue",
+		__entry->comm, __entry->pid,
+		__entry->prio, __entry->nr_running,
+		__entry->rt_nr_running, __entry->cpus_allowed,
+		__entry->cfs_util, __entry->rt_util,
+		__entry->gp0_cnt, __entry->gp1_cnt,
+		__entry->gp2_cnt, __entry->gp3_cnt)
+);
+
+TRACE_EVENT(sched_get_group_running_task_cnt,
+
+	TP_PROTO(int group_id, int win_idx, int cnt),
+
+	TP_ARGS(group_id, win_idx, cnt),
+
+	TP_STRUCT__entry(
+		__field(int,		group_id)
+		__field(int,		win_idx)
+		__field(int,		cnt)
+	),
+
+	TP_fast_assign(
+		__entry->group_id		= group_id;
+		__entry->win_idx		= win_idx;
+		__entry->cnt		= cnt;
+	),
+
+	TP_printk("grp_id=%d wc=%d  res=%d",
+		__entry->group_id, __entry->win_idx, __entry->cnt)
+);
+
+TRACE_EVENT(sched_get_group_util,
+
+	TP_PROTO(int group_id, int window_count, int weight_policy, int res, int type, int hint),
+
+	TP_ARGS(group_id, window_count, weight_policy, res, type, hint),
+
+	TP_STRUCT__entry(
+		__field(int,		type)
+		__field(int,		group_id)
+		__field(int,		window_count)
+		__field(int,		weight_policy)
+		__field(int,		res)
+		__field(int,		hint)
+	),
+
+	TP_fast_assign(
+		__entry->type		= type;
+		__entry->group_id		= group_id;
+		__entry->window_count	= window_count;
+		__entry->weight_policy	= weight_policy;
+		__entry->res		= res;
+		__entry->hint		= hint;
+	),
+
+	TP_printk("type=%d grp_id=%d wc=%d wp=%d res=%d hint %d",
+		__entry->type, __entry->group_id, __entry->window_count,
+		__entry->weight_policy, __entry->res, __entry->hint)
+);
+
+TRACE_EVENT(sched_get_cpu_group_util,
+
+	TP_PROTO(int cpu, int group_id, int util),
+
+	TP_ARGS(cpu, group_id, util),
+
+	TP_STRUCT__entry(
+		__field(int,		cpu)
+		__field(int,		group_id)
+		__field(int,		util)
+	),
+
+	TP_fast_assign(
+		__entry->cpu		= cpu;
+		__entry->group_id		= group_id;
+		__entry->util		= util;
+	),
+
+	TP_printk("cpu =%d gp=%d gp_util=%d",
+		__entry->cpu, __entry->group_id, __entry->util)
 );
 #endif
 

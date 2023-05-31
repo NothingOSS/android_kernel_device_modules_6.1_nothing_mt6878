@@ -51,11 +51,6 @@ enum _wp {
 	WP_MODE_NUM,
 };
 
-struct rq_group {
-	u64		window_start;
-	unsigned long	pelt_group_util[GROUP_ID_RECORD_MAX];
-};
-
 struct grp {
 	int			id;
 	raw_spinlock_t		lock;
@@ -79,7 +74,6 @@ void group_init(void);
 void group_exit(void);
 void  group_set_mode(u32 mode);
 u32 group_get_mode(void);
-int snapshot_pelt_group_status(void);
 int __sched_set_grp_id(struct task_struct *p, int group_id);
 inline struct grp *lookup_grp(int grp_id);
 inline struct grp *task_grp(struct task_struct *p);

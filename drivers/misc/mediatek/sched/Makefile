@@ -14,6 +14,7 @@ scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/flt_init.o
 scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/flt_api.o
 scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/group.o
 scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/flt_utility.o
+scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/flt_cal_build_utility.o
 
 obj-$(CONFIG_MTK_CPUFREQ_SUGOV_EXT) += cpufreq_sugov_ext.o
 cpufreq_sugov_ext-y += sugov/cpufreq_sugov_main.o

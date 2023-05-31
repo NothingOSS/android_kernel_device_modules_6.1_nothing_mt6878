@@ -23,16 +23,13 @@
 #include "flt_init.h"
 #include "flt_api.h"
 #include "group.h"
+#include "flt_cal.h"
 #include "eas_trace.h"
 
 static struct grp *related_thread_groups[GROUP_ID_RECORD_MAX];
 static u32 GP_mode = GP_MODE_0;
-atomic64_t gp_irq_work_lastq_ws;
-static struct irq_work gp_irq_work;
 
 static DEFINE_RWLOCK(related_thread_group_lock);
-DEFINE_PER_CPU(struct rq_group, rq_group);
-EXPORT_PER_CPU_SYMBOL(rq_group);
 
 static inline unsigned long task_util(struct task_struct *p)
 {
@@ -132,11 +129,18 @@ static void remove_task_from_group(struct task_struct *p)
 	int empty_group = 1;
 	struct rq *rq;
 	struct rq_flags rf;
+	struct flt_rq *fsrq;
+	int flt_groupid = grp->id, queued;
 
 	raw_spin_lock(&grp->lock);
 
 	rq = __task_rq_lock(p, &rf);
 	rcu_assign_pointer(gts->grp, NULL);
+	/* take care of flt group */
+	queued = task_on_rq_queued(p);
+	fsrq = &per_cpu(flt_rq, rq->cpu);
+	if (queued && fsrq->group_nr_running[flt_groupid] > 0)
+		fsrq->group_nr_running[flt_groupid]--;
 	__task_rq_unlock(rq, &rf);
 
 	if (!list_empty(&grp->tasks))
@@ -151,6 +155,8 @@ add_task_to_group(struct task_struct *p, struct grp *grp)
 	struct rq *rq;
 	struct rq_flags rf;
 	struct gp_task_struct *gts = &((struct mtk_task *)p->android_vendor_data1)->gp_task;
+	struct flt_rq *fsrq;
+	int flt_groupid = grp->id, queued;
 
 	raw_spin_lock(&grp->lock);
 
@@ -160,6 +166,11 @@ add_task_to_group(struct task_struct *p, struct grp *grp)
 	 */
 	rq = __task_rq_lock(p, &rf);
 	rcu_assign_pointer(gts->grp, grp);
+	/* take care of flt group */
+	fsrq = &per_cpu(flt_rq, rq->cpu);
+	queued = task_on_rq_queued(p);
+	if (queued)
+		fsrq->group_nr_running[flt_groupid]++;
 	__task_rq_unlock(rq, &rf);
 
 	raw_spin_unlock(&grp->lock);
@@ -338,138 +349,6 @@ static void group_android_rvh_try_to_wake_up_success(void *unused,
 	add_new_task_to_grp(p, GP_TTWU);
 }
 
-int snapshot_pelt_group_status(void)
-{
-	int grp_idx, cpu, grp_id;
-	unsigned long flags;
-	struct task_struct *p;
-	struct rq *rq;
-	struct rq_group *gprq;
-	unsigned long pelt_group_util_update[GROUP_ID_RECORD_MAX] = {0};
-	struct grp *grp = NULL;
-	unsigned long long t1, t2;
-	unsigned int prev_state;
-
-	rcu_read_lock();
-	for_each_possible_cpu(cpu) {
-		rq = cpu_rq(cpu);
-		gprq = &per_cpu(rq_group, cpu);
-		/* reset to 0 */
-		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx)
-			pelt_group_util_update[grp_idx] = 0;
-
-		raw_spin_rq_lock_irqsave(rq, flags);
-		t1 = sched_clock();
-		list_for_each_entry(p, &cpu_rq(cpu)->cfs_tasks, se.group_node) {
-			if (task_on_rq_queued(p)) {
-				prev_state = READ_ONCE(p->__state);
-				if (prev_state == TASK_DEAD)
-					continue;
-				grp = task_grp(p);
-				grp_id = grp ? grp->id : -1;
-				if (grp_id >= 0) {
-					pelt_group_util_update[grp_id] += task_util_est(p);
-					if (trace_sched_gather_pelt_group_util_enabled())
-						trace_sched_gather_pelt_group_util(p,
-							task_util_est(p), grp_id, cpu);
-				}
-			}
-		}
-		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx)
-			gprq->pelt_group_util[grp_idx] = pelt_group_util_update[grp_idx];
-		t2 = sched_clock();
-		if (trace_sched_get_pelt_group_util_enabled())
-			trace_sched_get_pelt_group_util(cpu, t2 - t1,
-					pelt_group_util_update[0], pelt_group_util_update[1],
-					pelt_group_util_update[2], pelt_group_util_update[3]);
-		raw_spin_rq_unlock_irqrestore(rq, flags);
-	}
-	rcu_read_unlock();
-	return 0;
-}
-EXPORT_SYMBOL(snapshot_pelt_group_status);
-
-static u64 update_window_start(struct rq *rq, u64 curr_time)
-{
-	s64 delta;
-	int nr_windows;
-	struct rq_group *gprq;
-	u64 old_window_start;
-
-	gprq = &per_cpu(rq_group, rq->cpu);
-	old_window_start = gprq->window_start;
-
-	delta = curr_time - gprq->window_start;
-
-	if (delta < GRP_DEFAULT_WS)
-		return old_window_start;
-
-	nr_windows = div64_u64(delta, GRP_DEFAULT_WS);
-	gprq->window_start += (u64)nr_windows * (u64)GRP_DEFAULT_WS;
-
-	return old_window_start;
-}
-
-static inline void gp_irq_work_queue(struct irq_work *work)
-{
-	if (likely(cpu_online(raw_smp_processor_id())))
-		irq_work_queue(work);
-	else
-		irq_work_queue_on(work, cpumask_any(cpu_online_mask));
-}
-
-static inline void run_gp_irq_work(u64 old_window_start, struct rq *rq, u64 wallclock)
-{
-	u64 result, last_reported_window;
-	struct rq_group *gprq;
-	s64 delta;
-	u64 window_start_ns, nr_windows;
-
-	gprq = &per_cpu(rq_group, rq->cpu);
-	if (old_window_start == gprq->window_start)
-		return;
-
-	result = atomic64_cmpxchg(&gp_irq_work_lastq_ws, old_window_start,
-				   gprq->window_start);
-	if (result == old_window_start) {
-		gp_irq_work_queue(&gp_irq_work);
-		return;
-	}
-
-	last_reported_window = atomic64_read(&gp_irq_work_lastq_ws);
-	delta = wallclock - last_reported_window;
-	if (delta >= GRP_DEFAULT_WS) {
-		nr_windows = div64_u64(wallclock, GRP_DEFAULT_WS);
-		window_start_ns = (u64)nr_windows * (u64)GRP_DEFAULT_WS;
-		atomic64_set(&gp_irq_work_lastq_ws, window_start_ns);
-		gp_irq_work_queue(&gp_irq_work);
-	}
-}
-
-static void gp_irq_workfn(struct irq_work *irq_work)
-{
-	snapshot_pelt_group_status();
-}
-
-static u64 group_get_current_time(void)
-{
-	struct flt_pm fltpm;
-
-	flt_get_pm_status(&fltpm);
-	if (unlikely(fltpm.ktime_suspended))
-		return ktime_to_ns(fltpm.ktime_last);
-	return ktime_get_ns();
-}
-
-void group_update_ws(struct rq *rq)
-{
-	u64 old_window_start, wallclock;
-
-	wallclock = group_get_current_time();
-	old_window_start = update_window_start(rq, wallclock);
-	run_gp_irq_work(old_window_start, rq, wallclock);
-}
-
 int get_grp_id(struct task_struct *p)
 {
 	int grp_id;
@@ -530,14 +409,6 @@ static void group_android_rvh_flush_task(void *unused, struct task_struct *p)
 		trace_sched_task_to_grp(p, -1, ret, GP_DEAD);
 }
 
-static void group_android_scheduler_tick(void *unused, struct rq *rq)
-{
-	if (unlikely(group_get_mode() == GP_MODE_0))
-		return;
-
-	group_update_ws(rq);
-}
-
 static void group_register_hooks(void)
 {
 	int ret = 0;
@@ -566,10 +437,6 @@ static void group_register_hooks(void)
 		group_android_rvh_try_to_wake_up_success, NULL);
 	if (ret)
 		pr_info("register try_to_wake_up_success hooks failed, returned %d\n", ret);
-
-	ret = register_trace_android_vh_scheduler_tick(group_android_scheduler_tick, NULL);
-	if (ret)
-		pr_info("register scheduler_tick failed\n");
 }
 
 void group_init(void)
@@ -606,8 +473,6 @@ void group_init(void)
 	window_start_ns = ktime_get_ns();
 	nr_windows = div64_u64(window_start_ns, GRP_DEFAULT_WS);
 	window_start_ns = (u64)nr_windows * (u64)GRP_DEFAULT_WS;
-	atomic64_set(&gp_irq_work_lastq_ws, window_start_ns);
-	init_irq_work(&gp_irq_work, gp_irq_workfn);
 
 	group_init_tg_pointers();
 	group_register_hooks();

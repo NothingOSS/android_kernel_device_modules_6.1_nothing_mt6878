@@ -26,6 +26,7 @@
 #include "flt_api.h"
 #include "group.h"
 #include "flt_utility.h"
+#include "flt_cal.h"
 #include <sugov/cpufreq.h>
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 #include "mtk_energy_model/v2/energy_model.h"
@@ -431,12 +432,12 @@ int flt_init_res(void)
 	int wl = 0, nr_wl = 0, ctp = 0, nr_cpu, ret;
 	bool BKV[GKEL] = {false};
 
+	flt_cal_init();
 	nr_wl = get_nr_wl_type();
 	nr_cpu = get_nr_cpu_type();
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
 		return -1;
-
-	if (unlikely(flt_get_mode() == FLT_MODE_2)) {
+	else if (unlikely(flt_get_mode() == FLT_MODE_2)) {
 		for (wl = 0; wl < nr_wl; ++wl) {
 			ctp = get_cpu_type(wl);
 			FLT_LOGI("nr_cpu %d wl %d get_cpu_type %d\n", nr_cpu, wl, ctp);

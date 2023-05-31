@@ -11,6 +11,8 @@
 
 #define MTK_TASK_GROUP_FLAG 1
 #define MTK_TASK_FLAG 9
+#define RAVG_HIST_SIZE_MAX (5)
+#define FLT_NR_CPUS (8)
 
 struct task_gear_hints {
 	int gear_start;
@@ -59,6 +61,26 @@ struct task_turbo_t {
 	atomic_t inherit_types;
 };
 
+struct flt_task_struct {
+	u64	last_update_time;
+	u64	mark_start;
+	u32	sum;
+	u32	util_sum;
+	u32	demand;
+	u32	util_demand;
+	u32	sum_history[RAVG_HIST_SIZE_MAX];
+	u32	util_sum_history[RAVG_HIST_SIZE_MAX];
+	u32	util_avg_history[RAVG_HIST_SIZE_MAX];
+	u64	active_time;
+	u32	init_load_pct;
+	u32	curr_window_cpu[FLT_NR_CPUS];
+	u32	prev_window_cpu[FLT_NR_CPUS];
+	u32	curr_window;
+	u32	prev_window;
+	int	prev_on_rq;
+	int	prev_on_rq_cpu;
+};
+
 struct mtk_task {
 	u64 reserved0[MTK_TASK_FLAG];
 	struct vip_task_struct	vip_task;
@@ -70,6 +92,7 @@ struct mtk_task {
 	struct rot_task_struct rot_task;
 	struct cc_task_struct cc_task;
 	struct task_turbo_t turbo_data;
+	struct flt_task_struct flt_task;
 };
 
 struct soft_affinity_tg {

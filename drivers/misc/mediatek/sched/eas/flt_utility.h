@@ -5,8 +5,6 @@
  #ifndef _FLT_UTILITY_H
 #define _FLT_UTILITY_H
 
-DECLARE_PER_CPU(struct rq_group, rq_group);
-
 /* API Function pointer*/
 extern int (*flt_get_ws_api)(void);
 extern int (*flt_set_ws_api)(int ws);
@@ -22,6 +20,7 @@ extern int (*flt_get_task_by_wp_api)(struct task_struct *p, int wc, int task_wp)
 extern int (*flt_sched_get_cpu_group_eas_api)(int cpu, int grp_id);
 extern int (*flt_get_grp_h_eas_api)(int grp_id);
 extern int (*flt_get_cpu_r_api)(int cpu);
+extern int (*flt_get_cpu_o_eas_api)(int grp_id);
 extern int (*flt_get_total_gp_api)(void);
 extern int (*flt_get_grp_r_eas_api)(int grp_id);
 

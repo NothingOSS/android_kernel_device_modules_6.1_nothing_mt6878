@@ -29,10 +29,12 @@ int flt_get_gear_sum_pelt_group_cnt(unsigned int gear_id, int grp_id);
 int flt_get_gear_max_pelt_group_cnt(unsigned int gear_id, int grp_id);
 int flt_sched_get_gear_max_group_eas(int gear_id, int grp_id);
 int flt_sched_get_gear_sum_group_eas(int gear_id, int grp_id);
+int flt_get_gp_r(int grp_id);
 
 /* Note: cpu related API */
 int flt_get_cpu_by_wp(int cpu);
 unsigned long flt_get_cpu(int cpu);
+int flt_get_cpu_r(int cpu);
 
 /* Note: task related API */
 int flt_get_task_by_wp(struct task_struct *p, int wc, int task_wp);

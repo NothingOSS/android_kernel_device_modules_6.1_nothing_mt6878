@@ -27,6 +27,7 @@
 #include "flt_api.h"
 #include "group.h"
 #include "flt_utility.h"
+#include "flt_cal.h"
 #include "eas_trace.h"
 
 void flt_update_data(unsigned int data, unsigned int offset)
@@ -210,28 +211,6 @@ static int flt_get_grp_r_mode2(int grp_id)
 	return res;
 }
 
-static int flt_get_gear_sum_pelt_group_mode2(unsigned int gear_id, int group_id)
-{
-		struct cpumask *gear_cpus;
-		struct rq_group *fsrq;
-		int cpu = -1;
-		unsigned long res = 0;
-		unsigned int nr_gear;
-
-		nr_gear = get_nr_gears();
-		if (gear_id >= nr_gear ||
-			group_id >= GROUP_ID_RECORD_MAX ||
-			group_id < 0)
-			return -1;
-
-		gear_cpus = get_gear_cpumask(gear_id);
-		for_each_cpu_and(cpu, gear_cpus, cpu_active_mask)  {
-			fsrq = &per_cpu(rq_group, cpu);
-			res += READ_ONCE(fsrq->pelt_group_util[group_id]);
-		}
-		return res;
-}
-
 int flt_sched_get_gear_sum_group_eas_mode2(int gear_id, int group_id)
 {
 	unsigned int nr_gear, gear_idx;
@@ -274,9 +253,9 @@ static int flt_get_cpu_by_wp_mode2(int cpu)
 
 static int flt_sched_get_cpu_group_eas_mode2(int cpu_idx, int group_id)
 {
-	int pelt_util = 0, res = 0, cpu = 0;
-	struct rq_group *fsrq;
-	u64 flt_util = 0, total_util = 0, cpu_util = 0;
+	int res = 0;
+	struct flt_rq *fsrq;
+	u64 flt_util = 0, util_ratio = 0;
 
 	if (group_id >= GROUP_ID_RECORD_MAX ||
 		group_id < 0 ||
@@ -284,16 +263,36 @@ static int flt_sched_get_cpu_group_eas_mode2(int cpu_idx, int group_id)
 		return -1;
 
 	flt_util = flt_get_sum_group_mode2(group_id);
-	for_each_possible_cpu(cpu)  {
-		fsrq = &per_cpu(rq_group, cpu);
-		pelt_util = READ_ONCE(fsrq->pelt_group_util[group_id]);
-		if (cpu_idx == cpu)
-			cpu_util = pelt_util;
-		total_util += pelt_util;
-	}
 
-	if (total_util)
-		res = (int)div64_u64(flt_util * cpu_util, total_util);
+	fsrq = &per_cpu(flt_rq, cpu_idx);
+	util_ratio = READ_ONCE(fsrq->group_util_ratio[group_id]);
+
+	res = (flt_util * util_ratio) >> SCHED_CAPACITY_SHIFT;
+	res = clamp_t(int, res, 0, cpu_cap_ceiling(cpu_idx));
+
+	return res;
+}
+
+static int flt_get_o_util_mode2(int cpu)
+{
+	int cpu_r = 0, grp_idx = 0, res;
+	struct rq *rq;
+	struct flt_rq *fsrq;
+	u64 util_ratio[GROUP_ID_RECORD_MAX] = {0}, grp_r[GROUP_ID_RECORD_MAX] = {0}, total = 0;
+
+	rq = cpu_rq(cpu);
+	fsrq = &per_cpu(flt_rq, cpu);
+
+	cpu_r = flt_get_cpu_r(cpu);
+
+	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
+		util_ratio[grp_idx] = READ_ONCE(fsrq->group_util_rtratio[grp_idx]);
+		grp_r[grp_idx] = (flt_get_gp_r(grp_idx) * util_ratio[grp_idx])
+				>> SCHED_CAPACITY_SHIFT;
+		total += grp_r[grp_idx];
+	}
+	res = cpu_r - total;
+	res = clamp_t(int, res, 0, cpu_cap_ceiling(cpu));
 
 	return res;
 }
@@ -307,12 +306,12 @@ void flt_mode2_register_api_hooks(void)
 	flt_sched_set_cpu_policy_eas_api = flt_sched_set_cpu_policy_eas_mode2;
 	flt_sched_get_cpu_policy_eas_api = flt_sched_get_cpu_policy_eas_mode2;
 	flt_get_sum_group_api = flt_get_sum_group_mode2;
-	flt_get_gear_sum_pelt_group_api = flt_get_gear_sum_pelt_group_mode2;
 	flt_sched_get_gear_sum_group_eas_api = flt_sched_get_gear_sum_group_eas_mode2;
 	flt_get_cpu_by_wp_api = flt_get_cpu_by_wp_mode2;
 	flt_sched_get_cpu_group_eas_api = flt_sched_get_cpu_group_eas_mode2;
 	flt_get_grp_h_eas_api = flt_get_grp_hint_mode2;
 	flt_get_cpu_r_api = flt_get_cpu_r_mode2;
+	flt_get_cpu_o_eas_api = flt_get_o_util_mode2;
 	flt_get_total_gp_api = flt_get_total_group_mode2;
 	flt_get_grp_r_eas_api = flt_get_grp_r_mode2;
 }
