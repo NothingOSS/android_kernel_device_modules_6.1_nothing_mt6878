@@ -179,6 +179,9 @@ def main(**args):
     file_text.append("GKI_VENDOR_DEFCONFIG=${DEFCONFIG}")
     file_text.append("GKI_PRE_DEFCONFIG_CMDS=${PRE_DEFCONFIG_CMDS}")
     file_text.append("GKI_POST_DEFCONFIG_CMDS=${GKI_POST_DEFCONFIG_CMDS}")
+    file_text.append("if [ -d \"${ROOT_DIR}/../vendor/mediatek/internal\" ]; then")
+    file_text.append("  MGK_INTERNAL=true")
+    file_text.append("fi")
 
     gen_build_config_mtk = '%s.mtk' % (gen_build_config)
     file_handle = open(gen_build_config_mtk, 'w')

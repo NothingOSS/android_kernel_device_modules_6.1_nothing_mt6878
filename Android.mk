@@ -19,6 +19,10 @@ endif
 ifneq ($(wildcard kernel/build),)
 KERNEL_MAKE_DEPENDENCIES += $(shell find kernel/build -name .git -prune -o -type f | sort)
 endif
+ifneq ($(wildcard vendor/mediatek/tests),)
+KERNEL_MAKE_DEPENDENCIES += $(shell find vendor/mediatek/tests/kernel/ktf_testcase -name .git -prune -o -type f | sort)
+KERNEL_MAKE_DEPENDENCIES += $(shell find vendor/mediatek/tests/ktf/kernel -name .git -prune -o -type f | sort)
+endif
 
 $(GEN_KERNEL_BUILD_CONFIG): PRIVATE_GEN_BUILD_CONFIG := $(REL_KERNEL_DIR)/scripts/gen_build_config.py
 $(GEN_KERNEL_BUILD_CONFIG): PRIVATE_KERNEL_DEFCONFIG := $(KERNEL_DEFCONFIG)

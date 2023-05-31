@@ -19,7 +19,7 @@ ccflags-y += -I$(OUT_DIR)/../gki_kernel/$(KERNEL_DIR)/security/selinux/
 ccflags-y += -Isecurity/selinux/
 obj-$(CONFIG_MTK_SELINUX_AEE_WARNING) += mtk_selinux_aee_warning.o
 
-ifneq ($(wildcard $(DEVICE_MODULES_PATH)/../../vendor/mediatek/internal/selinux_warning_enable),)
+ifeq ($(strip $(MGK_INTERNAL)),true)
 mtk_selinux_aee_warning-$(CONFIG_MTK_SELINUX_AEE_WARNING) += mtk_selinux_warning.o
 else
 mtk_selinux_aee_warning-$(CONFIG_MTK_SELINUX_AEE_WARNING) += dummy.o
