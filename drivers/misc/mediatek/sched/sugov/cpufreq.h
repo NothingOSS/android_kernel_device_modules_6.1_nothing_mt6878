@@ -128,7 +128,6 @@ struct dsu_table {
 
 struct cpu_dsu_freq_state {
 	bool is_eas_dsu_support;
-	bool is_fdvfs_support;
 	bool is_eas_dsu_ctrl;
 	unsigned int pd_count;
 	unsigned int dsu_target_freq;

@@ -45,6 +45,7 @@ struct cpufreq_mtk {
 	int nr_opp;
 	unsigned int last_index;
 	cpumask_t related_cpus;
+	long sb_ch;
 };
 
 static const u16 cpufreq_mtk_offsets[REG_ARRAY_SIZE] = {
