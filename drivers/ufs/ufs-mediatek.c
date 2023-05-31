@@ -2017,6 +2017,10 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 	struct ufs_dev_info *dev_info = &hba->dev_info;
 	u16 mid = dev_info->wmanufacturerid;
 
+	/* use none scheduler for mcq */
+	if (hba->host->nr_hw_queues > 1)
+		hba->host->tag_set.flags |= BLK_MQ_F_NO_SCHED_BY_DEFAULT;
+
 	if (mid == UFS_VENDOR_SAMSUNG) {
 		ufshcd_dme_set(hba, UIC_ARG_MIB(PA_TACTIVATE), 6);
 		ufshcd_dme_set(hba, UIC_ARG_MIB(PA_HIBERN8TIME), 10);
@@ -2372,6 +2376,7 @@ static int ufs_mtk_mcq_config_resource(struct ufs_hba *hba)
 	/* fail mcq initialization if interrupt is not filled properly */
 	if (!host->mcq_nr_intr) {
 		dev_info(hba->dev, "IRQs not ready. MCQ disabled.");
+		hba->host->nr_hw_queues = 1;
 		return -EINVAL;
 	}
 
