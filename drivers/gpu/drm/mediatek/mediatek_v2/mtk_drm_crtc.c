@@ -1557,6 +1557,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	int index = drm_crtc_index(crtc);
 	int ret = 0;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(crtc);
 
 	CRTC_MMP_EVENT_START(index, backlight, (unsigned long)crtc,
 			level);
@@ -1624,7 +1625,9 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 	}
 
-	/* set backlight */
+	if ((panel_ext) && (panel_ext->SilkyBrightnessDelay)
+		&& (drm_mode_vrefresh(&crtc->state->adjusted_mode) == 60))
+		cmdq_pkt_sleep(cmdq_handle, CMDQ_US_TO_TICK(panel_ext->SilkyBrightnessDelay), CMDQ_GPR_R06);
 
 	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
 	mtk_ddp_comp_io_cmd(oddmr_comp, cmdq_handle, ODDMR_BL_CHG, &level);

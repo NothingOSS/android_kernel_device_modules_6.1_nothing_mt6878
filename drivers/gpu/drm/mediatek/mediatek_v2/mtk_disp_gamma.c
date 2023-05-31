@@ -805,6 +805,7 @@ void mtk_trans_gain_to_gamma(struct mtk_ddp_comp *comp,
 		}
 		DDPINFO("[aal_kernel]ELVSSPN = %d, flag = %d\n",
 			ess20_spect_param->ELVSSPN, ess20_spect_param->flag);
+		CRTC_MMP_MARK(0, gamma_backlight, gain[gain_r], bl);
 		mtk_leds_brightness_set("lcd-backlight", bl, ess20_spect_param->ELVSSPN,
 					ess20_spect_param->flag);
 
@@ -820,6 +821,7 @@ void mtk_trans_gain_to_gamma(struct mtk_ddp_comp *comp,
 			gamma->primary_data->sb_param.bl = bl;
 			mtk_leds_brightness_set("lcd-backlight", bl, ess20_spect_param->ELVSSPN,
 						ess20_spect_param->flag);
+			CRTC_MMP_MARK(0, gamma_backlight, ess20_spect_param->flag, bl);
 			DDPINFO("%s : backlight = %d, flag = %d, elvss = %d\n", __func__, bl,
 				ess20_spect_param->flag, ess20_spect_param->ELVSSPN);
 		}
@@ -1134,6 +1136,7 @@ int mtk_cfg_trans_gain_to_gamma(struct mtk_drm_crtc *mtk_crtc,
 			DDPINFO("[aal_kernel] gamma gain not support!\n");
 		DDPINFO("[aal_kernel]ELVSSPN = %d, flag = %d\n",
 			ess20_spect_param->ELVSSPN, ess20_spect_param->flag);
+		CRTC_MMP_MARK(0, gamma_backlight, gain[gain_r], bl);
 		mtk_leds_brightness_set("lcd-backlight", bl, ess20_spect_param->ELVSSPN,
 					ess20_spect_param->flag);
 		DDPINFO("%s : gain = %d, backlight = %d\n",
@@ -1142,6 +1145,7 @@ int mtk_cfg_trans_gain_to_gamma(struct mtk_drm_crtc *mtk_crtc,
 		if ((gamma_priv->primary_data->sb_param.bl != bl)
 				|| (ess20_spect_param->flag & (1 << SET_ELVSS_PN))) {
 			gamma_priv->primary_data->sb_param.bl = bl;
+			CRTC_MMP_MARK(0, gamma_backlight, ess20_spect_param->flag, bl);
 			mtk_leds_brightness_set("lcd-backlight", bl, ess20_spect_param->ELVSSPN,
 						ess20_spect_param->flag);
 			DDPINFO("%s : backlight = %d, flag = %d, elvss = %d\n", __func__, bl,

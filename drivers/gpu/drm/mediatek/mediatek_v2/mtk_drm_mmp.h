@@ -138,6 +138,7 @@ struct CRTC_MMP_Events {
 	/*Gamma mmp mark*/
 	mmp_event gamma_ioctl;
 	mmp_event gamma_sof;
+	mmp_event gamma_backlight;
 	mmp_event mml_dbg;
 	mmp_event aal_ess20_elvss;
 	mmp_event aal_ess20_gamma;
@@ -151,6 +152,7 @@ struct CRTC_MMP_Events {
 	mmp_event dsi_underrun_irq;
 	/*pq common ioctl*/
 	mmp_event pq_frame_config;
+	mmp_event notify_backlight;
 };
 
 struct DRM_MMP_Events *get_drm_mmp_events(void);

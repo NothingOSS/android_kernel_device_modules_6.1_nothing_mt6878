@@ -316,6 +316,7 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 
 	prev_backlight = atomic_read(&aal_data->primary_data->backlight_notified);
 	atomic_set(&aal_data->primary_data->backlight_notified, trans_backlight);
+	CRTC_MMP_MARK(0, notify_backlight, trans_backlight, prev_backlight);
 
 	service_flags = 0;
 	if ((prev_backlight == 0) && (prev_backlight != trans_backlight))
