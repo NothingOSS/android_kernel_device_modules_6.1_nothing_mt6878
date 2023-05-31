@@ -21080,7 +21080,7 @@ void mtk_disp_mutex_add_comp(struct mtk_disp_mutex *mutex,
 	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS1)
 		reg_addr = (mmsys_id == MMSYS_MT6989) ? ddp->regs : ddp->side_regs;
 	else
-		reg_addr = (mmsys_id == MMSYS_MT6989) ? ddp->side_regs : ddp->side_regs;
+		reg_addr = (mmsys_id == MMSYS_MT6989) ? ddp->side_regs : ddp->regs;
 
 	if (ddp->data->dispsys_map &&
 		ddp->data->dispsys_map[id] == OVLSYS1) {
