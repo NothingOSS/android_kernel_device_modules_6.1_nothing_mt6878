@@ -646,7 +646,13 @@ DEVICE_ATTR_RW(vcp_A_logger_wakeup_AP);
 static ssize_t vcp_A_get_last_log_show(struct device *kobj,
 		struct device_attribute *attr, char *buf)
 {
+	int ret = 0;
+
+	ret = vcp_turn_mminfra_on();
+	if (ret < 0)
+		return 0;
 	vcp_A_get_last_log(PAGE_SIZE - 32);
+	vcp_turn_mminfra_off();
 	return snprintf(buf, PAGE_SIZE, "vcp_log_buf_maxlen=%u, log=%s\n",
 			last_log_info.vcp_log_buf_maxlen,
 			vcp_A_last_log ? vcp_A_last_log : "");

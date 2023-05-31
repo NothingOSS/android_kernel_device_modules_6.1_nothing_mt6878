@@ -65,8 +65,13 @@ static void vcp_A_wdt_handler(struct tasklet_struct *t)
 {
 	unsigned int reg0 = readl(R_CORE0_WDT_IRQ);
 	unsigned int reg1 = vcpreg.core_nums == 2 ? readl(R_CORE1_WDT_IRQ) : 0;
+	int ret = 0;
 
 	pr_notice("[VCP] %s\n", __func__);
+
+	ret = vcp_turn_mminfra_on();
+	if (ret < 0)
+		return;
 
 	if (readl(VCP_GPR_DEBUG_HINT) & B_SERR) {
 		pr_notice("[VCP] Serror detected dump !\n");
@@ -90,6 +95,7 @@ static void vcp_A_wdt_handler(struct tasklet_struct *t)
 		vcp_wdt_clear(1);
 
 	enable_irq(t->data);
+	vcp_turn_mminfra_off();
 }
 
 DECLARE_TASKLET(vcp_A_irq0_tasklet, vcp_A_wdt_handler);

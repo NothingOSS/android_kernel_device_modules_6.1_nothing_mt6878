@@ -216,6 +216,8 @@ struct vcp_ipi_irq vcp_ipi_irqs[] = {
 struct device *vcp_io_devs[VCP_IOMMU_DEV_NUM];
 struct device *vcp_power_devs;
 
+DEFINE_SPINLOCK(vcp_mminfra_spinlock);
+
 /* mminfra pwr contrl struct*/
 struct vcp_mminfra_on_off_st vcp_mminfra_on_off = {
 	.mminfra_on = NULL,
@@ -409,6 +411,11 @@ int get_vcp_semaphore(int flag)
 	if (!driver_init_done)
 		return -1;
 
+	ret = vcp_turn_mminfra_on();
+	if (ret < 0)
+		return ret;
+
+	ret = -1;
 	/* spinlock context safe*/
 	spin_lock_irqsave(&vcp_awake_spinlock, spin_flags);
 
@@ -438,6 +445,8 @@ int get_vcp_semaphore(int flag)
 
 	spin_unlock_irqrestore(&vcp_awake_spinlock, spin_flags);
 
+	vcp_turn_mminfra_off();
+
 	return ret;
 }
 EXPORT_SYMBOL_GPL(get_vcp_semaphore);
@@ -458,6 +467,11 @@ int release_vcp_semaphore(int flag)
 	if (!driver_init_done)
 		return -1;
 
+	ret = vcp_turn_mminfra_on();
+	if (ret < 0)
+		return ret;
+
+	ret = -1;
 	/* spinlock context safe*/
 	spin_lock_irqsave(&vcp_awake_spinlock, spin_flags);
 	flag = (flag * 2) + 1;
@@ -478,10 +492,59 @@ int release_vcp_semaphore(int flag)
 
 	spin_unlock_irqrestore(&vcp_awake_spinlock, spin_flags);
 
+	vcp_turn_mminfra_off();
+
 	return ret;
 }
 EXPORT_SYMBOL_GPL(release_vcp_semaphore);
 
+int vcp_turn_mminfra_on(void)
+{
+	int ret = 0;
+	unsigned long spin_flags;
+
+	if (vcp_ao && vcp_mminfra_on_off.mminfra_on != NULL) {
+		spin_lock_irqsave(&vcp_mminfra_spinlock, spin_flags);
+
+		ret = vcp_mminfra_on_off.mminfra_on();
+		vcp_mminfra_on_off.mminfra_ref = vcp_mminfra_on_off.mminfra_ref + 1;
+		if (ret < 0)
+			pr_notice("[VCP] %s(): turn mminfra on fail %d %d\n",
+				__func__, ret, vcp_mminfra_on_off.mminfra_ref);
+		pr_debug("%s(): ref count: %d\n", __func__, vcp_mminfra_on_off.mminfra_ref);
+
+		spin_unlock_irqrestore(&vcp_mminfra_spinlock, spin_flags);
+	}
+
+	return ret;
+}
+
+int vcp_turn_mminfra_off(void)
+{
+	int ret = 0;
+	unsigned long spin_flags;
+
+	if (vcp_ao && vcp_mminfra_on_off.mminfra_off != NULL) {
+		spin_lock_irqsave(&vcp_mminfra_spinlock, spin_flags);
+
+		vcp_mminfra_on_off.mminfra_ref = vcp_mminfra_on_off.mminfra_ref - 1;
+		if (vcp_mminfra_on_off.mminfra_ref < 0) {
+			pr_notice("[VCP] %s mminfra_ref %d < 0\n",
+				__func__, vcp_mminfra_on_off.mminfra_ref);
+			vcp_mminfra_on_off.mminfra_ref = 0;
+		} else {
+			ret = vcp_mminfra_on_off.mminfra_off();
+			if (ret < 0)
+				pr_notice("[VCP] %s(): turn mminfra off fail %d %d\n",
+					__func__, ret, vcp_mminfra_on_off.mminfra_ref);
+		}
+		pr_debug("%s(): ref count: %d\n", __func__, vcp_mminfra_on_off.mminfra_ref);
+
+		spin_unlock_irqrestore(&vcp_mminfra_spinlock, spin_flags);
+	}
+
+	return ret;
+}
 
 static BLOCKING_NOTIFIER_HEAD(vcp_A_notifier_list);
 /*
@@ -555,9 +618,14 @@ static void vcp_A_notify_ws(struct work_struct *ws)
 	struct vcp_work_struct *sws =
 		container_of(ws, struct vcp_work_struct, work);
 	unsigned int vcp_notify_flag = sws->flags;
+	int ret = 0;
 
 	vcp_recovery_flag[VCP_A_ID] = VCP_A_RECOVERY_OK;
+	ret = vcp_turn_mminfra_on();
+	if (ret < 0)
+		return;
 	writel(0xff, VCP_TO_SPM_REG); /* patch: clear SPM interrupt */
+	vcp_turn_mminfra_off();
 
 	mutex_lock(&vcp_A_notify_mutex);
 #if VCP_RECOVERY_SUPPORT
@@ -644,6 +712,7 @@ static void vcp_A_set_ready(void)
 #if VCP_BOOT_TIME_OUT_MONITOR
 static void vcp_wait_ready_timeout(struct timer_list *t)
 {
+	int ret = 0;
 #if VCP_RECOVERY_SUPPORT
 	if (vcp_timeout_times < 10)
 		vcp_send_reset_wq(RESET_TYPE_TIMEOUT);
@@ -652,7 +721,11 @@ static void vcp_wait_ready_timeout(struct timer_list *t)
 #endif
 	vcp_timeout_times++;
 	pr_notice("[VCP] vcp_timeout_times=%x\n", vcp_timeout_times);
+	ret = vcp_turn_mminfra_on();
+	if (ret < 0)
+		return;
 	vcp_dump_last_regs(mmup_enable_count());
+	vcp_turn_mminfra_off();
 }
 #endif
 
@@ -722,6 +795,7 @@ static void vcp_err_info_handler(int id, void *prdata, void *data,
 void trigger_vcp_halt(enum vcp_core_id id, char *user)
 {
 	int i, j;
+	int ret = 0;
 
 	i = 0;
 	while (!mutex_trylock(&vcp_pw_clk_mutex)) {
@@ -739,6 +813,11 @@ void trigger_vcp_halt(enum vcp_core_id id, char *user)
 			pr_notice("[VCP] vcp's first halt is from %s\n", halt_user);
 		}
 
+		ret = vcp_turn_mminfra_on();
+		if (ret < 0) {
+			mutex_unlock(&vcp_pw_clk_mutex);
+			return;
+		}
 		vcp_dump_last_regs(mmup_enable_count());
 
 		/* trigger halt isr, force vcp enter wfi */
@@ -749,6 +828,7 @@ void trigger_vcp_halt(enum vcp_core_id id, char *user)
 				pr_info("[VCP] Active feature id %d cnt %d\n",
 					j, feature_table[j].enable);
 		mtk_smi_dbg_hang_detect("VCP EE");
+		vcp_turn_mminfra_off();
 	} else
 		pr_notice("[VCP] %s %s tigger but VCP not ready\n", __func__, user);
 	mutex_unlock(&vcp_pw_clk_mutex);
@@ -757,10 +837,15 @@ EXPORT_SYMBOL_GPL(trigger_vcp_halt);
 
 void trigger_vcp_disp_sync(enum vcp_core_id id)
 {
+	int ret = 0;
 	if (mmup_enable_count() && vcp_ready[id]) {
+		ret = vcp_turn_mminfra_on();
+		if (ret < 0)
+			return;
 		/* trigger disp sync isr */
 		writel(B_GIPC0_SETCLR_0, R_GIPC_IN_SET);
 		pr_debug("[VCP] %s trigger\n", __func__);
+		vcp_turn_mminfra_off();
 	} else
 		pr_debug("[VCP] %s not trigger since mmup_enable_count=%d, vcp_ready[%d]=%d\n",
 			__func__, mmup_enable_count(), id, vcp_ready[id]);
@@ -992,7 +1077,7 @@ EXPORT_SYMBOL_GPL(vcp_disable_pm_clk);
 static int vcp_pm_event(struct notifier_block *notifier
 			, unsigned long pm_event, void *unused)
 {
-	int retval = 0;
+	int retval = 0, ret = 0;
 	uint32_t waitCnt = 0;
 
 	switch (pm_event) {
@@ -1005,32 +1090,32 @@ static int vcp_pm_event(struct notifier_block *notifier
 		pr_notice("[VCP] PM_SUSPEND_PREPARE entered %d %d\n", pwclkcnt, is_suspending);
 		if ((!is_suspending) && pwclkcnt) {
 			is_suspending = true;
+			if (!vcp_ao) {
 #if VCP_RECOVERY_SUPPORT
-			/* make sure all reset done */
-			flush_workqueue(vcp_reset_workqueue);
+				/* make sure all reset done */
+				flush_workqueue(vcp_reset_workqueue);
 #endif
-			waitCnt = vcp_wait_ready_sync(RTOS_FEATURE_ID);
-			vcp_disable_irqs();
-			flush_workqueue(vcp_workqueue);
-			vcp_ready[VCP_A_ID] = 0;
+				waitCnt = vcp_wait_ready_sync(RTOS_FEATURE_ID);
+				vcp_disable_irqs();
+				flush_workqueue(vcp_workqueue);
+				vcp_ready[VCP_A_ID] = 0;
 
-			/* trigger halt isr, force vcp enter wfi */
-			writel(B_GIPC3_SETCLR_1, R_GIPC_IN_SET);
-			wait_vcp_ready_to_reboot();
+				/* trigger halt isr, force vcp enter wfi */
+				writel(B_GIPC3_SETCLR_1, R_GIPC_IN_SET);
+				wait_vcp_ready_to_reboot();
 
 #if VCP_LOGGER_ENABLE
-			vcp_logger_uninit();
-			flush_workqueue(vcp_logger_workqueue);
+				vcp_logger_uninit();
+				flush_workqueue(vcp_logger_workqueue);
 #endif
 #if VCP_BOOT_TIME_OUT_MONITOR
-			del_timer(&vcp_ready_timer[VCP_A_ID].tl);
+				del_timer(&vcp_ready_timer[VCP_A_ID].tl);
 #endif
-			vcp_wait_core_stop_timeout(1);
-			vcp_disable_dapc();
+				vcp_wait_core_stop_timeout(1);
+				vcp_disable_dapc();
 
-			vcp_wait_awake_count();
+				vcp_wait_awake_count();
 
-			if (!vcp_ao) {
 				retval = pm_runtime_put_sync(vcp_power_devs);
 				if (retval)
 					pr_debug("[VCP] %s: pm_runtime_put_sync\n", __func__);
@@ -1040,6 +1125,30 @@ static int vcp_pm_event(struct notifier_block *notifier
 					clk_disable_unprepare(vcpclk);
 				if (!IS_ERR(vcp26m))
 					clk_disable_unprepare(vcp26m);
+			} else {
+#if VCP_RECOVERY_SUPPORT
+				/* make sure all reset done */
+				flush_workqueue(vcp_reset_workqueue);
+#endif
+				ret = vcp_turn_mminfra_on();
+				if (ret < 0) {
+					mutex_unlock(&vcp_pw_clk_mutex);
+					return NOTIFY_BAD;
+				}
+
+				waitCnt = vcp_wait_ready_sync(RTOS_FEATURE_ID);
+				flush_workqueue(vcp_workqueue);
+				vcp_ready[VCP_A_ID] = 0;
+
+#if VCP_LOGGER_ENABLE
+				flush_workqueue(vcp_logger_workqueue);
+#endif
+#if VCP_BOOT_TIME_OUT_MONITOR
+				del_timer(&vcp_ready_timer[VCP_A_ID].tl);
+#endif
+
+				vcp_wait_awake_count();
+				vcp_turn_mminfra_off();
 			}
 		}
 		is_suspending = true;
@@ -1049,7 +1158,6 @@ static int vcp_pm_event(struct notifier_block *notifier
 		// arm_smccc_smc(MTK_SIP_KERNEL_VCP_CONTROL, MTK_TINYSYS_VCP_KERNEL_OP_XXX,
 		// 0, 0, 0, 0, 0, 0, &res);
 		pr_debug("[VCP] PM_SUSPEND_PREPARE ok, waitCnt=%u\n", waitCnt);
-
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
 		mutex_lock(&vcp_pw_clk_mutex);
@@ -1077,17 +1185,30 @@ static int vcp_pm_event(struct notifier_block *notifier
 				retval = pm_runtime_get_sync(vcp_power_devs);
 				if (retval)
 					pr_debug("[VCP] %s: pm_runtime_get_sync\n", __func__);
-			}
 
-			vcp_enable_dapc();
-			vcp_enable_irqs();
+				vcp_enable_dapc();
+				vcp_enable_irqs();
 #if VCP_RECOVERY_SUPPORT
-			cpuidle_pause_and_lock();
-			reset_vcp(VCP_ALL_SUSPEND);
-			is_suspending = false;
-			waitCnt = vcp_wait_ready_sync(RTOS_FEATURE_ID);
-			cpuidle_resume_and_unlock();
+				cpuidle_pause_and_lock();
+				reset_vcp(VCP_ALL_SUSPEND);
+				is_suspending = false;
+				waitCnt = vcp_wait_ready_sync(RTOS_FEATURE_ID);
+				cpuidle_resume_and_unlock();
 #endif
+			} else {
+				ret = vcp_turn_mminfra_on();
+				if (ret < 0) {
+					mutex_unlock(&vcp_pw_clk_mutex);
+					return NOTIFY_BAD;
+				}
+#if VCP_RECOVERY_SUPPORT
+				cpuidle_pause_and_lock();
+				is_suspending = false;
+				waitCnt = vcp_wait_ready_sync(RTOS_FEATURE_ID);
+				cpuidle_resume_and_unlock();
+#endif
+				vcp_turn_mminfra_off();
+			}
 		}
 		is_suspending = false;
 		mutex_unlock(&vcp_pw_clk_mutex);
@@ -1100,15 +1221,19 @@ static int vcp_pm_event(struct notifier_block *notifier
 		// arm_smccc_smc(MTK_SIP_KERNEL_VCP_CONTROL, MTK_TINYSYS_VCP_KERNEL_OP_XXX,
 		// 0, 0, 0, 0, 0, 0, &res);
 		pr_debug("[VCP] PM_POST_SUSPEND ok, waitCnt=%u\n", waitCnt);
-
 		return NOTIFY_OK;
 	case PM_POST_HIBERNATION:
+		ret = vcp_turn_mminfra_on();
+		if (ret < 0)
+			return NOTIFY_BAD;
+
 		pr_debug("[VCP] %s: reboot\n", __func__);
 		retval = reset_vcp(VCP_ALL_REBOOT);
 		if (retval < 0) {
 			retval = -EINVAL;
 			pr_debug("[VCP] %s: reboot fail\n", __func__);
 		}
+		vcp_turn_mminfra_off();
 		return NOTIFY_DONE;
 	}
 	return NOTIFY_DONE;
@@ -1283,9 +1408,15 @@ DEVICE_ATTR_RO(vcp_A_status);
 static inline ssize_t vcp_A_reg_status_show(struct device *kobj
 			, struct device_attribute *attr, char *buf)
 {
-	int len = 0;
+	int len = 0, ret = 0;
+
+	ret = vcp_turn_mminfra_on();
+	if (ret < 0)
+		return 0;
 
 	vcp_dump_last_regs(mmup_enable_count());
+	vcp_turn_mminfra_off();
+
 	len += scnprintf(buf + len, PAGE_SIZE - len,
 		"c0_status = %08x\n", c0_m->status);
 	len += scnprintf(buf + len, PAGE_SIZE - len,
@@ -1356,13 +1487,18 @@ static inline ssize_t vcp_A_db_test_store(struct device *kobj
 		, struct device_attribute *attr, const char *buf, size_t count)
 {
 	unsigned int value = 0;
+	int ret = 0;
 
 	if (!buf || count == 0)
 		return count;
 
 	if (kstrtouint(buf, 10, &value) == 0) {
 		if (value == 666) {
+			ret = vcp_turn_mminfra_on();
+			if (ret < 0)
+				return count;
 			vcp_aed(RESET_TYPE_CMD, VCP_A_ID);
+			vcp_turn_mminfra_off();
 			if (vcp_ready[VCP_A_ID])
 				pr_debug("dumping VCP db\n");
 			else
@@ -1482,6 +1618,12 @@ DEVICE_ATTR_RW(vcp_ipi_test);
 #if VCP_RECOVERY_SUPPORT
 void vcp_wdt_reset(int cpu_id)
 {
+	int ret = 0;
+
+	ret = vcp_turn_mminfra_on();
+	if (ret < 0)
+		return;
+
 	switch (cpu_id) {
 	case 0:
 		writel(V_INSTANT_WDT, R_CORE0_WDT_CFG);
@@ -1490,6 +1632,8 @@ void vcp_wdt_reset(int cpu_id)
 		writel(V_INSTANT_WDT, R_CORE1_WDT_CFG);
 		break;
 	}
+
+	vcp_turn_mminfra_off();
 }
 EXPORT_SYMBOL(vcp_wdt_reset);
 
@@ -2232,6 +2376,7 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 	unsigned long spin_flags;
 	unsigned long c0_rstn = 0, c1_rstn = 0;
 	struct arm_smccc_res res;
+	int ret;
 
 	pr_notice("[VCP] %s(): vcp_reset_type %d remain %x times, en_cnt %d\n",
 		__func__, vcp_reset_type, vcp_reset_counts, mmup_enable_count());
@@ -2245,6 +2390,10 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 	 *   VCP_PLATFORM_READY = 1,
 	 */
 	vcp_ready[VCP_A_ID] = 0;
+
+	ret = vcp_turn_mminfra_on();
+	if (ret < 0)
+		return;
 
 	/* wake lock AP*/
 	__pm_stay_awake(vcp_reset_lock);
@@ -2288,6 +2437,8 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 			c0_rstn, c1_rstn, res.a0);
 	}
 
+	vcp_turn_mminfra_off();
+
 	/*notify vcp functions stop*/
 	pr_debug("[VCP] %s(): vcp_extern_notify\n", __func__);
 
@@ -2307,10 +2458,15 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 	vcp_reset_awake_counts();
 	spin_unlock_irqrestore(&vcp_awake_spinlock, spin_flags);
 
+	vcp_set_clk();
+
+	ret = vcp_turn_mminfra_on();
+	if (ret < 0)
+		return;
+
 	/* Setup dram reserved address and size for vcp*/
 	writel((unsigned int)VCP_PACK_IOVA(vcp_mem_base_phys), DRAM_RESV_ADDR_REG);
 	writel((unsigned int)vcp_mem_size, DRAM_RESV_SIZE_REG);
-	vcp_set_clk();
 
 	/* start vcp */
 	arm_smccc_smc(MTK_SIP_TINYSYS_VCP_CONTROL,
@@ -2325,6 +2481,8 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 #endif
 
 	dsb(SY); /* may take lot of time */
+	vcp_turn_mminfra_off();
+
 #if VCP_BOOT_TIME_OUT_MONITOR
 	mod_timer(&vcp_ready_timer[VCP_A_ID].tl, jiffies + VCP_READY_TIMEOUT);
 #endif

@@ -54,7 +54,7 @@ int vcp_awake_lock(void *_vcp_id)
 
 	if (vcp_id >= VCP_CORE_TOTAL) {
 		pr_notice("%s: VCP ID >= VCP_CORE_TOTAL\n", __func__);
-		return ret;
+		return -1;
 	}
 
 	vcp_awake_count = (int *)&vcp_awake_counts[vcp_id];
@@ -62,24 +62,21 @@ int vcp_awake_lock(void *_vcp_id)
 
 	if (is_vcp_ready(vcp_id) == 0) {
 		pr_notice("%s: %s not enabled\n", __func__, core_id);
-		return ret;
+		return -1;
 	}
 
 	/* vcp unlock awake */
 	spin_lock_irqsave(&vcp_awake_spinlock, spin_flags);
-	if (*vcp_awake_count > 0) {
-		*vcp_awake_count = *vcp_awake_count + 1;
-		spin_unlock_irqrestore(&vcp_awake_spinlock, spin_flags);
-		return 0;
-	}
 
 	/* vcp lock awake success*/
 	*vcp_awake_count = *vcp_awake_count + 1;
-	ret = 0;
 
 	spin_unlock_irqrestore(&vcp_awake_spinlock, spin_flags);
 
-	return ret;
+	ret = vcp_turn_mminfra_on();
+	if (ret < 0)
+		return -1;
+	return 0;
 }
 EXPORT_SYMBOL_GPL(vcp_awake_lock);
 
@@ -96,6 +93,8 @@ int vcp_awake_unlock(void *_vcp_id)
 	int *vcp_awake_count;
 	char *core_id;
 	int ret = -1;
+
+	vcp_turn_mminfra_off();
 
 	if (vcp_id >= VCP_CORE_TOTAL) {
 		pr_notice("%s: VCP ID >= VCP_CORE_TOTAL\n", __func__);
@@ -142,7 +141,6 @@ int vcp_clr_spm_reg(void *unused)
 	 * vcp set        bit[0]
 	 */
 	writel(0x1, VCP_TO_SPM_REG);
-
 	return 0;
 }
 EXPORT_SYMBOL_GPL(vcp_clr_spm_reg);

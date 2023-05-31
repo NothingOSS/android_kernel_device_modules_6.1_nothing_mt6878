@@ -228,6 +228,9 @@ extern void memcpy_from_vcp(void *trg, const void __iomem *src,
 extern int reset_vcp(int reset);
 extern struct device *vcp_get_io_device(enum VCP_IOMMU_DEV io_num);
 
+extern int vcp_turn_mminfra_on(void);
+extern int vcp_turn_mminfra_off(void);
+
 extern int vcp_check_resource(void);
 void set_vcp_mpu(void);
 void trigger_vcp_halt(enum vcp_core_id id, char *user);
