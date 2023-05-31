@@ -24,6 +24,7 @@
 
 #define MTK_SPMI_PMIC_REG_WIDTH	8
 #define PMIC_SWCID		0xB
+#define PMIC_MT6316_SWCID	0x20B
 #define RCS_INT_DONE		0x41B
 
 struct irq_top_t {
@@ -43,6 +44,7 @@ struct mtk_spmi_pmic_data {
 	unsigned int num_pmic_irqs;
 	unsigned short top_int_status_reg;
 	struct irq_top_t *pmic_ints;
+	unsigned int cid_addr;
 };
 
 struct pmic_core {
@@ -420,6 +422,11 @@ static const struct mtk_spmi_pmic_data common_data = {
 	.num_pmic_irqs = 0,
 };
 
+static const struct mtk_spmi_pmic_data mt6316_data = {
+	.num_pmic_irqs = 0,
+	.cid_addr = PMIC_MT6316_SWCID,
+};
+
 static const struct mtk_spmi_pmic_data mt6363_data = {
 	.cells = mt6363_devs,
 	.cell_size = ARRAY_SIZE(mt6363_devs),
@@ -707,7 +714,10 @@ static int mtk_spmi_pmic_probe(struct spmi_device *sdev)
 	core->regmap = devm_regmap_init_spmi_ext(sdev, &spmi_regmap_config);
 	if (IS_ERR(core->regmap))
 		return PTR_ERR(core->regmap);
-	ret = regmap_read(core->regmap, PMIC_SWCID, &id);
+	if(chip_data->cid_addr)
+		ret = regmap_read(core->regmap, chip_data->cid_addr, &id);
+	else
+		ret = regmap_read(core->regmap, PMIC_SWCID, &id);
 	if (ret) {
 		dev_err(&sdev->dev, "Failed to read chip id: %d\n", ret);
 		return ret;
@@ -745,7 +755,7 @@ static int mtk_spmi_pmic_probe(struct spmi_device *sdev)
 
 static const struct of_device_id mtk_spmi_pmic_of_match[] = {
 	{ .compatible = "mediatek,mt6315", .data = &common_data, },
-	{ .compatible = "mediatek,mt6316", .data = &common_data, },
+	{ .compatible = "mediatek,mt6316", .data = &mt6316_data, },
 	{ .compatible = "mediatek,mt6319", .data = &common_data, },
 	{ .compatible = "mediatek,mt6363", .data = &mt6363_data, },
 	{ .compatible = "mediatek,mt6368", .data = &mt6368_data, },
