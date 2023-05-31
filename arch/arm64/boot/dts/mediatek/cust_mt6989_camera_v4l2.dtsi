@@ -852,6 +852,9 @@
 				"imx866_mipi_raw";
 		reindex-to = <0>;
 
+		cust-aov-csi-clk = <312>;
+		phy-ctrl-ver = "mt6989";
+
 		pinctrl-names = "mclk_off",
 				"mclk_2mA",
 				"mclk_4mA",
