@@ -115,6 +115,7 @@ enum DW9781D_IMU {
 	ICM42631 = 0x0005,
 	BMI260   = 0x0006,
 	ICM42602 = 0x0007,
+	ICM42631_AUX2 = 0x0008,
 };
 enum DW9781D_mode {
 	DW9781D_STILL_MODE       = 0x8000,
@@ -218,33 +219,56 @@ static void I2C_OPERATION_CHECK(int val)
 	}
 }
 
-static void readhall(u16 *gyro_x, u16 *gyro_y, s16 *target_x, s16 *target_y, s16 *len_x, s16 *len_y)
+static void readhall(s16 *gyro_x, s16 *gyro_y, s16 *target_x, s16 *target_y, s16 *len_x, s16 *len_y)
 {
 	int ret = 0;
+	u16 nRet = 0;
+	unsigned int nTargetAddressX = 0, nTargetAddressY = 0;
 
 	// get x gyro
-	ret = ois_i2c_rd_u16(m_client, DW9781D_REG_OIS_GYROX, gyro_x);
+	ret = ois_i2c_rd_s16(m_client, DW9781D_REG_OIS_GYROX, gyro_x);
 	if (ret < 0) {
 		LOG_INF("Get x GYRO fail\n");
 		return;
 	}
 
 	// get y gyro
-	ret = ois_i2c_rd_u16(m_client, DW9781D_REG_OIS_GYROY, gyro_y);
+	ret = ois_i2c_rd_s16(m_client, DW9781D_REG_OIS_GYROY, gyro_y);
 	if (ret < 0) {
 		LOG_INF("Get y GYRO fail\n");
 		return;
 	}
 
+	// get OIS_CTRL register value
+	ret = ois_i2c_rd_u16(m_client, DW9781D_REG_OIS_CTRL, &nRet);
+	if (ret < 0) {
+		LOG_INF("Get OIS_CTRL fail\n");
+		return;
+	}
+
+	// According to OIS_CTRL register value to decide what target address to use
+	if (nRet == OIS_ON) {
+		nTargetAddressX = DW9781D_REG_OIS_TARGETX;
+		nTargetAddressY = DW9781D_REG_OIS_TARGETY;
+	} else {
+		nTargetAddressX = DW9781D_REG_OIS_CL_TARGETX;
+		nTargetAddressY = DW9781D_REG_OIS_CL_TARGETY;
+	}
+
+#ifdef FOR_DEBUG
+	LOG_INF("DW9781D_REG_OIS_CTRL: (%d), nTargetAddressX/Y: (0x%x/0x%x)\n",
+		nRet, nTargetAddressX, nTargetAddressY);
+#endif
+
 	// get x target
-	ret = ois_i2c_rd_s16(m_client, DW9781D_REG_OIS_TARGETX, target_x);
+	ret = ois_i2c_rd_s16(m_client, nTargetAddressX, target_x);
 	if (ret < 0) {
 		LOG_INF("Get x target fail\n");
 		return;
 	}
 
 	// get y target
-	ret = ois_i2c_rd_s16(m_client, DW9781D_REG_OIS_TARGETY, target_y);
+	ret = ois_i2c_rd_s16(m_client, nTargetAddressY, target_y);
 	if (ret < 0) {
 		LOG_INF("Get y target fail\n");
 		return;
@@ -335,7 +359,7 @@ static int dw9781d_init(struct dw9781d_device *dw9781d)
 	I2C_OPERATION_CHECK(ret);
 	mdelay(1);
 	// set gyro select ICM42631
-	ret = ois_i2c_wr_u16(client, DW9781D_REG_IMU_SELECT, ICM42631);
+	ret = ois_i2c_wr_u16(client, DW9781D_REG_IMU_SELECT, ICM42631_AUX2);
 	I2C_OPERATION_CHECK(ret);
 	mdelay(1);
 	// open gyro data reading
@@ -625,7 +649,7 @@ static int dw9781d_sample(struct hf_device *hfdev)
 	struct hf_manager *manager = dw9781d->hf_dev.manager;
 	struct hf_manager_event event;
 
-	u16 gyro_x = 0, gyro_y = 0;
+	s16 gyro_x = 0, gyro_y = 0;
 	s16 target_x = 0, target_y = 0;
 	s16 len_x = 0, len_y = 0;
 
@@ -636,12 +660,13 @@ static int dw9781d_sample(struct hf_device *hfdev)
 	event.sensor_type = dw9781d->hf_dev.support_list[0].sensor_type;
 	event.accurancy = SENSOR_ACCURANCY_HIGH;
 	event.action = DATA_ACTION;
-	event.word[0] = gyro_x;	// ois gyro x
-	event.word[1] = gyro_y;	// ois gyro y
-	event.word[2] = target_x;	// target x
-	event.word[3] = target_y;	// target y
-	event.word[4] = len_x;	// HALL_X
-	event.word[5] = len_y;	// HALL_Y
+	// unit transform, full scale is +-250dps, 65536/500=131(code/dps)
+	event.word[0] = gyro_x * 1000 / 131 * 1000;	// ois gyro x
+	event.word[1] = gyro_y * 1000 / 131 * 1000;	// ois gyro y
+	event.word[2] = target_x * 1000000;	// target x
+	event.word[3] = target_y * 1000000;	// target y
+	event.word[4] = len_x * 1000000;	// HALL_X
+	event.word[5] = len_y * 1000000;	// HALL_Y
 	manager->report(manager, &event);
 	manager->complete(manager);
 
@@ -674,16 +699,22 @@ static int dw9781d_custom_cmd(struct hf_device *hfdev, int sensor_type,
 	// OIS_POSTURE_CONFIG
 	} else if (cust_cmd->command == 3) {
 		// manual control
-		LOG_INF("manual control\n");
+		LOG_INF("manual control, targetX (%d), targetY (%d)",
+			cust_cmd->data[0] >> 16,
+			cust_cmd->data[0] & 0xFFFF);
+
+		// set ic servo on / ois off
+		ret = ois_i2c_wr_u16(m_client, DW9781D_REG_OIS_CTRL, SERVO_ON);
+		I2C_OPERATION_CHECK(ret);
 
 		// set targetX
 		ret = ois_i2c_wr_u16(m_client, DW9781D_REG_OIS_CL_TARGETX,
-			cust_cmd->data[0]);
+			(cust_cmd->data[0] >> 16));
 		I2C_OPERATION_CHECK(ret);
 
 		// set targetY
 		ret = ois_i2c_wr_u16(m_client, DW9781D_REG_OIS_CL_TARGETY,
-			cust_cmd->data[1]);
+			(cust_cmd->data[0] & 0xFFFF));
 		I2C_OPERATION_CHECK(ret);
 	}
 
@@ -693,7 +724,7 @@ static int dw9781d_custom_cmd(struct hf_device *hfdev, int sensor_type,
 static struct sensor_info support_sensors[] = {
 	{
 		.sensor_type = SENSOR_TYPE_OIS2,
-		.gain = 1,
+		.gain = 1000000,
 		.name = {'o', 'i', 's', '2'},
 		.vendor = {'m', 't', 'k'},
 	}
@@ -841,6 +872,7 @@ static int dw9781d_probe(struct i2c_client *client)
 	return 0;
 
 err_cleanup:
+	hf_device_unregister_manager_destroy(&dw9781d->hf_dev);
 	dw9781d_subdev_cleanup(dw9781d);
 	return ret;
 }
@@ -852,6 +884,7 @@ static void dw9781d_remove(struct i2c_client *client)
 
 	LOG_INF("+\n");
 
+	hf_device_unregister_manager_destroy(&dw9781d->hf_dev);
 	dw9781d_subdev_cleanup(dw9781d);
 	pm_runtime_disable(&client->dev);
 	if (!pm_runtime_status_suspended(&client->dev))
