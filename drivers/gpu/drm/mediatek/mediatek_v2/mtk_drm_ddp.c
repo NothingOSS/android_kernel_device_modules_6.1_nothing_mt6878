@@ -20167,8 +20167,8 @@ unsigned int mtk_ddp_ovl_resource_list(struct mtk_drm_private *priv, unsigned in
 			_ovl_list[1] = DDP_COMPONENT_OVL1_2L;
 			_ovl_list[2] = DDP_COMPONENT_OVL2_2L;
 			_ovl_list[3] = DDP_COMPONENT_OVL3_2L;
-			_ovl_list[2] = DDP_COMPONENT_OVL4_2L;
-			_ovl_list[3] = DDP_COMPONENT_OVL5_2L;
+			_ovl_list[4] = DDP_COMPONENT_OVL4_2L;
+			_ovl_list[5] = DDP_COMPONENT_OVL5_2L;
 			*ovl_list = _ovl_list;
 		}
 		return 6;
