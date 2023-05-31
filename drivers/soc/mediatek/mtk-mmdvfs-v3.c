@@ -84,6 +84,7 @@ enum {
 static int log_level;
 static int vcp_log_level;
 static int vmrc_log_level;
+static u32 hqa_enable;
 
 static u32 force_vol;
 static u32 force_rc_clk;
@@ -965,7 +966,7 @@ int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
 {
 	struct mmdvfs_mux *mux;
 	u8 idx = pwr_idx + MMDVFS_USER_VCORE;
-	int ret;
+	int ret, *last;
 
 	if (!mmdvfs_mux_version || idx >= ARRAY_SIZE(mmdvfs_user)) {
 		MMDVFS_ERR("invalid:%d pwr_idx:%hhu idx:%hhu", mmdvfs_mux_version, pwr_idx, idx);
@@ -979,15 +980,17 @@ int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
 		return -EINVAL;
 	}
 
+	last = &last_force_step[pwr_idx];
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-		opp < dpsw_thr && mux->last >= dpsw_thr)
+		opp < dpsw_thr && *last >= dpsw_thr)
 		mtk_mmdvfs_enable_vmm(true);
 	ret = mmdvfs_vcp_ipi_send(FUNC_FORCE_OPP, pwr_idx, opp, NULL);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-		opp >= dpsw_thr && mux->last < dpsw_thr)
+		opp >= dpsw_thr && *last < dpsw_thr)
 		mtk_mmdvfs_enable_vmm(false);
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
+	*last = opp;
 
 	MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd",
 		pwr_idx, idx, mux->id, opp);
@@ -1321,6 +1324,8 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 		mmdvfs_vcp_stop = false;
 		mmdvfs_vcp_ipi_send(FUNC_MMDVFSRC_INIT, MAX_OPP, MAX_OPP, NULL);
 		mmdvfs_vcp_cb_ready = true;
+		if (hqa_enable)
+			mtk_mmdvfs_enable_vmm(true);
 		break;
 	case VCP_EVENT_STOP:
 		if (dpc_fp)
@@ -1350,6 +1355,12 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 			}
 			if (dump)
 				mmdvfs_fmeter_dump();
+		}
+		if (hqa_enable) {
+			/* set vmm to lowest step for HQA test */
+			mmdvfs_force_step_by_vcp(1,
+				mmdvfs_mux[mmdvfs_user[0].target_id].freq_num - 1);
+			mtk_mmdvfs_enable_vmm(false);
 		}
 		mmdvfs_vcp_cb_ready = false;
 		break;
@@ -1524,6 +1535,31 @@ static int mtk_mmdvfs_clk_disable(const u8 clk_idx)
 	mmdvfs_vcp_ipi_send(FUNC_CLKMUX_ENABLE, clk_idx, false, NULL);
 	return 0;
 }
+
+int mmdvfs_set_hqa_enable(const char *val, const struct kernel_param *kp)
+{
+	int ret;
+	struct task_struct *kthr_vcp;
+
+	ret = kstrtou32(val, 0, &hqa_enable);
+	if (ret) {
+		MMDVFS_ERR("failed:%d", ret);
+		return ret;
+	}
+
+	if (!mmdvfs_free_run) {
+		mmdvfs_free_run = true;
+		kthr_vcp = kthread_run(mmdvfs_vcp_init_thread, NULL, "mmdvfs-vcp");
+	}
+
+	return ret;
+}
+
+static const struct kernel_param_ops mmdvfs_set_hqa_enable_ops = {
+	.set = mmdvfs_set_hqa_enable,
+};
+module_param_cb(hqa_enable, &mmdvfs_set_hqa_enable_ops, NULL, 0644);
+MODULE_PARM_DESC(hqa_enable, "mmdvfs hqa enable");
 
 static const struct of_device_id of_match_mmdvfs_v3[] = {
 	{
