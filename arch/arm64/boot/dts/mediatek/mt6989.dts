@@ -5792,8 +5792,8 @@
 			interconnect-names = "disp_hrt_qos",
 					"disp_hrt_by_larb",
 					"disp_dp_hrt_by_larb";
-			//pre-define-bw = <0xffffffff>, <4200>, <0>;
-			//crtc-ovl-usage = <7>, <4>, <8>;
+			pre-define-bw = <0xffffffff>, <4200>, <0>;
+			crtc-ovl-usage = <7>, <8>, <16>;
 
 			default-emi-eff = <8500>;
 			emi-eff-lp5-table =
@@ -6056,7 +6056,7 @@
 				<0>, /*MTK_DRM_OPT_VIRTUAL_DISP*/
 				<0>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
 				<0>, /*MTK_DRM_OPT_GPU_CACHE*/
-				<0>, /*MTK_DRM_OPT_SPHRT*/
+				<1>, /*MTK_DRM_OPT_SPHRT*/
 				<0>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
 				<1>, /*MTK_DRM_OPT_HRT_BY_LARB*/
 				<0>, /*MTK_DRM_OPT_TILE_OVERHEAD*/
