@@ -17,6 +17,7 @@
 struct task_gear_hints {
 	int gear_start;
 	int num_gear;
+	int reverse;
 };
 
 struct vip_task_struct {
@@ -122,11 +123,12 @@ struct mtk_tg {
 };
 
 extern int num_sched_clusters;
-extern cpumask_t __read_mostly **cpu_array;
+extern cpumask_t __read_mostly ***cpu_array;
 extern void init_cpu_array(void);
 extern void build_cpu_array(void);
 extern void free_cpu_array(void);
-extern void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_index);
+extern void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_index,
+			int *reverse);
 
 struct util_rq {
 	unsigned long util_cfs;

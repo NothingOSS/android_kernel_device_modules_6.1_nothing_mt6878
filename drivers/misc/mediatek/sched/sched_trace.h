@@ -136,10 +136,10 @@ TRACE_EVENT(sched_get_gear_indices,
 
 	TP_PROTO(struct task_struct *tsk, int uclamp_task_util,
 		int gear_start, int num_gear,
-		int num_sched_clusters, int order_index, int end_index),
+		int num_sched_clusters, int order_index, int end_index, int reverse),
 
 	TP_ARGS(tsk, uclamp_task_util, gear_start, num_gear, num_sched_clusters,
-			order_index, end_index),
+			reverse, order_index, end_index),
 
 	TP_STRUCT__entry(
 		__field(pid_t, pid)
@@ -147,6 +147,7 @@ TRACE_EVENT(sched_get_gear_indices,
 		__field(int,   gear_start)
 		__field(int,   num_gear)
 		__field(int,   num_sched_clusters)
+		__field(int,   reverse)
 		__field(int,   order_index)
 		__field(int,   end_index)
 		),
@@ -157,17 +158,19 @@ TRACE_EVENT(sched_get_gear_indices,
 		__entry->gear_start			= gear_start;
 		__entry->num_gear			= num_gear;
 		__entry->num_sched_clusters	= num_sched_clusters;
+		__entry->reverse			= reverse;
 		__entry->order_index		= order_index;
 		__entry->end_index			= end_index;
 		),
 
 	TP_printk(
-		"pid=%d uclamp_task_util=%d gear_start=%d num_gear=%d max_gear_num=%d order_index=%d end_index=%d",
+		"pid=%d uclamp_task_util=%d gear_start=%d num_gear=%d reverse=%d max_gear_num=%d order_index=%d end_index=%d",
 		__entry->pid,
 		__entry->uclamp_task_util,
 		__entry->gear_start,
 		__entry->num_gear,
 		__entry->num_sched_clusters,
+		__entry->reverse,
 		__entry->order_index,
 		__entry->end_index)
 );

@@ -949,23 +949,30 @@ static inline void compute_effective_softmask(struct task_struct *p,
 }
 
 __read_mostly int num_sched_clusters;
-cpumask_t __read_mostly **cpu_array;
+cpumask_t __read_mostly ***cpu_array;
 
 void init_cpu_array(void)
 {
-	int i;
+	int i, j;
 	num_sched_clusters = get_nr_gears();
 
-	cpu_array = kcalloc(num_sched_clusters, sizeof(cpumask_t *),
+	cpu_array = kcalloc(num_sched_clusters, sizeof(cpumask_t **),
 			GFP_ATOMIC | __GFP_NOFAIL);
 	if (!cpu_array)
 		free_cpu_array();
 
 	for (i = 0; i < num_sched_clusters; i++) {
-		cpu_array[i] = kcalloc(num_sched_clusters, sizeof(cpumask_t),
+		cpu_array[i] = kcalloc(num_sched_clusters, sizeof(cpumask_t *),
 				GFP_ATOMIC | __GFP_NOFAIL);
 		if (!cpu_array[i])
 			free_cpu_array();
+
+		for (j = 0; j < num_sched_clusters; j++) {
+			cpu_array[i][j] = kcalloc(2, sizeof(cpumask_t),
+					GFP_ATOMIC | __GFP_NOFAIL);
+			if (!cpu_array[i][j])
+				free_cpu_array();
+		}
 	}
 }
 
@@ -981,14 +988,16 @@ void build_cpu_array(void)
 		int j, k = 1;
 
 		/* Fill out first column with appropriate cpu arrays */
-		cpumask_copy(&cpu_array[i][0], get_gear_cpumask(i));
+		cpumask_copy(&cpu_array[i][0][0], get_gear_cpumask(i));
+		cpumask_copy(&cpu_array[i][0][1], get_gear_cpumask(i));
 		/*
 		 * k starts from column 1 because 0 is filled
 		 * Fill clusters for the rest of the row,
 		 * above i in ascending order
 		 */
 		for (j = i + 1; j < num_sched_clusters; j++) {
-			cpumask_copy(&cpu_array[i][k], get_gear_cpumask(j));
+			cpumask_copy(&cpu_array[i][k][0], get_gear_cpumask(j));
+			cpumask_copy(&cpu_array[i][j][1], get_gear_cpumask(j));
 			k++;
 		}
 
@@ -997,7 +1006,8 @@ void build_cpu_array(void)
 		 * Fill cluster below i in descending order.
 		 */
 		for (j = i - 1; j >= 0; j--) {
-			cpumask_copy(&cpu_array[i][k], get_gear_cpumask(j));
+			cpumask_copy(&cpu_array[i][k][0], get_gear_cpumask(j));
+			cpumask_copy(&cpu_array[i][i-j][1], get_gear_cpumask(j));
 			k++;
 		}
 	}
@@ -1005,12 +1015,16 @@ void build_cpu_array(void)
 
 void free_cpu_array(void)
 {
-	int i;
+	int i, j;
 
 	if (!cpu_array)
 		return;
 
 	for (i = 0; i < num_sched_clusters; i++) {
+		for (j = 0; j < num_sched_clusters; j++) {
+			kfree(cpu_array[i][j]);
+			cpu_array[i][j] = NULL;
+		}
 		kfree(cpu_array[i]);
 		cpu_array[i] = NULL;
 	}
@@ -1083,41 +1097,65 @@ static inline bool is_target_max_spare_cpu(bool is_vip, int num_vip, int min_num
 	return true;
 }
 
-void __set_gear_indices(struct task_struct *p, int gear_start, int num_gear)
+void __set_gear_indices(struct task_struct *p, int gear_start, int num_gear, int reverse)
 {
 	struct task_gear_hints *ghts = &((struct mtk_task *) p->android_vendor_data1)->gear_hints;
 
 	ghts->gear_start = gear_start;
 	ghts->num_gear   = num_gear;
+	ghts->reverse    = reverse;
 }
 
-void set_gear_indices(int pid, int gear_start, int num_gear)
+int set_gear_indices(int pid, int gear_start, int num_gear, int reverse)
 {
 	struct task_struct *p;
+	int ret = 0;
 
 	rcu_read_lock();
+
+	/* check gear_start validity */
+	if (gear_start < 0 || gear_start > num_sched_clusters-1)
+		goto unlock;
+
+	/* check num_gear validity */
+	if (num_gear < 1 || num_gear > num_sched_clusters)
+		goto unlock;
+
+	/* check num_gear validity */
+	if (reverse < 0 || reverse > 1)
+		goto unlock;
+
 	p = find_task_by_vpid(pid);
 	if (p) {
 		get_task_struct(p);
-		__set_gear_indices(p, gear_start, num_gear);
+		__set_gear_indices(p, gear_start, num_gear, reverse);
 		put_task_struct(p);
+		ret = 1;
 	}
+
+unlock:
 	rcu_read_unlock();
+
+	return ret;
 }
 EXPORT_SYMBOL_GPL(set_gear_indices);
 
-void unset_gear_indices(int pid)
+int unset_gear_indices(int pid)
 {
 	struct task_struct *p;
+	int ret = 0;
 
 	rcu_read_lock();
 	p = find_task_by_vpid(pid);
 	if (p) {
 		get_task_struct(p);
-		__set_gear_indices(p, -1, num_sched_clusters);
+		__set_gear_indices(p, -1, num_sched_clusters, 0);
 		put_task_struct(p);
+		ret = 1;
 	}
 	rcu_read_unlock();
+
+	return ret;
 }
 EXPORT_SYMBOL_GPL(unset_gear_indices);
 
@@ -1244,13 +1282,15 @@ static inline bool util_fits_capacity(unsigned long cpu_util, unsigned long cpu_
 }
 #endif
 
-void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_index)
+void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_index,
+		int *reverse)
 {
 	int i = 0;
 	struct task_gear_hints *ghts = &((struct mtk_task *) p->android_vendor_data1)->gear_hints;
 
 	*order_index = 0;
 	*end_index = 0;
+	*reverse = 0;
 	if (num_sched_clusters <= 1)
 		goto out;
 
@@ -1268,11 +1308,12 @@ void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_ind
 	if (ghts->gear_start >= 0) {
 		*order_index = ghts->gear_start;
 		*end_index   = ghts->num_gear;
+		*reverse     = ghts->reverse;
 		goto out;
 	}
 
 	for (i = *order_index; i < num_sched_clusters - 1; i++) {
-		if (task_demand_fits(p, cpumask_first(&cpu_array[i][0])))
+		if (task_demand_fits(p, cpumask_first(&cpu_array[i][0][0])))
 			break;
 	}
 
@@ -1281,8 +1322,8 @@ void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_ind
 out:
 	if (trace_sched_get_gear_indices_enabled())
 		trace_sched_get_gear_indices(p, uclamp_task_util(p),
-				ghts->gear_start, ghts->num_gear, num_sched_clusters,
-				*order_index, *end_index);
+				ghts->gear_start, ghts->num_gear, ghts->reverse,
+				num_sched_clusters, *order_index, *end_index);
 }
 
 struct find_best_candidates_parameters {
@@ -1291,6 +1332,7 @@ struct find_best_candidates_parameters {
 	int prev_cpu;
 	int order_index;
 	int end_index;
+	int reverse;
 };
 
 DEFINE_PER_CPU(cpumask_var_t, mtk_fbc_mask);
@@ -1319,6 +1361,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	int prev_cpu = fbc_params->prev_cpu;
 	int order_index = fbc_params->order_index;
 	int end_index = fbc_params->end_index;
+	int reverse = fbc_params->reverse;
 
 	num_vip = prev_min_num_vip = min_num_vip = UINT_MAX;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
@@ -1340,7 +1383,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 
 #endif
 
-		cpumask_and(cpus, &cpu_array[order_index][cluster], cpu_active_mask);
+		cpumask_and(cpus, &cpu_array[order_index][cluster][reverse], cpu_active_mask);
 
 		if (cpumask_empty(cpus))
 			continue;
@@ -1505,7 +1548,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	struct cpumask effective_softmask;
 	bool in_irq = in_interrupt();
 	struct cpumask allowed_cpu_mask;
-	int order_index, end_index, weight;
+	int order_index, end_index, weight, reverse;
 	cpumask_t *candidates;
 	struct find_best_candidates_parameters fbc_params;
 	unsigned long cpu_utils[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = ULONG_MAX};
@@ -1546,7 +1589,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 	irq_log_store();
 
-	mtk_get_gear_indicies(p, &order_index, &end_index);
+	mtk_get_gear_indicies(p, &order_index, &end_index, &reverse);
 
 	irq_log_store();
 
@@ -1571,6 +1614,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	fbc_params.prev_cpu = prev_cpu;
 	fbc_params.order_index = order_index;
 	fbc_params.end_index = end_index;
+	fbc_params.reverse = reverse;
 
 	/* Pre-select a set of candidate CPUs. */
 	candidates = this_cpu_ptr(&energy_cpus);

@@ -193,13 +193,13 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	unsigned long best_idle_exit_latency = UINT_MAX;
 	unsigned long cpu_idle_exit_latency = UINT_MAX;
 	int cluster, weight;
-	int order_index, end_index;
+	int order_index, end_index, reverse;
 	cpumask_t candidates;
 	bool best_cpu_has_lt, cpu_has_lt;
 	unsigned long pwr_eff, this_pwr_eff;
 
 	irq_log_store();
-	mtk_get_gear_indicies(p, &order_index, &end_index);
+	mtk_get_gear_indicies(p, &order_index, &end_index, &reverse);
 	irq_log_store();
 	end_index = energy_eval ? end_index : 0;
 
@@ -217,7 +217,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 		best_idle_cpu_cluster = -1;
 		best_cpu_has_lt = true;
 
-		for_each_cpu_and(cpu, lowest_mask, &cpu_array[order_index][cluster]) {
+		for_each_cpu_and(cpu, lowest_mask, &cpu_array[order_index][cluster][reverse]) {
 
 			cpu_util_cum = mtk_task_cap(p, cpu, min_cap, max_cap);
 
