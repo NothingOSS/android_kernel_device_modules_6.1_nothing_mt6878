@@ -126,6 +126,21 @@
 		op-mode = <1>;
 	};
 
+	cache-parity {
+		compatible = "mediatek,mt6985-cache-parity";
+		ecc-irq-support = <1>;
+		arm-dsu-ecc-hwirq = <48>;
+		interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 0 Fault IRQ */
+			     <GIC_SPI 1 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 1 Fault IRQ */
+			     <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 2 Fault IRQ */
+			     <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 3 Fault IRQ */
+			     <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 4 Fault IRQ */
+			     <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 5 Fault IRQ */
+			     <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 6 Fault IRQ */
+			     <GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH 0>, /* Core 7 Fault IRQ */
+			     <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH 0>; /* DSU Fault IRQ */
+	};
+
 	clkbuf_ctrl: clkbuf-ctrl {
 		pmic-supply = <&mt6685_clkbuf>;
 
