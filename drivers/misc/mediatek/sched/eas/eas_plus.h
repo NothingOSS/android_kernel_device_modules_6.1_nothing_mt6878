@@ -234,6 +234,8 @@ extern int cpu_high_irqload(int cpu, unsigned long cpu_util);
 extern unsigned int mtk_get_idle_exit_latency(int cpu, struct rt_energy_aware_output *rt_ea_output);
 extern unsigned long mtk_sched_cpu_util(int cpu);
 extern void track_sched_cpu_util(int cpu, unsigned long cpu_util);
+extern int get_cpu_irqUtil_threshold(int cpu);
+extern int get_cpu_irqRatio_threshold(int cpu);
 
 extern struct cpumask __cpu_pause_mask;
 #define cpu_pause_mask ((struct cpumask *)&__cpu_pause_mask)

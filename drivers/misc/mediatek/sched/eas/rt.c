@@ -105,7 +105,6 @@ static inline bool rt_task_fits_capacity(struct task_struct *p, int cpu)
 }
 #endif
 
-
 unsigned long mtk_sched_cpu_util(int cpu)
 {
 	return  mtk_cpu_util(cpu, cpu_util_cfs(cpu), ENERGY_UTIL, NULL, 0, SCHED_CAPACITY_SCALE);
@@ -127,9 +126,131 @@ unsigned int min_highirq_load[MAX_NR_CPUS] = {
 	[0 ... MAX_NR_CPUS-1] = SCHED_CAPACITY_SCALE /* default 1024 */
 };
 
-unsigned int inv_irq_ratio[MAX_NR_CPUS] = {
-	[0 ... MAX_NR_CPUS-1] = 1 /* default irq=cpu */
+unsigned int irq_ratio[MAX_NR_CPUS] = {
+	[0 ... MAX_NR_CPUS-1] = 100 /* default irq=cpu */
 };
+
+inline void __set_cpu_irqUtil_threshold(int cpu, unsigned int min_util)
+{
+	min_highirq_load[cpu] = min_util;
+}
+
+inline void __set_cpu_irqRatio_threshold(int cpu, unsigned int min_ratio)
+{
+	irq_ratio[cpu] = min_ratio;
+}
+
+inline void __unset_cpu_irqUtil_threshold(int cpu)
+{
+	min_highirq_load[cpu] = SCHED_CAPACITY_SCALE;
+}
+
+inline void __unset_cpu_irqRatio_threshold(int cpu)
+{
+	irq_ratio[cpu] = 100;
+}
+
+int set_cpu_irqUtil_threshold(int cpu, int min_util)
+{
+	int ret = 0;
+
+	/* check cpu validity */
+	if (cpu < 0 || cpu > MAX_NR_CPUS-1)
+		goto done;
+
+	/* check util validity */
+	if (min_util < 0 || min_util > SCHED_CAPACITY_SCALE)
+		goto done;
+
+	__set_cpu_irqUtil_threshold(cpu, min_util);
+	ret = 1;
+
+done:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(set_cpu_irqUtil_threshold);
+
+int unset_cpu_irqUtil_threshold(int cpu)
+{
+	int ret = 0;
+
+	/* check cpu validity */
+	if (cpu < 0 || cpu > MAX_NR_CPUS-1)
+		goto done;
+
+	__unset_cpu_irqUtil_threshold(cpu);
+	ret = 1;
+
+done:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(unset_cpu_irqUtil_threshold);
+
+int get_cpu_irqUtil_threshold(int cpu)
+{
+	int val = -1;
+
+	/* check cpu validity */
+	if (cpu < 0 || cpu > MAX_NR_CPUS-1)
+		goto done;
+
+	val = min_highirq_load[cpu];
+
+done:
+	return val;
+}
+EXPORT_SYMBOL_GPL(get_cpu_irqUtil_threshold);
+
+int set_cpu_irqRatio_threshold(int cpu, int min_ratio)
+{
+	int ret = 0;
+
+	/* check cpu validity */
+	if (cpu < 0 || cpu > MAX_NR_CPUS-1)
+		goto done;
+
+	/* check util validity */
+	if (min_ratio < 0 || min_ratio > 100)
+		goto done;
+
+	__set_cpu_irqRatio_threshold(cpu, min_ratio);
+	ret = 1;
+
+done:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(set_cpu_irqRatio_threshold);
+
+int unset_cpu_irqRatio_threshold(int cpu)
+{
+	int ret = 0;
+
+	/* check cpu validity */
+	if (cpu < 0 || cpu > MAX_NR_CPUS-1)
+		goto done;
+
+	__unset_cpu_irqRatio_threshold(cpu);
+	ret = 1;
+
+done:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(unset_cpu_irqRatio_threshold);
+
+int get_cpu_irqRatio_threshold(int cpu)
+{
+	int val = -1;
+
+	/* check cpu validity */
+	if (cpu < 0 || cpu > MAX_NR_CPUS-1)
+		goto done;
+
+	val = irq_ratio[cpu];
+
+done:
+	return val;
+}
+EXPORT_SYMBOL_GPL(get_cpu_irqRatio_threshold);
 
 inline int cpu_high_irqload(int cpu, unsigned long cpu_util)
 {
@@ -139,7 +260,7 @@ inline int cpu_high_irqload(int cpu, unsigned long cpu_util)
 	if (irq_util < min_highirq_load[cpu])
 		return 0;
 
-	if (irq_util * inv_irq_ratio[cpu] < cpu_util)
+	if (irq_util * 100 < cpu_util * irq_ratio[cpu])
 		return 0;
 
 	return 1;
