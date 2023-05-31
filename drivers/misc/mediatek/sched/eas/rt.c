@@ -117,12 +117,12 @@ static inline unsigned int mtk_task_cap(struct task_struct *p, int cpu,
 	return util;
 }
 
-unsigned int min_highirq_load[NR_CPUS] = {
-	[0 ... NR_CPUS-1] = SCHED_CAPACITY_SCALE /* default 1024 */
+unsigned int min_highirq_load[MAX_NR_CPUS] = {
+	[0 ... MAX_NR_CPUS-1] = SCHED_CAPACITY_SCALE /* default 1024 */
 };
 
-unsigned int inv_irq_ratio[NR_CPUS] = {
-	[0 ... NR_CPUS-1] = 1 /* default irq=cpu */
+unsigned int inv_irq_ratio[MAX_NR_CPUS] = {
+	[0 ... MAX_NR_CPUS-1] = 1 /* default irq=cpu */
 };
 
 inline int cpu_high_irqload(int cpu, unsigned long cpu_util)
@@ -186,7 +186,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			struct rt_energy_aware_output *rt_ea_output)
 {
 	int cpu, best_idle_cpu_cluster;
-	unsigned long util_cum[NR_CPUS] = {[0 ... NR_CPUS-1] = ULONG_MAX};
+	unsigned long util_cum[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = ULONG_MAX};
 	unsigned long cpu_util_cum, best_cpu_util_cum = ULONG_MAX;
 	unsigned long min_cap = uclamp_eff_value(p, UCLAMP_MIN);
 	unsigned long max_cap = uclamp_eff_value(p, UCLAMP_MAX);

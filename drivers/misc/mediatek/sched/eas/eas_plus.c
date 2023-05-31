@@ -159,7 +159,7 @@ void mtk_cpu_overutilized(void *data, int cpu, int *overutilized)
 }
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
-int __read_mostly thermal_headroom[NR_CPUS]  ____cacheline_aligned;
+int __read_mostly thermal_headroom[MAX_NR_CPUS]  ____cacheline_aligned;
 unsigned long next_update_thermal;
 static DEFINE_SPINLOCK(thermal_headroom_lock);
 
@@ -189,7 +189,7 @@ static void update_thermal_headroom(int this_cpu)
 int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order, bool in_irq)
 {
 	int i, j, cpu, cnt = 0;
-	int headroom_order[NR_CPUS] ____cacheline_aligned;
+	int headroom_order[MAX_NR_CPUS] ____cacheline_aligned;
 
 	if (cpumask_weight(cpus) == 1) {
 		cpu = cpumask_first(cpus);
@@ -614,7 +614,7 @@ int select_idle_cpu_from_domains(struct task_struct *p,
 int select_bigger_idle_cpu(struct task_struct *p)
 {
 	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
-	struct perf_domain *pd, *prefer_pds[NR_CPUS];
+	struct perf_domain *pd, *prefer_pds[MAX_NR_CPUS];
 	int cpu = task_cpu(p), bigger_idle_cpu = -1;
 	int i = 0;
 	long max_capacity = cpu_cap_ceiling(cpu);

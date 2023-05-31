@@ -1438,7 +1438,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 		int pd_max_spare_cap_cpu = -1;
 		int pd_max_spare_cap_cpu_ls_idle = -1;
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
-		int cpu_order[NR_CPUS]  ____cacheline_aligned, cnt, i;
+		int cpu_order[MAX_NR_CPUS]  ____cacheline_aligned, cnt, i;
 
 #endif
 
