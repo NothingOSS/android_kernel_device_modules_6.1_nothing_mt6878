@@ -1397,7 +1397,7 @@ static int get_async_counters(struct async_counter *counters)
 		return ASYNC_ERROR;
 	} else if (counters->gpuactive + counters->iter +
 		counters->compute + counters->l2ext + counters->irq == 0) {
-		GED_LOGE("[DVFS_ASYNC] counters are invalid, all counters are zero");
+		GED_LOGD_IF(ASYNC_LOG_LEVEL, "[DVFS_ASYNC] counters are invalid, all counters are zero");
 		return ASYNC_ERROR;
 	} else {
 		return ASYNC_OK;
@@ -1420,7 +1420,7 @@ static int ged_async_ratio_perf_model(int oppidx, int tar_freq, bool is_decreasi
 
 	//1. get counters from IPA
 	if (get_async_counters(&asyncCounter) == ASYNC_ERROR) {
-		GED_LOGE("[DVFS_ASYNC] - %s: get counters fail\n", __func__);
+		GED_LOGD_IF(ASYNC_LOG_LEVEL, "[DVFS_ASYNC] - %s: get counters fail\n", __func__);
 		return tar_opp;
 	}
 
