@@ -13307,6 +13307,23 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 			node-111 = "SSPM_SWPM_CPU__CORE_PMU_11",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			/* SLBC */
+			node-112 = "SSPM_SLBC_GID_USED",
+				"cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
+			node-113 = "SSPM_SLBC_GID_VALID",
+				"cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
+			node-114 = "SSPM_SLBC_CACHE_QUOTA",
+				"gid0,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
+			node-115 = "SSPM_SLBC_CACHE_HIT",
+				"gid0,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
+			node-116 = "SSPM_SLBC_CACHE_TOTAL",
+				"gid0,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
+			node-117 = "SSPM_SLBC_CACHE_STATE",
+				"pd,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
+			node-118 = "SSPM_SLBC_CACHE_SIZE",
+				"pd,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp,total,valid";
+			node-119 = "SSPM_SLBC_CACHE_WAY",
+				"pd,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp,total,buf_unused";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
