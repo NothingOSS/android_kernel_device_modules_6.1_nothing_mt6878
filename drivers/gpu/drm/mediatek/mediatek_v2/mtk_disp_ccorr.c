@@ -1553,30 +1553,13 @@ static void mtk_ccorr_primary_data_init(struct mtk_ddp_comp *comp)
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 	struct mtk_disp_ccorr *companion_data = comp_to_ccorr(ccorr_data->companion);
-	int i, j;
-	int matrix_init[3][3] = {
-			{1024, 0, 0},
-			{0, 1024, 0},
-			{0, 0, 1024}
-	};
 
 	if (ccorr_data->is_right_pipe) {
 		kfree(ccorr_data->primary_data);
 		ccorr_data->primary_data = companion_data->primary_data;
 		return;
 	}
-	primary_data->ccorr_offset_base = 1024;
-	primary_data->ccorr_max_negative = -2048;
-	primary_data->ccorr_max_positive = 2047;
-	primary_data->ccorr_fullbit_mask = 0x0fff;
-	primary_data->ccorr_offset_mask = 14;
-	for (i = 0; i < 3; i++) {
-		for (j = 0; j < 3; j++) {
-			primary_data->ccorr_color_matrix[i][j] = matrix_init[i][j];
-			primary_data->ccorr_prev_matrix[i][j] = matrix_init[i][j];
-			primary_data->rgb_matrix[i][j] = matrix_init[i][j];
-		}
-	}
+
 	init_waitqueue_head(&primary_data->ccorr_get_irq_wq);
 	spin_lock_init(&primary_data->ccorr_clock_lock);
 	spin_lock_init(&primary_data->pq_bl_change_lock);
