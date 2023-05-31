@@ -385,7 +385,7 @@ static const struct mtk_swpm_sysfs_op swpm_sp_ddr_idx_fops = {
 static ssize_t swpm_sp_spm_sig_read(char *ToUser, size_t sz, void *priv)
 {
 	char *p = ToUser;
-	int i, grp_id;
+	int i, grp_id = 0, prev_id;
 
 	struct res_sig_stats *spm_res_sig_stats_ptr;
 	struct res_sig *spm_res_sig_ptr;
@@ -414,11 +414,14 @@ static ssize_t swpm_sp_spm_sig_read(char *ToUser, size_t sz, void *priv)
 
 	swpm_dbg_log("spm resource signal time: (ms)\n");
 	swpm_dbg_log("resource signal number: %u\n", spm_res_sig_stats_ptr->res_sig_num);
+	swpm_dbg_log("group 0\n");
 	for (i = 0; i < spm_res_sig_stats_ptr->res_sig_num; i++) {
+		prev_id = grp_id;
 		grp_id = spm_res_sig_stats_ptr->res_sig_tbl[i].grp_id;
 
-		swpm_dbg_log("group %d\n", grp_id);
-		swpm_dbg_log("(%d)signal id %x: %llu\n", i,
+		if (prev_id != grp_id)
+			swpm_dbg_log("group %d\n", grp_id);
+		swpm_dbg_log("(%d)%x: %llu\n", i,
 			spm_res_sig_ptr[i].sig_id,
 			spm_res_sig_ptr[i].time);
 	}
