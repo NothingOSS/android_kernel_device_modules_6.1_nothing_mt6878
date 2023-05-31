@@ -11,6 +11,37 @@
 #include <linux/types.h>
 #include <linux/tracepoint.h>
 
+TRACE_EVENT(sugov_ext_curr_uclamp,
+	TP_PROTO(int cpu, int pid,
+		int util_ori, int util, int u_min,
+		int u_max),
+	TP_ARGS(cpu, pid, util_ori, util, u_min, u_max),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(unsigned int, pid)
+		__field(unsigned int, util_ori)
+		__field(unsigned int, util)
+		__field(unsigned int, u_min)
+		__field(unsigned int, u_max)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->pid = pid;
+		__entry->util_ori = util_ori;
+		__entry->util = util;
+		__entry->u_min = u_min;
+		__entry->u_max = u_max;
+	),
+	TP_printk(
+		"cpu=%d pid=%d util_ori=%d util_eff=%d u_min=%d, u_max=%d",
+		__entry->cpu,
+		__entry->pid,
+		__entry->util_ori,
+		__entry->util,
+		__entry->u_min,
+		__entry->u_max)
+);
+
 TRACE_EVENT(sugov_ext_util,
 	TP_PROTO(int cpu, unsigned long util,
 		unsigned int min, unsigned int max),

@@ -39,6 +39,10 @@ struct sbb_task_struct {
 	int set_group;
 };
 
+struct curr_uclamp_hint {
+	int hint;
+};
+
 struct rot_task_struct {
 	u64 ktime_ns;
 };
@@ -62,6 +66,7 @@ struct mtk_task {
 	struct gp_task_struct	gp_task;
 	struct task_gear_hints  gear_hints;
 	struct sbb_task_struct sbb_task;
+	struct curr_uclamp_hint cu_hint;
 	struct rot_task_struct rot_task;
 	struct cc_task_struct cc_task;
 	struct task_turbo_t turbo_data;

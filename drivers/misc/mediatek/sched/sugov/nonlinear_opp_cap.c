@@ -10,6 +10,7 @@
 #include <linux/sort.h>
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
+#include <sched/autogroup.h>
 #include <linux/sched/clock.h>
 #include <linux/energy_model.h>
 #include "common.h"
@@ -1331,6 +1332,140 @@ static int init_sram_mapping(void)
 	}
 	return 0;
 }
+
+bool cu_ctrl;
+bool get_curr_uclamp_ctrl(void)
+{
+	return cu_ctrl;
+}
+EXPORT_SYMBOL_GPL(get_curr_uclamp_ctrl);
+void set_curr_uclamp_ctrl(int val)
+{
+	cu_ctrl = val ? true : false;
+}
+EXPORT_SYMBOL_GPL(set_curr_uclamp_ctrl);
+int set_curr_uclamp_hint(int pid, int set)
+{
+	struct task_struct *p;
+	struct curr_uclamp_hint *cu_ht;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (!p) {
+		rcu_read_unlock();
+		return -1;
+	}
+
+	if (p->exit_state) {
+		rcu_read_unlock();
+		return -1;
+	}
+
+	get_task_struct(p);
+	cu_ht = &((struct mtk_task *) p->android_vendor_data1)->cu_hint;
+	cu_ht->hint = set;
+	put_task_struct(p);
+	rcu_read_unlock();
+	return 0;
+}
+EXPORT_SYMBOL_GPL(set_curr_uclamp_hint);
+int get_curr_uclamp_hint(int pid)
+{
+	struct task_struct *p;
+	struct curr_uclamp_hint *cu_ht;
+	int hint;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (!p) {
+		rcu_read_unlock();
+		return -1;
+	}
+
+	if (p->exit_state) {
+		rcu_read_unlock();
+		return -1;
+	}
+
+	get_task_struct(p);
+	cu_ht = &((struct mtk_task *) p->android_vendor_data1)->cu_hint;
+	hint = cu_ht->hint;
+	put_task_struct(p);
+	rcu_read_unlock();
+	return hint;
+}
+EXPORT_SYMBOL_GPL(get_curr_uclamp_hint);
+
+#if IS_ENABLED(CONFIG_UCLAMP_TASK_GROUP)
+#define UCLAMP_BUCKET_DELTA DIV_ROUND_CLOSEST(SCHED_CAPACITY_SCALE, UCLAMP_BUCKETS)
+static int gear_uclamp_max[MAX_NR_CPUS] = {
+			[0 ... MAX_NR_CPUS-1] = SCHED_CAPACITY_SCALE
+};
+static inline unsigned int uclamp_bucket_id(unsigned int clamp_value)
+{
+	return min_t(unsigned int, clamp_value / UCLAMP_BUCKET_DELTA, UCLAMP_BUCKETS - 1);
+}
+static inline void uclamp_se_set(struct uclamp_se *uc_se,
+				 unsigned int value, bool user_defined)
+{
+	uc_se->value = value;
+	uc_se->bucket_id = uclamp_bucket_id(value);
+	uc_se->user_defined = user_defined;
+}
+static bool gu_ctrl;
+bool get_gear_uclamp_ctrl(void)
+{
+	return gu_ctrl;
+}
+EXPORT_SYMBOL_GPL(get_gear_uclamp_ctrl);
+void set_gear_uclamp_ctrl(int val)
+{
+	gu_ctrl = val ? true : false;
+}
+EXPORT_SYMBOL_GPL(set_gear_uclamp_ctrl);
+
+int get_gear_uclamp_max(int gearid)
+{
+	return gear_uclamp_max[gearid];
+}
+EXPORT_SYMBOL_GPL(get_gear_uclamp_max);
+void set_gear_uclamp_max(int gearid, int val)
+{
+	gear_uclamp_max[gearid] = val;
+}
+EXPORT_SYMBOL_GPL(set_gear_uclamp_max);
+
+void mtk_uclamp_eff_get(void *data, struct task_struct *p, enum uclamp_id clamp_id,
+		struct uclamp_se *uc_max, struct uclamp_se *uc_eff, int *ret)
+{
+	unsigned int tg_min, tg_max, value = SCHED_CAPACITY_SCALE;
+	unsigned int gearid;
+
+	if (gu_ctrl == false)
+		return;
+
+	*uc_eff =  p->uclamp_req[clamp_id];
+
+	if (task_group_is_autogroup(task_group(p)))
+		goto sys_restriction;
+	if (task_group(p) == &root_task_group)
+		goto sys_restriction;
+
+	tg_min = task_group(p)->uclamp[UCLAMP_MIN].value;
+	tg_max = task_group(p)->uclamp[UCLAMP_MAX].value;
+	value = uc_eff->value;
+	value = clamp(value, tg_min, tg_max);
+
+sys_restriction:
+	gearid = per_cpu(gear_id, task_cpu(p));
+	value = min_t(unsigned int, value, gear_uclamp_max[gearid]);
+	uclamp_se_set(uc_eff, value, false);
+	if (uc_eff->value > uc_max->value)
+		*uc_eff = *uc_max;
+
+	*ret = 1;
+}
+#endif
 
 int init_opp_cap_info(struct proc_dir_entry *dir)
 {

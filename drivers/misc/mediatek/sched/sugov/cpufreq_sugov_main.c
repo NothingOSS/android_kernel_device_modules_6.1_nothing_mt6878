@@ -200,6 +200,42 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	return freq;
 }
 
+inline int curr_clamp(struct rq *rq, unsigned long *util)
+{
+	struct task_struct *curr_task;
+	int u_min = 0, u_max = 1024;
+	int cpu = rq->cpu;
+	unsigned long util_ori = *util;
+	struct curr_uclamp_hint *cu_ht;
+
+	rcu_read_lock();
+	curr_task = rcu_dereference(rq->curr);
+	if (!curr_task) {
+		rcu_read_unlock();
+		return -1;
+	}
+
+	if (curr_task->exit_state) {
+		rcu_read_unlock();
+		return -1;
+	}
+
+	cu_ht = &((struct mtk_task *) curr_task->android_vendor_data1)->cu_hint;
+	if (!cu_ht->hint) {
+		rcu_read_unlock();
+		return -1;
+	}
+	u_min = curr_task->uclamp_req[UCLAMP_MIN].value;
+	u_max = curr_task->uclamp_req[UCLAMP_MAX].value;
+	rcu_read_unlock();
+
+	*util = clamp_val(*util, u_min, u_max);
+	if (trace_sugov_ext_curr_uclamp_enabled())
+		trace_sugov_ext_curr_uclamp(cpu, curr_task->pid,
+		util_ori, *util, u_min, u_max);
+	return 0;
+}
+
 /*
  * This function computes an effective utilization for the given CPU, to be
  * used for frequency selection given the linear relation: f = u * f_max.
@@ -273,10 +309,13 @@ unsigned long mtk_cpu_util(int cpu, unsigned long util_cfs,
 				util = util * sbb_data->boost_factor;
 		}
 
-		if (p == (struct task_struct *)UINTPTR_MAX)
+		if (p == (struct task_struct *)UINTPTR_MAX) {
 			p = NULL;
-
+			if (cu_ctrl && curr_clamp(rq, &util) == 0)
+				goto skip_rq_uclamp;
+		}
 		util = mtk_uclamp_rq_util_with(rq, util, p, min_cap, max_cap);
+skip_rq_uclamp:
 		if (sbb_trigger && trace_sugov_ext_sbb_enabled()) {
 			int pid = -1;
 			struct task_struct *curr;
@@ -1119,6 +1158,12 @@ static int __init cpufreq_mtk_init(void)
 		pr_info("register android_vh_arch_set_freq_scale failed\n");
 	else
 		topology_clear_scale_freq_source(SCALE_FREQ_SOURCE_ARCH, cpu_possible_mask);
+#if IS_ENABLED(CONFIG_UCLAMP_TASK_GROUP)
+	ret = register_trace_android_rvh_uclamp_eff_get(
+		mtk_uclamp_eff_get, NULL);
+	if (ret)
+		pr_info("register android_rvh_uclamp_eff_get failed\n");
+#endif
 #endif
 
 	return cpufreq_register_governor(&mtk_gov);

@@ -185,6 +185,19 @@ void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 				unsigned long freq, unsigned long max, unsigned long *scale);
 extern int set_sched_capacity_margin_dvfs(int capacity_margin);
 extern unsigned int get_sched_capacity_margin_dvfs(void);
+#if IS_ENABLED(CONFIG_UCLAMP_TASK_GROUP)
+extern void mtk_uclamp_eff_get(void *data, struct task_struct *p, enum uclamp_id clamp_id,
+		struct uclamp_se *uc_max, struct uclamp_se *uc_eff, int *ret);
+#endif
+extern bool cu_ctrl;
+extern bool get_curr_uclamp_ctrl(void);
+extern void set_curr_uclamp_ctrl(int val);
+extern int set_curr_uclamp_hint(int pid, int set);
+extern int get_curr_uclamp_hint(int pid);
+extern bool get_gear_uclamp_ctrl(void);
+extern void set_gear_uclamp_ctrl(int val);
+extern int get_gear_uclamp_max(int gearid);
+extern void set_gear_uclamp_max(int gearid, int val);
 #endif
 #endif
 extern void set_target_active_ratio_pct(int val);
