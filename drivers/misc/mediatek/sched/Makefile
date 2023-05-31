@@ -27,6 +27,7 @@ else
 endif
 cpufreq_sugov_ext-y += sugov/nonlinear_opp_cap.o
 cpufreq_sugov_ext-y += sugov/dsu_interface.o
+cpufreq_sugov_ext-y += sugov/sched_version_ctrl.o
 cpufreq_sugov_ext-y += common.o
 
 subdir-ccflags-y += -I$(srctree)/kernel/

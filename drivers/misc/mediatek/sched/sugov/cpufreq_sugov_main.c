@@ -34,6 +34,7 @@
 #include <uapi/linux/sched/types.h>
 #include <thermal_interface.h>
 #include <mt-plat/mtk_irq_mon.h>
+#include "sched_version_ctrl.h"
 
 #define CREATE_TRACE_POINTS
 #include "sugov_trace.h"
@@ -1159,6 +1160,10 @@ static int __init cpufreq_mtk_init(void)
 	dir = proc_mkdir("mtk_scheduler", NULL);
 	if (!dir)
 		return -ENOMEM;
+
+	ret = init_sched_ctrl();
+	if(ret)
+		pr_info("register init_sched_ctrl failed\n");
 
 	ret = init_opp_cap_info(dir);
 	if (ret)
