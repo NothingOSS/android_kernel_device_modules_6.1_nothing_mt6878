@@ -4,6 +4,7 @@
  */
 
 #include <linux/arm-smccc.h>
+#include <linux/clocksource.h>
 #include <linux/err.h>
 #include <linux/uaccess.h>
 
@@ -40,15 +41,59 @@ int gzvm_arch_vcpu_update_one_reg(struct gzvm_vcpu *vcpu, __u64 reg_id,
 	return ret;
 }
 
+static void clear_migrate_state(struct gzvm_vcpu *vcpu)
+{
+	vcpu->hwstate->vtimer_migrate = 0;
+	vcpu->hwstate->vtimer_delay = 0;
+}
+
+static u64 gzvm_mtimer_delay_time(u64 delay)
+{
+	u64 ns;
+
+	ns = clocksource_cyc2ns(
+		delay,
+		timecycle.mult,
+		timecycle.shift
+	);
+
+	return ns;
+}
+
+static void gzvm_mtimer_release(struct gzvm_vcpu *vcpu)
+{
+	hrtimer_cancel(&vcpu->gzvm_mtimer);
+
+	clear_migrate_state(vcpu);
+}
+
+static void gzvm_mtimer_catch(struct hrtimer *hrt, u64 delay)
+{
+	u64 ns;
+
+	ns = gzvm_mtimer_delay_time(delay);
+	hrtimer_start(hrt, ktime_add_ns(ktime_get(), ns),
+				HRTIMER_MODE_ABS_HARD);
+}
+
 int gzvm_arch_vcpu_run(struct gzvm_vcpu *vcpu, __u64 *exit_reason)
 {
 	struct arm_smccc_res res;
 	unsigned long a1;
 	int ret;
 
+	/* hrtimer cancel and clear migrate state */
+	if (vcpu->hwstate->vtimer_migrate)
+		gzvm_mtimer_release(vcpu);
+
 	a1 = assemble_vm_vcpu_tuple(vcpu->gzvm->vm_id, vcpu->vcpuid);
 	ret = gzvm_hypcall_wrapper(MT_HVC_GZVM_RUN, a1, 0, 0, 0, 0, 0,
 				   0, &res);
+
+	/* hrtimer register if migration needed */
+	if (vcpu->hwstate->vtimer_migrate)
+		gzvm_mtimer_catch(&vcpu->gzvm_mtimer, vcpu->hwstate->vtimer_delay);
+
 	*exit_reason = res.a1;
 	return ret;
 }

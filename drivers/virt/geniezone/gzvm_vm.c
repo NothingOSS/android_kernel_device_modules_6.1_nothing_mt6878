@@ -4,6 +4,7 @@
  */
 
 #include <linux/anon_inodes.h>
+#include <linux/clocksource.h>
 #include <linux/file.h>
 #include <linux/kdev_t.h>
 #include <linux/miscdevice.h>
@@ -16,6 +17,8 @@
 
 static DEFINE_MUTEX(gzvm_list_lock);
 static LIST_HEAD(gzvm_list);
+
+struct timecycle timecycle;
 
 /**
  * hva_to_pa_fast() converts hva to pa in generic fast way
@@ -466,6 +469,14 @@ static struct gzvm *gzvm_create_vm(unsigned long vm_type)
 		kfree(gzvm);
 		return ERR_PTR(ret);
 	}
+
+	/* timecycle init mult shift */
+	clocks_calc_mult_shift(
+		&timecycle.mult,
+		&timecycle.shift,
+		arch_timer_get_cntfrq(),
+		NSEC_PER_SEC,
+		10);
 
 	mutex_lock(&gzvm_list_lock);
 	list_add(&gzvm->vm_list, &gzvm_list);

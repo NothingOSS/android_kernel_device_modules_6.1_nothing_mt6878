@@ -5,6 +5,7 @@
 
 #include <asm/sysreg.h>
 #include <linux/anon_inodes.h>
+#include <linux/clocksource.h>
 #include <linux/device.h>
 #include <linux/file.h>
 #include <linux/mm.h>
@@ -71,6 +72,35 @@ static bool gzvm_vcpu_handle_mmio(struct gzvm_vcpu *vcpu)
 	val_ptr = &vcpu->run->mmio.data;
 
 	return gzvm_ioevent_write(vcpu, addr, len, val_ptr);
+}
+
+static void mtimer_irq_forward(struct gzvm_vcpu *vcpu)
+{
+	struct gzvm *gzvm;
+	unsigned int irq_num, irq_type, vcpu_idx;
+	u32 irq;
+
+	gzvm = vcpu->gzvm;
+	irq = 27;
+
+	irq_num = (irq >> GZVM_IRQ_NUM_SHIFT) & GZVM_IRQ_NUM_MASK;
+	irq_type = (irq >> GZVM_IRQ_TYPE_SHIFT) & GZVM_IRQ_TYPE_MASK;
+	vcpu_idx = (irq >> GZVM_IRQ_VCPU_SHIFT) & GZVM_IRQ_VCPU_MASK;
+	vcpu_idx += ((irq >> GZVM_IRQ_VCPU2_SHIFT) & GZVM_IRQ_VCPU2_MASK) *
+		(GZVM_IRQ_VCPU_MASK + 1);
+
+	gzvm_arch_inject_irq(gzvm, vcpu_idx, irq_type, irq_num, 1);
+}
+
+static enum hrtimer_restart gzvm_mtimer_expire(struct hrtimer *hrt)
+{
+	struct gzvm_vcpu *vcpu;
+
+	vcpu = container_of(hrt, struct gzvm_vcpu, gzvm_mtimer);
+
+	mtimer_irq_forward(vcpu);
+
+	return HRTIMER_NORESTART;
 }
 
 /**
@@ -177,6 +207,7 @@ static void gzvm_destroy_vcpu(struct gzvm_vcpu *vcpu)
 	if (!vcpu)
 		return;
 
+	hrtimer_cancel(&vcpu->gzvm_mtimer);
 	gzvm_arch_destroy_vcpu(vcpu->gzvm->vm_id, vcpu->vcpuid);
 	/* clean guest's data */
 	memset(vcpu->run, 0, GZVM_VCPU_RUN_MAP_SIZE);
@@ -245,6 +276,10 @@ int gzvm_vm_ioctl_create_vcpu(struct gzvm *gzvm, u32 cpuid)
 	vcpu->vcpuid = cpuid;
 	vcpu->gzvm = gzvm;
 	mutex_init(&vcpu->lock);
+
+	/* gzvm_mtimer init based on hrtimer */
+	hrtimer_init(&vcpu->gzvm_mtimer, CLOCK_MONOTONIC, HRTIMER_MODE_ABS_HARD);
+	vcpu->gzvm_mtimer.function = gzvm_mtimer_expire;
 
 	ret = gzvm_arch_create_vcpu(gzvm->vm_id, vcpu->vcpuid, vcpu->run);
 	if (ret < 0)

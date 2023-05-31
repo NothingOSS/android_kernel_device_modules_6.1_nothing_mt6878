@@ -6,6 +6,7 @@
 #ifndef __GZVM_DRV_H__
 #define __GZVM_DRV_H__
 
+#include <asm/arch_timer.h>
 #include <linux/eventfd.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
@@ -39,6 +40,12 @@
 #define GZVM_MAX_MEM_REGION	10
 
 #define GZVM_VCPU_RUN_MAP_SIZE		(PAGE_SIZE * 2)
+
+struct timecycle {
+	u32 mult;
+	u32 shift;
+};
+extern struct timecycle timecycle;
 
 /* struct mem_region_addr_range - Identical to ffa memory constituent */
 struct mem_region_addr_range {
@@ -74,6 +81,7 @@ struct gzvm_vcpu {
 	struct mutex lock;
 	struct gzvm_vcpu_run *run;
 	struct gzvm_vcpu_hwstate *hwstate;
+	struct hrtimer gzvm_mtimer;
 };
 
 struct gzvm {

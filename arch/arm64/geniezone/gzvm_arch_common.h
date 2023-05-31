@@ -76,6 +76,8 @@ static inline gzvm_vcpu_id_t get_vcpuid_from_tuple(unsigned int tuple)
 struct gzvm_vcpu_hwstate {
 	__u32 nr_lrs;
 	__u64 lr[GIC_V3_NR_LRS];
+	__u64 vtimer_delay;
+	__u32 vtimer_migrate;
 };
 
 static inline unsigned int
