@@ -167,7 +167,7 @@ static struct snd_soc_dai_driver mtk_dai_dsp_driver[] = {
 		.capture = {
 				.stream_name = "DSP_Capture_Raw",
 				.channels_min = 1,
-				.channels_max = 4,
+				.channels_max = 6,
 				.rates = MTK_I2S_RATES,
 				.formats = MTK_I2S_FORMATS,
 			},
