@@ -1123,24 +1123,16 @@ static void tdshp_histdone_cb(struct cmdq_cb_data data)
 
 static void tdshp_err_dump_cb(struct cmdq_cb_data data)
 {
-	struct cmdq_pkt *pkt = (struct cmdq_pkt *)data.data;
-	struct mml_comp_tdshp *tdshp = (struct mml_comp_tdshp *)pkt->user_data;
-	u32 pipe;
+	struct mml_comp_tdshp *tdshp = (struct mml_comp_tdshp *)data.data;
 
+	if (!tdshp) {
+		mml_pq_err("%s tdshp is null", __func__);
+		return;
+	}
 
 	mml_pq_ir_log("%s jobid[%d] tdshp->hist_pkts[0] = [%p] hdr->hist_pkts[1] = [%p]",
 		__func__, tdshp->jobid, tdshp->hist_pkts[0], tdshp->hist_pkts[1]);
 
-	if (pkt == tdshp->hist_pkts[0]) {
-		pipe = 0;
-	} else if (pkt == tdshp->hist_pkts[1]) {
-		pipe = 1;
-	} else {
-		mml_err("%s task %p pkt %p not match both pipe (%p and %p)",
-			__func__, tdshp, pkt, tdshp->hist_pkts[0],
-			tdshp->hist_pkts[1]);
-		return;
-	}
 }
 
 
