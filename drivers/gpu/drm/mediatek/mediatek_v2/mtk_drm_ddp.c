@@ -21970,7 +21970,7 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 		}
 	}
 
-	if (((sched_clock() - irq_time[0].time) > 850000) &&
+	if (((sched_clock() - irq_time[0].time) > 4800000) &&
 			__ratelimit(&irq_ratelimit)) {
 		DDPMSG("%s > 850 us\n", __func__);
 		for (i = 0; i < irq_time_index; i++) {
