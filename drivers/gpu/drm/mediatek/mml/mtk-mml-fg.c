@@ -7,6 +7,7 @@
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
+#include <mtk-smmu-v3.h>
 
 #include "mtk-mml-core.h"
 #include "mtk-mml-driver.h"
@@ -14,51 +15,146 @@
 
 #include "tile_driver.h"
 
-#define FG_TRIGGER	0x000
-#define FG_STATUS	0x004
-#define FG_CTRL_0	0x020
-#define FG_CK_EN	0x024
-#define FG_SHADOW_CTRL	0x028
-#define FG_BACK_DOOR_0	0x02c
-#define FG_PIC_INFO_0	0x400
-#define FG_PIC_INFO_1	0x404
-#define FG_TILE_INFO_0	0x418
-#define FG_TILE_INFO_1	0x41c
-#define FG_DEBUG_0	0x500
-#define FG_DEBUG_1	0x504
-#define FG_DEBUG_2	0x508
-#define FG_DEBUG_3	0x50c
-#define FG_DEBUG_4	0x510
-#define FG_DEBUG_5	0x514
-#define FG_DEBUG_6	0x518
-#define FG_PPS_0	0x408
-#define FG_PPS_1	0x40C
-#define FG_PPS_2	0x410
-#define FG_PPS_3	0x414
-#define FG_LUMA_TBL_BASE	0x008
-#define FG_CB_TBL_BASE	0x00c
-#define FG_CR_TBL_BASE	0x010
-#define FG_LUT_BASE	0x014
-#define FG_LUMA_TBL_BASE_MSB	0x05c
-#define FG_CB_TBL_BASE_MSB	0x060
-#define FG_CR_TBL_BASE_MSB	0x064
-#define FG_LUT_BASE_MSB	0x068
+#define REG_NOT_SUPPORT 0xfff
+
+enum mml_fg_reg_index {
+	FG_TRIGGER,
+	FG_STATUS,
+	FG_CTRL_0,
+	FG_CK_EN,
+	FG_SHADOW_CTRL,
+	FG_BACK_DOOR_0,
+	FG_CRC_TBL_0,
+	FG_CRC_TBL_1,
+	FG_PIC_INFO_0,
+	FG_PIC_INFO_1,
+	FG_TILE_INFO_0,
+	FG_TILE_INFO_1,
+	FG_DEBUG_0,
+	FG_DEBUG_1,
+	FG_DEBUG_2,
+	FG_DEBUG_3,
+	FG_DEBUG_4,
+	FG_DEBUG_5,
+	FG_DEBUG_6,
+	FG_PPS_0,
+	FG_PPS_1,
+	FG_PPS_2,
+	FG_PPS_3,
+	FG_LUMA_TBL_BASE,
+	FG_CB_TBL_BASE,
+	FG_CR_TBL_BASE,
+	FG_LUT_BASE,
+	FG_LUMA_TBL_BASE_MSB,
+	FG_CB_TBL_BASE_MSB,
+	FG_CR_TBL_BASE_MSB,
+	FG_LUT_BASE_MSB,
+	FG_IRQ_CTRL,
+	FG_IRQ_STATUS,
+	FG_SRAM_CTRL,
+	FG_SRAM_STATUS,
+	FG_REG_MAX_COUNT
+};
+
+static const u16 fg_reg_table_mt6897[FG_REG_MAX_COUNT] = {
+	[FG_TRIGGER] = 0x000,
+	[FG_STATUS] = 0x004,
+	[FG_CTRL_0] = 0x020,
+	[FG_CK_EN] = 0x024,
+	[FG_SHADOW_CTRL] = 0x028,
+	[FG_BACK_DOOR_0] = 0x02c,
+	[FG_CRC_TBL_0] = 0x030,
+	[FG_CRC_TBL_1] = 0x034,
+	[FG_PIC_INFO_0] = 0x400,
+	[FG_PIC_INFO_1] = 0x404,
+	[FG_TILE_INFO_0] = 0x418,
+	[FG_TILE_INFO_1] = 0x41c,
+	[FG_DEBUG_0] = 0x500,
+	[FG_DEBUG_1] = 0x504,
+	[FG_DEBUG_2] = 0x508,
+	[FG_DEBUG_3] = 0x50c,
+	[FG_DEBUG_4] = 0x510,
+	[FG_DEBUG_5] = 0x514,
+	[FG_DEBUG_6] = 0x518,
+	[FG_PPS_0] = 0x408,
+	[FG_PPS_1] = 0x40C,
+	[FG_PPS_2] = 0x410,
+	[FG_PPS_3] = 0x414,
+	[FG_LUMA_TBL_BASE] = 0x008,
+	[FG_CB_TBL_BASE] = 0x00c,
+	[FG_CR_TBL_BASE] = 0x010,
+	[FG_LUT_BASE] = 0x014,
+	[FG_LUMA_TBL_BASE_MSB] = 0x05c,
+	[FG_CB_TBL_BASE_MSB] = 0x060,
+	[FG_CR_TBL_BASE_MSB] = 0x064,
+	[FG_LUT_BASE_MSB] = 0x068,
+	[FG_IRQ_CTRL] = 0x018,
+	[FG_IRQ_STATUS] = 0x01c,
+	[FG_SRAM_CTRL] = REG_NOT_SUPPORT,
+	[FG_SRAM_STATUS] = REG_NOT_SUPPORT
+};
+
+static const u16 fg_reg_table_mt6989[FG_REG_MAX_COUNT] = {
+	[FG_TRIGGER] = 0x000,
+	[FG_STATUS] = 0x004,
+	[FG_CTRL_0] = 0x020,
+	[FG_CK_EN] = 0x024,
+	[FG_SHADOW_CTRL] = 0x028,
+	[FG_BACK_DOOR_0] = 0x02c,
+	[FG_CRC_TBL_0] = 0x030,
+	[FG_CRC_TBL_1] = 0x034,
+	[FG_PIC_INFO_0] = 0x400,
+	[FG_PIC_INFO_1] = 0x404,
+	[FG_TILE_INFO_0] = 0x418,
+	[FG_TILE_INFO_1] = 0x41c,
+	[FG_DEBUG_0] = 0x500,
+	[FG_DEBUG_1] = 0x504,
+	[FG_DEBUG_2] = 0x508,
+	[FG_DEBUG_3] = 0x50c,
+	[FG_DEBUG_4] = 0x510,
+	[FG_DEBUG_5] = 0x514,
+	[FG_DEBUG_6] = 0x518,
+	[FG_PPS_0] = 0x408,
+	[FG_PPS_1] = 0x40C,
+	[FG_PPS_2] = 0x410,
+	[FG_PPS_3] = 0x414,
+	[FG_LUMA_TBL_BASE] = 0x008,
+	[FG_CB_TBL_BASE] = 0x00c,
+	[FG_CR_TBL_BASE] = 0x010,
+	[FG_LUT_BASE] = 0x014,
+	[FG_LUMA_TBL_BASE_MSB] = 0x05c,
+	[FG_CB_TBL_BASE_MSB] = 0x060,
+	[FG_CR_TBL_BASE_MSB] = 0x064,
+	[FG_LUT_BASE_MSB] = 0x068,
+	[FG_IRQ_CTRL] = 0x018,
+	[FG_IRQ_STATUS] = 0x01c,
+	[FG_SRAM_CTRL] = 0x070,
+	[FG_SRAM_STATUS] = 0x074
+};
 
 struct fg_data {
+	u16 gpr[MML_PIPE_CNT];
+	const u16 *reg_table;
 };
 
 static const struct fg_data mt6893_fg_data = {
 };
 
 static const struct fg_data mt6897_fg_data = {
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.reg_table = fg_reg_table_mt6897,
+};
+
+static const struct fg_data mt6989_fg_data = {
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.reg_table = fg_reg_table_mt6989,
 };
 
 struct mml_comp_fg {
 	struct mml_comp comp;
 	const struct fg_data *data;
-};
-
-static const struct fg_data mt6989_fg_data = {
+	struct device *mmu_dev;	/* for dmabuf to iova */
+	struct device *mmu_dev_sec; /* for secure dmabuf to secure iova */
 };
 
 enum fg_label_index {
@@ -86,6 +182,11 @@ struct fg_frame_data {
 };
 
 #define fg_frm_data(i)	((struct fg_frame_data *)(i->data))
+
+static inline struct mml_comp_fg *comp_to_fg(struct mml_comp *comp)
+{
+	return container_of(comp, struct mml_comp_fg, comp);
+}
 
 static s32 fg_prepare(struct mml_comp *comp, struct mml_task *task,
 		      struct mml_comp_config *ccfg)
@@ -139,16 +240,32 @@ static const struct mml_comp_tile_ops fg_tile_ops = {
 	.prepare = fg_tile_prepare,
 };
 
+static u32 fg_get_label_count(struct mml_comp *comp, struct mml_task *task,
+			       struct mml_comp_config *ccfg)
+{
+	struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+
+	mml_pq_msg("%s pipe_id[%d] engine_id[%d] en_fg[%d]", __func__,
+		ccfg->pipe, comp->id, dest->pq_config.en_fg);
+
+	if (!dest->pq_config.en_fg)
+		return 0;
+
+	return FG_LABEL_TOTAL;
+}
+
 static s32 fg_init(struct mml_comp *comp, struct mml_task *task,
 		   struct mml_comp_config *ccfg)
 {
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	const phys_addr_t base_pa = comp->base_pa;
+	struct mml_comp_fg *fg = comp_to_fg(comp);
 
-	cmdq_pkt_write(pkt, NULL, base_pa + FG_TRIGGER, 0, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_TRIGGER], 0, U32_MAX);
 
 	/* Enable shadow */
-	cmdq_pkt_write(pkt, NULL, base_pa + FG_SHADOW_CTRL, 0x2, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_SHADOW_CTRL], 0x2, U32_MAX);
 
 	return 0;
 }
@@ -162,12 +279,16 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct fg_frame_data *fg_frm = fg_frm_data(ccfg);
+	struct mml_comp_fg *fg = comp_to_fg(comp);
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
 	struct mml_pq_film_grain_params *fg_meta =
 		&task->pq_param[ccfg->node->out_idx].video_param.fg_meta;
+	struct device *dev_buf = smmu_v3_enabled()?
+		fg->mmu_dev : task->config->path[ccfg->pipe]->clt->chan->mbox->dev;
 	bool relay_mode = !dest->pq_config.en_fg;
+	u32 gpr = fg->data->gpr[ccfg->pipe];
 	s32 ret = 0;
 	u8 bit_depth = MML_FMT_10BIT(src->format) ? 10 : 8;
 	bool smi_sw_reset = 1;
@@ -180,12 +301,12 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 		dest->pq_config.en_fg, crop->r.width, crop->r.height);
 
 	if (relay_mode) {
-		cmdq_pkt_write(pkt, NULL, base_pa + FG_CTRL_0, 1, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + FG_CK_EN, 0x7, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CTRL_0], 1, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CK_EN], 0x7, U32_MAX);
 		goto exit;
 	}
 
-	mml_pq_get_fg_buffer(task, ccfg->pipe, &(task->pq_task->fg_table));
+	mml_pq_get_fg_buffer(task, ccfg->pipe, dev_buf, &(task->pq_task->fg_table));
 	if (unlikely(!task->pq_task->fg_table)) {
 		mml_pq_err("%s job_id[%d] fg_table is null", __func__,
 			task->job.jobid);
@@ -202,11 +323,11 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth);
 
 	// enable filmGrain
-	cmdq_pkt_write(pkt, NULL, base_pa + FG_CTRL_0, relay_mode << 0, 1 << 0);
-	cmdq_pkt_write(pkt, NULL, base_pa + FG_CK_EN, 0xF, 0xF);
+	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CTRL_0], relay_mode << 0, 1 << 0);
+	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CK_EN], 0xF, 0xF);
 
 	// smi sw reset
-	cmdq_pkt_write(pkt, NULL, base_pa + FG_BACK_DOOR_0,
+	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_BACK_DOOR_0],
 		smi_sw_reset << 0 | crc_cg_enable << 4, 1 << 0 | 1 << 4);
 
 	/* set FilmGrain Table Address */
@@ -219,52 +340,59 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s FG_CB_TBL_ADDR[%llx]", __func__,
 		fg_table_pa + mml_pq_fg_get_scaling_offset(is_yuv_444));
 
-	mml_write(pkt, base_pa + FG_LUMA_TBL_BASE,
+	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUMA_TBL_BASE],
 		(u32)(fg_table_pa + mml_pq_fg_get_luma_offset()),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUMA_TBL_BASE_LABEL]);
-	mml_write(pkt, base_pa + FG_CB_TBL_BASE,
+	mml_write(pkt, base_pa + fg->data->reg_table[FG_CB_TBL_BASE],
 		(u32)(fg_table_pa + mml_pq_fg_get_cb_offset()),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_CB_TBL_BASE_LABEL]);
-	mml_write(pkt, base_pa + FG_CR_TBL_BASE,
+	mml_write(pkt, base_pa + fg->data->reg_table[FG_CR_TBL_BASE],
 		(u32)(fg_table_pa + mml_pq_fg_get_cr_offset(is_yuv_444)),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_CR_TBL_BASE_LABEL]);
-	mml_write(pkt, base_pa + FG_LUT_BASE,
+	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUT_BASE],
 		(u32)(fg_table_pa + mml_pq_fg_get_scaling_offset(is_yuv_444)),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUT_BASE_LABEL]);
 
-	mml_write(pkt, base_pa + FG_LUMA_TBL_BASE_MSB,
+	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUMA_TBL_BASE_MSB],
 		(fg_table_pa + mml_pq_fg_get_luma_offset()) >> 32,
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUMA_TBL_BASE_MSB_LABEL]);
-	mml_write(pkt, base_pa + FG_CB_TBL_BASE_MSB,
+	mml_write(pkt, base_pa + fg->data->reg_table[FG_CB_TBL_BASE_MSB],
 		(fg_table_pa + mml_pq_fg_get_cb_offset()) >> 32,
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_CB_TBL_BASE_MSB_LABEL]);
-	mml_write(pkt, base_pa + FG_CR_TBL_BASE_MSB,
+	mml_write(pkt, base_pa + fg->data->reg_table[FG_CR_TBL_BASE_MSB],
 		(fg_table_pa + mml_pq_fg_get_cr_offset(is_yuv_444)) >> 32,
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_CR_TBL_BASE_MSB_LABEL]);
-	mml_write(pkt, base_pa + FG_LUT_BASE_MSB,
+	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUT_BASE_MSB],
 		(fg_table_pa + mml_pq_fg_get_scaling_offset(is_yuv_444)) >> 32,
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUT_BASE_MSB_LABEL]);
 
 	/* bit_depth & is yuv420 or yuv444 */
-	cmdq_pkt_write(pkt, NULL, base_pa + FG_PIC_INFO_0,
+	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_PIC_INFO_0],
 		!is_yuv_444 << 4 | bit_depth << 0, 1 << 4 | 0xF << 0);
 
 	/* picture widht & height */
-	cmdq_pkt_write(pkt, NULL, base_pa + FG_PIC_INFO_1,
+	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_PIC_INFO_1],
 		crop->r.width << 0 | crop->r.height << 16, U32_MAX);
 
 	/* config pps */
-	mml_write(pkt, base_pa + FG_PPS_0, mml_pq_fg_get_pps0(fg_meta),
+	mml_write(pkt, base_pa + fg->data->reg_table[FG_PPS_0], mml_pq_fg_get_pps0(fg_meta),
 		0x1FFFFFFF, reuse, cache, &fg_frm->labels[FG_PPS_0_LABEL]);
-	mml_write(pkt, base_pa + FG_PPS_1, mml_pq_fg_get_pps1(fg_meta),
+	mml_write(pkt, base_pa + fg->data->reg_table[FG_PPS_1], mml_pq_fg_get_pps1(fg_meta),
 		0x01FFFFFF, reuse, cache, &fg_frm->labels[FG_PPS_1_LABEL]);
-	mml_write(pkt, base_pa + FG_PPS_2, mml_pq_fg_get_pps2(fg_meta),
+	mml_write(pkt, base_pa + fg->data->reg_table[FG_PPS_2], mml_pq_fg_get_pps2(fg_meta),
 		0x01FFFFFF, reuse, cache, &fg_frm->labels[FG_PPS_2_LABEL]);
-	mml_write(pkt, base_pa + FG_PPS_3, mml_pq_fg_get_pps3(fg_meta),
+	mml_write(pkt, base_pa + fg->data->reg_table[FG_PPS_3], mml_pq_fg_get_pps3(fg_meta),
 		0x00FFFFFF, reuse, cache, &fg_frm->labels[FG_PPS_3_LABEL]);
 
 	/* trigger FG load table */
-	cmdq_pkt_write(pkt, NULL, base_pa + FG_TRIGGER, 1 << 0, 1 << 0);
+	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_TRIGGER], 1 << 0, 1 << 0);
+	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0);
+
+	if (fg->data->reg_table[FG_SRAM_CTRL] != REG_NOT_SUPPORT) {
+		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_SRAM_CTRL], 0x0, 0x3);
+		cmdq_pkt_poll(pkt, NULL,
+			0x1, base_pa + fg->data->reg_table[FG_SRAM_STATUS], 0x1, gpr);
+	}
 
 exit:
 	mml_pq_trace_ex_end();
@@ -277,15 +405,16 @@ static s32 fg_config_tile(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_config *cfg = task->config;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	const phys_addr_t base_pa = comp->base_pa;
+	struct mml_comp_fg *fg = comp_to_fg(comp);
 
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
 
 	u32 width = tile->in.xe - tile->in.xs + 1;
 	u32 height = tile->in.ye - tile->in.ys + 1;
 
-	cmdq_pkt_write(pkt, NULL, base_pa + FG_TILE_INFO_0,
+	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_TILE_INFO_0],
 		(tile->in.xs & 0xffff) + ((width & 0xffff) << 16), U32_MAX);
-	cmdq_pkt_write(pkt, NULL, base_pa + FG_TILE_INFO_1,
+	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_TILE_INFO_1],
 		(tile->in.ys & 0xffff) + ((height & 0xffff) << 16), U32_MAX);
 	return 0;
 }
@@ -297,8 +426,11 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct fg_frame_data *fg_frm = fg_frm_data(ccfg);
+	struct mml_comp_fg *fg = comp_to_fg(comp);
 	struct mml_pq_film_grain_params *fg_meta =
 		&task->pq_param[ccfg->node->out_idx].video_param.fg_meta;
+	struct device *dev_buf = smmu_v3_enabled()?
+		fg->mmu_dev : task->config->path[ccfg->pipe]->clt->chan->mbox->dev;
 	s32 ret = 0;
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	u8 bit_depth = MML_FMT_10BIT(src->format) ? 10 : 8;
@@ -313,7 +445,7 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	if (!dest->pq_config.en_fg)
 		goto exit;
 
-	mml_pq_get_fg_buffer(task, ccfg->pipe, &(task->pq_task->fg_table));
+	mml_pq_get_fg_buffer(task, ccfg->pipe, dev_buf, &(task->pq_task->fg_table));
 	if (unlikely(!task->pq_task->fg_table)) {
 		mml_pq_err("%s job_id[%d] fg_table is null", __func__,
 			task->job.jobid);
@@ -370,6 +502,7 @@ exit:
 
 static const struct mml_comp_config_ops fg_cfg_ops = {
 	.prepare = fg_prepare,
+	.get_label_count = fg_get_label_count,
 	.init = fg_init,
 	.frame = fg_config_frame,
 	.tile = fg_config_tile,
@@ -381,6 +514,9 @@ static void fg_task_done(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	struct mml_comp_fg *fg = comp_to_fg(comp);
+	struct device *dev_buf = smmu_v3_enabled()?
+		fg->mmu_dev : task->config->path[ccfg->pipe]->clt->chan->mbox->dev;
 
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
 	mml_pq_msg("%s engine_id[%d] en_fg[%d]", __func__, comp->id,
@@ -388,7 +524,7 @@ static void fg_task_done(struct mml_comp *comp, struct mml_task *task,
 	if (!dest->pq_config.en_fg)
 		goto exit;
 
-	mml_pq_put_fg_buffer(task, ccfg->pipe, &(task->pq_task->fg_table));
+	mml_pq_put_fg_buffer(task, ccfg->pipe, dev_buf, &(task->pq_task->fg_table));
 
 exit:
 	mml_pq_trace_ex_end();
@@ -402,51 +538,64 @@ static const struct mml_comp_hw_ops fg_hw_ops = {
 
 static void fg_debug_dump(struct mml_comp *comp)
 {
+	struct mml_comp_fg *fg = comp_to_fg(comp);
 	void __iomem *base = comp->base;
-	u32 value[28];
+	u32 value[33];
 	u32 shadow_ctrl;
 
 	mml_err("fg component %u dump:", comp->id);
 
 	/* Enable shadow read working */
-	shadow_ctrl = readl(base + FG_SHADOW_CTRL);
+	shadow_ctrl = readl(base + fg->data->reg_table[FG_SHADOW_CTRL]);
 	shadow_ctrl |= 0x4;
-	writel(shadow_ctrl, base + FG_SHADOW_CTRL);
+	writel(shadow_ctrl, base + fg->data->reg_table[FG_SHADOW_CTRL]);
 
-	value[0] = readl(base + FG_TRIGGER);
-	value[1] = readl(base + FG_STATUS);
-	value[2] = readl(base + FG_CTRL_0);
-	value[3] = readl(base + FG_CK_EN);
-	value[4] = readl(base + FG_BACK_DOOR_0);
-	value[5] = readl(base + FG_PIC_INFO_0);
-	value[6] = readl(base + FG_PIC_INFO_1);
-	value[7] = readl(base + FG_TILE_INFO_0);
-	value[8] = readl(base + FG_TILE_INFO_1);
-	value[9] = readl(base + FG_DEBUG_0);
-	value[10] = readl(base + FG_DEBUG_1);
-	value[11] = readl(base + FG_DEBUG_2);
-	value[12] = readl(base + FG_DEBUG_3);
-	value[13] = readl(base + FG_DEBUG_4);
-	value[14] = readl(base + FG_DEBUG_5);
-	value[15] = readl(base + FG_DEBUG_6);
-	value[16] = readl(base + FG_LUMA_TBL_BASE);
-	value[17] = readl(base + FG_CB_TBL_BASE);
-	value[18] = readl(base + FG_CR_TBL_BASE);
-	value[19] = readl(base + FG_LUT_BASE);
-	value[20] = readl(base + FG_LUMA_TBL_BASE_MSB);
-	value[21] = readl(base + FG_CB_TBL_BASE_MSB);
-	value[22] = readl(base + FG_CR_TBL_BASE_MSB);
-	value[23] = readl(base + FG_LUT_BASE_MSB);
-	value[24] = readl(base + FG_PPS_0);
-	value[25] = readl(base + FG_PPS_1);
-	value[26] = readl(base + FG_PPS_2);
-	value[27] = readl(base + FG_PPS_3);
+	value[0] = readl(base + fg->data->reg_table[FG_TRIGGER]);
+	value[1] = readl(base + fg->data->reg_table[FG_STATUS]);
+	value[2] = readl(base + fg->data->reg_table[FG_CTRL_0]);
+	value[3] = readl(base + fg->data->reg_table[FG_CK_EN]);
+	value[4] = readl(base + fg->data->reg_table[FG_BACK_DOOR_0]);
+	value[5] = readl(base + fg->data->reg_table[FG_PIC_INFO_0]);
+	value[6] = readl(base + fg->data->reg_table[FG_PIC_INFO_1]);
+	value[7] = readl(base + fg->data->reg_table[FG_TILE_INFO_0]);
+	value[8] = readl(base + fg->data->reg_table[FG_TILE_INFO_1]);
+	value[9] = readl(base + fg->data->reg_table[FG_DEBUG_0]);
+	value[10] = readl(base + fg->data->reg_table[FG_DEBUG_1]);
+	value[11] = readl(base + fg->data->reg_table[FG_DEBUG_2]);
+	value[12] = readl(base + fg->data->reg_table[FG_DEBUG_3]);
+	value[13] = readl(base + fg->data->reg_table[FG_DEBUG_4]);
+	value[14] = readl(base + fg->data->reg_table[FG_DEBUG_5]);
+	value[15] = readl(base + fg->data->reg_table[FG_DEBUG_6]);
+	value[16] = readl(base + fg->data->reg_table[FG_LUMA_TBL_BASE]);
+	value[17] = readl(base + fg->data->reg_table[FG_CB_TBL_BASE]);
+	value[18] = readl(base + fg->data->reg_table[FG_CR_TBL_BASE]);
+	value[19] = readl(base + fg->data->reg_table[FG_LUT_BASE]);
+	value[20] = readl(base + fg->data->reg_table[FG_LUMA_TBL_BASE_MSB]);
+	value[21] = readl(base + fg->data->reg_table[FG_CB_TBL_BASE_MSB]);
+	value[22] = readl(base + fg->data->reg_table[FG_CR_TBL_BASE_MSB]);
+	value[23] = readl(base + fg->data->reg_table[FG_LUT_BASE_MSB]);
+	value[24] = readl(base + fg->data->reg_table[FG_PPS_0]);
+	value[25] = readl(base + fg->data->reg_table[FG_PPS_1]);
+	value[26] = readl(base + fg->data->reg_table[FG_PPS_2]);
+	value[27] = readl(base + fg->data->reg_table[FG_PPS_3]);
+	value[28] = readl(base + fg->data->reg_table[FG_IRQ_STATUS]);
 
+	if (fg->data->reg_table[FG_SRAM_CTRL] != REG_NOT_SUPPORT) {
+		value[29] = readl(base + fg->data->reg_table[FG_SRAM_CTRL]);
+		value[30] = readl(base + fg->data->reg_table[FG_SRAM_STATUS]);
+	}
+	value[31] = readl(base + fg->data->reg_table[FG_CRC_TBL_0]);
+	value[32] = readl(base + fg->data->reg_table[FG_CRC_TBL_1]);
 
 	mml_err("FG_TRIGGER %#010x FG_STATUS %#010x",
 		value[0], value[1]);
 	mml_err("FG_CTRL_0 %#010x FG_CK_EN %#010x",
 		value[2], value[3]);
+	if (fg->data->reg_table[FG_SRAM_CTRL] != REG_NOT_SUPPORT) {
+		mml_err("FG_SRAM_CTRL %#010x FG_SRAM_STATUS %#010x",
+			value[29], value[30]);
+	}
+	mml_err("FG_IRQ_STATUS %#010x", value[28]);
 	mml_err("FG_BACK_DOOR_0 %#010x FG_PIC_INFO_0 %#010x FG_PIC_INFO_1 %#010x",
 		value[4], value[5], value[6]);
 	mml_err("FG_TILE_INFO_0 %#010x FG_TILE_INFO_1 %#010x",
@@ -466,6 +615,8 @@ static void fg_debug_dump(struct mml_comp *comp)
 	mml_err("FG_DEBUG_3 %#010x FG_DEBUG_4 %#010x FG_DEBUG_5 %#010x",
 		value[12], value[13], value[14]);
 	mml_err("FG_DEBUG_6 %#010x ", value[15]);
+	mml_err("FG_CRC_TBL_0 %#010x FG_CRC_TBL_1 %#010x",
+		value[31], value[32]);
 }
 
 static const struct mml_comp_debug_ops fg_debug_ops = {
@@ -511,6 +662,18 @@ static int probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, priv);
 	priv->data = of_device_get_match_data(dev);
+
+	if (smmu_v3_enabled()) {
+		/* shared smmu device, setup 34bit in dts */
+		priv->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
+		priv->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
+	} else {
+		priv->mmu_dev = dev;
+		priv->mmu_dev_sec = dev;
+		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+		if (ret)
+			mml_err("fail to config fg dma mask %d", ret);
+	}
 
 	ret = mml_comp_init(pdev, &priv->comp);
 	if (ret) {

@@ -308,18 +308,23 @@ void mml_pq_put_readback_buffer(struct mml_task *task, u8 pipe,
  *
  * @task:	task data, include pq_task inside
  * @pipe:	pipe id, use in dual pipe
+ * @dev:	device for getting buffer
  * @engine	engine id, fg engine
  */
 void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe,
+				struct device *dev,
 				struct mml_pq_dma_buffer **lut_buf);
 
 /*
  * mml_pq_put_fg_buffer - put fg buffer
  *
  * @task:	task data, include pq_task inside
+ * @pipe:	pipe id, use in dual pipe
+ * @dev:	device for putting buffer
  * @engine	engine id, fg engine
  */
 void mml_pq_put_fg_buffer(struct mml_task *task, u8 pipe,
+				struct device *dev,
 				struct mml_pq_dma_buffer **lut_buf);
 
 /*

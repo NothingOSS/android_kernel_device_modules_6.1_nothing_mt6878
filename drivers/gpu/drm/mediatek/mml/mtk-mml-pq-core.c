@@ -511,9 +511,9 @@ void mml_pq_put_readback_buffer(struct mml_task *task, u8 pipe,
 	*hist = NULL;
 }
 
-void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe, struct mml_pq_dma_buffer **lut_buf)
+void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe,
+	struct device *dev, struct mml_pq_dma_buffer **lut_buf)
 {
-	struct device *dev = task->config->path[pipe]->clt->chan->mbox->dev;
 	struct mml_pq_dma_buffer *temp_buffer = NULL;
 
 	mml_pq_msg("%s job_id[%d]", __func__, task->job.jobid);
@@ -536,6 +536,10 @@ void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe, struct mml_pq_dma_buff
 		}
 		INIT_LIST_HEAD(&temp_buffer->buffer_list);
 		fg_buffer_num++;
+		if (fg_buffer_num > FG_BUF_NUM_LIMIT) {
+			mml_pq_msg("%s buffer num[%d] exceeds limit[%d]",
+				__func__, fg_buffer_num, FG_BUF_NUM_LIMIT);
+		}
 
 		mutex_lock(&task->pq_task->fg_buffer_mutex);
 		*lut_buf = temp_buffer;
@@ -552,7 +556,8 @@ void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe, struct mml_pq_dma_buff
 		task->job.jobid, temp_buffer->va, temp_buffer->pa, fg_buffer_num);
 }
 
-void mml_pq_put_fg_buffer(struct mml_task *task, u8 pipe, struct mml_pq_dma_buffer **lut_buf)
+void mml_pq_put_fg_buffer(struct mml_task *task, u8 pipe,
+	struct device *dev, struct mml_pq_dma_buffer **lut_buf)
 {
 	if (!(*lut_buf)) {
 		mml_pq_err("%s buffer lut_buf is null jobid[%d]", __func__, task->job.jobid);
@@ -561,8 +566,15 @@ void mml_pq_put_fg_buffer(struct mml_task *task, u8 pipe, struct mml_pq_dma_buff
 
 	mml_pq_msg("%s all end job_id[%d] lut_buf_va[%p] lut_buf_pa[%llx]",
 		__func__, task->job.jobid, (*lut_buf)->va, (*lut_buf)->pa);
+
 	mutex_lock(&fg_buf_list_mutex);
-	list_add_tail(&((*lut_buf)->buffer_list), &fg_buf_list);
+	if (fg_buffer_num > FG_BUF_NUM_LIMIT) {
+		mml_pq_msg("%s buffer num[%d] exceeds limit[%d]",
+			__func__, fg_buffer_num, FG_BUF_NUM_LIMIT);
+		dma_free_coherent(dev, FG_BUF_SIZE, (*lut_buf)->va, (*lut_buf)->pa);
+		fg_buffer_num--;
+	} else
+		list_add_tail(&((*lut_buf)->buffer_list), &fg_buf_list);
 	mutex_unlock(&fg_buf_list_mutex);
 	*lut_buf = NULL;
 }
