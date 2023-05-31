@@ -1885,7 +1885,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	/* 16. idle manager performance monitor */
 
 	/* 15. v-idle enable */
-	mtk_vidle_enable(priv);
+	mtk_vidle_enable(crtc);
 
 	if (idlemgr->perf != NULL) {
 		unsigned long long cost;

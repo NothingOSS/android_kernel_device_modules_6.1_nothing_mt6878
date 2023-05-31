@@ -11099,7 +11099,7 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	mtk_crtc_set_status(crtc, true);
 
 	/* 10. v-idle enable */
-	mtk_vidle_enable(priv);
+	mtk_vidle_enable(crtc);
 
 	/* move power off mtcmos to kms init flow for multiple display in LK */
 }

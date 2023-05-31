@@ -38,6 +38,7 @@ struct mtk_disp_vidle_para {
 /* V-idle stop case */
 #define VIDLE_STOP_DEBUGE BIT(0)
 #define VIDLE_STOP_MULTI_CRTC BIT(1)
+#define VIDLE_STOP_LCM_DISCONNECT BIT(2)
 
 struct mtk_disp_dpc_data {
 	struct mtk_disp_vidle_para *mtk_disp_vidle_flag;
@@ -57,7 +58,7 @@ struct dpc_driver {
 
 void mtk_vidle_sync_mmdvfsrc_status_rc(unsigned int rc_en);
 void mtk_vidle_sync_mmdvfsrc_status_wdt(unsigned int wdt_en);
-void mtk_vidle_enable(struct mtk_drm_private *priv);
+void mtk_vidle_enable(struct drm_crtc *crtc);
 void mtk_vidle_power_keep(void);
 void mtk_vidle_power_release(void);
 void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop);

@@ -46,13 +46,28 @@ struct mtk_disp_vidle {
 };
 
 
-static void mtk_vidle_flag_init(struct mtk_drm_private *priv)
+static void mtk_vidle_flag_init(struct drm_crtc *crtc)
 {
-	/* TODO: CHECK LCM_IS_CONNECTED, if not, auto mtcmos cannot be enabled */
-	if (priv == NULL)
+	struct mtk_drm_private *priv;
+	struct mtk_ddp_comp *output_comp;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+
+	//init
+	mtk_disp_vidle_flag.vidle_en = 0;
+	mtk_disp_vidle_flag.vidle_stop = 0;
+
+	if (crtc == NULL)
 		return;
 
-	mtk_disp_vidle_flag.vidle_en = 0;	//init
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	priv = crtc->dev->dev_private;
+	if (priv == NULL || output_comp == NULL)
+		return;
+
+	/* video mode no V-Idle */
+	if (mtk_dsi_is_cmd_mode(output_comp) == 0)
+		return;
+
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_TOP_EN))
 		mtk_disp_vidle_flag.vidle_en = mtk_disp_vidle_flag.vidle_en | DISP_VIDLE_TOP_EN;
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_MTCMOS_DT_EN))
@@ -69,6 +84,9 @@ static void mtk_vidle_flag_init(struct mtk_drm_private *priv)
 		mtk_disp_vidle_flag.vidle_en = mtk_disp_vidle_flag.vidle_en | DISP_VIDLE_GCE_TS_EN;
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DPC_PRE_TE_EN))
 		mtk_disp_vidle_flag.vidle_en = mtk_disp_vidle_flag.vidle_en | DISP_DPC_PRE_TE_EN;
+
+	/* TODO: CHECK LCM_IS_CONNECTED, if not, auto mtcmos cannot be enabled */
+
 }
 
 static unsigned int mtk_vidle_enable_check(unsigned int vidle_item)
@@ -165,16 +183,16 @@ void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop)
 		mtk_vidle_stop();
 }
 
-void mtk_vidle_enable(struct mtk_drm_private *priv)
+void mtk_vidle_enable(struct drm_crtc *crtc)
 {
-	if (priv == NULL)
+	if (crtc == NULL)
 		return;
 	if (mtk_vidle_enable_check(DISP_VIDLE_TOP_EN))
 		DDPINFO("vidle en(0x%x), stop(0x%x)\n",
 			mtk_disp_vidle_flag.vidle_en, mtk_disp_vidle_flag.vidle_stop);
 
 	if (mtk_disp_vidle_flag.vidle_init == 0) {
-		mtk_vidle_flag_init(priv);
+		mtk_vidle_flag_init(crtc);
 		mtk_disp_vidle_flag.vidle_init = 1;
 	}
 
@@ -183,7 +201,6 @@ void mtk_vidle_enable(struct mtk_drm_private *priv)
 		mtk_vidle_stop();
 		return;
 	}
-
 
 	if (disp_dpc_driver.dpc_enable && mtk_vidle_enable_check(DISP_VIDLE_TOP_EN)) {
 		mtk_vidle_dt_enable(1);
