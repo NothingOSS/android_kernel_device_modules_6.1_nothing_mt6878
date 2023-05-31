@@ -106,3 +106,11 @@ config VIDEO_MTK_ISP_IMGSYS_7SP
 	    and/or statistics for better image qualities
 	    such as noise reduction, edge enhencement,
 	    and motion estimation, etc.
+
+config MTK_C2PS
+	tristate "Support MTK Camera Power Performance Sceduling (C2PS) mechanism mechanism"
+	help
+		C2PS driver supports Camera Power Performance Sceduling mechanism,
+		which monitors critical tasks and
+		sets suitable uclamp value for these tasks.
+		C2PS ioctl module is also set by this config.
