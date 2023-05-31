@@ -128,6 +128,19 @@ do { \
 int rrot_binning;
 module_param(rrot_binning, int, 0644);
 
+/* Debug parameter to force config stash cmd RROT_PREFETCH_CONTROL_1 and RROT_PREFETCH_CONTROL_2
+ * Set 0 for disable, any value to enable.
+ * con1[31:16]	PREFETCH_LINE_CNT_0
+ * con1[15:00]	PREFETCH_LINE_CNT_1
+ * con2[31:16]	PREFETCH_LINE_CNT_2
+ * con2[15:00]	PREFETCH_LINE_CNT_3
+ *
+ */
+int rrot_stash_con1;
+module_param(rrot_stash_con1, int, 0644);
+int rrot_stash_con2;
+module_param(rrot_stash_con2, int, 0644);
+
 enum rrot_label {
 	RROT_LABEL_BASE_0 = 0,
 	RROT_LABEL_BASE_0_MSB,
@@ -916,6 +929,33 @@ done:
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_AUTO_SLICE_1, slice1, U32_MAX);
 }
 
+static void rrot_config_stash(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+	struct mml_frame_data *src = &task->config->info.src;
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	u32 prefetch_con1, prefetch_con2;
+
+	if (MML_FMT_AFBC(src->format)) {
+		prefetch_con1 = 25 << 16;
+		prefetch_con2 = 6 << 16;
+	} else if (MML_FMT_HYFBC(src->format)) {
+		prefetch_con1 = 25 << 16 | 25;
+		prefetch_con2 = 6 << 16 | 6;
+	} else {
+		prefetch_con1 = 0;
+		prefetch_con2 = 0;
+	}
+
+	if (unlikely(rrot_stash_con1))
+		prefetch_con1 = rrot_stash_con1;
+	if (unlikely(rrot_stash_con2))
+		prefetch_con1 = rrot_stash_con2;
+
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_1, prefetch_con1, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_2, prefetch_con2, U32_MAX);
+}
+
 static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 			     struct mml_comp_config *ccfg)
 {
@@ -1042,6 +1082,8 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	} else {
 		rrot_reset_threshold(rrot, pkt, comp->base_pa);
 	}
+
+	rrot_config_stash(comp, task, ccfg);
 
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_GMCIF_CON, gmcif_con, U32_MAX);
 	rrot_frm->gmcif_con = gmcif_con;
