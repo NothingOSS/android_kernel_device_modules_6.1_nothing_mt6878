@@ -37,6 +37,14 @@ enum npu_scp_system_action {
 enum npu_scp_test_action {
 	NPU_SCP_TEST_START = 1,
 	NPU_SCP_TEST_STOP,
+	NPU_SCP_TEST_LAST_RESULT,
+};
+
+enum npu_scp_test_status {
+	NPU_SCP_TEST_PASS,
+	NPU_SCP_TEST_TIMEOUT,
+	NPU_SCP_TEST_EXEC_FAIL,
+	NPU_SCP_TEST_POWER_TIMEOUT,
 };
 
 #define SCP_IPI_TIMEOUT_MS (10)

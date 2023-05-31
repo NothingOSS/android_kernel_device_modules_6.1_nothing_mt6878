@@ -45,6 +45,67 @@ static struct dentry *apusys_dbg_root;
 static const unsigned int version_number_1 = 1;
 static const unsigned int version_number_2 = 2;
 
+// uint32_t mask
+// param->arg
+#define NPU_TESTCASE_CASE_MASK          (0xFFF00000)
+#define NPU_TESTCASE_PARAM_MASK		(0x000FFFFF)
+// param->ret
+#define NPU_TESTCASE_TIMEOUT_MASK	(0xFFFFFFF0)
+#define NPU_TESTCASE_RETURN_MASK	(0x0000000F)
+
+static int apusys_aov_query_testcase_result(struct seq_file *s)
+{
+	struct npu_scp_ipi_param send_msg = { 0, 0, 0, 0 };
+	struct npu_scp_ipi_param recv_msg = { 0, 0, 0, 0 };
+	int ret;
+	uint32_t testcase, timeout, param;
+	uint8_t test_ret;
+
+	send_msg.cmd = NPU_SCP_TEST;
+	send_msg.act = NPU_SCP_TEST_LAST_RESULT;
+	send_msg.arg = 0;
+	send_msg.ret = 0;
+	ret = npu_scp_ipi_send(&send_msg, &recv_msg, TESTCASE_TIMEOUT_MS);
+	if (ret) {
+		seq_printf(s, "%s failed to send scp ipi, ret %d\n", __func__, ret);
+		return ret;
+	}
+
+	testcase = (recv_msg.arg & NPU_TESTCASE_CASE_MASK) >> 20;
+	param = recv_msg.arg & NPU_TESTCASE_PARAM_MASK;
+	timeout = (recv_msg.ret & NPU_TESTCASE_TIMEOUT_MASK) >> 4;
+	test_ret = recv_msg.ret & NPU_TESTCASE_RETURN_MASK;
+
+	if (testcase) {
+		seq_printf(s, "Last testcase: case %u, param %u, timeout %us, ret %u\n",
+			   testcase, param, timeout, test_ret);
+
+		switch (test_ret) {
+		case NPU_SCP_TEST_PASS:
+			seq_puts(s, "~ PASS ~\n");
+			break;
+		case NPU_SCP_TEST_TIMEOUT:
+			seq_printf(s, "Case %d timeout!!!\n", testcase);
+			seq_puts(s, "~ PASS ~\n");
+			break;
+		case NPU_SCP_TEST_EXEC_FAIL:
+			seq_printf(s, "Case %d execution fail!!!\n", testcase);
+			seq_puts(s, "~ FAILED ~\n");
+			break;
+		case NPU_SCP_TEST_POWER_TIMEOUT:
+			seq_printf(s, "Case %d power test fail!!!\n", testcase);
+			seq_puts(s, "~ FAILED ~\n");
+			break;
+		default:
+			seq_printf(s, "Unknown status ret : %u\n", test_ret);
+			seq_puts(s, "~ FAILED ~\n");
+			break;
+		}
+	}
+
+	return 0;
+}
+
 static int apusys_aov_test_show(struct seq_file *s, void *unused)
 {
 	// struct apusys_aov_ctx *ctx = (struct apusys_aov_ctx *)s->private;
@@ -66,6 +127,12 @@ static int apusys_aov_test_show(struct seq_file *s, void *unused)
 	dev = recv_msg.ret & 0xff;
 	seq_printf(s, "AOV APU KO Version: %s\n", APUSYS_AOV_KVERSION);
 	seq_printf(s, "AOV APU Version: %d.%d.%d.%d\n", major, minor, subminor, dev);
+
+	ret = apusys_aov_query_testcase_result(s);
+	if (ret) {
+		seq_printf(s, "%s failed to query testcase result, ret %d\n", __func__, ret);
+		return 0;
+	}
 
 	return 0;
 }
@@ -109,7 +176,8 @@ static inline char *args_get_next_str(char **str)
 }
 
 static int apusys_aov_start_testcase(struct seq_file *s, struct apusys_aov_ctx *ctx,
-				     unsigned int testcase)
+				     unsigned int testcase, unsigned int param,
+				     unsigned int timeout)
 {
 	struct npu_scp_ipi_param send_msg = { 0, 0, 0, 0 };
 	struct npu_scp_ipi_param recv_msg = { 0, 0, 0, 0 };
@@ -119,7 +187,8 @@ static int apusys_aov_start_testcase(struct seq_file *s, struct apusys_aov_ctx *
 
 	send_msg.cmd = NPU_SCP_TEST;
 	send_msg.act = NPU_SCP_TEST_START;
-	send_msg.arg = testcase;
+	send_msg.arg = (testcase << 20) | (param & NPU_TESTCASE_PARAM_MASK);
+	send_msg.ret = (timeout << 4);
 	ret = npu_scp_ipi_send(&send_msg, &recv_msg, TESTCASE_TIMEOUT_MS);
 	if (ret) {
 		dev_info(ctx->dev, "%s failed to send scp ipi, ret %d\n", __func__, ret);
@@ -148,7 +217,7 @@ static int apusys_aov_stop_testcase(struct seq_file *s, struct apusys_aov_ctx *c
 
 	send_msg.cmd = NPU_SCP_TEST;
 	send_msg.act = NPU_SCP_TEST_STOP;
-	send_msg.arg = testcase;
+	send_msg.arg = (testcase << 20);
 	ret = npu_scp_ipi_send(&send_msg, &recv_msg, TESTCASE_TIMEOUT_MS);
 	if (ret) {
 		dev_info(ctx->dev, "%s failed to send scp ipi, ret %d\n", __func__, ret);
@@ -204,7 +273,7 @@ static ssize_t apusys_aov_test_write(struct file *flip, const char __user *buffe
 	struct seq_file *s = (struct seq_file *)flip->private_data;
 	struct apusys_aov_ctx *ctx = (struct apusys_aov_ctx *)s->private;
 	char *user_input, *cmd_str;
-	unsigned int testcase = 0;
+	unsigned int testcase = 0, param = 0, timeout = 0;
 	bool trigger_start = false;
 	bool trigger_stop = false;
 
@@ -234,16 +303,38 @@ static ssize_t apusys_aov_test_write(struct file *flip, const char __user *buffe
 	while (cmd_str != NULL) {
 		char *token = args_get_next_str(&cmd_str);
 
-		if (args_compare("--testcase", "-t", token)) {
+		if (args_compare("--case", "-c", token)) {
 			unsigned int number;
 
 			token = args_get_next_str(&cmd_str);
 			if (kstrtouint(token, 10, &number)) {
-				dev_info(ctx->dev, "%s Failed to get %s number\n", __func__, token);
+				dev_info(ctx->dev, "%s Failed to get %s case\n", __func__, token);
 				break;
 			}
 
 			testcase = number;
+		} else if (args_compare("--parameter", "-p", token)) {
+			unsigned int number;
+
+			token = args_get_next_str(&cmd_str);
+			if (kstrtouint(token, 10, &number)) {
+				dev_info(ctx->dev, "%s Failed to get %s parameter\n",
+				__func__, token);
+				break;
+			}
+
+			param = number;
+		} else if (args_compare("--timeout", "-t", token)) {
+			unsigned int number;
+
+			token = args_get_next_str(&cmd_str);
+			if (kstrtouint(token, 10, &number)) {
+				dev_info(ctx->dev, "%s Failed to get %s timeout\n",
+				__func__, token);
+				break;
+			}
+
+			timeout = number;
 		} else if (args_compare("--system", "-s", token)) {
 			struct npu_scp_ipi_param param = { 0, 0, 0, 0 };
 			unsigned int act;
@@ -271,7 +362,7 @@ static ssize_t apusys_aov_test_write(struct file *flip, const char __user *buffe
 		apusys_aov_stop_testcase(s, ctx, testcase);
 
 	if (trigger_start)
-		apusys_aov_start_testcase(s, ctx, testcase);
+		apusys_aov_start_testcase(s, ctx, testcase, param, timeout);
 
 out:
 	kfree(user_input);
@@ -511,6 +602,8 @@ static int apusys_aov_probe(struct platform_device *pdev)
 	npu_scp_ipi_register_handler(NPU_SCP_SYSTEM, npu_system_handler, NULL);
 
 	npu_scp_ipi_register_handler(NPU_SCP_RESPONSE, npu_response_arrived, NULL);
+
+	npu_scp_ipi_register_handler(NPU_SCP_TEST, npu_response_arrived, NULL);
 
 	ctx->version = (const unsigned int *)of_device_get_match_data(&pdev->dev);
 	if (!ctx->version) {
