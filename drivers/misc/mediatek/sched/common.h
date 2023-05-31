@@ -9,6 +9,7 @@
 	BUILD_BUG_ON(sizeof(mstruct) > (sizeof(u64) *		\
 		ARRAY_SIZE(((kstruct *)0)->android_vendor_data1)))
 
+#define GEAR_HINT_UNSET -1
 #define MTK_TASK_GROUP_FLAG 1
 #define MTK_TASK_FLAG 9
 #define RAVG_HIST_SIZE_MAX (5)

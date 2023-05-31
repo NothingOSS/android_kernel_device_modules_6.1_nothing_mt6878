@@ -1118,7 +1118,7 @@ int set_gear_indices(int pid, int gear_start, int num_gear, int reverse)
 		goto unlock;
 
 	/* check num_gear validity */
-	if (num_gear < 1 || num_gear > num_sched_clusters)
+	if ((num_gear != -1 && num_gear < 1) || num_gear > num_sched_clusters)
 		goto unlock;
 
 	/* check num_gear validity */
@@ -1149,7 +1149,7 @@ int unset_gear_indices(int pid)
 	p = find_task_by_vpid(pid);
 	if (p) {
 		get_task_struct(p);
-		__set_gear_indices(p, -1, num_sched_clusters, 0);
+		__set_gear_indices(p, GEAR_HINT_UNSET, GEAR_HINT_UNSET, 0);
 		put_task_struct(p);
 		ret = 1;
 	}
@@ -1346,6 +1346,7 @@ void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_ind
 {
 	int i = 0;
 	struct task_gear_hints *ghts = &((struct mtk_task *) p->android_vendor_data1)->gear_hints;
+	int max_num_gear = -1;
 
 	*order_index = 0;
 	*end_index = 0;
@@ -1366,7 +1367,16 @@ void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_ind
 	/* task has customized gear prefer */
 	if (ghts->gear_start >= 0) {
 		*order_index = ghts->gear_start;
-		*end_index   = ghts->num_gear;
+		if (ghts->reverse)
+			max_num_gear = ghts->gear_start + 1;
+		else
+			max_num_gear = num_sched_clusters - ghts->gear_start;
+
+		if (ghts->num_gear > 0 && ghts->num_gear <= max_num_gear)
+			*end_index = ghts->num_gear - 1;
+		else
+			*end_index = max_num_gear - 1;
+
 		*reverse     = ghts->reverse;
 		goto out;
 	}
@@ -1382,7 +1392,7 @@ out:
 	if (trace_sched_get_gear_indices_enabled())
 		trace_sched_get_gear_indices(p, uclamp_task_util(p),
 				ghts->gear_start, ghts->num_gear, ghts->reverse,
-				num_sched_clusters, *order_index, *end_index);
+				num_sched_clusters, max_num_gear, *order_index, *end_index, *reverse);
 }
 
 struct find_best_candidates_parameters {

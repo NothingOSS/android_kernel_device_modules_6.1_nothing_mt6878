@@ -141,21 +141,24 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 TRACE_EVENT(sched_get_gear_indices,
 
 	TP_PROTO(struct task_struct *tsk, int uclamp_task_util,
-		int gear_start, int num_gear,
-		int num_sched_clusters, int order_index, int end_index, int reverse),
+		int gear_start, int num_gear, int gear_reverse,
+		int num_sched_clusters, int max_gear_num,
+		int order_index, int end_index, int reverse),
 
-	TP_ARGS(tsk, uclamp_task_util, gear_start, num_gear, num_sched_clusters,
-			reverse, order_index, end_index),
+	TP_ARGS(tsk, uclamp_task_util, gear_start, num_gear, gear_reverse,
+			num_sched_clusters, max_gear_num, order_index, end_index, reverse),
 
 	TP_STRUCT__entry(
 		__field(pid_t, pid)
 		__field(int,   uclamp_task_util)
 		__field(int,   gear_start)
 		__field(int,   num_gear)
+		__field(int,   gear_reverse)
 		__field(int,   num_sched_clusters)
-		__field(int,   reverse)
+		__field(int,   max_gear_num)
 		__field(int,   order_index)
 		__field(int,   end_index)
+		__field(int,   reverse)
 		),
 
 	TP_fast_assign(
@@ -163,22 +166,26 @@ TRACE_EVENT(sched_get_gear_indices,
 		__entry->uclamp_task_util	= uclamp_task_util;
 		__entry->gear_start			= gear_start;
 		__entry->num_gear			= num_gear;
+		__entry->gear_reverse		= gear_reverse;
 		__entry->num_sched_clusters	= num_sched_clusters;
-		__entry->reverse			= reverse;
+		__entry->max_gear_num		= max_gear_num;
 		__entry->order_index		= order_index;
 		__entry->end_index			= end_index;
+		__entry->reverse			= reverse;
 		),
 
 	TP_printk(
-		"pid=%d uclamp_task_util=%d gear_start=%d num_gear=%d reverse=%d max_gear_num=%d order_index=%d end_index=%d",
+		"pid=%d uclamp_task_util=%d gear_start=%d num_gear=%d gear_reverse=%d num_sched_clusters=%d max_gear_num=%d order_index=%d end_index=%d reverse=%d",
 		__entry->pid,
 		__entry->uclamp_task_util,
 		__entry->gear_start,
 		__entry->num_gear,
+		__entry->gear_reverse,
 		__entry->num_sched_clusters,
-		__entry->reverse,
+		__entry->max_gear_num,
 		__entry->order_index,
-		__entry->end_index)
+		__entry->end_index,
+		__entry->reverse)
 );
 
 TRACE_EVENT(sched_util_fits_cpu,
