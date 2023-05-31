@@ -6430,9 +6430,11 @@
 					<&gce_m 16 3000 CMDQ_THR_PRIO_2>,
 					<&gce_m 17 3000 CMDQ_THR_PRIO_2>,
 					<&gce_m 18 3000 CMDQ_THR_PRIO_2>,
-					<&gce_m 19 3000 CMDQ_THR_PRIO_1>,
-					<&gce_m 22 3000 CMDQ_THR_PRIO_1>,
-					<&gce_m 23 3000 CMDQ_THR_PRIO_1>;
+					<&gce_m 19 3000 CMDQ_THR_PRIO_2>,
+					<&gce_m 22 3000 CMDQ_THR_PRIO_2>,
+					<&gce_m 23 3000 CMDQ_THR_PRIO_1>,
+					<&gce_m 27 3000 CMDQ_THR_PRIO_1>,
+					<&gce_m 28 3000 CMDQ_THR_PRIO_1>;
 					//<&gce_m_sec 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
 					//<&gce_m_sec 12 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
 				traw_cq_thread0_frame_done =
