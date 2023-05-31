@@ -423,6 +423,7 @@ static struct mml_frame_config *frame_config_create(
 	for (i = 0; i < MML_MAX_OUTPUTS; i++) {
 		cfg->frame_in_crop[i] = info->dest[i].crop;
 		cfg->out_rotate[i] = info->dest[i].rotate;
+		cfg->out_flip[i] = info->dest[i].flip;
 	}
 	memcpy(cfg->dl_out, submit->dl_out, sizeof(cfg->dl_out));
 	INIT_WORK(&cfg->work_destroy, frame_config_destroy_work);

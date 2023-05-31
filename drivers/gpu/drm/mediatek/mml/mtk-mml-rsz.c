@@ -428,7 +428,7 @@ static s32 rsz_config_frame(struct mml_comp *comp, struct mml_task *task,
 	struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
 	struct mml_pq_tile_init_result *result;
 
-	mml_msg("%s is called", __func__);
+	mml_msg("%s relay:%s", __func__, rsz_frm->relay_mode ? "true" : "false");
 	cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_CONTROL, 0x0, U32_MAX);
 
 	if (rsz_frm->relay_mode) {

@@ -330,6 +330,7 @@ struct mml_frame_config {
 	u8 bin_x;
 	u8 bin_y;
 	u8 out_rotate[MML_MAX_OUTPUTS];
+	bool out_flip[MML_MAX_OUTPUTS];
 	/* frame output pixel size */
 	struct mml_frame_size frame_out[MML_MAX_OUTPUTS];
 	/* direct-link input roi offset and output rect */

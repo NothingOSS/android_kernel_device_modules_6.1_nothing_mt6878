@@ -1556,6 +1556,7 @@ static ssize_t test_read(struct file *filep, char __user *buf, size_t size,
 		return -EFAULT;
 	}
 
+	memset(&the_case, 0, sizeof(the_case));
 	if (mml_case < ARRAY_SIZE(cases) && cases[mml_case].config)
 		cases[mml_case].config();
 	else

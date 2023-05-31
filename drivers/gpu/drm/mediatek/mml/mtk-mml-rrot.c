@@ -176,7 +176,7 @@ struct rrot_data {
 };
 
 static const struct rrot_data mt6989_rrot_data = {
-	.tile_width = 3520,
+	.tile_width = 4096,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6989),
@@ -248,7 +248,6 @@ struct rrot_frame_data {
 	u32 vdo_blk_shift_w;
 	u32 vdo_blk_height;
 	u32 vdo_blk_shift_h;
-	struct rrot_offset src_off;
 	u32 mf_src_w;
 	u32 mf_src_h;
 	u32 pixel_acc;		/* pixel accumulation */
@@ -256,6 +255,7 @@ struct rrot_frame_data {
 	u16 crop_off_l;		/* crop offset left */
 	u16 crop_off_t;		/* crop offset top */
 	u32 gmcif_con;
+	u32 slice_pixel;
 	bool ultra_off;
 	bool binning;
 
@@ -332,19 +332,24 @@ static u32 rrot_get_latency(struct mml_frame_config *cfg)
 
 static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_config *ccfg)
 {
+	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 	u32 w = dest->crop.r.width, h = dest->crop.r.height, i;
+	u32 outw = dest->data.width, outh = dest->data.height;
 
-	if ((w >> 1) >= dest->data.width) {
-		cfg->frame_in.width = w >> 1;
+	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
+		swap(outw, outh);
+
+	if ((w >> 1) >= outw) {
+		cfg->frame_in.width = src->width >> 1;
 		cfg->bin_x = 1;
 		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
 			cfg->frame_in_crop[i].r.width = cfg->frame_in_crop[i].r.width >> 1;
 			cfg->frame_in_crop[i].r.left = cfg->frame_in_crop[i].r.left >> 1;
 		}
 	}
-	if ((h >> 1) >= dest->data.height) {
-		cfg->frame_in.height = h >> 1;
+	if ((h >> 1) >= outh) {
+		cfg->frame_in.height = src->height >> 1;
 		cfg->bin_y = 1;
 		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
 			cfg->frame_in_crop[i].r.height = cfg->frame_in_crop[i].r.height >> 1;
@@ -361,6 +366,13 @@ static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_confi
 			swap(cfg->frame_in_crop[i].x_sub_px, cfg->frame_in_crop[i].y_sub_px);
 			swap(cfg->frame_in_crop[i].w_sub_px, cfg->frame_in_crop[i].h_sub_px);
 			cfg->out_rotate[i] = 0;
+			cfg->out_flip[i] = false;
+		}
+	} else {
+		/* rotate 0 or 180, clear both rotation and flip value but keep others */
+		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
+			cfg->out_rotate[i] = 0;
+			cfg->out_flip[i] = false;
 		}
 	}
 }
@@ -380,7 +392,8 @@ static s32 rrot_prepare(struct mml_comp *comp, struct mml_task *task,
 		calc_binning_rot(task->config, ccfg);
 	if (cfg->bin_x || cfg->bin_y) {
 		rrot_frm->binning = true;
-		mml_log("%s bin %u %u", __func__, cfg->bin_x, cfg->bin_y);
+		mml_log("%s rrot%s bin %u %u",
+			__func__, rrot->pipe ? "_2nd" : "    ", cfg->bin_x, cfg->bin_y);
 	}
 
 	return 0;
@@ -433,8 +446,9 @@ s32 rrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_config *cfg = task->config;
 	struct mml_frame_data *src = &cfg->info.src;
 	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
+	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 
-	mml_log("%s rrot %u pipe %u", __func__, comp->id, rrot->pipe);
+	mml_msg("%s rrot %u pipe %u", __func__, comp->id, rrot->pipe);
 
 	data->rdma.src_fmt = src->format;
 	data->rdma.blk_shift_w = MML_FMT_BLOCK(src->format) ? 4 : 0;
@@ -458,7 +472,6 @@ s32 rrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	     !memcmp(&cfg->info.dest[0].crop, &cfg->info.dest[1].crop, sizeof(struct mml_crop))) {
 		struct mml_frame_dest *dest = &cfg->info.dest[0];
 		u32 in_crop_w, in_crop_h;
-		struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 
 		data->rdma.crop = cfg->frame_in_crop[ccfg->pipe].r;
 		in_crop_w = data->rdma.crop.width;
@@ -481,6 +494,12 @@ s32 rrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 		data->rdma.crop.width = cfg->frame_in.width;
 		data->rdma.crop.height = cfg->frame_in.height;
 	}
+
+	mml_log("%s size %u %u %u %u crop off %u %u",
+		__func__,
+		func->full_size_x_in, func->full_size_y_in,
+		func->full_size_x_out, func->full_size_y_out,
+		rrot_frm->crop_off_l, rrot_frm->crop_off_t);
 
 	return 0;
 }
@@ -838,14 +857,15 @@ static void rrot_select_threshold_hrt(struct mml_comp_rrot *rrot,
 }
 
 static void rrot_config_slice(struct mml_comp *comp, struct mml_frame_config *cfg,
-	struct mml_frame_data *src, u32 rotate, struct rrot_frame_data *rrot_frm,
+	struct mml_frame_data *src, struct mml_frame_dest *dest, struct rrot_frame_data *rrot_frm,
 	struct cmdq_pkt *pkt)
 {
 	u32 slice_size = 0;
 	u32 slice_num;
-	u32 slice0 = 0, slice1 = 0;
+	u32 slice0 = 0, slice1 = 0, slice_px;
+	u32 width;
 
-	if (rotate == MML_ROT_0 || rotate == MML_ROT_180)
+	if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180)
 		goto done;
 
 	if (MML_FMT_YUV420(src->format) && rrot_frm->blk)
@@ -857,12 +877,15 @@ static void rrot_config_slice(struct mml_comp *comp, struct mml_frame_config *cf
 	else
 		mml_log("no slice for format %#x", src->format);
 
-	slice_num = DIV_ROUND_UP(src->width, 1 << slice_size);
+	width = dest->crop.r.width;
+	slice_px = 1 << slice_size;	/* full slice size */
+	slice_num = DIV_ROUND_UP(width, slice_px);
 	slice0 = slice_size << 16 | slice_num << 3 | 1;
-	slice1 = (1 << slice_size) << 16 | (src->width - (1 << slice_size) * (slice_num - 1));
+	slice1 = slice_px << 16 | (width - slice_px * (slice_num - 1));
+	rrot_frm->slice_pixel = slice_px;
 
-	mml_log("slice size %u num %u slice0 %#010x slice1 %#010x",
-		slice_size, slice_num, slice0, slice1);
+	mml_msg("width %u slice size %u num %u slice0 %#010x slice1 %#010x",
+		width, slice_size, slice_num, slice0, slice1);
 done:
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_AUTO_SLICE_0, slice0, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_AUTO_SLICE_1, slice1, U32_MAX);
@@ -930,7 +953,7 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		U32_MAX);
 
 	rrot_color_fmt(cfg, rrot_frm);
-	rrot_config_slice(comp, cfg, src, dest->rotate, rrot_frm, pkt);
+	rrot_config_slice(comp, cfg, src, dest, rrot_frm, pkt);
 
 	if (MML_FMT_V_SUBSAMPLE(src->format) &&
 	    !MML_FMT_V_SUBSAMPLE(dst_fmt) &&
@@ -1225,7 +1248,6 @@ static void rrot_calc_unbin(struct mml_frame_config *cfg, struct mml_tile_engine
 		tile->in.xe = tile->in.xs + in_w - 1;
 		tile->out.xs = tile->out.xs << cfg->bin_x;
 		tile->out.xe = tile->out.xs + out_w - 1;
-
 		tile->luma.x = tile->luma.x << cfg->bin_x;
 		tile->chroma.x = tile->chroma.x << cfg->bin_x;
 	}
@@ -1238,7 +1260,6 @@ static void rrot_calc_unbin(struct mml_frame_config *cfg, struct mml_tile_engine
 		tile->in.ye = tile->in.ys + in_h - 1;
 		tile->out.ys = tile->out.ys << cfg->bin_y;
 		tile->out.ye = tile->out.ys + out_h - 1;
-
 		tile->luma.y = tile->luma.y << cfg->bin_y;
 		tile->chroma.y = tile->chroma.y << cfg->bin_y;
 	}
@@ -1250,6 +1271,13 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 	const struct mml_frame_dest *dest = &task->config->info.dest[0];
 	struct mml_tile_engine tile = *tile_merge;
+
+	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270) {
+		swap(tile.in.xs, tile.in.ys);
+		swap(tile.in.xe, tile.in.ye);
+		swap(tile.out.xs, tile.out.ys);
+		swap(tile.out.xe, tile.out.ye);
+	}
 
 	if (rrot->pipe == 0) {
 		if ((dest->rotate == MML_ROT_90 && !dest->flip) ||
@@ -1319,16 +1347,19 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 		(_target_uv(_offx, _offy, _stride, _frm)))
 
 static void rrot_calc_offset(struct mml_frame_data *src, const struct mml_frame_dest *dest,
-	struct rrot_frame_data *rrot_frm, struct mml_tile_engine *tile)
+	struct rrot_frame_data *rrot_frm, struct mml_tile_engine *tile,
+	struct rrot_offset *ofst, bool buf_offset)
 {
-	struct rrot_offset *ofst = &rrot_frm->src_off;
-	const u64 xs = tile->out.xs;
-	const u64 xe = tile->out.xe;
-	const u64 ys = tile->out.ys;
-	const u64 ye = tile->out.ye;
+	u64 xs, ys;
+	const u64 xe = tile->in.xe - tile->in.xs;
+	const u64 ye = tile->in.ye - tile->in.ys;
 	const char *msg = NULL;
 
-	if (dest->rotate == MML_ROT_0 && !dest->flip) {
+	/* Calculate offset from begin of buffer to RROT or RROT_2ND */
+	if (buf_offset) {
+		xs = tile->in.xs;
+		ys = tile->in.ys;
+
 		/* Target Y offset */
 		ofst->y = target_y(xs, ys, src->y_stride, rrot_frm);
 
@@ -1338,11 +1369,26 @@ static void rrot_calc_offset(struct mml_frame_data *src, const struct mml_frame_
 		/* Target V offset */
 		ofst->v = target_uv(xs, ys, src->uv_stride, rrot_frm);
 
+		msg = "Buffer offset w/o rotation and flip";
+		goto done;
+	}
+
+	/* Calculate the add_offset,
+	 * which is offset by different rotation and flip,
+	 * from addr+buffer_offset to the byte that RROT start read.
+	 */
+	xs = 0;
+	ys = 0;
+	if ((dest->rotate == MML_ROT_0 && !dest->flip)) {
+		ofst->y = target_y(xs, ys, src->y_stride, rrot_frm);
+		ofst->c = target_uv(xs, ys, src->uv_stride, rrot_frm);
+		ofst->v = target_uv(xs, ys, src->uv_stride, rrot_frm);
+
 		msg = "No flip and no rotation";
 	} else if (dest->rotate == MML_ROT_0 && dest->flip) {
-		ofst->y = target_y(xe, ys, src->y_stride, rrot_frm);
-		ofst->c = target_uv(xe, ys, src->uv_stride, rrot_frm);
-		ofst->v = target_uv(xe, ys, src->uv_stride, rrot_frm);
+		ofst->y = target_y(xs, ys, src->y_stride, rrot_frm);
+		ofst->c = target_uv(xs, ys, src->uv_stride, rrot_frm);
+		ofst->v = target_uv(xs, ys, src->uv_stride, rrot_frm);
 
 		msg = "Flip without rotation";
 	} else if (dest->rotate == MML_ROT_90 && !dest->flip) {
@@ -1358,9 +1404,9 @@ static void rrot_calc_offset(struct mml_frame_data *src, const struct mml_frame_
 
 		msg = "Flip and Rotate 90 degree";
 	} else if (dest->rotate == MML_ROT_180 && !dest->flip) {
-		ofst->y = target_y(xe, ye, src->y_stride, rrot_frm);
-		ofst->c = target_uv(xe, ye, src->uv_stride, rrot_frm);
-		ofst->v = target_uv(xe, ye, src->uv_stride, rrot_frm);
+		ofst->y = target_y(xs, ye, src->y_stride, rrot_frm);
+		ofst->c = target_uv(xs, ye, src->uv_stride, rrot_frm);
+		ofst->v = target_uv(xs, ye, src->uv_stride, rrot_frm);
 
 		msg = "Rotate 180 degree only";
 	} else if (dest->rotate == MML_ROT_180 && dest->flip) {
@@ -1370,21 +1416,34 @@ static void rrot_calc_offset(struct mml_frame_data *src, const struct mml_frame_
 
 		msg = "Flip and Rotate 180 degree";
 	} else if (dest->rotate == MML_ROT_270 && !dest->flip) {
-		ofst->y = target_y(xe, ys, src->y_stride, rrot_frm);
-		ofst->c = target_uv(xe, ys, src->uv_stride, rrot_frm);
-		ofst->v = target_uv(xe, ys, src->uv_stride, rrot_frm);
+		u32 w = xe - xs + 1;
+		u32 slice = w & (rrot_frm->slice_pixel - 1);
+
+		if (!slice)
+			slice = rrot_frm->slice_pixel;
+
+		ofst->y = target_y(xe + 1 - slice, ys, src->y_stride, rrot_frm);
+		ofst->c = target_uv(xe + 1 - slice, ys, src->uv_stride, rrot_frm);
+		ofst->v = target_uv(xe + 1 - slice, ys, src->uv_stride, rrot_frm);
 
 		msg = "Rotate 270 degree only";
 	} else if (dest->rotate == MML_ROT_270 && dest->flip) {
-		ofst->y = target_y(xe, ye, src->y_stride, rrot_frm);
-		ofst->c = target_uv(xe, ye, src->uv_stride, rrot_frm);
-		ofst->v = target_uv(xe, ye, src->uv_stride, rrot_frm);
+		u32 w = xe - xs + 1;
+		u32 slice = w & (rrot_frm->slice_pixel - 1);
+
+		if (!slice)
+			slice = rrot_frm->slice_pixel;
+
+		ofst->y = target_y(xe + 1 - slice, ye, src->y_stride, rrot_frm);
+		ofst->c = target_uv(xe + 1 - slice, ye, src->uv_stride, rrot_frm);
+		ofst->v = target_uv(xe + 1 - slice, ye, src->uv_stride, rrot_frm);
 
 		msg = "Flip and Rotate 270 degree";
 	}
 
-	mml_msg("%s %s: offset Y:%#010llx U:%#010llx V:%#010llx",
-		__func__, msg, ofst->y, ofst->c, ofst->v);
+done:
+	mml_msg("%s %s: offset Y:%#010llx U:%#010llx V:%#010llx slice %u",
+		__func__, msg, ofst->y, ofst->c, ofst->v, rrot_frm->slice_pixel);
 }
 
 static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
@@ -1399,6 +1458,7 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	const phys_addr_t base_pa = comp->base_pa;
 	struct mml_tile_engine *tile_merge = config_get_tile(cfg, ccfg, idx);
 	const struct mml_frame_dest *dest = &cfg->info.dest[0];
+	struct rrot_offset ofst;
 
 	u32 src_offset_wp = 0;
 	u32 src_offset_hp = 0;
@@ -1441,7 +1501,22 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		src_offset_hp = in_ys;
 	}
 
-	rrot_calc_offset(src, dest, rrot_frm, &tile);
+	/* config source buffer offset */
+	rrot_calc_offset(src, dest, rrot_frm, &tile, &ofst, true);
+	rrot_write64(pkt,
+		base_pa + RROT_SRC_OFFSET_0,
+		base_pa + RROT_SRC_OFFSET_0_MSB,
+		ofst.y);
+	rrot_write64(pkt,
+		base_pa + RROT_SRC_OFFSET_1,
+		base_pa + RROT_SRC_OFFSET_1_MSB,
+		ofst.c);
+	rrot_write64(pkt,
+		base_pa + RROT_SRC_OFFSET_2,
+		base_pa + RROT_SRC_OFFSET_2_MSB,
+		ofst.v);
+
+	rrot_calc_offset(src, dest, rrot_frm, &tile, &ofst, false);
 	if (!rrot_frm->blk) {
 		/* Set source size */
 		mf_src_w = in_xe - in_xs + 1;
@@ -1457,7 +1532,7 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	} else {
 		/* Set 10bit UFO mode */
 		if (MML_FMT_10BIT_PACKED(src->format) && rrot_frm->enable_ufo)
-			src_offset_wp = (rrot_frm->src_off.y << 2) / 5;
+			src_offset_wp = (ofst.y << 2) / 5;
 
 		/* Set source size */
 		mf_src_w = in_xe - in_xs + 1;
@@ -1473,17 +1548,17 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	rrot_write64(pkt,
-		base_pa + RROT_SRC_OFFSET_0,
-		base_pa + RROT_SRC_OFFSET_0_MSB,
-		rrot_frm->src_off.y);
+		base_pa + RROT_SRC_BASE_ADD_0,
+		base_pa + RROT_SRC_BASE_ADD_0_MSB,
+		ofst.y);
 	rrot_write64(pkt,
-		base_pa + RROT_SRC_OFFSET_1,
-		base_pa + RROT_SRC_OFFSET_1_MSB,
-		rrot_frm->src_off.c);
+		base_pa + RROT_SRC_BASE_ADD_1,
+		base_pa + RROT_SRC_BASE_ADD_1_MSB,
+		ofst.c);
 	rrot_write64(pkt,
-		base_pa + RROT_SRC_OFFSET_2,
-		base_pa + RROT_SRC_OFFSET_2_MSB,
-		rrot_frm->src_off.v);
+		base_pa + RROT_SRC_BASE_ADD_2,
+		base_pa + RROT_SRC_BASE_ADD_2_MSB,
+		ofst.v);
 
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_SRC_OFFSET_WP, src_offset_wp, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_SRC_OFFSET_HP, src_offset_hp, U32_MAX);
@@ -1513,10 +1588,11 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	if (plane > 2)
 		rrot_frm->datasize += mml_color_get_min_uv_size(src->format, mf_src_w, mf_src_h);
 
-	mml_log("rrot%s src %u %u clip %u %u pixel %u data %u rotate %u",
+	mml_log("rrot%s src %u %u clip %u %u whp %u %u pixel %u data %u rotate %u",
 		rrot->pipe == 1 ? "_2nd" : "    ",
 		mf_src_w, mf_src_h,
 		mf_clip_w, mf_clip_h,
+		src_offset_wp, src_offset_hp,
 		rrot_frm->pixel_acc, rrot_frm->datasize,
 		dest->rotate);
 
@@ -1549,7 +1625,7 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 	 * it is ok for rdma to directly assign and accumulate in wrot.
 	 */
 	cache->total_datasize = rrot_frm->datasize;
-	cache->max_pixel = rrot_frm->pixel_acc;
+	cache->max_pixel = max(cache->max_pixel, rrot_frm->pixel_acc);
 
 	mml_msg("%s task %p pipe %hhu data %u pixel %u",
 		__func__, task, ccfg->pipe, rrot_frm->datasize, rrot_frm->pixel_acc);
@@ -1801,26 +1877,14 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	value[8] = readl(base + RROT_MF_OFFSET_1);
 	value[9] = readl(base + RROT_SF_BKGD_SIZE_IN_BYTE);
 	value[10] = readl(base + RROT_MF_BKGD_H_SIZE_IN_PXL);
-	value[11] = readl(base + RROT_SRC_OFFSET_0_MSB);
-	value[12] = readl(base + RROT_SRC_OFFSET_0);
-	value[13] = readl(base + RROT_SRC_OFFSET_1_MSB);
-	value[14] = readl(base + RROT_SRC_OFFSET_1);
-	value[15] = readl(base + RROT_SRC_OFFSET_2_MSB);
-	value[16] = readl(base + RROT_SRC_OFFSET_2);
-	value[17] = readl(base + RROT_SRC_OFFSET_WP);
-	value[18] = readl(base + RROT_SRC_OFFSET_HP);
-	value[19] = readl(base + RROT_SRC_BASE_0_MSB);
-	value[20] = readl(base + RROT_SRC_BASE_0);
-	value[21] = readl(base + RROT_SRC_BASE_1_MSB);
-	value[22] = readl(base + RROT_SRC_BASE_1);
-	value[23] = readl(base + RROT_SRC_BASE_2_MSB);
-	value[24] = readl(base + RROT_SRC_BASE_2);
-	value[25] = readl(base + RROT_UFO_DEC_LENGTH_BASE_Y_MSB);
-	value[26] = readl(base + RROT_UFO_DEC_LENGTH_BASE_Y);
-	value[27] = readl(base + RROT_UFO_DEC_LENGTH_BASE_C_MSB);
-	value[28] = readl(base + RROT_UFO_DEC_LENGTH_BASE_C);
-	value[29] = readl(base + RROT_AFBC_PAYLOAD_OST);
-	value[30] = readl(base + RROT_GMCIF_CON);
+	value[11] = readl(base + RROT_SRC_OFFSET_WP);
+	value[12] = readl(base + RROT_SRC_OFFSET_HP);
+	value[13] = readl(base + RROT_SRC_BASE_0_MSB);
+	value[14] = readl(base + RROT_SRC_BASE_0);
+	value[15] = readl(base + RROT_SRC_BASE_1_MSB);
+	value[16] = readl(base + RROT_SRC_BASE_1);
+	value[17] = readl(base + RROT_SRC_BASE_2_MSB);
+	value[18] = readl(base + RROT_SRC_BASE_2);
 
 	mml_err("RROT_MF_BKGD_SIZE_IN_BYTE %#010x RROT_MF_BKGD_SIZE_IN_PXL %#010x",
 		value[4], value[5]);
@@ -1828,20 +1892,34 @@ static void rrot_debug_dump(struct mml_comp *comp)
 		value[6], value[7], value[8]);
 	mml_err("RROT_SF_BKGD_SIZE_IN_BYTE %#010x RROT_MF_BKGD_H_SIZE_IN_PXL %#010x",
 		value[9], value[10]);
-	mml_err("RROT_SRC OFFSET_0_MSB %#010x OFFSET_0 %#010x",
-		value[11], value[12]);
-	mml_err("RROT_SRC OFFSET_1_MSB %#010x OFFSET_1 %#010x",
-		value[13], value[14]);
-	mml_err("RROT_SRC OFFSET_2_MSB %#010x OFFSET_2 %#010x",
-		value[15], value[16]);
 	mml_err("RROT_SRC_OFFSET_WP %#010x RROT_SRC_OFFSET_HP %#010x",
-		value[17], value[18]);
-	mml_err("RROT_SRC BASE_0_MSB %#010x BASE_0 %#010x",
-		value[19], value[20]);
+		value[11], value[12]);
+	mml_err("RROT_SRC BASE_0 %#010x BASE_0 %#010x",
+		value[13], value[14]);
 	mml_err("RROT_SRC BASE_1_MSB %#010x BASE_1 %#010x",
-		value[21], value[22]);
+		value[15], value[16]);
 	mml_err("RROT_SRC BASE_2_MSB %#010x BASE_2 %#010x",
-		value[23], value[24]);
+		value[17], value[18]);
+
+	value[13] = readl(base + RROT_SRC_OFFSET_0);
+	value[14] = readl(base + RROT_SRC_OFFSET_1);
+	value[15] = readl(base + RROT_SRC_OFFSET_2);
+	value[16] = readl(base + RROT_SRC_BASE_ADD_0);
+	value[17] = readl(base + RROT_SRC_BASE_ADD_1);
+	value[18] = readl(base + RROT_SRC_BASE_ADD_2);
+
+	mml_err("RROT_SRC   OFFSET_0 %#010x   OFFSET_1 %#010x   OFFSET_2 %#010x",
+		value[13], value[14], value[15]);
+	mml_err("RROT_SRC BASE_ADD_0 %#010x BASE_ADD_1 %#010x BASE_ADD_2 %#010x",
+		value[16], value[17], value[18]);
+
+	value[25] = readl(base + RROT_UFO_DEC_LENGTH_BASE_Y_MSB);
+	value[26] = readl(base + RROT_UFO_DEC_LENGTH_BASE_Y);
+	value[27] = readl(base + RROT_UFO_DEC_LENGTH_BASE_C_MSB);
+	value[28] = readl(base + RROT_UFO_DEC_LENGTH_BASE_C);
+	value[29] = readl(base + RROT_AFBC_PAYLOAD_OST);
+	value[30] = readl(base + RROT_GMCIF_CON);
+
 	mml_err("RROT_UFO_DEC_LENGTH BASE_Y_MSB %#010x BASE_Y %#010x",
 		value[25], value[26]);
 	mml_err("RROT_UFO_DEC_LENGTH BASE_C_MSB %#010x BASE_C %#010x",

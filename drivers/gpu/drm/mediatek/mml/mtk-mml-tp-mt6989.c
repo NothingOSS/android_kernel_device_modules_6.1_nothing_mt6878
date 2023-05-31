@@ -591,9 +591,9 @@ static inline bool tp_need_resize(struct mml_frame_info *info, bool *can_binning
 		if (can_binning && (cw >= w * 2 || ch >= h * 2))
 			*can_binning = true;
 
-		if (w * 2 == cw)
+		if (cw >= w * 2)
 			cw = cw / 2;
-		if (h * 2 == ch)
+		if (ch >= h * 2)
 			ch = ch / 2;
 	}
 

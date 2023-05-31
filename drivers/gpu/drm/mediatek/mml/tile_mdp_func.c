@@ -173,7 +173,11 @@ enum isp_tile_message tile_wrot_init(struct tile_func_block *ptr_func,
 			ptr_func->out_tile_height = data->racing_h;
 		}
 	} else {
-		if (data->rotate == MML_ROT_90 ||
+		if (data->rotate == MML_ROT_0 && MML_FMT_IS_RGB(data->dest_fmt) &&
+			!MML_FMT_COMPRESS(data->dest_fmt)) {
+			/* output rgb will directly output to dram, no limit */
+			ptr_func->out_tile_width = 65535;
+		} else if (data->rotate == MML_ROT_90 ||
 		    data->rotate == MML_ROT_270 ||
 		    data->flip) {
 			/* 90, 270 degrees and flip */
