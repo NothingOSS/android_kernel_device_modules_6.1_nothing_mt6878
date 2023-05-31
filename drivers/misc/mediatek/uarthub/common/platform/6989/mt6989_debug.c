@@ -1014,11 +1014,11 @@ int uarthub_dump_debug_tx_rx_count_mt6989(const char *tag, int trigger_point)
 	d2_rx_bcnt = UARTHUB_DEBUG_GET_OP_RX_REQ(debug5.dev2, debug6.dev2);
 	cmm_rx_bcnt = UARTHUB_DEBUG_GET_OP_RX_REQ(debug5.cmm, debug6.cmm);
 	ap_rx_bcnt = UARTHUB_DEBUG_GET_OP_RX_REQ(debug5.ap, debug6.ap);
-	d0_tx_bcnt = UARTHUB_DEBUG_GET_IP_TX_DMA(debug5.dev0, debug6.dev0);
-	d1_tx_bcnt = UARTHUB_DEBUG_GET_IP_TX_DMA(debug5.dev1, debug6.dev1);
-	d2_tx_bcnt = UARTHUB_DEBUG_GET_IP_TX_DMA(debug5.dev2, debug6.dev2);
-	cmm_tx_bcnt = UARTHUB_DEBUG_GET_IP_TX_DMA(debug5.cmm, debug6.cmm);
-	ap_tx_bcnt = UARTHUB_DEBUG_GET_IP_TX_DMA(debug5.ap, debug6.ap);
+	d0_tx_bcnt = UARTHUB_DEBUG_GET_IP_TX_DMA(debug2.dev0, debug3.dev0);
+	d1_tx_bcnt = UARTHUB_DEBUG_GET_IP_TX_DMA(debug2.dev1, debug3.dev1);
+	d2_tx_bcnt = UARTHUB_DEBUG_GET_IP_TX_DMA(debug2.dev2, debug3.dev2);
+	cmm_tx_bcnt = UARTHUB_DEBUG_GET_IP_TX_DMA(debug2.cmm, debug3.cmm);
+	ap_tx_bcnt = UARTHUB_DEBUG_GET_IP_TX_DMA(debug2.ap, debug3.ap);
 
 	if (trigger_point != DUMP0) {
 		len = 0;
