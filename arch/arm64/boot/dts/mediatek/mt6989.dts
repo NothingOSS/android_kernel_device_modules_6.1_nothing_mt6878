@@ -3398,6 +3398,11 @@
 			nvmem-cell-names = "e_data1","e_data2","e_data3","e_data4","e_data5";
 		};
 
+		vtskin: vtskin {
+			compatible = "mediatek,mt6989-virtual-tskin";
+			#thermal-sensor-cells = <1>;
+		};
+
 		gpio: gpio@10005000 {
 			compatible = "mediatek,gpio";
 			reg = <0 0x10005000 0 0x1000>;
@@ -16253,6 +16258,90 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 					temperature = <118400>;
 					hysteresis = <2000>;
 					type = "critical";
+				};
+			};
+		};
+		vtskin-max {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&vtskin 0>;
+			trips {
+				vtskin_max_crit: vtskin-max-crit {
+					temperature = <118400>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+		vtskin1 {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&vtskin 1>;
+			trips {
+				vtskin1_crit: vtskin1-crit {
+					temperature = <118400>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+		vtskin2 {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&vtskin 2>;
+			trips {
+				vtskin2_crit: vtskin2-crit {
+					temperature = <118400>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+		vtskin3 {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&vtskin 3>;
+			trips {
+				vtskin3_crit: vtskin3-crit {
+					temperature = <118400>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+		vtskin4 {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&vtskin 4>;
+			trips {
+				vtskin4_crit: vtskin4-crit {
+					temperature = <118400>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+		vtskin5 {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&vtskin 5>;
+			trips {
+				vtskin5_crit: vtskin5-crit {
+					temperature = <118400>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+		vtskin6 {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&vtskin 6>;
+			trips {
+				vtskin6_crit: vtskin6-crit {
+					temperature = <118400>;
+					hysteresis = <2000>;
+					type = "passive";
 				};
 			};
 		};
