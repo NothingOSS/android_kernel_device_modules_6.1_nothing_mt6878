@@ -373,7 +373,8 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 			share_volt = (dsu->dsu_volt > cpu_volt) ? dsu->dsu_volt : cpu_volt;
 		}
 
-		eenv->dsu_freq_new = mtk_ps->dsu_freq;
+		if (eenv->dsu_freq_thermal != -1)
+			eenv->dsu_freq_new = min(mtk_ps->dsu_freq, eenv->dsu_freq_thermal);
 		dsu_opp = dsu_get_freq_opp(eenv->dsu_freq_new);
 		dsu_ps = dsu_get_opp_ps(eenv->wl_type, dsu_opp);
 		eenv->dsu_volt_new = dsu_ps->volt;

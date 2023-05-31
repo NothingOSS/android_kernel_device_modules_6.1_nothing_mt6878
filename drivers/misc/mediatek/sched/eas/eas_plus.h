@@ -76,6 +76,7 @@ struct energy_env {
 	unsigned int wl_support;
 	unsigned int wl_type;
 	struct dsu_info dsu;
+	unsigned int dsu_freq_thermal;
 	unsigned int dsu_freq_base;
 	unsigned int dsu_freq_new;
 	unsigned int dsu_volt_base;

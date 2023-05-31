@@ -313,6 +313,7 @@ static inline void eenv_init(struct energy_env *eenv,
 				trace_sched_check_temp("dsu", -1, dsu->temp);
 		}
 
+		eenv->dsu_freq_thermal = get_dsu_ceiling_freq();
 		eenv->dsu_freq_base = mtk_get_dsu_freq();
 		dsu_opp = dsu_get_freq_opp(eenv->dsu_freq_base);
 		dsu_ps = dsu_get_opp_ps(eenv->wl_type, dsu_opp);
@@ -320,7 +321,7 @@ static inline void eenv_init(struct energy_env *eenv,
 
 		if (trace_sched_eenv_init_enabled())
 			trace_sched_eenv_init(eenv->dsu_freq_base, eenv->dsu_volt_base,
-					share_buck.gear_idx);
+					eenv->dsu_freq_thermal, share_buck.gear_idx);
 	} else
 		eenv->wl_type = 0;
 }

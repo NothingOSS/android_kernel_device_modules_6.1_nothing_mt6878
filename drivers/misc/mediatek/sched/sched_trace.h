@@ -382,25 +382,28 @@ TRACE_EVENT(sched_energy_init,
 
 TRACE_EVENT(sched_eenv_init,
 
-	TP_PROTO(unsigned int dsu_freq_base, unsigned int dsu_volt_base, unsigned int gear_idx),
+	TP_PROTO(unsigned int dsu_freq_base, unsigned int dsu_volt_base, unsigned int dsu_freq_thermal, unsigned int gear_idx),
 
-	TP_ARGS(dsu_freq_base, dsu_volt_base, gear_idx),
+	TP_ARGS(dsu_freq_base, dsu_volt_base, dsu_freq_thermal, gear_idx),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, dsu_freq_base)
 		__field(unsigned int, dsu_volt_base)
+		__field(unsigned int, dsu_freq_thermal)
 		__field(unsigned int, gear_idx)
 		),
 
 	TP_fast_assign(
 		__entry->dsu_freq_base = dsu_freq_base;
 		__entry->dsu_volt_base = dsu_volt_base;
+		__entry->dsu_freq_thermal = dsu_freq_thermal;
 		__entry->gear_idx = gear_idx;
 		),
 
-	TP_printk("dsu_freq_base=%u dsu_volt_base=%u share_buck_idx=%u",
+	TP_printk("dsu_freq_base=%u dsu_volt_base=%u dsu_freq_thermal=%u share_buck_idx=%u",
 		__entry->dsu_freq_base,
 		__entry->dsu_volt_base,
+		__entry->dsu_freq_thermal,
 		__entry->gear_idx)
 );
 
