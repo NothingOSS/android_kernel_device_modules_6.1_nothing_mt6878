@@ -11499,6 +11499,14 @@
 		dma-mask-bit = <35>;
 		smmu-supply = <&mm_smmu>;
 	};
+	mm_smmu_aov_normal: mm-smmu-aov-normal {
+		compatible = "mediatek,smmu-share-group";
+		label = "mm_smmu_aov_normal";
+		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
+		iommus = <&mm_smmu 34>;
+		mtk,smmu-dma-mode = "disable";
+		smmu-supply = <&mm_smmu>;
+	};
 	mm_smmu_hrt_protected: mm-smmu-hrt-protected {
 		compatible = "mediatek,smmu-share-group";
 		label = "mm_smmu_hrt_protected";
@@ -11534,6 +11542,14 @@
 		mtk,iommu-dma-range = <0x1 0xc000000 0x0 0x4000000>;
 		iommus = <&mm_smmu 43>;
 		dma-mask-bit = <35>;
+		smmu-supply = <&mm_smmu>;
+	};
+	mm_smmu_aov_protected: mm-smmu-aov-protected {
+		compatible = "mediatek,smmu-share-group";
+		label = "mm_smmu_aov_protected";
+		dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
+		iommus = <&mm_smmu 44>;
+		mtk,smmu-dma-mode = "disable";
 		smmu-supply = <&mm_smmu>;
 	};
 	mm_smmu_hrt_secure: mm-smmu-hrt-secure {
