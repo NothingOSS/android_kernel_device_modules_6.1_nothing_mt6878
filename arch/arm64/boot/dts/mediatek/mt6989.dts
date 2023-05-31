@@ -1726,8 +1726,9 @@
 			compatible = "android,ise-trusty-log-v1";
 		};
 
-		ise-virtio {
+		ise-virtio@10001000 {
 			compatible = "android,ise-trusty-virtio-v1";
+			reg = <0 0x10001000 0 0x1000>;
 			interrupts = <GIC_SPI 938 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 	};
