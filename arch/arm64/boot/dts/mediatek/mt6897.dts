@@ -14088,8 +14088,9 @@
 		lbat-limit-freq-lv2 = < 1200000  1700000 1800000>;
 		lbat-limit-freq-lv3 = < 900000  900000 900000>;
 
-		oc-max-level = <1>;
-		oc-limit-freq-lv1 = < 900000  900000 900000>;
+		oc-max-level = <2>;
+		oc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
+		oc-limit-freq-lv2 = < 900000  900000 900000>;
 
 		soc-max-level = <1>;
 		soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
@@ -14103,8 +14104,9 @@
 		lbat-reduce-tx-lv2 = <6>;
 		lbat-reduce-tx-lv3 = <6>;
 
-		oc-max-level = <1>;
-		oc-reduce-tx-lv1 = <6>;
+		oc-max-level = <2>;
+		oc-reduce-tx-lv1 = <0>;
+		oc-reduce-tx-lv2 = <6>;
 
 		soc-max-level = <1>;
 		soc-reduce-tx-lv1 = <6>;
@@ -15626,8 +15628,7 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 			interrupts-extended = <&mtk_gauge MT6375_IRQ_FG_CUR_H>,
 					      <&mtk_gauge MT6375_IRQ_FG_CUR_L>;
 			interrupt-names = "fg_cur_h", "fg_cur_l";
-			oc-thd-h = <6800>;
-			oc-thd-l = <8000>;
+			oc-thd-h = <6000 7000 8000>;
 		};
 	};
 };
