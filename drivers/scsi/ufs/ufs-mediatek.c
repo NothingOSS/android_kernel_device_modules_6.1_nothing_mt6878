@@ -22,17 +22,6 @@
 #include <linux/tracepoint.h>
 #include <scsi/scsi_proto.h>
 #include <scsi/scsi_dbg.h>
-
-#if IS_ENABLED(CONFIG_RPMB)
-#include <asm/unaligned.h>
-#include <linux/async.h>
-#include <linux/rpmb.h>
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-#include <mt-plat/mtk_blocktag.h>
-#endif
-
 #include <ufs/ufshcd.h>
 #include "ufshcd-crypto.h"
 #include "ufshcd-pltfrm.h"
@@ -41,359 +30,11 @@
 #include "ufs-mediatek.h"
 #include "ufs-mediatek-sip.h"
 
-#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
+/* MediaTek UFS facilities */
 #include "ufs-mediatek-dbg.h"
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-#include <mt-plat/aee.h>
-static int ufs_abort_aee_count;
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
-#include <linux/sched/cputime.h>
-#include <linux/sched/debug.h>
-#include <sched/sched.h>
-
-static void ufs_mtk_mphy_dump(struct ufs_hba *hba);
-static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage);
-static const u32 mphy_reg_dump[] = {
-	0xA09C, /* RON */ /* 0 */
-	0xA19C, /* RON */ /* 1 */
-
-	0x80C0, /* RON */ /* 2 */
-	0x81C0, /* RON */ /* 3 */
-	0xB010, /* RON */ /* 4 */
-	0xB010, /* RON */ /* 5 */
-	0xB010, /* RON */ /* 6 */
-	0xB010, /* RON */ /* 7 */
-	0xB010, /* RON */ /* 8 */
-	0xB110, /* RON */ /* 9 */
-	0xB110, /* RON */ /* 10 */
-	0xB110, /* RON */ /* 11 */
-	0xB110, /* RON */ /* 12 */
-	0xB110, /* RON */ /* 13 */
-	0xA0AC, /* RON */ /* 14 */
-	0xA0B0, /* RON */ /* 15 */
-	0xA09C, /* RON */ /* 16 */
-	0xA1AC, /* RON */ /* 17 */
-	0xA1B0, /* RON */ /* 18 */
-	0xA19C, /* RON */ /* 19 */
-
-	0x00B0, /* RON */ /* 20 */
-
-	0xA808, /* RON */ /* 21 */
-	0xA80C, /* RON */ /* 22 */
-	0xA810, /* RON */ /* 23 */
-	0xA814, /* RON */ /* 24 */
-	0xA818, /* RON */ /* 25 */
-	0xA81C, /* RON */ /* 26 */
-	0xA820, /* RON */ /* 27 */
-	0xA824, /* RON */ /* 28 */
-	0xA828, /* RON */ /* 29 */
-	0xA82C, /* RON */ /* 30 */
-	0xA830, /* RON */ /* 31 */
-	0xA834, /* RON */ /* 32 */
-	0xA838, /* RON */ /* 33 */
-	0xA83C, /* RON */ /* 34 */
-
-	0xA908, /* RON */ /* 35 */
-	0xA90C, /* RON */ /* 36 */
-	0xA910, /* RON */ /* 37 */
-	0xA914, /* RON */ /* 38 */
-	0xA918, /* RON */ /* 39 */
-	0xA91C, /* RON */ /* 40 */
-	0xA920, /* RON */ /* 41 */
-	0xA924, /* RON */ /* 42 */
-	0xA928, /* RON */ /* 43 */
-	0xA92C, /* RON */ /* 44 */
-	0xA930, /* RON */ /* 45 */
-	0xA934, /* RON */ /* 46 */
-	0xA938, /* RON */ /* 47 */
-	0xA93C, /* RON */ /* 48 */
-
-	0x00B0, /* CL */ /* 49 */
-	0x00B0, /* CL */ /* 50 */
-	0x00B0, /* CL */ /* 51 */
-	0x00B0, /* CL */ /* 52 */
-	0x00B0, /* CL */ /* 53 */
-	0x00B0, /* CL */ /* 54 */
-	0x00B0, /* CL */ /* 55 */
-	0x00B0, /* CL */ /* 56 */
-	0x00B0, /* CL */ /* 57 */
-	0x00B0, /* CL */ /* 58 */
-	0x00B0, /* CL */ /* 59 */
-	0x00B0, /* CL */ /* 60 */
-	0x00B0, /* CL */ /* 61 */
-	0x00B0, /* CL */ /* 62 */
-	0x00B0, /* CL */ /* 63 */
-	0x00B0, /* CL */ /* 64 */
-	0x00B0, /* CL */ /* 65 */
-	0x00B0, /* CL */ /* 66 */
-	0x00B0, /* CL */ /* 67 */
-	0x00B0, /* CL */ /* 68 */
-	0x00B0, /* CL */ /* 69 */
-	0x00B0, /* CL */ /* 70 */
-	0x00B0, /* CL */ /* 71 */
-	0x00B0, /* CL */ /* 72 */
-	0x00B0, /* CL */ /* 73 */
-	0x00B0, /* CL */ /* 74 */
-	0x00B0, /* CL */ /* 75 */
-	0x00B0, /* CL */ /* 76 */
-	0x00B0, /* CL */ /* 77 */
-	0x00B0, /* CL */ /* 78 */
-	0x00B0, /* CL */ /* 79 */
-	0x00B0, /* CL */ /* 80 */
-	0x00B0, /* CL */ /* 81 */
-	0x00B0, /* CL */ /* 82 */
-	0x00B0, /* CL */ /* 83 */
-
-	0x00B0, /* CL */ /* 84 */
-	0x00B0, /* CL */ /* 85 */
-	0x00B0, /* CL */ /* 86 */
-	0x00B0, /* CL */ /* 87 */
-	0x00B0, /* CL */ /* 88 */
-	0x00B0, /* CL */ /* 89 */
-	0x00B0, /* CL */ /* 90 */
-	0x00B0, /* CL */ /* 91 */
-	0x00B0, /* CL */ /* 92 */
-	0x00B0, /* CL */ /* 93 */
-
-	0x00B0, /* CL */ /* 94 */
-	0x00B0, /* CL */ /* 95 */
-	0x00B0, /* CL */ /* 96 */
-	0x00B0, /* CL */ /* 97 */
-	0x00B0, /* CL */ /* 98 */
-	0x00B0, /* CL */ /* 99 */
-	0x00B0, /* CL */ /* 100 */
-	0x00B0, /* CL */ /* 101 */
-	0x00B0, /* CL */ /* 102 */
-	0x00B0, /* CL */ /* 103 */
-
-	0x00B0, /* CL */ /* 104 */
-	0x00B0, /* CL */ /* 105 */
-	0x00B0, /* CL */ /* 106 */
-	0x00B0, /* CL */ /* 107 */
-	0x00B0, /* CL */ /* 108 */
-	0x3080, /* CL */ /* 109 */
-
-	0xC210, /* CL */ /* 110 */
-	0xC280, /* CL */ /* 111 */
-	0xC268, /* CL */ /* 112 */
-	0xC228, /* CL */ /* 113 */
-	0xC22C, /* CL */ /* 114 */
-	0xC220, /* CL */ /* 115 */
-	0xC224, /* CL */ /* 116 */
-	0xC284, /* CL */ /* 117 */
-	0xC274, /* CL */ /* 118 */
-	0xC278, /* CL */ /* 119 */
-	0xC29C, /* CL */ /* 110 */
-	0xC214, /* CL */ /* 121 */
-	0xC218, /* CL */ /* 122 */
-	0xC21C, /* CL */ /* 123 */
-	0xC234, /* CL */ /* 124 */
-	0xC230, /* CL */ /* 125 */
-	0xC244, /* CL */ /* 126 */
-	0xC250, /* CL */ /* 127 */
-	0xC270, /* CL */ /* 128 */
-	0xC26C, /* CL */ /* 129 */
-	0xC310, /* CL */ /* 120 */
-	0xC380, /* CL */ /* 131 */
-	0xC368, /* CL */ /* 132 */
-	0xC328, /* CL */ /* 133 */
-	0xC32C, /* CL */ /* 134 */
-	0xC320, /* CL */ /* 135 */
-	0xC324, /* CL */ /* 136 */
-	0xC384, /* CL */ /* 137 */
-	0xC374, /* CL */ /* 138 */
-	0xC378, /* CL */ /* 139 */
-	0xC39C, /* CL */ /* 140 */
-	0xC314, /* CL */ /* 141 */
-	0xC318, /* CL */ /* 142 */
-	0xC31C, /* CL */ /* 143 */
-	0xC334, /* CL */ /* 144 */
-	0xC330, /* CL */ /* 145 */
-	0xC344, /* CL */ /* 146 */
-	0xC350, /* CL */ /* 147 */
-	0xC370, /* CL */ /* 148 */
-	0xC36C  /* CL */ /* 149 */
-};
-#define MPHY_DUMP_NUM    (sizeof(mphy_reg_dump) / sizeof(u32))
-enum {
-	UFS_MPHY_INIT = 0,
-	UFS_MPHY_UIC,
-	UFS_MPHY_UIC_LINE_RESET,
-	UFS_MPHY_STAGE_NUM
-};
-
-struct ufs_mtk_mphy_struct {
-	u32 record[MPHY_DUMP_NUM];
-	u64 time;
-	u64 time_done;
-};
-static struct ufs_mtk_mphy_struct mphy_record[UFS_MPHY_STAGE_NUM];
-static const u8 *mphy_str[] = {
-	"RON", /* 0 */
-	"RON", /* 1 */
-
-	"RON", /* 2 */
-	"RON", /* 3 */
-	"RON", /* 4 */
-	"RON", /* 5 */
-	"RON", /* 6 */
-	"RON", /* 7 */
-	"RON", /* 8 */
-	"RON", /* 9 */
-	"RON", /* 10 */
-	"RON", /* 11 */
-	"RON", /* 12 */
-	"RON", /* 13 */
-	"RON", /* 14 */
-	"RON", /* 15 */
-	"RON", /* 16 */
-	"RON", /* 17 */
-	"RON", /* 18 */
-	"RON", /* 19 */
-
-	"RON", /* 20 */
-
-	"RON", /* 21 */
-	"RON", /* 22 */
-	"RON", /* 23 */
-	"RON", /* 24 */
-	"RON", /* 25 */
-	"RON", /* 26 */
-	"RON", /* 27 */
-	"RON", /* 28 */
-	"RON", /* 29 */
-	"RON", /* 30 */
-	"RON", /* 31 */
-	"RON", /* 32 */
-	"RON", /* 33 */
-	"RON", /* 34 */
-
-	"RON", /* 35 */
-	"RON", /* 36 */
-	"RON", /* 37 */
-	"RON", /* 38 */
-	"RON", /* 39 */
-	"RON", /* 40 */
-	"RON", /* 41 */
-	"RON", /* 42 */
-	"RON", /* 43 */
-	"RON", /* 44 */
-	"RON", /* 45 */
-	"RON", /* 46 */
-	"RON", /* 47 */
-	"RON", /* 48 */
-
-	"CL ckbuf_en                                           ", /* 49 */
-	"CL sq,imppl_en                                        ", /* 50 */
-	"CL n2p_det,term_en                                    ", /* 51 */
-	"CL cdr_en                                             ", /* 52 */
-	"CL eq_vcm_en                                          ", /* 53 */
-	"CL pi_edge_q_en                                       ", /* 54 */
-	"CL fedac_en,eq_en,eq_ldo_en,dfe_clk_en                ", /* 55 */
-	"CL dfe_clk_edge_sel,dfe_clk,des_en                    ", /* 56 */
-	"CL des_en,cdr_ldo_en,comp_difp_en                     ", /* 57 */
-	"CL cdr_ldo_en                                         ", /* 58 */
-	"CL lck2ref                                            ", /* 59 */
-	"CL freacq_en                                          ", /* 60 */
-	"CL cdr_dig_en,auto_en                                 ", /* 61 */
-	"CL bias_en                                            ", /* 62 */
-	"CL pi_edge_i_en,eq_osacal_en,eq_osacal_bg_en,eq_ldo_en", /* 63 */
-	"CL des_en                                             ", /* 64 */
-	"CL eq_en,imppl_en,sq_en,term_en                       ", /* 65 */
-	"CL pn_swap                                            ", /* 66 */
-	"CL sq,imppl_en                                        ", /* 67 */
-	"CL n2p_det,term_en                                    ", /* 68 */
-	"CL cdr_en                                             ", /* 69 */
-	"CL eq_vcm_en                                          ", /* 70 */
-	"CL pi_edge_q_en                                       ", /* 71 */
-	"CL fedac_en,eq_en,eq_ldo_en,dfe_clk_en                ", /* 72 */
-	"CL dfe_clk_edge_sel,dfe_clk,des_en                    ", /* 73 */
-	"CL des_en,cdr_ldo_en,comp_difp_en                     ", /* 74 */
-	"CL cdr_ldo_en                                         ", /* 75 */
-	"CL lck2ref                                            ", /* 76 */
-	"CL freacq_en                                          ", /* 77 */
-	"CL cdr_dig_en,auto_en                                 ", /* 78 */
-	"CL bias_en                                            ", /* 79 */
-	"CL pi_edge_i_en,eq_osacal_en,eq_osacal_bg_en,eq_ldo_en", /* 80 */
-	"CL des_en                                             ", /* 81 */
-	"CL eq_en,imppl_en,sq_en,term_en                       ", /* 82 */
-	"CL pn_swap                                            ", /* 83 */
-
-	"CL IPATH CODE", /* 84 */
-	"CL IPATH CODE", /* 85 */
-	"CL IPATH CODE", /* 86 */
-	"CL IPATH CODE", /* 87 */
-	"CL IPATH CODE", /* 88 */
-	"CL IPATH CODE", /* 89 */
-	"CL IPATH CODE", /* 90 */
-	"CL IPATH CODE", /* 91 */
-	"CL IPATH CODE", /* 92 */
-	"CL IPATH CODE", /* 93 */
-	"CL PI CODE", /* 94 */
-	"CL PI CODE", /* 95 */
-	"CL PI CODE", /* 96 */
-	"CL PI CODE", /* 97 */
-	"CL PI CODE", /* 98 */
-	"CL PI CODE", /* 99 */
-	"CL PI CODE", /* 100 */
-	"CL PI CODE", /* 101 */
-	"CL PI CODE", /* 102 */
-	"CL PI CODE", /* 103 */
-
-	"CL RXPLL_BAND", /* 104 */
-	"CL RXPLL_BAND", /* 105 */
-	"CL RXPLL_BAND", /* 106 */
-	"CL RXPLL_BAND", /* 107 */
-	"CL RXPLL_BAND", /* 108 */
-	"CL", /* 109 */
-
-	"CL", /* 110 */
-	"CL", /* 111 */
-	"CL", /* 112 */
-	"CL", /* 113 */
-	"CL", /* 114 */
-	"CL", /* 115 */
-	"CL", /* 116 */
-	"CL", /* 117 */
-	"CL", /* 118 */
-	"CL", /* 119 */
-	"CL", /* 110 */
-	"CL", /* 121 */
-	"CL", /* 122 */
-	"CL", /* 123 */
-	"CL", /* 124 */
-	"CL", /* 125 */
-	"CL", /* 126 */
-	"CL", /* 127 */
-	"CL", /* 128 */
-	"CL", /* 129 */
-	"CL", /* 120 */
-	"CL", /* 131 */
-	"CL", /* 132 */
-	"CL", /* 133 */
-	"CL", /* 134 */
-	"CL", /* 135 */
-	"CL", /* 136 */
-	"CL", /* 137 */
-	"CL", /* 138 */
-	"CL", /* 139 */
-	"CL", /* 140 */
-	"CL", /* 141 */
-	"CL", /* 142 */
-	"CL", /* 143 */
-	"CL", /* 144 */
-	"CL", /* 145 */
-	"CL", /* 146 */
-	"CL", /* 147 */
-	"CL", /* 148 */
-	"CL", /* 149 */
-};
-
-#endif
+#include "ufs-mediatek-btag.h"
+#include "ufs-mediatek-rpmb.h"
+#include "ufs-mediatek-sysfs.h"
 
 extern void mt_irq_dump_status(unsigned int irq);
 static int ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba);
@@ -406,20 +47,58 @@ static int ufs_mtk_config_mcq(struct ufs_hba *hba, bool irq);
 #define MAX_SUPP_MAC 64
 #define MCQ_QUEUE_OFFSET(c) ((((c) >> 16) & 0xFF) * 0x200)
 
-static struct ufs_dev_quirk ufs_mtk_dev_quirks[] = {
+static const struct ufs_dev_quirk ufs_mtk_dev_fixups[] = {
 	{ .wmanufacturerid = UFS_ANY_VENDOR,
 	  .model = UFS_ANY_MODEL,
-	  .quirk = UFS_DEVICE_QUIRK_DELAY_BEFORE_LPM |
-		UFS_DEVICE_QUIRK_DELAY_AFTER_LPM },
+	  .quirk = UFS_DEVICE_QUIRK_DELAY_AFTER_LPM |
+		UFS_DEVICE_QUIRK_DELAY_BEFORE_LPM },
 	{ .wmanufacturerid = UFS_VENDOR_SKHYNIX,
 	  .model = "H9HQ21AFAMZDAR",
 	  .quirk = UFS_DEVICE_QUIRK_SUPPORT_EXTENDED_FEATURES },
-	{ }
+	{}
 };
 
 static const struct of_device_id ufs_mtk_of_match[] = {
 	{ .compatible = "mediatek,mt8183-ufshci" },
 	{},
+};
+
+/*
+ * Details of UIC Errors
+ */
+static const char *const ufs_uic_err_str[] = {
+	"PHY Adapter Layer",
+	"Data Link Layer",
+	"Network Link Layer",
+	"Transport Link Layer",
+	"DME"
+};
+
+static const char *const ufs_uic_pa_err_str[] = {
+	"PHY error on Lane 0",
+	"PHY error on Lane 1",
+	"PHY error on Lane 2",
+	"PHY error on Lane 3",
+	"Generic PHY Adapter Error. This should be the LINERESET indication"
+};
+
+static const char *const ufs_uic_dl_err_str[] = {
+	"NAC_RECEIVED",
+	"TCx_REPLAY_TIMER_EXPIRED",
+	"AFCx_REQUEST_TIMER_EXPIRED",
+	"FCx_PROTECTION_TIMER_EXPIRED",
+	"CRC_ERROR",
+	"RX_BUFFER_OVERFLOW",
+	"MAX_FRAME_LENGTH_EXCEEDED",
+	"WRONG_SEQUENCE_NUMBER",
+	"AFC_FRAME_SYNTAX_ERROR",
+	"NAC_FRAME_SYNTAX_ERROR",
+	"EOF_SYNTAX_ERROR",
+	"FRAME_SYNTAX_ERROR",
+	"BAD_CTRL_SYMBOL_TYPE",
+	"PA_INIT_ERROR",
+	"PA_ERROR_IND_RECEIVED",
+	"PA_INIT"
 };
 
 static bool ufs_mtk_is_boost_crypt_enabled(struct ufs_hba *hba)
@@ -607,9 +286,13 @@ static int ufs_mtk_hce_enable_notify(struct ufs_hba *hba,
 			hba->ahit = 0;
 		}
 
+		/*
+		 * Turn on CLK_CG early to bypass abnormal ERR_CHK signal
+		 * to prevent host hang issue
+		 */
 		ufshcd_writel(hba,
-			(ufshcd_readl(hba, REG_UFS_XOUFS_CTRL) | 0x80),
-			REG_UFS_XOUFS_CTRL);
+			      ufshcd_readl(hba, REG_UFS_XOUFS_CTRL) | 0x80,
+			      REG_UFS_XOUFS_CTRL);
 	}
 
 	return 0;
@@ -711,7 +394,7 @@ out:
 }
 
 static void ufs_mtk_setup_ref_clk_wait_us(struct ufs_hba *hba,
-					  u16 gating_us, u16 ungating_us)
+					  u16 gating_us)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
@@ -722,7 +405,7 @@ static void ufs_mtk_setup_ref_clk_wait_us(struct ufs_hba *hba,
 		host->ref_clk_gating_wait_us = gating_us;
 	}
 
-	host->ref_clk_ungating_wait_us = ungating_us;
+	host->ref_clk_ungating_wait_us = REFCLK_DEFAULT_WAIT_US;
 }
 
 static void ufs_mtk_dbg_sel(struct ufs_hba *hba)
@@ -747,15 +430,15 @@ static void ufs_mtk_wait_idle_state(struct ufs_hba *hba,
 	u32 val, sm;
 	bool wait_idle;
 
-	timeout = sched_clock() + retry_ms * 1000000UL;
-
+	/* cannot use plain ktime_get() in suspend */
+	timeout = ktime_get_mono_fast_ns() + retry_ms * 1000000UL;
 
 	/* wait a specific time after check base */
 	udelay(10);
 	wait_idle = false;
 
 	do {
-		time_checked = sched_clock();
+		time_checked = ktime_get_mono_fast_ns();
 		ufs_mtk_dbg_sel(hba);
 		val = ufshcd_readl(hba, REG_UFS_PROBE);
 
@@ -846,8 +529,6 @@ static int ufs_mtk_mphy_power_on(struct ufs_hba *hba, bool on)
 		if (ufs_mtk_is_va09_supported(hba)) {
 			ufs_mtk_va09_pwr_ctrl(res, 0);
 			ret = regulator_disable(host->reg_va09);
-			if (ret < 0)
-				goto out;
 		}
 	}
 out:
@@ -1036,16 +717,15 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 	if (of_property_read_bool(np, "mediatek,ufs-disable-mcq"))
 		host->caps |= UFS_MTK_CAP_DISABLE_MCQ;
 
-#if !IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
-	host->caps |= UFS_MTK_CAP_DISABLE_MCQ;
-#endif
-
 	if (of_property_read_bool(np, "mediatek,ufs-rtff-mtcmos"))
 		host->caps |= UFS_MTK_CAP_RTFF_MTCMOS;
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	if (of_property_read_bool(np, "mediatek,ufs-mphy-debug"))
-		host->mphy_base = ioremap(0x112a0000, 0x10000);
+		ufs_mtk_dbg_phy_enable(hba);
+
+#if !IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+	/* Disable MCQ in user load temporarily */
+	host->caps |= UFS_MTK_CAP_DISABLE_MCQ;
 #endif
 
 	dev_info(hba->dev, "caps=0x%x", host->caps);
@@ -1161,18 +841,6 @@ static void ufs_mtk_mcq_set_irq_affinity(struct ufs_hba *hba)
 	}
 }
 
-static inline bool ufs_mtk_is_data_cmd(struct scsi_cmnd *cmd)
-{
-	char cmd_op = cmd->cmnd[0];
-
-	if (cmd_op == WRITE_10 || cmd_op == READ_10 ||
-	    cmd_op == WRITE_16 || cmd_op == READ_16 ||
-	    cmd_op == WRITE_6 || cmd_op == READ_6)
-		return true;
-
-	return false;
-}
-
 #define UFS_VEND_SAMSUNG  (1 << 0)
 
 struct tracepoints_table {
@@ -1183,183 +851,22 @@ struct tracepoints_table {
 	unsigned int vend;
 };
 
-#if defined(CONFIG_UFSFEATURE)
-static void ufs_mtk_trace_vh_prepare_command_vend_ss(void *data,
-				struct ufs_hba *hba, struct request *rq,
-				struct ufshcd_lrb *lrbp, int *err)
-{
-	ufsf_change_lun(ufs_mtk_get_ufsf(hba), lrbp);
-	*err = ufsf_prep_fn(ufs_mtk_get_ufsf(hba), lrbp);
-}
-
-static void ufs_mtk_trace_vh_compl_command_vend_ss(struct ufs_hba *hba,
-				struct ufshcd_lrb *lrbp,
-				unsigned long out_reqs,
-				unsigned long out_tasks)
-{
-	struct scsi_cmnd *cmd = lrbp->cmd;
-	struct utp_upiu_header *header = &lrbp->ucd_rsp_ptr->header;
-	int result = 0;
-	int scsi_status;
-	int ocs;
-	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
-
-	if (!cmd)
-		return;
-
-#if defined(CONFIG_UFSSHPB) && defined(CONFIG_HPB_DEBUG)
-	trace_printk("%llu + %u cmd 0x%X comp tag[%d] out %lX\n",
-		     (unsigned long long) blk_rq_pos(cmd->request),
-		     (unsigned int) blk_rq_sectors(cmd->request),
-		     cmd->cmnd[0], lrbp->task_tag, hba->outstanding_reqs);
-#endif
-	ocs = le32_to_cpu(header->dword_2) & MASK_OCS;
-
-	if (ocs == OCS_SUCCESS) {
-		result = be32_to_cpu(header->dword_0) >> 24;
-		if (result == UPIU_TRANSACTION_RESPONSE) {
-			scsi_status = be32_to_cpu(header->dword_1) &
-				MASK_SCSI_STATUS;
-			if (scsi_status == SAM_STAT_GOOD) {
-				ufsf_hpb_noti_rb(ufsf, lrbp);
-				if (ufsf_upiu_check_for_ccd(lrbp)) {
-					ufsf_copy_sense_data(lrbp);
-					/*
-					 * this applies to "GOOD" case
-					 * in scsi_decide_disposition()
-					 * and will pass normally.
-					 * if result is 0x00, sense will not
-					 * be able to copy in sg_scsi_ioctl()
-					 * Finally, ioctl tool in userspace will
-					 * receive the error as 1.
-					 */
-					result |= GOOD_CCD;
-				}
-			}
-		}
-	}
-#if defined(CONFIG_UFSHID)
-	/* Check if it is the last request to be completed */
-	if (!out_tasks && !out_reqs)
-		schedule_work(&ufsf->on_idle_work);
-#endif
-}
-
-static void ufs_mtk_trace_vh_send_tm_command_vend_ss(void *data, struct ufs_hba *hba,
-			int tag, int str_t)
-{
-	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
-
-	if (str_t == UFS_TM_COMP)
-		ufsf_reset_lu(ufsf);
-}
-
-static void ufs_mtk_trace_vh_update_sdev_vend_ss(void *data, struct scsi_device *sdev)
-{
-	struct ufs_hba *hba = shost_priv(sdev->host);
-	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
-
-	if (hba->dev_info.wmanufacturerid == UFS_VENDOR_SAMSUNG)
-		ufsf_slave_configure(ufsf, sdev);
-}
-
-static void ufs_mtk_trace_vh_send_command_vend_ss(void *data, struct ufs_hba *hba,
-				struct ufshcd_lrb *lrbp)
-{
-	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
-
-	ufsf_hid_acc_io_stat(ufsf, lrbp);
-}
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-struct ufs_hw_queue *ufs_mtk_mcq_req_to_hwq(struct ufs_hba *hba,
-					    struct request *req)
-{
-	u32 utag = blk_mq_unique_tag(req);
-	u32 hwq = blk_mq_unique_tag_to_hwq(utag);
-
-	/* uhq[0] is used to serve device commands */
-	return &hba->uhq[hwq];
-}
-#endif
-
 static void ufs_mtk_trace_vh_send_command(void *data, struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 {
-	struct scsi_cmnd *cmd = lrbp->cmd;
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-	struct ufs_hw_queue *hq;
-	__u16 qid = 0;
-#endif
-
-	if (!cmd)
+	if (!lrbp->cmd)
 		return;
 
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-	if (ufs_mtk_is_data_cmd(cmd)) {
-		if (is_mcq_enabled(hba)) {
-			hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
-			qid = hq->id;
-		}
-		mtk_btag_ufs_send_command(lrbp->task_tag, qid, cmd);
-	}
-#endif
+	ufs_mtk_btag_send_command(hba, lrbp);
 }
-
-#if defined(CONFIG_UFSFEATURE)
-static void ufs_mtk_get_outstanding_reqs(struct ufs_hba *hba,
-				unsigned long **outstanding_reqs, int *nr_tag)
-{
-	*outstanding_reqs = &hba->outstanding_reqs;
-	*nr_tag = hba->nutrs;
-}
-#endif
 
 static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 {
 	struct scsi_cmnd *cmd = lrbp->cmd;
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-	struct ufs_hw_queue *hq;
-	__u16 qid = 0;
-#endif
-#if defined(CONFIG_UFSFEATURE)
-	unsigned long outstanding_tasks;
-	struct ufsf_feature *ufsf;
-	unsigned long *outstanding_reqs;
-	unsigned long ongoing_cnt = 0;
-	int tmp_tag, nr_tag;
-#endif
 
 	if (!cmd)
 		return;
 
-#if defined(CONFIG_UFSFEATURE)
-	ufs_mtk_get_outstanding_reqs(hba, &outstanding_reqs, &nr_tag);
-	for_each_set_bit(tmp_tag, outstanding_reqs, nr_tag) {
-		ongoing_cnt = 1;
-		break;
-	}
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-	if (ufs_mtk_is_data_cmd(cmd)) {
-		if (is_mcq_enabled(hba)) {
-			hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
-			qid = hq->id;
-		}
-		mtk_btag_ufs_transfer_req_compl(lrbp->task_tag, qid);
-	}
-#endif
-
-#if defined(CONFIG_UFSFEATURE)
-	ufsf = ufs_mtk_get_ufsf(hba);
-
-	outstanding_tasks = hba->outstanding_tasks;
-
-	if (ufsf->hba)
-		ufs_mtk_trace_vh_compl_command_vend_ss(hba, lrbp,
-			ongoing_cnt, outstanding_tasks);
-#endif
+	ufs_mtk_btag_send_command(hba, lrbp);
 }
 
 static void ufs_mtk_trace_vh_update_sdev(void *data, struct scsi_device *sdev)
@@ -1434,28 +941,6 @@ static struct tracepoints_table interests[] = {
 		.name = "android_vh_ufs_update_sdev",
 		.func = ufs_mtk_trace_vh_update_sdev
 	},
-#if defined(CONFIG_UFSFEATURE)
-	{
-		.name = "android_vh_ufs_prepare_command",
-		.func = ufs_mtk_trace_vh_prepare_command_vend_ss,
-		.vend = UFS_VEND_SAMSUNG
-	},
-	{
-		.name = "android_vh_ufs_send_tm_command",
-		.func = ufs_mtk_trace_vh_send_tm_command_vend_ss,
-		.vend = UFS_VEND_SAMSUNG
-	},
-	{
-		.name = "android_vh_ufs_update_sdev",
-		.func = ufs_mtk_trace_vh_update_sdev_vend_ss,
-		.vend = UFS_VEND_SAMSUNG
-	},
-	{
-		.name = "android_vh_ufs_send_command",
-		.func = ufs_mtk_trace_vh_send_command_vend_ss,
-		.vend = UFS_VEND_SAMSUNG
-	},
-#endif
 };
 
 #define FOR_EACH_INTEREST(i) \
@@ -1489,7 +974,6 @@ static void ufs_mtk_uninstall_tracepoints(void)
 static int ufs_mtk_install_tracepoints(struct ufs_hba *hba)
 {
 	int i;
-	unsigned int vend;
 
 	/* Install the tracepoints */
 	for_each_kernel_tracepoint(ufs_mtk_lookup_tracepoints, NULL);
@@ -1500,16 +984,6 @@ static int ufs_mtk_install_tracepoints(struct ufs_hba *hba)
 				interests[i].name);
 			continue;
 		}
-
-		vend = interests[i].vend;
-		if (vend & UFS_VEND_SAMSUNG) {
-			if (hba->dev_info.wmanufacturerid != UFS_VENDOR_SAMSUNG)
-				continue;
-		}
-
-		tracepoint_probe_register(interests[i].tp,
-					  interests[i].func,
-					  NULL);
 		interests[i].init = true;
 	}
 
@@ -1544,519 +1018,6 @@ static void ufs_mtk_get_controller_version(struct ufs_hba *hba)
 static u32 ufs_mtk_get_ufs_hci_version(struct ufs_hba *hba)
 {
 	return hba->ufs_version;
-}
-
-
-#if IS_ENABLED(CONFIG_RPMB)
-
-#define SEC_PROTOCOL_UFS  0xEC
-#define SEC_SPECIFIC_UFS_RPMB 0x0001
-
-#define SEC_PROTOCOL_CMD_SIZE 12
-#define SEC_PROTOCOL_RETRIES 3
-#define SEC_PROTOCOL_RETRIES_ON_RESET 10
-#define SEC_PROTOCOL_TIMEOUT msecs_to_jiffies(30000)
-
-int ufs_mtk_rpmb_security_out(struct scsi_device *sdev,
-			 struct rpmb_frame *frames, u32 cnt, u8 region)
-{
-	struct scsi_sense_hdr sshdr = {0};
-	u32 trans_len = cnt * sizeof(struct rpmb_frame);
-	int reset_retries = SEC_PROTOCOL_RETRIES_ON_RESET;
-	int ret;
-	u8 cmd[SEC_PROTOCOL_CMD_SIZE];
-
-	memset(cmd, 0, SEC_PROTOCOL_CMD_SIZE);
-	cmd[0] = SECURITY_PROTOCOL_OUT;
-	cmd[1] = SEC_PROTOCOL_UFS;
-	put_unaligned_be16((region << 8) | SEC_SPECIFIC_UFS_RPMB, cmd + 2);
-	cmd[4] = 0;                              /* inc_512 bit 7 set to 0 */
-	put_unaligned_be32(trans_len, cmd + 6);  /* transfer length */
-
-retry:
-	ret = scsi_execute_cmd(sdev, cmd, REQ_OP_DRV_OUT, frames,
-				trans_len, SEC_PROTOCOL_TIMEOUT, SEC_PROTOCOL_RETRIES,
-				&(struct scsi_exec_args) {
-					.sshdr = &sshdr,
-					.resid = NULL,
-				});
-
-	if (ret && scsi_sense_valid(&sshdr) &&
-	    sshdr.sense_key == UNIT_ATTENTION)
-		/*
-		 * Device reset might occur several times,
-		 * give it one more chance
-		 */
-		if (--reset_retries > 0)
-			goto retry;
-
-	if (ret)
-		dev_err(&sdev->sdev_gendev, "%s: failed with err %0x\n",
-			__func__, ret);
-
-	if (scsi_sense_valid(&sshdr) && sshdr.sense_key)
-		scsi_print_sense_hdr(sdev, "rpmb: security out", &sshdr);
-
-	return ret;
-}
-
-int ufs_mtk_rpmb_security_in(struct scsi_device *sdev,
-			struct rpmb_frame *frames, u32 cnt, u8 region)
-{
-	struct scsi_sense_hdr sshdr = {0};
-	u32 alloc_len = cnt * sizeof(struct rpmb_frame);
-	int reset_retries = SEC_PROTOCOL_RETRIES_ON_RESET;
-	int ret;
-	u8 cmd[SEC_PROTOCOL_CMD_SIZE];
-
-	memset(cmd, 0, SEC_PROTOCOL_CMD_SIZE);
-	cmd[0] = SECURITY_PROTOCOL_IN;
-	cmd[1] = SEC_PROTOCOL_UFS;
-	put_unaligned_be16((region << 8) | SEC_SPECIFIC_UFS_RPMB, cmd + 2);
-	cmd[4] = 0;                             /* inc_512 bit 7 set to 0 */
-	put_unaligned_be32(alloc_len, cmd + 6); /* allocation length */
-
-retry:
-	ret = scsi_execute_cmd(sdev, cmd, REQ_OP_DRV_IN, frames,
-				alloc_len, SEC_PROTOCOL_TIMEOUT, SEC_PROTOCOL_RETRIES,
-				&(struct scsi_exec_args) {
-					.sshdr = &sshdr,
-					.resid = NULL,
-				});
-
-	if (ret && scsi_sense_valid(&sshdr) &&
-	    sshdr.sense_key == UNIT_ATTENTION)
-		/*
-		 * Device reset might occur several times,
-		 * give it one more chance
-		 */
-		if (--reset_retries > 0)
-			goto retry;
-
-	if (ret)
-		dev_err(&sdev->sdev_gendev, "%s: failed with err %0x\n",
-			__func__, ret);
-
-	if (scsi_sense_valid(&sshdr) && sshdr.sense_key)
-		scsi_print_sense_hdr(sdev, "rpmb: security in", &sshdr);
-
-	return ret;
-}
-
-static int ufs_mtk_rpmb_cmd_seq(struct device *dev,
-			       struct rpmb_cmd *cmds, u32 ncmds, u8 region)
-{
-	unsigned long flags;
-	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct ufs_mtk_host *host;
-	struct scsi_device *sdev;
-	struct rpmb_cmd *cmd;
-	int i;
-	int ret;
-
-	host = ufshcd_get_variant(hba);
-
-	spin_lock_irqsave(hba->host->host_lock, flags);
-	sdev = host->sdev_rpmb;
-	if (sdev) {
-		ret = scsi_device_get(sdev);
-		if (!ret && !scsi_device_online(sdev)) {
-			ret = -ENODEV;
-			scsi_device_put(sdev);
-		}
-	} else {
-		ret = -ENODEV;
-	}
-	spin_unlock_irqrestore(hba->host->host_lock, flags);
-	if (ret)
-		return ret;
-
-	/*
-	 * Send all command one by one.
-	 * Use rpmb lock to prevent other rpmb read/write threads cut in line.
-	 * Use mutex not spin lock because in/out function might sleep.
-	 */
-	down(&host->rpmb_sem);
-	/* Ensure device is resumed before RPMB operation */
-	scsi_autopm_get_device(sdev);
-
-	for (ret = 0, i = 0; i < ncmds && !ret; i++) {
-		cmd = &cmds[i];
-		if (cmd->flags & RPMB_F_WRITE)
-			ret = ufs_mtk_rpmb_security_out(sdev, cmd->frames,
-						       cmd->nframes, region);
-		else
-			ret = ufs_mtk_rpmb_security_in(sdev, cmd->frames,
-						      cmd->nframes, region);
-	}
-
-	/* Allow device to be runtime suspended */
-	scsi_autopm_put_device(sdev);
-	up(&host->rpmb_sem);
-
-	scsi_device_put(sdev);
-	return ret;
-}
-
-static struct rpmb_ops ufs_mtk_rpmb_dev_ops = {
-	.cmd_seq = ufs_mtk_rpmb_cmd_seq,
-	.type = RPMB_TYPE_UFS,
-};
-static struct rpmb_dev *rawdev_ufs_rpmb;
-
-/**
- * ufs_mtk_rpmb_ddd - add mtk rpmb cdev
- * @data: host controller instance (hba)
- *
- * Read max ufs device read/write rpmb size support and
- * set to reliable_wr_cnt for rpmb cdev read/write reference.
- *
- * Register raw cdve device in rawdev_ufs_rpmb
- */
-static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
-{
-	int err;
-	u8 *desc_buf;
-	struct rpmb_dev *rdev;
-	u8 rw_size;
-	struct ufs_mtk_host *host;
-	struct ufs_hba *hba = (struct ufs_hba *)data;
-	struct scsi_device *sdev = NULL;
-
-	host = ufshcd_get_variant(hba);
-
-	sema_init(&host->rpmb_sem, 0);
-
-	err = wait_for_completion_timeout(&host->luns_added, 10 * HZ);
-	if (err == 0) {
-		dev_info(hba->dev, "%s: LUNs not ready before timeout. RPMB init failed", __func__);
-		goto out;
-	}
-
-	/* add sdev_rpmb */
-	shost_for_each_device(sdev, hba->host) {
-		if (sdev->lun == ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_RPMB_WLUN)) { /* rpmb lun */
-			host->sdev_rpmb = sdev;
-			/* break out shost_for_each_device should call scsi_device_put(sdev) */
-			scsi_device_put(sdev);
-			goto find_exit;
-		}
-	}
-
-	dev_err(hba->dev, "%s: scsi rpmb device cannot found\n", __func__);
-		goto out;
-
-find_exit:
-
-	desc_buf = kmalloc(QUERY_DESC_MAX_SIZE, GFP_KERNEL);
-	if (!desc_buf)
-		goto out;
-
-	err = ufshcd_read_desc_param(hba, QUERY_DESC_IDN_GEOMETRY, 0, 0,
-				     desc_buf, QUERY_DESC_MAX_SIZE);
-	if (err) {
-		dev_warn(hba->dev, "%s: cannot get rpmb rw limit %d\n",
-			 dev_name(hba->dev), err);
-		/* fallback to singel frame write */
-		rw_size = 1;
-	} else {
-		rw_size = desc_buf[GEOMETRY_DESC_PARAM_RPMB_RW_SIZE];
-	}
-
-	kfree(desc_buf);
-	dev_info(hba->dev, "rpmb rw_size: %d\n", rw_size);
-
-	ufs_mtk_rpmb_dev_ops.reliable_wr_cnt = rw_size;
-
-	if (unlikely(scsi_device_get(host->sdev_rpmb)))
-		goto out;
-
-	rdev = rpmb_dev_register(hba->dev, &ufs_mtk_rpmb_dev_ops);
-	if (IS_ERR(rdev)) {
-		dev_warn(hba->dev, "%s: cannot register to rpmb %ld\n",
-			 dev_name(hba->dev), PTR_ERR(rdev));
-		goto out_put_dev;
-	}
-
-	/*
-	 * Preserve rpmb_dev to globals for connection of legacy
-	 * rpmb ioctl solution.
-	 */
-	rawdev_ufs_rpmb = rdev;
-
-out_put_dev:
-	scsi_device_put(host->sdev_rpmb);
-
-out:
-	up(&host->rpmb_sem);
-
-	return;
-}
-
-struct rpmb_dev *ufs_mtk_rpmb_get_raw_dev(void)
-{
-	return rawdev_ufs_rpmb;
-}
-EXPORT_SYMBOL_GPL(ufs_mtk_rpmb_get_raw_dev);
-#endif
-
-/**
- * ufs_mtk_query_ioctl - perform user read queries
- * @hba: per-adapter instance
- * @lun: used for lun specific queries
- * @buffer: user space buffer for reading and submitting query data and params
- * @return: 0 for success negative error code otherwise
- *
- * Expected/Submitted buffer structure is struct ufs_ioctl_query_data.
- * It will read the opcode, idn and buf_length parameters, and, put the
- * response in the buffer field while updating the used size in buf_length.
- */
-static int
-ufs_mtk_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
-{
-	struct ufs_ioctl_query_data *ioctl_data;
-	int err = 0;
-	int length = 0;
-	void *data_ptr;
-	bool flag;
-	u32 att;
-	u8 index = 0;
-	u8 *desc = NULL;
-
-	ioctl_data = kzalloc(sizeof(*ioctl_data), GFP_KERNEL);
-	if (!ioctl_data) {
-		err = -ENOMEM;
-		goto out;
-	}
-
-	/* extract params from user buffer */
-	err = copy_from_user(ioctl_data, buffer,
-			     sizeof(struct ufs_ioctl_query_data));
-	if (err) {
-		dev_err(hba->dev,
-			"%s: Failed copying buffer from user, err %d\n",
-			__func__, err);
-		goto out_release_mem;
-	}
-
-#if defined(CONFIG_UFSFEATURE)
-	if (ufsf_check_query(ioctl_data->opcode)) {
-		err = ufsf_query_ioctl(ufs_mtk_get_ufsf(hba), lun, buffer,
-				       ioctl_data, UFSFEATURE_SELECTOR);
-		goto out_release_mem;
-	}
-#endif
-
-	/* verify legal parameters & send query */
-	switch (ioctl_data->opcode) {
-	case UPIU_QUERY_OPCODE_READ_DESC:
-		switch (ioctl_data->idn) {
-		case QUERY_DESC_IDN_DEVICE:
-		case QUERY_DESC_IDN_CONFIGURATION:
-		case QUERY_DESC_IDN_INTERCONNECT:
-		case QUERY_DESC_IDN_GEOMETRY:
-		case QUERY_DESC_IDN_POWER:
-			index = 0;
-			break;
-		case QUERY_DESC_IDN_UNIT:
-			if (!ufs_is_valid_unit_desc_lun(&hba->dev_info, lun)) {
-				dev_err(hba->dev,
-					"%s: No unit descriptor for lun 0x%x\n",
-					__func__, lun);
-				err = -EINVAL;
-				goto out_release_mem;
-			}
-			index = lun;
-			break;
-		default:
-			goto out_einval;
-		}
-		length = min_t(int, QUERY_DESC_MAX_SIZE,
-			       ioctl_data->buf_size);
-		desc = kzalloc(length, GFP_KERNEL);
-		if (!desc) {
-			dev_err(hba->dev, "%s: Failed allocating %d bytes\n",
-				__func__, length);
-			err = -ENOMEM;
-			goto out_release_mem;
-		}
-		err = ufshcd_query_descriptor_retry(hba, ioctl_data->opcode,
-						    ioctl_data->idn, index, 0,
-						    desc, &length);
-		break;
-	case UPIU_QUERY_OPCODE_READ_ATTR:
-		switch (ioctl_data->idn) {
-		case QUERY_ATTR_IDN_BOOT_LU_EN:
-		case QUERY_ATTR_IDN_POWER_MODE:
-		case QUERY_ATTR_IDN_ACTIVE_ICC_LVL:
-		case QUERY_ATTR_IDN_OOO_DATA_EN:
-		case QUERY_ATTR_IDN_BKOPS_STATUS:
-		case QUERY_ATTR_IDN_PURGE_STATUS:
-		case QUERY_ATTR_IDN_MAX_DATA_IN:
-		case QUERY_ATTR_IDN_MAX_DATA_OUT:
-		case QUERY_ATTR_IDN_REF_CLK_FREQ:
-		case QUERY_ATTR_IDN_CONF_DESC_LOCK:
-		case QUERY_ATTR_IDN_MAX_NUM_OF_RTT:
-		case QUERY_ATTR_IDN_EE_CONTROL:
-		case QUERY_ATTR_IDN_EE_STATUS:
-		case QUERY_ATTR_IDN_SECONDS_PASSED:
-			index = 0;
-			break;
-		case QUERY_ATTR_IDN_DYN_CAP_NEEDED:
-		case QUERY_ATTR_IDN_CORR_PRG_BLK_NUM:
-			index = lun;
-			break;
-		default:
-			goto out_einval;
-		}
-		err = ufshcd_query_attr(hba, ioctl_data->opcode,
-					ioctl_data->idn, index, 0, &att);
-		break;
-
-	case UPIU_QUERY_OPCODE_WRITE_ATTR:
-		err = copy_from_user(&att,
-				     buffer +
-				     sizeof(struct ufs_ioctl_query_data),
-				     sizeof(u32));
-		if (err) {
-			dev_err(hba->dev,
-				"%s: Failed copying buffer from user, err %d\n",
-				__func__, err);
-			goto out_release_mem;
-		}
-
-		switch (ioctl_data->idn) {
-		case QUERY_ATTR_IDN_BOOT_LU_EN:
-			index = 0;
-			if (!att) {
-				dev_err(hba->dev,
-					"%s: Illegal ufs query ioctl data, opcode 0x%x, idn 0x%x, att 0x%x\n",
-					__func__, ioctl_data->opcode,
-					(unsigned int)ioctl_data->idn, att);
-				err = -EINVAL;
-				goto out_release_mem;
-			}
-			break;
-		default:
-			goto out_einval;
-		}
-		err = ufshcd_query_attr(hba, ioctl_data->opcode,
-					ioctl_data->idn, index, 0, &att);
-		break;
-
-	case UPIU_QUERY_OPCODE_READ_FLAG:
-		switch (ioctl_data->idn) {
-		case QUERY_FLAG_IDN_FDEVICEINIT:
-		case QUERY_FLAG_IDN_PERMANENT_WPE:
-		case QUERY_FLAG_IDN_PWR_ON_WPE:
-		case QUERY_FLAG_IDN_BKOPS_EN:
-		case QUERY_FLAG_IDN_PURGE_ENABLE:
-		case QUERY_FLAG_IDN_FPHYRESOURCEREMOVAL:
-		case QUERY_FLAG_IDN_BUSY_RTC:
-			break;
-		default:
-			goto out_einval;
-		}
-		err = ufshcd_query_flag(hba, ioctl_data->opcode,
-					ioctl_data->idn, 0, &flag);
-		break;
-	default:
-		goto out_einval;
-	}
-
-	if (err) {
-		dev_err(hba->dev, "%s: Query for idn %d failed\n", __func__,
-			ioctl_data->idn);
-		goto out_release_mem;
-	}
-
-	/*
-	 * copy response data
-	 * As we might end up reading less data than what is specified in
-	 * "ioctl_data->buf_size". So we are updating "ioctl_data->
-	 * buf_size" to what exactly we have read.
-	 */
-	switch (ioctl_data->opcode) {
-	case UPIU_QUERY_OPCODE_READ_DESC:
-		ioctl_data->buf_size = min_t(int, ioctl_data->buf_size, length);
-		data_ptr = desc;
-		break;
-	case UPIU_QUERY_OPCODE_READ_ATTR:
-		ioctl_data->buf_size = sizeof(u32);
-		data_ptr = &att;
-		break;
-	case UPIU_QUERY_OPCODE_READ_FLAG:
-		ioctl_data->buf_size = 1;
-		data_ptr = &flag;
-		break;
-	case UPIU_QUERY_OPCODE_WRITE_ATTR:
-		goto out_release_mem;
-	default:
-		goto out_einval;
-	}
-
-	/* copy to user */
-	err = copy_to_user(buffer, ioctl_data,
-			   sizeof(struct ufs_ioctl_query_data));
-	if (err)
-		dev_err(hba->dev, "%s: Failed copying back to user.\n",
-			__func__);
-	err = copy_to_user(buffer + sizeof(struct ufs_ioctl_query_data),
-			   data_ptr, ioctl_data->buf_size);
-	if (err)
-		dev_err(hba->dev, "%s: err %d copying back to user.\n",
-			__func__, err);
-	goto out_release_mem;
-
-out_einval:
-	dev_err(hba->dev,
-		"%s: illegal ufs query ioctl data, opcode 0x%x, idn 0x%x\n",
-		__func__, ioctl_data->opcode, (unsigned int)ioctl_data->idn);
-	err = -EINVAL;
-out_release_mem:
-	kfree(ioctl_data);
-	kfree(desc);
-out:
-	return err;
-}
-
-/**
- * ufs_mtk_ioctl - ufs ioctl callback registered in scsi_host
- * @dev: scsi device required for per LUN queries
- * @cmd: command opcode
- * @buffer: user space buffer for transferring data
- *
- * Supported commands:
- * UFS_IOCTL_QUERY
- */
-static int
-ufs_mtk_ioctl(struct scsi_device *dev, unsigned int cmd, void __user *buffer)
-{
-	struct ufs_hba *hba = shost_priv(dev->host);
-	int err = 0;
-
-	BUG_ON(!hba);
-	if (!buffer) {
-		dev_err(hba->dev, "%s: User buffer is NULL!\n", __func__);
-		return -EINVAL;
-	}
-
-	switch (cmd) {
-	case UFS_IOCTL_QUERY:
-		pm_runtime_get_sync(hba->dev);
-		err = ufs_mtk_query_ioctl(hba,
-					  ufshcd_scsi_to_upiu_lun(dev->lun),
-					  buffer);
-		pm_runtime_put_sync(hba->dev);
-		break;
-	default:
-		err = -ENOIOCTLCMD;
-		dev_dbg(hba->dev, "%s: Unsupported ioctl cmd %d\n", __func__,
-			cmd);
-		break;
-	}
-
-	return err;
 }
 
 /**
@@ -2370,22 +1331,6 @@ failed:
 	host->mcq_nr_intr = 0;
 }
 
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-static void ufs_mtk_blocktag_add(void *data, async_cookie_t cookie)
-{
-	struct ufs_hba *hba = (struct ufs_hba *)data;
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-
-	if (!wait_for_completion_timeout(&host->luns_added, 10 * HZ)) {
-		dev_info(hba->dev, "%s: LUNs not ready before timeout. blocktag init failed",
-			 __func__);
-		return;
-	}
-
-	mtk_btag_ufs_init(host, hba->nr_hw_queues, hba->nutrs);
-}
-#endif
-
 /**
  * ufs_mtk_init - find other essential mmio bases
  * @hba: host controller instance
@@ -2466,12 +1411,10 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	ufs_mtk_init_clocks(hba);
 
-#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
 	if (hba->caps & UFSHCD_CAP_CLK_SCALING)
 		ufs_mtk_init_clk_scaling_sysfs(hba);
 
 	ufs_mtk_init_irq_sysfs(hba);
-#endif
 
 	/*
 	 * ufshcd_vops_init() is invoked after
@@ -2502,27 +1445,14 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	INIT_DELAYED_WORK(&host->delay_eh_work, ufs_mtk_delay_eh_work_fn);
 	host->delay_eh_workq = create_singlethread_workqueue("ufs_mtk_eh_wq");
 
+	ufs_mtk_btag_init(hba);
 
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-	async_schedule(ufs_mtk_blocktag_add, hba);
-#endif
-
-#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
 	ufs_mtk_dbg_register(hba);
-#endif
 
-#if IS_ENABLED(CONFIG_RPMB)
-	async_schedule(ufs_mtk_rpmb_add, hba);
-#endif
+	ufs_mtk_rpmb_init(hba);
 
-	/* Provide SCSI host ioctl API */
-	hba->host->hostt->ioctl = (int (*)(struct scsi_device *, unsigned int,
-				   void __user *))ufs_mtk_ioctl;
-#ifdef CONFIG_COMPAT
-	hba->host->hostt->compat_ioctl = (int (*)(struct scsi_device *,
-					  unsigned int,
-					  void __user *))ufs_mtk_ioctl;
-#endif
+	ufs_mtk_init_ioctl(hba);
+
 	goto out;
 
 out_variant_clear:
@@ -2633,7 +1563,7 @@ static int ufs_mtk_pre_pwr_change(struct ufs_hba *hba,
 			FASTAUTO_MODE << 4 | FASTAUTO_MODE);
 
 		if (ret) {
-			dev_err(hba->dev, "%s: HSG1B FASTAUTO failed ret=%d\n",
+			dev_info(hba->dev, "%s: HSG1B FASTAUTO failed ret=%d\n",
 				__func__, ret);
 		}
 	}
@@ -2669,451 +1599,6 @@ static int ufs_mtk_pre_pwr_change(struct ufs_hba *hba,
 	return ret;
 }
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
-static void ufs_mtk_mphy_record(struct ufs_hba *hba, u8 stage)
-{
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	u32 i, j;
-
-	if (!host->mphy_base)
-		return;
-
-	if (mphy_record[stage].time)
-		return;
-
-	mphy_record[stage].time = local_clock();
-
-	writel(0xC1000200, host->mphy_base + 0x20C0);
-	for (i = 0; i < 2; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	for (i = 2; i < 20; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-	writel(0, host->mphy_base + 0x20C0);
-
-	writel(0x0, host->mphy_base + 0x0);
-	writel(0x4, host->mphy_base + 0x4);
-	for (i = 20; i < 21; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	for (i = 21; i < 49; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	/* DA Probe */
-	writel(0x0, host->mphy_base + 0x0);
-	writel(0x7, host->mphy_base + 0x4);
-	for (i = 49; i < 50; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	/* Lane 0 */
-	writel(0xc, host->mphy_base + 0x0);
-	writel(0x45, host->mphy_base + 0xA000);
-	for (i = 50; i < 51; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x5f, host->mphy_base + 0xA000);
-	for (i = 51; i < 52; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x85, host->mphy_base + 0xA000);
-	for (i = 52; i < 53; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x8a, host->mphy_base + 0xA000);
-	for (i = 53; i < 54; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x8b, host->mphy_base + 0xA000);
-	for (i = 54; i < 55; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x8c, host->mphy_base + 0xA000);
-	for (i = 55; i < 56; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x8d, host->mphy_base + 0xA000);
-	for (i = 56; i < 57; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x8e, host->mphy_base + 0xA000);
-	for (i = 57; i < 58; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x94, host->mphy_base + 0xA000);
-	for (i = 58; i < 59; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x95, host->mphy_base + 0xA000);
-	for (i = 59; i < 60; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x97, host->mphy_base + 0xA000);
-	for (i = 60; i < 61; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x98, host->mphy_base + 0xA000);
-	for (i = 61; i < 62; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x99, host->mphy_base + 0xA000);
-	for (i = 62; i < 63; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x9c, host->mphy_base + 0xA000);
-	for (i = 63; i < 64; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x9d, host->mphy_base + 0xA000);
-	for (i = 64; i < 65; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0xbd, host->mphy_base + 0xA000);
-	for (i = 65; i < 66; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0xca, host->mphy_base + 0xA000);
-	for (i = 66; i < 67; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	/* Lane 1 */
-	writel(0xd, host->mphy_base + 0x0);
-	writel(0x45, host->mphy_base + 0xA100);
-	for (i = 67; i < 68; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x5f, host->mphy_base + 0xA100);
-	for (i = 68; i < 69; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x85, host->mphy_base + 0xA100);
-	for (i = 69; i < 70; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x8a, host->mphy_base + 0xA100);
-	for (i = 70; i < 71; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x8b, host->mphy_base + 0xA100);
-	for (i = 71; i < 72; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x8c, host->mphy_base + 0xA100);
-	for (i = 72; i < 73; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x8d, host->mphy_base + 0xA100);
-	for (i = 73; i < 74; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x8e, host->mphy_base + 0xA100);
-	for (i = 74; i < 75; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x94, host->mphy_base + 0xA100);
-	for (i = 75; i < 76; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x95, host->mphy_base + 0xA100);
-	for (i = 76; i < 77; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x97, host->mphy_base + 0xA100);
-	for (i = 77; i < 78; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x98, host->mphy_base + 0xA100);
-	for (i = 78; i < 79; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x99, host->mphy_base + 0xA100);
-	for (i = 79; i < 80; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x9c, host->mphy_base + 0xA100);
-	for (i = 80; i < 81; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0x9d, host->mphy_base + 0xA100);
-	for (i = 81; i < 82; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0xbd, host->mphy_base + 0xA100);
-	for (i = 82; i < 83; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(0xca, host->mphy_base + 0xA100);
-	for (i = 83; i < 84; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	/* IPATH CODE */
-	for (j = 0; j < 10; j++) {
-		writel(0x00000000, host->mphy_base + 0x0000);
-		writel(0x2F2E2D2C, host->mphy_base + 0x0004);
-		writel(0x00000001, host->mphy_base + 0xB024);
-		writel(0x00061003, host->mphy_base + 0xB000);
-		writel(0x00000001, host->mphy_base + 0xB124);
-		writel(0x00061003, host->mphy_base + 0xB100);
-		writel(0x00000101, host->mphy_base + 0xB024);
-		writel(0x00000101, host->mphy_base + 0xB124);
-		writel(0x00000141, host->mphy_base + 0xB024);
-		writel(0x400E1003, host->mphy_base + 0xB000);
-		writel(0x00000141, host->mphy_base + 0xB124);
-		writel(0x400E1003, host->mphy_base + 0xB100);
-		writel(0x00000101, host->mphy_base + 0xB024);
-		writel(0x000E1003, host->mphy_base + 0xB000);
-		writel(0x00000101, host->mphy_base + 0xB124);
-		writel(0x000E1003, host->mphy_base + 0xB100);
-		for (i = (84 + j); i < (85 + j); i++) {
-			mphy_record[stage].record[i] =
-				readl(host->mphy_base + mphy_reg_dump[i]);
-		}
-	}
-
-	for (j = 0; j < 10; j++) {
-		writel(0x00000000, host->mphy_base + 0x0000);
-		writel(0x2F2E2D2C, host->mphy_base + 0x0004);
-		writel(0x00000001, host->mphy_base + 0xB024);
-		writel(0x00061003, host->mphy_base + 0xB000);
-		writel(0x00000001, host->mphy_base + 0xB124);
-		writel(0x00061003, host->mphy_base + 0xB100);
-		writel(0x00000001, host->mphy_base + 0xB024);
-		writel(0x00000001, host->mphy_base + 0xB124);
-		writel(0x00000041, host->mphy_base + 0xB024);
-		writel(0x400E1003, host->mphy_base + 0xB000);
-		writel(0x00000041, host->mphy_base + 0xB124);
-		writel(0x400E1003, host->mphy_base + 0xB100);
-		writel(0x00000001, host->mphy_base + 0xB024);
-		writel(0x000E1003, host->mphy_base + 0xB000);
-		writel(0x00000001, host->mphy_base + 0xB124);
-		writel(0x000E1003, host->mphy_base + 0xB100);
-		for (i = (94 + j); i < (95 + j); i++) {
-			mphy_record[stage].record[i] =
-				readl(host->mphy_base + mphy_reg_dump[i]);
-		}
-	}
-
-	writel(0x00000000, host->mphy_base + 0x0000);
-	writel(0x2A << 8 | 0x28, host->mphy_base + 0x4);
-	for (i = 104; i < 109; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(readl(host->mphy_base + 0x1044) | 0x20,
-		host->mphy_base + 0x1044);
-	for (i = 109; i < 110; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-
-	/* Enable CK */
-	writel(readl(host->mphy_base + 0xA02C) | (0x1 << 11),
-		host->mphy_base + 0xA02C);
-	writel(readl(host->mphy_base + 0xA12C) | (0x1 << 11),
-		host->mphy_base + 0xA12C);
-	writel(readl(host->mphy_base + 0xA6C8) | (0x3 << 13),
-		host->mphy_base + 0xA6C8);
-	writel(readl(host->mphy_base + 0xA638) | (0x1 << 10),
-		host->mphy_base + 0xA638);
-	writel(readl(host->mphy_base + 0xA7C8) | (0x3 << 13),
-		host->mphy_base + 0xA7C8);
-	writel(readl(host->mphy_base + 0xA738) | (0x1 << 10),
-		host->mphy_base + 0xA738);
-
-	/* Dump [Lane0] RX RG */
-	for (i = 110; i < 112; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(readl(host->mphy_base + 0xC0DC) & ~(0x1 << 25),
-		host->mphy_base + 0xC0DC);
-	writel(readl(host->mphy_base + 0xC0DC) | (0x1 << 25),
-		host->mphy_base + 0xC0DC);
-	writel(readl(host->mphy_base + 0xC0DC) & ~(0x1 << 25),
-		host->mphy_base + 0xC0DC);
-
-	for (i = 112; i < 120; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(readl(host->mphy_base + 0xC0C0) & ~(0x1 << 27),
-		host->mphy_base + 0xC0C0);
-	writel(readl(host->mphy_base + 0xC0C0) | (0x1 << 27),
-		host->mphy_base + 0xC0C0);
-	writel(readl(host->mphy_base + 0xC0C0) & ~(0x1 << 27),
-		host->mphy_base + 0xC0C0);
-
-	for (i = 120; i < 130; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	/* Dump [Lane1] RX RG */
-	for (i = 130; i < 132; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(readl(host->mphy_base + 0xC1DC) & ~(0x1 << 25),
-		host->mphy_base + 0xC1DC);
-	writel(readl(host->mphy_base + 0xC1DC) | (0x1 << 25),
-		host->mphy_base + 0xC1DC);
-	writel(readl(host->mphy_base + 0xC1DC) & ~(0x1 << 25),
-		host->mphy_base + 0xC1DC);
-
-	for (i = 132; i < 140; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	writel(readl(host->mphy_base + 0xC1C0) & ~(0x1 << 27),
-		host->mphy_base + 0xC1C0);
-	writel(readl(host->mphy_base + 0xC1C0) | (0x1 << 27),
-		host->mphy_base + 0xC1C0);
-	writel(readl(host->mphy_base + 0xC1C0) & ~(0x1 << 27),
-		host->mphy_base + 0xC1C0);
-
-
-	for (i = 140; i < 150; i++) {
-		mphy_record[stage].record[i] =
-			readl(host->mphy_base + mphy_reg_dump[i]);
-	}
-
-	/* Disable CK */
-	writel(readl(host->mphy_base + 0xA02C) & ~(0x1 << 11),
-		host->mphy_base + 0xA02C);
-	writel(readl(host->mphy_base + 0xA12C) & ~(0x1 << 11),
-		host->mphy_base + 0xA12C);
-	writel(readl(host->mphy_base + 0xA6C8) & ~(0x3 << 13),
-		host->mphy_base + 0xA6C8);
-	writel(readl(host->mphy_base + 0xA638) & ~(0x1 << 10),
-		host->mphy_base + 0xA638);
-	writel(readl(host->mphy_base + 0xA7C8) & ~(0x3 << 13),
-		host->mphy_base + 0xA7C8);
-	writel(readl(host->mphy_base + 0xA738) & ~(0x1 << 10),
-		host->mphy_base + 0xA738);
-
-	mphy_record[stage].time_done = local_clock();
-}
-#endif
-
-/* only can read/write in eng/userdebug */
-static void ufs_mtk_mphy_dump(struct ufs_hba *hba)
-{
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	struct timespec64 dur;
-	u32 i, j;
-
-	if (!host->mphy_base)
-		return;
-
-	for (i = 0; i < UFS_MPHY_STAGE_NUM; i++) {
-		if (mphy_record[i].time == 0)
-			continue;
-
-		dur = ns_to_timespec64(mphy_record[i].time);
-
-		pr_info("%s: MPHY record start at %6llu.%lu\n", __func__,
-			dur.tv_sec, dur.tv_nsec);
-
-		dur = ns_to_timespec64(mphy_record[i].time_done);
-
-		pr_info("%s: MPHY record end at %6llu.%lu\n", __func__,
-			dur.tv_sec, dur.tv_nsec);
-
-		for (j = 0; j < MPHY_DUMP_NUM; j++) {
-			pr_info("%s: 0x112a%04X=0x%x, %s\n", __func__,
-				mphy_reg_dump[j], mphy_record[i].record[j],
-				mphy_str[j]);
-		}
-		/* clear mphy record time to avoid to print remaining log */
-		mphy_record[i].time = 0;
-	}
-#endif
-}
-
 static int ufs_mtk_pwr_change_notify(struct ufs_hba *hba,
 				     enum ufs_notify_change_status stage,
 				     struct ufs_pa_layer_attr *dev_max_params,
@@ -3136,74 +1621,6 @@ static int ufs_mtk_pwr_change_notify(struct ufs_hba *hba,
 	return ret;
 }
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
-static void ufs_mtk_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
-				    enum ufs_notify_change_status status)
-{
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	u32 val;
-	static bool boot_mphy_dump;
-
-	/* clear before hibern8 enter in suspend  */
-	if (status == PRE_CHANGE && cmd == UIC_CMD_DME_HIBER_ENTER &&
-		(hba->pm_op_in_progress)) {
-
-		if (host->mphy_base) {
-			/*
-			 * in middle of ssu sleep and hibern8 enter,
-			 * clear 2 line hw status.
-			 */
-			val = readl(host->mphy_base + 0xA800) | 0x02;
-			writel(val, host->mphy_base + 0xA800);
-			writel(val, host->mphy_base + 0xA800);
-			val = val & (~0x02);
-			writel(val, host->mphy_base + 0xA800);
-
-			val = readl(host->mphy_base + 0xA900) | 0x02;
-			writel(val, host->mphy_base + 0xA900);
-			writel(val, host->mphy_base + 0xA900);
-			val = val & (~0x02);
-			writel(val, host->mphy_base + 0xA900);
-
-			val = readl(host->mphy_base + 0xA804) | 0x02;
-			writel(val, host->mphy_base + 0xA804);
-			writel(val, host->mphy_base + 0xA804);
-			val = val & (~0x02);
-			writel(val, host->mphy_base + 0xA804);
-
-			val = readl(host->mphy_base + 0xA904) | 0x02;
-			writel(val, host->mphy_base + 0xA904);
-			writel(val, host->mphy_base + 0xA904);
-			val = val & (~0x02);
-			writel(val, host->mphy_base + 0xA904);
-
-			/* check status is already clear */
-			if (readl(host->mphy_base + 0xA808) ||
-				readl(host->mphy_base + 0xA908)) {
-
-				pr_info("%s: [%d] clear fail 0x%x 0x%x\n",
-					__func__, __LINE__,
-					readl(host->mphy_base + 0xA808),
-					readl(host->mphy_base + 0xA908)
-					);
-			}
-		}
-	}
-
-	/* record burst mode mphy status after resume exit hibern8 complete */
-	if (status == POST_CHANGE && cmd == UIC_CMD_DME_HIBER_EXIT &&
-		(hba->pm_op_in_progress)) {
-
-		ufs_mtk_mphy_record(hba, UFS_MPHY_INIT);
-
-		if (!boot_mphy_dump) {
-			ufs_mtk_mphy_dump(hba);
-			boot_mphy_dump = true;
-		}
-	}
-}
-#endif
-
 static int ufs_mtk_unipro_set_lpm(struct ufs_hba *hba, bool lpm)
 {
 	int ret;
@@ -3221,30 +1638,8 @@ static int ufs_mtk_unipro_set_lpm(struct ufs_hba *hba, bool lpm)
 		host->unipro_lpm = lpm;
 	}
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
-	if (ret) {
-		int ret2, val = 0;
-
-		/* maybe irq pending */
-		mt_irq_dump_status(hba->irq);
-
-		/* dump CPU3 callstack for debugging */
-		dev_info(hba->dev, "%s: Task dump on CPU3\n", __func__);
-		sched_show_task(cpu_curr(3));
-
-		ret2 = ufshcd_dme_get(hba,
-			UIC_ARG_MIB(VS_UNIPROPOWERDOWNCONTROL), &val);
-		if (!ret2) {
-			dev_info(hba->dev, "%s: read 0xD0A8 val=%d\n",
-				__func__, val);
-		}
-
-		aee_kernel_warning_api(__FILE__,
-			__LINE__, DB_OPT_FS_IO_LOG | DB_OPT_FTRACE,
-			"ufs", "set 0xd0a8 fail, ret=%d, ret2=%d, 0xd0a8=%d",
-			ret, ret2, val);
-	}
-#endif
+	if (ret)
+		ufs_mtk_eh_unipro_set_lpm(hba, ret);
 
 	return ret;
 }
@@ -3312,13 +1707,6 @@ static int ufs_mtk_link_startup_notify(struct ufs_hba *hba,
 static int ufs_mtk_device_reset(struct ufs_hba *hba)
 {
 	struct arm_smccc_res res;
-
-#if IS_ENABLED(CONFIG_UFSFEATURE)
-	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
-
-	if (ufsf->hba)
-		ufsf_reset_host(ufs_mtk_get_ufsf(hba));
-#endif
 
 	ufs_mtk_device_reset_ctrl(0, res);
 
@@ -3551,12 +1939,6 @@ fail:
 static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 {
 	int i;
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
-	static int err_count;
-	static ktime_t err_ktime;
-	ktime_t delta_ktime;
-	s64 delta_msecs;
-#endif
 
 	mt_irq_dump_status(hba->irq);
 
@@ -3596,37 +1978,11 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 	ufs_mtk_dbg_sel(hba);
 	ufshcd_dump_regs(hba, REG_UFS_PROBE, 0x4, "Debug Probe ");
 
-	/* Dump mphy */
-	ufs_mtk_mphy_dump(hba);
-
-#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
 	ufs_mtk_dbg_dump(100);
-#endif
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
-	delta_ktime = ktime_sub(local_clock(), err_ktime);
-	delta_msecs = ktime_to_ms(delta_ktime);
+	ufs_mtk_dbg_phy_dump(hba);
 
-	/* If last error happen more than 72 hrs, clear error count */
-	if (delta_msecs >= 72 * 60 * 60 * 1000)
-		err_count = 0;
-
-	/* Treat errors happen in 3000 ms as one time error */
-	if (delta_msecs >= 3000) {
-		err_ktime = local_clock();
-		err_count++;
-	}
-
-	/*
-	 * Most uic error is recoverable, it should be minor.
-	 * Only dump db if uic error heppen frequently(>=6) in 72 hrs.
-	 */
-	if (err_count >= 6) {
-		aee_kernel_warning_api(__FILE__,
-			__LINE__, DB_OPT_FS_IO_LOG | DB_OPT_FTRACE,
-			"ufs", "error dump %d", err_count);
-	}
-#endif
+	ufs_mtk_eh_err_cnt();
 }
 
 static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
@@ -3650,17 +2006,17 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 	/*
 	 * Decide waiting time before gating reference clock and
 	 * after ungating reference clock according to vendors'
-	 * requirements. Default 30, 30.
+	 * requirements.
 	 */
 	if (mid == UFS_VENDOR_SAMSUNG)
-		ufs_mtk_setup_ref_clk_wait_us(hba, 1, 32);
+		ufs_mtk_setup_ref_clk_wait_us(hba, 1);
 	else if (mid == UFS_VENDOR_SKHYNIX)
-		ufs_mtk_setup_ref_clk_wait_us(hba, 30, 30);
+		ufs_mtk_setup_ref_clk_wait_us(hba, 30);
 	else if (mid == UFS_VENDOR_TOSHIBA)
-		ufs_mtk_setup_ref_clk_wait_us(hba, 100, 32);
+		ufs_mtk_setup_ref_clk_wait_us(hba, 100);
 	else
-		ufs_mtk_setup_ref_clk_wait_us(hba, 30, 30);
-
+		ufs_mtk_setup_ref_clk_wait_us(hba,
+					      REFCLK_DEFAULT_WAIT_US);
 	return 0;
 }
 
@@ -3669,7 +2025,7 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 	struct ufs_dev_info *dev_info = &hba->dev_info;
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	ufshcd_fixup_dev_quirks(hba, ufs_mtk_dev_quirks);
+	ufshcd_fixup_dev_quirks(hba, ufs_mtk_dev_fixups);
 
 	if (STR_PRFX_EQUAL("H9HQ15AFAMBDAR", dev_info->model))
 		host->caps |= UFS_MTK_CAP_BROKEN_VCC | UFS_MTK_CAP_FORCE_VSx_LPM;
@@ -3690,13 +2046,6 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 	ufs_mtk_fix_ahit(hba);
 
 	ufs_mtk_install_tracepoints(hba);
-
-#if IS_ENABLED(CONFIG_UFSFEATURE)
-	if (hba->dev_info.wmanufacturerid == UFS_VENDOR_SAMSUNG) {
-		host->ufsf.hba = hba;
-		ufsf_set_init_state(ufs_mtk_get_ufsf(hba));
-	}
-#endif
 }
 
 static void ufs_mtk_event_notify(struct ufs_hba *hba,
@@ -3722,13 +2071,12 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 		for_each_set_bit(bit, &reg, ARRAY_SIZE(ufs_uic_pa_err_str))
 			dev_info(hba->dev, "%s\n", ufs_uic_pa_err_str[bit]);
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 		/* Got a LINERESET indication. */
 		if (reg & UIC_PHY_ADAPTER_LAYER_GENERIC_ERROR)
-			ufs_mtk_mphy_record(hba, UFS_MPHY_UIC_LINE_RESET);
+			ufs_mtk_dbg_phy_trace(hba, UFS_MPHY_UIC_LINE_RESET);
 		else
-			ufs_mtk_mphy_record(hba, UFS_MPHY_UIC);
-#endif
+			ufs_mtk_dbg_phy_trace(hba, UFS_MPHY_UIC);
+
 		ufs_mtk_dbg_register_dump(hba);
 
 		if ((reg & UIC_PHY_ADAPTER_LAYER_ERROR_CODE_MASK) == 0x3) {
@@ -3751,33 +2099,14 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 		for_each_set_bit(bit, &reg, ARRAY_SIZE(ufs_uic_dl_err_str))
 			dev_info(hba->dev, "%s\n", ufs_uic_dl_err_str[bit]);
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
-		ufs_mtk_mphy_record(hba, UFS_MPHY_UIC);
-#endif
+		ufs_mtk_dbg_phy_trace(hba, UFS_MPHY_UIC);
+
 		ufs_mtk_dbg_register_dump(hba);
 	}
 
-	/*
-	 * After error handling of ufshcd_host_reset_and_restore
-	 * Bypass clear ua to send scsi command request sense, else
-	 * deadlock hang because scsi is waiting error handling done.
-	 */
-	/* TODO: clearing wlun_dev_clr_ua is removed,
-	 * make sure related fix is pulled.
-	 * https://android-review.googlesource.com/c/kernel/common/+/1905492
-	 */
+	if (evt == UFS_EVT_ABORT)
+		ufs_mtk_eh_abort(val);
 
-#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-	if (evt == UFS_EVT_ABORT && !ufs_abort_aee_count) {
-		ufs_abort_aee_count++;
-#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
-		ufs_mtk_dbg_cmd_hist_disable();
-		aee_kernel_warning_api(__FILE__,
-			__LINE__, DB_OPT_FS_IO_LOG,
-			"ufshcd_abort", "timeout at tag %d", val);
-#endif
-	}
-#endif
 }
 
 static int ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba)
@@ -3810,22 +2139,11 @@ static int ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba)
 	return ret;
 }
 
-void ufs_mtk_setup_task_mgmt(struct ufs_hba *hba, int tag, u8 tm_function)
-{
-#if IS_ENABLED(CONFIG_UFSFEATURE)
-	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
-
-	if (ufsf->hba && (tm_function == UFS_LOGICAL_RESET))
-		ufsf_prepare_reset_lu(ufsf);
-#endif
-}
-
-
 static void ufs_mtk_config_scaling_param(struct ufs_hba *hba,
-					struct devfreq_dev_profile *profile,
-					struct devfreq_simple_ondemand_data *data)
+				struct devfreq_dev_profile *profile,
+				struct devfreq_simple_ondemand_data *data)
 {
-	/* customize clk scaling parms */
+	/* Customize min gear in clk scaling */
 	hba->clk_scaling.min_gear = UFS_HS_G4;
 
 	hba->vps->devfreq_profile.polling_ms = 200;
@@ -3849,7 +2167,8 @@ static void _ufs_mtk_clk_scale(struct ufs_hba *hba, bool scale_up)
 
 	ret = clk_prepare_enable(clki->clk);
 	if (ret) {
-		dev_info(hba->dev, "clk_prepare_enable() fail, ret = %d\n", ret);
+		dev_info(hba->dev,
+			 "clk_prepare_enable() fail, ret: %d\n", ret);
 		return;
 	}
 
@@ -3938,7 +2257,7 @@ out:
 }
 
 static int ufs_mtk_clk_scale_notify(struct ufs_hba *hba, bool scale_up,
-				enum ufs_notify_change_status status)
+				    enum ufs_notify_change_status status)
 {
 	if (!ufshcd_is_clkscaling_supported(hba) || !hba->clk_scaling.is_enabled)
 		return 0;
@@ -4088,6 +2407,14 @@ static int ufs_mtk_config_esi(struct ufs_hba *hba)
 	return ufs_mtk_config_mcq(hba, true);
 }
 
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG) && IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
+static void ufs_mtk_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
+				    enum ufs_notify_change_status status)
+{
+	ufs_mtk_dbg_phy_hibern8_notify(hba, cmd, status);
+}
+#endif
+
 /*
  * struct ufs_hba_mtk_vops - UFS MTK specific variant operations
  *
@@ -4102,7 +2429,7 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.hce_enable_notify   = ufs_mtk_hce_enable_notify,
 	.link_startup_notify = ufs_mtk_link_startup_notify,
 	.pwr_change_notify   = ufs_mtk_pwr_change_notify,
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG) && IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
 	.hibern8_notify      = ufs_mtk_hibern8_notify,
 #endif
 	.apply_dev_quirks    = ufs_mtk_apply_dev_quirks,
@@ -4112,7 +2439,6 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.dbg_register_dump   = ufs_mtk_dbg_register_dump,
 	.device_reset        = ufs_mtk_device_reset,
 	.event_notify        = ufs_mtk_event_notify,
-	.setup_task_mgmt     = ufs_mtk_setup_task_mgmt,
 	.config_scaling_param = ufs_mtk_config_scaling_param,
 	.clk_scale_notify    = ufs_mtk_clk_scale_notify,
 	/* mcq vops */
@@ -4214,16 +2540,6 @@ out:
 	return err;
 }
 
-#if defined(CONFIG_UFSFEATURE)
-static void ufs_mtk_remove_ufsf(struct ufs_hba *hba)
-{
-	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
-
-	if (ufsf->hba)
-		ufsf_remove(ufsf);
-}
-#endif
-
 /**
  * ufs_mtk_remove - set driver_data of the device to NULL
  * @pdev: pointer to platform device handle
@@ -4236,44 +2552,31 @@ static int ufs_mtk_remove(struct platform_device *pdev)
 
 	pm_runtime_get_sync(&(pdev)->dev);
 
-#if defined(CONFIG_UFSFEATURE)
-	ufs_mtk_remove_ufsf(hba);
-#endif
-
-
-#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
 	if (hba->caps & UFSHCD_CAP_CLK_SCALING)
 		ufs_mtk_remove_clk_scaling_sysfs(hba);
 
 	ufs_mtk_remove_irq_sysfs(hba);
-#endif
 
 	ufshcd_remove(hba);
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-	mtk_btag_ufs_exit();
-#endif
+
+	ufs_mtk_btag_exit();
+
 	ufs_mtk_uninstall_tracepoints();
+
 	return 0;
 }
 
-int ufs_mtk_system_suspend(struct device *dev)
+#ifdef CONFIG_PM_SLEEP
+static int ufs_mtk_system_suspend(struct device *dev)
 {
 	int ret = 0;
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_mtk_host *host;
 	struct arm_smccc_res res;
-#if defined(CONFIG_UFSFEATURE)
-	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
-#endif
 
 	host = ufshcd_get_variant(hba);
 	if (down_trylock(&host->rpmb_sem))
 		return -EBUSY;
-
-#if defined(CONFIG_UFSFEATURE)
-	if (ufsf->hba)
-		ufsf_suspend(ufsf);
-#endif
 
 	/* Check if shutting down */
 	if (!ufshcd_is_user_access_allowed(hba)) {
@@ -4289,28 +2592,18 @@ int ufs_mtk_system_suspend(struct device *dev)
 	if (!ret && ufs_mtk_is_rtff_mtcmos(hba))
 		ufs_mtk_mtcmos_ctrl(false, res);
 out:
-
-#if defined(CONFIG_UFSFEATURE)
-	/* We assume link is off */
-	if (ret && ufsf)
-		ufsf_resume(ufsf, true);
-#endif
 	if (ret)
 		up(&host->rpmb_sem);
 
 	return ret;
 }
 
-int ufs_mtk_system_resume(struct device *dev)
+static int ufs_mtk_system_resume(struct device *dev)
 {
 	int ret = 0;
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_mtk_host *host;
 	struct arm_smccc_res res;
-#if defined(CONFIG_UFSFEATURE)
-	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
-	bool is_link_off = ufshcd_is_link_off(hba);
-#endif
 
 	if (ufs_mtk_is_rtff_mtcmos(hba))
 		ufs_mtk_mtcmos_ctrl(true, res);
@@ -4319,62 +2612,43 @@ int ufs_mtk_system_resume(struct device *dev)
 
 	ret = ufshcd_system_resume(dev);
 
-#if defined(CONFIG_UFSFEATURE)
-	if (!ret && ufsf->hba)
-		ufsf_resume(ufsf, is_link_off);
-#endif
-
 	host = ufshcd_get_variant(hba);
 	if (!ret)
 		up(&host->rpmb_sem);
 
 	return ret;
 }
+#endif
 
-int ufs_mtk_runtime_suspend(struct device *dev)
+#ifdef CONFIG_PM
+static int ufs_mtk_runtime_suspend(struct device *dev)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct arm_smccc_res res;
 	int ret = 0;
 
-#if defined(CONFIG_UFSFEATURE)
-	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
-
-	if (ufsf->hba)
-		ufsf_suspend(ufsf);
-#endif
 	ret = ufshcd_runtime_suspend(dev);
+	if (ret)
+		return ret;
 
-	if (!ret)
-		ufs_mtk_dev_vreg_set_lpm(hba, true);
+	ufs_mtk_dev_vreg_set_lpm(hba, true);
 
-#if defined(CONFIG_UFSFEATURE)
-	/* We assume link is off */
-	if (ret && ufsf->hba)
-		ufsf_resume(ufsf, true);
-#endif
-
-	if (!ret && ufs_mtk_is_rtff_mtcmos(hba))
+	if (ufs_mtk_is_rtff_mtcmos(hba))
 		ufs_mtk_mtcmos_ctrl(false, res);
 
-	if (!ret && (host->phy_dev))
+	if (host->phy_dev)
 		pm_runtime_put_sync(host->phy_dev);
 
-	return ret;
+	return 0;
 }
 
-int ufs_mtk_runtime_resume(struct device *dev)
+static int ufs_mtk_runtime_resume(struct device *dev)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	int ret = 0;
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct arm_smccc_res res;
-
-#if defined(CONFIG_UFSFEATURE)
-	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
-	bool is_link_off = ufshcd_is_link_off(hba);
-#endif
 
 	if (ufs_mtk_is_rtff_mtcmos(hba))
 		ufs_mtk_mtcmos_ctrl(true, res);
@@ -4386,25 +2660,11 @@ int ufs_mtk_runtime_resume(struct device *dev)
 
 	ret = ufshcd_runtime_resume(dev);
 
-#if defined(CONFIG_UFSFEATURE)
-	if (!ret && ufsf->hba)
-		ufsf_resume(ufsf, is_link_off);
-#endif
-
 	return ret;
 }
 
 void ufs_mtk_shutdown(struct platform_device *pdev)
 {
-#if defined(CONFIG_UFSFEATURE)
-	struct device *dev = &pdev->dev;
-	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct ufsf_feature *ufsf = ufs_mtk_get_ufsf(hba);
-
-	if (ufsf->hba)
-		ufsf_suspend(ufsf);
-#endif
-
 	/*
 	 * ufshcd_wl_shutdown may run concurrently and have racing problem.
 	 * ufshcd_pltfrm_shutdown only turn off power and clock, which is not
@@ -4414,10 +2674,13 @@ void ufs_mtk_shutdown(struct platform_device *pdev)
 	 * So, it is not necessary and remove ufshcd_pltfrm_shutdown.
 	 */
 }
+#endif
 
 static const struct dev_pm_ops ufs_mtk_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(ufs_mtk_system_suspend, ufs_mtk_system_resume)
-	SET_RUNTIME_PM_OPS(ufs_mtk_runtime_suspend, ufs_mtk_runtime_resume, NULL)
+	SET_SYSTEM_SLEEP_PM_OPS(ufs_mtk_system_suspend,
+				ufs_mtk_system_resume)
+	SET_RUNTIME_PM_OPS(ufs_mtk_runtime_suspend,
+			   ufs_mtk_runtime_resume, NULL)
 	.prepare	 = ufshcd_suspend_prepare,
 	.complete	 = ufshcd_resume_complete,
 };

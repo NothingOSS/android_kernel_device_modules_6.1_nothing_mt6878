@@ -17,10 +17,10 @@
 #include <linux/tracepoint.h>
 #include "governor.h"
 #include "ufshcd-priv.h"
+#include <ufs/ufshcd.h>
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 #include <mt-plat/mrdump.h>
 #endif
-//#include "ufshcd.h"
 #include "ufs-mediatek.h"
 #include "ufs-mediatek-dbg.h"
 
@@ -41,6 +41,73 @@ static unsigned int cmd_hist_ptr = MAX_CMD_HIST_ENTRY_CNT - 1;
 static struct cmd_hist_struct *cmd_hist;
 static struct ufs_hba *ufshba;
 static char *ufs_aee_buffer;
+
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#include <mt-plat/aee.h>
+#endif
+
+extern void mt_irq_dump_status(unsigned int irq);
+
+void ufs_mtk_eh_abort(unsigned int tag)
+{
+	static int ufs_abort_aee_count;
+
+	if (!ufs_abort_aee_count) {
+		ufs_abort_aee_count++;
+		ufs_mtk_dbg_cmd_hist_disable();
+		ufs_mtk_aee_warning("ufshcd_abort at tag %d", tag);
+	}
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_eh_abort);
+
+void ufs_mtk_eh_unipro_set_lpm(struct ufs_hba *hba, int ret)
+{
+	int ret2, val = 0;
+
+	/* Check if irq is pending */
+	mt_irq_dump_status(hba->irq);
+
+	ret2 = ufshcd_dme_get(hba,
+		UIC_ARG_MIB(VS_UNIPROPOWERDOWNCONTROL), &val);
+	if (!ret2) {
+		dev_info(hba->dev, "%s: Read 0xD0A8 val=%d\n",
+			 __func__, val);
+	}
+
+	ufs_mtk_aee_warning(
+		"Set 0xD0A8 timeout, ret=%d, ret2=%d, 0xD0A8=%d",
+		ret, ret2, val);
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_eh_unipro_set_lpm);
+
+void ufs_mtk_eh_err_cnt(void)
+{
+	static int err_count;
+	static ktime_t err_ktime;
+	ktime_t delta_ktime;
+	s64 delta_msecs;
+
+	delta_ktime = ktime_sub(local_clock(), err_ktime);
+	delta_msecs = ktime_to_ms(delta_ktime);
+
+	/* If last error happen more than 72 hrs, clear error count */
+	if (delta_msecs >= 72 * 60 * 60 * 1000)
+		err_count = 0;
+
+	/* Treat errors happen in 3000 ms as one time error */
+	if (delta_msecs >= 3000) {
+		err_ktime = local_clock();
+		err_count++;
+	}
+
+	/*
+	 * Most uic error is recoverable, it should be minor.
+	 * Only dump db if uic error heppen frequently(>=6) in 72 hrs.
+	 */
+	if (err_count >= 6)
+		ufs_mtk_aee_warning("Error Dump %d", err_count);
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_eh_err_cnt);
 
 static void ufs_mtk_dbg_print_err_hist(char **buff, unsigned long *size,
 				  struct seq_file *m, u32 id,
@@ -406,6 +473,855 @@ static void probe_ufshcd_uic_command(void *data, const char *dev_name,
 		}
 	}
 }
+
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+
+/* MPHY Debugging is for ENG/USERDEBUG builds only */
+
+static const u32 mphy_reg_dump[] = {
+	0xA09C, /* RON */ /* 0 */
+	0xA19C, /* RON */ /* 1 */
+
+	0x80C0, /* RON */ /* 2 */
+	0x81C0, /* RON */ /* 3 */
+	0xB010, /* RON */ /* 4 */
+	0xB010, /* RON */ /* 5 */
+	0xB010, /* RON */ /* 6 */
+	0xB010, /* RON */ /* 7 */
+	0xB010, /* RON */ /* 8 */
+	0xB110, /* RON */ /* 9 */
+	0xB110, /* RON */ /* 10 */
+	0xB110, /* RON */ /* 11 */
+	0xB110, /* RON */ /* 12 */
+	0xB110, /* RON */ /* 13 */
+	0xA0AC, /* RON */ /* 14 */
+	0xA0B0, /* RON */ /* 15 */
+	0xA09C, /* RON */ /* 16 */
+	0xA1AC, /* RON */ /* 17 */
+	0xA1B0, /* RON */ /* 18 */
+	0xA19C, /* RON */ /* 19 */
+
+	0x00B0, /* RON */ /* 20 */
+
+	0xA808, /* RON */ /* 21 */
+	0xA80C, /* RON */ /* 22 */
+	0xA810, /* RON */ /* 23 */
+	0xA814, /* RON */ /* 24 */
+	0xA818, /* RON */ /* 25 */
+	0xA81C, /* RON */ /* 26 */
+	0xA820, /* RON */ /* 27 */
+	0xA824, /* RON */ /* 28 */
+	0xA828, /* RON */ /* 29 */
+	0xA82C, /* RON */ /* 30 */
+	0xA830, /* RON */ /* 31 */
+	0xA834, /* RON */ /* 32 */
+	0xA838, /* RON */ /* 33 */
+	0xA83C, /* RON */ /* 34 */
+
+	0xA908, /* RON */ /* 35 */
+	0xA90C, /* RON */ /* 36 */
+	0xA910, /* RON */ /* 37 */
+	0xA914, /* RON */ /* 38 */
+	0xA918, /* RON */ /* 39 */
+	0xA91C, /* RON */ /* 40 */
+	0xA920, /* RON */ /* 41 */
+	0xA924, /* RON */ /* 42 */
+	0xA928, /* RON */ /* 43 */
+	0xA92C, /* RON */ /* 44 */
+	0xA930, /* RON */ /* 45 */
+	0xA934, /* RON */ /* 46 */
+	0xA938, /* RON */ /* 47 */
+	0xA93C, /* RON */ /* 48 */
+
+	0x00B0, /* CL */ /* 49 */
+	0x00B0, /* CL */ /* 50 */
+	0x00B0, /* CL */ /* 51 */
+	0x00B0, /* CL */ /* 52 */
+	0x00B0, /* CL */ /* 53 */
+	0x00B0, /* CL */ /* 54 */
+	0x00B0, /* CL */ /* 55 */
+	0x00B0, /* CL */ /* 56 */
+	0x00B0, /* CL */ /* 57 */
+	0x00B0, /* CL */ /* 58 */
+	0x00B0, /* CL */ /* 59 */
+	0x00B0, /* CL */ /* 60 */
+	0x00B0, /* CL */ /* 61 */
+	0x00B0, /* CL */ /* 62 */
+	0x00B0, /* CL */ /* 63 */
+	0x00B0, /* CL */ /* 64 */
+	0x00B0, /* CL */ /* 65 */
+	0x00B0, /* CL */ /* 66 */
+	0x00B0, /* CL */ /* 67 */
+	0x00B0, /* CL */ /* 68 */
+	0x00B0, /* CL */ /* 69 */
+	0x00B0, /* CL */ /* 70 */
+	0x00B0, /* CL */ /* 71 */
+	0x00B0, /* CL */ /* 72 */
+	0x00B0, /* CL */ /* 73 */
+	0x00B0, /* CL */ /* 74 */
+	0x00B0, /* CL */ /* 75 */
+	0x00B0, /* CL */ /* 76 */
+	0x00B0, /* CL */ /* 77 */
+	0x00B0, /* CL */ /* 78 */
+	0x00B0, /* CL */ /* 79 */
+	0x00B0, /* CL */ /* 80 */
+	0x00B0, /* CL */ /* 81 */
+	0x00B0, /* CL */ /* 82 */
+	0x00B0, /* CL */ /* 83 */
+
+	0x00B0, /* CL */ /* 84 */
+	0x00B0, /* CL */ /* 85 */
+	0x00B0, /* CL */ /* 86 */
+	0x00B0, /* CL */ /* 87 */
+	0x00B0, /* CL */ /* 88 */
+	0x00B0, /* CL */ /* 89 */
+	0x00B0, /* CL */ /* 90 */
+	0x00B0, /* CL */ /* 91 */
+	0x00B0, /* CL */ /* 92 */
+	0x00B0, /* CL */ /* 93 */
+
+	0x00B0, /* CL */ /* 94 */
+	0x00B0, /* CL */ /* 95 */
+	0x00B0, /* CL */ /* 96 */
+	0x00B0, /* CL */ /* 97 */
+	0x00B0, /* CL */ /* 98 */
+	0x00B0, /* CL */ /* 99 */
+	0x00B0, /* CL */ /* 100 */
+	0x00B0, /* CL */ /* 101 */
+	0x00B0, /* CL */ /* 102 */
+	0x00B0, /* CL */ /* 103 */
+
+	0x00B0, /* CL */ /* 104 */
+	0x00B0, /* CL */ /* 105 */
+	0x00B0, /* CL */ /* 106 */
+	0x00B0, /* CL */ /* 107 */
+	0x00B0, /* CL */ /* 108 */
+	0x3080, /* CL */ /* 109 */
+
+	0xC210, /* CL */ /* 110 */
+	0xC280, /* CL */ /* 111 */
+	0xC268, /* CL */ /* 112 */
+	0xC228, /* CL */ /* 113 */
+	0xC22C, /* CL */ /* 114 */
+	0xC220, /* CL */ /* 115 */
+	0xC224, /* CL */ /* 116 */
+	0xC284, /* CL */ /* 117 */
+	0xC274, /* CL */ /* 118 */
+	0xC278, /* CL */ /* 119 */
+	0xC29C, /* CL */ /* 110 */
+	0xC214, /* CL */ /* 121 */
+	0xC218, /* CL */ /* 122 */
+	0xC21C, /* CL */ /* 123 */
+	0xC234, /* CL */ /* 124 */
+	0xC230, /* CL */ /* 125 */
+	0xC244, /* CL */ /* 126 */
+	0xC250, /* CL */ /* 127 */
+	0xC270, /* CL */ /* 128 */
+	0xC26C, /* CL */ /* 129 */
+	0xC310, /* CL */ /* 120 */
+	0xC380, /* CL */ /* 131 */
+	0xC368, /* CL */ /* 132 */
+	0xC328, /* CL */ /* 133 */
+	0xC32C, /* CL */ /* 134 */
+	0xC320, /* CL */ /* 135 */
+	0xC324, /* CL */ /* 136 */
+	0xC384, /* CL */ /* 137 */
+	0xC374, /* CL */ /* 138 */
+	0xC378, /* CL */ /* 139 */
+	0xC39C, /* CL */ /* 140 */
+	0xC314, /* CL */ /* 141 */
+	0xC318, /* CL */ /* 142 */
+	0xC31C, /* CL */ /* 143 */
+	0xC334, /* CL */ /* 144 */
+	0xC330, /* CL */ /* 145 */
+	0xC344, /* CL */ /* 146 */
+	0xC350, /* CL */ /* 147 */
+	0xC370, /* CL */ /* 148 */
+	0xC36C  /* CL */ /* 149 */
+};
+#define MPHY_DUMP_NUM    (sizeof(mphy_reg_dump) / sizeof(u32))
+
+struct ufs_mtk_mphy_struct {
+	u32 record[MPHY_DUMP_NUM];
+	u64 time;
+	u64 time_done;
+};
+static struct ufs_mtk_mphy_struct mphy_record[UFS_MPHY_STAGE_NUM];
+static const u8 *mphy_str[] = {
+	"RON", /* 0 */
+	"RON", /* 1 */
+
+	"RON", /* 2 */
+	"RON", /* 3 */
+	"RON", /* 4 */
+	"RON", /* 5 */
+	"RON", /* 6 */
+	"RON", /* 7 */
+	"RON", /* 8 */
+	"RON", /* 9 */
+	"RON", /* 10 */
+	"RON", /* 11 */
+	"RON", /* 12 */
+	"RON", /* 13 */
+	"RON", /* 14 */
+	"RON", /* 15 */
+	"RON", /* 16 */
+	"RON", /* 17 */
+	"RON", /* 18 */
+	"RON", /* 19 */
+
+	"RON", /* 20 */
+
+	"RON", /* 21 */
+	"RON", /* 22 */
+	"RON", /* 23 */
+	"RON", /* 24 */
+	"RON", /* 25 */
+	"RON", /* 26 */
+	"RON", /* 27 */
+	"RON", /* 28 */
+	"RON", /* 29 */
+	"RON", /* 30 */
+	"RON", /* 31 */
+	"RON", /* 32 */
+	"RON", /* 33 */
+	"RON", /* 34 */
+
+	"RON", /* 35 */
+	"RON", /* 36 */
+	"RON", /* 37 */
+	"RON", /* 38 */
+	"RON", /* 39 */
+	"RON", /* 40 */
+	"RON", /* 41 */
+	"RON", /* 42 */
+	"RON", /* 43 */
+	"RON", /* 44 */
+	"RON", /* 45 */
+	"RON", /* 46 */
+	"RON", /* 47 */
+	"RON", /* 48 */
+
+	"CL ckbuf_en                                           ", /* 49 */
+	"CL sq,imppl_en                                        ", /* 50 */
+	"CL n2p_det,term_en                                    ", /* 51 */
+	"CL cdr_en                                             ", /* 52 */
+	"CL eq_vcm_en                                          ", /* 53 */
+	"CL pi_edge_q_en                                       ", /* 54 */
+	"CL fedac_en,eq_en,eq_ldo_en,dfe_clk_en                ", /* 55 */
+	"CL dfe_clk_edge_sel,dfe_clk,des_en                    ", /* 56 */
+	"CL des_en,cdr_ldo_en,comp_difp_en                     ", /* 57 */
+	"CL cdr_ldo_en                                         ", /* 58 */
+	"CL lck2ref                                            ", /* 59 */
+	"CL freacq_en                                          ", /* 60 */
+	"CL cdr_dig_en,auto_en                                 ", /* 61 */
+	"CL bias_en                                            ", /* 62 */
+	"CL pi_edge_i_en,eq_osacal_en,eq_osacal_bg_en,eq_ldo_en", /* 63 */
+	"CL des_en                                             ", /* 64 */
+	"CL eq_en,imppl_en,sq_en,term_en                       ", /* 65 */
+	"CL pn_swap                                            ", /* 66 */
+	"CL sq,imppl_en                                        ", /* 67 */
+	"CL n2p_det,term_en                                    ", /* 68 */
+	"CL cdr_en                                             ", /* 69 */
+	"CL eq_vcm_en                                          ", /* 70 */
+	"CL pi_edge_q_en                                       ", /* 71 */
+	"CL fedac_en,eq_en,eq_ldo_en,dfe_clk_en                ", /* 72 */
+	"CL dfe_clk_edge_sel,dfe_clk,des_en                    ", /* 73 */
+	"CL des_en,cdr_ldo_en,comp_difp_en                     ", /* 74 */
+	"CL cdr_ldo_en                                         ", /* 75 */
+	"CL lck2ref                                            ", /* 76 */
+	"CL freacq_en                                          ", /* 77 */
+	"CL cdr_dig_en,auto_en                                 ", /* 78 */
+	"CL bias_en                                            ", /* 79 */
+	"CL pi_edge_i_en,eq_osacal_en,eq_osacal_bg_en,eq_ldo_en", /* 80 */
+	"CL des_en                                             ", /* 81 */
+	"CL eq_en,imppl_en,sq_en,term_en                       ", /* 82 */
+	"CL pn_swap                                            ", /* 83 */
+
+	"CL IPATH CODE", /* 84 */
+	"CL IPATH CODE", /* 85 */
+	"CL IPATH CODE", /* 86 */
+	"CL IPATH CODE", /* 87 */
+	"CL IPATH CODE", /* 88 */
+	"CL IPATH CODE", /* 89 */
+	"CL IPATH CODE", /* 90 */
+	"CL IPATH CODE", /* 91 */
+	"CL IPATH CODE", /* 92 */
+	"CL IPATH CODE", /* 93 */
+	"CL PI CODE", /* 94 */
+	"CL PI CODE", /* 95 */
+	"CL PI CODE", /* 96 */
+	"CL PI CODE", /* 97 */
+	"CL PI CODE", /* 98 */
+	"CL PI CODE", /* 99 */
+	"CL PI CODE", /* 100 */
+	"CL PI CODE", /* 101 */
+	"CL PI CODE", /* 102 */
+	"CL PI CODE", /* 103 */
+
+	"CL RXPLL_BAND", /* 104 */
+	"CL RXPLL_BAND", /* 105 */
+	"CL RXPLL_BAND", /* 106 */
+	"CL RXPLL_BAND", /* 107 */
+	"CL RXPLL_BAND", /* 108 */
+	"CL", /* 109 */
+
+	"CL", /* 110 */
+	"CL", /* 111 */
+	"CL", /* 112 */
+	"CL", /* 113 */
+	"CL", /* 114 */
+	"CL", /* 115 */
+	"CL", /* 116 */
+	"CL", /* 117 */
+	"CL", /* 118 */
+	"CL", /* 119 */
+	"CL", /* 110 */
+	"CL", /* 121 */
+	"CL", /* 122 */
+	"CL", /* 123 */
+	"CL", /* 124 */
+	"CL", /* 125 */
+	"CL", /* 126 */
+	"CL", /* 127 */
+	"CL", /* 128 */
+	"CL", /* 129 */
+	"CL", /* 120 */
+	"CL", /* 131 */
+	"CL", /* 132 */
+	"CL", /* 133 */
+	"CL", /* 134 */
+	"CL", /* 135 */
+	"CL", /* 136 */
+	"CL", /* 137 */
+	"CL", /* 138 */
+	"CL", /* 139 */
+	"CL", /* 140 */
+	"CL", /* 141 */
+	"CL", /* 142 */
+	"CL", /* 143 */
+	"CL", /* 144 */
+	"CL", /* 145 */
+	"CL", /* 146 */
+	"CL", /* 147 */
+	"CL", /* 148 */
+	"CL", /* 149 */
+};
+
+void ufs_mtk_dbg_phy_trace(struct ufs_hba *hba, u8 stage)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u32 i, j;
+
+	if (!host->mphy_base)
+		return;
+
+	if (mphy_record[stage].time)
+		return;
+
+	mphy_record[stage].time = local_clock();
+
+	writel(0xC1000200, host->mphy_base + 0x20C0);
+	for (i = 0; i < 2; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	for (i = 2; i < 20; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+	writel(0, host->mphy_base + 0x20C0);
+
+	writel(0x0, host->mphy_base + 0x0);
+	writel(0x4, host->mphy_base + 0x4);
+	for (i = 20; i < 21; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	for (i = 21; i < 49; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	/* DA Probe */
+	writel(0x0, host->mphy_base + 0x0);
+	writel(0x7, host->mphy_base + 0x4);
+	for (i = 49; i < 50; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	/* Lane 0 */
+	writel(0xc, host->mphy_base + 0x0);
+	writel(0x45, host->mphy_base + 0xA000);
+	for (i = 50; i < 51; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x5f, host->mphy_base + 0xA000);
+	for (i = 51; i < 52; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x85, host->mphy_base + 0xA000);
+	for (i = 52; i < 53; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x8a, host->mphy_base + 0xA000);
+	for (i = 53; i < 54; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x8b, host->mphy_base + 0xA000);
+	for (i = 54; i < 55; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x8c, host->mphy_base + 0xA000);
+	for (i = 55; i < 56; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x8d, host->mphy_base + 0xA000);
+	for (i = 56; i < 57; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x8e, host->mphy_base + 0xA000);
+	for (i = 57; i < 58; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x94, host->mphy_base + 0xA000);
+	for (i = 58; i < 59; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x95, host->mphy_base + 0xA000);
+	for (i = 59; i < 60; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x97, host->mphy_base + 0xA000);
+	for (i = 60; i < 61; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x98, host->mphy_base + 0xA000);
+	for (i = 61; i < 62; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x99, host->mphy_base + 0xA000);
+	for (i = 62; i < 63; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x9c, host->mphy_base + 0xA000);
+	for (i = 63; i < 64; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x9d, host->mphy_base + 0xA000);
+	for (i = 64; i < 65; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0xbd, host->mphy_base + 0xA000);
+	for (i = 65; i < 66; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0xca, host->mphy_base + 0xA000);
+	for (i = 66; i < 67; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	/* Lane 1 */
+	writel(0xd, host->mphy_base + 0x0);
+	writel(0x45, host->mphy_base + 0xA100);
+	for (i = 67; i < 68; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x5f, host->mphy_base + 0xA100);
+	for (i = 68; i < 69; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x85, host->mphy_base + 0xA100);
+	for (i = 69; i < 70; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x8a, host->mphy_base + 0xA100);
+	for (i = 70; i < 71; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x8b, host->mphy_base + 0xA100);
+	for (i = 71; i < 72; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x8c, host->mphy_base + 0xA100);
+	for (i = 72; i < 73; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x8d, host->mphy_base + 0xA100);
+	for (i = 73; i < 74; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x8e, host->mphy_base + 0xA100);
+	for (i = 74; i < 75; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x94, host->mphy_base + 0xA100);
+	for (i = 75; i < 76; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x95, host->mphy_base + 0xA100);
+	for (i = 76; i < 77; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x97, host->mphy_base + 0xA100);
+	for (i = 77; i < 78; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x98, host->mphy_base + 0xA100);
+	for (i = 78; i < 79; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x99, host->mphy_base + 0xA100);
+	for (i = 79; i < 80; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x9c, host->mphy_base + 0xA100);
+	for (i = 80; i < 81; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0x9d, host->mphy_base + 0xA100);
+	for (i = 81; i < 82; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0xbd, host->mphy_base + 0xA100);
+	for (i = 82; i < 83; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(0xca, host->mphy_base + 0xA100);
+	for (i = 83; i < 84; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	/* IPATH CODE */
+	for (j = 0; j < 10; j++) {
+		writel(0x00000000, host->mphy_base + 0x0000);
+		writel(0x2F2E2D2C, host->mphy_base + 0x0004);
+		writel(0x00000001, host->mphy_base + 0xB024);
+		writel(0x00061003, host->mphy_base + 0xB000);
+		writel(0x00000001, host->mphy_base + 0xB124);
+		writel(0x00061003, host->mphy_base + 0xB100);
+		writel(0x00000101, host->mphy_base + 0xB024);
+		writel(0x00000101, host->mphy_base + 0xB124);
+		writel(0x00000141, host->mphy_base + 0xB024);
+		writel(0x400E1003, host->mphy_base + 0xB000);
+		writel(0x00000141, host->mphy_base + 0xB124);
+		writel(0x400E1003, host->mphy_base + 0xB100);
+		writel(0x00000101, host->mphy_base + 0xB024);
+		writel(0x000E1003, host->mphy_base + 0xB000);
+		writel(0x00000101, host->mphy_base + 0xB124);
+		writel(0x000E1003, host->mphy_base + 0xB100);
+		for (i = (84 + j); i < (85 + j); i++) {
+			mphy_record[stage].record[i] =
+				readl(host->mphy_base + mphy_reg_dump[i]);
+		}
+	}
+
+	for (j = 0; j < 10; j++) {
+		writel(0x00000000, host->mphy_base + 0x0000);
+		writel(0x2F2E2D2C, host->mphy_base + 0x0004);
+		writel(0x00000001, host->mphy_base + 0xB024);
+		writel(0x00061003, host->mphy_base + 0xB000);
+		writel(0x00000001, host->mphy_base + 0xB124);
+		writel(0x00061003, host->mphy_base + 0xB100);
+		writel(0x00000001, host->mphy_base + 0xB024);
+		writel(0x00000001, host->mphy_base + 0xB124);
+		writel(0x00000041, host->mphy_base + 0xB024);
+		writel(0x400E1003, host->mphy_base + 0xB000);
+		writel(0x00000041, host->mphy_base + 0xB124);
+		writel(0x400E1003, host->mphy_base + 0xB100);
+		writel(0x00000001, host->mphy_base + 0xB024);
+		writel(0x000E1003, host->mphy_base + 0xB000);
+		writel(0x00000001, host->mphy_base + 0xB124);
+		writel(0x000E1003, host->mphy_base + 0xB100);
+		for (i = (94 + j); i < (95 + j); i++) {
+			mphy_record[stage].record[i] =
+				readl(host->mphy_base + mphy_reg_dump[i]);
+		}
+	}
+
+	writel(0x00000000, host->mphy_base + 0x0000);
+	writel(0x2A << 8 | 0x28, host->mphy_base + 0x4);
+	for (i = 104; i < 109; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(readl(host->mphy_base + 0x1044) | 0x20,
+		host->mphy_base + 0x1044);
+	for (i = 109; i < 110; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+
+	/* Enable CK */
+	writel(readl(host->mphy_base + 0xA02C) | (0x1 << 11),
+		host->mphy_base + 0xA02C);
+	writel(readl(host->mphy_base + 0xA12C) | (0x1 << 11),
+		host->mphy_base + 0xA12C);
+	writel(readl(host->mphy_base + 0xA6C8) | (0x3 << 13),
+		host->mphy_base + 0xA6C8);
+	writel(readl(host->mphy_base + 0xA638) | (0x1 << 10),
+		host->mphy_base + 0xA638);
+	writel(readl(host->mphy_base + 0xA7C8) | (0x3 << 13),
+		host->mphy_base + 0xA7C8);
+	writel(readl(host->mphy_base + 0xA738) | (0x1 << 10),
+		host->mphy_base + 0xA738);
+
+	/* Dump [Lane0] RX RG */
+	for (i = 110; i < 112; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(readl(host->mphy_base + 0xC0DC) & ~(0x1 << 25),
+		host->mphy_base + 0xC0DC);
+	writel(readl(host->mphy_base + 0xC0DC) | (0x1 << 25),
+		host->mphy_base + 0xC0DC);
+	writel(readl(host->mphy_base + 0xC0DC) & ~(0x1 << 25),
+		host->mphy_base + 0xC0DC);
+
+	for (i = 112; i < 120; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(readl(host->mphy_base + 0xC0C0) & ~(0x1 << 27),
+		host->mphy_base + 0xC0C0);
+	writel(readl(host->mphy_base + 0xC0C0) | (0x1 << 27),
+		host->mphy_base + 0xC0C0);
+	writel(readl(host->mphy_base + 0xC0C0) & ~(0x1 << 27),
+		host->mphy_base + 0xC0C0);
+
+	for (i = 120; i < 130; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	/* Dump [Lane1] RX RG */
+	for (i = 130; i < 132; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(readl(host->mphy_base + 0xC1DC) & ~(0x1 << 25),
+		host->mphy_base + 0xC1DC);
+	writel(readl(host->mphy_base + 0xC1DC) | (0x1 << 25),
+		host->mphy_base + 0xC1DC);
+	writel(readl(host->mphy_base + 0xC1DC) & ~(0x1 << 25),
+		host->mphy_base + 0xC1DC);
+
+	for (i = 132; i < 140; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	writel(readl(host->mphy_base + 0xC1C0) & ~(0x1 << 27),
+		host->mphy_base + 0xC1C0);
+	writel(readl(host->mphy_base + 0xC1C0) | (0x1 << 27),
+		host->mphy_base + 0xC1C0);
+	writel(readl(host->mphy_base + 0xC1C0) & ~(0x1 << 27),
+		host->mphy_base + 0xC1C0);
+
+
+	for (i = 140; i < 150; i++) {
+		mphy_record[stage].record[i] =
+			readl(host->mphy_base + mphy_reg_dump[i]);
+	}
+
+	/* Disable CK */
+	writel(readl(host->mphy_base + 0xA02C) & ~(0x1 << 11),
+		host->mphy_base + 0xA02C);
+	writel(readl(host->mphy_base + 0xA12C) & ~(0x1 << 11),
+		host->mphy_base + 0xA12C);
+	writel(readl(host->mphy_base + 0xA6C8) & ~(0x3 << 13),
+		host->mphy_base + 0xA6C8);
+	writel(readl(host->mphy_base + 0xA638) & ~(0x1 << 10),
+		host->mphy_base + 0xA638);
+	writel(readl(host->mphy_base + 0xA7C8) & ~(0x3 << 13),
+		host->mphy_base + 0xA7C8);
+	writel(readl(host->mphy_base + 0xA738) & ~(0x1 << 10),
+		host->mphy_base + 0xA738);
+
+	mphy_record[stage].time_done = local_clock();
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_trace);
+
+void ufs_mtk_dbg_phy_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
+				    enum ufs_notify_change_status status)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	u32 val;
+	static bool boot_mphy_dump;
+
+	/* clear before hibern8 enter in suspend  */
+	if (status == PRE_CHANGE && cmd == UIC_CMD_DME_HIBER_ENTER &&
+		(hba->pm_op_in_progress)) {
+
+		if (host->mphy_base) {
+			/*
+			 * in middle of ssu sleep and hibern8 enter,
+			 * clear 2 line hw status.
+			 */
+			val = readl(host->mphy_base + 0xA800) | 0x02;
+			writel(val, host->mphy_base + 0xA800);
+			writel(val, host->mphy_base + 0xA800);
+			val = val & (~0x02);
+			writel(val, host->mphy_base + 0xA800);
+
+			val = readl(host->mphy_base + 0xA900) | 0x02;
+			writel(val, host->mphy_base + 0xA900);
+			writel(val, host->mphy_base + 0xA900);
+			val = val & (~0x02);
+			writel(val, host->mphy_base + 0xA900);
+
+			val = readl(host->mphy_base + 0xA804) | 0x02;
+			writel(val, host->mphy_base + 0xA804);
+			writel(val, host->mphy_base + 0xA804);
+			val = val & (~0x02);
+			writel(val, host->mphy_base + 0xA804);
+
+			val = readl(host->mphy_base + 0xA904) | 0x02;
+			writel(val, host->mphy_base + 0xA904);
+			writel(val, host->mphy_base + 0xA904);
+			val = val & (~0x02);
+			writel(val, host->mphy_base + 0xA904);
+
+			/* check status is already clear */
+			if (readl(host->mphy_base + 0xA808) ||
+				readl(host->mphy_base + 0xA908)) {
+
+				pr_info("%s: [%d] clear fail 0x%x 0x%x\n",
+					__func__, __LINE__,
+					readl(host->mphy_base + 0xA808),
+					readl(host->mphy_base + 0xA908)
+					);
+			}
+		}
+	}
+
+	/* record burst mode mphy status after resume exit hibern8 complete */
+	if (status == POST_CHANGE && cmd == UIC_CMD_DME_HIBER_EXIT &&
+		(hba->pm_op_in_progress)) {
+
+		ufs_mtk_dbg_phy_trace(hba, UFS_MPHY_INIT);
+
+		if (!boot_mphy_dump) {
+			ufs_mtk_dbg_phy_dump(hba);
+			boot_mphy_dump = true;
+		}
+	}
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_hibern8_notify);
+
+void ufs_mtk_dbg_phy_dump(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host;
+	struct timespec64 dur;
+	u32 i, j;
+
+	if (!hba)
+		return;
+
+	host = ufshcd_get_variant(hba);
+
+	if (!host->mphy_base)
+		return;
+
+	for (i = 0; i < UFS_MPHY_STAGE_NUM; i++) {
+		if (mphy_record[i].time == 0)
+			continue;
+
+		dur = ns_to_timespec64(mphy_record[i].time);
+
+		pr_info("%s: MPHY record start at %6llu.%lu\n", __func__,
+			dur.tv_sec, dur.tv_nsec);
+
+		dur = ns_to_timespec64(mphy_record[i].time_done);
+
+		pr_info("%s: MPHY record end at %6llu.%lu\n", __func__,
+			dur.tv_sec, dur.tv_nsec);
+
+		for (j = 0; j < MPHY_DUMP_NUM; j++) {
+			pr_info("%s: 0x112a%04X=0x%x, %s\n", __func__,
+				mphy_reg_dump[j], mphy_record[i].record[j],
+				mphy_str[j]);
+		}
+		/* clear mphy record time to avoid to print remaining log */
+		mphy_record[i].time = 0;
+	}
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_dump);
+#endif
 
 static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 				    int state)
@@ -1021,237 +1937,6 @@ static int ufs_mtk_dbg_init_procfs(void)
 	return 0;
 }
 
-static ssize_t downdifferential_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct ufs_hba *hba = dev_get_drvdata(dev);
-
-	return sysfs_emit(buf, "%d\n", hba->vps->ondemand_data.downdifferential);
-}
-
-static ssize_t downdifferential_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct ufs_hba *hba = dev_get_drvdata(dev);
-	u32 value;
-	int err = 0;
-
-	if (kstrtou32(buf, 0, &value))
-		return -EINVAL;
-
-	mutex_lock(&hba->devfreq->lock);
-	if (value > 100 || value > hba->vps->ondemand_data.upthreshold) {
-		err = -EINVAL;
-		goto out;
-	}
-	hba->vps->ondemand_data.downdifferential = value;
-
-out:
-	mutex_unlock(&hba->devfreq->lock);
-	return err ? err : count;
-}
-
-static ssize_t upthreshold_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct ufs_hba *hba = dev_get_drvdata(dev);
-
-	return sysfs_emit(buf, "%d\n", hba->vps->ondemand_data.upthreshold);
-}
-
-static ssize_t upthreshold_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct ufs_hba *hba = dev_get_drvdata(dev);
-	u32 value;
-	int err = 0;
-
-	if (kstrtou32(buf, 0, &value))
-		return -EINVAL;
-
-	mutex_lock(&hba->devfreq->lock);
-	if (value > 100 || value < hba->vps->ondemand_data.downdifferential) {
-		err = -EINVAL;
-		goto out;
-	}
-	hba->vps->ondemand_data.upthreshold = value;
-
-out:
-	mutex_unlock(&hba->devfreq->lock);
-	return err ? err : count;
-}
-
-static ssize_t clkscale_control_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	ssize_t size = 0;
-	int value, powerhal;
-
-	value = atomic_read((&host->clkscale_control));
-	powerhal = atomic_read((&host->clkscale_control_powerhal));
-	if (!value)
-		value = powerhal;
-
-	size += sprintf(buf + size, "current: %d\n", value);
-	size += sprintf(buf + size, "powerhal_set: %d\n", powerhal);
-	size += sprintf(buf + size, "===== control manual =====\n");
-	size += sprintf(buf + size, "0: free run\n");
-	size += sprintf(buf + size, "1: scale down\n");
-	size += sprintf(buf + size, "2: scale up\n");
-
-	return size;
-}
-
-static ssize_t clkscale_control_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	atomic_t *set_target = &host->clkscale_control;
-	unsigned long flags;
-	const char *opcode = buf;
-	u32 value;
-
-	if (!strncmp(buf, "powerhal_set: ", 14)) {
-		set_target = &host->clkscale_control_powerhal;
-		opcode = buf + 14;
-	}
-
-	if (kstrtou32(opcode, 0, &value) || value > 2)
-		return -EINVAL;
-
-	atomic_set(set_target, value);
-	ufshcd_rpm_get_sync(hba);
-	spin_lock_irqsave(hba->host->host_lock, flags);
-	if (!hba->clk_scaling.window_start_t) {
-		hba->clk_scaling.window_start_t = ktime_sub_us(ktime_get(), 1);
-		hba->clk_scaling.tot_busy_t = 0;
-		hba->clk_scaling.busy_start_t = 0;
-		hba->clk_scaling.is_busy_started = false;
-	}
-	spin_unlock_irqrestore(hba->host->host_lock, flags);
-	update_devfreq(hba->devfreq);
-	ufshcd_rpm_put(hba);
-
-	return count;
-}
-
-static DEVICE_ATTR_RW(downdifferential);
-static DEVICE_ATTR_RW(upthreshold);
-static DEVICE_ATTR_RW(clkscale_control);
-
-static struct attribute *ufs_mtk_sysfs_clkscale_attrs[] = {
-	&dev_attr_downdifferential.attr,
-	&dev_attr_upthreshold.attr,
-	&dev_attr_clkscale_control.attr,
-	NULL
-};
-
-struct attribute_group ufs_mtk_sysfs_clkscale_group = {
-	.name = "clkscale",
-	.attrs = ufs_mtk_sysfs_clkscale_attrs,
-};
-
-void ufs_mtk_init_clk_scaling_sysfs(struct ufs_hba *hba)
-{
-	if (sysfs_create_group(&hba->dev->kobj, &ufs_mtk_sysfs_clkscale_group))
-		dev_info(hba->dev, "Failed to create sysfs for clkscale_control\n");
-}
-EXPORT_SYMBOL_GPL(ufs_mtk_init_clk_scaling_sysfs);
-
-void ufs_mtk_remove_clk_scaling_sysfs(struct ufs_hba *hba)
-{
-	sysfs_remove_group(&hba->dev->kobj, &ufs_mtk_sysfs_clkscale_group);
-}
-EXPORT_SYMBOL_GPL(ufs_mtk_remove_clk_scaling_sysfs);
-
-static int write_irq_affinity(const char *buf)
-{
-	struct ufs_hba *hba = ufshba;
-	cpumask_var_t new_mask;
-	int ret;
-
-	if (!zalloc_cpumask_var(&new_mask, GFP_KERNEL))
-		return -ENOMEM;
-
-	ret = cpumask_parse(buf, new_mask);
-	if (ret)
-		goto free;
-
-	if (!cpumask_intersects(new_mask, cpu_online_mask)) {
-		ret = -EINVAL;
-		goto free;
-	}
-
-	ret = irq_set_affinity(hba->irq, new_mask);
-
-free:
-	free_cpumask_var(new_mask);
-	return ret;
-}
-
-static ssize_t smp_affinity_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct ufs_hba *hba = ufshba;
-	struct irq_desc *desc = irq_to_desc(hba->irq);
-	const struct cpumask *mask;
-
-	mask = desc->irq_common_data.affinity;
-#ifdef CONFIG_GENERIC_PENDING_IRQ
-	if (irqd_is_setaffinity_pending(&desc->irq_data))
-		mask = desc->pending_mask;
-#endif
-
-	return sprintf(buf, "%*pb\n", cpumask_pr_args(mask));
-}
-
-static ssize_t smp_affinity_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned long mask;
-	struct ufs_hba *hba = ufshba;
-	int ret = count;
-
-	if (kstrtoul(buf, 16, &mask) || mask >= 256)
-		return -EINVAL;
-
-	ret = write_irq_affinity(buf);
-	if (!ret)
-		ret = count;
-
-	dev_info(hba->dev, "set irq affinity %lx\n", mask);
-
-	return count;
-}
-
-static DEVICE_ATTR_RW(smp_affinity);
-
-static struct attribute *ufs_mtk_sysfs_irq_attrs[] = {
-	&dev_attr_smp_affinity.attr,
-	NULL
-};
-
-struct attribute_group ufs_mtk_sysfs_irq_group = {
-	.name = "irq",
-	.attrs = ufs_mtk_sysfs_irq_attrs,
-};
-
-void ufs_mtk_init_irq_sysfs(struct ufs_hba *hba)
-{
-	if (sysfs_create_group(&hba->dev->kobj, &ufs_mtk_sysfs_irq_group))
-		dev_info(hba->dev, "Failed to create sysfs for irq\n");
-}
-EXPORT_SYMBOL_GPL(ufs_mtk_init_irq_sysfs);
-
-void ufs_mtk_remove_irq_sysfs(struct ufs_hba *hba)
-{
-	sysfs_remove_group(&hba->dev->kobj, &ufs_mtk_sysfs_irq_group);
-}
-EXPORT_SYMBOL_GPL(ufs_mtk_remove_irq_sysfs);
-
 static void ufs_mtk_dbg_cleanup(void)
 {
 	int i;
@@ -1266,6 +1951,14 @@ static void ufs_mtk_dbg_cleanup(void)
 
 	_cmd_hist_cleanup();
 }
+
+void ufs_mtk_dbg_phy_enable(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	host->mphy_base = ioremap(0x112a0000, 0x10000);
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_enable);
 
 int ufs_mtk_dbg_register(struct ufs_hba *hba)
 {

@@ -13,10 +13,7 @@
 #include <ufs/ufs.h>
 #include <ufs/ufshci.h>
 #include <ufs/ufshcd.h>
-
-#ifdef CONFIG_UFSFEATURE
-#include "ufsfeature.h"
-#endif
+#include "ufs-mediatek-rpmb.h"
 
 /*
  * MCQ define and struct
@@ -69,44 +66,6 @@
 #define PA_TXHSG5SYNCLENGTH	0x15D6
 
 /*
- * Details of UIC Errors
- */
-static const u8 *ufs_uic_err_str[] = {
-	"PHY Adapter Layer",
-	"Data Link Layer",
-	"Network Link Layer",
-	"Transport Link Layer",
-	"DME"
-};
-
-static const u8 *ufs_uic_pa_err_str[] = {
-	"PHY error on Lane 0",
-	"PHY error on Lane 1",
-	"PHY error on Lane 2",
-	"PHY error on Lane 3",
-	"Generic PHY Adapter Error. This should be the LINERESET indication"
-};
-
-static const u8 *ufs_uic_dl_err_str[] = {
-	"NAC_RECEIVED",
-	"TCx_REPLAY_TIMER_EXPIRED",
-	"AFCx_REQUEST_TIMER_EXPIRED",
-	"FCx_PROTECTION_TIMER_EXPIRED",
-	"CRC_ERROR",
-	"RX_BUFFER_OVERFLOW",
-	"MAX_FRAME_LENGTH_EXCEEDED",
-	"WRONG_SEQUENCE_NUMBER",
-	"AFC_FRAME_SYNTAX_ERROR",
-	"NAC_FRAME_SYNTAX_ERROR",
-	"EOF_SYNTAX_ERROR",
-	"FRAME_SYNTAX_ERROR",
-	"BAD_CTRL_SYMBOL_TYPE",
-	"PA_INIT_ERROR (FATAL ERROR)",
-	"PA_ERROR_IND_RECEIVED",
-	"PA_INIT (3.0 FATAL ERROR)"
-};
-
-/*
  * Ref-clk control
  *
  * Values for register REG_UFS_REFCLK_CTRL
@@ -116,6 +75,7 @@ static const u8 *ufs_uic_dl_err_str[] = {
 #define REFCLK_ACK                  BIT(1)
 
 #define REFCLK_REQ_TIMEOUT_US       3000
+#define REFCLK_DEFAULT_WAIT_US      32
 
 /*
  * Other attributes
@@ -270,9 +230,6 @@ struct ufs_mtk_host {
 	bool mcq_set_intr;
 	int mcq_nr_intr;
 	struct ufs_mtk_mcq_intr_info mcq_intr_info[UFSHCD_MAX_Q_NR];
-#if defined(CONFIG_UFSFEATURE)
-	struct ufsf_feature ufsf;
-#endif
 };
 
 #define UFSHCD_MAX_TAG	256
@@ -342,10 +299,6 @@ struct tag_bootmode {
 	u32 boottype;
 };
 
-#if IS_ENABLED(CONFIG_RPMB)
-struct rpmb_dev *ufs_mtk_rpmb_get_raw_dev(void);
-#endif
-
 /**
  * ufshcd_upiu_wlun_to_scsi_wlun - maps UPIU W-LUN id to SCSI W-LUN ID
  * @upiu_wlun_id: UPIU W-LUN id
@@ -356,15 +309,6 @@ static inline u16 ufshcd_upiu_wlun_to_scsi_wlun(u8 upiu_wlun_id)
 {
 	return (upiu_wlun_id & ~UFS_UPIU_WLUN_ID) | SCSI_W_LUN_BASE;
 }
-
-#if defined(CONFIG_UFSFEATURE)
-static inline struct ufsf_feature *ufs_mtk_get_ufsf(struct ufs_hba *hba)
-{
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-
-	return &host->ufsf;
-}
-#endif
 
 static inline const void *ufs_mtk_get_boot_property(struct device_node *np,
 	const char *name, int *lenp)

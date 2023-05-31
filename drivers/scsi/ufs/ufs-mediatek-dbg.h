@@ -11,6 +11,7 @@
 #include <linux/device.h>
 #include <linux/seq_file.h>
 #include <linux/types.h>
+#include <mt-plat/aee.h>
 
 /*
  * snprintf may return a value of size or "more" to indicate
@@ -80,6 +81,13 @@ enum cmd_hist_event {
 	CMD_PM			= 18,
 	CMD_CLK_SCALING		= 19,
 	CMD_UNKNOWN
+};
+
+enum {
+	UFS_MPHY_INIT = 0,
+	UFS_MPHY_UIC,
+	UFS_MPHY_UIC_LINE_RESET,
+	UFS_MPHY_STAGE_NUM
 };
 
 struct tm_cmd_struct {
@@ -157,16 +165,39 @@ int ufs_mtk_dbg_register(struct ufs_hba *hba);
 void ufs_mtk_dbg_dump(u32 latest_cnt);
 int ufs_mtk_dbg_cmd_hist_enable(void);
 int ufs_mtk_dbg_cmd_hist_disable(void);
-void ufs_mtk_init_clk_scaling_sysfs(struct ufs_hba *hba);
-void ufs_mtk_remove_clk_scaling_sysfs(struct ufs_hba *hba);
-void ufs_mtk_init_irq_sysfs(struct ufs_hba *hba);
-void ufs_mtk_remove_irq_sysfs(struct ufs_hba *hba);
+void ufs_mtk_eh_abort(unsigned int tag);
+void ufs_mtk_eh_err_cnt(void);
+void ufs_mtk_eh_unipro_set_lpm(struct ufs_hba *hba, int ret);
+
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#define ufs_mtk_aee_warning(string, args...)			\
+	aee_kernel_warning_api(__FILE__, __LINE__,		\
+		DB_OPT_FS_IO_LOG | DB_OPT_FTRACE, "ufs", string, ##args)
+#endif
 
 #else
 
+#define ufs_mtk_aee_warning(...)
+#define ufs_mtk_dbg_cmd_hist_disable(...)
+#define ufs_mtk_dbg_dump(...)
 #define ufs_mtk_dbg_register(...)
+#define ufs_mtk_eh_abort(...)
+#define ufs_mtk_eh_err_cnt(...)
+#define ufs_mtk_eh_unipro_set_lpm(...)
+#endif /* CONFIG_SCSI_UFS_MEDIATEK_DBG */
 
+#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG) && IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+void ufs_mtk_dbg_phy_enable(struct ufs_hba *hba);
+void ufs_mtk_dbg_phy_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
+				    enum ufs_notify_change_status status);
+void ufs_mtk_dbg_phy_dump(struct ufs_hba *hba);
+void ufs_mtk_dbg_phy_trace(struct ufs_hba *hba, u8 stage);
+#else
+#define ufs_mtk_dbg_phy_enable(...)
+#define ufs_mtk_dbg_phy_hibern8_notify(...)
+#define ufs_mtk_dbg_phy_dump(...)
+#define ufs_mtk_dbg_phy_trace(...)
 #endif
 
-#endif
+#endif /* _UFS_MEDIATEK_DBG_H */
 
