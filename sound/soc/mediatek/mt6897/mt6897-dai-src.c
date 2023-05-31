@@ -732,7 +732,7 @@ static const struct snd_kcontrol_new mtk_hw_src_0_in_ch2_mix[] = {
 				    I_DL_24CH_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN181_2,
 				    I_DL24_CH2, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN180_0,
+	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN181_0,
 				    I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN0_CH2", AFE_CONN181_4,
 				    I_I2SIN0_CH2, 1, 0),
@@ -1186,7 +1186,9 @@ static int mtk_dai_src_hw_free(struct snd_pcm_substream *substream,
 	struct mt6897_afe_private *afe_priv = afe->platform_priv;
 	int id = dai->id;
 	struct mtk_afe_src_priv *src_priv = afe_priv->dai_priv[id];
-
+#ifdef GSRC_REG
+	unsigned int reg, sft, mask;
+#endif
 	dev_info(afe->dev, "%s(), id %d, stream %d\n",
 		 __func__,
 		 id,
@@ -1196,6 +1198,30 @@ static int mtk_dai_src_hw_free(struct snd_pcm_substream *substream,
 		src_priv->dl_rate = 0;
 	else
 		src_priv->ul_rate = 0;
+
+#ifdef GSRC_REG
+	if (id == MT6897_DAI_SRC_0)
+		reg = AFE_GASRC0_NEW_CON5;
+	else if (id == MT6897_DAI_SRC_1)
+		reg = AFE_GASRC1_NEW_CON5;
+	else if (id == MT6897_DAI_SRC_2)
+		reg = AFE_GASRC2_NEW_CON5;
+	else
+		reg = AFE_GASRC3_NEW_CON5;
+
+	/* rate */
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		sft = IN_EN_SEL_FS_SFT;
+		mask = IN_EN_SEL_FS_MASK;
+	} else {
+		sft = OUT_EN_SEL_FS_SFT;
+		mask = OUT_EN_SEL_FS_MASK;
+	}
+	regmap_update_bits(afe->regmap,
+			   reg,
+			   mask << sft,
+			   0 << sft);
+#endif
 
 	return 0;
 }
