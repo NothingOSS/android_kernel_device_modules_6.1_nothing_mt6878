@@ -34,7 +34,6 @@
 atomic64_t dma_heap_normal_total = ATOMIC64_INIT(0);
 EXPORT_SYMBOL(dma_heap_normal_total);
 
-static void *dma_buf_fops;
 static dmaheap_slc_callback slc_callback;
 
 struct system_heap_buffer {
@@ -1071,9 +1070,6 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 		goto free_pages;
 	}
 
-	if (!dma_buf_fops)
-		dma_buf_fops = (void *)dmabuf->file->f_op;
-
 	/*
 	 * For uncached buffers, we need to initially flush cpu cache, since
 	 * the __GFP_ZERO on the allocation means the zeroing was done by the
@@ -1382,12 +1378,6 @@ long mtk_dma_buf_set_name(struct dma_buf *dmabuf, const char *buf)
 
 	return ret;
 } EXPORT_SYMBOL_GPL(mtk_dma_buf_set_name);
-
-int is_dma_buf_file(struct file *file)
-{
-	return (dma_buf_fops && file && (void *)file->f_op == dma_buf_fops);
-}
-EXPORT_SYMBOL_GPL(is_dma_buf_file);
 
 int is_mtk_mm_heap_dmabuf(const struct dma_buf *dmabuf)
 {
