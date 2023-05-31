@@ -20,6 +20,8 @@ enum swpm_perf_evt_id {
 	PMU_9_EVT,
 	PMU_10_EVT,
 	PMU_11_EVT,
+	PMU_12_EVT,
+	PMU_13_EVT,
 };
 
 extern unsigned int swpm_arm_pmu_get_status(void);

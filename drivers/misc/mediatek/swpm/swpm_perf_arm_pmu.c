@@ -40,6 +40,8 @@ static DEFINE_PER_CPU(struct perf_event *, pmu_event_8);
 static DEFINE_PER_CPU(struct perf_event *, pmu_event_9);
 static DEFINE_PER_CPU(struct perf_event *, pmu_event_10);
 static DEFINE_PER_CPU(struct perf_event *, pmu_event_11);
+static DEFINE_PER_CPU(struct perf_event *, pmu_event_12);
+static DEFINE_PER_CPU(struct perf_event *, pmu_event_13);
 
 static DEFINE_PER_CPU(int, pmu_idx_3);
 static DEFINE_PER_CPU(int, pmu_idx_4);
@@ -50,6 +52,9 @@ static DEFINE_PER_CPU(int, pmu_idx_8);
 static DEFINE_PER_CPU(int, pmu_idx_9);
 static DEFINE_PER_CPU(int, pmu_idx_10);
 static DEFINE_PER_CPU(int, pmu_idx_11);
+static DEFINE_PER_CPU(int, pmu_idx_12);
+static DEFINE_PER_CPU(int, pmu_idx_13);
+
 
 #endif
 
@@ -91,7 +96,7 @@ static struct perf_event_attr dsu_cycle_event_attr = {
 static struct perf_event_attr pmu_event_3_attr = {
 	.type           = PERF_TYPE_RAW,
 /*	.config         = 0x2B, */
-	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.config         = 0x04,
 	.size           = sizeof(struct perf_event_attr),
 	.pinned         = 1,
 /*	.disabled       = 1, */
@@ -99,7 +104,7 @@ static struct perf_event_attr pmu_event_3_attr = {
 static struct perf_event_attr pmu_event_4_attr = {
 	.type           = PERF_TYPE_RAW,
 /*	.config         = 0x2B, */
-	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.config         = 0x10,
 	.size           = sizeof(struct perf_event_attr),
 	.pinned         = 1,
 /*	.disabled       = 1, */
@@ -107,7 +112,7 @@ static struct perf_event_attr pmu_event_4_attr = {
 static struct perf_event_attr pmu_event_5_attr = {
 	.type           = PERF_TYPE_RAW,
 /*	.config         = 0x2B, */
-	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.config         = 0x14,
 	.size           = sizeof(struct perf_event_attr),
 	.pinned         = 1,
 /*	.disabled       = 1, */
@@ -115,7 +120,7 @@ static struct perf_event_attr pmu_event_5_attr = {
 static struct perf_event_attr pmu_event_6_attr = {
 	.type           = PERF_TYPE_RAW,
 /*	.config         = 0x2B, */
-	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.config         = 0x16,
 	.size           = sizeof(struct perf_event_attr),
 	.pinned         = 1,
 /*	.disabled       = 1, */
@@ -123,7 +128,7 @@ static struct perf_event_attr pmu_event_6_attr = {
 static struct perf_event_attr pmu_event_7_attr = {
 	.type           = PERF_TYPE_RAW,
 /*	.config         = 0x2B, */
-	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.config         = 0x17,
 	.size           = sizeof(struct perf_event_attr),
 	.pinned         = 1,
 /*	.disabled       = 1, */
@@ -131,7 +136,7 @@ static struct perf_event_attr pmu_event_7_attr = {
 static struct perf_event_attr pmu_event_8_attr = {
 	.type           = PERF_TYPE_RAW,
 /*	.config         = 0x2B, */
-	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.config         = 0x18,
 	.size           = sizeof(struct perf_event_attr),
 	.pinned         = 1,
 /*	.disabled       = 1, */
@@ -139,7 +144,7 @@ static struct perf_event_attr pmu_event_8_attr = {
 static struct perf_event_attr pmu_event_9_attr = {
 	.type           = PERF_TYPE_RAW,
 /*	.config         = 0x2B, */
-	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.config         = 0x21,
 	.size           = sizeof(struct perf_event_attr),
 	.pinned         = 1,
 /*	.disabled       = 1, */
@@ -147,7 +152,7 @@ static struct perf_event_attr pmu_event_9_attr = {
 static struct perf_event_attr pmu_event_10_attr = {
 	.type           = PERF_TYPE_RAW,
 /*	.config         = 0x2B, */
-	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.config         = 0x3B,
 	.size           = sizeof(struct perf_event_attr),
 	.pinned         = 1,
 /*	.disabled       = 1, */
@@ -155,7 +160,23 @@ static struct perf_event_attr pmu_event_10_attr = {
 static struct perf_event_attr pmu_event_11_attr = {
 	.type           = PERF_TYPE_RAW,
 /*	.config         = 0x2B, */
-	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.config         = 0x4021,
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
+static struct perf_event_attr pmu_event_12_attr = {
+	.type           = PERF_TYPE_RAW,
+/*	.config         = 0x2B, */
+	.config         = 0x80C1,
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
+static struct perf_event_attr pmu_event_13_attr = {
+	.type           = PERF_TYPE_RAW,
+/*	.config         = 0x2B, */
+	.config         = 0x80EF,
 	.size           = sizeof(struct perf_event_attr),
 	.pinned         = 1,
 /*	.disabled       = 1, */
@@ -212,6 +233,8 @@ static void swpm_pmu_start(int cpu)
 		struct perf_event *p9_event = per_cpu(pmu_event_9, cpu);
 		struct perf_event *p10_event = per_cpu(pmu_event_10, cpu);
 		struct perf_event *p11_event = per_cpu(pmu_event_11, cpu);
+		struct perf_event *p12_event = per_cpu(pmu_event_12, cpu);
+		struct perf_event *p13_event = per_cpu(pmu_event_13, cpu);
 
 		if (p3_event) {
 			perf_event_enable(p3_event);
@@ -249,6 +272,14 @@ static void swpm_pmu_start(int cpu)
 			perf_event_enable(p11_event);
 			per_cpu(pmu_idx_11, cpu) = p11_event->hw.idx;
 		}
+		if (p12_event) {
+			perf_event_enable(p12_event);
+			per_cpu(pmu_idx_12, cpu) = p12_event->hw.idx;
+		}
+		if (p13_event) {
+			perf_event_enable(p13_event);
+			per_cpu(pmu_idx_13, cpu) = p13_event->hw.idx;
+		}
 	}
 }
 
@@ -281,6 +312,8 @@ static void swpm_pmu_stop(int cpu)
 		struct perf_event *p9_event = per_cpu(pmu_event_9, cpu);
 		struct perf_event *p10_event = per_cpu(pmu_event_10, cpu);
 		struct perf_event *p11_event = per_cpu(pmu_event_11, cpu);
+		struct perf_event *p12_event = per_cpu(pmu_event_12, cpu);
+		struct perf_event *p13_event = per_cpu(pmu_event_13, cpu);
 
 		if (p3_event) {
 			perf_event_disable(p3_event);
@@ -318,6 +351,15 @@ static void swpm_pmu_stop(int cpu)
 			perf_event_disable(p11_event);
 			per_cpu(pmu_idx_11, cpu) = -1;
 		}
+		if (p12_event) {
+			perf_event_disable(p12_event);
+			per_cpu(pmu_idx_12, cpu) = -1;
+		}
+		if (p13_event) {
+			perf_event_disable(p13_event);
+			per_cpu(pmu_idx_13, cpu) = -1;
+		}
+
 	}
 
 }
@@ -411,6 +453,8 @@ static int swpm_arm_pmu_enable(int cpu, int enable)
 			struct perf_event *p9_event = per_cpu(pmu_event_9, cpu);
 			struct perf_event *p10_event = per_cpu(pmu_event_10, cpu);
 			struct perf_event *p11_event = per_cpu(pmu_event_11, cpu);
+			struct perf_event *p12_event = per_cpu(pmu_event_12, cpu);
+			struct perf_event *p13_event = per_cpu(pmu_event_13, cpu);
 
 			if (!p3_event && cpu >= boundary) {
 				event = perf_event_create_kernel_counter(
@@ -502,6 +546,26 @@ static int swpm_arm_pmu_enable(int cpu, int enable)
 				}
 				per_cpu(pmu_event_11, cpu) = event;
 			}
+			if (!p12_event && cpu >= boundary) {
+				event = perf_event_create_kernel_counter(
+					&pmu_event_12_attr, cpu, NULL, NULL, NULL);
+				if (IS_ERR(event)) {
+					pr_notice("create (%d) p12_event error (%d)\n",
+						  cpu, (int)PTR_ERR(event));
+					goto FAIL;
+				}
+				per_cpu(pmu_event_12, cpu) = event;
+			}
+			if (!p13_event && cpu >= boundary) {
+				event = perf_event_create_kernel_counter(
+					&pmu_event_13_attr, cpu, NULL, NULL, NULL);
+				if (IS_ERR(event)) {
+					pr_notice("create (%d) p13_event error (%d)\n",
+						  cpu, (int)PTR_ERR(event));
+					goto FAIL;
+				}
+				per_cpu(pmu_event_13, cpu) = event;
+			}
 		}
 
 		swpm_pmu_start(cpu);
@@ -530,6 +594,8 @@ static int swpm_arm_pmu_enable(int cpu, int enable)
 			struct perf_event *p9_event = per_cpu(pmu_event_9, cpu);
 			struct perf_event *p10_event = per_cpu(pmu_event_10, cpu);
 			struct perf_event *p11_event = per_cpu(pmu_event_11, cpu);
+			struct perf_event *p12_event = per_cpu(pmu_event_12, cpu);
+			struct perf_event *p13_event = per_cpu(pmu_event_13, cpu);
 
 			if (p3_event) {
 				perf_event_release_kernel(p3_event);
@@ -566,6 +632,14 @@ static int swpm_arm_pmu_enable(int cpu, int enable)
 			if (p11_event) {
 				perf_event_release_kernel(p11_event);
 				per_cpu(pmu_event_11, cpu) = NULL;
+			}
+			if (p12_event) {
+				perf_event_release_kernel(p12_event);
+				per_cpu(pmu_event_12, cpu) = NULL;
+			}
+			if (p13_event) {
+				perf_event_release_kernel(p13_event);
+				per_cpu(pmu_event_13, cpu) = NULL;
 			}
 		}
 	}
@@ -608,6 +682,10 @@ int swpm_arm_pmu_get_idx(unsigned int evt_id, unsigned int cpu)
 			return per_cpu(pmu_idx_10, cpu);
 		case PMU_11_EVT:
 			return per_cpu(pmu_idx_11, cpu);
+		case PMU_12_EVT:
+			return per_cpu(pmu_idx_12, cpu);
+		case PMU_13_EVT:
+			return per_cpu(pmu_idx_13, cpu);
 		}
 	}
 
@@ -736,6 +814,8 @@ END:
 			per_cpu(pmu_idx_9, i) = -1;
 			per_cpu(pmu_idx_10, i) = -1;
 			per_cpu(pmu_idx_11, i) = -1;
+			per_cpu(pmu_idx_12, i) = -1;
+			per_cpu(pmu_idx_13, i) = -1;
 		}
 	}
 	dsu_cycle_idx = -1;
