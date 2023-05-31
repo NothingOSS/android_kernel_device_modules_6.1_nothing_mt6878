@@ -205,6 +205,7 @@ static void __iomem *g_mfg_brcast_base;
 static void __iomem *g_mfg_vgpu_devapc_ao_base;
 static void __iomem *g_mfg_vgpu_devapc_base;
 static void __iomem *g_mfg_smmu_base;
+static void __iomem *g_mfg_hbvc_base;
 static void __iomem *g_brisket_top_base;
 static void __iomem *g_brisket_st0_base;
 static void __iomem *g_brisket_st1_base;
@@ -1447,6 +1448,44 @@ void __gpufreq_dump_infra_status(void)
 		"MFG18", DRV_Reg32(MFG_RPC_MFG18_PWR_CON),
 		"MFG19", DRV_Reg32(MFG_RPC_MFG19_PWR_CON),
 		"MFG20", DRV_Reg32(MFG_RPC_MFG20_PWR_CON));
+	GPUFREQ_LOGI("%s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"SHADER_READY_LO", DRV_Reg32(MALI_SHADER_READY_LO),
+		"TILER_READY_LO", DRV_Reg32(MALI_TILER_READY_LO),
+		"MALI_L2_READY_LO", DRV_Reg32(MALI_L2_READY_LO));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[HBVC]",
+		"HBVC_STATUS", DRV_Reg32(HBVC_STATUS),
+		"HBVC_GRP0_BACKEND0", DRV_Reg32(MFG_HBVC_GRP0_DBG_BACKEND0),
+		"HBVC_GRP1_BACKEND0", DRV_Reg32(MFG_HBVC_GRP1_DBG_BACKEND0),
+		"HBVC_GRP0_VPROC_UPDATE", DRV_Reg32(MFG_HBVC_GRP0_VPROC_UPDATE),
+		"HBVC_GRP1_VPROC_UPDATE", DRV_Reg32(MFG_HBVC_GRP1_VPROC_UPDATE));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[HBVC]",
+		"HBVC_PMIFARB0", DRV_Reg32(HBVC_DBG_PMIFARB0),
+		"HBVC_PMIFARB1", DRV_Reg32(HBVC_DBG_PMIFARB1),
+		"HBVC_PMIFARB2", DRV_Reg32(HBVC_DBG_PMIFARB2),
+		"HBVC_PMIF_ERR_SEL", DRV_Reg32(HBVC_PMIF_ERR_SEL),
+		"HBVC_PMIF_ERR_OUT_L", DRV_Reg32(HBVC_PMIF_ERR_OUT_L),
+		"HBVC_PMIF_ERR_OUT_H", DRV_Reg32(HBVC_PMIF_ERR_OUT_H));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[BRCAST]",
+		"ERROR_IRQ", DRV_Reg32(MFG_BRCAST_ERROR_IRQ),
+		"DEBUG_INFO_9", DRV_Reg32(MFG_BRCAST_DEBUG_INFO_9),
+		"DEBUG_INFO_10", DRV_Reg32(MFG_BRCAST_DEBUG_INFO_10),
+		"DEBUG_INFO_11", DRV_Reg32(MFG_BRCAST_DEBUG_INFO_11),
+		"CONFIG_0", DRV_Reg32(MFG_BRCAST_CONFIG_0),
+		"CONFIG_1", DRV_Reg32(MFG_BRCAST_CONFIG_1));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[DREQ]",
+		"RPC_DREQ_CFG", DRV_Reg32(MFG_RPC_GTOP_DREQ_CFG),
+		"TOP_DBG_CON_0", DRV_Reg32(MFG_DREQ_TOP_DBG_CON_0),
+		"CG_DBG_CON_0", DRV_Reg32(MFG_CG_DREQ_CG_DBG_CON_0));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[DELSEL]",
+		"TOP_DUMMY_REG", DRV_Reg32(MFG_DUMMY_REG),
+		"CG_HW_DELSEL_SEL_0", DRV_Reg32(MFG_CG_HW_DELSEL_SEL_0),
+		"CG_HW_DELSEL_SEL_1", DRV_Reg32(MFG_CG_HW_DELSEL_SEL_1),
+		"CG_DUMMY_REG", DRV_Reg32(MFG_CG_DUMMY_REG));
 }
 
 void __gpufreq_dump_power_tracker_status(void)
@@ -5628,6 +5667,18 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 	g_mfg_smmu_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
 	if (unlikely(!g_mfg_smmu_base)) {
 		GPUFREQ_LOGE("fail to ioremap MFG_SMMU: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x13F50000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg_hbvc");
+	if (unlikely(!res)) {
+		GPUFREQ_LOGE("fail to get resource MFG_HBVC");
+		goto done;
+	}
+	g_mfg_hbvc_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (unlikely(!g_mfg_hbvc_base)) {
+		GPUFREQ_LOGE("fail to ioremap MFG_HBVC: 0x%llx", res->start);
 		goto done;
 	}
 

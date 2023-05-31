@@ -19,12 +19,21 @@
 #define MALI_BASE                              (0x13000000)
 #define MALI_GPU_ID                            (g_mali_base + 0x000)               /* 0x13000000 */
 #define MALI_SHADER_READY_LO                   (g_mali_base + 0x140)               /* 0x13000140 */
+#define MALI_SHADER_READY_HI                   (g_mali_base + 0x144)               /* 0x13000144 */
 #define MALI_TILER_READY_LO                    (g_mali_base + 0x150)               /* 0x13000150 */
+#define MALI_TILER_READY_HI                    (g_mali_base + 0x154)               /* 0x13000154 */
 #define MALI_L2_READY_LO                       (g_mali_base + 0x160)               /* 0x13000160 */
+#define MALI_L2_READY_HI                       (g_mali_base + 0x164)               /* 0x13000164 */
 #define MALI_L2_PWRON_LO                       (g_mali_base + 0x1A0)               /* 0x130001A0 */
 #define MALI_L2_PWRON_HI                       (g_mali_base + 0x1A4)               /* 0x130001A4 */
 #define MALI_L2_PWROFF_LO                      (g_mali_base + 0x1E0)               /* 0x130001E0 */
 #define MALI_L2_PWROFF_HI                      (g_mali_base + 0x1E4)               /* 0x130001E4 */
+#define MALI_SHADER_PWRTRANS_LO                (g_mali_base + 0x200)               /* 0x13000200 */
+#define MALI_SHADER_PWRTRANS_HI                (g_mali_base + 0x204)               /* 0x13000204 */
+#define MALI_TILER_PWRTRANS_LO                 (g_mali_base + 0x210)               /* 0x13000210 */
+#define MALI_TILER_PWRTRANS_HI                 (g_mali_base + 0x214)               /* 0x13000214 */
+#define MALI_L2_PWRTRANS_LO                    (g_mali_base + 0x220)               /* 0x13000220 */
+#define MALI_L2_PWRTRANS_HI                    (g_mali_base + 0x224)               /* 0x13000224 */
 #define MALI_GPU_IRQ_CLEAR                     (g_mali_base + 0x024)               /* 0x13000024 */
 #define MALI_GPU_IRQ_MASK                      (g_mali_base + 0x028)               /* 0x13000028 */
 #define MALI_GPU_IRQ_STATUS                    (g_mali_base + 0x02C)               /* 0x1300002C */
@@ -124,6 +133,7 @@
 #define MFG_DFD_CON_27                         (g_mfg_top_base + 0xF2C)            /* 0x13FBFF2C */
 #define MFG_PDCA_BACKDOOR                      (g_mfg_top_base + 0x210)            /* 0x13FBF210 */
 #define MFG_DREQ_TOP_DBG_CON_0                 (g_mfg_top_base + 0x1F0)            /* 0x13FBF1F0 */
+#define MFG_SRAM_FUL_SEL_ULV                   (g_mfg_top_base + 0x080)            /* 0x13FBF080 */
 #define MFG_SRAM_FUL_SEL_ULV_TOP               (g_mfg_top_base + 0x084)            /* 0x13FBF084 */
 
 #define MFG_CG_CFG_BASE                        (0x13E90000)
@@ -247,6 +257,18 @@
 #define MFG_BRCAST_CMD_SEQ_1_0_LSB             (g_mfg_brcast_base + 0x080)         /* 0x13FB1080 */
 #define MFG_BRCAST_CMD_SEQ_1_0_MSB             (g_mfg_brcast_base + 0x084)         /* 0x13FB1084 */
 #define MFG_BRCAST_CMD_SEQ_0AND1_PTY           (g_mfg_brcast_base + 0x380)         /* 0x13FB1380 */
+#define MFG_BRCAST_ERROR_IRQ                   (g_mfg_brcast_base + 0xDFC)         /* 0x13FB1DFC */
+#define MFG_BRCAST_DEBUG_INFO_9                (g_mfg_brcast_base + 0xE2C)         /* 0x13FB1E2C */
+#define MFG_BRCAST_DEBUG_INFO_10               (g_mfg_brcast_base + 0xE30)         /* 0x13FB1E30 */
+#define MFG_BRCAST_DEBUG_INFO_11               (g_mfg_brcast_base + 0xE34)         /* 0x13FB1E34 */
+#define MFG_BRCAST_DEBUG_INFO_12               (g_mfg_brcast_base + 0xE38)         /* 0x13FB1E38 */
+#define MFG_BRCAST_DEBUG_INFO_13               (g_mfg_brcast_base + 0xE3C)         /* 0x13FB1E3C */
+#define MFG_BRCAST_CONFIG_0                    (g_mfg_brcast_base + 0xFE8)         /* 0x13FB1FE8 */
+#define MFG_BRCAST_CONFIG_1                    (g_mfg_brcast_base + 0xFEC)         /* 0x13FB1FEC */
+#define MFG_BRCAST_CONFIG_2                    (g_mfg_brcast_base + 0xFF0)         /* 0x13FB1FF0 */
+#define MFG_BRCAST_CONFIG_3                    (g_mfg_brcast_base + 0xFF4)         /* 0x13FB1FF4 */
+#define MFG_BRCAST_CONFIG_4                    (g_mfg_brcast_base + 0xFF8)         /* 0x13FB1FF8 */
+#define MFG_BRCAST_CONFIG_5                    (g_mfg_brcast_base + 0xFFC)         /* 0x13FB1FFC */
 
 #define MFG_VGPU_DEVAPC_AO_BASE                (0x13FA1000)
 #define MFG_VGPU_DEVAPC_AO_MAS_SEC_0           (g_mfg_vgpu_devapc_ao_base + 0xA00) /* 0x13FA1A00 */
@@ -259,6 +281,34 @@
 #define MFG_SMMU_BASE                          (0x13A00000)
 #define MFG_SMMU_CR0                           (g_mfg_smmu_base + 0x0020)          /* 0x13A00000 */
 #define MFG_SMMU_GBPA                          (g_mfg_smmu_base + 0x0044)          /* 0x13A00000 */
+
+#define MFG_HBVC_BASE                          (0x13F50000)
+#define MFG_HBVC_CFG                           (g_mfg_hbvc_base + 0x000)           /* 0x13F50000 */
+#define MFG_HBVC_SAMPLE_EN                     (g_mfg_hbvc_base + 0x004)           /* 0x13F50004 */
+#define MFG_HBVC_GRP0_CFG                      (g_mfg_hbvc_base + 0x0C0)           /* 0x13F500C0 */
+#define MFG_HBVC_GRP1_CFG                      (g_mfg_hbvc_base + 0x0C4)           /* 0x13F500C4 */
+#define MFG_HBVC_GRP0_VPROC_UPDATE             (g_mfg_hbvc_base + 0x1C0)           /* 0x13F501C0 */
+#define MFG_HBVC_GRP1_VPROC_UPDATE             (g_mfg_hbvc_base + 0x1C4)           /* 0x13F501C4 */
+#define MFG_HBVC_FLL0_DBG_FRONTEND0            (g_mfg_hbvc_base + 0x400)           /* 0x13F50400 */
+#define MFG_HBVC_FLL1_DBG_FRONTEND0            (g_mfg_hbvc_base + 0x404)           /* 0x13F50404 */
+#define MFG_HBVC_FLL2_DBG_FRONTEND0            (g_mfg_hbvc_base + 0x408)           /* 0x13F50408 */
+#define MFG_HBVC_FLL4_DBG_FRONTEND0            (g_mfg_hbvc_base + 0x410)           /* 0x13F50410 */
+#define MFG_HBVC_FLL5_DBG_FRONTEND0            (g_mfg_hbvc_base + 0x414)           /* 0x13F50414 */
+#define MFG_HBVC_FLL6_DBG_FRONTEND0            (g_mfg_hbvc_base + 0x418)           /* 0x13F50418 */
+#define MFG_HBVC_FLL7_DBG_FRONTEND0            (g_mfg_hbvc_base + 0x41C)           /* 0x13F5041C */
+#define MFG_HBVC_GRP0_DBG_BACKEND0             (g_mfg_hbvc_base + 0x480)           /* 0x13F50480 */
+#define MFG_HBVC_GRP1_DBG_BACKEND0             (g_mfg_hbvc_base + 0x484)           /* 0x13F50484 */
+#define HBVC_DBG_PMIFARB0                      (g_mfg_hbvc_base + 0x4C0)           /* 0x13F504C0 */
+#define HBVC_DBG_PMIFARB1                      (g_mfg_hbvc_base + 0x4C4)           /* 0x13F504C4 */
+#define HBVC_DBG_PMIFARB2                      (g_mfg_hbvc_base + 0x4C8)           /* 0x13F504C8 */
+#define HBVC_PMIF_ERR_SEL                      (g_mfg_hbvc_base + 0x4D0)           /* 0x13F504D0 */
+#define HBVC_PMIF_ERR_OUT_L                    (g_mfg_hbvc_base + 0x4D4)           /* 0x13F504D4 */
+#define HBVC_PMIF_ERR_OUT_H                    (g_mfg_hbvc_base + 0x4D8)           /* 0x13F504D8 */
+#define HBVC_STATUS                            (g_mfg_hbvc_base + 0x4DC)           /* 0x13F504DC */
+#define MFG_HBVC_GRP1_POC_CFG                  (g_mfg_hbvc_base + 0x810)           /* 0x13F50810 */
+#define MFG_HBVC_GRP1_POC_DBG_CFG              (g_mfg_hbvc_base + 0x814)           /* 0x13F50814 */
+#define MFG_HBVC_GRP1_POC_DBG_0                (g_mfg_hbvc_base + 0x818)           /* 0x13F50818 */
+#define MFG_HBVC_GRP1_POC_DBG_1                (g_mfg_hbvc_base + 0x81C)           /* 0x13F5081C */
 
 #define BRISKET_TOP_BASE                       (0x13FB0000)
 #define BRISKET_TOP_VOLTAGEEXT                 (g_brisket_top_base + 0x148)        /* 0x13FB0148 */
