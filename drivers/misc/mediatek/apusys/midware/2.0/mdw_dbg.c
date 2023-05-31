@@ -19,6 +19,7 @@ struct dentry *mdw_dbg_device;
 
 u32 g_mdw_klog;
 u8 cfg_apusys_trace;
+u32 g_mdw_pwroff_cnt;
 
 /* default value need to align with rv or add sync flow */
 u64 dbg_min_dtime;
@@ -79,6 +80,7 @@ DEFINE_DEBUGFS_ATTRIBUTE(fops_min_etime, min_etime_get, min_etime_set, "%llu\n")
 int mdw_dbg_init(struct apusys_core_info *info)
 {
 	g_mdw_klog = 0x0;
+	g_mdw_pwroff_cnt = 0x0;
 
 	/* create debug root */
 	mdw_dbg_root = debugfs_create_dir("midware", info->dbg_root);
@@ -91,6 +93,10 @@ int mdw_dbg_init(struct apusys_core_info *info)
 	cfg_apusys_trace = 0;
 	debugfs_create_u8("trace_en", 0644,
 		mdw_dbg_root, &cfg_apusys_trace);
+
+	/* create pwroff_cnt */
+	debugfs_create_u32("pwroff_cnt", 0644,
+		mdw_dbg_root, &g_mdw_pwroff_cnt);
 
 	dbg_min_dtime = 0;
 	dbg_max_dtime = 10000;

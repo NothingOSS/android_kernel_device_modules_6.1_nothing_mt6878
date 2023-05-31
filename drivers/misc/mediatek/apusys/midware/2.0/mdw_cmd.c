@@ -1167,8 +1167,9 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	if (need_dtime_check) {
 		mdw_flw_debug("check user set dtime\n");
 		/* check dtime setting */
-		if (c->power_dtime > MAX_DTIME || c->is_dtime_set) {
+		if (c->power_dtime > MAX_DTIME || !c->is_dtime_set) {
 			mdw_flw_debug("trigger fast power off directly\n");
+			g_mdw_pwroff_cnt++;
 			ret = mdev->dev_funcs->power_onoff(mdev, MDW_APU_POWER_OFF);
 			goto power_out;
 		}

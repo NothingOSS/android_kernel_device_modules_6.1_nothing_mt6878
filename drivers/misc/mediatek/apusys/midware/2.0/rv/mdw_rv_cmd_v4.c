@@ -346,7 +346,7 @@ reuse:
 		c->num_subcmds * c->num_subcmds * sizeof(uint8_t));
 
 	/* clear einfos */
-	memset(c->einfos, 0, c->exec_infos->size);
+	memset((void *)rmc + rmc->exec_infos_offset, 0, c->exec_infos->size);
 
 	/* clear exec ret */
 	c->einfos->c.ret = 0;
