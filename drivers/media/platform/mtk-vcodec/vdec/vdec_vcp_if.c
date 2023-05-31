@@ -1609,6 +1609,16 @@ static int vdec_vcp_set_param(unsigned long h_vdec,
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_OPERATING_RATE;
 		break;
 	case SET_PARAM_DEC_PARAMS:
+		mtk_v4l2_debug(2, "[%d] param change 0x%x decode mode %d frame %d %d max %d %d wait key %d op-rate %d error mode %d",
+			inst->ctx->id, inst->vsi->dec_params.dec_param_change,
+			inst->vsi->dec_params.decode_mode,
+			inst->vsi->dec_params.frame_size_width,
+			inst->vsi->dec_params.frame_size_height,
+			inst->vsi->dec_params.fixed_max_frame_size_width,
+			inst->vsi->dec_params.fixed_max_frame_size_height,
+			inst->vsi->dec_params.wait_key_frame,
+			inst->vsi->dec_params.operating_rate,
+			inst->vsi->dec_params.decode_error_handle_mode);
 		vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
 		break;
 	case SET_PARAM_TOTAL_FRAME_BUFQ_COUNT:
