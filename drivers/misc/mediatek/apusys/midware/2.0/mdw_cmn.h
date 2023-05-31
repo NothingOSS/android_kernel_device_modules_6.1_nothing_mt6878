@@ -14,6 +14,8 @@
 
 extern u32 g_mdw_klog;
 extern u8 cfg_apusys_trace;
+extern u64 dbg_min_dtime;
+extern u64 dbg_max_dtime;
 
 enum {
 	MDW_DBG_DRV = 0x01,

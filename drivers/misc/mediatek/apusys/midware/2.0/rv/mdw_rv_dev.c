@@ -68,10 +68,14 @@ int mdw_rv_dev_dtime_handle(struct mdw_rv_dev *mrdev, struct mdw_cmd *c)
 	struct mdw_device *mdev = c->mpriv->mdev;
 	uint64_t curr_dtime_ts = 0;
 	unsigned long power_dtime = 0;
+	uint32_t activate_dtime = c->power_dtime;
 
 	/* dtime handle */
+	activate_dtime = (activate_dtime > dbg_max_dtime)? dbg_max_dtime: activate_dtime;
+	activate_dtime = (activate_dtime < dbg_min_dtime)? dbg_min_dtime: activate_dtime;
+
 	mutex_lock(&mdev->dtime_mtx);
-	curr_dtime_ts = c->end_ts + c->power_dtime;
+	curr_dtime_ts = c->end_ts + activate_dtime;
 	if (mdev->max_dtime_ts < curr_dtime_ts)
 		mdev->max_dtime_ts = curr_dtime_ts;
 	else
@@ -455,6 +459,7 @@ int mdw_rv_dev_get_param(struct mdw_rv_dev *mrdev, enum mdw_info_type type, uint
 		break;
 	case MDW_INFO_MIN_DTIME:
 	case MDW_INFO_MIN_ETIME:
+	case MDW_INFO_MAX_DTIME:
 	case MDW_INFO_RESERV_TIME_REMAIN:
 		memset(&msg, 0, sizeof(msg));
 		msg.id = MDW_IPI_PARAM;

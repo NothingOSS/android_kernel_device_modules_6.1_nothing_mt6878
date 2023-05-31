@@ -20,6 +20,10 @@ struct dentry *mdw_dbg_device;
 u32 g_mdw_klog;
 u8 cfg_apusys_trace;
 
+/* default value need to align with rv or add sync flow */
+u64 dbg_min_dtime;
+u64 dbg_max_dtime;
+
 static int min_etime_set(void *data, u64 val)
 {
 	struct mdw_device *mdev = (struct mdw_device *)data;
@@ -39,6 +43,7 @@ static int min_dtime_set(void *data, u64 val)
 {
 	struct mdw_device *mdev = (struct mdw_device *)data;
 
+	dbg_min_dtime = val;
 	mdev->dev_funcs->set_param(mdev, MDW_INFO_MIN_DTIME, val);
 	return 0;
 }
@@ -50,7 +55,25 @@ static int min_dtime_get(void *data, u64 *val)
 	return 0;
 }
 
+static int max_dtime_set(void *data, u64 val)
+{
+	struct mdw_device *mdev = (struct mdw_device *)data;
+
+	dbg_max_dtime = val;
+	mdev->dev_funcs->set_param(mdev, MDW_INFO_MAX_DTIME, val);
+	return 0;
+}
+
+static int max_dtime_get(void *data, u64 *val)
+{
+	struct mdw_device *mdev = (struct mdw_device *)data;
+
+	*val = mdev->dev_funcs->get_info(mdev, MDW_INFO_MAX_DTIME);
+	return 0;
+}
+
 DEFINE_DEBUGFS_ATTRIBUTE(fops_min_dtime, min_dtime_get, min_dtime_set, "%llu\n");
+DEFINE_DEBUGFS_ATTRIBUTE(fops_max_dtime, max_dtime_get, max_dtime_set, "%llu\n");
 DEFINE_DEBUGFS_ATTRIBUTE(fops_min_etime, min_etime_get, min_etime_set, "%llu\n");
 //----------------------------------------------
 int mdw_dbg_init(struct apusys_core_info *info)
@@ -69,7 +92,10 @@ int mdw_dbg_init(struct apusys_core_info *info)
 	debugfs_create_u8("trace_en", 0644,
 		mdw_dbg_root, &cfg_apusys_trace);
 
+	dbg_min_dtime = 0;
+	dbg_max_dtime = 10000;
 	debugfs_create_file("min_dtime", 0644, mdw_dbg_root, mdw_dev, &fops_min_dtime);
+	debugfs_create_file("max_dtime", 0644, mdw_dbg_root, mdw_dev, &fops_max_dtime);
 	debugfs_create_file("min_etime", 0644, mdw_dbg_root, mdw_dev, &fops_min_etime);
 
 	mdw_dbg_device = debugfs_create_dir("device", mdw_dbg_root);
