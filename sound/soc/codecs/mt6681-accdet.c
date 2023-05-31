@@ -87,8 +87,10 @@ struct mt63xx_accdet_data {
 	int accdet_eint0;
 	int accdet_eint1;
 	struct wakeup_source *wake_lock;
+	struct wakeup_source *gpio_wake_lock;
 	struct wakeup_source *timer_lock;
 	struct mutex res_lock;
+	struct mutex gpio_res_lock;
 	dev_t accdet_devno;
 	struct class *accdet_class;
 	int button_status;
@@ -989,11 +991,6 @@ static inline void clear_accdet_int(void)
 {
 	/* it is safe by using polling to adjust when to clear IRQ_CLR_BIT */
 	pmic_write_set(MT6681_ACCDET_IRQ_CLR_ADDR, MT6681_ACCDET_IRQ_CLR_SHIFT);
-	if (accdet_dts.accdet_irq_gpio_enable == 0x1) {
-		pmic_write_clr(MT6681_ACCDET_IRQ_CLR_ADDR, MT6681_ACCDET_IRQ_CLR_SHIFT);
-		pmic_write_set(MT6681_RG_INT_STATUS_ACCDET_ADDR, MT6681_RG_INT_STATUS_ACCDET_SHIFT);
-		pmic_write_set(MT6681_TOP_INT_STATUS0, 0x7);
-	}
 }
 
 static inline void clear_accdet_int_check(void)
@@ -1008,6 +1005,12 @@ static inline void clear_accdet_int_check(void)
 	/* Unmask accdet and clear status */
 	pmic_write_set(MT6681_AUD_TOP_INT_MASK_CON0_CLR, MT6681_RG_INT_MASK_ACCDET_SHIFT);
 	pmic_write_set(MT6681_RG_INT_STATUS_ACCDET_ADDR, MT6681_RG_INT_STATUS_ACCDET_SHIFT);
+
+	if (accdet_dts.accdet_irq_gpio_enable == 0x1) {
+		pmic_write(MT6681_RG_INT_STATUS_ACCDET_ADDR,
+			(0x1 << MT6681_RG_INT_STATUS_ACCDET_SHIFT));
+		pmic_write(MT6681_TOP_INT_STATUS0, (0x1 << RG_INT_STATUS_AUD_SFT));
+	}
 }
 
 static inline void clear_accdet_eint(u32 eintid)
@@ -1019,13 +1022,6 @@ static inline void clear_accdet_eint(u32 eintid)
 	if ((eintid & PMIC_EINT1) == PMIC_EINT1) {
 		pmic_write_set(MT6681_ACCDET_EINT1_IRQ_CLR_ADDR,
 			       MT6681_ACCDET_EINT1_IRQ_CLR_SHIFT);
-	}
-	if (accdet_dts.accdet_irq_gpio_enable == 0x1) {
-		pmic_write_set(MT6681_ACCDET_EINT0_IRQ_CLR_ADDR, MT6681_ACCDET_EINT0_IRQ_CLR_SHIFT);
-		pmic_write_clr(MT6681_ACCDET_EINT0_IRQ_CLR_ADDR, MT6681_ACCDET_EINT0_IRQ_CLR_SHIFT);
-		pmic_write_set(MT6681_RG_INT_STATUS_ACCDET_EINT0_ADDR,
-			MT6681_RG_INT_STATUS_ACCDET_EINT0_SHIFT);
-		pmic_write_set(MT6681_TOP_INT_STATUS0, 0x7);
 	}
 }
 
@@ -1044,6 +1040,12 @@ static inline void clear_accdet_eint_check(u32 eintid)
 			       MT6681_RG_INT_MASK_ACCDET_EINT0_SHIFT);
 		pmic_write_set(MT6681_RG_INT_STATUS_ACCDET_ADDR,
 			       MT6681_RG_INT_STATUS_ACCDET_EINT0_SHIFT);
+
+		if (accdet_dts.accdet_irq_gpio_enable == 0x1) {
+			pmic_write(MT6681_RG_INT_STATUS_ACCDET_EINT0_ADDR,
+				(0x1 << MT6681_RG_INT_STATUS_ACCDET_EINT0_SHIFT));
+			pmic_write(MT6681_TOP_INT_STATUS0, (0x1 << RG_INT_STATUS_AUD_SFT));
+		}
 	}
 	if ((eintid & PMIC_EINT1) == PMIC_EINT1) {
 		while ((pmic_read(MT6681_ACCDET_EINT1_IRQ_ADDR) & ACCDET_EINT1_IRQ_B3) &&
@@ -1630,6 +1632,8 @@ static void eint_work_callback(struct work_struct *work)
 		accdet_init();
 
 		enable_accdet(0);
+		if (accdet_dts.accdet_irq_gpio_enable == 0x1)
+			enable_irq(accdet->gpioirq);
 	} else {
 		mutex_lock(&accdet->res_lock);
 		accdet->eint_sync_flag = false;
@@ -1644,6 +1648,8 @@ static void eint_work_callback(struct work_struct *work)
 			       MT6681_ACCDET_SW_EN_SHIFT);
 		disable_accdet();
 		headset_plug_out();
+		if (accdet_dts.accdet_irq_gpio_enable == 0x1)
+			enable_irq(accdet->gpioirq);
 	}
 
 	if (HAS_CAP(accdet->data->caps, ACCDET_PMIC_EINT_IRQ)) {
@@ -1854,6 +1860,9 @@ static void accdet_work_callback(struct work_struct *work)
 			__func__);
 	mutex_unlock(&accdet->res_lock);
 	__pm_relax(accdet->wake_lock);
+
+	if (accdet_dts.accdet_irq_gpio_enable == 0x1)
+		enable_irq(accdet->gpioirq);
 }
 
 static void accdet_queue_work(void)
@@ -2128,41 +2137,19 @@ static irqreturn_t ext_eint_handler(int irq, void *data)
 {
 	u32 top_status = 0, irq_status = 0;
 
+	__pm_stay_awake(accdet->gpio_wake_lock);
+	mutex_lock(&accdet->gpio_res_lock);
+
 	top_status = pmic_read(MT6681_TOP_INT_STATUS0);
 	irq_status = pmic_read(MT6681_ACCDET_IRQ_ADDR);
 
-	if ((top_status == 0x80) && (irq_status == 0x4)) {
-		// first clear accdet irq
-		if (accdet->cur_eint_state == EINT_PIN_PLUG_IN) {
-			/* To trigger EINT when the headset was plugged in
-			 * We set the polarity back as we initialed.
-			 */
-			if (accdet->accdet_eint_type == IRQ_TYPE_LEVEL_HIGH)
-				irq_set_irq_type(accdet->gpioirq, IRQ_TYPE_LEVEL_HIGH);
-			else
-				irq_set_irq_type(accdet->gpioirq, IRQ_TYPE_LEVEL_LOW);
-			if (gpio_is_valid(accdet->gpiopin))
-				gpio_set_debounce(accdet->gpiopin, accdet->gpio_hp_deb);
-		} else {
-			/* To trigger EINT when the headset was plugged out
-			 * We set the opposite polarity to what we initialed.
-			 */
-			if (accdet->accdet_eint_type == IRQ_TYPE_LEVEL_HIGH)
-				irq_set_irq_type(accdet->gpioirq, IRQ_TYPE_LEVEL_LOW);
-			else
-				irq_set_irq_type(accdet->gpioirq, IRQ_TYPE_LEVEL_HIGH);
-
-			if (gpio_is_valid(accdet->gpiopin))
-				gpio_set_debounce(accdet->gpiopin, accdet_dts.plugout_deb * 1000);
-
-			if (accdet_dts.moisture_detect_mode != 0x5) {
-				mod_timer(&micbias_timer,
-					jiffies + MICBIAS_DISABLE_TIMER);
-			}
-		}
+	if ((top_status == 0x80) && ((irq_status == 0x4) || (irq_status == 0x1))) {
 		disable_irq_nosync(accdet->gpioirq);
+		accdet_irq_handle();
 	}
-	accdet_irq_handle();
+
+	mutex_unlock(&accdet->gpio_res_lock);
+	__pm_relax(accdet->gpio_wake_lock);
 
 	return IRQ_HANDLED;
 }
@@ -2171,6 +2158,7 @@ static inline int ext_eint_setup(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct device_node *node = pdev->dev.of_node;
+	struct irq_data *irq_data;
 
 	if (!node)
 		return -ENODEV;
@@ -2189,26 +2177,26 @@ static inline int ext_eint_setup(struct platform_device *pdev)
 	}
 	pinctrl_select_state(accdet->pinctrl, accdet->pins_eint);
 
-	accdet->gpiopin = of_get_named_gpio(node, "accdet-gpios", 0);
-	dev_notice(&pdev->dev, "accdet->gpiopin (%d)\n", accdet->gpiopin);
-	accdet->gpioirq = platform_get_irq_byname(pdev, "ap_eint");
-	dev_notice(&pdev->dev, "Get ap_eint (%d)\n", accdet->gpioirq);
+	accdet->gpioirq = of_irq_get_byname(node, "ap_eint");
 	if (accdet->gpioirq < 0) {
 		dev_notice(&pdev->dev, "Get ap_eint failed (%d)\n", accdet->gpioirq);
 		return accdet->gpioirq;
 	}
 
-	accdet->accdet_eint_type = irqd_get_trigger_type(irq_get_irq_data(accdet->gpioirq));
+	irq_data = irq_get_irq_data(accdet->gpioirq);
+	if (!irq_data)
+		dev_info(&pdev->dev, "irq_data is null\n");
+	else
+		accdet->accdet_eint_type = irqd_get_trigger_type(irq_data);
 
 	//set accdet irq polarity
 	pmic_write(MT6681_TOP_INT_CON2, 0x1);
+
+	ret = devm_request_threaded_irq(&pdev->dev, accdet->gpioirq, NULL, ext_eint_handler,
+					IRQF_TRIGGER_LOW|IRQF_ONESHOT, "ap_eint", NULL);
+
 	//enable top level irq
 	pmic_write(MT6681_TOP_INT_CON0, 0x80);
-
-	/* Enable interrupt when acccet init done */
-	irq_set_status_flags(accdet->gpiopin, IRQ_NOAUTOEN);
-	ret = devm_request_threaded_irq(&pdev->dev, gpio_to_irq(accdet->gpiopin),
-			NULL, ext_eint_handler, IRQF_ONESHOT, "accdet-gpios", NULL);
 
 	dev_info(&pdev->dev, "%s ret:%d\n", __func__, ret);
 	if (ret)
@@ -2938,7 +2926,12 @@ static int accdet_probe(struct platform_device *pdev)
 	accdet->timer_lock = wakeup_source_register(NULL, "accdet_timer_lock");
 	if (!accdet->timer_lock)
 		return -ENOMEM;
+	accdet->gpio_wake_lock = wakeup_source_register(NULL, "accdet_gpio_wake_lock");
+	if (!accdet->gpio_wake_lock)
+		return -ENOMEM;
 	mutex_init(&accdet->res_lock);
+
+	mutex_init(&accdet->gpio_res_lock);
 
 	platform_set_drvdata(pdev, accdet);
 
