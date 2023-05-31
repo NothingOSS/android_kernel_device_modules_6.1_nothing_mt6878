@@ -392,8 +392,7 @@ static int mtk_cpu_resources_init(struct platform_device *pdev,
 static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 {
 	struct device_node *cpu_np;
-	struct device_node *hvfs_node;
-	struct device_node *qos_node;
+	struct device_node *hvfs_node, *csram_sys_node, *qos_node;
 	struct of_phandle_args args;
 	struct resource *csram_res;
 	struct resource *qos_res;
@@ -432,14 +431,27 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 		return -EBUSY;
 	}
 
-	csram_base = ioremap(csram_res->start + REG_FREQ_SCALING, LUT_ROW_SIZE);
+	csram_base = ioremap(csram_res->start, resource_size(csram_res));
 	if (!csram_base) {
 		pr_notice("failed to map csram_base @ %s\n", __func__);
 		ret = -ENOMEM;
 		goto release_region;
 	}
 
-	if (readl_relaxed(csram_base))
+	csram_sys_node = of_parse_phandle(hvfs_node, "csram-sys-base", 0);
+	if (csram_sys_node != NULL) {
+		static void __iomem *csram_sys_base;
+
+		csram_sys_base = of_iomap(csram_sys_node, 0);
+		if (!readl_relaxed(csram_sys_base + cpufreq_mtk_offsets[3])) {
+			pr_notice("%s: cpufreq hardware not enable\n", __func__);
+			ret = -ENOMEM;
+			goto release_region;
+		}
+		pr_notice("%s: cpufreq hardware enable\n", __func__);
+	}
+
+	if (readl_relaxed(csram_base + REG_FREQ_SCALING))
 		freq_scaling_disabled = false;
 
 	fdvfs_enabled = check_fdvfs_support() == 1 ? true : false;
