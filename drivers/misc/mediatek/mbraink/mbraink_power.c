@@ -15,7 +15,7 @@
 	IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
 	IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 
-#if (MBRAINK_LANDING_PONSOT_CHECK == 1)
+#if (MBRAINK_LANDING_FEATURE_CHECK == 1)
 void mtk_get_lp_info(struct lpm_dbg_lp_info *info, int type)
 {
 	pr_info("%s: not support yet...", __func__);
@@ -128,89 +128,88 @@ int mbraink_get_power_info(char *buffer, unsigned int size, int datatype)
 int mbraink_power_getVcoreInfo(struct mbraink_power_vcoreInfo *pmbrainkPowerVcoreInfo)
 {
 	int ret = 0;
-	int i, j;
-	int32_t core_vol_num, core_ip_num;
-	struct ip_stats *core_ip_stats_ptr;
-	struct vol_duration *core_duration_ptr;
+	int i = 0;
+	int32_t core_vol_num = 0, core_ip_num = 0;
+	struct ip_stats *core_ip_stats_ptr = NULL;
+	struct vol_duration *core_duration_ptr = NULL;
+	int32_t core_vol_check = 0, core_ip_check = 0;
 
 	core_vol_num = get_vcore_vol_num();
 	core_ip_num = get_vcore_ip_num();
 
-	core_duration_ptr = kmalloc_array(core_vol_num, sizeof(struct vol_duration), GFP_KERNEL);
-	core_ip_stats_ptr = kmalloc_array(core_ip_num, sizeof(struct ip_stats), GFP_KERNEL);
-	for (i = 0; i < core_ip_num; i++)
-		core_ip_stats_ptr[i].vol_times =
-			kmalloc_array(core_vol_num, sizeof(struct ip_vol_times), GFP_KERNEL);
-
-	sync_latest_data();
-
-	if (!core_duration_ptr) {
+	core_duration_ptr = kcalloc(core_vol_num, sizeof(struct vol_duration), GFP_KERNEL);
+	if (core_duration_ptr == NULL) {
 		pr_notice("core_duration_idx failure\n");
 		ret = -1;
 		goto End;
-	} else if (!core_ip_stats_ptr) {
+	}
+
+	core_ip_stats_ptr = kcalloc(core_ip_num, sizeof(struct ip_stats), GFP_KERNEL);
+	if (core_ip_stats_ptr == NULL) {
 		pr_notice("core_ip_stats_idx failure\n");
 		ret = -1;
 		goto End;
 	}
 
+	for (i = 0; i < core_ip_num; i++) {
+		core_ip_stats_ptr[i].times =
+		kzalloc(sizeof(struct ip_times), GFP_KERNEL);
+		if (core_ip_stats_ptr[i].times == NULL) {
+			pr_notice("times failure\n");
+			goto End;
+		}
+	}
+
+	sync_latest_data();
+
 	get_vcore_vol_duration(core_vol_num, core_duration_ptr);
 	get_vcore_ip_vol_stats(core_ip_num, core_vol_num, core_ip_stats_ptr);
 
-	pr_info("VCORE_VOL_NUM = %d\n", core_vol_num);
-	pr_info("VCORE_IP_NUM = %d\n", core_ip_num);
+	if (core_vol_num > MAX_VCORE_NUM) {
+		pr_notice("core vol num over (%d)", MAX_VCORE_NUM);
+		core_vol_check = MAX_VCORE_NUM;
+	} else
+		core_vol_check = core_vol_num;
 
-	if (core_vol_num != MAX_VCORE_NUM) {
-		pr_notice("VCORE_VOL_NUM is not expected(%d)\n", MAX_VCORE_NUM);
-		ret = -1;
-		goto End;
-	}
+	if (core_ip_num > MAX_VCORE_IP_NUM) {
+		pr_notice("core_ip_num over (%d)", MAX_VCORE_IP_NUM);
+		core_ip_check = MAX_VCORE_IP_NUM;
+	} else
+		core_ip_check = core_ip_num;
 
-	if (core_ip_num != MBRAINK_VCORE_IP_MAX) {
-		pr_notice("VCORE_IP_NUM is not expected(%d)\n", MBRAINK_VCORE_IP_MAX);
-		ret = -1;
-		goto End;
-	}
+	pmbrainkPowerVcoreInfo->totalVCNum = core_vol_check;
+	pmbrainkPowerVcoreInfo->totalVCIpNum = core_ip_check;
 
-	for (i = 0; i < core_vol_num; i++) {
+	for (i = 0; i < core_vol_check; i++) {
 		pmbrainkPowerVcoreInfo->vcoreDurationInfo[i].vol =
 			core_duration_ptr[i].vol;
 		pmbrainkPowerVcoreInfo->vcoreDurationInfo[i].duration =
 			core_duration_ptr[i].duration;
-		pr_info("VCORE %d mV : %lld ms\n",
-			pmbrainkPowerVcoreInfo->vcoreDurationInfo[i].vol,
-			pmbrainkPowerVcoreInfo->vcoreDurationInfo[i].duration);
 	}
 
-	for (i = 0; i < core_ip_num; i++) {
+	for (i = 0; i < core_ip_check; i++) {
 		strncpy(pmbrainkPowerVcoreInfo->vcoreIpDurationInfo[i].ip_name,
 			core_ip_stats_ptr[i].ip_name,
 			MAX_IP_NAME_LENGTH - 1);
-		pr_info("VCORE IP %s\n",
-			pmbrainkPowerVcoreInfo->vcoreIpDurationInfo[i].ip_name);
-		for (j = 0; j < core_vol_num; j++) {
-			pmbrainkPowerVcoreInfo->vcoreIpDurationInfo[i].vol_times[j].vol =
-				core_ip_stats_ptr[i].vol_times[j].vol;
-			pmbrainkPowerVcoreInfo->vcoreIpDurationInfo[i].vol_times[j].active_time =
-				core_ip_stats_ptr[i].vol_times[j].active_time;
-			pmbrainkPowerVcoreInfo->vcoreIpDurationInfo[i].vol_times[j].idle_time =
-				core_ip_stats_ptr[i].vol_times[j].idle_time;
-			pmbrainkPowerVcoreInfo->vcoreIpDurationInfo[i].vol_times[j].off_time =
-				core_ip_stats_ptr[i].vol_times[j].off_time;
-
-			pr_info("%d mV \t active_time : %lld ms \t idle_time : %lld ms \t off_time : %lld ms\n",
-			pmbrainkPowerVcoreInfo->vcoreIpDurationInfo[i].vol_times[j].vol,
-			pmbrainkPowerVcoreInfo->vcoreIpDurationInfo[i].vol_times[j].active_time,
-			pmbrainkPowerVcoreInfo->vcoreIpDurationInfo[i].vol_times[j].idle_time,
-			pmbrainkPowerVcoreInfo->vcoreIpDurationInfo[i].vol_times[j].off_time);
-		}
+		pmbrainkPowerVcoreInfo->vcoreIpDurationInfo[i].times.active_time =
+			core_ip_stats_ptr[i].times->active_time;
+		pmbrainkPowerVcoreInfo->vcoreIpDurationInfo[i].times.idle_time =
+			core_ip_stats_ptr[i].times->idle_time;
+		pmbrainkPowerVcoreInfo->vcoreIpDurationInfo[i].times.off_time =
+			core_ip_stats_ptr[i].times->off_time;
 	}
-End:
-	kfree(core_duration_ptr);
 
-	for (i = 0; i < core_ip_num; i++)
-		kfree(core_ip_stats_ptr[i].vol_times);
-	kfree(core_ip_stats_ptr);
+End:
+	if (core_duration_ptr != NULL)
+		kfree(core_duration_ptr);
+
+	if (core_ip_stats_ptr != NULL) {
+		for (i = 0; i < core_ip_num; i++) {
+			if (core_ip_stats_ptr[i].times != NULL)
+				kfree(core_ip_stats_ptr[i].times);
+		}
+		kfree(core_ip_stats_ptr);
+	}
 
 	return ret;
 }

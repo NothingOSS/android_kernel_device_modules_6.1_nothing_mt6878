@@ -11,9 +11,11 @@
 #define MAX_MEM_STRUCT_SZ			4
 #define MAX_MONITOR_PROCESSNAME_SZ		64
 #define MAX_MONITOR_PROCESS_NUM			16
-#define MAX_DDR_FREQ_NUM			9
+#define MAX_DDR_FREQ_NUM			12
+#define MAX_DDR_IP_NUM				8
 #define MAX_TRACE_PID_NUM			32
-#define MAX_VCORE_NUM				5
+#define MAX_VCORE_NUM				8
+#define MAX_VCORE_IP_NUM			8
 #define MAX_IP_NAME_LENGTH			(16)
 #define MAX_NOTIFY_CPUFREQ_NUM			8
 #define MAX_SUSPEND_INFO_SZ			128
@@ -25,19 +27,10 @@
 #define NETLINK_EVENT_UDMFETCH			"M&"
 #define NETLINK_EVENT_MESSAGE_SIZE		1024
 
-#define MBRAINK_LANDING_PONSOT_CHECK 1
+#define MBRAINK_LANDING_FEATURE_CHECK 1
 
 #define MBRAINK_FEATURE_GPU_EN		(1<<0UL)
 #define MBRAINK_FEATURE_AUDIO_EN	(1<<1UL)
-
-enum MBRAINK_VCORE_IP {
-	MBRAINK_VCORE_IP_MDP,
-	MBRAINK_VCORE_IP_DISP,
-	MBRAINK_VCORE_IP_VENC,
-	MBRAINK_VCORE_IP_VDEC,
-	MBRAINK_VCORE_IP_SCP,
-	MBRAINK_VCORE_IP_MAX,
-};
 
 struct mbraink_process_stat_struct {
 	unsigned short pid;
@@ -91,12 +84,7 @@ struct mbraink_monitor_processlist {
 struct mbraink_memory_ddrActiveInfo {
 	int32_t freqInMhz;
 	int64_t totalActiveTimeInMs;
-	uint64_t totalReadActiveTimeInMs;
-	uint64_t totalWriteActiveTimeInMs;
-	uint64_t totalCpuActiveTimeInMs;
-	uint64_t totalGpuActiveTimeInMs;
-	uint64_t totalMmActiveTimeInMs;
-	uint64_t totalMdActiveTimeInMs;
+	uint64_t totalIPActiveTimeInMs[MAX_DDR_IP_NUM];
 };
 
 struct mbraink_memory_ddrInfo {
@@ -104,6 +92,7 @@ struct mbraink_memory_ddrInfo {
 	int64_t srTimeInMs;
 	int64_t pdTimeInMs;
 	int32_t totalDdrFreqNum;
+	int32_t totalDdrIpNum;
 };
 
 struct mbraink_audio_idleRatioInfo {
@@ -144,7 +133,6 @@ struct mbraink_power_vcoreDurationInfo {
 };
 
 struct mbraink_power_vcoreIpDurationInfo {
-	int32_t vol;
 	int64_t active_time;
 	int64_t idle_time;
 	int64_t off_time;
@@ -152,12 +140,14 @@ struct mbraink_power_vcoreIpDurationInfo {
 
 struct mbraink_power_vcoreIpStats {
 	char ip_name[MAX_IP_NAME_LENGTH];
-	struct mbraink_power_vcoreIpDurationInfo vol_times[MAX_VCORE_NUM];
+	struct mbraink_power_vcoreIpDurationInfo times;
 };
 
 struct mbraink_power_vcoreInfo {
 	struct mbraink_power_vcoreDurationInfo vcoreDurationInfo[MAX_VCORE_NUM];
-	struct mbraink_power_vcoreIpStats vcoreIpDurationInfo[MBRAINK_VCORE_IP_MAX];
+	struct mbraink_power_vcoreIpStats vcoreIpDurationInfo[MAX_VCORE_IP_NUM];
+	int32_t totalVCNum;
+	int32_t totalVCIpNum;
 };
 
 struct mbraink_cpufreq_notify_struct {

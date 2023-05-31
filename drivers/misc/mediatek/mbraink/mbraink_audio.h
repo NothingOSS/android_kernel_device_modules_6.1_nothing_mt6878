@@ -16,7 +16,7 @@ int mbraink_audio_getIdleRatioInfo(struct mbraink_audio_idleRatioInfo *pmbrainkA
 ssize_t getTimeoutCouterReport(char *pBuf);
 
 extern int mbraink_netlink_send_msg(const char *msg); //EXPORT_SYMBOL_GPL
-#if (MBRAINK_LANDING_PONSOT_CHECK == 0)
+#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 extern void (*audiokeylog2mbrain_fp)(int level, const char *buf);
 #endif
 

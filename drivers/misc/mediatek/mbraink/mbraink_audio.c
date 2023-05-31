@@ -28,7 +28,7 @@ struct mbraink_udm_buffer {
 	unsigned int counter;
 };
 
-#if (MBRAINK_LANDING_PONSOT_CHECK == 1)
+#if (MBRAINK_LANDING_FEATURE_CHECK == 1)
 void (*audiokeylog2mbrain_fp)(int level, const char *buf);
 #endif
 
@@ -241,7 +241,7 @@ int mbraink_audio_deinit(void)
 }
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_SWPM_MODULE) && (MBRAINK_LANDING_PONSOT_CHECK == 0)
+#if IS_ENABLED(CONFIG_MTK_SWPM_MODULE) && (MBRAINK_LANDING_FEATURE_CHECK == 0)
 int mbraink_audio_getIdleRatioInfo(struct mbraink_audio_idleRatioInfo *pmbrainkAudioIdleRatioInfo)
 {
 	struct audio_pmsr_times *audio_pmsr_times_ptr;

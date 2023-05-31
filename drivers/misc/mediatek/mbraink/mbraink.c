@@ -47,20 +47,29 @@ static int mbraink_release(struct inode *inode, struct file *filp)
 static long handleMemoryDdrInfo(unsigned long arg)
 {
 	long ret = 0;
-	struct mbraink_memory_ddrInfo memoryDdrInfo;
+	struct mbraink_memory_ddrInfo *pMemoryDdrInfo = NULL;
 
-	memset(&memoryDdrInfo,
+	pMemoryDdrInfo =
+		vmalloc(sizeof(struct mbraink_memory_ddrInfo));
+
+	if (pMemoryDdrInfo == NULL) {
+		pr_notice("Can't allocate memoryDdrInfo!\n");
+		return -EPERM;
+	}
+
+	memset(pMemoryDdrInfo,
 			0,
 			sizeof(struct mbraink_memory_ddrInfo));
-	ret = mbraink_memory_getDdrInfo(&memoryDdrInfo);
+	ret = mbraink_memory_getDdrInfo(pMemoryDdrInfo);
 	if (ret == 0) {
 		if (copy_to_user((struct mbraink_memory_ddrInfo *)arg,
-						&memoryDdrInfo,
-						sizeof(memoryDdrInfo))) {
+						pMemoryDdrInfo,
+						sizeof(struct mbraink_memory_ddrInfo))) {
 			pr_notice("Copy memory ddr Info to UserSpace error!\n");
 			ret = -EPERM;
 		}
 	}
+	vfree(pMemoryDdrInfo);
 
 	return ret;
 }
@@ -88,20 +97,30 @@ static long handleIdleRatioInfo(unsigned long arg)
 static long handleVcoreInfo(unsigned long arg)
 {
 	long ret = 0;
-	struct mbraink_power_vcoreInfo powerVcoreInfo;
+	struct mbraink_power_vcoreInfo *pPowerVcoreInfo = NULL;
 
-	memset(&powerVcoreInfo,
+	pPowerVcoreInfo =
+		vmalloc(sizeof(struct mbraink_power_vcoreInfo));
+
+	if (pPowerVcoreInfo == NULL) {
+		pr_notice("Can't allocate Power Vc Info!\n");
+		return -EPERM;
+	}
+
+	memset(pPowerVcoreInfo,
 			0,
 			sizeof(struct mbraink_power_vcoreInfo));
-	ret = mbraink_power_getVcoreInfo(&powerVcoreInfo);
+	ret = mbraink_power_getVcoreInfo(pPowerVcoreInfo);
 	if (ret == 0) {
 		if (copy_to_user((struct mbraink_power_vcoreInfo *)arg,
-						&powerVcoreInfo,
+						pPowerVcoreInfo,
 						sizeof(struct mbraink_power_vcoreInfo))) {
 			pr_notice("Copy vcore info from UserSpace Err!\n");
 			ret = -EPERM;
 		}
 	}
+	vfree(pPowerVcoreInfo);
+
 	return ret;
 }
 
@@ -424,21 +443,25 @@ static long mbraink_ioctl(struct file *filp,
 		vfree(pcpufreq_notify_buffer);
 		break;
 	}
+
 	case RO_MEMORY_DDR_INFO:
 	{
 		ret = handleMemoryDdrInfo(arg);
 		break;
 	}
+
 	case RO_IDLE_RATIO:
 	{
 		ret = handleIdleRatioInfo(arg);
 		break;
 	}
+
 	case RO_VCORE_INFO:
 	{
 		ret = handleVcoreInfo(arg);
 		break;
 	}
+
 	case RO_SUSPEND_INFO:
 	{
 		struct mbraink_suspend_info_struct_data *psuspend_info_buffer =
