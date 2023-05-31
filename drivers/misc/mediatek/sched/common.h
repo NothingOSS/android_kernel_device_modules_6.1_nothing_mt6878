@@ -27,6 +27,7 @@ struct vip_task_struct {
 	u64				total_exec;
 	int				vip_prio;
 	bool			basic_vip;
+	bool			vvip;
 };
 
 struct soft_affinity_task {

@@ -24,7 +24,8 @@ extern bool vip_enable;
 
 struct vip_rq {
 	struct list_head vip_tasks;
-	int num_vip_tasks;
+	int num_vip_tasks; /* contain vvip */
+	int num_vvip_tasks;
 };
 
 enum vip_group {
@@ -36,9 +37,11 @@ enum vip_group {
 
 extern bool sched_vip_enable_get(void);
 extern inline int get_vip_task_prio(struct task_struct *p);
-extern bool task_is_vip(struct task_struct *p);
+extern bool task_is_vip(struct task_struct *p, int type);
 extern inline unsigned int num_vip_in_cpu(int cpu);
+extern inline unsigned int num_vvip_in_cpu(int cpu);
 extern inline bool is_task_latency_sensitive(struct task_struct *p);
+extern int find_imbalanced_vvip_gear(void);
 
 extern void vip_enqueue_task(struct rq *rq, struct task_struct *p);
 

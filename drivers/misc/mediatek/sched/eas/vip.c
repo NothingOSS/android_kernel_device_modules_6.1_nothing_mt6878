@@ -16,12 +16,60 @@ unsigned int ls_vip_threshold                   =  DEFAULT_VIP_PRIO_THRESHOLD;
 bool vip_enable;
 
 DEFINE_PER_CPU(struct vip_rq, vip_rq);
+inline unsigned int num_vvip_in_cpu(int cpu)
+{
+	struct vip_rq *vrq = &per_cpu(vip_rq, cpu);
+
+	return vrq->num_vvip_tasks;
+}
 
 inline unsigned int num_vip_in_cpu(int cpu)
 {
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu);
 
 	return vrq->num_vip_tasks;
+}
+
+int find_imbalanced_vvip_gear(void)
+{
+	int gear = -1;
+	struct cpumask cpus;
+	int cpu;
+	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
+	struct perf_domain *pd;
+	int num_vvip_in_gear = 0;
+	int num_cpu = 0;
+
+	rcu_read_lock();
+	pd = rcu_dereference(rd->pd);
+	if (!pd)
+		goto out;
+	for (gear = num_sched_clusters-1; gear >= 0 ; gear--) {
+		cpumask_and(&cpus, perf_domain_span(pd), cpu_active_mask);
+		for_each_cpu(cpu, &cpus) {
+			num_vvip_in_gear += num_vvip_in_cpu(cpu);
+			num_cpu += 1;
+		}
+
+		/* Choice it since it's beggiest gaar without VVIP*/
+		if (num_vvip_in_gear == 0)
+			goto out;
+
+		/* Choice it since it's biggest imbalanced gear */
+		if (num_vvip_in_gear % num_cpu != 0)
+			goto out;
+
+		num_vvip_in_gear = 0;
+		num_cpu = 0;
+		pd = pd->next;
+	}
+
+	/* choice biggest gear when all gear balanced and have VVIP*/
+	gear = num_sched_clusters - 1;
+
+out:
+	rcu_read_unlock();
+	return gear;
 }
 
 struct task_struct *vts_to_ts(struct vip_task_struct *vts)
@@ -41,9 +89,12 @@ pid_t list_head_to_pid(struct list_head *lh)
 	return pid;
 }
 
-bool task_is_vip(struct task_struct *p)
+bool task_is_vip(struct task_struct *p, int type)
 {
 	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+
+	if (type == VVIP)
+		return (vts->vip_prio == VVIP);
 
 	return (vts->vip_prio != NOT_VIP);
 }
@@ -71,8 +122,11 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 		}
 	}
 	list_add(&vts->vip_list, pos->prev);
-	if (!requeue)
+	if (!requeue) {
 		vrq->num_vip_tasks += 1;
+		if (vts->vip_prio == VVIP)
+			vrq->num_vvip_tasks += 1;
+	}
 
 	/* vip inserted trace event */
 	if (trace_sched_insert_vip_task_enabled()) {
@@ -218,14 +272,14 @@ bool is_VIP_latency_sensitive(struct task_struct *p)
 void set_task_vvip(int pid)
 {
 	struct task_struct *p;
-	struct task_gear_hints *ghts;
+	struct vip_task_struct *vts;
 
 	rcu_read_lock();
 	p = find_task_by_vpid(pid);
 	if (p) {
 		get_task_struct(p);
-		ghts = &((struct mtk_task *) p->android_vendor_data1)->gear_hints;
-		ghts->gear_start = num_sched_clusters;
+		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts->vvip = true;
 		put_task_struct(p);
 	}
 	rcu_read_unlock();
@@ -234,7 +288,9 @@ EXPORT_SYMBOL_GPL(set_task_vvip);
 
 int is_VVIP(struct task_struct *p)
 {
-	return 0;
+	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+
+	return vts->vvip;
 }
 
 /* basic vip interace */
@@ -339,9 +395,12 @@ static void deactivate_vip_task(struct task_struct *p, struct rq *rq)
 	struct list_head *next = vts->vip_list.next;
 
 	list_del_init(&vts->vip_list);
+	if (vts->vip_prio == VVIP)
+		vrq->num_vvip_tasks -= 1;
 	vts->vip_prio = NOT_VIP;
 	vrq->num_vip_tasks -= 1;
 	vts->basic_vip = false;
+	vts->vvip = false;
 
 	if (trace_sched_deactivate_vip_task_enabled()) {
 		pid_t prev_pid = list_head_to_pid(prev);
@@ -584,6 +643,7 @@ void init_vip_task_struct(struct task_struct *p)
 	vts->total_exec = 0;
 	vts->vip_prio = NOT_VIP;
 	vts->basic_vip = false;
+	vts->vvip = false;
 }
 
 void init_task_gear_hints(struct task_struct *p)
@@ -678,6 +738,7 @@ void vip_init(void)
 
 		INIT_LIST_HEAD(&vrq->vip_tasks);
 		vrq->num_vip_tasks = 0;
+		vrq->num_vvip_tasks = 0;
 	}
 
 	/* init vip related value to newly forked tasks */

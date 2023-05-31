@@ -1092,6 +1092,9 @@ static inline bool task_can_skip_this_cpu(struct task_struct *p, unsigned long p
 	if (!cpu_in_bcpus || !fits_capacity(task_util, util_Th, get_adaptive_margin(cpu)))
 		return 0;
 
+	if (cpu_in_bcpus && task_is_vip(p, VVIP))
+		return 0;
+
 	return 1;
 }
 
@@ -1433,12 +1436,6 @@ void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_ind
 	if (ghts->gear_start > num_sched_clusters || ghts->gear_start < -1)
 		goto out;
 
-	/* strict boost on BCPU */
-	if (ghts->gear_start == num_sched_clusters) {
-		*order_index = num_sched_clusters - 1;
-		goto out;
-	}
-
 	/* task has customized gear prefer */
 	if (gear_hints_enable && ghts->gear_start >= 0) {
 		*order_index = ghts->gear_start;
@@ -1499,6 +1496,8 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	unsigned int num_vip, prev_min_num_vip, min_num_vip;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	struct vip_task_struct *vts;
+	unsigned int (*num_vip_in_cpu_fn)(int cpu) = num_vip_in_cpu;
+	int target_balance_cluster;
 #endif
 	bool latency_sensitive = fbc_params->latency_sensitive;
 	bool in_irq = fbc_params->in_irq;
@@ -1511,7 +1510,16 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 	vts->vip_prio = get_vip_task_prio(p);
-	is_vip = task_is_vip(p);
+	is_vip = task_is_vip(p, NOT_VIP);
+
+	if (task_is_vip(p, VVIP)) {
+		target_balance_cluster = find_imbalanced_vvip_gear();
+		if (target_balance_cluster != -1) {
+			order_index = target_balance_cluster;
+			end_index = 0;
+			num_vip_in_cpu_fn = num_vvip_in_cpu;
+		}
+	}
 #endif
 
 	/* find best candidate */
@@ -1576,12 +1584,15 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 			if (is_vip) {
-				num_vip = num_vip_in_cpu(cpu);
+				num_vip = num_vip_in_cpu_fn(cpu);
 				if (num_vip > min_num_vip)
 					continue;
 
 				prev_min_num_vip = min_num_vip;
 				min_num_vip = num_vip;
+				/*don't choice CPU only because it can calc energy, choice min_num_vip CPU */
+				if ((prev_min_num_vip != UINT_MAX) && (prev_min_num_vip != min_num_vip))
+					cpumask_clear(candidates);
 			}
 #endif
 
@@ -1680,6 +1691,14 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 
 		if ((cluster >= end_index) && (!cpumask_empty(candidates)))
 			break;
+		else if (task_is_vip(p, VVIP) &&
+			(*idle_max_spare_cap_cpu>=0 || *sys_max_spare_cap_cpu>=0)) {
+			/*
+			 * Don't calc energy if we found max spare cpu
+			 * since we have search a target balance gear for VVIP
+			 */
+			break;
+		}
 	}
 
 	if (trace_sched_find_best_candidates_enabled())
