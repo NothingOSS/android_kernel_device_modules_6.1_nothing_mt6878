@@ -4929,7 +4929,7 @@ static const unsigned int mt6989_dispsys_map[DDP_COMPONENT_ID_MAX] = {
 		[DDP_COMPONENT_DMDP_RSZ1] = OVLSYS1,
 			[DDP_COMPONENT_OVLSYS_WDMA0] = OVLSYS0,
 			[DDP_COMPONENT_OVLSYS_WDMA1] = OVLSYS0,
-		[DDP_COMPONENT_OVLSYS_WDMA1] = OVLSYS1,
+		[DDP_COMPONENT_OVLSYS_WDMA2] = OVLSYS1,
 		[DDP_COMPONENT_OVLSYS_WDMA3] = OVLSYS1,
 			[DDP_COMPONENT_OVLSYS_UFBC_WDMA0] = OVLSYS0,
 		[DDP_COMPONENT_OVLSYS_UFBC_WDMA1] = OVLSYS1,
@@ -14840,26 +14840,21 @@ static int mtk_ddp_ovl_con_MT6989(enum mtk_ddp_comp_id cur,
 		return 0;
 
 	next_is_ovl = (mtk_ddp_comp_get_type(next) == MTK_DISP_OVL);
-	if (cur == DDP_COMPONENT_OVL0_2L || cur == DDP_COMPONENT_OVL4_2L) {
+	if (cur == DDP_COMPONENT_OVL0_2L || cur == DDP_COMPONENT_OVL3_2L) {
 		if (next_is_ovl)
 			value = DISP_OVL0_2L_TO_BG_CROSSBAR0;
 		else
 			value = DISP_OVL0_2L_TO_BLEND_CROSSBAR0;
-	} else if (cur == DDP_COMPONENT_OVL1_2L || cur == DDP_COMPONENT_OVL5_2L) {
+	} else if (cur == DDP_COMPONENT_OVL1_2L || cur == DDP_COMPONENT_OVL4_2L) {
 		if (next_is_ovl)
 			value = DISP_OVL1_2L_TO_BG_CROSSBAR1;
 		else
 			value = DISP_OVL1_2L_TO_BLEND_CROSSBAR1;
-	} else if (cur == DDP_COMPONENT_OVL2_2L || cur == DDP_COMPONENT_OVL6_2L) {
+	} else if (cur == DDP_COMPONENT_OVL2_2L || cur == DDP_COMPONENT_OVL5_2L) {
 		if (next_is_ovl)
 			value = DISP_OVL2_2L_TO_BG_CROSSBAR2;
 		else
 			value = DISP_OVL2_2L_TO_BLEND_CROSSBAR2;
-	} else if (cur == DDP_COMPONENT_OVL3_2L || cur == DDP_COMPONENT_OVL7_2L) {
-		if (next_is_ovl)
-			value = DISP_OVL3_2L_TO_BG_CROSSBAR3;
-		else
-			value = DISP_OVL3_2L_TO_BLEND_CROSSBAR3;
 	} else {
 		value = -1;
 	}
@@ -15149,11 +15144,11 @@ static int mtk_ddp_mout_en_MT6989(const struct mtk_mmsys_reg_data *data,
 		return value;
 	}
 
-	if ((cur == DDP_COMPONENT_OVL7_2L &&
-		next == DDP_COMPONENT_OVL7_2L_VIRTUAL0)) {
+	if ((cur == DDP_COMPONENT_OVL4_2L &&
+		next == DDP_COMPONENT_OVL4_2L_VIRTUAL0)) {
 		/* CRTC2 - CON2 */
-		*addr = MT6989_OVL_BLEND_CROSSBAR3_MOUT_EN;
-		value = DISP_OVL3_2L_TO_WDMA0;
+		*addr = MT6989_OVL_BLEND_CROSSBAR1_MOUT_EN;
+		value = MT6989_DISP_OVL1_2L_TO_WDMA0;
 	} else if ((cur == DDP_COMPONENT_DLI_ASYNC0 &&
 		next == DDP_COMPONENT_PQ0_OUT_CB4)){
 		/* PQ_IN_CROSSBAR */

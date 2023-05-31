@@ -30,6 +30,7 @@ struct mtk_disp_sec_config {
 
 struct mtk_disp_sec_data {
 	u32 legacy_dts_check;
+	u32 with_larb_ctrl;
 };
 
 
@@ -189,22 +190,24 @@ static int disp_sec_probe(struct platform_device *pdev)
 
 	data = of_device_get_match_data(dev);
 
-	sec_config.disp_sec_client = cmdq_mbox_create(dev, 0);
-	if (sec_config.disp_sec_client) {
-		if (data->legacy_dts_check) {
-			of_property_read_u32(node, "sw_sync_token_tzmp_disp_wait",
-						&sec_config.tzmp_disp_sec_wait);
-			of_property_read_u32(node, "sw_sync_token_tzmp_disp_set",
-						&sec_config.tzmp_disp_sec_set);
-		} else {
-			of_property_read_u32(node, "sw-sync-token-tzmp-disp-wait",
-						&sec_config.tzmp_disp_sec_wait);
-			of_property_read_u32(node, "sw-sync-token-tzmp-disp-set",
-						&sec_config.tzmp_disp_sec_set);
+	if (data->with_larb_ctrl) {
+		sec_config.disp_sec_client = cmdq_mbox_create(dev, 0);
+		if (sec_config.disp_sec_client) {
+			if (data->legacy_dts_check) {
+				of_property_read_u32(node, "sw_sync_token_tzmp_disp_wait",
+							&sec_config.tzmp_disp_sec_wait);
+				of_property_read_u32(node, "sw_sync_token_tzmp_disp_set",
+							&sec_config.tzmp_disp_sec_set);
+			} else {
+				of_property_read_u32(node, "sw-sync-token-tzmp-disp-wait",
+							&sec_config.tzmp_disp_sec_wait);
+				of_property_read_u32(node, "sw-sync-token-tzmp-disp-set",
+							&sec_config.tzmp_disp_sec_set);
+			}
+			DDPMSG("tzmp_disp_sec_wait %d tzmp_disp_sec_set %d\n",
+						sec_config.tzmp_disp_sec_wait,
+						sec_config.tzmp_disp_sec_set);
 		}
-		DDPMSG("tzmp_disp_sec_wait %d tzmp_disp_sec_set %d\n",
-					sec_config.tzmp_disp_sec_wait,
-					sec_config.tzmp_disp_sec_set);
 	}
 	ret = mtk_drm_disp_sec_cb_init();
 	*ret = (void *) mtk_drm_disp_sec_cb_event;
@@ -220,11 +223,19 @@ static int disp_sec_remove(struct platform_device *pdev)
 
 static const struct mtk_disp_sec_data legacy_sec_driver_data = {
 	.legacy_dts_check = 1,
+	.with_larb_ctrl = 1,
 };
 
 static const struct mtk_disp_sec_data current_sec_driver_data = {
 	.legacy_dts_check = 0,
+	.with_larb_ctrl = 1,
 };
+
+static const struct mtk_disp_sec_data current_sec_driver_data_aidctl = {
+	.legacy_dts_check = 0,
+	.with_larb_ctrl = 0,
+};
+
 
 static const struct of_device_id of_disp_sec_match_tbl[] = {
 	{
@@ -234,6 +245,10 @@ static const struct of_device_id of_disp_sec_match_tbl[] = {
 	{
 		.compatible = "mediatek,disp-sec",
 		.data = &current_sec_driver_data,
+	},
+	{
+		.compatible = "mediatek,disp-sec-aidctl",
+		.data = &current_sec_driver_data_aidctl,
 	},
 	{}
 };

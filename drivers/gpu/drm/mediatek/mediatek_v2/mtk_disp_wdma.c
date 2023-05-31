@@ -172,6 +172,8 @@
 #define MT6879_WDMA0_AID_SEL	(0xB1CUL)
 #define MT6879_WDMA1_AID_SEL	(0xB20UL)
 
+#define MT6989_OVLSYS1_WDMA0_AID_SEL	(0xB80UL)
+
 #define PARSE_FROM_DTS 0xFFFFFFFF
 
 enum GS_WDMA_FLD {
@@ -376,6 +378,22 @@ resource_size_t mtk_wdma_check_sec_reg_MT6985(struct mtk_ddp_comp *comp)
 	}
 }
 
+resource_size_t mtk_wdma_check_sec_reg_MT6989(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_WDMA1:
+	case DDP_COMPONENT_OVLSYS_WDMA0:
+	case DDP_COMPONENT_OVLSYS_WDMA1:
+	case DDP_COMPONENT_OVLSYS_WDMA3:
+		return 0;
+	case DDP_COMPONENT_WDMA0: // w/ TDSHP
+	case DDP_COMPONENT_OVLSYS_WDMA2: // w/o TDSHP
+		return MT6985_OVL1_2L + MT6985_OVL_DUMMY_REG;
+	default:
+		return 0;
+	}
+}
+
 resource_size_t mtk_wdma_check_sec_reg_MT6897(struct mtk_ddp_comp *comp)
 {
 	switch (comp->id) {
@@ -391,6 +409,15 @@ resource_size_t mtk_wdma_check_sec_reg_MT6897(struct mtk_ddp_comp *comp)
 	}
 }
 
+unsigned int mtk_wdma_aid_sel_MT6989(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_OVLSYS_WDMA2:
+		return MT6989_OVLSYS1_WDMA0_AID_SEL;
+	default:
+		return 0;
+	}
+}
 
 unsigned int mtk_wdma_aid_sel_MT6895(struct mtk_ddp_comp *comp)
 {
@@ -2067,11 +2094,12 @@ static const struct mtk_disp_wdma_data mt6989_wdma_driver_data = {
 	.fifo_size_3plane = PARSE_FROM_DTS,
 	.fifo_size_uv_3plane = PARSE_FROM_DTS,
 	.sodi_config = mt6989_mtk_sodi_config,
-	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6985,
+	.aid_sel = &mtk_wdma_aid_sel_MT6989,
+	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6989,
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.is_support_34bits = true,
-	.use_larb_control_sec = true,
+	.use_larb_control_sec = false,
 };
 
 static const struct mtk_disp_wdma_data mt6897_wdma_driver_data = {

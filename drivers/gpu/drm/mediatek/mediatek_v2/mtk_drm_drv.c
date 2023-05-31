@@ -2893,6 +2893,12 @@ static const enum mtk_ddp_comp_id mt6989_mtk_ddp_discrete_chip[] = {
 	DDP_COMPONENT_DSI2,
 };
 
+static const enum mtk_ddp_comp_id mt6989_mtk_ddp_mem_dp_wo_tdshp[] = {
+	DDP_COMPONENT_OVL4_2L,
+	DDP_COMPONENT_OVL4_2L_VIRTUAL0,
+	DDP_COMPONENT_OVLSYS_WDMA2,
+};
+
 static const enum mtk_ddp_comp_id mt6983_mtk_ddp_dual_main[] = {
 	/* Can't enable dual pipe with bypass PQ */
 	DDP_COMPONENT_OVL2_2L, /*DDP_COMPONENT_OVL3_2L,*/
@@ -4379,9 +4385,9 @@ static const struct mtk_crtc_path_data mt6989_mtk_dp_w_tdshp_path_data = {
 };
 
 static const struct mtk_crtc_path_data mt6989_mtk_dp_wo_tdshp_path_data = {
-//	.path[DDP_MAJOR][0] = mt6989_mtk_ddp_mem_dp_wo_tdshp,
-//	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6989_mtk_ddp_mem_dp_wo_tdshp),
-//	.addon_data = mt6983_addon_dp_wo_tdshp,
+	.path[DDP_MAJOR][0] = mt6989_mtk_ddp_mem_dp_wo_tdshp,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6989_mtk_ddp_mem_dp_wo_tdshp),
+	.addon_data = mt6983_addon_dp_wo_tdshp,
 };
 
 static const struct mtk_crtc_path_data mt6989_mtk_secondary_path_data = {

@@ -17450,6 +17450,7 @@ int mtk_crtc_enter_tui(struct drm_crtc *crtc)
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT6985:
 	case MMSYS_MT6897:
+	case MMSYS_MT6989:
 		priv->ddp_comp[DDP_COMPONENT_OVL1_2L]->blank_mode = true;
 
 		if (mtk_crtc->is_dual_pipe)
@@ -17518,6 +17519,7 @@ int mtk_crtc_exit_tui(struct drm_crtc *crtc)
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT6985:
 	case MMSYS_MT6897:
+	case MMSYS_MT6989:
 		priv->ddp_comp[DDP_COMPONENT_OVL1_2L]->blank_mode = false;
 
 		if (mtk_crtc->is_dual_pipe)
