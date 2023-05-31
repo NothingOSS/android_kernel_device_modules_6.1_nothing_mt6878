@@ -479,30 +479,12 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 	       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
 {
 	unsigned long cpu_pwr = 0, dsu_pwr = 0;
-	unsigned long shared_pwr_base, shared_pwr_new, delta_share_pwr = 0;
+	unsigned long delta_share_pwr = 0;
 	struct dsu_info *dsu = &eenv->dsu;
 
 	dsu->dsu_freq = eenv->dsu_freq_base;
 	dsu->dsu_volt = eenv->dsu_volt_base;
 	cpu_pwr = mtk_compute_energy_cpu(eenv->gear_idx, eenv, pd, pd_cpus, p, dst_cpu);
-
-	if ((eenv->dsu_freq_new  > eenv->dsu_freq_base) && !(shared_gear(eenv->gear_idx))
-			&& share_buck.gear_idx != -1) {
-
-		/* calculate share_buck gear pwr with new DSU freq */
-		dsu->dsu_freq  = eenv->dsu_freq_new;
-		dsu->dsu_volt = eenv->dsu_volt_new;
-		shared_pwr_new = mtk_compute_energy_cpu(share_buck.gear_idx, eenv, share_buck.pd,
-							share_buck.cpus, p, -1);
-
-		/* calculate share_buck gear pwr with new old freq */
-		dsu->dsu_freq = eenv->dsu_freq_base;
-		dsu->dsu_volt = eenv->dsu_volt_base;
-		shared_pwr_base = mtk_compute_energy_cpu(share_buck.gear_idx, eenv, share_buck.pd,
-							share_buck.cpus, p, -1);
-
-		delta_share_pwr = shared_pwr_new - shared_pwr_base;
-	}
 
 	if (dst_cpu != -1) {
 		if (trace_sched_compute_energy_dsu_enabled())
