@@ -173,7 +173,7 @@ static void proc_all_fclk_freq(fn_fclk_freq_proc proc, void *data)
 
 	fmeter_data = prepare_fmeter();
 
-	for (; fclk->type != FT_NULL; fclk++) {
+	for (; fclk != NULL && fclk->type != FT_NULL; fclk++) {
 		u32 freq;
 
 		freq = fmeter_freq(fclk);
