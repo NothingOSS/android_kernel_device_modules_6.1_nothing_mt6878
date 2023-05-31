@@ -10074,6 +10074,7 @@
 				sub-id = <6>;
 			};
 			pcie {
+				perms = <0x3ffff>;
 				xo-buf = "BB2";
 				sub-id = <7>;
 			};
