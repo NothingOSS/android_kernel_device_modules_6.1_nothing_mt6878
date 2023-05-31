@@ -398,6 +398,8 @@ static void account_vip_runtime(struct rq *rq, struct task_struct *curr)
 	limit = vip_task_limit(curr);
 	if (vts->total_exec > limit) {
 		deactivate_vip_task(curr, rq);
+		vts->basic_vip = false;
+		vts->vvip = false;
 		return;
 	}
 
