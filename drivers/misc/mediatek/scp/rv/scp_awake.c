@@ -381,11 +381,13 @@ int scp_clr_spm_reg(void *unused)
 	 * scp side write 0x1 to SCP2SPM_IPC_SET to set SPM reg
 	 * scp set        bit[0]
 	 */
-	if (scpreg.secure_ipc)
-		scp_do_spm_clear(0x1);
+	if (scpreg.cfgreg_ap_en)
+		writel(0x1, (scpreg.cfgreg_ap + 0x0018));
 	else
 		writel(0x1, SCP_TO_SPM_REG);
 
+	if(scpreg.ipc_wa)
+		scp_do_gpr_clear(7);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(scp_clr_spm_reg);

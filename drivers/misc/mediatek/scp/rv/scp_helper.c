@@ -614,8 +614,8 @@ static void scp_A_notify_ws(struct work_struct *ws)
 	if (scp_notify_flag) {
 		scp_recovery_flag[SCP_A_ID] = SCP_A_RECOVERY_OK;
 
-		if (scpreg.secure_ipc)
-			scp_do_spm_clear(0xff);
+		if (scpreg.cfgreg_ap_en)
+			writel(0xff, (scpreg.cfgreg_ap + 0x0018)); /* move ipc clear to cfgreg_ap */
 		else
 			writel(0xff, SCP_TO_SPM_REG); /* patch: clear SPM interrupt */
 
@@ -2584,8 +2584,9 @@ static int scp_device_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device_node *node;
 	const char *scp_pm_notify = NULL;
-	const char *scp_secure_ipc = NULL;
 	const char *scp_low_pwr_dbg = NULL;
+	const char *scp_cfgreg_ap_en = NULL;
+	const char *scp_ipc_wa = NULL;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	scpreg.sram = devm_ioremap_resource(dev, res);
@@ -2728,13 +2729,32 @@ static int scp_device_probe(struct platform_device *pdev)
 		}
 	}
 
-	/* scp secure ipc */
-	scpreg.secure_ipc = 0;
+	/* scp cfgreg_ap */
+	scpreg.cfgreg_ap_en = 0;
 	if (!of_property_read_string(pdev->dev.of_node,
-				"scp-secure-ipc", &scp_secure_ipc)){
-		if (!strncmp(scp_secure_ipc, "enable", strlen("enable"))) {
-			pr_notice("[SCP] scp_secure_ipc enabled\n");
-			scpreg.secure_ipc = 1;
+				"scp-cfgreg-ap-en", &scp_cfgreg_ap_en)){
+		if (!strncmp(scp_cfgreg_ap_en, "enable", strlen("enable"))) {
+			pr_notice("[SCP] scp_cfgreg_ap_en enabled\n");
+			scpreg.cfgreg_ap_en = 1;
+		}
+	}
+	if(scpreg.cfgreg_ap_en) {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 28);
+		scpreg.cfgreg_ap = devm_ioremap_resource(dev, res);
+		if (IS_ERR((void const *) scpreg.cfgreg_ap)) {
+			pr_debug("[SCP] scpreg.cfgreg_ap error\n");
+			return -1;
+		}
+		pr_debug("[SCP] cfgreg_ap base = 0x%p\n", scpreg.cfgreg_ap);
+	}
+
+	/* scp ipc wa */
+	scpreg.ipc_wa = 0;
+	if (!of_property_read_string(pdev->dev.of_node,
+				"scp-ipc-wa", &scp_ipc_wa)){
+		if (!strncmp(scp_ipc_wa, "enable", strlen("enable"))) {
+			pr_notice("[SCP] scp_ipc_wa enabled\n");
+			scpreg.ipc_wa = 1;
 		}
 	}
 

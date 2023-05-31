@@ -126,6 +126,7 @@ struct scp_regs {
 	void __iomem *cfg_core1;
 	void __iomem *cfg_sec;
 	void __iomem *bus_tracker;
+	void __iomem *cfgreg_ap;
 	int irq0;
 	int irq1;
 	unsigned int total_tcmsize;
@@ -136,7 +137,8 @@ struct scp_regs {
 	unsigned int secure_dump;
 	unsigned int low_pwr_dbg;
 	int scp_dram_region;
-	unsigned int secure_ipc;
+	unsigned int cfgreg_ap_en;
+	unsigned int ipc_wa;
 	struct scp_bus_tracker_status tracker_status;
 };
 
@@ -282,7 +284,7 @@ enum MTK_TINYSYS_SCP_KERNEL_OP {
 	MTK_TINYSYS_SCP_KERNEL_OP_WDT_SET,
 	MTK_TINYSYS_SCP_KERNEL_OP_HALT_SET,
 	MTK_TINYSYS_SCP_KERNEL_OP_WDT_CLEAR,
-	MTK_TINYSYS_SCP_KERNEL_OP_SPM_CLEAR,
+	MTK_TINYSYS_SCP_KERNEL_OP_GPR_CLEAR,
 	MTK_TINYSYS_SCP_KERNEL_OP_NUM,
 };
 
@@ -377,15 +379,16 @@ static inline uint64_t scp_do_wdt_clear(uint64_t coreid)
 	return res.a0;
 }
 
-static inline uint64_t scp_do_spm_clear(uint64_t val)
+static inline uint64_t scp_do_gpr_clear(uint64_t idx)
 {
 	struct arm_smccc_res res;
 
 	arm_smccc_smc(MTK_SIP_TINYSYS_SCP_CONTROL,
-			MTK_TINYSYS_SCP_KERNEL_OP_SPM_CLEAR,
-			val, 0, 0, 0, 0, 0, &res);
+			MTK_TINYSYS_SCP_KERNEL_OP_GPR_CLEAR,
+			idx, 0, 0, 0, 0, 0, &res);
 	return res.a0;
 }
+
 #endif
 
 #endif
