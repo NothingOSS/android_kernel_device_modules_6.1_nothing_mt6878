@@ -428,7 +428,7 @@ static void show_irq_info(char *addr)
 	len = scnprintf(&msg[index], SZ_256, "%5s", "");
 	index += len;
 	for (j = 0; j < min_t(int, nr_cpu_ids, MAX_CPU_NUM); j++) {
-		len = scnprintf(&msg[index], SZ_256-index, "CPU%-7d", j);
+		len = scnprintf(&msg[index], SZ_256-index, "CPU%-7d ", j);
 		index += len;
 		/*reserved '\0' memory*/
 		if (index >= SZ_256 - 2) {
@@ -449,7 +449,7 @@ static void show_irq_info(char *addr)
 
 		if (desc && desc->kstat_irqs) {
 			for (j = 0; j < min_t(int, nr_cpu_ids, MAX_CPU_NUM); j++) {
-				len = scnprintf(&msg[index], SZ_256-index, "%-10d",
+				len = scnprintf(&msg[index], SZ_256-index, "%-10d ",
 				/*
 				 * read desc->kstat_irqs maybe encounter data race.
 				 * use data_race bypass iterator_category
@@ -461,6 +461,36 @@ static void show_irq_info(char *addr)
 					msg[index] = '\0';
 					goto flush;
 				}
+			}
+
+			if (desc->irq_data.chip) {
+				if (desc->irq_data.chip->name) {
+					len = scnprintf(&msg[index], SZ_256-index, "%-8s ",
+						desc->irq_data.chip->name);
+				} else {
+					len = scnprintf(&msg[index], SZ_256-index, "%-8s ", "-");
+				}
+			} else {
+				len = scnprintf(&msg[index], SZ_256-index, "%-8s ", "None");
+			}
+			index += len;
+			if (index >= SZ_256 - 2) {
+				index = SZ_256 - 2;
+				msg[index] = '\0';
+				goto flush;
+			}
+
+			if(desc->irq_data.hwirq) {
+				len = scnprintf(&msg[index], SZ_256-index, "%3lu ",
+					desc->irq_data.hwirq);
+			} else {
+				len = scnprintf(&msg[index], SZ_256-index, "%3s ", "-");
+			}
+			index += len;
+			if (index >= SZ_256 - 2) {
+				index = SZ_256 - 2;
+				msg[index] = '\0';
+				goto flush;
 			}
 
 			if (desc->action && desc->action->name) {
