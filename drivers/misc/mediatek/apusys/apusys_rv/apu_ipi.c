@@ -45,6 +45,8 @@ static struct mtk_apu *g_apu;
 
 static int current_ipi_handler_id;
 
+static bool pwr_profile_polling_mode;
+
 static inline void dump_msg_buf(struct mtk_apu *apu, void *data, uint32_t len)
 {
 	struct device *dev = apu->dev;
@@ -543,6 +545,7 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 	struct mtk_apu_hw_ops *hw_ops;
 	struct apu_ipi_desc *ipi;
 	struct timespec64 ts, te;
+	struct timespec64 ts_polling, te_polling;
 
 	if (!apu)
 		return -EINVAL;
@@ -562,8 +565,12 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 		return -EOPNOTSUPP;
 	}
 
-	dev_info(dev, "%s: enter, id(%u), on(%u), off(%u)\n", __func__, id, on, off);
-	ktime_get_ts64(&ts);
+	apu_info_ratelimited(dev, "%s: enter, id(%u), on(%u), off(%u)\n", __func__, id, on, off);
+
+	if (pwr_profile_polling_mode && hw_ops->polling_rpc_status) {
+		mutex_lock(&apu->power_profile_lock);
+		ktime_get_ts64(&ts_polling);
+	}
 
 	ipi = &apu->ipi_desc[id];
 	spin_lock(&apu->usage_cnt_lock);
@@ -575,17 +582,34 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 			__func__, id, ipi->usage_cnt);
 		spin_unlock(&apu->usage_cnt_lock);
 		apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_OFF_FAIL");
+		if (pwr_profile_polling_mode && hw_ops->polling_rpc_status)
+			mutex_unlock(&apu->power_profile_lock);
 		return -EINVAL;
 	}
 	spin_unlock(&apu->usage_cnt_lock);
 
 	ret = hw_ops->power_on_off(apu, id, on, off);
 
+	ktime_get_ts64(&ts);
+	if (pwr_profile_polling_mode && hw_ops->polling_rpc_status &&
+		((on && apu->local_pwr_ref_cnt == 1) || (off && apu->local_pwr_ref_cnt == 0))) {
+		if (on)
+			hw_ops->polling_rpc_status(apu, 1, 1000000);
+		else if (off)
+			hw_ops->polling_rpc_status(apu, 0, 1000000);
+		ktime_get_ts64(&te_polling);
+		ts_polling = timespec64_sub(te_polling, ts_polling);
+		dev_info(dev, "%s(%d/%d): time diff = %llu ns\n", __func__, on, off, timespec64_to_ns(&ts_polling));
+	}
+
 	ktime_get_ts64(&te);
 	ts = timespec64_sub(te, ts);
 
 	if (apu->platdata->flags & F_APUSYS_RV_TAG_SUPPORT)
 		trace_apusys_rv_pwr_ctrl(id, on, off, timespec64_to_ns(&ts));
+
+	if (pwr_profile_polling_mode && hw_ops->polling_rpc_status)
+		mutex_unlock(&apu->power_profile_lock);
 
 	return ret;
 }
@@ -728,12 +752,15 @@ static uint32_t rcx_off_ce_ts_max;
 static uint32_t warmboot_on_ts_last;
 static uint32_t dpidle_off_ts_last;
 static uint32_t smmu_hw_sem_ts_last;
+static uint32_t mdw_abort_ts_last;
 static uint32_t warmboot_on_ts_avg;
 static uint32_t dpidle_off_ts_avg;
 static uint32_t smmu_hw_sem_ts_avg;
+static uint32_t mdw_abort_ts_avg;
 static uint32_t warmboot_on_ts_max;
 static uint32_t dpidle_off_ts_max;
 static uint32_t smmu_hw_sem_ts_max;
+static uint32_t mdw_abort_ts_max;
 
 static uint64_t ut_on_ts_last;
 static uint64_t ut_off_ts_last;
@@ -796,7 +823,7 @@ static int apu_ipi_ut_send(struct apu_ipi_ut_ipi_data *d, bool wait_ack)
 		size -= num;
 		ptr += num;
 	}
-	pr_info("%s\n", buf);
+	/* pr_info("%s\n", buf); */
 
 	if (polling_mode)
 		ktime_get_ts64(&ts);
@@ -841,11 +868,6 @@ static int apu_ipi_ut_send(struct apu_ipi_ut_ipi_data *d, bool wait_ack)
 		if (ret == 0) {
 			pr_info("%s: wait for completion timeout\n", __func__);
 			ret = -1;
-			/* power off to restore ref cnt */
-			ret2 = rpmsg_sendto(apu_ipi_ut_rpm_dev.ept, NULL, 0, 1);
-			if (ret2 && ret2 != -EOPNOTSUPP)
-				pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret2);
-			goto out;
 		} else {
 			ret = 0;
 		}
@@ -917,13 +939,16 @@ static int apu_ipi_ut_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 		warmboot_on_ts_last = d->data[7];
 		dpidle_off_ts_last = d->data[8];
 		smmu_hw_sem_ts_last = d->data[9];
-		warmboot_on_ts_avg = d->data[10];
-		dpidle_off_ts_avg = d->data[11];
-		smmu_hw_sem_ts_avg = d->data[12];
-		warmboot_on_ts_max = d->data[13];
-		dpidle_off_ts_max = d->data[14];
-		smmu_hw_sem_ts_max = d->data[15];
-		boot_count = d->data[16];
+		mdw_abort_ts_last = d->data[10];
+		warmboot_on_ts_avg = d->data[11];
+		dpidle_off_ts_avg = d->data[12];
+		smmu_hw_sem_ts_avg = d->data[13];
+		mdw_abort_ts_avg = d->data[14];
+		warmboot_on_ts_max = d->data[15];
+		dpidle_off_ts_max = d->data[16];
+		smmu_hw_sem_ts_max = d->data[17];
+		mdw_abort_ts_max = d->data[18];
+		boot_count = d->data[19];
 	}
 
 	if (polling_mode)
@@ -978,6 +1003,8 @@ static int apu_ipi_ut_val, apu_ipi_ut_cmd;
 
 static int apu_ipi_dbg_show(struct seq_file *s, void *unused)
 {
+	struct mtk_apu *apu = g_apu;
+
 	seq_printf(s, "apu_ipi_ut_cmd = %d, apu_ipi_ut_val = %d\n", apu_ipi_ut_cmd, apu_ipi_ut_val);
 
 	if (apu_ipi_ut_cmd == CMD_GET_PWR_ON_OFF_TIME) {
@@ -987,6 +1014,9 @@ static int apu_ipi_dbg_show(struct seq_file *s, void *unused)
 			dpidle_off_ts_avg + rcx_off_ce_ts_avg);
 		seq_printf(s, "boot_count = %u\n", boot_count);
 	} else if (apu_ipi_ut_cmd == CMD_PWR_TIME_PROFILE_INTERNAL) {
+		seq_printf(s, "pwr_profile_polling_mode = %u\n", pwr_profile_polling_mode);
+		seq_printf(s, "pwr_on_polling_dbg_mode = %u\n", apu->pwr_on_polling_dbg_mode);
+
 		seq_printf(s, "rcx_on_avg_time = %u us\n",
 			warmboot_on_ts_avg + rcx_on_ce_ts_avg);
 		seq_printf(s, "rcx_off_avg_time = %u us\n",
@@ -1002,12 +1032,15 @@ static int apu_ipi_dbg_show(struct seq_file *s, void *unused)
 		seq_printf(s, "warmboot_on_ts_last = %u us\n", warmboot_on_ts_last);
 		seq_printf(s, "dpidle_off_ts_last = %u us\n", dpidle_off_ts_last);
 		seq_printf(s, "smmu_hw_sem_ts_last = %u us\n", smmu_hw_sem_ts_last);
+		seq_printf(s, "mdw_abort_ts_last = %u us\n", mdw_abort_ts_last);
 		seq_printf(s, "warmboot_on_ts_avg = %u us\n", warmboot_on_ts_avg);
 		seq_printf(s, "dpidle_off_ts_avg = %u us\n", dpidle_off_ts_avg);
 		seq_printf(s, "smmu_hw_sem_ts_avg = %u us\n", smmu_hw_sem_ts_avg);
+		seq_printf(s, "mdw_abort_ts_avg = %u us\n", mdw_abort_ts_avg);
 		seq_printf(s, "warmboot_on_ts_max = %u us\n", warmboot_on_ts_max);
 		seq_printf(s, "dpidle_off_ts_max = %u us\n", dpidle_off_ts_max);
 		seq_printf(s, "smmu_hw_sem_ts_max = %u us\n", smmu_hw_sem_ts_max);
+		seq_printf(s, "mdw_abort_ts_max = %u us\n", mdw_abort_ts_max);
 
 		seq_printf(s, "ut_on_ts_last = %llu us\n", ut_on_ts_last);
 		seq_printf(s, "ut_off_ts_last = %llu us\n", ut_off_ts_last);
@@ -1066,10 +1099,13 @@ static int apu_ipi_dbg_exec_cmd(int cmd, unsigned int *args)
 static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 				 size_t count, loff_t *f_pos)
 {
+	struct mtk_apu *apu = g_apu;
 	char *tmp, *ptr, *token;
 	unsigned int args[IPI_DBG_MAX_ARGS];
-	int cmd;
+	int cmd = 0;
 	int ret, i;
+	bool change_pwr_profile_polling_mode = false;
+	bool change_pwr_on_polling_dbg_mode = false;
 
 	tmp = kzalloc(count + 1, GFP_KERNEL);
 	if (!tmp)
@@ -1094,6 +1130,10 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 		cmd = CMD_GET_PWR_ON_OFF_TIME;
 	} else if (strcmp(token, "pwr_time_internal") == 0) {
 		cmd = CMD_PWR_TIME_PROFILE_INTERNAL;
+	} else if (strcmp(token, "pwr_profile_polling_mode") == 0) {
+		change_pwr_profile_polling_mode = true;
+	} else if (strcmp(token, "pwr_on_polling_dbg_mode") == 0) {
+		change_pwr_on_polling_dbg_mode = true;
 	} else {
 		ret = -EINVAL;
 		pr_info("%s: unknown ipi dbg cmd: %s\n", __func__, token);
@@ -1108,6 +1148,16 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 				__func__, i, token);
 			goto out;
 		}
+	}
+
+	if (change_pwr_profile_polling_mode) {
+		pwr_profile_polling_mode = args[0];
+		ret = count;
+		goto out;
+	} else if (change_pwr_on_polling_dbg_mode) {
+		apu->pwr_on_polling_dbg_mode = args[0];
+		ret = count;
+		goto out;
 	}
 
 	ret = apu_ipi_dbg_exec_cmd(cmd, args);
@@ -1243,14 +1293,15 @@ int apu_ipi_init(struct platform_device *pdev, struct mtk_apu *apu)
 
 	mutex_init(&apu->send_lock);
 	mutex_init(&apu->power_lock);
+	mutex_init(&apu->power_profile_lock);
 	spin_lock_init(&apu->usage_cnt_lock);
-
-	if (apu->platdata->flags & F_APU_IPI_UT_SUPPORT)
-		apu_ipi_ut_init(apu);
 
 	mutex_init(&affin_lock);
 	affin_depth = 0;
 	g_apu = apu;
+
+	if (apu->platdata->flags & F_APU_IPI_UT_SUPPORT)
+		apu_ipi_ut_init(apu);
 
 	for (i = 0; i < APU_IPI_MAX; i++) {
 		mutex_init(&apu->ipi_desc[i].lock);

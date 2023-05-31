@@ -334,6 +334,8 @@ static int apu_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, apu);
 	spin_lock_init(&apu->reg_lock);
 
+	apu->bypass_aee = false;
+
 	ret = of_property_read_u32(np, "up-code-buf-sz",
 						   &up_code_buf_sz);
 	if (ret) {

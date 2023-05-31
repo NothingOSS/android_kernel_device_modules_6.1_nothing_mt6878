@@ -195,12 +195,15 @@ struct mtk_apu {
 	/* to prevent multiple ipi_send run concurrently */
 	struct mutex send_lock;
 	struct mutex power_lock;
+	struct mutex power_profile_lock;
 	spinlock_t usage_cnt_lock;
 	struct apu_ipi_desc ipi_desc[APU_IPI_MAX];
 	u32 ipi_id;
 	bool ipi_id_ack[APU_IPI_MAX]; /* per-ipi ack */
 	bool ipi_inbound_locked;
 	bool bypass_pwr_off_chk;
+	bool bypass_aee;
+	bool pwr_on_polling_dbg_mode;
 	wait_queue_head_t ack_wq; /* for waiting for ipi ack */
 	struct timespec64 intr_ts_begin;
 	struct timespec64 intr_ts_end;

@@ -331,6 +331,7 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 		apu->bypass_pwr_off_chk = true;
 		apusys_rv_exception_aee_warn(
 			apusys_assert_module_name[apu->conf_buf->ramdump_module]);
+		apu->bypass_aee = true;
 		dev_info(dev, "%s +\n", __func__);
 		return;
 	}
@@ -350,14 +351,18 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_TBUFDUMP, 0);
 
-		/* ungate md32 cg for debug apb connection */
-		apusys_rv_smc_call(dev,
-			MTK_APUSYS_KERNEL_OP_APUSYS_RV_CG_UNGATING, 0);
-		status = apusys_rv_smc_call(dev,
-			MTK_APUSYS_KERNEL_OP_APUSYS_RV_DBG_APB_ATTACH, 0);
+		if ((apu->platdata->flags & F_TCM_WA) == 0) {
+			/* ungate md32 cg for debug apb connection */
+			apusys_rv_smc_call(dev,
+				MTK_APUSYS_KERNEL_OP_APUSYS_RV_CG_UNGATING, 0);
+			status = apusys_rv_smc_call(dev,
+				MTK_APUSYS_KERNEL_OP_APUSYS_RV_DBG_APB_ATTACH, 0);
 
-		apusys_rv_smc_call(dev,
-			MTK_APUSYS_KERNEL_OP_APUSYS_RV_REGDUMP, (status & 0x1));
+			apusys_rv_smc_call(dev,
+				MTK_APUSYS_KERNEL_OP_APUSYS_RV_REGDUMP, (status & 0x1));
+		} else
+			apusys_rv_smc_call(dev,
+				MTK_APUSYS_KERNEL_OP_APUSYS_RV_REGDUMP, 0);
 
 		/* gating md32 cg for cache dump */
 		apusys_rv_smc_call(dev,
@@ -496,6 +501,7 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 	/* since exception is triggered, so bypass power off timeout check */
 	apu->bypass_pwr_off_chk = true;
 	apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
+	apu->bypass_aee = true;
 	dev_info(dev, "%s +\n", __func__);
 }
 

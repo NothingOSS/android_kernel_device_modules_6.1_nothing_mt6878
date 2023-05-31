@@ -20,6 +20,7 @@
 
 #include "apusys_power.h"
 #include "apusys_secure.h"
+#include "apu_regdump.h"
 #include "../apu.h"
 #include "../apu_debug.h"
 #include "../apu_config.h"
@@ -87,6 +88,13 @@ static struct wakeup_source *ws;
 #endif
 
 static bool is_under_lp_scp_recovery_flow;
+
+struct apu_polling_on_work_struct {
+	struct mtk_apu *apu;
+	struct work_struct work;
+};
+
+static struct apu_polling_on_work_struct apu_polling_on_work;
 
 /*
  * COLD BOOT power off timeout
@@ -352,8 +360,10 @@ static void mt6989_apu_pwr_wake_lock(struct mtk_apu *apu, uint32_t id)
 		__pm_stay_awake(ws);
 	wake_lock_ref_cnt_local = apu->wake_lock_ref_cnt;
 	spin_unlock_irqrestore(&apu->wakelock_spinlock, flags);
-	dev_info(apu->dev, "%s(%d): wake_lock_ref_cnt = %d\n",
-		__func__, id, wake_lock_ref_cnt_local);
+	/* remove to reduce log
+	 * dev_info(apu->dev, "%s(%d): wake_lock_ref_cnt = %d\n",
+	 *	__func__, id, wake_lock_ref_cnt_local);
+	 */
 #endif
 }
 
@@ -370,8 +380,10 @@ static void mt6989_apu_pwr_wake_unlock(struct mtk_apu *apu, uint32_t id)
 		__pm_relax(ws);
 	wake_lock_ref_cnt_local = apu->wake_lock_ref_cnt;
 	spin_unlock_irqrestore(&apu->wakelock_spinlock, flags);
-	dev_info(apu->dev, "%s(%d): wake_lock_ref_cnt = %d\n",
-		__func__, id, wake_lock_ref_cnt_local);
+	/* remove to reduce log
+	 * dev_info(apu->dev, "%s(%d): wake_lock_ref_cnt = %d\n",
+	 *	__func__, id, wake_lock_ref_cnt_local);
+	 */
 #endif
 }
 
@@ -568,10 +580,16 @@ static int mt6989_polling_rpc_status(struct mtk_apu *apu, u32 pwr_stat, u32 time
 	void *addr = 0;
 	uint32_t val = 0;
 
-	addr = apu->apu_rpc + 0x44;
+	if (pwr_stat == 0)
+		addr = apu->apu_rpc + 0x44;
+	else
+		addr = apu->apu_mbox + 0x50;
 
 	ret = readl_relaxed_poll_timeout_atomic(addr, val,
 		((val & (0x1UL)) == pwr_stat), 1, timeout);
+
+	if (ret)
+		dev_info(apu->dev, "%s(pwr_stat = %u): timeout\n", __func__, pwr_stat);
 
 	return ret;
 }
@@ -620,6 +638,8 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 							msecs_to_jiffies(APU_PWROFF_TIMEOUT_MS));
 					if (id == APU_IPI_SCP_NP_RECOVER && rpc_state == 1)
 						is_under_lp_scp_recovery_flow = true;
+					if (apu->pwr_on_polling_dbg_mode)
+						schedule_work(&(apu_polling_on_work.work));
 				} else {
 					mt6989_apu_pwr_wake_unlock(apu, id);
 					apu->ipi_pwr_ref_cnt[id]--;
@@ -638,6 +658,8 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 			apu->local_pwr_ref_cnt--;
 			mt6989_apu_pwr_wake_unlock(apu, id);
 			if (apu->local_pwr_ref_cnt == 0) {
+				if (apu->pwr_on_polling_dbg_mode)
+					cancel_work_sync(&(apu_polling_on_work.work));
 				ret = apu_power_ctrl(apu, 0);
 				if (!ret) {
 					/* clear status & cancel timeout worker */
@@ -709,7 +731,7 @@ static int mt6989_power_on_off(struct mtk_apu *apu, u32 id, u32 on, u32 off)
 	ktime_get_ts64(&te);
 	ts = timespec64_sub(te, ts);
 
-	dev_info(dev,
+	apu_info_ratelimited(dev,
 		"%s(%d/%d/%d): local_pwr_ref_cnt = %d, ipi_pwr_ref_cnt = %d, time = %lld ns\n",
 		__func__, id, on, off, apu->local_pwr_ref_cnt,
 		apu->ipi_pwr_ref_cnt[id], timespec64_to_ns(&ts));
@@ -961,6 +983,28 @@ static void mt6989_rv_cachedump(struct mtk_apu *apu)
 	spin_unlock_irqrestore(&apu->reg_lock, flags);
 }
 
+static void apu_polling_on_work_func(struct work_struct *p_work)
+{
+	int ret;
+	struct apu_polling_on_work_struct *apu_polling_on_work =
+		container_of(p_work, struct apu_polling_on_work_struct, work);
+	struct mtk_apu *apu = apu_polling_on_work->apu;
+	struct device *dev = apu->dev;
+
+	ret = mt6989_polling_rpc_status(apu, 1, 1000000);
+	if (ret) {
+		apu_regdump();
+		apu->bypass_pwr_off_chk = true;
+		dev_info(dev, "%s: APU_RPC_TOP_CON = 0x%x\n",
+			__func__, ioread32(apu->apu_rpc + 0x0));
+		dev_info(dev, "%s: APU_RPC_INTF_PWR_RDY = 0x%x\n",
+			__func__, ioread32(apu->apu_rpc + 0x44));
+		dev_info(dev, "%s: MBOX0_OUTBOX = 0x%x\n",
+			__func__, ioread32(apu->apu_mbox + 0x20));
+		apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
+	}
+}
+
 static int mt6989_rproc_init(struct mtk_apu *apu)
 {
 	int ret;
@@ -976,6 +1020,12 @@ static int mt6989_rproc_init(struct mtk_apu *apu)
 	/* cold boot done will call unlock */
 	mt6989_apu_pwr_wake_lock(apu, APU_IPI_INIT);
 #endif
+
+	INIT_WORK(&(apu_polling_on_work.work), &apu_polling_on_work_func);
+	apu_polling_on_work.apu = apu;
+
+	/* TODO: change to false to reduce latency */
+	apu->pwr_on_polling_dbg_mode = true;
 
 	is_under_lp_scp_recovery_flow = false;
 
@@ -993,12 +1043,14 @@ static int mt6989_rproc_exit(struct mtk_apu *apu)
 #if IS_ENABLED(CONFIG_PM_SLEEP)
 	wakeup_source_unregister(ws);
 #endif
+	cancel_work_sync(&(apu_polling_on_work.work));
+
 	return 0;
 }
 
 const struct mtk_apu_platdata mt6989_platdata = {
 	.flags		= F_AUTO_BOOT | F_FAST_ON_OFF | F_APU_IPI_UT_SUPPORT |
-					F_TCM_WA | F_SMMU_SUPPORT | F_DEBUG_LOG_ON |
+					F_TCM_WA | F_SMMU_SUPPORT |
 					F_APUSYS_RV_TAG_SUPPORT | F_PRELOAD_FIRMWARE |
 					F_SECURE_BOOT | F_SECURE_COREDUMP,
 	.ops		= {

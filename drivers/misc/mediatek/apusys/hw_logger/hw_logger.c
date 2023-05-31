@@ -1322,7 +1322,7 @@ static int seq_show(struct seq_file *s, void *v)
 			}
 		}
 		if (seq_has_overflowed(s)) {
-			pr_info("%s: seq_has_overflowed\n", __func__);
+			/* pr_info("%s: seq_has_overflowed\n", __func__); */
 			/* need to allocate more buffer */
 			buf = kvmalloc(s->size <<= 1, GFP_KERNEL_ACCOUNT);
 			if (!buf)
