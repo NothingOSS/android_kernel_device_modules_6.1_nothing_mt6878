@@ -846,7 +846,7 @@ static u32 dvfsrc_get_opp_gear_info(struct mtk_dvfsrc *dvfsrc, u32 idx)
 			val = dvfsrc_read(dvfsrc, DVFSRC_LEVEL_LABEL_L, 0x4 * (idx / 2));
 			val = (val >> (16 * (idx % 2)));
 		} else if (idx < 128) {
-			val = dvfsrc_read(dvfsrc, DVFSRC_LEVEL_LABEL_H, 0x4 * (idx / 2));
+			val = dvfsrc_read(dvfsrc, DVFSRC_LEVEL_LABEL_H, 0x4 * ((idx - 64) / 2));
 			val = (val >> (16 * (idx % 2)));
 		}
 	break;
