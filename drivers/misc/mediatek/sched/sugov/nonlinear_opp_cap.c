@@ -1303,63 +1303,9 @@ static int init_sram_mapping(void)
 	return 0;
 }
 
-static int pd_capacity_tbl_show(struct seq_file *m, void *v)
-{
-	int i, j;
-	struct pd_capacity_info *pd_info;
-	struct em_perf_domain *pd;
-
-	for (i = 0; i < pd_count; i++) {
-		pd_info = &pd_capacity_tbl[i];
-
-		if (!pd_info->nr_caps)
-			break;
-
-		seq_printf(m, "pd table: %d\n", i);
-		seq_printf(m, "cpus: %*pbl\n", cpumask_pr_args(&pd_info->cpus));
-		pd = em_cpu_get(cpumask_first(&pd_info->cpus));
-		if (!pd) {
-			pr_info("sugov_ext err: pd null in cluster%d\n", i);
-			continue;
-		}
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-		seq_printf(m, "nr_caps: %d\n", pd->nr_perf_states);
-		for (j = 0; j < pd->nr_perf_states; j++)
-			seq_printf(m, "%3d: %4u, %7u\n", j,
-				mtk_em_pd_ptr_public[i].table[j].capacity,
-				mtk_em_pd_ptr_public[i].table[j].freq);
-		if (is_gearless_support())
-			seq_puts(m, "\n");
-#else
-		if (pd_info->nr_caps != pd->nr_perf_states) {
-			pr_info("sugov_ext err: pd_info->nr_c. != pd->nr_perf_sta. in clus.=%d\n",
-				i);
-			continue;
-		}
-		seq_printf(m, "nr_caps: %d\n", pd_info->nr_caps);
-		for (j = 0; j < pd_info->nr_caps; j++)
-			seq_printf(m, "%d: %u, %u\n", j, pd_info->table[j].capacity,
-				pd_info->table[j].freq);
-#endif
-	}
-
-	return 0;
-}
-
-static int pd_capacity_tbl_open(struct inode *in, struct file *file)
-{
-	return single_open(file, pd_capacity_tbl_show, NULL);
-}
-
-static const struct proc_ops pd_capacity_tbl_ops = {
-	.proc_open = pd_capacity_tbl_open,
-	.proc_read = seq_read
-};
-
 int init_opp_cap_info(struct proc_dir_entry *dir)
 {
 	int ret, i;
-	struct proc_dir_entry *entry;
 
 	ret = init_sram_mapping();
 	if (ret)
@@ -1393,10 +1339,6 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 
 		init_eas_dsu_ctrl();
 	}
-
-	entry = proc_create("pd_capacity_tbl", 0644, dir, &pd_capacity_tbl_ops);
-	if (!entry)
-		pr_info("mtk_scheduler/pd_capacity_tbl entry create failed\n");
 
 	init_sbb_cpu_data();
 
