@@ -124,9 +124,7 @@ struct mtk_sec_heap_buffer {
 	struct sg_table sg_table;
 	int vmap_cnt;
 	void *vaddr;
-
 	bool uncached;
-
 	/* helper function */
 	int (*show)(const struct dma_buf *dmabuf, struct seq_file *s);
 
@@ -138,6 +136,8 @@ struct mtk_sec_heap_buffer {
 	char pid_name[TASK_COMM_LEN];
 	char tid_name[TASK_COMM_LEN];
 	unsigned long long ts; /* us */
+
+	int gid; /* slc */
 
 	/* private part for secure heap */
 	u64 sec_handle; /* keep same type with tmem */
@@ -1699,6 +1699,7 @@ static struct dma_buf *tmem_page_allocate(struct dma_heap *heap,
 	/* all page base memory set as noncached buffer */
 	buffer->uncached = true;
 	buffer->show = sec_buf_priv_dump;
+	buffer->gid = -1;
 
 	if (tmem_api_ver == 2)
 		ret = page_base_alloc_v2(sec_heap, buffer, len);
@@ -1767,6 +1768,7 @@ static struct dma_buf *tmem_region_allocate(struct dma_heap *heap,
 	buffer->len = len;
 	buffer->heap = heap;
 	buffer->show = sec_buf_priv_dump;
+	buffer->gid = -1;
 
 	ret = region_base_alloc(sec_heap, buffer, len, aligned);
 	if (ret)

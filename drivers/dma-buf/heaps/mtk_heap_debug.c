@@ -75,9 +75,7 @@ struct dmaheap_buf_copy {
 	struct sg_table sg_table;
 	int vmap_cnt;
 	void *vaddr;
-	struct mtk_deferred_freelist_item deferred_free;
 	bool uncached;
-
 	/* helper function */
 	int (*show)(const struct dma_buf *dmabuf, struct seq_file *s);
 
@@ -89,6 +87,11 @@ struct dmaheap_buf_copy {
 	char                     pid_name[TASK_COMM_LEN];
 	char                     tid_name[TASK_COMM_LEN];
 	unsigned long long       ts; /* us */
+
+	int gid; /* slc */
+
+	/* private part for system heap */
+	struct mtk_deferred_freelist_item deferred_free;
 };
 
 enum stats_type {
