@@ -752,7 +752,7 @@ static int mt6989_wait_for_vcore_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 
 	return readl_poll_timeout_atomic(
 			dvfsrc->regs + dvfsrc->dvd->regs[DVFSRC_CUR_TAR_GEAR],
-			val, ((val >> 8) & 0x7) == level, STARTUP_TIME, POLL_TIMEOUT);
+			val, ((val >> 8) & 0x7) >= level, STARTUP_TIME, POLL_TIMEOUT);
 }
 
 static int mt6989_wait_for_dram_level(struct mtk_dvfsrc *dvfsrc, u32 level)
@@ -761,7 +761,7 @@ static int mt6989_wait_for_dram_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 
 	return readl_poll_timeout_atomic(
 			dvfsrc->regs + dvfsrc->dvd->regs[DVFSRC_CUR_TAR_GEAR],
-			val, (val & 0xF) == level, STARTUP_TIME, POLL_TIMEOUT);
+			val, (val & 0xF) >= level, STARTUP_TIME, POLL_TIMEOUT);
 }
 
 #ifdef DVFSRC_FORCE_OPP_SUPPORT
@@ -1054,6 +1054,10 @@ static int mtk_dvfsrc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	dvfsrc->dvd = of_device_get_match_data(&pdev->dev);
+	if (dvfsrc->dvd == NULL) {
+		ret = -EINVAL;
+		goto err;
+	}
 	dvfsrc->dev = &pdev->dev;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
