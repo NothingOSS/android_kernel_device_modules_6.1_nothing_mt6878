@@ -13531,7 +13531,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"FREQ,VCORE,PS_TOTAL,PS_B0,",
 				"PS_B1,PS_B2,PS_B3,PS_B4,",
 				"PS_B5,PS_DPC,PS_B6,MD_SCE,",
-				"MD_SCE,HR_BW,EMI_OPP,HR_DB,",
+				"MD_STA,HR_BW,EMI_OPP,HR_DB,",
 				"HR_IB,HR_MB,HR_BASE,CEIL_MISC";
 		};
 
