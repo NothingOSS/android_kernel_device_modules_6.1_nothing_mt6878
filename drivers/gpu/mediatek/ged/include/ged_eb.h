@@ -9,7 +9,6 @@
 #include <linux/types.h>
 #include "ged_type.h"
 #include "ged_dvfs.h"
-#include "ged_gpu_bm.h"
 
 /**************************************************
  * GPU FAST DVFS Log Setting
@@ -28,12 +27,12 @@
 /**************************************************
  * GPU FAST DVFS SYSRAM Setting
  **************************************************/
-#define FASTDVFS_COUNTER_FIRST_ENTRY NR_BM_COUNTER   // use to offset array
-#define FASTDVFS_FEEDBACK_INFO_FIRST_ENTRY 35        // use to offset array
+#define FASTDVFS_COUNTER_FIRST_ENTRY 48   // use to offset array
+#define FASTDVFS_FEEDBACK_INFO_FIRST_ENTRY 88  // use to offset array
 
 #define SYSRAM_LOG_SIZE sizeof(int)
 
-// FDVFS SYSRAM space is allocated after BM, 5~24
+// FDVFS SYSRAM space is allocated after QOSc & SLC, 48~77
 enum gpu_fastdvfs_counter {
 	FASTDVFS_COUNTER_CURRENT_FREQUENCY = FASTDVFS_COUNTER_FIRST_ENTRY,
 	FASTDVFS_COUNTER_PREDICTED_FREQUENCY,
@@ -85,8 +84,8 @@ enum gpu_fastdvfs_share_info {
 	MAX_FASTDVFS_SHARE_INFO,
 };
 
-/* 6983 0x112000~0x112400 */
-#define FASTDVFS_POWERMODEL_SYSRAM_BASE 0x112000U
+/* 6989 0x117800~0x117C00 */
+#define FASTDVFS_POWERMODEL_SYSRAM_BASE 0x117800U
 
 #define SYSRAM_GPU_CURR_FREQ                         \
 (                                                    \
