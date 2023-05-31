@@ -989,6 +989,8 @@ static int flt_sync_all_cpu(void)
 		delta = wallclock - fsrq->window_start;
 		if (delta >= sched_ravg_window  && rq->curr)
 			flt_update_task_ravg(rq->curr, rq, TASK_UPDATE, wallclock, 0);
+		if (rq->nr_running == 0)
+				memset(fsrq->group_nr_running, 0, sizeof(fsrq->group_nr_running));
 		raw_spin_rq_unlock(rq);
 	}
 
