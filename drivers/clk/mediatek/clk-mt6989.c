@@ -365,6 +365,11 @@
 #define PTPPLL_CON3				0x014
 
 /* HW Voter REG */
+#define HWV_B0_SET				0x01A0
+#define HWV_B0_CLR				0x01A4
+#define HWV_B0_SET_STA				0x1474
+#define HWV_B0_CLR_STA				0x1478
+#define HWV_B0_DONE				0x142C
 
 static DEFINE_SPINLOCK(mt6989_clk_lock);
 
@@ -3193,6 +3198,39 @@ static void __iomem *plls_base[PLL_SYS_NUM];
 		.pcwibits = MT6989_INTEGER_BITS,			\
 	}
 
+#define PLL_SETCLR_R(_id, _name, _pll_setclr, _hwv_comp,		\
+			_en_setclr_bit, _rstb_setclr_bit, _flags,	\
+			_pd_reg, _pd_shift, _tuner_reg, _tuner_en_reg,	\
+			_tuner_en_bit, _pcw_reg, _pcw_shift,		\
+			_pcwbits, _hwv_res_set_ofs, _hwv_res_clr_ofs,	\
+			_hwv_done_ofs, _hwv_set_sta_ofs,		\
+			_hwv_clr_sta_ofs, _hwv_shift) {			\
+		.id = _id,						\
+		.name = _name,						\
+		.pll_setclr = &(_pll_setclr),				\
+		.hwv_comp = _hwv_comp,					\
+		.en_setclr_bit = _en_setclr_bit,			\
+		.rstb_setclr_bit = _rstb_setclr_bit,			\
+		.flags = (_flags | PLL_CFLAGS),				\
+		.fmax = MT6989_PLL_FMAX,				\
+		.fmin = MT6989_PLL_FMIN,				\
+		.pd_reg = _pd_reg,					\
+		.pd_shift = _pd_shift,					\
+		.tuner_reg = _tuner_reg,				\
+		.tuner_en_reg = _tuner_en_reg,				\
+		.tuner_en_bit = _tuner_en_bit,				\
+		.pcw_reg = _pcw_reg,					\
+		.pcw_shift = _pcw_shift,				\
+		.pcwbits = _pcwbits,					\
+		.pcwibits = MT6989_INTEGER_BITS,			\
+		.hwv_res_set_ofs = _hwv_res_set_ofs,			\
+		.hwv_res_clr_ofs = _hwv_res_clr_ofs,			\
+		.hwv_done_ofs = _hwv_done_ofs,				\
+		.hwv_set_sta_ofs = _hwv_set_sta_ofs,			\
+		.hwv_clr_sta_ofs = _hwv_clr_sta_ofs,			\
+		.hwv_shift = _hwv_shift,				\
+	}
+
 static const struct mtk_pll_data cci_plls[] = {
 	PLL(CLK_CCIPLL, "ccipll", CCIPLL_CON0/*base*/,
 		CCIPLL_CON0, 0, 0/*en*/,
@@ -3257,21 +3295,30 @@ static const struct mtk_pll_data apmixed_plls[] = {
 		EMIPLL2_CON1, 24/*pd*/,
 		0, 0, 0/*tuner*/,
 		EMIPLL2_CON1, 0, 22/*pcw*/),
-	PLL_SETCLR(CLK_APMIXED_MAINPLL2, "mainpll2", setclr_data/*base*/,
+	PLL_SETCLR_R(CLK_APMIXED_MAINPLL2, "mainpll2", setclr_data/*base*/,
+		"hw-voter-regmap"/*comp*/,
 		13, 6, HAVE_RST_BAR,
 		MAINPLL2_CON1, 24/*pd*/,
 		0, 0, 0/*tuner*/,
-		MAINPLL2_CON1, 0, 22/*pcw*/),
-	PLL_SETCLR(CLK_APMIXED_UNIVPLL2, "univpll2", setclr_data/*base*/,
+		MAINPLL2_CON1, 0, 22/*pcw*/,
+		HWV_B0_SET, HWV_B0_CLR, HWV_B0_DONE,
+		HWV_B0_SET_STA, HWV_B0_CLR_STA, 0),
+	PLL_SETCLR_R(CLK_APMIXED_UNIVPLL2, "univpll2", setclr_data/*base*/,
+		"hw-voter-regmap"/*comp*/,
 		12, 5, HAVE_RST_BAR,
 		UNIVPLL2_CON1, 24/*pd*/,
 		0, 0, 0/*tuner*/,
-		UNIVPLL2_CON1, 0, 22/*pcw*/),
-	PLL_SETCLR(CLK_APMIXED_MMPLL2, "mmpll2", setclr_data/*base*/,
+		UNIVPLL2_CON1, 0, 22/*pcw*/,
+		HWV_B0_SET, HWV_B0_CLR, HWV_B0_DONE,
+		HWV_B0_SET_STA, HWV_B0_CLR_STA, 1),
+	PLL_SETCLR_R(CLK_APMIXED_MMPLL2, "mmpll2", setclr_data/*base*/,
+		"hw-voter-regmap"/*comp*/,
 		11, 4, HAVE_RST_BAR,
 		MMPLL2_CON1, 24/*pd*/,
 		0, 0, 0/*tuner*/,
-		MMPLL2_CON1, 0, 22/*pcw*/),
+		MMPLL2_CON1, 0, 22/*pcw*/,
+		HWV_B0_SET, HWV_B0_CLR, HWV_B0_DONE,
+		HWV_B0_SET_STA, HWV_B0_CLR_STA, 2),
 	PLL_SETCLR(CLK_APMIXED_TVDPLL, "tvdpll", setclr_data/*base*/,
 		4, 0, 0,
 		TVDPLL_CON1, 24/*pd*/,

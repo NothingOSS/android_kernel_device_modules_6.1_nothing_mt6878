@@ -268,6 +268,7 @@ struct mtk_pll_setclr_data {
 struct mtk_pll_data {
 	int id;
 	const char *name;
+	const char *hwv_comp;
 	struct mtk_pll_setclr_data *pll_setclr;
 	uint32_t reg;
 	uint32_t pwr_reg;
