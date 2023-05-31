@@ -37,6 +37,7 @@
 
 /* scp mbox/ipi related */
 #include <linux/soc/mediatek/mtk-mbox.h>
+#include <linux/soc/mediatek/mtk_tinysys_ipi.h>
 #include "scp_ipi.h"
 
 /* scp chre message buffer for IPI slots */
@@ -106,6 +107,8 @@ static int scp_chre_ipi_handler(unsigned int id, void *prdata, void *data,
 static ssize_t scp_chre_manager_read(struct file *filp,
 		char __user *buf, size_t count, loff_t *f_pos)
 {
+	int ret = 0;
+
 	if (count <= 0 || count > SCP_CHRE_MANAGER_PAYLOAD_MAXIMUM) {
 		pr_err("[SCP] %s: wrong size(%zd)\n", __func__, count);
 		return -1;
@@ -114,8 +117,10 @@ static ssize_t scp_chre_manager_read(struct file *filp,
 	chre_buf = buf;
 	scp_chre_ack2scp[0] = 0;
 	scp_chre_ack2scp[1] = -1;
-	mtk_ipi_recv_reply(&scp_ipidev, IPI_IN_SCP_HOST_CHRE,
+	ret = mtk_ipi_recv_reply(&scp_ipidev, IPI_IN_SCP_HOST_CHRE,
 			&scp_chre_ack2scp, PIN_IN_SIZE_SCP_HOST_CHRE);
+	if (ret == IPI_FAKE_SIGNAL)
+		scp_chre_ack2scp[1] = 0;
 
 	return scp_chre_ack2scp[1];
 }

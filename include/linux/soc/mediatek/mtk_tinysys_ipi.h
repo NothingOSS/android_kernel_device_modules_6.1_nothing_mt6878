@@ -116,6 +116,7 @@ struct mtk_ipi_device  {
 #define IPI_COMPL_TIMEOUT	-7 /* polling or wait for ack ipi timeout */
 #define IPI_PRE_CB_FAIL		-8 /* pre-callback fail */
 #define IPI_POST_CB_FAIL	-9 /* post-callback fail */
+#define IPI_FAKE_SIGNAL		-10
 #define IPI_RPMSG_ERR		-99 /* some error from rpmsg layer */
 
 

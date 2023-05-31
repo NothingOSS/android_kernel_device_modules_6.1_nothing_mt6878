@@ -421,7 +421,7 @@ int mtk_ipi_recv(struct mtk_ipi_device *ipidev, int ipi_id)
 	 * so do nothing and just return any unfinished type to caller
 	 */
 	if (ret)
-		return IPI_COMPL_TIMEOUT;
+		return IPI_FAKE_SIGNAL;
 
 	ipi_monitor(ipidev, ipi_id, RECV_MSG);
 	ipidev->ipi_last_done = ipi_id;
@@ -595,7 +595,7 @@ int mtk_ipi_recv_reply(struct mtk_ipi_device *ipidev, int ipi_id,
 	 * so do nothing and just return any unfinished type to caller
 	 */
 	if (ret)
-		return IPI_COMPL_TIMEOUT;
+		return IPI_FAKE_SIGNAL;
 
 	ipi_monitor(ipidev, ipi_id, RECV_MSG);
 
