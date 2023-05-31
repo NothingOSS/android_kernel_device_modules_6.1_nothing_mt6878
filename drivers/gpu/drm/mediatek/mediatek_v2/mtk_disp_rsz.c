@@ -464,8 +464,8 @@ static void mtk_rsz_config(struct mtk_ddp_comp *comp,
 	}
 
 	reg_val = 0;
-	reg_val |= REG_FLD_VAL(FLD_RSZ_HORIZONTAL_EN, (in_w != out_w));
-	reg_val |= REG_FLD_VAL(FLD_RSZ_VERTICAL_EN, (in_h != out_h));
+	reg_val |= REG_FLD_VAL(FLD_RSZ_HORIZONTAL_EN, 1);
+	reg_val |= REG_FLD_VAL(FLD_RSZ_VERTICAL_EN, 1);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_RSZ_CONTROL_1, reg_val, ~0);
 	DDPDBG("%s:CONTROL_1:0x%x\n", __func__, reg_val);
@@ -572,8 +572,8 @@ static void mtk_rsz_addon_config(struct mtk_ddp_comp *comp,
 	}
 
 	reg_val = 0;
-	reg_val |= REG_FLD_VAL(FLD_RSZ_HORIZONTAL_EN, (in_w != out_w));
-	reg_val |= REG_FLD_VAL(FLD_RSZ_VERTICAL_EN, (in_h != out_h));
+	reg_val |= REG_FLD_VAL(FLD_RSZ_HORIZONTAL_EN, 1);
+	reg_val |= REG_FLD_VAL(FLD_RSZ_VERTICAL_EN, 1);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_RSZ_CONTROL_1, reg_val, ~0);
 	DDPDBG("%s:CONTROL_1:0x%x\n", __func__, reg_val);
