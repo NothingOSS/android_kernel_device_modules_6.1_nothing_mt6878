@@ -408,6 +408,24 @@ int get_dsu_temp(void)
 }
 EXPORT_SYMBOL(get_dsu_temp);
 
+
+int get_dsu_ceiling_freq(void)
+{
+	int freq = -1; //KHz
+
+	if (!tm_data.sw_ready)
+		return freq;
+
+	if (tm_data.is_cputcm)
+		freq= therm_intf_read_cputcm_s32(DSU_CEILING_FREQ_TCM_OFFSET);
+	else
+		freq = therm_intf_read_csram_s32(DSU_CEILING_FREQ_OFFSET);
+
+	return freq;
+}
+EXPORT_SYMBOL(get_dsu_ceiling_freq);
+
+
 int set_reboot_temperature(int temp)
 {
 	if (!tm_data.sw_ready)

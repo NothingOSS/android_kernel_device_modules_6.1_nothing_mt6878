@@ -211,6 +211,7 @@ extern int get_catm_min_ttj(void);
 extern int get_dsu_temp(void);
 extern int set_reboot_temperature(int temp);
 extern int set_cold_interrupt_enable_addr(int val);
+extern int get_dsu_ceiling_freq(void);
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 extern void __iomem *thermal_csram_base;
