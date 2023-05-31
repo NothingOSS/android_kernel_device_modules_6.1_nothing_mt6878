@@ -4769,6 +4769,33 @@ static void mt6989_check_cal_data(struct lvts_data *lvts_data)
 	}
 }
 
+#define COF_A_T_SLP_GLD_6989 219960
+#define COF_A_COUNT_R_GLD_6989 14437
+#define COF_A_CONST_OFS_6989 280000
+#define COF_A_OFS_6989 (COF_A_T_SLP_GLD_6989 - COF_A_CONST_OFS_6989)
+
+static void mt6989_update_coef_data(struct lvts_data *lvts_data)
+{
+	struct sensor_cal_data *cal_data = &lvts_data->cal_data;
+	struct tc_settings *tc = lvts_data->tc;
+	unsigned int i, j, s_index;
+
+	for (i = 0; i < lvts_data->num_tc; i++) {
+		for  (j = 0; j < tc[i].num_sensor; j++) {
+			if (tc[i].sensor_on_off[j] != SEN_ON)
+				continue;
+
+			s_index = tc[i].sensor_map[j];
+
+			tc[i].coeff.a[j] = COF_A_OFS_6989 + (COF_A_CONST_OFS_6989 *
+					cal_data->count_r[s_index] / COF_A_COUNT_R_GLD_6989);
+
+			dev_info(lvts_data->dev, "%s tc[%d].coeff.a[%d]=%d\n", __func__,
+				i, j, tc[i].coeff.a[j]);
+		}
+	}
+}
+
 static struct tc_settings mt6989_tc_settings[] = {
 	[MT6989_LVTS_MCU_CTRL0] = {
 		.domain_index = MT6989_MCU_DOMAIN,
@@ -4923,7 +4950,7 @@ static struct lvts_data mt6989_lvts_data = {
 		.lvts_temp_to_raw = lvts_temp_to_raw_v2,
 		.lvts_raw_to_temp = lvts_raw_to_temp_v2,
 		.check_cal_data = mt6989_check_cal_data,
-		.update_coef_data = update_coef_data_v1,
+		.update_coef_data = mt6989_update_coef_data,
 	},
 	.feature_bitmap = FEATURE_DEVICE_AUTO_RCK,
 	.num_efuse_addr = 33,
