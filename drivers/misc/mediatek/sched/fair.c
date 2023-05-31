@@ -1493,6 +1493,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	unsigned long min_cap = eenv->min_cap;
 	unsigned long max_cap = eenv->max_cap;
 	bool is_vip = false;
+	bool is_vvip = false;
 	unsigned int num_vip, prev_min_num_vip, min_num_vip;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	struct vip_task_struct *vts;
@@ -1511,8 +1512,9 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
 	vts->vip_prio = get_vip_task_prio(p);
 	is_vip = task_is_vip(p, NOT_VIP);
+	is_vvip = task_is_vip(p, VVIP);
 
-	if (task_is_vip(p, VVIP)) {
+	if (is_vvip) {
 		target_balance_cluster = find_imbalanced_vvip_gear();
 		if (target_balance_cluster != -1) {
 			order_index = target_balance_cluster;
@@ -1585,6 +1587,9 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 			if (is_vip) {
 				num_vip = num_vip_in_cpu_fn(cpu);
+				if (!is_vvip && num_vvip_in_cpu(cpu))
+					continue;
+
 				if (num_vip > min_num_vip)
 					continue;
 
@@ -1691,7 +1696,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 
 		if ((cluster >= end_index) && (!cpumask_empty(candidates)))
 			break;
-		else if (task_is_vip(p, VVIP) &&
+		else if (is_vvip &&
 			(*idle_max_spare_cap_cpu>=0 || *sys_max_spare_cap_cpu>=0)) {
 			/*
 			 * Don't calc energy if we found max spare cpu
