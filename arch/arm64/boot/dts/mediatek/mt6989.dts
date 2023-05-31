@@ -1347,8 +1347,10 @@
 		reg-names = "pmif-m", "spmimst-m","pmif-p","spmimst-p";
 		interrupts-extended = <&pio 267 IRQ_TYPE_LEVEL_HIGH>,
 				<&gic GIC_SPI 544 IRQ_TYPE_LEVEL_HIGH 0>,
-				<&gic GIC_SPI 543 IRQ_TYPE_LEVEL_HIGH 0>;
-		interrupt-names = "rcs_irq","pmif_irq","spmi_nack_irq";
+				<&gic GIC_SPI 543 IRQ_TYPE_LEVEL_HIGH 0>,
+				<&gic GIC_SPI 936 IRQ_TYPE_LEVEL_HIGH 0>,
+				<&gic GIC_SPI 935 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "rcs_irq","pmif_irq","spmi_nack_irq","pmif_p_irq","spmi_p_nack_irq";
 		interrupt-controller;
 		#interrupt-cells = <1>;
 		irq-event-en = <0xc0000000 0x0 0x0 0x0 0x0>;
