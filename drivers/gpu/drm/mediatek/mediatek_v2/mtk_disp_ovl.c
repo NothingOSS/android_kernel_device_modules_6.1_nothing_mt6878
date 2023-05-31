@@ -357,13 +357,6 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 #define M4U_PORT_DISP_OVL0_2L_HDR ((1 << 5) + 0)
 #define M4U_PORT_DISP_OVL0_2L ((1 << 5) + 2)
 
-/* define for AFBC_V1_2 */
-#define AFBC_V1_2_TILE_W (32)
-#define AFBC_V1_2_TILE_H (8)
-#define AFBC_V1_2_HEADER_ALIGN_BYTES (1024)
-#define AFBC_V1_2_HEADER_SIZE_PER_TILE_BYTES (16)
-
-
 /* AID offset in mmsys config */
 #define MT6989_OVL0_2L_AID_SEL	(0xB00UL)
 #define MT6989_OVL1_2L_AID_SEL	(0xB20UL)

@@ -8,6 +8,12 @@
 
 #define DISP_REG_OVL_ADDR_BASE 0x0f40
 
+/* define for AFBC_V1_2 */
+#define AFBC_V1_2_TILE_W (32)
+#define AFBC_V1_2_TILE_H (8)
+#define AFBC_V1_2_HEADER_ALIGN_BYTES (1024)
+#define AFBC_V1_2_HEADER_SIZE_PER_TILE_BYTES (16)
+
 struct mtk_disp_ovl_data {
 	unsigned int addr;
 	unsigned int el_addr_offset;

@@ -63,6 +63,7 @@
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
 #include "platform/mtk_drm_platform.h"
 #include "mtk_disp_vidle.h"
+#include "mtk_disp_ovl.h"
 
 /* *****Panel_Master*********** */
 #include "mtk_fbconfig_kdebug.h"
@@ -6497,6 +6498,10 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 		unsigned int src_w = plane_state->pending.width;
 		unsigned int src_h = plane_state->pending.height;
 		unsigned int dst_x = plane_state->pending.dst_x;
+		unsigned int src_x = plane_state->pending.src_x;
+		unsigned int src_y = plane_state->pending.src_y;
+		unsigned int tile_w = AFBC_V1_2_TILE_W;
+		unsigned int tile_h = AFBC_V1_2_TILE_H;
 		unsigned int bpp =
 			mtk_get_format_bpp(plane_state->pending.format);
 		unsigned int is_compress =
@@ -6514,6 +6519,10 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 		bool need_skip = false;
 		struct mtk_ddp_comp *comp_right_pipe = NULL;
 		bool cross_mid_line = false;
+		unsigned int src_x_align, src_w_align;
+		unsigned int src_y_align, src_y_half_align;
+		unsigned int src_y_end_align, src_y_end_half_align;
+		unsigned int src_h_align, src_h_half_align = 0;
 
 		DDPDBG_BWM("BWM: layer caps:0x%08x\n", plane_state->comp_state.layer_caps);
 		if ((plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_LAYER) ||
@@ -6531,14 +6540,34 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			break;
 		}
 
+		/* calculate for alignment */
+		src_x_align = (src_x / tile_w) * tile_w;
+		src_w_align = (1 + (src_x + src_w - 1) / tile_w) * tile_w - src_x_align;
+		/* src_y_half_align, src_y_end_half_align,
+		 * the start y offset and  stop y offset if half tile align
+		 * such as 0 and 3, then the src_h_align is 4
+		 */
+		src_y_align = (src_y / tile_h) * tile_h;
+		src_y_end_align = (1 + (src_y + src_h - 1) / tile_h) * tile_h - 1;
+		src_h_align = src_y_end_align - src_y_align + 1;
+		src_y_half_align = (src_y / (tile_h >> 1)) * (tile_h >> 1);
+		src_y_end_half_align =
+			(1 + (src_y + src_h - 1) / (tile_h >> 1)) * (tile_h >> 1) - 1;
+		src_h_half_align = src_y_end_half_align - src_y_half_align + 1;
+
+		if (plane_state->pending.format != DRM_FORMAT_RGB565 &&
+			plane_state->pending.format != DRM_FORMAT_BGR565) {
+			src_h_align = src_h_half_align;
+		}
+
 		if ((dst_x < width / 2) &&
-			(dst_x + src_w >= width / 2))
+			(dst_x + src_w_align >= width / 2))
 			cross_mid_line = true;
 
 		if (mtk_crtc->is_dual_pipe && cross_mid_line &&
 			mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_TILE_OVERHEAD) && !need_skip)
-			src_w = to_info.left_in_width + to_info.right_in_width - width + src_w;
+			src_w_align = to_info.left_in_width + to_info.right_in_width - width + src_w_align;
 
 		/*
 		 * Layer SRT compress ratio =
@@ -6550,32 +6579,32 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 		if (!bpp || !is_compress) {
 			need_skip = true;
 		} else {
-			if (src_w * src_h * bpp)
-				avg_inter_value = (16 * expand)/(src_w * src_h * bpp);
+			if (src_w_align * src_h_align * bpp)
+				avg_inter_value = (16 * expand)/(src_w_align * src_h_align * bpp);
 			else {
 				need_skip = true;
 				DDPPR_ERR("BWM: division by zero, src_w:%u src_h:%u\n",
-						src_w, src_h);
+						src_w_align, src_h_align);
 			}
-			if (src_w * ovl_win_size * bpp) {
+			if (src_w_align * ovl_win_size * bpp) {
 				if ((plane_state->pending.format == DRM_FORMAT_RGB565) ||
 					(plane_state->pending.format == DRM_FORMAT_BGR565))
 					peak_inter_value = (16 * expand) /
-						(src_w * ovl_win_size * (is_compress?8:1) * bpp);
+						(src_w_align * ovl_win_size * (is_compress?8:1) * bpp);
 				else
 					peak_inter_value = (16 * expand) /
-						(src_w * ovl_win_size * (is_compress?4:1) * bpp);
+						(src_w_align * ovl_win_size * (is_compress?4:1) * bpp);
 			} else {
 				need_skip = true;
 				DDPPR_ERR("BWM: division by zero, src_w:%u ovl_win_size:%u\n",
-						src_w, ovl_win_size);
+						src_w_align, ovl_win_size);
 			}
 		}
 
 		DDPDBG_BWM("BWM: plane_index:%u fn:%u index:%d lye_id:%d ext_lye_id:%d\n",
 			plane_index, fn, index, lye_id, ext_lye_id);
-		DDPDBG_BWM("BWM: win_size:%d compress:%d bpp:%d src_w:%d src_h:%d\n",
-			ovl_win_size, is_compress, bpp, src_w, src_h);
+		DDPDBG_BWM("BWM: win_size:%d compress:%d bpp:%d src_w_align:%d src_h_align:%d\n",
+			ovl_win_size, is_compress, bpp, src_w_align, src_h_align);
 		DDPDBG_BWM("BWM: avg_inter_value:%u peak_inter_value:%u\n",
 			avg_inter_value, peak_inter_value);
 
