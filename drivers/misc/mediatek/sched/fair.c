@@ -1097,6 +1097,12 @@ static inline bool is_target_max_spare_cpu(bool is_vip, int num_vip, int min_num
 	return true;
 }
 
+bool gear_hints_enable;
+void init_gear_hints(void)
+{
+	gear_hints_enable = sched_gear_hints_enable_get();
+}
+
 void __set_gear_indices(struct task_struct *p, int gear_start, int num_gear, int reverse)
 {
 	struct task_gear_hints *ghts = &((struct mtk_task *) p->android_vendor_data1)->gear_hints;
@@ -1111,20 +1117,23 @@ int set_gear_indices(int pid, int gear_start, int num_gear, int reverse)
 	struct task_struct *p;
 	int ret = 0;
 
-	rcu_read_lock();
+	/* check feature is enabled */
+	if (!gear_hints_enable)
+		goto done;
 
 	/* check gear_start validity */
 	if (gear_start < 0 || gear_start > num_sched_clusters-1)
-		goto unlock;
+		goto done;
 
 	/* check num_gear validity */
 	if ((num_gear != -1 && num_gear < 1) || num_gear > num_sched_clusters)
-		goto unlock;
+		goto done;
 
 	/* check num_gear validity */
 	if (reverse < 0 || reverse > 1)
-		goto unlock;
+		goto done;
 
+	rcu_read_lock();
 	p = find_task_by_vpid(pid);
 	if (p) {
 		get_task_struct(p);
@@ -1133,9 +1142,9 @@ int set_gear_indices(int pid, int gear_start, int num_gear, int reverse)
 		ret = 1;
 	}
 
-unlock:
 	rcu_read_unlock();
 
+done:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(set_gear_indices);
@@ -1144,6 +1153,10 @@ int unset_gear_indices(int pid)
 {
 	struct task_struct *p;
 	int ret = 0;
+
+	/* check feature is enabled */
+	if (!gear_hints_enable)
+		goto done;
 
 	rcu_read_lock();
 	p = find_task_by_vpid(pid);
@@ -1155,6 +1168,7 @@ int unset_gear_indices(int pid)
 	}
 	rcu_read_unlock();
 
+done:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(unset_gear_indices);
@@ -1173,6 +1187,10 @@ int get_gear_indices(int pid, int *gear_start, int *num_gear, int *reverse)
 	struct task_struct *p;
 	int ret = 0;
 
+	/* check feature is enabled */
+	if (!gear_hints_enable)
+		goto done;
+
 	rcu_read_lock();
 	p = find_task_by_vpid(pid);
 	if (p) {
@@ -1183,6 +1201,7 @@ int get_gear_indices(int pid, int *gear_start, int *num_gear, int *reverse)
 	}
 	rcu_read_unlock();
 
+done:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(get_gear_indices);
@@ -1365,7 +1384,7 @@ void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_ind
 	}
 
 	/* task has customized gear prefer */
-	if (ghts->gear_start >= 0) {
+	if (gear_hints_enable && ghts->gear_start >= 0) {
 		*order_index = ghts->gear_start;
 		if (ghts->reverse)
 			max_num_gear = ghts->gear_start + 1;
@@ -1390,7 +1409,7 @@ void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_ind
 	*end_index = num_sched_clusters - 1 - i;
 out:
 	if (trace_sched_get_gear_indices_enabled())
-		trace_sched_get_gear_indices(p, uclamp_task_util(p),
+		trace_sched_get_gear_indices(p, uclamp_task_util(p), gear_hints_enable,
 				ghts->gear_start, ghts->num_gear, ghts->reverse,
 				num_sched_clusters, max_num_gear, *order_index, *end_index, *reverse);
 }

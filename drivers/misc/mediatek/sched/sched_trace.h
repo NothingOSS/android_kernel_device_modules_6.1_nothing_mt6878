@@ -141,16 +141,19 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 TRACE_EVENT(sched_get_gear_indices,
 
 	TP_PROTO(struct task_struct *tsk, int uclamp_task_util,
-		int gear_start, int num_gear, int gear_reverse,
-		int num_sched_clusters, int max_gear_num,
+		bool gear_hints_enable, int gear_start, int num_gear,
+		int gear_reverse, int num_sched_clusters, int max_gear_num,
 		int order_index, int end_index, int reverse),
 
-	TP_ARGS(tsk, uclamp_task_util, gear_start, num_gear, gear_reverse,
-			num_sched_clusters, max_gear_num, order_index, end_index, reverse),
+	TP_ARGS(tsk, uclamp_task_util, gear_hints_enable,
+			gear_start, num_gear, gear_reverse,
+			num_sched_clusters, max_gear_num,
+			order_index, end_index, reverse),
 
 	TP_STRUCT__entry(
 		__field(pid_t, pid)
 		__field(int,   uclamp_task_util)
+		__field(int,   gear_hints_enable)
 		__field(int,   gear_start)
 		__field(int,   num_gear)
 		__field(int,   gear_reverse)
@@ -164,6 +167,7 @@ TRACE_EVENT(sched_get_gear_indices,
 	TP_fast_assign(
 		__entry->pid				= tsk->pid;
 		__entry->uclamp_task_util	= uclamp_task_util;
+		__entry->gear_hints_enable	= gear_hints_enable;
 		__entry->gear_start			= gear_start;
 		__entry->num_gear			= num_gear;
 		__entry->gear_reverse		= gear_reverse;
@@ -175,9 +179,10 @@ TRACE_EVENT(sched_get_gear_indices,
 		),
 
 	TP_printk(
-		"pid=%d uclamp_task_util=%d gear_start=%d num_gear=%d gear_reverse=%d num_sched_clusters=%d max_gear_num=%d order_index=%d end_index=%d reverse=%d",
+		"pid=%d uclamp_task_util=%d gear_hints_enable=%d gear_start=%d num_gear=%d gear_reverse=%d num_sched_clusters=%d max_gear_num=%d order_index=%d end_index=%d reverse=%d",
 		__entry->pid,
 		__entry->uclamp_task_util,
+		__entry->gear_hints_enable,
 		__entry->gear_start,
 		__entry->num_gear,
 		__entry->gear_reverse,

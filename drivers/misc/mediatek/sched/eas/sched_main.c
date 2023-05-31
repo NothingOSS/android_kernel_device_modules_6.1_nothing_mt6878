@@ -533,6 +533,7 @@ static int __init mtk_scheduler_init(void)
 	/* build cpu_array for hints-based gear search*/
 	init_cpu_array();
 	build_cpu_array();
+	init_gear_hints();
 
 	ret = init_sched_common_sysfs();
 	if (ret)

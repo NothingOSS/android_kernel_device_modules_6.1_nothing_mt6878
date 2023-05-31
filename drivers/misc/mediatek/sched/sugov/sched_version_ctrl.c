@@ -16,6 +16,7 @@
 #include "sched_version_ctrl.h"
 
 bool vip_enable;
+bool gear_hints_enable;
 int init_sched_ctrl(void)
 {
 	struct device_node *eas_node;
@@ -35,21 +36,25 @@ int init_sched_ctrl(void)
 		am_support = 0;
 		grp_dvfs_support_mode = 0;
 		// TODO
+		gear_hints_enable = false;
 		break;
 	case EAS_5_5_1:
 		am_support = 0;
 		grp_dvfs_support_mode = 0;
 		// TODO
+		gear_hints_enable = false;
 		break;
 	case EAS_6_1:
 		am_support = 1;
 		grp_dvfs_support_mode = 1;
 		// TODO
+		gear_hints_enable = true;
 		break;
 	default:
 		am_support = 0;
 		grp_dvfs_support_mode = 0;
 		// TODO
+		gear_hints_enable = false;
 		break;
 	}
 	return 0;
@@ -60,3 +65,9 @@ bool sched_vip_enable_get(void)
 	return vip_enable;
 }
 EXPORT_SYMBOL_GPL(sched_vip_enable_get);
+
+bool sched_gear_hints_enable_get(void)
+{
+	return gear_hints_enable;
+}
+EXPORT_SYMBOL_GPL(sched_gear_hints_enable_get);
