@@ -88,7 +88,7 @@ static void md_pt_over_current_cb(enum BATTERY_OC_LEVEL_TAG level, void *data)
 	int ret, intensity;
 	if (level > md_pt_info[OC_POWER_THROTTLING].max_lv)
 		return;
-	if (level <= BATTERY_OC_LEVEL_1) {
+	if (level < BATTERY_OC_LEVEL_NUM) {
 		if (level != BATTERY_OC_LEVEL_0)
 			intensity = md_pt_info[OC_POWER_THROTTLING].reduce_tx[level-1];
 		else
@@ -97,6 +97,10 @@ static void md_pt_over_current_cb(enum BATTERY_OC_LEVEL_TAG level, void *data)
 			intensity << 24;
 		ret = exec_ccci_kern_func(ID_THROTTLING_CFG,
 			(char *)&md_throttle_cmd, 4);
+
+		pr_notice("%s: send cmd to CCCI ret=%d, cmd=0x%x\n", __func__, ret,
+						md_throttle_cmd);
+
 		if (ret)
 			pr_notice("%s: error, ret=%d, cmd=0x%x l=%d\n", __func__, ret,
 				md_throttle_cmd, level);
