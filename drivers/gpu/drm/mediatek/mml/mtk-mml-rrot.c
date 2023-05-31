@@ -116,6 +116,15 @@
 /* SMI offset */
 #define SMI_LARB_NON_SEC_CON		0x380
 
+int mml_rrot_msg;
+module_param(mml_rrot_msg, int, 0644);
+
+#define rrot_msg(fmt, args...) \
+do { \
+	if (mtk_mml_msg || mml_rrot_msg) \
+		pr_notice("[mml]" fmt "\n", ##args); \
+} while (0)
+
 enum rrot_label {
 	RROT_LABEL_BASE_0 = 0,
 	RROT_LABEL_BASE_0_MSB,
@@ -402,7 +411,7 @@ static s32 rrot_prepare(struct mml_comp *comp, struct mml_task *task,
 		calc_binning_rot(task->config, ccfg);
 	if (cfg->bin_x || cfg->bin_y) {
 		rrot_frm->binning = true;
-		mml_log("%s rrot%s bin %u %u",
+		rrot_msg("%s rrot%s bin %u %u",
 			__func__, rrot->pipe ? "_2nd" : "    ", cfg->bin_x, cfg->bin_y);
 	}
 
@@ -506,7 +515,7 @@ s32 rrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 		data->rdma.crop.height = cfg->frame_in.height;
 	}
 
-	mml_log("%s size %u %u %u %u crop off %u %u",
+	rrot_msg("%s size %u %u %u %u crop off %u %u",
 		__func__,
 		func->full_size_x_in, func->full_size_y_in,
 		func->full_size_x_out, func->full_size_y_out,
@@ -1285,12 +1294,42 @@ static void rrot_calc_unbin(struct mml_frame_config *cfg, struct mml_tile_engine
 	}
 }
 
+static void coord_flip(u16 left, u16 *start, u16 *end, u32 size)
+{
+	u32 crop = *end - *start + 1;
+
+	*start = size + left - *start - crop + left;
+	*end = *start + crop - 1;
+}
+
 static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml_task *task,
-	struct mml_tile_engine *tile_merge)
+	struct mml_comp_config *ccfg, struct mml_tile_engine *tile_merge)
 {
 	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 	const struct mml_frame_dest *dest = &task->config->info.dest[0];
+	const struct mml_frame_config *cfg = task->config;
 	struct mml_tile_engine tile = *tile_merge;
+
+	if ((dest->rotate == MML_ROT_0 && dest->flip) ||
+		(dest->rotate == MML_ROT_180 && !dest->flip) ||
+		(dest->rotate == MML_ROT_90 && !dest->flip) ||
+		(dest->rotate == MML_ROT_270 && dest->flip)) {
+		struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
+		const u32 tile_width = rrot_frm->crop_off_l + cfg->frame_in_crop[0].r.width;
+
+		rrot_msg("%s flip tile %u frame in crop %u %u %u %u inx %u %u outx %u %u",
+			__func__, tile_width,
+			cfg->frame_in_crop[0].r.left, cfg->frame_in_crop[0].r.top,
+			cfg->frame_in_crop[0].r.width, cfg->frame_in_crop[0].r.height,
+			tile.in.xs, tile.in.xe, tile.out.xs, tile.out.xe);
+		coord_flip(cfg->frame_in_crop[0].r.left, &tile.in.xs, &tile.in.xe, tile_width);
+		coord_flip(0, &tile.out.xs, &tile.out.xe, tile_width);
+		rrot_msg("%s flip tile %u frame in crop %u %u %u %u inx %u %u outx %u %u (after)",
+			__func__, tile_width,
+			cfg->frame_in_crop[0].r.left, cfg->frame_in_crop[0].r.top,
+			cfg->frame_in_crop[0].r.width, cfg->frame_in_crop[0].r.height,
+			tile.in.xs, tile.in.xe, tile.out.xs, tile.out.xe);
+	}
 
 	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270) {
 		swap(tile.in.xs, tile.in.ys);
@@ -1490,7 +1529,7 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u32 mf_offset_h_1;
 
 	/* Following data retrieve from tile calc result */
-	struct mml_tile_engine tile = rrot_config_dual(comp, task, tile_merge);
+	struct mml_tile_engine tile = rrot_config_dual(comp, task, ccfg, tile_merge);
 	u64 in_xs = tile.in.xs;
 	const u32 in_xe = tile.in.xe;
 	u64 in_ys = tile.in.ys;
@@ -1502,7 +1541,7 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	const u32 crop_ofst_x = tile.luma.x;
 	const u32 crop_ofst_y = tile.luma.y;
 
-	mml_log("%s rrot %u pipe %i tile %p in %llu %u %llu %u out %u %u %llu %u ofst %u %u",
+	rrot_msg("%s rrot %u pipe %i tile %p in %llu %u %llu %u out %u %u %llu %u ofst %u %u",
 		__func__, comp->id, rrot->pipe, tile_merge, in_xs, in_xe, in_ys, in_ye,
 		out_xs, out_xe, out_ys, out_ye,
 		crop_ofst_x, crop_ofst_y);
@@ -1608,11 +1647,12 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	if (plane > 2)
 		rrot_frm->datasize += mml_color_get_min_uv_size(src->format, mf_src_w, mf_src_h);
 
-	mml_log("rrot%s src %u %u clip %u %u whp %u %u pixel %u data %u rotate %u",
+	rrot_msg("rrot%s src %u %u clip %u %u whp %u %u crop off %u %u pixel %u data %u rotate %u",
 		rrot->pipe == 1 ? "_2nd" : "    ",
 		mf_src_w, mf_src_h,
 		mf_clip_w, mf_clip_h,
 		src_offset_wp, src_offset_hp,
+		mf_offset_w_1, mf_offset_h_1,
 		rrot_frm->pixel_acc, rrot_frm->datasize,
 		dest->rotate);
 

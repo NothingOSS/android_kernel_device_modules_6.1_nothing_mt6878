@@ -1020,9 +1020,13 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 	 * to power on/off mminfra mtcmos.
 	 */
 	if (sys->data->pw_mminfra) {
+		s32 ret;
+
 		sys->dev = dev;
 		pm_runtime_enable(dev);
-		mml_comp_init_larb(comp, dev);
+		ret = mml_comp_init_larb(comp, dev);
+		if (ret)
+			mml_err("%s init larb fail %d", __func__, ret);
 	}
 
 	/* Initialize mux-pins */

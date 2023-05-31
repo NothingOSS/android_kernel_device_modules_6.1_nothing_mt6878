@@ -79,7 +79,6 @@ enum isp_tile_message tile_rrot_init(struct tile_func_block *ptr_func,
 				     struct tile_reg_map *ptr_tile_reg_map)
 {
 	struct rdma_tile_data *data = &ptr_func->data->rdma;
-	u32 in_tile_size;
 
 	if (unlikely(!data))
 		return MDP_MESSAGE_NULL_DATA;
@@ -100,20 +99,16 @@ enum isp_tile_message tile_rrot_init(struct tile_func_block *ptr_func,
 		 * and may exceed max tile width 640. So reduce width
 		 * to prevent it.
 		 */
-		in_tile_size = ((data->max_width >> 5) - 1) << 5;
+		ptr_func->in_tile_width = ((data->max_width >> 5) - 1) << 5;
 	} else if (MML_FMT_AFBC_YUV(data->src_fmt)) {
-		in_tile_size = ((data->max_width >> 4) - 1) << 4;
+		ptr_func->in_tile_width = ((data->max_width >> 4) - 1) << 4;
 	} else if (MML_FMT_HYFBC(data->src_fmt)) {
 		/* For HyFBC block size 32x16, so tile rule same as RGB AFBC */
-		in_tile_size = ((data->max_width >> 5) - 1) << 5;
+		ptr_func->in_tile_width = ((data->max_width >> 5) - 1) << 5;
 	} else if (MML_FMT_BLOCK(data->src_fmt)) {
-		in_tile_size = (data->max_width >> 6) << 6;
-	} else if (MML_FMT_YUV420(data->src_fmt)) {
-		in_tile_size = data->max_width;
-	} else if (MML_FMT_YUV422(data->src_fmt)) {
-		in_tile_size = data->max_width * 2;
+		ptr_func->in_tile_width = (data->max_width >> 6) << 6;
 	} else {
-		in_tile_size = data->max_width * 4;
+		ptr_func->in_tile_width = data->max_width;
 	}
 
 	if (MML_FMT_H_SUBSAMPLE(data->src_fmt)) {
@@ -136,16 +131,10 @@ enum isp_tile_message tile_rrot_init(struct tile_func_block *ptr_func,
 		ptr_func->in_const_x = 4;
 	}
 
-	if (data->read_rotate == MML_ROT_0 || data->read_rotate == MML_ROT_180) {
-		ptr_func->in_tile_width = in_tile_size;
-		ptr_func->in_tile_height = 65535;
-		ptr_func->out_tile_height = 65535;
-	} else {
-		ptr_func->in_tile_width = 65535;
-		ptr_func->in_tile_height = in_tile_size;
-		ptr_func->out_tile_width = 65535;
+	ptr_func->in_tile_height = 65535;
+	ptr_func->out_tile_height = 65535;
+	if (data->read_rotate == MML_ROT_90 || data->read_rotate == MML_ROT_270)
 		swap(ptr_func->in_const_x, ptr_func->in_const_y);
-	}
 
 	ptr_func->crop_bias_x = data->crop.left;
 	ptr_func->crop_bias_y = data->crop.top;

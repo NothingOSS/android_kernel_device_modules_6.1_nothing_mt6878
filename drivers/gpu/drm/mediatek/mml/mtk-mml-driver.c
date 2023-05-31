@@ -1425,13 +1425,11 @@ static int mml_remove(struct platform_device *pdev)
 
 static int __maybe_unused mml_pm_suspend(struct device *dev)
 {
-	dev_notice(dev, "%s ignore\n", __func__);
 	return 0;
 }
 
 static int __maybe_unused mml_pm_resume(struct device *dev)
 {
-	dev_notice(dev, "%s ignore\n", __func__);
 	return 0;
 }
 

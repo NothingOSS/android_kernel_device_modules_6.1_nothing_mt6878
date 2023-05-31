@@ -156,7 +156,7 @@ static s32 merge_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	if (cfg->rrot_out[0].width + cfg->rrot_out[1].width == width &&
 		cfg->rrot_out[0].height == height && cfg->rrot_out[1].height == height)
-		mml_log("[merge]in0 %u %u in1 %u %u out %u %u full %u %u",
+		mml_msg("[merge]in0 %u %u in1 %u %u out %u %u full %u %u",
 			cfg->rrot_out[0].width, cfg->rrot_out[0].height,
 			cfg->rrot_out[1].width, cfg->rrot_out[1].height,
 			width, height,

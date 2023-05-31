@@ -1892,6 +1892,7 @@ static void core_update_config(struct mml_frame_config *cfg)
 		dest = &cfg->info.dest[i];
 		cfg->frame_in_crop[i] = dest->crop;
 		cfg->out_rotate[i] = dest->rotate;
+		cfg->out_flip[i] = dest->flip;
 		if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180) {
 			cfg->frame_out[i].width = dest->compose.width;
 			cfg->frame_out[i].height = dest->compose.height;

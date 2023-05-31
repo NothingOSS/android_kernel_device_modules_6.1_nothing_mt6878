@@ -104,8 +104,7 @@ static s32 mutex_enable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 		cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_MOD(mutex_id, offset),
 			       mutex_mod[i], U32_MAX);
 	}
-	cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_SOF(mutex_id),
-		       mutex_sof, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_SOF(mutex_id), mutex_sof, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_EN(mutex_id), 0x1, U32_MAX);
 	return 0;
 }

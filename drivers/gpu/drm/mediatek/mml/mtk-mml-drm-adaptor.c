@@ -845,6 +845,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 			if (IS_ERR(task)) {
 				result = PTR_ERR(task);
 				mml_err("%s create task for reuse frame fail", __func__);
+				task = NULL;
 				goto err_unlock_exit;
 			}
 			task->config = cfg;

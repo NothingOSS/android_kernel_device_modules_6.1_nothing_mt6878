@@ -49,7 +49,7 @@ module_param(mml_racing, int, 0644);
 int mml_dl = 2;
 module_param(mml_dl, int, 0644);
 
-int mml_rrot = 2;
+int mml_rrot;
 module_param(mml_rrot, int, 0644);
 
 int mml_racing_rsz = 1;
@@ -623,7 +623,7 @@ static void tp_select_path(struct mml_topology_cache *cache,
 	struct mml_topology_path **path)
 {
 	enum topology_scenario scene = 0;
-	bool en_rsz, en_pq, can_binning = false, use_rrot = false;
+	bool en_rsz, en_pq, can_binning = false;
 
 	if (cfg->info.mode == MML_MODE_RACING) {
 		/* always rdma to wrot for racing case */
@@ -673,32 +673,24 @@ static void tp_select_path(struct mml_topology_cache *cache,
 	}
 
 check_rr:
-	if (mml_rrot == 1) {
-		/* force change to rrot path */
-		use_rrot = true;
-	} else if (mml_rrot == 0) {
-		if (cfg->info.dest[0].rotate != MML_ROT_0) /* need rotate, use rrot */
-			use_rrot = true;
-		else if (can_binning) /* need binning so use rrot */
-			use_rrot = true;
-	}
-
-	if (!use_rrot)
-		goto done;
-
-	if (scene == PATH_MML_PQ)
-		scene = PATH_MML_RR;
-	else if (scene == PATH_MML_PQ_DL) {
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK && mml_rrot != 2) {
+		/* direct link mode and not force disalbe, change to RROT */
 		if (cfg->info.dest_cnt == 2 && cfg->info.dest[0].pq_config.en_region_pq)
 			scene = PATH_MML_RR_DL_2IN_2OUT;
 		else
 			scene = PATH_MML_RR_DL;
-	} else if (scene == PATH_MML_NOPQ)
-		scene = PATH_MML_RR_NOPQ;
-	else if (scene == PATH_MML_2IN_2OUT)
-		scene = PATH_MML_RR_2IN_2OUT;
+	} else if (cfg->info.mode == MML_MODE_MML_DECOUPLE && mml_rrot == 1) {
+		/* dc mode but force enable RROT */
+		if (scene == PATH_MML_PQ)
+			scene = PATH_MML_RR;
+		else if (scene == PATH_MML_NOPQ)
+			scene = PATH_MML_RR_NOPQ;
+		else if (scene == PATH_MML_2IN_2OUT)
+			scene = PATH_MML_RR_2IN_2OUT;
+		else
+			scene = PATH_MML_RR;
+	}
 
-done:
 	*path = &cache->paths[scene];
 }
 
@@ -784,22 +776,19 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 	if (unlikely(mml_dl)) {
 		if (mml_dl == 2)
 			goto decouple;
+		else if (mml_dl == 1)
+			goto dl_force;
 	}
 
-	/* no pq support for dl mode */
-	if (info->dest[0].pq_config.en_dc ||
-		info->dest[0].pq_config.en_color ||
-		info->dest[0].pq_config.en_hdr ||
-		info->dest[0].pq_config.en_ccorr ||
-		info->dest[0].pq_config.en_dre ||
-		info->dest[0].pq_config.en_region_pq ||
-		info->dest[0].pq_config.en_fg) {
+	/* no fg/c3d support for dl mode */
+	if (info->dest[0].pq_config.en_fg) {
 		*reason = mml_query_pqen;
 		goto decouple;
 	}
 
-	if (info->dest[0].flip) {
-		*reason = mml_query_flip;
+	/* TODO: remove after AI region PQ DL mode enable */
+	if (info->dest[0].pq_config.en_region_pq) {
+		*reason = mml_query_pqen;
 		goto decouple;
 	}
 
@@ -831,6 +820,7 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 		goto decouple;
 	}
 
+dl_force:
 	return MML_MODE_DIRECT_LINK;
 
 decouple:
@@ -996,18 +986,25 @@ static struct cmdq_client *get_racing_clt(struct mml_topology_cache *cache, u32 
 static const struct mml_topology_path *tp_get_dl_path(struct mml_topology_cache *cache,
 	struct mml_submit *submit, u32 pipe)
 {
+	if (mml_rrot == 0 || mml_rrot == 1)
+		goto use_rrot;
+
 	if (!submit)
 		return &cache->paths[PATH_MML_PQ_DL + pipe];
 
-	if (submit->info.dest_cnt == 2)
-		if (submit->info.dest[0].pq_config.en_region_pq)
-			return &cache->paths[PATH_MML_RR_DL_2IN_2OUT + pipe];
-		else
-			return &cache->paths[PATH_MML_PQ_DL + pipe];
-	else if (submit->info.dest[0].pq_config.en_region_pq)
-		return &cache->paths[PATH_MML_PQ_DL + pipe];
-	else
-		return &cache->paths[PATH_MML_PQ_DL + pipe];
+	if (submit->info.dest_cnt == 2 && submit->info.dest[0].pq_config.en_region_pq)
+		return &cache->paths[PATH_MML_RR_DL_2IN_2OUT + pipe];
+
+	return &cache->paths[PATH_MML_PQ_DL + pipe];
+
+use_rrot:
+	if (!submit)
+		return &cache->paths[PATH_MML_RR_DL + pipe];
+
+	if (submit->info.dest_cnt == 2 && submit->info.dest[0].pq_config.en_region_pq)
+		return &cache->paths[PATH_MML_RR_DL_2IN_2OUT + pipe];
+
+	return &cache->paths[PATH_MML_RR_DL + pipe];
 }
 
 static const struct mml_topology_ops tp_ops_mt6989 = {
