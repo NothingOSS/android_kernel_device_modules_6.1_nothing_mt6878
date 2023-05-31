@@ -1794,6 +1794,8 @@
 		baudrate = <12000000>;
 		flavor-bin = "dx3";
 		bk-rs-en = <1>;
+		uart-irq-en = <1>;
+		interrupts = <GIC_SPI 946 IRQ_TYPE_LEVEL_HIGH 0>;
 		pinctrl-names = "bt_combo_gpio_init",
 				"bt_combo_gpio_pre_on",
 				"bt_combo_uart_tx_aux",
