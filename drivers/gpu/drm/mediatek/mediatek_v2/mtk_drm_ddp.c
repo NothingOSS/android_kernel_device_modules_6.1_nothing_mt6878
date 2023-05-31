@@ -12326,6 +12326,269 @@ static char *ddp_ovlsys_clock_0_mt6985(int bit)
 	}
 }
 
+static char *ddp_sys_0_clock_0_mt6989(int bit)
+{
+	switch (bit) {
+	case 0:
+		return "dispsys_config, ";
+	case 1:
+		return "disp_mutex0, ";
+	case 2:
+		return "disp_aal0, ";
+	case 3:
+		return "disp_aal1, ";
+	case 4:
+		return "disp_c3d0, ";
+	case 5:
+		return "disp_c3d1, ";
+	case 6:
+		return "disp_ccorr0, ";
+	case 7:
+		return "disp_ccorr1, ";
+	case 8:
+		return "disp_ccorr2, ";
+	case 9:
+		return "disp_ccorr3, ";
+	case 10:
+		return "disp_chist0, ";
+	case 11:
+		return "disp_chist1, ";
+	case 12:
+		return "disp_color0, ";
+	case 13:
+		return "disp_color1, ";
+	case 14:
+		return "disp_dither0, ";
+	case 15:
+		return "disp_dither1, ";
+	case 16:
+		return "disp_dither2, ";
+	case 17:
+		return "disp_dli_async0, ";
+	case 18:
+		return "disp_dli_async1, ";
+	case 19:
+		return "disp_dli_async2, ";
+	case 20:
+		return "disp_dli_async3, ";
+	case 21:
+		return "disp_dli_async4, ";
+	case 22:
+		return "disp_dli_async5, ";
+	case 23:
+		return "disp_dli_async6, ";
+	case 24:
+		return "disp_dli_async7, ";
+	case 25:
+		return "disp_dlo_async0, ";
+	case 26:
+		return "disp_dlo_async1, ";
+	case 27:
+		return "disp_dlo_async2, ";
+	case 28:
+		return "disp_dlo_async3, ";
+	case 29:
+		return "disp_dlo_async4, ";
+	case 30:
+		return "disp_gamma0, ";
+	case 31:
+		return "disp_gamma1, ";
+	default:
+		return NULL;
+	}
+}
+
+static char *ddp_sys_0_clock_1_mt6989(int bit)
+{
+	switch (bit) {
+	case 0:
+		return "disp_mdp_aal0, ";
+	case 1:
+		return "disp_mdp_rdma0, ";
+	case 2:
+		return "disp_oddmr0, ";
+	case 3:
+		return "disp_postalign0, ";
+	case 4:
+		return "disp_postmask0, ";
+	case 5:
+		return "disp_postmask1, ";
+	case 6:
+		return "disp_rsz0, ";
+	case 7:
+		return "disp_rsz1, ";
+	case 8:
+		return "disp_spr0, ";
+	case 9:
+		return "disp_tdshp0, ";
+	case 10:
+		return "disp_tdshp1, ";
+	case 11:
+		return "disp_wdma1, ";
+	case 12:
+		return "disp_y2r0, ";
+	case 13:
+		return "disp_mdp_aal1, ";
+	case 14:
+		return "smi_sub_comm0, ";
+	default:
+		return NULL;
+	}
+}
+
+static char *ddp_sys_1_clock_0_mt6989(int bit)
+{
+	switch (bit) {
+	case 0:
+		return "dispsys1_config, ";
+	case 1:
+		return "disp_mutex0, ";
+	case 2:
+		return "disp_dli_async0, ";
+	case 3:
+		return "disp_dli_async1, ";
+	case 4:
+		return "disp_dli_async2, ";
+	case 5:
+		return "disp_mdp_rdma0, ";
+	case 6:
+		return "disp_r2y0, ";
+	case 7:
+		return "disp_splitter0, ";
+	case 8:
+		return "disp_splitter1, ";
+	case 9:
+		return "disp_vdcm0, ";
+	case 10:
+		return "disp_dsc_wrap0, ";
+	case 11:
+		return "disp_dsc_wrap1, ";
+	case 12:
+		return "disp_dsc_wrap2, ";
+	case 13:
+		return "disp_dp_intf0, ";
+	case 14:
+		return "disp_dsi0, ";
+	case 15:
+		return "disp_dsi1, ";
+	case 16:
+		return "disp_dsi2, ";
+	case 17:
+		return "disp_merge0, ";
+	case 18:
+		return "disp_wdma0, ";
+	case 19:
+		return "smi_sub_comm0, ";
+	case 20:
+		return "disp_wdma1, ";
+	case 21:
+		return "disp_wdma2, ";
+	case 22:
+		return "disp_gdma0, ";
+	case 23:
+		return "disp_dli_async3, ";
+	case 24:
+		return "disp_dli_async4, ";
+	default:
+		return NULL;
+	}
+}
+
+static char *ddp_sys_1_clock_1_mt6989(int bit)
+{
+	switch (bit) {
+	default:
+		return NULL;
+	}
+}
+
+static char *ddp_ovlsys_clock_0_mt6989(int bit)
+{
+	switch (bit) {
+	case 0:
+		return "ovlsys_config, ";
+	case 1:
+		return "disp_fake_eng0, ";
+	case 2:
+		return "disp_fake_eng1, ";
+	case 3:
+		return "disp_mutex0, ";
+	case 4:
+		return "disp_ovl0_2l, ";
+	case 5:
+		return "disp_ovl1_2l, ";
+	case 6:
+		return "disp_ovl2_2l, ";
+	case 7:
+		return "disp_ovl3_2l, ";
+	case 8:
+		return "disp_rsz1, ";
+	case 9:
+		return "disp_mdp_rsz0, ";
+	case 10:
+		return "disp_wdma0, ";
+	case 11:
+		return "disp_ufbc_wdma0, ";
+	case 12:
+		return "disp_wdma2, ";
+	case 13:
+		return "disp_dli_async0, ";
+	case 14:
+		return "disp_dli_async1, ";
+	case 15:
+		return "disp_dli_async2, ";
+	case 16:
+		return "disp_dlo_async0, ";
+	case 17:
+		return "disp_dlo_async1, ";
+	case 18:
+		return "disp_dlo_async2, ";
+	case 19:
+		return "disp_dlo_async3, ";
+	case 20:
+		return "disp_dlo_async4, ";
+	case 21:
+		return "disp_dlo_async5, ";
+	case 22:
+		return "disp_dlo_async6, ";
+	case 23:
+		return "inlinerot0, ";
+	case 24:
+		return "smi_sub_comm0, ";
+	case 25:
+		return "disp_y2r0, ";
+	case 26:
+		return "disp_y2r1, ";
+	case 27:
+		return "disp_ovl4_2l, ";
+	default:
+		return NULL;
+	}
+}
+
+static char *ddp_clock_mt6989(int idx, int bit, int sys_id)
+{
+	if (!sys_id) {
+		switch (idx) {
+		case 0:
+			return ddp_sys_0_clock_0_mt6989(bit);
+		case 1:
+			return ddp_sys_0_clock_1_mt6989(bit);
+		default:
+			return NULL;
+		}
+	} else {
+		switch (idx) {
+		case 0:
+			return ddp_sys_1_clock_0_mt6989(bit);
+		case 1:
+			return ddp_sys_1_clock_1_mt6989(bit);
+		default:
+			return NULL;
+		}
+	}
+}
+
 static char *ddp_clock_0_mt6897(int bit)
 {
 	switch (bit) {
@@ -24174,7 +24437,7 @@ void mmsys_config_dump_analysis_mt6989(void __iomem *config_regs, int sys_id)
 	reg = readl_relaxed(config_regs + DISP_REG_CONFIG_MMSYS_CG_CON0_MT6989);
 	for (bit = 0; bit < 32; bit++) {
 		if ((reg & (1 << bit)) == 0) {
-			name = ddp_clock_0_mt6985(bit);
+			name = ddp_clock_mt6989(0, bit, sys_id);
 			if (name)
 				strncat(clock_on, name, (sizeof(clock_on) -
 							 strlen(clock_on) - 1));
@@ -24184,7 +24447,7 @@ void mmsys_config_dump_analysis_mt6989(void __iomem *config_regs, int sys_id)
 	reg = readl_relaxed(config_regs + DISP_REG_CONFIG_MMSYS_CG_CON1_MT6989);
 	for (bit = 0; bit < 32; bit++) {
 		if ((reg & (1 << bit)) == 0) {
-			name = ddp_clock_1_mt6985(bit);
+			name = ddp_clock_mt6989(1, bit, sys_id);
 			if (name)
 				strncat(clock_on, name, (sizeof(clock_on) -
 							 strlen(clock_on) - 1));
@@ -24324,7 +24587,7 @@ void ovlsys_config_dump_analysis_mt6989(void __iomem *config_regs)
 	reg = readl_relaxed(config_regs + DISP_REG_CONFIG_OVLSYS_CG_CON0_MT6985);
 	for (bit = 0; bit < 32; bit++) {
 		if ((reg & (1 << bit)) == 0) {
-			name = ddp_ovlsys_clock_0_mt6985(bit);
+			name = ddp_ovlsys_clock_0_mt6989(bit);
 			if (name)
 				strncat(clock_on, name, (sizeof(clock_on) -
 							 strlen(clock_on) - 1));
