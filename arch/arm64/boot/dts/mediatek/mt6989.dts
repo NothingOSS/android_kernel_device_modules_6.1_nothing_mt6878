@@ -12638,6 +12638,10 @@
 		compatible = "mediatek,mm-smmu-test-ktf1";
 		dma-mmap-reg = <0x14400000 0x1000>;
 		mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_OVL0_SHUTDOWN>;
+		clocks = <&ovlsys_config_clk CLK_OVL_DISP_FAKE_ENG0>;
+		clock-names = "bclk";
+		mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;
 	};
 
 	smmu-test-ktf6 {
