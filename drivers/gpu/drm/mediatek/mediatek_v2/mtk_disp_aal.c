@@ -854,64 +854,7 @@ static bool disp_aal_read_single_hist(struct mtk_ddp_comp *comp)
 
 	if (atomic_read(&aal_data->eof_irq) == 0)
 		return false;
-
-	if (comp->mtk_crtc->is_dual_pipe) {
-		if (!aal_data->is_right_pipe) {
-			for (i = 0; i < AAL_HIST_BIN; i++) {
-				aal_data->primary_data->hist.aal0_maxHist[i] = readl(comp->regs +
-						DISP_AAL_STATUS_00 + (i << 2));
-			}
-			for (i = 0; i < AAL_HIST_BIN; i++) {
-				aal_data->primary_data->hist.aal0_yHist[i] = readl(comp->regs +
-						DISP_Y_HISTOGRAM_00 + (i << 2));
-			}
-			read_success = disp_color_reg_get(aal_data->comp_color,
-					DISP_COLOR_TWO_D_W1_RESULT,
-					&aal_data->primary_data->hist.aal0_colorHist);
-
-			// for Display Clarity
-			if (aal_data->primary_data->disp_clarity_support) {
-				for (i = 0; i < MDP_AAL_CLARITY_READBACK_NUM; i++) {
-					aal_data->primary_data->hist.aal0_clarity[i] =
-					readl(dre3_va + MDP_AAL_DRE_BILATERAL_STATUS_00 + (i << 2));
-				}
-
-				for (i = 0; i < DISP_TDSHP_CLARITY_READBACK_NUM; i++) {
-					aal_data->primary_data->hist.tdshp0_clarity[i] =
-					readl(disp_tdshp->regs + MDP_TDSHP_STATUS_00 + (i << 2));
-				}
-
-				disp_aal_dump_clarity_regs(aal_data, 0);
-			}
-		} else {
-			for (i = 0; i < AAL_HIST_BIN; i++) {
-				aal_data->primary_data->hist.aal1_maxHist[i] = readl(comp->regs +
-						DISP_AAL_STATUS_00 + (i << 2));
-			}
-			for (i = 0; i < AAL_HIST_BIN; i++) {
-				aal_data->primary_data->hist.aal1_yHist[i] = readl(comp->regs +
-						DISP_Y_HISTOGRAM_00 + (i << 2));
-			}
-			read_success = disp_color_reg_get(aal_data->comp_color,
-					DISP_COLOR_TWO_D_W1_RESULT,
-					&aal_data->primary_data->hist.aal1_colorHist);
-
-			// for Display Clarity
-			if (aal_data->primary_data->disp_clarity_support) {
-				for (i = 0; i < MDP_AAL_CLARITY_READBACK_NUM; i++) {
-					aal_data->primary_data->hist.aal1_clarity[i] = readl(dre3_va
-						+ MDP_AAL_DRE_BILATERAL_STATUS_00 + (i << 2));
-				}
-
-				for (i = 0; i < DISP_TDSHP_CLARITY_READBACK_NUM; i++) {
-					aal_data->primary_data->hist.tdshp1_clarity[i] =
-					readl(disp_tdshp->regs + MDP_TDSHP_STATUS_00 + (i << 2));
-				}
-
-				disp_aal_dump_clarity_regs(aal_data, 1);
-			}
-		}
-	} else {
+	if (!aal_data->is_right_pipe) {
 		for (i = 0; i < AAL_HIST_BIN; i++) {
 			aal_data->primary_data->hist.aal0_maxHist[i] = readl(comp->regs +
 					DISP_AAL_STATUS_00 + (i << 2));
@@ -920,14 +863,27 @@ static bool disp_aal_read_single_hist(struct mtk_ddp_comp *comp)
 			aal_data->primary_data->hist.aal0_yHist[i] = readl(comp->regs +
 					DISP_Y_HISTOGRAM_00 + (i << 2));
 		}
-		read_success = disp_color_reg_get(aal_data->comp_color, DISP_COLOR_TWO_D_W1_RESULT,
+		if (aal_data->data->mdp_aal_ghist_support) {
+			aal_data->primary_data->hist.mdp_aal_ghist_valid = 1;
+			for (i = 0; i < AAL_HIST_BIN; i++) {
+				aal_data->primary_data->hist.mdp_aal0_maxHist[i] = readl(dre3_va +
+						MDP_AAL_STATUS_00 + (i << 2));
+			}
+			for (i = 0; i < AAL_HIST_BIN; i++) {
+				aal_data->primary_data->hist.mdp_aal0_yHist[i] = readl(dre3_va +
+						MDP_Y_HISTOGRAM_00 + (i << 2));
+			}
+		} else
+			aal_data->primary_data->hist.mdp_aal_ghist_valid = 0;
+		read_success = disp_color_reg_get(aal_data->comp_color,
+				DISP_COLOR_TWO_D_W1_RESULT,
 				&aal_data->primary_data->hist.aal0_colorHist);
 
 		// for Display Clarity
 		if (aal_data->primary_data->disp_clarity_support) {
 			for (i = 0; i < MDP_AAL_CLARITY_READBACK_NUM; i++) {
-				aal_data->primary_data->hist.aal0_clarity[i] = readl(dre3_va +
-					MDP_AAL_DRE_BILATERAL_STATUS_00 + (i << 2));
+				aal_data->primary_data->hist.aal0_clarity[i] =
+				readl(dre3_va + MDP_AAL_DRE_BILATERAL_STATUS_00 + (i << 2));
 			}
 
 			for (i = 0; i < DISP_TDSHP_CLARITY_READBACK_NUM; i++) {
@@ -937,8 +893,46 @@ static bool disp_aal_read_single_hist(struct mtk_ddp_comp *comp)
 
 			disp_aal_dump_clarity_regs(aal_data, 0);
 		}
-	}
+	} else {
+		for (i = 0; i < AAL_HIST_BIN; i++) {
+			aal_data->primary_data->hist.aal1_maxHist[i] = readl(comp->regs +
+					DISP_AAL_STATUS_00 + (i << 2));
+		}
+		for (i = 0; i < AAL_HIST_BIN; i++) {
+			aal_data->primary_data->hist.aal1_yHist[i] = readl(comp->regs +
+					DISP_Y_HISTOGRAM_00 + (i << 2));
+		}
+		if (aal_data->data->mdp_aal_ghist_support) {
+			aal_data->primary_data->hist.mdp_aal_ghist_valid = 1;
+			for (i = 0; i < AAL_HIST_BIN; i++) {
+				aal_data->primary_data->hist.mdp_aal1_maxHist[i] = readl(dre3_va +
+						MDP_AAL_STATUS_00 + (i << 2));
+			}
+			for (i = 0; i < AAL_HIST_BIN; i++) {
+				aal_data->primary_data->hist.mdp_aal1_yHist[i] = readl(dre3_va +
+						MDP_Y_HISTOGRAM_00 + (i << 2));
+			}
+		} else
+			aal_data->primary_data->hist.mdp_aal_ghist_valid = 0;
+		read_success = disp_color_reg_get(aal_data->comp_color,
+				DISP_COLOR_TWO_D_W1_RESULT,
+				&aal_data->primary_data->hist.aal1_colorHist);
 
+		// for Display Clarity
+		if (aal_data->primary_data->disp_clarity_support) {
+			for (i = 0; i < MDP_AAL_CLARITY_READBACK_NUM; i++) {
+				aal_data->primary_data->hist.aal1_clarity[i] =
+				readl(dre3_va + MDP_AAL_DRE_BILATERAL_STATUS_00 + (i << 2));
+			}
+
+			for (i = 0; i < DISP_TDSHP_CLARITY_READBACK_NUM; i++) {
+				aal_data->primary_data->hist.tdshp1_clarity[i] =
+				readl(disp_tdshp->regs + MDP_TDSHP_STATUS_00 + (i << 2));
+			}
+
+			disp_aal_dump_clarity_regs(aal_data, 1);
+		}
+	}
 	atomic_set(&aal_data->eof_irq, 0);
 	return read_success;
 }
@@ -4633,6 +4627,7 @@ static const struct mtk_disp_aal_data mt6989_aal_driver_data = {
 	.aal_dre_gain_end   = 6780,
 	.aal_dre3_curve_sram = true,
 	.aal_dre3_auto_inc = true,
+	.mdp_aal_ghist_support = true,
 	.bitShift = 16,
 };
 

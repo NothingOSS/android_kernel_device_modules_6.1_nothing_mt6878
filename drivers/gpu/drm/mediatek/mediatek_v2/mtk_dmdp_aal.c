@@ -175,7 +175,7 @@ static void mtk_dmdp_aal_bypass(struct mtk_ddp_comp *comp, int bypass,
 			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_EN,
 				   AAL_EN, ~0);
 			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_CFG,
-				   0x00400022, ~0);
+				   0x00400026, ~0);
 		}
 	}
 }
@@ -337,7 +337,7 @@ void mtk_dmdp_aal_first_cfg(struct mtk_ddp_comp *comp,
 {
 	DDPINFO("%s\n", __func__);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_CFG,
-			0x00400022, ~0);
+			0x00400026, ~0);
 	mtk_dmdp_aal_config(comp, cfg, handle);
 	mtk_dmdp_aal_start(comp, handle);
 }

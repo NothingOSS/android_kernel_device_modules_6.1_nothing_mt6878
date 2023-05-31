@@ -111,6 +111,9 @@
 #define MDP_AAL_DUAL_PIPE08				(0x544)
 #define MDP_AAL_DRE_ROI_00						(0x520)
 #define MDP_AAL_DRE_ROI_01						(0x524)
+#define MDP_AAL_STATUS_00                      (0x224)
+#define MDP_Y_HISTOGRAM_00                     (0x604)
+
 
 /* AAL Calarty */
 #define MDP_AAL_DRE_BILATEAL                    (0x53C)
@@ -240,6 +243,7 @@ struct mtk_disp_aal_data {
 	int aal_dre_gain_end;
 	bool aal_dre3_curve_sram;
 	bool aal_dre3_auto_inc;
+	bool mdp_aal_ghist_support;
 	int bitShift;
 };
 
