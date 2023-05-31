@@ -955,6 +955,8 @@ static inline int ccmni_inst_init(struct ccmni_instance *ccmni, struct net_devic
 
 static inline void ccmni_dev_init(struct net_device *dev)
 {
+	u8 addr[ETH_ALEN];
+
 	dev->header_ops = NULL; /* No Header */
 	dev->mtu = CCMNI_MTU;
 	dev->tx_queue_len = CCMNI_TX_QUEUE;
@@ -992,7 +994,9 @@ static inline void ccmni_dev_init(struct net_device *dev)
 	dev->addr_len = 0;        /* hasn't ethernet header */
 	dev->priv_destructor = free_netdev;
 	dev->netdev_ops = &ccmni_netdev_ops;
-	eth_random_addr((u8 *) dev->dev_addr);
+	memset(addr, 0, sizeof(addr));
+	eth_random_addr(addr);
+	__dev_addr_set(dev, addr, ETH_ALEN);
 }
 
 #ifdef CCCI_CCMNI_MODULE
