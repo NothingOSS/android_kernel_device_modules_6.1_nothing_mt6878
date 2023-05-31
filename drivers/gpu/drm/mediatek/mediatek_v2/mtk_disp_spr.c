@@ -581,6 +581,11 @@
 	#define SPR_CUP_SRAM_RDATA_MSB              REG_FLD_MSB_LSB(15, 0)
 /* MTK SPRv2 Registers define end */
 
+//MT6989 SPR
+#define MT6989_DISP_REG_SPR_CROP_SIZE           0x0040
+	#define MT6989_CROP_OUT_HSIZE               REG_FLD_MSB_LSB(12, 0)
+	#define MT6989_CROP_OUT_VSIZE               REG_FLD_MSB_LSB(28, 16)
+
 //MT6989 Postalign
 #define MT6989_DISP_REG_POSTALIGN0_EN           0x000
 #define MT6989_DISP_REG_POSTALIGN0_RESET        0x004
@@ -1161,10 +1166,17 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 		}
 		height = cfg->h;
 
-		mtk_ddp_write_mask(comp, (crop_out_hsize) << 16,
-			DISP_REG_SPR_RDY_SEL, REG_FLD_MASK(CROP_OUT_HSIZE), handle);
-		mtk_ddp_write_mask(comp, height << 16,
-			DISP_REG_SPR_RDY_SEL_EN, REG_FLD_MASK(CROP_OUT_VSIZE), handle);
+		if (priv->data->mmsys_id == MMSYS_MT6989) {
+			mtk_ddp_write_mask(comp, (crop_out_hsize) << 0,
+				MT6989_DISP_REG_SPR_CROP_SIZE, REG_FLD_MASK(MT6989_CROP_OUT_HSIZE), handle);
+			mtk_ddp_write_mask(comp, height << 16,
+				MT6989_DISP_REG_SPR_CROP_SIZE, REG_FLD_MASK(MT6989_CROP_OUT_VSIZE), handle);
+		} else {
+			mtk_ddp_write_mask(comp, (crop_out_hsize) << 16,
+				DISP_REG_SPR_RDY_SEL, REG_FLD_MASK(CROP_OUT_HSIZE), handle);
+			mtk_ddp_write_mask(comp, height << 16,
+				DISP_REG_SPR_RDY_SEL_EN, REG_FLD_MASK(CROP_OUT_VSIZE), handle);
+		}
 		mtk_ddp_write_mask(comp, crop_hoffset << 16,
 				DISP_REG_SPR_CK_ON, REG_FLD_MASK(CROP_HOFFSET), handle);
 		mtk_ddp_write_mask(comp, 0, DISP_REG_SPR_OPTION,
@@ -1173,10 +1185,17 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 		postalign_width = cfg->w;
 		width = cfg->w;
 		height = cfg->h;
-		mtk_ddp_write_mask(comp, width << 16,
-			DISP_REG_SPR_RDY_SEL, REG_FLD_MASK(CROP_OUT_HSIZE), handle);
-		mtk_ddp_write_mask(comp, height << 16,
-			DISP_REG_SPR_RDY_SEL_EN, REG_FLD_MASK(CROP_OUT_VSIZE), handle);
+		if (priv->data->mmsys_id == MMSYS_MT6989) {
+			mtk_ddp_write_mask(comp, width << 0,
+				MT6989_DISP_REG_SPR_CROP_SIZE, REG_FLD_MASK(MT6989_CROP_OUT_HSIZE), handle);
+			mtk_ddp_write_mask(comp, height << 16,
+				MT6989_DISP_REG_SPR_CROP_SIZE, REG_FLD_MASK(MT6989_CROP_OUT_VSIZE), handle);
+		} else {
+			mtk_ddp_write_mask(comp, width << 16,
+				DISP_REG_SPR_RDY_SEL, REG_FLD_MASK(CROP_OUT_HSIZE), handle);
+			mtk_ddp_write_mask(comp, height << 16,
+				DISP_REG_SPR_RDY_SEL_EN, REG_FLD_MASK(CROP_OUT_VSIZE), handle);
+		}
 		mtk_ddp_write_mask(comp, 0 << 16,
 			DISP_REG_SPR_CK_ON, REG_FLD_MASK(CROP_HOFFSET), handle);
 	}
