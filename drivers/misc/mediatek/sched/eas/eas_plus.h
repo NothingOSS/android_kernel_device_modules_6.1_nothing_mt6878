@@ -232,6 +232,8 @@ extern void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask
 
 extern int cpu_high_irqload(int cpu, unsigned long cpu_util);
 extern unsigned int mtk_get_idle_exit_latency(int cpu, struct rt_energy_aware_output *rt_ea_output);
+extern unsigned long mtk_sched_cpu_util(int cpu);
+extern void track_sched_cpu_util(int cpu, unsigned long cpu_util);
 
 extern struct cpumask __cpu_pause_mask;
 #define cpu_pause_mask ((struct cpumask *)&__cpu_pause_mask)

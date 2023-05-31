@@ -1437,6 +1437,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 		unsigned int pd_min_exit_lat = UINT_MAX;
 		int pd_max_spare_cap_cpu = -1;
 		int pd_max_spare_cap_cpu_ls_idle = -1;
+		unsigned long util_cum;
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
 		int cpu_order[MAX_NR_CPUS]  ____cacheline_aligned, cnt, i;
 
@@ -1455,10 +1456,17 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 #else
 		for_each_cpu(cpu, cpus) {
 #endif
+
+			util_cum = mtk_sched_cpu_util(cpu);
+			track_sched_cpu_util(cpu, util_cum);
+
 			if (!cpumask_test_cpu(cpu, p->cpus_ptr))
 				continue;
 
 			if (cpu_paused(cpu))
+				continue;
+
+			if (cpu_high_irqload(cpu, util_cum))
 				continue;
 
 			cpumask_set_cpu(cpu, allowed_cpu_mask);
