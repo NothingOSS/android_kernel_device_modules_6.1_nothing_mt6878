@@ -1154,9 +1154,6 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	if ((spmi_nack & 0x20) || (spmi_p_nack & 0x20)) {
 		pr_notice("%s spmi transaction PARITY_ERR triggered SPMI_REC0 m/p:0x%x/0x%x, SPMI_REC1 m/p:0x%x/0x%x\n",
 			__func__, spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
-		pr_notice("%s SPMI_REC_CMD_DEC m/p:0x%x/0x%x\n", __func__, spmi_rcs_nack, spmi_p_rcs_nack);
-		pr_notice("%s SPMI_DEC_DBG m/p:0x%x/0x%x\n", __func__, spmi_debug_nack, spmi_p_debug_nack);
-		pr_notice("%s SPMI_MST_DBG m/p:0x%x/0x%x\n", __func__, spmi_mst_nack, spmi_p_mst_nack);
 		if (spmi_p_nack & 0x20) {
 			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
 				mt6316INTSTA, &rdata, 1);
@@ -1176,6 +1173,11 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 		}
 		flag = 0;
 	}
+	pr_notice("%s SPMI_REC0 m/p:0x%x/0x%x, SPMI_REC1 m/p:0x%x/0x%x\n",
+		__func__, spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
+	pr_notice("%s SPMI_REC_CMD_DEC m/p:0x%x/0x%x\n", __func__, spmi_rcs_nack, spmi_p_rcs_nack);
+	pr_notice("%s SPMI_DEC_DBG m/p:0x%x/0x%x\n", __func__, spmi_debug_nack, spmi_p_debug_nack);
+	pr_notice("%s SPMI_MST_DBG m/p:0x%x/0x%x\n", __func__, spmi_mst_nack, spmi_p_mst_nack);
 
 	if (flag) {
 		/* trigger AEE event*/
@@ -1184,9 +1186,12 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	}
 
 	/* clear irq*/
-	mtk_spmi_writel(arb->spmimst_base, arb, 0x3, SPMI_REC_CTRL);
-	if (arb->spmimst_base_p != NULL)
+	if ((spmi_nack & 0xF8) || (spmi_rcs_nack & 0xC0000))
+		mtk_spmi_writel(arb->spmimst_base, arb, 0x3, SPMI_REC_CTRL);
+	else if ((spmi_p_nack & 0xF8) || (spmi_p_rcs_nack & 0xC0000))
 		mtk_spmi_writel(arb->spmimst_base_p, arb, 0x3, SPMI_REC_CTRL);
+	else
+		pr_notice("%s IRQ not cleared\n", __func__);
 
 	mutex_unlock(&arb->pmif_m_mutex);
 	__pm_relax(arb->pmif_m_Thread_lock);
