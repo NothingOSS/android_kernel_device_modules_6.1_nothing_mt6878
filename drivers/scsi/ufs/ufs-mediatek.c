@@ -984,6 +984,10 @@ static int ufs_mtk_install_tracepoints(struct ufs_hba *hba)
 				interests[i].name);
 			continue;
 		}
+
+		tracepoint_probe_register(interests[i].tp,
+					  interests[i].func,
+					  NULL);
 		interests[i].init = true;
 	}
 
