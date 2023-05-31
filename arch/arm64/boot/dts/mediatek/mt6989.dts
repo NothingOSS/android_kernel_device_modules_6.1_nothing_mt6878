@@ -3292,6 +3292,27 @@
 			version = <600>;
 		};
 
+		perf_tracker_info: perf-tracker-info {
+			compatible = "mediatek,perf-tracker-info";
+			/* CPU, CPU EB, DSU Freq, DSU Volt */
+			cdfv-csram-base = <0x0c0dd350>;
+			cdfv-csram-base-len = <0x1400>;
+			apeb-csram-base = <0x0c0dc350>;
+			apeb-csram-base-len = <0xa4>;
+			pmu-csram-base = <0x0c0dbf50>;
+			pmu-csram-base-len = <0x64>;
+			dsu-ap-min-freq-offset = <0x94>;
+			dsu-bw-monitor-offset = <0x30>;
+			dsu-user-min-freq-offset = <0x484>;
+			dsu-user-max-freq-offset = <0x480>;
+			dsu-eb-max-freq-offset = <0xa0>;
+			cpu-l3dc-offset = <0x0>;
+			cpu-inst-spec-offset = <0x20>;
+			cpu-idx-cycles-offset = <0x40>;
+			perf-tracker-status-offset = <0x12e0>;
+			dsu-volt-3-cluster = <0x514>;
+		};
+
 		flt: flt@c0d4270 {
 			compatible = "mediatek,flt";
 			reg = <0 0xc0d4270 0 0x91c>;
