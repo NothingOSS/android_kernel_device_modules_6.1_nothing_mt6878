@@ -546,6 +546,11 @@ static u32 change_to_unit(u32 bw)
 static void set_freq_by_vmmrc(const u32 comm_id)
 {
 	int i, j;
+	bool is_reg_value_changed = false;
+	u32 off_s_r_bw;
+	u32 off_s_w_bw;
+	u32 off_h_r_bw;
+	u32 off_h_w_bw;
 
 	if (log_level & 1 << log_comm_freq) {
 		for (i = 0; i < MMQOS_MAX_COMM_NUM; i++) {
@@ -570,21 +575,38 @@ static void set_freq_by_vmmrc(const u32 comm_id)
 		store_bw_value(comm_id, i, !is_srt, is_write, IS_ON_TABLE,
 			change_to_unit(chn_hrt_w_bw[comm_id][i]));
 
+		off_s_r_bw = chn_srt_r_bw[comm_id][i] - disp_srt_r_bw[comm_id][i];
+		off_s_w_bw = chn_srt_w_bw[comm_id][i] - disp_srt_w_bw[comm_id][i];
+		off_h_r_bw = chn_hrt_r_bw[comm_id][i] - disp_hrt_r_bw[comm_id][i];
+		off_h_w_bw = chn_hrt_w_bw[comm_id][i] - disp_hrt_w_bw[comm_id][i];
 		store_bw_value(comm_id, i, is_srt, !is_write, !IS_ON_TABLE,
-			change_to_unit(chn_srt_r_bw[comm_id][i] - disp_srt_r_bw[comm_id][i]));
+			change_to_unit(off_s_r_bw));
 		store_bw_value(comm_id, i, is_srt, is_write, !IS_ON_TABLE,
-			change_to_unit(chn_srt_w_bw[comm_id][i] - disp_srt_w_bw[comm_id][i]));
+			change_to_unit(off_s_w_bw));
 		store_bw_value(comm_id, i, !is_srt, !is_write, !IS_ON_TABLE,
-			change_to_unit(chn_hrt_r_bw[comm_id][i] - disp_hrt_r_bw[comm_id][i]));
+			change_to_unit(off_h_r_bw));
 		store_bw_value(comm_id, i, !is_srt, is_write, !IS_ON_TABLE,
-			change_to_unit(chn_hrt_w_bw[comm_id][i] - disp_hrt_w_bw[comm_id][i]));
+			change_to_unit(off_h_w_bw));
+
+		if (mmqos_met_enabled())
+			trace_mmqos__chn_bw(comm_id, i,
+				icc_to_MBps(off_s_r_bw),
+				icc_to_MBps(off_s_w_bw),
+				icc_to_MBps(off_h_r_bw),
+				icc_to_MBps(off_h_w_bw),
+				TYPE_IS_OFF);
 	}
 
-	if (is_bw_value_changed(IS_ON_TABLE))
+	if (is_bw_value_changed(IS_ON_TABLE)) {
 		set_channel_bw_reg_value(IS_ON_TABLE);
-	if (is_bw_value_changed(!IS_ON_TABLE))
+		is_reg_value_changed = true;
+	}
+	if (is_bw_value_changed(!IS_ON_TABLE)) {
 		set_channel_bw_reg_value(!IS_ON_TABLE);
-	set_channel_bw_to_hw();
+		is_reg_value_changed = true;
+	}
+	if (is_reg_value_changed)
+		set_channel_bw_to_hw();
 }
 
 static void set_comm_icc_bw(struct common_node *comm_node)
@@ -816,7 +838,8 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 					icc_to_MBps(chn_srt_r_bw[comm_id][chnn_id]),
 					icc_to_MBps(chn_srt_w_bw[comm_id][chnn_id]),
 					icc_to_MBps(chn_hrt_r_bw[comm_id][chnn_id]),
-					icc_to_MBps(chn_hrt_w_bw[comm_id][chnn_id]));
+					icc_to_MBps(chn_hrt_w_bw[comm_id][chnn_id]),
+					TYPE_IS_ON);
 		}
 #endif
 		if (!comm_node)

@@ -124,9 +124,14 @@ TRACE_EVENT(mmqos__larb_peak_bw,
 		(int)__entry->chn,
 		(int)__entry->bw)
 );
+
+#define TYPE_IS_ON		0
+#define TYPE_IS_OFF		1
+#define TYPE_IS_VCP		2
+
 TRACE_EVENT(mmqos__chn_bw,
-	TP_PROTO(int comm_id, int chn_id, int s_r, int s_w, int h_r, int h_w),
-	TP_ARGS(comm_id, chn_id, s_r, s_w, h_r, h_w),
+	TP_PROTO(int comm_id, int chn_id, int s_r, int s_w, int h_r, int h_w, int type),
+	TP_ARGS(comm_id, chn_id, s_r, s_w, h_r, h_w, type),
 	TP_STRUCT__entry(
 		__field(int, comm_id)
 		__field(int, chn_id)
@@ -134,6 +139,7 @@ TRACE_EVENT(mmqos__chn_bw,
 		__field(int, s_w)
 		__field(int, h_r)
 		__field(int, h_w)
+		__field(int, type)
 	),
 	TP_fast_assign(
 		__entry->comm_id = comm_id;
@@ -142,17 +148,22 @@ TRACE_EVENT(mmqos__chn_bw,
 		__entry->s_w = s_w;
 		__entry->h_r = h_r;
 		__entry->h_w = h_w;
+		__entry->type = type;
 	),
-	TP_printk("comm%d_%d_s_r=%d, comm%d_%d_s_w=%d, comm%d_%d_h_r=%d, comm%d_%d_h_w=%d",
+	TP_printk("%s_comm%d_%d_s_r=%d, %s_comm%d_%d_s_w=%d, %s_comm%d_%d_h_r=%d, %s_comm%d_%d_h_w=%d",
+		((int)__entry->type == 0 ? "on" : ((int)__entry->type == 1 ? "off" : "vcp")),
 		(int)__entry->comm_id,
 		(int)__entry->chn_id,
 		(int)__entry->s_r,
+		((int)__entry->type == 0 ? "on" : ((int)__entry->type == 1 ? "off" : "vcp")),
 		(int)__entry->comm_id,
 		(int)__entry->chn_id,
 		(int)__entry->s_w,
+		((int)__entry->type == 0 ? "on" : ((int)__entry->type == 1 ? "off" : "vcp")),
 		(int)__entry->comm_id,
 		(int)__entry->chn_id,
 		(int)__entry->h_r,
+		((int)__entry->type == 0 ? "on" : ((int)__entry->type == 1 ? "off" : "vcp")),
 		(int)__entry->comm_id,
 		(int)__entry->chn_id,
 		(int)__entry->h_w)
