@@ -12854,8 +12854,8 @@
 			dramc-ver = <2>;
 			slc-ver = <3>;
 			/* 0: dram ebg, 1:emi_freq, 2: DRAMC_DCM_CTRL 3:chn_emi_low_effi */
-			/* 4: SLC */
-			met-emi-support-list = <0x12>;
+			/* 4: SLC, 5: DRAMC BUS MON trigger */
+			met-emi-support-list = <0x32>;
 			cen-emi-reg-base = <0x10219000 0x1021d000>;
 			cen-emi-reg-size = <0x1000>;
 			chn-emi-reg-base = <0x10235000 0x10245000 0x10255000 0x10265000>;
@@ -12864,6 +12864,7 @@
 			dramc-nao-reg-size = <0xf08>;
 			dramc-ao-reg-base = <0x10230000 0x10240000 0x10250000 0x10260000>;
 			dramc-ao-reg-size = <0x2000>;
+			dramc-ao-bus-mon1 = <0x118>;
 			ddrphy-ao-reg-base = <0x10238000 0x10248000 0x10258000 0x10268000>;
 			ddrphy-ao-reg-size = <0x1650>;
 			ddrphy-ao-misc-cg-ctrl0 = <0x0>;
