@@ -133,6 +133,10 @@ extern void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *
 extern bool sched_gear_hints_enable_get(void);
 extern void init_gear_hints(void);
 
+
+extern bool sched_updown_migration_enable_get(void);
+extern void init_updown_migration(void);
+
 struct util_rq {
 	unsigned long util_cfs;
 	unsigned long dl_util;

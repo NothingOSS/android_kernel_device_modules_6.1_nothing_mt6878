@@ -1222,6 +1222,12 @@ EXPORT_SYMBOL_GPL(get_gear_indices);
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_UPDOWN_MIGRATE)
 
+bool updown_migration_enable;
+void init_updown_migration(void)
+{
+	updown_migration_enable = sched_updown_migration_enable_get();
+}
+
 /* Default Migration margin */
 bool adaptive_margin_enabled[MAX_NR_CPUS] = {
 			[0 ... MAX_NR_CPUS-1] = true /* default on */
@@ -1237,6 +1243,10 @@ int set_updown_migration_pct(int gear_idx, int dn_pct, int up_pct)
 {
 	int ret = 0, cpu;
 	struct cpumask *cpus;
+
+	/* check feature is enabled */
+	if (!updown_migration_enable)
+		goto done;
 
 	/* check gear_idx validity */
 	if (gear_idx < 0 || gear_idx > num_sched_clusters-1)
@@ -1272,6 +1282,10 @@ int unset_updown_migration_pct(int gear_idx)
 	int ret = 0, cpu;
 	struct cpumask *cpus;
 
+	/* check feature is enabled */
+	if (!updown_migration_enable)
+		goto done;
+
 	/* check gear_idx validity */
 	if (gear_idx < 0 || gear_idx > num_sched_clusters-1)
 		goto done;
@@ -1293,8 +1307,10 @@ int get_updown_migration_pct(int gear_idx, int *dn_pct, int *up_pct)
 {
 	int ret = 0, cpu;
 
-	*dn_pct = -1;
-	*up_pct = -1;
+	*dn_pct = *up_pct = -1;
+	/* check feature is enabled */
+	if (!updown_migration_enable)
+		goto done;
 
 	/* check gear_idx validity */
 	if (gear_idx < 0 || gear_idx > num_sched_clusters-1)
@@ -1324,6 +1340,10 @@ static inline bool task_demand_fits(struct task_struct *p, int dst_cpu)
 	if (dst_capacity == SCHED_CAPACITY_SCALE)
 		return true;
 
+	/* if updown_migration is not enabled */
+	if (!updown_migration_enable)
+		return task_fits_capacity(p, dst_capacity, get_adaptive_margin(dst_cpu));
+
 	/*
 	 * Derive upmigration/downmigration margin wrt the src/dst CPU.
 	 */
@@ -1347,6 +1367,10 @@ static inline bool util_fits_capacity(unsigned long cpu_util, unsigned long cpu_
 	unsigned long ceiling;
 	bool AM_enabled = adaptive_margin_enabled[cpu], fit;
 	unsigned int sugov_margin = AM_enabled ? get_adaptive_margin(cpu) : SCHED_CAPACITY_SCALE;
+
+	/* if updown_migration is not enabled */
+	if (!updown_migration_enable)
+		return fits_capacity(cpu_util, cpu_cap, get_adaptive_margin(cpu));
 
 	ceiling = SCHED_CAPACITY_SCALE * capacity_orig_of(cpu) / sched_capacity_up_margin[cpu];
 

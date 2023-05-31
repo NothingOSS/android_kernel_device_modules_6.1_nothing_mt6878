@@ -535,6 +535,8 @@ static int __init mtk_scheduler_init(void)
 	build_cpu_array();
 	init_gear_hints();
 
+	init_updown_migration();
+
 	ret = init_sched_common_sysfs();
 	if (ret)
 		return ret;
