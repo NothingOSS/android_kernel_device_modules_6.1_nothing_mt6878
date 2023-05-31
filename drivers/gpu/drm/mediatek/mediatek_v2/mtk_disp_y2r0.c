@@ -17,6 +17,20 @@
 #include "mtk_drm_drv.h"
 #include "../mml/mtk-mml-color.h"
 
+#define MT6989_DISP_REG_DISP_Y2R0_EN   0x000
+	#define MT6989_Y2R0_EN BIT(0)
+#define MT6989_DISP_REG_DISP_Y2R0_RST  0x004
+#define MT6989_DISP_REG_DISP_Y2R0_CFG  0x018
+	#define MT6989_DISP_REG_DISP_Y2R0_CLAMP BIT(4)
+	#define MT6989_DISP_REG_DISP_Y2R0_RELAY_MODE BIT(5)
+	//#define MT6989_DISP_REG_DISP_Y2R0_LUT_EN BIT(6)
+	//#define MT6989_DISP_REG_DISP_Y2R0_STALL_CG_ON BIT(7)
+	//#define MT6989_DISP_REG_DISP_Y2R0_OP_8BIT_MODE BIT(8)
+	#define MT6989_DISP_REG_DISP_Y2R0_CLAMP_U10 BIT(9)
+#define MT6989_DISP_REG_DISP_Y2R0_SIZE 0x01C
+#define MT6989_DISP_REG_DISP_Y2R0_1TNP 0x020
+	#define MT6989_DISP_1T2P BIT(0)
+
 #define DISP_REG_DISP_Y2R0_EN 0x250
 #define DISP_REG_DISP_Y2R0_RST 0x254
 #define DISP_REG_DISP_Y2R0_CON0 0x258
@@ -34,30 +48,97 @@
 struct mtk_disp_y2r {
 	struct mtk_ddp_comp ddp_comp;
 };
+void mtk_mt6989_y2r_dump(struct mtk_ddp_comp *comp)
+{
+	void __iomem *baddr = comp->regs;
 
+	if (!baddr) {
+		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+		return;
+	}
+
+	DDPDUMP("== DISP %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
+	DDPDUMP("0x000: 0x%08x 0x%08x 0x%08x 0x%08x\n", readl(baddr + 0x000),
+		readl(baddr + 0x004), readl(baddr + 0x008), readl(baddr + 0x00C));
+	DDPDUMP("0x010: 0x%08x 0x%08x 0x%08x 0x%08x\n", readl(baddr + 0x010),
+		readl(baddr + 0x014), readl(baddr + 0x018), readl(baddr + 0x01C));
+	DDPDUMP("0x020: 0x%08x 0x%08x 0x%08x 0x%08x\n", readl(baddr + 0x020),
+		readl(baddr + 0x024), readl(baddr + 0x028), readl(baddr + 0x02C));
+	DDPDUMP("0x030: 0x%08x\n", readl(baddr + 0x030));
+}
 static inline struct mtk_disp_y2r *comp_to_y2r(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_y2r, ddp_comp);
 }
-
-static void mtk_y2r_addon_config(struct mtk_ddp_comp *comp,
-				 enum mtk_ddp_comp_id prev,
-				 enum mtk_ddp_comp_id next,
+static void mtk_y2r_mt6989_config(struct mtk_drm_crtc *mtk_crtc,
+				 struct mtk_ddp_comp *comp,
 				 union mtk_addon_config *addon_config,
 				 struct cmdq_pkt *handle)
 {
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	unsigned int disp_y2r_cfg = 0;
 
-	if (!mtk_crtc) {
-		DDPINFO("%s mtk_crtc is not assigned\n", __func__);
-		return;
+	DDPINFO("%s + yuv:%d\n", __func__, addon_config->addon_mml_config.is_yuv);
+
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			comp->regs_pa
+			+ MT6989_DISP_REG_DISP_Y2R0_EN, MT6989_Y2R0_EN, MT6989_Y2R0_EN);
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			comp->regs_pa
+			+ MT6989_DISP_REG_DISP_Y2R0_1TNP, MT6989_DISP_1T2P, MT6989_DISP_1T2P);
+
+	if (mtk_crtc->mml_cfg) {
+		int hsize = 0, vsize = 0;
+		int profile = 5;
+
+		hsize = mtk_crtc->mml_cfg->dl_out[0].width & 0x1FFF;
+		vsize = mtk_crtc->mml_cfg->dl_out[0].height & 0x1FFF;
+
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				comp->regs_pa
+				+ MT6989_DISP_REG_DISP_Y2R0_SIZE, ((hsize << 16) | vsize), ~0);
+
+		/*follow mml output mml_ycbcr_profile*/
+		switch (mtk_crtc->mml_cfg->info.dest[0].data.profile) {
+		case MML_YCBCR_PROFILE_BT601:
+			profile = DISP_REG_DISP_Y2R0_MATRIX_SEL_LIMIT_RANGE_BT601_RGB;
+			break;
+		case MML_YCBCR_PROFILE_BT709:
+			profile = DISP_REG_DISP_Y2R0_MATRIX_SEL_LIMIT_RANGE_BT709_RGB;
+			break;
+		case MML_YCBCR_PROFILE_JPEG:
+			profile = DISP_REG_DISP_Y2R0_MATRIX_SEL_JPEG_RGB;
+			break;
+		default:
+			break;
+		}
+		profile |= MT6989_DISP_REG_DISP_Y2R0_CLAMP;
+		profile |= MT6989_DISP_REG_DISP_Y2R0_CLAMP_U10;
+		disp_y2r_cfg = profile;
+
+	} else {
+		disp_y2r_cfg = DISP_REG_DISP_Y2R0_MATRIX_SEL_FULL_RANGE_BT709_RGB & 0xF;
 	}
 
-	if (!mtk_crtc->is_force_mml_scen)
-		return;
+	if (!(addon_config->addon_mml_config.is_yuv)) {
+		DDPINFO("relay\n");
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_CFG, MT6989_DISP_REG_DISP_Y2R0_RELAY_MODE, ~0);
+	} else {
+		disp_y2r_cfg |= ~MT6989_DISP_REG_DISP_Y2R0_RELAY_MODE;
+		DDPINFO("disp_y2r_cfg: 0x%x\n",disp_y2r_cfg);
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_CFG, disp_y2r_cfg, ~0);
+	}
 
-	if (addon_config->config_type.type == ADDON_DISCONNECT)
-		return;
+	DDPINFO("%s -\n", __func__);
+}
+
+static void mtk_y2r_config(struct mtk_drm_crtc *mtk_crtc,
+				 struct mtk_ddp_comp *comp,
+				 union mtk_addon_config *addon_config,
+				 struct cmdq_pkt *handle)
+{
+	DDPINFO("%s +\n", __func__);
 
 	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 			comp->regs_pa
@@ -87,19 +168,55 @@ static void mtk_y2r_addon_config(struct mtk_ddp_comp *comp,
 				comp->regs_pa
 				+ DISP_REG_DISP_Y2R0_CON0,
 				DISP_REG_DISP_Y2R0_MATRIX_SEL_FULL_RANGE_BT709_RGB, ~0);
+	DDPINFO("%s -\n", __func__);
+
+}
+static void mtk_y2r_addon_config(struct mtk_ddp_comp *comp,
+				 enum mtk_ddp_comp_id prev,
+				 enum mtk_ddp_comp_id next,
+				 union mtk_addon_config *addon_config,
+				 struct cmdq_pkt *handle)
+{
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
+
+	priv = mtk_crtc->base.dev->dev_private;
+
+	if (!mtk_crtc) {
+		DDPINFO("%s mtk_crtc is not assigned\n", __func__);
+		return;
+	}
+
+	if (!mtk_crtc->is_force_mml_scen)
+		return;
+
+	if (addon_config->config_type.type == ADDON_DISCONNECT)
+		return;
+	if (priv->data->mmsys_id == MMSYS_MT6989)
+		mtk_y2r_mt6989_config(mtk_crtc, comp,addon_config, handle);
+	else
+		mtk_y2r_config(mtk_crtc, comp,addon_config, handle);
 }
 
 void mtk_y2r_dump(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
+
+	priv = mtk_crtc->base.dev->dev_private;
 
 	if (!baddr) {
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
 		return;
 	}
-	DDPDUMP("== DISP %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	DDPDUMP("0x250: 0x%08x 0x%08x 0x%08x\n", readl(baddr + 0x250),
-		readl(baddr + 0x254), readl(baddr + 0x258));
+	if (priv->data->mmsys_id == MMSYS_MT6989)
+		mtk_mt6989_y2r_dump(comp);
+	else {
+		DDPDUMP("== DISP %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
+		DDPDUMP("0x250: 0x%08x 0x%08x 0x%08x\n", readl(baddr + 0x250),
+			readl(baddr + 0x254), readl(baddr + 0x258));
+	}
 }
 
 int mtk_y2r_analysis(struct mtk_ddp_comp *comp)
@@ -231,6 +348,7 @@ static const struct of_device_id mtk_disp_y2r_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6983-disp-y2r",},
 	{.compatible = "mediatek,mt6895-disp-y2r",},
 	{.compatible = "mediatek,mt6985-disp-y2r",},
+	{.compatible = "mediatek,mt6989-disp-y2r",},
 	{.compatible = "mediatek,mt6886-disp-y2r",},
 	{.compatible = "mediatek,mt6897-disp-y2r",},
 	{},
