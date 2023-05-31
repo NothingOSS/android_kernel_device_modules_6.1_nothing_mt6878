@@ -33,6 +33,8 @@ struct fmeter_dev_t {
 	struct reg_ctrl_t dqopen[2];
 	struct reg_ctrl_t dqsopen[2];
 	struct reg_ctrl_t ckdiv4_ca[2];
+	struct reg_ctrl_t async_ca[2];
+	struct reg_ctrl_t dq_ser_mode[2];
 };
 
 struct mr4_dev_t {
