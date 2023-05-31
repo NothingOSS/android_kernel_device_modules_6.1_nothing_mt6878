@@ -318,6 +318,7 @@ struct acquire_info {
 	int c_tid;
 	int api;
 	unsigned long long buffer_id;
+	unsigned long long ts;
 	struct rb_node entry;
 	struct fbt_render_key key;
 };
@@ -406,13 +407,15 @@ int fpsgo_get_BQid_pair(int pid, int tgid, long long identifier,
 int fpsgo_get_acquire_queue_pair_by_self(int tid, unsigned long long buffer_id);
 int fpsgo_get_acquire_queue_pair_by_group(int tid, int *dep_arr, int dep_arr_num,
 		unsigned long long buffer_id);
+int fpsgo_check_cam_do_frame(void);
 int fpsgo_check_all_render_blc(int render_tid, unsigned long long buffer_id);
 struct acquire_info *fpsgo_add_acquire_info(int p_pid, int c_pid, int c_tid,
-	int api, unsigned long long buffer_id);
+	int api, unsigned long long buffer_id, unsigned long long ts);
 struct acquire_info *fpsgo_search_acquire_info(int tid, unsigned long long buffer_id);
 int fpsgo_delete_acquire_info(int mode, int tid, unsigned long long buffer_id);
 int fpsgo_check_is_cam_apk(int tgid);
 void fpsgo_ctrl2base_get_cam_pid(int cmd, int *pid);
+void fpsgo_ctrl2base_notify_cam_close(void);
 void fpsgo_main_trace(const char *fmt, ...);
 void fpsgo_clear_uclamp_boost(void);
 void fpsgo_clear_llf_cpu_policy(void);

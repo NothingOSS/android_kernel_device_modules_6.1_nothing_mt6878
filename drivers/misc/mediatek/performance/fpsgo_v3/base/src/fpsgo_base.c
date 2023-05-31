@@ -31,6 +31,7 @@
 #include "fps_composer.h"
 #include "xgf.h"
 #include "fbt_cpu_ux.h"
+#include "fstb.h"
 
 #include <linux/preempt.h>
 #include <linux/trace_events.h>
@@ -466,6 +467,13 @@ void fpsgo_ctrl2base_get_cam_pid(int cmd, int *pid)
 
 	fpsgo_render_tree_lock(__func__);
 	fpsgo_get_cam_pid(cmd, pid);
+	fpsgo_render_tree_unlock(__func__);
+}
+
+void fpsgo_ctrl2base_notify_cam_close(void)
+{
+	fpsgo_render_tree_lock(__func__);
+	fpsgo_delete_acquire_info(2, 0, 0);
 	fpsgo_render_tree_unlock(__func__);
 }
 
@@ -2069,6 +2077,55 @@ out:
 	return ret;
 }
 
+int fpsgo_check_cam_do_frame(void)
+{
+	int ret = 1;
+	int local_cam_rtid = 0;
+	int local_qfps_arr_num = 0;
+	int local_tfps_arr_num = 0;
+	int *local_qfps_arr = NULL;
+	int *local_tfps_arr = NULL;
+	struct render_info *r_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
+		r_iter = rb_entry(rbn, struct render_info, render_key_node);
+		if (r_iter->api == NATIVE_WINDOW_API_CAMERA) {
+			local_cam_rtid = r_iter->pid;
+			break;
+		}
+	}
+
+	if (!local_cam_rtid) {
+		ret = 0;
+		fpsgo_main_trace("[base] %s no cam_rtid", __func__);
+		goto out;
+	}
+
+	local_qfps_arr = kcalloc(1, sizeof(int), GFP_KERNEL);
+	if (!local_qfps_arr)
+		goto out;
+
+	local_tfps_arr = kcalloc(1, sizeof(int), GFP_KERNEL);
+	if (!local_tfps_arr)
+		goto out;
+
+	fpsgo_other2fstb_get_fps(local_cam_rtid, 0,
+		local_qfps_arr, &local_qfps_arr_num, 1,
+		local_tfps_arr, &local_tfps_arr_num, 1);
+
+	if (!local_qfps_arr[0]) {
+		ret = 0;
+		fpsgo_main_trace("[base] %s cam_rtid:%d queue_fps:%d",
+			__func__, local_cam_rtid, local_qfps_arr[0]);
+	}
+
+out:
+	kfree(local_qfps_arr);
+	kfree(local_tfps_arr);
+	return ret;
+}
+
 int fpsgo_check_all_render_blc(int render_tid, unsigned long long buffer_id)
 {
 	int ret = 1;
@@ -2133,7 +2190,7 @@ struct acquire_info *fpsgo_search_acquire_info(int tid, unsigned long long buffe
 }
 
 struct acquire_info *fpsgo_add_acquire_info(int p_pid, int c_pid, int c_tid,
-	int api, unsigned long long buffer_id)
+	int api, unsigned long long buffer_id, unsigned long long ts)
 {
 	int local_tgid;
 	struct rb_node **p = &acquire_info_tree.rb_node;
@@ -2208,6 +2265,15 @@ int fpsgo_delete_acquire_info(int mode, int tid, unsigned long long buffer_id)
 				rbn = rb_first(&acquire_info_tree);
 			} else
 				rbn = rb_next(rbn);
+		}
+	} else if (mode == 2) {
+		rbn = rb_first(&acquire_info_tree);
+		while (rbn) {
+			iter = rb_entry(rbn, struct acquire_info, entry);
+			rb_erase(&iter->entry, &acquire_info_tree);
+			kfree(iter);
+			ret = 1;
+			rbn = rb_first(&acquire_info_tree);
 		}
 	}
 
@@ -2867,8 +2933,9 @@ static ssize_t acquire_info_show(struct kobject *kobj,
 	for (rbn = rb_first(&acquire_info_tree); rbn; rbn = rb_next(rbn)) {
 		iter = rb_entry(rbn, struct acquire_info, entry);
 		length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-			"p_pid:%d c_pid:%d c_tid:%d api:%d buffer_id:0x%llx\n",
-			iter->p_pid, iter->c_pid, iter->c_tid, iter->api, iter->buffer_id);
+			"p_pid:%d c_pid:%d c_tid:%d api:%d buffer_id:0x%llx ts:%llu\n",
+			iter->p_pid, iter->c_pid, iter->c_tid,
+			iter->api, iter->buffer_id, iter->ts);
 		pos += length;
 	}
 

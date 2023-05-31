@@ -857,6 +857,8 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 		return index;
 	}
 
+	xgf_add_pid2prev_dep(render_iter, FPSGO_TYPE, pid, 0);
+
 	if (render_iter->spid > 0)
 		xgf_add_pid2prev_dep(render_iter, FPSGO_TYPE, render_iter->spid, XGF_ADD_DEP);
 

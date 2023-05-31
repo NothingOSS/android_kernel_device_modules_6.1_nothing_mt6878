@@ -491,7 +491,8 @@ static int fpsgo_com_check_BQ_type(int *bq_type,
 	if (local_bq_type == ACQUIRE_CAMERA_TYPE)
 		goto out;
 
-	local_bq_type = fpsgo_check_all_render_blc(pid, buffer_id);
+	if (fpsgo_check_cam_do_frame())
+		local_bq_type = fpsgo_check_all_render_blc(pid, buffer_id);
 	if (local_bq_type == ACQUIRE_OTHER_TYPE)
 		fpsgo_systrace_c_fbt(pid, buffer_id, local_bq_type, "bypass_acquire");
 
@@ -1314,15 +1315,20 @@ void fpsgo_ctrl2comp_disconnect_api(
 }
 
 void fpsgo_ctrl2comp_acquire(int p_pid, int c_pid, int c_tid,
-	int api, unsigned long long buffer_id)
+	int api, unsigned long long buffer_id, unsigned long long ts)
 {
+	struct acquire_info *iter = NULL;
+
 	fpsgo_render_tree_lock(__func__);
 
 	if (api == WINDOW_DISCONNECT)
 		fpsgo_delete_acquire_info(0, c_tid, buffer_id);
-	else
-		fpsgo_add_acquire_info(p_pid, c_pid, c_tid,
-			api, buffer_id);
+	else {
+		iter = fpsgo_add_acquire_info(p_pid, c_pid, c_tid,
+			api, buffer_id, ts);
+		if (iter)
+			iter->ts = ts;
+	}
 
 	fpsgo_render_tree_unlock(__func__);
 }
@@ -1732,7 +1738,7 @@ int fpsgo_ktf2comp_test_check_BQ_type(int *a_p_pid_arr,  int *a_c_pid_arr,
 
 	for (i = 0; i < a_num; i++) {
 		a_iter = fpsgo_add_acquire_info(a_p_pid_arr[i], a_c_pid_arr[i],
-			a_c_tid_arr[i], a_api_arr[i], a_bufID_arr[i]);
+			a_c_tid_arr[i], a_api_arr[i], a_bufID_arr[i], 0);
 		if (!a_iter) {
 			ret = -ENOMEM;
 			break;

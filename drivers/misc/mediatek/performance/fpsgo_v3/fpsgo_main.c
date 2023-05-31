@@ -215,7 +215,8 @@ static void fpsgo_notifier_wq_cb_bqid(int pid, unsigned long long bufID,
 }
 
 static void fpsgo_notify_wq_cb_acquire(int consumer_pid, int consumer_tid,
-	int producer_pid, int connectedAPI, unsigned long long buffer_id)
+	int producer_pid, int connectedAPI, unsigned long long buffer_id,
+	unsigned long long ts)
 {
 	FPSGO_LOGI(
 		"[FPSGO_CB] acquire: p_pid %d, c_pid:%d, c_tid:%d, api:%d, bufID:0x%llx\n",
@@ -228,7 +229,7 @@ static void fpsgo_notify_wq_cb_acquire(int consumer_pid, int consumer_tid,
 		return;
 
 	fpsgo_ctrl2comp_acquire(producer_pid, consumer_pid, consumer_tid,
-		connectedAPI, buffer_id);
+		connectedAPI, buffer_id, ts);
 }
 
 static void fpsgo_notifier_wq_cb_qudeq(int qudeq,
@@ -470,7 +471,7 @@ static void fpsgo_notifier_wq_cb(void)
 	case FPSGO_NOTIFIER_ACQUIRE:
 		fpsgo_notify_wq_cb_acquire(vpPush->consumer_pid,
 			vpPush->consumer_tid, vpPush->producer_pid,
-			vpPush->connectedAPI, vpPush->bufID);
+			vpPush->connectedAPI, vpPush->bufID, vpPush->cur_ts);
 		break;
 	case FPSGO_NOTIFIER_BUFFER_QUOTA:
 		fpsgo_notifier_wq_cb_buffer_quota(vpPush->cur_ts,
@@ -660,6 +661,7 @@ void fpsgo_notify_acquire(int consumer_pid, int producer_pid,
 	vpPush->producer_pid = producer_pid;
 	vpPush->connectedAPI = connectedAPI;
 	vpPush->bufID = buffer_id;
+	vpPush->cur_ts = fpsgo_get_time();
 
 	fpsgo_queue_work(vpPush);
 }
