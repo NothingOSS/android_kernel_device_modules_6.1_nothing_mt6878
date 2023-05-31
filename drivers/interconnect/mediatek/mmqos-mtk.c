@@ -470,7 +470,7 @@ static void start_write_bw(void)
 	u32 orig = 0;
 
 	orig = read_register(APMCU_MASK_OFFSET);
-	write_register(APMCU_MASK_OFFSET, orig & ~BIT(gmmqos->apmcu_mask_bit));
+	write_register(APMCU_MASK_OFFSET, orig | BIT(gmmqos->apmcu_mask_bit));
 }
 
 static void stop_write_bw(void)
@@ -478,7 +478,7 @@ static void stop_write_bw(void)
 	u32 orig = 0;
 
 	orig = read_register(APMCU_MASK_OFFSET);
-	write_register(APMCU_MASK_OFFSET, orig | BIT(gmmqos->apmcu_mask_bit));
+	write_register(APMCU_MASK_OFFSET, orig & ~BIT(gmmqos->apmcu_mask_bit));
 }
 
 void clear_reg_value(bool is_on)
