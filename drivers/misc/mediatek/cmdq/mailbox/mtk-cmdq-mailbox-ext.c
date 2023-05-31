@@ -277,6 +277,7 @@ struct cmdq {
 	struct cmdq_client	*prebuilt_clt;
 	struct cmdq_client	*hw_trace_clt;
 	struct mutex mbox_mutex;
+	struct device	*share_dev;
 };
 
 struct gce_plat {
@@ -1110,7 +1111,7 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 		cmdq_util_prebuilt_dump(
 			cmdq->hwid, CMDQ_TOKEN_PREBUILT_DISP_WAIT); // set iova
 
-		domain = iommu_get_domain_for_dev(mtk_smmu_get_shared_device(cmdq->mbox.dev));
+		domain = iommu_get_domain_for_dev(cmdq->share_dev);
 		if (domain) {
 			pa = iommu_iova_to_phys(domain, curr_pa);
 			cmdq_err("iova:%pa iommu pa:%pa", &curr_pa, &pa);
@@ -2468,6 +2469,7 @@ static int cmdq_probe(struct platform_device *pdev)
 		of_property_read_bool(dev->of_node, "ddr-urgent");
 
 	cmdq->mbox.dev = dev;
+	cmdq->share_dev = mtk_smmu_get_shared_device(dev);
 	cmdq->mbox.chans = devm_kcalloc(dev, CMDQ_THR_MAX_COUNT,
 					sizeof(*cmdq->mbox.chans), GFP_KERNEL);
 	if (!cmdq->mbox.chans)

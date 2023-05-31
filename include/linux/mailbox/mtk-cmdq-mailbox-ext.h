@@ -193,6 +193,7 @@ struct cmdq_pkt {
 
 	struct work_struct	destroy_work;
 	u16			write_addr_high;
+	struct device	*share_dev;
 };
 
 struct cmdq_thread {

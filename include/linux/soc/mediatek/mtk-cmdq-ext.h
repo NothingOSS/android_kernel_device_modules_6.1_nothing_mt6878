@@ -216,6 +216,7 @@ struct cmdq_client {
 	void *cl_priv;
 	struct mutex chan_mutex;
 	bool use_iommu;
+	struct device	*share_dev;
 };
 
 struct cmdq_operand {
