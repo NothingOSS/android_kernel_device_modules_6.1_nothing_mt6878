@@ -4987,7 +4987,7 @@
 			mtk,smmu = <&mm_smmu>;
 		};
 
-		gpu_smmu: smmuv3@13a00000 {
+		gpu_smmu: iommu@13a00000 {
 			#iommu-cells = <1>;
 			compatible = "arm,smmu-v3", "mtk,smmu-v700", "mediatek,mt6989-gpu-smmu";
 			reg = <0 0x13a00000 0 0x200000>;
