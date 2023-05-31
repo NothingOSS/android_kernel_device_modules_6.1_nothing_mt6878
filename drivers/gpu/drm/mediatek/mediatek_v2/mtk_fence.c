@@ -376,6 +376,11 @@ static struct mtk_fence_buf_info *mtk_get_buf_info(void)
 		mtk_init_buf_info(info);
 	} else {
 		info = kzalloc(sizeof(struct mtk_fence_buf_info), GFP_KERNEL);
+		if (!info) {
+			mutex_unlock(&fence_buffer_mutex);
+			DDPPR_ERR("%s mtk_fence_buf_info allocate fail\n", __func__);
+			return NULL;
+		}
 		mtk_init_buf_info(info);
 		MTK_FENCE_LOG("create new mtk_fence_buf_info node %p\n", info);
 	}
@@ -816,20 +821,28 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 	}
 
 	buf_info = mtk_get_buf_info();
+	if (!buf_info)
+		return NULL;
 	mutex_lock(&layer_info->sync_lock);
 	data.fence = MTK_INVALID_FENCE_FD;
 	data.value = ++(layer_info->fence_idx);
 	mutex_unlock(&(layer_info->sync_lock));
 
-	if (is_implicit)
-		ret = mtk_sync_share_fence_create(layer_info->timeline, &data, resv);
-	else
-		ret = mtk_sync_fence_create(layer_info->timeline, &data);
-	if (ret != 0) {
-		/* Does this really happened? */
-		DDPPR_ERR("%s%d,layer%d create Fence Object failed ret=%d!\n",
-			  mtk_fence_session_mode_spy(session_id),
-			  MTK_SESSION_DEV(session_id), timeline_id, ret);
+	if (layer_info->timeline) {
+		if (is_implicit)
+			ret = mtk_sync_share_fence_create(layer_info->timeline, &data, resv);
+		else
+			ret = mtk_sync_fence_create(layer_info->timeline, &data);
+		if (ret != 0) {
+			/* Does this really happened? */
+			DDPPR_ERR("%s%d,layer%d create Fence Object failed ret=%d!\n",
+				  mtk_fence_session_mode_spy(session_id),
+				  MTK_SESSION_DEV(session_id), timeline_id, ret);
+		}
+	}else {
+		DDPPR_ERR("%s layer%d layer_info->timeline is NULL!\n",
+				  __func__, timeline_id);
+		return NULL;
 	}
 	buf_info->fence = data.fence;
 	buf_info->idx = data.value;
