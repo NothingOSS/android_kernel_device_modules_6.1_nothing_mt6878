@@ -1911,7 +1911,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 			kfree(perf_string);
 		}
 
-		if (perf_aee_timeout > 0 && cost > perf_aee_timeout * 1000) {
+		if (perf_aee_timeout > 0 && cost > (unsigned long long)perf_aee_timeout * 1000) {
 			DDPAEE("[IDLE] perf drop:%lluus, timeout:%uus\n",
 				cost, perf_aee_timeout * 1000);
 			perf_aee_timeout = 0;
