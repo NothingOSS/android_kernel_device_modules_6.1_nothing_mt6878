@@ -56,8 +56,9 @@ struct audio_swpm_data {
 
 extern int swpm_audio_v6989_init(void);
 extern void swpm_audio_v6989_exit(void);
+#ifdef AUDIO_KERNEL_EXIST
 extern struct audio_swpm_data mt6989_aud_get_power_scenario(void);
-
+#endif
 extern struct audio_swpm_data audio_data;
 
 #endif

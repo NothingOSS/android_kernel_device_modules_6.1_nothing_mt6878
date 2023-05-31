@@ -19,7 +19,9 @@ static ssize_t audio_scenario_read(char *ToUser, size_t sz, void *priv)
 	if (!ToUser)
 		return -EINVAL;
 
+	#ifdef AUDIO_KERNEL_EXIST
 	audio_data = mt6989_aud_get_power_scenario();
+	#endif
 	swpm_dbg_log(
 		"%s(), ON %u, user %u, out %u, in %u, adda %u, rate %u, channel %u\n",
 		__func__, audio_data.afe_on,

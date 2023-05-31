@@ -15,7 +15,9 @@ static struct audio_swpm_data *audio_swpm_data_ptr;
 
 static void update_audio_scenario(void)
 {
+#ifdef AUDIO_KERNEL_EXIST
 	audio_data = mt6989_aud_get_power_scenario();
+#endif
 	*audio_swpm_data_ptr = audio_data;
 }
 
