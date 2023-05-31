@@ -5567,7 +5567,8 @@
 				<0 0x10309000 0 0x1000>,   /* SEMI_MI32_MI33_SMI */
 				<0 0x13c00000 0 0x50000>,  /* GPUEB_SRAM */
 				<0 0x13c60000 0 0x2000>,   /* GPUEB_CFGREG */
-				<0 0x0c0df7e0 0 0x100>;    /* MCDI_MBOX */
+				<0 0x0c0df7e0 0 0x100>,    /* MCDI_MBOX */
+				<0 0x00118800 0 0x2000>;  /* SYSRAM_MFG_HISTORY */
 			reg-names =
 				"mfg_top_config",
 				"mfg_cg_config",
@@ -5606,7 +5607,8 @@
 				"semi_mi32_mi33_smi",
 				"gpueb_sram",
 				"gpueb_cfgreg",
-				"mcdi_mbox";
+				"mcdi_mbox",
+				"sysram_mfg_history";
 			vgpu-supply = <&mt6373_vbuck3>;
 			vstack-supply = <&mt6316_7_vbuck1>;
 			vsram-supply = <&mt6373_vbuck4>;
