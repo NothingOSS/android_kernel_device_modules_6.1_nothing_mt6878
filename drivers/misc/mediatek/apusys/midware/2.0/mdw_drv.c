@@ -14,6 +14,7 @@
 #include "mdw_cmn.h"
 #include "mdw_mem.h"
 #include "mdw_mem_pool.h"
+#include "mdw_ext.h"
 
 struct mdw_device *mdw_dev;
 static struct apusys_core_info *g_info;
@@ -359,9 +360,18 @@ int mdw_init(struct apusys_core_info *info)
 		goto unregister_platform_driver;
 	}
 
+	/* init apu ext function */
+	ret = mdw_ext_init();
+	if (ret) {
+		pr_info("failed to do ext init\n");
+		goto unregister_rpmsg_driver;
+	}
+
 	pr_info("%s init done\n", __func__);
 	goto out;
 
+unregister_rpmsg_driver:
+	unregister_rpmsg_driver(&mdw_rpmsg_driver);
 unregister_platform_driver:
 	platform_driver_unregister(&mdw_platform_driver);
 unregister_misc_dev:
@@ -372,6 +382,7 @@ out:
 
 void mdw_exit(void)
 {
+	mdw_ext_deinit();
 	unregister_rpmsg_driver(&mdw_rpmsg_driver);
 	platform_driver_unregister(&mdw_platform_driver);
 	misc_deregister(&mdw_misc_dev);

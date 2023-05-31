@@ -395,6 +395,9 @@ struct mdw_cmd {
 	uint64_t is_dtime_set;
 	/* polling cmd result */
 	uint32_t cmd_done;
+
+	/* ext operation */
+	uint64_t ext_id; // for apuext unique id
 };
 
 struct mdw_dev_func {

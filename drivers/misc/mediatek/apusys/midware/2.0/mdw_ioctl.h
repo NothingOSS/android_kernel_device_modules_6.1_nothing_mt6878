@@ -258,6 +258,7 @@ struct mdw_cmd_in {
 			uint32_t inference_ms;
 			uint32_t tolerance_ms;
 			uint64_t is_dtime_set;
+			uint32_t u_pid;
 		} exec;
 	};
 };
@@ -268,6 +269,7 @@ struct mdw_cmd_out {
 			uint64_t id;
 			uint64_t fence;
 			uint64_t cmd_done_usr;
+			uint64_t ext_id;
 		} exec;
 	};
 };
