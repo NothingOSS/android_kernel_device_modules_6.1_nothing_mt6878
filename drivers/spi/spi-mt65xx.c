@@ -106,6 +106,9 @@
 #define SPI_PACKET_LENGTH_HIGH_OFFSET		16
 
 #define MT8173_SPI_MAX_PAD_SEL 3
+#define MTK_SPI_MAX_TICK_DLY   8
+#define MTK_SPI_PAD_SEL   0
+
 
 #define MTK_SPI_PAUSE_INT_STATUS 0x2
 
@@ -253,10 +256,7 @@ static const struct mtk_spi_compatible mt6893_compat = {
  * A piece of default chip info unless the platform
  * supplies it.
  */
-static const struct mtk_chip_config mtk_default_chip_info = {
-	.sample_sel = 0,
-	.tick_delay = 0,
-};
+static const struct mtk_chip_config mtk_default_chip_info;
 
 static const struct of_device_id mtk_spi_of_match[] = {
 	{ .compatible = "mediatek,mt2701-spi",
@@ -387,7 +387,7 @@ static void spi_dump_config(struct spi_master *master, struct spi_message *msg)
 	spi_debug("chip_config->spi_mode:0x%x\n", spi->mode);
 	spi_debug("chip_config->sample_sel:%d\n", chip_config->sample_sel);
 	spi_debug("chip_config->chip_select:%d,chip_config->pad_sel:%d\n",
-			spi->chip_select, mdata->pad_sel[spi->chip_select]);
+			spi->chip_select, mdata->pad_sel[MTK_SPI_PAD_SEL]);
 	spi_debug("||**************%s end**************||\n", __func__);
 }
 
@@ -657,7 +657,7 @@ static int mtk_spi_hw_init(struct spi_master *master,
 
 	/* pad select */
 	if (mdata->dev_comp->need_pad_sel)
-		writel(mdata->pad_sel[spi->chip_select],
+		writel(mdata->pad_sel[MTK_SPI_PAD_SEL],
 		       mdata->base + SPI_PAD_SEL_REG);
 
 	/* tick delay */
@@ -1077,14 +1077,43 @@ static bool mtk_spi_can_dma(struct spi_master *master,
 static int mtk_spi_setup(struct spi_device *spi)
 {
 	struct mtk_spi *mdata = spi_master_get_devdata(spi->master);
+	struct mtk_chip_config *spicfg = spi->controller_data;
+	struct device_node *np = spi->master->dev.parent->of_node;
+	u32 prop;
 
-	if (!spi->controller_data)
-		spi->controller_data = (void *)&mtk_default_chip_info;
+	if (spicfg == NULL && np) {
+		spicfg = kzalloc(sizeof(*spicfg), GFP_KERNEL);
+		if (!spicfg)
+			return -ENOMEM;
+		*spicfg = mtk_default_chip_info;
+		/* override with dt configured values */
+		if (!of_property_read_u32_index(np, "mediatek,tickdly",
+						mdata->pad_sel[MTK_SPI_PAD_SEL],
+						&prop)) {
+			if (prop < MTK_SPI_MAX_TICK_DLY) {
+				spicfg->tick_delay = prop;
+				dev_info(&spi->dev, "setup pad[%d] tickdly[%d] by dts\n",
+					mdata->pad_sel[MTK_SPI_PAD_SEL], spicfg->tick_delay);
+			} else {
+				return -EINVAL;
+			}
+		}
+		spi->controller_data = spicfg;
+	}
 
 	if (mdata->dev_comp->need_pad_sel && spi->cs_gpiod)
 		gpiod_direction_output(spi->cs_gpiod, !(spi->mode & SPI_CS_HIGH));
 
 	return 0;
+}
+
+static void mtk_spi_cleanup(struct spi_device *spi)
+{
+	struct mtk_chip_config *spicfg = spi->controller_data;
+
+	spi->controller_data = NULL;
+	if (spi->dev.of_node)
+		kfree(spicfg);
 }
 
 static irqreturn_t mtk_spi_interrupt(int irq, void *dev_id)
@@ -1460,6 +1489,7 @@ static int mtk_spi_probe(struct platform_device *pdev)
 	master->transfer_one = mtk_spi_transfer_one;
 	master->can_dma = mtk_spi_can_dma;
 	master->setup = mtk_spi_setup;
+	master->cleanup = mtk_spi_cleanup;
 	master->set_cs_timing = mtk_spi_set_hw_cs_timing;
 
 	of_id = of_match_node(mtk_spi_of_match, pdev->dev.of_node);
