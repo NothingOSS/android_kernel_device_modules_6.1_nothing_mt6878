@@ -21,6 +21,7 @@
 //#include "mtk_drm_mmp.h"
 #include "mtk_drm_trace.h"
 #include "mtk_drm_drv.h"
+#include "mtk_drm_crtc.h"
 #include "platform/mtk_drm_platform.h"
 
 struct mtk_disp_vidle_para mtk_disp_vidle_flag = {
@@ -31,26 +32,17 @@ struct mtk_disp_vidle_para mtk_disp_vidle_flag = {
 	0,	/* wdt_en */
 };
 
-struct dpc_driver disp_dpc_driver = {
-	.dpc_enable = dpc_enable,
-	.dpc_group_enable = dpc_group_enable,
-	.vidle_power_keep = mtk_disp_vidle_power_keep,
-	.vidle_power_release = mtk_disp_vidle_power_release,
-	.dpc_hrt_bw_set = dpc_hrt_bw_set,
-	.dpc_srt_bw_set = dpc_srt_bw_set,
-	.dpc_dvfs_set = dpc_dvfs_set,
-};
+struct dpc_driver disp_dpc_driver;
 
 struct mtk_disp_vidle {
 	const struct mtk_disp_vidle_data *data;
 };
 
-
 static void mtk_vidle_flag_init(struct drm_crtc *crtc)
 {
-	struct mtk_drm_private *priv;
-	struct mtk_ddp_comp *output_comp;
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_ddp_comp *output_comp = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
 
 	//init
 	mtk_disp_vidle_flag.vidle_en = 0;
@@ -58,6 +50,7 @@ static void mtk_vidle_flag_init(struct drm_crtc *crtc)
 
 	if (crtc == NULL)
 		return;
+	mtk_crtc = to_mtk_crtc(crtc);
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	priv = crtc->dev->dev_private;
@@ -183,10 +176,15 @@ void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop)
 		mtk_vidle_stop();
 }
 
-void mtk_vidle_enable(struct drm_crtc *crtc)
+void mtk_vidle_enable(void *_crtc)
 {
-	if (crtc == NULL)
+	struct drm_crtc *crtc = NULL;
+
+	if (_crtc == NULL)
 		return;
+
+	crtc = (struct drm_crtc *)_crtc;
+
 	if (mtk_vidle_enable_check(DISP_VIDLE_TOP_EN))
 		DDPINFO("vidle en(0x%x), stop(0x%x)\n",
 			mtk_disp_vidle_flag.vidle_en, mtk_disp_vidle_flag.vidle_stop);
@@ -226,12 +224,14 @@ void mtk_vidle_dvfs_set(const u8 level)
 		disp_dpc_driver.dpc_dvfs_set(DPC_SUBSYS_DISP, level);
 }
 
-__weak void dpc_enable(bool en) {}
-__weak void dpc_group_enable(const u16 group, bool en) {}
-__weak void dpc_config(const enum mtk_dpc_subsys subsys, bool en) {}
-__weak void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en) {}
-__weak void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb) {}
-__weak void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb) {}
-__weak void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level) {}
-__weak int mtk_disp_vidle_power_keep(void) { return 0; }
-__weak void mtk_disp_vidle_power_release(void) {}
+void mtk_vidle_register(const struct dpc_driver *funcs)
+{
+	disp_dpc_driver.dpc_enable = funcs->dpc_enable;
+	disp_dpc_driver.dpc_group_enable = funcs->dpc_group_enable;
+	disp_dpc_driver.vidle_power_keep = funcs->vidle_power_keep;
+	disp_dpc_driver.vidle_power_release = funcs->vidle_power_release;
+	disp_dpc_driver.dpc_hrt_bw_set = funcs->dpc_hrt_bw_set;
+	disp_dpc_driver.dpc_srt_bw_set = funcs->dpc_srt_bw_set;
+	disp_dpc_driver.dpc_dvfs_set = funcs->dpc_dvfs_set;
+}
+EXPORT_SYMBOL(mtk_vidle_register);

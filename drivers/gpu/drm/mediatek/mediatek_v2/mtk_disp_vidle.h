@@ -6,7 +6,6 @@
 #ifndef __MTK_DISP_VIDLE_H__
 #define __MTK_DISP_VIDLE_H__
 
-#include "mtk_drm_crtc.h"
 #include "mtk_dpc.h"
 
 extern void dpc_enable(bool en);
@@ -58,7 +57,7 @@ struct dpc_driver {
 
 void mtk_vidle_sync_mmdvfsrc_status_rc(unsigned int rc_en);
 void mtk_vidle_sync_mmdvfsrc_status_wdt(unsigned int wdt_en);
-void mtk_vidle_enable(struct drm_crtc *crtc);
+void mtk_vidle_enable(void *crtc);
 void mtk_vidle_power_keep(void);
 void mtk_vidle_power_release(void);
 void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop);
@@ -67,5 +66,6 @@ void mtk_vidle_get_all_flag(unsigned int *en, unsigned int *stop);
 void mtk_vidle_hrt_bw_set(const u32 bw_in_mb);
 void mtk_vidle_srt_bw_set(const u32 bw_in_mb);
 void mtk_vidle_dvfs_set(const u8 level);
+void mtk_vidle_register(const struct dpc_driver *funcs);
 
 #endif

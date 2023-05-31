@@ -22,6 +22,8 @@
 #include "mtk_dpc_mmp.h"
 #include "mtk_dpc_internal.h"
 
+#include "mtk_disp_vidle.h"
+
 int debug_mmp = 1;
 module_param(debug_mmp, int, 0644);
 int debug_force_power = 1;
@@ -970,6 +972,16 @@ static const struct file_operations debug_fops = {
 };
 #endif
 
+static const struct dpc_driver dpc_funcs = {
+	.dpc_enable = dpc_enable,
+	.dpc_group_enable = dpc_group_enable,
+	.vidle_power_keep = mtk_disp_vidle_power_keep,
+	.vidle_power_release = mtk_disp_vidle_power_release,
+	.dpc_hrt_bw_set = dpc_hrt_bw_set,
+	.dpc_srt_bw_set = dpc_srt_bw_set,
+	.dpc_dvfs_set = dpc_dvfs_set,
+};
+
 static int mtk_dpc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1020,6 +1032,8 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 #endif
 
 	dpc_mmp_init();
+
+	mtk_vidle_register(&dpc_funcs);
 
 	DPCFUNC("-");
 	return ret;

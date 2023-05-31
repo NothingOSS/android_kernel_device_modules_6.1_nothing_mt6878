@@ -3,6 +3,7 @@
 subdir-ccflags-y += -Werror
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc \
+             -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2 \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp
 
