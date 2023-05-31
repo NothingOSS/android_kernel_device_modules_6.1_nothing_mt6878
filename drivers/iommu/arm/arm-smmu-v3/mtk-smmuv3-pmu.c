@@ -839,25 +839,14 @@ static void smmu_pmu_get_iidr(struct smmu_pmu *smmu_pmu)
 
 static void smmu_pmu_delay_init(struct smmu_pmu *smmu_pmu)
 {
-	struct platform_device *pdev;
 	u32 cfgr, reg_size;
 	u64 ceid_64[2];
 
-	pdev = to_platform_device(smmu_pmu->dev);
 	cfgr = readl_relaxed(smmu_pmu->reg_base + SMMU_PMCG_CFGR);
 
 	/* Determine if page 1 is present */
-	if (cfgr & SMMU_PMCG_CFGR_RELOC_CTRS) {
-		smmu_pmu->reloc_base = devm_platform_ioremap_resource(pdev, 1);
-		if (IS_ERR(smmu_pmu->reloc_base)) {
-			dev_info(smmu_pmu->dev,
-				 "reloc_base error for %s",
-				 smmu_pmu->pmu.name);
-			smmu_pmu->reloc_base = smmu_pmu->reg_base;
-		}
-	} else {
+	if (!(cfgr & SMMU_PMCG_CFGR_RELOC_CTRS))
 		smmu_pmu->reloc_base = smmu_pmu->reg_base;
-	}
 
 	ceid_64[0] = readq_relaxed(smmu_pmu->reg_base + SMMU_PMCG_CEID0);
 	ceid_64[1] = readq_relaxed(smmu_pmu->reg_base + SMMU_PMCG_CEID1);
@@ -909,6 +898,13 @@ static int smmu_pmu_probe(struct platform_device *pdev)
 	smmu_pmu->reg_base = devm_platform_get_and_ioremap_resource(pdev, 0, &res_0);
 	if (IS_ERR(smmu_pmu->reg_base))
 		return PTR_ERR(smmu_pmu->reg_base);
+	smmu_pmu->reloc_base = devm_platform_ioremap_resource(pdev, 1);
+	if (IS_ERR(smmu_pmu->reloc_base)) {
+		dev_info(smmu_pmu->dev,
+			 "reloc_base error for %s",
+			 smmu_pmu->pmu.name);
+		smmu_pmu->reloc_base = smmu_pmu->reg_base;
+	}
 
 	spin_lock_init(&smmu_pmu->pmu_lock);
 	irq = platform_get_irq_optional(pdev, 0);
