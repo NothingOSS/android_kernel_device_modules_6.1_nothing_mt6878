@@ -176,25 +176,20 @@ static void fixup_busy_time(struct task_struct *p, int new_cpu)
 	struct rq *src_rq = task_rq(p);
 	struct rq *dest_rq = cpu_rq(new_cpu);
 	u64 wallclock;
-	struct flt_rq *dest_fsrq = &per_cpu(flt_rq, dest_rq->cpu);
-	struct flt_rq *src_fsrq =  &per_cpu(flt_rq, src_rq->cpu);
-	struct flt_task_struct *fts = &((struct mtk_task *)p->android_vendor_data1)->flt_task;
-	u64 *src_curr_runnable_sum, *dst_curr_runnable_sum;
-	u64 *src_prev_runnable_sum, *dst_prev_runnable_sum;
-	int flt_groupid = -1;
-	bool is_flt_group_id = false;
+	unsigned int state;
 
-	if (!p->on_rq && READ_ONCE(p->__state) != TASK_WAKING)
+	state = READ_ONCE(p->__state);
+	if (!p->on_rq && state != TASK_WAKING)
 		return;
-	is_flt_group_id = check_and_get_grp_id(p, &flt_groupid);
-	if (READ_ONCE(p->__state) == TASK_WAKING)
+
+	if (state == TASK_WAKING)
 		double_rq_lock(src_rq, dest_rq);
 
 	wallclock = get_current_time();
-
-	lockdep_assert_rq_held(src_rq);
-	lockdep_assert_rq_held(dest_rq);
-
+	if (state == TASK_WAKING) {
+		lockdep_assert_rq_held(src_rq);
+		lockdep_assert_rq_held(dest_rq);
+	}
 	if (task_rq(p) != src_rq) {
 		FLT_LOGI("on CPU %d task %s(%d) not on src_rq %d",
 			raw_smp_processor_id(), p->comm, p->pid, src_rq->cpu);
@@ -202,29 +197,10 @@ static void fixup_busy_time(struct task_struct *p, int new_cpu)
 
 	flt_update_task_ravg(task_rq(p)->curr, task_rq(p),
 			      TASK_UPDATE, wallclock, 0);
-	flt_update_task_ravg(dest_rq->curr, dest_rq,
-			      TASK_UPDATE, wallclock, 0);
-
 	flt_update_task_ravg(p, task_rq(p), TASK_MIGRATE,
 			 wallclock, 0);
-	if (is_flt_group_id) {
-		src_curr_runnable_sum = &src_fsrq->group_curr_sum[flt_groupid];
-		src_prev_runnable_sum = &src_fsrq->group_prev_sum[flt_groupid];
 
-		dst_curr_runnable_sum = &dest_fsrq->group_curr_sum[flt_groupid];
-		dst_prev_runnable_sum = &dest_fsrq->group_prev_sum[flt_groupid];
-
-		if (fts->curr_window) {
-			*src_curr_runnable_sum -= fts->curr_window;
-			*dst_curr_runnable_sum += fts->curr_window;
-		}
-
-		if (fts->prev_window) {
-			*src_prev_runnable_sum -= fts->prev_window;
-			*dst_prev_runnable_sum += fts->prev_window;
-		}
-	}
-	if (READ_ONCE(p->__state) == TASK_WAKING)
+	if (state == TASK_WAKING)
 		double_rq_unlock(src_rq, dest_rq);
 }
 
