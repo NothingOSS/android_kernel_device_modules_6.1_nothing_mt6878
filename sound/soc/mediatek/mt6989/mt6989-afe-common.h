@@ -15,7 +15,7 @@
 #include "mt6989-reg.h"
 #include "../common/mtk-base-afe.h"
 
-#define SKIP_SB
+// #define SKIP_SB
 #ifdef SKIP_SB
 /* define SKIP_SB to skip all feature */
 #define SKIP_SB_DSP
@@ -26,8 +26,12 @@
 #define SKIP_SMCC_SB
 #else
 /* delete define below if your feature don't want to skip */
+#define SKIP_SB_BTCVSD
 #define SKIP_SB_OFFLOAD
+#define SKIP_SB_ULTRA
+#define SKIP_SB_VOW
 #define SKIP_SB_AUDIO
+#define SKIP_SMCC_SB
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
