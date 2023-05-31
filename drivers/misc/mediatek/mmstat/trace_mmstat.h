@@ -8,6 +8,7 @@
 
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
 extern bool mtk_get_gpu_memory_usage(unsigned int *pMemUsage);
+extern bool mtk_get_gpu_memory_pool(size_t *pMemPool);
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_ION)

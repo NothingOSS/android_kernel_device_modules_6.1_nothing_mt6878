@@ -153,6 +153,7 @@ static void mmstat_trace_meminfo(void)
 	unsigned long meminfo[NR_MEMINFO_ITEMS] = {0};
 	size_t num_entries = 0;
 	unsigned int gpuuse = 0;
+	size_t gpu_pool = 0;
 
 	/* available memory */
 	meminfo[num_entries++] = P2K(global_zone_page_state(NR_FREE_PAGES));
@@ -189,7 +190,11 @@ static void mmstat_trace_meminfo(void)
 #if IS_ENABLED(CONFIG_MTK_ION)
 	meminfo[num_entries++] = B2K((unsigned long)ion_mm_heap_total_memory());
 #else
-	meminfo[num_entries++] = P2K(global_node_page_state(NR_KERNEL_MISC_RECLAIMABLE));
+#if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
+	if (mtk_get_gpu_memory_pool(&gpu_pool))
+		gpu_pool = B2K(gpu_pool);
+#endif
+	meminfo[num_entries++] = P2K(global_node_page_state(NR_KERNEL_MISC_RECLAIMABLE)) - gpu_pool;
 #endif
 
 	/* misc */
