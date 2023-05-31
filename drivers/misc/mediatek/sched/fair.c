@@ -1106,6 +1106,21 @@ void set_gear_indices(int pid, int gear_start, int num_gear)
 }
 EXPORT_SYMBOL_GPL(set_gear_indices);
 
+void unset_gear_indices(int pid)
+{
+	struct task_struct *p;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		__set_gear_indices(p, -1, num_sched_clusters);
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL_GPL(unset_gear_indices);
+
 #if IS_ENABLED(CONFIG_MTK_SCHED_UPDOWN_MIGRATE)
 
 /* Default Migration margin */
