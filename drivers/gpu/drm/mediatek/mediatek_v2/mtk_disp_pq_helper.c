@@ -289,6 +289,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 		cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 		if (!cb_data) {
 			DDPPR_ERR("cb data creation failed\n");
+			cmdq_pkt_destroy(pq_cmdq_handle);
 			return -1;
 		}
 
@@ -303,6 +304,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 
 		if (!(mtk_crtc->enabled)) {
 			DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
+			cmdq_pkt_destroy(pq_cmdq_handle);
 			kfree(cb_data);
 			if (user_lock)
 				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
