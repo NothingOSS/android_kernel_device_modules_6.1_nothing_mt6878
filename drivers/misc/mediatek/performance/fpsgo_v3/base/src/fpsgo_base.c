@@ -44,6 +44,11 @@
 #define TIME_1S  1000000000ULL
 #define TRAVERSE_PERIOD  300000000000ULL
 
+#ifndef CREATE_TRACE_POINTS
+#define CREATE_TRACE_POINTS
+#endif
+#include "fpsgo_trace_event.h"
+
 #define event_trace(ip, fmt, args...) \
 do { \
 	__trace_printk_check_format(fmt, ##args);     \
@@ -469,31 +474,75 @@ int fpsgo_get_acquire_hint_is_enable(void)
 	return fpsgo_get_acquire_hint_enable;
 }
 
-uint32_t fpsgo_systrace_mask;
-
-#define GENERATE_STRING(name, unused) #name
-static const char * const mask_string[] = {
-	FPSGO_SYSTRACE_LIST(GENERATE_STRING)
-};
-
 static int fpsgo_update_tracemark(void)
 {
 	return 1;
 }
 
-static noinline int tracing_mark_write(const char *buf)
+static int fpsgo_systrace_enabled(int type)
 {
-	trace_printk(buf);
-	return 0;
+	int ret = 1;
+
+	switch (type) {
+	case FPSGO_DEBUG_MANDATORY:
+		if (!trace_fpsgo_main_systrace_enabled())
+			ret = 0;
+		break;
+	case FPSGO_DEBUG_FBT:
+		if (!trace_fbt_systrace_enabled())
+			ret = 0;
+		break;
+	case FPSGO_DEBUG_FSTB:
+		if (!trace_fstb_systrace_enabled())
+			ret = 0;
+		break;
+	case FPSGO_DEBUG_XGF:
+		if (!trace_xgf_systrace_enabled())
+			ret = 0;
+		break;
+	case FPSGO_DEBUG_FBT_CTRL:
+		if (!trace_fbt_ctrl_systrace_enabled())
+			ret = 0;
+		break;
+	default:
+		break;
+	}
+	return ret;
 }
 
-void __fpsgo_systrace_c(pid_t pid, unsigned long long bufID,
+static void __fpsgo_systrace_print(int type, char *buf)
+{
+	switch (type) {
+	case FPSGO_DEBUG_MANDATORY:
+		trace_fpsgo_main_systrace(buf);
+		break;
+	case FPSGO_DEBUG_FBT:
+		trace_fbt_systrace(buf);
+		break;
+	case FPSGO_DEBUG_FSTB:
+		trace_fstb_systrace(buf);
+		break;
+	case FPSGO_DEBUG_XGF:
+		trace_xgf_systrace(buf);
+		break;
+	case FPSGO_DEBUG_FBT_CTRL:
+		trace_fbt_ctrl_systrace(buf);
+		break;
+	default:
+		break;
+	}
+}
+
+void __fpsgo_systrace_c(int type, pid_t pid, unsigned long long bufID,
 	int val, const char *fmt, ...)
 {
 	char log[256];
 	va_list args;
 	int len;
 	char buf2[256];
+
+	if (!fpsgo_systrace_enabled(type))
+		return;
 
 	if (unlikely(!fpsgo_update_tracemark()))
 		return;
@@ -519,15 +568,18 @@ void __fpsgo_systrace_c(pid_t pid, unsigned long long bufID,
 	else if (unlikely(len == 256))
 		buf2[255] = '\0';
 
-	tracing_mark_write(buf2);
+	__fpsgo_systrace_print(type, buf2);
 }
 
-void __fpsgo_systrace_b(pid_t tgid, const char *fmt, ...)
+void __fpsgo_systrace_b(int type, pid_t tgid, const char *fmt, ...)
 {
 	char log[256];
 	va_list args;
 	int len;
 	char buf2[256];
+
+	if (!fpsgo_systrace_enabled(type))
+		return;
 
 	if (unlikely(!fpsgo_update_tracemark()))
 		return;
@@ -549,13 +601,16 @@ void __fpsgo_systrace_b(pid_t tgid, const char *fmt, ...)
 	else if (unlikely(len == 256))
 		buf2[255] = '\0';
 
-	tracing_mark_write(buf2);
+	__fpsgo_systrace_print(type, buf2);
 }
 
-void __fpsgo_systrace_e(void)
+void __fpsgo_systrace_e(int type)
 {
 	char buf2[256];
 	int len;
+
+	if (!fpsgo_systrace_enabled(type))
+		return;
 
 	if (unlikely(!fpsgo_update_tracemark()))
 		return;
@@ -567,7 +622,7 @@ void __fpsgo_systrace_e(void)
 	else if (unlikely(len == 256))
 		buf2[255] = '\0';
 
-	tracing_mark_write(buf2);
+	__fpsgo_systrace_print(type, buf2);
 }
 
 void fpsgo_main_trace(const char *fmt, ...)
@@ -576,6 +631,8 @@ void fpsgo_main_trace(const char *fmt, ...)
 	va_list args;
 	int len;
 
+	if (!trace_fpsgo_main_trace_enabled())
+		return;
 
 	va_start(args, fmt);
 	len = vsnprintf(log, sizeof(log), fmt, args);
@@ -583,7 +640,7 @@ void fpsgo_main_trace(const char *fmt, ...)
 	if (unlikely(len == 256))
 		log[255] = '\0';
 	va_end(args);
-	trace_printk(log);
+	trace_fpsgo_main_trace(log);
 }
 EXPORT_SYMBOL(fpsgo_main_trace);
 
@@ -2205,69 +2262,6 @@ int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
 	return 0;
 }
 
-static ssize_t systrace_mask_show(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	int i;
-	char *temp = NULL;
-	int pos = 0;
-	int length = 0;
-
-	temp = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
-	if (!temp)
-		goto out;
-
-	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-			" Current enabled systrace:\n");
-	pos += length;
-
-	for (i = 0; (1U << i) < FPSGO_DEBUG_MAX; i++) {
-		length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-			"  %-*s ... %s\n", 12, mask_string[i],
-		   fpsgo_systrace_mask & (1U << i) ?
-		   "On" : "Off");
-		pos += length;
-
-	}
-
-	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
-
-out:
-	kfree(temp);
-	return length;
-}
-
-static ssize_t systrace_mask_store(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		const char *buf, size_t count)
-{
-	uint32_t val = -1;
-	char *acBuffer = NULL;
-	uint32_t arg;
-
-	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
-	if (!acBuffer)
-		goto out;
-
-	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtou32(acBuffer, 0, &arg) == 0)
-				val = arg;
-			else
-				goto out;
-		}
-	}
-
-	fpsgo_systrace_mask = val & (FPSGO_DEBUG_MAX - 1U);
-
-out:
-	kfree(acBuffer);
-	return count;
-}
-
-static KOBJ_ATTR_RW(systrace_mask);
-
 static ssize_t fpsgo_enable_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -3086,7 +3080,6 @@ int init_fpsgo_common(void)
 	acquire_info_tree = RB_ROOT;
 
 	if (!fpsgo_sysfs_create_dir(NULL, "common", &base_kobj)) {
-		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_systrace_mask);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_fpsgo_enable);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_force_onoff);
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_render_info);
@@ -3104,7 +3097,6 @@ int init_fpsgo_common(void)
 	}
 
 	fpsgo_update_tracemark();
-	fpsgo_systrace_mask = FPSGO_DEBUG_MANDATORY;
 
 	return 0;
 }

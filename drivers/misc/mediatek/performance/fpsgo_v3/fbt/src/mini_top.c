@@ -19,6 +19,7 @@
 
 #include "fpsgo_base.h"
 #include "fpsgo_sysfs.h"
+#include "fpsgo_trace_event.h"
 #include "fbt_cpu.h"
 #include "fstb.h"
 #include "xgf.h"
@@ -36,7 +37,6 @@ static int __minitop_n;
 static int __warmup_order;
 static int __cooldn_order;
 static int __thrs_heavy;
-static int __minitop_trace_enable;
 
 static DEFINE_MUTEX(minitop_mlock);
 static DEFINE_MUTEX(minitop_qlock);
@@ -66,7 +66,7 @@ static void minitop_trace(const char *fmt, ...)
 	va_list args;
 	int len;
 
-	if (!__minitop_trace_enable)
+	if (!trace_minitop_trace_enabled())
 		return;
 
 	va_start(args, fmt);
@@ -74,7 +74,7 @@ static void minitop_trace(const char *fmt, ...)
 	if (unlikely(len == 256))
 		log[255] = '\0';
 	va_end(args);
-	trace_printk(log);
+	trace_minitop_trace(log);
 }
 
 static int __util_cmp(const void *a, const void *b)
@@ -1025,35 +1025,6 @@ MINITOP_SYSFS_WRITE(thrs_heavy, 0, 101)
 
 static KOBJ_ATTR_RW(thrs_heavy);
 
-static ssize_t minitop_trace_enable_show(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	char *temp = NULL;
-	int pos = 0;
-	int length = 0;
-
-	temp = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
-	if (!temp)
-		goto out;
-
-	minitop_lock(__func__);
-	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-			"%d\n", __minitop_trace_enable);
-	pos += length;
-	minitop_unlock(__func__);
-
-	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
-
-out:
-	kfree(temp);
-	return length;
-}
-
-MINITOP_SYSFS_WRITE(minitop_trace_enable, 0, 1)
-
-static KOBJ_ATTR_RW(minitop_trace_enable);
-
 static ssize_t enable_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -1129,8 +1100,6 @@ void __exit minitop_exit(void)
 	fpsgo_sysfs_remove_file(minitop_kobj, &kobj_attr_cooldn_order);
 	fpsgo_sysfs_remove_file(minitop_kobj, &kobj_attr_thrs_heavy);
 	fpsgo_sysfs_remove_file(minitop_kobj, &kobj_attr_enable);
-	fpsgo_sysfs_remove_file(minitop_kobj,
-		&kobj_attr_minitop_trace_enable);
 
 	fpsgo_sysfs_remove_dir(&minitop_kobj);
 }
@@ -1162,8 +1131,6 @@ int __init minitop_init(void)
 		fpsgo_sysfs_create_file(minitop_kobj, &kobj_attr_cooldn_order);
 		fpsgo_sysfs_create_file(minitop_kobj, &kobj_attr_thrs_heavy);
 		fpsgo_sysfs_create_file(minitop_kobj, &kobj_attr_enable);
-		fpsgo_sysfs_create_file(minitop_kobj,
-			&kobj_attr_minitop_trace_enable);
 	}
 
 

@@ -43,6 +43,7 @@
 #include "fpsgo_base.h"
 #include "fpsgo_sysfs.h"
 #include "fbt_usedext.h"
+#include "fpsgo_trace_event.h"
 #include "fbt_cpu.h"
 #include "fbt_cpu_platform.h"
 #include "../fstb/fstb.h"
@@ -1031,7 +1032,7 @@ static void print_dep(const char *func,
 	struct fpsgo_loading *fl;
 	int i, ret;
 
-	if (!xgf_trace_enable)
+	if (!trace_xgf_trace_enabled())
 		return;
 
 	dep_str = kcalloc(size + 1, MAX_PID_DIGIT * sizeof(char),

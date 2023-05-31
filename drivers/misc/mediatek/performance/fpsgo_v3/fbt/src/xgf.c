@@ -28,6 +28,7 @@
 #include "fpsgo_base.h"
 #include "fpsgo_sysfs.h"
 #include "fpsgo_usedext.h"
+#include "fpsgo_trace_event.h"
 #include "fstb.h"
 #include "fps_composer.h"
 
@@ -37,8 +38,6 @@ static DEFINE_MUTEX(xgf_policy_cmd_lock);
 static atomic_t xgf_event_buffer_idx;
 static atomic_t fstb_event_buffer_idx;
 static int xgf_enable;
-int xgf_trace_enable;
-static int xgf_log_trace_enable;
 static int xgf_ko_ready;
 static int xgf_nr_cpus __read_mostly;
 static struct kobject *xgf_kobj;
@@ -110,20 +109,20 @@ static int xgf_tracepoint_probe_unregister(struct tracepoint *tp,
 
 void xgf_trace(const char *fmt, ...)
 {
-	char log[256];
+	char log[1024];
 	va_list args;
 	int len;
 
-	if (!xgf_trace_enable)
+	if (!trace_xgf_trace_enabled())
 		return;
 
 	va_start(args, fmt);
 	len = vsnprintf(log, sizeof(log), fmt, args);
-	if (unlikely(len == 256))
-		log[255] = '\0';
+	if (unlikely(len == 1024))
+		log[1023] = '\0';
 	va_end(args);
 
-	trace_printk(log);
+	trace_xgf_trace(log);
 }
 EXPORT_SYMBOL(xgf_trace);
 
@@ -1039,24 +1038,6 @@ static char *xgf_strcat(char *dest, const char *src,
 	return dest;
 }
 
-static void xgf_log_trace(const char *fmt, ...)
-{
-	char log[1024];
-	va_list args;
-	int len;
-
-	if (!xgf_log_trace_enable)
-		return;
-
-	va_start(args, fmt);
-	len = vsnprintf(log, sizeof(log), fmt, args);
-
-	if (unlikely(len == 1024))
-		log[1023] = '\0';
-	va_end(args);
-	trace_printk(log);
-}
-
 static void xgf_print_critical_path_info(int rpid, unsigned long long bufID,
 	int *raw_dep_list, int raw_dep_list_num)
 {
@@ -1066,7 +1047,7 @@ static void xgf_print_critical_path_info(int rpid, unsigned long long bufID,
 	int overflow = 0;
 	int len = 0;
 
-	if (!xgf_log_trace_enable)
+	if (!trace_xgf_trace_enabled())
 		return;
 
 	if (!raw_dep_list || raw_dep_list_num < 0 ||
@@ -1105,16 +1086,16 @@ static void xgf_print_critical_path_info(int rpid, unsigned long long bufID,
 
 out:
 	if (overflow)
-		xgf_log_trace("[xgf][%d][0x%llx] | (of) %s",
+		xgf_trace("[xgf][%d][0x%llx] | (of) %s",
 		rpid, bufID, total_pid_list);
 	else
-		xgf_log_trace("[xgf][%d][0x%llx] | %s",
+		xgf_trace("[xgf][%d][0x%llx] | %s",
 		rpid, bufID, total_pid_list);
 
 	return;
 
 error:
-	xgf_log_trace("[xgf][%d][0x%llx] | %s error",
+	xgf_trace("[xgf][%d][0x%llx] | %s error",
 		rpid, bufID, __func__);
 	return;
 }
@@ -1181,7 +1162,7 @@ static int xgff_enter_est_runtime(struct xgf_render_if *render,
 	if (!local_dep_list)
 		goto out;
 
-	if (xgf_log_trace_enable) {
+	if (!trace_xgf_trace_enabled()) {
 		max_raw_dep_list_num = xgf_max_dep_path_num * xgf_max_dep_task_num;
 		raw_dep_list = xgf_alloc_array(max_raw_dep_list_num, sizeof(int));
 		if (!raw_dep_list)
@@ -1397,7 +1378,7 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 	if (!local_dep_list)
 		goto by_pass_skip;
 
-	if (xgf_log_trace_enable) {
+	if (!trace_xgf_trace_enabled()) {
 		max_raw_dep_list_num = xgf_max_dep_path_num * xgf_max_dep_task_num;
 		raw_dep_list = xgf_alloc_array(max_raw_dep_list_num, sizeof(int));
 		if (!raw_dep_list)
@@ -2448,14 +2429,6 @@ out: \
 	return count; \
 }
 
-XGF_SYSFS_READ(xgf_trace_enable, 1, xgf_trace_enable);
-XGF_SYSFS_WRITE_VALUE(xgf_trace_enable, xgf_main_lock, xgf_trace_enable, 0, 1);
-static KOBJ_ATTR_RW(xgf_trace_enable);
-
-XGF_SYSFS_READ(xgf_log_trace_enable, 1, xgf_log_trace_enable);
-XGF_SYSFS_WRITE_VALUE(xgf_log_trace_enable, xgf_main_lock, xgf_log_trace_enable, 0, 1);
-static KOBJ_ATTR_RW(xgf_log_trace_enable);
-
 XGF_SYSFS_READ(xgf_cfg_spid, 1, xgf_cfg_spid);
 XGF_SYSFS_WRITE_VALUE(xgf_cfg_spid, xgf_main_lock, xgf_cfg_spid, 0, 1);
 static KOBJ_ATTR_RW(xgf_cfg_spid);
@@ -2841,8 +2814,6 @@ int __init init_xgf(void)
 	init_xgf_ko();
 
 	if (!fpsgo_sysfs_create_dir(NULL, "xgf", &xgf_kobj)) {
-		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_trace_enable);
-		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_log_trace_enable);
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_cfg_spid);
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_dep_frames);
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_extra_sub);
@@ -2878,8 +2849,6 @@ int __exit exit_xgf(void)
 
 	clean_xgf_tp();
 
-	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_trace_enable);
-	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_log_trace_enable);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_cfg_spid);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_dep_frames);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_extra_sub);

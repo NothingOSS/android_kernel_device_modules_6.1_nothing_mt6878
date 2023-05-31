@@ -126,8 +126,6 @@ struct xgff_frame {
 	int is_start_dep;
 };
 
-extern int xgf_trace_enable;
-
 int __init init_xgf(void);
 int __exit exit_xgf(void);
 void fpsgo_ctrl2xgf_switch_xgf(int val);
