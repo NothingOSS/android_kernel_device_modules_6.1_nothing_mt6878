@@ -80,6 +80,16 @@ module_param(mml_pipe0_dest_crc, int, 0644);
 int mml_pipe1_dest_crc;
 module_param(mml_pipe1_dest_crc, int, 0644);
 
+/* crc compare, support only dest crc */
+int mml_crc_cmp;
+module_param(mml_crc_cmp, int, 0644);
+int mml_crc_cmp_p0;
+module_param(mml_crc_cmp_p0, int, 0644);
+int mml_crc_cmp_p1;
+module_param(mml_crc_cmp_p1, int, 0644);
+int mml_crc_err;
+module_param(mml_crc_err, int, 0644);
+
 struct mml_dev {
 	struct platform_device *pdev;
 	struct mml_comp *comps[MML_MAX_COMPONENTS];
@@ -1075,6 +1085,21 @@ void mml_unregister_comp(struct device *master, struct mml_comp *comp)
 }
 EXPORT_SYMBOL_GPL(mml_unregister_comp);
 
+static void mml_record_crc_check(struct mml_task *task)
+{
+	if (mml_crc_cmp_p0 != task->dest_crc[0]) {
+		mml_crc_err++;
+		mml_err("CRC check job %u pipe 0 crc fail %#010x != %#010x error count %d",
+			task->job.jobid, task->dest_crc[0], mml_crc_cmp_p0, mml_crc_err);
+	}
+
+	if (task->pkts[1] && mml_crc_cmp_p1 != task->dest_crc[1]) {
+		mml_crc_err++;
+		mml_err("CRC check job %u pipe 1 crc fail %#010x != %#010x error count %d",
+			task->job.jobid, task->dest_crc[1], mml_crc_cmp_p1, mml_crc_err);
+	}
+}
+
 void mml_record_track(struct mml_dev *mml, struct mml_task *task)
 {
 	const struct mml_frame_config *cfg = task->config;
@@ -1112,6 +1137,9 @@ void mml_record_track(struct mml_dev *mml, struct mml_task *task)
 		record->src_crc[i] = task->src_crc[i];
 		record->dest_crc[i] = task->dest_crc[i];
 	}
+
+	if (mml_crc_cmp)
+		mml_record_crc_check(task);
 
 	mml_pipe0_dest_crc = task->dest_crc[0];
 	if (MML_PIPE_CNT > 1)

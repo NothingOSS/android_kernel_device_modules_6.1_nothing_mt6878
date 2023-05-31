@@ -115,6 +115,9 @@
 #define WROT_POLL_SLEEP_TIME_US		(10)
 #define WROT_MAX_POLL_TIME_US		(1000)
 
+#define CMDQ_GET_ADDR_LOW(addr)		((u16)(addr & GENMASK(15, 0)) | BIT(1))
+
+
 /* debug option to change sram write height */
 int mml_racing_h = MML_WROT_RACING_MAX;
 module_param(mml_racing_h, int, 0644);
@@ -128,6 +131,8 @@ module_param(mml_wrot_crc, int, 0644);
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 static u32 *wrot_crc_va[MML_PIPE_CNT];
 static dma_addr_t wrot_crc_pa[MML_PIPE_CNT];
+static u32 wrot_crc_idx[MML_PIPE_CNT];
+#define WROT_CRC_CNT	1024
 #endif
 
 int mml_wrot_bkgd_en;
@@ -321,6 +326,7 @@ struct wrot_frame_data {
 	 * use in reuse command
 	 */
 	u16 labels[WROT_LABEL_TOTAL];
+	u32 crc_inst_offset;
 
 	u32 wdone_cnt;
 };
@@ -2016,6 +2022,66 @@ static s32 wrot_wait(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+static void wrot_backup_crc(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	dma_addr_t pa_addr;
+
+	if (likely(!mml_wrot_crc))
+		return;
+
+	if (!wrot_crc_va[ccfg->pipe] && !wrot_crc_pa[ccfg->pipe]) {
+		wrot_crc_va[ccfg->pipe] =
+			cmdq_mbox_buf_alloc(task->config->path[ccfg->pipe]->clt,
+				&wrot_crc_pa[ccfg->pipe]);
+		mml_log("%s wrot component %u job %u pipe %u va %p pa %#llx",
+			__func__, comp->id, task->job.jobid,
+			ccfg->pipe, wrot_crc_va[ccfg->pipe], wrot_crc_pa[ccfg->pipe]);
+	}
+
+	if (unlikely(!wrot_crc_va[ccfg->pipe]) || unlikely(!wrot_crc_pa[ccfg->pipe])) {
+		mml_err("%s wrot component %u job %u pipe %u get dram va %p pa %#llx failed",
+			__func__, comp->id, task->job.jobid,
+			ccfg->pipe, wrot_crc_va[ccfg->pipe], wrot_crc_pa[ccfg->pipe]);
+		return;
+	}
+
+	pa_addr = wrot_crc_pa[ccfg->pipe] + wrot_crc_idx[ccfg->pipe] * 4;
+	task->wrot_crc_idx[ccfg->pipe] = wrot_crc_idx[ccfg->pipe]++;
+	if (wrot_crc_idx[ccfg->pipe] >= WROT_CRC_CNT)
+		wrot_crc_idx[ccfg->pipe] = 0;
+
+	/* read reg value to spr : CMDQ_THR_SPR_IDX2*/
+	cmdq_pkt_read_addr(pkt, comp->base_pa + VIDO_CRC_VALUE, CMDQ_THR_SPR_IDX2);
+
+	/* write spr to dram pa */
+	cmdq_pkt_write_indriect(pkt, NULL, pa_addr, CMDQ_THR_SPR_IDX2, UINT_MAX);
+	wrot_frm->crc_inst_offset = pkt->cmd_buf_size - CMDQ_INST_SIZE;
+#endif
+}
+
+static void wrot_backup_crc_update(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	dma_addr_t pa_addr;
+	u32 *inst;
+
+	pa_addr = wrot_crc_pa[ccfg->pipe] + wrot_crc_idx[ccfg->pipe] * 4;
+	task->wrot_crc_idx[ccfg->pipe] =  wrot_crc_idx[ccfg->pipe]++;
+	if (wrot_crc_idx[ccfg->pipe] >= WROT_CRC_CNT)
+		wrot_crc_idx[ccfg->pipe] = 0;
+
+	inst = (u32 *)cmdq_pkt_get_va_by_offset(pkt, wrot_frm->crc_inst_offset);
+	inst[1] = (inst[1] & 0xff00ffff) | CMDQ_GET_ADDR_LOW(pa_addr);
+#endif
+}
+
 static s32 wrot_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
@@ -2039,33 +2105,8 @@ static s32 wrot_post(struct mml_comp *comp, struct mml_task *task,
 				0, GENMASK(19, 16));
 	}
 
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	if (unlikely(mml_wrot_crc)) {
-		if (!wrot_crc_va[ccfg->pipe] && !wrot_crc_pa[ccfg->pipe]) {
-			wrot_crc_va[ccfg->pipe] =
-				cmdq_mbox_buf_alloc(task->config->path[ccfg->pipe]->clt,
-					&wrot_crc_pa[ccfg->pipe]);
-			mml_log("%s wrot component %u job %u pipe %u va %p pa %llx",
-				__func__, comp->id, task->job.jobid,
-				ccfg->pipe, wrot_crc_va[ccfg->pipe], wrot_crc_pa[ccfg->pipe]);
-		}
+	wrot_backup_crc(comp, task, ccfg);
 
-		if (unlikely(!wrot_crc_va[ccfg->pipe]) || unlikely(!wrot_crc_pa[ccfg->pipe])) {
-			mml_err("%s wrot component %u job %u pipe %u get dram va %p pa %llx failed",
-				__func__, comp->id, task->job.jobid,
-				ccfg->pipe, wrot_crc_va[ccfg->pipe], wrot_crc_pa[ccfg->pipe]);
-		} else {
-			/* read reg value to spr : CMDQ_THR_SPR_IDX2*/
-			cmdq_pkt_read_addr(task->pkts[ccfg->pipe],
-				comp->base_pa + VIDO_CRC_VALUE,
-				CMDQ_THR_SPR_IDX2);
-
-			/* write spr to dram pa */
-			cmdq_pkt_write_indriect(task->pkts[ccfg->pipe],
-				NULL, wrot_crc_pa[ccfg->pipe], CMDQ_THR_SPR_IDX2, UINT_MAX);
-		}
-	}
-#endif
 	return 0;
 }
 
@@ -2111,6 +2152,9 @@ static s32 update_frame_addr(struct mml_comp *comp, struct mml_task *task,
 			 wrot_frm->labels[WROT_LABEL_ADDR_V],
 			 wrot_frm->labels[WROT_LABEL_ADDR_HIGH_V],
 			 addr_v);
+
+	wrot_backup_crc_update(comp, task, ccfg);
+
 	return 0;
 }
 
@@ -2148,6 +2192,26 @@ u32 wrot_format_get(struct mml_task *task, struct mml_comp_config *ccfg)
 	return task->config->info.dest[ccfg->node->out_idx].data.format;
 }
 
+static void wrot_store_crc(struct mml_comp *comp, struct mml_task *task,
+			   struct mml_comp_config *ccfg)
+{
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	u32 *crc_va;
+	u32 cur_crc;
+
+	if (!mml_wrot_crc || !wrot_crc_va[ccfg->pipe])
+		return;
+
+	crc_va = wrot_crc_va[ccfg->pipe] + task->wrot_crc_idx[ccfg->pipe];
+	cur_crc = readl(crc_va);
+	task->dest_crc[ccfg->pipe] = cur_crc;
+	mml_msg("%s wrot%d component %u job %u pipe %u crc %#010x",
+		__func__, wrot->idx, comp->id, task->job.jobid,
+		ccfg->pipe, task->dest_crc[ccfg->pipe]);
+#endif
+}
+
 static void wrot_task_done(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg)
 {
@@ -2161,14 +2225,7 @@ static void wrot_task_done(struct mml_comp *comp, struct mml_task *task,
 		mml_pq_wrot_callback(task);
 	}
 
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	if (mml_wrot_crc && wrot_crc_va[ccfg->pipe]) {
-		task->dest_crc[ccfg->pipe] = readl(wrot_crc_va[ccfg->pipe]);
-		mml_msg("%s wrot component %u, job %u pipe %u crc %#010x",
-			__func__, comp->id, task->job.jobid,
-			ccfg->pipe, task->dest_crc[ccfg->pipe]);
-	}
-#endif
+	wrot_store_crc(comp, task, ccfg);
 }
 
 static s32 mml_wrot_comp_clk_enable(struct mml_comp *comp)

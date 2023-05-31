@@ -491,6 +491,7 @@ struct mml_task {
 	enum mml_task_state state;
 	struct kref ref;
 	struct mml_task_pipe pipe[MML_PIPE_CNT];
+	u32 wrot_crc_idx[MML_PIPE_CNT];
 
 	/* mml context */
 	void *ctx;
