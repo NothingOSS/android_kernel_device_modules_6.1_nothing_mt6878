@@ -46,7 +46,7 @@ static bool freq_scaling_disabled = true;
 static int pd_count;
 static int entry_count;
 static int busy_tick_boost_all;
-static int sbb_active_ratio = 100;
+static int sbb_active_ratio[MAX_NR_CPUS] = {100};
 static unsigned int wl_type_delay_update_tick = 2;
 
 static int fpsgo_boosting; //0 : disable, 1 : enable
@@ -162,7 +162,7 @@ struct cpu_dsu_freq_state *get_dsu_freq_state(void)
 }
 EXPORT_SYMBOL_GPL(get_dsu_freq_state);
 
-inline void set_dsu_target_freq(struct cpufreq_policy *policy)
+bool set_dsu_target_freq(struct cpufreq_policy *policy)
 {
 	int i, cpu = policy->cpu, opp, dsu_target_freq = 0;
 	unsigned int wl_type = get_em_wl();
@@ -170,12 +170,16 @@ inline void set_dsu_target_freq(struct cpufreq_policy *policy)
 	struct mtk_em_perf_state *ps;
 	struct cpufreq_mtk *c = policy->driver_data;
 
+	if (freq_state.is_eas_dsu_support == false)
+		return false;
+
 	freq_state.cpu_freq[per_cpu(gear_id, cpu)] = policy->cached_target_freq;
+
 	if (!freq_state.is_eas_dsu_ctrl) {
 		c->sb_ch = -1;
 		if (trace_sugov_ext_dsu_freq_vote_enabled())
 			trace_sugov_ext_dsu_freq_vote(wl_type, UINT_MAX, UINT_MAX, UINT_MAX);
-		return;
+		return false;
 	}
 
 	for (i = 0; i < pd_count; i++) {
@@ -200,6 +204,11 @@ skip_single_idle_cpu:
 
 	freq_state.dsu_target_freq = dsu_target_freq;
 	c->sb_ch  = dsu_target_freq;
+	if (dsu_target_freq != freq_state.dsu_target_freq_last) {
+		freq_state.dsu_target_freq_last = dsu_target_freq;
+		return true;
+	}
+	return false;
 }
 
 static struct dsu_table dsu_tbl;
@@ -409,13 +418,25 @@ void init_sbb_cpu_data(void)
 }
 EXPORT_SYMBOL_GPL(init_sbb_cpu_data);
 
+void set_system_sbb(bool set)
+{
+	busy_tick_boost_all = set;
+}
+EXPORT_SYMBOL_GPL(set_system_sbb);
+
+bool get_system_sbb(void)
+{
+	return busy_tick_boost_all;
+}
+EXPORT_SYMBOL_GPL(get_system_sbb);
+
 void set_sbb(int flag, int pid, bool set)
 {
 	struct task_struct *p, *group_leader;
 
 	switch (flag) {
 	case SBB_ALL:
-		busy_tick_boost_all = set;
+		set_system_sbb(set);
 		break;
 	case SBB_GROUP:
 		rcu_read_lock();
@@ -481,15 +502,24 @@ EXPORT_SYMBOL_GPL(is_sbb_trigger);
 
 void set_sbb_active_ratio(int val)
 {
-	sbb_active_ratio = val;
+	int i;
+
+	for (i = 0; i < pd_count; i++)
+		sbb_active_ratio[i] = val;
 }
 EXPORT_SYMBOL_GPL(set_sbb_active_ratio);
 
-int get_sbb_active_ratio(void)
+void set_sbb_active_ratio_gear(int gear_id, int val)
 {
-	return sbb_active_ratio;
+	sbb_active_ratio[gear_id] = val;
 }
-EXPORT_SYMBOL_GPL(get_sbb_active_ratio);
+EXPORT_SYMBOL_GPL(set_sbb_active_ratio_gear);
+
+int get_sbb_active_ratio_gear(int gear_id)
+{
+	return sbb_active_ratio[gear_id];
+}
+EXPORT_SYMBOL_GPL(get_sbb_active_ratio_gear);
 
 unsigned int pd_get_dsu_weighting(int wl_type, int cpu)
 {
@@ -1420,7 +1450,7 @@ static inline void uclamp_se_set(struct uclamp_se *uc_se,
 	uc_se->bucket_id = uclamp_bucket_id(value);
 	uc_se->user_defined = user_defined;
 }
-static bool gu_ctrl;
+static bool gu_ctrl = false;
 bool get_gear_uclamp_ctrl(void)
 {
 	return gu_ctrl;
@@ -1428,7 +1458,13 @@ bool get_gear_uclamp_ctrl(void)
 EXPORT_SYMBOL_GPL(get_gear_uclamp_ctrl);
 void set_gear_uclamp_ctrl(int val)
 {
+	int i;
+
 	gu_ctrl = val ? true : false;
+	if (gu_ctrl == false) {
+		for (i = 0; i < pd_count; i++)
+			gear_uclamp_max[i] = SCHED_CAPACITY_SCALE;
+	}
 }
 EXPORT_SYMBOL_GPL(set_gear_uclamp_ctrl);
 
@@ -1437,6 +1473,13 @@ int get_gear_uclamp_max(int gearid)
 	return gear_uclamp_max[gearid];
 }
 EXPORT_SYMBOL_GPL(get_gear_uclamp_max);
+int get_cpu_gear_uclamp_max(int cpu)
+{
+	if (gu_ctrl == false)
+		return SCHED_CAPACITY_SCALE;
+	return gear_uclamp_max[per_cpu(gear_id, cpu)];
+}
+EXPORT_SYMBOL_GPL(get_cpu_gear_uclamp_max);
 void set_gear_uclamp_max(int gearid, int val)
 {
 	gear_uclamp_max[gearid] = val;
@@ -1575,9 +1618,6 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 		mtk_arch_set_freq_scale_gearless(policy, target_freq);
 
 	irq_log_store();
-
-	if (freq_state.is_eas_dsu_support)
-		set_dsu_target_freq(policy);
 }
 
 void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
@@ -1706,7 +1746,7 @@ static int am_wind_dura = 4000; /* microsecond */
 static int am_wind_cnt_shift = 1; /* wind_cnt = 1 << am_wind_cnt_shift */
 static int am_floor = 1024; /* 1024: 0% margin */
 static int am_ceiling = 1280; /* 1280: 20% margin */
-static int am_target_active_ratio = 80;
+static int am_target_active_ratio[MAX_NR_CPUS] = {80};
 static unsigned int adaptive_margin[MAX_NR_CPUS] = {1280};
 static unsigned int his_ptr[MAX_NR_CPUS];
 static unsigned int margin_his[MAX_NR_CPUS][MAX_NR_CPUS];
@@ -1735,9 +1775,9 @@ int get_adaptive_ratio(int cpu, int target)
 }
 EXPORT_SYMBOL_GPL(get_adaptive_ratio);
 
-void set_target_active_ratio_pct(int val)
+void set_target_active_ratio_pct(int gear_id, int val)
 {
-	am_target_active_ratio = clamp(val, 1, 100);
+	am_target_active_ratio[gear_id] = clamp(val, 1, 100);
 }
 EXPORT_SYMBOL_GPL(set_target_active_ratio_pct);
 
@@ -1752,6 +1792,18 @@ int get_am_ceiling(void)
 	return am_ceiling;
 }
 EXPORT_SYMBOL_GPL(get_am_ceiling);
+
+bool ignore_idle_ctrl = false;
+void set_ignore_idle_ctrl(bool val)
+{
+	ignore_idle_ctrl = val;
+}
+EXPORT_SYMBOL_GPL(set_ignore_idle_ctrl);
+bool get_ignore_idle_ctrl(void)
+{
+	return ignore_idle_ctrl;
+}
+EXPORT_SYMBOL_GPL(get_ignore_idle_ctrl);
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 unsigned long (*flt_sched_get_cpu_group_util_eas_hook)(int cpu, int group_id);
@@ -1845,8 +1897,8 @@ inline void update_adaptive_margin(struct cpufreq_policy *policy)
 
 		if (ramp_up[gearid] == 0) {
 			adaptive_margin_tmp = READ_ONCE(adaptive_margin[gearid]);
-			adaptive_margin_tmp =
-				(adaptive_margin_tmp * get_adaptive_ratio(cpu, 80))
+			adaptive_margin_tmp = (adaptive_margin_tmp *
+				get_adaptive_ratio(cpu, am_target_active_ratio[gearid]))
 				>> SCHED_CAPACITY_SHIFT;
 			adaptive_margin_tmp =
 				clamp_val(adaptive_margin_tmp, am_floor, am_ceiling);

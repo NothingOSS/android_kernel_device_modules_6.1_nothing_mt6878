@@ -134,12 +134,16 @@ static bool sugov_up_down_rate_limit(struct sugov_policy *sg_policy, u64 time,
 static bool sugov_update_next_freq(struct sugov_policy *sg_policy, u64 time,
 				   unsigned int next_freq)
 {
+	bool need_dsu_freq_update = false;
+
 	if (sugov_up_down_rate_limit(sg_policy, time, next_freq))
 		return false;
 
+	need_dsu_freq_update = set_dsu_target_freq(sg_policy->policy);
+
 	if (sg_policy->need_freq_update)
 		sg_policy->need_freq_update = false;
-	else if (sg_policy->next_freq == next_freq)
+	else if (sg_policy->next_freq == next_freq && need_dsu_freq_update == false)
 		return false;
 
 	sg_policy->next_freq = next_freq;
@@ -328,7 +332,8 @@ skip_rq_uclamp:
 
 			trace_sugov_ext_sbb(cpu, pid,
 				sbb_data->boost_factor, util_ori, util,
-				sbb_data->cpu_utilize, get_sbb_active_ratio());
+				sbb_data->cpu_utilize,
+				get_sbb_active_ratio_gear(per_cpu(gear_id,cpu)));
 		}
 	}
 
@@ -638,6 +643,7 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
 	struct cpufreq_policy *policy = sg_policy->policy;
 	struct rq *rq;
+	struct cpuidle_state *idle = NULL;
 	unsigned long umin, umax;
 	unsigned long util = 0, max = 1;
 	unsigned int j, max_cpu = 0;
@@ -650,15 +656,18 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 		sugov_iowait_apply(j_sg_cpu, time);
 		j_util = j_sg_cpu->util;
 		j_max = j_sg_cpu->max;
+		if (ignore_idle_ctrl)
+			idle = idle_get_state(cpu_rq(j));
 
 		if (trace_sugov_ext_util_enabled()) {
 			rq = cpu_rq(j);
 
 			umin = rq->uclamp[UCLAMP_MIN].value;
 			umax = rq->uclamp[UCLAMP_MAX].value;
-			trace_sugov_ext_util(j, j_util, umin, umax);
+			trace_sugov_ext_util(j, idle ? 0 : j_util, umin, umax);
 		}
-
+		if (idle)
+			continue;
 		if (j_util * max >= j_max * util) {
 			util = j_util;
 			max = j_max;

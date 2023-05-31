@@ -478,7 +478,8 @@ void mtk_tick_entry(void *data, struct rq *rq)
 			sbb_data->idle_time = idle_time;
 			sbb_data->wall_time = wall_time;
 
-			if (cpu_utilize >= get_sbb_active_ratio()) {
+			if (cpu_utilize >=
+				get_sbb_active_ratio_gear(pd_get_cpu_gear_id(this_cpu))) {
 				sbb_data->active = 1;
 
 				sbb_data->boost_factor =

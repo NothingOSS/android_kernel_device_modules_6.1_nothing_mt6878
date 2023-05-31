@@ -131,6 +131,7 @@ struct cpu_dsu_freq_state {
 	bool is_eas_dsu_ctrl;
 	unsigned int pd_count;
 	unsigned int dsu_target_freq;
+	unsigned int dsu_target_freq_last;
 	unsigned int *cpu_freq;
 	unsigned int *dsu_freq_vote;
 };
@@ -197,13 +198,20 @@ extern int get_curr_uclamp_hint(int pid);
 extern bool get_gear_uclamp_ctrl(void);
 extern void set_gear_uclamp_ctrl(int val);
 extern int get_gear_uclamp_max(int gearid);
+extern int get_cpu_gear_uclamp_max(int cpu);
 extern void set_gear_uclamp_max(int gearid, int val);
 #endif
 #endif
-extern void set_target_active_ratio_pct(int val);
+/* ignore idle util */
+extern bool ignore_idle_ctrl;
+extern void set_ignore_idle_ctrl(bool val);
+extern bool get_ignore_idle_ctrl(void);
+/* sbb */
+extern void set_target_active_ratio_pct(int gear_id, int val);
 extern void set_sbb(int flag, int pid, bool set);
+extern void set_sbb_active_ratio_gear(int gear_id, int val);
 extern void set_sbb_active_ratio(int val);
-extern int get_sbb_active_ratio(void);
+extern int get_sbb_active_ratio_gear(int gear_id);
 extern bool is_sbb_trigger(struct rq *rq);
 extern unsigned int get_nr_gears(void);
 extern struct cpumask *get_gear_cpumask(unsigned int gear);
@@ -212,6 +220,7 @@ extern bool is_gearless_support(void);
 extern bool get_eas_dsu_ctrl(void);
 extern void set_eas_dsu_ctrl(bool set);
 extern struct cpu_dsu_freq_state *get_dsu_freq_state(void);
+bool set_dsu_target_freq(struct cpufreq_policy *);
 
 /* adaptive margin */
 extern int am_support;
