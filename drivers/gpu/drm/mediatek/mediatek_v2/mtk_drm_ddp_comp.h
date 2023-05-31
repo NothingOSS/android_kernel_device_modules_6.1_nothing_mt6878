@@ -742,6 +742,8 @@ struct mtk_oddmr_timing {
 	unsigned int bl_level;
 	unsigned int mode_chg_index;
 	unsigned int vrefresh;
+	unsigned int old_bl_level;
+	unsigned int old_vrefresh;
 	u16 hdisplay;
 	u16 vdisplay;
 };

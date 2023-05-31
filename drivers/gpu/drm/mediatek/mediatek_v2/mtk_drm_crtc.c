@@ -10006,6 +10006,8 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc)
 			cmdq_pkt_destroy(handle);
 		}
 	}
+	if (priv->data->mmsys_id == MMSYS_MT6989)
+		cmdq_util_disp_smc_cmd(drm_crtc_index(crtc), DISP_CMD_CRTC_ENABLE);
 }
 #endif
 

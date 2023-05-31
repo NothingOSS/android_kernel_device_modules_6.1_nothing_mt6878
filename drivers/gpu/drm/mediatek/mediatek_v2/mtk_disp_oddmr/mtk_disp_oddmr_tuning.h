@@ -134,6 +134,9 @@
 #define	OD_TABLE_R_SRAM4_START	0x0CC3
 #define	OD_TABLE_R_SRAM4_END	0x0DC2
 
+/* oddmr base info */
+#define	ODDMR_BASE_ADDRESS		0x3FFF
+
 struct mtk_oddmr_sw_reg {
 	unsigned int reg;
 	unsigned int val;

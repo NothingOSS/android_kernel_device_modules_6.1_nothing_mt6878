@@ -23,7 +23,7 @@
 #include "../mtk_drm_gem.h"
 #include "../mtk_drm_fb.h"
 
-#define OD_TABLE_MAX 2
+#define OD_TABLE_MAX 4
 #define DMR_TABLE_MAX 2
 #define DMR_GAIN_MAX 15
 #define OD_GAIN_MAX 15
@@ -32,8 +32,8 @@ enum ODDMR_STATE {
 	ODDMR_INVALID = 0,
 	ODDMR_LOAD_PARTS,
 	ODDMR_LOAD_DONE,
-	ODDMR_TABLE_UPDATING,
 	ODDMR_INIT_DONE,
+	ODDMR_TABLE_UPDATING,
 	ODDMR_MODE_DONE,
 };
 enum ODDMR_USER_CMD {
@@ -89,6 +89,7 @@ struct mtk_disp_oddmr_data {
 	bool is_od_need_force_clk;
 	bool is_od_support_sec;
 	bool is_od_merge_lines;
+	bool is_od_4_table;
 	int tile_overhead;
 	uint32_t dmr_buffer_size;
 	uint32_t odr_buffer_size;
@@ -100,9 +101,14 @@ struct mtk_disp_oddmr_od_data {
 	uint32_t ln_offset;
 	uint32_t merge_lines;
 	int od_sram_read_sel;
+	uint32_t od_dram_sel[2];
 	int od_sram_table_idx[2];
 	/* TODO: sram 0,1 fixed pkg, need support sram1 update */
-	struct cmdq_pkt *od_sram_pkgs[2];
+	/* od_sram_pkgs[a][b]
+	 *	a:which table for dram
+	 *	b:this table save in which sram
+	 */
+	struct cmdq_pkt *od_sram_pkgs[4][2];
 	struct mtk_drm_gem_obj *r_channel;
 	struct mtk_drm_gem_obj *g_channel;
 	struct mtk_drm_gem_obj *b_channel;
@@ -162,6 +168,9 @@ struct mtk_disp_oddmr {
 	enum ODDMR_STATE od_state;
 	enum ODDMR_STATE dmr_state;
 	uint32_t od_user_gain;
+	/* workqueue */
+	struct workqueue_struct *oddmr_wq;
+	struct work_struct update_table_work;
 };
 
 int mtk_drm_ioctl_oddmr_load_param(struct drm_device *dev, void *data,

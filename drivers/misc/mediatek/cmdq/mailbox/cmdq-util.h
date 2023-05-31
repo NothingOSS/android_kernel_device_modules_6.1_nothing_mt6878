@@ -180,6 +180,7 @@ s32 cmdq_util_error_save(const char *format, ...);
 void cmdq_util_set_mml_aid_selmode(void);
 void cmdq_util_mmuen_devapc_disable(void);
 void cmdq_util_enable_disp_va(void);
+void cmdq_util_disp_smc_cmd(u32 crtc_idx, u32 cmd);
 bool cmdq_util_is_prebuilt_client(struct cmdq_client *client);
 void cmdq_util_prebuilt_set_client(const u16 hwid, struct cmdq_client *client);
 bool cmdq_util_is_secure_client(struct cmdq_client *client);

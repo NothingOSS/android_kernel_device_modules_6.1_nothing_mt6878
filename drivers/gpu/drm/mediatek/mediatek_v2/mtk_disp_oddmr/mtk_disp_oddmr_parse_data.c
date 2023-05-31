@@ -841,6 +841,11 @@ int mtk_oddmr_od_tuning_read(struct mtk_ddp_comp *comp, uint32_t table_idx,
 		*val = pparam->od_tables[table_idx]->bl_table[idx].value;
 		break;
 	}
+	case ODDMR_BASE_ADDRESS:
+	{
+		*val = (uint32_t)comp->regs_pa;
+		break;
+	}
 	default:
 		ret = -EFAULT;
 		break;

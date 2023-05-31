@@ -475,6 +475,7 @@ enum cmdq_smc_request {
 	CMDQ_MMINFRA_CMD,
 	CMDQ_MMUEN_SET_DEVAPC_DISABLE,
 	CMDQ_SET_MML_SEC,
+	CMDQ_DISP_CMD,
 };
 
 static atomic_t cmdq_dbg_ctrl[CMDQ_HW_MAX] = {ATOMIC_INIT(0)};
@@ -536,6 +537,16 @@ void cmdq_util_enable_disp_va(void)
 		0, 0, 0, 0, 0, 0, &res);
 }
 EXPORT_SYMBOL(cmdq_util_enable_disp_va);
+
+void cmdq_util_disp_smc_cmd(u32 crtc_idx, u32 cmd)
+{
+	struct arm_smccc_res res;
+
+	cmdq_log("%s: crtc %u, cmd %u", __func__, crtc_idx, cmd);
+	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMDQ_DISP_CMD,
+		crtc_idx, cmd, 0, 0, 0, 0, &res);
+}
+EXPORT_SYMBOL(cmdq_util_disp_smc_cmd);
 
 void cmdq_util_prebuilt_init(const u16 mod)
 {

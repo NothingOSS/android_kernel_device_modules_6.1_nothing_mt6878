@@ -14,7 +14,7 @@ struct mtk_oddmr_panelid {
 	uint32_t len;
 	uint8_t data[16];
 };
-#define OD_TABLE_MAX 2
+#define OD_TABLE_MAX 4
 #define DMR_TABLE_MAX 2
 #define DMR_GAIN_MAX 15
 #define OD_GAIN_MAX 15
@@ -98,6 +98,7 @@ struct mtk_oddmr_od_param {
 	struct mtk_oddmr_od_table *od_tables[OD_TABLE_MAX];
 	uint32_t valid_table;
 	int valid_table_cnt;
+	int updata_dram_table;
 };
 
 /***************** dmr param ******************/
