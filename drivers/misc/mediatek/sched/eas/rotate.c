@@ -23,6 +23,7 @@
 #include "eas_plus.h"
 #include "eas_trace.h"
 #include "common.h"
+#include <mt-plat/mtk_irq_mon.h>
 
 DEFINE_PER_CPU(struct task_rotate_work, task_rotate_works);
 bool big_task_rotation_enable = true;
@@ -46,9 +47,13 @@ int is_reserved(int cpu)
 	int reserved = 0;
 	struct rq_flags rf;
 
+	irq_log_store();
 	rq_lock(rq, &rf);
+	irq_log_store();
 	reserved = rq->active_balance;
+	irq_log_store();
 	rq_unlock(rq, &rf);
+	irq_log_store();
 
 	return reserved;
 }
@@ -75,8 +80,10 @@ static void task_rotate_work_func(struct work_struct *work)
 	int ret = -1;
 	struct rq *src_rq, *dst_rq;
 
+	irq_log_store();
 	ret = migrate_swap(wr->src_task, wr->dst_task,
 			task_cpu(wr->dst_task), task_cpu(wr->src_task));
+	irq_log_store();
 
 	if (ret == 0) {
 		trace_sched_big_task_rotation(wr->src_cpu, wr->dst_cpu,
@@ -85,18 +92,25 @@ static void task_rotate_work_func(struct work_struct *work)
 						true);
 	}
 
+	irq_log_store();
 	put_task_struct(wr->src_task);
+	irq_log_store();
 	put_task_struct(wr->dst_task);
+	irq_log_store();
 
 	src_rq = cpu_rq(wr->src_cpu);
 	dst_rq = cpu_rq(wr->dst_cpu);
 
+	irq_log_store();
 	local_irq_disable();
 	double_rq_lock(src_rq, dst_rq);
+	irq_log_store();
 	src_rq->active_balance = 0;
 	dst_rq->active_balance = 0;
+	irq_log_store();
 	double_rq_unlock(src_rq, dst_rq);
 	local_irq_enable();
+	irq_log_store();
 }
 
 void task_rotate_work_init(void)
@@ -144,15 +158,24 @@ void task_check_for_rotation(struct rq *src_rq)
 	int heavy_task = 0;
 	int force = 0;
 
-	if (!big_task_rotation_enable)
-		return;
+	irq_log_store();
 
-	if (is_max_capacity_cpu(src_cpu))
+	if (!big_task_rotation_enable) {
+		irq_log_store();
 		return;
+	}
 
-	if (cpu_paused(src_cpu))
+	if (is_max_capacity_cpu(src_cpu)) {
+		irq_log_store();
 		return;
+	}
 
+	if (cpu_paused(src_cpu)) {
+		irq_log_store();
+		return;
+	}
+
+	irq_log_store();
 	for_each_possible_cpu(i) {
 		struct rq *rq = cpu_rq(i);
 		struct task_struct *curr_task = READ_ONCE(rq->curr);
@@ -164,11 +187,16 @@ void task_check_for_rotation(struct rq *src_rq)
 		if (heavy_task >= HEAVY_TASK_NUM)
 			break;
 	}
+	irq_log_store();
 
-	if (heavy_task < HEAVY_TASK_NUM)
+	if (heavy_task < HEAVY_TASK_NUM) {
+		irq_log_store();
 		return;
+	}
 
+	irq_log_store();
 	wc = ktime_get_raw_ns();
+	irq_log_store();
 	for_each_possible_cpu(i) {
 		struct rq *rq = cpu_rq(i);
 		struct rot_task_struct *rts;
@@ -194,9 +222,12 @@ void task_check_for_rotation(struct rq *src_rq)
 			deserved_cpu = i;
 		}
 	}
+	irq_log_store();
 
-	if (deserved_cpu != src_cpu)
+	if (deserved_cpu != src_cpu) {
+		irq_log_store();
 		return;
+	}
 
 	for_each_possible_cpu(i) {
 		struct rq *rq = cpu_rq(i);
@@ -228,24 +259,31 @@ void task_check_for_rotation(struct rq *src_rq)
 			dst_cpu = i;
 		}
 	}
+	irq_log_store();
 
-	if (dst_cpu == nr_cpu_ids)
+	if (dst_cpu == nr_cpu_ids) {
+		irq_log_store();
 		return;
+	}
 
 	dst_rq = cpu_rq(dst_cpu);
-
+	irq_log_store();
 	double_rq_lock(src_rq, dst_rq);
+	irq_log_store();
+
 	if (dst_rq->curr->policy == SCHED_NORMAL) {
 		if (!cpumask_test_cpu(dst_cpu,
 					src_rq->curr->cpus_ptr) ||
 			!cpumask_test_cpu(src_cpu,
 					dst_rq->curr->cpus_ptr)) {
 			double_rq_unlock(src_rq, dst_rq);
+			irq_log_store();
 			return;
 		}
 
 		if (cpu_paused(src_cpu) || cpu_paused(dst_cpu)) {
 			double_rq_unlock(src_rq, dst_rq);
+			irq_log_store();
 			return;
 		}
 
@@ -253,8 +291,11 @@ void task_check_for_rotation(struct rq *src_rq)
 			src_rq->active_balance = 1;
 			dst_rq->active_balance = 1;
 
+			irq_log_store();
 			get_task_struct(src_rq->curr);
+			irq_log_store();
 			get_task_struct(dst_rq->curr);
+			irq_log_store();
 
 			wr = &per_cpu(task_rotate_works, src_cpu);
 
@@ -266,14 +307,18 @@ void task_check_for_rotation(struct rq *src_rq)
 			force = 1;
 		}
 	}
+	irq_log_store();
 	double_rq_unlock(src_rq, dst_rq);
+	irq_log_store();
 
 	if (force) {
 		queue_work_on(src_cpu, system_highpri_wq, &wr->w);
+		irq_log_store();
 		trace_sched_big_task_rotation(wr->src_cpu, wr->dst_cpu,
 					wr->src_task->pid, wr->dst_task->pid,
 					false);
 	}
+	irq_log_store();
 }
 
 void set_big_task_rotation(bool enable)
