@@ -27,6 +27,7 @@ struct led_conf_info {
 	int flags;
 	enum led_mode mode;
 	int connector_id;
+	int logic_max_brightness;
 #define LED_MT_BRIGHTNESS_HW_CHANGED	BIT(1)
 #define LED_MT_BRIGHTNESS_CHANGED	BIT(2)
 

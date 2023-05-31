@@ -67,6 +67,40 @@ static int  __maybe_unused call_notifier(int event, struct led_conf_info *led_co
 	return err;
 }
 
+static ssize_t logic_max_brightness_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	struct led_conf_info *led_conf =
+		container_of(led_cdev, struct led_conf_info, cdev);
+	return sprintf(buf, "%u\n", led_conf->logic_max_brightness);
+}
+
+static ssize_t logic_max_brightness_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	unsigned long state;
+	ssize_t ret;
+	struct led_conf_info *led_conf =
+			container_of(led_cdev, struct led_conf_info, cdev);
+	mutex_lock(&led_cdev->led_access);
+	if (led_sysfs_is_disabled(led_cdev)) {
+		ret = -EBUSY;
+		goto unlock;
+	}
+	ret = kstrtoul(buf, 10, &state);
+	if (ret)
+		goto unlock;
+	led_conf->logic_max_brightness = state;
+	led_conf->cdev.max_brightness = state;
+	ret = size;
+unlock:
+	mutex_unlock(&led_cdev->led_access);
+	return ret;
+}
+static DEVICE_ATTR_RW(logic_max_brightness);
+
 static ssize_t min_brightness_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -421,6 +455,7 @@ int mt_leds_parse_dt(struct mt_led_data *mdev, struct fwnode_handle *fwnode)
 		pr_info("No max-brightness, use max_hw_brightness");
 		mdev->conf.cdev.max_brightness = mdev->conf.max_hw_brightness;
 	}
+	mdev->conf.logic_max_brightness = mdev->conf.cdev.max_brightness;
 
 	ret = fwnode_property_read_u32(fwnode,
 		"min-hw-brightness", &(mdev->conf.min_hw_brightness));
@@ -494,6 +529,7 @@ static struct attribute *led_class_attrs[] = {
 	&dev_attr_min_hw_brightness.attr,
 	&dev_attr_led_mode.attr,
 	&dev_attr_connector_id.attr,
+	&dev_attr_logic_max_brightness.attr,
 	NULL,
 };
 
