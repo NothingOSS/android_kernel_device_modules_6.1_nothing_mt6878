@@ -39,6 +39,7 @@
 #include "mtk-interconnect.h"
 #include "remoteproc_internal.h"
 #include <mtk-smmu-v3.h>
+#include <mtk_heap.h>
 
 #define CCU_SET_MMQOS
 /* #define CCU1_DEVICE */
@@ -48,6 +49,8 @@
 #define MTK_CCU_TAG "[ccu_rproc]"
 #define LOG_DBG(format, args...) \
 	pr_info(MTK_CCU_TAG "[%s] " format, __func__, ##args)
+
+static char *buf_name = "CCU_LOG_DBGDUMP";
 
 struct mtk_ccu_clk_name ccu_clk_name_isp71[] = {
 	{true, "CLK_TOP_CCUSYS_SEL"},
@@ -185,6 +188,8 @@ alloc_with_smmu:
 		memHandle->dmabuf = NULL;
 		goto err_out;
 	}
+
+	mtk_dma_buf_set_name(memHandle->dmabuf, buf_name);
 
 	sdev = mtk_smmu_get_shared_device(dev);
 	if (!sdev) {
