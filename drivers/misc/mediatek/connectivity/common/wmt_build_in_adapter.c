@@ -93,9 +93,9 @@ static struct cdev gConnDbgdev;
 static struct wmt_platform_bridge bridge;
 static struct wmt_platform_dbg_bridge g_dbg_bridge;
 
-#define CONN_DBG_LOG_BUF_SIZE 1024
+#define CONN_DBG_LOG_BUF_SIZE PAGE_SIZE
 #define CONN_DBG_MAX_LOG_LEN 128
-#define CONN_DBG_MAX_REC_NUM 32
+#define CONN_DBG_MAX_REC_NUM 128
 static spinlock_t conn_dbg_log_lock;
 static struct conn_dbg_record *g_conn_dbg_record_p;
 static int conn_dbg_record_num;
@@ -114,7 +114,7 @@ int conn_dbg_add_log(enum conn_dbg_log_type type, const char *buf)
 	unsigned long flag;
 	u64 sec;
 	unsigned long nsec;
-	struct conn_dbg_record *rec;
+	struct conn_dbg_record *rec, *last = NULL;
 	int ret = 0;
 	unsigned int len;
 
@@ -133,6 +133,7 @@ int conn_dbg_add_log(enum conn_dbg_log_type type, const char *buf)
 	while (rec != NULL && rec->log != NULL) {
 		if (strncmp(rec->log, buf, CONN_DBG_MAX_LOG_LEN) == 0)
 			break;
+		last = rec;
 		rec = rec->next;
 	}
 
@@ -163,8 +164,11 @@ int conn_dbg_add_log(enum conn_dbg_log_type type, const char *buf)
 		rec->num = 0;
 		rec->first_sec = sec;
 		rec->first_nsec = nsec;
-		rec->next = g_conn_dbg_record_p;
-		g_conn_dbg_record_p = rec;
+		rec->next = NULL;
+		if (last != NULL)
+			last->next = rec;
+		else
+			g_conn_dbg_record_p = rec;
 		conn_dbg_record_num++;
 	}
 	rec->num++;
@@ -183,15 +187,16 @@ static void conn_dbg_dump_log(char *buf)
 	unsigned long flag;
 
 	buf[0] = '\0';
+	buf[CONN_DBG_LOG_BUF_SIZE - 1] = '\0';
 	spin_lock_irqsave(&conn_dbg_log_lock, flag);
 	rec = g_conn_dbg_record_p;
 	while (rec != NULL) {
 		if (snprintf(temp, sizeof(temp), "[%llu.%06lu~%llu.%06lu][%llu]",
 			rec->first_sec, rec->first_nsec,
 			rec->last_sec, rec->last_nsec, rec->num) > 0) {
-			strncat(buf, temp, CONN_DBG_LOG_BUF_SIZE);
-			strncat(buf, rec->log, CONN_DBG_LOG_BUF_SIZE);
-			strncat(buf, "\n", CONN_DBG_LOG_BUF_SIZE);
+			strncat(buf, temp, CONN_DBG_LOG_BUF_SIZE - strlen(buf) - 1);
+			strncat(buf, rec->log, CONN_DBG_LOG_BUF_SIZE - strlen(buf) - 1);
+			strncat(buf, "\n", CONN_DBG_LOG_BUF_SIZE - strlen(buf) - 1);
 		}
 		rec = rec->next;
 	}
