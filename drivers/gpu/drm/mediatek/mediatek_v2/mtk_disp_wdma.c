@@ -161,6 +161,8 @@
 #define MT6985_OVLSYS_DUMMY_OFFSET	0x400
 #define MT6985_OVLSYS_DUMMY1_OFFSET	0x404
 
+#define MT6989_OVLSYS1_WDMA0_AID_MANU 0xB84
+
 /* AID offset in mmsys config */
 #define MT6895_WDMA0_AID_SEL	(0xB1CUL)
 #define MT6895_WDMA1_AID_SEL	(0xB20UL)
@@ -529,11 +531,19 @@ static void mtk_wdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 				wdma->wdma_sec_first_time_install = 1;
 		}
 	} else {
-		if (data && data->aid_sel)
+		if (data && data->aid_sel) {
 			aid_sel_offset = data->aid_sel(comp);
-		if (aid_sel_offset)
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				mmsys_reg + aid_sel_offset, BIT(1), BIT(1));
+			if (priv->data->mmsys_id == MMSYS_MT6989)
+				mmsys_reg = priv->ovlsys1_regs_pa;
+		}
+		if (aid_sel_offset) {
+			if (priv->data->mmsys_id == MMSYS_MT6989)
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					mmsys_reg + MT6989_OVLSYS1_WDMA0_AID_MANU, BIT(0), BIT(0));
+			else
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					mmsys_reg + aid_sel_offset, BIT(1), BIT(1));
+		}
 	}
 
 	if (data && data->sodi_config)
@@ -1080,8 +1090,11 @@ static int wdma_config_yuv420(struct mtk_ddp_comp *comp,
 			}
 		}
 	} else {
-		if (wdma->data->aid_sel)
+		if (wdma->data->aid_sel) {
 			aid_sel_offset = wdma->data->aid_sel(comp);
+			if (priv->data->mmsys_id == MMSYS_MT6989)
+				mmsys_reg = priv->ovlsys1_regs_pa;
+		}
 		if (aid_sel_offset) {
 			if (sec)
 				cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1248,8 +1261,11 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 			}
 		}
 	} else {
-		if (wdma->data && wdma->data->aid_sel)
+		if (wdma->data && wdma->data->aid_sel) {
 			aid_sel_offset = wdma->data->aid_sel(comp);
+			if (priv->data->mmsys_id == MMSYS_MT6989)
+				mmsys_reg = priv->ovlsys1_regs_pa;
+		}
 		if (aid_sel_offset) {
 			if (sec)
 				cmdq_pkt_write(handle, comp->cmdq_base,
