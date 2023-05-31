@@ -327,6 +327,7 @@ struct xsphy_instance {
 	int tx_lctxcm1;
 	int tx_lctxc0;
 	int tx_lctxcp1;
+	bool u3_rx_fix;
 	struct proc_dir_entry *phy_root;
 	struct work_struct procfs_work;
 };
@@ -1225,14 +1226,18 @@ static void u3_phy_instance_power_on(struct mtk_xsphy *xsphy,
 
 	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_2C, RG_XTP0_DAIF_LN_G2_RX_SGDT_HF, 0x2);
 
-	/* DA_XTP_LN0_RX_AEQ_OFORCE[10], 1'b1 */
-	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_30, RG_XTP_LN0_RX_AEQ_ATT);
+	/* Deprecated since MT6989 */
+	if (!inst->u3_rx_fix) {
+		/* DA_XTP_LN0_RX_AEQ_OFORCE[10], 1'b1 */
+		mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_30, RG_XTP_LN0_RX_AEQ_ATT);
 
-	/* rg_sspxtp0_datf_ln_rx_aeq_att[2:0], 3'b111 */
-	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_14, RG_XTP0_DAIF_LN_RX_AEQ_ATT, 0x7);
+		/* rg_sspxtp0_datf_ln_rx_aeq_att[2:0], 3'b111 */
+		mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_14, RG_XTP0_DAIF_LN_RX_AEQ_ATT, 0x7);
 
-	/* rg_sspxtp0_datf_frc_ln_rx_aeq_att, 1'b1 */
-	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_04, RG_XTP0_DAIF_FRC_LN_RX_AEQ_ATT);
+		/* rg_sspxtp0_datf_frc_ln_rx_aeq_att, 1'b1 */
+		mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_04, RG_XTP0_DAIF_FRC_LN_RX_AEQ_ATT);
+	} else
+		dev_info(xsphy->dev, "%s apply u3_rx_fix.\n", __func__);
 
 	/* Ponsot */
 	if (of_device_is_compatible(np, "mediatek,mt6897-xsphy")) {
@@ -1669,9 +1674,10 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 		if (device_property_read_u32(dev, "mediatek,tx-lctxcp1",
 					 &inst->tx_lctxcp1))
 			inst->tx_lctxcp1 = -1;
-		dev_dbg(dev, "intr:%d, tx-imp:%d, rx-imp:%d\n",
+		inst->u3_rx_fix = device_property_read_bool(dev, "mediatek,u3-rx-fix");
+		dev_dbg(dev, "intr:%d, tx-imp:%d, rx-imp:%d, u3_rx_fix:%d\n",
 			inst->efuse_intr, inst->efuse_tx_imp,
-			inst->efuse_rx_imp);
+			inst->efuse_rx_imp, inst->u3_rx_fix);
 		break;
 	default:
 		dev_err(xsphy->dev, "incompatible phy type\n");
