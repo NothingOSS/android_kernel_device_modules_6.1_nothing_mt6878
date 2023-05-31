@@ -100,6 +100,7 @@ mgk_64_k61_device_modules = [
     "drivers/dma/mediatek/mtk-cqdma.ko",
     "drivers/dma/mediatek/mtk-uart-apdma.ko",
     "drivers/gpu/drm/mediatek/dpc/mtk_dpc.ko",
+    "drivers/gpu/drm/mediatek/dpc/mtk_vdisp.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mediatek-drm.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_aod_scp.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_disp_notify.ko",

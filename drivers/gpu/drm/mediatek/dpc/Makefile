@@ -11,3 +11,5 @@ obj-$(CONFIG_MTK_DPC) := mtk_dpc.o
 
 mtk_dpc-objs += mtk_dpc_driver.o
 mtk_dpc-objs += mtk_dpc_mmp.o
+
+obj-$(CONFIG_MTK_DPC) += mtk_vdisp.o

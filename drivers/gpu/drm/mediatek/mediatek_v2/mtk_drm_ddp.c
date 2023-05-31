@@ -21067,15 +21067,20 @@ void mtk_disp_mutex_add_comp(struct mtk_disp_mutex *mutex,
 	unsigned int reg, reg1;
 	void __iomem *reg_addr = NULL;
 	void __iomem *reg_addr1 = NULL;
+	unsigned int mmsys_id = 0;
+
+	if (ddp->mtk_crtc[0])
+		mmsys_id = mtk_get_mmsys_id(&ddp->mtk_crtc[0]->base);
 
 	if (&ddp->mutex[mutex->id] != mutex)
 		DDPAEE("%s:%d, invalid mutex:(%p,%p) id:%d\n",
 			__func__, __LINE__,
 			&ddp->mutex[mutex->id], mutex, mutex->id);
-	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == 1)
-		reg_addr = ddp->side_regs;
+
+	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS1)
+		reg_addr = (mmsys_id == MMSYS_MT6989) ? ddp->regs : ddp->side_regs;
 	else
-		reg_addr = ddp->regs;
+		reg_addr = (mmsys_id == MMSYS_MT6989) ? ddp->side_regs : ddp->side_regs;
 
 	if (ddp->data->dispsys_map &&
 		ddp->data->dispsys_map[id] == OVLSYS1) {
@@ -21241,6 +21246,10 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int reg;
 	resource_size_t regs_pa = 0;
 	resource_size_t ovlsys_regs_pa = 0;
+	unsigned int mmsys_id = 0;
+
+	if (mtk_crtc)
+		mmsys_id = mtk_get_mmsys_id(&mtk_crtc->base);
 
 	if (mutex_id >= DDP_PATH_NR) {
 		DDPPR_ERR("mutex id is out of bound:%d\n", mutex_id);
@@ -21255,11 +21264,10 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 			__func__, __LINE__,
 			&ddp->mutex[mutex->id], mutex, mutex->id);
 
-	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == 1 &&
-			ddp->side_regs_pa)
-		regs_pa = ddp->side_regs_pa;
+	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS1)
+		regs_pa = (mmsys_id == MMSYS_MT6989) ? ddp->regs_pa : ddp->side_regs_pa;
 	else
-		regs_pa = ddp->regs_pa;
+		regs_pa = (mmsys_id == MMSYS_MT6989) ? ddp->side_regs_pa : ddp->regs_pa;
 
 	if (ddp->data->dispsys_map &&
 		ddp->data->dispsys_map[id] == OVLSYS1) {

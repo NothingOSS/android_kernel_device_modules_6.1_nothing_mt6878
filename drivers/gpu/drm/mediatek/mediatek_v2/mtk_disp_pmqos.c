@@ -403,11 +403,13 @@ void mtk_drm_mmdvfs_init(struct device *dev)
 	/* support DPC and VDISP */
 	ret = of_property_read_u8(node, "vdisp-dvfs-opp", &vdisp_opp);
 	if (ret == 0) {
-		if (unlikely(mmdvfs_get_version() == 0)) {
-			DDPMSG("%s use VDISP but mmdvfs is not v3\n", __func__);
-			vdisp_opp = U8_MAX;
-		} else
-			DDPMSG("%s VDISP_OPP(%u)\n", __func__, vdisp_opp);
+		mm_freq_request = devm_regulator_get_optional(dev, "dis1-shutdown");
+		if (mm_freq_request == NULL)
+			DDPMSG("%s use vdisp opp(%u)\n", __func__, vdisp_opp);
+		else if (IS_ERR(mm_freq_request))
+			mm_freq_request = NULL;
+		else
+			DDPMSG("%s use vdisp but regulator flow\n", __func__);
 		return;
 	}
 
@@ -484,23 +486,26 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 	DDPINFO("%s[%d] final_level(freq=%d, %lu) final_lp_mode:%d\n",
 		__func__, __LINE__, final_level, freq, final_lp_mode);
 
-	if (vdisp_opp != U8_MAX) {
-		vdisp_opp = final_level >= 0 ? final_level : 0;
+	if ((vdisp_opp != U8_MAX) && (mm_freq_request == NULL)) {
+		if (final_level >= 0)
+			vdisp_opp = final_level;
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP);
 		mtk_vidle_dvfs_set(vdisp_opp);
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
 		return;
 	}
 
-	mmdvfs_set_lp_mode(final_lp_mode);
-	opp = dev_pm_opp_find_freq_ceil(crtc->dev->dev, &freq);
-	volt = dev_pm_opp_get_voltage(opp);
-	dev_pm_opp_put(opp);
-	ret = regulator_set_voltage(mm_freq_request, volt, INT_MAX);
+	if (mm_freq_request) {
+		if (vdisp_opp == U8_MAX) /* not support for vdisp platform */
+			mmdvfs_set_lp_mode(final_lp_mode);
 
-	if (ret)
-		DDPPR_ERR("%s:regulator_set_voltage fail\n", __func__);
-
+		opp = dev_pm_opp_find_freq_ceil(crtc->dev->dev, &freq);
+		volt = dev_pm_opp_get_voltage(opp);
+		dev_pm_opp_put(opp);
+		ret = regulator_set_voltage(mm_freq_request, volt, INT_MAX);
+		if (ret)
+			DDPPR_ERR("%s:regulator_set_voltage fail\n", __func__);
+	}
 }
 
 void mtk_drm_set_mmclk_by_pixclk(struct drm_crtc *crtc,
