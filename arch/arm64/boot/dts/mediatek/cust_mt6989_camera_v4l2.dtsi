@@ -72,6 +72,14 @@
 		};
 };
 
+&rt5133_ldo7 {
+	rt5133-ldo1-supply = <&camera_common_dovdd>;
+};
+
+&rt5133_ldo8 {
+	rt5133-ldo1-supply = <&camera_common_dovdd>;
+};
+
 /* CAMERA GPIO fixed to regulator */
 &odm {
 	camera_common_dovdd: camera-common-dovdd {
