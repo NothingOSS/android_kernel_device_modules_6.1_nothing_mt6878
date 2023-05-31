@@ -136,7 +136,6 @@ int register_get_fpsgo_is_boosting(fpsgo_notify_is_boost_cb func_cb)
 
 	return ret;
 }
-EXPORT_SYMBOL(register_get_fpsgo_is_boosting);
 
 int unregister_get_fpsgo_is_boosting(fpsgo_notify_is_boost_cb func_cb)
 {
@@ -159,7 +158,6 @@ int unregister_get_fpsgo_is_boosting(fpsgo_notify_is_boost_cb func_cb)
 
 	return ret;
 }
-EXPORT_SYMBOL(unregister_get_fpsgo_is_boosting);
 
 int fpsgo_com2other_notify_fpsgo_is_boosting(int boost)
 {

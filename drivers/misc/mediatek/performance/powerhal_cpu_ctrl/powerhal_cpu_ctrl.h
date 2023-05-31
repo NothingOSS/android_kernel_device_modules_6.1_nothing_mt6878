@@ -65,10 +65,4 @@ extern void (*boost_get_cmd_fp)(int *cmd, int *value);
 extern int adpf_register_callback(adpfCallback callback);
 extern int adpf_unregister_callback(int idx);
 
-typedef void (*fpsgo_notify_is_boost_cb)(int fpsgo_is_boosting);
-int (*register_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
-EXPORT_SYMBOL_GPL(register_get_fpsgo_is_boosting_fp);
-int (*unregister_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
-EXPORT_SYMBOL_GPL(unregister_get_fpsgo_is_boosting_fp);
-
 #endif

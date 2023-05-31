@@ -56,6 +56,12 @@ static const struct proc_ops perfmgr_ ## name ## _proc_fops = { \
 
 #define CLUSTER_MAX 10
 
+typedef void (*fpsgo_notify_is_boost_cb)(int fpsgo_is_boosting);
+int (*register_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
+EXPORT_SYMBOL_GPL(register_get_fpsgo_is_boosting_fp);
+int (*unregister_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
+EXPORT_SYMBOL_GPL(unregister_get_fpsgo_is_boosting_fp);
+
 typedef struct _cpufreq {
 	int min;
 	int max;
@@ -90,7 +96,6 @@ static struct _SESSION *sessionList[ADPF_MAX_SESSION];
 static adpfCallback adpfCallbackList[ADPF_MAX_CALLBACK];
 static DEFINE_MUTEX(adpf_mutex);
 static int sf_hint_low_power_enabled;
-
 
 void send_boost_cmd(int cmd, int value)
 {
