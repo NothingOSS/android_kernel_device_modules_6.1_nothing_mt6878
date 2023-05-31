@@ -695,11 +695,12 @@ int apu_ipi_affin_disable(void)
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 
-#define APU_IPI_UT_MAX_DATA (16)
+#define APU_IPI_UT_MAX_DATA (32)
 enum {
 	CMD_UT = 0,
 	CMD_UT_RANDOM,
 	CMD_GET_PWR_ON_OFF_TIME,
+	CMD_PWR_TIME_PROFILE_INTERNAL,
 	MAX_CMD_UT_ID,
 };
 
@@ -726,10 +727,13 @@ static uint32_t rcx_off_ce_ts_max;
 
 static uint32_t warmboot_on_ts_last;
 static uint32_t dpidle_off_ts_last;
+static uint32_t smmu_hw_sem_ts_last;
 static uint32_t warmboot_on_ts_avg;
 static uint32_t dpidle_off_ts_avg;
+static uint32_t smmu_hw_sem_ts_avg;
 static uint32_t warmboot_on_ts_max;
 static uint32_t dpidle_off_ts_max;
+static uint32_t smmu_hw_sem_ts_max;
 
 static uint64_t ut_on_ts_last;
 static uint64_t ut_off_ts_last;
@@ -760,7 +764,7 @@ static int apu_ipi_ut_send(struct apu_ipi_ut_ipi_data *d, bool wait_ack)
 	}
 	hw_ops = &apu->platdata->ops;
 
-	if (d->cmd_id == CMD_GET_PWR_ON_OFF_TIME &&
+	if (d->cmd_id == CMD_PWR_TIME_PROFILE_INTERNAL &&
 		hw_ops->polling_rpc_status && d->data[0] == 1)
 		polling_mode = true;
 
@@ -837,6 +841,11 @@ static int apu_ipi_ut_send(struct apu_ipi_ut_ipi_data *d, bool wait_ack)
 		if (ret == 0) {
 			pr_info("%s: wait for completion timeout\n", __func__);
 			ret = -1;
+			/* power off to restore ref cnt */
+			ret2 = rpmsg_sendto(apu_ipi_ut_rpm_dev.ept, NULL, 0, 1);
+			if (ret2 && ret2 != -EOPNOTSUPP)
+				pr_info("%s: rpmsg_sendto(power off) fail(%d)\n", __func__, ret2);
+			goto out;
 		} else {
 			ret = 0;
 		}
@@ -880,7 +889,7 @@ static int apu_ipi_ut_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 	}
 	hw_ops = &apu->platdata->ops;
 
-	if (d->cmd_id == CMD_GET_PWR_ON_OFF_TIME &&
+	if (d->cmd_id == CMD_PWR_TIME_PROFILE_INTERNAL &&
 		hw_ops->polling_rpc_status && d->data[0] == 1)
 		polling_mode = true;
 
@@ -892,11 +901,13 @@ static int apu_ipi_ut_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 	}
 
 	val = d->data[0];
-	pr_info("%s: cmd_id = %u, val = %d, rand_num = %u\n", __func__, d->cmd_id, val, rand_num);
+	pr_info("%s: cmd_id = %u, val = %d, rand_num = %u\n",
+		__func__, d->cmd_id, val, rand_num);
 	if (d->cmd_id != CMD_UT_RANDOM)
 		complete(&apu_ipi_ut_rpm_dev.ack);
 
-	if (d->cmd_id == CMD_GET_PWR_ON_OFF_TIME) {
+	if (d->cmd_id == CMD_GET_PWR_ON_OFF_TIME ||
+		d->cmd_id == CMD_PWR_TIME_PROFILE_INTERNAL) {
 		rcx_on_ce_ts_last = d->data[1];
 		rcx_off_ce_ts_last = d->data[2];
 		rcx_on_ce_ts_avg = d->data[3];
@@ -905,11 +916,14 @@ static int apu_ipi_ut_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 		rcx_off_ce_ts_max = d->data[6];
 		warmboot_on_ts_last = d->data[7];
 		dpidle_off_ts_last = d->data[8];
-		warmboot_on_ts_avg = d->data[9];
-		dpidle_off_ts_avg = d->data[10];
-		warmboot_on_ts_max = d->data[11];
-		dpidle_off_ts_max = d->data[12];
-		boot_count = d->data[13];
+		smmu_hw_sem_ts_last = d->data[9];
+		warmboot_on_ts_avg = d->data[10];
+		dpidle_off_ts_avg = d->data[11];
+		smmu_hw_sem_ts_avg = d->data[12];
+		warmboot_on_ts_max = d->data[13];
+		dpidle_off_ts_max = d->data[14];
+		smmu_hw_sem_ts_max = d->data[15];
+		boot_count = d->data[16];
 	}
 
 	if (polling_mode)
@@ -960,38 +974,52 @@ static struct rpmsg_driver apu_ipi_ut_rpmsg_driver = {
 	.remove = apu_ipi_ut_rpmsg_remove,
 };
 
-int apu_ipi_ut_val;
+static int apu_ipi_ut_val, apu_ipi_ut_cmd;
 
 static int apu_ipi_dbg_show(struct seq_file *s, void *unused)
 {
-	seq_printf(s, "apu_ipi_ut_val = %d\n", apu_ipi_ut_val);
+	seq_printf(s, "apu_ipi_ut_cmd = %d, apu_ipi_ut_val = %d\n", apu_ipi_ut_cmd, apu_ipi_ut_val);
 
-	seq_printf(s, "rcx_on_ce_ts_last = %u us\n", rcx_on_ce_ts_last);
-	seq_printf(s, "rcx_off_ce_ts_last = %u us\n", rcx_off_ce_ts_last);
-	seq_printf(s, "rcx_on_ce_ts_last = %u us\n", rcx_on_ce_ts_last);
-	seq_printf(s, "rcx_off_ce_ts_last = %u us\n", rcx_off_ce_ts_last);
-	seq_printf(s, "rcx_on_ce_ts_last = %u us\n", rcx_on_ce_ts_last);
-	seq_printf(s, "rcx_off_ce_ts_last = %u us\n", rcx_off_ce_ts_last);
+	if (apu_ipi_ut_cmd == CMD_GET_PWR_ON_OFF_TIME) {
+		seq_printf(s, "rcx_on_avg_time = %u us\n",
+			warmboot_on_ts_avg + rcx_on_ce_ts_avg);
+		seq_printf(s, "rcx_off_avg_time = %u us\n",
+			dpidle_off_ts_avg + rcx_off_ce_ts_avg);
+		seq_printf(s, "boot_count = %u\n", boot_count);
+	} else if (apu_ipi_ut_cmd == CMD_PWR_TIME_PROFILE_INTERNAL) {
+		seq_printf(s, "rcx_on_avg_time = %u us\n",
+			warmboot_on_ts_avg + rcx_on_ce_ts_avg);
+		seq_printf(s, "rcx_off_avg_time = %u us\n",
+			dpidle_off_ts_avg + rcx_off_ce_ts_avg);
+		seq_printf(s, "boot_count = %u\n", boot_count);
+		seq_printf(s, "rcx_on_ce_ts_last = %u us\n", rcx_on_ce_ts_last);
+		seq_printf(s, "rcx_off_ce_ts_last = %u us\n", rcx_off_ce_ts_last);
+		seq_printf(s, "rcx_on_ce_ts_avg = %u us\n", rcx_on_ce_ts_avg);
+		seq_printf(s, "rcx_off_ce_ts_avg = %u us\n", rcx_off_ce_ts_avg);
+		seq_printf(s, "rcx_on_ce_ts_max = %u us\n", rcx_on_ce_ts_max);
+		seq_printf(s, "rcx_off_ce_ts_max = %u us\n", rcx_off_ce_ts_max);
 
-	seq_printf(s, "warmboot_on_ts_last = %u us\n", warmboot_on_ts_last);
-	seq_printf(s, "dpidle_off_ts_last = %u us\n", dpidle_off_ts_last);
-	seq_printf(s, "warmboot_on_ts_avg = %u us\n", warmboot_on_ts_avg);
-	seq_printf(s, "dpidle_off_ts_avg = %u us\n", dpidle_off_ts_avg);
-	seq_printf(s, "warmboot_on_ts_max = %u us\n", warmboot_on_ts_max);
-	seq_printf(s, "dpidle_off_ts_max = %u us\n", dpidle_off_ts_max);
+		seq_printf(s, "warmboot_on_ts_last = %u us\n", warmboot_on_ts_last);
+		seq_printf(s, "dpidle_off_ts_last = %u us\n", dpidle_off_ts_last);
+		seq_printf(s, "smmu_hw_sem_ts_last = %u us\n", smmu_hw_sem_ts_last);
+		seq_printf(s, "warmboot_on_ts_avg = %u us\n", warmboot_on_ts_avg);
+		seq_printf(s, "dpidle_off_ts_avg = %u us\n", dpidle_off_ts_avg);
+		seq_printf(s, "smmu_hw_sem_ts_avg = %u us\n", smmu_hw_sem_ts_avg);
+		seq_printf(s, "warmboot_on_ts_max = %u us\n", warmboot_on_ts_max);
+		seq_printf(s, "dpidle_off_ts_max = %u us\n", dpidle_off_ts_max);
+		seq_printf(s, "smmu_hw_sem_ts_max = %u us\n", smmu_hw_sem_ts_max);
 
-	seq_printf(s, "boot_count = %u\n", boot_count);
-
-	seq_printf(s, "ut_on_ts_last = %llu us\n", ut_on_ts_last);
-	seq_printf(s, "ut_off_ts_last = %llu us\n", ut_off_ts_last);
-	seq_printf(s, "ut_on_ts_avg = %llu us\n", ut_on_ts_avg);
-	seq_printf(s, "ut_off_ts_avg = %llu us\n", ut_off_ts_avg);
-	seq_printf(s, "ut_on_ts_max = %llu us\n", ut_on_ts_max);
-	seq_printf(s, "ut_off_ts_max = %llu us\n", ut_off_ts_max);
-	seq_printf(s, "ut_on_ts_cnt = %llu us\n", ut_on_ts_cnt);
-	seq_printf(s, "ut_off_ts_cnt = %llu us\n", ut_off_ts_cnt);
-	seq_printf(s, "ut_on_ts_acc = %llu us\n", ut_on_ts_acc);
-	seq_printf(s, "ut_off_ts_acc = %llu us\n", ut_off_ts_acc);
+		seq_printf(s, "ut_on_ts_last = %llu us\n", ut_on_ts_last);
+		seq_printf(s, "ut_off_ts_last = %llu us\n", ut_off_ts_last);
+		seq_printf(s, "ut_on_ts_avg = %llu us\n", ut_on_ts_avg);
+		seq_printf(s, "ut_off_ts_avg = %llu us\n", ut_off_ts_avg);
+		seq_printf(s, "ut_on_ts_max = %llu us\n", ut_on_ts_max);
+		seq_printf(s, "ut_off_ts_max = %llu us\n", ut_off_ts_max);
+		seq_printf(s, "ut_on_ts_cnt = %llu us\n", ut_on_ts_cnt);
+		seq_printf(s, "ut_off_ts_cnt = %llu us\n", ut_off_ts_cnt);
+		seq_printf(s, "ut_on_ts_acc = %llu us\n", ut_on_ts_acc);
+		seq_printf(s, "ut_off_ts_acc = %llu us\n", ut_off_ts_acc);
+	}
 
 	return 0;
 }
@@ -1020,6 +1048,7 @@ static int apu_ipi_dbg_exec_cmd(int cmd, unsigned int *args)
 		ret = apu_ipi_ut_send(&d, false);
 		break;
 	case CMD_GET_PWR_ON_OFF_TIME:
+	case CMD_PWR_TIME_PROFILE_INTERNAL:
 		apu_ipi_ut_val = args[0];
 		d.cmd_id = cmd;
 		d.data[0] = args[0];
@@ -1063,11 +1092,14 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 		cmd = CMD_UT_RANDOM;
 	} else if (strcmp(token, "get_pwr_time") == 0) {
 		cmd = CMD_GET_PWR_ON_OFF_TIME;
+	} else if (strcmp(token, "pwr_time_internal") == 0) {
+		cmd = CMD_PWR_TIME_PROFILE_INTERNAL;
 	} else {
 		ret = -EINVAL;
 		pr_info("%s: unknown ipi dbg cmd: %s\n", __func__, token);
 		goto out;
 	}
+	apu_ipi_ut_cmd = cmd;
 
 	for (i = 0; i < IPI_DBG_MAX_ARGS && (token = strsep(&ptr, " ")); i++) {
 		ret = kstrtoint(token, 10, &args[i]);
