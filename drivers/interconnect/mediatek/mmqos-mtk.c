@@ -791,7 +791,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 	struct mtk_mmqos *mmqos = container_of(dst->provider,
 					struct mtk_mmqos, prov);
 	u32 value = 1;
-	u32 comm_id, chnn_id, port_id;
+	u32 comm_id, chnn_id, port_id, trace_comm_id, trace_chnn_id;
 	const char *r_w_type = "w";
 
 	MMQOS_SYSTRACE_BEGIN("%s %s->%s\n", __func__, src->name, dst->name);
@@ -884,16 +884,23 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			if (mmqos_met_enabled()) {
 				if (!larb_node->is_write)
 					r_w_type = "r";
+				trace_comm_id = (larb_node->channel_v2 >> 4) & 0xf;
+				trace_chnn_id = larb_node->channel_v2 & 0xf;
+				trace_chnn_id -= 1;
 				trace_mmqos__larb_avg_bw(
 					r_w_type,
 					src->name,
 					LARB_ID(src->id),
-					icc_to_MBps(src->avg_bw));
+					icc_to_MBps(src->avg_bw),
+					trace_comm_id,
+					trace_chnn_id);
 				trace_mmqos__larb_peak_bw(
 					r_w_type,
 					src->name,
 					LARB_ID(src->id),
-					icc_to_MBps(src->peak_bw));
+					icc_to_MBps(src->peak_bw),
+					trace_comm_id,
+					trace_chnn_id);
 #ifdef ENABLE_INTERCONNECT_V1
 				trace_mmqos__chn_bw(comm_id, chnn_id,
 					icc_to_MBps(chn_srt_r_bw[comm_id][chnn_id]),
@@ -1059,16 +1066,23 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 		if (mmqos_met_enabled()) {
 			if (!larb_port_node->is_write)
 				r_w_type = "r";
+			trace_comm_id = (larb_node->channel_v2 >> 4) & 0xf;
+			trace_chnn_id = larb_node->channel_v2 & 0xf;
+			trace_chnn_id -= 1;
 			trace_mmqos__larb_port_avg_bw(
 				r_w_type,
 				dst->name,
 				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
-				icc_to_MBps(larb_port_node->base->icc_node->avg_bw));
+				icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
+				trace_comm_id,
+				trace_chnn_id);
 			trace_mmqos__larb_port_peak_bw(
 				r_w_type,
 				dst->name,
 				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
-				icc_to_MBps(larb_port_node->base->icc_node->peak_bw));
+				icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
+				trace_comm_id,
+				trace_chnn_id);
 #ifdef ENABLE_INTERCONNECT_V1
 			trace_mmqos__chn_bw(comm_id, chnn_id,
 				icc_to_MBps(chn_srt_r_bw[comm_id][chnn_id]),
@@ -1564,6 +1578,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 			//INIT_WORK(&larb_node->work, set_larb_icc_bw_handler);
 
 			larb_node->channel = node_desc->channel;
+			larb_node->channel_v2 = comm_port_node->channel_v2;
 			larb_node->is_write = node_desc->is_write;
 			larb_node->bw_ratio = node_desc->bw_ratio;
 			/* init disable dualpipe */

@@ -115,6 +115,7 @@ struct larb_node {
 	u32 old_avg_bw;
 	u32 old_peak_bw;
 	u8 channel;
+	u8 channel_v2;
 	u8 dual_pipe_id;
 	u16 bw_ratio;
 	bool is_write;

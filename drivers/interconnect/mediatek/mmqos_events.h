@@ -11,14 +11,17 @@
 #include <linux/tracepoint.h>
 
 TRACE_EVENT(mmqos__larb_port_avg_bw,
-	TP_PROTO(const char *r_w_type, const char *dev_name, int larb, int port, int avg_bw),
-	TP_ARGS(r_w_type, dev_name, larb, port, avg_bw),
+	TP_PROTO(const char *r_w_type, const char *dev_name, int larb, int port, int avg_bw,
+			int comm, int chn),
+	TP_ARGS(r_w_type, dev_name, larb, port, avg_bw, comm, chn),
 	TP_STRUCT__entry(
 		__string(r_w_type, r_w_type)
 		__string(dev_name, dev_name)
 		__field(int, larb)
 		__field(int, port)
 		__field(int, avg_bw)
+		__field(int, comm)
+		__field(int, chn)
 	),
 	TP_fast_assign(
 		__assign_str(r_w_type, r_w_type);
@@ -26,22 +29,29 @@ TRACE_EVENT(mmqos__larb_port_avg_bw,
 		__entry->larb = larb;
 		__entry->port = port;
 		__entry->avg_bw = avg_bw;
+		__entry->comm = comm;
+		__entry->chn = chn;
 	),
-	TP_printk("%s_%d_%s=%d",
+	TP_printk("%s_%d_%s_comm%d_chn%d=%d",
 		__get_str(dev_name),
 		(int)__entry->port,
 		__get_str(r_w_type),
+		(int)__entry->comm,
+		(int)__entry->chn,
 		(int)__entry->avg_bw)
 );
 TRACE_EVENT(mmqos__larb_port_peak_bw,
-	TP_PROTO(const char *r_w_type, const char *dev_name, int larb, int port, int peak_bw),
-	TP_ARGS(r_w_type, dev_name, larb, port, peak_bw),
+	TP_PROTO(const char *r_w_type, const char *dev_name, int larb, int port, int peak_bw,
+			int comm, int chn),
+	TP_ARGS(r_w_type, dev_name, larb, port, peak_bw, comm, chn),
 	TP_STRUCT__entry(
 		__string(r_w_type, r_w_type)
 		__string(dev_name, dev_name)
 		__field(int, larb)
 		__field(int, port)
 		__field(int, peak_bw)
+		__field(int, comm)
+		__field(int, chn)
 	),
 	TP_fast_assign(
 		__assign_str(r_w_type, r_w_type);
@@ -49,51 +59,69 @@ TRACE_EVENT(mmqos__larb_port_peak_bw,
 		__entry->larb = larb;
 		__entry->port = port;
 		__entry->peak_bw = peak_bw;
+		__entry->comm = comm;
+		__entry->chn = chn;
 	),
-	TP_printk("%s_%d_%s=%d",
+	TP_printk("%s_%d_%s_comm%d_chn%d=%d",
 		__get_str(dev_name),
 		(int)__entry->port,
 		__get_str(r_w_type),
+		(int)__entry->comm,
+		(int)__entry->chn,
 		(int)__entry->peak_bw)
 );
 TRACE_EVENT(mmqos__larb_avg_bw,
-	TP_PROTO(const char *r_w_type, const char *dev_name, int larb, int bw),
-	TP_ARGS(r_w_type, dev_name, larb, bw),
+	TP_PROTO(const char *r_w_type, const char *dev_name, int larb, int bw,
+			int comm, int chn),
+	TP_ARGS(r_w_type, dev_name, larb, bw, comm, chn),
 	TP_STRUCT__entry(
 		__string(r_w_type, r_w_type)
 		__string(dev_name, dev_name)
 		__field(int, larb)
 		__field(int, bw)
+		__field(int, comm)
+		__field(int, chn)
 	),
 	TP_fast_assign(
 		__assign_str(r_w_type, r_w_type);
 		__assign_str(dev_name, dev_name);
 		__entry->larb = larb;
 		__entry->bw = bw;
+		__entry->comm = comm;
+		__entry->chn = chn;
 	),
-	TP_printk("%s_%s=%d",
+	TP_printk("%s_%s_comm%d_chn%d=%d",
 		__get_str(dev_name),
 		__get_str(r_w_type),
+		(int)__entry->comm,
+		(int)__entry->chn,
 		(int)__entry->bw)
 );
 TRACE_EVENT(mmqos__larb_peak_bw,
-	TP_PROTO(const char *r_w_type, const char *dev_name, int larb, int bw),
-	TP_ARGS(r_w_type, dev_name, larb, bw),
+	TP_PROTO(const char *r_w_type, const char *dev_name, int larb, int bw,
+			int comm, int chn),
+	TP_ARGS(r_w_type, dev_name, larb, bw, comm, chn),
 	TP_STRUCT__entry(
 		__string(r_w_type, r_w_type)
 		__string(dev_name, dev_name)
 		__field(int, larb)
 		__field(int, bw)
+		__field(int, comm)
+		__field(int, chn)
 	),
 	TP_fast_assign(
 		__assign_str(r_w_type, r_w_type);
 		__assign_str(dev_name, dev_name);
 		__entry->larb = larb;
 		__entry->bw = bw;
+		__entry->comm = comm;
+		__entry->chn = chn;
 	),
-	TP_printk("%s_%s=%d",
+	TP_printk("%s_%s_comm%d_chn%d=%d",
 		__get_str(dev_name),
 		__get_str(r_w_type),
+		(int)__entry->comm,
+		(int)__entry->chn,
 		(int)__entry->bw)
 );
 TRACE_EVENT(mmqos__chn_bw,
