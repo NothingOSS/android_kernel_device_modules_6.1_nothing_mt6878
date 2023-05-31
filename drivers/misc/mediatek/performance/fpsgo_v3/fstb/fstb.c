@@ -2504,6 +2504,47 @@ out:
 
 static KOBJ_ATTR_RO(fstb_policy_cmd);
 
+static ssize_t fstb_frs_info_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	char *temp = NULL;
+	int i = 0;
+	int pos = 0;
+	int length = 0;
+	struct FSTB_FRAME_INFO *iter = NULL;
+	struct hlist_node *h = NULL;
+
+	temp = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!temp)
+		goto out;
+
+	mutex_lock(&fstb_lock);
+
+	hlist_for_each_entry_safe(iter, h, &fstb_frame_infos, hlist) {
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+			"%d\t%d\t0x%llx\t%d\t%d\n",
+			i+1,
+			iter->pid,
+			iter->bufid,
+			iter->self_ctrl_fps_enable ? iter->target_fps_v2 : iter->target_fps,
+			iter->target_fps_diff);
+		pos += length;
+		i++;
+	}
+
+	mutex_unlock(&fstb_lock);
+
+	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
+
+out:
+	kfree(temp);
+	return length;
+}
+
+static KOBJ_ATTR_RO(fstb_frs_info);
+
 // Powerhal use this to determine fstb_support
 static ssize_t fstb_soft_level_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -2577,6 +2618,8 @@ int mtk_fstb_init(void)
 				&kobj_attr_fstb_soft_level);
 		fpsgo_sysfs_create_file(fstb_kobj,
 				&kobj_attr_fstb_tfps_info);
+		fpsgo_sysfs_create_file(fstb_kobj,
+				&kobj_attr_fstb_frs_info);
 	}
 
 	wq = alloc_ordered_workqueue("%s", WQ_MEM_RECLAIM | WQ_HIGHPRI, "mt_fstb");
@@ -2638,6 +2681,8 @@ int __exit mtk_fstb_exit(void)
 			&kobj_attr_fstb_soft_level);
 	fpsgo_sysfs_remove_file(fstb_kobj,
 			&kobj_attr_fstb_tfps_info);
+	fpsgo_sysfs_remove_file(fstb_kobj,
+			&kobj_attr_fstb_frs_info);
 
 	fpsgo_sysfs_remove_dir(&fstb_kobj);
 
