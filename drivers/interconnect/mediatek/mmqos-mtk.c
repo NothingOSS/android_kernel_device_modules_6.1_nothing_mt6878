@@ -27,6 +27,8 @@
 #include "mmqos-mtk.h"
 #include "mtk_qos_bound.h"
 #include "mmqos-vcp.h"
+#include "mmqos-vcp-memory.h"
+#include <linux/delay.h>
 
 #if IS_ENABLED(CONFIG_MTK_EMI)
 #include <soc/mediatek/emi.h>
@@ -38,10 +40,12 @@
 #define SHIFT_ROUND(a, b)	((((a) - 1) >> (b)) + 1)
 #define icc_to_MBps(x)		((x) / 1000)
 #define MASK_8(a)		((a) & 0xff)
+#define MASK_16(a)		((a) & 0xffff)
 #define COMM_PORT_COMM_ID(a)	((a >> 8) & 0xff)
 #define MULTIPLY_RATIO(value)	((value)*1000)
 
-#define NODE_TYPE(a)		(a >> 16)
+#define RSH_16(a)		(a >> 16)
+#define NODE_TYPE(a)		RSH_16(a)
 #define LARB_ID(a)		(MASK_8(a))
 
 #define MAX_RECORD_COMM_NUM	(2)
@@ -59,7 +63,7 @@
 
 #define IS_ON_TABLE		(true)
 
-static int ftrace_ena;
+static u32 ftrace_ena;
 
 struct comm_port_bw_record {
 	u8 idx[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM];
@@ -327,7 +331,7 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 		MMQOS_DBG("comm%d avg %d peak %d",
 			comm_id, icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
 	if (MEM_BASE != NULL) {
-		writel(total_bw_to_vcp, MEM_TOTAL_BW);
+		writel(total_bw_to_vcp, MEM_APMCU_TOTAL_BW);
 		if (log_level & 1 << log_bw)
 			MMQOS_DBG("total_bw_to_vcp:%d", total_bw_to_vcp);
 	}
@@ -926,14 +930,12 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				trace_mmqos__larb_avg_bw(
 					r_w_type,
 					src->name,
-					LARB_ID(src->id),
 					icc_to_MBps(src->avg_bw),
 					trace_comm_id,
 					trace_chnn_id);
 				trace_mmqos__larb_peak_bw(
 					r_w_type,
 					src->name,
-					LARB_ID(src->id),
 					icc_to_MBps(src->peak_bw),
 					trace_comm_id,
 					trace_chnn_id);
@@ -1875,6 +1877,106 @@ noinline int tracing_mark_write(char *fmt, ...)
 	return 0;
 }
 
+static int mmqos_dbg_ftrace_thread(void *data)
+{
+	int retry = 0;
+
+	while (!mmqos_is_init_done()) {
+		MMQOS_DBG("start");
+		if (++retry > 20) {
+			MMQOS_DBG("mmqos vcp init not ready");
+			return 0;
+		}
+		ssleep(2);
+	}
+	while (!kthread_should_stop()) {
+		trace_mmqos__bw_to_emi(TYPE_IS_VCP,
+			readl(MEM_VCP_TOTAL_BW), 0);
+		trace_mmqos__chn_bw(0, 0,
+				RSH_16(readl(MEM_SMI_COMM0_CHN0_BW)),
+				MASK_16(readl(MEM_SMI_COMM0_CHN0_BW)),
+				0,
+				0,
+				TYPE_IS_VCP);
+		trace_mmqos__chn_bw(0, 1,
+				RSH_16(readl(MEM_SMI_COMM0_CHN1_BW)),
+				MASK_16(readl(MEM_SMI_COMM0_CHN1_BW)),
+				0,
+				0,
+				TYPE_IS_VCP);
+		trace_mmqos__chn_bw(1, 0,
+				RSH_16(readl(MEM_SMI_COMM1_CHN0_BW)),
+				MASK_16(readl(MEM_SMI_COMM1_CHN0_BW)),
+				0,
+				0,
+				TYPE_IS_VCP);
+		trace_mmqos__chn_bw(1, 1,
+				RSH_16(readl(MEM_SMI_COMM1_CHN1_BW)),
+				MASK_16(readl(MEM_SMI_COMM1_CHN1_BW)),
+				0,
+				0,
+				TYPE_IS_VCP);
+		trace_mmqos__larb_avg_bw(
+			"r", "vdec", RSH_16(readl(MEM_SMI_VDEC_COMM0_CHN0_BW)), 0, 0);
+		trace_mmqos__larb_avg_bw(
+			"w", "vdec", MASK_16(readl(MEM_SMI_VDEC_COMM0_CHN0_BW)), 0, 0);
+		trace_mmqos__larb_avg_bw(
+			"r", "vdec", RSH_16(readl(MEM_SMI_VDEC_COMM0_CHN1_BW)), 0, 1);
+		trace_mmqos__larb_avg_bw(
+			"w", "vdec", MASK_16(readl(MEM_SMI_VDEC_COMM0_CHN1_BW)), 0, 1);
+		trace_mmqos__larb_avg_bw(
+			"r", "vdec", RSH_16(readl(MEM_SMI_VDEC_COMM1_CHN0_BW)), 1, 0);
+		trace_mmqos__larb_avg_bw(
+			"w", "vdec", MASK_16(readl(MEM_SMI_VDEC_COMM1_CHN0_BW)), 1, 0);
+		trace_mmqos__larb_avg_bw(
+			"r", "vdec", RSH_16(readl(MEM_SMI_VDEC_COMM1_CHN1_BW)), 1, 1);
+		trace_mmqos__larb_avg_bw(
+			"w", "vdec", MASK_16(readl(MEM_SMI_VDEC_COMM1_CHN1_BW)), 1, 1);
+		trace_mmqos__larb_avg_bw(
+			"r", "venc", RSH_16(readl(MEM_SMI_VENC_COMM0_CHN0_BW)), 0, 0);
+		trace_mmqos__larb_avg_bw(
+			"w", "venc", MASK_16(readl(MEM_SMI_VENC_COMM0_CHN0_BW)), 0, 0);
+		trace_mmqos__larb_avg_bw(
+			"r", "venc", RSH_16(readl(MEM_SMI_VENC_COMM0_CHN1_BW)), 0, 1);
+		trace_mmqos__larb_avg_bw(
+			"w", "venc", MASK_16(readl(MEM_SMI_VENC_COMM0_CHN1_BW)), 0, 1);
+		trace_mmqos__larb_avg_bw(
+			"r", "venc", RSH_16(readl(MEM_SMI_VENC_COMM1_CHN0_BW)), 1, 0);
+		trace_mmqos__larb_avg_bw(
+			"w", "venc", MASK_16(readl(MEM_SMI_VENC_COMM1_CHN0_BW)), 1, 0);
+		trace_mmqos__larb_avg_bw(
+			"r", "venc", RSH_16(readl(MEM_SMI_VENC_COMM1_CHN1_BW)), 1, 1);
+		trace_mmqos__larb_avg_bw(
+			"w", "venc", MASK_16(readl(MEM_SMI_VENC_COMM1_CHN1_BW)), 1, 1);
+		msleep(20);
+	}
+	return 0;
+}
+
+static int mmqos_debug_set_ftrace(const char *val,
+	const struct kernel_param *kp)
+{
+	static struct task_struct *kthr;
+	u32 ena = 0;
+	int ret;
+
+	ret = kstrtou32(val, 0, &ena);
+
+	ftrace_ena = ena;
+	if (mmqos_state & VCP_ENABLE) {
+		if (ena) {
+			kthr = kthread_run(
+				mmqos_dbg_ftrace_thread, NULL, "mmqos-dbg-ftrace");
+		} else {
+			MMQOS_DBG("disable");
+			ret = kthread_stop(kthr);
+			if (!ret)
+				MMQOS_DBG("stop kthread mmqos-dbg-ftrace");
+		}
+	}
+	return 0;
+}
+
 module_param(log_level, uint, 0644);
 MODULE_PARM_DESC(log_level, "mmqos log level");
 
@@ -1922,8 +2024,12 @@ MODULE_PARM_DESC(mmqos_state, "mmqos_state");
 module_param(freq_mode, uint, 0644);
 MODULE_PARM_DESC(freq_mode, "mminfra change frequency mode");
 
-module_param(ftrace_ena, uint, 0644);
-MODULE_PARM_DESC(ftrace_ena, "ftrace enable");
+static const struct kernel_param_ops mmqos_debug_set_ftrace_ops = {
+	.set = mmqos_debug_set_ftrace,
+	.get = param_get_uint,
+};
+module_param_cb(ftrace_ena, &mmqos_debug_set_ftrace_ops, &ftrace_ena, 0644);
+MODULE_PARM_DESC(ftrace_ena, "mmqos ftrace log");
 
 EXPORT_SYMBOL_GPL(mtk_mmqos_remove);
 MODULE_LICENSE("GPL v2");
