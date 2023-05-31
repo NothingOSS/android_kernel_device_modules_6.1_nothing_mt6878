@@ -1053,6 +1053,40 @@
 		mediatek,enable = <1>;
 	};
 
+	cm_mgr: cm-mgr@c100000 {
+		compatible = "mediatek,mt6989-cm_mgr";
+		reg = <0 0xc100000 0 0x9000>;
+		reg-names = "cm_mgr_base";
+		interconnects = <&dvfsrc MT6873_MASTER_MCU_1 &dvfsrc MT6873_SLAVE_DDR_EMI>;
+		interconnect-names = "cm-perf-bw";
+		required-opps = <&dvfsrc_freq_opp0>,
+				<&dvfsrc_freq_opp1>,
+				<&dvfsrc_freq_opp2>,
+				<&dvfsrc_freq_opp3>,
+				<&dvfsrc_freq_opp4>,
+				<&dvfsrc_freq_opp5>,
+				<&dvfsrc_freq_opp6>,
+				<&dvfsrc_freq_opp7>,
+				<&dvfsrc_freq_opp8>;
+		cm-mgr-enable = <1>;
+		cm-mgr-arch = "v1p";
+
+		cm-mgr-num-array = <7>;
+		cm-mgr,cp-down  = <100 100 100 100 100 100 100>;
+		cm-mgr,cp-up = <100 100 100 100 100 100 100>;
+		cm-mgr,dt-down = <0 0 0 0 0 0 0>;
+		cm-mgr,dt-up = <0 0 0 0 0 0 0>;
+		cm-mgr,vp-down = <100 100 100 100 100 100 100>;
+		cm-mgr,vp-up = <100 100 100 100 100 100 100>;
+
+		use-cpu-to-dram-map = "enable";
+		use-cpu-to-dram-map-new = "enable";
+		cm-mgr-cpu-opp-to-dram = <1 1 8 8 8 8 8 8
+					8 8 8 8 8 8 8 8
+					8 8 8 8 8 8 8 8
+					8 8 8 8 8 8 8 8>;
+	};
+
 	ptppll_pll_ctrl_clk: syscon@c034000 {
 		compatible = "mediatek,mt6989-ptppll_pll_ctrl", "syscon";
 		reg = <0 0xc034000 0 0x1000>;
