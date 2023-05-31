@@ -1246,14 +1246,9 @@ static int mt6989_adsp_mem_set(struct snd_kcontrol *kcontrol,
 	case AUDIO_TASK_ECHO_REF_ID:
 	case AUDIO_TASK_USBUL_ID:
 	case AUDIO_TASK_MDDL_ID:
-		ul_memif_num = get_dsp_task_attr(task_id,
-						 ADSP_TASK_ATTR_MEMUL);
-		break;
 	case AUDIO_TASK_BTUL_ID:
 		ul_memif_num = get_dsp_task_attr(task_id,
 						 ADSP_TASK_ATTR_MEMUL);
-		ref_memif_num = get_dsp_task_attr(task_id,
-						 ADSP_TASK_ATTR_MEMREF);
 		break;
 	case AUDIO_TASK_CALL_FINAL_ID:
 	case AUDIO_TASK_PLAYBACK_ID:
