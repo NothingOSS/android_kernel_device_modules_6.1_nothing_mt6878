@@ -2280,20 +2280,6 @@ static int ufs_mtk_clk_scale_notify(struct ufs_hba *hba, bool scale_up,
 		ufs_mtk_clk_scale(hba, scale_up);
 	}
 
-	/*
-	 * This is a workaround for upstream bug, can remove after revert
-	 * commit cb42f459a615c0abe4f97429070f2e0783408f11
-	 * Author: Adrien Thierry <athierry@redhat.com>
-	 * Date:   Fri Feb 17 14:44:22 2023 -0500
-	 * UPSTREAM: scsi: ufs: core: Initialize devfreq synchronously
-	 */
-	if (status == POST_CHANGE) {
-		if (scale_up && !(hba->clk_scaling.saved_pwr_info.info.gear_rx))
-			memcpy(&hba->clk_scaling.saved_pwr_info.info,
-				&hba->pwr_info,
-				sizeof(struct ufs_pa_layer_attr));
-	}
-
 	return 0;
 }
 
