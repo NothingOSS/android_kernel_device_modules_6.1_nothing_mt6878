@@ -13230,6 +13230,8 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 					"L,M,B";
 			node-29 = "MCUPM_CPUCOOLER_DSU_MAX_FREQ",
 					"max_freq";
+			node-30 = "MCUPM_PMU_MGR_CPU_STALL_COUNT",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 		};
 
 		sspm_rts_header: sspm-rts-header {
