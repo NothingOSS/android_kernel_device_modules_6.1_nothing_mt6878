@@ -10737,7 +10737,7 @@
 			};
 		};
 
-		apusys-hw-logger@19024000 {
+		apusys_hw_logger: apusys-hw-logger@19024000 {
 			#address-cells = <2>;
 			#size-cells = <2>;
 			compatible = "mediatek,apusys_hw_logger";
