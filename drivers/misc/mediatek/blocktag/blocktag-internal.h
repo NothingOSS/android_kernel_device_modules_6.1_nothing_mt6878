@@ -126,12 +126,14 @@ struct mtk_btag_mictx {
 		__u64 window_begin;
 		__u16 depth;
 	} wl;
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	struct __mictx_average_queue_depth {
 		spinlock_t lock;
 		__u64 latency;
 		__u64 last_depth_chg;
 		__u16 depth;
 	} avg_qd;
+#endif
 	struct __mictx_tag {
 		__u64 start_t;
 		enum mtk_btag_io_type io_type;
