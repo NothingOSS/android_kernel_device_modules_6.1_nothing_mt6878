@@ -37,6 +37,8 @@ enum smmu_atf_cmd {
 	SMMU_SECURE_TRIGGER_IRQ,
 	SMMU_SECURE_TEST,
 	SMMU_SECURE_CONFIG_CQDMA,
+	SMMU_SECURE_DUMP_REG,
+	SMMU_SECURE_DUMP_PGTABLE,
 	SMMU_CMD_NUM
 };
 
@@ -244,6 +246,34 @@ static int mtk_smmu_sec_test(u32 smmu_type)
 	return SMC_SMMU_SUCCESS;
 }
 
+static int mtk_smmu_sec_dump_reg(u32 smmu_type)
+{
+	int ret;
+
+	ret = mtk_smmu_atf_call_common(smmu_type, SMMU_SECURE_DUMP_REG);
+	if (ret) {
+		pr_info("%s, smc call fail:%d, type:%u\n", __func__, ret, smmu_type);
+		return SMC_SMMU_FAIL;
+	}
+
+	return SMC_SMMU_SUCCESS;
+}
+
+static int mtk_smmu_sec_dump_pgtable(u32 smmu_type, u32 fmt)
+{
+	unsigned long cmd;
+	int ret;
+
+	cmd = SMMU_ATF_SET_CMD(smmu_type, 1, SMMU_SECURE_DUMP_PGTABLE);
+	ret = mtk_smmu_atf_call(smmu_type, cmd, fmt, 0, 0, 0, 0, 0);
+	if (ret) {
+		pr_info("%s, smc call fail:%d, type:%u\n", __func__, ret, smmu_type);
+		return SMC_SMMU_FAIL;
+	}
+
+	return SMC_SMMU_SUCCESS;
+}
+
 int mtk_smmu_sec_config_cqdma(bool enable)
 {
 	unsigned long cmd = SMMU_ATF_SET_CMD(SOC_SMMU, 0, SMMU_SECURE_CONFIG_CQDMA);
@@ -266,6 +296,7 @@ EXPORT_SYMBOL_GPL(mtk_smmu_sec_config_cqdma);
 #define DEBUG_SET_PARAM_EN		GENMASK_ULL(7, 7)
 #define DEBUG_SET_PARAM_AID		GENMASK_ULL(15, 8)
 #define DEBUG_SET_PARAM_SID		GENMASK_ULL(23, 16)
+#define DEBUG_SET_PARAM_FMT		GENMASK_ULL(25, 24)
 
 static int mtk_smmu_sec_debug_set(void *data, u64 input)
 {
@@ -275,12 +306,13 @@ static int mtk_smmu_sec_debug_set(void *data, u64 input)
 	u32 enable = !!((input & DEBUG_SET_PARAM_EN) >> 7);
 	u32 aid = (input & DEBUG_SET_PARAM_AID) >> 8;
 	u32 sid = (input & DEBUG_SET_PARAM_SID) >> 16;
+	u32 fmt = (input & DEBUG_SET_PARAM_FMT) >> 24;
 	unsigned long fault_iova = 0, fault_pa = 0, fault_id = 0;
 	bool need_handle = false;
 	int ret = 0;
 
-	pr_info("%s input:0x%llx, index:%u, smmu:%u, sec:%u, enable:%u, aid:%u, sid:%u\n",
-		__func__, input, index, smmu_type, sec, enable, aid, sid);
+	pr_info("%s input:0x%llx, index:%u, smmu:%u, sec:%u, enable:%u, aid:%u, sid:%u, fmt:%u\n",
+		__func__, input, index, smmu_type, sec, enable, aid, sid, fmt);
 
 	switch (index) {
 	case SMMU_SECURE_INIT:
@@ -313,6 +345,14 @@ static int mtk_smmu_sec_debug_set(void *data, u64 input)
 	case SMMU_SECURE_TEST:
 		pr_info("%s, SMMU_SECURE_TEST\n", __func__);
 		ret = mtk_smmu_sec_test(smmu_type);
+		break;
+	case SMMU_SECURE_DUMP_REG:
+		pr_info("%s, SMMU_SECURE_DUMP_REG\n", __func__);
+		ret = mtk_smmu_sec_dump_reg(smmu_type);
+		break;
+	case SMMU_SECURE_DUMP_PGTABLE:
+		pr_info("%s, SMMU_SECURE_DUMP_PGTABLE\n", __func__);
+		ret = mtk_smmu_sec_dump_pgtable(smmu_type, fmt);
 		break;
 	default:
 		pr_info("%s error, index:%u\n", __func__, index);
