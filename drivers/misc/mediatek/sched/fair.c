@@ -1419,8 +1419,8 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			 * Find the CPU with the maximum spare capacity in
 			 * the performance domain
 			 */
-			if (is_target_max_spare_cpu(is_vip, num_vip, prev_min_num_vip,
-					spare_cap, pd_max_spare_cap)) {
+			if (!latency_sensitive && is_target_max_spare_cpu(is_vip, num_vip,
+					prev_min_num_vip, spare_cap, pd_max_spare_cap)) {
 				pd_max_spare_cap = spare_cap;
 				pd_max_spare_cap_cpu = cpu;
 			}
