@@ -3160,11 +3160,22 @@
 
 	apusys-aov {
 		compatible = "mediatek,apusys_aov-v2";
+		smmu-device = <&apusys_aov_smmu_device>;
+		ctrl-size = <0x200000>;
+	};
+
+	apusys_aov_smmu_device: apusys-aov-smmu-device {
+		compatible = "mediatek,apusys-aov-smmu-device";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		mtk,iommu-dma-range = <0xb000000 0x1000000>;
 		iommus = <&apu_smmu 0x11>;
-		ctrl-size = <0x200000>;
+	};
+
+	secure_apu_smmu_device: secure-apu-smmu-device {
+		compatible = "mediatek,secure-apu-smmu-device";
+		mtk,iommu-group = <&apu_iommu_group_0>;
+		iommus = <&apu_smmu 0x10>;
 	};
 
 	soc {
@@ -16993,12 +17004,9 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 &trusty {
 	trusty-sapu {
 		compatible = "mediatek,trusty-sapu";
-		#address-cells = <2>;
-		#size-cells = <2>;
 		power-version = <2>;
 		datamem-size = <0x0 0x1000000>;
-		mtk,iommu-group = <&apu_iommu_group_0>;
-		iommus = <&apu_smmu 0x10>;
+		smmu-device = <&secure_apu_smmu_device>;
 		status = "okay";
 	};
 };
