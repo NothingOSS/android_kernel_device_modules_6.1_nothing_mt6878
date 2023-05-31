@@ -61,6 +61,7 @@
 			mml-mutex = &mml_mutex0;
 			y2r4 = &ovl_y2r0;
 			y2r6 = &ovl1_y2r0;
+			y2r0 = &disp_y2r0;
 			ovl3 = &disp_ovl0_2l;
 			ovl4 = &disp_ovl1_2l;
 			ovl5 = &disp_ovl2_2l;
@@ -100,7 +101,7 @@
 			dither2 = &disp_dither2;
 			chist0 = &disp_chist0;
 			chist1 = &disp_chist1;
-//			mdp_rdma0 = &disp_mdp_rdma0;
+			mdp-rdma0 = &disp_mdp_rdma0;
 			rsz0 = &disp_rsz0;
 			rsz1 = &disp_rsz1;
 			rsz4 = &ovl0_rsz0;
@@ -116,8 +117,8 @@
 //			merge0 = &disp_merge0;
 			oddmr0 = &disp_oddmr0;
 			dsi0 = &dsi0;
-//			dsi1 = &dsi1;
-//			dsi2 = &dsi2;
+			dsi1 = &dsi1;
+			dsi2 = &dsi2;
 //			intf0 = &disp1_dp_intf0;
 			mutex0 = &disp1_mutex0;
 			mtksmmu0 = &mm_smmu;
@@ -6462,10 +6463,18 @@
 			mtk-tdshp-clarity-support = <1>;
 		};
 
-		disp-mdp-rdma0@14014000 {
-			compatible = "mediatek,disp_mdp_rdma0";
+		disp_mdp_rdma0: disp-mdp-rdma0@14014000 {
+			compatible = "mediatek,disp_mdp_rdma0",
+						"mediatek,mt6989-disp-mdp-rdma";
 			reg = <0 0x14014000 0 0x1000>;
-			interrupts = <GIC_SPI 456 IRQ_TYPE_NONE 0>;
+			interrupts = <GIC_SPI 456 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys_config_clk CLK_MM_MDP_RDMA0>;
+			mediatek,larb = <&smi_larb32 SMMU_L32_P4_DISP_MDP_RDMA0>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L32_P4_DISP_MDP_RDMA0)
+						&mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "DDP_COMPONENT_MDP_RDMA0_hrt_qos";
 		};
 
 		disp_oddmr0: disp-oddmr0@14015000 {
@@ -6543,9 +6552,10 @@
 		};
 
 		disp_y2r0: disp-y2r0@14023000 {
-			compatible = "mediatek,disp_y2r0";
-					//"mediatek,mt6989-disp-y2r";
+			compatible = "mediatek,disp_y2r0",
+					"mediatek,mt6989-disp-y2r";
 			reg = <0 0x14023000 0 0x1000>;
+			clocks = <&dispsys_config_clk CLK_MM_DISP_Y2R0>;
 		};
 
 		i2c@14025000 {
@@ -6668,24 +6678,29 @@
 		};
 
 		dsi1: dsi@1420b000 {
-			compatible = "mediatek,disp1_dsi1";
-					//"mediatek,mt6989-dsi";
+			status = "disabled";
+			compatible = "mediatek,disp1_dsi1",
+					"mediatek,mt6989-dsi";
 			reg = <0 0x1420b000 0 0x1000>;
 			interrupts = <GIC_SPI 501 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSI1>,
 					<&dispsys1_config_clk CLK_MM1_MOD2>,
-					<&mipi_tx_config0>;
+					<&mipi_tx_config1>;
 			clock-names = "engine", "digital", "hs";
 			phys = <&mipi_tx_config1>;
 			phy-names = "dphy";
 		};
 
 		dsi2: dsi@1420c000 {
-			compatible = "mediatek,disp1_dsi2";
-					//"mediatek,mt6989-dsi";
+			status = "disabled";
+			compatible = "mediatek,disp1_dsi2",
+					"mediatek,mt6989-dsi";
 			reg = <0 0x1420c000 0 0x1000>;
 			interrupts = <GIC_SPI 502 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSI2>;
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DSI2>,
+					<&dispsys1_config_clk CLK_MM1_MOD3>,
+					<&mipi_tx_config1>;
+			clock-names = "engine", "digital", "hs";
 			phys = <&mipi_tx_config1>;
 			phy-names = "dphy";
 		};

@@ -123,6 +123,33 @@ arm64.nopauth arm64.nosme arm64.nosve";
 	status = "okay";
 };
 
+&dsi1 {
+//	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	init-panel-off;
+	panel21@0 {
+		compatible = "truly,td4330,cmd";
+		reg = <1>;
+		pm-enable-gpios = <&pio 215 0>;
+		reset-gpios = <&pio 230 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel21_in: endpoint {
+				remote-endpoint = <&dsi1_out>;
+			};
+		};
+	};
+	ports {
+		port {
+			dsi1_out: endpoint {
+				remote-endpoint = <&panel21_in>;
+			};
+		};
+	};
+};
+
 &dsi0 {
 	status = "okay";
 	#address-cells = <1>;
