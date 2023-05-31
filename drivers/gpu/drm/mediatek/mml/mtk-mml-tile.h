@@ -19,6 +19,7 @@ struct rdma_tile_data {
 	u32 blk_shift_h;
 	struct mml_rect crop;
 	u32 max_width;
+	u16 read_rotate;
 };
 
 struct rsz_tile_data {

@@ -986,15 +986,12 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		return MML_MODE_MML_DECOUPLE;
 	}
 
-	/* no rotate, go to direct link */
-	if (info->dest[0].rotate == MML_ROT_0)
-		return tp_query_mode_dl(mml, info, reason);
-
 	/* rotate go to racing (inline rotate) */
-	if (info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270)
+	if (mml_racing == 1 &&
+		(info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270))
 		return tp_query_mode_racing(mml, info, reason);
 
-	return MML_MODE_MML_DECOUPLE;
+	return tp_query_mode_dl(mml, info, reason);
 
 decouple_user:
 	return info->mode;

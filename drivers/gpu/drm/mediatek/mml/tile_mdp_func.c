@@ -75,6 +75,84 @@ enum isp_tile_message tile_rdma_init(struct tile_func_block *ptr_func,
 	return ISP_MESSAGE_TILE_OK;
 }
 
+enum isp_tile_message tile_rrot_init(struct tile_func_block *ptr_func,
+				     struct tile_reg_map *ptr_tile_reg_map)
+{
+	struct rdma_tile_data *data = &ptr_func->data->rdma;
+	u32 in_tile_size;
+
+	if (unlikely(!data))
+		return MDP_MESSAGE_NULL_DATA;
+
+
+	/* Specific constraints implied by different formats */
+
+	/* In tile constraints
+	 * Input Format | Tile Width
+	 * -------------|-----------
+	 *   Block mode | L
+	 *       YUV420 | L
+	 *       YUV422 | L * 2
+	 * YUV444/RGB/Y | L * 4
+	 */
+	if (MML_FMT_AFBC_ARGB(data->src_fmt)) {
+		/* For AFBC mode end x may be extend to block size
+		 * and may exceed max tile width 640. So reduce width
+		 * to prevent it.
+		 */
+		in_tile_size = ((data->max_width >> 5) - 1) << 5;
+	} else if (MML_FMT_AFBC_YUV(data->src_fmt)) {
+		in_tile_size = ((data->max_width >> 4) - 1) << 4;
+	} else if (MML_FMT_HYFBC(data->src_fmt)) {
+		/* For HyFBC block size 32x16, so tile rule same as RGB AFBC */
+		in_tile_size = ((data->max_width >> 5) - 1) << 5;
+	} else if (MML_FMT_BLOCK(data->src_fmt)) {
+		in_tile_size = (data->max_width >> 6) << 6;
+	} else if (MML_FMT_YUV420(data->src_fmt)) {
+		in_tile_size = data->max_width;
+	} else if (MML_FMT_YUV422(data->src_fmt)) {
+		in_tile_size = data->max_width * 2;
+	} else {
+		in_tile_size = data->max_width * 4;
+	}
+
+	if (MML_FMT_H_SUBSAMPLE(data->src_fmt)) {
+		/* YUV422 or YUV420 */
+		/* Tile alignment constraints */
+		ptr_func->in_const_x = 2;
+
+		if (MML_FMT_V_SUBSAMPLE(data->src_fmt) &&
+		    !MML_FMT_INTERLACED(data->src_fmt)) {
+			/* YUV420 */
+			ptr_func->in_const_y = 2;
+		}
+	}
+
+	if (MML_FMT_10BIT_PACKED(data->src_fmt) &&
+	    !MML_FMT_COMPRESS(data->src_fmt) &&
+	    !MML_FMT_ALPHA(data->src_fmt) &&
+	    !MML_FMT_BLOCK(data->src_fmt)) {
+		/* 10-bit packed, not compress, not alpha 32-bit, not blk */
+		ptr_func->in_const_x = 4;
+	}
+
+	if (data->read_rotate == MML_ROT_0 || data->read_rotate == MML_ROT_180) {
+		ptr_func->in_tile_width = in_tile_size;
+		ptr_func->in_tile_height = 65535;
+		ptr_func->out_tile_height = 65535;
+	} else {
+		ptr_func->in_tile_width = 65535;
+		ptr_func->in_tile_height = in_tile_size;
+		ptr_func->out_tile_width = 65535;
+		swap(ptr_func->in_const_x, ptr_func->in_const_y);
+	}
+
+	ptr_func->crop_bias_x = data->crop.left;
+	ptr_func->crop_bias_y = data->crop.top;
+
+	return ISP_MESSAGE_TILE_OK;
+}
+
 enum isp_tile_message tile_prz_init(struct tile_func_block *ptr_func,
 				    struct tile_reg_map *ptr_tile_reg_map)
 {
@@ -770,6 +848,12 @@ enum isp_tile_message tile_rdma_back(struct tile_func_block *ptr_func,
 			remain = TILE_MOD(ptr_func->in_pos_ys, ptr_func->in_const_y);
 			if (remain)
 				ptr_func->in_pos_ys -= remain;
+
+			if (ptr_func->in_tile_height &&
+			    ptr_func->in_pos_ye + 1 >
+					ptr_func->in_pos_ys + ptr_func->in_tile_height)
+				ptr_func->in_pos_ye =
+					ptr_func->in_pos_ys + ptr_func->in_tile_height - 1;
 		}
 	}
 	return ISP_MESSAGE_TILE_OK;

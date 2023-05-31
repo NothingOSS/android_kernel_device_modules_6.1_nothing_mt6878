@@ -457,10 +457,11 @@ s32 rrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	/* RDMA support crop capability */
 	func->type = TILE_TYPE_RDMA | TILE_TYPE_CROP_EN;
-	func->init_func = tile_rdma_init;
+	func->init_func = tile_rrot_init;
 	func->for_func = tile_rdma_for;
 	func->back_func = tile_rdma_back;
 	func->data = data;
+	data->rdma.read_rotate = cfg->info.dest[0].rotate;
 	func->enable_flag = true;
 
 	func->full_size_x_in = cfg->frame_in.width;
