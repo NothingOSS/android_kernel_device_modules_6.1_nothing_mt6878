@@ -780,6 +780,9 @@ static int mtk_hwv_pll_setclr_prepare(struct clk_hw *hw)
 	int i = 0;
 	int ret = 0;
 
+	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(true);
+
 	ret = mtk_hwv_pll_res_prepare(pll);
 	if (ret)
 		return ret;
@@ -831,6 +834,9 @@ static int mtk_hwv_pll_setclr_prepare(struct clk_hw *hw)
 		}
 	}
 
+	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
+
 	return 0;
 hwv_rstb_done_fail:
 	val = readl(pll->rstb_addr);
@@ -850,6 +856,8 @@ hwv_prepare_fail:
 	mtk_clk_notify(NULL, pll->hwv_regmap, NULL,
 			0, (pll->data->hwv_set_ofs / MTK_HWV_ID_OFS),
 			0, CLK_EVT_HWV_CG_TIMEOUT);
+	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
 
 	return -EBUSY;
 }
@@ -859,6 +867,9 @@ static void mtk_hwv_pll_setclr_unprepare(struct clk_hw *hw)
 	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
 	u32 val = 0, val2 = 0;
 	int i = 0;
+
+	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(true);
 
 	if (pll->data->flags & HAVE_RST_BAR) {
 		regmap_write(pll->hwv_regmap, pll->data->hwv_clr_ofs + (PLL_RSTB_TYPE * 0x8),
@@ -906,6 +917,8 @@ static void mtk_hwv_pll_setclr_unprepare(struct clk_hw *hw)
 	}
 
 	mtk_hwv_pll_res_unprepare(pll);
+	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
 
 	return;
 
@@ -926,6 +939,8 @@ hwv_prepare_fail:
 	mtk_clk_notify(NULL, pll->hwv_regmap, NULL,
 			0, (pll->data->hwv_clr_ofs / MTK_HWV_ID_OFS),
 			0, CLK_EVT_HWV_CG_TIMEOUT);
+	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
 }
 
 int mtk_hwv_pll_on(struct clk_hw *hw)

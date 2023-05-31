@@ -154,6 +154,12 @@ static const struct mtk_gate_regs perao0_cg_regs = {
 	.sta_ofs = 0x10,
 };
 
+static const struct mtk_gate_regs perao0_hwv_regs = {
+	.set_ofs = 0x0020,
+	.clr_ofs = 0x0024,
+	.sta_ofs = 0x1C10,
+};
+
 static const struct mtk_gate_regs perao1_cg_regs = {
 	.set_ofs = 0x2C,
 	.clr_ofs = 0x30,
@@ -173,6 +179,18 @@ static const struct mtk_gate_regs perao2_cg_regs = {
 		.regs = &perao0_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_gate_ops_setclr,	\
+	}
+
+#define GATE_HWV_PERAO0(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "hw-voter-regmap",					\
+		.regs = &perao0_cg_regs,			\
+		.hwv_regs = &perao0_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv,				\
+		.flags = CLK_USE_HW_VOTER,				\
 	}
 
 #define GATE_PERAO1(_id, _name, _parent, _shift) {	\
@@ -219,21 +237,21 @@ static const struct mtk_gate perao_clks[] = {
 			"disp_pwm_ck"/* parent */, 10),
 	GATE_PERAO0(CLK_PERAOP_DISP_PWM1, "peraop_disp_pwm1",
 			"disp_pwm_ck"/* parent */, 11),
-	GATE_PERAO0(CLK_PERAOP_SPI0_B, "peraop_spi0_b",
+	GATE_HWV_PERAO0(CLK_PERAOP_SPI0_B, "peraop_spi0_b",
 			"spi0_b_ck"/* parent */, 12),
-	GATE_PERAO0(CLK_PERAOP_SPI1_B, "peraop_spi1_b",
+	GATE_HWV_PERAO0(CLK_PERAOP_SPI1_B, "peraop_spi1_b",
 			"spi1_b_ck"/* parent */, 13),
-	GATE_PERAO0(CLK_PERAOP_SPI2_B, "peraop_spi2_b",
+	GATE_HWV_PERAO0(CLK_PERAOP_SPI2_B, "peraop_spi2_b",
 			"spi2_b_ck"/* parent */, 14),
-	GATE_PERAO0(CLK_PERAOP_SPI3_B, "peraop_spi3_b",
+	GATE_HWV_PERAO0(CLK_PERAOP_SPI3_B, "peraop_spi3_b",
 			"spi3_b_ck"/* parent */, 15),
-	GATE_PERAO0(CLK_PERAOP_SPI4_B, "peraop_spi4_b",
+	GATE_HWV_PERAO0(CLK_PERAOP_SPI4_B, "peraop_spi4_b",
 			"spi4_b_ck"/* parent */, 16),
-	GATE_PERAO0(CLK_PERAOP_SPI5_B, "peraop_spi5_b",
+	GATE_HWV_PERAO0(CLK_PERAOP_SPI5_B, "peraop_spi5_b",
 			"spi5_b_ck"/* parent */, 17),
-	GATE_PERAO0(CLK_PERAOP_SPI6_B, "peraop_spi6_b",
+	GATE_HWV_PERAO0(CLK_PERAOP_SPI6_B, "peraop_spi6_b",
 			"spi6_b_ck"/* parent */, 18),
-	GATE_PERAO0(CLK_PERAOP_SPI7_B, "peraop_spi7_b",
+	GATE_HWV_PERAO0(CLK_PERAOP_SPI7_B, "peraop_spi7_b",
 			"spi7_b_ck"/* parent */, 19),
 	/* PERAO1 */
 	GATE_PERAO1(CLK_PERAOP_DMA_B, "peraop_dma_b",

@@ -134,6 +134,8 @@ static int mtk_clk_hwv_mux_enable(struct clk_hw *hw)
 	bool is_done = false;
 	int i = 0;
 
+	if (mux->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(true);
 	regmap_write(mux->hwv_regmap, mux->data->hwv_set_ofs,
 			BIT(mux->data->gate_shift));
 
@@ -168,6 +170,9 @@ static int mtk_clk_hwv_mux_enable(struct clk_hw *hw)
 		i++;
 	}
 
+	if (mux->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
+
 	return 0;
 
 hwv_done_fail:
@@ -181,6 +186,8 @@ hwv_prepare_fail:
 	mtk_clk_notify(mux->regmap, mux->hwv_regmap, NULL,
 			mux->data->mux_ofs, (mux->data->hwv_set_ofs / MTK_HWV_ID_OFS),
 			mux->data->gate_shift, CLK_EVT_HWV_CG_TIMEOUT);
+	if (mux->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
 
 	return -EBUSY;
 }
@@ -190,6 +197,9 @@ static void mtk_clk_hwv_mux_disable(struct clk_hw *hw)
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
 	u32 val;
 	int i = 0;
+
+	if (mux->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(true);
 
 	regmap_write(mux->hwv_regmap, mux->data->hwv_clr_ofs,
 			BIT(mux->data->gate_shift));
@@ -212,6 +222,9 @@ static void mtk_clk_hwv_mux_disable(struct clk_hw *hw)
 		i++;
 	}
 
+	if (mux->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
+
 	return;
 
 hwv_done_fail:
@@ -225,7 +238,8 @@ hwv_prepare_fail:
 	mtk_clk_notify(mux->regmap, mux->hwv_regmap, clk_hw_get_name(hw),
 			mux->data->mux_ofs, (mux->data->hwv_set_ofs / MTK_HWV_ID_OFS),
 			mux->data->gate_shift, CLK_EVT_HWV_CG_TIMEOUT);
-	return;
+	if (mux->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
 }
 
 static int mtk_clk_ipi_mux_enable(struct clk_hw *hw)
@@ -359,6 +373,14 @@ static int __mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index, bool setcl
 			mask << mux->data->mux_shift,
 			index << mux->data->mux_shift);
 
+	if (mux->data->chk_ofs) {
+		regmap_read(mux->regmap, mux->data->chk_ofs, &val);
+		if (val & mux->data->chk_shift)
+			mtk_clk_notify(mux->regmap, NULL, clk_hw_get_name(hw),
+				mux->data->chk_ofs, 0,
+				mux->data->chk_shift, CLK_EVT_SET_PARENT_ERR);
+	}
+
 null_pointer_error:
 	if (mux->lock)
 		spin_unlock_irqrestore(mux->lock, flags);
@@ -386,48 +408,56 @@ static int mtk_clk_mux_set_parent_setclr_upd_lock(struct clk_hw *hw, u8 index)
 static int mtk_clk_hwv_mux_set_parent(struct clk_hw *hw, u8 index)
 {
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
-	u32 mask = GENMASK(mux->data->mux_width - 1, 0);
+	u32 mask;
+	u32 opp_mask;
 	u32 val = 0, val2 = 0, orig = 0, renew = 0;
 	int i = 0;
 
+	if (mux->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(true);
+
+	mask = GENMASK(mux->data->mux_width - 1, 0) << mux->data->mux_shift;
+	opp_mask = GENMASK(index, 0) << mux->data->mux_shift;
+
 	regmap_read(mux->hwv_regmap, mux->data->hwv_set_ofs, &orig);
 
-	val = (orig & ~(mask << mux->data->mux_shift))
-			| (index << mux->data->mux_shift);
+	val = orig & mask;
+	val ^= opp_mask;
 
-	if (val != orig) {
-		regmap_write(mux->hwv_regmap, mux->data->hwv_clr_ofs,
-					mask << mux->data->mux_shift);
-		regmap_write(mux->hwv_regmap, mux->data->hwv_set_ofs,
-				index << mux->data->mux_shift);
+	if (val > opp_mask)
+		regmap_write(mux->hwv_regmap, mux->data->hwv_clr_ofs, val);
+	else
+		regmap_write(mux->hwv_regmap, mux->data->hwv_set_ofs, val);
 
-		while (1) {
-			regmap_read(mux->hwv_regmap, mux->data->hwv_set_ofs, &renew);
-			if (renew == val)
-				break;
-			if (i < MTK_WAIT_HWV_PREPARE_CNT)
-				udelay(MTK_WAIT_HWV_PREPARE_US);
-			else
-				goto hwv_prepare_fail;
-			i++;
-		}
-
-		i = 0;
-
-		while (1) {
-			regmap_read(mux->hwv_regmap, mux->data->hwv_sta_ofs, &val);
-
-			if ((val & mask) != 0)
-				break;
-
-			if (i < MTK_WAIT_HWV_DONE_CNT)
-				udelay(MTK_WAIT_HWV_DONE_US);
-			else
-				goto hwv_done_fail;
-
-			i++;
-		}
+	while (1) {
+		regmap_read(mux->hwv_regmap, mux->data->hwv_set_ofs, &renew);
+		if ((renew & opp_mask) == opp_mask)
+			break;
+		if (i < MTK_WAIT_HWV_PREPARE_CNT)
+			udelay(MTK_WAIT_HWV_PREPARE_US);
+		else
+			goto hwv_prepare_fail;
+		i++;
 	}
+
+	i = 0;
+
+	while (1) {
+		regmap_read(mux->hwv_regmap, mux->data->hwv_sta_ofs, &renew);
+
+		if ((renew & val) == val)
+			break;
+
+		if (i < MTK_WAIT_HWV_DONE_CNT)
+			udelay(MTK_WAIT_HWV_DONE_US);
+		else
+			goto hwv_done_fail;
+
+		i++;
+	}
+
+	if (mux->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
 
 	return 0;
 
@@ -438,6 +468,8 @@ hwv_done_fail:
 hwv_prepare_fail:
 	regmap_read(mux->regmap, mux->data->hwv_sta_ofs, &val);
 	pr_err("%s mux prepare timeout(%x)\n", clk_hw_get_name(hw), val);
+	if (mux->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
 
 	return -EBUSY;
 }
@@ -552,6 +584,16 @@ const struct clk_ops mtk_hwv_mux_ops = {
 };
 EXPORT_SYMBOL_GPL(mtk_hwv_mux_ops);
 
+const struct clk_ops mtk_hwv_dfs_mux_ops = {
+	.enable = mtk_clk_hwv_mux_enable,
+	.disable = mtk_clk_hwv_mux_disable,
+	.is_enabled = mtk_clk_mux_is_enabled,
+	.get_parent = mtk_clk_mux_get_parent,
+	.set_parent = mtk_clk_hwv_mux_set_parent,
+	.determine_rate = mtk_clk_mux_determine_rate,
+};
+EXPORT_SYMBOL_GPL(mtk_hwv_dfs_mux_ops);
+
 const struct clk_ops mtk_ipi_mux_ops = {
 	.prepare = mtk_clk_ipi_mux_enable,
 	.unprepare = mtk_clk_ipi_mux_disable,
@@ -562,18 +604,6 @@ const struct clk_ops mtk_ipi_mux_ops = {
 	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock,
 };
 EXPORT_SYMBOL_GPL(mtk_ipi_mux_ops);
-
-const struct clk_ops mtk_ipi_mux_2_ops = {
-	.prepare = mtk_clk_ipi_mux_enable,
-	.unprepare = mtk_clk_ipi_mux_disable,
-	.enable = mtk_clk_hwv_mux_enable,
-	.disable = mtk_clk_hwv_mux_disable,
-	.is_enabled = mtk_clk_mux_is_enabled,
-	.get_parent = mtk_clk_mux_get_parent,
-	.set_parent = mtk_clk_hwv_mux_set_parent,
-	.determine_rate = mtk_clk_mux_determine_rate,
-};
-EXPORT_SYMBOL_GPL(mtk_ipi_mux_2_ops);
 
 static struct clk *mtk_clk_register_mux(const struct mtk_mux *mux,
 				 struct regmap *regmap,
@@ -615,7 +645,7 @@ int mtk_clk_register_muxes(const struct mtk_mux *muxes,
 			   spinlock_t *lock,
 			   struct clk_onecell_data *clk_data)
 {
-	struct regmap *regmap, *hw_voter_regmap;
+	struct regmap *regmap, *hw_voter_regmap, *hwv_mult_regmap = NULL;
 	struct clk *clk;
 	int i;
 
@@ -636,6 +666,15 @@ int mtk_clk_register_muxes(const struct mtk_mux *muxes,
 		const struct mtk_mux *mux = &muxes[i];
 
 		if (IS_ERR_OR_NULL(clk_data->clks[mux->id])) {
+			if (mux->hwv_comp) {
+				hwv_mult_regmap = syscon_regmap_lookup_by_phandle(node,
+						mux->hwv_comp);
+				if (IS_ERR(hwv_mult_regmap))
+					hwv_mult_regmap = NULL;
+			}
+			if (hwv_mult_regmap)
+				hw_voter_regmap = hwv_mult_regmap;
+
 			clk = mtk_clk_register_mux(mux, regmap, hw_voter_regmap, lock);
 
 			if (IS_ERR(clk)) {

@@ -82,6 +82,12 @@ static const struct mtk_gate_regs scp_iic_cg_regs = {
 	.sta_ofs = 0xE10,
 };
 
+static const struct mtk_gate_regs scp_iic_hwv_regs = {
+	.set_ofs = 0x0028,
+	.clr_ofs = 0x002C,
+	.sta_ofs = 0x1C14,
+};
+
 #define GATE_SCP_IIC(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -91,10 +97,22 @@ static const struct mtk_gate_regs scp_iic_cg_regs = {
 		.ops = &mtk_clk_gate_ops_setclr,	\
 	}
 
+#define GATE_HWV_SCP_IIC(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "hw-voter-regmap",					\
+		.regs = &scp_iic_cg_regs,			\
+		.hwv_regs = &scp_iic_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv,				\
+		.flags = CLK_USE_HW_VOTER,				\
+	}
+
 static const struct mtk_gate scp_iic_clks[] = {
 	GATE_SCP_IIC(CLK_SCP_IIC_I2C0, "scp_iic_i2c0",
 			"ulposc_ck"/* parent */, 0),
-	GATE_SCP_IIC(CLK_SCP_IIC_I2C1, "scp_iic_i2c1",
+	GATE_HWV_SCP_IIC(CLK_SCP_IIC_I2C1, "scp_iic_i2c1",
 			"ulposc_ck"/* parent */, 1),
 	GATE_SCP_IIC(CLK_SCP_IIC_I2C2, "scp_iic_i2c2",
 			"ulposc_ck"/* parent */, 2),

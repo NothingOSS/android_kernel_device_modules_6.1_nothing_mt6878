@@ -21,8 +21,16 @@
 #include "clk-mtk.h"
 #include "clk-gate.h"
 
+#define MTK_POLL_HWV_VOTE_CNT		100
+#define MTK_POLL_HWV_VOTE_US		2
+#define MTK_POLL_DELAY_US		10
+#define MTK_POLL_100MS_TIMEOUT		(100 * USEC_PER_MSEC)
+
+#define MMINFRA_DONE_STA		BIT(0)
+
 static ATOMIC_NOTIFIER_HEAD(mtk_clk_notifier_list);
 static struct ipi_callbacks *g_clk_cb;
+static struct mtk_hwv_domain mminfra_hwv_domain;
 
 int register_mtk_clk_notifier(struct notifier_block *nb)
 {
@@ -66,6 +74,114 @@ struct ipi_callbacks *mtk_clk_get_ipi_cb(void)
 	return g_clk_cb;
 }
 EXPORT_SYMBOL_GPL(mtk_clk_get_ipi_cb);
+
+struct device *mtk_find_device_by_phandle(struct device_node *node, const char *ph_prop)
+{
+	struct device_node *hwv_node = NULL;
+	struct platform_device *hwv_pdev = NULL;
+	phandle ph = 0;
+
+	if (ph_prop) {
+		of_property_read_u32_index(node, ph_prop, 0, &ph);
+		hwv_node = of_find_node_by_phandle(ph);
+		if (hwv_node) {
+			hwv_pdev = of_find_device_by_node(hwv_node);
+			if (hwv_pdev) {
+				pr_notice("get hwv dev: %s\n", dev_name(&hwv_pdev->dev));
+				return &hwv_pdev->dev;
+			}
+		}
+	}
+
+	return NULL;
+}
+EXPORT_SYMBOL_GPL(mtk_find_device_by_phandle);
+
+static int mtk_mminfra_hwv_is_enable_done(struct mtk_hwv_domain *hwvd)
+{
+	u32 val = 0;
+
+	regmap_read(hwvd->regmap, hwvd->data->done_ofs, &val);
+
+	if ((val & MMINFRA_DONE_STA) == MMINFRA_DONE_STA)
+		return 1;
+
+	return 0;
+}
+
+int __mminfra_hwv_power_ctrl(struct mtk_hwv_domain *hwvd, bool onoff)
+{
+	u32 en_ofs;
+	u32 vote_ofs;
+	u32 vote_msk;
+	u32 vote_ack;
+	u32 val = 0;
+	int ret = 0;
+	int tmp;
+	int i = 0;
+
+	en_ofs = hwvd->data->en_ofs;
+	/* write twice to prevent clk idle */
+	vote_msk = BIT(hwvd->data->en_shift);
+	vote_msk = BIT(hwvd->data->en_shift);
+	if (onoff) {
+		vote_ofs = hwvd->data->set_ofs;
+		vote_ack = vote_msk;
+	} else {
+		vote_ofs = hwvd->data->clr_ofs;
+		vote_ack = 0x0;
+	}
+
+	regmap_write(hwvd->regmap, vote_ofs, vote_msk);
+	do {
+		regmap_read(hwvd->regmap, en_ofs, &val);
+		if ((val & vote_msk) == vote_ack)
+			break;
+
+		if (i > MTK_POLL_HWV_VOTE_CNT)
+			goto err_hwv_vote;
+
+		udelay(MTK_POLL_HWV_VOTE_US);
+		i++;
+	} while (1);
+
+	if (onoff) {
+		/* wait until VOTER_ACK = 1 */
+		ret = readx_poll_timeout_atomic(mtk_mminfra_hwv_is_enable_done, hwvd, tmp, tmp > 0,
+				MTK_POLL_DELAY_US, MTK_POLL_100MS_TIMEOUT);
+		if (ret < 0)
+			goto err_hwv_done;
+	}
+
+	return 0;
+
+err_hwv_done:
+	dev_err(hwvd->dev, "Failed to hwv done timeout %s(%d)\n", hwvd->data->name, hwvd->data->done_ofs);
+err_hwv_vote:
+	dev_err(hwvd->dev, "Failed to hwv vote timeout %s(%d %x)\n", hwvd->data->name, ret, val);
+
+	return ret;
+}
+
+int mtk_clk_mminfra_hwv_power_ctrl(bool onoff)
+{
+	if (!mminfra_hwv_domain.data)
+		return 0;
+
+	return __mminfra_hwv_power_ctrl(&mminfra_hwv_domain, onoff);
+}
+EXPORT_SYMBOL_GPL(mtk_clk_mminfra_hwv_power_ctrl);
+
+int mtk_clk_register_mminfra_hwv_data(const struct mtk_hwv_data *data,
+			struct regmap *regmap, struct device *dev)
+{
+	mminfra_hwv_domain.data = data;
+	mminfra_hwv_domain.regmap = regmap;
+	mminfra_hwv_domain.dev = dev;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_clk_register_mminfra_hwv_data);
 
 struct clk_onecell_data *mtk_alloc_clk_data(unsigned int clk_num)
 {
@@ -164,7 +280,7 @@ int mtk_clk_register_gates_with_dev(struct device_node *node,
 {
 	int i;
 	struct clk *clk;
-	struct regmap *regmap, *hw_voter_regmap;
+	struct regmap *regmap, *hw_voter_regmap, *hwv_mult_regmap = NULL;
 
 	if (!clk_data)
 		return -ENOMEM;
@@ -186,24 +302,22 @@ int mtk_clk_register_gates_with_dev(struct device_node *node,
 		if (!IS_ERR_OR_NULL(clk_data->clks[gate->id]))
 			continue;
 
+		if (gate->hwv_comp) {
+			hwv_mult_regmap = syscon_regmap_lookup_by_phandle(node,
+					gate->hwv_comp);
+			if (IS_ERR(hwv_mult_regmap))
+				hwv_mult_regmap = NULL;
+		}
+		if (hwv_mult_regmap)
+			hw_voter_regmap = hwv_mult_regmap;
+
 		if (hw_voter_regmap && gate->flags & CLK_USE_HW_VOTER)
-			clk = mtk_clk_register_gate_hwv(gate->name, gate->parent_name,
+			clk = mtk_clk_register_gate_hwv(gate,
 					regmap,
 					hw_voter_regmap,
-					gate->regs->set_ofs,
-					gate->regs->clr_ofs,
-					gate->regs->sta_ofs,
-					gate->hwv_regs->set_ofs,
-					gate->hwv_regs->clr_ofs,
-					gate->hwv_regs->sta_ofs,
-					gate->shift, gate->ops, gate->flags, dev);
+					dev);
 		else
-			clk = mtk_clk_register_gate(gate->name, gate->parent_name,
-					regmap,
-					gate->regs->set_ofs,
-					gate->regs->clr_ofs,
-					gate->regs->sta_ofs,
-					gate->shift, gate->ops, gate->flags, dev);
+			clk = mtk_clk_register_gate(gate, regmap, dev);
 
 		if (IS_ERR(clk)) {
 			pr_err("Failed to register clk %s: %ld\n",

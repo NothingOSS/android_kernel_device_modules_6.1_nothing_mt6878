@@ -36,14 +36,14 @@ static int disable_unused_probe(struct platform_device *pdev)
 	pm_runtime_get_sync(&pdev->dev);
 	for (i = 0; i < clk_con; i++) {
 		clk = of_clk_get(pdev->dev.of_node, i);
-		if (IS_ERR(clk)) {
+		if (IS_ERR_OR_NULL(clk)) {
 			long ret = PTR_ERR(clk);
 
 			if (ret == -EPROBE_DEFER)
-				pr_notice("clk [%d]%s is not ready\n", i, __clk_get_name(clk));
+				pr_notice("clk [%d] is not ready\n", i);
 			else
-				pr_notice("get clk [%d]%s fail, ret=%d, clk_con=%d\n",
-						i, __clk_get_name(clk),  (int)ret, clk_con);
+				pr_notice("get clk [%d] fail, ret=%d, clk_con=%d\n",
+						i,  (int)ret, clk_con);
 		} else {
 #if DUMP_UNUSED_CLKS
 			/* enable parent clk first because of clk dependency */

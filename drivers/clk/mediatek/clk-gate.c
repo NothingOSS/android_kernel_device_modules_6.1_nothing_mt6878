@@ -157,9 +157,12 @@ static int mtk_cg_is_done_hwv(struct clk_hw *hw)
 static int __cg_enable_hwv(struct clk_hw *hw, bool inv)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
-	u32 val, val2;
+	u32 val = 0, val2 = 0;
 	bool is_done = false;
 	int i = 0;
+
+	if (cg->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(true);
 
 	regmap_write(cg->hwv_regmap, cg->hwv_set_ofs,
 			BIT(cg->bit));
@@ -178,7 +181,7 @@ static int __cg_enable_hwv(struct clk_hw *hw, bool inv)
 		if (!is_done)
 			regmap_read(cg->hwv_regmap, cg->hwv_sta_ofs, &val);
 
-		if (((val & BIT(cg->bit)) != 0))
+		if ((val & BIT(cg->bit)) != 0)
 			is_done = true;
 
 		if (is_done) {
@@ -200,6 +203,9 @@ static int __cg_enable_hwv(struct clk_hw *hw, bool inv)
 			cg->sta_ofs, (cg->hwv_set_ofs / MTK_HWV_ID_OFS),
 			cg->bit, CLK_EVT_HWV_CG_CHK_PWR);
 
+	if (cg->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
+
 	return 0;
 
 hwv_done_fail:
@@ -213,6 +219,8 @@ hwv_prepare_fail:
 	mtk_clk_notify(cg->regmap, cg->hwv_regmap, clk_hw_get_name(hw),
 			cg->sta_ofs, (cg->hwv_set_ofs / MTK_HWV_ID_OFS),
 			cg->bit, CLK_EVT_HWV_CG_TIMEOUT);
+	if (cg->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
 
 	return -EBUSY;
 }
@@ -236,6 +244,9 @@ static void mtk_cg_disable_hwv(struct clk_hw *hw)
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
 	u32 val;
 	int i = 0;
+
+	if (cg->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(true);
 
 	/* dummy read to clr idle signal of hw voter bus */
 	regmap_read(cg->hwv_regmap, cg->hwv_clr_ofs, &val);
@@ -266,6 +277,9 @@ static void mtk_cg_disable_hwv(struct clk_hw *hw)
 
 	mtk_clk_notify(NULL, NULL, clk_hw_get_name(hw), 0, 0, 0, CLK_EVT_CLK_TRACE);
 
+	if (cg->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
+
 	return;
 
 hwv_done_fail:
@@ -279,6 +293,8 @@ hwv_prepare_fail:
 	mtk_clk_notify(cg->regmap, cg->hwv_regmap, clk_hw_get_name(hw),
 			cg->sta_ofs, (cg->hwv_set_ofs / MTK_HWV_ID_OFS),
 			cg->bit, CLK_EVT_HWV_CG_TIMEOUT);
+	if (cg->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
 }
 
 static void mtk_cg_disable_unused_hwv(struct clk_hw *hw)
@@ -407,19 +423,9 @@ const struct clk_ops mtk_clk_gate_ops_no_setclr_inv = {
 EXPORT_SYMBOL_GPL(mtk_clk_gate_ops_no_setclr_inv);
 
 struct clk *mtk_clk_register_gate_hwv(
-		const char *name,
-		const char *parent_name,
+		const struct mtk_gate *gate,
 		struct regmap *regmap,
 		struct regmap *hwv_regmap,
-		int set_ofs,
-		int clr_ofs,
-		int sta_ofs,
-		int hwv_set_ofs,
-		int hwv_clr_ofs,
-		int hwv_sta_ofs,
-		u8 bit,
-		const struct clk_ops *ops,
-		unsigned long flags,
 		struct device *dev)
 {
 	struct mtk_clk_gate *cg;
@@ -432,21 +438,22 @@ struct clk *mtk_clk_register_gate_hwv(
 	if (!cg)
 		return ERR_PTR(-ENOMEM);
 
-	init.name = name;
-	init.flags = flags | CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE;
-	init.parent_names = parent_name ? &parent_name : NULL;
-	init.num_parents = parent_name ? 1 : 0;
-	init.ops = ops;
+	init.name = gate->name;
+	init.flags = gate->flags | CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE;
+	init.parent_names = gate->parent_name ? &gate->parent_name : NULL;
+	init.num_parents = gate->parent_name ? 1 : 0;
+	init.ops = gate->ops;
 
 	cg->regmap = regmap;
 	cg->hwv_regmap = hwv_regmap;
-	cg->set_ofs = set_ofs;
-	cg->clr_ofs = clr_ofs;
-	cg->sta_ofs = sta_ofs;
-	cg->hwv_set_ofs = hwv_set_ofs;
-	cg->hwv_clr_ofs = hwv_clr_ofs;
-	cg->hwv_sta_ofs = hwv_sta_ofs;
-	cg->bit = bit;
+	cg->set_ofs = gate->regs->set_ofs;
+	cg->clr_ofs = gate->regs->clr_ofs;
+	cg->sta_ofs = gate->regs->sta_ofs;
+	cg->hwv_set_ofs = gate->hwv_regs->set_ofs;
+	cg->hwv_clr_ofs = gate->hwv_regs->clr_ofs;
+	cg->hwv_sta_ofs = gate->hwv_regs->sta_ofs;
+	cg->bit = gate->shift;
+	cg->flags = gate->flags;
 
 	cg->hw.init = &init;
 
@@ -461,15 +468,8 @@ struct clk *mtk_clk_register_gate_hwv(
 EXPORT_SYMBOL_GPL(mtk_clk_register_gate_hwv);
 
 struct clk *mtk_clk_register_gate(
-		const char *name,
-		const char *parent_name,
+		const struct mtk_gate *gate,
 		struct regmap *regmap,
-		int set_ofs,
-		int clr_ofs,
-		int sta_ofs,
-		u8 bit,
-		const struct clk_ops *ops,
-		unsigned long flags,
 		struct device *dev)
 {
 	struct mtk_clk_gate *cg;
@@ -482,17 +482,18 @@ struct clk *mtk_clk_register_gate(
 	if (!cg)
 		return ERR_PTR(-ENOMEM);
 
-	init.name = name;
-	init.flags = flags | CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE;
-	init.parent_names = parent_name ? &parent_name : NULL;
-	init.num_parents = parent_name ? 1 : 0;
-	init.ops = ops;
+	init.name = gate->name;
+	init.flags = gate->flags | CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE;
+	init.parent_names = gate->parent_name ? &gate->parent_name : NULL;
+	init.num_parents = gate->parent_name ? 1 : 0;
+	init.ops = gate->ops;
 
 	cg->regmap = regmap;
-	cg->set_ofs = set_ofs;
-	cg->clr_ofs = clr_ofs;
-	cg->sta_ofs = sta_ofs;
-	cg->bit = bit;
+	cg->set_ofs = gate->regs->set_ofs;
+	cg->clr_ofs = gate->regs->clr_ofs;
+	cg->sta_ofs = gate->regs->sta_ofs;
+	cg->bit = gate->shift;
+	cg->flags = gate->flags;
 
 	cg->hw.init = &init;
 

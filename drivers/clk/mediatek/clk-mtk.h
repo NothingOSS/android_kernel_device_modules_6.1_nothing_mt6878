@@ -45,6 +45,7 @@ enum clk_evt_type {
 	CLK_EVT_IPI_CG_TIMEOUT = 6,
 	CLK_EVT_SET_PARENT_TIMEOUT = 7,
 	CLK_EVT_BYPASS_PLL = 8,
+	CLK_EVT_SET_PARENT_ERR = 9,
 	CLK_EVT_NUM,
 };
 
@@ -188,32 +189,6 @@ void mtk_clk_register_composites(const struct mtk_composite *mcs,
 		int num, void __iomem *base, spinlock_t *lock,
 		struct clk_onecell_data *clk_data);
 
-struct mtk_gate_regs {
-	u32 sta_ofs;
-	u32 clr_ofs;
-	u32 set_ofs;
-};
-
-struct mtk_gate {
-	int id;
-	const char *name;
-	const char *parent_name;
-	const struct mtk_gate_regs *regs;
-	const struct mtk_gate_regs *hwv_regs;
-	int shift;
-	const struct clk_ops *ops;
-	unsigned long flags;
-};
-
-int mtk_clk_register_gates(struct device_node *node,
-			const struct mtk_gate *clks, int num,
-			struct clk_onecell_data *clk_data);
-
-int mtk_clk_register_gates_with_dev(struct device_node *node,
-		const struct mtk_gate *clks,
-		int num, struct clk_onecell_data *clk_data,
-		struct device *dev);
-
 struct mtk_clk_divider {
 	int id;
 	const char *name;
@@ -249,7 +224,7 @@ void mtk_free_clk_data(struct clk_onecell_data *clk_data);
 #define HWV_CHK_FULL_STA		BIT(19)
 #define CLK_ENABLE_QUICK_SWITCH		BIT(20)
 #define MUX_ROUND_CLOSEST		BIT(21)
-
+#define CLK_EN_MM_INFRA_PWR		BIT(22)
 
 struct mtk_pll_div_table {
 	u32 div;
@@ -318,6 +293,23 @@ struct dfs_ops {
 	unsigned long (*get_rate)(const char *name);
 };
 
+struct mtk_hwv_data {
+	const char *name;
+	uint32_t set_ofs;
+	uint32_t clr_ofs;
+	uint32_t en_ofs;
+	uint32_t done_ofs;
+	uint8_t en_shift;
+	uint8_t on_msk;
+	uint8_t off_msk;
+};
+
+struct mtk_hwv_domain {
+	const struct mtk_hwv_data *data;
+	struct regmap *regmap;
+	struct device *dev;
+};
+
 #define MUX_USER_CLK(_id, _name, _target_name, _rate) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -367,5 +359,10 @@ extern struct ipi_callbacks *mtk_clk_get_ipi_cb(void);
 extern int mtk_hwv_pll_on(struct clk_hw *hw);
 extern void mtk_hwv_pll_off(struct clk_hw *hw);
 extern bool mtk_hwv_pll_is_on(struct clk_hw *hw);
+struct device *mtk_find_device_by_phandle(struct device_node *node, const char *ph_prop);
+/* enable/disable mminfra pwr for mm hw voter */
+int mtk_clk_mminfra_hwv_power_ctrl(bool onoff);
+int mtk_clk_register_mminfra_hwv_data(const struct mtk_hwv_data *data,
+			struct regmap *regmap, struct device *dev);
 
 #endif /* __DRV_CLK_MTK_H */
