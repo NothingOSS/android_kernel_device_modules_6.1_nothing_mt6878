@@ -67,6 +67,9 @@ static struct _SCRN_THRM_ENABLE SCRN_nl_enable;
 static int scrn_status_changed;
 #endif
 
+#define CPU_SENSOR_NUM 10
+static int eas_previous_temp[CPU_SENSOR_NUM] = {25000};
+
 struct therm_intf_info {
 	int sw_ready;
 	unsigned int cpu_cluster_num;
@@ -379,7 +382,8 @@ int get_cpu_temp(int cpu_id)
 {
 	int temp = 25000;
 
-	if (!tm_data.sw_ready || cpu_id >= num_possible_cpus())
+	if (!tm_data.sw_ready || cpu_id >= num_possible_cpus() ||
+		cpu_id >= CPU_SENSOR_NUM)
 		return temp;
 
 	if (tm_data.is_cputcm)
@@ -387,6 +391,10 @@ int get_cpu_temp(int cpu_id)
 	else
 		temp = therm_intf_read_csram_s32(CPU_TEMP_OFFSET + 4 * cpu_id);
 
+	if (temp != THERMAL_TEMP_INVALID)
+		eas_previous_temp[cpu_id] = temp;
+	else
+		temp = eas_previous_temp[cpu_id];
 
 	return temp;
 }
@@ -1066,9 +1074,9 @@ static ssize_t target_tpcb_show(struct kobject *kobj,
 	int target_tpcb = 0;
 
 	if (tm_data.is_cputcm)
-		therm_intf_read_cputcm_s32(TARGET_TPCB_TCM_OFFSET);
+		target_tpcb = therm_intf_read_cputcm_s32(TARGET_TPCB_TCM_OFFSET);
 	else
-		therm_intf_read_csram_s32(TARGET_TPCB_OFFSET);
+		target_tpcb = therm_intf_read_csram_s32(TARGET_TPCB_OFFSET);
 
 	len += snprintf(buf + len, PAGE_SIZE - len, "%d\n", target_tpcb);
 
