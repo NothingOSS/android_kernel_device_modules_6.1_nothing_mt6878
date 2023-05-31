@@ -12492,7 +12492,6 @@
 			/* sys register offset */
 			ready-sel = /bits/ 16 <MML_IN_LINE_READY_SEL>;
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_L3_P10_DISP_FAKE0)>;
-			sspm-aid-enable;
 			operating-points-v2 = <&opp_table_mdp>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			apu = <&apusys_rv>;
