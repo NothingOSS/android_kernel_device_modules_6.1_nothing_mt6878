@@ -402,11 +402,6 @@ static void spmi_dev_parse(struct platform_device *pdev)
 		else
 			spmidev[i].mstid = SPMI_MASTER_1;
 	}
-	for (i = 0; i < 16; i++) {
-		dev_notice(&pdev->dev, "slvid %d %s %s\n",
-			spmidev[i].slvid, spmidev[i].exist ? "exist":"no exist",
-			(spmidev[i].mstid == SPMI_MASTER_P_1) ? "SPMI_MASTER_P_1":"SPMI_MASTER_1");
-	}
 }
 unsigned long long get_current_time_ms(void)
 {
@@ -427,15 +422,15 @@ static void pmif_writel(struct pmif *arb, u32 val, enum pmif_regs reg)
 	writel(val, arb->base + arb->regs[reg]);
 }
 
-static void mtk_spmi_writel(struct pmif *arb, u32 val, enum spmi_regs reg)
+static void mtk_spmi_writel(void __iomem *addr, struct pmif *arb, u32 val, enum spmi_regs reg)
 {
-	writel(val, arb->spmimst_base + arb->spmimst_regs[reg]);
+	writel(val, addr + arb->spmimst_regs[reg]);
 }
 
 
-static u32 mtk_spmi_readl(struct pmif *arb, enum spmi_regs reg)
+static u32 mtk_spmi_readl(void __iomem *addr, struct pmif *arb, enum spmi_regs reg)
 {
-	return readl(arb->spmimst_base + arb->spmimst_regs[reg]);
+	return readl(addr + arb->spmimst_regs[reg]);
 }
 
 static bool pmif_is_fsm_vldclr(struct pmif *arb)
@@ -465,7 +460,7 @@ static int pmif_arb_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid)
 	else
 		return -EINVAL;
 
-	mtk_spmi_writel(arb, (cmd << 0x4) | sid, SPMI_OP_ST_CTRL);
+	mtk_spmi_writel(arb->spmimst_base, arb, (cmd << 0x4) | sid, SPMI_OP_ST_CTRL);
 	ret = readl_poll_timeout_atomic(arb->spmimst_base + arb->spmimst_regs[SPMI_OP_ST_STA],
 					rdata, (rdata & SPMI_OP_ST_BUSY) == SPMI_OP_ST_BUSY,
 					PMIF_DELAY_US, PMIF_TIMEOUT);
@@ -1079,44 +1074,106 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 {
 	struct pmif *arb = data;
 	int flag = 0;
-	int spmi_nack = 0, spmi_nack_data = 0;
-	int spmi_rcs_nack = 0, spmi_debug_nack = 0, spmi_mst_nack = 0;
+	int spmi_nack = 0, spmi_p_nack = 0, spmi_nack_data = 0, spmi_p_nack_data = 0;
+	int spmi_rcs_nack = 0, spmi_debug_nack = 0, spmi_mst_nack = 0,
+		spmi_p_rcs_nack = 0, spmi_p_debug_nack = 0, spmi_p_mst_nack = 0;
+	u8 rdata = 0, rdata1 = 0;
+	unsigned short mt6316INTSTA = 0x240, hwcidaddr_mt6316 = 0x209;
 
 	__pm_stay_awake(arb->pmif_m_Thread_lock);
 	mutex_lock(&arb->pmif_m_mutex);
 
-	spmi_nack = mtk_spmi_readl(arb, SPMI_REC0);
-	spmi_nack_data = mtk_spmi_readl(arb, SPMI_REC1);
-	spmi_rcs_nack = mtk_spmi_readl(arb, SPMI_REC_CMD_DEC);
-	spmi_debug_nack = mtk_spmi_readl(arb, SPMI_DEC_DBG);
-	spmi_mst_nack = mtk_spmi_readl(arb, SPMI_MST_DBG);
+	spmi_nack = mtk_spmi_readl(arb->spmimst_base, arb, SPMI_REC0);
+	spmi_nack_data = mtk_spmi_readl(arb->spmimst_base, arb, SPMI_REC1);
+	spmi_rcs_nack = mtk_spmi_readl(arb->spmimst_base, arb, SPMI_REC_CMD_DEC);
+	spmi_debug_nack = mtk_spmi_readl(arb->spmimst_base, arb, SPMI_DEC_DBG);
+	spmi_mst_nack = mtk_spmi_readl(arb->spmimst_base, arb, SPMI_MST_DBG);
 
-	if ((spmi_nack & 0xD8)) {
-		pr_notice("%s spmi transaction fail irq triggered SPMI_REC0:0x%x, SPMI_REC1:0x%x\n",
-			__func__, spmi_nack, spmi_nack_data);
+	if (arb->spmimst_base_p != NULL) {
+		spmi_p_nack = mtk_spmi_readl(arb->spmimst_base_p, arb, SPMI_REC0);
+		spmi_p_nack_data = mtk_spmi_readl(arb->spmimst_base_p, arb, SPMI_REC1);
+		spmi_p_rcs_nack = mtk_spmi_readl(arb->spmimst_base_p, arb, SPMI_REC_CMD_DEC);
+		spmi_p_debug_nack = mtk_spmi_readl(arb->spmimst_base_p, arb, SPMI_DEC_DBG);
+		spmi_p_mst_nack = mtk_spmi_readl(arb->spmimst_base_p, arb, SPMI_MST_DBG);
+	}
+
+	if ((spmi_nack & 0xD8) || (spmi_p_nack & 0xD8)) {
+		pr_notice("%s spmi transaction fail irq triggered SPMI_REC0 m/p:0x%x/0x%x SPMI_REC1 m/p 0x%x/0x%x\n",
+			__func__, spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
+		if (spmi_p_nack & 0xD8) {
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x6 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x7 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x8 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+		}
 		flag = 1;
 	}
-	if ((spmi_rcs_nack & 0xC0000)) {
-		pr_notice("%s spmi_rcs transaction fail irq triggered SPMI_REC_CMD_DEC:0x%x\n",
-			__func__, spmi_rcs_nack);
+	if ((spmi_rcs_nack & 0xC0000) || (spmi_p_rcs_nack & 0xD8)) {
+		pr_notice("%s spmi_rcs transaction fail irq triggered SPMI_REC_CMD_DEC m/p:0x%x/0x%x\n",
+			__func__, spmi_rcs_nack, spmi_p_rcs_nack);
 		flag = 1;
 	}
-	if ((spmi_debug_nack & 0xF0000)) {
-		pr_notice("%s spmi_debug_nack transaction fail irq triggered SPMI_DEC_DBG:0x%x\n",
-			__func__, spmi_debug_nack);
+	if ((spmi_debug_nack & 0xF0000) || (spmi_p_debug_nack & 0xF0000)) {
+		pr_notice("%s spmi_debug_nack transaction fail irq triggered SPMI_DEC_DBG m/p: 0x%x/0x%x\n",
+			__func__, spmi_debug_nack, spmi_p_debug_nack);
 		flag = 1;
 	}
-	if ((spmi_mst_nack & 0xC0000)) {
-		pr_notice("%s spmi_mst_nack transaction fail irq triggered SPMI_MST_DBG:0x%x\n",
-			__func__, spmi_mst_nack);
+	if ((spmi_mst_nack & 0xC0000) || (spmi_p_mst_nack & 0xC0000)) {
+		pr_notice("%s spmi_mst_nack transaction fail irq triggered SPMI_MST_DBG m/p: 0x%x/0x%x\n",
+		__func__, spmi_mst_nack, spmi_p_mst_nack);
+		if (spmi_p_mst_nack & 0xC0000) {
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x6 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x7 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x8 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+		}
 		flag = 1;
 	}
-	if ((spmi_nack & 0x20)) {
-		pr_notice("%s spmi transaction PARITY_ERR triggered SPMI_REC0:0x%x, SPMI_REC1:0x%x\n",
-			__func__, spmi_nack, spmi_nack_data);
-		pr_notice("%s SPMI_REC_CMD_DEC:0x%x\n", __func__, spmi_rcs_nack);
-		pr_notice("%s SPMI_DEC_DBG:0x%x\n", __func__, spmi_debug_nack);
-		pr_notice("%s SPMI_MST_DBG:0x%x\n", __func__, spmi_mst_nack);
+	if ((spmi_nack & 0x20) || (spmi_p_nack & 0x20)) {
+		pr_notice("%s spmi transaction PARITY_ERR triggered SPMI_REC0 m/p:0x%x/0x%x, SPMI_REC1 m/p:0x%x/0x%x\n",
+			__func__, spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
+		pr_notice("%s SPMI_REC_CMD_DEC m/p:0x%x/0x%x\n", __func__, spmi_rcs_nack, spmi_p_rcs_nack);
+		pr_notice("%s SPMI_DEC_DBG m/p:0x%x/0x%x\n", __func__, spmi_debug_nack, spmi_p_debug_nack);
+		pr_notice("%s SPMI_MST_DBG m/p:0x%x/0x%x\n", __func__, spmi_mst_nack, spmi_p_mst_nack);
+		if (spmi_p_nack & 0x20) {
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x6 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x7 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x8 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+		}
 		flag = 0;
 	}
 
@@ -1127,7 +1184,9 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	}
 
 	/* clear irq*/
-	mtk_spmi_writel(arb, 0x3, SPMI_REC_CTRL);
+	mtk_spmi_writel(arb->spmimst_base, arb, 0x3, SPMI_REC_CTRL);
+	if (arb->spmimst_base_p != NULL)
+		mtk_spmi_writel(arb->spmimst_base_p, arb, 0x3, SPMI_REC_CTRL);
 
 	mutex_unlock(&arb->pmif_m_mutex);
 	__pm_relax(arb->pmif_m_Thread_lock);
@@ -1215,14 +1274,14 @@ static irqreturn_t rcs_irq_handler(int irq, void *data)
 	int i;
 
 	for (i = 0; i < SPMI_MAX_SLAVE_ID; i++) {
-		slv_irq_sta = mtk_spmi_readl(arb, SPMI_SLV_3_0_EINT + (i / 4));
+		slv_irq_sta = mtk_spmi_readl(arb->spmimst_base, arb, SPMI_SLV_3_0_EINT + (i / 4));
 		slv_irq_sta = (slv_irq_sta >> ((i % 4) * 8)) & 0xFF;
 
 		/* need to clear using 0xFF to avoid new irq happen
 		 * after read SPMI_SLV_3_0_EINT + (i/4) value then use
 		 * this value to clean
 		 */
-		mtk_spmi_writel(arb, (0xFF << ((i % 4) * 8)),
+		mtk_spmi_writel(arb->spmimst_base, arb, (0xFF << ((i % 4) * 8)),
 				SPMI_SLV_3_0_EINT + (i / 4));
 		if (arb->rcs_enable_hwirq[i] && slv_irq_sta) {
 			dev_info(&arb->spmic->dev,
@@ -1256,7 +1315,7 @@ static int rcs_irq_register(struct platform_device *pdev,
 	}
 	/* clear all slave irq status */
 	for (i = 0; i < SPMI_MAX_SLAVE_ID; i++) {
-		mtk_spmi_writel(arb, (0xFF << ((i % 4) * 8)),
+		mtk_spmi_writel(arb->spmimst_base, arb, (0xFF << ((i % 4) * 8)),
 				SPMI_SLV_3_0_EINT + (i / 4));
 	}
 	ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
@@ -1306,30 +1365,6 @@ static void pmif_spmi_mrdump_register(struct platform_device *pdev, struct pmif 
 			__func__, ret);
 }
 #endif
-
-void spmi_test(struct spmi_controller *ctrl)
-{
-	int i = 0;
-	u8 rdata = 0;
-	unsigned short hwcidaddr = 0x9;
-	unsigned short hwcidaddr_mt6316 = 0x209;
-
-	for (i = 0; i < ARRAY_SIZE(spmidev); i++) {
-		if (spmidev[i].exist) {
-			if ((spmidev[i].slvid == 6) || (spmidev[i].slvid == 7) ||
-				(spmidev[i].slvid == 8))
-				ctrl->read_cmd(ctrl, SPMI_CMD_EXT_READL, spmidev[i].slvid,
-					hwcidaddr_mt6316, &rdata, 1);
-			else
-				ctrl->read_cmd(ctrl, SPMI_CMD_EXT_READL, spmidev[i].slvid,
-					hwcidaddr, &rdata, 1);
-
-			pr_notice("%s spmi_read_check slvid:%d rdata = 0x%x\n",
-				__func__, spmidev[i].slvid, rdata);
-		}
-	}
-}
-
 
 static int mtk_spmi_probe(struct platform_device *pdev)
 {
@@ -1386,7 +1421,6 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 #endif
 
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
-
 	if (arb->caps == 1) {
 		arb->pmif_sys_ck = devm_clk_get(&pdev->dev, "pmif_sys_ck");
 		if (IS_ERR(arb->pmif_sys_ck)) {
@@ -1413,60 +1447,6 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 			dev_notice(&pdev->dev, "[SPMIMST]:failed to enable spmi master clk\n");
 			goto err_put_ctrl;
 		}
-	} else {
-		arb->pmif_clk_mux = devm_clk_get(&pdev->dev, "pmif_clk_mux");
-		if (IS_ERR(arb->pmif_clk_mux))
-			dev_notice(&pdev->dev, "[PMIF]:failed to get clock: %ld\n",
-				PTR_ERR(arb->pmif_clk_mux));
-		else
-			err = clk_prepare_enable(arb->pmif_clk_mux);
-		if (err)
-			dev_notice(&pdev->dev, "[PMIF]:failed to enable pmif_clk_mux\n");
-
-		arb->spmimst_m_clk_mux = devm_clk_get(&pdev->dev, "spmimst_m_clk_mux");
-		if (IS_ERR(arb->spmimst_m_clk_mux))
-			dev_notice(&pdev->dev, "[SPMIMST]:failed to get clock: %ld\n",
-				PTR_ERR(arb->spmimst_m_clk_mux));
-		else
-			err = clk_prepare_enable(arb->spmimst_m_clk_mux);
-		if (err)
-			dev_notice(&pdev->dev, "[PMIF]:failed to enable spmimst_m_clk\n");
-
-		arb->spmimst_p_clk_mux = devm_clk_get(&pdev->dev, "spmimst_p_clk_mux");
-		if (IS_ERR(arb->spmimst_p_clk_mux))
-			dev_notice(&pdev->dev, "[SPMIMST]:failed to get clock: %ld\n",
-				PTR_ERR(arb->spmimst_p_clk_mux));
-		else
-			err = clk_prepare_enable(arb->spmimst_p_clk_mux);
-		if (err)
-			dev_notice(&pdev->dev, "[SPMIMST]:failed to enable spmimst_p_clk\n");
-
-		arb->vlp_pmif_clk_mux = devm_clk_get(&pdev->dev, "vlp_pmif_clk_mux");
-		if (IS_ERR(arb->vlp_pmif_clk_mux))
-			dev_notice(&pdev->dev, "[PMIF]:failed to get clock: %ld\n",
-				PTR_ERR(arb->vlp_pmif_clk_mux));
-		else
-			err = clk_prepare_enable(arb->vlp_pmif_clk_mux);
-		if (err)
-			dev_notice(&pdev->dev, "[PMIF]:failed to enable vlp_pmif_clk\n");
-
-		arb->vlp_spmimst_m_clk_mux = devm_clk_get(&pdev->dev, "vlp_spmimst_m_clk_mux");
-		if (IS_ERR(arb->vlp_spmimst_m_clk_mux))
-			dev_notice(&pdev->dev, "[SPMIMST]:failed to get clock: %ld\n",
-				PTR_ERR(arb->vlp_spmimst_m_clk_mux));
-		else
-			err = clk_prepare_enable(arb->vlp_spmimst_m_clk_mux);
-		if (err)
-			dev_notice(&pdev->dev, "[SPMIMST]:failed to enable vlp_spmimst_m_clk\n");
-
-		arb->vlp_spmimst_p_clk_mux = devm_clk_get(&pdev->dev, "vlp_spmimst_p_clk_mux");
-		if (IS_ERR(arb->vlp_spmimst_p_clk_mux))
-			dev_notice(&pdev->dev, "[SPMIMST]:failed to get clock: %ld\n",
-				PTR_ERR(arb->vlp_spmimst_p_clk_mux));
-		else
-			err = clk_prepare_enable(arb->vlp_spmimst_p_clk_mux);
-		if (err)
-			dev_notice(&pdev->dev, "[SPMIMST]:failed to enable vlp_spmimst_p_clk\n");
 	}
 #else
 	dev_notice(&pdev->dev, "[PMIF]:no need to get clock at fpga\n");
@@ -1520,6 +1500,18 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 					"Failed to register spmi_nack_irq, ret = %d\n",
 						 arb->spmi_nack_irq);
 		}
+
+		arb->spmi_p_nack_irq = platform_get_irq_byname(pdev, "spmi_p_nack_irq");
+		if (arb->spmi_p_nack_irq < 0) {
+			dev_notice(&pdev->dev,
+				"Failed to get spmi_nack_irq, ret = %d\n", arb->spmi_p_nack_irq);
+		} else {
+			err = spmi_nack_irq_register(pdev, arb, arb->spmi_p_nack_irq);
+			if (err)
+				dev_notice(&pdev->dev,
+					"Failed to register spmi_p_nack_irq, ret = %d\n",
+						 arb->spmi_p_nack_irq);
+		}
 	}
 	spmi_dev_parse(pdev);
 #if defined(CONFIG_FPGA_EARLY_PORTING)
@@ -1529,7 +1521,7 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	pmif_writel(arb, 0x1, PMIF_CMDISSUE_EN);
 	pmif_writel(arb, 0x1, PMIF_INIT_DONE);
 
-	mtk_spmi_writel(arb, 0x1, SPMI_MST_REQ_EN);
+	mtk_spmi_writel(arb->spmimst_base, arb, 0x1, SPMI_MST_REQ_EN);
 	/* r/w verification */
 	ctrl->read_cmd(ctrl, 0x38, test_id, hwcid_l_addr, &id_l, 1);
 	ctrl->read_cmd(ctrl, 0x38, test_id, hwcid_h_addr, &id_h, 1);
@@ -1540,10 +1532,6 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	ctrl->read_cmd(ctrl, 0x38, test_id, test_w_addr, &val, 1);
 	dev_notice(&pdev->dev, "%s check [0x%x] = 0x%x\n", __func__, test_w_addr, val);
 #endif
-#if !defined(CONFIG_FPGA_EARLY_PORTING)
-	spmi_test(ctrl);
-#endif
-
 
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	/* add mrdump for reboot DB*/
@@ -1563,14 +1551,6 @@ err_domain_remove:
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
 	if (arb->caps == 1)
 		clk_disable_unprepare(arb->spmimst_clk_mux);
-	else {
-		clk_disable_unprepare(arb->pmif_clk_mux);
-		clk_disable_unprepare(arb->spmimst_m_clk_mux);
-		clk_disable_unprepare(arb->spmimst_p_clk_mux);
-		clk_disable_unprepare(arb->vlp_pmif_clk_mux);
-		clk_disable_unprepare(arb->vlp_spmimst_m_clk_mux);
-		clk_disable_unprepare(arb->vlp_spmimst_p_clk_mux);
-	}
 #endif
 err_put_ctrl:
 	spmi_controller_put(ctrl);

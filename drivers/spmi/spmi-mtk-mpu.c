@@ -182,6 +182,9 @@ static const struct of_device_id mtk_spmi_pmif_mpu_match_table[] = {
 		.compatible = "mediatek,mt6985-spmi_pmif_mpu",
 		.data = &pmif_mpu_arb,
 	}, {
+		.compatible = "mediatek,mt6989-spmi_pmif_mpu",
+		.data = &pmif_mpu_arb,
+	}, {
 		/* sentinel */
 	},
 };

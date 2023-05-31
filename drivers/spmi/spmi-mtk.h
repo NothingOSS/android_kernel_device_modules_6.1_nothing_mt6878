@@ -33,6 +33,7 @@ struct pmif {
 	int     mstid;
 	int     pmifid;
 	int		irq;
+	int		irq_p;
 	int		grpid;
 	raw_spinlock_t	lock_m;
 	raw_spinlock_t	lock_p;
@@ -65,6 +66,7 @@ struct pmif {
 	int (*write_cmd)(struct spmi_controller *ctrl, u8 opc, u8 sid,
 			u16 addr, const u8 *buf, size_t len);
 	int spmi_nack_irq;
+	int spmi_p_nack_irq;
 	u32 caps;
 };
 
