@@ -75,7 +75,7 @@ struct trusty_vdev {
 #define vdev_to_tvdev(vd)  container_of((vd), struct trusty_vdev, vdev)
 
 #define RSVD_OFFSET (0x70C)
-#define APMCU_ACK BIT(0)
+#define APMCU_ACK BIT(16)
 
 static void __iomem *infracfg_base;
 
@@ -86,12 +86,32 @@ static uint32_t trusty_read(uint32_t offset)
 	return readl(reg);
 }
 
+#if !IS_ENABLED(CONFIG_TRUSTY)
 static void trusty_write(uint32_t offset, uint32_t value)
 {
 	void __iomem *reg = infracfg_base + offset;
 
 	writel(value, reg);
 }
+#endif
+
+static void trusty_setbits(uint32_t offset, uint32_t bits)
+{
+	void __iomem *reg = infracfg_base + offset;
+	uint32_t value = readl(reg) | bits;
+
+	writel(value, reg);
+}
+
+#if !IS_ENABLED(CONFIG_TRUSTY)
+static void trusty_clrbits(uint32_t offset, uint32_t bits)
+{
+	void __iomem *reg = infracfg_base + offset;
+	uint32_t value = readl(reg) & ~bits;
+
+	writel(value, reg);
+}
+#endif
 
 static void check_all_vqs(struct work_struct *work)
 {
@@ -652,7 +672,7 @@ static irqreturn_t trusty_virtio_irq_handler(int irq, void *data)
 	struct trusty_ctx *tctx = data;
 
 	if (!(trusty_read(RSVD_OFFSET) & APMCU_ACK))
-		trusty_write(RSVD_OFFSET, APMCU_ACK);
+		trusty_setbits(RSVD_OFFSET, APMCU_ACK);
 
 	trusty_notifier_call();
 	dev_info(tctx->dev, "%s: handled\n", __func__);
