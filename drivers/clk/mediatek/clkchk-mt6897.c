@@ -2206,7 +2206,6 @@ static const char * const off_pll_names[] = {
 	"univpll",
 	"msdcpll",
 	"mmpll",
-	"adsppll",
 	"tvdpll",
 	"imgpll",
 	"mfg-ao-mfgpll",
