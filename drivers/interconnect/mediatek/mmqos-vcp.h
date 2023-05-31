@@ -7,6 +7,7 @@
 #define MMQOS_VCP_H
 
 #include "mmqos-global.h"
+#include "mmqos-vcp-memory.h"
 
 #define IPI_TIMEOUT_MS	(200U)
 #define VCP_TEST_NUM	(100)

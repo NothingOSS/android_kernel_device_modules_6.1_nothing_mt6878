@@ -11,7 +11,6 @@
 #include <linux/rpmsg/mtk_rpmsg.h>
 #include "mmqos-vcp.h"
 #include "mmqos-test.h"
-#include "mmqos-vcp-memory.h"
 #include "vcp.h"
 #include "vcp_status.h"
 

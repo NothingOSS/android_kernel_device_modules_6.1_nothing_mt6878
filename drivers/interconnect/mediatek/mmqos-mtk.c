@@ -283,13 +283,15 @@ static bool is_disp_comm_port(u8 hrt_type)
 
 static void set_total_bw_to_emi(struct common_node *comm_node)
 {
-	u32 avg_bw = 0, peak_bw = 0;
+	u32 avg_bw = 0, peak_bw = 0, total_bw_to_vcp = 0;
 	u64 normalize_peak_bw;
 	struct common_port_node *comm_port_node;
 	u32 comm_id;
 
 	list_for_each_entry(comm_port_node, &comm_node->comm_port_list, list) {
 		mutex_lock(&comm_port_node->bw_lock);
+		total_bw_to_vcp +=
+			comm_port_node->latest_avg_bw + comm_port_node->latest_peak_bw;
 		if (mmqos_state & DPC_ENABLE
 			&& is_disp_comm_port(comm_port_node->hrt_type)) {
 			if (log_level & 1 << log_debug)
@@ -324,6 +326,11 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 	if (log_level & 1 << log_bw)
 		MMQOS_DBG("comm%d avg %d peak %d",
 			comm_id, icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
+	if (MEM_BASE != NULL) {
+		writel(total_bw_to_vcp, MEM_TOTAL_BW);
+		if (log_level & 1 << log_bw)
+			MMQOS_DBG("total_bw_to_vcp:%d", total_bw_to_vcp);
+	}
 
 	MMQOS_SYSTRACE_BEGIN("to EMI avg %d peak %d\n",
 		icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
@@ -616,6 +623,9 @@ static void set_comm_icc_bw(struct common_node *comm_node)
 	u32 comm_id, i, j;
 
 	MMQOS_SYSTRACE_BEGIN("%s %s\n", __func__, comm_node->base->icc_node->name);
+
+	set_total_bw_to_emi(comm_node);
+
 	comm_id = MASK_8(comm_node->base->icc_node->id);
 
 	if (log_level & 1 << log_comm_freq) {
@@ -652,8 +662,6 @@ static void set_comm_icc_bw(struct common_node *comm_node)
 	} else if (freq_mode == BY_VMMRC) {
 		set_freq_by_vmmrc(comm_id);
 	}
-
-	set_total_bw_to_emi(comm_node);
 
 	MMQOS_SYSTRACE_END();
 }
