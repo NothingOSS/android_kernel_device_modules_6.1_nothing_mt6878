@@ -2773,7 +2773,9 @@ static long mml_pq_ioctl(struct file *file, unsigned int cmd,
 	case MML_PQ_IOC_TILE_INIT:
 		return mml_pq_tile_init_ioctl(arg);
 	case MML_PQ_IOC_COMP_CONFIG:
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 		mml_pq_log("%s MML_PQ_IOC_COMP_CONFIG called cmd[%#x]", __func__, cmd);
+#endif
 		return mml_pq_comp_config_ioctl(arg);
 	case MML_PQ_IOC_AAL_READBACK:
 		return mml_pq_aal_readback_ioctl(arg);
