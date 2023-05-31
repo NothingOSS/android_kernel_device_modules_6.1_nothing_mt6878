@@ -363,16 +363,16 @@ static int dvfsrc_aee_trigger(struct mtk_dvfsrc *dvfsrc, u32 aee_type)
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 	switch (aee_type) {
 	case DVFSRC_AEE_LEVEL_ERROR:
-		aee_kernel_warning("DVFSRC", "LEVEL Change fail");
+		aee_kernel_warning("DVFSRC", "\nCRDISPATCH_KEY:DVFSRC\nLEVEL Change fail");
 	break;
 	case DVFSRC_AEE_FORCE_ERROR:
-		aee_kernel_warning("DVFSRC", "Force opp fail");
+		aee_kernel_warning("DVFSRC", "\nCRDISPATCH_KEY:DVFSRC\nForce opp fail");
 	break;
 	case DVFSRC_AEE_VCORE_CHK_ERROR:
-		aee_kernel_warning("DVFSRC", "vcore check fail");
+		aee_kernel_warning("DVFSRC", "\nCRDISPATCH_KEY:DVFSRC\nvcore check fail");
 	break;
 	case DVFSRC_AEE_TIMEOUT_ERROR:
-		aee_kernel_warning("DVFSRC", "timeout fail");
+		aee_kernel_warning("DVFSRC", "\nCRDISPATCH_KEY:DVFSRC\ntimeout fail");
 	break;
 	default:
 		dev_info(dvfsrc->dev, "unknown aee type\n");
