@@ -153,11 +153,11 @@ static bool ufs_mtk_is_clk_scale_ready(struct ufs_hba *hba)
 		mclk->ufs_sel_min_clki;
 }
 
-static bool ufs_mtk_is_force_vsx_lpm(struct ufs_hba *hba)
+static bool ufs_mtk_is_allow_vccqx_lpm(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	return !!(host->caps & UFS_MTK_CAP_FORCE_VSx_LPM);
+	return !!(host->caps & UFS_MTK_CAP_ALLOW_VCCQX_LPM);
 }
 
 static void ufs_mtk_cfg_unipro_cg(struct ufs_hba *hba, bool enable)
@@ -1847,36 +1847,37 @@ static void ufs_mtk_vsx_set_lpm(struct ufs_hba *hba, bool lpm)
 
 static void ufs_mtk_dev_vreg_set_lpm(struct ufs_hba *hba, bool lpm)
 {
-	if (!hba->vreg_info.vccq && !hba->vreg_info.vccq2)
-		return;
+	bool skip_vccqx = false;
 
-	/* prevent entering LPM when device is still active */
+	/* Prevent entering LPM when device is still active */
 	if (lpm && ufshcd_is_ufs_dev_active(hba))
 		return;
 
-	/*  Skip if VCC is assumed always-on */
-	if (!hba->vreg_info.vcc)
-		return;
+	/* Skip vccqx lpm control and control vsx only */
+	if (!hba->vreg_info.vccq && !hba->vreg_info.vccq2)
+		skip_vccqx = true;
 
-	/*
-	 * If VCC kept always-on, we do not use smc call to avoid
-	 * non-essential time consumption.
-	 *
-	 * We don't need to control VS buck (the upper layer of VCCQ/VCCQ2)
-	 * to enter LPM, because UFS device may be active when VCC
-	 * is always-on. We also introduce UFS_MTK_CAP_FORCE_VSx_LPM to
-	 * allow overriding such protection to save power.
-	 */
-	if (lpm && hba->vreg_info.vcc->enabled &&
-		!ufs_mtk_is_force_vsx_lpm(hba))
-		return;
+	/* VCC is always-on, control vsx only */
+	if (!hba->vreg_info.vcc)
+		skip_vccqx = true;
+
+	/* Broken vcc keep vcc always on, most case control vsx only */
+	if (lpm && hba->vreg_info.vcc && hba->vreg_info.vcc->enabled) {
+		/* Some device vccqx/vsx can enter lpm */
+		if (ufs_mtk_is_allow_vccqx_lpm(hba))
+			skip_vccqx = false;
+		else /* control vsx only */
+			skip_vccqx = true;
+	}
 
 	if (lpm) {
-		ufs_mtk_vccqx_set_lpm(hba, lpm);
+		if (!skip_vccqx)
+			ufs_mtk_vccqx_set_lpm(hba, lpm);
 		ufs_mtk_vsx_set_lpm(hba, lpm);
 	} else {
 		ufs_mtk_vsx_set_lpm(hba, lpm);
-		ufs_mtk_vccqx_set_lpm(hba, lpm);
+		if (!skip_vccqx)
+			ufs_mtk_vccqx_set_lpm(hba, lpm);
 	}
 }
 
@@ -2059,7 +2060,7 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 	ufshcd_fixup_dev_quirks(hba, ufs_mtk_dev_fixups);
 
 	if (STR_PRFX_EQUAL("H9HQ15AFAMBDAR", dev_info->model))
-		host->caps |= UFS_MTK_CAP_BROKEN_VCC | UFS_MTK_CAP_FORCE_VSx_LPM;
+		host->caps |= UFS_MTK_CAP_BROKEN_VCC | UFS_MTK_CAP_ALLOW_VCCQX_LPM;
 
 	if (ufs_mtk_is_broken_vcc(hba) && hba->vreg_info.vcc &&
 	    (hba->dev_quirks & UFS_DEVICE_QUIRK_DELAY_AFTER_LPM)) {
