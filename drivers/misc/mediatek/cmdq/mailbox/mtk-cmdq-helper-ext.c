@@ -1146,6 +1146,8 @@ dma_addr_t cmdq_pkt_get_pa_by_offset(struct cmdq_pkt *pkt, u32 offset)
 	u32 offset_remaind = offset;
 	struct cmdq_pkt_buffer *buf;
 
+	pkt->write_addr_high = 0;
+
 	list_for_each_entry(buf, &pkt->buf, list_entry) {
 		if (offset_remaind >= CMDQ_CMD_BUFFER_SIZE) {
 			offset_remaind -= CMDQ_CMD_BUFFER_SIZE;
@@ -1267,6 +1269,18 @@ s32 cmdq_pkt_append_command(struct cmdq_pkt *pkt, u16 arg_c, u16 arg_b,
 }
 EXPORT_SYMBOL(cmdq_pkt_append_command);
 
+static s32 cmdq_pkt_assign_addr_high_command(struct cmdq_pkt *pkt, u32 value)
+{
+	s32 err = 0;
+
+	if (unlikely(pkt->write_addr_high != value)) {
+		err = cmdq_pkt_assign_command(pkt, CMDQ_SPR_FOR_TEMP, value);
+		if (!err)
+			pkt->write_addr_high = value;
+	}
+	return err;
+}
+
 s32 cmdq_pkt_move(struct cmdq_pkt *pkt, u16 reg_idx, u64 value)
 {
 	return cmdq_pkt_append_command(pkt, CMDQ_GET_ARG_C(value),
@@ -1306,8 +1320,8 @@ s32 cmdq_pkt_read_addr(struct cmdq_pkt *pkt, dma_addr_t addr, u16 dst_reg_idx)
 	s32 err;
 	const u16 src_reg_idx = CMDQ_SPR_FOR_TEMP;
 
-	err = cmdq_pkt_assign_command(pkt, src_reg_idx,
-		CMDQ_GET_ADDR_HIGH(addr));
+	err = cmdq_pkt_assign_addr_high_command(pkt, CMDQ_GET_ADDR_HIGH(addr));
+
 	if (err != 0)
 		return err;
 
@@ -1366,8 +1380,8 @@ s32 cmdq_pkt_write_reg_addr(struct cmdq_pkt *pkt, dma_addr_t addr,
 	s32 err;
 	const u16 dst_reg_idx = CMDQ_SPR_FOR_TEMP;
 
-	err = cmdq_pkt_assign_command(pkt, dst_reg_idx,
-		CMDQ_GET_ADDR_HIGH(addr));
+	err = cmdq_pkt_assign_addr_high_command(pkt, CMDQ_GET_ADDR_HIGH(addr));
+
 	if (err != 0)
 		return err;
 
@@ -1382,9 +1396,8 @@ s32 cmdq_pkt_write_value_addr(struct cmdq_pkt *pkt, dma_addr_t addr,
 	s32 err;
 	const u16 dst_reg_idx = CMDQ_SPR_FOR_TEMP;
 
-	/* assign bit 47:16 to spr temp */
-	err = cmdq_pkt_assign_command(pkt, dst_reg_idx,
-		CMDQ_GET_ADDR_HIGH(addr));
+	err = cmdq_pkt_assign_addr_high_command(pkt, CMDQ_GET_ADDR_HIGH(addr));
+
 	if (err != 0)
 		return err;
 
@@ -1415,8 +1428,8 @@ s32 cmdq_pkt_write_reg_addr_reuse(struct cmdq_pkt *pkt, dma_addr_t addr,
 	s32 err;
 	const u16 dst_reg_idx = CMDQ_SPR_FOR_TEMP;
 
-	err = cmdq_pkt_assign_command(pkt, dst_reg_idx,
-		CMDQ_GET_ADDR_HIGH(addr));
+	err = cmdq_pkt_assign_addr_high_command(pkt, CMDQ_GET_ADDR_HIGH(addr));
+
 	if (err != 0)
 		return err;
 
@@ -1436,9 +1449,8 @@ s32 cmdq_pkt_write_value_addr_reuse(struct cmdq_pkt *pkt, dma_addr_t addr,
 	s32 err;
 	const u16 dst_reg_idx = CMDQ_SPR_FOR_TEMP;
 
-	/* assign bit 47:16 to spr temp */
-	err = cmdq_pkt_assign_command(pkt, dst_reg_idx,
-		CMDQ_GET_ADDR_HIGH(addr));
+	err = cmdq_pkt_assign_addr_high_command(pkt, CMDQ_GET_ADDR_HIGH(addr));
+
 	if (err != 0)
 		return err;
 
@@ -1719,8 +1731,7 @@ s32 cmdq_pkt_write_dummy(struct cmdq_pkt *pkt, dma_addr_t addr)
 	dummy_addr = (u32)cmdq_mbox_get_dummy_reg(cl->chan);
 	if (addr > (dma_addr_t)gce_mminfra) {
 		/* assign bit 47:16 to spr temp */
-		err = cmdq_pkt_assign_command(pkt, dst_reg_idx,
-			CMDQ_GET_ADDR_HIGH(dummy_addr));
+		err = cmdq_pkt_assign_addr_high_command(pkt, CMDQ_GET_ADDR_HIGH(dummy_addr));
 		if (err != 0)
 			return err;
 
@@ -1860,6 +1871,7 @@ s32 cmdq_pkt_cond_jump(struct cmdq_pkt *pkt,
 
 	left_idx_value = CMDQ_OPERAND_GET_IDX_VALUE(left_operand);
 	right_idx_value = CMDQ_OPERAND_GET_IDX_VALUE(right_operand);
+	pkt->write_addr_high = 0;
 
 	return cmdq_pkt_append_command(pkt, right_idx_value, left_idx_value,
 		offset_reg_idx, condition_operator,
@@ -1883,6 +1895,7 @@ s32 cmdq_pkt_cond_jump_abs(struct cmdq_pkt *pkt,
 
 	left_idx_value = CMDQ_OPERAND_GET_IDX_VALUE(left_operand);
 	right_idx_value = CMDQ_OPERAND_GET_IDX_VALUE(right_operand);
+	pkt->write_addr_high = 0;
 
 	return cmdq_pkt_append_command(pkt, right_idx_value, left_idx_value,
 		addr_reg_idx, condition_operator,
@@ -1983,6 +1996,7 @@ s32 cmdq_pkt_sleep(struct cmdq_pkt *pkt, u32 tick, u16 reg_gpr)
 	const u32 timeout_en = (cl ? cmdq_mbox_get_base_pa(cl->chan) :
 		cmdq_dev_get_base_pa(pkt->dev)) + CMDQ_TPR_TIMEOUT_EN;
 
+	pkt->write_addr_high = 0;
 	/* set target gpr value to max to avoid event trigger
 	 * before new value write to gpr
 	 */
@@ -2044,6 +2058,7 @@ s32 cmdq_pkt_poll_timeout_reuse(struct cmdq_pkt *pkt, u32 value, u8 subsys,
 	struct cmdq_operand lop, rop;
 	struct cmdq_instruction *inst;
 
+	pkt->write_addr_high = 0;
 	/* assign compare value as compare target later */
 	cmdq_pkt_assign_command(pkt, reg_val, value);
 

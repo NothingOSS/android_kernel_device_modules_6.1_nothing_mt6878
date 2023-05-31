@@ -3277,6 +3277,7 @@ s32 cmdq_pkt_hw_trace(struct cmdq_pkt *pkt, const u16 event_id)
 	// spr = (CMDQ_TPR_ID >> 14) | (idx << 24)
 	cmdq_pkt_assign_command(pkt, CMDQ_SPR_FOR_TEMP,
 		thread->idx << 27 | (event_id & GENMASK(9, 0)) << 18);
+	pkt->write_addr_high = 0;
 
 	lop.reg = true;
 	lop.idx = CMDQ_TPR_ID;
@@ -3298,7 +3299,6 @@ s32 cmdq_pkt_hw_trace(struct cmdq_pkt *pkt, const u16 event_id)
 
 	cmdq_pkt_set_event(pkt, CMDQ_TOKEN_HW_TRACE_WAIT);
 	cmdq_pkt_set_event(pkt, CMDQ_TOKEN_HW_TRACE_LOCK);
-
 	return 0;
 }
 EXPORT_SYMBOL(cmdq_pkt_hw_trace);
