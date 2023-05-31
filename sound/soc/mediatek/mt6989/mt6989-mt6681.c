@@ -703,6 +703,11 @@ SND_SOC_DAILINK_DEFS(adda_ch34,
 	DAILINK_COMP_ARRAY(COMP_CODEC(DEVICE_MT6681_NAME,
 				      "mt6681-snd-codec-aif2")),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+SND_SOC_DAILINK_DEFS(adda_ch56,
+	DAILINK_COMP_ARRAY(COMP_CPU("ADDA_CH56")),
+	DAILINK_COMP_ARRAY(COMP_CODEC(DEVICE_MT6681_NAME,
+				      "mt6681-snd-codec-aif3")),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 SND_SOC_DAILINK_DEFS(ap_dmic,
 	DAILINK_COMP_ARRAY(COMP_CPU("AP_DMIC")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
@@ -1450,6 +1455,13 @@ static struct snd_soc_dai_link mt6989_mt6681_dai_links[] = {
 		.dpcm_capture = 1,
 		.ignore_suspend = 1,
 		SND_SOC_DAILINK_REG(adda_ch34),
+	},
+	{
+		.name = "Primary Codec CH56",
+		.no_pcm = 1,
+		.dpcm_capture = 1,
+		.ignore_suspend = 1,
+		SND_SOC_DAILINK_REG(adda_ch56),
 	},
 	{
 		.name = "AP_DMIC",

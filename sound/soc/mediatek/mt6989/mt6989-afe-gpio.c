@@ -137,6 +137,16 @@ static int mt6989_afe_gpio_adda_ch34_ul(struct mtk_base_afe *afe, bool enable)
 					      MT6989_AFE_GPIO_DAT_MISO0_OFF);
 }
 
+static int mt6989_afe_gpio_adda_ch56_ul(struct mtk_base_afe *afe, bool enable)
+{
+	if (enable)
+		return mt6989_afe_gpio_select(afe,
+					      MT6989_AFE_GPIO_DAT_MISO1_ON);
+	else
+		return mt6989_afe_gpio_select(afe,
+					      MT6989_AFE_GPIO_DAT_MISO1_OFF);
+}
+
 int mt6989_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 			    int dai, int uplink)
 {
@@ -153,6 +163,10 @@ int mt6989_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 			mt6989_afe_gpio_adda_ch34_ul(afe, enable);
 		else
 			mt6989_afe_gpio_adda_ch34_dl(afe, enable);
+		break;
+	case MT6989_DAI_ADDA_CH56:
+		if (uplink)
+			mt6989_afe_gpio_adda_ch56_ul(afe, enable);
 		break;
 	case MT6989_DAI_I2S_IN0:
 		break;

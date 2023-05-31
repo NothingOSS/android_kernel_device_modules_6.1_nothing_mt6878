@@ -505,6 +505,37 @@ static int mtk_adda_ch34_ul_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int mtk_adda_ch56_ul_event(struct snd_soc_dapm_widget *w,
+			     struct snd_kcontrol *kcontrol,
+			     int event)
+{
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mt6989_afe_private *afe_priv = afe->platform_priv;
+	int mtkaif_dmic = afe_priv->mtkaif_dmic;
+
+	dev_info(afe->dev, "%s(), name %s, event 0x%x, mtkaif_dmic %d\n",
+		 __func__, w->name, event, mtkaif_dmic);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		mt6989_afe_gpio_request(afe, true, MT6989_DAI_ADDA_CH56, 1);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		/* should delayed 1/fs(smallest is 8k) = 125us before afe off */
+		udelay(125);
+		mt6989_afe_gpio_request(afe, false, MT6989_DAI_ADDA_CH56, 1);
+
+		/* reset dmic */
+		afe_priv->mtkaif_dmic = 0;
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static int mtk_adda_pad_top_event(struct snd_soc_dapm_widget *w,
 				  struct snd_kcontrol *kcontrol,
 				  int event)
@@ -1153,6 +1184,9 @@ static const struct snd_kcontrol_new adda_ul_mux_control =
 static const struct snd_kcontrol_new adda_ch34_ul_mux_control =
 	SOC_DAPM_ENUM("ADDA_CH34_UL_MUX Select", adda_ul_mux_map_enum);
 
+static const struct snd_kcontrol_new adda_ch56_ul_mux_control =
+	SOC_DAPM_ENUM("ADDA_CH56_UL_MUX Select", adda_ul_mux_map_enum);
+
 static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 	/* inter-connections */
 	SND_SOC_DAPM_MIXER("ADDA_DL_CH1", SND_SOC_NOPM, 0, 0,
@@ -1195,6 +1229,11 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 			      UL_SRC_ON_TMP_CTL_SFT, 0,
 			      mtk_adda_ch34_ul_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_SUPPLY_S("ADDA CH56 Capture Enable", SUPPLY_SEQ_ADDA_UL_ON,
+			      AFE_ADDA_UL1_SRC_CON0,
+			      UL_SRC_ON_TMP_CTL_SFT, 0,
+			      mtk_adda_ch56_ul_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
 	SND_SOC_DAPM_SUPPLY_S("AUD_PAD_TOP", SUPPLY_SEQ_ADDA_AUD_PAD_TOP,
 			      AFE_AUD_PAD_TOP_CFG0,
@@ -1206,6 +1245,10 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 			      mtk_adda_mtkaif_cfg_event,
 			      SND_SOC_DAPM_PRE_PMU),
 	SND_SOC_DAPM_SUPPLY_S("ADDA6_MTKAIF_CFG", SUPPLY_SEQ_ADDA6_MTKAIF_CFG,
+			      SND_SOC_NOPM, 0, 0,
+			      mtk_adda_mtkaif_cfg_event,
+			      SND_SOC_DAPM_PRE_PMU),
+	SND_SOC_DAPM_SUPPLY_S("ADDA7_MTKAIF_CFG", SUPPLY_SEQ_ADDA6_MTKAIF_CFG,
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_adda_mtkaif_cfg_event,
 			      SND_SOC_DAPM_PRE_PMU),
@@ -1241,6 +1284,8 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 			 &adda_ul_mux_control),
 	SND_SOC_DAPM_MUX("ADDA_CH34_UL_Mux", SND_SOC_NOPM, 0, 0,
 			 &adda_ch34_ul_mux_control),
+	SND_SOC_DAPM_MUX("ADDA_CH56_UL_Mux", SND_SOC_NOPM, 0, 0,
+			 &adda_ch56_ul_mux_control),
 
 	SND_SOC_DAPM_INPUT("AP_DMIC_INPUT"),
 	SND_SOC_DAPM_INPUT("AP_DMIC_CH34_INPUT"),
@@ -1418,6 +1463,8 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"ADDA_CH34_UL_Mux", "MTKAIF", "ADDA CH34 Capture"},
 	{"ADDA_CH34_UL_Mux", "AP_DMIC", "AP DMIC CH34 Capture"},
 
+	{"ADDA_CH56_UL_Mux", "MTKAIF", "ADDA CH56 Capture"},
+
 	{"ADDA Capture", NULL, "ADDA Enable"},
 	{"ADDA Capture", NULL, "ADDA Capture Enable"},
 	{"ADDA Capture", NULL, "AUD_PAD_TOP"},
@@ -1439,6 +1486,13 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"AP DMIC CH34 Capture", NULL, "ADDA CH34 Capture Enable"},
 	{"AP DMIC CH34 Capture", NULL, "ADDA_CH34_FIFO"},
 	{"AP DMIC CH34 Capture", NULL, "AP_DMIC_CH34_EN"},
+
+	{"ADDA CH56 Capture", NULL, "ADDA Enable"},
+	{"ADDA CH56 Capture", NULL, "ADDA CH56 Capture Enable"},
+	{"ADDA CH56 Capture", NULL, "AUD_PAD_TOP"},
+	{"ADDA CH56 Capture", NULL, "ADDA7_MTKAIF_CFG"},
+	{"ADDA CH56 Capture", NULL, "VS1_VOTER_UL"},
+
 
 	{"AP DMIC Capture", NULL, "AP_DMIC_INPUT"},
 	{"AP DMIC CH34 Capture", NULL, "AP_DMIC_CH34_INPUT"},
@@ -1643,19 +1697,29 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 		case MT6989_DAI_ADDA_CH34:
 		case MT6989_DAI_AP_DMIC_CH34:
 #ifdef MTKAIF4
-			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
-					ADDA6_MTKAIFV4_RXIF_INPUT_MODE_MASK_SFT,
-					mtkaif_rate << ADDA6_MTKAIFV4_RXIF_INPUT_MODE_SFT);
-			/* AFE_ADDA6_MTKAIFV4_RX_CFG0 */
-			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
-					ADDA6_MTKAIFV4_RXIF_FOUR_CHANNEL_MASK_SFT,
-					0x0 << ADDA6_MTKAIFV4_RXIF_FOUR_CHANNEL_SFT);
-			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
-					ADDA6_MTKAIFV4_RXIF_EN_SEL_MASK_SFT,
-					0x1 << ADDA6_MTKAIFV4_RXIF_EN_SEL_SFT);
-			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
-					ADDA6_MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
-					0x1 << ADDA6_MTKAIFV4_RXIF_AFE_ON_SFT);
+			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+					MTKAIFV4_RXIF_INPUT_MODE_MASK_SFT,
+					mtkaif_rate << MTKAIFV4_RXIF_INPUT_MODE_SFT);
+			/* AFE_ADDA_MTKAIFV4_RX_CFG0 */
+			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+					MTKAIFV4_RXIF_FOUR_CHANNEL_MASK_SFT,
+					0x1 << MTKAIFV4_RXIF_FOUR_CHANNEL_SFT);
+			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+					MTKAIFV4_UL_CH1CH2_IN_EN_SEL_MASK_SFT,
+					0x1 << MTKAIFV4_UL_CH1CH2_IN_EN_SEL_SFT);
+			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+					MTKAIFV4_UL_CH3CH4_IN_EN_SEL_MASK_SFT,
+					0x1 << MTKAIFV4_UL_CH3CH4_IN_EN_SEL_SFT);
+			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+					MTKAIFV4_RXIF_EN_SEL_MASK_SFT,
+					0x0 << MTKAIFV4_RXIF_EN_SEL_SFT);
+			/* [28] loopback mode
+			 * 0: loopback adda tx to adda rx
+			 * 1: loopback adda6 tx to adda rx
+			 */
+			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+					MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
+					0x1 << MTKAIFV4_RXIF_AFE_ON_SFT);
 #endif
 
 			/* 35Hz @ 48k */
@@ -1679,6 +1743,24 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 					0x1 << 0,
 					0x0 << 0);
 
+			break;
+		case MT6989_DAI_ADDA_CH56:
+			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
+					ADDA6_MTKAIFV4_RXIF_INPUT_MODE_MASK_SFT,
+					mtkaif_rate << ADDA6_MTKAIFV4_RXIF_INPUT_MODE_SFT);
+			/* AFE_ADDA6_MTKAIFV4_RX_CFG0 */
+			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
+					ADDA6_MTKAIFV4_RXIF_FOUR_CHANNEL_MASK_SFT,
+					0x1 << ADDA6_MTKAIFV4_RXIF_FOUR_CHANNEL_SFT);
+			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+					MTKAIFV4_UL_CH5CH6_IN_EN_SEL_MASK_SFT,
+					0x1 << MTKAIFV4_UL_CH5CH6_IN_EN_SEL_SFT);
+			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
+					ADDA6_MTKAIFV4_RXIF_EN_SEL_MASK_SFT,
+					0x1 << ADDA6_MTKAIFV4_RXIF_EN_SEL_SFT);
+			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
+					ADDA6_MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
+					0x1 << ADDA6_MTKAIFV4_RXIF_AFE_ON_SFT);
 			break;
 		default:
 			break;
@@ -1758,6 +1840,18 @@ static struct snd_soc_dai_driver mtk_dai_adda_driver[] = {
 		.ops = &mtk_dai_adda_ops,
 	},
 	{
+		.name = "ADDA_CH56",
+		.id = MT6989_DAI_ADDA_CH56,
+		.capture = {
+			.stream_name = "ADDA CH56 Capture",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = MTK_ADDA_CAPTURE_RATES,
+			.formats = MTK_ADDA_FORMATS,
+		},
+		.ops = &mtk_dai_adda_ops,
+	},
+	{
 		.name = "AP_DMIC",
 		.id = MT6989_DAI_AP_DMIC,
 		.capture = {
@@ -1814,6 +1908,11 @@ int mt6989_dai_adda_register(struct mtk_base_afe *afe)
 		return ret;
 
 	ret = mt6989_dai_set_priv(afe, MT6989_DAI_ADDA_CH34,
+				  sizeof(struct mtk_afe_adda_priv), NULL);
+	if (ret)
+		return ret;
+
+	ret = mt6989_dai_set_priv(afe, MT6989_DAI_ADDA_CH56,
 				  sizeof(struct mtk_afe_adda_priv), NULL);
 	if (ret)
 		return ret;
