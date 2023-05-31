@@ -15,6 +15,7 @@
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include "sched_avg.h"
+#include "common.h"
 
 #define TAG "sched_avg"
 
@@ -63,19 +64,6 @@ static int global_task_util;
 static int init_thres_table(void);
 static unsigned int over_thres[OVER_THRES_SIZE] = {80, 70};
 static struct cluster_over_thres_stats cluster_over_thres_table[MAX_CLUSTER_NR];
-
-#if IS_ENABLED(CONFIG_MTK_SCHEDULER)
-extern bool sysctl_util_est;
-#endif
-
-bool is_util_est_enable(void)
-{
-#if IS_ENABLED(CONFIG_MTK_SCHEDULER)
-	return sysctl_util_est;
-#else
-	return true;
-#endif
-}
 
 void sched_max_util_task(int *util)
 {
@@ -503,8 +491,12 @@ static void over_thresh_chg_notify(void)
 		 * re-calculate over_thres count when updated threshold
 		 */
 		list_for_each_entry(p, &cpu_rq(cpu)->cfs_tasks, se.group_node) {
+			struct cc_task_struct *cc_ts =
+				&((struct mtk_task *) p->android_vendor_data1)->cc_task;
+
 			over_type = is_task_over_thres(p);
-			p->android_vendor_data1[6] = (u64)over_type;
+			WRITE_ONCE(cc_ts->over_type, (u64)over_type);
+
 			if (over_type) {
 				if (over_type == OVER_UP_THRES) {
 					nr_over_dn_thres++;
@@ -549,6 +541,7 @@ void sched_update_nr_over_thres_prod(struct task_struct *p, int cpu, int inc)
 	enum over_thres_type over_type = NO_OVER_THRES;
 	struct over_thres_stats *cpu_over_thres = NULL;
 	unsigned long util;
+	struct cc_task_struct *cc_ts = NULL;
 
 	/* TODO: should be error handle ? */
 	if (!init_thres) {
@@ -565,7 +558,8 @@ void sched_update_nr_over_thres_prod(struct task_struct *p, int cpu, int inc)
 	/* check if task is over threshold */
 	over_type = get_over_type(cpu_over_thres, util);
 	update_nr_over_thres_locked(cpu_over_thres, over_type, p, util, inc);
-	p->android_vendor_data1[6] = (u64)over_type;
+	cc_ts = &((struct mtk_task *) p->android_vendor_data1)->cc_task;
+	WRITE_ONCE(cc_ts->over_type, (u64)over_type);
 	spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
 }
 
@@ -648,6 +642,7 @@ void pelt_se_tp(void *data, struct sched_entity *se)
 	unsigned long flags;
 	unsigned long util;
 	int cpu;
+	struct cc_task_struct *cc_ts = NULL;
 
 	if (!init_thres) {
 		printk_deferred_once("assertion failed at %s:%d\n",
@@ -661,7 +656,8 @@ void pelt_se_tp(void *data, struct sched_entity *se)
 		cpu = cpu_of(task_rq(p));
 
 		spin_lock_irqsave(&per_cpu(nr_over_thres_lock, cpu), flags);
-		old_type = p->android_vendor_data1[6];
+		cc_ts = &((struct mtk_task *) p->android_vendor_data1)->cc_task;
+		old_type = READ_ONCE(cc_ts->over_type);
 
 		util = task_util(p);
 		stats = &per_cpu(cpu_over_thres_state, cpu);
@@ -681,7 +677,7 @@ void pelt_se_tp(void *data, struct sched_entity *se)
 					new_type == OVER_UP_THRES)
 				++stats->nr_over_up_thres;
 		}
-		p->android_vendor_data1[6] = (u64)new_type;
+		WRITE_ONCE(cc_ts->over_type, (u64)new_type);
 		spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
 	}
 }
