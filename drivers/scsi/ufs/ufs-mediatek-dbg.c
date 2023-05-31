@@ -1321,6 +1321,14 @@ void ufs_mtk_dbg_phy_dump(struct ufs_hba *hba)
 	}
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_dump);
+
+void ufs_mtk_dbg_phy_enable(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	host->mphy_base = ioremap(0x112a0000, 0x10000);
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_enable);
 #endif
 
 static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
@@ -1951,14 +1959,6 @@ static void ufs_mtk_dbg_cleanup(void)
 
 	_cmd_hist_cleanup();
 }
-
-void ufs_mtk_dbg_phy_enable(struct ufs_hba *hba)
-{
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-
-	host->mphy_base = ioremap(0x112a0000, 0x10000);
-}
-EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_enable);
 
 int ufs_mtk_dbg_register(struct ufs_hba *hba)
 {
