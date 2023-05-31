@@ -10885,6 +10885,12 @@
 			pwm-supply = "mt6373_vio28";
 		};
 
+		usb_offload: usb-offload {
+			compatible = "mediatek,usb-offload";
+			xhci-host = <&usb_host>;
+			adv-lowpower;
+		};
+
 		ssusb: usb0@11201000 {
 			compatible = "mediatek,mtu3";
 			reg = <0 0x11201000 0 0x2e00>,
@@ -10924,6 +10930,7 @@
 				interrupts = <GIC_SPI 274 IRQ_TYPE_LEVEL_HIGH 0>;
 				clocks = <&clk26m>;
 				clock-names = "sys_ck";
+				mediatek,usb-offload = <&usb_offload>;
 				status = "okay";
 			};
 		};
