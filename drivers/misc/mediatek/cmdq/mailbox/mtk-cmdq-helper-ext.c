@@ -1127,11 +1127,19 @@ void cmdq_pkt_destroy(struct cmdq_pkt *pkt)
 }
 EXPORT_SYMBOL(cmdq_pkt_destroy);
 
+size_t cmdq_pkt_get_curr_offset(struct cmdq_pkt *pkt)
+{
+	pkt->write_addr_high = 0;
+	return pkt->cmd_buf_size - CMDQ_INST_SIZE;
+}
+EXPORT_SYMBOL(cmdq_pkt_get_curr_offset);
+
 u64 *cmdq_pkt_get_va_by_offset(struct cmdq_pkt *pkt, size_t offset)
 {
 	size_t offset_remaind = offset;
 	struct cmdq_pkt_buffer *buf;
 
+	pkt->write_addr_high = 0;
 	list_for_each_entry(buf, &pkt->buf, list_entry) {
 		if (offset_remaind >= CMDQ_CMD_BUFFER_SIZE) {
 			offset_remaind -= CMDQ_CMD_BUFFER_SIZE;
@@ -1168,6 +1176,7 @@ dma_addr_t cmdq_pkt_get_curr_buf_pa(struct cmdq_pkt *pkt)
 {
 	struct cmdq_pkt_buffer *buf;
 
+	pkt->write_addr_high = 0;
 	if (unlikely(!pkt->avail_buf_size))
 		if (cmdq_pkt_add_cmd_buffer(pkt) < 0)
 			return -ENOMEM;
@@ -1182,6 +1191,7 @@ void *cmdq_pkt_get_curr_buf_va(struct cmdq_pkt *pkt)
 {
 	struct cmdq_pkt_buffer *buf;
 
+	pkt->write_addr_high = 0;
 	if (unlikely(!pkt->avail_buf_size))
 		if (cmdq_pkt_add_cmd_buffer(pkt) < 0)
 			return NULL;

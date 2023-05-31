@@ -610,6 +610,8 @@ int cmdq_helper_init(void);
 
 void cmdq_hw_trace_check_inst(struct cmdq_pkt *pkt);
 
+size_t cmdq_pkt_get_curr_offset(struct cmdq_pkt *pkt);
+
 struct cmdq_thread_task_info {
 	dma_addr_t		pa_base;
 	struct cmdq_pkt		*pkt;
