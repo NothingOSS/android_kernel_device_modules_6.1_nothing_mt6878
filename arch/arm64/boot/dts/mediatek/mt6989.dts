@@ -118,6 +118,7 @@
 //			dsi2 = &dsi2;
 //			intf0 = &disp1_dp_intf0;
 			mutex0 = &disp1_mutex0;
+			mtksmmu0 = &mm_smmu;
 	};
 
 	aov: aov {
