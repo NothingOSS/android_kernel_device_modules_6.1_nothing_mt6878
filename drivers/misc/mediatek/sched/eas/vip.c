@@ -12,9 +12,8 @@
 #include "eas_trace.h"
 #include "eas_plus.h"
 
-bool vip_enable = true;
-
 unsigned int ls_vip_threshold                   =  DEFAULT_VIP_PRIO_THRESHOLD;
+bool vip_enable;
 
 DEFINE_PER_CPU(struct vip_rq, vip_rq);
 
@@ -681,4 +680,5 @@ void vip_init(void)
 
 	/* init vip related value to newly forked tasks */
 	register_vip_hooks();
+	vip_enable = sched_vip_enable_get();
 }

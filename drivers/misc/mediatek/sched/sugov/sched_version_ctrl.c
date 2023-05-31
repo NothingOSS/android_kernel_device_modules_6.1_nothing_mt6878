@@ -41,6 +41,7 @@ int init_sched_ctrl(void)
 		gear_hints_enable = false;
 		updown_migration_enable = false;
 		skip_hiIRQ_enable = false;
+		vip_enable = false;
 		break;
 	case EAS_5_5_1:
 		am_support = 0;
@@ -49,6 +50,7 @@ int init_sched_ctrl(void)
 		gear_hints_enable = false;
 		updown_migration_enable = true;
 		skip_hiIRQ_enable = false;
+		vip_enable = false;
 		break;
 	case EAS_6_1:
 		am_support = 1;
@@ -57,6 +59,7 @@ int init_sched_ctrl(void)
 		gear_hints_enable = true;
 		updown_migration_enable = true;
 		skip_hiIRQ_enable = true;
+		vip_enable = true;
 		break;
 	default:
 		am_support = 0;
@@ -65,6 +68,7 @@ int init_sched_ctrl(void)
 		gear_hints_enable = false;
 		updown_migration_enable = false;
 		skip_hiIRQ_enable = false;
+		vip_enable = false;
 		break;
 	}
 	return 0;
