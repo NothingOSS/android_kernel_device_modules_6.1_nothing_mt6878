@@ -245,6 +245,89 @@ int emi_slb_select(int argv1, int argv2, int argv3)
 }
 EXPORT_SYMBOL_GPL(emi_slb_select);
 
+int emi_pmu_counter(int idx, int filter0, int bw_lat_sel)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_EMI_PMU_COUNTER;
+	slbc_ipi_d.arg = idx;
+	slbc_ipi_d.arg2 = filter0;
+	slbc_ipi_d.arg3 = bw_lat_sel;
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(emi_pmu_counter);
+
+int emi_pmu_set_ctrl(int feature, int idx, int action)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_EMI_PMU_SET_CTRL;
+	slbc_ipi_d.arg = feature;
+	slbc_ipi_d.arg2 = idx;
+	slbc_ipi_d.arg3 = action;
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(emi_pmu_set_ctrl);
+
+int emi_pmu_read_counter(int idx)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+	struct scmi_tinysys_status rvalue = {0};
+	int ret = 0;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = SLBC_IPI(IPI_EMI_PMU_READ_COUNTER, idx);
+
+	ret = slbc_scmi_get(&slbc_ipi_d, &rvalue);
+	if (ret) {
+		pr_info("#@# %s(%d) return fail(%d)\n",
+			__func__, __LINE__, ret);
+		return  -1;
+	}
+
+	return rvalue.r1;
+}
+EXPORT_SYMBOL_GPL(emi_pmu_read_counter);
+
+int emi_gid_pmu_counter(int idx, int set)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = IPI_EMI_GID_PMU_COUNTER;
+	slbc_ipi_d.arg = idx;
+	slbc_ipi_d.arg2 = set;
+	return slbc_scmi_set(&slbc_ipi_d);
+}
+EXPORT_SYMBOL_GPL(emi_gid_pmu_counter);
+
+int emi_gid_pmu_read_counter(void *ptr)
+{
+	struct slbc_ipi_data slbc_ipi_d;
+	struct scmi_tinysys_status rvalue = {0};
+	struct slbc_data *d = (struct slbc_data *)ptr;
+	int ret = 0;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = SLBC_IPI(IPI_EMI_GID_PMU_READ_COUNTER, d->uid);
+
+	ret = slbc_scmi_get(&slbc_ipi_d, &rvalue);
+	if (ret) {
+		pr_info("#@# %s(%d) return fail(%d)\n",
+			__func__, __LINE__, ret);
+		return -1;
+	}
+
+	d->type = rvalue.r1;
+	d->flag = rvalue.r2;
+	d->timeout = rvalue.r3;
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(emi_gid_pmu_read_counter);
+
 int _slbc_request_cache_scmi(void *ptr)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)

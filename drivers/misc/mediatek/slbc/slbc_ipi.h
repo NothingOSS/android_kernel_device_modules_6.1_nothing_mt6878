@@ -53,6 +53,11 @@ enum {
 	IPI_SLBC_TABLE_GID_AXI_GET,
 	IPI_EMI_SLB_SELECT,
 	IPI_SLBC_BUFFER_CB_NOTIFY,
+	IPI_EMI_PMU_COUNTER,
+	IPI_EMI_PMU_SET_CTRL,
+	IPI_EMI_GID_PMU_COUNTER,
+	IPI_EMI_PMU_READ_COUNTER,
+	IPI_EMI_GID_PMU_READ_COUNTER,
 	NR_IPI_SLBC,
 };
 
@@ -105,6 +110,11 @@ extern int slbc_table_gid_axi_set(int index, int axiid, int pg);
 extern int slbc_table_gid_axi_release(int index);
 extern int slbc_table_gid_axi_get(int index);
 extern int emi_slb_select(int argv1, int argv2, int argv3);
+extern int emi_pmu_counter(int argv1, int argv2, int argv3);
+extern int emi_pmu_set_ctrl(int argv1, int argv2, int argv3);
+extern int emi_gid_pmu_counter(int argv1, int argv2);
+extern int emi_pmu_read_counter(int idx);
+extern int emi_gid_pmu_read_counter(void *ptr);
 extern int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid,
 			struct slbc_gid_data *data);
 
@@ -136,6 +146,11 @@ __weak int slbc_table_gid_axi_set(int index, int axiid, int pg) {}
 __weak int slbc_table_gid_axi_release(int index) {}
 __weak int slbc_table_gid_axi_get(int index) {}
 __weak int emi_slb_select(int argv1, int argv2, int argv3) {}
+__weak int emi_pmu_counter(int argv1, int argv2, int argv3) {}
+__weak int emi_pmu_set_ctrl(int argv1, int argv2, int argv3) {}
+__weak int emi_gid_pmu_counter(int argv1, int argv2) {}
+__weak int emi_pmu_read_counter(int idx) {}
+__weak int emi_gid_pmu_read_counter(void *ptr) {}
 __weak int _slbc_ach_scmi(unsigned int cmd, enum slc_ach_uid uid, int gid,
 			struct slbc_gid_data *data)
 {

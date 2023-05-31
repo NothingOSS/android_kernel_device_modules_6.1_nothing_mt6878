@@ -1116,6 +1116,7 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 {
 	int i;
 	int sid;
+	int ret;
 
 	slbc_sspm_sram_update();
 
@@ -1221,6 +1222,18 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 		seq_printf(m, "stat rel count:%lld min:%lld avg:%lld max:%lld\n",
 				rel_val_count, rel_val_min,
 				rel_val_total / rel_val_count, rel_val_max);
+	}
+	seq_puts(m, "emi_pmu_read");
+	for (i = 34; i <= 59; i++)
+		seq_printf(m, " [%d]%d", i, emi_pmu_read_counter(i));
+	seq_puts(m, "\n");
+	seq_puts(m, "emi_gid_pmu_read");
+
+	for (i = 0; i < 64; i++) {
+		test_d.uid = i;
+		ret = emi_gid_pmu_read_counter(&test_d);
+		if (!ret)
+			seq_printf(m, " [%d]%d, %d, %d", i, test_d.type, test_d.flag, test_d.timeout);//hit,quota,total
 	}
 
 	seq_puts(m, "\n");
@@ -1358,6 +1371,12 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		slbc_table_gid_axi_get(val_1);
 	} else if (!strcmp(cmd, "slb_select")) {
 		emi_slb_select(val_1, val_2, val_3);
+	} else if (!strcmp(cmd, "pmu_counter")) {
+		emi_pmu_counter(val_1, val_2, val_3);
+	} else if (!strcmp(cmd, "pmu_set_ctrl")) {
+		emi_pmu_set_ctrl(val_1, val_2, val_3);
+	} else if (!strcmp(cmd, "gid_pmu_set_ctrl")) {
+		emi_gid_pmu_counter(val_1, val_2);
 #endif
 	} else if (!strcmp(cmd, "sram")) {
 		pr_info("#@# %s(%d) slbc->regs 0x%lx slbc->regsize 0x%x\n",
