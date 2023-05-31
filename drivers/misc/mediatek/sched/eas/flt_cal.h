@@ -61,4 +61,8 @@ struct flt_rq {
 void flt_cal_init(void);
 void sched_window_nr_ticks_change(void);
 int flt_get_grp_hint_mode1(int grp_id);
+void flt_rvh_enqueue_task(void *data, struct rq *rq,
+				struct task_struct *p, int flags);
+void flt_rvh_dequeue_task(void *data, struct rq *rq,
+				struct task_struct *p, int flags);
 #endif /* _FLT_H */

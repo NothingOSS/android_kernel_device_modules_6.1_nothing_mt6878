@@ -35,6 +35,7 @@
 #include "flt_init.h"
 #include "flt_api.h"
 #include "group.h"
+#include "flt_cal.h"
 #endif
 
 #define CREATE_TRACE_POINTS
@@ -117,6 +118,12 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 	int type = *(int *)data;
 	irq_log_store();
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+	if (type == enqueue)
+		flt_rvh_enqueue_task(data, rq, p, flags);
+	else if (type == dequeue)
+		flt_rvh_dequeue_task(data, rq, p, flags);
+#endif
 	if (trace_sched_queue_task_enabled()) {
 		unsigned long util = READ_ONCE(rq->cfs.avg.util_avg);
 

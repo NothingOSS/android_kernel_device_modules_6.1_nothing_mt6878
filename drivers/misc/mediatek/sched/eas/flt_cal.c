@@ -592,7 +592,7 @@ done:
 }
 
 
-static void flt_rvh_enqueue_task(void *data, struct rq *rq,
+void flt_rvh_enqueue_task(void *data, struct rq *rq,
 				struct task_struct *p, int flags)
 {
 	struct flt_rq *fsrq = &per_cpu(flt_rq, rq->cpu);
@@ -627,7 +627,7 @@ static void flt_rvh_enqueue_task(void *data, struct rq *rq,
 		trace_sched_enq_deq_task(p, 1, cpumask_bits(&p->cpus_mask)[0], fsrq);
 }
 
-static void flt_rvh_dequeue_task(void *data, struct rq *rq,
+void flt_rvh_dequeue_task(void *data, struct rq *rq,
 				struct task_struct *p, int flags)
 {
 	struct flt_rq *fsrq = &per_cpu(flt_rq, rq->cpu);
@@ -1039,6 +1039,8 @@ static int flt_sync_all_cpu(void)
 				<< SCHED_CAPACITY_SHIFT;
 			if (total_sum[grp_idx])
 				res = (u32)div64_u64(res, total_sum[grp_idx]);
+			else
+				res = 0;
 			WRITE_ONCE(fsrq->group_util_ratio[grp_idx], res);
 		}
 	}
@@ -1059,6 +1061,8 @@ static int flt_sync_all_cpu(void)
 				<< SCHED_CAPACITY_SHIFT;
 			if (rt_total[grp_idx])
 				res = (u32)div64_u64(res, rt_total[grp_idx]);
+			else
+				res = 0;
 			WRITE_ONCE(fsrq->group_util_rtratio[grp_idx], res);
 		}
 	}
@@ -1231,16 +1235,6 @@ static void flt_register_kernel_hooks(void)
 		flt_android_rvh_tick_entry, NULL);
 	if (ret)
 		pr_info("register android_rvh_tick_entry failed\n");
-
-	ret = register_trace_android_rvh_enqueue_task(
-		flt_rvh_enqueue_task, NULL);
-	if (ret)
-		pr_info("register enqueue_task failed, returned %d\n", ret);
-
-	ret = register_trace_android_rvh_dequeue_task(
-		flt_rvh_dequeue_task, NULL);
-	if (ret)
-		pr_info("register dequeue_task hooks failed, returned %d\n", ret);
 }
 
 void flt_cal_init(void)
