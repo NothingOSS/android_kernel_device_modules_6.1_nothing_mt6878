@@ -4008,7 +4008,7 @@
 			#performance-domain-cells = <1>;
 		};
 
-		eas_info: eas_info {
+		eas_info: eas-info {
 			compatible = "mediatek,eas-info";
 			csram-base = <0x0011bc00>;
 			/* L, M, B, CCI */
