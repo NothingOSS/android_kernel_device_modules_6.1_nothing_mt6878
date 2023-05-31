@@ -11724,7 +11724,9 @@
 		<35 3  2>,/* IPI_OUT_C_SCP_HWVOTER_DEBUG */
 		<39 3  4>,/* IPI_OUT_AOV_SCP */
 		<43 3  4>,/* IPI_OUT_NPU_SCP */
-		<45 3  1>;/* IPI_OUT_SCP_PM_NOTIFY_0 */
+		<45 3  1>,/* IPI_OUT_SCP_PM_NOTIFY_0 */
+		<47 3  2>,/* IPI_PIN_HOST_SCP_CHRE */
+		<48 3  2>;/* IPI_PIN_SCP_HOST_CHRE */
 
 		#recv-cells-mode = <1>;
 		/* mode 0 or no defined #recv-cells-mode => 4 elements : id, mbox,
@@ -11753,7 +11755,9 @@
 		<27 3  2 0 0 0 0>,/* IPI_IN_AUDIO_ULTRA_SND_ACK_0 */
 		<35 3  4 1 0 0 0>,/* IPI_OUT_C_SCP_HWVOTER_DEBUG */
 		<40 3  4 0 0 0 0>,/* IPI_IN_SCP_AOV */
-		<44 3  4 0 0 0 0>;/* IPI_IN_SCP_NPU */
+		<44 3  4 0 0 0 0>,/* IPI_IN_SCP_NPU */
+		<47 3  2 1 0 0 0>,/* IPI_PIN_HOST_SCP_CHRE ack slot */
+		<48 3  2 0 0 0 1>;/* IPI_PIN_SCP_HOST_CHRE msg slot */
 
 		//legacy_table =	<11>, /* out_id_0 IPI_OUT_SCP_MPOOL_0 */
 		//		<24>, /* out_id_1 IPI_OUT_SCP_MPOOL_1 */
@@ -11781,7 +11785,7 @@
 		scp-dram-region = "enable";   /* enable scp dram region manage */
 		scp-protect = "enable";   /* enable scp protections */
 		secure-dump = "enable";   /* enable dump via secure world*/
-		secure-dump-size = <0x480000>;
+		secure-dump-size = <0x580000>;
 		scp-pm-notify = "disable";
 		scp-thermal-wq = "disable";
 		scp-secure-ipc = "enable";
@@ -11805,13 +11809,15 @@
 				  <12 0x100 0x0>, /* sensor custom reader */
 				  <13 0x780000 0x0>, /* aov */
 				  <15 0x10000 0x0>, /* aod */
+				  <17 0x8000 0x0>, /* scp chre from */
+				  <18 0x8000 0x0>, /* scp chre to */
 				  <19 0x100 0x0>;  /* low power debug */
 
 		memorydump = <0x340000>, /* l2tcm */
 				 <0x03c000>, /* l1c */
 				 <0x003c00>, /* regdump */
 				 <0x000400>, /* trace buffer */
-				 <0x100000>; /* dram */
+				 <0x200000>; /* dram */
 #if 0
 		scp-resource-dump = "disable";   /* enable dump scp related resource */
 		/* regulator */
