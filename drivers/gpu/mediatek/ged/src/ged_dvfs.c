@@ -669,6 +669,7 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 	int ui32CurFreqID, ui32CeilingID, ui32FloorID;
 	unsigned int cur_freq = 0;
 	enum gpu_dvfs_policy_state policy_state;
+	unsigned int cur_minfreq, cur_top, cur_stack, cur_real_stack;
 
 	ui32CurFreqID = ged_get_cur_oppidx();
 
@@ -700,8 +701,6 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		/* do change */
 		if (ui32NewFreqID != ui32CurFreqID) {
 			/* call to ged gpufreq wrapper module */
-			g_ged_dvfs_commit_idx = ui32NewFreqID;
-			g_ged_dvfs_commit_top_idx = ui32NewFreqID;
 			ged_gpufreq_commit(ui32NewFreqID, eCommitType, &bCommited);
 
 			/*
@@ -732,18 +731,19 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 				gpufreq_get_cur_freq(TARGET_DEFAULT) / 1000,
 				gpufreq_get_cur_freq(TARGET_GPU) / 1000);
 		} else {
-			int cur_minfreq = ged_get_freq_by_idx(ged_get_min_oppidx());
-			int cur_maxfreq = ged_get_freq_by_idx(ged_get_max_oppidx());
+			cur_minfreq = ged_get_freq_by_idx(ged_get_min_oppidx());
+			cur_top = ged_get_cur_top_freq();
+			cur_stack = ged_get_cur_stack_freq();
+			cur_real_stack = gpufreq_get_cur_freq(TARGET_DEFAULT);
 
-			if (ged_get_cur_freq() >= cur_minfreq &&
-				ged_get_cur_freq() <= cur_maxfreq) {
+			if (cur_top >= cur_minfreq &&
+				cur_real_stack >= cur_minfreq) {
 				trace_tracing_mark_write(5566, "gpu_freq",
-				(long long) ged_get_cur_freq() / 1000);
-			}
+				(long long) cur_stack / 1000);
 
-			trace_GPU_DVFS__Frequency(ged_get_cur_freq() / 1000,
-				gpufreq_get_cur_freq(TARGET_DEFAULT) / 1000,
-				gpufreq_get_cur_freq(TARGET_GPU) / 1000);
+				trace_GPU_DVFS__Frequency(cur_stack / 1000,
+					cur_real_stack / 1000, cur_top / 1000);
+			}
 		}
 
 		trace_tracing_mark_write(5566, "gpu_freq_ceil",
@@ -784,6 +784,7 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	int ui32CurFreqID, ui32CeilingID, ui32FloorID, newTopFreq;
 	unsigned int cur_freq = 0;
 	enum gpu_dvfs_policy_state policy_state;
+	unsigned int cur_minfreq, cur_top, cur_stack, cur_real_stack;
 
 	ui32CurFreqID = ged_get_cur_oppidx();
 	newTopFreq = ged_get_top_freq_by_virt_opp(topNewFreqID);
@@ -849,17 +850,19 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 			gpufreq_get_cur_freq(TARGET_DEFAULT) / 1000,
 			gpufreq_get_cur_freq(TARGET_GPU) / 1000);
 	} else {
-		int cur_minfreq = ged_get_freq_by_idx(ged_get_min_oppidx());
-		int cur_maxfreq = ged_get_freq_by_idx(ged_get_max_oppidx());
+		cur_minfreq = ged_get_freq_by_idx(ged_get_min_oppidx());
+		cur_top = ged_get_cur_top_freq();
+		cur_stack = ged_get_cur_stack_freq();
+		cur_real_stack = gpufreq_get_cur_freq(TARGET_DEFAULT);
 
-		if (ged_get_cur_freq() >= cur_minfreq && ged_get_cur_freq() <= cur_maxfreq) {
+		if (cur_top >= cur_minfreq &&
+			cur_real_stack >= cur_minfreq) {
 			trace_tracing_mark_write(5566, "gpu_freq",
-			(long long) ged_get_cur_freq() / 1000);
-		}
+			(long long) cur_stack / 1000);
 
-		trace_GPU_DVFS__Frequency(ged_get_cur_freq() / 1000,
-			gpufreq_get_cur_freq(TARGET_DEFAULT) / 1000,
-			gpufreq_get_cur_freq(TARGET_GPU) / 1000);
+			trace_GPU_DVFS__Frequency(cur_stack / 1000,
+				cur_real_stack / 1000, cur_top / 1000);
+		}
 	}
 
 	trace_tracing_mark_write(5566, "gpu_freq_ceil",
@@ -1325,6 +1328,11 @@ static int get_async_counters(struct async_counter *counters)
 	counters->l2ext		= (long)g_counter_hs.util_l2ext_raw / memory_conter_scale;
 	counters->irq		= (long)g_counter_hs.util_irq_raw;
 
+	// MET
+	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Counter(
+		counters->gpuactive, counters->iter, counters->compute,
+		counters->l2ext, counters->irq, g_counter_hs.util_mcu_raw);
+
 	// reset counter value after get
 	reset_async_counters();
 
@@ -1332,10 +1340,6 @@ static int get_async_counters(struct async_counter *counters)
 			"[DVFS_ASYNC] - %s: Async counters [gpuactive/iter/compute/l2ext/irq]: [%ld/%ld/%ld/%ld/%ld]\n",
 			__func__, counters->gpuactive,
 			counters->iter, counters->compute, counters->l2ext, counters->irq);
-	// MET
-	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Counter(
-		counters->gpuactive, counters->iter, counters->compute,
-		counters->l2ext, counters->irq, g_counter_hs.util_mcu_raw);
 
 	if ((counters->gpuactive < 0) || (counters->iter < 0) ||
 		(counters->compute < 0) || (counters->l2ext < 0) ||

@@ -477,7 +477,10 @@ int ged_get_cur_oppidx(void)
 			break;
 	}
 
-	oppidx += i * g_oppnum_eachmask;
+	if (g_async_ratio_support)
+		oppidx += i * g_oppnum_eachmask;
+	else
+		oppidx = g_min_working_oppidx + i;
 
 	return oppidx;
 }
@@ -693,6 +696,10 @@ int ged_gpufreq_commit(int oppidx, int commit_type, int *bCommited)
 		mask_idx = 0;
 		oppidx_tar = oppidx;
 	}
+
+	/* write working opp to sysram */
+	ged_dvfs_set_sysram_last_commit_top_idx(oppidx_tar);
+	ged_dvfs_set_sysram_last_commit_stack_idx(oppidx_tar);
 
 	/* scaling cores to max if freq. is fixed */
 	dvfs_state = gpufreq_get_dvfs_state();
