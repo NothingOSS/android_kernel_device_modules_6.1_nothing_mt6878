@@ -459,9 +459,9 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 		MTK_DRM_OPT_MMQOS_SUPPORT)) {
-		if (drm_crtc_index(crtc) == 0)
-			mtk_disp_set_hrt_bw(mtk_crtc,
-				mtk_crtc->qos_ctx->last_hrt_req);
+	//	if (drm_crtc_index(crtc) == 0)
+	//		mtk_disp_set_hrt_bw(mtk_crtc,
+	//			mtk_crtc->qos_ctx->last_hrt_req);
 	}
 
 	mtk_drm_crtc_enable(crtc);
