@@ -13828,7 +13828,7 @@ FLL_top_cc4";
 			};
 			spm_vcore: spm-vcore {
 				id = <0x00000005>;
-				value = <1>;
+				value = <0>;
 			};
 			spm_emi: spm-emi {
 				id = <0x00000006>;
@@ -13855,7 +13855,7 @@ FLL_top_cc4";
 			rc_vcore: rc-vcore {
 				rc-name = "vcore";
 				id = <0x00000000>;
-				value = <0>;
+				value = <1>;
 				cond-info = <1>;
 			};
 		};
