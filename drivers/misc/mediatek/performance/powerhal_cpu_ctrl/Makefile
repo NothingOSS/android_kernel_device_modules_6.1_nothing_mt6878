@@ -11,7 +11,10 @@
 # GNU General Public License for more details.
 #
 
-ccflags-y += -I$(srctree)/include/
+ccflags-y += \
+	-I$(srctree)/include/ \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_lite/
+
 CFLAGS_powerhal_cpu_ctrl.o := -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/powerhal_cpu_ctrl
 
 obj-$(CONFIG_MTK_PERFORMANCE_MODULE) += powerhal_cpu_ctrl.o

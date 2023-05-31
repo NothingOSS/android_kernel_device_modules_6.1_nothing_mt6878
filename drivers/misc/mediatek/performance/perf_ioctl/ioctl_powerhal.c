@@ -6,6 +6,7 @@
 
 #define TAG "IOCTL_POWERHAL"
 
+// ADPF
 int (*powerhal_adpf_create_session_hint_fp)
 	(unsigned int sid, unsigned int tgid, unsigned int uid,
 	int *threadIds, int threadIds_size, long durationNanos);
@@ -29,6 +30,10 @@ int (*powerhal_adpf_set_threads_fp)(unsigned int sid, int *threadIds, int thread
 EXPORT_SYMBOL_GPL(powerhal_adpf_set_threads_fp);
 void (*boost_get_cmd_fp)(int *cmd, int *value);
 EXPORT_SYMBOL_GPL(boost_get_cmd_fp);
+
+// DSU
+int (*powerhal_dsu_sport_mode_fp)(unsigned int mode);
+EXPORT_SYMBOL_GPL(powerhal_dsu_sport_mode_fp);
 
 
 struct proc_dir_entry *perfmgr_root;
@@ -61,7 +66,7 @@ static int device_open(struct inode *inode, struct file *file)
 	return single_open(file, device_show, inode->i_private);
 }
 
-static long device_ioctl(struct file *filp,
+static long adpf_device_ioctl(struct file *filp,
 		unsigned int cmd, unsigned long arg)
 {
 	ssize_t ret = 0;
@@ -203,6 +208,48 @@ ret_ioctl:
 	return ret;
 }
 
+static long device_ioctl(struct file *filp,
+		unsigned int cmd, unsigned long arg)
+{
+	ssize_t ret = 0;
+	struct _POWERHAL_PACKAGE *t_msgKM = NULL,
+			*t_msgUM = (struct _POWERHAL_PACKAGE *)arg;
+	struct _POWERHAL_PACKAGE t_smsgKM;
+
+	t_msgKM = &t_smsgKM;
+	if (perfctl_copy_from_user(t_msgKM, t_msgUM,
+				sizeof(struct _POWERHAL_PACKAGE))) {
+		pr_debug("POWERHAL_SET_DATA error: %d", cmd);
+		ret = -EFAULT;
+		goto ret_ioctl;
+	}
+
+	pr_debug(TAG "cmd: %d\n", cmd);
+
+	switch (cmd) {
+	case DSU_CCI_SPORT_MODE:
+		if (powerhal_dsu_sport_mode_fp)
+			powerhal_dsu_sport_mode_fp(t_msgKM->value);
+		break;
+	default:
+		pr_debug(TAG "%s %d: unknown cmd %x\n", __FILE__, __LINE__, cmd);
+		ret = -1;
+		goto ret_ioctl;
+	}
+
+ret_ioctl:
+	return ret;
+}
+
+static const struct proc_ops adpf_Fops = {
+	.proc_compat_ioctl = adpf_device_ioctl,
+	.proc_ioctl = adpf_device_ioctl,
+	.proc_open = device_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
 static const struct proc_ops Fops = {
 	.proc_compat_ioctl = device_ioctl,
 	.proc_ioctl = device_ioctl,
@@ -222,6 +269,15 @@ static int __init init_perfctl(void)
 
 	parent = proc_mkdir("perfmgr_powerhal", NULL);
 	perfmgr_root = parent;
+
+	pe = proc_create("ioctl_powerhal_adpf", 0664, parent, &adpf_Fops);
+	if (!pe) {
+		pr_debug(TAG"%s failed with %d\n",
+				"Creating file node ",
+				ret_val);
+		ret_val = -ENOMEM;
+		goto out_wq;
+	}
 
 	pe = proc_create("ioctl_powerhal", 0664, parent, &Fops);
 	if (!pe) {

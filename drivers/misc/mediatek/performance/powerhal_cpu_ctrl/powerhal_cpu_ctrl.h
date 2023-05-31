@@ -27,6 +27,7 @@ extern int (*powerhal_adpf_resume_fp)(unsigned int sid);
 extern int (*powerhal_adpf_close_fp)(unsigned int sid);
 extern int (*powerhal_adpf_sent_hint_fp)(unsigned int sid, int hint);
 extern int (*powerhal_adpf_set_threads_fp)(unsigned int sid, int *threadIds, int threadIds_size);
+extern int (*powerhal_dsu_sport_mode_fp)(unsigned int mode);
 
 enum _SESSION_HINT {
 	CPU_LOAD_UP = 0,

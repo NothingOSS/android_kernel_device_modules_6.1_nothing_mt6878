@@ -57,6 +57,10 @@ struct _ADPF_PACKAGE {
 	};
 };
 
+struct _POWERHAL_PACKAGE {
+	__u32 value;
+};
+
 
 struct _CPU_CTRL_PACKAGE {
 	__s32 cmd;
@@ -72,3 +76,5 @@ enum {
 #define NOTIFY_BOOST             _IOW('g', 1, struct _CPU_CTRL_PACKAGE)
 #define POWERHAL_SET_ADPF_DATA   _IOW('g', 1, struct _ADPF_PACKAGE)
 #define POWERHAL_GET_ADPF_DATA   _IOW('g', 2, struct _ADPF_PACKAGE)
+
+#define DSU_CCI_SPORT_MODE		 _IOW('g', 3, struct _POWERHAL_PACKAGE)

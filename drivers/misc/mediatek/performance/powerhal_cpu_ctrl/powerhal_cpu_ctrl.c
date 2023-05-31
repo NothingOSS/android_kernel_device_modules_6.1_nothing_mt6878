@@ -28,8 +28,12 @@
 #endif
 #include "powerhal_trace_event.h"
 #include "powerhal_cpu_ctrl.h"
+#include "cpufreq-dbg-lite.h"
 //#include "mtk_perfmgr_internal.h"
 /* PROCFS */
+#ifdef PROC_FOPS_RW
+#undef PROC_FOPS_RW
+#endif
 #define PROC_FOPS_RW(name) \
 static const struct proc_ops perfmgr_ ## name ## _proc_fops = { \
 	.proc_read	= perfmgr_ ## name ## _proc_show, \
@@ -37,13 +41,22 @@ static const struct proc_ops perfmgr_ ## name ## _proc_fops = { \
 	.proc_open	= perfmgr_proc_open, \
 }
 
+#ifdef PROC_FOPS_RO
+#undef PROC_FOPS_RO
+#endif
 #define PROC_FOPS_RO(name) \
 static const struct proc_ops perfmgr_ ## name ## _proc_fops = { \
 	.proc_read	= perfmgr_ ## name ## _proc_show, \
 	.proc_open	= perfmgr_proc_open, \
 }
 
+
+#ifdef PROC_ENTRY
+#undef PROC_ENTRY
+#endif
+
 #define PROC_ENTRY(name) {__stringify(name), &perfmgr_ ## name ## _proc_fops}
+
 
 #define show_debug(fmt, x...) \
 	do { \
@@ -952,6 +965,14 @@ int adpf_set_threads(unsigned int sid, int *threadIds, int threadIds_size)
 	return 0;
 }
 
+int dsu_sport_mode(unsigned int mode)
+{
+	pr_debug("[%s] mode: %d",  __func__, mode);
+	cpufreq_set_cci_mode(mode);
+
+	return 0;
+}
+
 static int __init powerhal_cpu_ctrl_init(void)
 {
 	int cpu_num = 0;
@@ -1062,6 +1083,9 @@ static int __init powerhal_cpu_ctrl_init(void)
 	boost_get_cmd_fp = _boost_get_cmd;
 
 	sf_hint_low_power_enabled = 0;
+
+	// DSU
+	powerhal_dsu_sport_mode_fp = dsu_sport_mode;
 
 	return 0;
 }
