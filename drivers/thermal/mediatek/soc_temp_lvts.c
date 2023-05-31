@@ -1155,9 +1155,10 @@ static int lvts_init(struct lvts_data *lvts_data)
 
 	lk_init = lvts_lk_init_check(lvts_data);
 	if (lk_init == true) {
-		ret = read_calibration_data(lvts_data);
-		set_all_tc_hw_reboot(lvts_data);
-
+		if (!lvts_data->spm_lvts) {
+			ret = read_calibration_data(lvts_data);
+			set_all_tc_hw_reboot(lvts_data);
+		}
 #ifdef DUMP_MORE_LOG
 		clear_lvts_register_value_array(lvts_data);
 		read_controller_reg_before_active(lvts_data);
@@ -1166,6 +1167,9 @@ static int lvts_init(struct lvts_data *lvts_data)
 		dev_info(dev, "%s, LK init LVTS\n", __func__);
 		return ret;
 	}
+
+	if (lvts_data->spm_lvts)
+		return ret;
 
 	if (!lvts_data->reset_no_need)
 		lvts_reset(lvts_data);
@@ -1499,6 +1503,9 @@ static void lvts_device_close(struct lvts_data *lvts_data)
 static void lvts_close(struct lvts_data *lvts_data)
 {
 	bool tfa_init;
+
+	if (lvts_data->spm_lvts)
+		return;
 
 	tfa_init = lvts_tfa_init_check(lvts_data);
 	if (tfa_init)
@@ -4928,6 +4935,7 @@ static struct lvts_data mt6989_lvts_data = {
 	.enable_dump_log = 0,
 	.clock_gate_no_need = true,
 	.reset_no_need = true,
+	.spm_lvts = true,
 };
 
 /*==================================================
