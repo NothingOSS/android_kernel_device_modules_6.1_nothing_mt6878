@@ -4972,7 +4972,6 @@
 			gpr-id = <6>;
 			gmpu-table-size = <0x0>;
 			protected-reserve-size = <0x800000>;
-#if 0
 			gpu-iommu {
 				compatible = "mediatek,gpu-iommu";
 				iommus = <&gpu_smmu 0x01>; /* SID=1 */
@@ -4983,7 +4982,6 @@
 				iommus = <&gpu_smmu 0x02>; /* SID=2 */
 				mtk,smmu-dma-mode = "disable";
 			};
-#endif
 		};
 
 		mali: mali@13000000 {
