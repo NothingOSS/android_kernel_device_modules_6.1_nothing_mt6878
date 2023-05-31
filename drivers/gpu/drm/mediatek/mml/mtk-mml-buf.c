@@ -191,6 +191,11 @@ void mml_buf_invalid(struct mml_file_buf *buf)
 	for (i = 0; i < buf->cnt; i++) {
 		if (!buf->dma[i].dmabuf)
 			continue;
+		if (!buf->dma[i].attach) {
+			mml_err("%s no attach to invalid plane %u",
+				__func__, i);
+			continue;
+		}
 		buf->dma[i].attach->dma_map_attrs &= ~DMA_ATTR_SKIP_CPU_SYNC;
 		dma_buf_begin_cpu_access(buf->dma[i].dmabuf, DMA_FROM_DEVICE);
 		buf->dma[i].attach->dma_map_attrs |= DMA_ATTR_SKIP_CPU_SYNC;

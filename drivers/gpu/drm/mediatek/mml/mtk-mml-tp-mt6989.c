@@ -119,8 +119,7 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_DLI0_SEL, MML_FG0,},
 		{MML_FG0, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
-		{MML_AAL0, MML_C3D0,},
-		{MML_C3D0, MML_PQ_AAL0_SEL,},
+		{MML_AAL0, MML_PQ_AAL0_SEL,},
 		{MML_PQ_AAL0_SEL, MML_RSZ0,},
 		{MML_RSZ0, MML_TDSHP0,},
 		{MML_TDSHP0, MML_COLOR0,},
@@ -135,8 +134,7 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_DLI0_SEL, MML_FG0,},
 		{MML_FG0, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
-		{MML_AAL0, MML_C3D0,},
-		{MML_C3D0, MML_PQ_AAL0_SEL,},
+		{MML_AAL0, MML_PQ_AAL0_SEL,},
 		{MML_PQ_AAL0_SEL, MML_RSZ0,},
 		{MML_RSZ0, MML_TDSHP0,},
 		{MML_TDSHP0, MML_COLOR0,},
@@ -181,8 +179,7 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_DLI0_SEL, MML_FG0,},
 		{MML_FG0, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
-		{MML_AAL0, MML_C3D0,},
-		{MML_C3D0, MML_PQ_AAL0_SEL,},
+		{MML_AAL0, MML_PQ_AAL0_SEL,},
 		{MML_PQ_AAL0_SEL, MML_RSZ0,},
 		{MML_RSZ0, MML_TDSHP0,},
 		{MML_TDSHP0, MML_COLOR0,},
@@ -194,12 +191,11 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_MMLSYS,},
 		{MML_MUTEX,},
 		{MML_RDMA0, MML_DMA0_SEL,},
-		{MML_DMA0_SEL, MML_DLI0_SEL,},
+		{MML_DMA0_SEL, MML_DLI0_SEL, MML_RSZ2,},
 		{MML_DLI0_SEL, MML_FG0,},
 		{MML_FG0, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
-		{MML_AAL0, MML_C3D0,},
-		{MML_C3D0, MML_PQ_AAL0_SEL,},
+		{MML_AAL0, MML_PQ_AAL0_SEL,},
 		{MML_PQ_AAL0_SEL, MML_RSZ0,},
 		{MML_RSZ0, MML_TDSHP0,},
 		{MML_RDMA2, MML_BIRSZ0,},
@@ -207,8 +203,8 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_TDSHP0, MML_COLOR0,},
 		{MML_COLOR0, MML_WROT0_SEL,},
 		{MML_WROT0_SEL, MML_WROT0,},
-		{MML_DMA0_SEL, MML_RSZ2,},
 		{MML_RSZ2, MML_WROT2,},
+		{MML_WROT0,},
 		{MML_WROT2,},
 	},
 	[PATH_MML_RR_2IN_2OUT] = {
@@ -217,12 +213,11 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_RROT0, MML_MERGE0,},
 		{MML_RROT0_2ND, MML_MERGE0,},
 		{MML_MERGE0, MML_DMA0_SEL,},
-		{MML_DMA0_SEL, MML_DLI0_SEL,},
+		{MML_DMA0_SEL, MML_DLI0_SEL, MML_RSZ2,},
 		{MML_DLI0_SEL, MML_FG0,},
 		{MML_FG0, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
-		{MML_AAL0, MML_C3D0,},
-		{MML_C3D0, MML_PQ_AAL0_SEL,},
+		{MML_AAL0, MML_PQ_AAL0_SEL,},
 		{MML_PQ_AAL0_SEL, MML_RSZ0,},
 		{MML_RSZ0, MML_TDSHP0,},
 		{MML_RDMA2, MML_BIRSZ0,},
@@ -230,8 +225,8 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_TDSHP0, MML_COLOR0,},
 		{MML_COLOR0, MML_WROT0_SEL,},
 		{MML_WROT0_SEL, MML_WROT0,},
-		{MML_DMA0_SEL, MML_RSZ2,},
 		{MML_RSZ2, MML_WROT2,},
+		{MML_WROT0,},
 		{MML_WROT2,},
 	},
 	[PATH_MML_RR_DL_2IN_2OUT] = {
@@ -240,12 +235,11 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_RROT0, MML_MERGE0,},
 		{MML_RROT0_2ND, MML_MERGE0,},
 		{MML_MERGE0, MML_DMA0_SEL,},
-		{MML_DMA0_SEL, MML_DLI0_SEL,},
+		{MML_DMA0_SEL, MML_DLI0_SEL, MML_RSZ2,},
 		{MML_DLI0_SEL, MML_FG0,},
 		{MML_FG0, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
-		{MML_AAL0, MML_C3D0,},
-		{MML_C3D0, MML_PQ_AAL0_SEL,},
+		{MML_AAL0, MML_PQ_AAL0_SEL,},
 		{MML_PQ_AAL0_SEL, MML_RSZ0,},
 		{MML_RSZ0, MML_TDSHP0,},
 		{MML_RDMA2, MML_BIRSZ0,},
@@ -253,8 +247,8 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_TDSHP0, MML_COLOR0,},
 		{MML_COLOR0, MML_WROT0_SEL,},
 		{MML_WROT0_SEL, MML_DLO0,},
-		{MML_DMA0_SEL, MML_RSZ2,},
 		{MML_RSZ2, MML_WROT2,},
+		{MML_DLO0,},
 		{MML_WROT2,},
 	},
 };
@@ -321,6 +315,11 @@ static inline bool engine_dma(u32 id)
 		id == MML_FG0 || id == MML_WROT0 || id == MML_WROT2;
 }
 
+static inline bool engine_tdshp(u32 id)
+{
+	return id == MML_TDSHP0;
+}
+
 enum cmdq_clt_usage {
 	MML_CLT_PIPE0,
 	MML_CLT_PIPE1,
@@ -377,8 +376,8 @@ static void tp_dump_path(const struct mml_topology_path *path)
 
 	for (i = 0; i < path->node_cnt; i++) {
 		mml_log(
-			"[topology]engine %u (%p) prev %p %p next %p %p comp %p tile idx %u out %u",
-			path->nodes[i].id, &path->nodes[i],
+			"[topology]%u engine %u (%p) prev %p %p next %p %p comp %p tile idx %u out %u",
+			i, path->nodes[i].id, &path->nodes[i],
 			path->nodes[i].prev[0], path->nodes[i].prev[1],
 			path->nodes[i].next[0], path->nodes[i].next[1],
 			path->nodes[i].comp,
@@ -431,6 +430,8 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 	const struct path_node *route)
 {
 	u8 i, tile_idx, out_eng_idx;
+	struct mml_path_node *pq_rdma = NULL;
+	struct mml_path_node *pq_birsz = NULL;
 
 	for (i = 0; i < MML_MAX_PATH_NODES; i++) {
 		const u8 eng = route[i].eng;
@@ -457,6 +458,19 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 			path->mutex = path->nodes[i].comp;
 			path->mutex_idx = i;
 			continue;
+		} else if (engine_pq_rdma(eng)) {
+			pq_rdma = &path->nodes[i];
+			continue;
+		} else if (engine_pq_birsz(eng)) {
+			pq_birsz = &path->nodes[i];
+			continue;
+		} else if (engine_tdshp(eng)) {
+			if (pq_rdma && pq_birsz) {
+				pq_birsz->prev[0] = pq_rdma;
+				pq_rdma->next[0] = pq_birsz;
+				pq_birsz->next[0] = &path->nodes[i];
+				path->nodes[i].prev[1] = pq_birsz;
+			}
 		}
 
 		/* find and connect previous engine to current node */
