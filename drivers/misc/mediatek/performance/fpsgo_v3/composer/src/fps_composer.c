@@ -1046,7 +1046,7 @@ void fpsgo_ctrl2comp_hint_frame_start(int pid,
 
 	mutex_lock(&f_render->ux_mlock);
 	frame_info = fpsgo_ux_search_and_add_frame_info(f_render, frameID, frame_start_time, 1);
-	ux_frame_cnt = fpsgo_ux_count_frame_info(f_render);
+	ux_frame_cnt = fpsgo_ux_count_frame_info(f_render, 2);
 	fpsgo_systrace_c_fbt(pid, identifier, ux_frame_cnt, "[ux]ux_frame_cnt");
 	mutex_unlock(&f_render->ux_mlock);
 
@@ -1108,7 +1108,7 @@ void fpsgo_ctrl2comp_hint_frame_end(int pid,
 		fpsgo_ux_delete_frame_info(f_render, frame_info);
 	}
 
-	ux_frame_cnt = fpsgo_ux_count_frame_info(f_render);
+	ux_frame_cnt = fpsgo_ux_count_frame_info(f_render, 1);
 	mutex_unlock(&f_render->ux_mlock);
 
 	// frame end.
@@ -1151,15 +1151,14 @@ void fpsgo_ctrl2comp_hint_frame_err(int pid,
 	if (!frame_info) {
 		fpsgo_systrace_c_fbt(pid, identifier, frameID, "[ux]start_not_found");
 		fpsgo_systrace_c_fbt(pid, identifier, 0, "[ux]start_not_found");
-	} else {
+	} else
 		fpsgo_ux_delete_frame_info(f_render, frame_info);
-		ux_frame_cnt = fpsgo_ux_count_frame_info(f_render);
-		if (ux_frame_cnt == 0) {
-			fpsgo_systrace_c_fbt(f_render->pid, identifier, 0, "[ux]sbe_set_ctrl");
-			fbt_ux_frame_err(f_render, time);
-		}
-		fpsgo_systrace_c_fbt(pid, identifier, ux_frame_cnt, "[ux]ux_frame_cnt");
+	ux_frame_cnt = fpsgo_ux_count_frame_info(f_render, 1);
+	if (ux_frame_cnt == 0) {
+		fpsgo_systrace_c_fbt(f_render->pid, identifier, 0, "[ux]sbe_set_ctrl");
+		fbt_ux_frame_err(f_render, time);
 	}
+	fpsgo_systrace_c_fbt(pid, identifier, ux_frame_cnt, "[ux]ux_frame_cnt");
 	mutex_unlock(&f_render->ux_mlock);
 
 	fpsgo_thread_unlock(&f_render->thr_mlock);

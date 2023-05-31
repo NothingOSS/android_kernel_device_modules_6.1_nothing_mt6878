@@ -260,8 +260,6 @@ void fbt_ux_frame_end(struct render_info *thr,
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, targetfps, "[ux]target_fps");
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
 		targettime, "[ux]target_time");
-	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
-		runtime, "[ux]running_time");
 
 	fpsgo_get_fbt_mlock(__func__);
 	ret = fbt_get_dep_list(thr);
@@ -382,7 +380,7 @@ static struct ux_frame_info *fpsgo_ux_find_earliest_frame_info
 
 }
 
-int fpsgo_ux_count_frame_info(struct render_info *thr)
+int fpsgo_ux_count_frame_info(struct render_info *thr, int target)
 {
 	struct rb_node *cur;
 	struct ux_frame_info *tmp = NULL;
@@ -398,7 +396,7 @@ int fpsgo_ux_count_frame_info(struct render_info *thr)
 		ret += 1;
 	}
 	/* error handling */
-	while (ret > 2) {
+	while (ret > target) {
 		tmp = fpsgo_ux_find_earliest_frame_info(thr);
 		if (!tmp)
 			break;
@@ -446,7 +444,7 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		thr->boost_info.sbe_rescue = 1;
 		thr->sbe_enhance = enhance < 0 ?  sbe_enhance_f : enhance;
 		fbt_ux_set_cap_with_sbe(thr);
-		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "sbe rescue");
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "[ux]sbe_rescue");
 	} else {
 		if (thr->boost_info.sbe_rescue == 0)
 			goto leave;
@@ -454,7 +452,7 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		thr->boost_info.sbe_rescue = 0;
 		thr->sbe_enhance = 0;
 		fbt_ux_set_cap_with_sbe(thr);
-		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "sbe rescue");
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "[ux]sbe_rescue");
 	}
 leave:
 	mutex_unlock(&fbt_mlock);
@@ -548,13 +546,13 @@ void fpsgo_sbe_rescue_legacy(struct render_info *thr, int start, int enhance,
 			thr->boost_info.last_blc_m = blc_wt_m;
 		}
 
-		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, new_enhance, "sbe rescue legacy");
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, new_enhance, "sbe rescue");
 
 		/* support mode: sbe rescue until queue end */
 		if (start == SBE_RESCUE_MODE_UNTIL_QUEUE_END) {
 			thr->boost_info.sbe_rescue = 0;
 			sbe_rescuing_frame_id_legacy = -1;
-			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "sbe rescue legacy");
+			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "sbe rescue");
 		}
 
 	} else {

@@ -20,7 +20,7 @@ void fpsgo_ux_delete_frame_info(struct render_info *thr, struct ux_frame_info *i
 struct ux_frame_info *fpsgo_ux_search_and_add_frame_info(struct render_info *thr,
 		unsigned long long frameID, unsigned long long start_ts, int action);
 struct ux_frame_info *fpsgo_ux_get_next_frame_info(struct render_info *thr);
-int fpsgo_ux_count_frame_info(struct render_info *thr);
+int fpsgo_ux_count_frame_info(struct render_info *thr, int target);
 
 void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		unsigned long long frame_id);
