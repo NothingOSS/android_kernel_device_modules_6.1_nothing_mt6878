@@ -37,6 +37,7 @@
 #define HDR_LABEL_CNT		(HDR_LABEL_CNT_REG + HDR_LABEL_CNT_CURVE)
 #define call_hw_op(_comp, op, ...) \
 	(_comp->hw_ops->op ? _comp->hw_ops->op(_comp, ##__VA_ARGS__) : 0)
+#define REG_NOT_SUPPORT 0xfff
 
 enum mml_hdr_reg_index {
 	HDR_TOP,
@@ -1190,6 +1191,18 @@ static const struct mml_comp_hw_ops hdr_hw_ops = {
 	.task_done = hdr_task_done_readback,
 };
 
+static u32 read_reg_value(struct mml_comp *comp, u16 reg)
+{
+	void __iomem *base = comp->base;
+
+	if (reg == REG_NOT_SUPPORT) {
+		mml_err("%s tdshp reg is not support", __func__);
+		return 0xFFFFFFFF;
+	}
+
+	return readl(base + reg);
+}
+
 static void hdr_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
@@ -1200,26 +1213,26 @@ static void hdr_debug_dump(struct mml_comp *comp)
 	mml_err("hdr component %u dump:", comp->id);
 
 	/* Enable shadow read working */
-	hdr_top = readl(base + hdr->data->reg_table[HDR_TOP]);
+	hdr_top = read_reg_value(comp, hdr->data->reg_table[HDR_TOP]);
 	hdr_top |= 0x8000;
 	writel(hdr_top, base + hdr->data->reg_table[HDR_TOP]);
 
-	value[0] = readl(base + hdr->data->reg_table[HDR_TOP]);
-	value[1] = readl(base + hdr->data->reg_table[HDR_RELAY]);
-	value[2] = readl(base + hdr->data->reg_table[HDR_INTSTA]);
-	value[3] = readl(base + hdr->data->reg_table[HDR_ENGSTA]);
-	value[4] = readl(base + hdr->data->reg_table[HDR_SIZE_0]);
-	value[5] = readl(base + hdr->data->reg_table[HDR_SIZE_1]);
-	value[6] = readl(base + hdr->data->reg_table[HDR_SIZE_2]);
-	value[7] = readl(base + hdr->data->reg_table[HDR_HIST_CTRL_0]);
-	value[8] = readl(base + hdr->data->reg_table[HDR_HIST_CTRL_1]);
-	value[9] = readl(base + hdr->data->reg_table[HDR_CURSOR_CTRL]);
-	value[10] = readl(base + hdr->data->reg_table[HDR_CURSOR_POS]);
-	value[11] = readl(base + hdr->data->reg_table[HDR_CURSOR_COLOR]);
-	value[12] = readl(base + hdr->data->reg_table[HDR_TILE_POS]);
-	value[13] = readl(base + hdr->data->reg_table[HDR_CURSOR_BUF0]);
-	value[14] = readl(base + hdr->data->reg_table[HDR_CURSOR_BUF1]);
-	value[15] = readl(base + hdr->data->reg_table[HDR_CURSOR_BUF2]);
+	value[0] = read_reg_value(comp, hdr->data->reg_table[HDR_TOP]);
+	value[1] = read_reg_value(comp, hdr->data->reg_table[HDR_RELAY]);
+	value[2] = read_reg_value(comp, hdr->data->reg_table[HDR_INTSTA]);
+	value[3] = read_reg_value(comp, hdr->data->reg_table[HDR_ENGSTA]);
+	value[4] = read_reg_value(comp, hdr->data->reg_table[HDR_SIZE_0]);
+	value[5] = read_reg_value(comp, hdr->data->reg_table[HDR_SIZE_1]);
+	value[6] = read_reg_value(comp, hdr->data->reg_table[HDR_SIZE_2]);
+	value[7] = read_reg_value(comp, hdr->data->reg_table[HDR_HIST_CTRL_0]);
+	value[8] = read_reg_value(comp, hdr->data->reg_table[HDR_HIST_CTRL_1]);
+	value[9] = read_reg_value(comp, hdr->data->reg_table[HDR_CURSOR_CTRL]);
+	value[10] = read_reg_value(comp, hdr->data->reg_table[HDR_CURSOR_POS]);
+	value[11] = read_reg_value(comp, hdr->data->reg_table[HDR_CURSOR_COLOR]);
+	value[12] = read_reg_value(comp, hdr->data->reg_table[HDR_TILE_POS]);
+	value[13] = read_reg_value(comp, hdr->data->reg_table[HDR_CURSOR_BUF0]);
+	value[14] = read_reg_value(comp, hdr->data->reg_table[HDR_CURSOR_BUF1]);
+	value[15] = read_reg_value(comp, hdr->data->reg_table[HDR_CURSOR_BUF2]);
 
 	mml_err("HDR_TOP %#010x HDR_RELAY %#010x HDR_INTSTA %#010x HDR_ENGSTA %#010x",
 		value[0], value[1], value[2], value[3]);

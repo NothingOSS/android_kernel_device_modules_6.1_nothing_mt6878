@@ -934,6 +934,18 @@ static const struct mml_comp_hw_ops tdshp_hw_ops = {
 	.task_done = tdshp_task_done_readback,
 };
 
+static u32 read_reg_value(struct mml_comp *comp, u16 reg)
+{
+	void __iomem *base = comp->base;
+
+	if (reg == REG_NOT_SUPPORT) {
+		mml_err("%s tdshp reg is not support", __func__);
+		return 0xFFFFFFFF;
+	}
+
+	return readl(base + reg);
+}
+
 static void tdshp_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_tdshp *tdshp = comp_to_tdshp(comp);
@@ -944,21 +956,21 @@ static void tdshp_debug_dump(struct mml_comp *comp)
 	mml_err("tdshp component %u dump:", comp->id);
 
 	/* Enable shadow read working */
-	shadow_ctrl = readl(base + tdshp->data->reg_table[TDSHP_SHADOW_CTRL]);
+	shadow_ctrl = read_reg_value(comp, tdshp->data->reg_table[TDSHP_SHADOW_CTRL]);
 	shadow_ctrl |= 0x4;
 	writel(shadow_ctrl, base + tdshp->data->reg_table[TDSHP_SHADOW_CTRL]);
 
-	value[0] = readl(base + tdshp->data->reg_table[TDSHP_CTRL]);
-	value[1] = readl(base + tdshp->data->reg_table[TDSHP_INTEN]);
-	value[2] = readl(base + tdshp->data->reg_table[TDSHP_INTSTA]);
-	value[3] = readl(base + tdshp->data->reg_table[TDSHP_STATUS]);
-	value[4] = readl(base + tdshp->data->reg_table[TDSHP_CFG]);
-	value[5] = readl(base + tdshp->data->reg_table[TDSHP_INPUT_COUNT]);
-	value[6] = readl(base + tdshp->data->reg_table[TDSHP_OUTPUT_COUNT]);
-	value[7] = readl(base + tdshp->data->reg_table[TDSHP_INPUT_SIZE]);
-	value[8] = readl(base + tdshp->data->reg_table[TDSHP_OUTPUT_OFFSET]);
-	value[9] = readl(base + tdshp->data->reg_table[TDSHP_OUTPUT_SIZE]);
-	value[10] = readl(base + tdshp->data->reg_table[TDSHP_BLANK_WIDTH]);
+	value[0] = read_reg_value(comp, tdshp->data->reg_table[TDSHP_CTRL]);
+	value[1] = read_reg_value(comp, tdshp->data->reg_table[TDSHP_INTEN]);
+	value[2] = read_reg_value(comp, tdshp->data->reg_table[TDSHP_INTSTA]);
+	value[3] = read_reg_value(comp, tdshp->data->reg_table[TDSHP_STATUS]);
+	value[4] = read_reg_value(comp, tdshp->data->reg_table[TDSHP_CFG]);
+	value[5] = read_reg_value(comp, tdshp->data->reg_table[TDSHP_INPUT_COUNT]);
+	value[6] = read_reg_value(comp, tdshp->data->reg_table[TDSHP_OUTPUT_COUNT]);
+	value[7] = read_reg_value(comp, tdshp->data->reg_table[TDSHP_INPUT_SIZE]);
+	value[8] = read_reg_value(comp, tdshp->data->reg_table[TDSHP_OUTPUT_OFFSET]);
+	value[9] = read_reg_value(comp, tdshp->data->reg_table[TDSHP_OUTPUT_SIZE]);
+	value[10] = read_reg_value(comp, tdshp->data->reg_table[TDSHP_BLANK_WIDTH]);
 
 	mml_err("TDSHP_CTRL %#010x TDSHP_INTEN %#010x TDSHP_INTSTA %#010x TDSHP_STATUS %#010x",
 		value[0], value[1], value[2], value[3]);

@@ -385,6 +385,18 @@ static const struct mml_comp_config_ops color_cfg_ops = {
 	.repost = color_config_post,
 };
 
+static u32 read_reg_value(struct mml_comp *comp, u16 reg)
+{
+	void __iomem *base = comp->base;
+
+	if (reg == REG_NOT_SUPPORT) {
+		mml_err("%s color reg is not support", __func__);
+		return 0xFFFFFFFF;
+	}
+
+	return readl(base + reg);
+}
+
 static void color_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_color *color = comp_to_color(comp);
@@ -395,24 +407,24 @@ static void color_debug_dump(struct mml_comp *comp)
 	mml_err("color component %u dump:", comp->id);
 
 	/* Enable shadow read working */
-	shadow_ctrl = readl(base + color->data->reg_table[COLOR_SHADOW_CTRL]);
+	shadow_ctrl = read_reg_value(comp, color->data->reg_table[COLOR_SHADOW_CTRL]);
 	shadow_ctrl |= 0x4;
 	writel(shadow_ctrl, base + color->data->reg_table[COLOR_SHADOW_CTRL]);
 
-	value[0] = readl(base + color->data->reg_table[COLOR_CFG_MAIN]);
-	value[1] = readl(base + color->data->reg_table[COLOR_PXL_CNT_MAIN]);
-	value[2] = readl(base + color->data->reg_table[COLOR_LINE_CNT_MAIN]);
-	value[3] = readl(base + color->data->reg_table[COLOR_WIN_X_MAIN]);
-	value[4] = readl(base + color->data->reg_table[COLOR_WIN_Y_MAIN]);
-	value[5] = readl(base + color->data->reg_table[COLOR_DBG_CFG_MAIN]);
-	value[6] = readl(base + color->data->reg_table[COLOR_START]);
-	value[7] = readl(base + color->data->reg_table[COLOR_INTEN]);
-	value[8] = readl(base + color->data->reg_table[COLOR_INTSTA]);
-	value[9] = readl(base + color->data->reg_table[COLOR_OUT_SEL]);
-	value[10] = readl(base + color->data->reg_table[COLOR_FRAME_DONE_DEL]);
-	value[11] = readl(base + color->data->reg_table[COLOR_INTERNAL_IP_WIDTH]);
-	value[12] = readl(base + color->data->reg_table[COLOR_INTERNAL_IP_HEIGHT]);
-	value[13] = readl(base + color->data->reg_table[COLOR_MISC]);
+	value[0] = read_reg_value(comp, color->data->reg_table[COLOR_CFG_MAIN]);
+	value[1] = read_reg_value(comp, color->data->reg_table[COLOR_PXL_CNT_MAIN]);
+	value[2] = read_reg_value(comp, color->data->reg_table[COLOR_LINE_CNT_MAIN]);
+	value[3] = read_reg_value(comp, color->data->reg_table[COLOR_WIN_X_MAIN]);
+	value[4] = read_reg_value(comp, color->data->reg_table[COLOR_WIN_Y_MAIN]);
+	value[5] = read_reg_value(comp, color->data->reg_table[COLOR_DBG_CFG_MAIN]);
+	value[6] = read_reg_value(comp, color->data->reg_table[COLOR_START]);
+	value[7] = read_reg_value(comp, color->data->reg_table[COLOR_INTEN]);
+	value[8] = read_reg_value(comp, color->data->reg_table[COLOR_INTSTA]);
+	value[9] = read_reg_value(comp, color->data->reg_table[COLOR_OUT_SEL]);
+	value[10] = read_reg_value(comp, color->data->reg_table[COLOR_FRAME_DONE_DEL]);
+	value[11] = read_reg_value(comp, color->data->reg_table[COLOR_INTERNAL_IP_WIDTH]);
+	value[12] = read_reg_value(comp, color->data->reg_table[COLOR_INTERNAL_IP_HEIGHT]);
+	value[13] = read_reg_value(comp, color->data->reg_table[COLOR_MISC]);
 
 	mml_err("COLOR_CFG_MAIN %#010x COLOR_PXL_CNT_MAIN %#010x COLOR_LINE_CNT_MAIN %#010x",
 		value[0], value[1], value[2]);

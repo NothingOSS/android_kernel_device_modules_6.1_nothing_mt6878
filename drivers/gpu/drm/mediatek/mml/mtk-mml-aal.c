@@ -2082,6 +2082,18 @@ static const struct mml_comp_hw_ops aal_hw_ops = {
 	.task_done = aal_task_done_readback,
 };
 
+static u32 read_reg_value(struct mml_comp *comp, u16 reg)
+{
+	void __iomem *base = comp->base;
+
+	if (reg == REG_NOT_SUPPORT) {
+		mml_err("%s aal reg is not support", __func__);
+		return 0xFFFFFFFF;
+	}
+
+	return readl(base + reg);
+}
+
 static void aal_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_aal *aal = comp_to_aal(comp);
@@ -2092,22 +2104,22 @@ static void aal_debug_dump(struct mml_comp *comp)
 	mml_err("aal component %u dump:", comp->id);
 
 	/* Enable shadow read working */
-	shadow_ctrl = readl(base + aal->data->reg_table[AAL_SHADOW_CTRL]);
+	shadow_ctrl = read_reg_value(comp, aal->data->reg_table[AAL_SHADOW_CTRL]);
 	shadow_ctrl |= 0x4;
 	writel(shadow_ctrl, base + aal->data->reg_table[AAL_SHADOW_CTRL]);
 
 	value[0] = readl(base + aal->data->reg_table[AAL_CFG]);
 	mml_err("AAL_CFG %#010x", value[0]);
 
-	value[0] = readl(base + aal->data->reg_table[AAL_INTSTA]);
-	value[1] = readl(base + aal->data->reg_table[AAL_STATUS]);
-	value[2] = readl(base + aal->data->reg_table[AAL_INPUT_COUNT]);
-	value[3] = readl(base + aal->data->reg_table[AAL_OUTPUT_COUNT]);
-	value[4] = readl(base + aal->data->reg_table[AAL_SIZE]);
-	value[5] = readl(base + aal->data->reg_table[AAL_OUTPUT_SIZE]);
-	value[6] = readl(base + aal->data->reg_table[AAL_OUTPUT_OFFSET]);
-	value[7] = readl(base + aal->data->reg_table[AAL_TILE_00]);
-	value[8] = readl(base + aal->data->reg_table[AAL_TILE_01]);
+	value[0] = read_reg_value(comp, aal->data->reg_table[AAL_INTSTA]);
+	value[1] = read_reg_value(comp, aal->data->reg_table[AAL_STATUS]);
+	value[2] = read_reg_value(comp, aal->data->reg_table[AAL_INPUT_COUNT]);
+	value[3] = read_reg_value(comp, aal->data->reg_table[AAL_OUTPUT_COUNT]);
+	value[4] = read_reg_value(comp, aal->data->reg_table[AAL_SIZE]);
+	value[5] = read_reg_value(comp, aal->data->reg_table[AAL_OUTPUT_SIZE]);
+	value[6] = read_reg_value(comp, aal->data->reg_table[AAL_OUTPUT_OFFSET]);
+	value[7] = read_reg_value(comp, aal->data->reg_table[AAL_TILE_00]);
+	value[8] = read_reg_value(comp, aal->data->reg_table[AAL_TILE_01]);
 
 	mml_err("AAL_INTSTA %#010x AAL_STATUS %#010x AAL_INPUT_COUNT %#010x AAL_OUTPUT_COUNT %#010x",
 		value[0], value[1], value[2], value[3]);
