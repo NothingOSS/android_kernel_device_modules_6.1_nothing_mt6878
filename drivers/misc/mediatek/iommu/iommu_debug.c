@@ -894,6 +894,11 @@ static void dump_wrapper_register(struct seq_file *s,
 		   (unsigned long long) smmu->wp_base);
 
 	smmuwp_reg_nr = ARRAY_SIZE(smmuwp_regs);
+
+	/* SOC has one less TBU than the others */
+	if (data->plat_data->smmu_type == SOC_SMMU)
+		smmuwp_reg_nr -= SMMU_TBU_REG_NUM;
+
 	for (i = 0; i < smmuwp_reg_nr; i++) {
 		if (i + 4 < smmuwp_reg_nr) {
 			iommu_dump(s,
@@ -1375,11 +1380,15 @@ static void smmu_pgtable_dump(struct seq_file *s, struct arm_smmu_device *smmu, 
 {
 	struct rb_node *n;
 	struct arm_smmu_stream *stream;
+	struct mtk_smmu_data *data;
 
 	if (!smmu) {
 		pr_info("%s, ERROR\n", __func__);
 		return;
 	}
+
+	data = to_mtk_smmu_data(smmu);
+	iommu_dump(s, "pgtable dump for smmu_%d:\n", data->plat_data->smmu_type);
 
 	for (n = rb_first(&smmu->streams); n; n = rb_next(n)) {
 		stream = rb_entry(n, struct arm_smmu_stream, node);

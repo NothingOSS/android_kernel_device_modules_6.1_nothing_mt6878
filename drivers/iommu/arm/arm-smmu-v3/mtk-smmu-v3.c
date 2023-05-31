@@ -1295,16 +1295,30 @@ static void dump_global_register(struct arm_smmu_device *smmu)
 {
 	/* SMMU ID and control registers */
 	dev_info(smmu->dev,
-		 "[%s] IDR0:0x%x IDR1:0x%x IDR3:0x%x IDR5:0x%x CR0:0x%x CR1:0x%x CR2:0x%x GBPA:0x%x\n",
-		 __func__,
+		 "IDR0:0x%x IDR1:0x%x IDR3:0x%x IDR5:0x%x CR0:[0x%x 0x%x] CR1:0x%x CR2:0x%x GBPA:0x%x\n",
 		 readl_relaxed(smmu->base + ARM_SMMU_IDR0),
 		 readl_relaxed(smmu->base + ARM_SMMU_IDR1),
 		 readl_relaxed(smmu->base + ARM_SMMU_IDR3),
 		 readl_relaxed(smmu->base + ARM_SMMU_IDR5),
 		 readl_relaxed(smmu->base + ARM_SMMU_CR0),
+		 readl_relaxed(smmu->base + ARM_SMMU_CR0ACK),
 		 readl_relaxed(smmu->base + ARM_SMMU_CR1),
 		 readl_relaxed(smmu->base + ARM_SMMU_CR2),
 		 readl_relaxed(smmu->base + ARM_SMMU_GBPA));
+
+	/* SMMU stream table, IRQ, command queue and event queue registers */
+	dev_info(smmu->dev,
+		 "STRTAB:[0x%llx 0x%x] IRQ:[0x%x 0x%x] CMDQ:[0x%llx 0x%x 0x%x] EVTQ:[0x%llx 0x%x 0x%x]\n",
+		 readq_relaxed(smmu->base + ARM_SMMU_STRTAB_BASE),
+		 readl_relaxed(smmu->base + ARM_SMMU_STRTAB_BASE_CFG),
+		 readl_relaxed(smmu->base + ARM_SMMU_IRQ_CTRL),
+		 readl_relaxed(smmu->base + ARM_SMMU_IRQ_CTRLACK),
+		 readq_relaxed(smmu->base + ARM_SMMU_CMDQ_BASE),
+		 readl_relaxed(smmu->base + ARM_SMMU_CMDQ_PROD),
+		 readl_relaxed(smmu->base + ARM_SMMU_CMDQ_CONS),
+		 readq_relaxed(smmu->base + ARM_SMMU_EVTQ_BASE),
+		 readl_relaxed(smmu->base + ARM_SMMU_EVTQ_PROD),
+		 readl_relaxed(smmu->base + ARM_SMMU_EVTQ_CONS));
 }
 
 static void __maybe_unused smmu_dump_reg(void __iomem *base,
@@ -1402,10 +1416,8 @@ static void mtk_smmu_fault_iova_dump(struct arm_smmu_master *master,
 
 #ifdef MTK_SMMU_DEBUG
 	/* skip dump when fault iova = 0 */
-	if (fault_iova) {
+	if (fault_iova)
 		mtk_iova_map_dump(fault_iova, tab_id);
-		mtk_iova_trace_dump(fault_iova);
-	}
 #endif
 }
 
