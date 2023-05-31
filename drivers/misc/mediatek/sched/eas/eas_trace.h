@@ -417,13 +417,14 @@ out:
 #endif
 
 TRACE_EVENT(sched_cpu_util,
-	TP_PROTO(int cpu, unsigned long cpu_util),
-	TP_ARGS(cpu, cpu_util),
+	TP_PROTO(struct task_struct *p, int cpu,
+		unsigned long min_cap, unsigned long max_cap),
+	TP_ARGS(p, cpu, min_cap, max_cap),
 	TP_STRUCT__entry(
 		__field(unsigned int,	cpu)
 		__field(unsigned int,	nr_running)
 		__field(long,		cpu_util)
-		__field(long,		cpu_util_flt)
+		__field(long,		cpu_max_util)
 		__field(unsigned int,	capacity)
 		__field(unsigned int,	capacity_orig)
 		__field(unsigned int,	idle_exit_latency)
@@ -438,24 +439,24 @@ TRACE_EVENT(sched_cpu_util,
 	TP_fast_assign(
 		__entry->cpu		= cpu;
 		__entry->nr_running = cpu_rq(cpu)->nr_running;
-		__entry->cpu_util	= cpu_util;
-		__entry->cpu_util_flt	= 0; //cpu_util_flt(cpu);
+		__entry->cpu_util	= mtk_sched_cpu_util(cpu);
+		__entry->cpu_max_util	= mtk_sched_max_util(p, cpu, min_cap, max_cap);
 		__entry->capacity	= capacity_of(cpu);
 		__entry->capacity_orig	= capacity_orig_of(cpu);
 		__entry->idle_exit_latency	= mtk_get_idle_exit_latency(cpu, NULL);
 		__entry->online			= cpu_online(cpu);
 		__entry->paused			= cpu_paused(cpu);
-		__entry->nr_rtg_high_prio_tasks = 0; //mtk_nr_rtg_high_prio(cpu);
-		__entry->high_irq_load	= cpu_high_irqload(cpu, cpu_util);
+		__entry->nr_rtg_high_prio_tasks = 0;
+		__entry->high_irq_load	= cpu_high_irqload(cpu);
 		__entry->irqload		= cpu_util_irq(cpu_rq(cpu));
 		__entry->min_highirq_load	= get_cpu_irqUtil_threshold(cpu);
 		__entry->irq_ratio			= get_cpu_irqRatio_threshold(cpu);
 	),
-	TP_printk("cpu=%d nr_running=%d cpu_util=%ld cpu_util_flt=%ld capacity=%u capacity_orig=%u idle_exit_latency=%u online=%u paused=%u nr_rtg_hp=%u high_irq_load=%u irqload=%ld min_highirq_load=%u irq_ratio=%u",
+	TP_printk("cpu=%d nr_running=%d cpu_util=%ld cpu_max_util=%ld capacity=%u capacity_orig=%u idle_exit_latency=%u online=%u paused=%u nr_rtg_hp=%u high_irq_load=%u irqload=%ld min_highirq_load=%u irq_ratio=%u",
 		__entry->cpu,
 		__entry->nr_running,
 		__entry->cpu_util,
-		__entry->cpu_util_flt,
+		__entry->cpu_max_util,
 		__entry->capacity,
 		__entry->capacity_orig,
 		__entry->idle_exit_latency,

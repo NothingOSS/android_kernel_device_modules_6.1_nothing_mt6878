@@ -230,10 +230,13 @@ extern int mtk_sched_asym_cpucapacity;
 extern void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowest_mask,
 				int ret, int *lowest_cpu);
 
-extern int cpu_high_irqload(int cpu, unsigned long cpu_util);
+extern int cpu_high_irqload(int cpu);
 extern unsigned int mtk_get_idle_exit_latency(int cpu, struct rt_energy_aware_output *rt_ea_output);
 extern unsigned long mtk_sched_cpu_util(int cpu);
-extern void track_sched_cpu_util(int cpu, unsigned long cpu_util);
+extern unsigned long mtk_sched_max_util(struct task_struct *p, int cpu,
+					unsigned long min_cap, unsigned long max_cap);
+extern void track_sched_cpu_util(struct task_struct *p, int cpu,
+					unsigned long min_cap, unsigned long max_cap);
 extern int get_cpu_irqUtil_threshold(int cpu);
 extern int get_cpu_irqRatio_threshold(int cpu);
 

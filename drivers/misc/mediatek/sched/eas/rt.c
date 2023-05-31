@@ -105,15 +105,21 @@ static inline bool rt_task_fits_capacity(struct task_struct *p, int cpu)
 }
 #endif
 
-unsigned long mtk_sched_cpu_util(int cpu)
+inline unsigned long mtk_sched_cpu_util(int cpu)
 {
-	return  mtk_cpu_util(cpu, cpu_util_cfs(cpu), ENERGY_UTIL, NULL, 0, SCHED_CAPACITY_SCALE);
+	unsigned long util;
+
+	irq_log_store();
+	util = mtk_cpu_util(cpu, cpu_util_cfs(cpu), ENERGY_UTIL, NULL, 0, SCHED_CAPACITY_SCALE);
+	irq_log_store();
+
+	return util;
 }
 
-static inline unsigned int mtk_task_cap(struct task_struct *p, int cpu,
+inline unsigned long mtk_sched_max_util(struct task_struct *p, int cpu,
 					unsigned long min_cap, unsigned long max_cap)
 {
-	unsigned int util;
+	unsigned long util;
 
 	irq_log_store();
 	util = mtk_cpu_util(cpu, cpu_util_cfs(cpu), FREQUENCY_UTIL, p, min_cap, max_cap);
@@ -252,11 +258,12 @@ done:
 }
 EXPORT_SYMBOL_GPL(get_cpu_irqRatio_threshold);
 
-inline int cpu_high_irqload(int cpu, unsigned long cpu_util)
+inline int cpu_high_irqload(int cpu)
 {
-	unsigned long irq_util;
+	unsigned long irq_util, cpu_util;
 
 	irq_util = cpu_util_irq(cpu_rq(cpu));
+	cpu_util = mtk_sched_cpu_util(cpu);
 	if (irq_util < min_highirq_load[cpu])
 		return 0;
 
@@ -308,10 +315,11 @@ inline unsigned int mtk_get_idle_exit_latency(int cpu,
 	return UINT_MAX;
 }
 
-void track_sched_cpu_util(int cpu, unsigned long cpu_util)
+void track_sched_cpu_util(struct task_struct *p, int cpu,
+			unsigned long min_cap, unsigned long max_cap)
 {
 	if (trace_sched_cpu_util_enabled())
-		trace_sched_cpu_util(cpu, cpu_util);
+		trace_sched_cpu_util(p, cpu, min_cap, max_cap);
 }
 
 static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
@@ -320,7 +328,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 {
 	int cpu, best_idle_cpu_cluster;
 	unsigned long util_cum[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = ULONG_MAX};
-	unsigned long util, cpu_util_cum, best_cpu_util_cum = ULONG_MAX;
+	unsigned long cpu_util_cum, best_cpu_util_cum = ULONG_MAX;
 	unsigned long min_cap = uclamp_eff_value(p, UCLAMP_MIN);
 	unsigned long max_cap = uclamp_eff_value(p, UCLAMP_MAX);
 	unsigned long best_idle_exit_latency = UINT_MAX;
@@ -352,9 +360,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 
 		for_each_cpu_and(cpu, lowest_mask, &cpu_array[order_index][cluster][reverse]) {
 
-			util = mtk_sched_cpu_util(cpu);
-
-			track_sched_cpu_util(cpu, util);
+			track_sched_cpu_util(p, cpu, min_cap, max_cap);
 
 			if (!cpumask_test_cpu(cpu, p->cpus_ptr))
 				continue;
@@ -362,7 +368,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			if (cpu_paused(cpu))
 				continue;
 
-			if (cpu_high_irqload(cpu, util))
+			if (cpu_high_irqload(cpu))
 				continue;
 
 			/* RT task skips cpu that runs latency_sensitive or vip tasks */
@@ -394,7 +400,9 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			if (cpu_idle_exit_latency == UINT_MAX)
 				continue;
 
-			cpu_util_cum = mtk_task_cap(p, cpu, min_cap, max_cap);
+			irq_log_store();
+			cpu_util_cum = mtk_sched_max_util(p, cpu, min_cap, max_cap);
+			irq_log_store();
 			if (best_idle_exit_latency < cpu_idle_exit_latency)
 				continue;
 
