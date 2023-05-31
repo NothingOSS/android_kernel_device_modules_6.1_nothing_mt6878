@@ -1471,7 +1471,7 @@ enum mtk_pq_module_type {
 	MTK_DISP_PQ_C3D,
 	MTK_DISP_PQ_TDSHP,
 	MTK_DISP_VIRTUAL_TYPE,
-	MTK_DISP_PQ_TYPE_MAX,
+	MTK_DISP_PQ_TYPE_MAX = 65535,
 };
 
 enum mtk_pq_frame_cfg_cmd {
@@ -1482,12 +1482,12 @@ enum mtk_pq_frame_cfg_cmd {
 	PQ_AAL_SET_PARAM,
 	PQ_AAL_INIT_DRE30,
 	PQ_AAL_CLARITY_SET_REG,
-	PQ_GAMMA_SET_GAMMALUT,
+	PQ_GAMMA_SET_GAMMALUT = 100,
 	PQ_GAMMA_SET_12BIT_GAMMALUT,
 	PQ_GAMMA_BYPASS_GAMMA,
 	PQ_GAMMA_DISABLE_MUL_EN,
-	PQ_CHIST_CONFIG,
-	PQ_COLOR_MUTEX_CONTROL,
+	PQ_CHIST_CONFIG = 200,
+	PQ_COLOR_MUTEX_CONTROL = 300,
 	PQ_COLOR_BYPASS,
 	PQ_COLOR_SET_PQINDEX,
 	PQ_COLOR_SET_PQPARAM,
@@ -1496,38 +1496,38 @@ enum mtk_pq_frame_cfg_cmd {
 	PQ_COLOR_SET_COLOR_REG,
 	PQ_COLOR_SET_WINDOW,
 	PQ_COLOR_DRECOLOR_SET_SGY,
-	PQ_CCORR_EVENTCTL,
+	PQ_CCORR_EVENTCTL = 400,
 	PQ_CCORR_SUPPORT_COLOR_MATRIX,
 	PQ_CCORR_SET_CCORR,
 	PQ_CCORR_AIBLD_CV_MODE,
 	PQ_CCORR_SET_PQ_CAPS,
-	PQ_C3D_EVENTCTL,
+	PQ_C3D_EVENTCTL = 500,
 	PQ_C3D_BYPASS,
 	PQ_C3D_SET_LUT,
-	PQ_TDSHP_SET_REG,
-	PQ_DITHER_SET_DITHER_PARAM,
-	PQ_VIRTUAL_SET_PROPERTY,
+	PQ_TDSHP_SET_REG = 600,
+	PQ_DITHER_SET_DITHER_PARAM = 700,
+	PQ_VIRTUAL_SET_PROPERTY = 800,
 	/* Get cmd begin */
 	/* Notice:
 	 * Command for getting must be added after the PQ_GET_CMD_START.
 	 * Otherwise, the func of 'copy_to_user' will not be called.
 	 */
-	PQ_GET_CMD_START,
+	PQ_GET_CMD_START = 60000,
 	PQ_AAL_GET_HIST,
 	PQ_AAL_GET_SIZE,
 	PQ_AAL_SET_TRIGGER_STATE,
-	PQ_CHIST_GET,
-	PQ_COLOR_READ_REG,
+	PQ_CHIST_GET = 60100,
+	PQ_COLOR_READ_REG = 60200,
 	PQ_COLOR_READ_SW_REG,
-	PQ_CCORR_GET_IRQ,
+	PQ_CCORR_GET_IRQ = 60300,
 	PQ_CCORR_GET_PQ_CAPS,
-	PQ_C3D_GET_IRQ,
+	PQ_C3D_GET_IRQ = 60400,
 	PQ_C3D_GET_IRQ_STATUS,
 	PQ_C3D_GET_BIN_NUM,
-	PQ_TDSHP_GET_SIZE,
-	PQ_VIRTUAL_GET_MASTER_INFO,
+	PQ_TDSHP_GET_SIZE = 60500,
+	PQ_VIRTUAL_GET_MASTER_INFO = 60600,
 	PQ_VIRTUAL_GET_IRQ,
-	PQ_CMD_MAX,
+	PQ_CMD_MAX = 65535,
 };
 
 #define GET_PANELS_STR_LEN 64
@@ -1824,7 +1824,8 @@ struct DISP_AAL_PARAM {
 	int silky_bright_flag;
 	int allowPartial;
 	int refreshLatency;	/* DISP_AAL_REFRESH_LATENCY */
-	unsigned int silky_bright_gain[3];    /* 13-bit ; [1,8192] */
+	unsigned int silky_gain_range; /* 13bit: [1-8192]; 14bit:[1-16384] */
+	unsigned int silky_bright_gain[3];
 	unsigned long long dre30_gain;
 };
 
@@ -1845,8 +1846,11 @@ struct DISP_AAL_HIST {
 	int backlight;
 	int aal0_colorHist;
 	int aal1_colorHist;
+	unsigned int mdp_aal_ghist_valid;
 	unsigned int aal0_maxHist[AAL_HIST_BIN];
 	unsigned int aal1_maxHist[AAL_HIST_BIN];
+	unsigned int mdp_aal0_maxHist[AAL_HIST_BIN];
+	unsigned int mdp_aal1_maxHist[AAL_HIST_BIN];
 	int requestPartial;
 	unsigned long long dre30_hist;
 	unsigned int panel_type;
@@ -1855,6 +1859,8 @@ struct DISP_AAL_HIST {
 	int dre_enable;
 	unsigned int aal0_yHist[AAL_HIST_BIN];
 	unsigned int aal1_yHist[AAL_HIST_BIN];
+	unsigned int mdp_aal0_yHist[AAL_HIST_BIN];
+	unsigned int mdp_aal1_yHist[AAL_HIST_BIN];
 	unsigned int MaxHis_denominator_pipe0[AAL_DRE_BLK_NUM];
 	unsigned int MaxHis_denominator_pipe1[AAL_DRE_BLK_NUM];
 	int srcWidth;
