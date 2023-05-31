@@ -60,7 +60,6 @@ static void mdw_rv_dev_timer_callback(struct timer_list *timer)
 		container_of(timer, struct mdw_rv_dev, power_off_timer);
 
 	mdw_drv_info("dtime timer up\n");
-	INIT_WORK(&mrdev->power_off_wk, &mdw_rv_dev_power_off);
 	schedule_work(&mrdev->power_off_wk);
 }
 
@@ -642,6 +641,7 @@ int mdw_rv_dev_init(struct mdw_device *mdev)
 	mutex_init(&mrdev->mtx);
 	INIT_LIST_HEAD(&mrdev->s_list);
 	INIT_WORK(&mrdev->init_wk, &mdw_rv_dev_init_func);
+	INIT_WORK(&mrdev->power_off_wk, &mdw_rv_dev_power_off);
 
 	schedule_work(&mrdev->init_wk);
 
