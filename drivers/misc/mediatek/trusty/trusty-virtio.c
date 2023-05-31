@@ -26,6 +26,7 @@
 #include <linux/atomic.h>
 
 #include <linux/interrupt.h>
+#include <linux/of_address.h>
 #include <linux/of_irq.h>
 
 #define  RSC_DESCR_VER  1
@@ -72,6 +73,25 @@ struct trusty_vdev {
 };
 
 #define vdev_to_tvdev(vd)  container_of((vd), struct trusty_vdev, vdev)
+
+#define RSVD_OFFSET (0x70C)
+#define APMCU_ACK BIT(0)
+
+static void __iomem *infracfg_base;
+
+static uint32_t trusty_read(uint32_t offset)
+{
+	void __iomem *reg = infracfg_base + offset;
+
+	return readl(reg);
+}
+
+static void trusty_write(uint32_t offset, uint32_t value)
+{
+	void __iomem *reg = infracfg_base + offset;
+
+	writel(value, reg);
+}
 
 static void check_all_vqs(struct work_struct *work)
 {
@@ -633,8 +653,11 @@ static irqreturn_t trusty_virtio_irq_handler(int irq, void *data)
 
 	dev_dbg(tctx->dev, "enter\n");
 	trusty_notifier_call();
-	dev_dbg(tctx->dev, "exit\n");
 
+	if (!(trusty_read(RSVD_OFFSET) & APMCU_ACK))
+		trusty_write(RSVD_OFFSET, APMCU_ACK);
+
+	dev_dbg(tctx->dev, "exit\n");
 	return IRQ_HANDLED;
 }
 
@@ -689,6 +712,12 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 
 	if (IS_ERR(node)) {
 		dev_err(&pdev->dev, "Failed to find device node\n");
+		goto err_add_devices;
+	}
+
+	infracfg_base = of_iomap(node, 0);
+	if (infracfg_base == NULL) {
+		dev_err(&pdev->dev, "Failed to parse register\n");
 		goto err_add_devices;
 	}
 
