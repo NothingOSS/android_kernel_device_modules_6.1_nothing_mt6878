@@ -123,6 +123,8 @@
 			mutex0 = &disp1_mutex0;
 			mtksmmu0 = &mm_smmu;
 			mtksmmu1 = &gpu_smmu;
+			mtksmmu2 = &apu_smmu;
+			mtksmmu3 = &soc_smmu;
 	};
 
 	aov: aov {
