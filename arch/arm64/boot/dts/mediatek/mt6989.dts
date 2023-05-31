@@ -1119,6 +1119,17 @@
 		cm-perf-mode-ceiling-opp = <0>;
 	};
 
+	fpsgo: fpsgo {
+		compatible = "mediatek,fpsgo";
+		interconnects = <&dvfsrc MT6873_MASTER_MCUSYS &dvfsrc MT6873_SLAVE_DDR_EMI>;
+		interconnect-names = "fpsgo-perf-bw";
+		required-opps = <&dvfsrc_freq_opp1>;
+		cpu-limit = <2>;
+		gcc-enable = <1>;
+		fbt-cpu-mask = <255 128 15 127 240 112>;
+		sbe-resceue-enable = <1>;
+	};
+
 	ptppll_pll_ctrl_clk: syscon@c034000 {
 		compatible = "mediatek,mt6989-ptppll_pll_ctrl", "syscon";
 		reg = <0 0xc034000 0 0x1000>;
