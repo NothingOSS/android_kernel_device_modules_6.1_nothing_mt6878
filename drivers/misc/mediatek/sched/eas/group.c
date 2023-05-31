@@ -398,6 +398,14 @@ int set_task_to_group(int pid, int grp_id)
 }
 EXPORT_SYMBOL(set_task_to_group);
 
+/* Allow user set task to grp (0,1)->(2,3) */
+int user_set_task_to_grp(int pid, int grp_id)
+{
+	grp_id += GROUP_ID_3;
+	return set_task_to_group(pid, grp_id);
+}
+EXPORT_SYMBOL(user_set_task_to_grp);
+
 static void group_android_rvh_flush_task(void *unused, struct task_struct *p)
 {
 	int ret = 0;

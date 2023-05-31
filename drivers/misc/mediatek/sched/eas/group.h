@@ -82,4 +82,5 @@ int set_task_to_group(int pid, int grp_id);
 inline bool check_and_get_grp_id(struct task_struct *p, int *grp_id);
 void group_update_ws(struct rq *rq);
 inline int cgrp_to_grpid(struct task_struct *p);
+int user_set_task_to_grp(int pid, int grp_id);
 #endif /* _EAS_GROUP_H*/
