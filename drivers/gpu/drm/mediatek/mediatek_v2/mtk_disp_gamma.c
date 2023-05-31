@@ -81,8 +81,8 @@ static void mtk_gamma_init(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_GAMMA_SIZE,
 		(width << 16) | cfg->h, ~0);
-	if (gamma->primary_data->data_mode == HW_12BIT_MODE_8BIT ||
-		gamma->primary_data->data_mode == HW_12BIT_MODE_12BIT) {
+	if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_8BIT ||
+		gamma->primary_data->data_mode == HW_12BIT_MODE_IN_10BIT) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_BANK,
 			(gamma->primary_data->data_mode - 1) << 2, 0x4);
@@ -228,9 +228,9 @@ static int mtk_gamma_write_12bit_lut_reg(struct mtk_ddp_comp *comp,
 		goto gamma_write_lut_unlock;
 	}
 
-	if (gamma->primary_data->data_mode == HW_12BIT_MODE_12BIT) {
+	if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_10BIT) {
 		block_num = DISP_GAMMA_12BIT_LUT_SIZE / DISP_GAMMA_BLOCK_SIZE;
-	} else if (gamma->primary_data->data_mode == HW_12BIT_MODE_8BIT) {
+	} else if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_8BIT) {
 		block_num = DISP_GAMMA_LUT_SIZE / DISP_GAMMA_BLOCK_SIZE;
 	} else {
 		DDPINFO("%s: g_gamma_data_mode is error\n", __func__);
@@ -286,43 +286,62 @@ gamma_write_lut_unlock:
 	return ret;
 }
 
+#define GAIN_RANGE_UNIT 100
+static unsigned int mtk_gamma_gain_range_ratio(unsigned int sw_range, unsigned int hw_range)
+{
+	unsigned int ratio;
+
+	if (sw_range == 0 || hw_range == 0) {
+		DDPINFO("%s %d/%d hw/sw gain range invalid!!\n", __func__, hw_range, sw_range);
+		return GAIN_RANGE_UNIT;
+	}
+	ratio = hw_range * GAIN_RANGE_UNIT / sw_range;
+	if (ratio != GAIN_RANGE_UNIT)
+		DDPINFO("%s %d/%d hw/sw gain range different!!\n", __func__, hw_range, sw_range);
+	return ratio;
+}
+
 static int mtk_gamma_write_gain_reg(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int lock)
 {
 	int i;
 	int ret = 0;
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
+	struct mtk_disp_gamma_sb_param *sb_param = &gamma->primary_data->sb_param;
+	unsigned int gamma_gain_range = gamma->data->gamma_gain_range;
+	unsigned int sb_gain_range = sb_param->gain_range;
+	unsigned int hw_gain[3], ratio = GAIN_RANGE_UNIT;
 
 	if (lock)
 		mutex_lock(&gamma->primary_data->global_lock);
-
-	if ((gamma->primary_data->sb_param.gain[0] == 8192)
-		&& (gamma->primary_data->sb_param.gain[1] == 8192)
-		&& (gamma->primary_data->sb_param.gain[2] == 8192)) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_GAMMA_CFG, 0x0 << 3, 0x8);
-		DDPINFO("all gain == 8192\n");
-		goto unlock;
+	if (sb_gain_range != gamma_gain_range)
+		ratio = mtk_gamma_gain_range_ratio(sb_gain_range, gamma_gain_range);
+	for (i = 0; i < DISP_GAMMA_GAIN_SIZE; i++) {
+		hw_gain[i] = sb_param->gain[i] * ratio / GAIN_RANGE_UNIT;
+		if (hw_gain[i] > gamma_gain_range)
+			hw_gain[i] = gamma_gain_range;
 	}
 
-	if ((gamma->primary_data->sb_param.gain[0] == 0)
-		&& (gamma->primary_data->sb_param.gain[1] == 0)
-		&& (gamma->primary_data->sb_param.gain[2] == 0)) {
+	/* close gamma gain mul if all channels don't need gain */
+	if (((hw_gain[0] == gamma_gain_range) &&
+	     (hw_gain[1] == gamma_gain_range) &&
+	     (hw_gain[2] == gamma_gain_range)) ||
+	    ((hw_gain[0] == 0) &&
+	     (hw_gain[1] == 0) &&
+	     (hw_gain[2] == 0))) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_CFG, 0x0 << 3, 0x8);
-		DDPINFO("all gain == 0\n");
+		DDPINFO("all gain == %d\n", hw_gain[0]);
 		goto unlock;
 	}
 
 	for (i = 0; i < DISP_GAMMA_GAIN_SIZE; i++) {
-		if (gamma->primary_data->sb_param.gain[i] == 8192)
-			gamma->primary_data->sb_param.gain[i] = 8191;
-	}
-
-	for (i = 0; i < DISP_GAMMA_GAIN_SIZE; i++) {
+		/* using rang - 1 to approximate range */
+		if (hw_gain[i] == gamma_gain_range)
+			hw_gain[i] = gamma_gain_range - 1;
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_BLOCK_0_R_GAIN + i * 4,
-			gamma->primary_data->sb_param.gain[i], ~0);
+			hw_gain[i], ~0);
 	}
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -418,6 +437,7 @@ static int mtk_gamma_12bit_set_lut(struct mtk_ddp_comp *comp,
 
 	return ret;
 }
+
 static int mtk_gamma_set_gain(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, struct mtk_disp_gamma_sb_param *user_gamma_gain)
 {
@@ -635,8 +655,8 @@ static void mtk_gamma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS])
 		mtk_gamma_write_gain_reg(comp, handle, 0);
 
-	if (gamma->primary_data->data_mode == HW_12BIT_MODE_8BIT ||
-		gamma->primary_data->data_mode == HW_12BIT_MODE_12BIT)
+	if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_8BIT ||
+		gamma->primary_data->data_mode == HW_12BIT_MODE_IN_10BIT)
 		mtk_gamma_write_12bit_lut_reg(comp, handle, 0);
 	else
 		mtk_gamma_write_lut_reg(comp, handle, 0);
@@ -721,14 +741,15 @@ static void calculateGammaLut(struct DISP_GAMMA_LUT_T *data,
 		struct mtk_disp_gamma *gamma)
 {
 	int i;
+	unsigned int range = gamma->data->gamma_gain_range;
 
 	for (i = 0; i < DISP_GAMMA_LUT_SIZE; i++)
 		data->lut[i] = (((gamma->primary_data->gamma_lut_db.lut[i] & 0x3ff) *
-			gamma->primary_data->sb_param.gain[gain_b] + 4096) / 8192) |
+			gamma->primary_data->sb_param.gain[gain_b] + range / 2) / range) |
 			(((gamma->primary_data->gamma_lut_db.lut[i] >> 10 & 0x3ff) *
-			gamma->primary_data->sb_param.gain[gain_g] + 4096) / 8192) << 10 |
+			gamma->primary_data->sb_param.gain[gain_g] + range / 2) / range) << 10 |
 			(((gamma->primary_data->gamma_lut_db.lut[i] >> 20 & 0x3ff) *
-			gamma->primary_data->sb_param.gain[gain_r] + 4096) / 8192) << 20;
+			gamma->primary_data->sb_param.gain[gain_r] + range / 2) / range) << 20;
 
 }
 
@@ -736,19 +757,20 @@ static void calculateGamma12bitLut(struct DISP_GAMMA_12BIT_LUT_T *data,
 		struct mtk_disp_gamma *gamma)
 {
 	int i, lut_size = DISP_GAMMA_LUT_SIZE;
+	unsigned int range = gamma->data->gamma_gain_range;
 
-	if (gamma->primary_data->data_mode == HW_12BIT_MODE_12BIT)
+	if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_10BIT)
 		lut_size = DISP_GAMMA_12BIT_LUT_SIZE;
 
 	for (i = 0; i < lut_size; i++) {
 		data->lut_0[i] =
 			(((gamma->primary_data->gamma_12bit_lut_db.lut_0[i] & 0xfff) *
-			gamma->primary_data->sb_param.gain[gain_r] + 4096) / 8192) |
+			gamma->primary_data->sb_param.gain[gain_r] + range / 2) / range) |
 			(((gamma->primary_data->gamma_12bit_lut_db.lut_0[i] >> 12 & 0xfff) *
-			gamma->primary_data->sb_param.gain[gain_g] + 4096) / 8192) << 12;
+			gamma->primary_data->sb_param.gain[gain_g] + range / 2) / range) << 12;
 		data->lut_1[i] =
 			(((gamma->primary_data->gamma_12bit_lut_db.lut_1[i] & 0xfff) *
-			gamma->primary_data->sb_param.gain[gain_b] + 4096) / 8192);
+			gamma->primary_data->sb_param.gain[gain_b] + range / 2) / range);
 	}
 }
 
@@ -788,8 +810,8 @@ void mtk_trans_gain_to_gamma(struct mtk_ddp_comp *comp,
 				}
 			}
 
-			if (gamma->primary_data->data_mode == HW_12BIT_MODE_8BIT ||
-				gamma->primary_data->data_mode == HW_12BIT_MODE_12BIT) {
+			if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_8BIT ||
+				gamma->primary_data->data_mode == HW_12BIT_MODE_IN_10BIT) {
 				lut_12bit_data = kzalloc(sizeof(struct DISP_GAMMA_12BIT_LUT_T),
 							GFP_KERNEL);
 				if (lut_12bit_data) {
@@ -801,7 +823,7 @@ void mtk_trans_gain_to_gamma(struct mtk_ddp_comp *comp,
 			}
 		} else {
 			mtk_crtc_user_cmd(crtc, comp,
-				SET_GAMMAGAIN, (void *)&gamma->primary_data->sb_param);
+				SET_GAMMA_GAIN, (void *)&gamma->primary_data->sb_param);
 		}
 		DDPINFO("[aal_kernel]ELVSSPN = %d, flag = %d\n",
 			ess20_spect_param->ELVSSPN, ess20_spect_param->flag);
@@ -884,7 +906,7 @@ static int mtk_gamma_user_bypass_gamma(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
-static int mtk_gamma_user_set_gammagain(struct mtk_ddp_comp *comp,
+static int mtk_gamma_user_set_gamma_gain(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data)
 {
 	struct mtk_disp_gamma_sb_param *config = data;
@@ -947,11 +969,11 @@ static int mtk_gamma_user_cmd(struct mtk_ddp_comp *comp,
 	case BYPASS_GAMMA:
 		mtk_gamma_user_bypass_gamma(comp, handle, data);
 		break;
-	case SET_GAMMAGAIN:
+	case SET_GAMMA_GAIN:
 	{
 		int ret;
 
-		ret = mtk_gamma_user_set_gammagain(comp, handle, data);
+		ret = mtk_gamma_user_set_gamma_gain(comp, handle, data);
 		if (ret < 0)
 			return ret;
 	}
@@ -1105,13 +1127,15 @@ static int mtk_gamma_cfg_bypass_disp_gamma(struct mtk_ddp_comp *comp,
 }
 
 int mtk_cfg_trans_gain_to_gamma(struct mtk_drm_crtc *mtk_crtc,
-	struct cmdq_pkt *handle, unsigned int gain[3], unsigned int bl, void *param)
+	struct cmdq_pkt *handle, struct DISP_AAL_PARAM *aal_param, unsigned int bl, void *param)
 {
 	int ret;
-	bool support_gammagain;
+	bool support_gamma_gain;
 	struct DISP_AAL_ESS20_SPECT_PARAM *ess20_spect_param = param;
 	struct mtk_ddp_comp *comp;
 	struct mtk_disp_gamma *gamma_priv;
+	unsigned int *gain = (unsigned int *)aal_param->silky_bright_gain;
+	unsigned int silky_gain_range = (unsigned int)aal_param->silky_gain_range;
 
 	if (param == NULL)
 		ret = -EFAULT;
@@ -1121,7 +1145,8 @@ int mtk_cfg_trans_gain_to_gamma(struct mtk_drm_crtc *mtk_crtc,
 		return -EFAULT;
 	}
 	gamma_priv = comp_to_gamma(comp);
-	support_gammagain = gamma_priv->data->support_gammagain;
+	support_gamma_gain = gamma_priv->data->support_gamma_gain;
+	gamma_priv->primary_data->sb_param.gain_range = silky_gain_range;
 	if (gamma_priv->primary_data->sb_param.gain[gain_r] != gain[gain_r] ||
 		gamma_priv->primary_data->sb_param.gain[gain_g] != gain[gain_g] ||
 		gamma_priv->primary_data->sb_param.gain[gain_b] != gain[gain_b]) {
@@ -1129,8 +1154,8 @@ int mtk_cfg_trans_gain_to_gamma(struct mtk_drm_crtc *mtk_crtc,
 		gamma_priv->primary_data->sb_param.gain[gain_r] = gain[gain_r];
 		gamma_priv->primary_data->sb_param.gain[gain_g] = gain[gain_g];
 		gamma_priv->primary_data->sb_param.gain[gain_b] = gain[gain_b];
-		if (support_gammagain)
-			mtk_gamma_user_set_gammagain(comp, handle,
+		if (support_gamma_gain)
+			mtk_gamma_user_set_gamma_gain(comp, handle,
 				(void *)&gamma_priv->primary_data->sb_param);
 		else
 			DDPINFO("[aal_kernel] gamma gain not support!\n");
@@ -1449,19 +1474,23 @@ static int mtk_disp_gamma_remove(struct platform_device *pdev)
 }
 
 struct mtk_disp_gamma_data legacy_driver_data = {
-	.support_gammagain = false,
+	.support_gamma_gain = false,
+	.gamma_gain_range = 8192,
 };
 
 struct mtk_disp_gamma_data mt6985_driver_data = {
-	.support_gammagain = true,
+	.support_gamma_gain = true,
+	.gamma_gain_range = 8192,
 };
 
 struct mtk_disp_gamma_data mt6897_driver_data = {
-	.support_gammagain = true,
+	.support_gamma_gain = true,
+	.gamma_gain_range = 8192,
 };
 
 struct mtk_disp_gamma_data mt6989_driver_data = {
-	.support_gammagain = true,
+	.support_gamma_gain = true,
+	.gamma_gain_range = 16384,
 };
 
 static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {

@@ -28,18 +28,19 @@ enum GAMMA_USER_CMD {
 	SET_GAMMALUT = 0,
 	SET_12BIT_GAMMALUT,
 	BYPASS_GAMMA,
-	SET_GAMMAGAIN,
+	SET_GAMMA_GAIN,
 	DISABLE_MUL_EN
 };
 
 enum GAMMA_MODE {
 	HW_8BIT = 0,
-	HW_12BIT_MODE_8BIT,
-	HW_12BIT_MODE_12BIT,
+	HW_12BIT_MODE_IN_8BIT,
+	HW_12BIT_MODE_IN_10BIT,
 };
 
 struct mtk_disp_gamma_data {
-	bool support_gammagain;
+	bool support_gamma_gain;
+	unsigned int gamma_gain_range;
 };
 
 struct mtk_disp_gamma_tile_overhead {
@@ -50,6 +51,7 @@ struct mtk_disp_gamma_tile_overhead {
 struct mtk_disp_gamma_sb_param {
 	unsigned int gain[3];
 	unsigned int bl;
+	unsigned int gain_range;
 };
 
 struct mtk_disp_gamma_primary {
@@ -108,7 +110,7 @@ int mtk_drm_ioctl_gamma_mul_disable(struct drm_device *dev, void *data,
 void mtk_trans_gain_to_gamma(struct mtk_ddp_comp *comp,
 	unsigned int gain[3], unsigned int bl, void *param);
 int mtk_cfg_trans_gain_to_gamma(struct mtk_drm_crtc *mtk_crtc,
-	struct cmdq_pkt *handle, unsigned int gain[3], unsigned int bl, void *param);
+	struct cmdq_pkt *handle, struct DISP_AAL_PARAM *aal_param, unsigned int bl, void *param);
 void disp_gamma_set_bypass(struct drm_crtc *crtc, int bypass);
 void mtk_gamma_regdump(struct mtk_ddp_comp *comp);
 

@@ -3940,7 +3940,7 @@ static int mtk_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 			aal_data->primary_data->ess20_spect_param.flag);
 
 		mtk_cfg_trans_gain_to_gamma(mtk_crtc, handle,
-			&aal_data->primary_data->aal_param.silky_bright_gain[0],
+			&aal_data->primary_data->aal_param,
 			aal_data->primary_data->backlight_set,
 			(void *)&aal_data->primary_data->ess20_spect_param);
 	} else {
