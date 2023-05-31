@@ -217,19 +217,15 @@ unsigned int mt6681_voice_rate_transform(unsigned int rate)
 #if IS_ENABLED(CONFIG_MT6681_EFUSE)
 static void mt6681_get_hw_ver(struct mt6681_priv *priv)
 {
-	int ret = 0;
-	int value, fab;
-	unsigned short efuse_val = 0;
+	unsigned int id = 0;
+	unsigned int ver = 0;
 
-	ret = nvmem_device_read(priv->hp_efuse, 0x8, 1, &efuse_val);
-	value = (efuse_val >> 5) & 0x7;
+	regmap_read(priv->regmap, MT6681_HWCID_H, &id);
+	regmap_read(priv->regmap, MT6681_HWCID_L, &ver);
+	priv->hw_ver = id;
 
-	ret = nvmem_device_read(priv->hp_efuse, 0xE, 1, &efuse_val);
-	fab = (efuse_val >> 5) & 0x7;
-
-	priv->hw_ver = value;
-	pr_info("%s() mt6681 fab=%d, hw_ver= %d\n", __func__, fab,
-		priv->hw_ver);
+	pr_info("MT6681_ID : %s() mt6681 hw_id =%d, hw_ver= %d\n",
+		__func__, priv->hw_ver, ver);
 }
 
 #ifdef NLE_IMP
