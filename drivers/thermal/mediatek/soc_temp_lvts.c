@@ -665,6 +665,8 @@ static void dump_lvts_controller_temp_and_raw(struct lvts_data *lvts_data)
 		for (j = 0; j < tc[i].num_sensor; j++) {
 			s_index = tc[i].sensor_map[j];
 
+			if (s_index >= lvts_data->num_sensor)
+				continue;
 			offset += snprintf(buffer + offset,
 					sizeof(buffer) - offset, "[0x%x,%d]",
 					lvts_data->sen_data[s_index].msr_raw,
