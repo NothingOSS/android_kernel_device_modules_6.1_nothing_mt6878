@@ -681,6 +681,43 @@ void mtk_ged_event_notify(int events)
 
 	mutex_unlock(&g_ged_event_change.lock);
 }
+//------------------------------------------------------------------------------
+extern unsigned int force_loading_based_enable;
+static ssize_t force_loading_base_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+
+	int pos = 0;
+
+	if (force_loading_based_enable)
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,"force_loading_base is enabled\n");
+	else
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,"force_loading_base is disabled\n");
+
+	return pos;
+}
+static ssize_t force_loading_base_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
+				if (i32Value > 0 && i32Value < 256)
+					force_loading_based_enable = 1;
+				else
+					force_loading_based_enable = 0;
+			}
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(force_loading_base);
 
 //-----------------------------------------------------------------------------
 #ifdef GED_DCS_POLICY
@@ -1302,6 +1339,10 @@ GED_ERROR ged_hal_init(void)
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create reduce_mips_dvfs entry!\n");
 
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_force_loading_base);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create force_loading_base entry!\n");
+
 #ifdef GED_DCS_POLICY
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_mode);
 	if (unlikely(err != GED_OK)) {
@@ -1428,6 +1469,7 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fallback_frequency_adjust);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dvfs_async_ratio);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_ged_log_level);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_force_loading_base);
 #ifdef GED_DCS_POLICY
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_mode);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_stress);

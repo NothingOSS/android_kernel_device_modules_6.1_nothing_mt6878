@@ -308,6 +308,8 @@ struct GED_KPI_HEAD *main_head;
 struct GED_KPI_HEAD *prev_main_head;
 static int is_loading_based;
 static bool g_is_multiproducer;
+unsigned int force_loading_based_enable;
+
 /* end */
 
 /* for calculating KPI info per second */
@@ -1035,7 +1037,10 @@ static void ged_kpi_set_fallback_mode(struct GED_KPI_HEAD *psHead)
 
 static int ged_kpi_get_fallback_mode(void)
 {
-	return is_loading_based;
+	if (force_loading_based_enable)
+		return 1;
+	else
+		return is_loading_based;
 }
 
 /* ------------------------------------------------------------------- */
@@ -2134,7 +2139,7 @@ GED_ERROR ged_kpi_system_init(void)
 #endif /* GED_BUFFER_LOG_DISABLE */
 	is_GED_KPI_enabled = ged_gpufreq_bringup() ? 0 : 1;
 	g_eb_workload = 0;
-
+	force_loading_based_enable = 0;
 	g_psGIFT = (struct GED_KPI_MEOW_DVFS_FREQ_PRED *)
 		ged_alloc_atomic(sizeof(struct GED_KPI_MEOW_DVFS_FREQ_PRED));
 	if (unlikely(!g_psGIFT)) {
