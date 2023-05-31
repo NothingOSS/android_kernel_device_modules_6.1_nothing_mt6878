@@ -45,6 +45,8 @@ mgk_64_k61_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/cpufreq_int:cpu_hwtest",
     "//vendor/mediatek/kernel_modules/fpsgo_cus:fpsgo_cus",
     "//vendor/mediatek/kernel_modules/fpsgo_int:fpsgo_int",
+    "//vendor/mediatek/kernel_modules/msync2_frd_cus:msync2_frd_cus",
+    "//vendor/mediatek/kernel_modules/msync2_frd_int:msync2_frd_int",
     "//vendor/mediatek/kernel_modules/gpu:gpu",
     "//vendor/mediatek/kernel_modules/hbt_driver_cus:hbt_cus",
     "//vendor/mediatek/kernel_modules/hbt_driver:hbt_int",
