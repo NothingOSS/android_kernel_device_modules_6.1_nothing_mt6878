@@ -13257,77 +13257,52 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-86 = "WLA_STH_IDLE_CNT",
 				"wla0,wla1,wla2,wla3,wla4,wla5,wla6,wla7,wla8,wla9,wla10,",
 				"wla11,wla12,wla13,wla14,wla15";
-
-			/* MDLA */
-			node-87 = "SSPM_SWPM_APU__MDLA_AVG_PDX",
-				"mdla0,mdla1,mdla2,mdla3";
-			node-88 = "SSPM_SWPM_APU__MDLA_CORE_ON_RATIO",
-				"mdla0,mdla1,mdla2,mdla3";
-			node-89 = "SSPM_SWPM_APU__MDLA_FREQ",
-				"mdla0,mdla1,mdla2,mdla3";
-			/* MVPU */
-			node-90 = "SSPM_SWPM_APU__MVPU_AVG_PDX",
-				"mvpu0,mvpu1";
-			node-91 = "SSPM_SWPM_APU__MVPU_CORE_ON_RATIO",
-				"mvpu0,mvpu1";
-			node-92 = "SSPM_SWPM_APU__MVPU_FREQ",
-				"mvpu0,mvpu1";
-			/* TOP on ratio */
-			node-93 = "SSPM_SWPM_APU__TOP_FREQ",
-				"freq";
-			node-94 = "SSPM_SWPM_APU__TOP_CORE_ON_RATIO",
-				"top_on_ratio";
-			node-95 = "SSPM_SWPM_APU__TOP_UP_WFI_RATIO",
-				"wfi_ratio";
-			node-96 = "SSPM_SWPM_APU__TOP_ARDCM_IDLE_RATIO",
-				"ardcm_idle_ra";
-			/* TOP BW */
-			node-97 = "SSPM_SWPM_APU__TOP_BW_EDMA",
-				"eDPAbw";
-			node-98 = "SSPM_SWPM_APU__TOP_BW_APUTCM",
-				"tcmbw";
-			node-99 = "SSPM_SWPM_APU__TOP_BW_NOC_RCX",
-				"rcxbw";
-			node-100 = "SSPM_SWPM_APU__TOP_BW_NOC_ACX0",
-				"acx0bw";
-			node-101 = "SSPM_SWPM_APU__TOP_BW_NOC_ACX1",
-				"acx1bw";
-			node-102 = "SSPM_SWPM_APU__TOP_BW_NOC_ACX2",
-				"acx2bw";
-			node-103 = "SSPM_SWPM_CPU__CORE_PMU_3",
+			node-87 = "SSPM_SWPM_APU__MDLA",
+				"mdla_pdx0,mdla_pdx1,mdla_pdx2,mdla_pdx3",
+				"mdla_freq0,mdla_freq1,mdla_freq2,mdla_freq3",
+				"mdla_on_ratio0,mdla_on_ratio1,mdla_on_ratio2,mdla_on_ratio3";
+			node-88 = "SSPM_SWPM_APU__MVPU",
+				"mvpu_pdx0,mvpu_pdx1",
+				"mvpu_freq0,mvpu_freq1",
+				"mvpu_on_ratio0,mvpu_on_ratio1";
+			node-89 = "SSPM_SWPM_APU__TOP_FRQ_AND_RATIO",
+				"top_freq,top_on_ratio,idle_ratio_noc,wfi_ratio";
+			node-90 = "SSPM_SWPM_APU__TOP_BW",
+				"top_bw,eDPAbw,tcmbw,rcxbw,acx0bw,acx1bw,acx2bw";
+			node-91 = "SSPM_SWPM_CPU__CORE_PMU_3",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-104 = "SSPM_SWPM_CPU__CORE_PMU_4",
+			node-92 = "SSPM_SWPM_CPU__CORE_PMU_4",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-105 = "SSPM_SWPM_CPU__CORE_PMU_5",
+			node-93 = "SSPM_SWPM_CPU__CORE_PMU_5",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-106 = "SSPM_SWPM_CPU__CORE_PMU_6",
+			node-94 = "SSPM_SWPM_CPU__CORE_PMU_6",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-107 = "SSPM_SWPM_CPU__CORE_PMU_7",
+			node-95 = "SSPM_SWPM_CPU__CORE_PMU_7",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-108 = "SSPM_SWPM_CPU__CORE_PMU_8",
+			node-96 = "SSPM_SWPM_CPU__CORE_PMU_8",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-109 = "SSPM_SWPM_CPU__CORE_PMU_9",
+			node-97 = "SSPM_SWPM_CPU__CORE_PMU_9",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-110 = "SSPM_SWPM_CPU__CORE_PMU_10",
+			node-98 = "SSPM_SWPM_CPU__CORE_PMU_10",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-111 = "SSPM_SWPM_CPU__CORE_PMU_11",
+			node-99 = "SSPM_SWPM_CPU__CORE_PMU_11",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 			/* SLBC */
-			node-112 = "SSPM_SLBC_GID_USED",
+			node-100 = "SSPM_SLBC_GID_USED",
 				"cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
-			node-113 = "SSPM_SLBC_GID_VALID",
+			node-101 = "SSPM_SLBC_GID_VALID",
 				"cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
-			node-114 = "SSPM_SLBC_CACHE_QUOTA",
+			node-102 = "SSPM_SLBC_CACHE_QUOTA",
 				"gid0,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
-			node-115 = "SSPM_SLBC_CACHE_HIT",
+			node-103 = "SSPM_SLBC_CACHE_HIT",
 				"gid0,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
-			node-116 = "SSPM_SLBC_CACHE_TOTAL",
+			node-104 = "SSPM_SLBC_CACHE_TOTAL",
 				"gid0,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
-			node-117 = "SSPM_SLBC_CACHE_STATE",
+			node-105 = "SSPM_SLBC_CACHE_STATE",
 				"pd,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
-			node-118 = "SSPM_SLBC_CACHE_SIZE",
+			node-106 = "SSPM_SLBC_CACHE_SIZE",
 				"pd,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp,total,valid";
-			node-119 = "SSPM_SLBC_CACHE_WAY",
+			node-107 = "SSPM_SLBC_CACHE_WAY",
 				"pd,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp,total,buf_unused";
 		};
 
