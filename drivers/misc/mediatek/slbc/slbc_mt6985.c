@@ -678,45 +678,45 @@ void slbc_update_outer(unsigned int outer)
 
 int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data)
 {
-	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "gid:%d", *gid);
 	if (*gid >= GID_MAX)
-		return -EINVAL;
-	if (data->sign != 0x51ca11ca) {
-		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "invalid sign:%#x", data->sign);
-		return -EINVAL;
-	}
+		return 0;
+
+	if (data->sign != 0x51ca11ca)
+		return 0;
+
+	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "gid:%d", *gid);
 
 	switch (uid) {
 	case ID_MD:
 		if (*gid == GID_REQ)
 			*gid = GID_MD;
 		else if (*gid != GID_MD)
-			return -EINVAL;
+			return 0;
 		break;
 	case ID_VDEC_FRAME:
 		if (*gid != GID_VDEC_FRAME)
-			return -EINVAL;
+			return 0;
 		break;
 	case ID_VDEC_UBE:
 		if (*gid == GID_REQ)
 			*gid = GID_VDEC_UBE;
 		else if (*gid != GID_VDEC_UBE)
-			return -EINVAL;
+			return 0;
 		break;
 	case ID_GPU:
 		if (*gid == GID_REQ)
 			*gid = GID_GPU;
 		else if (*gid != GID_GPU)
-			return -EINVAL;
+			return 0;
 		break;
 	case ID_GPU_W:
 	case ID_OVL_R:
 		if (*gid != GID_GPU_OVL)
-			return -EINVAL;
+			return 0;
 		break;
 	default:
 		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "unrecognized uid");
-		return -EINVAL;
+		return 0;
 	}
 
 	gid_ref[*gid]++;
