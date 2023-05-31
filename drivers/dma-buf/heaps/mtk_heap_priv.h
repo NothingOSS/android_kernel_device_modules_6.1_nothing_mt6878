@@ -31,12 +31,16 @@
 #define HEAP_DUMP_OOM             (1 << 5)
 #define HEAP_DUMP_PSS_BY_FD	  (1 << 6)
 #define HEAP_DUMP_EGL		  (1 << 7)
+#define HEAP_DUMP_STATISTIC	  (1 << 8)
 
 #define HANG_DMABUF_FILE_TAG	((void *)0x1)
 typedef void (*hang_dump_cb)(const char *fmt, ...);
 extern hang_dump_cb hang_dump_proc;
 
 typedef int (*mtk_refill_order_cb)(unsigned int order, int value);
+
+typedef void (*dmabuf_rbtree_dump_cb)(u64 tab_id, u32 dom_id);
+extern dmabuf_rbtree_dump_cb dmabuf_rbtree_dump_by_domain;
 
 #define dmabuf_dump(file, fmt, args...)                         \
 	do {                                                    \

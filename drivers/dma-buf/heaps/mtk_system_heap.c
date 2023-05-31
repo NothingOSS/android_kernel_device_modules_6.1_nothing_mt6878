@@ -36,6 +36,9 @@ EXPORT_SYMBOL(dma_heap_normal_total);
 
 static dmaheap_slc_callback slc_callback;
 
+dmabuf_rbtree_dump_cb dmabuf_rbtree_dump_by_domain;
+EXPORT_SYMBOL_GPL(dmabuf_rbtree_dump_by_domain);
+
 struct system_heap_buffer {
 	struct dma_heap *heap;
 	struct list_head attachments;
@@ -352,6 +355,10 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 		pr_info("%s map fail tab:%llu, dom:%d, dev:%s\n",
 			__func__, tab_id, dom_id, dev_name(attachment->dev));
 		mutex_unlock(&buffer->map_lock);
+
+		if (dmabuf_rbtree_dump_by_domain)
+			dmabuf_rbtree_dump_by_domain(tab_id, dom_id);
+
 		return ERR_PTR(-ENOMEM);
 	}
 

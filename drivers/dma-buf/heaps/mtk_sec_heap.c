@@ -832,6 +832,9 @@ mtk_sec_heap_page_map_dma_buf(struct dma_buf_attachment *attachment,
 		pr_err("%s err, iommu-dev(%s) dma_map_sgtable failed\n",
 		       __func__, dev_name(attachment->dev));
 		mutex_unlock(&buffer->map_lock);
+
+		if (dmabuf_rbtree_dump_by_domain)
+			dmabuf_rbtree_dump_by_domain(tab_id, dom_id);
 		return ERR_PTR(ret);
 	}
 	ret = fill_sec_buffer_info(buffer, table, attachment, direction, tab_id,
@@ -976,6 +979,9 @@ mtk_sec_heap_region_map_dma_buf(struct dma_buf_attachment *attachment,
 			pr_err("%s err, iommu-dev(%s) dma_map_sgtable failed\n",
 			       __func__, dev_name(attachment->dev));
 			mutex_unlock(&buffer->map_lock);
+
+			if (dmabuf_rbtree_dump_by_domain)
+				dmabuf_rbtree_dump_by_domain(tab_id, dom_id);
 			return ERR_PTR(ret);
 		}
 		pr_debug(

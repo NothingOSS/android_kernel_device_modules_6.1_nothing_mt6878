@@ -30,6 +30,7 @@
 #include <linux/oom.h>
 #include <linux/notifier.h>
 #include <linux/iommu.h>
+#include <linux/list_sort.h>
 #if IS_ENABLED(CONFIG_PROC_FS)
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
@@ -57,6 +58,7 @@ int pss_by_mmap_enable;
 #define OOM_DUMP_INTERVAL         (2000)  /* unit: ms */
 #define SET_PID_CMDLINE_LEN       (16)
 #define EGL_DUMP_INTERVAL         (500)  /* unit: ms */
+#define DMABUF_DUMP_TOP_MAX       (10)
 
 /* Bit map for error */
 #define DBG_ALLOC_MEM_FAIL        (1 << 0)
@@ -149,6 +151,13 @@ struct pid_map {
 	size_t RSS;
 };
 
+struct dmabuf_count_info {
+	char *name;
+	u64 size;
+	u32 count;
+	struct list_head list_node;
+};
+
 /* 100 is enough for most cases */
 #define TOTAL_PID_CNT   (100)
 struct dump_fd_data {
@@ -164,6 +173,7 @@ struct dump_fd_data {
 	int ret;
 	/* can't changed part */
 	struct fd_const constd;
+	struct list_head count_list_head;
 };
 
 struct dmabuf_fd_res {
@@ -282,7 +292,7 @@ static void hang_dmabuf_dump(const char *fmt, ...)
 
 static void mtk_dmabuf_dump_for_hang(void)
 {
-	mtk_dmabuf_dump_heap(NULL, HANG_DMABUF_FILE_TAG, HEAP_DUMP_OOM);
+	mtk_dmabuf_dump_heap(NULL, HANG_DMABUF_FILE_TAG, HEAP_DUMP_OOM | HEAP_DUMP_STATISTIC);
 }
 
 #endif
@@ -309,7 +319,8 @@ void dump_pid_map(struct seq_file *s, struct pid_map *map, unsigned int map_cnt)
 			break;
 		dmabuf_dump(s, "\tpid:%-6d name:%s\n", map[i].id, map[i].name);
 	}
-	dmabuf_dump(s, "\n");
+	if (s)
+		dmabuf_dump(s, "\n");
 }
 
 char *pid_map_get_name(struct dump_fd_data *fd_data, pid_t num)
@@ -623,6 +634,18 @@ dmabuf_rbtree_dbg_add_return(struct dump_fd_data *fd_data, const struct dma_buf 
 	return dbg_node;
 }
 
+static void dmdbuf_clear_size(struct dump_fd_data *fddata)
+{
+	struct dmabuf_count_info *plist;
+	struct dmabuf_count_info *tmp_plist;
+
+	list_for_each_entry_safe(plist, tmp_plist, &fddata->count_list_head, list_node) {
+		list_del(&plist->list_node);
+		kfree(plist->name);
+		kfree(plist);
+	}
+}
+
 /* clear rbtree before every time iterate */
 unsigned long dmabuf_dbg_rbtree_clear(struct dump_fd_data *fd_data)
 {
@@ -716,6 +739,9 @@ unsigned long dmabuf_dbg_rbtree_clear(struct dump_fd_data *fd_data)
 	}
 	spin_unlock(&fd_data->splock);
 	free_size += sizeof(*fd_data);
+
+	/* clear count dmabuf size */
+	dmdbuf_clear_size(fd_data);
 	kfree(fd_data);
 
 	return free_size;
@@ -1205,6 +1231,7 @@ struct dump_fd_data *dmabuf_rbtree_add_all(struct dma_heap *heap,
 		dmabuf_rbtree_add_all_pid(fddata, heap, s, pids[pid_count-1], flag);
 		pid_count--;
 	}
+	INIT_LIST_HEAD(&fddata->count_list_head);
 
 	kfree(pids);
 	return fddata;
@@ -1262,7 +1289,9 @@ void dmabuf_rbtree_dump_stats(struct seq_file *s, struct pid_map *map,
 	dmabuf_dump(s, "-----EGL memtrack data end\n");
 	dmabuf_dump(s, "--sum: userspace_pss:%ld KB rss:%ld KB\n",
 		    total_pss/1024, total_rss/1024);
-	dmabuf_dump(s, "--sum: kernel rss: %ld KB\n\n", krn_rss/1024);
+	dmabuf_dump(s, "--sum: kernel rss: %ld KB\n", krn_rss/1024);
+	if (s)
+		dmabuf_dump(s, "\n");
 
 	/* dump pid map below for debugging more easier.*/
 	dump_pid_map(s, map, map_cnt);
@@ -1346,6 +1375,200 @@ static void dmabuf_rbtree_dump_buf(struct dump_fd_data *fddata, unsigned long fl
 		if (s)
 			dmabuf_dump(s, "\n");
 	}
+}
+
+static int dmabuf_size_cmp(void *priv, const struct list_head *a,
+	const struct list_head *b)
+{
+	struct dmabuf_count_info *ia, *ib;
+
+	ia = list_entry(a, struct dmabuf_count_info, list_node);
+	ib = list_entry(b, struct dmabuf_count_info, list_node);
+
+	if (ia->size < ib->size)
+		return 1;
+	if (ia->size > ib->size)
+		return -1;
+
+	return 0;
+}
+
+static void dmabuf_count_size(struct dump_fd_data *fddata, const struct dma_buf *dmabuf)
+{
+	struct dmabuf_count_info *plist = NULL;
+	struct dmabuf_count_info *n = NULL;
+	struct dmabuf_count_info *new_info;
+	char *name = NULL;
+
+	/* Add to dmabuf_count_info if exist */
+	if (!dmabuf || !fddata)
+		return;
+
+	list_for_each_entry_safe(plist, n, &fddata->count_list_head, list_node) {
+		if ((plist->name && dmabuf->name && strcmp(dmabuf->name, plist->name) == 0) ||
+		      (!plist->name && !dmabuf->name)) {
+			plist->count += file_count(dmabuf->file) - 1;
+			plist->size += (unsigned long) (dmabuf->size / 1024);
+			return;
+		}
+	}
+
+	/* Create new dmabuf_count_info if no exist */
+	new_info = kzalloc(sizeof(*new_info), GFP_ATOMIC);
+	if (!new_info)
+		return;
+
+	if (dmabuf->name != NULL) {
+		name = kzalloc(strlen(dmabuf->name) + 1, GFP_ATOMIC);
+		if (!name) {
+			kfree(new_info);
+			return;
+		}
+		memcpy(name, dmabuf->name, strlen(dmabuf->name) + 1);
+	}
+
+	new_info->name = name;
+	new_info->size = (unsigned long) (dmabuf->size / 1024);
+	new_info->count = file_count(dmabuf->file) - 1;
+	list_add_tail(&new_info->list_node, &fddata->count_list_head);
+}
+
+static void dmabuf_count_list_top_dump(struct dump_fd_data *fddata, u64 total_size, int total_cnt)
+{
+	struct dmabuf_count_info *p_count_list = NULL;
+	struct dmabuf_count_info *n_count = NULL;
+	struct seq_file *s = fddata->constd.s;
+	int i = 0;
+
+	/* sort dmabuf count list by size*/
+	list_sort(NULL, &fddata->count_list_head, dmabuf_size_cmp);
+
+	/* dump top max user */
+	dmabuf_dump(s, "dmabuf alloc total:(%d/%lluKB), top %d user:\n",
+		    total_cnt, total_size, DMABUF_DUMP_TOP_MAX);
+
+	dmabuf_dump(s, "%-35s %-20s %-25s\n",
+		    "debug name", "sum of size(KB)", "count of heap");
+
+	list_for_each_entry_safe(p_count_list, n_count, &fddata->count_list_head, list_node) {
+		dmabuf_dump(s, "%-35s %-20llu %-25u\n",
+			    p_count_list->name?:"NULL",
+			    p_count_list->size,
+			    p_count_list->count);
+		i++;
+		if (i >= DMABUF_DUMP_TOP_MAX)
+			break;
+	}
+	if (s)
+		dmabuf_dump(s, "\n");
+}
+
+static int dmabuf_id_cmp(const struct dma_buf *dmabuf, u64 tab_id, u32 dom_id)
+{
+	int k = 0;
+	struct dmaheap_buf_copy *buf = dmabuf->priv;
+	struct list_head *cache_node;
+	struct iova_cache_data *cache_data;
+	u32 temp_dom_id;
+
+	mutex_lock(&buf->map_lock);
+	list_for_each(cache_node, &buf->iova_caches) {
+		cache_data = list_entry(cache_node, struct iova_cache_data, iova_caches);
+
+		if (cache_data->tab_id != tab_id)
+			continue;
+
+		for (k = 0; k < MTK_M4U_DOM_NR_MAX; k++) {
+			struct iommu_fwspec *fwspec = NULL;
+			struct device *dev = cache_data->dev_info[k].dev;
+
+			if (!dev)
+				continue;
+
+			fwspec = dev_iommu_fwspec_get(dev);
+			if (!fwspec)
+				continue;
+
+			temp_dom_id = MTK_M4U_TO_DOM(fwspec->ids[0]);
+			if (temp_dom_id == dom_id) {
+				mutex_unlock(&buf->map_lock);
+				return 1;
+			}
+		}
+	}
+	mutex_unlock(&buf->map_lock);
+	return 0;
+}
+
+void dmabuf_rbtree_dump_domain(u64 tab_id, u32 dom_id)
+{
+	struct rb_node *tmp_rb;
+	const struct dma_buf *dmabuf;
+	struct dmabuf_debug_node *dbg_node;
+	int total_cnt = 0;
+	u64 size = 0, total_size = 0;
+	struct dump_fd_data *fddata;
+	struct rb_root *rbroot = NULL;
+	struct seq_file *s = NULL;
+
+	fddata = dmabuf_rbtree_add_all(NULL, NULL, -1, 0);
+	if (IS_ERR_OR_NULL(fddata)) {
+		dmabuf_dump(NULL, "[%s]err: no memory fddata\n", __func__);
+		return;
+	}
+	rbroot = &fddata->dmabuf_root;
+	s = fddata->constd.s;
+
+	for (tmp_rb = rb_first(rbroot); tmp_rb; tmp_rb = rb_next(tmp_rb)) {
+		dbg_node = rb_entry(tmp_rb, struct dmabuf_debug_node, dmabuf_node);
+		if (!dbg_node)
+			continue;
+
+		dmabuf = dbg_node->dmabuf;
+
+		if (!dmabuf || !is_dmabuf_from_dma_heap(dmabuf) ||
+		    !dmabuf_id_cmp(dmabuf, tab_id, dom_id))
+			continue;
+
+		spin_lock((spinlock_t *)&dmabuf->name_lock);
+		size = (unsigned long) (dmabuf->size / 1024);
+		dmabuf_count_size(fddata, dmabuf);
+		spin_unlock((spinlock_t *)&dmabuf->name_lock);
+
+		total_size += size;
+		total_cnt += file_count(dmabuf->file) - 1;
+	}
+	dmabuf_count_list_top_dump(fddata, total_size, total_cnt);
+	dmabuf_dbg_rbtree_clear(fddata);
+}
+
+static void dmabuf_rbtree_dump_top(struct dump_fd_data *fddata)
+{
+	struct rb_node *tmp_rb;
+	const struct dma_buf *dmabuf;
+	struct dmabuf_debug_node *dbg_node;
+	struct rb_root *rbroot = &fddata->dmabuf_root;
+	int total_cnt = 0;
+	u64 size = 0, total_size = 0;
+
+	for (tmp_rb = rb_first(rbroot); tmp_rb; tmp_rb = rb_next(tmp_rb)) {
+		dbg_node = rb_entry(tmp_rb, struct dmabuf_debug_node, dmabuf_node);
+		if (!dbg_node)
+			continue;
+
+		dmabuf = dbg_node->dmabuf;
+		if (!dmabuf)
+			continue;
+
+		spin_lock((spinlock_t *)&dmabuf->name_lock);
+		size = (unsigned long) (dmabuf->size / 1024);
+		dmabuf_count_size(fddata, dmabuf);
+		spin_unlock((spinlock_t *)&dmabuf->name_lock);
+
+		total_size += size;
+		total_cnt += file_count(dmabuf->file) - 1;
+	}
+	dmabuf_count_list_top_dump(fddata, total_size, total_cnt);
 }
 
 static void dmabuf_rbtree_dump_egl(struct seq_file *s, int pid)
@@ -1448,6 +1671,10 @@ void dmabuf_rbtree_dump_all(struct dma_heap *heap, unsigned long flag,
 	}
 
 	dmabuf_rbtree_dump_stats(s, fddata->pid_map, TOTAL_PID_CNT, krn_rss);
+
+	if ((flag & HEAP_DUMP_STATISTIC))
+		dmabuf_rbtree_dump_top(fddata);
+
 	if (!(flag & HEAP_DUMP_STATS))
 		dmabuf_rbtree_dump_buf(fddata, flag);
 
@@ -1495,8 +1722,8 @@ void dma_heap_default_show(struct dma_heap *heap,
 pool_dump_done:
 	if (flag & HEAP_DUMP_SKIP_RB_DUMP)
 		goto rb_dump_done;
-
-	dmabuf_dump(s, "\n");
+	if (s)
+		dmabuf_dump(s, "\n");
 	dmabuf_rbtree_dump_all(heap, flag, s, -1);
 
 rb_dump_done:
@@ -1508,21 +1735,14 @@ static void show_help_info(struct dma_heap *heap, struct seq_file *s)
 {
 	int i = 0;
 
-	dmabuf_dump(s, "help info\n");
-
-	dmabuf_dump(s, "\t|- How to use this debug file %s\n",
-		    "https://wiki.mediatek.inc/pages/viewpage.action?pageId=881824213 ");
-
-	dmabuf_dump(s, "\t|- Set debug name for dmabuf: %s\n",
-		    "https://wiki.mediatek.inc/display/WSDOSS3ME18/How+to+set+dmabuf+debug+name ");
-
 	dmabuf_dump(s, "debug cmd:\n");
 	for (i = 0; i < ARRAY_SIZE(heap_helper); i++) {
 		dmabuf_dump(s, "\t|- %s %s\n",
 			    heap_helper[i].str,
 			    *heap_helper[i].flag ? "on" : "off");
 	}
-	dmabuf_dump(s, "\n");
+	if (s)
+		dmabuf_dump(s, "\n");
 }
 
 static void mtk_dmabuf_dump_heap(struct dma_heap *heap,
@@ -1544,9 +1764,10 @@ static void mtk_dmabuf_dump_heap(struct dma_heap *heap,
 		show_help_info(heap, s);
 		dmabuf_sz = get_dma_heap_buffer_total(heap);
 		dmabuf_dump(s, "dmabuf buffer total:%ld KB\n", (dmabuf_sz * 4) / PAGE_SIZE);
-		dmabuf_dump(s, "\t|-normal dma_heap buffer total:%llu KB\n\n",
+		dmabuf_dump(s, "\t|-normal dma_heap buffer total:%llu KB\n",
 			    (atomic64_read(&dma_heap_normal_total) * 4) / PAGE_SIZE);
-
+		if (s)
+			dmabuf_dump(s, "\n");
 		//dump all heaps
 		dmabuf_dump(s, "[heap info] @%llu ms\n",
 			    get_current_time_ms());
@@ -1558,7 +1779,7 @@ static void mtk_dmabuf_dump_heap(struct dma_heap *heap,
 				heap_sz += get_dma_heap_buffer_total(heap);
 			}
 		}
-		dmabuf_dump(s, "\nnon-dma_heap buffer total:%ld KB\n",
+		dmabuf_dump(s, "non-dma_heap buffer total:%ld KB\n",
 			    (dmabuf_sz - heap_sz) * 4 / PAGE_SIZE);
 
 		dma_heap_default_show(NULL, s, flag | HEAP_DUMP_HEAP_SKIP_POOL);
@@ -1575,7 +1796,7 @@ static struct mtk_heap_priv_info default_heap_priv = {
 /* dump all heaps */
 static inline void mtk_dmabuf_dump_all(struct seq_file *s, int flag)
 {
-	return mtk_dmabuf_dump_heap(NULL, s, flag);
+	return mtk_dmabuf_dump_heap(NULL, s, flag | HEAP_DUMP_STATISTIC);
 }
 
 static void mtk_dmabuf_stats_show(struct seq_file *s, int flag)
@@ -2008,7 +2229,7 @@ static int dma_heap_oom_notify(struct notifier_block *nb,
 		return 0;
 	}
 
-	mtk_dmabuf_dump_all(NULL, HEAP_DUMP_OOM);
+	mtk_dmabuf_dump_all(NULL, HEAP_DUMP_OOM | HEAP_DUMP_STATISTIC | HEAP_DUMP_STATS);
 
 	last_oom_time = oom_time;
 
@@ -2052,6 +2273,8 @@ static int __init mtk_dma_heap_debug(void)
 	}
 #endif
 
+	dmabuf_rbtree_dump_by_domain = dmabuf_rbtree_dump_domain;
+
 	egl_pid_map = kzalloc(sizeof(*egl_pid_map) * TOTAL_PID_CNT, GFP_KERNEL);
 	if (!egl_pid_map)
 		pr_info("%s create egl_pid_map fail\n", __func__);
@@ -2080,6 +2303,7 @@ static void __exit mtk_dma_heap_debug_exit(void)
 	}
 
 #endif
+	dmabuf_rbtree_dump_by_domain = NULL;
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	heap_monitor_exit();
