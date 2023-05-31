@@ -185,11 +185,12 @@ static const struct mtk_gate_regs perao2_cg_regs = {
 		.id = _id,						\
 		.name = _name,						\
 		.parent_name = _parent,					\
-		.hwv_comp = "hw-voter-regmap",					\
+		.hwv_comp = "hw-voter-regmap",				\
 		.regs = &perao0_cg_regs,			\
 		.hwv_regs = &perao0_hwv_regs,		\
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_ops_hwv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr,			\
 		.flags = CLK_USE_HW_VOTER,				\
 	}
 

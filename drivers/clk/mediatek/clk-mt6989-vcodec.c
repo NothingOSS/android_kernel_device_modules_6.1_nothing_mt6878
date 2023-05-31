@@ -168,6 +168,12 @@ static const struct mtk_gate_regs ven1_cg_regs = {
 	.sta_ofs = 0x0,
 };
 
+static const struct mtk_gate_regs ven1_hwv_regs = {
+	.set_ofs = 0x0088,
+	.clr_ofs = 0x008C,
+	.sta_ofs = 0x1C44,
+};
+
 #define GATE_VEN1(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -177,10 +183,23 @@ static const struct mtk_gate_regs ven1_cg_regs = {
 		.ops = &mtk_clk_gate_ops_setclr_inv,	\
 	}
 
+#define GATE_HWV_VEN1(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &ven1_cg_regs,			\
+		.hwv_regs = &ven1_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv_inv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
+		.flags = CLK_USE_HW_VOTER | CLK_EN_MM_INFRA_PWR,	\
+	}
+
 static const struct mtk_gate ven1_clks[] = {
-	GATE_VEN1(CLK_VEN1_CKE0_LARB, "ven1_larb",
+	GATE_HWV_VEN1(CLK_VEN1_CKE0_LARB, "ven1_larb",
 			"venc_ck"/* parent */, 0),
-	GATE_VEN1(CLK_VEN1_CKE1_VENC, "ven1_venc",
+	GATE_HWV_VEN1(CLK_VEN1_CKE1_VENC, "ven1_venc",
 			"venc_ck"/* parent */, 4),
 	GATE_VEN1(CLK_VEN1_CKE2_JPGENC, "ven1_jpgenc",
 			"venc_ck"/* parent */, 8),
@@ -205,6 +224,12 @@ static const struct mtk_gate_regs ven2_cg_regs = {
 	.sta_ofs = 0x0,
 };
 
+static const struct mtk_gate_regs ven2_hwv_regs = {
+	.set_ofs = 0x0090,
+	.clr_ofs = 0x0094,
+	.sta_ofs = 0x1C48,
+};
+
 #define GATE_VEN2(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -214,10 +239,23 @@ static const struct mtk_gate_regs ven2_cg_regs = {
 		.ops = &mtk_clk_gate_ops_setclr_inv,	\
 	}
 
+#define GATE_HWV_VEN2(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &ven2_cg_regs,			\
+		.hwv_regs = &ven2_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv_inv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
+		.flags = CLK_USE_HW_VOTER | CLK_EN_MM_INFRA_PWR,	\
+	}
+
 static const struct mtk_gate ven2_clks[] = {
-	GATE_VEN2(CLK_VEN2_CKE0_LARB, "ven2_larb",
+	GATE_HWV_VEN2(CLK_VEN2_CKE0_LARB, "ven2_larb",
 			"venc_ck"/* parent */, 0),
-	GATE_VEN2(CLK_VEN2_CKE1_VENC, "ven2_venc",
+	GATE_HWV_VEN2(CLK_VEN2_CKE1_VENC, "ven2_venc",
 			"venc_ck"/* parent */, 4),
 	GATE_VEN2(CLK_VEN2_CKE2_JPGENC, "ven2_jpgenc",
 			"venc_ck"/* parent */, 8),
@@ -240,6 +278,12 @@ static const struct mtk_gate_regs ven_c2_cg_regs = {
 	.sta_ofs = 0x0,
 };
 
+static const struct mtk_gate_regs ven_c2_hwv_regs = {
+	.set_ofs = 0x0098,
+	.clr_ofs = 0x009C,
+	.sta_ofs = 0x1C4C,
+};
+
 #define GATE_VEN_C2(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -249,10 +293,23 @@ static const struct mtk_gate_regs ven_c2_cg_regs = {
 		.ops = &mtk_clk_gate_ops_setclr_inv,	\
 	}
 
+#define GATE_HWV_VEN_C2(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &ven_c2_cg_regs,			\
+		.hwv_regs = &ven_c2_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv_inv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
+		.flags = CLK_USE_HW_VOTER | CLK_EN_MM_INFRA_PWR,	\
+	}
+
 static const struct mtk_gate ven_c2_clks[] = {
-	GATE_VEN_C2(CLK_VEN_C2_CKE0_LARB, "ven_c2_larb",
+	GATE_HWV_VEN_C2(CLK_VEN_C2_CKE0_LARB, "ven_c2_larb",
 			"venc_ck"/* parent */, 0),
-	GATE_VEN_C2(CLK_VEN_C2_CKE1_VENC, "ven_c2_venc",
+	GATE_HWV_VEN_C2(CLK_VEN_C2_CKE1_VENC, "ven_c2_venc",
 			"venc_ck"/* parent */, 4),
 	GATE_VEN_C2(CLK_VEN_C2_CKE2_JPGENC, "ven_c2_jpgenc",
 			"venc_ck"/* parent */, 8),

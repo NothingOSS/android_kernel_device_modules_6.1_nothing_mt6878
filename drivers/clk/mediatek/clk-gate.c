@@ -22,7 +22,7 @@ static bool is_registered;
 static int mtk_cg_bit_is_cleared(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
-	u32 val;
+	u32 val = 0;
 
 	if (!is_registered)
 		return 0;
@@ -37,7 +37,7 @@ static int mtk_cg_bit_is_cleared(struct clk_hw *hw)
 static int mtk_cg_bit_is_set(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
-	u32 val;
+	u32 val = 0;
 
 	if (!is_registered)
 		return 0;
@@ -130,7 +130,7 @@ static void mtk_cg_disable_unused_inv(struct clk_hw *hw)
 static int mtk_cg_is_set_hwv(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
-	u32 val;
+	u32 val = 0;
 
 	if (!is_registered)
 		return 0;
@@ -145,7 +145,7 @@ static int mtk_cg_is_set_hwv(struct clk_hw *hw)
 static int mtk_cg_is_done_hwv(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
-	u32 val;
+	u32 val = 0;
 
 	regmap_read(cg->hwv_regmap, cg->hwv_sta_ofs, &val);
 
@@ -442,7 +442,13 @@ struct clk *mtk_clk_register_gate_hwv(
 	init.flags = gate->flags | CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE;
 	init.parent_names = gate->parent_name ? &gate->parent_name : NULL;
 	init.num_parents = gate->parent_name ? 1 : 0;
-	init.ops = gate->ops;
+	if (gate->flags & CLK_USE_HW_VOTER) {
+		if (hwv_regmap)
+			init.ops = gate->ops;
+		else
+			init.ops = gate->dma_ops;
+	} else
+		init.ops = gate->ops;
 
 	cg->regmap = regmap;
 	cg->hwv_regmap = hwv_regmap;
@@ -486,7 +492,10 @@ struct clk *mtk_clk_register_gate(
 	init.flags = gate->flags | CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE;
 	init.parent_names = gate->parent_name ? &gate->parent_name : NULL;
 	init.num_parents = gate->parent_name ? 1 : 0;
-	init.ops = gate->ops;
+	if (gate->flags & CLK_USE_HW_VOTER)
+		init.ops = gate->dma_ops;
+	else
+		init.ops = gate->ops;
 
 	cg->regmap = regmap;
 	cg->set_ofs = gate->regs->set_ofs;

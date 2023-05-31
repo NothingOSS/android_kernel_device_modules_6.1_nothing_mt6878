@@ -65,13 +65,22 @@ static const struct mtk_gate_regs mdp12_cg_regs = {
 		.ops = &mtk_clk_gate_ops_setclr,	\
 	}
 
+#define GATE_MDP10_DUMMY(_id, _name, _parent, _shift) {	\
+		.id = _id,				\
+		.name = _name,				\
+		.parent_name = _parent,			\
+		.regs = &mdp10_cg_regs,			\
+		.shift = _shift,			\
+		.ops = &mtk_clk_gate_ops_setclr_dummy,	\
+	}
+
 static const struct mtk_gate mdp1_clks[] = {
 	/* MDP10 */
 	GATE_MDP10(CLK_MDP1_MDP_MUTEX0, "mdp1_mdp_mutex0",
 			"mdp_ck"/* parent */, 0),
 	GATE_MDP10(CLK_MDP1_APB_BUS, "mdp1_apb_bus",
 			"mdp_ck"/* parent */, 1),
-	GATE_MDP10(CLK_MDP1_SMI0, "mdp1_smi0",
+	GATE_MDP10_DUMMY(CLK_MDP1_SMI0, "mdp1_smi0",
 			"mdp_ck"/* parent */, 2),
 	GATE_MDP10(CLK_MDP1_MDP_RDMA0, "mdp1_mdp_rdma0",
 			"mdp_ck"/* parent */, 3),
@@ -176,6 +185,12 @@ static const struct mtk_gate_regs mdp0_cg_regs = {
 	.sta_ofs = 0x100,
 };
 
+static const struct mtk_gate_regs mdp0_hwv_regs = {
+	.set_ofs = 0x0048,
+	.clr_ofs = 0x004C,
+	.sta_ofs = 0x1C24,
+};
+
 static const struct mtk_gate_regs mdp1_cg_regs = {
 	.set_ofs = 0x114,
 	.clr_ofs = 0x118,
@@ -195,6 +210,19 @@ static const struct mtk_gate_regs mdp2_cg_regs = {
 		.regs = &mdp0_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_gate_ops_setclr,	\
+	}
+
+#define GATE_HWV_MDP0(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &mdp0_cg_regs,			\
+		.hwv_regs = &mdp0_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr,			\
+		.flags = CLK_USE_HW_VOTER | CLK_EN_MM_INFRA_PWR,	\
 	}
 
 #define GATE_MDP1(_id, _name, _parent, _shift) {	\
@@ -221,7 +249,7 @@ static const struct mtk_gate mdp_clks[] = {
 			"mdp_ck"/* parent */, 0),
 	GATE_MDP0(CLK_MDP_APB_BUS, "mdp_apb_bus",
 			"mdp_ck"/* parent */, 1),
-	GATE_MDP0(CLK_MDP_SMI0, "mdp_smi0",
+	GATE_HWV_MDP0(CLK_MDP_SMI0, "mdp_smi0",
 			"mdp_ck"/* parent */, 2),
 	GATE_MDP0(CLK_MDP_RDMA0, "mdp_rdma0",
 			"mdp_ck"/* parent */, 3),

@@ -43,6 +43,7 @@ struct mtk_mux {
 	u8 chk_shift;
 
 	const struct clk_ops *ops;
+	const struct clk_ops *dma_ops;
 
 	signed char num_parents;
 };
@@ -184,6 +185,16 @@ extern const struct clk_ops mtk_hwv_dfs_mux_ops;
 			_mux_ofs, _mux_set_ofs, _mux_clr_ofs, _shift,	\
 			_width, _upd_ofs, _upd, _chk_ofs, _chk, 0)
 
+#define MUX_GATE_CLR_SET_UPD_FLAGS_2_CHK(_id, _name, _parents,		\
+			_mux_ofs, _mux_set_ofs, _mux_clr_ofs,		\
+			_shift, _width, _gate, _upd_ofs, _upd,		\
+			_chk_ofs, _chk, _flags)			\
+		GATE_CLR_SET_UPD_CHK_FLAGS(_id, _name, _parents,		\
+			_mux_ofs, _mux_set_ofs, _mux_clr_ofs,		\
+			_shift, _width, _gate, _upd_ofs, _upd,		\
+			_chk_ofs, _chk, _flags,				\
+			mtk_mux_gate_clr_set_upd_2_ops)
+
 #define MUX_MULT_HWV_FLAGS(_id, _name, _parents, _mux_ofs,		\
 			_mux_set_ofs, _mux_clr_ofs, _hwv_comp,	\
 			_hwv_sta_ofs, _hwv_set_ofs, _hwv_clr_ofs,	\
@@ -209,6 +220,7 @@ extern const struct clk_ops mtk_hwv_dfs_mux_ops;
 		.num_parents = ARRAY_SIZE(_parents),			\
 		.flags =  CLK_USE_HW_VOTER | _flags,	\
 		.ops = &mtk_hwv_mux_ops,				\
+		.dma_ops = &mtk_mux_gate_clr_set_upd_ops,		\
 	}
 
 #define MUX_MULT_HWV(_id, _name, _parents, _mux_ofs,			\
@@ -266,6 +278,7 @@ extern const struct clk_ops mtk_hwv_dfs_mux_ops;
 		.num_parents = ARRAY_SIZE(_parents),			\
 		.flags =  CLK_USE_HW_VOTER | _flags,			\
 		.ops = &mtk_hwv_dfs_mux_ops,				\
+		.dma_ops = &mtk_mux_gate_clr_set_upd_ops,		\
 	}
 
 #define MUX_MULT_DFS_HWV(_id, _name, _parents, _mux_ofs,		\
@@ -303,6 +316,7 @@ extern const struct clk_ops mtk_hwv_dfs_mux_ops;
 		.num_parents = ARRAY_SIZE(_parents),			\
 		.flags = CLK_USE_HW_VOTER | _flags,			\
 		.ops = &mtk_ipi_mux_ops,				\
+		.dma_ops = &mtk_mux_gate_clr_set_upd_ops,		\
 	}
 
 #define MUX_IPI(_id, _name, _parents, _mux_ofs,		\

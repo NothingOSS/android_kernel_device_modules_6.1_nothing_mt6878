@@ -801,6 +801,8 @@ unsigned int pd_list[] = {
 	MT6989_CHK_PD_AUDIO,
 	MT6989_CHK_PD_ADSP_TOP,
 	MT6989_CHK_PD_ADSP_AO,
+	MT6989_CHK_PD_MM_INFRA,
+	MT6989_CHK_PD_SSRSYS,
 	MT6989_CHK_PD_ISP_TRAW,
 	MT6989_CHK_PD_ISP_DIP1,
 	MT6989_CHK_PD_ISP_MAIN,
@@ -827,10 +829,8 @@ unsigned int pd_list[] = {
 	MT6989_CHK_PD_DIS1,
 	MT6989_CHK_PD_OVL0,
 	MT6989_CHK_PD_OVL1,
-	MT6989_CHK_PD_MM_INFRA,
 	MT6989_CHK_PD_DP_TX,
 	MT6989_CHK_PD_CSI_RX,
-	MT6989_CHK_PD_SSRSYS,
 };
 
 static bool is_in_pd_list(unsigned int id)
@@ -861,11 +861,9 @@ static enum chk_sys_id debug_dump_id[] = {
 	mfgsc1_ao,
 	vlpcfg,
 	vlp_ck,
-	cci,
-	cpu_ll,
-	cpu_bl,
-	cpu_b,
-	ptp,
+	hfrp_2_bus,
+	hfrp,
+	hfrp_1_bus,
 	hwv,
 	hwv_ext,
 	chk_sys_num,
@@ -873,10 +871,13 @@ static enum chk_sys_id debug_dump_id[] = {
 
 static void debug_dump(unsigned int id, unsigned int pwr_sta)
 {
+	const struct fmeter_clk *fclks;
 	int i, parent_id = PD_NULL;
 
 	if (id >= MT6989_CHK_PD_NUM)
 		return;
+
+	fclks = mt_get_fmeter_clks();
 
 	release_mt6989_hwv_secure();
 
@@ -901,6 +902,11 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 	}
 
 	dump_power_event();
+	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
+		if (fclks->type != VLPCK && fclks->type != SUBSYS)
+			pr_notice("[%s] %d khz\n", fclks->name,
+				mt_get_fmeter_freq(fclks->id, fclks->type));
+	}
 
 	BUG_ON(1);
 }
@@ -932,6 +938,8 @@ static struct pd_sta pd_pwr_sta[] = {
 	{MT6989_CHK_PD_AUDIO, spm, 0x0E2C, GENMASK(31, 30)},
 	{MT6989_CHK_PD_ADSP_TOP, spm, 0x0E34, GENMASK(31, 30)},
 	{MT6989_CHK_PD_ADSP_AO, spm, 0x0E3C, GENMASK(31, 30)},
+	{MT6989_CHK_PD_MM_INFRA, spm, 0x0EA8, GENMASK(31, 30)},
+	{MT6989_CHK_PD_SSRSYS, spm, 0x0EF8, GENMASK(31, 30)},
 	{MT6989_CHK_PD_ISP_TRAW, spm, 0x0E40, GENMASK(31, 30)},
 	{MT6989_CHK_PD_ISP_DIP1, spm, 0x0E44, GENMASK(31, 30)},
 	{MT6989_CHK_PD_ISP_MAIN, spm, 0x0E48, GENMASK(31, 30)},
@@ -958,10 +966,8 @@ static struct pd_sta pd_pwr_sta[] = {
 	{MT6989_CHK_PD_DIS1, spm, 0x0E9C, GENMASK(31, 30)},
 	{MT6989_CHK_PD_OVL0, spm, 0x0EA0, GENMASK(31, 30)},
 	{MT6989_CHK_PD_OVL1, spm, 0x0EA4, GENMASK(31, 30)},
-	{MT6989_CHK_PD_MM_INFRA, spm, 0x0EA8, GENMASK(31, 30)},
 	{MT6989_CHK_PD_DP_TX, spm, 0x0EB0, GENMASK(31, 30)},
-	{MT6989_CHK_PD_CSI_RX, spm, 0x0EF4, GENMASK(31, 30)},
-	{MT6989_CHK_PD_SSRSYS, spm, 0x0EF8, GENMASK(31, 30)},
+	{MT6989_CHK_PD_CSI_RX, spm, 0x0EB4, GENMASK(31, 30)},
 };
 
 static u32 get_pd_pwr_status(int pd_id)
@@ -987,6 +993,8 @@ static u32 get_pd_pwr_status(int pd_id)
 
 static int off_mtcmos_id[] = {
 	MT6989_CHK_PD_ADSP_AO,
+	MT6989_CHK_PD_MM_INFRA,
+	MT6989_CHK_PD_SSRSYS,
 	MT6989_CHK_PD_ISP_TRAW,
 	MT6989_CHK_PD_ISP_DIP1,
 	MT6989_CHK_PD_ISP_MAIN,
@@ -1013,23 +1021,21 @@ static int off_mtcmos_id[] = {
 	MT6989_CHK_PD_DIS1,
 	MT6989_CHK_PD_OVL0,
 	MT6989_CHK_PD_OVL1,
-	MT6989_CHK_PD_MM_INFRA,
 	MT6989_CHK_PD_DP_TX,
 	MT6989_CHK_PD_CSI_RX,
-	MT6989_CHK_PD_SSRSYS,
 	PD_NULL,
 };
 
 static int notice_mtcmos_id[] = {
 	MT6989_CHK_PD_MD1,
 	MT6989_CHK_PD_CONN,
-	MT6989_CHK_PD_AUDIO,
-	MT6989_CHK_PD_ADSP_TOP,
 	MT6989_CHK_PD_PEXTP_MAC0,
 	MT6989_CHK_PD_PEXTP_MAC1,
 	MT6989_CHK_PD_PEXTP_PHY0,
 	MT6989_CHK_PD_PEXTP_PHY1,
 	MT6989_CHK_PD_PERI_USB0,
+	MT6989_CHK_PD_AUDIO,
+	MT6989_CHK_PD_ADSP_TOP,
 	PD_NULL,
 };
 

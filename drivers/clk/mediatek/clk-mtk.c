@@ -75,28 +75,6 @@ struct ipi_callbacks *mtk_clk_get_ipi_cb(void)
 }
 EXPORT_SYMBOL_GPL(mtk_clk_get_ipi_cb);
 
-struct device *mtk_find_device_by_phandle(struct device_node *node, const char *ph_prop)
-{
-	struct device_node *hwv_node = NULL;
-	struct platform_device *hwv_pdev = NULL;
-	phandle ph = 0;
-
-	if (ph_prop) {
-		of_property_read_u32_index(node, ph_prop, 0, &ph);
-		hwv_node = of_find_node_by_phandle(ph);
-		if (hwv_node) {
-			hwv_pdev = of_find_device_by_node(hwv_node);
-			if (hwv_pdev) {
-				pr_notice("get hwv dev: %s\n", dev_name(&hwv_pdev->dev));
-				return &hwv_pdev->dev;
-			}
-		}
-	}
-
-	return NULL;
-}
-EXPORT_SYMBOL_GPL(mtk_find_device_by_phandle);
-
 static int mtk_mminfra_hwv_is_enable_done(struct mtk_hwv_domain *hwvd)
 {
 	u32 val = 0;
@@ -293,7 +271,7 @@ int mtk_clk_register_gates_with_dev(struct device_node *node,
 	}
 
 	hw_voter_regmap = syscon_regmap_lookup_by_phandle(node, "hw-voter-regmap");
-	if (IS_ERR(hw_voter_regmap))
+	if (IS_ERR_OR_NULL(hw_voter_regmap))
 		hw_voter_regmap = NULL;
 
 	for (i = 0; i < num; i++) {
@@ -307,9 +285,8 @@ int mtk_clk_register_gates_with_dev(struct device_node *node,
 					gate->hwv_comp);
 			if (IS_ERR(hwv_mult_regmap))
 				hwv_mult_regmap = NULL;
-		}
-		if (hwv_mult_regmap)
 			hw_voter_regmap = hwv_mult_regmap;
+		}
 
 		if (hw_voter_regmap && gate->flags & CLK_USE_HW_VOTER)
 			clk = mtk_clk_register_gate_hwv(gate,

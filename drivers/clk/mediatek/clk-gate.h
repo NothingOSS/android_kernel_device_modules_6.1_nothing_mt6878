@@ -41,6 +41,7 @@ struct mtk_gate {
 	const struct mtk_gate_regs *hwv_regs;
 	int shift;
 	const struct clk_ops *ops;
+	const struct clk_ops *dma_ops;
 	unsigned long flags;
 };
 

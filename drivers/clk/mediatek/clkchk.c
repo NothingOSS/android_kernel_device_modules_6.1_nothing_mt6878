@@ -43,7 +43,7 @@ void __attribute__((weak)) clkchk_set_cfg(void)
 static const struct clkchk_ops *clkchk_ops;
 static struct provider_clk clkchk_pvd_clks[MAX_CLK_NUM], clkdbg_pvd_clks[MAX_CLK_NUM];
 static struct notifier_block mtk_clkchk_notifier;
-static int hwv_irq;
+static int hwv_irq, hfrp_hwv_irq;
 
 void set_clkchk_ops(const struct clkchk_ops *ops)
 {
@@ -756,12 +756,22 @@ static void clkchk_check_hwv_irq_sta(void)
 	clkchk_ops->check_hwv_irq_sta();
 }
 
+static void clkchk_check_mm_hwv_irq_sta(void)
+{
+	if (clkchk_ops == NULL || clkchk_ops->check_mm_hwv_irq_sta == NULL)
+		return;
+
+	clkchk_ops->check_mm_hwv_irq_sta();
+}
+
 static irqreturn_t clkchk_hwv_irq_handler(int irq, void *dev_id)
 {
 	disable_irq_nosync(irq);
 
 	if (likely(irq == hwv_irq))
 		clkchk_check_hwv_irq_sta();
+	if (likely(irq == hfrp_hwv_irq))
+		clkchk_check_mm_hwv_irq_sta();
 
 	return IRQ_HANDLED;
 }
@@ -784,6 +794,23 @@ void clkchk_hwv_irq_init(struct platform_device *pdev)
 			if (ret < 0)
 				pr_notice("[clkchk]hwv wake fail:%d,%d\n",
 					hwv_irq, ret);
+		}
+	}
+
+	hfrp_hwv_irq = platform_get_irq_byname(pdev, "hfrp_hwv_irq");
+	if (hfrp_hwv_irq < 0) {
+		pr_notice("[clkchk] get hfrp hwv irq is not support\n");
+	} else {
+		ret = request_irq(hfrp_hwv_irq, clkchk_hwv_irq_handler,
+			IRQF_TRIGGER_NONE, "HFRP HWV IRQ", NULL);
+		if (ret < 0) {
+			pr_notice("[clkchk]hfrp hwv require irq fail %d %d\n",
+				hfrp_hwv_irq, ret);
+		} else {
+			ret = enable_irq_wake(hfrp_hwv_irq);
+			if (ret < 0)
+				pr_notice("[clkchk]hfrp hwv wake fail:%d,%d\n",
+					hfrp_hwv_irq, ret);
 		}
 	}
 }

@@ -416,7 +416,7 @@ static int mtk_clk_hwv_mux_set_parent(struct clk_hw *hw, u8 index)
 	if (mux->flags & CLK_EN_MM_INFRA_PWR)
 		mtk_clk_mminfra_hwv_power_ctrl(true);
 
-	mask = GENMASK(mux->data->mux_width - 1, 0) << mux->data->mux_shift;
+	mask = GENMASK(6, 0) << mux->data->mux_shift;
 	opp_mask = GENMASK(index, 0) << mux->data->mux_shift;
 
 	regmap_read(mux->hwv_regmap, mux->data->hwv_set_ofs, &orig);
@@ -622,7 +622,13 @@ static struct clk *mtk_clk_register_mux(const struct mtk_mux *mux,
 	init.flags = mux->flags;
 	init.parent_names = mux->parent_names;
 	init.num_parents = mux->num_parents;
-	init.ops = mux->ops;
+	if (mux->flags & CLK_USE_HW_VOTER) {
+		if (hw_voter_regmap)
+			init.ops = mux->ops;
+		else
+			init.ops = mux->dma_ops;
+	} else
+		init.ops = mux->ops;
 
 	clk_mux->regmap = regmap;
 	clk_mux->hwv_regmap = hw_voter_regmap;
@@ -671,9 +677,8 @@ int mtk_clk_register_muxes(const struct mtk_mux *muxes,
 						mux->hwv_comp);
 				if (IS_ERR(hwv_mult_regmap))
 					hwv_mult_regmap = NULL;
-			}
-			if (hwv_mult_regmap)
 				hw_voter_regmap = hwv_mult_regmap;
+			}
 
 			clk = mtk_clk_register_mux(mux, regmap, hw_voter_regmap, lock);
 

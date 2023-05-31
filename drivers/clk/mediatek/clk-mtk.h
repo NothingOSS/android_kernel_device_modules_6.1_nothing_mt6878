@@ -15,9 +15,9 @@
 #include <soc/mediatek/mmdvfs_v3.h>
 
 /* hw voter timeout configures */
-#define MTK_WAIT_HWV_PREPARE_CNT	200
+#define MTK_WAIT_HWV_PREPARE_CNT	100000
 #define MTK_WAIT_HWV_PREPARE_US		1
-#define MTK_WAIT_HWV_DONE_CNT		500
+#define MTK_WAIT_HWV_DONE_CNT		100000
 #define MTK_WAIT_HWV_DONE_US		1
 #define MTK_WAIT_HWV_STA_CNT		100
 #define MTK_HWV_ID_OFS			(0x8)
@@ -359,9 +359,8 @@ extern struct ipi_callbacks *mtk_clk_get_ipi_cb(void);
 extern int mtk_hwv_pll_on(struct clk_hw *hw);
 extern void mtk_hwv_pll_off(struct clk_hw *hw);
 extern bool mtk_hwv_pll_is_on(struct clk_hw *hw);
-struct device *mtk_find_device_by_phandle(struct device_node *node, const char *ph_prop);
 /* enable/disable mminfra pwr for mm hw voter */
-int mtk_clk_mminfra_hwv_power_ctrl(bool onoff);
+extern int mtk_clk_mminfra_hwv_power_ctrl(bool onoff);
 int mtk_clk_register_mminfra_hwv_data(const struct mtk_hwv_data *data,
 			struct regmap *regmap, struct device *dev);
 

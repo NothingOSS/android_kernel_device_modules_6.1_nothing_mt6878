@@ -1351,13 +1351,13 @@ static struct regbase rb[] = {
 	[bcrm_ssr_bus] = REGBASE_V(0x1070E000, bcrm_ssr_bus, PD_NULL, CLK_NULL),
 	[perao] = REGBASE_V(0x11036000, perao, PD_NULL, CLK_NULL),
 	[afe] = REGBASE_V(0x11050000, afe, MT6989_CHK_PD_AUDIO, CLK_NULL),
-	[impc] = REGBASE_V(0x11284000, impc, PD_NULL, CLK_NULL),
+	[impc] = REGBASE_V(0x11284000, impc, PD_NULL, "i2c_sel"),
 	[ufsao] = REGBASE_V(0x112b8000, ufsao, PD_NULL, CLK_NULL),
 	[ufspdn] = REGBASE_V(0x112bb000, ufspdn, PD_NULL, CLK_NULL),
 	[pext] = REGBASE_V(0x112e0000, pext, PD_NULL, CLK_NULL),
-	[imps] = REGBASE_V(0x11D04000, imps, PD_NULL, CLK_NULL),
-	[impes] = REGBASE_V(0x11D24000, impes, PD_NULL, CLK_NULL),
-	[impn] = REGBASE_V(0x11F02000, impn, PD_NULL, CLK_NULL),
+	[imps] = REGBASE_V(0x11D04000, imps, PD_NULL, "i2c_sel"),
+	[impes] = REGBASE_V(0x11D24000, impes, PD_NULL, "i2c_sel"),
+	[impn] = REGBASE_V(0x11F02000, impn, PD_NULL, "i2c_sel"),
 	[gpu_eb_rpc] = REGBASE_V(0x13F91000, gpu_eb_rpc, PD_NULL, CLK_NULL),
 	[mfg_ao] = REGBASE_V(0x13fa0000, mfg_ao, PD_NULL, CLK_NULL),
 	[mfgsc0_ao] = REGBASE_V(0x13fa0400, mfgsc0_ao, PD_NULL, CLK_NULL),
@@ -1387,6 +1387,9 @@ static struct regbase rb[] = {
 	[scp] = REGBASE_V(0x1CB21000, scp, PD_NULL, CLK_NULL),
 	[scp_iic] = REGBASE_V(0x1CBB8000, scp_iic, PD_NULL, CLK_NULL),
 	[scp_fast_iic] = REGBASE_V(0x1CBE1000, scp_fast_iic, PD_NULL, CLK_NULL),
+	[hfrp_2_bus] = REGBASE_V(0x1EC24000, hfrp_2_bus, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
+	[hfrp] = REGBASE_V(0x1EC3E000, hfrp, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
+	[hfrp_1_bus] = REGBASE_V(0x1ECA5000, hfrp_1_bus, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	[cam_m] = REGBASE_V(0x1a000000, cam_m, MT6989_CHK_PD_CAM_MAIN, CLK_NULL),
 	[camsys_rmsa] = REGBASE_V(0x1a04e000, camsys_rmsa, MT6989_CHK_PD_CAM_SUBA, CLK_NULL),
 	[cam_ra] = REGBASE_V(0x1a04f000, cam_ra, MT6989_CHK_PD_CAM_SUBA, CLK_NULL),
@@ -1415,6 +1418,8 @@ static struct regbase rb[] = {
 	[hwv] = REGBASE_V(0x10320000, hwv, PD_NULL, CLK_NULL),
 	[hwv_ext] = REGBASE_V(0x10321000, hwv_ext, PD_NULL, CLK_NULL),
 	[hwv_wrt] = REGBASE_V(0x10321000, hwv_wrt, PD_NULL, CLK_NULL),
+	[mm_hwv] = REGBASE_V(0x1EC3A000, hwv, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
+	[mm_hwv_ext] = REGBASE_V(0x1EC3B000, mm_hwv_ext, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	{},
 };
 
@@ -1727,6 +1732,50 @@ static struct regname rn[] = {
 	REGNAME(scp_iic, 0xE10, CCU_CLOCK_CG_CEN),
 	/* SCP_FAST_IIC register */
 	REGNAME(scp_fast_iic, 0xE10, CCU_CLOCK_CG_CEN),
+	/* HFRP_2_BUS register */
+	REGNAME(hfrp_2_bus, 0x8, HFRP_CFGREG_SLP_PROTECT_EN),
+	REGNAME(hfrp_2_bus, 0xC, HFRP_CFGREG_SLP_PROTECT_RDY_STA),
+	/* HFRP register */
+	REGNAME(hfrp, 0xE40, ISP_TRAW_PWR_CON),
+	REGNAME(hfrp, 0xE44, ISP_DIP1_PWR_CON),
+	REGNAME(hfrp, 0xE48, ISP_MAIN_PWR_CON),
+	REGNAME(hfrp, 0xE4C, ISP_VCORE_PWR_CON),
+	REGNAME(hfrp, 0xE50, VDE0_PWR_CON),
+	REGNAME(hfrp, 0xE54, VDE1_PWR_CON),
+	REGNAME(hfrp, 0xE58, VDE_VCORE0_PWR_CON),
+	REGNAME(hfrp, 0xE5C, VDE_VCORE1_PWR_CON),
+	REGNAME(hfrp, 0xE60, VEN0_PWR_CON),
+	REGNAME(hfrp, 0xE64, VEN1_PWR_CON),
+	REGNAME(hfrp, 0xE68, VEN2_PWR_CON),
+	REGNAME(hfrp, 0xE6C, CAM_MRAW_PWR_CON),
+	REGNAME(hfrp, 0xE70, CAM_SUBA_PWR_CON),
+	REGNAME(hfrp, 0xE74, CAM_SUBB_PWR_CON),
+	REGNAME(hfrp, 0xE78, CAM_SUBC_PWR_CON),
+	REGNAME(hfrp, 0xE7C, CAM_MAIN_PWR_CON),
+	REGNAME(hfrp, 0xE80, CAM_VCORE_PWR_CON),
+	REGNAME(hfrp, 0xE84, CAM_CCU_PWR_CON),
+	REGNAME(hfrp, 0xE88, CAM_CCU_AO_PWR_CON),
+	REGNAME(hfrp, 0xE8C, DISP_VCORE_PWR_CON),
+	REGNAME(hfrp, 0xE90, MML0_PWR_CON),
+	REGNAME(hfrp, 0xE94, MML1_PWR_CON),
+	REGNAME(hfrp, 0xE98, DIS0_PWR_CON),
+	REGNAME(hfrp, 0xE9C, DIS1_PWR_CON),
+	REGNAME(hfrp, 0xEA0, OVL0_PWR_CON),
+	REGNAME(hfrp, 0xEA4, OVL1_PWR_CON),
+	REGNAME(hfrp, 0xEA8, MM_INFRA_PWR_CON),
+	REGNAME(hfrp, 0xEB0, DP_TX_PWR_CON),
+	REGNAME(hfrp, 0xEB4, CSI_RX_PWR_CON),
+	/* HFRP_1_BUS register */
+	REGNAME(hfrp_1_bus, 0x460, HFRP_MMSYS_PROTECT_EN_4),
+	REGNAME(hfrp_1_bus, 0x480, HFRP_MMSYS_PROTECT_RDY_STA_4),
+	REGNAME(hfrp_1_bus, 0x458, HFRP_MMSYS_PROTECT_EN_2),
+	REGNAME(hfrp_1_bus, 0x478, HFRP_MMSYS_PROTECT_RDY_STA_2),
+	REGNAME(hfrp_1_bus, 0x450, HFRP_MMSYS_PROTECT_EN_0),
+	REGNAME(hfrp_1_bus, 0x470, HFRP_MMSYS_PROTECT_RDY_STA_0),
+	REGNAME(hfrp_1_bus, 0x454, HFRP_MMSYS_PROTECT_EN_1),
+	REGNAME(hfrp_1_bus, 0x474, HFRP_MMSYS_PROTECT_RDY_STA_1),
+	REGNAME(hfrp_1_bus, 0x45C, HFRP_MMSYS_PROTECT_EN_3),
+	REGNAME(hfrp_1_bus, 0x47C, HFRP_MMSYS_PROTECT_RDY_STA_3),
 	/* CAMSYS_MAIN register */
 	REGNAME(cam_m, 0x0, CAM_MAIN_CG_0),
 	REGNAME(cam_m, 0x4C, CAM_MAIN_CG_1),
@@ -1868,6 +1917,76 @@ static struct regname rn[] = {
 	REGNAME(hwv_ext, 0x40c, HW_CCF_PLL_DONE),
 	/* HWV register */
 	REGNAME(hwv_wrt, 0x55c, HWV_DOMAIN_KEY),
+	/* HWV register */
+	REGNAME(mm_hwv, 0xf90, HW_CCF_MMUP_PLL_SET),
+	REGNAME(mm_hwv, 0xf98, HW_CCF_MMUP_MTCMOS_SET),
+	REGNAME(mm_hwv, 0x790, HW_CCF_GPU_PLL_SET),
+	REGNAME(mm_hwv, 0x990, HW_CCF_SSPM_PLL_SET),
+	REGNAME(mm_hwv, 0x190, HW_CCF_AP_PLL_SET),
+	REGNAME(mm_hwv, 0xb98, HW_CCF_APU_MTCMOS_SET),
+	REGNAME(mm_hwv, 0xb90, HW_CCF_APU_PLL_SET),
+	REGNAME(mm_hwv, 0xd98, HW_CCF_SPM_MTCMOS_SET),
+	REGNAME(mm_hwv, 0x590, HW_CCF_MD_PLL_SET),
+	REGNAME(mm_hwv, 0x198, HW_CCF_AP_MTCMOS_SET),
+	REGNAME(mm_hwv, 0xd90, HW_CCF_SPM_PLL_SET),
+	REGNAME(mm_hwv, 0x998, HW_CCF_SSPM_MTCMOS_SET),
+	REGNAME(mm_hwv, 0x398, HW_CCF_TEE_MTCMOS_SET),
+	REGNAME(mm_hwv, 0x390, HW_CCF_TEE_PLL_SET),
+	REGNAME(mm_hwv, 0x598, HW_CCF_MD_MTCMOS_SET),
+	REGNAME(mm_hwv, 0x798, HW_CCF_GPU_MTCMOS_SET),
+	/* HWV register */
+	REGNAME(mm_hwv_ext, 0xf64, HWV_DATA_HISTORY_8),
+	REGNAME(mm_hwv_ext, 0xf68, HWV_DATA_HISTORY_9),
+	REGNAME(mm_hwv_ext, 0x464, HW_CCF_PLL_SET_STATUS),
+	REGNAME(mm_hwv_ext, 0xf44, HWV_DATA_HISTORY_0),
+	REGNAME(mm_hwv_ext, 0xf48, HWV_DATA_HISTORY_1),
+	REGNAME(mm_hwv_ext, 0xf4c, HWV_DATA_HISTORY_2),
+	REGNAME(mm_hwv_ext, 0xf50, HWV_DATA_HISTORY_3),
+	REGNAME(mm_hwv_ext, 0xf54, HWV_DATA_HISTORY_4),
+	REGNAME(mm_hwv_ext, 0xf58, HWV_DATA_HISTORY_5),
+	REGNAME(mm_hwv_ext, 0xf5c, HWV_DATA_HISTORY_6),
+	REGNAME(mm_hwv_ext, 0xf60, HWV_DATA_HISTORY_7),
+	REGNAME(mm_hwv_ext, 0x190, HW_CCF_GCE_PLL_SET),
+	REGNAME(mm_hwv_ext, 0xf84, HWV_IDX_POINTER),
+	REGNAME(mm_hwv_ext, 0x500, HW_CCF_INT_STATUS),
+	REGNAME(mm_hwv_ext, 0x454, HW_CCF_MTCMOS_STATUS_CLR),
+	REGNAME(mm_hwv_ext, 0x400, HW_CCF_PLL_ENABLE),
+	REGNAME(mm_hwv_ext, 0x414, HW_CCF_MTCMOS_STATUS),
+	REGNAME(mm_hwv_ext, 0x46c, HW_CCF_MTCMOS_SET_STATUS),
+	REGNAME(mm_hwv_ext, 0xf24, HWV_ADDR_HISTORY_8),
+	REGNAME(mm_hwv_ext, 0xf74, HWV_DATA_HISTORY_12),
+	REGNAME(mm_hwv_ext, 0xf78, HWV_DATA_HISTORY_13),
+	REGNAME(mm_hwv_ext, 0xf6c, HWV_DATA_HISTORY_10),
+	REGNAME(mm_hwv_ext, 0xf70, HWV_DATA_HISTORY_11),
+	REGNAME(mm_hwv_ext, 0xf7c, HWV_DATA_HISTORY_14),
+	REGNAME(mm_hwv_ext, 0xf80, HWV_DATA_HISTORY_15),
+	REGNAME(mm_hwv_ext, 0x41c, HW_CCF_MTCMOS_DONE),
+	REGNAME(mm_hwv_ext, 0x4ac, HW_CCF_MTCMOS_FLOW_FLAG_CLR),
+	REGNAME(mm_hwv_ext, 0x410, HW_CCF_MTCMOS_ENABLE),
+	REGNAME(mm_hwv_ext, 0x404, HW_CCF_PLL_STATUS),
+	REGNAME(mm_hwv_ext, 0xf18, HWV_ADDR_HISTORY_5),
+	REGNAME(mm_hwv_ext, 0xf14, HWV_ADDR_HISTORY_4),
+	REGNAME(mm_hwv_ext, 0x198, HW_CCF_GCE_MTCMOS_SET),
+	REGNAME(mm_hwv_ext, 0xf1c, HWV_ADDR_HISTORY_6),
+	REGNAME(mm_hwv_ext, 0xf08, HWV_ADDR_HISTORY_1),
+	REGNAME(mm_hwv_ext, 0xf04, HWV_ADDR_HISTORY_0),
+	REGNAME(mm_hwv_ext, 0xf10, HWV_ADDR_HISTORY_3),
+	REGNAME(mm_hwv_ext, 0xf0c, HWV_ADDR_HISTORY_2),
+	REGNAME(mm_hwv_ext, 0xf28, HWV_ADDR_HISTORY_9),
+	REGNAME(mm_hwv_ext, 0x398, HW_CCF_SCP_MTCMOS_SET),
+	REGNAME(mm_hwv_ext, 0x468, HW_CCF_PLL_CLR_STATUS),
+	REGNAME(mm_hwv_ext, 0x4a8, HW_CCF_MTCMOS_FLOW_FLAG_SET),
+	REGNAME(mm_hwv_ext, 0xf20, HWV_ADDR_HISTORY_7),
+	REGNAME(mm_hwv_ext, 0x390, HW_CCF_SCP_PLL_SET),
+	REGNAME(mm_hwv_ext, 0xf30, HWV_ADDR_HISTORY_11),
+	REGNAME(mm_hwv_ext, 0xf2c, HWV_ADDR_HISTORY_10),
+	REGNAME(mm_hwv_ext, 0xf38, HWV_ADDR_HISTORY_13),
+	REGNAME(mm_hwv_ext, 0xf34, HWV_ADDR_HISTORY_12),
+	REGNAME(mm_hwv_ext, 0xf40, HWV_ADDR_HISTORY_15),
+	REGNAME(mm_hwv_ext, 0xf3c, HWV_ADDR_HISTORY_14),
+	REGNAME(mm_hwv_ext, 0x450, HW_CCF_PLL_STATUS_CLR),
+	REGNAME(mm_hwv_ext, 0x470, HW_CCF_MTCMOS_CLR_STATUS),
+	REGNAME(mm_hwv_ext, 0x40c, HW_CCF_PLL_DONE),
 	{},
 };
 
@@ -1991,7 +2110,7 @@ static u32 get_pwr_status(s32 idx)
 	if (pvd_pwr_data[idx].id >= chk_sys_num)
 		return 0;
 
-	return  clk_readl(rb[pvd_pwr_data[idx].base].virt + pvd_pwr_data[idx].ofs);
+	return clk_readl(rb[pvd_pwr_data[idx].base].virt + pvd_pwr_data[idx].ofs);
 }
 
 static bool is_cg_chk_pwr_on(void)
@@ -2267,24 +2386,19 @@ EXPORT_SYMBOL_GPL(print_subsys_reg_mt6989);
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static enum chk_sys_id devapc_dump_id[] = {
 	spm,
+	hfrp,
 	top,
 	apmixed,
-	bcrm_infra1_bus,
 	ifr_bus,
-	bcrm_ssr_bus,
-	gpu_eb_rpc,
-	mfg_ao,
-	mfgsc0_ao,
-	mfgsc1_ao,
 	vlpcfg,
 	vlp_ck,
-	cci,
-	cpu_ll,
-	cpu_bl,
-	cpu_b,
-	ptp,
+	hfrp,
+	hfrp_2_bus,
+	hfrp_1_bus,
 	hwv,
 	hwv_ext,
+	mm_hwv,
+	mm_hwv_ext,
 	chk_sys_num,
 };
 
@@ -2304,6 +2418,7 @@ static void serror_dump(void)
 
 	fclks = mt_get_fmeter_clks();
 
+	set_subsys_reg_dump_mt6989(devapc_dump_id);
 	get_subsys_reg_dump_mt6989();
 
 	dump_clk_event();
@@ -2396,8 +2511,11 @@ static bool is_suspend_retry_stop(bool reset_cnt)
 static enum chk_sys_id history_dump_id[] = {
 	top,
 	apmixed,
+	hfrp,
 	hwv,
 	hwv_ext,
+	mm_hwv,
+	mm_hwv_ext,
 	chk_sys_num,
 };
 
@@ -2433,6 +2551,7 @@ static void dump_hwv_history(struct regmap *regmap, u32 id)
 static enum chk_sys_id bus_dump_id[] = {
 	top,
 	apmixed,
+	hfrp,
 	chk_sys_num,
 };
 
@@ -2454,8 +2573,11 @@ static void dump_bus_reg(struct regmap *regmap, u32 ofs)
 static enum chk_sys_id pll_dump_id[] = {
 	apmixed,
 	top,
+	hfrp,
 	hwv,
 	hwv_ext,
+	mm_hwv,
+	mm_hwv_ext,
 	chk_sys_num,
 };
 
@@ -2476,6 +2598,20 @@ static void check_hwv_irq_sta(void)
 	u32 irq_sta;
 
 	irq_sta = get_mt6989_reg_value(hwv_ext, HWV_IRQ_STATUS);
+
+	if ((irq_sta & HWV_INT_CG_TRIGGER) == HWV_INT_CG_TRIGGER) {
+		dump_hwv_history(NULL, 0);
+		dump_bus_reg(NULL, 0);
+	}
+	if ((irq_sta & HWV_INT_PLL_TRIGGER) == HWV_INT_PLL_TRIGGER)
+		dump_pll_reg(true);
+}
+
+static void check_mm_hwv_irq_sta(void)
+{
+	u32 irq_sta;
+
+	irq_sta = get_mt6989_reg_value(mm_hwv_ext, HWV_IRQ_STATUS);
 
 	if ((irq_sta & HWV_INT_CG_TRIGGER) == HWV_INT_CG_TRIGGER) {
 		dump_hwv_history(NULL, 0);
@@ -2509,6 +2645,7 @@ static struct clkchk_ops clkchk_mt6989_ops = {
 	.dump_pll_reg = dump_pll_reg,
 	.trace_clk_event = trace_clk_event,
 	.check_hwv_irq_sta = check_hwv_irq_sta,
+	.check_mm_hwv_irq_sta = check_mm_hwv_irq_sta,
 	.is_suspend_retry_stop = is_suspend_retry_stop,
 };
 
