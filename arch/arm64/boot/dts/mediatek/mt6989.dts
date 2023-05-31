@@ -10763,8 +10763,9 @@
 					<&scpsys MT6989_POWER_DOMAIN_PEXTP_PHY0>;
 			power-domain-names = "pd_mac", "pd_phy";
 
-			pinctrl-names = "default";
+			pinctrl-names = "default", "sleep";
 			pinctrl-0 = <&pcie0_pins_default>;
+			pinctrl-1 = <&pcie0_pins_sleep>;
 
 			#interrupt-cells = <1>;
 			interrupt-map-mask = <0 0 0 7>;
@@ -15637,9 +15638,20 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 &pio {
 	pcie0_pins_default: pcie0-default {
 		pins-cmd-dat {
+			/* PINMUX_GPIO144__FUNC_GPIO144 for Falcon */
 			pinmux = <PINMUX_GPIO143__FUNC_PCIE_PERSTN>,
 				 <PINMUX_GPIO145__FUNC_PCIE_CLKREQN>;
 			bias-pull-up;
+		};
+	};
+
+	pcie0_pins_sleep: pcie0-sleep {
+		pins-cmd-dat {
+			/* PINMUX_GPIO144__FUNC_GPIO144 for Falcon */
+			pinmux = <PINMUX_GPIO143__FUNC_GPIO143>,
+				 <PINMUX_GPIO145__FUNC_GPIO145>;
+			bias-pull-down;
+			input-enable;
 		};
 	};
 
