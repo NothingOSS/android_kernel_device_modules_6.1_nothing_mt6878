@@ -58,7 +58,9 @@ static int mt6681_check_id(struct mt6681_pmic_info *mpi)
 		dev_info(mpi->dev, "data = %d, not mt6681 chip\n", data);
 		//return -ENODEV;
 	}
-	mpi->chip_rev = data;
+	mpi->chip_rev = (data << 8);
+	ret = regmap_read(mpi->regmap, MT6681_SWCID_L, &data);
+	mpi->chip_rev |= data;
 
 	return 0;
 }
@@ -125,36 +127,19 @@ void mt6681_LP_Setting(struct mt6681_pmic_info *mpi)
 
 void mt6681_Suspend_Setting(struct mt6681_pmic_info *mpi)
 {
-
-	regmap_write(mpi->regmap, MT6681_TOP_CON, 0x02);
-	regmap_write(mpi->regmap, MT6681_TOP_CON2, 0x1F);
-	regmap_write(mpi->regmap, MT6681_TEST_CON0, 0x1F);
-	regmap_write(mpi->regmap, MT6681_SMT_CON0, 0xFF);
-	regmap_write(mpi->regmap, MT6681_SMT_CON1, 0xFF);
-	regmap_write(mpi->regmap, MT6681_GPIO_PULLEN0, 0xF9);
-	regmap_write(mpi->regmap, MT6681_GPIO_PULLEN1, 0xFF);
-	regmap_write(mpi->regmap, MT6681_TOP_CKPDN_CON0, 0x5B);
-	regmap_write(mpi->regmap, MT6681_DA_INTF_STTING3, 0x0C);
+	regmap_write(mpi->regmap, MT6681_MTC_CTL0, 0x10);
+	regmap_write(mpi->regmap, MT6681_MTC_CTL0, 0x11);
 	regmap_write(mpi->regmap, MT6681_MTC_CTL0, 0x13);
-	regmap_write(mpi->regmap, MT6681_MTC_VOW_CTL0, 0x13);
-	regmap_write(mpi->regmap, MT6681_MTC_VOW_CTL3, 0x01);
-	regmap_write(mpi->regmap, MT6681_PLT_CON0, 0x75);
-	regmap_write(mpi->regmap, MT6681_PLT_CON1, 0x0C);
-	regmap_write(mpi->regmap, MT6681_HK_TOP_CLK_CON0, 0x15);
-	regmap_write(mpi->regmap, MT6681_AUXADC_CON0, 0x00);
-	regmap_write(mpi->regmap, MT6681_AUXADC_TRIM_SEL2, 0x40);
-	regmap_write(mpi->regmap, MT6681_TOP_TOP_CKHWEN_CON0, 0x0F);
-	regmap_write(mpi->regmap, MT6681_LDO_TOP_CLK_DCM_CON0, 0x01);
-	regmap_write(mpi->regmap, MT6681_LDO_TOP_VR_CLK_CON0, 0x00);
-	regmap_write(mpi->regmap, MT6681_LDO_VAUD18_CON2, 0x1C);
-	regmap_write(mpi->regmap, MT6681_DA_INTF_STTING1, 0x75);
-	regmap_write(mpi->regmap, MT6681_MTC_VOW_CTL0, 0x13);
+
 	regmap_write(mpi->regmap, MT6681_DA_INTF_STTING3, 0x08);
+
+	regmap_write(mpi->regmap, MT6681_LDO_VAUD18_CON2, 0x1C);
 	regmap_write(mpi->regmap, MT6681_LDO_VAUD18_OP_EN0, 0x01);
 	regmap_write(mpi->regmap, MT6681_LDO_VAUD18_OP_CFG0, 0x01);
-	regmap_write(mpi->regmap, MT6681_TSBG_PMU_CON2, 0x8);
-	regmap_write(mpi->regmap, MT6681_STRUP_ELR_3, 0x20);
-	regmap_write(mpi->regmap, MT6681_TOP_CON, 0x0);
+
+	regmap_write(mpi->regmap, MT6681_DA_INTF_STTING1, 0x64);
+	regmap_write(mpi->regmap, MT6681_DA_INTF_STTING1, 0x66);
+	regmap_write(mpi->regmap, MT6681_DA_INTF_STTING1, 0x76);
 }
 
 void mt6681_InitSetting(struct mt6681_pmic_info *mpi)
