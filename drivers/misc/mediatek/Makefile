@@ -20,7 +20,6 @@ obj-$(CONFIG_MMPROFILE) += mmp/
 obj-$(CONFIG_MTK_APUSYS_SUPPORT) += apusys/
 obj-$(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM) += trusted_mem/
 obj-$(CONFIG_MTK_ENABLE_GENIEZONE) += geniezone/
-obj-$(CONFIG_MTK_GZVM) += gzvm/
 obj-$(CONFIG_TRUSTY) += trusty/
 obj-$(CONFIG_MTK_ISE_LPM_SUPPORT) += ise_lpm/
 obj-$(CONFIG_MTK_SECURITY_SW_SUPPORT) += masp/

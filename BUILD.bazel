@@ -86,6 +86,7 @@ mgk_64_k61_common_user_modules = COMMON_GKI_MODULES_LIST + mgk_module_outs + mgk
 
 mgk_64_k61_device_modules = [
     # keep sorted
+    "arch/arm64/geniezone/gzvm.ko",
     "drivers/char/hw_random/sec-rng.ko",
     "drivers/char/rpmb/rpmb.ko",
     "drivers/char/rpmb/rpmb-mtk.ko",
@@ -259,7 +260,6 @@ mgk_64_k61_device_modules = [
     "drivers/misc/mediatek/geniezone/gz-trusty/gz_trusty_mod.ko",
     "drivers/misc/mediatek/geniezone/gz-trusty/gz_virtio_mod.ko",
     "drivers/misc/mediatek/geniezone/gz_tz_system.ko",
-    "drivers/misc/mediatek/gzvm/gzvm.ko",
     "drivers/misc/mediatek/hw_sem/mtk-hw-semaphore.ko",
     "drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko",
     "drivers/misc/mediatek/iommu/iommu_debug.ko",

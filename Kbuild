@@ -98,4 +98,6 @@ obj-y += sound/soc/mediatek/
 
 obj-y += drivers/pci/controller/
 
+obj-y += arch/arm64/geniezone/
+
 endif
