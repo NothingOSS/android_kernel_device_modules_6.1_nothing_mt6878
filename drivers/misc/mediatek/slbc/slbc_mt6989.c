@@ -1536,7 +1536,7 @@ void slbc_get_gid_for_dma(struct dma_buf *dmabuf_2)
 	ret = dma_buf_vmap(dmabuf_2, &map);
 	if (ret) {
 		SLBC_TRACE_REC(LVL_ERR, TYPE_C, 0, ret, "dma_buf_vmap failed");
-		return;
+		goto err1;
 	}
 
 	gid_data = (struct slbc_gid_data *)map.vaddr;
@@ -1548,7 +1548,7 @@ void slbc_get_gid_for_dma(struct dma_buf *dmabuf_2)
 
 	if (gid_data->sign != SLC_DATA_MAGIC) {
 		SLBC_TRACE_REC(LVL_ERR, TYPE_C, 0, ret, "invalid sign:%#x", gid_data->sign);
-		return;
+		goto err1;
 	}
 
 	/* mapping producre/consumer to GID */
@@ -1573,13 +1573,14 @@ void slbc_get_gid_for_dma(struct dma_buf *dmabuf_2)
 	dmabuf_1 = dma_buf_get(buffer_fd);
 	if (IS_ERR(dmabuf_1)) {
 		SLBC_TRACE_REC(LVL_ERR, TYPE_C, 0, 0, "dma_buf_get failed");
-		return;
+		goto err1;
 	}
 	ret = dma_buf_set_gid(dmabuf_1, gid);
 	if (ret)
 		SLBC_TRACE_REC(LVL_ERR, TYPE_C, 0, ret, "dma_buf_set_gid failed");
 
 	dma_buf_put(dmabuf_1);
+err1:
 	dma_buf_vunmap(dmabuf_2, &map);
 }
 
