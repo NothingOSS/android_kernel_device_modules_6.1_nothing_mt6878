@@ -70,11 +70,9 @@ struct mtk_video_dec_buf {
 	struct vdec_fb  frame_buffer;
 	int     flags;
 	int     general_user_fd;
-	void     *general_dma_va;
-	struct  dma_buf *dma_general_buf;
+	void    *general_dma_va;
 	int     meta_user_fd;
-	struct  dma_buf *dma_meta_buf;
-	int vpeek;
+	int     vpeek;
 	struct hdr10plus_info hdr10plus_buf;
 };
 
