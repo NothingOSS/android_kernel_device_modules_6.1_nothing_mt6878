@@ -651,13 +651,13 @@ static irqreturn_t trusty_virtio_irq_handler(int irq, void *data)
 {
 	struct trusty_ctx *tctx = data;
 
-	dev_dbg(tctx->dev, "enter\n");
+	dev_info(tctx->dev, "%s: enter\n", __func__);
 	trusty_notifier_call();
 
 	if (!(trusty_read(RSVD_OFFSET) & APMCU_ACK))
 		trusty_write(RSVD_OFFSET, APMCU_ACK);
 
-	dev_dbg(tctx->dev, "exit\n");
+	dev_info(tctx->dev, "%s: exit\n", __func__);
 	return IRQ_HANDLED;
 }
 
