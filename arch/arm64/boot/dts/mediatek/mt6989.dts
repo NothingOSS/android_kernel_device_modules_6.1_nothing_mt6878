@@ -16974,6 +16974,16 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 	};
 /* AUDIO GPIO standardization end */
 
+&pio {
+     accdet_pins_eint_as_int: accdet-eint {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO20__FUNC_GPIO20>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+};
+
 &scp_i2c1{
 	clock-frequency = <1000000>;
 	#address-cells = <1>;
@@ -17035,6 +17045,11 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 			io-channel-names = "pmic_accdet";
 			nvmem = <&mt6681_efuse>;
 			nvmem-names = "mt63xx-accdet-efuse";
+			interrupt-parent = <&pio>;
+			interrupts = <20 IRQ_TYPE_LEVEL_LOW>;
+			interrupt-names = "ap_eint";
+			pinctrl-names = "state_eint_as_int";
+			pinctrl-0 = <&accdet_pins_eint_as_int>;
 			status = "okay";
 		};
 	};
