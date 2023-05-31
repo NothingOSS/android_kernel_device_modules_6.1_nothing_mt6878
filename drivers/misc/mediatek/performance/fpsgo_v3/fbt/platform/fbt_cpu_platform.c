@@ -242,9 +242,27 @@ static int generate_sbe_rescue_enable(void)
 	return ret;
 }
 
-void fbt_set_affinity(pid_t pid, unsigned int prefer_type)
+int fbt_check_ls(int pid)
 {
-	long ret = 0;
+	struct task_struct *tsk;
+	int ls = -1;
+
+	rcu_read_lock();
+	tsk = find_task_by_vpid(pid);
+	if (!tsk)
+		goto EXIT;
+	get_task_struct(tsk);
+	ls = is_task_latency_sensitive(tsk);
+	put_task_struct(tsk);
+
+EXIT:
+	rcu_read_unlock();
+	return ls;
+}
+
+int fbt_set_affinity(pid_t pid, unsigned int prefer_type)
+{
+	int ret = 0;
 
 	if (!mask_done) {
 		ret = -100;
@@ -257,9 +275,34 @@ out:
 	if (ret != 0) {
 		fpsgo_systrace_c_fbt(pid, 0, ret, "setaffinity fail");
 		fpsgo_systrace_c_fbt(pid, 0, 0, "setaffinity fail");
-		return;
+		return ret;
 	}
 	fpsgo_systrace_c_fbt(pid, 0, prefer_type, "set_affinity");
+	return ret;
+}
+
+int fbt_set_soft_affinity(int pid, int set, unsigned int prefer_type)
+{
+	int ret = 0;
+
+	if (!mask_done) {
+		ret = -100;
+		goto out;
+	}
+
+	if (set)
+		set_task_ls_prefer_cpus(pid, mask_int[prefer_type]);
+	else
+		unset_task_ls_prefer_cpus(pid);
+
+out:
+	if (ret != 0) {
+		fpsgo_systrace_c_fbt(pid, 0, ret, "softaffinity fail");
+		fpsgo_systrace_c_fbt(pid, 0, 0, "softaffinity fail");
+		return ret;
+	}
+	fpsgo_systrace_c_fbt(pid, 0, prefer_type, "soft_affinity");
+	return ret;
 }
 
 int fbt_get_L_min_ceiling(void)

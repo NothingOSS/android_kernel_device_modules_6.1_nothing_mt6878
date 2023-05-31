@@ -789,7 +789,7 @@ int has_xgf_dep(pid_t tid)
 	return ret;
 }
 
-static int xgf_non_normal_dep_task(int tid)
+static int xgf_non_normal_dep_task(int tid, struct xgf_render_if *render)
 {
 	int ret = 0;
 	struct task_struct *tsk = NULL;
@@ -803,7 +803,8 @@ static int xgf_non_normal_dep_task(int tid)
 	}
 
 	get_task_struct(tsk);
-	if ((tsk->flags & PF_KTHREAD) || rt_task(tsk) || dl_task(tsk))
+	if ((tsk->flags & PF_KTHREAD) || (rt_task(tsk) &&
+		xgf_get_process_id(tid) != render->tgid) || dl_task(tsk))
 		ret = 1;
 	put_task_struct(tsk);
 
@@ -817,7 +818,7 @@ static int xgf_filter_dep_task(int tid, struct xgf_render_if *render_iter)
 	int ret = 0;
 	int local_tgid = 0;
 
-	ret = xgf_non_normal_dep_task(tid);
+	ret = xgf_non_normal_dep_task(tid, render_iter);
 	if (ret)
 		goto out;
 

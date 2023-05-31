@@ -856,7 +856,10 @@ void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->gcc_enq_bound_quota_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->gcc_deq_bound_quota_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->blc_boost_by_pid = BY_PID_DEFAULT_VAL;
-
+		boost_attr->boost_vip_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->rt_prio1_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->rt_prio2_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->rt_prio3_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->check_buffer_quota_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->expected_fps_margin_by_pid = BY_PID_DEFAULT_VAL;
 	}
@@ -1109,6 +1112,10 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.qr_t2wnt_y_n_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.qr_t2wnt_y_p_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.blc_boost_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.boost_vip_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.rt_prio1_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.rt_prio2_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.rt_prio3_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.gcc_deq_bound_quota_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.gcc_deq_bound_thrs_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.gcc_down_sec_pct_by_pid == BY_PID_DEFAULT_VAL &&
@@ -1150,6 +1157,10 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.qr_t2wnt_y_n_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.qr_t2wnt_y_p_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.blc_boost_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.boost_vip_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.rt_prio1_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.rt_prio2_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.rt_prio3_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.gcc_deq_bound_quota_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.gcc_deq_bound_thrs_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.gcc_down_sec_pct_by_pid == BY_PID_DELETE_VAL ||
@@ -2519,6 +2530,9 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" check_buffer_quota, expected_fps_margin\n");
 	pos += length;
+	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				" boost_VIP, RT_prio1, RT_prio2, RT_prio3\n");
+	pos += length;
 
 	fpsgo_render_tree_lock(__func__);
 	rcu_read_lock();
@@ -2621,6 +2635,14 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d,\n",
 				attr_item.check_buffer_quota_by_pid,
 				attr_item.expected_fps_margin_by_pid);
+			pos += length;
+
+			length = scnprintf(temp + pos,
+				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d\n",
+				attr_item.boost_vip_by_pid,
+				attr_item.rt_prio1_by_pid,
+				attr_item.rt_prio2_by_pid,
+				attr_item.rt_prio3_by_pid);
 			pos += length;
 
 			put_task_struct(tsk);

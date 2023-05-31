@@ -26,6 +26,10 @@ enum FPSGO_CPU_LIMIT {
 };
 
 extern void cm_mgr_perf_set_status(int enable);
+extern void set_task_ls_prefer_cpus(int pid, unsigned int cpumask_val);
+extern void unset_task_ls_prefer_cpus(int pid);
+extern bool is_task_latency_sensitive(struct task_struct *p);
+
 
 void fbt_set_boost_value(unsigned int base_blc);
 void fbt_clear_boost_value(void);
@@ -38,7 +42,9 @@ int fbt_get_default_boost_ta(void);
 int fbt_get_default_adj_loading(void);
 int fbt_get_default_adj_count(void);
 int fbt_get_default_adj_tdiff(void);
-void fbt_set_affinity(pid_t pid, unsigned int prefer_type);
+int fbt_set_affinity(pid_t pid, unsigned int prefer_type);
+int fbt_check_ls(int pid);
+int fbt_set_soft_affinity(int pid, int set, unsigned int prefer_type);
 int fbt_get_cluster_limit(int *cluster, int *freq, int *r_freq, int *cpu);
 int fbt_get_default_qr_enable(void);
 int fbt_get_default_gcc_enable(void);
