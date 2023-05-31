@@ -1200,26 +1200,24 @@ unsigned int sched_capacity_down_margin[MAX_NR_CPUS] = {
 			[0 ... MAX_NR_CPUS-1] = 1024 /* ~0% margin */
 };
 
-int set_updown_migrate_pct(int gear_idx, int dn_pct, int up_pct)
+int set_updown_migration_pct(int gear_idx, int dn_pct, int up_pct)
 {
 	int ret = 0, cpu;
 	struct cpumask *cpus;
 
-	rcu_read_lock();
-
 	/* check gear_idx validity */
 	if (gear_idx < 0 || gear_idx > num_sched_clusters-1)
-		goto unlock;
+		goto done;
 
 	/* check pct validity */
 	if (dn_pct < 1 || dn_pct > 100)
-		goto unlock;
+		goto done;
 
 	if (up_pct < 1 || up_pct > 100)
-		goto unlock;
+		goto done;
 
 	if (dn_pct > up_pct)
-		goto unlock;
+		goto done;
 
 	cpus = get_gear_cpumask(gear_idx);
 	for_each_cpu(cpu, cpus) {
@@ -1231,23 +1229,19 @@ int set_updown_migrate_pct(int gear_idx, int dn_pct, int up_pct)
 	}
 	ret = 1;
 
-unlock:
-	rcu_read_unlock();
-
+done:
 	return ret;
 }
-EXPORT_SYMBOL_GPL(set_updown_migrate_pct);
+EXPORT_SYMBOL_GPL(set_updown_migration_pct);
 
-int unset_updown_migrate_pct(int gear_idx)
+int unset_updown_migration_pct(int gear_idx)
 {
 	int ret = 0, cpu;
 	struct cpumask *cpus;
 
-	rcu_read_lock();
-
 	/* check gear_idx validity */
 	if (gear_idx < 0 || gear_idx > num_sched_clusters-1)
-		goto unlock;
+		goto done;
 
 	cpus = get_gear_cpumask(gear_idx);
 	for_each_cpu(cpu, cpus) {
@@ -1257,12 +1251,33 @@ int unset_updown_migrate_pct(int gear_idx)
 	}
 	ret = 1;
 
-unlock:
-	rcu_read_unlock();
-
+done:
 	return ret;
 }
-EXPORT_SYMBOL_GPL(unset_updown_migrate_pct);
+EXPORT_SYMBOL_GPL(unset_updown_migration_pct);
+
+int get_updown_migration_pct(int gear_idx, int *dn_pct, int *up_pct)
+{
+	int ret = 0, cpu;
+
+	*dn_pct = -1;
+	*up_pct = -1;
+
+	/* check gear_idx validity */
+	if (gear_idx < 0 || gear_idx > num_sched_clusters-1)
+		goto done;
+
+	cpu = cpumask_first(get_gear_cpumask(gear_idx));
+
+	*dn_pct = SCHED_CAPACITY_SCALE * 100 / sched_capacity_down_margin[cpu];
+	*up_pct = SCHED_CAPACITY_SCALE * 100 / sched_capacity_up_margin[cpu];
+
+	ret = 1;
+
+done:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(get_updown_migration_pct);
 
 static inline bool task_demand_fits(struct task_struct *p, int dst_cpu)
 {
