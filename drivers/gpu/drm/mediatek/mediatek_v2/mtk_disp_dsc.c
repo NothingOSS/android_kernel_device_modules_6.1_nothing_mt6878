@@ -406,7 +406,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 		if (dsc->data->need_obuf_sw && enc_pic_width < 1440) {
 			if (dsc->data->decrease_outstream_buf)
 				mtk_ddp_write_relaxed(comp,
-					0x80000200, DISP_REG_DSC_OBUF, handle);
+					0x800000c8, DISP_REG_DSC_OBUF, handle);
 			else
 				mtk_ddp_write_relaxed(comp,
 					0x800002d9, DISP_REG_DSC_OBUF, handle);
