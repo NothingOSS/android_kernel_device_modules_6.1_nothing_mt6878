@@ -389,7 +389,7 @@ static void probe_android_vh_ufs_compl_command(void *data, struct ufs_hba *hba,
 
 static void probe_ufshcd_command(void *data, const char *dev_name,
 				 enum ufs_trace_str_t str_t, unsigned int tag,
-				 u32 doorbell, int transfer_len,
+				 u32 doorbell, u32 hwq_id, int transfer_len,
 				 u32 intr, u64 lba, u8 opcode, u8 group_id)
 {
 	int ptr, ptr_cur;
