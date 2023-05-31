@@ -2529,7 +2529,7 @@ static void cmdq_pkt_err_irq_dump(struct cmdq_pkt *pkt)
 	struct cmdq_client *client = pkt->cl;
 	dma_addr_t pc = 0;
 	struct cmdq_instruction *inst = NULL;
-	//const char *mod = "CMDQ";
+	const char *mod = "CMDQ";
 	struct cmdq_pkt_buffer *buf;
 	u32 size = pkt->cmd_buf_size, cnt = 0;
 	s32 thread_id = cmdq_mbox_chan_id(client->chan);
@@ -2581,7 +2581,7 @@ static void cmdq_pkt_err_irq_dump(struct cmdq_pkt *pkt)
 	}
 
 	cmdq_util_helper->dump_smi();
-#if 0
+
 	if (inst) {
 		/* not sync case, print raw */
 		cmdq_util_aee_ex(CMDQ_AEE_EXCEPTION, mod,
@@ -2594,7 +2594,7 @@ static void cmdq_pkt_err_irq_dump(struct cmdq_pkt *pkt)
 			"%s(%s) instruction not available pc:%#llx thread:%d",
 			mod, cmdq_util_helper->hw_name(client->chan), pc, thread_id);
 	}
-#endif
+
 	cmdq_util_helper->error_disable((u8)hwid);
 }
 
@@ -2604,6 +2604,12 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 	struct cmdq_flush_item *item = pkt->flush_item;
 	struct cmdq_cb_data user_data = {
 		.data = item->data, .err = data.err };
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	u64 debug_end[2] = {0};
+	u32 debug_cnt = 0;
+	u8 irq_long_times;
+	struct cmdq_client *client = pkt->cl;
+#endif
 
 	cmdq_log("%s pkt:%p", __func__, pkt);
 
@@ -2613,9 +2619,21 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 			BUG_ON(1);
 	}
 
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	debug_end[debug_cnt++] = sched_clock();
+#endif
 	if (item->cb)
 		item->cb(user_data);
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	debug_end[debug_cnt++] = sched_clock();
+#endif
 	complete(&pkt->cmplt);
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+	irq_long_times = cmdq_get_irq_long_times(client->chan);
+	if (debug_end[1] - debug_end[0] >= 500000 && !irq_long_times)
+		cmdq_util_err("IRQ_LONG:%llu in user callback",
+			debug_end[1] - debug_end[0]);
+#endif
 }
 #endif
 
@@ -2786,21 +2804,20 @@ void cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
 	if (inst && inst->op == CMDQ_CODE_WFE) {
 		mod = cmdq_util_helper->event_module_dispatch(gce_pa, inst->arg_a,
 			thread_id);
-		/*cmdq_util_aee_ex(aee, mod,
+		cmdq_util_aee_ex(aee, mod,
 			"DISPATCH:%s(%s) inst:%#018llx OP:WAIT EVENT:%hu thread:%d",
 			mod, cmdq_util_helper->hw_name(client->chan),
-			*(u64 *)inst, inst->arg_a, thread_id);*/
+			*(u64 *)inst, inst->arg_a, thread_id);
 	} else if (inst) {
 		if (!mod)
 			mod = cmdq_util_helper->thread_module_dispatch(gce_pa, thread_id);
 
 		/* not sync case, print raw */
-		/*cmdq_util_aee_ex(aee, mod,
+		cmdq_util_aee_ex(aee, mod,
 			"DISPATCH:%s(%s) inst:%#018llx OP:%#04hhx thread:%d",
 			mod, cmdq_util_helper->hw_name(client->chan),
-			*(u64 *)inst, inst->op, thread_id);*/
+			*(u64 *)inst, inst->op, thread_id);
 	} else {
-#if 0
 		if (!mod)
 			mod = "CMDQ";
 
@@ -2813,7 +2830,6 @@ void cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
 			cmdq_util_aee_ex(CMDQ_AEE_WARN, mod,
 				"DISPATCH:%s(%s) unknown instruction thread:%d",
 				mod, cmdq_util_helper->hw_name(client->chan), thread_id);
-#endif
 	}
 #ifdef CMDQ_SECURE_SUPPORT
 done:

@@ -79,7 +79,7 @@ extern int cmdq_hw_trace;
 		char tag[LINK_MAX]; \
 		int len = snprintf(tag, LINK_MAX, "CRDISPATCH_KEY:%s", key); \
 		if (len >= LINK_MAX) \
-			pr_debug("len:%d over max:%d\n", \
+			pr_debug("%s:%d len:%d over max:%d\n", \
 				__func__, __LINE__, len, LINK_MAX); \
 		cmdq_aee(fmt, ##args); \
 		cmdq_util_error_save("[cmdq][aee] "fmt"\n", ##args); \
@@ -92,7 +92,7 @@ extern int cmdq_hw_trace;
 		char tag[LINK_MAX]; \
 		int len = snprintf(tag, LINK_MAX, "CRDISPATCH_KEY:%s", key); \
 		if (len >= LINK_MAX) \
-			pr_debug("len:%d over max:%d\n", \
+			pr_debug("%s:%d len:%d over max:%d\n", \
 				__func__, __LINE__, len, LINK_MAX); \
 		cmdq_aee(fmt" (aee not ready)", ##args); \
 		cmdq_util_error_save("[cmdq][aee] "fmt"\n", ##args); \
@@ -106,7 +106,7 @@ extern int cmdq_hw_trace;
 		char tag[LINK_MAX]; \
 		int len = snprintf(tag, LINK_MAX, "CRDISPATCH_KEY:%s", key); \
 		if (len >= LINK_MAX) \
-			pr_debug("len:%d over max:%d\n", \
+			pr_debug("%s:%d len:%d over max:%d\n", \
 				__func__, __LINE__, len, LINK_MAX); \
 		cmdq_aee(fmt, ##args); \
 		cmdq_util_error_save("[cmdq][aee] "fmt"\n", ##args); \
@@ -125,7 +125,7 @@ extern int cmdq_hw_trace;
 		char tag[LINK_MAX]; \
 		int len = snprintf(tag, LINK_MAX, "CRDISPATCH_KEY:%s", key); \
 		if (len >= LINK_MAX) \
-			pr_debug("len:%d over max:%d\n", \
+			pr_debug("%s:%d len:%d over max:%d\n", \
 				__func__, __LINE__, len, LINK_MAX); \
 		cmdq_aee(fmt" (aee not ready)", ##args); \
 		cmdq_util_error_save("[cmdq][aee] "fmt"\n", ##args); \

@@ -278,6 +278,7 @@ struct cmdq {
 	struct cmdq_client	*hw_trace_clt;
 	struct mutex mbox_mutex;
 	struct device	*share_dev;
+	u8			irq_long_times;
 };
 
 struct gce_plat {
@@ -293,6 +294,14 @@ struct gce_plat {
 #endif
 
 static struct cmdq *g_cmdq[2];
+
+u8 cmdq_get_irq_long_times(void *chan)
+{
+	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
+		typeof(*cmdq), mbox);
+	return cmdq->irq_long_times;
+}
+EXPORT_SYMBOL(cmdq_get_irq_long_times);
 
 void cmdq_dump_usage(void)
 {
@@ -1065,7 +1074,6 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	u64 start = sched_clock(), end[4];
 	u32 end_cnt = 0;
-	static u8 time;
 #endif
 
 	if (atomic_read(&cmdq->usage) <= 0) {
@@ -1225,13 +1233,11 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 	}
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt] = sched_clock();
-	if (end[end_cnt] - start >= 1000000 && !time) /* 1ms */
+	if (end[end_cnt] - start >= 1000000 && !cmdq->irq_long_times) /* 1ms */
 		cmdq_util_err(
 			"IRQ_LONG:%llu reg:%llu loop:%llu list:%llu dis:%llu",
 			end[end_cnt] - start, end[0] - start,
 			end[1] - end[0], end[2] - end[1], end[3] - end[2]);
-	if (end[end_cnt] - start >= 1000000)
-		time += 1;
 #endif
 }
 
@@ -1245,7 +1251,6 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	u64 start = sched_clock(), end[4];
 	u32 end_cnt = 0;
-	static u8 time;
 #endif
 
 	if (atomic_read(&cmdq->usage) == -1)
@@ -1310,7 +1315,7 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 	wake_up_interruptible(&cmdq->err_irq_wq);
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt] = sched_clock();
-	if (end[end_cnt] - start >= 5000000 && !time) { /* 5ms */
+	if (end[end_cnt] - start >= 5000000 && !cmdq->irq_long_times) { /* 5ms */
 		cmdq_util_err(
 			"IRQ_LONG:%llu atomic:%llu readl:%llu bit:%llu wakeup:%llu",
 			end[end_cnt] - start, end[0] - start,
@@ -1339,8 +1344,8 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 		}
 	}
 
-	if (end[end_cnt] - start >= 1000000)
-		time += 1;
+	if (end[end_cnt] - start >= 5000000)
+		cmdq->irq_long_times += 1;
 #endif
 	return secure_irq ? IRQ_NONE : IRQ_HANDLED;
 }
@@ -3278,7 +3283,7 @@ s32 cmdq_pkt_hw_trace(struct cmdq_pkt *pkt, const u16 event_id)
 
 	// spr = (CMDQ_TPR_ID >> 14) | (idx << 24)
 	cmdq_pkt_assign_command(pkt, CMDQ_SPR_FOR_TEMP,
-		thread->idx << 27 | (event_id & GENMASK(9, 0)) << 18);
+		thread->idx << 27 | (event_id & GENMASK(8, 0)) << 18);
 	pkt->write_addr_high = 0;
 
 	lop.reg = true;
