@@ -35,6 +35,8 @@
 #define BATTERY_INFO			'e'
 #define FEATURE_EN				'f'
 #define WAKEUP_INFO				'g'
+#define PMU_EN					'h'
+#define PMU_INFO				'i'
 #define POWER_SPM_RAW			'j'
 
 
@@ -68,6 +70,10 @@
 							struct mbraink_feature_en*)
 #define RO_WAKEUP_INFO			_IOR(IOC_MAGIC, WAKEUP_INFO, \
 							struct mbraink_power_wakeup_data*)
+#define WO_PMU_EN				_IOW(IOC_MAGIC, PMU_EN, \
+							struct mbraink_pmu_en*)
+#define RO_PMU_INFO				_IOR(IOC_MAGIC, PMU_INFO, \
+							struct mbraink_pmu_info*)
 
 #define RO_POWER_SPM_RAW			_IOR(IOC_MAGIC, POWER_SPM_RAW, \
 								struct mbraink_power_spm_raw*)
@@ -88,6 +94,7 @@ struct mbraink_data {
 	struct sock *mbraink_sock;
 	int client_pid;
 	unsigned int feature_en;
+	unsigned int pmu_en;
 };
 
 int mbraink_netlink_send_msg(const char *msg);

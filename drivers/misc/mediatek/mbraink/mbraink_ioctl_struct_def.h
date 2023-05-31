@@ -29,6 +29,8 @@
 
 #define MBRAINK_LANDING_FEATURE_CHECK 1
 
+#define MBRAINK_PMU_INST_SPEC_EN	(1<<0UL)
+
 #define MBRAINK_FEATURE_GPU_EN		(1<<0UL)
 #define MBRAINK_FEATURE_AUDIO_EN	(1<<1UL)
 
@@ -219,6 +221,21 @@ struct mbraink_power_wakeup_data {
 	uint8_t is_has_data;
 	unsigned short next_pos;
 	struct mbraink_power_wakeup_struct drv_data[MAX_WAKEUP_SOURCE_NUM];
+};
+
+struct mbraink_pmu_en {
+	unsigned int pmu_en;
+};
+
+struct mbraink_pmu_info {
+	unsigned long cpu0_pmu_data_inst_spec;
+	unsigned long cpu1_pmu_data_inst_spec;
+	unsigned long cpu2_pmu_data_inst_spec;
+	unsigned long cpu3_pmu_data_inst_spec;
+	unsigned long cpu4_pmu_data_inst_spec;
+	unsigned long cpu5_pmu_data_inst_spec;
+	unsigned long cpu6_pmu_data_inst_spec;
+	unsigned long cpu7_pmu_data_inst_spec;
 };
 
 struct mbraink_power_spm_raw {

@@ -26,8 +26,10 @@
 #include "mbraink_cpufreq.h"
 #include "mbraink_suspend_info.h"
 #include "mbraink_battery.h"
+#include "mbraink_pmu.h"
 
 static DEFINE_MUTEX(power_lock);
+static DEFINE_MUTEX(pmu_lock);
 struct mbraink_data mbraink_priv;
 
 static int mbraink_open(struct inode *inode, struct file *filp)
@@ -171,6 +173,77 @@ static long handleFeatureEn(unsigned long arg)
 	} else {
 		pr_notice("mbraink feature enabled before.\n");
 	}
+
+	return ret;
+}
+
+static long handlePmuEn(unsigned long arg)
+{
+	long ret = 0;
+	struct mbraink_pmu_en pmuEnInfo;
+
+	memset(&pmuEnInfo,
+			0,
+			sizeof(struct mbraink_pmu_en));
+
+	if (copy_from_user(&pmuEnInfo,
+			 (char *)arg,
+			 sizeof(struct mbraink_pmu_en))) {
+		pr_notice("Data get pmu en from UserSpace Err!\n");
+		return -EPERM;
+	}
+
+	mutex_lock(&pmu_lock);
+	if (mbraink_priv.pmu_en != pmuEnInfo.pmu_en) {
+		pr_notice("mbraink pmu_en enable.\n");
+		if ((pmuEnInfo.pmu_en & MBRAINK_PMU_INST_SPEC_EN) == MBRAINK_PMU_INST_SPEC_EN) {
+			pr_notice("mbraink feature enable pmu inst spec.\n");
+			ret = mbraink_enable_pmu_inst_spec(true);
+			if (ret)
+				pr_notice("mbraink pmu inst spec enabled failed.\n");
+			else
+				mbraink_priv.pmu_en |= MBRAINK_PMU_INST_SPEC_EN;
+		} else {
+			pr_notice("mbraink feature disable pmu inst spec.\n");
+			ret = mbraink_enable_pmu_inst_spec(false);
+			if (ret)
+				pr_notice("mbraink pmu inst spec enabled failed.\n");
+			else
+				mbraink_priv.pmu_en ^= MBRAINK_PMU_INST_SPEC_EN;
+		}
+
+		pr_notice("mbraink en set (%d) to (%d)\n",
+					pmuEnInfo.pmu_en,
+					mbraink_priv.pmu_en);
+	} else {
+		pr_notice("mbraink pmu_en enabled before.\n");
+	}
+	mutex_unlock(&pmu_lock);
+
+	return ret;
+}
+
+static long handlePmuInfo(unsigned long arg)
+{
+	long ret = 0;
+	struct mbraink_pmu_info pmuInfo;
+
+	pr_notice("mbraink %s\n", __func__);
+	memset(&pmuInfo,
+			0,
+			sizeof(struct mbraink_pmu_info));
+
+	mutex_lock(&pmu_lock);
+	ret = mbraink_get_pmu_inst_spec(&pmuInfo);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_pmu_info *)arg,
+						&pmuInfo,
+						sizeof(pmuInfo))) {
+			pr_notice("Copy pmu Info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+	mutex_unlock(&pmu_lock);
 
 	return ret;
 }
@@ -523,6 +596,16 @@ static long mbraink_ioctl(struct file *filp,
 		}
 		break;
 	}
+	case WO_PMU_EN:
+	{
+		ret = handlePmuEn(arg);
+		break;
+	}
+	case RO_PMU_INFO:
+	{
+		ret = handlePmuInfo(arg);
+		break;
+	}
 	case RO_POWER_SPM_RAW:
 	{
 		struct mbraink_power_spm_raw power_spm_buffer;
@@ -588,6 +671,11 @@ static int mbraink_suspend(struct device *dev)
 	}
 	mutex_unlock(&power_lock);
 
+	mutex_lock(&pmu_lock);
+	if ((mbraink_priv.pmu_en & MBRAINK_PMU_INST_SPEC_EN) == MBRAINK_PMU_INST_SPEC_EN)
+		uninit_pmu_keep_data();
+	mutex_unlock(&pmu_lock);
+
 	mbraink_set_suspend_info_list_record(SUSPEND_DATA);
 
 	ret = pm_generic_suspend(dev);
@@ -616,6 +704,11 @@ static int mbraink_resume(struct device *dev)
 		}
 	}
 	mutex_unlock(&power_lock);
+
+	mutex_lock(&pmu_lock);
+	if ((mbraink_priv.pmu_en & MBRAINK_PMU_INST_SPEC_EN) == MBRAINK_PMU_INST_SPEC_EN)
+		init_pmu_keep_data();
+	mutex_unlock(&pmu_lock);
 
 	return ret;
 }
@@ -725,6 +818,7 @@ static int mbraink_dev_init(void)
 	mbraink_priv.resume_power_data_size = 0;
 	mbraink_priv.suspend_power_info_en[0] = '0';
 	mbraink_priv.feature_en = 0;
+	mbraink_priv.pmu_en = 0;
 
 	/*Allocating Major number*/
 	if ((alloc_chrdev_region(&mbraink_dev_no, 0, 1, CHRDEV_NAME)) < 0) {
@@ -871,6 +965,10 @@ static int mbraink_init(void)
 	if (ret)
 		pr_notice("mbraink cpufreq tracer init failed.\n");
 
+	ret = mbraink_pmu_init();
+	if (ret)
+		pr_notice("mbraink pmu init failed.\n");
+
 	mbraink_suspend_info_list_init();
 
 	return ret;
@@ -903,6 +1001,7 @@ static void mbraink_netlink_exit(void)
 
 static void mbraink_exit(void)
 {
+	mbraink_pmu_uninit();
 	mbraink_dev_exit();
 	mbraink_netlink_exit();
 	mbraink_process_tracer_exit();
