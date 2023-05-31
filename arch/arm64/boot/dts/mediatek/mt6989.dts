@@ -159,7 +159,6 @@
 		bootargs = "console=tty0 root=/dev/ram \
 			    nosoftlockup kasan.page_alloc.sample=1 \
 			    8250.nr_uarts=4 \
-			    allow_mismatched_32bit_el0 \
 			    androidboot.hardware=mt6989 \
 			    vmalloc=400M swiotlb=noforce cma=64M \
 			    firmware_class.path=/vendor/firmware";
