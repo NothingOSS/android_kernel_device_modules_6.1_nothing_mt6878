@@ -131,6 +131,7 @@
 		compatible = "mediatek,aov";
 		status = "okay";
 		op-mode = <1>;
+		aie = <&aie>;
 	};
 
 	cache-parity {
