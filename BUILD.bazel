@@ -96,7 +96,6 @@ mgk_64_k61_device_modules = [
     "drivers/dma-buf/heaps/mtk_heap_debug.ko",
     "drivers/dma-buf/heaps/mtk_heap_refill.ko",
     "drivers/dma-buf/heaps/mtk_sec_heap.ko",
-    "drivers/dma-buf/heaps/page_pool.ko",
     "drivers/dma-buf/heaps/system_heap.ko",
     "drivers/dma/mediatek/mtk-cqdma.ko",
     "drivers/dma/mediatek/mtk-uart-apdma.ko",
