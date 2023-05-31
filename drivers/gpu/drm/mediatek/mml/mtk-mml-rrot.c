@@ -125,6 +125,9 @@ do { \
 		pr_notice("[mml]" fmt "\n", ##args); \
 } while (0)
 
+int rrot_binning;
+module_param(rrot_binning, int, 0644);
+
 enum rrot_label {
 	RROT_LABEL_BASE_0 = 0,
 	RROT_LABEL_BASE_0_MSB,
@@ -352,11 +355,13 @@ static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_confi
 	u32 w = dest->crop.r.width, h = dest->crop.r.height, i;
 	u32 outw = dest->data.width, outh = dest->data.height;
 	struct mml_crop *crop;
+	bool binning = rrot_binning &&
+		!MML_FMT_IS_RGB(src->format) && !MML_FMT_IS_ARGB(src->format);
 
 	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
 		swap(outw, outh);
 
-	if ((w >> 1) >= outw) {
+	if (binning && (w >> 1) >= outw) {
 		cfg->frame_in.width = (src->width + 1) >> 1;
 		cfg->bin_x = 1;
 		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
@@ -365,7 +370,7 @@ static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_confi
 			calc_binning_crop(&crop->r.left, &crop->x_sub_px);
 		}
 	}
-	if ((h >> 1) >= outh) {
+	if (binning && (h >> 1) >= outh) {
 		cfg->frame_in.height = (src->height + 1) >> 1;
 		cfg->bin_y = 1;
 		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
