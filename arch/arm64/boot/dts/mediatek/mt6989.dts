@@ -526,6 +526,9 @@
 		proc3-supply = <&mt6373_vbuck9>; //B
 		proc4-supply = <&mt6373_vbuck9>; //DSU
 
+		/* csram sysram base */
+		csram-sys-base = <&csram_sys>;
+
 		/* wl support */
 		// wl-support = <1>;
 
@@ -3362,6 +3365,10 @@
 
 		cpu_pll: mcusys-pll1u-top@1000c000 {
 			reg = <0 0x0c030000 0 0x1000>; /* 4KB */
+		};
+
+		csram_sys: csram-sysram@11bc00 {
+			reg = <0 0x0011bc00 0 0x1400>; /* 5KB */
 		};
 
 		topckgen@10000000 {
