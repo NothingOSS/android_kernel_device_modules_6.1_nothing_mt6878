@@ -110,6 +110,7 @@ def main(**args):
     file_text.append("unset BUILD_NUMBER")
     file_text.append("if [ -z \"${SOURCE_DATE_EPOCH}\" ]; then")
     file_text.append("  export SOURCE_DATE_EPOCH=0")
+    file_text.append("  export GKI_SOURCE_DATE_EPOCH=0")
     file_text.append("fi")
 
     file_text.append("\nDEFCONFIG=olddefconfig")
