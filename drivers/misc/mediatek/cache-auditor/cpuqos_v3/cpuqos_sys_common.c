@@ -29,6 +29,7 @@ static struct attribute *cpuqos_attrs[] = {
 	&trace_enable_attr.attr,
 	&boot_complete_attr.attr,
 	&show_L3m_status_attr.attr,
+	&resource_pct_attr.attr,
 	NULL,
 };
 

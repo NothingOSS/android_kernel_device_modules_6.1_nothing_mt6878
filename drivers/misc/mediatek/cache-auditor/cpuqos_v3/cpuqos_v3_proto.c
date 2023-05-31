@@ -27,6 +27,9 @@
 static void __iomem *sram_base_addr;
 #endif
 
+static void __iomem *l3ctl_sram_base_addr;
+#define RESOURCE_USAGE_OFS	0xC
+
 #define CREATE_TRACE_POINTS
 #include <cpuqos_v3_trace.h>
 #undef CREATE_TRACE_POINTS
@@ -50,6 +53,7 @@ MODULE_AUTHOR("Jing-Ting Wu");
 static int cpuqos_subsys_id = cpu_cgrp_id;
 static struct device_node *node;
 static int plat_enable;
+static int ram_base;
 static int q_pid = -1;
 static int boot_complete;
 /* For ftrace */
@@ -114,6 +118,13 @@ enum pd_rank {
 	GROUP_RANK,
 	TASK_RANK
 };
+
+enum {
+	RAM_BASE_SLC,
+	RAM_BASE_SYSRAM,
+	RAM_BASE_TCM,
+};
+
 
 static enum perf_mode cpuqos_perf_mode = DISABLE;
 
@@ -515,13 +526,18 @@ int set_cpuqos_mode(int mode)
 	}
 
 	trace_cpuqos_set_cpuqos_mode(cpuqos_perf_mode);
+
+	if (ram_base != RAM_BASE_SLC)
+		iowrite32(cpuqos_perf_mode, l3ctl_sram_base_addr);
+	else {
 #if IS_ENABLED(CONFIG_MTK_SLBC)
-	slbc_sram_write(CPUQOS_MODE, cpuqos_perf_mode);
+		slbc_sram_write(CPUQOS_MODE, cpuqos_perf_mode);
 #else
-	pr_info("Set to SLBC fail: config is disable\n");
-	sram_base_addr = ioremap(SLC_SYSRAM_BASE, SLC_SRAM_SIZE);
-	iowrite32(cpuqos_perf_mode, (sram_base_addr + CPUQOS_MODE));
+		pr_info("Set to SLBC fail: config is disable\n");
+		sram_base_addr = ioremap(SLC_SYSRAM_BASE, SLC_SRAM_SIZE);
+		iowrite32(cpuqos_perf_mode, (sram_base_addr + CPUQOS_MODE));
 #endif
+	}
 
 	/*
 	 * Ensure the pd map update is visible before kicking the CPUs.
@@ -622,11 +638,36 @@ static ssize_t set_boot_complete(struct kobject *kobj,
 	return cnt;
 }
 
+static ssize_t show_resource_pct(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	unsigned int len = 0;
+	unsigned int max_len = 4096;
+	unsigned int temp;
+	unsigned int ct_res, nct_res, ct_res_pct, total_res;
+
+	temp = ioread32(l3ctl_sram_base_addr + RESOURCE_USAGE_OFS);
+
+	ct_res = (temp & (0xf << 4)) >> 4;
+	nct_res = temp & 0xf;
+	total_res = ct_res + nct_res;
+	ct_res_pct = (ct_res*100)/total_res;
+	len += snprintf(buf+len, max_len-len,
+			"Resource percentage CT:NCT = %u/\%u\n",
+			ct_res_pct, 100 - ct_res_pct);
+
+	return len;
+}
+
 struct kobj_attribute trace_enable_attr =
 __ATTR(cpuqos_trace_enable, 0600, show_trace_enable, set_trace_enable);
 
 struct kobj_attribute boot_complete_attr =
 __ATTR(cpuqos_boot_complete, 0600, NULL, set_boot_complete);
+
+struct kobj_attribute resource_pct_attr =
+__ATTR(resource_percentage, 0600, show_resource_pct, NULL);
 
 static void cpuqos_v3_hook_attach(void __always_unused *data,
 			     struct cgroup_subsys *ss, struct cgroup_taskset *tset)
@@ -754,6 +795,8 @@ out_unlock:
 static int platform_cpuqos_v3_probe(struct platform_device *pdev)
 {
 	int ret = 0, retval = 0;
+	struct platform_device *pdev_temp;
+	struct resource *sram_res;
 
 	node = pdev->dev.of_node;
 
@@ -765,6 +808,25 @@ static int platform_cpuqos_v3_probe(struct platform_device *pdev)
 		pr_info("%s unable to get plat_enable\n", __func__);
 
 	pr_info("cpuqos_v3 plat_enable=%d\n", plat_enable);
+
+	ret = of_property_read_u32(node, "ram-base", &ram_base);
+	if (ret) {
+		pr_info("failed to find ram-base @ %s\n", __func__);
+		//set default to sysram, 0 : slc, 1 : l3ctl, 2 : tcm
+		ram_base = RAM_BASE_SLC;
+	}
+
+	pdev_temp = of_find_device_by_node(node);
+	if (!pdev_temp)
+		pr_info("failed to find cpuqos_v3 pdev @ %s\n", __func__);
+
+	sram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 0);
+	if (sram_res) {
+		l3ctl_sram_base_addr = ioremap(sram_res->start,
+				resource_size(sram_res));
+	} else {
+		pr_info("%s can't get cpuqos_v3 resource\n", __func__);
+	}
 
 	return 0;
 }

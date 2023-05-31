@@ -10,10 +10,9 @@
 extern int init_cpuqos_common_sysfs(void);
 extern void cleanup_cpuqos_common_sysfs(void);
 
-extern struct kobj_attribute show_cpuqos_status_attr;
-extern struct kobj_attribute set_cache_size_attr;
 extern struct kobj_attribute trace_enable_attr;
 extern struct kobj_attribute boot_complete_attr;
 extern struct kobj_attribute show_L3m_status_attr;
+extern struct kobj_attribute resource_pct_attr;
 
 #endif
