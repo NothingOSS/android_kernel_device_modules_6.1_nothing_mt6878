@@ -83,6 +83,9 @@ int aputop_send_rpmsg(struct aputop_rpmsg_data *rpmsg_data, int timeout) // ms
 		ret = 0;
 	}
 
+	/* unlock mutex reutrn directly if no error happen */
+	goto unlock;
+
 poweroff:
 	/* power off to restore ref cnt */
 	ret = rpmsg_sendto(top_rpmsg->ept, NULL, 0, 1);
