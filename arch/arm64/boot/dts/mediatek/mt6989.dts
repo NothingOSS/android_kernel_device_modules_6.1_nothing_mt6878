@@ -5446,8 +5446,8 @@
 
 		gpu_dcs: gpu-dcs {
 			compatible = "mediatek,gpu_dcs";
-			dcs-policy-support = <0>;
-			virtual-opp-support = <0x0>;
+			dcs-policy-support = <1>;
+			virtual-opp-support = <0x820>;
 		};
 
 		gpu-fdvfs@117800 {
