@@ -854,8 +854,14 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	if (stackNewFreqID < ui32CeilingID)
 		stackNewFreqID = ui32CeilingID;
 
+	if (topNewFreqID < ui32CeilingID)
+		topNewFreqID = ui32CeilingID;
+
 	if (stackNewFreqID > ui32FloorID)
 		stackNewFreqID = ui32FloorID;
+
+	if (topNewFreqID > ui32FloorID)
+		topNewFreqID = ui32FloorID;
 
 	g_ulCommitFreq = ged_get_freq_by_idx(stackNewFreqID);
 	ged_commit_freq = ui32NewFreq;
@@ -868,6 +874,14 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 			stackNewFreqID = FORCE_OPP;
 		if (FORCE_TOP_OPP >= 0)
 			topNewFreqID = FORCE_TOP_OPP;
+
+		// if no force opp, stack opp must equal to top opp
+		if (FORCE_OPP < 0 && FORCE_TOP_OPP < 0 &&
+			topNewFreqID != stackNewFreqID) {
+			GED_LOGE("[DVFS_ASYNC] topFreqID(%d) != stackFreqID(%d), force top = stack",
+					topNewFreqID, stackNewFreqID);
+			topNewFreqID = stackNewFreqID;
+		}
 
 		ged_gpufreq_dual_commit(topNewFreqID, stackNewFreqID, eCommitType, &bCommited);
 
