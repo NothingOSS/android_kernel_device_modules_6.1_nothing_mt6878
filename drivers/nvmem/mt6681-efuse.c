@@ -23,7 +23,7 @@
 #define RG_OTP_DOUT_SW		0xE
 #define RG_OTP_RD_BUSY		0xF
 /* mask of OTP_PA */
-#define RG_OTP_PA_MASK		0x3FF
+#define RG_OTP_PA_MASK		0x4FF
 /* Mask definition for EFUSE control engine clock register */
 #define RG_EFUSE_CK_PDN_HWEN_MASK	BIT(0)
 #define RG_EFUSE_CK_PDN_MASK		BIT(2)
@@ -181,7 +181,7 @@ static int mt6681_efuse_probe(struct platform_device *pdev)
 	return 0;
 }
 static const struct efuse_chip_data mt6681_efuse_data = {
-	.reg_num = 128,
+	.reg_num = 160,
 	.base = MT6681_OTP_CON0,
 	.ck_pdn = MT6681_TOP_CKPDN_CON0,
 	.ck_pdn_hwen = MT6681_TOP_CKHWEN_CON0
