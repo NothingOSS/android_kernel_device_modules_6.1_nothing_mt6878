@@ -10,6 +10,11 @@
 #include <linux/io.h>
 #include "mbraink_ioctl_struct_def.h"
 
+#define MAX_POWER_HD_SZ 8
+#define SPM_DATA_SZ (5640)
+#define SPM_TOTAL_SZ (MAX_POWER_HD_SZ+SPM_DATA_SZ)
+
+
 #if IS_ENABLED(CONFIG_MTK_LPM_MT6985) && \
 	IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
 	IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
@@ -92,5 +97,6 @@ int mbraink_power_getVcoreInfo(struct mbraink_power_vcoreInfo *pmbrainkPowerVcor
 
 void mbraink_get_power_wakeup_info(struct mbraink_power_wakeup_data *wakeup_info_buffer);
 
+int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *power_spm_buffer);
 
 #endif /*end of MBRAINK_POWER_H*/

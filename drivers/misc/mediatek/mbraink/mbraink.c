@@ -523,6 +523,25 @@ static long mbraink_ioctl(struct file *filp,
 		}
 		break;
 	}
+	case RO_POWER_SPM_RAW:
+	{
+		struct mbraink_power_spm_raw power_spm_buffer;
+
+		if (copy_from_user(&power_spm_buffer,
+					(struct mbraink_power_spm_raw *) arg,
+					sizeof(power_spm_buffer))) {
+			pr_notice("Data write power_spm_buffer from UserSpace Err!\n");
+			return -EPERM;
+		}
+		mbraink_power_get_spm_info(&power_spm_buffer);
+		if (copy_to_user((struct mbraink_power_spm_raw *) arg,
+					&power_spm_buffer,
+					sizeof(power_spm_buffer))) {
+			pr_notice("Copy power_spm_buffer to UserSpace error!\n");
+			return -EPERM;
+		}
+		break;
+	}
 	default:
 		pr_notice("illegal ioctl number %u.\n", cmd);
 		return -EINVAL;

@@ -9,7 +9,19 @@
 #include <linux/sched/clock.h>
 #include <swpm_module_ext.h>
 
+
+#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
+	IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+
+#include <lpm_sys_res_mbrain_dbg.h>
+
+unsigned char *g_spm_raw;
+unsigned int g_data_size;
+
+#endif
+
 #include "mbraink_power.h"
+
 
 #if IS_ENABLED(CONFIG_MTK_LPM_MT6985) && \
 	IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
@@ -298,4 +310,88 @@ void mbraink_get_power_wakeup_info(struct mbraink_power_wakeup_data *wakeup_info
 	else
 		wakeup_info_buffer->is_has_data = 0;
 }
+
+#if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
+	IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+
+int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
+{
+	bool bfree = false;
+	struct lpm_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
+
+	if (spm_buffer == NULL) {
+		bfree = true;
+		goto End;
+	}
+
+	if (spm_buffer->type == 1) {
+
+		sys_res_mbrain_ops = get_lpm_mbrain_dbg_ops();
+
+		if (sys_res_mbrain_ops && sys_res_mbrain_ops->get_length) {
+			g_data_size = sys_res_mbrain_ops->get_length();
+			g_data_size += MAX_POWER_HD_SZ;
+			pr_notice("g_data_size(%d)\n", g_data_size);
+		}
+
+		if (g_data_size == 0) {
+			bfree = true;
+			goto End;
+		}
+
+		if (g_spm_raw != NULL) {
+			vfree(g_spm_raw);
+			g_spm_raw = NULL;
+		}
+
+		if (g_data_size == SPM_TOTAL_SZ) {
+			g_spm_raw = vmalloc(g_data_size);
+			if (g_spm_raw != NULL) {
+				memset(g_spm_raw, 0, g_data_size);
+
+				if (sys_res_mbrain_ops &&
+				   sys_res_mbrain_ops->get_data &&
+				   sys_res_mbrain_ops->get_data(g_spm_raw, g_data_size) != 0) {
+					bfree = true;
+					goto End;
+				}
+			}
+		}
+	}
+
+	if (g_spm_raw != NULL) {
+		if (((spm_buffer->pos+spm_buffer->size) > (g_data_size)) ||
+			spm_buffer->size > sizeof(spm_buffer->spm_data)) {
+			bfree = true;
+			goto End;
+		}
+		memcpy(spm_buffer->spm_data, g_spm_raw+spm_buffer->pos, spm_buffer->size);
+
+		if (spm_buffer->type == 0) {
+			bfree = true;
+			goto End;
+		}
+	}
+
+End:
+	if (bfree == true) {
+		if (g_spm_raw != NULL) {
+			vfree(g_spm_raw);
+			g_spm_raw = NULL;
+		}
+		g_data_size = 0;
+	}
+
+	return 0;
+}
+
+#else
+
+int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
+{
+	pr_notice("not support spm info\n");
+	return 0;
+}
+
+#endif
 

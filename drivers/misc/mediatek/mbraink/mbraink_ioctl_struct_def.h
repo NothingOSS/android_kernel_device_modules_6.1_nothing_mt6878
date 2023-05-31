@@ -32,6 +32,20 @@
 #define MBRAINK_FEATURE_GPU_EN		(1<<0UL)
 #define MBRAINK_FEATURE_AUDIO_EN	(1<<1UL)
 
+
+#define MAX_POWER_SPM_TBL_SEC_SZ (928)
+
+
+
+enum MBRAINK_VCORE_IP {
+	MBRAINK_VCORE_IP_MDP,
+	MBRAINK_VCORE_IP_DISP,
+	MBRAINK_VCORE_IP_VENC,
+	MBRAINK_VCORE_IP_VDEC,
+	MBRAINK_VCORE_IP_SCP,
+	MBRAINK_VCORE_IP_MAX,
+};
+
 struct mbraink_process_stat_struct {
 	unsigned short pid;
 	unsigned short uid;
@@ -205,6 +219,13 @@ struct mbraink_power_wakeup_data {
 	uint8_t is_has_data;
 	unsigned short next_pos;
 	struct mbraink_power_wakeup_struct drv_data[MAX_WAKEUP_SOURCE_NUM];
+};
+
+struct mbraink_power_spm_raw {
+	uint8_t type;
+	unsigned short pos;
+	unsigned short size;
+	unsigned char spm_data[MAX_POWER_SPM_TBL_SEC_SZ];
 };
 
 

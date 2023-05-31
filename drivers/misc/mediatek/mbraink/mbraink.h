@@ -35,6 +35,7 @@
 #define BATTERY_INFO			'e'
 #define FEATURE_EN				'f'
 #define WAKEUP_INFO				'g'
+#define POWER_SPM_RAW			'j'
 
 
 /*Mbrain Delegate IOCTL List*/
@@ -68,6 +69,8 @@
 #define RO_WAKEUP_INFO			_IOR(IOC_MAGIC, WAKEUP_INFO, \
 							struct mbraink_power_wakeup_data*)
 
+#define RO_POWER_SPM_RAW			_IOR(IOC_MAGIC, POWER_SPM_RAW, \
+								struct mbraink_power_spm_raw*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1
