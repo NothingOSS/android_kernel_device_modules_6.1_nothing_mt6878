@@ -23,7 +23,7 @@ extern int (*flt_get_cpu_r_api)(int cpu);
 extern int (*flt_get_cpu_o_eas_api)(int grp_id);
 extern int (*flt_get_total_gp_api)(void);
 extern int (*flt_get_grp_r_eas_api)(int grp_id);
-
+extern void (*flt_ctl_api)(int set);
 #define CPU_NUM		8
 #define PER_ENTRY	4
 #define RESERVED_LEN	112

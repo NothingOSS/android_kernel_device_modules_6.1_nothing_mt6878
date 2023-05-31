@@ -74,10 +74,8 @@ EXPORT_SYMBOL(flt_get_total_gp_api);
 int (*flt_get_grp_r_eas_api)(int grp_id);
 EXPORT_SYMBOL(flt_get_grp_r_eas_api);
 
-#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-extern unsigned long (*flt_get_cpu_util_hook)(int cpu);
-extern unsigned long (*flt_sched_get_cpu_group_util_eas_hook)(int cpu, int group_id);
-#endif
+void (*flt_ctl_api)(int set);
+EXPORT_SYMBOL(flt_ctl_api);
 
 int flt_get_ws(void)
 {
@@ -357,11 +355,19 @@ int flt_get_gp_r(int grp_id)
 }
 EXPORT_SYMBOL(flt_get_gp_r);
 
+void flt_ctl(int set)
+{
+	if (flt_ctl_api)
+		flt_ctl_api(set);
+}
+EXPORT_SYMBOL_GPL(flt_ctl);
+
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 void register_sugov_hooks(void)
 {
 	flt_get_cpu_util_hook = flt_get_cpu;
 	flt_sched_get_cpu_group_util_eas_hook = flt_sched_get_cpu_group;
+	flt_get_fpsgo_boosting = flt_ctl;
 }
 #endif
 

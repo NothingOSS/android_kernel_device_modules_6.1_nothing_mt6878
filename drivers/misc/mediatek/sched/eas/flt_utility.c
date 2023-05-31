@@ -309,6 +309,14 @@ static int flt_get_o_util_mode2(int cpu)
 	return res;
 }
 
+static void flt_ctl_mode2(int set)
+{
+	if (set)
+		flt_set_mode(FLT_MODE2_EN);
+	else
+		flt_set_mode(0);
+}
+
 void flt_mode2_register_api_hooks(void)
 {
 	flt_get_ws_api = flt_get_window_size_mode2;
@@ -326,6 +334,7 @@ void flt_mode2_register_api_hooks(void)
 	flt_get_cpu_o_eas_api = flt_get_o_util_mode2;
 	flt_get_total_gp_api = flt_get_total_group_mode2;
 	flt_get_grp_r_eas_api = flt_get_grp_r_mode2;
+	flt_ctl_api = flt_ctl_mode2;
 }
 
 void flt_mode2_init_res(void)

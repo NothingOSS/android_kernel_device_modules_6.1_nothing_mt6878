@@ -41,6 +41,9 @@ int flt_get_task_by_wp(struct task_struct *p, int wc, int task_wp);
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 void register_sugov_hooks(void);
+extern unsigned long (*flt_get_cpu_util_hook)(int cpu);
+extern unsigned long (*flt_sched_get_cpu_group_util_eas_hook)(int cpu, int group_id);
+extern void (*flt_get_fpsgo_boosting)(int fpsgo_flag);
 #endif
 
 /* suspend/resume api */
