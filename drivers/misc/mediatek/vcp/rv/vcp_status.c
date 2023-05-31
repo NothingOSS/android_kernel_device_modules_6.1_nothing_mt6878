@@ -9,6 +9,7 @@
 
 struct vcp_status_fp *vcp_fp;
 struct mtk_ipi_device *vcp_ipidev_ex;
+struct vcp_mminfra_on_off_st *vcp_mminfra_cb_ptr;
 
 int pwclkcnt;
 EXPORT_SYMBOL_GPL(pwclkcnt);
@@ -120,6 +121,24 @@ unsigned int vcp_cmd_ex(enum vcp_cmd_id id, char *user)
 	return vcp_fp->vcp_cmd(id, user);
 }
 EXPORT_SYMBOL_GPL(vcp_cmd_ex);
+
+void vcp_set_mminfra_cb(struct vcp_mminfra_on_off_st *str_ptr)
+{
+	if (!str_ptr)
+		return;
+	vcp_mminfra_cb_ptr = str_ptr;
+}
+EXPORT_SYMBOL_GPL(vcp_set_mminfra_cb);
+
+int vcp_register_mminfra_cb_ex(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off)
+{
+	if(!vcp_mminfra_cb_ptr)
+		return -1;
+	vcp_mminfra_cb_ptr->mminfra_on = fpt_on;
+	vcp_mminfra_cb_ptr->mminfra_off = fpt_off;
+	return 0;
+}
+EXPORT_SYMBOL_GPL(vcp_register_mminfra_cb_ex);
 
 static void __exit mtk_vcp_status_exit(void)
 {

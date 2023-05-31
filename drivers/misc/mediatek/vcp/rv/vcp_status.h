@@ -30,6 +30,13 @@ struct vcp_status_fp {
 	is_vcp_suspending_fp		is_vcp_suspending;
 };
 
+typedef int (*mminfra_pwr_ptr)(void);
+struct vcp_mminfra_on_off_st {
+	mminfra_pwr_ptr mminfra_on;
+	mminfra_pwr_ptr mminfra_off;
+	int mminfra_ref;
+};
+
 extern int pwclkcnt;
 extern bool is_suspending;
 int mmup_enable_count(void);
@@ -45,5 +52,7 @@ void vcp_A_register_notify_ex(struct notifier_block *nb);
 void vcp_A_unregister_notify_ex(struct notifier_block *nb);
 unsigned int vcp_cmd_ex(enum vcp_cmd_id id, char *user);
 unsigned int is_vcp_suspending_ex(void);
+void vcp_set_mminfra_cb(struct vcp_mminfra_on_off_st *str_ptr);
+int vcp_register_mminfra_cb_ex(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off);
 
 #endif

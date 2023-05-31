@@ -216,6 +216,13 @@ struct vcp_ipi_irq vcp_ipi_irqs[] = {
 struct device *vcp_io_devs[VCP_IOMMU_DEV_NUM];
 struct device *vcp_power_devs;
 
+/* mminfra pwr contrl struct*/
+struct vcp_mminfra_on_off_st vcp_mminfra_on_off = {
+	.mminfra_on = NULL,
+	.mminfra_off = NULL,
+	.mminfra_ref = 0
+};
+
 struct vcp_status_fp vcp_helper_fp = {
 	.vcp_get_reserve_mem_phys	= vcp_get_reserve_mem_phys,
 	.vcp_get_reserve_mem_virt	= vcp_get_reserve_mem_virt,
@@ -3263,6 +3270,7 @@ static int __init vcp_init(void)
 
 	vcp_set_fp(&vcp_helper_fp);
 	vcp_set_ipidev(&vcp_ipidev);
+	vcp_set_mminfra_cb(&vcp_mminfra_on_off);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 	register_devapc_power_callback(&devapc_power_handle);
