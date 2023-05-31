@@ -5170,7 +5170,7 @@
 			gpr-offset = <0xd1c>;
 			gpr-id = <6>;
 			gmpu-table-size = <0x0>;
-			protected-reserve-size = <0x800000>;
+			protected-reserve-size = <0x200000>;
 			gpu-iommu {
 				compatible = "mediatek,gpu-iommu";
 				iommus = <&gpu_smmu 0x01>; /* SID=1 */
