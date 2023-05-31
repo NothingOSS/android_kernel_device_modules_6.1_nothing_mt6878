@@ -7472,7 +7472,6 @@
 
 			mediatek,ufs-qos;
 			mediatek,ufs-pmc-via-fastauto;
-			mediatek,ufs-mphy-debug;
 			mediatek,ufs-tx-skew-fix;
 			/*
 			 * Control mtcmos with rtff flow by ufs driver,
