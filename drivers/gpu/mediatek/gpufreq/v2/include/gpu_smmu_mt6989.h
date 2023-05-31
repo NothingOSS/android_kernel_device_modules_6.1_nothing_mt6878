@@ -17,7 +17,7 @@
 
 /* MFG-SMMU */
 #define ENABLE_MFG_SMMU_SPM_SEMA   1
-#define ENABLE_MFG_SMMU_PWR_CTRL   0
+#define ENABLE_MFG_SMMU_PWR_CTRL   1
 /* Debug */
 #define ENABLE_MFG_SMMU_FOOTPRINT  0
 #define ENABLE_MFG_SMMU_ON_EB      0
