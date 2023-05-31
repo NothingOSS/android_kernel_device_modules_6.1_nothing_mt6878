@@ -8693,9 +8693,7 @@
 			operating-points-v2 = <&opp_table_cam>;
 			clocks = <&mmdvfs_mux MMDVFS_USER_CAM>;
 			clock-names = "mmdvfs_mux";
-#if 0
 			mboxes = <&gce_m 24 0 CMDQ_THR_PRIO_1>;
-#endif
 		};
 
 		cam_raw_a: cam-raw-a@1a030000 {
