@@ -13306,23 +13306,23 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"top_freq,top_on_ratio,idle_ratio_noc,wfi_ratio";
 			node-90 = "SSPM_SWPM_APU__TOP_BW",
 				"top_bw,eDPAbw,tcmbw,rcxbw,acx0bw,acx1bw,acx2bw";
-			node-91 = "SSPM_SWPM_CPU__CORE_PMU_3",
+			node-91 = "SSPM_SWPM_CPU__CORE_PMU_0x0004",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-92 = "SSPM_SWPM_CPU__CORE_PMU_4",
+			node-92 = "SSPM_SWPM_CPU__CORE_PMU_0x0010",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-93 = "SSPM_SWPM_CPU__CORE_PMU_5",
+			node-93 = "SSPM_SWPM_CPU__CORE_PMU_0x0014",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-94 = "SSPM_SWPM_CPU__CORE_PMU_6",
+			node-94 = "SSPM_SWPM_CPU__CORE_PMU_0x0016",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-95 = "SSPM_SWPM_CPU__CORE_PMU_7",
+			node-95 = "SSPM_SWPM_CPU__CORE_PMU_0x0017",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-96 = "SSPM_SWPM_CPU__CORE_PMU_8",
+			node-96 = "SSPM_SWPM_CPU__CORE_PMU_0x0018",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-97 = "SSPM_SWPM_CPU__CORE_PMU_9",
+			node-97 = "SSPM_SWPM_CPU__CORE_PMU_0x0021",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-98 = "SSPM_SWPM_CPU__CORE_PMU_10",
+			node-98 = "SSPM_SWPM_CPU__CORE_PMU_0x003B",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-99 = "SSPM_SWPM_CPU__CORE_PMU_11",
+			node-99 = "SSPM_SWPM_CPU__CORE_PMU_0x4021",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 			/* SLBC */
 			node-100 = "SSPM_SLBC_GID_USED",
@@ -13341,6 +13341,10 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"pd,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp,total,valid";
 			node-107 = "SSPM_SLBC_CACHE_WAY",
 				"pd,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp,total,buf_unused";
+			node-108 = "SSPM_SWPM_CPU__CORE_PMU_0x80C1",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-109 = "SSPM_SWPM_CPU__CORE_PMU_0X80EF",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
