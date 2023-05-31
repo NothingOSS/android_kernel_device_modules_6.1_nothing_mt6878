@@ -186,7 +186,7 @@ static unsigned long aee_addr_find(const char *name)
 	unsigned long i;
 	unsigned int off;
 
-	if (!_mrdump_kns)
+	if (!mrdump_km)
 		return 0;
 
 	for (i = 0, off = 0; i < _mrdump_kns; i++) {
