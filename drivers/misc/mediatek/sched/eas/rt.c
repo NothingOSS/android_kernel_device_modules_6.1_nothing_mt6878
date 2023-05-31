@@ -376,6 +376,7 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 				lowest_mask, rt_task_fits_capacity);
 
 	cpumask_andnot(lowest_mask, lowest_mask, cpu_pause_mask);
+	cpumask_and(lowest_mask, lowest_mask, cpu_active_mask);
 
 	irq_log_store();
 	mtk_rt_energy_aware_wake_cpu(p, lowest_mask, ret, &target, true, &rt_ea_output);
@@ -408,29 +409,24 @@ out:
 void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowest_mask,
 			int ret, int *lowest_cpu)
 {
-	int cpu, source_cpu;
+	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
+	struct perf_domain *pd;
+	int cpu, source_cpu, best_cpu;
 	int this_cpu = smp_processor_id();
 	cpumask_t avail_lowest_mask;
 	int target = -1, select_reason = -1;
 
 	irq_log_store();
 
-	cpumask_andnot(&avail_lowest_mask, lowest_mask, cpu_pause_mask);
 	if (!ret) {
 		select_reason = LB_RT_NO_LOWEST_RQ;
 		goto out; /* No targets found */
 	}
+
+	cpumask_andnot(&avail_lowest_mask, lowest_mask, cpu_pause_mask);
+	cpumask_and(&avail_lowest_mask, &avail_lowest_mask, cpu_active_mask);
+
 	irq_log_store();
-
-	source_cpu = task_cpu(p);
-
-	 /* Skip source_cpu if it is not among lowest */
-	if (!cpumask_test_cpu(source_cpu, &avail_lowest_mask))
-		source_cpu = -1;
-
-	/* Skip this_cpu if it is not among lowest */
-	if (!cpumask_test_cpu(this_cpu, &avail_lowest_mask))
-		this_cpu = -1;
 
 	mtk_rt_energy_aware_wake_cpu(p, &avail_lowest_mask, ret, &target, false, NULL);
 
@@ -445,14 +441,54 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 
 	irq_log_store();
 
+	source_cpu = task_cpu(p);
+
 	/* use prev cpu as target */
-	if (source_cpu !=  -1) {
+	if (cpumask_test_cpu(source_cpu, &avail_lowest_mask)) {
 		*lowest_cpu = source_cpu;
 		select_reason = LB_RT_SOURCE_CPU;
 		goto out;
 	}
 
 	irq_log_store();
+
+	/* Skip this_cpu if it is not among lowest */
+	if (!cpumask_test_cpu(this_cpu, &avail_lowest_mask))
+		this_cpu = -1;
+
+	rcu_read_lock();
+	pd = rcu_dereference(rd->pd);
+	if (!pd)
+		goto unlock;
+
+	/* Find best_cpu on same cluster with task_cpu(p) */
+	for (; pd; pd = pd->next) {
+		if (!cpumask_test_cpu(source_cpu, perf_domain_span(pd)))
+			continue;
+
+		/*
+		 * "this_cpu" is cheaper to preempt than a
+		 * remote processor.
+		 */
+		if (this_cpu != -1 && cpumask_test_cpu(this_cpu, perf_domain_span(pd))) {
+			rcu_read_unlock();
+			*lowest_cpu = this_cpu;
+			select_reason = LB_RT_SAME_SYNC;
+			goto out;
+		}
+
+		best_cpu = cpumask_any_and_distribute(&avail_lowest_mask,
+						perf_domain_span(pd));
+		if (best_cpu < nr_cpu_ids) {
+			rcu_read_unlock();
+			*lowest_cpu = best_cpu;
+			select_reason = LB_RT_SAME_FIRST;
+			goto out;
+		}
+	}
+
+unlock:
+	rcu_read_unlock();
 
 	/*
 	 * And finally, if there were no matches within the domains
@@ -465,28 +501,27 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 		goto out;
 	}
 
-	irq_log_store();
-
 	cpu = cpumask_any_and_distribute(&avail_lowest_mask, cpu_possible_mask);
 	if (cpu < nr_cpu_ids) {
 		*lowest_cpu = cpu;
-		select_reason = LB_RT_FAIL_RANDOM;
+		select_reason = LB_RT_FAIL_FIRST;
 		goto out;
 	}
-
-	irq_log_store();
 
 	/* Let find_lowest_rq not to choose dst_cpu */
 	*lowest_cpu = -1;
 	select_reason = LB_RT_FAIL;
-	cpumask_clear(lowest_mask);
-
 out:
 	irq_log_store();
 
 	if (trace_sched_find_lowest_rq_enabled())
 		trace_sched_find_lowest_rq(p, select_reason, *lowest_cpu,
-				&avail_lowest_mask, lowest_mask);
+				&avail_lowest_mask, lowest_mask, cpu_active_mask);
+	/*
+	 * move here so that we can see lowest_mask in trace event,
+	 * work only if lowest_cpu == -1
+	 */
+	cpumask_clear(lowest_mask);
 
 	irq_log_store();
 }

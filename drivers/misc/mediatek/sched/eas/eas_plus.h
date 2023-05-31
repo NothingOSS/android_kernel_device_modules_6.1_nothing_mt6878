@@ -45,6 +45,9 @@ DECLARE_PER_CPU(unsigned long, min_freq);
 #define LB_RT_FAIL_SYNC        (0x20000)
 #define LB_RT_FAIL_RANDOM      (0x40000)
 #define LB_RT_NO_LOWEST_RQ     (0x80000)
+#define LB_RT_SAME_SYNC      (0x80001)
+#define LB_RT_SAME_FIRST     (0x80002)
+#define LB_RT_FAIL_FIRST     (0x80004)
 
 /*
  * energy_env - Utilization landscape for energy estimation.
