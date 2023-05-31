@@ -66,9 +66,9 @@ void adsp_mt6989_select_uart_clock_mode(enum adsp_clk_mode mode)
 {
 	switch (mode) {
 	case CLK_LOW_POWER:
+	case CLK_DEFAULT_INIT:
 		adsp_set_uart_top_mux(CLK_TOP_UNIVPLL_D6_D4);
 		break;
-	case CLK_DEFAULT_INIT:
 	case CLK_HIGH_PERFORM:
 		adsp_set_uart_top_mux(CLK_TOP_UNIVPLL_D6_D2);
 		break;
@@ -80,6 +80,7 @@ void adsp_mt6989_select_uart_clock_mode(enum adsp_clk_mode mode)
 int adsp_mt6989_enable_uart_clock(void)
 {
 	int ret = 0;
+	pr_info("%s name:%s\n", __func__, adsp_uart_clks[CLK_TOP_ADSP_UART_SEL].name);
 
 	ret = clk_prepare_enable(adsp_uart_clks[CLK_TOP_ADSP_UART_SEL].clock);
 	if (IS_ERR(&ret)) {
@@ -87,12 +88,12 @@ int adsp_mt6989_enable_uart_clock(void)
 			__func__, adsp_uart_clks[CLK_TOP_ADSP_UART_SEL].name, ret);
 		return -EINVAL;
 	}
-
 	return 0;
 }
 
 void adsp_mt6989_disable_uart_clock(void)
 {
+	pr_info("%s name:%s\n", __func__, adsp_uart_clks[CLK_TOP_ADSP_UART_SEL].name);
 	clk_disable_unprepare(adsp_uart_clks[CLK_TOP_ADSP_UART_SEL].clock);
 }
 

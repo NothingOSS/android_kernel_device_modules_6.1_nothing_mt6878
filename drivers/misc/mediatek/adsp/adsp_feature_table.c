@@ -181,10 +181,8 @@ int _adsp_deregister_feature(u32 cid, u32 fid, u32 opt)
 
 	if (is_adsp_btaudio_feature(fid)) {
 		ctrl->total_btaud -= 1;
-		if (ctrl->total_btaud == 0) {
-			adsp_select_uart_clock_mode(CLK_DEFAULT_INIT);
+		if (ctrl->total_btaud == 0)
 			adsp_disable_uart_clock();
-		}
 	}
 
 	if (item->counter[cid] == 0) {
