@@ -5,6 +5,8 @@
 #ifndef __CPUFREQ_H__
 #define __CPUFREQ_H__
 #include <linux/proc_fs.h>
+#include <linux/kthread.h>
+#include <linux/irq_work.h>
 
 #define MAX_CAP_ENTRYIES 168
 
@@ -124,6 +126,16 @@ struct dsu_table {
 	unsigned int *opp_map;
 };
 
+struct cpu_dsu_freq_state {
+	bool is_eas_dsu_support;
+	bool is_fdvfs_support;
+	bool is_eas_dsu_ctrl;
+	unsigned int pd_count;
+	unsigned int dsu_target_freq;
+	unsigned int *cpu_freq;
+	unsigned int *dsu_freq_vote;
+};
+
 extern struct dsu_state *dsu_get_opp_ps(int wl_type, int opp);
 extern unsigned int dsu_get_freq_opp(unsigned int freq);
 extern int init_dsu(void);
@@ -164,7 +176,6 @@ extern unsigned int pd_get_opp_leakage(unsigned int cpu, unsigned int opp,
 	unsigned int temperature);
 extern unsigned int pd_get_dsu_weighting(int wl_type, int cpu);
 extern unsigned int pd_get_emi_weighting(int wl_type, int cpu);
-extern unsigned int get_dsu_target_freq(void);
 extern unsigned int get_curr_cap(int cpu);
 extern int get_fpsgo_bypass_flag(void);
 extern void (*fpsgo_notify_fbt_is_boost_fp)(int fpsgo_is_boost);
@@ -185,6 +196,10 @@ extern bool is_sbb_trigger(struct rq *rq);
 extern unsigned int get_nr_gears(void);
 extern struct cpumask *get_gear_cpumask(unsigned int gear);
 extern bool is_gearless_support(void);
+/* dsu ctrl */
+extern bool get_eas_dsu_ctrl(void);
+extern void set_eas_dsu_ctrl(bool set);
+extern struct cpu_dsu_freq_state *get_dsu_freq_state(void);
 
 /* adaptive margin */
 extern int am_enable;

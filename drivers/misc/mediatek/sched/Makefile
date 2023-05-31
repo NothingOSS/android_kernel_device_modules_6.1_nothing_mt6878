@@ -34,6 +34,7 @@ subdir-ccflags-y += -I$(srctree)/kernel/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/cpufreq/
 
 obj-$(CONFIG_MTK_CORE_CTL) += mtk_core_ctl.o
 mtk_core_ctl-y += core_ctl/sched_avg.o

@@ -20,6 +20,7 @@
 #else
 #include "mtk_energy_model/v1/energy_model.h"
 #endif
+#include "mediatek-cpufreq-hw_fdvfs.h"
 #include "dsu_interface.h"
 #include <mt-plat/mtk_irq_mon.h>
 
@@ -69,6 +70,81 @@ void init_adaptive_margin(void)
 	}
 }
 
+/* eas dsu ctrl */
+static struct cpu_dsu_freq_state freq_state;
+void init_eas_dsu_ctrl(void)
+{
+	freq_state.is_eas_dsu_support = true;
+	if (is_fdvfs_support())
+		freq_state.is_fdvfs_support = true;
+	else
+		freq_state.is_fdvfs_support = false;
+	freq_state.is_eas_dsu_ctrl = true;
+	freq_state.pd_count = pd_count;
+	freq_state.cpu_freq = kcalloc(pd_count, sizeof(unsigned int), GFP_KERNEL);
+	freq_state.dsu_freq_vote = kcalloc(pd_count, sizeof(unsigned int), GFP_KERNEL);
+	pr_info("fdvfs_sup.=%d, eas_dsu_sup.=%d\n",
+		freq_state.is_fdvfs_support, freq_state.is_eas_dsu_support);
+}
+
+bool get_eas_dsu_ctrl(void)
+{
+	return freq_state.is_eas_dsu_ctrl;
+}
+EXPORT_SYMBOL_GPL(get_eas_dsu_ctrl);
+
+void set_eas_dsu_ctrl(bool set)
+{
+	int i;
+
+	if (freq_state.is_eas_dsu_support) {
+		freq_state.is_eas_dsu_ctrl = set;
+		if (!freq_state.is_eas_dsu_ctrl) {
+			freq_state.dsu_target_freq = 0;
+			for (i = 0; i < freq_state.pd_count; i++)
+				freq_state.dsu_freq_vote[i] = 0;
+		}
+	}
+}
+EXPORT_SYMBOL_GPL(set_eas_dsu_ctrl);
+
+struct cpu_dsu_freq_state *get_dsu_freq_state(void)
+{
+	return &freq_state;
+}
+EXPORT_SYMBOL_GPL(get_dsu_freq_state);
+
+inline void set_dsu_target_freq(void)
+{
+	int i, cpu, opp, dsu_target_freq = 0;
+	unsigned int wl_type = get_em_wl();
+	struct pd_capacity_info *pd_info;
+	struct mtk_em_perf_state *ps;
+
+	for (i = 0; i < pd_count; i++) {
+		pd_info = &pd_capacity_tbl[i];
+		cpu = cpumask_first(&pd_info->cpus);
+		if (pd_info->nr_cpus == 1 && idle_get_state(cpu_rq(cpu))) {
+			freq_state.dsu_freq_vote[i] = 0;
+			goto skip_single_idle_cpu;
+		}
+
+		ps = pd_get_freq_ps(wl_type, cpu, freq_state.cpu_freq[i], &opp);
+		freq_state.dsu_freq_vote[i] = ps->dsu_freq;
+
+		if (dsu_target_freq < freq_state.dsu_freq_vote[i])
+			dsu_target_freq = freq_state.dsu_freq_vote[i];
+
+skip_single_idle_cpu:
+		if (trace_sugov_ext_dsu_freq_vote_enabled())
+			trace_sugov_ext_dsu_freq_vote(wl_type, i,
+				 freq_state.cpu_freq[i], freq_state.dsu_freq_vote[i]);
+	}
+
+	freq_state.dsu_target_freq = dsu_target_freq;
+	cpufreq_fdvfs_cci_switch(dsu_target_freq);
+}
+
 enum {
 	REG_FREQ_LUT_TABLE,
 	REG_FREQ_ENABLE,
@@ -88,7 +164,6 @@ struct cpufreq_mtk {
 };
 
 static struct dsu_table dsu_tbl;
-static int *curr_freqs;
 static int nr_wl_type = 1;
 static int wl_type_curr;
 static int wl_type_manual = -1;
@@ -1123,7 +1198,6 @@ static int alloc_capacity_table(void)
 			continue;
 		pd_count++;
 	}
-	curr_freqs = kcalloc(pd_count, sizeof(int), GFP_KERNEL);
 
 	if (is_wl_support())
 		nr_wl_type = mtk_mapping.total_type;
@@ -1312,6 +1386,8 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 		}
 		l3ctl_sram_base_addr = get_l3ctl_sram_base_addr();
 		init_dsu();
+
+		init_eas_dsu_ctrl();
 	}
 
 	entry = proc_create("pd_capacity_tbl", 0644, dir, &pd_capacity_tbl_ops);
@@ -1382,13 +1458,13 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 
 	if (is_gearless_support())
 		mtk_arch_set_freq_scale_gearless(policy, target_freq);
-	curr_freqs[per_cpu(gear_id, cpu)] = *target_freq;
 
 	irq_log_store();
 
-	if (is_wl_support()) {
+	if (freq_state.is_eas_dsu_support) {
 		int wl_type = get_em_wl();
 
+		freq_state.cpu_freq[per_cpu(gear_id, cpu)] = *target_freq;
 		offset_dsu_vote = per_cpu(gear_id, cpu) << 2;
 		ps = pd_get_freq_ps(wl_type, cpu, *target_freq, &opp);
 		target_dsu = ps->dsu_freq * 1000;
@@ -1407,7 +1483,7 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 				target_dsu = 0;
 			} else {
 				ps = pd_get_freq_ps(wl_type, single_cpu,
-					curr_freqs[per_cpu(gear_id, single_cpu)], &opp);
+					freq_state.cpu_freq[per_cpu(gear_id, single_cpu)], &opp);
 				target_dsu = ps->dsu_freq * 1000;
 			}
 			offset_dsu_vote = i << 2;
@@ -1415,31 +1491,15 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 				DSU_DVFS_VOTE_EAS_1 + offset_dsu_vote);
 			if (trace_sugov_ext_dsu_freq_vote_enabled())
 				trace_sugov_ext_dsu_freq_vote(wl_type, per_cpu(gear_id, single_cpu),
-					curr_freqs[per_cpu(gear_id, single_cpu)], target_dsu);
+					freq_state.cpu_freq[per_cpu(gear_id, single_cpu)],
+					target_dsu);
 		}
+	} else if (freq_state.is_eas_dsu_support && freq_state.is_fdvfs_support &&
+			freq_state.is_eas_dsu_ctrl) {
+		freq_state.cpu_freq[per_cpu(gear_id, cpu)] = *target_freq;
+		set_dsu_target_freq();
 	}
 }
-
-unsigned int get_dsu_target_freq(void)
-{
-	int cpu, opp, dsu_target_freq = 0;
-	struct cpufreq_policy *policy;
-	struct mtk_em_perf_state *ps;
-
-	for_each_online_cpu(cpu) {
-		policy = cpufreq_cpu_get(cpu);
-		if (policy) {
-			ps = pd_get_freq_ps(get_em_wl(), cpu, curr_freqs[per_cpu(gear_id, cpu)],
-				&opp);
-			if (dsu_target_freq < ps->dsu_freq)
-				dsu_target_freq = ps->dsu_freq;
-			cpu = cpumask_last(policy->related_cpus);
-			cpufreq_cpu_put(policy);
-		}
-	}
-	return dsu_target_freq;
-}
-EXPORT_SYMBOL_GPL(get_dsu_target_freq);
 
 void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 		unsigned long freq, unsigned long max, unsigned long *scale)
