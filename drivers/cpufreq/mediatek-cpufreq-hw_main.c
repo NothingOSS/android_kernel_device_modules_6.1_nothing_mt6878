@@ -26,6 +26,7 @@
 #define POLL_USEC			1000
 #define TIMEOUT_USEC			300000
 #define REG_FREQ_SCALING		0x4cc
+#define REG_QOS_OFF			0x20
 
 enum {
 	REG_FREQ_LUT_TABLE,
@@ -58,6 +59,7 @@ static const u16 cpufreq_mtk_offsets[REG_ARRAY_SIZE] = {
 static struct cpufreq_mtk *mtk_freq_domain_map[NR_CPUS];
 static bool freq_scaling_disabled = true;
 static bool fdvfs_enabled;
+static void __iomem *qos_base;
 
 static int look_up_cpu(struct device *cpu_dev)
 {
@@ -147,9 +149,19 @@ static unsigned int mtk_cpufreq_hw_fast_switch(struct cpufreq_policy *policy,
 	else
 		index = cpufreq_table_find_index_dl(policy, target_freq, false);
 
-	if (fdvfs_enabled) // Fdvfs enabled
+	if (fdvfs_enabled) {
+		if(c->sb_ch)
+			c->sb_ch == -1 ? cpufreq_fdvfs_cci_switch(0):
+					cpufreq_fdvfs_cci_switch(c->sb_ch);
 		cpufreq_fdvfs_switch(target_freq, policy);
+	}
 	else {
+		if(qos_base && c->sb_ch) {
+			c->sb_ch == -1 ?
+			writel_relaxed(0, qos_base + REG_QOS_OFF):
+			writel_relaxed(c->sb_ch * 1000,
+					qos_base + REG_QOS_OFF);
+		}
 		if (!freq_scaling_disabled) // Frequency scaling enabled
 			writel_relaxed(target_freq, c->reg_bases[REG_FREQ_PERF_STATE]);
 		else
@@ -380,9 +392,12 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 {
 	struct device_node *cpu_np;
 	struct device_node *hvfs_node;
+	struct device_node *qos_node;
 	struct of_phandle_args args;
 	struct resource *csram_res;
+	struct resource *qos_res;
 	struct platform_device *pdev_c;
+	struct platform_device *pdev_qos;
 	static void __iomem *csram_base;
 	const u16 *offsets;
 	unsigned int cpu;
@@ -427,6 +442,28 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 		freq_scaling_disabled = false;
 
 	fdvfs_enabled = check_fdvfs_support() == 1 ? true : false;
+
+	qos_node = of_find_node_by_name(NULL, "cpuqos-v3");
+	if (!qos_node) {
+		pr_info("without cpuqos-v3 @ %s\n", __func__);
+		qos_base = NULL;
+	} else {
+		pdev_qos = of_find_device_by_node(qos_node);
+		if (!pdev_qos) {
+			pr_info("without cpuqos_v3 pdev @ %s\n", __func__);
+			qos_base = NULL;
+		} else {
+			qos_res = platform_get_resource(pdev_qos,
+							IORESOURCE_MEM, 0);
+			if (qos_res) {
+				qos_base = ioremap(qos_res->start,
+						resource_size(qos_res));
+			} else {
+				pr_info("%s no qos resource\n", __func__);
+				qos_base = NULL;
+			}
+		}
+	}
 
 	for_each_possible_cpu(cpu) {
 		cpu_np = of_cpu_device_node_get(cpu);
