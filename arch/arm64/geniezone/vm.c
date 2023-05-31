@@ -143,6 +143,8 @@ static int gzvm_vm_ioctl_cap_pvm(struct gzvm *gzvm, struct gzvm_enable_cap *cap,
 
 	switch (cap->args[0]) {
 	case GZVM_CAP_ARM_PVM_SET_PVMFW_IPA:
+		fallthrough;
+	case GZVM_CAP_ARM_PVM_SET_PROTECTED_VM:
 		ret = gzvm_vm_arch_enable_cap(gzvm, cap, &res);
 		break;
 	case GZVM_CAP_ARM_PVM_GET_PVMFW_SIZE:
