@@ -197,10 +197,6 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_ATR_TLP_TYPE_MEM		PCIE_ATR_TLP_TYPE(0)
 #define PCIE_ATR_TLP_TYPE_IO		PCIE_ATR_TLP_TYPE(2)
 
-#define PCIE_DIS_MAC_SLEEP		0xe70
-#define MAC_SLEEP_DIS_SET		BIT(0)
-#define MAC_SLEEP_DIS_CLR		BIT(8)
-
 /* pcie read completion timeout */
 #define PCIE_CONF_DEV2_CTL_STS		0x10a8
 #define PCIE_DCR2_CPL_TO		GENMASK(3, 0)
@@ -1209,7 +1205,6 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 {
 	struct device *dev = port->dev;
 	int err;
-	u32 val;
 
 	/* Clear PCIe pextp sw reset bit */
 	if (port->pextpcfg && port->port_num == 0)
@@ -1255,10 +1250,6 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 		goto err_clk_init;
 	}
 
-	val = readl_relaxed(port->base + PCIE_DIS_MAC_SLEEP);
-	val |= MAC_SLEEP_DIS_SET;
-	writel_relaxed(val, port->base + PCIE_DIS_MAC_SLEEP);
-
 	return 0;
 
 err_clk_init:
@@ -1277,12 +1268,6 @@ err_phy_init:
 
 static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 {
-	u32 val;
-
-	val = readl_relaxed(port->base + PCIE_DIS_MAC_SLEEP);
-	val |= MAC_SLEEP_DIS_CLR;
-	writel_relaxed(val, port->base + PCIE_DIS_MAC_SLEEP);
-
 	clk_bulk_disable_unprepare(port->num_clks, port->clks);
 	phy_power_off(port->phy);
 	phy_exit(port->phy);
