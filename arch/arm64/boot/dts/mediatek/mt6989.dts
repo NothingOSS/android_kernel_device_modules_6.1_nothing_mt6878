@@ -13631,17 +13631,17 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 			node-109 = "SSPM_SWPM_CPU__CORE_PMU_0X80EF",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-110 = "SSPM_VCORE__D",
-				"SW_R1,SW_R2,SW_R3,EMI_MON,",
-				"QOS_B,MD,MD2,ADSP";
-			node-111 = "SSPM_VCORE__V",
+			node-110 = "SSPM_VCORE_DVFS__DDR_DETAIL",
+				"EMI_MON,QOS_B,HR_BW,SW_R1,SW_R2,",
+				"SW_R3,MD,MD2,ADSP";
+			node-111 = "SSPM_VCORE_DVFS__VCORE_DETAIL",
 				"SW_R3,SW_R4,SW_R7";
-			node-112 = "SSPM_VCORE__M",
-				"FREQ,VCORE,PS_TOTAL,PS_B0,",
-				"PS_B1,PS_B2,PS_B3,PS_B4,",
-				"PS_B5,PS_DPC,PS_B6,MD_SCE,",
-				"MD_STA,HR_BW,EMI_OPP,HR_DB,",
-				"HR_IB,HR_MB,HR_BASE,CEIL_MISC";
+			node-112 = "SSPM_VCORE_DVFS__MISC_DETAIL",
+				"PS_B0,PS_B1,PS_B2,PS_B3,",
+				"PS_B4,PS_B5,PS_B6,PS_DPC,",
+				"PS_TOTAL,MD_SCE,MD_STA,EMI_OPP,",
+				"HR_DB,HR_IB,HR_MB,HR_BASE,",
+				"CEIL_MISC";
 			node-113 = "SSPM_SWPM_GPU__GPUEB_STATE_RATIO",
 				"active,idle,off";
 			node-114 = "SSPM_SWPM_GPU__TOP_STATE_RATIO",
@@ -13652,6 +13652,16 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"active,idle,off";
 			node-117 = "SSPM_SWPM_GPU__OTHER_STATE_RATIO",
 				"exec_core_active,gpu_active_2,gpu_active_3,gpu_freq";
+			node-118 = "SSPM_VCORE_DVFS__DDR",
+				"EMI_MON,QOS_B,HR_BW";
+			node-119 = "SSPM_VCORE_DVFS__VCORE",
+				"SW_R3";
+			node-120 = "SSPM_VCORE_DVFS__OPP",
+				"FREQ,VOLT";
+			node-121 = "SSPM_VCORE_DVFS__MISC",
+				"PS_B0,PS_B1,PS_B2,PS_B3,",
+				"PS_B4,PS_B5,PS_B6,PS_DPC,",
+				"PS_TOTAL";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
