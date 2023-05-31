@@ -700,6 +700,7 @@ int ged_gpufreq_commit(int oppidx, int commit_type, int *bCommited)
 	/* write working opp to sysram */
 	ged_dvfs_set_sysram_last_commit_top_idx(oppidx_tar);
 	ged_dvfs_set_sysram_last_commit_stack_idx(oppidx_tar);
+	ged_dvfs_set_sysram_last_commit_dual_idx(oppidx_tar, oppidx_tar);
 
 	/* scaling cores to max if freq. is fixed */
 	dvfs_state = gpufreq_get_dvfs_state();
@@ -804,6 +805,7 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 	/* write working opp to sysram */
 	ged_dvfs_set_sysram_last_commit_top_idx(gpu_oppidx);
 	ged_dvfs_set_sysram_last_commit_stack_idx(oppidx_tar);
+	ged_dvfs_set_sysram_last_commit_dual_idx(gpu_oppidx, oppidx_tar);
 
 	/* scaling cores to max if freq. is fixed */
 	dvfs_state = gpufreq_get_dvfs_state();

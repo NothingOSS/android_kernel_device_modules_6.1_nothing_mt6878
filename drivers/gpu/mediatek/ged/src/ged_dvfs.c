@@ -188,6 +188,7 @@ static int overdue_counter;
 static int FORCE_OPP = -1;
 static int FORCE_TOP_OPP = -1;
 static int g_async_ratio_support;
+static int g_async_virtual_table_support;
 unsigned int get_min_oppidx;
 
 void ged_dvfs_last_and_target_cb(int t_gpu_target, int boost_accum_gpu)
@@ -562,6 +563,7 @@ bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
  */
 static unsigned long g_ged_dvfs_commit_idx; /* freq opp idx for last policy(default stack) */
 static unsigned long g_ged_dvfs_commit_top_idx; /* top freq opp idx for last policy*/
+static unsigned long g_ged_dvfs_commit_dual; /* [0:7] for stack, [8:15] for top*/
 
 void (*ged_dvfs_gpu_freq_commit_fp)(unsigned long ui32NewFreqID,
 	GED_DVFS_COMMIT_TYPE eCommitType, int *pbCommited) = NULL;
@@ -579,7 +581,7 @@ EXPORT_SYMBOL(ged_dvfs_gpu_freq_dual_commit_fp);
 
 unsigned long ged_dvfs_write_sysram_last_commit_idx(void)
 {
-
+	/* last commit idx = stack */
 	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_IDX, g_ged_dvfs_commit_idx);
 
 	return g_ged_dvfs_commit_idx;
@@ -619,14 +621,41 @@ void ged_dvfs_set_sysram_last_commit_top_idx(int commit_idx)
 }
 EXPORT_SYMBOL(ged_dvfs_set_sysram_last_commit_top_idx);
 
+void ged_dvfs_set_sysram_last_commit_dual_idx(int top_idx, int stack_idx)
+{
+	// [0:7] for stack, [8:15] for top
+	int compose_idx = stack_idx & 0xFF;
+	int tmp_top = (top_idx & 0xFF) << 8;
+
+	if (g_async_virtual_table_support == 0 && (stack_idx != top_idx))
+		GED_LOGE(" %s: opp index different top:%d, stack:%d ",
+			__func__, top_idx, stack_idx);
+
+	compose_idx += tmp_top;
+	g_ged_dvfs_commit_dual = compose_idx;
+}
+EXPORT_SYMBOL(ged_dvfs_set_sysram_last_commit_dual_idx);
+
+
 unsigned long ged_dvfs_write_sysram_last_commit_stack_idx(void)
 {
-
+	/* last commit idx = stack */
 	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_IDX, g_ged_dvfs_commit_idx);
 
 	return g_ged_dvfs_commit_idx;
 }
 EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_stack_idx);
+
+unsigned long ged_dvfs_write_sysram_last_commit_dual(void)
+{
+
+	/* last commit idx = [0:7] for stack, [8:15] for top */
+	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_IDX, g_ged_dvfs_commit_dual);
+
+	return g_ged_dvfs_commit_dual;
+}
+EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_dual);
+
 
 unsigned long ged_dvfs_write_sysram_last_commit_stack_idx_test(int commit_idx)
 {
@@ -636,6 +665,20 @@ unsigned long ged_dvfs_write_sysram_last_commit_stack_idx_test(int commit_idx)
 	return commit_idx;
 }
 EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_stack_idx_test);
+
+
+unsigned long ged_dvfs_write_sysram_last_commit_dual_test(int top_idx, int stack_idx)
+{
+	// [0:7] for stack, [8:15] for top
+	int compose_idx = stack_idx & 0xFF;
+	int tmp_top = (top_idx & 0xFF) << 8;
+
+	compose_idx += tmp_top;
+	mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_IDX, compose_idx);
+
+	return compose_idx;
+}
+EXPORT_SYMBOL(ged_dvfs_write_sysram_last_commit_dual_test);
 
 void ged_dvfs_set_sysram_last_commit_stack_idx(int commit_idx)
 {
@@ -660,6 +703,12 @@ unsigned long ged_dvfs_get_last_commit_stack_idx(void)
 	return g_ged_dvfs_commit_idx;
 }
 EXPORT_SYMBOL(ged_dvfs_get_last_commit_stack_idx);
+
+unsigned long ged_dvfs_get_last_commit_dual_idx(void)
+{
+	return g_ged_dvfs_commit_dual;
+}
+EXPORT_SYMBOL(ged_dvfs_get_last_commit_dual_idx);
 
 bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 	unsigned long ui32NewFreq, GED_DVFS_COMMIT_TYPE eCommitType)
@@ -3104,6 +3153,8 @@ GED_ERROR ged_dvfs_system_init(void)
 	} else {
 		of_property_read_u32(async_dvfs_node, "async-ratio-support",
 							&g_async_ratio_support);
+		of_property_read_u32(async_dvfs_node, "async-virtual-table-support",
+							&g_async_virtual_table_support);
 		of_property_read_u32(async_dvfs_node, "async-oppnum-low", &g_min_async_oppnum);
 		of_property_read_u32(async_dvfs_node, "async-oppnum-eachmask", &g_oppnum_eachmask);
 	}
