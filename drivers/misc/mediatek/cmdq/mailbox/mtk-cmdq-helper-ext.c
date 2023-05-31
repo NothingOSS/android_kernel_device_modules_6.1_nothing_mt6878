@@ -3426,6 +3426,70 @@ void cmdq_set_alldump(bool on)
 }
 EXPORT_SYMBOL(cmdq_set_alldump);
 
+u32 cmdq_buf_cmd_parse_buf(u64 *buf, u32 cmd_nr, dma_addr_t buf_pa,
+	dma_addr_t cur_pa, const char *info, void *chan, void *buf_out, u32 buf_out_sz)
+{
+#define txt_sz 128
+	static char text[txt_sz];
+	struct cmdq_instruction *cmdq_inst = (struct cmdq_instruction *)buf;
+	u32 i;
+	u16 spr_cache[4] = {0};
+	u32 buf_cur = 0, len;
+
+	for (i = 0; i < cmd_nr; i++) {
+		switch (cmdq_inst[i].op) {
+		case CMDQ_CODE_WRITE_S:
+		case CMDQ_CODE_WRITE_S_W_MASK:
+			cmdq_buf_print_write(text, txt_sz, (u32)buf_pa,
+				&cmdq_inst[i], spr_cache);
+			break;
+		case CMDQ_CODE_WFE:
+			cmdq_buf_print_wfe(text, txt_sz, (u32)buf_pa,
+				(void *)&cmdq_inst[i]);
+			break;
+		case CMDQ_CODE_MOVE:
+			cmdq_buf_print_move(text, txt_sz, (u32)buf_pa,
+				&cmdq_inst[i]);
+			break;
+		case CMDQ_CODE_READ_S:
+			cmdq_buf_print_read(text, txt_sz, (u32)buf_pa,
+				&cmdq_inst[i]);
+			break;
+		case CMDQ_CODE_LOGIC:
+			cmdq_buf_print_logic(text, txt_sz, (u32)buf_pa,
+				&cmdq_inst[i], spr_cache);
+			break;
+		case CMDQ_CODE_JUMP_C_ABSOLUTE:
+		case CMDQ_CODE_JUMP_C_RELATIVE:
+			cmdq_buf_print_write_jump_c(text, txt_sz, (u32)buf_pa,
+				&cmdq_inst[i]);
+			break;
+		case CMDQ_CODE_POLL:
+			cmdq_buf_print_poll(text, txt_sz, (u32)buf_pa,
+				&cmdq_inst[i]);
+			break;
+		case CMDQ_CODE_JUMP:
+			cmdq_buf_print_jump(text, txt_sz, (u32)buf_pa,
+				&cmdq_inst[i]);
+			break;
+		default:
+			cmdq_buf_print_misc(text, txt_sz, (u32)buf_pa,
+				&cmdq_inst[i]);
+			break;
+		}
+		len = snprintf(buf_out + buf_cur, buf_out_sz - buf_cur, "%s\n", text);
+		buf_cur += len;
+		if (buf_cur >= buf_out_sz) {
+			cmdq_msg("%s out buf full %u", __func__, buf_cur);
+			break;
+		}
+		buf_pa += CMDQ_INST_SIZE;
+	}
+
+	return buf_cur;
+}
+EXPORT_SYMBOL(cmdq_buf_cmd_parse_buf);
+
 s32 cmdq_pkt_dump_buf(struct cmdq_pkt *pkt, dma_addr_t curr_pa)
 {
 	struct cmdq_client *client;
@@ -3518,20 +3582,27 @@ EXPORT_SYMBOL(cmdq_dump_pkt);
 
 #define CMDQ_INST_STR_SIZE 20
 
-char *cmdq_pkt_parse_buf(struct cmdq_pkt *pkt, u32 *size_out)
+char *cmdq_pkt_parse_buf(struct cmdq_pkt *pkt, u32 *size_out, void **raw_out, u32 *size_raw_out)
 {
 	u32 buf_size = CMDQ_NUM_CMD(pkt->cmd_buf_size) * CMDQ_INST_STR_SIZE + 1;
 	char *insts = kmalloc(buf_size, GFP_KERNEL);
 	u32 cur_buf = 0, cur_inst = 0, size;
 	int len;
 	struct cmdq_pkt_buffer *buf;
+	u8 *raw = NULL;
+	u32 raw_sz = 0;
 
-	cmdq_msg("dump buffer size %u(%zu) pkt %p inst %p",
-		buf_size, pkt->cmd_buf_size, pkt, insts);
+	cmdq_msg("dump buffer size %u(%zu) pkt %p inst %p raw %s",
+		buf_size, pkt->cmd_buf_size, pkt, insts, (raw_out && size_raw_out) ? "true" : "false");
 
 	if (!insts) {
 		*size_out = 0;
 		return NULL;
+	}
+
+	if (raw_out && size_raw_out) {
+		raw = kzalloc(pkt->cmd_buf_size, GFP_KERNEL);
+		*raw_out = (void *)raw;
 	}
 
 	list_for_each_entry(buf, &pkt->buf, list_entry) {
@@ -3546,6 +3617,11 @@ char *cmdq_pkt_parse_buf(struct cmdq_pkt *pkt, u32 *size_out)
 			if (cmdq_util_helper->is_feature_en(CMDQ_LOG_FEAT_PERF))
 				cur_inst = 2;
 #endif
+		}
+
+		if (raw) {
+			memcpy(raw + raw_sz, buf->va_base, size);
+			raw_sz += size;
 		}
 
 		for (; cur_inst < CMDQ_NUM_CMD(size) && cur_buf < buf_size;
@@ -3564,6 +3640,7 @@ char *cmdq_pkt_parse_buf(struct cmdq_pkt *pkt, u32 *size_out)
 	}
 
 	*size_out = cur_buf + 1;
+	*size_raw_out = raw_sz;
 	return insts;
 }
 EXPORT_SYMBOL(cmdq_pkt_parse_buf);

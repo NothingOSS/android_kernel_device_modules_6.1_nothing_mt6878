@@ -586,11 +586,14 @@ void cmdq_buf_cmd_parse(u64 *buf, u32 cmd_nr, dma_addr_t buf_pa,
 
 void cmdq_set_alldump(bool on);
 
+u32 cmdq_buf_cmd_parse_buf(u64 *buf, u32 cmd_nr, dma_addr_t buf_pa,
+	dma_addr_t cur_pa, const char *info, void *chan, void *buf_out, u32 buf_out_sz);
+
 s32 cmdq_pkt_dump_buf(struct cmdq_pkt *pkt, dma_addr_t curr_pa);
 
 int cmdq_dump_pkt(struct cmdq_pkt *pkt, dma_addr_t pc, bool dump_inst);
 
-char *cmdq_pkt_parse_buf(struct cmdq_pkt *pkt, u32 *size_out);
+char *cmdq_pkt_parse_buf(struct cmdq_pkt *pkt, u32 *size_out, void **raw_out, u32 *size_raw_out);
 
 void cmdq_pkt_set_err_cb(struct cmdq_pkt *pkt,
 	cmdq_async_flush_cb cb, void *data);
