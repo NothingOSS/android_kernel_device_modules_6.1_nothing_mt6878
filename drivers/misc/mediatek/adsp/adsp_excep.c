@@ -135,6 +135,7 @@ static u32 dump_adsp_internal_memory(void *buf, size_t size, struct adsp_priv *p
 	u32 n = 0;
 
 	adsp_enable_clock();
+	adsp_enable_uart_clock();
 	adsp_latch_dump_region(true);
 
 	n += write_mem_header(buf + n, size - n, "cfg", adspsys->cfg_size);
@@ -150,6 +151,7 @@ static u32 dump_adsp_internal_memory(void *buf, size_t size, struct adsp_priv *p
 	n += copy_from_iomem(buf + n, size - n, pdata->dtcm, pdata->dtcm_size, 0, -1);
 
 	adsp_latch_dump_region(false);
+	adsp_disable_uart_clock();
 	adsp_disable_clock();
 
 	/* sysram not rely on adsp clk */
@@ -501,6 +503,7 @@ void get_adsp_aee_buffer(unsigned long *vaddr, unsigned long *size)
 	memset(buf, 0, len);
 
 	adsp_enable_clock();
+	adsp_enable_uart_clock();
 	adsp_latch_dump_region(true);
 
 	pdata = get_adsp_core_by_id(ADSP_A_ID);
@@ -519,6 +522,7 @@ void get_adsp_aee_buffer(unsigned long *vaddr, unsigned long *size)
 					pdata->dtcm, pdata->dtcm_size, 0, -1);
 	}
 	adsp_latch_dump_region(false);
+	adsp_disable_uart_clock();
 	adsp_disable_clock();
 
 	/* last adsp_log */
