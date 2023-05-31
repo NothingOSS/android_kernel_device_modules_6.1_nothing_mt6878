@@ -743,67 +743,74 @@ static void accdet_get_efuse(void)
 	if (accdet->auxadc_offset > 128)
 		accdet->auxadc_offset -= 256;
 	accdet->auxadc_offset = (accdet->auxadc_offset >> 1);
-/* all of moisture_vdd/moisture_offset0/eint is  2'complement,
- * we need to transfer it
- */
-	/* moisture vdd efuse offset */
-	ret = nvmem_device_read(accdet->accdet_efuse, 121, 1, &efuseval);
-	ret = nvmem_device_read(accdet->accdet_efuse, 122, 1, &efuseval2);
-	accdet->moisture_vdd_offset = (((efuseval >> 4) | ((efuseval2 << 4))) & ACCDET_CALI_MASK0);
-	if (accdet->moisture_vdd_offset > 128)
-		accdet->moisture_vdd_offset -= 256;
-	pr_info("%s moisture_vdd efuse=0x%x, moisture_vdd_offset=%d mv\n",
-		__func__, efuseval, accdet->moisture_vdd_offset);
 
-	/* moisture offset */
-	ret = nvmem_device_read(accdet->accdet_efuse, 122, 1, &efuseval);
-	ret = nvmem_device_read(accdet->accdet_efuse, 123, 1, &efuseval2);
-	accdet->moisture_offset = (((efuseval >> 4) | ((efuseval2 << 4))) & ACCDET_CALI_MASK0);
-	if (accdet->moisture_offset > 128)
-		accdet->moisture_offset -= 256;
-	pr_info("%s moisture_efuse efuse=0x%x,moisture_offset=%d mv\n",
-		__func__, efuseval, accdet->moisture_offset);
+	if (accdet_dts.moisture_detect_mode <= 3) {
+	/* all of moisture_vdd/moisture_offset0/eint is  2'complement,
+	 * we need to transfer it
+	 */
+		/* moisture vdd efuse offset */
+		ret = nvmem_device_read(accdet->accdet_efuse, 121, 1, &efuseval);
+		ret = nvmem_device_read(accdet->accdet_efuse, 122, 1, &efuseval2);
+		accdet->moisture_vdd_offset =
+			(((efuseval >> 4) | ((efuseval2 << 4))) & ACCDET_CALI_MASK0);
+		if (accdet->moisture_vdd_offset > 128)
+			accdet->moisture_vdd_offset -= 256;
+		pr_info("%s moisture_vdd efuse=0x%x, moisture_vdd_offset=%d mv\n",
+			__func__, efuseval, accdet->moisture_vdd_offset);
 
-	if (accdet_dts.moisture_use_ext_res == 0x0) {
-		/* moisture eint efuse offset */
-		ret = nvmem_device_read(accdet->accdet_efuse, 119, 1, &efuseval);
-		ret = nvmem_device_read(accdet->accdet_efuse, 120, 1, &efuseval2);
-		moisture_eint0 = (((efuseval >> 4) | ((efuseval2 << 4))) & ACCDET_CALI_MASK0);
-		pr_info("%s moisture_eint0 efuse=0x%x,moisture_eint0=0x%x\n",
-			__func__, efuseval, moisture_eint0);
+		/* moisture offset */
+		ret = nvmem_device_read(accdet->accdet_efuse, 122, 1, &efuseval);
+		ret = nvmem_device_read(accdet->accdet_efuse, 123, 1, &efuseval2);
+		accdet->moisture_offset =
+			(((efuseval >> 4) | ((efuseval2 << 4))) & ACCDET_CALI_MASK0);
+		if (accdet->moisture_offset > 128)
+			accdet->moisture_offset -= 256;
+		pr_info("%s moisture_efuse efuse=0x%x,moisture_offset=%d mv\n",
+			__func__, efuseval, accdet->moisture_offset);
 
-		ret = nvmem_device_read(accdet->accdet_efuse, 120, 1, &efuseval);
-		ret = nvmem_device_read(accdet->accdet_efuse, 121, 1, &efuseval2);
-		moisture_eint1 = (((efuseval >> 4) | ((efuseval2 << 4))) & ACCDET_CALI_MASK0);
-		pr_info("%s moisture_eint1 efuse=0x%x,moisture_eint1=0x%x\n",
-			__func__, efuseval, moisture_eint1);
+		if (accdet_dts.moisture_use_ext_res == 0x0) {
+			/* moisture eint efuse offset */
+			ret = nvmem_device_read(accdet->accdet_efuse, 119, 1, &efuseval);
+			ret = nvmem_device_read(accdet->accdet_efuse, 120, 1, &efuseval2);
+			moisture_eint0 =
+				(((efuseval >> 4) | ((efuseval2 << 4))) & ACCDET_CALI_MASK0);
+			pr_info("%s moisture_eint0 efuse=0x%x,moisture_eint0=0x%x\n",
+				__func__, efuseval, moisture_eint0);
 
-		accdet->moisture_eint_offset =
-			(moisture_eint1 << 8) | moisture_eint0;
-		if (accdet->moisture_eint_offset > 32768)
-			accdet->moisture_eint_offset -= 65536;
-		pr_info("%s moisture_eint_offset=%d ohm\n", __func__,
-			accdet->moisture_eint_offset);
+			ret = nvmem_device_read(accdet->accdet_efuse, 120, 1, &efuseval);
+			ret = nvmem_device_read(accdet->accdet_efuse, 121, 1, &efuseval2);
+			moisture_eint1 =
+				(((efuseval >> 4) | ((efuseval2 << 4))) & ACCDET_CALI_MASK0);
+			pr_info("%s moisture_eint1 efuse=0x%x,moisture_eint1=0x%x\n",
+				__func__, efuseval, moisture_eint1);
 
-		accdet->moisture_vm = (2800 + accdet->moisture_vdd_offset);
-		accdet->moisture_vm *=
-			(accdet->water_r + accdet->moisture_int_r);
-		tmp_div = accdet->water_r + accdet->moisture_int_r +
-			8 * accdet->moisture_eint_offset + 450000;
-		accdet->moisture_vm = accdet->moisture_vm / tmp_div;
-		accdet->moisture_vm =
-			accdet->moisture_vm + accdet->moisture_offset / 2;
-		pr_info("%s internal moisture_vm=%d mv\n", __func__,
-			accdet->moisture_vm);
-	} else if (accdet_dts.moisture_use_ext_res == 0x1) {
-		accdet->moisture_vm = (2800 + accdet->moisture_vdd_offset);
-		accdet->moisture_vm = accdet->moisture_vm * accdet->water_r;
-		accdet->moisture_vm /=
-			(accdet->water_r + accdet->moisture_ext_r);
-		accdet->moisture_vm +=
-			(accdet->moisture_offset >> 1);
-		pr_info("%s external moisture_vm=%d mv\n", __func__,
-			accdet->moisture_vm);
+			accdet->moisture_eint_offset =
+				(moisture_eint1 << 8) | moisture_eint0;
+			if (accdet->moisture_eint_offset > 32768)
+				accdet->moisture_eint_offset -= 65536;
+			pr_info("%s moisture_eint_offset=%d ohm\n", __func__,
+				accdet->moisture_eint_offset);
+
+			accdet->moisture_vm = (2800 + accdet->moisture_vdd_offset);
+			accdet->moisture_vm *=
+				(accdet->water_r + accdet->moisture_int_r);
+			tmp_div = accdet->water_r + accdet->moisture_int_r +
+				8 * accdet->moisture_eint_offset + 450000;
+			accdet->moisture_vm = accdet->moisture_vm / tmp_div;
+			accdet->moisture_vm =
+				accdet->moisture_vm + accdet->moisture_offset / 2;
+			pr_info("%s internal moisture_vm=%d mv\n", __func__,
+				accdet->moisture_vm);
+		} else if (accdet_dts.moisture_use_ext_res == 0x1) {
+			accdet->moisture_vm = (2800 + accdet->moisture_vdd_offset);
+			accdet->moisture_vm = accdet->moisture_vm * accdet->water_r;
+			accdet->moisture_vm /=
+				(accdet->water_r + accdet->moisture_ext_r);
+			accdet->moisture_vm +=
+				(accdet->moisture_offset >> 1);
+			pr_info("%s external moisture_vm=%d mv\n", __func__,
+				accdet->moisture_vm);
+		}
 	}
 	pr_info("%s efuse=0x%x,auxadc_val=%dmv\n", __func__, efuseval, accdet->auxadc_offset);
 }
@@ -2082,15 +2089,14 @@ static u32 config_moisture_detect_2_1_1(void)
 	ret = nvmem_device_read(accdet->accdet_efuse, 136, 1, &efuseval);
 	ret = nvmem_device_read(accdet->accdet_efuse, 137, 1, &efuseval2);
 
-	vref_1v = (int)(((efuseval >> 5) || ((efuseval2 & 0x1f) << 3)) & ACCDET_CALI_MASK0);
-	pr_info("%s vref_1v=0x%x(0x%x)\n", __func__, vref_1v, efuseval);
+	vref_1v = (int)(((efuseval >> 5) | ((efuseval2 & 0x1f) << 3)) & ACCDET_CALI_MASK0);
+	pr_info("%s vref_1v=0x%x\n", __func__, vref_1v);
+	pr_info("%s 136=(0x%x) 137=(0x%x)\n", __func__, efuseval, efuseval2);
 
-	pmic_write_clr(MT6681_RG_MVTH2EN_ADDR, MT6681_RG_MVTH2EN_SHIFT);
-	pmic_write_mclr(MT6681_RG_MVTH2SEL_ADDR, MT6681_RG_MVTH2SEL_SHIFT, 0xF);
-	if (!vref_1v)
-		pmic_write_mset(MT6681_RG_ACCDETSPARE_ADDR, 0x3, 0x1F, 0x5);
-	else
-		pmic_write_mset(MT6681_RG_ACCDETSPARE_ADDR, 0x3, 0x1F, vref_1v);
+	pmic_write_mset(MT6681_RG_MVTH2EN_ADDR, 0x3,
+			0x1, ((vref_1v >> 5) & 0x1));
+	pmic_write_mset(MT6681_RG_ACCDETSPARE_ADDR, 0x3,
+			0x1F, vref_1v);
 
 	return 0;
 }
