@@ -1008,6 +1008,7 @@ static void mtk_dsi_reset_engine(struct mtk_dsi *dsi)
 
 static void mtk_dsi_phy_reset(struct mtk_dsi *dsi)
 {
+	mtk_dsi_mask(dsi, DSI_CON_CTRL, DSI_PHY_RESET, 0);
 	mtk_dsi_mask(dsi, DSI_CON_CTRL, DSI_PHY_RESET, DSI_PHY_RESET);
 	mtk_dsi_mask(dsi, DSI_CON_CTRL, DSI_PHY_RESET, 0);
 }
@@ -1701,27 +1702,19 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 	writel(size, dsi->regs + DSI_SIZE_CON);
 }
 
+static u8 _lanes_to_val(u32 lanes)
+{
+	static const u8 val[4] = {0x1, 0x3, 0x7, 0xf};
+
+	if (lanes > 0 && lanes <= 4)
+		return val[lanes - 1];
+	else
+		return val[3];
+}
+
 static void mtk_dsi_rxtx_control(struct mtk_dsi *dsi)
 {
-	u32 tmp_reg;
-
-	switch (dsi->lanes) {
-	case 1:
-		tmp_reg = 1 << 2;
-		break;
-	case 2:
-		tmp_reg = 3 << 2;
-		break;
-	case 3:
-		tmp_reg = 7 << 2;
-		break;
-	case 4:
-		tmp_reg = 0xf << 2;
-		break;
-	default:
-		tmp_reg = 0xf << 2;
-		break;
-	}
+	u32 tmp_reg = _lanes_to_val(dsi->lanes) << 2;
 
 	tmp_reg |= (dsi->mode_flags & MIPI_DSI_CLOCK_NON_CONTINUOUS) << 6;
 
@@ -2673,10 +2666,15 @@ static void mtk_dsi_enter_ulps(struct mtk_dsi *dsi, bool async)
 
 static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 {
-	int wake_up_prd = (dsi->data_rate * 1000) / (1024 * 8) + 1;
+	int wake_up_prd = (dsi->data_rate * 1000) / (1024 * 8) + 1; /* 1 ms */
 	int ret = 0;
 
 	dsi->ulps_wakeup_prd = wake_up_prd;
+
+	mtk_mipi_tx_pre_oe_config(dsi->phy, 0);
+	mtk_mipi_tx_sw_control_en(dsi->phy, 1);
+
+	mtk_dsi_mask(dsi, DSI_TXRX_CTRL, LANE_NUM, _lanes_to_val(dsi->lanes) << 2);
 	mtk_dsi_phy_reset(dsi);
 	/* set pre oe */
 	mtk_mipi_tx_pre_oe_config(dsi->phy, 1);

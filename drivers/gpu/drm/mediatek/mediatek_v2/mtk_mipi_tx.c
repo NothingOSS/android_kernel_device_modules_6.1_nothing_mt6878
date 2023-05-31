@@ -144,6 +144,7 @@
 #define MIPITX_CK_SW_CTL_EN_MT6983 (0x035CUL)
 #define MIPITX_D1_SW_CTL_EN_MT6983 (0x045CUL)
 #define MIPITX_D3_SW_CTL_EN_MT6983 (0x055CUL)
+#define MIPITX_CK1_SW_CTL_EN_MT6989 (0x075CUL)
 
 #define MIPITX_PLL_CON2_MT6983 (0x0034UL)
 #define RG_DSI_PLL_SDM_SSC_EN_MT6983 BIT(1)
@@ -211,6 +212,8 @@
 #define MIPITX_D3C_SW_LPTX_PRE_OE_MT6983	(0x0580UL)
 #define MIPITX_CK_SW_LPTX_PRE_OE_MT6983	(0x0360UL)
 #define MIPITX_CKC_SW_LPTX_PRE_OE_MT6983	(0x0380UL)
+#define MIPITX_CK1_SW_LPTX_PRE_OE_MT6989	(0x0760UL)
+#define MIPITX_CK1C_SW_LPTX_PRE_OE_MT6989	(0x0780UL)
 
 //common reg
 #define MIPITX_LANE_CON (0x000CUL)
@@ -1561,26 +1564,32 @@ void mtk_mipi_tx_sw_control_en(struct phy *phy, bool en)
 	DDPINFO("%s, en=%d\n", __func__, en);
 	if (en) {
 		mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d0_sw_ctl_en,
-			DSI_D0_SW_CTL_EN);
+			DSI_D0_SW_CTL_EN | BIT(8));
 		mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d1_sw_ctl_en,
-			DSI_D1_SW_CTL_EN);
+			DSI_D1_SW_CTL_EN | BIT(8));
 		mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d2_sw_ctl_en,
-			DSI_D2_SW_CTL_EN);
+			DSI_D2_SW_CTL_EN | BIT(8));
 		mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d3_sw_ctl_en,
-			DSI_D3_SW_CTL_EN);
+			DSI_D3_SW_CTL_EN | BIT(8));
 		mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->ck_sw_ctl_en,
-			DSI_CK_SW_CTL_EN);
+			DSI_CK_SW_CTL_EN | BIT(8));
+		if (mipi_tx->driver_data->ck1_sw_ctl_en)
+			mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->ck1_sw_ctl_en,
+					     BIT(0) | BIT(8));
 	} else {
 		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->d0_sw_ctl_en,
-			DSI_D0_SW_CTL_EN);
+			DSI_D0_SW_CTL_EN | BIT(8));
 		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->d1_sw_ctl_en,
-			DSI_D1_SW_CTL_EN);
+			DSI_D1_SW_CTL_EN | BIT(8));
 		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->d2_sw_ctl_en,
-			DSI_D2_SW_CTL_EN);
+			DSI_D2_SW_CTL_EN | BIT(8));
 		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->d3_sw_ctl_en,
-			DSI_D3_SW_CTL_EN);
+			DSI_D3_SW_CTL_EN | BIT(8));
 		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->ck_sw_ctl_en,
-			DSI_CK_SW_CTL_EN);
+			DSI_CK_SW_CTL_EN | BIT(8));
+		if (mipi_tx->driver_data->ck1_sw_ctl_en)
+			mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->ck1_sw_ctl_en,
+					       BIT(0) | BIT(8));
 	}
 #endif
 }
@@ -1601,6 +1610,10 @@ void mtk_mipi_tx_pre_oe_config(struct phy *phy, bool en)
 		mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d1c_sw_lptx_pre_oe, 1);
 		mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d3_sw_lptx_pre_oe, 1);
 		mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d3c_sw_lptx_pre_oe, 1);
+		if (mipi_tx->driver_data->ck1_sw_lptx_pre_oe)
+			mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->ck1_sw_lptx_pre_oe, 1);
+		if (mipi_tx->driver_data->ck1c_sw_lptx_pre_oe)
+			mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->ck1c_sw_lptx_pre_oe, 1);
 	} else {
 		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->d2_sw_lptx_pre_oe, 1);
 		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->d2c_sw_lptx_pre_oe, 1);
@@ -1612,6 +1625,12 @@ void mtk_mipi_tx_pre_oe_config(struct phy *phy, bool en)
 		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->d1c_sw_lptx_pre_oe, 1);
 		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->d3_sw_lptx_pre_oe, 1);
 		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->d3c_sw_lptx_pre_oe, 1);
+		if (mipi_tx->driver_data->ck1_sw_lptx_pre_oe)
+			mtk_mipi_tx_clear_bits(mipi_tx,
+					       mipi_tx->driver_data->ck1_sw_lptx_pre_oe, 1);
+		if (mipi_tx->driver_data->ck1c_sw_lptx_pre_oe)
+			mtk_mipi_tx_clear_bits(mipi_tx,
+					       mipi_tx->driver_data->ck1c_sw_lptx_pre_oe, 1);
 	}
 #endif
 }
@@ -5523,6 +5542,7 @@ static const struct mtk_mipitx_data mt6989_mipitx_data = {
 	.dsi_pll_en = RG_DSI_PLL_EN_MT6983,
 	.dsi_ssc_en = RG_DSI_PLL_SDM_SSC_EN_MT6983,
 	.ck_sw_ctl_en = MIPITX_CK_SW_CTL_EN_MT6983,
+	.ck1_sw_ctl_en = MIPITX_CK1_SW_CTL_EN_MT6989,
 	.d0_sw_ctl_en = MIPITX_D0_SW_CTL_EN_MT6983,
 	.d1_sw_ctl_en = MIPITX_D1_SW_CTL_EN_MT6983,
 	.d2_sw_ctl_en = MIPITX_D2_SW_CTL_EN_MT6983,
@@ -5537,6 +5557,8 @@ static const struct mtk_mipitx_data mt6989_mipitx_data = {
 	.d3c_sw_lptx_pre_oe = MIPITX_D3C_SW_LPTX_PRE_OE_MT6983,
 	.ck_sw_lptx_pre_oe = MIPITX_CK_SW_LPTX_PRE_OE_MT6983,
 	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE_MT6983,
+	.ck1_sw_lptx_pre_oe = MIPITX_CK1_SW_LPTX_PRE_OE_MT6989,
+	.ck1c_sw_lptx_pre_oe = MIPITX_CK1C_SW_LPTX_PRE_OE_MT6989,
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6989,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6983,
 	.dsi_get_pcw = _dsi_get_pcw_mt6989,

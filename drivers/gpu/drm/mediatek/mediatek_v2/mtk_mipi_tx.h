@@ -123,6 +123,7 @@ struct mtk_mipitx_data {
 	const u32 dsi_pll_en;
 	const u32 dsi_ssc_en;
 	const u32 ck_sw_ctl_en;
+	const u32 ck1_sw_ctl_en;
 	const u32 d0_sw_ctl_en;
 	const u32 d1_sw_ctl_en;
 	const u32 d2_sw_ctl_en;
@@ -137,6 +138,8 @@ struct mtk_mipitx_data {
 	const u32 d3c_sw_lptx_pre_oe;
 	const u32 ck_sw_lptx_pre_oe;
 	const u32 ckc_sw_lptx_pre_oe;
+	const u32 ck1_sw_lptx_pre_oe;
+	const u32 ck1c_sw_lptx_pre_oe;
 	int (*pll_prepare)(struct clk_hw *hw);
 	int (*power_on_signal)(struct phy *phy);
 	void (*pll_unprepare)(struct clk_hw *hw);
