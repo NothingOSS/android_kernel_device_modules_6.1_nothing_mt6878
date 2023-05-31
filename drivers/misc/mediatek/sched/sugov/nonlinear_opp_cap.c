@@ -1752,6 +1752,7 @@ static unsigned int his_ptr[MAX_NR_CPUS];
 static unsigned int margin_his[MAX_NR_CPUS][MAX_NR_CPUS];
 static u64 last_wall_time_stamp[MAX_NR_CPUS];
 static u64 last_idle_time_stamp[MAX_NR_CPUS];
+static u64 last_idle_duratio[MAX_NR_CPUS];
 static unsigned int cpu_active_ratio[MAX_NR_CPUS];
 static unsigned int gear_max_active_ratio[MAX_NR_CPUS];
 static unsigned int gear_update_active_ratio_cnt[MAX_NR_CPUS];
@@ -1771,7 +1772,7 @@ EXPORT_SYMBOL_GPL(get_adaptive_margin);
 int get_adaptive_ratio(int cpu, int target)
 {
 	int gearid = per_cpu(gear_id, cpu);
-	return cpu_active_ratio[gearid] * 100 / target;
+	return gear_max_active_ratio[gearid] * 100 / target;
 }
 EXPORT_SYMBOL_GPL(get_adaptive_ratio);
 
@@ -1844,6 +1845,7 @@ inline int update_cpu_active_ratio(int cpu_idx)
 	duration = wall_time_stamp - last_wall_time_stamp[cpu_idx];
 	idle_duration = idle_time_stamp - last_idle_time_stamp[cpu_idx];
 	idle_duration = min_t(u64, idle_duration, duration);
+	last_idle_duratio[cpu_idx] = idle_duration;
 	active_duration = duration - idle_duration;
 	last_idle_time_stamp[cpu_idx] = idle_time_stamp;
 	last_wall_time_stamp[cpu_idx] = wall_time_stamp;
@@ -1865,7 +1867,7 @@ void update_active_ratio_gear(struct cpumask *cpumask)
 			cpu_id = cpu_idx;
 		}
 	}
-	if (cpu_active_ratio[cpu_id] == 0)
+	if (last_idle_duratio[cpu_id] > am_wind_dura)
 		ramp_up[gear_idx] = 2;
 	gear_max_active_ratio[gear_idx] = gear_max_active_ratio_tmp;
 	gear_update_active_ratio_cnt[gear_idx]++;
@@ -1896,22 +1898,28 @@ inline void update_adaptive_margin(struct cpufreq_policy *policy)
 		his_ptr[gearid] %= MAX_NR_CPUS;
 
 		if (ramp_up[gearid] == 0) {
+			unsigned int adaptive_ratio =
+				get_adaptive_ratio(cpu, am_target_active_ratio[gearid]);
+
 			adaptive_margin_tmp = READ_ONCE(adaptive_margin[gearid]);
-			adaptive_margin_tmp = (adaptive_margin_tmp *
-				get_adaptive_ratio(cpu, am_target_active_ratio[gearid]))
+			adaptive_margin_tmp =
+				(adaptive_margin_tmp * adaptive_ratio)
 				>> SCHED_CAPACITY_SHIFT;
 			adaptive_margin_tmp =
 				clamp_val(adaptive_margin_tmp, am_floor, am_ceiling);
 			margin_his[gearid][his_ptr[gearid]] = adaptive_margin_tmp;
-			adaptive_margin_tmp = 0;
-			ptr = (his_ptr[gearid] + MAX_NR_CPUS - (1 << am_wind_cnt_shift) + 1)
-				% MAX_NR_CPUS;
-			for (i = 0; i < (1 << am_wind_cnt_shift); i++) {
-				adaptive_margin_tmp += margin_his[gearid][ptr];
-				ptr++;
-				ptr %= MAX_NR_CPUS;
+			if (adaptive_ratio < SCHED_CAPACITY_SCALE) {
+				adaptive_margin_tmp = 0;
+				ptr = (his_ptr[gearid] + MAX_NR_CPUS - (1 << am_wind_cnt_shift) + 1)
+					% MAX_NR_CPUS;
+				for (i = 0; i < (1 << am_wind_cnt_shift); i++) {
+					adaptive_margin_tmp += margin_his[gearid][ptr];
+					ptr++;
+					ptr %= MAX_NR_CPUS;
+				}
+				adaptive_margin_tmp >>= am_wind_cnt_shift;
+				margin_his[gearid][his_ptr[gearid]] = adaptive_margin_tmp;
 			}
-			adaptive_margin_tmp >>= am_wind_cnt_shift;
 		} else {
 			margin_his[gearid][his_ptr[gearid]] = adaptive_margin_tmp = util_scale;
 			ramp_up[gearid]--;

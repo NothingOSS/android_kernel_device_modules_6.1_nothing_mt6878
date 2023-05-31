@@ -244,15 +244,18 @@ int flt_sched_get_gear_sum_group_eas_mode2(int gear_id, int group_id)
 
 static int flt_get_cpu_by_wp_mode2(int cpu)
 {
-	int res = 0;
-	unsigned int offset;
+	struct rq *rq;
+	struct flt_rq *fsrq;
+	int cpu_dmand_util = 0;
 
-	if (!cpumask_test_cpu(cpu, cpu_possible_mask) || flt_is_valid() != 1)
+	if (unlikely(!cpumask_test_cpu(cpu, cpu_possible_mask)))
 		return -1;
 
-	offset = cpu * PER_ENTRY;
-	res = flt_get_data(CPU_S + offset);
-	return res;
+	rq = cpu_rq(cpu);
+	fsrq = &per_cpu(flt_rq, cpu);
+
+	cpu_dmand_util = READ_ONCE(fsrq->cpu_tar_util);
+	return cpu_dmand_util;
 }
 
 static int flt_sched_get_cpu_group_eas_mode2(int cpu_idx, int group_id)

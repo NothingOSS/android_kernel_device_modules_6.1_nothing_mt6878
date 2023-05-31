@@ -116,6 +116,15 @@ config MTK_SCHED_FAST_LOAD_TRACKING
 	   2. DTS config.
 	   3. API Interface.
 
+config MTK_SCHED_GROUP_AWARE
+	tristate "group aware scheduler"
+	depends on MTK_SCHED_FAST_LOAD_TRACKING
+	help
+	   Choose this option to provide the vendor with a group-aware
+	   scheduler which builds by Mediatek. This mechanism tracks a
+	   group's capacity usage and provides a satisfied CPU capacity
+	   for this group.
+
 config MTK_CPUFREQ_SUGOV_EXT
 	tristate "mediatek sugov governor"
 	depends on CPU_FREQ && SMP

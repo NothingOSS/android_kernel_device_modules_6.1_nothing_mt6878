@@ -42,8 +42,8 @@ int init_sched_ctrl(void)
 		// TODO
 		break;
 	case EAS_6_1:
-		am_support = 0;
-		grp_dvfs_support_mode = 0;
+		am_support = 1;
+		grp_dvfs_support_mode = 1;
 		// TODO
 		break;
 	default:

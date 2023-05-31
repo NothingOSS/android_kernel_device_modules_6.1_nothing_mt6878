@@ -19,13 +19,16 @@
 #include <trace/hooks/cgroup.h>
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
+#include <mt-plat/mtk_irq_mon.h>
 #include "common.h"
 #include "flt_init.h"
 #include "group.h"
 #include "flt_cal.h"
 #include "flt_api.h"
 #include "eas_trace.h"
+#include "grp_awr.h"
 #include <sugov/cpufreq.h>
 
 /* src code */
 #include "flt_cal.c"
+#include "grp_awr.c"
