@@ -34,7 +34,8 @@
 #include "gbe_common.h"
 
 #define CREATE_TRACE_POINTS
-
+#define MAX_MAGT_TARGET_FPS_NUM 10
+#define MAX_MAGT_DEP_LIST_NUM 10
 #define TARGET_UNLIMITED_FPS 240
 
 enum FPSGO_NOTIFIER_PUSH_TYPE {
@@ -49,6 +50,8 @@ enum FPSGO_NOTIFIER_PUSH_TYPE {
 	FPSGO_NOTIFIER_ACQUIRE              = 0x08,
 	FPSGO_NOTIFIER_BUFFER_QUOTA         = 0x09,
 	FPSGO_NOTIFIER_ADPF_HINT            = 0x0a,
+	FPSGO_NOTIFIER_MAGT_TARGET_FPS      = 0x0b,
+	FPSGO_NOTIFIER_MAGT_DEP_LIST        = 0x0c,
 	FPSGO_NOTIFIER_FRAME_HINT			= 0x10,
 	FPSGO_NOTIFIER_SBE_POLICY			= 0x11,
 };
@@ -65,6 +68,19 @@ struct fpsgo_adpf_session {
 	int workload_num;
 	int used;
 	unsigned long long target_time;
+};
+
+struct fpsgo_magt_target_fps {
+	int pid_arr[MAX_MAGT_TARGET_FPS_NUM];
+	int tid_arr[MAX_MAGT_TARGET_FPS_NUM];
+	int tfps_arr[MAX_MAGT_TARGET_FPS_NUM];
+	int num;
+};
+
+struct fpsgo_magt_dep_list {
+	int pid;
+	int dep_task_arr[MAX_MAGT_DEP_LIST_NUM];
+	int dep_task_num;
 };
 
 /* TODO: use union*/
@@ -100,14 +116,14 @@ struct FPSGO_NOTIFIER_PUSH_TAG {
 	unsigned long mask;
 
 	struct fpsgo_adpf_session adpf_hint;
+	struct fpsgo_magt_target_fps *magt_tfps_hint;
+	struct fpsgo_magt_dep_list *magt_dep_hint;
 };
 
 static struct mutex notify_lock;
 static struct task_struct *kfpsgo_tsk;
 static int fpsgo_enable;
 static int fpsgo_force_onoff;
-static int gpu_boost_enable_perf;
-static int gpu_boost_enable_camera;
 static int perfserv_ta;
 
 int powerhal_tid;
@@ -369,6 +385,24 @@ static void fpsgo_notifier_wq_cb_adpf_hint(struct fpsgo_adpf_session *session)
 	}
 }
 
+static void fpsgo_notifier_wq_cb_magt_target_fps(struct fpsgo_magt_target_fps *iter)
+{
+	if (!iter || !fpsgo_is_enable())
+		return;
+
+	fpsgo_ctrl2fstb_magt_set_target_fps(iter->pid_arr, iter->tid_arr, iter->tfps_arr, iter->num);
+	fpsgo_free(iter, sizeof(struct fpsgo_magt_target_fps));
+}
+
+static void fpsgo_notifier_wq_cb_magt_dep_list(struct fpsgo_magt_dep_list *iter)
+{
+	if (!iter || !fpsgo_is_enable())
+		return;
+
+	fpsgo_ctrl2xgf_magt_set_dep_list(iter->pid, iter->dep_task_arr, iter->dep_task_num);
+	fpsgo_free(iter, sizeof(struct fpsgo_magt_dep_list));
+}
+
 static LIST_HEAD(head);
 static int condition_notifier_wq;
 static DEFINE_MUTEX(notifier_wq_lock);
@@ -455,6 +489,12 @@ static void fpsgo_notifier_wq_cb(void)
 		break;
 	case FPSGO_NOTIFIER_ADPF_HINT:
 		fpsgo_notifier_wq_cb_adpf_hint(&vpPush->adpf_hint);
+		break;
+	case FPSGO_NOTIFIER_MAGT_TARGET_FPS:
+		fpsgo_notifier_wq_cb_magt_target_fps(vpPush->magt_tfps_hint);
+		break;
+	case FPSGO_NOTIFIER_MAGT_DEP_LIST:
+		fpsgo_notifier_wq_cb_magt_dep_list(vpPush->magt_dep_hint);
 		break;
 	default:
 		FPSGO_LOGE("[FPSGO_CTRL] unhandled push type = %d\n",
@@ -918,11 +958,12 @@ int fpsgo_notify_adpf_hint(struct _SESSION *session)
 	if (!session)
 		return -EFAULT;
 
-	vpPush = fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
-	if (!vpPush) {
-		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+	if (!kfpsgo_tsk)
 		return -ENOMEM;
-	}
+
+	vpPush = fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+	if (!vpPush)
+		return -ENOMEM;
 
 	vpPush->adpf_hint.cmd = session->cmd;
 	vpPush->adpf_hint.sid = session->sid;
@@ -950,6 +991,79 @@ int fpsgo_notify_adpf_hint(struct _SESSION *session)
 	vpPush->adpf_hint.used = session->used;
 	vpPush->adpf_hint.target_time = session->durationNanos;
 	vpPush->ePushType = FPSGO_NOTIFIER_ADPF_HINT;
+
+	fpsgo_queue_work(vpPush);
+
+	return 0;
+}
+
+int fpsgo_notify_magt_target_fps(int *pid_arr, int *tid_arr,
+	int *tfps_arr, int num)
+{
+	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush = NULL;
+
+	if (!pid_arr|| !tid_arr|| num < 0 ||
+		num > MAX_MAGT_TARGET_FPS_NUM)
+		return -EINVAL;
+
+	if (!kfpsgo_tsk)
+		return -ENOMEM;
+
+	vpPush = fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+	if (!vpPush)
+		return -ENOMEM;
+
+	vpPush->magt_tfps_hint = NULL;
+	vpPush->magt_tfps_hint = fpsgo_alloc_atomic(sizeof(struct fpsgo_magt_target_fps));
+	if (!vpPush->magt_tfps_hint) {
+		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+		return -ENOMEM;
+	}
+
+	memset(vpPush->magt_tfps_hint->pid_arr, 0, MAX_MAGT_TARGET_FPS_NUM * sizeof(int));
+	memcpy(vpPush->magt_tfps_hint->pid_arr, pid_arr, num * sizeof(int));
+	memset(vpPush->magt_tfps_hint->tid_arr, 0, MAX_MAGT_TARGET_FPS_NUM * sizeof(int));
+	memcpy(vpPush->magt_tfps_hint->tid_arr, tid_arr, num * sizeof(int));
+	memset(vpPush->magt_tfps_hint->tfps_arr, 0, MAX_MAGT_TARGET_FPS_NUM * sizeof(int));
+	memcpy(vpPush->magt_tfps_hint->tfps_arr, tfps_arr, num * sizeof(int));
+	vpPush->magt_tfps_hint->num = num;
+	vpPush->ePushType = FPSGO_NOTIFIER_MAGT_TARGET_FPS;
+
+	fpsgo_queue_work(vpPush);
+
+	return 0;
+}
+
+int fpsgo_notify_magt_dep_list(int pid, int *dep_task_arr, int dep_task_num)
+{
+	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush = NULL;
+
+	if (dep_task_num < 0 || dep_task_num > MAX_MAGT_DEP_LIST_NUM ||
+		(!dep_task_arr && dep_task_num != 0))
+		return -EINVAL;
+
+	if (!kfpsgo_tsk)
+		return -ENOMEM;
+
+	vpPush = fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+	if (!vpPush)
+		return -ENOMEM;
+
+	vpPush->magt_dep_hint = NULL;
+	vpPush->magt_dep_hint = fpsgo_alloc_atomic(sizeof(struct fpsgo_magt_dep_list));
+	if (!vpPush->magt_dep_hint) {
+		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+		return -ENOMEM;
+	}
+
+	vpPush->magt_dep_hint->pid = pid;
+	memset(vpPush->magt_dep_hint->dep_task_arr, 0,
+		MAX_MAGT_DEP_LIST_NUM * sizeof(int));
+	if (dep_task_arr)
+		memcpy(vpPush->magt_dep_hint->dep_task_arr, dep_task_arr,
+			dep_task_num * sizeof(int));
+	vpPush->magt_dep_hint->dep_task_num = dep_task_num;
+	vpPush->ePushType = FPSGO_NOTIFIER_MAGT_DEP_LIST;
 
 	fpsgo_queue_work(vpPush);
 
@@ -1265,7 +1379,6 @@ fail_reg_cpu_frequency_entry:
 	mutex_init(&notify_lock);
 
 	fpsgo_force_onoff = FPSGO_FREE;
-	gpu_boost_enable_perf = gpu_boost_enable_camera = -1;
 
 	init_fpsgo_common();
 	mtk_fstb_init();
@@ -1297,6 +1410,8 @@ fail_reg_cpu_frequency_entry:
 	fpsgo_get_pid_fp = fpsgo_get_pid;
 	register_get_fpsgo_is_boosting_fp = register_get_fpsgo_is_boosting;
 	unregister_get_fpsgo_is_boosting_fp = unregister_get_fpsgo_is_boosting;
+	magt2fpsgo_notify_target_fps_fp = fpsgo_notify_magt_target_fps;
+	magt2fpsgo_notify_dep_list_fp = fpsgo_notify_magt_dep_list;
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_register_fps_chg_callback(dfrc_fps_limit_cb);

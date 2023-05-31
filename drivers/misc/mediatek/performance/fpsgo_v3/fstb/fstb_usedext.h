@@ -66,6 +66,7 @@ struct FSTB_FRAME_INFO {
 	int hwui_flag;
 	int self_ctrl_fps_enable;
 	int notify_target_fps;
+	int magt_target_fps;
 
 	unsigned long master_type;
 };
@@ -85,7 +86,11 @@ struct FSTB_POWERFPS_LIST {
 };
 
 struct FSTB_NOTIFIER_PUSH_TAG {
+	int tgid;
 	int pid;
+	int target_fps_margin;
+	int target_fps_hint;
+	int eara_is_active;
 	unsigned long long bufid;
 	unsigned long long cur_queue_end_ts;
 

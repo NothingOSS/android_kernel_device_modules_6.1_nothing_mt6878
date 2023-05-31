@@ -32,6 +32,11 @@ extern void (*fpsgo_get_pid_fp)(int cmd, int *pid, int op);
 extern void (*fpsgo_notify_sbe_policy_fp)(int pid,  char *name,
 	unsigned long mask, int start, int *ret);
 
+extern int (*magt2fpsgo_notify_target_fps_fp)(int *pid_arr, int *tid_arr,
+	int *tfps_arr, int num);
+extern int (*magt2fpsgo_notify_dep_list_fp)(int pid, int *dep_task_arr,
+	int dep_task_num);
+
 extern void (*ged_vsync_notifier_fp)(void);
 
 int fpsgo_is_force_enable(void);

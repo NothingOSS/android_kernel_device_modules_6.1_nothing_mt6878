@@ -2135,16 +2135,23 @@ struct acquire_info *fpsgo_search_acquire_info(int tid, unsigned long long buffe
 struct acquire_info *fpsgo_add_acquire_info(int p_pid, int c_pid, int c_tid,
 	int api, unsigned long long buffer_id)
 {
+	int local_tgid;
 	struct rb_node **p = &acquire_info_tree.rb_node;
 	struct rb_node *parent = NULL;
 	struct acquire_info *iter = NULL;
 	struct fbt_render_key local_key = {.key1 = c_tid, .key2 = buffer_id};
 
 	if (api == NATIVE_WINDOW_API_CAMERA) {
-		if (wq_has_sleeper(&cam_apk_pid_queue))
-			fpsgo2cam_sentcmd(CAMERA_APK, c_pid);
-		if (wq_has_sleeper(&cam_ser_pid_queue))
-			fpsgo2cam_sentcmd(CAMERA_SERVER, p_pid);
+		if (wq_has_sleeper(&cam_apk_pid_queue)) {
+			local_tgid = 0;
+			fpsgo_get_cam_pid(CAMERA_APK, &local_tgid);
+			fpsgo2cam_sentcmd(CAMERA_APK, local_tgid);
+		}
+		if (wq_has_sleeper(&cam_ser_pid_queue)) {
+			local_tgid = 0;
+			fpsgo_get_cam_pid(CAMERA_SERVER, &local_tgid);
+			fpsgo2cam_sentcmd(CAMERA_SERVER, local_tgid);
+		}
 	}
 
 	while (*p) {
@@ -2452,6 +2459,9 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 
 	for (n = rb_first(&render_pid_tree); n != NULL; n = rb_next(n)) {
 		iter = rb_entry(n, struct render_info, render_key_node);
+		if (iter->frame_type == BY_PASS_TYPE)
+			continue;
+
 		attr_item = iter->attr;
 		tsk = find_task_by_vpid(iter->tgid);
 		if (tsk) {
@@ -3014,11 +3024,49 @@ out:
 
 static KOBJ_ATTR_RO(render_loading);
 
+static ssize_t render_type_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	char *temp = NULL;
+	int i = 0;
+	int pos = 0;
+	int length = 0;
+	struct render_info *r_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	temp = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!temp)
+		goto out;
+
+	fpsgo_render_tree_lock(__func__);
+
+	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
+		r_iter = rb_entry(rbn, struct render_info, render_key_node);
+		length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				"%dth\t[%d][0x%llx]\tframe_type:%d\tbq_type:%d\thwui:%d\tmaster_type:%lu\n",
+				i+1, r_iter->pid, r_iter->buffer_id,
+				r_iter->frame_type, r_iter->bq_type, r_iter->hwui, r_iter->master_type);
+		pos += length;
+		i++;
+	}
+
+	fpsgo_render_tree_unlock(__func__);
+
+	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
+
+out:
+	kfree(temp);
+	return length;
+}
+
+static KOBJ_ATTR_RO(render_type);
+
 static ssize_t kfps_cpu_mask_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "%d\n", global_kfps_mask);
+	return scnprintf(buf, PAGE_SIZE, "%x\n", global_kfps_mask);
 }
 
 static ssize_t kfps_cpu_mask_store(struct kobject *kobj,
@@ -3094,6 +3142,7 @@ int init_fpsgo_common(void)
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_render_attr_params_tid);
 		#endif
 		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_kfps_cpu_mask);
+		fpsgo_sysfs_create_file(base_kobj, &kobj_attr_render_type);
 	}
 
 	fpsgo_update_tracemark();

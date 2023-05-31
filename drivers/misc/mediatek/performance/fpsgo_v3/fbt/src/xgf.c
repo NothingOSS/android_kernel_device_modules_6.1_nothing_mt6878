@@ -84,6 +84,7 @@ int (*xgf_est_runtime_fp)(
 	int ema2_enable, int latest_dep_frames, int ema1_dividend, int do_ex_sub,
 	int *raw_dep_list, int *raw_dep_list_num, int max_raw_dep_list_num,
 	int *dep_list, int *dep_list_num, int max_dep_list_num,
+	int *magt_dep_list, int magt_dep_list_size,
 	unsigned long long *raw_t_cpu, unsigned long long *ema_t_cpu,
 	unsigned long long *deq_t_cpu, unsigned long long *enq_t_cpu,
 	unsigned long long t_dequeue_start, unsigned long long t_dequeue_end,
@@ -245,40 +246,6 @@ int xgf_check_specific_pid(int pid)
 }
 EXPORT_SYMBOL(xgf_check_specific_pid);
 
-int xgf_check_specific_process(int pid, int rpid)
-{
-	int ret = 0;
-	int tmp_process_id, main_process_id;
-	char tmp_process_name[16];
-	struct task_struct *gtsk = NULL;
-
-	main_process_id = xgf_get_process_id(rpid);
-	if (main_process_id < 0)
-		goto out;
-
-	tmp_process_id = xgf_get_process_id(pid);
-	if (tmp_process_id < 0)
-		goto out;
-
-	rcu_read_lock();
-	gtsk = find_task_by_vpid(tmp_process_id);
-	if (gtsk) {
-		get_task_struct(gtsk);
-		strncpy(tmp_process_name, gtsk->comm, 16);
-		tmp_process_name[15] = '\0';
-		put_task_struct(gtsk);
-	} else
-		tmp_process_name[0] = '\0';
-	rcu_read_unlock();
-
-	if ((tmp_process_id == main_process_id) ||
-		strstr(tmp_process_name, "surfaceflinger"))
-		ret = 1;
-
-out:
-	return ret;
-}
-
 static inline int xgf_is_enable(void)
 {
 	return xgf_enable;
@@ -343,8 +310,12 @@ static void xgf_delete_policy_cmd(struct xgf_policy_cmd *iter)
 	struct rb_node *rbn = NULL;
 
 	if (iter) {
-		min_iter = iter;
-		goto delete;
+		if (iter->ema2_enable == BY_PID_DEFAULT_VAL &&
+			iter->filter_dep_task_enable == BY_PID_DEFAULT_VAL) {
+			min_iter = iter;
+			goto delete;
+		} else
+			return;
 	}
 
 	if (RB_EMPTY_ROOT(&xgf_policy_cmd_tree))
@@ -369,7 +340,7 @@ delete:
 	total_xgf_policy_cmd_num--;
 }
 
-static struct xgf_policy_cmd *xgf_get_policy_cmd(int tgid, int ema2_enable,
+static struct xgf_policy_cmd *xgf_get_policy_cmd(int tgid,
 	unsigned long long ts, int force)
 {
 	struct rb_node **p = &xgf_policy_cmd_tree.rb_node;
@@ -396,8 +367,8 @@ static struct xgf_policy_cmd *xgf_get_policy_cmd(int tgid, int ema2_enable,
 		return NULL;
 
 	iter->tgid = tgid;
-	iter->ema2_enable = 0;
-	iter->filter_dep_task_enable = 0;
+	iter->ema2_enable = BY_PID_DEFAULT_VAL;
+	iter->filter_dep_task_enable = BY_PID_DEFAULT_VAL;
 	iter->ts = ts;
 
 	rb_link_node(&iter->rb_node, parent, p);
@@ -408,6 +379,23 @@ static struct xgf_policy_cmd *xgf_get_policy_cmd(int tgid, int ema2_enable,
 		xgf_delete_policy_cmd(NULL);
 
 	return iter;
+}
+
+static void xgf_set_policy_cmd(int cmd, int value, int tgid,
+	unsigned long long ts, int op)
+{
+	struct xgf_policy_cmd *iter;
+
+	iter = xgf_get_policy_cmd(tgid, ts, op);
+	if (iter) {
+		if (cmd == 0)
+			iter->ema2_enable = value;
+		else if (cmd == 1)
+			iter->filter_dep_task_enable = value;
+
+		if (!op)
+			xgf_delete_policy_cmd(iter);
+	}
 }
 
 int set_xgf_spid_list(char *proc_name,
@@ -611,6 +599,8 @@ static struct xgf_render_if *xgf_get_render_if(int pid, unsigned long long bufID
 	iter->ema_t_cpu = 0;
 	iter->dep_list = RB_ROOT;
 	iter->dep_list_size = 0;
+	iter->magt_dep_list = RB_ROOT;
+	iter->magt_dep_list_size = 0;
 	iter->ema2_enable = 0;
 	iter->filter_dep_task_enable = 0;
 	iter->master_type = master_type;
@@ -621,25 +611,56 @@ out:
 	return iter;
 }
 
-static void xgf_reset_render_dep_list(struct xgf_render_if *render)
+static void xgf_reset_render_dep_list(struct xgf_render_if *render, int type)
 {
 	struct xgf_dep *iter;
 
-	while (!RB_EMPTY_ROOT(&render->dep_list)) {
-		iter = rb_entry(render->dep_list.rb_node,
-			struct xgf_dep, rb_node);
-		rb_erase(&iter->rb_node, &render->dep_list);
-		xgf_free(iter);
+	switch (type) {
+	case FPSGO_TYPE:
+	case ADPF_TYPE:
+	case KTF_TYPE:
+		while (!RB_EMPTY_ROOT(&render->dep_list)) {
+			iter = rb_entry(render->dep_list.rb_node,
+				struct xgf_dep, rb_node);
+			rb_erase(&iter->rb_node, &render->dep_list);
+			xgf_free(iter);
+		}
+		render->dep_list_size = 0;
+		break;
+	case MAGT_TYPE:
+		while (!RB_EMPTY_ROOT(&render->magt_dep_list)) {
+			iter = rb_entry(render->magt_dep_list.rb_node,
+				struct xgf_dep, rb_node);
+			rb_erase(&iter->rb_node, &render->magt_dep_list);
+			xgf_free(iter);
+		}
+		render->magt_dep_list_size = 0;
+		break;
 	}
-	render->dep_list_size = 0;
 }
 
-static struct xgf_dep *xgf_add_dep_task(int tid, struct xgf_render_if *render, int create)
+static struct xgf_dep *xgf_add_dep_task(int tid,
+	struct xgf_render_if *render, int type, int create)
 {
 	struct xgf_dep *iter;
-	struct rb_root *r = &render->dep_list;
-	struct rb_node **p = &render->dep_list.rb_node;
+	struct rb_root *r = NULL;
+	struct rb_node **p = NULL;
 	struct rb_node *parent;
+
+	switch (type) {
+	case FPSGO_TYPE:
+	case ADPF_TYPE:
+	case KTF_TYPE:
+		r = &render->dep_list;
+		p = &render->dep_list.rb_node;
+		break;
+	case MAGT_TYPE:
+		r = &render->magt_dep_list;
+		p = &render->magt_dep_list.rb_node;
+		break;
+	default:
+		return NULL;
+	}
 
 	while (*p) {
 		parent = *p;
@@ -665,38 +686,64 @@ static struct xgf_dep *xgf_add_dep_task(int tid, struct xgf_render_if *render, i
 
 	rb_link_node(&iter->rb_node, parent, p);
 	rb_insert_color(&iter->rb_node, r);
-	render->dep_list_size++;
+
+	switch (type) {
+	case FPSGO_TYPE:
+	case ADPF_TYPE:
+	case KTF_TYPE:
+		render->dep_list_size++;
+		break;
+	case MAGT_TYPE:
+		render->magt_dep_list_size++;
+		break;
+	default:
+		break;
+	}
 
 	return iter;
 }
 
 static void xgf_setup_render_dep_list(int *dep_list, int dep_list_num,
-	struct xgf_render_if *render)
+	struct xgf_render_if *render, int type)
 {
 	int i;
 	struct xgf_dep *iter;
 
 	for (i = 0; i < dep_list_num; i++)
-		iter = xgf_add_dep_task(dep_list[i], render, 1);
+		iter = xgf_add_dep_task(dep_list[i], render, type, 1);
 }
 
-static void xgf_del_pid2prev_dep(struct xgf_render_if *render, int tid)
+static void xgf_del_pid2prev_dep(struct xgf_render_if *render, int type, int tid)
 {
 	struct xgf_dep *iter;
 
-	iter = xgf_add_dep_task(tid, render, 0);
-	if (iter) {
+	iter = xgf_add_dep_task(tid, render, type, 0);
+	if (!iter)
+		return;
+
+	switch (type) {
+	case FPSGO_TYPE:
+	case ADPF_TYPE:
+	case KTF_TYPE:
 		rb_erase(&iter->rb_node, &render->dep_list);
-		xgf_free(iter);
 		render->dep_list_size--;
+		break;
+	case MAGT_TYPE:
+		rb_erase(&iter->rb_node, &render->magt_dep_list);
+		render->magt_dep_list_size--;
+		break;
+	default:
+		break;
 	}
+
+	xgf_free(iter);
 }
 
-static void xgf_add_pid2prev_dep(struct xgf_render_if *render, int tid, int action)
+static void xgf_add_pid2prev_dep(struct xgf_render_if *render, int type, int tid, int action)
 {
 	struct xgf_dep *iter;
 
-	iter = xgf_add_dep_task(tid, render, 1);
+	iter = xgf_add_dep_task(tid, render, type, 1);
 	if (iter)
 		iter->action = action;
 }
@@ -710,9 +757,9 @@ static void xgf_wspid_list_add2prev(struct xgf_render_if *render)
 		if (xgf_spid_iter->rpid == render->pid
 			&& xgf_spid_iter->bufID == render->bufid) {
 			if (xgf_spid_iter->action == XGF_DEL_DEP)
-				xgf_del_pid2prev_dep(render, xgf_spid_iter->tid);
+				xgf_del_pid2prev_dep(render, FPSGO_TYPE, xgf_spid_iter->tid);
 			else
-				xgf_add_pid2prev_dep(render, xgf_spid_iter->tid,
+				xgf_add_pid2prev_dep(render, FPSGO_TYPE, xgf_spid_iter->tid,
 					xgf_spid_iter->action);
 		}
 	}
@@ -731,7 +778,7 @@ int has_xgf_dep(pid_t tid)
 	query_tid = tid;
 
 	hlist_for_each_entry_safe(render_iter, n, &xgf_render_if_list, hlist) {
-		out_xd = xgf_add_dep_task(query_tid, render_iter, 0);
+		out_xd = xgf_add_dep_task(query_tid, render_iter, FPSGO_TYPE, 0);
 		if (out_xd) {
 			ret = 1;
 			break;
@@ -782,9 +829,11 @@ static int xgf_filter_dep_task(int tid, struct xgf_render_if *render_iter)
 			goto out;
 		}
 	}
+
 	if (render_iter->filter_dep_task_enable &&
-			!xgf_check_specific_process(tid, render_iter->pid))
-		ret = 1;
+		local_tgid != render_iter->tgid)
+		ret = local_tgid;
+
 out:
 	return ret;
 }
@@ -809,7 +858,7 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 	}
 
 	if (render_iter->spid > 0)
-		xgf_add_pid2prev_dep(render_iter, render_iter->spid, 0);
+		xgf_add_pid2prev_dep(render_iter, FPSGO_TYPE, render_iter->spid, XGF_ADD_DEP);
 
 	if (xgf_cfg_spid)
 		xgf_wspid_list_add2prev(render_iter);
@@ -911,6 +960,47 @@ int gbe2xgf_get_dep_list(int pid, int count,
 	return index;
 }
 
+static int xgf_get_specific_action_spid(int target_action, struct xgf_render_if *render_iter)
+{
+	int exist = 0;
+	struct xgf_spid *spid_iter = NULL;
+	struct hlist_node *h = NULL;
+
+	hlist_for_each_entry_safe(spid_iter, h, &xgf_wspid_list, hlist) {
+		if (spid_iter->rpid == render_iter->pid &&
+			spid_iter->bufID == render_iter->bufid &&
+			spid_iter->action == target_action) {
+			xgf_add_pid2prev_dep(render_iter, MAGT_TYPE,
+				spid_iter->tid, spid_iter->action);
+			exist = 1;
+		}
+	}
+
+	if (!exist && !test_bit(MAGT_TYPE, &render_iter->master_type))
+		xgf_reset_render_dep_list(render_iter, MAGT_TYPE);
+
+	return exist;
+}
+
+static int xgf_get_magt_dep_list(int *arr, int count, struct xgf_render_if *render_iter)
+{
+	int index = 0;
+	struct xgf_dep *xd_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	if (!arr || !render_iter)
+		return 0;
+
+	for (rbn = rb_first(&render_iter->magt_dep_list); rbn; rbn = rb_next(rbn)) {
+		xd_iter = rb_entry(rbn, struct xgf_dep, rb_node);
+		if (index < count)
+			arr[index] = xd_iter->tid;
+		index++;
+	}
+
+	return index;
+}
+
 static int xgff_get_dep_list(int pid, int count,
 	unsigned int *arr, struct xgf_render_if *render_iter)
 {
@@ -943,7 +1033,8 @@ static void xgf_reset_render(struct xgf_render_if *iter)
 	hlist_del(&iter->hlist);
 	xgf_enter_delete_render_info(iter->pid, iter->bufid);
 	xgf_render_reset_wspid_list(iter->pid, iter->bufid);
-	xgf_reset_render_dep_list(iter);
+	xgf_reset_render_dep_list(iter, FPSGO_TYPE);
+	xgf_reset_render_dep_list(iter, MAGT_TYPE);
 	xgf_free(iter);
 }
 
@@ -1138,6 +1229,7 @@ static int xgf_enter_est_runtime(int pid, unsigned long long bufID, int tgid, in
 	int ema2_enable, int latest_dep_frames, int ema1_dividend, int do_ex_sub,
 	int *raw_dep_list, int *raw_dep_list_num, int max_raw_dep_list_num,
 	int *dep_list, int *dep_list_num, int max_dep_list_num,
+	int *magt_dep_list, int magt_dep_list_size,
 	unsigned long long *raw_t_cpu, unsigned long long *ema_t_cpu,
 	unsigned long long *deq_t_cpu, unsigned long long *enq_t_cpu,
 	unsigned long long t_dequeue_start, unsigned long long t_dequeue_end,
@@ -1166,6 +1258,7 @@ static int xgf_enter_est_runtime(int pid, unsigned long long bufID, int tgid, in
 				ema2_enable, latest_dep_frames, ema1_dividend, do_ex_sub,
 				raw_dep_list, raw_dep_list_num, max_raw_dep_list_num,
 				dep_list, dep_list_num, max_dep_list_num,
+				magt_dep_list, magt_dep_list_size,
 				raw_t_cpu, ema_t_cpu,
 				deq_t_cpu, enq_t_cpu,
 				t_dequeue_start, t_dequeue_end,
@@ -1195,7 +1288,7 @@ static int xgff_enter_est_runtime(struct xgf_render_if *render,
 	if (!local_dep_list)
 		goto out;
 
-	if (!trace_xgf_trace_enabled()) {
+	if (trace_xgf_trace_enabled()) {
 		max_raw_dep_list_num = xgf_max_dep_path_num * xgf_max_dep_task_num;
 		raw_dep_list = xgf_alloc_array(max_raw_dep_list_num, sizeof(int));
 		if (!raw_dep_list)
@@ -1209,6 +1302,7 @@ static int xgff_enter_est_runtime(struct xgf_render_if *render,
 				render->ema2_enable, xgf_latest_dep_frames, xgf_ema_dividend, 0,
 				raw_dep_list, &raw_dep_list_num, max_raw_dep_list_num,
 				local_dep_list, &local_dep_list_num, max_local_dep_list_num,
+				NULL, 0,
 				&local_raw_t_cpu, &local_ema_t_cpu,
 				&local_deq_t_cpu, &local_enq_t_cpu,
 				0, 0, 0, 0, prev_queue_end_ts, cur_queue_end_ts);
@@ -1216,8 +1310,8 @@ static int xgff_enter_est_runtime(struct xgf_render_if *render,
 
 	mutex_unlock(&xgf_main_lock);
 
-	xgf_reset_render_dep_list(render);
-	xgf_setup_render_dep_list(local_dep_list, local_dep_list_num, render);
+	xgf_reset_render_dep_list(render, FPSGO_TYPE);
+	xgf_setup_render_dep_list(local_dep_list, local_dep_list_num, render, FPSGO_TYPE);
 
 	*runtime = local_raw_t_cpu;
 
@@ -1370,8 +1464,8 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 	int ret = 0;
 	int new_spid;
 	int do_extra_sub = 0;
-	int *local_dep_list = NULL, *raw_dep_list = NULL;
-	int local_dep_list_num = 0, raw_dep_list_num = 0;
+	int *local_dep_list = NULL, *raw_dep_list = NULL, *local_magt_dep_list = NULL;
+	int local_dep_list_num = 0, raw_dep_list_num = 0, local_magt_dep_list_num = 0;
 	int max_local_dep_list_num = MAX_DEP_NUM;
 	int max_raw_dep_list_num = 0;
 	unsigned long local_master_type = 0;
@@ -1401,6 +1495,8 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 	if (!iter)
 		return;
 
+	xgf_get_specific_action_spid(XGF_ADD_DEP_FORCE_CPU_TIME, iter);
+
 	iter->prev_queue_end_ts = def_start_ts > 0 ? def_start_ts : iter->cur_queue_end_ts;
 	iter->cur_queue_end_ts = def_end_ts;
 
@@ -1411,23 +1507,34 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 	if (!local_dep_list)
 		goto by_pass_skip;
 
-	if (!trace_xgf_trace_enabled()) {
+	if (iter->magt_dep_list_size > 0) {
+		local_magt_dep_list = xgf_alloc_array(iter->magt_dep_list_size, sizeof(int));
+		if (!local_magt_dep_list)
+			goto by_pass_skip;
+
+		local_magt_dep_list_num = xgf_get_magt_dep_list(local_magt_dep_list,
+			iter->magt_dep_list_size, iter);
+		if (local_magt_dep_list_num != iter->magt_dep_list_size)
+			goto by_pass_skip;
+	}
+
+	if (trace_xgf_trace_enabled()) {
 		max_raw_dep_list_num = xgf_max_dep_path_num * xgf_max_dep_task_num;
 		raw_dep_list = xgf_alloc_array(max_raw_dep_list_num, sizeof(int));
 		if (!raw_dep_list)
 			goto by_pass_skip;
 	}
 
+	iter->ema2_enable = xgf_ema2_enable;
+	iter->filter_dep_task_enable = xgf_filter_dep_task_enable;
 	mutex_lock(&xgf_policy_cmd_lock);
-	policy = xgf_get_policy_cmd(iter->tgid, iter->ema2_enable, t_enqueue_end, 0);
+	policy = xgf_get_policy_cmd(iter->tgid, t_enqueue_end, 0);
 	if (policy) {
+		if (policy->ema2_enable != BY_PID_DEFAULT_VAL)
+			iter->ema2_enable = policy->ema2_enable;
+		if (policy->filter_dep_task_enable != BY_PID_DEFAULT_VAL)
+			iter->filter_dep_task_enable = policy->filter_dep_task_enable;
 		policy->ts = t_enqueue_end;
-		iter->ema2_enable = policy->ema2_enable;
-		iter->filter_dep_task_enable = policy->filter_dep_task_enable;
-		policy->ts = t_enqueue_end;
-	} else {
-		iter->ema2_enable = xgf_ema2_enable ? 1 : 0;
-		iter->filter_dep_task_enable = xgf_filter_dep_task_enable ? 1 : 0;
 	}
 	mutex_unlock(&xgf_policy_cmd_lock);
 
@@ -1453,6 +1560,7 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 				xgf_ema_dividend, do_extra_sub,
 				raw_dep_list, &raw_dep_list_num, max_raw_dep_list_num,
 				local_dep_list, &local_dep_list_num, max_local_dep_list_num,
+				local_magt_dep_list, local_magt_dep_list_num,
 				&local_raw_t_cpu, &local_ema_t_cpu,
 				&local_deq_t_cpu, &local_enq_t_cpu,
 				t_dequeue_start, t_dequeue_end,
@@ -1461,8 +1569,8 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 	fpsgo_systrace_c_fbt(iter->pid, iter->bufid, ret, "xgf_ret");
 	iter->raw_t_cpu = local_raw_t_cpu;
 	iter->ema_t_cpu = local_ema_t_cpu;
-	xgf_reset_render_dep_list(iter);
-	xgf_setup_render_dep_list(local_dep_list, local_dep_list_num, iter);
+	xgf_reset_render_dep_list(iter, FPSGO_TYPE);
+	xgf_setup_render_dep_list(local_dep_list, local_dep_list_num, iter, FPSGO_TYPE);
 
 	if (run_time)
 		*run_time = local_ema_t_cpu;
@@ -1477,6 +1585,7 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 
 by_pass_skip:
 	xgf_free(raw_dep_list);
+	xgf_free(local_magt_dep_list);
 	xgf_free(local_dep_list);
 
 	mutex_unlock(&xgf_main_lock);
@@ -1506,9 +1615,9 @@ int fpsgo_comp2xgf_adpf_set_dep_list(int tgid, int rtid, unsigned long long bufI
 		goto malloc_err;
 	r_iter->tgid = tgid;
 
-	xgf_reset_render_dep_list(r_iter);
+	xgf_reset_render_dep_list(r_iter, ADPF_TYPE);
 	for (i = 0; i < dep_num; i++) {
-		xd = xgf_add_dep_task(dep_arr[i], r_iter, 1);
+		xd = xgf_add_dep_task(dep_arr[i], r_iter, ADPF_TYPE, 1);
 		if (!xd)
 			goto malloc_err;
 		xgf_trace("[adpf][xgf][%d][0x%llx] | create dep_task[%d]:%d",
@@ -1522,6 +1631,35 @@ out:
 malloc_err:
 	mutex_unlock(&xgf_main_lock);
 	return -ENOMEM;
+}
+
+void fpsgo_ctrl2xgf_magt_set_dep_list(int tgid, int *dep_arr, int dep_num)
+{
+	int i;
+	struct xgf_render_if *r_iter = NULL;
+	struct hlist_node *h = NULL;
+
+	mutex_lock(&xgf_main_lock);
+
+	hlist_for_each_entry_safe(r_iter, h, &xgf_render_if_list, hlist) {
+		if (r_iter->tgid != tgid ||
+			!test_bit(FPSGO_TYPE, &r_iter->master_type))
+			continue;
+
+		xgf_reset_render_dep_list(r_iter, MAGT_TYPE);
+		if (dep_num > 0) {
+			for (i = 0; i < dep_num; i++) {
+				xgf_add_pid2prev_dep(r_iter, MAGT_TYPE,
+					dep_arr[i], XGF_ADD_DEP_FORCE_CPU_TIME);
+				xgf_trace("[xgf][%d][0x%llx] | %dth magt_dep_task:%d",
+					r_iter->pid, r_iter->bufid, i+1, dep_arr[i]);
+			}
+			set_bit(MAGT_TYPE, &r_iter->master_type);
+		} else
+			clear_bit(MAGT_TYPE, &r_iter->master_type);
+	}
+
+	mutex_unlock(&xgf_main_lock);
 }
 
 int fpsgo_ktf2xgf_atomic_set(int op, int value)
@@ -1563,7 +1701,7 @@ int fpsgo_ktf2xgf_add_delete_render_info(int mode, int pid, unsigned long long b
 	case 0:
 		r_iter = xgf_get_render_if(pid, bufID, local_master_type, ts, 1);
 		if (r_iter) {
-			xd_iter = xgf_add_dep_task(pid, r_iter, 1);
+			xd_iter = xgf_add_dep_task(pid, r_iter, KTF_TYPE, 1);
 			if (xd_iter)
 				ret = 1;
 		}
@@ -2462,6 +2600,39 @@ out: \
 	return count; \
 }
 
+#define XGF_SYSFS_WRITE_POLICY_CMD(name, lock, cmd, min, max); \
+static ssize_t name##_store(struct kobject *kobj, \
+		struct kobj_attribute *attr, \
+		const char *buf, size_t count) \
+{ \
+	char *acBuffer = NULL; \
+	int tgid; \
+	int arg; \
+	unsigned long long ts = fpsgo_get_time(); \
+\
+	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL); \
+	if (!acBuffer) \
+		goto out; \
+\
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) { \
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) { \
+			if (sscanf(acBuffer, "%d %d", &tgid, &arg) == 2) { \
+				mutex_lock(&(lock)); \
+				if (arg >= (min) && arg <= (max)) \
+					xgf_set_policy_cmd(cmd, arg, tgid, ts, 1); \
+				else \
+					xgf_set_policy_cmd(cmd, BY_PID_DEFAULT_VAL, \
+						tgid, ts, 0); \
+				mutex_unlock(&(lock)); \
+			} \
+		} \
+	} \
+\
+out: \
+	kfree(acBuffer); \
+	return count; \
+}
+
 XGF_SYSFS_READ(xgf_cfg_spid, 1, xgf_cfg_spid);
 XGF_SYSFS_WRITE_VALUE(xgf_cfg_spid, xgf_main_lock, xgf_cfg_spid, 0, 1);
 static KOBJ_ATTR_RW(xgf_cfg_spid);
@@ -2507,7 +2678,19 @@ XGF_SYSFS_READ(set_cam_server_pid, 1, cam_server_pid);
 XGF_SYSFS_WRITE_VALUE(set_cam_server_pid, xgf_main_lock, cam_server_pid, 0, 65536);
 static KOBJ_ATTR_RW(set_cam_server_pid);
 
-static ssize_t xgf_ema2_enable_by_pid_show(struct kobject *kobj,
+XGF_SYSFS_READ(xgf_filter_dep_task_enable, 1, xgf_filter_dep_task_enable);
+XGF_SYSFS_WRITE_VALUE(xgf_filter_dep_task_enable, xgf_main_lock, xgf_filter_dep_task_enable, 0, 1);
+static KOBJ_ATTR_RW(xgf_filter_dep_task_enable);
+
+XGF_SYSFS_READ(xgf_ema2_enable_by_pid, 0, 0);
+XGF_SYSFS_WRITE_POLICY_CMD(xgf_ema2_enable_by_pid, xgf_main_lock, 0, 0, 1);
+static KOBJ_ATTR_RW(xgf_ema2_enable_by_pid);
+
+XGF_SYSFS_READ(xgf_filter_dep_task_enable_by_pid, 0, 0);
+XGF_SYSFS_WRITE_POLICY_CMD(xgf_filter_dep_task_enable_by_pid, xgf_main_lock, 1, 0, 1);
+static KOBJ_ATTR_RW(xgf_filter_dep_task_enable_by_pid);
+
+static ssize_t xgf_policy_cmd_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
@@ -2516,7 +2699,6 @@ static ssize_t xgf_ema2_enable_by_pid_show(struct kobject *kobj,
 	int pos = 0;
 	int length = 0;
 	struct xgf_policy_cmd *iter;
-	struct rb_root *rbr;
 	struct rb_node *rbn;
 
 	temp = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
@@ -2525,8 +2707,7 @@ static ssize_t xgf_ema2_enable_by_pid_show(struct kobject *kobj,
 
 	mutex_lock(&xgf_policy_cmd_lock);
 
-	rbr = &xgf_policy_cmd_tree;
-	for (rbn = rb_first(rbr); rbn; rbn = rb_next(rbn)) {
+	for (rbn = rb_first(&xgf_policy_cmd_tree); rbn; rbn = rb_next(rbn)) {
 		iter = rb_entry(rbn, struct xgf_policy_cmd, rb_node);
 		length = scnprintf(temp + pos,
 			FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
@@ -2548,94 +2729,7 @@ out:
 	return length;
 }
 
-static ssize_t xgf_ema2_enable_by_pid_store(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		const char *buf, size_t count)
-{
-	char *acBuffer = NULL;
-	int tgid;
-	int ema2_enable;
-	unsigned long long ts = fpsgo_get_time();
-	struct xgf_policy_cmd *iter;
-
-	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
-	if (!acBuffer)
-		goto out;
-
-	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (sscanf(acBuffer, "%d %d", &tgid, &ema2_enable) == 2) {
-				mutex_lock(&xgf_policy_cmd_lock);
-				if (ema2_enable > 0) {
-					iter = xgf_get_policy_cmd(tgid, !!ema2_enable, ts, 1);
-					if (iter)
-						iter->ema2_enable = !!ema2_enable;
-				} else {
-					iter = xgf_get_policy_cmd(tgid, ema2_enable, ts, 0);
-					if (iter) {
-						iter->ema2_enable = 0;
-						xgf_delete_policy_cmd(iter);
-					}
-				}
-				mutex_unlock(&xgf_policy_cmd_lock);
-			}
-		}
-	}
-
-out:
-	kfree(acBuffer);
-	return count;
-}
-
-static KOBJ_ATTR_RW(xgf_ema2_enable_by_pid);
-
-static ssize_t xgf_filter_dep_task_enable_by_pid_show(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	return 0;
-}
-
-static ssize_t xgf_filter_dep_task_enable_by_pid_store(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		const char *buf, size_t count)
-{
-	char *acBuffer = NULL;
-	int tgid;
-	int arg;
-	unsigned long long ts = fpsgo_get_time();
-	struct xgf_policy_cmd *iter;
-
-	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
-	if (!acBuffer)
-		goto out;
-
-	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (sscanf(acBuffer, "%d %d", &tgid, &arg) == 2) {
-				mutex_lock(&xgf_policy_cmd_lock);
-				if (arg > 0) {
-					iter = xgf_get_policy_cmd(tgid, 0, ts, 1);
-					if (iter)
-						iter->filter_dep_task_enable = !!arg;
-				} else {
-					iter = xgf_get_policy_cmd(tgid, 0, ts, 0);
-					if (iter) {
-						iter->filter_dep_task_enable = 0;
-						xgf_delete_policy_cmd(iter);
-					}
-				}
-				mutex_unlock(&xgf_policy_cmd_lock);
-			}
-		}
-	}
-
-out:
-	kfree(acBuffer);
-	return count;
-}
-
-static KOBJ_ATTR_RW(xgf_filter_dep_task_enable_by_pid);
+static KOBJ_ATTR_RO(xgf_policy_cmd);
 
 static ssize_t xgf_spid_list_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
@@ -2744,10 +2838,21 @@ static ssize_t xgf_deplist_show(struct kobject *kobj,
 
 	hlist_for_each_entry_safe(r_iter, r_tmp, &xgf_render_if_list, hlist) {
 		length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-			"pid:%d bufID:0x%llx size:%d\n",
-			r_iter->pid, r_iter->bufid, r_iter->dep_list_size);
+			"pid:%d bufID:0x%llx type:%lu size:%d(%d)\n",
+			r_iter->pid, r_iter->bufid, r_iter->master_type,
+			r_iter->dep_list_size, r_iter->magt_dep_list_size);
 		pos += length;
 		for (rbn = rb_first(&r_iter->dep_list); rbn; rbn = rb_next(rbn)) {
+			xd = rb_entry(rbn, struct xgf_dep, rb_node);
+			length = scnprintf(temp + pos,
+				FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				" %d(%d)", xd->tid, xd->action);
+			pos += length;
+		}
+		length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+			"\n");
+		pos += length;
+		for (rbn = rb_first(&r_iter->magt_dep_list); rbn; rbn = rb_next(rbn)) {
 			xd = rb_entry(rbn, struct xgf_dep, rb_node);
 			length = scnprintf(temp + pos,
 				FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
@@ -2807,41 +2912,6 @@ out:
 
 static KOBJ_ATTR_RO(xgf_runtime);
 
-static ssize_t xgf_filter_dep_task_enable_show(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	return scnprintf(buf, PAGE_SIZE, "%d\n", xgf_filter_dep_task_enable);
-}
-
-static ssize_t xgf_filter_dep_task_enable_store(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		const char *buf, size_t count)
-{
-	char *acBuffer = NULL;
-	int arg;
-
-	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
-	if (!acBuffer)
-		goto out;
-
-	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtoint(acBuffer, 0, &arg) == 0) {
-				mutex_lock(&xgf_main_lock);
-				xgf_filter_dep_task_enable = !!arg;
-				mutex_unlock(&xgf_main_lock);
-			}
-		}
-	}
-
-out:
-	kfree(acBuffer);
-	return count;
-}
-
-static KOBJ_ATTR_RW(xgf_filter_dep_task_enable);
-
 int __init init_xgf(void)
 {
 	init_xgf_ko();
@@ -2864,6 +2934,7 @@ int __init init_xgf(void)
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_set_cam_server_pid);
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_filter_dep_task_enable);
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_filter_dep_task_enable_by_pid);
+		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_policy_cmd);
 	}
 
 	xgf_policy_cmd_tree = RB_ROOT;
@@ -2899,6 +2970,7 @@ int __exit exit_xgf(void)
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_set_cam_server_pid);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_filter_dep_task_enable);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_filter_dep_task_enable_by_pid);
+	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_policy_cmd);
 
 	unregister_get_fpsgo_is_boosting(fpsgo_comp2xgf_notify_boost);
 

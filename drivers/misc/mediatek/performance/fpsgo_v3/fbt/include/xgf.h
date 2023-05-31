@@ -26,7 +26,8 @@ enum XGF_ACTION {
 	XGF_DEL_DEP = -1,
 	XGF_ADD_DEP = 0,
 	XGF_ADD_DEP_NO_LLF = 1,
-	XGF_ADD_DEP_FORCE_LLF = 2
+	XGF_ADD_DEP_FORCE_LLF = 2,
+	XGF_ADD_DEP_FORCE_CPU_TIME = 3
 };
 
 enum XGF_EVENT {
@@ -66,6 +67,8 @@ struct xgf_render_if {
 
 	struct rb_root dep_list;
 	int dep_list_size;
+	struct rb_root magt_dep_list;
+	int magt_dep_list_size;
 
 	int ema2_enable;
 	int filter_dep_task_enable;
@@ -144,6 +147,7 @@ int fpsgo_comp2xgf_get_dep_list(int pid, int count,
 int fpsgo_comp2xgf_adpf_set_dep_list(int tgid, int rtid, unsigned long long bufID,
 	int *dep_arr, int dep_num, int op);
 int has_xgf_dep(pid_t tid);
+void fpsgo_ctrl2xgf_magt_set_dep_list(int tgid, int *dep_arr, int dep_num);
 int fpsgo_ktf2xgf_add_delete_render_info(int mode, int pid, unsigned long long bufID);
 struct xgf_thread_loading fbt_xgff_list_loading_add(int pid,
 	unsigned long long buffer_id, unsigned long long ts);
