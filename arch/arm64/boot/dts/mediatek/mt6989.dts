@@ -13699,6 +13699,11 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"PS_B0,PS_B1,PS_B2,PS_B3,",
 				"PS_B4,PS_B5,PS_B6,PS_DPC,",
 				"PS_TOTAL";
+			node-122 = "SSPM_SWPM_AUDIO__SCENARIO_IDX",
+				"afe_on,user_case,output_device,input_device,adda_mode,sample_rate,",
+				"channel_num,freq_clock,D0_ratio";
+			node-123 = "SSPM_SWPM_ADSP__CORE_STATE_RATIO",
+				"active_0_1,active_0_wfi_1, wfi_0_1,active_0_off_1,wfi_0_off_1,off_0_1,core_freq";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
