@@ -26,7 +26,26 @@ static int perf_common_init;
 static atomic_t perf_in_progress;
 
 void __iomem *csram_base;
+void __iomem *u_tcm_base;
+void __iomem *u_e_tcm_base;
+void __iomem *pmu_tcm_base;
+
 struct em_perf_domain *em_pd;
+u32 U_AFFO;
+u32 U_BMONIO;
+u32 U_UFFO;
+u32 U_UCFO;
+u32 U_ECFO;
+u32 CPU_L3DC_OFFSET = 0x1254;
+u32 CPU_INST_SPEC_OFFSET = 0x1274;
+u32 CPU_IDX_CYCLES_OFFSET = 0x1294;
+u32 PERF_TRACKER_STATUS_OFFSET = 0x12E0;
+u32 U_VOLT_2_CLUSTER = 0x518;
+u32 U_FREQ_2_CLUSTER = 0x11e8;
+u32 U_VOLT_3_CLUSTER = 0x51c;
+u32 U_FREQ_3_CLUSTER = 0x11ec;
+u32 MCUPM_OFFSET_BASE = 0x133c;
+bool perf_tracker_info_exist;
 
 static int first_cpu_in_cluster[MAX_CLUSTER_NR] = {0};
 struct ppm_data cluster_ppm_info[MAX_CLUSTER_NR];
@@ -229,6 +248,45 @@ static void cleanup_perf_common_sysfs(void)
 	}
 }
 
+bool is_perf_tracker_info_exist(void)
+{
+	struct device_node *perf_tracker_node;
+	bool ret = 0;
+
+	perf_tracker_node = of_find_node_by_name(NULL, "perf-tracker-info");
+	if (!perf_tracker_node) {
+		pr_info("failed to find node @ %s\n", __func__);
+		ret = 0;
+	} else {
+		pr_info("perf-tracker-info node found.\n");
+		ret = 1;
+	}
+	return ret;
+}
+
+u32 get_perf_tracker_info_from_dts(const char *property_name)
+{
+	struct device_node *perf_tracker_node;
+	u32 para = 0;
+
+	perf_tracker_node = of_find_node_by_name(NULL, "perf-tracker-info");
+	if (perf_tracker_node == NULL)
+		pr_info("failed to find node @ %s\n", __func__);
+	else {
+		int ret;
+
+		ret = of_property_read_u32(perf_tracker_node, property_name, &para);
+
+		if (ret < 0)
+			pr_info("no %s dts_ret=%d\n", property_name, ret);
+		else
+			pr_info("%s enabled\n", property_name);
+	}
+
+	return para;
+}
+
+
 static int __init init_perf_common(void)
 {
 	int ret = 0;
@@ -252,34 +310,57 @@ static int __init init_perf_common(void)
 	init_perf_freq_tracker();
 #endif
 
-	/* get cpufreq driver base address */
-	dn = of_find_node_by_name(NULL, "cpuhvfs");
-	if (!dn) {
-		ret = -ENOMEM;
-		pr_info("%s: find cpuhvfs node failed\n", TAG);
-		goto get_base_failed;
-	}
+	perf_tracker_info_exist = is_perf_tracker_info_exist();
+	if (perf_tracker_info_exist) {
+		U_AFFO = get_perf_tracker_info_from_dts("u-affo");
+		U_BMONIO = get_perf_tracker_info_from_dts("u-bmonio");
+		U_UFFO = get_perf_tracker_info_from_dts("u-uffo");
+		U_UCFO = get_perf_tracker_info_from_dts("u-ucfo");
+		U_ECFO = get_perf_tracker_info_from_dts("u-ecfo");
+		CPU_L3DC_OFFSET = get_perf_tracker_info_from_dts("cpu-l3dc-offset");
+		CPU_INST_SPEC_OFFSET = get_perf_tracker_info_from_dts("cpu-inst-spec-offset");
+		CPU_IDX_CYCLES_OFFSET = get_perf_tracker_info_from_dts("cpu-idx-cycles-offset");
+		PERF_TRACKER_STATUS_OFFSET = get_perf_tracker_info_from_dts("perf-tracker-status-offset");
+		U_VOLT_3_CLUSTER = get_perf_tracker_info_from_dts("u-volt-3-cluster");
 
-	pdev = of_find_device_by_node(dn);
-	of_node_put(dn);
-	if (!pdev) {
-		ret = -ENODEV;
-		pr_info("%s: cpuhvfs is not ready\n", TAG);
-		goto get_base_failed;
-	}
+		csram_base = ioremap(get_perf_tracker_info_from_dts("cdfv-tcm-base")
+					, get_perf_tracker_info_from_dts("cdfv-tcm-base-len"));
+		u_tcm_base = ioremap(get_perf_tracker_info_from_dts("u-tcm-base")
+						, get_perf_tracker_info_from_dts("u-tcm-base-len"));
+		u_e_tcm_base = ioremap(get_perf_tracker_info_from_dts("u-e-tcm-base")
+						, get_perf_tracker_info_from_dts("u-e-tcm-base-len"));
+		pmu_tcm_base = ioremap(get_perf_tracker_info_from_dts("pmu-tcm-base")
+						, get_perf_tracker_info_from_dts("pmu-tcm-base-len"));
+	} else {
+		/* get cpufreq driver base address */
+		dn = of_find_node_by_name(NULL, "cpuhvfs");
+		if (!dn) {
+			ret = -ENOMEM;
+			pr_info("%s: find cpuhvfs node failed\n", TAG);
+			goto get_base_failed;
+		}
 
-	csram_res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (!csram_res) {
-		ret = -ENODEV;
-		pr_info("%s: cpuhvfs resource is not found\n", TAG);
-		goto get_base_failed;
-	}
+		pdev = of_find_device_by_node(dn);
+		of_node_put(dn);
+		if (!pdev) {
+			ret = -ENODEV;
+			pr_info("%s: cpuhvfs is not ready\n", TAG);
+			goto get_base_failed;
+		}
 
-	csram_base = ioremap(csram_res->start, resource_size(csram_res));
-	if (IS_ERR_OR_NULL((void *)csram_base)) {
-		ret = -ENOMEM;
-		pr_info("%s: find csram base failed\n", TAG);
-		goto get_base_failed;
+		csram_res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+		if (!csram_res) {
+			ret = -ENODEV;
+			pr_info("%s: cpuhvfs resource is not found\n", TAG);
+			goto get_base_failed;
+		}
+
+		csram_base = ioremap(csram_res->start, resource_size(csram_res));
+		if (IS_ERR_OR_NULL((void *)csram_base)) {
+			ret = -ENOMEM;
+			pr_info("%s: find csram base failed\n", TAG);
+			goto get_base_failed;
+		}
 	}
 
 	/* register tracepoint of scheduler_tick */

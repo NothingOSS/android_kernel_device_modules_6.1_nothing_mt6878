@@ -26,6 +26,13 @@
 #include <perf_tracker.h>
 #include <perf_tracker_internal.h>
 
+#include "sugov/cpufreq.h"
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+#include "mtk_energy_model/v2/energy_model.h"
+#endif
+
+static struct cpu_dsu_freq_state *freq_state;
+
 static void fuel_gauge_handler(struct work_struct *work);
 static int fuel_gauge_enable;
 static int fuel_gauge_delay;
@@ -61,6 +68,7 @@ static DEFINE_PER_CPU(u64, cpu_last_inst_spec);
 static DEFINE_PER_CPU(u64, cpu_last_cycle);
 static DEFINE_PER_CPU(u64, cpu_last_l3dc);
 static int pmu_init;
+static int last_bw_idx = 0xFFFF;
 
 static void set_pmu_enable(unsigned int enable)
 {
@@ -96,11 +104,15 @@ static void exit_pmu_data(void)
 u64 get_cpu_pmu(int cpu, u32 offset)
 {
 	u64 count = 0;
-
-	if (IS_ERR_OR_NULL((void *)csram_base))
-		return count;
-
-	count = __raw_readl(csram_base + offset + (cpu * 0x4));
+	if (perf_tracker_info_exist) {
+		if (IS_ERR_OR_NULL((void *)pmu_tcm_base))
+			return count;
+		count = __raw_readl(pmu_tcm_base + offset + (cpu * 0x4));
+	} else {
+		if (IS_ERR_OR_NULL((void *)csram_base))
+			return count;
+		count = __raw_readl(csram_base + offset + (cpu * 0x4));
+	}
 	return count;
 }
 EXPORT_SYMBOL_GPL(get_cpu_pmu);
@@ -182,25 +194,12 @@ static unsigned int cpudvfs_get_cur_freq(int cluster_id, bool is_mcupm)
 
 	return 0;
 }
-/*
- *cluster's volt: start from 0x514
- *cluster's freq: start from 0x11e0
- */
-/*2 cluster: B Vproc, >L Vproc, B Vsram, L Vsram */
-#define DSU_VOLT_2_CLUSTER	0x518
-/*2 cluster: L, B, >DSU */
-#define DSU_FREQ_2_CLUSTER	0x11e8
-/*3 cluster: B Vproc, M Vproc, >L Vproc, B Vsram, M Vsram, L Vsram */
-#define DSU_VOLT_3_CLUSTER	0x51c
-/*3 cluster: L, M, B, >DSU */
-#define DSU_FREQ_3_CLUSTER	0x11ec
-#define MCUPM_OFFSET_BASE	0x133c
 
-unsigned int csram_read(unsigned int offs)
+unsigned int base_offset_read(unsigned int __iomem *base, unsigned int offs)
 {
-	if (IS_ERR_OR_NULL((void *)csram_base))
+	if (IS_ERR_OR_NULL((void *)base))
 		return 0;
-	return __raw_readl(csram_base + (offs));
+	return __raw_readl(base + (offs));
 }
 
 int perf_tracker_enable(int on)
@@ -239,21 +238,26 @@ static inline void format_sbin_data(char *buf, u32 size, u32 *sbin_data, u32 len
 }
 
 enum {
-	SBIN_BW_RECORD		= 1U << 0,
-	SBIN_DSU_RECORD		= 1U << 1,
-	SBIN_MCUPM_RECORD	= 1U << 2,
-	SBIN_PMU_RECORD		= 1U << 3,
+	SBIN_BW_RECORD			= 1U << 0,
+	SBIN_U_RECORD			= 1U << 1,
+	SBIN_MCUPM_RECORD		= 1U << 2,
+	SBIN_PMU_RECORD			= 1U << 3,
+	SBIN_U_VOTING_RECORD		= 1U << 4,
+	SBIN_U_A_E_RECORD		= 1U << 5,
 };
 
 #define K(x) ((x) << (PAGE_SHIFT - 10))
 #define max_cpus 8
 #define bw_hist_nums 8
 #define bw_record_nums 32
-#define dsu_record_nums 2
+#define u_record_nums 2
 #define mcupm_record_nums 9
+#define u_voting_record_nums 3
+#define u_a_e_record_nums 5
 /* inst-spec, l3dc, cpu-cycles */
 #define CPU_PMU_NUMS  (3 * max_cpus)
-#define PRINT_BUFFER_SIZE ((bw_record_nums+dsu_record_nums+mcupm_record_nums+CPU_PMU_NUMS) * 16 + 8)
+#define PRINT_BUFFER_SIZE ((bw_record_nums+u_record_nums+mcupm_record_nums \
+		+CPU_PMU_NUMS+u_voting_record_nums+u_a_e_record_nums) * 16 + 8)
 
 #define for_each_cpu_get_pmu(cpu, _pmu)						\
 	do {									\
@@ -271,11 +275,16 @@ void perf_tracker(u64 wallclock,
 	struct mtk_btag_mictx_iostat_struct *iostat_ptr = &iostat;
 	int bw_c = 0, bw_g = 0, bw_mm = 0, bw_total = 0, bw_idx = 0xFFFF;
 	u32 bw_record = 0;
-	u32 sbin_data[bw_record_nums+dsu_record_nums+mcupm_record_nums+CPU_PMU_NUMS] = {0};
+	u32 sbin_data[bw_record_nums+u_record_nums+mcupm_record_nums
+		+CPU_PMU_NUMS+u_voting_record_nums+u_a_e_record_nums] = {0};
 	int sbin_lens = 0;
 	char sbin_data_print[PRINT_BUFFER_SIZE] = {0};
 	u32 sbin_data_ctl = 0;
-	u32 dsu_v = 0, dsu_f = 0;
+	u32 u_v = 0, u_f = 0;
+	u32 u_aff = 0;
+	u32 u_bmoni = 0;
+	u32 u_uff = 0, u_ucf = 0;
+	u32 u_ecf = 0;
 	int vcore_uv = 0;
 	int i;
 	int stall[max_cpus] = {0};
@@ -294,11 +303,6 @@ void perf_tracker(u64 wallclock,
 	vcore_uv = mtk_dvfsrc_query_opp_info(MTK_DVFSRC_CURR_VCORE_UV);
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_DRAMC)
-	if (dram_rate <= 0)
-		dram_rate = mtk_dramc_get_data_rate();
-#endif
-
 #if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK)
 	/* emi */
 	bw_c  = qos_sram_read(QOS_DEBUG_1);
@@ -308,7 +312,8 @@ void perf_tracker(u64 wallclock,
 
 	/* emi history */
 	bw_idx = qos_rec_get_hist_idx();
-	if (bw_idx != 0xFFFF) {
+	if (bw_idx != 0xFFFF && bw_idx != last_bw_idx) {
+		last_bw_idx = bw_idx;
 		for (bw_record = 0; bw_record < bw_record_nums; bw_record += 8) {
 			/* occupied bw history */
 			sbin_data[bw_record]   = qos_rec_get_hist_bw(bw_idx, 0);
@@ -329,18 +334,18 @@ void perf_tracker(u64 wallclock,
 #endif
 	sbin_lens += bw_record_nums;
 	sbin_data_ctl |= SBIN_BW_RECORD;
-	/* dsu */
+	/* u */
 	if (cluster_nr == 2) {
-		dsu_v = csram_read(DSU_VOLT_2_CLUSTER);
-		dsu_f = csram_read(DSU_FREQ_2_CLUSTER);
+		u_v = csram_read(U_VOLT_2_CLUSTER);
+		u_f = csram_read(U_FREQ_2_CLUSTER);
 	} else if (cluster_nr == 3) {
-		dsu_v = csram_read(DSU_VOLT_3_CLUSTER);
-		dsu_f = csram_read(DSU_FREQ_3_CLUSTER);
+		u_v = csram_read(U_VOLT_3_CLUSTER);
+		u_f = csram_read(U_FREQ_3_CLUSTER);
 	}
-	sbin_data[sbin_lens] = dsu_v;
-	sbin_data[sbin_lens+1] = dsu_f;
-	sbin_lens += dsu_record_nums;
-	sbin_data_ctl |= SBIN_DSU_RECORD;
+	sbin_data[sbin_lens] = u_v;
+	sbin_data[sbin_lens+1] = u_f;
+	sbin_lens += u_record_nums;
+	sbin_data_ctl |= SBIN_U_RECORD;
 
 	/* mcupm freq */
 	if (mcupm_freq_enable) {
@@ -358,6 +363,31 @@ void perf_tracker(u64 wallclock,
 		for_each_cpu_get_pmu(i, cycle);
 		for_each_cpu_get_pmu(i, l3dc);
 		sbin_data_ctl |= SBIN_PMU_RECORD;
+	}
+
+	if (is_wl_support()) {
+		/* get U freq. voting */
+		freq_state = get_dsu_freq_state();
+		for (i = 0; i < freq_state->pd_count; i++)
+			sbin_data[sbin_lens+i] = (u32)freq_state->dsu_freq_vote[i];
+		sbin_lens += u_voting_record_nums;
+		sbin_data_ctl |= SBIN_U_VOTING_RECORD;
+	}
+
+	if (perf_tracker_info_exist) {
+		/* get U A, E */
+		u_aff = base_offset_read(u_tcm_base, U_AFFO);
+		u_bmoni = base_offset_read(u_tcm_base, U_BMONIO);
+		u_uff = csram_read(U_UFFO);
+		u_ucf = csram_read(U_UCFO);
+		u_ecf = base_offset_read(u_e_tcm_base, U_ECFO);
+		sbin_data[sbin_lens] = u_aff;
+		sbin_data[sbin_lens+1] = u_bmoni;
+		sbin_data[sbin_lens+2] = u_uff;
+		sbin_data[sbin_lens+3] = u_ucf;
+		sbin_data[sbin_lens+4] = u_ecf;
+		sbin_lens += u_a_e_record_nums;
+		sbin_data_ctl |= SBIN_U_A_E_RECORD;
 	}
 
 	format_sbin_data(sbin_data_print, sizeof(sbin_data_print), sbin_data, sbin_lens);
