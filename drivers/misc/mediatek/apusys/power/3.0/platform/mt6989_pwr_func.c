@@ -16,16 +16,17 @@ static struct tiny_dvfs_opp_tbl opp_tbl2;
 static struct apu_pwr_curr_info curr_info;
 
 static const char * const pll_name[] = {
-				"PLL_CONN", "PLL_RV33", "PLL_MVPU", "PLL_MDLA"};
+				"PLL_CONN", "PLL_RV33", "PLL_MVPU", "PLL_MDLA", "PLL_APS"};
 static const char * const buck_name[] = {
 				"BUCK_VAPU", "BUCK_VSRAM", "BUCK_VCORE"};
 static const char * const cluster_name[] = {
-				"ACX0", "ACX1", "ACX2", "RCX"};
+				"D_ACX", "ACX0", "ACX1", "ACX2", "RCX"};
 #define _OPP_LMT_TBL(_opp_lmt_reg) {    \
 	.opp_lmt_reg = _opp_lmt_reg,    \
 }
 
 static struct cluster_dev_opp_info opp_limit_tbl[CLUSTER_NUM] = {
+	_OPP_LMT_TBL(D_ACX_LIMIT_OPP_REG),
 	_OPP_LMT_TBL(ACX0_LIMIT_OPP_REG),
 	_OPP_LMT_TBL(ACX1_LIMIT_OPP_REG),
 	_OPP_LMT_TBL(ACX2_LIMIT_OPP_REG),

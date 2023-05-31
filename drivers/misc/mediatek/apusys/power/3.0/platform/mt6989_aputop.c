@@ -542,7 +542,14 @@ void mt6989_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump)
 	uint32_t status2 = 0x0;
 	uint32_t status3 = 0x0;
 
-	if (id == ACX0) {
+	if (id == D_ACX) { //[Fix me] This is RCX_DLA status
+		status1 = apu_readl(apupw.regs[apu_rpctop_mdla]
+				+ APU_RPC_INTF_PWR_RDY);
+		status2 = apu_readl(apupw.regs[apu_rcx_dla]
+				+ APU_RCX_MDLA0_CG_CON);
+		pr_info("%s D_ACX RPC_PWR_RDY:0x%08x APU_RCX_MDLA0_CG_CON:0x%08x\n",
+			__func__, status1, status2);
+	} else if (id == ACX0) {
 		status1 = apu_readl(apupw.regs[apu_acx0_rpc_lite]
 				+ APU_RPC_INTF_PWR_RDY);
 		status2 = apu_readl(apupw.regs[apu_acx0]

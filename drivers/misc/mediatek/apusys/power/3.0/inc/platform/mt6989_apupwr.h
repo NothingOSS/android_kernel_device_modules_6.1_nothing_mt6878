@@ -49,7 +49,8 @@ enum smc_pwr_dump {
 };
 
 enum t_acx_id {
-	ACX0 = 0,
+	D_ACX = 0,
+	ACX0,
 	ACX1,
 	ACX2,
 	CLUSTER_NUM,
@@ -67,6 +68,7 @@ enum apu_clksrc_id {
 	PLL_UP,
 	PLL_VPU,
 	PLL_DLA,
+	PLL_APS,
 	PLL_NUM,
 };
 
