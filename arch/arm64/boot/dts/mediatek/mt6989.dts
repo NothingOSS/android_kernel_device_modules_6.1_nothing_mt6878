@@ -13633,6 +13633,16 @@ FLL6_cc0,FLL_top_cc0,FLL0_cc1,FLL1_cc1,FLL3_cc1,FLL4_cc1,FLL5_cc1,FLL6_cc1,FLL_t
 FLL0_cc2,FLL1_cc2,FLL3_cc2,FLL4_cc2,FLL5_cc2,FLL6_cc2,FLL_top_cc2,FLL0_cc3,FLL1_cc3,FLL3_cc3,\
 FLL4_cc3,FLL5_cc3,FLL6_cc3,FLL_top_cc3,FLL0_cc4,FLL1_cc4,FLL3_cc4,FLL4_cc4,FLL5_cc4,FLL6_cc4,\
 FLL_top_cc4";
+			node-30 = "GPUEB_IPA_COUNTER", "iter_active,mcu_active";
+			node-31 = "GPUEB_IPA_LOADING",
+				"loading,max_active,delta_time,cur_top,cur_stack";
+			node-32 = "GPUEB_POLICY_INFO",
+				"virtual_opp,real_freq,virtual_freq,core_num,policy_flag";
+			node-33 = "GPUEB_MARGIN_INFO", "high,low,margin";
+			node-34 = "GPUEB_POWER_STATE", "power_state";
+			node-35 = "GPUEB_FB_FRAME_TIME", "fb_accum_time,target_hd";
+			node-36 = "GPUEB_TARGET_FPS", "target_fps";
+			node-37 = "GPUEB_LB_FRAME_TIME", "umcomplete_time,target_hd";
 		};
 	};
 
