@@ -73,6 +73,7 @@ enum swpm_cmd_type {
 	CPU_CMD_TYPE,
 	MEM_CMD_TYPE,
 	CORE_CMD_TYPE,
+	APU_CMD_TYPE,
 
 	NR_SWPM_CMD_TYPE,
 };
