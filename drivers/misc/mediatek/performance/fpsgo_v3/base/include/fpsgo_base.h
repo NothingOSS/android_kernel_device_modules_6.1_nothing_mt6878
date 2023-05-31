@@ -14,6 +14,8 @@
 #include <linux/sched/task.h>
 #include <linux/sched.h>
 
+#define FPSGO_VERSION_CODE 7
+#define FPSGO_VERSION_MODULE "7.0"
 #define MAX_DEP_NUM 100
 #define WINDOW 20
 #define RESCUE_TIMER_NUM 5

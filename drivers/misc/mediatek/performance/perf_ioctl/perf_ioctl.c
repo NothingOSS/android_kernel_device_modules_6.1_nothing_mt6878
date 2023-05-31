@@ -4,10 +4,9 @@
  */
 #include "perf_ioctl.h"
 
-
 #define TAG "PERF_IOCTL"
 
-void (*fpsgo_notify_qudeq_fp)(int qudeq,
+int (*fpsgo_notify_qudeq_fp)(int qudeq,
 		unsigned int startend,
 		int pid, unsigned long long identifier);
 EXPORT_SYMBOL_GPL(fpsgo_notify_qudeq_fp);
@@ -439,7 +438,7 @@ static long device_ioctl(struct file *filp,
 #if defined(CONFIG_MTK_FPSGO_V3)
 	case FPSGO_QUEUE:
 		if (fpsgo_notify_qudeq_fp)
-			fpsgo_notify_qudeq_fp(1,
+			ret = fpsgo_notify_qudeq_fp(1,
 					msgKM->start, msgKM->tid,
 					msgKM->identifier);
 		break;

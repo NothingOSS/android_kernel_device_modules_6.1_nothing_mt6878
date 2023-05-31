@@ -7,7 +7,7 @@
 #define __FPSGO_USEDEXT_H__
 
 extern void (*cpufreq_notifier_fp)(int cid, unsigned long freq);
-extern void (*fpsgo_notify_qudeq_fp)(int qudeq, unsigned int startend,
+extern int (*fpsgo_notify_qudeq_fp)(int qudeq, unsigned int startend,
 		int pid, unsigned long long identifier);
 extern void (*fpsgo_notify_frame_hint_fp)(int qudeq,
 		int pid, int frameID, unsigned long long id);

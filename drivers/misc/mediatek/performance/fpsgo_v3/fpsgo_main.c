@@ -490,7 +490,7 @@ static int kfpsgo(void *arg)
 
 	return 0;
 }
-void fpsgo_notify_qudeq(int qudeq,
+int fpsgo_notify_qudeq(int qudeq,
 		unsigned int startend,
 		int pid, unsigned long long id)
 {
@@ -501,20 +501,20 @@ void fpsgo_notify_qudeq(int qudeq,
 		qudeq, startend, id, pid);
 
 	if (!fpsgo_is_enable())
-		return;
+		return 0;
 
 	vpPush =
 		(struct FPSGO_NOTIFIER_PUSH_TAG *)
 		fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
 	if (!vpPush) {
 		FPSGO_LOGE("[FPSGO_CTRL] OOM\n");
-		return;
+		return 0;
 	}
 
 	if (!kfpsgo_tsk) {
 		FPSGO_LOGE("[FPSGO_CTRL] NULL WorkQueue\n");
 		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
-		return;
+		return 0;
 	}
 
 	cur_ts = fpsgo_get_time();
@@ -527,6 +527,8 @@ void fpsgo_notify_qudeq(int qudeq,
 	vpPush->identifier = id;
 
 	fpsgo_queue_work(vpPush);
+
+	return FPSGO_VERSION_CODE;
 }
 void fpsgo_notify_connect(int pid,
 		int connectedAPI, unsigned long long id)
@@ -1302,3 +1304,4 @@ module_exit(fpsgo_exit);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("MediaTek FPSGO");
 MODULE_AUTHOR("MediaTek Inc.");
+MODULE_VERSION(FPSGO_VERSION_MODULE);
