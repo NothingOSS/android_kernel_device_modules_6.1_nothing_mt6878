@@ -1820,7 +1820,7 @@ static void __exit slbc_module_exit(void)
 }
 module_exit(slbc_module_exit);
 
-MODULE_SOFTDEP("pre: tinysys-scmi.ko");
-MODULE_DESCRIPTION("SLBC Driver mt6985 v0.1");
+MODULE_SOFTDEP("pre: tinysys-scmi.ko");
+MODULE_DESCRIPTION("SLBC Driver mt6989 v0.1");
 MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL");

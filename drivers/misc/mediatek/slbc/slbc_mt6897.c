@@ -2041,6 +2041,6 @@ static void __exit slbc_module_exit(void)
 }
 module_exit(slbc_module_exit);
 
-MODULE_SOFTDEP("pre: tinysys-scmi.ko");
+MODULE_SOFTDEP("pre: tinysys-scmi.ko");
 MODULE_DESCRIPTION("SLBC Driver mt6897 v0.1");
 MODULE_LICENSE("GPL");
