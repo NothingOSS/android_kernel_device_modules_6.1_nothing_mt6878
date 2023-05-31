@@ -10446,6 +10446,7 @@
 			reg = <0 0x1f80b000 0 0x1000>;
 			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_TDSHP0>;
 			clock-names = "tdshp0";
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P7_MDP_FAKE_ENG0)>;
 			comp-ids = <MML_TDSHP0>;
 			comp-names = "tdshp0";
 		};
