@@ -46,7 +46,8 @@ static bool freq_scaling_disabled = true;
 static int pd_count;
 static int entry_count;
 static int busy_tick_boost_all;
-static int sbb_active_ratio[MAX_NR_CPUS] = {100};
+static int sbb_active_ratio[MAX_NR_CPUS] = {
+	[0 ... MAX_NR_CPUS - 1] = 100 };
 static unsigned int wl_type_delay_update_tick = 2;
 
 static int fpsgo_boosting; //0 : disable, 1 : enable
@@ -181,7 +182,7 @@ bool set_dsu_target_freq(struct cpufreq_policy *policy)
 			trace_sugov_ext_dsu_freq_vote(wl_type, UINT_MAX, UINT_MAX, UINT_MAX);
 		return false;
 	}
-
+	rcu_read_lock();
 	for (i = 0; i < pd_count; i++) {
 		pd_info = &pd_capacity_tbl[i];
 		cpu = cpumask_first(&pd_info->cpus);
@@ -201,7 +202,7 @@ skip_single_idle_cpu:
 			trace_sugov_ext_dsu_freq_vote(wl_type, i,
 				 freq_state.cpu_freq[i], freq_state.dsu_freq_vote[i]);
 	}
-
+	rcu_read_unlock();
 	freq_state.dsu_target_freq = dsu_target_freq;
 	c->sb_ch  = dsu_target_freq;
 	if (dsu_target_freq != freq_state.dsu_target_freq_last) {
@@ -1437,7 +1438,7 @@ EXPORT_SYMBOL_GPL(get_curr_uclamp_hint);
 #if IS_ENABLED(CONFIG_UCLAMP_TASK_GROUP)
 #define UCLAMP_BUCKET_DELTA DIV_ROUND_CLOSEST(SCHED_CAPACITY_SCALE, UCLAMP_BUCKETS)
 static int gear_uclamp_max[MAX_NR_CPUS] = {
-			[0 ... MAX_NR_CPUS-1] = SCHED_CAPACITY_SCALE
+			[0 ... MAX_NR_CPUS - 1] = SCHED_CAPACITY_SCALE
 };
 static inline unsigned int uclamp_bucket_id(unsigned int clamp_value)
 {
@@ -1746,8 +1747,10 @@ static int am_wind_dura = 4000; /* microsecond */
 static int am_wind_cnt_shift = 1; /* wind_cnt = 1 << am_wind_cnt_shift */
 static int am_floor = 1024; /* 1024: 0% margin */
 static int am_ceiling = 1280; /* 1280: 20% margin */
-static int am_target_active_ratio[MAX_NR_CPUS] = {80};
-static unsigned int adaptive_margin[MAX_NR_CPUS] = {1280};
+static int am_target_active_ratio[MAX_NR_CPUS] = {
+	[0 ... MAX_NR_CPUS - 1] = 80};
+static unsigned int adaptive_margin[MAX_NR_CPUS] = {
+	[0 ... MAX_NR_CPUS - 1] = 1280};
 static unsigned int his_ptr[MAX_NR_CPUS];
 static unsigned int margin_his[MAX_NR_CPUS][MAX_NR_CPUS];
 static u64 last_wall_time_stamp[MAX_NR_CPUS];
@@ -1759,7 +1762,8 @@ static unsigned int gear_update_active_ratio_cnt[MAX_NR_CPUS];
 static unsigned int gear_update_active_ratio_cnt_last[MAX_NR_CPUS];
 static unsigned int duration_wind[MAX_NR_CPUS];
 static unsigned int duration_act[MAX_NR_CPUS];
-static unsigned int ramp_up[MAX_NR_CPUS];
+static unsigned int ramp_up[MAX_NR_CPUS] = {
+	[0 ... MAX_NR_CPUS - 1] = 0};
 unsigned int get_adaptive_margin(int cpu)
 {
 	if (!turn_point_util[per_cpu(gear_id, cpu)] && am_ctrl)
@@ -1878,7 +1882,7 @@ void update_active_ratio_gear(struct cpumask *cpumask)
 	gear_max_active_ratio[gear_idx] = gear_max_active_ratio_tmp;
 	gear_update_active_ratio_cnt[gear_idx]++;
 }
-
+static bool grp_trigger;
 void update_active_ratio_all(void)
 {
 	int i;
@@ -1888,6 +1892,7 @@ void update_active_ratio_all(void)
 		pd_info = &pd_capacity_tbl[i];
 		update_active_ratio_gear(&pd_info->cpus);
 	}
+	grp_trigger = true;
 }
 EXPORT_SYMBOL(update_active_ratio_all);
 
@@ -1951,7 +1956,7 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 	if (data != NULL) {
 		sg_policy = (struct sugov_policy *)data;
 		policy = sg_policy->policy;
-		if (grp_dvfs_ctrl_mode == 0) {
+		if (grp_dvfs_ctrl_mode == 0 || grp_trigger == false) {
 			idle_time_stamp = get_cpu_idle_time(cpu, &wall_time_stamp, 1);
 			if (wall_time_stamp - last_wall_time_stamp[cpu] > am_wind_dura)
 				update_active_ratio_gear(cpumask);

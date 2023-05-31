@@ -3,6 +3,7 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+static int grp_awr_init_finished;
 static int **pcpu_pgrp_u;
 static int **pger_pgrp_u;
 static int **pcpu_pgrp_adpt_rto;
@@ -26,6 +27,8 @@ void grp_awr_update_grp_awr_util(void)
 {
 	int cpu_idx, grp_idx, tmp = -1;
 
+	if (grp_awr_init_finished == false)
+		return;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++) {
 		if (map_cpu_ger[cpu_idx] == tmp)
 			continue;
@@ -81,6 +84,8 @@ void grp_awr_update_cpu_tar_util(int cpu)
 {
 	struct flt_rq *fsrq;
 
+	if (grp_awr_init_finished == false)
+		return;
 	fsrq = &per_cpu(flt_rq, cpu);
 
 	if (grp_awr_update_cpu_tar_util_hook)
@@ -94,6 +99,8 @@ void grp_awr_update_cpu_tar_util(int cpu)
 
 void set_group_target_active_ratio(int grp_idx, int val)
 {
+	if (grp_awr_init_finished == false)
+		return;
 	pgrp_tar_act_rto[grp_idx] = clamp_val(val, 1, 100);
 }
 EXPORT_SYMBOL(set_group_target_active_ratio);
@@ -131,6 +138,7 @@ int grp_awr_init(void)
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++)
 		pgrp_tar_act_rto[grp_idx] = 85;
 
+	grp_awr_init_finished = true;
 	return 0;
 }
 #endif
