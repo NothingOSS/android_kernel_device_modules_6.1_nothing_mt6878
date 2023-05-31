@@ -2309,7 +2309,7 @@ static const struct mtk_smmu_plat_data mt6989_data_apu = {
 static const struct mtk_smmu_plat_data mt6989_data_soc = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= SOC_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN | SMMU_CLK_AO_EN,
+	.flags			= SMMU_EN_PRE | SMMU_SEC_EN | SMMU_CLK_AO_EN,
 };
 
 static const struct mtk_smmu_plat_data mt6989_data_gpu = {
