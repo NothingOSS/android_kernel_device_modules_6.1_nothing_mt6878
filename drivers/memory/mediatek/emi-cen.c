@@ -160,6 +160,10 @@ static const struct mtk_emi_compatible mt6877_compat = {
 #define MTK_EMI_HASH 0x7
 #define MTK_EMI_DISPATCH 0x0
 
+static unsigned int emi_a2d_emi_cen[6];
+static unsigned int emi_a2d_emi_chn[3];
+static unsigned int emi_a2d_info_support;
+
 static unsigned int emi_a2d_con_offset[] = {
 	/* central EMI CONA, CONF, CONH, CONH_2ND, CONK, SCRM_EXT */
 	0x00, 0x28, 0x38, 0x3c, 0x50, 0x7b4
@@ -640,18 +644,34 @@ static inline void prepare_a2d_v2(struct emi_cen *cen)
 	s6s = &cen->a2d_s6s.v2;
 	cen->offset = MTK_EMI_DRAM_OFFSET;
 
-	emi_cen_base = cen->emi_cen_base[0];
-	emi_cona = readl(emi_cen_base + emi_a2d_con_offset[0]);
-	emi_conf = readl(emi_cen_base + emi_a2d_con_offset[1]);
-	emi_conh = readl(emi_cen_base + emi_a2d_con_offset[2]);
-	emi_conh_2nd = readl(emi_cen_base + emi_a2d_con_offset[3]);
-	emi_conk = readl(emi_cen_base + emi_a2d_con_offset[4]);
-	emi_scrm_ext = readl(emi_cen_base + emi_a2d_con_offset[5]);
+	if (emi_a2d_info_support) {
+		emi_cona = emi_a2d_emi_cen[0];
+		emi_conf = emi_a2d_emi_cen[1];
+		emi_conh = emi_a2d_emi_cen[2];
+		emi_conh_2nd = emi_a2d_emi_cen[3];
+		emi_conk = emi_a2d_emi_cen[4];
+		emi_scrm_ext = emi_a2d_emi_cen[5];
+	} else {
+		emi_cen_base = cen->emi_cen_base[0];
+		emi_cona = readl(emi_cen_base + emi_a2d_con_offset[0]);
+		emi_conf = readl(emi_cen_base + emi_a2d_con_offset[1]);
+		emi_conh = readl(emi_cen_base + emi_a2d_con_offset[2]);
+		emi_conh_2nd = readl(emi_cen_base + emi_a2d_con_offset[3]);
+		emi_conk = readl(emi_cen_base + emi_a2d_con_offset[4]);
+		emi_scrm_ext = readl(emi_cen_base + emi_a2d_con_offset[5]);
+	}
 
-	emi_chn_base = cen->emi_chn_base[0];
-	emi_chn_cona = readl(emi_chn_base + emi_a2d_chn_con_offset[0]);
-	emi_chn_conc = readl(emi_chn_base + emi_a2d_chn_con_offset[1]);
-	emi_chn_conc_2nd = readl(emi_chn_base + emi_a2d_chn_con_offset[2]);
+	if (emi_a2d_info_support) {
+		emi_chn_cona = emi_a2d_emi_chn[0];
+		emi_chn_conc = emi_a2d_emi_chn[1];
+		emi_chn_conc_2nd = emi_a2d_emi_chn[2];
+
+	} else {
+		emi_chn_base = cen->emi_chn_base[0];
+		emi_chn_cona = readl(emi_chn_base + emi_a2d_chn_con_offset[0]);
+		emi_chn_conc = readl(emi_chn_base + emi_a2d_chn_con_offset[1]);
+		emi_chn_conc_2nd = readl(emi_chn_base + emi_a2d_chn_con_offset[2]);
+	}
 
 	pr_info("a2d_cen: 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx\n",
 			emi_cona, emi_conf, emi_conh, emi_conh_2nd, emi_conk, emi_scrm_ext);
@@ -1284,6 +1304,23 @@ static int emicen_probe(struct platform_device *pdev)
 	if (ret)
 		dev_info(&pdev->dev, "No a2d-chn-conf-offset\n");
 
+	ret = of_property_read_u32_array(emicen_node,
+		"a2d-emi-cen", emi_a2d_emi_cen,
+		ARRAY_SIZE(emi_a2d_emi_cen));
+	if (ret)
+		dev_info(&pdev->dev, "No a2d_emi_cen\n");
+
+	ret = of_property_read_u32_array(emicen_node,
+		"a2d-emi-chn", emi_a2d_emi_chn,
+		ARRAY_SIZE(emi_a2d_emi_chn));
+	if (ret)
+		dev_info(&pdev->dev, "No a2d_emi_chn\n");
+
+	ret = of_property_read_u32(emicen_node,
+		"a2d-info-support", &emi_a2d_info_support);
+	if (ret)
+		dev_info(&pdev->dev, "No a2d_info_support\n");
+
 	if (cen->ver == 1)
 		prepare_a2d_v1(cen);
 	else if (cen->ver == 2)
@@ -1302,17 +1339,27 @@ static int emicen_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "rk_size%d(0x%llx)\n",
 			i, cen->rk_size[i]);
 
-	dev_info(&pdev->dev, "a2d-disph %d\n", cen->disph);
+	dev_info(&pdev->dev, "a2d-disph 0x%x\n", cen->disph);
 
-	dev_info(&pdev->dev, "a2d-hash %d\n", cen->hash);
+	dev_info(&pdev->dev, "a2d-hash 0x%x\n", cen->hash);
 
-	for (i = 0; i < ARRAY_SIZE(emi_a2d_con_offset); i++)
-		dev_info(&pdev->dev, "emi-a2d-con-offset[%d] %d\n",
-			i, emi_a2d_con_offset[i]);
+	if (emi_a2d_info_support) {
+		for (i = 0; i < ARRAY_SIZE(emi_a2d_emi_cen); i++)
+			dev_info(&pdev->dev, "emi_a2d_emi_cen[%d] 0x%x\n",
+				i, emi_a2d_emi_cen[i]);
 
-	for (i = 0; i < ARRAY_SIZE(emi_a2d_chn_con_offset); i++)
-		dev_info(&pdev->dev, "emi-a2d-chn-con-offset[%d] %d\n",
-			i, emi_a2d_chn_con_offset[i]);
+		for (i = 0; i < ARRAY_SIZE(emi_a2d_emi_chn); i++)
+			dev_info(&pdev->dev, "emi_a2d_emi_chn[%d] 0x%x\n",
+				i, emi_a2d_emi_chn[i]);
+	} else {
+		for (i = 0; i < ARRAY_SIZE(emi_a2d_con_offset); i++)
+			dev_info(&pdev->dev, "emi_a2d_con_offset[%d] 0x%x\n",
+				i, emi_a2d_con_offset[i]);
+
+		for (i = 0; i < ARRAY_SIZE(emi_a2d_chn_con_offset); i++)
+			dev_info(&pdev->dev, "emi_a2d_chn_con_offset[%d] 0x%x\n",
+				i, emi_a2d_chn_con_offset[i]);
+	}
 
 	return 0;
 }
