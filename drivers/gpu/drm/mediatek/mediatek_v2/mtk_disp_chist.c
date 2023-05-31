@@ -1122,6 +1122,13 @@ static irqreturn_t mtk_disp_chist_irq_handler(int irq, void *dev_id)
 	struct mtk_disp_chist *priv = dev_id;
 	struct mtk_ddp_comp *comp = &priv->ddp_comp;
 	struct mtk_disp_chist *chist_data = comp_to_chist(comp);
+	unsigned long flags;
+
+	spin_lock_irqsave(&chist_data->primary_data->power_lock, flags);
+	if (atomic_read(&(chist_data->primary_data->clock_on)) == 0) {
+		spin_unlock_irqrestore(&chist_data->primary_data->power_lock, flags);
+		return IRQ_NONE;
+	}
 
 	intsta = readl(comp->regs + DISP_CHIST_INSTA);
 	if (intsta & 0x2) {
@@ -1130,6 +1137,8 @@ static irqreturn_t mtk_disp_chist_irq_handler(int irq, void *dev_id)
 		atomic_set(&(priv->primary_data->irq_event), 1);
 		wake_up_interruptible(&chist_data->primary_data->event_wq);
 	}
+	spin_unlock_irqrestore(&chist_data->primary_data->power_lock, flags);
+
 	ret = IRQ_HANDLED;
 	return ret;
 }
