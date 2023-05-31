@@ -165,6 +165,7 @@
 	chosen: chosen {
 		bootargs = "console=tty0 root=/dev/ram \
 			    nosoftlockup transparent_hugepage=never \
+			    kasan.page_alloc.sample=1 \
 			    allow_mismatched_32bit_el0 \
 			    8250.nr_uarts=4 cgroup.memory=nosocket,nokmem \
 			    androidboot.hardware=mt6897 disable_dma32=on \
