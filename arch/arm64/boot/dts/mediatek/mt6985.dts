@@ -4016,6 +4016,8 @@
 			offs-cap = <0xfa0>;
 			share-buck = <0>;
 			adaptive-margin = <1>;
+			/* EAS_5_5 : 550, EAS_5_5_1 : 551, EAS_6_1 : 600*/
+			version = <600>;
 		};
 
 		wl_info: wl-info {
