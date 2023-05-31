@@ -3302,7 +3302,7 @@
 			/* L, M, B, CCI */
 			// offs-thermal-limit = <0x1208 0x120c 0x1210 0x1214>;
 			// offs-cap = <0xfa0>;
-			share-buck = <1>;
+			share-buck = <2>;
 			/* EAS_5_5 : 550, EAS_5_5_1 : 551, EAS_6_1 : 600*/
 			version = <600>;
 		};
