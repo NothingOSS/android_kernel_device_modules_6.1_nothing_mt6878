@@ -8,6 +8,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/proc_fs.h>
 
 #define SMC_RET_NUM	4
@@ -27,6 +28,7 @@ struct sec_rng_priv {
 	const char *method;
 	uint16_t func_num;
 	struct hwrng rng;
+	struct device *dev;
 };
 
 static struct sec_rng_priv *priv;
@@ -34,6 +36,12 @@ static struct sec_rng_priv *priv;
 static bool __sec_get_rnd(struct sec_rng_priv *priv, uint32_t *val)
 {
 	struct arm_smccc_res res;
+	struct device *dev;
+
+	dev = priv->dev;
+
+	pm_runtime_enable(dev);
+	pm_runtime_get_sync(dev);
 
 	if (!strncmp("smc", priv->method, strlen("smc")))
 		arm_smccc_smc(HWRNG_SMC_FAST_CALL_VAL(priv->func_num),
@@ -51,6 +59,9 @@ static bool __sec_get_rnd(struct sec_rng_priv *priv, uint32_t *val)
 	val[1] = res.a1;
 	val[2] = res.a2;
 	val[3] = res.a3;
+
+	pm_runtime_disable(dev);
+	pm_runtime_get_sync(dev);
 
 	return true;
 }
@@ -128,6 +139,7 @@ static int sec_rng_probe(struct platform_device *pdev)
 	priv->rng.name = pdev->name;
 	priv->rng.read = sec_rng_read;
 	priv->rng.priv = (unsigned long)&pdev->dev;
+	priv->dev = &pdev->dev;
 
 	ret = devm_hwrng_register(&pdev->dev, &priv->rng);
 	if (ret) {
