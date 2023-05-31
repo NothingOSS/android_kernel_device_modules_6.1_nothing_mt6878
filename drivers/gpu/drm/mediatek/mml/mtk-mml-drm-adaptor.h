@@ -38,6 +38,7 @@ enum mml_query_mode_reason {
 	mml_query_inwidth,
 	mml_query_inheight,
 	mml_query_flip,
+	mml_query_alpha,
 };
 
 struct mml_drm_param {

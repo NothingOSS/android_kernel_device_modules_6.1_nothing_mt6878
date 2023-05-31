@@ -42,6 +42,7 @@ enum mml_color_reg_index {
 	COLOR_CM2_EN,
 	COLOR_SHADOW_CTRL,
 	COLOR_REGIONAL_ENABLE_LENGHTH,
+	COLOR_MISC,
 	COLOR_REG_MAX_COUNT
 };
 
@@ -62,6 +63,7 @@ static const u16 colo_reg_table_mt6983[COLOR_REG_MAX_COUNT] = {
 	[COLOR_CM1_EN] = 0xc60,
 	[COLOR_CM2_EN] = 0xca0,
 	[COLOR_SHADOW_CTRL] = 0xcb0,
+	[COLOR_MISC] = REG_NOT_SUPPORT,
 	[COLOR_REGIONAL_ENABLE_LENGHTH] = REG_NOT_SUPPORT,
 };
 
@@ -83,6 +85,7 @@ static const u16 colo_reg_table_mt6989[COLOR_REG_MAX_COUNT] = {
 	[COLOR_CM2_EN] = 0xca0,
 	[COLOR_SHADOW_CTRL] = 0xcb0,
 	[COLOR_REGIONAL_ENABLE_LENGHTH] = 0xf08,
+	[COLOR_MISC] = 0xf0c,
 };
 
 
@@ -234,9 +237,12 @@ static s32 color_config_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_pq_comp_config_result *result = NULL;
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
+	u32 alpha = cfg->info.alpha ? 1 : 0;
 	s32 ret = 0;
 	s32 i;
 	struct mml_pq_reg *regs = NULL;
+
+	cmdq_pkt_write(pkt, NULL, base_pa + color->data->reg_table[COLOR_MISC], alpha, U32_MAX);
 
 	if (!dest->pq_config.en_color) {
 		cmdq_pkt_write(pkt, NULL,
@@ -383,7 +389,7 @@ static void color_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_color *color = comp_to_color(comp);
 	void __iomem *base = comp->base;
-	u32 value[13];
+	u32 value[14];
 	u32 shadow_ctrl;
 
 	mml_err("color component %u dump:", comp->id);
@@ -406,6 +412,7 @@ static void color_debug_dump(struct mml_comp *comp)
 	value[10] = readl(base + color->data->reg_table[COLOR_FRAME_DONE_DEL]);
 	value[11] = readl(base + color->data->reg_table[COLOR_INTERNAL_IP_WIDTH]);
 	value[12] = readl(base + color->data->reg_table[COLOR_INTERNAL_IP_HEIGHT]);
+	value[13] = readl(base + color->data->reg_table[COLOR_MISC]);
 
 	mml_err("COLOR_CFG_MAIN %#010x COLOR_PXL_CNT_MAIN %#010x COLOR_LINE_CNT_MAIN %#010x",
 		value[0], value[1], value[2]);
@@ -417,6 +424,8 @@ static void color_debug_dump(struct mml_comp *comp)
 		value[8], value[9], value[10]);
 	mml_err("COLOR_INTERNAL_IP_WIDTH %#010x COLOR_INTERNAL_IP_HEIGHT %#010x",
 		value[11], value[12]);
+	mml_err("COLOR_MISC %#010x",
+		value[13]);
 }
 
 static const struct mml_comp_debug_ops color_debug_ops = {

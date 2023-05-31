@@ -157,6 +157,9 @@ module_param(mml_test_rot, int, 0644);
 int mml_test_flip;
 module_param(mml_test_flip, int, 0644);
 
+int mml_test_alpha;
+module_param(mml_test_alpha, int, 0644);
+
 int mml_test_pq;
 module_param(mml_test_pq, int, 0644);
 
@@ -404,6 +407,8 @@ static void case_general_submit(struct mml_test *test,
 			pq_param->src_hdr_video_mode = MML_PQ_HDR10;
 		mml_log("[test] %s open PQ", __func__);
 	}
+
+	task.info.alpha = mml_test_alpha;
 
 	if (setup)
 		setup(&task, cur);
@@ -1694,6 +1699,27 @@ static void mml_test_fill_frame_rgba8888(u8 *va, u32 width, u32 height)
 	}
 }
 
+static void mml_test_fill_frame_rgba1010102(u8 *va, u32 width, u32 height)
+{
+	u32 x, y;
+	const u32 step = 0x3ff;
+
+	for (y = 0; y < height; y++) {
+		for (x = 0; x < width; x++) {
+			u32 r = step * x / width;
+			u32 g = step * y / height;
+			u32 b = (r + g) / 2;
+			u32 idx = (y * width + x) * 4;
+
+			va[idx] = r & 0xff;
+			va[idx + 1] = ((r >> 8) & 0x3) | ((g & 0x3f) << 2);
+			va[idx + 2] = ((g >> 6) & 0xf) | ((b & 0xf) << 4);
+			va[idx + 3] = ((b >> 4) & 0x3f ) |
+				(((x * y * 3 / width / height) & 0x3) << 6);
+		}
+	}
+}
+
 static s32 mml_test_fill_frame_dumpout(void *frame_buf, u32 size)
 {
 	struct mml_frm_dump_data *frm = mml_core_get_frame_out();
@@ -1809,6 +1835,10 @@ static int mml_test_create_src(struct dma_heap *heap, struct mml_ut *cur_case,
 	case MML_FMT_RGBA8888:
 	case MML_FMT_BGRA8888:
 		mml_test_fill_frame_rgba8888(va, cur_case->cfg_src_w, cur_case->cfg_src_h);
+		break;
+	case MML_FMT_RGBA1010102:
+	case MML_FMT_BGRA1010102:
+		mml_test_fill_frame_rgba1010102(va, cur_case->cfg_src_w, cur_case->cfg_src_h);
 		break;
 	default:
 		if (!mml_test_use_last || !mml_test_fill_frame_dumpout(va, bufsize))

@@ -485,7 +485,7 @@ static void dump_inout(struct mml_task *task)
 	mml_log("in:%s plane:%hhu%s%s%s job:%u mode:%hhu acttime %u",
 		frame,
 		task->buf.src.cnt,
-		cfg->info.alpha ? " alpha" : "",
+		(cfg->info.alpha || cfg->alpharot) ? " alpha" : "",
 		task->buf.src.fence ? " fence" : "",
 		task->buf.src.flush ? " flush" : "",
 		task->job.jobid,

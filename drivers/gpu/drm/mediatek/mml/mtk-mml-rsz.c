@@ -51,6 +51,7 @@
 #define RSZ_DEMO_IN_VMASK		0x074
 #define RSZ_DEMO_OUT_HMASK		0x078
 #define RSZ_DEMO_OUT_VMASK		0x07c
+#define RSZ_CONTROL_3			0x084
 #define RSZ_SHADOW_CTRL			0x0f0
 #define RSZ_ATPG			0x0fc
 #define RSZ_PAT1_GEN_SET		0x100
@@ -427,9 +428,13 @@ static s32 rsz_config_frame(struct mml_comp *comp, struct mml_task *task,
 	const phys_addr_t base_pa = comp->base_pa;
 	struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
 	struct mml_pq_tile_init_result *result;
+	u32 alpha = task->config->info.alpha ? 1 << 10 : 0;
 
 	mml_msg("%s relay:%s", __func__, rsz_frm->relay_mode ? "true" : "false");
 	cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_CONTROL, 0x0, U32_MAX);
+
+	if (alpha)
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CONTROL_3, alpha, U32_MAX);
 
 	if (rsz_frm->relay_mode) {
 		rsz_relay(pkt, base_pa);
@@ -619,7 +624,7 @@ const char *get_rsz_state(const u32 state)
 static void rsz_debug_dump(struct mml_comp *comp)
 {
 	void __iomem *base = comp->base;
-	u32 value[30];
+	u32 value[31];
 	u32 debug[8];
 	u32 state;
 	u32 request[4];
@@ -662,6 +667,7 @@ static void rsz_debug_dump(struct mml_comp *comp)
 	value[27] = readl(base + RSZ_ETC_SIM_PROT_GAINCON_2);
 	value[28] = readl(base + RSZ_ETC_SIM_PROT_GAINCON_3);
 	value[29] = readl(base + RSZ_ETC_BLEND);
+	value[30] = readl(base + RSZ_CONTROL_3);
 
 	writel(0x1, base + RSZ_DEBUG_SEL);
 	debug[0] = readl(base + RSZ_DEBUG);
@@ -682,8 +688,8 @@ static void rsz_debug_dump(struct mml_comp *comp)
 
 	mml_err("RSZ_ENABLE %#010x RSZ_CON_1 %#010x RSZ_CON_2 %#010x RSZ_INT_FLAG %#010x",
 		value[0], value[1], value[2], value[3]);
-	mml_err("RSZ_INPUT_IMAGE %#010x RSZ_OUTPUT_IMAGE %#010x",
-		value[4], value[5]);
+	mml_err("RSZ_INPUT_IMAGE %#010x RSZ_OUTPUT_IMAGE %#010x RSZ_CONTROL_3 %#010x",
+		value[4], value[5], value[30]);
 	mml_err("RSZ_HOR_COEFF_STEP %#010x RSZ_VER_COEFF_STEP %#010x",
 		value[6], value[7]);
 	mml_err("RSZ_LUMA_HOR_INT_OFFSET %#010x RSZ_LUMA_HOR_SUB_OFFSET %#010x",

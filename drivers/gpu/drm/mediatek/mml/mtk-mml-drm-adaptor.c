@@ -102,30 +102,6 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *ctx,
 		}
 	}
 
-	/* for alpha rotate */
-	if (info->alpha &&
-	    MML_FMT_IS_ARGB(info->src.format) &&
-	    MML_FMT_IS_ARGB(info->dest[0].data.format)) {
-		const struct mml_frame_dest *dest = &info->dest[0];
-		u32 srccw = dest->crop.r.width;
-		u32 srcch = dest->crop.r.height;
-		u32 destw = dest->data.width;
-		u32 desth = dest->data.height;
-
-		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
-			swap(destw, desth);
-
-		if (srcw < 9) {
-			mml_err("exceed HW limitation src width %u < 9", srcw);
-			goto not_support;
-		}
-		if (srccw != destw || srcch != desth) {
-			mml_err("unsupport alpha rotation for resize case crop %u,%u to dest %u,%u",
-				srccw, srcch, destw, desth);
-			goto not_support;
-		}
-	}
-
 	for (i = 0; i < info->dest_cnt; i++) {
 		const struct mml_frame_dest *dest = &info->dest[i];
 		u32 destw = dest->data.width;

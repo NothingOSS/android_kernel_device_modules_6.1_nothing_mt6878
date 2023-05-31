@@ -571,7 +571,10 @@ static void aal_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 {
 	struct mml_comp_aal *aal = comp_to_aal(comp);
 
-	cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_CFG], relay, 0x00000001);
+	/* 8	alpha_en
+	 * 0	RELAY_MODE
+	 */
+	cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_CFG], relay, 0x00000101);
 }
 
 static s32 aal_config_init(struct mml_comp *comp, struct mml_task *task,
@@ -900,6 +903,7 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 	u32 addr = aal->sram_curve_start;
 	u32 gpr = aal->data->gpr[ccfg->pipe];
 	s8 mode = cfg->info.mode;
+	u32 alpha = cfg->info.alpha ? 1 << 8 : 0;
 	s32 ret = 0;
 	u32 i;
 
@@ -908,10 +912,10 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	if (aal_frm->relay_mode) {
 		/* relay mode */
-		aal_relay(comp, pkt, base_pa, 0x1);
+		aal_relay(comp, pkt, base_pa, alpha | 0x1);
 		goto exit;
 	}
-	aal_relay(comp, pkt, base_pa, 0x0);
+	aal_relay(comp, pkt, base_pa, alpha);
 
 	if (MML_FMT_10BIT(src->format) || MML_FMT_10BIT(dest->data.format))
 		cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_CFG_MAIN],
@@ -1987,7 +1991,7 @@ static void aal_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_aal *aal = comp_to_aal(comp);
 	void __iomem *base = comp->base;
-	u32 value[30];
+	u32 value[9];
 	u32 shadow_ctrl;
 
 	mml_err("aal component %u dump:", comp->id);
@@ -1996,6 +2000,9 @@ static void aal_debug_dump(struct mml_comp *comp)
 	shadow_ctrl = readl(base + aal->data->reg_table[AAL_SHADOW_CTRL]);
 	shadow_ctrl |= 0x4;
 	writel(shadow_ctrl, base + aal->data->reg_table[AAL_SHADOW_CTRL]);
+
+	value[0] = readl(base + aal->data->reg_table[AAL_CFG]);
+	mml_err("AAL_CFG %#010x", value[0]);
 
 	value[0] = readl(base + aal->data->reg_table[AAL_INTSTA]);
 	value[1] = readl(base + aal->data->reg_table[AAL_STATUS]);

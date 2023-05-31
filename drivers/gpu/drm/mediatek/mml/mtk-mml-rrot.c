@@ -946,6 +946,15 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_SHADOW_CTRL,
 		((cfg->shadow ? 0 : BIT(1)) << 1) | 0x1, U32_MAX);
 
+	if (mml_rdma_crc) {
+		if (MML_FMT_COMPRESS(src->format))
+			cmdq_pkt_write(pkt, NULL, base_pa + RROT_DEBUG_CON,
+				(0x10 << 13) + 0x1, U32_MAX);
+		else
+			cmdq_pkt_write(pkt, NULL, base_pa + RROT_DEBUG_CON,
+				0x1, U32_MAX);
+	}
+
 	/* enable binning with horizontal and vertical level, 0 for disable */
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_BINNING,
 		cfg->bin_y << 3 |	/* vertical level */
@@ -1617,6 +1626,7 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_config *cfg = task->config;
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
+	u32 pipe = comp_to_rrot(comp)->pipe;
 
 	/* ufo case */
 	if (MML_FMT_UFO(cfg->info.src.format))
@@ -1628,24 +1638,23 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 	cache->total_datasize = rrot_frm->datasize;
 	cache->max_pixel = max(cache->max_pixel, rrot_frm->pixel_acc);
 
-	mml_msg("%s task %p pipe %hhu data %u pixel %u",
-		__func__, task, ccfg->pipe, rrot_frm->datasize, rrot_frm->pixel_acc);
+	mml_msg("%s task %p pipe %u data %u pixel %u",
+		__func__, task, pipe, rrot_frm->datasize, rrot_frm->pixel_acc);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	if (unlikely(mml_rdma_crc)) {
-		if (!rdma_crc_va[ccfg->pipe] && !rdma_crc_pa[ccfg->pipe]) {
-			rdma_crc_va[ccfg->pipe] =
-				cmdq_mbox_buf_alloc(cfg->path[ccfg->pipe]->clt,
-					&rdma_crc_pa[ccfg->pipe]);
+		if (!rdma_crc_va[pipe] && !rdma_crc_pa[pipe]) {
+			rdma_crc_va[pipe] =
+				cmdq_mbox_buf_alloc(cfg->path[ccfg->pipe]->clt, &rdma_crc_pa[pipe]);
 			mml_log("%s rrot component %u job %u pipe %u va %p pa %llx",
 				__func__, comp->id, task->job.jobid,
-				ccfg->pipe, rdma_crc_va[ccfg->pipe], rdma_crc_pa[ccfg->pipe]);
+				pipe, rdma_crc_va[pipe], rdma_crc_pa[pipe]);
 		}
 
-		if (unlikely(!rdma_crc_va[ccfg->pipe]) || unlikely(!rdma_crc_pa[ccfg->pipe])) {
+		if (unlikely(!rdma_crc_va[pipe]) || unlikely(!rdma_crc_pa[pipe])) {
 			mml_err("%s rrot component %u job %u pipe %u get dram va %p pa %llx failed",
 				__func__, comp->id, task->job.jobid,
-				ccfg->pipe, rdma_crc_va[ccfg->pipe], rdma_crc_pa[ccfg->pipe]);
+				pipe, rdma_crc_va[pipe], rdma_crc_pa[pipe]);
 		} else {
 			/* read reg value to spr : CMDQ_THR_SPR_IDX2*/
 			cmdq_pkt_read_addr(task->pkts[ccfg->pipe],
@@ -1656,7 +1665,7 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 
 			/* write spr to dram pa */
 			cmdq_pkt_write_indriect(task->pkts[ccfg->pipe],
-				NULL, rdma_crc_pa[ccfg->pipe], CMDQ_THR_SPR_IDX2, UINT_MAX);
+				NULL, rdma_crc_pa[pipe], CMDQ_THR_SPR_IDX2, UINT_MAX);
 		}
 	}
 #endif

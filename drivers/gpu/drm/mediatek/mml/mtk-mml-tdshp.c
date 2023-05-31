@@ -311,7 +311,10 @@ static void tdshp_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_
 {
 	struct mml_comp_tdshp *tdshp = comp_to_tdshp(comp);
 
-	cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[TDSHP_CFG], relay, 0x00000001);
+	/* 17	ALPHA_EN
+	 * 0	RELAY_MODE
+	 */
+	cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[TDSHP_CFG], relay, 0x00020001);
 }
 
 static void tdshp_config_region_pq(struct mml_comp *comp, struct cmdq_pkt *pkt,
@@ -448,6 +451,7 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct mml_comp_tdshp *tdshp = comp_to_tdshp(comp);
+	u32 alpha = cfg->info.alpha ? 1 << 17 : 0;
 
 	const phys_addr_t base_pa = comp->base_pa;
 	struct mml_pq_comp_config_result *result;
@@ -474,16 +478,16 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 		if (cfg->info.mode == MML_MODE_DDP_ADDON ||
 			cfg->info.mode == MML_MODE_DIRECT_LINK) {
 			/* enable to crop */
-			tdshp_relay(comp, pkt, base_pa, 0x0);
+			tdshp_relay(comp, pkt, base_pa, alpha);
 			cmdq_pkt_write(pkt, NULL,
 				base_pa + tdshp->data->reg_table[TDSHP_00], 0, 1 << 31);
 		} else {
-			tdshp_relay(comp, pkt, base_pa, 0x1);
+			tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
 		}
 		return 0;
 	}
 
-	tdshp_relay(comp, pkt, base_pa, 0x0);
+	tdshp_relay(comp, pkt, base_pa, alpha);
 
 	do {
 		ret = mml_pq_get_comp_config_result(task, TDSHP_WAIT_TIMEOUT_MS);

@@ -542,9 +542,6 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 				path->nodes[i].id, out_eng_idx);
 		path->out_engine_ids[out_eng_idx] = path->nodes[i].id;
 	}
-
-	if (path->tile_engine_cnt == 2)
-		path->alpharot = true;
 }
 
 static s32 tp_init_cache(struct mml_dev *mml, struct mml_topology_cache *cache,
@@ -724,14 +721,7 @@ static s32 tp_select(struct mml_topology_cache *cache,
 		return -EPERM;
 
 	cfg->path[0] = path;
-	if (path->alpharot) {
-		u32 i;
-
-		cfg->alpharot = MML_FMT_IS_ARGB(cfg->info.src.format);
-		for (i = 0; i < cfg->info.dest_cnt && cfg->alpharot; i++)
-			if (!MML_FMT_IS_ARGB(cfg->info.dest[i].data.format))
-				cfg->alpharot = false;
-	}
+	cfg->alpharot = cfg->info.alpha && MML_FMT_ALPHA(cfg->info.src.format);
 
 	if (mml_need_irq ||
 	    cfg->info.mode == MML_MODE_MML_DECOUPLE ||
