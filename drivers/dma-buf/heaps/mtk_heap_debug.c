@@ -257,6 +257,7 @@ struct heap_status_s debug_heap_list[] = {
 	{"mtk_sapu_data_shm_region-aligned", NULL, 0},
 	{"mtk_sapu_engine_shm_region", NULL, 0},
 	{"mtk_sapu_engine_shm_region-aligned", NULL, 0},
+	{"mtk_sapu_page-uncached", NULL, 0},
 };
 #define _DEBUG_HEAP_CNT_  (ARRAY_SIZE(debug_heap_list))
 

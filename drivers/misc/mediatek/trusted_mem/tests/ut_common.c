@@ -200,7 +200,31 @@ int ut_multi_thread_mtkSecHeap(void *from)
 	strcpy(sec_heap_name, "mtk_svp_page-uncached");
 	align = 0x1000;
 	loop = MAX_ALLOC;
-	upper = 0x500000;
+	upper = 0x1000000;
+
+	for (i = 0; i < loop; i++) {
+		dma_heap = dma_heap_find(sec_heap_name);
+		if (!dma_heap) {
+			pr_info("heap_find fail\n");
+			goto sec_out;
+		}
+		size = get_random_u64() % (upper / align) * align + 0x1000;
+		ut_dmabuf = dma_heap_buffer_alloc(dma_heap, size,
+						  O_RDWR | O_CLOEXEC,
+						  DMA_HEAP_VALID_HEAP_FLAGS);
+		dma_heap_put(dma_heap);
+		if (IS_ERR(ut_dmabuf)) {
+			pr_info("dma_buf allocated fail PTR_ERR = %ld\n",
+				PTR_ERR(ut_dmabuf));
+			goto sec_out;
+		}
+		dma_heap_buffer_free(ut_dmabuf);
+	}
+
+	strcpy(sec_heap_name, "mtk_sapu_page-uncached");
+	align = 0x1000;
+	loop = MAX_ALLOC;
+	upper = 0x1000000;
 
 	for (i = 0; i < loop; i++) {
 		dma_heap = dma_heap_find(sec_heap_name);

@@ -39,7 +39,8 @@ static inline void trusted_mem_type_enum_validate(void)
 	COMPILE_ASSERT((int)(TRUSTED_MEM_REQ_SAPU_ENGINE_SHM) == (int)TRUSTED_MEM_SAPU_ENGINE_SHM);
 	COMPILE_ASSERT((int)(TRUSTED_MEM_REQ_AP_MD_SHM) == (int)TRUSTED_MEM_AP_MD_SHM);
 	COMPILE_ASSERT((int)(TRUSTED_MEM_REQ_AP_SCP_SHM) == (int)TRUSTED_MEM_AP_SCP_SHM);
-	COMPILE_ASSERT((int)(TRUSTED_MEM_MAX - 1) == (int)TRUSTED_MEM_AP_SCP_SHM);
+	COMPILE_ASSERT((int)TRUSTED_MEM_REQ_SAPU_PAGE == (int)TRUSTED_MEM_SAPU_PAGE);
+	COMPILE_ASSERT((int)(TRUSTED_MEM_MAX - 1) == (int)TRUSTED_MEM_SAPU_PAGE);
 }
 
 static inline enum TRUSTED_MEM_TYPE
@@ -80,6 +81,8 @@ get_mem_type(enum TRUSTED_MEM_REQ_TYPE req_type)
 		return TRUSTED_MEM_AP_SCP_SHM;
 	case TRUSTED_MEM_REQ_TUI_REGION:
 		return TRUSTED_MEM_TUI_REGION;
+	case TRUSTED_MEM_REQ_SAPU_PAGE:
+		return TRUSTED_MEM_SAPU_PAGE;
 	default:
 		pr_info("[TMEM] %s: req_type=%d not found\n", __func__, req_type);
 		return TRUSTED_MEM_SVP_REGION;
@@ -96,6 +99,8 @@ get_region_mem_type(enum TRUSTED_MEM_TYPE req_type)
 		return TRUSTED_MEM_PROT_REGION;
 	case TRUSTED_MEM_WFD_PAGE:
 		return TRUSTED_MEM_WFD_REGION;
+	case TRUSTED_MEM_SAPU_PAGE:
+		return TRUSTED_MEM_SAPU_DATA_SHM;
 	default:
 		return req_type;
 	}
@@ -231,7 +236,9 @@ int trusted_mem_page_based_alloc(enum TRUSTED_MEM_REQ_TYPE req_mem_type,
 {
 	enum TRUSTED_MEM_TYPE mem_type = get_mem_type(req_mem_type);
 
-	if (is_ffa_enabled() && (mem_type == TRUSTED_MEM_PROT_PAGE)) {
+	if (is_ffa_enabled() &&
+		((mem_type == TRUSTED_MEM_PROT_PAGE) ||
+		 (mem_type == TRUSTED_MEM_SAPU_PAGE))) {
 		pr_info("[TMEM][%d] page-based: size = 0x%x\n", mem_type, size);
 		return tmem_ffa_page_alloc(sg_tbl, handle);
 	}

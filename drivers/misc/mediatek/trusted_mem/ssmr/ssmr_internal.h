@@ -362,6 +362,19 @@ static struct SSMR_Feature _ssmr_feats[__MAX_NR_SSMR_FEATURES] = {
 		.is_dma_alloc = false,
 		.is_reserved_mem = false
 	},
+	[SSMR_FEAT_SAPU_PAGE] = {
+		.dt_prop_name = "sapu-page-based-size",
+		.feat_name = "sapu_page_based",
+		.cmd_online = "sapu_page=on",
+		.cmd_offline = "sapu_page=off",
+		.enable = "on",
+		.scheme_flag = FACE_REGISTRATION_FLAGS | FACE_PAYMENT_FLAGS |
+				FACE_UNLOCK_FLAGS,
+		.req_size = 0,
+		.is_page_based = true,
+		.is_dma_alloc = false,
+		.is_reserved_mem = false
+	},
 	[SSMR_FEAT_AP_MD_SHM] = {
 		.dt_prop_name = "ap-md-shm-size",
 		.feat_name = "ap-md-shm",
