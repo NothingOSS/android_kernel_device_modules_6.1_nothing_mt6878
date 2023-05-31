@@ -590,19 +590,19 @@
 #define MT6989_DISP_REG_POSTALIGN0_EN           0x000
 #define MT6989_DISP_REG_POSTALIGN0_RESET        0x004
 #define MT6989_DISP_REG_POSTALIGN0_INTEN        0x008
-	#define MT6989_IF_END_INT_EN                REG_FLD_MSB_LSB(0, 0)
-	#define MT6989_OF_END_INT_EN                REG_FLD_MSB_LSB(1, 1)
+	#define MT6989_IF_END_INT_EN                BIT(0)
+	#define MT6989_OF_END_INT_EN                BIT(1)
 #define MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL  0x014
-	#define MT6989_FORCE_COMMIT                 REG_FLD_MSB_LSB(0, 0)
-	#define MT6989_BYPASS_SHADOW                REG_FLD_MSB_LSB(1, 1)
-	#define MT6989_READ_WRK_REG                 REG_FLD_MSB_LSB(2, 2)
+	#define MT6989_FORCE_COMMIT                 BIT(0)
+	#define MT6989_BYPASS_SHADOW                BIT(1)
+	#define MT6989_READ_WRK_REG                 BIT(2)
 #define MT6989_DISP_REG_POSTALIGN0_CFG          0x018
 	#define MT6989_POSTALIGN_SEL                REG_FLD_MSB_LSB(5, 0)
-	#define MT6989_POSTALIGN_6TYPE_MODE         REG_FLD_MSB_LSB(8, 8)
-	#define MT6989_DSC_PADDING_REPEAT_EN        REG_FLD_MSB_LSB(12, 12)
-	#define MT6989_RELAY_MODE                   REG_FLD_MSB_LSB(16, 16)
-	#define MT6989_POSTALIGN_LUT_EN             REG_FLD_MSB_LSB(17, 17)
-	#define MT6989_STALL_CG_ON                  REG_FLD_MSB_LSB(18, 18)
+	#define MT6989_POSTALIGN_6TYPE_MODE         BIT(8)
+	#define MT6989_DSC_PADDING_REPEAT_EN        BIT(12)
+	#define MT6989_RELAY_MODE                   BIT(16)
+	#define MT6989_POSTALIGN_LUT_EN             BIT(17)
+	#define MT6989_STALL_CG_ON                  BIT(18)
 #define MT6989_DISP_REG_POSTALIGN0_SIZE         0x01C
 	#define MT6989_VSIZE                        REG_FLD_MSB_LSB(12, 0)
 	#define MT6989_HSIZE                        REG_FLD_MSB_LSB(28, 16)
@@ -1256,7 +1256,8 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 				REG_FLD_MASK(MT6989_POSTALIGN_SEL), handle);
 			mtk_ddp_write_mask(postalign_comp,
 				spr_params->postalign_6type_mode_en << 8,
-				MT6989_DISP_REG_POSTALIGN0_CFG, POSTALIGN_6TYPE_MODE, handle);
+				MT6989_DISP_REG_POSTALIGN0_CFG,
+				MT6989_POSTALIGN_6TYPE_MODE, handle);
 			mtk_ddp_write_mask(postalign_comp, spr_params->padding_repeat_en << 12,
 				MT6989_DISP_REG_POSTALIGN0_CFG,
 				MT6989_DSC_PADDING_REPEAT_EN, handle);
