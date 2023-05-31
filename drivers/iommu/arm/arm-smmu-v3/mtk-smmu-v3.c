@@ -46,6 +46,7 @@
 #define SMMU_DELAY_HW_INIT		BIT(5)
 #define SMMU_SEC_EN			BIT(6)
 #define SMMU_SKIP_SHUTDOWN		BIT(7)
+#define SMMU_HYP_EN			BIT(8)
 
 #define SMMU_IRQ_COUNT_MAX		(5)
 #define SMMU_IRQ_DISABLE_TIME		(10) /* 10s */
@@ -57,10 +58,23 @@
 #define SMMU_FAULT_RS_INTERVAL		DEFAULT_RATELIMIT_INTERVAL
 #define SMMU_FAULT_RS_BURST		(2)
 
+/* hyp-pmm smmu related SMC call */
+#define HYP_PMM_SMMU_CONTROL		(0XBB00FFAE)
+
+#define MTK_SMMU_ADDR(addr) ({						  \
+	dma_addr_t _addr = addr;					  \
+	((lower_32_bits(_addr) & GENMASK(31, 12)) | upper_32_bits(_addr));\
+})
+
 static const char *IOMMU_GROUP_PROP_NAME = "mtk,iommu-group";
 static const char *SMMU_MPAM_CONFIG = "mtk,mpam-cfg";
 static const char *SMMU_MPAM_CMAX = "mtk,mpam-cmax";
 static const char *PMU_SMMU_PROP_NAME = "mtk,smmu";
+
+enum hyp_smmu_cmd {
+	HYP_SMMU_TF_DUMP,
+	HYP_SMMU_CMD_NUM
+};
 
 enum iova_type {
 	NORMAL,
@@ -1698,11 +1712,53 @@ static void __maybe_unused smmu_dump_reg(void __iomem *base,
 	}
 }
 
-static phys_addr_t mtee_smmu_iova_to_phys(u64 iova, u32 sid, u32 ssid)
+/*
+ * a0/in0 = HYP_PMM_SMMU_CONTROL (HYP-PMM SMMU SMC ID)
+ * a1/in1 = HYP-PMM SMMU SMC cmd id
+ * a2/in2 = smmu type
+ * a3/in3 ~ a7/in7: user defined
+ */
+static int mtk_hyp_smmu_smc_call(u32 smmu_type, unsigned long cmd_id,
+				 unsigned long in3, unsigned long in4,
+				 unsigned long in5, unsigned long in6,
+				 unsigned long in7)
 {
-	// TODO
+	struct arm_smccc_res res;
 
-	return 0;
+	if (smmu_type >= SMMU_TYPE_NUM) {
+		pr_info("%s, SMMU HW type is invalid, type:%u\n", __func__, smmu_type);
+		return SMC_SMMU_FAIL;
+	}
+
+	arm_smccc_smc(HYP_PMM_SMMU_CONTROL, cmd_id, smmu_type, in3, in4, in5, in6, in7, &res);
+
+	return res.a0;
+}
+
+static int mtk_hyp_smmu_tf_dump(struct arm_smmu_device *smmu,
+				u64 fault_iova, u64 fault_ipa,
+				u32 sid, u32 ssid, u32 trans_s2)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	u32 smmu_type = data->plat_data->smmu_type;
+	u32 fault_iova_32, fault_ipa_32;
+	int ret;
+
+	if (!MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_HYP_EN))
+		return SMC_SMMU_SUCCESS;
+
+	fault_iova_32 = MTK_SMMU_ADDR(fault_iova);
+	fault_ipa_32 = MTK_SMMU_ADDR(fault_ipa);
+
+	ret = mtk_hyp_smmu_smc_call(smmu_type, HYP_SMMU_TF_DUMP,
+				    fault_iova_32, fault_ipa_32,
+				    sid, ssid, trans_s2);
+	if (ret) {
+		pr_info("%s, smc call fail:%d, type:%u\n", __func__, ret, smmu_type);
+		return SMC_SMMU_FAIL;
+	}
+
+	return SMC_SMMU_SUCCESS;
 }
 
 static u64 smmu_iova_to_iopte(struct arm_smmu_master *master, u64 iova)
@@ -1729,8 +1785,7 @@ static void mtk_smmu_fault_iova_dump(struct arm_smmu_master *master,
 {
 	struct arm_smmu_domain *smmu_domain = master->domain;
 	u64 tab_id = get_smmu_tab_id_by_domain(&smmu_domain->domain);
-	phys_addr_t fake_pa;
-	phys_addr_t hw_pa;
+	phys_addr_t fault_pa;
 	u64 tf_iova_tmp;
 	u64 pte;
 	int i;
@@ -1740,13 +1795,12 @@ static void mtk_smmu_fault_iova_dump(struct arm_smmu_master *master,
 			tf_iova_tmp -= SZ_4K;
 
 		pte = smmu_iova_to_iopte(master, tf_iova_tmp);
-		fake_pa = smmu_iova_to_phys(master, tf_iova_tmp);
-		hw_pa = mtee_smmu_iova_to_phys(tf_iova_tmp, sid, ssid);
+		fault_pa = smmu_iova_to_phys(master, tf_iova_tmp);
 
-		pr_info("error, tab_id:0x%llx, index:%d, pte:0x%llx, falut_iova:0x%llx, fault_pa:0x%llx, 0x%llx\n",
-			tab_id, i, pte, tf_iova_tmp, fake_pa, hw_pa);
+		pr_info("error, tab_id:0x%llx, index:%d, pte:0x%llx, falut_iova:0x%llx, fault_pa:0x%llx\n",
+			tab_id, i, pte, tf_iova_tmp, fault_pa);
 
-		if (tf_iova_tmp == 0 || (!fake_pa && i > 0))
+		if (tf_iova_tmp == 0 || (!fault_pa && i > 0))
 			break;
 	}
 
@@ -1843,6 +1897,8 @@ static int mtk_report_device_fault(struct arm_smmu_master *master,
 	mtk_smmu_fault_iova_dump(master, fault_iova, sid, ssid);
 
 	mtk_smmu_sid_dump(smmu, sid);
+
+	mtk_hyp_smmu_tf_dump(smmu, fault_iova, fault_ipa, sid, ssid, (s2_trans != 0));
 
 	/* Report fault event to device driver */
 	ret = iommu_report_device_fault(master->dev, &mtk_fault_evt.fault_evt);
@@ -2296,26 +2352,28 @@ struct arm_smmu_device *mtk_smmu_v3_impl_init(struct arm_smmu_device *smmu)
 static const struct mtk_smmu_plat_data mt6989_data_mm = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= MM_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN,
+	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN |
+				  SMMU_HYP_EN,
 };
 
 static const struct mtk_smmu_plat_data mt6989_data_apu = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= APU_SMMU,
 	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN |
-				  SMMU_SKIP_SHUTDOWN,
+				  SMMU_HYP_EN | SMMU_SKIP_SHUTDOWN,
 };
 
 static const struct mtk_smmu_plat_data mt6989_data_soc = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= SOC_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_SEC_EN | SMMU_CLK_AO_EN,
+	.flags			= SMMU_EN_PRE | SMMU_SEC_EN | SMMU_CLK_AO_EN |
+				  SMMU_HYP_EN,
 };
 
 static const struct mtk_smmu_plat_data mt6989_data_gpu = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= GPU_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT,
+	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_HYP_EN,
 };
 
 static const struct mtk_smmu_plat_data *of_device_get_plat_data(struct device *dev)
