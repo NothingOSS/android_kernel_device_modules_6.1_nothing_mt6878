@@ -4615,7 +4615,7 @@ enum mt6989_lvts_sensor_enum {
 	MT6989_TS5_1,
 	MT6989_TS5_2,
 	MT6989_TS5_3,
-	MT6989_TS6_0,//20
+	MT6989_TS6_1,//20
 	MT6989_TS30_0,
 	MT6989_TS30_1,
 	MT6989_TS30_2,
@@ -4627,7 +4627,8 @@ enum mt6989_lvts_sensor_enum {
 	MT6989_TS12_1,
 	MT6989_TS12_2,//30
 	MT6989_TS12_3,//31
-	MT6989_NUM_TS//32
+	MT6989_NUM_TS,//32
+	MT6989_TS6_0
 };
 
 
@@ -4689,7 +4690,7 @@ static void mt6989_efuse_to_cal_data(struct lvts_data *lvts_data)
 	cal_data->count_r[MT6989_TS5_2] =  GET_CAL_DATA_BITMASK(10, 31, 16);
 	cal_data->count_r[MT6989_TS5_3] =  GET_CAL_DATA_BITMASK(10, 15, 0);
 
-	cal_data->count_r[MT6989_TS6_0]  =  GET_CAL_DATA_BITMASK(11, 31, 16);
+	cal_data->count_r[MT6989_TS6_1]  =  GET_CAL_DATA_BITMASK(11, 31, 16);
 	cal_data->count_r[MT6989_TS30_0] =  GET_CAL_DATA_BITMASK(11, 15, 0);
 	cal_data->count_r[MT6989_TS30_1] =  GET_CAL_DATA_BITMASK(12, 31, 16);
 	cal_data->count_r[MT6989_TS30_2] =  GET_CAL_DATA_BITMASK(12, 15, 0);
@@ -4874,13 +4875,13 @@ static struct tc_settings mt6989_tc_settings[] = {
 	},
 	[MT6989_LVTS_APU_CTRL1] = {
 		.domain_index = MT6989_APU_DOMAIN,
-		.addr_offset = 0x0,
-		.num_sensor = 1,
-		.sensor_map = {MT6989_TS6_0},
-		.sensor_on_off = {SEN_ON},
+		.addr_offset = 0x100,
+		.num_sensor = 2,
+		.sensor_map = {MT6989_TS6_0, MT6989_TS6_1},
+		.sensor_on_off = {SEN_OFF, SEN_ON},
 		.tc_speed = SET_TC_SPEED_IN_US(10, 1950, 10, 10),
 		.hw_filter = LVTS_FILTER_1,
-		.dominator_sensing_point = SENSING_POINT0,
+		.dominator_sensing_point = SENSING_POINT1,
 		.hw_reboot_trip_point = 118400,
 		.irq_bit = BIT(1),
 		.coeff = {
