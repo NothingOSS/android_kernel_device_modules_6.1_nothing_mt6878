@@ -12078,6 +12078,11 @@
 		trace-dram-size  = <0x0>;
 	};
 
+	pmic-oc-debug {
+		compatible = "mediatek,mt6983-oc-debug";
+		status = "okay";
+	};
+
 	extcon_usb: extcon-usb {
 		compatible = "mediatek,extcon-usb";
 		vbus-supply = <&mt6375_otg_vbus>;
@@ -15842,8 +15847,8 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 			/* charger: mtk_charger_thread */
 			mediatek,charger = <&lk_charger>;
 			/* 2000~2900mV, one gear per 100mV */
-			uvlo-level = <2500>;
-			vbb-uvlo-level = <2500>;
+			uvlo-level = <2400>;
+			vbb-uvlo-level = <2400>;
 			io-channels = <&mt6375_auxadc MT6375_AUXADC_IMP>,
 				<&mt6375_auxadc MT6375_AUXADC_IMIX_R>,
 				<&mt6375_auxadc MT6375_AUXADC_BATSNS>;
