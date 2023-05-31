@@ -12656,6 +12656,21 @@
 		mtk,smmu = <&mm_smmu>;
 	};
 
+	soc-smmu-mpam-mon {
+		compatible = "mtk,smmu-v3-mpam-mon";
+		mtk,smmu = <&soc_smmu>;
+	};
+
+	apu-smmu-mpam-mon {
+		compatible = "mtk,smmu-v3-mpam-mon";
+		mtk,smmu = <&apu_smmu>;
+	};
+
+	mm-smmu-mpam-mon {
+		compatible = "mtk,smmu-v3-mpam-mon";
+		mtk,smmu = <&mm_smmu>;
+	};
+
 	/* smmu test devices */
 	smmu-test-ktf1 {
 		compatible = "mediatek,soc-smmu-test-ktf1";
