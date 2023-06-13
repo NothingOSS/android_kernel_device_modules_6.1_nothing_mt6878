@@ -149,6 +149,18 @@ static const char *job_id_mapping(uint32_t job_id)
 
 }
 
+uint32_t apu_ce_reg_dump(struct mtk_apu *apu)
+{
+	return apusys_rv_smc_call(apu->dev,
+		MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP, 0, NULL, NULL, NULL);
+}
+
+uint32_t apu_ce_sram_dump(struct mtk_apu *apu)
+{
+	return apusys_rv_smc_call(apu->dev,
+		MTK_APUSYS_KERNEL_OP_APUSYS_CE_SRAM_DUMP, 0, NULL, NULL, NULL);
+}
+
 static void apu_ce_coredump_work_func(struct work_struct *p_work)
 {
 	struct apu_coredump_work_struct *apu_coredump_work =

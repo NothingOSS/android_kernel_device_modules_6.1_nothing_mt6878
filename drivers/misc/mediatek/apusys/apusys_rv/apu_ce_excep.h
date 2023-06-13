@@ -31,12 +31,16 @@
 
 #endif
 
+uint32_t apu_ce_reg_dump(struct mtk_apu *apu);
+uint32_t apu_ce_sram_dump(struct mtk_apu *apu);
 int apu_ce_excep_init(struct platform_device *pdev, struct mtk_apu *apu);
 void apu_ce_excep_remove(struct platform_device *pdev, struct mtk_apu *apu);
 void apu_ce_start_timer_dump_reg(void);
 void apu_ce_stop_timer_dump_reg(void);
 
 
+#define APU_ARE_SRAMBASE                 (0x190a0000)
+#define APU_ARE_REG_BASE                 (0x190b0000)
 #define APU_ACE_SW_REQ_0                      (0x400)
 #define APU_ACE_SW_REQ_1	                  (0x404)
 #define APU_ACE_SW_REQ_2	                  (0x408)
@@ -236,6 +240,12 @@ void apu_ce_stop_timer_dump_reg(void);
 #define APU_CE3_STEP	                      (0x9a4)
 #define APU_CE3_BREAKPOINT	                  (0x9a8)
 #define APU_CE3_OVERFLOW	                  (0x9b0)
+
+#define CE_REG_DUMP_MAGIC_NUM            (0xEEEEEEEE)
+#define CE_REG_DUMP_ACE_START      (APU_ACE_SW_REQ_0)
+#define CE_REG_DUMP_ACE_END        (APU_CE3_OVERFLOW)
+#define CE_REG_DUMP_HW_SEMA_START             (0xe08)
+#define CE_REG_DUMP_HW_SEMA_END               (0xe0c)
 
 enum {
 	SMC_OP_APU_CE_NULL = 0,

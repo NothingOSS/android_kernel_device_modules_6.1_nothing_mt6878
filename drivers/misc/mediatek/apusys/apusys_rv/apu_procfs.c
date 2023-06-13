@@ -16,13 +16,14 @@
 
 #include "apu.h"
 #include "apu_regdump.h"
+#include "apu_ce_excep.h"
 
 #define PT_MAGIC (0x58901690)
 
 static struct platform_device *g_apu_pdev;
 static struct proc_dir_entry *procfs_root;
-static size_t coredump_len, xfile_len, ce_fw_sram_len;
-static void *coredump_base, *xfile_base, *ce_fw_sram_base;
+static size_t coredump_len, xfile_len;
+static void *coredump_base, *xfile_base;
 
 static int coredump_seq_show(struct seq_file *s, void *v)
 {
@@ -82,9 +83,88 @@ static int regdump_seq_show(struct seq_file *s, void *v)
 	return 0;
 }
 
+static ssize_t dump_ce_fw_sram_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *pos)
+{
+	char tmp[16] = {0};
+	int ret;
+	unsigned int input = 0;
+	struct mtk_apu *apu = (struct mtk_apu *)platform_get_drvdata(g_apu_pdev);
+
+	if (count + 1 >= 16)
+		return -ENOMEM;
+
+	ret = copy_from_user(tmp, buffer, count);
+	if (ret) {
+		dev_info(&g_apu_pdev->dev, "%s: copy_from_user failed (%d)\n", __func__, ret);
+		goto out;
+	}
+
+	tmp[count] = '\0';
+	ret = kstrtouint(tmp, 16, &input);
+	if (ret) {
+		dev_info(&g_apu_pdev->dev, "%s: kstrtouint failed (%d)\n", __func__, ret);
+		goto out;
+	}
+
+	dev_info(&g_apu_pdev->dev, "%s: dump ops (0x%x)\n", __func__, input);
+
+	if (input & (0x1)) {
+		if (apu_ce_reg_dump(apu) == 0)
+			dev_info(&g_apu_pdev->dev, "%s: dump ce register success\n", __func__);
+		else
+			dev_info(&g_apu_pdev->dev, "%s: dump ce register smc call fail\n", __func__);
+	}
+	if (input & (0x2)) {
+		if (apu_ce_sram_dump(apu) == 0)
+			dev_info(&g_apu_pdev->dev, "%s: dump are sram success\n", __func__);
+		else
+			dev_info(&g_apu_pdev->dev, "%s: dump are sram call fail\n", __func__);
+	}
+out:
+	return count;
+}
+
 static int ce_fw_sram_show(struct seq_file *s, void *v)
 {
-	seq_write(s, ce_fw_sram_base, ce_fw_sram_len);
+	uint32_t *ce_reg_addr = NULL;
+	uint32_t *ce_sram_addr = NULL;
+	uint32_t size;
+	struct mtk_apu *apu = (struct mtk_apu *)platform_get_drvdata(g_apu_pdev);
+
+	ce_reg_addr = (uint32_t *)((unsigned long)apu->apu_aee_coredump_mem_base +
+		(unsigned long)apu->apusys_aee_coredump_info->ce_bin_ofs);
+
+	if (ce_reg_addr[0] == CE_REG_DUMP_MAGIC_NUM &&
+		ce_reg_addr[1] == CE_REG_DUMP_MAGIC_NUM) {
+
+		seq_printf(s, "---- dump ce register from 0x%08x to 0x%08x ----\n",
+			APU_ARE_REG_BASE + CE_REG_DUMP_ACE_START,
+			APU_ARE_REG_BASE + CE_REG_DUMP_ACE_END);
+
+		ce_reg_addr += 2;
+		size = CE_REG_DUMP_ACE_END - CE_REG_DUMP_ACE_START + 4;
+		seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 16, 4, ce_reg_addr, size, false);
+
+		seq_printf(s, "---- dump hw sema from 0x%08x to 0x%08x----\n",
+			APU_ARE_REG_BASE + CE_REG_DUMP_HW_SEMA_START,
+			APU_ARE_REG_BASE + CE_REG_DUMP_HW_SEMA_END);
+
+		ce_reg_addr += size / 4;
+		size = CE_REG_DUMP_HW_SEMA_END - CE_REG_DUMP_HW_SEMA_START + 4;
+		seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 8, 4, ce_reg_addr, size, false);
+	} else {
+		seq_printf(s, "---- memory header invalid [0x%08x][0x%08x] ----\n",
+			ce_reg_addr[0], ce_reg_addr[1]);
+	}
+
+
+	seq_printf(s, "---- dump ce sram start from 0x%08x ----\n", APU_ARE_SRAMBASE);
+	ce_sram_addr = (uint32_t *)((unsigned long)apu->apu_aee_coredump_mem_base +
+		(unsigned long)apu->apusys_aee_coredump_info->are_sram_ofs);
+	size = apu->apusys_aee_coredump_info->are_sram_sz;
+
+	seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 16, 4, ce_sram_addr, size, false);
 
 	return 0;
 }
@@ -160,6 +240,7 @@ static const struct proc_ops regdump_file_ops = {
 
 static const struct proc_ops ce_fw_sram_file_ops = {
 	.proc_open		= ce_fw_sram_sqopen,
+	.proc_write     = dump_ce_fw_sram_write,
 	.proc_read		= seq_read,
 	.proc_lseek		= seq_lseek,
 	.proc_release	= single_release
@@ -273,9 +354,6 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 	if (ret)
 		dev_info(dev, "%s: APUSYS_CE_FW_SRAM add fail(%d)\n",
 			__func__, ret);
-
-	ce_fw_sram_len = (size_t) size;
-	ce_fw_sram_base = (void *) base_va;
 
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	ret = mrdump_mini_add_extra_file((unsigned long)apu, __pa_nodebug(apu),
