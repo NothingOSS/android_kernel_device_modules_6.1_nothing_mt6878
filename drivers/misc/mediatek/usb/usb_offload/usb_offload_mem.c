@@ -559,11 +559,11 @@ int mtk_offload_alloc_mem(struct usb_offload_buffer *buf,
 ALLOC_SUCCESS:
 	if (is_sram(mem_id) && !buf->is_sram) {
 		/* we requeset for sram, but turn out to be dram */
-		USB_OFFLOAD_INFO("buf:%p falls from sram to dram\n", buf);
+		USB_OFFLOAD_MEM_DBG("buf:%p falls from sram to dram\n", buf);
 		list_add_tail(&buf->list, &downgrade_list);
 	}
 
-	USB_OFFLOAD_INFO("va:%p phy:0x%llx size:%zu is_sram:%d is_rsv:%d type:%s\n",
+	USB_OFFLOAD_MEM_DBG("va:%p phy:0x%llx size:%zu is_sram:%d is_rsv:%d type:%s\n",
 		buf->dma_area, (unsigned long long)buf->dma_addr,
 		buf->dma_bytes, buf->is_sram, buf->is_rsv,
 		memory_type(buf->is_sram, buf->type));
@@ -585,11 +585,11 @@ int mtk_offload_free_mem(struct usb_offload_buffer *buf)
 	bool is_sram;
 
 	if (!buf || !buf->allocated) {
-		USB_OFFLOAD_INFO("buf:%p has alreadt freed\n", buf);
+		USB_OFFLOAD_MEM_DBG("buf:%p has already freed\n", buf);
 		return 0;
 	}
 
-	USB_OFFLOAD_INFO("va:%p phy:0x%llx size:%zu is_sram:%d is_rsv:%d type:%s\n",
+	USB_OFFLOAD_MEM_DBG("va:%p phy:0x%llx size:%zu is_sram:%d is_rsv:%d type:%s\n",
 		buf->dma_area, (unsigned long long)buf->dma_addr,
 		buf->dma_bytes, buf->is_sram, buf->is_rsv,
 		memory_type(buf->is_sram, buf->type));

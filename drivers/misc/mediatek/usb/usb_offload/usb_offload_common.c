@@ -215,7 +215,7 @@ static struct snd_usb_substream *find_snd_usb_substream(unsigned int card_num,
 	}
 
 done:
-	USB_OFFLOAD_INFO("done\n");
+	USB_OFFLOAD_MEM_DBG("done\n");
 err:
 	*uchip = chip;
 	if (!subs)
@@ -922,7 +922,7 @@ int send_uas_ipi_msg_to_adsp(struct usb_audio_stream_msg *uas_msg)
 	struct ipi_msg_t ipi_msg;
 	uint8_t task_scene = 0;
 
-	USB_OFFLOAD_INFO("msg: %p, size: %lu\n",
+	USB_OFFLOAD_MEM_DBG("msg: %p, size: %lu\n",
 			uas_msg, sizeof(*uas_msg));
 
 	if (uas_msg->uainfo.direction == 0)
@@ -1053,8 +1053,7 @@ static int usb_offload_prepare_msg_ext(struct usb_audio_stream_msg *msg,
 	if (expend_tr)
 		total_size += USB_OFFLOAD_TRB_SEGMENT_SIZE + align;
 
-	USB_OFFLOAD_INFO("allocate total_size:%d direction:%d\n",
-		total_size, uainfo->direction);
+	USB_OFFLOAD_INFO("total_size:%d direction:%d\n", total_size, uainfo->direction);
 
 	/* requeset for memory (urbs + 2nd segment)*/
 	ret = mtk_offload_alloc_mem(buf, total_size, USB_OFFLOAD_TRB_SEGMENT_SIZE,
@@ -1804,7 +1803,7 @@ fail:
 static void xhci_mtk_free_ring(struct xhci_hcd *xhci,
 		struct xhci_ring *ring, unsigned int ep_index)
 {
-	USB_OFFLOAD_INFO("\n");
+	USB_OFFLOAD_MEM_DBG("\n");
 
 	if (!ring)
 		return;
@@ -1845,7 +1844,7 @@ static struct xhci_ring *xhci_mtk_alloc_transfer_ring(struct xhci_hcd *xhci,
 	int num_segs = 1;
 	int cycle_state = 1;
 
-	USB_OFFLOAD_INFO("\n");
+	USB_OFFLOAD_MEM_DBG("\n");
 
 	if (endpoint_type != ISOC_OUT_EP && endpoint_type != ISOC_IN_EP) {
 		USB_OFFLOAD_ERR("wrong endpoint type, type=%d\n", endpoint_type);
@@ -1919,7 +1918,7 @@ FAIL_TO_ALLOC_ERST:
 
 static bool xhci_mtk_is_streaming(struct xhci_hcd *xhci)
 {
-	USB_OFFLOAD_INFO("is_streaming: %d\n", uodev->is_streaming);
+	USB_OFFLOAD_MEM_DBG("is_streaming: %d\n", uodev->is_streaming);
 	return uodev->is_streaming;
 }
 
@@ -2196,7 +2195,7 @@ static long usb_offload_ioctl(struct file *fp,
 		xhci_mem->erst_table = (unsigned long long)uodev->erst->erst_dma_addr;
 		xhci_mem->ev_ring = (unsigned long long)uodev->event_ring->first_seg->dma;
 
-		USB_OFFLOAD_INFO("ev_ring:0x%llx erst_table:0x%llx\n",
+		USB_OFFLOAD_MEM_DBG("ev_ring:0x%llx erst_table:0x%llx\n",
 			xhci_mem->ev_ring, xhci_mem->erst_table);
 
 		ret = send_init_ipi_msg_to_adsp(xhci_mem);
@@ -2346,12 +2345,12 @@ int xhci_mtk_ssusb_offload_get_mode(struct device *dev)
 {
 	bool is_in_advanced;
 
-	is_in_advanced = mtk_offload_is_advlowpwr(uodev);
-	USB_OFFLOAD_INFO("is_streaming:%d, is_in_advanced:%d\n",
-		uodev->is_streaming, is_in_advanced);
-
 	if (!uodev->is_streaming)
 		return SSUSB_OFFLOAD_MODE_NONE;
+
+	is_in_advanced = mtk_offload_is_advlowpwr(uodev);
+	USB_OFFLOAD_MEM_DBG("is_streaming:%d, is_in_advanced:%d\n",
+		uodev->is_streaming, is_in_advanced);
 
 	/* we only release APSRC request in advanced mode by
 	 * notifying SSUSB_OFFLOAD_MODE_S to mtu3 driver
@@ -2454,7 +2453,7 @@ INIT_OFFLOAD_NOTIFY_FAIL:
 INIT_MISC_DEV_FAIL:
 INIT_SHAREMEM_FAIL:
 	of_node_put(node_xhci_host);
-	USB_OFFLOAD_INFO("Probe Fail!!!");
+	USB_OFFLOAD_ERR("Probe Fail!!!");
 	return ret;
 }
 
