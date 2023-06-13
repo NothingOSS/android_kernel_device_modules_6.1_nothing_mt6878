@@ -5973,8 +5973,8 @@
 			interconnect-names = "disp_hrt_qos",
 					"disp_hrt_by_larb",
 					"disp_dp_hrt_by_larb";
-			pre-define-bw = <0xffffffff>, <4200>, <0>;
-			crtc-ovl-usage = <7>, <8>, <16>;
+			pre-define-bw = <0xffffffff>, <4200>, <0>, <2700>;
+			crtc-ovl-usage = <7>, <8>, <0x10>, <0x20>;
 
 			default-emi-eff = <8500>;
 			emi-eff-lp5-table =
