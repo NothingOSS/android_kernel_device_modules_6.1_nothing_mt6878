@@ -339,6 +339,9 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 	dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params;
 	spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
 
+	if (spr_params->enable == 1 && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1)
+		dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params_spr_in;
+
 	rc_buf_thresh = dsc_params->ext_pps_cfg.rc_buf_thresh;
 	range_min_qp = dsc_params->ext_pps_cfg.range_min_qp;
 	range_max_qp = dsc_params->ext_pps_cfg.range_max_qp;
@@ -364,7 +367,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 		bit_per_pixel = dsc_params->bit_per_pixel;
 		chrunk_size = (slice_width*bit_per_pixel/8/16);
 
-		if (spr_params->enable && spr_params->relay == 0
+		if (spr_params->enable && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1
 			&& disp_spr_bypass == 0) {
 			reg_val = 0x1 << 26;
 			switch (spr_params->spr_format_type) {
@@ -406,7 +409,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 			enc_slice_width = slice_width;
 		}
 		enc_pic_width = enc_slice_width * (dsc_params->slice_mode + 1);
-		if (spr_params->enable && spr_params->relay == 0
+		if (spr_params->enable && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1
 			&& disp_spr_bypass == 0) {
 			slice_group_width = (enc_slice_width + 2) / 3;
 			pic_group_width = slice_group_width * (dsc_params->slice_mode + 1);
@@ -610,7 +613,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 			mtk_ddp_write(comp, 0xd1a7d1a5,	DISP_REG_DSC_PPS18, handle);
 			mtk_ddp_write(comp, 0x0000d1ed,	DISP_REG_DSC_PPS19, handle);
 		}
-		if (spr_params->enable && spr_params->relay == 0
+		if (spr_params->enable && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1
 					&& disp_spr_bypass == 0) {
 			//mtk_ddp_write(comp, 0x0001d822, DISP_REG_DSC_CFG, handle);//VESA1.2 needed
 			//mtk_ddp_write(comp, 0x00014001, DISP_REG_DSC_CON, handle);

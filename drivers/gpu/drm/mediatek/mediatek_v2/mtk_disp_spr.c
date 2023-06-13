@@ -705,14 +705,36 @@ static void mtk_spr_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 static void mtk_spr_prepare(struct mtk_ddp_comp *comp)
 {
-	struct mtk_disp_spr *spr = comp_to_spr(comp);
+	struct mtk_disp_spr *spr = NULL;
+	struct mtk_ddp_comp *out_comp = NULL;
+	unsigned int panel_spr_enable;
 
 	DDPINFO("%s+\n", __func__);
+
+	if (!comp)
+		return;
+	spr = comp_to_spr(comp);
 
 	mtk_ddp_comp_clk_prepare(comp);
 
 	mtk_ddp_write_mask_cpu(comp, SPR_BYPASS_SHADOW,
 		DISP_REG_SPR_EN, SPR_BYPASS_SHADOW);
+
+	if (comp && comp->mtk_crtc && comp->mtk_crtc->panel_ext
+		&& comp->mtk_crtc->panel_ext->params
+		&& comp->mtk_crtc->panel_ext->params->spr_params.enable == 1
+		&& comp->mtk_crtc->panel_ext->params->spr_params.relay == 0) {
+		if (comp->mtk_crtc->spr_is_on)
+			panel_spr_enable = 0xfefe;
+		else
+			panel_spr_enable = 0xeeee;
+	}
+
+	if(comp && comp->mtk_crtc)
+		out_comp = mtk_ddp_comp_request_output(comp->mtk_crtc);
+
+	if (out_comp && out_comp->funcs && out_comp->funcs->io_cmd)
+		out_comp->funcs->io_cmd(out_comp, NULL, DSI_SET_PANEL_SPR, &panel_spr_enable);
 
 	if (spr->data && spr->data->version == MTK_SPR_V2) {
 		if (comp->mtk_crtc && comp->mtk_crtc->panel_ext &&
@@ -1248,7 +1270,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 		return;
 	}
 
-	if (spr_params->enable == 1 && spr_params->relay == 0) {
+	if (spr_params->enable == 1 && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1) {
 		//postalign config
 		if (priv->data->mmsys_id == MMSYS_MT6989) {
 			mtk_ddp_write_relaxed(postalign_comp, 1, MT6989_DISP_REG_POSTALIGN0_EN,

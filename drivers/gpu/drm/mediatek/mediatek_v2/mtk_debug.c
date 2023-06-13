@@ -565,6 +565,28 @@ int mtk_drm_get_conn_obj_id_from_idx(unsigned int disp_idx, int flag)
 }
 EXPORT_SYMBOL(mtk_drm_get_conn_obj_id_from_idx);
 
+int mtkfb_set_spr_status(unsigned int en)
+{
+	unsigned int ret;
+	struct drm_crtc *crtc;
+
+
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("%s failed to find crtc\n", __func__);
+		return -EINVAL;
+	}
+	if (en)
+		ret = mtk_drm_switch_spr(crtc, 1);
+	else
+		ret = mtk_drm_switch_spr(crtc, 0);
+
+	return ret;
+}
+EXPORT_SYMBOL(mtkfb_set_spr_status);
+
 int mtkfb_set_aod_backlight_level(unsigned int level)
 {
 	struct drm_crtc *crtc;
@@ -3345,6 +3367,22 @@ static void process_dbg_opt(const char *opt)
 		}
 		DDPMSG("read_cm:%d\n", addr);
 		ddic_dsi_read_cm_cmd(addr);
+	}  else if (strncmp(opt, "spr_enable:", 10) == 0) {
+		unsigned int value;
+		unsigned int ret;
+
+		ret = sscanf(opt, "spr_enable:%d\n", &value);
+		if (ret != 1) {
+			DDPPR_ERR("%d error to parse cmd %s\n",
+				__LINE__, opt);
+			return;
+		}
+		DDPMSG("spr_enable:%d\n", value);
+		if (value)
+			ret = mtkfb_set_spr_status(1);
+		else
+			ret = mtkfb_set_spr_status(0);
+
 	} else if (strncmp(opt, "ap_spr_cm_bypass:", 17) == 0) {
 		unsigned int spr_bypass, cm_bypass, ret;
 

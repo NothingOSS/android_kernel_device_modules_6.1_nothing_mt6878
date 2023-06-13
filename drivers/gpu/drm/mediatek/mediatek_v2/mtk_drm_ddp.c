@@ -22081,6 +22081,16 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 			DRM_MMP_MARK(mutex[m_id], val, 0);
 			if (m_id == 0)
 				drm_trace_tag_mark("mutex0_sof");
+
+			if (priv && (priv->data->mmsys_id == MMSYS_MT6989
+				|| priv->data->mmsys_id == MMSYS_MT6897)
+				&& mtk_crtc0 && atomic_read(&mtk_crtc0->spr_switching)) {
+				if (!readl(mtk_get_gce_backup_slot_va(mtk_crtc0,
+					DISP_SLOT_PANEL_SPR_EN))) {
+					atomic_set(&mtk_crtc0->spr_switching, 0);
+					wake_up(&mtk_crtc0->spr_switch_wait_queue);
+				}
+			}
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 			if (m_id == 0) {
 				//hint vcp display SOF

@@ -123,7 +123,8 @@ enum DISP_PMQOS_SLOT {
 #define DISP_SLOT_REQUEST_TE_PREPARE (DISP_SLOT_TE1_EN + 0x4)
 #define DISP_SLOT_REQUEST_TE_EN (DISP_SLOT_REQUEST_TE_PREPARE + 0x4)
 
-#define DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE (DISP_SLOT_REQUEST_TE_EN + 0x4)
+#define DISP_SLOT_PANEL_SPR_EN (DISP_SLOT_REQUEST_TE_EN + 0x4)
+#define DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE (DISP_SLOT_PANEL_SPR_EN + 0x4)
 
 /* reset OVL log */
 #define OVL_RT_LOG_NR 10
@@ -996,6 +997,10 @@ struct mtk_drm_crtc {
 	int dli_relay_1tnp;
 
 	unsigned int total_srt;
+
+	unsigned int spr_is_on;
+	wait_queue_head_t spr_switch_wait_queue;
+	atomic_t spr_switching;
 };
 
 struct mtk_crtc_state {
@@ -1313,5 +1318,7 @@ void mtk_addon_get_module(const enum addon_scenario scn,
 			 const struct mtk_addon_module_data **addon_module_dual);
 void mtk_crtc_exec_atf_prebuilt_instr(struct mtk_drm_crtc *mtk_crtc,
 			struct cmdq_pkt *handle);
+
+int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en);
 
 #endif /* MTK_DRM_CRTC_H */

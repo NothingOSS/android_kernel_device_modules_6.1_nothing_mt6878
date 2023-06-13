@@ -7283,14 +7283,21 @@ unsigned int mtk_dsi_get_dsc_compress_rate(struct mtk_dsi *dsi)
 	unsigned int compress_rate, bpp, bpc;
 	struct mtk_panel_ext *ext = dsi->ext;
 	struct mtk_panel_spr_params *spr_params;
+	struct mtk_panel_dsc_params *dsc_params;
 
 	spr_params = &ext->params->spr_params;
-	if (ext->params->dsc_params.enable) {
-		bpp = ext->params->dsc_params.bit_per_pixel / 16;
-		bpc = ext->params->dsc_params.bit_per_channel;
+
+	dsc_params = &ext->params->dsc_params;
+	if (spr_params->enable && spr_params->relay == 0 && disp_spr_bypass == 0
+		&& dsi->ddp_comp.mtk_crtc->spr_is_on)
+		dsc_params = &ext->params->dsc_params_spr_in;
+
+	if (dsc_params->enable) {
+		bpp = dsc_params->bit_per_pixel / 16;
+		bpc = dsc_params->bit_per_channel;
 		//compress_rate*100 for 3.75 or 2.5 case
 		if (spr_params->enable && spr_params->relay == 0
-			&& disp_spr_bypass == 0
+			&& disp_spr_bypass == 0 && dsi->ddp_comp.mtk_crtc->spr_is_on
 			&& spr_params->spr_format_type < MTK_PANEL_RGBRGB_BGRBGR_TYPE)
 			compress_rate = bpc * 4 * 100 / bpp;
 		else
@@ -7300,8 +7307,9 @@ unsigned int mtk_dsi_get_dsc_compress_rate(struct mtk_dsi *dsi)
 	}
 	/* spr compress rate */
 	if (spr_params->enable && spr_params->relay == 0 && disp_spr_bypass == 0
+		&& dsi->ddp_comp.mtk_crtc->spr_is_on
 		&& spr_params->spr_format_type < MTK_PANEL_EXT_TYPE) {
-		if (ext->params->dsc_params.enable)
+		if (dsc_params->enable)
 			compress_rate = compress_rate * 3 / 2;
 		else if (ext->params->spr_output_mode == MTK_PANEL_PACKED_SPR_8_BITS
 			|| ext->params->spr_output_mode == MTK_PANEL_PACKED_SPR_12_BITS)
@@ -9142,6 +9150,21 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			panel_ext->funcs->set_bl_elvss_cmdq(dsi,
 					mipi_dsi_dcs_grp_write_gce,
 					handle, (struct mtk_bl_ext_config *)params);
+	}
+		break;
+	case DSI_SET_PANEL_SPR:
+	{
+		struct mtk_dsi *dsi =
+			container_of(comp, struct mtk_dsi, ddp_comp);
+		struct drm_panel *panel = dsi ? dsi->panel : NULL;
+
+		panel_ext = mtk_dsi_get_panel_ext(comp);
+
+		if (panel_ext && panel_ext->funcs
+			&& panel_ext->funcs->set_spr_cmdq)
+			panel_ext->funcs->set_spr_cmdq(dsi, panel,
+					mipi_dsi_dcs_grp_write_gce,
+					handle, *(unsigned int *)params);
 	}
 		break;
 	case DSI_HBM_SET:

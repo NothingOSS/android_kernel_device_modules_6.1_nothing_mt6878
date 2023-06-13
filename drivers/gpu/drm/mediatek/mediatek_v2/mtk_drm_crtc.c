@@ -174,6 +174,7 @@ static bool g_ccorr_linear;
 #define DISP_REG_OVL_ELX_BURST_ACC(n) (0x950UL + 0x4 * (n))
 #define DISP_REG_OVL_LX_BURST_ACC_WIN_MAX(n) (0x960UL + 0x4 * (n))
 #define DISP_REG_OVL_ELX_BURST_ACC_WIN_MAX(n) (0x970UL + 0x4 * (n))
+static void mtk_crtc_spr_switch_cfg(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
 
 #define DISP_REG_OVL_GREQ_LAYER_CNT (0x234UL)
 
@@ -1680,6 +1681,96 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	CRTC_MMP_EVENT_END(index, backlight, (unsigned long)crtc,
 			level);
 
+	return ret;
+}
+
+int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct cmdq_pkt *cmdq_handle;
+	int ret = 0;
+	struct mtk_panel_params *params =
+			mtk_drm_get_lcm_ext_params(crtc);
+
+
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+	if (!(mtk_crtc->enabled)) {
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	if (params && (params->spr_params.enable == 0 || params->spr_params.relay == 1)) {
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	if (en == mtk_crtc->spr_is_on) {
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return ret;
+	}
+
+	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+
+	if (params && params->spr_params.enable == 1 &&
+		params->spr_params.relay == 0) {
+		cmdq_handle =
+			cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+
+			if (!cmdq_handle) {
+				DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+				return -EINVAL;
+			}
+
+			if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
+				mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
+					DDP_SECOND_PATH, 0);
+			else
+				mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
+					DDP_FIRST_PATH, 0);
+
+			mtk_crtc->spr_is_on = en;
+			mtk_crtc_spr_switch_cfg(mtk_crtc, cmdq_handle);
+			if (mtk_crtc->spr_is_on)
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_PANEL_SPR_EN), 1, ~0);
+			else
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_PANEL_SPR_EN), 2, ~0);
+			cmdq_pkt_set_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+
+
+		cmdq_pkt_flush(cmdq_handle);
+		cmdq_pkt_destroy(cmdq_handle);
+
+		atomic_set(&mtk_crtc->spr_switching, 1);
+		if (!readl(mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_PANEL_SPR_EN))) {
+			atomic_set(&mtk_crtc->spr_switching, 0);
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			return ret;
+		}
+
+	}
+
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+	//wait switch done
+	if (!wait_event_timeout(mtk_crtc->spr_switch_wait_queue,
+		!atomic_read(&mtk_crtc->spr_switching), msecs_to_jiffies(50))) {
+		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+		if (!readl(mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_PANEL_SPR_EN))) {
+			atomic_set(&mtk_crtc->spr_switching, 0);
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			return ret;
+		}
+		DDPPR_ERR("%s:%d switch time\n", __func__, __LINE__);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -EINVAL;
+	}
 	return ret;
 }
 
@@ -8003,6 +8094,139 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 
 #ifndef DRM_CMDQ_DISABLE
 
+static void cmdq_pkt_switch_panel_spr_enable(struct cmdq_pkt *cmdq_handle,
+		struct mtk_drm_crtc *mtk_crtc)
+{
+	const u16 reg_jump = CMDQ_THR_SPR_IDX2;
+	const u16 panel_spr_en = CMDQ_THR_SPR_IDX3;
+	struct cmdq_operand lop;
+	struct cmdq_operand rop;
+	u32 inst_condi_jump, inst_jump_end;
+	u64 *inst, jump_pa;
+
+	unsigned int panel_spr_enable = 1;
+	struct mtk_ddp_comp *comp = NULL;
+
+
+
+	cmdq_pkt_read(cmdq_handle, NULL,
+		mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_PANEL_SPR_EN), panel_spr_en);
+	lop.reg = true;
+	lop.idx = panel_spr_en;
+	rop.reg = false;
+	rop.value = 2;
+
+	inst_condi_jump = cmdq_handle->cmd_buf_size;
+	cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
+	/* check whether te1_en is enabled*/
+	cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump,
+		&lop, &rop, CMDQ_EQUAL);
+
+	/* condition not match, here is nop jump */
+
+	inst_jump_end = cmdq_handle->cmd_buf_size;
+	cmdq_pkt_jump_addr(cmdq_handle, 0);
+
+	/* following instructinos is condition TRUE,
+	 * thus conditional jump should jump current offset
+	 */
+	if (unlikely(!cmdq_handle->avail_buf_size))
+		cmdq_pkt_add_cmd_buffer(cmdq_handle);
+	inst = cmdq_pkt_get_va_by_offset(cmdq_handle, inst_condi_jump);
+
+	jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
+			cmdq_handle->cmd_buf_size);
+	*inst = *inst & ((u64)0xFFFFFFFF << 32);
+	*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
+
+	/* condition match, here is nop jump */
+
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	mtk_ddp_comp_io_cmd(comp, cmdq_handle, DSI_SET_PANEL_SPR, &panel_spr_enable);
+	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+				 mtk_get_gce_backup_slot_pa(mtk_crtc,
+				DISP_SLOT_PANEL_SPR_EN), 0, ~0);
+
+	/* this is end of whole condition, thus condition
+	 * FALSE part should jump here
+	 */
+	if (unlikely(!cmdq_handle->avail_buf_size))
+		cmdq_pkt_add_cmd_buffer(cmdq_handle);
+	inst = cmdq_pkt_get_va_by_offset(cmdq_handle, inst_jump_end);
+
+	jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
+			cmdq_handle->cmd_buf_size);
+	*inst = *inst & ((u64)0xFFFFFFFF << 32);
+	*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
+}
+
+static void cmdq_pkt_switch_panel_spr_disable(struct cmdq_pkt *cmdq_handle,
+		struct mtk_drm_crtc *mtk_crtc)
+{
+	const u16 reg_jump = CMDQ_THR_SPR_IDX2;
+	const u16 panel_spr_en = CMDQ_THR_SPR_IDX3;
+	struct cmdq_operand lop;
+	struct cmdq_operand rop;
+	u32 inst_condi_jump, inst_jump_end;
+	u64 *inst, jump_pa;
+
+	unsigned int panel_spr_enable = 0;
+	struct mtk_ddp_comp *comp = NULL;
+
+
+
+	cmdq_pkt_read(cmdq_handle, NULL,
+		mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_PANEL_SPR_EN), panel_spr_en);
+	lop.reg = true;
+	lop.idx = panel_spr_en;
+	rop.reg = false;
+	rop.value = 1;
+
+	inst_condi_jump = cmdq_handle->cmd_buf_size;
+	cmdq_pkt_assign_command(cmdq_handle, reg_jump, 0);
+	/* check whether te1_en is enabled*/
+	cmdq_pkt_cond_jump_abs(cmdq_handle, reg_jump,
+		&lop, &rop, CMDQ_EQUAL);
+
+	/* condition not match, here is nop jump */
+
+	inst_jump_end = cmdq_handle->cmd_buf_size;
+	cmdq_pkt_jump_addr(cmdq_handle, 0);
+
+	/* following instructinos is condition TRUE,
+	 * thus conditional jump should jump current offset
+	 */
+	if (unlikely(!cmdq_handle->avail_buf_size))
+		cmdq_pkt_add_cmd_buffer(cmdq_handle);
+	inst = cmdq_pkt_get_va_by_offset(cmdq_handle, inst_condi_jump);
+
+	jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
+			cmdq_handle->cmd_buf_size);
+	*inst = *inst & ((u64)0xFFFFFFFF << 32);
+	*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
+
+	/* condition match, here is nop jump */
+
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	mtk_ddp_comp_io_cmd(comp, cmdq_handle, DSI_SET_PANEL_SPR, &panel_spr_enable);
+	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+				 mtk_get_gce_backup_slot_pa(mtk_crtc,
+				DISP_SLOT_PANEL_SPR_EN), 0, ~0);
+
+	/* this is end of whole condition, thus condition
+	 * FALSE part should jump here
+	 */
+	if (unlikely(!cmdq_handle->avail_buf_size))
+		cmdq_pkt_add_cmd_buffer(cmdq_handle);
+	inst = cmdq_pkt_get_va_by_offset(cmdq_handle, inst_jump_end);
+
+	jump_pa = cmdq_pkt_get_pa_by_offset(cmdq_handle,
+			cmdq_handle->cmd_buf_size);
+	*inst = *inst & ((u64)0xFFFFFFFF << 32);
+	*inst = *inst | CMDQ_REG_SHIFT_ADDR(jump_pa);
+}
+
+
 static void cmdq_pkt_request_te(struct cmdq_pkt *cmdq_handle,
 		struct mtk_drm_crtc *mtk_crtc)
 {
@@ -8435,7 +8659,14 @@ skip_prete:
 			if (priv->data->mmsys_id == MMSYS_MT6985)
 				mtk_oddmr_ddren(cmdq_handle, crtc, 1);
 
+			if (params_lcm && params_lcm->spr_params.enable == 1
+				&& params_lcm->spr_params.relay == 0) {
+				cmdq_pkt_switch_panel_spr_enable(cmdq_handle, mtk_crtc);
+				cmdq_pkt_switch_panel_spr_disable(cmdq_handle, mtk_crtc);
+			}
+
 			mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle, MTK_TRIG_FLAG_PRE_TRIGGER);
+
 
 			if (mtk_crtc->pre_te_cfg.merge_trigger_en == true)
 				GCE_DO(clear_event, EVENT_STREAM_DIRTY);
@@ -12387,6 +12618,50 @@ mte_target:
 /******************Msync 2.0 function end**********************/
 
 
+static void mtk_crtc_spr_switch_cfg(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle)
+{
+
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_ddp_config cfg = {0};
+	struct mtk_ddp_comp *dsc_comp;
+
+	struct mtk_ddp_comp *spr0_comp;
+	struct mtk_ddp_comp *spr1_comp;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+
+	struct mtk_panel_params *params =
+			mtk_drm_get_lcm_ext_params(crtc);
+
+
+
+	if (drm_crtc_index(crtc) == 0 && params && params->spr_params.enable) {
+
+		spr0_comp = priv->ddp_comp[DDP_COMPONENT_SPR0];
+
+		cfg.w = mtk_crtc_get_width_by_comp(__func__, crtc, spr0_comp, false);
+		cfg.h = mtk_crtc_get_height_by_comp(__func__, crtc, spr0_comp, false);
+		cfg.tile_overhead = mtk_crtc_get_total_overhead(mtk_crtc);
+
+		if (params && params->output_mode == MTK_PANEL_DSC_SINGLE_PORT) {
+			dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+			if (dsc_comp && dsc_comp->mtk_crtc == NULL)
+				dsc_comp->mtk_crtc = mtk_crtc;
+
+			mtk_ddp_comp_config(dsc_comp, &cfg, cmdq_handle);
+			mtk_ddp_comp_start(dsc_comp, cmdq_handle);
+		}
+
+		spr0_comp = priv->ddp_comp[DDP_COMPONENT_SPR0];
+		mtk_ddp_comp_config(spr0_comp, &cfg, cmdq_handle);
+		if (mtk_crtc->is_dual_pipe) {
+			spr1_comp = priv->ddp_comp[DDP_COMPONENT_SPR1];
+			mtk_ddp_comp_config(spr1_comp, &cfg, cmdq_handle);
+		}
+	}
+}
+
+
+
 static void update_frame_weight(struct drm_crtc *crtc,
 		struct mtk_crtc_state *crtc_state)
 {
@@ -16025,6 +16300,10 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		mtk_ddp_comp_io_cmd(output_comp, NULL, REQ_PANEL_EXT,
 				    &mtk_crtc->panel_ext);
 
+	if (mtk_crtc && mtk_crtc->panel_ext &&
+		mtk_crtc->panel_ext->params) {
+		mtk_crtc->spr_is_on = mtk_crtc->panel_ext->params->spr_params.enable;
+	}
 	drm_mode_crtc_set_gamma_size(&mtk_crtc->base, MTK_LUT_SIZE);
 	/* TODO: Skip color mgmt first */
 	// drm_crtc_enable_color_mgmt(&mtk_crtc->base, 0, false, MTK_LUT_SIZE);
@@ -16089,6 +16368,8 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		/* For protect crtc blank state */
 		mutex_init(&mtk_crtc->blank_lock);
 		init_waitqueue_head(&mtk_crtc->state_wait_queue);
+
+		init_waitqueue_head(&mtk_crtc->spr_switch_wait_queue);
 
 		init_waitqueue_head(&mtk_crtc->trigger_cmdq);
 		mtk_crtc->trig_cmdq_task =

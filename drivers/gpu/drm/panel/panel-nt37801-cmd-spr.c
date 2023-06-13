@@ -98,6 +98,18 @@ unsigned int nt37801_range_min_qp[15] = {0, 2, 3, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 
 unsigned int nt37801_range_max_qp[15] = {4, 6, 7, 9, 10, 11, 11, 12, 12, 13, 13, 13, 13, 14, 15};
 int nt37801_range_bpg_ofs[15] = {2, 0, 0, -2, -4, -6, -8, -8, -8, -10, -10, -10, -12, -12, -12};
 
+unsigned int nt37801_wqhs_dsi_cmd_120hz_dphy_buf_thresh[14] = {
+	896, 1792, 2688, 3584, 4480, 5376, 6272, 6720, 7168, 7616, 7744, 7872, 8000, 8064};
+unsigned int nt37801_wqhs_dsi_cmd_120hz_dphy_range_min_qp[15] = {
+	0, 4, 5, 5, 7, 7, 7, 7, 7, 8, 9, 9, 9, 12, 16};
+unsigned int nt37801_wqhs_dsi_cmd_120hz_dphy_range_max_qp[15] = {
+	8, 8, 9, 10, 11, 11, 11, 12, 13, 14, 14, 15, 15, 16, 17};
+int nt37801_wqhs_dsi_cmd_120hz_dphy_range_bpg_ofs[15] = {
+	2, 0, 0, -2, -4, -6, -8, -8, -8, -10, -10, -10, -12, -12, -12};
+
+
+static bool panel_spr_enable;
+
 
 struct lcm {
 	struct device *dev;
@@ -325,8 +337,9 @@ static void lcm_panel_init(struct lcm *ctx)
 	bl_tb[2] = level & 0xFF;
 	lcm_dcs_write(ctx, bl_tb, ARRAY_SIZE(bl_tb));
 
-	lcm_dcs_write_seq_static(ctx, 0x11);
-	msleep(140);
+	//rnd off
+	//lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x07);
+	//lcm_dcs_write_seq_static(ctx, 0xc0, 0x00);
 
 	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x03);
 	lcm_dcs_write_seq_static(ctx, 0x6F, 0x08);
@@ -336,9 +349,27 @@ static void lcm_panel_init(struct lcm *ctx)
 	//lcm_dcs_write_seq_static(ctx, 0xDE, 0x10, 0x34, 0x25, 0x30, 0x14, 0x25);//nvt CHANGE COLOR
 	lcm_dcs_write_seq_static(ctx, 0xDE, 0x30, 0x14, 0x25, 0x10, 0x34, 0x25);//bgrg
 
-	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x07);
-	lcm_dcs_write_seq_static(ctx, 0xB0, 0x24);
-	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
+	lcm_dcs_write_seq_static(ctx, 0x91, 0xAB, 0xA8, 0x00, 0x28, 0xD2,
+		0x00, 0x02, 0x86, 0x04, 0x3A, 0x00, 0x0A, 0x02, 0xAB, 0x01, 0xE9, 0x10, 0xF0);
+	lcm_dcs_write_seq_static(ctx, 0x93, 0xA0, 0xF0, 0x00, 0x08, 0xD1,
+		0x00, 0x01, 0xD6, 0x00, 0x40, 0x00, 0x3C, 0x0E, 0xDC, 0x36, 0x00, 0x11, 0x50);
+
+	lcm_dcs_write_seq_static(ctx, 0xFF, 0xaa, 0x55, 0xa5, 0x81);
+	lcm_dcs_write_seq_static(ctx, 0x6f, 0x1d);
+	lcm_dcs_write_seq_static(ctx, 0xfb, 0x6f);
+
+	if (panel_spr_enable) {
+		lcm_dcs_write_seq_static(ctx, 0x03, 0x00);
+		lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x07);
+		lcm_dcs_write_seq_static(ctx, 0xB0, 0x84);
+	} else {
+		lcm_dcs_write_seq_static(ctx, 0x03, 0x10);
+		lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x07);
+		lcm_dcs_write_seq_static(ctx, 0xB0, 0x24);
+	}
+
+	lcm_dcs_write_seq_static(ctx, 0x11);
+	msleep(140);
 
 	pr_info("%s current_fps:%d\n", __func__, current_fps);
 	switch (current_fps) {
@@ -820,6 +851,50 @@ static struct mtk_panel_params ext_params = {
 
 	.dsc_params = {
 		.enable = 1,
+		.ver = 18,
+		.slice_mode = 1,
+		.rgb_swap = 0,
+		.dsc_cfg = 40,
+		.rct_on = 1,
+		.bit_per_channel = 10,
+		.dsc_line_buf_depth = 11,
+		.bp_enable = 1,
+		.bit_per_pixel = 128,
+		.pic_height = FRAME_HEIGHT,
+		.pic_width = FRAME_WIDTH,
+		.slice_height = 40,
+		.slice_width = (FRAME_WIDTH/2),
+		.chunk_size = 720,
+		.xmit_delay = 512,
+		.dec_delay = 646,
+		.scale_value = 32,
+		.increment_interval = 1082,
+		.decrement_interval = 10,
+		.line_bpg_offset = 13,
+		.nfl_bpg_offset = 683,
+		.slice_bpg_offset = 489,
+		.initial_offset = 6144,
+		.final_offset = 4336,
+		.flatness_minqp = 7,
+		.flatness_maxqp = 16,
+		.rc_model_size = 8192,
+		.rc_edge_factor = 6,
+		.rc_quant_incr_limit0 = 15,
+		.rc_quant_incr_limit1 = 15,
+		.rc_tgt_offset_hi = 3,
+		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = nt37801_wqhs_dsi_cmd_120hz_dphy_buf_thresh,
+			.range_min_qp = nt37801_wqhs_dsi_cmd_120hz_dphy_range_min_qp,
+			.range_max_qp = nt37801_wqhs_dsi_cmd_120hz_dphy_range_max_qp,
+			.range_bpg_ofs = nt37801_wqhs_dsi_cmd_120hz_dphy_range_bpg_ofs,
+			},
+	},
+
+	.dsc_params_spr_in  = {
+		.enable = 1,
 		.ver = 2,
 		.slice_mode = 1,
 		.rgb_swap = 0,
@@ -934,7 +1009,50 @@ static struct mtk_panel_params ext_params_90hz = {
 	},
 	.spr_output_mode = MTK_PANEL_PACKED_SPR_8_BITS,
 
-	.dsc_params = {
+		.dsc_params = {
+		.enable = 1,
+		.ver = 18,
+		.slice_mode = 1,
+		.rgb_swap = 0,
+		.dsc_cfg = 40,
+		.rct_on = 1,
+		.bit_per_channel = 10,
+		.dsc_line_buf_depth = 11,
+		.bp_enable = 1,
+		.bit_per_pixel = 128,
+		.pic_height = FRAME_HEIGHT,
+		.pic_width = FRAME_WIDTH,
+		.slice_height = 40,
+		.slice_width = (FRAME_WIDTH/2),
+		.chunk_size = 720,
+		.xmit_delay = 512,
+		.dec_delay = 646,
+		.scale_value = 32,
+		.increment_interval = 1082,
+		.decrement_interval = 10,
+		.line_bpg_offset = 13,
+		.nfl_bpg_offset = 683,
+		.slice_bpg_offset = 489,
+		.initial_offset = 6144,
+		.final_offset = 4336,
+		.flatness_minqp = 7,
+		.flatness_maxqp = 16,
+		.rc_model_size = 8192,
+		.rc_edge_factor = 6,
+		.rc_quant_incr_limit0 = 15,
+		.rc_quant_incr_limit1 = 15,
+		.rc_tgt_offset_hi = 3,
+		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = nt37801_wqhs_dsi_cmd_120hz_dphy_buf_thresh,
+			.range_min_qp = nt37801_wqhs_dsi_cmd_120hz_dphy_range_min_qp,
+			.range_max_qp = nt37801_wqhs_dsi_cmd_120hz_dphy_range_max_qp,
+			.range_bpg_ofs = nt37801_wqhs_dsi_cmd_120hz_dphy_range_bpg_ofs,
+			},
+	},
+	.dsc_params_spr_in = {
 		.enable = 1,
 		.ver = 2,
 		.slice_mode = 1,
@@ -1050,7 +1168,51 @@ static struct mtk_panel_params ext_params_60hz = {
 	},
 	.spr_output_mode = MTK_PANEL_PACKED_SPR_8_BITS,
 
-	.dsc_params = {
+		.dsc_params = {
+		.enable = 1,
+		.ver = 18,
+		.slice_mode = 1,
+		.rgb_swap = 0,
+		.dsc_cfg = 40,
+		.rct_on = 1,
+		.bit_per_channel = 10,
+		.dsc_line_buf_depth = 11,
+		.bp_enable = 1,
+		.bit_per_pixel = 128,
+		.pic_height = FRAME_HEIGHT,
+		.pic_width = FRAME_WIDTH,
+		.slice_height = 40,
+		.slice_width = (FRAME_WIDTH/2),
+		.chunk_size = 720,
+		.xmit_delay = 512,
+		.dec_delay = 646,
+		.scale_value = 32,
+		.increment_interval = 1082,
+		.decrement_interval = 10,
+		.line_bpg_offset = 13,
+		.nfl_bpg_offset = 683,
+		.slice_bpg_offset = 489,
+		.initial_offset = 6144,
+		.final_offset = 4336,
+		.flatness_minqp = 7,
+		.flatness_maxqp = 16,
+		.rc_model_size = 8192,
+		.rc_edge_factor = 6,
+		.rc_quant_incr_limit0 = 15,
+		.rc_quant_incr_limit1 = 15,
+		.rc_tgt_offset_hi = 3,
+		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = nt37801_wqhs_dsi_cmd_120hz_dphy_buf_thresh,
+			.range_min_qp = nt37801_wqhs_dsi_cmd_120hz_dphy_range_min_qp,
+			.range_max_qp = nt37801_wqhs_dsi_cmd_120hz_dphy_range_max_qp,
+			.range_bpg_ofs = nt37801_wqhs_dsi_cmd_120hz_dphy_range_bpg_ofs,
+			},
+	},
+
+	.dsc_params_spr_in = {
 		.enable = 1,
 		.ver = 2,
 		.slice_mode = 1,
@@ -1282,6 +1444,42 @@ static int mode_switch(struct drm_panel *panel,
 	return ret;
 }
 
+
+static int lcm_set_spr_cmdq(void *dsi, struct drm_panel *panel, dcs_grp_write_gce cb,
+	void *handle, unsigned int en)
+{
+	static struct mtk_panel_para_table panel_spr_on_tb[] = {
+		{2, { 0x03, 0x00}},
+		{6, { 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x07}},
+		{2, { 0xB0, 0x84}},
+	};
+	static struct mtk_panel_para_table panel_spr_off_tb[] = {
+		{2, { 0x03, 0x10}},
+		{6, { 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x07}},
+		{2, { 0xB0, 0x24}},
+	};
+		//ddic spr off
+		if (en == 0xfefe) {
+			panel_spr_enable = false;
+			return -1;
+		}
+		//ddic spr on
+		if (en == 0xeeee) {
+			panel_spr_enable = true;
+			return -1;
+		}
+		if (!cb)
+			return -1;
+		if (!handle)
+			return -1;
+		if (en)
+			cb(dsi, handle, panel_spr_on_tb, ARRAY_SIZE(panel_spr_on_tb));
+		else
+			cb(dsi, handle, panel_spr_off_tb, ARRAY_SIZE(panel_spr_off_tb));
+		return 0;
+}
+
+
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
@@ -1293,6 +1491,7 @@ static struct mtk_panel_funcs ext_funcs = {
 	/* Not real backlight cmd in AOD, just for QC purpose */
 	.set_aod_light_mode = lcm_setbacklight_cmdq,
 	.ata_check = panel_ata_check,
+	.set_spr_cmdq = lcm_set_spr_cmdq,
 };
 #endif
 

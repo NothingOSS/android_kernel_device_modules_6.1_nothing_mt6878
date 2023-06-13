@@ -496,6 +496,7 @@ struct mtk_panel_params {
 		lane_swap[MIPITX_PHY_PORT_NUM][MIPITX_PHY_LANE_NUM];
 	bool pn_swap[MIPITX_PHY_PORT_NUM][MIPITX_PHY_LANE_NUM];
 	struct mtk_panel_dsc_params dsc_params;
+	struct mtk_panel_dsc_params dsc_params_spr_in;
 	unsigned int output_mode;
 	unsigned int spr_output_mode;
 	unsigned int lcm_cmd_if;
@@ -564,6 +565,8 @@ struct mtk_panel_funcs {
 
 	int (*set_backlight_cmdq)(void *dsi_drv, dcs_write_gce cb,
 		void *handle, unsigned int level);
+	int (*set_spr_cmdq)(void *dsi_drv, struct drm_panel *panel, dcs_grp_write_gce cb,
+		void *handle, unsigned int en);
 	int (*set_aod_light_mode)(void *dsi_drv, dcs_write_gce cb,
 		void *handle, unsigned int mode);
 	int (*set_backlight_grp_cmdq)(void *dsi_drv, dcs_grp_write_gce cb,
