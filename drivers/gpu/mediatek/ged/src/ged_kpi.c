@@ -324,6 +324,7 @@ static unsigned long long g_GRemTimeAccu; /*g_gpu_remained_time_accum*/
 static unsigned long long g_CRemTimeAccu; /*g_cpu_remained_time_accum*/
 static unsigned long long g_gpu_freq_accum;
 static unsigned int g_frame_count;
+static unsigned int g_effective_frame_count;
 
 static unsigned int gx_fps;
 static unsigned int gx_cpu_time_avg;
@@ -400,6 +401,7 @@ EXPORT_SYMBOL(ged_kpi_fastdvfs_update_dcs_fp);
 static inline void ged_kpi_clean_kpi_info(void)
 {
 	g_frame_count = 0;
+	g_effective_frame_count = 0;
 	g_elapsed_time_per_sec = 0;
 	g_cpu_time_accum = 0;
 	g_gpu_time_accum = 0;
@@ -415,7 +417,7 @@ static inline void ged_kpi_clean_kpi_info(void)
 static inline void ged_kpi_calc_kpi_info(u64 ulID, struct GED_KPI *psKPI
 	, struct GED_KPI_HEAD *psHead)
 {
-
+	unsigned int cur_minfreq;
 	/* check if there is a main rendering thread */
 	/* only SF is excluded from the group of considered candidates */
 	if (main_head) {
@@ -439,16 +441,21 @@ static inline void ged_kpi_calc_kpi_info(u64 ulID, struct GED_KPI *psKPI
 		g_elapsed_time_per_sec += psKPI->ullTimeStampS - g_pre_TimeStampS;
 		g_gpu_time_accum += psKPI->t_gpu;
 		g_CRemTimeAccu += psKPI->ullTimeStampS - psKPI->ullTimeStamp1;
-		g_gpu_freq_accum += psKPI->gpu_freq;
 		g_cpu_time_accum += psKPI->ullTimeStamp1 - g_pre_TimeStamp1;
 		g_frame_count++;
+		cur_minfreq = ged_get_freq_by_idx(ged_get_min_oppidx());  /* in KHz*/
+
+		if (psKPI->gpu_freq >= cur_minfreq / 1000) {
+			g_gpu_freq_accum += psKPI->gpu_freq;
+			g_effective_frame_count++;
+		}
 
 		g_pre_TimeStamp1 = psKPI->ullTimeStamp1;
 		g_pre_TimeStamp2 = psKPI->ullTimeStamp2;
 		g_pre_TimeStampS = psKPI->ullTimeStampS;
 
 		if (g_elapsed_time_per_sec >= GED_KPI_SEC_DIVIDER &&
-			g_frame_count > 0) {
+			g_frame_count > 0 && g_effective_frame_count > 0) {
 			unsigned long long g_fps;
 
 			g_fps = g_frame_count;
@@ -471,7 +478,7 @@ static inline void ged_kpi_calc_kpi_info(u64 ulID, struct GED_KPI *psKPI
 			do_div(g_CRemTimeAccu, g_frame_count);
 			gx_cpu_remained_time_avg = (unsigned int)g_CRemTimeAccu;
 
-			do_div(g_gpu_freq_accum, g_frame_count);
+			do_div(g_gpu_freq_accum, g_effective_frame_count);
 			gx_gpu_freq_avg = g_gpu_freq_accum;
 
 			ged_kpi_clean_kpi_info();
