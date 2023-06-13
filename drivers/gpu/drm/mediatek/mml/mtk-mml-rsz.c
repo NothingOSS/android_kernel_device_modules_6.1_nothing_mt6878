@@ -357,8 +357,8 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 		}
 	}
 	data->rsz.max_width = rsz->data->tile_width;
-	data->rsz.crop_aal_tile_loss =
-		!rsz->data->aal_crop && dest->pq_config.en_dre;
+	data->rsz.frame_out = cfg->frame_out[ccfg->node->out_idx];
+	data->rsz.crop_aal_tile_loss = !rsz->data->aal_crop && dest->pq_config.en_dre;
 	/* RSZ support crop capability */
 	func->type = TILE_TYPE_CROP_EN;
 	func->init_func = tile_prz_init;
@@ -547,12 +547,12 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	/* YUV422 to YUV444 upsampler */
 	if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
-		if (tile->out.xe >= dest->data.height - 1)
+		if (tile->out.xe >= dest->compose.height - 1)
 			urs_clip_en = false;
 		else
 			urs_clip_en = true;
 	} else {
-		if (tile->out.xe >= dest->data.width - 1)
+		if (tile->out.xe >= dest->compose.width - 1)
 			urs_clip_en = false;
 		else
 			urs_clip_en = true;
