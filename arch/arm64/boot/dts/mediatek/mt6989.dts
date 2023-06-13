@@ -11126,6 +11126,7 @@
 		u3phy: usb-phy0@11e40000 {
 			compatible = "mediatek,xsphy";
 			reg = <0 0x11e43000 0 0x200>;
+			tx-chirpk-capable;
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
