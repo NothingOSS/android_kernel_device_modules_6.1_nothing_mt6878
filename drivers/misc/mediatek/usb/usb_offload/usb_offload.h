@@ -27,8 +27,6 @@
 #include <linux/iommu.h>
 #include <linux/dma-mapping.h>
 
-#define MTK_AUDIO_INTERFACE_READY
-
 #define MIN_USB_OFFLOAD_SHIFT (8)
 #define MIN_USB_OFFLOAD_POOL_SIZE (1 << MIN_USB_OFFLOAD_SHIFT)
 
@@ -47,6 +45,7 @@ struct usb_offload_mem_info {
 	unsigned long long size;
 	unsigned char *vir_addr;
 	bool is_valid;
+	bool try_init;
 	struct gen_pool *pool;
 	u8 type;
 };
@@ -266,8 +265,10 @@ extern unsigned int usb_offload_log;
 		pr_info("UD, %s(%d) " fmt, __func__, __LINE__, ## args); \
 	} while (0)
 
-extern int mtk_usb_offload_init_rsv_mem(int min_alloc_order);
-extern int mtk_usb_offload_deinit_rsv_sram(void);
+extern int soc_init_aud_intf(void);
+extern int mtk_offload_init_rsv_dram(int min_alloc_order);
+extern int mtk_offload_init_rsv_sram(int min_alloc_order);
+extern int mtk_offload_deinit_rsv_sram(void);
 extern int mtk_offload_alloc_mem(struct usb_offload_buffer *buf, unsigned int size,
 	int align, enum usb_offload_mem_id mem_id, bool is_rsv);
 extern int mtk_offload_free_mem(struct usb_offload_buffer *buf);
