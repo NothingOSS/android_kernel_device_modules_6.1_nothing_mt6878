@@ -94,7 +94,7 @@ static inline bool should_honor_rt_sync(struct rq *rq, struct task_struct *p,
 #if IS_ENABLED(CONFIG_UCLAMP_TASK)
 static inline unsigned long uclamp_task_util(struct task_struct *p)
 {
-	return clamp(task_util_est(p),
+	return clamp(rt_task(p) ? 0 : task_util_est(p),
 		     uclamp_eff_value(p, UCLAMP_MIN),
 		     uclamp_eff_value(p, UCLAMP_MAX));
 }
@@ -133,7 +133,7 @@ static inline bool rt_task_fits_capacity(struct task_struct *p, int cpu)
 #else
 static inline unsigned long uclamp_task_util(struct task_struct *p)
 {
-	return task_util_est(p);
+	return rt_task(p) ? 0 : task_util_est(p);
 }
 
 static inline bool rt_task_fits_capacity(struct task_struct *p, int cpu)
