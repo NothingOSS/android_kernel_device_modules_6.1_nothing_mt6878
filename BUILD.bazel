@@ -16,6 +16,7 @@ load("//kernel-6.1:mgk_modules.bzl",
 
 
 mgk_64_k61_kleaf_modules = [
+    # keep sorted
     "//vendor/mediatek/kernel_modules/connectivity/bt/linux_v2:btmtk_uart_unify",
     "//vendor/mediatek/kernel_modules/connectivity/bt/mt66xx:btif",
     "//vendor/mediatek/kernel_modules/connectivity/bt/mt66xx/wmt:wmt",
@@ -45,8 +46,6 @@ mgk_64_k61_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/cpufreq_int:cpu_hwtest",
     "//vendor/mediatek/kernel_modules/fpsgo_cus:fpsgo_cus",
     "//vendor/mediatek/kernel_modules/fpsgo_int:fpsgo_int",
-    "//vendor/mediatek/kernel_modules/msync2_frd_cus/build:msync2_frd_cus",
-    "//vendor/mediatek/kernel_modules/msync2_frd_int:msync2_frd_int",
     "//vendor/mediatek/kernel_modules/gpu:gpu",
     "//vendor/mediatek/kernel_modules/hbt_driver_cus:hbt_cus",
     "//vendor/mediatek/kernel_modules/hbt_driver:hbt_int",
@@ -54,6 +53,8 @@ mgk_64_k61_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/met_drv_v3/met_api:met_api_v3_cus",
     "//vendor/mediatek/kernel_modules/met_drv_v3/met_api:met_api_v3_int",
     "//vendor/mediatek/kernel_modules/met_drv_v3:met_drv_v3",
+    "//vendor/mediatek/kernel_modules/msync2_frd_cus/build:msync2_frd_cus",
+    "//vendor/mediatek/kernel_modules/msync2_frd_int:msync2_frd_int",
     "//vendor/mediatek/kernel_modules/mtk_input/FT3518U:ft3518u",
     "//vendor/mediatek/kernel_modules/mtk_input/GT9886:gt9886",
     "//vendor/mediatek/kernel_modules/mtk_input/GT9916:gt9916",
@@ -61,23 +62,33 @@ mgk_64_k61_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtk_input/ST61Y:st61y",
     "//vendor/mediatek/kernel_modules/mtk_input/fingerprint/goodix/5.10:gf_spi",
     "//vendor/mediatek/kernel_modules/mtk_input/synaptics_tcm:synaptics_tcm",
-    "//vendor/mediatek/kernel_modules/mtkcam/ccusys:ccusys",
-    "//vendor/mediatek/kernel_modules/mtkcam/scpsys/mtk-aov:mtk_aov",
-    "//vendor/mediatek/kernel_modules/sched_cus:sched_cus",
-    "//vendor/mediatek/kernel_modules/sched_int:sched_int",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:camsys",
-    "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie",
     "//vendor/mediatek/kernel_modules/mtkcam/cam_cal/src_v4l2/custom:mtk_cam_cal",
+    "//vendor/mediatek/kernel_modules/mtkcam/ccusys:ccusys",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-v4l2:mtk_imgsensor",
-    "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
-    "//vendor/mediatek/tests/ktf/kernel:ktf",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys:imgsys",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp:mtk-hcp",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-ipesys-me:mtk-ipesys-me",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-dpe:mtk-dpe",
     "//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps",
+    "//vendor/mediatek/kernel_modules/mtkcam/scpsys/mtk-aov:mtk_aov",
+    "//vendor/mediatek/kernel_modules/sched_cus:sched_cus",
+    "//vendor/mediatek/kernel_modules/sched_int:sched_int",
 ]
 
+mgk_64_k61_kleaf_eng_modules = [
+    "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
+    "//vendor/mediatek/tests/ktf/kernel:ktf",
+]
+
+mgk_64_k61_kleaf_userdebug_modules = [
+    "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
+    "//vendor/mediatek/tests/ktf/kernel:ktf",
+]
+
+mgk_64_k61_kleaf_user_modules = [
+]
 
 mgk_64_k61_common_modules = COMMON_GKI_MODULES_LIST + mgk_module_outs
 mgk_64_k61_common_eng_modules = COMMON_GKI_MODULES_LIST + mgk_module_outs + mgk_module_eng_outs
@@ -778,6 +789,9 @@ mgk_64_k61_platform_device_user_modules = {
 define_mgk(
     name = "mgk_64_k61",
     kleaf_modules = mgk_64_k61_kleaf_modules,
+    kleaf_eng_modules = mgk_64_k61_kleaf_eng_modules,
+    kleaf_userdebug_modules = mgk_64_k61_kleaf_userdebug_modules,
+    kleaf_user_modules = mgk_64_k61_kleaf_user_modules,
     common_modules = mgk_64_k61_common_modules,
     common_eng_modules = mgk_64_k61_common_eng_modules,
     common_userdebug_modules = mgk_64_k61_common_userdebug_modules,
