@@ -219,6 +219,7 @@ struct cmdq_thread {
 	u64			mbox_dis;
 	u32			cookie;
 	cmdq_usage_cb usage_cb;
+	bool			skip_fast_mtcmos;
 };
 
 extern int mtk_cmdq_log;
@@ -317,6 +318,8 @@ extern int cmdq_trace;
 } while (0)
 #endif
 
+void cmdq_mbox_mtcmos_by_fast(void *cmdq_mbox, bool on);
+void cmdq_mbox_dump_fast_mtcmos(void *cmdq_mbox);
 dma_addr_t cmdq_thread_get_pc(struct cmdq_thread *thread);
 dma_addr_t cmdq_thread_get_end(struct cmdq_thread *thread);
 void cmdq_thread_set_spr(struct mbox_chan *chan, u8 id, u32 val);

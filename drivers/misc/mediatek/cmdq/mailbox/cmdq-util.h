@@ -12,6 +12,21 @@
 #include <mt-plat/aee.h>
 #endif
 
+/* sync with request in atf */
+enum cmdq_smc_request {
+	CMDQ_ENABLE_DEBUG,
+	CMDQ_ENABLE_DISP_VA,
+	CMDQ_PREBUILT_INIT,
+	CMDQ_PREBUILT_ENABLE,
+	CMDQ_PREBUILT_DISABLE,
+	CMDQ_PREBUILT_DUMP,
+	CMDQ_MMINFRA_CMD,
+	CMDQ_MMUEN_SET_DEVAPC_DISABLE,
+	CMDQ_SET_MML_SEC,
+	CMDQ_DISP_CMD,
+	CMDQ_VCORE_REQ,
+};
+
 enum {
 	CMDQ_LOG_FEAT_SECURE,
 	CMDQ_LOG_FEAT_PERF,
@@ -210,6 +225,7 @@ bool cmdq_thread_ddr_module(const s32 thread);
 bool cmdq_mbox_hw_trace_thread(void *chan);
 void cmdq_util_enable_dbg(u32 id);
 void cmdq_util_devapc_dump(void);
+void cmdq_util_dump_fast_mtcmos(void);
 int cmdq_util_init(void);
 
 extern void mt_irq_dump_status(unsigned int irq);

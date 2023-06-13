@@ -464,20 +464,6 @@ EXPORT_SYMBOL(cmdq_util_log_feature_set);
 DEFINE_SIMPLE_ATTRIBUTE(cmdq_util_log_feature_fops,
 	cmdq_util_log_feature_get, cmdq_util_log_feature_set, "%llu");
 
-/* sync with request in atf */
-enum cmdq_smc_request {
-	CMDQ_ENABLE_DEBUG,
-	CMDQ_ENABLE_DISP_VA,
-	CMDQ_PREBUILT_INIT,
-	CMDQ_PREBUILT_ENABLE,
-	CMDQ_PREBUILT_DISABLE,
-	CMDQ_PREBUILT_DUMP,
-	CMDQ_MMINFRA_CMD,
-	CMDQ_MMUEN_SET_DEVAPC_DISABLE,
-	CMDQ_SET_MML_SEC,
-	CMDQ_DISP_CMD,
-};
-
 static atomic_t cmdq_dbg_ctrl[CMDQ_HW_MAX] = {ATOMIC_INIT(0)};
 
 bool cmdq_util_is_prebuilt_client(struct cmdq_client *client)
@@ -533,8 +519,10 @@ void cmdq_util_enable_disp_va(void)
 {
 	struct arm_smccc_res res;
 
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[0], true);
 	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMDQ_ENABLE_DISP_VA,
 		0, 0, 0, 0, 0, 0, &res);
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[0], false);
 }
 EXPORT_SYMBOL(cmdq_util_enable_disp_va);
 
@@ -563,8 +551,10 @@ void cmdq_util_prebuilt_enable(const u16 hwid)
 	struct arm_smccc_res res;
 
 	cmdq_log("%s: hwid:%u", __func__, hwid);
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[hwid], true);
 	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMDQ_PREBUILT_ENABLE, hwid,
 		0, 0, 0, 0, 0, &res);
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[hwid], false);
 }
 EXPORT_SYMBOL(cmdq_util_prebuilt_enable);
 
@@ -573,8 +563,10 @@ void cmdq_util_prebuilt_disable(const u16 hwid)
 	struct arm_smccc_res res;
 
 	cmdq_log("%s: hwid:%u", __func__, hwid);
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[hwid], true);
 	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMDQ_PREBUILT_DISABLE, hwid,
 		0, 0, 0, 0, 0, &res);
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[hwid], false);
 }
 EXPORT_SYMBOL(cmdq_util_prebuilt_disable);
 
@@ -586,8 +578,10 @@ void cmdq_util_prebuilt_dump(const u16 hwid, const u16 event)
 
 	cmdq_msg("%s: hwid:%hu event:%hu mod:%hu", __func__, hwid, event, mod);
 
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[hwid], true);
 	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMDQ_PREBUILT_DUMP, mod, event,
 		0, 0, 0, 0, &res);
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[hwid], false);
 }
 EXPORT_SYMBOL(cmdq_util_prebuilt_dump);
 
@@ -615,7 +609,9 @@ void cmdq_util_prebuilt_dump_cpr(const u16 hwid, const u16 cpr, const u16 cnt)
 	for (i = 0; i < cnt; i++)
 		cmdq_pkt_write_indriect(
 			pkt, NULL, pa + i * 4, cpr + i, UINT_MAX);
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[hwid], true);
 	cmdq_pkt_flush(pkt);
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[hwid], false);
 	cmdq_pkt_destroy(pkt);
 
 	cmdq_msg("%s: hwid:%hu cpr:%#x cnt:%hu", __func__, hwid, cpr, cnt);
@@ -742,8 +738,11 @@ void cmdq_util_hw_trace_dump(const u16 hwid, const bool dram)
 	}
 
 	trace = &util.hw_trace[hwid];
+
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[hwid], true);
 	if (!trace->clt) {
 		cmdq_err("hw trace disable");
+		cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[hwid], false);
 		return;
 	} else if (trace->clt && trace->pkt)
 		cmdq_dump_summary(trace->clt, trace->pkt);
@@ -751,6 +750,7 @@ void cmdq_util_hw_trace_dump(const u16 hwid, const bool dram)
 	// SRAM
 	cmdq_util_prebuilt_dump_cpr(
 		hwid, CMDQ_CPR_HW_TRACE_START, CMDQ_CPR_HW_TRACE_SIZE);
+	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[hwid], false);
 	// DRAM
 	for (i = 0; dram && i < CMDQ_CPR_HW_TRACE_SIZE; i += 8) {
 		for (j = 0; j < 8; j++)
@@ -779,8 +779,10 @@ void cmdq_util_enable_dbg(u32 id)
 	if ((id < CMDQ_HW_MAX) && (atomic_cmpxchg(&cmdq_dbg_ctrl[id], 0, 1) == 0)) {
 		struct arm_smccc_res res;
 
+		cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[id], true);
 		arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMDQ_ENABLE_DEBUG, id,
 			0, 0, 0, 0, 0, &res);
+		cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[id], false);
 	}
 }
 EXPORT_SYMBOL(cmdq_util_enable_dbg);
@@ -876,6 +878,15 @@ static struct devapc_vio_callbacks devapc_vio_handle = {
 	.debug_dump = cmdq_util_devapc_dump,
 };
 #endif
+
+void cmdq_util_dump_fast_mtcmos(void)
+{
+	u32 i;
+
+	for (i = 0; i < util.mbox_cnt; i++)
+		cmdq_mbox_dump_fast_mtcmos(util.cmdq_mbox[i]);
+}
+EXPORT_SYMBOL(cmdq_util_dump_fast_mtcmos);
 
 u8 cmdq_util_track_ctrl(void *cmdq, phys_addr_t base, bool sec)
 {

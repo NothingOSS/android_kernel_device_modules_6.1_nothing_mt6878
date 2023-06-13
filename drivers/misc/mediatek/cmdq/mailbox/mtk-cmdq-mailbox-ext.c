@@ -25,6 +25,8 @@
 #include <linux/suspend.h>
 #include <linux/pm_runtime.h>
 #include <linux/pm_domain.h>
+#include <linux/soc/mediatek/mtk_sip_svc.h>
+#include <linux/arm-smccc.h>
 
 #include <iommu_debug.h>
 
@@ -279,6 +281,12 @@ struct cmdq {
 	struct mutex mbox_mutex;
 	struct device	*share_dev;
 	u8			irq_long_times;
+	/* fast mtcmos */
+	bool		fast_mtcmos;
+	spinlock_t	fast_mtcmos_lock;
+	atomic_t	fast_mtcmos_usage;
+	u64			fast_en;
+	u64			fast_dis;
 };
 
 struct gce_plat {
@@ -322,9 +330,10 @@ void cmdq_dump_usage(void)
 	s32 i, j, usage[CMDQ_THR_MAX_COUNT];
 
 	for (i = 0; i < 2; i++) {
-		cmdq_msg("%s: hwid:%d suspend:%d usage:%d",
+		cmdq_msg("%s: hwid:%d suspend:%d usage:%d fast_usage:%d",
 			__func__, g_cmdq[i]->hwid, g_cmdq[i]->suspended,
-			atomic_read(&g_cmdq[i]->usage));
+			atomic_read(&g_cmdq[i]->usage),
+			atomic_read(&g_cmdq[i]->fast_mtcmos_usage));
 
 		if (!atomic_read(&g_cmdq[i]->usage))
 			continue;
@@ -399,6 +408,72 @@ static inline void cmdq_mmp_init(void)
 #endif
 }
 
+static void cmdq_vcore_resource(struct cmdq *cmdq, bool on)
+{
+	u32 onoff = on ? 1 : 0;
+	struct arm_smccc_res res;
+
+	cmdq_log("%s on:%d", __func__, on);
+	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMDQ_VCORE_REQ, onoff,
+		0, 0, 0, 0, 0, &res);
+}
+
+static void cmdq_mtcmos_by_fast(struct cmdq *cmdq, bool on)
+{
+	unsigned long flags;
+	u32 usage;
+
+	if (!cmdq || !cmdq->fast_mtcmos)
+		return;
+
+	spin_lock_irqsave(&cmdq->fast_mtcmos_lock, flags);
+	cmdq_log("%s on:%d fast_usage:%d", __func__,
+		on, atomic_read(&cmdq->fast_mtcmos_usage));
+	if (on) {
+		usage = atomic_inc_return(&cmdq->fast_mtcmos_usage);
+		if (usage == 1) {
+			pm_runtime_get_sync(cmdq->mbox.dev);
+			if (mminfra_power_cb && !mminfra_power_cb())
+				cmdq_err("hwid:%hu usage:%d mminfra power not enable",
+					cmdq->hwid, usage);
+			cmdq->fast_en = sched_clock();
+		}
+	} else {
+		usage = atomic_dec_return(&cmdq->fast_mtcmos_usage);
+		if (usage == 0) {
+			cmdq->fast_dis = sched_clock();
+			if (mminfra_power_cb && !mminfra_power_cb())
+				cmdq_err("hwid:%hu usage:%d mminfra power not enable",
+					cmdq->hwid, usage);
+			pm_runtime_put_sync(cmdq->mbox.dev);
+		} else if (usage < 0)
+			cmdq_err("hwid:%u usage:%d cannot below zero",
+				cmdq->hwid, usage);
+	}
+	spin_unlock_irqrestore(&cmdq->fast_mtcmos_lock, flags);
+}
+
+void cmdq_mbox_mtcmos_by_fast(void *cmdq_mbox, bool on)
+{
+	struct cmdq *cmdq = cmdq_mbox;
+
+	cmdq_mtcmos_by_fast(cmdq, on);
+}
+EXPORT_SYMBOL(cmdq_mbox_mtcmos_by_fast);
+
+void cmdq_mbox_dump_fast_mtcmos(void *cmdq_mbox)
+{
+	struct cmdq *cmdq = cmdq_mbox;
+
+	if (!cmdq || !cmdq->fast_mtcmos)
+		return;
+
+	cmdq_util_msg("hwid:%u fast_en:%llu fast_dis:%llu fast_usage:%d",
+		cmdq->hwid, cmdq->fast_en, cmdq->fast_dis,
+		atomic_read(&cmdq->fast_mtcmos_usage));
+}
+EXPORT_SYMBOL(cmdq_mbox_dump_fast_mtcmos);
+
 dma_addr_t cmdq_thread_get_pc(struct cmdq_thread *thread)
 {
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq, mbox);
@@ -428,15 +503,17 @@ static void cmdq_thread_set_end(struct cmdq_thread *thread, dma_addr_t end)
 
 void cmdq_thread_set_spr(struct mbox_chan *chan, u8 id, u32 val)
 {
-	if (id >= CMDQ_GPR_CNT_ID) {
-		struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
+	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 
+	cmdq_mtcmos_by_fast(cmdq, true);
+	if (id >= CMDQ_GPR_CNT_ID)
 		writel(val, cmdq->base + GCE_GPR_R0_START + (id - CMDQ_GPR_CNT_ID) * 4);
-	} else {
+	else {
 		struct cmdq_thread *thread = (struct cmdq_thread *)chan->con_priv;
 
 		writel(val, thread->base + CMDQ_THR_SPR + id * 4);
 	}
+	cmdq_mtcmos_by_fast(cmdq, false);
 }
 EXPORT_SYMBOL(cmdq_thread_set_spr);
 
@@ -811,17 +888,21 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 	}
 	dma_handle = CMDQ_BUF_ADDR(buf);
 
+	cmdq_mtcmos_by_fast(cmdq, true);
+
 	if (list_empty(&thread->task_busy_list)) {
 		// power
 		if (mminfra_power_cb && !mminfra_power_cb()) {
 			cmdq_err("hwid:%u idx:%u mminfra power not enable",
 				cmdq->hwid, thread->idx);
+			cmdq_mtcmos_by_fast(cmdq, false);
 			return;
 		}
 		// clock
 		if (mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid)) {
 			cmdq_err("hwid:%u idx:%u gce clock not enable",
 				cmdq->hwid, thread->idx);
+			cmdq_mtcmos_by_fast(cmdq, false);
 			return;
 		}
 	}
@@ -829,6 +910,7 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 	task = kzalloc(sizeof(*task), GFP_ATOMIC);
 	if (!task) {
 		cmdq_task_callback(pkt, -ENOMEM);
+		cmdq_mtcmos_by_fast(cmdq, false);
 		return;
 	}
 	pkt->task_alloc = true;
@@ -851,7 +933,6 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 		cmdq_err("hwid:%hu usage:%d idx:%u usage:%d gce off",
 			cmdq->hwid, atomic_read(&cmdq->usage),
 			thread->idx, atomic_read(&thread->usage));
-
 
 	if (list_empty(&thread->task_busy_list)) {
 
@@ -993,6 +1074,7 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 	pkt->rec_trigger = sched_clock();
 #endif
+	cmdq_mtcmos_by_fast(cmdq, false);
 }
 
 static void cmdq_task_exec_done(struct cmdq_task *task, s32 err)
@@ -1288,7 +1370,9 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt++] = sched_clock();
 #endif
+	cmdq_mtcmos_by_fast(cmdq, true);
 	irq_status = readl(cmdq->base + CMDQ_CURR_IRQ_STATUS) & CMDQ_IRQ_MASK;
+	cmdq_mtcmos_by_fast(cmdq, false);
 	cmdq_log("gce:%lx irq: %#x, %#x",
 		(unsigned long)cmdq->base_pa, (u32)irq_status,
 		(u32)(irq_status ^ CMDQ_IRQ_MASK));
@@ -1316,10 +1400,12 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 		}
 
 		irq_time = sched_clock();
+		cmdq_mtcmos_by_fast(cmdq, true);
 		spin_lock_irqsave(&thread->chan->lock, flags);
 		thread->lock_time = sched_clock() - irq_time;
 		cmdq_thread_irq_handler(cmdq, thread, &cmdq->irq_removes);
 		spin_unlock_irqrestore(&thread->chan->lock, flags);
+		cmdq_mtcmos_by_fast(cmdq, false);
 		thread->irq_time = sched_clock() - irq_time;
 		thd_cnt += 1;
 	}
@@ -1484,9 +1570,12 @@ static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 		return;
 	}
 
+	cmdq_mtcmos_by_fast(cmdq, true);
+
 	/* After IRQ, first task may change. */
 	if (cmdq_thread_skip_timeout_by_cookie(thread)) {
 		spin_unlock_irqrestore(&thread->chan->lock, flags);
+		cmdq_mtcmos_by_fast(cmdq, false);
 		return;
 	}
 
@@ -1584,6 +1673,7 @@ unlock_free_done:
 		list_del(&task->list_entry);
 		kfree(task);
 	}
+	cmdq_mtcmos_by_fast(cmdq, false);
 }
 static void cmdq_thread_handle_timeout(struct timer_list *t)
 {
@@ -1673,6 +1763,8 @@ void cmdq_thread_dump(struct mbox_chan *chan, struct cmdq_pkt *cl_pkt,
 	bool empty = true;
 	u32 timeout_ms = cmdq_mbox_get_thread_timeout(chan);
 
+	cmdq_mtcmos_by_fast(cmdq, true);
+
 	/* lock channel and get info */
 	spin_lock_irqsave(&chan->lock, flags);
 
@@ -1681,6 +1773,7 @@ void cmdq_thread_dump(struct mbox_chan *chan, struct cmdq_pkt *cl_pkt,
 			__func__, cmdq, thread->idx);
 		dump_stack();
 		spin_unlock_irqrestore(&chan->lock, flags);
+		cmdq_mtcmos_by_fast(cmdq, false);
 		return;
 	}
 
@@ -1765,6 +1858,8 @@ void cmdq_thread_dump(struct mbox_chan *chan, struct cmdq_pkt *cl_pkt,
 		*inst_out = curr_va;
 	if (pc_out)
 		*pc_out = curr_pa;
+
+	cmdq_mtcmos_by_fast(cmdq, false);
 }
 EXPORT_SYMBOL(cmdq_thread_dump);
 
@@ -1831,7 +1926,9 @@ void cmdq_chan_dump_dbg(void *chan)
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 
+	cmdq_mtcmos_by_fast(cmdq, true);
 	cmdq_mbox_dump_dbg(cmdq, chan, false);
+	cmdq_mtcmos_by_fast(cmdq, false);
 }
 EXPORT_SYMBOL(cmdq_chan_dump_dbg);
 
@@ -1847,6 +1944,7 @@ void cmdq_thread_dump_all(void *mbox_cmdq, const bool lock, const bool dump_pkt,
 	if (usage <= 0)
 		return;
 
+	cmdq_mtcmos_by_fast(cmdq, true);
 	for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++) {
 		struct cmdq_thread *thread = &cmdq->thread[i];
 		unsigned long flags = 0L;
@@ -1879,6 +1977,7 @@ void cmdq_thread_dump_all(void *mbox_cmdq, const bool lock, const bool dump_pkt,
 		if (lock)
 			spin_unlock_irqrestore(&thread->chan->lock, flags);
 	}
+	cmdq_mtcmos_by_fast(cmdq, false);
 }
 EXPORT_SYMBOL(cmdq_thread_dump_all);
 
@@ -1895,6 +1994,7 @@ void cmdq_thread_dump_all_seq(void *mbox_cmdq, struct seq_file *seq)
 	if (usage <= 0)
 		return;
 
+	cmdq_mtcmos_by_fast(cmdq, true);
 	for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++) {
 		struct cmdq_thread *thread = &cmdq->thread[i];
 
@@ -1911,7 +2011,7 @@ void cmdq_thread_dump_all_seq(void *mbox_cmdq, struct seq_file *seq)
 		seq_printf(seq, "[cmdq] thd idx:%u pc:%pa end:%pa\n",
 			thread->idx, &curr_pa, &end_pa);
 	}
-
+	cmdq_mtcmos_by_fast(cmdq, false);
 }
 EXPORT_SYMBOL(cmdq_thread_dump_all_seq);
 
@@ -1929,9 +2029,11 @@ void cmdq_mbox_thread_remove_task(struct mbox_chan *chan,
 
 	INIT_LIST_HEAD(&removes);
 
+	cmdq_mtcmos_by_fast(cmdq, true);
 	spin_lock_irqsave(&thread->chan->lock, flags);
 	if (list_empty(&thread->task_busy_list)) {
 		spin_unlock_irqrestore(&thread->chan->lock, flags);
+		cmdq_mtcmos_by_fast(cmdq, false);
 		return;
 	}
 
@@ -1952,6 +2054,7 @@ void cmdq_mbox_thread_remove_task(struct mbox_chan *chan,
 			thread->idx);
 		cmdq_thread_resume(thread);
 		spin_unlock_irqrestore(&thread->chan->lock, flags);
+		cmdq_mtcmos_by_fast(cmdq, false);
 		return;
 	}
 
@@ -1971,6 +2074,7 @@ void cmdq_mbox_thread_remove_task(struct mbox_chan *chan,
 			thread->dirty) {
 			/* task during error handling, skip */
 			spin_unlock_irqrestore(&thread->chan->lock, flags);
+			cmdq_mtcmos_by_fast(cmdq, false);
 			return;
 		}
 
@@ -1983,6 +2087,7 @@ void cmdq_mbox_thread_remove_task(struct mbox_chan *chan,
 		cmdq_thread_resume(thread);
 		cmdq_thread_disable(cmdq, thread);
 		spin_unlock_irqrestore(&thread->chan->lock, flags);
+		cmdq_mtcmos_by_fast(cmdq, false);
 		return;
 	}
 
@@ -2005,8 +2110,8 @@ void cmdq_mbox_thread_remove_task(struct mbox_chan *chan,
 	}
 
 	cmdq_thread_resume(thread);
-
 	spin_unlock_irqrestore(&thread->chan->lock, flags);
+	cmdq_mtcmos_by_fast(cmdq, false);
 
 	list_for_each_entry_safe(task, tmp, &removes, list_entry) {
 		list_del(&task->list_entry);
@@ -2026,8 +2131,9 @@ void cmdq_check_thread_complete(struct mbox_chan *chan)
 		spin_unlock_irqrestore(&thread->chan->lock, flags);
 		return;
 	}
-
+	cmdq_mtcmos_by_fast(cmdq, true);
 	cmdq_thread_irq_handler(cmdq, thread, &cmdq->irq_removes);
+	cmdq_mtcmos_by_fast(cmdq, false);
 	spin_unlock_irqrestore(&thread->chan->lock, flags);
 }
 EXPORT_SYMBOL(cmdq_check_thread_complete);
@@ -2042,10 +2148,12 @@ static void cmdq_mbox_thread_stop(struct cmdq_thread *thread)
 
 	INIT_LIST_HEAD(&removes);
 
+	cmdq_mtcmos_by_fast(cmdq, true);
 	spin_lock_irqsave(&thread->chan->lock, flags);
 	if (list_empty(&thread->task_busy_list)) {
 		cmdq_log("stop empty thread:%u", thread->idx);
 		spin_unlock_irqrestore(&thread->chan->lock, flags);
+		cmdq_mtcmos_by_fast(cmdq, false);
 		return;
 	}
 
@@ -2061,6 +2169,7 @@ static void cmdq_mbox_thread_stop(struct cmdq_thread *thread)
 		cmdq_err("thread:%u empty after irq handle in disable thread",
 			thread->idx);
 		spin_unlock_irqrestore(&thread->chan->lock, flags);
+		cmdq_mtcmos_by_fast(cmdq, false);
 		return;
 	}
 
@@ -2091,6 +2200,7 @@ static void cmdq_mbox_thread_stop(struct cmdq_thread *thread)
 		cmdq_thread_disable(cmdq, thread);
 
 	spin_unlock_irqrestore(&thread->chan->lock, flags);
+	cmdq_mtcmos_by_fast(cmdq, false);
 
 	list_for_each_entry_safe(task, tmp, &removes, list_entry) {
 		list_del(&task->list_entry);
@@ -2436,6 +2546,12 @@ static int cmdq_probe(struct platform_device *pdev)
 
 	cmdq_msg("dump_buf_size %d error irq %d", cmdq_dump_buf_size, error_irq_bug_on);
 
+	if (of_property_read_bool(dev->of_node, "gce-fast-mtcmos")) {
+		cmdq->fast_mtcmos = true;
+		pm_runtime_irq_safe(dev);
+	}
+	spin_lock_init(&cmdq->fast_mtcmos_lock);
+
 	dev_notice(dev,
 		"cmdq thread:%u shift:%u mminfra:%#x base:0x%lx pa:0x%lx\n",
 		plat_data->thread_nr, plat_data->shift, plat_data->mminfra,
@@ -2670,6 +2786,14 @@ void cmdq_mbox_enable(void *chan)
 
 	thd_usage = atomic_inc_return(&cmdq->thread[i].usage);
 
+	//skip_fast_mtcmos
+	if (thd_usage == 1 && cmdq->fast_mtcmos && cmdq->thread[i].skip_fast_mtcmos) {
+		pm_runtime_get_sync(cmdq->mbox.dev);
+		if (mminfra_power_cb && !mminfra_power_cb())
+			cmdq_err("hwid:%hu usage:%d mminfra power not enable",
+				cmdq->hwid, thd_usage);
+	}
+
 	usage = atomic_inc_return(&cmdq->usage);
 	if (usage == 1) {
 		unsigned long flags;
@@ -2678,11 +2802,19 @@ void cmdq_mbox_enable(void *chan)
 			__func__, cmdq->hwid, usage, i,
 			atomic_read(&cmdq->thread[i].usage));
 
-		// power
-		pm_runtime_get_sync(cmdq->mbox.dev);
-		if (mminfra_power_cb && !mminfra_power_cb())
-			cmdq_err("hwid:%hu usage:%d mminfra power not enable",
-				cmdq->hwid, usage);
+		//Vcore
+		if (cmdq->fast_mtcmos)
+			cmdq_vcore_resource(cmdq, true);
+
+		//power
+		if (!cmdq->fast_mtcmos) {
+			pm_runtime_get_sync(cmdq->mbox.dev);
+			if (mminfra_power_cb && !mminfra_power_cb())
+				cmdq_err("hwid:%hu usage:%d mminfra power not enable",
+					cmdq->hwid, usage);
+		}
+
+		cmdq_mtcmos_by_fast(cmdq, true);
 
 		// clock
 		ret = clk_prepare_enable(cmdq->clock);
@@ -2730,6 +2862,8 @@ void cmdq_mbox_enable(void *chan)
 			cmdq_util_hw_trace_enable(cmdq->hwid,
 				cmdq_util_get_bit_feature() &
 				CMDQ_LOG_FEAT_PERF);
+
+		cmdq_mtcmos_by_fast(cmdq, false);
 	}
 
 	if (thd_usage == 1) {
@@ -2745,7 +2879,7 @@ void cmdq_mbox_disable(void *chan)
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 	struct cmdq_thread *thread;
-	s32 usage, i;
+	s32 usage, i, thd_usage;
 
 	mutex_lock(&cmdq->mbox_mutex);
 
@@ -2763,6 +2897,7 @@ void cmdq_mbox_disable(void *chan)
 	for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++)
 		if (cmdq->thread[i].chan == chan)
 			break;
+	thread = &cmdq->thread[i];
 
 	if (i == ARRAY_SIZE(cmdq->thread)) {
 		cmdq_err("hwid:%u usage:%d idx:%d wrong chan:%p",
@@ -2776,16 +2911,16 @@ void cmdq_mbox_disable(void *chan)
 	cmdq_log("%s: hwid:%u usage:%d idx:%d usage:%d", __func__,
 		cmdq->hwid, usage, i, atomic_read(&cmdq->thread[i].usage));
 
-	usage = atomic_dec_return(&cmdq->thread[i].usage);
-	if (!usage && !list_empty(&cmdq->thread[i].task_busy_list)) {
+	thd_usage = atomic_dec_return(&cmdq->thread[i].usage);
+	if (!thd_usage && !list_empty(&cmdq->thread[i].task_busy_list)) {
 		cmdq_err("hwid:%u idx:%d usage:%d still has tasks",
-			cmdq->hwid, i, usage);
-	} else if (usage == 0) {
+			cmdq->hwid, i, thd_usage);
+	} else if (thd_usage == 0) {
 		thread = &cmdq->thread[i];
 		thread->mbox_dis = sched_clock();
-	} else if (usage < 0) {
+	} else if (thd_usage < 0) {
 		cmdq_err("hwid:%u idx:%d usage:%d cannot below zero",
-			cmdq->hwid, i, usage);
+			cmdq->hwid, i, thd_usage);
 		WARN_ON(1);
 	}
 
@@ -2805,6 +2940,8 @@ void cmdq_mbox_disable(void *chan)
 		cmdq_log_level(CMDQ_PWR_CHECK, "%s: hwid:%hu usage:%d idx:%d usage:%d",
 			__func__, cmdq->hwid, usage, i,
 			atomic_read(&cmdq->thread[i].usage));
+
+		cmdq_mtcmos_by_fast(cmdq, true);
 
 		// thread
 		if (cmdq->prebuilt_enable)
@@ -2827,10 +2964,27 @@ void cmdq_mbox_disable(void *chan)
 		clk_disable_unprepare(cmdq->clock_timer);
 		clk_disable_unprepare(cmdq->clock);
 
+		cmdq_mtcmos_by_fast(cmdq, false);
+
 		// power
+		if (!cmdq->fast_mtcmos) {
+			if (mminfra_power_cb && !mminfra_power_cb())
+				cmdq_err("hwid:%hu usage:%d mminfra power not enable",
+					cmdq->hwid, usage);
+			pm_runtime_put_sync(cmdq->mbox.dev);
+		}
+
+		//Vcore
+		if (cmdq->fast_mtcmos)
+			cmdq_vcore_resource(cmdq, false);
+	}
+
+	//skip_fast_mtcmos
+	if ((thd_usage == 0)
+		&& (cmdq->fast_mtcmos) && (thread->skip_fast_mtcmos)) {
 		if (mminfra_power_cb && !mminfra_power_cb())
-			cmdq_err("hwid:%hu usage:%d mminfra power not enable",
-				cmdq->hwid, usage);
+			cmdq_err("hwid:%hu thd_usage:%d mminfra power not enable",
+				cmdq->hwid, thd_usage);
 		pm_runtime_put_sync(cmdq->mbox.dev);
 	}
 	atomic_dec(&cmdq->usage);
@@ -2939,8 +3093,13 @@ s32 cmdq_mbox_thread_suspend(void *chan)
 	struct cmdq_thread *thread = ((struct mbox_chan *)chan)->con_priv;
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq,
 		mbox);
+	int ret;
 
-	return cmdq_thread_suspend(cmdq, thread);
+	cmdq_mtcmos_by_fast(cmdq, true);
+	ret = cmdq_thread_suspend(cmdq, thread);
+	cmdq_mtcmos_by_fast(cmdq, false);
+
+	return ret;
 }
 EXPORT_SYMBOL(cmdq_mbox_thread_suspend);
 
@@ -3036,6 +3195,7 @@ EXPORT_SYMBOL(cmdq_mbox_check_buffer);
 
 s32 cmdq_task_get_thread_pc(struct mbox_chan *chan, dma_addr_t *pc_out)
 {
+	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 	struct cmdq_thread *thread;
 	dma_addr_t pc = 0;
 
@@ -3043,8 +3203,9 @@ s32 cmdq_task_get_thread_pc(struct mbox_chan *chan, dma_addr_t *pc_out)
 		return -EINVAL;
 
 	thread = chan->con_priv;
+	cmdq_mtcmos_by_fast(cmdq, true);
 	pc = cmdq_thread_get_pc(thread);
-
+	cmdq_mtcmos_by_fast(cmdq, false);
 	*pc_out = pc;
 
 	return 0;
@@ -3053,13 +3214,16 @@ EXPORT_SYMBOL(cmdq_task_get_thread_pc);
 
 s32 cmdq_task_get_thread_irq(struct mbox_chan *chan, u32 *irq_out)
 {
+	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 	struct cmdq_thread *thread;
 
 	if (!irq_out || !chan)
 		return -EINVAL;
 
 	thread = chan->con_priv;
+	cmdq_mtcmos_by_fast(cmdq, true);
 	*irq_out = readl(thread->base + CMDQ_THR_IRQ_STATUS);
+	cmdq_mtcmos_by_fast(cmdq, false);
 
 	return 0;
 }
@@ -3067,13 +3231,16 @@ EXPORT_SYMBOL(cmdq_task_get_thread_irq);
 
 s32 cmdq_task_get_thread_irq_en(struct mbox_chan *chan, u32 *irq_en_out)
 {
+	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 	struct cmdq_thread *thread;
 
 	if (!irq_en_out || !chan)
 		return -EINVAL;
 
 	thread = chan->con_priv;
+	cmdq_mtcmos_by_fast(cmdq, true);
 	*irq_en_out = readl(thread->base + CMDQ_THR_IRQ_ENABLE);
+	cmdq_mtcmos_by_fast(cmdq, false);
 
 	return 0;
 }
@@ -3081,13 +3248,16 @@ s32 cmdq_task_get_thread_irq_en(struct mbox_chan *chan, u32 *irq_en_out)
 s32 cmdq_task_get_thread_end_addr(struct mbox_chan *chan,
 	dma_addr_t *end_addr_out)
 {
+	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 	struct cmdq_thread *thread;
 
 	if (!end_addr_out || !chan)
 		return -EINVAL;
 
 	thread = chan->con_priv;
+	cmdq_mtcmos_by_fast(cmdq, true);
 	*end_addr_out = cmdq_thread_get_end(thread);
+	cmdq_mtcmos_by_fast(cmdq, false);
 
 	return 0;
 }
@@ -3187,9 +3357,11 @@ void cmdq_set_event(void *chan, u16 event_id)
 		typeof(*cmdq), mbox);
 	unsigned long flags;
 
+	cmdq_mtcmos_by_fast(cmdq, true);
 	spin_lock_irqsave(&cmdq->event_lock, flags);
 	writel((1L << 16) | event_id, cmdq->base + CMDQ_SYNC_TOKEN_UPD);
 	spin_unlock_irqrestore(&cmdq->event_lock, flags);
+	cmdq_mtcmos_by_fast(cmdq, false);
 }
 EXPORT_SYMBOL(cmdq_set_event);
 
@@ -3199,9 +3371,11 @@ void cmdq_clear_event(void *chan, u16 event_id)
 		typeof(*cmdq), mbox);
 	unsigned long flags;
 
+	cmdq_mtcmos_by_fast(cmdq, true);
 	spin_lock_irqsave(&cmdq->event_lock, flags);
 	writel(event_id, cmdq->base + CMDQ_SYNC_TOKEN_UPD);
 	spin_unlock_irqrestore(&cmdq->event_lock, flags);
+	cmdq_mtcmos_by_fast(cmdq, false);
 }
 EXPORT_SYMBOL(cmdq_clear_event);
 
@@ -3212,10 +3386,12 @@ u32 cmdq_get_event(void *chan, u16 event_id)
 	u32 event_val = 0;
 	unsigned long flags;
 
+	cmdq_mtcmos_by_fast(cmdq, true);
 	spin_lock_irqsave(&cmdq->event_lock, flags);
 	writel(0x3FF & event_id, cmdq->base + CMDQ_SYNC_TOKEN_ID);
 	event_val = readl(cmdq->base + CMDQ_SYNC_TOKEN_VAL);
 	spin_unlock_irqrestore(&cmdq->event_lock, flags);
+	cmdq_mtcmos_by_fast(cmdq, false);
 	return event_val;
 }
 EXPORT_SYMBOL(cmdq_get_event);
@@ -3244,6 +3420,7 @@ void cmdq_event_verify(void *chan, u16 event_id)
 	if (event_id > 512)
 		event_id = 512;
 
+	cmdq_mtcmos_by_fast(cmdq, true);
 	/* check if this event can be set and clear */
 	writel((1L << 16) | event_id, cmdq->base + CMDQ_SYNC_TOKEN_UPD);
 	writel(event_id, cmdq->base + CMDQ_SYNC_TOKEN_UPD);
@@ -3274,6 +3451,7 @@ void cmdq_event_verify(void *chan, u16 event_id)
 		if (readl(cmdq->base + CMDQ_SYNC_TOKEN_VAL))
 			cmdq_msg("event still on:%u", i);
 	}
+	cmdq_mtcmos_by_fast(cmdq, false);
 
 	cmdq_msg("end debug event for %u", event_id);
 }

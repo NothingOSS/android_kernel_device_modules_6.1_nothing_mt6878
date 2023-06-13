@@ -349,6 +349,12 @@ struct cmdq_client *cmdq_mbox_create(struct device *dev, int index)
 		return NULL;
 	}
 
+	if (of_property_read_bool(dev->of_node, "gce-skip-fast-mtcmos")) {
+		struct cmdq_thread *thread = (struct cmdq_thread *)client->chan->con_priv;
+
+		thread->skip_fast_mtcmos = true;
+	}
+
 	mbox_dev = client->chan->mbox->dev;
 	device = mtk_smmu_get_shared_device(mbox_dev);
 	client->share_dev = device;
@@ -3653,6 +3659,7 @@ int cmdq_dump_pkt(struct cmdq_pkt *pkt, dma_addr_t pc, bool dump_ist)
 			"mbox_enable:%llu mbox_disable:%llu submit:%llu trigger:%llu wait:%llu irq:%llu",
 			thread->mbox_en, thread->mbox_dis, pkt->rec_submit, pkt->rec_trigger,
 			pkt->rec_wait, pkt->rec_irq);
+		cmdq_util_dump_fast_mtcmos();
 #endif
 		cmdq_util_user_msg(client->chan,
 			"append info pc:%pa->%pa end:%pa suspend:%d last_inst:%#018llx",
