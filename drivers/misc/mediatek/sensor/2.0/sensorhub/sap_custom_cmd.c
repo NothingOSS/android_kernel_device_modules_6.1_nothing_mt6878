@@ -84,7 +84,7 @@ static int sap_custom_cmd_seq(int sensor_type, struct custom_cmd *cust_cmd)
 	memcpy(&notify.cmd, cust_cmd, tx_len);
 	ret = mtk_ipi_send(&sap_ipidev, IPI_OUT_SENSOR_SAP_NOTIFY,
 		0, (void *)&notify, ipi_len(notify.length), 10);
-	if (ret < 0)
+	if (ret < 0 || !cust_cmd->rx_len)
 		return ret;
 
 	timeout = wait_for_completion_timeout(&cust_cmd_done,
