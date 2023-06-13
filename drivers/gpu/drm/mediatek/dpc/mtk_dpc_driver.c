@@ -290,7 +290,7 @@ static void dpc_disp_group_enable(const enum mtk_dpc_disp_vidle group, bool en)
 		writel(value, dpc_base + DISP_REG_DPC_DISP1_MTCMOS_CFG);
 
 		/* DDR_SRC and EMI_REQ DT is follow DISP1 */
-		value = en ? 0 : 0x000D000D;
+		value = en ? 0x00010001 : 0x000D000D;
 		writel(value, dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);
 		break;
 	case DPC_DISP_VIDLE_VDISP_DVFS:
@@ -342,7 +342,7 @@ static void dpc_mml_group_enable(const enum mtk_dpc_mml_vidle group, bool en)
 		writel(value, dpc_base + DISP_REG_DPC_MML1_MTCMOS_CFG);
 
 		/* DDR_SRC and EMI_REQ DT is follow MML1 */
-		value = en ? 0 : 0x000D000D;
+		value = en ? 0x00010001 : 0x000D000D;
 		writel(value, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
 
 		/* DISP1 pwr off dependency */
