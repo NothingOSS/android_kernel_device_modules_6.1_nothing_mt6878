@@ -10547,15 +10547,18 @@
 			comp-ids = <MML_MMLSYS>,
 				<MML_DLI0>, <MML_DMA0_SEL>,
 				<MML_DLI0_SEL>, <MML_PQ_AAL0_SEL>,
-				<MML_WROT0_SEL>, <MML_DLO0>;
+				<MML_WROT0_SEL>, <MML_DLO0>,
+				<MML_DLO2>;
 			comp-types = <MML_CT_SYS>,
 				<MML_CT_DL_IN>, <MML_CT_PATH>,
 				<MML_CT_PATH>, <MML_CT_PATH>,
-				<MML_CT_PATH>, <MML_CT_DL_OUT>;
+				<MML_CT_PATH>, <MML_CT_DL_OUT>,
+				<MML_CT_DL_OUT>;
 			comp-names = "mmlsys",
 				"dli0", "dma0_sel",
 				"dli0_sel", "pq_aal0_sel",
-				"wrot0_sel", "dlo0";
+				"wrot0_sel", "dlo0",
+				"dlo2";
 			/* as sys component */
 			mux-pins = /bits/ 16 <
 				1 MML_AAL0      MML_C3D0      MML_MUX_SLIN MML_C3D0_SEL_IN
@@ -10573,6 +10576,7 @@
 				1 MML_COLOR0    MML_WROT0_SEL MML_MUX_SLIN MML_WROT0_SEL_IN
 				0 MML_WROT0_SEL MML_WROT0     MML_MUX_SOUT MML_DLO0_SOUT_SEL
 				1 MML_WROT0_SEL MML_DLO0      MML_MUX_SOUT MML_DLO0_SOUT_SEL
+				2 MML_WROT0_SEL MML_DLO2      MML_MUX_SOUT MML_DLO0_SOUT_SEL
 				0 MML_DMA0_SEL  MML_WROT0     MML_MUX_MOUT MML_BYP0_MOUT_EN
 				1 MML_DMA0_SEL  MML_RSZ2      MML_MUX_MOUT MML_BYP0_MOUT_EN
 				2 MML_DMA0_SEL  MML_DLI0_SEL  MML_MUX_MOUT MML_BYP0_MOUT_EN
@@ -10606,10 +10610,7 @@
 				"DMA0_SEL_IN", "RDMA0_SOUT_SEL",
 				"DLOUT0_SEL_IN",
 				"MOUT_MASK0", "MOUT_MASK1", "MOUT_MASK2",
-				"DL_IN_RELAY0_SIZE", "DL_IN_RELAY2_SIZE",
 				"DL_OUT_RELAY0_SIZE", "DL_OUT_RELAY2_SIZE",
-				"DLI_ASYNC0_STATUS0", "DLI_ASYNC0_STATUS1",
-				"DLI_ASYNC2_STATUS0", "DLI_ASYNC2_STATUS1",
 				"DLO_ASYNC0_STATUS0", "DLO_ASYNC0_STATUS1",
 				"DLO_ASYNC2_STATUS0", "DLO_ASYNC2_STATUS1",
 				"DL_VALID0", "DL_VALID1", "DL_VALID2", "DL_VALID3",
@@ -10634,10 +10635,7 @@
 				<MML_DMA0_SEL_IN>, <MML_RDMA0_SOUT_SEL>,
 				<MML_DLOUT0_SEL_IN>,
 				<MML_MOUT_MASK0>, <MML_MOUT_MASK1>, <MML_MOUT_MASK2>,
-				<MML_DL_IN_RELAY0_SIZE>, <MML_DL_IN_RELAY2_SIZE>,
 				<MML_DL_OUT_RELAY0_SIZE>, <MML_DL_OUT_RELAY2_SIZE>,
-				<MML_DLI_ASYNC0_STATUS0>, <MML_DLI_ASYNC0_STATUS1>,
-				<MML_DLI_ASYNC2_STATUS0>, <MML_DLI_ASYNC2_STATUS1>,
 				<MML_DLO_ASYNC0_STATUS0>, <MML_DLO_ASYNC0_STATUS1>,
 				<MML_DLO_ASYNC2_STATUS0>, <MML_DLO_ASYNC2_STATUS1>,
 				<MML_DL_VALID0>, <MML_DL_VALID1>, <MML_DL_VALID2>, <MML_DL_VALID3>,
@@ -10682,8 +10680,8 @@
 			mutex-comps = "rdma0", "hdr0", "aal0", "rsz0",
 				"tdshp0", "color0", "wrot0", "rdma2",
 				"dli0", "dlo0", "rsz2", "wrot2",
-				"birsz0", "rrot0", "rrot0-2nd", "merge0",
-				"c3d0", "fg0";
+				"dlo2", "birsz0", "rrot0", "rrot0-2nd",
+				"merge0", "c3d0", "fg0";
 			rdma0 = <MML_RDMA0 0 0>;
 			hdr0 = <MML_HDR0 0 2>;
 			aal0 = <MML_AAL0 0 4>;
@@ -10696,6 +10694,7 @@
 			dlo0 = <MML_DLO0 0 18>;
 			rsz2 = <MML_RSZ2 0 20>;
 			wrot2 = <MML_WROT2 0 22>;
+			dlo2 = <MML_DLO2 0 26>;
 			birsz0 = <MML_BIRSZ0 0 28>;
 			rrot0 = <MML_RROT0 1 0>;
 			rrot0-2nd = <MML_RROT0_2ND 1 1>;
