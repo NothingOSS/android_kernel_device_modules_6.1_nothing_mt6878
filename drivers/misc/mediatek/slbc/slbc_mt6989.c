@@ -940,7 +940,7 @@ int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data)
 		return -EINVAL;
 	}
 
-	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "gid:%d", *gid);
+	SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "gid:%d", *gid);
 
 	switch (uid) {
 	case ID_MD:
@@ -990,7 +990,7 @@ int slbc_gid_release(enum slc_ach_uid uid, int gid)
 	if (gid >= GID_MAX)
 		return -EINVAL;
 
-	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "gid:%d", gid);
+	SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "gid:%d", gid);
 
 	switch (uid) {
 	case ID_MD:
