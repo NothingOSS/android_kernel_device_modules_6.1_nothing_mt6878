@@ -1532,7 +1532,11 @@ static const struct dvfsrc_opp_desc dvfsrc_opp_mt6989_desc[] = {
 	{
 		.opps = NULL,
 		.num_opp = 34,
-	}
+	},
+	{
+		.opps = NULL,
+		.num_opp = 34,
+	},
 };
 
 static const struct dvfsrc_soc_data mt6989_data = {
