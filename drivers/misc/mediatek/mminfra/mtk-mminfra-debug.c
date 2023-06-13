@@ -45,6 +45,7 @@ struct mminfra_dbg {
 	struct device *comm_dev[MAX_SMI_COMM_NUM];
 	struct notifier_block nb;
 	u32 gals_sel[MMINFRA_GALS_NR];
+	bool irq_safe;
 };
 
 static struct notifier_block mtk_pd_notifier;
@@ -131,6 +132,27 @@ static void do_mminfra_bkrs(bool is_restore)
 			pr_notice("%s: call scmi_tinysys_common_set(%d) err=%d osts:%llu ts:%llu\n",
 				__func__, is_restore, err, bkrs_osts, bkrs_ts);
 	}
+}
+
+static struct device *mminfra_get_if_in_use(void)
+{
+	s32 ret = 0;
+	u32 i;
+
+	for (i = 0; i < MAX_SMI_COMM_NUM; i++) {
+		if (!dev || !dbg || !dbg->comm_dev[i])
+			break;
+
+		ret = pm_runtime_get_if_in_use(dbg->comm_dev[i]);
+		if (ret <= 0)
+			continue;
+		else
+			return dbg->comm_dev[i];
+	}
+
+	pr_info("MMinfra may off, idx:%d ret=%d\n", i, ret);
+
+	return NULL;
 }
 
 static void mminfra_clk_set(bool is_enable)
@@ -519,11 +541,18 @@ EXPORT_SYMBOL_GPL(mtk_mminfra_off_gipc);
 static bool aee_dump;
 static irqreturn_t mminfra_irq_handler(int irq, void *data)
 {
+	struct device *comm_dev;
 	//char buf[LINK_MAX + 1] = {0};
 
 	pr_notice("handle mminfra irq!\n");
 	if (!dev || !dbg || !dbg->comm_dev[0])
 		return IRQ_NONE;
+
+	comm_dev = mminfra_get_if_in_use();
+	if (!comm_dev) {
+		pr_notice("%s: mminfra is power off\n", __func__);
+		return IRQ_HANDLED;
+	}
 
 	cmdq_util_mminfra_cmd(1);
 
@@ -540,12 +569,19 @@ static irqreturn_t mminfra_irq_handler(int irq, void *data)
 
 	cmdq_util_mminfra_cmd(0);
 
+	pm_runtime_put(comm_dev);
+
 	return IRQ_HANDLED;
 }
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static bool mminfra_devapc_power_cb(void)
 {
+	if (dbg->irq_safe) {
+		pr_info("%s set mminfra poweron\n", __func__);
+		vcp_mminfra_on();
+		return true;
+	}
 	return is_mminfra_power_on();
 }
 
@@ -655,6 +691,7 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 
 	if (vcp_gipc) {
 		pm_runtime_irq_safe(dev);
+		dbg->irq_safe = true;
 		vcp_register_mminfra_cb_ex(vcp_mminfra_on, vcp_mminfra_off);
 	}
 
