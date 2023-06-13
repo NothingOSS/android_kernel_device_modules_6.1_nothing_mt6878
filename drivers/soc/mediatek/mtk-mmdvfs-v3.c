@@ -31,6 +31,7 @@
 #include "mtk-mmdvfs-v3-memory.h"
 
 #include "../../misc/mediatek/smi/mtk-smi-dbg.h"
+#include "mtk-smmu-v3.h"
 
 static u8 mmdvfs_clk_num;
 static struct mtk_mmdvfs_clk *mtk_mmdvfs_clks;
@@ -1432,7 +1433,11 @@ static int mmdvfs_vcp_init_thread(void *data)
 	}
 
 	mmdvfs_memory_iova = vcp_get_reserve_mem_phys_ex(MMDVFS_MEM_ID);
-	domain = iommu_get_domain_for_dev(&vcp_ipi_dev->mrpdev->pdev->dev);
+	if (smmu_v3_enabled())
+		domain = iommu_get_domain_for_dev(
+			mtk_smmu_get_shared_device(&vcp_ipi_dev->mrpdev->pdev->dev));
+	else
+		domain = iommu_get_domain_for_dev(&vcp_ipi_dev->mrpdev->pdev->dev);
 	if (domain)
 		mmdvfs_memory_pa = iommu_iova_to_phys(domain, mmdvfs_memory_iova);
 	mmdvfs_memory_va = (void *)vcp_get_reserve_mem_virt_ex(MMDVFS_MEM_ID);
