@@ -60,7 +60,7 @@ static int get_desp_index(int id)
 	int i = 0;
 
 	while (i < leds_info->lens) {
-		pr_info("%s: leds %d connector id is %d\n", __func__, i, leds_info->leds[i]->connector_id);
+//		pr_info("%s: leds %d connector id is %d\n", __func__, i, leds_info->leds[i]->connector_id);
 		if (leds_info->leds[i]->connector_id < 0) {
 			struct mt_led_data *led_dat = container_of(leds_info->leds[i],
 				struct mt_led_data, desp);
