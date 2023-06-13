@@ -460,6 +460,8 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 			reg_index = VDEC_LAT_AVC_VLD;
 		}  else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_AVC_VLD, name)) {
 			reg_index = VDEC_AVC_VLD;
+		}  else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_AV1_VLD, name)) {
+			reg_index = VDEC_AV1_VLD;
 		} else {
 			dev_info(&pdev->dev, "invalid reg name: %s, index: %d", name, i);
 			return -EINVAL;

@@ -449,7 +449,7 @@ static void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 }
 #endif
 
-void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, int hw_id)
+void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, unsigned int hw_id)
 {
 
 #ifdef CONFIG_MTK_PSEUDO_M4U
@@ -576,7 +576,7 @@ void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, int hw_id)
 
 }
 
-void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, int hw_id)
+void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, unsigned int hw_id)
 {
 #ifndef FPGA_PWRCLK_API_DISABLE
 	struct mtk_vcodec_dev *dev;
@@ -673,16 +673,18 @@ static void mtk_vdec_dump_addr_reg(
 	void __iomem *lat_vld_addr = dev->dec_reg_base[VDEC_LAT_VLD];
 	void __iomem *lat_wdma_addr = dev->dec_reg_base[VDEC_LAT_MISC] + 0x800;
 	void __iomem *rctrl_addr = dev->dec_reg_base[VDEC_RACING_CTRL];
+	void __iomem *vdec_lat_vld_top_addr = dev->dec_reg_base[VDEC_LAT_VLD] + 0x800;
+	void __iomem *vdec_av1_vld_addr = dev->dec_reg_base[VDEC_AV1_VLD];
 	enum mtk_vcodec_ipm vdec_hw_ipm;
 	unsigned long value, values[6];
 	bool is_ufo = false;
 	int i, j, start, end;
 	unsigned long flags;
 
-	#define INPUT_LAT_VLD_NUM 7
+	#define INPUT_LAT_VLD_NUM 8
 	const unsigned int input_lat_vld_reg[INPUT_LAT_VLD_NUM] = {
-		0xB0, 0xB4, 0xB8, 0x110, 0xEC, 0xF8, 0xFC};
-	// RPTR, VSTART, VEND, WPTR, VBAR, VWPTR, VRPTR
+		0xB0, 0xB4, 0xB8, 0x110, 0xEC, 0xF8, 0xFC, 0x100};
+	// RPTR, VSTART, VEND, WPTR, VBAR, VWPTR, VRPTR BS(HW RPTR)
 	#define OUTPUT_MC_NUM 2
 	const unsigned int output_mc_reg[OUTPUT_MC_NUM] = {
 		0x224, 0x228}; // PY_ADD, PC_ADD
@@ -700,6 +702,12 @@ static void mtk_vdec_dump_addr_reg(
 	#define UBE_CORE_VLD_NUM 3
 	const unsigned int ube_core_vld_reg[UBE_CORE_VLD_NUM] = {
 		0xB0, 0xB4, 0xB8};
+	#define SEGMENT_ID_NUM 2
+	const unsigned int segment_id_vld_top_reg[SEGMENT_ID_NUM] = {
+		0x118, 0x11C}; // segment id read addr / write add
+	#define CTX_TABLE_NUM 3
+	const unsigned int ctx_table_av1_vld_reg[CTX_TABLE_NUM] = {
+		0x180, 0x184, 0x188}; // ctx table read addr / write addr / switch base addr
 
 	if (dev->pm.mtkdev == NULL) {
 		mtk_v4l2_err("fail to get vdec_hw_ipm");
@@ -738,6 +746,18 @@ static void mtk_vdec_dump_addr_reg(
 			value = readl(lat_vld_addr + input_lat_vld_reg[i]);
 			mtk_v4l2_err("[LAT][VLD] 0x%x(%d) = 0x%lx",
 				input_lat_vld_reg[i], input_lat_vld_reg[i]/4, value);
+		}
+		for (i = 0; i < SEGMENT_ID_NUM; i++) {
+			value = readl(vdec_lat_vld_top_addr + segment_id_vld_top_reg[i]);
+			mtk_v4l2_err("[LAT][VLD_TOP] 0x%x(%d) = 0x%lx",
+				segment_id_vld_top_reg[i], segment_id_vld_top_reg[i]/4, value);
+		}
+		if (vdec_av1_vld_addr == NULL)
+			break;
+		for (i = 0; i < CTX_TABLE_NUM; i++) {
+			value = readl(vdec_av1_vld_addr + ctx_table_av1_vld_reg[i]);
+			mtk_v4l2_err("[LAT][AV1_VLD] 0x%x(%d) = 0x%lx",
+				ctx_table_av1_vld_reg[i], ctx_table_av1_vld_reg[i]/4, value);
 		}
 		break;
 	case DUMP_VDEC_OUT_BUF:
