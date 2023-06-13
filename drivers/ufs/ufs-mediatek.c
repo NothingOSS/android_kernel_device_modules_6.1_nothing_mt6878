@@ -2510,7 +2510,7 @@ static int ufs_mtk_config_esi(struct ufs_hba *hba)
 	return ufs_mtk_config_mcq(hba, true);
 }
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG) && IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 static void ufs_mtk_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 				    enum ufs_notify_change_status status)
 {
@@ -2532,7 +2532,7 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.hce_enable_notify   = ufs_mtk_hce_enable_notify,
 	.link_startup_notify = ufs_mtk_link_startup_notify,
 	.pwr_change_notify   = ufs_mtk_pwr_change_notify,
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG) && IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 	.hibern8_notify      = ufs_mtk_hibern8_notify,
 #endif
 	.apply_dev_quirks    = ufs_mtk_apply_dev_quirks,

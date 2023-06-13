@@ -474,7 +474,7 @@ static void probe_ufshcd_uic_command(void *data, const char *dev_name,
 	}
 }
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 
 /* MPHY Debugging is for ENG/USERDEBUG builds only */
 
@@ -1335,7 +1335,7 @@ static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 				    int state)
 {
 	int ptr;
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 	struct ufs_mtk_host *host = ufshcd_get_variant(ufshba);
 	u32 val;
 #endif
@@ -1348,7 +1348,7 @@ static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 	cmd_hist[ptr].event = CMD_CLK_GATING;
 	cmd_hist[ptr].cmd.clk_gating.state = state;
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 	if (state == CLKS_ON && host->mphy_base) {
 		writel(0xC1000200, host->mphy_base + 0x20C0);
 		cmd_hist[ptr].cmd.clk_gating.arg1 =

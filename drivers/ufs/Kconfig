@@ -59,6 +59,16 @@ config SCSI_UFS_MEDIATEK_DBG
 
 	  If unsure, say N.
 
+config MTK_UFS_DEBUG_BUILD
+	depends on SCSI_UFS_MEDIATEK_DBG
+	help
+	  This selects the debugging facility for Mediatek UFS platforms
+	  existed in debug build only.
+
+	  Select this if you want to enable above facilities.
+
+	  If unsure, say N.
+
 source "$(KCONFIG_EXT_PREFIX)drivers/ufs/vendor/Kconfig"
 
 config MTK_UFS_DEBUG

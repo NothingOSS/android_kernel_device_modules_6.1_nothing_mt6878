@@ -190,7 +190,7 @@ void ufs_mtk_eh_unipro_set_lpm(struct ufs_hba *hba, int ret);
 #define ufs_mtk_eh_unipro_set_lpm(...)
 #endif /* CONFIG_SCSI_UFS_MEDIATEK_DBG */
 
-#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG) && IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 void ufs_mtk_dbg_phy_enable(struct ufs_hba *hba);
 void ufs_mtk_dbg_phy_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 				    enum ufs_notify_change_status status);
