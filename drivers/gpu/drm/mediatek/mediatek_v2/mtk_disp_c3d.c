@@ -251,10 +251,10 @@ static void disp_c3d_config_sram(struct mtk_ddp_comp *comp,
 	unsigned int write_value = 0;
 
 	cfg = primary_data->c3d_sram_cfg;
-	reuse_buf_size = DISP_C3D_SRAM_SIZE_17BIN * 2;
+	reuse_buf_size = DISP_C3D_SRAM_SIZE_17BIN + 1;
 	if (c3d_data->data->bin_num == 9) {
 		cfg = primary_data->c3d_sram_cfg_9bin;
-		reuse_buf_size = DISP_C3D_SRAM_SIZE_9BIN * 2;
+		reuse_buf_size = DISP_C3D_SRAM_SIZE_9BIN + 1;
 	} else if (c3d_data->data->bin_num != 17)
 		DDPMSG("%s: %d bin Not support!", __func__, c3d_data->data->bin_num);
 
@@ -270,16 +270,17 @@ static void disp_c3d_config_sram(struct mtk_ddp_comp *comp,
 
 	// Write 3D LUT to SRAM
 	if (!c3d_data->pkt_reused) {
+		cmdq_pkt_write_value_addr_reuse(*handle, comp->regs_pa + C3D_SRAM_RW_IF_0,
+			c3d_data->data->c3d_sram_start_addr, ~0, &reuse[0]);
+		reuse[0].val = c3d_data->data->c3d_sram_start_addr;
 		for (sram_offset = c3d_data->data->c3d_sram_start_addr;
 			sram_offset <= c3d_data->data->c3d_sram_end_addr;
 				sram_offset += 4) {
 			write_value = cfg[sram_offset/4];
 
 			// use cmdq reuse to save time
-			cmdq_pkt_write_value_addr_reuse(*handle, comp->regs_pa + C3D_SRAM_RW_IF_0,
-				sram_offset, ~0, &reuse[sram_offset/4 * 2]);
 			cmdq_pkt_write_value_addr_reuse(*handle, comp->regs_pa + C3D_SRAM_RW_IF_1,
-				write_value, ~0, &reuse[sram_offset/4 * 2 + 1]);
+				write_value, ~0, &reuse[sram_offset/4 + 1]);
 
 			c3d_data->pkt_reused = true;
 		}
@@ -287,11 +288,9 @@ static void disp_c3d_config_sram(struct mtk_ddp_comp *comp,
 		for (sram_offset = c3d_data->data->c3d_sram_start_addr;
 			sram_offset <= c3d_data->data->c3d_sram_end_addr;
 				sram_offset += 4) {
-			reuse[sram_offset/4 * 2].val = sram_offset;
-			reuse[sram_offset/4 * 2 + 1].val = cfg[sram_offset/4];
+			reuse[sram_offset/4 + 1].val = cfg[sram_offset/4];
+			cmdq_pkt_reuse_value(*handle, &reuse[sram_offset/4 + 1]);
 		}
-
-		cmdq_pkt_reuse_buf_va(*handle, reuse, reuse_buf_size);
 	}
 }
 
