@@ -1452,6 +1452,7 @@ int gpufreq_set_mfgsys_config(enum gpufreq_config_target target, enum gpufreq_co
 
 	return ret;
 }
+EXPORT_SYMBOL(gpufreq_set_mfgsys_config);
 
 /***********************************************************************************
  * Function Name      : gpufreq_mssv_commit

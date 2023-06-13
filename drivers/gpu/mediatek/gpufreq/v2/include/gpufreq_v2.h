@@ -116,6 +116,7 @@ enum gpufreq_config_target {
 	CONFIG_FAKE_MTCMOS_CTRL = 15,
 	CONFIG_MCUETM_CLK       = 16,
 	CONFIG_PTP3             = 17,
+	CONFIG_MFG2_BEFORE_OFF  = 18,
 };
 
 enum gpufreq_config_value {
