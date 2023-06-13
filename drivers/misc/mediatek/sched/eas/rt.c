@@ -52,6 +52,25 @@ bool task_may_not_preempt(struct task_struct *task, int cpu)
 #endif /* CONFIG_RT_SOFTINT_OPTIMIZATION */
 
 #if IS_ENABLED(CONFIG_SMP)
+static inline unsigned long task_util(struct task_struct *p)
+{
+	return READ_ONCE(p->se.avg.util_avg);
+}
+
+static inline unsigned long _task_util_est(struct task_struct *p)
+{
+	struct util_est ue = READ_ONCE(p->se.avg.util_est);
+
+	return max(ue.ewma, (ue.enqueued & ~UTIL_AVG_UNCHANGED));
+}
+
+static inline unsigned long task_util_est(struct task_struct *p)
+{
+	if (sched_feat(UTIL_EST) && is_util_est_enable())
+		return max(task_util(p), _task_util_est(p));
+	return task_util(p);
+}
+
 static inline bool should_honor_rt_sync(struct rq *rq, struct task_struct *p,
 					bool sync)
 {
@@ -73,6 +92,13 @@ static inline bool should_honor_rt_sync(struct rq *rq, struct task_struct *p,
 #endif
 
 #if IS_ENABLED(CONFIG_UCLAMP_TASK)
+static inline unsigned long uclamp_task_util(struct task_struct *p)
+{
+	return clamp(task_util_est(p),
+		     uclamp_eff_value(p, UCLAMP_MIN),
+		     uclamp_eff_value(p, UCLAMP_MAX));
+}
+
 /*
  * Verify the fitness of task @p to run on @cpu taking into account the uclamp
  * settings.
@@ -105,6 +131,11 @@ static inline bool rt_task_fits_capacity(struct task_struct *p, int cpu)
 	return cpu_cap >= min(min_cap, max_cap);
 }
 #else
+static inline unsigned long uclamp_task_util(struct task_struct *p)
+{
+	return task_util_est(p);
+}
+
 static inline bool rt_task_fits_capacity(struct task_struct *p, int cpu)
 {
 	return true;
@@ -590,7 +621,7 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 out:
 	if (trace_sched_select_task_rq_rt_enabled())
 		trace_sched_select_task_rq_rt(p, select_reason, *target_cpu, &rt_ea_output,
-					 lowest_mask, sd_flag, sync);
+				lowest_mask, sd_flag, sync, task_util_est(p), uclamp_task_util(p));
 	irq_log_store();
 }
 

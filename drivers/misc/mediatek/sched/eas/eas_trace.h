@@ -484,9 +484,10 @@ TRACE_EVENT(sched_cpu_util,
 TRACE_EVENT(sched_select_task_rq_rt,
 	TP_PROTO(struct task_struct *tsk, int policy,
 		int target_cpu, struct rt_energy_aware_output *rt_ea_output,
-		struct cpumask *lowest_mask, int sd_flag, bool sync),
+		struct cpumask *lowest_mask, int sd_flag, bool sync,
+		unsigned long task_util_est, unsigned long uclamp_task_util),
 	TP_ARGS(tsk, policy, target_cpu, rt_ea_output, lowest_mask,
-		sd_flag, sync),
+		sd_flag, sync, task_util_est, uclamp_task_util),
 	TP_STRUCT__entry(
 		__field(pid_t, pid)
 		__field(int, policy)
@@ -500,8 +501,10 @@ TRACE_EVENT(sched_select_task_rq_rt,
 		__field(int, rt_lowest_cpu)
 		__field(int, rt_lowest_prio)
 		__field(int, rt_lowest_pid)
+		__field(unsigned long, task_util_est)
 		__field(unsigned long, uclamp_min)
 		__field(unsigned long, uclamp_max)
+		__field(unsigned long, uclamp_task_util)
 		__field(int, sd_flag)
 		__field(bool, sync)
 		__field(long, task_mask)
@@ -522,8 +525,10 @@ TRACE_EVENT(sched_select_task_rq_rt,
 		__entry->rt_lowest_cpu  = rt_ea_output->rt_lowest_cpu;
 		__entry->rt_lowest_prio   = rt_ea_output->rt_lowest_prio;
 		__entry->rt_lowest_pid   = rt_ea_output->rt_lowest_pid;
+		__entry->task_util_est = task_util_est;
 		__entry->uclamp_min = uclamp_eff_value(tsk, UCLAMP_MIN);
 		__entry->uclamp_max = uclamp_eff_value(tsk, UCLAMP_MAX);
+		__entry->uclamp_task_util = uclamp_task_util;
 		__entry->sd_flag = sd_flag;
 		__entry->sync = sync;
 		__entry->task_mask = tsk->cpus_ptr->bits[0];
@@ -532,7 +537,7 @@ TRACE_EVENT(sched_select_task_rq_rt,
 		__entry->act_mask = cpu_active_mask->bits[0];
 	),
 	TP_printk(
-		"pid=%4d policy=0x%08x target=%d lowest_mask=0x%lx idle_cpus=0x%x cfs_cpus=0x%x cfs_lowest_cpu=%d cfs_lowest_prio=%d cfs_lowest_pid=%d rt_lowest_cpu=%d rt_lowest_prio=%d rt_lowest_pid=%d uclamp_min=%lu uclamp_max=%lu sd_flag=%d sync=%d mask=0x%lx cpuctl=%d cpuset=%d act_mask=0x%lx",
+		"pid=%4d policy=0x%08x target=%d lowest_mask=0x%lx idle_cpus=0x%x cfs_cpus=0x%x cfs_lowest_cpu=%d cfs_lowest_prio=%d cfs_lowest_pid=%d rt_lowest_cpu=%d rt_lowest_prio=%d rt_lowest_pid=%d util_est=%lu uclamp_min=%lu uclamp_max=%lu uclamp=%lu sd_flag=%d sync=%d mask=0x%lx cpuctl=%d cpuset=%d act_mask=0x%lx",
 		__entry->pid,
 		__entry->policy,
 		__entry->target_cpu,
@@ -545,8 +550,10 @@ TRACE_EVENT(sched_select_task_rq_rt,
 		__entry->rt_lowest_cpu,
 		__entry->rt_lowest_prio,
 		__entry->rt_lowest_pid,
+		__entry->task_util_est,
 		__entry->uclamp_min,
 		__entry->uclamp_max,
+		__entry->uclamp_task_util,
 		__entry->sd_flag,
 		__entry->sync,
 		__entry->task_mask,
