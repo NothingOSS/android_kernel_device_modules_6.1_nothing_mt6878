@@ -3130,7 +3130,7 @@
 					&smi_ccu_sub_comm0>;
 	};
 
-	mminfra-debug@1e827000 {
+	mminfra_debug: mminfra-debug@1e827000 {
 		compatible = "mediatek,mminfra-debug";
 		reg = <0 0x1e827000 0 0x90>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
@@ -3146,6 +3146,8 @@
 				<&mminfra_config_clk CLK_MMINFRA_SMI>,
 				<&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_26M>;
 		clock-names = "clk0", "clk1", "clk2", "clk3";
+		mediatek,vcp-supply = <&vcp>;
+		vcp-gipc;
 	};
 
 	mmqos-wrapper {
