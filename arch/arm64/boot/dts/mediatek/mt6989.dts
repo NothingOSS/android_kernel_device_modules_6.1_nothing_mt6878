@@ -6645,8 +6645,8 @@
 			mediatek,mml = <&mmlsys_config>;
 			dispsys-num = <2>;
 			ovlsys-num = <2>;
-			reg = <0 0x14201000 0 0x1000>,
-				  <0 0x14001000 0 0x1000>,
+			reg = <0 0x14001000 0 0x1000>,
+				  <0 0x14201000 0 0x1000>,
 				  <0 0x14401000 0 0x1000>,
 				  <0 0x14601000 0 0x1000>;
 			interrupts = <GIC_SPI 487 IRQ_TYPE_LEVEL_HIGH 0>,
