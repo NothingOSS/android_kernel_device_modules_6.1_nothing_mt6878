@@ -13877,6 +13877,8 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"active_ratio10,active_ratio9,active_ratio8,active_ratio7,",
 				"active_ratio6,active_ratio5,active_ratio4,active_ratio3,",
 				"active_ratio2,active_ratio1,active_ratio0,Freq";
+			node-125 = "SSPM_SWPM_DISP__PWR_STA",
+				"off,act,disp_clk,time";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
