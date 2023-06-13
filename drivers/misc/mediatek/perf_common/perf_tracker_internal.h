@@ -21,7 +21,6 @@ struct ppm_data {
 
 extern void __iomem *csram_base;
 extern void __iomem *u_tcm_base;
-extern void __iomem *u_e_tcm_base;
 extern void __iomem *pmu_tcm_base;
 
 extern struct ppm_data cluster_ppm_info[MAX_CLUSTER_NR];
@@ -38,7 +37,6 @@ extern u32 U_AFFO;
 extern u32 U_BMONIO;
 extern u32 U_UFFO;
 extern u32 U_UCFO;
-extern u32 U_ECFO;
 
 /*
  *cluster's volt: start from 0x514

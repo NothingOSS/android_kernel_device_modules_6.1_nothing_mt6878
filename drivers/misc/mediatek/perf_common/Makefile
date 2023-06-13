@@ -3,6 +3,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos/
 
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs
 subdir-ccflags-y += -I$(srctree)/drivers/ufs

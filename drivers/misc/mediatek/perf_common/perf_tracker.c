@@ -30,6 +30,9 @@
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 #include "mtk_energy_model/v2/energy_model.h"
 #endif
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
+#include <thermal_interface.h>
+#endif
 
 static struct cpu_dsu_freq_state *freq_state;
 
@@ -380,7 +383,9 @@ void perf_tracker(u64 wallclock,
 		u_bmoni = base_offset_read(u_tcm_base, U_BMONIO);
 		u_uff = csram_read(U_UFFO);
 		u_ucf = csram_read(U_UCFO);
-		u_ecf = base_offset_read(u_e_tcm_base, U_ECFO);
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
+		u_ecf = get_dsu_ceiling_freq();
+#endif
 		sbin_data[sbin_lens] = u_aff;
 		sbin_data[sbin_lens+1] = u_bmoni;
 		sbin_data[sbin_lens+2] = u_uff;

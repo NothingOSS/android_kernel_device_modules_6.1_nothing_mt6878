@@ -27,7 +27,6 @@ static atomic_t perf_in_progress;
 
 void __iomem *csram_base;
 void __iomem *u_tcm_base;
-void __iomem *u_e_tcm_base;
 void __iomem *pmu_tcm_base;
 
 struct em_perf_domain *em_pd;
@@ -35,7 +34,6 @@ u32 U_AFFO;
 u32 U_BMONIO;
 u32 U_UFFO;
 u32 U_UCFO;
-u32 U_ECFO;
 u32 CPU_L3DC_OFFSET = 0x1254;
 u32 CPU_INST_SPEC_OFFSET = 0x1274;
 u32 CPU_IDX_CYCLES_OFFSET = 0x1294;
@@ -290,6 +288,7 @@ u32 get_perf_tracker_info_from_dts(const char *property_name)
 static int __init init_perf_common(void)
 {
 	int ret = 0;
+	u32 cdfv_tcm_base_start = 0, u_tcm_base_start = 0, pmu_tcm_base_start = 0;
 	struct device_node *dn = NULL;
 	struct platform_device *pdev = NULL;
 	struct resource *csram_res = NULL;
@@ -316,21 +315,27 @@ static int __init init_perf_common(void)
 		U_BMONIO = get_perf_tracker_info_from_dts("u-bmonio");
 		U_UFFO = get_perf_tracker_info_from_dts("u-uffo");
 		U_UCFO = get_perf_tracker_info_from_dts("u-ucfo");
-		U_ECFO = get_perf_tracker_info_from_dts("u-ecfo");
 		CPU_L3DC_OFFSET = get_perf_tracker_info_from_dts("cpu-l3dc-offset");
 		CPU_INST_SPEC_OFFSET = get_perf_tracker_info_from_dts("cpu-inst-spec-offset");
 		CPU_IDX_CYCLES_OFFSET = get_perf_tracker_info_from_dts("cpu-idx-cycles-offset");
 		PERF_TRACKER_STATUS_OFFSET = get_perf_tracker_info_from_dts("perf-tracker-status-offset");
 		U_VOLT_3_CLUSTER = get_perf_tracker_info_from_dts("u-volt-3-cluster");
 
-		csram_base = ioremap(get_perf_tracker_info_from_dts("cdfv-tcm-base")
+		cdfv_tcm_base_start = get_perf_tracker_info_from_dts("cdfv-tcm-base");
+		if (cdfv_tcm_base_start == 0)
+			goto get_base_failed;
+		csram_base = ioremap(cdfv_tcm_base_start
 					, get_perf_tracker_info_from_dts("cdfv-tcm-base-len"));
-		u_tcm_base = ioremap(get_perf_tracker_info_from_dts("u-tcm-base")
+		u_tcm_base_start = get_perf_tracker_info_from_dts("u-tcm-base");
+		if (u_tcm_base_start != 0) {
+			u_tcm_base = ioremap(u_tcm_base_start
 						, get_perf_tracker_info_from_dts("u-tcm-base-len"));
-		u_e_tcm_base = ioremap(get_perf_tracker_info_from_dts("u-e-tcm-base")
-						, get_perf_tracker_info_from_dts("u-e-tcm-base-len"));
-		pmu_tcm_base = ioremap(get_perf_tracker_info_from_dts("pmu-tcm-base")
+		}
+		pmu_tcm_base_start = get_perf_tracker_info_from_dts("pmu-tcm-base");
+		if (pmu_tcm_base_start != 0) {
+			pmu_tcm_base = ioremap(pmu_tcm_base_start
 						, get_perf_tracker_info_from_dts("pmu-tcm-base-len"));
+		}
 	} else {
 		/* get cpufreq driver base address */
 		dn = of_find_node_by_name(NULL, "cpuhvfs");
