@@ -19,6 +19,8 @@
 #define MTK_DRM_PROP_OVERLAP_LAYER_NUM  "OVERLAP_LAYER_NUM"
 #define MTK_DRM_PROP_NEXT_BUFF_IDX  "NEXT_BUFF_IDX"
 #define MTK_DRM_PROP_PRESENT_FENCE  "PRESENT_FENCE"
+#define MAX_DBV_PN 100
+#define MAX_FPS_PN 20
 
 struct mml_frame_info;
 
@@ -1518,6 +1520,7 @@ enum mtk_pq_frame_cfg_cmd {
 	PQ_AAL_GET_HIST,
 	PQ_AAL_GET_SIZE,
 	PQ_AAL_SET_TRIGGER_STATE,
+	PQ_AAL_GET_BASE_VOLTAGE,
 	PQ_CHIST_GET = 60100,
 	PQ_COLOR_READ_REG = 60200,
 	PQ_COLOR_READ_SW_REG,
@@ -1552,7 +1555,14 @@ struct mtk_disp_pq_irq_data {
 	__u32 backlight;
 	enum mtk_disp_pq_irq_trig irq_src;
 };
-
+struct DISP_PANEL_BASE_VOLTAGE {
+	unsigned char AnodeBase[MAX_FPS_PN];
+	unsigned char AnodeOffset[MAX_DBV_PN];
+	unsigned char ELVSSBase[MAX_DBV_PN];
+	_Bool flag;
+	unsigned int DDICDbvPn;
+	unsigned int DDICFpsPn;
+};
 #define DRM_IOCTL_MTK_GEM_CREATE	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_MTK_GEM_CREATE, struct drm_mtk_gem_create)
 
@@ -1874,6 +1884,7 @@ struct DISP_AAL_HIST {
 	unsigned int tdshp0_clarity[DISP_TDSHP_CLARITY_READBACK_NUM];
 	unsigned int tdshp1_clarity[DISP_TDSHP_CLARITY_READBACK_NUM];
 	int pipeLineNum;
+	unsigned int fps;
 };
 
 struct DISP_AAL_ESS20_SPECT_PARAM {
