@@ -23,6 +23,26 @@ void mtk_rect_set(struct mtk_rect *in, int left, int top, int right, int bottom)
 	in->height = bottom - top + 1;
 }
 
+int mtk_rect_is_empty(const struct mtk_rect *in)
+{
+	return in->width == 0 || in->height == 0;
+}
+
+void mtk_rect_initial(struct mtk_rect *in)
+{
+	in->x = 0;
+	in->y = 0;
+	in->width = 0;
+	in->height = 0;
+}
+
+int mtk_rect_equal(const struct mtk_rect *one,
+							const struct mtk_rect *two)
+{
+	return (one->x == two->x) && (one->y == two->y) &&
+		(one->width == two->width) && (one->height == two->height);
+}
+
 void mtk_rect_join(const struct mtk_rect *in1, const struct mtk_rect *in2,
 		   struct mtk_rect *out)
 {
@@ -60,4 +80,40 @@ void mtk_rect_join(const struct mtk_rect *in1, const struct mtk_rect *in2,
 	DDPDBG("%s (%d,%d,%d,%d) & (%d,%d,%d,%d) to (%d,%d,%d,%d)\n", __func__,
 	       in1->x, in1->y, in1->width, in1->height, in2_x, in2_y, in2_w,
 	       in2_h, in2->x, in2->y, in2->width, in2->height);
+}
+
+int mtk_rect_intersect(const struct mtk_rect *src,
+		   const struct mtk_rect *dst, struct mtk_rect *out)
+{
+	int left = src->x;
+	int top = src->y;
+	int right = src->x + src->width - 1;
+	int bottom = src->y + src->height - 1;
+	int fLeft = dst->x;
+	int fTop = dst->y;
+	int fRight = dst->x + dst->width - 1;
+	int fBottom = dst->y + dst->height - 1;
+
+	if (left < right && top < bottom && !mtk_rect_is_empty(dst) &&
+			fLeft <= right && left <= fRight &&
+			fTop <= bottom && top <= fBottom) {
+		if (fLeft < left)
+			fLeft = left;
+		if (fTop < top)
+			fTop = top;
+		if (fRight > right)
+			fRight = right;
+		if (fBottom > bottom)
+			fBottom = bottom;
+		mtk_rect_set(out, fLeft, fTop, fRight, fBottom);
+		DDPDBG("%s (%d,%d,%d,%d) & (%d,%d,%d,%d) to (%d,%d,%d,%d)\n",
+			__func__, src->x, src->y, src->width, src->height,
+			dst->x, dst->y, dst->width, dst->height,
+			out->x, out->y, out->width, out->height);
+		return 1;
+	}
+	/*make out empty*/
+	mtk_rect_initial(out);
+	return 0;
+
 }

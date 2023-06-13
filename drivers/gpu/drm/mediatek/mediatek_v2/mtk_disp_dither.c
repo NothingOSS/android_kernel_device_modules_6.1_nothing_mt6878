@@ -124,6 +124,9 @@ struct mtk_disp_dither {
 	bool reg_backup;
 };
 
+static bool set_partial_update;
+static unsigned int roi_height;
+
 static inline struct mtk_disp_dither *comp_to_dither(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_dither, ddp_comp);
@@ -468,9 +471,14 @@ static void mtk_dither_config(struct mtk_ddp_comp *comp,
 		enable << 1 |
 		primary_data->relay_value, 0x3);
 
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_REG_DITHER_SIZE,
-		width << 16 | cfg->h, ~0);
+	if (!set_partial_update)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_DITHER_SIZE,
+			width << 16 | cfg->h, ~0);
+	else
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_DITHER_SIZE,
+			width << 16 | roi_height, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_DITHER_PURECOLOR0,
 		primary_data->pure_clr_param->pure_clr_det, 0x1);
@@ -548,6 +556,7 @@ static void mtk_dither_bypass(struct mtk_ddp_comp *comp, int bypass,
 	struct mtk_disp_dither *priv = dev_get_drvdata(comp->dev);
 
 	DDPINFO("%s\n", __func__);
+
 	primary_data->relay_value = bypass;
 
 	if (bypass)
@@ -912,6 +921,31 @@ static int mtk_dither_ioctl_transact(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
+static int mtk_dither_set_partial_update(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+{
+	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, true);
+
+	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
+			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+	set_partial_update = enable;
+	roi_height = partial_roi.height;
+
+	if (set_partial_update) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_DITHER_SIZE,
+			roi_height, 0x1fff);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_DITHER_SIZE,
+			full_height, 0x1fff);
+	}
+
+	return 0;
+}
+
 static const struct mtk_ddp_comp_funcs mtk_disp_dither_funcs = {
 	.config = mtk_dither_config,
 	.first_cfg = mtk_dither_first_cfg,
@@ -928,6 +962,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_dither_funcs = {
 	.io_cmd = mtk_dither_io_cmd,
 	.pq_frame_config = mtk_dither_pq_frame_config,
 	.pq_ioctl_transact = mtk_dither_ioctl_transact,
+	.partial_update = mtk_dither_set_partial_update,
 };
 
 static int mtk_disp_dither_bind(struct device *dev, struct device *master,

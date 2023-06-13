@@ -474,6 +474,10 @@ struct mtk_disp_ovl {
 	struct mtk_ovl_backup_info backup_info[MAX_LAYER_NUM];
 };
 
+static bool set_partial_update;
+static unsigned int roi_y_offset, roi_height;
+static unsigned int y_overhead;
+
 static inline struct mtk_disp_ovl *comp_to_ovl(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_ovl, ddp_comp);
@@ -1139,7 +1143,11 @@ static void _get_bg_roi(struct mtk_ddp_comp *comp, int *h, int *w)
 {
 	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 
-	*h = ovl->bg_h;
+	if (!set_partial_update)
+		*h = ovl->bg_h;
+	else
+		*h = roi_height;
+
 	*w = ovl->bg_w;
 }
 
@@ -1150,7 +1158,7 @@ static int mtk_ovl_golden_setting(struct mtk_ddp_comp *comp,
 static void mtk_ovl_config(struct mtk_ddp_comp *comp,
 			   struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
-	unsigned int width;
+	unsigned int width, height;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
@@ -1169,11 +1177,17 @@ static void mtk_ovl_config(struct mtk_ddp_comp *comp,
 	} else
 		width = cfg->w;
 
+	if (!set_partial_update)
+		height = cfg->h;
+	else
+		height = roi_height;
+
 	if (cfg->w != 0 && cfg->h != 0) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_ROI_SIZE,
-			       cfg->h << 16 | width, ~0);
-		_store_bg_roi(comp, cfg->h, width);
+				   comp->regs_pa + DISP_REG_OVL_ROI_SIZE,
+				   height << 16 | width, ~0);
+
+		_store_bg_roi(comp, height, width);
 	}
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_OVL_ROI_BGCLR, OVL_ROI_BGCLR,
@@ -1183,10 +1197,10 @@ static void mtk_ovl_config(struct mtk_ddp_comp *comp,
 				comp->regs_pa + DISP_REG_OVL_TRIG, 0x1000, 0x1000);
 
 
-	mtk_ddp_write(comp, (cfg->h * 9) / 10,
+	mtk_ddp_write(comp, (height * 9) / 10,
 		OVL_ROI_TIMING_0, handle);
 
-	DDPINFO("%s -> %u\n", __func__, (cfg->h * 9) / 10);
+	DDPINFO("%s -> %u\n", __func__, (height * 9) / 10);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 		(crtc_idx == 0)) {
@@ -2019,6 +2033,7 @@ static void _ovl_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			clip |= REG_FLD_VAL(OVL_L_CLIP_FLD_RIGHT, 1);
 		}
 	}
+
 	src_size = (dst_h << 16) | dst_w;
 
 #ifdef CONFIG_MTK_LCM_PHYSICAL_ROTATION_HW
@@ -4508,6 +4523,33 @@ mtk_ovl_config_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkt,
 	}
 }
 
+static int mtk_ovl_set_partial_update(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+{
+	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, true);
+
+	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
+			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+	set_partial_update = enable;
+	y_overhead = 0;/*(partial_roi.y > 2) ? 2 : partial_roi.y;*/
+	roi_y_offset = partial_roi.y - y_overhead;
+	roi_height = partial_roi.height + (y_overhead * 2);
+
+	if (set_partial_update) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_REG_OVL_ROI_SIZE,
+				roi_height << 16, 0x1fff << 16);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_REG_OVL_ROI_SIZE,
+				full_height << 16, 0x1fff << 16);
+	}
+
+	return 0;
+}
+
 static const struct mtk_ddp_comp_funcs mtk_disp_ovl_funcs = {
 	.config = mtk_ovl_config,
 	.first_cfg = mtk_ovl_config,
@@ -4528,6 +4570,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_ovl_funcs = {
 	.unprepare = mtk_ovl_unprepare,
 	.connect = mtk_ovl_connect,
 	.config_trigger = mtk_ovl_config_trigger,
+	.partial_update = mtk_ovl_set_partial_update,
 };
 
 /* TODO: to be refactored */

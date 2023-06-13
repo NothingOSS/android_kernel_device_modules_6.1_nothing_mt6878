@@ -113,6 +113,9 @@ struct mtk_disp_color {
 	spinlock_t clock_lock;
 };
 
+static bool set_partial_update;
+static unsigned int roi_height;
+
 static inline struct mtk_disp_color *comp_to_color(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_color, ddp_comp);
@@ -1256,8 +1259,13 @@ static void mtk_color_config(struct mtk_ddp_comp *comp,
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_COLOR_WIDTH(color), width, ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		       comp->regs_pa + DISP_COLOR_HEIGHT(color), cfg->h, ~0);
+	if (!set_partial_update)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + DISP_COLOR_HEIGHT(color), cfg->h, ~0);
+	else
+		cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + DISP_COLOR_HEIGHT(color), roi_height, ~0);
+
 	mutex_lock(&primary_data->reg_lock);
 	if ((pq_data->new_persist_property[DISP_DRE_CAPABILITY] & 0x1) &&
 		drecolor_sgy->sgy_trans_trigger) {
@@ -2628,6 +2636,7 @@ static void mtk_color_bypass(struct mtk_ddp_comp *comp, int bypass,
 	struct mtk_disp_color *color = comp_to_color(comp);
 
 	DDPINFO("%s: bypass: %d\n", __func__, bypass);
+
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_COLOR_CFG_MAIN,
 		       COLOR_BYPASS_ALL | COLOR_SEQ_SEL, ~0);
@@ -3885,6 +3894,32 @@ static int mtk_color_ioctl_transact(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
+
+static int mtk_color_set_partial_update(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+{
+	struct mtk_disp_color *color = comp_to_color(comp);
+	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, true);
+
+	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
+			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+	set_partial_update = enable;
+	roi_height = partial_roi.height;
+
+	if (set_partial_update) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + DISP_COLOR_HEIGHT(color), roi_height, ~0);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + DISP_COLOR_HEIGHT(color), full_height, ~0);
+	}
+
+	return 0;
+}
+
+
 static const struct mtk_ddp_comp_funcs mtk_disp_color_funcs = {
 	.config = mtk_color_config,
 	.first_cfg = mtk_color_first_cfg,
@@ -3898,6 +3933,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_color_funcs = {
 	.io_cmd = mtk_color_io_cmd,
 	.pq_frame_config = mtk_color_pq_frame_config,
 	.pq_ioctl_transact = mtk_color_ioctl_transact,
+	.partial_update = mtk_color_set_partial_update,
 };
 
 void mtk_color_dump(struct mtk_ddp_comp *comp)

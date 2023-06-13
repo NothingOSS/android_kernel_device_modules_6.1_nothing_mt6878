@@ -658,6 +658,9 @@ struct mtk_disp_spr_data {
 	bool shrink_cfg;
 };
 
+static bool set_partial_update;
+static unsigned int roi_height;
+
 /**
  * struct mtk_disp_spr - DISP_SPR driver structure
  * @ddp_comp - structure containing type enum and hardware resources
@@ -1184,7 +1187,10 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 	} else {
 		postalign_width = cfg->w;
 		width = cfg->w;
-		height = cfg->h;
+		if (!set_partial_update)
+			height = cfg->h;
+		else
+			height = roi_height;
 		if (priv->data->mmsys_id == MMSYS_MT6989) {
 			mtk_ddp_write_mask(comp, width << 0,
 				MT6989_DISP_REG_SPR_CROP_SIZE, REG_FLD_MASK(MT6989_CROP_OUT_HSIZE), handle);
@@ -1471,6 +1477,84 @@ int mtk_spr_analysis(struct mtk_ddp_comp *comp)
 	return 0;
 }
 
+static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+{
+	resource_size_t config_regs_pa;
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+	struct mtk_ddp_comp *postalign_comp;
+	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, true);
+
+	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
+			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+	set_partial_update = enable;
+	roi_height = partial_roi.height;
+
+	if (comp->id == DDP_COMPONENT_SPR0) {
+		if (priv->data->mmsys_id == MMSYS_MT6989)
+			postalign_comp = priv->ddp_comp[DDP_COMPONENT_POSTALIGN0];
+		else
+			config_regs_pa = comp->mtk_crtc->config_regs_pa;
+	} else
+		config_regs_pa = comp->mtk_crtc->side_config_regs_pa;
+
+	if (set_partial_update) {
+		if (priv->data->mmsys_id == MMSYS_MT6989) {
+			mtk_ddp_write_mask(comp, roi_height << 16,
+				MT6989_DISP_REG_SPR_CROP_SIZE,
+				REG_FLD_MASK(MT6989_CROP_OUT_VSIZE), handle);
+
+			mtk_ddp_write_mask(postalign_comp, roi_height << 0,
+				MT6989_DISP_REG_POSTALIGN0_SIZE,
+				REG_FLD_MASK(MT6989_VSIZE), handle);
+		} else {
+			mtk_ddp_write_mask(comp, roi_height << 16,
+				DISP_REG_SPR_RDY_SEL_EN,
+				REG_FLD_MASK(CROP_OUT_VSIZE), handle);
+
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				config_regs_pa + DISP_REG_POSTALIGN0_CON1,
+				roi_height << 16, 0xffff0000);
+		}
+
+		//roi size config
+		mtk_ddp_write_mask(comp, roi_height << 16,
+			DISP_REG_V2_SPR_ROI_SIZE, REG_FLD_MASK(CROP_OUT_VSIZE), handle);
+
+		mtk_ddp_write_mask(comp, roi_height << 12,
+		DISP_REG_V2_SPR_IP_CFG_0, 0xfffff000, handle);
+	} else {
+		if (priv->data->mmsys_id == MMSYS_MT6989) {
+			mtk_ddp_write_mask(comp, full_height << 16,
+				MT6989_DISP_REG_SPR_CROP_SIZE,
+				REG_FLD_MASK(MT6989_CROP_OUT_VSIZE), handle);
+
+			mtk_ddp_write_mask(postalign_comp, full_height << 0,
+				MT6989_DISP_REG_POSTALIGN0_SIZE,
+				REG_FLD_MASK(MT6989_VSIZE), handle);
+		} else {
+			mtk_ddp_write_mask(comp, full_height << 16,
+				DISP_REG_SPR_RDY_SEL_EN,
+				REG_FLD_MASK(CROP_OUT_VSIZE), handle);
+
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				config_regs_pa + DISP_REG_POSTALIGN0_CON1,
+				full_height << 16, 0xffff0000);
+		}
+
+		//roi size config
+		mtk_ddp_write_mask(comp, full_height << 16,
+			DISP_REG_V2_SPR_ROI_SIZE, REG_FLD_MASK(CROP_OUT_VSIZE), handle);
+
+		mtk_ddp_write_mask(comp, full_height << 12,
+		DISP_REG_V2_SPR_IP_CFG_0, 0xfffff000, handle);
+	}
+
+	return 0;
+}
+
 static const struct mtk_ddp_comp_funcs mtk_disp_spr_funcs = {
 	.first_cfg = mtk_spr_first_config,
 	.config = mtk_spr_config,
@@ -1479,6 +1563,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_spr_funcs = {
 	.prepare = mtk_spr_prepare,
 	.unprepare = mtk_spr_unprepare,
 	.config_overhead = mtk_disp_spr_config_overhead,
+	.partial_update = mtk_spr_set_partial_update,
 };
 
 static int mtk_disp_spr_bind(struct device *dev, struct device *master,

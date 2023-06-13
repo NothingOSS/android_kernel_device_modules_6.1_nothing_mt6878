@@ -60,6 +60,11 @@ struct cb_data_store *mtk_drm_get_cb_data(unsigned int crtc_id);
 void mtk_drm_del_cb_data(struct cmdq_cb_data data, unsigned int crtc_id);
 int hrt_lp_switch_get(void);
 void mtk_dprec_snapshot(void);
+
+void mtkfb_set_force_partial_roi(int en);
+bool mtkfb_is_force_partial_roi(void);
+int mtkfb_force_partial_y_offset(void);
+int mtkfb_force_partial_height(void);
 #endif
 
 enum mtk_drm_mml_dbg {

@@ -810,6 +810,8 @@ struct mtk_ddp_comp_funcs {
 		      unsigned int cmd, void *params, unsigned int size);
 	void (*mutex_sof_irq)(struct mtk_ddp_comp *comp);
 	void (*mutex_eof_irq)(struct mtk_ddp_comp *comp);
+	int (*partial_update)(struct mtk_ddp_comp *comp,
+			struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable);
 };
 
 struct mtk_ddp_comp {
@@ -1057,6 +1059,17 @@ static inline int mtk_ddp_comp_pq_frame_config(struct mtk_ddp_comp *comp,
 
 	if (comp && comp->funcs && comp->funcs->pq_frame_config && !comp->blank_mode)
 		ret = comp->funcs->pq_frame_config(comp, handle, cmd, params, size);
+
+	return ret;
+}
+
+static inline int mtk_ddp_comp_partial_update(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+{
+	int ret = 0;
+
+	if (comp && comp->funcs && comp->funcs->partial_update && !comp->blank_mode)
+		ret = comp->funcs->partial_update(comp, handle, partial_roi, enable);
 
 	return ret;
 }

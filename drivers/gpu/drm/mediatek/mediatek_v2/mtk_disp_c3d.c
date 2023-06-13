@@ -36,6 +36,9 @@ static bool debug_api_log;
 		pr_notice("[API]%s:" fmt, __func__, ##arg); \
 	} while (0)
 
+static bool set_partial_update;
+static unsigned int roi_height;
+
 static void mtk_disp_c3d_write_mask(void __iomem *address, u32 data, u32 mask)
 {
 	u32 value = data;
@@ -1114,8 +1117,13 @@ static void mtk_disp_c3d_config(struct mtk_ddp_comp *comp,
 			width = cfg->w;
 	}
 
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + C3D_SIZE, (width << 16) | cfg->h, ~0);
+	if (!set_partial_update)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + C3D_SIZE, (width << 16) | cfg->h, ~0);
+	else
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + C3D_SIZE, (width << 16) | roi_height, ~0);
+
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_R2Y_09, 0, 0x1);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_Y2R_09, 0, 0x1);
 }
@@ -1391,6 +1399,28 @@ static int mtk_c3d_ioctl_transact(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
+static int mtk_c3d_set_partial_update(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+{
+	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, true);
+	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
+			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+	set_partial_update = enable;
+	roi_height = partial_roi.height;
+
+	if (set_partial_update) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + C3D_SIZE, roi_height, 0xffff);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + C3D_SIZE, full_height, 0xffff);
+	}
+
+	return 0;
+}
+
 static const struct mtk_ddp_comp_funcs mtk_disp_c3d_funcs = {
 	.config = mtk_disp_c3d_config,
 	.first_cfg = mtk_disp_c3d_first_cfg,
@@ -1406,6 +1436,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_c3d_funcs = {
 	.mutex_eof_irq = disp_c3d_on_end_of_frame,
 	.mutex_sof_irq = disp_c3d_on_start_of_frame,
 	.pq_ioctl_transact = mtk_c3d_ioctl_transact,
+	.partial_update = mtk_c3d_set_partial_update,
 };
 
 static int mtk_disp_c3d_bind(struct device *dev, struct device *master,

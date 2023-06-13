@@ -63,6 +63,9 @@
 #define DISP_GAMMA_BLOCK_SIZE 256
 #define DISP_GAMMA_GAIN_SIZE 3
 
+static bool set_partial_update;
+static unsigned int roi_height;
+
 static void mtk_gamma_init(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
@@ -78,9 +81,14 @@ static void mtk_gamma_init(struct mtk_ddp_comp *comp,
 			width = cfg->w;
 	}
 
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_GAMMA_SIZE,
-		(width << 16) | cfg->h, ~0);
+	if (!set_partial_update)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_GAMMA_SIZE,
+			(width << 16) | cfg->h, ~0);
+	else
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_GAMMA_SIZE,
+			(width << 16) | roi_height, ~0);
 	if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_8BIT ||
 		gamma->primary_data->data_mode == HW_12BIT_MODE_IN_10BIT) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -688,6 +696,7 @@ static void mtk_gamma_bypass(struct mtk_ddp_comp *comp, int bypass,
 	struct mtk_disp_gamma *data = comp_to_gamma(comp);
 
 	DDPINFO("%s\n", __func__);
+
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_GAMMA_CFG, bypass, 0x1);
 	data->primary_data->relay_value = bypass;
@@ -1265,6 +1274,31 @@ static int mtk_gamma_ioctl_transact(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
+static int mtk_gamma_set_partial_update(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+{
+	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, true);
+
+	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
+			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+	set_partial_update = enable;
+	roi_height = partial_roi.height;
+
+	if (set_partial_update) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + DISP_GAMMA_SIZE,
+				   roi_height, 0xffff);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + DISP_GAMMA_SIZE,
+				   full_height, 0xffff);
+	}
+
+	return 0;
+}
+
 static const struct mtk_ddp_comp_funcs mtk_disp_gamma_funcs = {
 	.gamma_set = mtk_gamma_set,
 	.config = mtk_gamma_config,
@@ -1280,6 +1314,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_gamma_funcs = {
 	.pq_frame_config = mtk_gamma_pq_frame_config,
 	.pq_ioctl_transact = mtk_gamma_ioctl_transact,
 	.mutex_sof_irq = disp_gamma_on_start_of_frame,
+	.partial_update = mtk_gamma_set_partial_update,
 };
 
 static int mtk_disp_gamma_bind(struct device *dev, struct device *master,

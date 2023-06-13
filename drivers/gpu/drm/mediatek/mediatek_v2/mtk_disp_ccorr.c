@@ -64,6 +64,9 @@
 
 static struct drm_device *g_drm_dev;
 
+static bool set_partial_update;
+static unsigned int roi_height;
+
 static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int lock);
 /* static void ccorr_dump_reg(void); */
@@ -1339,9 +1342,14 @@ static void mtk_ccorr_config(struct mtk_ddp_comp *comp,
 	else
 		DDPINFO("Disp CCORR's bit is : %u\n", cfg->bpc);
 
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		       comp->regs_pa + DISP_REG_CCORR_SIZE,
-		       (width << 16) | cfg->h, ~0);
+	if (!set_partial_update)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + DISP_REG_CCORR_SIZE,
+				   (width << 16) | cfg->h, ~0);
+	else
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			       comp->regs_pa + DISP_REG_CCORR_SIZE,
+			       (width << 16) | roi_height, ~0);
 }
 
 static void mtk_ccorr_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -1377,6 +1385,7 @@ static void mtk_ccorr_bypass(struct mtk_ddp_comp *comp, int bypass,
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 
 	DDPINFO("%s\n", __func__);
+
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_CCORR_CFG, bypass, 0x1);
 	primary_data->ccorr_relay_value = bypass;
@@ -1652,6 +1661,31 @@ static int mtk_ccorr_ioctl_transact(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
+static int mtk_ccorr_set_partial_update(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+{
+	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, true);
+
+	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
+			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+	set_partial_update = enable;
+	roi_height = partial_roi.height;
+
+	if (set_partial_update) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + DISP_REG_CCORR_SIZE,
+				   roi_height, 0x1fff);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + DISP_REG_CCORR_SIZE,
+				   full_height, 0x1fff);
+	}
+
+	return 0;
+}
+
 static const struct mtk_ddp_comp_funcs mtk_disp_ccorr_funcs = {
 	.config = mtk_ccorr_config,
 	.first_cfg = mtk_ccorr_first_cfg,
@@ -1665,6 +1699,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_ccorr_funcs = {
 	.pq_frame_config = mtk_ccorr_pq_frame_config,
 	.mutex_sof_irq = disp_ccorr_on_start_of_frame,
 	.pq_ioctl_transact = mtk_ccorr_ioctl_transact,
+	.partial_update = mtk_ccorr_set_partial_update,
 };
 
 static int mtk_disp_ccorr_bind(struct device *dev, struct device *master,

@@ -661,6 +661,12 @@ struct mtk_panel_funcs {
 	int (*cust_funcs)(struct drm_panel *panel,
 		int cmd, void *params, void *handle, void **output);
 	int (*read_panelid)(struct drm_panel *panel, struct mtk_oddmr_panelid *panelid);
+	int (*lcm_update_roi)(struct drm_panel *panel,
+		unsigned int x, unsigned int y,
+		unsigned int w, unsigned int h);
+	int (*lcm_update_roi_cmdq)(void *dsi_drv,
+		dcs_write_gce cb, void *handle,
+		unsigned int x, unsigned int y, unsigned int w, unsigned int h);
 };
 
 void mtk_panel_init(struct mtk_panel_ctx *ctx);

@@ -421,6 +421,7 @@ enum MTK_CRTC_PROP {
 	CRTC_PROP_OUTPUT_SCENARIO,
 	CRTC_PROP_CAPS_BLOB_ID,
 	CRTC_PROP_AOSP_CCORR_LINEAR,
+	CRTC_PROP_PARTIAL_UPDATE_ENABLE,
 	CRTC_PROP_MAX,
 };
 
@@ -1013,6 +1014,8 @@ struct mtk_crtc_state {
 	struct mtk_rect mml_dst_roi;
 	struct mtk_rect mml_dst_roi_dual[2];
 	struct mtk_rsz_param rsz_param[2];
+	struct mtk_rect ovl_partial_roi;
+	bool ovl_partial_dirty;
 	atomic_t plane_enabled_num;
 	bool pending_usage_update;
 	unsigned int pending_usage_list;
@@ -1268,6 +1271,10 @@ void mtk_crtc_set_width_height(
 	int *h,
 	struct drm_crtc *crtc,
 	bool is_scaling_path);
+
+int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
+	struct drm_crtc_state *old_crtc_state,
+	struct cmdq_pkt *cmdq_handle, bool enable);
 
 /* ********************* Legacy DISP API *************************** */
 unsigned int DISP_GetScreenWidth(void);

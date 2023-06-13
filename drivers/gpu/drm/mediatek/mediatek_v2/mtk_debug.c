@@ -115,6 +115,10 @@ static int hrt_lp_switch;
 
 static struct completion cwb_cmp;
 
+static bool partial_force_roi;
+static unsigned int partial_y_offset;
+static unsigned int partial_height;
+
 struct logger_buffer {
 	char **buffer_ptr;
 	unsigned int len;
@@ -583,6 +587,43 @@ int mtkfb_set_aod_backlight_level(unsigned int level)
 	return ret;
 }
 EXPORT_SYMBOL(mtkfb_set_aod_backlight_level);
+
+int mtkfb_set_partial_update(unsigned int y_offset, unsigned int height)
+{
+	int ret = 0;
+
+	mtkfb_set_force_partial_roi(1);
+	partial_y_offset = y_offset;
+	partial_height = height;
+
+	return ret;
+}
+EXPORT_SYMBOL(mtkfb_set_partial_update);
+
+void mtkfb_set_force_partial_roi(int en)
+{
+	partial_force_roi = en;
+}
+EXPORT_SYMBOL(mtkfb_set_force_partial_roi);
+
+
+bool mtkfb_is_force_partial_roi(void)
+{
+	return partial_force_roi;
+}
+EXPORT_SYMBOL(mtkfb_is_force_partial_roi);
+
+int mtkfb_force_partial_y_offset(void)
+{
+	return partial_y_offset;
+}
+EXPORT_SYMBOL(mtkfb_force_partial_y_offset);
+
+int mtkfb_force_partial_height(void)
+{
+	return partial_height;
+}
+EXPORT_SYMBOL(mtkfb_force_partial_height);
 
 void mtk_disp_mipi_ccci_callback(unsigned int en, unsigned int usrdata)
 {
@@ -3021,6 +3062,32 @@ static void process_dbg_opt(const char *opt)
 		}
 
 		mtkfb_set_aod_backlight_level(level);
+	} else if (strncmp(opt, "set_partial_update_y_and_h:", 27) == 0) {
+		unsigned int y_offset, height;
+		int ret;
+
+		ret = sscanf(opt, "set_partial_update_y_and_h:%d,%d\n", &y_offset, &height);
+		if (ret != 2) {
+			DDPPR_ERR("%d fail to parse cmd %s\n",
+			__LINE__, opt);
+			return;
+		}
+
+		DDPINFO("set_partial_update+, y_offset:%d, height:%d\n", y_offset, height);
+		mtkfb_set_partial_update(y_offset, height);
+	} else if (strncmp(opt, "set_force_partial_roi:", 22) == 0) {
+		int en;
+		int ret;
+
+		ret = sscanf(opt, "set_force_partial_roi:%d\n", &en);
+		if (ret != 1) {
+			DDPPR_ERR("%d fail to parse cmd %s\n",
+			__LINE__, opt);
+			return;
+		}
+
+		DDPINFO("set force partial roi:%d\n", en);
+		mtkfb_set_force_partial_roi(en);
 	} else if (strncmp(opt, "dump_fake_engine", 16) == 0) {
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;

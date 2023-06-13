@@ -103,6 +103,7 @@ static struct mtk_drm_property mtk_crtc_property[CRTC_PROP_MAX] = {
 	{DRM_MODE_PROP_ATOMIC | DRM_MODE_PROP_IMMUTABLE,
 						"CAPS_BLOB_ID", 0, UINT_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "AOSP_CCORR_LINEAR", 0, UINT_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "PARTIAL_UPDATE_ENABLE", 0, UINT_MAX, 0},
 };
 
 static struct cmdq_pkt *sb_cmdq_handle;
@@ -1277,6 +1278,8 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 		state->lye_state = old_state->lye_state;
 		state->rsz_src_roi = old_state->rsz_src_roi;
 		state->rsz_dst_roi = old_state->rsz_dst_roi;
+		state->ovl_partial_dirty= old_state->ovl_partial_dirty;
+		state->ovl_partial_roi = old_state->ovl_partial_roi;
 		state->prop_val[CRTC_PROP_DOZE_ACTIVE] =
 			old_state->prop_val[CRTC_PROP_DOZE_ACTIVE];
 		if (mtk_crtc->res_switch != RES_SWITCH_NO_USE)
@@ -12449,6 +12452,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	dma_addr_t msync_slot_addr;
 	bool msync20_status_changed = 0;
 	struct mtk_ddp_comp *output_comp;
+	bool partial_enable = 0;
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
@@ -12654,6 +12658,21 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		update_frame_weight(crtc, mtk_crtc_state);
 	mtk_crtc_update_ddp_state(crtc, old_crtc_state, mtk_crtc_state,
 				  mtk_crtc_state->cmdq_handle);
+
+	if (priv->data->mmsys_id == MMSYS_MT6989) {
+		if (mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_PARTIAL_UPDATE)) {
+			partial_enable =
+			(mtk_crtc_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE] ||
+			mtkfb_is_force_partial_roi());
+
+			DDPDBG("partial_enable: %d\n", partial_enable);
+
+			/* set partial update */
+			//mtk_drm_crtc_set_partial_update(crtc, old_crtc_state,
+					//mtk_crtc_state->cmdq_handle, partial_enable);
+		}
+	}
 #endif
 
 	if ((priv->usage[crtc_idx] == DISP_OPENING) &&
@@ -13769,6 +13788,264 @@ void mtk_crtc_set_width_height(
 {
 	*w = mtk_crtc_get_width_by_comp(__func__, crtc, NULL, is_scaling_path);
 	*h = mtk_crtc_get_height_by_comp(__func__, crtc, NULL, is_scaling_path);
+}
+
+static void _assign_full_lcm_roi(struct drm_crtc *crtc,
+		struct mtk_rect *roi)
+{
+	bool in_scaling_path = true;
+
+	roi->x = 0;
+	roi->y = 0;
+	roi->width = mtk_crtc_get_width_by_comp(__func__, crtc,
+						NULL, in_scaling_path);
+	roi->height = mtk_crtc_get_height_by_comp(__func__, crtc,
+						NULL, in_scaling_path);
+}
+
+static int _is_equal_full_lcm(struct drm_crtc *crtc,
+		const struct mtk_rect *roi)
+{
+	static struct mtk_rect full_roi;
+
+	_assign_full_lcm_roi(crtc, &full_roi);
+
+	return mtk_rect_equal(&full_roi, roi);
+}
+
+static void _convert_picture_to_ovl_dirty(struct mtk_rect *src,
+		struct mtk_rect *dst, struct mtk_rect *in, struct mtk_rect *out)
+{
+	struct mtk_rect layer_roi = {0, 0, 0, 0};
+	struct mtk_rect pic_roi = {0, 0, 0, 0};
+	struct mtk_rect result = {0, 0, 0, 0};
+
+	layer_roi.x = src->x;
+	layer_roi.y = src->y;
+	layer_roi.width = src->width;
+	layer_roi.height = src->height;
+
+	pic_roi.x = in->x;
+	pic_roi.y = in->y;
+	pic_roi.width = in->width;
+	pic_roi.height = in->height;
+
+	mtk_rect_intersect(&layer_roi, &pic_roi, &result);
+
+	out->x = result.x - layer_roi.x + dst->x;
+	out->y = result.y - layer_roi.y + dst->y;
+	out->width = result.width;
+	out->height = result.height;
+
+	DDPDBG("pic to ovl dirty(%d,%d,%dx%d)->(%d,%d,%dx%d)\n",
+		pic_roi.x, pic_roi.y, pic_roi.width, pic_roi.height,
+		out->x, out->y, out->width, out->height);
+}
+
+static int mtk_crtc_partial_compute_ovl_roi(struct drm_crtc *crtc,
+			struct mtk_rect *result)
+{
+	int i;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	int disable_layer = 0;
+	struct mtk_rect layer_roi = {0, 0, 0, 0};
+	int dirty_roi_num = 0;
+
+	if (mtkfb_is_force_partial_roi()) {
+		_assign_full_lcm_roi(crtc, result);
+		result->x = 0;
+		result->y = mtkfb_force_partial_y_offset();
+		result->width = crtc->state->adjusted_mode.hdisplay;
+		result->height = mtkfb_force_partial_height();
+		return 0;
+	}
+
+	for (i = 0 ; i < mtk_crtc->layer_nr; i++) {
+		struct mtk_rect src_roi = {0, 0, 0, 0};
+		struct mtk_rect dst_roi = {0, 0, 0, 0};
+		struct mtk_rect layer_total_roi = {0, 0, 0, 0};
+		struct drm_plane *plane = &mtk_crtc->planes[i].base;
+		struct mtk_plane_state *plane_state =
+				to_mtk_plane_state(plane->state);
+
+		src_roi.x = (plane->state->src.x1 >> 16);
+		src_roi.y = (plane->state->src.y1 >> 16);
+		src_roi.width = drm_rect_width(&plane->state->src) >> 16;
+		src_roi.height = drm_rect_height(&plane->state->src) >> 16;
+		dst_roi.x = plane->state->dst.x1;
+		dst_roi.y = plane->state->dst.y1;
+		dst_roi.width = drm_rect_width(&plane->state->dst);
+		dst_roi.height = drm_rect_height(&plane->state->dst);
+
+		if (!plane->state->visible) {
+			disable_layer++;
+			continue;
+		}
+
+		//DDPDBG("hwc plane[%d] roi_num:(%llu) dirty roi:(%llu,%llu,%llu,%llu)\n",
+		//i, plane_state->prop_val[PLANE_PROP_DIRTY_ROI_NUM],
+		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_X],
+		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_Y],
+		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_W],
+		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_H]);
+
+		dirty_roi_num = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_NUM];
+		if (dirty_roi_num) {
+			/* 1. compute picture dirty roi*/
+			layer_roi.x = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_X];
+			layer_roi.y = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_Y];
+			layer_roi.width = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_W];
+			layer_roi.height = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_H];
+			mtk_rect_join(&layer_roi, &layer_total_roi,
+				&layer_total_roi);
+
+			/* 2. convert picture dirty to ovl dirty */
+			if (!mtk_rect_is_empty(&layer_total_roi))
+				_convert_picture_to_ovl_dirty(&src_roi,
+					&dst_roi, &layer_total_roi, &layer_total_roi);
+		}
+
+		/* 3. full dirty if num euals 0 */
+		if (dirty_roi_num == 0 && plane->state->visible) {
+			DDPDBG("layer %d dirty num 0\n", i);
+			_assign_full_lcm_roi(crtc, result);
+			/* break if full lcm roi */
+			break;
+		}
+
+		/* 4. deal with other cases:layer disable, dim layer*/
+		mtk_rect_join(&layer_total_roi, result, result);
+
+		/*break if roi is full lcm */
+		if (_is_equal_full_lcm(crtc, result))
+			break;
+
+	}
+
+	if (disable_layer >= mtk_crtc->layer_nr) {
+		DDPMSG(" all layer disabled, force full roi\n");
+		_assign_full_lcm_roi(crtc, result);
+	}
+
+	return 0;
+}
+
+static void mtk_crtc_validate_roi(struct drm_crtc *crtc,
+		struct mtk_rect *partial_roi)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	static struct mtk_rect full_roi;
+	int slice_height = 40;
+
+	_assign_full_lcm_roi(crtc, &full_roi);
+
+	slice_height =
+			mtk_crtc->panel_ext->params->dsc_params.slice_height;
+
+	if (partial_roi->y % slice_height != 0)
+		partial_roi->y =
+			(partial_roi->y / slice_height) * slice_height;
+
+	if (partial_roi->height % slice_height != 0)
+		partial_roi->height =
+			((partial_roi->height / slice_height) + 1) * slice_height;
+
+	if (partial_roi->width != full_roi.width)
+		partial_roi->width = full_roi.width;
+}
+
+int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
+	struct drm_crtc_state *old_crtc_state,
+	struct cmdq_pkt *cmdq_handle, bool enable)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
+	struct mtk_crtc_state *old_state =
+		to_mtk_crtc_state(old_crtc_state);
+	int crtc_index = 0;
+	struct mtk_ddp_comp *comp;
+	struct mtk_ddp_comp *dsc_comp;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_rect partial_roi = {0, 0, 0, 0};
+	int i, j;
+	int ret = 0;
+
+	crtc_index = drm_crtc_index(crtc);
+	if (crtc_index) {
+		DDPPR_ERR("%s:%d, invalid crtc:0x%p, index:%d\n",
+				__func__, __LINE__, crtc, crtc_index);
+		return -EINVAL;
+	}
+
+	if (!mtk_crtc_is_frame_trigger_mode(crtc)) {
+		//DDPMSG("video mode does not support partial update!\n");
+		return ret;
+	}
+
+	if (!(mtk_crtc->enabled))
+		DDPINFO("Sleep State set partial update enable --crtc not ebable\n");
+
+	if (enable)
+		mtk_crtc_partial_compute_ovl_roi(crtc, &partial_roi);
+	else
+		_assign_full_lcm_roi(crtc, &partial_roi);
+
+	DDPINFO("partial roi: (%d,%d,%d,%d)\n",
+		partial_roi.x, partial_roi.y,
+		partial_roi.width, partial_roi.height);
+
+	/* validate partial roi */
+	mtk_crtc_validate_roi(crtc, &partial_roi);
+
+	DDPINFO("validate partial roi: (%d,%d,%d,%d)\n",
+		partial_roi.x, partial_roi.y,
+		partial_roi.width, partial_roi.height);
+
+	state->ovl_partial_roi = partial_roi;
+
+	/* set ovl_partial_dirty if roi is full lcm */
+	if (_is_equal_full_lcm(crtc, &partial_roi))
+		state->ovl_partial_dirty = 0;
+	else
+		state->ovl_partial_dirty = 1;
+
+	/* skip if ovl partial dirty disable state equal to old */
+	if (!state->ovl_partial_dirty &&
+		!old_state->ovl_partial_dirty) {
+		DDPINFO("skip because partial roi is equal to old\n");
+		return ret;
+	}
+
+	/* skip if partial roi is equal to old partial roi */
+	if (mtk_rect_equal(&state->ovl_partial_roi,
+				&old_state->ovl_partial_roi)) {
+		DDPINFO("skip because partial roi is equal to old\n");
+		return ret;
+	}
+
+	/* bypass PQ module if enable partial update */
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_AAL ||
+				mtk_ddp_comp_get_type(comp->id) == MTK_DMDP_AAL ||
+				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CHIST)) {
+			if (comp->funcs && comp->funcs->bypass)
+				mtk_ddp_comp_bypass(comp, enable, cmdq_handle);
+		}
+	}
+
+	/* disable oddmr if enable partial update */
+	mtk_crtc->panel_ext->params->is_support_dmr = !enable;
+	mtk_crtc->panel_ext->params->is_support_od = !enable;
+
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		mtk_ddp_comp_partial_update(comp, cmdq_handle, partial_roi, enable);
+	}
+
+	dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+	mtk_ddp_comp_partial_update(dsc_comp, cmdq_handle, partial_roi, enable);
+
+	return ret;
+
 }
 
 static void mtk_drm_crtc_enable_fake_layer(struct drm_crtc *crtc,
@@ -15691,9 +15968,13 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_EXT_LAYER;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_CWB;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_MSYNC20;
+			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PARTIAL_UPDATE;
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_OVL_BW_MONITOR))
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_BW_MONITOR;
+			if (mtk_drm_helper_get_opt(priv->helper_opt,
+					MTK_DRM_OPT_PARTIAL_UPDATE))
+				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PARTIAL_UPDATE;
 		}
 		mtk_crtc->crtc_caps.ovl_csc_bit_number = 18;
 	}

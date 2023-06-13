@@ -395,6 +395,9 @@ static struct mtk_drm_property mtk_connector_property[CONNECTOR_PROP_MAX] = {
 	{DRM_MODE_PROP_IMMUTABLE, "CAPS_BLOB_ID", 0, UINT_MAX, 0},
 };
 
+static bool set_partial_update;
+static unsigned int roi_y_offset, roi_height;
+
 struct mtk_panel_ext *mtk_dsi_get_panel_ext(struct mtk_ddp_comp *comp);
 static void mtk_dsi_set_targetline(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, unsigned int hacive);
@@ -1616,11 +1619,18 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 	/* scaling path */
 	if (mtk_crtc->scaling_ctx.scaling_en) {
 		width = mtk_crtc_get_width_by_comp(__func__, &mtk_crtc->base, comp, false);
-		height = mtk_crtc_get_height_by_comp(__func__, &mtk_crtc->base, comp, false);
+		if (!set_partial_update)
+			height = mtk_crtc_get_height_by_comp(__func__, &mtk_crtc->base,
+								comp, false);
+		else
+			height = roi_height;
 	} else {
 		if (!dsi->is_slave) {
 			width = mtk_dsi_get_virtual_width(dsi, dsi->encoder.crtc);
-			height = mtk_dsi_get_virtual_heigh(dsi, dsi->encoder.crtc);
+			if (!set_partial_update)
+				height = mtk_dsi_get_virtual_heigh(dsi, dsi->encoder.crtc);
+			else
+				height = roi_height;
 		} else {
 			width = mtk_dsi_get_virtual_width(dsi,
 					dsi->master_dsi->encoder.crtc);
@@ -1761,11 +1771,18 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	/* scaling path */
 	if (mtk_crtc && mtk_crtc->scaling_ctx.scaling_en) {
 		width = mtk_crtc_get_width_by_comp(__func__, &mtk_crtc->base, comp, false);
-		height = mtk_crtc_get_height_by_comp(__func__, &mtk_crtc->base, comp, false);
+		if (!set_partial_update)
+			height = mtk_crtc_get_height_by_comp(__func__, &mtk_crtc->base,
+								comp, false);
+		else
+			height = roi_height;
 	} else {
 		if (!dsi->is_slave) {
 			width = mtk_dsi_get_virtual_width(dsi, dsi->encoder.crtc);
-			height = mtk_dsi_get_virtual_heigh(dsi, dsi->encoder.crtc);
+			if (!set_partial_update)
+				height = mtk_dsi_get_virtual_heigh(dsi, dsi->encoder.crtc);
+			else
+				height = roi_height;
 		} else {
 			width = mtk_dsi_get_virtual_width(dsi,
 					dsi->master_dsi->encoder.crtc);
@@ -9733,6 +9750,61 @@ void mtk_dsi_first_cfg(struct mtk_ddp_comp *comp,
 	}
 }
 
+static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+{
+	struct mtk_panel_ext *panel_ext = NULL;
+	struct mtk_dsi *dsi =
+		container_of(comp, struct mtk_dsi, ddp_comp);
+	struct mtk_drm_crtc *crtc = comp->mtk_crtc;
+	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, true);
+
+	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
+			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+	if (comp->id == DDP_COMPONENT_DSI0) {
+		set_partial_update = enable;
+		roi_y_offset = partial_roi.y;
+		roi_height = partial_roi.height;
+	}
+
+	if (set_partial_update) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_VACT_NL,
+			roi_height, ~0);
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_SIZE_CON,
+			roi_height << 16, 0xffff0000);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_VACT_NL,
+			full_height, ~0);
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_SIZE_CON,
+			full_height << 16, 0xffff0000);
+	}
+
+	panel_ext = mtk_dsi_get_panel_ext(comp);
+
+	if (panel_ext && panel_ext->funcs
+		&& panel_ext->funcs->lcm_update_roi_cmdq) {
+		if (set_partial_update)
+			panel_ext->funcs->lcm_update_roi_cmdq(dsi,
+			mipi_dsi_dcs_write_gce, handle, 0, roi_y_offset,
+			mtk_dsi_get_virtual_width(dsi, &crtc->base), roi_height);
+		else
+			panel_ext->funcs->lcm_update_roi_cmdq(dsi,
+			mipi_dsi_dcs_write_gce, handle, 0, 0,
+			mtk_dsi_get_virtual_width(dsi, &crtc->base),
+			mtk_dsi_get_virtual_heigh(dsi, &crtc->base));
+	}
+
+	return 0;
+}
+
 static const struct mtk_ddp_comp_funcs mtk_dsi_funcs = {
 	.config = mtk_dsi_ddp_config,
 	.first_cfg = mtk_dsi_first_cfg,
@@ -9741,6 +9813,7 @@ static const struct mtk_ddp_comp_funcs mtk_dsi_funcs = {
 	.config_trigger = mtk_dsi_config_trigger,
 	.io_cmd = mtk_dsi_io_cmd,
 	.is_busy = mtk_dsi_is_busy,
+	.partial_update = mtk_dsi_set_partial_update,
 };
 
 static int mtk_dsi_bind(struct device *dev, struct device *master, void *data)

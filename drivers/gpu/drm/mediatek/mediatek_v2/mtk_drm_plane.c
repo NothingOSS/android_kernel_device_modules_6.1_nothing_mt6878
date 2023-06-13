@@ -156,6 +156,11 @@ static struct mtk_drm_property mtk_plane_property[PLANE_PROP_MAX] = {
 	{DRM_MODE_PROP_ATOMIC, "BUFFER_ALLOC_ID", 0, ULONG_MAX, 0},	/* 10 */
 	{DRM_MODE_PROP_ATOMIC, "OVL_CSC_SET_BRIGHTNESS", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "OVL_CSC_SET_COLORTRANSFORM", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "PLANE_PROP_DIRTY_ROI_NUM", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "PLANE_PROP_DIRTY_ROI_X", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "PLANE_PROP_DIRTY_ROI_Y", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "PLANE_PROP_DIRTY_ROI_W", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "PLANE_PROP_DIRTY_ROI_H", 0, ULONG_MAX, 0},
 };
 
 static void mtk_plane_reset(struct drm_plane *plane)
@@ -432,7 +437,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	struct mtk_drm_private *priv;
 	struct mtk_crtc_state *crtc_state;
 	struct drm_framebuffer *fb = plane->state->fb;
-	int src_w, src_h, dst_x, dst_y, dst_w, dst_h, i;
+	int src_x, src_y, src_w, src_h, dst_x, dst_y, dst_w, dst_h, i;
 	struct mtk_drm_crtc *mtk_crtc;
 	unsigned int plane_index = to_crtc_plane_index(plane->index);
 	bool skip_update = 0;
@@ -456,6 +461,9 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		return;
 	}
 
+
+	src_x = (plane->state->src.x1 >> 16);
+	src_y = (plane->state->src.y1 >> 16);
 	src_w = drm_rect_width(&plane->state->src) >> 16;
 	src_h = drm_rect_height(&plane->state->src) >> 16;
 	dst_x = plane->state->dst.x1;
@@ -548,6 +556,51 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 							  crtc_state->rsz_dst_roi.y << 16;
 		} else
 			mtk_plane_state->pending.offset = dst_x | dst_y << 16;
+	}
+
+
+	if (priv->data->mmsys_id == MMSYS_MT6989 &&
+			crtc_state->ovl_partial_dirty) {
+		struct mtk_rect layer_roi = {0, 0, 0, 0};
+		struct mtk_rect ovl_partial_roi = {0, 0, 0, 0};
+		struct mtk_rect layer_partial_roi = {0, 0, 0, 0};
+
+		ovl_partial_roi = crtc_state->ovl_partial_roi;
+		layer_roi.x = dst_x;
+		layer_roi.y = dst_y;
+		layer_roi.width = dst_w;
+		layer_roi.height = dst_h;
+
+		if (mtk_rect_intersect(&layer_roi, &ovl_partial_roi,
+			&layer_partial_roi)) {
+			mtk_plane_state->pending.dst_x =
+					layer_partial_roi.x - ovl_partial_roi.x;
+			mtk_plane_state->pending.dst_y =
+					layer_partial_roi.y - ovl_partial_roi.y;
+			mtk_plane_state->pending.width =
+					layer_partial_roi.width;
+			mtk_plane_state->pending.height =
+					layer_partial_roi.height;
+			mtk_plane_state->pending.src_x =
+					src_x + layer_partial_roi.x - dst_x;
+			mtk_plane_state->pending.src_y =
+					src_y + layer_partial_roi.y - dst_y;
+
+			mtk_plane_state->pending.offset =
+					mtk_plane_state->pending.dst_y << 16 |
+					mtk_plane_state->pending.dst_x;
+
+			DDPINFO("partial (%d,%d)(%d,%d,%dx%d) to (%d,%d)(%d,%d,%dx%d)\n",
+					src_x, src_y, dst_x, dst_y, dst_w, dst_h,
+					mtk_plane_state->pending.src_x,
+					mtk_plane_state->pending.src_y,
+					mtk_plane_state->pending.dst_x,
+					mtk_plane_state->pending.dst_y,
+					mtk_plane_state->pending.width,
+					mtk_plane_state->pending.height);
+		} else
+			/* this layer will not be displayed */
+			mtk_plane_state->pending.enable = 0;
 	}
 
 	if (mtk_drm_fb_is_secure(fb))

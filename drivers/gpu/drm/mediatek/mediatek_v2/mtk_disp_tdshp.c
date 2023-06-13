@@ -46,6 +46,10 @@ struct mtk_disp_tdshp {
 	atomic_t is_clock_on;
 };
 
+static bool set_partial_update;
+static unsigned int roi_height;
+static unsigned int y_overhead;
+
 static inline struct mtk_disp_tdshp *comp_to_tdshp(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_tdshp, ddp_comp);
@@ -522,8 +526,13 @@ static void mtk_disp_tdshp_config(struct mtk_ddp_comp *comp,
 		out_width = in_width;
 	}
 
-	in_val = (in_width << 16) | (cfg->h);
-	out_val = (out_width << 16) | (cfg->h);
+	if (!set_partial_update) {
+		in_val = (in_width << 16) | (cfg->h);
+		out_val = (out_width << 16) | (cfg->h);
+	} else {
+		in_val = (in_width << 16) | (roi_height + (y_overhead * 2));
+		out_val = (out_width << 16) | (roi_height);
+	}
 
 	DDPINFO("%s: in: 0x%08x, out: 0x%08x\n", __func__, in_val, out_val);
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -540,8 +549,12 @@ static void mtk_disp_tdshp_config(struct mtk_ddp_comp *comp,
 				comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET,
 				tdshp_data->tile_overhead.comp_overhead << 16 | 0, ~0);
 	} else {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, 0x0, ~0);
+		if (!set_partial_update)
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, 0x0, ~0);
+		else
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, y_overhead, ~0);
 	}
 
 	// DISP_TDSHP_SWITCH
@@ -778,6 +791,43 @@ static int mtk_tdshp_ioctl_transact(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
+static int mtk_tdshp_set_partial_update(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+{
+	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, true);
+
+	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
+			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+	set_partial_update = enable;
+	roi_height = partial_roi.height;
+	y_overhead = 0;/*(partial_roi.y > 2) ? 2 : partial_roi.y;*/
+
+	if (set_partial_update) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_TDSHP_INPUT_SIZE,
+			roi_height + (y_overhead * 2), 0xffff);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_TDSHP_OUTPUT_SIZE, roi_height, 0xffff);
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, y_overhead, 0xff);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_TDSHP_INPUT_SIZE,
+			full_height, 0xffff);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_TDSHP_OUTPUT_SIZE, full_height, 0xffff);
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, 0, 0xff);
+	}
+
+	return 0;
+
+}
+
 static const struct mtk_ddp_comp_funcs mtk_disp_tdshp_funcs = {
 	.config = mtk_disp_tdshp_config,
 	.first_cfg = mtk_disp_tdshp_first_cfg,
@@ -791,6 +841,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_tdshp_funcs = {
 	.io_cmd = mtk_tdshp_io_cmd,
 	.pq_frame_config = mtk_tdshp_pq_frame_config,
 	.pq_ioctl_transact = mtk_tdshp_ioctl_transact,
+	.partial_update = mtk_tdshp_set_partial_update,
 };
 
 static int mtk_disp_tdshp_bind(struct device *dev, struct device *master,
