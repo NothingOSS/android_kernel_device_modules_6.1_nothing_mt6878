@@ -2199,9 +2199,17 @@ static int vidioc_decoder_cmd(struct file *file, void *priv,
 		if (mtk_vcodec_is_state(ctx, MTK_STATE_INIT))
 			mtk_vdec_queue_error_event(ctx);
 
+		if (src_vq == NULL) {
+			mtk_v4l2_err("Error! src_vq is NULL!");
+			return -EINVAL;
+		}
 		if (!vb2_is_streaming(src_vq)) {
 			mtk_v4l2_debug(1, "Output stream is off. No need to flush.");
 			return 0;
+		}
+		if (dst_vq == NULL) {
+			mtk_v4l2_err("Error! dst_vq is NULL!");
+			return -EINVAL;
 		}
 		if (!vb2_is_streaming(dst_vq)) {
 			mtk_v4l2_debug(1, "Capture stream is off. No need to flush.");
@@ -2219,6 +2227,10 @@ static int vidioc_decoder_cmd(struct file *file, void *priv,
 		break;
 
 	case V4L2_DEC_CMD_START:
+		if (dst_vq == NULL) {
+			mtk_v4l2_err("Error! dst_vq is NULL!");
+			return -EINVAL;
+		}
 		vb2_clear_last_buffer_dequeued(dst_vq);
 		break;
 
@@ -2673,6 +2685,10 @@ static int vidioc_vdec_qbuf(struct file *file, void *priv,
 	}
 
 	vq = v4l2_m2m_get_vq(ctx->m2m_ctx, buf->type);
+	if (vq == NULL) {
+		mtk_v4l2_err("Error! vq is NULL!");
+		return -EINVAL;
+	}
 	if (buf->index >= vq->num_buffers) {
 		mtk_v4l2_err("[%d] buffer index %d out of range %d",
 			ctx->id, buf->index, vq->num_buffers);
@@ -2770,6 +2786,10 @@ static int vidioc_vdec_dqbuf(struct file *file, void *priv,
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE &&
 		ret == 0) {
 		vq = v4l2_m2m_get_vq(ctx->m2m_ctx, buf->type);
+		if (vq == NULL) {
+			mtk_v4l2_err("Error! vq is NULL!");
+			return -EINVAL;
+		}
 		if (buf->index >= vq->num_buffers) {
 			mtk_v4l2_err("[%d] buffer index %d out of range %d",
 				ctx->id, buf->index, vq->num_buffers);
@@ -4508,6 +4528,10 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 			if (vcp_get_io_device(VCP_IOMMU_SEC)) {
 				src_vq = v4l2_m2m_get_vq(ctx->m2m_ctx,
 					V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+				if (src_vq == NULL) {
+					mtk_v4l2_err("Error! src_vq is NULL!");
+					return -EINVAL;
+				}
 				src_vq->dev = vcp_get_io_device(VCP_IOMMU_SEC);
 				mtk_v4l2_debug(4, "use VCP_IOMMU_SEC domain");
 			}

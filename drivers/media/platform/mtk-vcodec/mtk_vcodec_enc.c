@@ -364,6 +364,10 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 			if (vcp_get_io_device(VCP_IOMMU_SEC)) {
 				dst_vq = v4l2_m2m_get_vq(ctx->m2m_ctx,
 					V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
+				if (!dst_vq) {
+					mtk_v4l2_err("fail to get dst_vq");
+					return -EINVAL;
+				}
 				dst_vq->dev = vcp_get_io_device(VCP_IOMMU_SEC);
 				mtk_v4l2_debug(4, "use VCP_IOMMU_SEC domain");
 			}
@@ -481,6 +485,10 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		if (p->scenario == 3 || p->scenario == 1) {
 			src_vq = v4l2_m2m_get_vq(ctx->m2m_ctx,
 				V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+			if (!src_vq) {
+				mtk_v4l2_err("fail to get src_vq");
+				return -EINVAL;
+			}
 			src_vq->mem_ops = &venc_dma_contig_memops;
 		}
 		break;
@@ -1737,6 +1745,10 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 
 	// Check if need to proceed cache operations
 	vq = v4l2_m2m_get_vq(ctx->m2m_ctx, buf->type);
+	if (!vq) {
+		mtk_v4l2_err("fail to get vq");
+		return -EINVAL;
+	}
 	if (buf->index >= vq->num_buffers) {
 		mtk_v4l2_err("[%d] buffer index %d out of range %d",
 			ctx->id, buf->index, vq->num_buffers);
@@ -2045,9 +2057,19 @@ static int vidioc_encoder_cmd(struct file *file, void *priv,
 	case V4L2_ENC_CMD_STOP:
 		src_vq = v4l2_m2m_get_vq(ctx->m2m_ctx,
 			V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+
+		if (!src_vq) {
+			mtk_v4l2_err("fail to get src_vq");
+			return -EINVAL;
+		}
 		if (!vb2_is_streaming(src_vq)) {
 			mtk_v4l2_debug(1, "Output stream is off. No need to flush.");
 			return 0;
+		}
+
+		if (!dst_vq) {
+			mtk_v4l2_err("fail to get dst_vq");
+			return -EINVAL;
 		}
 		if (!vb2_is_streaming(dst_vq)) {
 			mtk_v4l2_debug(1, "Capture stream is off. No need to flush.");
@@ -2064,6 +2086,10 @@ static int vidioc_encoder_cmd(struct file *file, void *priv,
 		break;
 
 	case V4L2_ENC_CMD_START:
+		if (!dst_vq) {
+			mtk_v4l2_err("fail to get dst_vq");
+			return -EINVAL;
+		}
 		vb2_clear_last_buffer_dequeued(dst_vq);
 		break;
 

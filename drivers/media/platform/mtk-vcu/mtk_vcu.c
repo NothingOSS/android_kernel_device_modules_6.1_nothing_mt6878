@@ -2154,6 +2154,10 @@ static long mtk_vcu_unlocked_ioctl(struct file *file, unsigned int cmd,
 			return -EINVAL;
 		}
 		ret = vcu_ipi_handler(vcu_dev, &share_buff_data);
+		if (ret != 0L) {
+			pr_info("[VCU] %s(%d) Abort not handled!\n",
+			       __func__, __LINE__);
+		}
 		ret = (long)copy_to_user(user_data_addr, &share_buff_data,
 			(unsigned long)sizeof(struct share_obj));
 		if (ret != 0L) {
@@ -2640,7 +2644,7 @@ static int mtk_vcu_probe(struct platform_device *pdev)
 			support ? "off" : "on", mtk_vcodec_vcp);
 	} else {
 		ret = of_property_read_u32(pdev->dev.of_node, "mediatek,vcu-off", &off);
-		if (off) {
+		if (off && ret == 0) {
 			mtk_vcodec_vcp = 3;
 			pr_info("[VCU] VCU off\n");
 		} else {

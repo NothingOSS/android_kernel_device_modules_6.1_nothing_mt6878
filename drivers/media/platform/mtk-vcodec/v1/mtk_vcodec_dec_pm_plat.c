@@ -36,7 +36,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 	const int bw_item_num = 2;
 	struct platform_device *pdev;
 	int i, j, larb_cnt, ret;
-	u32 nmin, nmax, cnt;
+	u32 nmin = 0, nmax = 0, cnt = 0;
 
 	pdev = dev->plat_dev;
 	larb_cnt = 0;
@@ -55,8 +55,10 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "throughput-normal-max", &nmax);
-	if (ret)
+	if (ret) {
+		nmax = STD_VDEC_FREQ;
 		mtk_v4l2_debug(0, "[VDEC] Cannot get normal max, default %u", nmax);
+	}
 
 	dev->vdec_dvfs_params.codec_type = MTK_INST_DECODER;
 	dev->vdec_dvfs_params.min_freq = nmin;
