@@ -1531,6 +1531,7 @@ enum mtk_pq_frame_cfg_cmd {
 };
 
 #define GET_PANELS_STR_LEN 64
+#define MAX_CRTC_CNT 10
 struct mtk_drm_panels_info {
 	int connector_cnt;
 	int default_connector_id;
