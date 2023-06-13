@@ -1763,6 +1763,7 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 	struct mtk_mux_user *user;
 	struct mmdvfs_mux *mux;
 	int i, ret = 0, retry = 0;
+	u64 ns = sched_clock(), sec = ns / 1000000000, usec = (ns / 1000) % 1000000;
 
 	for (i = 0; i < ARRAY_SIZE(mmdvfs_user); i++)
 		if (!strncmp(mmdvfs_user[i].name, name, 16))
@@ -1795,6 +1796,8 @@ int mmdvfs_mux_set_opp(const char *name, unsigned long rate)
 	if (MEM_BASE) {
 		writel_relaxed(rate, MEM_USR_FREQ(user->id));
 		writel_relaxed(mux->opp, MEM_USR_OPP(user->id));
+		writel_relaxed(sec, MEM_USR_OPP_SEC(user->id));
+		writel_relaxed(usec, MEM_USR_OPP_USEC(user->id));
 	}
 
 	if (mux->opp == mux->last)

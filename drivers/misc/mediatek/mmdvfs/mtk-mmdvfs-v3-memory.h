@@ -54,8 +54,16 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_FORCE_VOL(x)	(MEM_BASE + 0x1E0 + 0x4 * (x)) // POWER_NUM(4)
 #define MEM_FORCE_CLK(x)	(MEM_BASE + 0x1F0 + 0x4 * (x)) // MUX_NUM(16)
 #define MEM_PROFILE_TIMES	(MEM_BASE + 0x230)
+/* reserved: 0x234/0x238/0x23C */
 
-/* next start: 0x234 */
+#define MEM_USR_OPP_SEC(x)	(MEM_BASE + 0x240 + 0x4 * (x)) // USER_NUM(16)
+#define MEM_USR_OPP_USEC(x)	(MEM_BASE + 0x280 + 0x4 * (x)) // USER_NUM(16)
+#define MEM_MUX_OPP_SEC(x)	(MEM_BASE + 0x2C0 + 0x4 * (x)) // MUX_NUM(16)
+#define MEM_MUX_OPP_USEC(x)	(MEM_BASE + 0x300 + 0x4 * (x)) // MUX_NUM(16)
+#define MEM_PWR_OPP_SEC(x)	(MEM_BASE + 0x340 + 0x4 * (x)) // POWER_NUM(4)
+#define MEM_PWR_OPP_USEC(x)	(MEM_BASE + 0x350 + 0x4 * (x)) // POWER_NUM(4)
+
+/* next start: 0x360 */
 
 #define MEM_REC_PWR_OBJ		4
 #define MEM_REC_USR_OBJ		5
@@ -65,7 +73,7 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 
 #define MEM_REC_MUX_CNT		(MEM_BASE + 0xBB0)
 #define MEM_REC_MUX_SEC(x)	(MEM_BASE + 0xBB4 + MEM_REC_MUX_OBJ * 0x4 * (x))
-#define MEM_REC_MUX_NSEC(x)	(MEM_BASE + 0xBB8 + MEM_REC_MUX_OBJ * 0x4 * (x))
+#define MEM_REC_MUX_USEC(x)	(MEM_BASE + 0xBB8 + MEM_REC_MUX_OBJ * 0x4 * (x))
 /* mux_id/opp/min/level */
 #define MEM_REC_MUX_VAL(x)	(MEM_BASE + 0xBBC + MEM_REC_MUX_OBJ * 0x4 * (x))
 

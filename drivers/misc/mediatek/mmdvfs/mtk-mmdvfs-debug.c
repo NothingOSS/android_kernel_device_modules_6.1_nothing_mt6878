@@ -231,39 +231,42 @@ static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 	/* MMDVFS_DBG_VER3.5 */
 	seq_puts(file, "VER3.5: mux controlled by vcp:\n");
 
-	//mux opp/min
-	seq_puts(file, "mux latest opp/min\n");
-	for (i = 0; i < USER_NUM; i++)
-		seq_printf(file, "mux: %u opp: %u min: %u\n",
-			i, readl(MEM_MUX_OPP(i)), readl(MEM_MUX_MIN(i)));
-
 	//power opp/gear
 	seq_puts(file, "power latest opp/gear\n");
 	for (i = 0; i < PWR_MMDVFS_NUM; i++)
-		seq_printf(file, "power: %u opp: %u gear: %u\n",
-			i, readl(MEM_PWR_OPP(i)), readl(MEM_PWR_CUR_GEAR(i)));
+		seq_printf(file, "[%5u.%6u] power: %u opp: %u gear: %u\n",
+			readl(MEM_PWR_OPP_SEC(i)), readl(MEM_PWR_OPP_USEC(i)), i,
+			readl(MEM_PWR_OPP(i)), readl(MEM_PWR_CUR_GEAR(i)));
+
+	//mux opp/min
+	seq_puts(file, "mux latest opp/min\n");
+	for (i = 0; i < USER_NUM; i++)
+		seq_printf(file, "[%5u.%6u] mux: %2u opp: %u min: %u\n",
+			readl(MEM_MUX_OPP_SEC(i)), readl(MEM_MUX_OPP_USEC(i)), i,
+			readl(MEM_MUX_OPP(i)), readl(MEM_MUX_MIN(i)));
 
 	//user latest request freq/opp
-	seq_puts(file, "user latest request freq/opp\n");
+	seq_puts(file, "user latest request opp/freq\n");
 	for (i = 0; i < MMDVFS_USER_NUM; i++)
-		seq_printf(file, "user: %u freq: %u opp: %u\n",
-			i, readl(MEM_USR_FREQ(i)), readl(MEM_USR_OPP(i)));
+		seq_printf(file, "[%5u.%6u] user: %2u opp: %u freq: %u\n",
+			readl(MEM_USR_OPP_SEC(i)), readl(MEM_USR_OPP_USEC(i)), i,
+			readl(MEM_USR_OPP(i)), readl(MEM_USR_FREQ(i)));
 
 	// mux opp records
 	i = readl(MEM_REC_MUX_CNT) % MEM_REC_CNT_MAX;
 	if (readl(MEM_REC_MUX_SEC(i)))
 		for (j = i; j < MEM_REC_CNT_MAX; j++) {
 			val = readl(MEM_REC_MUX_VAL(j));
-			seq_printf(file, "[%5u.%3u] mux:%lu opp:%lu min:%lu level:%lu\n",
-				readl(MEM_REC_MUX_SEC(j)), readl(MEM_REC_MUX_NSEC(j)),
+			seq_printf(file, "[%5u.%6u] mux:%lu opp:%lu min:%lu level:%lu\n",
+				readl(MEM_REC_MUX_SEC(j)), readl(MEM_REC_MUX_USEC(j)),
 				(val >> 24) & GENMASK(7, 0), (val >> 16) & GENMASK(7, 0),
 				(val >> 8) & GENMASK(7, 0), val & GENMASK(7, 0));
 		}
 
 	for (j = 0; j < i; j++) {
 		val = readl(MEM_REC_MUX_VAL(j));
-		seq_printf(file, "[%5u.%3u] mux:%lu opp:%lu min:%lu level:%lu\n",
-			readl(MEM_REC_MUX_SEC(j)), readl(MEM_REC_MUX_NSEC(j)),
+		seq_printf(file, "[%5u.%6u] mux:%lu opp:%lu min:%lu level:%lu\n",
+			readl(MEM_REC_MUX_SEC(j)), readl(MEM_REC_MUX_USEC(j)),
 			(val >> 24) & GENMASK(7, 0), (val >> 16) & GENMASK(7, 0),
 			(val >> 8) & GENMASK(7, 0), val & GENMASK(7, 0));
 	}
