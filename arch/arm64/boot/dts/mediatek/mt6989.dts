@@ -12675,9 +12675,77 @@
 		memory-region = <&mkp_mem>;
 	};
 
-	mtk-sec-dmaheap {
-		compatible = "mediatek,dmaheap-region-base";
+	mtkheap-slc {
+		compatible = "mediatek,dmaheap-mtk-slc";
+		heap-name = "mtk_slc";
+	};
+
+	mtkheap-page-prot {
+		compatible = "mediatek,dmaheap-mtk-sec-page";
+		heap-name = "mtk_prot_page-uncached";
+		trusted-mem-type = <10>;
+	};
+
+	mtkheap-region-prot {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_prot_region";
+		trusted-mem-type = <1>;
+		region-heap-align-name = "mtk_prot_region-aligned";
 		mtk,smmu-shared = <&mm_smmu_srt_protected>;
+	};
+
+	mtkheap-page-sapu {
+		compatible = "mediatek,dmaheap-mtk-sec-page";
+		heap-name = "mtk_sapu_page-uncached";
+		trusted-mem-type = <16>;
+	};
+
+	mtkheap-region-saup-data {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_sapu_data_shm_region";
+		trusted-mem-type = <12>;
+		region-heap-align-name = "mtk_sapu_data_shm_region-aligned";
+		mtk,smmu-shared = <&secure_apu_smmu_device>;
+	};
+
+	mtkheap-region-saup-engine {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_sapu_engine_shm_region";
+		trusted-mem-type = <13>;
+		region-heap-align-name = "mtk_sapu_engine_shm_region-aligned";
+		mtk,smmu-shared = <&secure_apu_smmu_device>;
+	};
+
+	mtkheap_page_svp: mtkheap-page-svp {
+		compatible = "mediatek,dmaheap-mtk-sec-page";
+		heap-name = "mtk_svp_page-uncached";
+		trusted-mem-type = <9>;
+		status = "disabled";
+	};
+
+	mtkheap_page_wfd: mtkheap-page-wfd {
+		compatible = "mediatek,dmaheap-mtk-sec-page";
+		heap-name = "mtk_wfd_page-uncached";
+		trusted-mem-type = <11>;
+		status = "disabled";
+	};
+
+	mtkheap_region_svp: mtkheap-region-svp {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_svp_region";
+		trusted-mem-type = <0>;
+		region-heap-align-name = "mtk_svp_region-aligned";
+		mtk,smmu-shared = <&mm_smmu_srt_protected>;
+		status = "disabled";
+	};
+
+	mtkheap_region_wfd: mtkheap-region-wfd {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_wfd_region";
+		trusted-mem-type = <2>;
+		region-heap-align-name = "mtk_wfd_region-aligned";
+		mtk,smmu-shared = <&mm_smmu_srt_protected>;
+		status = "disabled";
 	};
 
 	mtk-iommu-debug {
