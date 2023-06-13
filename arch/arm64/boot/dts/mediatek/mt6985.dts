@@ -14786,10 +14786,14 @@
 		mediatek,mmdvfs-user-target = <MMDVFS_MUX_DIS>, <MMDVFS_MUX_MDP>, <MMDVFS_MUX_MML>,
 			<MMDVFS_MUX_SMI>, <MMDVFS_MUX_VEN>, <MMDVFS_MUX_VEN>, <MMDVFS_MUX_VEN>,
 			<MMDVFS_MUX_VDE>, <MMDVFS_MUX_IMG>, <MMDVFS_MUX_CAM>,
-			<MMDVFS_MUX_SMI>, <MMDVFS_MUX_CAM>, <MMDVFS_MUX_DIS>, <MMDVFS_MUX_VDE>;
+			<MMDVFS_MUX_SMI>, <MMDVFS_MUX_CAM>, <MMDVFS_MUX_DIS>, <MMDVFS_MUX_VDE>,
+			<MMDVFS_MUX_DIS>, <MMDVFS_MUX_MDP>, <MMDVFS_MUX_MML>, <MMDVFS_MUX_SMI>,
+			<MMDVFS_MUX_VEN>, <MMDVFS_MUX_VDE>, <MMDVFS_MUX_IMG>, <MMDVFS_MUX_CAM>;
 		mediatek,mmdvfs-user-names = "user-disp", "user-mdp", "user-mml", "user-smi",
 			"user-jpegdec", "user-jpegenc", "user-venc", "user-vfmt", "user-img",
-			"user-cam", "user-vcore", "user-vmm", "user-vdisp", "user-vdec";
+			"user-cam", "user-vcore", "user-vmm", "user-vdisp", "user-vdec",
+			"dummy-dis", "dummy-mdp", "dummy-mml", "dummy-smi",
+			"dummy-ven", "dummy-vde", "dummy-img", "dummy-cam";
 		mediatek,mmdvfs-swrgo;
 		mediatek,free-run;
 		mediatek,dpsw-thres = <1>;
@@ -14799,8 +14803,14 @@
 	mmdvfs-user {
 		compatible = "mediatek,mtk-mmdvfs-user";
 		clocks = <&mmdvfs_mux MMDVFS_USER_VCORE>, <&mmdvfs_mux MMDVFS_USER_VMM>,
-			 <&mmdvfs_mux MMDVFS_USER_VDISP>, <&mmdvfs_mux MMDVFS_USER_VDEC>;
-		clock-names = "user-vcore", "user-vmm", "user-vdisp", "user-vdec";
+			 <&mmdvfs_mux MMDVFS_USER_VDISP>, <&mmdvfs_mux MMDVFS_USER_VDEC>,
+			 <&mmdvfs_mux DUMMY_USER_DIS>, <&mmdvfs_mux DUMMY_USER_MDP>,
+			 <&mmdvfs_mux DUMMY_USER_MML>, <&mmdvfs_mux DUMMY_USER_SMI>,
+			 <&mmdvfs_mux DUMMY_USER_VEN>, <&mmdvfs_mux DUMMY_USER_VDE>,
+			 <&mmdvfs_mux DUMMY_USER_IMG>, <&mmdvfs_mux DUMMY_USER_CAM>;
+		clock-names = "user-vcore", "user-vmm", "user-vdisp", "user-vdec",
+			"dummy-dis", "dummy-mdp", "dummy-mml", "dummy-smi",
+			"dummy-ven", "dummy-vde", "dummy-img", "dummy-cam";
 	};
 
 	mmdvfs_clk: mmdvfs-clk {
