@@ -1747,8 +1747,8 @@ static int am_wind_dura = 4000; /* microsecond */
 static int am_wind_cnt_shift = 1; /* wind_cnt = 1 << am_wind_cnt_shift */
 static int am_floor = 1024; /* 1024: 0% margin */
 static int am_ceiling = 1280; /* 1280: 20% margin */
-static int am_target_active_ratio[MAX_NR_CPUS] = {
-	[0 ... MAX_NR_CPUS - 1] = 80};
+static int am_target_active_ratio_cap[MAX_NR_CPUS] = {
+	[0 ... MAX_NR_CPUS - 1] = 819};
 static unsigned int adaptive_margin[MAX_NR_CPUS] = {
 	[0 ... MAX_NR_CPUS - 1] = 1280};
 static unsigned int his_ptr[MAX_NR_CPUS];
@@ -1756,8 +1756,8 @@ static unsigned int margin_his[MAX_NR_CPUS][MAX_NR_CPUS];
 static u64 last_wall_time_stamp[MAX_NR_CPUS];
 static u64 last_idle_time_stamp[MAX_NR_CPUS];
 static u64 last_idle_duratio[MAX_NR_CPUS];
-static unsigned int cpu_active_ratio[MAX_NR_CPUS];
-static unsigned int gear_max_active_ratio[MAX_NR_CPUS];
+static unsigned int cpu_active_ratio_cap[MAX_NR_CPUS];
+static unsigned int gear_max_active_ratio_cap[MAX_NR_CPUS];
 static unsigned int gear_update_active_ratio_cnt[MAX_NR_CPUS];
 static unsigned int gear_update_active_ratio_cnt_last[MAX_NR_CPUS];
 static unsigned int duration_wind[MAX_NR_CPUS];
@@ -1773,18 +1773,29 @@ unsigned int get_adaptive_margin(int cpu)
 }
 EXPORT_SYMBOL_GPL(get_adaptive_margin);
 
-int get_adaptive_ratio(int cpu, int target)
+int get_cpu_active_ratio_cap(int cpu)
 {
-	int gearid = per_cpu(gear_id, cpu);
-	return gear_max_active_ratio[gearid] * 100 / target;
+	return cpu_active_ratio_cap[cpu];
 }
-EXPORT_SYMBOL_GPL(get_adaptive_ratio);
+EXPORT_SYMBOL_GPL(get_cpu_active_ratio_cap);
+
+int get_gear_max_active_ratio_cap(int gearid)
+{
+	return gear_max_active_ratio_cap[gearid];
+}
+EXPORT_SYMBOL_GPL(get_gear_max_active_ratio_cap);
 
 void set_target_active_ratio_pct(int gear_id, int val)
 {
-	am_target_active_ratio[gear_id] = clamp(val, 1, 100);
+	am_target_active_ratio_cap[gear_id] = clamp_val(val, 1, 100) << SCHED_CAPACITY_SHIFT / 100;
 }
 EXPORT_SYMBOL_GPL(set_target_active_ratio_pct);
+
+void set_target_active_ratio_cap(int gear_id, int val)
+{
+	am_target_active_ratio_cap[gear_id] = clamp_val(val, 1, SCHED_CAPACITY_SCALE);
+}
+EXPORT_SYMBOL_GPL(set_target_active_ratio_cap);
 
 void set_am_ceiling(int val)
 {
@@ -1871,15 +1882,15 @@ void update_active_ratio_gear(struct cpumask *cpumask)
 
 	for_each_cpu(cpu_idx, cpumask) {
 		gear_idx = per_cpu(gear_id, cpu_idx);
-		cpu_active_ratio[cpu_idx] = update_cpu_active_ratio(cpu_idx);
-		if (cpu_active_ratio[cpu_idx] > gear_max_active_ratio_tmp) {
-			gear_max_active_ratio_tmp = cpu_active_ratio[cpu_idx];
+		cpu_active_ratio_cap[cpu_idx] = update_cpu_active_ratio(cpu_idx);
+		if (cpu_active_ratio_cap[cpu_idx] > gear_max_active_ratio_tmp) {
+			gear_max_active_ratio_tmp = cpu_active_ratio_cap[cpu_idx];
 			cpu_id = cpu_idx;
 		}
 	}
 	if (last_idle_duratio[cpu_id] > am_wind_dura)
 		ramp_up[gear_idx] = 2;
-	gear_max_active_ratio[gear_idx] = gear_max_active_ratio_tmp;
+	gear_max_active_ratio_cap[gear_idx] = gear_max_active_ratio_tmp;
 	gear_update_active_ratio_cnt[gear_idx]++;
 }
 static bool grp_trigger;
@@ -1909,8 +1920,8 @@ inline void update_adaptive_margin(struct cpufreq_policy *policy)
 		his_ptr[gearid] %= MAX_NR_CPUS;
 
 		if (ramp_up[gearid] == 0) {
-			unsigned int adaptive_ratio =
-				get_adaptive_ratio(cpu, am_target_active_ratio[gearid]);
+			unsigned int adaptive_ratio = gear_max_active_ratio_cap[gearid] *
+				SCHED_CAPACITY_SCALE / am_target_active_ratio_cap[gearid];
 
 			adaptive_margin_tmp = READ_ONCE(adaptive_margin[gearid]);
 			adaptive_margin_tmp =
@@ -1939,7 +1950,7 @@ inline void update_adaptive_margin(struct cpufreq_policy *policy)
 
 		if (trace_sugov_ext_adaptive_margin_enabled())
 			trace_sugov_ext_adaptive_margin(gearid,
-			READ_ONCE(adaptive_margin[gearid]), gear_max_active_ratio[gearid]);
+			READ_ONCE(adaptive_margin[gearid]), gear_max_active_ratio_cap[gearid]);
 	}
 }
 
