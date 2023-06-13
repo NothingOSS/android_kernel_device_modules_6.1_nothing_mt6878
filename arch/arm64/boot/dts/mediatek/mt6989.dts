@@ -3363,15 +3363,12 @@
 			cdfv-tcm-base-len = <0x1400>;
 			u-tcm-base = <0x0c0dc350>;
 			u-tcm-base-len = <0xa4>;
-			u-e-tcm-base = <0x0c0dd170>;
-			u-e-tcm-base-len = <0x4>;
 			pmu-tcm-base = <0x0c0dbf50>;
 			pmu-tcm-base-len = <0x64>;
 			u-affo = <0x94>;
 			u-bmonio = <0x30>;
 			u-uffo = <0x484>;
 			u-ucfo = <0x480>;
-			u-ecfo = <0x0>;
 			cpu-l3dc-offset = <0x0>;
 			cpu-inst-spec-offset = <0x20>;
 			cpu-idx-cycles-offset = <0x40>;
