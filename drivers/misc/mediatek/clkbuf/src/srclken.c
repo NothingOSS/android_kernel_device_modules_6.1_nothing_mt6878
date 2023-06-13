@@ -27,10 +27,10 @@ static int read_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 *val,
 	int ret = 0;
 
 	if (!reg)
-		return -EREG_NOT_SUPPORT;
+		return -EREG_IS_NULL;
 
 	if (!reg->mask)
-		return -EREG_NOT_SUPPORT;
+		return -EREG_NO_MASK;
 
 	*val = 0;
 
@@ -47,8 +47,7 @@ static int read_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 *val,
 		break;
 
 	default:
-		ret = -EREG_NOT_SUPPORT;
-		CLKBUF_DBG("srclken read failed: %d\n", ret);
+		ret = -EREG_READ_FAIL;
 		break;
 	}
 
@@ -61,10 +60,10 @@ static int write_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 val,
 	int ret = 0;
 
 	if (!reg)
-		return -EREG_NOT_SUPPORT;
+		return -EREG_IS_NULL;
 
 	if (!reg->mask)
-		return -EREG_NOT_SUPPORT;
+		return -EREG_NO_MASK;
 
 	switch (hw->hw_type) {
 	case SRCLKEN_CFG:
@@ -82,8 +81,7 @@ static int write_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 val,
 		break;
 
 	default:
-		ret = -EREG_NOT_SUPPORT;
-		CLKBUF_DBG("srclken write failed: %d\n", ret);
+		ret = -EREG_WRITE_FAIL;
 		break;
 	}
 
@@ -201,7 +199,7 @@ static int srclken_init_v1(struct clkbuf_dts *array,
 			pd, array->init_dts_cmd.sub_req, array->sub_id,
 			array->perms);
 		if (ret)
-			CLKBUF_DBG("Error code: %x\n", ret);
+			CLKBUF_DBG("Error: %d\n", ret);
 	}
 
 	return 0;
@@ -314,19 +312,15 @@ int __srclken_subsys_ctrl(void *data, int cmd, int sub_id, int perms)
 	unsigned long flags = 0;
 	spinlock_t *lock = pd->lock;
 
-	if (!IS_RC_HW((pd->hw).hw_type)) {
-		CLKBUF_DBG("get HW type Err\n");
-		goto REQ_FAIL;
-	}
+	if (!IS_RC_HW((pd->hw).hw_type))
+		return -EHW_WRONG_TYPE;
 
 	hw = pd->hw;
 	/*switch to RC CFG*/
 	hw.hw_type = SRCLKEN_CFG;
 	cfg = pd->cfg;
-	if (!cfg) {
-		CLKBUF_DBG("cfg is null");
-		goto REQ_FAIL;
-	}
+	if (!cfg)
+		return -EHW_NO_RC_DATA;
 
 	/*platform data*/
 	m00_cfg = cfg->_m00_cfg;
@@ -335,18 +329,17 @@ int __srclken_subsys_ctrl(void *data, int cmd, int sub_id, int perms)
 	sw_fpm_en = cfg->_sw_fpm_en;
 	sw_bblpm_en = cfg->_sw_bblpm_en;
 
+	CLKBUF_DBG("rc_req: %x, perms: %x\n", cmd, perms);
+
 	spin_lock_irqsave(lock, flags);
 	ret = read_with_ofs(&hw, &m00_cfg, &val, sub_id * 4);
 
-	if (ret) {
-		CLKBUF_DBG("read srclken_rc subsys cfg failed\n");
+	if (ret)
 		goto REQ_FAIL;
-	}
 
 	val &= (~(sw_srclken_rc_en.mask << sw_srclken_rc_en.shift));
 	val |= (sw_srclken_rc_en.mask << sw_srclken_rc_en.shift);
 
-	CLKBUF_DBG("rc_req: %x, perms: %x\n", cmd, perms);
 	switch (cmd & perms) {
 	case RC_FPM_REQ:
 		val &= (~(sw_rc_req.mask << sw_rc_req.shift));
@@ -369,6 +362,7 @@ int __srclken_subsys_ctrl(void *data, int cmd, int sub_id, int perms)
 
 		break;
 	default:
+		ret = -EUSER_INPUT_INVALID;
 		goto REQ_FAIL;
 	}
 
@@ -386,7 +380,7 @@ int __srclken_subsys_ctrl(void *data, int cmd, int sub_id, int perms)
 
 REQ_FAIL:
 	spin_unlock_irqrestore(lock, flags);
-	return cmd & perms;
+	return ret;
 }
 
 ssize_t __dump_srclken_status(void *data, char *buf)

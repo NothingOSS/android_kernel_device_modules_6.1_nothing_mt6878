@@ -29,10 +29,10 @@ static int read_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 *val,
 	int ret = 0;
 
 	if (!reg)
-		return -EREG_NOT_SUPPORT;
+		return -EREG_IS_NULL;
 
 	if (!reg->mask)
-		return -EREG_NOT_SUPPORT;
+		return -EREG_NO_MASK;
 
 	*val = 0;
 
@@ -49,8 +49,7 @@ static int read_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 *val,
 		break;
 
 	default:
-		ret = -EREG_NOT_SUPPORT;
-		CLKBUF_DBG("pmif read failed: %d\n", ret);
+		ret = -EREG_READ_FAIL;
 		break;
 	}
 
@@ -63,10 +62,10 @@ static int write_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 val,
 	int ret = 0;
 
 	if (!reg)
-		return -EREG_NOT_SUPPORT;
+		return -EREG_IS_NULL;
 
 	if (!reg->mask)
-		return -EREG_NOT_SUPPORT;
+		return -EREG_NO_MASK;
 
 	switch (hw->hw_type) {
 	case PMIF_M:
@@ -84,8 +83,7 @@ static int write_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 val,
 		break;
 
 	default:
-		ret = -EREG_NOT_SUPPORT;
-		CLKBUF_DBG("pmif write failed: %d\n", ret);
+		ret = -EREG_WRITE_FAIL;
 		break;
 	}
 
@@ -130,15 +128,16 @@ static int __set_pmif_inf(void *data, int cmd, int pmif_id, int onoff)
 	int ret = 0;
 	spinlock_t *lock = pd->lock;
 
+	CLKBUF_DBG("cmd: %x\n", cmd);
+
 	spin_lock_irqsave(lock, flags);
 
 	pmif_m = pd->pmif_m;
 	if (!pmif_m) {
-		CLKBUF_DBG("pmif_m is null");
+		ret = -EHW_NO_PM_DATA;
 		goto WRITE_FAIL;
 	}
 
-	CLKBUF_DBG("cmd: %x\n", cmd);
 	switch (cmd) {
 	case SET_PMIF_CONN_INF: // = 0x0001,
 
@@ -165,6 +164,7 @@ static int __set_pmif_inf(void *data, int cmd, int pmif_id, int onoff)
 		break;
 
 	default:
+		ret = -EUSER_INPUT_INVALID;
 		goto WRITE_FAIL;
 	}
 
@@ -172,7 +172,7 @@ static int __set_pmif_inf(void *data, int cmd, int pmif_id, int onoff)
 	return ret;
 WRITE_FAIL:
 	spin_unlock_irqrestore(lock, flags);
-	return cmd;
+	return ret;
 }
 
 static int __set_pmif_inf_v2(void *data, int cmd, int pmif_id, int onoff)
@@ -186,8 +186,9 @@ static int __set_pmif_inf_v2(void *data, int cmd, int pmif_id, int onoff)
 	int ret = 0;
 	spinlock_t *lock = pd->lock;
 
-	spin_lock_irqsave(lock, flags);
 	CLKBUF_DBG("cmd: %x\n", cmd);
+
+	spin_lock_irqsave(lock, flags);
 
 	if (pmif_id == PMIF_M_ID) {
 		if (pmif_m) {
@@ -213,10 +214,11 @@ static int __set_pmif_inf_v2(void *data, int cmd, int pmif_id, int onoff)
 					goto V2_WRITE_FAIL;
 				break;
 			default:
+				ret = -EUSER_INPUT_INVALID;
 				goto V2_WRITE_FAIL;
 			}
 		} else {
-			CLKBUF_DBG("pmif_m is null");
+			ret = -EHW_NO_PM_DATA;
 			goto V2_WRITE_FAIL;
 		}
 	} else if (pmif_id == PMIF_P_ID) {
@@ -243,10 +245,11 @@ static int __set_pmif_inf_v2(void *data, int cmd, int pmif_id, int onoff)
 					goto V2_WRITE_FAIL;
 				break;
 			default:
+				ret = -EUSER_INPUT_INVALID;
 				goto V2_WRITE_FAIL;
 			}
 		} else {
-			CLKBUF_DBG("pmif_p is null");
+			ret = -EHW_NO_PP_DATA;
 			goto V2_WRITE_FAIL;
 		}
 	}
@@ -255,7 +258,7 @@ static int __set_pmif_inf_v2(void *data, int cmd, int pmif_id, int onoff)
 	return ret;
 V2_WRITE_FAIL:
 	spin_unlock_irqrestore(lock, flags);
-	return cmd;
+	return ret;
 }
 
 static ssize_t __dump_pmif_status(void *data, char *buf)

@@ -26,15 +26,11 @@ static int read_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 *val,
 {
 	int ret = 0;
 
-	if (!reg) {
-		CLKBUF_DBG("reg is null\n");
-		return -EREG_NOT_SUPPORT;
-	}
+	if (!reg)
+		return -EREG_IS_NULL;
 
-	if (!reg->mask) {
-		CLKBUF_DBG("reg->mask not define\n");
-		return -EREG_NOT_SUPPORT;
-	}
+	if (!reg->mask)
+		return -EREG_NO_MASK;
 
 	*val = 0;
 
@@ -42,7 +38,7 @@ static int read_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 *val,
 		ret = regmap_read(hw->base.map, reg->ofs + ofs, val);
 		(*val) = ((*val) & (reg->mask << reg->shift)) >> reg->shift;
 	} else
-		CLKBUF_DBG("pmic read failed: %d\n", ret);
+		ret = -EREG_READ_FAIL;
 
 	return ret;
 }
@@ -53,15 +49,11 @@ static int write_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 val,
 	int ret = 0;
 	u32 mask;
 
-	if (!reg) {
-		CLKBUF_DBG("reg is null\n");
-		return -EREG_NOT_SUPPORT;
-	}
+	if (!reg)
+		return -EREG_IS_NULL;
 
-	if (!reg->mask) {
-		CLKBUF_DBG("reg->mask not define\n");
-		return -EREG_NOT_SUPPORT;
-	}
+	if (!reg->mask)
+		return -EREG_NO_MASK;
 
 	if (IS_PMIC_HW(hw->hw_type)) {
 		mask = reg->mask << reg->shift;
@@ -69,7 +61,7 @@ static int write_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 val,
 		ret = regmap_update_bits(hw->base.map, reg->ofs + ofs, mask,
 					 val);
 	} else
-		CLKBUF_DBG("pmic read failed: %d\n", ret);
+		ret = -EREG_WRITE_FAIL;
 
 	return ret;
 }
@@ -115,7 +107,7 @@ static int pmic_init_v1(struct clkbuf_dts *array, struct match_pmic *match)
 							 xo_dts_cmd->cmd_val,
 							 array->perms);
 			if (ret)
-				CLKBUF_DBG("Error code: %x\n", ret);
+				CLKBUF_DBG("Error: %d\n", ret);
 		}
 	}
 
@@ -140,10 +132,8 @@ int set_xo_desense(void *data, int xo_id, u32 des)
 
 	spin_unlock_irqrestore(lock, flags);
 
-	if (ret) {
-		CLKBUF_DBG("set xo desense failed\n");
-		return ret;
-	}
+	if (ret)
+		CLKBUF_DBG("set xo desense failed, Error: %d\n", ret);
 
 	return ret;
 }
@@ -160,10 +150,8 @@ int get_xo_desense(void *data, int xo_id, u32 *out)
 	reg = xo_buf._de_sense;
 	ret = pmic_read(&hw, &reg, out);
 
-	if (ret) {
-		CLKBUF_DBG("clkbuf read desense failed\n");
-		return ret;
-	}
+	if (ret)
+		CLKBUF_DBG("clkbuf read desense failed, Error: %d\n", ret);
 
 	return ret;
 }
@@ -186,10 +174,8 @@ int set_xo_impedance(void *data, int xo_id, u32 imp)
 
 	spin_unlock_irqrestore(lock, flags);
 
-	if (ret) {
-		CLKBUF_DBG("set xo en failed\n");
-		return ret;
-	}
+	if (ret)
+		CLKBUF_DBG("set xo en failed, Error: %d\n", ret);
 
 	return ret;
 }
@@ -206,10 +192,8 @@ int get_xo_impedance(void *data, int xo_id, u32 *out)
 	reg = xo_buf._impedance;
 	ret = pmic_read(&hw, &reg, out);
 
-	if (ret) {
-		CLKBUF_DBG("clkbuf read init xo en_m failed\n");
-		return ret;
-	}
+	if (ret)
+		CLKBUF_DBG("clkbuf read init xo en_m failed, Error: %d\n", ret);
 
 	return ret;
 }
@@ -226,10 +210,8 @@ int get_xo_mode(void *data, int xo_id, u32 *out)
 	reg = xo_buf._xo_mode;
 	ret = pmic_read(&hw, &reg, out);
 
-	if (ret) {
-		CLKBUF_DBG("clkbuf read init xo en_m failed\n");
-		return ret;
-	}
+	if (ret)
+		CLKBUF_DBG("clkbuf read init xo en_m failed, Error: %d\n", ret);
 
 	return ret;
 }
@@ -246,10 +228,8 @@ int get_xo_en_m(void *data, int xo_id, u32 *out)
 	reg = xo_buf._xo_en;
 	ret = pmic_read(&hw, &reg, out);
 
-	if (ret) {
+	if (ret)
 		CLKBUF_DBG("clkbuf read init xo en_m failed\n");
-		return ret;
-	}
 
 	return ret;
 }
@@ -287,10 +267,8 @@ int set_xo_mode(void *data, int xo_id, u32 mode)
 			udelay(400);
 	}
 
-	if (ret) {
+	if (ret)
 		CLKBUF_DBG("set xo en failed\n");
-		return ret;
-	}
 
 	return ret;
 }
@@ -321,10 +299,8 @@ int set_xo_en_m(void *data, int xo_id, int onoff)
 			udelay(400);
 	}
 
-	if (ret) {
+	if (ret)
 		CLKBUF_DBG("set xo en failed\n");
-		return ret;
-	}
 
 	return ret;
 }
@@ -368,20 +344,25 @@ int get_xo_auxout(void *data, int xo_id, u32 *out, char *reg_name)
 	spin_lock_irqsave(lock, flags);
 
 	ret = pmic_write(&hw, &reg_in, auxout_sel);
-	if (ret) {
-		CLKBUF_DBG("write auxout sel failed with err: %d\n", ret);
-		return ret;
-	}
+	if (ret)
+		goto FAIL1;
 
 	ret = pmic_read(&hw, &reg_out, out);
-	if (ret) {
-		CLKBUF_DBG("read auxout sel failed with err: %d\n", ret);
-		return ret;
-	}
+	if (ret)
+		goto FAIL2;
 
 	spin_unlock_irqrestore(lock, flags);
-
 	return ret;
+
+FAIL1:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("1st Error: %d\n", ret);
+	return ret;
+FAIL2:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("2nd Error: %d\n", ret);
+	return ret;
+
 }
 
 int __get_pmrcen(void *data, u32 *out)
@@ -439,22 +420,28 @@ int get_xo_voter(void *data, int xo_id, u32 *out)
 	spin_lock_irqsave(lock, flags);
 
 	ret = pmic_read(&hw, &reg, out);
-	if (ret) {
-		CLKBUF_DBG("read voter failed\n");
-		return ret;
-	}
+	if (ret)
+		goto FAIL1;
 
 	/* if pmic is spmi type rw, read 1 more reg to fit 16bits */
 	ret = read_with_ofs(&hw, &reg, &tmp, 1);
-	if (ret) {
-		CLKBUF_DBG("read voter ofs: 1 failed\n");
-		return ret;
-	}
+	if (ret)
+		goto FAIL2;
+
 	*out |= (tmp << 8);
 
 	spin_unlock_irqrestore(lock, flags);
 
 	CLKBUF_DBG("dump voter = %x", *out);
+	return ret;
+
+FAIL1:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("1st Error: %d\n", ret);
+	return ret;
+FAIL2:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("2nd Error: %d\n", ret);
 	return ret;
 }
 
@@ -484,21 +471,26 @@ int set_xo_voter(void *data, int xo_id, u32 vote)
 	spin_lock_irqsave(lock, flags);
 
 	ret = pmic_write(&hw, &reg, vote);
-	if (ret) {
-		CLKBUF_DBG("write voter_LSB failed\n");
-		return ret;
-	}
+	if (ret)
+		goto FAIL1;
+
 	vote >>= 8;
+
 	/* if pmic is spmi type rw, read 1 more reg to fit 16bits */
 	ret = write_with_ofs(&hw, &reg, vote, 1);
+	if (ret)
+		goto FAIL2;
 
 	spin_unlock_irqrestore(lock, flags);
+	return ret;
 
-	if (ret) {
-		CLKBUF_DBG("write voter_MSB failed\n");
-		return ret;
-	}
-
+FAIL1:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("1st Error: %d\n", ret);
+	return ret;
+FAIL2:
+	spin_unlock_irqrestore(lock, flags);
+	CLKBUF_DBG("2nd Error: %d\n", ret);
 	return ret;
 }
 
@@ -585,11 +577,12 @@ static int __set_xo_cmd_hdlr_v1(void *data, int cmd, int xo_id, u32 input,
 		break;
 
 	default:
+		ret = -EUSER_INPUT_INVALID;
 		goto WRITE_FAIL;
 	}
 	return ret;
 WRITE_FAIL:
-	return cmd & perms;
+	return ret;
 }
 
 int __dump_pmic_debug_regs(void *data, char *buf, int len)

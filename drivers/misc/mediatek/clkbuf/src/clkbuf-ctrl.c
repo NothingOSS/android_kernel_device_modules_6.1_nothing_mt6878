@@ -12,7 +12,6 @@
 #include <linux/string.h>
 #include <linux/list.h>
 #include <linux/spinlock.h>
-#include <linux/spinlock.h>
 #include <linux/slab.h>
 #include "clkbuf-util.h"
 #include "clkbuf-ctrl.h"
@@ -108,7 +107,7 @@ int clkbuf_srclken_ctrl(char *cmd, int sub_id)
 						pd, cmd_idx, array->sub_id,
 						dts_api_perms);
 					if (ret) {
-						CLKBUF_DBG("Error code: %x\n", ret);
+						CLKBUF_DBG("Error: %d\n", ret);
 						break;
 					}
 					return ret;
@@ -159,7 +158,7 @@ int clkbuf_xo_ctrl(char *cmd, int xo_id, u32 input)
 						pd, cmd_idx, xo_id, input,
 						dts_api_perms);
 					if (ret) {
-						CLKBUF_DBG("Error code: %x\n", ret);
+						CLKBUF_DBG("Error: %d\n", ret);
 						break;
 					}
 					return ret;

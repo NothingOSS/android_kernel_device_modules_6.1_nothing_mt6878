@@ -229,7 +229,7 @@ static ssize_t subsys_req_store(struct kobject *kobj,
 				ret = hdlr->ops->srclken_subsys_ctrl(
 					pd, cmd, array->sub_id, array->perms);
 				if (ret) {
-					CLKBUF_DBG("Error code: %x\n", ret);
+					CLKBUF_DBG("Error: %d\n", ret);
 					break;
 				}
 
@@ -349,7 +349,7 @@ static ssize_t xo_status_store(struct kobject *kobj,
 				ret = hdlr->ops->set_xo_cmd_hdlr(
 					pd, cmd, xo_id, input, array->perms);
 				if (ret)
-					CLKBUF_DBG("Error code: %x\n", ret);
+					CLKBUF_DBG("Error: %d\n", ret);
 				break;
 			}
 		}
@@ -428,7 +428,7 @@ static ssize_t pmif_status_store(struct kobject *kobj,
 				ret = hdlr->ops->set_pmif_inf(
 					pd, cmd, pmif_id, input);
 				if (ret)
-					CLKBUF_DBG("Error code: %x\n", ret);
+					CLKBUF_DBG("Error: %d\n", ret);
 				break;
 			}
 		}
