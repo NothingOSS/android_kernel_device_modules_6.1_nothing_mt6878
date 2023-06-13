@@ -408,6 +408,53 @@ static void mdw_cmd_delete_infos(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 	}
 }
 
+static int mdw_cmd_history_tbl_create(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
+{
+	struct mdw_cmd_history_tbl *ch_tbl = NULL;
+	int ret = 0;
+
+	/* alloc cmd history */
+	ch_tbl = kzalloc(sizeof(*ch_tbl), GFP_KERNEL);
+	if (!ch_tbl) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	/* alloc subcmd history */
+	ch_tbl->h_sc_einfo =
+			 kcalloc(c->num_subcmds, sizeof(*ch_tbl->h_sc_einfo), GFP_KERNEL);
+
+	/* assign basic info */
+	ch_tbl->uid = c->uid;
+	ch_tbl->num_subcmds = c->num_subcmds;
+
+	/* add history tbl node to list */
+	list_add_tail(&ch_tbl->ch_tbl_node , &mpriv->ch_list);
+
+	if (!ch_tbl->h_sc_einfo) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	mdw_flw_debug("create cmd history done\n");
+
+out:
+	return ret;
+}
+
+static void mdw_cmd_history_tbl_delete(struct mdw_fpriv *mpriv)
+{
+	struct mdw_cmd_history_tbl *ch_tbl = NULL, *tmp = NULL;
+
+	list_for_each_entry_safe(ch_tbl, tmp, &mpriv->ch_list, ch_tbl_node) {
+		list_del(&ch_tbl->ch_tbl_node);
+		mdw_cmd_debug("s(0x%llx) uid(0x%llx) delete ch_tbl\n",
+			(uint64_t)mpriv, ch_tbl->uid);
+		kfree(ch_tbl->h_sc_einfo);
+		kfree(ch_tbl);
+	}
+}
+
 void mdw_cmd_mpriv_release(struct mdw_fpriv *mpriv)
 {
 	struct mdw_cmd *c = NULL;
@@ -792,30 +839,19 @@ static void mdw_cmd_check_rets(struct mdw_cmd *c, int ret)
 	}
 }
 
-int mdw_cmd_history_tbl_create(struct mdw_fpriv *mpriv)
+struct mdw_cmd_history_tbl *mdw_cmd_ch_tbl_find(struct mdw_cmd *c)
 {
-	int ret = 0;
+	struct mdw_cmd_history_tbl *ch_tbl = NULL;
+	struct mdw_fpriv *mpriv = c->mpriv;
 
-	/* alloc cmd history */
-	mpriv->ch_tbl = kzalloc(sizeof(*mpriv->ch_tbl), GFP_KERNEL);
-	if (!mpriv->ch_tbl) {
-		ret = -ENOMEM;
-		goto out;
+	list_for_each_entry(ch_tbl, &mpriv->ch_list, ch_tbl_node) {
+		if(ch_tbl->uid == c->uid) {
+			mdw_flw_debug("find ch_tbl uid(0x%llx)\n", c->uid);
+			return ch_tbl;
+		}
 	}
 
-	/* alloc subcmd history */
-	mpriv->ch_tbl->h_sc_einfo =
-			 kcalloc(MDW_SUBCMD_MAX, sizeof(*mpriv->ch_tbl->h_sc_einfo), GFP_KERNEL);
-
-	if (!mpriv->ch_tbl->h_sc_einfo) {
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	mdw_flw_debug("create cmd history done\n");
-
-out:
-	return ret;
+	return NULL;
 }
 
 void mdw_cmd_history_init(struct mdw_device *mdev)
@@ -827,12 +863,6 @@ void mdw_cmd_history_init(struct mdw_device *mdev)
 
 void mdw_cmd_history_deinit(struct mdw_device *mdev)
 {
-}
-
-void mdw_cmd_history_tbl_delete(struct mdw_fpriv *mpriv)
-{
-	kfree(mpriv->ch_tbl->h_sc_einfo);
-	kfree(mpriv->ch_tbl);
 }
 
 static uint64_t mdw_cmd_iptime_cal(uint64_t his_iptime, uint64_t new_iptime)
@@ -958,7 +988,7 @@ static int mdw_cmd_record(struct mdw_cmd *c)
 	uint64_t predict_start_ts = 0;
 
 	/* check history table */
-	ch_tbl = c->mpriv->ch_tbl;
+	ch_tbl = mdw_cmd_ch_tbl_find(c);
 	if (!ch_tbl)
 		goto out;
 
@@ -966,9 +996,6 @@ static int mdw_cmd_record(struct mdw_cmd *c)
 	sc_einfo = &c->einfos->sc;
 	if (!sc_einfo)
 		goto out;
-
-	/* inc cmd counter */
-	ch_tbl->cmd_cnt++;
 
 	/* calculate history ip_time */
 	for (i = 0; i < c->num_subcmds; i++) {
@@ -985,7 +1012,6 @@ static int mdw_cmd_record(struct mdw_cmd *c)
 				mdw_cmd_iptime_cal(h_iptime, c_iptime);
 		} else {
 			ch_tbl->h_sc_einfo[i].ip_time = c_iptime;
-			ch_tbl->cmd_cnt = 1;
 		}
 	}
 
@@ -1043,12 +1069,14 @@ static uint64_t mdw_cmd_get_predict(struct mdw_cmd *c)
 	for (i = 0; i < heap_nr; i++) {
 		predict_start_ts = mdev->predict_cmd_ts[0];
 		if (c->end_ts >= predict_start_ts) {
-			mdw_flw_debug("predict cmd start_ts is invalid\n");
+			mdw_flw_debug("predict cmd start_ts(%llu) is invalid\n",
+					predict_start_ts);
 			min_heap_pop(&mdev->heap, &mdw_min_heap_funcs);
 			predict_start_ts = 0;
 			continue;
 		} else {
-			mdw_flw_debug("predict cmd start_ts is valid\n");
+			mdw_flw_debug("predict cmd start_ts(%llu) is valid\n",
+					predict_start_ts);
 			break;
 		}
 	}
@@ -1175,7 +1203,9 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 		if (c->power_dtime > MAX_DTIME || !c->is_dtime_set) {
 			mdw_flw_debug("trigger fast power off directly\n");
 			g_mdw_pwroff_cnt++;
+			mdw_trace_begin("apumdw:power_off|pwroff_cnt(%u)", g_mdw_pwroff_cnt);
 			ret = mdev->dev_funcs->power_onoff(mdev, MDW_APU_POWER_OFF);
+			mdw_trace_end();
 			goto power_out;
 		}
 	}
@@ -1390,11 +1420,32 @@ static int mdw_cmd_ioctl_del(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 	return ret;
 }
 
+static void mdw_cmd_ch_tbl_sanity_check(struct mdw_fpriv *mpriv)
+{
+	if (mpriv->cmd_cnt > MDW_CMD_MAX)
+		mdw_flw_debug("session has %d cmd\n", mpriv->cmd_cnt);
+}
+
+static void mdw_cmd_ch_tbl_sc_check(struct mdw_cmd_history_tbl *ch_tbl,
+	struct mdw_cmd *c)
+{
+	/* compare num_subcmds */
+	if (ch_tbl->num_subcmds < c->num_subcmds) {
+		mdw_flw_debug("s(0x%llx) uid(0x%llx) del old ch_tbl and create new\n",
+				(uint64_t)c->mpriv, c->uid);
+		list_del(&ch_tbl->ch_tbl_node);
+		kfree(ch_tbl->h_sc_einfo);
+		kfree(ch_tbl);
+		mdw_cmd_history_tbl_create(c->mpriv, c);
+	}
+}
+
 static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 {
 	struct mdw_cmd_in *in = (struct mdw_cmd_in *)args;
 	struct mdw_cmd *c = NULL, *priv_c = NULL;
 	struct sync_file *sync_file = NULL;
+	struct mdw_cmd_history_tbl *ch_tbl = NULL;
 	int ret = 0, fd = 0, wait_fd = 0, is_running = 0;
 
 	mdw_trace_begin("apumdw:user_run");
@@ -1459,6 +1510,23 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 
 exec:
 	mutex_lock(&c->mtx);
+
+	/* handle cmd histroy */
+	ch_tbl = mdw_cmd_ch_tbl_find(c);
+	if (ch_tbl) {
+		mdw_flw_debug("s(0x%llx) uid(0x%llx) check num subcmd\n",
+				(uint64_t)mpriv, c->uid);
+		mdw_cmd_ch_tbl_sc_check(ch_tbl, c);
+	} else {
+		mdw_flw_debug("s(0x%llx) uid(0x%llx) create ch_tbl\n",
+				(uint64_t)mpriv, c->uid);
+		mdw_cmd_history_tbl_create(mpriv, c);
+		mpriv->cmd_cnt++;
+	}
+
+	/* ch_tbl sanity check */
+	mdw_cmd_ch_tbl_sanity_check(mpriv);
+
 	mdw_cmd_trace(c, MDW_CMD_ENQUE);
 	/* get sync_file fd */
 	fd = get_unused_fd_flags(O_CLOEXEC);

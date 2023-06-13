@@ -296,7 +296,8 @@ struct mdw_fpriv {
 	void (*put)(struct mdw_fpriv *mpriv);
 
 	/* cmd history */
-	struct mdw_cmd_history_tbl *ch_tbl;
+	struct list_head ch_list;
+	uint32_t cmd_cnt;
 };
 
 struct mdw_exec_info {
@@ -327,14 +328,16 @@ struct mdw_cmd_map_invoke {
 };
 
 struct mdw_cmd_history_tbl {
-	/* history counter */
+	/* history basic struct */
+	uint64_t uid;
+	struct list_head ch_tbl_node; //to mpriv
 	uint64_t period_cnt;
+	uint32_t num_subcmds;
 
 	/* history cmd time info */
 	uint64_t h_end_ts;
 	uint64_t h_start_ts;
 	uint64_t h_period;
-	uint64_t cmd_cnt;
 
 	/* history subcmd einfo */
 	struct mdw_subcmd_exec_info *h_sc_einfo;
@@ -482,7 +485,6 @@ int mdw_dev_validation(struct mdw_fpriv *mpriv, uint32_t dtype,
 
 void mdw_cmd_history_init(struct mdw_device *mdev);
 void mdw_cmd_history_deinit(struct mdw_device *mdev);
-int mdw_cmd_history_tbl_create(struct mdw_fpriv *mpriv);
-void mdw_cmd_history_tbl_delete(struct mdw_fpriv *mpriv);
+struct mdw_cmd_history_tbl *mdw_cmd_ch_tbl_find(struct mdw_cmd *c);
 
 #endif

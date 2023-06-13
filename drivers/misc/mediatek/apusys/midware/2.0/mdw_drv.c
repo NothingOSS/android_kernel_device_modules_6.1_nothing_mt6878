@@ -69,6 +69,7 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 	mutex_init(&mpriv->mtx);
 	INIT_LIST_HEAD(&mpriv->mems);
 	INIT_LIST_HEAD(&mpriv->invokes);
+	INIT_LIST_HEAD(&mpriv->ch_list);
 	atomic_set(&mpriv->active_cmds, 0);
 	idr_init(&mpriv->cmds);
 	atomic_set(&mpriv->exec_seqno, 0);
@@ -94,18 +95,10 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 		goto put_mpriv;
 	}
 
-	ret = mdw_cmd_history_tbl_create(mpriv);
-	if (ret) {
-		mdw_drv_err("mdw create history table fail ret(%d)\n", ret);
-		goto delete_mem_pool;
-	}
-
 	mdw_dev_session_create(mpriv);
 	mdw_flw_debug("mpriv(0x%lx)\n", (unsigned long)mpriv);
 	goto out;
 
-delete_mem_pool:
-	mdw_mem_pool_destroy(&mpriv->cmd_buf_pool);
 put_mpriv:
 	mpriv->put(mpriv);
 out:
