@@ -1708,6 +1708,8 @@ void cmdq_dump_core(struct mbox_chan *chan)
 	struct cmdq *cmdq = dev_get_drvdata(chan->mbox->dev);
 	u32 irq, loaded, cycle, thd_timer, tpr_mask, tpr_en, bus_gctl;
 
+	cmdq_mtcmos_by_fast(cmdq, true);
+
 	irq = readl(cmdq->base + CMDQ_CURR_IRQ_STATUS);
 	loaded = readl(cmdq->base + CMDQ_CURR_LOADED_THR);
 	cycle = readl(cmdq->base + CMDQ_THR_EXEC_CYCLES);
@@ -1716,6 +1718,7 @@ void cmdq_dump_core(struct mbox_chan *chan)
 	tpr_en = readl(cmdq->base + CMDQ_TPR_TIMEOUT_EN);
 	bus_gctl = readl(cmdq->base + GCE_BUS_GCTL);
 
+	cmdq_mtcmos_by_fast(cmdq, false);
 
 	cmdq_util_user_msg(chan,
 		"irq:%#x loaded:%#x cycle:%#x thd timer:%#x mask:%#x en:%#x",
