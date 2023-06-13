@@ -17333,7 +17333,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 		lv-deb-sel = <0>;
 		hv-deb-sel = <2>;
 		vio18-switch-reg = <0x53 0x58>;
-		status = "disabled";
 	};
 };
 
