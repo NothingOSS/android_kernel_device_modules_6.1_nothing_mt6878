@@ -5971,7 +5971,6 @@
 			condition-num = <2>;
 			operating-points-v2 = <&opp_table_disp>;
 			vdisp-dvfs-opp = /bits/ 8 <3>;
-			dis1-shutdown-supply = <&mt6363_vbuck1>;
 			interconnects = <&mmqos SLAVE_LARB(51) &mmqos SLAVE_COMMON(0)>,
 					<&mmqos SLAVE_LARB(52) &mmqos SLAVE_COMMON(1)>,
 					<&mmqos SLAVE_LARB(53) &mmqos SLAVE_COMMON(1)>;
