@@ -14185,19 +14185,27 @@ static int mtk_crtc_partial_compute_ovl_roi(struct drm_crtc *crtc,
 		dst_roi.width = drm_rect_width(&plane->state->dst);
 		dst_roi.height = drm_rect_height(&plane->state->dst);
 
-		//DDPDBG("hwc plane[%d] roi_num:(%llu) dirty roi:(%llu,%llu,%llu,%llu)\n",
-		//i, plane_state->prop_val[PLANE_PROP_DIRTY_ROI_NUM],
+		//DDPDBG("hwc plane[%d]en:(%d) roi_num:(%llu) roi:(%llu,%llu,%llu,%llu)\n",
+		//i, plane->state->visible, plane_state->prop_val[PLANE_PROP_DIRTY_ROI_NUM],
 		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_X],
 		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_Y],
 		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_W],
 		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_H]);
 
+		/* skip if plane is not enable */
 		if (!plane->state->visible) {
 			disable_layer++;
 			continue;
 		}
 
 		dirty_roi_num = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_NUM];
+		/* skip if roi num euals 0 */
+		if (dirty_roi_num == 0 && plane->state->visible) {
+			DDPDBG("layer %d dirty roi num is 0\n", i);
+			disable_layer++;
+			continue;
+		}
+
 		if (dirty_roi_num) {
 			/* 1. compute picture dirty roi*/
 			layer_roi.x = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_X];
@@ -14213,25 +14221,22 @@ static int mtk_crtc_partial_compute_ovl_roi(struct drm_crtc *crtc,
 					&dst_roi, &layer_total_roi, &layer_total_roi);
 		}
 
-		/* 3. full dirty if num euals 0 */
-		if (dirty_roi_num == 0 && plane->state->visible) {
-			DDPDBG("layer %d dirty num 0\n", i);
-			_assign_full_lcm_roi(crtc, result);
-			/* break if full lcm roi */
-			break;
-		}
-
-		/* 4. deal with other cases:layer disable, dim layer*/
+		/* 3. deal with other cases:layer disable, dim layer*/
 		mtk_rect_join(&layer_total_roi, result, result);
 
-		/*break if roi is full lcm */
+		/* 4. break if roi is full lcm */
 		if (_is_equal_full_lcm(crtc, result))
 			break;
 
 	}
 
 	if (disable_layer >= mtk_crtc->layer_nr) {
-		DDPMSG(" all layer disabled, force full roi\n");
+		DDPDBG(" all layer disabled, force full roi\n");
+		_assign_full_lcm_roi(crtc, result);
+	}
+
+	if (mtk_rect_is_empty(result)) {
+		DDPDBG(" total roi is empty, force full roi\n");
 		_assign_full_lcm_roi(crtc, result);
 	}
 
@@ -14254,12 +14259,16 @@ static void mtk_crtc_validate_roi(struct drm_crtc *crtc,
 		partial_roi->y =
 			(partial_roi->y / slice_height) * slice_height;
 
-	if (partial_roi->height % slice_height != 0)
+	if (partial_roi->height % slice_height != 0) {
 		partial_roi->height =
 			((partial_roi->height / slice_height) + 1) * slice_height;
 
-	if (partial_roi->width != full_roi.width)
-		partial_roi->width = full_roi.width;
+		if (partial_roi->height > full_roi.height)
+			partial_roi->height = full_roi.height;
+	}
+
+	partial_roi->x = 0;
+	partial_roi->width = full_roi.width;
 }
 
 int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
@@ -14297,6 +14306,12 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	/* disable partial update if rpo lye is exist */
 	if (state->lye_state.rpo_lye && partial_enable) {
 		DDPINFO("skip because rpo lye is exist\n");
+		partial_enable = false;
+	}
+
+	/* disable partial update if mml_ir lye is exist */
+	if (state->lye_state.mml_ir_lye && partial_enable) {
+		DDPINFO("skip because mml_ir lye is exist\n");
 		partial_enable = false;
 	}
 
