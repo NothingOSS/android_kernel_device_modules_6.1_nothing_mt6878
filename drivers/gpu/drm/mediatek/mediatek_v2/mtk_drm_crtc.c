@@ -6783,6 +6783,11 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			ovl_win_size, is_compress, bpp, src_w_align, src_h_align);
 		DDPDBG_BWM("BWM: avg_inter_value:%u peak_inter_value:%u\n",
 			avg_inter_value, peak_inter_value);
+		if (!need_skip)
+			DDPINFO("BWM:p:%u f:%u i:%d l:%d e:%d w:%d c:%d b:%d s:%d s:%d a:%u p:%u\n",
+				plane_index, fn, index, lye_id, ext_lye_id,
+				ovl_win_size, is_compress, bpp, src_w_align, src_h_align,
+				avg_inter_value, peak_inter_value);
 
 		if (!comp) {
 			DDPPR_ERR("%s:%d comp is NULL\n", __func__, __LINE__);
