@@ -17,6 +17,7 @@
 #include <linux/iio/consumer.h>
 #include <linux/nvmem-consumer.h>
 #include <linux/mfd/mt6397/core.h>
+#include <linux/mfd/mt6681.h>
 #include <linux/regulator/consumer.h>
 #include <sound/tlv.h>
 #include <sound/soc.h>
@@ -6773,6 +6774,30 @@ static int mt_clksq_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int mt_scp_req_event(struct snd_soc_dapm_widget *w,
+			  struct snd_kcontrol *kcontrol,
+			  int event)
+{
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	struct i2c_adapter *adap = priv->i2c_client->adapter;
+
+	dev_info(priv->dev, "%s(), event = 0x%x\n", __func__, event);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		scp_wake_request(adap);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		scp_wake_release(adap);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static int mt_key_event(struct snd_soc_dapm_widget *w,
 			struct snd_kcontrol *kcontrol, int event)
 {
@@ -13162,6 +13187,10 @@ static int mt_dc_trim_event(struct snd_soc_dapm_widget *w,
 /* DAPM Widgets */
 static const struct snd_soc_dapm_widget mt6681_dapm_widgets[] = {
 	/* Global Supply*/
+	SND_SOC_DAPM_SUPPLY_S("SCP_REQ", SUPPLY_SEQ_SCP_REQ,
+			      SND_SOC_NOPM, 0, 0,
+			      mt_scp_req_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("KEY", SUPPLY_SEQ_CLK_BUF, SND_SOC_NOPM, 0, 0,
 			      mt_key_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
@@ -13725,6 +13754,7 @@ static int mt_dcc_clk_connect(struct snd_soc_dapm_widget *source,
 /* DAPM Route */
 static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	/* Capture */
+	{"AIFTX_Supply", NULL, "SCP_REQ"},
 	{"AIFTX_Supply", NULL, "UL_GPIO"},
 	{"AIFTX_Supply", NULL, "KEY"},
 	{"AIFTX_Supply", NULL, "CLK_BUF"},
@@ -13962,6 +13992,7 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	{"AIN6", NULL, "MIC_BIAS_3"},
 
 	/* DL Supply */
+	{"DL Power Supply", NULL, "SCP_REQ"},
 	{"DL Power Supply", NULL, "DL_GPIO"},
 	{"DL Power Supply", NULL, "KEY"},
 	{"DL Power Supply", NULL, "CLK_BUF"},
@@ -38028,6 +38059,7 @@ static int mt6681_parse_dt(struct mt6681_priv *priv)
 static int mt6681_platform_driver_probe(struct platform_device *pdev)
 {
 	struct mt6681_priv *priv = NULL;
+	struct mt6681_pmic_info *mpi = NULL;
 	int ret;
 
 	dev_info(&pdev->dev, "%s(), dev name %s\n", __func__,
@@ -38044,6 +38076,17 @@ static int mt6681_platform_driver_probe(struct platform_device *pdev)
 	priv->regmap = dev_get_regmap(pdev->dev.parent, NULL);
 	if (!priv->regmap) {
 		dev_info(&pdev->dev, "Faled to get parent regmap\n");
+		return -ENODEV;
+	}
+	/* get i2c client for scp_request/release */
+	mpi = dev_get_drvdata(pdev->dev.parent);
+	if (!mpi) {
+		dev_info(&pdev->dev, "Faled to get parent driver data\n");
+		return -ENODEV;
+	}
+	priv->i2c_client = mpi->i2c;
+	if (!priv->i2c_client) {
+		dev_info(&pdev->dev, "Faled to get i2c_client\n");
 		return -ENODEV;
 	}
 

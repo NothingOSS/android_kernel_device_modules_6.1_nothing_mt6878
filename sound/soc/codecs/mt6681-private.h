@@ -5,6 +5,7 @@
 #ifndef _MT6681_PRIVATE_H_
 #define _MT6681_PRIVATE_H_
 #define MT6681_NLE_GAIN_STAGE 8
+#include <linux/i2c.h>
 enum {
 	MT6681_MTKAIF_PROTOCOL_1 = 0,
 	MT6681_MTKAIF_PROTOCOL_2,
@@ -133,6 +134,7 @@ enum {
 /* Supply widget subseq */
 enum {
 	/* common */
+	SUPPLY_SEQ_SCP_REQ,
 	SUPPLY_SEQ_CLK_BUF,
 	SUPPLY_SEQ_CKTST,
 	SUPPLY_SEQ_LDO_VAUD18,
@@ -487,6 +489,7 @@ struct mt6681_priv {
 	struct device *dev;
 	struct regmap *regmap;
 	struct nvmem_device *efuse;
+	struct i2c_client *i2c_client;
 	unsigned int dl_rate[MT6681_AIF_NUM];
 	unsigned int ul_rate[MT6681_AIF_NUM];
 	int ana_gain[AUDIO_ANALOG_VOLUME_TYPE_MAX];
@@ -597,4 +600,6 @@ void mt6681_mtkaif_calibration_enable(struct snd_soc_component *cmpnt);
 void mt6681_mtkaif_calibration_disable(struct snd_soc_component *cmpnt);
 void mt6681_set_mtkaif_calibration_phase(struct snd_soc_component *cmpnt,
 					 int phase_1, int phase_2, int phase_3);
+extern int scp_wake_request(struct i2c_adapter *);
+extern int scp_wake_release(struct i2c_adapter *);
 #endif
