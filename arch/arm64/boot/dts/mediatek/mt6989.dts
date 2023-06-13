@@ -11205,7 +11205,7 @@
 			bus-range = <0x00 0xff>;
 			ranges = <0x82000000 0 0x30000000
 				  0x0 0x30000000 0 0x4000000>;
-			status = "okay";
+			status = "disabled";
 			linux,pci-domain = <0>;
 			mediatek,peri-reset-dis;
 			mediatek,dvfs-req-dis;
@@ -11225,9 +11225,6 @@
 
 			phys = <&pciephy0>;
 			phy-names = "pcie-phy";
-			pinctrl-names = "default", "sleep";
-			pinctrl-0 = <&pcie0_pins_default>;
-			pinctrl-1 = <&pcie0_pins_sleep>;
 
 			#interrupt-cells = <1>;
 			interrupt-map-mask = <0 0 0 7>;
@@ -11271,8 +11268,6 @@
 
 			phys = <&pciephy1>;
 			phy-names = "pcie-phy";
-			pinctrl-names = "default";
-			pinctrl-0 = <&pcie1_pins_default>;
 
 			#interrupt-cells = <1>;
 			interrupt-map-mask = <0 0 0 7>;
@@ -11288,19 +11283,17 @@
 		};
 
 		pciephy0: phy@11100000 {
-			compatible = "mediatek,mt8195-pcie-phy",
-				     "mediatek,mt6989-pcie-phy";
+			compatible = "mediatek,mt6989-pcie-phy";
 			#phy-cells = <0>;
 			reg = <0 0x11100000 0 0x10000>;
 			reg-names = "sif";
-			status = "okay";
+			status = "disabled";
 
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_PEXTP_PHY0>;
 		};
 
 		pciephy1: phy@11120000 {
-			compatible = "mediatek,mt8195-pcie-phy",
-				     "mediatek,mt6989-pcie-phy";
+			compatible = "mediatek,mt6989-pcie-phy";
 			#phy-cells = <0>;
 			reg = <0 0x11120000 0 0x10000>;
 			reg-names = "sif";
@@ -16501,38 +16494,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 			"wl_tbl_base";
 	 };
 };
-
-/* PCIe pinmux start */
-&pio {
-	pcie0_pins_default: pcie0-default {
-		pins-cmd-dat {
-			/* PINMUX_GPIO144__FUNC_GPIO144 for Falcon */
-			pinmux = <PINMUX_GPIO143__FUNC_PCIE_PERSTN>,
-				 <PINMUX_GPIO145__FUNC_PCIE_CLKREQN>;
-			bias-pull-up;
-		};
-	};
-
-	pcie0_pins_sleep: pcie0-sleep {
-		pins-cmd-dat {
-			/* PINMUX_GPIO144__FUNC_GPIO144 for Falcon */
-			pinmux = <PINMUX_GPIO143__FUNC_GPIO143>,
-				 <PINMUX_GPIO145__FUNC_GPIO145>;
-			bias-pull-down;
-			input-enable;
-		};
-	};
-
-	pcie1_pins_default: pcie1-default {
-		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO2__FUNC_PCIE_CLKREQN_P1>,
-				 <PINMUX_GPIO3__FUNC_PCIE_WAKEN_P1>,
-				 <PINMUX_GPIO4__FUNC_PCIE_PERSTN_P1>;
-			bias-pull-up;
-		};
-	};
-};
-/* PCIe pinmux end */
 
 /* CONNV3 GPIO start */
 &pio {
