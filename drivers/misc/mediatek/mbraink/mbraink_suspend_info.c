@@ -118,11 +118,6 @@ void mbraink_get_suspend_info_list_record(struct mbraink_suspend_info_struct_dat
 				mbraink_suspend_info_list_data[r_idx].datatype;
 			buffer->drv_data[buf_idx].reason =
 				mbraink_suspend_info_list_data[r_idx].reason;
-			pr_info("%s: r_idx = %u, buf_idx=%u, timestamp=%lld, datatype=%u\n",
-				__func__,
-				r_idx, buf_idx,
-				buffer->drv_data[buf_idx].timestamp,
-				buffer->drv_data[buf_idx].datatype);
 			mbraink_suspend_info_list_data[r_idx].dirty = false;
 			buf_idx++;
 			buffer->count++;
