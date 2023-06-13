@@ -28,7 +28,7 @@ static int backlight_throttle(struct backlight_cooling_device *backlight_cdev, u
 
 	bl_percent = BACKLIGHT_COOLING_MAX_STATE - state;
 
-	setMaxBrightness(backlight_cdev->name, bl_percent, enable);
+	setMaxBrightness(-1, bl_percent, enable);
 	backlight_cdev->target_state = state;
 	dev_info(dev, "%s: set lv = %ld, bl percent = %ld done\n", backlight_cdev->name,
 		state, bl_percent);
