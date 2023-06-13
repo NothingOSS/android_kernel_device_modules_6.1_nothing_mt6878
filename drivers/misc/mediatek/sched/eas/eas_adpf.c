@@ -27,6 +27,10 @@ int sched_adpf_callback(struct _SESSION *session)
 	unsigned int adpf_ratio = 0;
 	unsigned int durationNanos = 0;
 	unsigned int targetDurationNanos = 0;
+	bool vip_enable = sched_vip_enable_get();
+
+	if (unlikely(group_get_mode() == GP_MODE_0) && !vip_enable)
+		return -1;
 
 	switch(cmd) {
 	case ADPF_CREATE_HINT_SESSION:

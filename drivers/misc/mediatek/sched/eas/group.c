@@ -389,6 +389,8 @@ int set_task_to_group(int pid, int grp_id)
 
 	if (grp_id >= GROUP_ID_RECORD_MAX)
 		return ret;
+	if (unlikely(group_get_mode() == GP_MODE_0))
+		return ret;
 	p = get_pid_task(find_vpid(pid), PIDTYPE_PID);
 	if (!p)
 		return ret;
