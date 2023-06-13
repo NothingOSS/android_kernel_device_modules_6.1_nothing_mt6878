@@ -869,8 +869,8 @@ int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 	if (unlikely(!debug_force_power))
 		return 0;
 
-	mtk_disp_vlp_vote(VOTE_SET, user);
 	pm_runtime_get_sync(g_priv->dev);
+	mtk_disp_vlp_vote(VOTE_SET, user);
 
 	return 0;
 }
@@ -1054,7 +1054,7 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	priv->dev = dev;
 
 	pm_runtime_enable(dev);
-	pm_runtime_irq_safe(dev);
+	// pm_runtime_irq_safe(dev);
 
 	ret = dpc_res_init(priv);
 	if (ret)

@@ -8466,7 +8466,7 @@ SKIP_OVLSYS_CONFIG:
 		of_node_put(infra_node);
 	}
 
-	private->dpc_dev = mtk_drm_get_pd_device(dev, "mminfra_in_dpc");
+	// private->dpc_dev = mtk_drm_get_pd_device(dev, "mminfra_in_dpc");
 	if (private->dpc_dev)
 		pm_runtime_irq_safe(private->dpc_dev);
 	mtk_drm_pm_ctrl(private, DISP_PM_ENABLE);
