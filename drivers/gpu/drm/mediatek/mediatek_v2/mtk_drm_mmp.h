@@ -153,6 +153,8 @@ struct CRTC_MMP_Events {
 	/*pq common ioctl*/
 	mmp_event pq_frame_config;
 	mmp_event notify_backlight;
+	/* csc_bl sync */
+	mmp_event csc_bl;
 };
 
 struct DRM_MMP_Events *get_drm_mmp_events(void);

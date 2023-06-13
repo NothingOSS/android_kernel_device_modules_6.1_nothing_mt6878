@@ -111,8 +111,19 @@ enum disp_hrt_usage {
 
 enum MTK_CONNECTOR_PROP {
 	CONNECTOR_PROP_CAPS_BLOB_ID,
+	CONNECTOR_PROP_CSC_BL,	/* csc bylayer backlight */
 	CONNECTOR_PROP_MAX,
 };
+
+
+struct mtk_connector_state {
+	struct drm_connector_state base;
+
+	/* property */
+	uint64_t prop_val[MAX_CONNECTOR][CONNECTOR_PROP_MAX];
+};
+
+#define to_mtk_connector_state(x) container_of(x, struct mtk_connector_state, base)
 
 
 struct mtk_drm_private {
@@ -407,6 +418,8 @@ extern unsigned int ovl_win_size;
 extern unsigned int default_emi_eff;
 extern unsigned int emi_eff_tb[MAX_EMI_EFF_LEVEL];
 extern int aod_scp_flag;
+extern int mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
+				 unsigned int cfg_flag);
 
 int mtk_drm_ioctl_set_dither_param(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);

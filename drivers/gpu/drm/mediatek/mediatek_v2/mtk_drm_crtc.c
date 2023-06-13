@@ -1549,7 +1549,7 @@ static bool msync_is_on(struct mtk_drm_private *priv,
 }
 
 int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
-	unsigned int panel_ext_param, unsigned int cfg_flag)
+	unsigned int panel_ext_param, unsigned int cfg_flag, unsigned int lock)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
@@ -1571,29 +1571,39 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])
 		sb_backlight = level;
 
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	if(mtk_crtc == NULL || crtc->state == NULL){
+		DDPINFO("Sleep State set backlight stop --crtc not ebable\n");
+		CRTC_MMP_EVENT_END(index, backlight, 0, 0);
+		return -EINVAL;
+	}
 
 	if (!(mtk_crtc->enabled)) {
 		DDPINFO("Sleep State set backlight stop --crtc not ebable\n");
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		CRTC_MMP_EVENT_END(index, backlight, 0, 0);
-
 		return -EINVAL;
 	}
 
 	if (!comp) {
 		DDPINFO("%s no output comp\n", __func__);
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		CRTC_MMP_EVENT_END(index, backlight, 0, 1);
-
 		return -EINVAL;
 	}
 
+	mtk_ddp_comp_io_cmd(comp, NULL, REQ_PANEL_EXT, &panel_ext);
+	if (unlikely(!panel_ext)) {
+		DDPPR_ERR("%s:can't find panel_ext handle\n", __func__);
+		CRTC_MMP_EVENT_END(index, backlight, 0, 1);
+		return -EINVAL;
+	}
+
+	if (lock)
+		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
 	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 	if (!cb_data) {
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		if (lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		DDPPR_ERR("cb data creation failed\n");
 		CRTC_MMP_EVENT_END(index, backlight, 0, 2);
 		return -EINVAL;
@@ -1607,13 +1617,20 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 		cmdq_handle = sb_cmdq_handle;
 		sb_cmdq_handle = NULL;
 	} else {
-		cmdq_handle =
-			cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+		if (is_frame_mode)
+			cmdq_handle =
+				cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+		else
+			cmdq_handle =
+				cmdq_pkt_create(
+				mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
 	}
 
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		if (lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		CRTC_MMP_EVENT_END(index, backlight, 0, 1);
 		return -EINVAL;
 	}
 
@@ -1635,6 +1652,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 		&& (drm_mode_vrefresh(&crtc->state->adjusted_mode) == 60))
 		cmdq_pkt_sleep(cmdq_handle, CMDQ_US_TO_TICK(panel_ext->SilkyBrightnessDelay), CMDQ_GPR_R06);
 
+	/* set backlight */
 	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
 	mtk_ddp_comp_io_cmd(oddmr_comp, cmdq_handle, ODDMR_BL_CHG, &level);
 
@@ -1675,8 +1693,8 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 		DDPPR_ERR("failed to flush bl_cmdq_cb\n");
 		ret = -EINVAL;
 	}
-
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	if (lock)
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	CRTC_MMP_EVENT_END(index, backlight, (unsigned long)crtc,
 			level);
@@ -12238,6 +12256,18 @@ void mtk_drm_get_msync_cmd_level_table(void)
 	DDPMSG("========msync_level_tb_get end========\n");
 }
 
+void mtk_drm_set_backlight(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_ddp_comp *comp;
+
+	/* set backlight */
+	/* the output should be DSI and cmd mode OLDE panel */
+	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DSI, 0);
+	if (comp && mtk_dsi_is_cmd_mode(comp))
+		mtk_ddp_comp_io_cmd(comp,
+			NULL, DSI_SET_CSC_BL, NULL);
+}
+
 int mtk_drm_get_atomic_fps(void)
 {
 	struct timespec64 tval;
@@ -12801,6 +12831,9 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		mtk_crtc_state->base.event = NULL;
 	}
 
+	/* set backlight value from HWC */
+	mtk_drm_set_backlight(mtk_crtc);
+
 	/*Msync 2.0: add Msync trace info*/
 	mtk_drm_trace_begin("mtk_drm_crtc_atomic:%d-%d-%d-%d",
 				crtc_idx, mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX],
@@ -12969,6 +13002,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		comp->fbdc_bw = 0;
 		comp->hrt_bw = 0;
 	}
+
 
 end:
 	CRTC_MMP_EVENT_END(index, atomic_begin,

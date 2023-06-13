@@ -474,7 +474,7 @@ int __mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param
 	if (group == true)
 		ret = mtk_drm_setbacklight_grp(crtc, level, panel_ext_param, cfg_flag);
 	else
-		ret = mtk_drm_setbacklight(crtc, level, panel_ext_param, cfg_flag);
+		ret = mtk_drm_setbacklight(crtc, level, panel_ext_param, cfg_flag, 1);
 
 	return ret;
 }
@@ -526,7 +526,7 @@ int mtk_drm_set_conn_backlight_level(unsigned int conn_id, unsigned int level,
 		goto out;
 	}
 
-	ret = mtk_drm_setbacklight(crtc, level, panel_ext_param, cfg_flag);
+	ret = mtk_drm_setbacklight(crtc, level, panel_ext_param, cfg_flag, 1);
 out:
 	drm_connector_put(conn);
 	DDP_MUTEX_UNLOCK(&priv->commit.lock, __func__, __LINE__);

@@ -50,6 +50,7 @@
 #include "mtk_dsi.h"
 #include "platform/mtk_drm_platform.h"
 #include "mtk_drm_trace.h"
+#include "mtk_disp_gamma.h"
 
 /* ************ Panel Master ********** */
 #include "mtk_fbconfig_kdebug.h"
@@ -393,6 +394,7 @@ enum DSI_MODE_CON {
 };
 static struct mtk_drm_property mtk_connector_property[CONNECTOR_PROP_MAX] = {
 	{DRM_MODE_PROP_IMMUTABLE, "CAPS_BLOB_ID", 0, UINT_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "CSC_BL", 0, UINT_MAX, 0},
 };
 
 static bool set_partial_update;
@@ -2342,6 +2344,50 @@ void clear_dsi_underrun_event(void)
 	DDPMSG("%s, do clear underrun event\n", __func__);
 	dsi_underrun_trigger = 1;
 }
+
+void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
+{
+	struct mtk_connector_state *mtk_conn_state = NULL;
+	unsigned int index;
+	static unsigned int csc_bl[MAX_CONNECTOR] = {0};
+
+	if (dsi == NULL) {
+		DDPINFO("%s, dsi is null\n", __func__);
+		return;
+	}
+
+	mtk_conn_state = to_mtk_connector_state(dsi->conn.state);
+	if (mtk_conn_state == NULL) {
+		DDPINFO("%s, mtk_conn_state is null\n", __func__);
+		return;
+	}
+
+	index = dsi->conn.index;
+	if (csc_bl[index] != mtk_conn_state->prop_val[index][CONNECTOR_PROP_CSC_BL]) {
+		struct mtk_ddp_comp *comp;
+		struct mtk_drm_crtc *mtk_crtc = dsi->ddp_comp.mtk_crtc;
+		struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(mtk_crtc->base.state);
+
+		if (mtk_crtc == NULL || mtk_crtc_state == NULL)
+			return;
+
+		csc_bl[index] = mtk_conn_state->prop_val[index][CONNECTOR_PROP_CSC_BL];
+		DDPINFO("%s,csc_bl i:%d, bl_lv:%d\n", __func__,
+			index, csc_bl[index]);
+		mtk_drm_setbacklight(&mtk_crtc->base, csc_bl[index], 0, (0X1<<SET_BACKLIGHT_LEVEL), 0);
+
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_AAL, 0);
+		//if (comp)
+		//	disp_aal_notify_backlight_changed(comp, csc_bl[index], -1, 0);
+
+		//comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_GAMMA, 0);
+		//if (comp)
+		//	mtk_gamma_set_silky_brightness_gain(comp,
+		//		mtk_crtc_state->cmdq_handle,
+		//		mtk_crtc_state->bl_sync_gamma_gain);
+	}
+}
+
 irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 {
 	struct mtk_dsi *dsi = dev_id;
@@ -3621,6 +3667,145 @@ static int mtk_dsi_atomic_check(struct drm_encoder *encoder,
 	return 0;
 }
 
+void mtk_dsi_connector_reset(struct drm_connector *connector)
+{
+	struct drm_connector_state *conn_state =
+		kzalloc(sizeof(*conn_state), GFP_KERNEL);
+	struct mtk_connector_state *state;
+
+	if (connector->state) {
+		__drm_atomic_helper_connector_destroy_state(connector->state);
+		kfree(connector->state);
+		__drm_atomic_helper_connector_reset(connector, conn_state);
+		state = to_mtk_connector_state(connector->state);
+		memset(state, 0, sizeof(*state));
+	} else {
+		state = kzalloc(sizeof(*state), GFP_KERNEL);
+		if (!state)
+			return;
+		connector->state = &state->base;
+	}
+	state->base.connector = connector;
+}
+
+static int mtk_dsi_connector_set_property(struct drm_connector *connector,
+				   struct drm_connector_state *state,
+				   struct drm_property *property,
+				   uint64_t val)
+{
+	unsigned int index;
+	struct mtk_dsi *dsi;
+	struct mtk_connector_state *mtk_conn_state;
+	int ret = 0;
+	int i;
+	struct drm_device *dev;
+	struct mtk_drm_private *private;
+
+	if (connector == NULL || property == NULL || connector->state == NULL)
+		return -EINVAL;
+
+	dsi = connector_to_dsi(connector);
+	if (dsi == NULL)
+		return -EINVAL;
+
+	mtk_conn_state = to_mtk_connector_state(state);
+	if (mtk_conn_state == NULL)
+		return -EINVAL;
+
+	index = connector->index;
+	if (index < 0)
+		return -EINVAL;
+
+	dev = dsi->conn.dev;
+	if (dev == NULL)
+		return -EINVAL;
+
+	private = dev->dev_private;
+	if (private == NULL)
+		return -EINVAL;
+
+	for (i = 0; i < CONNECTOR_PROP_MAX; i++) {
+		if (private->connector_property[index][i] == property) {
+			mtk_conn_state->prop_val[index][i] = (unsigned int)val;
+			DDPINFO("connector:%d set property:%s %d\n",
+					index, property->name,
+					(unsigned int)val);
+			return ret;
+		}
+	}
+
+	DDPPR_ERR("fail to set property:%s %d\n", property->name,
+		  (unsigned int)val);
+	return -EINVAL;
+}
+
+static int mtk_dsi_connector_get_property(struct drm_connector *connector,
+				   const struct drm_connector_state *state,
+				   struct drm_property *property,
+				   uint64_t *val)
+{
+	struct mtk_dsi *dsi = connector_to_dsi(connector);
+	struct mtk_connector_state *mtk_conn_state;
+	unsigned int index;
+	int i;
+	struct drm_device *dev;
+	struct mtk_drm_private *private;
+
+	dev = dsi->conn.dev;
+	if (dev == NULL)
+		return -EINVAL;
+
+	private = dev->dev_private;
+	if (private == NULL)
+		return -EINVAL;
+
+	index = connector->index;
+	mtk_conn_state = to_mtk_connector_state(state);
+	for (i = 0; i < CONNECTOR_PROP_MAX; i++) {
+		if (private->connector_property[index][i] == property) {
+			*val = mtk_conn_state->prop_val[index][i];
+			DDPINFO("get property:%s %lld\n", property->name, *val);
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+
+struct drm_connector_state *
+mtk_dsi_connector_duplicate_state(struct drm_connector *connector)
+{
+	struct mtk_connector_state *old_state;
+	struct mtk_connector_state *state;
+	unsigned int index;
+
+	if (WARN_ON(!connector->state))
+		return NULL;
+
+	old_state = to_mtk_connector_state(connector->state);
+	state = kmalloc(sizeof(*state), GFP_KERNEL);
+	if (state)
+		__drm_atomic_helper_connector_duplicate_state(connector, &state->base);
+
+	if (state->base.connector != connector) {
+		DDPAEE("%s:%d, invalid connector:(%p,%p)\n",
+			__func__, __LINE__,
+			state->base.connector, connector);
+		state->base.connector = connector;
+
+		if (!state->base.connector) {
+			kfree(state);
+			return NULL;
+		}
+	}
+
+	index = connector->index;
+	state->prop_val[index][CONNECTOR_PROP_CSC_BL] =
+		old_state->prop_val[index][CONNECTOR_PROP_CSC_BL];
+
+	return &state->base;
+}
+
 static const struct drm_encoder_helper_funcs mtk_dsi_encoder_helper_funcs = {
 	.mode_fixup = mtk_dsi_encoder_mode_fixup,
 	.mode_set = mtk_dsi_encoder_mode_set,
@@ -3630,13 +3815,15 @@ static const struct drm_encoder_helper_funcs mtk_dsi_encoder_helper_funcs = {
 };
 
 static const struct drm_connector_funcs mtk_dsi_connector_funcs = {
-	/* .dpms = drm_atomic_helper_connector_dpms, */
+	/*.dpms = drm_atomic_helper_connector_dpms,*/
 	.detect = mtk_dsi_connector_detect,
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.destroy = drm_connector_cleanup,
-	.reset = drm_atomic_helper_connector_reset,
-	.atomic_duplicate_state = drm_atomic_helper_connector_duplicate_state,
+	.reset = mtk_dsi_connector_reset,
+	.atomic_duplicate_state = mtk_dsi_connector_duplicate_state,
 	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
+	.atomic_set_property = mtk_dsi_connector_set_property,
+	.atomic_get_property = mtk_dsi_connector_get_property,
 };
 
 static const struct drm_connector_helper_funcs mtk_dsi_conn_helper_funcs = {
@@ -3686,13 +3873,14 @@ static void mtk_drm_set_connector_caps(struct drm_connector *conn)
 static void mtk_drm_connector_attach_property(struct drm_connector *conn)
 {
 	struct drm_device *dev = conn->dev;
-	struct mtk_drm_private *private = dev->dev_private;
+	struct mtk_dsi *dsi;
 	struct drm_property *prop;
 	static struct drm_property *mtk_connector_prop[CONNECTOR_PROP_MAX];
 	struct mtk_drm_property *conn_prop;
 	unsigned int index = conn->index;
 	int i;
 	static int num;
+	struct mtk_drm_private *private;
 
 	if (index >= MAX_CONNECTOR) {
 		DDPPR_ERR("%s:%d index:%d > MAX_CONNECTOR\n",
@@ -3700,7 +3888,18 @@ static void mtk_drm_connector_attach_property(struct drm_connector *conn)
 		return;
 	}
 
-	DDPINFO("%s:%d conn:%d\n", __func__, __LINE__, index);
+	dsi = connector_to_dsi(conn);
+	if (dsi == NULL)
+		return;
+
+	if (dev == NULL)
+		return;
+
+	private = dev->dev_private;
+	if (private == NULL)
+		return;
+
+	DDPINFO("%s:%d conn:%d, num:%d\n", __func__, __LINE__, index, num);
 
 	if (num == 0) {
 		for (i = 0; i < CONNECTOR_PROP_MAX; i++) {
@@ -3727,12 +3926,11 @@ static void mtk_drm_connector_attach_property(struct drm_connector *conn)
 		DDPINFO("%s:%d prop:%p\n", __func__, __LINE__, prop);
 		if (!prop) {
 			prop = mtk_connector_prop[i];
-		      private
+			private
 			->connector_property[index][i] = prop;
 
 			drm_object_attach_property(&conn->base, prop,
 						   conn_prop->val);
-
 		}
 	}
 }
@@ -9794,6 +9992,11 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		DDPMSG("DSI_AOD_SCP_GET_DSI_PARAM ulps_wakeup_prd %d\n", dsi->ulps_wakeup_prd);
 		*aod_scp_wakeup_prd = dsi->ulps_wakeup_prd;
+	}
+		break;
+	case DSI_SET_CSC_BL:
+	{
+		mtk_dsi_set_backlight(dsi);
 	}
 		break;
 	default:

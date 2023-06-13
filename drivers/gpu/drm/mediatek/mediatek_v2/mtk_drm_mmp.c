@@ -342,6 +342,8 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "pq_frame_config");
 		g_CRTC_MMP_Events[i].notify_backlight = mmprofile_register_event(
 			crtc_mmp_root, "notify_backlight");
+		g_CRTC_MMP_Events[i].csc_bl = mmprofile_register_event(
+			crtc_mmp_root, "csc_bl");
 	}
 }
 void drm_mmp_init(void)

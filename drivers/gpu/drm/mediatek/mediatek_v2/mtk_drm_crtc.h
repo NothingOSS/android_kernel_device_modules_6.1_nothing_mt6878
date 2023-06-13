@@ -1305,7 +1305,7 @@ unsigned int check_dsi_underrun_event(void);
 void clear_dsi_underrun_event(void);
 
 int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
-			unsigned int panel_ext_param, unsigned int cfg_flag);
+			unsigned int panel_ext_param, unsigned int cfg_flag, unsigned int lock);
 int mtk_drm_setbacklight_grp(struct drm_crtc *crtc, unsigned int level,
 			unsigned int panel_ext_param, unsigned int cfg_flag);
 void mtk_crtc_update_gce_event(struct mtk_drm_crtc *mtk_crtc);
