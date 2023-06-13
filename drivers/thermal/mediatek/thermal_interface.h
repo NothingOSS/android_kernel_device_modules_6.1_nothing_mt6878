@@ -44,7 +44,6 @@
 #define REBOOT_TEMPERATURE_ADDR_OFFSET (0x39c)
 #define GPU_COOLER_BASE             (0x3A0)
 #define CPU_COOLER_BASE             (0x3D0)
-#define DSU_AVG_TEMP_BASE_ADDR_OFFSET       (0x98)
 #define COLD_INTERRUPT_ENABLE_OFFSET (0x398)
 
 #define APU_MBOX_TTJ_OFFSET        (0x700)
@@ -67,7 +66,7 @@
 #define SPORTS_MODE_TCM_ENABLE          (0x90)
 #define VTSKIN_TCM                      (0x94)
 #define DSU_AVG_TEMP_BASE_ADDR_TCM_OFFSET       (0x98)
-
+#define CG_POLICY_MODE_TCM_OFFSET       (0x9C)
 /*TTJ*/
 #define TTJ_TCM_OFFSET                  (0xA0)
 
@@ -212,6 +211,7 @@ extern int get_dsu_temp(void);
 extern int set_reboot_temperature(int temp);
 extern int set_cold_interrupt_enable_addr(int val);
 extern int get_dsu_ceiling_freq(void);
+extern int get_cpu_ceiling_freq (int cluster_id);
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 extern void __iomem *thermal_csram_base;

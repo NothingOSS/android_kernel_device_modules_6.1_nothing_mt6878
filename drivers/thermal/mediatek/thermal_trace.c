@@ -324,7 +324,7 @@ static enum hrtimer_restart thermal_trace_work(struct hrtimer *timer)
 		goto skip;
 
 	if (thermal_cputcm_base)
-		is_tcm_ready = readl(thermal_cputcm_base + TCM_BUF_OFFSET);
+		is_tcm_ready = readl(thermal_csram_base + TCM_BUF_OFFSET);
 
 	/* parse hr info */
 	for_each_possible_cpu(i) {
