@@ -21,7 +21,6 @@ static struct mtk_drm_helper help_info[] = {
 	{MTK_DRM_OPT_STAGE, 0, "MTK_DRM_OPT_STAGE"},       /* must enable */
 	{MTK_DRM_OPT_USE_CMDQ, 0, "MTK_DRM_OPT_USE_CMDQ"}, /* must enable */
 	{MTK_DRM_OPT_USE_M4U, 1, "MTK_DRM_OPT_USE_M4U"},   /* must enable */
-	{MTK_DRM_OPT_SLC_ALL_CACHE, 0, "MTK_DRM_OPT_SLC_ALL_CACHE"},
 
 	{MTK_DRM_OPT_MMQOS_SUPPORT, 1, "MTK_DRM_OPT_MMQOS_SUPPORT"},
 	{MTK_DRM_OPT_MMDVFS_SUPPORT, 1, "MTK_DRM_OPT_MMDVFS_SUPPORT"},
@@ -106,6 +105,7 @@ static struct mtk_drm_helper help_info[] = {
 	{MTK_DRM_OPT_DPC_PRE_TE_EN, 0, "MTK_DRM_OPT_DPC_PRE_TE_EN"},
 	{MTK_DRM_OPT_OVLSYS_CASCADE, 0, "MTK_DRM_OPT_OVLSYS_CASCADE"},
 	{MTK_DRM_OPT_PARTIAL_UPDATE, 0, "MTK_DRM_OPT_PARTIAL_UPDATE"},
+	{MTK_DRM_OPT_SLC_ALL_CACHE, 0, "MTK_DRM_OPT_SLC_ALL_CACHE"},
 };
 
 enum DISP_HELPER_STAGE disp_helper_get_stage(void)
