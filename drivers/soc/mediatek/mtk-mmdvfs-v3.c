@@ -1129,11 +1129,12 @@ EXPORT_SYMBOL_GPL(mmdvfs_vote_step_by_vcp);
 
 int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 {
+	s32 opp;
 	u8 func, idx, mux_idx;
-	s8 opp, level;
+	s8 level;
 	int ret;
 
-	ret = sscanf(val, "%hhu %hhu %hhd", &func, &idx, &opp);
+	ret = sscanf(val, "%hhu %hhu %d", &func, &idx, &opp);
 	if (ret != 3) {
 		MMDVFS_ERR("input failed:%d func:%hhu idx:%hhu opp:%hhd", ret, func, idx, opp);
 		return -EINVAL;
@@ -1155,6 +1156,11 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 	}
 
 	switch (func) {
+	case TEST_SET_RATE:
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_VOTE);
+		ret = mmdvfs_vcp_ipi_send(func, (idx << 4) | ((opp >> 8) & 0xf), opp & 0xff, NULL);
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
+		break;
 	case TEST_AP_SET_OPP:
 		ret = mmdvfs_mux_set_opp(mmdvfs_user[idx].name, mmdvfs_mux[mux_idx].freq[level]);
 		break;
