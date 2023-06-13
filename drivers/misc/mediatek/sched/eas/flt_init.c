@@ -61,10 +61,11 @@
 #define L3	30
 
 #define ECG	0x1
-#define IBS	0x2d070a
+#define IBS	0x15070a
 #define TSH	0x2481c6
 #define LFP	0x1f
 #define KOL	0x1dc
+#define AMI	0x3ff
 
 unsigned int EKV[GKEL][RT] = {0};
 
@@ -148,12 +149,6 @@ static void flt_fei(int wl, int ctp)
 	unsigned int XHR[TLO] = {0};
 	unsigned int XU[TLO] = {0};
 	unsigned int XF[TLO] = {
-		0x44aa20,
-		0x4313e0,
-		0x417da0,
-		0x3fe760,
-		0x3e5120,
-		0x3cbae0,
 		0x3b24a0,
 		0x398e60,
 		0x37f820,
@@ -181,6 +176,12 @@ static void flt_fei(int wl, int ctp)
 		0x150ea0,
 		0x137860,
 		0x11e220,
+		0x104be0,
+		0xeb5a0,
+		0xd1f60,
+		0xb8920,
+		0x9f2e0,
+		0x85ca0,
 		0x30d400,
 		0x2f3dc0,
 		0x2da780,
@@ -233,12 +234,6 @@ static void flt_fei(int wl, int ctp)
 		0x42e50,
 	};
 	unsigned int X_RR[TLO] = {
-		0x2255,
-		0x2189,
-		0x20be,
-		0x1ff3,
-		0x1f28,
-		0x1e5d,
 		0x1d92,
 		0x1cc7,
 		0x1bfc,
@@ -266,6 +261,12 @@ static void flt_fei(int wl, int ctp)
 		0xa87,
 		0x9bc,
 		0x8f1,
+		0x825,
+		0x75a,
+		0x68f,
+		0x5c4,
+		0x4f9,
+		0x42e,
 		0x186a,
 		0x179e,
 		0x16d3,
@@ -328,6 +329,7 @@ static void flt_fei(int wl, int ctp)
 		ps = pd_get_opp_ps(wl, cpu, 0xffff, false);
 		LF = ps->freq;
 		LU = ps->capacity;
+		MU = clamp_t(unsigned int, MU, 0, AMI);
 		if (gear_idx == 2) {
 			KY = 0;
 			GK = XLO;
