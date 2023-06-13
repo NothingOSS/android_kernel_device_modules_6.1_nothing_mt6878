@@ -339,8 +339,8 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	status = "okay";
 };
 /* GPS GPIO standardization end */
+#endif
 
-/* PCIe pinmux start */
 &pcie0 {
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&pcie0_pins_default>;
@@ -363,6 +363,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	status = "disabled";
 };
 
+/* PCIe pinmux start */
 &pio {
 	pcie0_pins_default: pcie0-default {
 		pins_cmd_dat {
@@ -392,7 +393,6 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	};
 };
 /* PCIe pinmux end */
-#endif
 
 /* usb typec mux start */
 &pio {
