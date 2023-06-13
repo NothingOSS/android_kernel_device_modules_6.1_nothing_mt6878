@@ -647,6 +647,9 @@ static inline struct device *mtk_smmu_get_shared_device(struct device *dev)
 	struct platform_device *shared_pdev;
 	struct device *shared_dev = dev;
 
+	if (!smmu_v3_enabled())
+		return dev;
+
 	node = of_parse_phandle(dev->of_node, "mtk,smmu-shared", 0);
 	if (node) {
 		shared_pdev = of_find_device_by_node(node);

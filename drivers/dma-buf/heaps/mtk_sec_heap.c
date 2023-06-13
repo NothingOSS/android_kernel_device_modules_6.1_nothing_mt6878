@@ -103,6 +103,7 @@ struct secure_heap_region {
 	struct sg_table *region_table;
 	struct dma_heap *heap[REGION_TYPE_NUM];
 	struct device *heap_dev;
+	struct device *iommu_dev; /* smmu uses shared dev */
 	enum TRUSTED_MEM_REQ_TYPE tmem_type;
 	enum HEAP_BASE_TYPE heap_type;
 };
@@ -330,9 +331,11 @@ static int region_base_free(struct secure_heap_region *sec_heap,
 			    struct mtk_sec_heap_buffer *buffer)
 {
 	struct iova_cache_data *cache_data, *temp_data;
+	struct device *iommu_dev;
 	int j, ret = 0;
 	u64 sec_handle = 0;
 
+	iommu_dev = sec_heap->iommu_dev;
 	/* remove all domains' sgtable */
 	list_for_each_entry_safe(cache_data, temp_data, &buffer->iova_caches, iova_caches) {
 		for (j = 0; j < MTK_M4U_DOM_NR_MAX; j++) {
@@ -343,7 +346,9 @@ static int region_base_free(struct secure_heap_region *sec_heap,
 				dev_info.map_attrs | DMA_ATTR_SKIP_CPU_SYNC;
 
 			if (!cache_data->mapped[j] ||
-			    (!smmu_v3_enable && dev_is_normal_region(dev_info.dev)))
+			    (!smmu_v3_enable && dev_is_normal_region(dev_info.dev)) ||
+			    (smmu_v3_enable &&
+			    (get_smmu_tab_id(dev_info.dev) == get_smmu_tab_id(iommu_dev))))
 				continue;
 			pr_debug("%s: free tab:%llu, dom:%d iova:0x%lx, dev:%s\n",
 				 __func__, cache_data->tab_id, j,
@@ -377,7 +382,7 @@ static int region_base_free(struct secure_heap_region *sec_heap,
 		mutex_lock(&sec_heap->heap_lock);
 		if (sec_heap->heap_filled && sec_heap->region_table) {
 			if (sec_heap->heap_mapped) {
-				dma_unmap_sgtable(sec_heap->heap_dev,
+				dma_unmap_sgtable(iommu_dev,
 						  sec_heap->region_table,
 						  DMA_BIDIRECTIONAL,
 						  DMA_ATTR_SKIP_CPU_SYNC);
@@ -444,7 +449,14 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 
 	table = &buffer->sg_table;
 	for_each_sgtable_sg(table, sg, i) {
-		struct page *page = sg_page(sg);
+		struct page *page;
+
+		if (!sg) {
+			pr_info("%s err, sg null at %d\n", __func__, i);
+			return -EINVAL;
+		}
+		page = sg_page(sg);
+
 		for (j = 0; j < NUM_ORDERS; j++) {
 			if (compound_order(page) == orders[j])
 				break;
@@ -660,6 +672,11 @@ static int copy_sec_sg_table(struct sg_table *source, struct sg_table *dest)
 
 	dest_sgl = dest->sgl;
 	for_each_sg(source->sgl, sgl, source->orig_nents, i) {
+		if (!sgl || !dest_sgl) {
+			pr_info("%s err, sgl or dest_sgl null at %d\n",
+				__func__, i);
+			return -EINVAL;
+		}
 		memcpy(dest_sgl, sgl, sizeof(*sgl));
 		dest_sgl = sg_next(dest_sgl);
 	}
@@ -737,8 +754,16 @@ static int check_map_alignment(struct sg_table *table)
 		struct scatterlist *sgl;
 
 		for_each_sg(table->sgl, sgl, table->orig_nents, i) {
-			unsigned int len = sgl->length;
-			phys_addr_t s_phys = sg_phys(sgl);
+			unsigned int len;
+			phys_addr_t s_phys;
+
+			if (!sgl) {
+				pr_info("%s err, sgl null at %d\n", __func__, i);
+				return -EINVAL;
+			}
+
+			len = sgl->length;
+			s_phys = sg_phys(sgl);
 
 			if (!IS_ALIGNED(len, SZ_1M)) {
 				pr_info("%s err, size(0x%x) is not 1MB alignment\n",
@@ -904,9 +929,7 @@ mtk_sec_heap_region_map_dma_buf(struct dma_buf_attachment *attachment,
 		pr_err("%s, sec_heap_region_get failed\n", __func__);
 		return NULL;
 	}
-	iommu_dev = smmu_v3_enable ?
-		    mtk_smmu_get_shared_device(sec_heap->heap_dev) :
-		    sec_heap->heap_dev;
+	iommu_dev = sec_heap->iommu_dev;
 
 	mutex_lock(&sec_heap->heap_lock);
 	if (!sec_heap->heap_mapped) {
@@ -1446,6 +1469,10 @@ struct page *alloc_pmm_msg_v2(struct sg_table *table,
 			tmp_page = list_next_entry(tmp_page, lru);
 			pmm_msg = page_address(tmp_page);
 		}
+		if (!sg) {
+			pr_info("%s err, sg null at %d\n", __func__, i);
+			goto free_buffer;
+		}
 		set_pmm_msg_entry(pmm_msg, i % pmepp, sg_page(sg));
 		sg = sg_next(sg);
 	}
@@ -1973,6 +2000,8 @@ static int mtk_region_heap_create(struct device *dev,
 				return PTR_ERR(mtk_sec_heap_region[i].heap[j]);
 
 			mtk_sec_heap_region[i].heap_dev = dev;
+			mtk_sec_heap_region[i].iommu_dev =
+				mtk_smmu_get_shared_device(dev);
 			ret = dma_set_mask_and_coherent(
 				mtk_sec_heap_region[i].heap_dev,
 				DMA_BIT_MASK(34));
