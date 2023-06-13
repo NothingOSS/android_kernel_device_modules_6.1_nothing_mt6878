@@ -11131,69 +11131,6 @@ static char *ddp_get_mutex_module0_0_name_mt6989(unsigned int bit)
 {
 	switch (bit) {
 	case 0:
-		return "disp_dli_async0";
-	case 1:
-		return "disp_dli_async1";
-	case 2:
-		return "disp_dli_async2";
-	case 3:
-		return "disp_mdp_rdma0";
-	case 4:
-		return "disp_r2y0";
-	case 5:
-		return "disp_splitter0";
-	case 6:
-		return "disp_splitter1";
-	case 7:
-		return "disp_vdcm0";
-	case 8:
-		return "disp_dsc_wrap0_core0";
-	case 9:
-		return "disp_dsc_wrap0_core1";
-	case 10:
-		return "disp_dsc_wrap1_core0";
-	case 11:
-		return "disp_dsc_wrap1_core1";
-	case 12:
-		return "disp_dsc_wrap2_core0";
-	case 13:
-		return "disp_dsc_wrap2_core1";
-	case 14:
-		return "disp_dp_intf0";
-	case 15:
-		return "disp_dsi0";
-	case 16:
-		return "disp_dsi1";
-	case 17:
-		return "disp_dsi2";
-	case 18:
-		return "disp_merge0";
-	case 19:
-		return "disp_wdma0";
-	case 20:
-		return "disp_pwm0";
-	case 21:
-		return "disp_pwm1";
-	case 22:
-		return "disp_wdma1";
-	case 23:
-		return "disp_wdma2";
-	case 24:
-		return "disp_gdma0";
-	case 25:
-		return "disp_dli_async3";
-	case 26:
-		return "disp_dli_async4";
-	default:
-		break;
-	}
-	return "unknown-mutex";
-}
-
-static char *ddp_get_mutex_module0_1_name_mt6989(unsigned int bit)
-{
-	switch (bit) {
-	case 0:
 		return "disp_aal0";
 	case 1:
 		return "disp_aal1";
@@ -11264,6 +11201,69 @@ static char *ddp_get_mutex_module0_1_name_mt6989(unsigned int bit)
 }
 
 static char *ddp_get_mutex_module1_name_mt6989(unsigned int bit)
+{
+	switch (bit) {
+	case 0:
+		return "disp_dli_async0";
+	case 1:
+		return "disp_dli_async1";
+	case 2:
+		return "disp_dli_async2";
+	case 3:
+		return "disp_mdp_rdma0";
+	case 4:
+		return "disp_r2y0";
+	case 5:
+		return "disp_splitter0";
+	case 6:
+		return "disp_splitter1";
+	case 7:
+		return "disp_vdcm0";
+	case 8:
+		return "disp_dsc_wrap0_core0";
+	case 9:
+		return "disp_dsc_wrap0_core1";
+	case 10:
+		return "disp_dsc_wrap1_core0";
+	case 11:
+		return "disp_dsc_wrap1_core1";
+	case 12:
+		return "disp_dsc_wrap2_core0";
+	case 13:
+		return "disp_dsc_wrap2_core1";
+	case 14:
+		return "disp_dp_intf0";
+	case 15:
+		return "disp_dsi0";
+	case 16:
+		return "disp_dsi1";
+	case 17:
+		return "disp_dsi2";
+	case 18:
+		return "disp_merge0";
+	case 19:
+		return "disp_wdma0";
+	case 20:
+		return "disp_pwm0";
+	case 21:
+		return "disp_pwm1";
+	case 22:
+		return "disp_wdma1";
+	case 23:
+		return "disp_wdma2";
+	case 24:
+		return "disp_gdma0";
+	case 25:
+		return "disp_dli_async3";
+	case 26:
+		return "disp_dli_async4";
+	default:
+		break;
+	}
+	return "unknown-mutex";
+}
+
+static char *ddp_get_mutex_module0_1_name_mt6989(unsigned int bit)
 {
 	switch (bit) {
 	case 0:
@@ -21260,9 +21260,9 @@ void mtk_disp_mutex_add_comp(struct mtk_disp_mutex *mutex,
 			&ddp->mutex[mutex->id], mutex, mutex->id);
 
 	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS1)
-		reg_addr = (mmsys_id == MMSYS_MT6989) ? ddp->regs : ddp->side_regs;
+		reg_addr = ddp->side_regs;
 	else
-		reg_addr = (mmsys_id == MMSYS_MT6989) ? ddp->side_regs : ddp->regs;
+		reg_addr = ddp->regs;
 
 	if (ddp->data->dispsys_map &&
 		ddp->data->dispsys_map[id] == OVLSYS1) {
@@ -21454,9 +21454,9 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 			&ddp->mutex[mutex->id], mutex, mutex->id);
 
 	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS1)
-		regs_pa = (mmsys_id == MMSYS_MT6989) ? ddp->regs_pa : ddp->side_regs_pa;
+		regs_pa = ddp->side_regs_pa;
 	else
-		regs_pa = (mmsys_id == MMSYS_MT6989) ? ddp->side_regs_pa : ddp->regs_pa;
+		regs_pa = ddp->regs_pa;
 
 	if (ddp->data->dispsys_map &&
 		ddp->data->dispsys_map[id] == OVLSYS1) {
@@ -23061,7 +23061,7 @@ REDUMP:
 						ddp_get_mutex_module0_0_name_mt6989(j));
 				} else {
 					len = sprintf(p, "%s,",
-						ddp_get_mutex_module0_1_name_mt6989(j));
+						ddp_get_mutex_module1_name_mt6989(j));
 				}
 				if (len < 0) {
 					/* Handle sprintf() error */
@@ -23075,7 +23075,7 @@ REDUMP:
 		for (j = 0; j < 32; j++) {
 			if ((mod1 & (1 << j))) {
 				len = sprintf(p, "%s,",
-					ddp_get_mutex_module1_name_mt6989(j));
+					ddp_get_mutex_module0_1_name_mt6989(j));
 
 				if (len < 0) {
 					/* Handle sprintf() error */

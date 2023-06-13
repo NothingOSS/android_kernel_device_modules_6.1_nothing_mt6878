@@ -112,6 +112,8 @@
 	#define MT6855_HRT_URGENT_CTL_VAL_WDMA0       REG_FLD_MSB_LSB(10, 10)
 	#define MT6855_HRT_URGENT_CTL_VAL_DSI0        REG_FLD_MSB_LSB(13, 13)
 
+#define MT6989_OVLSYS_MISC_SODI_WDMA_SEL BIT(4)
+
 #define MT6833_INFRA_DISP_DDR_CTL  0x2C
 #define MT6833_INFRA_FLD_DDR_MASK  REG_FLD_MSB_LSB(7, 4)
 
@@ -2299,6 +2301,34 @@ void mt6989_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 					HRT_URGENT_CTL_SEL_WDMA1);
 		SET_VAL_MASK(emi_req_val, emi_req_mask, en,
 					DVFS_HALT_MASK_SEL_WDMA1);
+	} else if (id == DDP_COMPONENT_OVLSYS_WDMA2) {
+		/* 0xF0: wdma ddren setting */
+		unsigned int va;
+
+		if (handle == NULL) {
+			if (en) {
+				va = (readl(priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK));
+				va |= (en << 4); //SODI_WDMA_SEL
+				writel_relaxed(va, priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
+			} else {
+				va = (readl(priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK));
+				va &= ~(!en << 4); //SODI_WDMA_SEL
+				writel_relaxed(va, priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
+			}
+		} else {
+			if (en) {
+				cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
+						MMSYS_SODI_REQ_MASK,
+						MT6989_OVLSYS_MISC_SODI_WDMA_SEL,
+						MT6989_OVLSYS_MISC_SODI_WDMA_SEL);
+			} else {
+				cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
+						MMSYS_SODI_REQ_MASK,
+						0,
+						MT6989_OVLSYS_MISC_SODI_WDMA_SEL);
+			}
+		}
+		return;
 	} else
 		return;
 
