@@ -1259,13 +1259,20 @@ void get_most_powerful_pd_and_util_Th(void)
 
 }
 
+bool gear_hints_enable;
 static inline bool task_can_skip_this_cpu(struct task_struct *p, unsigned long p_uclamp_min,
 		bool latency_sensitive, int cpu, struct cpumask *bcpus)
 {
 	bool cpu_in_bcpus;
 	unsigned long task_util;
+	struct task_gear_hints *ghts = &((struct mtk_task *) p->android_vendor_data1)->gear_hints;
 
 	if (latency_sensitive)
+		return 0;
+
+	if (gear_hints_enable &&
+		ghts->gear_start >= 0 &&
+		ghts->gear_start <= num_sched_clusters-1)
 		return 0;
 
 	if (p_uclamp_min > 0)
@@ -1317,7 +1324,6 @@ out:
 	return replace;
 }
 
-bool gear_hints_enable;
 void init_gear_hints(void)
 {
 	gear_hints_enable = sched_gear_hints_enable_get();
