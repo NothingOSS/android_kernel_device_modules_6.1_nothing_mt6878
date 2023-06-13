@@ -6488,6 +6488,28 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
+static void conv_to_crtc_obj_id(struct drm_device *dev,
+		struct mtk_drm_panels_info *panel_ctx)
+{
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc;
+	int crtc_cnt, crtc_flag;
+	int i, j;
+
+	for (i = 0; i < panel_ctx->connector_cnt; i++) {
+		crtc_cnt = 0;
+		crtc_flag = panel_ctx->possible_crtc[i][0];
+		panel_ctx->possible_crtc[i][0] = 0;
+		for (j = 0; j < MAX_CRTC; j++) {
+			if ((crtc_flag & (1 << j)) == 0)
+				continue;
+			crtc = private->crtc[j];
+			if (crtc)
+				panel_ctx->possible_crtc[i][crtc_cnt++] = crtc->base.id;
+		}
+	}
+}
+
 int mtk_drm_ioctl_get_all_connector_panel_info(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
 {
@@ -6497,8 +6519,9 @@ int mtk_drm_ioctl_get_all_connector_panel_info(struct drm_device *dev, void *dat
 			(struct mtk_drm_panels_info *)data;
 	struct mtk_drm_panels_info __panel_ctx = {0};
 	bool check_only_mode;
-	void *ptr;
-	void **uptr;
+	void *ptr = NULL;
+	void **panel_uptr = NULL;
+	void **crtc_uptr = NULL;
 	int i, ret = 0;
 
 	if (!dev)
@@ -6524,13 +6547,23 @@ int mtk_drm_ioctl_get_all_connector_panel_info(struct drm_device *dev, void *dat
 		ptr = panel_ctx->connector_obj_id;
 		__panel_ctx.connector_obj_id =
 			vmalloc(sizeof(unsigned int) * __panel_ctx.connector_cnt);
-		__panel_ctx.panel_name = vmalloc(sizeof(char *) * __panel_ctx.connector_cnt);
-		if (!__panel_ctx.connector_obj_id || !__panel_ctx.panel_name) {
+		__panel_ctx.possible_crtc = vzalloc(sizeof(unsigned int *) * __panel_ctx.connector_cnt);
+		__panel_ctx.panel_name = vzalloc(sizeof(char *) * __panel_ctx.connector_cnt);
+		if (!__panel_ctx.connector_obj_id || !__panel_ctx.possible_crtc ||
+				!__panel_ctx.panel_name) {
 			DDPPR_ERR("%s ojb_id panel_id or panel_name alloc fail\n", __func__);
 			ret = -ENOMEM;
 			goto exit0;
 		}
 
+		for (i = 0 ; i < __panel_ctx.connector_cnt ; ++i) {
+			__panel_ctx.possible_crtc[i] = vzalloc(sizeof(unsigned int) * MAX_CRTC_CNT);
+			if (!__panel_ctx.possible_crtc[i]) {
+				DDPPR_ERR("%s alloc possible_crtc fail\n", __func__);
+				ret = -ENOMEM;
+				goto exit1;
+			}
+		}
 		for (i = 0 ; i < __panel_ctx.connector_cnt ; ++i) {
 			__panel_ctx.panel_name[i] = vzalloc(sizeof(char) * GET_PANELS_STR_LEN);
 			if (!__panel_ctx.panel_name[i]) {
@@ -6553,25 +6586,47 @@ int mtk_drm_ioctl_get_all_connector_panel_info(struct drm_device *dev, void *dat
 			goto exit1;
 		}
 
-		uptr = vmalloc(sizeof(void __user *) * __panel_ctx.connector_cnt);
-		if (!uptr) {
-			DDPPR_ERR("%s alloc panel_name fail\n", __func__);
+		// copy possible_crtc
+		conv_to_crtc_obj_id(dev, &__panel_ctx);
+		crtc_uptr = vmalloc(sizeof(void __user *) * __panel_ctx.connector_cnt);
+		if (!crtc_uptr) {
+			DDPPR_ERR("%s alloc possible_crtc fail\n", __func__);
 			ret = -ENOMEM;
 			goto exit2;
 		}
-
-		if (copy_from_user(uptr, panel_ctx->panel_name,
+		if (copy_from_user(crtc_uptr, panel_ctx->possible_crtc,
 				sizeof(void __user *) * __panel_ctx.connector_cnt)) {
-			DDPPR_ERR("%s copy_from_user panel_name fail\n", __func__);
+			DDPPR_ERR("%s copy_from_user possible_crtc fail\n", __func__);
 			ret = -EINVAL;
 			goto exit2;
 		}
 		for (i = 0 ; i < __panel_ctx.connector_cnt; ++i) {
-			if (copy_to_user((void __user *)uptr[i], __panel_ctx.panel_name[i],
+			if (copy_to_user((void __user *)crtc_uptr[i], __panel_ctx.possible_crtc[i],
+					sizeof(unsigned int) * MAX_CRTC_CNT)) {
+				DDPPR_ERR("%s copy_to_user possible_crtc fail\n", __func__);
+				ret = -EINVAL;
+				goto exit2;
+			}
+		}
+		// copy panel name
+		panel_uptr = vmalloc(sizeof(void __user *) * __panel_ctx.connector_cnt);
+		if (!panel_uptr) {
+			DDPPR_ERR("%s alloc panel_name fail\n", __func__);
+			ret = -ENOMEM;
+			goto exit3;
+		}
+		if (copy_from_user(panel_uptr, panel_ctx->panel_name,
+				sizeof(void __user *) * __panel_ctx.connector_cnt)) {
+			DDPPR_ERR("%s copy_from_user panel_name fail\n", __func__);
+			ret = -EINVAL;
+			goto exit3;
+		}
+		for (i = 0 ; i < __panel_ctx.connector_cnt; ++i) {
+			if (copy_to_user((void __user *)panel_uptr[i], __panel_ctx.panel_name[i],
 					sizeof(char) * GET_PANELS_STR_LEN)) {
 				DDPPR_ERR("%s copy_to_user panel_name fail\n", __func__);
 				ret = -EINVAL;
-				goto exit2;
+				goto exit3;
 			}
 		}
 	} else {
@@ -6579,13 +6634,18 @@ int mtk_drm_ioctl_get_all_connector_panel_info(struct drm_device *dev, void *dat
 		panel_ctx->default_connector_id = __panel_ctx.default_connector_id;
 		return ret;
 	}
+exit3:
+	vfree(panel_uptr);
 exit2:
-	vfree(uptr);
+	vfree(crtc_uptr);
 exit1:
-	for (i = 0 ; i < __panel_ctx.connector_cnt; ++i)
+	for (i = 0 ; i < __panel_ctx.connector_cnt; ++i) {
+		vfree(__panel_ctx.possible_crtc[i]);
 		vfree(__panel_ctx.panel_name[i]);
+	}
 exit0:
 	vfree(__panel_ctx.connector_obj_id);
+	vfree(__panel_ctx.possible_crtc);
 	vfree(__panel_ctx.panel_name);
 
 	return ret;

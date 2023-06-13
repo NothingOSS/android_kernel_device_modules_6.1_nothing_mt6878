@@ -8656,6 +8656,7 @@ static void mtk_dsi_get_panels_info(struct mtk_dsi *dsi, struct mtk_drm_panels_i
 				strncpy(panel_ctx->panel_name[dsi_cnt], panel_name,
 					GET_PANELS_STR_LEN - 1);
 				panel_ctx->connector_obj_id[dsi_cnt] = mtk_dsi->conn.base.id;
+				panel_ctx->possible_crtc[dsi_cnt][0] = encoder->possible_crtcs;
 			} else {
 				DDPPR_ERR("%s NULL panel_name\n", __func__);
 				break;
