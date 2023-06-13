@@ -11187,8 +11187,7 @@
 
 		pcie0: pcie@112f0000 {
 			device_type = "pci";
-			compatible = "mediatek,mt6985-pcie",
-				     "mediatek,mt6989-pcie";
+			compatible = "mediatek,mt6989-pcie";
 			reg = <0 0x112f0000 0 0x4000>;
 			reg-names = "pcie-mac";
 			#address-cells = <3>;
@@ -11236,8 +11235,7 @@
 
 		pcie1: pcie@112f8000 {
 			device_type = "pci";
-			compatible = "mediatek,mt6985-pcie",
-				     "mediatek,mt6989-pcie";
+			compatible = "mediatek,mt6989-pcie";
 			reg = <0 0x112f8000 0 0x4000>;
 			reg-names = "pcie-mac";
 			#address-cells = <3>;
