@@ -31,6 +31,8 @@
 #define MMINFRA_MAX_CLK_NUM	(4)
 #define MAX_SMI_COMM_NUM	(3)
 
+#define MMINFRA_GALS_NR		(6)
+
 struct mminfra_dbg {
 	void __iomem *ctrl_base;
 	void __iomem *mminfra_base;
@@ -40,6 +42,7 @@ struct mminfra_dbg {
 	ssize_t ctrl_size;
 	struct device *comm_dev[MAX_SMI_COMM_NUM];
 	struct notifier_block nb;
+	u32 gals_sel[MMINFRA_GALS_NR];
 };
 
 static struct notifier_block mtk_pd_notifier;
@@ -385,11 +388,10 @@ static struct kernel_param_ops mminfra_ut_ops = {
 module_param_cb(mminfra_ut, &mminfra_ut_ops, NULL, 0644);
 MODULE_PARM_DESC(mminfra_ut, "mminfra ut");
 
-#define MMINFRA_GALS_NR	(6)
 static void mminfra_gals_dump(void)
 {
 	u32 i;
-	u32 mux_setting[MMINFRA_GALS_NR] = {0x11, 0x12, 0x13, 0x14, 0x15, 0x16};
+	u32 *mux_setting = dbg->gals_sel;
 
 	for (i = 0; i < MMINFRA_GALS_NR; i++) {
 		writel(mux_setting[i], dbg->mminfra_base + MMINFRA_DBG_SEL);
@@ -508,8 +510,8 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	struct resource *res;
 	const char *name;
 	struct clk *clk;
-	u32 comm_id, spm_base_pa;
-	int ret = 0, i = 0, irq, comm_nr = 0;
+	u32 comm_id, spm_base_pa, tmp;
+	int ret = 0, i = 0, irq, comm_nr = 0, clk_nr = 0;
 
 	dbg = kzalloc(sizeof(*dbg), GFP_KERNEL);
 	if (!dbg)
@@ -561,6 +563,12 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	dev = &pdev->dev;
 	pm_runtime_enable(dev);
 
+	for (i = 0; i < MMINFRA_GALS_NR; i++) {
+		if (!of_property_read_u32_index(dev->of_node, "mminfra-gals-sel", i, &tmp))
+			dbg->gals_sel[i] = tmp;
+		pr_notice("[mminfra] gals_sel[%d]=%d\n", i, dbg->gals_sel[i]);
+	}
+
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
 		dev_notice(&pdev->dev, "failed to get irq (%d)\n", irq);
@@ -599,12 +607,12 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 			break;
 		}
 
-		if (i == MMINFRA_MAX_CLK_NUM) {
+		if (clk_nr == MMINFRA_MAX_CLK_NUM) {
 			dev_notice(dev, "%s: clk num is wrong\n", __func__);
 			ret = -EINVAL;
 			break;
 		}
-		mminfra_clk[i++] = clk;
+		mminfra_clk[clk_nr++] = clk;
 	}
 	if (of_property_read_bool(node, "init-clk-on")) {
 		atomic_inc(&clk_ref_cnt);
