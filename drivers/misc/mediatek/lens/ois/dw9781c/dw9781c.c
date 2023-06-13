@@ -22,6 +22,11 @@
 #define DW9781C_NAME				"dw9781c"
 
 // #define FOR_DEBUG
+// #define FW_UPDATE
+
+#ifdef FW_UPDATE
+#include "VIVO_FW_v0B.F0_230601_set_FW_Word_Format.h"
+#endif
 
 #define DW9781C_CTRL_DELAY_US			5000
 
@@ -327,11 +332,163 @@ static int dw9781c_release(struct dw9781c_device *dw9781c)
 	return 0;
 }
 
+#ifdef FW_UPDATE
+static void set_mode_for_FW_download(void)
+{
+	u16 FMCret = 0;
+	int ret = 0;
+
+	ret = ois_i2c_wr_u16(m_client, 0xd001, 0x0000);
+	I2C_OPERATION_CHECK(ret);
+
+	LOG_INF("[dw9781c_all_protection_release] execution\r\n");
+	/* release all protection */
+	ret = ois_i2c_wr_u16(m_client, 0xFAFA, 0x98AC);
+	I2C_OPERATION_CHECK(ret);
+	mdelay(1);
+
+	ret = ois_i2c_wr_u16(m_client, 0xF053, 0x70BD);
+	I2C_OPERATION_CHECK(ret);
+	mdelay(1);
+
+	//wait 5ms
+	ois_i2c_rd_u16(m_client, 0xDE01, &FMCret);
+	LOG_INF("FMC register (%d)", FMCret);
+	mdelay(5);
+}
+
+static void erase_FW_flash_sector(void)
+{
+	LOG_INF("[dw9781c_erase_mtp] start erasing firmware flash\r\n");
+	/* 12c level adjust */
+	ois_i2c_wr_u16(m_client, 0xd005, 0x0001);
+	ois_i2c_wr_u16(m_client, 0xdd03, 0x0002);
+	ois_i2c_wr_u16(m_client, 0xdd04, 0x0002);
+
+	/* 4k Sector_0 */
+	ois_i2c_wr_u16(m_client, 0xde03, 0x0000);
+	/* 4k Sector Erase */
+	ois_i2c_wr_u16(m_client, 0xde04, 0x0002);
+	mdelay(10);
+	/* 4k Sector_1 */
+	ois_i2c_wr_u16(m_client, 0xde03, 0x0008);
+	/* 4k Sector Erase */
+	ois_i2c_wr_u16(m_client, 0xde04, 0x0002);
+	mdelay(10);
+	/* 4k Sector_2 */
+	ois_i2c_wr_u16(m_client, 0xde03, 0x0010);
+	/* 4k Sector Erase */
+	ois_i2c_wr_u16(m_client, 0xde04, 0x0002);
+	mdelay(10);
+	/* 4k Sector_3 */
+	ois_i2c_wr_u16(m_client, 0xde03, 0x0018);
+	/* 4k Sector Erase */
+	ois_i2c_wr_u16(m_client, 0xde04, 0x0002);
+	mdelay(10);
+	/* 4k Sector_4 */
+	ois_i2c_wr_u16(m_client, 0xde03, 0x0020);
+	/* 4k Sector Erase */
+	ois_i2c_wr_u16(m_client, 0xde04, 0x0002);
+	mdelay(10);
+	LOG_INF("[dw9781c_erase_mtp] complete erasing firmware flash\r\n");
+}
+
+static void ois_reset(void)
+{
+	ois_i2c_wr_u16(m_client, 0xD002, 0x0001);
+	mdelay(4);
+
+	ois_i2c_wr_u16(m_client, 0xD001, 0x0001);
+	mdelay(25);
+
+	ois_i2c_wr_u16(m_client, 0xEBF1, 0x56FA);
+}
+
+//#define DATPKT_SIZE 256
+#define DATPKT_SIZE 1
+#define MTP_START_ADDRESS 0x8000
+
+struct FirmwareContex {
+	unsigned int driverIc;
+	unsigned int size;
+	unsigned short *fwContentPtr;
+	unsigned short version;
+};
+
+struct FirmwareContex g_firmwareContext;
+
+void GenerateFirmwareContexts(void)
+{
+	g_firmwareContext.version = 0x0624;
+	g_firmwareContext.size = 10240; /* size: word */
+	g_firmwareContext.driverIc = 0x9781;
+	g_firmwareContext.fwContentPtr = DW9781_Flash_Buf;
+}
+
+unsigned short buf_temp[10240];
+
+static int FlashDownload_Seq(void)
+{
+	unsigned short addr;
+	int i = 0;
+	int ret = 0;
+
+	memset(buf_temp, 0, g_firmwareContext.size * sizeof(unsigned short));
+	GenerateFirmwareContexts();
+
+	// set mode for FW download
+	set_mode_for_FW_download();
+
+	// Erase FW flash sector
+	erase_FW_flash_sector();
+
+	LOG_INF("[dw9781c_download_fw] start firmware download\r\n");
+
+	// Write FW data
+	for (i = 0; i < g_firmwareContext.size; i += DATPKT_SIZE) {
+		addr = MTP_START_ADDRESS + i;
+		ois_i2c_wr_u16(m_client, addr, *(g_firmwareContext.fwContentPtr + i));
+		// i2c_block_write_reg(addr, g_firmwareContext.fwContentPtr + i, DATPKT_SIZE);
+
+	}
+	LOG_INF("[dw9781c_download_fw] write firmware to flash\r\n");
+
+	// Read FW data
+	for (i = 0; i <  g_firmwareContext.size; i += DATPKT_SIZE) {
+		addr = MTP_START_ADDRESS + i;
+		ois_i2c_rd_u16(m_client, addr, buf_temp + i);
+		// i2c_block_read_reg(addr, buf_temp + i, DATPKT_SIZE);
+	}
+	LOG_INF("[dw9781c_download_fw] read firmware from flash");
+
+	// Verify FW data
+	for (i = 0; i < g_firmwareContext.size; i++) {
+		if (g_firmwareContext.fwContentPtr[i] != buf_temp[i]) {
+			LOG_INF("firmware verify NG!!! ADDR:%04X, firmware:%04x, READ:%04x\n",
+				MTP_START_ADDRESS+i,
+				g_firmwareContext.fwContentPtr[i],
+				buf_temp[i]);
+			// shutdown mode
+			ret = ois_i2c_wr_u16(m_client, DW9781C_REG_CHIP_CTRL, OFF);
+			I2C_OPERATION_CHECK(ret);
+			return -1;
+		}
+	}
+
+	// IC reset
+	ois_reset();
+
+	return 0;
+}
+#endif
+
 static int dw9781c_init(struct dw9781c_device *dw9781c)
 {
 	// Initial parameters
 	int ret = 0;
 	struct i2c_client *client = v4l2_get_subdevdata(&dw9781c->sd);
+	u16 i2c_readvalue = 0;
+	u16 i2cret_ver = 0, i2cret_date = 0;
 
 	m_client = client;
 
@@ -344,13 +501,75 @@ static int dw9781c_init(struct dw9781c_device *dw9781c)
 	ret = ois_i2c_wr_u16(client, DW9781C_REG_OIS_LOGIC_RESET, ON);
 	I2C_OPERATION_CHECK(ret);
 	mdelay(4);
-
 	ret = ois_i2c_wr_u16(client, DW9781C_REG_OIS_DSP_CTRL, ON);
 	I2C_OPERATION_CHECK(ret);
 	mdelay(25);
-
 	ret = ois_i2c_wr_u16(client, DW9781C_REG_OIS_USER_WRITE_PROTECT, USER_WRITE_EN);
 	mdelay(10);
+
+	// -------------------------------- read firmware version -------------------------
+	ret = ois_i2c_rd_u16(client, 0x7001, &i2cret_ver);
+	ret = ois_i2c_rd_u16(client, 0x7002, &i2cret_date);
+	LOG_INF("FW_VER (0x%x), FW_DATE (0x%x)", i2cret_ver, i2cret_date);
+
+#ifdef FW_UPDATE
+	// firmware update
+	if (i2cret_date != 0x0601) {
+		// Uodate firmware
+		if (FlashDownload_Seq() < 0) {
+			LOG_INF("FlashDownload_Seq fail!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			return -1;
+		}
+		LOG_INF("FlashDownload_Seq Pass!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+	}
+
+	ret = ois_i2c_rd_u16(client, 0x7001, &i2cret_ver);
+	ret = ois_i2c_rd_u16(client, 0x7002, &i2cret_date);
+	LOG_INF("after update, FW_VER (0x%x), FW_DATE (0x%x)", i2cret_ver, i2cret_date);
+#endif
+
+	// check is master or intercept
+	ret = ois_i2c_rd_u16(client, DW9781C_REG_GYRO_INIT, &i2c_readvalue);
+	LOG_INF("after reset, REG_GYRO_INIT = 0x%x\n", i2c_readvalue);
+
+	// if the default value isn't intercept mode, modify to intercept mode
+	if (i2c_readvalue != 0x0001) {
+		// open gyro data reading and set intercept
+		ret = ois_i2c_wr_u16(client, DW9781C_REG_GYRO_INIT, 0x0001);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(2);
+
+		// Store start =======================================
+		LOG_INF("do store\n");
+		ret = ois_i2c_wr_u16(client, 0x7015, 0x0002);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(10);
+
+		ret = ois_i2c_wr_u16(client, 0xFD00, 0x5252);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(1);
+
+		ret = ois_i2c_wr_u16(client, 0x7011, 0x00AA);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(20);
+
+		ret = ois_i2c_wr_u16(client, 0x7010, 0x8000);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(200);
+		// Store end =======================================
+
+		// OIS RESET
+		LOG_INF("do reset\n");
+		ret = ois_i2c_wr_u16(client, DW9781C_REG_OIS_LOGIC_RESET, ON);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(4);
+		ret = ois_i2c_wr_u16(client, DW9781C_REG_OIS_DSP_CTRL, ON);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(25);
+		ret = ois_i2c_wr_u16(client, DW9781C_REG_OIS_USER_WRITE_PROTECT, USER_WRITE_EN);
+		mdelay(10);
+	}
+
 	// set pantilt limit, (1100 is equal to 1.1 degree)
 	ret = ois_i2c_wr_u16(client, DW9781C_REG_OIS_PANTILT_DERGEEX, 1100);
 	I2C_OPERATION_CHECK(ret);
@@ -358,18 +577,23 @@ static int dw9781c_init(struct dw9781c_device *dw9781c)
 	ret = ois_i2c_wr_u16(client, DW9781C_REG_OIS_PANTILT_DERGEEY, 1100);
 	I2C_OPERATION_CHECK(ret);
 	mdelay(1);
-	// set gyro select ICM42631
+	// set gyro select ICM42631_AUX2
 	ret = ois_i2c_wr_u16(client, DW9781C_REG_IMU_SELECT, ICM42631_AUX2);
 	I2C_OPERATION_CHECK(ret);
 	mdelay(1);
+
 	// open gyro data reading
-	ret = ois_i2c_wr_u16(client, DW9781C_REG_GYRO_INIT, 0x0000);
+	ret = ois_i2c_wr_u16(client, DW9781C_REG_GYRO_INIT, 0x0001);
 	I2C_OPERATION_CHECK(ret);
 	usleep_range(1900, 2000);
-	// set OIS ON/SERVO ON
-	ret = ois_i2c_wr_u16(client, DW9781C_REG_OIS_CTRL, OIS_ON);
-	I2C_OPERATION_CHECK(ret);
-	mdelay(1);
+
+	// check is master or intercept
+	ret = ois_i2c_rd_u16(client, DW9781C_REG_GYRO_INIT, &i2c_readvalue);
+	LOG_INF("after open gyro data reading, REG_GYRO_INIT = 0x%x\n", i2c_readvalue);
+
+	// lock OIS, because DW hw limitation (can't get gyro data)
+	fixmode(0, 0);
+
 	// set ois mode
 	ret = ois_i2c_wr_u16(client, DW9781C_REG_OIS_MODE, DW9781C_STILL_MODE);
 	I2C_OPERATION_CHECK(ret);
