@@ -11,7 +11,7 @@
 #include <linux/rpmsg/mtk_rpmsg.h>
 #include "mmqos-vcp.h"
 #include "mmqos-test.h"
-#include "vcp.h"
+#include "vcp_helper.h"
 #include "vcp_status.h"
 
 static phys_addr_t mmqos_memory_iova;
@@ -72,14 +72,14 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 	mutex_unlock(&mmqos_vcp_ipi_mutex);
 
 	while (!is_vcp_ready_ex(VCP_A_ID) || (!mmqos_vcp_cb_ready && func != FUNC_MMQOS_INIT)) {
-		if (++retry > 100) {
+		if (++retry > VCP_SYNC_TIMEOUT_MS) {
 			ret = -ETIMEDOUT;
 			MMQOS_ERR(
 				"ret:%d retry:%d ready:%d cb_ready:%d",
 				ret, retry, is_vcp_ready_ex(VCP_A_ID), mmqos_vcp_cb_ready);
 			goto ipi_send_end;
 		}
-		usleep_range(1000, 2000);
+		mdelay(1);
 	}
 
 	mutex_lock(&mmqos_vcp_ipi_mutex);
@@ -94,7 +94,7 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 
 	retry = 0;
 	while (!(readl(MEM_IPI_SYNC_DATA) & (1 << func))) {
-		if (++retry > 10000) {
+		if (++retry > VCP_SYNC_TIMEOUT_MS) {
 			ret = IPI_COMPL_TIMEOUT;
 			MMQOS_ERR(
 				"ret:%d retry:%d ready:%d cb_ready:%d slot:%#llx vcp_power:%d unfinish func:%#x",
@@ -110,7 +110,7 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 				*(u64 *)&slot, vcp_power, val);
 			break;
 		}
-		udelay(10);
+		mdelay(1);
 	}
 
 	if (!ret)
@@ -216,11 +216,11 @@ int mmqos_vcp_init_thread(void *data)
 
 	retry = 0;
 	while (!is_vcp_ready_ex(VCP_A_ID)) {
-		if (++retry > 100) {
+		if (++retry > VCP_SYNC_TIMEOUT_MS) {
 			MMQOS_ERR("VCP_A_ID:%d not ready", VCP_A_ID);
 			return -ETIMEDOUT;
 		}
-		usleep_range(1000, 2000);
+		mdelay(1);
 	}
 
 	retry = 0;

@@ -24,7 +24,7 @@
 #include "clk-mtk.h"
 #include "mtk-mmdvfs-v3.h"
 
-#include "vcp.h"
+#include "vcp_helper.h"
 #include "vcp_reg.h"
 #include "vcp_status.h"
 
@@ -286,11 +286,11 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 		if (func == FUNC_VMM_GENPD_NOTIFY || func == FUNC_VMM_CEIL_ENABLE ||
 			func == FUNC_MMDVFS_LP_MODE)
 			goto ipi_send_end;
-		if (++retry > 100) {
+		if (++retry > VCP_SYNC_TIMEOUT_MS) {
 			ret = -ETIMEDOUT;
 			goto ipi_send_end;
 		}
-		usleep_range(1000, 2000);
+		mdelay(1);
 	}
 
 	mutex_lock(&mmdvfs_vcp_ipi_mutex);
@@ -305,7 +305,7 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 
 	retry = 0;
 	while (!(readl(MEM_IPI_SYNC_DATA) & (1 << func))) {
-		if (++retry > 10000) {
+		if (++retry > VCP_SYNC_TIMEOUT_MS) {
 			ret = IPI_COMPL_TIMEOUT;
 			break;
 		}
@@ -313,7 +313,7 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 			ret = -ETIMEDOUT;
 			break;
 		}
-		udelay(10);
+		mdelay(1);
 	}
 
 	if (!ret)
@@ -383,11 +383,11 @@ static int mtk_mmdvfs_set_rate(struct clk_hw *hw, unsigned long rate, unsigned l
 
 
 	while (!is_vcp_ready_ex(VCP_A_ID) || !mmdvfs_vcp_cb_ready) {
-		if (++retry > 100) {
+		if (++retry > VCP_SYNC_TIMEOUT_MS) {
 			ret = -ETIMEDOUT;
 			goto set_rate_end;
 		}
-		usleep_range(1000, 2000);
+		mdelay(1);
 	}
 
 	if (clk->ipi_type == IPI_MMDVFS_CCU) {
@@ -789,11 +789,11 @@ int mmdvfs_set_ccu_ipi(const char *val, const struct kernel_param *kp)
 
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_CCU);
 	while (!is_vcp_ready_ex(VCP_A_ID)) {
-		if (++retry > 100) {
+		if (++retry > VCP_SYNC_TIMEOUT_MS) {
 			MMDVFS_ERR("VCP_A_ID:%d not ready", VCP_A_ID);
 			return -ETIMEDOUT;
 		}
-		usleep_range(1000, 2000);
+		mdelay(1);
 	}
 
 	mtk_mmdvfs_enable_ccu(true, CCU_PWR_USR_MMDVFS);
@@ -1416,11 +1416,11 @@ static int mmdvfs_vcp_init_thread(void *data)
 
 	retry = 0;
 	while (!is_vcp_ready_ex(VCP_A_ID)) {
-		if (++retry > 100) {
+		if (++retry > VCP_SYNC_TIMEOUT_MS) {
 			MMDVFS_ERR("VCP_A_ID:%d not ready", VCP_A_ID);
 			return -ETIMEDOUT;
 		}
-		usleep_range(1000, 2000);
+		mdelay(1);
 	}
 
 	retry = 0;

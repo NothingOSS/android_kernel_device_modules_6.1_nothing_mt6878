@@ -13,7 +13,7 @@
 #include <linux/platform_device.h>
 #include <soc/mediatek/smi.h>
 
-#include "vcp.h"
+#include "vcp_helper.h"
 #include "vcp_reg.h"
 #include "vcp_status.h"
 
@@ -97,11 +97,11 @@ static int mmdebug_vcp_init_thread(void *data)
 
 	retry = 0;
 	while (!is_vcp_ready_ex(VCP_A_ID)) {
-		if (++retry > 100) {
+		if (++retry > VCP_SYNC_TIMEOUT_MS) {
 			MMDEBUG_ERR("VCP_A_ID:%d not ready", VCP_A_ID);
 			return -ETIMEDOUT;
 		}
-		usleep_range(1000, 2000);
+		mdelay(1);
 	}
 
 	retry = 0;
