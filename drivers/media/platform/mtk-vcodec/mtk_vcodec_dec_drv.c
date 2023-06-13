@@ -40,6 +40,7 @@ char mtk_vdec_property_prev[LOG_PROPERTY_SIZE];
 char mtk_vdec_vcp_log_prev[LOG_PROPERTY_SIZE];
 module_param(mtk_vdec_lpw_limit, int, 0644);
 module_param(mtk_vdec_lpw_timeout, int, 0644);
+module_param(mtk_vdec_slc_enable, bool, 0644);
 
 static struct mtk_vcodec_dev *dev_ptr;
 

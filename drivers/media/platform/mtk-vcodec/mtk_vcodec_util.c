@@ -156,6 +156,10 @@ EXPORT_SYMBOL_GPL(mtk_vdec_lpw_limit);
 int mtk_vdec_lpw_timeout = MTK_VDEC_WAIT_GROUP_MS;
 EXPORT_SYMBOL_GPL(mtk_vdec_lpw_timeout);
 
+/* For vdec slc switch on/off */
+bool mtk_vdec_slc_enable = true;
+EXPORT_SYMBOL_GPL(mtk_vdec_slc_enable);
+
 struct vcu_v4l2_func vcu_func = { NULL };
 EXPORT_SYMBOL_GPL(vcu_func);
 

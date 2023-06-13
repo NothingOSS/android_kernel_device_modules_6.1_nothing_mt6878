@@ -160,6 +160,7 @@ extern char *mtk_venc_vcp_log;
 extern char mtk_venc_vcp_log_prev[LOG_PROPERTY_SIZE];
 extern int mtk_vdec_lpw_limit;
 extern int mtk_vdec_lpw_timeout;
+extern bool mtk_vdec_slc_enable;
 extern int support_svp_region;
 extern int support_wfd_region;
 

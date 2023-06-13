@@ -3679,8 +3679,8 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 			}
 		}
 
-		if (ctx->dev->dec_slc_ver == VDEC_SLC_V1 &&
-			ctx->state == MTK_STATE_HEADER) {
+		if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver == VDEC_SLC_V1 &&
+			mtk_vcodec_is_state(ctx, MTK_STATE_HEADER)) {
 			mtk_vdec_slc_get_gid_from_dma(ctx, vb->planes[0].dbuf);
 		}
 
@@ -4080,7 +4080,7 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 		mtk_vdec_pmqos_begin_inst(ctx);
 		mutex_unlock(&ctx->dev->dec_dvfs_mutex);
 
-		if (ctx->dev->dec_slc_ver == VDEC_SLC_V1) {
+		if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver == VDEC_SLC_V1) {
 			mtk_vdec_slc_gid_request(ctx, &ctx->dev->dec_slc_frame);
 			mtk_vdec_slc_gid_request(ctx, &ctx->dev->dec_slc_ube);
 		}
@@ -4242,7 +4242,7 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 	mtk_vdec_pmqos_end_inst(ctx);
 	mutex_unlock(&ctx->dev->dec_dvfs_mutex);
 
-	if (ctx->dev->dec_slc_ver == VDEC_SLC_V1) {
+	if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver == VDEC_SLC_V1) {
 		mtk_vdec_slc_gid_release(ctx, &ctx->dev->dec_slc_frame);
 		mtk_vdec_slc_gid_release(ctx, &ctx->dev->dec_slc_ube);
 	}
