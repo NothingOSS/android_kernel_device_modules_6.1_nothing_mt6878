@@ -1338,12 +1338,6 @@
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_SSR>;
 	};
 
-	teeperf {
-		compatible = "mediatek,teeperf";
-		cpu-type = <1>; /* 1: CPU_V9_TYPE, 2: CPU_V8_TYPE */
-		cpu-map = <1>; /* 1: CPU_4_3_1_MAP, 2: CPU_6_2_MAP */
-	};
-
 	pmu-x4 {
 		compatible = "arm,armv8-pmuv3";
 		interrupt-parent = <&gic>;
