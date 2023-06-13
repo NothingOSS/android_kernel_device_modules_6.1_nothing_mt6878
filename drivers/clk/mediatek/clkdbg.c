@@ -898,24 +898,6 @@ static int clkdbg_reg_read(struct seq_file *s, void *v)
 	return 0;
 }
 
-static int clkdbg_reg_read_len(struct seq_file *s, void *v)
-{
-	void __iomem *reg;
-	unsigned long len, tmp;
-	unsigned long val;
-
-	if (parse_reg_val_from_cmd(&reg, &len) != 2)
-		return 0;
-
-	seq_printf(s, "readl(0x%p) len 0x%08x\n", reg, (u32)len);
-
-	for (tmp = 0; tmp < len; tmp = tmp + 4) {
-		val = clk_readl(reg + tmp);
-		seq_printf(s, "reg[0x%08x] = 0x%08x\n", (u32)tmp, (u32)val);
-	}
-	return 0;
-}
-
 static int clkdbg_reg_write(struct seq_file *s, void *v)
 {
 	void __iomem *reg;
@@ -2193,7 +2175,6 @@ static const struct cmd_fn common_cmds[] = {
 	CMDFN("reg_write", clkdbg_reg_write),
 	CMDFN("reg_set", clkdbg_reg_set),
 	CMDFN("reg_clr", clkdbg_reg_clr),
-	CMDFN("reg_read_len", clkdbg_reg_read_len),
 #endif
 	CMDFN("show_flags", clkdbg_show_flags),
 	CMDFN("set_flag", clkdbg_set_flag),
