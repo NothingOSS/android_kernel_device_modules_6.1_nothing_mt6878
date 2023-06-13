@@ -164,7 +164,7 @@
 			    nosoftlockup kasan.page_alloc.sample=1 \
 			    8250.nr_uarts=4 \
 			    androidboot.hardware=mt6989 \
-			    vmalloc=400M swiotlb=noforce cma=64M \
+			    vmalloc=400M swiotlb=noforce \
 			    firmware_class.path=/vendor/firmware";
 			    mkp_panic="on";
 		kaslr-seed = <0 0>;
