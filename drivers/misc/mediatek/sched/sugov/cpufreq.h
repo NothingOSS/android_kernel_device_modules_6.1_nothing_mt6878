@@ -45,9 +45,13 @@ enum sugov_type {
 	PWR_EFF,
 };
 
+struct cpu_weighting {
+	unsigned int dsu_weighting;
+	unsigned int emi_weighting;
+};
+
 struct pd_capacity_info {
 	unsigned int nr_cpus;
-	unsigned int type;
 	unsigned int dsu_weighting;
 	unsigned int emi_weighting;
 	int nr_caps;

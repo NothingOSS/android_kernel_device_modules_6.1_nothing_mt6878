@@ -38,6 +38,7 @@ static struct resource *csram_res;
 static void __iomem *sram_base_addr;
 static struct pd_capacity_info *pd_capacity_tbl;
 static struct pd_capacity_info **pd_wl_type;
+static struct cpu_weighting **cpu_wt;
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 static void __iomem *sram_base_addr_freq_scaling;
 static struct mtk_em_perf_domain *mtk_em_pd_ptr;
@@ -525,26 +526,22 @@ EXPORT_SYMBOL_GPL(get_sbb_active_ratio_gear);
 unsigned int pd_get_dsu_weighting(int wl_type, int cpu)
 {
 	int i;
-	struct pd_capacity_info *pd_info;
 
 	i = per_cpu(gear_id, cpu);
 	if (wl_type < 0)
 		wl_type = wl_type_curr;
-	pd_info = &pd_wl_type[wl_type][i];
-	return pd_info->dsu_weighting;
+	return cpu_wt[i][wl_type].dsu_weighting;
 }
 EXPORT_SYMBOL_GPL(pd_get_dsu_weighting);
 
 unsigned int pd_get_emi_weighting(int wl_type, int cpu)
 {
 	int i;
-	struct pd_capacity_info *pd_info;
 
 	i = per_cpu(gear_id, cpu);
 	if (wl_type < 0)
 		wl_type = wl_type_curr;
-	pd_info = &pd_wl_type[wl_type][i];
-	return pd_info->emi_weighting;
+	return cpu_wt[i][wl_type].emi_weighting;
 }
 EXPORT_SYMBOL_GPL(pd_get_emi_weighting);
 
@@ -1070,10 +1067,6 @@ inline int init_util_freq_opp_mapping_table_type(int t)
 					pd_info->table[opp + 1].freq, false);
 			cpufreq_cpu_put(policy);
 		}
-		pd_info->dsu_weighting =
-			mtk_em_pd_ptr_public[i].cur_weighting.dsu_weighting;
-		pd_info->emi_weighting =
-			mtk_em_pd_ptr_public[i].cur_weighting.emi_weighting;
 	}
 	return 0;
 nomem:
@@ -1084,12 +1077,25 @@ nomem:
 
 static int init_util_freq_opp_mapping_table(void)
 {
-	int t, ret;
+	int t, k, ret, need_alloc;
 
 	for (t = nr_wl_type - 1; t >= 0 ; t--) {
-		ret = init_util_freq_opp_mapping_table_type(t);
-		if (ret)
-			goto nomem;
+		need_alloc = 1;
+		for (k = t + 1; k < nr_wl_type; k++) {
+			if (mtk_mapping.cpu_to_dsu[t].cpu_type
+					== mtk_mapping.cpu_to_dsu[k].cpu_type) {
+				need_alloc = 0;
+				break;
+			}
+		}
+
+		if (need_alloc == 0)
+			continue;
+		else {
+			ret = init_util_freq_opp_mapping_table_type(t);
+			if (ret)
+				goto nomem;
+		}
 	}
 	return 0;
 nomem:
@@ -1116,6 +1122,13 @@ static int init_capacity_table(void)
 			}
 			pd_info->table = mtk_em_pd_ptr[i].table;
 			pd_info->table_legacy = mtk_em_pd_ptr_public[i].table;
+
+			/* cpu weighting init*/
+			cpu_wt[i][t].dsu_weighting =
+				mtk_em_pd_ptr_public[i].cur_weighting.dsu_weighting;
+			cpu_wt[i][t].emi_weighting =
+				mtk_em_pd_ptr_public[i].cur_weighting.emi_weighting;
+
 			for_each_cpu(j, &pd_info->cpus) {
 				per_cpu(gear_id, j) = i;
 				if (per_cpu(cpu_scale, j) != pd_info->table[0].capacity) {
@@ -1236,7 +1249,7 @@ static int alloc_capacity_table(void)
 	int cpu = 0;
 	int cur_tbl = 0;
 	int nr_caps;
-	int i;
+	int i, k, need_alloc;
 	struct em_perf_domain *pd;
 	unsigned int nr_cpus;
 
@@ -1278,11 +1291,29 @@ static int alloc_capacity_table(void)
 		nr_wl_type = 1;
 	pd_wl_type = kcalloc(nr_wl_type, sizeof(struct pd_capacity_info *),
 			GFP_KERNEL);
+	cpu_wt = kcalloc(pd_count, sizeof(struct cpu_weighting *), GFP_KERNEL);
+	for (i = 0; i < pd_count; i++)
+		cpu_wt[i] = kcalloc(nr_wl_type, sizeof(struct cpu_weighting), GFP_KERNEL);
+
 	for (i = 0; i < nr_wl_type; i++) {
-		pd_wl_type[i] = kcalloc(pd_count, sizeof(struct pd_capacity_info),
-				GFP_KERNEL);
-		if (!pd_wl_type[i])
-			return -ENOMEM;
+		need_alloc = 1;
+		for (k = i - 1; k >= 0; k--) {
+			if (mtk_mapping.cpu_to_dsu[i].cpu_type
+					== mtk_mapping.cpu_to_dsu[k].cpu_type) {
+				pd_wl_type[i] = pd_wl_type[k];
+				need_alloc = 0;
+				break;
+			}
+		}
+
+		if (need_alloc == 0)
+			continue;
+		else {
+			pd_wl_type[i] = kcalloc(pd_count, sizeof(struct pd_capacity_info),
+					GFP_KERNEL);
+			if (!pd_wl_type[i])
+				return -ENOMEM;
+		}
 	}
 
 	for_each_possible_cpu(cpu) {
@@ -1317,7 +1348,6 @@ static int alloc_capacity_table(void)
 			pd_capacity_tbl[cur_tbl].nr_cpus = nr_cpus;
 			pd_capacity_tbl[cur_tbl].nr_caps = nr_caps;
 			pd_capacity_tbl[cur_tbl].nr_caps_legacy = pd->nr_perf_states;
-			pd_capacity_tbl[cur_tbl].type = i;
 			cpumask_copy(&pd_capacity_tbl[cur_tbl].cpus, to_cpumask(pd->cpus));
 
 			pd_capacity_tbl[cur_tbl].freq_max =
@@ -1540,6 +1570,7 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 		return ret;
 
 	for (i = 0; i < pd_count; i++) {
+		mtk_update_wl_table(i, 0); /* set default wl type = 0 */
 		set_target_margin(i, 20);
 		set_target_margin_low(i, 20);
 		set_turn_point_freq(i, 0);
