@@ -689,10 +689,10 @@ static int mt6989_power_on_off(struct mtk_apu *apu, u32 id, u32 on, u32 off)
 {
 	int ret = 0;
 	struct device *dev = apu->dev;
-	struct timespec64 ts, te;
+	/* struct timespec64 ts, te; */
 	uint32_t retry_cnt = 500, i = 0;
 
-	ktime_get_ts64(&ts);
+	/* ktime_get_ts64(&ts); */
 
 	for (i = 0; i < retry_cnt; i++) {
 		mutex_lock(&apu->power_lock);
@@ -728,13 +728,14 @@ static int mt6989_power_on_off(struct mtk_apu *apu, u32 id, u32 on, u32 off)
 		}
 	}
 
-	ktime_get_ts64(&te);
-	ts = timespec64_sub(te, ts);
-
-	apu_info_ratelimited(dev,
-		"%s(%d/%d/%d): local_pwr_ref_cnt = %d, ipi_pwr_ref_cnt = %d, time = %lld ns\n",
-		__func__, id, on, off, apu->local_pwr_ref_cnt,
-		apu->ipi_pwr_ref_cnt[id], timespec64_to_ns(&ts));
+	/* remove to reduce latency
+	 * ktime_get_ts64(&te);
+	 * ts = timespec64_sub(te, ts);
+	 * apu_info_ratelimited(dev,
+	 *  "%s(%d/%d/%d): local_pwr_ref_cnt = %d, ipi_pwr_ref_cnt = %d, time = %lld ns\n",
+	 *  __func__, id, on, off, apu->local_pwr_ref_cnt,
+	 *  apu->ipi_pwr_ref_cnt[id], timespec64_to_ns(&ts));
+	 */
 
 	return ret;
 }

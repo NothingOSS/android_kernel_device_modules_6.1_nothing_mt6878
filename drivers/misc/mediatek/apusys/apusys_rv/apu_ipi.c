@@ -32,6 +32,12 @@
 #define CREATE_TRACE_POINTS
 #include "apusys_rv_events.h"
 
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+static void apu_power_on_off_profile(u32 on, u32 off, uint64_t time_diff_ns);
+#else
+static void apu_power_on_off_profile(u32 on, u32 off, uint64_t time_diff_ns) {}
+#endif
+
 static struct lock_class_key ipi_lock_key[APU_IPI_MAX];
 
 static unsigned int tx_serial_no;
@@ -546,6 +552,7 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 	struct apu_ipi_desc *ipi;
 	struct timespec64 ts, te;
 	struct timespec64 ts_polling, te_polling;
+	uint64_t time_diff;
 
 	if (!apu)
 		return -EINVAL;
@@ -565,7 +572,7 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 		return -EOPNOTSUPP;
 	}
 
-	apu_info_ratelimited(dev, "%s: enter, id(%u), on(%u), off(%u)\n", __func__, id, on, off);
+	ktime_get_ts64(&ts);
 
 	if (pwr_profile_polling_mode && hw_ops->polling_rpc_status) {
 		mutex_lock(&apu->power_profile_lock);
@@ -590,7 +597,6 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 
 	ret = hw_ops->power_on_off(apu, id, on, off);
 
-	ktime_get_ts64(&ts);
 	if (pwr_profile_polling_mode && hw_ops->polling_rpc_status &&
 		((on && apu->local_pwr_ref_cnt == 1) || (off && apu->local_pwr_ref_cnt == 0))) {
 		if (on)
@@ -599,17 +605,22 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 			hw_ops->polling_rpc_status(apu, 0, 1000000);
 		ktime_get_ts64(&te_polling);
 		ts_polling = timespec64_sub(te_polling, ts_polling);
-		dev_info(dev, "%s(%d/%d): time diff = %llu ns\n", __func__, on, off, timespec64_to_ns(&ts_polling));
+		time_diff = timespec64_to_ns(&ts_polling);
+		apu_power_on_off_profile(on, off, time_diff);
 	}
 
 	ktime_get_ts64(&te);
 	ts = timespec64_sub(te, ts);
+	time_diff = timespec64_to_ns(&ts);
 
 	if (apu->platdata->flags & F_APUSYS_RV_TAG_SUPPORT)
-		trace_apusys_rv_pwr_ctrl(id, on, off, timespec64_to_ns(&ts));
+		trace_apusys_rv_pwr_ctrl(id, on, off, time_diff);
 
 	if (pwr_profile_polling_mode && hw_ops->polling_rpc_status)
 		mutex_unlock(&apu->power_profile_lock);
+
+	apu_info_ratelimited(dev, "%s: id(%u), on(%u), off(%u), latency = %llu ns\n",
+		__func__, id, on, off, time_diff);
 
 	return ret;
 }
@@ -762,18 +773,37 @@ static uint32_t dpidle_off_ts_max;
 static uint32_t smmu_hw_sem_ts_max;
 static uint32_t mdw_abort_ts_max;
 
-static uint64_t ut_on_ts_last;
-static uint64_t ut_off_ts_last;
-static uint64_t ut_on_ts_avg;
-static uint64_t ut_off_ts_avg;
-static uint64_t ut_on_ts_max;
-static uint64_t ut_off_ts_max;
-static uint64_t ut_on_ts_cnt;
-static uint64_t ut_off_ts_cnt;
-static uint64_t ut_on_ts_acc;
-static uint64_t ut_off_ts_acc;
+static uint64_t apu_on_ts_last;
+static uint64_t apu_off_ts_last;
+static uint64_t apu_on_ts_avg;
+static uint64_t apu_off_ts_avg;
+static uint64_t apu_on_ts_max;
+static uint64_t apu_off_ts_max;
+static uint64_t apu_on_ts_cnt;
+static uint64_t apu_off_ts_cnt;
+static uint64_t apu_on_ts_acc;
+static uint64_t apu_off_ts_acc;
 
 static uint32_t boot_count;
+
+static void apu_power_on_off_profile(u32 on, u32 off, uint64_t time_diff_ns)
+{
+	if (on) {
+		apu_on_ts_last = time_diff_ns/1000;
+		apu_on_ts_cnt++;
+		apu_on_ts_acc += apu_on_ts_last;
+		if (apu_on_ts_cnt != 0)
+			apu_on_ts_avg = apu_on_ts_acc / apu_on_ts_cnt;
+		apu_on_ts_max = max(apu_on_ts_max, apu_on_ts_last);
+	} else if (off) {
+		apu_off_ts_last = time_diff_ns/1000;
+		apu_off_ts_cnt++;
+		apu_off_ts_acc += apu_off_ts_last;
+		if (apu_off_ts_cnt != 0)
+			apu_off_ts_avg = apu_off_ts_acc / apu_off_ts_cnt;
+		apu_off_ts_max = max(apu_off_ts_max, apu_off_ts_last);
+	}
+}
 
 static int apu_ipi_ut_send(struct apu_ipi_ut_ipi_data *d, bool wait_ack)
 {
@@ -843,12 +873,6 @@ static int apu_ipi_ut_send(struct apu_ipi_ut_ipi_data *d, bool wait_ack)
 			ktime_get_ts64(&te);
 			ts = timespec64_sub(te, ts);
 			pr_info("%s: diff = %llu ns\n", __func__, timespec64_to_ns(&ts));
-			ut_on_ts_cnt++;
-			ut_on_ts_last = timespec64_to_ns(&ts) / 1000;
-			ut_on_ts_max = max(ut_on_ts_max, ut_on_ts_last);
-			ut_on_ts_acc += ut_on_ts_last;
-			if (ut_on_ts_cnt != 0)
-				ut_on_ts_avg = ut_on_ts_acc / ut_on_ts_cnt;
 		}
 	}
 
@@ -967,12 +991,6 @@ static int apu_ipi_ut_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 			ktime_get_ts64(&te);
 			ts = timespec64_sub(te, ts);
 			pr_info("%s: diff = %llu ns\n", __func__, timespec64_to_ns(&ts));
-			ut_off_ts_cnt++;
-			ut_off_ts_last = timespec64_to_ns(&ts) / 1000;
-			ut_off_ts_max = max(ut_off_ts_max, ut_off_ts_last);
-			ut_off_ts_acc += ut_off_ts_last;
-			if (ut_off_ts_cnt != 0)
-				ut_off_ts_avg = ut_off_ts_acc / ut_off_ts_cnt;
 		}
 	}
 
@@ -1042,16 +1060,16 @@ static int apu_ipi_dbg_show(struct seq_file *s, void *unused)
 		seq_printf(s, "smmu_hw_sem_ts_max = %u us\n", smmu_hw_sem_ts_max);
 		seq_printf(s, "mdw_abort_ts_max = %u us\n", mdw_abort_ts_max);
 
-		seq_printf(s, "ut_on_ts_last = %llu us\n", ut_on_ts_last);
-		seq_printf(s, "ut_off_ts_last = %llu us\n", ut_off_ts_last);
-		seq_printf(s, "ut_on_ts_avg = %llu us\n", ut_on_ts_avg);
-		seq_printf(s, "ut_off_ts_avg = %llu us\n", ut_off_ts_avg);
-		seq_printf(s, "ut_on_ts_max = %llu us\n", ut_on_ts_max);
-		seq_printf(s, "ut_off_ts_max = %llu us\n", ut_off_ts_max);
-		seq_printf(s, "ut_on_ts_cnt = %llu us\n", ut_on_ts_cnt);
-		seq_printf(s, "ut_off_ts_cnt = %llu us\n", ut_off_ts_cnt);
-		seq_printf(s, "ut_on_ts_acc = %llu us\n", ut_on_ts_acc);
-		seq_printf(s, "ut_off_ts_acc = %llu us\n", ut_off_ts_acc);
+		seq_printf(s, "apu_on_ts_last = %llu us\n", apu_on_ts_last);
+		seq_printf(s, "apu_off_ts_last = %llu us\n", apu_off_ts_last);
+		seq_printf(s, "apu_on_ts_avg = %llu us\n", apu_on_ts_avg);
+		seq_printf(s, "apu_off_ts_avg = %llu us\n", apu_off_ts_avg);
+		seq_printf(s, "apu_on_ts_max = %llu us\n", apu_on_ts_max);
+		seq_printf(s, "apu_off_ts_max = %llu us\n", apu_off_ts_max);
+		seq_printf(s, "apu_on_ts_cnt = %llu\n", apu_on_ts_cnt);
+		seq_printf(s, "apu_off_ts_cnt = %llu\n", apu_off_ts_cnt);
+		seq_printf(s, "apu_on_ts_acc = %llu us\n", apu_on_ts_acc);
+		seq_printf(s, "apu_off_ts_acc = %llu us\n", apu_off_ts_acc);
 	}
 
 	return 0;
