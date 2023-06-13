@@ -591,10 +591,16 @@ static int dw9781d_init(struct dw9781d_device *dw9781d)
 	ret = ois_i2c_rd_u16(client, DW9781D_REG_GYRO_INIT, &i2c_readvalue);
 	LOG_INF("after open gyro data reading, REG_GYRO_INIT = 0x%x\n", i2c_readvalue);
 
-	// set OIS ON/SERVO ON
-	ret = ois_i2c_wr_u16(client, DW9781D_REG_OIS_CTRL, OIS_ON);
-	I2C_OPERATION_CHECK(ret);
-	mdelay(1);
+	if (i2cret_date != 0x0601) {
+		LOG_INF("The version doesn't match, so the OIS is locked");
+		fixmode(0, 0);
+	} else {
+		// set OIS ON/SERVO ON
+		ret = ois_i2c_wr_u16(client, DW9781D_REG_OIS_CTRL, OIS_ON);
+		I2C_OPERATION_CHECK(ret);
+		mdelay(1);
+	}
+
 	// set ois mode
 	ret = ois_i2c_wr_u16(client, DW9781D_REG_OIS_MODE, DW9781D_STILL_MODE);
 	I2C_OPERATION_CHECK(ret);
