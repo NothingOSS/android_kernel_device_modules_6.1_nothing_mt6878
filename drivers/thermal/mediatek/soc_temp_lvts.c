@@ -50,7 +50,7 @@ static unsigned int g_lvts_device_value_b[LVTS_CONTROLLER_DEBUG_NUM]
 static unsigned int g_lvts_device_value_e[LVTS_CONTROLLER_DEBUG_NUM]
 	[NUM_LVTS_DEVICE_REG];
 
-#define NUM_LVTS_CONTROLLER_REG (26)
+#define NUM_LVTS_CONTROLLER_REG (32)
 static const unsigned int g_lvts_controller_addrs[NUM_LVTS_CONTROLLER_REG] = {
 	LVTSMONCTL0_0,
 	LVTSMONCTL1_0,
@@ -66,6 +66,12 @@ static const unsigned int g_lvts_controller_addrs[NUM_LVTS_CONTROLLER_REG] = {
 	LVTSEDATA01_0,
 	LVTSEDATA02_0,
 	LVTSEDATA03_0,
+	LVTSATPTGT_0,
+	LVTSGSLOPE_0,
+	LVTSOVSP0_0,
+	LVTSOVSP1_0,
+	LVTSOVSP2_0,
+	LVTSOVSP3_0,
 	LVTSMSR0_0,
 	LVTSMSR1_0,
 	LVTSMSR2_0,
@@ -4145,7 +4151,7 @@ static struct tc_settings mt6897_tc_settings[] = {
 		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
 		.tc_speed = SET_TC_SPEED_IN_US(10, 2460, 10, 10),
 		.hw_filter = LVTS_FILTER_1,
-		.dominator_sensing_point = SENSING_POINT0,
+		.dominator_sensing_point = SENSING_POINT1,
 		.hw_reboot_trip_point = 119000,
 		.irq_bit = BIT(2),
 		.coeff = {
@@ -4160,7 +4166,7 @@ static struct tc_settings mt6897_tc_settings[] = {
 		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
 		.tc_speed = SET_TC_SPEED_IN_US(10, 2460, 10, 10),
 		.hw_filter = LVTS_FILTER_1,
-		.dominator_sensing_point = SENSING_POINT3,
+		.dominator_sensing_point = SENSING_POINT0,
 		.hw_reboot_trip_point = 119000,
 		.irq_bit = BIT(3),
 		.coeff = {
@@ -4175,7 +4181,7 @@ static struct tc_settings mt6897_tc_settings[] = {
 		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
 		.tc_speed = SET_TC_SPEED_IN_US(10, 10, 10, 10),
 		.hw_filter = LVTS_FILTER_1,
-		.dominator_sensing_point = SENSING_POINT2,
+		.dominator_sensing_point = SENSING_POINT1,
 		.hw_reboot_trip_point = 119000,
 		.irq_bit = BIT(4),
 		.coeff = {
@@ -4190,7 +4196,7 @@ static struct tc_settings mt6897_tc_settings[] = {
 		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
 		.tc_speed = SET_TC_SPEED_IN_US(30, 180, 90, 90),
 		.hw_filter = LVTS_FILTER_1,
-		.dominator_sensing_point = SENSING_POINT0,
+		.dominator_sensing_point = SENSING_POINT2,
 		.hw_reboot_trip_point = 119000,
 		.irq_bit = BIT(1),
 		.coeff = {
@@ -4205,7 +4211,7 @@ static struct tc_settings mt6897_tc_settings[] = {
 		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
 		.tc_speed = SET_TC_SPEED_IN_US(10, 860, 30, 40),
 		.hw_filter = LVTS_FILTER_1,
-		.dominator_sensing_point = SENSING_POINT0,
+		.dominator_sensing_point = SENSING_POINT2,
 		.hw_reboot_trip_point = 119000,
 		.irq_bit = BIT(2),
 		.coeff = {
@@ -4220,7 +4226,7 @@ static struct tc_settings mt6897_tc_settings[] = {
 		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
 		.tc_speed = SET_TC_SPEED_IN_US(253, 60720, 759, 60720),
 		.hw_filter = LVTS_FILTER_1,
-		.dominator_sensing_point = SENSING_POINT0,
+		.dominator_sensing_point = SENSING_POINT3,
 		.hw_reboot_trip_point = 119000,
 		.irq_bit = BIT(3),
 		.coeff = {

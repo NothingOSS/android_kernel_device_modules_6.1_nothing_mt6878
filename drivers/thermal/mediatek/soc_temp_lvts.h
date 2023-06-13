@@ -379,6 +379,12 @@ struct lvts_id {
 #define LVTSEDATA01_0	0x058
 #define LVTSEDATA02_0	0x05C
 #define LVTSEDATA03_0	0x060
+#define LVTSATPTGT_0    0x064
+#define LVTSGSLOPE_0    0x068
+#define LVTSOVSP0_0     0x080
+#define LVTSOVSP1_0     0x084
+#define LVTSOVSP2_0     0x088
+#define LVTSOVSP3_0     0x08C
 #define LVTSMSR0_0	0x090
 #define MRS_RAW_MASK		GENMASK(15, 0)
 #define MRS_RAW_VALID_BIT	BIT(16)
