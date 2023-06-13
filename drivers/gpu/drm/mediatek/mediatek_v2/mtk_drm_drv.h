@@ -316,7 +316,7 @@ struct layer_compress_ratio_item {
 enum {
 	DISP_PLAT_DBG_INIT,
 	DISP_PLAT_DBG_ENABLE,
-	DISP_PLAT_DBG_DSIUNDERRUN,
+	DISP_PLAT_DBG_PROFILE,
 	DISP_PLAT_MAX,
 };
 

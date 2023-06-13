@@ -4216,6 +4216,24 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 
+	} else if (strncmp(opt, "disp_plat_dbg_profile:", 22) == 0) {
+		int err = 0;
+		struct disp_plat_dbg_scmi_data scmi_data;
+
+		scmi_data.cmd = DISP_PLAT_DBG_PROFILE;
+
+		if (strncmp(opt + 22, "1", 1) == 0)
+			scmi_data.p1 = 1;
+		else if (strncmp(opt + 22, "0", 1) == 0)
+			scmi_data.p1 = 0;
+		DDPMSG("disp_plat_dbg_profile:%d", scmi_data.p1);
+
+		err = scmi_set(&scmi_data);
+		if (err) {
+			pr_info("call scmi_tinysys_common_set err=%d\n", err);
+			return;
+		}
+
 	} else if (strncmp(opt, "mml_cmd_ir:", 11) == 0) {
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;
