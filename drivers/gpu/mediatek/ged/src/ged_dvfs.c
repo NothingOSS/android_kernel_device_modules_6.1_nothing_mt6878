@@ -232,7 +232,7 @@ static int gx_tb_dvfs_margin = GED_DVFS_TIMER_BASED_DVFS_MARGIN;
 static int gx_tb_dvfs_margin_cur = GED_DVFS_TIMER_BASED_DVFS_MARGIN;
 
 #define MAX_TB_DVFS_MARGIN               99
-#define MIN_TB_DVFS_MARGIN               5
+#define MIN_TB_DVFS_MARGIN               10
 #define CONFIGURE_TIMER_BASED_MODE       0x00000000
 #define DYNAMIC_TB_MASK                  0x00000100
 #define DYNAMIC_TB_PIPE_TIME_MASK        0x00000200   // phased out
@@ -1232,6 +1232,8 @@ GED_ERROR ged_dvfs_um_commit(unsigned long gpu_tar_freq, bool bFallback)
 
 #define DEFAULT_DVFS_MARGIN 300 /* 30% margin */
 #define FIXED_FPS_MARGIN 3 /* Fixed FPS margin: 3fps */
+#define FB_ADD_MARGIN 100 /* 10% margin */
+#define TIMER_LATENCY 500000 /* 500us */
 
 int gx_fb_dvfs_margin = DEFAULT_DVFS_MARGIN;/* 10-bias */
 
@@ -1584,7 +1586,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 		ap_workload_real;   // unit: 100*cycle
 	unsigned long long frame_t_gpu;   // for gpu_util_history api
 	unsigned int frame_workload, frame_freq;   // for gpu_util_history api
-	int t_gpu_target_hd;   // apply headroom target, unit: us
+	int t_gpu_target_hd, t_gpu_target_fb;   // apply headroom target, unit: us
 	int t_gpu_pipe, t_gpu_real;   // unit: us
 	int gpu_freq_pre, gpu_freq_tar, gpu_freq_floor;   // unit: KHZ
 	int gpu_freq_overdue_max;   // unit: KHZ
@@ -1912,12 +1914,15 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 		ged_dvfs_gpu_freq_commit((unsigned long)ui32NewFreqID,
 			gpu_freq_tar, GED_DVFS_FRAME_BASE_COMMIT);
 
+	// add fallback timer margin to reduce fallback timer
+	t_gpu_target_fb = t_gpu_target * (1000 - gx_fb_dvfs_margin - FB_ADD_MARGIN) / 1000;
+
 	//t_gpu_target(unit: 100us) *10^5 =nanosecond
 	if (is_fdvfs_enable()) {
 		mtk_gpueb_sysram_write(SYSRAM_GPU_LEFT_TIME, t_gpu_target_hd);
 		set_fb_timeout(t_gpu_target * 100000, t_gpu_target * 200000);
 	} else
-		set_fb_timeout(t_gpu_target * 100000, t_gpu_target_hd * 100000);
+		set_fb_timeout(t_gpu_target * 100000, t_gpu_target_fb * 100000);
 
 	ged_set_backup_timer_timeout(fb_timeout);
 	ged_cancel_backup_timer();
@@ -2287,14 +2292,14 @@ static bool ged_dvfs_policy(
 		if (g_ged_frame_base_optimize &&
 				ged_get_policy_state() == POLICY_STATE_FB_FALLBACK &&
 				((u64)t_gpu_uncomplete * 1000) < fb_timeout) {
-			u64 fb_tmp_timer = fb_timeout - ((u64)t_gpu_uncomplete * 1000);
+			u64 fb_tmp_timer = fb_timeout - ((u64)t_gpu_uncomplete * 1000) - TIMER_LATENCY;
 			u64 timeout_val = ged_get_fallback_time();
-			/* keep minimum value of fallback time*/
-			if (fb_tmp_timer < timeout_val)
-				fb_tmp_timer = timeout_val;
-			ged_set_policy_state(POLICY_STATE_FB);
-			ged_set_backup_timer_timeout(fb_tmp_timer);
-			g_CommitType = MTK_GPU_DVFS_TYPE_VSYNCBASED;
+
+			if (fb_tmp_timer > timeout_val) {
+				ged_set_policy_state(POLICY_STATE_FB);
+				ged_set_backup_timer_timeout(fb_tmp_timer);
+				g_CommitType = MTK_GPU_DVFS_TYPE_VSYNCBASED;
+			}
 		} else
 			g_CommitType = MTK_GPU_DVFS_TYPE_FALLBACK;
 	}
