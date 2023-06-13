@@ -1578,37 +1578,53 @@ static int vdec_vcp_set_param(unsigned long h_vdec,
 		ret = vdec_vcp_set_frame_buffer(inst, in);
 		break;
 	case SET_PARAM_FRAME_SIZE:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		inst->vsi->dec_params.frame_size_width = (__u32)(*param_ptr);
 		inst->vsi->dec_params.frame_size_height = (__u32)(*(param_ptr + 1));
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_FRAME_SIZE;
 		break;
 	case SET_PARAM_SET_FIXED_MAX_OUTPUT_BUFFER:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		inst->vsi->dec_params.fixed_max_frame_size_width = (__u32)(*param_ptr);
 		inst->vsi->dec_params.fixed_max_frame_size_height = (__u32)(*(param_ptr + 1));
 		inst->vsi->dec_params.fixed_max_frame_buffer_mode = (__u32)(*(param_ptr + 2));
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_FIXED_MAX_FRAME_SIZE;
 		break;
 	case SET_PARAM_DECODE_MODE:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		inst->vsi->dec_params.decode_mode = (__u32)(*param_ptr);
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_DECODE_MODE;
 		break;
 	case SET_PARAM_NAL_SIZE_LENGTH:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		inst->vsi->dec_params.nal_size_length = (__u32)(*param_ptr);
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_NAL_SIZE_LENGTH;
 		break;
 	case SET_PARAM_WAIT_KEY_FRAME:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		inst->vsi->dec_params.wait_key_frame = (__u32)(*param_ptr);
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_WAIT_KEY_FRAME;
 		break;
 	case SET_PARAM_DECODE_ERROR_HANDLE_MODE:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		inst->vsi->dec_params.decode_error_handle_mode = (__u32)(*param_ptr);
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE;
 		break;
 	case SET_PARAM_OPERATING_RATE:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		inst->vsi->dec_params.operating_rate = (__u32)(*param_ptr);
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_OPERATING_RATE;
 		break;
 	case SET_PARAM_DEC_PARAMS:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		mtk_v4l2_debug(2, "[%d] param change 0x%x decode mode %d frame %d %d max %d %d wait key %d op-rate %d error mode %d",
 			inst->ctx->id, inst->vsi->dec_params.dec_param_change,
 			inst->vsi->dec_params.decode_mode,
