@@ -381,7 +381,7 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 
 		if (trace_sched_dsu_freq_enabled())
 			trace_sched_dsu_freq(gear_idx, eenv->dsu_freq_new, eenv->dsu_volt_new, freq,
-					mtk_ps->freq);
+					mtk_ps->freq, dyn_pwr, share_volt, cpu_volt);
 
 		if (share_volt > cpu_volt)
 			dyn_pwr = (unsigned long long)dyn_pwr * (unsigned long long)share_volt *

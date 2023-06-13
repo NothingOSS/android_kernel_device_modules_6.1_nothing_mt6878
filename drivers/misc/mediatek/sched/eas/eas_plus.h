@@ -263,7 +263,6 @@ extern int set_turn_point_freq(int gearid, unsigned long turn_freq);
 extern int set_util_est_ctrl(bool enable);
 struct share_buck_info {
 	int gear_idx;
-	struct perf_domain *pd;
 	struct cpumask *cpus;
 };
 
