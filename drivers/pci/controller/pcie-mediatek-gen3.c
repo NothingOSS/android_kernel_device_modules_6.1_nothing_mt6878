@@ -197,6 +197,9 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_ATR_TLP_TYPE_MEM		PCIE_ATR_TLP_TYPE(0)
 #define PCIE_ATR_TLP_TYPE_IO		PCIE_ATR_TLP_TYPE(2)
 
+#define PCIE_RESOURCE_CTRL		0xd2c
+#define PCIE_APSRC_ACK			BIT(10)
+
 /* pcie read completion timeout */
 #define PCIE_CONF_DEV2_CTL_STS		0x10a8
 #define PCIE_DCR2_CPL_TO		GENMASK(3, 0)
@@ -245,6 +248,16 @@ enum mtk_pcie_suspend_link_state {
 	LINK_STATE_L2,
 };
 
+struct mtk_pcie_port;
+
+/**
+ * struct mtk_pcie_data - PCIe data for each SoC
+ * @pre_init: Specific init data, called before linkup
+ */
+struct mtk_pcie_data {
+	int (*pre_init)(struct mtk_pcie_port *port);
+};
+
 /**
  * struct mtk_msi_set - MSI information for each set
  * @base: IO mapped register base
@@ -269,6 +282,7 @@ struct mtk_msi_set {
  * @phy: PHY controller block
  * @clks: PCIe clocks
  * @num_clks: PCIe clocks count for this port
+ * @data: special init data of each SoC
  * @port_num: serial number of pcie port
  * @suspend_mode: pcie enter low poer mode when the system enter suspend
  * @dvfs_req_en: pcie wait request to reply ack when pcie exit from P2 state
@@ -301,6 +315,7 @@ struct mtk_pcie_port {
 	int num_clks;
 	int max_link_speed;
 
+	struct mtk_pcie_data *data;
 	int port_num;
 	u32 suspend_mode;
 	bool dvfs_req_en;
@@ -596,14 +611,12 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 			dev_info(port->dev, "PCIE MSI select=%#x\n",
 				readl_relaxed(port->pextpcfg + PCIE_MSI_SEL));
 		}
+	}
 
-		/* Enable P2_EXIT signal to phy, wait 8us for EP entering L1ss */
-		val = readl_relaxed(port->base + PCIE_ASPM_CTRL);
-		val &= ~PCIE_P2_IDLE_TIME_MASK;
-		val |= PCIE_P2_EXIT_BY_CLKREQ | PCIE_P2_IDLE_TIME(8);
-		writel_relaxed(val, port->base + PCIE_ASPM_CTRL);
-
-		mtk_pcie_mt6985_phy_fixup(port);
+	if (port->data && port->data->pre_init) {
+		err = port->data->pre_init(port);
+		if (err)
+			return err;
 	}
 
 	/* Mask all INTx interrupts */
@@ -1338,6 +1351,7 @@ static int mtk_pcie_probe(struct platform_device *pdev)
 	port = pci_host_bridge_priv(host);
 
 	port->dev = dev;
+	port->data = (struct mtk_pcie_data *)of_device_get_match_data(dev);
 	platform_set_drvdata(pdev, port);
 
 	err = mtk_pcie_setup(port);
@@ -2094,9 +2108,45 @@ int mtk_pcie_soft_on(struct pci_bus *bus)
 }
 EXPORT_SYMBOL(mtk_pcie_soft_on);
 
+static int mtk_pcie_pre_init_6985(struct mtk_pcie_port *port)
+{
+	u32 val;
+
+	/* Enable P2_EXIT signal to phy, wait 8us for EP entering L1ss */
+	val = readl_relaxed(port->base + PCIE_ASPM_CTRL);
+	val &= ~PCIE_P2_IDLE_TIME_MASK;
+	val |= PCIE_P2_EXIT_BY_CLKREQ | PCIE_P2_IDLE_TIME(8);
+	writel_relaxed(val, port->base + PCIE_ASPM_CTRL);
+
+	mtk_pcie_mt6985_phy_fixup(port);
+
+	return 0;
+}
+
+static const struct mtk_pcie_data mt6985_data = {
+	.pre_init = mtk_pcie_pre_init_6985,
+};
+
+static int mtk_pcie_pre_init_6989(struct mtk_pcie_port *port)
+{
+	u32 val;
+
+	/* Make PCIe RC wait apsrc_ack signal before access EMI */
+	val = readl_relaxed(port->base + PCIE_RESOURCE_CTRL);
+	val |= PCIE_APSRC_ACK;
+	writel_relaxed(val, port->base + PCIE_RESOURCE_CTRL);
+
+	return 0;
+}
+
+static const struct mtk_pcie_data mt6989_data = {
+	.pre_init = mtk_pcie_pre_init_6989,
+};
+
 static const struct of_device_id mtk_pcie_of_match[] = {
 	{ .compatible = "mediatek,mt8192-pcie" },
-	{ .compatible = "mediatek,mt6985-pcie" },
+	{ .compatible = "mediatek,mt6985-pcie", .data = &mt6985_data },
+	{ .compatible = "mediatek,mt6989-pcie", .data = &mt6989_data },
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_pcie_of_match);
