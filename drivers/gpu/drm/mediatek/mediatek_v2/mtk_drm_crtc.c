@@ -1565,35 +1565,44 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	CRTC_MMP_EVENT_START(index, backlight, (unsigned long)crtc,
 			level);
 
+	if (lock)
+		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])
 		sb_backlight = level;
 
 	if(mtk_crtc == NULL || crtc->state == NULL){
 		DDPINFO("Sleep State set backlight stop --crtc not ebable\n");
 		CRTC_MMP_EVENT_END(index, backlight, 0, 0);
+		if (lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -EINVAL;
 	}
 
 	if (!(mtk_crtc->enabled)) {
 		DDPINFO("Sleep State set backlight stop --crtc not ebable\n");
 		CRTC_MMP_EVENT_END(index, backlight, 0, 0);
+		if (lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -EINVAL;
 	}
 
 	if (!comp) {
 		DDPINFO("%s no output comp\n", __func__);
 		CRTC_MMP_EVENT_END(index, backlight, 0, 1);
+		if (lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -EINVAL;
 	}
 
 	if (unlikely(!panel_ext)) {
 		DDPPR_ERR("%s:can't find panel_ext handle\n", __func__);
 		CRTC_MMP_EVENT_END(index, backlight, 0, 1);
+		if (lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -EINVAL;
 	}
 
-	if (lock)
-		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
 	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
