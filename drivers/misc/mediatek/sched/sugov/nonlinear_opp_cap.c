@@ -1451,7 +1451,7 @@ static inline void uclamp_se_set(struct uclamp_se *uc_se,
 	uc_se->bucket_id = uclamp_bucket_id(value);
 	uc_se->user_defined = user_defined;
 }
-static bool gu_ctrl = false;
+static bool gu_ctrl;
 bool get_gear_uclamp_ctrl(void)
 {
 	return gu_ctrl;
@@ -1798,7 +1798,7 @@ int get_am_ceiling(void)
 }
 EXPORT_SYMBOL_GPL(get_am_ceiling);
 
-bool ignore_idle_ctrl = false;
+bool ignore_idle_ctrl;
 void set_ignore_idle_ctrl(bool val)
 {
 	ignore_idle_ctrl = val;

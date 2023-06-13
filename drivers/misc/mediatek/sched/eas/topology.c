@@ -107,8 +107,8 @@ void mtk_update_cpu_capacity(void *data, int cpu, unsigned long *capacity)
 {
 	unsigned long cap_ceiling;
 
-	cap_ceiling = min(READ_ONCE(per_cpu(max_freq_scale, cpu)),
-		(unsigned long)get_cpu_gear_uclamp_max(cpu));
+	cap_ceiling = min_t(unsigned long,
+		READ_ONCE(per_cpu(max_freq_scale, cpu)), get_cpu_gear_uclamp_max(cpu));
 	*capacity = min(cap_ceiling, *capacity);
 }
 
@@ -116,8 +116,8 @@ unsigned long cpu_cap_ceiling(int cpu)
 {
 	unsigned long cap_ceiling;
 
-	cap_ceiling = min(READ_ONCE(per_cpu(max_freq_scale, cpu)),
-		(unsigned long)get_cpu_gear_uclamp_max(cpu));
+	cap_ceiling = min_t(unsigned long,
+		READ_ONCE(per_cpu(max_freq_scale, cpu)), get_cpu_gear_uclamp_max(cpu));
 	return min(capacity_orig_of(cpu), cap_ceiling);
 }
 
