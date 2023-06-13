@@ -538,6 +538,9 @@ static ssize_t dbg_tp_unregister_store(struct device *dev,
 	if (value == atomic_xchg(&host->dbg_tp_unregister, value))
 		return count;
 
+	if (!is_mcq_enabled(hba))
+		return count;
+
 	if (value)
 		ufs_mtk_dbg_tp_unregister();
 	else
@@ -571,7 +574,9 @@ static ssize_t skip_blocktag_store(struct device *dev,
 	if (kstrtou32(opcode, 0, &value) || value > 1)
 		return -EINVAL;
 
-	atomic_set(&host->skip_btag, value);
+	if (is_mcq_enabled(hba))
+		atomic_set(&host->skip_btag, value);
+
 	return count;
 }
 

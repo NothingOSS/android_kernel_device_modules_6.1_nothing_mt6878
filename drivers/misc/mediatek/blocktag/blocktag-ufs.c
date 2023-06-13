@@ -534,11 +534,10 @@ static void btag_ufs_init_ctx(struct mtk_blocktag *btag)
 		rcu_assign_pointer(ctx[qid].cur_data, &ctx[qid].data[0]);
 	}
 
-#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
-	btag->ctx_enable = true;
-#else
-	btag->ctx_enable = false;
-#endif
+	if (IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD) || btag->ctx.count == 1)
+		btag->ctx_enable = true;
+	else
+		btag->ctx_enable = false;
 }
 
 static struct mtk_btag_vops btag_ufs_vops = {
