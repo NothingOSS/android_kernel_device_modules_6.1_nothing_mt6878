@@ -360,6 +360,7 @@ static void flt_fei(int wl, int ctp)
 		GG = XU[i] << AGK;
 		if (X_RR[i])
 			XHR[i] = (GG + (X_RR[i] >> 1)) / X_RR[i];
+		XHR[i] = clamp_t(unsigned int, XHR[i], 0, AMI);
 	}
 	flt_kh(XHR, XLO, XLA, EKV[ctp], ctp);
 	flt_kh(XHR, XLO + YLO, YLA, EKV[ctp], ctp);
