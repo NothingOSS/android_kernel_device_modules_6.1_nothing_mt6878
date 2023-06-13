@@ -2844,6 +2844,8 @@ void mtk_oddmr_set_pq_dirty(void)
 int mtk_oddmr_hrt_cal_notify(int *oddmr_hrt)
 {
 	int sum = 0;
+	unsigned long long res_ratio = 1000;
+	struct mtk_drm_crtc *mtk_crtc;
 
 	if (!default_comp || !g_oddmr_priv)
 		return 0;
@@ -2864,8 +2866,17 @@ int mtk_oddmr_hrt_cal_notify(int *oddmr_hrt)
 			g_oddmr1_priv->od_enable = g_oddmr1_priv->od_enable_req;
 			g_oddmr1_priv->dmr_enable = g_oddmr1_priv->dmr_enable_req;
 		}
-		ODDMRLOW_LOG("od %d dmr %d sum %d\n",
-				g_oddmr_priv->od_enable, g_oddmr_priv->dmr_enable, sum);
+		mtk_crtc = default_comp->mtk_crtc;
+		if (mtk_crtc->scaling_ctx.scaling_en) {
+			res_ratio =
+				((unsigned long long)mtk_crtc->scaling_ctx.lcm_width *
+				mtk_crtc->scaling_ctx.lcm_height * 1000) /
+				((unsigned long long)mtk_crtc->base.state->adjusted_mode.vdisplay *
+				mtk_crtc->base.state->adjusted_mode.hdisplay);
+		}
+		ODDMRLOW_LOG("od %d dmr %d sum %d res_ratio %llu\n",
+				g_oddmr_priv->od_enable, g_oddmr_priv->dmr_enable, sum, res_ratio);
+		sum = sum * res_ratio / 1000;
 	} else {
 		return 0;
 	}

@@ -4263,6 +4263,20 @@ static unsigned int overlap_to_bw(struct drm_crtc *crtc,
 		DDPDBG("%s:%d BWM bw_base:%u overlap:%u bw:%u\n", __func__, __LINE__,
 				bw_base, lyeblob_ids->frame_weight_of_bwm, bw);
 	}
+
+	if ((crtc_idx == 0) && (mtk_crtc->scaling_ctx.scaling_en)) {
+		int res_ratio;
+
+		res_ratio =
+			((unsigned long long)crtc->state->adjusted_mode.vdisplay *
+			crtc->state->adjusted_mode.hdisplay * 1000) /
+			((unsigned long long)mtk_crtc->scaling_ctx.lcm_width *
+			mtk_crtc->scaling_ctx.lcm_height);
+		bw = bw * res_ratio / 1000;
+		DDPDBG("%s:%d AP_RES res_ratio:%u bw:%u\n", __func__, __LINE__,
+				res_ratio, bw);
+	}
+
 	return bw;
 }
 
