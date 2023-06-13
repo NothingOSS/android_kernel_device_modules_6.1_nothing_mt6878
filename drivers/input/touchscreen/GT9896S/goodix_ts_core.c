@@ -42,10 +42,12 @@ static struct gt9896s_ts_core *ts_core;
 
 #define GOOIDX_INPUT_PHYS	"goodix_ts/input0"
 
+#ifdef GT9896S_SYSFS
 static struct task_struct *gt9896s_polling_thread;
 static int gt9896s_ts_event_polling(void *arg);
 static int gt9896s_polling_flag;
 struct mutex irq_info_mutex;
+#endif
 
 struct gt9896s_module gt9896s_modules;
 
@@ -335,6 +337,8 @@ void gt9896s_msg_printf(const char *fmt, ...)
 }
 EXPORT_SYMBOL_GPL(gt9896s_msg_printf);
 
+#ifdef GT9896S_SYSFS
+
 static int gt9896s_debugfs_init(void)
 {
 	struct dentry *r_b;
@@ -346,7 +350,7 @@ static int gt9896s_debugfs_init(void)
 		ts_err("Debugfs init failed\n");
 		goto exit;
 	}
-	r_b = debugfs_create_blob("gt9896s_ts", 0644, NULL, &gt9896s_dbg.buf);
+	r_b = debugfs_create_blob("gt9896s_ts", 0640, NULL, &gt9896s_dbg.buf);
 	if (!r_b) {
 		ts_err("Debugfs create failed\n");
 		return -ENOENT;
@@ -365,7 +369,7 @@ static void gt9896s_debugfs_exit(void)
 }
 
 /* show external module infomation */
-static ssize_t gt9896s_ts_extmod_show(struct device *dev,
+static ssize_t extmod_info_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct gt9896s_ext_module *module, *next;
@@ -392,7 +396,7 @@ static ssize_t gt9896s_ts_extmod_show(struct device *dev,
 }
 
 /* show driver infomation */
-static ssize_t gt9896s_ts_driver_info_show(struct device *dev,
+static ssize_t driver_info_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	return snprintf(buf, PAGE_SIZE, "DriverVersion:%s\n",
@@ -400,7 +404,7 @@ static ssize_t gt9896s_ts_driver_info_show(struct device *dev,
 }
 
 /* show chip infoamtion */
-static ssize_t gt9896s_ts_chip_info_show(struct device  *dev,
+static ssize_t chip_info_show(struct device  *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct gt9896s_ts_core *core_data =
@@ -425,7 +429,7 @@ static ssize_t gt9896s_ts_chip_info_show(struct device  *dev,
 }
 
 /* reset chip */
-static ssize_t gt9896s_ts_reset_store(struct device *dev,
+static ssize_t reset_store(struct device *dev,
 				     struct device_attribute *attr,
 				     const char *buf,
 				     size_t count)
@@ -446,7 +450,7 @@ static ssize_t gt9896s_ts_reset_store(struct device *dev,
 
 }
 
-static ssize_t gt9896s_ts_read_cfg_show(struct device *dev,
+static ssize_t read_cfg_show(struct device *dev,
 				       struct device_attribute *attr,
 				       char *buf)
 {
@@ -536,7 +540,7 @@ static int gt9896s_ts_convert_0x_data(const u8 *buf, int buf_size,
 	return 0;
 }
 
-static ssize_t gt9896s_ts_send_cfg_store(struct device *dev,
+static ssize_t send_cfg_store(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
 {
@@ -594,7 +598,7 @@ exit:
 }
 
 /* show irq infomation */
-static ssize_t gt9896s_ts_irq_info_show(struct device *dev,
+static ssize_t irq_info_show(struct device *dev,
 				       struct device_attribute *attr,
 				       char *buf)
 {
@@ -615,11 +619,15 @@ static ssize_t gt9896s_ts_irq_info_show(struct device *dev,
 		return -EINVAL;
 
 	desc = irq_to_desc(core_data->irq);
-	offset += r;
-	r = snprintf(&buf[offset], PAGE_SIZE - offset, "disable-depth:%d\n",
-		     desc->depth);
-	if (r < 0)
-		return -EINVAL;
+	if (desc) {
+		offset += r;
+		r = snprintf(&buf[offset], PAGE_SIZE - offset, "disable-depth:%d\n",
+				desc->depth);
+		if (r < 0)
+			return -EINVAL;
+	} else {
+		ts_info("invalid desc!");
+	}
 
 	offset += r;
 	r = snprintf(&buf[offset], PAGE_SIZE - offset, "trigger-count:%zu\n",
@@ -638,7 +646,7 @@ static ssize_t gt9896s_ts_irq_info_show(struct device *dev,
 }
 
 /* enable/disable irq */
-static ssize_t gt9896s_ts_irq_info_store(struct device *dev,
+static ssize_t irq_info_store(struct device *dev,
 					struct device_attribute *attr,
 					const char *buf, size_t count)
 {
@@ -682,7 +690,9 @@ static ssize_t gt9896s_ts_irq_info_store(struct device *dev,
 		break;
 	//use cmd to make touch power off
 	case 2:
+		mutex_lock(&irq_info_mutex);
 		ret = gt9896s_ts_power_off(core_data);
+		mutex_unlock(&irq_info_mutex);
 		if (ret < 0) {
 			ts_err("Failed to disable analog power: %d", ret);
 			return ret;
@@ -691,7 +701,9 @@ static ssize_t gt9896s_ts_irq_info_store(struct device *dev,
 		break;
 	//use cmd to make touch power on
 	case 3:
+		mutex_lock(&irq_info_mutex);
 		ret = gt9896s_ts_power_on(core_data);
+		mutex_unlock(&irq_info_mutex);
 		if (ret < 0) {
 			ts_err("Failed to enable analog power: %d", ret);
 			return ret;
@@ -722,6 +734,7 @@ static int gt9896s_ts_event_polling(void *arg)
 	ts_info("gt9896s_polling_thread, enter");
 	do {
 		usleep_range(30000, 35100);
+		atomic64_set(&ts_core->timestamp, ktime_to_ns(ktime_get()));
 		/* read touch data from touch device */
 		ret = ts_dev->hw_ops->event_handler(ts_dev, ts_event);
 		if (likely(ret >= 0)) {
@@ -740,14 +753,13 @@ static int gt9896s_ts_event_polling(void *arg)
 	return 0;
 }
 
-
 /*reg read/write */
 static u16 rw_addr;
 static u32 rw_len;
 static u8 rw_flag;
 static u8 store_buf[32];
 static u8 show_buf[PAGE_SIZE];
-static ssize_t gt9896s_ts_reg_rw_show(struct device *dev,
+static ssize_t reg_rw_show(struct device *dev,
 			struct device_attribute *attr, char *buf)
 {
 	int ret;
@@ -777,7 +789,7 @@ static ssize_t gt9896s_ts_reg_rw_show(struct device *dev,
 			rw_addr, rw_len, rw_len, show_buf);
 }
 
-static ssize_t gt9896s_ts_reg_rw_store(struct device *dev,
+static ssize_t reg_rw_store(struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t count)
 {
@@ -869,16 +881,16 @@ err_out:
 	return -EINVAL;
 }
 
-static DEVICE_ATTR(extmod_info, S_IRUGO, gt9896s_ts_extmod_show, NULL);
-static DEVICE_ATTR(driver_info, S_IRUGO, gt9896s_ts_driver_info_show, NULL);
-static DEVICE_ATTR(chip_info, S_IRUGO, gt9896s_ts_chip_info_show, NULL);
-static DEVICE_ATTR(reset, S_IWUSR | S_IWGRP, NULL, gt9896s_ts_reset_store);
-static DEVICE_ATTR(send_cfg, S_IWUSR | S_IWGRP, NULL, gt9896s_ts_send_cfg_store);
-static DEVICE_ATTR(read_cfg, S_IRUGO, gt9896s_ts_read_cfg_show, NULL);
-static DEVICE_ATTR(irq_info, S_IRUGO | S_IWUSR | S_IWGRP,
-		   gt9896s_ts_irq_info_show, gt9896s_ts_irq_info_store);
-static DEVICE_ATTR(reg_rw, S_IRUGO | S_IWUSR | S_IWGRP,
-		   gt9896s_ts_reg_rw_show, gt9896s_ts_reg_rw_store);
+static DEVICE_ATTR(extmod_info, 0440, extmod_info_show, NULL);
+static DEVICE_ATTR(driver_info, 0440, driver_info_show, NULL);
+static DEVICE_ATTR(chip_info, 0440, chip_info_show, NULL);
+static DEVICE_ATTR_WO(reset);
+static DEVICE_ATTR_WO(send_cfg);
+static DEVICE_ATTR(read_cfg, 0440, read_cfg_show, NULL);
+static DEVICE_ATTR(irq_info, 0640,
+		   irq_info_show, irq_info_store);
+static DEVICE_ATTR(reg_rw, 0640,
+		   reg_rw_show, reg_rw_store);
 
 static struct attribute *sysfs_attrs[] = {
 	&dev_attr_extmod_info.attr,
@@ -982,8 +994,10 @@ static int gt9896s_ts_sysfs_init(struct gt9896s_ts_core *core_data)
 	ret = sysfs_create_group(&core_data->pdev->dev.kobj, &sysfs_group);
 	if (ret) {
 		ts_err("failed create core sysfs group");
+    #ifdef GT9896S_CONFIG_BIN
 		sysfs_remove_bin_file(&core_data->pdev->dev.kobj,
 				      &gt9896s_config_bin_attr);
+    #endif
 		return ret;
 	}
 
@@ -996,7 +1010,7 @@ static void gt9896s_ts_sysfs_exit(struct gt9896s_ts_core *core_data)
 			      &gt9896s_config_bin_attr);
 	sysfs_remove_group(&core_data->pdev->dev.kobj, &sysfs_group);
 }
-
+#endif
 /* event notifier */
 static BLOCKING_NOTIFIER_HEAD(ts_notifier_list);
 /**
@@ -2177,9 +2191,11 @@ int gt9896s_ts_stage2_init(struct gt9896s_ts_core *core_data)
 	else
 		disp_notify_reg_flag = true;
 #endif
+
+#ifdef GT9896S_SYSFS
 	/*create sysfs files*/
 	gt9896s_ts_sysfs_init(core_data);
-
+#endif
 	/* esd protector */
 	gt9896s_ts_esd_init(core_data);
 
@@ -2302,7 +2318,9 @@ static int gt9896s_ts_probe(struct platform_device *pdev)
 		ts_info("Failed start cfg_bin_proc");
 		goto err;
 	}
+#ifdef GT9896S_SYSFS
 	mutex_init(&irq_info_mutex);
+#endif
 	ts_info("core probe OUT");
 	/* wakeup ext module register work */
 	complete_all(&gt9896s_modules.core_comp);
@@ -2355,8 +2373,10 @@ static int gt9896s_ts_remove(struct platform_device *pdev)
 		gt9896s_ts_esd_off(core_data);
 	gt9896s_remove_all_ext_modules();
 	gt9896s_ts_power_off(core_data);
+#ifdef GT9896S_SYSFS
 	gt9896s_debugfs_exit();
 	gt9896s_ts_sysfs_exit(core_data);
+#endif
 	// can't free the memory for tools or gesture module
 	//kfree(core_data);
 	return 0;
@@ -2401,8 +2421,9 @@ int gt9896s_ts_core_init(void)
 		mutex_init(&gt9896s_modules.mutex);
 		init_completion(&gt9896s_modules.core_comp);
 	}
-
+#ifdef GT9896S_SYSFS
 	gt9896s_debugfs_init();
+#endif
 	return platform_driver_register(&gt9896s_ts_driver);
 }
 

@@ -1199,7 +1199,7 @@ out:
 	}
 	return r;
 }
-
+#ifdef GT9896S_FWU_SYSFS
 /*
  * gt9896s_sysfs_update_en_store: start fw update manually
  * @buf: '1'[001] update in blocking mode with fwdata from sysfs
@@ -1400,9 +1400,9 @@ static ssize_t gt9896s_sysfs_force_update_store(
 
 static struct gt9896s_ext_attribute gt9896s_fwu_attrs[] = {
 	__EXTMOD_ATTR(update_en, 0220, NULL, gt9896s_sysfs_update_en_store),
-	__EXTMOD_ATTR(progress, S_IRUGO, gt9896s_sysfs_update_progress_show, NULL),
-	__EXTMOD_ATTR(result, S_IRUGO, gt9896s_sysfs_update_result_show, NULL),
-	__EXTMOD_ATTR(fwversion, S_IRUGO,
+	__EXTMOD_ATTR(progress, 0440, gt9896s_sysfs_update_progress_show, NULL),
+	__EXTMOD_ATTR(result, 0440, gt9896s_sysfs_update_result_show, NULL),
+	__EXTMOD_ATTR(fwversion, 0440,
 			gt9896s_sysfs_update_fwversion_show, NULL),
 	__EXTMOD_ATTR(fwsize, 0660, gt9896s_sysfs_fwsize_show,
 			gt9896s_sysfs_fwsize_store),
@@ -1451,7 +1451,7 @@ static int gt9896s_fw_sysfs_init(struct gt9896s_ts_core *core_data,
 exit_sysfs_init:
 	return ret;
 }
-
+#endif
 int gt9896s_do_fw_update(int mode)
 {
 	struct task_struct *fwu_thrd;
@@ -1531,15 +1531,17 @@ static int gt9896s_fw_update_init(struct gt9896s_ts_core *core_data,
 	}
 	ts_info("gt9896s_fw_update_ctrl.fw_name:%s",
 				gt9896s_fw_update_ctrl.fw_name);
-
+#ifdef GT9896S_FWU_SYSFS
 	ret = gt9896s_fw_sysfs_init(core_data, module);
 	if (ret) {
 		ts_err("failed create fwupate sysfs node");
 		goto err_out;
 	}
-
+#endif
 	gt9896s_fw_update_ctrl.initialized = 1;
+#ifdef GT9896S_FWU_SYSFS
 err_out:
+#endif
 	mutex_unlock(&gt9896s_fw_update_ctrl.mutex);
 	return ret;
 }
