@@ -114,5 +114,8 @@ int mtk_cfg_trans_gain_to_gamma(struct mtk_drm_crtc *mtk_crtc,
 void disp_gamma_set_bypass(struct drm_crtc *crtc, int bypass);
 void mtk_gamma_regdump(struct mtk_ddp_comp *comp);
 
+// for HWC LayerBrightness, backlight & gamma gain update by atomic
+int mtk_gamma_set_silky_brightness_gain(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+	unsigned int gain[3]);
 #endif
 

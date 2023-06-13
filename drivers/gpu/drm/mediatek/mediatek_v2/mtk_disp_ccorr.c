@@ -1027,12 +1027,22 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 	switch (event) {
 	case LED_BRIGHTNESS_CHANGED:
 		trans_level = led_conf->cdev.brightness;
+
+		if (led_conf->led_type == LED_TYPE_ATOMIC)
+			break;
+
 		disp_pq_notify_backlight_changed(comp, trans_level);
 		DDPINFO("%s: brightness changed: %d(%d)\n",
 			__func__, trans_level, led_conf->cdev.brightness);
 		break;
 	case LED_STATUS_SHUTDOWN:
+		if (led_conf->led_type == LED_TYPE_ATOMIC)
+			break;
+
 		disp_pq_notify_backlight_changed(comp, 0);
+		break;
+	case LED_TYPE_CHANGED:
+		pr_info("[leds -> ccorr] led type changed: %d", led_conf->led_type);
 		break;
 	default:
 		break;

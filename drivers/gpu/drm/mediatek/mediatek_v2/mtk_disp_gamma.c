@@ -1604,3 +1604,40 @@ void disp_gamma_set_bypass(struct drm_crtc *crtc, int bypass)
 
 	DDPINFO("%s : ret = %d", __func__, ret);
 }
+
+// for HWC LayerBrightness, backlight & gamma gain update by atomic
+int mtk_gamma_set_silky_brightness_gain(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+	unsigned int gain[3])
+{
+	int ret = 0;
+	unsigned int mmsys_id = 0;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
+
+	mmsys_id = mtk_get_mmsys_id(crtc);
+	if (gamma->primary_data->sb_param.gain[gain_r] != gain[gain_r] ||
+		gamma->primary_data->sb_param.gain[gain_g] != gain[gain_g] ||
+		gamma->primary_data->sb_param.gain[gain_b] != gain[gain_b]) {
+
+		gamma->primary_data->sb_param.gain[gain_r] = gain[gain_r];
+		gamma->primary_data->sb_param.gain[gain_g] = gain[gain_g];
+		gamma->primary_data->sb_param.gain[gain_b] = gain[gain_b];
+
+		if (mmsys_id == MMSYS_MT6985 || mmsys_id == MMSYS_MT6989) {
+			if (mtk_gamma_set_gain(comp, handle, &gamma->primary_data->sb_param) < 0)
+				return -EFAULT;
+		} else {
+			DDPPR_ERR("%s: Not Support Set Gamma Gain\n", __func__);
+
+			return -EFAULT;
+		}
+
+		DDPINFO("%s : gain(r: %d, g: %d, b: %d)\n", __func__,
+			gamma->primary_data->sb_param.gain[gain_r],
+			gamma->primary_data->sb_param.gain[gain_g],
+			gamma->primary_data->sb_param.gain[gain_b]);
+	}
+
+	return ret;
+}

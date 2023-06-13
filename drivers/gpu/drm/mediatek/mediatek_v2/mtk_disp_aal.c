@@ -264,7 +264,7 @@ static void disp_aal_notify_backlight_log(int bl_1024)
 	memcpy(&g_aal_log_prevtime, &aal_time, sizeof(struct timespec64));
 }
 
-void disp_aal_refresh_by_kernel(struct mtk_disp_aal *aal_data)
+void disp_aal_refresh_by_kernel(struct mtk_disp_aal *aal_data, int need_lock)
 {
 	unsigned long flags, clockflags;
 	struct mtk_ddp_comp *comp = &aal_data->ddp_comp;
@@ -287,14 +287,14 @@ void disp_aal_refresh_by_kernel(struct mtk_disp_aal *aal_data)
 		spin_unlock_irqrestore(&aal_data->primary_data->irq_en_lock, flags);
 		/* Backlight or Kernel API latency should be smallest */
 		if (atomic_read(&aal_data->primary_data->force_delay_check_trig) == 1)
-			mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
+			mtk_crtc_check_trigger(comp->mtk_crtc, true, need_lock);
 		else
-			mtk_crtc_check_trigger(comp->mtk_crtc, false, true);
+			mtk_crtc_check_trigger(comp->mtk_crtc, false, need_lock);
 	}
 }
 
 void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
-		int trans_backlight, int max_backlight)
+		int trans_backlight, int max_backlight, int need_lock)
 {
 	unsigned long flags;
 	unsigned int service_flags;
@@ -319,7 +319,7 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 	//max_backlight = disp_pwm_get_max_backlight(DISP_PWM0);
 	AALAPI_LOG("connector_id = %d, max_backlight = %d\n", connector_id, max_backlight);
 
-	if (trans_backlight > max_backlight)
+	if ((max_backlight != -1) && (trans_backlight > max_backlight))
 		trans_backlight = max_backlight;
 
 	prev_backlight = atomic_read(&aal_data->primary_data->backlight_notified);
@@ -332,7 +332,9 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 
 	if (trans_backlight == 0) {
 		aal_data->primary_data->backlight_set = trans_backlight;
-		mtk_leds_brightness_set(connector_id, 0, 0, (0X1<<SET_BACKLIGHT_LEVEL));
+
+		if (aal_data->primary_data->led_type != TYPE_ATOMIC)
+			mtk_leds_brightness_set(connector_id, 0, 0, (0X1<<SET_BACKLIGHT_LEVEL));
 		/* set backlight = 0 may be not from AAL, */
 		/* we have to let AALService can turn on backlight */
 		/* on phone resumption */
@@ -342,8 +344,9 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 		!pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])) {
 		/* AAL Service is not running */
 
-		mtk_leds_brightness_set(connector_id, trans_backlight,
-					0, (0X1<<SET_BACKLIGHT_LEVEL));
+		if (aal_data->primary_data->led_type != TYPE_ATOMIC)
+			mtk_leds_brightness_set(connector_id, trans_backlight,
+						0, (0X1<<SET_BACKLIGHT_LEVEL));
 	}
 
 	spin_lock_irqsave(&aal_data->primary_data->hist_lock, flags);
@@ -351,9 +354,9 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 	aal_data->primary_data->hist.serviceFlags |= service_flags;
 	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 	// always notify aal service for LED changed
-	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 1);
+	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, need_lock);
 
-	disp_aal_refresh_by_kernel(aal_data);
+	disp_aal_refresh_by_kernel(aal_data, need_lock);
 }
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
@@ -411,11 +414,15 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 	switch (event) {
 	case LED_BRIGHTNESS_CHANGED:
 		trans_level = led_conf->cdev.brightness;
+
+		if (led_conf->led_type == LED_TYPE_ATOMIC)
+			break;
+
 		aal_data = comp_to_aal(comp);
 		if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS] &&
 			(atomic_read(&aal_data->primary_data->force_relay) != 1)) {
 			disp_aal_notify_backlight_changed(comp, trans_level,
-				led_conf->cdev.max_brightness);
+				led_conf->cdev.max_brightness, 1);
 		} else {
 			trans_level = (
 				led_conf->max_hw_brightness
@@ -427,7 +434,7 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 				trans_level = 1;
 
 			disp_aal_notify_backlight_changed(comp, trans_level,
-				led_conf->max_hw_brightness);
+				led_conf->max_hw_brightness, 1);
 		}
 
 		AALAPI_LOG("brightness changed: %d(%d)\n",
@@ -435,12 +442,26 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 		led_conf->aal_enable = 1;
 		break;
 	case LED_STATUS_SHUTDOWN:
+		if (led_conf->led_type == LED_TYPE_ATOMIC)
+			break;
+
 		if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS])
 			disp_aal_notify_backlight_changed(comp, 0,
-				led_conf->cdev.max_brightness);
+				led_conf->cdev.max_brightness, 1);
 		else
 			disp_aal_notify_backlight_changed(comp, 0,
-				led_conf->max_hw_brightness);
+				led_conf->max_hw_brightness, 1);
+		break;
+	case LED_TYPE_CHANGED:
+		pr_info("[leds -> aal] led type changed: %d", led_conf->led_type);
+
+		aal_data = comp_to_aal(comp);
+		aal_data->primary_data->led_type = (unsigned int)led_conf->led_type;
+
+		// force set aal_enable to 1 for ELVSS
+		if (led_conf->led_type == LED_TYPE_ATOMIC)
+			led_conf->aal_enable = 1;
+
 		break;
 	default:
 		break;
@@ -1715,7 +1736,8 @@ int mtk_drm_ioctl_aal_set_param_impl(struct mtk_ddp_comp *comp, void *data)
 	if (atomic_read(&aal_data->primary_data->backlight_notified) == 0)
 		aal_data->primary_data->backlight_set = 0;
 
-	if (prev_backlight == aal_data->primary_data->backlight_set)
+	if ((prev_backlight == aal_data->primary_data->backlight_set) ||
+		(aal_data->primary_data->led_type == TYPE_ATOMIC))
 		aal_data->primary_data->ess20_spect_param.flag &= (~(1 << SET_BACKLIGHT_LEVEL));
 	else
 		aal_data->primary_data->ess20_spect_param.flag |= (1 << SET_BACKLIGHT_LEVEL);
@@ -1746,7 +1768,6 @@ int mtk_drm_ioctl_aal_set_param_impl(struct mtk_ddp_comp *comp, void *data)
 			aal_data->primary_data->backlight_set,
 			(void *)&aal_data->primary_data->ess20_spect_param);
 	} else {
-
 		AALAPI_LOG("connector_id:%d, pre_bl:%d, bl:%d, pn:%u, flag:%u\n",
 			connector_id, prev_backlight, aal_data->primary_data->backlight_set,
 			aal_data->primary_data->ess20_spect_param.ELVSSPN,
@@ -1776,6 +1797,7 @@ int mtk_drm_ioctl_aal_set_param(struct drm_device *dev, void *data,
 		DDPPR_ERR("%s, comp is null!\n", __func__);
 		return -1;
 	}
+
 	return mtk_drm_ioctl_aal_set_param_impl(comp, data);
 }
 
@@ -3768,6 +3790,7 @@ static void mtk_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	aal_data->primary_data->dre_en_cmd_id = 0;
 	aal_data->primary_data->ess_en_cmd_id = 0;
 	aal_data->primary_data->isDualPQ = 0;
+	aal_data->primary_data->led_type = TYPE_FILE;
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
 	mtk_leds_register_notifier(&leds_init_notifier);
@@ -3939,7 +3962,8 @@ static int mtk_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 	if (atomic_read(&aal_data->primary_data->backlight_notified) == 0)
 		aal_data->primary_data->backlight_set = 0;
 
-	if (prev_backlight == aal_data->primary_data->backlight_set)
+	if ((prev_backlight == aal_data->primary_data->backlight_set) ||
+			(aal_data->primary_data->led_type == TYPE_ATOMIC))
 		aal_data->primary_data->ess20_spect_param.flag &= (~(1 << SET_BACKLIGHT_LEVEL));
 	else
 		aal_data->primary_data->ess20_spect_param.flag |= (1 << SET_BACKLIGHT_LEVEL);
@@ -4736,7 +4760,7 @@ void disp_aal_set_ess_level(struct mtk_ddp_comp *comp, int level)
 
 	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 
-	disp_aal_refresh_by_kernel(aal_data);
+	disp_aal_refresh_by_kernel(aal_data, 1);
 	AALAPI_LOG("level = %d (cmd = 0x%x)\n", level, level_command);
 }
 
@@ -4757,7 +4781,7 @@ void disp_aal_set_ess_en(struct mtk_ddp_comp *comp, int enable)
 
 	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 
-	disp_aal_refresh_by_kernel(aal_data);
+	disp_aal_refresh_by_kernel(aal_data, 1);
 	AALAPI_LOG("en = %d (cmd = 0x%x) level = 0x%08x (cmd = 0x%x)\n",
 		enable, enable_command, ESS_LEVEL_BY_CUSTOM_LIB, level_command);
 }
@@ -4778,7 +4802,7 @@ void disp_aal_set_dre_en(struct mtk_ddp_comp *comp, int enable)
 
 	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 
-	disp_aal_refresh_by_kernel(aal_data);
+	disp_aal_refresh_by_kernel(aal_data, 1);
 	AALAPI_LOG("en = %d (cmd = 0x%x)\n", enable, enable_command);
 }
 

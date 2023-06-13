@@ -223,6 +223,13 @@ enum DISP_AAL_REFRESH_LATENCY {
 	AAL_REFRESH_33MS = 33
 };
 
+enum MTK_LED_TYPE {
+	TYPE_FILE = 0,
+	TYPE_ATOMIC = 1,
+	TYPE_FACTORY = 2,
+	TYPE_MAX = 3,
+};
+
 struct DISP_DRE30_HIST {
 	unsigned int aal0_dre_hist[AAL_DRE30_HIST_REGISTER_NUM];
 	unsigned int aal1_dre_hist[AAL_DRE30_HIST_REGISTER_NUM];
@@ -360,6 +367,8 @@ struct mtk_disp_aal_primary {
 	struct aal_backup backup;
 	struct DISP_AAL_INITREG init_regs;
 	struct work_struct_aal_data refresh_task;
+	enum MTK_LED_TYPE led_type;
+	unsigned int fps;
 };
 
 struct mtk_disp_aal {
@@ -397,7 +406,7 @@ void disp_aal_debug(struct drm_crtc *crtc, const char *opt);
 
 /* Provide for LED */
 void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp, int trans_backlight,
-	int max_backlight);
+	int max_backlight, int need_lock);
 
 /* AAL Control API in Kernel */
 void disp_aal_set_lcm_type(unsigned int panel_type);
