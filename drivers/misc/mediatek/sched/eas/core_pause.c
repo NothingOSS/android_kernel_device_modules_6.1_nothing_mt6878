@@ -355,11 +355,11 @@ int sched_pause_cpu(int cpu)
 
 	err = pause_cpus(&cpu_pause_req);
 	if (err) {
-		pr_info("[Core Pause]Already Pause: cpu=%d, req=0x%lx, pause=0x%lx, online=0x%lx, act=0x%lx\n",
+		printk_deferred("[Core Pause]Already Pause: cpu=%d, req=0x%lx, pause=0x%lx, online=0x%lx, act=0x%lx\n",
 			cpu, cpu_pause_req.bits[0], cpu_pause_mask->bits[0],
 			cpu_online_mask->bits[0], cpu_active_mask->bits[0]);
 	} else {
-		pr_info("[Core Pause]Pause success: cpu=%d, req=0x%lx, pause=0x%lx, online=0x%lx, act=0x%lx\n",
+		printk_deferred("[Core Pause]Pause success: cpu=%d, req=0x%lx, pause=0x%lx, online=0x%lx, act=0x%lx\n",
 			cpu, cpu_pause_req.bits[0], cpu_pause_mask->bits[0],
 			cpu_online_mask->bits[0], cpu_active_mask->bits[0]);
 	}
@@ -388,11 +388,11 @@ int sched_resume_cpu(int cpu)
 
 	err = resume_cpus(&cpu_resume_req);
 	if (err) {
-		pr_info("[Core Pause]Already Resume: cpu=%d, req=0x%lx, pause=0x%lx, online=0x%lx, act=0x%lx\n",
+		printk_deferred("[Core Pause]Already Resume: cpu=%d, req=0x%lx, pause=0x%lx, online=0x%lx, act=0x%lx\n",
 			cpu, cpu_resume_req.bits[0], cpu_pause_mask->bits[0],
 			cpu_online_mask->bits[0], cpu_active_mask->bits[0]);
 	} else {
-		pr_info("[Core Pause]Resume success: cpu=%d, req=0x%lx, pause=0x%lx, online=0x%lx, act=0x%lx\n",
+		printk_deferred("[Core Pause]Resume success: cpu=%d, req=0x%lx, pause=0x%lx, online=0x%lx, act=0x%lx\n",
 			cpu, cpu_resume_req.bits[0], cpu_pause_mask->bits[0],
 			cpu_online_mask->bits[0], cpu_active_mask->bits[0]);
 	}
@@ -582,7 +582,7 @@ void sched_pause_init(void)
 
 	pause_drain_thread = kthread_run(try_drain_rqs, &drain_data, "pause_drain_rqs");
 	if (IS_ERR(pause_drain_thread)) {
-		pr_info("Error creating pause_drain_rqs\n");
+		printk_deferred("Error creating pause_drain_rqs\n");
 		return;
 	}
 
