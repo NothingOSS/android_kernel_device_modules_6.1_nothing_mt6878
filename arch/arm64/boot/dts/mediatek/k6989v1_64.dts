@@ -131,7 +131,10 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 		compatible = "truly,td4330,cmd";
 		reg = <1>;
 		pm-enable-gpios = <&pio 215 0>;
-		reset-gpios = <&pio 230 0>;
+		reset-gpios = <&pio 9 0>;
+		swap-from-dts;
+		lane-swap-setting = <1 2 0 3 4 2>;
+		pn-swap-setting = <1 1 1 1 1 1>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {

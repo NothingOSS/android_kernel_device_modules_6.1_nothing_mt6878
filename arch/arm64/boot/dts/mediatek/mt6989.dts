@@ -7340,6 +7340,7 @@
 			#clock-cells = <0>;
 			#phy-cells = <0>;
 			clock-output-names = "mipi_tx0_pll";
+			dispsys-sel-offset = <0x170 0x174>;
 		};
 
 		mipi_tx_config1: mipi-tx-config@11ea0000 {
@@ -7351,6 +7352,7 @@
 			#clock-cells = <0>;
 			#phy-cells = <0>;
 			clock-output-names = "mipi_tx1_pll";
+			dispsys-sel-offset = <0x178 0x17c>;
 		};
 
 		hcp: hcp@15001000 {
