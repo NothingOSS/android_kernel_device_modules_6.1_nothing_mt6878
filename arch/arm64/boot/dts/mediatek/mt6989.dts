@@ -4035,6 +4035,7 @@
 				<0x160 0xffffffff 16>,
 				<0x200 0x00000003 16>;
 			clear-md = <0x1fc 0x80000000 1>;
+			smc-clear = <1>;
 		};
 		nsmpu: nsmpu@10351000 {
 			compatible = "mediatek,smpu";
@@ -4769,6 +4770,7 @@
 			dump = <0xd14 0xd18 0xd1c 0xd20 0xd24 0xd60 0xd64 0xd68 0xd6c>;
 			clear = <0x540 0x1 1>,
 				<0x540 0x0 1>;
+			mpu-base-clear = <1>;
 		};
 
 		nemi-hre-emi-apb@10344000 {
