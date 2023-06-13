@@ -1236,10 +1236,6 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 		}
 	}
 
-	/* MAC power on */
-	reset_control_deassert(port->mac_reset);
-	pm_runtime_get_sync(port->genpd_mac);
-
 	/* PHY power on and enable pipe clock */
 	reset_control_deassert(port->phy_reset);
 	pm_runtime_get_sync(port->genpd_phy);
@@ -1256,7 +1252,10 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 		goto err_phy_on;
 	}
 
-	/* Enable transaction layer clocks */
+	/* MAC power on and enable transaction layer clocks */
+	reset_control_deassert(port->mac_reset);
+	pm_runtime_get_sync(port->genpd_mac);
+
 	err = clk_bulk_prepare_enable(port->num_clks, port->clks);
 	if (err) {
 		dev_err(dev, "failed to enable clocks\n");
@@ -1266,6 +1265,8 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 	return 0;
 
 err_clk_init:
+	pm_runtime_put_sync(port->genpd_mac);
+	reset_control_assert(port->mac_reset);
 	phy_power_off(port->phy);
 err_phy_on:
 	phy_exit(port->phy);
@@ -1273,22 +1274,19 @@ err_phy_init:
 	pm_runtime_put_sync(port->genpd_phy);
 	reset_control_assert(port->phy_reset);
 
-	pm_runtime_put_sync(port->genpd_mac);
-	reset_control_assert(port->mac_reset);
-
 	return err;
 }
 
 static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 {
 	clk_bulk_disable_unprepare(port->num_clks, port->clks);
+	pm_runtime_put_sync(port->genpd_mac);
+	reset_control_assert(port->mac_reset);
+
 	phy_power_off(port->phy);
 	phy_exit(port->phy);
 	pm_runtime_put_sync(port->genpd_phy);
 	reset_control_assert(port->phy_reset);
-
-	pm_runtime_put_sync(port->genpd_mac);
-	reset_control_assert(port->mac_reset);
 
 	/* Set PCIe sw reset bit */
 	if (port->peri_reset_en)
