@@ -115,6 +115,7 @@ static int hrt_lp_switch;
 
 static struct completion cwb_cmp;
 
+static bool partial_roi_highlight;
 static bool partial_force_roi;
 static unsigned int partial_y_offset;
 static unsigned int partial_height;
@@ -611,6 +612,18 @@ int mtkfb_set_aod_backlight_level(unsigned int level)
 	return ret;
 }
 EXPORT_SYMBOL(mtkfb_set_aod_backlight_level);
+
+void mtkfb_set_partial_roi_highlight(int en)
+{
+	partial_roi_highlight = en;
+}
+EXPORT_SYMBOL(mtkfb_set_partial_roi_highlight);
+
+bool mtkfb_is_partial_roi_highlight(void)
+{
+	return partial_roi_highlight;
+}
+EXPORT_SYMBOL(mtkfb_is_partial_roi_highlight);
 
 int mtkfb_set_partial_update(unsigned int y_offset, unsigned int height)
 {
@@ -3086,6 +3099,19 @@ static void process_dbg_opt(const char *opt)
 		}
 
 		mtkfb_set_aod_backlight_level(level);
+	} else if (strncmp(opt, "set_partial_roi_highlight:", 26) == 0) {
+		int en;
+		int ret;
+
+		ret = sscanf(opt, "set_partial_roi_highlight:%d\n", &en);
+		if (ret != 1) {
+			DDPPR_ERR("%d fail to parse cmd %s\n",
+			__LINE__, opt);
+			return;
+		}
+
+		DDPINFO("set partial roi highlight:%d\n", en);
+		mtkfb_set_partial_roi_highlight(en);
 	} else if (strncmp(opt, "set_partial_update_y_and_h:", 27) == 0) {
 		unsigned int y_offset, height;
 		int ret;

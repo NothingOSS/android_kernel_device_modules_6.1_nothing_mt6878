@@ -14178,7 +14178,8 @@ static int mtk_crtc_partial_compute_ovl_roi(struct drm_crtc *crtc,
 		result->y = mtkfb_force_partial_y_offset();
 		result->width = crtc->state->adjusted_mode.hdisplay;
 		result->height = mtkfb_force_partial_height();
-		return 0;
+		if (!mtk_rect_is_empty(result))
+			return 0;
 	}
 
 	for (i = 0 ; i < mtk_crtc->layer_nr; i++) {
@@ -14198,12 +14199,12 @@ static int mtk_crtc_partial_compute_ovl_roi(struct drm_crtc *crtc,
 		dst_roi.width = drm_rect_width(&plane->state->dst);
 		dst_roi.height = drm_rect_height(&plane->state->dst);
 
-		//DDPDBG("hwc plane[%d]en:(%d) roi_num:(%llu) roi:(%llu,%llu,%llu,%llu)\n",
-		//i, plane->state->visible, plane_state->prop_val[PLANE_PROP_DIRTY_ROI_NUM],
-		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_X],
-		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_Y],
-		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_W],
-		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_H]);
+		DDPDBG("hwc plane[%d]en:(%d) roi_num:(%llu) roi:(%llu,%llu,%llu,%llu)\n",
+		i, plane->state->visible, plane_state->prop_val[PLANE_PROP_DIRTY_ROI_NUM],
+		plane_state->prop_val[PLANE_PROP_DIRTY_ROI_X],
+		plane_state->prop_val[PLANE_PROP_DIRTY_ROI_Y],
+		plane_state->prop_val[PLANE_PROP_DIRTY_ROI_W],
+		plane_state->prop_val[PLANE_PROP_DIRTY_ROI_H]);
 
 		/* skip if plane is not enable */
 		if (!plane->state->visible) {
@@ -14262,16 +14263,20 @@ static void mtk_crtc_validate_roi(struct drm_crtc *crtc,
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	static struct mtk_rect full_roi;
 	int slice_height = 40;
+	int y_diff = 0;
 
 	_assign_full_lcm_roi(crtc, &full_roi);
 
 	slice_height =
 			mtk_crtc->panel_ext->params->dsc_params.slice_height;
 
-	if (partial_roi->y % slice_height != 0)
-		partial_roi->y =
-			(partial_roi->y / slice_height) * slice_height;
+	if (partial_roi->y % slice_height != 0) {
+		y_diff =
+			partial_roi->y - (partial_roi->y / slice_height) * slice_height;
+		partial_roi->y -= y_diff;
+	}
 
+	partial_roi->height += y_diff;
 	if (partial_roi->height % slice_height != 0) {
 		partial_roi->height =
 			((partial_roi->height / slice_height) + 1) * slice_height;
@@ -14296,6 +14301,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	struct mtk_ddp_comp *comp;
 	struct mtk_ddp_comp *dsc_comp;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	static struct mtk_rect full_roi;
+	struct total_tile_overhead_v tile_overhead_v;
 	struct mtk_rect partial_roi = {0, 0, 0, 0};
 	bool partial_enable = enable;
 	int i, j;
@@ -14379,6 +14386,25 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	/* disable oddmr if enable partial update */
 	mtk_crtc->panel_ext->params->is_support_dmr = !partial_enable;
 	mtk_crtc->panel_ext->params->is_support_od = !partial_enable;
+
+	/* calculate total overhead vertical */
+	for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
+		mtk_ddp_comp_config_overhead_v(comp, &tile_overhead_v);
+		DDPDBG("%s:comp %s overhead_v:%d\n",
+			__func__, mtk_dump_comp_str(comp),
+			tile_overhead_v.overhead_v);
+	}
+
+	/*store total overhead vertical data*/
+	mtk_crtc_store_total_overhead_v(mtk_crtc, tile_overhead_v);
+
+	/* check total overhead vertical */
+	_assign_full_lcm_roi(crtc, &full_roi);
+	if (partial_roi.y < mtk_crtc->tile_overhead_v.overhead_v ||
+		partial_roi.y > full_roi.height - mtk_crtc->tile_overhead_v.overhead_v) {
+		mtk_crtc->tile_overhead_v.overhead_v = 0;
+		mtk_crtc->tile_overhead_v.overhead_v_scaling = 0;
+	}
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		mtk_ddp_comp_partial_update(comp, cmdq_handle, partial_roi, partial_enable);
@@ -18847,6 +18873,17 @@ void mtk_crtc_store_total_overhead(struct mtk_drm_crtc *mtk_crtc,
 struct total_tile_overhead mtk_crtc_get_total_overhead(struct mtk_drm_crtc *mtk_crtc)
 {
 	return mtk_crtc->tile_overhead;
+}
+
+void mtk_crtc_store_total_overhead_v(struct mtk_drm_crtc *mtk_crtc,
+	struct total_tile_overhead_v info)
+{
+	mtk_crtc->tile_overhead_v = info;
+}
+
+struct total_tile_overhead_v mtk_crtc_get_total_overhead_v(struct mtk_drm_crtc *mtk_crtc)
+{
+	return mtk_crtc->tile_overhead_v;
 }
 
 void mtk_addon_get_comp(u32 addon, u32 *comp_id, u8 *layer_idx)

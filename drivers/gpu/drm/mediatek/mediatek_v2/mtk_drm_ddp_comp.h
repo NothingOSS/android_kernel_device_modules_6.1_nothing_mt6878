@@ -725,6 +725,11 @@ unsigned int right_overhead_scaling;
 bool is_support;
 };
 
+struct total_tile_overhead_v {
+unsigned int overhead_v;
+unsigned int overhead_v_scaling;
+};
+
 struct mtk_ddp_config {
 	void *pa;
 	unsigned int w;
@@ -807,6 +812,8 @@ struct mtk_ddp_comp_funcs {
 	void (*dump)(struct mtk_ddp_comp *comp);
 	void (*reset)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
 	void (*config_overhead)(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg);
+	void (*config_overhead_v)(struct mtk_ddp_comp *comp,
+				struct total_tile_overhead_v  *tile_overhead_v);
 	int (*pq_frame_config)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		      unsigned int cmd, void *params, unsigned int size);
 	int (*pq_ioctl_transact)(struct mtk_ddp_comp *comp,
@@ -859,6 +866,13 @@ static inline void mtk_ddp_comp_config_overhead(struct mtk_ddp_comp *comp,
 {
 	if (comp && comp->funcs && comp->funcs->config_overhead && !comp->blank_mode)
 		comp->funcs->config_overhead(comp, cfg);
+}
+
+static inline void mtk_ddp_comp_config_overhead_v(struct mtk_ddp_comp *comp,
+				       struct total_tile_overhead_v  *tile_overhead_v)
+{
+	if (comp && comp->funcs && comp->funcs->config_overhead_v && !comp->blank_mode)
+		comp->funcs->config_overhead_v(comp, tile_overhead_v);
 }
 
 static inline void mtk_ddp_comp_config(struct mtk_ddp_comp *comp,

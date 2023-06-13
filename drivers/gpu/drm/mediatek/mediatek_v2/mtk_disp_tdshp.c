@@ -23,6 +23,11 @@ struct mtk_disp_tdshp_tile_overhead {
 	unsigned int comp_overhead;
 };
 
+struct mtk_disp_tdshp_tile_overhead_v {
+	unsigned int overhead_v;
+	unsigned int comp_overhead_v;
+};
+
 struct mtk_disp_tdshp_primary {
 	wait_queue_head_t size_wq;
 	bool get_size_available;
@@ -43,12 +48,14 @@ struct mtk_disp_tdshp {
 	struct mtk_ddp_comp *companion;
 	struct mtk_disp_tdshp_primary *primary_data;
 	struct mtk_disp_tdshp_tile_overhead tile_overhead;
+	struct mtk_disp_tdshp_tile_overhead_v tile_overhead_v;
 	atomic_t is_clock_on;
 };
 
 static bool set_partial_update;
 static unsigned int roi_height;
 static unsigned int y_overhead;
+static unsigned int y_comp_overhead;
 
 static inline struct mtk_disp_tdshp *comp_to_tdshp(struct mtk_ddp_comp *comp)
 {
@@ -495,6 +502,22 @@ static void mtk_disp_tdshp_config_overhead(struct mtk_ddp_comp *comp,
 	}
 }
 
+static void mtk_disp_tdshp_config_overhead_v(struct mtk_ddp_comp *comp,
+	struct total_tile_overhead_v  *tile_overhead_v)
+{
+	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
+
+	DDPDBG("line: %d\n", __LINE__);
+
+	/*set component overhead*/
+	tdshp_data->tile_overhead_v.comp_overhead_v = 2;
+	/*add component overhead on total overhead*/
+	tile_overhead_v->overhead_v +=
+		tdshp_data->tile_overhead_v.comp_overhead_v;
+	/*copy from total overhead info*/
+	tdshp_data->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+}
+
 static void mtk_disp_tdshp_config(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
@@ -530,8 +553,9 @@ static void mtk_disp_tdshp_config(struct mtk_ddp_comp *comp,
 		in_val = (in_width << 16) | (cfg->h);
 		out_val = (out_width << 16) | (cfg->h);
 	} else {
-		in_val = (in_width << 16) | (roi_height + (y_overhead * 2));
-		out_val = (out_width << 16) | (roi_height);
+		in_val = (in_width << 16) | (roi_height + y_overhead * 2);
+		out_val = (out_width << 16) |
+				  (roi_height + (y_overhead - y_comp_overhead) * 2);
 	}
 
 	DDPINFO("%s: in: 0x%08x, out: 0x%08x\n", __func__, in_val, out_val);
@@ -554,7 +578,7 @@ static void mtk_disp_tdshp_config(struct mtk_ddp_comp *comp,
 				comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, 0x0, ~0);
 		else
 			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, y_overhead, ~0);
+				comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, y_comp_overhead, ~0);
 	}
 
 	// DISP_TDSHP_SWITCH
@@ -794,6 +818,7 @@ static int mtk_tdshp_ioctl_transact(struct mtk_ddp_comp *comp,
 static int mtk_tdshp_set_partial_update(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
 {
+	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
 
@@ -802,17 +827,24 @@ static int mtk_tdshp_set_partial_update(struct mtk_ddp_comp *comp,
 
 	set_partial_update = enable;
 	roi_height = partial_roi.height;
-	y_overhead = 0;/*(partial_roi.y > 2) ? 2 : partial_roi.y;*/
+	y_overhead = (partial_roi.y < tdshp_data->tile_overhead_v.overhead_v ||
+			partial_roi.y > full_height - tdshp_data->tile_overhead_v.overhead_v)
+			? 0 : tdshp_data->tile_overhead_v.overhead_v;
+	y_comp_overhead = (!y_overhead) ? 0 : tdshp_data->tile_overhead_v.comp_overhead_v;
+
+	DDPDBG("%s, %s y_overhead:%d, y_comp_overhead:%d\n",
+			__func__, mtk_dump_comp_str(comp), y_overhead, y_comp_overhead);
 
 	if (set_partial_update) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_TDSHP_INPUT_SIZE,
-			roi_height + (y_overhead * 2), 0xffff);
+			roi_height + y_overhead * 2, 0xffff);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_TDSHP_OUTPUT_SIZE, roi_height, 0xffff);
+			comp->regs_pa + DISP_TDSHP_OUTPUT_SIZE,
+			roi_height + (y_overhead - y_comp_overhead) * 2, 0xffff);
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, y_overhead, 0xff);
+			comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, y_comp_overhead, 0xff);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_TDSHP_INPUT_SIZE,
@@ -838,6 +870,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_tdshp_funcs = {
 	.prepare = mtk_disp_tdshp_prepare,
 	.unprepare = mtk_disp_tdshp_unprepare,
 	.config_overhead = mtk_disp_tdshp_config_overhead,
+	.config_overhead_v = mtk_disp_tdshp_config_overhead_v,
 	.io_cmd = mtk_tdshp_io_cmd,
 	.pq_frame_config = mtk_tdshp_pq_frame_config,
 	.pq_ioctl_transact = mtk_tdshp_ioctl_transact,

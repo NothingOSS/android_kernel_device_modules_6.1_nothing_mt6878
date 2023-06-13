@@ -976,6 +976,7 @@ struct mtk_drm_crtc {
 	atomic_t force_high_step;
 	int force_high_enabled;
 	struct total_tile_overhead tile_overhead;
+	struct total_tile_overhead_v tile_overhead_v;
 
 	struct task_struct *mode_switch_task;
 	wait_queue_head_t mode_switch_wq;
@@ -1253,6 +1254,9 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc, struct cmdq_pkt *ha
 void mtk_crtc_store_total_overhead(struct mtk_drm_crtc *mtk_crtc,
 	struct total_tile_overhead info);
 struct total_tile_overhead mtk_crtc_get_total_overhead(struct mtk_drm_crtc *mtk_crtc);
+void mtk_crtc_store_total_overhead_v(struct mtk_drm_crtc *mtk_crtc,
+	struct total_tile_overhead_v info);
+struct total_tile_overhead_v mtk_crtc_get_total_overhead_v(struct mtk_drm_crtc *mtk_crtc);
 bool mtk_crtc_check_is_scaling_comp(struct mtk_drm_crtc *mtk_crtc,
 		enum mtk_ddp_comp_id comp_id);
 void mtk_crtc_divide_default_path_by_rsz(struct mtk_drm_crtc *mtk_crtc);

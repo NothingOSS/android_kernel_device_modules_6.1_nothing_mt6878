@@ -63,6 +63,8 @@ void mtk_drm_del_cb_data(struct cmdq_cb_data data, unsigned int crtc_id);
 int hrt_lp_switch_get(void);
 void mtk_dprec_snapshot(void);
 
+void mtkfb_set_partial_roi_highlight(int en);
+bool mtkfb_is_partial_roi_highlight(void);
 void mtkfb_set_force_partial_roi(int en);
 bool mtkfb_is_force_partial_roi(void);
 int mtkfb_force_partial_y_offset(void);
