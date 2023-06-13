@@ -1035,7 +1035,7 @@ struct cmdq_pkt *cmdq_pkt_create(struct cmdq_client *client)
 	}
 
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
-	if (client && cmdq_util_helper->is_feature_en(CMDQ_LOG_FEAT_PERF))
+	if (client)
 		cmdq_pkt_perf_begin(pkt);
 
 	if (!cmdq_util_is_prebuilt_client(client))
@@ -2195,6 +2195,9 @@ void cmdq_pkt_perf_begin(struct cmdq_pkt *pkt)
 	dma_addr_t pa;
 	struct cmdq_pkt_buffer *buf;
 
+	if (!cmdq_util_helper->is_feature_en(CMDQ_LOG_FEAT_PERF))
+		return;
+
 	if (!pkt->buf_size)
 		if (cmdq_pkt_add_cmd_buffer(pkt) < 0)
 			return;
@@ -2211,6 +2214,9 @@ void cmdq_pkt_perf_end(struct cmdq_pkt *pkt)
 {
 	dma_addr_t pa;
 	struct cmdq_pkt_buffer *buf;
+
+	if (!cmdq_util_helper->is_feature_en(CMDQ_LOG_FEAT_PERF))
+		return;
 
 	if (!pkt->buf_size)
 		if (cmdq_pkt_add_cmd_buffer(pkt) < 0)
@@ -2414,8 +2420,7 @@ s32 cmdq_pkt_finalize(struct cmdq_pkt *pkt)
 		return 0;
 
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
-	if (cmdq_util_helper->is_feature_en(CMDQ_LOG_FEAT_PERF))
-		cmdq_pkt_perf_end(pkt);
+	cmdq_pkt_perf_end(pkt);
 
 #ifdef CMDQ_SECURE_SUPPORT
 	if (pkt->sec_data) {
@@ -2612,10 +2617,12 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 	struct cmdq_cb_data user_data = {
 		.data = item->data, .err = data.err };
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+#ifdef CMDQ_SECURE_SUPPORT
 	u64 debug_end[2] = {0};
 	u32 debug_cnt = 0;
 	u8 irq_long_times;
 	struct cmdq_client *client = pkt->cl;
+#endif
 #endif
 
 	cmdq_log("%s pkt:%p", __func__, pkt);
@@ -2627,19 +2634,27 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 	}
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+#ifdef CMDQ_SECURE_SUPPORT
 	debug_end[debug_cnt++] = sched_clock();
+#endif
 #endif
 	if (item->cb)
 		item->cb(user_data);
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
+#ifdef CMDQ_SECURE_SUPPORT
 	debug_end[debug_cnt++] = sched_clock();
+#endif
 #endif
 	complete(&pkt->cmplt);
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	irq_long_times = cmdq_get_irq_long_times(client->chan);
-	if (debug_end[1] - debug_end[0] >= 500000 && !irq_long_times)
-		cmdq_util_err("IRQ_LONG:%llu in user callback",
-			debug_end[1] - debug_end[0]);
+#ifdef CMDQ_SECURE_SUPPORT
+	if (!pkt->sec_data) {
+		irq_long_times = cmdq_get_irq_long_times(client->chan);
+		if (debug_end[1] - debug_end[0] >= 500000 && !irq_long_times)
+			cmdq_util_err("IRQ_LONG:%llu in user callback",
+				debug_end[1] - debug_end[0]);
+	}
+#endif
 #endif
 }
 #endif
@@ -2749,7 +2764,6 @@ void cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
 	if (!err_num[hwid])
 		cmdq_util_helper->error_enable((u8)hwid);
 
-	cmdq_dump_core(client->chan);
 
 #ifdef CMDQ_SECURE_SUPPORT
 	/* for secure path dump more detail */
@@ -2759,6 +2773,7 @@ void cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
 		cmdq_sec_helper->sec_err_dump_fp(
 			pkt, client, (u64 **)&inst, &mod);
 	} else {
+		cmdq_dump_core(client->chan);
 		cmdq_thread_dump(client->chan, pkt, (u64 **)&inst, &pc);
 	}
 
@@ -2772,7 +2787,12 @@ void cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
 #endif
 
 	if (inst && inst->op == CMDQ_CODE_WFE) {
+#ifdef CMDQ_SECURE_SUPPORT
+		if (!pkt->sec_data)
+			cmdq_print_wait_summary(client->chan, pc, inst);
+#else
 		cmdq_print_wait_summary(client->chan, pc, inst);
+#endif
 
 		if (inst->arg_a >= CMDQ_TOKEN_PREBUILT_MDP_WAIT &&
 			inst->arg_a <= CMDQ_TOKEN_DISP_VA_END)
