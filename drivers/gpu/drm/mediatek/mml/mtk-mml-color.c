@@ -19,7 +19,7 @@
 #define pr_fmt(fmt) "[mml_pq_color]" fmt
 
 #define COLOR_WAIT_TIMEOUT_MS (50)
-#define COLOR_REG_NUM (155)
+#define COLOR_REG_NUM (368)
 
 #define REG_NOT_SUPPORT 0xfff
 
