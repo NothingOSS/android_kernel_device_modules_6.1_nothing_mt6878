@@ -54,6 +54,8 @@ int mtk_drm_gem_dumb_map_offset(struct drm_file *file_priv,
 int mtk_drm_gem_mmap(struct file *filp, struct vm_area_struct *vma);
 int mtk_drm_gem_mmap_buf(struct drm_gem_object *obj,
 			 struct vm_area_struct *vma);
+void mtk_drm_validate_slc(struct dma_buf *buf_hnd);
+void mtk_drm_invalidate_slc(struct dma_buf *buf_hnd);
 void mtk_drm_gem_ion_free_handle(struct dma_buf *buf_hnd, const char *name,
 				int line);
 struct dma_buf *mtk_drm_gem_ion_import_handle(int fd);

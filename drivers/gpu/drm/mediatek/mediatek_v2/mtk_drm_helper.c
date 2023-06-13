@@ -21,6 +21,7 @@ static struct mtk_drm_helper help_info[] = {
 	{MTK_DRM_OPT_STAGE, 0, "MTK_DRM_OPT_STAGE"},       /* must enable */
 	{MTK_DRM_OPT_USE_CMDQ, 0, "MTK_DRM_OPT_USE_CMDQ"}, /* must enable */
 	{MTK_DRM_OPT_USE_M4U, 1, "MTK_DRM_OPT_USE_M4U"},   /* must enable */
+	{MTK_DRM_OPT_SLC_ALL_CACHE, 0, "MTK_DRM_OPT_SLC_ALL_CACHE"},
 
 	{MTK_DRM_OPT_MMQOS_SUPPORT, 1, "MTK_DRM_OPT_MMQOS_SUPPORT"},
 	{MTK_DRM_OPT_MMDVFS_SUPPORT, 1, "MTK_DRM_OPT_MMDVFS_SUPPORT"},

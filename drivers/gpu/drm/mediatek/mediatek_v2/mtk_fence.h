@@ -70,6 +70,7 @@ struct mtk_fence_buf_info {
 	unsigned long long ts_period_keep;
 	unsigned int seq;
 	unsigned int layer_type;
+	unsigned int slc_cached;
 };
 
 struct mtk_fence_sync_info {

@@ -23,6 +23,8 @@
 #include "mtk_drm_mmp.h"
 #include "iommu_debug.h"
 #include <soc/mediatek/smi.h>
+#include "slbc_ops.h"
+#include "mtk_heap.h"
 #ifdef IF_ZERO
 #include "mt_iommu.h"
 #include "mtk_iommu_ext.h"
@@ -455,6 +457,34 @@ int mtk_drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	obj = vma->vm_private_data;
 
 	return mtk_drm_gem_object_mmap(obj, vma);
+}
+
+void mtk_drm_invalidate_slc(struct dma_buf *buf_hnd)
+{
+	int gid;
+
+	gid = dma_buf_get_gid(buf_hnd);
+	if (gid < 0)
+		return;
+
+	DDPDBG("%s gid:%d\n", __func__, gid);
+	slbc_invalidate(ID_OVL_R, gid);
+	slbc_gid_release(ID_OVL_R, gid);
+}
+
+void mtk_drm_validate_slc(struct dma_buf *buf_hnd)
+{
+	struct slbc_gid_data slbc_data = {0};
+	int gid = 0;
+
+	gid = dma_buf_get_gid(buf_hnd);
+	if (gid < 0)
+		return;
+
+	DDPDBG("%s gid:%d\n", __func__, gid);
+	slbc_data.dma_size = buf_hnd->size;
+	slbc_gid_request(ID_OVL_R, &gid, &slbc_data);
+	slbc_validate(ID_OVL_R, gid);
 }
 
 void mtk_drm_gem_ion_free_handle(struct dma_buf *buf_hnd,

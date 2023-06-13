@@ -468,6 +468,10 @@ void mtk_release_fence(unsigned int session_id, unsigned int layer_id,
 		list_del_init(&buf->list);
 
 		if (buf->buf_hnd) {
+			/* buffer info slc_cached is set which indicate SLC cache feature enabled */
+			/* invalidate slc */
+			if (buf->slc_cached == true)
+				mtk_drm_invalidate_slc(buf->buf_hnd);
 			mtk_drm_gem_ion_free_handle(buf->buf_hnd,
 					__func__, __LINE__);
 
@@ -797,6 +801,7 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 	struct mtk_fence_info *layer_info = NULL;
 	struct mtk_fence_session_sync_info *session_info = NULL;
 	struct dma_fence *fence = NULL;
+	struct mtk_drm_private *priv = dev->dev_private;
 
 	if (buf == NULL) {
 		DDPPR_ERR("Prepare Buffer, buf is NULL!!\n");
@@ -854,6 +859,12 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 		return NULL;
 	}
 
+	/* validate SLC from dma_buff and set slc_cached flag */
+	if (mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_SLC_ALL_CACHE)) {
+		mtk_drm_validate_slc(buf_info->buf_hnd);
+		buf_info->slc_cached = true;
+	}
 	buf_info->mva_offset = 0;
 	buf_info->trigger_ticket = 0;
 	buf_info->buf_state = create;
