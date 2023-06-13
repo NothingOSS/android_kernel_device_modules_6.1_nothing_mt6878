@@ -18,6 +18,7 @@
 #include <linux/pm_qos.h>
 #include <linux/math64.h>
 #include "mdp_pmqos.h"
+#include "mdp_dpc.h"
 
 #include "cmdq_helper_ext.h"
 
@@ -315,6 +316,7 @@ static void cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 					__func__, ret);
 		}
 		ret = pm_runtime_resume_and_get(larb);
+		mdp_dpc_power_keep();
 		cmdq_mdp_get_func()->mdpEnableCommonClock(enable, engine_flag);
 
 		if (ret)
@@ -322,6 +324,7 @@ static void cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 				__func__, ret);
 	} else {
 		cmdq_mdp_get_func()->mdpEnableCommonClock(enable, engine_flag);
+		mdp_dpc_power_release();
 		pm_runtime_put_sync(larb);
 		if (mdpdev) {
 			ret = pm_runtime_put_sync(mdpdev);

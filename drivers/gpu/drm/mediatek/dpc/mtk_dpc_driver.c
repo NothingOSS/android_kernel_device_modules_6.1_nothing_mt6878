@@ -28,6 +28,7 @@
 
 #include "mtk_disp_vidle.h"
 #include "mtk-mml-dpc.h"
+#include "mdp_dpc.h"
 
 int debug_mmp = 1;
 module_param(debug_mmp, int, 0644);
@@ -1095,6 +1096,7 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 
 	mtk_vidle_register(&funcs);
 	mml_dpc_register(&funcs);
+	mdp_dpc_register(&funcs);
 
 	DPCFUNC("-");
 	return ret;
