@@ -83,6 +83,7 @@ struct dvfs_params {
 	u8 lock_cnt[MTK_VDEC_HW_NUM]; /* lock cnt */
 	u8 frame_need_update;	/* this frame begin / end needs update */
 	u32 target_bw_factor; /* target bw = base bw * target_bw_factor*/
+	u32 os_bw[2];		/* additional bw for overspec, (> 0 => support overspec) */
 	struct timer_list vdec_active_checker;
 	u8 has_timer;
 	u8 mmdvfs_in_vcp; /* need send dvfs/mmqos request to vcp*/
