@@ -400,8 +400,8 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 		enc_pic_width = enc_slice_width * (dsc_params->slice_mode + 1);
 		if (spr_params->enable && spr_params->relay == 0
 			&& disp_spr_bypass == 0) {
-			pic_group_width = (enc_pic_width + 2) / 3;
 			slice_group_width = (enc_slice_width + 2) / 3;
+			pic_group_width = slice_group_width * (dsc_params->slice_mode + 1);
 		}
 		if (dsc->data->need_obuf_sw && enc_pic_width < 1440) {
 			if (dsc->data->decrease_outstream_buf)
@@ -452,7 +452,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 			DISP_REG_DSC_SLICE_W, handle);
 
 		mtk_ddp_write_relaxed(comp,
-			(slice_width % 3) << 30 |
+			(enc_slice_width % 3) << 30 |
 			(pic_height_ext_num - 1) << 16 |
 			(slice_height - 1),
 			DISP_REG_DSC_SLICE_H, handle);
