@@ -1328,7 +1328,7 @@ static const struct drm_panel_funcs jdi_drm_funcs = {
 static int jdi_probe(struct mipi_dsi_device *dsi)
 {
 	struct device *dev = &dsi->dev;
-	struct device_node *dsi_node;
+	struct device_node *dsi_node, *remote_node = NULL, *endpoint = NULL;
 	struct jdi *ctx;
 	struct device_node *backlight;
 	unsigned int value;
@@ -1337,6 +1337,22 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 	pr_info("%s+\n", __func__);
 
 	dsi_node = of_get_parent(dev->of_node);
+	if (dsi_node) {
+		endpoint = of_graph_get_next_endpoint(dsi_node, NULL);
+		if (endpoint) {
+			remote_node = of_graph_get_remote_port_parent(endpoint);
+			if (!remote_node) {
+				pr_info("No panel connected,skip probe lcm\n");
+				return -ENODEV;
+			}
+			pr_info("device node name:%s\n", remote_node->name);
+		}
+	}
+	if (remote_node != dev->of_node) {
+		pr_info("%s+ skip probe due to not current lcm\n", __func__);
+		return -ENODEV;
+	}
+
 	ctx = devm_kzalloc(dev, sizeof(struct jdi), GFP_KERNEL);
 	if (!ctx)
 		return -ENOMEM;
@@ -1413,7 +1429,7 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 
 #endif
 
-	pr_info("%s- jdi,nt36672e,cphy,vdo,hfp\n", __func__);
+	pr_info("%s- jdi,nt36672e,cphy,vdo\n", __func__);
 
 	return ret;
 }
