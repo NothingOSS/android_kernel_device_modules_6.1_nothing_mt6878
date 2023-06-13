@@ -990,6 +990,7 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 	aal_data->primary_data->hist.essStrengthIndex = aal_data->primary_data->ess_level;
 	aal_data->primary_data->hist.ess_enable = aal_data->primary_data->ess_en;
 	aal_data->primary_data->hist.dre_enable = aal_data->primary_data->dre_en;
+	aal_data->primary_data->hist.fps = aal_data->primary_data->fps;
 
 	if (aal_data->primary_data->isDualPQ) {
 		aal_data->primary_data->hist.pipeLineNum = 2;
@@ -1098,9 +1099,42 @@ void dump_hist(struct mtk_ddp_comp *comp, struct DISP_AAL_HIST *data)
 			data->dre_enable);
 }
 
+void dump_base_voltage(struct DISP_PANEL_BASE_VOLTAGE *data)
+{
+	int i = 0;
+
+	if (data->flag) {
+		pr_notice("Anodeoffset:\n");
+		for (i = 0; i < 23; i++)
+			pr_notice("AnodeOffset[%d] = %d\n", i, data->AnodeOffset[i]);
+
+		pr_notice("ELVSSoffset:\n");
+		for (i = 0; i < 23; i++)
+			pr_notice("ELVSSBase[%d] = %d\n", i, data->ELVSSBase[i]);
+	} else
+		pr_notice("invalid base voltage\n");
+}
+
 static bool debug_dump_aal_hist;
 int mtk_drm_ioctl_aal_get_hist_impl(struct mtk_ddp_comp *comp, void *data)
 {
+	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct drm_display_mode *mode;
+
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+	mode = mtk_crtc_get_display_mode_by_comp(__func__, crtc, comp, false);
+	if (mode == NULL)
+		DDPPR_ERR("display_mode is NULL can not get fps\n");
+	else
+		aal_data->primary_data->fps = drm_mode_vrefresh(mode);
+
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+	DDPINFO("%s fps=%d +\n", __func__, aal_data->primary_data->fps);
+
 	disp_aal_wait_hist(comp);
 	if (disp_aal_copy_hist_to_user(comp, (struct DISP_AAL_HIST *) data) < 0)
 		return -EFAULT;
@@ -1703,6 +1737,7 @@ int mtk_drm_ioctl_aal_set_param_impl(struct mtk_ddp_comp *comp, void *data)
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
 	int prev_backlight = 0;
+	int prev_elvsspn = 0;
 	struct DISP_AAL_PARAM *param = (struct DISP_AAL_PARAM *) data;
 	bool delay_refresh = false;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
@@ -1724,7 +1759,9 @@ int mtk_drm_ioctl_aal_set_param_impl(struct mtk_ddp_comp *comp, void *data)
 	memcpy(&aal_data->primary_data->aal_param, param, sizeof(*param));
 
 	prev_backlight = aal_data->primary_data->backlight_set;
+	prev_elvsspn = aal_data->primary_data->elvsspn_set;
 	aal_data->primary_data->backlight_set = aal_data->primary_data->aal_param.FinalBacklight;
+	aal_data->primary_data->elvsspn_set = aal_data->primary_data->ess20_spect_param.ELVSSPN;
 
 	mutex_lock(&aal_data->primary_data->sram_lock);
 	ret = mtk_crtc_user_cmd(crtc, comp, SET_PARAM, data);
@@ -1742,6 +1779,8 @@ int mtk_drm_ioctl_aal_set_param_impl(struct mtk_ddp_comp *comp, void *data)
 	else
 		aal_data->primary_data->ess20_spect_param.flag |= (1 << SET_BACKLIGHT_LEVEL);
 
+	if (prev_elvsspn == aal_data->primary_data->elvsspn_set)
+		aal_data->primary_data->ess20_spect_param.flag &= (~(1 << SET_ELVSS_PN));
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
 		if (aal_data->primary_data->aal_param.silky_bright_flag == 0) {
 			AALAPI_LOG("connector_id:%d, bl:%d, silky_bright_flag:%d, ELVSSPN:%u, flag:%u\n",
@@ -2574,6 +2613,36 @@ int mtk_drm_ioctl_aal_set_trigger_state(struct drm_device *dev, void *data,
 		return -1;
 	}
 	return mtk_drm_ioctl_aal_set_trigger_state_impl(comp, data);
+}
+
+int mtk_drm_ioctl_aal_get_base_voltage(struct mtk_ddp_comp *comp, void *data)
+{
+	int ret = 0;
+	struct DISP_PANEL_BASE_VOLTAGE *dst_baseVoltage = (struct DISP_PANEL_BASE_VOLTAGE *)data;
+	struct DISP_PANEL_BASE_VOLTAGE src_baseVoltage;
+	struct mtk_ddp_comp *output_comp;
+
+	output_comp = mtk_ddp_comp_request_output(comp->mtk_crtc);
+	if (!output_comp) {
+		DDPPR_ERR("%s:invalid output comp\n", __func__);
+		return -EFAULT;
+	}
+
+	AALFLOW_LOG("get base_voltage\n");
+
+	/* DSI_SEND_DDIC_CMD */
+	if (output_comp) {
+		ret = mtk_ddp_comp_io_cmd(output_comp, NULL,
+			DSI_READ_ELVSS_BASE_VOLTAGE, &src_baseVoltage);
+		if (ret < 0)
+			DDPPR_ERR("%s:read elvss base voltage failed\n", __func__);
+		else {
+			memcpy(dst_baseVoltage, &src_baseVoltage, sizeof(struct DISP_PANEL_BASE_VOLTAGE));
+			if (debug_dump_aal_hist)
+				dump_base_voltage(&src_baseVoltage);
+		}
+	}
+	return ret;
 }
 
 static void dumpAlgAALClarityRegOutput(struct DISP_CLARITY_REG clarityHWReg)
@@ -4062,6 +4131,9 @@ static int mtk_aal_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 		break;
 	case PQ_AAL_SET_TRIGGER_STATE:
 		ret = mtk_drm_ioctl_aal_set_trigger_state_impl(comp, params);
+		break;
+	case PQ_AAL_GET_BASE_VOLTAGE:
+		ret = mtk_drm_ioctl_aal_get_base_voltage(comp, params);
 		break;
 	default:
 		break;

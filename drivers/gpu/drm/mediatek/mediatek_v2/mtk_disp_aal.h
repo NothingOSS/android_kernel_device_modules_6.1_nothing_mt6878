@@ -331,6 +331,7 @@ struct mtk_disp_aal_primary {
 	struct workqueue_struct *flip_wq;
 	struct workqueue_struct *refresh_wq;
 	int backlight_set;
+	int elvsspn_set;
 	spinlock_t dre3_gain_lock;
 	atomic_t dre_halt;
 	struct DISP_DRE30_INIT init_dre30;
