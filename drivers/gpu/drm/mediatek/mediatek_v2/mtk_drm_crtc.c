@@ -2445,11 +2445,15 @@ void mtk_crtc_ddp_prepare(struct mtk_drm_crtc *mtk_crtc)
 			mtk_ddp_comp_clk_prepare(comp);
 			mtk_ddp_comp_prepare(comp);
 		}
+	}
+
+	if (mtk_crtc->is_dual_pipe || mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_OVLSYS_CASCADE)) {
 		for (i = 0; i < ADDON_SCN_NR; i++) {
 			addon_data = mtk_addon_get_scenario_data_dual(__func__,
 								 &mtk_crtc->base, i);
 			if (!addon_data)
-				break;
+				continue;
 
 			for (j = 0; j < addon_data->module_num; j++) {
 				module = addon_data->module_data[j].module;
@@ -2518,12 +2522,15 @@ void mtk_crtc_ddp_unprepare(struct mtk_drm_crtc *mtk_crtc)
 			mtk_ddp_comp_clk_unprepare(comp);
 			mtk_ddp_comp_unprepare(comp);
 		}
+	}
 
+	if (mtk_crtc->is_dual_pipe || mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_OVLSYS_CASCADE)) {
 		for (i = 0; i < ADDON_SCN_NR; i++) {
 			addon_data = mtk_addon_get_scenario_data_dual(__func__,
 								 &mtk_crtc->base, i);
 			if (!addon_data)
-				break;
+				continue;
 
 			for (j = 0; j < addon_data->module_num; j++) {
 				module = addon_data->module_data[j].module;
@@ -3039,6 +3046,10 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 		int h = crtc->state->adjusted_mode.vdisplay;
 		struct mtk_ddp_comp *output_comp;
 		struct mtk_rect rsz_roi = {0, 0, w, h};
+		const struct mtk_addon_path_data *path_data;
+		const struct mtk_mmsys_reg_data *reg_data;
+		unsigned int target_comp, prev_comp_id;
+		const struct mtk_addon_module_data **module;
 
 		mtk_addon_get_module(ONE_SCALING, mtk_crtc, &addon_module[0], &addon_module[1]);
 		mtk_addon_get_comp(lye_state->rpo_lye, &(addon_config.config_type.tgt_comp), NULL);
@@ -3060,8 +3071,17 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 
 		addon_config.config_type.module = addon_module[0]->module;
 		addon_config.config_type.type = addon_module[0]->type;
-		mtk_addon_disconnect_embed(crtc, ddp_mode, addon_module[0], &addon_config,
-					   cmdq_handle);
+		path_data = mtk_addon_module_get_path(addon_module[0]->module);
+		reg_data = mtk_crtc->mmsys_reg_data;
+		prev_comp_id = path_data->path[path_data->path_len - 1];
+		target_comp = addon_config.config_type.tgt_comp;
+		if (reg_data && reg_data->dispsys_map &&
+				(reg_data->dispsys_map[prev_comp_id] == reg_data->dispsys_map[target_comp]))
+			module = &addon_module[0];
+		else
+			module = &addon_module[1];
+		mtk_addon_disconnect_embed(crtc, ddp_mode, *module, &addon_config,
+				   cmdq_handle);
 
 		if (mtk_crtc->is_dual_pipe) {
 			addon_config.config_type.module = addon_module[1]->module;
@@ -3487,6 +3507,10 @@ _mtk_crtc_lye_addon_module_connect(
 		const struct mtk_addon_module_data *addon_module[2] = {NULL, NULL};
 		union mtk_addon_config addon_config;
 		u32 tgt_comp[2];
+		const struct mtk_addon_path_data *path_data;
+		const struct mtk_mmsys_reg_data *reg_data;
+		unsigned int prev_comp_id;
+		const struct mtk_addon_module_data **module;
 
 		mtk_addon_get_module(ONE_SCALING, mtk_crtc, &addon_module[0], &addon_module[1]);
 		mtk_addon_get_comp(lye_state->rpo_lye, &tgt_comp[0], NULL);
@@ -3501,11 +3525,21 @@ _mtk_crtc_lye_addon_module_connect(
 			addon_config.config_type.tgt_comp = tgt_comp[pipe];
 
 			if (!mtk_crtc->is_dual_pipe) {
+				path_data = mtk_addon_module_get_path(addon_module[0]->module);
+				reg_data = mtk_crtc->mmsys_reg_data;
+				prev_comp_id = path_data->path[path_data->path_len - 1];
+				if (reg_data && reg_data->dispsys_map &&
+						(reg_data->dispsys_map[prev_comp_id] ==
+						reg_data->dispsys_map[tgt_comp[pipe]]))
+					module = &addon_module[0];
+				else
+					module = &addon_module[1];
+
 				if (addon_module[0]->type == ADDON_BETWEEN)
-					mtk_addon_connect_between(crtc, ddp_mode, addon_module[0],
+					mtk_addon_connect_between(crtc, ddp_mode, *module,
 								&addon_config, cmdq_handle);
 				else if (addon_module[0]->type == ADDON_EMBED)
-					mtk_addon_connect_embed(crtc, ddp_mode, addon_module[0],
+					mtk_addon_connect_embed(crtc, ddp_mode, *module,
 								&addon_config, cmdq_handle);
 				break;
 			}
@@ -18157,6 +18191,12 @@ void mtk_addon_get_comp(u32 addon, u32 *comp_id, u8 *layer_idx)
 	case 3:
 		*comp_id = DDP_COMPONENT_OVL3_2L;
 		break;
+	case 4:
+		*comp_id = DDP_COMPONENT_OVL4_2L;
+		break;
+	case 5:
+		*comp_id = DDP_COMPONENT_OVL5_2L;
+		break;
 	default:
 		break;
 	}
@@ -18181,6 +18221,12 @@ void mtk_addon_set_comp(u32 *addon, const u32 comp_id, const u8 layer_idx)
 	case DDP_COMPONENT_OVL3_2L:
 		*addon <<= 15;
 		break;
+	case DDP_COMPONENT_OVL4_2L:
+		*addon <<= 20;
+		break;
+	case DDP_COMPONENT_OVL5_2L:
+		*addon <<= 25;
+		break;
 	default:
 		break;
 	}
@@ -18201,13 +18247,10 @@ void mtk_addon_get_module(const enum addon_scenario scn,
 	if (addon_data->module_num != 1)
 		return; /* TBD */
 
-	if (mtk_crtc->is_dual_pipe) {
-		addon_data_dual = mtk_addon_get_scenario_data_dual(__func__, &mtk_crtc->base, scn);
-		if (!addon_data_dual)
-			return;
-	}
+	addon_data_dual = mtk_addon_get_scenario_data_dual(__func__, &mtk_crtc->base, scn);
+	if (!addon_data_dual)
+		return;
 
 	*addon_module = &addon_data->module_data[0];
-	if (mtk_crtc->is_dual_pipe)
-		*addon_module_dual = &addon_data_dual->module_data[0];
+	*addon_module_dual = &addon_data_dual->module_data[0];
 }
