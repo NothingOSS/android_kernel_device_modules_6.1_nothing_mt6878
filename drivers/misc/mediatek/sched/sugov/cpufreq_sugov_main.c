@@ -388,6 +388,11 @@ skip_rq_uclamp:
 }
 EXPORT_SYMBOL(mtk_cpu_util);
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+void (*sugov_grp_awr_update_cpu_tar_util_hook)(int cpu);
+EXPORT_SYMBOL(sugov_grp_awr_update_cpu_tar_util_hook);
+#endif
+
 static void sugov_get_util(struct sugov_cpu *sg_cpu)
 {
 	struct rq *rq = cpu_rq(sg_cpu->cpu);
@@ -398,6 +403,10 @@ static void sugov_get_util(struct sugov_cpu *sg_cpu)
 	sg_cpu->util = mtk_cpu_util(sg_cpu->cpu, cpu_util_cfs(sg_cpu->cpu), FREQUENCY_UTIL,
 							(struct task_struct *)UINTPTR_MAX,
 							0, SCHED_CAPACITY_SCALE);
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+	if (sugov_grp_awr_update_cpu_tar_util_hook)
+		sugov_grp_awr_update_cpu_tar_util_hook(sg_cpu->cpu);
+#endif
 }
 
 /**

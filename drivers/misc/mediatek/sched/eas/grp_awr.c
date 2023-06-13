@@ -138,6 +138,8 @@ int grp_awr_init(void)
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++)
 		pgrp_tar_act_rto[grp_idx] = 85;
 
+	sugov_grp_awr_update_cpu_tar_util_hook = grp_awr_update_cpu_tar_util;
+
 	grp_awr_init_finished = true;
 	return 0;
 }

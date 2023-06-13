@@ -603,9 +603,6 @@ void flt_rvh_enqueue_task(void *data, struct rq *rq,
 	}
 	if (trace_sched_enq_deq_task_enabled())
 		trace_sched_enq_deq_task(p, 1, cpumask_bits(&p->cpus_mask)[0], fsrq);
-#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-	grp_awr_update_cpu_tar_util(rq->cpu);
-#endif
 }
 
 void flt_rvh_dequeue_task(void *data, struct rq *rq,
@@ -645,9 +642,6 @@ void flt_rvh_dequeue_task(void *data, struct rq *rq,
 	}
 	if (trace_sched_enq_deq_task_enabled())
 		trace_sched_enq_deq_task(p, 0, cpumask_bits(&p->cpus_mask)[0], fsrq);
-#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-	grp_awr_update_cpu_tar_util(rq->cpu);
-#endif
 }
 
 static int account_busy_for_task_demand(struct rq *rq, struct task_struct *p, int event)
@@ -1184,9 +1178,6 @@ static void flt_android_rvh_tick_entry(void *unused, struct rq *rq)
 	wallclock = get_current_time();
 
 	flt_update_task_ravg(rq->curr, rq, TASK_UPDATE, wallclock, 0);
-#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-	grp_awr_update_cpu_tar_util(rq->cpu);
-#endif
 }
 
 static void flt_android_rvh_schedule(void *unused, struct task_struct *prev,
