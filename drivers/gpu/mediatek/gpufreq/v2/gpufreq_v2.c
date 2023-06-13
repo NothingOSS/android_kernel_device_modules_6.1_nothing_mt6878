@@ -20,6 +20,7 @@
 #include <linux/export.h>
 #include <linux/printk.h>
 #include <linux/mutex.h>
+#include <linux/spinlock.h>
 #include <linux/types.h>
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
 
@@ -92,7 +93,8 @@ static unsigned int g_shared_mem_size;
 static struct gpufreq_platform_fp *gpufreq_fp;
 static struct gpuppm_platform_fp *gpuppm_fp;
 static struct gpufreq_ipi_data g_recv_msg;
-static DEFINE_MUTEX(gpufreq_ipi_lock);
+static unsigned long g_irq_flags;
+static raw_spinlock_t gpufreq_ipi_lock;
 
 /**
  * ===============================================
@@ -505,14 +507,14 @@ unsigned int gpufreq_get_freq_by_idx(enum gpufreq_target target, int oppidx)
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_GET_FREQ_BY_IDX;
 		send_msg.target = target;
 		send_msg.u.oppidx = oppidx;
 
 		if (!gpufreq_ipi_to_gpueb(send_msg))
 			freq = g_recv_msg.u.freq;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 		goto done;
 	}
 
@@ -547,14 +549,14 @@ unsigned int gpufreq_get_power_by_idx(enum gpufreq_target target, int oppidx)
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_GET_POWER_BY_IDX;
 		send_msg.target = target;
 		send_msg.u.oppidx = oppidx;
 
 		if (!gpufreq_ipi_to_gpueb(send_msg))
 			power = g_recv_msg.u.power;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 		goto done;
 	}
 
@@ -589,14 +591,14 @@ int gpufreq_get_oppidx_by_freq(enum gpufreq_target target, unsigned int freq)
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_GET_OPPIDX_BY_FREQ;
 		send_msg.target = target;
 		send_msg.u.freq = freq;
 
 		if (!gpufreq_ipi_to_gpueb(send_msg))
 			oppidx = g_recv_msg.u.oppidx;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 		goto done;
 	}
 
@@ -631,14 +633,14 @@ unsigned int gpufreq_get_leakage_power(enum gpufreq_target target, unsigned int 
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_GET_LEAKAGE_POWER;
 		send_msg.target = target;
 		send_msg.u.volt = volt;
 
 		if (!gpufreq_ipi_to_gpueb(send_msg))
 			p_leakage = g_recv_msg.u.power;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 		goto done;
 	}
 
@@ -710,7 +712,7 @@ int gpufreq_power_control(enum gpufreq_power_state power)
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_POWER_CONTROL;
 		send_msg.u.power_state = power;
 
@@ -718,7 +720,7 @@ int gpufreq_power_control(enum gpufreq_power_state power)
 			ret = g_recv_msg.u.return_value;
 		else
 			ret = GPUFREQ_EINVAL;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 		goto done;
 	}
 
@@ -765,7 +767,7 @@ int gpufreq_active_sleep_control(enum gpufreq_power_state power)
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_ACTIVE_SLEEP_CONTROL;
 		send_msg.u.power_state = power;
 
@@ -773,7 +775,7 @@ int gpufreq_active_sleep_control(enum gpufreq_power_state power)
 			ret = g_recv_msg.u.return_value;
 		else
 			ret = GPUFREQ_EINVAL;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 		goto done;
 	}
 
@@ -820,7 +822,7 @@ int gpufreq_commit(enum gpufreq_target target, int oppidx)
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_COMMIT;
 		send_msg.target = target;
 		send_msg.u.oppidx = oppidx;
@@ -829,7 +831,7 @@ int gpufreq_commit(enum gpufreq_target target, int oppidx)
 			ret = g_recv_msg.u.return_value;
 		else
 			ret = GPUFREQ_EINVAL;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 		goto done;
 	}
 
@@ -872,7 +874,7 @@ int gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx)
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_DUAL_COMMIT;
 		send_msg.u.dual_commit.gpu_oppidx = gpu_oppidx;
 		send_msg.u.dual_commit.stack_oppidx = stack_oppidx;
@@ -881,7 +883,7 @@ int gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx)
 			ret = g_recv_msg.u.return_value;
 		else
 			ret = GPUFREQ_EINVAL;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 		goto done;
 	}
 
@@ -934,7 +936,7 @@ int gpufreq_set_limit(enum gpufreq_target target,
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_SET_LIMIT;
 		send_msg.target = target;
 		send_msg.u.set_limit.limiter = limiter;
@@ -945,7 +947,7 @@ int gpufreq_set_limit(enum gpufreq_target target,
 			ret = g_recv_msg.u.return_value;
 		else
 			ret = GPUFREQ_EINVAL;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 		goto done;
 	}
 
@@ -1093,12 +1095,12 @@ void gpufreq_pdca_config(enum gpufreq_power_state power)
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_PDCA_CONFIG;
 		send_msg.u.power = power;
 
 		ret = gpufreq_ipi_to_gpueb(send_msg);
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 	/* implement on AP */
 	} else {
 		if (gpufreq_fp && gpufreq_fp->pdca_config)
@@ -1136,11 +1138,11 @@ int gpufreq_update_debug_opp_info(void)
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_UPDATE_DEBUG_OPP_INFO;
 
 		ret = gpufreq_ipi_to_gpueb(send_msg);
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 	/* implement on AP */
 	} else {
 		if (gpufreq_fp && gpufreq_fp->update_debug_opp_info)
@@ -1193,7 +1195,7 @@ int gpufreq_switch_limit(enum gpufreq_target target,
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_SWITCH_LIMIT;
 		send_msg.target = target;
 		send_msg.u.set_limit.limiter = limiter;
@@ -1204,7 +1206,7 @@ int gpufreq_switch_limit(enum gpufreq_target target,
 			ret = g_recv_msg.u.return_value;
 		else
 			ret = GPUFREQ_EINVAL;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 		goto done;
 	}
 
@@ -1244,7 +1246,7 @@ int gpufreq_fix_target_oppidx(enum gpufreq_target target, int oppidx)
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_FIX_TARGET_OPPIDX;
 		send_msg.target = target;
 		send_msg.u.oppidx = oppidx;
@@ -1253,7 +1255,7 @@ int gpufreq_fix_target_oppidx(enum gpufreq_target target, int oppidx)
 			ret = g_recv_msg.u.return_value;
 		else
 			ret = GPUFREQ_EINVAL;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 		goto done;
 	}
 
@@ -1290,7 +1292,7 @@ int gpufreq_fix_dual_target_oppidx(int gpu_oppidx, int stack_oppidx)
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_FIX_DUAL_TARGET_OPPIDX;
 		send_msg.u.dual_commit.gpu_oppidx = gpu_oppidx;
 		send_msg.u.dual_commit.stack_oppidx = stack_oppidx;
@@ -1299,7 +1301,7 @@ int gpufreq_fix_dual_target_oppidx(int gpu_oppidx, int stack_oppidx)
 			ret = g_recv_msg.u.return_value;
 		else
 			ret = GPUFREQ_EINVAL;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 		goto done;
 	}
 
@@ -1339,7 +1341,7 @@ int gpufreq_fix_custom_freq_volt(enum gpufreq_target target,
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_FIX_CUSTOM_FREQ_VOLT;
 		send_msg.target = target;
 		send_msg.u.custom.freq = freq;
@@ -1349,7 +1351,7 @@ int gpufreq_fix_custom_freq_volt(enum gpufreq_target target,
 			ret = g_recv_msg.u.return_value;
 		else
 			ret = GPUFREQ_EINVAL;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 		goto done;
 	}
 
@@ -1387,7 +1389,7 @@ int gpufreq_fix_dual_custom_freq_volt(unsigned int fgpu, unsigned int vgpu,
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_FIX_DUAL_CUSTOM_FREQ_VOLT;
 		send_msg.u.dual_custom.fgpu = fgpu;
 		send_msg.u.dual_custom.vgpu = vgpu;
@@ -1398,7 +1400,7 @@ int gpufreq_fix_dual_custom_freq_volt(unsigned int fgpu, unsigned int vgpu,
 			ret = g_recv_msg.u.return_value;
 		else
 			ret = GPUFREQ_EINVAL;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 		goto done;
 	}
 
@@ -1431,13 +1433,13 @@ int gpufreq_set_mfgsys_config(enum gpufreq_config_target target, enum gpufreq_co
 
 	/* implement on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_SET_MFGSYS_CONFIG;
 		send_msg.u.mfg_cfg.target = target;
 		send_msg.u.mfg_cfg.val = val;
 
 		ret = gpufreq_ipi_to_gpueb(send_msg);
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 	/* implement on AP */
 	} else {
 		if (gpufreq_fp && gpufreq_fp->set_mfgsys_config)
@@ -1463,7 +1465,7 @@ int gpufreq_mssv_commit(unsigned int target, unsigned int val)
 
 	/* implement only on EB */
 	if (g_gpueb_support) {
-		mutex_lock(&gpufreq_ipi_lock);
+		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 		send_msg.cmd_id = CMD_MSSV_COMMIT;
 		send_msg.u.mssv.target = target;
 		send_msg.u.mssv.val = val;
@@ -1472,7 +1474,7 @@ int gpufreq_mssv_commit(unsigned int target, unsigned int val)
 			ret = g_recv_msg.u.return_value;
 		else
 			ret = GPUFREQ_EINVAL;
-		mutex_unlock(&gpufreq_ipi_lock);
+		raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 	/* implement on AP */
 	} else {
 		if (gpufreq_fp && gpufreq_fp->mssv_commit)
@@ -1833,14 +1835,14 @@ static int gpufreq_gpueb_init(void)
 	mtk_ipi_register(get_gpueb_ipidev(), g_ipi_channel, NULL, NULL, (void *)&g_recv_msg);
 
 	/* init shared status on EB side */
-	mutex_lock(&gpufreq_ipi_lock);
+	raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
 	send_msg.cmd_id = CMD_INIT_SHARED_MEM;
 	send_msg.u.shared_mem.base = g_shared_mem_pa;
 	send_msg.u.shared_mem.size = g_shared_mem_size;
 	ret = gpufreq_ipi_to_gpueb(send_msg);
 	if (unlikely(ret))
 		GPUFREQ_LOGE("fail to init gpufreq shared memory");
-	mutex_unlock(&gpufreq_ipi_lock);
+	raw_spin_unlock_irqrestore(&gpufreq_ipi_lock, g_irq_flags);
 
 done:
 	return ret;
@@ -1868,6 +1870,9 @@ static int gpufreq_wrapper_pdrv_probe(struct platform_device *pdev)
 		GPUFREQ_LOGI("skip gpufreq wrapper driver probe when bringup");
 		goto done;
 	}
+
+	/* init spinlock */
+	raw_spin_lock_init(&gpufreq_ipi_lock);
 
 	/* init shared memory */
 	ret = gpufreq_shared_memory_init();
