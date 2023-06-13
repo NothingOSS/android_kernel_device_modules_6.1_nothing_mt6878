@@ -8701,6 +8701,19 @@
 					"path_jpegenc_bsdma";
 		};
 
+		jpgdec1@17840000 {
+			compatible = "mediatek,jpgdec_c1";
+			reg = <0 0x17840000 0 0x10000>;
+			interrupts = <GIC_SPI 553 IRQ_TYPE_LEVEL_HIGH 0>;
+			mediatek,larbs = <&smi_larb8>;
+			operating-points-v2 = <&opp_table_venc>;
+			clocks = <&venc_gcon_core1_clk CLK_VEN1_CKE3_JPGDEC>,
+				<&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
+			clock-names = "MT_CG_VENC_JPGDEC_C2", "mmdvfs_clk";
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN0>;
+			mtk,smmu-shared = <&mm_smmu_srt_normal>;
+		};
+
 		mbist@17860000 {
 			compatible = "mediatek,mbist";
 			reg = <0 0x17860000 0 0x10000>;
