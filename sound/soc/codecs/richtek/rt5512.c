@@ -421,11 +421,6 @@ static int rt5512_codec_classd_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMD:
 		dev_info(component->dev, "Amp off\n");
 		cpu_latency_qos_update_request(&chip->rt5512_qos_request, 150);
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
-		ret = richtek_spm_classdev_trigger_ampoff(&chip->spm);
-		if (ret < 0)
-			dev_err(component->dev, "spm ampoff failed\n");
-#endif
 
 		/* enable mute */
 		ret = snd_soc_component_update_bits(component, 0x03, 0x0002,
