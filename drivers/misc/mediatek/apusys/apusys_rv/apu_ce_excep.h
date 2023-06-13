@@ -33,6 +33,9 @@
 
 int apu_ce_excep_init(struct platform_device *pdev, struct mtk_apu *apu);
 void apu_ce_excep_remove(struct platform_device *pdev, struct mtk_apu *apu);
+void apu_ce_start_timer_dump_reg(void);
+void apu_ce_stop_timer_dump_reg(void);
+
 
 #define APU_ACE_SW_REQ_0                      (0x400)
 #define APU_ACE_SW_REQ_1	                  (0x404)

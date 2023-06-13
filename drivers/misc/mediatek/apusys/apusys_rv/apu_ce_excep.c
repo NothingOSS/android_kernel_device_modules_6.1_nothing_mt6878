@@ -8,6 +8,10 @@
 #include <linux/workqueue.h>
 #include <linux/iommu.h>
 #include <linux/delay.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/timer.h>
+
 #include <mt-plat/aee.h>
 
 #include "apu.h"
@@ -67,7 +71,14 @@ struct apu_coredump_work_struct {
 	struct work_struct work;
 };
 
+static struct delayed_work timeout_work;
+static struct workqueue_struct *apu_workq;
+static struct mtk_apu *ce_apu;
+
 static struct apu_coredump_work_struct apu_ce_coredump_work;
+#define APU_CE_DUMP_TIMEOUT_MS (1)
+
+static void apu_ce_timer_dump_reg(struct work_struct *work);
 
 static uint32_t apusys_rv_smc_call(struct device *dev, uint32_t smc_id,
 	uint32_t param, uint32_t *ret0, uint32_t *ret1, uint32_t *ret2)
@@ -248,6 +259,41 @@ static irqreturn_t apu_ce_isr(int irq, void *private_data)
 	return IRQ_HANDLED;
 }
 
+void apu_ce_start_timer_dump_reg(void)
+{
+	/* init delay worker for power off detection */
+	queue_delayed_work(apu_workq,
+							&timeout_work,
+							msecs_to_jiffies(APU_CE_DUMP_TIMEOUT_MS));
+}
+
+void apu_ce_stop_timer_dump_reg(void)
+{
+	cancel_delayed_work_sync(&timeout_work);
+}
+
+void apu_ce_timer_dump_reg_init(void)
+{
+	char wq_name[] = "apusys_ce_timer";
+
+	/* init delay worker for power off detection */
+	INIT_DELAYED_WORK(&timeout_work, apu_ce_timer_dump_reg);
+	apu_workq = alloc_ordered_workqueue(wq_name, WQ_MEM_RECLAIM);
+}
+
+void apu_ce_timer_dump_reg(struct work_struct *work)
+{
+	if (ce_apu != NULL) {
+		struct device *dev = ce_apu->dev;
+		uint32_t ret =0;
+
+		dev_info(dev, "%s +\n", __func__);
+
+		ret = apusys_rv_smc_call(dev,
+					MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP, 0, NULL, NULL, NULL);
+	}
+}
+
 static int apu_ce_irq_register(struct platform_device *pdev,
 	struct mtk_apu *apu)
 {
@@ -281,6 +327,8 @@ int apu_ce_excep_init(struct platform_device *pdev, struct mtk_apu *apu)
 	ret = apu_ce_irq_register(pdev, apu);
 	if (ret < 0)
 		return ret;
+	ce_apu = apu;
+	apu_ce_timer_dump_reg_init();
 
 	return ret;
 }

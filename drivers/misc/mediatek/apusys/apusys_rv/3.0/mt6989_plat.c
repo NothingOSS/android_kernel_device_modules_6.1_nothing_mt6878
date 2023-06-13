@@ -27,6 +27,8 @@
 #include "../apu_hw.h"
 #include "../apu_excep.h"
 #include "../apu_ipi.h"
+#include "../apu_ce_excep.h"
+
 
 #include "apummu_tbl.h"
 
@@ -658,10 +660,16 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 							msecs_to_jiffies(APU_PWROFF_TIMEOUT_MS));
 					if (id == APU_IPI_SCP_NP_RECOVER && rpc_state == 1)
 						is_under_lp_scp_recovery_flow = true;
-					if (apu->pwr_on_polling_dbg_mode)
+
+					if (apu->ce_dbg_polling_dump_mode)
+						apu_ce_start_timer_dump_reg();
+
+					if (apu->pwr_on_polling_dbg_mode) {
+
 						queue_delayed_work(apu_workq,
 							&apu_polling_on_work,
 							msecs_to_jiffies(APU_PWRON_TIMEOUT_MS));
+					}
 				} else {
 					mt6989_apu_pwr_wake_unlock(apu, id);
 					apu->ipi_pwr_ref_cnt[id]--;
@@ -682,11 +690,15 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 			apu->local_pwr_ref_cnt--;
 			mt6989_apu_pwr_wake_unlock(apu, id);
 			apu->sub_latency[0] = profile_end(&ts, &te);
+			if (apu->ce_dbg_polling_dump_mode)
+				apu_ce_stop_timer_dump_reg();
 
 			if (apu->local_pwr_ref_cnt == 0) {
 				profile_start(&ts);
+
 				if (apu->pwr_on_polling_dbg_mode)
 					cancel_delayed_work_sync(&apu_polling_on_work);
+
 				apu->sub_latency[1] = profile_end(&ts, &te);
 
 				profile_start(&ts);

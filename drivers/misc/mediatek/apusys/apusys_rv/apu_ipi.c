@@ -1110,6 +1110,7 @@ static int apu_ipi_dbg_show(struct seq_file *s, void *unused)
 	} else if (apu_ipi_ut_cmd == CMD_PWR_TIME_PROFILE_INTERNAL) {
 		seq_printf(s, "pwr_profile_polling_mode = %u\n", pwr_profile_polling_mode);
 		seq_printf(s, "pwr_on_polling_dbg_mode = %u\n", apu->pwr_on_polling_dbg_mode);
+		seq_printf(s, "ce_dbg_polling_dump_mode = %u\n", apu->ce_dbg_polling_dump_mode);
 
 		seq_printf(s, "rcx_on_avg_time = %u us\n",
 			warmboot_on_ts_avg + rcx_on_ce_ts_avg);
@@ -1210,6 +1211,7 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 	int ret, i;
 	bool change_pwr_profile_polling_mode = false;
 	bool change_pwr_on_polling_dbg_mode = false;
+	bool ce_dbg_polling_dump_mode = false;
 
 	tmp = kzalloc(count + 1, GFP_KERNEL);
 	if (!tmp)
@@ -1238,6 +1240,8 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 		change_pwr_profile_polling_mode = true;
 	} else if (strcmp(token, "pwr_on_polling_dbg_mode") == 0) {
 		change_pwr_on_polling_dbg_mode = true;
+	} else if (strcmp(token, "ce_dbg_polling_dump_mode") == 0) {
+		ce_dbg_polling_dump_mode = true;
 	} else {
 		ret = -EINVAL;
 		pr_info("%s: unknown ipi dbg cmd: %s\n", __func__, token);
@@ -1260,6 +1264,10 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 		goto out;
 	} else if (change_pwr_on_polling_dbg_mode) {
 		apu->pwr_on_polling_dbg_mode = args[0];
+		ret = count;
+		goto out;
+	} else if (ce_dbg_polling_dump_mode) {
+		apu->ce_dbg_polling_dump_mode = args[0];
 		ret = count;
 		goto out;
 	}
