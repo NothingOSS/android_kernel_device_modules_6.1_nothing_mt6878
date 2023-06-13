@@ -21,7 +21,7 @@
 
 #include "jpeg_dma_buf.h"
 
-#define HW_CORE_NUMBER 2
+#define HW_CORE_NUMBER 3
 #define JPEG_LARB_COUNT 2
 #define MAX_FREQ_STEP 10
 
@@ -30,12 +30,12 @@ extern int jpg_dbg_level;
 struct JpegClk {
 	struct clk *clk_venc_jpgDec;
 	struct clk *clk_venc_jpgDec_c1;
-	struct clk *clk_venc_c1_jpgDec;
+	struct clk *clk_venc_jpgDec_c2;
 };
 
 struct JpegDeviceStruct {
 	struct device *pDev[JPEG_LARB_COUNT];
-	struct device *smmu_dev[HW_CORE_NUMBER];
+	struct device *smmu_dev[JPEG_LARB_COUNT];
 	long hybriddecRegBaseVA[HW_CORE_NUMBER];
 	uint32_t hybriddecIrqId[HW_CORE_NUMBER];
 	struct JpegClk jpegClk;
