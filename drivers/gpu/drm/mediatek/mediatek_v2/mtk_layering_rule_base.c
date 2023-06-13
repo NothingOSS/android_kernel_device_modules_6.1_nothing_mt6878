@@ -405,8 +405,8 @@ int mtk_get_phy_layer_limit(uint16_t layer_map_tb)
 static int get_ovl_by_phy(struct drm_device *dev, int disp_idx, int disp_list,
 			  uint16_t layer_map_tb, int phy_layer_idx)
 {
-	uint16_t ovl_mapping_tb;
-	int i, ovl_idx = 0, layer_idx = 0;
+	uint16_t ovl_mapping_tb, layer_map_tb_bak = layer_map_tb;
+	int i, ovl_idx = 0, layer_idx = 0, phy_layer_idx_bak = phy_layer_idx;
 
 	ovl_mapping_tb =
 		l_rule_ops->get_mapping_table(dev, disp_idx, disp_list, DISP_HW_OVL_TB, 0);
@@ -420,8 +420,9 @@ static int get_ovl_by_phy(struct drm_device *dev, int disp_idx, int disp_list,
 	}
 
 	if (layer_idx == MAX_PHY_OVL_CNT) {
-		DDPPR_ERR("%s fail, phy_layer_idx:%d\n", __func__,
-			  phy_layer_idx);
+		DDPPR_ERR("%s fail, %u %u (layer_map_tb %x phy_lay_idx %u) phy_layer_idx:%d\n",
+			__func__, disp_idx, disp_list,
+			layer_map_tb_bak, phy_layer_idx_bak, phy_layer_idx);
 		return -1;
 	}
 
@@ -2733,7 +2734,63 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 		drm_dev, disp_idx, disp_list, DISP_HW_OVL_TB, 0);
 	struct mtk_drm_private *priv = drm_dev->dev_private;
 	unsigned int temp, temp1, i, comp_id_nr, *comp_id_list = NULL;
+	unsigned int valid_ovl_map, idx = 0;
 
+	if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH)) {
+		comp_id_nr = mtk_ddp_ovl_resource_list(priv, &comp_id_list);
+		if (unlikely(comp_id_nr > DDP_COMPONENT_ID_MAX)) {
+			DDPPR_ERR("%s gets invalid ovl comp_id_list\n", __func__);
+			return comp_id_nr;
+		}
+
+		/* calculate ovl list idx from ovl_map */
+		temp = ovl_mapping_tb & ~BIT(0);
+		for (i = 0 ; i < comp_id_nr ; ++i) {
+			temp1 = HRT_GET_FIRST_SET_BIT(temp);
+			DDPINFO("%s %d map_tb %x %x map_idx %x\n", __func__, disp_idx, temp, temp1, layer_map_idx);
+			if (temp1 >= layer_map_idx) {
+				idx = i;
+				break;
+			}
+			temp &= ~temp1;
+		}
+		if (unlikely(idx >= comp_id_nr)) {
+			DDPPR_ERR("%s abnormal input ovl_mapping_tb %x & layer_map_idx %x idx %x\n",
+						__func__, ovl_mapping_tb, layer_map_idx, idx);
+			return comp_id_nr;
+		}
+
+		/* get valid ovl from disp_list */
+		valid_ovl_map = priv->ovl_usage[disp_idx];
+		if (priv->pre_defined_bw[disp_idx] == 0xFFFFFFFF) {
+			for (i = 0 ; i < MAX_CRTC ; ++i) {
+				if (i == disp_idx)
+					continue;
+				if ((disp_list & BIT(i)) != 0)
+					valid_ovl_map &= ~priv->ovl_usage[i];
+			}
+		}
+
+		/* get ovl comp according to ovl list idx and valid ovl */
+		temp1 = valid_ovl_map;
+		for (i = 0 ; i <= idx ; ++i) {
+			temp = HRT_GET_FIRST_SET_BIT(temp1);
+			DDPINFO("tmp %x valid_ovl_map %x\n", temp, temp1);
+			temp1 &= ~temp;
+		}
+		temp = __builtin_ffs(temp);
+		temp = (temp == 0) ? 0 : temp - 1;
+		DDPINFO("%s %d idx %x to temp %x tmp1 %x\n", __func__, disp_idx, idx, temp, valid_ovl_map);
+
+		if (unlikely(temp >= comp_id_nr)) {
+			DDPPR_ERR("%s comp_list ovl_map %x & layer_map %x valid %x idx %x\n",
+				__func__, ovl_mapping_tb, layer_map_idx,
+				valid_ovl_map, valid_ovl_map);
+			return comp_id_nr;
+		}
+
+		return comp_id_list[temp];
+	}
 	/* TODO: The component ID should be changed by ddp path and platforms */
 	if (disp_idx == 0) {
 		if (HRT_GET_FIRST_SET_BIT(ovl_mapping_tb) >= layer_map_idx)
@@ -2743,110 +2800,6 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 			MTK_DRM_OPT_VDS_PATH_SWITCH) &&
 			priv->need_vds_path_switch)
 			return DDP_COMPONENT_OVL0;
-		else if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH)) {
-			comp_id_nr = mtk_ddp_ovl_resource_list(priv, &comp_id_list);
-
-			if (comp_id_nr > DDP_COMPONENT_ID_MAX) {
-				DDPPR_ERR("%s gets invalid ovl comp_id_list\n", __func__);
-				return comp_id_nr;
-			}
-
-			if (HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
-				HRT_GET_FIRST_SET_BIT(ovl_mapping_tb)) >= layer_map_idx) {
-				temp = priv->ovl_usage[disp_idx];
-				for (i = 1 ; i < MAX_CRTC ; ++i) {
-					if ((disp_list & BIT(i)) != 0)
-						temp = temp & ~priv->ovl_usage[i];
-				}
-				temp1 = HRT_GET_FIRST_SET_BIT(temp);
-				for (i = 0 ; i < comp_id_nr ; ++i) {
-					if (temp1 == BIT(i))
-						break;
-				}
-				if (i >= comp_id_nr) {
-					DDPPR_ERR("%s comp_id_nr %u ovl_usage %u, set to 0\n",
-						__func__, comp_id_nr, temp);
-					i = 0;
-				}
-				if (comp_id_list != NULL)
-					return comp_id_list[i];
-			} else if (HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
-				HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
-				HRT_GET_FIRST_SET_BIT(ovl_mapping_tb)) -
-				HRT_GET_FIRST_SET_BIT(ovl_mapping_tb)) >=
-				layer_map_idx) {
-				temp = priv->ovl_usage[disp_idx];
-
-				for (i = 1 ; i < MAX_CRTC ; ++i) {
-					if ((disp_list & BIT(i)) != 0)
-						temp = temp & ~priv->ovl_usage[i];
-				}
-				temp1 = HRT_GET_FIRST_SET_BIT(temp - HRT_GET_FIRST_SET_BIT(temp));
-				for (i = 0 ; i < comp_id_nr ; ++i) {
-					if (temp1 == BIT(i))
-						break;
-				}
-				if (i >= comp_id_nr) {
-					DDPPR_ERR("%s comp_id_nr %u ovl_usage %u, set to 0\n",
-						__func__, comp_id_nr, temp);
-					i = 0;
-				}
-				if (comp_id_list != NULL)
-					return comp_id_list[i];
-			} else if (HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
-					HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
-					HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
-					HRT_GET_FIRST_SET_BIT(ovl_mapping_tb)) -
-					HRT_GET_FIRST_SET_BIT(ovl_mapping_tb)) -
-					HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
-					HRT_GET_FIRST_SET_BIT(ovl_mapping_tb)) -
-					HRT_GET_FIRST_SET_BIT(ovl_mapping_tb)) >=
-						layer_map_idx) {
-				temp = priv->ovl_usage[disp_idx];
-
-				for (i = 1 ; i < MAX_CRTC ; ++i) {
-					if ((disp_list & BIT(i)) != 0)
-						temp = temp & ~priv->ovl_usage[i];
-				}
-				temp1 = HRT_GET_FIRST_SET_BIT(temp -
-						HRT_GET_FIRST_SET_BIT(temp -
-						HRT_GET_FIRST_SET_BIT(temp)) -
-						HRT_GET_FIRST_SET_BIT(temp));
-				for (i = 0 ; i < comp_id_nr ; ++i) {
-					if (temp1 == BIT(i))
-						break;
-				}
-				if (i >= comp_id_nr) {
-					DDPPR_ERR("%s comp_id_nr %u ovl_usage %u, set to 0\n",
-							__func__, comp_id_nr, temp);
-					i = 0;
-				}
-				return comp_id_list[i];
-			}
-			temp = priv->ovl_usage[disp_idx];
-
-			for (i = 1 ; i < MAX_CRTC ; ++i) {
-				if ((disp_list & BIT(i)) != 0)
-					temp = temp & ~priv->ovl_usage[i];
-			}
-			temp1 = HRT_GET_FIRST_SET_BIT(temp -
-					HRT_GET_FIRST_SET_BIT(temp -
-					HRT_GET_FIRST_SET_BIT(temp - HRT_GET_FIRST_SET_BIT(temp)) -
-					HRT_GET_FIRST_SET_BIT(temp)) -
-					HRT_GET_FIRST_SET_BIT(temp - HRT_GET_FIRST_SET_BIT(temp)) -
-					HRT_GET_FIRST_SET_BIT(temp));
-			for (i = 0 ; i < comp_id_nr ; ++i) {
-				if (temp1 == BIT(i))
-					break;
-			}
-			if (i >= comp_id_nr) {
-				DDPPR_ERR("%s comp_id_nr %u ovl_usage %u, set to 0\n",
-						__func__, comp_id_nr, temp);
-				i = 0;
-			}
-			if (comp_id_list != NULL)
-				return comp_id_list[i];
-		}
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6897 ||
 			priv->data->mmsys_id == MMSYS_MT6989) {
@@ -3340,12 +3293,6 @@ static int dispatch_ovl_id(struct drm_mtk_layering_info *disp_info,
 		layer_map = l_rule_ops->get_mapping_table(
 			drm_dev, disp_idx, disp_info->disp_list, DISP_HW_LAYER_TB, ovl_cnt);
 
-		if (l_rule_info->dal_enable) {
-			layer_map = l_rule_ops->get_mapping_table(
-				drm_dev, disp_idx, disp_info->disp_list, DISP_HW_LAYER_TB,
-				MAX_PHY_OVL_CNT);
-			layer_map &= HRT_AEE_LAYER_MASK;
-		}
 		_dispatch_lye_blob_idx(disp_info, layer_map,
 			disp_idx, lyeblob_ids, drm_dev, lye_state);
 

@@ -391,7 +391,8 @@ uint16_t get_dynamic_mapping_table(struct drm_device *dev, unsigned int disp_idx
 {
 	struct mtk_drm_private *priv = dev->dev_private;
 	unsigned int temp, temp1 = 0, comp_id_nr, *comp_id_list;
-	int i, j, main_disp_idx = -1;
+	unsigned int i, j;
+	int main_disp_idx = -1;
 	uint16_t ret = 0;
 
 	comp_id_nr = mtk_ddp_ovl_resource_list(priv, &comp_id_list);
@@ -416,16 +417,20 @@ uint16_t get_dynamic_mapping_table(struct drm_device *dev, unsigned int disp_idx
 		break;
 	case HRT_TB_TYPE_GENERAL1:
 		if (tb_type == DISP_HW_LAYER_TB) {
-			temp = priv->ovl_usage[main_disp_idx];
+			if (disp_idx == main_disp_idx) {
+				temp = priv->ovl_usage[main_disp_idx];
 
-			for (i = 0 ; i < MAX_CRTC ; ++i) {
-				if (i == main_disp_idx)
-					continue;
+				for (i = 0 ; i < MAX_CRTC ; ++i) {
+					if (i == main_disp_idx)
+						continue;
 
-				if ((disp_list & BIT(i)) != 0)
-					temp = temp & ~priv->ovl_usage[i];
+					if ((disp_list & BIT(i)) != 0)
+						temp = temp & ~priv->ovl_usage[i];
+				}
+			} else {
+				temp = priv->ovl_usage[disp_idx];
 			}
-			for (i = 0,	j = 0 ; i < comp_id_nr ; ++i) {
+			for (i = 0, j = 0 ; i < comp_id_nr ; ++i) {
 				if ((temp & BIT(i)) != 0) {
 					temp1 |= 0x3 << (j * 2);
 					j++;
@@ -434,14 +439,18 @@ uint16_t get_dynamic_mapping_table(struct drm_device *dev, unsigned int disp_idx
 			temp1 = temp1 << 1;
 			ret = temp1;
 		} else { /* DISP_HW_OVL_TB */
-			temp = priv->ovl_usage[main_disp_idx];
+			if (disp_idx == main_disp_idx) {
+				temp = priv->ovl_usage[main_disp_idx];
 
-			for (i = 0 ; i < MAX_CRTC ; ++i) {
-				if (i == main_disp_idx)
-					continue;
+				for (i = 0 ; i < MAX_CRTC ; ++i) {
+					if (i == main_disp_idx)
+						continue;
 
-				if ((disp_list & BIT(i)) != 0)
-					temp = temp & ~priv->ovl_usage[i];
+					if ((disp_list & BIT(i)) != 0)
+						temp = temp & ~priv->ovl_usage[i];
+				}
+			} else {
+				temp = priv->ovl_usage[disp_idx];
 			}
 
 			for (i = 0, j = 0 ; i < comp_id_nr ; ++i) {
@@ -456,14 +465,18 @@ uint16_t get_dynamic_mapping_table(struct drm_device *dev, unsigned int disp_idx
 		break;
 	case HRT_TB_TYPE_RPO_L0:
 		if (tb_type == DISP_HW_LAYER_TB) {
-			temp = priv->ovl_usage[main_disp_idx];
+			if (disp_idx == main_disp_idx) {
+				temp = priv->ovl_usage[main_disp_idx];
 
-			for (i = 0 ; i < MAX_CRTC ; ++i) {
-				if (i == main_disp_idx)
-					continue;
+				for (i = 0 ; i < MAX_CRTC ; ++i) {
+					if (i == main_disp_idx)
+						continue;
 
-				if ((disp_list & BIT(i)) != 0)
-					temp = temp & ~priv->ovl_usage[i];
+					if ((disp_list & BIT(i)) != 0)
+						temp = temp & ~priv->ovl_usage[i];
+				}
+			} else {
+				temp = priv->ovl_usage[disp_idx];
 			}
 
 			for (i = 0, j = 0; i < comp_id_nr ; ++i) {
@@ -478,14 +491,18 @@ uint16_t get_dynamic_mapping_table(struct drm_device *dev, unsigned int disp_idx
 			temp1 = temp1 << 1;
 			ret =  temp1;
 		} else { /* DISP_HW_OVL_TB */
-			temp = priv->ovl_usage[main_disp_idx];
+			if (disp_idx == main_disp_idx) {
+				temp = priv->ovl_usage[main_disp_idx];
 
-			for (i = 0 ; i < MAX_CRTC ; ++i) {
-				if (i == main_disp_idx)
-					continue;
+				for (i = 0 ; i < MAX_CRTC ; ++i) {
+					if (i == main_disp_idx)
+						continue;
 
-				if ((disp_list & BIT(i)) != 0)
-					temp = temp & ~priv->ovl_usage[i];
+					if ((disp_list & BIT(i)) != 0)
+						temp = temp & ~priv->ovl_usage[i];
+				}
+			} else {
+				temp = priv->ovl_usage[disp_idx];
 			}
 
 			for (i = 0, j = 0 ; i < comp_id_nr ; ++i) {
