@@ -87,6 +87,8 @@ enum topology_scenario {
 	PATH_MML_2IN_2OUT,
 	PATH_MML_RR_2IN_2OUT,
 	PATH_MML_RR_DL_2IN_2OUT,
+	PATH_MML_RR_DL2,
+	PATH_MML_RR_DL2_2IN_2OUT,
 	PATH_MML_MAX
 };
 
@@ -252,6 +254,46 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_WROT0_SEL, MML_DLO0,},
 		{MML_RSZ2, MML_WROT2,},
 		{MML_DLO0,},
+		{MML_WROT2,},
+	},
+	[PATH_MML_RR_DL2] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RROT0, MML_MERGE0,},
+		{MML_RROT0_2ND, MML_MERGE0,},
+		{MML_MERGE0, MML_DMA0_SEL,},
+		{MML_DMA0_SEL, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_FG0,},
+		{MML_FG0, MML_HDR0,},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_PQ_AAL0_SEL, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_WROT0_SEL,},
+		{MML_WROT0_SEL, MML_DLO2,},
+		{MML_DLO2,},
+	},
+	[PATH_MML_RR_DL2_2IN_2OUT] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RROT0, MML_MERGE0,},
+		{MML_RROT0_2ND, MML_MERGE0,},
+		{MML_MERGE0, MML_DMA0_SEL,},
+		{MML_DMA0_SEL, MML_DLI0_SEL, MML_RSZ2,},
+		{MML_DLI0_SEL, MML_FG0,},
+		{MML_FG0, MML_HDR0,},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_PQ_AAL0_SEL, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_RDMA2, MML_BIRSZ0,},
+		{MML_BIRSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_WROT0_SEL,},
+		{MML_WROT0_SEL, MML_DLO2,},
+		{MML_RSZ2, MML_WROT2,},
+		{MML_DLO2,},
 		{MML_WROT2,},
 	},
 };
@@ -692,6 +734,14 @@ check_rr:
 			scene = PATH_MML_RR_2IN_2OUT;
 		else
 			scene = PATH_MML_RR;
+	}
+
+	/* check if connect to ovlsys1 */
+	if (cfg->info.layer_id == MML_DLO_OVLSYS1) {
+		if (scene == PATH_MML_RR_DL)
+			scene = PATH_MML_RR_DL2;
+		else if (scene == PATH_MML_RR_DL_2IN_2OUT)
+			scene = PATH_MML_RR_DL2_2IN_2OUT;
 	}
 
 	*path = &cache->paths[scene];

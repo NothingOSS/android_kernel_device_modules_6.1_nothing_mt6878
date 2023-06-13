@@ -1894,7 +1894,8 @@ static int subcomp_init(struct platform_device *pdev, struct mml_sys *sys,
 				return ret;
 		}
 
-		if (data->ddp_comp_funcs[comp_type]) {
+		/* currently only mml-sys comp add to ddp comps */
+		if (data->ddp_comp_funcs[comp_type] && comp_type == MML_CT_SYS) {
 			ret = mml_ddp_comp_init(dev, &sys->ddp_comps[subcomponent],
 						comp, data->ddp_comp_funcs[comp_type]);
 			if (unlikely(ret)) {
@@ -1905,7 +1906,7 @@ static int subcomp_init(struct platform_device *pdev, struct mml_sys *sys,
 			sys->ddp_comp_en |= 1 << subcomponent;
 		}
 	} else
-		mml_err(" %s comp_type %d >= MML_COMP_TYPE_TOTAL", __func__, comp_type);
+		mml_err("%s comp_type %d >= MML_COMP_TYPE_TOTAL", __func__, comp_type);
 
 	return ret;
 }

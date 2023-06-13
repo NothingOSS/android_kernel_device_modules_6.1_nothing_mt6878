@@ -2416,7 +2416,6 @@ static int probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mml_comp_aal *priv;
 	s32 ret;
-	bool add_ddp = true;
 	int irq = -1;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
@@ -2455,13 +2454,6 @@ static int probe(struct platform_device *pdev)
 	priv->comp.config_ops = &aal_cfg_ops;
 	priv->comp.hw_ops = &aal_hw_ops;
 	priv->comp.debug_ops = &aal_debug_ops;
-
-	ret = mml_ddp_comp_init(dev, &priv->ddp_comp, &priv->comp,
-				&ddp_comp_funcs);
-	if (ret) {
-		mml_log("failed to init ddp component: %d", ret);
-		add_ddp = false;
-	}
 
 	if (aal_get_rb_mode(priv) == RB_EOF_MODE) {
 		irq = platform_get_irq(pdev, 0);
@@ -2503,8 +2495,6 @@ static int probe(struct platform_device *pdev)
 	dbg_probed_components[dbg_probed_count++] = priv;
 
 	ret = component_add(dev, &mml_comp_ops);
-	if (add_ddp)
-		ret = component_add(dev, &mml_comp_ops);
 	if (ret)
 		dev_err(dev, "Failed to add component: %d\n", ret);
 

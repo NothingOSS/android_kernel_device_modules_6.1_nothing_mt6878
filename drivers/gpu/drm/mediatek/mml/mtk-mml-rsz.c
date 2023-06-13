@@ -95,7 +95,6 @@ enum rsz_dbg_ver {
 struct rsz_data {
 	u32 tile_width;
 	u8 rsz_dbg;
-	bool add_ddp;
 	bool aal_crop;
 };
 
@@ -106,7 +105,6 @@ static const struct rsz_data mt6893_rsz_data = {
 
 static const struct rsz_data mt6983_rsz_data = {
 	.tile_width = 1636,
-	.add_ddp = true,
 	.aal_crop = true,
 };
 
@@ -117,57 +115,48 @@ static const struct rsz_data mt6879_rsz_data = {
 
 static const struct rsz_data mt6895_rsz0_data = {
 	.tile_width = 1300,
-	.add_ddp = true,
 	.aal_crop = true,
 };
 
 static const struct rsz_data mt6895_rsz1_data = {
 	.tile_width = 836,
-	.add_ddp = true,
 	.aal_crop = true,
 };
 
 static const struct rsz_data mt6895_rsz_data = {
 	.tile_width = 520,
-	.add_ddp = true,
 	.aal_crop = true,
 };
 
 static const struct rsz_data mt6985_rsz_data = {
 	.tile_width = 1674,
-	.add_ddp = true,
 	/* .aal_crop = false, */
 };
 
 static const struct rsz_data mt6985_rsz2_data = {
 	.tile_width = 544,
-	.add_ddp = true,
 	/* .aal_crop = false, */
 };
 
 static const struct rsz_data mt6897_rsz_data = {
 	.tile_width = 1674,
-	.add_ddp = true,
 	.aal_crop = true,
 };
 
 static const struct rsz_data mt6897_rsz2_data = {
 	.tile_width = 544,
-	.add_ddp = true,
 	.aal_crop = true,
 };
 
 static const struct rsz_data mt6989_rsz_data = {
 	.tile_width = 3348,
 	.rsz_dbg = RSZ_DBG_MT6989,
-	.add_ddp = true,
 	.aal_crop = true,
 };
 
 static const struct rsz_data mt6989_rsz2_data = {
 	.tile_width = 544,
 	.rsz_dbg = RSZ_DBG_MT6989,
-	.add_ddp = true,
 	.aal_crop = false,
 };
 
@@ -814,7 +803,6 @@ static int probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mml_comp_rsz *priv;
 	s32 ret;
-	bool add_ddp = true;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -834,20 +822,9 @@ static int probe(struct platform_device *pdev)
 	priv->comp.hw_ops = &rsz_hw_ops;
 	priv->comp.debug_ops = &rsz_debug_ops;
 
-	if (priv->data->add_ddp) {
-		ret = mml_ddp_comp_init(dev, &priv->ddp_comp, &priv->comp,
-					&ddp_comp_funcs);
-		if (ret) {
-			mml_log("failed to init ddp component: %d", ret);
-			add_ddp = false;
-		}
-	}
-
 	dbg_probed_components[dbg_probed_count++] = priv;
 
 	ret = component_add(dev, &mml_comp_ops);
-	if (add_ddp)
-		ret = component_add(dev, &mml_comp_ops);
 	if (ret)
 		dev_err(dev, "Failed to add component: %d\n", ret);
 

@@ -241,6 +241,11 @@ struct mml_frame_buffer {
 	uint8_t dest_cnt;
 };
 
+enum mml_layer_id {
+	MML_DLO_OVLSYS0 = 0,
+	MML_DLO_OVLSYS1,
+};
+
 /**
  * struct mml_submit - submit mml task from user
  * @job:	[in/out] The mml task serial number and fence for user to wait.

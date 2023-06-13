@@ -1288,7 +1288,6 @@ static int probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mml_comp_tdshp *priv;
 	s32 ret;
-	bool add_ddp = true;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -1326,18 +1325,9 @@ static int probe(struct platform_device *pdev)
 	priv->comp.hw_ops = &tdshp_hw_ops;
 	priv->comp.debug_ops = &tdshp_debug_ops;
 
-	ret = mml_ddp_comp_init(dev, &priv->ddp_comp, &priv->comp,
-				&ddp_comp_funcs);
-	if (ret) {
-		mml_log("failed to init ddp component: %d", ret);
-		add_ddp = false;
-	}
-
 	dbg_probed_components[dbg_probed_count++] = priv;
 
 	ret = component_add(dev, &mml_comp_ops);
-	if (add_ddp)
-		ret = component_add(dev, &mml_comp_ops);
 	if (ret)
 		dev_err(dev, "Failed to add component: %d\n", ret);
 

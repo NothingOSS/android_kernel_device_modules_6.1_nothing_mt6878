@@ -495,8 +495,6 @@ static int probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mml_comp_color *priv;
 	s32 ret;
-	bool add_ddp = true;
-
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
@@ -514,21 +512,12 @@ static int probe(struct platform_device *pdev)
 	priv->comp.config_ops = &color_cfg_ops;
 	priv->comp.debug_ops = &color_debug_ops;
 
-	ret = mml_ddp_comp_init(dev, &priv->ddp_comp, &priv->comp,
-				&ddp_comp_funcs);
-	if (ret) {
-		mml_log("failed to init ddp component: %d", ret);
-		add_ddp = false;
-	}
-
 	if (unlikely(dbg_probed_count < 0))
 		return -EFAULT;
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 
 	ret = component_add(dev, &mml_comp_ops);
-	if (add_ddp)
-		ret = component_add(dev, &mml_comp_ops);
 	if (ret)
 		dev_err(dev, "Failed to add component: %d\n", ret);
 

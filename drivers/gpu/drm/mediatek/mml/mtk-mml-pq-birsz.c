@@ -42,12 +42,10 @@
 
 struct birsz_data {
 	u32 tile_width;
-	bool add_ddp;
 };
 
 static const struct birsz_data mt6985_birsz_data = {
 	.tile_width = 516,
-	.add_ddp = true,
 };
 
 struct mml_comp_birsz {
@@ -510,7 +508,6 @@ static int probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mml_comp_birsz *priv;
 	s32 ret;
-	bool add_ddp = true;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -530,20 +527,9 @@ static int probe(struct platform_device *pdev)
 	priv->comp.hw_ops = &birsz_hw_ops;
 	priv->comp.debug_ops = &birsz_debug_ops;
 
-	if (priv->data->add_ddp) {
-		ret = mml_ddp_comp_init(dev, &priv->ddp_comp, &priv->comp,
-					&ddp_comp_funcs);
-		if (ret) {
-			mml_log("failed to init ddp component: %d", ret);
-			add_ddp = false;
-		}
-	}
-
 	dbg_probed_components[dbg_probed_count++] = priv;
 
 	ret = component_add(dev, &mml_comp_ops);
-	if (add_ddp)
-		ret = component_add(dev, &mml_comp_ops);
 	if (ret)
 		dev_err(dev, "Failed to add component: %d\n", ret);
 

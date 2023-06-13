@@ -946,28 +946,8 @@ struct mml_ddp_comp_match {
 };
 
 static const struct mml_ddp_comp_match mml_ddp_matches[] = {
-	{ DDP_COMPONENT_MML_RSZ0, MTK_MML_RSZ, "rsz0" },
-	{ DDP_COMPONENT_MML_RSZ1, MTK_MML_RSZ, "rsz1" },
-	{ DDP_COMPONENT_MML_RSZ2, MTK_MML_RSZ, "rsz2" },
-	{ DDP_COMPONENT_MML_RSZ3, MTK_MML_RSZ, "rsz3" },
-	{ DDP_COMPONENT_MML_HDR0, MTK_MML_HDR, "hdr0" },
-	{ DDP_COMPONENT_MML_HDR1, MTK_MML_HDR, "hdr1" },
-	{ DDP_COMPONENT_MML_AAL0, MTK_MML_AAL, "aal0" },
-	{ DDP_COMPONENT_MML_AAL1, MTK_MML_AAL, "aal1" },
-	{ DDP_COMPONENT_MML_TDSHP0, MTK_MML_TDSHP, "tdshp0" },
-	{ DDP_COMPONENT_MML_TDSHP1, MTK_MML_TDSHP, "tdshp1" },
-	{ DDP_COMPONENT_MML_COLOR0, MTK_MML_COLOR, "color0" },
-	{ DDP_COMPONENT_MML_COLOR1, MTK_MML_COLOR, "color1" },
 	{ DDP_COMPONENT_MML_MML0, MTK_MML_MML, "mmlsys" },
-	{ DDP_COMPONENT_MML_DLI0, MTK_MML_MML, "dli0" },
-	{ DDP_COMPONENT_MML_DLI1, MTK_MML_MML, "dli1" },
-	{ DDP_COMPONENT_MML_DLO0, MTK_MML_MML, "dlo0" },
-	{ DDP_COMPONENT_MML_DLO1, MTK_MML_MML, "dlo1" },
 	{ DDP_COMPONENT_MML_MUTEX0, MTK_MML_MUTEX, "mutex0" },
-	{ DDP_COMPONENT_MML_WROT0, MTK_MML_WROT, "wrot0" },
-	{ DDP_COMPONENT_MML_WROT1, MTK_MML_WROT, "wrot1" },
-	{ DDP_COMPONENT_MML_WROT2, MTK_MML_WROT, "wrot2" },
-	{ DDP_COMPONENT_MML_WROT3, MTK_MML_WROT, "wrot3" },
 };
 
 static u32 mml_ddp_comp_get_id(struct device_node *node, const char *name)
