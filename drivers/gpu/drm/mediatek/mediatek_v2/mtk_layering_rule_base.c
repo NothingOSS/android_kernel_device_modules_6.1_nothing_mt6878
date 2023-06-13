@@ -3178,6 +3178,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 				DDPMSG("MML IR layer changed\n");
 				layer_info->layer_caps &= ~DISP_MML_CAPS_MASK;
 				layer_info->layer_caps |= MTK_MML_DISP_MDP_LAYER;
+				disp_info->disp_caps[disp_idx] |= MTK_NEED_REPAINT;
 			}
 		}
 
@@ -3633,11 +3634,10 @@ void lye_add_blob_ids(struct drm_mtk_layering_info *l_info,
 	lye_state->lc_tgt_layer = 0;
 	l_rule_info->bk_mml_dl_lye = lye_state->mml_dl_lye;
 
-	lye_state->need_repaint = l_rule_info->need_repaint;
-	l_rule_info->need_repaint = false;
-
 	if (get_layering_opt(LYE_OPT_SPHRT))
 		disp_idx = l_info->disp_idx;
+
+	lye_state->need_repaint = (l_info->disp_caps[disp_idx]==MTK_NEED_REPAINT);
 
 	crtc = priv->crtc[disp_idx];
 	if (crtc) {
@@ -4163,7 +4163,6 @@ static void check_is_mml_layer(const int disp_idx,
 		     mtk_crtc->is_mml_dl || l_rule_info->bk_mml_dl_lye))) {
 			c->layer_caps &= ~MTK_MML_DISP_DECOUPLE_LAYER;
 			c->layer_caps |= MTK_MML_DISP_MDP_LAYER;
-			l_rule_info->need_repaint = true;
 			disp_info->disp_caps[disp_idx] |= MTK_NEED_REPAINT;
 			DDPINFO("Use MDP for %s-DC transition\n",
 				mtk_crtc->is_mml_dl ? "DL" : "IR");
