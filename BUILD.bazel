@@ -132,6 +132,7 @@ mgk_64_k61_device_modules = [
     "drivers/gpu/drm/panel/panel-nt37801-cmd-fhd.ko",
     "drivers/gpu/drm/panel/panel-nt37801-cmd-ltpo.ko",
     "drivers/gpu/drm/panel/panel-nt37801-cmd-spr.ko",
+    "drivers/gpu/drm/panel/panel-nt37801-cmd-fhd-plus.ko",
     "drivers/gpu/drm/panel/panel-samsung-ana6705-cmd.ko",
     "drivers/gpu/drm/panel/panel-samsung-ana6705-cmd-fhdp.ko",
     "drivers/gpu/drm/panel/panel-samsung-op-cmd.ko",
