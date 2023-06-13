@@ -65,6 +65,7 @@ int mtk_iommu_unregister_fault_callback(int port, bool is_vpu);
 void mtk_iova_map(u64 tab_id, u64 iova, size_t size);
 void mtk_iova_unmap(u64 tab_id, u64 iova, size_t size);
 void mtk_iova_map_dump(u64 iova, u64 tab_id);
+void mtk_iova_dump(u64 iova, u64 tab_id);
 void mtk_iova_trace_dump(u64 iova);
 void mtk_iommu_tlb_sync_trace(u64 iova, size_t size, int iommu_ids);
 void mtk_iommu_pm_trace(int event, int iommu_id, int pd_sta,

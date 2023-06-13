@@ -839,10 +839,9 @@ static int mtk_smmu_hw_sec_init(struct arm_smmu_device *smmu)
 	if (!MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_SEC_EN))
 		return 0;
 
-	dev_info(smmu->dev,
-		 "[%s] plat_data{smmu_plat:%d, flags:0x%x, smmu:%s}\n",
-		 __func__, plat_data->smmu_plat, plat_data->flags,
-		 get_smmu_name(plat_data->smmu_type));
+	/* SOC & GPU SMMU not support secure init */
+	if (plat_data->smmu_type == SOC_SMMU || plat_data->smmu_type == GPU_SMMU)
+		return 0;
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 	ret = mtk_smmu_sec_init(plat_data->smmu_type);
@@ -1381,6 +1380,10 @@ static int mtk_smmu_sec_setup_irqs(struct arm_smmu_device *smmu, bool enable)
 	if (!MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_SEC_EN))
 		return 0;
 
+	/* SOC & GPU SMMU not support secure irq */
+	if (smmu_type == SOC_SMMU || smmu_type == GPU_SMMU)
+		return 0;
+
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 	/* enable or disable secure interrupt */
 	ret = mtk_smmu_sec_irq_setup(smmu_type, enable);
@@ -1806,8 +1809,10 @@ static void mtk_smmu_fault_iova_dump(struct arm_smmu_master *master,
 
 #ifdef MTK_SMMU_DEBUG
 	/* skip dump when fault iova = 0 */
-	if (fault_iova)
-		mtk_iova_map_dump(fault_iova, tab_id);
+	if (fault_iova) {
+		/* For smmu iova dump, tab_id use smmu hardware id */
+		mtk_iova_dump(fault_iova, smmu_tab_id_to_smmu_id(tab_id));
+	}
 #endif
 }
 

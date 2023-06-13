@@ -84,6 +84,8 @@
 #define FIND_IOVA_TIMEOUT_NS		(1000000 * 5) /* 5ms! */
 #define MAP_IOVA_TIMEOUT_NS		(1000000 * 5) /* 5ms! */
 
+#define IOVA_DUMP_LOG_MAX		(100)
+
 struct mtk_iommu_cb {
 	int port;
 	mtk_iommu_fault_callback_t fault_fn;
@@ -236,6 +238,7 @@ static void mtk_iommu_iova_alloc_dump_top(struct seq_file *s,
 					  struct device *dev);
 static void mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev);
 static void mtk_iommu_iova_map_dump(struct seq_file *s, u64 iova, u64 tab_id);
+static void mtk_iommu_iova_dump(struct seq_file *s, u64 iova, u64 tab_id);
 
 static void mtk_iommu_system_time(u64 *high, u32 *low)
 {
@@ -278,23 +281,23 @@ static void mtk_iova_map_latency_check(u64 tab_id, u64 iova, size_t size,
 	spin_unlock(&iova_list.lock);
 
 	if ((end_t - start_t) > FIND_IOVA_TIMEOUT_NS)
-		pr_info("%s warnning, find iova:0x%llx in %d timeout:%llu\n",
-			__func__, iova, i, (end_t - start_t));
+		pr_info("%s warnning, find iova:[0x%llx 0x%llx 0x%zx] in %d timeout:%llu\n",
+			__func__, tab_id, iova, size, i, (end_t - start_t));
 
 	if (dev == NULL) {
-		pr_info("%s warnning, iova:0x%llx is not find in %d\n",
-			__func__, iova, i);
+		pr_info("%s warnning, iova:[0x%llx 0x%llx 0x%zx] not find in %d\n",
+			__func__, tab_id, iova, size, i);
 	} else {
 		/* iova map latency check and print warnning log */
 		start_t = to_system_time(alloc_time_high, alloc_time_low);
 		end_t = to_system_time(end_time_high, end_time_low);
 		latency_time = end_t - start_t;
 		if (latency_time > MAP_IOVA_TIMEOUT_NS) {
-			pr_info("%s warnning, dev:%s, %llu, %llu.%06llu, iova:0x%llx, size:0x%lx\n",
+			pr_info("%s warnning, dev:%s, %llu, %llu.%06llu, iova:[0x%llx 0x%llx 0x%zx]\n",
 				__func__, dev_name(dev), latency_time,
 				(end_time_high - alloc_time_high),
 				(end_time_low - alloc_time_low),
-				iova, size);
+				tab_id, iova, size);
 		}
 	}
 }
@@ -370,8 +373,8 @@ void mtk_iova_unmap(u64 tab_id, u64 iova, size_t size)
 	spin_unlock_irqrestore(&map_list.lock, flags);
 
 	if ((end_t - start_t) > FIND_IOVA_TIMEOUT_NS)
-		pr_info("%s warnning, find iova:0x%llx in %d timeout:%llu\n",
-			__func__, iova, i, (end_t - start_t));
+		pr_info("%s warnning, find iova:[0x%llx 0x%llx 0x%zx] in %d timeout:%llu\n",
+			__func__, tab_id, iova, size, i, (end_t - start_t));
 
 	if (!find_iova)
 		pr_info("%s warnning, iova:[0x%llx 0x%llx 0x%zx] not find in %d\n",
@@ -389,9 +392,16 @@ void mtk_iova_map_dump(u64 iova, u64 tab_id)
 }
 EXPORT_SYMBOL_GPL(mtk_iova_map_dump);
 
+/* For smmu, tab_id is smmu hardware id */
+void mtk_iova_dump(u64 iova, u64 tab_id)
+{
+	mtk_iommu_iova_dump(NULL, iova, tab_id);
+}
+EXPORT_SYMBOL_GPL(mtk_iova_dump);
+
 static int to_smmu_hw_id(u64 tab_id)
 {
-	return smmu_v3_enable ? tab_id >> 8 : tab_id;
+	return smmu_v3_enable ? smmu_tab_id_to_smmu_id(tab_id) : tab_id;
 }
 
 static void mtk_iommu_iova_map_info_dump(struct seq_file *s,
@@ -1163,11 +1173,8 @@ static void dump_ste_cd_info(struct seq_file *s,
 		ttbr = FIELD_GET(CTXDESC_CD_1_TTB0_MASK,  le64_to_cpu(cdptr[1]));
 	}
 
-	iommu_dump(s, "%s strtab base(sw:0x%llx,hw:0x%llx) cfg:(sw:0x%x,hw:0x%x)\n",
-		   __func__, smmu->strtab_cfg.strtab_base,
-		   readq_relaxed(smmu->base + ARM_SMMU_STRTAB_BASE),
-		   smmu->strtab_cfg.strtab_base_cfg,
-		   readl_relaxed(smmu->base + ARM_SMMU_STRTAB_BASE_CFG));
+	iommu_dump(s, "%s strtab base:0x%llx, cfg:0x%x\n", __func__,
+		   smmu->strtab_cfg.strtab_base, smmu->strtab_cfg.strtab_base_cfg);
 	iommu_dump(s, "%s sid=0x%x asid=0x%llx ttbr=0x%llx dev(%s) NULL[cd:%d ste:%d]\n",
 		   __func__, sid, asid, ttbr, dev_name(master->dev),
 		   (cdptr == NULL), (steptr == NULL));
@@ -1719,11 +1726,10 @@ static int mtk_iommu_dump_fops_proc_show(struct seq_file *s, void *unused)
 			}
 
 			mtk_smmu_wpreg_dump(s, i);
+			mtk_smmu_power_put(i);
 
 			/* no need dump all page table raw data */
 			mtk_smmu_pgtable_dump(s, i, false);
-
-			mtk_smmu_power_put(i);
 		}
 	}
 	return 0;
@@ -1772,20 +1778,11 @@ static int mtk_smmu_wp_fops_proc_show(struct seq_file *s, void *unused)
 static int mtk_smmu_pgtable_fops_proc_show(struct seq_file *s, void *unused)
 {
 	if (smmu_v3_enable) {
-		int i, ret;
+		int i;
 
 		/* dump all smmu if exist */
-		for (i = 0; i < SMMU_TYPE_NUM; i++) {
-			ret = mtk_smmu_power_get(i);
-			iommu_dump(s, "smmu_%d: %s\n", i, get_power_status_str(ret));
-			if (ret) {
-				pr_info("[%s] smmu_%d, failed ret:%d\n", __func__, i, ret);
-				continue;
-			}
-
+		for (i = 0; i < SMMU_TYPE_NUM; i++)
 			mtk_smmu_pgtable_dump(s, i, true);
-			mtk_smmu_power_put(i);
-		}
 	}
 	return 0;
 }
@@ -1838,7 +1835,7 @@ static void mtk_iommu_trace_init(struct mtk_m4u_data *data)
 	iommu_globals.write_pointer = 0;
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
-	iommu_globals.map_record = 1;
+	iommu_globals.map_record = (smmu_v3_enable ? 0 : 1);
 #else
 	iommu_globals.map_record = 0;
 #endif
@@ -2235,6 +2232,60 @@ static void mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 	spin_unlock(&iova_list.lock);
 }
 
+/* For smmu, tab_id is smmu hardware id */
+static void mtk_iommu_iova_dump(struct seq_file *s, u64 iova, u64 tab_id)
+{
+	struct iova_info *plist = NULL;
+	struct iova_info *n = NULL;
+	int dump_count = 0;
+
+	if (!iova || tab_id > MTK_M4U_TAB_NR_MAX) {
+		pr_info("%s fail, invalid iova:0x%llx tab_id:%llu\n",
+			__func__, iova, tab_id);
+		return;
+	}
+
+	if (smmu_v3_enable) {
+		iommu_dump(s, "smmu iova dump:\n");
+		iommu_dump(s, "%-9s %-10s %-10s %-18s %-14s %17s, %s\n",
+			   "smmu_id", "stream_id", "asid", "iova", "size", "time", "dev");
+	} else {
+		iommu_dump(s, "iommu iova dump:\n");
+		iommu_dump(s, "%6s %6s %-18s %-10s %17s %s\n",
+			   "tab_id", "dom_id", "iova", "size", "time", "dev");
+	}
+
+	spin_lock(&iova_list.lock);
+	list_for_each_entry_safe(plist, n, &iova_list.head, list_node)
+		if (to_smmu_hw_id(plist->tab_id) == tab_id &&
+			    iova <= (plist->iova + plist->size) &&
+			    iova >= (plist->iova)) {
+			if (smmu_v3_enable)
+				iommu_dump(s, "%-9u 0x%-8x 0x%-8x %-18pa 0x%-12zx %10llu.%06u %s\n",
+					   smmu_tab_id_to_smmu_id(plist->tab_id),
+					   get_smmu_stream_id(plist->dev),
+					   smmu_tab_id_to_asid(plist->tab_id),
+					   &plist->iova,
+					   plist->size,
+					   plist->time_high,
+					   plist->time_low,
+					   dev_name(plist->dev));
+			else
+				iommu_dump(s, "%6llu %6u %-18pa 0x%-8zx %10llu.%06u %s\n",
+					   plist->tab_id,
+					   plist->dom_id,
+					   &plist->iova,
+					   plist->size,
+					   plist->time_high,
+					   plist->time_low,
+					   dev_name(plist->dev));
+
+			if (s == NULL && ++dump_count > IOVA_DUMP_LOG_MAX)
+				break;
+		}
+	spin_unlock(&iova_list.lock);
+}
+
 static void mtk_iova_dbg_alloc(struct device *dev,
 	struct iova_domain *iovad, dma_addr_t iova, size_t size)
 {
@@ -2313,13 +2364,13 @@ static void mtk_iova_dbg_free(
 	spin_unlock(&iova_list.lock);
 
 	if ((end_t - start_t) > FIND_IOVA_TIMEOUT_NS)
-		pr_info("%s warnning, dev:%s, find iova:0x%llx in %d timeout:%llu\n",
+		pr_info("%s warnning, dev:%s, find iova:[0x%llx 0x%llx 0x%zx] in %d timeout:%llu\n",
 			__func__, (dev ? dev_name(dev) : "NULL"),
-			iova, i, (end_t - start_t));
+			tab_id, iova, size, i, (end_t - start_t));
 
 	if (dev == NULL)
-		pr_info("%s warnning, iova:0x%llx is not find in %d\n",
-			__func__, iova, i);
+		pr_info("%s warnning, iova:[0x%llx 0x%zx] not find in %d\n",
+			__func__, iova, size, i);
 
 	mtk_iommu_iova_trace(IOMMU_FREE, iova, size, tab_id, dev);
 }
