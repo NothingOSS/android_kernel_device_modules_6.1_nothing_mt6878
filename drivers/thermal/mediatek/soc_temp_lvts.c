@@ -351,6 +351,36 @@ static void enable_sensing_points(struct lvts_data *lvts_data, unsigned int tc_i
 	writel(flag, LVTSMONCTL0_0 + base);
 }
 
+static void enable_all_sensing_points(struct lvts_data *lvts_data)
+{
+	struct device *dev = lvts_data->dev;
+	struct tc_settings *tc = lvts_data->tc;
+	unsigned int i, j, num;
+	void __iomem *base;
+	unsigned int flag;
+
+	for (i = 0; i < lvts_data->num_tc; i++) {
+		base = GET_BASE_ADDR(i);
+		num = tc[i].num_sensor;
+
+		if (num > ALL_SENSING_POINTS) {
+			dev_err(dev,
+				"%s, LVTS%d, illegal number of sensors: %d\n",
+				__func__, i, tc[i].num_sensor);
+			continue;
+		}
+
+		flag = LVTS_SINGLE_SENSE;
+		for (j = 0; j < tc[i].num_sensor; j++) {
+			if (tc[i].sensor_on_off[j] != SEN_ON)
+				continue;
+
+			flag = flag | (0x1<<j);
+		}
+		writel(flag, LVTSMONCTL0_0 + base);
+	}
+}
+
 #ifdef DUMP_MORE_LOG
 static void read_controller_reg_before_active(struct lvts_data *lvts_data)
 {
@@ -615,32 +645,39 @@ static int lvts_thermal_check_all_sensing_point_idle(struct lvts_data *lvts_data
 void lvts_wait_for_all_sensing_point_idle(struct lvts_data *lvts_data)
 {
 	struct device *dev = lvts_data->dev;
-	int cnt = 0;
+	int cnt = 0, i, error_code, mask;
 	int temp;
+	void __iomem *base;
 
+	mask = BIT(10) | BIT(7) | BIT(0);
 	/*
 	 * Wait until all sensoring points idled.
 	 * No need to check LVTS status when suspend/resume,
 	 * this will spend extra 100us of suspend flow.
 	 * LVTS status will be reset after resume.
 	 */
-	while (cnt < 50) {
+	while (cnt < 80) {
 		temp = lvts_thermal_check_all_sensing_point_idle(lvts_data);
 		if (temp == 0)
-			break;
-
-		if ((cnt + 1) % 10 == 0) {
-			dev_info(dev, "Cnt= %d LVTS TC %d, LVTSMSRCTL1[10,7,0] = %lu,%lu,%lu, LVTSMSRCTL1[10:0] = 0x%lx\n",
-				cnt + 1, (temp >> 16),
-				((temp & BIT(2)) >> 2),
-				((temp & BIT(1)) >> 1),
-				(temp & BIT(0)),
-				(temp & GENMASK(10, 0)));
-		}
+			goto TAIL;
 
 		udelay(2);
 		cnt++;
 	}
+	for (i = 0; i < lvts_data->num_tc; i++) {
+		base = GET_BASE_ADDR(i);
+		temp = readl(LVTSMSRCTL1_0 + base);
+		if ((temp & mask) != 0) {
+			error_code = ((temp & BIT(10)) >> 8) +
+				((temp & BIT(7)) >> 6) +
+				(temp & BIT(0));
+
+			dev_info(dev, "Error LVTS %d sensing points aren't idle, error_code %d\n",
+				i, error_code);
+		}
+	}
+TAIL:
+	return;
 }
 
 
@@ -876,6 +913,8 @@ static void set_all_tc_hw_reboot(struct lvts_data *lvts_data)
 	struct tc_settings *tc = lvts_data->tc;
 	int i, trip_point;
 
+	disable_all_sensing_points(lvts_data);
+	lvts_wait_for_all_sensing_point_idle(lvts_data);
 	for (i = 0; i < lvts_data->num_tc; i++) {
 		trip_point = tc[i].hw_reboot_trip_point;
 
@@ -889,6 +928,7 @@ static void set_all_tc_hw_reboot(struct lvts_data *lvts_data)
 
 		set_tc_hw_reboot_threshold(lvts_data, trip_point, i);
 	}
+	enable_all_sensing_points(lvts_data);
 }
 
 static void update_all_tc_hw_reboot_point(struct lvts_data *lvts_data,
@@ -907,19 +947,11 @@ static int soc_temp_lvts_set_trip_temp(struct thermal_zone_device *tz,
 	struct soc_temp_tz *lvts_tz = (struct soc_temp_tz *)tz->devdata;
 	struct lvts_data *lvts_data = lvts_tz->lvts_data;
 	const struct thermal_trip *trip_points;
-	struct device *dev = lvts_data->dev;
 	int ret;
 
 	trip_points = of_thermal_get_trip_points(lvts_data->tz_dev);
 	if (!trip_points)
 		return -EINVAL;
-
-	if (temp <= MIN_THERMAL_HW_REBOOT_POINT && temp != THERMAL_TEMP_INVALID &&
-		trip_points[trip].type == THERMAL_TRIP_CRITICAL && lvts_tz->id == 0) {
-		dev_info(dev, "%s, input temperature is lower than %d\n", __func__,
-			MIN_THERMAL_HW_REBOOT_POINT);
-		return -EINVAL;
-	}
 
 	if (trip_points[trip].type != THERMAL_TRIP_CRITICAL || lvts_tz->id != 0)
 		return 0;
