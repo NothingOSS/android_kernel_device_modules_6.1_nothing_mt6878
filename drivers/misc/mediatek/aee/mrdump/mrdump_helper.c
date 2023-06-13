@@ -27,6 +27,9 @@
 #ifdef MODULE
 
 #define NAME_LEN	128
+#define MRDUMP_KA_MAGIC 0xAEE0AEE0
+
+static u32 mrdump_ka_done;
 
 static unsigned long *mrdump_ka;
 static int *mrdump_ko;
@@ -121,6 +124,7 @@ static void mrdump_ka_work_func(struct work_struct *work)
 		init_ko_addr_list_late();
 		mrdump_mini_add_klog();
 		mrdump_mini_add_kallsyms();
+		mrdump_ka_done = MRDUMP_KA_MAGIC;
 	} else {
 		pr_info("%s: retry in 0.1 second", __func__);
 		if (--retry_nm >= 0)
@@ -186,7 +190,7 @@ static unsigned long aee_addr_find(const char *name)
 	unsigned long i;
 	unsigned int off;
 
-	if (!mrdump_km)
+	if (mrdump_ka_done != MRDUMP_KA_MAGIC)
 		return 0;
 
 	for (i = 0, off = 0; i < _mrdump_kns; i++) {
