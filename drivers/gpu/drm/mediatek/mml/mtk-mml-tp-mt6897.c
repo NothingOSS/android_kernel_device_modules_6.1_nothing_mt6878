@@ -1162,7 +1162,13 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 	}
 
 	/* no pq support for dl mode */
-	if (info->dest[0].pq_config.en_fg) {
+	if (info->dest[0].pq_config.en_dc ||
+		info->dest[0].pq_config.en_color ||
+		info->dest[0].pq_config.en_hdr ||
+		info->dest[0].pq_config.en_ccorr ||
+		info->dest[0].pq_config.en_dre ||
+		info->dest[0].pq_config.en_region_pq ||
+		info->dest[0].pq_config.en_fg) {
 		*reason = mml_query_pqen;
 		goto decouple;
 	}
@@ -1248,7 +1254,13 @@ static enum mml_mode tp_query_mode_racing(struct mml_dev *mml, struct mml_frame_
 	}
 
 	/* no pq support for racing mode */
-	if (info->dest[0].pq_config.en_fg) {
+	if (info->dest[0].pq_config.en_dc ||
+		info->dest[0].pq_config.en_color ||
+		info->dest[0].pq_config.en_hdr ||
+		info->dest[0].pq_config.en_ccorr ||
+		info->dest[0].pq_config.en_dre ||
+		info->dest[0].pq_config.en_region_pq ||
+		info->dest[0].pq_config.en_fg) {
 		*reason = mml_query_pqen;
 		goto decouple;
 	}
