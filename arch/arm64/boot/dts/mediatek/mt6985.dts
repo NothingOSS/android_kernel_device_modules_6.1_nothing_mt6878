@@ -9135,6 +9135,89 @@
 			bootmode = <&chosen>;
 		};
 
+		ufshci: ufshci@112b0000 {
+			compatible = "mediatek,mt8183-ufshci";
+			reg = <0 0x112b0000 0 0x2300>;
+			phys = <&ufsphy>;
+
+			interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH 0>,
+					 <GIC_SPI 177 IRQ_TYPE_LEVEL_HIGH 0>,
+					 <GIC_SPI 178 IRQ_TYPE_LEVEL_HIGH 0>,
+					 <GIC_SPI 179 IRQ_TYPE_LEVEL_HIGH 0>,
+					 <GIC_SPI 180 IRQ_TYPE_LEVEL_HIGH 0>,
+					 <GIC_SPI 181 IRQ_TYPE_LEVEL_HIGH 0>,
+					 <GIC_SPI 182 IRQ_TYPE_LEVEL_HIGH 0>,
+					 <GIC_SPI 183 IRQ_TYPE_LEVEL_HIGH 0>,
+					 <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH 0>;
+
+
+			clocks =
+				<&topckgen_clk CLK_TOP_U_SEL>,
+				<&topckgen_clk CLK_TOP_MAINPLL_D4_D2>,
+				<&topckgen_clk CLK_TOP_MMPLL_D6>,
+				<&topckgen_clk CLK_TOP_AES_UFSFDE_SEL>,
+				<&topckgen_clk CLK_TOP_U_MBIST_SEL>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_TX_SYM>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM0>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM1>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SYS>,
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS>,
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AES>;
+
+			clock-names =
+				"ufs_sel",
+				"ufs_sel_min_src",
+				"ufs_sel_max_src",
+				"ufs_fde",
+				"ufs_mbist",
+				"unipro_tx_sym",
+				"unipro_rx_sym0",
+				"unipro_rx_sym1",
+				"unipro_sys",
+				"ufshci_ufs",
+				"ufshci_aes";
+
+			freq-table-hz =
+				<273000000 458333313>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>;
+
+			power-domains = <&scpsys MT6985_POWER_DOMAIN_UFS0_SHUTDOWN>;
+
+			vcc-supply = <&mt6363_vemc>;
+			vccq-supply = <&mt6373_vbuck7>;
+
+			resets = <&ufscfgao_rst 0>, <&ufscfgao_rst 1>,
+				<&ufscfgpdn_rst 0>, <&ufscfgpdn_rst 1>;
+			reset-names = "unipro_rst", "mphy_rst", "crypto_rst", "hci_rst";
+
+			bootmode = <&chosen>;
+
+			mediatek,ufs-disable-mcq;
+			mediatek,ufs-qos;
+			mediatek,ufs-pmc-via-fastauto;
+			mediatek,ufs-mphy-debug;
+			mediatek,ufs-tx-skew-fix;
+
+			/* mcq setting */
+			mediatek,ufs-mcq-enabled;
+			mediatek,ufs-mcq-hwq-count = <8>;
+			mediatek,ufs-mcq-q-depth = <32>;
+			mediatek,ufs-mcq-intr-count = <8>;
+
+			/* @CONFIG_UFS_MEDIATEK_INTERNAL */
+			mediatek,ufs-mcq-disable-on-hwver = <0xca00>;
+		};
+
+
 		mgm: mgm {
 			compatible = "arm,physical-memory-group-manager";
 		};
@@ -12712,88 +12795,6 @@
 			};
 		};
 
-	};
-
-	ufshci: ufshci@112b0000 {
-		compatible = "mediatek,mt8183-ufshci";
-		reg = <0 0x112b0000 0 0x2300>;
-		phys = <&ufsphy>;
-
-		interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH 0>,
-				 <GIC_SPI 177 IRQ_TYPE_LEVEL_HIGH 0>,
-				 <GIC_SPI 178 IRQ_TYPE_LEVEL_HIGH 0>,
-				 <GIC_SPI 179 IRQ_TYPE_LEVEL_HIGH 0>,
-				 <GIC_SPI 180 IRQ_TYPE_LEVEL_HIGH 0>,
-				 <GIC_SPI 181 IRQ_TYPE_LEVEL_HIGH 0>,
-				 <GIC_SPI 182 IRQ_TYPE_LEVEL_HIGH 0>,
-				 <GIC_SPI 183 IRQ_TYPE_LEVEL_HIGH 0>,
-				 <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH 0>;
-
-
-		clocks =
-			<&topckgen_clk CLK_TOP_U_SEL>,
-			<&topckgen_clk CLK_TOP_MAINPLL_D4_D2>,
-			<&topckgen_clk CLK_TOP_MMPLL_D6>,
-			<&topckgen_clk CLK_TOP_AES_UFSFDE_SEL>,
-			<&topckgen_clk CLK_TOP_U_MBIST_SEL>,
-			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_TX_SYM>,
-			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM0>,
-			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM1>,
-			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SYS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AES>;
-
-		clock-names =
-			"ufs_sel",
-			"ufs_sel_min_src",
-			"ufs_sel_max_src",
-			"ufs_fde",
-			"ufs_mbist",
-			"unipro_tx_sym",
-			"unipro_rx_sym0",
-			"unipro_rx_sym1",
-			"unipro_sys",
-			"ufshci_ufs",
-			"ufshci_aes";
-
-		freq-table-hz =
-			<273000000 458333313>,
-			<0 0>,
-			<0 0>,
-			<0 0>,
-			<0 0>,
-			<0 0>,
-			<0 0>,
-			<0 0>,
-			<0 0>,
-			<0 0>,
-			<0 0>;
-
-		power-domains = <&scpsys MT6985_POWER_DOMAIN_UFS0_SHUTDOWN>;
-
-		vcc-supply = <&mt6363_vemc>;
-		vccq-supply = <&mt6373_vbuck7>;
-
-		resets = <&ufscfgao_rst 0>, <&ufscfgao_rst 1>,
-			<&ufscfgpdn_rst 0>, <&ufscfgpdn_rst 1>;
-		reset-names = "unipro_rst", "mphy_rst", "crypto_rst", "hci_rst";
-
-		bootmode = <&chosen>;
-
-		mediatek,ufs-disable-mcq;
-		mediatek,ufs-qos;
-		mediatek,ufs-pmc-via-fastauto;
-		mediatek,ufs-mphy-debug;
-		mediatek,ufs-tx-skew-fix;
-
-		/* mcq setting */
-		mediatek,ufs-mcq-enabled;
-		mediatek,ufs-mcq-hwq-count = <8>;
-		mediatek,ufs-mcq-q-depth = <32>;
-		mediatek,ufs-mcq-intr-count = <8>;
-
-		/* @CONFIG_UFS_MEDIATEK_INTERNAL */
-		mediatek,ufs-mcq-disable-on-hwver = <0xca00>;
 	};
 
 	scp: scp@1c700000 {
