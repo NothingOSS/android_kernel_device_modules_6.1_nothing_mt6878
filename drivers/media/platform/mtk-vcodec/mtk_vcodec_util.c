@@ -33,9 +33,7 @@ char mtk_vdec_tmp_log[LOG_PROPERTY_SIZE];
 char mtk_venc_tmp_log[LOG_PROPERTY_SIZE];
 char mtk_vdec_tmp_prop[LOG_PROPERTY_SIZE];
 char mtk_venc_tmp_prop[LOG_PROPERTY_SIZE];
-static int group_list[VCODEC_MAX_GROUP_SIZE];
-static unsigned int group_list_size;
-static struct mutex grouplock;
+
 
 
 
@@ -1193,70 +1191,17 @@ void mtk_vcodec_get_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 	mtk_v4l2_debug(0, "val: %s, log_index: %d", val, log_index);
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_get_log);
-static void mtk_vcodec_make_group_list(void)
-{
-	struct task_struct *task, *task_child;
-	int ret = 0;
 
-	rcu_read_lock();
-	for_each_process(task) {
-		if (!strcmp(task->comm, "c2@1.2-mediatek") ||
-		!strcmp(task->comm, "mtk-vcodec-dec") ||
-		!strcmp(task->comm, "vdec_ipi_recv") ||
-		!strcmp(task->comm, "mtk-vcodec-enc") ||
-		!strcmp(task->comm, "venc_ipi_recv")) {
-			for_each_thread(task, task_child) {
-				ret = set_task_to_group(
-				task_child->thread_pid->numbers[0].nr,
-				GROUP_ID_3);
-				if (ret == -1)
-					pr_info("put tid %d fail\n",
-					task_child->thread_pid->numbers[0].nr);
-				else {
-					if (group_list_size < VCODEC_MAX_GROUP_SIZE) {
-						group_list[group_list_size] =
-						task_child->thread_pid->numbers[0].nr;
-						group_list_size ++;
-					} else {
-						pr_info("invalid grouplist size %d\n",
-						group_list_size);
-					}
-				}
-			}
-			//pr_info("update size group_list_size %d\n", group_list_size);
-		}
-	}
-	rcu_read_unlock();
 
-}
 void mtk_vcodec_config_group_list(void)
 {
-	int i = 0;
-
-	mutex_lock(&grouplock);
-	if (group_list_size != 0) {
-		//pr_info("clean group_list_size %d\n", group_list_size);
-		for (i = 0; i < group_list_size; i++) {
-			set_task_to_group( group_list[i], -1);
-			group_list[i] = 0;
-		}
-		group_list_size = 0;
-	}
-	mtk_vcodec_make_group_list();
-	mutex_unlock(&grouplock);
 
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_config_group_list);
 
 void mtk_vcodec_init_group_list_lock(void)
 {
-	static int init_flag;
 
-	if (init_flag == 0) {
-		init_flag = 1;
-		mutex_init(&grouplock);
-		group_list_size = 0;
-	}
 
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_init_group_list_lock);
