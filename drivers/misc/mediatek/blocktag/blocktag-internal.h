@@ -126,7 +126,7 @@ struct mtk_btag_mictx {
 		__u64 window_begin;
 		__u16 depth;
 	} wl;
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
 	struct __mictx_average_queue_depth {
 		spinlock_t lock;
 		__u64 latency;

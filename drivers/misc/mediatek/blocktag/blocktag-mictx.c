@@ -59,7 +59,7 @@ static void mictx_reset(struct mtk_btag_mictx *mictx)
 		spin_unlock_irqrestore(&q->lock, flags);
 	}
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
 	/* clear average queue depth */
 	spin_lock_irqsave(&mictx->avg_qd.lock, flags);
 	mictx->avg_qd.latency = 0;
@@ -111,7 +111,7 @@ void mtk_btag_mictx_send_command(struct mtk_blocktag *btag, __u64 start_t,
 	list_for_each_entry_rcu(mictx, &btag->ctx.mictx.list, list) {
 		struct mtk_btag_mictx_queue *q = &mictx->q[qid];
 		unsigned long flags;
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
 		__u64 time;
 #endif
 
@@ -139,7 +139,7 @@ void mtk_btag_mictx_send_command(struct mtk_blocktag *btag, __u64 start_t,
 			mictx->tags[tid].len = tot_len;
 		}
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
 		/* average queue depth
 		 * NOTE: see the calculation in mictx_evaluate_avg_qd()
 		 */
@@ -172,7 +172,7 @@ void mtk_btag_mictx_complete_command(struct mtk_blocktag *btag, __u64 end_t,
 	list_for_each_entry_rcu(mictx, &btag->ctx.mictx.list, list) {
 		struct mtk_btag_mictx_queue *q = &mictx->q[qid];
 		unsigned long flags;
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
 		__u64 time;
 #endif
 
@@ -195,7 +195,7 @@ void mtk_btag_mictx_complete_command(struct mtk_blocktag *btag, __u64 end_t,
 			spin_unlock_irqrestore(&q->lock, flags);
 		}
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
 		/* average queue depth
 		 * NOTE: see the calculation in mictx_evaluate_avg_qd()
 		 */
@@ -319,7 +319,7 @@ static void mictx_evaluate_queue(struct mtk_btag_mictx *mictx,
 						iostat->duration);
 }
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
 /* Average Queue Depth
  * NOTE:
  *                 |<----------------- Window Time (WT) ----------------->|
@@ -377,7 +377,7 @@ int mtk_btag_mictx_get_data(struct mtk_btag_mictx_id mictx_id,
 	memset(iostat, 0, sizeof(struct mtk_btag_mictx_iostat_struct));
 	mictx_evaluate_workload(mictx, iostat);
 	mictx_evaluate_queue(mictx, iostat);
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
 	if (mictx->full_logging)
 		mictx_evaluate_avg_qd(mictx, iostat);
 #endif
@@ -459,7 +459,7 @@ static int mictx_alloc(enum mtk_btag_storage_type type)
 	spin_lock_init(&mictx->wl.lock);
 	mictx->wl.window_begin = cur_time;
 	mictx->wl.idle_begin = cur_time;
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
 	spin_lock_init(&mictx->avg_qd.lock);
 	mictx->avg_qd.last_depth_chg = cur_time;
 #endif

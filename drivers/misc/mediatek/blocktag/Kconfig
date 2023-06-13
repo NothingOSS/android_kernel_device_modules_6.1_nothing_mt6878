@@ -27,3 +27,13 @@ config MTK_BLOCK_IO_PM_DEBUG
 	  events will be created in block layer.
 	  Our blocktag module will registered these event and
 	  records the pm information.
+
+config MTK_BLOCK_IO_DEBUG_BUILD
+	bool "Enable Blocktag Debugging Facilities"
+	depends on MTK_BLOCK_IO_TRACER
+	help
+	  If enabled, more information will be collected
+	  for the I/O transaction such like average queue
+	  depth statistics.
+
+	  If unsure, say N.

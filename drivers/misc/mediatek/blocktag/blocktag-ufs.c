@@ -534,7 +534,7 @@ static void btag_ufs_init_ctx(struct mtk_blocktag *btag)
 		rcu_assign_pointer(ctx[qid].cur_data, &ctx[qid].data[0]);
 	}
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+#if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
 	btag->ctx_enable = true;
 #else
 	btag->ctx_enable = false;
