@@ -376,7 +376,6 @@ struct mtk_disp_aal {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_crtc *crtc;
 	struct dre3_node dre3_hw;
-	atomic_t dirty_frame_retrieved;
 	atomic_t is_clock_on;
 	const struct mtk_disp_aal_data *data;
 	bool is_right_pipe;
