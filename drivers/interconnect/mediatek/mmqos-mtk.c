@@ -55,7 +55,7 @@
 #define HRT_BONUS		(10 / 7)
 #define MAX_BW_VALUE_NUM	(24)
 #define MAX_REG_VALUE_NUM	(8)
-#define MAX_BW_UNIT		(1024)
+#define MAX_BW_UNIT		(1023)
 
 #define APMCU_MASK_OFFSET	(gmmqos->apmcu_mask_offset)
 #define APMCU_ON_BW_OFFSET(i)	(gmmqos->apmcu_on_bw_offset + 4 * i)
