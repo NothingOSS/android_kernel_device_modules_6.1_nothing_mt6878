@@ -271,7 +271,10 @@ static void group_init_tg_pointers(void)
 static void add_new_task_to_grp(struct task_struct *new, enum _GP_trace GP_trace)
 {
 	int groupid, ret;
+	struct gp_task_struct *gts = &((struct mtk_task *)new->android_vendor_data1)->gp_task;
 
+	if (gts->customized)
+		return;
 	groupid = cgrp_to_grpid(new);
 	ret = __sched_set_grp_id(new, groupid);
 	if (trace_sched_task_to_grp_enabled())
@@ -316,6 +319,7 @@ static void group_android_rvh_cpu_cgroup_attach(void *unused,
 	struct task_group *tg;
 	struct cgrp_tg *cgrptg;
 	int ret, grp_id;
+	struct gp_task_struct *gts;
 
 	if (unlikely(group_get_mode() == GP_MODE_0))
 		return;
@@ -329,6 +333,9 @@ static void group_android_rvh_cpu_cgroup_attach(void *unused,
 
 	cgroup_taskset_for_each(task, css, tset) {
 		grp_id = cgrptg->colocate ? cgrptg->groupid : -1;
+		gts = &((struct mtk_task *)task->android_vendor_data1)->gp_task;
+		if (gts->customized)
+			continue;
 		ret = __sched_set_grp_id(task, grp_id);
 		if (trace_sched_task_to_grp_enabled())
 			trace_sched_task_to_grp(task, grp_id, ret, GP_CGROUP);
@@ -378,12 +385,18 @@ int set_task_to_group(int pid, int grp_id)
 {
 	struct task_struct *p;
 	int ret = -1;
+	struct gp_task_struct *gts;
 
 	if (grp_id >= GROUP_ID_RECORD_MAX)
 		return ret;
 	p = get_pid_task(find_vpid(pid), PIDTYPE_PID);
 	if (!p)
 		return ret;
+	gts = &((struct mtk_task *)p->android_vendor_data1)->gp_task;
+	if (grp_id < 0)
+		gts->customized = false;
+	else
+		gts->customized = true;
 	ret = __sched_set_grp_id(p, grp_id);
 	if (trace_sched_task_to_grp_enabled())
 		trace_sched_task_to_grp(p, grp_id, ret, GP_API);

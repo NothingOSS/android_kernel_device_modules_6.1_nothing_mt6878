@@ -37,6 +37,7 @@ struct soft_affinity_task {
 
 struct gp_task_struct {
 	struct grp __rcu	*grp;
+	bool customized;
 };
 
 struct sbb_task_struct {
