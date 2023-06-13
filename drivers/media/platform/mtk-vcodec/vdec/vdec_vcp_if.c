@@ -1181,6 +1181,14 @@ static int vdec_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 		(fourcc >> 16) & 0xFF, (fourcc >> 24) & 0xFF,
 		inst->vcu.id, inst, msg.ap_inst_addr);
 
+	if (ctx->dev->smmu_enabled) {
+		mtk_vcodec_vp_mode_buf_prepare(ctx->dev);
+		inst->vsi->vp_mode_src_buf[0] = ctx->dev->vp_mode_buf[0].mem.iova;
+		inst->vsi->vp_mode_src_buf[1] = ctx->dev->vp_mode_buf[1].mem.iova;
+		mtk_v4l2_debug(2, "fill vsi vp mode src buf iova: 0x%llx 0x%llx",
+			inst->vsi->vp_mode_src_buf[0], inst->vsi->vp_mode_src_buf[1]);
+	}
+
 	vcodec_trace_end();
 	return 0;
 
@@ -1216,6 +1224,9 @@ static void vdec_vcp_deinit(unsigned long h_vdec)
 	mtk_vcodec_debug(inst, "- ret=%d", err);
 
 	mtk_vcodec_del_ctx_list(inst->ctx);
+
+	if (inst->ctx->dev->smmu_enabled)
+		mtk_vcodec_vp_mode_buf_unprepare(inst->ctx->dev);
 
 	mutex_lock(inst->vcu.ctx_ipi_lock);
 	list_for_each_safe(p, q, &inst->vcu.bufs) {

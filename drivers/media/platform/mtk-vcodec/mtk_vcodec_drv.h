@@ -705,6 +705,12 @@ struct venc_larb_port {
 	unsigned int ram_type[MTK_VENC_PORT_NUM];
 };
 
+struct vdec_vp_mode_buf {
+	struct vcodec_mem_obj mem;
+	struct dma_buf_attachment *attach;
+	struct sg_table *sgt;
+};
+
 
 /**
  * struct mtk_vcodec_dev - driver data
@@ -867,6 +873,11 @@ struct mtk_vcodec_dev {
 	bool queued_frame;
 	struct slc_param dec_slc_frame;
 	struct slc_param dec_slc_ube;
+
+	bool smmu_enabled;
+	unsigned int vp_mode_used_cnt;
+	struct mutex vp_mode_buf_mutex;
+	struct vdec_vp_mode_buf vp_mode_buf[2];
 /**
  *	struct ion_client *ion_vdec_client;
  *	struct ion_client *ion_venc_client;

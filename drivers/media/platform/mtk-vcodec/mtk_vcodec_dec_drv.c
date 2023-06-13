@@ -648,6 +648,10 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	mtk_vdec_init_slc(&dev->dec_slc_frame, ID_VDEC_FRAME);
 	mtk_vdec_init_slc(&dev->dec_slc_ube, ID_VDEC_UBE);
 
+	dev->smmu_enabled = smmu_v3_enabled();
+	dev->vp_mode_used_cnt = 0;
+	mutex_init(&dev->vp_mode_buf_mutex);
+
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	vdec_vcp_probe(dev);
 #endif

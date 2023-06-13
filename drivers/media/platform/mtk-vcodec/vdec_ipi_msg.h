@@ -472,6 +472,7 @@ struct vdec_vsi {
 	__u32 codec_fmt;
 	__s32 target_freq;
 	__u32 is_active;
+	__u64 vp_mode_src_buf[2];
 };
 
 #endif
