@@ -3042,8 +3042,10 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 	int no_compress_layer_num = 0;
 	int idx = disp_idx;
 	static u32 last_mml_ir_lye;
-	bool transition = false;
-	u32 rpo_comp = 0;
+	bool exclusive_chance = false;
+	u32 rpo_comp = 0, mml_comp = 0;
+	unsigned int *comp_id_list = NULL, comp_id_nr;
+	struct mtk_drm_private *priv = drm_dev->dev_private;
 
 	if (get_layering_opt(LYE_OPT_SPHRT))
 		idx = 0;
@@ -3061,6 +3063,10 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			break;
 		}
 	}
+
+	comp_id_nr = mtk_ddp_ovl_resource_list(priv, &comp_id_list);
+	exclusive_chance = ((disp_info->gles_head[idx] == -1) &&
+			    (disp_info->layer_num[idx] < (2 * comp_id_nr)));
 
 	/* TODO: check BW monitor with SPHRT */
 	if (disp_idx == HRT_PRIMARY) {
@@ -3136,51 +3142,60 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			break;
 		}
 
-		if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER))
-			mtk_addon_set_comp(&lye_state->mml_ir_lye,
-					   comp_state.comp_id, comp_state.lye_id);
-		else if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_LINK_LAYER))
-			mtk_addon_set_comp(&lye_state->mml_dl_lye,
-					   comp_state.comp_id, comp_state.lye_id);
-		else if (mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER)) {
-			mtk_addon_set_comp(&lye_state->rpo_lye,
-					   comp_state.comp_id, comp_state.lye_id);
-			rpo_comp = comp_state.comp_id;
-		}
-
 		if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER |
-						  MTK_MML_DISP_DIRECT_LINK_LAYER)) {
-			if (last_mml_ir_lye && (last_mml_ir_lye != lye_state->mml_ir_lye)) {
-				DDPMSG("MML layer changed\n");
-				transition = true;
-				disp_info->disp_caps[disp_idx] |= MTK_NEED_REPAINT;
-			}
-			if (rpo_comp == comp_state.comp_id) {
-				DDPMSG("MML RPO use the same OVL\n");
-				transition = true;
+						  MTK_MML_DISP_DIRECT_LINK_LAYER))
+			mml_comp = comp_state.comp_id;
+		else if (mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER))
+			rpo_comp = comp_state.comp_id;
+
+		if (mml_comp && (mml_comp == rpo_comp)) {
+			DDPMSG("MML RPO use the same OVL\n");
+			if (exclusive_chance && (mml_comp != comp_id_list[comp_id_nr - 1])) {
+				layer_map |= (layer_map_idx << 1);
+				i--;
+				continue;
+			} else {
+				if (mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER)) {
+					layer_info->layer_caps &= ~MTK_DISP_RSZ_LAYER;
+					mtk_gles_incl_layer(disp_info, idx, i);
+				} else {
+					/* for both IR and DL */
+					layer_info->layer_caps &= ~DISP_MML_CAPS_MASK;
+					layer_info->layer_caps |= MTK_MML_DISP_MDP_LAYER;
+				}
 			}
 		}
 
-		if (transition) {
-			transition = false;
+		if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER) &&
+		    last_mml_ir_lye) {
+			u8 last_lye = 0;
+			u32 last_comp = 0;
 
-			if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER))
-				lye_state->mml_ir_lye = 0;
-			else if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_LINK_LAYER))
-				lye_state->mml_dl_lye = 0;
-
-			layer_info->layer_caps &= ~DISP_MML_CAPS_MASK;
-			layer_info->layer_caps |= MTK_MML_DISP_MDP_LAYER;
+			mtk_addon_get_comp(last_mml_ir_lye, &last_comp, &last_lye);
+			if ((comp_state.comp_id != last_comp) || (comp_state.lye_id != last_lye)) {
+				DDPMSG("MML IR layer changed\n");
+				layer_info->layer_caps &= ~DISP_MML_CAPS_MASK;
+				layer_info->layer_caps |= MTK_MML_DISP_MDP_LAYER;
+			}
 		}
 
 		comp_state.layer_caps = layer_info->layer_caps;
-
 		lye_add_lye_priv_blob(&comp_state, lyeblob_ids, plane_idx,
 				      disp_idx, drm_dev);
 
 		layer_info->ovl_id = plane_idx;
 		plane_idx++;
 		prev_comp_id = comp_state.comp_id;
+
+		if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER))
+			mtk_addon_set_comp(&lye_state->mml_ir_lye,
+					   comp_state.comp_id, comp_state.lye_id);
+		else if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_LINK_LAYER))
+			mtk_addon_set_comp(&lye_state->mml_dl_lye,
+					   comp_state.comp_id, comp_state.lye_id);
+		else if (mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER))
+			mtk_addon_set_comp(&lye_state->rpo_lye,
+					   comp_state.comp_id, comp_state.lye_id);
 	}
 
 	last_mml_ir_lye = lye_state->mml_ir_lye;
