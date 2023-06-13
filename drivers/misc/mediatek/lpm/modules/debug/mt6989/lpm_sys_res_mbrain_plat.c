@@ -43,7 +43,8 @@ void get_sys_res_header(void)
 
 	header.data_offset = sizeof(struct sys_res_mbrain_header);
 	header.index_data_length = SCENE_RELEASE_NUM *
-		(sizeof(struct sys_res_scene_info) + sys_res_sig_num * sizeof(struct sys_res_sig_info));
+		(sizeof(struct sys_res_scene_info) +
+		sys_res_sig_num * sizeof(struct sys_res_sig_info));
 }
 
 void *sys_res_data_copy(void *dest, void *src, uint64_t size)
@@ -93,9 +94,12 @@ int lpm_mbrain_get_sys_res_data(void *address, uint32_t size)
 	spin_lock_irqsave(&sys_res_ops->lock, flag);
 	scene_info.res_sig_num = sys_res_sig_num;
 	for(i=0; i<SCENE_RELEASE_NUM; i++) {
-		scene_info.duration_time = sys_res_ops->get_detail(sys_res_record[i], SYS_RES_DURATION, 0);
-		scene_info.suspend_time = sys_res_ops->get_detail(sys_res_record[i], SYS_RES_SUSPEND_TIME, 0);
-		address = sys_res_data_copy(address, &scene_info, sizeof(struct sys_res_scene_info));
+		scene_info.duration_time = sys_res_ops->get_detail(sys_res_record[i],
+								SYS_RES_DURATION, 0);
+		scene_info.suspend_time = sys_res_ops->get_detail(sys_res_record[i],
+								SYS_RES_SUSPEND_TIME, 0);
+		address = sys_res_data_copy(address, &scene_info,
+							sizeof(struct sys_res_scene_info));
 	}
 
 	/* Copy signal data */
@@ -103,14 +107,16 @@ int lpm_mbrain_get_sys_res_data(void *address, uint32_t size)
 		for (j = 0; j <= VCORE_REQ; j++){
 			if(group_release[j]) {
 				sig_info = (void *)sys_res_ops->get_detail(sys_res_record[i],
-									SYS_RES_SIG_ADDR,
-									sys_res_group_info[j].sys_index);
+							SYS_RES_SIG_ADDR,
+							sys_res_group_info[j].sys_index);
 				if(sig_info)
-					address = sys_res_data_copy(address, sig_info, sizeof(struct sys_res_sig_info));
+					address = sys_res_data_copy(address,
+								sig_info,
+								sizeof(struct sys_res_sig_info));
 
 				sig_info = (void *)sys_res_ops->get_detail(sys_res_record[i],
-									SYS_RES_SIG_ADDR,
-									sys_res_group_info[j].sig_table_index);
+							SYS_RES_SIG_ADDR,
+							sys_res_group_info[j].sig_table_index);
 				if(sig_info)
 					address = sys_res_data_copy(address,
 								sig_info,

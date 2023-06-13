@@ -44,16 +44,16 @@ static unsigned int sys_res_last_suspend_diff_buffer_index;
 static unsigned int sys_res_last_diff_buffer_index;
 
 struct sys_res_group_info sys_res_group_info[NR_SPM_GRP] = {
-	{DDREN_REQ,	  "DDREN",   287,   0,  32, 0},
-	{APSRC_REQ,   "APSRC",   294,  32,  33, 0},
-	{EMI_REQ,     "EMI",     293,  65,  33, 0},
-	{MAINPLL_REQ, "MAINPLL", 292,  98,  34, 0},
-	{INFRA_REQ,   "INFRA",   291, 132,  35, 0},
-	{F26M_REQ,    "26M",     290, 167,  36, 0},
-	{PMIC_REQ,    "PMIC",    289, 203,  33, 0},
-	{VCORE_REQ,   "VCORE",   288, 236,  11, 0},
-	{PWR_ACT,     "PWR_ACT",   0, 247,  37, 0},
-	{SYS_STA,     "SYS_STA",   0, 284,  11, 0},
+	{DDREN_REQ,	  "DDREN",   286,   0,  32, 30},
+	{APSRC_REQ,   "APSRC",   288,  32,  33, 30},
+	{EMI_REQ,     "EMI",     289,  65,  33, 30},
+	{MAINPLL_REQ, "MAINPLL", 290,  98,  34, 30},
+	{INFRA_REQ,   "INFRA",   291, 132,  35, 30},
+	{F26M_REQ,    "26M",     292, 167,  36, 30},
+	{PMIC_REQ,    "PMIC",    293, 203,  33, 30},
+	{VCORE_REQ,   "VCORE",   294, 236,  11, 30},
+	{PWR_ACT,     "PWR_ACT",   0, 247,  37, 30},
+	{SYS_STA,     "SYS_STA",   0, 284,  11, 30},
 };
 
 
@@ -233,14 +233,16 @@ static uint64_t lpm_sys_res_get_detail(struct sys_res_record *record, int op, un
 			return 0;
 		total_time = record->spm_res_sig_stats_ptr->duration_time;
 		sig_time = record->spm_res_sig_stats_ptr->res_sig_tbl[val].time;
-		ret = (sig_time * 100) / total_time;
+		ret = sig_time < total_time ?
+			(sig_time * 100) / total_time : 100;
 		break;
 	case SYS_RES_SIG_SUSPEND_RATIO:
 		if (val >= record->spm_res_sig_stats_ptr->res_sig_num)
 			return 0;
 		total_time = record->spm_res_sig_stats_ptr->suspend_time;
 		sig_time = record->spm_res_sig_stats_ptr->res_sig_tbl[val].time;
-		ret = (sig_time * 100) / total_time;
+		ret = sig_time < total_time ?
+			(sig_time * 100) / total_time : 100;
 		break;
 	case SYS_RES_SIG_ADDR:
 		if (val >= record->spm_res_sig_stats_ptr->res_sig_num)

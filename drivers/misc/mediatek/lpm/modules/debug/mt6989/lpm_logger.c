@@ -576,13 +576,13 @@ static void suspend_show_detailed_wakeup_reason
 {
 }
 
-#define SPM_SYS_RES_VCORE_INDEX (288)
-#define SPM_SYS_RES_PMIC_INDEX  (289)
-#define SPM_SYS_RES_26M_INDEX   (290)
+#define SPM_SYS_RES_VCORE_INDEX (294)
+#define SPM_SYS_RES_PMIC_INDEX  (293)
+#define SPM_SYS_RES_26M_INDEX   (292)
 #define SPM_SYS_RES_INFRA_INDEX (291)
-#define SPM_SYS_RES_BUSPLL_INDEX    (292)
-#define SPM_SYS_RES_EMI_INDEX   (293)
-#define SPM_SYS_RES_APSRC_INDEX (287)
+#define SPM_SYS_RES_BUSPLL_INDEX    (290)
+#define SPM_SYS_RES_EMI_INDEX   (289)
+#define SPM_SYS_RES_APSRC_INDEX (288)
 
 
 static int lpm_show_message(int type, const char *prefix, void *data)
@@ -608,8 +608,10 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 	unsigned long flag;
 	struct lpm_sys_res_ops *sys_res_ops;
 	struct sys_res_record *sys_res_record;
-	uint64_t suspend_time, sys_index, threshold, ratio;
-	int j;
+	uint64_t suspend_time, sys_index, sig_tbl_index;
+	uint64_t threshold, ratio;
+	char sys_res_log_buf[LOG_BUF_OUT_SZ] = { 0 };
+	int j = 0, sys_res_log_size = 0;
 
 	sys_res_ops = get_lpm_sys_res_ops();
 #endif
@@ -861,35 +863,80 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 		if (sys_res_ops && sys_res_ops->get_last_suspend) {
 			spin_lock_irqsave(&sys_res_ops->lock, flag);
 			sys_res_record = sys_res_ops->get_last_suspend();
-			suspend_time = sys_res_ops->get_detail(sys_res_record, SYS_RES_SUSPEND_TIME, 0);
-			pr_info("[name:spm&][SPM] ms suspend %llu, Vcore %llu, 26M %llu, pmic %llu, infra %llu, buspll %llu, emi %llu, apsrc %llu",
-			suspend_time,
-			sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_TIME, SPM_SYS_RES_VCORE_INDEX),
-			sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_TIME, SPM_SYS_RES_26M_INDEX),
-			sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_TIME, SPM_SYS_RES_PMIC_INDEX),
-			sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_TIME, SPM_SYS_RES_INFRA_INDEX),
-			sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_TIME, SPM_SYS_RES_BUSPLL_INDEX),
-			sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_TIME, SPM_SYS_RES_EMI_INDEX),
-			sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_TIME, SPM_SYS_RES_APSRC_INDEX));
+			suspend_time = sys_res_ops->get_detail(sys_res_record,
+							SYS_RES_SUSPEND_TIME, 0);
+
+			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"Vcore %llu, ",
+				sys_res_ops->get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, SPM_SYS_RES_VCORE_INDEX));
+
+			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"26M %llu, ",
+				sys_res_ops->get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, SPM_SYS_RES_26M_INDEX));
+
+			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"pmic %llu, ",
+				sys_res_ops->get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, SPM_SYS_RES_PMIC_INDEX));
+
+			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"infra %llu, ",
+				sys_res_ops->get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, SPM_SYS_RES_INFRA_INDEX));
+
+			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"buspll %llu, ",
+				sys_res_ops->get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, SPM_SYS_RES_BUSPLL_INDEX));
+
+			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"emi %llu, ",
+				sys_res_ops->get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, SPM_SYS_RES_EMI_INDEX));
+
+			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"apsrc %llu",
+				sys_res_ops->get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, SPM_SYS_RES_APSRC_INDEX));
+
+			pr_info("[name:spm&][SPM] ms suspend %llu, %s",
+				suspend_time, sys_res_log_buf);
 
 			for (i = 0; i <= VCORE_REQ; i++){
 				local_ptr = sys_res_group_info[i].name;
 				sys_index = sys_res_group_info[i].sys_index;
+				sig_tbl_index = sys_res_group_info[i].sig_table_index;
 				threshold = sys_res_group_info[i].threshold;
-				ratio = sys_res_ops->get_detail(sys_res_record, SYS_RES_SIG_SUSPEND_RATIO, sys_index);
-				pr_info("[name:spm&][SPM] sys %s, threshold %llu active ratio %llu\n",
+				ratio = sys_res_ops->get_detail(sys_res_record,
+							SYS_RES_SIG_SUSPEND_RATIO, sys_index);
+				pr_info("[name:spm&][SPM] sys %s, threshold %llu, active ratio %llu\n",
 					local_ptr, threshold, ratio);
+
 				if (ratio < threshold)
 					continue;
+
 				for (j = 0; j < sys_res_group_info[i].group_num; j++) {
-					pr_info("[name:spm&][SPM] group id %d, sig id 0x%llx active ratio %llu\n",
+					ratio = sys_res_ops->get_detail(sys_res_record,
+								SYS_RES_SIG_SUSPEND_RATIO,
+								j + sig_tbl_index);
+
+					if (ratio < threshold)
+						continue;
+
+					pr_info("[name:spm&][SPM] group %d, sig id 0x%llx, active ratio %llu\n",
 						i,
 						sys_res_ops->get_detail(sys_res_record,
-									SYS_RES_SIG_ID,
-									j + sys_res_group_info[i].sig_table_index),
-						sys_res_ops->get_detail(sys_res_record,
-									SYS_RES_SIG_SUSPEND_RATIO,
-									j + sys_res_group_info[i].sig_table_index));
+								SYS_RES_SIG_ID, j + sig_tbl_index),
+						ratio);
 				}
 			}
 			spin_unlock_irqrestore(&sys_res_ops->lock, flag);
