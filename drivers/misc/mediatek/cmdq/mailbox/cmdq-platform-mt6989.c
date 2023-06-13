@@ -15,6 +15,7 @@ const char *cmdq_thread_module_dispatch(phys_addr_t gce_pa, s32 thread)
 	if (gce_pa == GCE_D_PA) {
 		switch (thread) {
 		case 0 ... 9:
+		case 22 ... 31:
 			return "DISP";
 		case 16 ... 19:
 			return "MML";
@@ -26,14 +27,10 @@ const char *cmdq_thread_module_dispatch(phys_addr_t gce_pa, s32 thread)
 	} else if (gce_pa == GCE_M_PA) {
 		switch (thread) {
 		case 0 ... 5:
-		case 10 ... 11:
-		case 16 ... 22:
+		case 10 ... 12:
+		case 16 ... 24:
+		case 26 ...31:
 			return "ISP";
-		case 6 ... 7:
-			return "VFMT";
-		case 12:
-		case 23:
-			return "VENC";
 		default:
 			return "CMDQ";
 		}
@@ -52,9 +49,12 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 
 	if (gce_pa == GCE_D_PA) // GCE-D
 		switch (event) {
-		case CMDQ_EVENT_MMLSYS1_MDP_FG0_SOF
+		case CMDQ_EVENT_MMLSYS0_MDP_FG0_SOF
 			... CMDQ_EVENT_MMLSYS0_MEM_ISOINTB_ENG_EVENT:
 			return "MDP";
+		case CMDQ_EVENT_MMLSYS1_MDP_FG0_SOF
+			... CMDQ_EVENT_MMLSYS1_MEM_ISOINTB_ENG_EVENT:
+			return "MML";
 		case CMDQ_EVENT_OVL1_DISP_OVL0_2L_SOF
 			... CMDQ_EVENT_DSI2_TE_I_DSI2_TE_I:
 			return "DISP";
@@ -164,8 +164,8 @@ u32 cmdq_util_hw_id(u32 pa)
 u32 cmdq_test_get_subsys_list(u32 **regs_out)
 {
 	static u32 regs[] = {
-		0x1f003000,	/* mdp_wrot0 */
-		0x14000100,	/* mmsys_config */
+		0x1f003000,	/* mdp_rdma0 */
+		0x1f000100,	/* mmsys_config */
 		0x14001000,	/* dispsys */
 		0x15101200,	/* imgsys */
 		0x1000106c,	/* infra */
@@ -182,16 +182,8 @@ void cmdq_test_set_ostd(void)
 	u32 pa_base;
 	u32 preval, newval;
 
-	/* 1. set mdp_smi_common outstanding to 1 : 0x1E80F120 = 0x01014000 */
-	pa_base = 0x1E80F120;
-	va_base = ioremap(pa_base, 0x1000);
-	preval = readl(va_base);
-	writel(val, va_base);
-	newval = readl(va_base);
-	cmdq_msg("%s addr0x%#x: 0x%#x -> 0x%#x  ", __func__, pa_base, preval, newval);
-
-	/* 2. set mdp_sub_common outstanding to 1 : 0x1E818120 = 0x01014000 */
-	pa_base = 0x1E818120;
+	/* 1. set mdp_smi_common outstanding to 1 : 0x1E80F10C = 0x01014000 */
+	pa_base = 0x1E80F10C;
 	va_base = ioremap(pa_base, 0x1000);
 	preval = readl(va_base);
 	writel(val, va_base);
