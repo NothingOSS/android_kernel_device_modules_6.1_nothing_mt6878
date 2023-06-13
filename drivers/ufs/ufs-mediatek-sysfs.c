@@ -14,6 +14,7 @@
 #include <ufs/ufshcd.h>
 #include "ufshcd-priv.h"
 #include "ufs-mediatek.h"
+#include "ufs-mediatek-dbg.h"
 
 /**
  * ufs_mtk_query_ioctl - perform user read queries
@@ -398,7 +399,7 @@ struct attribute_group ufs_mtk_sysfs_clkscale_group = {
 	.attrs = ufs_mtk_sysfs_clkscale_attrs,
 };
 
-void ufs_mtk_init_clk_scaling_sysfs(struct ufs_hba *hba)
+static void init_clk_scaling_sysfs(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
@@ -407,13 +408,11 @@ void ufs_mtk_init_clk_scaling_sysfs(struct ufs_hba *hba)
 	if (sysfs_create_group(&hba->dev->kobj, &ufs_mtk_sysfs_clkscale_group))
 		dev_info(hba->dev, "Failed to create sysfs for clkscale_control\n");
 }
-EXPORT_SYMBOL_GPL(ufs_mtk_init_clk_scaling_sysfs);
 
-void ufs_mtk_remove_clk_scaling_sysfs(struct ufs_hba *hba)
+static void remove_clk_scaling_sysfs(struct ufs_hba *hba)
 {
 	sysfs_remove_group(&hba->dev->kobj, &ufs_mtk_sysfs_clkscale_group);
 }
-EXPORT_SYMBOL_GPL(ufs_mtk_remove_clk_scaling_sysfs);
 
 static int write_irq_affinity(unsigned int irq, const char *buf)
 {
@@ -500,18 +499,52 @@ void ufs_mtk_init_ioctl(struct ufs_hba *hba)
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_init_ioctl);
 
-void ufs_mtk_init_irq_sysfs(struct ufs_hba *hba)
+static void init_irq_sysfs(struct ufs_hba *hba)
 {
 	if (sysfs_create_group(&hba->dev->kobj, &ufs_mtk_sysfs_irq_group))
 		dev_info(hba->dev, "Failed to create sysfs for irq\n");
 }
-EXPORT_SYMBOL_GPL(ufs_mtk_init_irq_sysfs);
 
-void ufs_mtk_remove_irq_sysfs(struct ufs_hba *hba)
+static void remove_irq_sysfs(struct ufs_hba *hba)
 {
 	sysfs_remove_group(&hba->dev->kobj, &ufs_mtk_sysfs_irq_group);
 }
-EXPORT_SYMBOL_GPL(ufs_mtk_remove_irq_sysfs);
+
+static ssize_t dbg_tp_unregister_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	ssize_t size = 0;
+	int value;
+
+	value = atomic_read(&host->dbg_tp_unregister);
+	size += sprintf(buf + size, "%d\n", value);
+
+	return size;
+}
+
+static ssize_t dbg_tp_unregister_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	const char *opcode = buf;
+	u32 value;
+
+	if (kstrtou32(opcode, 0, &value) || value > 1)
+		return -EINVAL;
+
+	if (value == atomic_xchg(&host->dbg_tp_unregister, value))
+		return count;
+
+	if (value)
+		ufs_mtk_dbg_tp_unregister();
+	else
+		ufs_mtk_dbg_tp_register();
+
+	return count;
+}
 
 static ssize_t skip_blocktag_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -543,28 +576,41 @@ static ssize_t skip_blocktag_store(struct device *dev,
 }
 
 static DEVICE_ATTR_RW(skip_blocktag);
+static DEVICE_ATTR_RW(dbg_tp_unregister);
 
-static struct attribute *ufs_mtk_sysfs_btag_attrs[] = {
+static struct attribute *ufs_mtk_sysfs_attrs[] = {
 	&dev_attr_skip_blocktag.attr,
+	&dev_attr_dbg_tp_unregister.attr,
 	NULL
 };
 
-struct attribute_group ufs_mtk_sysfs_btag_group = {
-	.attrs = ufs_mtk_sysfs_btag_attrs,
+struct attribute_group ufs_mtk_sysfs_group = {
+	.attrs = ufs_mtk_sysfs_attrs,
 };
 
-void ufs_mtk_init_btag_sysfs(struct ufs_hba *hba)
+void ufs_mtk_init_sysfs(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	atomic_set(&host->skip_btag, 0);
-	if (sysfs_create_group(&hba->dev->kobj, &ufs_mtk_sysfs_btag_group))
+	atomic_set(&host->dbg_tp_unregister, 0);
+	if (sysfs_create_group(&hba->dev->kobj, &ufs_mtk_sysfs_group))
 		dev_info(hba->dev, "Failed to create sysfs for btag\n");
-}
-EXPORT_SYMBOL_GPL(ufs_mtk_init_btag_sysfs);
 
-void ufs_mtk_remove_btag_sysfs(struct ufs_hba *hba)
-{
-	sysfs_remove_group(&hba->dev->kobj, &ufs_mtk_sysfs_btag_group);
+	if (hba->caps & UFSHCD_CAP_CLK_SCALING)
+		init_clk_scaling_sysfs(hba);
+
+	init_irq_sysfs(hba);
 }
-EXPORT_SYMBOL_GPL(ufs_mtk_remove_btag_sysfs);
+EXPORT_SYMBOL_GPL(ufs_mtk_init_sysfs);
+
+void ufs_mtk_remove_sysfs(struct ufs_hba *hba)
+{
+	sysfs_remove_group(&hba->dev->kobj, &ufs_mtk_sysfs_group);
+
+	if (hba->caps & UFSHCD_CAP_CLK_SCALING)
+		remove_clk_scaling_sysfs(hba);
+
+	remove_irq_sysfs(hba);
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_remove_sysfs);

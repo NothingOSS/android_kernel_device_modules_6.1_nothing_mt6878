@@ -1945,7 +1945,31 @@ static int ufs_mtk_dbg_init_procfs(void)
 	return 0;
 }
 
-static void ufs_mtk_dbg_cleanup(void)
+int ufs_mtk_dbg_tp_register(void)
+{
+	int i;
+
+	FOR_EACH_INTEREST(i) {
+		if (interests[i].tp == NULL) {
+			pr_info("Error: %s not found\n",
+				interests[i].name);
+			return -EINVAL;
+		}
+
+		if (interests[i].init)
+			continue;
+
+		tracepoint_probe_register(interests[i].tp,
+					  interests[i].func,
+					  NULL);
+		interests[i].init = true;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_dbg_tp_register);
+
+void ufs_mtk_dbg_tp_unregister(void)
 {
 	int i;
 
@@ -1954,15 +1978,24 @@ static void ufs_mtk_dbg_cleanup(void)
 			tracepoint_probe_unregister(interests[i].tp,
 						    interests[i].func,
 						    NULL);
+			interests[i].init = false;
 		}
 	}
+
+	tracepoint_synchronize_unregister();
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_dbg_tp_unregister);
+
+static void ufs_mtk_dbg_cleanup(void)
+{
+	ufs_mtk_dbg_tp_unregister();
 
 	_cmd_hist_cleanup();
 }
 
 int ufs_mtk_dbg_register(struct ufs_hba *hba)
 {
-	int i, ret;
+	int ret;
 
 	/*
 	 * Ignore any failure of AEE buffer allocation to still allow
@@ -1977,24 +2010,14 @@ int ufs_mtk_dbg_register(struct ufs_hba *hba)
 	/* Install the tracepoints */
 	for_each_kernel_tracepoint(lookup_tracepoints, NULL);
 
-	FOR_EACH_INTEREST(i) {
-		if (interests[i].tp == NULL) {
-			pr_info("Error: %s not found\n",
-				interests[i].name);
-			/* Unload previously loaded */
-			ufs_mtk_dbg_cleanup();
-			return -EINVAL;
-		}
-
-		tracepoint_probe_register(interests[i].tp,
-					  interests[i].func,
-					  NULL);
-		interests[i].init = true;
-	}
+	ret = ufs_mtk_dbg_tp_register();
+	if (ret)
+		goto out;
 
 	/* Create control nodes in procfs */
 	ret = ufs_mtk_dbg_init_procfs();
 
+out:
 	/* Enable command history feature by default */
 	if (!ret)
 		ufs_mtk_dbg_cmd_hist_enable();

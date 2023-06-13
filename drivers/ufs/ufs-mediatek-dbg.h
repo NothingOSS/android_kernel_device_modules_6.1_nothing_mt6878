@@ -161,6 +161,8 @@ struct cmd_hist_struct {
 	} cmd;
 };
 
+int ufs_mtk_dbg_tp_register(void);
+void ufs_mtk_dbg_tp_unregister(void);
 int ufs_mtk_dbg_register(struct ufs_hba *hba);
 void ufs_mtk_dbg_dump(u32 latest_cnt);
 int ufs_mtk_dbg_cmd_hist_enable(void);
@@ -177,6 +179,8 @@ void ufs_mtk_eh_unipro_set_lpm(struct ufs_hba *hba, int ret);
 
 #else
 
+#define ufs_mtk_dbg_tp_register(...)
+#define ufs_mtk_dbg_tp_unregister(...)
 #define ufs_mtk_aee_warning(...)
 #define ufs_mtk_dbg_cmd_hist_disable(...)
 #define ufs_mtk_dbg_dump(...)

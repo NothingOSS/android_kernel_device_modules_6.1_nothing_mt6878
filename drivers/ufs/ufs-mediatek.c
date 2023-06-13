@@ -1429,10 +1429,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	ufs_mtk_init_clocks(hba);
 
-	if (hba->caps & UFSHCD_CAP_CLK_SCALING)
-		ufs_mtk_init_clk_scaling_sysfs(hba);
-
-	ufs_mtk_init_irq_sysfs(hba);
+	ufs_mtk_init_sysfs(hba);
 
 	/*
 	 * ufshcd_vops_init() is invoked after
@@ -2630,10 +2627,7 @@ static int ufs_mtk_remove(struct platform_device *pdev)
 
 	pm_runtime_get_sync(&(pdev)->dev);
 
-	if (hba->caps & UFSHCD_CAP_CLK_SCALING)
-		ufs_mtk_remove_clk_scaling_sysfs(hba);
-
-	ufs_mtk_remove_irq_sysfs(hba);
+	ufs_mtk_remove_sysfs(hba);
 
 	ufshcd_remove(hba);
 

@@ -92,7 +92,6 @@ static void ufs_mtk_blocktag_add(void *data, async_cookie_t cookie)
 
 void ufs_mtk_btag_init(struct ufs_hba *hba)
 {
-	ufs_mtk_init_btag_sysfs(hba);
 	async_schedule(ufs_mtk_blocktag_add, hba);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_init);
@@ -100,7 +99,6 @@ EXPORT_SYMBOL_GPL(ufs_mtk_btag_init);
 void ufs_mtk_btag_exit(struct ufs_hba *hba)
 {
 	mtk_btag_ufs_exit();
-	ufs_mtk_remove_btag_sysfs(hba);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_exit);
 
