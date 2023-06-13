@@ -84,6 +84,7 @@
 #define VCP_A_TIMER 0
 
 /* vcp ipi message buffer */
+uint32_t slp_ipi_ack_data;
 uint32_t msg_vcp_ready0, msg_vcp_ready1;
 char msg_vcp_err_info0[40], msg_vcp_err_info1[40];
 
@@ -943,6 +944,7 @@ extern unsigned int mt_get_fmeter_freq(unsigned int id, enum FMETER_TYPE type);
 int vcp_enable_pm_clk(enum feature_id id)
 {
 	int ret = 0;
+	struct slp_ctrl_data ipi_data;
 
 	if (!vcp_support)
 		return -1;
@@ -984,6 +986,12 @@ int vcp_enable_pm_clk(enum feature_id id)
 			reset_vcp(VCP_ALL_ENABLE);
 	}
 	pwclkcnt++;
+	if (!vcp_ao && id != RTOS_FEATURE_ID) {
+		ipi_data.cmd = SLP_WAKE_LOCK;
+		ipi_data.feature = id;
+		ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
+					IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+	}
 #ifdef VCP_CLK_FMETER
 	pr_notice("[VCP] %s id %d done %d clk %d\n", __func__, id,
 		pwclkcnt, mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type));
@@ -998,6 +1006,7 @@ int vcp_disable_pm_clk(enum feature_id id)
 	int ret = 0;
 	int i = 0;
 	uint32_t waitCnt = 0;
+	struct slp_ctrl_data ipi_data;
 
 	if (!vcp_support)
 		return -1;
@@ -1012,6 +1021,13 @@ int vcp_disable_pm_clk(enum feature_id id)
 
 	pr_notice("[VCP] %s id %d entered %d ready %d\n", __func__, id,
 		pwclkcnt, is_vcp_ready(VCP_A_ID));
+
+	if (!vcp_ao && id != RTOS_FEATURE_ID) {
+		ipi_data.cmd = SLP_WAKE_UNLOCK;
+		ipi_data.feature = id;
+		ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
+					IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+	}
 	pwclkcnt--;
 	if (pwclkcnt == 0) {
 #if VCP_RECOVERY_SUPPORT
@@ -1358,7 +1374,8 @@ static inline ssize_t vcp_register_on_store(struct device *kobj
 		, struct device_attribute *attr, const char *buf, size_t count)
 {
 	unsigned int value = 0;
-	unsigned int i;
+	unsigned int i, ret;
+	struct slp_ctrl_data ipi_data;
 
 	if (!buf || count == 0)
 		return count;
@@ -1371,6 +1388,18 @@ static inline ssize_t vcp_register_on_store(struct device *kobj
 				pr_notice("[VCP] %s Check feature id %d enable cnt %d\n",
 					__func__, feature_table[i].feature, feature_table[i].enable);
 		}
+		if (value == 444) {
+			ipi_data.cmd = SLP_STATUS_DBG;
+			ipi_data.feature = RTOS_FEATURE_ID;
+			ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
+						IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+		}
+		if (value == 333) {
+			ipi_data.cmd = SLP_WAKE_LOCK;
+			ipi_data.feature = RTOS_FEATURE_ID;
+			ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
+						IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+		}
 	}
 
 	return count;
@@ -1381,14 +1410,22 @@ static inline ssize_t vcp_deregister_off_store(struct device *kobj
 		, struct device_attribute *attr, const char *buf, size_t count)
 {
 	unsigned int value = 0;
+	unsigned int ret;
+	struct slp_ctrl_data ipi_data;
 
 	if (!buf || count == 0)
 		return count;
 
-	if (kstrtouint(buf, 10, &value) == 0)
+	if (kstrtouint(buf, 10, &value) == 0) {
 		if (value == 666)
 			vcp_deregister_feature(RTOS_FEATURE_ID);
-
+		if (value == 333) {
+			ipi_data.cmd = SLP_WAKE_UNLOCK;
+			ipi_data.feature = RTOS_FEATURE_ID;
+			ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
+						IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+		}
+	}
 	return count;
 }
 DEVICE_ATTR_WO(vcp_deregister_off);
@@ -3371,6 +3408,9 @@ static int __init vcp_init(void)
 	}
 
 	INIT_WORK(&vcp_A_notify_work.work, vcp_A_notify_ws);
+
+	mtk_ipi_register(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
+		NULL, NULL, &slp_ipi_ack_data);
 
 	mtk_ipi_register(&vcp_ipidev, IPI_IN_VCP_READY_0,
 			(void *)vcp_A_ready_ipi_handler, NULL, &msg_vcp_ready0);

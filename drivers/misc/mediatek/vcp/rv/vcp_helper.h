@@ -111,6 +111,17 @@ enum mtk_tinysys_vcp_kernel_op {
 	MTK_TINYSYS_VCP_KERNEL_OP_NUM,
 };
 
+struct slp_ctrl_data {
+	uint32_t feature;
+	uint32_t cmd;
+};
+
+enum {
+	SLP_WAKE_LOCK = 0,
+	SLP_WAKE_UNLOCK,
+	SLP_STATUS_DBG,
+};
+
 struct vcp_regs {
 	void __iomem *sram;
 	void __iomem *cfg;
