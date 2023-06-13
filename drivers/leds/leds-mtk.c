@@ -226,14 +226,25 @@ static void mt_leds_remove_brightness_hw_changed(struct led_conf_info *led_conf)
 	device_remove_file(led_conf->cdev.dev, &dev_attr_mt_brightness_hw_changed);
 }
 
-void mt_leds_notify_brightness_hw_changed(struct led_conf_info *led_conf,
+void mt_leds_notify_brightness_hw_changed(int conn_id,
 					       enum led_brightness brightness)
 {
-	if (WARN_ON(!led_conf->brightness_hw_changed_kn))
+	struct mt_led_data *led_dat;
+	int index;
+
+	index = get_desp_index(conn_id);
+	if (index < 0) {
+		pr_notice("can not find leds by led_desp connector id %d", conn_id);
+		return;
+	}
+	led_dat = container_of(leds_info->leds[index],
+		struct mt_led_data, desp);
+
+	if (WARN_ON(!led_dat->conf.brightness_hw_changed_kn))
 		return;
 
-	led_conf->brightness_hw_changed = brightness;
-	sysfs_notify_dirent(led_conf->brightness_hw_changed_kn);
+	led_dat->conf.brightness_hw_changed = brightness;
+	sysfs_notify_dirent(led_dat->conf.brightness_hw_changed_kn);
 }
 EXPORT_SYMBOL_GPL(mt_leds_notify_brightness_hw_changed);
 #else
@@ -245,6 +256,47 @@ static void mt_leds_remove_brightness_hw_changed(struct led_conf_info *led_conf)
 {
 }
 #endif
+
+static ssize_t led_type_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	struct led_conf_info *led_conf =
+		container_of(led_cdev, struct led_conf_info, cdev);
+
+	return sprintf(buf, "%u\n", led_conf->led_type);
+}
+
+static ssize_t led_type_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	struct led_conf_info *led_conf =
+		container_of(led_cdev, struct led_conf_info, cdev);
+	unsigned long state;
+	ssize_t ret;
+
+	mutex_lock(&led_cdev->led_access);
+
+	if (led_sysfs_is_disabled(led_cdev)) {
+		ret = -EBUSY;
+		goto unlock;
+	}
+
+	ret = kstrtoul(buf, 10, &state);
+	if (ret)
+		goto unlock;
+
+	led_conf->led_type = state;
+	call_notifier(LED_TYPE_CHANGED, led_conf);
+
+	ret = size;
+unlock:
+	mutex_unlock(&led_cdev->led_access);
+	return ret;
+}
+static DEVICE_ATTR_RW(led_type);
+
 
 /****************************************************************************
  * DEBUG MACROS
@@ -308,8 +360,10 @@ static int mtk_set_hw_brightness(struct mt_led_data *led_dat, int brightness,
 		brightness = max(brightness, led_dat->conf.min_hw_brightness);
 	}
 
-	if (brightness == led_dat->hw_brightness && params_flag == (1 << SET_BACKLIGHT_LEVEL))
-		return 0;
+	if (params_flag == (1 << SET_BACKLIGHT_LEVEL) &&
+		(led_dat->conf.led_type == LED_TYPE_ATOMIC ||
+		brightness == led_dat->hw_brightness))
+		return ret;
 	pr_debug("set hw brightness(%s): %d -> %d",
 		led_dat->conf.cdev.name, led_dat->hw_brightness, brightness);
 	ret = led_dat->mtk_hw_brightness_set(led_dat, brightness, params, params_flag);
@@ -318,7 +372,7 @@ static int mtk_set_hw_brightness(struct mt_led_data *led_dat, int brightness,
 		   (params_flag & (1 << SET_BACKLIGHT_LEVEL))) {
 			led_dat->hw_brightness = brightness;
 #ifdef CONFIG_LEDS_MT_BRIGHTNESS_HW_CHANGED
-			mt_leds_notify_brightness_hw_changed(&led_dat->conf, brightness);
+			mt_leds_notify_brightness_hw_changed(led_dat->conf.connector_id, brightness);
 #endif
 		}
 	} else {
@@ -384,7 +438,7 @@ static int mtk_set_brightness(struct led_classdev *led_cdev,
 	call_notifier(LED_BRIGHTNESS_CHANGED, led_conf);
 	mutex_lock(&led_dat->led_access);
 	if (!led_conf->aal_enable) {
-		mtk_set_hw_brightness(led_dat, trans_level, 0, 1);
+		mtk_set_hw_brightness(led_dat, trans_level, 0, 1 << SET_BACKLIGHT_LEVEL);
 		led_dat->last_hw_brightness = trans_level;
 	}
 	mutex_unlock(&led_dat->led_access);
@@ -419,7 +473,7 @@ int set_max_brightness(struct mt_led_data *led_dat, int percent, bool enable)
 	}
 
 	if (led_dat->conf.cdev.brightness != 0)
-		mtk_set_hw_brightness(led_dat, cur_l, 0, 1);
+		mtk_set_hw_brightness(led_dat, cur_l, 0, 1 << SET_BACKLIGHT_LEVEL);
 
 	pr_info("after: name: %s, cur_l : %d, max_brightness : %d",
 		led_dat->conf.cdev.name, cur_l, led_dat->conf.limit_hw_brightness);
@@ -528,6 +582,7 @@ int mt_leds_parse_dt(struct mt_led_data *mdev, struct fwnode_handle *fwnode)
 
 	strscpy(mdev->desp.name, mdev->conf.cdev.name,
 		sizeof(mdev->desp.name));
+	mdev->conf.led_type = LED_TYPE_FILE;
 	mdev->desp.index = leds_info->lens;
 
 	mdev->conf.connector_id = -1;
@@ -568,6 +623,7 @@ static struct attribute *led_class_attrs[] = {
 	&dev_attr_led_mode.attr,
 	&dev_attr_connector_id.attr,
 	&dev_attr_logic_max_brightness.attr,
+	&dev_attr_led_type.attr,
 	NULL,
 };
 
@@ -617,7 +673,8 @@ int mt_leds_classdev_register(struct device *parent,
 	led_dat->last_brightness = led_dat->conf.cdev.brightness;
 
 	mtk_set_hw_brightness(led_dat,
-		brightness_maptolevel(&led_dat->conf, led_dat->last_brightness), 0, 1);
+		brightness_maptolevel(&led_dat->conf, led_dat->last_brightness),
+		0, 1 << SET_BACKLIGHT_LEVEL);
 
 	pr_info("%s devm_led_classdev_register end! ", led_dat->conf.cdev.name);
 

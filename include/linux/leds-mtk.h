@@ -8,7 +8,14 @@
 
 enum mtk_leds_events {
 	LED_BRIGHTNESS_CHANGED	= 0,
-	LED_STATUS_SHUTDOWN	= 1
+	LED_STATUS_SHUTDOWN	= 1,
+	LED_TYPE_CHANGED	= 2,
+};
+enum mtk_leds_types {
+	LED_TYPE_FILE = 0,
+	LED_TYPE_ATOMIC = 1,
+	LED_TYPE_FACTORY = 2,
+	LED_TYPE_MAX = 3,
 };
 
 enum led_mode {
@@ -35,14 +42,15 @@ struct led_conf_info {
 	int brightness_hw_changed;
 	struct kernfs_node	*brightness_hw_changed_kn;
 #endif
-	};
+	enum mtk_leds_types led_type;
+};
 
 #ifdef CONFIG_LEDS_MT_BRIGHTNESS_HW_CHANGED
-void mtk_leds_notify_brightness_hw_changed(
-	struct led_conf_info *led_conf, enum led_brightness brightness);
+void mt_leds_notify_brightness_hw_changed(
+	int connector_id, enum led_brightness brightness);
 #else
-static inline void mtk_leds_notify_brightness_hw_changed(
-	struct led_conf_info *led_conf, enum led_brightness brightness) { }
+static inline void mt_leds_notify_brightness_hw_changed(
+	int connector_id, enum led_brightness brightness) { }
 #endif
 
 int mtk_leds_register_notifier(struct notifier_block *nb);
