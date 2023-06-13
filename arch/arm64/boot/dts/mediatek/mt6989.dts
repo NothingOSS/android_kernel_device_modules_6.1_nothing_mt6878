@@ -11432,7 +11432,6 @@
 					<&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_26M>;
 			clock-names = "gce","gce-timer";
 			dma-mask-bit = <35>;
-			ddr-urgent;
 			cmdq-log-perf-off;
 			mtk,smmu-shared = <&mm_smmu_srt_normal>;
 			mtk,iommu-dma-axid = <SMMU_L48_GCE_DM>;
@@ -11476,7 +11475,6 @@
 					<&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_26M>;
 			clock-names = "gce","gce-timer";
 			dma-mask-bit = <35>;
-			ddr-urgent;
 			cmdq-log-perf-off;
 			mtk,smmu-shared = <&mm_smmu_srt_normal>;
 			mtk,iommu-dma-axid = <SMMU_L48_GCE_MM>;
