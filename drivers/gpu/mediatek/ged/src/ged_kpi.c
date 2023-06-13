@@ -1264,10 +1264,8 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 			psTimeStamp->i32QedBuffer_length,
 			psTimeStamp->ullTimeStamp,
 			psHead);
-		if (is_fdvfs_enable()) {
-			if (ged_kpi_get_fallback_mode())
-				ged_kpi_update_sysram_uncompleted_tgpu(&info_sysram);
-		}
+		if (is_fdvfs_enable() && ged_kpi_get_fallback_mode())
+			ged_kpi_update_sysram_uncompleted_tgpu(&info_sysram);
 
 		break;
 
@@ -1327,7 +1325,7 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		if (is_fdvfs_enable())
 			mtk_gpueb_sysram_write(SYSRAM_GPU_ELAPSED_TIME, psKPI->ullTimeStamp2);
 
-		/* gpu info to KPI TAG*/
+		/* gpu info to KPI TAG */
 		psKPI->t_gpu = psHead->t_gpu_latest;
 		psKPI->gpu_freq = ged_get_cur_freq() / 1000;
 		psKPI->gpu_freq_max =
@@ -1370,18 +1368,45 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		force_fallback = g_force_gpu_dvfs_fallback;
 
 		/* In GPU Job Boundary, ged will check & commit gpueb desire oppidx */
-		if (is_fdvfs_enable()) {
-			if (ged_get_policy_state() != POLICY_STATE_FB)
-				ged_kpi_fastdvfs_update_dcs();
-		}
+		if (is_fdvfs_enable() && ged_get_policy_state() != POLICY_STATE_FB)
+			ged_kpi_fastdvfs_update_dcs();
 
 		if (g_force_gpu_dvfs_fallback) {   // main producer ratio < thresh (LB)
 			// use LB policy
 			ged_set_policy_state(POLICY_STATE_LB);
 			set_lb_timeout(psKPI->t_gpu_target);
-			// get tgpu uncompleted time
-			if (is_fdvfs_enable())
+
+			if (is_fdvfs_enable()) {
+				// get tgpu uncompleted time in loading-based
 				ged_kpi_update_sysram_uncompleted_tgpu(&info_sysram);
+
+				// get frame info in loading-based
+				ret_bq_state = ged_kpi_timer_based_pick_riskyBQ(&info_kpi);
+
+				// update frame info in loading-based
+				if (ret_bq_state == GED_OK) {
+					t_gpu_complete_eb = (int) info_kpi.completed_bq.t_gpu;
+					t_gpu_uncomplete_eb = (int) info_kpi.uncompleted_bq.t_gpu;
+					t_gpu_target_eb_complete = info_kpi.completed_bq.t_gpu_target;
+					t_gpu_target_eb_uncomplete = info_kpi.uncompleted_bq.t_gpu_target;
+					risk_completed_eb = info_kpi.completed_bq.risk;
+					risk_uncompleted_eb = info_kpi.uncompleted_bq.risk;
+					gpu_completed_counteb = info_kpi.total_gpu_completed_count;
+				} else {
+					t_gpu_complete_eb = -1;
+					t_gpu_uncomplete_eb = -1;
+				}
+
+				/* update info in sysram */
+				mtk_gpueb_sysram_write(SYSRAM_GPU_CURR_FREQ, ret_bq_state);
+				mtk_gpueb_sysram_write(SYSRAM_GPU_PRED_FREQ, t_gpu_complete_eb);
+				mtk_gpueb_sysram_write(SYSRAM_GPU_FINISHED_WORKLOAD, t_gpu_uncomplete_eb);
+				mtk_gpueb_sysram_write(SYSRAM_GPU_PRED_WORKLOAD, t_gpu_target_eb_complete);
+				mtk_gpueb_sysram_write(SYSRAM_GPU_FRAGMENT_LOADING, t_gpu_target_eb_uncomplete);
+				mtk_gpueb_sysram_write(SYSRAM_GPU_KERNEL_FRAME_DONE_INTERVAL, risk_completed_eb);
+				mtk_gpueb_sysram_write(SYSRAM_GPU_EB_FRAME_DONE_INTERVAL, risk_uncompleted_eb);
+				mtk_gpueb_sysram_write(SYSRAM_GPU_TARGET_TIME, gpu_completed_counteb);
+			}
 		} else {   // main producer ratio >= thresh (FB)
 			if (main_head == psHead) {   // is main head
 				enum gpu_dvfs_policy_state policy_state;
@@ -1588,34 +1613,6 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 
 	default:
 		break;
-	}
-
-	if (is_fdvfs_enable()) {
-		ret_bq_state = ged_kpi_timer_based_pick_riskyBQ(&info_kpi);
-
-		if (ret_bq_state == GED_OK) {
-			t_gpu_complete_eb = (int) info_kpi.completed_bq.t_gpu;
-			t_gpu_uncomplete_eb = (int) info_kpi.uncompleted_bq.t_gpu;
-
-			t_gpu_target_eb_complete = info_kpi.completed_bq.t_gpu_target;
-			t_gpu_target_eb_uncomplete = info_kpi.uncompleted_bq.t_gpu_target;
-
-			risk_completed_eb = info_kpi.completed_bq.risk;
-			risk_uncompleted_eb = info_kpi.uncompleted_bq.risk;
-			gpu_completed_counteb = info_kpi.total_gpu_completed_count;
-		} else {
-			t_gpu_complete_eb = -1;
-			t_gpu_uncomplete_eb = -1;
-		}
-		/* write info in sysram */
-		mtk_gpueb_sysram_write(SYSRAM_GPU_CURR_FREQ, ret_bq_state);
-		mtk_gpueb_sysram_write(SYSRAM_GPU_PRED_FREQ, t_gpu_complete_eb);
-		mtk_gpueb_sysram_write(SYSRAM_GPU_FINISHED_WORKLOAD, t_gpu_uncomplete_eb);
-		mtk_gpueb_sysram_write(SYSRAM_GPU_PRED_WORKLOAD, t_gpu_target_eb_complete);
-		mtk_gpueb_sysram_write(SYSRAM_GPU_FRAGMENT_LOADING, t_gpu_target_eb_uncomplete);
-		mtk_gpueb_sysram_write(SYSRAM_GPU_KERNEL_FRAME_DONE_INTERVAL, risk_completed_eb);
-		mtk_gpueb_sysram_write(SYSRAM_GPU_EB_FRAME_DONE_INTERVAL, risk_uncompleted_eb);
-		mtk_gpueb_sysram_write(SYSRAM_GPU_TARGET_TIME, gpu_completed_counteb);
 	}
 
 work_cb_end:
@@ -2095,7 +2092,7 @@ void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info)
 		ged_kpi_update_sysram_uncompleted_fcn, (void *) info);
 	spin_unlock_irqrestore(&gs_hashtableLock, ulIRQFlags);
 
-	//write data to sysram
+	// write data to sysram
 	mtk_gpueb_sysram_write(SYSRAM_GPU_TARGET_FRAME_BOUNDARY, info->last_tgpu_uncompleted);
 	trace_tracing_mark_write(5566, "last_tgpu_uncompleted", info->last_tgpu_uncompleted);
 }

@@ -2822,7 +2822,7 @@ void ged_dvfs_run(
 			policy_state = ged_get_policy_state();
 			prev_policy_state = ged_get_prev_policy_state();
 
-			/* set loading-based new timeout = target_time */
+			/* set loading-based new timeout = target_time(set 4,1) */
 			if (is_fdvfs_enable())
 				ged_kpi_set_loading_mode(LB_TIMEOUT_TYPE_REDUCE_MIPS,
 									LB_TIMEOUT_REDUCE_MIPS);
