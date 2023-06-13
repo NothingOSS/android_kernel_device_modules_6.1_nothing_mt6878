@@ -52,6 +52,7 @@
 #ifdef VCP_CLK_FMETER
 #include "clk-fmeter.h"
 #endif
+#include "clk-mtk.h"
 
 /* SMMU related header file */
 #include "mtk-smmu-v3.h"
@@ -143,6 +144,8 @@ struct vcp_regs vcpreg;
 struct clk *vcpsel;
 struct clk *vcpclk;
 struct clk *vcp26m;
+
+#define CLK_MMINFRA_PWR_VOTE_BIT_VCP	(30)
 
 unsigned char *vcp_send_buff[VCP_CORE_TOTAL];
 unsigned char *vcp_recv_buff[VCP_CORE_TOTAL];
@@ -506,7 +509,8 @@ int vcp_turn_mminfra_on(void)
 	if (vcp_ao && vcp_mminfra_on_off.mminfra_on != NULL) {
 		spin_lock_irqsave(&vcp_mminfra_spinlock, spin_flags);
 
-		ret = vcp_mminfra_on_off.mminfra_on();
+		ret = mtk_clk_mminfra_hwv_power_ctrl_optional(true,
+			CLK_MMINFRA_PWR_VOTE_BIT_VCP);
 		vcp_mminfra_on_off.mminfra_ref = vcp_mminfra_on_off.mminfra_ref + 1;
 		if (ret < 0)
 			pr_notice("[VCP] %s(): turn mminfra on fail %d %d\n",
@@ -533,7 +537,8 @@ int vcp_turn_mminfra_off(void)
 				__func__, vcp_mminfra_on_off.mminfra_ref);
 			vcp_mminfra_on_off.mminfra_ref = 0;
 		} else {
-			ret = vcp_mminfra_on_off.mminfra_off();
+			ret = mtk_clk_mminfra_hwv_power_ctrl_optional(false,
+				CLK_MMINFRA_PWR_VOTE_BIT_VCP);
 			if (ret < 0)
 				pr_notice("[VCP] %s(): turn mminfra off fail %d %d\n",
 					__func__, ret, vcp_mminfra_on_off.mminfra_ref);
