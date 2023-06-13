@@ -13916,7 +13916,7 @@ FLL_top_cc4";
 		ranges;
 		lpm-kernel-suspend = <0>;
 		suspend-method = "enable";
-		common-sodi = <1>;
+		common-sodi = <0>;
 
 		logger-enable-states = "mcusysoff_l", "mcusysoff_m", "mcusysoff_b", "system_vcore";
 
