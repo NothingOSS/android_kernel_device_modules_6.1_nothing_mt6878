@@ -10,6 +10,7 @@
 #include <scsi/scsi_cmnd.h>
 #include <ufs/ufshcd.h>
 #include "ufs-mediatek.h"
+#include "ufs-mediatek-sysfs.h"
 #include <mt-plat/mtk_blocktag.h>
 #if IS_ENABLED(CONFIG_SCSI_UFS_HPB)
 #include "ufshpb.h"
@@ -43,11 +44,12 @@ static struct ufs_hw_queue *ufs_mtk_mcq_req_to_hwq(struct ufs_hba *hba,
 
 void ufs_mtk_btag_send_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 {
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct scsi_cmnd *cmd = lrbp->cmd;
 	struct ufs_hw_queue *hq;
 	__u16 qid = 0;
 
-	if (ufs_mtk_is_data_cmd(cmd)) {
+	if (!atomic_read(&host->skip_btag) && ufs_mtk_is_data_cmd(cmd)) {
 		if (is_mcq_enabled(hba)) {
 			hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
 			qid = hq->id;
@@ -59,11 +61,12 @@ EXPORT_SYMBOL_GPL(ufs_mtk_btag_send_command);
 
 void ufs_mtk_btag_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 {
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct scsi_cmnd *cmd = lrbp->cmd;
 	struct ufs_hw_queue *hq;
 	__u16 qid = 0;
 
-	if (ufs_mtk_is_data_cmd(cmd)) {
+	if (!atomic_read(&host->skip_btag) && ufs_mtk_is_data_cmd(cmd)) {
 		if (is_mcq_enabled(hba)) {
 			hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
 			qid = hq->id;
@@ -89,13 +92,15 @@ static void ufs_mtk_blocktag_add(void *data, async_cookie_t cookie)
 
 void ufs_mtk_btag_init(struct ufs_hba *hba)
 {
+	ufs_mtk_init_btag_sysfs(hba);
 	async_schedule(ufs_mtk_blocktag_add, hba);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_init);
 
-void ufs_mtk_btag_exit(void)
+void ufs_mtk_btag_exit(struct ufs_hba *hba)
 {
 	mtk_btag_ufs_exit();
+	ufs_mtk_remove_btag_sysfs(hba);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_btag_exit);
 

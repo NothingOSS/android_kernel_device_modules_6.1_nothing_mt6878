@@ -2639,7 +2639,7 @@ static int ufs_mtk_remove(struct platform_device *pdev)
 
 	ufshcd_remove(hba);
 
-	ufs_mtk_btag_exit();
+	ufs_mtk_btag_exit(hba);
 
 	ufs_mtk_uninstall_tracepoints();
 

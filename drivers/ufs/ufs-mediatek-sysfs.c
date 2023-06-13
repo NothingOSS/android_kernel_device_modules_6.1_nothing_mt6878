@@ -516,4 +516,58 @@ void ufs_mtk_remove_irq_sysfs(struct ufs_hba *hba)
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_remove_irq_sysfs);
 
+static ssize_t skip_blocktag_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	ssize_t size = 0;
+	int value;
 
+	value = atomic_read((&host->skip_btag));
+	size += sprintf(buf + size, "%d\n", value);
+
+	return size;
+}
+
+static ssize_t skip_blocktag_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	const char *opcode = buf;
+	u32 value;
+
+	if (kstrtou32(opcode, 0, &value) || value > 1)
+		return -EINVAL;
+
+	atomic_set(&host->skip_btag, value);
+	return count;
+}
+
+static DEVICE_ATTR_RW(skip_blocktag);
+
+static struct attribute *ufs_mtk_sysfs_btag_attrs[] = {
+	&dev_attr_skip_blocktag.attr,
+	NULL
+};
+
+struct attribute_group ufs_mtk_sysfs_btag_group = {
+	.attrs = ufs_mtk_sysfs_btag_attrs,
+};
+
+void ufs_mtk_init_btag_sysfs(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	atomic_set(&host->skip_btag, 0);
+	if (sysfs_create_group(&hba->dev->kobj, &ufs_mtk_sysfs_btag_group))
+		dev_info(hba->dev, "Failed to create sysfs for btag\n");
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_init_btag_sysfs);
+
+void ufs_mtk_remove_btag_sysfs(struct ufs_hba *hba)
+{
+	sysfs_remove_group(&hba->dev->kobj, &ufs_mtk_sysfs_btag_group);
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_remove_btag_sysfs);

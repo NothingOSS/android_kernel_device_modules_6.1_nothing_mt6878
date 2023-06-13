@@ -9,7 +9,7 @@
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 
 void ufs_mtk_btag_init(struct ufs_hba *hba);
-void ufs_mtk_btag_exit(void);
+void ufs_mtk_btag_exit(struct ufs_hba *hba);
 void ufs_mtk_btag_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp);
 void ufs_mtk_btag_send_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp);
 
