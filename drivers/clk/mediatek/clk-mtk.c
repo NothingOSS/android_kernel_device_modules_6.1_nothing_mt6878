@@ -87,11 +87,11 @@ static int mtk_mminfra_hwv_is_enable_done(struct mtk_hwv_domain *hwvd)
 	return 0;
 }
 
-int __mminfra_hwv_power_ctrl(struct mtk_hwv_domain *hwvd, bool onoff)
+int __mminfra_hwv_power_ctrl(struct mtk_hwv_domain *hwvd,
+			unsigned int vote_msk, bool onoff)
 {
 	u32 en_ofs;
 	u32 vote_ofs;
-	u32 vote_msk;
 	u32 vote_ack;
 	u32 val = 0, val2 = 0;
 	int ret = 0;
@@ -99,7 +99,6 @@ int __mminfra_hwv_power_ctrl(struct mtk_hwv_domain *hwvd, bool onoff)
 	int i = 0;
 
 	en_ofs = hwvd->data->en_ofs;
-	vote_msk = BIT(hwvd->data->en_shift);
 	if (onoff) {
 		vote_ofs = hwvd->data->set_ofs;
 		vote_ack = vote_msk;
@@ -153,9 +152,20 @@ int mtk_clk_mminfra_hwv_power_ctrl(bool onoff)
 	if (!mminfra_hwv_domain.data)
 		return 0;
 
-	return __mminfra_hwv_power_ctrl(&mminfra_hwv_domain, onoff);
+	return __mminfra_hwv_power_ctrl(&mminfra_hwv_domain,
+		BIT(mminfra_hwv_domain.data->en_shift), onoff);
 }
 EXPORT_SYMBOL_GPL(mtk_clk_mminfra_hwv_power_ctrl);
+
+
+int mtk_clk_mminfra_hwv_power_ctrl_optional(bool onoff, u8 bit)
+{
+	if (!mminfra_hwv_domain.data || (bit > 31))
+		return 0;
+
+	return __mminfra_hwv_power_ctrl(&mminfra_hwv_domain, BIT(bit), onoff);
+}
+EXPORT_SYMBOL_GPL(mtk_clk_mminfra_hwv_power_ctrl_optional);
 
 int mtk_clk_register_mminfra_hwv_data(const struct mtk_hwv_data *data,
 			struct regmap *regmap, struct device *dev)

@@ -362,6 +362,7 @@ extern void mtk_hwv_pll_off(struct clk_hw *hw);
 extern bool mtk_hwv_pll_is_on(struct clk_hw *hw);
 /* enable/disable mminfra pwr for mm hw voter */
 extern int mtk_clk_mminfra_hwv_power_ctrl(bool onoff);
+extern int mtk_clk_mminfra_hwv_power_ctrl_optional(bool onoff, u8 bit);
 int mtk_clk_register_mminfra_hwv_data(const struct mtk_hwv_data *data,
 			struct regmap *regmap, struct device *dev);
 
