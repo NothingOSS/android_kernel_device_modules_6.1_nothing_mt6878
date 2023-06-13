@@ -10411,6 +10411,8 @@
 			throughput-min = <218000000>;
 			throughput-normal-max = <660000000>;
 			interconnect-num = <4>;
+			os-allow-bw = <1>;
+			vdec-max-w = <4096>;
 			bandwidth-table = // avg occupy measure from (4K60,416MHz) scale to 218MHz
 				<4 0 414>,
 				<5 0 141>,
