@@ -11033,6 +11033,7 @@
 			mediatek,force-vbus;
 			mediatek,clk-mgr;
 			mediatek,usb3-drd;
+			mediatek,noise-still-tr;
 			mediatek,hwrscs-vers = <1>;
 			mediatek,syscon-wakeup = <&pericfg_ao_clk 0x200 103>;
 			wakeup-source;
@@ -11076,6 +11077,7 @@
 			maximum-speed = "high-speed";
 			mediatek,force-vbus;
 			mediatek,clk-mgr;
+			mediatek,noise-still-tr;
 			mediatek,hwrscs-vers = <1>;
 			usb-role-switch;
 			port {
@@ -11134,6 +11136,7 @@
 				clock-names = "ref";
 				#phy-cells = <1>;
 				usb2jtag = <&infracfg_ao_clk 1>;
+				usb2uart;
 				nvmem-cells = <&u2_phy_data>, <&u2_phy_data>;
 				nvmem-cell-names = "intr_cal", "term_cal";
 				nvmem-cell-masks = <0x3f 0xf00>;
