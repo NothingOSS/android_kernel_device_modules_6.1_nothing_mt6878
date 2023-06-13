@@ -1589,7 +1589,6 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 		return -EINVAL;
 	}
 
-	mtk_ddp_comp_io_cmd(comp, NULL, REQ_PANEL_EXT, &panel_ext);
 	if (unlikely(!panel_ext)) {
 		DDPPR_ERR("%s:can't find panel_ext handle\n", __func__);
 		CRTC_MMP_EVENT_END(index, backlight, 0, 1);
