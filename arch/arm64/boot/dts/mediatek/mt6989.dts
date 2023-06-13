@@ -3509,10 +3509,10 @@
 			dfd_cache: dfd-cache {
 				enabled = <1>;
 				/* dfd-timeout = <0x1d4c0>; */ /* 60 sec for full cache dump */
-				dfd-timeout = <0x6000>; /* 12.3 sec */
+				dfd-timeout = <0xc000>; /* 24.6 sec */
 				/* buf-length = <0x2000000>; */ /* for full cache dump */
 				buf-length = <0x280000>;
-				/* tap-en = <0x80fffff>; */ /* for full cache dump */
+				/* tap-en = <0x8ffffff>; */ /* for full cache dump */
 				tap-en = <0x8000000>;
 			};
 		};
