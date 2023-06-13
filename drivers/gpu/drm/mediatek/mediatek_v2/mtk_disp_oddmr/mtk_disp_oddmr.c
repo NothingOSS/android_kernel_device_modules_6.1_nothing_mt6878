@@ -2147,8 +2147,10 @@ static int _mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *priv,
 	}
 
 	if ((idx == cnts) ||
-			!IS_TABLE_VALID(idx, g_od_param.valid_table))
-		idx = -1;
+			!IS_TABLE_VALID(idx, g_od_param.valid_table)) {
+		ODDMRFLOW_LOG("not find table!\n");
+		idx = 0;
+	}
 	ODDMRFLOW_LOG("table_idx %d\n", idx);
 	return idx;
 }
