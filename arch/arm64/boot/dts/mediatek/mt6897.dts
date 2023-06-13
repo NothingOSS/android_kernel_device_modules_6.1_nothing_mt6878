@@ -121,6 +121,7 @@
 			oddmr0 = &disp_oddmr0;
 			oddmr1 = &disp1_oddmr0;
 			dsi0 = &dsi0;
+			dsi1 = &dsi1;
 			mutex0 = &disp_mutex0;
 			mtksmmu0 = &disp_iommu;
 			mtksmmu1 = &mdp_iommu;
@@ -8119,6 +8120,7 @@
 				"disp_mutex2_eof",
 				"disp_ovlsys_wdma2_eof2",
 				"disp_dsi0_sof0",
+				"disp_dsi1_sof0",
 				"disp_token_vfp_period0",
 				"disp_token_disp_va_start0",
 				"disp_token_disp_va_end0",
@@ -8129,6 +8131,7 @@
 				"disp_gpio_te0",
 				"disp_gpio_te1",
 				"disp_dsi0_targetline0",
+				"disp_dsi1_targetline0",
 				"disp_ovlsys_wdma0_eof0",
 				"disp_ovlsys_wdma0_eof2",
 				"disp_token_disp_v_idle_power_on0",
@@ -8165,6 +8168,7 @@
 				<&gce CMDQ_EVENT_DISPSYS1_DP_INTF_FRAME_DONE>,
 				<&gce CMDQ_EVENT_OVLSYS1_DISP_WDMA0_FRAME_DONE>,
 				<&gce CMDQ_EVENT_DISPSYS_DISP_DSI0_SOF>,
+				<&gce CMDQ_EVENT_DISPSYS1_DISP_DSI0_SOF>,
 				<&gce CMDQ_SYNC_TOKEN_VFP_PERIOD>,
 				<&gce CMDQ_SYNC_TOKEN_DISP_VA_START>,
 				<&gce CMDQ_SYNC_TOKEN_DISP_VA_END>,
@@ -8175,6 +8179,7 @@
 				<&gce CMDQ_EVENT_GCE_EVENT_DSI0_TE_I>,
 				<&gce CMDQ_EVENT_GCE_EVENT_DSI1_TE_I>,
 				<&gce CMDQ_EVENT_DISPSYS_DSI_TARGET_LINE>,
+				<&gce CMDQ_EVENT_DISPSYS1_DSI_TARGET_LINE>,
 				<&gce CMDQ_EVENT_OVLSYS_DISP_WDMA0_FRAME_DONE>,
 				<&gce CMDQ_EVENT_OVLSYS_DISP_WDMA0_FRAME_DONE>,
 				<&gce CMDQ_SYNC_TOKEN_VIDLE_POWER_ON>,
@@ -8381,6 +8386,20 @@
 			<&dispsys0_config_clk CLK_DISPSYS0_DSI_CLK>,
 			<&mipi_tx_config0>;
 			clock-names = "engine", "digital", "hs";
+		};
+
+		dsi1: dsi@1420d000 {
+			compatible = "mediatek,dsi1",
+					"mediatek,mt6897-dsi";
+			reg = <0 0x1420d000 0 0x1000>;
+			interrupts = <GIC_SPI 412 IRQ_TYPE_LEVEL_HIGH 0>;
+			phys = <&mipi_tx_config1>;
+			phy-names = "dphy";
+			clocks = <&dispsys1_config_clk CLK_DISPSYS1_DISP_DSI0>,
+			<&dispsys1_config_clk CLK_DISPSYS1_DSI_CLK>,
+			<&mipi_tx_config1>;
+			clock-names = "engine", "digital", "hs";
+			status = "disabled";
 		};
 
 		ovlsys-config@14400000 {
@@ -13297,6 +13316,17 @@
 			#clock-cells = <0>;
 			#phy-cells = <0>;
 			clock-output-names = "mipi_tx0_pll";
+		};
+
+		mipi_tx_config1: mipi-tx-config@11e60000 {
+			status = "disabled";
+			compatible = "mediatek,mipi_tx_config1",
+						"mediatek,mt6897-mipi-tx";
+			reg = <0 0x11e60000 0 0x1000>;
+			clocks = <&clk26m>;
+			#clock-cells = <0>;
+			#phy-cells = <0>;
+			clock-output-names = "mipi_tx1_pll";
 		};
 
 		vcp: vcp@1ec00000 {
