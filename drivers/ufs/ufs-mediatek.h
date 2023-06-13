@@ -297,6 +297,11 @@ enum {
 	BOOTDEV_UFS   = 2
 };
 
+/* UFS MTK ip version value */
+enum {
+	IP_VER_MT6989 = 0x01450000
+};
+
 struct tag_bootmode {
 	u32 size;
 	u32 tag;
