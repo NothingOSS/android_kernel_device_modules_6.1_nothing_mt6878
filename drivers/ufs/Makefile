@@ -2,6 +2,7 @@
 # UFSHCD makefile
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/blocktag/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/vendor
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/
 ccflags-y += -I$(srctree)/drivers/ufs/core/

@@ -36,6 +36,15 @@
 #include "ufs-mediatek-rpmb.h"
 #include "ufs-mediatek-sysfs.h"
 
+/* Power Throttling */
+#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
+#include <mtk_low_battery_throttling.h>
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
+#include <mtk_battery_oc_throttling.h>
+#endif
+
 extern void mt_irq_dump_status(unsigned int irq);
 static int ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba);
 static int ufs_mtk_config_mcq(struct ufs_hba *hba, bool irq);
@@ -212,6 +221,41 @@ static void ufs_mtk_crypto_enable(struct ufs_hba *hba)
 		hba->caps &= ~UFSHCD_CAP_CRYPTO;
 	}
 }
+
+#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING) || \
+	IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
+static void ufs_mtk_pt_callback(struct ufs_hba *hba, bool pt_on)
+{
+	if (pt_on)
+		ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_G1);
+	else
+		ufs_mtk_dynamic_clock_scaling(hba, CLK_SCALE_FREE_RUN);
+}
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
+static void ufs_mtk_low_battery_callback(enum LOW_BATTERY_LEVEL_TAG level, void *data)
+{
+	struct ufs_hba *hba = (struct ufs_hba *) data;
+
+	if (level >= LOW_BATTERY_LEVEL_2)
+		ufs_mtk_pt_callback(hba, true);
+	else
+		ufs_mtk_pt_callback(hba, false);
+}
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
+static void ufs_mtk_battery_oc_callback(enum BATTERY_OC_LEVEL_TAG level, void *data)
+{
+	struct ufs_hba *hba = (struct ufs_hba *) data;
+
+	if (level >= BATTERY_OC_LEVEL_2)
+		ufs_mtk_pt_callback(hba, true);
+	else
+		ufs_mtk_pt_callback(hba, false);
+}
+#endif
 
 static void ufs_mtk_host_reset(struct ufs_hba *hba)
 {
@@ -1421,6 +1465,16 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	ufs_mtk_init_clocks(hba);
 
 	ufs_mtk_init_sysfs(hba);
+
+#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
+	register_low_battery_notify(&ufs_mtk_low_battery_callback,
+				    LOW_BATTERY_PRIO_UFS, (void *) hba);
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
+	register_battery_oc_notify(&ufs_mtk_battery_oc_callback,
+				   BATTERY_OC_PRIO_UFS, (void *) hba);
+#endif
 
 	/*
 	 * ufshcd_vops_init() is invoked after
