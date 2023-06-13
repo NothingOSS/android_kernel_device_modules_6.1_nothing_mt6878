@@ -7371,14 +7371,66 @@
 			reg = <0 0x17c60000 0 0x10000>;
 		};
 
-		mtk_sec_dmaheap {
-			compatible = "mediatek,dmaheap-region-base";
+		mtkheap-page-prot {
+			compatible = "mediatek,dmaheap-mtk-sec-page";
+			heap-name = "mtk_prot_page-uncached";
+			trusted-mem-type = <10>;
+		};
+
+		mtkheap-region-prot {
+			compatible = "mediatek,dmaheap-mtk-sec-region";
+			heap-name = "mtk_prot_region";
+			trusted-mem-type = <1>;
+			region-heap-align-name = "mtk_prot_region-aligned";
 			iommus = <&disp_iommu M4U_PORT_L0_DISP_OVL0_2L_HDR>;
 		};
 
-		mtk-sec-dmaheap-apu {
-			compatible = "mediatek,dmaheap-apu-region-base";
+		mtkheap-region-saup-data {
+			compatible = "mediatek,dmaheap-mtk-sec-region";
+			heap-name = "mtk_sapu_data_shm_region";
+			trusted-mem-type = <12>;
+			region-heap-align-name = "mtk_sapu_data_shm_region-aligned";
 			iommus = <&apu_iommu0 M4U_PORT_L40_APU_CODE>;
+		};
+
+		mtkheap-region-saup-engine {
+			compatible = "mediatek,dmaheap-mtk-sec-region";
+			heap-name = "mtk_sapu_engine_shm_region";
+			trusted-mem-type = <13>;
+			region-heap-align-name = "mtk_sapu_engine_shm_region-aligned";
+			iommus = <&apu_iommu0 M4U_PORT_L40_APU_CODE>;
+		};
+
+		mtkheap_page_svp: mtkheap-page-svp {
+			compatible = "mediatek,dmaheap-mtk-sec-page";
+			heap-name = "mtk_svp_page-uncached";
+			trusted-mem-type = <9>;
+			status = "disabled";
+		};
+
+		mtkheap_page_wfd: mtkheap-page-wfd {
+			compatible = "mediatek,dmaheap-mtk-sec-page";
+			heap-name = "mtk_wfd_page-uncached";
+			trusted-mem-type = <11>;
+			status = "disabled";
+		};
+
+		mtkheap_region_svp: mtkheap-region-svp {
+			compatible = "mediatek,dmaheap-mtk-sec-region";
+			heap-name = "mtk_svp_region";
+			trusted-mem-type = <0>;
+			region-heap-align-name = "mtk_svp_region-aligned";
+			iommus = <&disp_iommu M4U_PORT_L0_DISP_OVL0_2L_HDR>;
+			status = "disabled";
+		};
+
+		mtkheap_region_wfd: mtkheap-region-wfd {
+			compatible = "mediatek,dmaheap-mtk-sec-region";
+			heap-name = "mtk_wfd_region";
+			trusted-mem-type = <2>;
+			region-heap-align-name = "mtk_wfd_region-aligned";
+			iommus = <&disp_iommu M4U_PORT_L0_DISP_OVL0_2L_HDR>;
+			status = "disabled";
 		};
 
 		mtk_iommu_debug {
