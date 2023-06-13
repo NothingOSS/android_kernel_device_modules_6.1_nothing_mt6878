@@ -968,7 +968,7 @@ static int flt_sync_all_cpu(void)
 		if (delta >= sched_ravg_window  && rq->curr)
 			flt_update_task_ravg(rq->curr, rq, TASK_UPDATE, wallclock, 0);
 		if (rq->nr_running == 0)
-				memset(fsrq->group_nr_running, 0, sizeof(fsrq->group_nr_running));
+			memset(fsrq->group_nr_running, 0, sizeof(fsrq->group_nr_running));
 		raw_spin_rq_unlock(rq);
 	}
 
@@ -999,36 +999,68 @@ static int flt_sync_all_cpu(void)
 		}
 	}
 
-	for_each_possible_cpu(cpu) {
-		rq = cpu_rq(cpu);
-		fsrq = &per_cpu(flt_rq, cpu);
-		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
-			sum = 0;
-			for (ridx = 0; ridx < RAVG_HIST_SIZE_MAX; ++ridx)
-				sum += READ_ONCE(fsrq->group_util_active_history[grp_idx][ridx]);
-			total_sum[grp_idx] += sum;
-			WRITE_ONCE(fsrq->group_util_ratio[grp_idx], sum);
+	if (flt_getnid() == FLT_GP_NID) {
+		for_each_possible_cpu(cpu) {
+			rq = cpu_rq(cpu);
+			fsrq = &per_cpu(flt_rq, cpu);
+			for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
+				sum = 0;
+				for (ridx = 0; ridx < RAVG_HIST_SIZE_MAX; ++ridx)
+					sum += READ_ONCE(
+						fsrq->group_util_active_history[grp_idx][ridx]);
+				total_sum[grp_idx] += sum;
+				WRITE_ONCE(fsrq->group_util_ratio[grp_idx], sum);
+			}
 		}
-	}
 
-	for_each_possible_cpu(cpu) {
-		rq = cpu_rq(cpu);
-		fsrq = &per_cpu(flt_rq, cpu);
-		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
-			res = READ_ONCE(fsrq->group_util_ratio[grp_idx])
-				<< SCHED_CAPACITY_SHIFT;
+		for_each_possible_cpu(cpu) {
+			rq = cpu_rq(cpu);
+			fsrq = &per_cpu(flt_rq, cpu);
+			for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
+				res = READ_ONCE(fsrq->group_util_ratio[grp_idx])
+					<< SCHED_CAPACITY_SHIFT;
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-			if (grp_cal_rat)
-				res = grp_cal_rat(res, total_sum[grp_idx]);
-			else
-				res = 0;
+				if (grp_cal_rat)
+					res = grp_cal_rat(res, total_sum[grp_idx]);
+				else
+					res = 0;
 #else
-			res = 0;
+				res = 0;
 #endif
-			WRITE_ONCE(fsrq->group_util_ratio[grp_idx], res);
+				WRITE_ONCE(fsrq->group_util_ratio[grp_idx], res);
+			}
+		}
+	} else {
+		for_each_possible_cpu(cpu) {
+			rq = cpu_rq(cpu);
+			fsrq = &per_cpu(flt_rq, cpu);
+			for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
+				sum = 0;
+				for (ridx = 0; ridx < RAVG_HIST_SIZE_MAX; ++ridx)
+					sum += READ_ONCE(fsrq->group_util_history[ridx][grp_idx]);
+				total_sum[grp_idx] += sum;
+				WRITE_ONCE(fsrq->group_raw_util_ratio[grp_idx], sum);
+			}
+		}
+
+		for_each_possible_cpu(cpu) {
+			rq = cpu_rq(cpu);
+			fsrq = &per_cpu(flt_rq, cpu);
+			for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
+				res = READ_ONCE(fsrq->group_raw_util_ratio[grp_idx])
+					<< SCHED_CAPACITY_SHIFT;
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+				if (grp_cal_rat)
+					res = grp_cal_rat(res, total_sum[grp_idx]);
+				else
+					res = 0;
+#else
+				res = 0;
+#endif
+				WRITE_ONCE(fsrq->group_raw_util_ratio[grp_idx], res);
+			}
 		}
 	}
-
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
 		for_each_possible_cpu(cpu) {
 			rq = cpu_rq(cpu);

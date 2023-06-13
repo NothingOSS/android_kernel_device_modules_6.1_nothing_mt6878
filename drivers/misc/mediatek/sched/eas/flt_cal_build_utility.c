@@ -25,6 +25,7 @@
 #include "group.h"
 #include "flt_cal.h"
 #include "flt_api.h"
+#include "flt_utility.h"
 #include "eas_trace.h"
 #include "grp_awr.h"
 #include <sugov/cpufreq.h>

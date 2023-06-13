@@ -54,6 +54,7 @@ struct flt_rq {
 	u32			group_util_active_history[GROUP_ID_RECORD_MAX][RAVG_HIST_SIZE_MAX];
 	int			group_nr_running[GROUP_ID_RECORD_MAX];
 	u32			group_util_ratio[GROUP_ID_RECORD_MAX];
+	u32			group_raw_util_ratio[GROUP_ID_RECORD_MAX];
 	u32			group_util_rtratio[GROUP_ID_RECORD_MAX];
 	u32			cpu_dmand_util;
 	u32			cpu_tar_util;

@@ -33,6 +33,7 @@
 int (*grp_cal_tra)(int x, unsigned int y);
 EXPORT_SYMBOL(grp_cal_tra);
 #endif
+static u32 flt_nid = FLT_GP_NID;
 
 void flt_update_data(unsigned int data, unsigned int offset)
 {
@@ -159,7 +160,10 @@ static int flt_get_sum_group_mode2(int grp_id)
 	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0 || flt_is_valid() != 1)
 		return -1;
 	offset = grp_id * PER_ENTRY;
-	res = flt_get_data(GP_NIDWP + offset);
+	if (flt_nid == FLT_GP_NID)
+		res = flt_get_data(GP_NIDWP + offset);
+	else
+		res = flt_get_data(GP_RWP + offset);
 
 	return res;
 }
@@ -272,7 +276,10 @@ static int flt_sched_get_cpu_group_eas_mode2(int cpu_idx, int group_id)
 	flt_util = flt_get_sum_group_mode2(group_id);
 
 	fsrq = &per_cpu(flt_rq, cpu_idx);
-	util_ratio = READ_ONCE(fsrq->group_util_ratio[group_id]);
+	if (flt_nid == FLT_GP_NID)
+		util_ratio = READ_ONCE(fsrq->group_util_ratio[group_id]);
+	else
+		util_ratio = READ_ONCE(fsrq->group_raw_util_ratio[group_id]);
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 	if (grp_cal_tra)
 		res = grp_cal_tra(flt_util, util_ratio);
@@ -348,3 +355,18 @@ void flt_mode2_init_res(void)
 		flt_sched_set_group_policy_eas(i, DEFAULT_WS, GRP_DEFAULT_WP, GRP_DEFAULT_WC);
 	flt_update_data(FLT_MODE2_EN, AP_FLT_CTL);
 }
+
+int flt_setnid(u32 mode)
+{
+	if (mode >= FLT_GP_NUM)
+		return -1;
+	flt_nid = mode;
+	return 0;
+}
+EXPORT_SYMBOL(flt_setnid);
+
+u32 flt_getnid(void)
+{
+	return flt_nid;
+}
+EXPORT_SYMBOL(flt_getnid);
