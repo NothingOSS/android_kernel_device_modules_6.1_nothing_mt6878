@@ -5207,7 +5207,7 @@
 			gpu-frame-base-optimize = <1>;
 			l2-hash-values = <0xb 0xe 0x0>;
 			sleep-mode-enable = <1>;
-			firmware-idle-hysteresis-time-us = <100>;
+			firmware-idle-hysteresis-time-us = <500>;
 			default-glb-pwroff-timeout-us = <80>;
 			autosuspend-delay-ms = <25>;
 			adaptive-power-policy = <1>;
