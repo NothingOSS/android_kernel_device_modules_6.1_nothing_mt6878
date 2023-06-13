@@ -46,6 +46,10 @@ static int ufs_mtk_config_mcq(struct ufs_hba *hba, bool irq);
 
 #define MAX_SUPP_MAC 64
 #define MCQ_QUEUE_OFFSET(c) ((((c) >> 16) & 0xFF) * 0x200)
+#define MCQ_QCFG_SIZE 0x40
+#define MCQ_CFG_n(r, i) ((r) + MCQ_QCFG_SIZE * (i))
+#define QUEUE_EN_OFFSET 31
+#define QUEUE_ID_OFFSET 16
 
 static const struct ufs_dev_quirk ufs_mtk_dev_fixups[] = {
 	{ .wmanufacturerid = UFS_ANY_VENDOR,
@@ -1747,6 +1751,42 @@ static int ufs_mtk_device_reset(struct ufs_hba *hba)
 	return 0;
 }
 
+static void ufs_mtk_scsi_unblock_requests(struct ufs_hba *hba)
+{
+	if (atomic_dec_and_test(&hba->scsi_block_reqs_cnt))
+		scsi_unblock_requests(hba->host);
+}
+
+static void ufs_mtk_scsi_block_requests(struct ufs_hba *hba)
+{
+	if (atomic_inc_return(&hba->scsi_block_reqs_cnt) == 1)
+		scsi_block_requests(hba->host);
+}
+
+static int ufs_mtk_mcq_config_cqid(struct ufs_hba *hba)
+{
+	u32 sq_attr, reg, i;
+
+	ufs_mtk_scsi_block_requests(hba);
+	for (i = 0; i < hba->nr_hw_queues; i++) {
+		sq_attr = MCQ_CFG_n(REG_SQATTR, i);
+
+		/* Disable SQ and clear CQID */
+		reg = ufsmcq_readl(hba, sq_attr);
+		reg &= ~(1 << QUEUE_EN_OFFSET);
+		reg &= ~(0xFF << QUEUE_ID_OFFSET);
+		ufsmcq_writel(hba, reg, sq_attr);
+
+		/* Config CQID and re-enable SQ */
+		reg |= (1 << QUEUE_EN_OFFSET) |
+			(3 << QUEUE_ID_OFFSET);
+		ufsmcq_writel(hba, reg, sq_attr);
+	}
+	ufs_mtk_scsi_unblock_requests(hba);
+
+	return 0;
+}
+
 static int ufs_mtk_link_set_hpm(struct ufs_hba *hba)
 {
 	int err;
@@ -1785,6 +1825,7 @@ static int ufs_mtk_link_set_hpm(struct ufs_hba *hba)
 		ufs_mtk_config_mcq(hba, false);
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 		ufshcd_mcq_make_queues_operational(hba);
+		ufs_mtk_mcq_config_cqid(hba);
 		ufshcd_mcq_config_mac(hba, hba->nutrs);
 #endif
 		ufshcd_writel(hba, ufshcd_readl(hba, REG_UFS_MEM_CFG) | 0x1,
@@ -2013,9 +2054,14 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 	struct ufs_dev_info *dev_info = &hba->dev_info;
 	u16 mid = dev_info->wmanufacturerid;
 
-	/* use none scheduler for mcq */
-	if (hba->host->nr_hw_queues > 1)
-		hba->host->tag_set.flags |= BLK_MQ_F_NO_SCHED_BY_DEFAULT;
+	if (is_mcq_enabled(hba)) {
+		/* Use none scheduler for mcq */
+		if (hba->host->nr_hw_queues > 1) {
+			hba->host->tag_set.flags |=
+				BLK_MQ_F_NO_SCHED_BY_DEFAULT;
+		}
+		ufs_mtk_mcq_config_cqid(hba);
+	}
 
 	if (mid == UFS_VENDOR_SAMSUNG) {
 		ufshcd_dme_set(hba, UIC_ARG_MIB(PA_TACTIVATE), 6);
@@ -2464,21 +2510,6 @@ static int ufs_mtk_config_esi(struct ufs_hba *hba)
 	return ufs_mtk_config_mcq(hba, true);
 }
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
-static int ufs_mtk_config_cqid(struct ufs_hba *hba)
-{
-	struct ufs_hw_queue *hwq;
-	int i;
-
-	for (i = 0; i < hba->nr_hw_queues; i++) {
-		hwq = &hba->uhq[i];
-		hwq->cqid = 3;
-	}
-
-	return 0;
-}
-#endif
-
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG) && IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
 static void ufs_mtk_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 				    enum ufs_notify_change_status status)
@@ -2517,10 +2548,7 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.get_hba_mac         = ufs_mtk_get_hba_mac,
 	.op_runtime_config   = ufs_mtk_op_runtime_config,
 	.mcq_config_resource = ufs_mtk_mcq_config_resource,
-	.config_esi          = ufs_mtk_config_esi,
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
-	.config_cqid         = ufs_mtk_config_cqid,
-#endif
+	.config_esi          = ufs_mtk_config_esi
 };
 
 /**
