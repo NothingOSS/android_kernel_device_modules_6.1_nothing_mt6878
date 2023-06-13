@@ -1001,8 +1001,8 @@ static const struct mml_comp_hw_ops sys_hw_ops = {
 static const struct mml_comp_hw_ops sys_hw_ops_mminfra = {
 	.pw_enable = &mml_sys_pw_enable,
 	.pw_disable = &mml_sys_pw_disable,
-	.clk_enable = &mml_comp_clk_enable,
-	.clk_disable = &mml_comp_clk_disable,
+	.clk_enable = &mml_sys_comp_clk_enable,
+	.clk_disable = &mml_sys_comp_clk_disable,
 };
 
 #endif

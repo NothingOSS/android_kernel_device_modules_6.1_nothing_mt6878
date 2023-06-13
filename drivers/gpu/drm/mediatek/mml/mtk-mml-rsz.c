@@ -87,8 +87,14 @@
 int mml_rsz_fw_comb = 1;
 module_param(mml_rsz_fw_comb, int, 0644);
 
+enum rsz_dbg_ver {
+	RSZ_DBG_MT6985 = 0,
+	RSZ_DBG_MT6989,
+};
+
 struct rsz_data {
 	u32 tile_width;
+	u8 rsz_dbg;
 	bool add_ddp;
 	bool aal_crop;
 };
@@ -153,12 +159,14 @@ static const struct rsz_data mt6897_rsz2_data = {
 
 static const struct rsz_data mt6989_rsz_data = {
 	.tile_width = 3348,
+	.rsz_dbg = RSZ_DBG_MT6989,
 	.add_ddp = true,
 	.aal_crop = true,
 };
 
 static const struct rsz_data mt6989_rsz2_data = {
 	.tile_width = 544,
+	.rsz_dbg = RSZ_DBG_MT6989,
 	.add_ddp = true,
 	.aal_crop = false,
 };
@@ -628,8 +636,25 @@ const char *get_rsz_state(const u32 state)
 	}
 }
 
+const char *get_rsz_state2(const u32 state)
+{
+	/* in_valid, in_ready, out_valid, out_ready */
+
+	switch (state) {
+	case 0x5:
+		/* 0,1,0,1 */
+		return "upstream hang";
+	case 0xa:
+		/* 1,0,1,0 */
+		return "downstream hang";
+	default:
+		return "";
+	}
+}
+
 static void rsz_debug_dump(struct mml_comp *comp)
 {
+	const struct mml_comp_rsz *rsz = comp_to_rsz(comp);
 	void __iomem *base = comp->base;
 	u32 value[31];
 	u32 debug[8];
@@ -726,11 +751,15 @@ static void rsz_debug_dump(struct mml_comp *comp)
 
 	state = debug[1] & 0xf;
 	request[0] = state & 0x1;
-	request[1] = (state & (0x1 << 1)) >> 1;
-	request[2] = (state & (0x1 << 2)) >> 2;
-	request[3] = (state & (0x1 << 3)) >> 3;
-	mml_err("RSZ inRdy,inRsq,outRdy,outRsq: %d,%d,%d,%d (%s)",
-		request[3], request[2], request[1], request[0], get_rsz_state(state));
+	request[1] = (state >> 1) & 0x1;
+	request[2] = (state >> 2) & 0x1;
+	request[3] = (state >> 3) & 0x1;
+	if (rsz->data->rsz_dbg == RSZ_DBG_MT6989)
+		mml_err("RSZ in_valid,in_ready,out_valid,out_ready: %d,%d,%d,%d (%s)",
+			request[3], request[2], request[1], request[0], get_rsz_state2(state));
+	else
+		mml_err("RSZ inRdy,inRsq,outRdy,outRsq: %d,%d,%d,%d (%s)",
+			request[3], request[2], request[1], request[0], get_rsz_state(state));
 }
 
 static const struct mml_comp_debug_ops rsz_debug_ops = {

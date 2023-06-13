@@ -1395,8 +1395,17 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 		(dest->rotate == MML_ROT_180 && !dest->flip) ||
 		(dest->rotate == MML_ROT_90 && !dest->flip) ||
 		(dest->rotate == MML_ROT_270 && dest->flip)) {
-		struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
-		const u32 tile_width = rrot_frm->crop_off_l + cfg->frame_in_crop[0].r.width;
+		const enum mml_color format = cfg->info.src.format;
+		u32 tile_width = cfg->frame_in_crop[0].r.left + cfg->frame_in_crop[0].r.width;
+
+		if (MML_FMT_10BIT_PACKED(format) && !MML_FMT_COMPRESS(format) &&
+			!MML_FMT_ALPHA(format) && !MML_FMT_BLOCK(format)) {
+			/* 10-bit packed, not compress, not alpha 32-bit, not blk */
+			tile_width = round_up(tile_width, 4);
+		} else if (MML_FMT_H_SUBSAMPLE(format)) {
+			/* YUV422 or YUV420 tile alignment constraints */
+			tile_width = round_up(tile_width, 2);
+		}
 
 		rrot_msg("%s flip tile %u frame in crop %u %u %u %u inx %u %u outx %u %u",
 			__func__, tile_width,
@@ -1639,6 +1648,10 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	if (MML_FMT_AFBC(src->format) || MML_FMT_HYFBC(src->format)) {
 		src_offset_wp = in_xs;
 		src_offset_hp = in_ys;
+
+		if ((src_offset_wp & 0x1) || (src_offset_hp & 0x1))
+			mml_err("%s pipe %u w %u h %u",
+				__func__, rrot->pipe, src_offset_wp, src_offset_hp);
 	}
 
 	/* config source buffer offset */
@@ -2035,11 +2048,9 @@ static void rrot_debug_dump(struct mml_comp *comp)
 		value[9], value[10]);
 	mml_err("RROT_SRC_OFFSET_WP %#010x RROT_SRC_OFFSET_HP %#010x",
 		value[11], value[12]);
-	mml_err("RROT_SRC BASE_0 %#010x BASE_0 %#010x",
-		value[13], value[14]);
-	mml_err("RROT_SRC BASE_1_MSB %#010x BASE_1 %#010x",
-		value[15], value[16]);
-	mml_err("RROT_SRC BASE_2_MSB %#010x BASE_2 %#010x",
+	mml_err("RROT_SRC     BASE_0 %#03x%08x     BASE_1 %#03x%08x     BASE_2 %#03x%08x",
+		value[13], value[14],
+		value[15], value[16],
 		value[17], value[18]);
 
 	value[13] = readl(base + RROT_SRC_OFFSET_0);
@@ -2049,9 +2060,9 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	value[17] = readl(base + RROT_SRC_BASE_ADD_1);
 	value[18] = readl(base + RROT_SRC_BASE_ADD_2);
 
-	mml_err("RROT_SRC   OFFSET_0 %#010x   OFFSET_1 %#010x   OFFSET_2 %#010x",
+	mml_err("RROT_SRC   OFFSET_0 %#010x    OFFSET_1 %#010x    OFFSET_2 %#010x",
 		value[13], value[14], value[15]);
-	mml_err("RROT_SRC BASE_ADD_0 %#010x BASE_ADD_1 %#010x BASE_ADD_2 %#010x",
+	mml_err("RROT_SRC BASE_ADD_0 %#010x  BASE_ADD_1 %#010x  BASE_ADD_2 %#010x",
 		value[16], value[17], value[18]);
 
 	value[25] = readl(base + RROT_UFO_DEC_LENGTH_BASE_Y_MSB);
@@ -2061,9 +2072,9 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	value[29] = readl(base + RROT_AFBC_PAYLOAD_OST);
 	value[30] = readl(base + RROT_GMCIF_CON);
 
-	mml_err("RROT_UFO_DEC_LENGTH BASE_Y_MSB %#010x BASE_Y %#010x",
+	mml_err("RROT_UFO_DEC_LENGTH BASE_Y %#03x%08x",
 		value[25], value[26]);
-	mml_err("RROT_UFO_DEC_LENGTH BASE_C_MSB %#010x BASE_C %#010x",
+	mml_err("RROT_UFO_DEC_LENGTH BASE_C %#03x%08x",
 		value[27], value[28]);
 	mml_err("RROT_AFBC_PAYLOAD_OST %#010x RROT_GMCIF_CON %#010x",
 		value[29], value[30]);
@@ -2075,7 +2086,7 @@ static void rrot_debug_dump(struct mml_comp *comp)
 			value[31], value[32]);
 	}
 
-	/* mon sta from 0 ~ 28 */
+	/* mon sta from 0 ~ 37 */
 	for (i = 0; i < RROT_MON_COUNT; i++)
 		value[i] = readl(base + RROT_MON_STA_0 + i * 8);
 
@@ -2086,7 +2097,7 @@ static void rrot_debug_dump(struct mml_comp *comp)
 			i * 3 + 2, value[i * 3 + 2]);
 	}
 	mml_err("RROT_MON_STA_36 %#010x RROT_MON_STA_37 %#010x",
-		value[27], value[28]);
+		value[36], value[37]);
 
 	/* parse state */
 	mml_err("RROT ack:%u req:%d ufo:%u",
