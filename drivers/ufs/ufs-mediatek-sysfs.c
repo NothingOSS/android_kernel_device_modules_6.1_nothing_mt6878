@@ -15,8 +15,6 @@
 #include "ufshcd-priv.h"
 #include "ufs-mediatek.h"
 
-static struct ufs_hba *ufshba;
-
 /**
  * ufs_mtk_query_ioctl - perform user read queries
  * @hba: per-adapter instance
@@ -402,6 +400,10 @@ struct attribute_group ufs_mtk_sysfs_clkscale_group = {
 
 void ufs_mtk_init_clk_scaling_sysfs(struct ufs_hba *hba)
 {
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	atomic_set(&host->clkscale_control, 0);
+	atomic_set(&host->clkscale_control_powerhal, 0);
 	if (sysfs_create_group(&hba->dev->kobj, &ufs_mtk_sysfs_clkscale_group))
 		dev_info(hba->dev, "Failed to create sysfs for clkscale_control\n");
 }
@@ -413,9 +415,8 @@ void ufs_mtk_remove_clk_scaling_sysfs(struct ufs_hba *hba)
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_remove_clk_scaling_sysfs);
 
-static int write_irq_affinity(const char *buf)
+static int write_irq_affinity(unsigned int irq, const char *buf)
 {
-	struct ufs_hba *hba = ufshba;
 	cpumask_var_t new_mask;
 	int ret;
 
@@ -431,7 +432,7 @@ static int write_irq_affinity(const char *buf)
 		goto free;
 	}
 
-	ret = irq_set_affinity(hba->irq, new_mask);
+	ret = irq_set_affinity(irq, new_mask);
 
 free:
 	free_cpumask_var(new_mask);
@@ -441,7 +442,7 @@ free:
 static ssize_t smp_affinity_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct ufs_hba *hba = ufshba;
+	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct irq_desc *desc = irq_to_desc(hba->irq);
 	const struct cpumask *mask;
 
@@ -457,14 +458,14 @@ static ssize_t smp_affinity_show(struct device *dev,
 static ssize_t smp_affinity_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
+	struct ufs_hba *hba = dev_get_drvdata(dev);
 	unsigned long mask;
-	struct ufs_hba *hba = ufshba;
 	int ret = count;
 
 	if (kstrtoul(buf, 16, &mask) || mask >= 256)
 		return -EINVAL;
 
-	ret = write_irq_affinity(buf);
+	ret = write_irq_affinity(hba->irq, buf);
 	if (!ret)
 		ret = count;
 
@@ -501,8 +502,6 @@ EXPORT_SYMBOL_GPL(ufs_mtk_init_ioctl);
 
 void ufs_mtk_init_irq_sysfs(struct ufs_hba *hba)
 {
-	ufshba = hba;
-
 	if (sysfs_create_group(&hba->dev->kobj, &ufs_mtk_sysfs_irq_group))
 		dev_info(hba->dev, "Failed to create sysfs for irq\n");
 }
@@ -510,8 +509,6 @@ EXPORT_SYMBOL_GPL(ufs_mtk_init_irq_sysfs);
 
 void ufs_mtk_remove_irq_sysfs(struct ufs_hba *hba)
 {
-	ufshba = NULL;
-
 	sysfs_remove_group(&hba->dev->kobj, &ufs_mtk_sysfs_irq_group);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_remove_irq_sysfs);

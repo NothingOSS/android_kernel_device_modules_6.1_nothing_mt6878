@@ -1415,8 +1415,6 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	/* enable clk scaling*/
 	hba->caps |= UFSHCD_CAP_CLK_SCALING;
 	host->clk_scale_up = true; /* default is max freq */
-	atomic_set(&host->clkscale_control, 0);
-	atomic_set(&host->clkscale_control_powerhal, 0);
 
 	hba->quirks |= UFSHCI_QUIRK_SKIP_MANUAL_WB_FLUSH_CTRL;
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
