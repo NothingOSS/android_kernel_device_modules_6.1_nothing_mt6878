@@ -236,22 +236,40 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 			};
 		};
 	};
+	panel5@4 {
+		compatible = "jdi,nt36672e,cphy,vdo";
+		reg = <4>;
+		pm-enable-gpios = <&pio 215 0>;
+		reset-gpios = <&pio 230 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in5: endpoint {
+				remote-endpoint = <&dsi_out5>;
+			};
+		};
+	};
+
 	ports {
 		port {
-			dsi_out: endpoint {
+			dsi_out: endpoint@0 {
 				remote-endpoint = <&panel_in1>;
 			};
 
-			dsi_out2: endpoint2 {
+			dsi_out2: endpoint@1 {
 				remote-endpoint = <&panel_in2>;
 			};
 
-			dsi_out3: endpoint3 {
+			dsi_out3: endpoint@2 {
 				remote-endpoint = <&panel_in3>;
 			};
 
-			dsi_out4: endpoint4 {
+			dsi_out4: endpoint@3 {
 				remote-endpoint = <&panel_in4>;
+			};
+
+			dsi_out5: endpoint@4 {
+				remote-endpoint = <&panel_in5>;
 			};
 		};
 	};
