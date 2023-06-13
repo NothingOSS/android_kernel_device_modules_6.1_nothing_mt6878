@@ -2560,7 +2560,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 		/* Set LO gain to 0DB */
 	}
 	if (priv->hp_hifi_mode) {
-		/* Step 107: Enable HP mute */
+		/* Step 108: Enable HP mute */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON29,
 				   RG_HPLMUTE_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_HPLMUTE_EN_VAUDP18_SFT);
@@ -2568,43 +2568,43 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_HPRMUTE_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_HPRMUTE_EN_VAUDP18_SFT);
 		usleep_range(100, 120);
-		/* Step 109: Pull-down HPL/R to AVSS30_AUD */
+		/* Step 110: Pull-down HPL/R to AVSS30_AUD */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
 				   0x1 << RG_HPPSHORT2VCM_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 111: Pull-down HPL/R to AVSS30_AUD */
+		/* Step 112: Pull-down HPL/R to AVSS30_AUD */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
 				   0x2 << RG_HPPSHORT2VCM_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 113: Pull-down HPL/R to AVSS30_AUD */
+		/* Step 114: Pull-down HPL/R to AVSS30_AUD */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
 				   0x3 << RG_HPPSHORT2VCM_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 115: Pull-down HPL/R to AVSS30_AUD */
+		/* Step 116: Pull-down HPL/R to AVSS30_AUD */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
 				   0x4 << RG_HPPSHORT2VCM_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 117: Pull-down HPL/R to AVSS30_AUD */
+		/* Step 118: Pull-down HPL/R to AVSS30_AUD */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
 				   0x5 << RG_HPPSHORT2VCM_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 119: Pull-down HPL/R to AVSS30_AUD */
+		/* Step 120: Pull-down HPL/R to AVSS30_AUD */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
 				   0x6 << RG_HPPSHORT2VCM_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 121: Pull-down HPL/R to AVSS30_AUD */
+		/* Step 122: Pull-down HPL/R to AVSS30_AUD */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
 				   0x7 << RG_HPPSHORT2VCM_VAUDP18_SFT);
 		usleep_range(600, 620);
 		/*
-		 * Step 123:
+		 * Step 124:
 		 * HPL Rfb opamp input short enable
 		 * HPR Rfb opamp input short enable
 		 */
@@ -2615,7 +2615,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_HPR_RFB_OPAMPIN_SHORT_VAUDP18_MASK_SFT,
 				   0x1 << RG_HPR_RFB_OPAMPIN_SHORT_VAUDP18_SFT);
 		/*
-		 * Step 124:
+		 * Step 125:
 		 * HPL FB Enable
 		 * HPR FB Enable
 		 */
@@ -2625,12 +2625,12 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
 				   RG_HPRFB_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_HPRFB_EN_VAUDP18_SFT);
-		/* Step 125: HP NREG segmentation */
+		/* Step 126: HP NREG segmentation */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
 				   RG_HP_NREG_STAGE_VAUDP18_MASK_SFT,
 				   0x0 << RG_HP_NREG_STAGE_VAUDP18_SFT);
 		/*
-		 * Step 126:
+		 * Step 127:
 		 * HPL_Trim_mode(1'b0: old version)
 		 * HPR_Trim_mode(1'b0: old version)
 		 */
@@ -2640,23 +2640,23 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_AUDHPR_TRIM_MODE_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPR_TRIM_MODE_VAUDP18_SFT);
-		/* Step 129: Enable HPTRIM */
+		/* Step 130: Enable HPTRIM */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_AUDHPTRIM_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPTRIM_EN_VAUDP18_SFT);
-		/* Step 130: Disable headphone short-ckt protection. */
+		/* Step 131: Disable headphone short-ckt protection. */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
 				   RG_AUDHPRSCDISABLE_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPRSCDISABLE_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
 				   RG_AUDHPLSCDISABLE_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPLSCDISABLE_VAUDP18_SFT);
-		/* Step 131: Enable IBIST */
+		/* Step 132: Enable IBIST */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON54,
 				   RG_AUDIBIASPWRDN_VAUDP18_MASK_SFT,
 				   0x0 << RG_AUDIBIASPWRDN_VAUDP18_SFT);
 		/*
-		 * Step 132:
+		 * Step 133:
 		 * [2:0] Headphone Left/Right DR bias current setting
 		 * 000: 2uA (ULP)
 		 * 001: 3uA
@@ -2671,7 +2671,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDBIASADJ_0_HP_VAUDP18_MASK_SFT,
 				   0x4 << RG_AUDBIASADJ_0_HP_VAUDP18_SFT);
 		/*
-		 * Step 133:
+		 * Step 134:
 		 * Set HP & ZCD bias current optimization
 		 * [7:6] 01: ZCD: 4uA, [5:4]: LO; [3:2]: HS; [1:0]: HP
 		 * LO/HS/HP: 00:2uA, 01:3uA, 10: 4uA, 11:5uA
@@ -2679,110 +2679,102 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON55,
 				   RG_AUDBIASADJ_1_VAUDP18_MASK_SFT,
 				   0x3 << RG_AUDBIASADJ_1_VAUDP18_SFT);
-		/* Step 134: digital gain output debug mode */
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_NLE_GAIN_IMP_LCH_CFG0_H,
+		/* Step 135: digital gain output debug mode */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_IMP_LCH_CFG0_H,
 				   RG_DG_OUTPUT_DEBUG_MODE_LCH_MASK_SFT,
 				   0x1 << RG_DG_OUTPUT_DEBUG_MODE_LCH_SFT);
-		/* Step 135: digital gain output debug mode */
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_NLE_GAIN_IMP_RCH_CFG0_H,
+		/* Step 136: digital gain output debug mode */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_IMP_RCH_CFG0_H,
 				   RG_DG_OUTPUT_DEBUG_MODE_RCH_MASK_SFT,
 				   0x1 << RG_DG_OUTPUT_DEBUG_MODE_RCH_SFT);
-		/* Step 136: Set NLE DA signal to debug mode (controlled by RG
-		 * setting)
-		 */
+		/* Step 137: Set NLE DA signal to debug mode (controlled by RG setting) */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_H,
 				   RG_D2A_SIGNAL_SW_DEBUG_MODE_RCH_MASK_SFT,
 				   0x1 << RG_D2A_SIGNAL_SW_DEBUG_MODE_RCH_SFT);
-		/* Step 137: Set NLE DA signal to debug mode (controlled by RG
-		 * setting)
-		 */
+		/* Step 138: Set NLE DA signal to debug mode (controlled by RG setting) */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_L,
 				   RG_D2A_SIGNAL_SW_DEBUG_MODE_LCH_MASK_SFT,
 				   0x1 << RG_D2A_SIGNAL_SW_DEBUG_MODE_LCH_SFT);
-		/* Step 138: Toggle bit for update NLE RG */
+		/* Step 139: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 139: Toggle bit for update NLE RG */
+		/* Step 140: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		/*
-		 * Step 140:
+		 * Step 141:
 		 * Set HPP/N STB enhance circuits
 		 * enable lpstbenh when turn on sequence
 		 */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON28,
 				   RG_HPROUTPUTSTBENH_VAUDP18_MASK_SFT,
 				   0x7 << RG_HPROUTPUTSTBENH_VAUDP18_SFT);
-		/* Step 141: Set HPP/N STB enhance circuits */
+		/* Step 142: Set HPP/N STB enhance circuits */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON28,
 				   RG_HPLOUTPUTSTBENH_VAUDP18_MASK_SFT,
 				   0x7 << RG_HPLOUTPUTSTBENH_VAUDP18_SFT);
-		/* Step 142: Enable HPN 4Kohm ON */
+		/* Step 143: Enable HPN 4Kohm ON */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
 				   RG_HPN4KTONSIDE_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_HPN4KTONSIDE_EN_VAUDP18_SFT);
 		/*
-		 * Step 143:
+		 * Step 144:
 		 * HP Feedback Cap select 2'b00: 15pF
 		 * for >=96KHz sampling rate: 2'b01: 10.5pF
 		 */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
 				   RG_AUDHPHFCOMPBUFGAINSEL_VAUDP18_MASK_SFT,
 				   0x0 << RG_AUDHPHFCOMPBUFGAINSEL_VAUDP18_SFT);
-		/* Step 144: Enable HP De-CMgain circuits */
+		/* Step 145: Enable HP De-CMgain circuits */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
 				   RG_AUDHPDECMGAIN_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPDECMGAIN_EN_VAUDP18_SFT);
-		/* Step 145: Disable 2nd order damp circuit when turn on
-		 * sequence
-		 */
+		/* Step 146: Disable 2nd order damp circuit when turn on sequence */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
 				   RG_DAMP2ND_EN_VAUDP18_MASK_SFT,
 				   0x0 << RG_DAMP2ND_EN_VAUDP18_SFT);
-		/* Step 146: Enable HD removed SW when turn on sequence */
+		/* Step 147: Enable HD removed SW when turn on sequence */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON32,
 				   RG_HPLHDRM_PFL_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_HPLHDRM_PFL_EN_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON32,
 				   RG_HPRHDRM_PFL_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_HPRHDRM_PFL_EN_VAUDP18_SFT);
-		/* Step 147: HP NREG segmentation */
+		/* Step 148: HP NREG segmentation */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
 				   RG_HP_NREG_STAGE_VAUDP18_MASK_SFT,
 				   0x7 << RG_HP_NREG_STAGE_VAUDP18_SFT);
-		/* Step 148: Enable HP NREG preset */
+		/* Step 149: Enable HP NREG preset */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
 				   RG_NREGPRESET_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_NREGPRESET_EN_VAUDP18_SFT);
-		/* Step 149: Enable Neg R when turn on sequence */
+		/* Step 150: Enable Neg R when turn on sequence */
 		regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
 				   DA_AUDHPLNEGR_EN_VAUDP18_MASK_SFT,
 				   0x1 << DA_AUDHPLNEGR_EN_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
 				   DA_AUDHPRNEGR_EN_VAUDP18_MASK_SFT,
 				   0x1 << DA_AUDHPRNEGR_EN_VAUDP18_SFT);
-		/* Step 150: Enable HPR main output stage to min */
+		/* Step 151: Enable HPR main output stage to min */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
 				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
 				   0x0 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 151: Enable HPL main output stage to min */
+		/* Step 152: Enable HPL main output stage to min */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
 				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
 				   0x0 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 152: Toggle bit for update NLE RG */
+		/* Step 153: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 153: Toggle bit for update NLE RG */
+		/* Step 154: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		/*
-		 * Step 154:
+		 * Step 155:
 		 * Damping adjustment select. (Hi-Fi: 14kohm; LP: 3.5kohm)
 		 * (000) 20kohm, (001) 40kohm, (010) 60kohm, (011) 100kohm
 		 * (100) 14kohm, (101) 7kohm, (110) 3.5kohm
@@ -2790,58 +2782,58 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
 				   RG_AUDHPDAMP_ADJ_VAUDP18_MASK_SFT,
 				   0x4 << RG_AUDHPDAMP_ADJ_VAUDP18_SFT);
-		/* Step 155: Enable HP damping ckt.  */
+		/* Step 156: Enable HP damping ckt.  */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
 				   RG_AUDHPDAMP_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPDAMP_EN_VAUDP18_SFT);
-		/* Step 156: Enable HFOP circuits for Hi-Fi mode */
+		/* Step 157: Enable HFOP circuits for Hi-Fi mode */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON39,
 				   RG_AUDHPHFOP_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPHFOP_EN_VAUDP18_SFT);
 		/*
-		 * Step 157:
+		 * Step 158:
 		 * Set input diff pair bias to min (HiFi: 5uA x 8 = 40uA)
 		 * 00: 8x ibias; 01: 16x ibias; 10: 24x ibias; 11: 32x ibias
 		 */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
 				   RG_AUDHPDIFFINPBIASADJ_VAUDP18_MASK_SFT,
 				   0x0 << RG_AUDHPDIFFINPBIASADJ_VAUDP18_SFT);
-		/* Step 158: Enable Aux-output */
+		/* Step 159: Enable Aux-output */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON27,
 				   RG_AUDHPLOUTAUXPWRUP_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPLOUTAUXPWRUP_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON27,
 				   RG_AUDHPROUTAUXPWRUP_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPROUTAUXPWRUP_VAUDP18_SFT);
-		/* Step 159: Enable Aux-loop feedback SW */
+		/* Step 160: Enable Aux-loop feedback SW */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON27,
 				   RG_HPLAUXFBRSW_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_HPLAUXFBRSW_EN_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON27,
 				   RG_HPRAUXFBRSW_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_HPRAUXFBRSW_EN_VAUDP18_SFT);
-		/* Step 160: Enable Aux-loop CMFB */
+		/* Step 161: Enable Aux-loop CMFB */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON29,
 				   RG_AUDHPLAUXCM_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPLAUXCM_EN_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON29,
 				   RG_AUDHPRAUXCM_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPRAUXCM_EN_VAUDP18_SFT);
-		/* Step 161: Enable HP driver bias circuits */
+		/* Step 162: Enable HP driver bias circuits */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
 				   RG_AUDHPLPWRUP_IBIAS_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPLPWRUP_IBIAS_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
 				   RG_AUDHPRPWRUP_IBIAS_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPRPWRUP_IBIAS_VAUDP18_SFT);
-		/* Step 162: Enable HP driver core circuits */
+		/* Step 163: Enable HP driver core circuits */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
 				   RG_AUDHPLPWRUP_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPLPWRUP_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON25,
 				   RG_AUDHPRPWRUP_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPRPWRUP_VAUDP18_SFT);
-		/* Step 163: Short HP output to AUX output */
+		/* Step 164: Short HP output to AUX output */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON27,
 				   RG_HPLSHORT2HPLAUX_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_HPLSHORT2HPLAUX_EN_VAUDP18_SFT);
@@ -2849,40 +2841,38 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_HPRSHORT2HPRAUX_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_HPRSHORT2HPRAUX_EN_VAUDP18_SFT);
 		usleep_range(100, 120);
-		/* Step 165: Set input diff pair bias step by step */
+		/* Step 166: Set input diff pair bias step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
 				   RG_AUDHPDIFFINPBIASADJ_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPDIFFINPBIASADJ_VAUDP18_SFT);
 		usleep_range(100, 120);
-		/* Step 167: Set input diff pair bias step by step */
+		/* Step 168: Set input diff pair bias step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
 				   RG_AUDHPDIFFINPBIASADJ_VAUDP18_MASK_SFT,
 				   0x2 << RG_AUDHPDIFFINPBIASADJ_VAUDP18_SFT);
 		usleep_range(100, 120);
-		/* Step 169: Set input diff pair bias select (Hi-Fi: 5uA x 32 =
-		 * 160uA)
-		 */
+		/* Step 170: Set input diff pair bias select (Hi-Fi: 5uA x 32 = 160uA) */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON36,
 				   RG_AUDHPDIFFINPBIASADJ_VAUDP18_MASK_SFT,
 				   0x3 << RG_AUDHPDIFFINPBIASADJ_VAUDP18_SFT);
 		usleep_range(100, 120);
-		/* Step 171: Enable HP main CMFB loop */
+		/* Step 172: Enable HP main CMFB loop */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
 				   RG_DA_HPCMFB_EN_RCH_MASK_SFT,
 				   0x1 << RG_DA_HPCMFB_EN_RCH_SFT);
-		/* Step 172: Enable HP main CMFB loop */
+		/* Step 173: Enable HP main CMFB loop */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
 				   RG_DA_HPCMFB_EN_LCH_MASK_SFT,
 				   0x1 << RG_DA_HPCMFB_EN_LCH_SFT);
-		/* Step 173: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		/* Step 174: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
+				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		/* Step 175: Toggle bit for update NLE RG */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 175: Disable Aux-loop CMFB */
+		/* Step 176: Disable Aux-loop CMFB */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON29,
 				   RG_AUDHPLAUXCM_EN_VAUDP18_MASK_SFT,
 				   0x0 << RG_AUDHPLAUXCM_EN_VAUDP18_SFT);
@@ -2890,7 +2880,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXCM_EN_VAUDP18_MASK_SFT,
 				   0x0 << RG_AUDHPRAUXCM_EN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 177: Enable HP main output stage */
+		/* Step 178: Enable HP main output stage */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON27,
 				   RG_AUDHPLOUTPWRUP_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPLOUTPWRUP_VAUDP18_SFT);
@@ -2898,126 +2888,126 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPROUTPWRUP_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPROUTPWRUP_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 179: Enable HPR main output stage step by step */
+		/* Step 180: Enable HPR main output stage step by step */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
 				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
 				   0x1 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 180: Enable HPL main output stage step by step */
+		/* Step 181: Enable HPL main output stage step by step */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
 				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
 				   0x1 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 181: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		/* Step 182: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
+				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		/* Step 183: Toggle bit for update NLE RG */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		usleep_range(600, 620);
-		/* Step 184: Enable HPR main output stage step by step */
+		/* Step 185: Enable HPR main output stage step by step */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
 				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
 				   0x2 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 185: Enable HPL main output stage step by step */
+		/* Step 186: Enable HPL main output stage step by step */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
 				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
 				   0x2 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 186: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		/* Step 187: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
+				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		/* Step 188: Toggle bit for update NLE RG */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		usleep_range(600, 620);
-		/* Step 189: Enable HPR main output stage step by step */
+		/* Step 190: Enable HPR main output stage step by step */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
 				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
 				   0x3 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 190: Enable HPL main output stage step by step */
+		/* Step 191: Enable HPL main output stage step by step */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
 				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
 				   0x3 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 191: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		/* Step 192: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
+				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		/* Step 193: Toggle bit for update NLE RG */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		usleep_range(600, 620);
-		/* Step 194: Enable HPR main output stage step by step */
+		/* Step 195: Enable HPR main output stage step by step */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
 				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
 				   0x4 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 195: Enable HPL main output stage step by step */
+		/* Step 196: Enable HPL main output stage step by step */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
 				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
 				   0x4 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 196: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		/* Step 197: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
+				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		/* Step 198: Toggle bit for update NLE RG */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		usleep_range(600, 620);
-		/* Step 199: Enable HPR main output stage step by step */
+		/* Step 200: Enable HPR main output stage step by step */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
 				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
 				   0x5 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 200: Enable HPL main output stage step by step */
+		/* Step 201: Enable HPL main output stage step by step */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
 				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
 				   0x5 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 201: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		/* Step 202: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
+				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		/* Step 203: Toggle bit for update NLE RG */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		usleep_range(600, 620);
-		/* Step 204: Enable HPR main output stage step by step */
+		/* Step 205: Enable HPR main output stage step by step */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
 				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
 				   0x6 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 205: Enable HPL main output stage step by step */
+		/* Step 206: Enable HPL main output stage step by step */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
 				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
 				   0x6 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 206: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		/* Step 207: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
+				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		/* Step 208: Toggle bit for update NLE RG */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		usleep_range(600, 620);
-		/* Step 209: Enable HPR main output stage step by step */
+		/* Step 210: Enable HPR main output stage step by step */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG_M,
 				   RG_DA_HP_OUTSTG_RCH_MASK_SFT,
 				   0x7 << RG_DA_HP_OUTSTG_RCH_SFT);
-		/* Step 210: Enable HPL main output stage step by step */
+		/* Step 211: Enable HPL main output stage step by step */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_D2A_DEBUG,
 				   RG_DA_HP_OUTSTG_LCH_MASK_SFT,
 				   0x7 << RG_DA_HP_OUTSTG_LCH_SFT);
-		/* Step 211: Toggle bit for update NLE RG */
+		/* Step 212: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 212: Toggle bit for update NLE RG */
+		/* Step 213: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		usleep_range(600, 620);
-		/* Step 214: Reduce HP aux feedback loop gain step by step */
+		/* Step 215: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3025,7 +3015,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 216: Reduce HP aux feedback loop gain step by step */
+		/* Step 217: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0x2 << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3033,7 +3023,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0x2 << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 218: Reduce HP aux feedback loop gain step by step */
+		/* Step 219: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0x3 << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3041,7 +3031,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0x3 << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 220: Reduce HP aux feedback loop gain step by step */
+		/* Step 221: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0x4 << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3049,7 +3039,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0x4 << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 222: Reduce HP aux feedback loop gain step by step */
+		/* Step 223: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0x5 << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3057,7 +3047,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0x5 << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 224: Reduce HP aux feedback loop gain step by step */
+		/* Step 225: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0x6 << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3065,7 +3055,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0x6 << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 226: Reduce HP aux feedback loop gain step by step */
+		/* Step 227: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0x7 << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3073,7 +3063,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0x7 << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 228: Reduce HP aux feedback loop gain step by step */
+		/* Step 229: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0x8 << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3081,7 +3071,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0x8 << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 230: Reduce HP aux feedback loop gain step by step */
+		/* Step 231: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0x9 << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3089,7 +3079,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0x9 << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 232: Reduce HP aux feedback loop gain step by step */
+		/* Step 233: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0xa << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3097,7 +3087,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0xa << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 234: Reduce HP aux feedback loop gain step by step */
+		/* Step 235: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0xb << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3105,7 +3095,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0xb << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 236: Reduce HP aux feedback loop gain step by step */
+		/* Step 237: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0xc << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3113,7 +3103,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0xc << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 238: Reduce HP aux feedback loop gain step by step */
+		/* Step 239: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0xd << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3121,7 +3111,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0xd << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 240: Reduce HP aux feedback loop gain step by step */
+		/* Step 241: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0xe << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3129,7 +3119,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0xe << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 242: Reduce HP aux feedback loop gain step by step */
+		/* Step 243: Reduce HP aux feedback loop gain step by step */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON30,
 				   RG_AUDHPLAUXGAIN_VAUDP18_MASK_SFT,
 				   0xf << RG_AUDHPLAUXGAIN_VAUDP18_SFT);
@@ -3137,36 +3127,30 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRAUXGAIN_VAUDP18_MASK_SFT,
 				   0xf << RG_AUDHPRAUXGAIN_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 244: Disable Aux-loop feedback SW */
+		/* Step 245: Disable Aux-loop feedback SW */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON27,
 				   RG_HPLAUXFBRSW_EN_VAUDP18_MASK_SFT,
 				   0x0 << RG_HPLAUXFBRSW_EN_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON27,
 				   RG_HPRAUXFBRSW_EN_VAUDP18_MASK_SFT,
 				   0x0 << RG_HPRAUXFBRSW_EN_VAUDP18_SFT);
-		/* Step 245: Set HPL gain to min 0dB (11: 0dB, 10: 3dB, 01: 6dB,
-		 * 00:
-		 * 9dB)
-		 */
+		/* Step 246: Set HPL gain to min 0dB (11: 0dB, 10: 3dB, 01: 6dB, 00: 9dB) */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
 				   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
 				   0x3 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
-		/* Step 246: Set HPR gain to min 0dB (11: 0dB, 10: 3dB, 01: 6dB,
-		 * 00:
-		 * 9dB)
-		 */
+		/* Step 247: Set HPR gain to min 0dB (11: 0dB, 10: 3dB, 01: 6dB, 00: 9dB) */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
 				   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
 				   0x3 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
-		/* Step 247: Toggle bit for update NLE RG */
-		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
-				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
-				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		/* Step 248: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
+				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+		/* Step 249: Toggle bit for update NLE RG */
+		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
+				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 249: Disable HP mute */
+		/* Step 250: Disable HP mute */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON29,
 				   RG_HPLMUTE_EN_VAUDP18_MASK_SFT,
 				   0x0 << RG_HPLMUTE_EN_VAUDP18_SFT);
@@ -3175,139 +3159,136 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   0x0 << RG_HPRMUTE_EN_VAUDP18_SFT);
 		usleep_range(600, 620);
 		/*
-		 * Step 251:
+		 * Step 252:
 		 * Increase HPL gain to normal gain step by step, 5'h2 :+3dB
-		 * (32ohm, HPgain=3dB, 16ohm HPgain=0dB)
+		 * (32ohm, HPgain=6dB, 16ohm HPgain=3dB)
 		 */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPLGAIN,
 				   RG_DA_NLE_ZCD_HPLGAIN_MASK_SFT,
 				   0x1 << RG_DA_NLE_ZCD_HPLGAIN_SFT);
 		/*
-		 * Step 252:
+		 * Step 253:
 		 * Increase HPR gain to normal gain step by step, 5'h2 :+3dB
-		 * (32ohm, HPgain=3dB, 16ohm HPgain=0dB)
+		 * (32ohm, HPgain=6dB, 16ohm HPgain=3dB)
 		 */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_HPRGAIN,
 				   RG_DA_NLE_ZCD_HPRGAIN_MASK_SFT,
 				   0x1 << RG_DA_NLE_ZCD_HPRGAIN_SFT);
-		/* Step 253: Toggle bit for update NLE RG */
+		/* Step 254: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
-		/* Step 254: Toggle bit for update NLE RG */
+		/* Step 255: Toggle bit for update NLE RG */
 		regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 				   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 				   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
 		usleep_range(100, 120);
-		/* Step 256: open HP output to AUX output */
+		/* Step 257: open HP output to AUX output */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON27,
 				   RG_HPLSHORT2HPLAUX_EN_VAUDP18_MASK_SFT,
 				   0x0 << RG_HPLSHORT2HPLAUX_EN_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON27,
 				   RG_HPRSHORT2HPRAUX_EN_VAUDP18_MASK_SFT,
 				   0x0 << RG_HPRSHORT2HPRAUX_EN_VAUDP18_SFT);
-		/* Step 257: Disable Aux-output */
+		/* Step 258: Disable Aux-output */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON27,
 				   RG_AUDHPLOUTAUXPWRUP_VAUDP18_MASK_SFT,
 				   0x0 << RG_AUDHPLOUTAUXPWRUP_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON27,
 				   RG_AUDHPROUTAUXPWRUP_VAUDP18_MASK_SFT,
 				   0x0 << RG_AUDHPROUTAUXPWRUP_VAUDP18_SFT);
-		/* Step 258: Set HPP/N STB enhance circuits */
+		/* Step 259: Set HPP/N STB enhance circuits */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON28,
 				   RG_HPROUTPUTSTBENH_VAUDP18_MASK_SFT,
 				   0x3 << RG_HPROUTPUTSTBENH_VAUDP18_SFT);
-		/* Step 259: Set HPP/N STB enhance circuits */
+		/* Step 260: Set HPP/N STB enhance circuits */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON28,
 				   RG_HPLOUTPUTSTBENH_VAUDP18_MASK_SFT,
 				   0x3 << RG_HPLOUTPUTSTBENH_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 261: Pull-down HPL/R to AVSS30_AUD */
+		/* Step 262: Pull-down HPL/R to AVSS30_AUD */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
 				   0x6 << RG_HPPSHORT2VCM_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 263: Pull-down HPL/R to AVSS30_AUD */
+		/* Step 264: Pull-down HPL/R to AVSS30_AUD */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
 				   0x5 << RG_HPPSHORT2VCM_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 265: Pull-down HPL/R to AVSS30_AUD */
+		/* Step 266: Pull-down HPL/R to AVSS30_AUD */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
 				   0x4 << RG_HPPSHORT2VCM_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 267: Pull-down HPL/R to AVSS30_AUD */
+		/* Step 268: Pull-down HPL/R to AVSS30_AUD */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
 				   0x3 << RG_HPPSHORT2VCM_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 269: Pull-down HPL/R to AVSS30_AUD */
+		/* Step 270: Pull-down HPL/R to AVSS30_AUD */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
 				   0x2 << RG_HPPSHORT2VCM_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 271: Pull-down HPL/R to AVSS30_AUD */
+		/* Step 272: Pull-down HPL/R to AVSS30_AUD */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
 				   0x1 << RG_HPPSHORT2VCM_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 273: Pull-down HPL/R to AVSS30_AUD */
+		/* Step 274: Pull-down HPL/R to AVSS30_AUD */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
 				   0x0 << RG_HPPSHORT2VCM_VAUDP18_SFT);
 		usleep_range(600, 620);
-		/* Step 275: Enable 2nd order damp circuit for Hi-Fi mode */
+		/* Step 276: Enable 2nd order damp circuit for Hi-Fi mode */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
 				   RG_DAMP2ND_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_DAMP2ND_EN_VAUDP18_SFT);
-		/* Step 276: CMFB resistor with modulation Rwell level */
+		/* Step 277: CMFB resistor with modulation Rwell level */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON29,
 				   RG_AUDHPLCMFB_RNWSEL_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPLCMFB_RNWSEL_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON29,
 				   RG_AUDHPRCMFB_RNWSEL_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPRCMFB_RNWSEL_VAUDP18_SFT);
-		/* Step 277: Feedback resistor with modulation Rwell level */
+		/* Step 278: Feedback resistor with modulation Rwell level */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
 				   RG_AUDHPLHPFB_RNWSEL_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPLHPFB_RNWSEL_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON31,
 				   RG_AUDHPRHPFB_RNWSEL_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPRHPFB_RNWSEL_VAUDP18_SFT);
-		/* Step 278: Disable HP feedback SW source-tie */
+		/* Step 279: Disable HP feedback SW source-tie */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
 				   RG_AUDHPHIFISWST_EN_VAUDP18_MASK_SFT,
 				   0x0 << RG_AUDHPHIFISWST_EN_VAUDP18_SFT);
-		/* Step 279: Disable HD removed SW source-tie for Hi-Fi mode */
+		/* Step 280: Disable HD removed SW source-tie for Hi-Fi mode */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON32,
 				   RG_HPLHDRMSW_ST_EN_VAUDP18_MASK_SFT,
 				   0x0 << RG_HPLHDRMSW_ST_EN_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON32,
 				   RG_HPRHDRMSW_ST_EN_VAUDP18_MASK_SFT,
 				   0x0 << RG_HPRHDRMSW_ST_EN_VAUDP18_SFT);
-		/* Step 280: Enable CMFB SW source-tie */
+		/* Step 281: Enable CMFB SW source-tie */
 		regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
 				   DA_HPLCMFBSWST_EN_VAUDP18_MASK_SFT,
 				   0x1 << DA_HPLCMFBSWST_EN_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AFUNC_AUD_CON12_H,
 				   DA_HPRCMFBSWST_EN_VAUDP18_MASK_SFT,
 				   0x1 << DA_HPRCMFBSWST_EN_VAUDP18_SFT);
-		/* Step 281: Disable HP input MUX SW source-tie */
+		/* Step 282: Disable HP input MUX SW source-tie */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON38,
 				   RG_HPMUXST_EN_VAUDP18_MASK_SFT,
 				   0x0 << RG_HPMUXST_EN_VAUDP18_SFT);
-		/* Step 282: HP damp adjustmention control and 2nd order damp
-		 * control
-		 * automatically select by NLE
-		 */
+		/* Step 283: HP damp adjustmention control and 2nd order damp control automatically select by NLE */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
 				   RG_HP_PDAMP_SELBYNLE_VAUDP18_MASK_SFT,
 				   0x1 << RG_HP_PDAMP_SELBYNLE_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON37,
 				   RG_HP_DAMP2ND_SELBYNLE_VAUDP18_MASK_SFT,
 				   0x1 << RG_HP_DAMP2ND_SELBYNLE_VAUDP18_SFT);
-		/* Step 283: Enable HPRL LN path feedback Rwell modulation */
+		/* Step 284: Enable HPRL LN path feedback Rwell modulation */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON29,
 				   RG_AUDHPLLNFB_RNWSEL_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPLLNFB_RNWSEL_VAUDP18_SFT);
@@ -3315,29 +3296,27 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPRLNFB_RNWSEL_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPRLNFB_RNWSEL_VAUDP18_SFT);
 		/*
-		 * Step 284:
+		 * Step 285:
 		 * [0]: Enable NVREG LC IBIAS2
-		 * (Set after HPBUF enabled -> Avoid unstable NVREG-LC at
-		 * no
-		 * load)
+		 *      (Set after HPBUF enabled -> Avoid unstable NVREG-LC at no load)
 		 */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON73,
 				   RG_ABIDEC_RSVD0_VAUDP18_MASK_SFT,
 				   0x1 << RG_ABIDEC_RSVD0_VAUDP18_SFT);
-		/* Step 285: Enable HP DAC Current Trim Function */
+		/* Step 286: Enable HP DAC Current Trim Function */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON12,
 				   RG_AUDDACHPL_TRIM_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDDACHPL_TRIM_EN_VAUDP18_SFT);
-		/* Step 286: Enable HP DAC Current Trim Function */
+		/* Step 287: Enable HP DAC Current Trim Function */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON12,
 				   RG_AUDDACHPR_TRIM_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDDACHPR_TRIM_EN_VAUDP18_SFT);
-		/* Step 287: Disable Hold Switch Function */
+		/* Step 288: Disable Hold Switch Function */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON1,
 				   RG_AUDDACHP_HOLD_SW_EN_VAUDP18_MASK_SFT,
 				   0x0 << RG_AUDDACHP_HOLD_SW_EN_VAUDP18_SFT);
 		/*
-		 * Step 288:
+		 * Step 289:
 		 * AUDDACHPL Force SW EN
 		 * AUDDACHPR Force SW EN
 		 */
@@ -3348,7 +3327,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDDACHPR_FORCE_SW_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDDACHPR_FORCE_SW_EN_VAUDP18_SFT);
 		/*
-		 * Step 289:
+		 * Step 290:
 		 * HPL Rfb opamp input short disable
 		 * HPR Rfb opamp input short disable
 		 */
@@ -3359,7 +3338,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_HPR_RFB_OPAMPIN_SHORT_VAUDP18_MASK_SFT,
 				   0x0 << RG_HPR_RFB_OPAMPIN_SHORT_VAUDP18_SFT);
 		/*
-		 * Step 290:
+		 * Step 291:
 		 * L-ch DAC P/N-rail VCG reference select
 		 * 0: 250mV 1: 275mV 2: 300mV 3: 325mV
 		 * 4: 350mV 5: 375mV 6: 400mV 7: 425mV
@@ -3373,7 +3352,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDDAC_L_VCG_N_VSEL_VA32_MASK_SFT,
 				   0x4 << RG_AUDDAC_L_VCG_N_VSEL_VA32_SFT);
 		/*
-		 * Step 291:
+		 * Step 292:
 		 * R-ch DAC P/N-rail VCG reference select
 		 * 0: 250mV 1: 275mV 2: 300mV 3: 325mV
 		 * 4: 350mV 5: 375mV 6: 400mV 7: 425mV
@@ -3387,24 +3366,25 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDDAC_R_VCG_N_VSEL_VA32_MASK_SFT,
 				   0xa << RG_AUDDAC_R_VCG_N_VSEL_VA32_SFT);
 		/*
-		 * Step 292:
+		 * Step 293:
 		 * R-ch share L-ch's VCG buffer output select
 		 * 0: Do Not share
 		 * 1: Share the VCG output
 		 */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON2,
-			RG_AUDDAC_VCG_BUF_SHARE_SEL_VAUDP18_MASK_SFT,
-			0x0 << RG_AUDDAC_VCG_BUF_SHARE_SEL_VAUDP18_SFT);
-		/* Step 293: Audio cascade voltage L/R-ch buffer enable */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON2,
+				   RG_AUDDAC_VCG_BUF_SHARE_SEL_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDDAC_VCG_BUF_SHARE_SEL_VAUDP18_SFT);
+		/* Step 294: Audio cascade voltage L/R-ch buffer enable */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON2,
 				   RG_AUDDAC_L_VCG_BUF_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDDAC_L_VCG_BUF_EN_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON2,
 				   RG_AUDDAC_R_VCG_BUF_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDDAC_R_VCG_BUF_EN_VAUDP18_SFT);
-		/* Step 294: Audio L/R-ch DAC latch current fixed enable &
-		 * select
+		/*
+		 * Step 295:
+		 * Audio L/R-ch DAC latch current fixed enable & select
+		 * **update at 3/28
 		 */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON1,
 				   RG_AUDDAC_L_FIX_EN_VAUDP18_MASK_SFT,
@@ -3419,17 +3399,16 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDDAC_R_FIX_SEL_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDDAC_R_FIX_SEL_VAUDP18_SFT);
 		/*
-		 * Step 295:
-		 * AUDDACHP LN Enable Mode
-		 * 0: HW mode
-		 * 1: SW mode
-		 */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON5,
-			RG_AUDDAC_LN_SW_MODE_SEL_VA32_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDDAC_LN_SW_MODE_SEL_VA32_VAUDP18_SFT);
-		/*
 		 * Step 296:
+		 * AUDDACHP LN Enable Mode
+		 *        0: HW mode
+		 *        1: SW mode
+		 */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON5,
+				   RG_AUDDAC_LN_SW_MODE_SEL_VA32_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDAC_LN_SW_MODE_SEL_VA32_VAUDP18_SFT);
+		/*
+		 * Step 297:
 		 * AUDDAC opamp stability enhancement enable
 		 * 0: Disable
 		 * 1: Enable
@@ -3438,147 +3417,128 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDDAC_OPAMP_STBENH_EN_VA32_MASK_SFT,
 				   0x1 << RG_AUDDAC_OPAMP_STBENH_EN_VA32_SFT);
 		/*
-		 * Step 297:
+		 * Step 298:
 		 * IDAC noise filter swtich's bulk connent to
 		 * 0: VDD
 		 * 1: opamp driven
 		 */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON7,
-			RG_AUDDACL_FILTER_BULK_SEL_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDDACL_FILTER_BULK_SEL_VAUDP18_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON7,
-			RG_AUDDACR_FILTER_BULK_SEL_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDDACR_FILTER_BULK_SEL_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON7,
+				   RG_AUDDACL_FILTER_BULK_SEL_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDACL_FILTER_BULK_SEL_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON7,
+				   RG_AUDDACR_FILTER_BULK_SEL_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDACR_FILTER_BULK_SEL_VAUDP18_SFT);
 		/*
-		 * Step 298:
+		 * Step 299:
 		 * IDAC Roff control FB select
 		 * 0: Maximum Roff
 		 * 1: Controlled by replica loop
 		 */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON9,
-			RG_AUDDACL_FILTER_ROFFCTRL_FB_SEL_VAUDP18_MASK_SFT,
-			0x0 << RG_AUDDACL_FILTER_ROFFCTRL_FB_SEL_VAUDP18_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON9,
-			RG_AUDDACR_FILTER_ROFFCTRL_FB_SEL_VAUDP18_MASK_SFT,
-			0x0 << RG_AUDDACR_FILTER_ROFFCTRL_FB_SEL_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON9,
+				   RG_AUDDACL_FILTER_ROFFCTRL_FB_SEL_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDDACL_FILTER_ROFFCTRL_FB_SEL_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON9,
+				   RG_AUDDACR_FILTER_ROFFCTRL_FB_SEL_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDDACR_FILTER_ROFFCTRL_FB_SEL_VAUDP18_SFT);
 		/*
-		 * Step 299:
+		 * Step 300:
 		 * IDACL Roff control circuit offset select (P-rail)
 		 * 0: 0mV 1: 25mV 2: 50mV 3: 75mV
 		 * 4: 100mV 5: 125mV 6: 150mV 7:175mV
 		 * 8: 200mV 9: 225mV 10: 250mV 11: 275mV
 		 * 12: 300mV 13: 325mV 14: 350mV 15: 375mV
 		 */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON10,
-			RG_AUDDACL_FILTER_ROFFCTRL_P_SEL_VAUDP18_MASK_SFT,
-			0x5 << RG_AUDDACL_FILTER_ROFFCTRL_P_SEL_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON10,
+				   RG_AUDDACL_FILTER_ROFFCTRL_P_SEL_VAUDP18_MASK_SFT,
+				   0x5 << RG_AUDDACL_FILTER_ROFFCTRL_P_SEL_VAUDP18_SFT);
 		/*
-		 * Step 300:
+		 * Step 301:
 		 * IDACL Roff control circuit offset select (N-rail)
 		 * 0: 0mV 1: 25mV 2: 50mV 3: 75mV
 		 * 4: 100mV 5: 125mV 6: 150mV 7:175mV
 		 * 8: 200mV 9: 225mV 10: 250mV 11: 275mV
 		 * 12: 300mV 13: 325mV 14: 350mV 15: 375mV
 		 */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON10,
-			RG_AUDDACL_FILTER_ROFFCTRL_N_SEL_VAUDP18_MASK_SFT,
-			0x5 << RG_AUDDACL_FILTER_ROFFCTRL_N_SEL_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON10,
+				   RG_AUDDACL_FILTER_ROFFCTRL_N_SEL_VAUDP18_MASK_SFT,
+				   0x5 << RG_AUDDACL_FILTER_ROFFCTRL_N_SEL_VAUDP18_SFT);
 		/*
-		 * Step 301:
+		 * Step 302:
 		 * IDACR Roff control circuit offset select (P-rail)
 		 * 0: 0mV 1: 25mV 2: 50mV 3: 75mV
 		 * 4: 100mV 5: 125mV 6: 150mV 7:175mV
 		 * 8: 200mV 9: 225mV 10: 250mV 11: 275mV
 		 * 12: 300mV 13: 325mV 14: 350mV 15: 375mV
 		 */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON11,
-			RG_AUDDACR_FILTER_ROFFCTRL_P_SEL_VAUDP18_MASK_SFT,
-			0x5 << RG_AUDDACR_FILTER_ROFFCTRL_P_SEL_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON11,
+				   RG_AUDDACR_FILTER_ROFFCTRL_P_SEL_VAUDP18_MASK_SFT,
+				   0x5 << RG_AUDDACR_FILTER_ROFFCTRL_P_SEL_VAUDP18_SFT);
 		/*
-		 * Step 302:
+		 * Step 303:
 		 * IDACR Roff control circuit offset select (N-rail)
 		 * 0: 0mV 1: 25mV 2: 50mV 3: 75mV
 		 * 4: 100mV 5: 125mV 6: 150mV 7:175mV
 		 * 8: 200mV 9: 225mV 10: 250mV 11: 275mV
 		 * 12: 300mV 13: 325mV 14: 350mV 15: 375mV
 		 */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON11,
-			RG_AUDDACR_FILTER_ROFFCTRL_N_SEL_VAUDP18_MASK_SFT,
-			0x5 << RG_AUDDACR_FILTER_ROFFCTRL_N_SEL_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON11,
+				   RG_AUDDACR_FILTER_ROFFCTRL_N_SEL_VAUDP18_MASK_SFT,
+				   0x5 << RG_AUDDACR_FILTER_ROFFCTRL_N_SEL_VAUDP18_SFT);
 		/*
-		 * Step 303:
+		 * Step 304:
 		 * IDAC Roff control FB select
 		 * 0: Maximum Roff
 		 * 1: Controlled by replica loop
 		 */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON9,
-			RG_AUDDACL_FILTER_ROFFCTRL_P_EN_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDDACL_FILTER_ROFFCTRL_P_EN_VAUDP18_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON9,
-			RG_AUDDACR_FILTER_ROFFCTRL_P_EN_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDDACR_FILTER_ROFFCTRL_P_EN_VAUDP18_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON9,
-			RG_AUDDACL_FILTER_ROFFCTRL_N_EN_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDDACL_FILTER_ROFFCTRL_N_EN_VAUDP18_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON9,
-			RG_AUDDACR_FILTER_ROFFCTRL_N_EN_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDDACR_FILTER_ROFFCTRL_N_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON9,
+				   RG_AUDDACL_FILTER_ROFFCTRL_P_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDACL_FILTER_ROFFCTRL_P_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON9,
+				   RG_AUDDACR_FILTER_ROFFCTRL_P_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDACR_FILTER_ROFFCTRL_P_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON9,
+				   RG_AUDDACL_FILTER_ROFFCTRL_N_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDACL_FILTER_ROFFCTRL_N_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON9,
+				   RG_AUDDACR_FILTER_ROFFCTRL_N_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDACR_FILTER_ROFFCTRL_N_EN_VAUDP18_SFT);
 		/*
-		 * Step 304:
+		 * Step 305:
 		 * IDACL noise filter bypass switch controlled by
 		 * 0: One-Shot Circuit (DA-)
 		 * 1: RG_AUDDAC_FILTER_BYPASS_EN_VAUDP18 (SW-)
 		 */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON8,
-			RG_AUDDACL_FILTER_BYPASS_SW_SEL_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDDACL_FILTER_BYPASS_SW_SEL_VAUDP18_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON8,
-			RG_AUDDACR_FILTER_BYPASS_SW_SEL_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDDACR_FILTER_BYPASS_SW_SEL_VAUDP18_SFT);
-		/* Step 305: Enable Audio HiFi DAC  */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON0,
-			RG_AUDDACR_BIAS_PWRUP_VA32_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDDACR_BIAS_PWRUP_VA32_VAUDP18_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON0,
-			RG_AUDDACL_BIAS_PWRUP_VA32_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDDACL_BIAS_PWRUP_VA32_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON8,
+				   RG_AUDDACL_FILTER_BYPASS_SW_SEL_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDACL_FILTER_BYPASS_SW_SEL_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON8,
+				   RG_AUDDACR_FILTER_BYPASS_SW_SEL_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDACR_FILTER_BYPASS_SW_SEL_VAUDP18_SFT);
+		/* Step 306: Enable Audio HiFi DAC  */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON0,
+				   RG_AUDDACR_BIAS_PWRUP_VA32_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDACR_BIAS_PWRUP_VA32_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON0,
+				   RG_AUDDACL_BIAS_PWRUP_VA32_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDACL_BIAS_PWRUP_VA32_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON0,
 				   RG_AUDDACR_PWRUP_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDDACR_PWRUP_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON0,
 				   RG_AUDDACL_PWRUP_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDDACL_PWRUP_VAUDP18_SFT);
-		/* Step 306: AVDD30_DAC power switch select to AVDD30_AUD */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON5,
-			RG_AUDPMU_IDAC_IBIAS_SEL_VA32_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDPMU_IDAC_IBIAS_SEL_VA32_VAUDP18_SFT);
+		/* Step 307: AVDD30_DAC power switch select to AVDD30_AUD */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON5,
+				   RG_AUDPMU_IDAC_IBIAS_SEL_VA32_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDPMU_IDAC_IBIAS_SEL_VA32_VAUDP18_SFT);
 		usleep_range(100, 120);
-		/* Step 308: Low Noise Filter Enabled Bypass Mode */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON7,
-			RG_AUDDACL_FILTER_BYPASS_EN_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDDACL_FILTER_BYPASS_EN_VAUDP18_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON7,
-			RG_AUDDACR_FILTER_BYPASS_EN_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDDACR_FILTER_BYPASS_EN_VAUDP18_SFT);
+		/* Step 309: Low Noise Filter Enabled Bypass Mode */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON7,
+				   RG_AUDDACL_FILTER_BYPASS_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDACL_FILTER_BYPASS_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON7,
+				   RG_AUDDACR_FILTER_BYPASS_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDACR_FILTER_BYPASS_EN_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON7,
 				   RG_AUDDACL_FILTER_OP_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDDACL_FILTER_OP_EN_VAUDP18_SFT);
@@ -3586,15 +3546,13 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDDACR_FILTER_OP_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDDACR_FILTER_OP_EN_VAUDP18_SFT);
 		usleep_range(1000, 1020);
-		/* Step 310: Low Noise Filter Disabled Bypass Mode */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON7,
-			RG_AUDDACL_FILTER_BYPASS_EN_VAUDP18_MASK_SFT,
-			0x0 << RG_AUDDACL_FILTER_BYPASS_EN_VAUDP18_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON7,
-			RG_AUDDACR_FILTER_BYPASS_EN_VAUDP18_MASK_SFT,
-			0x0 << RG_AUDDACR_FILTER_BYPASS_EN_VAUDP18_SFT);
+		/* Step 311: Low Noise Filter Disabled Bypass Mode */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON7,
+				   RG_AUDDACL_FILTER_BYPASS_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDDACL_FILTER_BYPASS_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON7,
+				   RG_AUDDACR_FILTER_BYPASS_EN_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDDACR_FILTER_BYPASS_EN_VAUDP18_SFT);
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON7,
 				   RG_AUDDACL_FILTER_OP_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDDACL_FILTER_OP_EN_VAUDP18_SFT);
@@ -3602,31 +3560,26 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDDACR_FILTER_OP_EN_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDDACR_FILTER_OP_EN_VAUDP18_SFT);
 		/*
-		 * Step 311:
+		 * Step 312:
 		 * Enable DAC Noise Filter Toggle Clock
-		 *
 		 * IDACL noise filter bypass switch controlled by
 		 * 0: One-Shot Circuit (DA-)
 		 * 1: RG_AUDDAC_FILTER_BYPASS_EN_VAUDP18 (SW-)
 		 */
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON8,
-			RG_AUDDAC_FILTER_TOGGLE_CLK_EN_VAUDP18_MASK_SFT,
-			0x1 << RG_AUDDAC_FILTER_TOGGLE_CLK_EN_VAUDP18_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON8,
-			RG_AUDDAC_FILTER_TOGGLE_CLK_SEL_VAUDP18_MASK_SFT,
-			0x0 << RG_AUDDAC_FILTER_TOGGLE_CLK_SEL_VAUDP18_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON8,
-			RG_AUDDACL_FILTER_BYPASS_SW_SEL_VAUDP18_MASK_SFT,
-			0x0 << RG_AUDDACL_FILTER_BYPASS_SW_SEL_VAUDP18_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AUDDEC_PMU_CON8,
-			RG_AUDDACR_FILTER_BYPASS_SW_SEL_VAUDP18_MASK_SFT,
-			0x0 << RG_AUDDACR_FILTER_BYPASS_SW_SEL_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON8,
+				   RG_AUDDAC_FILTER_TOGGLE_CLK_EN_VAUDP18_MASK_SFT,
+				   0x1 << RG_AUDDAC_FILTER_TOGGLE_CLK_EN_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON8,
+				   RG_AUDDAC_FILTER_TOGGLE_CLK_SEL_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDDAC_FILTER_TOGGLE_CLK_SEL_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON8,
+				   RG_AUDDACL_FILTER_BYPASS_SW_SEL_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDDACL_FILTER_BYPASS_SW_SEL_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON8,
+				   RG_AUDDACR_FILTER_BYPASS_SW_SEL_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDDACR_FILTER_BYPASS_SW_SEL_VAUDP18_SFT);
 		/*
-		 * Step 312:
+		 * Step 313:
 		 * Switch HPL MUX to audio DAC
 		 * 000: Open/Open
 		 * 001: LOLP/LOLN
@@ -3641,7 +3594,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   RG_AUDHPLMUXINPUTSEL_VAUDP18_MASK_SFT,
 				   0x2 << RG_AUDHPLMUXINPUTSEL_VAUDP18_SFT);
 		/*
-		 * Step 313:
+		 * Step 314:
 		 * Switch HPR MUX to audio DAC
 		 * 000: Open/Open
 		 * 001: LOLP/LOLN
@@ -12444,7 +12397,7 @@ static int mt_sdm_3rd_event(struct snd_soc_dapm_widget *w,
 			regmap_update_bits(priv->regmap,
 					   MT6681_AFE_ADDA_DL_SRC_CON0_H,
 					   AFE_DL_INPUT_MODE_CTL_MASK_SFT,
-					   0x8 << AFE_DL_INPUT_MODE_CTL_SFT);
+					   rate << AFE_DL_INPUT_MODE_CTL_SFT);
 		} else {
 			/* use 2nd new 8bit SDM  */
 			regmap_write(priv->regmap,
@@ -12935,10 +12888,12 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 					   AFE_CLH_HP_FIFO_ON_MASK_SFT,
 					   0x1 << AFE_CLH_HP_FIFO_ON_SFT);
 			/* Step 70: Set toggle CLK and enable */
-			regmap_update_bits(
-				priv->regmap, MT6681_AFE_DAC_CHOP_CLK_CON0,
-				AFE_DAC_CHOP_CLK_DIV_SEL_MASK_SFT,
-				0x1F << AFE_DAC_CHOP_CLK_DIV_SEL_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AFE_DAC_CHOP_CLK_CON0,
+					   AFE_DAC_CHOP_CLK_DIV_SEL_MASK_SFT,
+					   0x1F << AFE_DAC_CHOP_CLK_DIV_SEL_SFT);
+			regmap_update_bits(priv->regmap, MT6681_AFE_DAC_CHOP_CLK_CON0,
+					   AFE_DAC_CHOP_CLK_DIV_EN_MASK_SFT,
+					   0x1 << AFE_DAC_CHOP_CLK_DIV_EN_SFT);
 		} else {
 			/* Step 40: Select preview data source based from 0: HP
 			 * path or
@@ -18707,2648 +18662,4405 @@ static void codec_gpio_init(struct mt6681_priv *priv)
 static void mt6681_clh_lut_init(struct mt6681_priv *priv)
 {
 
-	dev_info(priv->dev, "%s()++\n", __func__);
+	dev_info(priv->dev, "%s()v2++\n", __func__);
+	/* Step 1: use digital lch gain for SW config mode */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G0_H,
 			   RG_DG_STEP_LCH_SW_CONFIG_MODE_MASK_SFT,
 			   0x1 << RG_DG_STEP_LCH_SW_CONFIG_MODE_SFT);
+	/* Step 2: Set Lch G0 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G0_H,
 			   RG_DG_LNGAIN_COMP_LCH_G0_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_LCH_G0_H_SFT);
+	/* Step 3: Set Lch G0 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G0_M,
 			   RG_DG_LNGAIN_COMP_LCH_G0_M_MASK_SFT,
 			   0x01 << RG_DG_LNGAIN_COMP_LCH_G0_M_SFT);
+	/* Step 4: Set Lch G0 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G0_L,
 			   RG_DG_LNGAIN_COMP_LCH_G0_L_MASK_SFT,
 			   0x00 << RG_DG_LNGAIN_COMP_LCH_G0_L_SFT);
+	/* Step 5: Set Lch G0 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G0,
 			   RG_DG_LNGAIN_COMP_LCH_G0_MASK_SFT,
 			   0x00 << RG_DG_LNGAIN_COMP_LCH_G0_SFT);
+	/* Step 6: Set Lch G1 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G1_H,
 			   RG_DG_LNGAIN_COMP_LCH_G1_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_LCH_G1_H_SFT);
+	/* Step 7: Set Lch G1 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G1_M,
 			   RG_DG_LNGAIN_COMP_LCH_G1_M_MASK_SFT,
 			   0x01 << RG_DG_LNGAIN_COMP_LCH_G1_M_SFT);
+	/* Step 8: Set Lch G1 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G1_L,
 			   RG_DG_LNGAIN_COMP_LCH_G1_L_MASK_SFT,
 			   0x0D << RG_DG_LNGAIN_COMP_LCH_G1_L_SFT);
+	/* Step 9: Set Lch G1 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G1,
 			   RG_DG_LNGAIN_COMP_LCH_G1_MASK_SFT,
 			   0x08 << RG_DG_LNGAIN_COMP_LCH_G1_SFT);
+	/* Step 10: Set Lch G2 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G2_H,
 			   RG_DG_LNGAIN_COMP_LCH_G2_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_LCH_G2_H_SFT);
+	/* Step 11: Set Lch G2 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G2_M,
 			   RG_DG_LNGAIN_COMP_LCH_G2_M_MASK_SFT,
 			   0x01 << RG_DG_LNGAIN_COMP_LCH_G2_M_SFT);
+	/* Step 12: Set Lch G2 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G2_L,
 			   RG_DG_LNGAIN_COMP_LCH_G2_L_MASK_SFT,
 			   0x77 << RG_DG_LNGAIN_COMP_LCH_G2_L_SFT);
+	/* Step 13: Set Lch G2 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G2,
 			   RG_DG_LNGAIN_COMP_LCH_G2_MASK_SFT,
 			   0x65 << RG_DG_LNGAIN_COMP_LCH_G2_SFT);
+	/* Step 14: Set Lch G3 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G3_H,
 			   RG_DG_LNGAIN_COMP_LCH_G3_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_LCH_G3_H_SFT);
+	/* Step 15: Set Lch G3 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G3_M,
 			   RG_DG_LNGAIN_COMP_LCH_G3_M_MASK_SFT,
 			   0x02 << RG_DG_LNGAIN_COMP_LCH_G3_M_SFT);
+	/* Step 16: Set Lch G3 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G3_L,
 			   RG_DG_LNGAIN_COMP_LCH_G3_L_MASK_SFT,
 			   0x16 << RG_DG_LNGAIN_COMP_LCH_G3_L_SFT);
+	/* Step 17: Set Lch G3 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G3,
 			   RG_DG_LNGAIN_COMP_LCH_G3_MASK_SFT,
 			   0x43 << RG_DG_LNGAIN_COMP_LCH_G3_SFT);
+	/* Step 18: Set Lch G4 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G4_H,
 			   RG_DG_LNGAIN_COMP_LCH_G4_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_LCH_G4_H_SFT);
+	/* Step 19: Set Lch G4 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G4_M,
 			   RG_DG_LNGAIN_COMP_LCH_G4_M_MASK_SFT,
 			   0x02 << RG_DG_LNGAIN_COMP_LCH_G4_M_SFT);
+	/* Step 20: Set Lch G4 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G4_L,
 			   RG_DG_LNGAIN_COMP_LCH_G4_L_MASK_SFT,
 			   0xE1 << RG_DG_LNGAIN_COMP_LCH_G4_L_SFT);
+	/* Step 21: Set Lch G4 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G4,
 			   RG_DG_LNGAIN_COMP_LCH_G4_MASK_SFT,
 			   0x88 << RG_DG_LNGAIN_COMP_LCH_G4_SFT);
+	/* Step 22: Set Lch G5 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G5_H,
 			   RG_DG_LNGAIN_COMP_LCH_G5_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_LCH_G5_H_SFT);
+	/* Step 23: Set Lch G5 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G5_M,
 			   RG_DG_LNGAIN_COMP_LCH_G5_M_MASK_SFT,
 			   0x04 << RG_DG_LNGAIN_COMP_LCH_G5_M_SFT);
+	/* Step 24: Set Lch G5 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G5_L,
 			   RG_DG_LNGAIN_COMP_LCH_G5_L_MASK_SFT,
 			   0x4C << RG_DG_LNGAIN_COMP_LCH_G5_L_SFT);
+	/* Step 25: Set Lch G5 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G5,
 			   RG_DG_LNGAIN_COMP_LCH_G5_MASK_SFT,
 			   0xA6 << RG_DG_LNGAIN_COMP_LCH_G5_SFT);
+	/* Step 26: Set Lch G6 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G6_H,
 			   RG_DG_LNGAIN_COMP_LCH_G6_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_LCH_G6_H_SFT);
+	/* Step 27: Set Lch G6 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G6_M,
 			   RG_DG_LNGAIN_COMP_LCH_G6_M_MASK_SFT,
 			   0x06 << RG_DG_LNGAIN_COMP_LCH_G6_M_SFT);
+	/* Step 28: Set Lch G6 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G6_L,
 			   RG_DG_LNGAIN_COMP_LCH_G6_L_MASK_SFT,
 			   0x2E << RG_DG_LNGAIN_COMP_LCH_G6_L_SFT);
+	/* Step 29: Set Lch G6 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G6,
 			   RG_DG_LNGAIN_COMP_LCH_G6_MASK_SFT,
 			   0x2E << RG_DG_LNGAIN_COMP_LCH_G6_SFT);
+	/* Step 30: Set Lch G7 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G7_H,
 			   RG_DG_LNGAIN_COMP_LCH_G7_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_LCH_G7_H_SFT);
+	/* Step 31: Set Lch G7 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G7_M,
 			   RG_DG_LNGAIN_COMP_LCH_G7_M_MASK_SFT,
 			   0x08 << RG_DG_LNGAIN_COMP_LCH_G7_M_SFT);
+	/* Step 32: Set Lch G7 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G7_L,
 			   RG_DG_LNGAIN_COMP_LCH_G7_L_MASK_SFT,
 			   0xC5 << RG_DG_LNGAIN_COMP_LCH_G7_L_SFT);
+	/* Step 33: Set Lch G7 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_LCH_G7,
 			   RG_DG_LNGAIN_COMP_LCH_G7_MASK_SFT,
 			   0x45 << RG_DG_LNGAIN_COMP_LCH_G7_SFT);
+	/* Step 34: use digital RCH gain for SW config mode */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G0_H,
 			   RG_DG_STEP_RCH_SW_CONFIG_MODE_MASK_SFT,
 			   0x1 << RG_DG_STEP_RCH_SW_CONFIG_MODE_SFT);
+	/* Step 35: Set RCH G0 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G0_H,
 			   RG_DG_LNGAIN_COMP_RCH_G0_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_RCH_G0_H_SFT);
+	/* Step 36: Set RCH G0 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G0_M,
 			   RG_DG_LNGAIN_COMP_RCH_G0_M_MASK_SFT,
 			   0x01 << RG_DG_LNGAIN_COMP_RCH_G0_M_SFT);
+	/* Step 37: Set RCH G0 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G0_L,
 			   RG_DG_LNGAIN_COMP_RCH_G0_L_MASK_SFT,
 			   0x00 << RG_DG_LNGAIN_COMP_RCH_G0_L_SFT);
+	/* Step 38: Set RCH G0 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G0,
 			   RG_DG_LNGAIN_COMP_RCH_G0_MASK_SFT,
 			   0x00 << RG_DG_LNGAIN_COMP_RCH_G0_SFT);
+	/* Step 39: Set RCH G1 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G1_H,
 			   RG_DG_LNGAIN_COMP_RCH_G1_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_RCH_G1_H_SFT);
+	/* Step 40: Set RCH G1 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G1_M,
 			   RG_DG_LNGAIN_COMP_RCH_G1_M_MASK_SFT,
 			   0x01 << RG_DG_LNGAIN_COMP_RCH_G1_M_SFT);
+	/* Step 41: Set RCH G1 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G1_L,
 			   RG_DG_LNGAIN_COMP_RCH_G1_L_MASK_SFT,
 			   0x0D << RG_DG_LNGAIN_COMP_RCH_G1_L_SFT);
+	/* Step 42: Set RCH G1 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G1,
 			   RG_DG_LNGAIN_COMP_RCH_G1_MASK_SFT,
 			   0x08 << RG_DG_LNGAIN_COMP_RCH_G1_SFT);
+	/* Step 43: Set RCH G2 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G2_H,
 			   RG_DG_LNGAIN_COMP_RCH_G2_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_RCH_G2_H_SFT);
+	/* Step 44: Set RCH G2 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G2_M,
 			   RG_DG_LNGAIN_COMP_RCH_G2_M_MASK_SFT,
 			   0x01 << RG_DG_LNGAIN_COMP_RCH_G2_M_SFT);
+	/* Step 45: Set RCH G2 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G2_L,
 			   RG_DG_LNGAIN_COMP_RCH_G2_L_MASK_SFT,
 			   0x77 << RG_DG_LNGAIN_COMP_RCH_G2_L_SFT);
+	/* Step 46: Set RCH G2 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G2,
 			   RG_DG_LNGAIN_COMP_RCH_G2_MASK_SFT,
 			   0x65 << RG_DG_LNGAIN_COMP_RCH_G2_SFT);
+	/* Step 47: Set RCH G3 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G3_H,
 			   RG_DG_LNGAIN_COMP_RCH_G3_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_RCH_G3_H_SFT);
+	/* Step 48: Set RCH G3 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G3_M,
 			   RG_DG_LNGAIN_COMP_RCH_G3_M_MASK_SFT,
 			   0x02 << RG_DG_LNGAIN_COMP_RCH_G3_M_SFT);
+	/* Step 49: Set RCH G3 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G3_L,
 			   RG_DG_LNGAIN_COMP_RCH_G3_L_MASK_SFT,
 			   0x16 << RG_DG_LNGAIN_COMP_RCH_G3_L_SFT);
+	/* Step 50: Set RCH G3 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G3,
 			   RG_DG_LNGAIN_COMP_RCH_G3_MASK_SFT,
 			   0x43 << RG_DG_LNGAIN_COMP_RCH_G3_SFT);
+	/* Step 51: Set RCH G4 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G4_H,
 			   RG_DG_LNGAIN_COMP_RCH_G4_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_RCH_G4_H_SFT);
+	/* Step 52: Set RCH G4 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G4_M,
 			   RG_DG_LNGAIN_COMP_RCH_G4_M_MASK_SFT,
 			   0x02 << RG_DG_LNGAIN_COMP_RCH_G4_M_SFT);
+	/* Step 53: Set RCH G4 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G4_L,
 			   RG_DG_LNGAIN_COMP_RCH_G4_L_MASK_SFT,
 			   0xE1 << RG_DG_LNGAIN_COMP_RCH_G4_L_SFT);
+	/* Step 54: Set RCH G4 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G4,
 			   RG_DG_LNGAIN_COMP_RCH_G4_MASK_SFT,
 			   0x88 << RG_DG_LNGAIN_COMP_RCH_G4_SFT);
+	/* Step 55: Set RCH G5 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G5_H,
 			   RG_DG_LNGAIN_COMP_RCH_G5_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_RCH_G5_H_SFT);
+	/* Step 56: Set RCH G5 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G5_M,
 			   RG_DG_LNGAIN_COMP_RCH_G5_M_MASK_SFT,
 			   0x04 << RG_DG_LNGAIN_COMP_RCH_G5_M_SFT);
+	/* Step 57: Set RCH G5 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G5_L,
 			   RG_DG_LNGAIN_COMP_RCH_G5_L_MASK_SFT,
 			   0x4C << RG_DG_LNGAIN_COMP_RCH_G5_L_SFT);
+	/* Step 58: Set RCH G5 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G5,
 			   RG_DG_LNGAIN_COMP_RCH_G5_MASK_SFT,
 			   0xA6 << RG_DG_LNGAIN_COMP_RCH_G5_SFT);
+	/* Step 59: Set RCH G6 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G6_H,
 			   RG_DG_LNGAIN_COMP_RCH_G6_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_RCH_G6_H_SFT);
+	/* Step 60: Set RCH G6 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G6_M,
 			   RG_DG_LNGAIN_COMP_RCH_G6_M_MASK_SFT,
 			   0x06 << RG_DG_LNGAIN_COMP_RCH_G6_M_SFT);
+	/* Step 61: Set RCH G6 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G6_L,
 			   RG_DG_LNGAIN_COMP_RCH_G6_L_MASK_SFT,
 			   0x2E << RG_DG_LNGAIN_COMP_RCH_G6_L_SFT);
+	/* Step 62: Set RCH G6 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G6,
 			   RG_DG_LNGAIN_COMP_RCH_G6_MASK_SFT,
 			   0x2E << RG_DG_LNGAIN_COMP_RCH_G6_SFT);
+	/* Step 63: Set RCH G7 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G7_H,
 			   RG_DG_LNGAIN_COMP_RCH_G7_H_MASK_SFT,
 			   0x0 << RG_DG_LNGAIN_COMP_RCH_G7_H_SFT);
+	/* Step 64: Set RCH G7 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G7_M,
 			   RG_DG_LNGAIN_COMP_RCH_G7_M_MASK_SFT,
 			   0x08 << RG_DG_LNGAIN_COMP_RCH_G7_M_SFT);
+	/* Step 65: Set RCH G7 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G7_L,
 			   RG_DG_LNGAIN_COMP_RCH_G7_L_MASK_SFT,
 			   0xC5 << RG_DG_LNGAIN_COMP_RCH_G7_L_SFT);
+	/* Step 66: Set RCH G7 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_LNGAIN_COMP_RCH_G7,
 			   RG_DG_LNGAIN_COMP_RCH_G7_MASK_SFT,
 			   0x45 << RG_DG_LNGAIN_COMP_RCH_G7_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_PRE_BUF_CFG_M,
-			   SRAM_ADDR_REG_H_MASK_SFT,
-			   0x3C << SRAM_ADDR_REG_H_SFT);
+	/*
+	 * Step 67:
+	 * start to read pre_buf address when nle enable
+	 * 0x4B0 = 1200 = 25ms (wi 48KHz)
+	 * 0x3C0 = 960 = 20ms (wi 48KHz)
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_PRE_BUF_CFG_L,
-			   SRAM_ADDR_REG_MASK_SFT, 0x0 << SRAM_ADDR_REG_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_PRE_BUF_CFG_L,
-			   POINT_END_H_MASK_SFT, 0x3 << POINT_END_H_SFT);
+			   POINT_END_H_MASK_SFT,
+			   0x4 << POINT_END_H_SFT);
+	/* Step 68: start to read pre_buf address when nle enable */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_PRE_BUF_CFG,
-			   POINT_END_MASK_SFT, 0xC0 << POINT_END_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PRE_BUF_CFG_M,
-			   RG_HSLO_NLES_RAM_ADDR_REG_H_MASK_SFT,
-			   0x3C << RG_HSLO_NLES_RAM_ADDR_REG_H_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PRE_BUF_CFG_L,
-			   RG_HSLO_NLE_SRAM_ADDR_REG_MASK_SFT,
-			   0x0 << RG_HSLO_NLE_SRAM_ADDR_REG_SFT);
+			   POINT_END_MASK_SFT,
+			   0xB0 << POINT_END_SFT);
+	/*
+	 * Step 69:
+	 * start to read pre_buf address when nle enable
+	 * 0x4B0 = 1200 = 25ms (wi 48KHz)
+	 * 0x3C0 = 960 = 20ms (wi 48KHz)
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PRE_BUF_CFG_L,
 			   RG_HSLO_NLE_POINT_END_H_MASK_SFT,
-			   0x3 << RG_HSLO_NLE_POINT_END_H_SFT);
+			   0x4 << RG_HSLO_NLE_POINT_END_H_SFT);
+	/* Step 70: start to read pre_buf address when nle enable */
 	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PRE_BUF_CFG,
 			   RG_HSLO_NLE_POINT_END_MASK_SFT,
-			   0xC0 << RG_HSLO_NLE_POINT_END_SFT);
+			   0xB0 << RG_HSLO_NLE_POINT_END_SFT);
+	/* Step 71: Set Lch hold time 31ms */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_PWR_DET_LCH_CFG_H,
 			   RG_H2L_HOLD_TIME_LCH_MASK_SFT,
-			   0x16 << RG_H2L_HOLD_TIME_LCH_SFT);
+			   0x1f << RG_H2L_HOLD_TIME_LCH_SFT);
+	/* Step 72: Set Rch hold time 31ms */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_PWR_DET_RCH_CFG_H,
 			   RG_H2L_HOLD_TIME_RCH_MASK_SFT,
-			   0x16 << RG_H2L_HOLD_TIME_RCH_SFT);
+			   0x1f << RG_H2L_HOLD_TIME_RCH_SFT);
+	/* Step 73: Set Lch hold time 31ms */
 	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PWR_DET_LCH_CFG_H,
 			   RG_HSLO_NLE_H2L_HOLD_TIME_LCH_MASK_SFT,
-			   0x16 << RG_HSLO_NLE_H2L_HOLD_TIME_LCH_SFT);
+			   0x1f << RG_HSLO_NLE_H2L_HOLD_TIME_LCH_SFT);
+	/* Step 74: Set Rch hold time 31ms */
 	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PWR_DET_RCH_CFG_H,
 			   RG_HSLO_NLE_H2L_HOLD_TIME_RCH_MASK_SFT,
-			   0x16 << RG_HSLO_NLE_H2L_HOLD_TIME_RCH_SFT);
+			   0x1f << RG_HSLO_NLE_H2L_HOLD_TIME_RCH_SFT);
+	/*
+	 * Step 75:
+	 * Lch power detect threshold [1,0,23]
+	 * -50dB = DEC2HEX(round(10^(-50/20)*2^23,0),6)= 0x00679F
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_PWR_DET_LCH_CFG_M,
 			   RG_NLE_VTH_LCH_H_MASK_SFT,
 			   0x00 << RG_NLE_VTH_LCH_H_SFT);
+	/*
+	 * Step 76:
+	 * Lch power detect threshold [1,0,23]
+	 * -50dB = DEC2HEX(round(10^(-50/20)*2^23,0),6)= 0x00679F
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_PWR_DET_LCH_CFG_L,
 			   RG_NLE_VTH_LCH_M_MASK_SFT,
-			   0xB8 << RG_NLE_VTH_LCH_M_SFT);
+			   0x67 << RG_NLE_VTH_LCH_M_SFT);
+	/*
+	 * Step 77:
+	 * Lch power detect threshold [1,0,23]
+	 * -50dB = DEC2HEX(round(10^(-50/20)*2^23,0),6)= 0x00679F
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_PWR_DET_LCH_CFG,
-			   RG_NLE_VTH_LCH_MASK_SFT, 0x45 << RG_NLE_VTH_LCH_SFT);
+			   RG_NLE_VTH_LCH_MASK_SFT,
+			   0x9F << RG_NLE_VTH_LCH_SFT);
+	/*
+	 * Step 78:
+	 * Rch power detect threshold [1,0,23]
+	 * -50dB = DEC2HEX(round(10^(-50/20)*2^23,0),6)= 0x00679F
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_PWR_DET_RCH_CFG_M,
 			   RG_NLE_VTH_RCH_H_MASK_SFT,
 			   0x00 << RG_NLE_VTH_RCH_H_SFT);
+	/*
+	 * Step 79:
+	 * Rch power detect threshold [1,0,23]
+	 * -50dB = DEC2HEX(round(10^(-50/20)*2^23,0),6)= 0x00679F
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_PWR_DET_RCH_CFG_L,
 			   RG_NLE_VTH_RCH_M_MASK_SFT,
-			   0xB8 << RG_NLE_VTH_RCH_M_SFT);
+			   0x67 << RG_NLE_VTH_RCH_M_SFT);
+	/*
+	 * Step 80:
+	 * Rch power detect threshold [1,0,23]
+	 * -50dB = DEC2HEX(round(10^(-50/20)*2^23,0),6)= 0x00679F
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_PWR_DET_RCH_CFG,
-			   RG_NLE_VTH_RCH_MASK_SFT, 0x45 << RG_NLE_VTH_RCH_SFT);
+			   RG_NLE_VTH_RCH_MASK_SFT,
+			   0x9F << RG_NLE_VTH_RCH_SFT);
+	/*
+	 * Step 81:
+	 * Lch power detect threshold [1,0,23]
+	 * -50dB = DEC2HEX(round(10^(-50/20)*2^23,0),6)= 0x00679F
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PWR_DET_LCH_CFG_M,
 			   RG_HSLO_NLE_VTH_LCH_H_MASK_SFT,
 			   0x00 << RG_HSLO_NLE_VTH_LCH_H_SFT);
+	/*
+	 * Step 82:
+	 * Lch power detect threshold [1,0,23]
+	 * -50dB = DEC2HEX(round(10^(-50/20)*2^23,0),6)= 0x00679F
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PWR_DET_LCH_CFG_L,
 			   RG_HSLO_NLE_VTH_LCH_M_MASK_SFT,
-			   0xB8 << RG_HSLO_NLE_VTH_LCH_M_SFT);
+			   0x67 << RG_HSLO_NLE_VTH_LCH_M_SFT);
+	/*
+	 * Step 83:
+	 * Lch power detect threshold [1,0,23]
+	 * -50dB = DEC2HEX(round(10^(-50/20)*2^23,0),6)= 0x00679F
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PWR_DET_LCH_CFG,
 			   RG_HSLO_NLE_VTH_LCH_MASK_SFT,
-			   0x45 << RG_HSLO_NLE_VTH_LCH_SFT);
+			   0x9F << RG_HSLO_NLE_VTH_LCH_SFT);
+	/*
+	 * Step 84:
+	 * Rch power detect threshold [1,0,23]
+	 * -50dB = DEC2HEX(round(10^(-50/20)*2^23,0),6)= 0x00679F
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PWR_DET_RCH_CFG_M,
 			   RG_HSLO_NLE_VTH_RCH_H_MASK_SFT,
 			   0x00 << RG_HSLO_NLE_VTH_RCH_H_SFT);
+	/*
+	 * Step 85:
+	 * Rch power detect threshold [1,0,23]
+	 * -50dB = DEC2HEX(round(10^(-50/20)*2^23,0),6)= 0x00679F
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PWR_DET_RCH_CFG_L,
 			   RG_HSLO_NLE_VTH_RCH_M_MASK_SFT,
-			   0xB8 << RG_HSLO_NLE_VTH_RCH_M_SFT);
+			   0x67 << RG_HSLO_NLE_VTH_RCH_M_SFT);
+	/*
+	 * Step 86:
+	 * Rch power detect threshold [1,0,23]
+	 * -50dB = DEC2HEX(round(10^(-50/20)*2^23,0),6)= 0x00679F
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_PWR_DET_RCH_CFG,
 			   RG_HSLO_NLE_VTH_RCH_MASK_SFT,
-			   0x45 << RG_HSLO_NLE_VTH_RCH_SFT);
+			   0x9F << RG_HSLO_NLE_VTH_RCH_SFT);
+	/* Step 87:  ZC mode = data_eq_zero and zero_cross */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_LCH_CFG,
 			   RG_ZCD_MODE_SEL_LCH_MASK_SFT,
 			   0x3 << RG_ZCD_MODE_SEL_LCH_SFT);
+	/* Step 88:  ZC mode = data_eq_zero and zero_cross */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_RCH_CFG,
 			   RG_ZCD_MODE_SEL_RCH_MASK_SFT,
 			   0x3 << RG_ZCD_MODE_SEL_RCH_SFT);
+	/* Step 89:  ZC mode = data_eq_zero and zero_cross */
 	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_ZCD_LCH_CFG,
 			   RG_HSLO_NLE_ZCD_MODE_SEL_LCH_MASK_SFT,
 			   0x3 << RG_HSLO_NLE_ZCD_MODE_SEL_LCH_SFT);
+	/* Step 90:  ZC mode = data_eq_zero and zero_cross */
 	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_ZCD_RCH_CFG,
 			   RG_HSLO_NLE_ZCD_MODE_SEL_RCH_MASK_SFT,
 			   0x3 << RG_HSLO_NLE_ZCD_MODE_SEL_RCH_SFT);
+	/*
+	 * Step 91:
+	 * Time out level for gain adjusting, unit is 1ms.
+	 * Set to 30ms
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_ADJ_LCH_CFG0_H,
 			   RG_TIME_OUT_LCH_MASK_SFT,
 			   0x1e << RG_TIME_OUT_LCH_SFT);
+	/*
+	 * Step 92:
+	 * Time out level for gain adjusting, unit is 1ms.
+	 * Set to 30ms
+	 */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_ADJ_RCH_CFG0_H,
 			   RG_TIME_OUT_RCH_MASK_SFT,
 			   0x1e << RG_TIME_OUT_RCH_SFT);
-	regmap_update_bits(priv->regmap,
-			   MT6681_AFE_HSLO_NLE_GAIN_ADJ_LCH_CFG0_H,
+	/*
+	 * Step 93:
+	 * Time out level for gain adjusting, unit is 1ms.
+	 * Set to 30ms
+	 */
+	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_GAIN_ADJ_LCH_CFG0_H,
 			   RG_HSLO_NLE_TIME_OUT_LCH_MASK_SFT,
 			   0x1e << RG_HSLO_NLE_TIME_OUT_LCH_SFT);
-	regmap_update_bits(priv->regmap,
-			   MT6681_AFE_HSLO_NLE_GAIN_ADJ_RCH_CFG0_H,
+	/*
+	 * Step 94:
+	 * Time out level for gain adjusting, unit is 1ms.
+	 * Set to 30ms
+	 */
+	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_GAIN_ADJ_RCH_CFG0_H,
 			   RG_HSLO_NLE_TIME_OUT_RCH_MASK_SFT,
 			   0x1e << RG_HSLO_NLE_TIME_OUT_RCH_SFT);
+	/* Step 95: Set Lch AG delay time to analog domain (19T) */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_IMP_LCH_CFG0_M,
 			   RG_AG_DELAY_LCH_MASK_SFT,
 			   0x13 << RG_AG_DELAY_LCH_SFT);
+	/* Step 96: Set Rch AG delay time to analog domain (19T) */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_IMP_RCH_CFG0_M,
 			   RG_AG_DELAY_RCH_MASK_SFT,
 			   0x13 << RG_AG_DELAY_RCH_SFT);
-	regmap_update_bits(priv->regmap,
-			   MT6681_AFE_HSLO_NLE_GAIN_IMP_LCH_CFG0_M,
+	/* Step 97: Set Lch AG delay time to analog domain (19T) */
+	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_GAIN_IMP_LCH_CFG0_M,
 			   RG_HSLO_NLE_AG_DELAY_LCH_MASK_SFT,
 			   0x13 << RG_HSLO_NLE_AG_DELAY_LCH_SFT);
-	regmap_update_bits(priv->regmap,
-			   MT6681_AFE_HSLO_NLE_GAIN_IMP_RCH_CFG0_M,
+	/* Step 98: Set Rch AG delay time to analog domain (19T) */
+	regmap_update_bits(priv->regmap, MT6681_AFE_HSLO_NLE_GAIN_IMP_RCH_CFG0_M,
 			   RG_HSLO_NLE_AG_DELAY_RCH_MASK_SFT,
 			   0x13 << RG_HSLO_NLE_AG_DELAY_RCH_SFT);
+	/* Step 99: Set Lch Again MIN (for HP NLE min=0, max=7) */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_ADJ_LCH_CFG0_L,
 			   RG_AG_MIN_LCH_M_MASK_SFT,
 			   0x0 << RG_AG_MIN_LCH_M_SFT);
+	/* Step 100: Set Lch Again MIN (for HP NLE min=0, max=7) */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_ADJ_LCH_CFG0,
-			   RG_AG_MIN_LCH_MASK_SFT, 0x0 << RG_AG_MIN_LCH_SFT);
+			   RG_AG_MIN_LCH_MASK_SFT,
+			   0x0 << RG_AG_MIN_LCH_SFT);
+	/* Step 101: Set Lch Again MIN (for HP NLE min=0, max=7) */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_ADJ_LCH_CFG0,
-			   RG_AG_MAX_LCH_MASK_SFT, 0x7 << RG_AG_MAX_LCH_SFT);
+			   RG_AG_MAX_LCH_MASK_SFT,
+			   0x7 << RG_AG_MAX_LCH_SFT);
+	/* Step 102: Set Rch Again MIN (for HP NLE min=0, max=7) */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_ADJ_RCH_CFG0_L,
 			   RG_AG_MIN_RCH_M_MASK_SFT,
 			   0x0 << RG_AG_MIN_RCH_M_SFT);
+	/* Step 103: Set Rch Again MIN (for HP NLE min=0, max=7) */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_ADJ_RCH_CFG0,
-			   RG_AG_MIN_RCH_MASK_SFT, 0x0 << RG_AG_MIN_RCH_SFT);
+			   RG_AG_MIN_RCH_MASK_SFT,
+			   0x0 << RG_AG_MIN_RCH_SFT);
+	/* Step 104: Set Rch Again MIN (for HP NLE min=0, max=7) */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_GAIN_ADJ_RCH_CFG0,
-			   RG_AG_MAX_RCH_MASK_SFT, 0x7 << RG_AG_MAX_RCH_SFT);
+			   RG_AG_MAX_RCH_MASK_SFT,
+			   0x7 << RG_AG_MAX_RCH_SFT);
+	/* Step 105: NLE ZCD COUNT L2H LCH for 10 ZCDs */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_COUNT_TH_LCH,
 			   RG_NLE_ZCD_COUNT_DG_L2H_LCH_MASK_SFT,
 			   0x9 << RG_NLE_ZCD_COUNT_DG_L2H_LCH_SFT);
+	/* Step 106: NLE ZCD COUNT H2L LCH for 1 ZCDs */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_COUNT_TH_LCH,
 			   RG_NLE_ZCD_COUNT_DG_H2L_LCH_MASK_SFT,
-			   0x2 << RG_NLE_ZCD_COUNT_DG_H2L_LCH_SFT);
+			   0x0 << RG_NLE_ZCD_COUNT_DG_H2L_LCH_SFT);
+	/* Step 107: NLE ZCD COUNT L2H RCH for 10 ZCDs */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_COUNT_TH_RCH,
 			   RG_NLE_ZCD_COUNT_DG_L2H_RCH_MASK_SFT,
 			   0x9 << RG_NLE_ZCD_COUNT_DG_L2H_RCH_SFT);
+	/* Step 108: NLE ZCD COUNT H2L RCH for 1 ZCDs */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_ZCD_COUNT_TH_RCH,
 			   RG_NLE_ZCD_COUNT_DG_H2L_RCH_MASK_SFT,
-			   0x2 << RG_NLE_ZCD_COUNT_DG_H2L_RCH_SFT);
+			   0x0 << RG_NLE_ZCD_COUNT_DG_H2L_RCH_SFT);
+	/* Step 109: Toggle bit for update NLE RG */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 			   0x0 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+	/* Step 110: Toggle bit for update NLE RG */
 	regmap_update_bits(priv->regmap, MT6681_AFE_NLE_CFG_H,
 			   RG_NLE_SYNC_MODE_TOGGLE_MASK_SFT,
 			   0x1 << RG_NLE_SYNC_MODE_TOGGLE_SFT);
+	/*
+	 * Step 1:
+	 * Set class-H PVDDref at frame Vaudmax = 0.000V
+	 * <Note> Vaud 1 LSB = (2V / 127) = 15.75mV
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_0,
 			   RG_CLH_LUT0_PVDDREF_0_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_PVDDREF_0_SFT);
+	/* Step 2: Set class-H PVDDref at frame Vaudmax = 0.016V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_1,
 			   RG_CLH_LUT0_PVDDREF_1_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_PVDDREF_1_SFT);
+	/* Step 3: Set class-H PVDDref at frame Vaudmax = 0.031V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_2,
 			   RG_CLH_LUT0_PVDDREF_2_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_PVDDREF_2_SFT);
+	/* Step 4: Set class-H PVDDref at frame Vaudmax = 0.047V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_3,
 			   RG_CLH_LUT0_PVDDREF_3_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_PVDDREF_3_SFT);
+	/* Step 5: Set class-H PVDDref at frame Vaudmax = 0.063V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_4,
 			   RG_CLH_LUT0_PVDDREF_4_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_PVDDREF_4_SFT);
+	/* Step 6: Set class-H PVDDref at frame Vaudmax = 0.079V (0.1mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_5,
 			   RG_CLH_LUT0_PVDDREF_5_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_PVDDREF_5_SFT);
+	/* Step 7: Set class-H PVDDref at frame Vaudmax = 0.094V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_6,
 			   RG_CLH_LUT0_PVDDREF_6_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_PVDDREF_6_SFT);
+	/* Step 8: Set class-H PVDDref at frame Vaudmax = 0.110V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_7,
 			   RG_CLH_LUT0_PVDDREF_7_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_PVDDREF_7_SFT);
+	/* Step 9: Set class-H PVDDref at frame Vaudmax = 0.126V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_8,
 			   RG_CLH_LUT0_PVDDREF_8_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_PVDDREF_8_SFT);
+	/* Step 10: Set class-H PVDDref at frame Vaudmax = 0.142V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_9,
 			   RG_CLH_LUT0_PVDDREF_9_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_PVDDREF_9_SFT);
+	/* Step 11: Set class-H PVDDref at frame Vaudmax = 0.157V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_10,
 			   RG_CLH_LUT0_PVDDREF_10_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_PVDDREF_10_SFT);
+	/* Step 12: Set class-H PVDDref at frame Vaudmax = 0.173V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_11,
 			   RG_CLH_LUT0_PVDDREF_11_MASK_SFT,
-			   0x0 << RG_CLH_LUT0_PVDDREF_11_SFT);
+			   0x2 << RG_CLH_LUT0_PVDDREF_11_SFT);
+	/* Step 13: Set class-H PVDDref at frame Vaudmax = 0.189V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_12,
 			   RG_CLH_LUT0_PVDDREF_12_MASK_SFT,
-			   0x0 << RG_CLH_LUT0_PVDDREF_12_SFT);
+			   0x3 << RG_CLH_LUT0_PVDDREF_12_SFT);
+	/* Step 14: Set class-H PVDDref at frame Vaudmax = 0.205V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_13,
 			   RG_CLH_LUT0_PVDDREF_13_MASK_SFT,
-			   0x0 << RG_CLH_LUT0_PVDDREF_13_SFT);
+			   0x5 << RG_CLH_LUT0_PVDDREF_13_SFT);
+	/* Step 15: Set class-H PVDDref at frame Vaudmax = 0.220V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_14,
 			   RG_CLH_LUT0_PVDDREF_14_MASK_SFT,
-			   0x0 << RG_CLH_LUT0_PVDDREF_14_SFT);
+			   0x6 << RG_CLH_LUT0_PVDDREF_14_SFT);
+	/* Step 16: Set class-H PVDDref at frame Vaudmax = 0.236V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_15,
 			   RG_CLH_LUT0_PVDDREF_15_MASK_SFT,
-			   0x1 << RG_CLH_LUT0_PVDDREF_15_SFT);
+			   0x8 << RG_CLH_LUT0_PVDDREF_15_SFT);
+	/* Step 17: Set class-H PVDDref at frame Vaudmax = 0.252V (1mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_16,
 			   RG_CLH_LUT0_PVDDREF_16_MASK_SFT,
-			   0x2 << RG_CLH_LUT0_PVDDREF_16_SFT);
+			   0xa << RG_CLH_LUT0_PVDDREF_16_SFT);
+	/* Step 18: Set class-H PVDDref at frame Vaudmax = 0.268V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_17,
 			   RG_CLH_LUT0_PVDDREF_17_MASK_SFT,
-			   0x3 << RG_CLH_LUT0_PVDDREF_17_SFT);
+			   0xb << RG_CLH_LUT0_PVDDREF_17_SFT);
+	/* Step 19: Set class-H PVDDref at frame Vaudmax = 0.283V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_18,
 			   RG_CLH_LUT0_PVDDREF_18_MASK_SFT,
-			   0x4 << RG_CLH_LUT0_PVDDREF_18_SFT);
+			   0xd << RG_CLH_LUT0_PVDDREF_18_SFT);
+	/* Step 20: Set class-H PVDDref at frame Vaudmax = 0.299V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_19,
 			   RG_CLH_LUT0_PVDDREF_19_MASK_SFT,
-			   0x6 << RG_CLH_LUT0_PVDDREF_19_SFT);
+			   0xe << RG_CLH_LUT0_PVDDREF_19_SFT);
+	/* Step 21: Set class-H PVDDref at frame Vaudmax = 0.315V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_20,
 			   RG_CLH_LUT0_PVDDREF_20_MASK_SFT,
-			   0x7 << RG_CLH_LUT0_PVDDREF_20_SFT);
+			   0x10 << RG_CLH_LUT0_PVDDREF_20_SFT);
+	/* Step 22: Set class-H PVDDref at frame Vaudmax = 0.331V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_21,
 			   RG_CLH_LUT0_PVDDREF_21_MASK_SFT,
-			   0x8 << RG_CLH_LUT0_PVDDREF_21_SFT);
+			   0x12 << RG_CLH_LUT0_PVDDREF_21_SFT);
+	/* Step 23: Set class-H PVDDref at frame Vaudmax = 0.346V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_22,
 			   RG_CLH_LUT0_PVDDREF_22_MASK_SFT,
-			   0x9 << RG_CLH_LUT0_PVDDREF_22_SFT);
+			   0x13 << RG_CLH_LUT0_PVDDREF_22_SFT);
+	/* Step 24: Set class-H PVDDref at frame Vaudmax = 0.362V (2mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_23,
 			   RG_CLH_LUT0_PVDDREF_23_MASK_SFT,
-			   0xa << RG_CLH_LUT0_PVDDREF_23_SFT);
+			   0x15 << RG_CLH_LUT0_PVDDREF_23_SFT);
+	/* Step 25: Set class-H PVDDref at frame Vaudmax = 0.378V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_24,
 			   RG_CLH_LUT0_PVDDREF_24_MASK_SFT,
-			   0xb << RG_CLH_LUT0_PVDDREF_24_SFT);
+			   0x16 << RG_CLH_LUT0_PVDDREF_24_SFT);
+	/* Step 26: Set class-H PVDDref at frame Vaudmax = 0.394V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_25,
 			   RG_CLH_LUT0_PVDDREF_25_MASK_SFT,
-			   0xc << RG_CLH_LUT0_PVDDREF_25_SFT);
+			   0x18 << RG_CLH_LUT0_PVDDREF_25_SFT);
+	/* Step 27: Set class-H PVDDref at frame Vaudmax = 0.409V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_26,
 			   RG_CLH_LUT0_PVDDREF_26_MASK_SFT,
-			   0xd << RG_CLH_LUT0_PVDDREF_26_SFT);
+			   0x19 << RG_CLH_LUT0_PVDDREF_26_SFT);
+	/* Step 28: Set class-H PVDDref at frame Vaudmax = 0.425V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_27,
 			   RG_CLH_LUT0_PVDDREF_27_MASK_SFT,
-			   0xe << RG_CLH_LUT0_PVDDREF_27_SFT);
+			   0x1b << RG_CLH_LUT0_PVDDREF_27_SFT);
+	/* Step 29: Set class-H PVDDref at frame Vaudmax = 0.441V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_28,
 			   RG_CLH_LUT0_PVDDREF_28_MASK_SFT,
-			   0xf << RG_CLH_LUT0_PVDDREF_28_SFT);
+			   0x1d << RG_CLH_LUT0_PVDDREF_28_SFT);
+	/* Step 30: Set class-H PVDDref at frame Vaudmax = 0.457V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_29,
 			   RG_CLH_LUT0_PVDDREF_29_MASK_SFT,
-			   0x10 << RG_CLH_LUT0_PVDDREF_29_SFT);
+			   0x1e << RG_CLH_LUT0_PVDDREF_29_SFT);
+	/* Step 31: Set class-H PVDDref at frame Vaudmax = 0.472V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_30,
 			   RG_CLH_LUT0_PVDDREF_30_MASK_SFT,
-			   0x12 << RG_CLH_LUT0_PVDDREF_30_SFT);
+			   0x20 << RG_CLH_LUT0_PVDDREF_30_SFT);
+	/* Step 32: Set class-H PVDDref at frame Vaudmax = 0.488V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_31,
 			   RG_CLH_LUT0_PVDDREF_31_MASK_SFT,
-			   0x13 << RG_CLH_LUT0_PVDDREF_31_SFT);
+			   0x21 << RG_CLH_LUT0_PVDDREF_31_SFT);
+	/* Step 33: Set class-H PVDDref at frame Vaudmax = 0.504V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_32,
 			   RG_CLH_LUT0_PVDDREF_32_MASK_SFT,
-			   0x14 << RG_CLH_LUT0_PVDDREF_32_SFT);
+			   0x23 << RG_CLH_LUT0_PVDDREF_32_SFT);
+	/* Step 34: Set class-H PVDDref at frame Vaudmax = 0.520V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_33,
 			   RG_CLH_LUT0_PVDDREF_33_MASK_SFT,
-			   0x15 << RG_CLH_LUT0_PVDDREF_33_SFT);
+			   0x25 << RG_CLH_LUT0_PVDDREF_33_SFT);
+	/* Step 35: Set class-H PVDDref at frame Vaudmax = 0.535V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_34,
 			   RG_CLH_LUT0_PVDDREF_34_MASK_SFT,
-			   0x16 << RG_CLH_LUT0_PVDDREF_34_SFT);
+			   0x26 << RG_CLH_LUT0_PVDDREF_34_SFT);
+	/* Step 36: Set class-H PVDDref at frame Vaudmax = 0.551V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_35,
 			   RG_CLH_LUT0_PVDDREF_35_MASK_SFT,
-			   0x17 << RG_CLH_LUT0_PVDDREF_35_SFT);
+			   0x28 << RG_CLH_LUT0_PVDDREF_35_SFT);
+	/* Step 37: Set class-H PVDDref at frame Vaudmax = 0.567V (5mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_36,
 			   RG_CLH_LUT0_PVDDREF_36_MASK_SFT,
-			   0x18 << RG_CLH_LUT0_PVDDREF_36_SFT);
+			   0x29 << RG_CLH_LUT0_PVDDREF_36_SFT);
+	/* Step 38: Set class-H PVDDref at frame Vaudmax = 0.583V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_37,
 			   RG_CLH_LUT0_PVDDREF_37_MASK_SFT,
-			   0x19 << RG_CLH_LUT0_PVDDREF_37_SFT);
+			   0x2b << RG_CLH_LUT0_PVDDREF_37_SFT);
+	/* Step 39: Set class-H PVDDref at frame Vaudmax = 0.598V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_38,
 			   RG_CLH_LUT0_PVDDREF_38_MASK_SFT,
-			   0x1a << RG_CLH_LUT0_PVDDREF_38_SFT);
+			   0x2d << RG_CLH_LUT0_PVDDREF_38_SFT);
+	/* Step 40: Set class-H PVDDref at frame Vaudmax = 0.614V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_39,
 			   RG_CLH_LUT0_PVDDREF_39_MASK_SFT,
-			   0x1b << RG_CLH_LUT0_PVDDREF_39_SFT);
+			   0x2e << RG_CLH_LUT0_PVDDREF_39_SFT);
+	/* Step 41: Set class-H PVDDref at frame Vaudmax = 0.630V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_40,
 			   RG_CLH_LUT0_PVDDREF_40_MASK_SFT,
-			   0x1c << RG_CLH_LUT0_PVDDREF_40_SFT);
+			   0x30 << RG_CLH_LUT0_PVDDREF_40_SFT);
+	/* Step 42: Set class-H PVDDref at frame Vaudmax = 0.646V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_41,
 			   RG_CLH_LUT0_PVDDREF_41_MASK_SFT,
-			   0x1e << RG_CLH_LUT0_PVDDREF_41_SFT);
+			   0x31 << RG_CLH_LUT0_PVDDREF_41_SFT);
+	/* Step 43: Set class-H PVDDref at frame Vaudmax = 0.661V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_42,
 			   RG_CLH_LUT0_PVDDREF_42_MASK_SFT,
-			   0x1f << RG_CLH_LUT0_PVDDREF_42_SFT);
+			   0x33 << RG_CLH_LUT0_PVDDREF_42_SFT);
+	/* Step 44: Set class-H PVDDref at frame Vaudmax = 0.677V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_43,
 			   RG_CLH_LUT0_PVDDREF_43_MASK_SFT,
-			   0x20 << RG_CLH_LUT0_PVDDREF_43_SFT);
+			   0x35 << RG_CLH_LUT0_PVDDREF_43_SFT);
+	/* Step 45: Set class-H PVDDref at frame Vaudmax = 0.693V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_44,
 			   RG_CLH_LUT0_PVDDREF_44_MASK_SFT,
-			   0x21 << RG_CLH_LUT0_PVDDREF_44_SFT);
+			   0x36 << RG_CLH_LUT0_PVDDREF_44_SFT);
+	/* Step 46: Set class-H PVDDref at frame Vaudmax = 0.709V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_45,
 			   RG_CLH_LUT0_PVDDREF_45_MASK_SFT,
-			   0x22 << RG_CLH_LUT0_PVDDREF_45_SFT);
+			   0x38 << RG_CLH_LUT0_PVDDREF_45_SFT);
+	/* Step 47: Set class-H PVDDref at frame Vaudmax = 0.724V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_46,
 			   RG_CLH_LUT0_PVDDREF_46_MASK_SFT,
-			   0x23 << RG_CLH_LUT0_PVDDREF_46_SFT);
+			   0x39 << RG_CLH_LUT0_PVDDREF_46_SFT);
+	/* Step 48: Set class-H PVDDref at frame Vaudmax = 0.740V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_47,
 			   RG_CLH_LUT0_PVDDREF_47_MASK_SFT,
-			   0x24 << RG_CLH_LUT0_PVDDREF_47_SFT);
+			   0x3b << RG_CLH_LUT0_PVDDREF_47_SFT);
+	/* Step 49: Set class-H PVDDref at frame Vaudmax = 0.756V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_48,
 			   RG_CLH_LUT0_PVDDREF_48_MASK_SFT,
-			   0x25 << RG_CLH_LUT0_PVDDREF_48_SFT);
+			   0x3c << RG_CLH_LUT0_PVDDREF_48_SFT);
+	/* Step 50: Set class-H PVDDref at frame Vaudmax = 0.772V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_49,
 			   RG_CLH_LUT0_PVDDREF_49_MASK_SFT,
-			   0x26 << RG_CLH_LUT0_PVDDREF_49_SFT);
+			   0x3e << RG_CLH_LUT0_PVDDREF_49_SFT);
+	/* Step 51: Set class-H PVDDref at frame Vaudmax = 0.787V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_50,
 			   RG_CLH_LUT0_PVDDREF_50_MASK_SFT,
-			   0x27 << RG_CLH_LUT0_PVDDREF_50_SFT);
+			   0x40 << RG_CLH_LUT0_PVDDREF_50_SFT);
+	/* Step 52: Set class-H PVDDref at frame Vaudmax = 0.803V (10mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_51,
 			   RG_CLH_LUT0_PVDDREF_51_MASK_SFT,
-			   0x28 << RG_CLH_LUT0_PVDDREF_51_SFT);
+			   0x41 << RG_CLH_LUT0_PVDDREF_51_SFT);
+	/* Step 53: Set class-H PVDDref at frame Vaudmax = 0.819V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_52,
 			   RG_CLH_LUT0_PVDDREF_52_MASK_SFT,
-			   0x2a << RG_CLH_LUT0_PVDDREF_52_SFT);
+			   0x43 << RG_CLH_LUT0_PVDDREF_52_SFT);
+	/* Step 54: Set class-H PVDDref at frame Vaudmax = 0.835V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_53,
 			   RG_CLH_LUT0_PVDDREF_53_MASK_SFT,
-			   0x2b << RG_CLH_LUT0_PVDDREF_53_SFT);
+			   0x44 << RG_CLH_LUT0_PVDDREF_53_SFT);
+	/* Step 55: Set class-H PVDDref at frame Vaudmax = 0.850V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_54,
 			   RG_CLH_LUT0_PVDDREF_54_MASK_SFT,
-			   0x2c << RG_CLH_LUT0_PVDDREF_54_SFT);
+			   0x46 << RG_CLH_LUT0_PVDDREF_54_SFT);
+	/* Step 56: Set class-H PVDDref at frame Vaudmax = 0.866V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_55,
 			   RG_CLH_LUT0_PVDDREF_55_MASK_SFT,
-			   0x2d << RG_CLH_LUT0_PVDDREF_55_SFT);
+			   0x48 << RG_CLH_LUT0_PVDDREF_55_SFT);
+	/* Step 57: Set class-H PVDDref at frame Vaudmax = 0.882V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_56,
 			   RG_CLH_LUT0_PVDDREF_56_MASK_SFT,
-			   0x2e << RG_CLH_LUT0_PVDDREF_56_SFT);
+			   0x49 << RG_CLH_LUT0_PVDDREF_56_SFT);
+	/* Step 58: Set class-H PVDDref at frame Vaudmax = 0.898V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_57,
 			   RG_CLH_LUT0_PVDDREF_57_MASK_SFT,
-			   0x2f << RG_CLH_LUT0_PVDDREF_57_SFT);
+			   0x4b << RG_CLH_LUT0_PVDDREF_57_SFT);
+	/* Step 59: Set class-H PVDDref at frame Vaudmax = 0.913V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_58,
 			   RG_CLH_LUT0_PVDDREF_58_MASK_SFT,
-			   0x30 << RG_CLH_LUT0_PVDDREF_58_SFT);
+			   0x4c << RG_CLH_LUT0_PVDDREF_58_SFT);
+	/* Step 60: Set class-H PVDDref at frame Vaudmax = 0.929V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_59,
 			   RG_CLH_LUT0_PVDDREF_59_MASK_SFT,
-			   0x31 << RG_CLH_LUT0_PVDDREF_59_SFT);
+			   0x4e << RG_CLH_LUT0_PVDDREF_59_SFT);
+	/* Step 61: Set class-H PVDDref at frame Vaudmax = 0.945V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_60,
 			   RG_CLH_LUT0_PVDDREF_60_MASK_SFT,
-			   0x32 << RG_CLH_LUT0_PVDDREF_60_SFT);
+			   0x50 << RG_CLH_LUT0_PVDDREF_60_SFT);
+	/* Step 62: Set class-H PVDDref at frame Vaudmax = 0.961V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_61,
 			   RG_CLH_LUT0_PVDDREF_61_MASK_SFT,
-			   0x33 << RG_CLH_LUT0_PVDDREF_61_SFT);
+			   0x51 << RG_CLH_LUT0_PVDDREF_61_SFT);
+	/* Step 63: Set class-H PVDDref at frame Vaudmax = 0.976V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_62,
 			   RG_CLH_LUT0_PVDDREF_62_MASK_SFT,
-			   0x34 << RG_CLH_LUT0_PVDDREF_62_SFT);
+			   0x53 << RG_CLH_LUT0_PVDDREF_62_SFT);
+	/* Step 64: Set class-H PVDDref at frame Vaudmax = 0.992V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_63,
 			   RG_CLH_LUT0_PVDDREF_63_MASK_SFT,
-			   0x36 << RG_CLH_LUT0_PVDDREF_63_SFT);
+			   0x54 << RG_CLH_LUT0_PVDDREF_63_SFT);
+	/* Step 65: Set class-H PVDDref at frame Vaudmax = 1.008V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_64,
 			   RG_CLH_LUT0_PVDDREF_64_MASK_SFT,
-			   0x37 << RG_CLH_LUT0_PVDDREF_64_SFT);
+			   0x56 << RG_CLH_LUT0_PVDDREF_64_SFT);
+	/* Step 66: Set class-H PVDDref at frame Vaudmax = 1.024V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_65,
 			   RG_CLH_LUT0_PVDDREF_65_MASK_SFT,
-			   0x38 << RG_CLH_LUT0_PVDDREF_65_SFT);
+			   0x58 << RG_CLH_LUT0_PVDDREF_65_SFT);
+	/* Step 67: Set class-H PVDDref at frame Vaudmax = 1.039V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_66,
 			   RG_CLH_LUT0_PVDDREF_66_MASK_SFT,
-			   0x39 << RG_CLH_LUT0_PVDDREF_66_SFT);
+			   0x59 << RG_CLH_LUT0_PVDDREF_66_SFT);
+	/* Step 68: Set class-H PVDDref at frame Vaudmax = 1.055V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_67,
 			   RG_CLH_LUT0_PVDDREF_67_MASK_SFT,
-			   0x3a << RG_CLH_LUT0_PVDDREF_67_SFT);
+			   0x5b << RG_CLH_LUT0_PVDDREF_67_SFT);
+	/* Step 69: Set class-H PVDDref at frame Vaudmax = 1.071V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_68,
 			   RG_CLH_LUT0_PVDDREF_68_MASK_SFT,
-			   0x3b << RG_CLH_LUT0_PVDDREF_68_SFT);
+			   0x5c << RG_CLH_LUT0_PVDDREF_68_SFT);
+	/* Step 70: Set class-H PVDDref at frame Vaudmax = 1.087V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_69,
 			   RG_CLH_LUT0_PVDDREF_69_MASK_SFT,
-			   0x3c << RG_CLH_LUT0_PVDDREF_69_SFT);
+			   0x5e << RG_CLH_LUT0_PVDDREF_69_SFT);
+	/* Step 71: Set class-H PVDDref at frame Vaudmax = 1.102V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_70,
 			   RG_CLH_LUT0_PVDDREF_70_MASK_SFT,
-			   0x3d << RG_CLH_LUT0_PVDDREF_70_SFT);
+			   0x5f << RG_CLH_LUT0_PVDDREF_70_SFT);
+	/* Step 72: Set class-H PVDDref at frame Vaudmax = 1.118V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_71,
 			   RG_CLH_LUT0_PVDDREF_71_MASK_SFT,
-			   0x3e << RG_CLH_LUT0_PVDDREF_71_SFT);
+			   0x61 << RG_CLH_LUT0_PVDDREF_71_SFT);
+	/* Step 73: Set class-H PVDDref at frame Vaudmax = 1.134V (20mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_72,
 			   RG_CLH_LUT0_PVDDREF_72_MASK_SFT,
-			   0x3f << RG_CLH_LUT0_PVDDREF_72_SFT);
+			   0x63 << RG_CLH_LUT0_PVDDREF_72_SFT);
+	/* Step 74: Set class-H PVDDref at frame Vaudmax = 1.150V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_73,
 			   RG_CLH_LUT0_PVDDREF_73_MASK_SFT,
-			   0x40 << RG_CLH_LUT0_PVDDREF_73_SFT);
+			   0x64 << RG_CLH_LUT0_PVDDREF_73_SFT);
+	/* Step 75: Set class-H PVDDref at frame Vaudmax = 1.165V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_74,
 			   RG_CLH_LUT0_PVDDREF_74_MASK_SFT,
-			   0x42 << RG_CLH_LUT0_PVDDREF_74_SFT);
+			   0x66 << RG_CLH_LUT0_PVDDREF_74_SFT);
+	/* Step 76: Set class-H PVDDref at frame Vaudmax = 1.181V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_75,
 			   RG_CLH_LUT0_PVDDREF_75_MASK_SFT,
-			   0x43 << RG_CLH_LUT0_PVDDREF_75_SFT);
+			   0x67 << RG_CLH_LUT0_PVDDREF_75_SFT);
+	/* Step 77: Set class-H PVDDref at frame Vaudmax = 1.197V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_76,
 			   RG_CLH_LUT0_PVDDREF_76_MASK_SFT,
-			   0x44 << RG_CLH_LUT0_PVDDREF_76_SFT);
+			   0x69 << RG_CLH_LUT0_PVDDREF_76_SFT);
+	/* Step 78: Set class-H PVDDref at frame Vaudmax = 1.213V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_77,
 			   RG_CLH_LUT0_PVDDREF_77_MASK_SFT,
-			   0x45 << RG_CLH_LUT0_PVDDREF_77_SFT);
+			   0x6b << RG_CLH_LUT0_PVDDREF_77_SFT);
+	/* Step 79: Set class-H PVDDref at frame Vaudmax = 1.228V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_78,
 			   RG_CLH_LUT0_PVDDREF_78_MASK_SFT,
-			   0x46 << RG_CLH_LUT0_PVDDREF_78_SFT);
+			   0x6c << RG_CLH_LUT0_PVDDREF_78_SFT);
+	/* Step 80: Set class-H PVDDref at frame Vaudmax = 1.244V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_79,
 			   RG_CLH_LUT0_PVDDREF_79_MASK_SFT,
-			   0x47 << RG_CLH_LUT0_PVDDREF_79_SFT);
+			   0x6e << RG_CLH_LUT0_PVDDREF_79_SFT);
+	/* Step 81: Set class-H PVDDref at frame Vaudmax = 1.260V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_80,
 			   RG_CLH_LUT0_PVDDREF_80_MASK_SFT,
-			   0x48 << RG_CLH_LUT0_PVDDREF_80_SFT);
+			   0x6f << RG_CLH_LUT0_PVDDREF_80_SFT);
+	/* Step 82: Set class-H PVDDref at frame Vaudmax = 1.276V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_81,
 			   RG_CLH_LUT0_PVDDREF_81_MASK_SFT,
-			   0x49 << RG_CLH_LUT0_PVDDREF_81_SFT);
+			   0x71 << RG_CLH_LUT0_PVDDREF_81_SFT);
+	/* Step 83: Set class-H PVDDref at frame Vaudmax = 1.291V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_82,
 			   RG_CLH_LUT0_PVDDREF_82_MASK_SFT,
-			   0x4a << RG_CLH_LUT0_PVDDREF_82_SFT);
+			   0x73 << RG_CLH_LUT0_PVDDREF_82_SFT);
+	/* Step 84: Set class-H PVDDref at frame Vaudmax = 1.307V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_83,
 			   RG_CLH_LUT0_PVDDREF_83_MASK_SFT,
-			   0x4b << RG_CLH_LUT0_PVDDREF_83_SFT);
+			   0x74 << RG_CLH_LUT0_PVDDREF_83_SFT);
+	/* Step 85: Set class-H PVDDref at frame Vaudmax = 1.323V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_84,
 			   RG_CLH_LUT0_PVDDREF_84_MASK_SFT,
-			   0x4c << RG_CLH_LUT0_PVDDREF_84_SFT);
+			   0x76 << RG_CLH_LUT0_PVDDREF_84_SFT);
+	/* Step 86: Set class-H PVDDref at frame Vaudmax = 1.339V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_85,
 			   RG_CLH_LUT0_PVDDREF_85_MASK_SFT,
-			   0x4e << RG_CLH_LUT0_PVDDREF_85_SFT);
+			   0x77 << RG_CLH_LUT0_PVDDREF_85_SFT);
+	/* Step 87: Set class-H PVDDref at frame Vaudmax = 1.354V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_86,
 			   RG_CLH_LUT0_PVDDREF_86_MASK_SFT,
-			   0x4f << RG_CLH_LUT0_PVDDREF_86_SFT);
+			   0x79 << RG_CLH_LUT0_PVDDREF_86_SFT);
+	/* Step 88: Set class-H PVDDref at frame Vaudmax = 1.370V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_87,
 			   RG_CLH_LUT0_PVDDREF_87_MASK_SFT,
-			   0x50 << RG_CLH_LUT0_PVDDREF_87_SFT);
+			   0x7b << RG_CLH_LUT0_PVDDREF_87_SFT);
+	/* Step 89: Set class-H PVDDref at frame Vaudmax = 1.386V (30mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_88,
 			   RG_CLH_LUT0_PVDDREF_88_MASK_SFT,
-			   0x51 << RG_CLH_LUT0_PVDDREF_88_SFT);
+			   0x7c << RG_CLH_LUT0_PVDDREF_88_SFT);
+	/* Step 90: Set class-H PVDDref at frame Vaudmax = 1.402V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_89,
 			   RG_CLH_LUT0_PVDDREF_89_MASK_SFT,
-			   0x52 << RG_CLH_LUT0_PVDDREF_89_SFT);
+			   0x7e << RG_CLH_LUT0_PVDDREF_89_SFT);
+	/* Step 91: Set class-H PVDDref at frame Vaudmax = 1.417V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_90,
 			   RG_CLH_LUT0_PVDDREF_90_MASK_SFT,
-			   0x53 << RG_CLH_LUT0_PVDDREF_90_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_90_SFT);
+	/* Step 92: Set class-H PVDDref at frame Vaudmax = 1.433V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_91,
 			   RG_CLH_LUT0_PVDDREF_91_MASK_SFT,
-			   0x54 << RG_CLH_LUT0_PVDDREF_91_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_91_SFT);
+	/* Step 93: Set class-H PVDDref at frame Vaudmax = 1.449V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_92,
 			   RG_CLH_LUT0_PVDDREF_92_MASK_SFT,
-			   0x55 << RG_CLH_LUT0_PVDDREF_92_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_92_SFT);
+	/* Step 94: Set class-H PVDDref at frame Vaudmax = 1.465V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_93,
 			   RG_CLH_LUT0_PVDDREF_93_MASK_SFT,
-			   0x56 << RG_CLH_LUT0_PVDDREF_93_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_93_SFT);
+	/* Step 95: Set class-H PVDDref at frame Vaudmax = 1.480V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_94,
 			   RG_CLH_LUT0_PVDDREF_94_MASK_SFT,
-			   0x57 << RG_CLH_LUT0_PVDDREF_94_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_94_SFT);
+	/* Step 96: Set class-H PVDDref at frame Vaudmax = 1.496V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_95,
 			   RG_CLH_LUT0_PVDDREF_95_MASK_SFT,
-			   0x58 << RG_CLH_LUT0_PVDDREF_95_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_95_SFT);
+	/* Step 97: Set class-H PVDDref at frame Vaudmax = 1.512V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_96,
 			   RG_CLH_LUT0_PVDDREF_96_MASK_SFT,
-			   0x5a << RG_CLH_LUT0_PVDDREF_96_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_96_SFT);
+	/* Step 98: Set class-H PVDDref at frame Vaudmax = 1.528V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_97,
 			   RG_CLH_LUT0_PVDDREF_97_MASK_SFT,
-			   0x5b << RG_CLH_LUT0_PVDDREF_97_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_97_SFT);
+	/* Step 99: Set class-H PVDDref at frame Vaudmax = 1.543V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_98,
 			   RG_CLH_LUT0_PVDDREF_98_MASK_SFT,
-			   0x5c << RG_CLH_LUT0_PVDDREF_98_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_98_SFT);
+	/* Step 100: Set class-H PVDDref at frame Vaudmax = 1.559V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_99,
 			   RG_CLH_LUT0_PVDDREF_99_MASK_SFT,
-			   0x5d << RG_CLH_LUT0_PVDDREF_99_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_99_SFT);
+	/* Step 101: Set class-H PVDDref at frame Vaudmax = 1.575V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_100,
 			   RG_CLH_LUT0_PVDDREF_100_MASK_SFT,
-			   0x5e << RG_CLH_LUT0_PVDDREF_100_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_100_SFT);
+	/* Step 102: Set class-H PVDDref at frame Vaudmax = 1.591V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_101,
 			   RG_CLH_LUT0_PVDDREF_101_MASK_SFT,
-			   0x5f << RG_CLH_LUT0_PVDDREF_101_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_101_SFT);
+	/* Step 103: Set class-H PVDDref at frame Vaudmax = 1.606V (40mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_102,
 			   RG_CLH_LUT0_PVDDREF_102_MASK_SFT,
-			   0x60 << RG_CLH_LUT0_PVDDREF_102_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_102_SFT);
+	/* Step 104: Set class-H PVDDref at frame Vaudmax = 1.622V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_103,
 			   RG_CLH_LUT0_PVDDREF_103_MASK_SFT,
-			   0x61 << RG_CLH_LUT0_PVDDREF_103_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_103_SFT);
+	/* Step 105: Set class-H PVDDref at frame Vaudmax = 1.638V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_104,
 			   RG_CLH_LUT0_PVDDREF_104_MASK_SFT,
-			   0x62 << RG_CLH_LUT0_PVDDREF_104_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_104_SFT);
+	/* Step 106: Set class-H PVDDref at frame Vaudmax = 1.654V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_105,
 			   RG_CLH_LUT0_PVDDREF_105_MASK_SFT,
-			   0x63 << RG_CLH_LUT0_PVDDREF_105_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_105_SFT);
+	/* Step 107: Set class-H PVDDref at frame Vaudmax = 1.669V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_106,
 			   RG_CLH_LUT0_PVDDREF_106_MASK_SFT,
-			   0x65 << RG_CLH_LUT0_PVDDREF_106_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_106_SFT);
+	/* Step 108: Set class-H PVDDref at frame Vaudmax = 1.685V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_107,
 			   RG_CLH_LUT0_PVDDREF_107_MASK_SFT,
-			   0x66 << RG_CLH_LUT0_PVDDREF_107_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_107_SFT);
+	/* Step 109: Set class-H PVDDref at frame Vaudmax = 1.701V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_108,
 			   RG_CLH_LUT0_PVDDREF_108_MASK_SFT,
-			   0x67 << RG_CLH_LUT0_PVDDREF_108_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_108_SFT);
+	/* Step 110: Set class-H PVDDref at frame Vaudmax = 1.717V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_109,
 			   RG_CLH_LUT0_PVDDREF_109_MASK_SFT,
-			   0x68 << RG_CLH_LUT0_PVDDREF_109_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_109_SFT);
+	/* Step 111: Set class-H PVDDref at frame Vaudmax = 1.732V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_110,
 			   RG_CLH_LUT0_PVDDREF_110_MASK_SFT,
-			   0x69 << RG_CLH_LUT0_PVDDREF_110_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_110_SFT);
+	/* Step 112: Set class-H PVDDref at frame Vaudmax = 1.748V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_111,
 			   RG_CLH_LUT0_PVDDREF_111_MASK_SFT,
-			   0x6a << RG_CLH_LUT0_PVDDREF_111_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_111_SFT);
+	/* Step 113: Set class-H PVDDref at frame Vaudmax = 1.764V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_112,
 			   RG_CLH_LUT0_PVDDREF_112_MASK_SFT,
-			   0x6b << RG_CLH_LUT0_PVDDREF_112_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_112_SFT);
+	/* Step 114: Set class-H PVDDref at frame Vaudmax = 1.780V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_113,
 			   RG_CLH_LUT0_PVDDREF_113_MASK_SFT,
-			   0x6c << RG_CLH_LUT0_PVDDREF_113_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_113_SFT);
+	/* Step 115: Set class-H PVDDref at frame Vaudmax = 1.795V (50mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_114,
 			   RG_CLH_LUT0_PVDDREF_114_MASK_SFT,
-			   0x6d << RG_CLH_LUT0_PVDDREF_114_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_114_SFT);
+	/* Step 116: Set class-H PVDDref at frame Vaudmax = 1.811V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_115,
 			   RG_CLH_LUT0_PVDDREF_115_MASK_SFT,
-			   0x6e << RG_CLH_LUT0_PVDDREF_115_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_115_SFT);
+	/* Step 117: Set class-H PVDDref at frame Vaudmax = 1.827V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_116,
 			   RG_CLH_LUT0_PVDDREF_116_MASK_SFT,
-			   0x6f << RG_CLH_LUT0_PVDDREF_116_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_116_SFT);
+	/* Step 118: Set class-H PVDDref at frame Vaudmax = 1.843V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_117,
 			   RG_CLH_LUT0_PVDDREF_117_MASK_SFT,
-			   0x71 << RG_CLH_LUT0_PVDDREF_117_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_117_SFT);
+	/* Step 119: Set class-H PVDDref at frame Vaudmax = 1.858V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_118,
 			   RG_CLH_LUT0_PVDDREF_118_MASK_SFT,
-			   0x72 << RG_CLH_LUT0_PVDDREF_118_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_118_SFT);
+	/* Step 120: Set class-H PVDDref at frame Vaudmax = 1.874V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_119,
 			   RG_CLH_LUT0_PVDDREF_119_MASK_SFT,
-			   0x73 << RG_CLH_LUT0_PVDDREF_119_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_119_SFT);
+	/* Step 121: Set class-H PVDDref at frame Vaudmax = 1.890V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_120,
 			   RG_CLH_LUT0_PVDDREF_120_MASK_SFT,
-			   0x74 << RG_CLH_LUT0_PVDDREF_120_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_120_SFT);
+	/* Step 122: Set class-H PVDDref at frame Vaudmax = 1.906V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_121,
 			   RG_CLH_LUT0_PVDDREF_121_MASK_SFT,
-			   0x74 << RG_CLH_LUT0_PVDDREF_121_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_121_SFT);
+	/* Step 123: Set class-H PVDDref at frame Vaudmax = 1.921V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_122,
 			   RG_CLH_LUT0_PVDDREF_122_MASK_SFT,
-			   0x74 << RG_CLH_LUT0_PVDDREF_122_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_122_SFT);
+	/* Step 124: Set class-H PVDDref at frame Vaudmax = 1.937V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_123,
 			   RG_CLH_LUT0_PVDDREF_123_MASK_SFT,
-			   0x74 << RG_CLH_LUT0_PVDDREF_123_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_123_SFT);
+	/* Step 125: Set class-H PVDDref at frame Vaudmax = 1.953V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_124,
 			   RG_CLH_LUT0_PVDDREF_124_MASK_SFT,
-			   0x74 << RG_CLH_LUT0_PVDDREF_124_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_124_SFT);
+	/* Step 126: Set class-H PVDDref at frame Vaudmax = 1.969V (60mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_125,
 			   RG_CLH_LUT0_PVDDREF_125_MASK_SFT,
-			   0x74 << RG_CLH_LUT0_PVDDREF_125_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_125_SFT);
+	/* Step 127: Set class-H PVDDref at frame Vaudmax = 1.984V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_126,
 			   RG_CLH_LUT0_PVDDREF_126_MASK_SFT,
-			   0x74 << RG_CLH_LUT0_PVDDREF_126_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_126_SFT);
+	/* Step 128: Set class-H PVDDref at frame Vaudmax = 2.000V (62.5mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_MSB_127,
 			   RG_CLH_LUT0_PVDDREF_127_MASK_SFT,
-			   0x74 << RG_CLH_LUT0_PVDDREF_127_SFT);
+			   0x7f << RG_CLH_LUT0_PVDDREF_127_SFT);
+	/*
+	 * Step 129:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.000V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_0,
 			   RG_CLH_LUT0_TONREF_0_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_0_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_0,
 			   RG_CLH_LUT0_NSEG_0_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_0_SFT);
+	/*
+	 * Step 130:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.016V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_1,
 			   RG_CLH_LUT0_TONREF_1_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_1_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_1,
 			   RG_CLH_LUT0_NSEG_1_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_1_SFT);
+	/*
+	 * Step 131:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.031V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_2,
 			   RG_CLH_LUT0_TONREF_2_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_2_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_2,
 			   RG_CLH_LUT0_NSEG_2_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_2_SFT);
+	/*
+	 * Step 132:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.047V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_3,
 			   RG_CLH_LUT0_TONREF_3_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_3_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_3,
 			   RG_CLH_LUT0_NSEG_3_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_3_SFT);
+	/*
+	 * Step 133:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.063V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_4,
 			   RG_CLH_LUT0_TONREF_4_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_4_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_4,
 			   RG_CLH_LUT0_NSEG_4_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_4_SFT);
+	/*
+	 * Step 134:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.079V (0.1mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_5,
 			   RG_CLH_LUT0_TONREF_5_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_5_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_5,
 			   RG_CLH_LUT0_NSEG_5_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_5_SFT);
+	/*
+	 * Step 135:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.094V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_6,
 			   RG_CLH_LUT0_TONREF_6_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_6_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_6,
 			   RG_CLH_LUT0_NSEG_6_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_6_SFT);
+	/*
+	 * Step 136:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.110V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_7,
 			   RG_CLH_LUT0_TONREF_7_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_7_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_7,
 			   RG_CLH_LUT0_NSEG_7_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_7_SFT);
+	/*
+	 * Step 137:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.126V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_8,
 			   RG_CLH_LUT0_TONREF_8_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_8_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_8,
 			   RG_CLH_LUT0_NSEG_8_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_8_SFT);
+	/*
+	 * Step 138:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.142V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_9,
 			   RG_CLH_LUT0_TONREF_9_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_9_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_9,
 			   RG_CLH_LUT0_NSEG_9_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_9_SFT);
+	/*
+	 * Step 139:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.157V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_10,
 			   RG_CLH_LUT0_TONREF_10_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_10_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_10,
 			   RG_CLH_LUT0_NSEG_10_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_10_SFT);
+	/*
+	 * Step 140:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.173V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_11,
 			   RG_CLH_LUT0_TONREF_11_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_11_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_11,
 			   RG_CLH_LUT0_NSEG_11_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_11_SFT);
+	/*
+	 * Step 141:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.189V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_12,
 			   RG_CLH_LUT0_TONREF_12_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_12_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_12,
 			   RG_CLH_LUT0_NSEG_12_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_12_SFT);
+	/*
+	 * Step 142:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.205V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_13,
 			   RG_CLH_LUT0_TONREF_13_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_13_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_13,
 			   RG_CLH_LUT0_NSEG_13_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_13_SFT);
+	/*
+	 * Step 143:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.220V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_14,
 			   RG_CLH_LUT0_TONREF_14_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_14_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_14,
 			   RG_CLH_LUT0_NSEG_14_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_14_SFT);
+	/*
+	 * Step 144:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.236V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_15,
 			   RG_CLH_LUT0_TONREF_15_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_15_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_15,
 			   RG_CLH_LUT0_NSEG_15_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_15_SFT);
+	/*
+	 * Step 145:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.252V (1mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_16,
 			   RG_CLH_LUT0_TONREF_16_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_16_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_16,
 			   RG_CLH_LUT0_NSEG_16_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_16_SFT);
+	/*
+	 * Step 146:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.268V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_17,
 			   RG_CLH_LUT0_TONREF_17_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_17_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_17,
 			   RG_CLH_LUT0_NSEG_17_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_17_SFT);
+	/*
+	 * Step 147:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.283V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_18,
 			   RG_CLH_LUT0_TONREF_18_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_18_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_18,
 			   RG_CLH_LUT0_NSEG_18_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_18_SFT);
+	/*
+	 * Step 148:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.299V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_19,
 			   RG_CLH_LUT0_TONREF_19_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_19_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_19,
 			   RG_CLH_LUT0_NSEG_19_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_19_SFT);
+	/*
+	 * Step 149:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.315V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_20,
 			   RG_CLH_LUT0_TONREF_20_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_20_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_20,
 			   RG_CLH_LUT0_NSEG_20_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_20_SFT);
+	/*
+	 * Step 150:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.331V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_21,
 			   RG_CLH_LUT0_TONREF_21_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_21_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_21,
 			   RG_CLH_LUT0_NSEG_21_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_21_SFT);
+	/*
+	 * Step 151:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.346V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_22,
 			   RG_CLH_LUT0_TONREF_22_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_22_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_22,
 			   RG_CLH_LUT0_NSEG_22_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_22_SFT);
+	/*
+	 * Step 152:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.362V (2mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_23,
 			   RG_CLH_LUT0_TONREF_23_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_23_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_23,
 			   RG_CLH_LUT0_NSEG_23_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_23_SFT);
+	/*
+	 * Step 153:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.378V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_24,
 			   RG_CLH_LUT0_TONREF_24_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_24_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_24,
 			   RG_CLH_LUT0_NSEG_24_MASK_SFT,
 			   0x0 << RG_CLH_LUT0_NSEG_24_SFT);
+	/*
+	 * Step 154:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.394V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_25,
 			   RG_CLH_LUT0_TONREF_25_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_25_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_25,
 			   RG_CLH_LUT0_NSEG_25_MASK_SFT,
-			   0x1 << RG_CLH_LUT0_NSEG_25_SFT);
+			   0x0 << RG_CLH_LUT0_NSEG_25_SFT);
+	/*
+	 * Step 155:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.409V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_26,
 			   RG_CLH_LUT0_TONREF_26_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_26_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_26,
 			   RG_CLH_LUT0_NSEG_26_MASK_SFT,
-			   0x1 << RG_CLH_LUT0_NSEG_26_SFT);
+			   0x0 << RG_CLH_LUT0_NSEG_26_SFT);
+	/*
+	 * Step 156:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.425V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_27,
 			   RG_CLH_LUT0_TONREF_27_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_27_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_27,
 			   RG_CLH_LUT0_NSEG_27_MASK_SFT,
-			   0x1 << RG_CLH_LUT0_NSEG_27_SFT);
+			   0x0 << RG_CLH_LUT0_NSEG_27_SFT);
+	/*
+	 * Step 157:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.441V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_28,
 			   RG_CLH_LUT0_TONREF_28_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_28_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_28,
 			   RG_CLH_LUT0_NSEG_28_MASK_SFT,
-			   0x1 << RG_CLH_LUT0_NSEG_28_SFT);
+			   0x0 << RG_CLH_LUT0_NSEG_28_SFT);
+	/*
+	 * Step 158:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.457V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_29,
 			   RG_CLH_LUT0_TONREF_29_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_29_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_29,
 			   RG_CLH_LUT0_NSEG_29_MASK_SFT,
-			   0x1 << RG_CLH_LUT0_NSEG_29_SFT);
+			   0x0 << RG_CLH_LUT0_NSEG_29_SFT);
+	/*
+	 * Step 159:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.472V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_30,
 			   RG_CLH_LUT0_TONREF_30_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_30_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_30,
 			   RG_CLH_LUT0_NSEG_30_MASK_SFT,
-			   0x1 << RG_CLH_LUT0_NSEG_30_SFT);
+			   0x0 << RG_CLH_LUT0_NSEG_30_SFT);
+	/*
+	 * Step 160:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.488V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_31,
 			   RG_CLH_LUT0_TONREF_31_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_31_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_31,
 			   RG_CLH_LUT0_NSEG_31_MASK_SFT,
-			   0x1 << RG_CLH_LUT0_NSEG_31_SFT);
+			   0x0 << RG_CLH_LUT0_NSEG_31_SFT);
+	/*
+	 * Step 161:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.504V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_32,
 			   RG_CLH_LUT0_TONREF_32_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_32_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_32,
 			   RG_CLH_LUT0_NSEG_32_MASK_SFT,
-			   0x1 << RG_CLH_LUT0_NSEG_32_SFT);
+			   0x0 << RG_CLH_LUT0_NSEG_32_SFT);
+	/*
+	 * Step 162:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.520V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_33,
 			   RG_CLH_LUT0_TONREF_33_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_33_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_33,
 			   RG_CLH_LUT0_NSEG_33_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_33_SFT);
+	/*
+	 * Step 163:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.535V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_34,
 			   RG_CLH_LUT0_TONREF_34_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_34_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_34,
 			   RG_CLH_LUT0_NSEG_34_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_34_SFT);
+	/*
+	 * Step 164:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.551V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_35,
 			   RG_CLH_LUT0_TONREF_35_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_35_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_35,
 			   RG_CLH_LUT0_NSEG_35_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_35_SFT);
+	/*
+	 * Step 165:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.567V (5mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_36,
 			   RG_CLH_LUT0_TONREF_36_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_36_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_36,
 			   RG_CLH_LUT0_NSEG_36_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_36_SFT);
+	/*
+	 * Step 166:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.583V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_37,
 			   RG_CLH_LUT0_TONREF_37_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_37_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_37,
 			   RG_CLH_LUT0_NSEG_37_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_37_SFT);
+	/*
+	 * Step 167:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.598V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_38,
 			   RG_CLH_LUT0_TONREF_38_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_38_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_38,
 			   RG_CLH_LUT0_NSEG_38_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_38_SFT);
+	/*
+	 * Step 168:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.614V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_39,
 			   RG_CLH_LUT0_TONREF_39_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_39_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_39,
 			   RG_CLH_LUT0_NSEG_39_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_39_SFT);
+	/*
+	 * Step 169:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.630V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_40,
 			   RG_CLH_LUT0_TONREF_40_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_40_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_40,
 			   RG_CLH_LUT0_NSEG_40_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_40_SFT);
+	/*
+	 * Step 170:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.646V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_41,
 			   RG_CLH_LUT0_TONREF_41_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_41_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_41,
 			   RG_CLH_LUT0_NSEG_41_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_41_SFT);
+	/*
+	 * Step 171:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.661V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_42,
 			   RG_CLH_LUT0_TONREF_42_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_42_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_42,
 			   RG_CLH_LUT0_NSEG_42_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_42_SFT);
+	/*
+	 * Step 172:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.677V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_43,
 			   RG_CLH_LUT0_TONREF_43_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_43_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_43,
 			   RG_CLH_LUT0_NSEG_43_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_43_SFT);
+	/*
+	 * Step 173:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.693V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_44,
 			   RG_CLH_LUT0_TONREF_44_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_44_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_44,
 			   RG_CLH_LUT0_NSEG_44_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_44_SFT);
+	/*
+	 * Step 174:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.709V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_45,
 			   RG_CLH_LUT0_TONREF_45_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_45_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_45,
 			   RG_CLH_LUT0_NSEG_45_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_45_SFT);
+	/*
+	 * Step 175:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.724V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_46,
 			   RG_CLH_LUT0_TONREF_46_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_46_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_46,
 			   RG_CLH_LUT0_NSEG_46_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_46_SFT);
+	/*
+	 * Step 176:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.740V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_47,
 			   RG_CLH_LUT0_TONREF_47_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_47_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_47,
 			   RG_CLH_LUT0_NSEG_47_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_47_SFT);
+	/*
+	 * Step 177:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.756V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_48,
 			   RG_CLH_LUT0_TONREF_48_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_48_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_48,
 			   RG_CLH_LUT0_NSEG_48_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_48_SFT);
+	/*
+	 * Step 178:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.772V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_49,
 			   RG_CLH_LUT0_TONREF_49_MASK_SFT,
 			   0x7 << RG_CLH_LUT0_TONREF_49_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_49,
 			   RG_CLH_LUT0_NSEG_49_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_49_SFT);
+	/*
+	 * Step 179:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.787V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_50,
 			   RG_CLH_LUT0_TONREF_50_MASK_SFT,
-			   0x7 << RG_CLH_LUT0_TONREF_50_SFT);
+			   0x8 << RG_CLH_LUT0_TONREF_50_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_50,
 			   RG_CLH_LUT0_NSEG_50_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_50_SFT);
+	/*
+	 * Step 180:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.803V (10mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_51,
 			   RG_CLH_LUT0_TONREF_51_MASK_SFT,
-			   0x7 << RG_CLH_LUT0_TONREF_51_SFT);
+			   0x8 << RG_CLH_LUT0_TONREF_51_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_51,
 			   RG_CLH_LUT0_NSEG_51_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_51_SFT);
+	/*
+	 * Step 181:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.819V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_52,
 			   RG_CLH_LUT0_TONREF_52_MASK_SFT,
-			   0x6 << RG_CLH_LUT0_TONREF_52_SFT);
+			   0x8 << RG_CLH_LUT0_TONREF_52_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_52,
 			   RG_CLH_LUT0_NSEG_52_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_52_SFT);
+	/*
+	 * Step 182:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.835V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_53,
 			   RG_CLH_LUT0_TONREF_53_MASK_SFT,
-			   0x6 << RG_CLH_LUT0_TONREF_53_SFT);
+			   0x8 << RG_CLH_LUT0_TONREF_53_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_53,
 			   RG_CLH_LUT0_NSEG_53_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_53_SFT);
+	/*
+	 * Step 183:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.850V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_54,
 			   RG_CLH_LUT0_TONREF_54_MASK_SFT,
-			   0x6 << RG_CLH_LUT0_TONREF_54_SFT);
+			   0x9 << RG_CLH_LUT0_TONREF_54_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_54,
 			   RG_CLH_LUT0_NSEG_54_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_54_SFT);
+	/*
+	 * Step 184:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.866V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_55,
 			   RG_CLH_LUT0_TONREF_55_MASK_SFT,
-			   0x6 << RG_CLH_LUT0_TONREF_55_SFT);
+			   0x9 << RG_CLH_LUT0_TONREF_55_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_55,
 			   RG_CLH_LUT0_NSEG_55_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_55_SFT);
+	/*
+	 * Step 185:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.882V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_56,
 			   RG_CLH_LUT0_TONREF_56_MASK_SFT,
-			   0x6 << RG_CLH_LUT0_TONREF_56_SFT);
+			   0x9 << RG_CLH_LUT0_TONREF_56_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_56,
 			   RG_CLH_LUT0_NSEG_56_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_56_SFT);
+	/*
+	 * Step 186:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.898V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_57,
 			   RG_CLH_LUT0_TONREF_57_MASK_SFT,
-			   0x6 << RG_CLH_LUT0_TONREF_57_SFT);
+			   0x9 << RG_CLH_LUT0_TONREF_57_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_57,
 			   RG_CLH_LUT0_NSEG_57_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_57_SFT);
+	/*
+	 * Step 187:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.913V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_58,
 			   RG_CLH_LUT0_TONREF_58_MASK_SFT,
-			   0x6 << RG_CLH_LUT0_TONREF_58_SFT);
+			   0xa << RG_CLH_LUT0_TONREF_58_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_58,
 			   RG_CLH_LUT0_NSEG_58_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_58_SFT);
+	/*
+	 * Step 188:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.929V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_59,
 			   RG_CLH_LUT0_TONREF_59_MASK_SFT,
-			   0x6 << RG_CLH_LUT0_TONREF_59_SFT);
+			   0xa << RG_CLH_LUT0_TONREF_59_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_59,
 			   RG_CLH_LUT0_NSEG_59_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_59_SFT);
+	/*
+	 * Step 189:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.945V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_60,
 			   RG_CLH_LUT0_TONREF_60_MASK_SFT,
-			   0x6 << RG_CLH_LUT0_TONREF_60_SFT);
+			   0xa << RG_CLH_LUT0_TONREF_60_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_60,
 			   RG_CLH_LUT0_NSEG_60_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_60_SFT);
+	/*
+	 * Step 190:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.961V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_61,
 			   RG_CLH_LUT0_TONREF_61_MASK_SFT,
-			   0x6 << RG_CLH_LUT0_TONREF_61_SFT);
+			   0xa << RG_CLH_LUT0_TONREF_61_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_61,
 			   RG_CLH_LUT0_NSEG_61_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_61_SFT);
+	/*
+	 * Step 191:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.976V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_62,
 			   RG_CLH_LUT0_TONREF_62_MASK_SFT,
-			   0x6 << RG_CLH_LUT0_TONREF_62_SFT);
+			   0xa << RG_CLH_LUT0_TONREF_62_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_62,
 			   RG_CLH_LUT0_NSEG_62_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_62_SFT);
+	/*
+	 * Step 192:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.992V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_63,
 			   RG_CLH_LUT0_TONREF_63_MASK_SFT,
-			   0x6 << RG_CLH_LUT0_TONREF_63_SFT);
+			   0xb << RG_CLH_LUT0_TONREF_63_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_63,
 			   RG_CLH_LUT0_NSEG_63_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_63_SFT);
+	/*
+	 * Step 193:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.008V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_64,
 			   RG_CLH_LUT0_TONREF_64_MASK_SFT,
-			   0x6 << RG_CLH_LUT0_TONREF_64_SFT);
+			   0xb << RG_CLH_LUT0_TONREF_64_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_64,
 			   RG_CLH_LUT0_NSEG_64_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_64_SFT);
+	/*
+	 * Step 194:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.024V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_65,
 			   RG_CLH_LUT0_TONREF_65_MASK_SFT,
-			   0x7 << RG_CLH_LUT0_TONREF_65_SFT);
+			   0xb << RG_CLH_LUT0_TONREF_65_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_65,
 			   RG_CLH_LUT0_NSEG_65_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_65_SFT);
+	/*
+	 * Step 195:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.039V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_66,
 			   RG_CLH_LUT0_TONREF_66_MASK_SFT,
-			   0x7 << RG_CLH_LUT0_TONREF_66_SFT);
+			   0xc << RG_CLH_LUT0_TONREF_66_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_66,
 			   RG_CLH_LUT0_NSEG_66_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_66_SFT);
+	/*
+	 * Step 196:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.055V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_67,
 			   RG_CLH_LUT0_TONREF_67_MASK_SFT,
-			   0x7 << RG_CLH_LUT0_TONREF_67_SFT);
+			   0xc << RG_CLH_LUT0_TONREF_67_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_67,
 			   RG_CLH_LUT0_NSEG_67_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_67_SFT);
+	/*
+	 * Step 197:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.071V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_68,
 			   RG_CLH_LUT0_TONREF_68_MASK_SFT,
-			   0x7 << RG_CLH_LUT0_TONREF_68_SFT);
+			   0xc << RG_CLH_LUT0_TONREF_68_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_68,
 			   RG_CLH_LUT0_NSEG_68_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_68_SFT);
+	/*
+	 * Step 198:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.087V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_69,
 			   RG_CLH_LUT0_TONREF_69_MASK_SFT,
-			   0x7 << RG_CLH_LUT0_TONREF_69_SFT);
+			   0xc << RG_CLH_LUT0_TONREF_69_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_69,
 			   RG_CLH_LUT0_NSEG_69_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_69_SFT);
+	/*
+	 * Step 199:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.102V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_70,
 			   RG_CLH_LUT0_TONREF_70_MASK_SFT,
-			   0x7 << RG_CLH_LUT0_TONREF_70_SFT);
+			   0xd << RG_CLH_LUT0_TONREF_70_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_70,
 			   RG_CLH_LUT0_NSEG_70_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_70_SFT);
+	/*
+	 * Step 200:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.118V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_71,
 			   RG_CLH_LUT0_TONREF_71_MASK_SFT,
-			   0x8 << RG_CLH_LUT0_TONREF_71_SFT);
+			   0xd << RG_CLH_LUT0_TONREF_71_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_71,
 			   RG_CLH_LUT0_NSEG_71_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_71_SFT);
+	/*
+	 * Step 201:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.134V (20mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_72,
 			   RG_CLH_LUT0_TONREF_72_MASK_SFT,
-			   0x8 << RG_CLH_LUT0_TONREF_72_SFT);
+			   0xd << RG_CLH_LUT0_TONREF_72_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_72,
 			   RG_CLH_LUT0_NSEG_72_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_72_SFT);
+	/*
+	 * Step 202:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.150V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_73,
 			   RG_CLH_LUT0_TONREF_73_MASK_SFT,
-			   0x8 << RG_CLH_LUT0_TONREF_73_SFT);
+			   0xe << RG_CLH_LUT0_TONREF_73_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_73,
 			   RG_CLH_LUT0_NSEG_73_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_73_SFT);
+	/*
+	 * Step 203:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.165V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_74,
 			   RG_CLH_LUT0_TONREF_74_MASK_SFT,
-			   0x8 << RG_CLH_LUT0_TONREF_74_SFT);
+			   0xe << RG_CLH_LUT0_TONREF_74_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_74,
 			   RG_CLH_LUT0_NSEG_74_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_74_SFT);
+	/*
+	 * Step 204:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.181V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_75,
 			   RG_CLH_LUT0_TONREF_75_MASK_SFT,
-			   0x8 << RG_CLH_LUT0_TONREF_75_SFT);
+			   0xe << RG_CLH_LUT0_TONREF_75_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_75,
 			   RG_CLH_LUT0_NSEG_75_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_75_SFT);
+	/*
+	 * Step 205:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.197V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_76,
 			   RG_CLH_LUT0_TONREF_76_MASK_SFT,
-			   0x8 << RG_CLH_LUT0_TONREF_76_SFT);
+			   0xf << RG_CLH_LUT0_TONREF_76_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_76,
 			   RG_CLH_LUT0_NSEG_76_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_76_SFT);
+	/*
+	 * Step 206:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.213V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_77,
 			   RG_CLH_LUT0_TONREF_77_MASK_SFT,
-			   0x9 << RG_CLH_LUT0_TONREF_77_SFT);
+			   0xf << RG_CLH_LUT0_TONREF_77_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_77,
 			   RG_CLH_LUT0_NSEG_77_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_77_SFT);
+	/*
+	 * Step 207:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.228V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_78,
 			   RG_CLH_LUT0_TONREF_78_MASK_SFT,
-			   0x9 << RG_CLH_LUT0_TONREF_78_SFT);
+			   0xf << RG_CLH_LUT0_TONREF_78_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_78,
 			   RG_CLH_LUT0_NSEG_78_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_78_SFT);
+	/*
+	 * Step 208:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.244V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_79,
 			   RG_CLH_LUT0_TONREF_79_MASK_SFT,
-			   0x9 << RG_CLH_LUT0_TONREF_79_SFT);
+			   0xf << RG_CLH_LUT0_TONREF_79_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_79,
 			   RG_CLH_LUT0_NSEG_79_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_79_SFT);
+	/*
+	 * Step 209:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.260V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_80,
 			   RG_CLH_LUT0_TONREF_80_MASK_SFT,
-			   0x9 << RG_CLH_LUT0_TONREF_80_SFT);
+			   0x10 << RG_CLH_LUT0_TONREF_80_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_80,
 			   RG_CLH_LUT0_NSEG_80_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_80_SFT);
+	/*
+	 * Step 210:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.276V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_81,
 			   RG_CLH_LUT0_TONREF_81_MASK_SFT,
-			   0x9 << RG_CLH_LUT0_TONREF_81_SFT);
+			   0x11 << RG_CLH_LUT0_TONREF_81_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_81,
 			   RG_CLH_LUT0_NSEG_81_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_81_SFT);
+	/*
+	 * Step 211:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.291V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_82,
 			   RG_CLH_LUT0_TONREF_82_MASK_SFT,
-			   0xa << RG_CLH_LUT0_TONREF_82_SFT);
+			   0x11 << RG_CLH_LUT0_TONREF_82_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_82,
 			   RG_CLH_LUT0_NSEG_82_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_82_SFT);
+	/*
+	 * Step 212:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.307V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_83,
 			   RG_CLH_LUT0_TONREF_83_MASK_SFT,
-			   0xa << RG_CLH_LUT0_TONREF_83_SFT);
+			   0x11 << RG_CLH_LUT0_TONREF_83_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_83,
 			   RG_CLH_LUT0_NSEG_83_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_83_SFT);
+	/*
+	 * Step 213:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.323V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_84,
 			   RG_CLH_LUT0_TONREF_84_MASK_SFT,
-			   0xa << RG_CLH_LUT0_TONREF_84_SFT);
+			   0x11 << RG_CLH_LUT0_TONREF_84_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_84,
 			   RG_CLH_LUT0_NSEG_84_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_84_SFT);
+	/*
+	 * Step 214:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.339V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_85,
 			   RG_CLH_LUT0_TONREF_85_MASK_SFT,
-			   0xa << RG_CLH_LUT0_TONREF_85_SFT);
+			   0x12 << RG_CLH_LUT0_TONREF_85_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_85,
 			   RG_CLH_LUT0_NSEG_85_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_85_SFT);
+	/*
+	 * Step 215:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.354V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_86,
 			   RG_CLH_LUT0_TONREF_86_MASK_SFT,
-			   0xa << RG_CLH_LUT0_TONREF_86_SFT);
+			   0x12 << RG_CLH_LUT0_TONREF_86_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_86,
 			   RG_CLH_LUT0_NSEG_86_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_86_SFT);
+	/*
+	 * Step 216:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.370V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_87,
 			   RG_CLH_LUT0_TONREF_87_MASK_SFT,
-			   0xa << RG_CLH_LUT0_TONREF_87_SFT);
+			   0x12 << RG_CLH_LUT0_TONREF_87_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_87,
 			   RG_CLH_LUT0_NSEG_87_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_87_SFT);
+	/*
+	 * Step 217:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.386V (30mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_88,
 			   RG_CLH_LUT0_TONREF_88_MASK_SFT,
-			   0xb << RG_CLH_LUT0_TONREF_88_SFT);
+			   0x12 << RG_CLH_LUT0_TONREF_88_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_88,
 			   RG_CLH_LUT0_NSEG_88_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_88_SFT);
+	/*
+	 * Step 218:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.402V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_89,
 			   RG_CLH_LUT0_TONREF_89_MASK_SFT,
-			   0xb << RG_CLH_LUT0_TONREF_89_SFT);
+			   0x13 << RG_CLH_LUT0_TONREF_89_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_89,
 			   RG_CLH_LUT0_NSEG_89_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_89_SFT);
+	/*
+	 * Step 219:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.417V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_90,
 			   RG_CLH_LUT0_TONREF_90_MASK_SFT,
-			   0xb << RG_CLH_LUT0_TONREF_90_SFT);
+			   0x13 << RG_CLH_LUT0_TONREF_90_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_90,
 			   RG_CLH_LUT0_NSEG_90_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_90_SFT);
+	/*
+	 * Step 220:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.433V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_91,
 			   RG_CLH_LUT0_TONREF_91_MASK_SFT,
-			   0xb << RG_CLH_LUT0_TONREF_91_SFT);
+			   0x13 << RG_CLH_LUT0_TONREF_91_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_91,
 			   RG_CLH_LUT0_NSEG_91_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_91_SFT);
+	/*
+	 * Step 221:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.449V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_92,
 			   RG_CLH_LUT0_TONREF_92_MASK_SFT,
-			   0xb << RG_CLH_LUT0_TONREF_92_SFT);
+			   0x13 << RG_CLH_LUT0_TONREF_92_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_92,
 			   RG_CLH_LUT0_NSEG_92_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_92_SFT);
+	/*
+	 * Step 222:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.465V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_93,
 			   RG_CLH_LUT0_TONREF_93_MASK_SFT,
-			   0xc << RG_CLH_LUT0_TONREF_93_SFT);
+			   0x14 << RG_CLH_LUT0_TONREF_93_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_93,
 			   RG_CLH_LUT0_NSEG_93_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_93_SFT);
+	/*
+	 * Step 223:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.480V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_94,
 			   RG_CLH_LUT0_TONREF_94_MASK_SFT,
-			   0xc << RG_CLH_LUT0_TONREF_94_SFT);
+			   0x14 << RG_CLH_LUT0_TONREF_94_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_94,
 			   RG_CLH_LUT0_NSEG_94_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_94_SFT);
+	/*
+	 * Step 224:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.496V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_95,
 			   RG_CLH_LUT0_TONREF_95_MASK_SFT,
-			   0xc << RG_CLH_LUT0_TONREF_95_SFT);
+			   0x14 << RG_CLH_LUT0_TONREF_95_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_95,
 			   RG_CLH_LUT0_NSEG_95_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_95_SFT);
+	/*
+	 * Step 225:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.512V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_96,
 			   RG_CLH_LUT0_TONREF_96_MASK_SFT,
-			   0xc << RG_CLH_LUT0_TONREF_96_SFT);
+			   0x14 << RG_CLH_LUT0_TONREF_96_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_96,
 			   RG_CLH_LUT0_NSEG_96_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_96_SFT);
+	/*
+	 * Step 226:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.528V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_97,
 			   RG_CLH_LUT0_TONREF_97_MASK_SFT,
-			   0xc << RG_CLH_LUT0_TONREF_97_SFT);
+			   0x15 << RG_CLH_LUT0_TONREF_97_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_97,
 			   RG_CLH_LUT0_NSEG_97_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_97_SFT);
+	/*
+	 * Step 227:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.543V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_98,
 			   RG_CLH_LUT0_TONREF_98_MASK_SFT,
-			   0xd << RG_CLH_LUT0_TONREF_98_SFT);
+			   0x15 << RG_CLH_LUT0_TONREF_98_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_98,
 			   RG_CLH_LUT0_NSEG_98_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_98_SFT);
+	/*
+	 * Step 228:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.559V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_99,
 			   RG_CLH_LUT0_TONREF_99_MASK_SFT,
-			   0xd << RG_CLH_LUT0_TONREF_99_SFT);
+			   0x15 << RG_CLH_LUT0_TONREF_99_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_99,
 			   RG_CLH_LUT0_NSEG_99_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_99_SFT);
+	/*
+	 * Step 229:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.575V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_100,
 			   RG_CLH_LUT0_TONREF_100_MASK_SFT,
-			   0xd << RG_CLH_LUT0_TONREF_100_SFT);
+			   0x15 << RG_CLH_LUT0_TONREF_100_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_100,
 			   RG_CLH_LUT0_NSEG_100_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_100_SFT);
+	/*
+	 * Step 230:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.591V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_101,
 			   RG_CLH_LUT0_TONREF_101_MASK_SFT,
-			   0xd << RG_CLH_LUT0_TONREF_101_SFT);
+			   0x16 << RG_CLH_LUT0_TONREF_101_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_101,
 			   RG_CLH_LUT0_NSEG_101_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_101_SFT);
+	/*
+	 * Step 231:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.606V (40mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_102,
 			   RG_CLH_LUT0_TONREF_102_MASK_SFT,
-			   0xd << RG_CLH_LUT0_TONREF_102_SFT);
+			   0x16 << RG_CLH_LUT0_TONREF_102_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_102,
 			   RG_CLH_LUT0_NSEG_102_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_102_SFT);
+	/*
+	 * Step 232:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.622V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_103,
 			   RG_CLH_LUT0_TONREF_103_MASK_SFT,
-			   0xe << RG_CLH_LUT0_TONREF_103_SFT);
+			   0x16 << RG_CLH_LUT0_TONREF_103_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_103,
 			   RG_CLH_LUT0_NSEG_103_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_103_SFT);
+	/*
+	 * Step 233:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.638V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_104,
 			   RG_CLH_LUT0_TONREF_104_MASK_SFT,
-			   0xe << RG_CLH_LUT0_TONREF_104_SFT);
+			   0x16 << RG_CLH_LUT0_TONREF_104_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_104,
 			   RG_CLH_LUT0_NSEG_104_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_104_SFT);
+	/*
+	 * Step 234:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.654V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_105,
 			   RG_CLH_LUT0_TONREF_105_MASK_SFT,
-			   0xe << RG_CLH_LUT0_TONREF_105_SFT);
+			   0x17 << RG_CLH_LUT0_TONREF_105_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_105,
 			   RG_CLH_LUT0_NSEG_105_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_105_SFT);
+	/*
+	 * Step 235:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.669V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_106,
 			   RG_CLH_LUT0_TONREF_106_MASK_SFT,
-			   0xe << RG_CLH_LUT0_TONREF_106_SFT);
+			   0x17 << RG_CLH_LUT0_TONREF_106_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_106,
 			   RG_CLH_LUT0_NSEG_106_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_106_SFT);
+	/*
+	 * Step 236:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.685V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_107,
 			   RG_CLH_LUT0_TONREF_107_MASK_SFT,
-			   0xf << RG_CLH_LUT0_TONREF_107_SFT);
+			   0x17 << RG_CLH_LUT0_TONREF_107_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_107,
 			   RG_CLH_LUT0_NSEG_107_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_107_SFT);
+	/*
+	 * Step 237:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.701V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_108,
 			   RG_CLH_LUT0_TONREF_108_MASK_SFT,
-			   0xf << RG_CLH_LUT0_TONREF_108_SFT);
+			   0xcb << RG_CLH_LUT0_TONREF_108_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_108,
 			   RG_CLH_LUT0_NSEG_108_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_108_SFT);
+	/*
+	 * Step 238:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.717V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_109,
 			   RG_CLH_LUT0_TONREF_109_MASK_SFT,
-			   0xf << RG_CLH_LUT0_TONREF_109_SFT);
+			   0x18 << RG_CLH_LUT0_TONREF_109_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_109,
 			   RG_CLH_LUT0_NSEG_109_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_109_SFT);
+	/*
+	 * Step 239:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.732V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_110,
 			   RG_CLH_LUT0_TONREF_110_MASK_SFT,
-			   0xf << RG_CLH_LUT0_TONREF_110_SFT);
+			   0x18 << RG_CLH_LUT0_TONREF_110_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_110,
 			   RG_CLH_LUT0_NSEG_110_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_110_SFT);
+	/*
+	 * Step 240:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.748V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_111,
 			   RG_CLH_LUT0_TONREF_111_MASK_SFT,
-			   0xf << RG_CLH_LUT0_TONREF_111_SFT);
+			   0x18 << RG_CLH_LUT0_TONREF_111_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_111,
 			   RG_CLH_LUT0_NSEG_111_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_111_SFT);
+	/*
+	 * Step 241:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.764V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_112,
 			   RG_CLH_LUT0_TONREF_112_MASK_SFT,
-			   0x10 << RG_CLH_LUT0_TONREF_112_SFT);
+			   0x18 << RG_CLH_LUT0_TONREF_112_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_112,
 			   RG_CLH_LUT0_NSEG_112_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_112_SFT);
+	/*
+	 * Step 242:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.780V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_113,
 			   RG_CLH_LUT0_TONREF_113_MASK_SFT,
-			   0x10 << RG_CLH_LUT0_TONREF_113_SFT);
+			   0x19 << RG_CLH_LUT0_TONREF_113_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_113,
 			   RG_CLH_LUT0_NSEG_113_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_113_SFT);
+	/*
+	 * Step 243:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.795V (50mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_114,
 			   RG_CLH_LUT0_TONREF_114_MASK_SFT,
-			   0x10 << RG_CLH_LUT0_TONREF_114_SFT);
+			   0x19 << RG_CLH_LUT0_TONREF_114_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_114,
 			   RG_CLH_LUT0_NSEG_114_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_114_SFT);
+	/*
+	 * Step 244:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.811V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_115,
 			   RG_CLH_LUT0_TONREF_115_MASK_SFT,
-			   0x10 << RG_CLH_LUT0_TONREF_115_SFT);
+			   0x19 << RG_CLH_LUT0_TONREF_115_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_115,
 			   RG_CLH_LUT0_NSEG_115_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_115_SFT);
+	/*
+	 * Step 245:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.827V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_116,
 			   RG_CLH_LUT0_TONREF_116_MASK_SFT,
-			   0x11 << RG_CLH_LUT0_TONREF_116_SFT);
+			   0x19 << RG_CLH_LUT0_TONREF_116_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_116,
 			   RG_CLH_LUT0_NSEG_116_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_116_SFT);
+	/*
+	 * Step 246:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.843V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_117,
 			   RG_CLH_LUT0_TONREF_117_MASK_SFT,
-			   0x11 << RG_CLH_LUT0_TONREF_117_SFT);
+			   0x1a << RG_CLH_LUT0_TONREF_117_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_117,
 			   RG_CLH_LUT0_NSEG_117_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_117_SFT);
+	/*
+	 * Step 247:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.858V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_118,
 			   RG_CLH_LUT0_TONREF_118_MASK_SFT,
-			   0x11 << RG_CLH_LUT0_TONREF_118_SFT);
+			   0x1a << RG_CLH_LUT0_TONREF_118_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_118,
 			   RG_CLH_LUT0_NSEG_118_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_118_SFT);
+	/*
+	 * Step 248:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.874V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_119,
 			   RG_CLH_LUT0_TONREF_119_MASK_SFT,
-			   0x11 << RG_CLH_LUT0_TONREF_119_SFT);
+			   0x1a << RG_CLH_LUT0_TONREF_119_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_119,
 			   RG_CLH_LUT0_NSEG_119_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_119_SFT);
+	/*
+	 * Step 249:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.890V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_120,
 			   RG_CLH_LUT0_TONREF_120_MASK_SFT,
-			   0x12 << RG_CLH_LUT0_TONREF_120_SFT);
+			   0x1a << RG_CLH_LUT0_TONREF_120_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_120,
 			   RG_CLH_LUT0_NSEG_120_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_120_SFT);
+	/*
+	 * Step 250:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.906V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_121,
 			   RG_CLH_LUT0_TONREF_121_MASK_SFT,
-			   0x12 << RG_CLH_LUT0_TONREF_121_SFT);
+			   0x1a << RG_CLH_LUT0_TONREF_121_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_121,
 			   RG_CLH_LUT0_NSEG_121_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_121_SFT);
+	/*
+	 * Step 251:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.921V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_122,
 			   RG_CLH_LUT0_TONREF_122_MASK_SFT,
-			   0x12 << RG_CLH_LUT0_TONREF_122_SFT);
+			   0x1a << RG_CLH_LUT0_TONREF_122_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_122,
 			   RG_CLH_LUT0_NSEG_122_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_122_SFT);
+	/*
+	 * Step 252:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.937V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_123,
 			   RG_CLH_LUT0_TONREF_123_MASK_SFT,
-			   0x12 << RG_CLH_LUT0_TONREF_123_SFT);
+			   0x1a << RG_CLH_LUT0_TONREF_123_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_123,
 			   RG_CLH_LUT0_NSEG_123_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_123_SFT);
+	/*
+	 * Step 253:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.953V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_124,
 			   RG_CLH_LUT0_TONREF_124_MASK_SFT,
-			   0x12 << RG_CLH_LUT0_TONREF_124_SFT);
+			   0x1a << RG_CLH_LUT0_TONREF_124_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_124,
 			   RG_CLH_LUT0_NSEG_124_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_124_SFT);
+	/*
+	 * Step 254:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.969V (60mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_125,
 			   RG_CLH_LUT0_TONREF_125_MASK_SFT,
-			   0x13 << RG_CLH_LUT0_TONREF_125_SFT);
+			   0x1a << RG_CLH_LUT0_TONREF_125_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_125,
 			   RG_CLH_LUT0_NSEG_125_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_125_SFT);
+	/*
+	 * Step 255:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.984V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_126,
 			   RG_CLH_LUT0_TONREF_126_MASK_SFT,
-			   0x13 << RG_CLH_LUT0_TONREF_126_SFT);
+			   0x1a << RG_CLH_LUT0_TONREF_126_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_126,
 			   RG_CLH_LUT0_NSEG_126_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_126_SFT);
+	/*
+	 * Step 256:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 2.000V (62.5mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_127,
 			   RG_CLH_LUT0_TONREF_127_MASK_SFT,
-			   0x13 << RG_CLH_LUT0_TONREF_127_SFT);
+			   0x1a << RG_CLH_LUT0_TONREF_127_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT0_LSB_127,
 			   RG_CLH_LUT0_NSEG_127_MASK_SFT,
 			   0x1 << RG_CLH_LUT0_NSEG_127_SFT);
+	/* Step 1: Set class-H PVDDref at frame Vaudmax = 0.000V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_0,
 			   RG_CLH_LUT1_PVDDREF_0_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_PVDDREF_0_SFT);
+	/* Step 2: Set class-H PVDDref at frame Vaudmax = 0.011V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_1,
 			   RG_CLH_LUT1_PVDDREF_1_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_PVDDREF_1_SFT);
+	/* Step 3: Set class-H PVDDref at frame Vaudmax = 0.022V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_2,
 			   RG_CLH_LUT1_PVDDREF_2_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_PVDDREF_2_SFT);
+	/* Step 4: Set class-H PVDDref at frame Vaudmax = 0.033V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_3,
 			   RG_CLH_LUT1_PVDDREF_3_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_PVDDREF_3_SFT);
+	/* Step 5: Set class-H PVDDref at frame Vaudmax = 0.045V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_4,
 			   RG_CLH_LUT1_PVDDREF_4_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_PVDDREF_4_SFT);
+	/* Step 6: Set class-H PVDDref at frame Vaudmax = 0.056V (0.1mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_5,
 			   RG_CLH_LUT1_PVDDREF_5_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_PVDDREF_5_SFT);
+	/* Step 7: Set class-H PVDDref at frame Vaudmax = 0.067V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_6,
 			   RG_CLH_LUT1_PVDDREF_6_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_PVDDREF_6_SFT);
+	/* Step 8: Set class-H PVDDref at frame Vaudmax = 0.078V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_7,
 			   RG_CLH_LUT1_PVDDREF_7_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_PVDDREF_7_SFT);
+	/* Step 9: Set class-H PVDDref at frame Vaudmax = 0.089V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_8,
 			   RG_CLH_LUT1_PVDDREF_8_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_PVDDREF_8_SFT);
+	/* Step 10: Set class-H PVDDref at frame Vaudmax = 0.100V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_9,
 			   RG_CLH_LUT1_PVDDREF_9_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_PVDDREF_9_SFT);
+	/* Step 11: Set class-H PVDDref at frame Vaudmax = 0.111V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_10,
 			   RG_CLH_LUT1_PVDDREF_10_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_PVDDREF_10_SFT);
+	/* Step 12: Set class-H PVDDref at frame Vaudmax = 0.122V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_11,
 			   RG_CLH_LUT1_PVDDREF_11_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_PVDDREF_11_SFT);
+	/* Step 13: Set class-H PVDDref at frame Vaudmax = 0.134V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_12,
 			   RG_CLH_LUT1_PVDDREF_12_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_PVDDREF_12_SFT);
+	/* Step 14: Set class-H PVDDref at frame Vaudmax = 0.145V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_13,
 			   RG_CLH_LUT1_PVDDREF_13_MASK_SFT,
-			   0x0 << RG_CLH_LUT1_PVDDREF_13_SFT);
+			   0x1 << RG_CLH_LUT1_PVDDREF_13_SFT);
+	/* Step 15: Set class-H PVDDref at frame Vaudmax = 0.156V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_14,
 			   RG_CLH_LUT1_PVDDREF_14_MASK_SFT,
-			   0x1 << RG_CLH_LUT1_PVDDREF_14_SFT);
+			   0x2 << RG_CLH_LUT1_PVDDREF_14_SFT);
+	/* Step 16: Set class-H PVDDref at frame Vaudmax = 0.167V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_15,
 			   RG_CLH_LUT1_PVDDREF_15_MASK_SFT,
-			   0x2 << RG_CLH_LUT1_PVDDREF_15_SFT);
+			   0x3 << RG_CLH_LUT1_PVDDREF_15_SFT);
+	/* Step 17: Set class-H PVDDref at frame Vaudmax = 0.178V (1mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_16,
 			   RG_CLH_LUT1_PVDDREF_16_MASK_SFT,
-			   0x3 << RG_CLH_LUT1_PVDDREF_16_SFT);
+			   0x4 << RG_CLH_LUT1_PVDDREF_16_SFT);
+	/* Step 18: Set class-H PVDDref at frame Vaudmax = 0.189V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_17,
 			   RG_CLH_LUT1_PVDDREF_17_MASK_SFT,
-			   0x4 << RG_CLH_LUT1_PVDDREF_17_SFT);
+			   0x5 << RG_CLH_LUT1_PVDDREF_17_SFT);
+	/* Step 19: Set class-H PVDDref at frame Vaudmax = 0.200V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_18,
 			   RG_CLH_LUT1_PVDDREF_18_MASK_SFT,
 			   0x6 << RG_CLH_LUT1_PVDDREF_18_SFT);
+	/* Step 20: Set class-H PVDDref at frame Vaudmax = 0.212V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_19,
 			   RG_CLH_LUT1_PVDDREF_19_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_PVDDREF_19_SFT);
+	/* Step 21: Set class-H PVDDref at frame Vaudmax = 0.223V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_20,
 			   RG_CLH_LUT1_PVDDREF_20_MASK_SFT,
-			   0x8 << RG_CLH_LUT1_PVDDREF_20_SFT);
+			   0x9 << RG_CLH_LUT1_PVDDREF_20_SFT);
+	/* Step 22: Set class-H PVDDref at frame Vaudmax = 0.234V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_21,
 			   RG_CLH_LUT1_PVDDREF_21_MASK_SFT,
-			   0x9 << RG_CLH_LUT1_PVDDREF_21_SFT);
+			   0xa << RG_CLH_LUT1_PVDDREF_21_SFT);
+	/* Step 23: Set class-H PVDDref at frame Vaudmax = 0.245V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_22,
 			   RG_CLH_LUT1_PVDDREF_22_MASK_SFT,
-			   0xa << RG_CLH_LUT1_PVDDREF_22_SFT);
+			   0xb << RG_CLH_LUT1_PVDDREF_22_SFT);
+	/* Step 24: Set class-H PVDDref at frame Vaudmax = 0.256V (2mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_23,
 			   RG_CLH_LUT1_PVDDREF_23_MASK_SFT,
-			   0xb << RG_CLH_LUT1_PVDDREF_23_SFT);
+			   0xc << RG_CLH_LUT1_PVDDREF_23_SFT);
+	/* Step 25: Set class-H PVDDref at frame Vaudmax = 0.267V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_24,
 			   RG_CLH_LUT1_PVDDREF_24_MASK_SFT,
-			   0xc << RG_CLH_LUT1_PVDDREF_24_SFT);
+			   0xd << RG_CLH_LUT1_PVDDREF_24_SFT);
+	/* Step 26: Set class-H PVDDref at frame Vaudmax = 0.278V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_25,
 			   RG_CLH_LUT1_PVDDREF_25_MASK_SFT,
-			   0xd << RG_CLH_LUT1_PVDDREF_25_SFT);
+			   0xe << RG_CLH_LUT1_PVDDREF_25_SFT);
+	/* Step 27: Set class-H PVDDref at frame Vaudmax = 0.290V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_26,
 			   RG_CLH_LUT1_PVDDREF_26_MASK_SFT,
-			   0xe << RG_CLH_LUT1_PVDDREF_26_SFT);
+			   0xf << RG_CLH_LUT1_PVDDREF_26_SFT);
+	/* Step 28: Set class-H PVDDref at frame Vaudmax = 0.301V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_27,
 			   RG_CLH_LUT1_PVDDREF_27_MASK_SFT,
-			   0xf << RG_CLH_LUT1_PVDDREF_27_SFT);
+			   0x10 << RG_CLH_LUT1_PVDDREF_27_SFT);
+	/* Step 29: Set class-H PVDDref at frame Vaudmax = 0.312V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_28,
 			   RG_CLH_LUT1_PVDDREF_28_MASK_SFT,
-			   0x10 << RG_CLH_LUT1_PVDDREF_28_SFT);
+			   0x12 << RG_CLH_LUT1_PVDDREF_28_SFT);
+	/* Step 30: Set class-H PVDDref at frame Vaudmax = 0.323V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_29,
 			   RG_CLH_LUT1_PVDDREF_29_MASK_SFT,
-			   0x11 << RG_CLH_LUT1_PVDDREF_29_SFT);
+			   0x13 << RG_CLH_LUT1_PVDDREF_29_SFT);
+	/* Step 31: Set class-H PVDDref at frame Vaudmax = 0.334V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_30,
 			   RG_CLH_LUT1_PVDDREF_30_MASK_SFT,
-			   0x12 << RG_CLH_LUT1_PVDDREF_30_SFT);
+			   0x14 << RG_CLH_LUT1_PVDDREF_30_SFT);
+	/* Step 32: Set class-H PVDDref at frame Vaudmax = 0.345V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_31,
 			   RG_CLH_LUT1_PVDDREF_31_MASK_SFT,
-			   0x14 << RG_CLH_LUT1_PVDDREF_31_SFT);
+			   0x15 << RG_CLH_LUT1_PVDDREF_31_SFT);
+	/* Step 33: Set class-H PVDDref at frame Vaudmax = 0.356V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_32,
 			   RG_CLH_LUT1_PVDDREF_32_MASK_SFT,
-			   0x15 << RG_CLH_LUT1_PVDDREF_32_SFT);
+			   0x16 << RG_CLH_LUT1_PVDDREF_32_SFT);
+	/* Step 34: Set class-H PVDDref at frame Vaudmax = 0.367V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_33,
 			   RG_CLH_LUT1_PVDDREF_33_MASK_SFT,
-			   0x16 << RG_CLH_LUT1_PVDDREF_33_SFT);
+			   0x17 << RG_CLH_LUT1_PVDDREF_33_SFT);
+	/* Step 35: Set class-H PVDDref at frame Vaudmax = 0.379V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_34,
 			   RG_CLH_LUT1_PVDDREF_34_MASK_SFT,
-			   0x17 << RG_CLH_LUT1_PVDDREF_34_SFT);
+			   0x18 << RG_CLH_LUT1_PVDDREF_34_SFT);
+	/* Step 36: Set class-H PVDDref at frame Vaudmax = 0.390V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_35,
 			   RG_CLH_LUT1_PVDDREF_35_MASK_SFT,
-			   0x18 << RG_CLH_LUT1_PVDDREF_35_SFT);
+			   0x19 << RG_CLH_LUT1_PVDDREF_35_SFT);
+	/* Step 37: Set class-H PVDDref at frame Vaudmax = 0.401V (5mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_36,
 			   RG_CLH_LUT1_PVDDREF_36_MASK_SFT,
-			   0x19 << RG_CLH_LUT1_PVDDREF_36_SFT);
+			   0x1b << RG_CLH_LUT1_PVDDREF_36_SFT);
+	/* Step 38: Set class-H PVDDref at frame Vaudmax = 0.412V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_37,
 			   RG_CLH_LUT1_PVDDREF_37_MASK_SFT,
-			   0x1a << RG_CLH_LUT1_PVDDREF_37_SFT);
+			   0x1c << RG_CLH_LUT1_PVDDREF_37_SFT);
+	/* Step 39: Set class-H PVDDref at frame Vaudmax = 0.423V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_38,
 			   RG_CLH_LUT1_PVDDREF_38_MASK_SFT,
-			   0x1b << RG_CLH_LUT1_PVDDREF_38_SFT);
+			   0x1d << RG_CLH_LUT1_PVDDREF_38_SFT);
+	/* Step 40: Set class-H PVDDref at frame Vaudmax = 0.434V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_39,
 			   RG_CLH_LUT1_PVDDREF_39_MASK_SFT,
-			   0x1c << RG_CLH_LUT1_PVDDREF_39_SFT);
+			   0x1e << RG_CLH_LUT1_PVDDREF_39_SFT);
+	/* Step 41: Set class-H PVDDref at frame Vaudmax = 0.445V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_40,
 			   RG_CLH_LUT1_PVDDREF_40_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_PVDDREF_40_SFT);
+			   0x1f << RG_CLH_LUT1_PVDDREF_40_SFT);
+	/* Step 42: Set class-H PVDDref at frame Vaudmax = 0.457V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_41,
 			   RG_CLH_LUT1_PVDDREF_41_MASK_SFT,
-			   0x1e << RG_CLH_LUT1_PVDDREF_41_SFT);
+			   0x20 << RG_CLH_LUT1_PVDDREF_41_SFT);
+	/* Step 43: Set class-H PVDDref at frame Vaudmax = 0.468V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_42,
 			   RG_CLH_LUT1_PVDDREF_42_MASK_SFT,
-			   0x20 << RG_CLH_LUT1_PVDDREF_42_SFT);
+			   0x21 << RG_CLH_LUT1_PVDDREF_42_SFT);
+	/* Step 44: Set class-H PVDDref at frame Vaudmax = 0.479V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_43,
 			   RG_CLH_LUT1_PVDDREF_43_MASK_SFT,
-			   0x21 << RG_CLH_LUT1_PVDDREF_43_SFT);
+			   0x22 << RG_CLH_LUT1_PVDDREF_43_SFT);
+	/* Step 45: Set class-H PVDDref at frame Vaudmax = 0.490V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_44,
 			   RG_CLH_LUT1_PVDDREF_44_MASK_SFT,
-			   0x22 << RG_CLH_LUT1_PVDDREF_44_SFT);
+			   0x24 << RG_CLH_LUT1_PVDDREF_44_SFT);
+	/* Step 46: Set class-H PVDDref at frame Vaudmax = 0.501V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_45,
 			   RG_CLH_LUT1_PVDDREF_45_MASK_SFT,
-			   0x23 << RG_CLH_LUT1_PVDDREF_45_SFT);
+			   0x25 << RG_CLH_LUT1_PVDDREF_45_SFT);
+	/* Step 47: Set class-H PVDDref at frame Vaudmax = 0.512V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_46,
 			   RG_CLH_LUT1_PVDDREF_46_MASK_SFT,
-			   0x24 << RG_CLH_LUT1_PVDDREF_46_SFT);
+			   0x26 << RG_CLH_LUT1_PVDDREF_46_SFT);
+	/* Step 48: Set class-H PVDDref at frame Vaudmax = 0.523V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_47,
 			   RG_CLH_LUT1_PVDDREF_47_MASK_SFT,
-			   0x25 << RG_CLH_LUT1_PVDDREF_47_SFT);
+			   0x27 << RG_CLH_LUT1_PVDDREF_47_SFT);
+	/* Step 49: Set class-H PVDDref at frame Vaudmax = 0.535V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_48,
 			   RG_CLH_LUT1_PVDDREF_48_MASK_SFT,
-			   0x26 << RG_CLH_LUT1_PVDDREF_48_SFT);
+			   0x28 << RG_CLH_LUT1_PVDDREF_48_SFT);
+	/* Step 50: Set class-H PVDDref at frame Vaudmax = 0.546V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_49,
 			   RG_CLH_LUT1_PVDDREF_49_MASK_SFT,
-			   0x27 << RG_CLH_LUT1_PVDDREF_49_SFT);
+			   0x29 << RG_CLH_LUT1_PVDDREF_49_SFT);
+	/* Step 51: Set class-H PVDDref at frame Vaudmax = 0.557V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_50,
 			   RG_CLH_LUT1_PVDDREF_50_MASK_SFT,
-			   0x29 << RG_CLH_LUT1_PVDDREF_50_SFT);
+			   0x2a << RG_CLH_LUT1_PVDDREF_50_SFT);
+	/* Step 52: Set class-H PVDDref at frame Vaudmax = 0.568V (10mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_51,
 			   RG_CLH_LUT1_PVDDREF_51_MASK_SFT,
-			   0x2a << RG_CLH_LUT1_PVDDREF_51_SFT);
+			   0x2b << RG_CLH_LUT1_PVDDREF_51_SFT);
+	/* Step 53: Set class-H PVDDref at frame Vaudmax = 0.579V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_52,
 			   RG_CLH_LUT1_PVDDREF_52_MASK_SFT,
-			   0x2b << RG_CLH_LUT1_PVDDREF_52_SFT);
+			   0x2d << RG_CLH_LUT1_PVDDREF_52_SFT);
+	/* Step 54: Set class-H PVDDref at frame Vaudmax = 0.590V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_53,
 			   RG_CLH_LUT1_PVDDREF_53_MASK_SFT,
-			   0x2c << RG_CLH_LUT1_PVDDREF_53_SFT);
+			   0x2e << RG_CLH_LUT1_PVDDREF_53_SFT);
+	/* Step 55: Set class-H PVDDref at frame Vaudmax = 0.601V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_54,
 			   RG_CLH_LUT1_PVDDREF_54_MASK_SFT,
-			   0x2d << RG_CLH_LUT1_PVDDREF_54_SFT);
+			   0x2f << RG_CLH_LUT1_PVDDREF_54_SFT);
+	/* Step 56: Set class-H PVDDref at frame Vaudmax = 0.612V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_55,
 			   RG_CLH_LUT1_PVDDREF_55_MASK_SFT,
-			   0x2e << RG_CLH_LUT1_PVDDREF_55_SFT);
+			   0x30 << RG_CLH_LUT1_PVDDREF_55_SFT);
+	/* Step 57: Set class-H PVDDref at frame Vaudmax = 0.624V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_56,
 			   RG_CLH_LUT1_PVDDREF_56_MASK_SFT,
-			   0x2f << RG_CLH_LUT1_PVDDREF_56_SFT);
+			   0x31 << RG_CLH_LUT1_PVDDREF_56_SFT);
+	/* Step 58: Set class-H PVDDref at frame Vaudmax = 0.635V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_57,
 			   RG_CLH_LUT1_PVDDREF_57_MASK_SFT,
-			   0x31 << RG_CLH_LUT1_PVDDREF_57_SFT);
+			   0x32 << RG_CLH_LUT1_PVDDREF_57_SFT);
+	/* Step 59: Set class-H PVDDref at frame Vaudmax = 0.646V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_58,
 			   RG_CLH_LUT1_PVDDREF_58_MASK_SFT,
-			   0x32 << RG_CLH_LUT1_PVDDREF_58_SFT);
+			   0x33 << RG_CLH_LUT1_PVDDREF_58_SFT);
+	/* Step 60: Set class-H PVDDref at frame Vaudmax = 0.657V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_59,
 			   RG_CLH_LUT1_PVDDREF_59_MASK_SFT,
-			   0x33 << RG_CLH_LUT1_PVDDREF_59_SFT);
+			   0x35 << RG_CLH_LUT1_PVDDREF_59_SFT);
+	/* Step 61: Set class-H PVDDref at frame Vaudmax = 0.668V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_60,
 			   RG_CLH_LUT1_PVDDREF_60_MASK_SFT,
-			   0x34 << RG_CLH_LUT1_PVDDREF_60_SFT);
+			   0x36 << RG_CLH_LUT1_PVDDREF_60_SFT);
+	/* Step 62: Set class-H PVDDref at frame Vaudmax = 0.679V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_61,
 			   RG_CLH_LUT1_PVDDREF_61_MASK_SFT,
-			   0x35 << RG_CLH_LUT1_PVDDREF_61_SFT);
+			   0x37 << RG_CLH_LUT1_PVDDREF_61_SFT);
+	/* Step 63: Set class-H PVDDref at frame Vaudmax = 0.690V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_62,
 			   RG_CLH_LUT1_PVDDREF_62_MASK_SFT,
-			   0x36 << RG_CLH_LUT1_PVDDREF_62_SFT);
+			   0x38 << RG_CLH_LUT1_PVDDREF_62_SFT);
+	/* Step 64: Set class-H PVDDref at frame Vaudmax = 0.702V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_63,
 			   RG_CLH_LUT1_PVDDREF_63_MASK_SFT,
-			   0x38 << RG_CLH_LUT1_PVDDREF_63_SFT);
+			   0x3a << RG_CLH_LUT1_PVDDREF_63_SFT);
+	/* Step 65: Set class-H PVDDref at frame Vaudmax = 0.713V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_64,
 			   RG_CLH_LUT1_PVDDREF_64_MASK_SFT,
-			   0x39 << RG_CLH_LUT1_PVDDREF_64_SFT);
+			   0x3b << RG_CLH_LUT1_PVDDREF_64_SFT);
+	/* Step 66: Set class-H PVDDref at frame Vaudmax = 0.724V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_65,
 			   RG_CLH_LUT1_PVDDREF_65_MASK_SFT,
-			   0x3a << RG_CLH_LUT1_PVDDREF_65_SFT);
+			   0x3c << RG_CLH_LUT1_PVDDREF_65_SFT);
+	/* Step 67: Set class-H PVDDref at frame Vaudmax = 0.735V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_66,
 			   RG_CLH_LUT1_PVDDREF_66_MASK_SFT,
-			   0x3b << RG_CLH_LUT1_PVDDREF_66_SFT);
+			   0x3d << RG_CLH_LUT1_PVDDREF_66_SFT);
+	/* Step 68: Set class-H PVDDref at frame Vaudmax = 0.746V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_67,
 			   RG_CLH_LUT1_PVDDREF_67_MASK_SFT,
-			   0x3d << RG_CLH_LUT1_PVDDREF_67_SFT);
+			   0x3f << RG_CLH_LUT1_PVDDREF_67_SFT);
+	/* Step 69: Set class-H PVDDref at frame Vaudmax = 0.757V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_68,
 			   RG_CLH_LUT1_PVDDREF_68_MASK_SFT,
-			   0x3e << RG_CLH_LUT1_PVDDREF_68_SFT);
+			   0x40 << RG_CLH_LUT1_PVDDREF_68_SFT);
+	/* Step 70: Set class-H PVDDref at frame Vaudmax = 0.768V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_69,
 			   RG_CLH_LUT1_PVDDREF_69_MASK_SFT,
-			   0x3f << RG_CLH_LUT1_PVDDREF_69_SFT);
+			   0x41 << RG_CLH_LUT1_PVDDREF_69_SFT);
+	/* Step 71: Set class-H PVDDref at frame Vaudmax = 0.779V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_70,
 			   RG_CLH_LUT1_PVDDREF_70_MASK_SFT,
-			   0x40 << RG_CLH_LUT1_PVDDREF_70_SFT);
+			   0x42 << RG_CLH_LUT1_PVDDREF_70_SFT);
+	/* Step 72: Set class-H PVDDref at frame Vaudmax = 0.791V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_71,
 			   RG_CLH_LUT1_PVDDREF_71_MASK_SFT,
-			   0x41 << RG_CLH_LUT1_PVDDREF_71_SFT);
+			   0x44 << RG_CLH_LUT1_PVDDREF_71_SFT);
+	/* Step 73: Set class-H PVDDref at frame Vaudmax = 0.802V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_72,
 			   RG_CLH_LUT1_PVDDREF_72_MASK_SFT,
-			   0x42 << RG_CLH_LUT1_PVDDREF_72_SFT);
+			   0x45 << RG_CLH_LUT1_PVDDREF_72_SFT);
+	/* Step 74: Set class-H PVDDref at frame Vaudmax = 0.813V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_73,
 			   RG_CLH_LUT1_PVDDREF_73_MASK_SFT,
-			   0x44 << RG_CLH_LUT1_PVDDREF_73_SFT);
+			   0x46 << RG_CLH_LUT1_PVDDREF_73_SFT);
+	/* Step 75: Set class-H PVDDref at frame Vaudmax = 0.824V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_74,
 			   RG_CLH_LUT1_PVDDREF_74_MASK_SFT,
-			   0x45 << RG_CLH_LUT1_PVDDREF_74_SFT);
+			   0x47 << RG_CLH_LUT1_PVDDREF_74_SFT);
+	/* Step 76: Set class-H PVDDref at frame Vaudmax = 0.835V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_75,
 			   RG_CLH_LUT1_PVDDREF_75_MASK_SFT,
-			   0x46 << RG_CLH_LUT1_PVDDREF_75_SFT);
+			   0x49 << RG_CLH_LUT1_PVDDREF_75_SFT);
+	/* Step 77: Set class-H PVDDref at frame Vaudmax = 0.846V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_76,
 			   RG_CLH_LUT1_PVDDREF_76_MASK_SFT,
-			   0x47 << RG_CLH_LUT1_PVDDREF_76_SFT);
+			   0x4a << RG_CLH_LUT1_PVDDREF_76_SFT);
+	/* Step 78: Set class-H PVDDref at frame Vaudmax = 0.857V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_77,
 			   RG_CLH_LUT1_PVDDREF_77_MASK_SFT,
-			   0x49 << RG_CLH_LUT1_PVDDREF_77_SFT);
+			   0x4b << RG_CLH_LUT1_PVDDREF_77_SFT);
+	/* Step 79: Set class-H PVDDref at frame Vaudmax = 0.869V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_78,
 			   RG_CLH_LUT1_PVDDREF_78_MASK_SFT,
-			   0x4a << RG_CLH_LUT1_PVDDREF_78_SFT);
+			   0x4d << RG_CLH_LUT1_PVDDREF_78_SFT);
+	/* Step 80: Set class-H PVDDref at frame Vaudmax = 0.880V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_79,
 			   RG_CLH_LUT1_PVDDREF_79_MASK_SFT,
-			   0x4b << RG_CLH_LUT1_PVDDREF_79_SFT);
+			   0x4e << RG_CLH_LUT1_PVDDREF_79_SFT);
+	/* Step 81: Set class-H PVDDref at frame Vaudmax = 0.891V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_80,
 			   RG_CLH_LUT1_PVDDREF_80_MASK_SFT,
-			   0x4c << RG_CLH_LUT1_PVDDREF_80_SFT);
+			   0x4f << RG_CLH_LUT1_PVDDREF_80_SFT);
+	/* Step 82: Set class-H PVDDref at frame Vaudmax = 0.902V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_81,
 			   RG_CLH_LUT1_PVDDREF_81_MASK_SFT,
-			   0x4d << RG_CLH_LUT1_PVDDREF_81_SFT);
+			   0x51 << RG_CLH_LUT1_PVDDREF_81_SFT);
+	/* Step 83: Set class-H PVDDref at frame Vaudmax = 0.913V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_82,
 			   RG_CLH_LUT1_PVDDREF_82_MASK_SFT,
-			   0x4f << RG_CLH_LUT1_PVDDREF_82_SFT);
+			   0x52 << RG_CLH_LUT1_PVDDREF_82_SFT);
+	/* Step 84: Set class-H PVDDref at frame Vaudmax = 0.924V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_83,
 			   RG_CLH_LUT1_PVDDREF_83_MASK_SFT,
-			   0x50 << RG_CLH_LUT1_PVDDREF_83_SFT);
+			   0x53 << RG_CLH_LUT1_PVDDREF_83_SFT);
+	/* Step 85: Set class-H PVDDref at frame Vaudmax = 0.935V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_84,
 			   RG_CLH_LUT1_PVDDREF_84_MASK_SFT,
-			   0x51 << RG_CLH_LUT1_PVDDREF_84_SFT);
+			   0x55 << RG_CLH_LUT1_PVDDREF_84_SFT);
+	/* Step 86: Set class-H PVDDref at frame Vaudmax = 0.947V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_85,
 			   RG_CLH_LUT1_PVDDREF_85_MASK_SFT,
-			   0x53 << RG_CLH_LUT1_PVDDREF_85_SFT);
+			   0x56 << RG_CLH_LUT1_PVDDREF_85_SFT);
+	/* Step 87: Set class-H PVDDref at frame Vaudmax = 0.958V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_86,
 			   RG_CLH_LUT1_PVDDREF_86_MASK_SFT,
-			   0x54 << RG_CLH_LUT1_PVDDREF_86_SFT);
+			   0x57 << RG_CLH_LUT1_PVDDREF_86_SFT);
+	/* Step 88: Set class-H PVDDref at frame Vaudmax = 0.969V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_87,
 			   RG_CLH_LUT1_PVDDREF_87_MASK_SFT,
-			   0x55 << RG_CLH_LUT1_PVDDREF_87_SFT);
+			   0x59 << RG_CLH_LUT1_PVDDREF_87_SFT);
+	/* Step 89: Set class-H PVDDref at frame Vaudmax = 0.980V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_88,
 			   RG_CLH_LUT1_PVDDREF_88_MASK_SFT,
-			   0x56 << RG_CLH_LUT1_PVDDREF_88_SFT);
+			   0x5a << RG_CLH_LUT1_PVDDREF_88_SFT);
+	/* Step 90: Set class-H PVDDref at frame Vaudmax = 0.991V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_89,
 			   RG_CLH_LUT1_PVDDREF_89_MASK_SFT,
-			   0x58 << RG_CLH_LUT1_PVDDREF_89_SFT);
+			   0x5b << RG_CLH_LUT1_PVDDREF_89_SFT);
+	/* Step 91: Set class-H PVDDref at frame Vaudmax = 1.002V (31mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_90,
 			   RG_CLH_LUT1_PVDDREF_90_MASK_SFT,
-			   0x59 << RG_CLH_LUT1_PVDDREF_90_SFT);
+			   0x5d << RG_CLH_LUT1_PVDDREF_90_SFT);
+	/* Step 92: Set class-H PVDDref at frame Vaudmax = 1.013V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_91,
 			   RG_CLH_LUT1_PVDDREF_91_MASK_SFT,
-			   0x5a << RG_CLH_LUT1_PVDDREF_91_SFT);
+			   0x5e << RG_CLH_LUT1_PVDDREF_91_SFT);
+	/* Step 93: Set class-H PVDDref at frame Vaudmax = 1.024V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_92,
 			   RG_CLH_LUT1_PVDDREF_92_MASK_SFT,
-			   0x5b << RG_CLH_LUT1_PVDDREF_92_SFT);
+			   0x5f << RG_CLH_LUT1_PVDDREF_92_SFT);
+	/* Step 94: Set class-H PVDDref at frame Vaudmax = 1.036V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_93,
 			   RG_CLH_LUT1_PVDDREF_93_MASK_SFT,
-			   0x5d << RG_CLH_LUT1_PVDDREF_93_SFT);
+			   0x61 << RG_CLH_LUT1_PVDDREF_93_SFT);
+	/* Step 95: Set class-H PVDDref at frame Vaudmax = 1.047V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_94,
 			   RG_CLH_LUT1_PVDDREF_94_MASK_SFT,
-			   0x5e << RG_CLH_LUT1_PVDDREF_94_SFT);
+			   0x62 << RG_CLH_LUT1_PVDDREF_94_SFT);
+	/* Step 96: Set class-H PVDDref at frame Vaudmax = 1.058V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_95,
 			   RG_CLH_LUT1_PVDDREF_95_MASK_SFT,
-			   0x5f << RG_CLH_LUT1_PVDDREF_95_SFT);
+			   0x63 << RG_CLH_LUT1_PVDDREF_95_SFT);
+	/* Step 97: Set class-H PVDDref at frame Vaudmax = 1.069V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_96,
 			   RG_CLH_LUT1_PVDDREF_96_MASK_SFT,
-			   0x61 << RG_CLH_LUT1_PVDDREF_96_SFT);
+			   0x65 << RG_CLH_LUT1_PVDDREF_96_SFT);
+	/* Step 98: Set class-H PVDDref at frame Vaudmax = 1.080V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_97,
 			   RG_CLH_LUT1_PVDDREF_97_MASK_SFT,
-			   0x62 << RG_CLH_LUT1_PVDDREF_97_SFT);
+			   0x66 << RG_CLH_LUT1_PVDDREF_97_SFT);
+	/* Step 99: Set class-H PVDDref at frame Vaudmax = 1.091V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_98,
 			   RG_CLH_LUT1_PVDDREF_98_MASK_SFT,
-			   0x63 << RG_CLH_LUT1_PVDDREF_98_SFT);
+			   0x68 << RG_CLH_LUT1_PVDDREF_98_SFT);
+	/* Step 100: Set class-H PVDDref at frame Vaudmax = 1.102V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_99,
 			   RG_CLH_LUT1_PVDDREF_99_MASK_SFT,
-			   0x65 << RG_CLH_LUT1_PVDDREF_99_SFT);
+			   0x69 << RG_CLH_LUT1_PVDDREF_99_SFT);
+	/* Step 101: Set class-H PVDDref at frame Vaudmax = 1.114V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_100,
 			   RG_CLH_LUT1_PVDDREF_100_MASK_SFT,
-			   0x66 << RG_CLH_LUT1_PVDDREF_100_SFT);
+			   0x6b << RG_CLH_LUT1_PVDDREF_100_SFT);
+	/* Step 102: Set class-H PVDDref at frame Vaudmax = 1.125V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_101,
 			   RG_CLH_LUT1_PVDDREF_101_MASK_SFT,
-			   0x67 << RG_CLH_LUT1_PVDDREF_101_SFT);
+			   0x6c << RG_CLH_LUT1_PVDDREF_101_SFT);
+	/* Step 103: Set class-H PVDDref at frame Vaudmax = 1.136V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_102,
 			   RG_CLH_LUT1_PVDDREF_102_MASK_SFT,
-			   0x69 << RG_CLH_LUT1_PVDDREF_102_SFT);
+			   0x6e << RG_CLH_LUT1_PVDDREF_102_SFT);
+	/* Step 104: Set class-H PVDDref at frame Vaudmax = 1.147V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_103,
 			   RG_CLH_LUT1_PVDDREF_103_MASK_SFT,
-			   0x6a << RG_CLH_LUT1_PVDDREF_103_SFT);
+			   0x6f << RG_CLH_LUT1_PVDDREF_103_SFT);
+	/* Step 105: Set class-H PVDDref at frame Vaudmax = 1.158V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_104,
 			   RG_CLH_LUT1_PVDDREF_104_MASK_SFT,
-			   0x6b << RG_CLH_LUT1_PVDDREF_104_SFT);
+			   0x70 << RG_CLH_LUT1_PVDDREF_104_SFT);
+	/* Step 106: Set class-H PVDDref at frame Vaudmax = 1.169V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_105,
 			   RG_CLH_LUT1_PVDDREF_105_MASK_SFT,
-			   0x6d << RG_CLH_LUT1_PVDDREF_105_SFT);
+			   0x72 << RG_CLH_LUT1_PVDDREF_105_SFT);
+	/* Step 107: Set class-H PVDDref at frame Vaudmax = 1.180V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_106,
 			   RG_CLH_LUT1_PVDDREF_106_MASK_SFT,
-			   0x6e << RG_CLH_LUT1_PVDDREF_106_SFT);
+			   0x73 << RG_CLH_LUT1_PVDDREF_106_SFT);
+	/* Step 108: Set class-H PVDDref at frame Vaudmax = 1.192V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_107,
 			   RG_CLH_LUT1_PVDDREF_107_MASK_SFT,
-			   0x6f << RG_CLH_LUT1_PVDDREF_107_SFT);
+			   0x75 << RG_CLH_LUT1_PVDDREF_107_SFT);
+	/* Step 109: Set class-H PVDDref at frame Vaudmax = 1.203V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_108,
 			   RG_CLH_LUT1_PVDDREF_108_MASK_SFT,
-			   0x71 << RG_CLH_LUT1_PVDDREF_108_SFT);
+			   0x77 << RG_CLH_LUT1_PVDDREF_108_SFT);
+	/* Step 110: Set class-H PVDDref at frame Vaudmax = 1.214V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_109,
 			   RG_CLH_LUT1_PVDDREF_109_MASK_SFT,
-			   0x72 << RG_CLH_LUT1_PVDDREF_109_SFT);
+			   0x78 << RG_CLH_LUT1_PVDDREF_109_SFT);
+	/* Step 111: Set class-H PVDDref at frame Vaudmax = 1.225V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_110,
 			   RG_CLH_LUT1_PVDDREF_110_MASK_SFT,
-			   0x74 << RG_CLH_LUT1_PVDDREF_110_SFT);
+			   0x7a << RG_CLH_LUT1_PVDDREF_110_SFT);
+	/* Step 112: Set class-H PVDDref at frame Vaudmax = 1.236V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_111,
 			   RG_CLH_LUT1_PVDDREF_111_MASK_SFT,
-			   0x75 << RG_CLH_LUT1_PVDDREF_111_SFT);
+			   0x7b << RG_CLH_LUT1_PVDDREF_111_SFT);
+	/* Step 113: Set class-H PVDDref at frame Vaudmax = 1.247V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_112,
 			   RG_CLH_LUT1_PVDDREF_112_MASK_SFT,
-			   0x76 << RG_CLH_LUT1_PVDDREF_112_SFT);
+			   0x7c << RG_CLH_LUT1_PVDDREF_112_SFT);
+	/* Step 114: Set class-H PVDDref at frame Vaudmax = 1.258V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_113,
 			   RG_CLH_LUT1_PVDDREF_113_MASK_SFT,
-			   0x78 << RG_CLH_LUT1_PVDDREF_113_SFT);
+			   0x7e << RG_CLH_LUT1_PVDDREF_113_SFT);
+	/* Step 115: Set class-H PVDDref at frame Vaudmax = 1.269V (50mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_114,
 			   RG_CLH_LUT1_PVDDREF_114_MASK_SFT,
-			   0x79 << RG_CLH_LUT1_PVDDREF_114_SFT);
+			   0x7f << RG_CLH_LUT1_PVDDREF_114_SFT);
+	/* Step 116: Set class-H PVDDref at frame Vaudmax = 1.281V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_115,
 			   RG_CLH_LUT1_PVDDREF_115_MASK_SFT,
-			   0x7b << RG_CLH_LUT1_PVDDREF_115_SFT);
+			   0x7f << RG_CLH_LUT1_PVDDREF_115_SFT);
+	/* Step 117: Set class-H PVDDref at frame Vaudmax = 1.292V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_116,
 			   RG_CLH_LUT1_PVDDREF_116_MASK_SFT,
-			   0x7c << RG_CLH_LUT1_PVDDREF_116_SFT);
+			   0x7f << RG_CLH_LUT1_PVDDREF_116_SFT);
+	/* Step 118: Set class-H PVDDref at frame Vaudmax = 1.303V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_117,
 			   RG_CLH_LUT1_PVDDREF_117_MASK_SFT,
-			   0x7e << RG_CLH_LUT1_PVDDREF_117_SFT);
+			   0x7f << RG_CLH_LUT1_PVDDREF_117_SFT);
+	/* Step 119: Set class-H PVDDref at frame Vaudmax = 1.314V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_118,
 			   RG_CLH_LUT1_PVDDREF_118_MASK_SFT,
 			   0x7f << RG_CLH_LUT1_PVDDREF_118_SFT);
+	/* Step 120: Set class-H PVDDref at frame Vaudmax = 1.325V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_119,
 			   RG_CLH_LUT1_PVDDREF_119_MASK_SFT,
 			   0x7f << RG_CLH_LUT1_PVDDREF_119_SFT);
+	/* Step 121: Set class-H PVDDref at frame Vaudmax = 1.336V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_120,
 			   RG_CLH_LUT1_PVDDREF_120_MASK_SFT,
 			   0x7f << RG_CLH_LUT1_PVDDREF_120_SFT);
+	/* Step 122: Set class-H PVDDref at frame Vaudmax = 1.347V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_121,
 			   RG_CLH_LUT1_PVDDREF_121_MASK_SFT,
 			   0x7f << RG_CLH_LUT1_PVDDREF_121_SFT);
+	/* Step 123: Set class-H PVDDref at frame Vaudmax = 1.359V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_122,
 			   RG_CLH_LUT1_PVDDREF_122_MASK_SFT,
 			   0x7f << RG_CLH_LUT1_PVDDREF_122_SFT);
+	/* Step 124: Set class-H PVDDref at frame Vaudmax = 1.370V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_123,
 			   RG_CLH_LUT1_PVDDREF_123_MASK_SFT,
 			   0x7f << RG_CLH_LUT1_PVDDREF_123_SFT);
+	/* Step 125: Set class-H PVDDref at frame Vaudmax = 1.381V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_124,
 			   RG_CLH_LUT1_PVDDREF_124_MASK_SFT,
 			   0x7f << RG_CLH_LUT1_PVDDREF_124_SFT);
+	/* Step 126: Set class-H PVDDref at frame Vaudmax = 1.392V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_125,
 			   RG_CLH_LUT1_PVDDREF_125_MASK_SFT,
 			   0x7f << RG_CLH_LUT1_PVDDREF_125_SFT);
+	/* Step 127: Set class-H PVDDref at frame Vaudmax = 1.403V */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_126,
 			   RG_CLH_LUT1_PVDDREF_126_MASK_SFT,
 			   0x7f << RG_CLH_LUT1_PVDDREF_126_SFT);
+	/* Step 128: Set class-H PVDDref at frame Vaudmax = 1.414V (62mW) */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_MSB_127,
 			   RG_CLH_LUT1_PVDDREF_127_MASK_SFT,
 			   0x7f << RG_CLH_LUT1_PVDDREF_127_SFT);
+	/*
+	 * Step 129:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.000V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_0,
 			   RG_CLH_LUT1_TONREF_0_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_0_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_0_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_0,
 			   RG_CLH_LUT1_NSEG_0_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_0_SFT);
+	/*
+	 * Step 130:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.011V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_1,
 			   RG_CLH_LUT1_TONREF_1_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_1_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_1_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_1,
 			   RG_CLH_LUT1_NSEG_1_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_1_SFT);
+	/*
+	 * Step 131:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.022V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_2,
 			   RG_CLH_LUT1_TONREF_2_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_2_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_2_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_2,
 			   RG_CLH_LUT1_NSEG_2_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_2_SFT);
+	/*
+	 * Step 132:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.033V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_3,
 			   RG_CLH_LUT1_TONREF_3_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_3_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_3_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_3,
 			   RG_CLH_LUT1_NSEG_3_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_3_SFT);
+	/*
+	 * Step 133:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.045V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_4,
 			   RG_CLH_LUT1_TONREF_4_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_4_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_4_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_4,
 			   RG_CLH_LUT1_NSEG_4_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_4_SFT);
+	/*
+	 * Step 134:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.056V (0.1mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_5,
 			   RG_CLH_LUT1_TONREF_5_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_5_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_5_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_5,
 			   RG_CLH_LUT1_NSEG_5_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_5_SFT);
+	/*
+	 * Step 135:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.067V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_6,
 			   RG_CLH_LUT1_TONREF_6_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_6_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_6_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_6,
 			   RG_CLH_LUT1_NSEG_6_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_6_SFT);
+	/*
+	 * Step 136:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.078V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_7,
 			   RG_CLH_LUT1_TONREF_7_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_7_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_7_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_7,
 			   RG_CLH_LUT1_NSEG_7_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_7_SFT);
+	/*
+	 * Step 137:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.089V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_8,
 			   RG_CLH_LUT1_TONREF_8_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_8_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_8_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_8,
 			   RG_CLH_LUT1_NSEG_8_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_8_SFT);
+	/*
+	 * Step 138:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.100V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_9,
 			   RG_CLH_LUT1_TONREF_9_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_9_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_9_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_9,
 			   RG_CLH_LUT1_NSEG_9_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_9_SFT);
+	/*
+	 * Step 139:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.111V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_10,
 			   RG_CLH_LUT1_TONREF_10_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_10_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_10_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_10,
 			   RG_CLH_LUT1_NSEG_10_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_10_SFT);
+	/*
+	 * Step 140:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.122V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_11,
 			   RG_CLH_LUT1_TONREF_11_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_11_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_11_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_11,
 			   RG_CLH_LUT1_NSEG_11_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_11_SFT);
+	/*
+	 * Step 141:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.134V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_12,
 			   RG_CLH_LUT1_TONREF_12_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_12_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_12_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_12,
 			   RG_CLH_LUT1_NSEG_12_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_12_SFT);
+	/*
+	 * Step 142:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.145V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_13,
 			   RG_CLH_LUT1_TONREF_13_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_13_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_13_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_13,
 			   RG_CLH_LUT1_NSEG_13_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_13_SFT);
+	/*
+	 * Step 143:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.156V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_14,
 			   RG_CLH_LUT1_TONREF_14_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_14_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_14_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_14,
 			   RG_CLH_LUT1_NSEG_14_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_14_SFT);
+	/*
+	 * Step 144:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.167V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_15,
 			   RG_CLH_LUT1_TONREF_15_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_15_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_15_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_15,
 			   RG_CLH_LUT1_NSEG_15_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_15_SFT);
+	/*
+	 * Step 145:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.178V (1mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_16,
 			   RG_CLH_LUT1_TONREF_16_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_16_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_16_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_16,
 			   RG_CLH_LUT1_NSEG_16_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_16_SFT);
+	/*
+	 * Step 146:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.189V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_17,
 			   RG_CLH_LUT1_TONREF_17_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_17_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_17_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_17,
 			   RG_CLH_LUT1_NSEG_17_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_17_SFT);
+	/*
+	 * Step 147:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.200V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_18,
 			   RG_CLH_LUT1_TONREF_18_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_18_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_18_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_18,
 			   RG_CLH_LUT1_NSEG_18_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_18_SFT);
+	/*
+	 * Step 148:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.212V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_19,
 			   RG_CLH_LUT1_TONREF_19_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_19_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_19_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_19,
 			   RG_CLH_LUT1_NSEG_19_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_19_SFT);
+	/*
+	 * Step 149:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.223V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_20,
 			   RG_CLH_LUT1_TONREF_20_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_20_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_20_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_20,
 			   RG_CLH_LUT1_NSEG_20_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_20_SFT);
+	/*
+	 * Step 150:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.234V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_21,
 			   RG_CLH_LUT1_TONREF_21_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_21_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_21_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_21,
 			   RG_CLH_LUT1_NSEG_21_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_21_SFT);
+	/*
+	 * Step 151:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.245V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_22,
 			   RG_CLH_LUT1_TONREF_22_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_22_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_22_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_22,
 			   RG_CLH_LUT1_NSEG_22_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_22_SFT);
+	/*
+	 * Step 152:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.256V (2mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_23,
 			   RG_CLH_LUT1_TONREF_23_MASK_SFT,
-			   0x6 << RG_CLH_LUT1_TONREF_23_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_23_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_23,
 			   RG_CLH_LUT1_NSEG_23_MASK_SFT,
 			   0x0 << RG_CLH_LUT1_NSEG_23_SFT);
+	/*
+	 * Step 153:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.267V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_24,
 			   RG_CLH_LUT1_TONREF_24_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_24_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_24,
 			   RG_CLH_LUT1_NSEG_24_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_24_SFT);
+	/*
+	 * Step 154:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.278V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_25,
 			   RG_CLH_LUT1_TONREF_25_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_25_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_25,
 			   RG_CLH_LUT1_NSEG_25_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_25_SFT);
+	/*
+	 * Step 155:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.290V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_26,
 			   RG_CLH_LUT1_TONREF_26_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_26_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_26,
 			   RG_CLH_LUT1_NSEG_26_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_26_SFT);
+	/*
+	 * Step 156:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.301V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_27,
 			   RG_CLH_LUT1_TONREF_27_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_27_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_27,
 			   RG_CLH_LUT1_NSEG_27_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_27_SFT);
+	/*
+	 * Step 157:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.312V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_28,
 			   RG_CLH_LUT1_TONREF_28_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_28_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_28,
 			   RG_CLH_LUT1_NSEG_28_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_28_SFT);
+	/*
+	 * Step 158:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.323V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_29,
 			   RG_CLH_LUT1_TONREF_29_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_29_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_29,
 			   RG_CLH_LUT1_NSEG_29_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_29_SFT);
+	/*
+	 * Step 159:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.334V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_30,
 			   RG_CLH_LUT1_TONREF_30_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_30_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_30,
 			   RG_CLH_LUT1_NSEG_30_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_30_SFT);
+	/*
+	 * Step 160:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.345V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_31,
 			   RG_CLH_LUT1_TONREF_31_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_31_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_31,
 			   RG_CLH_LUT1_NSEG_31_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_31_SFT);
+	/*
+	 * Step 161:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.356V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_32,
 			   RG_CLH_LUT1_TONREF_32_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_32_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_32,
 			   RG_CLH_LUT1_NSEG_32_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_32_SFT);
+	/*
+	 * Step 162:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.367V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_33,
 			   RG_CLH_LUT1_TONREF_33_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_33_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_33,
 			   RG_CLH_LUT1_NSEG_33_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_33_SFT);
+	/*
+	 * Step 163:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.379V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_34,
 			   RG_CLH_LUT1_TONREF_34_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_34_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_34,
 			   RG_CLH_LUT1_NSEG_34_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_34_SFT);
+	/*
+	 * Step 164:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.390V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_35,
 			   RG_CLH_LUT1_TONREF_35_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_35_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_35,
 			   RG_CLH_LUT1_NSEG_35_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_35_SFT);
+	/*
+	 * Step 165:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.401V (5mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_36,
 			   RG_CLH_LUT1_TONREF_36_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_36_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_36,
 			   RG_CLH_LUT1_NSEG_36_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_36_SFT);
+	/*
+	 * Step 166:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.412V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_37,
 			   RG_CLH_LUT1_TONREF_37_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_37_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_37,
 			   RG_CLH_LUT1_NSEG_37_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_37_SFT);
+	/*
+	 * Step 167:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.423V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_38,
 			   RG_CLH_LUT1_TONREF_38_MASK_SFT,
 			   0x7 << RG_CLH_LUT1_TONREF_38_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_38,
 			   RG_CLH_LUT1_NSEG_38_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_38_SFT);
+	/*
+	 * Step 168:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.434V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_39,
 			   RG_CLH_LUT1_TONREF_39_MASK_SFT,
-			   0x8 << RG_CLH_LUT1_TONREF_39_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_39_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_39,
 			   RG_CLH_LUT1_NSEG_39_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_39_SFT);
+	/*
+	 * Step 169:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.445V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_40,
 			   RG_CLH_LUT1_TONREF_40_MASK_SFT,
-			   0x8 << RG_CLH_LUT1_TONREF_40_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_40_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_40,
 			   RG_CLH_LUT1_NSEG_40_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_40_SFT);
+	/*
+	 * Step 170:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.457V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_41,
 			   RG_CLH_LUT1_TONREF_41_MASK_SFT,
-			   0x8 << RG_CLH_LUT1_TONREF_41_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_41_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_41,
 			   RG_CLH_LUT1_NSEG_41_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_41_SFT);
+	/*
+	 * Step 171:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.468V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_42,
 			   RG_CLH_LUT1_TONREF_42_MASK_SFT,
-			   0x8 << RG_CLH_LUT1_TONREF_42_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_42_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_42,
 			   RG_CLH_LUT1_NSEG_42_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_42_SFT);
+	/*
+	 * Step 172:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.479V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_43,
 			   RG_CLH_LUT1_TONREF_43_MASK_SFT,
-			   0x9 << RG_CLH_LUT1_TONREF_43_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_43_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_43,
 			   RG_CLH_LUT1_NSEG_43_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_43_SFT);
+	/*
+	 * Step 173:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.490V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_44,
 			   RG_CLH_LUT1_TONREF_44_MASK_SFT,
-			   0x9 << RG_CLH_LUT1_TONREF_44_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_44_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_44,
 			   RG_CLH_LUT1_NSEG_44_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_44_SFT);
+	/*
+	 * Step 174:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.501V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_45,
 			   RG_CLH_LUT1_TONREF_45_MASK_SFT,
-			   0x9 << RG_CLH_LUT1_TONREF_45_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_45_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_45,
 			   RG_CLH_LUT1_NSEG_45_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_45_SFT);
+	/*
+	 * Step 175:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.512V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_46,
 			   RG_CLH_LUT1_TONREF_46_MASK_SFT,
-			   0xa << RG_CLH_LUT1_TONREF_46_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_46_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_46,
 			   RG_CLH_LUT1_NSEG_46_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_46_SFT);
+	/*
+	 * Step 176:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.523V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_47,
 			   RG_CLH_LUT1_TONREF_47_MASK_SFT,
-			   0xa << RG_CLH_LUT1_TONREF_47_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_47_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_47,
 			   RG_CLH_LUT1_NSEG_47_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_47_SFT);
+	/*
+	 * Step 177:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.535V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_48,
 			   RG_CLH_LUT1_TONREF_48_MASK_SFT,
-			   0xa << RG_CLH_LUT1_TONREF_48_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_48_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_48,
 			   RG_CLH_LUT1_NSEG_48_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_48_SFT);
+	/*
+	 * Step 178:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.546V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_49,
 			   RG_CLH_LUT1_TONREF_49_MASK_SFT,
-			   0xa << RG_CLH_LUT1_TONREF_49_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_49_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_49,
 			   RG_CLH_LUT1_NSEG_49_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_49_SFT);
+	/*
+	 * Step 179:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.557V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_50,
 			   RG_CLH_LUT1_TONREF_50_MASK_SFT,
-			   0xb << RG_CLH_LUT1_TONREF_50_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_50_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_50,
 			   RG_CLH_LUT1_NSEG_50_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_50_SFT);
+	/*
+	 * Step 180:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.568V (10mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_51,
 			   RG_CLH_LUT1_TONREF_51_MASK_SFT,
-			   0xb << RG_CLH_LUT1_TONREF_51_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_51_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_51,
 			   RG_CLH_LUT1_NSEG_51_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_51_SFT);
+	/*
+	 * Step 181:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.579V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_52,
 			   RG_CLH_LUT1_TONREF_52_MASK_SFT,
-			   0xb << RG_CLH_LUT1_TONREF_52_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_52_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_52,
 			   RG_CLH_LUT1_NSEG_52_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_52_SFT);
+	/*
+	 * Step 182:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.590V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_53,
 			   RG_CLH_LUT1_TONREF_53_MASK_SFT,
-			   0xc << RG_CLH_LUT1_TONREF_53_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_53_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_53,
 			   RG_CLH_LUT1_NSEG_53_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_53_SFT);
+	/*
+	 * Step 183:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.601V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_54,
 			   RG_CLH_LUT1_TONREF_54_MASK_SFT,
-			   0xc << RG_CLH_LUT1_TONREF_54_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_54_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_54,
 			   RG_CLH_LUT1_NSEG_54_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_54_SFT);
+	/*
+	 * Step 184:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.612V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_55,
 			   RG_CLH_LUT1_TONREF_55_MASK_SFT,
-			   0xc << RG_CLH_LUT1_TONREF_55_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_55_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_55,
 			   RG_CLH_LUT1_NSEG_55_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_55_SFT);
+	/*
+	 * Step 185:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.624V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_56,
 			   RG_CLH_LUT1_TONREF_56_MASK_SFT,
-			   0xc << RG_CLH_LUT1_TONREF_56_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_56_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_56,
 			   RG_CLH_LUT1_NSEG_56_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_56_SFT);
+	/*
+	 * Step 186:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.635V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_57,
 			   RG_CLH_LUT1_TONREF_57_MASK_SFT,
-			   0xd << RG_CLH_LUT1_TONREF_57_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_57_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_57,
 			   RG_CLH_LUT1_NSEG_57_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_57_SFT);
+	/*
+	 * Step 187:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.646V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_58,
 			   RG_CLH_LUT1_TONREF_58_MASK_SFT,
-			   0xd << RG_CLH_LUT1_TONREF_58_SFT);
+			   0x7 << RG_CLH_LUT1_TONREF_58_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_58,
 			   RG_CLH_LUT1_NSEG_58_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_58_SFT);
+	/*
+	 * Step 188:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.657V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_59,
 			   RG_CLH_LUT1_TONREF_59_MASK_SFT,
-			   0xd << RG_CLH_LUT1_TONREF_59_SFT);
+			   0x8 << RG_CLH_LUT1_TONREF_59_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_59,
 			   RG_CLH_LUT1_NSEG_59_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_59_SFT);
+	/*
+	 * Step 189:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.668V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_60,
 			   RG_CLH_LUT1_TONREF_60_MASK_SFT,
-			   0xe << RG_CLH_LUT1_TONREF_60_SFT);
+			   0x8 << RG_CLH_LUT1_TONREF_60_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_60,
 			   RG_CLH_LUT1_NSEG_60_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_60_SFT);
+	/*
+	 * Step 190:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.679V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_61,
 			   RG_CLH_LUT1_TONREF_61_MASK_SFT,
-			   0xe << RG_CLH_LUT1_TONREF_61_SFT);
+			   0x8 << RG_CLH_LUT1_TONREF_61_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_61,
 			   RG_CLH_LUT1_NSEG_61_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_61_SFT);
+	/*
+	 * Step 191:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.690V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_62,
 			   RG_CLH_LUT1_TONREF_62_MASK_SFT,
-			   0xe << RG_CLH_LUT1_TONREF_62_SFT);
+			   0x9 << RG_CLH_LUT1_TONREF_62_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_62,
 			   RG_CLH_LUT1_NSEG_62_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_62_SFT);
+	/*
+	 * Step 192:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.702V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_63,
 			   RG_CLH_LUT1_TONREF_63_MASK_SFT,
-			   0xf << RG_CLH_LUT1_TONREF_63_SFT);
+			   0x9 << RG_CLH_LUT1_TONREF_63_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_63,
 			   RG_CLH_LUT1_NSEG_63_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_63_SFT);
+	/*
+	 * Step 193:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.713V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_64,
 			   RG_CLH_LUT1_TONREF_64_MASK_SFT,
-			   0xf << RG_CLH_LUT1_TONREF_64_SFT);
+			   0x9 << RG_CLH_LUT1_TONREF_64_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_64,
 			   RG_CLH_LUT1_NSEG_64_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_64_SFT);
+	/*
+	 * Step 194:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.724V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_65,
 			   RG_CLH_LUT1_TONREF_65_MASK_SFT,
-			   0xf << RG_CLH_LUT1_TONREF_65_SFT);
+			   0x9 << RG_CLH_LUT1_TONREF_65_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_65,
 			   RG_CLH_LUT1_NSEG_65_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_65_SFT);
+	/*
+	 * Step 195:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.735V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_66,
 			   RG_CLH_LUT1_TONREF_66_MASK_SFT,
-			   0x10 << RG_CLH_LUT1_TONREF_66_SFT);
+			   0xa << RG_CLH_LUT1_TONREF_66_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_66,
 			   RG_CLH_LUT1_NSEG_66_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_66_SFT);
+	/*
+	 * Step 196:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.746V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_67,
 			   RG_CLH_LUT1_TONREF_67_MASK_SFT,
-			   0x10 << RG_CLH_LUT1_TONREF_67_SFT);
+			   0xa << RG_CLH_LUT1_TONREF_67_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_67,
 			   RG_CLH_LUT1_NSEG_67_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_67_SFT);
+	/*
+	 * Step 197:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.757V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_68,
 			   RG_CLH_LUT1_TONREF_68_MASK_SFT,
-			   0x10 << RG_CLH_LUT1_TONREF_68_SFT);
+			   0xa << RG_CLH_LUT1_TONREF_68_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_68,
 			   RG_CLH_LUT1_NSEG_68_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_68_SFT);
+	/*
+	 * Step 198:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.768V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_69,
 			   RG_CLH_LUT1_TONREF_69_MASK_SFT,
-			   0x11 << RG_CLH_LUT1_TONREF_69_SFT);
+			   0xb << RG_CLH_LUT1_TONREF_69_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_69,
 			   RG_CLH_LUT1_NSEG_69_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_69_SFT);
+	/*
+	 * Step 199:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.779V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_70,
 			   RG_CLH_LUT1_TONREF_70_MASK_SFT,
-			   0x11 << RG_CLH_LUT1_TONREF_70_SFT);
+			   0xb << RG_CLH_LUT1_TONREF_70_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_70,
 			   RG_CLH_LUT1_NSEG_70_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_70_SFT);
+	/*
+	 * Step 200:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.791V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_71,
 			   RG_CLH_LUT1_TONREF_71_MASK_SFT,
-			   0x11 << RG_CLH_LUT1_TONREF_71_SFT);
+			   0xb << RG_CLH_LUT1_TONREF_71_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_71,
 			   RG_CLH_LUT1_NSEG_71_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_71_SFT);
+	/*
+	 * Step 201:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.802V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_72,
 			   RG_CLH_LUT1_TONREF_72_MASK_SFT,
-			   0x12 << RG_CLH_LUT1_TONREF_72_SFT);
+			   0xc << RG_CLH_LUT1_TONREF_72_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_72,
 			   RG_CLH_LUT1_NSEG_72_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_72_SFT);
+	/*
+	 * Step 202:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.813V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_73,
 			   RG_CLH_LUT1_TONREF_73_MASK_SFT,
-			   0x12 << RG_CLH_LUT1_TONREF_73_SFT);
+			   0xc << RG_CLH_LUT1_TONREF_73_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_73,
 			   RG_CLH_LUT1_NSEG_73_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_73_SFT);
+	/*
+	 * Step 203:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.824V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_74,
 			   RG_CLH_LUT1_TONREF_74_MASK_SFT,
-			   0x12 << RG_CLH_LUT1_TONREF_74_SFT);
+			   0xc << RG_CLH_LUT1_TONREF_74_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_74,
 			   RG_CLH_LUT1_NSEG_74_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_74_SFT);
+	/*
+	 * Step 204:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.835V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_75,
 			   RG_CLH_LUT1_TONREF_75_MASK_SFT,
-			   0x13 << RG_CLH_LUT1_TONREF_75_SFT);
+			   0xc << RG_CLH_LUT1_TONREF_75_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_75,
 			   RG_CLH_LUT1_NSEG_75_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_75_SFT);
+	/*
+	 * Step 205:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.846V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_76,
 			   RG_CLH_LUT1_TONREF_76_MASK_SFT,
-			   0x13 << RG_CLH_LUT1_TONREF_76_SFT);
+			   0xd << RG_CLH_LUT1_TONREF_76_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_76,
 			   RG_CLH_LUT1_NSEG_76_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_76_SFT);
+	/*
+	 * Step 206:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.857V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_77,
 			   RG_CLH_LUT1_TONREF_77_MASK_SFT,
-			   0x13 << RG_CLH_LUT1_TONREF_77_SFT);
+			   0xd << RG_CLH_LUT1_TONREF_77_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_77,
 			   RG_CLH_LUT1_NSEG_77_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_77_SFT);
+	/*
+	 * Step 207:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.869V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_78,
 			   RG_CLH_LUT1_TONREF_78_MASK_SFT,
-			   0x14 << RG_CLH_LUT1_TONREF_78_SFT);
+			   0xd << RG_CLH_LUT1_TONREF_78_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_78,
 			   RG_CLH_LUT1_NSEG_78_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_78_SFT);
+	/*
+	 * Step 208:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.880V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_79,
 			   RG_CLH_LUT1_TONREF_79_MASK_SFT,
-			   0x14 << RG_CLH_LUT1_TONREF_79_SFT);
+			   0xe << RG_CLH_LUT1_TONREF_79_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_79,
 			   RG_CLH_LUT1_NSEG_79_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_79_SFT);
+	/*
+	 * Step 209:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.891V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_80,
 			   RG_CLH_LUT1_TONREF_80_MASK_SFT,
-			   0x15 << RG_CLH_LUT1_TONREF_80_SFT);
+			   0xe << RG_CLH_LUT1_TONREF_80_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_80,
 			   RG_CLH_LUT1_NSEG_80_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_80_SFT);
+	/*
+	 * Step 210:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.902V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_81,
 			   RG_CLH_LUT1_TONREF_81_MASK_SFT,
-			   0x15 << RG_CLH_LUT1_TONREF_81_SFT);
+			   0xe << RG_CLH_LUT1_TONREF_81_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_81,
 			   RG_CLH_LUT1_NSEG_81_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_81_SFT);
+	/*
+	 * Step 211:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.913V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_82,
 			   RG_CLH_LUT1_TONREF_82_MASK_SFT,
-			   0x15 << RG_CLH_LUT1_TONREF_82_SFT);
+			   0xf << RG_CLH_LUT1_TONREF_82_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_82,
 			   RG_CLH_LUT1_NSEG_82_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_82_SFT);
+	/*
+	 * Step 212:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.924V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_83,
 			   RG_CLH_LUT1_TONREF_83_MASK_SFT,
-			   0x16 << RG_CLH_LUT1_TONREF_83_SFT);
+			   0xf << RG_CLH_LUT1_TONREF_83_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_83,
 			   RG_CLH_LUT1_NSEG_83_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_83_SFT);
+	/*
+	 * Step 213:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.935V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_84,
 			   RG_CLH_LUT1_TONREF_84_MASK_SFT,
-			   0x16 << RG_CLH_LUT1_TONREF_84_SFT);
+			   0xf << RG_CLH_LUT1_TONREF_84_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_84,
 			   RG_CLH_LUT1_NSEG_84_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_84_SFT);
+	/*
+	 * Step 214:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.947V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_85,
 			   RG_CLH_LUT1_TONREF_85_MASK_SFT,
-			   0x16 << RG_CLH_LUT1_TONREF_85_SFT);
+			   0x10 << RG_CLH_LUT1_TONREF_85_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_85,
 			   RG_CLH_LUT1_NSEG_85_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_85_SFT);
+	/*
+	 * Step 215:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.958V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_86,
 			   RG_CLH_LUT1_TONREF_86_MASK_SFT,
-			   0x17 << RG_CLH_LUT1_TONREF_86_SFT);
+			   0x10 << RG_CLH_LUT1_TONREF_86_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_86,
 			   RG_CLH_LUT1_NSEG_86_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_86_SFT);
+	/*
+	 * Step 216:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.969V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_87,
 			   RG_CLH_LUT1_TONREF_87_MASK_SFT,
-			   0x17 << RG_CLH_LUT1_TONREF_87_SFT);
+			   0x11 << RG_CLH_LUT1_TONREF_87_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_87,
 			   RG_CLH_LUT1_NSEG_87_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_87_SFT);
+	/*
+	 * Step 217:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.980V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_88,
 			   RG_CLH_LUT1_TONREF_88_MASK_SFT,
-			   0x18 << RG_CLH_LUT1_TONREF_88_SFT);
+			   0x11 << RG_CLH_LUT1_TONREF_88_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_88,
 			   RG_CLH_LUT1_NSEG_88_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_88_SFT);
+	/*
+	 * Step 218:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 0.991V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_89,
 			   RG_CLH_LUT1_TONREF_89_MASK_SFT,
-			   0x18 << RG_CLH_LUT1_TONREF_89_SFT);
+			   0x11 << RG_CLH_LUT1_TONREF_89_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_89,
 			   RG_CLH_LUT1_NSEG_89_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_89_SFT);
+	/*
+	 * Step 219:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.002V (31mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_90,
 			   RG_CLH_LUT1_TONREF_90_MASK_SFT,
-			   0x18 << RG_CLH_LUT1_TONREF_90_SFT);
+			   0x12 << RG_CLH_LUT1_TONREF_90_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_90,
 			   RG_CLH_LUT1_NSEG_90_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_90_SFT);
+	/*
+	 * Step 220:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.013V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_91,
 			   RG_CLH_LUT1_TONREF_91_MASK_SFT,
-			   0x19 << RG_CLH_LUT1_TONREF_91_SFT);
+			   0x12 << RG_CLH_LUT1_TONREF_91_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_91,
 			   RG_CLH_LUT1_NSEG_91_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_91_SFT);
+	/*
+	 * Step 221:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.024V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_92,
 			   RG_CLH_LUT1_TONREF_92_MASK_SFT,
-			   0x19 << RG_CLH_LUT1_TONREF_92_SFT);
+			   0x12 << RG_CLH_LUT1_TONREF_92_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_92,
 			   RG_CLH_LUT1_NSEG_92_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_92_SFT);
+	/*
+	 * Step 222:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.036V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_93,
 			   RG_CLH_LUT1_TONREF_93_MASK_SFT,
-			   0x1a << RG_CLH_LUT1_TONREF_93_SFT);
+			   0x13 << RG_CLH_LUT1_TONREF_93_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_93,
 			   RG_CLH_LUT1_NSEG_93_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_93_SFT);
+	/*
+	 * Step 223:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.047V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_94,
 			   RG_CLH_LUT1_TONREF_94_MASK_SFT,
-			   0x1a << RG_CLH_LUT1_TONREF_94_SFT);
+			   0x13 << RG_CLH_LUT1_TONREF_94_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_94,
 			   RG_CLH_LUT1_NSEG_94_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_94_SFT);
+	/*
+	 * Step 224:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.058V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_95,
 			   RG_CLH_LUT1_TONREF_95_MASK_SFT,
-			   0x1a << RG_CLH_LUT1_TONREF_95_SFT);
+			   0x13 << RG_CLH_LUT1_TONREF_95_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_95,
 			   RG_CLH_LUT1_NSEG_95_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_95_SFT);
+	/*
+	 * Step 225:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.069V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_96,
 			   RG_CLH_LUT1_TONREF_96_MASK_SFT,
-			   0x1b << RG_CLH_LUT1_TONREF_96_SFT);
+			   0x14 << RG_CLH_LUT1_TONREF_96_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_96,
 			   RG_CLH_LUT1_NSEG_96_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_96_SFT);
+	/*
+	 * Step 226:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.080V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_97,
 			   RG_CLH_LUT1_TONREF_97_MASK_SFT,
-			   0x1b << RG_CLH_LUT1_TONREF_97_SFT);
+			   0x14 << RG_CLH_LUT1_TONREF_97_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_97,
 			   RG_CLH_LUT1_NSEG_97_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_97_SFT);
+	/*
+	 * Step 227:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.091V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_98,
 			   RG_CLH_LUT1_TONREF_98_MASK_SFT,
-			   0x1c << RG_CLH_LUT1_TONREF_98_SFT);
+			   0x15 << RG_CLH_LUT1_TONREF_98_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_98,
 			   RG_CLH_LUT1_NSEG_98_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_98_SFT);
+	/*
+	 * Step 228:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.102V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_99,
 			   RG_CLH_LUT1_TONREF_99_MASK_SFT,
-			   0x1c << RG_CLH_LUT1_TONREF_99_SFT);
+			   0x15 << RG_CLH_LUT1_TONREF_99_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_99,
 			   RG_CLH_LUT1_NSEG_99_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_99_SFT);
+	/*
+	 * Step 229:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.114V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_100,
 			   RG_CLH_LUT1_TONREF_100_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_100_SFT);
+			   0x15 << RG_CLH_LUT1_TONREF_100_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_100,
 			   RG_CLH_LUT1_NSEG_100_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_100_SFT);
+	/*
+	 * Step 230:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.125V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_101,
 			   RG_CLH_LUT1_TONREF_101_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_101_SFT);
+			   0x16 << RG_CLH_LUT1_TONREF_101_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_101,
 			   RG_CLH_LUT1_NSEG_101_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_101_SFT);
+	/*
+	 * Step 231:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.136V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_102,
 			   RG_CLH_LUT1_TONREF_102_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_102_SFT);
+			   0x16 << RG_CLH_LUT1_TONREF_102_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_102,
 			   RG_CLH_LUT1_NSEG_102_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_102_SFT);
+	/*
+	 * Step 232:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.147V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_103,
 			   RG_CLH_LUT1_TONREF_103_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_103_SFT);
+			   0x17 << RG_CLH_LUT1_TONREF_103_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_103,
 			   RG_CLH_LUT1_NSEG_103_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_103_SFT);
+	/*
+	 * Step 233:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.158V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_104,
 			   RG_CLH_LUT1_TONREF_104_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_104_SFT);
+			   0x17 << RG_CLH_LUT1_TONREF_104_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_104,
 			   RG_CLH_LUT1_NSEG_104_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_104_SFT);
+	/*
+	 * Step 234:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.169V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_105,
 			   RG_CLH_LUT1_TONREF_105_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_105_SFT);
+			   0x17 << RG_CLH_LUT1_TONREF_105_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_105,
 			   RG_CLH_LUT1_NSEG_105_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_105_SFT);
+	/*
+	 * Step 235:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.180V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_106,
 			   RG_CLH_LUT1_TONREF_106_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_106_SFT);
+			   0x18 << RG_CLH_LUT1_TONREF_106_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_106,
 			   RG_CLH_LUT1_NSEG_106_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_106_SFT);
+	/*
+	 * Step 236:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.192V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_107,
 			   RG_CLH_LUT1_TONREF_107_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_107_SFT);
+			   0x18 << RG_CLH_LUT1_TONREF_107_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_107,
 			   RG_CLH_LUT1_NSEG_107_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_107_SFT);
+	/*
+	 * Step 237:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.203V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_108,
 			   RG_CLH_LUT1_TONREF_108_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_108_SFT);
+			   0x19 << RG_CLH_LUT1_TONREF_108_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_108,
 			   RG_CLH_LUT1_NSEG_108_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_108_SFT);
+	/*
+	 * Step 238:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.214V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_109,
 			   RG_CLH_LUT1_TONREF_109_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_109_SFT);
+			   0x19 << RG_CLH_LUT1_TONREF_109_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_109,
 			   RG_CLH_LUT1_NSEG_109_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_109_SFT);
+	/*
+	 * Step 239:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.225V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_110,
 			   RG_CLH_LUT1_TONREF_110_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_110_SFT);
+			   0x1a << RG_CLH_LUT1_TONREF_110_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_110,
 			   RG_CLH_LUT1_NSEG_110_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_110_SFT);
+	/*
+	 * Step 240:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.236V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_111,
 			   RG_CLH_LUT1_TONREF_111_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_111_SFT);
+			   0x1a << RG_CLH_LUT1_TONREF_111_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_111,
 			   RG_CLH_LUT1_NSEG_111_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_111_SFT);
+	/*
+	 * Step 241:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.247V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_112,
 			   RG_CLH_LUT1_TONREF_112_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_112_SFT);
+			   0x1a << RG_CLH_LUT1_TONREF_112_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_112,
 			   RG_CLH_LUT1_NSEG_112_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_112_SFT);
+	/*
+	 * Step 242:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.258V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_113,
 			   RG_CLH_LUT1_TONREF_113_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_113_SFT);
+			   0x1b << RG_CLH_LUT1_TONREF_113_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_113,
 			   RG_CLH_LUT1_NSEG_113_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_113_SFT);
+	/*
+	 * Step 243:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.269V (50mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_114,
 			   RG_CLH_LUT1_TONREF_114_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_114_SFT);
+			   0x1b << RG_CLH_LUT1_TONREF_114_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_114,
 			   RG_CLH_LUT1_NSEG_114_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_114_SFT);
+	/*
+	 * Step 244:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.281V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_115,
 			   RG_CLH_LUT1_TONREF_115_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_115_SFT);
+			   0x1c << RG_CLH_LUT1_TONREF_115_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_115,
 			   RG_CLH_LUT1_NSEG_115_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_115_SFT);
+	/*
+	 * Step 245:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.292V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_116,
 			   RG_CLH_LUT1_TONREF_116_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_116_SFT);
+			   0x1c << RG_CLH_LUT1_TONREF_116_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_116,
 			   RG_CLH_LUT1_NSEG_116_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_116_SFT);
+	/*
+	 * Step 246:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.303V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_117,
 			   RG_CLH_LUT1_TONREF_117_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_117_SFT);
+			   0x1c << RG_CLH_LUT1_TONREF_117_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_117,
 			   RG_CLH_LUT1_NSEG_117_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_117_SFT);
+	/*
+	 * Step 247:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.314V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_118,
 			   RG_CLH_LUT1_TONREF_118_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_118_SFT);
+			   0x1c << RG_CLH_LUT1_TONREF_118_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_118,
 			   RG_CLH_LUT1_NSEG_118_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_118_SFT);
+	/*
+	 * Step 248:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.325V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_119,
 			   RG_CLH_LUT1_TONREF_119_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_119_SFT);
+			   0x1c << RG_CLH_LUT1_TONREF_119_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_119,
 			   RG_CLH_LUT1_NSEG_119_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_119_SFT);
+	/*
+	 * Step 249:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.336V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_120,
 			   RG_CLH_LUT1_TONREF_120_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_120_SFT);
+			   0x1c << RG_CLH_LUT1_TONREF_120_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_120,
 			   RG_CLH_LUT1_NSEG_120_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_120_SFT);
+	/*
+	 * Step 250:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.347V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_121,
 			   RG_CLH_LUT1_TONREF_121_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_121_SFT);
+			   0x1c << RG_CLH_LUT1_TONREF_121_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_121,
 			   RG_CLH_LUT1_NSEG_121_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_121_SFT);
+	/*
+	 * Step 251:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.359V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_122,
 			   RG_CLH_LUT1_TONREF_122_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_122_SFT);
+			   0x1c << RG_CLH_LUT1_TONREF_122_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_122,
 			   RG_CLH_LUT1_NSEG_122_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_122_SFT);
+	/*
+	 * Step 252:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.370V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_123,
 			   RG_CLH_LUT1_TONREF_123_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_123_SFT);
+			   0x1c << RG_CLH_LUT1_TONREF_123_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_123,
 			   RG_CLH_LUT1_NSEG_123_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_123_SFT);
+	/*
+	 * Step 253:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.381V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_124,
 			   RG_CLH_LUT1_TONREF_124_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_124_SFT);
+			   0x1c << RG_CLH_LUT1_TONREF_124_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_124,
 			   RG_CLH_LUT1_NSEG_124_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_124_SFT);
+	/*
+	 * Step 254:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.392V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_125,
 			   RG_CLH_LUT1_TONREF_125_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_125_SFT);
+			   0x1c << RG_CLH_LUT1_TONREF_125_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_125,
 			   RG_CLH_LUT1_NSEG_125_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_125_SFT);
+	/*
+	 * Step 255:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.403V
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_126,
 			   RG_CLH_LUT1_TONREF_126_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_126_SFT);
+			   0x1c << RG_CLH_LUT1_TONREF_126_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_126,
 			   RG_CLH_LUT1_NSEG_126_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_126_SFT);
+	/*
+	 * Step 256:
+	 * [5:1] Set class-H TONref at frame Vaudmax = 1.414V (62mW)
+	 * [0] Set class-H IL-charging path to single path
+	 */
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_127,
 			   RG_CLH_LUT1_TONREF_127_MASK_SFT,
-			   0x1d << RG_CLH_LUT1_TONREF_127_SFT);
+			   0x1c << RG_CLH_LUT1_TONREF_127_SFT);
 	regmap_update_bits(priv->regmap, MT6681_CLH_LUT1_LSB_127,
 			   RG_CLH_LUT1_NSEG_127_MASK_SFT,
 			   0x1 << RG_CLH_LUT1_NSEG_127_SFT);
+	/* Step 1: Set PVDDref coefficient 1 */
+	regmap_update_bits(priv->regmap, MT6681_CLH_REFGEN_CON3,
+			   RG_CLH_DYN_PVDDREFCOEF1_MASK_SFT,
+			   0x7a << RG_CLH_DYN_PVDDREFCOEF1_SFT);
+	/* Step 2: Set PVDDref coefficient 0's LSB */
+	regmap_update_bits(priv->regmap, MT6681_CLH_REFGEN_CON4,
+			   RG_CLH_DYN_PVDDREFCOEF0_LSB_MASK_SFT,
+			   0xcc << RG_CLH_DYN_PVDDREFCOEF0_LSB_SFT);
+	/* Step 3: Set PVDDref coefficient 0's MSB */
+	regmap_update_bits(priv->regmap, MT6681_CLH_REFGEN_CON5,
+			   RG_CLH_DYN_PVDDREFCOEF0_MSB_MASK_SFT,
+			   0x4 << RG_CLH_DYN_PVDDREFCOEF0_MSB_SFT);
+	/* Step 4: Set frame Vaudmax boundary with 1/2 IL-charging paths */
+	regmap_update_bits(priv->regmap, MT6681_CLH_REFGEN_CON6,
+			   RG_CLH_DYN_PWRSWSEGCOEF_MASK_SFT,
+			   0x18 << RG_CLH_DYN_PWRSWSEGCOEF_SFT);
+	/* Step 5: Set TONref coefficient 1 */
+	regmap_update_bits(priv->regmap, MT6681_CLH_TONREF_CON2,
+			   RG_CLH_DYN_TONREFCOEF1_MASK_SFT,
+			   0x1d << RG_CLH_DYN_TONREFCOEF1_SFT);
+	/* Step 6: Set TONref coefficient 0's LSB */
+	regmap_update_bits(priv->regmap, MT6681_CLH_TONREF_CON3,
+			   RG_CLH_DYN_TONREFCOEF0_LSB_MASK_SFT,
+			   0x66 << RG_CLH_DYN_TONREFCOEF0_LSB_SFT);
+	/* Step 7: Set TONref coefficient 0's MSB */
+	regmap_update_bits(priv->regmap, MT6681_CLH_TONREF_CON4,
+			   RG_CLH_DYN_TONREFCOEF0_MSB_MASK_SFT,
+			   0x0 << RG_CLH_DYN_TONREFCOEF0_MSB_SFT);
+	/* Step 8: [4:0] Set minimum Tonref to 6T in Calculator */
+	regmap_update_bits(priv->regmap, MT6681_CLH_TONREFTUNER_CON0,
+			   RG_CLH_TONREFLB_MASK_SFT,
+			   0x7 << RG_CLH_TONREFLB_SFT);
+	/* Step 9: Toggle class-H dynamic RGs */
+	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+			   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
+			   0x0 << RG_CLH_DYN_DYNRG_SYNC_SFT);
+	/* Step 10: Toggle class-H dynamic RGs */
+	regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON0,
+			   RG_CLH_DYN_DYNRG_SYNC_MASK_SFT,
+			   0x1 << RG_CLH_DYN_DYNRG_SYNC_SFT);
 
 	dev_info(priv->dev, "%s()--\n", __func__);
 }
