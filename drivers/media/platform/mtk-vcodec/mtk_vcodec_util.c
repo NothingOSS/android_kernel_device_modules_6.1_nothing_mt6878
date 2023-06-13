@@ -133,6 +133,10 @@ EXPORT_SYMBOL_GPL(mtk_v4l2_dbg_level);
 int mtk_vdec_lpw_level;
 EXPORT_SYMBOL_GPL(mtk_vdec_lpw_level);
 
+/* For vdec kernel driver trace enable */
+bool mtk_vdec_trace_enable;
+EXPORT_SYMBOL_GPL(mtk_vdec_trace_enable);
+
 /* For vcodec vcp debug */
 int mtk_vcodec_vcp;
 EXPORT_SYMBOL_GPL(mtk_vcodec_vcp);
@@ -291,17 +295,24 @@ EXPORT_SYMBOL_GPL(mtk_vcodec_set_state);
 
 /* VCODEC FTRACE */
 #if VCODEC_TRACE
-unsigned long vcodec_get_tracing_mark(void)
+void vcodec_trace(const char *fmt, ...)
 {
-	static unsigned long __read_mostly tracing_mark_write_addr;
+	char buf[256] = {0};
+	va_list args;
+	int len;
 
-	if (unlikely(tracing_mark_write_addr == 0))
-		tracing_mark_write_addr =
-			kallsyms_lookup_name("tracing_mark_write");
+	va_start(args, fmt);
+	len = vsnprintf(buf, sizeof(buf), fmt, args);
+	va_end(args);
 
-	return tracing_mark_write_addr;
+	if (unlikely(len < 0))
+		return;
+	else if (unlikely(len == 256))
+		buf[255] = '\0';
+
+	trace_puts(buf);
 }
-EXPORT_SYMBOL(vcodec_get_tracing_mark);
+EXPORT_SYMBOL(vcodec_trace);
 #endif
 
 void __iomem *mtk_vcodec_get_dec_reg_addr(struct mtk_vcodec_ctx *data,
@@ -619,7 +630,9 @@ int v4l2_m2m_buf_queue_check(struct v4l2_m2m_ctx *m2m_ctx,
 			LIST_POISON1, LIST_POISON2);
 		return -1;
 	}
+	vcodec_trace_begin_func();
 	v4l2_m2m_buf_queue(m2m_ctx, vbuf);
+	vcodec_trace_end();
 	return 0;
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_buf_queue_check);

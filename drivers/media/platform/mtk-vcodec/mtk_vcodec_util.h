@@ -149,6 +149,7 @@ extern int mtk_v4l2_dbg_level;
 extern int mtk_vdec_lpw_level;
 extern bool mtk_vcodec_dbg;
 extern bool mtk_vcodec_perf;
+extern bool mtk_vdec_trace_enable;
 extern int mtk_vcodec_vcp;
 extern char *mtk_vdec_property;
 extern char *mtk_venc_property;
@@ -187,13 +188,45 @@ enum mtk_vcodec_debug_level {
 	VCODEC_DBG_L8 = 8,
 };
 
+#define VCODEC_TRACE 1
+#if VCODEC_TRACE
+#define vcodec_trace_begin(fmt, args...) do { \
+			if (mtk_vdec_trace_enable) { \
+				vcodec_trace("B|%d|"fmt"\n", current->tgid, ##args); \
+			} \
+		} while (0)
+
+#define vcodec_trace_begin_func() vcodec_trace_begin("%s", __func__)
+
+#define vcodec_trace_end() do { \
+			if (mtk_vdec_trace_enable) { \
+				vcodec_trace("E\n"); \
+			} \
+		} while (0)
+
+#define vcodec_trace_count(name, count) do { \
+			if (mtk_vdec_trace_enable) { \
+				vcodec_trace("C|%d|%s|%d\n", current->tgid, name, count); \
+			} \
+		} while (0)
+
+void vcodec_trace(const char *fmt, ...);
+#else
+#define vcodec_trace_begin(fmt, args...)
+#define vcodec_trace_end()
+#define vcodec_trace_count(name, count)
+#endif
+
 #if defined(DEBUG)
 
 #define mtk_v4l2_debug(level, fmt, args...)                              \
 	do {                                                             \
-		if (((mtk_v4l2_dbg_level) & (level)) == (level))           \
+		if (((mtk_v4l2_dbg_level) & (level)) == (level)) {          \
+			vcodec_trace_begin("mtk_v4l2_debug_log"); \
 			pr_notice("[MTK_V4L2] level=%d %s(),%d: " fmt "\n",\
 				level, __func__, __LINE__, ##args);      \
+			vcodec_trace_end(); \
+		} \
 	} while (0)
 
 #define mtk_v4l2_err(fmt, args...)                \
@@ -289,33 +322,6 @@ static __used unsigned int time_ms_s[2][3], time_ms_e[2][3];
 				time_ms_e[is_enc][id] - time_ms_s[is_enc][id], \
 				timeout_ms); \
 	} while (0)
-
-#define VCODEC_TRACE 0
-#if VCODEC_TRACE
-#define vcodec_trace_begin(fmt, args...) do { \
-			preempt_disable(); \
-			event_trace_printk(vcodec_get_tracing_mark(), \
-				"B|%d|"fmt"\n", current->tgid, ##args); \
-			preempt_enable();\
-		} while (0)
-
-#define vcodec_trace_end() do { \
-			preempt_disable(); \
-			event_trace_printk(vcodec_get_tracing_mark(), "E\n"); \
-			preempt_enable(); \
-		} while (0)
-
-#define vcodec_trace_count(name, count) do { \
-			preempt_disable(); \
-			event_trace_printk(vcodec_get_tracing_mark(), \
-				"C|%d|%s|%d\n", current->tgid, name, count); \
-			preempt_enable();\
-		} while (0)
-#else
-#define vcodec_trace_begin(fmt, args...)
-#define vcodec_trace_end()
-#define vcodec_trace_count(name, count)
-#endif
 
 enum mtk_put_buffer_type {
 	PUT_BUFFER_WORKER = -1,

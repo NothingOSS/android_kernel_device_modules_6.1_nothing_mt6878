@@ -46,6 +46,9 @@ static const struct vdec_common_if *get_data_path_ptr(void)
 int vdec_if_init(struct mtk_vcodec_ctx *ctx, unsigned int fourcc)
 {
 	int ret = 0;
+
+	vcodec_trace_begin_func();
+
 	mtk_dec_init_ctx_pm(ctx);
 
 	switch (fourcc) {
@@ -69,14 +72,18 @@ int vdec_if_init(struct mtk_vcodec_ctx *ctx, unsigned int fourcc)
 		ctx->dec_if = get_data_path_ptr();
 		break;
 	default:
+		vcodec_trace_end();
 		return -EINVAL;
 	}
 
-	if (ctx->dec_if == NULL)
+	if (ctx->dec_if == NULL) {
+		vcodec_trace_end();
 		return -EINVAL;
+	}
 
 	ret = ctx->dec_if->init(ctx, &ctx->drv_handle);
 
+	vcodec_trace_end();
 	return ret;
 }
 
@@ -86,9 +93,12 @@ int vdec_if_decode(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_mem *bs,
 	int ret = 0;
 	unsigned int i = 0;
 
+	vcodec_trace_begin_func();
+
 	if (bs && !ctx->dec_params.svp_mode) {
 		if ((bs->dma_addr & 63UL) != 0UL) {
 			mtk_v4l2_err("bs dma_addr should 64 byte align");
+			vcodec_trace_end();
 			return -EINVAL;
 		}
 	}
@@ -97,18 +107,20 @@ int vdec_if_decode(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_mem *bs,
 		for (i = 0; i < fb->num_planes; i++) {
 			if ((fb->fb_base[i].dma_addr & 511UL) != 0UL) {
 				mtk_v4l2_err("fb addr should 512 byte align");
+				vcodec_trace_end();
 				return -EINVAL;
 			}
 		}
 	}
 
-	if (ctx->drv_handle == 0)
+	if (ctx->drv_handle == 0) {
+		vcodec_trace_end();
 		return -EIO;
+	}
 
-	//vcodec_trace_begin
 	ret = ctx->dec_if->decode(ctx->drv_handle, bs, fb, src_chg);
-	//vcodec_trace_end();
 
+	vcodec_trace_end();
 	return ret;
 }
 
@@ -118,6 +130,8 @@ int vdec_if_get_param(struct mtk_vcodec_ctx *ctx, enum vdec_get_param_type type,
 	struct vdec_inst *inst = NULL;
 	int ret = 0;
 	int drv_handle_exist = 1;
+
+	vcodec_trace_begin_func();
 
 	if (!ctx->drv_handle) {
 		inst = kzalloc(sizeof(struct vdec_inst), GFP_KERNEL);
@@ -144,6 +158,7 @@ int vdec_if_get_param(struct mtk_vcodec_ctx *ctx, enum vdec_get_param_type type,
 		ctx->dec_if = NULL;
 	}
 
+	vcodec_trace_end();
 	return ret;
 }
 
@@ -153,6 +168,8 @@ int vdec_if_set_param(struct mtk_vcodec_ctx *ctx, enum vdec_set_param_type type,
 	struct vdec_inst *inst = NULL;
 	int ret = 0;
 	int drv_handle_exist = 1;
+
+	vcodec_trace_begin_func();
 
 	if (!ctx->drv_handle) {
 		inst = kzalloc(sizeof(struct vdec_inst), GFP_KERNEL);
@@ -178,6 +195,7 @@ int vdec_if_set_param(struct mtk_vcodec_ctx *ctx, enum vdec_set_param_type type,
 		ctx->dec_if = NULL;
 	}
 
+	vcodec_trace_end();
 	return ret;
 }
 
@@ -186,24 +204,33 @@ void vdec_if_deinit(struct mtk_vcodec_ctx *ctx)
 	if (ctx->drv_handle == 0)
 		return;
 
-	ctx->dec_if->deinit(ctx->drv_handle);
+	vcodec_trace_begin_func();
 
+	ctx->dec_if->deinit(ctx->drv_handle);
 	ctx->drv_handle = 0;
+
+	vcodec_trace_end();
 }
 
 int vdec_if_flush(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_mem *bs,
 				   struct vdec_fb *fb, enum vdec_flush_type type)
 {
+	int ret;
+
 	if (ctx->drv_handle == 0)
 		return -EIO;
+
+	vcodec_trace_begin_func();
 
 	if (ctx->dec_if->flush == NULL) {
 		unsigned int src_chg;
 
-		return vdec_if_decode(ctx, bs, fb, &src_chg);
-	}
+		ret = vdec_if_decode(ctx, bs, fb, &src_chg);
+	} else
+		ret = ctx->dec_if->flush(ctx->drv_handle, fb, type);
 
-	return ctx->dec_if->flush(ctx->drv_handle, fb, type);
+	vcodec_trace_end();
+	return ret;
 }
 
 void vdec_decode_prepare(void *ctx_prepare,

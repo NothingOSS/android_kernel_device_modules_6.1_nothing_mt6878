@@ -699,22 +699,28 @@ int vcp_dec_ipi_handler(void *arg)
 				wake_up(&vcu->wq);
 				break;
 			case VCU_IPIMSG_DEC_PUT_FRAME_BUFFER:
+				vcodec_trace_begin("vdec_ipi(PUT_FRAME_BUFFER)");
 				mtk_vdec_put_fb(vcu->ctx, PUT_BUFFER_CALLBACK,
 					msg->no_need_put != 0);
 				msg->msg_id = AP_IPIMSG_DEC_PUT_FRAME_BUFFER_DONE;
 				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
+				vcodec_trace_end();
 				break;
 			case VCU_IPIMSG_DEC_MEM_ALLOC:
+				vcodec_trace_begin("vdec_ipi(MEM_ALLOC)");
 				handle_vdec_mem_alloc((void *)obj->share_buf);
 				msg->msg_id = AP_IPIMSG_DEC_MEM_ALLOC_DONE;
 				vdec_vcp_ipi_send(inst, msg,
 					sizeof(struct vdec_vcu_ipi_mem_op), true, false, false);
+				vcodec_trace_end();
 				break;
 			case VCU_IPIMSG_DEC_MEM_FREE:
+				vcodec_trace_begin("vdec_ipi(MEM_FREE)");
 				handle_vdec_mem_free((void *)obj->share_buf);
 				msg->msg_id = AP_IPIMSG_DEC_MEM_FREE_DONE;
 				vdec_vcp_ipi_send(inst, msg,
 					sizeof(struct vdec_vcu_ipi_mem_op), true, false, false);
+				vcodec_trace_end();
 				break;
 			// TODO: need remove HW locks /power & ISR ipis
 			case VCU_IPIMSG_DEC_LOCK_LAT:
@@ -1115,6 +1121,8 @@ static int vdec_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 	struct vdec_inst *inst = NULL;
 	__u32 fourcc;
 
+	vcodec_trace_begin_func();
+
 	inst = kzalloc(sizeof(*inst), GFP_KERNEL);
 	if (!inst)
 		return -ENOMEM;
@@ -1150,7 +1158,9 @@ static int vdec_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 
 	mtk_vcodec_add_ctx_list(ctx);
 
+	vcodec_trace_begin("%s(ipi)", __func__);
 	err = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
+	vcodec_trace_end();
 
 	if (err != 0) {
 		mtk_vcodec_err(inst, "%s err=%d", __func__, err);
@@ -1171,6 +1181,7 @@ static int vdec_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 		(fourcc >> 16) & 0xFF, (fourcc >> 24) & 0xFF,
 		inst->vcu.id, inst, msg.ap_inst_addr);
 
+	vcodec_trace_end();
 	return 0;
 
 error_free_inst_and_list:
@@ -1199,7 +1210,9 @@ static void vdec_vcp_deinit(unsigned long h_vdec)
 	msg.ctx_id = inst->ctx->id;
 	msg.vcu_inst_addr = inst->vcu.inst_addr;
 
+	vcodec_trace_begin("%s(ipi)", __func__);
 	err = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
+	vcodec_trace_end();
 	mtk_vcodec_debug(inst, "- ret=%d", err);
 
 	mtk_vcodec_del_ctx_list(inst->ctx);
@@ -1329,7 +1342,9 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 	msg.data[0] = (unsigned int)bs->size;
 	msg.data[1] = (unsigned int)bs->length;
 	msg.data[2] = (unsigned int)bs->flags;
+	vcodec_trace_begin("%s(ipi)", __func__);
 	ret = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
+	vcodec_trace_end();
 
 	*src_chg = inst->vsi->dec.vdec_changed_info;
 	*(errormap_info + bs->index % VB2_MAX_FRAME) =
