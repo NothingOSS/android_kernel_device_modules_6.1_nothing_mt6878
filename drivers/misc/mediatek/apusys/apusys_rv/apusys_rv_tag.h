@@ -38,6 +38,14 @@ struct apusys_rv_tag {
 			unsigned int on;
 			unsigned int off;
 			uint64_t latency;
+			uint64_t sub_latency_0;
+			uint64_t sub_latency_1;
+			uint64_t sub_latency_2;
+			uint64_t sub_latency_3;
+			uint64_t sub_latency_4;
+			uint64_t sub_latency_5;
+			uint64_t sub_latency_6;
+			uint64_t sub_latency_7;
 		} pwr_ctrl;
 	} d;
 };

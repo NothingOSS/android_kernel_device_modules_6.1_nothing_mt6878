@@ -34,9 +34,12 @@
 #include "apu_regdump.h"
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
-static void apu_power_on_off_profile(u32 on, u32 off, uint64_t time_diff_ns);
+static void apu_power_on_off_profile(u32 on, u32 off,
+	uint64_t time_diff_ns, uint64_t time_diff_ns2);
 #else
-static void apu_power_on_off_profile(u32 on, u32 off, uint64_t time_diff_ns) {}
+static void apu_power_on_off_profile(u32 on, u32 off,
+	uint64_t time_diff_ns, uint64_t time_diff_ns2)
+{}
 #endif
 
 static struct lock_class_key ipi_lock_key[APU_IPI_MAX];
@@ -582,14 +585,16 @@ static void apu_unregister_ipi(struct platform_device *pdev, u32 id)
 
 int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 {
-	int ret;
+	int ret, i;
 	struct mtk_apu *apu = platform_get_drvdata(pdev);
 	struct device *dev;
 	struct mtk_apu_hw_ops *hw_ops;
 	struct apu_ipi_desc *ipi;
-	struct timespec64 ts, te;
+	struct timespec64 t1, t2;
 	struct timespec64 ts_polling, te_polling;
 	uint64_t time_diff;
+
+	ktime_get_ts64(&t1);
 
 	if (!apu)
 		return -EINVAL;
@@ -608,8 +613,6 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 		/* dev_info(dev, "%s: not support\n", __func__); */
 		return -EOPNOTSUPP;
 	}
-
-	ktime_get_ts64(&ts);
 
 	if (pwr_profile_polling_mode && hw_ops->polling_rpc_status) {
 		mutex_lock(&apu->power_profile_lock);
@@ -643,15 +646,21 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 		ktime_get_ts64(&te_polling);
 		ts_polling = timespec64_sub(te_polling, ts_polling);
 		time_diff = timespec64_to_ns(&ts_polling);
-		apu_power_on_off_profile(on, off, time_diff);
+		apu_power_on_off_profile(on, off, time_diff, apu->smc_time_diff_ns);
 	}
 
-	ktime_get_ts64(&te);
-	ts = timespec64_sub(te, ts);
-	time_diff = timespec64_to_ns(&ts);
+	ktime_get_ts64(&t2);
+	t1 = timespec64_sub(t2, t1);
+	time_diff = timespec64_to_ns(&t1);
 
 	if (apu->platdata->flags & F_APUSYS_RV_TAG_SUPPORT)
-		trace_apusys_rv_pwr_ctrl(id, on, off, time_diff);
+		trace_apusys_rv_pwr_ctrl(id, on, off, time_diff,
+			apu->sub_latency[0], apu->sub_latency[1], apu->sub_latency[2],
+			apu->sub_latency[3], apu->sub_latency[4], apu->sub_latency[5],
+			apu->sub_latency[6], apu->sub_latency[7]);
+
+	for (i = 0; i < MAX_PWR_SUB_LATENCY; i++)
+		apu->sub_latency[i] = 0;
 
 	if (pwr_profile_polling_mode && hw_ops->polling_rpc_status)
 		mutex_unlock(&apu->power_profile_lock);
@@ -816,29 +825,59 @@ static uint64_t apu_on_ts_avg;
 static uint64_t apu_off_ts_avg;
 static uint64_t apu_on_ts_max;
 static uint64_t apu_off_ts_max;
-static uint64_t apu_on_ts_cnt;
-static uint64_t apu_off_ts_cnt;
 static uint64_t apu_on_ts_acc;
 static uint64_t apu_off_ts_acc;
 
+static uint64_t smc_on_ts_last;
+static uint64_t smc_off_ts_last;
+static uint64_t smc_on_ts_avg;
+static uint64_t smc_off_ts_avg;
+static uint64_t smc_on_ts_max;
+static uint64_t smc_off_ts_max;
+static uint64_t smc_on_ts_acc;
+static uint64_t smc_off_ts_acc;
+
+static uint64_t apu_on_over_1ms_cnt;
+static uint64_t apu_off_over_1ms_cnt;
+
+static uint64_t apu_on_ts_cnt;
+static uint64_t apu_off_ts_cnt;
+
 static uint32_t boot_count;
 
-static void apu_power_on_off_profile(u32 on, u32 off, uint64_t time_diff_ns)
+static void apu_power_on_off_profile(u32 on, u32 off,
+	uint64_t time_diff_ns, uint64_t time_diff_ns2)
 {
 	if (on) {
 		apu_on_ts_last = time_diff_ns/1000;
 		apu_on_ts_cnt++;
+		if (apu_on_ts_last >= 1000)
+			apu_on_over_1ms_cnt++;
 		apu_on_ts_acc += apu_on_ts_last;
 		if (apu_on_ts_cnt != 0)
 			apu_on_ts_avg = apu_on_ts_acc / apu_on_ts_cnt;
 		apu_on_ts_max = max(apu_on_ts_max, apu_on_ts_last);
+
+		smc_on_ts_last = time_diff_ns2/1000;
+		smc_on_ts_acc += smc_on_ts_last;
+		if (apu_on_ts_cnt != 0)
+			smc_on_ts_avg = smc_on_ts_acc / apu_on_ts_cnt;
+		smc_on_ts_max = max(smc_on_ts_max, smc_on_ts_last);
 	} else if (off) {
 		apu_off_ts_last = time_diff_ns/1000;
 		apu_off_ts_cnt++;
+		if (apu_off_ts_last >= 1000)
+			apu_off_over_1ms_cnt++;
 		apu_off_ts_acc += apu_off_ts_last;
 		if (apu_off_ts_cnt != 0)
 			apu_off_ts_avg = apu_off_ts_acc / apu_off_ts_cnt;
 		apu_off_ts_max = max(apu_off_ts_max, apu_off_ts_last);
+
+		smc_off_ts_last = time_diff_ns2/1000;
+		smc_off_ts_acc += smc_off_ts_last;
+		if (apu_off_ts_cnt != 0)
+			smc_off_ts_avg = smc_off_ts_acc / apu_off_ts_cnt;
+		smc_off_ts_max = max(smc_off_ts_max, smc_off_ts_last);
 	}
 }
 
@@ -1103,10 +1142,20 @@ static int apu_ipi_dbg_show(struct seq_file *s, void *unused)
 		seq_printf(s, "apu_off_ts_avg = %llu us\n", apu_off_ts_avg);
 		seq_printf(s, "apu_on_ts_max = %llu us\n", apu_on_ts_max);
 		seq_printf(s, "apu_off_ts_max = %llu us\n", apu_off_ts_max);
+
+		seq_printf(s, "smc_on_ts_last = %llu us\n", smc_on_ts_last);
+		seq_printf(s, "smc_off_ts_last = %llu us\n", smc_off_ts_last);
+		seq_printf(s, "smc_on_ts_avg = %llu us\n", smc_on_ts_avg);
+		seq_printf(s, "smc_off_ts_avg = %llu us\n", smc_off_ts_avg);
+		seq_printf(s, "smc_on_ts_max = %llu us\n", smc_on_ts_max);
+		seq_printf(s, "smc_off_ts_max = %llu us\n", smc_off_ts_max);
+
+		seq_printf(s, "apu_on_over_1ms_cnt = %llu\n", apu_on_over_1ms_cnt);
+		seq_printf(s, "apu_off_over_1ms_cnt = %llu\n", apu_off_over_1ms_cnt);
+
 		seq_printf(s, "apu_on_ts_cnt = %llu\n", apu_on_ts_cnt);
 		seq_printf(s, "apu_off_ts_cnt = %llu\n", apu_off_ts_cnt);
-		seq_printf(s, "apu_on_ts_acc = %llu us\n", apu_on_ts_acc);
-		seq_printf(s, "apu_off_ts_acc = %llu us\n", apu_off_ts_acc);
+
 	}
 
 	return 0;
@@ -1331,7 +1380,6 @@ static void apu_ipi_ut_exit(void)
 	unregister_rpmsg_driver(&apu_ipi_ut_rpmsg_driver);
 }
 #else
-static int apu_ipi_dbg_init(void) { return 0; }
 static void apu_ipi_dbg_exit(void) { }
 static int apu_ipi_ut_init(struct mtk_apu *apu) { return 0; }
 static void apu_ipi_ut_exit(void) { }

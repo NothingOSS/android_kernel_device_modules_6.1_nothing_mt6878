@@ -77,7 +77,10 @@ static void probe_apusys_rv_ipi_handle(void *data, unsigned int id, unsigned int
 
 /* The parameters must aligned with trace_apusys_rv_pwr_ctrl() */
 static void probe_apusys_rv_pwr_ctrl(void *data, unsigned int id,
-	unsigned int on, unsigned int off, uint64_t latency)
+	unsigned int on, unsigned int off, uint64_t latency,
+	uint64_t sub_latency_0, uint64_t sub_latency_1, uint64_t sub_latency_2,
+	uint64_t sub_latency_3, uint64_t sub_latency_4, uint64_t sub_latency_5,
+	uint64_t sub_latency_6, uint64_t sub_latency_7)
 {
 	struct apusys_rv_tag t;
 
@@ -90,6 +93,14 @@ static void probe_apusys_rv_pwr_ctrl(void *data, unsigned int id,
 	t.d.pwr_ctrl.on = on;
 	t.d.pwr_ctrl.off = off;
 	t.d.pwr_ctrl.latency = latency;
+	t.d.pwr_ctrl.sub_latency_0 = sub_latency_0;
+	t.d.pwr_ctrl.sub_latency_1 = sub_latency_1;
+	t.d.pwr_ctrl.sub_latency_2 = sub_latency_2;
+	t.d.pwr_ctrl.sub_latency_3 = sub_latency_3;
+	t.d.pwr_ctrl.sub_latency_4 = sub_latency_4;
+	t.d.pwr_ctrl.sub_latency_5 = sub_latency_5;
+	t.d.pwr_ctrl.sub_latency_6 = sub_latency_6;
+	t.d.pwr_ctrl.sub_latency_7 = sub_latency_7;
 
 	apu_tag_add(apusys_rv_drv_tags, &t);
 }
@@ -113,8 +124,14 @@ static void apusys_rv_tag_seq_ipi_handle(struct seq_file *s, struct apusys_rv_ta
 
 static void apusys_rv_tag_seq_pwr_ctrl(struct seq_file *s, struct apusys_rv_tag *t)
 {
-	seq_printf(s, "pwr_ctrl:id=%d,on=%d,off=%d,latency=%llu\n",
+	seq_printf(s, "pwr_ctrl:id=%d,on=%d,off=%d,latency=%llu,",
 		t->d.pwr_ctrl.id, t->d.pwr_ctrl.on, t->d.pwr_ctrl.off, t->d.pwr_ctrl.latency);
+	seq_printf(s, "sub_lat0=%llu,sub_lat1=%llu,sub_lat2=%llu,",
+		t->d.pwr_ctrl.sub_latency_0, t->d.pwr_ctrl.sub_latency_1, t->d.pwr_ctrl.sub_latency_2);
+	seq_printf(s, "sub_lat3=%llu,sub_lat4=%llu,sub_lat5=%llu,",
+		t->d.pwr_ctrl.sub_latency_3, t->d.pwr_ctrl.sub_latency_4, t->d.pwr_ctrl.sub_latency_5);
+	seq_printf(s, "sub_lat6=%llu,sub_lat7=%llu\n",
+		t->d.pwr_ctrl.sub_latency_6, t->d.pwr_ctrl.sub_latency_7);
 }
 
 static int apusys_rv_tag_seq(struct seq_file *s, void *tag, void *priv)

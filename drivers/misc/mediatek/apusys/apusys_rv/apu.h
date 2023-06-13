@@ -69,6 +69,8 @@ struct mtk_apu_hw_ops {
 
 /* #define APUSYS_RV_FPGA_EP */
 
+#define MAX_PWR_SUB_LATENCY (8)
+
 struct mtk_apu_platdata {
 	uint32_t flags;
 	struct mtk_apu_hw_ops ops;
@@ -180,6 +182,9 @@ struct mtk_apu {
 	uint64_t apusys_sec_mem_size;
 	uint64_t apusys_aee_coredump_mem_start;
 	uint64_t apusys_aee_coredump_mem_size;
+
+	uint64_t smc_time_diff_ns;
+	uint64_t sub_latency[MAX_PWR_SUB_LATENCY];
 
 	/* Buffer to place execution area */
 	void *code_buf;

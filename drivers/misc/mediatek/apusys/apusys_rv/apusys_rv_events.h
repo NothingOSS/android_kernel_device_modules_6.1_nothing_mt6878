@@ -15,7 +15,10 @@
 	"ipi_handle:id=%d,len=%d,serial_no=%d,csum=0x%x," \
 	"top_start_time=%llu,bottom_start_time=%llu,latency=%llu,elapse=%llu"
 #define APUSYS_RV_TAG_PWR_CTRL_PRINT \
-	"pwr_ctrl:id=%d,on=%d,off=%d,latency=%llu"
+	"pwr_ctrl:id=%d,on=%d,off=%d,latency=%llu," \
+	"sub_lat0=%llu,sub_lat1=%llu,sub_lat2=%llu," \
+	"sub_lat3=%llu,sub_lat4=%llu,sub_lat5=%llu," \
+	"sub_lat6=%llu,sub_lat7=%llu"
 
 TRACE_EVENT(apusys_rv_ipi_send,
 	TP_PROTO(unsigned int id,
@@ -100,28 +103,63 @@ TRACE_EVENT(apusys_rv_pwr_ctrl,
 	TP_PROTO(unsigned int id,
 			unsigned int on,
 			unsigned int off,
-			uint64_t latency
+			uint64_t latency,
+			uint64_t sub_latency_0,
+			uint64_t sub_latency_1,
+			uint64_t sub_latency_2,
+			uint64_t sub_latency_3,
+			uint64_t sub_latency_4,
+			uint64_t sub_latency_5,
+			uint64_t sub_latency_6,
+			uint64_t sub_latency_7
 		),
-	TP_ARGS(id, on, off, latency
+	TP_ARGS(id, on, off, latency,
+		sub_latency_0, sub_latency_1, sub_latency_2,
+		sub_latency_3, sub_latency_4, sub_latency_5,
+		sub_latency_6, sub_latency_7
 		),
 	TP_STRUCT__entry(
 		__field(unsigned int, id)
 		__field(unsigned int, on)
 		__field(unsigned int, off)
 		__field(uint64_t, latency)
+		__field(uint64_t, sub_latency_0)
+		__field(uint64_t, sub_latency_1)
+		__field(uint64_t, sub_latency_2)
+		__field(uint64_t, sub_latency_3)
+		__field(uint64_t, sub_latency_4)
+		__field(uint64_t, sub_latency_5)
+		__field(uint64_t, sub_latency_6)
+		__field(uint64_t, sub_latency_7)
 	),
 	TP_fast_assign(
 		__entry->id = id;
 		__entry->on = on;
 		__entry->off = off;
 		__entry->latency = latency;
+		__entry->sub_latency_1 = sub_latency_0;
+		__entry->sub_latency_1 = sub_latency_1;
+		__entry->sub_latency_2 = sub_latency_2;
+		__entry->sub_latency_3 = sub_latency_3;
+		__entry->sub_latency_4 = sub_latency_4;
+		__entry->sub_latency_5 = sub_latency_5;
+		__entry->sub_latency_6 = sub_latency_6;
+		__entry->sub_latency_7 = sub_latency_7;
 	),
 	TP_printk(
 		APUSYS_RV_TAG_PWR_CTRL_PRINT,
 		__entry->id,
 		__entry->on,
 		__entry->off,
-		__entry->latency
+		__entry->latency,
+		__entry->sub_latency_0,
+		__entry->sub_latency_1,
+		__entry->sub_latency_2,
+		__entry->sub_latency_3,
+		__entry->sub_latency_4,
+		__entry->sub_latency_5,
+		__entry->sub_latency_6,
+		__entry->sub_latency_7
 	)
 );
 

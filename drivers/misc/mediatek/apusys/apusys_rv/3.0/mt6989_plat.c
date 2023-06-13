@@ -89,12 +89,7 @@ static struct wakeup_source *ws;
 
 static bool is_under_lp_scp_recovery_flow;
 
-struct apu_polling_on_work_struct {
-	struct mtk_apu *apu;
-	struct work_struct work;
-};
-
-static struct apu_polling_on_work_struct apu_polling_on_work;
+static struct delayed_work apu_polling_on_work;
 
 /*
  * COLD BOOT power off timeout
@@ -112,6 +107,14 @@ static struct apu_polling_on_work_struct apu_polling_on_work;
  * if power off not done after ipi send
  */
 #define IPI_PWROFF_TIMEOUT_MS (60 * 1000)
+
+/*
+ * power on polling timeout
+ *
+ * excpetion will trigger
+ * if polling power on status timeout
+ */
+#define APU_PWRON_TIMEOUT_MS (1000)
 
 static void apu_timeout_work(struct work_struct *work)
 {
@@ -335,18 +338,6 @@ static int mt6989_rproc_stop(struct mtk_apu *apu)
 	return 0;
 }
 
-static int mt6989_apu_power_init(struct mtk_apu *apu)
-{
-	char wq_name[] = "apusys_rv_pwr";
-
-	/* init delay worker for power off detection */
-	INIT_DELAYED_WORK(&timeout_work, apu_timeout_work);
-	apu_workq = alloc_ordered_workqueue(wq_name, WQ_MEM_RECLAIM);
-	g_apu = apu;
-
-	return 0;
-}
-
 static void mt6989_apu_pwr_wake_lock(struct mtk_apu *apu, uint32_t id)
 {
 #if IS_ENABLED(CONFIG_PM_SLEEP)
@@ -463,10 +454,15 @@ static int apu_power_ctrl(struct mtk_apu *apu, uint32_t op)
 	struct device *dev = apu->dev;
 	uint32_t timeout = 300; /* 300 us to align with tf-a driver */
 	uint32_t global_ref_cnt;
+	struct timespec64 ts, te;
 
 	if (apu->platdata->flags & F_SECURE_BOOT) {
+		ktime_get_ts64(&ts);
 		ret = apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_PWR_CTRL, op);
+		ktime_get_ts64(&te);
+		ts = timespec64_sub(te, ts);
+		apu->smc_time_diff_ns = timespec64_to_ns(&ts);
 	} else {
 		ret = apu_hw_sema_ctl(apu, APU_HW_SEM_SYS_APMCU, 1, timeout);
 		if (ret) {
@@ -594,6 +590,18 @@ static int mt6989_polling_rpc_status(struct mtk_apu *apu, u32 pwr_stat, u32 time
 	return ret;
 }
 
+static inline void profile_start(struct timespec64 *ts)
+{
+	ktime_get_ts64(ts);
+}
+
+static inline uint64_t profile_end(struct timespec64 *ts, struct timespec64 *te)
+{
+	ktime_get_ts64(te);
+	*ts = timespec64_sub(*te, *ts);
+	return timespec64_to_ns(ts);
+}
+
 /* TODO: block power on off after pwr_on_fail_aee_triggered
  *		 or pwr_off_fail_aee_triggered?
  */
@@ -602,6 +610,7 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 	int ret = 0;
 	struct device *dev = apu->dev;
 	uint32_t rpc_state = 0;
+	struct timespec64 ts, te;
 
 	if (on == 1 && off == 0) {
 		/* block normal cmds when under scp lp recovery flow  */
@@ -612,10 +621,14 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 			dev_info(dev, "%s: ipi_pwr_ref_cnt[%u] == U32_MAX\n", __func__, id);
 			ret = -EINVAL;
 		} else {
+			profile_start(&ts);
 			apu->ipi_pwr_ref_cnt[id]++;
 			apu->local_pwr_ref_cnt++;
 			mt6989_apu_pwr_wake_lock(apu, id);
+			apu->sub_latency[0] = profile_end(&ts, &te);
+
 			if (apu->local_pwr_ref_cnt == 1) {
+				profile_start(&ts);
 				rpc_state = ioread32(apu->apu_rpc + APU_RPC_STATUS_1) & 0x1;
 				/* rpc_state == 1 means in lp mode, need to retry
 				 * only APU_IPI_SCP_NP_RECOVER can bypass the check
@@ -626,10 +639,17 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 						ioread32(apu->apu_rpc + APU_RPC_STATUS_1));
 					return -EBUSY;
 				}
+				apu->sub_latency[1] = profile_end(&ts, &te);
 
-				/* apu->conf_buf->time_offset = sched_clock(); */
+				profile_start(&ts);
 				timesync_update(apu);
+				apu->sub_latency[2] = profile_end(&ts, &te);
+
+				profile_start(&ts);
 				ret = apu_power_ctrl(apu, 1);
+				apu->sub_latency[3] = profile_end(&ts, &te);
+
+				profile_start(&ts);
 				if (!ret) {
 					/* for power timeout detection */
 					if ((apu->platdata->flags & F_BRINGUP) == 0)
@@ -639,13 +659,16 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 					if (id == APU_IPI_SCP_NP_RECOVER && rpc_state == 1)
 						is_under_lp_scp_recovery_flow = true;
 					if (apu->pwr_on_polling_dbg_mode)
-						schedule_work(&(apu_polling_on_work.work));
+						queue_delayed_work(apu_workq,
+							&apu_polling_on_work,
+							msecs_to_jiffies(APU_PWRON_TIMEOUT_MS));
 				} else {
 					mt6989_apu_pwr_wake_unlock(apu, id);
 					apu->ipi_pwr_ref_cnt[id]--;
 					apu->local_pwr_ref_cnt--;
 					dev_info(dev, "%s: power on fail(%d)\n", __func__, ret);
 				}
+				apu->sub_latency[4] = profile_end(&ts, &te);
 			}
 		}
 	} else if (on == 0 && off == 1) {
@@ -654,13 +677,23 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 			dev_info(dev, "%s: ipi_pwr_ref_cnt[%u] == 0\n", __func__, id);
 			ret = -EINVAL;
 		} else {
+			profile_start(&ts);
 			apu->ipi_pwr_ref_cnt[id]--;
 			apu->local_pwr_ref_cnt--;
 			mt6989_apu_pwr_wake_unlock(apu, id);
+			apu->sub_latency[0] = profile_end(&ts, &te);
+
 			if (apu->local_pwr_ref_cnt == 0) {
+				profile_start(&ts);
 				if (apu->pwr_on_polling_dbg_mode)
-					cancel_work_sync(&(apu_polling_on_work.work));
+					cancel_delayed_work_sync(&apu_polling_on_work);
+				apu->sub_latency[1] = profile_end(&ts, &te);
+
+				profile_start(&ts);
 				ret = apu_power_ctrl(apu, 0);
+				apu->sub_latency[2] = profile_end(&ts, &te);
+
+				profile_start(&ts);
 				if (!ret) {
 					/* clear status & cancel timeout worker */
 					apu->bypass_pwr_off_chk = false;
@@ -674,6 +707,7 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 					apu->local_pwr_ref_cnt++;
 					dev_info(dev, "%s: power off fail(%d)\n", __func__, ret);
 				}
+				apu->sub_latency[3] = profile_end(&ts, &te);
 			}
 		}
 	} else {
@@ -691,12 +725,19 @@ static int mt6989_power_on_off(struct mtk_apu *apu, u32 id, u32 on, u32 off)
 	struct device *dev = apu->dev;
 	/* struct timespec64 ts, te; */
 	uint32_t retry_cnt = 500, i = 0;
+	struct timespec64 ts, te;
+	struct timespec64 t1, t2;
 
 	/* ktime_get_ts64(&ts); */
 
+	profile_start(&t1);
 	for (i = 0; i < retry_cnt; i++) {
 		mutex_lock(&apu->power_lock);
+
+		profile_start(&ts);
 		ret = mt6989_power_on_off_locked(apu, id, on, off);
+		apu->sub_latency[5] = profile_end(&ts, &te);
+
 		mutex_unlock(&apu->power_lock);
 		/* retry if return value is -EBUSY because
 		 * hw sem may be blocked by other host or apu under lp mode
@@ -715,6 +756,8 @@ static int mt6989_power_on_off(struct mtk_apu *apu, u32 id, u32 on, u32 off)
 		}
 		break;
 	}
+	apu->sub_latency[6] = profile_end(&t1, &t2);
+	apu->sub_latency[7] = i;
 
 	if (ret) {
 		if (on == 1 && off == 0 && !pwr_on_fail_aee_triggered) {
@@ -965,12 +1008,10 @@ static void mt6989_rv_cachedump(struct mtk_apu *apu)
 static void apu_polling_on_work_func(struct work_struct *p_work)
 {
 	int ret;
-	struct apu_polling_on_work_struct *apu_polling_on_work =
-		container_of(p_work, struct apu_polling_on_work_struct, work);
-	struct mtk_apu *apu = apu_polling_on_work->apu;
+	struct mtk_apu *apu = g_apu;
 	struct device *dev = apu->dev;
 
-	ret = mt6989_polling_rpc_status(apu, 1, 1000000);
+	ret = mt6989_polling_rpc_status(apu, 1, 1);
 	if (ret) {
 		apu_regdump();
 		apu->bypass_pwr_off_chk = true;
@@ -978,10 +1019,23 @@ static void apu_polling_on_work_func(struct work_struct *p_work)
 			__func__, ioread32(apu->apu_rpc + 0x0));
 		dev_info(dev, "%s: APU_RPC_INTF_PWR_RDY = 0x%x\n",
 			__func__, ioread32(apu->apu_rpc + 0x44));
-		dev_info(dev, "%s: MBOX0_OUTBOX = 0x%x\n",
-			__func__, ioread32(apu->apu_mbox + 0x20));
+		dev_info(dev, "%s: MBOX0_RV_PWR_STA = 0x%x\n",
+			__func__, ioread32(apu->apu_mbox + 0x50));
 		apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
 	}
+}
+
+static int mt6989_apu_power_init(struct mtk_apu *apu)
+{
+	char wq_name[] = "apusys_rv_pwr";
+
+	/* init delay worker for power off detection */
+	INIT_DELAYED_WORK(&timeout_work, apu_timeout_work);
+	INIT_DELAYED_WORK(&apu_polling_on_work, &apu_polling_on_work_func);
+	apu_workq = alloc_ordered_workqueue(wq_name, WQ_MEM_RECLAIM);
+	g_apu = apu;
+
+	return 0;
 }
 
 static int mt6989_rproc_init(struct mtk_apu *apu)
@@ -999,9 +1053,6 @@ static int mt6989_rproc_init(struct mtk_apu *apu)
 	/* cold boot done will call unlock */
 	mt6989_apu_pwr_wake_lock(apu, APU_IPI_INIT);
 #endif
-
-	INIT_WORK(&(apu_polling_on_work.work), &apu_polling_on_work_func);
-	apu_polling_on_work.apu = apu;
 
 	/* TODO: change to false to reduce latency */
 	apu->pwr_on_polling_dbg_mode = true;
@@ -1022,7 +1073,7 @@ static int mt6989_rproc_exit(struct mtk_apu *apu)
 #if IS_ENABLED(CONFIG_PM_SLEEP)
 	wakeup_source_unregister(ws);
 #endif
-	cancel_work_sync(&(apu_polling_on_work.work));
+	cancel_delayed_work_sync(&apu_polling_on_work);
 
 	return 0;
 }
