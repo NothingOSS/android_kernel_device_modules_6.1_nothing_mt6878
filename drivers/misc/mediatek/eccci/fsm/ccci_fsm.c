@@ -47,6 +47,10 @@ int ccci_register_md_state_receiver(unsigned char ch_id,
 	unsigned int i;
 	unsigned long flags;
 
+	if (callback == NULL) {
+		CCCI_ERROR_LOG(0, FSM, "[%s] callback is NULL\n", __func__);
+		return -1;
+	}
 	if (ch_id >= KERN_MD_STAT_RCV_MAX || ch_id <= KERN_MD_STAT_RCV_NONE) {
 		CCCI_ERROR_LOG(0, FSM, "ch_id(%d) out-of-range\n", ch_id);
 		return -1;
