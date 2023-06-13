@@ -327,12 +327,13 @@ static void dump_thd_volts(struct device *dev, unsigned int *thd_volts, unsigned
 static int low_battery_vsys_notifier_call(struct notifier_block *this,
 				unsigned long event, void *ptr)
 {
-	int thd, size;
+	int thd, size = 0;
 
+	size = low_bat_thl_data->thd_volts_size;
+	event = event & ~(1 << 15);
 	pr_notice("[%s] lvsys thd = %lu\n", __func__, event);
 
-	if (event == LVSYS_F_2900) {
-		size = low_bat_thl_data->thd_volts_size;
+	if (event == low_bat_thl_data->thd_volts[size - 1]) {
 		if (size > 0 && low_bat_thl_data->thd_volts) {
 			thd = low_bat_thl_data->thd_volts[size - 1];
 			mutex_lock(&low_bat_thl_data->lock);
@@ -340,7 +341,7 @@ static int low_battery_vsys_notifier_call(struct notifier_block *this,
 			mutex_unlock(&low_bat_thl_data->lock);
 			exec_low_battery_throttle(thd, LVSYS, ACTIVATE);
 		}
-	} else if (event == LVSYS_R_3100) {
+	} else if (event == low_bat_thl_data->thd_volts[size - 2]) {
 		mutex_lock(&low_bat_thl_data->lock);
 		thd = low_bat_thl_data->low_bat_thl_temp_volt_thd;
 		mutex_unlock(&low_bat_thl_data->lock);
