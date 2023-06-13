@@ -657,10 +657,10 @@ static void rsz_debug_dump(struct mml_comp *comp)
 	const struct mml_comp_rsz *rsz = comp_to_rsz(comp);
 	void __iomem *base = comp->base;
 	u32 value[31];
-	u32 debug[8];
 	u32 state;
 	u32 request[4];
 	u32 shadow_ctrl;
+	u32 i;
 
 	mml_err("rsz component %u dump:", comp->id);
 
@@ -701,23 +701,6 @@ static void rsz_debug_dump(struct mml_comp *comp)
 	value[29] = readl(base + RSZ_ETC_BLEND);
 	value[30] = readl(base + RSZ_CONTROL_3);
 
-	writel(0x1, base + RSZ_DEBUG_SEL);
-	debug[0] = readl(base + RSZ_DEBUG);
-	writel(0x2, base + RSZ_DEBUG_SEL);
-	debug[1] = readl(base + RSZ_DEBUG);
-	writel(0x3, base + RSZ_DEBUG_SEL);
-	debug[2] = readl(base + RSZ_DEBUG);
-	writel(0x9, base + RSZ_DEBUG_SEL);
-	debug[3] = readl(base + RSZ_DEBUG);
-	writel(0xa, base + RSZ_DEBUG_SEL);
-	debug[4] = readl(base + RSZ_DEBUG);
-	writel(0xb, base + RSZ_DEBUG_SEL);
-	debug[5] = readl(base + RSZ_DEBUG);
-	writel(0xd, base + RSZ_DEBUG_SEL);
-	debug[6] = readl(base + RSZ_DEBUG);
-	writel(0xe, base + RSZ_DEBUG_SEL);
-	debug[7] = readl(base + RSZ_DEBUG);
-
 	mml_err("RSZ_ENABLE %#010x RSZ_CON_1 %#010x RSZ_CON_2 %#010x RSZ_INT_FLAG %#010x",
 		value[0], value[1], value[2], value[3]);
 	mml_err("RSZ_INPUT_IMAGE %#010x RSZ_OUTPUT_IMAGE %#010x RSZ_CONTROL_3 %#010x",
@@ -742,14 +725,28 @@ static void rsz_debug_dump(struct mml_comp *comp)
 		value[23], value[24], value[25]);
 	mml_err("RSZ_ETC_SIM_PROT_GAINCON_1 %#010x RSZ_ETC_SIM_PROT_GAINCON_2 %#010x RSZ_ETC_SIM_PROT_GAINCON_3 %#010x",
 		value[26], value[27], value[28]);
-	mml_err("RSZ_DEBUG_1 %#010x RSZ_DEBUG_2 %#010x RSZ_DEBUG_3 %#010x",
-		debug[0], debug[1], debug[2]);
-	mml_err("RSZ_DEBUG_9 %#010x RSZ_DEBUG_10 %#010x RSZ_DEBUG_11 %#010x",
-		debug[3], debug[4], debug[5]);
-	mml_err("RSZ_DEBUG_13 %#010x RSZ_DEBUG_14 %#010x",
-		debug[6], debug[7]);
 
-	state = debug[1] & 0xf;
+	writel(0x1, base + RSZ_DEBUG_SEL);
+	value[0] = readl(base + RSZ_DEBUG);
+	writel(0x2, base + RSZ_DEBUG_SEL);
+	value[1] = readl(base + RSZ_DEBUG);
+	writel(0x3, base + RSZ_DEBUG_SEL);
+	value[2] = readl(base + RSZ_DEBUG);
+	state = value[1] & 0xf;
+	mml_err("RSZ_DEBUG_1 %#010x RSZ_DEBUG_2 %#010x RSZ_DEBUG_3 %#010x",
+		value[0], value[1], value[2]);
+
+	for (i = 4; i < 16; i += 3) {
+		writel(i, base + RSZ_DEBUG_SEL);
+		value[0] = readl(base + RSZ_DEBUG);
+		writel(i + 1, base + RSZ_DEBUG_SEL);
+		value[1] = readl(base + RSZ_DEBUG);
+		writel(i + 2, base + RSZ_DEBUG_SEL);
+		value[2] = readl(base + RSZ_DEBUG);
+		mml_err("RSZ_DEBUG_%u %#010x RSZ_DEBUG_%u %#010x RSZ_DEBUG_%u %#010x",
+			i, value[0], i + 1, value[1], i + 2, value[2]);
+	}
+
 	request[0] = state & 0x1;
 	request[1] = (state >> 1) & 0x1;
 	request[2] = (state >> 2) & 0x1;

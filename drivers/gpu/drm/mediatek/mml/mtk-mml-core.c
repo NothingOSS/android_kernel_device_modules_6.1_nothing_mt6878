@@ -123,7 +123,8 @@ static LIST_HEAD(tp_ips);
 static DEFINE_MUTEX(tp_mutex);
 
 /* error counter */
-atomic_t mml_err_cnt;
+int mml_err_cnt;
+module_param(mml_err_cnt, int, 0644);
 
 int mml_topology_register_ip(const char *ip, const struct mml_topology_ops *op)
 {
@@ -1412,7 +1413,7 @@ static void core_taskdump(struct mml_task *task, u32 pipe, int err)
 		return;
 	}
 
-	cnt = atomic_fetch_inc(&mml_err_cnt);
+	cnt = mml_err_cnt++;
 
 	mml_mmp(irq_err, MMPROFILE_FLAG_PULSE, task->job.jobid, cnt);
 
