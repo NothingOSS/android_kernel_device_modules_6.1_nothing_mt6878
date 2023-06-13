@@ -31,6 +31,7 @@
 #define GPU_TEMP_OFFSET (0x180)
 #define GPU_LIMIT_FREQ_OFFSET (0x184)
 #define GPU_CUR_FREQ_OFFSET (0x188)
+#define GPU_CTT_SCALE_OFFSET (0x3BC)
 #define GPU_PPM_LIMIT_OFFSET (0x3C8)
 #define GPU_PPM_LIMITER_OFFSET (0x3CC)
 #define APU_TEMP_OFFSET (0x190)
@@ -97,7 +98,7 @@ struct thermal_gpu_info {
 	unsigned int limit_freq;
 	unsigned int cur_freq;
 	unsigned int ppm_limit_freq;
-
+	unsigned int ctt_avg_scale;
 };
 
 struct thermal_apu_info {

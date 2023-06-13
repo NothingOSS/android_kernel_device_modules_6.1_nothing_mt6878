@@ -1879,11 +1879,12 @@ static const struct file_operations cpu_cooler_fops = {
 static int gpu_cooler_show(struct seq_file *m, void *unused)
 {
 	/* output: tt, tp, polling_delay, leakage info */
-	seq_printf(m, "%d,%d,%d,%d\n",
+	seq_printf(m, "%d,%d,%d,%d, ctt = %d\n",
 		therm_intf_read_csram(GPU_COOLER_BASE+4),
 		therm_intf_read_csram(GPU_COOLER_BASE),
 		therm_intf_read_csram(GPU_COOLER_BASE+8),
-		therm_intf_read_csram(GPU_COOLER_BASE+20));
+		therm_intf_read_csram(GPU_COOLER_BASE+20),
+		therm_intf_read_csram(GPU_COOLER_BASE+24));
 
 	return 0;
 }
@@ -1918,6 +1919,8 @@ static ssize_t gpu_cooler_write(struct file *flip,
 		therm_intf_write_csram(value, GPU_COOLER_BASE + 4);
 	else if (strncmp(target, "polling_delay", 3) == 0)
 		therm_intf_write_csram(value, GPU_COOLER_BASE + 8);
+	else if (strncmp(target, "ctt", 3) == 0)
+		therm_intf_write_csram(value, GPU_COOLER_BASE + 24);
 
 	ret = cnt;
 

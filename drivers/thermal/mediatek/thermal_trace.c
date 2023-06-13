@@ -283,6 +283,7 @@ static void get_gpu_info(void)
 			readl(thermal_csram_base + GPU_VTSKIN_OFFSET), 31);
 	gpu_info.ppm_limiter = readl(thermal_csram_base + GPU_PPM_LIMITER_OFFSET);
 	gpu_info.ppm_limit_freq = readl(thermal_csram_base + GPU_PPM_LIMIT_OFFSET);
+	gpu_info.ctt_avg_scale = readl(thermal_csram_base + GPU_CTT_SCALE_OFFSET);
 }
 
 static void get_apu_info(void)
