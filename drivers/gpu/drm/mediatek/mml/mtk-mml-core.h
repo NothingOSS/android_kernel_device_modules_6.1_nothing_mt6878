@@ -36,6 +36,7 @@ extern int mtk_mml_msg;
 extern int mml_cmdq_err;
 extern int mml_qos;
 extern int mml_qos_log;
+extern int mml_dpc_log;
 
 /* define in mtk-mml-wrot.c */
 extern int mml_wrot_bkgd_en;
@@ -65,6 +66,12 @@ do { \
 do { \
 	if (mml_qos_log) \
 		pr_notice("[mml]" fmt "\n", ##args); \
+} while (0)
+
+#define mml_msg_dpc(fmt, args...) \
+do { \
+	if (mml_dpc_log) \
+		pr_notice("[mml][dpc]" fmt "\n", ##args); \
 } while (0)
 
 #define DB_OPT_MML	(DB_OPT_DEFAULT | DB_OPT_PROC_CMDQ_INFO | \
@@ -389,6 +396,7 @@ struct mml_frame_config {
 	bool nocmd:1;
 	bool err:1;
 	bool irq:1;
+	bool dpc:1;
 
 	/* tile */
 	struct mml_frame_tile *frame_tile[MML_PIPE_CNT];
@@ -606,14 +614,14 @@ struct mml_comp_hw_ops {
 	s32 (*pw_enable)(struct mml_comp *comp);
 	s32 (*pw_disable)(struct mml_comp *comp);
 	s32 (*clk_enable)(struct mml_comp *comp);
-	s32 (*clk_disable)(struct mml_comp *comp);
+	s32 (*clk_disable)(struct mml_comp *comp, struct mml_task *task);
 	u32 (*qos_datasize_get)(struct mml_task *task,
 				struct mml_comp_config *ccfg);
 	u32 (*qos_format_get)(struct mml_task *task,
 			      struct mml_comp_config *ccfg);
 	void (*qos_set)(struct mml_comp *comp, struct mml_task *task,
 			struct mml_comp_config *ccfg, u32 throughput, u32 tput_up);
-	void (*qos_clear)(struct mml_comp *comp);
+	void (*qos_clear)(struct mml_comp *comp, struct mml_task *task);
 	void (*task_done)(struct mml_comp *comp, struct mml_task *task,
 			  struct mml_comp_config *ccfg);
 };
@@ -637,6 +645,7 @@ struct mml_comp {
 	u32 cur_bw;
 	u32 cur_peak;
 	struct icc_path *icc_path;
+	struct icc_path *icc_dpc_path;
 	const struct mml_comp_tile_ops *tile_ops;
 	const struct mml_comp_config_ops *config_ops;
 	const struct mml_comp_hw_ops *hw_ops;

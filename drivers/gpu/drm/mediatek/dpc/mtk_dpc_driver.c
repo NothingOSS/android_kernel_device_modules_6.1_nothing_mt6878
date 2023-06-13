@@ -6,12 +6,14 @@
 #include <linux/clk.h>
 #include <linux/iopoll.h>
 #include <linux/component.h>
+#include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 #include <linux/debugfs.h>
 #endif
@@ -25,6 +27,7 @@
 #include "mtk_dpc_internal.h"
 
 #include "mtk_disp_vidle.h"
+#include "mtk-mml-dpc.h"
 
 int debug_mmp = 1;
 module_param(debug_mmp, int, 0644);
@@ -40,6 +43,8 @@ int debug_check_event;
 module_param(debug_check_event, int, 0644);
 int debug_mtcmos_off;
 module_param(debug_mtcmos_off, int, 0644);
+int debug_irq_handler;
+module_param(debug_irq_handler, int, 0644);
 
 /* TODO: move to mtk_dpc_test.c */
 #define SPM_REQ_STA_4 0x85C	/* D1: BIT30 APSRC_REQ, DDRSRC_REQ */
@@ -74,6 +79,7 @@ struct mtk_dpc {
 	void __iomem *spm_base;
 	void __iomem *vlp_base;
 	void __iomem *mminfra_voter_check;
+	void __iomem *mminfra_hfrp_pwr;
 	void __iomem *vdisp_dvfsrc_check;
 	void __iomem *vcore_dvfsrc_check;
 	void __iomem *dvfsrc_en;
@@ -216,7 +222,7 @@ static void dpc_dt_sw_trig(u16 dt)
 	writel(1, dpc_base + DISP_REG_DPC_DTx_SW_TRIG(dt));
 }
 
-static void dpc_ddr_force_enable(const enum mtk_dpc_subsys subsys, const bool en)
+void dpc_ddr_force_enable(const enum mtk_dpc_subsys subsys, const bool en)
 {
 	u32 addr = 0;
 	u32 value = en ? 0x000D000D : 0x00050005;
@@ -228,6 +234,38 @@ static void dpc_ddr_force_enable(const enum mtk_dpc_subsys subsys, const bool en
 
 	writel(value, dpc_base + addr);
 }
+EXPORT_SYMBOL(dpc_ddr_force_enable);
+
+void dpc_infra_force_enable(const enum mtk_dpc_subsys subsys, const bool en)
+{
+	u32 addr = 0;
+	u32 value = en ? 0x00181818 : 0x00080808;
+
+	if (subsys == DPC_SUBSYS_DISP)
+		addr = DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG;
+	else if (subsys == DPC_SUBSYS_MML)
+		addr = DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG;
+
+	writel(value, dpc_base + addr);
+}
+EXPORT_SYMBOL(dpc_infra_force_enable);
+
+void dpc_dc_force_enable(const bool en)
+{
+	if (en) {
+		writel(0x0, dpc_base + DISP_REG_DPC_MML_MASK_CFG);
+		writel(0x00010001,
+			dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
+		writel(0x0, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
+		writel(0xFFFFFFFF, dpc_base + DISP_REG_DPC_MML_DT_EN);
+		writel(0x3, dpc_base + DISP_REG_DPC_MML_DT_SW_TRIG_EN);
+		writel(0x1, dpc_base + DISP_REG_DPC_DTx_SW_TRIG(33));
+	} else {
+		writel(0x1, dpc_base + DISP_REG_DPC_DTx_SW_TRIG(32));
+		writel(0x0, dpc_base + DISP_REG_DPC_MML_DT_SW_TRIG_EN);
+	}
+}
+EXPORT_SYMBOL(dpc_dc_force_enable);
 
 static void dpc_disp_group_enable(const enum mtk_dpc_disp_vidle group, bool en)
 {
@@ -499,10 +537,10 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 	struct mtk_dpc *priv = dev_id;
 	u32 status;
 
-	if (IS_ERR_OR_NULL(priv))
+	if (!debug_irq_handler)
 		return IRQ_NONE;
 
-	if (!(readl(g_priv->spm_base + SPM_DISP_VCORE_PWR_CON) & SPM_PWR_ACK))
+	if (IS_ERR_OR_NULL(priv))
 		return IRQ_NONE;
 
 	status = readl(dpc_base + DISP_REG_DPC_DISP_INTSTA);
@@ -612,10 +650,10 @@ irqreturn_t mtk_dpc_mml_irq_handler(int irq, void *dev_id)
 	struct mtk_dpc *priv = dev_id;
 	u32 status;
 
-	if (IS_ERR_OR_NULL(priv))
+	if (!debug_irq_handler)
 		return IRQ_NONE;
 
-	if (!(readl(g_priv->spm_base + SPM_DISP_VCORE_PWR_CON) & SPM_PWR_ACK))
+	if (IS_ERR_OR_NULL(priv))
 		return IRQ_NONE;
 
 	status = readl(dpc_base + DISP_REG_DPC_MML_INTSTA);
@@ -680,6 +718,8 @@ static int dpc_res_init(struct mtk_dpc *priv)
 		priv->vcore_dvfsrc_check = ioremap(0x1c00f2a0, 0x4);
 	if (IS_ERR_OR_NULL(priv->dvfsrc_en))
 		priv->dvfsrc_en = ioremap(0x1c00f000, 0x4);
+
+	priv->mminfra_hfrp_pwr = ioremap(0x1ec3eea8, 0x4);
 
 	return ret;
 }
@@ -783,6 +823,7 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 	dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, thread, vote_set);
 }
 
+#ifdef IF_ZERO
 static int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
 {
 	unsigned int value;
@@ -819,48 +860,29 @@ static int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
 
 	return ret;
 }
+#endif
 
-int mtk_disp_vidle_power_keep(void)
+int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 {
-	if (!debug_force_power)
+	if (unlikely(!debug_force_power))
 		return 0;
 
-	mtk_disp_vlp_vote(VOTE_SET, DISP_VIDLE_USER_DISP);
-
-	/* wait subsys power on */
-	if (mtk_disp_wait_pwr_ack(DPC_SUBSYS_DISP1) &&	/* DISP1 first */
-		mtk_disp_wait_pwr_ack(DPC_SUBSYS_DISP0) &&
-		mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL0) &&
-		mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL1)) {
-		/* power on timeout */
-		return -1;
-	}
-
-	/* Vote for power keep */
-	dpc_mtcmos_vote(DPC_SUBSYS_DISP0, DISP_VIDLE_USER_DISP, VOTE_SET);
-	dpc_mtcmos_vote(DPC_SUBSYS_DISP1, DISP_VIDLE_USER_DISP, VOTE_SET);
-	dpc_mtcmos_vote(DPC_SUBSYS_OVL0, DISP_VIDLE_USER_DISP, VOTE_SET);
-	dpc_mtcmos_vote(DPC_SUBSYS_OVL1, DISP_VIDLE_USER_DISP, VOTE_SET);
+	mtk_disp_vlp_vote(VOTE_SET, user);
+	pm_runtime_get_sync(g_priv->dev);
 
 	return 0;
 }
-EXPORT_SYMBOL(mtk_disp_vidle_power_keep);
+EXPORT_SYMBOL(dpc_vidle_power_keep);
 
-void mtk_disp_vidle_power_release(void)
+void dpc_vidle_power_release(const enum mtk_vidle_voter_user user)
 {
-	if (!debug_force_power)
+	if (unlikely(!debug_force_power))
 		return;
 
-	/* Vote for power release */
-	dpc_mtcmos_vote(DPC_SUBSYS_DISP0, DISP_VIDLE_USER_DISP, VOTE_CLR);
-	dpc_mtcmos_vote(DPC_SUBSYS_DISP1, DISP_VIDLE_USER_DISP, VOTE_CLR);
-	dpc_mtcmos_vote(DPC_SUBSYS_OVL0, DISP_VIDLE_USER_DISP, VOTE_CLR);
-	dpc_mtcmos_vote(DPC_SUBSYS_OVL1, DISP_VIDLE_USER_DISP, VOTE_CLR);
-
-	/* vote for power release DISP/MMInfra MTCMOS */
-	mtk_disp_vlp_vote(VOTE_CLR, DISP_VIDLE_USER_DISP);
+	mtk_disp_vlp_vote(VOTE_CLR, user);
+	pm_runtime_put_sync(g_priv->dev);
 }
-EXPORT_SYMBOL(mtk_disp_vidle_power_release);
+EXPORT_SYMBOL(dpc_vidle_power_release);
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 static void process_dbg_opt(const char *opt)
@@ -999,9 +1021,14 @@ static const struct file_operations debug_fops = {
 
 static const struct dpc_funcs funcs = {
 	.dpc_enable = dpc_enable,
+	.dpc_ddr_force_enable = dpc_ddr_force_enable,
+	.dpc_infra_force_enable = dpc_infra_force_enable,
+	.dpc_dc_force_enable = dpc_dc_force_enable,
 	.dpc_group_enable = dpc_group_enable,
-	.vidle_power_keep = mtk_disp_vidle_power_keep,
-	.vidle_power_release = mtk_disp_vidle_power_release,
+	.dpc_config = dpc_config,
+	.dpc_mtcmos_vote = dpc_mtcmos_vote,
+	.vidle_power_keep = dpc_vidle_power_keep,
+	.vidle_power_release = dpc_vidle_power_release,
 	.dpc_hrt_bw_set = dpc_hrt_bw_set,
 	.dpc_srt_bw_set = dpc_srt_bw_set,
 	.dpc_dvfs_set = dpc_dvfs_set,
@@ -1023,6 +1050,9 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, priv);
 	priv->pdev = pdev;
 	priv->dev = dev;
+
+	pm_runtime_enable(dev);
+	pm_runtime_irq_safe(dev);
 
 	ret = dpc_res_init(priv);
 	if (ret)
@@ -1049,6 +1079,7 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 
 	/* keep vdisp opp */
 	writel(0x1, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
+	writel(0x1, dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_CFG);
 
 	/* keep HRT and SRT BW */
 	writel(0x00010001, dpc_base + DISP_REG_DPC_DISP_HRTBW_SRTBW_CFG);
@@ -1063,6 +1094,7 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	dpc_mmp_init();
 
 	mtk_vidle_register(&funcs);
+	mml_dpc_register(&funcs);
 
 	DPCFUNC("-");
 	return ret;

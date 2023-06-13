@@ -12,6 +12,7 @@
 #include <mtk_drm_ddp_comp.h>
 #include <cmdq-util.h>
 
+#include "mtk-mml-dpc.h"
 #include "mtk-mml-core.h"
 #include "mtk-mml-driver.h"
 #include "mtk-mml-dle-adaptor.h"
@@ -977,7 +978,8 @@ static s32 mml_sys_comp_clk_enable(struct mml_comp *comp)
 	return 0;
 }
 
-static s32 mml_sys_comp_clk_disable(struct mml_comp *comp)
+static s32 mml_sys_comp_clk_disable(struct mml_comp *comp,
+				    struct mml_task *task)
 {
 	int ret;
 
@@ -986,7 +988,7 @@ static s32 mml_sys_comp_clk_disable(struct mml_comp *comp)
 #endif
 
 	/* original clk enable */
-	ret = mml_comp_clk_disable(comp);
+	ret = mml_comp_clk_disable(comp, task);
 	if (ret < 0)
 		return ret;
 
@@ -1217,7 +1219,9 @@ static void ddp_command_make(struct mml_task *task, u32 pipe,
 	task->pkts[pipe] = NULL;
 }
 
-static void sys_ddp_disable_locked(const struct mml_topology_path *path, u32 pipe)
+static void sys_ddp_disable_locked(const struct mml_topology_path *path,
+				   u32 pipe,
+				   struct mml_task *task)
 {
 	struct mml_comp *comp;
 	u32 i;
@@ -1227,13 +1231,21 @@ static void sys_ddp_disable_locked(const struct mml_topology_path *path, u32 pip
 		if (i == path->mmlsys_idx || i == path->mutex_idx)
 			continue;
 		comp = path->nodes[i].comp;
-		call_hw_op(comp, clk_disable);
+		call_hw_op(comp, clk_disable, task);
 	}
 
 	if (path->mutex)
-		call_hw_op(path->mutex, clk_disable);
+		call_hw_op(path->mutex, clk_disable, task);
 	if (path->mmlsys)
-		call_hw_op(path->mmlsys, clk_disable);
+		call_hw_op(path->mmlsys, clk_disable, task);
+
+	if (task->config->dpc) {
+		/* set dpc total hrt/srt bw to 0 */
+		mml_msg("%s dpc total_bw total_peak to 0", __func__);
+		mml_dpc_srt_bw_set(DPC_SUBSYS_MML1, 0);
+		mml_dpc_hrt_bw_set(DPC_SUBSYS_MML1, 0);
+	}
+
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
@@ -1260,10 +1272,11 @@ static void sys_ddp_disable(struct mml_sys *sys, struct mml_task *task, u32 pipe
 
 	if (task->pipe[pipe].en.clk) {
 		/* disable and pop ddp paths */
-		sys_ddp_disable_locked(sys->ddp_path[pipe], pipe);
+		sys_ddp_disable_locked(sys->ddp_path[pipe], pipe, task);
 		if (sys->pre_ddp_path[pipe] &&
 		    sys->pre_ddp_path[pipe] != sys->ddp_path[pipe])
-			sys_ddp_disable_locked(sys->pre_ddp_path[pipe], pipe);
+			sys_ddp_disable_locked(sys->pre_ddp_path[pipe],
+				pipe, task);
 		task->pipe[pipe].en.clk = false;
 	}
 	sys->ddp_path[pipe] = NULL;
@@ -1318,7 +1331,7 @@ enabled:
 	/* disable pre_ddp_path if path diff */
 	if (sys->pre_ddp_path[pipe] &&
 	    sys->pre_ddp_path[pipe] != sys->ddp_path[pipe])
-		sys_ddp_disable_locked(sys->pre_ddp_path[pipe], pipe);
+		sys_ddp_disable_locked(sys->pre_ddp_path[pipe], pipe, task);
 
 	/* pop previous path and push paths */
 	sys->pre_ddp_path[pipe] = sys->ddp_path[pipe];
@@ -1546,15 +1559,10 @@ static void sys_addon_config(struct mtk_ddp_comp *ddp_comp,
 	mml_mmp(addon_addon_config, MMPROFILE_FLAG_PULSE, cfg->config_type.type, 0);
 
 	mml_msg("%s type:%d", __func__, cfg->config_type.type);
-	if (cfg->config_type.type == ADDON_DISCONNECT) {
-		if (cfg->task && !cfg->task->config->irq)
-			dec_task_cnt(cfg->task->config->mml, true);
+	if (cfg->config_type.type == ADDON_DISCONNECT)
 		sys_addon_disconnect(sys, cfg);
-	} else {
+	else
 		sys_addon_connect(sys, cfg, pkt);
-		if (cfg->task && !cfg->task->config->irq)
-			inc_task_cnt(cfg->task->config->mml, true);
-	}
 }
 
 static void sys_start(struct mtk_ddp_comp *ddp_comp, struct cmdq_pkt *pkt)

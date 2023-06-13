@@ -13,6 +13,7 @@
 #
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2 \
+             -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc \
              -I$(DEVICE_MODULES_PATH)/drivers/devfreq \
              -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs \
@@ -66,6 +67,7 @@ mtk-mml-objs += mtk-mml-wrot.o
 mtk-mml-objs += mtk-mml-rrot.o
 mtk-mml-objs += mtk-mml-merge.o
 mtk-mml-objs += mtk-mml-c3d.o
+mtk-mml-objs += mtk-mml-dpc.o
 
 # mml call sspm support
 mtk-mml-objs += mtk-mml-scmi.o

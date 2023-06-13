@@ -2250,7 +2250,8 @@ static s32 mml_wrot_comp_clk_enable(struct mml_comp *comp)
 	return 0;
 }
 
-static s32 mml_wrot_comp_clk_disable(struct mml_comp *comp)
+static s32 mml_wrot_comp_clk_disable(struct mml_comp *comp,
+				     struct mml_task *task)
 {
 	int ret;
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
@@ -2260,7 +2261,7 @@ static s32 mml_wrot_comp_clk_disable(struct mml_comp *comp)
 #endif
 
 	/* original clk enable */
-	ret = mml_comp_clk_disable(comp);
+	ret = mml_comp_clk_disable(comp, task);
 	if (ret < 0)
 		return ret;
 

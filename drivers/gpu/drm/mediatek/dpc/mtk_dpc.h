@@ -16,6 +16,14 @@ enum mtk_dpc_subsys {
 	DPC_SUBSYS_MML1 = 4,
 };
 
+/* NOTE: user 0 to 7 only */
+enum mtk_vidle_voter_user {
+	DISP_VIDLE_USER_DISP = 0,
+	DISP_VIDLE_USER_PQ,
+	DISP_VIDLE_USER_MML,
+	DISP_VIDLE_USER_OTHER = 7
+};
+
 enum mtk_dpc_disp_vidle {
 	DPC_DISP_VIDLE_MTCMOS = 0,
 	DPC_DISP_VIDLE_MTCMOS_DISP1 = 4,
@@ -42,22 +50,28 @@ enum mtk_dpc_mml_vidle {
 };
 
 void dpc_enable(bool en);
+void dpc_ddr_force_enable(const enum mtk_dpc_subsys subsys, const bool en);
+void dpc_infra_force_enable(const enum mtk_dpc_subsys subsys, const bool en);
+void dpc_dc_force_enable(const bool en);
 void dpc_group_enable(const u16 group, bool en);
 void dpc_config(const enum mtk_dpc_subsys subsys, bool en);
 void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
 void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
 void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
 void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force);
-int mtk_disp_vidle_power_keep(void);
-void mtk_disp_vidle_power_release(void);
+int dpc_vidle_power_keep(const enum mtk_vidle_voter_user);
+void dpc_vidle_power_release(const enum mtk_vidle_voter_user);
 
 struct dpc_funcs {
 	void (*dpc_enable)(bool en);
+	void (*dpc_ddr_force_enable)(const enum mtk_dpc_subsys subsys, const bool en);
+	void (*dpc_infra_force_enable)(const enum mtk_dpc_subsys subsys, const bool en);
+	void (*dpc_dc_force_enable)(const bool en);
 	void (*dpc_group_enable)(const u16 group, bool en);
 	void (*dpc_config)(const enum mtk_dpc_subsys subsys, bool en);
 	void (*dpc_mtcmos_vote)(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
-	int (*vidle_power_keep)(void);
-	void (*vidle_power_release)(void);
+	int (*vidle_power_keep)(const enum mtk_vidle_voter_user);
+	void (*vidle_power_release)(const enum mtk_vidle_voter_user);
 	void (*dpc_hrt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
 	void (*dpc_srt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
 	void (*dpc_dvfs_set)(const enum mtk_dpc_subsys subsys, const u8 level, bool force);

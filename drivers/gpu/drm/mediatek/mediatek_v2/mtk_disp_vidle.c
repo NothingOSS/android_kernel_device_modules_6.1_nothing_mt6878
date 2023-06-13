@@ -118,7 +118,7 @@ void mtk_vidle_power_keep(void)
 
 	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
 		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
-		disp_dpc_driver.vidle_power_keep();
+		disp_dpc_driver.vidle_power_keep(DISP_VIDLE_USER_DISP);
 }
 
 void mtk_vidle_power_release(void)
@@ -128,7 +128,7 @@ void mtk_vidle_power_release(void)
 
 	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
 		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
-		disp_dpc_driver.vidle_power_release();
+		disp_dpc_driver.vidle_power_release(DISP_VIDLE_USER_DISP);
 }
 
 void mtk_vidle_sync_mmdvfsrc_status_rc(unsigned int rc_en)

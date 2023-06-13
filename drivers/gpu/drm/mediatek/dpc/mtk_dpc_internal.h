@@ -181,13 +181,6 @@
 #define DPC_DISP_DT_CNT 32
 #define DPC_MML_DT_CNT 25
 
-/* NOTE: user 0 to 7 only */
-enum mtk_vidle_voter_user {
-	DISP_VIDLE_USER_DISP = 0,
-	DISP_VIDLE_USER_PQ,
-	DISP_VIDLE_USER_OTHER = 7
-};
-
 enum mtk_dpc_sp_type {
 	DPC_SP_TE,
 	DPC_SP_SOF,
@@ -205,6 +198,5 @@ struct mtk_dpc_dt_usage {
 static void dpc_dt_enable(u16 dt, bool en);
 static void dpc_dt_set(u16 dt, u32 counter);
 static void dpc_dt_sw_trig(u16 dt);
-static void dpc_ddr_force_enable(const enum mtk_dpc_subsys subsys, const bool en);
 
 #endif

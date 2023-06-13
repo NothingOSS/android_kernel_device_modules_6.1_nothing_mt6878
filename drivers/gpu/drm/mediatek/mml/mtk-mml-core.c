@@ -17,6 +17,7 @@
 #include "mtk-mml-tile.h"
 #include "mtk-mml-pq-core.h"
 #include "mtk-mml-mmp.h"
+#include "mtk-mml-dpc.h"
 
 #define MML_TRACE_MSG_LEN 1024
 #define CREATE_TRACE_POINTS
@@ -60,6 +61,9 @@ module_param(mml_qos, int, 0644);
 
 int mml_qos_log;
 module_param(mml_qos_log, int, 0644);
+
+int mml_dpc_log;
+module_param(mml_dpc_log, int, 0644);
 
 int mml_pq_disable;
 module_param(mml_pq_disable, int, 0644);
@@ -593,11 +597,23 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 	cmdq_mbox_enable(((struct cmdq_client *)task->pkts[pipe]->cl)->chan);
 	mml_trace_ex_end();
 
+	if (task->config->info.mode == MML_MODE_RACING && task->config->dpc) {
+		/* keep and release pw off until next DT */
+		mml_msg("%s dpc exception flow for IR", __func__);
+		mml_dpc_exc_keep(task);
+		mml_dpc_exc_release(task);
+	} else if (task->config->info.mode == MML_MODE_MML_DECOUPLE) {
+		mml_msg("%s dpc flow enable for DC", __func__);
+		mml_dpc_exc_keep(task);
+		mml_dpc_dc_enable(task, true);
+	}
+
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, pw_enable);
 	}
+
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
@@ -645,22 +661,38 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 		if (i == path->mmlsys_idx || i == path->mutex_idx)
 			continue;
 		comp = path->nodes[i].comp;
-		call_hw_op(comp, clk_disable);
+		call_hw_op(comp, clk_disable, task);
 	}
 
 	if (path->mutex)
-		call_hw_op(path->mutex, clk_disable);
+		call_hw_op(path->mutex, clk_disable, task);
 	if (path->mmlsys)
-		call_hw_op(path->mmlsys, clk_disable);
+		call_hw_op(path->mmlsys, clk_disable, task);
+
+	if (task->config->dpc) {
+		/* set dpc total hrt/srt bw to 0 */
+		mml_dpc_srt_bw_set(DPC_SUBSYS_MML1, 0);
+		mml_dpc_hrt_bw_set(DPC_SUBSYS_MML1, 0);
+	}
+
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
+	mml_dpc_exc_keep(task);
 	/* backward disable all power */
 	for (i = path->node_cnt - 1; i >= 0; i--) {
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, pw_disable);
 	}
+	mml_dpc_exc_release(task);
+
 	mml_trace_ex_end();
+
+	if (task->config->info.mode == MML_MODE_MML_DECOUPLE) {
+		mml_msg("%s dpc flow disable for DC", __func__);
+		mml_dpc_dc_enable(task, false);
+		mml_dpc_exc_release(task);
+	}
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "cmdq", pipe);
 	cmdq_mbox_disable(((struct cmdq_client *)task->pkts[pipe]->cl)->chan);
@@ -684,11 +716,20 @@ static void mml_core_qos_set(struct mml_task *task, u32 pipe, u32 throughput, u3
 	const struct mml_topology_path *path = task->config->path[pipe];
 	struct mml_pipe_cache *cache = &task->config->cache[pipe];
 	struct mml_comp *comp;
-	u32 i;
+	u32 i, total_bw = 0, total_peak = 0;
 
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, qos_set, task, &cache->cfg[i], throughput, tput_up);
+
+		total_bw += comp->cur_bw;
+		total_peak += comp->cur_peak;
+	}
+
+	if (task->config->dpc) {
+		/* set dpc total hrt/srt bw */
+		mml_dpc_srt_bw_set(DPC_SUBSYS_MML1, total_bw);
+		mml_dpc_hrt_bw_set(DPC_SUBSYS_MML1, total_peak);
 	}
 }
 
@@ -848,7 +889,7 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	mml_trace_begin("%u_%llu_%llu", throughput, duration, boost_time);
 	task->freq_time[pipe] = sched_clock();
 	path_clt->throughput = throughput;
-	tput_up = mml_qos_update_tput(cfg->mml);
+	tput_up = mml_qos_update_tput(cfg->mml, cfg->dpc);
 
 	/* note the running task not always current begin task */
 	task_pipe_tmp = list_first_entry_or_null(&path_clt->tasks,
@@ -982,7 +1023,7 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 
 done:
 	path_clt->throughput = throughput;
-	tput_up = mml_qos_update_tput(task->config->mml);
+	tput_up = mml_qos_update_tput(task->config->mml, task->config->dpc);
 	if (throughput) {
 		/* clear so that qos set api report max bw */
 		task_pipe_cur->bandwidth = 0;
@@ -1194,6 +1235,7 @@ static void core_taskdone_kt_work(struct kthread_work *work)
 static void core_taskdone(struct work_struct *work)
 {
 	struct mml_task *task = container_of(work, struct mml_task, work_done);
+	struct mml_frame_config *cfg = task->config;
 	u32 *perf, hw_time = 0;
 
 	mml_trace_begin("%s", __func__);
@@ -1256,6 +1298,9 @@ static void core_taskdone(struct work_struct *work)
 	else
 		task->config->task_ops->frame_done(task);
 
+	if (cfg->dpc && cfg->info.mode != MML_MODE_DDP_ADDON)
+		mml_dpc_task_cnt_dec(task, false);
+
 	mml_trace_end();
 }
 
@@ -1274,7 +1319,6 @@ static void core_taskdone_cb(struct cmdq_cb_data data)
 {
 	struct cmdq_pkt *pkt = (struct cmdq_pkt *)data.data;
 	struct mml_task *task = (struct mml_task *)pkt->user_data;
-	struct mml_frame_config *cfg = task->config;
 	u32 pipe;
 
 	if (pkt == task->pkts[0]) {
@@ -1294,9 +1338,6 @@ static void core_taskdone_cb(struct cmdq_cb_data data)
 			((data.err & GENMASK(15, 0)) << 16) | pipe);
 	else
 		mml_mmp(irq_done, MMPROFILE_FLAG_PULSE, task->job.jobid, pipe);
-
-	if (!cfg->irq && cfg->info.mode != MML_MODE_DDP_ADDON)
-		dec_task_cnt(cfg->mml, false);
 
 	core_taskdone_check(task);
 	mml_trace_end();
@@ -1624,13 +1665,14 @@ static void core_config_pipe(struct mml_task *task, u32 pipe)
 	mml_trace_ex_begin("%s_%u", __func__, pipe);
 	task->config_pipe_time[pipe] = sched_clock();
 
-	if (!cfg->irq) {
-		if (cfg->info.mode != MML_MODE_DDP_ADDON)
-			inc_task_cnt(cfg->mml, false);
+	if (cfg->info.mode != MML_MODE_DDP_ADDON && cfg->dpc)
+		mml_dpc_task_cnt_inc(task, false);
 
+	if (!cfg->irq) {
 		cmdq_check_thread_complete(tp_clt->chan);
+
 		if (cfg->info.mode == MML_MODE_DDP_ADDON ||
-			cfg->info.mode == MML_MODE_DIRECT_LINK)
+		    cfg->info.mode == MML_MODE_DIRECT_LINK)
 			cmdq_check_thread_complete(rb_clt->chan);
 	}
 
@@ -1681,8 +1723,8 @@ static void core_config_pipe(struct mml_task *task, u32 pipe)
 	mml_msg("%s task %p job %u pipe %u pkt %p done",
 		__func__, task, task->job.jobid, pipe, task->pkts[pipe]);
 exit:
-	if (!cfg->irq && err < 0)
-		dec_task_cnt(cfg->mml, false);
+	if (cfg->dpc && err < 0)
+		mml_dpc_task_cnt_dec(task, false);
 
 	mml_trace_ex_end();
 }

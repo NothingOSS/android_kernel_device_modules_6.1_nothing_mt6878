@@ -369,7 +369,14 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 
 			if (hdr->data->rb_mode == RB_EOF_MODE) {
 				mml_clock_lock(task->config->mml);
-				call_hw_op(comp, pw_enable);
+				if (task->config->dpc) {
+					/* dpc exception flow on */
+					mml_msg("%s dpc exception flow on", __func__);
+					mml_dpc_exc_keep(task);
+				} else {
+					/* ccf power on */
+					call_hw_op(comp, pw_enable);
+				}
 				call_hw_op(comp, clk_enable);
 				mml_clock_unlock(task->config->mml);
 				mml_lock_wake_lock(hdr->mml, true);
@@ -1490,8 +1497,15 @@ static void hdr_histdone_cb(struct cmdq_cb_data data)
 
 	if (hdr->data->rb_mode == RB_EOF_MODE) {
 		mml_clock_lock(hdr->mml);
-		call_hw_op(comp, clk_disable);
-		call_hw_op(comp, pw_disable);
+		call_hw_op(comp, clk_disable, hdr->pq_task->task);
+		if (hdr->pq_task->task->config->dpc) {
+			/* dpc exception flow off */
+			mml_msg("%s dpc exception flow off", __func__);
+			mml_dpc_exc_release(hdr->pq_task->task);
+		} else {
+			/* ccf power off */
+			call_hw_op(comp, pw_disable);
+		}
 		mml_clock_unlock(hdr->mml);
 		mml_lock_wake_lock(hdr->mml, false);
 	}

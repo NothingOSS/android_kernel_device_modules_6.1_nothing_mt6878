@@ -23,6 +23,7 @@
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #include <slbc_ops.h>
 
+#include "mtk-mml-dpc.h"
 #include "mtk-mml-dle-adaptor.h"
 #include "mtk-mml-driver.h"
 #include "mtk-mml-core.h"
@@ -90,6 +91,14 @@ module_param(mml_crc_cmp_p1, int, 0644);
 int mml_crc_err;
 module_param(mml_crc_err, int, 0644);
 
+struct mml_dpc {
+	atomic_t task_cnt;
+	atomic_t addon_task_cnt;
+	atomic_t exc_pw_cnt;
+	atomic_t dc_force_cnt;
+	struct clk *mmlsys_26m_clk;
+};
+
 struct mml_dev {
 	struct platform_device *pdev;
 	struct mml_comp *comps[MML_MAX_COMPONENTS];
@@ -130,8 +139,8 @@ struct mml_dev {
 	struct mml_record records[MML_RECORD_NUM];
 	struct mutex record_mutex;
 	u16 record_idx;
-	atomic_t task_cnt;
-	atomic_t addon_task_cnt;
+
+	struct mml_dpc dpc;
 };
 
 int mml_racing_bw;
@@ -226,7 +235,7 @@ static void mml_qos_init(struct mml_dev *mml)
 	}
 }
 
-u32 mml_qos_update_tput(struct mml_dev *mml)
+u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc)
 {
 	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
 	u32 tput = 0, i;
@@ -254,25 +263,37 @@ u32 mml_qos_update_tput(struct mml_dev *mml)
 		__func__, mml->current_volt, volt, tp->opp_speeds[i]);
 	mml->current_volt = volt;
 	mml_trace_begin("mml_volt_%u", volt);
-	if (tp->reg) {
-		ret = regulator_set_voltage(tp->reg, volt, INT_MAX);
-		if (ret)
-			mml_err("%s fail to set volt %d", __func__, volt);
-		else
-			mml_msg("%s volt %d (%u) tput %u", __func__, volt, i, tput);
-	} else if (tp->dvfs_clk) {
-		/* set dvfs clock rate by unit Hz */
-		if (mmdvfs_get_version())
-			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MML);
-		ret = clk_set_rate(tp->dvfs_clk, tp->opp_speeds[i] * 1000000);
-		if (ret)
-			mml_err("%s fail to set rate %uMHz error %d",
-				__func__, tp->opp_speeds[i], ret);
-		else
-			mml_msg("%s rate %uMHz (%u) tput %u",
-				__func__, tp->opp_speeds[i], i, tput);
-		if (mmdvfs_get_version())
-			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MML);
+
+	if (dpc) {
+		/* dpc set voltage */
+		mml_msg("%s dpc set rate %uMHz volt %d (%u) tput %u",
+			__func__, tp->opp_speeds[i], volt, i, tput);
+
+		mml_dpc_dvfs_set(DPC_SUBSYS_MML, i);
+	} else {
+		if (tp->reg) {
+			ret = regulator_set_voltage(tp->reg, volt, INT_MAX);
+			if (ret)
+				mml_err("%s fail to set volt %d",
+					__func__, volt);
+			else
+				mml_msg("%s volt %d (%u) tput %u",
+					__func__, volt, i, tput);
+		} else if (tp->dvfs_clk) {
+			/* set dvfs clock rate by unit Hz */
+			if (mmdvfs_get_version())
+				mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MML);
+			ret = clk_set_rate(tp->dvfs_clk,
+				tp->opp_speeds[i] * 1000000);
+			if (ret)
+				mml_err("%s fail to set rate %uMHz error %d",
+					__func__, tp->opp_speeds[i], ret);
+			else
+				mml_msg("%s rate %uMHz (%u) tput %u",
+					__func__, tp->opp_speeds[i], i, tput);
+			if (mmdvfs_get_version())
+				mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MML);
+		}
 	}
 	mml_trace_end();
 
@@ -663,6 +684,13 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 			__func__, comp->name ? comp->name : "");
 		comp->icc_path = NULL;
 	}
+
+	comp->icc_dpc_path = of_mtk_icc_get(dev, "mml_dma_dpc");
+	if (IS_ERR_OR_NULL(comp->icc_dpc_path)) {
+		mml_log("%s %s not support dpc qos",
+			__func__, comp->name ? comp->name : "");
+		comp->icc_dpc_path = NULL;
+	}
 #endif
 
 	return 0;
@@ -687,6 +715,7 @@ s32 mml_comp_pw_enable(struct mml_comp *comp)
 	}
 
 #ifndef MML_FPGA
+	mml_msg_dpc("%s comp %u pm_runtime_resume_and_get", __func__, comp->id);
 	ret = pm_runtime_resume_and_get(comp->larb_dev);
 	if (ret)
 		mml_err("%s enable fail ret:%d", __func__, ret);
@@ -712,6 +741,7 @@ s32 mml_comp_pw_disable(struct mml_comp *comp)
 	}
 
 #ifndef MML_FPGA
+	mml_msg_dpc("%s comp %u pm_runtime_put_sync", __func__, comp->id);
 	pm_runtime_put_sync(comp->larb_dev);
 #endif
 
@@ -746,7 +776,7 @@ s32 mml_comp_clk_enable(struct mml_comp *comp)
 #define call_hw_op(_comp, op, ...) \
 	(_comp->hw_ops->op ? _comp->hw_ops->op(_comp, ##__VA_ARGS__) : 0)
 
-s32 mml_comp_clk_disable(struct mml_comp *comp)
+s32 mml_comp_clk_disable(struct mml_comp *comp, struct mml_task *task)
 {
 	u32 i;
 
@@ -760,7 +790,7 @@ s32 mml_comp_clk_disable(struct mml_comp *comp)
 	}
 
 	/* clear bandwidth before disable if this component support dma */
-	call_hw_op(comp, qos_clear);
+	call_hw_op(comp, qos_clear, task);
 
 	for (i = 0; i < ARRAY_SIZE(comp->clks); i++) {
 		if (IS_ERR_OR_NULL(comp->clks[i]))
@@ -787,43 +817,133 @@ struct device *mml_smmu_get_shared_device(struct device *dev, const char *name)
 	return shared_dev;
 }
 
-void inc_task_cnt(struct mml_dev *mml, bool addon_task)
+void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
 {
-	s32 cur_task_cnt = atomic_read(&mml->task_cnt);
-	s32 cur_addon_task_cnt = atomic_read(&mml->addon_task_cnt);
+	struct mml_dev *mml = task->config->mml;
+	s32 cur_task_cnt = atomic_read(&mml->dpc.task_cnt);
+	s32 cur_addon_task_cnt = atomic_read(&mml->dpc.addon_task_cnt);
+	int ret;
 
 	if (addon_task)
-		cur_addon_task_cnt = atomic_inc_return(&mml->addon_task_cnt);
+		cur_addon_task_cnt = atomic_inc_return(&mml->dpc.addon_task_cnt);
 	else
-		cur_task_cnt = atomic_inc_return(&mml->task_cnt);
+		cur_task_cnt = atomic_inc_return(&mml->dpc.task_cnt);
 
-	if (cur_task_cnt + cur_addon_task_cnt == 1)
-		mml_msg("dpc start");
+	if (cur_task_cnt == 1) {
+		const struct mml_topology_path *path = task->config->path[0];
+		struct mml_comp *comp;
+
+		mml_msg_dpc("%s scenario in, dpc start", __func__);
+		mml_dpc_exc_keep(task);
+		comp = path->mmlsys;
+		call_hw_op(comp, pw_enable);
+		if (mml->dpc.mmlsys_26m_clk) {
+			ret = clk_prepare_enable(mml->dpc.mmlsys_26m_clk);
+			if (ret)
+				mml_err("%s clk_prepare_enable fail %d",
+					__func__, ret);
+		}
+		mml_dpc_enable(true);
+		mml_dpc_config(DPC_SUBSYS_MML1, true);
+		mml_dpc_exc_release(task);
+	}
 }
 
-void dec_task_cnt(struct mml_dev *mml, bool addon_task)
+void mml_dpc_task_cnt_dec(struct mml_task *task, bool addon_task)
 {
-	s32 cur_task_cnt = atomic_read(&mml->task_cnt);
-	s32 cur_addon_task_cnt = atomic_read(&mml->addon_task_cnt);
+	struct mml_dev *mml = task->config->mml;
+	s32 cur_task_cnt = atomic_read(&mml->dpc.task_cnt);
+	s32 cur_addon_task_cnt = atomic_read(&mml->dpc.addon_task_cnt);
 
 	if (addon_task) {
-		cur_addon_task_cnt = atomic_dec_return(&mml->addon_task_cnt);
+		cur_addon_task_cnt = atomic_dec_return(&mml->dpc.addon_task_cnt);
 		if (cur_addon_task_cnt < 0) {
 			cur_addon_task_cnt = 0;
-			atomic_set(&mml->addon_task_cnt, 0);
+			atomic_set(&mml->dpc.addon_task_cnt, 0);
 			mml_err("%s addon task_cnt < 0", __func__);
 		}
 	} else {
-		cur_task_cnt = atomic_dec_return(&mml->task_cnt);
+		cur_task_cnt = atomic_dec_return(&mml->dpc.task_cnt);
 		if (cur_task_cnt < 0) {
 			cur_task_cnt = 0;
-			atomic_set(&mml->task_cnt, 0);
+			atomic_set(&mml->dpc.task_cnt, 0);
 			mml_err("%s task_cnt < 0", __func__);
 		}
 	}
 
-	if (cur_task_cnt + cur_addon_task_cnt == 0)
-		mml_msg("dpc end");
+	if (cur_task_cnt == 0) {
+		const struct mml_topology_path *path = task->config->path[0];
+		struct mml_comp *comp;
+
+		mml_msg_dpc("%s scenario out, dpc end", __func__);
+		mml_dpc_exc_keep(task);
+		mml_dpc_config(DPC_SUBSYS_MML1, false);
+		if (mml->dpc.mmlsys_26m_clk)
+			clk_disable_unprepare(mml->dpc.mmlsys_26m_clk);
+		comp = path->mmlsys;
+		call_hw_op(comp, pw_disable);
+		mml_dpc_exc_release(task);
+	}
+}
+
+void mml_dpc_exc_keep(struct mml_task *task)
+{
+	struct mml_dev *mml = task->config->mml;
+	s32 cur_exc_pw_cnt = atomic_inc_return(&mml->dpc.exc_pw_cnt);
+
+	if (cur_exc_pw_cnt > 1)
+		return;
+	if (cur_exc_pw_cnt <= 0) {
+		mml_err("%s  cnt %d", __func__, cur_exc_pw_cnt);
+		return;
+	}
+
+	mml_dpc_power_keep();
+}
+
+void mml_dpc_exc_release(struct mml_task *task)
+{
+	struct mml_dev *mml = task->config->mml;
+	s32 cur_exc_pw_cnt = atomic_dec_return(&mml->dpc.exc_pw_cnt);
+
+	if (cur_exc_pw_cnt > 0)
+		return;
+	if (cur_exc_pw_cnt < 0) {
+		mml_err("%s  cnt %d", __func__, cur_exc_pw_cnt);
+		return;
+	}
+
+	mml_dpc_power_release();
+}
+
+void mml_dpc_dc_enable(struct mml_task *task, bool en)
+{
+	struct mml_dev *mml = task->config->mml;
+	s32 cur_dc_force_cnt;
+
+	if (en) {
+		cur_dc_force_cnt =
+			atomic_inc_return(&mml->dpc.dc_force_cnt);
+
+		if (cur_dc_force_cnt > 1)
+			return;
+		if (cur_dc_force_cnt <= 0) {
+			mml_err("%s  cnt %d", __func__, cur_dc_force_cnt);
+			return;
+		}
+	} else {
+		cur_dc_force_cnt =
+			atomic_dec_return(&mml->dpc.dc_force_cnt);
+
+		if (cur_dc_force_cnt > 0)
+			return;
+		if (cur_dc_force_cnt < 0) {
+			mml_err("%s  cnt %d", __func__, cur_dc_force_cnt);
+			return;
+		}
+	}
+
+	mml_dpc_dc_force_enable(en);
 }
 
 /* mml_calc_bw - calculate bandwidth by giving pixel and current throughput
@@ -899,7 +1019,14 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	if (comp->cur_bw != bandwidth || comp->cur_peak != hrt_bw) {
 		mml_trace_begin("mml_bw_%u_%u", bandwidth, hrt_bw);
 #ifndef MML_FPGA
-		mtk_icc_set_bw(comp->icc_path, MBps_to_icc(bandwidth), hrt_bw);
+		if (task->config->dpc)
+			mtk_icc_set_bw(comp->icc_dpc_path,
+					MBps_to_icc(bandwidth),
+					hrt_bw);
+		else
+			mtk_icc_set_bw(comp->icc_path,
+				MBps_to_icc(bandwidth),
+				hrt_bw);
 #endif
 		comp->cur_bw = bandwidth;
 		comp->cur_peak = hrt_bw;
@@ -912,10 +1039,13 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 		hrt ? " hrt" : "");
 }
 
-void mml_comp_qos_clear(struct mml_comp *comp)
+void mml_comp_qos_clear(struct mml_comp *comp, struct mml_task *task)
 {
 #ifndef MML_FPGA
-	mtk_icc_set_bw(comp->icc_path, 0, 0);
+	if (task->config->dpc)
+		mtk_icc_set_bw(comp->icc_dpc_path, 0, 0);
+	else
+		mtk_icc_set_bw(comp->icc_path, 0, 0);
 #endif
 	comp->cur_bw = 0;
 	comp->cur_peak = 0;
@@ -1420,6 +1550,13 @@ static int mml_probe(struct platform_device *pdev)
 	if (mml->racing_en) {
 		mml_log("racing mode enable");
 		mml->dle_ctx = mml_dle_ctx_create(mml);
+	}
+
+	mml->dpc.mmlsys_26m_clk = devm_clk_get(dev, "mmlsys_26m_clk");
+	if (IS_ERR_OR_NULL(mml->dpc.mmlsys_26m_clk)) {
+		mml_err("%s get dpc 26m clk failed %d",
+			__func__, (int)PTR_ERR(mml->dpc.mmlsys_26m_clk));
+		mml->dpc.mmlsys_26m_clk = NULL;
 	}
 
 	mml_log("%s success end", __func__);

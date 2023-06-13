@@ -58,6 +58,9 @@ module_param(mml_racing_rsz, int, 0644);
 int mml_need_irq;
 module_param(mml_need_irq, int, 0644);
 
+int mml_dpc;
+module_param(mml_dpc, int, 0644);
+
 /* 0: off
  * 1: on
  */
@@ -721,6 +724,19 @@ static s32 tp_select(struct mml_topology_cache *cache,
 		cfg->irq = true;
 	else
 		cfg->irq = false;
+
+	if (mml_dpc && !cfg->disp_vdo &&
+	    !(cfg->info.dest[0].pq_config.en_ur ||
+	      cfg->info.dest[0].pq_config.en_dc ||
+	      cfg->info.dest[0].pq_config.en_hdr ||
+	      cfg->info.dest[0].pq_config.en_ccorr ||
+	      cfg->info.dest[0].pq_config.en_dre ||
+	      cfg->info.dest[0].pq_config.en_region_pq ||
+	      cfg->info.dest[0].pq_config.en_fg) &&
+	    (cfg->info.mode == MML_MODE_DIRECT_LINK ||
+	     cfg->info.mode == MML_MODE_RACING ||
+	     cfg->info.mode == MML_MODE_DDP_ADDON))
+		cfg->dpc = true;
 
 	tp_dump_path_short(path);
 

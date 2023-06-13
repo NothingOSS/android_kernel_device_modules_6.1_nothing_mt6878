@@ -48,10 +48,11 @@ enum mml_sram_mode {
  * mml_qos_update_tput - scan throughputs in all path client and update the max one
  *
  * @mml: The mml driver instance
+ * @dpc: mml using dpc or not
  *
  * Return: throughput upper bound from opp table
  */
-u32 mml_qos_update_tput(struct mml_dev *mml);
+u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc);
 
 s32 mml_comp_init(struct platform_device *comp_pdev, struct mml_comp *comp);
 
@@ -59,7 +60,7 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev);
 s32 mml_comp_pw_enable(struct mml_comp *comp);
 s32 mml_comp_pw_disable(struct mml_comp *comp);
 s32 mml_comp_clk_enable(struct mml_comp *comp);
-s32 mml_comp_clk_disable(struct mml_comp *comp);
+s32 mml_comp_clk_disable(struct mml_comp *comp, struct mml_task *task);
 
 /*
  * mml_comp_get_smmu_node - check if platform use smmu v3 and parse normal/secure smmu shared node
@@ -73,10 +74,13 @@ struct device *mml_smmu_get_shared_device(struct device *dev, const char *name);
 
 void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 throughput, u32 tput_up);
-void mml_comp_qos_clear(struct mml_comp *comp);
+void mml_comp_qos_clear(struct mml_comp *comp, struct mml_task *task);
 
-void inc_task_cnt(struct mml_dev *mml, bool addon_task);
-void dec_task_cnt(struct mml_dev *mml, bool addon_task);
+void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task);
+void mml_dpc_task_cnt_dec(struct mml_task *task, bool addon_task);
+void mml_dpc_exc_keep(struct mml_task *task);
+void mml_dpc_exc_release(struct mml_task *task);
+void mml_dpc_dc_enable(struct mml_task *task, bool en);
 
 /*
  * mml_sram_get - get sram addr from slbc and power on
