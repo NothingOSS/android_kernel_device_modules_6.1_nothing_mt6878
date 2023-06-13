@@ -249,11 +249,21 @@ static int mt6989_memif_fs(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_component *component =
 		snd_soc_rtdcom_lookup(rtd, AFE_PCM_NAME);
-	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(component);
+	struct mtk_base_afe *afe = NULL;
 	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
-	unsigned int rate_reg = mt6989_rate_transform(afe->dev, rate, id);
+	unsigned int rate_reg = 0;
 	int cm = 0;
+
+	if (!component)
+		return -EINVAL;
+
+	afe = snd_soc_component_get_drvdata(component);
+
+	if (!afe)
+		return -EINVAL;
+
+	rate_reg = mt6989_rate_transform(afe->dev, rate, id);
 
 	switch (id) {
 	case MT6989_MEMIF_VUL8:
@@ -285,8 +295,11 @@ static int mt6989_irq_fs(struct snd_pcm_substream *substream, unsigned int rate)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_component *component =
 		snd_soc_rtdcom_lookup(rtd, AFE_PCM_NAME);
-	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(component);
+	struct mtk_base_afe *afe = NULL;
 
+	if (!component)
+		return -EINVAL;
+	afe = snd_soc_component_get_drvdata(component);
 	return mt6989_general_rate_transform(afe->dev, rate);
 }
 
@@ -4863,6 +4876,7 @@ static int mt6989_afe_runtime_resume(struct device *dev)
 	regmap_write(afe->regmap, AUDIO_TOP_CON0, 0x0);
 	regmap_write(afe->regmap, AUDIO_TOP_CON1, 0x0);
 	regmap_write(afe->regmap, AUDIO_TOP_CON2, 0x0);
+	regmap_write(afe->regmap, AUDIO_TOP_CON3, 0x0);
 	/* Can't set AUDIO_TOP_CON3 to be 0x0, it will hang in FPGA env */
 
 	regmap_update_bits(afe->regmap, AFE_CBIP_CFG0, 0x1, 0x1);
@@ -4894,9 +4908,12 @@ static int mt6989_afe_pcm_copy(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_component *component =
 		snd_soc_rtdcom_lookup(rtd, AFE_PCM_NAME);
-	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(component);
+	struct mtk_base_afe *afe = NULL;
 	int ret = 0;
 
+	if (!component)
+		return -EINVAL;
+	afe = snd_soc_component_get_drvdata(component);
 	mt6989_set_audio_int_bus_parent(afe, CLK_TOP_MAINPLL_D4_D4);
 
 	ret = sp_copy(substream, channel, hwoff, buf, bytes);
