@@ -819,29 +819,7 @@ static int mt6989_irq_affin_clear(struct mtk_apu *apu)
 
 static int mt6989_check_apu_exp_irq(struct mtk_apu *apu, char *ce_module)
 {
-	struct device *dev = apu->dev;
-	int ret = 0;
-
-	ret = apusys_rv_smc_call(dev,
-			MTK_APUSYS_KERNEL_OP_APUSYS_RV_OP_DECODE_APU_EXP_IRQ, 0);
-
-	dev_info(dev, "%s: apu_exp_id: %x\n", __func__, ret);
-
-	for (uint32_t i = 0; i < 32; i++) {
-		if (CHECK_BIT(ret, i) != 0) {
-			switch (i) {
-			case are_abnormal_irq:
-				if (strcmp("are_abnormal_irq", ce_module) == 0)
-					return 1;
-				else
-					return 0;
-				break;
-			default:
-				break;
-			}
-		}
-	}
-	return 0;
+	return 1;
 }
 
 
@@ -1053,7 +1031,7 @@ const struct mtk_apu_platdata mt6989_platdata = {
 	.flags		= F_AUTO_BOOT | F_FAST_ON_OFF | F_APU_IPI_UT_SUPPORT |
 					F_TCM_WA | F_SMMU_SUPPORT |
 					F_APUSYS_RV_TAG_SUPPORT | F_PRELOAD_FIRMWARE |
-					F_SECURE_BOOT | F_SECURE_COREDUMP,
+					F_SECURE_BOOT | F_SECURE_COREDUMP | F_CE_EXCEPTION_ON,
 	.ops		= {
 		.init	= mt6989_rproc_init,
 		.exit	= mt6989_rproc_exit,
