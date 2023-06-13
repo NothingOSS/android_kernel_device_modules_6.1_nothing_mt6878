@@ -48,6 +48,7 @@ static int led_disp_create_fwnode(struct device *dev, struct mt_leds_disp *priv)
 		}
 		led_data->mtk_hw_brightness_set = of_device_get_match_data(dev);
 		led_data->mtk_conn_id_get = led_disp_get_conn_id;
+		led_data->desp.connector_id = mtk_drm_get_conn_obj_id_from_idx(led_data->desp.index, 0);
 		ret = mt_leds_classdev_register(dev, led_data);
 		if (ret < 0) {
 			dev_notice(dev, "failed to register led for %s: %d\n",

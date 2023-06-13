@@ -18,6 +18,7 @@ struct led_debug_info {
 
 struct led_desp {
 	int index;
+	int connector_id;
 	char name[16];
 };
 

@@ -55,6 +55,26 @@ int mt_leds_call_notifier(unsigned long action, void *data)
 }
 EXPORT_SYMBOL_GPL(mt_leds_call_notifier);
 
+static int get_desp_index(int id)
+{
+	int i = 0;
+
+	while (i < leds_info->lens) {
+		pr_info("%s: leds %d connector id is %d\n", __func__, i, leds_info->leds[i]->connector_id);
+		if (leds_info->leds[i]->connector_id < 0) {
+			struct mt_led_data *led_dat = container_of(leds_info->leds[i],
+				struct mt_led_data, desp);
+			led_dat->mtk_conn_id_get(led_dat, led_dat->desp.index);
+			leds_info->leds[i]->connector_id = led_dat->conf.connector_id;
+		}
+
+		if (id == leds_info->leds[i]->connector_id)
+			return i;
+		i++;
+	}
+	return -1;
+}
+
 static int  __maybe_unused call_notifier(int event, struct led_conf_info *led_conf)
 {
 	int err = 0;
@@ -266,18 +286,6 @@ static void led_debug_log(struct mt_led_data *s_led,
 	s_led->debug.last_t = sched_clock();
 }
 
-static int get_desp_index(char *name)
-{
-	int i = 0;
-
-	while (i < leds_info->lens) {
-		if (!strcmp(name, leds_info->leds[i]->name))
-			return i;
-		i++;
-	}
-	return -1;
-}
-
 /****************************************************************************
  * driver functions
  ***************************************************************************/
@@ -321,15 +329,15 @@ static int mtk_set_hw_brightness(struct mt_led_data *led_dat, int brightness,
 	return 0;
 }
 
-int mtk_leds_brightness_set(char *name, int level,
+int mtk_leds_brightness_set(int connector_id, int level,
 		unsigned int params, unsigned int params_flag)
 {
 	struct mt_led_data *led_dat;
 	int index;
 
-	index = get_desp_index(name);
+	index = get_desp_index(connector_id);
 	if (index < 0) {
-		pr_notice("can not find leds by led_desp %s", name);
+		pr_info("can not find leds by led_desp connector id %d", connector_id);
 		return -1;
 	}
 	led_dat = container_of(leds_info->leds[index],
@@ -389,28 +397,23 @@ static int mtk_set_brightness(struct led_classdev *led_cdev,
 /****************************************************************************
  * add API for temperature control
  ***************************************************************************/
-
-int setMaxBrightness(char *name, int percent, bool enable)
+int set_max_brightness(struct mt_led_data *led_dat, int percent, bool enable)
 {
-	struct mt_led_data *led_dat;
-	int max_l = 0, index = -1, limit_l = 0, cur_l = 0;
+	int max_l = 0, limit_l = 0, cur_l = 0;
 
-	index = get_desp_index(name);
-	if (index < 0) {
-		pr_notice("can not find leds by led_desp %s", name);
+	if (led_dat == NULL) {
+		pr_info("invalid parameter\n");
 		return -1;
 	}
-	led_dat = container_of(leds_info->leds[index],
-		struct mt_led_data, desp);
 
 	max_l = led_dat->conf.max_hw_brightness;
 	limit_l = (percent * max_l) / 100;
 	pr_info("before: name: %s, percent : %d, limit_l : %d, enable: %d",
-		leds_info->leds[index]->name, percent, limit_l, enable);
+		led_dat->conf.cdev.name, percent, limit_l, enable);
 	if (enable) {
 		led_dat->conf.limit_hw_brightness = limit_l;
 		cur_l = min(led_dat->last_hw_brightness, limit_l);
-	} else if (!enable) {
+	} else {
 		led_dat->conf.limit_hw_brightness = max_l;
 		cur_l = led_dat->last_hw_brightness;
 	}
@@ -420,8 +423,43 @@ int setMaxBrightness(char *name, int percent, bool enable)
 
 	pr_info("after: name: %s, cur_l : %d, max_brightness : %d",
 		led_dat->conf.cdev.name, cur_l, led_dat->conf.limit_hw_brightness);
-	return 0;
 
+	return 0;
+}
+
+int setMaxBrightness(int connector_id, int percent, bool enable)
+{
+	struct mt_led_data *led_dat;
+	int i = 0, index = -1;
+	bool bSetall = false;
+
+	if (-1 == connector_id)
+		bSetall = true;
+	else {
+		index = get_desp_index(connector_id);
+		if (index < 0) {
+			pr_info("can not find leds by led_desp connector id %d", connector_id);
+			return -1;
+		}
+	}
+
+	if (!bSetall) {
+		led_dat = container_of(leds_info->leds[index],
+			struct mt_led_data, desp);
+		set_max_brightness(led_dat, percent, enable);
+	} else {
+		while (i < leds_info->lens) {
+			pr_info("led %d name %s\n", i, leds_info->leds[i]->name);
+			if (strstr(leds_info->leds[i]->name, "lcd-backlight")) {
+				led_dat = container_of(leds_info->leds[i],
+					struct mt_led_data, desp);
+				set_max_brightness(led_dat, percent, enable);
+			}
+			i++;
+		}
+	}
+
+	return 0;
 }
 EXPORT_SYMBOL(setMaxBrightness);
 

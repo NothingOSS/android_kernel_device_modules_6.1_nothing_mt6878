@@ -113,6 +113,7 @@ static int led_pwm_create_fwnode(struct device *dev, struct mt_leds_pwm *priv)
 		led.max_brightness = led_data->m_led.conf.cdev.max_brightness;
 		led_data->m_led.mtk_hw_brightness_set = led_pwm_set;
 		led_data->m_led.mtk_conn_id_get = led_pwm_get_conn_id;
+		led_data->m_led.desp.connector_id = mtk_drm_get_conn_obj_id_from_idx(led_data->m_led.desp.index, 0);
 
 		ret = led_pwm_add(dev, priv, &led, fwnode);
 		priv->num_leds++;
