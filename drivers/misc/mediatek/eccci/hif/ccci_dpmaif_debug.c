@@ -202,6 +202,9 @@ static ssize_t dpmaif_debug_read(struct file *file, char __user *buf,
 	unsigned int read_len;
 	int ret, len;
 
+	if (g_debug_buf.data == NULL)
+		return 0;
+
 	read_len = get_ringbuf_used_cnt(g_debug_buf_len, g_debug_buf.rd, g_debug_buf.wr);
 	if (read_len == 0)
 		return 0;
@@ -298,11 +301,10 @@ static void dpmaif_sysfs_parse(char *buf, int size)
 		if (pdata)
 			vfree(pdata);
 
-		if (g_debug_buf_len > 0) {
-			g_debug_buf.data = vmalloc(g_debug_buf_len);
-			CCCI_NORMAL_LOG(-1, TAG, "[%s] vmalloc(%u): %p\n",
-				__func__, g_debug_buf_len, g_debug_buf.data);
-		}
+		g_debug_buf.data = vmalloc(g_debug_buf_len);
+		CCCI_NORMAL_LOG(-1, TAG, "[%s] vmalloc(%u): %p\n",
+			__func__, g_debug_buf_len, g_debug_buf.data);
+
 	}
 }
 
@@ -342,13 +344,21 @@ static unsigned int dpmaif_debug_poll(struct file *fp, struct poll_table_struct 
 
 static int dpmaif_debug_open(struct inode *inode, struct file *file)
 {
+	if (!g_debug_buf.data) {
+		if (!g_debug_buf_len)
+			g_debug_buf_len = 1024 * 1024; //1MB buffer size
+		g_debug_buf.data = vmalloc(g_debug_buf_len);
+		CCCI_NORMAL_LOG(-1, TAG, "[%s] vmalloc(%u): %p\n",
+			__func__, g_debug_buf_len, g_debug_buf.data);
+	}
 	if (atomic_inc_return(&g_debug_buf.dbg_user_cnt) > 1) {
 		atomic_set(&g_debug_buf.dbg_user_cnt, 1);
 		return -EBUSY;
 	}
 
 	g_debug_flags = 0xFFFFFFFF;
-	CCCI_ERROR_LOG(-1, TAG, "[%s] name: %s\n", __func__, current->comm);
+	CCCI_NORMAL_LOG(-1, TAG, "[%s] name: %s\n", __func__, current->comm);
+
 	return 0;
 }
 
@@ -358,7 +368,8 @@ static int dpmaif_debug_close(struct inode *inode, struct file *file)
 		atomic_set(&g_debug_buf.dbg_user_cnt, 0);
 
 	g_debug_flags = 0;
-	CCCI_ERROR_LOG(-1, TAG, "[%s] name: %s\n", __func__, current->comm);
+	CCCI_NORMAL_LOG(-1, TAG, "[%s] name: %s\n", __func__, current->comm);
+
 	return 0;
 }
 
@@ -373,7 +384,6 @@ static const struct proc_ops g_dpmaif_debug_fops = {
 	.proc_poll    = dpmaif_debug_poll,
 	.proc_open    = dpmaif_debug_open,
 	.proc_release = dpmaif_debug_close,
-
 };
 
 void ccci_dpmaif_isr_record_init(void)
@@ -413,7 +423,7 @@ void ccci_dpmaif_debug_init(void)
 {
 	struct proc_dir_entry *dpmaif_debug_proc;
 
-	g_debug_buf_len = 1024*1024; //1M buffer size
+	g_debug_buf_len = 0;
 	g_debug_flags   = 0;
 
 	atomic_set(&g_debug_buf.dbg_user_cnt, 0);
@@ -432,12 +442,6 @@ void ccci_dpmaif_debug_init(void)
 	init_waitqueue_head(&g_debug_buf.dbg_wq);
 
 	ccci_set_dpmaif_debug_cb(&dpmaif_md_ee_cb);
-
-	if (g_debug_buf_len > 0) {
-		g_debug_buf.data = vmalloc(g_debug_buf_len);
-		CCCI_NORMAL_LOG(-1, TAG, "[%s] vmalloc(%u): %p\n",
-			__func__, g_debug_buf_len, g_debug_buf.data);
-	}
 
 	ccci_dpmaif_isr_record_init();
 }
