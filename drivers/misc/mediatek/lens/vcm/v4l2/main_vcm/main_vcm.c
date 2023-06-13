@@ -79,6 +79,10 @@ struct VcmDriverConfig {
 	unsigned int move_steps;
 	unsigned int move_delay_us;
 	char wr_rls_table[8][3];
+
+	// Capacity
+	int32_t vcm_bits;
+	int32_t af_calib_bits;
 };
 
 struct mtk_vcm_info {
@@ -331,6 +335,8 @@ static int main_vcm_power_off(struct main_vcm_device *main_vcm)
 		ret = pinctrl_select_state(main_vcm->vcamaf_pinctrl,
 					main_vcm->vcamaf_off);
 
+	LOG_INF("-\n");
+
 	return ret;
 }
 
@@ -413,6 +419,8 @@ static int main_vcm_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	LOG_INF("+\n");
 
 	main_vcm_power_off(main_vcm);
+
+	LOG_INF("-\n");
 
 	return 0;
 }

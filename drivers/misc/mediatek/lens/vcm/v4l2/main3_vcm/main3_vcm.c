@@ -79,6 +79,10 @@ struct VcmDriverConfig {
 	unsigned int move_steps;
 	unsigned int move_delay_us;
 	char wr_rls_table[8][3];
+
+	// Capacity
+	int32_t vcm_bits;
+	int32_t af_calib_bits;
 };
 
 struct mtk_vcm_info {
