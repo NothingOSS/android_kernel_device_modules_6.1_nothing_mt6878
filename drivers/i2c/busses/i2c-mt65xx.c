@@ -105,6 +105,8 @@
 #define I2C_CLK_ADJUST_THRESH		100000000
 
 #define I2C_OFFSET_SCP			0x200
+#define I2C_OFFSET_AP			0x100
+#define SHADOW_REG_MODE			(0x1 << 1)
 #define I2C_CCU_INTR_EN         0x2
 #define I2C_MCU_INTR_EN         0x1
 #define I2C_FIFO_DATA_LEN_MASK	0x001f
@@ -249,7 +251,7 @@ static const u16 mt_i2c_regs_v2[] = {
 	[OFFSET_FIFO_STAT] = 0xf4,
 	[OFFSET_FIFO_THRESH] = 0xf8,
 	[OFFSET_DCM_EN] = 0xf88,
-	[OFFSET_MULTI_DMA] = 0xf8c,
+	[OFFSET_MULTI_DMA] = 0x8c,
 };
 
 struct mtk_i2c_compatible {
@@ -686,6 +688,8 @@ int mtk_i2c_clock_enable_ex(struct i2c_adapter *adap)
 		goto err;
 	}
 
+	if (i2c->ch_offset_i2c == I2C_OFFSET_AP)
+		mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
 err:
 	return ret;
 }
@@ -713,6 +717,9 @@ static void mtk_i2c_init_hw(struct mtk_i2c *i2c)
 	u16 control_reg;
 	u16 intr_stat_reg;
 
+	if (i2c->ch_offset_i2c == I2C_OFFSET_AP)
+		mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
+
 	mtk_i2c_writew(i2c, I2C_CHN_CLR_FLAG, OFFSET_START);
 	intr_stat_reg = mtk_i2c_readw(i2c, OFFSET_INTR_STAT);
 	mtk_i2c_writew(i2c, intr_stat_reg, OFFSET_INTR_STAT);
@@ -738,6 +745,9 @@ static void mtk_i2c_init_hw(struct mtk_i2c *i2c)
 	/* config scp i2c ch2 intr to ap */
 	if (i2c->ch_offset_i2c == I2C_OFFSET_SCP)
 		mtk_i2c_writew(i2c, I2C_CCU_INTR_EN, OFFSET_MCU_INTR);
+
+	if (i2c->ch_offset_i2c == I2C_OFFSET_AP)
+		mtk_i2c_writew(i2c, I2C_MCU_INTR_EN, OFFSET_MCU_INTR);
 
 	/* Set ioconfig */
 	if (i2c->use_push_pull)
@@ -1877,6 +1887,9 @@ static int mtk_i2c_transfer(struct i2c_adapter *adap,
 
 	i2c->master_code_sended = false;
 	i2c->auto_restart = i2c->dev_comp->auto_restart;
+
+	if (i2c->ch_offset_i2c == I2C_OFFSET_AP)
+		mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
 
 	/* checking if we can skip restart and optimize using WRRD mode */
 	if (i2c->auto_restart && num == 2) {
