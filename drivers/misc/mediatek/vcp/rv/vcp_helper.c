@@ -986,7 +986,7 @@ int vcp_enable_pm_clk(enum feature_id id)
 			reset_vcp(VCP_ALL_ENABLE);
 	}
 	pwclkcnt++;
-	if (!vcp_ao && id != RTOS_FEATURE_ID) {
+	if (vcp_ao && id != RTOS_FEATURE_ID) {
 		ipi_data.cmd = SLP_WAKE_LOCK;
 		ipi_data.feature = id;
 		ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
@@ -1022,7 +1022,7 @@ int vcp_disable_pm_clk(enum feature_id id)
 	pr_notice("[VCP] %s id %d entered %d ready %d\n", __func__, id,
 		pwclkcnt, is_vcp_ready(VCP_A_ID));
 
-	if (!vcp_ao && id != RTOS_FEATURE_ID) {
+	if (vcp_ao && id != RTOS_FEATURE_ID) {
 		ipi_data.cmd = SLP_WAKE_UNLOCK;
 		ipi_data.feature = id;
 		ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
