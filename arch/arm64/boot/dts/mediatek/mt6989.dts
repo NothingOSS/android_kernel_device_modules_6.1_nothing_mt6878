@@ -13850,7 +13850,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 			node-98 = "SSPM_SWPM_CPU__CORE_PMU_0x003B",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-99 = "SSPM_SWPM_CPU__CORE_PMU_0x4021",
+			node-99 = "SSPM_SWPM_CPU__CORE_PMU_0x003D",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 			/* SLBC */
 			node-100 = "SSPM_SLBC_GID_USED",
@@ -13871,7 +13871,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"pd,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp,total,buf_unused";
 			node-108 = "SSPM_SWPM_CPU__CORE_PMU_0x80C1",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
-			node-109 = "SSPM_SWPM_CPU__CORE_PMU_0X80EF",
+			node-109 = "SSPM_SWPM_CPU__CORE_PMU_0x80EF",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 			node-110 = "SSPM_VCORE_DVFS__DDR_DETAIL",
 				"EMI_MON,QOS_B,HR_BW,SW_R1,SW_R2,",
