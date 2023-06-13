@@ -112,12 +112,6 @@
 
 #define MMINFRA_DONE_OFS		0x91c
 
-enum {
-	SSPM_DOMAIN = 0,
-	HFRP_DOMAIN,
-	VIP_DOMAIN_NUM,
-};
-
 enum regmap_type {
 	INVALID_TYPE = 0,
 	IFR_TYPE,
@@ -1259,9 +1253,9 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 	u32 vote_sta;
 	u32 vote_msk;
 	u32 vote_ack;
-	u32 val = 0;
+	u32 val = 0, val2 = 0;
 	int ret = 0;
-	int tmp;
+	int tmp = 0;
 	int i = 0;
 
 	val = BIT(scpd->data->hwv_shift);
@@ -1277,6 +1271,7 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 
 	/* write twice to prevent clk idle */
 	regmap_write(regmap, vote_ofs, val);
+	udelay(1);
 	regmap_write(regmap, vote_ofs, val);
 	do {
 		regmap_read(regmap, vote_sta, &val);
@@ -1301,7 +1296,8 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 	return 0;
 
 err_hwv_done:
-	dev_err(dev, "Failed to hwv done timeout %s(%d)\n", name, ret);
+	regmap_read(regmap, scpd->data->hwv_done_ofs, &val2);
+	dev_err(dev, "Failed to hwv done timeout %s(%d)\n", name, val2);
 err_hwv_vote:
 	dev_err(dev, "Failed to hwv vote timeout %s(%d %x)\n", name, ret, val);
 
