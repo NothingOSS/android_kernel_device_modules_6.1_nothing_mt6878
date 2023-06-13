@@ -8959,6 +8959,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	struct drm_display_mode **mode;
 	bool *enable, *async;
 	unsigned int vfp_low_power = 0;
+	int ret;
 
 	switch (cmd) {
 	case REQ_PANEL_EXT:
@@ -9405,6 +9406,22 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			panel_ext->funcs->set_spr_cmdq(dsi, panel,
 					mipi_dsi_dcs_grp_write_gce,
 					handle, *(unsigned int *)params);
+	}
+		break;
+	case DSI_READ_ELVSS_BASE_VOLTAGE:
+	{
+		struct mtk_dsi *dsi =
+			container_of(comp, struct mtk_dsi, ddp_comp);
+		panel_ext = mtk_dsi_get_panel_ext(comp);
+
+		if (panel_ext && panel_ext->funcs
+			&& panel_ext->funcs->read_elvss_base_voltage) {
+			ret = panel_ext->funcs->read_elvss_base_voltage(dsi, mtk_ddic_dsi_send_cmd,
+				mtk_ddic_dsi_read_cmd, (struct DISP_PANEL_BASE_VOLTAGE *)params);
+			return ret;
+		}
+		ret = -EPERM;
+		return ret;
 	}
 		break;
 	case DSI_HBM_SET:

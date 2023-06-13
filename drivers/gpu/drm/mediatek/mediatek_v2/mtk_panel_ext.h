@@ -149,6 +149,22 @@ typedef void (*dcs_grp_write_gce) (struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 				struct mtk_panel_para_table *para_table,
 				unsigned int para_size);
 typedef int (*panel_tch_rst) (void);
+typedef int (*ddic_dsi_send_cmd)(struct mtk_ddic_dsi_msg *cmd_msg, bool blocking);
+typedef int (*dic_dsi_read_cmd)(struct mtk_ddic_dsi_msg *cmd_msg);
+
+enum MTK_PANEL_BASE_VOLTAGE {
+	MTK_PANEL_ANODE_BASE_VOLTAGE,
+	MTK_PANEL_ANODE_OFFSET_VOLTAGE,
+	MTK_PANEL_ANODE_ELVSS_VOLTAGE,
+	MTK_PANEL_BASE_VOLTAGE_NUM,
+};
+
+struct panel_base_volatage_info {
+	unsigned char reg_addr;
+	unsigned char read_len;
+	struct mtk_panel_para_table page;
+	struct mtk_panel_para_table offset;
+};
 
 enum MTK_PANEL_DDIC_OPS {
 	MTK_PANEL_DESTROY_DDIC_PACKET,
@@ -563,7 +579,8 @@ struct mtk_oddmr_panelid {
 struct mtk_panel_funcs {
 	int (*set_bl_elvss_cmdq)(void *dsi_drv, dcs_grp_write_gce cb,
 		void *handle, struct mtk_bl_ext_config *bl_ext_config);
-
+	int (*read_elvss_base_voltage)(void *dsi_drv, ddic_dsi_send_cmd send_cb,
+		dic_dsi_read_cmd read_cb, struct DISP_PANEL_BASE_VOLTAGE *base_volageg);
 	int (*set_backlight_cmdq)(void *dsi_drv, dcs_write_gce cb,
 		void *handle, unsigned int level);
 	int (*set_spr_cmdq)(void *dsi_drv, struct drm_panel *panel, dcs_grp_write_gce cb,

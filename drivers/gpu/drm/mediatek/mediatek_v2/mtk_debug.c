@@ -159,6 +159,8 @@ static bool logger_enable;
 unsigned int g_trace_log;
 #endif
 
+struct DISP_PANEL_BASE_VOLTAGE base_volageg;
+
 static int draw_RGBA8888_buffer(char *va, int w, int h,
 		       char r, char g, char b, char a)
 {
@@ -3059,7 +3061,7 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 
-		__mtkfb_set_backlight_level(level, 0, (0x1 << SET_ELVSS_PN), false);
+		__mtkfb_set_backlight_level(0, level, (0x1 << SET_ELVSS_PN), false);
 	} else if (strncmp(opt, "backlight_grp:", 14) == 0) {
 		unsigned int level;
 		int ret;
@@ -3355,6 +3357,45 @@ static void process_dbg_opt(const char *opt)
 
 		ddic_dsi_send_switch_pgt(cmd_num, addr, val1, val2, val3,
 			val4, val5, val6);
+	} else if (strncmp(opt, "read_base_voltage:", 18) == 0) {
+		unsigned int recoder;
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+		unsigned int ret;
+		struct mtk_ddp_comp *output_comp;
+
+		ret = sscanf(opt, "read_base_voltage:%x\n", &recoder);
+		if (ret != 1) {
+			DDPMSG("%d error to parse cmd %s\n",
+				__LINE__, opt);
+			return;
+		}
+
+		DDPMSG("read_base_voltage %d\n", recoder);
+		/* This cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+
+		if (!crtc) {
+			DDPMSG("find crtc fail\n");
+			return;
+		}
+
+		mtk_crtc = to_mtk_crtc(crtc);
+
+		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+		if (!output_comp) {
+
+			DDPMSG("%s:invalid output comp\n", __func__);
+			return;
+		}
+
+		/* DSI_SEND_DDIC_CMD */
+		if (output_comp)
+			ret = mtk_ddp_comp_io_cmd(output_comp, NULL,
+				DSI_READ_ELVSS_BASE_VOLTAGE, &base_volageg);
+
 	} else if (strncmp(opt, "read_cm:", 8) == 0) {
 		u8 addr;
 		unsigned int ret;

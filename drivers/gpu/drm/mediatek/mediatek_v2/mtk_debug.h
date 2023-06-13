@@ -6,6 +6,8 @@
 #ifndef __MTKFB_DEBUG_H
 #define __MTKFB_DEBUG_H
 
+#include "mtk_panel_ext.h"
+
 #define LOGGER_BUFFER_SIZE (16 * 1024)
 #define ERROR_BUFFER_COUNT 4
 #define FENCE_BUFFER_COUNT 20
@@ -65,6 +67,9 @@ void mtkfb_set_force_partial_roi(int en);
 bool mtkfb_is_force_partial_roi(void);
 int mtkfb_force_partial_y_offset(void);
 int mtkfb_force_partial_height(void);
+
+int mtk_ddic_dsi_send_cmd(struct mtk_ddic_dsi_msg *cmd_msg, bool blocking);
+int mtk_ddic_dsi_read_cmd(struct mtk_ddic_dsi_msg *cmd_msg);
 #endif
 
 enum mtk_drm_mml_dbg {
