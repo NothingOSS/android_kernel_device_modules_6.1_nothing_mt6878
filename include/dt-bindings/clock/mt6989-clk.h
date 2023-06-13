@@ -893,13 +893,15 @@
 #define CLK_CAM_RA_LARBX				0
 #define CLK_CAM_RA_CAM					1
 #define CLK_CAM_RA_CAMTG				2
-#define CLK_CAM_RA_NR_CLK				3
+#define CLK_CAM_RA_LARBX_PDCK				3
+#define CLK_CAM_RA_NR_CLK				4
 
 /* CAMSYS_YUVA */
 #define CLK_CAM_YA_LARBX				0
 #define CLK_CAM_YA_CAM					1
 #define CLK_CAM_YA_CAMTG				2
-#define CLK_CAM_YA_NR_CLK				3
+#define CLK_CAM_YA_LARBX_PDCK				3
+#define CLK_CAM_YA_NR_CLK				4
 
 /* CAMSYS_RMSB */
 #define CLK_CAMSYS_RMSB_LARBX				0
@@ -911,13 +913,15 @@
 #define CLK_CAM_RB_LARBX				0
 #define CLK_CAM_RB_CAM					1
 #define CLK_CAM_RB_CAMTG				2
-#define CLK_CAM_RB_NR_CLK				3
+#define CLK_CAM_RB_LARBX_PDCK				3
+#define CLK_CAM_RB_NR_CLK				4
 
 /* CAMSYS_YUVB */
 #define CLK_CAM_YB_LARBX				0
 #define CLK_CAM_YB_CAM					1
 #define CLK_CAM_YB_CAMTG				2
-#define CLK_CAM_YB_NR_CLK				3
+#define CLK_CAM_YB_LARBX_PDCK				3
+#define CLK_CAM_YB_NR_CLK				4
 
 /* CAMSYS_RMSC */
 #define CLK_CAMSYS_RMSC_LARBX				0
@@ -929,13 +933,15 @@
 #define CLK_CAM_RC_LARBX				0
 #define CLK_CAM_RC_CAM					1
 #define CLK_CAM_RC_CAMTG				2
-#define CLK_CAM_RC_NR_CLK				3
+#define CLK_CAM_RC_LARBX_PDCK				3
+#define CLK_CAM_RC_NR_CLK				4
 
 /* CAMSYS_YUVC */
 #define CLK_CAM_YC_LARBX				0
 #define CLK_CAM_YC_CAM					1
 #define CLK_CAM_YC_CAMTG				2
-#define CLK_CAM_YC_NR_CLK				3
+#define CLK_CAM_YC_LARBX_PDCK				3
+#define CLK_CAM_YC_NR_CLK				4
 
 /* CAMSYS_MRAW */
 #define CLK_CAM_MR_LARBX				0
@@ -1077,7 +1083,8 @@
 #define CLK_MDP1_F26M_SLOW				44
 #define CLK_MDP1_F32K_SLOW				45
 #define CLK_MDP1_IMG_DL_RELAY1				46
-#define CLK_MDP1_NR_CLK					47
+#define CLK_MDP1_SMI0_PDCK				47
+#define CLK_MDP1_NR_CLK					48
 
 /* CCIPLL_PLL_CTRL */
 #define CLK_CCIPLL					0
