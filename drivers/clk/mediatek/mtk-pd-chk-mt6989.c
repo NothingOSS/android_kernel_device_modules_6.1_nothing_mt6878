@@ -1092,6 +1092,16 @@ static void check_hwv_irq_sta(void)
 		debug_dump(MT6989_CHK_PD_NUM, 0);
 }
 
+static void check_mm_hwv_irq_sta(void)
+{
+	u32 irq_sta;
+
+	irq_sta = get_mt6989_reg_value(mm_hwv_ext, HWV_IRQ_STATUS);
+
+	if ((irq_sta & HWV_INT_MTCMOS_TRIGGER) == HWV_INT_MTCMOS_TRIGGER)
+		debug_dump(MT6989_CHK_PD_NUM, 0);
+}
+
 /*
  * init functions
  */
@@ -1111,6 +1121,7 @@ static struct pdchk_ops pdchk_mt6989_ops = {
 	.dump_power_event = dump_power_event,
 	.is_suspend_retry_stop = pdchk_is_suspend_retry_stop,
 	.check_hwv_irq_sta = check_hwv_irq_sta,
+	.check_mm_hwv_irq_sta = check_mm_hwv_irq_sta,
 };
 
 static int pd_chk_mt6989_probe(struct platform_device *pdev)
