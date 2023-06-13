@@ -7408,6 +7408,7 @@
 					<&smi_larb12>;
 			mediatek,imgsys-cmdq = <&imgsys_cmdq>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			imgsys-supply = <&gce_m_sec>;
 			mboxes = <&gce_m 0 3000 CMDQ_THR_PRIO_2>,
 					<&gce_m 1 3000 CMDQ_THR_PRIO_2>,
 					<&gce_m 2 3000 CMDQ_THR_PRIO_2>,
@@ -7421,9 +7422,9 @@
 					<&gce_m 22 3000 CMDQ_THR_PRIO_2>,
 					<&gce_m 23 3000 CMDQ_THR_PRIO_1>,
 					<&gce_m 28 3000 CMDQ_THR_PRIO_1>,
-					<&gce_m 29 3000 CMDQ_THR_PRIO_1>;
-					//<&gce_m_sec 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
-					//<&gce_m_sec 12 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
+					<&gce_m 29 3000 CMDQ_THR_PRIO_1>,
+					<&gce_m_sec 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
+					<&gce_m_sec 12 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
 				traw-cq-thread0-frame-done =
 					/bits/ 16 <CMDQ_EVENT_IMG_TRAW0_CQ_THR_DONE_TRAW0_0>;
 				traw-cq-thread1-frame-done =
