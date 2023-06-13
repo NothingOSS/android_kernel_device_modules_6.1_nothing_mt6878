@@ -100,7 +100,8 @@ GED_ERROR ged_gpufreq_init(void)
 	GED_LOGI("%s: start to init GPU Freq\n", __func__);
 
 	/* init gpu opp table */
-	g_working_oppnum = gpufreq_get_opp_num(TARGET_DEFAULT);
+	g_working_oppnum = gpufreq_get_opp_num(TARGET_DEFAULT) > 0 ?
+						gpufreq_get_opp_num(TARGET_DEFAULT) : 1;
 	g_min_working_oppidx = g_working_oppnum - 1;
 	g_max_working_oppidx = 0;
 	g_max_freq_in_mhz = gpufreq_get_freq_by_idx(TARGET_DEFAULT, 0) / 1000;
@@ -400,6 +401,10 @@ unsigned int ged_get_freq_by_idx(int oppidx)
 
 int ged_get_sc_freq_by_virt_opp(int oppidx)
 {
+	// check oppidx is valid
+	if (oppidx < 0)
+		return 0;
+
 	if (is_dcs_enable() && g_virtual_async_table)
 		return g_virtual_async_table[oppidx].scFreq;
 
@@ -408,6 +413,10 @@ int ged_get_sc_freq_by_virt_opp(int oppidx)
 
 int ged_get_top_freq_by_virt_opp(int oppidx)
 {
+	// check oppidx is valid
+	if (oppidx < 0)
+		return 0;
+
 	if (is_dcs_enable() && g_virtual_async_table)
 		return g_virtual_async_table[oppidx].topFreq;
 
@@ -421,12 +430,19 @@ static int ged_get_cur_virtual_oppidx(void)
 {
 	int top_freq = ged_get_top_freq_by_virt_opp(g_cur_oppidx);
 	int sc_freq = ged_get_sc_freq_by_virt_opp(g_cur_oppidx);
+	int cur_top = ged_get_cur_top_freq();
+	int cur_stack = ged_get_cur_stack_freq();
+	int cur_minfreq = ged_get_freq_by_idx(g_min_virtual_oppidx);
 
 	// Make sure commit success
-	if (ged_get_cur_top_freq() == top_freq &&
-		ged_get_cur_stack_freq() == sc_freq) {
+	if (cur_top == top_freq && cur_stack == sc_freq)
 		return g_cur_oppidx;
-	}
+
+	// if cur freq is 26M, use g_cur_oppidx
+	if ((cur_top < cur_minfreq || cur_stack < cur_minfreq) &&
+		g_cur_oppidx >= 0 && g_cur_oppidx < g_virtual_async_oppnum)
+		return g_cur_oppidx;
+
 	// check cur oppidx < g_min_stack_oppidx
 	if (sc_freq > ged_get_sc_freq_by_virt_opp(g_min_stack_oppidx)) {
 		g_cur_oppidx = gpufreq_get_cur_oppidx(TARGET_DEFAULT);
@@ -782,6 +798,13 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 
 	int dvfs_state = 0;
 
+	if (gpu_oppidx < 0 || stack_oppidx < 0) {
+		GED_LOGE("[DVFS_ASYNC] oppidx in dual_commit is invalid: gpu(%d) stack(%d)",
+				gpu_oppidx, stack_oppidx);
+		return GED_ERROR_FAIL;
+	}
+
+	g_cur_oppidx = stack_oppidx;
 	oppidx_cur = ged_get_cur_oppidx();
 	if (oppidx_cur > stack_oppidx) /* freq scale up */
 		freqScaleUpFlag = true;
@@ -801,6 +824,13 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 	/* convert top virtual opp to working opp but neglecting core mask */
 	if (gpu_oppidx > g_min_working_oppidx)
 		gpu_oppidx = g_min_working_oppidx - (g_min_virtual_oppidx - gpu_oppidx);
+
+	// replace virtual opp with real opp if g_async_virtual_table_support
+	if (g_async_virtual_table_support && g_virtual_async_table) {
+		oppidx_tar = g_virtual_async_table[stack_oppidx].scRealOpp;
+		gpu_oppidx = g_virtual_async_table[stack_oppidx].topRealOpp;
+	}
+
 
 	/* write working opp to sysram */
 	ged_dvfs_set_sysram_last_commit_top_idx(gpu_oppidx);

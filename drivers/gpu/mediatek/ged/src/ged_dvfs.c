@@ -834,6 +834,7 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	unsigned int cur_freq = 0;
 	enum gpu_dvfs_policy_state policy_state;
 	unsigned int cur_minfreq, cur_top, cur_stack, cur_real_stack;
+	int ret = GED_OK;
 
 	ui32CurFreqID = ged_get_cur_oppidx();
 	newTopFreq = ged_get_top_freq_by_virt_opp(topNewFreqID);
@@ -883,7 +884,11 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 			topNewFreqID = stackNewFreqID;
 		}
 
-		ged_gpufreq_dual_commit(topNewFreqID, stackNewFreqID, eCommitType, &bCommited);
+		ret = ged_gpufreq_dual_commit(topNewFreqID, stackNewFreqID, eCommitType, &bCommited);
+		if (ret == GED_ERROR_FAIL) {
+			GED_LOGE("[DVFS_ASYNC] dual_commit fail");
+			return bCommited;
+		}
 
 		/*
 		 * To-Do: refine previous freq contributions,
