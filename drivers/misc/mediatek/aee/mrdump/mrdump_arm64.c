@@ -3,6 +3,7 @@
  * Copyright (C) 2016 MediaTek Inc.
  */
 
+#include <linux/mm.h>
 #include <linux/ptrace.h>
 #include <asm/stacktrace.h>
 #include <asm/system_misc.h>
@@ -37,6 +38,7 @@ void mrdump_arch_fill_machdesc(struct mrdump_machdesc *machdesc_p)
 	machdesc_p->kernel_pac_mask = (uint64_t)system_supports_address_auth() ?
 		ptrauth_kernel_pac_mask() : 0;
 	machdesc_p->kimage_voffset = (unsigned long)kimage_voffset;
+	machdesc_p->page_size = (unsigned long)PAGE_SIZE;
 }
 
 static void print_pstate(const struct pt_regs *regs)

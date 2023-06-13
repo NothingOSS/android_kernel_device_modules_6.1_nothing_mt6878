@@ -114,7 +114,7 @@ struct mrdump_machdesc {
 	uint64_t kimage_stext_real;
 	uint64_t kimage_voffset;
 	uint64_t kernel_pac_mask;
-	uint64_t unused1;
+	uint64_t page_size;
 
 	uint64_t vmalloc_start;
 	uint64_t vmalloc_end;
