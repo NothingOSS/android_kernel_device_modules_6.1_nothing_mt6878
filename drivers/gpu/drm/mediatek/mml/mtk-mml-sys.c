@@ -1552,7 +1552,7 @@ static void sys_addon_config(struct mtk_ddp_comp *ddp_comp,
 		sys_addon_disconnect(sys, cfg);
 	} else {
 		sys_addon_connect(sys, cfg, pkt);
-		if (!cfg->task->config->irq)
+		if (cfg->task && !cfg->task->config->irq)
 			inc_task_cnt(cfg->task->config->mml, true);
 	}
 }
