@@ -147,7 +147,12 @@ static int dsp_wakelock_set(struct snd_kcontrol *kcontrol,
 	int val = ucontrol->value.integer.value[0];
 
 	mutex_lock(&adsp_wakelock_lock);
-	if (val) {
+	if (val == 0xdead) {
+		if (adsp_wakelock_count) {
+			aud_wake_unlock(adsp_audio_wakelock);
+			adsp_wakelock_count = 0;
+		}
+	} else if (val) {
 		adsp_wakelock_count++;
 		if (adsp_wakelock_count == 1)
 			aud_wake_lock(adsp_audio_wakelock);
@@ -457,7 +462,7 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 		       a2dp_clear_irq_set),
 	SOC_SINGLE_EXT("ktv_status", SND_SOC_NOPM, 0, 0x1, 0,
 		       ktv_status_get, ktv_status_set),
-	SOC_SINGLE_EXT("audio_dsp_wakelock", SND_SOC_NOPM, 0, 0x1, 0,
+	SOC_SINGLE_EXT("audio_dsp_wakelock", SND_SOC_NOPM, 0, 0xffff, 0,
 		       dsp_wakelock_get, dsp_wakelock_set),
 };
 
