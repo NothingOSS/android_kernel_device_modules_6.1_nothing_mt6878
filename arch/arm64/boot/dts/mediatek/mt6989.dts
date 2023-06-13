@@ -1342,6 +1342,18 @@
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_SSR>;
 	};
 
+	security_ao: security-ao@1040d000 {
+		compatible = "mediatek,security_ao";
+		reg = <0 0x1040d000 0 0x1000>;
+	};
+
+	masp: masp@1040e000 {
+		compatible = "mediatek,masp";
+		reg = <0 0x1040e000 0 0x1000>;
+		interrupts = <GIC_SPI 410 IRQ_TYPE_LEVEL_HIGH 0>;
+		/* GIC_IRQ ID(sej_axgpt_irq) - 32 = 442 - 32 = 410 */
+	};
+
 	pmu-x4 {
 		compatible = "arm,armv8-pmuv3";
 		interrupt-parent = <&gic>;
