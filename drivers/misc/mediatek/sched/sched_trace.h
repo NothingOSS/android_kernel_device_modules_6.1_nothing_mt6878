@@ -326,18 +326,19 @@ TRACE_EVENT(sched_target_max_spare_cpu,
 TRACE_EVENT(sched_select_task_rq,
 
 	TP_PROTO(struct task_struct *tsk, bool in_irq,
-		int policy, int prev_cpu, int target_cpu,
+		int policy, int backup_reason, int prev_cpu, int target_cpu,
 		int task_util, int task_util_est, int boost, bool prefer,
 		int sync_flag, struct cpumask *effective_softmask),
 
-	TP_ARGS(tsk, in_irq, policy, prev_cpu, target_cpu, task_util, task_util_est, boost,
-		prefer, sync_flag, effective_softmask),
+	TP_ARGS(tsk, in_irq, policy, backup_reason, prev_cpu, target_cpu, task_util, task_util_est,
+		boost, prefer, sync_flag, effective_softmask),
 
 	TP_STRUCT__entry(
 		__field(pid_t, pid)
 		__field(int, compat_thread)
 		__field(bool, in_irq)
 		__field(int, policy)
+		__field(int, backup_reason)
 		__field(int, prev_cpu)
 		__field(int, target_cpu)
 		__field(int, task_util)
@@ -356,6 +357,7 @@ TRACE_EVENT(sched_select_task_rq,
 		__entry->compat_thread = is_compat_thread(task_thread_info(tsk));
 		__entry->in_irq     = in_irq;
 		__entry->policy     = policy;
+		__entry->backup_reason     = backup_reason;
 		__entry->prev_cpu   = prev_cpu;
 		__entry->target_cpu = target_cpu;
 		__entry->task_util      = task_util;
@@ -370,11 +372,12 @@ TRACE_EVENT(sched_select_task_rq,
 		),
 
 	TP_printk(
-		"pid=%4d 32-bit=%d in_irq=%d policy=0x%08x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d mask=0x%lx eff_softmask=0x%lx latency_sensitive=%d sync=%d cpuctl=%d cpuset=%d",
+		"pid=%4d 32-bit=%d in_irq=%d policy=0x%08x backup_reason=0x%04x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d mask=0x%lx eff_softmask=0x%lx latency_sensitive=%d sync=%d cpuctl=%d cpuset=%d",
 		__entry->pid,
 		__entry->compat_thread,
 		__entry->in_irq,
 		__entry->policy,
+		__entry->backup_reason,
 		__entry->prev_cpu,
 		__entry->target_cpu,
 		__entry->task_util,

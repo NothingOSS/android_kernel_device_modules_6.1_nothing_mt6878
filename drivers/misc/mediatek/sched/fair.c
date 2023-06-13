@@ -64,7 +64,27 @@ MODULE_LICENSE("GPL");
 	*ptr -= min_t(typeof(*ptr), *ptr, _val);		\
 } while (0)
 
+/* Runqueue only has SCHED_IDLE tasks enqueued */
+static int sched_idle_rq(struct rq *rq)
+{
+	return unlikely(rq->nr_running == rq->cfs.idle_h_nr_running &&
+			rq->nr_running);
+}
+
 #ifdef CONFIG_SMP
+bool mtk_cpus_share_cache(int this_cpu, int that_cpu)
+{
+	if (this_cpu == that_cpu)
+		return true;
+
+	return per_cpu(gear_id, this_cpu) == per_cpu(gear_id, that_cpu);
+}
+
+static int sched_idle_cpu(int cpu)
+{
+	return sched_idle_rq(cpu_rq(cpu));
+}
+
 static inline unsigned long task_util(struct task_struct *p)
 {
 	return READ_ONCE(p->se.avg.util_avg);
@@ -1050,6 +1070,181 @@ void free_cpu_array(void)
 	cpu_array = NULL;
 }
 
+static int mtk_wake_affine_idle(int this_cpu, int prev_cpu, int sync)
+{
+	if (available_idle_cpu(this_cpu) && mtk_cpus_share_cache(this_cpu, prev_cpu))
+		return available_idle_cpu(prev_cpu) ? prev_cpu : this_cpu;
+
+	if (sync && cpu_rq(this_cpu)->nr_running == 1)
+		return this_cpu;
+
+	if (available_idle_cpu(prev_cpu))
+		return prev_cpu;
+
+	return nr_cpumask_bits;
+}
+
+static inline unsigned long cfs_rq_load_avg(struct cfs_rq *cfs_rq)
+{
+	return cfs_rq->avg.load_avg;
+}
+
+static unsigned long cpu_load(struct rq *rq)
+{
+	return cfs_rq_load_avg(&rq->cfs);
+}
+
+#if IS_ENABLED(CONFIG_FAIR_GROUP_SCHED)
+static void update_cfs_rq_h_load(struct cfs_rq *cfs_rq)
+{
+	struct rq *rq = rq_of(cfs_rq);
+	struct sched_entity *se = cfs_rq->tg->se[cpu_of(rq)];
+	unsigned long now = jiffies;
+	unsigned long load;
+
+	if (cfs_rq->last_h_load_update == now)
+		return;
+
+	WRITE_ONCE(cfs_rq->h_load_next, NULL);
+	for (; se; se = se->parent) {
+		cfs_rq = cfs_rq_of(se);
+		WRITE_ONCE(cfs_rq->h_load_next, se);
+		if (cfs_rq->last_h_load_update == now)
+			break;
+	}
+
+	if (!se) {
+		cfs_rq->h_load = cfs_rq_load_avg(cfs_rq);
+		cfs_rq->last_h_load_update = now;
+	}
+
+	while ((se = READ_ONCE(cfs_rq->h_load_next)) != NULL) {
+		load = cfs_rq->h_load;
+		load = div64_ul(load * se->avg.load_avg,
+				cfs_rq_load_avg(cfs_rq) + 1);
+		cfs_rq = group_cfs_rq(se);
+		cfs_rq->h_load = load;
+		cfs_rq->last_h_load_update = now;
+	}
+}
+
+static unsigned long task_h_load(struct task_struct *p)
+{
+	struct cfs_rq *cfs_rq = task_cfs_rq(p);
+
+	update_cfs_rq_h_load(cfs_rq);
+	return div64_ul(p->se.avg.load_avg * cfs_rq->h_load,
+			cfs_rq_load_avg(cfs_rq) + 1);
+}
+#else
+static unsigned long task_h_load(struct task_struct *p)
+{
+	return p->se.avg.load_avg;
+}
+#endif
+
+static int mtk_wake_affine_weight(struct task_struct *p, int this_cpu, int prev_cpu, int sync)
+{
+	s64 this_eff_load, prev_eff_load;
+	unsigned long task_load;
+	//struct sched_domain *sd = NULL;
+
+	/* since "sched_domain_mutex undefined" build error, comment search sched_domain */
+	/* find least shared sched_domain for this_cpu and prev_cpu */
+	//for_each_domain(this_cpu, sd) {
+	//	if ((sd->flags & SD_WAKE_AFFINE) &&
+	//		cpumask_test_cpu(prev_cpu, sched_domain_span(sd)))
+	//		break;
+	//}
+	//if (unlikely(!sd))
+	//	return nr_cpumask_bits;
+
+	this_eff_load = cpu_load(cpu_rq(this_cpu));
+
+	if (sync) {
+		unsigned long current_load = task_h_load(current);
+
+		if (current_load > this_eff_load)
+			return this_cpu;
+
+		this_eff_load -= current_load;
+	}
+
+	task_load = task_h_load(p);
+
+	this_eff_load += task_load;
+	if (sched_feat(WA_BIAS))
+		this_eff_load *= 100;
+	this_eff_load *= capacity_of(prev_cpu);
+
+	prev_eff_load = cpu_load(cpu_rq(prev_cpu));
+	prev_eff_load -= task_load;
+
+	/* since "sched_domain_mutex undefined" build error, replace imbalance_pct with its val 117
+	 * prev_eff_load *= 100 + (sd->imbalance_pct - 100) / 2;
+	 */
+	if (sched_feat(WA_BIAS))
+		prev_eff_load *= 100 + (117 - 100) / 2;
+	prev_eff_load *= capacity_of(this_cpu);
+
+	/*
+	 * If sync, adjust the weight of prev_eff_load such that if
+	 * prev_eff == this_eff that select_idle_sibling() will consider
+	 * stacking the wakee on top of the waker if no other CPU is
+	 * idle.
+	 */
+	if (sync)
+		prev_eff_load += 1;
+
+	return this_eff_load < prev_eff_load ? this_cpu : nr_cpumask_bits;
+}
+
+static int mtk_wake_affine(struct task_struct *p, int this_cpu, int prev_cpu, int sync)
+{
+	int target = nr_cpumask_bits;
+
+	if (sched_feat(WA_IDLE))
+		target = mtk_wake_affine_idle(this_cpu, prev_cpu, sync);
+
+	if (sched_feat(WA_WEIGHT) && target == nr_cpumask_bits)
+		target = mtk_wake_affine_weight(p, this_cpu, prev_cpu, sync);
+
+	if (target == nr_cpumask_bits)
+		return prev_cpu;
+
+	return target;
+}
+
+/*
+ * Scan the asym_capacity domain for idle CPUs; pick the first idle one on whi
+ * the task fits. If no CPU is big enough, but there are idle ones, try to
+ * maximize capacity.
+ */
+static int
+mtk_select_idle_capacity(struct task_struct *p, struct cpumask *allowed_cpumask, int target)
+{
+	unsigned long task_util, best_cap = 0;
+	int cpu, best_cpu = -1;
+
+	task_util = uclamp_task_util(p);
+
+	for_each_cpu_wrap(cpu, allowed_cpumask, target) {
+		unsigned long cpu_cap = capacity_of(cpu);
+
+		if (!available_idle_cpu(cpu) && !sched_idle_cpu(cpu))
+			continue;
+		if (fits_capacity(task_util, cpu_cap, get_adaptive_margin(cpu)))
+			return cpu;
+
+		if (cpu_cap > best_cap) {
+			best_cap = cpu_cap;
+			best_cpu = cpu;
+		}
+	}
+
+	return best_cpu;
+}
+
 static struct cpumask bcpus;
 static unsigned long util_Th;
 
@@ -1728,7 +1923,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	bool latency_sensitive = false;
 	int cpu, best_energy_cpu = -1;
 	struct perf_domain *pd;
-	int select_reason = -1;
+	int select_reason = -1, backup_reason = 0;
 	unsigned long min_cap = uclamp_eff_value(p, UCLAMP_MIN);
 	unsigned long max_cap = uclamp_eff_value(p, UCLAMP_MAX);
 	struct energy_env eenv;
@@ -1739,6 +1934,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	cpumask_t *candidates;
 	struct find_best_candidates_parameters fbc_params;
 	unsigned long cpu_utils[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = ULONG_MAX};
+	int recent_used_cpu, target;
 
 	cpumask_clear(&allowed_cpu_mask);
 
@@ -1893,32 +2089,101 @@ unlock:
 
 	irq_log_store();
 
-	/* All cpu failed, even sys_max_spare_cap_cpu is not captured for in_irq */
+fail:
+	/* All cpu failed, even sys_max_spare_cap_cpu is not captured*/
 
-	if (unlikely(in_irq)) {
-		if (cpumask_test_cpu(prev_cpu, &allowed_cpu_mask)) {
-			*new_cpu = prev_cpu;
-			select_reason = LB_IRQ_BACKUP_PREV;
-			goto done;
-		}
-
-		irq_log_store();
-
-		if (cpumask_test_cpu(this_cpu, &allowed_cpu_mask)) {
-			*new_cpu = this_cpu;
-			select_reason = LB_IRQ_BACKUP_CURR;
-			goto done;
-		}
-
-		irq_log_store();
-
-		*new_cpu = cpumask_any(&allowed_cpu_mask);
-		select_reason = LB_IRQ_BACKUP_ALLOWED;
-		goto done;
+	/* from overutilized & zero_util */
+	if (cpumask_empty(&allowed_cpu_mask)) {
+		cpumask_andnot(&allowed_cpu_mask, p->cpus_ptr, cpu_pause_mask);
+		cpumask_and(&allowed_cpu_mask, &allowed_cpu_mask, cpu_active_mask);
+	} else {
+		select_reason = LB_FAIL_IN_REGULAR;
 	}
 
-fail:
+	rcu_read_lock();
+	if (cpumask_test_cpu(this_cpu, p->cpus_ptr) && (this_cpu != prev_cpu))
+		target = mtk_wake_affine(p, this_cpu, prev_cpu, sync);
+	else
+		target = prev_cpu;
+
+	if (cpumask_test_cpu(target, &allowed_cpu_mask) &&
+	    (available_idle_cpu(target) || sched_idle_cpu(target)) &&
+	    task_fits_capacity(p, target, get_adaptive_margin(target))) {
+		*new_cpu = target;
+		backup_reason = LB_BACKUP_AFFINE_IDLE_FIT;
+		goto backup_unlock;
+	}
+
+	/*
+	 * If the previous CPU fit_capacity and idle, don't be stupid:
+	 */
+	if (prev_cpu != target && mtk_cpus_share_cache(prev_cpu, target) &&
+		cpumask_test_cpu(prev_cpu, &allowed_cpu_mask) &&
+	    (available_idle_cpu(prev_cpu) || sched_idle_cpu(prev_cpu)) &&
+	    task_fits_capacity(p, prev_cpu, get_adaptive_margin(prev_cpu))) {
+		*new_cpu = prev_cpu;
+		backup_reason = LB_BACKUP_PREV;
+		goto backup_unlock;
+	}
+
+	irq_log_store();
+
+	/*
+	 * Allow a per-cpu kthread to stack with the wakee if the
+	 * kworker thread and the tasks previous CPUs are the same.
+	 * The assumption is that the wakee queued work for the
+	 * per-cpu kthread that is now complete and the wakeup is
+	 * essentially a sync wakeup. An obvious example of this
+	 * pattern is IO completions.
+	 */
+	if (cpumask_test_cpu(this_cpu, &allowed_cpu_mask) &&
+		is_per_cpu_kthread(current) && in_task() &&
+	    prev_cpu == this_cpu &&
+	    this_rq()->nr_running <= 1 &&
+	    task_fits_capacity(p, this_cpu, get_adaptive_margin(this_cpu))) {
+		*new_cpu = this_cpu;
+		backup_reason = LB_BACKUP_CURR;
+		goto backup_unlock;
+	}
+
+	irq_log_store();
+
+	/* Check a recently used CPU as a potential idle candidate: */
+	recent_used_cpu = p->recent_used_cpu;
+	p->recent_used_cpu = prev_cpu;
+	if (recent_used_cpu != prev_cpu && recent_used_cpu != target &&
+		mtk_cpus_share_cache(recent_used_cpu, target) &&
+		cpumask_test_cpu(recent_used_cpu, &allowed_cpu_mask) &&
+	    (available_idle_cpu(recent_used_cpu) || sched_idle_cpu(recent_used_cpu)) &&
+	    task_fits_capacity(p, recent_used_cpu, get_adaptive_margin(recent_used_cpu))) {
+		*new_cpu = recent_used_cpu;
+		/*
+		 * Replace recent_used_cpu
+		 * candidate for the next
+		 */
+		p->recent_used_cpu = prev_cpu;
+		backup_reason = LB_BACKUP_RECENT_USED_CPU;
+		goto backup_unlock;
+	}
+
+	irq_log_store();
+
+	*new_cpu = mtk_select_idle_capacity(p, &allowed_cpu_mask, target);
+	if (*new_cpu < nr_cpumask_bits) {
+		backup_reason = LB_BACKUP_IDLE_CAP;
+		goto backup_unlock;
+	}
+
+	if (*new_cpu == -1 && cpumask_test_cpu(target, p->cpus_ptr)) {
+		*new_cpu = target;
+		backup_reason = LB_BACKUP_AFFINE_WITHOUT_IDLE_CAP;
+		goto backup_unlock;
+	}
+
 	*new_cpu = -1;
+backup_unlock:
+	rcu_read_unlock();
+
 done:
 	irq_log_store();
 
@@ -1926,8 +2191,8 @@ done:
 		trace_sched_find_energy_efficient_cpu(in_irq, best_delta, best_energy_cpu,
 				best_energy_cpu, idle_max_spare_cap_cpu, sys_max_spare_cap_cpu);
 	if (trace_sched_select_task_rq_enabled()) {
-		trace_sched_select_task_rq(p, in_irq, select_reason, prev_cpu, *new_cpu,
-				task_util(p), task_util_est(p), uclamp_task_util(p),
+		trace_sched_select_task_rq(p, in_irq, select_reason, backup_reason, prev_cpu,
+				*new_cpu, task_util(p), task_util_est(p), uclamp_task_util(p),
 				latency_sensitive, sync, &effective_softmask);
 	}
 	if (trace_sched_effective_mask_enabled()) {
