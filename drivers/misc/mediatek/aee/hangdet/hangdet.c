@@ -444,10 +444,15 @@ static void show_irq_info(char *addr)
 		index = 0;
 		memset(msg, 0, SZ_256);
 		desc = irq_to_desc(irq);
-		len = scnprintf(&msg[index], SZ_256-index, "%3d: ", irq);
-		index += len;
 
 		if (desc && desc->kstat_irqs) {
+			/*Skip no registered irq*/
+			if (!(desc->action && desc->action->name))
+				continue;
+
+			len = scnprintf(&msg[index], SZ_256-index, "%3d: ", irq);
+			index += len;
+
 			for (j = 0; j < min_t(int, nr_cpu_ids, MAX_CPU_NUM); j++) {
 				len = scnprintf(&msg[index], SZ_256-index, "%-10d ",
 				/*
