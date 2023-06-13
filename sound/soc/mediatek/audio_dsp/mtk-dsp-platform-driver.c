@@ -261,6 +261,22 @@ static int ktv_status_get(struct snd_kcontrol *kcontrol,
 static int audio_dsp_latency_support_set(struct snd_kcontrol *kcontrol,
 			  struct snd_ctl_elem_value *ucontrol)
 {
+	int ret = 0;
+	unsigned int val = ucontrol->value.integer.value[0];
+	struct ipi_msg_t ipi_msg;
+
+	adsp_register_feature(AUDIO_CONTROLLER_FEATURE_ID);
+	ret = audio_send_ipi_msg(&ipi_msg, TASK_SCENE_AUDPLAYBACK,
+				  AUDIO_IPI_LAYER_TO_DSP, AUDIO_IPI_MSG_ONLY,
+				  AUDIO_IPI_MSG_BYPASS_ACK,
+				  AUDIO_DSP_TASK_SET_LATENCY_SUPPORT,
+				  val, 0, NULL);
+	if (ret)
+		pr_info("%s fail\n", __func__);
+
+	set_task_attr(AUDIO_TASK_PLAYBACK_ID, ADSP_TASK_ATTR_KERNEL_LATENCY_SUPPORT, val);
+	adsp_deregister_feature(AUDIO_CONTROLLER_FEATURE_ID);
+
 	return 0;
 }
 
