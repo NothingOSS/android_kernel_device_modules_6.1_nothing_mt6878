@@ -4251,9 +4251,7 @@ static const unsigned int mt6897_mutex_mod[DDP_COMPONENT_ID_MAX] = {
 	[DDP_COMPONENT_DP_INTF0] = MT6897_MUTEX_MOD0_DISP_DP_INTF0,
 	[DDP_COMPONENT_DP_INTF1] = MT6897_MUTEX_MOD0_DISP_DP_INTF0,
 	[DDP_COMPONENT_DSC0] = MT6897_MUTEX_MOD0_DISP_DSC0,
-	[DDP_COMPONENT_DSC1] = MT6897_MUTEX_MOD0_DISP_DSC1,
-	[DDP_COMPONENT_DSC2] = MT6897_MUTEX_MOD0_DISP_DSC0,
-	[DDP_COMPONENT_DSC3] = MT6897_MUTEX_MOD0_DISP_DSC1,
+	[DDP_COMPONENT_DSC1] = MT6897_MUTEX_MOD0_DISP_DSC0,
 	[DDP_COMPONENT_DSI0] = MT6897_MUTEX_MOD0_DISP_DSI0,
 	[DDP_COMPONENT_DSI1] = MT6897_MUTEX_MOD0_DISP_DSI0,
 	[DDP_COMPONENT_GAMMA0] = MT6897_MUTEX_MOD0_DISP_GAMMA0,
@@ -5095,9 +5093,7 @@ static const unsigned int mt6897_dispsys_map[DDP_COMPONENT_ID_MAX] = {
 		[DDP_COMPONENT_DLO_ASYNC2] = DISPSYS1,
 		[DDP_COMPONENT_DLO_ASYNC3] = DISPSYS1,
 		[DDP_COMPONENT_DSC0] = DISPSYS0,
-		[DDP_COMPONENT_DSC1] = DISPSYS0,
-		[DDP_COMPONENT_DSC2] = DISPSYS1,
-		[DDP_COMPONENT_DSC3] = DISPSYS1,
+		[DDP_COMPONENT_DSC1] = DISPSYS1,
 		[DDP_COMPONENT_DSI0] = DISPSYS0,
 		[DDP_COMPONENT_DSI1] = DISPSYS1,
 		[DDP_COMPONENT_GAMMA0] = DISPSYS0,
@@ -20711,6 +20707,7 @@ void mtk_ddp_remove_dsc_prim_MT6989(struct mtk_drm_crtc *mtk_crtc,
 void mtk_ddp_insert_dsc_prim_mt6897(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle)
 {
+	struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(&mtk_crtc->base);
 	unsigned int addr, value;
 
 	/* PANEL_COMP_OUT_CROSSBAR1_MOUT to  DISP_DSC_WRAP0 */
@@ -20755,6 +20752,35 @@ void mtk_ddp_insert_dsc_prim_mt6897(struct mtk_drm_crtc *mtk_crtc,
 	value = DISP_PANEL_COMP_OUT_CROSSBAR2_SEL_IN;
 	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 		       mtk_crtc->config_regs_pa + addr, value, ~0);
+
+	/*DSC_WARP0-> DSI1*/
+	if (panel_ext && panel_ext->output_mode == MTK_PANEL_DUAL_PORT) {
+		addr = MT6897_COMP_OUT_CROSSBAR2_MOUT_EN;
+		value = DISP_DSC_1_TO_MERGE_OUT_CROSSBAR1;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->config_regs_pa + addr, value, ~0);
+
+		addr = MT6897_MERGE_OUT_CROSSBAR1_MOUT_EN;
+		value = DISP_COMP_OUT_CROSSBAR1_TO_DLO_RELAY1;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->config_regs_pa + addr, value, ~0);
+
+		addr = MT6897_COMP_OUT_CROSSBAR6_MOUT_EN;
+		value = DISP_DLI_RELAY5_TO_MERGE_OUT_CROSSBAR1;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		addr = MT6897_MERGE_OUT_CROSSBAR1_MOUT_EN;
+		value = DISP_COMP_OUT_CROSSBAR1_TO_DSI0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, DDP_COMPONENT_DLO_ASYNC1,
+				mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base), handle, 0);
+		mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, DDP_COMPONENT_DLI_ASYNC11,
+				mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base), handle, 0);
+		return;
+	}
 
 }
 
@@ -21258,6 +21284,7 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 	unsigned int val = DDP_MUTEX_SOF_SINGLE_MODE;
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(&mtk_crtc->base);
 
 	if (&ddp->mutex[mutex->id] != mutex)
 		DDPAEE("%s:%d, invalid mutex:(%p,%p) id:%d\n",
@@ -21323,6 +21350,9 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 
 	if (ddp->data->dispsys_map && ddp->side_regs) {
 		if (ddp->ovlsys1_regs) {
+			if (val == DDP_MUTEX_SOF_DSI0 &&
+			    panel_ext && panel_ext->output_mode == MTK_PANEL_DUAL_PORT)
+				val = DDP_MUTEX_SOF_DSI1;
 			DDPINFO("%s, disp1 ovlsys1 id:%s, reg:0x%x, val:0x%x\n", __func__,
 				mtk_dump_comp_str_id(id), DISP_REG_MUTEX_SOF(ddp->data, mutex->id),
 				ddp->data->mutex_ovlsys_sof[val]);
@@ -21334,7 +21364,8 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 		/* In MT6989, use single pipe, each side listen same SOF*/
 		if (priv->data->mmsys_id != MMSYS_MT6989) {
 			/* disp0 DSI0 mutex src should mapping to DSI1, and vice versa */
-			if (val == DDP_MUTEX_SOF_DSI0)
+			if (val == DDP_MUTEX_SOF_DSI0 &&
+			    panel_ext && panel_ext->output_mode != MTK_PANEL_DUAL_PORT)
 				val = DDP_MUTEX_SOF_DSI1;
 			else if (val == DDP_MUTEX_SOF_DSI1)
 				val = DDP_MUTEX_SOF_DSI0;
@@ -21362,6 +21393,7 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 				       struct cmdq_pkt *handle,
 				       unsigned int mutex_id)
 {
+	struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(&mtk_crtc->base);
 	struct mtk_disp_mutex *mutex = NULL;
 	struct mtk_ddp *ddp = NULL;
 	unsigned int reg;
@@ -21433,6 +21465,14 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 					       regs_pa + DISP_REG_MUTEX_MOD(ddp->data, mutex->id),
 					       ddp->data->mutex_mod[id], ddp->data->mutex_mod[id]);
+				if (panel_ext && panel_ext->output_mode == MTK_PANEL_DUAL_PORT &&
+				    id == DDP_COMPONENT_DSC0) {
+					cmdq_pkt_write(handle, mtk_crtc->gce_obj.base, regs_pa +
+						       DISP_REG_MUTEX_MOD(ddp->data, mutex->id),
+						       ddp->data->mutex_mod[id] << 1,
+						       ddp->data->mutex_mod[id] << 1);
+					DDPINFO("mutex_add_comp /w cmdq mutex%d add DSC core1\n", mutex->id);
+				}
 			} else {
 				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 					       regs_pa + DISP_REG_MUTEX_MOD2(mutex->id),
