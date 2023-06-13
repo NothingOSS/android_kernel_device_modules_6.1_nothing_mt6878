@@ -10119,6 +10119,7 @@
 				<0 0x1c00d000 0 0x918>;   /* 16 SRCLKENRC */
 			radio-support = "gps", "mawd";
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CONN>;
+			interrupts = <GIC_SPI 926 IRQ_TYPE_LEVEL_HIGH 0>;
 			emi-addr = <0>;
 			emi-size = <0>;
 			ro-emi-size = <0x3c0000>;
