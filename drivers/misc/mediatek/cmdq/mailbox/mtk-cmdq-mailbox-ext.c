@@ -850,7 +850,7 @@ void cmdq_thread_pause(struct cmdq_thread *thread, bool lock)
 			CMDQ_TOKEN_PAUSE_TASK_0 + thread->idx);
 		spin_unlock_irqrestore(&cmdq->lock, flags);
 		if (event_val != 0)
-			cmdq_err("clear event fail, event[%u] = %u",
+			cmdq_log("%s clear event fail, event[%u] = %u", __func__,
 				(CMDQ_TOKEN_PAUSE_TASK_0 + thread->idx), event_val);
 	} else {
 		spin_lock_irqsave(&cmdq->lock, flags);
@@ -859,7 +859,7 @@ void cmdq_thread_pause(struct cmdq_thread *thread, bool lock)
 			CMDQ_TOKEN_PAUSE_TASK_0 + thread->idx);
 		spin_unlock_irqrestore(&cmdq->lock, flags);
 		if (event_val == 0)
-			cmdq_err("set event fail, event[%u] = %u",
+			cmdq_log("%s set event fail, event[%u] = %u", __func__,
 				(CMDQ_TOKEN_PAUSE_TASK_0 + thread->idx), event_val);
 	}
 }
@@ -874,6 +874,7 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 	size_t offset = 0;
 	bool thrd_suspend = false;
 	unsigned long flags;
+	s32 i = 0, alloc_retry_cnt = 5;
 
 	cmdq = dev_get_drvdata(thread->chan->mbox->dev);
 
@@ -907,7 +908,13 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 		}
 	}
 
-	task = kzalloc(sizeof(*task), GFP_ATOMIC);
+	do {
+		task = kzalloc(sizeof(*task), GFP_ATOMIC);
+		if (task)
+			break;
+		cmdq_err("alloc task fail, retry cnt:%d", i);
+	} while (++i < alloc_retry_cnt);
+
 	if (!task) {
 		cmdq_task_callback(pkt, -ENOMEM);
 		cmdq_mtcmos_by_fast(cmdq, false);
