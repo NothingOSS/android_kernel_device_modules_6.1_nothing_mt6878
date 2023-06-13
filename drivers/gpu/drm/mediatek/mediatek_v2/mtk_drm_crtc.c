@@ -7215,7 +7215,11 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	struct drm_crtc_state *crtc_state = cb_data->state;
 	struct drm_crtc *crtc = crtc_state->crtc;
 
+	/* debug log */
+	DDPINFO("%s +\n", __func__);
+
 	mtk_disp_signal_fence_worker_signal(crtc, data);
+	DDPINFO("%s -\n", __func__);
 }
 
 static void _ddp_cmdq_cb(struct cmdq_cb_data data)

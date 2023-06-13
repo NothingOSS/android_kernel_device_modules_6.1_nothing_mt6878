@@ -2261,6 +2261,9 @@ int mtk_drm_add_cb_data(struct cb_data_store *cb_data, unsigned int crtc_id)
 	struct cb_data_store *tmp_cb_data = NULL;
 	int search = 0;
 	unsigned long flags;
+
+	/* debug log */
+	DDPINFO("%s +\n", __func__);
 	if (crtc_id >= MAX_CRTC) {
 		DDPMSG("%s, crtc_id is invalid\n", __func__);
 		return -1;
@@ -2291,6 +2294,8 @@ struct cb_data_store *mtk_drm_get_cb_data(unsigned int crtc_id)
 	struct cb_data_store *tmp_cb_data = NULL;
 	unsigned long flags;
 
+	/* debug log */
+	DDPINFO("%s +\n", __func__);
 	spin_lock_irqsave(&cb_data_clock_lock, flags);
 
 	if (crtc_id < MAX_CRTC &&
@@ -2298,6 +2303,7 @@ struct cb_data_store *mtk_drm_get_cb_data(unsigned int crtc_id)
 		tmp_cb_data = list_first_entry(&cb_data_list[crtc_id],
 			struct cb_data_store, link);
 	spin_unlock_irqrestore(&cb_data_clock_lock, flags);
+	DDPINFO("%s -\n", __func__);
 
 	return tmp_cb_data;
 }
@@ -2306,6 +2312,9 @@ void mtk_drm_del_cb_data(struct cmdq_cb_data data, unsigned int crtc_id)
 {
 	struct cb_data_store *tmp_cb_data = NULL;
 	unsigned long flags;
+
+	/* debug log */
+	DDPINFO("%s +\n", __func__);
 
 	if (!data.data) {
 		DDPMSG("%s, data==NULL\n", __func__);
@@ -2329,6 +2338,7 @@ void mtk_drm_del_cb_data(struct cmdq_cb_data data, unsigned int crtc_id)
 	}
 	kfree(tmp_cb_data);
 	spin_unlock_irqrestore(&cb_data_clock_lock, flags);
+	DDPINFO("%s -\n", __func__);
 }
 
 #if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
