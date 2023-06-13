@@ -253,6 +253,11 @@ static irqreturn_t apu_ce_isr(int irq, void *private_data)
 			dev_info(dev, "APU_ACE_APB_MST_IN_STATUS_ERR: 0x%08x\n", res1);
 		}
 
+		if (apusys_rv_smc_call(
+				dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP, 0, NULL, NULL, NULL) == 0) {
+			dev_info(dev, "Dump CE register to APUSYS_CE_FW_SRAM\n");
+		}
+
 		schedule_work(&(apu_ce_coredump_work.work));
 		disable_irq_nosync(apu->ce_exp_irq_number);
 	}
