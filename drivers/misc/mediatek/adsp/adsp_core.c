@@ -381,8 +381,6 @@ static int adsp_pm_suspend_prepare(void)
 	if (is_adsp_system_running()) {
 		adsp_timesync_suspend(APTIME_FREEZE);
 		pr_info("%s, time sync freeze", __func__);
-
-		adsp_smc_send(MTK_ADSP_KERNEL_OP_ENTER_LP, 0, 0);
 	}
 
 	return NOTIFY_DONE;
@@ -393,8 +391,6 @@ static int adsp_pm_post_suspend(void)
 	if (is_adsp_system_running()) {
 		adsp_timesync_resume();
 		pr_info("%s, time sync unfreeze", __func__);
-
-		adsp_smc_send(MTK_ADSP_KERNEL_OP_LEAVE_LP, 0, 0);
 	}
 
 	return NOTIFY_DONE;
