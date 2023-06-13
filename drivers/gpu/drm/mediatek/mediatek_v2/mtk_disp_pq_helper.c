@@ -536,3 +536,25 @@ int mtk_drm_ioctl_pq_get_persist_property(struct drm_device *dev, void *data,
 
 	return mtk_drm_ioctl_pq_get_persist_property_impl(crtc, data);
 }
+
+struct drm_crtc *get_crtc_from_connector(int connector_id, struct drm_device *drm_dev)
+{
+	struct drm_crtc *crtc = NULL;
+	struct mtk_ddp_comp *output_comp = NULL;
+	unsigned int cur_connector_id = 0;
+
+	if (!drm_dev) {
+		DDPPR_ERR("%s: failed to get drm_dev!\n", __func__);
+		return NULL;
+	}
+	drm_for_each_crtc(crtc, drm_dev) {
+		output_comp = mtk_ddp_comp_request_output(to_mtk_crtc(crtc));
+		if (output_comp == NULL)
+			continue;
+		mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &cur_connector_id);
+		if (cur_connector_id == connector_id)
+			return crtc;
+	}
+	return NULL;
+}
+

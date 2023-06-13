@@ -977,23 +977,6 @@ int mtk_drm_ioctl_set_ccorr(struct drm_device *dev, void *data,
 }
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
-static struct drm_crtc *get_crtc_from_connector(int connector_id)
-{
-	struct drm_crtc *crtc = NULL;
-	struct mtk_ddp_comp *output_comp = NULL;
-	unsigned int cur_connector_id = 0;
-
-	drm_for_each_crtc(crtc, g_drm_dev) {
-		output_comp = mtk_ddp_comp_request_output(to_mtk_crtc(crtc));
-		if (output_comp == NULL)
-			continue;
-		mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &cur_connector_id);
-		if (cur_connector_id == connector_id)
-			return crtc;
-	}
-	return NULL;
-}
-
 int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long event,
 	void *v)
 {
@@ -1004,7 +987,11 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 	struct mtk_ddp_comp *comp = NULL;
 
 	led_conf = (struct led_conf_info *)v;
-	crtc = get_crtc_from_connector(led_conf->connector_id);
+	if (!led_conf) {
+		DDPPR_ERR("%s: led_conf is NULL!\n", __func__);
+		return -1;
+	}
+	crtc = get_crtc_from_connector(led_conf->connector_id, g_drm_dev);
 	if (crtc == NULL) {
 		led_conf->aal_enable = 0;
 		DDPPR_ERR("%s: failed to get crtc!\n", __func__);

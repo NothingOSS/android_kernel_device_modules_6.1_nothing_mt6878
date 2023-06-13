@@ -36,6 +36,6 @@ int mtk_drm_ioctl_pq_get_irq(struct drm_device *dev, void *data, struct drm_file
 void mtk_disp_pq_on_start_of_frame(struct mtk_drm_crtc *mtk_crtc);
 int mtk_drm_ioctl_pq_get_persist_property(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
-
+struct drm_crtc *get_crtc_from_connector(int connector_id, struct drm_device *drm_dev);
 
 #endif /* _MTK_DISP_PQ_HELPER_H_ */
