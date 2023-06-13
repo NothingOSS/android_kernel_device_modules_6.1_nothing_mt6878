@@ -1038,6 +1038,15 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		return MML_MODE_MML_DECOUPLE;
 	}
 
+	/* for alpha rotate */
+	if (MML_FMT_ALPHA(info->src.format) &&
+		MML_FMT_AFBC(info->src.format) &&
+		(info->dest[0].rotate == MML_ROT_90 ||
+		info->dest[0].rotate == MML_ROT_270)) {
+		*reason = mml_query_alpha;
+		goto not_support;
+	}
+
 	/* rotate go to racing (inline rotate) */
 	if (mml_racing == 1 &&
 		(info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270))
@@ -1047,6 +1056,9 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 
 decouple_user:
 	return info->mode;
+
+not_support:
+	return MML_MODE_NOT_SUPPORT;
 }
 
 static struct cmdq_client *get_racing_clt(struct mml_topology_cache *cache, u32 pipe)
