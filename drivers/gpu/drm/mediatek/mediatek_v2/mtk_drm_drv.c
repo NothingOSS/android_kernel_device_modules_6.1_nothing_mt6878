@@ -6902,7 +6902,11 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	drm->mode_config.fb_modifiers_not_supported = false;
 
 	/* Use OVL device for all DMA memory allocations */
-	np = private->comp_node[private->data->main_path_data
+	if (private->data->main_path_data->ovl_path_len[DDP_MAJOR][0] > 0)
+		np = private->comp_node[private->data->main_path_data
+					->ovl_path[DDP_MAJOR][0][0]];
+	else
+		np = private->comp_node[private->data->main_path_data
 					->path[DDP_MAJOR][0][0]];
 	if (np == NULL) {
 		if (of_property_read_bool(private->mmsys_dev->of_node, "enable_ext_alter_path"))
@@ -8316,23 +8320,6 @@ SKIP_OVLSYS_CONFIG:
 	if (private->side_ovlsys_dev)
 		pm_runtime_enable(private->side_ovlsys_dev);
 
-	for (i = 0 ; i < MAX_CRTC ; ++i) {
-		unsigned int value;
-
-		ret = of_property_read_u32_index(dev->of_node, "pre-define-bw", i, &value);
-		if (ret < 0)
-			value = 0;
-
-		private->pre_defined_bw[i] = value;
-
-		ret = of_property_read_u32_index(dev->of_node, "crtc-ovl-usage", i, &value);
-		if (ret < 0)
-			value = 0;
-		private->ovl_usage[i] = value;
-
-		DDPINFO("CRTC %d available BW:%x OVL usage:%x\n", i,
-				private->pre_defined_bw[i], private->ovl_usage[i]);
-	}
 
 	/* Get and enable top clk align to HW */
 	mtk_drm_get_top_clk(private);
@@ -8508,6 +8495,25 @@ SKIP_OVLSYS_CONFIG:
 	DDPINFO("%s- ret:%d\n", __func__, ret);
 	if (ret)
 		goto err_pm;
+
+	for (i = 0 ; i < MAX_CRTC ; ++i) {
+		unsigned int value;
+
+		ret = of_property_read_u32_index(dev->of_node, "pre-define-bw", i, &value);
+		if (unlikely(ret < 0))
+			value = 0;
+
+		private->pre_defined_bw[i] = value;
+
+		ret = of_property_read_u32_index(dev->of_node, "crtc-ovl-usage", i, &value);
+		if (unlikely(ret < 0))
+			value = 0;
+		private->ovlsys_usage[i] = value;
+
+		private->ovl_usage[i] = mtk_ddp_ovl_usage_trans(private, private->ovlsys_usage[i]);
+		DDPINFO("CRTC %d available BW:%x OVL usage:%x\n", i,
+				private->pre_defined_bw[i], private->ovl_usage[i]);
+	}
 
 	mtk_fence_init();
 	DDPINFO("%s-\n", __func__);

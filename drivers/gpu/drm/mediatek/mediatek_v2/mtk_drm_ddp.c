@@ -15087,7 +15087,7 @@ static int mtk_ddp_sout_sel_MT6985(const struct mtk_mmsys_reg_data *data,
 }
 
 static int mtk_ddp_ovl_con_MT6989(enum mtk_ddp_comp_id cur,
-			   enum mtk_ddp_comp_id next, unsigned int *addr)
+			   enum mtk_ddp_comp_id next, unsigned int *addr, unsigned int *mask)
 {
 	int value = 0;
 	bool next_is_ovl;
@@ -15102,22 +15102,29 @@ static int mtk_ddp_ovl_con_MT6989(enum mtk_ddp_comp_id cur,
 
 	next_is_ovl = (mtk_ddp_comp_get_type(next) == MTK_DISP_OVL);
 	if (cur == DDP_COMPONENT_OVL0_2L || cur == DDP_COMPONENT_OVL3_2L) {
-		if (next_is_ovl)
+		if (next_is_ovl || next == DDP_COMPONENT_OVLSYS_DLO_ASYNC1 ||
+				next == DDP_COMPONENT_OVLSYS_DLO_ASYNC8)
 			value = DISP_OVL0_2L_TO_BG_CROSSBAR0;
 		else
 			value = DISP_OVL0_2L_TO_BLEND_CROSSBAR0;
+		*mask = DISP_OVL0_2L_TO_BG_CROSSBAR0 | DISP_OVL0_2L_TO_BLEND_CROSSBAR0;
 	} else if (cur == DDP_COMPONENT_OVL1_2L || cur == DDP_COMPONENT_OVL4_2L) {
-		if (next_is_ovl)
+		if (next_is_ovl || next == DDP_COMPONENT_OVLSYS_DLO_ASYNC1 ||
+				next == DDP_COMPONENT_OVLSYS_DLO_ASYNC8)
 			value = DISP_OVL1_2L_TO_BG_CROSSBAR1;
 		else
 			value = DISP_OVL1_2L_TO_BLEND_CROSSBAR1;
+		*mask = DISP_OVL1_2L_TO_BG_CROSSBAR1 | DISP_OVL1_2L_TO_BLEND_CROSSBAR1;
 	} else if (cur == DDP_COMPONENT_OVL2_2L || cur == DDP_COMPONENT_OVL5_2L) {
-		if (next_is_ovl)
+		if (next_is_ovl || next == DDP_COMPONENT_OVLSYS_DLO_ASYNC1 ||
+				next == DDP_COMPONENT_OVLSYS_DLO_ASYNC8)
 			value = DISP_OVL2_2L_TO_BG_CROSSBAR2;
 		else
 			value = DISP_OVL2_2L_TO_BLEND_CROSSBAR2;
+		*mask = DISP_OVL2_2L_TO_BG_CROSSBAR2 | DISP_OVL2_2L_TO_BLEND_CROSSBAR2;
 	} else {
 		value = -1;
+		*mask = 0;
 	}
 
 	return value;
@@ -15365,10 +15372,21 @@ static int mtk_ddp_mout_en_MT6989(const struct mtk_mmsys_reg_data *data,
 	    cur == DDP_COMPONENT_INLINE_ROTATE0 || cur == DDP_COMPONENT_INLINE_ROTATE1)
 		return 0;
 
-	if (mtk_ddp_comp_get_type(cur) == MTK_DISP_OVL) {
-		if (mtk_ddp_comp_get_type(next) == MTK_DISP_OVL) {
+	/* not only OVL comp, but DLI_ASYNC2 and DLO_ASYNC1 also go to bg_cb */
+	if (mtk_ddp_comp_get_type(cur) == MTK_DISP_OVL ||
+			cur == DDP_COMPONENT_OVLSYS_DLI_ASYNC2 ||
+			cur == DDP_COMPONENT_OVLSYS_DLI_ASYNC5) {
+		if (mtk_ddp_comp_get_type(next) == MTK_DISP_OVL ||
+				next == DDP_COMPONENT_OVLSYS_DLO_ASYNC1 ||
+				next == DDP_COMPONENT_OVLSYS_DLO_ASYNC8)
 			value = mtk_ddp_ovl_bg_cb_MT6989(cur, next, addr);
-		} else if (next == DDP_COMPONENT_OVLSYS_DLO_ASYNC3 ||
+
+		if (value != -1)
+			return value;
+	}
+
+	if (mtk_ddp_comp_get_type(cur) == MTK_DISP_OVL) {
+		if (next == DDP_COMPONENT_OVLSYS_DLO_ASYNC3 ||
 			   next == DDP_COMPONENT_OVLSYS_DLO_ASYNC10 ||
 			   next == DDP_COMPONENT_OVLSYS_DLO_ASYNC4 ||
 			   next == DDP_COMPONENT_OVLSYS_DLO_ASYNC11 ||
@@ -17671,7 +17689,7 @@ void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
 			      enum mtk_ddp_comp_id next)
 {
 	int value;
-	unsigned int addr, reg;
+	unsigned int addr, reg, mask = 0;
 	unsigned int addr1, reg1;
 	const struct mtk_mmsys_reg_data *reg_data = mtk_crtc->mmsys_reg_data;
 	enum mtk_ddp_comp_id cur = comp->id;
@@ -17833,9 +17851,9 @@ void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
 			writel_relaxed(reg1, config_regs + addr1);
 		}
 
-		value = mtk_ddp_ovl_con_MT6989(cur, next, &addr);
+		value = mtk_ddp_ovl_con_MT6989(cur, next, &addr, &mask);
 		if (value >= 0) {
-			reg = readl_relaxed(config_regs + addr) |
+			reg = (readl_relaxed(config_regs + addr) & ~mask) |
 					(unsigned int)value;
 			writel_relaxed(reg, config_regs + addr);
 		}
@@ -18099,7 +18117,7 @@ void mtk_ddp_add_comp_to_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 					enum mtk_ddp_comp_id next,
 					struct cmdq_pkt *handle)
 {
-	unsigned int addr, reg;
+	unsigned int addr, reg, mask = 0;
 	unsigned int addr1, reg1;
 	int value;
 	const struct mtk_mmsys_reg_data *reg_data = mtk_crtc->mmsys_reg_data;
@@ -18279,11 +18297,11 @@ void mtk_ddp_add_comp_to_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				config_regs_pa + addr1, reg1, reg1);
 
-		value = mtk_ddp_ovl_con_MT6989(cur, next, &addr);
+		value = mtk_ddp_ovl_con_MT6989(cur, next, &addr, &mask);
 		if (value >= 0)
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				config_regs_pa
-				+ addr, value, value);
+				+ addr, value, mask);
 
 		value = mtk_ddp_mout_en_MT6989(reg_data,
 			cur, next, &addr);
@@ -18605,7 +18623,7 @@ void mtk_ddp_remove_comp_from_path(struct mtk_drm_crtc *mtk_crtc,
 				   enum mtk_ddp_comp_id cur,
 				   enum mtk_ddp_comp_id next)
 {
-	unsigned int addr, reg;
+	unsigned int addr, reg, mask = 0;
 	int value;
 	void __iomem *config_regs = NULL;
 	const struct mtk_mmsys_reg_data *reg_data  = NULL;
@@ -18700,9 +18718,9 @@ void mtk_ddp_remove_comp_from_path(struct mtk_drm_crtc *mtk_crtc,
 			config_regs = mtk_crtc->ovlsys1_regs;
 		}
 
-		value = mtk_ddp_ovl_con_MT6989(cur, next, &addr);
+		value = mtk_ddp_ovl_con_MT6989(cur, next, &addr, &mask);
 		if (value >= 0) {
-			reg = readl_relaxed(config_regs + addr) & ~(unsigned int)value;
+			reg = readl_relaxed(config_regs + addr) & ~(unsigned int)mask;
 			writel_relaxed(reg, config_regs + addr);
 		}
 		value = mtk_ddp_mout_en_MT6989(reg_data, cur, next, &addr);
@@ -18868,7 +18886,7 @@ void mtk_ddp_remove_comp_from_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 					     enum mtk_ddp_comp_id next,
 					     struct cmdq_pkt *handle)
 {
-	unsigned int addr;
+	unsigned int addr, mask = 0;
 	int value;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	const struct mtk_mmsys_reg_data *reg_data  = mtk_crtc->mmsys_reg_data;
@@ -18947,11 +18965,10 @@ void mtk_ddp_remove_comp_from_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 			config_regs_pa = mtk_crtc->ovlsys1_regs_pa;
 		}
 
-		value = mtk_ddp_ovl_con_MT6989(cur, next, &addr);
+		value = mtk_ddp_ovl_con_MT6989(cur, next, &addr, &mask);
 		if (value >= 0)
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-					   config_regs_pa + addr,
-					   ~(unsigned int)value, value);
+					   config_regs_pa + addr, 0, mask);
 
 		value = mtk_ddp_mout_en_MT6989(reg_data,
 					cur, next, &addr);
@@ -20149,49 +20166,133 @@ static void mtk_ddp_ext_insert_dual_pipe_MT6897(struct mtk_drm_crtc *mtk_crtc,
 	writel_relaxed(reg, ovlsys1_regs + addr);
 }
 
-
-unsigned int mtk_ddp_ovl_resource_list(struct mtk_drm_private *priv, unsigned int **ovl_list)
+/* the difference between ovl_resource_list is ovlsys_path describe DLI/DLO for crossing ovlsys */
+unsigned int mtk_ddp_ovlsys_path(struct mtk_drm_private *priv, unsigned int **ovl_list)
 {
-	static unsigned int *_ovl_list;
+	static unsigned int *_ovlsys_path;
 
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT6985:
 	case MMSYS_MT6897:
-		if (_ovl_list) {
-			*ovl_list = _ovl_list;
-		} else {
-			/* MT6985 has 4 continue OVL comp */
-			_ovl_list = vmalloc(4 * sizeof(unsigned int));
-			if (!_ovl_list) {
-				DDPPR_ERR("%s errors with NULL _ovl_list\n", __func__);
-				return -ENOMEM;
-			}
-			_ovl_list[0] = DDP_COMPONENT_OVL0_2L;
-			_ovl_list[1] = DDP_COMPONENT_OVL1_2L;
-			_ovl_list[2] = DDP_COMPONENT_OVL2_2L;
-			_ovl_list[3] = DDP_COMPONENT_OVL3_2L;
-			*ovl_list = _ovl_list;
+#define OVLSYS_PATH_MT6985 4
+		if (_ovlsys_path) {
+			*ovl_list = _ovlsys_path;
+			return OVLSYS_PATH_MT6985;
 		}
-		return 4;
+		/* MT6985 has 4 OVLSYS PATH */
+
+		_ovlsys_path = vmalloc(OVLSYS_PATH_MT6985 * sizeof(unsigned int));
+		if (!_ovlsys_path) {
+			DDPPR_ERR("%s errors with NULL _ovl_list\n", __func__);
+			return -ENOMEM;
+		}
+
+		_ovlsys_path[0] = DDP_COMPONENT_OVL0_2L;
+		_ovlsys_path[1] = DDP_COMPONENT_OVL1_2L;
+		_ovlsys_path[2] = DDP_COMPONENT_OVL2_2L;
+		_ovlsys_path[3] = DDP_COMPONENT_OVL3_2L;
+		*ovl_list = _ovlsys_path;
+
+		return OVLSYS_PATH_MT6985;
+	case MMSYS_MT6989:
+#define OVLSYS_PATH_MT6989 6
+		if (_ovlsys_path) {
+			*ovl_list = _ovlsys_path;
+			return OVLSYS_PATH_MT6989;
+		}
+		/* MT6989 has 6 OVLSYS PATH */
+
+		_ovlsys_path = vmalloc(OVLSYS_PATH_MT6989 * sizeof(unsigned int));
+		if (!_ovlsys_path) {
+			DDPPR_ERR("%s errors with NULL _ovl_list\n", __func__);
+			return -ENOMEM;
+		}
+		_ovlsys_path[0] = DDP_COMPONENT_OVL0_2L;
+		_ovlsys_path[1] = DDP_COMPONENT_OVL1_2L;
+		_ovlsys_path[2] = DDP_COMPONENT_OVL2_2L;
+		_ovlsys_path[3] = DDP_COMPONENT_OVL3_2L;
+		_ovlsys_path[4] = DDP_COMPONENT_OVL4_2L;
+		_ovlsys_path[5] = DDP_COMPONENT_OVL5_2L;
+
+		*ovl_list = _ovlsys_path;
+
+		return OVLSYS_PATH_MT6989;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+unsigned int mtk_ddp_ovl_usage_trans(struct mtk_drm_private *priv, unsigned int usage)
+{
+	unsigned int *_ovlpath = NULL;
+	unsigned int ovlpath_size;
+	unsigned int i, j;
+	unsigned int result = 0;
+
+	ovlpath_size = mtk_ddp_ovlsys_path(priv, &_ovlpath);
+
+	if (ovlpath_size == 0)
+		return result;
+
+	if (IS_ERR_OR_NULL(_ovlpath)) {
+		DDPPR_ERR("%s invalid _ovl_path\n", __func__);
+		return -EINVAL;
+	}
+
+	for (i = 0, j = 0 ; i < ovlpath_size ; ++i) {
+		if (mtk_ddp_comp_get_type(_ovlpath[i]) == MTK_DISP_VIRTUAL) {
+			usage = usage >> 1;
+			continue;
+		}
+
+		result |= usage & BIT(j);
+		++j;
+	}
+
+	return result;
+}
+
+unsigned int mtk_ddp_ovl_resource_list(struct mtk_drm_private *priv, unsigned int **ovl_list)
+{
+	static unsigned int *_ovl_list;
+	static unsigned int ovl_list_size;
+	unsigned int *_ovlpath = NULL;
+	unsigned int _ovlpath_size;
+	unsigned int i, j, k;
+
+	switch (priv->data->mmsys_id) {
+	case MMSYS_MT6985:
+	case MMSYS_MT6897:
 	case MMSYS_MT6989:
 		if (_ovl_list) {
 			*ovl_list = _ovl_list;
-		} else {
-			/* MT6985 has 4 continue OVL comp */
-			_ovl_list = vmalloc(6 * sizeof(unsigned int));
-			if (!_ovl_list) {
-				DDPPR_ERR("%s errors with NULL _ovl_list\n", __func__);
-				return -ENOMEM;
-			}
-			_ovl_list[0] = DDP_COMPONENT_OVL0_2L;
-			_ovl_list[1] = DDP_COMPONENT_OVL1_2L;
-			_ovl_list[2] = DDP_COMPONENT_OVL2_2L;
-			_ovl_list[3] = DDP_COMPONENT_OVL3_2L;
-			_ovl_list[4] = DDP_COMPONENT_OVL4_2L;
-			_ovl_list[5] = DDP_COMPONENT_OVL5_2L;
-			*ovl_list = _ovl_list;
+			return ovl_list_size;
 		}
-		return 6;
+
+		/* skip virtual comp, count ovl_path comp number */
+		_ovlpath_size = mtk_ddp_ovlsys_path(priv, &_ovlpath);
+		for (i = 0, j = 0; i < _ovlpath_size ; ++i) {
+			if (mtk_ddp_comp_get_type(_ovlpath[i]) != MTK_DISP_VIRTUAL)
+				j++;
+		}
+
+		_ovl_list = vmalloc(j * sizeof(unsigned int));
+		if (!_ovl_list) {
+			DDPPR_ERR("%s errors with NULL _ovl_list\n", __func__);
+			return -ENOMEM;
+		}
+		for (i = 0, k = 0 ; i < _ovlpath_size ; ++i) {
+			if (mtk_ddp_comp_get_type(_ovlpath[i]) != MTK_DISP_VIRTUAL) {
+				_ovl_list[k] = _ovlpath[i];
+				++k;
+			}
+		}
+		*ovl_list = _ovl_list;
+		ovl_list_size = k;
+
+		return ovl_list_size;
 	default:
 		break;
 	}

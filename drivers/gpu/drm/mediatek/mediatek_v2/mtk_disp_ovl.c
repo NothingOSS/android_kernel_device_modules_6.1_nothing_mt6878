@@ -3187,19 +3187,6 @@ mtk_ovl_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id prev,
 	} else
 		_ovl_UFOd_in(comp, 0, handle);
 
-	if (prev == DDP_COMPONENT_OVL0 || prev == DDP_COMPONENT_OVL0_2L ||
-		prev == DDP_COMPONENT_OVL1 || prev == DDP_COMPONENT_OVL1_2L ||
-		prev == DDP_COMPONENT_OVL2_2L || prev == DDP_COMPONENT_OVL3_2L ||
-		prev == DDP_COMPONENT_OVL4_2L || prev == DDP_COMPONENT_OVL5_2L ||
-		prev == DDP_COMPONENT_OVL6_2L)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_DATAPATH_CON,
-			       DISP_OVL_BGCLR_IN_SEL, DISP_OVL_BGCLR_IN_SEL);
-	else
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_DATAPATH_CON, 0,
-			       DISP_OVL_BGCLR_IN_SEL);
-
 	if (prev == -1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_ROI_SIZE,
@@ -3256,14 +3243,9 @@ static void mtk_ovl_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 	if (!comp->mtk_crtc)
 		return;
 
-	if (comp->mtk_crtc->base.index != 0) {
-
-		// Reset setting for other crtc
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_OVL_DATAPATH_CON,
-			0, DISP_OVL_BGCLR_IN_SEL);
+	/* no need connect to OVL PQ_LOOP or PQ_OUT path for external display so far */
+	if (comp->mtk_crtc->base.index != 0)
 		return;
-	}
 
 	if (idx != 0) {
 		value |= DISP_OVL_BGCLR_IN_SEL;
@@ -3284,13 +3266,20 @@ static void mtk_ovl_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			    enum mtk_ddp_comp_id prev,
 			    enum mtk_ddp_comp_id next)
 {
-	if (mtk_ddp_comp_get_type(prev) != MTK_DISP_OVL)
+	/* prev == DDP_COMPONENT_ID_MAX imply this OVL is the first comp in current path */
+	/* OVL might be connected from VIRTUAL comp like DLI in other dispsys */
+	if (mtk_ddp_comp_get_type(prev) != MTK_DISP_OVL &&
+			mtk_ddp_comp_get_type(prev) !=  MTK_DISP_VIRTUAL &&
+			mtk_ddp_comp_get_type(prev) !=  MTK_DISP_DLI_ASYNC &&
+			prev != DDP_COMPONENT_ID_MAX)
 		return;
 	else if (prev == DDP_COMPONENT_OVL0 || prev == DDP_COMPONENT_OVL0_2L ||
 		prev == DDP_COMPONENT_OVL1 || prev == DDP_COMPONENT_OVL1_2L ||
 		prev == DDP_COMPONENT_OVL2_2L || prev == DDP_COMPONENT_OVL3_2L ||
 		prev == DDP_COMPONENT_OVL4_2L || prev == DDP_COMPONENT_OVL5_2L ||
-		prev == DDP_COMPONENT_OVL6_2L) {
+		prev == DDP_COMPONENT_OVL6_2L ||
+		mtk_ddp_comp_get_type(prev) ==  MTK_DISP_VIRTUAL ||
+		mtk_ddp_comp_get_type(prev) ==  MTK_DISP_DLI_ASYNC) {
 		if (handle == NULL)
 			mtk_ddp_cpu_mask_write(comp, DISP_REG_OVL_DATAPATH_CON,
 				       DISP_OVL_BGCLR_IN_SEL,
