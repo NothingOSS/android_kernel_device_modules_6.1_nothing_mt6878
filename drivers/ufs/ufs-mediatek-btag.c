@@ -11,6 +11,9 @@
 #include <ufs/ufshcd.h>
 #include "ufs-mediatek.h"
 #include <mt-plat/mtk_blocktag.h>
+#if IS_ENABLED(CONFIG_SCSI_UFS_HPB)
+#include "ufshpb.h"
+#endif
 
 static bool ufs_mtk_is_data_cmd(struct scsi_cmnd *cmd)
 {
@@ -18,7 +21,11 @@ static bool ufs_mtk_is_data_cmd(struct scsi_cmnd *cmd)
 
 	if (cmd_op == WRITE_10 || cmd_op == READ_10 ||
 	    cmd_op == WRITE_16 || cmd_op == READ_16 ||
-	    cmd_op == WRITE_6 || cmd_op == READ_6)
+	    cmd_op == WRITE_6 || cmd_op == READ_6
+#if IS_ENABLED(CONFIG_SCSI_UFS_HPB)
+	    || cmd_op == UFSHPB_READ
+#endif
+	    )
 		return true;
 
 	return false;
