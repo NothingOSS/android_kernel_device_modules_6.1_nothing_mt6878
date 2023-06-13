@@ -32,8 +32,9 @@
 #define MML_RSZ2		21
 #define MML_WROT0		22
 #define MML_DLO0		23
-#define MML_WROT2		24
-#define MML_ENGINE_TOTAL	25
+#define MML_DLO2		24
+#define MML_WROT2		25
+#define MML_ENGINE_TOTAL	26
 
 /* MML component types. See mtk-mml-sys.c */
 #define MML_CT_SYS		1
