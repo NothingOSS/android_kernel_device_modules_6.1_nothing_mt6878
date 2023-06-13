@@ -42,7 +42,7 @@ int register_lpm_sys_res_ops(struct lpm_sys_res_ops *ops)
 	_lpm_sys_res_ops.get_detail = ops->get_detail;
 	_lpm_sys_res_ops.get_threshold = ops->get_threshold;
 	_lpm_sys_res_ops.set_threshold = ops->set_threshold;
-	spin_lock_init(&ops->lock);
+	spin_lock_init(&_lpm_sys_res_ops.lock);
 
 	return 0;
 }
