@@ -14,6 +14,14 @@
 
 #include "phy-mtk-io.h"
 
+/* PHY sif registers */
+#define PEXTP_DIG_GLB_20		0x20
+#define RG_XTP_BYPASS_PIPE_RST		BIT(4)
+#define PEXTP_DIG_GLB_28		0x28
+#define RG_XTP_PHY_CLKREQ_N_IN		GENMASK(13, 12)
+#define PEXTP_DIG_GLB_50		0x50
+#define RG_XTP_CKM_EN_L1S0		BIT(13)
+
 #define PEXTP_ANA_GLB_00_REG		0x9000
 /* Internal Resistor Selection of TX Bias Current */
 #define EFUSE_GLB_INTR_SEL		GENMASK(28, 24)
@@ -31,6 +39,10 @@
 #define EFUSE_LN_RX_SEL			GENMASK(3, 0)
 
 #define PEXTP_ANA_LANE_OFFSET		0x100
+
+/* PHY ckm regsiters */
+#define XTP_CKM_DA_REG_3C		0x3C
+#define RG_CKM_PADCK_REQ		GENMASK(13, 12)
 
 /**
  * struct mtk_pcie_lane_efuse - eFuse data for each lane
@@ -50,17 +62,20 @@ struct mtk_pcie_lane_efuse {
  * struct mtk_pcie_phy_data - phy data for each SoC
  * @num_lanes: supported lane numbers
  * @sw_efuse_supported: support software to load eFuse data
+ * @phy_int: special init function of each SoC
  */
 struct mtk_pcie_phy_data {
 	int num_lanes;
 	bool sw_efuse_supported;
+	int (*phy_init)(struct phy *phy);
 };
 
 /**
  * struct mtk_pcie_phy - PCIe phy driver main structure
  * @dev: pointer to device
  * @phy: pointer to generic phy
- * @sif_base: IO mapped register base address of system interface
+ * @sif_base: IO mapped register SIF base address of system interface
+ * @ckm_base: IO mapped register CKM base address of system interface
  * @data: pointer to SoC dependent data
  * @sw_efuse_en: software eFuse enable status
  * @efuse_glb_intr: internal resistor selection of TX bias current data
@@ -70,6 +85,7 @@ struct mtk_pcie_phy {
 	struct device *dev;
 	struct phy *phy;
 	void __iomem *sif_base;
+	void __iomem *ckm_base;
 	const struct mtk_pcie_phy_data *data;
 
 	bool sw_efuse_en;
@@ -110,7 +126,13 @@ static void mtk_pcie_efuse_set_lane(struct mtk_pcie_phy *pcie_phy,
 static int mtk_pcie_phy_init(struct phy *phy)
 {
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
-	int i;
+	int i, ret;
+
+	if (pcie_phy->data->phy_init) {
+		ret = pcie_phy->data->phy_init(phy);
+		if (ret)
+			return ret;
+	}
 
 	if (!pcie_phy->sw_efuse_en)
 		return 0;
@@ -256,13 +278,75 @@ static int mtk_pcie_phy_probe(struct platform_device *pdev)
 	return 0;
 }
 
+static int mtk_pcie_phy_init_6985(struct phy *phy)
+{
+	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
+	struct device *dev = pcie_phy->dev;
+	struct platform_device *pdev = to_platform_device(dev);
+	u32 val;
+
+	if (!pcie_phy->ckm_base) {
+		pcie_phy->ckm_base = devm_platform_ioremap_resource_byname(pdev,
+									   "ckm");
+		if (IS_ERR(pcie_phy->ckm_base)) {
+			dev_info(dev, "Failed to map phy-ckm base\n");
+			return PTR_ERR(pcie_phy->ckm_base);
+		}
+	}
+
+	val = readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_28);
+	val |= RG_XTP_PHY_CLKREQ_N_IN;
+	writel_relaxed(val, pcie_phy->sif_base + PEXTP_DIG_GLB_28);
+
+	val = readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_50);
+	val &= ~RG_XTP_CKM_EN_L1S0;
+	writel_relaxed(val, pcie_phy->sif_base + PEXTP_DIG_GLB_50);
+
+	val = readl_relaxed(pcie_phy->ckm_base + XTP_CKM_DA_REG_3C);
+	val |= RG_CKM_PADCK_REQ;
+	writel_relaxed(val, pcie_phy->ckm_base + XTP_CKM_DA_REG_3C);
+
+	dev_info(dev, "PHY GLB_28=%#x, GLB_50=%#x, CKM_3C=%#x\n",
+		 readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_28),
+		 readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_50),
+		 readl_relaxed(pcie_phy->ckm_base + XTP_CKM_DA_REG_3C));
+
+	return 0;
+}
+
+static int mtk_pcie_phy_init_6989(struct phy *phy)
+{
+	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
+	u32 val;
+
+	val = readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_20);
+	val &= ~RG_XTP_BYPASS_PIPE_RST;
+	writel_relaxed(val, pcie_phy->sif_base + PEXTP_DIG_GLB_20);
+
+	return 0;
+}
+
 static const struct mtk_pcie_phy_data mt8195_data = {
 	.num_lanes = 2,
 	.sw_efuse_supported = true,
 };
 
+static const struct mtk_pcie_phy_data mt6985_data = {
+	.num_lanes = 1,
+	.sw_efuse_supported = false,
+	.phy_init = mtk_pcie_phy_init_6985,
+};
+
+static const struct mtk_pcie_phy_data mt6989_data = {
+	.num_lanes = 1,
+	.sw_efuse_supported = false,
+	.phy_init = mtk_pcie_phy_init_6989,
+};
+
 static const struct of_device_id mtk_pcie_phy_of_match[] = {
 	{ .compatible = "mediatek,mt8195-pcie-phy", .data = &mt8195_data },
+	{ .compatible = "mediatek,mt6985-pcie-phy", .data = &mt6985_data },
+	{ .compatible = "mediatek,mt6989-pcie-phy", .data = &mt6989_data },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, mtk_pcie_phy_of_match);
