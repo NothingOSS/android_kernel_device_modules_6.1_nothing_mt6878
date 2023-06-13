@@ -28,6 +28,7 @@
 #define MTK_EMIMPU_CLEAR_MD             7
 #define MTK_SLBMPU_CLEAR                8
 #define MTK_EMIMPU_CLEAR_KP		9
+#define MTK_EMI_CLEAR			10
 
 #define MTK_EMIMPU_READ_SA		0
 #define MTK_EMIMPU_READ_EA		1

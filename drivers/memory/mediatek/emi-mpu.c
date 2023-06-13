@@ -23,6 +23,7 @@
 /* global pointer for exported functions */
 struct emi_mpu *global_emi_mpu;
 EXPORT_SYMBOL_GPL(global_emi_mpu);
+unsigned int smc_clear;
 
 static void set_regs(
 	struct reg_info_t *reg_list, unsigned int reg_cnt,
@@ -47,11 +48,21 @@ static void clear_violation(
 	struct emi_mpu *mpu, unsigned int emi_id)
 {
 	void __iomem *emi_cen_base;
+	struct arm_smccc_res smc_res;
 
 	emi_cen_base = mpu->emi_cen_base[emi_id];
 
-	set_regs(mpu->clear_reg,
-		mpu->clear_reg_cnt, emi_cen_base);
+	if (smc_clear) {
+		arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMI_CLEAR,
+				emi_id, 0, 0, 0, 0, 0, &smc_res);
+		if (smc_res.a0) {
+			pr_info("%s:%d failed to clear emi violation, ret=0x%lx\n",
+				__func__, __LINE__, smc_res.a0);
+		}
+	} else {
+		set_regs(mpu->clear_reg,
+			mpu->clear_reg_cnt, emi_cen_base);
+	}
 }
 
 static void emimpu_vio_dump(struct work_struct *work)
@@ -190,6 +201,7 @@ void mtk_clear_md_violation(void)
 {
 	struct emi_mpu *mpu;
 	void __iomem *emi_cen_base;
+	struct arm_smccc_res smc_res;
 	unsigned int emi_id;
 
 	mpu = global_emi_mpu;
@@ -198,9 +210,17 @@ void mtk_clear_md_violation(void)
 
 	for (emi_id = 0; emi_id < mpu->emi_cen_cnt; emi_id++) {
 		emi_cen_base = mpu->emi_cen_base[emi_id];
-
-		set_regs(mpu->clear_md_reg,
-			mpu->clear_md_reg_cnt, emi_cen_base);
+		if (smc_clear) {
+			arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMI_CLEAR,
+					emi_id, 1, 0, 0, 0, 0, &smc_res);
+			if (smc_res.a0) {
+				pr_info("%s:%d failed to clear md violation, ret=0x%lx\n",
+					__func__, __LINE__, smc_res.a0);
+			}
+		} else {
+			set_regs(mpu->clear_md_reg,
+				mpu->clear_md_reg_cnt, emi_cen_base);
+		}
 	}
 
 	pr_info("%s:version %d\n", __func__, mpu->version);
@@ -278,6 +298,12 @@ static int emimpu_probe(struct platform_device *pdev)
 		sizeof(struct emi_mpu), GFP_KERNEL);
 	if (!mpu)
 		return -ENOMEM;
+
+	smc_clear = 0;
+	ret = of_property_read_u32(emimpu_node,
+		"smc-clear", &smc_clear);
+	if (!ret)
+		dev_info(&pdev->dev, "Use smc to clear vio\n");
 
 	size = of_property_count_elems_of_size(emimpu_node,
 		"dump", sizeof(char));
