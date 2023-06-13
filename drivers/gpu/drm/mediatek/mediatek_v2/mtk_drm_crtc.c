@@ -1273,8 +1273,6 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 	state->base.crtc = crtc;
 
 	if (crtc->state) {
-		struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-
 		old_state = to_mtk_crtc_state(crtc->state);
 		state->lye_state = old_state->lye_state;
 		state->rsz_src_roi = old_state->rsz_src_roi;
@@ -1283,9 +1281,8 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 		state->ovl_partial_roi = old_state->ovl_partial_roi;
 		state->prop_val[CRTC_PROP_DOZE_ACTIVE] =
 			old_state->prop_val[CRTC_PROP_DOZE_ACTIVE];
-		if (mtk_crtc->res_switch != RES_SWITCH_NO_USE)
-			state->prop_val[CRTC_PROP_DISP_MODE_IDX] =
-				old_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
+		state->prop_val[CRTC_PROP_DISP_MODE_IDX] =
+			old_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
 		state->prop_val[CRTC_PROP_PRES_FENCE_IDX] =
 			old_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
 	}
