@@ -231,6 +231,7 @@ irqreturn_t mtk_ccu_isr_handler(int irq, void *priv)
 	static struct mtk_ccu_msg msg;
 	struct mtk_ccu *ccu = (struct mtk_ccu *)priv;
 	mtk_ccu_ipc_handle_t handler;
+	void *handler_priv;
 #if defined(SECURE_CCU)
 	struct arm_smccc_res res;
 #endif
@@ -296,11 +297,10 @@ irqreturn_t mtk_ccu_isr_handler(int irq, void *priv)
 
 		mutex_lock(&ccu->ipc_desc_lock);
 		handler = ccu->ipc_desc[msg.msg_id].handler;
+		handler_priv = ccu->ipc_desc[msg.msg_id].priv;
 		mutex_unlock(&ccu->ipc_desc_lock);
-		if (ccu->ipc_desc[msg.msg_id].handler != NULL) {
-			ccu->ipc_desc[msg.msg_id].handler(msg.in_data_ptr,
-			msg.inDataSize, ccu->ipc_desc[msg.msg_id].priv);
-		}
+		if (handler != NULL)
+			handler(msg.in_data_ptr, msg.inDataSize, handler_priv);
 	}
 
 ISR_EXIT:

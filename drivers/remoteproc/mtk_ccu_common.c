@@ -251,14 +251,22 @@ ERR:
 void mtk_ccu_ipc_log_handle(uint32_t data, uint32_t len, void *priv)
 {
 	struct mtk_ccu *ccu = priv;
+#if IS_ENABLED(CONFIG_MTK_CCU_DEBUG)
 	unsigned long flags;
+#endif
 
+	if (ccu == NULL)
+		return;
+
+#if IS_ENABLED(CONFIG_MTK_CCU_DEBUG)
 	if (data > LOG_BUF_IDX_MAX) {
 		dev_info(ccu->dev, "BUG: log buf idx %d\n", data);
 		return;
 	}
+#endif
 
 	dev_info(ccu->dev, "got APMCU_FLUSH_LOG:%d\n", data);
+#if IS_ENABLED(CONFIG_MTK_CCU_DEBUG)
 	ccu->bWaitCond = true;
 	ccu->g_LogBufIdx = (uint32_t)data;
 	local_irq_save(flags);
@@ -266,26 +274,45 @@ void mtk_ccu_ipc_log_handle(uint32_t data, uint32_t len, void *priv)
 	ccu->gtick = (uint32_t)arch_timer_read_counter();
 	local_irq_restore(flags);
 	wake_up_interruptible(&ccu->WaitQueueHead);
+#endif
 }
 
 void mtk_ccu_ipc_assert_handle(uint32_t data, uint32_t len, void *priv)
 {
 	struct mtk_ccu *ccu = priv;
 
+	if (ccu == NULL)
+		return;
+
 	dev_err(ccu->dev, "got AP_ISR_CCU_ASSERT:%d, para 0x%x\n", data, len);
+
+#if IS_ENABLED(CONFIG_MTK_CCU_DEBUG)
 	ccu->bWaitCond = true;
 	ccu->g_LogBufIdx = 0xFFFFFFFF;
 	wake_up_interruptible(&ccu->WaitQueueHead);
+#else
+	/*
+	 * SRAM log @ccu->dmem_base + MTK_CCU_SRAM_LOG_OFFSET, size MTK_CCU_SRAM_LOG_BUF_SIZE
+	 * CCU CSR @ccu->ccu_base, size MTK_CCU_REG_LOG_BUF_SIZE-MTK_CCU_EXTRA_REG_LOG_BUF_SIZE
+	 * CCU EXTRA CSR @ccu->ccu_base + MTK_CCU_EXTRA_REG_OFFSET, size MTK_CCU_EXTRA_REG_LOG_BUF_SIZE
+	 */
+#endif
 }
 
 void mtk_ccu_ipc_warning_handle(uint32_t data, uint32_t len, void *priv)
 {
 	struct mtk_ccu *ccu = priv;
 
+	if (ccu == NULL)
+		return;
+
 	dev_err(ccu->dev, "got AP_ISR_CCU_WARNING:%d\n", data);
+
+#if IS_ENABLED(CONFIG_MTK_CCU_DEBUG)
 	ccu->bWaitCond = true;
 	ccu->g_LogBufIdx = -2;
 	wake_up_interruptible(&ccu->WaitQueueHead);
+#endif
 }
 
 MODULE_DESCRIPTION("MTK CCU Rproc Driver");

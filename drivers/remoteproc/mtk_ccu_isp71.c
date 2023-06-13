@@ -222,7 +222,7 @@ alloc_with_smmu:
 	}
 
 alloc_show:
-	dev_info(dev, "success: size(%x), va(%lx), mva(%pad)\n",
+	dev_info(dev, "success: size(0x%x), va(0x%lx), mva(%pad)\n",
 		memHandle->meminfo.size, (unsigned long)memHandle->meminfo.va,
 		&memHandle->meminfo.mva);
 
@@ -264,7 +264,7 @@ static void mtk_ccu_set_log_memory_address(struct mtk_ccu *ccu)
 
 	/* sram log */
 	ccu->log_info[2].fd = meminfo->fd;
-	ccu->log_info[2].size = MTK_CCU_DRAM_LOG_BUF_SIZE;
+	ccu->log_info[2].size = MTK_CCU_SRAM_LOG_INDRAM_BUF_SIZE;
 	ccu->log_info[2].offset = offset + MTK_CCU_DRAM_LOG_BUF_SIZE * 2;
 	ccu->log_info[2].mva = ccu->log_info[1].mva + MTK_CCU_DRAM_LOG_BUF_SIZE;
 	ccu->log_info[2].va = ccu->log_info[1].va + MTK_CCU_DRAM_LOG_BUF_SIZE;
@@ -1145,7 +1145,7 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 
 	ccu->smmu_enabled = smmu_v3_enabled();
 
-	ccu->ext_buf.meminfo.size = MTK_CCU_DRAM_LOG_BUF_SIZE * 4;
+	ccu->ext_buf.meminfo.size = MTK_CCU_DRAM_LOG_DBG_BUF_SIZE;
 	ccu->ext_buf.meminfo.cached = false;
 	ret = mtk_ccu_allocate_mem(ccu->dev, &ccu->ext_buf, ccu->smmu_enabled);
 	if (ret) {
@@ -1154,6 +1154,7 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 	}
 
 	mtk_ccu_set_log_memory_address(ccu);
+
 	rproc->auto_boot = false;
 
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
