@@ -49,5 +49,6 @@ extern void vip_enqueue_task(struct rq *rq, struct task_struct *p);
 extern void vip_init(void);
 
 extern inline bool vip_fair_task(struct task_struct *p);
+extern void _init_tg_mask(struct cgroup_subsys_state *css);
 
 #endif /* _VIP_H */

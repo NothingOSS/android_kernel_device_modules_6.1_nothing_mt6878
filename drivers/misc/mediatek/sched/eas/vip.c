@@ -700,6 +700,7 @@ void __init_vip_group(struct cgroup_subsys_state *css)
 static void vip_rvh_cpu_cgroup_online(void *unused, struct cgroup_subsys_state *css)
 {
 	__init_vip_group(css);
+	_init_tg_mask(css);
 }
 
 void init_vip_group(void)

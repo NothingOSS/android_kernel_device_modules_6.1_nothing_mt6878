@@ -645,16 +645,10 @@ void _init_tg_mask(struct cgroup_subsys_state *css)
 	cpumask_copy(&sa_tg->soft_cpumask, cpu_possible_mask);
 }
 
-static void soft_affinity_rvh_cpu_cgroup_online(void *unused, struct cgroup_subsys_state *css)
-{
-	_init_tg_mask(css);
-}
-
 void init_tg_soft_affinity(void)
 {
 	struct cgroup_subsys_state *css = &root_task_group.css;
 	struct cgroup_subsys_state *top_css = css;
-	int ret;
 
 	/* init soft affinity related value to exist cgroups */
 	rcu_read_lock();
@@ -663,11 +657,7 @@ void init_tg_soft_affinity(void)
 		_init_tg_mask(css);
 	rcu_read_unlock();
 
-	/* init soft affinity related value to newly created cgroups */
-	ret = register_trace_android_rvh_cpu_cgroup_online(soft_affinity_rvh_cpu_cgroup_online,
-		NULL);
-	if (ret)
-		pr_info("register cpu_cgroup_online hooks failed, returned %d\n", ret);
+	/* init soft affinity related value to newly created cgroups in vip.c*/
 }
 
 void soft_affinity_init(void)
