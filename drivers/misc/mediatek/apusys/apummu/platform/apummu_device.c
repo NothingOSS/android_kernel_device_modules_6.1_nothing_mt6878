@@ -12,7 +12,7 @@
 
 static struct apummu_plat mt6897_drv = {
 	.slb_wait_time			= 0,
-	.is_general_SLB_support	= false,
+	.is_general_SLB_support	= true,
 };
 
 static struct apummu_plat mt6989_drv = {
