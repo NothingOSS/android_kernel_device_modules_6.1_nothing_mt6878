@@ -39,6 +39,7 @@ struct vcp_mminfra_on_off_st {
 
 extern int pwclkcnt;
 extern bool is_suspending;
+extern bool vcp_ao;
 int mmup_enable_count(void);
 void vcp_set_fp(struct vcp_status_fp *fp);
 void vcp_set_ipidev(struct mtk_ipi_device *ipidev);

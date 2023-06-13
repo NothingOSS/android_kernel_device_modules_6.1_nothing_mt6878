@@ -15,6 +15,8 @@ int pwclkcnt;
 EXPORT_SYMBOL_GPL(pwclkcnt);
 bool is_suspending;
 EXPORT_SYMBOL_GPL(is_suspending);
+bool vcp_ao;
+EXPORT_SYMBOL_GPL(vcp_ao);
 
 static int __init mtk_vcp_status_init(void)
 {
@@ -24,6 +26,9 @@ static int __init mtk_vcp_status_init(void)
 
 int mmup_enable_count(void)
 {
+	if (vcp_ao)
+		return pwclkcnt;
+
 	return ((is_suspending) ? 0 : pwclkcnt);
 }
 EXPORT_SYMBOL_GPL(mmup_enable_count);

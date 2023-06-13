@@ -139,7 +139,6 @@ phys_addr_t vcp_sec_dump_base_phys;
 phys_addr_t vcp_sec_dump_base_virt;
 phys_addr_t vcp_mem_size;
 bool vcp_hwvoter_support = true;
-bool vcp_ao;
 struct vcp_regs vcpreg;
 struct clk *vcpsel;
 struct clk *vcpclk;
