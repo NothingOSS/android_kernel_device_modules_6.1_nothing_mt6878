@@ -28,7 +28,6 @@
 #include <linux/pci.h>
 #include <linux/pci-ats.h>
 #include <linux/platform_device.h>
-#include <linux/pm.h>
 
 #include "arm-smmu-v3.h"
 #include "../../dma-iommu.h"
@@ -4269,31 +4268,6 @@ static int arm_smmu_rpm_put(struct arm_smmu_device *smmu)
 	return 0;
 }
 
-static int arm_smmu_runtime_resume(struct device *dev)
-{
-	struct arm_smmu_device *smmu = dev_get_drvdata(dev);
-
-	if (smmu && smmu->impl && smmu->impl->smmu_runtime_resume)
-		return smmu->impl->smmu_runtime_resume(dev);
-
-	return 0;
-}
-
-static int arm_smmu_runtime_suspend(struct device *dev)
-{
-	struct arm_smmu_device *smmu = dev_get_drvdata(dev);
-
-	if (smmu && smmu->impl && smmu->impl->smmu_runtime_suspend)
-		return smmu->impl->smmu_runtime_suspend(dev);
-
-	return 0;
-}
-
-static const struct dev_pm_ops arm_smmu_pm_ops = {
-	SET_RUNTIME_PM_OPS(arm_smmu_runtime_suspend,
-			   arm_smmu_runtime_resume, NULL)
-};
-
 static const struct of_device_id arm_smmu_of_match[] = {
 	{ .compatible = "arm,smmu-v3", },
 	{ },
@@ -4311,7 +4285,6 @@ static struct platform_driver arm_smmu_driver = {
 		.name			= "arm-smmu-v3",
 		.of_match_table		= arm_smmu_of_match,
 		.suppress_bind_attrs	= true,
-		.pm			= &arm_smmu_pm_ops,
 	},
 	.probe	= arm_smmu_device_probe,
 	.remove	= arm_smmu_device_remove,

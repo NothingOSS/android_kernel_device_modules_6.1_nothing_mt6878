@@ -15,9 +15,6 @@
 #include <linux/iopoll.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
-#include <linux/pm_domain.h>
-#include <linux/pm_runtime.h>
-#include <linux/slab.h>
 
 #include <asm/barrier.h>
 #include <asm/ptrace.h>
@@ -2231,12 +2228,7 @@ out_put_node:
 static int mtk_smmu_data_init(struct mtk_smmu_data *data)
 {
 	const struct mtk_smmu_plat_data *plat_data;
-	struct component_match *match = NULL;
 	struct device *dev = data->smmu.dev;
-	struct platform_device *plarbdev;
-	struct device_node *larbnode;
-	int larb_nr;
-	int i, ret;
 
 	mutex_init(&data->group_mutexs);
 	spin_lock_init(&data->pmu_lock);
@@ -2254,57 +2246,6 @@ static int mtk_smmu_data_init(struct mtk_smmu_data *data)
 
 	mtk_smmu_config_translation(data);
 
-	if (data->plat_data->smmu_type != MM_SMMU ||
-	    MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_EN_PRE)) {
-		dev_info(dev, "skip smi\n");
-		goto skip_smi;
-	}
-	larb_nr = of_count_phandle_with_args(dev->of_node,
-					     "mediatek,larbs", NULL);
-	if (larb_nr < 0) {
-		dev_err(dev, "%s, can't find mediatek,larbs !\n", __func__);
-		return larb_nr;
-	}
-
-	for (i = 0; i < larb_nr; i++) {
-		u32 id;
-
-		larbnode = of_parse_phandle(dev->of_node, "mediatek,larbs", i);
-		if (!larbnode) {
-			dev_err(dev, "%s, can't find larbnode:%d !\n", __func__, i);
-			return -EINVAL;
-		}
-
-		if (!of_device_is_available(larbnode)) {
-			of_node_put(larbnode);
-			continue;
-		}
-
-		ret = of_property_read_u32(larbnode, "mediatek,larb-id", &id);
-		if (ret)/* The id is consecutive if there is no this property */
-			id = i;
-
-		plarbdev = of_find_device_by_node(larbnode);
-		if (!plarbdev) {
-			dev_err(dev, "%s, can't find larb dev:%d !\n", __func__, i);
-			of_node_put(larbnode);
-			return -EPROBE_DEFER;
-		}
-		data->larb_imu[id].dev = &plarbdev->dev;
-
-		component_match_add_release(dev, &match, smmu_release_of,
-					    smmu_compare_of, larbnode);
-	}
-
-skip_smi:
-	if (data->plat_data->smmu_type == MM_SMMU &&
-	    !MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_EN_PRE)) {
-		ret = component_master_add_with_match(dev, &mtk_iommu_com_ops,
-						      match);
-		if (ret)
-			goto out_link_remove;
-	}
-
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 	if (data->plat_data->smmu_type == MM_SMMU) {
 		if (register_dbg_notifier != 1) {
@@ -2320,13 +2261,7 @@ skip_smi:
 
 	data->hw_init_flag = 0;
 
-	dev_info(dev, "%s done: %d\n", __func__, ret);
-	return ret;
-
-out_link_remove:
-	pm_runtime_disable(dev);
-
-	return ret;
+	return 0;
 }
 
 static struct arm_smmu_device *mtk_smmu_create(struct arm_smmu_device *smmu,
@@ -2370,29 +2305,26 @@ struct arm_smmu_device *mtk_smmu_v3_impl_init(struct arm_smmu_device *smmu)
 static const struct mtk_smmu_plat_data mt6989_data_mm = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= MM_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN |
-				  SMMU_HYP_EN,
+	.flags			= SMMU_DELAY_HW_INIT | SMMU_SEC_EN | SMMU_HYP_EN,
 };
 
 static const struct mtk_smmu_plat_data mt6989_data_apu = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= APU_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_SEC_EN |
-				  SMMU_HYP_EN | SMMU_SKIP_SHUTDOWN,
+	.flags			= SMMU_DELAY_HW_INIT | SMMU_SEC_EN | SMMU_HYP_EN |
+				  SMMU_SKIP_SHUTDOWN,
 };
 
 static const struct mtk_smmu_plat_data mt6989_data_soc = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= SOC_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_SEC_EN | SMMU_CLK_AO_EN |
-				  SMMU_HYP_EN,
+	.flags			= SMMU_SEC_EN | SMMU_CLK_AO_EN | SMMU_HYP_EN,
 };
 
 static const struct mtk_smmu_plat_data mt6989_data_gpu = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= GPU_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_HYP_EN |
-				  SMMU_DIS_CPU_PARTID,
+	.flags			= SMMU_DELAY_HW_INIT | SMMU_HYP_EN | SMMU_DIS_CPU_PARTID,
 };
 
 static const struct mtk_smmu_plat_data *of_device_get_plat_data(struct device *dev)
