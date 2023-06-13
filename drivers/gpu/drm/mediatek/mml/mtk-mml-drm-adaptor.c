@@ -215,7 +215,19 @@ void mml_drm_try_frame(struct mml_drm_ctx *ctx, struct mml_frame_info *info)
 	if (info->dest[0].pq_config.en_region_pq)
 		mml_adjust_src(&info->seg_map);
 
-	for (i = 0; i < info->dest_cnt; i++) {
+	if (info->mode == MML_MODE_DIRECT_LINK) {
+		struct mml_frame_dest *dest = &info->dest[0];
+
+		if (dest->data.width != dest->compose.width && dest->compose.width)
+			dest->data.width = dest->compose.width;
+		if (dest->data.height != dest->compose.height && dest->compose.height)
+			dest->data.height = dest->compose.height;
+		i = 1;
+	} else {
+		i = 0;
+	}
+
+	for (; i < info->dest_cnt; i++) {
 		/* adjust info data directly for user */
 		mml_adjust_dest(&info->src, &info->dest[i]);
 	}
@@ -223,7 +235,6 @@ void mml_drm_try_frame(struct mml_drm_ctx *ctx, struct mml_frame_info *info)
 	if ((MML_FMT_PLANE(info->src.format) > 1) && info->src.uv_stride <= 0)
 		info->src.uv_stride = mml_color_get_min_uv_stride(
 			info->src.format, info->src.width);
-
 }
 EXPORT_SYMBOL_GPL(mml_drm_try_frame);
 
