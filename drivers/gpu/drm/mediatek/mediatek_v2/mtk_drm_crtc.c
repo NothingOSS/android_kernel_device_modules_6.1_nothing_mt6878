@@ -149,8 +149,10 @@ static bool g_ccorr_linear;
 #define ALIGN_TO_32(x) ALIGN_TO(x, 32)
 
 #define DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL 0x308
-#define DISP_REG_CONFIG_BYPASS_MUX_SHADOW 0xf00
+#define DISP_REG_CONFIG_MMSYS_BYPASS_MUX_SHADOW 0xc30
 #define DISP_REG_CONFIG_OVLSYS_GCE_EVENT_SEL 0x308
+#define DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW 0xf00
+#define DISP_REG_CONFIG_OVLSYS_CB_BYPASS_MUX_SHADOW 0xf0c
 
 #define DISP_MUTEX0_EN 0xA0
 #define DISP_MUTEX0_CTL 0xAc
@@ -9564,7 +9566,7 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 
 		/*Set BYPASS_MUX_SHADOW*/
 		writel(0x1, mtk_crtc->config_regs +
-				DISP_REG_CONFIG_BYPASS_MUX_SHADOW);
+				DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW);
 
 		if (mtk_crtc->side_config_regs) {
 			writel(0x3, mtk_crtc->side_config_regs +
@@ -9572,7 +9574,7 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 
 			/*Set BYPASS_MUX_SHADOW*/
 			writel(0x1, mtk_crtc->side_config_regs +
-					DISP_REG_CONFIG_BYPASS_MUX_SHADOW);
+					DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW);
 		}
 	} else if (priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6897 ||
@@ -10922,9 +10924,46 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 			__get_golden_setting_context(mtk_crtc);
 
 #ifndef DRM_CMDQ_DISABLE
-	if (priv->data->mmsys_id == MMSYS_MT6983 ||
-		priv->data->mmsys_id == MMSYS_MT6985 ||
-		priv->data->mmsys_id == MMSYS_MT6989 ||
+	if (priv->data->mmsys_id == MMSYS_MT6985 ||
+		priv->data->mmsys_id == MMSYS_MT6989 ) {
+		/*Set EVENT_GCED_EN EVENT_GCEM_EN*/
+		writel(0x3, mtk_crtc->config_regs +
+				DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL);
+
+		/*Set BYPASS_MUX_SHADOW*/
+		writel(0xff0001, mtk_crtc->config_regs +
+				DISP_REG_CONFIG_MMSYS_BYPASS_MUX_SHADOW);
+
+		if (mtk_crtc->side_config_regs) {
+			writel(0x3, mtk_crtc->side_config_regs +
+					DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL);
+
+			/*Set BYPASS_MUX_SHADOW*/
+			writel(0xff0001, mtk_crtc->side_config_regs +
+					DISP_REG_CONFIG_MMSYS_BYPASS_MUX_SHADOW);
+		}
+
+		/*Set EVENT_GCED_EN EVENT_GCEM_EN <OVLSYS>*/
+		writel(0x3, mtk_crtc->ovlsys0_regs +
+				DISP_REG_CONFIG_OVLSYS_GCE_EVENT_SEL);
+
+		/*Set BYPASS_MUX_SHADOW*/
+		writel(0x1, mtk_crtc->ovlsys0_regs +
+				DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW);
+		writel(0x1fe0000, mtk_crtc->ovlsys0_regs +
+				DISP_REG_CONFIG_OVLSYS_CB_BYPASS_MUX_SHADOW);
+
+		if (mtk_crtc->ovlsys1_regs) {
+			writel(0x3, mtk_crtc->ovlsys1_regs +
+					DISP_REG_CONFIG_OVLSYS_GCE_EVENT_SEL);
+
+			/*Set BYPASS_MUX_SHADOW*/
+			writel(0x1, mtk_crtc->ovlsys1_regs +
+					DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW);
+			writel(0x1fe0000, mtk_crtc->ovlsys1_regs +
+					DISP_REG_CONFIG_OVLSYS_CB_BYPASS_MUX_SHADOW);
+		}
+	} else if (priv->data->mmsys_id == MMSYS_MT6983 ||
 		priv->data->mmsys_id == MMSYS_MT6897 ||
 		priv->data->mmsys_id == MMSYS_MT6879 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
@@ -10937,7 +10976,7 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 
 		/*Set BYPASS_MUX_SHADOW*/
 		writel(0x1, mtk_crtc->config_regs +
-				DISP_REG_CONFIG_BYPASS_MUX_SHADOW);
+				DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW);
 
 		if (mtk_crtc->side_config_regs) {
 			writel(0x3, mtk_crtc->side_config_regs +
@@ -10945,19 +10984,17 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 
 			/*Set BYPASS_MUX_SHADOW*/
 			writel(0x1, mtk_crtc->side_config_regs +
-					DISP_REG_CONFIG_BYPASS_MUX_SHADOW);
+					DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW);
 		}
 
-		if (priv->data->mmsys_id == MMSYS_MT6985 ||
-			priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6897) {
+		if (priv->data->mmsys_id == MMSYS_MT6897) {
 			/*Set EVENT_GCED_EN EVENT_GCEM_EN <OVLSYS>*/
 			writel(0x3, mtk_crtc->ovlsys0_regs +
 					DISP_REG_CONFIG_OVLSYS_GCE_EVENT_SEL);
 
 			/*Set BYPASS_MUX_SHADOW*/
 			writel(0x1, mtk_crtc->ovlsys0_regs +
-					DISP_REG_CONFIG_BYPASS_MUX_SHADOW);
+					DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW);
 
 			if (mtk_crtc->ovlsys1_regs) {
 				writel(0x3, mtk_crtc->ovlsys1_regs +
@@ -10965,7 +11002,7 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 
 				/*Set BYPASS_MUX_SHADOW*/
 				writel(0x1, mtk_crtc->ovlsys1_regs +
-						DISP_REG_CONFIG_BYPASS_MUX_SHADOW);
+						DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW);
 			}
 		}
 	}
