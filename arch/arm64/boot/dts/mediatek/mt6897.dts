@@ -15719,7 +15719,7 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 			interrupts-extended = <&mtk_gauge MT6375_IRQ_FG_CUR_H>,
 					      <&mtk_gauge MT6375_IRQ_FG_CUR_L>;
 			interrupt-names = "fg_cur_h", "fg_cur_l";
-			oc-thd-h = <6000 7000 8000>;
+			oc-thd = <6000 7000 8000>;
 		};
 	};
 };
