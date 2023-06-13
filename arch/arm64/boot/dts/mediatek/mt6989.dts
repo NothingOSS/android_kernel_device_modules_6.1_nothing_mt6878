@@ -1658,7 +1658,7 @@
 		ch-offset-dma = <0x80>;
 		scl-gpio-id = <176>;
 		sda-gpio-id = <177>;
-		scp-wake = <0x1c00c900 0x2 0x1>;
+		scp-wake = <0x1c00c900 0x1 0x1>;
 		sleep-reg-offset = <0x2c>;
 		sleep-stat-offset = <0x30>;
 		scp-awake = <0x1>;
