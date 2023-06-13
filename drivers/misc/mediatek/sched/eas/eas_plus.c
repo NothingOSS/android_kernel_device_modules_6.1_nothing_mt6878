@@ -451,11 +451,9 @@ int init_sram_info(void)
 void mtk_tick_entry(void *data, struct rq *rq)
 {
 
-	void __iomem *base = sram_base_addr;
 	struct em_perf_domain *pd;
-	int this_cpu = cpu_of(rq), gear_id, opp_idx, offset;
+	int this_cpu = cpu_of(rq), gear_id;
 	unsigned int freq_thermal;
-	int opp_ceiling;
 	bool sbb_trigger;
 	u64 idle_time, wall_time, cpu_utilize;
 	struct sbb_cpu_data *sbb_data = per_cpu(sbb, rq->cpu);
@@ -514,17 +512,8 @@ void mtk_tick_entry(void *data, struct rq *rq)
 		return;
 
 	gear_id = pd_get_cpu_gear_id(this_cpu);
-	offset = gear_id << 2;
 	irq_log_store();
-	opp_ceiling = ioread32(base + offset);
-	if ((opp_ceiling < 0) || (opp_ceiling > pd->nr_perf_states - 1)) {
-		pr_info("ERROR: invalid value from thermal, cpu = %d, opp_ceiling = %d, nr_perf_states = %d\n",
-			this_cpu, opp_ceiling, pd->nr_perf_states);
-		WARN_ON(1);
-	}
-	opp_idx = pd->nr_perf_states - opp_ceiling - 1;
-	freq_thermal = pd->table[opp_idx].frequency;
-
+	freq_thermal = get_cpu_ceiling_freq (gear_id);
 	arch_update_thermal_pressure(to_cpumask(pd->cpus), freq_thermal);
 
 	trace_sched_frequency_limits(this_cpu, freq_thermal);
