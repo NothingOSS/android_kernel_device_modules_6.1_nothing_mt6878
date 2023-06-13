@@ -10,6 +10,9 @@
 
 #include "inc/mt6989.h"
 #include "inc/mt6989_debug.h"
+#if UARTHUB_SUPPORT_DVT
+#include "ut/mt6989_ut_test.h"
+#endif
 
 #include <linux/clk.h>
 #include <linux/ctype.h>
@@ -97,7 +100,7 @@ static int uarthub_univpll_clk_init(struct platform_device *pdev);
 static int uarthub_univpll_clk_exit(void);
 #endif
 
-#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA) || (UARTHUB_SUPPORT_DVT)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 static int uarthub_sspm_irq_clear_ctrl_mt6989(int irq_type);
 static int uarthub_sspm_irq_get_sta_mt6989(void);
 static int uarthub_sspm_irq_mask_ctrl_mt6989(int irq_type, int is_mask);
@@ -106,7 +109,9 @@ static int uarthub_sspm_irq_mask_ctrl_mt6989(int irq_type, int is_mask);
 struct uarthub_ops_struct mt6989_plat_data = {
 	.core_ops = &mt6989_plat_core_data,
 	.debug_ops = &mt6989_plat_debug_data,
+#if UARTHUB_SUPPORT_DVT
 	.ut_test_ops = &mt6989_plat_ut_test_data,
+#endif
 };
 
 struct uarthub_core_ops_struct mt6989_plat_core_data = {
@@ -149,7 +154,7 @@ struct uarthub_core_ops_struct mt6989_plat_core_data = {
 	.uarthub_plat_get_spm_sys_timer = uarthub_get_spm_sys_timer_mt6989,
 #endif
 
-#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA) || (UARTHUB_SUPPORT_DVT)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 	.uarthub_plat_sspm_irq_clear_ctrl = uarthub_sspm_irq_clear_ctrl_mt6989,
 	.uarthub_plat_sspm_irq_get_sta = uarthub_sspm_irq_get_sta_mt6989,
 	.uarthub_plat_sspm_irq_mask_ctrl = uarthub_sspm_irq_mask_ctrl_mt6989,
@@ -326,7 +331,7 @@ int uarthub_irq_clear_ctrl_mt6989(int irq_type)
 	return 0;
 }
 
-#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA) || (UARTHUB_SUPPORT_DVT)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 int uarthub_sspm_irq_clear_ctrl_mt6989(int irq_type)
 {
 	UARTHUB_SET_BIT(IRQ_CLR_ADDR, irq_type);
@@ -334,7 +339,7 @@ int uarthub_sspm_irq_clear_ctrl_mt6989(int irq_type)
 }
 #endif
 
-#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA) || (UARTHUB_SUPPORT_DVT)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 int uarthub_sspm_irq_get_sta_mt6989(void)
 {
 	int mask = 0;
@@ -347,7 +352,7 @@ int uarthub_sspm_irq_get_sta_mt6989(void)
 }
 #endif
 
-#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA) || (UARTHUB_SUPPORT_DVT)
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
 int uarthub_sspm_irq_mask_ctrl_mt6989(int irq_type, int is_mask)
 {
 	int mask = 0;

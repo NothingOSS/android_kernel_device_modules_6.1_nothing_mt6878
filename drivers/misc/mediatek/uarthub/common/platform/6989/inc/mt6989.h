@@ -11,26 +11,12 @@
 #define UARTHUB_SUPPORT_FPGA           0
 #define UARTHUB_SUPPORT_DVT            0
 #define SPM_RES_CHK_EN                 1
-
-#if (UARTHUB_SUPPORT_FPGA) || (UARTHUB_SUPPORT_DVT)
-#define UARTHUB_SUPPORT_UT_CASE        1
-#else
-#define UARTHUB_SUPPORT_UT_CASE        0
-#endif
-
-#if UARTHUB_SUPPORT_UT_CASE
-#define UARTHUB_SUPPORT_UT_API         1
-#else
-#define UARTHUB_SUPPORT_UT_API         0
-#endif
-
 #define SSPM_DRIVER_EN                 1
 #define UNIVPLL_CTRL_EN                1
 #define MD_CHANNEL_EN                  1
 
 #include "INTFHUB_c_header.h"
 #include "UARTHUB_UART0_c_header.h"
-
 #include "common_def_id.h"
 #include "platform_def_id.h"
 
@@ -65,7 +51,9 @@ extern void __iomem *apuart_base_map[4];
 
 extern struct uarthub_core_ops_struct mt6989_plat_core_data;
 extern struct uarthub_debug_ops_struct mt6989_plat_debug_data;
+#if UARTHUB_SUPPORT_DVT
 extern struct uarthub_ut_test_ops_struct mt6989_plat_ut_test_data;
+#endif
 
 #define UARTHUB_CMM_BASE_ADDR      0x11005000
 #define UARTHUB_DEV_0_BASE_ADDR    0x11005100
@@ -129,62 +117,8 @@ int uarthub_dump_debug_apdma_uart_info_mt6989(const char *tag);
 int uarthub_dump_sspm_log_mt6989(const char *tag);
 int uarthub_trigger_fpga_testing_mt6989(int type);
 int uarthub_trigger_dvt_testing_mt6989(int type);
-#if UARTHUB_SUPPORT_UT_API
+#if UARTHUB_SUPPORT_DVT
 int uarthub_verify_combo_connect_sta_mt6989(int type, int rx_delay_ms);
-#endif
-
-/* UT Test API */
-int uarthub_is_ut_testing_mt6989(void);
-#if UARTHUB_SUPPORT_UT_API
-int uarthub_is_host_uarthub_ready_state_mt6989(int dev_index);
-int uarthub_get_host_irq_sta_mt6989(int dev_index);
-int uarthub_get_intfhub_active_sta_mt6989(void);
-int uarthub_clear_host_irq_mt6989(int dev_index, int irq_type);
-int uarthub_mask_host_irq_mt6989(int dev_index, int irq_type, int is_mask);
-int uarthub_config_host_irq_ctrl_mt6989(int dev_index, int enable);
-int uarthub_get_host_rx_fifo_size_mt6989(int dev_index);
-int uarthub_get_cmm_rx_fifo_size_mt6989(void);
-int uarthub_config_uartip_dma_en_ctrl_mt6989(int dev_index, enum uarthub_trx_type trx, int enable);
-int uarthub_reset_fifo_trx_mt6989(void);
-int uarthub_reset_intfhub_mt6989(void);
-int uarthub_uartip_write_data_to_tx_buf_mt6989(int dev_index, int tx_data);
-int uarthub_uartip_read_data_from_rx_buf_mt6989(int dev_index);
-int uarthub_is_uartip_tx_buf_empty_for_write_mt6989(int dev_index);
-int uarthub_is_uartip_rx_buf_ready_for_read_mt6989(int dev_index);
-int uarthub_is_uartip_throw_xoff_mt6989(int dev_index);
-int uarthub_config_uartip_rx_fifo_trig_thr_mt6989(int dev_index, int size);
-int uarthub_uartip_write_tx_data_mt6989(int dev_index, unsigned char *p_tx_data, int tx_len);
-int uarthub_uartip_read_rx_data_mt6989(
-	int dev_index, unsigned char *p_rx_data, int rx_len, int *p_recv_rx_len);
-int uarthub_is_apuart_tx_buf_empty_for_write_mt6989(int port_no);
-int uarthub_is_apuart_rx_buf_ready_for_read_mt6989(int port_no);
-int uarthub_apuart_write_data_to_tx_buf_mt6989(int port_no, int tx_data);
-int uarthub_apuart_read_data_from_rx_buf_mt6989(int port_no);
-int uarthub_apuart_write_tx_data_mt6989(int port_no, unsigned char *p_tx_data, int tx_len);
-int uarthub_apuart_read_rx_data_mt6989(
-	int port_no, unsigned char *p_rx_data, int rx_len, int *p_recv_rx_len);
-int uarthub_init_default_apuart_config_mt6989(void);
-int uarthub_clear_all_ut_irq_sta_mt6989(void);
-enum uarthub_pkt_fmt_type uarthub_check_packet_format(int dev_index, unsigned char byte1);
-int uarthub_check_packet_is_complete(int dev_index, unsigned char *pData, int length);
-int uarthub_get_crc(unsigned char *pData, int length, unsigned char *pData_CRC);
-int uarthub_uartip_send_data_internal_mt6989(
-	int dev_index, unsigned char *p_tx_data, int tx_len, int dump_trxlog);
-#endif
-
-/* UT Test API for IP level test */
-#if UARTHUB_SUPPORT_UT_CASE
-int uarthub_ut_ip_timeout_init_fsm_ctrl_mt6989(void);
-int uarthub_ut_ip_clear_rx_data_irq_mt6989(void);
-int uarthub_ut_ip_host_tx_packet_loopback_mt6989(void);
-int uarthub_ut_ip_verify_debug_monitor_packet_info_mode_mt6989(void);
-int uarthub_ut_ip_verify_debug_monitor_check_data_mode_mt6989(void);
-int uarthub_ut_ip_verify_debug_monitor_crc_result_mode_mt6989(void);
-#endif
-
-#if UARTHUB_SUPPORT_UT_API
-int uarthub_verify_cmm_loopback_sta_mt6989(void);
-int uarthub_verify_cmm_trx_connsys_sta_mt6989(int rx_delay_ms);
 #endif
 
 #endif /* MT6989_H */

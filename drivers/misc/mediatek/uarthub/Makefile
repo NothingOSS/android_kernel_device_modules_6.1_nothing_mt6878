@@ -15,6 +15,8 @@
 # If KERNELRELEASE is defined, we've been invoked from the
 # kernel build system and can use its language.
 
+BUILD_UT := n
+
 ifneq ($(KERNELRELEASE),)
     subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/
     subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat
@@ -39,8 +41,12 @@ endif
 ifneq ($(wildcard $(PATH_TO_UARTHUB_DRV)/common/platform/6989/mt6989.c),)
     $(MODULE_NAME)-objs += common/platform/6989/mt6989.o
     $(MODULE_NAME)-objs += common/platform/6989/mt6989_debug.o
-    $(MODULE_NAME)-objs += common/platform/6989/mt6989_ut_test.o
-    $(MODULE_NAME)-objs += common/platform/6989/mt6989_ut_test_for_ip.o
+ifneq ($(BUILD_UT), n)
+    $(MODULE_NAME)-objs += common/platform/6989/ut/mt6989_ut_test.o
+    $(MODULE_NAME)-objs += common/platform/6989/ut/mt6989_ut_test_for_ip.o
+    $(MODULE_NAME)-objs += common/platform/6989/ut/mt6989_ut_dat.o
+    $(MODULE_NAME)-objs += common/platform/6989/ut/ut_util.o
+endif
 endif
 
 # Otherwise we were called directly from the command line;

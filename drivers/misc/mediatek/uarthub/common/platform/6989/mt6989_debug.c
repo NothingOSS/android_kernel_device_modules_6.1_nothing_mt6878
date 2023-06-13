@@ -3,15 +3,16 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 #include <linux/kernel.h>
+#include <linux/regmap.h>
 
 #include "uarthub_drv_core.h"
 #include "uarthub_drv_export.h"
 #include "common_def_id.h"
-
 #include "inc/mt6989.h"
 #include "inc/mt6989_debug.h"
-
-#include <linux/regmap.h>
+#if UARTHUB_SUPPORT_DVT
+#include "ut/mt6989_ut_test.h"
+#endif
 
 static int g_enable_apuart_debug_info;
 
@@ -53,8 +54,7 @@ struct uarthub_debug_ops_struct mt6989_plat_debug_data = {
 	.uarthub_plat_dump_sspm_log = uarthub_dump_sspm_log_mt6989,
 	.uarthub_plat_trigger_fpga_testing = uarthub_trigger_fpga_testing_mt6989,
 	.uarthub_plat_trigger_dvt_testing = uarthub_trigger_dvt_testing_mt6989,
-
-#if UARTHUB_SUPPORT_UT_API
+#if UARTHUB_SUPPORT_DVT
 	.uarthub_plat_verify_combo_connect_sta = uarthub_verify_combo_connect_sta_mt6989,
 #endif
 };
@@ -338,6 +338,7 @@ int uarthub_dump_uartip_debug_info_mt6989(
 	UARTHUB_DEBUG_PRINT_ESCAPE_DAT(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_FCR_RD(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_MCR(def_tag, tag, print_ap, 0);
+	UARTHUB_DEBUG_PRINT_TX_OFFSET_DMA(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_LSR(def_tag, tag, print_ap, 1);
 
 	if (uartip_lock)
@@ -1538,42 +1539,39 @@ int uarthub_trigger_fpga_testing_mt6989(int type)
 	return 0;
 }
 
+/* Entry : dvt test (mt6989)*/
 int uarthub_trigger_dvt_testing_mt6989(int type)
 {
 #if UARTHUB_SUPPORT_DVT
 	int state = 0;
 
+	int (*dvt_func[])(void) = {
+		uarthub_ut_ip_help_info_mt6989,
+		uarthub_ut_ip_host_tx_packet_loopback_mt6989,
+		uarthub_ut_ip_timeout_init_fsm_ctrl_mt6989,
+		uarthub_ut_ip_clear_rx_data_irq_mt6989,
+		uarthub_ut_ip_verify_debug_monitor_packet_info_mode_mt6989,
+		uarthub_ut_ip_verify_debug_monitor_check_data_mode_mt6989,
+		uarthub_ut_ip_verify_debug_monitor_crc_result_mode_mt6989
+	};
+	const char * const func_name[] = {
+		"help info",
+		"host_tx_packet_loopback",
+		"timeout_init_fsm_ctrl",
+		"clear_rx_data_irq",
+		"verify_debug_monitor_packet_info_mode",
+		"verify_debug_monitor_check_data_mode",
+		"verify_debug_monitor_crc_result_mode"
+	};
 	pr_info("[%s] DVT type=[%d]\n", __func__, type);
 
-	pr_info("[DVT_1] host_tx_packet_loopback\n");
-	state = uarthub_ut_ip_host_tx_packet_loopback_mt6989();
-	pr_info("[DVT_1] RESULT=[%s], state=[%d]\n",
-		((state == 0) ? "PASS" : "FAIL"), state);
-
-	pr_info("[DVT_2] timeout_init_fsm_ctrl\n");
-	state = uarthub_ut_ip_timeout_init_fsm_ctrl_mt6989();
-	pr_info("[DVT_2] RESULT=[%s], state=[%d]\n",
-		((state == 0) ? "PASS" : "FAIL"), state);
-
-	pr_info("[DVT_3] clear_rx_data_irq\n");
-	state = uarthub_ut_ip_clear_rx_data_irq_mt6989();
-	pr_info("[DVT_3] RESULT=[%s], state=[%d]\n",
-		((state == 0) ? "PASS" : "FAIL"), state);
-
-	pr_info("[DVT_4] verify_debug_monitor_packet_info_mode\n");
-	state = uarthub_ut_ip_verify_debug_monitor_packet_info_mode_mt6989();
-	pr_info("[DVT_4] RESULT=[%s], state=[%d]\n",
-		((state == 0) ? "PASS" : "FAIL"), state);
-
-	pr_info("[DVT_5] verify_debug_monitor_check_data_mode\n");
-	state = uarthub_ut_ip_verify_debug_monitor_check_data_mode_mt6989();
-	pr_info("[DVT_5] RESULT=[%s], state=[%d]\n",
-		((state == 0) ? "PASS" : "FAIL"), state);
-
-	pr_info("[DVT_6] verify_debug_monitor_crc_result_mode\n");
-	state = uarthub_ut_ip_verify_debug_monitor_crc_result_mode_mt6989();
-	pr_info("[DVT_6] RESULT=[%s], state=[%d]\n",
-		((state == 0) ? "PASS" : "FAIL"), state);
+	if (type < 0 || type >= sizeof(func_name)) {
+		pr_info("[%s] Unkonwn type\n", __func__);
+		return 0;
+	}
+	state = dvt_func[type]();
+	pr_info("[DVT_%d] %s: RESULT=[%s], state=[%d]\n",
+		type, func_name[type], ((state) ? "FAIL" : "PASS"), state);
 
 #else
 	pr_info("[%s] NOT support DVT\n", __func__);
@@ -1581,7 +1579,7 @@ int uarthub_trigger_dvt_testing_mt6989(int type)
 	return 0;
 }
 
-#if UARTHUB_SUPPORT_UT_API
+#if UARTHUB_SUPPORT_DVT
 int uarthub_verify_combo_connect_sta_mt6989(int type, int rx_delay_ms)
 {
 	int state = -1;

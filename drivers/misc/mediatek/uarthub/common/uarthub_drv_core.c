@@ -128,9 +128,11 @@ static int mtk_uarthub_probe(struct platform_device *pdev)
 		if (g_plat_ic_core_ops->uarthub_plat_init_remap_reg)
 			g_plat_ic_core_ops->uarthub_plat_init_remap_reg();
 
-		if (g_plat_ic_ut_test_ops &&
-				g_plat_ic_ut_test_ops->uarthub_plat_is_ut_testing)
+		if (g_plat_ic_ut_test_ops && g_plat_ic_ut_test_ops->uarthub_plat_is_ut_testing) {
 			g_is_ut_testing = g_plat_ic_ut_test_ops->uarthub_plat_is_ut_testing();
+			if (g_is_ut_testing)
+				pr_info("[%s] ut_testing is enabled.\n", __func__);
+		}
 	}
 
 	atomic_set(&g_uarthub_probe_called, 1);
