@@ -183,7 +183,7 @@ void disp_plat_dbg_init(void)
 	int err;
 	struct disp_plat_dbg_scmi_data scmi_data;
 
-	DDPMSG("addr=0x%x, size=0x%x, %s\n", g_disp_plat_dbg_addr, g_disp_plat_dbg_size, __func__);
+	DDPMSG("%s:addr=0x%x,size=0x%x\n", __func__, g_disp_plat_dbg_addr, g_disp_plat_dbg_size);
 
 	if ((g_disp_plat_dbg_addr > 0) && (g_disp_plat_dbg_size > 0)) {
 		if (!tinfo) {
@@ -193,8 +193,13 @@ void disp_plat_dbg_init(void)
 				DDPMSG("%s: tinfo or tinfo->ph is wrong!!\n", __func__);
 				tinfo = NULL;
 				} else {
-					of_property_read_u32(tinfo->sdev->dev.of_node,
-						"scmi_dispplatdbg", &feature_id);
+					err = of_property_read_u32(tinfo->sdev->dev.of_node,
+						"scmi-dispplatdbg", &feature_id);
+					if (err) {
+						DDPMSG("get scmi-dispplatdbg fail\n");
+						return;
+					}
+
 					DDPMSG("%s: get scmi_smi succeed id=%d!!\n",
 						__func__, feature_id);
 
