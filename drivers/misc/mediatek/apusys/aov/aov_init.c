@@ -577,7 +577,7 @@ static int apusys_aov_probe(struct platform_device *pdev)
 	if (!ctx)
 		return -ENOMEM;
 
-	atomic_set(&ctx->aov_enabled, 1); // 1 for DEBUG! default is 0
+	atomic_set(&ctx->aov_enabled, 0);
 	atomic_set(&ctx->response_arrived, 0);
 	mutex_init(&ctx->scp_ipi_lock);
 

@@ -91,24 +91,22 @@ static int query_aov_reserved_iova(enum npu_scp_mem_service_action act, uint64_t
 				pr_info("%s Failed to get smmu\n", __func__);
 				return -ENODEV;
 			}
-			pr_info("%s smmu_domain %p, base 0x%x, pa 0x%llx, size %d\n", __func__,
-				smmu_domain, base, pa, size - ctrl_size);
 			iommu_map(smmu_domain, base, pa, size - ctrl_size, IOMMU_READ|IOMMU_WRITE);
 			*iova = base;
-			pr_info("%s data iova = %x (smmu)\n", __func__, base);
+			pr_debug("%s data iova = %x (smmu)\n", __func__, base);
 		} else {
 			arm_smccc_smc(MTK_SIP_APUSYS_CONTROL,
 				MTK_APUSYS_KERNEL_OP_APUSYS_AOVDRAM_DATA_IOVA,
 				0, 0, 0, 0, 0, 0, &res);
 			*iova = res.a1;
-			pr_info("%s data iova = %lx (non-smmu)\n", __func__, res.a1);
+			pr_debug("%s data iova = %lx (non-smmu)\n", __func__, res.a1);
 		}
 	} else if (act == NPU_SCP_QUERY_DRAM_CTRL_DEVADDR) {
 		arm_smccc_smc(MTK_SIP_APUSYS_CONTROL,
 			MTK_APUSYS_KERNEL_OP_APUSYS_AOVDRAM_CTRL_IOVA,
 			0, 0, 0, 0, 0, 0, &res);
 		*iova = res.a1;
-		pr_info("%s ctrl iova = %lx\n", __func__, res.a1);
+		pr_debug("%s ctrl iova = %lx\n", __func__, res.a1);
 	} else
 		return -EINVAL;
 
@@ -215,9 +213,6 @@ static int service_worker_func(void *data)
 		ctx->received_act = 0;
 		spin_unlock_irqrestore(&ctx->lock, flags);
 
-		pr_info("%s get action %d pa 0x%llx\n", __func__,
-			received_act, received_pa); //should delete
-
 		ret = query_aov_reserved_mblock(received_act, &mem_pa, &mem_size);
 		if (ret) {
 			pr_info("%s Failed to query AOV reserved memory\n", __func__);
@@ -238,8 +233,6 @@ static int service_worker_func(void *data)
 		case NPU_SCP_QUERY_DRAM_DATA_DEVADDR:
 			if (received_pa < mem_pa || received_pa > mem_pa + mem_size) {
 				pr_info("%s received pa is out of range\n", __func__);
-				pr_info("%s received pa 0x%llx, start 0x%llx, size 0x%lx\n",
-					__func__, received_pa, mem_pa, mem_size); // should delete
 				ret = -EINVAL;
 				break;
 			}
@@ -248,15 +241,10 @@ static int service_worker_func(void *data)
 			send_msg.act = NPU_SCP_SEND_DRAM_DATA_DEVADDR;
 			send_msg.arg = (uint32_t)(send_dev_addr >> 32);
 			send_msg.ret = (uint32_t)send_dev_addr;
-			pr_info("%s sent iova 0x%llx, arg 0x%x, ret 0x%x\n",
-				__func__, send_dev_addr, send_msg.arg,
-				send_msg.ret); // should delete
 			break;
 		case NPU_SCP_QUERY_DRAM_CTRL_DEVADDR:
 			if (received_pa < mem_pa || received_pa > mem_pa + mem_size) {
 				pr_info("%s received pa is out of range\n", __func__);
-				pr_info("%s received pa 0x%llx, start 0x%llx, size 0x%lx\n",
-					__func__, received_pa, mem_pa, mem_size); // should delete
 				ret = -EINVAL;
 				break;
 			}
@@ -265,9 +253,6 @@ static int service_worker_func(void *data)
 			send_msg.act = NPU_SCP_SEND_DRAM_CTRL_DEVADDR;
 			send_msg.arg = (uint32_t)(send_dev_addr >> 32);
 			send_msg.ret = (uint32_t)send_dev_addr;
-			pr_info("%s sent iova 0x%llx, arg 0x%x, ret 0x%x\n",
-				__func__, send_dev_addr, send_msg.arg,
-				send_msg.ret); // should delete
 			break;
 		default:
 			pr_info("%s Unknown action %d\n", __func__, received_act);
@@ -320,8 +305,6 @@ static int mem_service_handler(struct npu_scp_ipi_param *recv_msg)
 		break;
 	}
 
-	pr_info("%s get action %d pa 0x%llx\n", __func__, ctx->received_act,
-		ctx->received_pa); //should delete
 	spin_unlock_irqrestore(&ctx->lock, flags);
 
 	pr_info("%s trigger mem service worker thread +++\n", __func__);
