@@ -1501,6 +1501,7 @@ void cmdq_pkt_reuse_value(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse)
 {
 	*reuse->va = (*reuse->va & GENMASK(63, 32)) | reuse->val;
 }
+EXPORT_SYMBOL(cmdq_pkt_reuse_value);
 
 void cmdq_pkt_reuse_buf_va(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse,
 	const u32 count)
