@@ -4050,6 +4050,8 @@ static void check_is_mml_layer(const int disp_idx,
 	struct mml_frame_info *mml_info = NULL;
 	struct mtk_ddp_comp *output_comp = NULL;
 	u32 ns = 0;
+	u32 mml_ovl_layers = 0;
+	u8 down_scale_cnt = 0;
 
 	if (!dev || !disp_info)
 		return;
@@ -4064,6 +4066,29 @@ static void check_is_mml_layer(const int disp_idx,
 			break;
 	mtk_crtc = to_mtk_crtc(crtc);
 	priv = dev->dev_private;
+
+	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
+		c = &disp_info->input_config[disp_idx][i];
+		if (MTK_MML_OVL_LAYER & c->layer_caps) {
+			mml_ovl_layers |= (1 << i);
+			if (calc_mml_rsz_ratio(&(disp_info->mml_cfg[disp_idx][i])) > 100)
+				down_scale_cnt++;
+		}
+	}
+	if (down_scale_cnt > 1) {
+		u32 cnt = __builtin_popcount(mml_ovl_layers);
+		enum MTK_LAYERING_CAPS dc_cap = MTK_MML_DISP_DECOUPLE_LAYER;
+
+		while (cnt--) {
+			i = __builtin_ffs(mml_ovl_layers) - 1;
+			mml_ovl_layers &= ~(1 << i);
+			c = &disp_info->input_config[disp_idx][i];
+			c->layer_caps |= dc_cap;
+			DDPINFO("MML down scale layer(%d) caps(%u)\n", i, dc_cap);
+			dc_cap = MTK_MML_DISP_MDP_LAYER;
+		}
+		return;
+	}
 
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
 		if (disp_idx >= 0 && disp_idx < LYE_CRTC)
