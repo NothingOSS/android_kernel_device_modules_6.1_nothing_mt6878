@@ -5,6 +5,7 @@
  */
 
 #include <linux/bitfield.h>
+#include <linux/clk.h>
 #include <linux/module.h>
 #include <linux/nvmem-consumer.h>
 #include <linux/of_device.h>
@@ -76,6 +77,8 @@ struct mtk_pcie_phy_data {
  * @phy: pointer to generic phy
  * @sif_base: IO mapped register SIF base address of system interface
  * @ckm_base: IO mapped register CKM base address of system interface
+ * @clks: PCIe PHY clocks
+ * @num_clks: PCIe PHY clocks count
  * @data: pointer to SoC dependent data
  * @sw_efuse_en: software eFuse enable status
  * @efuse_glb_intr: internal resistor selection of TX bias current data
@@ -86,6 +89,8 @@ struct mtk_pcie_phy {
 	struct phy *phy;
 	void __iomem *sif_base;
 	void __iomem *ckm_base;
+	struct clk_bulk_data *clks;
+	int num_clks;
 	const struct mtk_pcie_phy_data *data;
 
 	bool sw_efuse_en;
@@ -128,6 +133,12 @@ static int mtk_pcie_phy_init(struct phy *phy)
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
 	int i, ret;
 
+	ret = clk_bulk_prepare_enable(pcie_phy->num_clks, pcie_phy->clks);
+	if (ret) {
+		dev_info(pcie_phy->dev, "failed to enable clocks\n");
+		return ret;
+	}
+
 	if (pcie_phy->data->phy_init) {
 		ret = pcie_phy->data->phy_init(phy);
 		if (ret)
@@ -147,8 +158,18 @@ static int mtk_pcie_phy_init(struct phy *phy)
 	return 0;
 }
 
+static int mtk_pcie_phy_exit(struct phy *phy)
+{
+	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
+
+	clk_bulk_disable_unprepare(pcie_phy->num_clks, pcie_phy->clks);
+
+	return 0;
+}
+
 static const struct phy_ops mtk_pcie_phy_ops = {
 	.init	= mtk_pcie_phy_init,
+	.exit	= mtk_pcie_phy_exit,
 	.owner	= THIS_MODULE,
 };
 
@@ -273,6 +294,12 @@ static int mtk_pcie_phy_probe(struct platform_device *pdev)
 	if (IS_ERR(provider)) {
 		dev_info(dev, "PCIe phy probe failed\n");
 		return PTR_ERR(provider);
+	}
+
+	pcie_phy->num_clks = devm_clk_bulk_get_all(dev, &pcie_phy->clks);
+	if (pcie_phy->num_clks < 0) {
+		dev_info(dev, "failed to get clocks\n");
+		return pcie_phy->num_clks;
 	}
 
 	return 0;
