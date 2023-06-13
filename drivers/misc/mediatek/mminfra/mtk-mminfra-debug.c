@@ -716,7 +716,8 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	}
 	if (of_property_read_bool(node, "init-clk-on")) {
 		atomic_inc(&clk_ref_cnt);
-		mminfra_clk_set(true);
+		if (!vcp_gipc)
+			mminfra_clk_set(true);
 		pr_notice("%s: init-clk-on enable clk\n", __func__);
 	}
 
