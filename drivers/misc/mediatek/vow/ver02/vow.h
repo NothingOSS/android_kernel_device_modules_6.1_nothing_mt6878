@@ -91,6 +91,7 @@
 #define BARGEIN_DUMP_BYTE_CNT_ECHO     (BARGEIN_DUMP_SMPL_CNT_ECHO * sizeof(short))
 #define BARGEIN_DUMP_TOTAL_BYTE_CNT_ECHO (BARGEIN_DUMP_BYTE_CNT_ECHO * VOW_MAX_ECHO_NUM)
 #define VOW_MAX_CH_NUM                 (2)   /* used in dump interleaving */
+#define VOW_MAX_SCP_DMIC_CH_NUM        (3)
 
 #define VOW_EXTRA_DATA_SIZE            0x100 /* 256 */
 #define VOW_CUSTOM_MODEL_SIZE          0x2800 // 10KB = 0x2800
@@ -252,6 +253,7 @@ enum vow_provider_t {
 	VOW_PROVIDER_SCP_FIFO = 1,
 	VOW_PROVIDER_STANDALONE_CODEC = 2,
 	VOW_PROVIDER_VIRTUAL = 3,
+	VOW_PROVIDER_SCP_DMIC_FIFO = 4,
 	VOW_PROVIDER_MAX
 };
 

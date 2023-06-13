@@ -16,6 +16,7 @@
 #include "../common/mtk-afe-platform-driver.h"
 
 #include "mt6897-afe-common.h"
+#include "mt6897-afe-gpio.h"
 
 #define SGEN_TIE_CH1_KCONTROL_NAME "Audio_SineGen_Tie_Ch1"
 #define SGEN_TIE_CH2_KCONTROL_NAME "Audio_SineGen_Tie_Ch2"
@@ -791,6 +792,34 @@ static const struct snd_kcontrol_new mt6897_afe_barge_in_controls[] = {
 		       mt6897_afe_vow_barge_in_set),
 };
 
+/* VOW scp dmic control */
+static int mt6897_afe_vow_scp_dmic_get(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+
+static int mt6897_afe_vow_scp_dmic_set(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	int val = ucontrol->value.integer.value[0];
+
+	dev_info(afe->dev, "%s(), %d\n", __func__, val);
+	if (val == true)
+		mt6897_afe_gpio_request(afe, true, MT6897_DAI_VOW_SCP_DMIC, 0);
+	else if (val == false)
+		mt6897_afe_gpio_request(afe, false, MT6897_DAI_VOW_SCP_DMIC, 0);
+	return 0;
+}
+
+static const struct snd_kcontrol_new mt6897_afe_scp_dmic_controls[] = {
+	SOC_SINGLE_EXT("Vow_scp_dmic_gpio", SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6897_afe_vow_scp_dmic_get,
+		       mt6897_afe_vow_scp_dmic_set),
+};
+
 int mt6897_add_misc_control(struct snd_soc_component *component)
 {
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(component);
@@ -812,6 +841,10 @@ int mt6897_add_misc_control(struct snd_soc_component *component)
 	snd_soc_add_component_controls(component,
 				       mt6897_afe_barge_in_controls,
 				       ARRAY_SIZE(mt6897_afe_barge_in_controls));
+
+	snd_soc_add_component_controls(component,
+				       mt6897_afe_scp_dmic_controls,
+				       ARRAY_SIZE(mt6897_afe_scp_dmic_controls));
 
 	return 0;
 }

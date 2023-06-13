@@ -531,6 +531,16 @@ static int dmic_used_get(struct snd_kcontrol *kcontrol,
 
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
 
+static int vow_pbuf_ch_get(struct snd_kcontrol *kcontrol,
+			   struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned int pbuf_active = 0; // no use
+
+	ucontrol->value.integer.value[0] = pbuf_active;
+
+	return 0;
+}
+
 static int vow_codec_type_get(struct snd_kcontrol *kcontrol,
 			      struct snd_ctl_elem_value *ucontrol)
 {
@@ -5806,6 +5816,7 @@ static const struct snd_kcontrol_new mt6368_snd_misc_controls[] = {
 		     NULL, mt6368_rcv_dcc_set),
 	SOC_ENUM_EXT("DMic Used", misc_control_enum[0], dmic_used_get, NULL),
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
+	SOC_ENUM_EXT("VOW PBUF Channel", misc_control_enum[0], vow_pbuf_ch_get, NULL),
 	SOC_ENUM_EXT("VOW codec type", misc_control_enum[0], vow_codec_type_get, NULL),
 	SOC_ENUM_EXT("VOW CIC type", misc_control_enum[0], vow_cic_type_get, NULL),
 #endif

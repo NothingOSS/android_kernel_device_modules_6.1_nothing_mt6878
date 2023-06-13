@@ -34,6 +34,10 @@ static struct audio_gpio_attr aud_gpios[MT6989_AFE_GPIO_GPIO_NUM] = {
 	[MT6989_AFE_GPIO_I2SOUT6_ON] = {"aud-gpio-i2sout6-on", false, NULL},
 	[MT6989_AFE_GPIO_I2SIN6_OFF] = {"aud-gpio-i2sin6-off", false, NULL},
 	[MT6989_AFE_GPIO_I2SIN6_ON] = {"aud-gpio-i2sin6-on", false, NULL},
+	[MT6989_AFE_GPIO_VOW_SCP_DMIC_DAT_OFF] = {"vow-scp-dmic-dat-off", false, NULL},
+	[MT6989_AFE_GPIO_VOW_SCP_DMIC_DAT_ON] = {"vow-scp-dmic-dat-on", false, NULL},
+	[MT6989_AFE_GPIO_VOW_SCP_DMIC_CLK_OFF] = {"vow-scp-dmic-clk-off", false, NULL},
+	[MT6989_AFE_GPIO_VOW_SCP_DMIC_CLK_ON] = {"vow-scp-dmic-clk-on", false, NULL},
 	[MT6989_AFE_GPIO_DAT_MOSI_CH34_OFF] = {"aud-dat-mosi-ch34-off",
 		false, NULL
 	},
@@ -203,6 +207,19 @@ int mt6989_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SOUT6_OFF);
 		break;
 	case MT6989_DAI_VOW:
+		break;
+	case MT6989_DAI_VOW_SCP_DMIC:
+		if (enable) {
+			mt6989_afe_gpio_select(afe,
+					       MT6989_AFE_GPIO_VOW_SCP_DMIC_CLK_ON);
+			mt6989_afe_gpio_select(afe,
+					       MT6989_AFE_GPIO_VOW_SCP_DMIC_DAT_ON);
+		} else {
+			mt6989_afe_gpio_select(afe,
+					       MT6989_AFE_GPIO_VOW_SCP_DMIC_CLK_OFF);
+			mt6989_afe_gpio_select(afe,
+					       MT6989_AFE_GPIO_VOW_SCP_DMIC_DAT_OFF);
+		}
 		break;
 	default:
 		mutex_unlock(&gpio_request_mutex);

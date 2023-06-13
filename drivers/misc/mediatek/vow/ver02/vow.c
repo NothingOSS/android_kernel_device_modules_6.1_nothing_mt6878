@@ -2229,6 +2229,7 @@ static bool VowDrv_CheckProviderType(unsigned int type)
 {
 	unsigned int provider_id = type & 0x0F;
 	unsigned int ch_num = (type >> 4) & 0x0F;
+	unsigned int scp_dmic_ch_sel = (type >> 13) & 0x7;
 
 	if (provider_id >= VOW_PROVIDER_MAX) {
 		VOWDRV_DEBUG("out of VOW_PROVIDER_ID %d\n\r", provider_id);
@@ -2236,6 +2237,10 @@ static bool VowDrv_CheckProviderType(unsigned int type)
 	}
 	if (ch_num >= VOW_CH_MAX) {
 		VOWDRV_DEBUG("out of VOW_MIC_NUM %d\n\r", ch_num);
+		return false;
+	}
+	if ((scp_dmic_ch_sel >= (1 << VOW_MAX_SCP_DMIC_CH_NUM)) != 0) {
+		VOWDRV_DEBUG("out of VOW_SCP_DMIC_CH_Sel %d\n\r", scp_dmic_ch_sel);
 		return false;
 	}
 	return true;
@@ -2894,7 +2899,7 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		pr_debug("+VOW_RECOG_ENABLE(0x%lx)+", arg);
 		pr_debug("KERNEL_VOW_DRV_VER %s", KERNEL_VOW_DRV_VER);
 		if (!VowDrv_CheckProviderType((unsigned int)arg)) {
-			pr_debug("+VOW_RECOG_ENABLE fail");
+			pr_debug("VOW_RECOG_ENABLE fail");
 			break;
 		}
 		VowDrv_SetProviderType((unsigned int)arg);
@@ -2907,7 +2912,7 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 	case VOW_RECOG_DISABLE:
 		pr_debug("+VOW_RECOG_DISABLE(0x%lx)+", arg);
 		if (!VowDrv_CheckProviderType((unsigned int)arg)) {
-			pr_debug("+VOW_RECOG_DISABLE fail");
+			pr_debug("VOW_RECOG_DISABLE fail");
 			break;
 		}
 		VowDrv_EnableHW(0);
