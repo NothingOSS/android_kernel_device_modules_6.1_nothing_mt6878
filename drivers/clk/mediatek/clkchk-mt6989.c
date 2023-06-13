@@ -1347,7 +1347,6 @@ static struct regbase rb[] = {
 	[ifr_bus] = REGBASE_V(0x1002C000, ifr_bus, PD_NULL, CLK_NULL),
 	[emi_reg0] = REGBASE_V(0x10219000, emi_reg0, PD_NULL, CLK_NULL),
 	[emi_reg1] = REGBASE_V(0x1021d000, emi_reg1, PD_NULL, CLK_NULL),
-	[ssr_top] = REGBASE_V(0x10400000, ssr_top, PD_NULL, CLK_NULL),
 	[bcrm_ssr_bus] = REGBASE_V(0x1070E000, bcrm_ssr_bus, PD_NULL, CLK_NULL),
 	[perao] = REGBASE_V(0x11036000, perao, PD_NULL, CLK_NULL),
 	[afe] = REGBASE_V(0x11050000, afe, MT6989_CHK_PD_AUDIO, CLK_NULL),
@@ -1387,7 +1386,6 @@ static struct regbase rb[] = {
 	[scp] = REGBASE_V(0x1CB21000, scp, PD_NULL, CLK_NULL),
 	[scp_iic] = REGBASE_V(0x1CBB8000, scp_iic, PD_NULL, CLK_NULL),
 	[scp_fast_iic] = REGBASE_V(0x1CBE1000, scp_fast_iic, PD_NULL, CLK_NULL),
-	[hfrp_2_bus] = REGBASE_V(0x1EC24000, hfrp_2_bus, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	[hfrp] = REGBASE_V(0x1EC3E000, hfrp, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	[hfrp_1_bus] = REGBASE_V(0x1ECA5000, hfrp_1_bus, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	[cam_m] = REGBASE_V(0x1a000000, cam_m, MT6989_CHK_PD_CAM_MAIN, CLK_NULL),
@@ -1564,10 +1562,6 @@ static struct regname rn[] = {
 	REGNAME(emi_reg0, 0x858, EMI_THRO_CTRL1),
 	/* EMI_REG1 register */
 	REGNAME(emi_reg1, 0x858, EMI_THRO_CTRL1),
-	/* SSR_TOP register */
-	REGNAME(ssr_top, 0x0, SSR_TOP_CLK_CFG),
-	REGNAME(ssr_top, 0x4, SSR_TOP_CLK_CFG_1),
-	REGNAME(ssr_top, 0x8, SSR_TOP_CLK_CFG_2),
 	/* BCRM_SSR_BUS register */
 	REGNAME(bcrm_ssr_bus, 0x01c, SPU_SSR_PROTECT_EN),
 	REGNAME(bcrm_ssr_bus, 0x01c, SPU_SSR_PROTECT_EN),
@@ -1732,9 +1726,6 @@ static struct regname rn[] = {
 	REGNAME(scp_iic, 0xE10, CCU_CLOCK_CG_CEN),
 	/* SCP_FAST_IIC register */
 	REGNAME(scp_fast_iic, 0xE10, CCU_CLOCK_CG_CEN),
-	/* HFRP_2_BUS register */
-	REGNAME(hfrp_2_bus, 0x8, HFRP_CFGREG_SLP_PROTECT_EN),
-	REGNAME(hfrp_2_bus, 0xC, HFRP_CFGREG_SLP_PROTECT_RDY_STA),
 	/* HFRP register */
 	REGNAME(hfrp, 0xE40, ISP_TRAW_PWR_CON),
 	REGNAME(hfrp, 0xE44, ISP_DIP1_PWR_CON),
@@ -2393,7 +2384,6 @@ static enum chk_sys_id devapc_dump_id[] = {
 	vlpcfg,
 	vlp_ck,
 	hfrp,
-	hfrp_2_bus,
 	hfrp_1_bus,
 	hwv,
 	hwv_ext,
