@@ -376,5 +376,7 @@ void mtk_vcodec_get_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 	void (*get_vcu_vpud_log)(struct mtk_vcodec_ctx *ctx, void *out));
 void mtk_vcodec_init_slice_info(struct mtk_vcodec_ctx *ctx, struct mtk_video_dec_buf *dst_buf_info);
 void mtk_vcodec_check_alive(struct timer_list *t);
+void mtk_vcodec_config_group_list(void);
+void mtk_vcodec_init_group_list_lock(void);
 
 #endif /* _MTK_VCODEC_UTIL_H_ */

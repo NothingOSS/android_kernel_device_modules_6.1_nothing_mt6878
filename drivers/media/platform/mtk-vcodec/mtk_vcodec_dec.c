@@ -3609,7 +3609,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 
 	if (mtk_vcodec_is_state(ctx, MTK_STATE_FREE)) {
 		struct mtk_q_data *q_data;
-
+		mtk_vcodec_config_group_list();
 		q_data = mtk_vdec_get_q_data(ctx, vb->vb2_queue->type);
 
 		ret = vdec_if_init(ctx, q_data->fmt->fourcc);
