@@ -133,6 +133,7 @@ static const struct of_device_id adsp_core_of_ids[] = {
 
 static const struct of_device_id adsp_qos_scene_of_ids[] = {
 	{ .compatible = "mediatek,mt6897-audio-dsp-hrt-bw"},
+	{ .compatible = "mediatek,mt6989-audio-dsp-hrt-bw"},
 	{},
 };
 
