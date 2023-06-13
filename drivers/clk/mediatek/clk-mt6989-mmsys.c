@@ -454,8 +454,21 @@ static const struct mtk_gate_regs mminfra_config_hwv_regs = {
 		.ops = &mtk_clk_gate_ops_setclr_dummy,			\
 	}
 
+#define GATE_HWV_MMINFRA_CONFIG_DUMMY(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "mm-hw-ccf-regmap",				\
+		.regs = &mminfra_config_cg_regs,			\
+		.hwv_regs = &mminfra_config_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_setclr_dummys,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr,			\
+		.flags = CLK_USE_HW_VOTER | CLK_EN_MM_INFRA_PWR,	\
+	}
+
 static const struct mtk_gate mminfra_config_clks[] = {
-	GATE_HWV_MMINFRA_CONFIG(CLK_MMINFRA_SMI, "mminfra_smi",
+	GATE_HWV_MMINFRA_CONFIG_DUMMY(CLK_MMINFRA_SMI, "mminfra_smi",
 			"clk26m"/* parent */, 2),
 };
 
