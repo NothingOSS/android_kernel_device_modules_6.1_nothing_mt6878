@@ -302,14 +302,22 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	struct mtk_ddp_comp *output_comp = NULL;
+	unsigned int connector_id = 0;
 
 	AALAPI_LOG("%d/%d\n", trans_backlight, max_backlight);
 	disp_aal_notify_backlight_log(trans_backlight);
 	//disp_aal_exit_idle(__func__, 1);
 
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp == NULL) {
+		DDPPR_ERR("%s: failed to get output_comp!\n", __func__);
+		return;
+	}
+	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
 	// FIXME
 	//max_backlight = disp_pwm_get_max_backlight(DISP_PWM0);
-	AALAPI_LOG("max_backlight = %d\n", max_backlight);
+	AALAPI_LOG("connector_id = %d, max_backlight = %d\n", connector_id, max_backlight);
 
 	if (trans_backlight > max_backlight)
 		trans_backlight = max_backlight;
@@ -324,7 +332,7 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 
 	if (trans_backlight == 0) {
 		aal_data->primary_data->backlight_set = trans_backlight;
-		mtk_leds_brightness_set("lcd-backlight", 0, 0, (0X1<<SET_BACKLIGHT_LEVEL));
+		mtk_leds_brightness_set(connector_id, 0, 0, (0X1<<SET_BACKLIGHT_LEVEL));
 		/* set backlight = 0 may be not from AAL, */
 		/* we have to let AALService can turn on backlight */
 		/* on phone resumption */
@@ -334,7 +342,7 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 		!pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])) {
 		/* AAL Service is not running */
 
-		mtk_leds_brightness_set("lcd-backlight", trans_backlight,
+		mtk_leds_brightness_set(connector_id, trans_backlight,
 					0, (0X1<<SET_BACKLIGHT_LEVEL));
 	}
 
@@ -385,8 +393,14 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 		return -1;
 	}
 	mtk_crtc = to_mtk_crtc(crtc);
-	pq_data = mtk_crtc->pq_data;
+	if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_PQ)) {
+		DDPINFO("%s, bl %d no need pq, connector_id:%d, crtc_id:%d\n", __func__,
+				led_conf->cdev.brightness, led_conf->connector_id, drm_crtc_index(crtc));
+		led_conf->aal_enable = 0;
+		return 0;
+	}
 
+	pq_data = mtk_crtc->pq_data;
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_AAL, 0);
 	if (!comp) {
 		led_conf->aal_enable = 0;
@@ -397,13 +411,6 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 	switch (event) {
 	case LED_BRIGHTNESS_CHANGED:
 		trans_level = led_conf->cdev.brightness;
-		if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_PQ)) {
-			DDPINFO("%s, bl %d no need pq, connector_id:%d, crtc_id:%d\n", __func__,
-					trans_level, led_conf->connector_id, drm_crtc_index(crtc));
-			led_conf->aal_enable = 0;
-			break;
-		}
-
 		aal_data = comp_to_aal(comp);
 		if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS] &&
 			(atomic_read(&aal_data->primary_data->force_relay) != 1)) {
@@ -1628,16 +1635,25 @@ int mtk_drm_ioctl_aal_set_ess20_spect_param_impl(struct mtk_ddp_comp *comp, void
 	unsigned int flag = 0;
 	struct DISP_AAL_ESS20_SPECT_PARAM *param = (struct DISP_AAL_ESS20_SPECT_PARAM *) data;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	struct mtk_ddp_comp *output_comp = NULL;
+	unsigned int connector_id = 0;
+
+	output_comp = mtk_ddp_comp_request_output(comp->mtk_crtc);
+	if (output_comp == NULL) {
+		DDPPR_ERR("%s: failed to get output_comp!\n", __func__);
+		return -1;
+	}
+	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
 
 	memcpy(&aal_data->primary_data->ess20_spect_param, param, sizeof(*param));
 	AALAPI_LOG("[aal_kernel]ELVSSPN = %d, flag = %d\n",
 		aal_data->primary_data->ess20_spect_param.ELVSSPN,
 		aal_data->primary_data->ess20_spect_param.flag);
 	if (aal_data->primary_data->ess20_spect_param.flag & (1 << ENABLE_DYN_ELVSS)) {
-		AALAPI_LOG("[aal_kernel]enable dyn elvss  flag = %d\n",
-				aal_data->primary_data->ess20_spect_param.flag);
+		AALAPI_LOG("[aal_kernel]enable dyn elvss, connector_id = %d, flag = %d\n",
+				connector_id, aal_data->primary_data->ess20_spect_param.flag);
 		flag = 1 << ENABLE_DYN_ELVSS;
-		mtk_leds_brightness_set("lcd-backlight", 0, 0, flag);
+		mtk_leds_brightness_set(connector_id, 0, 0, flag);
 	}
 	return ret;
 }
@@ -1669,11 +1685,19 @@ int mtk_drm_ioctl_aal_set_param_impl(struct mtk_ddp_comp *comp, void *data)
 	struct DISP_AAL_PARAM *param = (struct DISP_AAL_PARAM *) data;
 	bool delay_refresh = false;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	struct mtk_ddp_comp *output_comp = NULL;
+	unsigned int connector_id = 0;
 
 	if (debug_skip_set_param) {
 		pr_notice("skip_set_param for debug\n");
 		return ret;
 	}
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp == NULL) {
+		DDPPR_ERR("%s: failed to get output_comp!\n", __func__);
+		return -1;
+	}
+	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
 	/* Not need to protect g_aal_param, */
 	/* since only AALService can set AAL parameters. */
 	memcpy(&aal_data->primary_data->aal_param, param, sizeof(*param));
@@ -1698,20 +1722,20 @@ int mtk_drm_ioctl_aal_set_param_impl(struct mtk_ddp_comp *comp, void *data)
 
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
 		if (aal_data->primary_data->aal_param.silky_bright_flag == 0) {
-			AALAPI_LOG("bl = %d, silky_bright_flag = %d, ELVSSPN = %u, flag = %u\n",
-				aal_data->primary_data->backlight_set,
+			AALAPI_LOG("connector_id:%d, bl:%d, silky_bright_flag:%d, ELVSSPN:%u, flag:%u\n",
+				connector_id, aal_data->primary_data->backlight_set,
 				aal_data->primary_data->aal_param.silky_bright_flag,
 				aal_data->primary_data->ess20_spect_param.ELVSSPN,
 				aal_data->primary_data->ess20_spect_param.flag);
 
-			mtk_leds_brightness_set("lcd-backlight",
+			mtk_leds_brightness_set(connector_id,
 					aal_data->primary_data->backlight_set,
 					aal_data->primary_data->ess20_spect_param.ELVSSPN,
 					aal_data->primary_data->ess20_spect_param.flag);
 		}
 	} else if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS]) {
 		//if (pre_bl != cur_bl)
-		AALAPI_LOG("gian = %u, backlight = %d, ELVSSPN = %u, flag = %u\n",
+		AALAPI_LOG("gian:%u, backlight:%d, ELVSSPN:%u, flag:%u\n",
 			aal_data->primary_data->aal_param.silky_bright_gain[0],
 			aal_data->primary_data->backlight_set,
 			aal_data->primary_data->ess20_spect_param.ELVSSPN,
@@ -1723,11 +1747,11 @@ int mtk_drm_ioctl_aal_set_param_impl(struct mtk_ddp_comp *comp, void *data)
 			(void *)&aal_data->primary_data->ess20_spect_param);
 	} else {
 
-		AALAPI_LOG("pre_bl=%d, bl=%d, pn=%u, flag=%u\n",
-			prev_backlight, aal_data->primary_data->backlight_set,
+		AALAPI_LOG("connector_id:%d, pre_bl:%d, bl:%d, pn:%u, flag:%u\n",
+			connector_id, prev_backlight, aal_data->primary_data->backlight_set,
 			aal_data->primary_data->ess20_spect_param.ELVSSPN,
 			aal_data->primary_data->ess20_spect_param.flag);
-		mtk_leds_brightness_set("lcd-backlight", aal_data->primary_data->backlight_set,
+		mtk_leds_brightness_set(connector_id, aal_data->primary_data->backlight_set,
 					aal_data->primary_data->ess20_spect_param.ELVSSPN,
 					aal_data->primary_data->ess20_spect_param.flag);
 	}
@@ -3883,11 +3907,19 @@ static int mtk_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 	int prev_backlight = 0;
 	struct DISP_AAL_PARAM *param = (struct DISP_AAL_PARAM *) data;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	struct mtk_ddp_comp *output_comp = NULL;
+	unsigned int connector_id = 0;
 
 	if (debug_skip_set_param) {
 		pr_notice("skip_set_param for debug\n");
 		return ret;
 	}
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp == NULL) {
+		DDPPR_ERR("%s: failed to get output_comp!\n", __func__);
+		return -1;
+	}
+	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
 	/* Not need to protect g_aal_param, */
 	/* since only AALService can set AAL parameters. */
 	memcpy(&aal_data->primary_data->aal_param, param, sizeof(*param));
@@ -3914,20 +3946,20 @@ static int mtk_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
 		if (aal_data->primary_data->aal_param.silky_bright_flag == 0) {
-			AALAPI_LOG("bl = %d, silky_bright_flag = %d, ELVSSPN = %u, flag = %u\n",
-				aal_data->primary_data->backlight_set,
+			AALAPI_LOG("connector_id:%d, bl:%d, silky_bright_flag:%d, ELVSSPN:%u, flag:%u\n",
+				connector_id, aal_data->primary_data->backlight_set,
 				aal_data->primary_data->aal_param.silky_bright_flag,
 				aal_data->primary_data->ess20_spect_param.ELVSSPN,
 				aal_data->primary_data->ess20_spect_param.flag);
 
-			mtk_leds_brightness_set("lcd-backlight",
+			mtk_leds_brightness_set(connector_id,
 					aal_data->primary_data->backlight_set,
 					aal_data->primary_data->ess20_spect_param.ELVSSPN,
 					aal_data->primary_data->ess20_spect_param.flag);
 		}
 	} else if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS]) {
 		//if (pre_bl != cur_bl)
-		AALAPI_LOG("gian = %u, backlight = %d, ELVSSPN = %u, flag = %u\n",
+		AALAPI_LOG("gian:%u, backlight:%d, ELVSSPN:%u, flag:%u\n",
 			aal_data->primary_data->aal_param.silky_bright_gain[0],
 			aal_data->primary_data->backlight_set,
 			aal_data->primary_data->ess20_spect_param.ELVSSPN,
@@ -3938,11 +3970,11 @@ static int mtk_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 			aal_data->primary_data->backlight_set,
 			(void *)&aal_data->primary_data->ess20_spect_param);
 	} else {
-		AALAPI_LOG("pre_bl=%d, bl=%d, pn=%u, flag=%u\n",
-			prev_backlight, aal_data->primary_data->backlight_set,
+		AALAPI_LOG("connector_id:%d, pre_bl:%d, bl:%d, pn:%u, flag:%u\n",
+			connector_id, prev_backlight, aal_data->primary_data->backlight_set,
 			aal_data->primary_data->ess20_spect_param.ELVSSPN,
 			aal_data->primary_data->ess20_spect_param.flag);
-		mtk_leds_brightness_set("lcd-backlight", aal_data->primary_data->backlight_set,
+		mtk_leds_brightness_set(connector_id, aal_data->primary_data->backlight_set,
 					aal_data->primary_data->ess20_spect_param.ELVSSPN,
 					aal_data->primary_data->ess20_spect_param.flag);
 	}

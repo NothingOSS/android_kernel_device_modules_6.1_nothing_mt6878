@@ -846,8 +846,17 @@ int mtk_ccorr_cfg_set_ccorr(struct mtk_ddp_comp *comp,
 	struct mtk_disp_ccorr *ccorr = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr->primary_data;
 	struct DRM_DISP_CCORR_COEF_T *ccorr_config;
+	struct mtk_ddp_comp *output_comp = NULL;
+	unsigned int connector_id = 0;
 	char comp_name[64] = {0};
 	int ret = 0;
+
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp == NULL) {
+		DDPPR_ERR("%s: failed to get output_comp!\n", __func__);
+		return -1;
+	}
+	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
 
 	mtk_ddp_comp_get_name(comp, comp_name, sizeof(comp_name));
 	ccorr_config = data;
@@ -881,10 +890,10 @@ int mtk_ccorr_cfg_set_ccorr(struct mtk_ddp_comp *comp,
 
 		if ((ccorr_config->silky_bright_flag) == 1 &&
 			ccorr_config->FinalBacklight != 0) {
-			DDPINFO("brightness = %d, silky_bright_flag = %d",
-				ccorr_config->FinalBacklight,
+			DDPINFO("connector_id:%d, brightness:%d, silky_bright_flag:%d",
+				connector_id, ccorr_config->FinalBacklight,
 				ccorr_config->silky_bright_flag);
-			mtk_leds_brightness_set("lcd-backlight",
+			mtk_leds_brightness_set(connector_id,
 				ccorr_config->FinalBacklight, 0, (0X01<<SET_BACKLIGHT_LEVEL));
 		}
 	}
@@ -900,7 +909,16 @@ int mtk_drm_ioctl_set_ccorr_impl(struct mtk_ddp_comp *comp, void *data)
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 	struct DRM_DISP_CCORR_COEF_T *ccorr_config = data;
+	struct mtk_ddp_comp *output_comp = NULL;
+	unsigned int connector_id = 0;
 	int ret;
+
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp == NULL) {
+		DDPPR_ERR("%s: failed to get output_comp!\n", __func__);
+		return -1;
+	}
+	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
 
 	if (ccorr_config->hw_id != DRM_DISP_CCORR_TOTAL) {
 		DDPINFO("hw_id = %d", ccorr_config->hw_id);
@@ -925,10 +943,10 @@ int mtk_drm_ioctl_set_ccorr_impl(struct mtk_ddp_comp *comp, void *data)
 
 		if ((ccorr_config->silky_bright_flag) == 1 &&
 			ccorr_config->FinalBacklight != 0) {
-			DDPINFO("brightness = %d, silky_bright_flag = %d",
-				ccorr_config->FinalBacklight,
+			DDPINFO("connector_id:%d, brightness:%d, silky_bright_flag:%d\n",
+				connector_id, ccorr_config->FinalBacklight,
 				ccorr_config->silky_bright_flag);
-			mtk_leds_brightness_set("lcd-backlight",
+			mtk_leds_brightness_set(connector_id,
 				ccorr_config->FinalBacklight, 0, (0X01<<SET_BACKLIGHT_LEVEL));
 		}
 
@@ -990,6 +1008,12 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 		return -1;
 	}
 	mtk_crtc = to_mtk_crtc(crtc);
+	if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_PQ)) {
+		DDPINFO("%s, bl %d no need pq, connector_id:%d, crtc_id:%d\n", __func__,
+				led_conf->cdev.brightness, led_conf->connector_id, drm_crtc_index(crtc));
+		led_conf->aal_enable = 0;
+		return 0;
+	}
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_CCORR, 0);
 	if (!comp) {
 		led_conf->aal_enable = 0;
@@ -1000,13 +1024,6 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 	switch (event) {
 	case LED_BRIGHTNESS_CHANGED:
 		trans_level = led_conf->cdev.brightness;
-		if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_PQ)) {
-			DDPINFO("%s, bl %d no need pq, connector_id:%d, crtc_id:%d\n", __func__,
-					trans_level, led_conf->connector_id, drm_crtc_index(crtc));
-			led_conf->aal_enable = 0;
-			break;
-		}
-
 		disp_pq_notify_backlight_changed(comp, trans_level);
 		DDPINFO("%s: brightness changed: %d(%d)\n",
 			__func__, trans_level, led_conf->cdev.brightness);

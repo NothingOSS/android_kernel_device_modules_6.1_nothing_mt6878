@@ -785,6 +785,15 @@ void mtk_trans_gain_to_gamma(struct mtk_ddp_comp *comp,
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 	struct DISP_GAMMA_LUT_T *lut_8bit_data;
 	struct DISP_GAMMA_12BIT_LUT_T *lut_12bit_data;
+	struct mtk_ddp_comp *output_comp = NULL;
+	unsigned int connector_id = 0;
+
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp == NULL) {
+		DDPPR_ERR("%s: failed to get output_comp!\n", __func__);
+		return;
+	}
+	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
 
 	if (param == NULL)
 		ret = -EFAULT;
@@ -825,10 +834,10 @@ void mtk_trans_gain_to_gamma(struct mtk_ddp_comp *comp,
 			mtk_crtc_user_cmd(crtc, comp,
 				SET_GAMMA_GAIN, (void *)&gamma->primary_data->sb_param);
 		}
-		DDPINFO("[aal_kernel]ELVSSPN = %d, flag = %d\n",
-			ess20_spect_param->ELVSSPN, ess20_spect_param->flag);
+		DDPINFO("[aal_kernel] connector_id:%d, ELVSSPN:%d, flag:%d\n",
+			connector_id, ess20_spect_param->ELVSSPN, ess20_spect_param->flag);
 		CRTC_MMP_MARK(0, gamma_backlight, gain[gain_r], bl);
-		mtk_leds_brightness_set("lcd-backlight", bl, ess20_spect_param->ELVSSPN,
+		mtk_leds_brightness_set(connector_id, bl, ess20_spect_param->ELVSSPN,
 					ess20_spect_param->flag);
 
 		if (atomic_read(&gamma->primary_data->force_delay_check_trig) == 1)
@@ -841,11 +850,12 @@ void mtk_trans_gain_to_gamma(struct mtk_ddp_comp *comp,
 		if ((gamma->primary_data->sb_param.bl != bl) ||
 			(ess20_spect_param->flag & (1 << SET_ELVSS_PN))) {
 			gamma->primary_data->sb_param.bl = bl;
-			mtk_leds_brightness_set("lcd-backlight", bl, ess20_spect_param->ELVSSPN,
+			mtk_leds_brightness_set(connector_id, bl, ess20_spect_param->ELVSSPN,
 						ess20_spect_param->flag);
 			CRTC_MMP_MARK(0, gamma_backlight, ess20_spect_param->flag, bl);
-			DDPINFO("%s : backlight = %d, flag = %d, elvss = %d\n", __func__, bl,
-				ess20_spect_param->flag, ess20_spect_param->ELVSSPN);
+			DDPINFO("%s: connector_id:%d, backlight:%d, flag:%d, elvss:%d\n",
+				__func__, connector_id, bl, ess20_spect_param->flag,
+				ess20_spect_param->ELVSSPN);
 		}
 	}
 }
@@ -1136,6 +1146,15 @@ int mtk_cfg_trans_gain_to_gamma(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_disp_gamma *gamma_priv;
 	unsigned int *gain = (unsigned int *)aal_param->silky_bright_gain;
 	unsigned int silky_gain_range = (unsigned int)aal_param->silky_gain_range;
+	struct mtk_ddp_comp *output_comp = NULL;
+	unsigned int connector_id = 0;
+
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp == NULL) {
+		DDPPR_ERR("%s: failed to get output_comp!\n", __func__);
+		return -1;
+	}
+	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
 
 	if (param == NULL)
 		ret = -EFAULT;
@@ -1159,22 +1178,23 @@ int mtk_cfg_trans_gain_to_gamma(struct mtk_drm_crtc *mtk_crtc,
 				(void *)&gamma_priv->primary_data->sb_param);
 		else
 			DDPINFO("[aal_kernel] gamma gain not support!\n");
-		DDPINFO("[aal_kernel]ELVSSPN = %d, flag = %d\n",
+		DDPINFO("[aal_kernel] connector_id:%d, ELVSSPN:%d, flag:%d\n", connector_id,
 			ess20_spect_param->ELVSSPN, ess20_spect_param->flag);
 		CRTC_MMP_MARK(0, gamma_backlight, gain[gain_r], bl);
-		mtk_leds_brightness_set("lcd-backlight", bl, ess20_spect_param->ELVSSPN,
+		mtk_leds_brightness_set(connector_id, bl, ess20_spect_param->ELVSSPN,
 					ess20_spect_param->flag);
-		DDPINFO("%s : gain = %d, backlight = %d\n",
+		DDPINFO("%s: gain:%d, backlight:%d\n",
 			__func__, gamma_priv->primary_data->sb_param.gain[gain_r], bl);
 	} else {
 		if ((gamma_priv->primary_data->sb_param.bl != bl)
 				|| (ess20_spect_param->flag & (1 << SET_ELVSS_PN))) {
 			gamma_priv->primary_data->sb_param.bl = bl;
 			CRTC_MMP_MARK(0, gamma_backlight, ess20_spect_param->flag, bl);
-			mtk_leds_brightness_set("lcd-backlight", bl, ess20_spect_param->ELVSSPN,
+			mtk_leds_brightness_set(connector_id, bl, ess20_spect_param->ELVSSPN,
 						ess20_spect_param->flag);
-			DDPINFO("%s : backlight = %d, flag = %d, elvss = %d\n", __func__, bl,
-				ess20_spect_param->flag, ess20_spect_param->ELVSSPN);
+			DDPINFO("%s: connector_id:%d, backlight:%d, flag:%d, elvss:%d\n",
+				__func__, connector_id, bl, ess20_spect_param->flag,
+				ess20_spect_param->ELVSSPN);
 		}
 	}
 	return 0;
