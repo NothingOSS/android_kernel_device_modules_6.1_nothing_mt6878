@@ -155,8 +155,6 @@ int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint3
 		list_del(pos);
 		g_ammu_msg->count--;
 		rmesg = (struct apummu_msg *) &item->msg;
-		AMMU_LOG_VERBO("item sn(%d) cmd(%x) option(%x) ack (%x)\n",
-				rmesg->sn, rmesg->cmd, rmesg->option, rmesg->ack);
 
 		memcpy(reply, rmesg, sizeof(struct apummu_msg));
 		find = true;
