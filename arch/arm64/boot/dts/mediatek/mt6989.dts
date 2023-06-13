@@ -12352,7 +12352,11 @@
 			"aud-gpio-i2sin6-off",
 			"aud-gpio-i2sin6-on",
 			"aud-gpio-i2sout6-off",
-			"aud-gpio-i2sout6-on";
+			"aud-gpio-i2sout6-on",
+			"vow-scp-dmic-dat-off",
+			"vow-scp-dmic-dat-on",
+			"vow-scp-dmic-clk-off",
+			"vow-scp-dmic-clk-on";
 		pinctrl-0 = <&aud_clk_mosi_off>;
 		pinctrl-1 = <&aud_clk_mosi_on>;
 		pinctrl-2 = <&aud_dat_mosi_off>;
@@ -12371,6 +12375,10 @@
 		pinctrl-15 = <&aud_gpio_i2sin6_on>;
 		pinctrl-16 = <&aud_gpio_i2sout6_off>;
 		pinctrl-17 = <&aud_gpio_i2sout6_on>;
+		pinctrl-18 = <&vow_scp_dmic_dat_off>;
+		pinctrl-19 = <&vow_scp_dmic_dat_on>;
+		pinctrl-20 = <&vow_scp_dmic_clk_off>;
+		pinctrl-21 = <&vow_scp_dmic_clk_on>;
 
 		/* Only for ETDM in/out 4 */
 		etdm-out-ch = <2>;
@@ -17598,6 +17606,54 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 	aud_gpio_i2sout6_on: aud-gpio-i2sout6-on {
 		pins-cmd1-dat {
 			pinmux = <PINMUX_GPIO138__FUNC_I2SOUT6_0_DO>;
+			input-schmitt-enable;
+			bias-disable;
+		};
+	};
+	vow_scp_dmic_dat_off: vow-scp-dmic-dat-off {
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO89__FUNC_GPIO89>;
+			input-enable;
+			bias-pull-down;
+		};
+		pins-cmd2-dat {
+			pinmux = <PINMUX_GPIO228__FUNC_GPIO228>;
+			input-enable;
+			bias-pull-down;
+		};
+	};
+	vow_scp_dmic_dat_on: vow-scp-dmic-dat-on {
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO89__FUNC_SCP_DMIC_DAT>;
+			input-schmitt-enable;
+			bias-disable;
+		};
+		pins-cmd2-dat {
+			pinmux = <PINMUX_GPIO228__FUNC_SCP_DMIC1_DAT>;
+			input-schmitt-enable;
+			bias-disable;
+		};
+	};
+	vow_scp_dmic_clk_off: vow-scp-dmic-clk-off {
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO88__FUNC_GPIO88>;
+			input-enable;
+			bias-pull-down;
+		};
+		pins-cmd2-dat {
+			pinmux = <PINMUX_GPIO227__FUNC_GPIO227>;
+			input-enable;
+			bias-pull-down;
+		};
+	};
+	vow_scp_dmic_clk_on: vow-scp-dmic-clk-on {
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO88__FUNC_SCP_DMIC_CLK>;
+			input-schmitt-enable;
+			bias-disable;
+		};
+		pins-cmd2-dat {
+			pinmux = <PINMUX_GPIO227__FUNC_SCP_DMIC1_CLK>;
 			input-schmitt-enable;
 			bias-disable;
 		};
