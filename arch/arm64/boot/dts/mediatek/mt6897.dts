@@ -13315,7 +13315,7 @@
 				 "clk_top_seninf4",
 				 "clk_top_seninf5",
 				 "clk_top_camtm",
-				 "clk_top_univpll_d4_d2",
+				 "clk_top_univpll2_d4_d2",
 				 "clk_mmdvfs";
 
 			clk-fmeter-isp {
