@@ -45,6 +45,7 @@
 #define SMMU_SKIP_SHUTDOWN		BIT(7)
 #define SMMU_HYP_EN			BIT(8)
 #define SMMU_DIS_CPU_PARTID		BIT(9)
+#define SMMU_HANG_DETECT		BIT(10)
 
 #define SMMU_IRQ_COUNT_MAX		(5)
 #define SMMU_IRQ_DISABLE_TIME		(10) /* 10s */
@@ -2247,7 +2248,7 @@ static int mtk_smmu_data_init(struct mtk_smmu_data *data)
 	mtk_smmu_config_translation(data);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
-	if (data->plat_data->smmu_type == MM_SMMU) {
+	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_HANG_DETECT)) {
 		if (register_dbg_notifier != 1) {
 			mtk_smi_dbg_register_notifier(&mtk_smmu_dbg_hang_nb);
 			register_dbg_notifier = 1;

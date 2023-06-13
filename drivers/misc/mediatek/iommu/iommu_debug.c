@@ -1175,7 +1175,7 @@ static void dump_ste_cd_info(struct seq_file *s,
 
 	iommu_dump(s, "%s strtab base:0x%llx, cfg:0x%x\n", __func__,
 		   smmu->strtab_cfg.strtab_base, smmu->strtab_cfg.strtab_base_cfg);
-	iommu_dump(s, "%s sid=0x%x asid=0x%llx ttbr=0x%llx dev(%s) NULL[cd:%d ste:%d]\n",
+	iommu_dump(s, "%s sid=0x%x asid=0x%llx ttbr=0x%llx dev(%s) [cd:%d ste:%d]\n",
 		   __func__, sid, asid, ttbr, dev_name(master->dev),
 		   (cdptr == NULL), (steptr == NULL));
 

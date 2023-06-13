@@ -2018,10 +2018,8 @@ static void arm_smmu_tlb_inv_range_domain(unsigned long iova, size_t size,
 	int ret;
 
 	ret = arm_smmu_rpm_get(smmu_domain->smmu);
-	if (ret) {
-		dev_info(smmu_domain->smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+	if (ret)
 		return;
-	}
 
 	if (smmu_domain->stage == ARM_SMMU_DOMAIN_S1) {
 		cmd.opcode	= smmu_domain->smmu->features & ARM_SMMU_FEAT_E2H ?
@@ -2849,8 +2847,10 @@ static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 				 __func__, dev_name(dev));
 
 			ret = arm_smmu_rpm_get(smmu);
-			if (ret)
+			if (ret) {
+				dev_info(smmu->dev, "[%s] pm get failed ret:%d\n", __func__, ret);
 				goto out_unlock;
+			}
 
 			/* Probe the h/w */
 			ret = arm_smmu_device_hw_probe(smmu);

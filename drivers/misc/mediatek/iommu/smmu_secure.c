@@ -162,10 +162,8 @@ int mtk_smmu_pm_get(uint32_t smmu_type)
 	int ret;
 
 	ret = mtk_smmu_atf_call_common(smmu_type, SMMU_SECURE_PM_GET);
-	if (ret) {
-		pr_info("%s, smc call fail:%d, type:%u\n", __func__, ret, smmu_type);
+	if (ret)
 		return SMC_SMMU_FAIL;
-	}
 
 	return SMC_SMMU_SUCCESS;
 }
