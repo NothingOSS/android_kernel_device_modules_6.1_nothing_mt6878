@@ -17,6 +17,8 @@
 #endif
 
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
+#include <soc/mediatek/mmdvfs_v3.h>
+#include "mtk-mmdvfs-v3-memory.h"
 
 #include "mtk_dpc.h"
 #include "mtk_dpc_mmp.h"
@@ -949,8 +951,14 @@ static void process_dbg_opt(const char *opt)
 		ret = sscanf(opt, "wr:0x%x=0x%x\n", &v1, &v2);
 		if (ret != 2)
 			goto err;
-		DPCFUNC("(%#llx)=(%u)", (u64)(dpc_base + v1), v2);
+		DPCFUNC("(%#llx)=(%x)", (u64)(dpc_base + v1), v2);
 		writel(v2, dpc_base + v1);
+	} else if (strncmp(opt, "avs:", 4) == 0) {
+		ret = sscanf(opt, "avs:%u,%u\n", &v1, &v2);
+		if (ret != 2)
+			goto err;
+		writel(v2, MEM_VDISP_AVS_STEP(v1));
+		mtk_mmdvfs_v3_set_force_step(2, v1);
 	} else if (strncmp(opt, "vdo", 3) == 0) {
 		writel(DISP_DPC_EN|DISP_DPC_DT_EN|DISP_DPC_VDO_MODE, dpc_base + DISP_REG_DPC_EN);
 	}

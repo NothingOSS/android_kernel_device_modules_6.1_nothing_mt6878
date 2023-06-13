@@ -63,7 +63,10 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_PWR_OPP_SEC(x)	(MEM_BASE + 0x340 + 0x4 * (x)) // POWER_NUM(4)
 #define MEM_PWR_OPP_USEC(x)	(MEM_BASE + 0x350 + 0x4 * (x)) // POWER_NUM(4)
 
-/* next start: 0x360 */
+#define MEM_VDISP_AVS_STEP(x)	(MEM_BASE + 0x360 + 0x4 * (x)) // OPP_LEVEL(5)
+/* reserved: 0x374/0x378/0x37C */
+
+/* next start: 0x380 */
 
 #define MEM_REC_PWR_OBJ		4
 #define MEM_REC_USR_OBJ		5
