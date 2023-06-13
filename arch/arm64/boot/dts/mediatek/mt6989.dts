@@ -11683,6 +11683,8 @@
 			cammux-pdp-range = <40 43>;
 			cammux-uisp-range = <44 44>;
 
+			mtk-iomem-ver = "mt6989";
+
 			power-domains =
 						<&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>,
 						<&scpsys MT6989_POWER_DOMAIN_CSI_RX>;
