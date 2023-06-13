@@ -22,11 +22,6 @@
 
 #include "hf_manager.h"
 
-
-static int major;
-static struct class *hf_manager_class;
-static struct task_struct *task;
-
 struct coordinate {
 	int8_t sign[3];
 	uint8_t map[3];
@@ -43,6 +38,11 @@ static const struct coordinate coordinates[] = {
 	{ { 1, -1, -1}, {0, 1, 2} },
 	{ { -1, -1, -1}, {1, 0, 2} },
 };
+
+static int major;
+static struct class *hf_manager_class;
+static struct task_struct *task;
+static uint8_t debug_sensor_type;
 
 static DECLARE_BITMAP(sensor_list_bitmap, SENSOR_TYPE_SENSOR_MAX);
 static struct hf_core hfcore;
@@ -1506,7 +1506,7 @@ static const struct file_operations hf_manager_fops = {
 	.compat_ioctl   = hf_manager_ioctl,
 };
 
-static int hf_manager_proc_show(struct seq_file *m, void *v)
+static int hf_manager_proc_show_manager(struct seq_file *m, void *v)
 {
 	int i = 0, j = 0, k = 0;
 	uint8_t sensor_type = 0;
@@ -1600,7 +1600,7 @@ static int hf_manager_proc_show(struct seq_file *m, void *v)
 			continue;
 		if (device->debug(device, SENSOR_TYPE_INVALID, debug_buffer,
 				debug_len) > 0) {
-			seq_printf(m, "Debug Sub Module: %s\n",
+			seq_printf(m, "Debug Host Sub Module: %s\n",
 				device->dev_name);
 			seq_printf(m, "%s\n", debug_buffer);
 		}
@@ -1610,16 +1610,80 @@ static int hf_manager_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
+static int hf_manager_proc_show_sensor(struct seq_file *m, void *v,
+		uint8_t sensor_type)
+{
+	struct hf_core *core = (struct hf_core *)m->private;
+	struct hf_manager *manager = NULL;
+	struct hf_device *device = NULL;
+	const unsigned int debug_len = 4096;
+	uint8_t *debug_buffer = NULL;
+
+	seq_puts(m, "**************************************************\n");
+	seq_printf(m, "Debug Host Sensor Type: %u\n", sensor_type);
+	mutex_lock(&core->manager_lock);
+	manager = hf_manager_find_manager(core, sensor_type);
+	if (!manager)
+		goto out;
+	device = READ_ONCE(manager->hf_dev);
+	if (!device || !device->dev_name)
+		goto out;
+	debug_buffer = kzalloc(debug_len, GFP_KERNEL);
+	if (device->debug(device, sensor_type, debug_buffer,
+			debug_len) > 0) {
+		seq_printf(m, "On Host Sub Module: %s\n", device->dev_name);
+		seq_printf(m, "%s\n", debug_buffer);
+	}
+	kfree(debug_buffer);
+out:
+	mutex_unlock(&core->manager_lock);
+
+	return 0;
+}
+
+static int hf_manager_proc_show(struct seq_file *m, void *v)
+{
+	uint8_t sensor_type = READ_ONCE(debug_sensor_type);
+
+	if (sensor_type == SENSOR_TYPE_INVALID)
+		hf_manager_proc_show_manager(m, v);
+	else
+		hf_manager_proc_show_sensor(m, v, sensor_type);
+
+	return 0;
+}
+
 static int hf_manager_proc_open(struct inode *inode, struct file *filp)
 {
 	return single_open(filp, hf_manager_proc_show, pde_data(inode));
 }
 
+static ssize_t hf_manager_proc_write(struct file *file,
+		const char __user *user_buf, size_t count, loff_t *ppos)
+{
+	uint32_t sensor_type = 0;
+	char recv_str[16] = {0}, kbuf[64] = {0};
+	const char *debug = "debug";
+	size_t buf_size = min(count, sizeof(kbuf));
+
+	if (copy_from_user(kbuf, user_buf, buf_size))
+		return -EFAULT;
+	if (sscanf(kbuf, "%5s %u", recv_str, &sensor_type) != 2)
+		return -EINVAL;
+	if (strncmp(debug, recv_str, strlen(debug)))
+		return -EINVAL;
+	if (unlikely(sensor_type >= SENSOR_TYPE_SENSOR_MAX))
+		return -EINVAL;
+	WRITE_ONCE(debug_sensor_type, sensor_type);
+	return count;
+}
+
 static const struct proc_ops hf_manager_proc_fops = {
 	.proc_open           = hf_manager_proc_open,
+	.proc_write          = hf_manager_proc_write,
 	.proc_release        = single_release,
 	.proc_read           = seq_read,
-	.proc_lseek         = seq_lseek,
+	.proc_lseek          = seq_lseek,
 };
 
 static int __init hf_manager_init(void)
@@ -1652,7 +1716,7 @@ static int __init hf_manager_init(void)
 		goto err_class;
 	}
 
-	if (!proc_create_data("hf_manager", 0440, NULL,
+	if (!proc_create_data("hf_manager", 0600, NULL,
 			&hf_manager_proc_fops, &hfcore))
 		pr_err("Failed to create proc\n");
 
