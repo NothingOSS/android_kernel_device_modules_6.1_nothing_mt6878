@@ -155,7 +155,7 @@ static void dpmaif_allocmem_page_pool(unsigned int pool_size,  unsigned int inde
 	struct page *page = NULL;
 	unsigned int i = 0;
 
-	for (; i < pool_size/(PAGE_SIZE/4096); i++) {
+	for (; i < pool_size; i++) {
 		page = virt_to_page(page_address(resv_skb_mem[index].pages) + PAGE_SIZE*i);
 		if (!page) {
 			CCCI_ERROR_LOG(0, TAG, "alloc page for page_pool:%d failed\n", i);
@@ -179,7 +179,7 @@ void ccci_dpmaif_create_page_pool(unsigned int index)
 		pp.dma_dir = DMA_FROM_DEVICE;
 
 		g_page_pool = page_pool_create(&pp);
-		if (!g_page_pool) {
+		if (IS_ERR(g_page_pool)) {
 			CCCI_ERROR_LOG(0, TAG,
 			"[%s] error: create page pool fail.\n", __func__);
 			g_page_pool_arr[index] = NULL;
