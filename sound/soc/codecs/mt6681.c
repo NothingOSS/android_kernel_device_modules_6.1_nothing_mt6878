@@ -1674,32 +1674,24 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 		}
 		break;
 	case MT6681_AUDENC_2_2_PMU_CON0:
-		if (priv->mic_hifi_mode)
-			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
-		break;
 	case MT6681_AUDENC_2_2_PMU_CON1:
-		if (priv->mic_hifi_mode)
-			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
-		break;
 	case MT6681_AUDENC_2_2_PMU_CON2:
-		if (priv->mic_hifi_mode)
-			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
-		break;
 	case MT6681_AUDENC_2_2_PMU_CON3:
+		index *= 2;
 		if (priv->mic_hifi_mode)
 			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
+		else
+			ucontrol->value.integer.value[0] = index;
 		break;
 	case MT6681_AUDENC_2_2_PMU_CON4:
-		if (priv->vow_enable)
-			ucontrol->value.integer.value[0] = 12;
-		if (priv->mic_hifi_mode)
-			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
-		break;
 	case MT6681_AUDENC_2_2_PMU_CON5:
-		if (priv->vow_enable)
-			ucontrol->value.integer.value[0] = 12;
+		index *= 2;
 		if (priv->mic_hifi_mode)
 			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
+		else
+			ucontrol->value.integer.value[0] = index;
+		if (priv->vow_enable)
+			ucontrol->value.integer.value[0] = 12;
 		break;
 	}
 
