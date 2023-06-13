@@ -137,6 +137,13 @@ extern void init_gear_hints(void);
 extern bool sched_updown_migration_enable_get(void);
 extern void init_updown_migration(void);
 
+extern int set_gear_indices(int pid, int gear_start, int num_gear, int reverse);
+extern int unset_gear_indices(int pid);
+extern int get_gear_indices(int pid, int *gear_start, int *num_gear, int *reverse);
+extern int set_updown_migration_pct(int gear_idx, int dn_pct, int up_pct);
+extern int unset_updown_migration_pct(int gear_idx);
+extern int get_updown_migration_pct(int gear_idx, int *dn_pct, int *up_pct);
+
 struct util_rq {
 	unsigned long util_cfs;
 	unsigned long dl_util;
