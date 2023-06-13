@@ -370,4 +370,31 @@ static const struct kernel_param_ops mmqos_test_ops = {
 };
 module_param_cb(test_id, &mmqos_test_ops, NULL, 0644);
 MODULE_PARM_DESC(test_id, "mmqos vcp test id");
+
+static int mmqos_vcp_stress(const char *val, const struct kernel_param *kp)
+{
+	u32 test_id = 0;
+	u32 node_id, srt_r_bw, srt_w_bw;
+	int ret;
+
+	ret = sscanf(val, "%d %x %d %d", &test_id, &node_id, &srt_r_bw, &srt_w_bw);
+	if (ret != 4) {
+		MMQOS_ERR("failed:%d test_id:%#x", ret, test_id);
+		return ret;
+	}
+	MMQOS_DBG("test_id:%d, node_id:%#x, srt_r_bw:%d, srt_w_bw:%d",
+		test_id, node_id, srt_r_bw, srt_w_bw);
+	writel(node_id, MEM_TEST_NODE_ID);
+	writel(srt_r_bw, MEM_TEST_SRT_R_BW);
+	writel(srt_w_bw, MEM_TEST_SRT_W_BW);
+
+	mmqos_start_test_id(test_id);
+	return ret;
+}
+
+static const struct kernel_param_ops mmqos_stress_ops = {
+	.set = mmqos_vcp_stress,
+};
+module_param_cb(vcp_stress, &mmqos_stress_ops, NULL, 0644);
+MODULE_PARM_DESC(vcp_stress, "mmqos vcp stress");
 MODULE_LICENSE("GPL");

@@ -42,5 +42,9 @@ static inline void *mmqos_get_vcp_base(phys_addr_t *pa)
 #define MEM_APMCU_TOTAL_BW		(MEM_BASE + 0x50)
 #define MEM_SMI_LOG_FLAG		(MEM_BASE + 0x54)
 
+#define MEM_TEST_NODE_ID		(MEM_BASE + 0x60)
+#define MEM_TEST_SRT_R_BW		(MEM_BASE + 0x64)
+#define MEM_TEST_SRT_W_BW		(MEM_BASE + 0x68)
+
 #endif
 
