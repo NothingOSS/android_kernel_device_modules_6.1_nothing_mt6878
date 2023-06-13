@@ -239,6 +239,7 @@ extern int get_am_ceiling(void);
 
 /* group aware dvfs */
 extern int grp_dvfs_support_mode;
+extern int grp_dvfs_ctrl_mode;
 extern int get_grp_dvfs_ctrl(void);
 extern void set_grp_dvfs_ctrl(int set);
 

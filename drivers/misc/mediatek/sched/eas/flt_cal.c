@@ -1098,9 +1098,10 @@ static void flt_irq_workfn(struct irq_work *irq_work)
 	flt_sync_all_cpu();
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-	if (get_grp_dvfs_ctrl())
+	if (get_grp_dvfs_ctrl()) {
 		update_active_ratio_all();
-	grp_awr_update_grp_awr_util();
+		grp_awr_update_grp_awr_util();
+	}
 #endif
 
 	wc = get_current_time();

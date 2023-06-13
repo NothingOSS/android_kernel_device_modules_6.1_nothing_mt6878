@@ -43,7 +43,7 @@ void grp_awr_update_grp_awr_util(void)
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++) {
 		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++) {
 			pcpu_pgrp_u[cpu_idx][grp_idx] =
-				flt_sched_get_cpu_group_eas(cpu_idx, grp_idx);
+				flt_sched_get_cpu_group(cpu_idx, grp_idx);
 
 			pger_pgrp_u[map_cpu_ger[cpu_idx]][grp_idx] +=
 				pcpu_pgrp_u[cpu_idx][grp_idx];

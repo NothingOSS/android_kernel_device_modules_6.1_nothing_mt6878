@@ -27,7 +27,7 @@
 #include "eas_trace.h"
 
 static struct flt_pm fltpmrec;
-
+static bool flt_ctrl_force;
 /* API Function pointer*/
 int (*flt_get_ws_api)(void);
 EXPORT_SYMBOL(flt_get_ws_api);
@@ -357,10 +357,22 @@ EXPORT_SYMBOL(flt_get_gp_r);
 
 void flt_ctl(int set)
 {
-	if (flt_ctl_api)
+	if (flt_ctl_api && !flt_ctrl_force)
 		flt_ctl_api(set);
 }
 EXPORT_SYMBOL_GPL(flt_ctl);
+
+void flt_ctrl_force_set(int set)
+{
+	flt_ctrl_force = (set == 0) ? false : true;
+}
+EXPORT_SYMBOL_GPL(flt_ctrl_force_set);
+
+bool flt_ctrl_force_get(void)
+{
+	return flt_ctrl_force;
+}
+EXPORT_SYMBOL_GPL(flt_ctrl_force_get);
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 void register_sugov_hooks(void)

@@ -404,7 +404,7 @@ static void sugov_get_util(struct sugov_cpu *sg_cpu)
 							(struct task_struct *)UINTPTR_MAX,
 							0, SCHED_CAPACITY_SCALE);
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-	if (sugov_grp_awr_update_cpu_tar_util_hook)
+	if (sugov_grp_awr_update_cpu_tar_util_hook && grp_dvfs_ctrl_mode)
 		sugov_grp_awr_update_cpu_tar_util_hook(sg_cpu->cpu);
 #endif
 }

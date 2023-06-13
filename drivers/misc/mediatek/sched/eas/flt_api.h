@@ -44,6 +44,8 @@ void register_sugov_hooks(void);
 extern unsigned long (*flt_get_cpu_util_hook)(int cpu);
 extern unsigned long (*flt_sched_get_cpu_group_util_eas_hook)(int cpu, int group_id);
 extern void (*flt_get_fpsgo_boosting)(int fpsgo_flag);
+extern void flt_ctrl_force_set(int set);
+extern bool flt_ctrl_force_get(void);
 #endif
 
 /* suspend/resume api */
