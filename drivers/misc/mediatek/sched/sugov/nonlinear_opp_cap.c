@@ -57,18 +57,13 @@ void (*flt_get_fpsgo_boosting)(int fpsgo_flag);
 EXPORT_SYMBOL(flt_get_fpsgo_boosting);
 #endif
 
-
 /* group aware dvfs */
 int grp_dvfs_support_mode;
 int grp_dvfs_ctrl_mode;
 void init_grp_dvfs(void)
 {
-	if (grp_dvfs_support_mode) {
-		grp_dvfs_ctrl_mode = 1;
+	if (grp_dvfs_support_mode)
 		pr_info("grp_dvfs enable\n");
-	} else {
-		grp_dvfs_ctrl_mode = 0;
-	}
 }
 
 int get_grp_dvfs_ctrl(void)
@@ -927,7 +922,6 @@ EXPORT_SYMBOL_GPL(pd_get_opp_leakage);
 void Adaptive_module_bypass(int fpsgo_flag)
 {
 	fpsgo_boosting = fpsgo_flag;
-	set_grp_dvfs_ctrl(!fpsgo_boosting);
 	if (flt_get_fpsgo_boosting)
 		flt_get_fpsgo_boosting(!fpsgo_boosting);
 }

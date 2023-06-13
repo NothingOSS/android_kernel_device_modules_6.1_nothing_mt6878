@@ -91,6 +91,7 @@ void  flt_set_mode(u32 mode)
 	flt_mode = mode;
 	if (is_flt_io_enable)
 		flt_update_data(mode, AP_FLT_CTL);
+	set_grp_dvfs_ctrl(mode);
 }
 EXPORT_SYMBOL(flt_set_mode);
 
