@@ -1069,6 +1069,52 @@ static void pmif_irq_register(struct platform_device *pdev,
 	pmif_writel(arb, irq_event_en[4] | pmif_readl(arb, PMIF_IRQ_EVENT_EN_4),
 			PMIF_IRQ_EVENT_EN_4);
 }
+static void dump_pmic_dbg_rg(struct pmif *arb)
+{
+	u8 rdata = 0, rdata1 = 0, rdata2 =0, val = 0;
+	int i;
+	unsigned short mt6363INTSTA_0 = 0x4d, mt6363INTSTA_1 = 0x4e;
+	unsigned short PMIC_SPMI_DBG_SEL = 0x42d, PMIC_SPMI_DBG_L = 0x42b;
+	unsigned short PMIC_SPMI_DBG_H = 0x42c;
+	unsigned short mt6685INTSTA_0 = 0x1a6, mt6685INTSTA_1 = 0x1a7;
+
+	arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x4,
+			mt6363INTSTA_0, &rdata, 1);
+	pr_notice("%s 6363 0x4d 0x%x\n", __func__, rdata);
+	arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x4,
+			mt6363INTSTA_1, &rdata, 1);
+	pr_notice("%s 6363 0x4e 0x%x\n", __func__, rdata);
+	arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x9,
+			mt6685INTSTA_0, &rdata, 1);
+	pr_notice("%s 6685 0x1a6 0x%x\n", __func__, rdata);
+	arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x9,
+			mt6685INTSTA_1, &rdata, 1);
+	pr_notice("%s 6685 0x1a7 0x%x\n", __func__, rdata);
+
+	for (i = 0x33; i < 0x38; i++) {
+		val = i;
+		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, 0x4,
+			PMIC_SPMI_DBG_SEL, &val, 1);
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x4,
+			PMIC_SPMI_DBG_SEL, &rdata, 1);
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x4,
+			PMIC_SPMI_DBG_H, &rdata1, 1);
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x4,
+			PMIC_SPMI_DBG_L, &rdata2, 1);
+		pr_notice("%s 6363 DBG_SEL 0x%x DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
+			__func__, rdata, rdata1, rdata2);
+		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, 0x9,
+			PMIC_SPMI_DBG_SEL, &val, 1);
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x9,
+			PMIC_SPMI_DBG_SEL, &rdata, 1);
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x9,
+			PMIC_SPMI_DBG_H, &rdata1, 1);
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x9,
+			PMIC_SPMI_DBG_L, &rdata2, 1);
+		pr_notice("%s 6685 DBG_SEL 0x%x DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
+			__func__, rdata, rdata1, rdata2);
+	}
+}
 
 static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 {
@@ -1119,7 +1165,7 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 		}
 		flag = 1;
 	}
-	if ((spmi_rcs_nack & 0xC0000) || (spmi_p_rcs_nack & 0xD8)) {
+	if ((spmi_rcs_nack & 0xC0000) || (spmi_p_rcs_nack & 0xC0000)) {
 		pr_notice("%s spmi_rcs transaction fail irq triggered SPMI_REC_CMD_DEC m/p:0x%x/0x%x\n",
 			__func__, spmi_rcs_nack, spmi_p_rcs_nack);
 		flag = 1;
@@ -1173,6 +1219,7 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 		}
 		flag = 0;
 	}
+	dump_pmic_dbg_rg(arb);
 	pr_notice("%s SPMI_REC0 m/p:0x%x/0x%x, SPMI_REC1 m/p:0x%x/0x%x\n",
 		__func__, spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
 	pr_notice("%s SPMI_REC_CMD_DEC m/p:0x%x/0x%x\n", __func__, spmi_rcs_nack, spmi_p_rcs_nack);
@@ -1186,9 +1233,11 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	}
 
 	/* clear irq*/
-	if ((spmi_nack & 0xF8) || (spmi_rcs_nack & 0xC0000))
+	if ((spmi_nack & 0xF8) || (spmi_rcs_nack & 0xC0000) ||
+		(spmi_debug_nack & 0xF0000) || (spmi_mst_nack & 0xC0000))
 		mtk_spmi_writel(arb->spmimst_base, arb, 0x3, SPMI_REC_CTRL);
-	else if ((spmi_p_nack & 0xF8) || (spmi_p_rcs_nack & 0xC0000))
+	else if ((spmi_p_nack & 0xF8) || (spmi_p_rcs_nack & 0xC0000) ||
+		(spmi_p_debug_nack & 0xF0000) || (spmi_p_mst_nack & 0xC0000))
 		mtk_spmi_writel(arb->spmimst_base_p, arb, 0x3, SPMI_REC_CTRL);
 	else
 		pr_notice("%s IRQ not cleared\n", __func__);
