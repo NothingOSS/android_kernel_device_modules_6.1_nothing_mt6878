@@ -1688,6 +1688,36 @@ TRACE_EVENT(sugov_ext_pgrp_hint,
 );
 #endif
 
+TRACE_EVENT(sched_adpf_get_value,
+
+	TP_PROTO(unsigned int cmd, unsigned int sid, unsigned int tgid, unsigned int uid, int threadIds_size,
+	long targetDurationNanos),
+
+	TP_ARGS(cmd, sid, tgid, uid, threadIds_size, targetDurationNanos),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, cmd)
+		__field(unsigned int, sid)
+		__field(unsigned int, tgid)
+		__field(unsigned int, uid)
+		__field(int, threadIds_size)
+		__field(long, targetDurationNanos)
+	),
+
+	TP_fast_assign(
+		__entry->sid = cmd;
+		__entry->sid = sid;
+		__entry->tgid = tgid;
+		__entry->uid = uid;
+		__entry->threadIds_size = threadIds_size;
+		__entry->targetDurationNanos = targetDurationNanos;
+	),
+
+	TP_printk("cmd = %d sid = %d tgid = %d uid = %d threadIds_size = %d targetDurationNanos = %ld\n",
+		  __entry->cmd, __entry->sid, __entry->tgid, __entry->uid, __entry->threadIds_size,
+		  __entry->targetDurationNanos)
+);
+
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

@@ -23,6 +23,7 @@
 #include "eas_plus.h"
 #include "sched_sys_common.h"
 #include "sugov/cpufreq.h"
+#include "eas_adpf.h"
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 #include "mtk_energy_model/v2/energy_model.h"
 #else
@@ -562,6 +563,10 @@ static int __init mtk_scheduler_init(void)
 	get_most_powerful_pd_and_util_Th();
 
 	mtk_sched_trace_init();
+
+	ret = adpf_register_callback(sched_adpf_callback);
+	if (ret)
+		pr_info("register adpf_register_callback failed\n");
 
 #if IS_ENABLED(CONFIG_MTK_CORE_PAUSE)
 	sched_pause_init();
