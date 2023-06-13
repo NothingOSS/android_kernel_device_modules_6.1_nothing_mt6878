@@ -6725,9 +6725,40 @@
 		};
 
 		disp1_dp_intf0: disp1-dp-intf0@14209000 {
-			compatible = "mediatek,disp1_dp_intf0";
+			compatible = "mediatek,disp1_dp_intf0",
+						"mediatek,mt6989-dp-intf";
 			reg = <0 0x14209000 0 0x1000>;
 			interrupts = <GIC_SPI 499 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_DP_INTF0>,
+				<&dispsys1_config_clk CLK_MM1_MOD4>,
+				<&topckgen_clk CLK_TOP_DP_CORE_SEL>,
+				<&topckgen_clk CLK_TOP_DP_SEL>,
+				<&topckgen_clk CLK_TOP_TVDPLL_D4>,
+				<&topckgen_clk CLK_TOP_TVDPLL_D8>,
+				<&topckgen_clk CLK_TOP_TVDPLL_D16>,
+				<&topckgen_clk CLK_TOP_TVDPLL>;
+			clock-names = "hf_fmm_ck",
+					"hf_fdp_ck",
+					"MUX_VCORE_DP",
+					"MUX_DP",
+					"TVDPLL_D4",
+					"TVDPLL_D8",
+					"TVDPLL_D16",
+					"DPI_CK";
+			phys = <&dp_tx>;
+			phy-names = "dp_tx";
+		};
+
+		dp_tx: dp-tx@11e60000 {
+			compatible = "mediatek,mt6989-dp_tx",
+					"mediatek,dp_tx";
+			reg = <0 0x11e60000 0 0x5000>;
+			mediatek,vs-voter = <&pmic 0x149a 0x20 1>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_DP_TX>;
+			interrupts = <GIC_SPI 792 IRQ_TYPE_LEVEL_HIGH 0>;
+			#phy-cells = <0>;
+			dptx,phy-params = <0x221c1814 0x24241e18 0x0000302a
+					0x0e080400 0x000c0600 0x00000006>;
 		};
 
 		dsi0: dsi@1420a000 {
