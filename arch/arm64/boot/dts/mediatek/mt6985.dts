@@ -8981,8 +8981,7 @@
 				 <&pextpcfg_ao_clk CLK_PEXT_MAC0_P1_PCLK_250M>,
 				 <&pextpcfg_ao_clk CLK_PEXT_MAC0_GFMUX_TL>,
 				 <&pextpcfg_ao_clk CLK_PEXT_MAC0_FMEM>,
-				 <&pextpcfg_ao_clk CLK_PEXT_MAC0_HCLK>,
-				 <&pextpcfg_ao_clk CLK_PEXT_PHY0_REF>;
+				 <&pextpcfg_ao_clk CLK_PEXT_MAC0_HCLK>;
 			power-domains = <&scpsys MT6985_POWER_DOMAIN_PEXTP_MAC0_SHUTDOWN>;
 
 			phys = <&pciephy0>;
@@ -9024,8 +9023,7 @@
 				 <&pextpcfg_ao_clk CLK_PEXT_MAC1_P1_PCLK_250M>,
 				 <&pextpcfg_ao_clk CLK_PEXT_MAC1_GFMUX_TL>,
 				 <&pextpcfg_ao_clk CLK_PEXT_MAC1_FMEM>,
-				 <&pextpcfg_ao_clk CLK_PEXT_MAC1_HCLK>,
-				 <&pextpcfg_ao_clk CLK_PEXT_PHY1_REF>;
+				 <&pextpcfg_ao_clk CLK_PEXT_MAC1_HCLK>;
 			power-domains = <&scpsys MT6985_POWER_DOMAIN_PEXTP_MAC1_SHUTDOWN>;
 
 			phys = <&pciephy1>;
@@ -9052,6 +9050,7 @@
 			reg-names = "sif", "ckm";
 			status = "disabled";
 
+			clocks = <&pextpcfg_ao_clk CLK_PEXT_PHY0_REF>;
 			power-domains = <&scpsys MT6985_POWER_DOMAIN_PEXTP_PHY0>;
 		};
 
@@ -9063,6 +9062,7 @@
 			reg-names = "sif", "ckm";
 			status = "disabled";
 
+			clocks = <&pextpcfg_ao_clk CLK_PEXT_PHY1_REF>;
 			power-domains = <&scpsys MT6985_POWER_DOMAIN_PEXTP_PHY1>;
 		};
 
