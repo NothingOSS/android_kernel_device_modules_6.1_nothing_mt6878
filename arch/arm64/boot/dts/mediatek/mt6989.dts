@@ -11728,6 +11728,9 @@
 			cammux-pdp-range = <40 43>;
 			cammux-uisp-range = <44 44>;
 
+			/* description generic long packet (glp) force enable or not*/
+			force-glp-enable = <1>; /* 0: disable; 1: enable */
+
 			mtk-iomem-ver = "mt6989";
 
 			power-domains =
