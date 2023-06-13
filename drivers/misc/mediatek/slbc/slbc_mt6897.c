@@ -168,10 +168,11 @@ static struct slbc_config p_config[] = {
 	/* SLBC_ENTRY(id, sid, max, fix, p, extra, res, cache) */
 	SLBC_ENTRY(UID_MM_VENC, 0, 0, 0, 0, 0x0, 0x00fc, 0),
 	SLBC_ENTRY(UID_MML, 1, 0, 0, 1, 0x0, 0xf000, 0),
-	SLBC_ENTRY(UID_AINR, 2, 0, 0, 0, 0x0, 0xff00, 0),
+	SLBC_ENTRY(UID_AINR, 2, 0, 0, 0, 0x0, 0xf000, 0),
 	SLBC_ENTRY(UID_DISP, 3, 0, 0, 1, 0x0, 0xf000, 0),
 	SLBC_ENTRY(UID_HIFI3, 4, 0, 0, 0, 0x0, 0x0003, 0),
 	SLBC_ENTRY(UID_AOD, 5, 0, 0, 0, 0x0, 0x0ffc, 0),
+	SLBC_ENTRY(UID_APU, 6, 0, 0, 0, 0x0, 0x0f00, 0),
 };
 
 #ifdef SLBC_CB_THREAD
