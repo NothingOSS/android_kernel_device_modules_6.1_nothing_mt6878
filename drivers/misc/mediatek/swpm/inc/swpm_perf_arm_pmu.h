@@ -6,6 +6,9 @@
 #ifndef __SWPM_PERF_ARM_PMU_H__
 #define __SWPM_PERF_ARM_PMU_H__
 
+unsigned int legacy_core_pmu_num = 3;
+unsigned int legacy_dsu_pmu_num = 1;
+
 enum swpm_perf_evt_id {
 	L3DC_EVT,
 	INST_SPEC_EVT,
@@ -22,6 +25,7 @@ enum swpm_perf_evt_id {
 	PMU_11_EVT,
 	PMU_12_EVT,
 	PMU_13_EVT,
+	PMU_NUM,
 };
 
 extern unsigned int swpm_arm_pmu_get_status(void);
@@ -32,5 +36,7 @@ extern int swpm_arm_pmu_enable_all(unsigned int enable);
 extern int swpm_arm_dsu_pmu_enable(unsigned int enable);
 extern unsigned int swpm_arm_dsu_pmu_get_type(void);
 extern int swpm_arm_dsu_pmu_set_type(unsigned int type);
+extern void swpm_arm_ai_pmu_set(unsigned int type);
+extern unsigned int swpm_arm_ai_pmu_get(void);
 
 #endif

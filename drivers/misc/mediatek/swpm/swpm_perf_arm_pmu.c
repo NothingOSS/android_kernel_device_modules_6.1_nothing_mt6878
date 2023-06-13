@@ -742,6 +742,17 @@ int swpm_arm_dsu_pmu_enable(unsigned int enable)
 }
 EXPORT_SYMBOL(swpm_arm_dsu_pmu_enable);
 
+unsigned int swpm_arm_ai_pmu_get(void)
+{
+	return pmu_ai_support;
+}
+EXPORT_SYMBOL(swpm_arm_ai_pmu_get);
+
+void swpm_arm_ai_pmu_set(unsigned int ai_enable)
+{
+	pmu_ai_support = ai_enable;
+}
+EXPORT_SYMBOL(swpm_arm_ai_pmu_set);
 
 int swpm_arm_pmu_enable_all(unsigned int enable)
 {

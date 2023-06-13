@@ -140,7 +140,7 @@ static const struct mtk_swpm_sysfs_op swpm_arm_dsu_pmu_fops = {
 static ssize_t swpm_arm_pmu_read(char *ToUser, size_t sz, void *priv)
 {
 	char *p = ToUser;
-	unsigned int val, i;
+	unsigned int val, i, j;
 
 	if (!ToUser)
 		return -EINVAL;
@@ -168,12 +168,26 @@ static ssize_t swpm_arm_pmu_read(char *ToUser, size_t sz, void *priv)
 		     swpm_arm_pmu_get_idx((unsigned int)DSU_CYCLES_EVT, 0));
 	swpm_dbg_log("\n");
 
+	if (swpm_arm_ai_pmu_get()) {
+		unsigned int pmu_num = ((unsigned int)PMU_NUM);
+
+		swpm_dbg_log("Support extern core pmu: %d\n",
+			(pmu_num - legacy_core_pmu_num - legacy_dsu_pmu_num));
+		for(i = (legacy_core_pmu_num + legacy_dsu_pmu_num) ; i < pmu_num ; i++) {
+			swpm_dbg_log("PMU %d\n", i);
+			for (j = 0 ; j < num_possible_cpus(); j++)
+				swpm_dbg_log("%d,", swpm_arm_pmu_get_idx(i, j));
+			swpm_dbg_log("\n");
+		}
+	}
+
 	return p - ToUser;
 }
 
 static ssize_t swpm_arm_pmu_write(char *FromUser, size_t sz, void *priv)
 {
-	int enable;
+	int enable, param;
+	char cmd[8];
 	int ret;
 
 	ret = -EINVAL;
@@ -188,6 +202,11 @@ static ssize_t swpm_arm_pmu_write(char *FromUser, size_t sz, void *priv)
 	if (!kstrtouint(FromUser, 0, &enable)) {
 		swpm_arm_pmu_enable_all(enable);
 		ret = sz;
+	} else if (sscanf(FromUser, "%7s %u", cmd, &param) == 2) {
+		if (!strcmp(cmd, "ai")) {
+			swpm_arm_ai_pmu_set(param);
+			ret = sz;
+		}
 	}
 
 out:
