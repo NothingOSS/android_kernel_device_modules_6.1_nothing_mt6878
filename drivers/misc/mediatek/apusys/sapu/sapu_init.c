@@ -3,8 +3,12 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 #include "sapu_driver.h"
+#include "mtk-smmu-v3.h"
 
-#define ENABLE_DRAM_FB 0
+#define ENABLE_DRAM_FB 1
+
+#define SAPU_DATAMEM_PAGE_BASED_HEAP "mtk_sapu_page-uncached"
+#define SAPU_DATAMEM_REGION_BASED_HEAP "mtk_sapu_data_shm_region-aligned"
 
 struct sapu_private *sapu;
 struct sapu_private *get_sapu_private(void)
@@ -53,9 +57,13 @@ static long apusys_sapu_compat_ioctl(struct file *filep, unsigned int cmd,
 static int dram_fb_register(void)
 {
 	int ret;
-	struct dma_heap *dma_heap;
-	struct sg_table *dmem_sgt;
 	struct platform_device *pdev;
+	struct dma_heap *dma_heap;
+	struct device *dmem_device;
+	struct sg_table *dmem_sgt;
+	struct device_node *sapu_node;
+	struct device_node *smmu_node = NULL;
+	struct platform_device *smmu_dev = NULL;
 
 	u32 higher_32_iova;
 	u32 lower_32_iova;
@@ -71,13 +79,25 @@ static int dram_fb_register(void)
 		return -EINVAL;
 	}
 
+	dmem_device = &pdev->dev;
+	if (dmem_device == NULL) {
+		pr_info("%s %d\n", __func__, __LINE__);
+		ret = -EINVAL;
+		return -EINVAL;
+	}
+
 	ret = sapu->platdata->ops.power_ctrl(sapu, 1);
 	if (ret != 0) {
 		pr_info("%s %d: power on fail\n", __func__, __LINE__);
 		return -EAGAIN;
 	}
+
 	/* After power on, allocate dma_buf 2M from sapu data_mem */
-	dma_heap = dma_heap_find("mtk_sapu_data_shm_region-aligned");
+	if (smmu_v3_enabled()) {
+		dma_heap = dma_heap_find(SAPU_DATAMEM_PAGE_BASED_HEAP);
+	} else {
+		dma_heap = dma_heap_find(SAPU_DATAMEM_REGION_BASED_HEAP);
+	}
 	if (!dma_heap) {
 		pr_info("[%s]dma_heap_find fail\n", __func__);
 		ret = -ENODEV;
@@ -85,9 +105,9 @@ static int dram_fb_register(void)
 	}
 
 	sapu->dram_fb_info.dram_fb_dmabuf = dma_heap_buffer_alloc(
-		dma_heap, 0x200000,
-		DMA_HEAP_VALID_FD_FLAGS,
-		DMA_HEAP_VALID_HEAP_FLAGS);
+						dma_heap, 0x200000,
+						DMA_HEAP_VALID_FD_FLAGS,
+						DMA_HEAP_VALID_HEAP_FLAGS);
 
 	dma_heap_put(dma_heap);
 	if (IS_ERR(sapu->dram_fb_info.dram_fb_dmabuf)) {
@@ -96,9 +116,34 @@ static int dram_fb_register(void)
 		goto err_return;
 	}
 
-	sapu->dram_fb_info.dram_fb_attach = dma_buf_attach(
-			sapu->dram_fb_info.dram_fb_dmabuf,
-			&pdev->dev);
+
+	if (smmu_v3_enabled()) {
+		sapu_node = dmem_device->of_node;
+		if (!sapu_node) {
+			pr_info("%s sapu_node is NULL\n", __func__);
+			return -ENODEV;
+		}
+
+		smmu_node = of_parse_phandle(sapu_node, "smmu-device", 0);
+		if (!smmu_node) {
+			pr_info("%s get smmu_node failed\n", __func__);
+			return -ENODEV;
+		}
+
+		smmu_dev = of_find_device_by_node(smmu_node);
+		if (!smmu_node) {
+			pr_info("%s get smmu_dev failed\n", __func__);
+			return -ENODEV;
+		}
+
+		sapu->dram_fb_info.dram_fb_attach = dma_buf_attach(
+					sapu->dram_fb_info.dram_fb_dmabuf,
+					&smmu_dev->dev);
+	} else {
+		sapu->dram_fb_info.dram_fb_attach = dma_buf_attach(
+					sapu->dram_fb_info.dram_fb_dmabuf,
+					dmem_device);
+	}
 	if (IS_ERR(sapu->dram_fb_info.dram_fb_attach)) {
 		pr_info("[%s]dma_buf_attach fail\n", __func__);
 		ret = PTR_ERR(sapu->dram_fb_info.dram_fb_attach);
@@ -106,7 +151,7 @@ static int dram_fb_register(void)
 	}
 
 	dmem_sgt = dma_buf_map_attachment(sapu->dram_fb_info.dram_fb_attach,
-					DMA_BIDIRECTIONAL);
+					  DMA_BIDIRECTIONAL);
 	if (IS_ERR(dmem_sgt)) {
 		pr_info("[%s]dma_buf_map_attachment fail\n", __func__);
 		ret = PTR_ERR(dmem_sgt);
@@ -118,16 +163,16 @@ static int dram_fb_register(void)
 	higher_32_iova = (sapu->dram_fb_info.dram_dma_addr >> 32) & 0xFFFFFFFF;
 	lower_32_iova = sapu->dram_fb_info.dram_dma_addr & 0xFFFFFFFF;
 	ret = trusty_std_call32(pdev->dev.parent,
-			MTEE_SMCNR(MT_SMCF_SC_SAPU_DRAM_FB,
-			pdev->dev.parent),
-			1, higher_32_iova, lower_32_iova);
+				MTEE_SMCNR(MT_SMCF_SC_SAPU_DRAM_FB,
+					   pdev->dev.parent),
+				1, higher_32_iova, lower_32_iova);
 
 	if (ret) {
-		pr_info("[%s]dram callback register fail(0x%x)\n",
+		pr_info("[%s]dram fallback register fail(0x%x)\n",
 			__func__, ret);
 		goto dmabuf_detach;
 	} else {
-		pr_info("[%s]dram callback register success(0x%x)\n",
+		pr_info("[%s]dram fallback register success(0x%x)\n",
 			__func__, ret);
 	}
 
@@ -209,7 +254,7 @@ static int dram_fb_unregister(void)
 
 #endif // ENABLE_DRAM_FB
 
-static int apusys_sapu_open(struct inode *inode, struct file *filp)
+static int apusys_sapu_open(struct inode *inode, struct file *filep)
 {
 	int ret = 0;
 
@@ -230,7 +275,7 @@ static int apusys_sapu_open(struct inode *inode, struct file *filp)
 	return ret;
 }
 
-static int apusys_sapu_release(struct inode *inode, struct file *filp)
+static int apusys_sapu_release(struct inode *inode, struct file *filep)
 {
 	int ret = 0;
 
