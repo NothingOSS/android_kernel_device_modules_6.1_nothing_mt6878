@@ -62,7 +62,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 
 	mtkfb_pins_lcm_rst_out1_gpio: lcm-rst-out1-gpio {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO230__FUNC_GPIO230>;
+			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
 			slew-rate = <1>;
 			output-high;
 		};
@@ -75,6 +75,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 			output-low;
 		};
 	};
+
 	mtkfb_pins_lcm_dsi_te: lcm-dsi-te {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO229__FUNC_DSI_TE>;
@@ -96,13 +97,32 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 			output-low;
 		};
 	};
+
+	mtkfb_pins_lcm_dsi1_te: lcm-dsi1-te {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO10__FUNC_DSI1_TE>;
+		};
+	};
+
+	mtkfb_pins_lcm_dsi_gpio: lcm-dsi-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO229__FUNC_GPIO229>;
+		};
+	};
+
+	mtkfb_pins_lcm_dsi1_gpio: lcm-dsi1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO10__FUNC_GPIO10>;
+		};
+	};
 };
 
 &mtkfb {
 	pinctrl-names = "lcd_bias_enp1_gpio", "lcd_bias_enp0_gpio",
 		"lcd_bias_enn1_gpio", "lcd_bias_enn0_gpio",
 		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
-		"mode_te_te", "lcm_led_en1_gpio", "lcm_led_en0_gpio";
+		"mode_te_te", "lcm_led_en1_gpio", "lcm_led_en0_gpio",
+		"mode_te_te1";
 	pinctrl-0 = <&mtkfb_pins_lcd_bias_enp1>;
 	pinctrl-1 = <&mtkfb_pins_lcd_bias_enp0>;
 	pinctrl-2 = <&mtkfb_pins_lcd_bias_enn1>;
@@ -112,13 +132,15 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	pinctrl-6 = <&mtkfb_pins_lcm_dsi_te>;
 	pinctrl-7 = <&mtkfb_pins_lcm_led_en1>;
 	pinctrl-8 = <&mtkfb_pins_lcm_led_en0>;
+	pinctrl-9 = <&mtkfb_pins_lcm_dsi1_te>;
 
 	status = "okay";
 };
 
 &dispsys_config {
-	pinctrl-names = "mode_te_te";
+	pinctrl-names = "mode_te_te", "mode_te_te1";
 	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
+	pinctrl-1 = <&mtkfb_pins_lcm_dsi1_te>;
 	status = "okay";
 };
 
@@ -150,6 +172,12 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 			};
 		};
 	};
+};
+
+&dsi1_te {
+	interrupt-parent = <&pio>;
+	interrupts = <74 1 74 1>;
+	status = "okay";
 };
 
 &dsi0 {
@@ -254,203 +282,6 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	};
 };
 #if 0
-&pio {
-	mtkfb_pins_lcd_bias_enp1: lcd_bias_enp1_gpio {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO84__FUNC_GPIO84>;
-			slew-rate = <1>;
-			output-high;
-		};
-	};
-
-	mtkfb_pins_lcd_bias_enp0: lcd_bias_enp0_gpio {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO84__FUNC_GPIO84>;
-			slew-rate = <1>;
-			output-low;
-		};
-	};
-
-	mtkfb_pins_lcd_bias_enn1: lcd_bias_enn1_gpio {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO84__FUNC_GPIO84>;
-			slew-rate = <1>;
-			output-high;
-		};
-	};
-
-	mtkfb_pins_lcd_bias_enn0: lcd_bias_enn0_gpio {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO84__FUNC_GPIO84>;
-			slew-rate = <1>;
-			output-low;
-		};
-	};
-
-	mtkfb_pins_lcm_rst_out1_gpio: lcm_rst_out1_gpio {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO86__FUNC_GPIO86>;
-			slew-rate = <1>;
-			output-high;
-		};
-	};
-
-	mtkfb_pins_lcm_rst_out0_gpio: lcm_rst_out0_gpio {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO86__FUNC_GPIO86>;
-			slew-rate = <1>;
-			output-low;
-		};
-	};
-	mtkfb_pins_lcm_dsi_te: lcm_dsi_te {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO85__FUNC_DSI_TE>;
-		};
-	};
-
-	mtkfb_pins_lcm_led_en1: lcm_led_en1_gpio {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO68__FUNC_GPIO68>;
-			slew-rate = <1>;
-			output-high;
-		};
-	};
-
-	mtkfb_pins_lcm_led_en0: lcm_led_en0_gpio {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO68__FUNC_GPIO68>;
-			slew-rate = <1>;
-			output-low;
-		};
-	};
-};
-
-&mtkfb {
-	pinctrl-names = "lcd_bias_enp1_gpio", "lcd_bias_enp0_gpio",
-		"lcd_bias_enn1_gpio", "lcd_bias_enn0_gpio",
-		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
-		"mode_te_te", "lcm_led_en1_gpio", "lcm_led_en0_gpio";
-	pinctrl-0 = <&mtkfb_pins_lcd_bias_enp1>;
-	pinctrl-1 = <&mtkfb_pins_lcd_bias_enp0>;
-	pinctrl-2 = <&mtkfb_pins_lcd_bias_enn1>;
-	pinctrl-3 = <&mtkfb_pins_lcd_bias_enn0>;
-	pinctrl-4 = <&mtkfb_pins_lcm_rst_out1_gpio>;
-	pinctrl-5 = <&mtkfb_pins_lcm_rst_out0_gpio>;
-	pinctrl-6 = <&mtkfb_pins_lcm_dsi_te>;
-	pinctrl-7 = <&mtkfb_pins_lcm_led_en1>;
-	pinctrl-8 = <&mtkfb_pins_lcm_led_en0>;
-
-	status = "okay";
-};
-
-&dispsys_config {
-	pinctrl-names = "mode_te_te";
-	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
-	status = "okay";
-};
-
-&dsi1 {
-//	status = "okay";
-	#address-cells = <1>;
-	#size-cells = <0>;
-	panel21@0 {
-		compatible = "jdi,nt36672e,vdo,60hz";
-		reg = <0>;
-		pm-enable-gpios = <&pio 68 0>;
-		reset-gpios = <&pio 75 0>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel21_in: endpoint {
-				remote-endpoint = <&dsi1_out>;
-			};
-		};
-	};
-	ports {
-		port {
-			dsi1_out: endpoint {
-				remote-endpoint = <&panel21_in>;
-			};
-		};
-	};
-};
-
-&dsi0 {
-	status = "okay";
-	#address-cells = <1>;
-	#size-cells = <0>;
-	panel1@0 {
-		compatible = "jdi,nt36672e,vdo,120hz";
-		reg = <0>;
-		pm-enable-gpios = <&pio 68 0>;
-		reset-gpios = <&pio 86 0>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel_in1: endpoint {
-				remote-endpoint = <&dsi_out>;
-			};
-		};
-	};
-	panel2@1 {
-		compatible = "truly,td4330,cmd";
-		reg = <1>;
-		pm-enable-gpios = <&pio 68 0>;
-		reset-gpios = <&pio 86 0>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel_in2: endpoint {
-				remote-endpoint = <&dsi_out2>;
-			};
-		};
-	};
-	panel3@2 {
-		compatible = "tianma,nt36672e,vdo,120hz";
-		reg = <2>;
-		pm-enable-gpios = <&pio 68 0>;
-		reset-gpios = <&pio 86 0>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel_in3: endpoint {
-				remote-endpoint = <&dsi_out3>;
-			};
-		};
-	};
-	panel4@3 {
-		compatible = "nt37801,cmd,fhd";
-		reg = <3>;
-		pm-enable-gpios = <&pio 68 0>;
-		reset-gpios = <&pio 86 0>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel_in4: endpoint {
-				remote-endpoint = <&dsi_out4>;
-			};
-		};
-	};
-	ports {
-		port {
-			dsi_out: endpoint {
-				remote-endpoint = <&panel_in1>;
-			};
-
-			dsi_out2: endpoint2 {
-				remote-endpoint = <&panel_in2>;
-			};
-
-			dsi_out3: endpoint3 {
-				remote-endpoint = <&panel_in3>;
-			};
-
-			dsi_out4: endpoint4 {
-				remote-endpoint = <&panel_in4>;
-			};
-		};
-	};
-};
 /* GPS GPIO standardization start */
 &pio {
 	gps_pins_default: gps_default {
