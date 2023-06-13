@@ -13622,12 +13622,12 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"wla0,wla1,wla2,wla3,wla4,wla5,wla6,wla7,wla8,wla9,wla10,",
 				"wla11,wla12,wla13,wla14,wla15";
 			node-87 = "SSPM_SWPM_APU__MDLA",
-				"mdla_pdx0,mdla_pdx1,mdla_pdx2,mdla_pdx3",
-				"mdla_freq0,mdla_freq1,mdla_freq2,mdla_freq3",
+				"mdla_pdx0,mdla_pdx1,mdla_pdx2,mdla_pdx3,",
+				"mdla_freq0,mdla_freq1,mdla_freq2,mdla_freq3,",
 				"mdla_on_ratio0,mdla_on_ratio1,mdla_on_ratio2,mdla_on_ratio3";
 			node-88 = "SSPM_SWPM_APU__MVPU",
-				"mvpu_pdx0,mvpu_pdx1",
-				"mvpu_freq0,mvpu_freq1",
+				"mvpu_pdx0,mvpu_pdx1,",
+				"mvpu_freq0,mvpu_freq1,",
 				"mvpu_on_ratio0,mvpu_on_ratio1";
 			node-89 = "SSPM_SWPM_APU__TOP_FRQ_AND_RATIO",
 				"top_freq,top_on_ratio,idle_ratio_noc,wfi_ratio";
