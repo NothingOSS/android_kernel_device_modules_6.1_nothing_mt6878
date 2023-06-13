@@ -1585,7 +1585,7 @@ static inline void mtk_arch_set_freq_scale_gearless(struct cpufreq_policy *polic
 		cap = pd_X2Y(policy->cpu, *target_freq, FREQ, CAP, false);
 		max_cap = pd_X2Y(policy->cpu, policy->cpuinfo.max_freq, FREQ, CAP, false);
 		for_each_cpu(i, policy->related_cpus)
-			per_cpu(arch_freq_scale, i) = SCHED_CAPACITY_SCALE * cap / max_cap;
+			per_cpu(arch_freq_scale, i) = ((cap << SCHED_CAPACITY_SHIFT) / max_cap);
 	}
 }
 
@@ -1637,7 +1637,7 @@ void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 	}
 	cap = pd_X2Y(cpu, freq, FREQ, CAP, false);
 	max_cap = pd_X2Y(cpu, max, FREQ, CAP, false);
-	*scale = SCHED_CAPACITY_SCALE * cap / max_cap;
+	*scale = ((cap << SCHED_CAPACITY_SHIFT) / max_cap);
 	irq_log_store();
 }
 
@@ -1655,7 +1655,7 @@ int set_sched_capacity_margin_dvfs(int capacity_margin)
 		return -1;
 
 	sysctl_sched_capacity_margin_dvfs = capacity_margin;
-	util_scale = (SCHED_CAPACITY_SCALE * 100 / (100 - sysctl_sched_capacity_margin_dvfs));
+	util_scale = ((SCHED_CAPACITY_SCALE * 100) / (100 - sysctl_sched_capacity_margin_dvfs));
 
 	return 0;
 }
@@ -1872,7 +1872,7 @@ inline int update_cpu_active_ratio(int cpu_idx)
 	last_wall_time_stamp[cpu_idx] = wall_time_stamp;
 	duration_wind[cpu_idx] = duration;
 	duration_act[cpu_idx] = active_duration;
-	return (active_duration << SCHED_CAPACITY_SHIFT) / duration;
+	return ((active_duration << SCHED_CAPACITY_SHIFT) / duration);
 }
 
 void update_active_ratio_gear(struct cpumask *cpumask)
@@ -1920,8 +1920,8 @@ inline void update_adaptive_margin(struct cpufreq_policy *policy)
 		his_ptr[gearid] %= MAX_NR_CPUS;
 
 		if (ramp_up[gearid] == 0) {
-			unsigned int adaptive_ratio = gear_max_active_ratio_cap[gearid] *
-				SCHED_CAPACITY_SCALE / am_target_active_ratio_cap[gearid];
+			unsigned int adaptive_ratio = ((gear_max_active_ratio_cap[gearid] <<
+				SCHED_CAPACITY_SHIFT) / am_target_active_ratio_cap[gearid]);
 
 			adaptive_margin_tmp = READ_ONCE(adaptive_margin[gearid]);
 			adaptive_margin_tmp =
