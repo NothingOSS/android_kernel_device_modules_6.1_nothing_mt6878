@@ -297,6 +297,11 @@ struct scp_wake_info {
 	spinlock_t lock;
 };
 
+static struct scp_wake_info scp_wake = {
+	.remap_vaddr = NULL,
+	.count = 0,
+};
+
 struct mtk_i2c_cal_para {
 	unsigned int max_step;
 	unsigned int best_mul;
@@ -340,7 +345,7 @@ struct mtk_i2c {
 	bool master_code_sended;
 	struct mtk_i2c_ac_timing ac_timing;
 	const struct mtk_i2c_compatible *dev_comp;
-	struct scp_wake_info scp_wake;
+	spinlock_t multi_host_lock;
 };
 
 /**
@@ -675,6 +680,7 @@ static void mtk_i2c_clock_disable(struct mtk_i2c *i2c)
 int mtk_i2c_clock_enable_ex(struct i2c_adapter *adap)
 {
 	int ret = 0;
+	unsigned long flags;
 	struct mtk_i2c *i2c = i2c_get_adapdata(adap);
 
 	if (!i2c) {
@@ -688,8 +694,16 @@ int mtk_i2c_clock_enable_ex(struct i2c_adapter *adap)
 		goto err;
 	}
 
-	if (i2c->ch_offset_i2c == I2C_OFFSET_AP)
-		mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
+	if (i2c->ch_offset_i2c == I2C_OFFSET_AP) {
+		spin_lock_irqsave(&i2c->multi_host_lock, flags);
+		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0) {
+			mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
+			/* Make sure shadow reg mode is ready before writing register */
+			mb();
+			mtk_i2c_writew(i2c, i2c->ac_timing.htiming, OFFSET_TIMING);
+		}
+		spin_unlock_irqrestore(&i2c->multi_host_lock, flags);
+	}
 err:
 	return ret;
 }
@@ -716,9 +730,18 @@ static void mtk_i2c_init_hw(struct mtk_i2c *i2c)
 {
 	u16 control_reg;
 	u16 intr_stat_reg;
+	unsigned long flags;
 
-	if (i2c->ch_offset_i2c == I2C_OFFSET_AP)
-		mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
+	if (i2c->ch_offset_i2c == I2C_OFFSET_AP) {
+		spin_lock_irqsave(&i2c->multi_host_lock, flags);
+		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0) {
+			mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
+			/* Make sure shadow reg mode is ready before writing register */
+			mb();
+			mtk_i2c_writew(i2c, i2c->ac_timing.htiming, OFFSET_TIMING);
+		}
+		spin_unlock_irqrestore(&i2c->multi_host_lock, flags);
+	}
 
 	mtk_i2c_writew(i2c, I2C_CHN_CLR_FLAG, OFFSET_START);
 	intr_stat_reg = mtk_i2c_readw(i2c, OFFSET_INTR_STAT);
@@ -758,7 +781,9 @@ static void mtk_i2c_init_hw(struct mtk_i2c *i2c)
 	if (i2c->dev_comp->dcm)
 		mtk_i2c_writew(i2c, I2C_DCM_DISABLE, OFFSET_DCM_EN);
 
-	mtk_i2c_writew(i2c, i2c->timing_reg, OFFSET_TIMING);
+	if (!i2c->dev_comp->speed_ver)
+		mtk_i2c_writew(i2c, i2c->timing_reg, OFFSET_TIMING);
+
 	mtk_i2c_writew(i2c, i2c->high_speed_reg, OFFSET_HS);
 	if (i2c->dev_comp->ltiming_adjust)
 		mtk_i2c_writew(i2c, i2c->ltiming_reg, OFFSET_LTIMING);
@@ -1380,46 +1405,46 @@ int scp_wake_request(struct i2c_adapter *adap)
 	unsigned int delay = 0;
 	struct mtk_i2c *i2c = i2c_get_adapdata(adap);
 
-	if (!i2c->scp_wake.wakeup_mask || !i2c->scp_wake.notsleep_mask ||
-			!i2c->scp_wake.remap_vaddr) {
+	if (!scp_wake.wakeup_mask || !scp_wake.notsleep_mask ||
+			!scp_wake.remap_vaddr) {
 		dev_info(i2c->dev, "scp_wake init fail.\n");
 		return ret;
 	}
 
-	spin_lock_irqsave(&i2c->scp_wake.lock, flags);
+	spin_lock_irqsave(&scp_wake.lock, flags);
 
-	if (i2c->scp_wake.count == 0) {
-		writel((readl(i2c->scp_wake.remap_vaddr + i2c->scp_wake.sleep_reg)
-			| i2c->scp_wake.wakeup_mask), i2c->scp_wake.remap_vaddr + i2c->scp_wake.sleep_reg);
+	if (scp_wake.count == 0) {
+		writel((readl(scp_wake.remap_vaddr + scp_wake.sleep_reg)
+			| scp_wake.wakeup_mask), scp_wake.remap_vaddr + scp_wake.sleep_reg);
 
 		delay = SCP_WAKE_TIMEOUT;
 		do {
 			delay--;
-			reg = readl(i2c->scp_wake.remap_vaddr + i2c->scp_wake.sleep_stat);
-			if ((reg & i2c->scp_wake.notsleep_mask) == i2c->scp_wake.awake)
+			reg = readl(scp_wake.remap_vaddr + scp_wake.sleep_stat);
+			if ((reg & scp_wake.notsleep_mask) == scp_wake.awake)
 				break;
 			udelay(20);
 		} while (delay);
 
-		if ((reg & i2c->scp_wake.notsleep_mask) != i2c->scp_wake.awake) {
+		if ((reg & scp_wake.notsleep_mask) != scp_wake.awake) {
 			dev_info(i2c->dev, "wait scp wakeup timeout, sleep_stat=0x%x\n", reg);
 			goto err;
 		} else {
-			i2c->scp_wake.count++;
+			scp_wake.count++;
 			dev_dbg(i2c->dev, "scp wakeup success, sleep_stat=0x%x, count=%d\n",
-				reg, i2c->scp_wake.count);
+				reg, scp_wake.count);
 			ret = 0;
 		}
-	} else if (i2c->scp_wake.count > 0) {
-		i2c->scp_wake.count++;
-		dev_dbg(i2c->dev, "scp is awake, count=%d\n", i2c->scp_wake.count);
+	} else if (scp_wake.count > 0) {
+		scp_wake.count++;
+		dev_dbg(i2c->dev, "scp is awake, count=%d\n", scp_wake.count);
 		ret = 0;
 	} else {
 		dev_info(i2c->dev, "scp wake count value invalid\n");
 	}
 
 err:
-	spin_unlock_irqrestore(&i2c->scp_wake.lock, flags);
+	spin_unlock_irqrestore(&scp_wake.lock, flags);
 	return ret;
 }
 EXPORT_SYMBOL(scp_wake_request);
@@ -1430,23 +1455,23 @@ int scp_wake_release(struct i2c_adapter *adap)
 	int ret = -1;
 	struct mtk_i2c *i2c = i2c_get_adapdata(adap);
 
-	if (!i2c->scp_wake.wakeup_mask || !i2c->scp_wake.notsleep_mask ||
-			!i2c->scp_wake.remap_vaddr) {
+	if (!scp_wake.wakeup_mask || !scp_wake.notsleep_mask ||
+			!scp_wake.remap_vaddr) {
 		dev_info(i2c->dev, "scp_release init fail.\n");
 		return ret;
 	}
 
-	spin_lock_irqsave(&i2c->scp_wake.lock, flags);
+	spin_lock_irqsave(&scp_wake.lock, flags);
 
-	if (i2c->scp_wake.count == 0) {
+	if (scp_wake.count == 0) {
 		dev_info(i2c->dev, "please request scp first!\n");
 		goto err;
-	} else if (i2c->scp_wake.count > 0) {
-		i2c->scp_wake.count--;
-		dev_dbg(i2c->dev, "scp release count=%d\n", i2c->scp_wake.count);
-		if (!i2c->scp_wake.count) {
-			writel((readl(i2c->scp_wake.remap_vaddr + i2c->scp_wake.sleep_reg)
-			& ~(i2c->scp_wake.wakeup_mask)), i2c->scp_wake.remap_vaddr + i2c->scp_wake.sleep_reg);
+	} else if (scp_wake.count > 0) {
+		scp_wake.count--;
+		dev_dbg(i2c->dev, "scp release count=%d\n", scp_wake.count);
+		if (!scp_wake.count) {
+			writel((readl(scp_wake.remap_vaddr + scp_wake.sleep_reg)
+				& ~(scp_wake.wakeup_mask)), scp_wake.remap_vaddr + scp_wake.sleep_reg);
 			dev_dbg(i2c->dev, "scp release success.\n");
 		}
 		ret = 0;
@@ -1455,7 +1480,7 @@ int scp_wake_release(struct i2c_adapter *adap)
 	}
 
 err:
-	spin_unlock_irqrestore(&i2c->scp_wake.lock, flags);
+	spin_unlock_irqrestore(&scp_wake.lock, flags);
 	return ret;
 }
 EXPORT_SYMBOL(scp_wake_release);
@@ -1888,9 +1913,6 @@ static int mtk_i2c_transfer(struct i2c_adapter *adap,
 	i2c->master_code_sended = false;
 	i2c->auto_restart = i2c->dev_comp->auto_restart;
 
-	if (i2c->ch_offset_i2c == I2C_OFFSET_AP)
-		mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
-
 	/* checking if we can skip restart and optimize using WRRD mode */
 	if (i2c->auto_restart && num == 2) {
 		if (!(msgs[0].flags & I2C_M_RD) && (msgs[1].flags & I2C_M_RD) &&
@@ -2053,54 +2075,57 @@ static int mtk_i2c_parse_dt(struct device_node *np, struct mtk_i2c *i2c)
 	of_property_read_u32(np, "scl-gpio-id", &i2c->scl_gpio_id);
 	of_property_read_u32(np, "sda-gpio-id", &i2c->sda_gpio_id);
 
-	if (i2c->ch_offset_i2c == I2C_OFFSET_SCP) {
-		ret = of_property_read_u32_index(np, "scp-wake", 0, &i2c->scp_wake.phyaddr);
+	if ((i2c->ch_offset_i2c == I2C_OFFSET_SCP) && (!scp_wake.remap_vaddr)) {
+
+		spin_lock_init(&scp_wake.lock);
+
+		ret = of_property_read_u32_index(np, "scp-wake", 0, &scp_wake.phyaddr);
 		if (ret < 0) {
 			dev_info(i2c->dev, "read scp_wake base address fail, ret = %d\n", ret);
-			i2c->scp_wake.phyaddr = 0;
+			scp_wake.phyaddr = 0;
 			return ret;
 		}
 
-		i2c->scp_wake.remap_vaddr = ioremap(i2c->scp_wake.phyaddr, 0x100);
-		if (!i2c->scp_wake.remap_vaddr) {
-			dev_info(i2c->dev, "%s: remap_vaddr(0x%x) ioremap fail.\n",
-					__func__, i2c->scp_wake.phyaddr);
-			return -ENOMEM;
-		}
-
-		ret = of_property_read_u32_index(np, "scp-wake", 1, &i2c->scp_wake.wakeup_mask);
+		ret = of_property_read_u32_index(np, "scp-wake", 1, &scp_wake.wakeup_mask);
 		if (ret < 0) {
 			dev_info(i2c->dev, "read scp_wake wakeup_mask fail, ret = %d\n", ret);
-			i2c->scp_wake.wakeup_mask = 0;
+			scp_wake.wakeup_mask = 0;
 			return ret;
 		}
 
-		ret = of_property_read_u32_index(np, "scp-wake", 2, &i2c->scp_wake.notsleep_mask);
+		ret = of_property_read_u32_index(np, "scp-wake", 2, &scp_wake.notsleep_mask);
 		if (ret < 0) {
 			dev_info(i2c->dev, "read scp_wake notsleep_mask fail, ret = %d\n", ret);
-			i2c->scp_wake.notsleep_mask = 0;
+			scp_wake.notsleep_mask = 0;
 			return ret;
 		}
 
-		ret = of_property_read_u32(np, "sleep-reg-offset", &i2c->scp_wake.sleep_reg);
+		ret = of_property_read_u32(np, "sleep-reg-offset", &scp_wake.sleep_reg);
 		if (ret < 0) {
 			dev_info(i2c->dev, "read sleep-reg-offset fail, ret = %d\n", ret);
-			i2c->scp_wake.sleep_reg = 0;
+			scp_wake.sleep_reg = 0;
 			return ret;
 		}
 
-		ret = of_property_read_u32(np, "sleep-stat-offset", &i2c->scp_wake.sleep_stat);
+		ret = of_property_read_u32(np, "sleep-stat-offset", &scp_wake.sleep_stat);
 		if (ret < 0) {
 			dev_info(i2c->dev, "read sleep-stat-offset fail, ret = %d\n", ret);
-			i2c->scp_wake.sleep_stat = 0;
+			scp_wake.sleep_stat = 0;
 			return ret;
 		}
 
-		ret = of_property_read_u32(np, "scp-awake", &i2c->scp_wake.awake);
+		ret = of_property_read_u32(np, "scp-awake", &scp_wake.awake);
 		if (ret < 0) {
 			dev_info(i2c->dev, "read scp-awake fail, ret = %d\n", ret);
-			i2c->scp_wake.awake = 0;
+			scp_wake.awake = 0;
 			return ret;
+		}
+
+		scp_wake.remap_vaddr = ioremap(scp_wake.phyaddr, 0x100);
+		if (!scp_wake.remap_vaddr) {
+			dev_info(i2c->dev, "%s: remap_vaddr(0x%x) ioremap fail.\n",
+					__func__, scp_wake.phyaddr);
+			return -ENOMEM;
 		}
 	}
 
@@ -2135,6 +2160,8 @@ static int mtk_i2c_probe(struct platform_device *pdev)
 
 	init_completion(&i2c->msg_complete);
 
+	spin_lock_init(&i2c->multi_host_lock);
+
 	i2c->dev_comp = of_device_get_match_data(&pdev->dev);
 	i2c->adap.dev.of_node = pdev->dev.of_node;
 	i2c->dev = &pdev->dev;
@@ -2144,8 +2171,6 @@ static int mtk_i2c_probe(struct platform_device *pdev)
 	i2c->adap.quirks = i2c->dev_comp->quirks;
 	i2c->adap.timeout = 2 * HZ;
 	i2c->adap.retries = 1;
-	i2c->scp_wake.count = 0;
-	i2c->scp_wake.remap_vaddr = NULL;
 	i2c->adap.bus_regulator = devm_regulator_get_optional(&pdev->dev, "vbus");
 	if (IS_ERR(i2c->adap.bus_regulator)) {
 		if (PTR_ERR(i2c->adap.bus_regulator) == -ENODEV)
@@ -2254,8 +2279,10 @@ static int mtk_i2c_remove(struct platform_device *pdev)
 {
 	struct mtk_i2c *i2c = platform_get_drvdata(pdev);
 
-	if (i2c->scp_wake.remap_vaddr)
-		iounmap(i2c->scp_wake.remap_vaddr);
+	if (scp_wake.remap_vaddr) {
+		iounmap(scp_wake.remap_vaddr);
+		scp_wake.remap_vaddr = NULL;
+	}
 
 	i2c_del_adapter(&i2c->adap);
 
