@@ -5055,6 +5055,11 @@
 			reg = <0 0x13a00000 0 0x200000>;
 			interrupts = <GIC_SPI 677 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "combined";
+			/* global mpam: partid, pmg */
+			mtk,gmpam-cfg = <5 0>;
+			/* ste mpam: sid, partid, pmg */
+			mtk,mpam-cfg = <1 5 0>,
+				       <2 5 0>;
 			/* dma-coherent; */
 		};
 
