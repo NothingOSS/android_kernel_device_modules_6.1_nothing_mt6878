@@ -2344,6 +2344,12 @@ static int ufs_mtk_clk_scale_notify(struct ufs_hba *hba, bool scale_up,
 
 static int ufs_mtk_get_hba_mac(struct ufs_hba *hba)
 {
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	/* MCQ operation not permitted */
+	if (host->caps & UFS_MTK_CAP_DISABLE_MCQ)
+		return -EPERM;
+
 	return MAX_SUPP_MAC;
 }
 
@@ -2377,7 +2383,6 @@ static int ufs_mtk_mcq_config_resource(struct ufs_hba *hba)
 	/* fail mcq initialization if interrupt is not filled properly */
 	if (!host->mcq_nr_intr) {
 		dev_info(hba->dev, "IRQs not ready. MCQ disabled.");
-		hba->host->nr_hw_queues = 1;
 		return -EINVAL;
 	}
 
