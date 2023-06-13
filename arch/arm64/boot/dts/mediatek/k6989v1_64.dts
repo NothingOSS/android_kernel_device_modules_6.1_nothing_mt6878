@@ -355,6 +355,14 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	status = "disabled";
 };
 
+&pciephy0 {
+	status = "okay";
+};
+
+&pciephy1 {
+	status = "disabled";
+};
+
 &pio {
 	pcie0_pins_default: pcie0-default {
 		pins_cmd_dat {
