@@ -453,6 +453,8 @@ static s32 rrot_prepare(struct mml_comp *comp, struct mml_task *task,
 	struct rrot_frame_data *rrot_frm;
 
 	ccfg->data = kzalloc(sizeof(struct rrot_frame_data), GFP_KERNEL);
+	if (!ccfg->data)
+		return -ENOMEM;
 	rrot_frm = rrot_frm_data(ccfg);
 
 	/* calculate binning size and set to frame config */
@@ -1312,6 +1314,9 @@ static void rrot_config_left(struct mml_tile_engine *tile)
 {
 	tile->in.xe = tile->in.xs + (tile->in.xe - tile->in.xs + 1) / 2 - 1;
 	tile->out.xe = tile->out.xs + (tile->out.xe - tile->out.xs + 1) / 2 - 1;
+
+	tile->in.xe = round_up(tile->in.xe + 1, 32) - 1;
+	tile->out.xe = round_up(tile->out.xe + 1, 32) - 1;
 }
 
 static void rrot_config_right(struct mml_tile_engine *tile)
@@ -1319,12 +1324,18 @@ static void rrot_config_right(struct mml_tile_engine *tile)
 	tile->in.xs = tile->in.xs + (tile->in.xe - tile->in.xs + 1) / 2;
 	tile->out.xs = tile->out.xs + (tile->out.xe - tile->out.xs + 1) / 2;
 	tile->luma.x = 0;
+
+	tile->in.xs = round_up(tile->in.xs, 32);
+	tile->out.xs = round_up(tile->out.xs, 32);
 }
 
 static void rrot_config_top(struct mml_tile_engine *tile)
 {
 	tile->in.ye = tile->in.ys + (tile->in.ye - tile->in.ys + 1) / 2 - 1;
 	tile->out.ye = tile->out.ys + (tile->out.ye - tile->out.ys + 1) / 2 - 1;
+
+	tile->in.ye = round_up(tile->in.ye + 1, 16) - 1;
+	tile->out.ye = round_up(tile->out.ye + 1, 16) - 1;
 }
 
 static void rrot_config_bottom(struct mml_tile_engine *tile)
@@ -1332,6 +1343,9 @@ static void rrot_config_bottom(struct mml_tile_engine *tile)
 	tile->in.ys = tile->in.ys + (tile->in.ye - tile->in.ys + 1) / 2;
 	tile->out.ys = tile->out.ys + (tile->out.ye - tile->out.ys + 1) / 2;
 	tile->luma.y = 0;
+
+	tile->in.ys = round_up(tile->in.ys, 16);
+	tile->out.ys = round_up(tile->out.ys, 16);
 }
 
 static void rrot_calc_unbin(struct mml_frame_config *cfg, struct mml_tile_engine *tile)
