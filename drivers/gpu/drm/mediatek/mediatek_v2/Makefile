@@ -103,6 +103,7 @@ obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mtk_disp_sec.o
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM)	\
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/			\
+	     -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mminfra/			\
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/			\
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/			\
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pmic/			\

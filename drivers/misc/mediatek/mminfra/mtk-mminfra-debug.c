@@ -17,6 +17,7 @@
 #include "cmdq-util.h"
 #include "mtk-smi-dbg.h"
 #include "tinysys-scmi.h"
+#include "vcp_status.h"
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
 #endif
@@ -39,6 +40,7 @@ struct mminfra_dbg {
 	void __iomem *mminfra_ao_base;
 	void __iomem *gce_base;
 	void __iomem *spm_base;
+	void __iomem *vcp_gipc_in_set;
 	ssize_t ctrl_size;
 	struct device *comm_dev[MAX_SMI_COMM_NUM];
 	struct notifier_block nb;
@@ -50,15 +52,19 @@ static struct scmi_tinysys_info_st *tinfo;
 static int feature_id;
 static struct clk *mminfra_clk[MMINFRA_MAX_CLK_NUM];
 static atomic_t clk_ref_cnt = ATOMIC_INIT(0);
+static atomic_t vcp_ref_cnt = ATOMIC_INIT(0);
 static struct device *dev;
 static struct mminfra_dbg *dbg;
 static u32 mminfra_bkrs;
 static u32 bkrs_reg_pa;
 static bool mminfra_ao_base;
+static bool vcp_gipc;
+static bool no_sleep_pd_cb;
 
 #define MMINFRA_BASE		0x1e800000
 #define MMINFRA_AO_BASE		0x1e8ff000
 #define GCE_BASE		0x1e980000
+#define VCP_GIPC_IN_SET		0x1ec24098
 
 #define MMINFRA_CG_CON0		0x100
 #define MMINFRA_DBG_SEL		0x300
@@ -77,6 +83,15 @@ static bool mminfra_ao_base;
 #define MM_INFRA_AO_PDN_SRAM_CON	(0xf14)
 #define MM_INFRA_SLEEP_SRAM_PDN		BIT(0)
 #define MM_INFRA_SLEEP_SRAM_PDN_ACK	BIT(8)
+
+#define GIPC4_SETCLR_BIT_0	(1U << 16)
+#define GIPC4_SETCLR_BIT_1	(1U << 17)
+#define GIPC4_SETCLR_BIT_2	(1U << 18)
+#define GIPC4_SETCLR_BIT_3	(1U << 19)
+
+#define	MM_SYS_RESUME		GIPC4_SETCLR_BIT_0
+#define	MM_SYS_SUSPEND		GIPC4_SETCLR_BIT_1
+#define	MM_INFRA_OFF		GIPC4_SETCLR_BIT_2
 
 static bool mminfra_check_scmi_status(void)
 {
@@ -232,53 +247,60 @@ static int mtk_mminfra_pd_callback(struct notifier_block *nb,
 	u32 val;
 
 	if (flags == GENPD_NOTIFY_ON) {
-		mminfra_clk_set(true);
-		mminfra_cg_check(true);
 		count = atomic_inc_return(&clk_ref_cnt);
-		if (mminfra_bkrs) {
-			/* avoid suspend/resume fail when mminfra debug
-			 * is also initialized in sspm
-			 */
-			cmdq_util_mminfra_cmd(0);
-			cmdq_util_mminfra_cmd(3); //mminfra rfifo init
-			do_mminfra_bkrs(true);
-		}
-		cmdq_util_mmuen_devapc_disable();
-		test_base = ioremap(bkrs_reg_pa, 4);
-		val = readl_relaxed(test_base);
-		if (val != bk_val) {
-			pr_notice("%s: HRE restore failed %#x=%x\n",
-				__func__, bkrs_reg_pa, val);
+		if (!no_sleep_pd_cb) {
+			mminfra_clk_set(true);
+			mminfra_cg_check(true);
+			if (mminfra_bkrs) {
+				/* avoid suspend/resume fail when mminfra debug
+				 * is also initialized in sspm
+				 */
+				cmdq_util_mminfra_cmd(0);
+				cmdq_util_mminfra_cmd(3); //mminfra rfifo init
+				do_mminfra_bkrs(true);
+			}
+			cmdq_util_mmuen_devapc_disable();
+			test_base = ioremap(bkrs_reg_pa, 4);
+			val = readl_relaxed(test_base);
+			if (val != bk_val) {
+				pr_notice("%s: HRE restore failed %#x=%x\n",
+					__func__, bkrs_reg_pa, val);
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-			aee_kernel_warning("mminfra",
-				"HRE restore failed %#x=%x, bk_val=%x\n",
-				bkrs_reg_pa, val, bk_val);
+				aee_kernel_warning("mminfra",
+					"HRE restore failed %#x=%x, bk_val=%x\n",
+					bkrs_reg_pa, val, bk_val);
 #endif
-			BUG_ON(1);
+				BUG_ON(1);
+			}
+			iounmap(test_base);
+
+			writel(0x20002, dbg->gce_base + GCE_GCTL_VALUE);
+			pr_notice("%s: enable gce apsrc: %#x=%#x\n",
+				__func__, GCE_BASE + GCE_GCTL_VALUE,
+				readl(dbg->gce_base + GCE_GCTL_VALUE));
+			mtk_mminfra_gce_sram_en();
 		}
-		iounmap(test_base);
 		pr_notice("%s: enable clk ref_cnt=%d\n", __func__, count);
-		writel(0x20002, dbg->gce_base + GCE_GCTL_VALUE);
-		pr_notice("%s: enable gce apsrc: %#x=%#x\n",
-			__func__, GCE_BASE + GCE_GCTL_VALUE, readl(dbg->gce_base + GCE_GCTL_VALUE));
-		mtk_mminfra_gce_sram_en();
 	} else if (flags == GENPD_NOTIFY_PRE_OFF) {
-		writel(0, dbg->gce_base + GCE_GCTL_VALUE);
-		pr_notice("%s: disable gce apsrc: %#x=%#x\n",
-			__func__, GCE_BASE + GCE_GCTL_VALUE, readl(dbg->gce_base + GCE_GCTL_VALUE));
-		test_base = ioremap(bkrs_reg_pa, 4);
-		bk_val = readl_relaxed(test_base);
-		if (mminfra_bkrs)
-			do_mminfra_bkrs(false);
-		iounmap(test_base);
-		count = atomic_read(&clk_ref_cnt);
-		if (count != 1) {
-			pr_notice("%s: wrong clk ref_cnt=%d in PRE_OFF\n",
-				__func__, count);
-			return NOTIFY_OK;
+		if (!no_sleep_pd_cb) {
+			writel(0, dbg->gce_base + GCE_GCTL_VALUE);
+			pr_notice("%s: disable gce apsrc: %#x=%#x\n",
+				__func__, GCE_BASE + GCE_GCTL_VALUE,
+				readl(dbg->gce_base + GCE_GCTL_VALUE));
+			test_base = ioremap(bkrs_reg_pa, 4);
+			bk_val = readl_relaxed(test_base);
+			if (mminfra_bkrs)
+				do_mminfra_bkrs(false);
+			iounmap(test_base);
+			count = atomic_read(&clk_ref_cnt);
+			if (count != 1) {
+				pr_notice("%s: wrong clk ref_cnt=%d in PRE_OFF\n",
+					__func__, count);
+				return NOTIFY_OK;
+			}
+			mminfra_clk_set(false);
+			mminfra_cg_check(false);
 		}
-		mminfra_clk_set(false);
-		mminfra_cg_check(false);
 		count = atomic_dec_return(&clk_ref_cnt);
 		pr_notice("%s: disable clk ref_cnt=%d\n", __func__, count);
 	}
@@ -388,6 +410,28 @@ static struct kernel_param_ops mminfra_ut_ops = {
 module_param_cb(mminfra_ut, &mminfra_ut_ops, NULL, 0644);
 MODULE_PARM_DESC(mminfra_ut, "mminfra ut");
 
+static int vcp_mminfra_on(void)
+{
+	int count, ret;
+
+	count = atomic_inc_return(&vcp_ref_cnt);
+	ret = pm_runtime_get_sync(dev);
+	pr_notice("%s: ref_cnt=%d, ret=%d\n", __func__, count, ret);
+
+	return ret;
+}
+
+static int vcp_mminfra_off(void)
+{
+	int count, ret;
+
+	count = atomic_dec_return(&vcp_ref_cnt);
+	ret = pm_runtime_put_sync(dev);
+	pr_notice("%s: ref_cnt=%d, ret=%d\n", __func__, count, ret);
+
+	return ret;
+}
+
 static void mminfra_gals_dump(void)
 {
 	u32 i;
@@ -462,6 +506,15 @@ static int mminfra_smi_dbg_cb(struct notifier_block *nb,
 	mtk_mminfra_dbg_hang_detect("smi_dbg");
 	return 0;
 }
+
+void mtk_mminfra_off_gipc(void)
+{
+	if (vcp_gipc) {
+		writel(MM_INFRA_OFF, dbg->vcp_gipc_in_set);
+		pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
+	}
+}
+EXPORT_SYMBOL_GPL(mtk_mminfra_off_gipc);
 
 static bool aee_dump;
 static irqreturn_t mminfra_irq_handler(int irq, void *data)
@@ -552,6 +605,11 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	if (!bkrs_reg_pa)
 		bkrs_reg_pa = MMINFRA_BASE + 0x280;
 
+	if (!mminfra_bkrs) {
+		vcp_gipc = of_property_read_bool(node, "vcp-gipc");
+		no_sleep_pd_cb = of_property_read_bool(node, "no-sleep-pd-cb");
+	}
+
 	if (!of_property_read_u32(node, "spm-base", &spm_base_pa)) {
 		pr_notice("[mminfra] spm_base_pa=%#x\n", spm_base_pa);
 		dbg->spm_base = ioremap(bkrs_reg_pa, 0x1000);
@@ -590,10 +648,15 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 
 	dbg->mminfra_base = ioremap(MMINFRA_BASE, 0x8f4);
 	dbg->gce_base = ioremap(GCE_BASE, 0x1000);
+	dbg->vcp_gipc_in_set = ioremap(VCP_GIPC_IN_SET, 0x100);
 
 	cmdq_get_mminfra_cb(is_mminfra_power_on);
 	cmdq_get_mminfra_gce_cg_cb(is_gce_cg_on);
 
+	if (vcp_gipc) {
+		pm_runtime_irq_safe(dev);
+		vcp_register_mminfra_cb_ex(vcp_mminfra_on, vcp_mminfra_off);
+	}
 
 	mtk_pd_notifier.notifier_call = mtk_mminfra_pd_callback;
 	ret = dev_pm_genpd_add_notifier(dev, &mtk_pd_notifier);
@@ -633,8 +696,15 @@ static int mminfra_pm_suspend(struct device *dev)
 	return 0;
 }
 
+static int mminfra_pm_suspend_noirq(struct device *dev)
+{
+	pr_notice("mminfra suspend noirq\n");
+	return 0;
+}
+
 static const struct dev_pm_ops mminfra_debug_pm_ops = {
 	.suspend = mminfra_pm_suspend,
+	.suspend_noirq = mminfra_pm_suspend_noirq,
 };
 
 static const struct of_device_id of_mminfra_debug_match_tbl[] = {

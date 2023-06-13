@@ -10,12 +10,16 @@
 
 int mtk_mminfra_dbg_hang_detect(const char *user);
 
+void mtk_mminfra_off_gipc(void);
+
 #else
 
 static inline int mtk_mminfra_dbg_hang_detect(const char *user)
 {
 	return 0;
 }
+
+static inline void mtk_mminfra_off_gipc(void) { }
 
 #endif /* CONFIG_MTK_MMINFRA */
 

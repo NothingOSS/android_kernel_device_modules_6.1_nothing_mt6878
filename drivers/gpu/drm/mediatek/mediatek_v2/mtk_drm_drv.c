@@ -85,6 +85,8 @@
 #include <linux/nvmem-consumer.h>
 #endif
 
+#include "mtk-mminfra-debug.h"
+
 #define CLKBUF_COMMON_H
 
 #define DRIVER_NAME "mediatek"
@@ -7059,8 +7061,10 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	 * When kernel init, SMI larb will get once for keeping
 	 * MTCMOS on. Then, this keeping will be released after
 	 * display keep MTCMOS by itself.
+	 * Trigger mminfra gipc to hfrp.
 	 */
 	mtk_smi_init_power_off();
+	mtk_mminfra_off_gipc();
 
 	return 0;
 
