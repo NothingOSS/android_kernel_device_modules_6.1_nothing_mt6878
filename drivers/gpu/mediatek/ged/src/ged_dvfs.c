@@ -3150,9 +3150,9 @@ GED_ERROR ged_dvfs_system_init(void)
 	reduce_mips_dvfs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_reduce_mips");
 
 	if (unlikely(!reduce_mips_dvfs_node)) {
-		GED_LOGI("Failed to find reduce_mips_dvfs_node, dts not support");
+		GED_LOGI("Failed to find reduce_mips_dvfs_node");
 	} else {
-		GED_LOGI("Success to find reduce_mips_dvfs_node, dts support");
+		GED_LOGI("Success to find reduce_mips_dvfs_node");
 		of_property_read_u32(reduce_mips_dvfs_node, "reduce-mips-support",
 								&g_reduce_mips_support);
 	}
@@ -3163,8 +3163,9 @@ GED_ERROR ged_dvfs_system_init(void)
 	if (mips_support_flag == 1) {
 		get_min_oppidx = ged_get_min_oppidx();
 		mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GED_MIN_OPPIDX, get_min_oppidx);
-		GED_LOGI("dts support, min_oppidx=%u", get_min_oppidx);
-	}
+		GED_LOGI("dts support gpueb dvfs, min_oppidx=%u", get_min_oppidx);
+	} else
+		GED_LOGI("dts not support gpueb dvfs");
 
 	async_dvfs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_async_ratio");
 	if (unlikely(!async_dvfs_node)) {
