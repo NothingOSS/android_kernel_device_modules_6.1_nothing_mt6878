@@ -303,6 +303,20 @@ u8 cmdq_get_irq_long_times(void *chan)
 }
 EXPORT_SYMBOL(cmdq_get_irq_long_times);
 
+void cmdq_get_usage_cb(struct mbox_chan *chan, cmdq_usage_cb usage_cb)
+{
+	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
+		typeof(*cmdq), mbox);
+	u32 i;
+
+	for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++)
+		if (cmdq->thread[i].chan == chan)
+			break;
+
+	cmdq->thread[i].usage_cb = usage_cb;
+}
+EXPORT_SYMBOL(cmdq_get_usage_cb);
+
 void cmdq_dump_usage(void)
 {
 	s32 i, j, usage[CMDQ_THR_MAX_COUNT];
@@ -315,8 +329,11 @@ void cmdq_dump_usage(void)
 		if (!atomic_read(&g_cmdq[i]->usage))
 			continue;
 
-		for (j = 0; j < ARRAY_SIZE(g_cmdq[i]->thread); j++)
+		for (j = 0; j < ARRAY_SIZE(g_cmdq[i]->thread); j++) {
 			usage[j] = atomic_read(&g_cmdq[i]->thread[j].usage);
+			if (usage[j] > 0 && g_cmdq[i]->thread[j].usage_cb)
+				g_cmdq[i]->thread[j].usage_cb(j);
+		}
 
 		cmdq_msg(
 			"%s: usage:%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
@@ -2497,6 +2514,7 @@ static int cmdq_probe(struct platform_device *pdev)
 			cmdq_thread_handle_timeout, 0);
 		cmdq->thread[i].idx = i;
 		cmdq->mbox.chans[i].con_priv = &cmdq->thread[i];
+		cmdq->thread[i].usage_cb = NULL;
 		INIT_WORK(&cmdq->thread[i].timeout_work,
 			cmdq_thread_handle_timeout_work);
 	}
