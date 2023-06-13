@@ -25,6 +25,7 @@
 #define MT6363_RG_LVSYS_INT_EN		0xa18
 #define MT6363_RG_LVSYS_INT_VTHL	0xa8b
 #define MT6363_RG_LVSYS_INT_VTHH	0xa8c
+#define MTK_LBAT_PT_THD_VOLTS_LENGTH	20
 
 struct pmic_lvsys_info {
 	u32 lvsys_int_en_reg;
@@ -69,6 +70,7 @@ struct pmic_lvsys_notify {
 	unsigned int *cur_hv_ptr;
 	int thd_volts_l_size;
 	int thd_volts_h_size;
+	int bat_type;
 };
 
 static BLOCKING_NOTIFIER_HEAD(lvsys_notifier_list);
@@ -397,10 +399,92 @@ static int pmic_lvsys_parse_dt(struct pmic_lvsys_notify *lvsys_notify, struct de
 	return ret;
 }
 
+static int pmic_lowbatpt_parse_dt(struct pmic_lvsys_notify *lvsys_notify,
+				  struct device_node *np, struct device_node *lowbatpt_np)
+{
+	int ret;
+	unsigned int deb_sel = 0;
+	const struct pmic_lvsys_info *info = lvsys_notify->info;
+	char thd_volts_l[MTK_LBAT_PT_THD_VOLTS_LENGTH] = "thd-volts-l";
+	char thd_volts_h[MTK_LBAT_PT_THD_VOLTS_LENGTH] = "thd-volts-h";
+
+	if (lvsys_notify->bat_type == 1) {
+		/* big battery */
+		strncpy(thd_volts_l, "thd-volts-l-2s", MTK_LBAT_PT_THD_VOLTS_LENGTH);
+		strncpy(thd_volts_h, "thd-volts-h-2s", MTK_LBAT_PT_THD_VOLTS_LENGTH);
+	}
+
+	lvsys_notify->thd_volts_l_size =
+		of_property_count_elems_of_size(lowbatpt_np, thd_volts_l, sizeof(u32));
+	if (lvsys_notify->thd_volts_l_size <= 0)
+		return -EINVAL;
+	lvsys_notify->thd_volts_l = devm_kmalloc_array(lvsys_notify->dev,
+						       lvsys_notify->thd_volts_l_size,
+						       sizeof(u32), GFP_KERNEL);
+	if (!lvsys_notify->thd_volts_l)
+		return -ENOMEM;
+	ret = of_property_read_u32_array(lowbatpt_np, thd_volts_l, lvsys_notify->thd_volts_l,
+					 lvsys_notify->thd_volts_l_size);
+
+	lvsys_notify->thd_volts_h_size =
+		of_property_count_elems_of_size(lowbatpt_np, thd_volts_h, sizeof(u32));
+	if (lvsys_notify->thd_volts_h_size <= 0)
+		return -EINVAL;
+	lvsys_notify->thd_volts_h = devm_kmalloc_array(lvsys_notify->dev,
+						       lvsys_notify->thd_volts_h_size,
+						       sizeof(u32), GFP_KERNEL);
+	if (!lvsys_notify->thd_volts_h)
+		return -ENOMEM;
+	ret |= of_property_read_u32_array(lowbatpt_np, thd_volts_h, lvsys_notify->thd_volts_h,
+					 lvsys_notify->thd_volts_h_size);
+	if (ret)
+		return ret;
+#if LVSYS_DBG
+	pr_info("%s thd_volts_l_sizei=%d thd_volts_h_size=%d bat_type=%d\n", __func__,
+	       lvsys_notify->thd_volts_l_size, lvsys_notify->thd_volts_h_size,
+	       lvsys_notify->bat_type);
+	for (ret = 0; ret < lvsys_notify->thd_volts_l_size; ret++)
+		pr_info("%s idx=%d thd_l=%d\n", __func__, ret, lvsys_notify->thd_volts_l[ret]);
+	for (ret = 0; ret < lvsys_notify->thd_volts_h_size; ret++)
+		pr_info("%s idx=%d thd_h=%d\n", __func__, ret, lvsys_notify->thd_volts_h[ret]);
+#endif
+	/* we only get last element of array as thd */
+	lvsys_notify->thd_volts_l = lvsys_notify->thd_volts_l + lvsys_notify->thd_volts_l_size-1;
+	lvsys_notify->thd_volts_h = lvsys_notify->thd_volts_h + lvsys_notify->thd_volts_h_size-1;
+	lvsys_notify->thd_volts_l_size = 1;
+	lvsys_notify->thd_volts_h_size = 1;
+
+	lvsys_notify->cur_lv_ptr = lvsys_notify->thd_volts_l;
+	lvsys_notify->cur_hv_ptr = get_next_hv_ptr(lvsys_notify);
+	update_lvsys_vth(lvsys_notify);
+
+	ret = of_property_read_u32(np, "lv-deb-sel", &deb_sel);
+	if (ret)
+		deb_sel = 0;
+	else
+		deb_sel <<= __ffs(info->lvsys_int_fdb_sel_mask);
+	ret = regmap_update_bits(lvsys_notify->regmap, info->lvsys_int_en_reg,
+				 info->lvsys_int_fdb_sel_mask, deb_sel);
+	if (ret)
+		dev_notice(lvsys_notify->dev, "Failed to set LVSYS_INT_FDB_SEL, ret=%d\n", ret);
+	ret = of_property_read_u32(np, "hv-deb-sel", &deb_sel);
+	if (ret)
+		deb_sel = 0;
+	else
+		deb_sel <<= __ffs(info->lvsys_int_rdb_sel_mask);
+	ret = regmap_update_bits(lvsys_notify->regmap, info->lvsys_int_en_reg,
+				 info->lvsys_int_rdb_sel_mask, deb_sel);
+	if (ret)
+		dev_notice(lvsys_notify->dev, "Failed to set LVSYS_INT_RDB_SEL, ret=%d\n", ret);
+
+	return ret;
+}
+
 static int pmic_lvsys_notify_probe(struct platform_device *pdev)
 {
 	int ret, irq;
 	struct device_node *np = pdev->dev.of_node;
+	struct device_node *gauge_np, *lowbatpt_np;
 	struct pmic_lvsys_notify *lvsys_notify;
 	const struct pmic_lvsys_info *info;
 
@@ -420,8 +504,23 @@ static int pmic_lvsys_notify_probe(struct platform_device *pdev)
 		dev_notice(&pdev->dev, "failed to get regmap\n");
 		return -ENODEV;
 	}
+
+	gauge_np = of_find_node_by_name(NULL, "mtk-gauge");
+	if (!gauge_np)
+		dev_notice(&pdev->dev, "get mtk-gauge node fail\n");
+	else {
+		ret = of_property_read_u32(gauge_np, "bat_type", &lvsys_notify->bat_type);
+		if (ret)
+			dev_notice(&pdev->dev, "get bat_type fail\n");
+	}
+	lowbatpt_np = of_find_node_by_name(NULL, "low-battery-throttling");
+	if (!lowbatpt_np) {
+		pmic_lvsys_parse_dt(lvsys_notify, np);
+		dev_notice(&pdev->dev, "get low-battery-throttling node fail\n");
+	} else {
+		pmic_lowbatpt_parse_dt(lvsys_notify, np, lowbatpt_np);
+	}
 	mutex_init(&lvsys_notify->lock);
-	pmic_lvsys_parse_dt(lvsys_notify, np);
 
 	irq = platform_get_irq_byname_optional(pdev, "LVSYS_F");
 	if (irq < 0) {
