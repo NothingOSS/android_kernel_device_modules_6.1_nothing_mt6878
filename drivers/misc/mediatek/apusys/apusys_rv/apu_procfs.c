@@ -262,7 +262,9 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 
 		size = apu->apusys_aee_coredump_info->ce_bin_sz +
 			apu->apusys_aee_coredump_info->are_sram_sz;
-		dev_info(dev, "%s: ce_bin_sz + are_sram_sz = 0x%lx\n", __func__, size);
+		dev_info(dev, "%s: ce_bin_sz = 0x%x, are_sram_sz = 0x%x\n", __func__,
+			apu->apusys_aee_coredump_info->ce_bin_sz,
+			apu->apusys_aee_coredump_info->are_sram_sz);
 	}
 
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
