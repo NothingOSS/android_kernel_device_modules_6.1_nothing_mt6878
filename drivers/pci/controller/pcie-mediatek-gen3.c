@@ -45,6 +45,7 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_HW_MTCMOS_EN_P0		BIT(0)
 #define PEXTP_PWRCTL_1			0x44
 #define PCIE_HW_MTCMOS_EN_P1		BIT(0)
+#define PEXTP_PWRCTL_3			0x4c
 #define PEXTP_RSV_0			0x60
 #define PCIE_HW_MTCMOS_EN_MD_P0		BIT(0)
 #define PCIE_BBCK2_BYPASS		BIT(5)
@@ -458,49 +459,6 @@ static void mtk_pcie_enable_msi(struct mtk_pcie_port *port)
 	writel_relaxed(val, port->base + PCIE_INT_ENABLE_REG);
 }
 
-static void mtk_pcie_mt6985_phy_fixup(struct mtk_pcie_port *port)
-{
-	void __iomem *pcie_phy_sif;
-	void __iomem *pcie_phy_ckm;
-	u32 val;
-	u32 phy_sif_base, phy_ckm_base;
-
-	if (port->port_num >= MTK_PCIE_MAX_PORT || port->port_num < 0)
-		return;
-
-	if (port->port_num == 0) {
-		phy_sif_base = PCIE_PHY_SIF;
-		phy_ckm_base = PCIE_PHY_CKM;
-	}
-	if (port->port_num == 1) {
-		phy_sif_base = PCIE_PHY_SIF + PCIE_P1_PHY_OFFSET;
-		phy_ckm_base = PCIE_PHY_CKM + PCIE_P1_PHY_OFFSET;
-	}
-
-	pcie_phy_sif = ioremap(phy_sif_base, 0x100);
-	pcie_phy_ckm = ioremap(phy_ckm_base, 0x100);
-
-	val = readl(pcie_phy_sif + PEXTP_DIG_GLB_28);
-	val |= RG_XTP_PHY_CLKREQ_N_IN;
-	writel(val, pcie_phy_sif + PEXTP_DIG_GLB_28);
-
-	val = readl(pcie_phy_sif + PEXTP_DIG_GLB_50);
-	val &= ~RG_XTP_CKM_EN_L1S0;
-	writel(val, pcie_phy_sif + PEXTP_DIG_GLB_50);
-
-	val = readl(pcie_phy_ckm + XTP_CKM_DA_REG_3C);
-	val |= RG_CKM_PADCK_REQ;
-	writel(val, pcie_phy_ckm + XTP_CKM_DA_REG_3C);
-
-	dev_info(port->dev, "PHY GLB_28=%#x, GLB_50=%#x, CKM_3C=%#x\n",
-		readl(pcie_phy_sif + PEXTP_DIG_GLB_28),
-		readl(pcie_phy_sif + PEXTP_DIG_GLB_50),
-		readl(pcie_phy_ckm + XTP_CKM_DA_REG_3C));
-
-	iounmap(pcie_phy_sif);
-	iounmap(pcie_phy_ckm);
-}
-
 /*
  * mtk_pcie_clkbuf_control() - Switch BBCK2 to SW mode or HW mode
  * @dev: the request device
@@ -641,7 +599,7 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 
 	/* Assert all reset signals */
 	val = readl_relaxed(port->base + PCIE_RST_CTRL_REG);
-	val |= PCIE_MAC_RSTB | PCIE_BRG_RSTB | PCIE_PE_RSTB;
+	val |= PCIE_MAC_RSTB | PCIE_PHY_RSTB | PCIE_BRG_RSTB | PCIE_PE_RSTB;
 	writel_relaxed(val, port->base + PCIE_RST_CTRL_REG);
 
 	/*
@@ -653,7 +611,7 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	msleep(100);
 
 	/* De-assert reset signals */
-	val &= ~(PCIE_MAC_RSTB | PCIE_BRG_RSTB | PCIE_PE_RSTB);
+	val &= ~(PCIE_MAC_RSTB | PCIE_PHY_RSTB | PCIE_BRG_RSTB | PCIE_PE_RSTB);
 	writel_relaxed(val, port->base + PCIE_RST_CTRL_REG);
 
 	/* Check if the link is up or not */
@@ -1309,6 +1267,8 @@ static int mtk_pcie_setup(struct mtk_pcie_port *port)
 	if (err)
 		goto err_setup;
 
+	device_enable_async_suspend(port->dev);
+
 	return 0;
 
 err_setup:
@@ -1481,10 +1441,11 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		readl_relaxed(port->base + PCIE_AXI0_ERR_ADDR_L),
 		readl_relaxed(port->base + PCIE_AXI0_ERR_INFO),
 		readl_relaxed(port->base + PCIE_RES_STATUS));
-	pr_info("clock gate:%#x, PCIe HW MODE BIT:%#x, Modem HW MODE BIT:%#x, slp ready:%#x, SPM ready:%#x, BBCK2:%#x\n",
+	pr_info("clock gate:%#x, PCIe HW MODE BIT:%#x, Modem HW MODE BIT:%#x, PEXTP_PWRCTL_3:%#x, slp ready:%#x, SPM ready:%#x, BBCK2:%#x\n",
 		readl_relaxed(port->pextpcfg + PCIE_PEXTP_CG_0),
 		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_0),
 		readl_relaxed(port->pextpcfg + PEXTP_RSV_0),
+		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_3),
 		readl_relaxed(port->vlpcfg_base + PCIE_VLP_AXI_PROTECT_STA),
 		readl_relaxed(port->vlpcfg_base + SRCLKEN_SPM_REQ_STA),
 		readl_relaxed(port->vlpcfg_base + SRCLKEN_RC_REQ_STA));
@@ -1880,8 +1841,9 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 		mtk_pcie_clkbuf_control(dev, false);
 
 		/* srclken rc request state */
-		dev_info(port->dev, "PCIe0 Modem HW MODE BIT=%#x, srclken rc state=%#x\n",
+		dev_info(port->dev, "PCIe0 Modem HW MODE BIT=%#x, PEXTP_PWRCTL_3=%#x, srclken rc state=%#x\n",
 			 readl_relaxed(port->pextpcfg + PEXTP_RSV_0),
+			 readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_3),
 			 readl_relaxed(port->vlpcfg_base + SRCLKEN_RC_REQ_STA));
 	} else {
 		/* The user enters L2 in advance by himself, so skip suspend directly */
@@ -1944,8 +1906,9 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 			if (err)
 				return err;
 
-			dev_info(port->dev, "Modem HW MODE BIT=%#x\n",
-				 readl_relaxed(port->pextpcfg + PEXTP_RSV_0));
+			dev_info(port->dev, "Modem HW MODE BIT=%#x, PEXTP_PWRCTL_3=%#x\n",
+				 readl_relaxed(port->pextpcfg + PEXTP_RSV_0),
+				 readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_3));
 		} else if (port->port_num == 1) {
 			val = readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_1);
 			val &= ~PCIE_HW_MTCMOS_EN_P1;
@@ -2089,8 +2052,6 @@ static int mtk_pcie_pre_init_6985(struct mtk_pcie_port *port)
 	val &= ~PCIE_P2_IDLE_TIME_MASK;
 	val |= PCIE_P2_EXIT_BY_CLKREQ | PCIE_P2_IDLE_TIME(8);
 	writel_relaxed(val, port->base + PCIE_ASPM_CTRL);
-
-	mtk_pcie_mt6985_phy_fixup(port);
 
 	return 0;
 }
