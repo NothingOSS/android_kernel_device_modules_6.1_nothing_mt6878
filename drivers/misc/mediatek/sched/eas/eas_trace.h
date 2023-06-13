@@ -1523,40 +1523,51 @@ TRACE_EVENT(sched_get_cpu_group_util,
 
 TRACE_EVENT(sugov_ext_tar_cal,
 
-	TP_PROTO(int cpu, int pcpu_tar_u,
-	int *group_nr_running, int *pcpu_pgrp_tar_u, int pcpu_o_u),
+	TP_PROTO(int cpu, int pcpu_tar_u, int *pcpu_pgrp_tar_u,
+		int *group_nr_running, int pcpu_o_u),
 
-	TP_ARGS(cpu, pcpu_tar_u,
-	group_nr_running, pcpu_pgrp_tar_u, pcpu_o_u),
+	TP_ARGS(cpu, pcpu_tar_u, pcpu_pgrp_tar_u, group_nr_running, pcpu_o_u),
 
 	TP_STRUCT__entry(
 		__field(int,		cpu)
 		__field(int,		pcpu_tar_u)
-		__field(int *,		group_nr_running)
-		__field(int *,		pcpu_pgrp_tar_u)
-		__field(int,		pcpu_o_u)
+		__field(int,		gt0)
+		__field(int,		gt1)
+		__field(int,		gt2)
+		__field(int,		gt3)
+		__field(int,		nr0)
+		__field(int,		nr1)
+		__field(int,		nr2)
+		__field(int,		nr3)
+		__field(int,		ot)
 	),
 
 	TP_fast_assign(
 		__entry->cpu		= cpu;
-		__entry->pcpu_tar_u		= pcpu_tar_u;
-		__entry->group_nr_running		= group_nr_running;
-		__entry->pcpu_pgrp_tar_u		= pcpu_pgrp_tar_u;
-		__entry->pcpu_o_u		= pcpu_o_u;
+		__entry->pcpu_tar_u	= pcpu_tar_u;
+		__entry->gt0		= pcpu_pgrp_tar_u[0];
+		__entry->gt1		= pcpu_pgrp_tar_u[1];
+		__entry->gt2		= pcpu_pgrp_tar_u[2];
+		__entry->gt3		= pcpu_pgrp_tar_u[3];
+		__entry->nr0		= group_nr_running[0];
+		__entry->nr1		= group_nr_running[1];
+		__entry->nr2		= group_nr_running[2];
+		__entry->nr3		= group_nr_running[3];
+		__entry->ot			= pcpu_o_u;
 	),
 
-	TP_printk("cpu=%d tar=%d gt0=%d gt1=%d gt2=%d gt3=%d ot=%d nr0=%d nr1=%d nr2=%d nr3=%d",
+	TP_printk("cpu=%d tar=%d gt[0]=%d gt[1]=%d gt[2]=%d gt[3]=%d nr[0]=%d nr[1]=%d nr[2]=%d nr[3]=%d ot=%d",
 		__entry->cpu,
 		__entry->pcpu_tar_u,
-		__entry->pcpu_pgrp_tar_u[0],
-		__entry->pcpu_pgrp_tar_u[1],
-		__entry->pcpu_pgrp_tar_u[2],
-		__entry->pcpu_pgrp_tar_u[3],
-		__entry->pcpu_o_u,
-		__entry->group_nr_running[0],
-		__entry->group_nr_running[1],
-		__entry->group_nr_running[2],
-		__entry->group_nr_running[3])
+		__entry->gt0,
+		__entry->gt1,
+		__entry->gt2,
+		__entry->gt3,
+		__entry->nr0,
+		__entry->nr1,
+		__entry->nr2,
+		__entry->nr3,
+		__entry->ot)
 );
 
 TRACE_EVENT(sugov_ext_pcpu_pgrp_u_rto_marg,
@@ -1567,35 +1578,53 @@ TRACE_EVENT(sugov_ext_pcpu_pgrp_u_rto_marg,
 
 	TP_STRUCT__entry(
 		__field(int,		cpu)
-		__field(int *,		pcpu_pgrp_u)
-		__field(int *,		pcpu_pgrp_adpt_rto)
-		__field(int *,		pcpu_pgrp_marg)
-		__field(int,		pcpu_o_u)
+		__field(int,		gu0)
+		__field(int,		gu1)
+		__field(int,		gu2)
+		__field(int,		gu3)
+		__field(int,		rto0)
+		__field(int,		rto1)
+		__field(int,		rto2)
+		__field(int,		rto3)
+		__field(int,		marg0)
+		__field(int,		marg1)
+		__field(int,		marg2)
+		__field(int,		marg3)
+		__field(int,		ot)
 	),
 
 	TP_fast_assign(
 		__entry->cpu		= cpu;
-		__entry->pcpu_pgrp_u		= pcpu_pgrp_u;
-		__entry->pcpu_pgrp_adpt_rto		= pcpu_pgrp_adpt_rto;
-		__entry->pcpu_pgrp_marg		= pcpu_pgrp_marg;
-		__entry->pcpu_o_u		= pcpu_o_u;
+		__entry->gu0		= pcpu_pgrp_u[0];
+		__entry->gu1		= pcpu_pgrp_u[1];
+		__entry->gu2		= pcpu_pgrp_u[2];
+		__entry->gu3		= pcpu_pgrp_u[3];
+		__entry->rto0		= pcpu_pgrp_adpt_rto[0];
+		__entry->rto1		= pcpu_pgrp_adpt_rto[1];
+		__entry->rto2		= pcpu_pgrp_adpt_rto[2];
+		__entry->rto3		= pcpu_pgrp_adpt_rto[3];
+		__entry->marg0		= pcpu_pgrp_marg[0];
+		__entry->marg1		= pcpu_pgrp_marg[1];
+		__entry->marg2		= pcpu_pgrp_marg[2];
+		__entry->marg3		= pcpu_pgrp_marg[3];
+		__entry->ot			= pcpu_o_u;
 	),
 
-	TP_printk("cpu=%d gp0=%d gp1=%d gp2=%d gp3=%d rto0=%d rto1=%d rto2=%d rto3=%d marg0=%d marg1=%d marg2=%d marg3=%d ot=%d",
+	TP_printk("cpu=%d gu[0]=%d gu[1]=%d gu[2]=%d gu[3]=%d rto[0]=%d rto[1]=%d rto[2]=%d rto[3]=%d marg[0]=%d marg[1]=%d marg[2]=%d marg[3]=%d ot=%d",
 		__entry->cpu,
-		__entry->pcpu_pgrp_u[0],
-		__entry->pcpu_pgrp_u[1],
-		__entry->pcpu_pgrp_u[2],
-		__entry->pcpu_pgrp_u[3],
-		__entry->pcpu_pgrp_adpt_rto[0],
-		__entry->pcpu_pgrp_adpt_rto[1],
-		__entry->pcpu_pgrp_adpt_rto[2],
-		__entry->pcpu_pgrp_adpt_rto[3],
-		__entry->pcpu_pgrp_marg[0],
-		__entry->pcpu_pgrp_marg[1],
-		__entry->pcpu_pgrp_marg[2],
-		__entry->pcpu_pgrp_marg[3],
-		__entry->pcpu_o_u)
+		__entry->gu0,
+		__entry->gu1,
+		__entry->gu2,
+		__entry->gu3,
+		__entry->rto0,
+		__entry->rto1,
+		__entry->rto2,
+		__entry->rto3,
+		__entry->marg0,
+		__entry->marg1,
+		__entry->marg2,
+		__entry->marg3,
+		__entry->ot)
 );
 
 TRACE_EVENT(sugov_ext_pger_pgrp_u,
@@ -1607,22 +1636,28 @@ TRACE_EVENT(sugov_ext_pger_pgrp_u,
 	TP_STRUCT__entry(
 		__field(int,		gear_id)
 		__field(int,		cpu)
-		__field(int *,		pger_pgrp_u)
+		__field(int,		gu0)
+		__field(int,		gu1)
+		__field(int,		gu2)
+		__field(int,		gu3)
 	),
 
 	TP_fast_assign(
 		__entry->gear_id		= gear_id;
 		__entry->cpu		= cpu;
-		__entry->pger_pgrp_u		= pger_pgrp_u;
+		__entry->gu0		= pger_pgrp_u[0];
+		__entry->gu1		= pger_pgrp_u[1];
+		__entry->gu2		= pger_pgrp_u[2];
+		__entry->gu3		= pger_pgrp_u[3];
 	),
 
-	TP_printk("gear_id=%d cpu=%d gp0=%d gp1=%d gp2=%d gp3=%d",
+	TP_printk("gear_id=%d cpu=%d gu[0]=%d gu[1]=%d gu[2]=%d gu[3]=%d",
 		__entry->gear_id,
 		__entry->cpu,
-		__entry->pger_pgrp_u[0],
-		__entry->pger_pgrp_u[1],
-		__entry->pger_pgrp_u[2],
-		__entry->pger_pgrp_u[3])
+		__entry->gu0,
+		__entry->gu1,
+		__entry->gu2,
+		__entry->gu3)
 );
 
 TRACE_EVENT(sugov_ext_pgrp_hint,
@@ -1632,18 +1667,24 @@ TRACE_EVENT(sugov_ext_pgrp_hint,
 	TP_ARGS(pgrp_hint),
 
 	TP_STRUCT__entry(
-		__field(int *,		pgrp_hint)
+		__field(int,		ht0)
+		__field(int,		ht1)
+		__field(int,		ht2)
+		__field(int,		ht3)
 	),
 
 	TP_fast_assign(
-		__entry->pgrp_hint		= pgrp_hint;
+		__entry->ht0		= pgrp_hint[0];
+		__entry->ht1		= pgrp_hint[1];
+		__entry->ht2		= pgrp_hint[2];
+		__entry->ht3		= pgrp_hint[3];
 	),
 
-	TP_printk("gp0=%d gp1=%d gp2=%d gp3=%d",
-		__entry->pgrp_hint[0],
-		__entry->pgrp_hint[1],
-		__entry->pgrp_hint[2],
-		__entry->pgrp_hint[3])
+	TP_printk("gpht[0]=%d gpht[1]=%d gpht[2]=%d gpht[3]=%d",
+		__entry->ht0,
+		__entry->ht1,
+		__entry->ht2,
+		__entry->ht3)
 );
 #endif
 

@@ -96,11 +96,11 @@ void grp_awr_update_cpu_tar_util(int cpu)
 
 	if (grp_awr_update_cpu_tar_util_hook)
 		grp_awr_update_cpu_tar_util_hook(cpu, GROUP_ID_RECORD_MAX, &fsrq->cpu_tar_util,
-		fsrq->group_nr_running, pcpu_pgrp_tar_u, pcpu_o_u);
+			fsrq->group_nr_running, pcpu_pgrp_tar_u, pcpu_o_u);
 
 	if (trace_sugov_ext_tar_cal_enabled())
-		trace_sugov_ext_tar_cal(cpu, fsrq->cpu_tar_util,
-		fsrq->group_nr_running, pcpu_pgrp_tar_u[cpu], pcpu_o_u[cpu]);
+		trace_sugov_ext_tar_cal(cpu, fsrq->cpu_tar_util, pcpu_pgrp_tar_u[cpu],
+			fsrq->group_nr_running, pcpu_o_u[cpu]);
 }
 
 void set_group_target_active_ratio_pct(int grp_idx, int val)
