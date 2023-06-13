@@ -14186,17 +14186,17 @@ static int mtk_crtc_partial_compute_ovl_roi(struct drm_crtc *crtc,
 		dst_roi.width = drm_rect_width(&plane->state->dst);
 		dst_roi.height = drm_rect_height(&plane->state->dst);
 
-		if (!plane->state->visible) {
-			disable_layer++;
-			continue;
-		}
-
 		//DDPDBG("hwc plane[%d] roi_num:(%llu) dirty roi:(%llu,%llu,%llu,%llu)\n",
 		//i, plane_state->prop_val[PLANE_PROP_DIRTY_ROI_NUM],
 		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_X],
 		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_Y],
 		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_W],
 		//plane_state->prop_val[PLANE_PROP_DIRTY_ROI_H]);
+
+		if (!plane->state->visible) {
+			disable_layer++;
+			continue;
+		}
 
 		dirty_roi_num = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_NUM];
 		if (dirty_roi_num) {
@@ -14276,6 +14276,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	struct mtk_ddp_comp *dsc_comp;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_rect partial_roi = {0, 0, 0, 0};
+	bool partial_enable = enable;
 	int i, j;
 	int ret = 0;
 
@@ -14294,7 +14295,13 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	if (!(mtk_crtc->enabled))
 		DDPINFO("Sleep State set partial update enable --crtc not ebable\n");
 
-	if (enable)
+	/* disable partial update if rpo lye is exist */
+	if (state->lye_state.rpo_lye && partial_enable) {
+		DDPINFO("skip because rpo lye is exist\n");
+		partial_enable = false;
+	}
+
+	if (partial_enable)
 		mtk_crtc_partial_compute_ovl_roi(crtc, &partial_roi);
 	else
 		_assign_full_lcm_roi(crtc, &partial_roi);
@@ -14338,20 +14345,20 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 				mtk_ddp_comp_get_type(comp->id) == MTK_DMDP_AAL ||
 				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CHIST)) {
 			if (comp->funcs && comp->funcs->bypass)
-				mtk_ddp_comp_bypass(comp, enable, cmdq_handle);
+				mtk_ddp_comp_bypass(comp, partial_enable, cmdq_handle);
 		}
 	}
 
 	/* disable oddmr if enable partial update */
-	mtk_crtc->panel_ext->params->is_support_dmr = !enable;
-	mtk_crtc->panel_ext->params->is_support_od = !enable;
+	mtk_crtc->panel_ext->params->is_support_dmr = !partial_enable;
+	mtk_crtc->panel_ext->params->is_support_od = !partial_enable;
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		mtk_ddp_comp_partial_update(comp, cmdq_handle, partial_roi, enable);
+		mtk_ddp_comp_partial_update(comp, cmdq_handle, partial_roi, partial_enable);
 	}
 
 	dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
-	mtk_ddp_comp_partial_update(dsc_comp, cmdq_handle, partial_roi, enable);
+	mtk_ddp_comp_partial_update(dsc_comp, cmdq_handle, partial_roi, partial_enable);
 
 	return ret;
 
