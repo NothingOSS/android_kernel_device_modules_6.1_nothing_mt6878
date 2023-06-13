@@ -279,10 +279,12 @@ void DpEngine_COLORonInit(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_WIN_Y_MAIN, split_window_y, ~0);
 
+#ifdef IF_ZERO /* enable only if irq can be handled */
 	/* enable interrupt */
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_COLOR_INTEN(color),
 		0x00000007, 0x00000007);
+#endif
 
 	/* Set 10bit->8bit Rounding */
 	cmdq_pkt_write(handle, comp->cmdq_base,

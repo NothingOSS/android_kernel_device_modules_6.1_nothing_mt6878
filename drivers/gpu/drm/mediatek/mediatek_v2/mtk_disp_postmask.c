@@ -500,7 +500,9 @@ static void mtk_postmask_start(struct mtk_ddp_comp *comp,
 {
 	DDPDBG("%s\n", __func__);
 
+#ifdef IF_ZERO	/* enable only if irq can be handled */
 	mtk_postmask_io_cmd(comp, handle, IRQ_LEVEL_NORMAL, NULL);
+#endif
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_POSTMASK_EN, 1, ~0);
@@ -561,6 +563,7 @@ static int mtk_postmask_io_cmd(struct mtk_ddp_comp *comp,
 			       struct cmdq_pkt *handle,
 			       enum mtk_ddp_io_cmd io_cmd, void *params)
 {
+#ifdef IF_ZERO	/* enable only if irq can be handled */
 	switch (io_cmd) {
 	case IRQ_LEVEL_NORMAL: {
 		unsigned int inten;
@@ -589,7 +592,7 @@ static int mtk_postmask_io_cmd(struct mtk_ddp_comp *comp,
 	default:
 		break;
 	}
-
+#endif
 	return 0;
 }
 
