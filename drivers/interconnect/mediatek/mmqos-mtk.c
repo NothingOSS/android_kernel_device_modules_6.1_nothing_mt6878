@@ -873,7 +873,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 		if (!comm_port_node || !larb_node)
 			break;
 		comm_id = (larb_node->channel >> 4) & 0xf;
-		chnn_id = larb_node->channel & 0xf;
+		chnn_id = larb_node->channel_v2 & 0xf;
 		if ((mmqos_state & DISP_BY_LARB_ENABLE) == 0
 			&& (src->id == gmmqos->disp_virt_larbs[1] ||
 			src->id == gmmqos->disp_virt_larbs[2])) {
@@ -1969,9 +1969,11 @@ static int mmqos_debug_set_ftrace(const char *val,
 				mmqos_dbg_ftrace_thread, NULL, "mmqos-dbg-ftrace");
 		} else {
 			MMQOS_DBG("disable");
-			ret = kthread_stop(kthr);
-			if (!ret)
-				MMQOS_DBG("stop kthread mmqos-dbg-ftrace");
+			if (kthr) {
+				ret = kthread_stop(kthr);
+				if (!ret)
+					MMQOS_DBG("stop kthread mmqos-dbg-ftrace");
+			}
 		}
 	}
 	return 0;
