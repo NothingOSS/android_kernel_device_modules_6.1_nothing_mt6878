@@ -159,19 +159,27 @@ enum ged_gpu_power_state {
 };
 void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state);
 
-unsigned int ged_gpu_adaptive_power_support(void);
+//#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
+unsigned int ged_gpu_apo_support(void);
+unsigned long long ged_get_apo_threshold_us(void);
+void ged_set_apo_threshold_us(unsigned long long apo_threshold_us);
+unsigned long long ged_get_apo_wakeup_us(void);
+void ged_set_apo_wakeup_us(unsigned long long apo_wakeup_us);
+
 void ged_get_active_time(void);
 void ged_get_idle_time(void);
 void ged_check_power_duration(void);
-unsigned long long ged_get_power_duration_ns(void);
-void ged_gpu_adaptive_power_reset(void);
-bool ged_gpu_adaptive_power_notify(void);
+long long ged_get_power_duration(void);
+void ged_gpu_apo_reset(void);
+bool ged_gpu_apo_notify(void);
 
 void ged_get_predict_active_time(void);
 void ged_get_predict_idle_time(void);
 void ged_check_predict_power_duration(void);
-void ged_gpu_predict_adaptive_power_reset(void);
-bool ged_gpu_predict_adaptive_power_notify(void);
+long long ged_get_predict_power_duration(void);
+void ged_gpu_predict_apo_reset(void);
+bool ged_gpu_predict_apo_notify(void);
+//#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 
 GED_ERROR ged_dvfs_system_init(void);
 void ged_dvfs_system_exit(void);

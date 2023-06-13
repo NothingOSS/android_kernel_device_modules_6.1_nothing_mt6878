@@ -897,6 +897,99 @@ static ssize_t fw_idle_store(struct kobject *kobj,
 }
 static KOBJ_ATTR_RW(fw_idle);
 #endif /* MTK_GPU_FW_IDLE */
+
+#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
+static ssize_t apo_threshold_us_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	unsigned long long apo_threshold_us = 0;
+	int pos = 0;
+
+	apo_threshold_us = ged_get_apo_threshold_us();
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[APO-Threshold]: %llu us\n", apo_threshold_us);
+
+	return pos;
+}
+
+static ssize_t apo_threshold_us_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	u32 i32Value = 0;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf))
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				ged_set_apo_threshold_us((unsigned long long)i32Value);
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(apo_threshold_us);
+
+static ssize_t apo_wakeup_us_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	unsigned long long apo_wakeup_us = 0;
+	int pos = 0;
+
+	apo_wakeup_us = ged_get_apo_wakeup_us();
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[APO-Wakeup]: %llu us\n", apo_wakeup_us);
+
+	return pos;
+}
+
+static ssize_t apo_wakeup_us_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	u32 i32Value = 0;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf))
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				ged_set_apo_wakeup_us((unsigned long long)i32Value);
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(apo_wakeup_us);
+
+static ssize_t apo_status_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	bool bGPUAPO;
+	bool bGPUPredictAPO;
+	long long ns_gpu_off_duration;
+	long long ns_gpu_predict_off_duration;
+	int pos = 0;
+
+	bGPUAPO = ged_gpu_apo_notify();
+	bGPUPredictAPO = ged_gpu_predict_apo_notify();
+	ns_gpu_off_duration = ged_get_power_duration();
+	ns_gpu_predict_off_duration = ged_get_predict_power_duration();
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[APO]: %d, [Predict-APO]: %d\n", bGPUAPO, bGPUPredictAPO);
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[Dur]: %lld, [Predict-Dur]: %lld\n",
+				ns_gpu_off_duration, ns_gpu_predict_off_duration);
+
+	return pos;
+}
+static KOBJ_ATTR_RO(apo_status);
+#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
+
 //-----------------------------------------------------------------------------
 
 unsigned int g_loading_stride_size = GED_DEFAULT_SLIDE_STRIDE_SIZE;
@@ -1363,6 +1456,26 @@ GED_ERROR ged_hal_init(void)
 	}
 #endif /* MTK_GPU_FW_IDLE */
 
+#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_threshold_us);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create apo_threshold_us entry!\n");
+		goto ERROR;
+	}
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_wakeup_us);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create apo_wakeup_us entry!\n");
+		goto ERROR;
+	}
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_status);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create apo_status entry!\n");
+		goto ERROR;
+	}
+#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
+
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_loading_window_size);
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE(
@@ -1477,6 +1590,11 @@ void ged_hal_exit(void)
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fw_idle);
 #endif /* MTK_GPU_FW_IDLE */
+#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_threshold_us);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_wakeup_us);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_status);
+#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 
 	ged_sysfs_remove_dir(&hal_kobj);
 }

@@ -72,6 +72,28 @@ int notify_index;
 static enum gpu_dvfs_policy_state g_policy_state = POLICY_STATE_INIT;
 static enum gpu_dvfs_policy_state g_prev_policy_state = POLICY_STATE_INIT;
 
+#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
+#define GED_APO_THRESHOLD_US 2000
+
+static spinlock_t g_sApoLock;
+
+static unsigned long long g_apo_threshold_us;
+static unsigned long long g_apo_threshold_ns;
+static unsigned long long g_apo_wakeup_us;
+static unsigned long long g_apo_wakeup_ns;
+
+static unsigned long long g_ns_gpu_active_ts;
+static unsigned long long g_ns_gpu_idle_ts;
+static long long g_ns_gpu_off_duration;
+
+static unsigned long long g_ns_gpu_predict_active_ts;
+static unsigned long long g_ns_gpu_predict_idle_ts;
+static long long g_ns_gpu_predict_off_duration;
+
+static bool g_bGPUAPO;
+static bool g_bGPUPredictAPO;
+#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
+
 int (*ged_sw_vsync_event_fp)(bool bMode) = NULL;
 EXPORT_SYMBOL(ged_sw_vsync_event_fp);
 static struct mutex gsVsyncModeLock;
@@ -221,23 +243,17 @@ static void ged_notify_sw_sync_work_handle(struct work_struct *psWork)
 }
 
 #define GED_VSYNC_MISS_QUANTUM_NS 16666666
-#define GED_POWER_DURATION_NS 2000000
 
 #ifdef ENABLE_COMMON_DVFS
 static unsigned long long hw_vsync_ts;
 #endif
+
 static unsigned long long g_ns_gpu_on_ts;
 static unsigned long long g_ns_gpu_off_ts;
-static unsigned long long g_ns_gpu_active_ts;
-static unsigned long long g_ns_gpu_idle_ts;
-static unsigned long long g_ns_gpu_predict_active_ts;
-static unsigned long long g_ns_gpu_predict_idle_ts;
 
 static bool g_timer_on;
 static unsigned long long g_timer_on_ts;
 static bool g_bGPUClock;
-static bool g_bGPUAdaptivePower;
-static bool g_bGPUPredictAdaptivePower;
 
 /*
  * void timer_switch(bool bTock)
@@ -521,108 +537,210 @@ enum hrtimer_restart ged_sw_vsync_check_cb(struct hrtimer *timer)
 	return HRTIMER_NORESTART;
 }
 
-unsigned int ged_gpu_adaptive_power_support(void)
+#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
+unsigned int ged_gpu_apo_support(void)
 {
-	return g_ged_adaptive_power_policy_support;
+	return g_ged_apo_support;
 }
-EXPORT_SYMBOL(ged_gpu_adaptive_power_support);
+EXPORT_SYMBOL(ged_gpu_apo_support);
+
+unsigned long long ged_get_apo_threshold_us(void)
+{
+	return g_apo_threshold_us;
+}
+EXPORT_SYMBOL(ged_get_apo_threshold_us);
+
+void ged_set_apo_threshold_us(unsigned long long apo_threshold_us)
+{
+	unsigned long ulIRQFlags;
+
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
+	g_apo_threshold_us = apo_threshold_us;
+	g_apo_threshold_ns = g_apo_threshold_us * 1000;
+
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
+}
+EXPORT_SYMBOL(ged_set_apo_threshold_us);
+
+unsigned long long ged_get_apo_wakeup_us(void)
+{
+	return g_apo_wakeup_us;
+}
+EXPORT_SYMBOL(ged_get_apo_wakeup_us);
+
+void ged_set_apo_wakeup_us(unsigned long long apo_wakeup_us)
+{
+	unsigned long ulIRQFlags;
+
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
+	g_apo_wakeup_us = apo_wakeup_us;
+	g_apo_wakeup_ns = g_apo_wakeup_us * 1000;
+
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
+}
+EXPORT_SYMBOL(ged_set_apo_wakeup_us);
 
 void ged_get_active_time(void)
 {
+	unsigned long ulIRQFlags;
+
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
 	g_ns_gpu_active_ts = ged_get_time();
+
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
 }
 EXPORT_SYMBOL(ged_get_active_time);
 
 void ged_get_idle_time(void)
 {
+	unsigned long ulIRQFlags;
+
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
 	g_ns_gpu_idle_ts = ged_get_time();
+
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
 }
 EXPORT_SYMBOL(ged_get_idle_time);
-
-unsigned long long ged_get_power_duration_ns(void)
-{
-	return (unsigned long long)GED_POWER_DURATION_NS;
-}
-EXPORT_SYMBOL(ged_get_power_duration_ns);
 
 void ged_check_power_duration(void)
 {
 	long long llDiff = 0;
+	unsigned long ulIRQFlags;
 
-	llDiff = (long long)(g_ns_gpu_active_ts - g_ns_gpu_idle_ts);
-	if ((llDiff > 0) && (llDiff < GED_POWER_DURATION_NS))
-		g_bGPUAdaptivePower = true;
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
+	g_ns_gpu_off_duration =
+		(long long)(g_ns_gpu_active_ts - g_ns_gpu_idle_ts);
+	llDiff = g_ns_gpu_off_duration;
+	if ((llDiff > 0) && (llDiff < g_apo_threshold_ns))
+		g_bGPUAPO = true;
 	else {
-		g_bGPUAdaptivePower = false;
+		g_bGPUAPO = false;
 		g_ns_gpu_active_ts = 0;
 		g_ns_gpu_idle_ts = 0;
+		g_ns_gpu_off_duration = 0;
 	}
+
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
 }
 EXPORT_SYMBOL(ged_check_power_duration);
 
-void ged_gpu_adaptive_power_reset(void)
+long long ged_get_power_duration(void)
 {
-	g_bGPUAdaptivePower = false;
+	return g_ns_gpu_off_duration;
+}
+EXPORT_SYMBOL(ged_get_power_duration);
+
+void ged_gpu_apo_reset(void)
+{
+	unsigned long ulIRQFlags;
+
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
+	g_bGPUAPO = false;
 	g_ns_gpu_active_ts = 0;
 	g_ns_gpu_idle_ts = 0;
-}
-EXPORT_SYMBOL(ged_gpu_adaptive_power_reset);
+	g_ns_gpu_off_duration = 0;
 
-bool ged_gpu_adaptive_power_notify(void)
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
+}
+EXPORT_SYMBOL(ged_gpu_apo_reset);
+
+bool ged_gpu_apo_notify(void)
 {
-	if (g_ged_adaptive_power_policy_support)
-		return g_bGPUAdaptivePower;
+	if (g_ged_apo_support)
+		return g_bGPUAPO;
 	else
 		return false;
 }
-EXPORT_SYMBOL(ged_gpu_adaptive_power_notify);
+EXPORT_SYMBOL(ged_gpu_apo_notify);
 
 void ged_get_predict_active_time(void)
 {
+	unsigned long ulIRQFlags;
+
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
 	g_ns_gpu_predict_active_ts = ged_get_time();
+
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
 }
 EXPORT_SYMBOL(ged_get_predict_active_time);
 
 void ged_get_predict_idle_time(void)
 {
+	unsigned long ulIRQFlags;
+
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
 	g_ns_gpu_predict_idle_ts = ged_get_time();
+
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
 }
 EXPORT_SYMBOL(ged_get_predict_idle_time);
 
 void ged_check_predict_power_duration(void)
 {
 	long long llDiff = 0;
+	unsigned long ulIRQFlags;
 
-	llDiff = (long long)(g_ns_gpu_predict_active_ts - g_ns_gpu_predict_idle_ts);
-	if ((llDiff > 0) && (llDiff < GED_POWER_DURATION_NS))
-		g_bGPUPredictAdaptivePower = true;
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
+	g_ns_gpu_predict_off_duration =
+		(long long)(g_ns_gpu_predict_active_ts - g_ns_gpu_predict_idle_ts);
+	llDiff = g_ns_gpu_predict_off_duration;
+	if ((llDiff > 0) && (llDiff < g_apo_threshold_ns))
+		g_bGPUPredictAPO = true;
 	else {
-		g_bGPUPredictAdaptivePower = false;
+		g_bGPUPredictAPO = false;
+		g_ns_gpu_predict_active_ts = 0;
+		g_ns_gpu_predict_idle_ts = 0;
+		g_ns_gpu_predict_off_duration = 0;
+
+		g_bGPUAPO = false;
 		g_ns_gpu_active_ts = 0;
 		g_ns_gpu_idle_ts = 0;
+		g_ns_gpu_off_duration = 0;
 	}
 
-	g_ns_gpu_predict_active_ts = 0;
-	g_ns_gpu_predict_idle_ts = 0;
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
 }
 EXPORT_SYMBOL(ged_check_predict_power_duration);
 
-void ged_gpu_predict_adaptive_power_reset(void)
+long long ged_get_predict_power_duration(void)
 {
-	g_bGPUPredictAdaptivePower = false;
+	return g_ns_gpu_predict_off_duration;
+}
+EXPORT_SYMBOL(ged_get_predict_power_duration);
+
+void ged_gpu_predict_apo_reset(void)
+{
+	unsigned long ulIRQFlags;
+
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
+	g_bGPUPredictAPO = false;
 	g_ns_gpu_predict_active_ts = 0;
 	g_ns_gpu_predict_idle_ts = 0;
-}
-EXPORT_SYMBOL(ged_gpu_predict_adaptive_power_reset);
+	g_ns_gpu_predict_off_duration = 0;
 
-bool ged_gpu_predict_adaptive_power_notify(void)
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
+}
+EXPORT_SYMBOL(ged_gpu_predict_apo_reset);
+
+bool ged_gpu_predict_apo_notify(void)
 {
-	if (g_ged_adaptive_power_policy_support)
-		return g_bGPUPredictAdaptivePower;
+	if (g_ged_apo_support)
+		return g_bGPUPredictAPO;
 	else
 		return false;
 }
-EXPORT_SYMBOL(ged_gpu_predict_adaptive_power_notify);
+EXPORT_SYMBOL(ged_gpu_predict_apo_notify);
+#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 
 void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 {
@@ -710,6 +828,19 @@ GED_ERROR ged_notify_sw_vsync_system_init(void)
 
 	hrtimer_init(&g_HT_hwvsync_emu, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	g_HT_hwvsync_emu.function = ged_sw_vsync_check_cb;
+
+#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
+	g_apo_threshold_us = GED_APO_THRESHOLD_US;
+	g_apo_threshold_ns = g_apo_threshold_us * 1000;
+
+	g_apo_wakeup_us = g_apo_threshold_us + 1000;
+	g_apo_wakeup_ns = g_apo_wakeup_us * 1000;
+
+	g_ns_gpu_off_duration = 0;
+	g_ns_gpu_predict_off_duration = 0;
+
+	spin_lock_init(&g_sApoLock);
+#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 
 	return GED_OK;
 }

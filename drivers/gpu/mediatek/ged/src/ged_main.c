@@ -140,7 +140,9 @@ unsigned int g_fastdvfs_margin;
 unsigned int vGed_Tmp;
 unsigned int g_ged_segment_id;
 unsigned int g_ged_efuse_id;
-unsigned int g_ged_adaptive_power_policy_support;
+#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
+unsigned int g_ged_apo_support;
+#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 unsigned int g_ged_frame_base_optimize;
 unsigned long g_desire_freq;
 unsigned long g_desire_freq_stack, g_desire_freq_top;
@@ -487,28 +489,30 @@ GED_ERROR check_eb_config(void)
 	return ret;
 }
 
-GED_ERROR check_adaptive_power_policy(void)
+#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
+GED_ERROR check_apo_policy(void)
 {
 	struct device_node *app_node;
 	int ret = GED_OK, ret_temp;
 
-	g_ged_adaptive_power_policy_support = 0;
+	g_ged_apo_support = 0;
 	app_node = of_find_compatible_node(NULL, NULL, "mediatek,mali");
 	if (!app_node) {
 		GED_LOGE("No mali node.");
-		g_ged_adaptive_power_policy_support = 0;
+		g_ged_apo_support = 0;
 	} else {
 		ret_temp = of_property_read_u32(app_node, "adaptive-power-policy",
-			&g_ged_adaptive_power_policy_support);
+			&g_ged_apo_support);
 		if (unlikely(ret_temp))
-			GED_LOGE("fail to read adaptive-power-policy (%d)", ret_temp);
+			GED_LOGE("fail to read APO policy (%d)", ret_temp);
 	}
 
-	GED_LOGI("%s. adaptive_power_policy_support: %d",
-		__func__, g_ged_adaptive_power_policy_support);
+	GED_LOGI("%s. APO policy support: %d",
+		__func__, g_ged_apo_support);
 
 	return ret;
 }
+#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 
 GED_ERROR check_frame_base_optimize(void)
 {
@@ -612,11 +616,13 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 		goto ERROR;
 	}
 
-	err = check_adaptive_power_policy();
+#if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
+	err = check_apo_policy();
 	if (unlikely(err != GED_OK)) {
-		GED_LOGE("Failed to check adaptive power policy!\n");
+		GED_LOGE("Failed to check APO policy!\n");
 		goto ERROR;
 	}
+#endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 
 	err = check_frame_base_optimize();
 	if (unlikely(err != GED_OK)) {
