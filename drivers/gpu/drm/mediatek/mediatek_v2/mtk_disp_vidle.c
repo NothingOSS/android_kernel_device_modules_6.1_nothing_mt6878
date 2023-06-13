@@ -224,10 +224,16 @@ void mtk_vidle_dvfs_set(const u8 level)
 	if (disp_dpc_driver.dpc_dvfs_set)
 		disp_dpc_driver.dpc_dvfs_set(DPC_SUBSYS_DISP, level, true);
 }
+void mtk_vidle_config_ff(bool en)
+{
+	if (disp_dpc_driver.dpc_config)
+		disp_dpc_driver.dpc_config(DPC_SUBSYS_DISP, en);
+}
 
 void mtk_vidle_register(const struct dpc_funcs *funcs)
 {
 	disp_dpc_driver.dpc_enable = funcs->dpc_enable;
+	disp_dpc_driver.dpc_config = funcs->dpc_config;
 	disp_dpc_driver.dpc_group_enable = funcs->dpc_group_enable;
 	disp_dpc_driver.vidle_power_keep = funcs->vidle_power_keep;
 	disp_dpc_driver.vidle_power_release = funcs->vidle_power_release;

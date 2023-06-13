@@ -5450,6 +5450,7 @@ void mtk_drm_top_clk_prepare_enable(struct drm_device *drm)
 
 	//set_swpm_disp_active(true);
 	pm_runtime_get_sync(priv->mmsys_dev);
+	mtk_vidle_config_ff(false);
 	if (priv->side_mmsys_dev)
 		pm_runtime_get_sync(priv->side_mmsys_dev);
 	if (priv->ovlsys_dev)

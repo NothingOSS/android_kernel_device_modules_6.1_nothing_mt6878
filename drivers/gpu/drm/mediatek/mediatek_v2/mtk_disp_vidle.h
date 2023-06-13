@@ -56,5 +56,6 @@ void mtk_vidle_hrt_bw_set(const u32 bw_in_mb);
 void mtk_vidle_srt_bw_set(const u32 bw_in_mb);
 void mtk_vidle_dvfs_set(const u8 level);
 void mtk_vidle_register(const struct dpc_funcs *funcs);
+void mtk_vidle_config_ff(bool en);
 
 #endif

@@ -6,8 +6,12 @@
 #ifndef __MTK_DPC_INTERNAL_H__
 #define __MTK_DPC_INTERNAL_H__
 
+#ifdef IF_ZERO
 #define DPCFUNC(fmt, args...) \
 	pr_info("[dpc] %s:%d " fmt "\n", __func__, __LINE__, ##args)
+#else
+#define DPCFUNC(args...)
+#endif
 
 #define DPCERR(fmt, args...) \
 	pr_info("[dpc][err] %s:%d " fmt "\n", __func__, __LINE__, ##args)

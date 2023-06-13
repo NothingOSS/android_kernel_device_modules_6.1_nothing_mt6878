@@ -480,21 +480,22 @@ void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 		dpc_group_enable(DPC_DISP_VIDLE_MTCMOS_DISP1, en);
 		dpc_group_enable(DPC_DISP_VIDLE_VDISP_DVFS, en);
 		dpc_group_enable(DPC_DISP_VIDLE_HRT_BW, en);
-		dpc_group_enable(DPC_DISP_VIDLE_SRT_BW, en);
 		dpc_group_enable(DPC_DISP_VIDLE_MMINFRA_OFF, en);
-		dpc_group_enable(DPC_DISP_VIDLE_INFRA_OFF, en);
-		dpc_group_enable(DPC_DISP_VIDLE_MAINPLL_OFF, en);
 		writel(en ? 0 : U32_MAX, dpc_base + DISP_REG_DPC_DISP_MASK_CFG);
+		writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG);
+		writel(0x1F, dpc_base + DISP_REG_DPC_DISP_EXT_INPUT_EN);
 	} else if (subsys == DPC_SUBSYS_MML) {
 		dpc_group_enable(DPC_MML_VIDLE_MTCMOS, en);
 		dpc_group_enable(DPC_MML_VIDLE_VDISP_DVFS, en);
 		dpc_group_enable(DPC_MML_VIDLE_HRT_BW, en);
-		dpc_group_enable(DPC_MML_VIDLE_SRT_BW, en);
 		dpc_group_enable(DPC_MML_VIDLE_MMINFRA_OFF, en);
-		dpc_group_enable(DPC_MML_VIDLE_INFRA_OFF, en);
-		dpc_group_enable(DPC_MML_VIDLE_MAINPLL_OFF, en);
 		writel(en ? 0 : U32_MAX, dpc_base + DISP_REG_DPC_MML_MASK_CFG);
+		writel(0, dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG);
+		writel(0x3, dpc_base + DISP_REG_DPC_MML_EXT_INPUT_EN);
 	}
+
+	/* wla ddren ack */
+	writel(1, dpc_base + DISP_REG_DPC_DDREN_ACK_SEL);
 }
 EXPORT_SYMBOL(dpc_config);
 
