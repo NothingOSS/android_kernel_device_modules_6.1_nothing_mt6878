@@ -145,8 +145,6 @@ static unsigned int fn;
 /* overlay bandwidth monitor BURST ACC Window size */
 unsigned int ovl_win_size;
 
-static bool g_ccorr_linear;
-
 #define ALIGN_TO_32(x) ALIGN_TO(x, 32)
 
 #define DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL 0x308
@@ -6319,11 +6317,12 @@ struct drm_framebuffer *mtk_drm_framebuffer_lookup(struct drm_device *dev,
 static void mtk_crtc_dc_config_color_matrix(struct drm_crtc *crtc,
 				struct cmdq_pkt *cmdq_handle)
 {
-	int i, j, mode, ccorr_matrix[16], all_zero = 1;
+	int i, j, mode, ccorr_matrix[16], all_zero = 1, set = -1;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct cmdq_pkt_buffer *cmdq_buf = &(mtk_crtc->gce_obj.buf);
 	struct mtk_crtc_ddp_ctx *ddp_ctx;
-	bool set = false;
+	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
+	bool linear;
 
 	/* Get color matrix data from backup slot*/
 	mode = *(int *)(cmdq_buf->va_base + DISP_SLOT_COLOR_MATRIX_PARAMS(0));
@@ -6338,6 +6337,8 @@ static void mtk_crtc_dc_config_color_matrix(struct drm_crtc *crtc,
 		}
 	}
 
+	linear = state->prop_val[CRTC_PROP_AOSP_CCORR_LINEAR];
+
 	if (all_zero)
 		DDPPR_ERR("CCORR color matrix backup param is zero matrix\n");
 	else {
@@ -6346,20 +6347,22 @@ static void mtk_crtc_dc_config_color_matrix(struct drm_crtc *crtc,
 
 		for_each_comp_in_crtc_target_path(comp, mtk_crtc, i, DDP_SECOND_PATH) {
 			if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR) {
-				disp_ccorr_set_color_matrix(comp, cmdq_handle,
-					ccorr_matrix, mode, false, g_ccorr_linear);
+				set = disp_ccorr_set_color_matrix(comp, cmdq_handle,
+					ccorr_matrix, mode, false, linear);
+				if (set != 0)
+					continue;
 				if (mtk_crtc->is_dual_pipe) {
 					ccorr_data = comp_to_ccorr(comp);
-					disp_ccorr_set_color_matrix(ccorr_data->companion,
-					cmdq_handle, ccorr_matrix, mode, false, g_ccorr_linear);
+					set = disp_ccorr_set_color_matrix(ccorr_data->companion,
+					cmdq_handle, ccorr_matrix, mode, false, linear);
 				}
-				set = true;
-				break;
+				if (!set)
+					break;
 			}
 		}
 
-		if (!set)
-			DDPPR_ERR("Cannot not find DDP_COMPONENT_CCORR0\n");
+		if (set < 0 || set == 2)
+			DDPPR_ERR("Cannot not find ccorr with linear %d\n", linear);
 	}
 }
 #endif
@@ -13575,11 +13578,6 @@ static struct disp_ccorr_config *mtk_crtc_get_color_matrix_data(
 	if (!blob_id)
 		goto end;
 
-	if (state->prop_val[CRTC_PROP_AOSP_CCORR_LINEAR])
-		g_ccorr_linear = true;
-	else
-		g_ccorr_linear = false;
-
 	blob = drm_property_lookup_blob(crtc->dev, blob_id);
 	if (!blob) {
 		DDPPR_ERR("Cannot get color matrix blob: %d!\n", blob_id);
@@ -13642,39 +13640,45 @@ static void mtk_crtc_dl_config_color_matrix(struct drm_crtc *crtc,
 {
 
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	bool set =  false;
-	int i;
+	int set = -1, i;
+	bool linear;
 	struct mtk_ddp_comp *comp;
 	struct mtk_disp_ccorr *ccorr_data;
+	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
 
 	if (!ccorr_config)
 		return;
 
+	linear = state->prop_val[CRTC_PROP_AOSP_CCORR_LINEAR];
+
 	for_each_comp_in_crtc_target_path(comp, mtk_crtc, i, DDP_FIRST_PATH) {
 		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR) {
-			disp_ccorr_set_color_matrix(comp, cmdq_handle,
+			set = disp_ccorr_set_color_matrix(comp, cmdq_handle,
 					ccorr_config->color_matrix, ccorr_config->mode,
-					ccorr_config->featureFlag, g_ccorr_linear);
+					ccorr_config->featureFlag, linear);
+			if (set != 0)
+				continue;
 			if (mtk_crtc->is_dual_pipe) {
 				ccorr_data = comp_to_ccorr(comp);
-				disp_ccorr_set_color_matrix(ccorr_data->companion, cmdq_handle,
+				set = disp_ccorr_set_color_matrix(ccorr_data->companion,
+						cmdq_handle,
 						ccorr_config->color_matrix, ccorr_config->mode,
-						ccorr_config->featureFlag, g_ccorr_linear);
+						ccorr_config->featureFlag, linear);
 			}
-			set = true;
-			break;
+			if (!set)
+				break;
 		}
 	}
 
 #ifdef IF_ZERO /* not ready for dummy register method */
-	if (set)
+	if (!set)
 		mtk_crtc_backup_color_matrix_data(crtc, ccorr_config,
 						cmdq_handle);
 	else
 #else
-	if (!set)
+	if (set < 0 || set == 2)
 #endif
-		DDPPR_ERR("Cannot not find DDP_COMPONENT_CCORR0\n");
+		DDPPR_ERR("Cannot not find ccorr with linear %d\n", linear);
 }
 
 static void mtk_drm_discrete_cb(struct cmdq_cb_data data)

@@ -215,21 +215,19 @@ static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 	struct DRM_DISP_CCORR_COEF_T *ccorr, *multiply_matrix;
 	int ret = 0;
-	char comp_name[64] = {0};
 	unsigned int temp_matrix[3][3];
 	unsigned int cfg_val;
 	int i, j;
 
-	mtk_ddp_comp_get_name(comp, comp_name, sizeof(comp_name));
 	if (lock)
 		mutex_lock(&primary_data->ccorr_global_lock);
 
-	DDPINFO("%s: %s, aosp ccorr:%d,nonlinear:%d\n", __func__, comp_name,
+	DDPINFO("%s: %s, aosp ccorr:%d,nonlinear:%d\n", __func__, mtk_dump_comp_str(comp),
 		primary_data->disp_aosp_ccorr, primary_data->disp_ccorr_without_gamma);
 	/* to avoid different show of dual pipe, pipe1 use pipe0's config data */
 	ccorr = primary_data->disp_ccorr_coef;
 	if (ccorr == NULL) {
-		DDPINFO("%s: %s is not initialized\n", __func__, comp_name);
+		DDPINFO("%s: %s is not initialized\n", __func__, mtk_dump_comp_str(comp));
 		ret = -EFAULT;
 		goto ccorr_write_coef_unlock;
 	}
@@ -238,18 +236,18 @@ static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
 	if (((primary_data->prim_ccorr_force_linear && (primary_data->disp_ccorr_linear&0x01)) ||
 		(primary_data->prim_ccorr_pq_nonlinear && primary_data->disp_ccorr_linear == 0)) &&
 		(primary_data->disp_ccorr_number == 1)) {
-		DDPINFO("%s: %s forcelinear\n", __func__, comp_name);
+		DDPINFO("%s: %s forcelinear\n", __func__, mtk_dump_comp_str(comp));
 		disp_ccorr_multiply_3x3(comp, ccorr->coef, primary_data->ccorr_color_matrix,
 			temp_matrix);
 		disp_ccorr_multiply_3x3(comp, temp_matrix, primary_data->rgb_matrix,
 			multiply_matrix->coef);
 	} else {
 		if (primary_data->disp_aosp_ccorr) {
-			DDPINFO("%s: %s aospccorr\n", __func__, comp_name);
+			DDPINFO("%s: %s aospccorr\n", __func__, mtk_dump_comp_str(comp));
 			disp_ccorr_multiply_3x3(comp, ccorr->coef, primary_data->ccorr_color_matrix,
 				multiply_matrix->coef);//AOSP multiply
 		} else {
-			DDPINFO("%s: %s noaospccorr\n", __func__, comp_name);
+			DDPINFO("%s: %s noaospccorr\n", __func__, mtk_dump_comp_str(comp));
 			disp_ccorr_multiply_3x3(comp, ccorr->coef, primary_data->rgb_matrix,
 				multiply_matrix->coef);//PQ service multiply
 		}
@@ -575,9 +573,7 @@ static int disp_ccorr_set_coef(
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 	int ret = 0;
 	struct DRM_DISP_CCORR_COEF_T *ccorr, *old_ccorr;
-	char comp_name[64] = {0};
 
-	mtk_ddp_comp_get_name(comp, comp_name, sizeof(comp_name));
 	ccorr = kmalloc(sizeof(struct DRM_DISP_CCORR_COEF_T), GFP_KERNEL);
 	if (ccorr == NULL) {
 		DDPPR_ERR("%s: no memory\n", __func__);
@@ -595,7 +591,7 @@ static int disp_ccorr_set_coef(
 
 		old_ccorr = primary_data->disp_ccorr_coef;
 		primary_data->disp_ccorr_coef = ccorr;
-		DDPINFO("%s: Set module(%s) coef", __func__, comp_name);
+		DDPINFO("%s: Set module(%s) coef\n", __func__, mtk_dump_comp_str(comp));
 		if (primary_data->disp_aosp_ccorr)
 			primary_data->disp_aosp_ccorr = false;
 
@@ -619,18 +615,17 @@ static int mtk_disp_ccorr_set_interrupt(struct mtk_ddp_comp *comp, void *data)
 	int enabled = *((int *)data);
 	unsigned long flags;
 	int ret = 0;
-	char comp_name[64] = {0};
 
-	DDPDBG("%s @ %d......... spin_lock_irqsave ++ %s\n", __func__, __LINE__, comp_name);
+	DDPDBG("%s:%d spin_lock_irqsave ++ %s\n", __func__, __LINE__, mtk_dump_comp_str(comp));
 	spin_lock_irqsave(&primary_data->ccorr_clock_lock, flags);
-	DDPDBG("%s @ %d......... spin_lock_irqsave -- ",
+	DDPDBG("%s:%d spin_lock_irqsave -- ",
 		__func__, __LINE__);
 	if (atomic_read(&ccorr_data->is_clock_on) != 1) {
 		DDPINFO("%s: clock is off. enabled:%d\n",
 			__func__, enabled);
 
 		spin_unlock_irqrestore(&primary_data->ccorr_clock_lock, flags);
-		DDPDBG("%s @ %d......... spin_unlock_irqrestore -- ",
+		DDPDBG("%s:%d spin_unlock_irqrestore --\n",
 			__func__, __LINE__);
 		return ret;
 	}
@@ -658,10 +653,16 @@ static int mtk_disp_ccorr_set_interrupt(struct mtk_ddp_comp *comp, void *data)
 	return ret;
 }
 
+/*
+ * ret
+ *     0 success
+ *     1 skip for special case(disp_ccorr_number = 1)
+ *     2 skip for linear setting
+ *     -EFAULT error
+ */
 int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	int32_t matrix[16], int32_t hint, bool fte_flag, bool linear)
 {
-	int ret = 0;
 	int i, j;
 	int ccorr_without_gamma = 0;
 	bool need_refresh = false;
@@ -669,18 +670,21 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 	struct DRM_DISP_CCORR_COEF_T *ccorr;
-	char comp_name[64] = {0};
 
 	if (handle == NULL) {
 		DDPPR_ERR("%s: cmdq can not be NULL\n", __func__);
 		return -EFAULT;
 	}
-	mtk_ddp_comp_get_name(comp, comp_name, sizeof(comp_name));
 
 	if (identity_matrix && (primary_data->disp_ccorr_number == 1) &&
 			(!primary_data->prim_ccorr_force_linear) &&
-			(primary_data->disp_ccorr_linear & 0x01))
-		return ret;
+			(primary_data->disp_ccorr_linear & 0x01)) {
+		DDPINFO("%s, skip aosp ccorr setting for single ccorr\n", __func__);
+		return 1;
+	}
+
+	if (ccorr_data->is_linear != linear)
+		return 2;
 
 	if (primary_data->disp_ccorr_coef == NULL) {
 		ccorr = kmalloc(sizeof(struct DRM_DISP_CCORR_COEF_T), GFP_KERNEL);
@@ -725,7 +729,7 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	// arbitraty matrix maybe identity matrix or color transform matrix;
 	// only when set identity matrix and not gpu overlay, open display color
 	DDPINFO("hint: %d, identity: %d, fte_flag: %d, %s bypass color:%d\n",
-		hint, identity_matrix, fte_flag, comp_name, ccorr_data->bypass_color);
+		hint, identity_matrix, fte_flag, mtk_dump_comp_str(comp), ccorr_data->bypass_color);
 	if (((hint == 0) || ((hint == 1) && identity_matrix)) && (!fte_flag)) {
 		if (ccorr_data->bypass_color == true) {
 			ddp_color_bypass_color(ccorr_data->color_comp, false, handle);
@@ -818,7 +822,7 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	if (need_refresh == true && comp->mtk_crtc != NULL)
 		mtk_crtc_check_trigger(comp->mtk_crtc, true, false);
 
-	return ret;
+	return 0;
 }
 
 int disp_ccorr_set_RGB_Gain(struct mtk_ddp_comp *comp,
@@ -851,7 +855,6 @@ int mtk_ccorr_cfg_set_ccorr(struct mtk_ddp_comp *comp,
 	struct DRM_DISP_CCORR_COEF_T *ccorr_config;
 	struct mtk_ddp_comp *output_comp = NULL;
 	unsigned int connector_id = 0;
-	char comp_name[64] = {0};
 	int ret = 0;
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -861,10 +864,9 @@ int mtk_ccorr_cfg_set_ccorr(struct mtk_ddp_comp *comp,
 	}
 	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
 
-	mtk_ddp_comp_get_name(comp, comp_name, sizeof(comp_name));
 	ccorr_config = data;
 	DDPINFO("%s pqhal_linear = %d, comp_linear =%d, comp:%s\n", __func__,
-			ccorr_config->linear, ccorr->is_linear, comp_name);
+			ccorr_config->linear, ccorr->is_linear, mtk_dump_comp_str(comp));
 
 	if (ccorr_config->linear != ccorr->is_linear)
 		return 0;
@@ -1358,7 +1360,7 @@ static void mtk_ccorr_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	primary_data->disp_ccorr_without_gamma = CCORR_INVERSE_GAMMA;
 
 	if (primary_data->disp_ccorr_number == 2) {
-		if (ccorr_data->path_order == 0) {
+		if (!ccorr_data->is_linear) {
 			primary_data->disp_aosp_ccorr = true;
 			primary_data->disp_ccorr_without_gamma =
 				primary_data->disp_ccorr_temp_linear;
