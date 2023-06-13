@@ -625,6 +625,22 @@ static long mbraink_ioctl(struct file *filp,
 		}
 		break;
 	}
+	case RO_MODEM_INFO:
+	{
+		struct mbraink_modem_raw modem_buffer;
+
+		memset(&modem_buffer, 0,
+			sizeof(struct mbraink_modem_raw));
+		mbraink_power_get_modem_info(&modem_buffer);
+
+		if (copy_to_user((struct mbraink_modem_raw *) arg,
+					&modem_buffer,
+					sizeof(modem_buffer))) {
+			pr_notice("Copy modem_buffer to UserSpace error!\n");
+			return -EPERM;
+		}
+		break;
+	}
 	default:
 		pr_notice("illegal ioctl number %u.\n", cmd);
 		return -EINVAL;

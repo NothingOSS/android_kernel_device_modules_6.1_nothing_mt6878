@@ -9,6 +9,7 @@
 #include <linux/sched/clock.h>
 #include <swpm_module_ext.h>
 
+#include "mbraink_power.h"
 
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
 	IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
@@ -20,7 +21,9 @@ unsigned int g_data_size;
 
 #endif
 
-#include "mbraink_power.h"
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
+#include "mtk_ccci_common.h"
+#endif
 
 
 #if IS_ENABLED(CONFIG_MTK_LPM_MT6985) && \
@@ -390,6 +393,45 @@ End:
 int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
 {
 	pr_notice("not support spm info\n");
+	return 0;
+}
+
+#endif
+
+
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
+
+int mbraink_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
+{
+	int size = 0;
+	void __iomem *addrVir = NULL;
+
+	addrVir = get_smem_start_addr(SMEM_USER_32K_LOW_POWER, &size);
+	if (addrVir == NULL) {
+		pr_notice("get_smem_start_addr addr is null\n");
+		return 0;
+	}
+
+	if (size == 0) {
+		pr_notice("get_smem_start_addr size is 0\n");
+		return 0;
+	}
+
+	if (size >= MAX_MD_TOTAL_SZ) {
+		memcpy(modem_buffer->md_data, addrVir, MAX_MD_TOTAL_SZ);
+	} else {
+		pr_notice("share memory virtual addr(0x%llx), size:(0x%x)",
+			(u64)addrVir, size);
+	}
+
+	return 0;
+}
+
+#else
+
+int mbraink_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
+{
+	pr_notice("not support eccci modem interface\n");
 	return 0;
 }
 

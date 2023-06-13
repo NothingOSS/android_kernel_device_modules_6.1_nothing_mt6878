@@ -37,6 +37,8 @@
 
 #define MAX_POWER_SPM_TBL_SEC_SZ (928)
 
+#define MAX_MD_TOTAL_SZ 200
+
 struct mbraink_process_stat_struct {
 	unsigned short pid;
 	unsigned short uid;
@@ -232,6 +234,10 @@ struct mbraink_power_spm_raw {
 	unsigned short pos;
 	unsigned short size;
 	unsigned char spm_data[MAX_POWER_SPM_TBL_SEC_SZ];
+};
+
+struct mbraink_modem_raw{
+	unsigned char md_data[MAX_MD_TOTAL_SZ];
 };
 
 

@@ -99,4 +99,6 @@ void mbraink_get_power_wakeup_info(struct mbraink_power_wakeup_data *wakeup_info
 
 int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *power_spm_buffer);
 
+int mbraink_power_get_modem_info(struct mbraink_modem_raw *modem_buffer);
+
 #endif /*end of MBRAINK_POWER_H*/
