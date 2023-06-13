@@ -1574,8 +1574,8 @@ void slbc_get_gid_for_dma(struct dma_buf *dmabuf_2)
 	buffer_fd = gid_data->buffer_fd;
 	producer = gid_data->producer;
 	consumer = gid_data->consumer;
-	SLBC_TRACE_REC(LVL_QOS, TYPE_C, 0, ret, "buffer_fd:%d  producer:0x%x  consumer:0x%x",
-			buffer_fd, producer, consumer);
+	/* SLBC_TRACE_REC(LVL_QOS, TYPE_C, 0, ret, "buffer_fd:%d  producer:0x%x  consumer:0x%x", */
+			/* buffer_fd, producer, consumer); */
 
 	if (gid_data->sign != SLC_DATA_MAGIC) {
 		/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, 0, ret, "invalid sign:%#x", gid_data->sign); */
@@ -1598,8 +1598,7 @@ void slbc_get_gid_for_dma(struct dma_buf *dmabuf_2)
 		if (consumer & BUF_ID_GPU)  /* GPU only */
 			gid = GID_GPU;
 	}
-	SLBC_TRACE_REC(LVL_QOS, TYPE_C, 0, 0, "gid:%d", gid);
-
+	/* SLBC_TRACE_REC(LVL_QOS, TYPE_C, 0, 0, "gid:%d", gid); */
 
 	dmabuf_1 = dma_buf_get(buffer_fd);
 	if (IS_ERR(dmabuf_1)) {
