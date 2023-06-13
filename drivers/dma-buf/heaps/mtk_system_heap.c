@@ -170,6 +170,11 @@ static int copy_sg_table(struct sg_table *source, struct sg_table *dest)
 
 	dest_sgl = dest->sgl;
 	for_each_sg(source->sgl, sgl, source->orig_nents, i) {
+		if (!dest_sgl || !sgl) {
+			pr_info("%s error: dest_sgl or sgl is null\n", __func__);
+			break;
+		}
+
 		memcpy(dest_sgl, sgl, sizeof(*sgl));
 		dest_sgl = sg_next(dest_sgl);
 	}
@@ -515,9 +520,16 @@ static int mtk_mm_heap_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma)
 		vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
 
 	for_each_sg(table->sgl, sg, table->nents, i) {
-		struct page *page = sg_page(sg);
+		struct page *page;
 		unsigned long remainder = vma->vm_end - addr;
-		unsigned long len = sg->length;
+		unsigned long len;
+
+		if (!sg) {
+			pr_info("%s error: sg is null\n", __func__);
+			break;
+		}
+		page = sg_page(sg);
+		len = sg->length;
 
 		if (offset >= sg->length) {
 			offset -= sg->length;
@@ -650,7 +662,13 @@ static void system_heap_buf_free(struct mtk_deferred_freelist_item *item,
 
 	table = &buffer->sg_table;
 	for_each_sgtable_sg(table, sg, i) {
-		struct page *page = sg_page(sg);
+		struct page *page;
+
+		if (!sg) {
+			pr_info("%s error: sg is null\n", __func__);
+			break;
+		}
+		page = sg_page(sg);
 
 		if (reason == MTK_DF_UNDER_PRESSURE || !page_pools) {
 			__free_pages(page, compound_order(page));
@@ -752,7 +770,13 @@ static void system_heap_dma_buf_release(struct dma_buf *dmabuf)
 
 	table = &buffer->sg_table;
 	for_each_sgtable_sg(table, sg, i) {
-		struct page *page = sg_page(sg);
+		struct page *page;
+
+		if (!sg) {
+			pr_info("%s error: sg is null\n", __func__);
+			break;
+		}
+		page = sg_page(sg);
 
 		for (j = 0; j < NUM_ORDERS; j++) {
 			if (compound_order(page) == orders[j])
@@ -1525,7 +1549,6 @@ int dma_buf_set_gid(struct dma_buf *dmabuf, int gid)
 		return -EINVAL;
 
 	buffer->gid = gid;
-	pr_debug("%s gid:%d\n", __func__, buffer->gid);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(dma_buf_set_gid);
@@ -1537,7 +1560,6 @@ int dma_buf_get_gid(struct dma_buf *dmabuf)
 	if (IS_ERR_OR_NULL(buffer))
 		return -EINVAL;
 
-	pr_debug("%s gid:%d\n", __func__, buffer->gid);
 	return buffer->gid;
 }
 EXPORT_SYMBOL_GPL(dma_buf_get_gid);
