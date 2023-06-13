@@ -115,6 +115,7 @@ struct mtk_mipi_tx {
 	const struct mtk_mipitx_data *driver_data;
 	struct clk_hw pll_hw;
 	struct clk *pll;
+	unsigned int disp_offset[2]; //for mt6989 dispsys1 dsi0/dsi1 reg offset
 };
 
 struct mtk_mipitx_data {

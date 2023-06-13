@@ -401,7 +401,6 @@ static void mtk_mmsys1_update_bits(struct mtk_drm_crtc *mtk_crtc, u32 offset,
 	writel((temp & ~mask) | (data & mask), mtk_crtc->side_config_regs + offset);
 }
 
-
 unsigned int _dsi_get_data_rate(struct phy *phy)
 {
 	int i = 0;
@@ -1252,18 +1251,19 @@ int mtk_mipi_tx_dphy_lane_config_mt6989(struct phy *phy,
 {
 	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
 	struct mtk_panel_params *params = mtk_panel->params;
-	int j, i = 0;
+	int j;
 	enum MIPITX_PHY_LANE_SWAP *swap_base;
+	bool *pn_swap_base;
 
 	if (!mtk_panel->params->lane_swap_en) {
 		writel(0x0, mtk_crtc->config_regs + MT6897_DSI_SEL_CONFIG_0_MSB);
 		writel(0x00a43210, mtk_crtc->config_regs + MT6897_DSI_SEL_CONFIG_0_LSB);
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_CK_CKMODE_EN_MT6983,
-				0x1, 0x1);
+					0x1, 0x1);
 		mtk_mipi_tx_update_bits(mipi_tx, MT6897_MIPITX_PHY_SEL0,
-			MT6897_FLD_MIPI_TX_LPRX0_LN_SEL, 0x0 << 4);
+					MT6897_FLD_MIPI_TX_LPRX0_LN_SEL, 0x0 << 4);
 		mtk_mipi_tx_update_bits(mipi_tx, MT6897_MIPITX_PHY_SEL0,
-			MT6897_FLD_MIPI_TX_LPRX1_LN_SEL, 0x5 << 8);
+					MT6897_FLD_MIPI_TX_LPRX1_LN_SEL, 0x5 << 8);
 		return 0;
 	}
 
@@ -1272,7 +1272,13 @@ int mtk_mipi_tx_dphy_lane_config_mt6989(struct phy *phy,
 		swap_base = params->lane_swap[MIPITX_PHY_PORT_0];
 	else
 		swap_base = params->lane_swap[MIPITX_PHY_PORT_1];
-	DDPDBG("MIPITX Lane Swap Enabled for DSI Port %d\n", i);
+
+	if (is_master)
+		pn_swap_base = params->pn_swap[MIPITX_PHY_PORT_0];
+	else
+		pn_swap_base = params->pn_swap[MIPITX_PHY_PORT_1];
+
+	DDPDBG("MIPITX Lane Swap Enabled for DSI Port %d\n", is_master);
 	DDPDBG("MIPITX Lane Swap mapping: %d|%d|%d|%d|%d|%d\n",
 			swap_base[MIPITX_PHY_LANE_0],
 			swap_base[MIPITX_PHY_LANE_1],
@@ -1280,6 +1286,13 @@ int mtk_mipi_tx_dphy_lane_config_mt6989(struct phy *phy,
 			swap_base[MIPITX_PHY_LANE_3],
 			swap_base[MIPITX_PHY_LANE_CK],
 			swap_base[MIPITX_PHY_LANE_RX]);
+	DDPDBG("MIPITX PN Swap mapping: %d|%d|%d|%d|%d|%d\n",
+			pn_swap_base[MIPITX_PHY_LANE_0],
+			pn_swap_base[MIPITX_PHY_LANE_1],
+			pn_swap_base[MIPITX_PHY_LANE_2],
+			pn_swap_base[MIPITX_PHY_LANE_3],
+			pn_swap_base[MIPITX_PHY_LANE_CK],
+			pn_swap_base[MIPITX_PHY_LANE_RX]);
 
 	for (j = MIPITX_PHY_LANE_0; j < MIPITX_PHY_LANE_CK; j++) {
 		if (swap_base[j] == MIPITX_PHY_LANE_CK)
@@ -1288,48 +1301,61 @@ int mtk_mipi_tx_dphy_lane_config_mt6989(struct phy *phy,
 	switch (j) {
 	case MIPITX_PHY_LANE_0:
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_D0_CKMODE_EN_MT6983,
-				0x1, 0x1);
+					0x1, 0x1);
 		break;
 	case MIPITX_PHY_LANE_1:
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_D1_CKMODE_EN_MT6983,
-				0x1, 0x1);
+					0x1, 0x1);
 		break;
 	case MIPITX_PHY_LANE_2:
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_D2_CKMODE_EN_MT6983,
-				0x1, 0x1);
+					0x1, 0x1);
 		break;
 	case MIPITX_PHY_LANE_3:
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_D3_CKMODE_EN_MT6983,
-				0x1, 0x1);
+					0x1, 0x1);
 		break;
 	case MIPITX_PHY_LANE_CK:
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_CK_CKMODE_EN_MT6983,
-				0x1, 0x1);
+					0x1, 0x1);
 		break;
 	default:
 		break;
 	}
 
 	/* LANE0~3 */
-	mtk_mmsys1_update_bits(mtk_crtc, MT6897_DSI_SEL_CONFIG_0_LSB,
-		MT6897_FLD_DPHY_LANE0_SEL, swap_base[MIPITX_PHY_LANE_0]);
-	mtk_mmsys1_update_bits(mtk_crtc, MT6897_DSI_SEL_CONFIG_0_LSB,
-		MT6897_FLD_DPHY_LANE1_SEL, swap_base[MIPITX_PHY_LANE_1] << 4);
-	mtk_mmsys1_update_bits(mtk_crtc, MT6897_DSI_SEL_CONFIG_0_LSB,
-		MT6897_FLD_DPHY_LANE2_SEL, swap_base[MIPITX_PHY_LANE_2] << 8);
-	mtk_mmsys1_update_bits(mtk_crtc, MT6897_DSI_SEL_CONFIG_0_LSB,
-		MT6897_FLD_DPHY_LANE3_SEL, swap_base[MIPITX_PHY_LANE_3] << 12);
+	mtk_mmsys1_update_bits(mtk_crtc, mipi_tx->disp_offset[0],
+				MT6897_FLD_DPHY_LANE0_SEL, swap_base[MIPITX_PHY_LANE_0]);
+	mtk_mmsys1_update_bits(mtk_crtc, mipi_tx->disp_offset[0],
+				MT6897_FLD_DPHY_LANE1_SEL, swap_base[MIPITX_PHY_LANE_1] << 4);
+	mtk_mmsys1_update_bits(mtk_crtc, mipi_tx->disp_offset[0],
+				MT6897_FLD_DPHY_LANE2_SEL, swap_base[MIPITX_PHY_LANE_2] << 8);
+	mtk_mmsys1_update_bits(mtk_crtc, mipi_tx->disp_offset[0],
+				MT6897_FLD_DPHY_LANE3_SEL, swap_base[MIPITX_PHY_LANE_3] << 12);
 
 	/*DISABLE CPHY*/
-	mtk_mmsys_update_bits(mtk_crtc, MT6897_DSI_SEL_CONFIG_0_MSB,
-		MT6897_FLD_CPHY_EN, 0x0);
-	mtk_mipi_tx_update_bits(mipi_tx, MT6897_MIPITX_PHY_SEL0, FLD_MIPI_TX_CPHY_EN, 0x0);
+	mtk_mmsys1_update_bits(mtk_crtc, mipi_tx->disp_offset[1],
+							MT6897_FLD_CPHY_EN, 0x0);
+	mtk_mipi_tx_update_bits(mipi_tx, MT6897_MIPITX_PHY_SEL0,
+							FLD_MIPI_TX_CPHY_EN, 0x0);
 
 	/*LPRX SETTING*/
 	mtk_mipi_tx_update_bits(mipi_tx, MT6897_MIPITX_PHY_SEL0,
 			MT6897_FLD_MIPI_TX_LPRX0_LN_SEL, swap_base[MIPITX_PHY_LANE_RX] << 4);
 	mtk_mipi_tx_update_bits(mipi_tx, MT6897_MIPITX_PHY_SEL0,
 			MT6897_FLD_MIPI_TX_LPRX1_LN_SEL, 0x5 << 8);
+
+	/* PN SWAP */
+	if (pn_swap_base[MIPITX_PHY_LANE_0])
+		writel(0x1, mipi_tx->regs + MIPITX_D0_ANA_PN_SWAP_EN_MT6989);
+	if (pn_swap_base[MIPITX_PHY_LANE_1])
+		writel(0x1, mipi_tx->regs + MIPITX_D1_ANA_PN_SWAP_EN_MT6989);
+	if (pn_swap_base[MIPITX_PHY_LANE_2])
+		writel(0x1, mipi_tx->regs + MIPITX_D2_ANA_PN_SWAP_EN_MT6989);
+	if (pn_swap_base[MIPITX_PHY_LANE_3])
+		writel(0x1, mipi_tx->regs + MIPITX_D3_ANA_PN_SWAP_EN_MT6989);
+	if (pn_swap_base[MIPITX_PHY_LANE_CK])
+		writel(0x1, mipi_tx->regs + MIPITX_CK_ANA_PN_SWAP_EN_MT6989);
 
 	return 0;
 }
@@ -5284,6 +5310,7 @@ static int mtk_mipi_tx_probe(struct platform_device *pdev)
 	struct phy *phy;
 	struct phy_provider *phy_provider;
 	int ret;
+	unsigned int i, disp_offset[2] = {0};
 
 	DDPINFO("%s+\n", __func__);
 
@@ -5319,6 +5346,16 @@ static int mtk_mipi_tx_probe(struct platform_device *pdev)
 		if (ret < 0) {
 			dev_err(dev, "Failed to read clock-output-names: %d\n", ret);
 			return ret;
+		}
+	}
+
+	/* get mt6989 dispsys1 dsi0/dsi1 register offset from dts */
+	ret = of_property_read_u32_array(dev->of_node, "dispsys-sel-offset", disp_offset, 2);
+	if (ret == 0) {
+		for (i = 0; i < 2; i++) {
+			mipi_tx->disp_offset[i] = disp_offset[i];
+			DDPDBG("%s mipi_tx->disp_offset[%d]=0x%x\n",
+				__func__, i, mipi_tx->disp_offset[i]);
 		}
 	}
 
