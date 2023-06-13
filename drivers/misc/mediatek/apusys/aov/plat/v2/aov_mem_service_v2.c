@@ -28,6 +28,10 @@ struct aov_mem_service_ctx {
 	enum npu_scp_mem_service_action received_act;
 	uint64_t received_pa;
 	struct platform_device *parent_pdev;
+	struct iommu_domain *domain;
+	uint64_t data_iova;
+	size_t data_size;
+	uint64_t ctrl_iova;
 };
 
 static struct aov_mem_service_ctx *ctx;
@@ -51,7 +55,10 @@ static int query_aov_reserved_iova(enum npu_scp_mem_service_action act, uint64_t
 
 	if (act == NPU_SCP_QUERY_DRAM_DATA_DEVADDR) {
 		/* map data iova by smmu or iommu */
-		if (smmu_v3_enabled()) {
+		if (ctx->data_iova) {
+			*iova = ctx->data_iova;
+			pr_debug("%s data iova = %llx (allocated)\n", __func__, ctx->data_iova);
+		} else if (smmu_v3_enabled()) {
 			aov_node = dev_of_node(&ctx->parent_pdev->dev);
 			if (!aov_node) {
 				pr_info("%s not found aov node\n", __func__);
@@ -91,22 +98,39 @@ static int query_aov_reserved_iova(enum npu_scp_mem_service_action act, uint64_t
 				pr_info("%s Failed to get smmu\n", __func__);
 				return -ENODEV;
 			}
-			iommu_map(smmu_domain, base, pa, size - ctrl_size, IOMMU_READ|IOMMU_WRITE);
+			ctx->domain = smmu_domain;
+
+			ret = iommu_map(smmu_domain, base, pa, size - ctrl_size,
+					IOMMU_READ | IOMMU_WRITE);
+			if (ret){
+				pr_info("%s Failed to immu_map, ret %d\n", __func__, ret);
+				return ret;
+			}
+
+			ctx->data_iova = base;
+			ctx->data_size = size - ctrl_size;
 			*iova = base;
 			pr_debug("%s data iova = %x (smmu)\n", __func__, base);
 		} else {
 			arm_smccc_smc(MTK_SIP_APUSYS_CONTROL,
 				MTK_APUSYS_KERNEL_OP_APUSYS_AOVDRAM_DATA_IOVA,
 				0, 0, 0, 0, 0, 0, &res);
+			ctx->data_iova = res.a1;
 			*iova = res.a1;
 			pr_debug("%s data iova = %lx (non-smmu)\n", __func__, res.a1);
 		}
 	} else if (act == NPU_SCP_QUERY_DRAM_CTRL_DEVADDR) {
-		arm_smccc_smc(MTK_SIP_APUSYS_CONTROL,
-			MTK_APUSYS_KERNEL_OP_APUSYS_AOVDRAM_CTRL_IOVA,
-			0, 0, 0, 0, 0, 0, &res);
-		*iova = res.a1;
-		pr_debug("%s ctrl iova = %lx\n", __func__, res.a1);
+		if (ctx->ctrl_iova) {
+			*iova = ctx->ctrl_iova;
+			pr_debug("%s ctrl iova = %llx (allocated)\n", __func__, ctx->ctrl_iova);
+		} else {
+			arm_smccc_smc(MTK_SIP_APUSYS_CONTROL,
+				MTK_APUSYS_KERNEL_OP_APUSYS_AOVDRAM_CTRL_IOVA,
+				0, 0, 0, 0, 0, 0, &res);
+			ctx->ctrl_iova = res.a1;
+			*iova = res.a1;
+			pr_debug("%s ctrl iova = %lx\n", __func__, res.a1);
+		}
 	} else
 		return -EINVAL;
 
@@ -365,6 +389,9 @@ void aov_mem_service_v2_exit(struct platform_device *pdev)
 
 	if (ctx->service_worker)
 		kthread_stop(ctx->service_worker);
+
+	if (ctx->domain && ctx->data_iova && ctx->data_size)
+		iommu_unmap(ctx->domain, ctx->data_iova, ctx->data_size);
 
 	kfree(ctx);
 
