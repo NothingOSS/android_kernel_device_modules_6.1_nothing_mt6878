@@ -10480,8 +10480,9 @@
 				<&mdpsys1_config_clk CLK_MDP1_MDP_DLI_ASYNC2>,
 				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC0>,
 				<&mdpsys1_config_clk CLK_MDP1_MDP_DLO_ASYNC2>,
-				<&mmdvfs_mux MMDVFS_USER_MML>;
-			clock-names = "apb_bus", "dli0", "dli2", "dlo0", "dlo2", "mmdvfs_clk";
+				<&mmdvfs_mux MMDVFS_USER_MML>,
+				<&mdpsys1_config_clk CLK_MDP1_F26M_SLOW>;
+			clock-names = "apb_bus", "dli0", "dli2", "dlo0", "dlo2", "mmdvfs_clk", "mmlsys_26m_clk";
 			mmlsys-clock-names = "apb_bus";
 			dli0-clock-names = "dli0";
 			dli2-clock-names = "dli2";
