@@ -5912,6 +5912,12 @@
 			compatible = "mediatek,mmdvfs-v3-start";
 		};
 
+		ktf-mmdvfs-test {
+			compatible = "mediatek,ktf-mmdvfs-test";
+			clocks = <&mmdvfs_mux DUMMY_USER_CAM>;
+			clock-names = "clk_name";
+		};
+
 		dispsys_config: dispsys-config@14000000 {
 			compatible = "mediatek,mt6989-disp";
 			mediatek,mml = <&mmlsys_config>;
