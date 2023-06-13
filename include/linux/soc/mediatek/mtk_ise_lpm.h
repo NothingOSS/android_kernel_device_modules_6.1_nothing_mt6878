@@ -15,6 +15,7 @@
  */
 
 enum mtk_ise_awake_id_t {
+	ISE_PM_INIT,
 	ISE_PM_UT,
 	ISE_REE,
 	ISE_TEE,

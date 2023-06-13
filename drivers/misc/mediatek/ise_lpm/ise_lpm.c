@@ -6,6 +6,7 @@
 #include <asm/compiler.h>
 #include <linux/delay.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
@@ -54,6 +55,8 @@ static uint32_t ise_awake_cnt;
 static struct scmi_tinysys_info_st *_tinfo;
 #endif
 
+struct mutex mutex_ise_lpm;
+
 static uint32_t ise_wakelock_en;
 static uint32_t ise_awake_user_list[ISE_AWAKE_ID_NUM];
 
@@ -83,12 +86,13 @@ enum mtk_ise_awake_ack_t mtk_ise_awake_lock(enum mtk_ise_awake_id_t mtk_ise_awak
 		pr_notice("err id %d\n", mtk_ise_awake_id);
 		return ISE_ERR_UID;
 	}
-
+	mutex_lock(&mutex_ise_lpm);
 	inc_ise_awake_cnt(mtk_ise_awake_id);
 	if (ise_awake_cnt == 1)
 		ise_power_on();
 	else
 		pr_info("ise still awake, cnt = %d\n", ise_awake_cnt);
+	mutex_unlock(&mutex_ise_lpm);
 
 	return ISE_SUCCESS;
 }
@@ -113,11 +117,13 @@ enum mtk_ise_awake_ack_t mtk_ise_awake_unlock(enum mtk_ise_awake_id_t mtk_ise_aw
 		return ISE_ERR_REF_CNT;
 	}
 
+	mutex_lock(&mutex_ise_lpm);
 	dec_ise_awake_cnt(mtk_ise_awake_id);
 	if (ise_awake_cnt == 0)
 		ise_power_off();
 	else
 		pr_info("ise still awake, cnt = %d\n", ise_awake_cnt);
+	mutex_unlock(&mutex_ise_lpm);
 
 	return ISE_SUCCESS;
 }
@@ -235,9 +241,9 @@ ssize_t ise_lpm_dbg(struct file *file, const char __user *buffer,
 
 	if (!strncmp(cmd_str, "ise_pwr", sizeof("ise_pwr"))) {
 		if (param == ISE_AWAKE_LOCK)
-			mtk_ise_awake_lock(ISE_PM_UT);
+			mtk_ise_awake_lock(ISE_PM_INIT);
 		else if (param == ISE_AWAKE_UNLOCK)
-			mtk_ise_awake_unlock(ISE_PM_UT);
+			mtk_ise_awake_unlock(ISE_PM_INIT);
 		else if (param == ISE_LOWPOWER_UT) {
 			mtk_ise_awake_lock(ISE_PM_UT);
 			/* Do iSE jobs here */
@@ -273,11 +279,16 @@ static int ise_lpm_probe(struct platform_device *pdev)
 	}
 
 	if (ise_wakelock_en) {
+		mutex_init(&mutex_ise_lpm);
+		mutex_lock(&mutex_ise_lpm);
 		/*
-		 * Since iSE already boot up at BL2 phase,
-		 * so ise_awake_cnt inited as 1.
+		 * Since iSE already boot up at BL2 phase, so init following
+		 * ise_awake_cnt = 1
+		 * ise_awake_user_list[ISE_PM_INIT] = 1
 		 */
 		ise_awake_cnt = 1;
+		ise_awake_user_list[ISE_PM_INIT] = 1;
+		mutex_unlock(&mutex_ise_lpm);
 		ise_scmi_init();
 		proc_create("ise_lpm_dbg", 0664, NULL, &ise_lpm_dbg_fops);
 	}
