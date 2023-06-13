@@ -578,6 +578,8 @@ static void probe_preempt_enable(void *ignore,
 static void probe_hrtimer_expire_entry(void *ignore,
 				       struct hrtimer *hrtimer, ktime_t *now)
 {
+	if (!irqs_disabled())
+		return;
 	trace_stat_start(&hrtimer_expire_tracer);
 }
 
