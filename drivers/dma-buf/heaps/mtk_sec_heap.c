@@ -109,7 +109,7 @@ struct secure_heap_region {
 };
 
 struct secure_heap_page {
-	char heap_name[NAME_LEN];
+	const char *heap_name;
 	atomic64_t total_size;
 	struct dma_heap *heap;
 	struct device *heap_dev;
@@ -146,73 +146,11 @@ struct mtk_sec_heap_buffer {
 	struct ssheap_buf_info *ssheap; /* for page base */
 };
 
-static struct secure_heap_page mtk_sec_heap_page[PAGE_HEAPS_NUM] = {
-	[SVP_PAGE] = {
-		.heap_name = "mtk_svp_page-uncached",
-		.tmem_type = TRUSTED_MEM_REQ_SVP_PAGE,
-		.heap_type = PAGE_BASE,
-	},
-	[PROT_PAGE] = {
-		.heap_name = "mtk_prot_page-uncached",
-		.tmem_type = TRUSTED_MEM_REQ_PROT_PAGE,
-		.heap_type = PAGE_BASE,
-	},
-	[WFD_PAGE] = {
-		.heap_name = "mtk_wfd_page-uncached",
-		.tmem_type = TRUSTED_MEM_REQ_WFD_PAGE,
-		.heap_type = PAGE_BASE,
-	},
-	[SAPU_PAGE] = {
-		.heap_name = "mtk_sapu_page-uncached",
-		.tmem_type = TRUSTED_MEM_REQ_SAPU_PAGE,
-		.heap_type = PAGE_BASE,
-	},
-};
+static struct secure_heap_page *mtk_sec_heap_page;
+static u32 mtk_sec_page_count;
 
-static struct secure_heap_region mtk_sec_heap_region[REGION_HEAPS_NUM] = {
-	[SVP_REGION] = {
-		.heap_name = {"mtk_svp_region",
-			      "mtk_svp_region-aligned"},
-		.tmem_type = TRUSTED_MEM_REQ_SVP_REGION,
-		.heap_type = REGION_BASE,
-	},
-	[PROT_REGION] = {
-		.heap_name = {"mtk_prot_region",
-			      "mtk_prot_region-aligned"},
-		.tmem_type = TRUSTED_MEM_REQ_PROT_REGION,
-		.heap_type = REGION_BASE,
-	},
-	[PROT_2D_FR_REGION] = {
-		.heap_name = {"mtk_2d_fr_region",
-			      "mtk_2d_fr_region-aligned"},
-		.tmem_type = TRUSTED_MEM_REQ_2D_FR,
-		.heap_type = REGION_BASE,
-	},
-	[WFD_REGION] = {
-		.heap_name = {"mtk_wfd_region",
-			      "mtk_wfd_region-aligned"},
-		.tmem_type = TRUSTED_MEM_REQ_WFD_REGION,
-		.heap_type = REGION_BASE,
-	},
-	[SAPU_DATA_SHM_REGION] = {
-		.heap_name = {"mtk_sapu_data_shm_region",
-			      "mtk_sapu_data_shm_region-aligned"},
-		.tmem_type = TRUSTED_MEM_REQ_SAPU_DATA_SHM,
-		.heap_type = REGION_BASE,
-	},
-	[SAPU_ENGINE_SHM_REGION] = {
-		.heap_name = {"mtk_sapu_engine_shm_region",
-			      "mtk_sapu_engine_shm_region-aligned"},
-		.tmem_type = TRUSTED_MEM_REQ_SAPU_ENGINE_SHM,
-		.heap_type = REGION_BASE,
-	},
-	[TUI_REGION] = {
-		.heap_name = {"mtk_tui_region",
-				  "mtk_tui_region-aligned"},
-		.tmem_type = TRUSTED_MEM_REQ_TUI_REGION,
-		.heap_type = REGION_BASE,
-	},
-};
+static struct secure_heap_region *mtk_sec_heap_region;
+static u32 mtk_sec_region_count;
 
 /* function declare */
 static int is_region_base_dmabuf(const struct dma_buf *dmabuf);
@@ -245,13 +183,13 @@ static int get_heap_base_type(const struct dma_heap *heap)
 {
 	int i, j, k;
 
-	for (i = SVP_REGION; i < REGION_HEAPS_NUM; i++) {
+	for (i = 0; i < mtk_sec_region_count; i++) {
 		for (j = REGION_HEAP_NORMAL; j < REGION_TYPE_NUM; j++) {
 			if (mtk_sec_heap_region[i].heap[j] == heap)
 				return REGION_BASE;
 		}
 	}
-	for (k = SVP_PAGE; k < PAGE_HEAPS_NUM; k++) {
+	for (k = 0; k < mtk_sec_page_count; k++) {
 		if (mtk_sec_heap_page[k].heap == heap)
 			return PAGE_BASE;
 	}
@@ -263,7 +201,7 @@ sec_heap_region_get(const struct dma_heap *heap)
 {
 	int i, j;
 
-	for (i = SVP_REGION; i < REGION_HEAPS_NUM; i++) {
+	for (i = 0; i < mtk_sec_region_count; i++) {
 		for (j = REGION_HEAP_NORMAL; j < REGION_TYPE_NUM; j++) {
 			if (mtk_sec_heap_region[i].heap[j] == heap)
 				return &mtk_sec_heap_region[i];
@@ -276,7 +214,7 @@ static struct secure_heap_page *sec_heap_page_get(const struct dma_heap *heap)
 {
 	int i = 0;
 
-	for (i = SVP_PAGE; i < PAGE_HEAPS_NUM; i++) {
+	for (i = 0; i < mtk_sec_page_count; i++) {
 		if (mtk_sec_heap_page[i].heap == heap)
 			return &mtk_sec_heap_page[i];
 	}
@@ -1975,15 +1913,10 @@ u64 dmabuf_to_secure_handle(const struct dma_buf *dmabuf)
 }
 EXPORT_SYMBOL_GPL(dmabuf_to_secure_handle);
 
-/*
- * NOTE: the range of heap_id is (s, e), not [s, e] or [s, e)
- */
-static int mtk_region_heap_create(struct device *dev,
-				  enum sec_heap_region_type s,
-				  enum sec_heap_region_type e)
+static int mtk_region_heap_create(void)
 {
-	struct dma_heap_export_info exp_info;
-	int i, j, ret;
+	struct dma_heap_export_info exp_info = {0};
+	int i = 0, j, ret;
 
 	/* region base & page base use same heap show */
 	exp_info.priv = (void *)&mtk_sec_heap_priv;
@@ -1991,23 +1924,21 @@ static int mtk_region_heap_create(struct device *dev,
 	/* No need pagepool for secure heap */
 	exp_info.ops = &sec_heap_region_ops;
 
-	for (i = (s + 1); i < e; i++) {
+	for (i = 0; i < mtk_sec_region_count; i++) {
 		for (j = REGION_HEAP_NORMAL; j < REGION_TYPE_NUM; j++) {
+			if (!mtk_sec_heap_region[i].heap_name[j])
+				continue;
 			exp_info.name = mtk_sec_heap_region[i].heap_name[j];
-			mtk_sec_heap_region[i].heap[j] =
-				dma_heap_add(&exp_info);
+			mtk_sec_heap_region[i].heap[j] = dma_heap_add(&exp_info);
 			if (IS_ERR(mtk_sec_heap_region[i].heap[j]))
 				return PTR_ERR(mtk_sec_heap_region[i].heap[j]);
 
-			mtk_sec_heap_region[i].heap_dev = dev;
-			mtk_sec_heap_region[i].iommu_dev =
-				mtk_smmu_get_shared_device(dev);
 			ret = dma_set_mask_and_coherent(
 				mtk_sec_heap_region[i].heap_dev,
 				DMA_BIT_MASK(34));
 			if (ret) {
 				dev_info(
-					dev,
+					mtk_sec_heap_region[i].heap_dev,
 					"dma_set_mask_and_coherent failed: %d\n",
 					ret);
 				return ret;
@@ -2024,57 +1955,44 @@ static int mtk_region_heap_create(struct device *dev,
 	return 0;
 }
 
-static int apu_region_heap_probe(struct platform_device *pdev)
+static struct list_head secure_heap_config_data;
+static int mtk_dma_heap_config_probe(struct platform_device *pdev)
 {
+	struct mtk_dma_heap_config *heap_config;
 	int ret;
 
-	ret = mtk_region_heap_create(&pdev->dev, APU_HEAP_START, APU_HEAP_END);
-	if (ret)
-		pr_err("%s failed\n", __func__);
+	heap_config = kzalloc(sizeof(*heap_config), GFP_KERNEL);
+	if (!heap_config)
+		return -ENOMEM;
 
-	return ret;
+	ret = mtk_dma_heap_config_parse(&pdev->dev, heap_config);
+	if (ret)
+		return ret;
+
+	list_add(&heap_config->list_node, &secure_heap_config_data);
+	return 0;
 }
 
-static int mm_region_heap_probe(struct platform_device *pdev)
-{
-	int ret;
+static const struct mtk_dma_heap_match_data dmaheap_data_mtk_region = {
+	.dmaheap_type = DMA_HEAP_MTK_SEC_REGION,
+};
 
-	ret = mtk_region_heap_create(&pdev->dev, MM_HEAP_START, MM_HEAP_END);
-	if (ret)
-		pr_err("%s failed\n", __func__);
+static const struct mtk_dma_heap_match_data dmaheap_data_mtk_page = {
+	.dmaheap_type = DMA_HEAP_MTK_SEC_PAGE,
+};
 
-	return ret;
-}
-
-static const struct of_device_id mm_region_match_table[] = {
-	{ .compatible = "mediatek,dmaheap-region-base" },
+static const struct of_device_id mtk_dma_heap_match_table[] = {
+	{.compatible = "mediatek,dmaheap-mtk-sec-region", .data = &dmaheap_data_mtk_region},
+	{.compatible = "mediatek,dmaheap-mtk-sec-page", .data = &dmaheap_data_mtk_page},
 	{},
 };
 
-static const struct of_device_id apu_region_match_table[] = {
-	{ .compatible = "mediatek,dmaheap-apu-region-base" },
-	{},
-};
-
-static struct platform_driver mm_region_base = {
-	.probe = mm_region_heap_probe,
+static struct platform_driver mtk_dma_heap_config_driver = {
+	.probe = mtk_dma_heap_config_probe,
 	.driver = {
-		.name = "mm-region-base",
-		.of_match_table = mm_region_match_table,
+		.name = "mtk-dma-heap-secure",
+		.of_match_table = mtk_dma_heap_match_table,
 	},
-};
-
-static struct platform_driver apu_region_base = {
-	.probe = apu_region_heap_probe,
-	.driver = {
-		.name = "apu-region-base",
-		.of_match_table = apu_region_match_table,
-	},
-};
-
-static struct platform_driver *const mtk_region_heap_drivers[] = {
-	&mm_region_base,
-	&apu_region_base,
 };
 
 static int set_heap_dev_dma(struct device *heap_dev)
@@ -2106,6 +2024,77 @@ static int set_heap_dev_dma(struct device *heap_dev)
 	return 0;
 }
 
+static int mtk_dma_heap_config_alloc(void)
+{
+	struct mtk_dma_heap_config *heap_config, *temp_config;
+	struct secure_heap_region *heap_region;
+	struct secure_heap_page *heap_page;
+	int i = 0, j = 0;
+
+	list_for_each_entry(heap_config, &secure_heap_config_data, list_node) {
+		if (heap_config->heap_type == DMA_HEAP_MTK_SEC_PAGE)
+			mtk_sec_page_count++;
+		else if (heap_config->heap_type == DMA_HEAP_MTK_SEC_REGION)
+			mtk_sec_region_count++;
+	}
+
+	pr_info("%s page count:%d,region count:%d\n", __func__,
+		mtk_sec_page_count, mtk_sec_region_count);
+
+	mtk_sec_heap_page = kcalloc(mtk_sec_page_count, sizeof(*mtk_sec_heap_page), GFP_KERNEL);
+	if (!mtk_sec_heap_page)
+		goto alloc_page_fail;
+
+	mtk_sec_heap_region = kcalloc(mtk_sec_region_count, sizeof(*mtk_sec_heap_region),
+				      GFP_KERNEL);
+	if (!mtk_sec_heap_region)
+		goto alloc_region_fail;
+
+	memset(mtk_sec_heap_page, 0, sizeof(*mtk_sec_heap_page) * mtk_sec_page_count);
+	memset(mtk_sec_heap_region, 0, sizeof(*mtk_sec_heap_region) * mtk_sec_region_count);
+
+	list_for_each_entry_safe(heap_config, temp_config, &secure_heap_config_data, list_node) {
+		if (heap_config->heap_type == DMA_HEAP_MTK_SEC_PAGE && i < mtk_sec_page_count) {
+			heap_page = &mtk_sec_heap_page[i];
+			heap_page->heap_type = PAGE_BASE;
+			heap_page->tmem_type = heap_config->trusted_mem_type;
+			heap_page->heap_dev = heap_config->dev;
+			heap_page->heap_name = heap_config->heap_name;
+			i++;
+		} else if (heap_config->heap_type == DMA_HEAP_MTK_SEC_REGION &&
+			   j < mtk_sec_region_count) {
+			heap_region = &mtk_sec_heap_region[j];
+			heap_region->heap_type = REGION_BASE;
+			heap_region->tmem_type = heap_config->trusted_mem_type;
+			heap_region->heap_dev = heap_config->dev;
+			heap_region->iommu_dev = mtk_smmu_get_shared_device(heap_config->dev);
+			heap_region->heap_name[REGION_HEAP_NORMAL] = heap_config->heap_name;
+			heap_region->heap_name[REGION_HEAP_ALIGN] =
+							heap_config->region_heap_align_name;
+			j++;
+		}
+
+		list_del(&heap_config->list_node);
+		kfree(heap_config);
+	}
+
+	return 0;
+
+alloc_region_fail:
+	kfree(mtk_sec_heap_page);
+	mtk_sec_heap_page = NULL;
+
+alloc_page_fail:
+	mtk_sec_page_count = 0;
+	mtk_sec_region_count = 0;
+
+	list_for_each_entry_safe(heap_config, temp_config, &secure_heap_config_data, list_node) {
+		list_del(&heap_config->list_node);
+		kfree(heap_config);
+	}
+	return -ENOMEM;
+}
+
 static int mtk_page_heap_create(void)
 {
 	struct dma_heap_export_info exp_info = {0};
@@ -2124,7 +2113,7 @@ static int mtk_page_heap_create(void)
 	}
 
 	exp_info.ops = &sec_heap_page_ops;
-	for (i = SVP_PAGE; i < PAGE_HEAPS_NUM; i++) {
+	for (i = 0; i < mtk_sec_page_count; i++) {
 		/* param check */
 		if (mtk_sec_heap_page[i].heap_type != PAGE_BASE) {
 			pr_info("invalid heap param, %s, %d\n",
@@ -2158,7 +2147,6 @@ static int mtk_page_heap_create(void)
 static int __init mtk_sec_heap_init(void)
 {
 	int ret;
-	int i;
 
 	pr_info("%s+\n", __func__);
 
@@ -2169,38 +2157,48 @@ static int __init mtk_sec_heap_init(void)
 	else
 		tmem_api_ver = 1;
 
-	ret = mtk_page_heap_create();
-	if (ret) {
-		pr_err("page_base_heap_create failed\n");
+	INIT_LIST_HEAD(&secure_heap_config_data);
+	ret = platform_driver_register(&mtk_dma_heap_config_driver);
+	if (ret < 0) {
+		pr_info("%s fail to register dma heap: %d\n", __func__, ret);
 		return ret;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(mtk_region_heap_drivers); i++) {
-		pr_info("%s, register %d\n", __func__, i);
-		ret = platform_driver_register(mtk_region_heap_drivers[i]);
-		if (ret < 0) {
-			pr_err("Failed to register %s driver: %d\n",
-			       mtk_region_heap_drivers[i]->driver.name, ret);
-			goto err;
-		}
+	ret = mtk_dma_heap_config_alloc();
+	if (ret) {
+		pr_info("%s secure heap alloc failed\n", __func__);
+		goto err;
 	}
+
+	ret = mtk_page_heap_create();
+	if (ret) {
+		pr_info("%s page_base_heap_create failed\n", __func__);
+		goto err;
+	}
+
+	ret = mtk_region_heap_create();
+	if (ret) {
+		pr_info("%s region_base_heap_create failed\n", __func__);
+		goto err;
+	}
+
 	pr_info("%s-\n", __func__);
 
 	return 0;
 
 err:
-	while (--i >= 0)
-		platform_driver_unregister(mtk_region_heap_drivers[i]);
+	platform_driver_unregister(&mtk_dma_heap_config_driver);
 
 	return ret;
+
 }
 
 static void __exit mtk_sec_heap_exit(void)
 {
-	int i;
+	kfree(mtk_sec_heap_page);
+	kfree(mtk_sec_heap_region);
 
-	for (i = ARRAY_SIZE(mtk_region_heap_drivers) - 1; i >= 0; i--)
-		platform_driver_unregister(mtk_region_heap_drivers[i]);
+	platform_driver_unregister(&mtk_dma_heap_config_driver);
 }
 
 MODULE_SOFTDEP("pre: apusys");

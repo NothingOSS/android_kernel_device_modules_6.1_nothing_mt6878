@@ -1343,8 +1343,87 @@ out:
 	return ret;
 }
 
+int mtk_dma_heap_config_parse(struct device *dev, struct mtk_dma_heap_config *heap_config)
+{
+	const struct mtk_dma_heap_match_data *dmaheap_data = of_device_get_match_data(dev);
+	const struct device_node *node = dev->of_node;
+	const char *heap_name;
+	u32 trusted_mem_type;
+	u32 max_align;
+	int ret;
+
+	if (!heap_config)
+		return -EINVAL;
+
+	ret = of_property_read_string(node, "heap-name", &heap_name);
+	if (ret) {
+		pr_info("%s has no heap-name node:%s\n", __func__, node->name);
+		return -EINVAL;
+	}
+
+	heap_config->heap_type = dmaheap_data->dmaheap_type;
+	heap_config->heap_name = heap_name;
+	heap_config->heap_uncached = of_property_read_bool(node, "heap-uncached");
+
+	ret = of_property_read_string(node, "region-heap-align-name", &heap_name);
+	if (!ret)
+		heap_config->region_heap_align_name = heap_name;
+
+	ret = of_property_read_u32(node, "trusted-mem-type", &trusted_mem_type);
+	if (!ret)
+		heap_config->trusted_mem_type = trusted_mem_type;
+
+	ret = of_property_read_u32(node, "heap-max-align", &max_align);
+	if (!ret)
+		heap_config->max_align = max_align;
+
+	heap_config->dev = dev;
+	pr_info("%s node:%s,type:%d,name:%s,uncached:%d,trusted:%d,dev:%s\n",
+		__func__, node->name, heap_config->heap_type,
+		heap_config->heap_name?:"NULL", heap_config->heap_uncached?1:0,
+		heap_config->trusted_mem_type,
+		heap_config->dev?dev_name(heap_config->dev):"NULL");
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_dma_heap_config_parse);
+
+static int mtk_dma_heap_config_probe(struct platform_device *pdev)
+{
+	struct mtk_dma_heap_config heap_config = {0};
+	int ret;
+
+	ret = mtk_dma_heap_config_parse(&pdev->dev, &heap_config);
+	if (ret)
+		return ret;
+
+	if (heap_config.heap_type == DMA_HEAP_MTK_SLC)
+		mtk_heap_create(heap_config.heap_name, &mtk_slc_heap_ops, false, false);
+
+	return 0;
+}
+
+static const struct mtk_dma_heap_match_data dmaheap_data_mtk_slc = {
+	.dmaheap_type = DMA_HEAP_MTK_SLC,
+};
+
+static const struct of_device_id mtk_dma_heap_match_table[] = {
+	{.compatible = "mediatek,dmaheap-mtk-slc", .data = &dmaheap_data_mtk_slc},
+	{},
+};
+
+static struct platform_driver mtk_dma_heap_config_driver = {
+	.probe = mtk_dma_heap_config_probe,
+	.driver = {
+		.name = "mtk-dma-heap-slc",
+		.of_match_table = mtk_dma_heap_match_table,
+	},
+};
+
 static int mtk_system_heap_create(void)
 {
+	int ret;
+
 	// smmu support 4K/2M/1G granule
 	smmu_v3_enable = smmu_v3_enabled();
 	if (smmu_v3_enable)
@@ -1355,10 +1434,20 @@ static int mtk_system_heap_create(void)
 
 	mtk_heap_create("system", &system_heap_ops, true, true);
 	mtk_heap_create("mtk_mm", &mtk_mm_heap_ops, true, true);
-	mtk_heap_create("mtk_slc", &mtk_slc_heap_ops, false, false);
+
+	ret = platform_driver_register(&mtk_dma_heap_config_driver);
+	if (ret < 0) {
+		pr_info("%s fail to register mtk_slc heap: %d\n", __func__, ret);
+		return ret;
+	}
 
 	mtk_cache_pool_init();
 	return 0;
+}
+
+static void mtk_system_heap_exit(void)
+{
+	platform_driver_unregister(&mtk_dma_heap_config_driver);
 }
 
 const char *refill_heap_names[] = {
@@ -1436,7 +1525,7 @@ int dma_buf_set_gid(struct dma_buf *dmabuf, int gid)
 		return -EINVAL;
 
 	buffer->gid = gid;
-	pr_info("%s gid:%d\n", __func__, buffer->gid);
+	pr_debug("%s gid:%d\n", __func__, buffer->gid);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(dma_buf_set_gid);
@@ -1448,11 +1537,12 @@ int dma_buf_get_gid(struct dma_buf *dmabuf)
 	if (IS_ERR_OR_NULL(buffer))
 		return -EINVAL;
 
-	pr_info("%s gid:%d\n", __func__, buffer->gid);
+	pr_debug("%s gid:%d\n", __func__, buffer->gid);
 	return buffer->gid;
 }
 EXPORT_SYMBOL_GPL(dma_buf_get_gid);
 
 module_init(mtk_system_heap_create);
+module_exit(mtk_system_heap_exit);
 MODULE_LICENSE("GPL");
 MODULE_IMPORT_NS(DMA_BUF);

@@ -54,6 +54,16 @@ extern dmabuf_rbtree_dump_cb dmabuf_rbtree_dump_by_domain;
 			pr_info(fmt, ##args);                   \
 	} while (0)
 
+enum mtk_dmaheap_type {
+	DMA_HEAP_INVALID,
+	DMA_HEAP_SYSTEM,
+	DMA_HEAP_MTK_MM,
+	DMA_HEAP_MTK_SEC_REGION,
+	DMA_HEAP_MTK_SEC_PAGE,
+	DMA_HEAP_MTK_SLC,
+	DMA_HEAP_MTK_CMA,
+};
+
 /* mtk_heap private info, used for dump */
 struct mtk_heap_priv_info {
 	int uncached;
@@ -92,6 +102,23 @@ struct iova_cache_data {
 	struct list_head	 iova_caches;
 	u64			 tab_id;
 };
+
+struct mtk_dma_heap_config {
+	u32			heap_type;
+	const char		*heap_name;
+	struct device		*dev;
+	bool			heap_uncached;
+	u32			trusted_mem_type;
+	const char		*region_heap_align_name;
+	u32			max_align;
+	struct list_head	list_node;
+};
+
+struct mtk_dma_heap_match_data {
+	u32	dmaheap_type;
+};
+
+int mtk_dma_heap_config_parse(struct device *dev, struct mtk_dma_heap_config *heap_config);
 
 const char **mtk_refill_heap_names(void);
 
