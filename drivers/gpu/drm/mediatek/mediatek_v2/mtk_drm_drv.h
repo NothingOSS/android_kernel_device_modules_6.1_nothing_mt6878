@@ -133,6 +133,7 @@ struct mtk_drm_private {
 	struct device *side_mmsys_dev;
 	struct device *ovlsys_dev;
 	struct device *side_ovlsys_dev;
+	struct device *dpc_dev;
 
 	struct drm_crtc *crtc[MAX_CRTC];
 	unsigned int pre_defined_bw[MAX_CRTC];
@@ -328,6 +329,14 @@ struct disp_plat_dbg_scmi_data {
 	unsigned int p4;
 };
 
+enum disp_pm_action {
+	DISP_PM_ENABLE,
+	DISP_PM_DISABLE,
+	DISP_PM_GET,
+	DISP_PM_PUT,
+	DISP_PM_CHECK,
+};
+
 static const struct mtk_addon_module_data addon_rsz_data[] = {
 	{DISP_RSZ, ADDON_BETWEEN, DDP_COMPONENT_OVL0_2L},
 };
@@ -463,4 +472,5 @@ int scmi_set(void *buffer);
 int mtk_drm_get_master_info_ioctl(struct drm_device *dev,
 			void *data, struct drm_file *file_priv);
 void mtk_vidle_multi_crtc_stop(unsigned int crtc_id);
+int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action);
 #endif /* MTK_DRM_DRV_H */

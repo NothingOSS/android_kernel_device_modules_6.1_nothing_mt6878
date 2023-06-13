@@ -444,14 +444,7 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 			mtk_dump_reg(comp);
 	}
 
-	if (priv->side_ovlsys_dev)
-		pm_runtime_put(priv->side_ovlsys_dev);
-	if (priv->ovlsys_dev)
-		pm_runtime_put(priv->ovlsys_dev);
-	if (priv->side_mmsys_dev)
-		pm_runtime_put(priv->side_mmsys_dev);
-	if (priv->mmsys_dev)
-		pm_runtime_put(priv->mmsys_dev);
+	mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 
 done_return:
 	return;
@@ -684,16 +677,8 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		mtk_dump_reg(comp);
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		if (priv->side_ovlsys_dev)
-			pm_runtime_put(priv->side_ovlsys_dev);
-		if (priv->ovlsys_dev)
-			pm_runtime_put(priv->ovlsys_dev);
-		if (priv->side_mmsys_dev)
-			pm_runtime_put(priv->side_mmsys_dev);
-		if (priv->mmsys_dev)
-			pm_runtime_put(priv->mmsys_dev);
-	}
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 
 done_return:
 	return;
@@ -904,14 +889,7 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 			mtk_dump_analysis(comp);
 	}
 
-	if (priv->side_ovlsys_dev)
-		pm_runtime_put(priv->side_ovlsys_dev);
-	if (priv->ovlsys_dev)
-		pm_runtime_put(priv->ovlsys_dev);
-	if (priv->side_mmsys_dev)
-		pm_runtime_put(priv->side_mmsys_dev);
-	if (priv->mmsys_dev)
-		pm_runtime_put(priv->mmsys_dev);
+	mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 
 done_return:
 	return;
@@ -1184,16 +1162,8 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 		mtk_drm_crtc_addon_analysis(crtc, addon_data);
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		if (priv->side_ovlsys_dev)
-			pm_runtime_put(priv->side_ovlsys_dev);
-		if (priv->ovlsys_dev)
-			pm_runtime_put(priv->ovlsys_dev);
-		if (priv->side_mmsys_dev)
-			pm_runtime_put(priv->side_mmsys_dev);
-		if (priv->mmsys_dev)
-			pm_runtime_put(priv->mmsys_dev);
-	}
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 
 done_return:
 	return;
