@@ -241,36 +241,43 @@ int mbraink_audio_deinit(void)
 }
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_SWPM_MODULE) && (MBRAINK_LANDING_FEATURE_CHECK == 0)
+#if IS_ENABLED(CONFIG_MTK_SWPM_MODULE)
 int mbraink_audio_getIdleRatioInfo(struct mbraink_audio_idleRatioInfo *pmbrainkAudioIdleRatioInfo)
 {
-	struct audio_pmsr_times *audio_pmsr_times_ptr;
+	int ret = 0;
+	struct ddr_sr_pd_times *ddr_sr_pd_times_ptr = NULL;
+	struct timespec64 tv = { 0 };
 
-	audio_pmsr_times_ptr = kmalloc(sizeof(struct audio_pmsr_times), GFP_KERNEL);
-	sync_latest_data();
-	get_audio_pmsr_duration(audio_pmsr_times_ptr);
-
-	if (!audio_pmsr_times_ptr) {
-		pr_notice("audio_pmsr_times_idx failure\n");
+	ddr_sr_pd_times_ptr = kmalloc(sizeof(struct ddr_sr_pd_times), GFP_KERNEL);
+	if (!ddr_sr_pd_times_ptr) {
+		ret = -1;
 		goto End;
 	}
 
-	pmbrainkAudioIdleRatioInfo->timestamp = audio_pmsr_times_ptr->timestamp;
-	pmbrainkAudioIdleRatioInfo->adsp_active_time = audio_pmsr_times_ptr->adsp_active_time;
-	pmbrainkAudioIdleRatioInfo->adsp_wfi_time = audio_pmsr_times_ptr->adsp_wfi_time;
-	pmbrainkAudioIdleRatioInfo->adsp_pd_time = audio_pmsr_times_ptr->adsp_pd_time;
-	pmbrainkAudioIdleRatioInfo->s0_time = audio_pmsr_times_ptr->s0_time;
-	pmbrainkAudioIdleRatioInfo->s1_time = audio_pmsr_times_ptr->s1_time;
-	pmbrainkAudioIdleRatioInfo->mcusys_active_time = audio_pmsr_times_ptr->mcusys_active_time;
-	pmbrainkAudioIdleRatioInfo->mcusys_pd_time = audio_pmsr_times_ptr->mcusys_pd_time;
-	pmbrainkAudioIdleRatioInfo->cluster_active_time = audio_pmsr_times_ptr->cluster_active_time;
-	pmbrainkAudioIdleRatioInfo->cluster_idle_time = audio_pmsr_times_ptr->cluster_idle_time;
-	pmbrainkAudioIdleRatioInfo->cluster_pd_time = audio_pmsr_times_ptr->cluster_pd_time;
+	sync_latest_data();
+	ktime_get_real_ts64(&tv);
+
+	get_ddr_sr_pd_times(ddr_sr_pd_times_ptr);
+
+	pmbrainkAudioIdleRatioInfo->timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+	pmbrainkAudioIdleRatioInfo->adsp_active_time = 0;
+	pmbrainkAudioIdleRatioInfo->adsp_wfi_time = 0;
+	pmbrainkAudioIdleRatioInfo->adsp_pd_time = 0;
+	pmbrainkAudioIdleRatioInfo->s0_time = ddr_sr_pd_times_ptr->pd_time;
+	pmbrainkAudioIdleRatioInfo->s1_time = ddr_sr_pd_times_ptr->sr_time;
+	pmbrainkAudioIdleRatioInfo->mcusys_active_time = 0;
+	pmbrainkAudioIdleRatioInfo->mcusys_pd_time = 0;
+	pmbrainkAudioIdleRatioInfo->cluster_active_time = 0;
+	pmbrainkAudioIdleRatioInfo->cluster_idle_time = 0;
+	pmbrainkAudioIdleRatioInfo->cluster_pd_time = 0;
 	pmbrainkAudioIdleRatioInfo->audio_hw_time = 0;
 
 End:
-	kfree(audio_pmsr_times_ptr);
-	return 0;
+
+	if (ddr_sr_pd_times_ptr != NULL)
+		kfree(ddr_sr_pd_times_ptr);
+
+	return ret;
 }
 
 #else

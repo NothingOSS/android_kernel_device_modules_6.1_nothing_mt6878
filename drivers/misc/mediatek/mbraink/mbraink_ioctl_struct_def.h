@@ -15,7 +15,7 @@
 #define MAX_DDR_IP_NUM				8
 #define MAX_TRACE_PID_NUM			32
 #define MAX_VCORE_NUM				8
-#define MAX_VCORE_IP_NUM			8
+#define MAX_VCORE_IP_NUM			16
 #define MAX_IP_NAME_LENGTH			(16)
 #define MAX_NOTIFY_CPUFREQ_NUM			8
 #define MAX_SUSPEND_INFO_SZ			128
@@ -36,17 +36,6 @@
 
 
 #define MAX_POWER_SPM_TBL_SEC_SZ (928)
-
-
-
-enum MBRAINK_VCORE_IP {
-	MBRAINK_VCORE_IP_MDP,
-	MBRAINK_VCORE_IP_DISP,
-	MBRAINK_VCORE_IP_VENC,
-	MBRAINK_VCORE_IP_VDEC,
-	MBRAINK_VCORE_IP_SCP,
-	MBRAINK_VCORE_IP_MAX,
-};
 
 struct mbraink_process_stat_struct {
 	unsigned short pid;
