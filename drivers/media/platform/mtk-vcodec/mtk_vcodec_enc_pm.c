@@ -335,18 +335,22 @@ void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id)
 				ret = smi_sysram_enable(pm->larbvencs[core_id],
 					MTK_M4U_ID(larb_id, i), true, "LARB_VENC");
 
-				if (ret)
+				if (ret) {
 					mtk_v4l2_err("%#x smi_sysram_enable err: %#x\n",
 						i, ret);
+					mtk_smi_dbg_hang_detect("VENC SLBC");
+				}
 
 			} else if (dev->venc_ports[core_id].ram_type[i] > 1) {
 				ret =  mtk_smi_sysram_set(pm->larbvencs[core_id],
 					MTK_M4U_ID(larb_id, i),
 					(dev->venc_ports[core_id].ram_type[i] & 0xf) << 16,
 					"LARB_VENC");
-				if (ret)
+				if (ret) {
 					mtk_v4l2_err("%#x mtk_smi_sysram_set err: %#x\n",
 						i, ret);
+					mtk_smi_dbg_hang_detect("VENC SLBC");
+				}
 			}
 		}
 	}
