@@ -46,6 +46,14 @@ static void mtk_drm_idlemgr_get_private_data(struct drm_crtc *crtc,
 	}
 
 	switch (priv->data->mmsys_id) {
+	case MMSYS_MT6989:
+		data->cpu_mask = 0x80; //cpu7
+		data->cpu_freq = 0; // cpu7 default 1.2Ghz
+		data->cpu_dma_latency = 0;
+		data->vblank_async = false;
+		data->hw_async = true;
+		data->sram_sleep = false;
+		break;
 	case MMSYS_MT6985:
 		data->cpu_mask = 0x80;     //cpu7
 		data->cpu_freq = 0;        // cpu7 default 1.2Ghz
@@ -1651,10 +1659,12 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 		mtk_crtc_vblank_irq(&mtk_crtc->base);
 	}
 
-	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"power_off", 14, perf_string, false);
-	/* 8. power off MTCMOS */
-	mtk_drm_top_clk_disable_unprepare(crtc->dev);
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"power_off", 14, perf_string, false);
+		/* 8. power off MTCMOS */
+		mtk_drm_top_clk_disable_unprepare(crtc->dev);
+	}
 
 	if (idlemgr_ctx->priv.vblank_async == true &&
 		atomic_read(&idlemgr->async_enabled) != 0) {
@@ -1758,15 +1768,17 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	/* 0. CMDQ power on */
 	cmdq_mbox_enable(mtk_crtc->gce_obj.client[CLIENT_CFG]->chan);
 
-	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"power_on", 2, perf_string, true);
-	/* 1. power on mtcmos & init apsrc*/
-	mtk_drm_top_clk_prepare_enable(crtc->dev);
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"power_on", 2, perf_string, true);
+		/* 1. power on mtcmos & init apsrc*/
+		mtk_drm_top_clk_prepare_enable(crtc->dev);
 
-	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"apsrc_ctrl", 3, perf_string, true);
-	mtk_crtc_v_idle_apsrc_control(crtc, NULL, true, true,
-		MTK_APSRC_CRTC_DEFAULT, false);
+		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"apsrc_ctrl", 3, perf_string, true);
+		mtk_crtc_v_idle_apsrc_control(crtc, NULL, true, true,
+			MTK_APSRC_CRTC_DEFAULT, false);
+	}
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"update_mmclk", 4, perf_string, true);
@@ -1881,12 +1893,14 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	mtk_drm_fake_vsync_switch(crtc, true);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"STOP", -1, perf_string, true);
-	/* 16. idle manager performance monitor */
-
+				"vidle", 21, perf_string, true);
 	/* 15. v-idle enable */
 	mtk_vidle_enable(crtc);
 
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"STOP", -1, perf_string, true);
+
+	/* 16. idle manager performance monitor */
 	if (idlemgr->perf != NULL) {
 		unsigned long long cost;
 
