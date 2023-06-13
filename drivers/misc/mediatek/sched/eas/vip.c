@@ -308,6 +308,23 @@ void set_task_vvip(int pid)
 }
 EXPORT_SYMBOL_GPL(set_task_vvip);
 
+void unset_task_vvip(int pid)
+{
+	struct task_struct *p;
+	struct vip_task_struct *vts;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts->vvip = false;
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL_GPL(unset_task_vvip);
+
 int is_VVIP(struct task_struct *p)
 {
 	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;

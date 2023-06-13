@@ -35,6 +35,15 @@ enum vip_group {
 	VIP_GROUP_NUM
 };
 
+extern void set_task_basic_vip(int pid);
+extern void unset_task_basic_vip(int pid);
+extern void set_task_vvip(int pid);
+extern void unset_task_vvip(int pid);
+extern void set_ls_task_vip(unsigned int prio);
+extern int set_group_vip_prio(unsigned int cpuctl_id, unsigned int prio);
+extern void set_top_app_vip(unsigned int prio);
+extern void set_foreground_vip(unsigned int prio);
+extern void set_background_vip(unsigned int prio);
 extern bool sched_vip_enable_get(void);
 extern inline int get_vip_task_prio(struct task_struct *p);
 extern bool task_is_vip(struct task_struct *p, int type);
@@ -50,5 +59,6 @@ extern void vip_init(void);
 
 extern inline bool vip_fair_task(struct task_struct *p);
 extern void _init_tg_mask(struct cgroup_subsys_state *css);
+
 
 #endif /* _VIP_H */
