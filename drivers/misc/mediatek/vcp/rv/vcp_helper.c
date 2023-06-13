@@ -907,6 +907,13 @@ uint32_t vcp_wait_ready_sync(enum feature_id id)
 	unsigned long C1_H0 = CORE_RDY_TO_REBOOT;
 	unsigned long C1_H1 = CORE_RDY_TO_REBOOT;
 
+	if (vcp_ao) {
+		C0_H0 = CORE_REBOOT_OK;
+		C0_H1 = CORE_REBOOT_OK;
+		C1_H0 = CORE_REBOOT_OK;
+		C1_H1 = CORE_REBOOT_OK;
+	}
+
 	C0_H0 = readl(VCP_GPR_C0_H0_REBOOT);
 	if (vcpreg.twohart)
 		C0_H1 = readl(VCP_GPR_C0_H1_REBOOT);
@@ -917,9 +924,16 @@ uint32_t vcp_wait_ready_sync(enum feature_id id)
 			C1_H1 = readl(VCP_GPR_C1_H1_REBOOT);
 	}
 
-	if ((C0_H0 == CORE_RDY_TO_REBOOT) && (C0_H1 == CORE_RDY_TO_REBOOT)
-		&& (C1_H0 == CORE_RDY_TO_REBOOT) && (C1_H1 == CORE_RDY_TO_REBOOT))
-		return 0;
+	if (!vcp_ao) {
+		if ((C0_H0 == CORE_RDY_TO_REBOOT) && (C0_H1 == CORE_RDY_TO_REBOOT)
+			&& (C1_H0 == CORE_RDY_TO_REBOOT) && (C1_H1 == CORE_RDY_TO_REBOOT))
+			return 0;
+	} else {
+		if ((C0_H0 == CORE_REBOOT_OK) && (C0_H1 == CORE_REBOOT_OK)
+			&& (C1_H0 == CORE_REBOOT_OK) && (C1_H1 == CORE_REBOOT_OK)
+			&& !is_vcp_ready(VCP_A_ID))
+			vcp_A_set_ready();
+	}
 
 	while (!is_vcp_ready(VCP_A_ID)) {
 		i += 5;
