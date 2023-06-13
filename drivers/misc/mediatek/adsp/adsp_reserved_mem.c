@@ -44,6 +44,8 @@ static struct adsp_reserve_mblock adsp_reserve_mblocks[] = {
 		= ADSP_RESERVE_MEMORY_BLOCK("adsp-rsv-core-dump-b"),
 	[ADSP_PCIE_MEM_ID]
 		= ADSP_RESERVE_MEMORY_BLOCK("adsp-rsv-pcie"),
+	[ADSP_L2SRAM_CTRL_MEM_ID]
+		= ADSP_RESERVE_MEMORY_BLOCK("adsp-rsv-l2sram"),
 #if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD)
 	[ADSP_XHCI_MEM_ID]
 		= ADSP_RESERVE_MEMORY_BLOCK("adsp-rsv-xhci"),
