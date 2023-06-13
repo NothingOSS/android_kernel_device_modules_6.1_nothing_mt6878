@@ -347,8 +347,6 @@ static DEFINE_MUTEX(blc_mlock);
 static struct list_head blc_list;
 
 static int fbt_enable;
-static int fbt_idleprefer_enable;
-static int set_idleprefer;
 static int suppress_ceiling;
 static int boost_ta;
 static int down_throttle_ns;
@@ -751,19 +749,6 @@ static int fbt_is_cl_isolated(int cluster)
 	}
 
 	return 1;
-}
-
-static void fbt_set_idleprefer_locked(int enable)
-{
-	if (!fbt_idleprefer_enable)
-		return;
-
-	if (set_idleprefer == enable)
-		return;
-
-	xgf_trace("fpsgo %s idleprefer", enable?"enable":"disable");
-	fpsgo_sentcmd(FPSGO_SET_IDLE_PREFER, enable, -1);
-	set_idleprefer = enable;
 }
 
 void fbt_set_down_throttle_locked(int nsec)
@@ -4649,7 +4634,6 @@ void fbt_check_max_blc_locked(int pid)
 			fbt_boost_dram(0);
 		memset(base_opp, 0, cluster_num * sizeof(unsigned int));
 		fbt_notify_CM_limit(0);
-		fbt_set_idleprefer_locked(0);
 		fbt_set_down_throttle_locked(-1);
 	} else
 		fbt_set_limit(pid, max_blc, max_blc_pid, max_blc_buffer_id,
@@ -5312,7 +5296,6 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 		goto EXIT;
 	}
 
-	fbt_set_idleprefer_locked(1);
 	fbt_set_down_throttle_locked(0);
 
 	blc_wt = fbt_boost_policy(runtime,
@@ -5330,11 +5313,8 @@ EXIT:
 		blc_wt, limited_cap, thr->enqueue_length, thr->dequeue_length);
 }
 
-static void fbt_setting_reset(int reset_idleprefer)
+static void fbt_setting_reset(int reset)
 {
-	if (reset_idleprefer)
-		fbt_set_idleprefer_locked(0);
-
 	fbt_set_down_throttle_locked(-1);
 	fbt_free_bhr();
 	fbt_notify_CM_limit(0);
@@ -6090,31 +6070,6 @@ int fpsgo_ctrl2fbt_switch_uclamp(int enable)
 	return fbt_switch_uclamp_onoff(enable);
 }
 
-int fbt_switch_idleprefer(int enable)
-{
-	int last_enable;
-
-	mutex_lock(&fbt_mlock);
-
-	if (!fbt_enable) {
-		mutex_unlock(&fbt_mlock);
-		return 0;
-	}
-
-	last_enable = fbt_idleprefer_enable;
-
-	if (last_enable && !enable)
-		fbt_set_idleprefer_locked(0);
-	else if (!last_enable && enable)
-		fbt_set_idleprefer_locked(1);
-
-	fbt_idleprefer_enable = enable;
-
-	mutex_unlock(&fbt_mlock);
-
-	return 0;
-}
-
 int fbt_set_filter_frame_enable(int enable)
 {
 	if (enable == filter_frame_enable)
@@ -6406,49 +6361,6 @@ out:
 
 static KOBJ_ATTR_RW(light_loading_policy);
 
-static ssize_t switch_idleprefer_show(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	int val = -1;
-
-	mutex_lock(&fbt_mlock);
-	val = fbt_idleprefer_enable;
-	mutex_unlock(&fbt_mlock);
-
-	return scnprintf(buf, PAGE_SIZE, "fbt_idleprefer_enable:%d\n", val);
-}
-
-static ssize_t switch_idleprefer_store(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		const char *buf, size_t count)
-{
-	int val = -1;
-	char *acBuffer = NULL;
-	int arg;
-
-	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
-	if (!acBuffer)
-		goto out;
-
-	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtoint(acBuffer, 0, &arg) == 0)
-				val = arg;
-			else
-				goto out;
-		}
-	}
-
-	fbt_switch_idleprefer(val);
-
-out:
-	kfree(acBuffer);
-	return count;
-}
-
-static KOBJ_ATTR_RW(switch_idleprefer);
-
 static ssize_t fbt_info_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -6492,14 +6404,14 @@ static ssize_t fbt_info_show(struct kobject *kobj,
 
 	length = scnprintf(temp + posi,
 		FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
-		"enable\tidleprefer\tmax_blc\tmax_pid\tmax_bufID\tdfps\tvsync\n");
+		"enable\tmax_blc\tmax_pid\tmax_bufID\tdfps\tvsync\n");
 	posi += length;
 
 	length = scnprintf(temp + posi,
 		FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
-		"%d\t%d\t\t%d\t%d\t0x%llx\t%d\t%llu\n\n",
+		"%d\t\t%d\t%d\t0x%llx\t%d\t%llu\n\n",
 		fbt_enable,
-		set_idleprefer, max_blc, max_blc_pid,
+		max_blc, max_blc_pid,
 		max_blc_buffer_id, _gdfrc_fps_limit, vsync_time);
 	posi += length;
 
@@ -8491,8 +8403,6 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj,
 			&kobj_attr_fbt_info);
 	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_switch_idleprefer);
-	fpsgo_sysfs_remove_file(fbt_kobj,
 			&kobj_attr_enable_switch_down_throttle);
 	fpsgo_sysfs_remove_file(fbt_kobj,
 			&kobj_attr_rescue_enable);
@@ -8627,7 +8537,6 @@ int __init fbt_cpu_init(void)
 	_gdfrc_fps_limit = TARGET_DEFAULT_FPS;
 	vsync_period = GED_VSYNC_MISS_QUANTUM_NS;
 
-	fbt_idleprefer_enable = 0;
 	suppress_ceiling = 1;
 	uclamp_boost_enable = 1;
 	down_throttle_ns = -1;
@@ -8723,8 +8632,6 @@ int __init fbt_cpu_init(void)
 				&kobj_attr_light_loading_policy);
 		fpsgo_sysfs_create_file(fbt_kobj,
 				&kobj_attr_fbt_info);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_switch_idleprefer);
 		fpsgo_sysfs_create_file(fbt_kobj,
 				&kobj_attr_enable_switch_down_throttle);
 		fpsgo_sysfs_create_file(fbt_kobj,
