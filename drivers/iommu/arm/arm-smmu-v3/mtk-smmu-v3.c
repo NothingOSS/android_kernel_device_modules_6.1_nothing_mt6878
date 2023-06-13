@@ -47,6 +47,7 @@
 #define SMMU_SEC_EN			BIT(6)
 #define SMMU_SKIP_SHUTDOWN		BIT(7)
 #define SMMU_HYP_EN			BIT(8)
+#define SMMU_DIS_CPU_PARTID		BIT(9)
 
 #define SMMU_IRQ_COUNT_MAX		(5)
 #define SMMU_IRQ_DISABLE_TIME		(10) /* 10s */
@@ -70,6 +71,7 @@ static const char *IOMMU_GROUP_PROP_NAME = "mtk,iommu-group";
 static const char *SMMU_MPAM_CONFIG = "mtk,mpam-cfg";
 static const char *SMMU_MPAM_CMAX = "mtk,mpam-cmax";
 static const char *PMU_SMMU_PROP_NAME = "mtk,smmu";
+static const char *SMMU_GMAPM_CONFIG = "mtk,gmpam-cfg";
 
 enum hyp_smmu_cmd {
 	HYP_SMMU_TF_DUMP,
@@ -417,6 +419,9 @@ static int smmu_init_wpcfg(struct arm_smmu_device *smmu)
 	smmu_write_field(wp_base, SMMUWP_GLB_CTL0, CTL0_DCM_EN, CTL0_DCM_EN);
 	smmu_write_field(wp_base, SMMUWP_GLB_CTL0, CTL0_CFG_TAB_DCM_EN,
 			 CTL0_CFG_TAB_DCM_EN);
+	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_DIS_CPU_PARTID))
+		smmu_write_field(wp_base, SMMUWP_GLB_CTL0, CTL0_CPU_PARTID_DIS,
+				 CTL0_CPU_PARTID_DIS);
 
 	/* Used for MM_SMMMU read command overtaking */
 	if (data->plat_data->smmu_type == MM_SMMU)
@@ -478,20 +483,38 @@ static void smmu_mpam_config_set(struct arm_smmu_device *smmu)
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	struct device_node *np;
 	struct ste_mpam_config *mpam_cfgs;
-	unsigned int mpam_cfgs_cnt;
-	struct arm_smmu_cmdq_batch cmds;
-	struct arm_smmu_cmdq_ent cmd = {
-		.opcode = CMDQ_OP_CFGI_STE,
-		.cfgi = {
-			.leaf = true,
-		}
-	};
 	u64 sid_max = 1ULL << smmu->sid_bits;
+	unsigned int mpam_cfgs_cnt;
+	u32 sid, partid, pmg, regval;
+	void __iomem *mpam;
 	__le64 *step;
-	u32 sid;
 	int ret, n;
 
+	mpam = smmu->base + ARM_SMMU_GMPAM;
 	np = smmu->dev->of_node;
+
+	/* Global mpam config */
+	n = of_property_count_elems_of_size(np, SMMU_GMAPM_CONFIG, sizeof(u32));
+	if (n == 2) {
+		ret = of_property_read_u32_index(np, SMMU_GMAPM_CONFIG, 0, &partid);
+		if (ret)
+			return;
+		ret = of_property_read_u32_index(np, SMMU_GMAPM_CONFIG, 1, &pmg);
+		if (ret)
+			return;
+
+		regval = FIELD_PREP(SMMU_GMPAM_SO_PARTID, partid) |
+			 FIELD_PREP(SMMU_GMPAM_SO_PMG, pmg);
+
+		writel_relaxed(regval | SMMU_GMPAM_UPADTE, mpam);
+		ret = smmu_read_reg_poll_timeout(mpam,
+						 regval,
+						 !(regval & SMMU_GMPAM_UPADTE),
+						 1, ARM_SMMU_POLL_TIMEOUT_US);
+		if (ret)
+			dev_info(smmu->dev, "GMPAM not responding to update\n");
+	}
+
 	/* One mpam config consist of sid/partid/pmg three u32 */
 	n = of_property_count_elems_of_size(np, SMMU_MPAM_CONFIG, sizeof(u32));
 	if (n <= 0 || n % 3)
@@ -535,7 +558,6 @@ static void smmu_mpam_config_set(struct arm_smmu_device *smmu)
 		}
 	}
 
-	cmds.num = 0;
 	for (n = 0; n < mpam_cfgs_cnt; n++) {
 		sid = mpam_cfgs[n].sid;
 		// make sure ste is ready
@@ -548,16 +570,7 @@ static void smmu_mpam_config_set(struct arm_smmu_device *smmu)
 		step = arm_smmu_get_step_for_sid(smmu, sid);
 		step[4] = FIELD_PREP(STRTAB_STE_4_PARTID, mpam_cfgs[n].partid);
 		step[5] = FIELD_PREP(STRTAB_STE_5_PMG, mpam_cfgs[n].pmg);
-
-		cmd.cfgi.sid = sid;
-		arm_smmu_cmdq_batch_add(smmu, &cmds, &cmd);
-
-		pr_info("%s, sid:%d, partid:%d, pmg:%d, sid_max:%llu\n",
-			__func__, sid, mpam_cfgs[n].partid,
-			mpam_cfgs[n].pmg, sid_max);
 	}
-	if (cmds.num > 0)
-		arm_smmu_cmdq_batch_submit(smmu, &cmds);
 
 out_free:
 	kfree(mpam_cfgs);
@@ -2378,7 +2391,8 @@ static const struct mtk_smmu_plat_data mt6989_data_soc = {
 static const struct mtk_smmu_plat_data mt6989_data_gpu = {
 	.smmu_plat		= SMMU_MT6989,
 	.smmu_type		= GPU_SMMU,
-	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_HYP_EN,
+	.flags			= SMMU_EN_PRE | SMMU_DELAY_HW_INIT | SMMU_HYP_EN |
+				  SMMU_DIS_CPU_PARTID,
 };
 
 static const struct mtk_smmu_plat_data *of_device_get_plat_data(struct device *dev)
