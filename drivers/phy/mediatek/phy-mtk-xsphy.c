@@ -115,6 +115,9 @@
 #define XSP_USBPHYA_RESERVEA	((SSUSB_SIFSLV_U2PHY_COM) + 0x034)
 #define P2ARA_RG_TERM_CAL		GENMASK(11, 8)
 
+#define XSP_USBPHYA_RESERVEA1   ((SSUSB_SIFSLV_U2PHY_COM) + 0x038)
+#define P2ARA_RG_TX_CHIRPK           BIT(8)
+
 #define XSP_U2PHYA_RESERVE0	((SSUSB_SIFSLV_U2PHY_COM) + 0x040)
 #define P2A2R0_RG_PLL_FBKSEL         BIT(31)
 
@@ -339,6 +342,7 @@ struct mtk_xsphy {
 	int nphys;
 	int src_ref_clk; /* MHZ, reference clock for slew rate calibrate */
 	int src_coef;    /* coefficient for slew rate calibrate */
+	bool tx_chirpK_disable; /* Disable tx chirpK at normol status */
 	struct proc_dir_entry *root;
 	struct workqueue_struct *wq;
 	int (*suspend)(struct device *dev);
@@ -1850,6 +1854,7 @@ static int mtk_phy_power_on(struct phy *phy)
 {
 	struct xsphy_instance *inst = phy_get_drvdata(phy);
 	struct mtk_xsphy *xsphy = dev_get_drvdata(phy->dev.parent);
+	void __iomem *pbase = inst->port_base;
 
 	if (inst->type == PHY_TYPE_USB2) {
 		u2_phy_instance_power_on(xsphy, inst);
@@ -1860,6 +1865,11 @@ static int mtk_phy_power_on(struct phy *phy)
 		u3_phy_props_set(xsphy, inst);
 	}
 
+	if (xsphy->tx_chirpK_disable) {
+		dev_info(xsphy->dev, "Disable tx_chirpK.\n");
+		mtk_phy_set_bits(pbase + XSP_USBPHYA_RESERVEA1, P2ARA_RG_TX_CHIRPK);
+	}
+
 	return 0;
 }
 
@@ -1867,6 +1877,12 @@ static int mtk_phy_power_off(struct phy *phy)
 {
 	struct xsphy_instance *inst = phy_get_drvdata(phy);
 	struct mtk_xsphy *xsphy = dev_get_drvdata(phy->dev.parent);
+	void __iomem *pbase = inst->port_base;
+
+	if (xsphy->tx_chirpK_disable) {
+		dev_info(xsphy->dev, "Enable tx_chirpK.\n");
+		mtk_phy_clear_bits(pbase + XSP_USBPHYA_RESERVEA1, P2ARA_RG_TX_CHIRPK);
+	}
 
 	if (inst->type == PHY_TYPE_USB2)
 		u2_phy_instance_power_off(xsphy, inst);
@@ -2208,6 +2224,12 @@ static int mtk_xsphy_probe(struct platform_device *pdev)
 	device_property_read_u32(dev, "mediatek,src-ref-clk-mhz",
 				 &xsphy->src_ref_clk);
 	device_property_read_u32(dev, "mediatek,src-coef", &xsphy->src_coef);
+
+	xsphy->tx_chirpK_disable = device_property_read_bool(dev,
+				"tx-chirpk-capable");
+
+	dev_info(dev, "tx-chirpK-capable = %d\n", xsphy->tx_chirpK_disable);
+
 	/* create phy workqueue */
 	xsphy->wq = create_singlethread_workqueue("xsphy");
 	if (!xsphy->wq)
