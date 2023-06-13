@@ -3458,7 +3458,7 @@ static const struct mtk_mux top_muxes[] = {
 		23/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
 		TOP_MUX_MDP_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
 		5/* cksta shift */, CLK_EN_MM_INFRA_PWR),
-	MUX_MULT_DFS_HWV_FLAGS(CLK_TOP_MMINFRA_SEL/* dts */, "mminfra_sel",
+	MUX_MULT_DFS_HWV_DUMMY(CLK_TOP_MMINFRA_SEL/* dts */, "mminfra_sel",
 		mminfra_parents/* parent */, CKSYS2_CLK_CFG_6,
 		CKSYS2_CLK_CFG_6_SET, CKSYS2_CLK_CFG_6_CLR/* set parent */,
 		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_33_DONE,

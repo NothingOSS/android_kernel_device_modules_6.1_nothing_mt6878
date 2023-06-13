@@ -653,6 +653,14 @@ static void clkchk_dump_bus_reg(struct regmap *regmap, u32 ofs)
 	clkchk_ops->dump_bus_reg(regmap, ofs);
 }
 
+static void clkchk_dump_vlp_reg(struct regmap *regmap, u32 shift)
+{
+	if (clkchk_ops == NULL || clkchk_ops->dump_vlp_reg == NULL)
+		return;
+
+	clkchk_ops->dump_vlp_reg(regmap, shift);
+}
+
 static bool clkchk_is_cg_chk_pwr_on(void)
 {
 	if (clkchk_ops == NULL || clkchk_ops->is_cg_chk_pwr_on == NULL)
@@ -718,6 +726,7 @@ static int clkchk_evt_handling(struct notifier_block *nb,
 	case CLK_EVT_TRIGGER_TRACE_DUMP:
 		clkchk_trigger_trace_dump(clkd->id);
 		break;
+	case CLK_EVT_SET_PARENT_ERR:
 	case CLK_EVT_SET_PARENT_TIMEOUT:
 		clkchk_dump_bus_reg(clkd->regmap, clkd->ofs);
 		break;
@@ -726,6 +735,9 @@ static int clkchk_evt_handling(struct notifier_block *nb,
 			check_bypass_status = true;
 		else
 			check_bypass_status = false;
+		break;
+	case CLK_EVT_MMINFRA_HWV_TIMEOUT:
+		clkchk_dump_vlp_reg(clkd->regmap, clkd->shift);
 		break;
 	default:
 		pr_notice("cannot get flags identify\n");

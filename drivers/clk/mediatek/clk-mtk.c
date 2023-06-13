@@ -93,14 +93,12 @@ int __mminfra_hwv_power_ctrl(struct mtk_hwv_domain *hwvd, bool onoff)
 	u32 vote_ofs;
 	u32 vote_msk;
 	u32 vote_ack;
-	u32 val = 0;
+	u32 val = 0, val2 = 0;
 	int ret = 0;
-	int tmp;
+	int tmp = 0;
 	int i = 0;
 
 	en_ofs = hwvd->data->en_ofs;
-	/* write twice to prevent clk idle */
-	vote_msk = BIT(hwvd->data->en_shift);
 	vote_msk = BIT(hwvd->data->en_shift);
 	if (onoff) {
 		vote_ofs = hwvd->data->set_ofs;
@@ -109,7 +107,9 @@ int __mminfra_hwv_power_ctrl(struct mtk_hwv_domain *hwvd, bool onoff)
 		vote_ofs = hwvd->data->clr_ofs;
 		vote_ack = 0x0;
 	}
-
+	/* write twice to prevent clk idle */
+	regmap_write(hwvd->regmap, vote_ofs, vote_msk);
+	udelay(1);
 	regmap_write(hwvd->regmap, vote_ofs, vote_msk);
 	do {
 		regmap_read(hwvd->regmap, en_ofs, &val);
@@ -134,9 +134,16 @@ int __mminfra_hwv_power_ctrl(struct mtk_hwv_domain *hwvd, bool onoff)
 	return 0;
 
 err_hwv_done:
-	dev_err(hwvd->dev, "Failed to hwv done timeout %s(%d)\n", hwvd->data->name, hwvd->data->done_ofs);
+	regmap_read(hwvd->regmap, hwvd->data->done_ofs, &val2);
+	dev_err(hwvd->dev, "Failed to hwv done timeout %s(%x)\n", hwvd->data->name, val2);
 err_hwv_vote:
-	dev_err(hwvd->dev, "Failed to hwv vote timeout %s(%d %x)\n", hwvd->data->name, ret, val);
+	regmap_read(hwvd->regmap, en_ofs, &val);
+	dev_err(hwvd->dev, "Failed to hwv vote %s timeout %s(%d %x)\n", onoff ? "on" : "off",
+			hwvd->data->name, ret, val);
+
+	mtk_clk_notify(NULL, hwvd->regmap, hwvd->data->name,
+			hwvd->data->en_ofs, 0,
+			onoff, CLK_EVT_MMINFRA_HWV_TIMEOUT);
 
 	return ret;
 }

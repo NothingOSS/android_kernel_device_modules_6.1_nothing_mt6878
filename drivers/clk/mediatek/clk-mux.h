@@ -57,6 +57,7 @@ extern const struct clk_ops mtk_mux_gate_clr_set_upd_2_ops;
 extern const struct clk_ops mtk_hwv_mux_ops;
 extern const struct clk_ops mtk_ipi_mux_ops;
 extern const struct clk_ops mtk_hwv_dfs_mux_ops;
+extern const struct clk_ops mtk_hwv_dfs_mux_dummy_ops;
 
 #define GATE_CLR_SET_UPD_FLAGS(_id, _name, _parents, _mux_ofs,		\
 			_mux_set_ofs, _mux_clr_ofs, _shift, _width,	\
@@ -278,6 +279,34 @@ extern const struct clk_ops mtk_hwv_dfs_mux_ops;
 		.num_parents = ARRAY_SIZE(_parents),			\
 		.flags =  CLK_USE_HW_VOTER | _flags,			\
 		.ops = &mtk_hwv_dfs_mux_ops,				\
+		.dma_ops = &mtk_mux_gate_clr_set_upd_ops,		\
+	}
+
+#define MUX_MULT_DFS_HWV_DUMMY(_id, _name, _parents, _mux_ofs,		\
+			_mux_set_ofs, _mux_clr_ofs, _hwv_comp,		\
+			_hwv_sta_ofs, _hwv_set_ofs, _hwv_clr_ofs,	\
+			_shift, _width, _gate, _upd_ofs, _upd,		\
+			_chk_ofs, _chk, _flags) {			\
+		.id = _id,						\
+		.name = _name,						\
+		.mux_ofs = _mux_ofs,					\
+		.set_ofs = _mux_set_ofs,				\
+		.clr_ofs = _mux_clr_ofs,				\
+		.hwv_comp = _hwv_comp,					\
+		.hwv_sta_ofs = _hwv_sta_ofs,				\
+		.hwv_set_ofs = _hwv_set_ofs,				\
+		.hwv_clr_ofs = _hwv_clr_ofs,				\
+		.upd_ofs = _upd_ofs,					\
+		.chk_ofs = _chk_ofs,					\
+		.mux_shift = _shift,					\
+		.mux_width = _width,					\
+		.gate_shift = _gate,					\
+		.upd_shift = _upd,					\
+		.chk_shift = _chk,					\
+		.parent_names = _parents,				\
+		.num_parents = ARRAY_SIZE(_parents),			\
+		.flags =  CLK_USE_HW_VOTER | _flags,			\
+		.ops = &mtk_hwv_dfs_mux_dummy_ops,			\
 		.dma_ops = &mtk_mux_gate_clr_set_upd_ops,		\
 	}
 

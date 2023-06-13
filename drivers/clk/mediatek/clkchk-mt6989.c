@@ -1386,6 +1386,7 @@ static struct regbase rb[] = {
 	[scp] = REGBASE_V(0x1CB21000, scp, PD_NULL, CLK_NULL),
 	[scp_iic] = REGBASE_V(0x1CBB8000, scp_iic, PD_NULL, CLK_NULL),
 	[scp_fast_iic] = REGBASE_V(0x1CBE1000, scp_fast_iic, PD_NULL, CLK_NULL),
+	[hfrp_2_bus] = REGBASE_V(0x1EC24000, hfrp_2_bus, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	[hfrp] = REGBASE_V(0x1EC3E000, hfrp, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	[hfrp_1_bus] = REGBASE_V(0x1ECA5000, hfrp_1_bus, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	[cam_m] = REGBASE_V(0x1a000000, cam_m, MT6989_CHK_PD_CAM_MAIN, CLK_NULL),
@@ -1418,6 +1419,9 @@ static struct regbase rb[] = {
 	[hwv_wrt] = REGBASE_V(0x10321000, hwv_wrt, PD_NULL, CLK_NULL),
 	[mm_hwv] = REGBASE_V(0x1EC3A000, hwv, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	[mm_hwv_ext] = REGBASE_V(0x1EC3B000, mm_hwv_ext, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
+	[hfrp_hwv] = REGBASE_V(0x1EC45000, hfrp_hwv, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
+	[hfrp_irq] = REGBASE_V(0x1EC32000, hfrp_hwv, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
+	[vlp_ao] = REGBASE_V(0x1C000000, vlp_ao, CLK_NULL, CLK_NULL),
 	{},
 };
 
@@ -1726,6 +1730,9 @@ static struct regname rn[] = {
 	REGNAME(scp_iic, 0xE10, CCU_CLOCK_CG_CEN),
 	/* SCP_FAST_IIC register */
 	REGNAME(scp_fast_iic, 0xE10, CCU_CLOCK_CG_CEN),
+	/* HFRP_2_BUS register */
+	REGNAME(hfrp_2_bus, 0x8, HFRP_CFGREG_SLP_PROTECT_EN),
+	REGNAME(hfrp_2_bus, 0xC, HFRP_CFGREG_SLP_PROTECT_RDY_STA),
 	/* HFRP register */
 	REGNAME(hfrp, 0xE40, ISP_TRAW_PWR_CON),
 	REGNAME(hfrp, 0xE44, ISP_DIP1_PWR_CON),
@@ -1978,6 +1985,19 @@ static struct regname rn[] = {
 	REGNAME(mm_hwv_ext, 0x450, HW_CCF_PLL_STATUS_CLR),
 	REGNAME(mm_hwv_ext, 0x470, HW_CCF_MTCMOS_CLR_STATUS),
 	REGNAME(mm_hwv_ext, 0x40c, HW_CCF_PLL_DONE),
+	/* hfrp hw voter */
+	REGNAME(hfrp_hwv, 0x100, HFRP_HWV_SW_VOTE),
+	REGNAME(hfrp_hwv, 0x110, HFRP_HWV_INTEN),
+	REGNAME(hfrp_hwv, 0x114, HFRP_HWV_INTSTA),
+	REGNAME(hfrp_hwv, 0x120, HFRP_HWV_ONOFF_MSK0),
+	REGNAME(hfrp_hwv, 0x124, HFRP_HWV_ONOFF_MSK1),
+	REGNAME(hfrp_hwv, 0x128, HFRP_HWV_DBG_EVT),
+	REGNAME(hfrp_hwv, 0x130, HFRP_HWV_HW_VOTE_STA),
+	REGNAME(hfrp_hwv, 0x134, HFRP_HWV_HW_RECORD),
+	REGNAME(hfrp_hwv, 0x138, HFRP_HWV_SW_RECORD),
+	REGNAME(hfrp_hwv, 0x140, HFRP_HWV_ALL_VOTE_STA),
+	REGNAME(hfrp_irq, 0x008, HFRP_IRQ_STA),
+	REGNAME(vlp_ao, 0x420, HFRP_VLP_CTRL),
 	{},
 };
 
@@ -2007,7 +2027,7 @@ u32 get_mt6989_reg_value(u32 id, u32 ofs)
 }
 EXPORT_SYMBOL_GPL(get_mt6989_reg_value);
 
-static void set_mt6989_reg_value(u32 id, u32 ofs, u32 val)
+static void write_mt6989_reg_value(u32 id, u32 ofs, u32 val)
 {
 	if (id >= chk_sys_num)
 		return;
@@ -2015,9 +2035,17 @@ static void set_mt6989_reg_value(u32 id, u32 ofs, u32 val)
 	clk_writel(rb[id].virt + ofs, val);
 }
 
+static void set_mt6989_reg_value(u32 id, u32 ofs, u32 mask, u32 val)
+{
+	if (id >= chk_sys_num)
+		return;
+
+	clk_writel(rb[id].virt + ofs, (clk_readl(rb[id].virt + ofs) & ~mask) | val);
+}
+
 void release_mt6989_hwv_secure(void)
 {
-	set_mt6989_reg_value(hwv_wrt, HWV_DOMAIN_KEY, HWV_SECURE_KEY);
+	write_mt6989_reg_value(hwv_wrt, HWV_DOMAIN_KEY, HWV_SECURE_KEY);
 }
 EXPORT_SYMBOL_GPL(release_mt6989_hwv_secure);
 
@@ -2383,6 +2411,7 @@ static enum chk_sys_id devapc_dump_id[] = {
 	ifr_bus,
 	vlpcfg,
 	vlp_ck,
+	hfrp_2_bus,
 	hfrp,
 	hfrp_1_bus,
 	hwv,
@@ -2560,6 +2589,79 @@ static void dump_bus_reg(struct regmap *regmap, u32 ofs)
 	BUG_ON(1);
 }
 
+static enum chk_sys_id vlp_dump_id[] = {
+	top,
+	apmixed,
+	hfrp_hwv,
+	spm,
+	hfrp,
+	chk_sys_num,
+};
+
+static void dump_vlp_reg(struct regmap *regmap, u32 shift)
+{
+	const struct fmeter_clk *fclks;
+	u32 freq = 0;
+	int i = 0;
+
+	freq = mt_get_fmeter_freq(FM_MMINFRA_CK, CKGEN_CK2);
+	pr_notice("dump_vlp_reg(%d)\n", freq);
+	if (shift) {
+		set_mt6989_reg_value(spm, 0xEA8,0xffff, 0x1112);
+		write_mt6989_reg_value(vlp_ao, 0x420, 0x5);
+		udelay(100);
+		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) | 0x4);
+		while ((get_mt6989_reg_value(spm, 0xEA8)  & (1 << 30)) !=  (1 << 30)) {
+			udelay(10);
+			i++;
+			if (i > 1000) {
+				pr_notice("mtcmos timeout\n");
+				break;
+			}
+		}
+		/* wait ack*/
+		udelay(50);
+		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) | 0x8);
+		i = 0;
+		while ((get_mt6989_reg_value(spm, 0xEA8)  & (1 << 31)) !=  (1 << 31)) {
+			udelay(10);
+			i++;
+			if (i > 1000) {
+				pr_notice("mtcmos2 timeout\n");
+				break;
+			}
+		}
+		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) & ~(0x10));
+		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) & ~(0x2));
+		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8)  | (0x1));
+		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) & ~(0x100));
+		i = 0;
+		while ((get_mt6989_reg_value(spm, 0xEA8)  & (1 << 12)) ==  (1 << 12)) {
+			udelay(10);
+			i++;
+			if (i > 1000) {
+				pr_notice("sram timeout\n");
+				break;
+			}
+		}
+		write_mt6989_reg_value(vlp_ao, 0x420, 0x1);
+		udelay(100);
+		write_mt6989_reg_value(mminfra_config, 0x108, 0x4);
+	}
+	fclks = mt_get_fmeter_clks();
+	set_subsys_reg_dump_mt6989(vlp_dump_id);
+	get_subsys_reg_dump_mt6989();
+
+	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
+		if (fclks->type != VLPCK && fclks->type != SUBSYS)
+			pr_notice("[%s] %d khz\n", fclks->name,
+				mt_get_fmeter_freq(fclks->id, fclks->type));
+	}
+
+	mdelay(3000);
+	BUG_ON(1);
+}
+
 static enum chk_sys_id pll_dump_id[] = {
 	apmixed,
 	top,
@@ -2632,6 +2734,7 @@ static struct clkchk_ops clkchk_mt6989_ops = {
 	.dump_hwv_history = dump_hwv_history,
 	.get_bus_reg = get_bus_reg,
 	.dump_bus_reg = dump_bus_reg,
+	.dump_vlp_reg = dump_vlp_reg,
 	.dump_pll_reg = dump_pll_reg,
 	.trace_clk_event = trace_clk_event,
 	.check_hwv_irq_sta = check_hwv_irq_sta,

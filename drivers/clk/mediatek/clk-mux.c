@@ -468,6 +468,9 @@ hwv_done_fail:
 hwv_prepare_fail:
 	regmap_read(mux->regmap, mux->data->hwv_sta_ofs, &val);
 	pr_err("%s mux prepare timeout(%x)\n", clk_hw_get_name(hw), val);
+	mtk_clk_notify(mux->regmap, mux->hwv_regmap, clk_hw_get_name(hw),
+			mux->data->mux_ofs, (mux->data->hwv_set_ofs / MTK_HWV_ID_OFS),
+			mux->data->gate_shift, CLK_EVT_SET_PARENT_TIMEOUT);
 	if (mux->flags & CLK_EN_MM_INFRA_PWR)
 		mtk_clk_mminfra_hwv_power_ctrl(false);
 
@@ -583,6 +586,13 @@ const struct clk_ops mtk_hwv_mux_ops = {
 	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock,
 };
 EXPORT_SYMBOL_GPL(mtk_hwv_mux_ops);
+
+const struct clk_ops mtk_hwv_dfs_mux_dummy_ops = {
+	.get_parent = mtk_clk_mux_get_parent,
+	.set_parent = mtk_clk_hwv_mux_set_parent,
+	.determine_rate = mtk_clk_mux_determine_rate,
+};
+EXPORT_SYMBOL_GPL(mtk_hwv_dfs_mux_dummy_ops);
 
 const struct clk_ops mtk_hwv_dfs_mux_ops = {
 	.enable = mtk_clk_hwv_mux_enable,
