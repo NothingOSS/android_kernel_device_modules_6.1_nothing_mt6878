@@ -5936,8 +5936,8 @@
 	//				<&smi_larb1 M4U_PORT_L1_DISP_FAKE1>;
 			#clock-cells = <1>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS1_SHUTDOWN>;
-			pd-others = <&disp1_mutex0>, <&disp_ovl0_2l>, <&disp1_ovl0_2l>;
-			pd-names = "side_dispsys", "ovlsys", "side_ovlsys";
+			pd-others = <&disp1_mutex0>, <&disp_ovl0_2l>, <&disp1_ovl0_2l>, <&disp_dpc>;
+			pd-names = "side_dispsys", "ovlsys", "side_ovlsys", "mminfra_in_dpc";
 			clocks = <&dispsys_config_clk CLK_MM_CONFIG>,
 				 <&dispsys_config_clk CLK_MM_DISP_MUTEX0>,
 				 <&dispsys_config_clk CLK_MM_DLI_ASYNC0>,
@@ -6962,8 +6962,9 @@
 			reg = <0 0x14225000 0 0x1000>;
 		};
 
-		disp-dpc@14226000 {
+		disp_dpc: disp-dpc@14226000 {
 			compatible = "mediatek,mt6989-disp-dpc";
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 			reg =
 				<0 0x14226000 0 0x1000>,
 				<0 0x1c000000 0 0x1000>,
