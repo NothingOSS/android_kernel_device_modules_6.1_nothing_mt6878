@@ -80,6 +80,7 @@ static long long boost_duration = TOUCH_TIMEOUT_MS;
 static struct hrtimer hrt1;
 static int my_tid = -1;
 static int touch_boost_on;
+static struct kmem_cache *touch_boost_cache;
 
 static void _cpu_ctrl_systrace(int val, const char *fmt, ...)
 {
@@ -134,7 +135,7 @@ void send_boost_cmd(int enable)
 
 	mutex_lock(&tch2pwr_lock);
 
-	node = kmalloc(sizeof(*node), GFP_KERNEL);
+	node = kmem_cache_alloc(touch_boost_cache, GFP_KERNEL);
 	if (node == NULL)
 		goto out;
 
@@ -187,7 +188,7 @@ void touch_boost_get_cmd(int *cmd, int *enable,
 		*cpufreq_c2 = node->_cpufreq_c2;
 
 		list_del(&node->queue_list);
-		kfree(node);
+		kmem_cache_free(touch_boost_cache, node);
 	}
 
 	if (list_empty(&head))
@@ -245,6 +246,7 @@ void _force_stop_touch_boost(void)
 		ret = _update_userlimit_cpufreq_min(i, 0);
 
 	send_boost_cmd(0);
+	touch_boost_on = 0;
 	force_stop_boost = 0;
 }
 
@@ -1059,7 +1061,6 @@ static int __init touch_boost_init(void)
 		freq_to_set[i].min = 0;
 
 	for (i = 0; i < policy_num; i++) {
-		//freq_to_set[i].min = 0;
 		freq_to_set[i].max = cpu_opp_tbl[i][0];
 		boost_opp_cluster[i] = -1;
 	}
@@ -1093,6 +1094,12 @@ static int __init touch_boost_init(void)
 		cpufreq_cpu_put(policy);
 	}
 
+	touch_boost_cache = kmem_cache_create("touch_boost_cache",
+			sizeof(struct k_list),
+			0,
+			SLAB_CACHE_DMA,
+			NULL);
+
 	ktchboost.thread = (struct task_struct *)kthread_run(ktchboost_thread,
 			&ktchboost, "touch_boost");
 	if (IS_ERR(ktchboost.thread))
@@ -1114,6 +1121,7 @@ static void __exit touch_boost_exit(void)
 	kvfree(opp_table);
 	kvfree(freq_min_request);
 	kvfree(freq_max_request);
+	kmem_cache_destroy(touch_boost_cache);
 }
 
 module_init(touch_boost_init);
