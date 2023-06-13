@@ -4,6 +4,8 @@
  */
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 static int grp_awr_init_finished;
+static int grp_awr_marg_ctrl;
+static int grp_awr_marg;
 static int **pcpu_pgrp_u;
 static int **pger_pgrp_u;
 static int **pcpu_pgrp_adpt_rto;
@@ -23,6 +25,18 @@ EXPORT_SYMBOL(grp_awr_update_group_util_hook);
 void (*grp_awr_update_cpu_tar_util_hook)(int cpu, int nr_grps, int *pcpu_tar_u,
 	int *group_nr_running, int **pcpu_pgrp_tar_u, int *pcpu_o_u);
 EXPORT_SYMBOL(grp_awr_update_cpu_tar_util_hook);
+
+void set_grp_awr_marg_ctrl(int val)
+{
+	grp_awr_marg_ctrl = val; /* 20 for 20% margin */
+	grp_awr_marg = ((SCHED_CAPACITY_SCALE * 100) / (100 - val));
+}
+EXPORT_SYMBOL(set_grp_awr_marg_ctrl);
+int get_grp_awr_marg_ctrl(void)
+{
+	return grp_awr_marg_ctrl;
+}
+EXPORT_SYMBOL(get_grp_awr_marg_ctrl);
 
 void grp_awr_update_grp_awr_util(void)
 {
@@ -48,9 +62,15 @@ void grp_awr_update_grp_awr_util(void)
 			pger_pgrp_u[map_cpu_ger[cpu_idx]][grp_idx] +=
 				pcpu_pgrp_u[cpu_idx][grp_idx];
 
-			pcpu_pgrp_adpt_rto[cpu_idx][grp_idx] =
-				((pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] << SCHED_CAPACITY_SHIFT)
-				/ pgrp_tar_act_rto_cap[grp_idx]);
+			if (grp_awr_marg_ctrl) {
+				pcpu_pgrp_marg[cpu_idx][grp_idx] = grp_awr_marg;
+				pcpu_pgrp_adpt_rto[cpu_idx][grp_idx] = SCHED_CAPACITY_SCALE;
+			} else {
+				pcpu_pgrp_adpt_rto[cpu_idx][grp_idx] =
+					((pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx]
+					<< SCHED_CAPACITY_SHIFT)
+					/ pgrp_tar_act_rto_cap[grp_idx]);
+			}
 		}
 	}
 
@@ -64,8 +84,12 @@ void grp_awr_update_grp_awr_util(void)
 		}
 	}
 
-	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++)
-		pgrp_hint[grp_idx] = flt_get_gp_hint(grp_idx);
+	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++) {
+		if (grp_awr_marg_ctrl)
+			pgrp_hint[grp_idx] = 0;
+		else
+			pgrp_hint[grp_idx] = flt_get_gp_hint(grp_idx);
+	}
 
 	if (trace_sugov_ext_pgrp_hint_enabled())
 		trace_sugov_ext_pgrp_hint(pgrp_hint);

@@ -13,6 +13,8 @@ extern void set_cpu_group_active_ratio_pct(int cpu, int grp_idx, int val);
 extern void set_cpu_group_active_ratio_cap(int cpu, int grp_idx, int val);
 extern void set_group_active_ratio_pct(int grp_idx, int val);
 extern void set_group_active_ratio_cap(int grp_idx, int val);
+extern void set_grp_awr_marg_ctrl(int val);
+extern int get_grp_awr_marg_ctrl(void);
 void grp_awr_update_grp_awr_util(void);
 int grp_awr_init(void);
 #endif
