@@ -48,6 +48,7 @@ static struct task_struct *gt9895_polling_thread;
 static int gt9895_ts_event_polling(void *arg);
 static int gt9895_polling_flag;
 struct mutex irq_info_mutex;
+static unsigned int x_last[GOODIX_MAX_TOUCH], y_last[GOODIX_MAX_TOUCH];
 
 #if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
 struct goodix_ts_core *ts_core_gt9895_tui;
@@ -1253,6 +1254,12 @@ void goodix_ts_report_finger(struct input_dev *dev,
 				touch_data->coords[i].x,
 				touch_data->coords[i].y,
 				touch_data->coords[i].w);
+			if ((x_last[i] == 0) && (y_last[i] == 0))
+				ts_info("touch down, i=%d, x=%d, y=%d, x_last=%d, y_last=%d",
+					i, touch_data->coords[i].x, touch_data->coords[i].y,
+					x_last[i], y_last[i]);
+			x_last[i] = touch_data->coords[i].x;
+			y_last[i] = touch_data->coords[i].y;
 			input_mt_slot(dev, i);
 			input_mt_report_slot_state(dev, MT_TOOL_FINGER, true);
 			input_report_abs(dev, ABS_MT_POSITION_X,
@@ -1262,6 +1269,8 @@ void goodix_ts_report_finger(struct input_dev *dev,
 			input_report_abs(dev, ABS_MT_TOUCH_MAJOR,
 					touch_data->coords[i].w);
 		} else {
+			x_last[i] = 0;
+			y_last[i] = 0;
 			input_mt_slot(dev, i);
 			input_mt_report_slot_state(dev, MT_TOOL_FINGER, false);
 		}
