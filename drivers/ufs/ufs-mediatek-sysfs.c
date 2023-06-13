@@ -332,15 +332,11 @@ static ssize_t clkscale_control_show(struct device *dev,
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	ssize_t size = 0;
-	int value, powerhal;
+	int value;
 
 	value = atomic_read((&host->clkscale_control));
-	powerhal = atomic_read((&host->clkscale_control_powerhal));
-	if (!value)
-		value = powerhal;
 
 	size += sprintf(buf + size, "current: %d\n", value);
-	size += sprintf(buf + size, "powerhal_set: %d\n", powerhal);
 	size += sprintf(buf + size, "===== control manual =====\n");
 	size += sprintf(buf + size, "0: free run\n");
 	size += sprintf(buf + size, "1: scale down\n");
@@ -354,31 +350,33 @@ static ssize_t clkscale_control_store(struct device *dev,
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	atomic_t *set_target = &host->clkscale_control;
-	unsigned long flags;
 	const char *opcode = buf;
 	u32 value;
 
-	if (!strncmp(buf, "powerhal_set: ", 14)) {
-		set_target = &host->clkscale_control_powerhal;
+	if (!strncmp(buf, "powerhal_set: ", 14))
 		opcode = buf + 14;
-	}
 
 	if (kstrtou32(opcode, 0, &value) || value > 2)
 		return -EINVAL;
 
-	atomic_set(set_target, value);
-	ufshcd_rpm_get_sync(hba);
-	spin_lock_irqsave(hba->host->host_lock, flags);
-	if (!hba->clk_scaling.window_start_t) {
-		hba->clk_scaling.window_start_t = ktime_sub_us(ktime_get(), 1);
-		hba->clk_scaling.tot_busy_t = 0;
-		hba->clk_scaling.busy_start_t = 0;
-		hba->clk_scaling.is_busy_started = false;
+	atomic_set(&host->clkscale_control, value);
+
+	switch (value) {
+	case 0: /* free run */
+		ufs_mtk_dynamic_clock_scaling(hba, CLK_SCALE_FREE_RUN);
+		break;
+
+	case 1: /* scale down */
+		ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_DOWN);
+		break;
+
+	case 2: /* scale up */
+		ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_UP);
+		break;
+
+	default:
+		break;
 	}
-	spin_unlock_irqrestore(hba->host->host_lock, flags);
-	update_devfreq(hba->devfreq);
-	ufshcd_rpm_put(hba);
 
 	return count;
 }
@@ -404,7 +402,6 @@ static void init_clk_scaling_sysfs(struct ufs_hba *hba)
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	atomic_set(&host->clkscale_control, 0);
-	atomic_set(&host->clkscale_control_powerhal, 0);
 	if (sysfs_create_group(&hba->dev->kobj, &ufs_mtk_sysfs_clkscale_group))
 		dev_info(hba->dev, "Failed to create sysfs for clkscale_control\n");
 }

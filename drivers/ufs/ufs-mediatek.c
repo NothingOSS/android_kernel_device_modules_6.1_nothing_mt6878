@@ -39,6 +39,7 @@
 extern void mt_irq_dump_status(unsigned int irq);
 static int ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba);
 static int ufs_mtk_config_mcq(struct ufs_hba *hba, bool irq);
+static void _ufs_mtk_clk_scale(struct ufs_hba *hba, bool scale_up);
 
 #define CREATE_TRACE_POINTS
 #include "ufs-mediatek-trace.h"
@@ -903,32 +904,7 @@ void ufs_mtk_trace_vh_ufs_prepare_command(void *data, struct ufs_hba *hba,
 		cmnd[1] &= ~0x08;
 }
 
-void ufs_mtk_trace_vh_ufs_clock_scaling(void *data, struct ufs_hba *hba,
-		bool *force_out, bool *force_scaling, bool *scale_up)
-{
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	int value = atomic_read(&host->clkscale_control);
-
-	if (!value)
-		value = atomic_read(&host->clkscale_control_powerhal);
-
-	switch (value) {
-	case 1:
-		*scale_up = false;
-		break;
-	case 2:
-		*scale_up = true;
-		break;
-	default:
-		return;
-	}
-}
-
 static struct tracepoints_table interests[] = {
-	{
-		.name = "android_vh_ufs_clock_scaling",
-		.func = ufs_mtk_trace_vh_ufs_clock_scaling
-	},
 	{
 		.name = "android_vh_ufs_prepare_command",
 		.func = ufs_mtk_trace_vh_ufs_prepare_command
@@ -1310,6 +1286,17 @@ static void ufs_mtk_fix_ahit(struct ufs_hba *hba)
 	ufs_mtk_setup_clk_gating(hba);
 }
 
+static void ufs_mtk_fix_clock_scaling(struct ufs_hba *hba)
+{
+	/* UFS version is below 4.0, clock scaling is not necessary */
+	if ((hba->dev_info.wspecversion < 0x0400)  &&
+		ufs_mtk_is_clk_scale_ready(hba)) {
+		hba->caps &= ~UFSHCD_CAP_CLK_SCALING;
+
+		_ufs_mtk_clk_scale(hba, false);
+	}
+}
+
 static void ufs_mtk_delay_eh_work_fn(struct work_struct *dwork)
 {
 	struct ufs_hba *hba;
@@ -1559,6 +1546,10 @@ static int ufs_mtk_pre_pwr_change(struct ufs_hba *hba,
 			__func__);
 	}
 
+	/* Assume default boot up is max gear */
+	if (host->max_gear == 0)
+		host->max_gear = dev_req_params->gear_rx;
+
 	if (ufs_mtk_pmc_via_fastauto(hba, dev_req_params)) {
 		ufs_mtk_adjust_sync_length(hba);
 
@@ -1761,6 +1752,195 @@ static void ufs_mtk_scsi_block_requests(struct ufs_hba *hba)
 {
 	if (atomic_inc_return(&hba->scsi_block_reqs_cnt) == 1)
 		scsi_block_requests(hba->host);
+}
+
+static u32 ufs_mtk_pending_cmds(struct ufs_hba *hba)
+{
+	const struct scsi_device *sdev;
+	u32 pending = 0;
+
+	lockdep_assert_held(hba->host->host_lock);
+	__shost_for_each_device(sdev, hba->host)
+		pending += sbitmap_weight(&sdev->budget_map);
+
+	return pending;
+}
+
+static int ufs_mtk_wait_for_doorbell_clr(struct ufs_hba *hba,
+					u64 wait_timeout_us)
+{
+	unsigned long flags;
+	int ret = 0;
+	u32 tm_doorbell;
+	u32 tr_pending;
+	bool timeout = false, do_last_check = false;
+	ktime_t start;
+
+	ufshcd_hold(hba, false);
+	spin_lock_irqsave(hba->host->host_lock, flags);
+	/*
+	 * Wait for all the outstanding tasks/transfer requests.
+	 * Verify by checking the doorbell registers are clear.
+	 */
+	start = ktime_get();
+	do {
+		if (hba->ufshcd_state != UFSHCD_STATE_OPERATIONAL) {
+			ret = -EBUSY;
+			goto out;
+		}
+
+		tm_doorbell = ufshcd_readl(hba, REG_UTP_TASK_REQ_DOOR_BELL);
+		tr_pending = ufs_mtk_pending_cmds(hba);
+		if (!tm_doorbell && !tr_pending) {
+			timeout = false;
+			break;
+		} else if (do_last_check) {
+			break;
+		}
+
+		spin_unlock_irqrestore(hba->host->host_lock, flags);
+		io_schedule_timeout(msecs_to_jiffies(20));
+		if (ktime_to_us(ktime_sub(ktime_get(), start)) >
+		    wait_timeout_us) {
+			timeout = true;
+			/*
+			 * We might have scheduled out for long time so make
+			 * sure to check if doorbells are cleared by this time
+			 * or not.
+			 */
+			do_last_check = true;
+		}
+		spin_lock_irqsave(hba->host->host_lock, flags);
+	} while (tm_doorbell || tr_pending);
+
+	if (timeout) {
+		dev_err(hba->dev,
+			"%s: timedout waiting for doorbell to clear (tm=0x%x, tr=0x%x)\n",
+			__func__, tm_doorbell, tr_pending);
+		ret = -EBUSY;
+	}
+out:
+	spin_unlock_irqrestore(hba->host->host_lock, flags);
+	ufshcd_release(hba);
+	return ret;
+}
+
+static void ufs_mtk_config_pwr_mode(struct ufs_hba *hba, int mode,
+	bool scale_allow)
+{
+	struct ufs_pa_layer_attr pwr_info = { 0 };
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	int err;
+
+	/* Config desired power info */
+	memcpy(&pwr_info, &hba->pwr_info, sizeof(struct ufs_pa_layer_attr));
+
+	if (mode == CLK_FORCE_SCALE_UP) {
+		pwr_info.gear_rx = host->max_gear;
+		pwr_info.gear_tx = host->max_gear;
+	} else if (mode == CLK_FORCE_SCALE_DOWN) {
+		if (scale_allow) {
+			/* min_gear is set by MTK */
+			pwr_info.gear_rx = hba->clk_scaling.min_gear;
+			pwr_info.gear_tx = hba->clk_scaling.min_gear;
+		} else {
+			/*
+			 * min_gear is set by default, which is G1.
+			 * Just set to max_gear because in this case, we only
+			 * use max gear as default gear.
+			 */
+			pwr_info.gear_rx = host->max_gear;
+			pwr_info.gear_tx = host->max_gear;
+		}
+	} else if (mode == CLK_FORCE_SCALE_G1) {
+		pwr_info.gear_rx = UFS_HS_G1;
+		pwr_info.gear_tx = UFS_HS_G1;
+	}
+
+	ufshcd_rpm_get_sync(hba);
+	ufs_mtk_scsi_block_requests(hba);
+	ufshcd_hold(hba, false);
+
+	if (ufs_mtk_wait_for_doorbell_clr(hba, 1000 * 1000)) { /* 1 sec */
+		dev_err(hba->dev, "%s: ufshcd_wait_for_doorbell_clr timeout!\n",
+				__func__);
+		goto out;
+	}
+
+	/* Scale up, change clk mux before change gear */
+	if ((mode == CLK_FORCE_SCALE_UP) && scale_allow)
+		_ufs_mtk_clk_scale(hba, true);
+
+	/* Start change power mode */
+	err = ufshcd_config_pwr_mode(hba, &pwr_info);
+	if (err) {
+		dev_err(hba->dev, "%s: Failed setting power mode, err = %d\n",
+				__func__, err);
+	} else {
+		dev_info(hba->dev,
+		      "%s: PMC Success! [RX, TX]: gear=[%d, %d], pwr[%d, %d]\n",
+		      __func__,
+		      hba->pwr_info.gear_rx, hba->pwr_info.gear_tx,
+		      hba->pwr_info.pwr_rx, hba->pwr_info.pwr_tx);
+	}
+
+	/* Scale down, change clk mux after change gear */
+	if ((mode != CLK_FORCE_SCALE_UP) && scale_allow)
+		_ufs_mtk_clk_scale(hba, false);
+
+out:
+	ufshcd_release(hba);
+	ufs_mtk_scsi_unblock_requests(hba);
+	ufshcd_rpm_put(hba);
+}
+
+void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
+{
+	static int scale_mode = CLK_SCALE_FREE_RUN;
+	static u32 saved_gear;
+	static bool is_forced;
+	bool scale_allow = true;
+
+	/* Already in desire mode */
+	if (scale_mode == mode)
+		return;
+	scale_mode = mode;
+
+	/* UFS version is below 4.0, clock scaling is not necessary */
+	if (hba->dev_info.wspecversion < 0x0400)
+		scale_allow = false;
+
+	/* Host not support clock scaling */
+	if (!ufs_mtk_is_clk_scale_ready(hba))
+		scale_allow = false;
+
+	if (mode == CLK_SCALE_FREE_RUN) {
+		if (saved_gear >= UFS_HS_G5)
+			ufs_mtk_config_pwr_mode(hba, CLK_FORCE_SCALE_UP,
+				scale_allow);
+		else
+			ufs_mtk_config_pwr_mode(hba, CLK_FORCE_SCALE_DOWN,
+				scale_allow);
+
+		if (scale_allow) {
+			hba->caps |= UFSHCD_CAP_CLK_SCALING;
+			devfreq_resume_device(hba->devfreq);
+		}
+
+		is_forced = false;
+	} else {
+		if (!is_forced) {
+			if (scale_allow) {
+				devfreq_suspend_device(hba->devfreq);
+				hba->caps &= ~UFSHCD_CAP_CLK_SCALING;
+			}
+
+			saved_gear = hba->pwr_info.gear_rx;
+			is_forced = true;
+		}
+
+		ufs_mtk_config_pwr_mode(hba, mode, scale_allow);
+	}
 }
 
 static int ufs_mtk_mcq_config_cqid(struct ufs_hba *hba)
@@ -2117,6 +2297,7 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 	ufs_mtk_vreg_fix_vcc(hba);
 	ufs_mtk_vreg_fix_vccqx(hba);
 	ufs_mtk_fix_ahit(hba);
+	ufs_mtk_fix_clock_scaling(hba);
 
 	ufs_mtk_install_tracepoints(hba);
 }
@@ -2337,25 +2518,15 @@ static void ufs_mtk_clk_scale(struct ufs_hba *hba, bool scale_up)
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct ufs_mtk_clk *mclk = &host->mclk;
 	struct ufs_clk_info *clki = mclk->ufs_sel_clki;
-	static bool skip_switch;
 
 	if (host->clk_scale_up == scale_up)
 		goto out;
 
-	if (skip_switch)
-		goto skip;
-
-	/* Only change to CLK MAX if device is UFS4.0 and clock scale up */
-	if ((hba->dev_info.wspecversion >= 0x0400) && scale_up)
+	if (scale_up)
 		_ufs_mtk_clk_scale(hba, true);
 	else
 		_ufs_mtk_clk_scale(hba, false);
 
-	/* UFS3.0 keep MIN is enough, no need switch anymore */
-	if (hba->dev_info.wspecversion < 0x0400)
-		skip_switch = true;
-
-skip:
 	host->clk_scale_up = scale_up;
 
 	/* Must always set before clk_set_rate() */

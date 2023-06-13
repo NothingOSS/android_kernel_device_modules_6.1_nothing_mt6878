@@ -210,13 +210,13 @@ struct ufs_mtk_host {
 	bool ref_clk_enabled;
 	bool clk_scale_up;
 	atomic_t clkscale_control;
-	atomic_t clkscale_control_powerhal;
 	atomic_t skip_btag;
 	atomic_t dbg_tp_unregister;
 	u16 ref_clk_ungating_wait_us;
 	u16 ref_clk_gating_wait_us;
 	u32 ip_ver;
 	u32 desired_ahit;
+	u32 max_gear;
 	struct ufs_mtk_clk mclk;
 	bool pm_qos_init;
 	struct pm_qos_request pm_qos_req;
@@ -303,6 +303,15 @@ struct tag_bootmode {
 	u32 bootmode;
 	u32 boottype;
 };
+
+enum {
+	CLK_SCALE_FREE_RUN,
+	CLK_FORCE_SCALE_DOWN,
+	CLK_FORCE_SCALE_UP,
+	CLK_FORCE_SCALE_G1
+};
+
+void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode);
 
 /**
  * ufshcd_upiu_wlun_to_scsi_wlun - maps UPIU W-LUN id to SCSI W-LUN ID
