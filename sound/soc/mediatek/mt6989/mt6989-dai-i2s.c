@@ -113,7 +113,6 @@ static unsigned int get_etdm_wlen(snd_pcm_format_t format)
 
 	/* The reg_word_length should be >= reg_bit_length */
 	wlen = snd_pcm_format_physical_width(format);
-	pr_info("%s wlen %d\n", __func__, wlen);
 
 	if (wlen < 16)
 		return ETDM_WLEN_16_BIT;
@@ -174,7 +173,6 @@ static unsigned int get_etdm_rate(unsigned int rate)
 
 static unsigned int get_etdm_inconn_rate(unsigned int rate)
 {
-	pr_info("%s rate %d\n", __func__, rate);
 	switch (rate) {
 	case 8000:
 		return ETDM_CONN_8K;
