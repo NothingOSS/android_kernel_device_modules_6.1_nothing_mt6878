@@ -395,6 +395,7 @@ struct mtk_disp_aal {
 	struct mtk_ddp_comp *comp_tdshp;
 	struct mtk_ddp_comp *comp_gamma;
 	struct mtk_ddp_comp *comp_color;
+	struct mtk_ddp_comp *comp_dmdp_aal;
 };
 
 static inline struct mtk_disp_aal *comp_to_aal(struct mtk_ddp_comp *comp)

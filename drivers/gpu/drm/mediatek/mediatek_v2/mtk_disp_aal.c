@@ -42,6 +42,7 @@
 #include "platform/mtk_drm_platform.h"
 #include "mtk_disp_pq_helper.h"
 #include "mtk_disp_gamma.h"
+#include "mtk_dmdp_aal.h"
 
 #undef pr_fmt
 #define pr_fmt(fmt) "[disp_aal]" fmt
@@ -3362,8 +3363,17 @@ static int mtk_aal_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		int *value = data;
 
 		mtk_aal_bypass(comp, *value, handle);
-		if (comp->mtk_crtc->is_dual_pipe)
+		if (aal_data->primary_data->aal_fo->mtk_dre30_support)
+			mtk_dmdp_aal_bypass(aal_data->comp_dmdp_aal, *value, handle);
+
+		if (comp->mtk_crtc->is_dual_pipe) {
 			mtk_aal_bypass(aal_data->companion, *value, handle);
+			if (aal_data->primary_data->aal_fo->mtk_dre30_support) {
+				struct mtk_disp_aal *aal_companion_data = comp_to_aal(aal_data->companion);
+
+				mtk_dmdp_aal_bypass(aal_companion_data->comp_dmdp_aal, *value, handle);
+			}
+		}
 	}
 		break;
 	case SET_CLARITY_REG:
@@ -3681,6 +3691,8 @@ static void mtk_aal_data_init(struct mtk_ddp_comp *comp)
 									 MTK_DISP_GAMMA, 0);
 		aal_data->comp_color = mtk_ddp_comp_sel_in_cur_crtc_path(comp->mtk_crtc,
 									 MTK_DISP_COLOR, 0);
+		aal_data->comp_dmdp_aal = mtk_ddp_comp_sel_in_cur_crtc_path(comp->mtk_crtc,
+									 MTK_DMDP_AAL, 0);
 	} else {
 		aal_data->comp_tdshp = mtk_ddp_comp_sel_in_dual_pipe(comp->mtk_crtc,
 								     MTK_DISP_TDSHP, 0);
@@ -3688,6 +3700,8 @@ static void mtk_aal_data_init(struct mtk_ddp_comp *comp)
 								     MTK_DISP_GAMMA, 0);
 		aal_data->comp_color = mtk_ddp_comp_sel_in_dual_pipe(comp->mtk_crtc,
 								     MTK_DISP_COLOR, 0);
+		aal_data->comp_dmdp_aal = mtk_ddp_comp_sel_in_dual_pipe(comp->mtk_crtc,
+								     MTK_DMDP_AAL, 0);
 	}
 }
 

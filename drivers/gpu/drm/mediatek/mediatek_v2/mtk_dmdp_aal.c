@@ -156,7 +156,7 @@ static void mtk_dmdp_aal_stop(struct mtk_ddp_comp *comp,
 		       0x0, ~0);
 }
 
-static void mtk_dmdp_aal_bypass(struct mtk_ddp_comp *comp, int bypass,
+void mtk_dmdp_aal_bypass(struct mtk_ddp_comp *comp, int bypass,
 	struct cmdq_pkt *handle)
 {
 	struct mtk_dmdp_aal *data = comp_to_dmdp_aal(comp);
