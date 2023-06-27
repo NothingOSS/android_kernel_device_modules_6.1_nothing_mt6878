@@ -72,81 +72,69 @@ static inline struct mml_comp_birsz *comp_to_birsz(struct mml_comp *comp)
 
 static void birsz_first_6_taps(s32 out_start,
 			       s32 out_end,
-			       s32 coef_step,
+			       s32 coeff,
 			       s32 precision,
-			       s32 crop_offset,
-			       s32 crop_subpixel,
-			       s32 in_max_end,
+			       s32 crop,
+			       s32 crop_frac,
+			       s32 in_max,
 			       s32 *in_start,
 			       s32 *in_end)
 {
-	s64 startTemp;
-	s64 endTemp;
+	s64 start, end;
 
-	if (crop_subpixel < 0)
-		crop_subpixel = -0xfffff;
+	if (crop_frac < 0)
+		crop_frac = -0xfffff;
+	crop_frac = ((s64)crop_frac * precision) >> MML_SUBPIXEL_BITS;
 
-	/* Normalize */
-	crop_subpixel = ((s64)crop_subpixel * precision) >> MML_SUBPIXEL_BITS;
-
-	startTemp = (s64)out_start * coef_step + (s64)crop_offset * precision + crop_subpixel;
-	if (startTemp < (s64)3 * precision)
+	start = (s64)out_start * coeff + (s64)crop * precision + crop_frac;
+	if (start <= (s64)3 * precision) {
 		*in_start = 0;
-	else {
-		startTemp = startTemp / precision - 3;
-
-		if (!(startTemp & 0x1))
-			*in_start = (s32)startTemp;
-		else  /* must be even */
-			*in_start = (s32)startTemp - 1;
+	} else {
+		start = start / precision - 3;
+		if (!(start & 0x1))
+			*in_start = (s32)start;
+		else /* must be even */
+			*in_start = (s32)start - 1;
 	}
 
-	endTemp = (s64)out_end * coef_step +
-		  (s64)crop_offset * precision + crop_subpixel + (3 + 2) * precision;
-
-	if (endTemp > (s64)in_max_end * precision)
-		*in_end = in_max_end;
-	else {
-		/* due to ceiling in forward */
-		endTemp = endTemp / precision;
-		if (endTemp & 0x1)
-			*in_end = (s32)endTemp;
-		else
-			*in_end = (s32)endTemp + 1;
+	end = (s64)out_end * coeff + (s64)crop * precision + crop_frac +
+		(3 + 2) * precision;
+	if (end > (s64)in_max * precision) {
+		*in_end = in_max;
+	} else {
+		end = end / precision;
+		if (end & 0x1)
+			*in_end = (s32)end;
+		else /* must be odd */
+			*in_end = (s32)end + 1;
 	}
-
 }
 
 static void birsz_second_6_taps(s32 in_start,
-				s32 coef_step,
+				s32 coeff,
 				s32 precision,
-				s32 crop_offset,
-				s32 crop_subpixel,
+				s32 crop,
+				s32 crop_frac,
 				s32 back_out_start,
-				s32 *int_ofst,
-				s32 *sub_ofst)
+				s32 *luma,
+				s32 *luma_frac)
 {
-	s64 sub_temp;
-	s64 offset_cal_start;
+	s64 offset;
 
-	if (crop_subpixel < 0)
-		crop_subpixel = -0xfffff;
+	if (crop_frac < 0)
+		crop_frac = -0xfffff;
+	crop_frac = ((s64)crop_frac * precision) >> MML_SUBPIXEL_BITS;
 
-	/* Normalize */
-	crop_subpixel = ((s64)crop_subpixel * precision) >> MML_SUBPIXEL_BITS;
+	/* cal offset & frac by fixed out_start */
+	offset = (s64)back_out_start * coeff +
+		(s64)crop * precision + crop_frac - (s64)in_start * precision;
 
-	offset_cal_start = back_out_start;
+	*luma = (s32)(offset / precision);
+	*luma_frac = (s32)(offset - *luma * precision);
 
-	/* Cal bias & offset by fxied backward_out_pos_start */
-	sub_temp = (s64)offset_cal_start * coef_step +
-		   (s64)crop_offset * precision + crop_subpixel - (s64)in_start * precision;
-
-	*int_ofst = (s32)(sub_temp / precision);
-	*sub_ofst = (s32)(sub_temp - precision * *int_ofst);
-
-	if (*sub_ofst < 0) {
-		*int_ofst -= 1;
-		*sub_ofst += precision;
+	if (*luma_frac < 0) {
+		*luma -= 1;
+		*luma_frac += precision;
 	}
 }
 
@@ -162,8 +150,8 @@ static void birsz_cal_tile(struct mml_tile_engine *ref_tile,
 
 	s32 in_y_top;
 	s32 in_y_bottom;
-	s32 int_ofst;
-	s32 sub_ofst;
+	s32 luma;
+	s32 luma_sub;
 
 	out_x_left = ref_tile->in.xs;
 	out_x_right = ref_tile->in.xe;
@@ -194,11 +182,11 @@ static void birsz_cal_tile(struct mml_tile_engine *ref_tile,
 		birsz_frm->fw_out.hori_int_ofst,
 		birsz_frm->fw_out.hori_sub_ofst,
 		out_x_left,
-		&int_ofst,
-		&sub_ofst);
+		&luma,
+		&luma_sub);
 
-	tile->luma.x = (int_ofst > 0) ? (u32)int_ofst : 0x1ffff;
-	tile->luma.x_sub = sub_ofst;
+	tile->luma.x = (luma > 0) ? (u32)luma : 0x1ffff;
+	tile->luma.x_sub = luma_sub;
 
 	mml_msg("luma.x %#010x, luma.x_sub %#010x",
 		tile->luma.x, tile->luma.x_sub);
@@ -222,11 +210,11 @@ static void birsz_cal_tile(struct mml_tile_engine *ref_tile,
 		birsz_frm->fw_out.vert_int_ofst,
 		birsz_frm->fw_out.vert_sub_ofst,
 		ref_tile->in.ys,
-		&int_ofst,
-		&sub_ofst);
+		&luma,
+		&luma_sub);
 
-	tile->luma.y = (int_ofst > 0) ? (u32)int_ofst : 0x1ffff;
-	tile->luma.y_sub = sub_ofst;
+	tile->luma.y = (luma > 0) ? (u32)luma : 0x1ffff;
+	tile->luma.y_sub = luma_sub;
 	mml_msg("luma.y %#010x, luma.y_sub %#010x", tile->luma.y, tile->luma.y_sub);
 
 	tile->in.xs = in_x_left;

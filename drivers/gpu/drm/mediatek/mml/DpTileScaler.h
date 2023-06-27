@@ -11,7 +11,7 @@
 #include "mtk-mml.h"
 #include "mtk-mml-color.h"
 
-#define TILE_SCALER_SUBPIXEL_SHIFT	MML_SUBPIXEL_BITS
+#define RSZ_TILE_SUBPIXEL_BITS	MML_SUBPIXEL_BITS
 
 #ifndef ASSERT
 #define ASSERT(expr) \
@@ -25,131 +25,93 @@
 
 enum scaler_algo {
 	/* Cannot modify these enum definition */
-	SCALER_4_TAPS  = 0,
 	SCALER_6_TAPS  = 0,
-	SCALER_SRC_ACC = 1,	/* n tap */
+	SCALER_SRC_ACC = 1,	/* 1n tap */
 	SCALER_CUB_ACC = 2,	/* 4n tap */
-	SCALER_6N_CUB_ACC = 2,	/* 6n tap */
 };
 
-void backward_4_taps(s32 outTileStart,
-		     s32 outTileEnd,
-		     s32 outMaxEnd,
-		     s32 coeffStep,
+void backward_6_taps(s32 out_start,
+		     s32 out_end,
+		     s32 coeff,
 		     s32 precision,
-		     s32 cropOffset,
-		     s32 cropFraction,
-		     s32 inMaxEnd,
-		     s32 inAlignment,
-		     s32 *inTileStart,
-		     s32 *inTileEnd);
+		     s32 crop,
+		     s32 crop_frac,
+		     s32 in_max,
+		     s32 in_align,
+		     s32 *in_start,
+		     s32 *in_end);
 
-void forward_4_taps(s32 inTileStart,
-		    s32 inTileEnd,
-		    s32 inMaxEnd,
-		    s32 coeffStep,
+void forward_6_taps(s32 in_start,
+		    s32 in_end,
+		    s32 in_max,
+		    s32 coeff,
 		    s32 precision,
-		    s32 cropOffset,
-		    s32 cropSubpixel,
-		    s32 outMaxEnd,
-		    s32 outAlignment,
-		    s32 backOutStart,
-		    s32 outCalOrder,
-		    s32 *outTileStart,
-		    s32 *outTileEnd,
-		    s32 *lumaOffset,
-		    s32 *lumaSubpixel,
-		    s32 *chromaOffset,
-		    s32 *chromaSubpixel);
+		    s32 crop,
+		    s32 crop_frac,
+		    s32 out_max,
+		    s32 out_align,
+		    s32 back_out_start,
+		    s32 *out_start,
+		    s32 *out_end,
+		    s32 *luma,
+		    s32 *luma_frac,
+		    s32 *chroma,
+		    s32 *chroma_frac);
 
-void backward_6_taps(s32 outTileStart,
-		     s32 outTileEnd,
-		     s32 outMaxEnd,
-		     s32 coeffStep,
-		     s32 precision,
-		     s32 cropOffset,
-		     s32 cropFraction,
-		     s32 inMaxEnd,
-		     s32 inAlignment,
-		     s32 *inTileStart,
-		     s32 *inTileEnd);
-
-void forward_6_taps(s32 inTileStart,
-		    s32 inTileEnd,
-		    s32 inMaxEnd,
-		    s32 coeffStep,
-		    s32 precision,
-		    s32 cropOffset,
-		    s32 cropSubpixel,
-		    s32 outMaxEnd,
-		    s32 outAlignment,
-		    s32 backOutStart,
-		    s32 outCalOrder,
-		    s32 *outTileStart,
-		    s32 *outTileEnd,
-		    s32 *lumaOffset,
-		    s32 *lumaSubpixel,
-		    s32 *chromaOffset,
-		    s32 *chromaSubpixel);
-
-void backward_src_acc(s32 outTileStart,
-		      s32 outTileEnd,
-		      s32 outMaxEnd,
-		      s32 coeffStep,
+void backward_src_acc(s32 out_start,
+		      s32 out_end,
+		      s32 coeff,
 		      s32 precision,
-		      s32 cropOffset,
-		      s32 cropFraction,
-		      s32 inMaxEnd,
-		      s32 inAlignment,
-		      s32 *inTileStart,
-		      s32 *inTileEnd);
+		      s32 crop,
+		      s32 crop_frac,
+		      s32 in_max,
+		      s32 in_align,
+		      s32 *in_start,
+		      s32 *in_end);
 
-void forward_src_acc(s32 inTileStart,
-		     s32 inTileEnd,
-		     s32 inMaxEnd,
-		     s32 coeffStep,
+void forward_src_acc(s32 in_start,
+		     s32 in_end,
+		     s32 in_max,
+		     s32 coeff,
 		     s32 precision,
-		     s32 cropOffset,
-		     s32 cropSubpixel,
-		     s32 outMaxEnd,
-		     s32 outAlignment,
-		     s32 backOutStart,
-		     s32 outCalOrder,
-		     s32 *outTileStart,
-		     s32 *outTileEnd,
-		     s32 *lumaOffset,
-		     s32 *lumaSubpixel,
-		     s32 *chromaOffset,
-		     s32 *chromaSubpixel);
+		     s32 crop,
+		     s32 crop_frac,
+		     s32 out_max,
+		     s32 out_align,
+		     s32 back_out_start,
+		     s32 *out_start,
+		     s32 *out_end,
+		     s32 *luma,
+		     s32 *luma_frac,
+		     s32 *chroma,
+		     s32 *chroma_frac);
 
-void backward_cub_acc(s32 outTileStart,
-		      s32 outTileEnd,
-		      s32 outMaxEnd,
-		      s32 coeffStep,
+void backward_cub_acc(s32 out_start,
+		      s32 out_end,
+		      s32 coeff,
 		      s32 precision,
-		      s32 cropOffset,
-		      s32 cropFraction,
-		      s32 inMaxEnd,
-		      s32 inAlignment,
-		      s32 *inTileStart,
-		      s32 *inTileEnd);
+		      s32 crop,
+		      s32 crop_frac,
+		      s32 in_max,
+		      s32 in_align,
+		      s32 *in_start,
+		      s32 *in_end);
 
-void forward_cub_acc(s32 inTileStart,
-		     s32 inTileEnd,
-		     s32 inMaxEnd,
-		     s32 coeffStep,
+void forward_cub_acc(s32 in_start,
+		     s32 in_end,
+		     s32 in_max,
+		     s32 coeff,
 		     s32 precision,
-		     s32 cropOffset,
-		     s32 cropSubpixel,
-		     s32 outMaxEnd,
-		     s32 outAlignment,
-		     s32 backOutStart,
-		     s32 outCalOrder,
-		     s32 *outTileStart,
-		     s32 *outTileEnd,
-		     s32 *lumaOffset,
-		     s32 *lumaSubpixel,
-		     s32 *chromaOffset,
-		     s32 *chromaSubpixel);
+		     s32 crop,
+		     s32 crop_frac,
+		     s32 out_max,
+		     s32 out_align,
+		     s32 back_out_start,
+		     s32 *out_start,
+		     s32 *out_end,
+		     s32 *luma,
+		     s32 *luma_frac,
+		     s32 *chroma,
+		     s32 *chroma_frac);
 
 #endif  /* __DP_TILE_SCALER_H__ */

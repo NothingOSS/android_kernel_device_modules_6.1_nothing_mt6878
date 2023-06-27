@@ -570,35 +570,35 @@ void rsz_fw(struct rsz_fw_in *in, struct rsz_fw_out *out, bool en_ur)
 	if (out->hori_algo == SCALER_6_TAPS) {
 		out->hori_int_ofst = cal_param.hori_luma_int_ofst;
 		out->hori_sub_ofst = ((s64)cal_param.hori_luma_sub_ofst <<
-			TILE_SCALER_SUBPIXEL_SHIFT) / out->precision_x;
-	} else { /* (1 << TILE_SCALER_SUBPIXEL_SHIFT) == out->precision_x */
+			RSZ_TILE_SUBPIXEL_BITS) / out->precision_x;
+	} else { /* (1 << RSZ_TILE_SUBPIXEL_BITS) == out->precision_x */
 		s64 subpix_x;
 
 		subpix_x = ((s64)cal_param.hori_luma_int_ofst <<
-			TILE_SCALER_SUBPIXEL_SHIFT) + cal_param.hori_luma_sub_ofst;
-		subpix_x = ((subpix_x << TILE_SCALER_SUBPIXEL_SHIFT) +
+			RSZ_TILE_SUBPIXEL_BITS) + cal_param.hori_luma_sub_ofst;
+		subpix_x = ((subpix_x << RSZ_TILE_SUBPIXEL_BITS) +
 			out->hori_step - 1) / out->hori_step;
 
-		out->hori_int_ofst = subpix_x >> TILE_SCALER_SUBPIXEL_SHIFT;
+		out->hori_int_ofst = subpix_x >> RSZ_TILE_SUBPIXEL_BITS;
 		out->hori_sub_ofst = subpix_x -
-			((s64)out->hori_int_ofst << TILE_SCALER_SUBPIXEL_SHIFT);
+			((s64)out->hori_int_ofst << RSZ_TILE_SUBPIXEL_BITS);
 	}
 
 	if (out->vert_algo == SCALER_6_TAPS) {
 		out->vert_int_ofst = cal_param.vert_luma_int_ofst;
 		out->vert_sub_ofst = ((s64)cal_param.vert_luma_sub_ofst <<
-			TILE_SCALER_SUBPIXEL_SHIFT) / out->precision_y;
-	} else { /* (1 << TILE_SCALER_SUBPIXEL_SHIFT) == out->precision_y */
+			RSZ_TILE_SUBPIXEL_BITS) / out->precision_y;
+	} else { /* (1 << RSZ_TILE_SUBPIXEL_BITS) == out->precision_y */
 		s64 subpix_y;
 
 		subpix_y = ((s64)cal_param.vert_luma_int_ofst <<
-			TILE_SCALER_SUBPIXEL_SHIFT) + cal_param.vert_luma_sub_ofst;
-		subpix_y = ((subpix_y << TILE_SCALER_SUBPIXEL_SHIFT) +
+			RSZ_TILE_SUBPIXEL_BITS) + cal_param.vert_luma_sub_ofst;
+		subpix_y = ((subpix_y << RSZ_TILE_SUBPIXEL_BITS) +
 			out->vert_step - 1) / out->vert_step;
 
-		out->vert_int_ofst = subpix_y >> TILE_SCALER_SUBPIXEL_SHIFT;
+		out->vert_int_ofst = subpix_y >> RSZ_TILE_SUBPIXEL_BITS;
 		out->vert_sub_ofst = subpix_y -
-			((s64)out->vert_int_ofst << TILE_SCALER_SUBPIXEL_SHIFT);
+			((s64)out->vert_int_ofst << RSZ_TILE_SUBPIXEL_BITS);
 	}
 
 	/* always enable hor and ver */
