@@ -2419,7 +2419,14 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		return IRQ_NONE;
 	}
 
+	status = readl(dsi->regs + DSI_INTSTA);
+	if (!status) {
+		ret = IRQ_NONE;
+		goto out;
+	}
+
 	mtk_crtc = dsi->ddp_comp.mtk_crtc;
+
 	if (!mtk_crtc) {
 		DDPPR_ERR("%s mtk_crtc is NULL\n", __func__);
 		ret = IRQ_NONE;
@@ -2433,17 +2440,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	}
 
 	priv = mtk_crtc->base.dev->dev_private;
+
 	if (!priv) {
 		DDPPR_ERR("%s priv is NULL\n", __func__);
-		ret = IRQ_NONE;
-		goto out;
-	}
-
-	if (priv->dpc_dev)
-		pm_runtime_get_sync(priv->dpc_dev);
-
-	status = readl(dsi->regs + DSI_INTSTA);
-	if (!status) {
 		ret = IRQ_NONE;
 		goto out;
 	}
@@ -2655,9 +2654,6 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 out:
 	mtk_drm_top_clk_isr_put("dsi_irq");
-
-	if (priv->dpc_dev)
-		pm_runtime_put_sync(priv->dpc_dev);
 
 	return ret;
 }
