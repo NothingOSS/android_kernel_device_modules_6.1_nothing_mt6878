@@ -665,11 +665,8 @@ void vip_dequeue_task(void *unused, struct rq *rq, struct task_struct *p, int fl
 	 * runqueue.
 	 */
 
-	if (READ_ONCE(p->__state) != TASK_RUNNING) {
+	if (READ_ONCE(p->__state) != TASK_RUNNING)
 		vts->total_exec = 0;
-		vts->basic_vip = false;
-		vts->vvip = false;
-	}
 }
 
 inline bool vip_fair_task(struct task_struct *p)
