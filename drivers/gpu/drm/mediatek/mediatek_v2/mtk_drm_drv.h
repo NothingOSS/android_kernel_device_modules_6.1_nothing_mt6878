@@ -402,6 +402,7 @@ extern struct platform_driver mtk_disp_merge_driver;
 extern struct platform_driver mtk_dp_tx_driver;
 extern struct platform_driver mtk_dp_intf_driver;
 extern struct platform_driver mtk_disp_y2r_driver;
+extern struct platform_driver mtk_disp_r2y_driver;
 extern struct platform_driver mtk_disp_dlo_async_driver;
 extern struct platform_driver mtk_disp_dli_async_driver;
 extern struct platform_driver mtk_disp_inlinerotate_driver;

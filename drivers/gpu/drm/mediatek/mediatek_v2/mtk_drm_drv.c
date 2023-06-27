@@ -8100,6 +8100,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_Y2R},
 	{.compatible = "mediatek,mt6886-disp-y2r",
 	 .data = (void *)MTK_DISP_Y2R},
+	{.compatible = "mediatek,mt6989-disp1-r2y",
+	 .data = (void *)MTK_DISP_R2Y},
 	/* MML */
 	{.compatible = "mediatek,mt6983-mml_rsz",
 	 .data = (void *)MTK_MML_RSZ},
@@ -8620,6 +8622,7 @@ SKIP_OVLSYS_CONFIG:
 		    || comp_type == MTK_DP_INTF || comp_type == MTK_DISP_DPTX
 		    || comp_type == MTK_DISP_Y2R || comp_type == MTK_DISP_INLINE_ROTATE
 		    || comp_type == MTK_DISP_DLI_ASYNC || comp_type == MTK_DISP_DLO_ASYNC
+		    || comp_type == MTK_DISP_R2Y
 		) {
 			dev_info(dev, "Adding component match for %s, comp_id:%d\n",
 				 node->full_name, comp_id);
@@ -8907,6 +8910,7 @@ static struct platform_driver *const mtk_drm_drivers[] = {
 	&mtk_disp_dsc_driver,
 	&mtk_dp_tx_driver,
 	&mtk_disp_y2r_driver,
+	&mtk_disp_r2y_driver,
 	&mtk_disp_inlinerotate_driver,
 	&mtk_disp_dlo_async_driver,
 	&mtk_disp_dli_async_driver,
