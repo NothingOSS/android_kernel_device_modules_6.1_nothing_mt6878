@@ -46,6 +46,7 @@
 #define SLBC_CB
 /* #define SLBC_CB_SLEEP */
 /* #define SLBC_CB_TEST */
+/* #define SLBC_DUMP_DATA */
 
 #define SLBC_WAY_A_BASE			0x0f000000
 #define SLBC_WAY_B_BASE			0x780000000
@@ -1083,6 +1084,7 @@ int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable)
 	return 0;
 }
 
+#ifdef SLBC_DUMP_DATA
 static void slbc_dump_data(struct seq_file *m, struct slbc_data *d)
 {
 	unsigned int uid = d->uid;
@@ -1108,6 +1110,7 @@ static void slbc_dump_data(struct seq_file *m, struct slbc_data *d)
 	seq_printf(m, "ref: %d\n", d->ref);
 	seq_printf(m, "pwr_ref: %d\n", d->pwr_ref);
 }
+#endif
 
 static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 {
@@ -1203,6 +1206,7 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 					slbc_uid_str[i], uid_ref[i]);
 	}
 
+#ifdef SLBC_DUMP_DATA
 	mutex_lock(&slbc_ops_lock);
 	for (i = 0; i < ARRAY_SIZE(p_config); i++) {
 		struct slbc_data *d = ops_config[i].data;
@@ -1211,6 +1215,7 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 			slbc_dump_data(m, d);
 	}
 	mutex_unlock(&slbc_ops_lock);
+#endif
 
 	if (req_val_count) {
 		seq_printf(m, "stat req count:%lld min:%lld avg:%lld max:%lld\n",
