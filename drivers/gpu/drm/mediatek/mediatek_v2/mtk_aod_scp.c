@@ -14,6 +14,7 @@
 #include "mtk_drm_drv.h"
 #include "scp.h"
 #include "mtk_log.h"
+#include "mtk_drm_crtc.h"
 
 struct aod_scp_ipi_receive_info {
 	unsigned int aod_id;
@@ -22,6 +23,8 @@ struct aod_scp_ipi_receive_info {
 static int CFG_DISPLAY_WIDTH;      //(1080)
 static int CFG_DISPLAY_HEIGHT;     //(2340)
 static int CFG_DISPLAY_VREFRESH;
+static unsigned int aod_mmsys_id;
+
 #define ALIGN_TO(x, n)  (((x) + ((n) - 1)) & ~((n) - 1))
 #define MTK_FB_ALIGNMENT 32
 #define CFG_DISPLAY_ALIGN_WIDTH   ALIGN_TO(CFG_DISPLAY_WIDTH, MTK_FB_ALIGNMENT)
@@ -134,6 +137,7 @@ void mtk_module_backup(struct drm_crtc *crtc, unsigned int ulps_wakeup_prd)
 	char *bkup_buf, *scp_sh_mem, *module_base;
 	void __iomem *va = 0;
 	int i, size;
+	struct mtk_drm_private *priv;
 
 	if (!AOD_STAT_MATCH(AOD_STAT_ENABLE) || !crtc)
 		return;
@@ -141,6 +145,12 @@ void mtk_module_backup(struct drm_crtc *crtc, unsigned int ulps_wakeup_prd)
 	CFG_DISPLAY_WIDTH = crtc->state->mode.hdisplay;
 	CFG_DISPLAY_HEIGHT = crtc->state->mode.vdisplay;
 	CFG_DISPLAY_VREFRESH = drm_mode_vrefresh(&crtc->state->mode);
+
+	if (crtc && crtc->dev && crtc->dev->dev_private) {
+		priv = crtc->dev->dev_private;
+		if (priv && priv->data)
+			aod_mmsys_id = priv->data->mmsys_id;
+	}
 
 	scp_sh_mem = (char *)scp_get_reserve_mem_virt(SCP_AOD_MEM_ID);
 
@@ -486,13 +496,18 @@ int mtk_aod_scp_doze_update(int doze)
 		return 0;
 
 	if (doze) {
-		mtkfb_set_backlight_level_AOD(1800);
-		AOD_STAT_SET(AOD_STAT_ACTIVE);
-		mtk_prepare_config_map();
-		DDPMSG("Ahsin mdelay 10000\n");
-		mtk_aod_scp_ipi_send(0);
-		mtk_aod_scp_set_semaphore_noirq(0);
-		mdelay(10000);
+		if (aod_mmsys_id == MMSYS_MT6989) {
+			mtkfb_set_backlight_level_AOD(1800);
+			AOD_STAT_SET(AOD_STAT_ACTIVE);
+			mtk_prepare_config_map();
+			DDPMSG("Ahsin mdelay 10000\n");
+			mtk_aod_scp_ipi_send(0);
+			mtk_aod_scp_set_semaphore_noirq(0);
+			mdelay(10000);
+		} else {
+			AOD_STAT_SET(AOD_STAT_ACTIVE);
+			mtk_prepare_config_map();
+		}
 	} else
 		AOD_STAT_CLR(AOD_STAT_ACTIVE);
 
