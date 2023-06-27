@@ -5573,7 +5573,7 @@ void mtk_drm_top_clk_prepare_enable(struct drm_device *drm)
 	//set_swpm_disp_active(true);
 	mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 	mtk_vidle_config_ff(false);
-	mtk_vidle_enable(false, NULL);
+	mtk_vidle_enable(mtk_vidle_is_ff_enabled(), NULL);
 
 	for (i = 0; i < priv->top_clk_num; i++) {
 		if (IS_ERR(priv->top_clk[i])) {
@@ -5634,6 +5634,7 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
 		clk_disable_unprepare(priv->top_clk[i]);
 	}
 
+	mtk_vidle_enable(false, NULL);
 	mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 
 	DRM_MMP_MARK(top_clk, atomic_read(&top_clk_ref),

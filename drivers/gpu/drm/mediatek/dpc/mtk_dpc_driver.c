@@ -447,6 +447,7 @@ EXPORT_SYMBOL(dpc_dc_force_enable);
 
 void dpc_enable(bool en)
 {
+#ifdef IF_ZERO
 	s32 cur_dpc_en_cnt;
 
 	if (en) {
@@ -466,14 +467,17 @@ void dpc_enable(bool en)
 			return;
 		}
 	}
-
+#endif
 	if (dpc_pm_ctrl(true))
 		return;
 
-	if (en)
+	if (en) {
 		writel(DISP_DPC_EN | DISP_DPC_DT_EN, dpc_base + DISP_REG_DPC_EN);
-	else
+		dpc_mmp(config, MMPROFILE_FLAG_PULSE, U32_MAX, 1);
+	} else {
 		writel(0, dpc_base + DISP_REG_DPC_EN);
+		dpc_mmp(config, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
+	}
 
 	/* enable gce event */
 	writel(en, dpc_base + DISP_REG_DPC_EVENT_EN);
@@ -616,18 +620,20 @@ void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 		writel(0x30c, dpc_base + 0xd44);
 		writel(0x30c, dpc_base + 0xe44);
 
-		dpc_mtcmos_vote(DPC_SUBSYS_DISP0, 7, 0);
-		dpc_mtcmos_vote(DPC_SUBSYS_DISP1, 7, 0);
-		dpc_mtcmos_vote(DPC_SUBSYS_OVL0, 7, 0);
-		dpc_mtcmos_vote(DPC_SUBSYS_OVL1, 7, 0);
-		dpc_mtcmos_vote(DPC_SUBSYS_MML1, 7, 0);
+		dpc_mtcmos_vote(DPC_SUBSYS_DISP0, 6, 0);
+		dpc_mtcmos_vote(DPC_SUBSYS_DISP1, 6, 0);
+		dpc_mtcmos_vote(DPC_SUBSYS_OVL0, 6, 0);
+		dpc_mtcmos_vote(DPC_SUBSYS_OVL1, 6, 0);
+		dpc_mtcmos_vote(DPC_SUBSYS_MML1, 6, 0);
 	} else {
-		dpc_mtcmos_vote(DPC_SUBSYS_DISP0, 7, 1);
-		dpc_mtcmos_vote(DPC_SUBSYS_DISP1, 7, 1);
-		dpc_mtcmos_vote(DPC_SUBSYS_OVL0, 7, 1);
-		dpc_mtcmos_vote(DPC_SUBSYS_OVL1, 7, 1);
-		dpc_mtcmos_vote(DPC_SUBSYS_MML1, 7, 1);
+		dpc_mtcmos_vote(DPC_SUBSYS_DISP0, 6, 1);
+		dpc_mtcmos_vote(DPC_SUBSYS_DISP1, 6, 1);
+		dpc_mtcmos_vote(DPC_SUBSYS_OVL0, 6, 1);
+		dpc_mtcmos_vote(DPC_SUBSYS_OVL1, 6, 1);
+		dpc_mtcmos_vote(DPC_SUBSYS_MML1, 6, 1);
 	}
+
+	dpc_mmp(config, MMPROFILE_FLAG_PULSE, BIT(subsys), en);
 
 	dpc_pm_ctrl(false);
 }

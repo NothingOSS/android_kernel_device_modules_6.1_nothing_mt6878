@@ -43,7 +43,7 @@ struct mtk_disp_dpc_data {
 	struct mtk_disp_vidle_para *mtk_disp_vidle_flag;
 };
 
-
+bool mtk_vidle_is_ff_enabled(void);
 void mtk_vidle_sync_mmdvfsrc_status_rc(unsigned int rc_en);
 void mtk_vidle_sync_mmdvfsrc_status_wdt(unsigned int wdt_en);
 void mtk_vidle_flag_init(void *crtc);

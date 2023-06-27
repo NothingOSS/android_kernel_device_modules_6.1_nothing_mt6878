@@ -11842,7 +11842,6 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 	struct mtk_crtc_state *mtk_crtc_state = NULL;
 	const enum mtk_ddp_comp_id id[] = {DDP_COMPONENT_INLINE_ROTATE0,
 					   DDP_COMPONENT_INLINE_ROTATE1};
-	static bool dpc_controlling;
 
 	if (!crtc || !cmdq_handle)
 		return;
@@ -11869,20 +11868,20 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 		fallthrough;
 	case MML_DIRECT_LINKING:
 		if (priv->dpc_dev) {
-			if (!dpc_controlling) {
-				dpc_controlling = true;
+			if (mtk_vidle_is_ff_enabled()) {
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000414,
+					1 << DISP_VIDLE_USER_OTHER, 1 << DISP_VIDLE_USER_OTHER);
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000414,
+					1 << DISP_VIDLE_USER_OTHER, 1 << DISP_VIDLE_USER_OTHER);
+				cmdq_pkt_clear_event(cmdq_handle,
+					mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+				cmdq_pkt_wfe(cmdq_handle,
+					mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+			} else {
 				mtk_vidle_config_ff(true);
-				mtk_vidle_enable(true, crtc);
+				mtk_vidle_enable(true, NULL);
 				pm_runtime_put_sync(priv->dpc_dev);
 			}
-
-			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000414,
-				1 << DISP_VIDLE_USER_OTHER, 1 << DISP_VIDLE_USER_OTHER);
-			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000414,
-				1 << DISP_VIDLE_USER_OTHER, 1 << DISP_VIDLE_USER_OTHER);
-			cmdq_pkt_clear_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
-			cmdq_pkt_wfe(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 		}
 
 		mml_drm_racing_config_sync(mml_ctx, cmdq_handle);
@@ -11890,11 +11889,10 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 	case MML_STOP_LINKING:
 		DDP_PROFILE("MML_STOP_LINKING\n");
 		mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle, false);
-		if (priv->dpc_dev && dpc_controlling) {
-			dpc_controlling = false;
+		if (priv->dpc_dev && mtk_vidle_is_ff_enabled()) {
 			pm_runtime_get_sync(priv->dpc_dev);
 			mtk_vidle_config_ff(false);
-			mtk_vidle_enable(false, crtc);
+			mtk_vidle_enable(false, NULL);
 		}
 		break;
 	default:

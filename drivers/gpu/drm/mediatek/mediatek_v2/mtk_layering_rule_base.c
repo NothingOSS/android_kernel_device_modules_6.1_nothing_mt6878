@@ -3157,7 +3157,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 		if (mml_comp && (mml_comp == rpo_comp)) {
 			if (exclusive_chance && (mml_comp != comp_id_list[comp_id_nr - 1]) &&
 				(priv->data->mmsys_id != MMSYS_MT6897)) {
-				DDPMSG("MML RPO use the same OVL,got exclusive_chance\n");
+				DDPMSG("MML RPO use the same OVL, got exclusive_chance\n");
 				layer_map |= (layer_map_idx << 1);
 				i--;
 				continue;
@@ -4016,7 +4016,14 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 	mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
 	if (mml_ctx != NULL) {
 		mode = mml_drm_query_cap(mml_ctx, mml_info);
-	    DDPDBG("%s, mml_drm_query_cap mode:%d\n", __func__, mode);
+		DDPDBG("%s, mml_drm_query_cap mode:%d\n", __func__, mode);
+
+		if (mode == MML_MODE_DIRECT_LINK) {
+			if (mml_info->dest[0].data.width & 0x1) {
+				mode = MML_MODE_MML_DECOUPLE;
+				DDPINFO("%s DL width odd, to DC\n", __func__);
+			}
+		}
 	} else
 		return ret;
 

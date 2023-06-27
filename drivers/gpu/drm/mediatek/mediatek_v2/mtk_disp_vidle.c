@@ -24,7 +24,7 @@
 #include "mtk_drm_crtc.h"
 #include "platform/mtk_drm_platform.h"
 
-static atomic_t g_ff_enabled;
+static atomic_t g_ff_enabled = ATOMIC_INIT(0);
 
 struct mtk_disp_vidle_para mtk_disp_vidle_flag = {
 	0,	/* vidle_en */
@@ -164,6 +164,11 @@ void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop)
 		mtk_vidle_stop();
 }
 
+bool mtk_vidle_is_ff_enabled(void)
+{
+	return (bool)atomic_read(&g_ff_enabled);
+}
+
 void mtk_vidle_enable(bool en, void *_crtc)
 {
 	if (!disp_dpc_driver.dpc_enable)
@@ -178,7 +183,7 @@ void mtk_vidle_enable(bool en, void *_crtc)
 		return;
 	}
 
-	if (en == (bool)atomic_read(&g_ff_enabled))
+	if (en == mtk_vidle_is_ff_enabled())
 		return;
 	atomic_set(&g_ff_enabled, en);
 
@@ -217,7 +222,7 @@ void mtk_vidle_config_ff(bool en)
 
 	//if (en == (bool)atomic_read(&g_ff_enabled))
 	//	return;
-	atomic_set(&g_ff_enabled, en);
+	// atomic_set(&g_ff_enabled, en);
 
 	if (disp_dpc_driver.dpc_config)
 		disp_dpc_driver.dpc_config(DPC_SUBSYS_DISP, en);

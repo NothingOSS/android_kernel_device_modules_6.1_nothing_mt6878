@@ -23,6 +23,7 @@ static inline void dpc_mmp_init(void) {}
 
 struct dpc_mmp_events_t {
 	mmp_event folder;
+	mmp_event config;
 	// mmp_event dt_te;
 	// mmp_event dt_sof;
 	// mmp_event dsi_start;
