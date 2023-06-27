@@ -68,6 +68,37 @@ struct mml_drm_ctx {
 	struct mml_tile_cache tile_cache[MML_PIPE_CNT];
 };
 
+static u32 afbc_drm_to_mml(u32 drm_format)
+{
+	switch (drm_format) {
+	case MML_FMT_RGBA8888:
+		return MML_FMT_RGBA8888_AFBC;
+	case MML_FMT_RGBA1010102:
+		return MML_FMT_RGBA1010102_AFBC;
+	case MML_FMT_NV12:
+		return MML_FMT_YUV420_AFBC;
+	case MML_FMT_NV12_10L:
+		return MML_FMT_YUV420_10P_AFBC;
+	default:
+		mml_err("[drm]%s unknown drm format %#x", __func__, drm_format);
+		return drm_format;
+	}
+}
+
+#define MML_AFBC	DRM_FORMAT_MOD_ARM_AFBC( \
+	AFBC_FORMAT_MOD_BLOCK_SIZE_32x8 | AFBC_FORMAT_MOD_SPLIT)
+
+static u32 format_drm_to_mml(u32 drm_format, u64 modifier)
+{
+	/* check afbc modifier with rdma/wrot supported
+	 * 32x8 block and split mode
+	 */
+	if (modifier == MML_AFBC && !MML_FMT_COMPRESS(drm_format))
+		return afbc_drm_to_mml(drm_format);
+
+	return drm_format;
+}
+
 enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *ctx,
 				struct mml_frame_info *info)
 {
@@ -92,6 +123,8 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *ctx,
 		mml_err("[drm]invalid src mml color format %#010x", info->src.format);
 		goto not_support;
 	}
+
+	info->src.format = format_drm_to_mml(info->src.format, info->src.modifier);
 
 	if (MML_FMT_BLOCK(info->src.format)) {
 		if ((info->src.width & 0x0f) || (info->src.height & 0x1f)) {
@@ -237,37 +270,6 @@ void mml_drm_try_frame(struct mml_drm_ctx *ctx, struct mml_frame_info *info)
 			info->src.format, info->src.width);
 }
 EXPORT_SYMBOL_GPL(mml_drm_try_frame);
-
-static u32 afbc_drm_to_mml(u32 drm_format)
-{
-	switch (drm_format) {
-	case MML_FMT_RGBA8888:
-		return MML_FMT_RGBA8888_AFBC;
-	case MML_FMT_RGBA1010102:
-		return MML_FMT_RGBA1010102_AFBC;
-	case MML_FMT_NV12:
-		return MML_FMT_YUV420_AFBC;
-	case MML_FMT_NV12_10L:
-		return MML_FMT_YUV420_10P_AFBC;
-	default:
-		mml_err("[drm]%s unknown drm format %#x", __func__, drm_format);
-		return drm_format;
-	}
-}
-
-#define MML_AFBC	DRM_FORMAT_MOD_ARM_AFBC( \
-	AFBC_FORMAT_MOD_BLOCK_SIZE_32x8 | AFBC_FORMAT_MOD_SPLIT)
-
-static u32 format_drm_to_mml(u32 drm_format, u64 modifier)
-{
-	/* check afbc modifier with rdma/wrot supported
-	 * 32x8 block and split mode
-	 */
-	if (modifier == MML_AFBC && !MML_FMT_COMPRESS(drm_format))
-		return afbc_drm_to_mml(drm_format);
-
-	return drm_format;
-}
 
 static bool check_frame_wo_change(struct mml_submit *submit,
 				  struct mml_frame_config *cfg)
