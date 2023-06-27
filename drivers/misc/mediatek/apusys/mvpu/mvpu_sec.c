@@ -2007,14 +2007,18 @@ END:
 int mvpu_load_img(struct device *dev)
 {
 	int ret = 0;
+#ifndef MVPU_ALGO_IMG_DISABLE
 	struct device_node *mvpu_sec_mem_node;
 	struct reserved_mem *mvpu_algo;
 	phys_addr_t pa;
 	phys_addr_t size;
+#endif
 
-	if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
-		pr_info("[MVPU] %s start\n", __func__);
-
+#ifdef MVPU_ALGO_IMG_DISABLE
+	mvpu_algo_available = false;
+	pr_info("[MVPU] %s algo img disable\n", __func__);
+	goto END;
+#else
 	mvpu_sec_mem_node = of_find_compatible_node(NULL, NULL, "mediatek,apu_mvpu_algo");
 	if (!mvpu_sec_mem_node) {
 		dev_info(dev, "(f:%s/l:%d) DT,mediatek,mvpu_algo not found\n", __func__, __LINE__);
@@ -2069,6 +2073,7 @@ int mvpu_load_img(struct device *dev)
 		pr_info("[MVPU][IMG] [WARN] get mvpu_algo.img size error, PTN: 0x%08x, KNL: 0x%08x\n",
 					ptn_img_size, knl_img_size);
 	}
+#endif
 
 END:
 	return ret;
