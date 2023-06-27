@@ -96,6 +96,7 @@ f kernel/trace/trace.c
 f kernel/trace/trace_events.c
 f kernel/workqueue.c
 f lib/dynamic_debug.c
+f lib/maple_tree.c
 f mm/backing-dev.c
 f mm/kasan/common.c
 f mm/page-writeback.c
