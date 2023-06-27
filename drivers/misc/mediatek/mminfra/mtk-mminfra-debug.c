@@ -15,6 +15,7 @@
 #include <linux/slab.h>
 #include <linux/sched/clock.h>
 #include <linux/timer.h>
+#include <linux/delay.h>
 #include "cmdq-util.h"
 #include "mtk-smi-dbg.h"
 #include "tinysys-scmi.h"
@@ -47,6 +48,9 @@ struct mminfra_dbg {
 	struct device *comm_dev[MAX_SMI_COMM_NUM];
 	struct notifier_block nb;
 	u32 gals_sel[MMINFRA_GALS_NR];
+	u32 mm_voter_base;
+	u32 mm_mtcmos_base;
+	u32 mm_mtcmos_mask;
 };
 
 static struct notifier_block mtk_pd_notifier;
@@ -96,6 +100,11 @@ static bool skip_apsrc;
 #define	MM_SYS_SUSPEND		GIPC4_SETCLR_BIT_1
 #define	MM_INFRA_OFF		GIPC4_SETCLR_BIT_2
 #define	MM_INFRA_LOG		GIPC4_SETCLR_BIT_3
+
+#define MM_MON_CNT		(100)
+
+u32 mm_pwr_cnt;
+u32 voter_cnt[32] = {0};
 
 static bool mminfra_check_scmi_status(void)
 {
@@ -325,6 +334,77 @@ static int mtk_mminfra_pd_callback(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
+#if IS_ENABLED(CONFIG_MTK_MMINFRA_DEBUG)
+
+static int mminfra_voter_mon(void *data)
+{
+	void __iomem *voter_addr;
+	u32 val;
+	u32 bit;
+	u32 mask;
+	u32 cnt = 0;
+
+	if (!dbg || !dbg->mm_mtcmos_base || !dbg->mm_mtcmos_mask) {
+		pr_notice("%s skip\n", __func__);
+		return 0;
+	}
+
+	pr_notice("%s set mm pwr on\n", __func__);
+	pm_runtime_get(dbg->comm_dev[0]);
+	voter_addr = ioremap(dbg->mm_voter_base, 0x4);
+	while (!kthread_should_stop()) {
+		val = readl(voter_addr);
+		for(bit = 0; bit < 32; bit++) {
+			mask = (1<<bit);
+			if ((val & mask) == mask)
+				voter_cnt[bit]++;
+		}
+		cnt++;
+		if (cnt == MM_MON_CNT) {
+			pr_notice("%s ++++++++++, MM_MON_CNT = %u\n", __func__, MM_MON_CNT);
+			for(bit = 0; bit < 32; bit+=4)
+				pr_notice("bit=%u~%u,[%u][%u][%u][%u]\n", bit, bit+3,
+					voter_cnt[bit],voter_cnt[bit+1],
+					voter_cnt[bit+2],voter_cnt[bit+3]);
+			pr_notice("%s ----------\n", __func__);
+			for(bit = 0; bit < 32; bit++)
+				voter_cnt[bit] = 0;
+			cnt = 0;
+		}
+		msleep(20);
+	}
+	return 0 ;
+}
+
+static int mminfra_power_mon(void *data)
+{
+	void __iomem *mtcmos_addr;
+	u32 val;
+	u32 cnt = 0;
+
+	if (!dbg || !dbg->mm_mtcmos_base || !dbg->mm_mtcmos_mask) {
+		pr_notice("%s skip\n", __func__);
+		return 0;
+	}
+
+	mtcmos_addr = ioremap(dbg->mm_mtcmos_base, 0x4);
+	while (!kthread_should_stop()) {
+		val = readl(mtcmos_addr);
+		if ((val & dbg->mm_mtcmos_mask) == dbg->mm_mtcmos_mask)
+			mm_pwr_cnt++;//pwr on;
+		cnt++;
+		if (cnt == MM_MON_CNT) {
+			pr_notice("%s mminfra power_on ratio[%u/%u]\n",
+				__func__, mm_pwr_cnt, MM_MON_CNT);
+			mm_pwr_cnt = 0;
+			cnt = 0;
+		}
+		msleep(20);
+	}
+	return 0 ;
+}
+#endif
+
 int mminfra_scmi_test(const char *val, const struct kernel_param *kp)
 {
 	int ret, arg0;
@@ -362,7 +442,6 @@ static struct kernel_param_ops scmi_test_ops = {
 };
 module_param_cb(scmi_test, &scmi_test_ops, NULL, 0644);
 MODULE_PARM_DESC(scmi_test, "scmi test");
-
 
 int mminfra_ut(const char *val, const struct kernel_param *kp)
 {
@@ -411,6 +490,14 @@ int mminfra_ut(const char *val, const struct kernel_param *kp)
 			__func__, bkrs_reg_pa, readl_relaxed(test_base), value);
 		iounmap(test_base);
 		pm_runtime_put_sync(dev);
+		break;
+	case 2:
+		pr_notice("%s: test_case(%d) enable mminfra_voter_mon\n", __func__, test_case);
+		kthread_run(mminfra_voter_mon, NULL, "mminfra_voter_mon");
+		break;
+	case 3:
+		pr_notice("%s: test_case(%d) enable mminfra_power_mon\n", __func__, test_case);
+		kthread_run(mminfra_power_mon, NULL, "mminfra_power_mon");
 		break;
 	default:
 		pr_notice("%s: wrong test_case(%d)\n", __func__, test_case);
@@ -672,6 +759,10 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 		dbg->spm_base = ioremap(bkrs_reg_pa, 0x1000);
 	} else
 		dbg->spm_base = NULL;
+
+	of_property_read_u32(node, "mm-voter-base", &dbg->mm_voter_base);
+	of_property_read_u32(node, "mm-mtcmos-base", &dbg->mm_mtcmos_base);
+	of_property_read_u32(node, "mm-mtcmos-mask", &dbg->mm_mtcmos_mask);
 
 	mminfra_check_scmi_status();
 
