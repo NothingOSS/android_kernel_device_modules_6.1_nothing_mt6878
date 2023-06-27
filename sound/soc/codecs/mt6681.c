@@ -450,6 +450,34 @@ static void mt6681_reset_capture_gpio(struct mt6681_priv *priv)
 #endif
 }
 
+#if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
+static void mt6681_set_vow_gpio(struct mt6681_priv *priv)
+{
+	unsigned int value = 0;
+	/* vow gpio set (interrupt) */
+	regmap_update_bits(priv->regmap, MT6681_GPIO_MODE3_SET, 0x3, 0x3);
+
+	regmap_read(priv->regmap, MT6681_GPIO_MODE3, &value);
+	dev_info(priv->dev, "%s(), MT6681_GPIO_MODE3=0x%x\n",
+		 __func__, value);
+}
+
+static void mt6681_reset_vow_gpio(struct mt6681_priv *priv)
+{
+	unsigned int value = 0;
+	/* set pad_aud_*_miso to GPIO mode and dir input
+	 * reason:
+	 * pad_aud_dat_miso*, because the pin is used as boot strap
+	 */
+	/* vow gpio clear (data) */
+	regmap_update_bits(priv->regmap, MT6681_GPIO_MODE3_CLR, 0x3, 0X3);
+
+	regmap_read(priv->regmap, MT6681_GPIO_MODE3, &value);
+	dev_info(priv->dev, "%s(), MT6681_GPIO_MODE3=0x%x\n",
+		 __func__, value);
+}
+#endif
+
 /* use only when not govern by DAPM */
 static void mt6681_set_dcxo(struct mt6681_priv *priv, bool enable)
 {
@@ -7302,6 +7330,33 @@ static int mt_vow_digital_cfg_event(struct snd_soc_dapm_widget *w,
 	}
 	return 0;
 }
+
+static int mt_aif_vow_tx_event(struct snd_soc_dapm_widget *w,
+			       struct snd_kcontrol *kcontrol,
+			       int event)
+{
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	unsigned int r_miso1_enable = priv->audio_r_miso1_enable;
+
+	dev_info(priv->dev, "%s, set vow tx event = %d, audio_r_miso1_enable = %d\n",
+		 __func__, event, r_miso1_enable);
+
+	if (priv->audio_r_miso1_enable) {
+		switch (event) {
+		case SND_SOC_DAPM_PRE_PMU:
+			mt6681_set_vow_gpio(priv);
+			break;
+		case SND_SOC_DAPM_POST_PMD:
+			mt6681_reset_vow_gpio(priv);
+			break;
+		default:
+			break;
+		}
+	}
+
+	return 0;
+}
 #endif
 
 static int mt_aud208_event(struct snd_soc_dapm_widget *w,
@@ -13658,9 +13713,8 @@ static const struct snd_soc_dapm_widget mt6681_dapm_widgets[] = {
 			    SND_SOC_DAPM_POST_PMD),
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
 	SND_SOC_DAPM_AIF_OUT_E("VOW TX", "VOW Capture", 0, SND_SOC_NOPM, 0, 0,
-			       NULL,
-			       SND_SOC_DAPM_WILL_PMU | SND_SOC_DAPM_PRE_PMU
-				       | SND_SOC_DAPM_POST_PMD),
+			       mt_aif_vow_tx_event,
+			       SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 #endif
 };
 
@@ -18628,8 +18682,8 @@ static void keylock_set(struct mt6681_priv *priv)
 static void keylock_reset(struct mt6681_priv *priv)
 {
 	/* key unlock */
-	regmap_write(priv->regmap, MT6681_TOP_DIG_WPK, 0x18);
-	regmap_write(priv->regmap, MT6681_TOP_DIG_WPK_H, 0x19);
+	regmap_write(priv->regmap, MT6681_TOP_DIG_WPK, 0x81);
+	regmap_write(priv->regmap, MT6681_TOP_DIG_WPK_H, 0x66);
 	regmap_write(priv->regmap, MT6681_TOP_TMA_KEY, 0xE7);
 	regmap_write(priv->regmap, MT6681_TOP_TMA_KEY_H, 0xE6);
 	regmap_write(priv->regmap, MT6681_PSC_WPK_L, 0x29);
@@ -39704,6 +39758,16 @@ static int mt6681_parse_dt(struct mt6681_priv *priv)
 			__func__);
 		priv->dmic_one_wire_mode = 0;
 	}
+
+	ret = of_property_read_u32(np, "audio-r-miso1-enable",
+				   &priv->audio_r_miso1_enable);
+
+	if (ret) {
+		dev_dbg(priv->dev, "%s() failed to read audio_r_miso1_enable\n",
+			__func__);
+		priv->audio_r_miso1_enable = 0;
+	}
+
 	ret = of_property_read_u32_array(np, "mediatek,mic-type", mic_type_mux,
 					 mux_num);
 	if (ret) {

@@ -503,6 +503,7 @@ struct mt6681_priv {
 	int mic_hifi_mode;
 	int mic_ulcf_en;
 	unsigned int vd105;
+	unsigned int audio_r_miso1_enable;
 
 	/* hw version */
 	int hw_ver;
