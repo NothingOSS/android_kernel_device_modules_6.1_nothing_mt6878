@@ -652,10 +652,10 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
 	struct cpufreq_policy *policy = sg_policy->policy;
 	struct rq *rq;
-	struct cpuidle_state *idle = NULL;
 	unsigned long umin, umax;
 	unsigned long util = 0, max = 1;
 	unsigned int j, max_cpu = 0;
+	int idle = 0;
 
 	for_each_cpu(j, policy->cpus) {
 		struct sugov_cpu *j_sg_cpu = &per_cpu(sugov_cpu, j);
@@ -665,11 +665,8 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 		sugov_iowait_apply(j_sg_cpu, time);
 		j_util = j_sg_cpu->util;
 		j_max = j_sg_cpu->max;
-		if (ignore_idle_ctrl) {
-			rcu_read_lock();
-			idle = idle_get_state(cpu_rq(j));
-			rcu_read_unlock();
-		}
+		if (ignore_idle_ctrl)
+			idle = available_idle_cpu(j);
 
 		if (trace_sugov_ext_util_enabled()) {
 			rq = cpu_rq(j);

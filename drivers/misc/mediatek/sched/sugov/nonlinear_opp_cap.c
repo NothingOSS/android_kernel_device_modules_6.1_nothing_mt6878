@@ -178,14 +178,15 @@ bool set_dsu_target_freq(struct cpufreq_policy *policy)
 			trace_sugov_ext_dsu_freq_vote(wl_type, UINT_MAX, UINT_MAX, UINT_MAX);
 		return false;
 	}
-	rcu_read_lock();
+
 	for (i = 0; i < pd_count; i++) {
 		pd_info = &pd_capacity_tbl[i];
 		cpu = cpumask_first(&pd_info->cpus);
-		if (pd_info->nr_cpus == 1 && idle_get_state(cpu_rq(cpu))) {
-			freq_state.dsu_freq_vote[i] = 0;
-			goto skip_single_idle_cpu;
-		}
+		if (pd_info->nr_cpus == 1)
+			if (available_idle_cpu(cpu)) {
+				freq_state.dsu_freq_vote[i] = 0;
+				goto skip_single_idle_cpu;
+			}
 
 		ps = pd_get_freq_ps(wl_type, cpu, freq_state.cpu_freq[i], &opp);
 		freq_state.dsu_freq_vote[i] = ps->dsu_freq;
@@ -198,7 +199,7 @@ skip_single_idle_cpu:
 			trace_sugov_ext_dsu_freq_vote(wl_type, i,
 				 freq_state.cpu_freq[i], freq_state.dsu_freq_vote[i]);
 	}
-	rcu_read_unlock();
+
 	freq_state.dsu_target_freq = dsu_target_freq;
 	c->sb_ch  = dsu_target_freq;
 	if (dsu_target_freq != freq_state.dsu_target_freq_last) {
