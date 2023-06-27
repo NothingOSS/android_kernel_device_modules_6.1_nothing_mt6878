@@ -416,6 +416,7 @@ int fpsgo_get_acquire_queue_pair_by_group(int tid, int *dep_arr, int dep_arr_num
 		unsigned long long buffer_id);
 int fpsgo_check_cam_do_frame(void);
 int fpsgo_check_all_render_blc(int render_tid, unsigned long long buffer_id);
+int fpsgo_check_exist_queue_SF(int tgid);
 struct acquire_info *fpsgo_add_acquire_info(int p_pid, int c_pid, int c_tid,
 	int api, unsigned long long buffer_id, unsigned long long ts);
 struct acquire_info *fpsgo_search_acquire_info(int tid, unsigned long long buffer_id);

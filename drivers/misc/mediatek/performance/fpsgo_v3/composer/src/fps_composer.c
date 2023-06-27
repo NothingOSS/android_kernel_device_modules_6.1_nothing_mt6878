@@ -731,6 +731,8 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 			fpsgo_check_is_cam_apk(f_render->tgid))
 			f_render->frame_type = fpsgo_com_check_BQ_type(&f_render->bq_type,
 						pid, f_render->buffer_id);
+		if (f_render->frame_type == NON_VSYNC_ALIGNED_TYPE)
+			f_render->frame_type = fpsgo_check_exist_queue_SF(f_render->tgid);
 	}
 
 	switch (f_render->frame_type) {

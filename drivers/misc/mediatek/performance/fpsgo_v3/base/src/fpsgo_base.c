@@ -2187,6 +2187,27 @@ int fpsgo_check_all_render_blc(int render_tid, unsigned long long buffer_id)
 	return ret;
 }
 
+int fpsgo_check_exist_queue_SF(int tgid)
+{
+	int ret = BY_PASS_TYPE;
+	struct render_info *r_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
+		r_iter = rb_entry(rbn, struct render_info, render_key_node);
+
+		if (r_iter->tgid != tgid)
+			continue;
+
+		if (r_iter->queue_SF) {
+			ret = NON_VSYNC_ALIGNED_TYPE;
+			break;
+		}
+	}
+
+	return ret;
+}
+
 struct acquire_info *fpsgo_search_acquire_info(int tid, unsigned long long buffer_id)
 {
 	struct acquire_info *iter = NULL;
