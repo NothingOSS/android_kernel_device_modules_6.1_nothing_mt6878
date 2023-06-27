@@ -16,7 +16,8 @@
 #include <linux/types.h>
 #include <linux/miscdevice.h>
 #include <linux/usb.h>
-
+#include <linux/arm-smccc.h>
+#include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/slab.h>
 #include <linux/errno.h>
 #include <linux/debugfs.h>
@@ -52,6 +53,11 @@
 #endif
 #include "usb_offload.h"
 #include "audio_task_usb_msg_id.h"
+
+enum offload_smc_request {
+	OFFLOAD_SMC_AUD_SUSPEND = 6,
+	OFFLOAD_SMC_AUD_RESUME = 7,
+};
 
 static DEFINE_MUTEX(register_mutex);
 
@@ -2385,6 +2391,9 @@ static int usb_offload_probe(struct platform_device *pdev)
 
 	uodev->dev = &pdev->dev;
 	uodev->adv_lowpwr = of_property_read_bool(pdev->dev.of_node, "adv-lowpower");
+	uodev->smc_ctrl = of_property_read_bool(pdev->dev.of_node, "smc-ctrl");
+	uodev->smc_suspend = uodev->smc_ctrl ? OFFLOAD_SMC_AUD_SUSPEND : -1;
+	uodev->smc_resume = uodev->smc_ctrl ? OFFLOAD_SMC_AUD_RESUME : -1;
 
 	uodev->is_streaming = false;
 	uodev->tx_streaming = false;
@@ -2400,7 +2409,8 @@ static int usb_offload_probe(struct platform_device *pdev)
 	uodev->erst = NULL;
 	uodev->num_entries_in_use = 0;
 
-	USB_OFFLOAD_INFO("adv_lowpwr:%d\n", uodev->adv_lowpwr);
+	USB_OFFLOAD_INFO("adv_lowpwr:%d smc_suspend:%d smc_resume:%d\n",
+		uodev->adv_lowpwr, uodev->smc_suspend, uodev->smc_resume);
 
 	node_xhci_host = of_parse_phandle(uodev->dev->of_node, "xhci-host", 0);
 	if (node_xhci_host) {
@@ -2489,6 +2499,58 @@ static int usb_offload_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int usb_offload_smc_ctrl(int smc_req)
+{
+	struct arm_smccc_res res;
+
+	USB_OFFLOAD_INFO("smc_req:%d\n", smc_req);
+	if (smc_req != -1)
+		arm_smccc_smc(MTK_SIP_KERNEL_USB_CONTROL,
+			smc_req, 0, 0, 0, 0, 0, 0, &res);
+
+	return 0;
+}
+
+static int __maybe_unused usb_offload_suspend(struct device *dev)
+{
+	if (!uodev->is_streaming)
+		return 0;
+
+	return usb_offload_smc_ctrl(uodev->smc_suspend);
+}
+
+static int __maybe_unused usb_offload_resume(struct device *dev)
+{
+	if (!uodev->is_streaming)
+		return 0;
+
+	return usb_offload_smc_ctrl(uodev->smc_resume);
+}
+
+static int __maybe_unused usb_offload_runtime_suspend(struct device *dev)
+{
+	if (!uodev->is_streaming || !device_may_wakeup(dev))
+		return 0;
+
+	return usb_offload_smc_ctrl(uodev->smc_suspend);
+}
+
+static int __maybe_unused usb_offload_runtime_resume(struct device *dev)
+{
+	if (!uodev->is_streaming || !device_may_wakeup(dev))
+		return 0;
+
+	return usb_offload_smc_ctrl(uodev->smc_resume);
+}
+
+static const struct dev_pm_ops usb_offload_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(usb_offload_suspend, usb_offload_resume)
+	SET_RUNTIME_PM_OPS(usb_offload_runtime_suspend,
+					usb_offload_runtime_resume, NULL)
+};
+
+#define DEV_PM_OPS (IS_ENABLED(CONFIG_PM) ? &usb_offload_pm_ops : NULL)
+
 static const struct of_device_id usb_offload_of_match[] = {
 	{.compatible = "mediatek,usb-offload",},
 	{},
@@ -2501,6 +2563,7 @@ static struct platform_driver usb_offload_driver = {
 	.remove = usb_offload_remove,
 	.driver = {
 		.name = "mtk-usb-offload",
+		.pm = DEV_PM_OPS,
 		.of_match_table = of_match_ptr(usb_offload_of_match),
 	},
 };

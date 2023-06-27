@@ -223,6 +223,9 @@ struct usb_offload_dev {
 	u32 intr_num;
 	unsigned long card_slot;
 	unsigned int card_num;
+	bool smc_ctrl;
+	int smc_suspend;
+	int smc_resume;
 	bool adv_lowpwr;
 	bool is_streaming;
 	bool tx_streaming;
