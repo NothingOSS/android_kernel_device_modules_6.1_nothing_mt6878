@@ -838,6 +838,17 @@ static void aal_write_curve(struct mml_comp *comp, struct mml_task *task,
 	u32 i = 0;
 	u32 sram_cfg_val = 0, temp_val = 0;
 
+	mml_clock_lock(task->config->mml);
+	call_hw_op(comp, pw_enable);
+	if (task->config->dpc) {
+		/* dpc exception flow on */
+		mml_msg("%s dpc exception flow on", __func__);
+		mml_dpc_exc_keep(task);
+	}
+	call_hw_op(comp, clk_enable);
+	mml_clock_unlock(task->config->mml);
+	mml_lock_wake_lock(aal->mml, true);
+
 	do {
 		temp_val = readl(base + aal->data->reg_table[AAL_SRAM_CFG]);
 		sram_cfg_val = temp_val & 0xFFFFF8FF;
@@ -867,6 +878,18 @@ static void aal_write_curve(struct mml_comp *comp, struct mml_task *task,
 	for (i = 0; i < AAL_CURVE_NUM; i++, addr += 4)
 		if (sram_staus)
 			writel(curve[i], base + aal->data->reg_table[AAL_SRAM_RW_IF_1]);
+
+	mml_clock_lock(task->config->mml);
+	call_hw_op(comp, clk_disable, task);
+	if (task->config->dpc) {
+		/* dpc exception flow off */
+		mml_msg("%s dpc exception flow off", __func__);
+		mml_dpc_exc_release(task);
+	}
+	call_hw_op(comp, pw_disable);
+
+	mml_clock_unlock(task->config->mml);
+	mml_lock_wake_lock(aal->mml, false);
 
 	if (is_config)
 		mml_write(pkt, base_pa + aal->data->reg_table[AAL_SRAM_CFG],
