@@ -265,17 +265,21 @@ static int mtk_pcie_phy_probe(struct platform_device *pdev)
 		return PTR_ERR(pcie_phy->sif_base);
 	}
 
+	pm_runtime_enable(dev);
+
 	pcie_phy->phy = devm_phy_create(dev, dev->of_node, &mtk_pcie_phy_ops);
 	if (IS_ERR(pcie_phy->phy)) {
 		dev_info(dev, "Failed to create PCIe phy\n");
-		return PTR_ERR(pcie_phy->phy);
+		ret = PTR_ERR(pcie_phy->phy);
+		goto err_probe;
 	}
 
 	pcie_phy->dev = dev;
 	pcie_phy->data = of_device_get_match_data(dev);
 	if (!pcie_phy->data) {
 		dev_info(dev, "Failed to get phy data\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_probe;
 	}
 
 	if (pcie_phy->data->sw_efuse_supported) {
@@ -285,7 +289,7 @@ static int mtk_pcie_phy_probe(struct platform_device *pdev)
 		 */
 		ret = mtk_pcie_read_efuse(pcie_phy);
 		if (ret == -EPROBE_DEFER || ret == -ENOMEM)
-			return ret;
+			goto err_probe;
 	}
 
 	phy_set_drvdata(pcie_phy->phy, pcie_phy);
@@ -293,16 +297,23 @@ static int mtk_pcie_phy_probe(struct platform_device *pdev)
 	provider = devm_of_phy_provider_register(dev, of_phy_simple_xlate);
 	if (IS_ERR(provider)) {
 		dev_info(dev, "PCIe phy probe failed\n");
-		return PTR_ERR(provider);
+		ret = PTR_ERR(provider);
+		goto err_probe;
 	}
 
 	pcie_phy->num_clks = devm_clk_bulk_get_all(dev, &pcie_phy->clks);
 	if (pcie_phy->num_clks < 0) {
 		dev_info(dev, "failed to get clocks\n");
-		return pcie_phy->num_clks;
+		ret = pcie_phy->num_clks;
+		goto err_probe;
 	}
 
 	return 0;
+
+err_probe:
+	pm_runtime_disable(dev);
+
+	return ret;
 }
 
 static int mtk_pcie_phy_init_6985(struct phy *phy)
