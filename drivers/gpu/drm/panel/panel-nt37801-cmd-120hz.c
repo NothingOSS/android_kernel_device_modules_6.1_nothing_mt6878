@@ -349,6 +349,12 @@ static void lcm_panel_init(struct lcm *ctx)
 	lcm_dcs_write_seq_static(ctx, 0xFF, 0xAA, 0x55, 0xA5, 0x80);
 	lcm_dcs_write_seq_static(ctx, 0x6F, 0x1B);
 	lcm_dcs_write_seq_static(ctx, 0xF4, 0x55);
+
+	/* adjust TE freq for newer rev. */
+	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x01);
+	lcm_dcs_write_seq_static(ctx, 0x6F, 0x01);
+	lcm_dcs_write_seq_static(ctx, 0xC4, 0xF4);
+
 	lcm_dcs_write_seq_static(ctx, 0x90, 0x03, 0x03);
 	lcm_dcs_write_seq_static(ctx, 0x91, 0xAB, 0xA8, 0x00, 0x28, 0xD2,
 		0x00, 0x02, 0x86, 0x04, 0x3A, 0x00, 0x0A, 0x02, 0xAB, 0x01, 0xE9, 0x10, 0xF0);
@@ -1062,20 +1068,26 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 
 	if (drm_mode_vrefresh(m) == 120) {
 		ext_params.skip_vblank = 0;
+		ext_params.vblank_off = false;
 		ext->params = &ext_params;
 	} else if (drm_mode_vrefresh(m) == 90) {
+		ext_params.vblank_off = false;
 		ext->params = &ext_params_90hz;
 	} else if (drm_mode_vrefresh(m) == 60) {
 		ext_params_60hz.skip_vblank = 2;
+		ext_params.vblank_off = false;
 		ext->params = &ext_params_60hz;
 	} else if (drm_mode_vrefresh(m) == 30) {
 		ext_params.skip_vblank = 4;
+		ext_params.vblank_off = false;
 		ext->params = &ext_params;
 	} else if (drm_mode_vrefresh(m) == 24) {
 		ext_params.skip_vblank = 5;
+		ext_params.vblank_off = false;
 		ext->params = &ext_params;
 	} else if (drm_mode_vrefresh(m) == 10) {
 		ext_params.skip_vblank = 12;
+		ext_params.vblank_off = true;
 		ext->params = &ext_params;
 	} else
 		ret = 1;
