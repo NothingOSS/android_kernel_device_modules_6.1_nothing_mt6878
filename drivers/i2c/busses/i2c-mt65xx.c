@@ -286,19 +286,23 @@ struct mtk_i2c_ac_timing {
 };
 
 struct scp_wake_info {
-	unsigned int phyaddr;
-	void __iomem *remap_vaddr;
+	void __iomem *vlpcfg_base_va;
+	void __iomem *scp_power_stat_va;
 	unsigned int wakeup_mask;
-	unsigned int notsleep_mask;
+	unsigned int wakeup_pre_mask;
+	unsigned int not_in_sleep_mask;
+	unsigned int power_off_stat_mask;
 	unsigned int sleep_reg;
 	unsigned int sleep_stat;
-	unsigned int awake;
 	int count;
+	bool is_initialized;
 	spinlock_t lock;
 };
 
 static struct scp_wake_info scp_wake = {
-	.remap_vaddr = NULL,
+	.vlpcfg_base_va = NULL,
+	.scp_power_stat_va = NULL,
+	.is_initialized = false,
 	.count = 0,
 };
 
@@ -1402,11 +1406,11 @@ int scp_wake_request(struct i2c_adapter *adap)
 	unsigned long flags;
 	int ret = -1;
 	u32 reg = 0;
+	u32 power_reg;
 	unsigned int delay = 0;
 	struct mtk_i2c *i2c = i2c_get_adapdata(adap);
 
-	if (!scp_wake.wakeup_mask || !scp_wake.notsleep_mask ||
-			!scp_wake.remap_vaddr) {
+	if (!scp_wake.is_initialized) {
 		dev_info(i2c->dev, "scp_wake init fail.\n");
 		return ret;
 	}
@@ -1414,19 +1418,29 @@ int scp_wake_request(struct i2c_adapter *adap)
 	spin_lock_irqsave(&scp_wake.lock, flags);
 
 	if (scp_wake.count == 0) {
-		writel((readl(scp_wake.remap_vaddr + scp_wake.sleep_reg)
-			| scp_wake.wakeup_mask), scp_wake.remap_vaddr + scp_wake.sleep_reg);
+		writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg)
+			| scp_wake.wakeup_mask), scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
 
 		delay = SCP_WAKE_TIMEOUT;
 		do {
 			delay--;
-			reg = readl(scp_wake.remap_vaddr + scp_wake.sleep_stat);
-			if ((reg & scp_wake.notsleep_mask) == scp_wake.awake)
-				break;
+			reg = readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_stat);
+			if ((reg & scp_wake.not_in_sleep_mask) == scp_wake.not_in_sleep_mask) {
+				power_reg = readl(scp_wake.scp_power_stat_va);
+				if ((power_reg & scp_wake.power_off_stat_mask) == 0) {
+					writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg)) |
+					(scp_wake.wakeup_mask | scp_wake.wakeup_pre_mask),
+					scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
+
+					writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg) &
+						(~scp_wake.wakeup_mask)), scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
+					break;
+				}
+			}
 			udelay(20);
 		} while (delay);
 
-		if ((reg & scp_wake.notsleep_mask) != scp_wake.awake) {
+		if ((reg & scp_wake.not_in_sleep_mask) != scp_wake.not_in_sleep_mask) {
 			dev_info(i2c->dev, "wait scp wakeup timeout, sleep_stat=0x%x\n", reg);
 			goto err;
 		} else {
@@ -1440,7 +1454,7 @@ int scp_wake_request(struct i2c_adapter *adap)
 		dev_dbg(i2c->dev, "scp is awake, count=%d\n", scp_wake.count);
 		ret = 0;
 	} else {
-		dev_info(i2c->dev, "scp wake count value invalid\n");
+		dev_dbg(i2c->dev, "scp wake count value invalid\n");
 	}
 
 err:
@@ -1455,8 +1469,7 @@ int scp_wake_release(struct i2c_adapter *adap)
 	int ret = -1;
 	struct mtk_i2c *i2c = i2c_get_adapdata(adap);
 
-	if (!scp_wake.wakeup_mask || !scp_wake.notsleep_mask ||
-			!scp_wake.remap_vaddr) {
+	if (!scp_wake.is_initialized) {
 		dev_info(i2c->dev, "scp_release init fail.\n");
 		return ret;
 	}
@@ -1470,8 +1483,8 @@ int scp_wake_release(struct i2c_adapter *adap)
 		scp_wake.count--;
 		dev_dbg(i2c->dev, "scp release count=%d\n", scp_wake.count);
 		if (!scp_wake.count) {
-			writel((readl(scp_wake.remap_vaddr + scp_wake.sleep_reg)
-				& ~(scp_wake.wakeup_mask)), scp_wake.remap_vaddr + scp_wake.sleep_reg);
+			writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg)
+				& ~(scp_wake.wakeup_pre_mask)), scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
 			dev_dbg(i2c->dev, "scp release success.\n");
 		}
 		ret = 0;
@@ -2052,6 +2065,7 @@ static const struct i2c_algorithm mtk_i2c_algorithm = {
 static int mtk_i2c_parse_dt(struct device_node *np, struct mtk_i2c *i2c)
 {
 	int ret;
+	unsigned int temp;
 
 	ret = of_property_read_u32(np, "clock-frequency", &i2c->speed_hz);
 	if (ret < 0)
@@ -2075,58 +2089,77 @@ static int mtk_i2c_parse_dt(struct device_node *np, struct mtk_i2c *i2c)
 	of_property_read_u32(np, "scl-gpio-id", &i2c->scl_gpio_id);
 	of_property_read_u32(np, "sda-gpio-id", &i2c->sda_gpio_id);
 
-	if ((i2c->ch_offset_i2c == I2C_OFFSET_SCP) && (!scp_wake.remap_vaddr)) {
+	if ((i2c->ch_offset_i2c == I2C_OFFSET_SCP) && (!scp_wake.is_initialized)) {
+
+		ret = of_property_read_u32(np, "scp-wake-en", &temp);
+		if (ret < 0)
+			return 0;
 
 		spin_lock_init(&scp_wake.lock);
 
-		ret = of_property_read_u32_index(np, "scp-wake", 0, &scp_wake.phyaddr);
+		ret = of_property_read_u32(np, "vlpcfg-base", &temp);
 		if (ret < 0) {
-			dev_info(i2c->dev, "read scp_wake base address fail, ret = %d\n", ret);
-			scp_wake.phyaddr = 0;
+			dev_info(i2c->dev, "get vlpcfg-base address fail, ret = %d\n", ret);
 			return ret;
 		}
 
-		ret = of_property_read_u32_index(np, "scp-wake", 1, &scp_wake.wakeup_mask);
-		if (ret < 0) {
-			dev_info(i2c->dev, "read scp_wake wakeup_mask fail, ret = %d\n", ret);
-			scp_wake.wakeup_mask = 0;
-			return ret;
-		}
-
-		ret = of_property_read_u32_index(np, "scp-wake", 2, &scp_wake.notsleep_mask);
-		if (ret < 0) {
-			dev_info(i2c->dev, "read scp_wake notsleep_mask fail, ret = %d\n", ret);
-			scp_wake.notsleep_mask = 0;
-			return ret;
-		}
-
-		ret = of_property_read_u32(np, "sleep-reg-offset", &scp_wake.sleep_reg);
-		if (ret < 0) {
-			dev_info(i2c->dev, "read sleep-reg-offset fail, ret = %d\n", ret);
-			scp_wake.sleep_reg = 0;
-			return ret;
-		}
-
-		ret = of_property_read_u32(np, "sleep-stat-offset", &scp_wake.sleep_stat);
-		if (ret < 0) {
-			dev_info(i2c->dev, "read sleep-stat-offset fail, ret = %d\n", ret);
-			scp_wake.sleep_stat = 0;
-			return ret;
-		}
-
-		ret = of_property_read_u32(np, "scp-awake", &scp_wake.awake);
-		if (ret < 0) {
-			dev_info(i2c->dev, "read scp-awake fail, ret = %d\n", ret);
-			scp_wake.awake = 0;
-			return ret;
-		}
-
-		scp_wake.remap_vaddr = ioremap(scp_wake.phyaddr, 0x100);
-		if (!scp_wake.remap_vaddr) {
-			dev_info(i2c->dev, "%s: remap_vaddr(0x%x) ioremap fail.\n",
-					__func__, scp_wake.phyaddr);
+		scp_wake.vlpcfg_base_va = ioremap(temp, 0x1000);
+		if (!scp_wake.vlpcfg_base_va) {
+			dev_info(i2c->dev, "%s: vlpcfg_base_va(0x%x) ioremap fail.\n",
+					__func__, temp);
 			return -ENOMEM;
 		}
+
+		ret = of_property_read_u32_index(np, "scp-power-stat", 0, &temp);
+		if (ret < 0) {
+			dev_info(i2c->dev, "read scp-power-stat address fail, ret = %d\n", ret);
+			return ret;
+		}
+
+		scp_wake.scp_power_stat_va = ioremap(temp, 0x10);
+		if (!scp_wake.scp_power_stat_va) {
+			dev_info(i2c->dev, "%s: scp_power_stat_va(0x%x) ioremap fail.\n",
+					__func__, temp);
+			return -ENOMEM;
+		}
+
+		ret = of_property_read_u32_index(np, "scp-power-stat", 1, &scp_wake.power_off_stat_mask);
+		if (ret < 0) {
+			dev_info(i2c->dev, "read power_off_stat_mask fail, ret = %d\n", ret);
+			return ret;
+		}
+
+		ret = of_property_read_u32_index(np, "vlp-scp-sleep", 0, &scp_wake.sleep_reg);
+		if (ret < 0) {
+			dev_info(i2c->dev, "read scp_wake sleep_reg fail, ret = %d\n", ret);
+			return ret;
+		}
+
+		ret = of_property_read_u32_index(np, "vlp-scp-sleep", 1, &scp_wake.wakeup_mask);
+		if (ret < 0) {
+			dev_info(i2c->dev, "read scp_wake wakeup_mask fail, ret = %d\n", ret);
+			return ret;
+		}
+
+		ret = of_property_read_u32_index(np, "vlp-scp-sleep", 2, &scp_wake.wakeup_pre_mask);
+		if (ret < 0) {
+			dev_info(i2c->dev, "read scp_wake wakeup_pre_mask fail, ret = %d\n", ret);
+			return ret;
+		}
+
+		ret = of_property_read_u32_index(np, "vlp-scp-sleep-stat", 0, &scp_wake.sleep_stat);
+		if (ret < 0) {
+			dev_info(i2c->dev, "read scp_wake sleep_stat fail, ret = %d\n", ret);
+			return ret;
+		}
+
+		ret = of_property_read_u32_index(np, "vlp-scp-sleep-stat", 1, &scp_wake.not_in_sleep_mask);
+		if (ret < 0) {
+			dev_info(i2c->dev, "read scp_wake not_in_sleep_mask fail, ret = %d\n", ret);
+			return ret;
+		}
+
+		scp_wake.is_initialized = true;
 	}
 
 	return 0;
@@ -2279,9 +2312,18 @@ static int mtk_i2c_remove(struct platform_device *pdev)
 {
 	struct mtk_i2c *i2c = platform_get_drvdata(pdev);
 
-	if (scp_wake.remap_vaddr) {
-		iounmap(scp_wake.remap_vaddr);
-		scp_wake.remap_vaddr = NULL;
+	if (scp_wake.is_initialized) {
+		if (scp_wake.vlpcfg_base_va){
+			iounmap(scp_wake.vlpcfg_base_va);
+			scp_wake.vlpcfg_base_va = NULL;
+		}
+
+		if (scp_wake.scp_power_stat_va) {
+			iounmap(scp_wake.scp_power_stat_va);
+			scp_wake.scp_power_stat_va = NULL;
+		}
+
+		scp_wake.is_initialized = false;
 	}
 
 	i2c_del_adapter(&i2c->adap);
