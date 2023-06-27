@@ -41,6 +41,9 @@ struct mtk_drm_idlemgr_perf {
 	unsigned long long leave_max_cost; //us
 	unsigned long long leave_min_cost; //us
 	unsigned long long count;
+	unsigned long long cpu_total_bind;
+	unsigned long long cpu_bind_count;
+	unsigned long long cpu_total_unbind;
 	atomic_t detail;
 };
 

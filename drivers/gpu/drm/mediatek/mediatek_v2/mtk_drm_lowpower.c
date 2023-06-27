@@ -47,8 +47,8 @@ static void mtk_drm_idlemgr_get_private_data(struct drm_crtc *crtc,
 
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT6989:
-		data->cpu_mask = 0x80; //cpu7
-		data->cpu_freq = 0; // cpu7 default 1.2Ghz
+		data->cpu_mask = 0xf; //cpu0~3
+		data->cpu_freq = 1000000; // 1Ghz
 		data->cpu_dma_latency = 0;
 		data->vblank_async = false;
 		data->hw_async = true;
@@ -73,8 +73,12 @@ static void mtk_drm_idlemgr_get_private_data(struct drm_crtc *crtc,
 	}
 }
 
-static void mtk_drm_idlemgr_bind_cpu(struct task_struct *task, unsigned int mask)
+static void mtk_drm_idlemgr_bind_cpu(struct task_struct *task, struct drm_crtc *crtc, bool bind)
 {
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
+	struct mtk_drm_idlemgr_context *idlemgr_ctx = idlemgr->idlemgr_ctx;
+	unsigned int mask = bind ? idlemgr_ctx->priv.cpu_mask : 0xff;
 	cpumask_var_t cm;
 	int i = 0;
 
@@ -152,10 +156,8 @@ void mtk_drm_idlemgr_cpu_control(struct drm_crtc *crtc, int cmd, unsigned int da
 		break;
 	case MTK_DRM_CPU_CMD_MASK:
 		idlemgr_ctx->priv.cpu_mask = data & ((0x1 << MTK_DRM_CPU_MAX_COUNT) - 1);
-		mtk_drm_idlemgr_bind_cpu(idlemgr->idlemgr_task,
-				idlemgr_ctx->priv.cpu_mask);
-		mtk_drm_idlemgr_bind_cpu(idlemgr->kick_task,
-				idlemgr_ctx->priv.cpu_mask);
+		mtk_drm_idlemgr_bind_cpu(idlemgr->idlemgr_task, crtc, true);
+		mtk_drm_idlemgr_bind_cpu(idlemgr->kick_task, crtc, true);
 		break;
 	case MTK_DRM_CPU_CMD_LATENCY:
 		idlemgr_ctx->priv.cpu_dma_latency = data;
@@ -220,18 +222,28 @@ static void mtk_drm_adjust_cpu_latency(struct drm_crtc *crtc, bool enable)
 				PM_QOS_DEFAULT_VALUE);
 }
 
+static void mtk_drm_idlemgr_perf_reset(struct drm_crtc *crtc);
 static void mtk_drm_adjust_cpu_freq(struct drm_crtc *crtc, bool bind,
 		struct freq_qos_request **req, unsigned int *cpus, unsigned int count)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
 	struct mtk_drm_idlemgr_context *idlemgr_ctx = idlemgr->idlemgr_ctx;
+	struct mtk_drm_idlemgr_perf *perf = idlemgr->perf;
+	unsigned long long start, end, period;
 	unsigned int freq = 0;
-	int ret = 0, i = 0;
+	int ret = 0, i = 0, detail = 0;
 
 	if (count == 0 || cpus == NULL ||
 		idlemgr_ctx->priv.cpu_freq == 0)
 		return;
+
+	if (perf != NULL) {
+		start = sched_clock();
+		detail = atomic_read(&perf->detail);
+		if (detail != 0)
+			mtk_drm_trace_begin("adjust_cpu_freq:%d", bind);
+	}
 
 	if (bind == true) {
 		freq = idlemgr_ctx->priv.cpu_freq;
@@ -249,6 +261,7 @@ static void mtk_drm_adjust_cpu_freq(struct drm_crtc *crtc, bool bind,
 				continue;
 			}
 		}
+		usleep_range(10, 30); //make freq update
 	} else {
 		for (i = 0; i < count; i++) {
 			if (req[i] == NULL)
@@ -259,6 +272,28 @@ static void mtk_drm_adjust_cpu_freq(struct drm_crtc *crtc, bool bind,
 					__func__, ret);
 			kfree(req[i]);
 			req[i] = NULL;
+		}
+	}
+
+	if (perf != NULL) {
+		if (detail != 0)
+			mtk_drm_trace_end();
+
+		end = sched_clock();
+		if (bind == true) {
+			period = (end - start) / 1000;
+			if (perf->cpu_bind_count + 1 == 0 ||
+				perf->cpu_total_bind + period < perf->cpu_total_bind)
+				mtk_drm_idlemgr_perf_reset(crtc);
+
+			perf->cpu_bind_count++;
+			perf->cpu_total_bind += period;
+		} else if (perf->cpu_bind_count > 0) {
+			period = (end - start) / 1000;
+			if (perf->cpu_total_unbind + period < perf->cpu_total_unbind)
+				mtk_drm_idlemgr_perf_reset(crtc);
+			else
+				perf->cpu_total_unbind += period;
 		}
 	}
 
@@ -393,7 +428,7 @@ void mtk_drm_idlemgr_perf_dump_func(struct drm_crtc *crtc, bool lock)
 	if (perf->count > 0) {
 		idlemgr_ctx = idlemgr->idlemgr_ctx;
 		DDPMSG(
-			"%s:crtc:%u,async:%d/%d,sram_sleep:%d,cpu:(0x%x,%uMhz,%dus),count:%llu,max:%llu-%llu,min:%llu-%llu,avg:%llu-%llu\n",
+			"%s:crtc:%u,async:%d/%d,sram_sleep:%d,cpu:(0x%x,%uMhz,%dus),count:%llu,max:%llu-%llu,min:%llu-%llu,avg:%llu-%llu,cpu_avg:%llu-%llu,cpu_cnt:%llu\n",
 			__func__, crtc_id, idlemgr_ctx->priv.hw_async,
 			idlemgr_ctx->priv.vblank_async,
 			idlemgr_ctx->priv.sram_sleep,
@@ -403,7 +438,10 @@ void mtk_drm_idlemgr_perf_dump_func(struct drm_crtc *crtc, bool lock)
 			perf->enter_max_cost, perf->leave_max_cost,
 			perf->enter_min_cost, perf->leave_min_cost,
 			perf->enter_total_cost/perf->count,
-			perf->leave_total_cost/perf->count);
+			perf->leave_total_cost/perf->count,
+			perf->cpu_total_bind/perf->cpu_bind_count,
+			perf->cpu_total_unbind/perf->cpu_bind_count,
+			perf->cpu_bind_count);
 	} else {
 		DDPMSG("%s: crtc:%u, perf monitor is started w/o update\n",
 				__func__, crtc_id);
@@ -432,7 +470,7 @@ static void mtk_drm_idlemgr_perf_reset(struct drm_crtc *crtc)
 	if (perf->count > 0) {
 		crtc_id = drm_crtc_index(crtc);
 		DDPMSG(
-			"%s:crtc:%u,async:%d/%d,sram_sleep:%d,cpu:(0x%x,%uMhz),count:%llu,max:%llu-%llu,min:%llu-%llu,avg:%llu-%llu\n",
+			"%s:crtc:%u,async:%d/%d,sram_sleep:%d,cpu:(0x%x,%uMhz),count:%llu,max:%llu-%llu,min:%llu-%llu,avg:%llu-%llu,cpu_avg:%llu-%llu,cpu_cnt:%llu\n",
 			__func__, crtc_id, idlemgr_ctx->priv.hw_async,
 			idlemgr_ctx->priv.vblank_async,
 			idlemgr_ctx->priv.sram_sleep,
@@ -441,7 +479,10 @@ static void mtk_drm_idlemgr_perf_reset(struct drm_crtc *crtc)
 			perf->enter_max_cost, perf->leave_max_cost,
 			perf->enter_min_cost, perf->leave_min_cost,
 			perf->enter_total_cost/perf->count,
-			perf->leave_total_cost/perf->count);
+			perf->leave_total_cost/perf->count,
+			perf->cpu_total_bind/perf->cpu_bind_count,
+			perf->cpu_total_unbind/perf->cpu_bind_count,
+			perf->cpu_bind_count);
 	}
 	perf->enter_max_cost = 0;
 	perf->enter_min_cost = 0xffffffff;
@@ -450,6 +491,9 @@ static void mtk_drm_idlemgr_perf_reset(struct drm_crtc *crtc)
 	perf->leave_min_cost = 0xffffffff;
 	perf->leave_total_cost = 0;
 	perf->count = 0;
+	perf->cpu_total_bind = 0;
+	perf->cpu_bind_count = 0;
+	perf->cpu_total_unbind = 0;
 }
 
 static void mtk_drm_idlemgr_perf_update(struct drm_crtc *crtc,
@@ -476,15 +520,16 @@ static void mtk_drm_idlemgr_perf_update(struct drm_crtc *crtc,
 	} else if (perf->count > 0) {
 		if (perf->leave_total_cost + cost < perf->leave_total_cost)
 			mtk_drm_idlemgr_perf_reset(crtc);
+		else {
+			if (perf->leave_max_cost < cost)
+				perf->leave_max_cost = cost;
+			if (perf->leave_min_cost > cost)
+				perf->leave_min_cost = cost;
+			perf->leave_total_cost += cost;
 
-		if (perf->leave_max_cost < cost)
-			perf->leave_max_cost = cost;
-		if (perf->leave_min_cost > cost)
-			perf->leave_min_cost = cost;
-		perf->leave_total_cost += cost;
-
-		if (perf->count % 50 == 0)
-			mtk_drm_idlemgr_perf_dump_func(crtc, false);
+			if (perf->count % 50 == 0)
+				mtk_drm_idlemgr_perf_dump_func(crtc, false);
+		}
 	}
 }
 
@@ -1430,10 +1475,8 @@ int mtk_drm_idlemgr_init(struct drm_crtc *crtc, int index)
 			idlemgr_ctx->priv.hw_async, idlemgr_ctx->priv.vblank_async,
 			idlemgr_ctx->priv.cpu_mask, idlemgr_ctx->priv.cpu_freq / 1000,
 			idlemgr_ctx->priv.sram_sleep);
-		mtk_drm_idlemgr_bind_cpu(idlemgr->idlemgr_task,
-				idlemgr_ctx->priv.cpu_mask);
-		mtk_drm_idlemgr_bind_cpu(idlemgr->kick_task,
-				idlemgr_ctx->priv.cpu_mask);
+		mtk_drm_idlemgr_bind_cpu(idlemgr->idlemgr_task, crtc, true);
+		mtk_drm_idlemgr_bind_cpu(idlemgr->kick_task, crtc, true);
 
 		init_waitqueue_head(&idlemgr->async_event_wq);
 		atomic_set(&idlemgr->async_ref, 0);
@@ -1457,8 +1500,6 @@ int mtk_drm_idlemgr_init(struct drm_crtc *crtc, int index)
 			wake_up_process(idlemgr->async_vblank_task);
 		}
 
-		DDPMSG("%s, add cpu qos req, default:%d, value:%d\n", __func__,
-			PM_QOS_DEFAULT_VALUE, idlemgr_ctx->priv.cpu_dma_latency);
 		cpu_latency_qos_add_request(&idlemgr->cpu_qos_req, PM_QOS_DEFAULT_VALUE);
 	}
 
