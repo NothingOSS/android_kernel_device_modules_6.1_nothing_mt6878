@@ -110,8 +110,12 @@ unsigned long (*ged_get_last_commit_stack_idx_fp)(void);
 EXPORT_SYMBOL(ged_get_last_commit_stack_idx_fp);
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static bool gpufreq_devapc_vio_callback(void);
-struct devapc_power_callbacks devapc_cb = {
+struct devapc_power_callbacks devapc_cb_gpu = {
 	.type = DEVAPC_TYPE_GPU,
+	.query_power = gpufreq_devapc_vio_callback,
+};
+struct devapc_power_callbacks devapc_cb_gpu1 = {
+	.type = DEVAPC_TYPE_GPU1,
 	.query_power = gpufreq_devapc_vio_callback,
 };
 #endif /* CONFIG_DEVICE_MODULES_MTK_DEVAPC */
@@ -1694,18 +1698,9 @@ static void gpufreq_low_batt_callback(enum LOW_BATTERY_LEVEL_TAG low_batt_level,
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static bool gpufreq_devapc_vio_callback(void)
 {
-	enum gpufreq_power_state power_state = gpufreq_get_power_state();
+	gpufreq_set_mfgsys_config(CONFIG_DEVAPC_HANDLE, CONFIG_VAL_IGNORE);
 
-	GPUFREQ_LOGW("DEVAPC violation, power state: %d", power_state);
-
-	if (power_state == GPU_PWR_ON) {
-		if (gpufreq_fp && gpufreq_fp->devapc_vio_handler)
-			gpufreq_fp->devapc_vio_handler();
-		else
-			GPUFREQ_LOGE("null gpufreq platform function pointer (ENOENT)");
-	}
-
-	return power_state;
+	return GPU_PWR_ON;
 }
 #endif /* CONFIG_DEVICE_MODULES_MTK_DEVAPC */
 
@@ -1746,7 +1741,8 @@ static void gpufreq_init_external_callback(void)
 #endif /* CONFIG_MTK_BATTERY_OC_POWER_THROTTLING */
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
-	register_devapc_power_callback(&devapc_cb);
+	register_devapc_power_callback(&devapc_cb_gpu);
+	register_devapc_power_callback(&devapc_cb_gpu1);
 #endif /* CONFIG_DEVICE_MODULES_MTK_DEVAPC */
 }
 
