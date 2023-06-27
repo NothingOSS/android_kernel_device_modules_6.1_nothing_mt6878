@@ -1174,11 +1174,12 @@ static int __init pgboost_init_data(void)
 #if !IS_ENABLED(CONFIG_GCOV_KERNEL)
 static int __init pgboost_get_ksyms(void)
 {
-	/* Init ksyms */
+	/* Init ksyms
 	if (tools_ka_init()) {
 		pr_info("%s:%d pgboost ka is not initialized!\n", __func__, __LINE__);
 		return -1;
 	}
+	*/
 
 	/*
 	 * (Example) get interesting ksyms here --
