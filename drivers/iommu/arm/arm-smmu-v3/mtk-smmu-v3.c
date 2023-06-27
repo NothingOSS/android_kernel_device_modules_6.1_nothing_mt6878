@@ -442,6 +442,21 @@ static int smmu_init_wpcfg(struct arm_smmu_device *smmu)
 		dev_info(smmu->dev, "[%s] ret:%d, Connecting DVM is not responding\n",
 			 __func__, ret);
 
+	/* Set AXSLC */
+	if (data->axslc) {
+		smmu_write_field(wp_base, SMMUWP_GLB_CTL0,
+				 CTL0_STD_AXI_MODE_DIS, CTL0_STD_AXI_MODE_DIS);
+		smmu_write_field(wp_base, SMMU_TCU_CTL1_AXSLC, AXSLC_BIT_FIELD,
+				 AXSLC_SET);
+		smmu_write_field(wp_base, SMMU_TCU_CTL1_AXSLC, SLC_SB_ONLY_EN,
+				 SLC_SB_ONLY_EN);
+		dev_info(smmu->dev,
+			 "[%s] AXSLC done SMMU_TCU_CTL1_AXSLC(0x%llx)=0x%x\n",
+			 __func__,
+			 (unsigned long long)wp_base + SMMU_TCU_CTL1_AXSLC,
+			 smmu_read_reg(wp_base, SMMU_TCU_CTL1_AXSLC));
+	}
+
 	dev_info(smmu->dev,
 		 "[%s] ret:%d, GLB_CTL0(0x%llx)=0x%x, GLB_CTL3(0x%llx)=0x%x\n",
 		 __func__, ret,
@@ -2168,6 +2183,9 @@ static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 		data->tcu_prefetch = prefetch;
 		dev_info(smmu->dev, "parse tcu-prefetch:%d\n", prefetch);
 	}
+
+	if (of_property_read_bool(smmu->dev->of_node, "mediatek,axslc"))
+		data->axslc = true;
 }
 
 static int mtk_smmu_config_translation(struct mtk_smmu_data *data)

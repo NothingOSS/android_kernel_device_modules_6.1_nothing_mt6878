@@ -135,6 +135,13 @@
 /* SMMU secure interrupt pending count register, count 3 */
 #define SMMUWP_IRQ_S_CNTx(cnt)		(0x180 + 0x4 * (cnt))
 
+#define SMMU_TCU_CTL1_AXSLC		(0x204)
+#define AXSLC_BIT_FIELD			GENMASK(8, 4)
+#define AXSLC_CACHE			F_BIT_SET(5)
+#define AXSLC_ALLOCATE			F_BIT_SET(6)
+#define AXSLC_SPECULATIVE		F_BIT_SET(7)
+#define AXSLC_SET			(AXSLC_CACHE | AXSLC_ALLOCATE | AXSLC_SPECULATIVE)
+#define SLC_SB_ONLY_EN			F_BIT_SET(1)
 /*
  * TCU_DVM_EN_REQ: Set 1 for connecting to DVM
  * TCU_DVM_EN_ACK: Poll 1 to wait for ACK connected to DVM
@@ -503,7 +510,7 @@ struct mtk_smmu_data {
 	u32				partid_max;
 	u32				pmg_max;
 	u32				tcu_prefetch;
-
+	bool				axslc;
 	u32				irq_cnt;
 	unsigned long			irq_first_jiffies;
 	struct timer_list		irq_pause_timer;
