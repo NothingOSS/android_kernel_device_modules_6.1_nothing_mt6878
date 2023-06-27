@@ -49,9 +49,6 @@
 #define REG_UFS_DEBUG_SEL_B1        0x22D4
 #define REG_UFS_DEBUG_SEL_B2        0x22D8
 #define REG_UFS_DEBUG_SEL_B3        0x22DC
-#define REG_UFS_DEBUG_MSEL_G0       0x22F0
-#define REG_UFS_DEBUG_MSEL_G1       0x22F4
-#define REG_UFS_DEBUG_MSEL_G2       0x22F8
 
 #define REG_UFS_MTK_SQD             0x2800
 #define REG_UFS_MTK_SQIS            0x2814
