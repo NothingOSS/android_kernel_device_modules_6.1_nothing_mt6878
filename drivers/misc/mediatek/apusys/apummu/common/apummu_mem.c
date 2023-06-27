@@ -43,9 +43,6 @@ int apummu_mem_alloc(struct device *dev, struct apummu_mem *mem)
 	mem->kva = (uint64_t)kva;
 	mem->iova = (uint64_t)iova;
 
-	AMMU_LOG_INFO("DRAM alloc mem(0x%llx/0x%x/0x%llx)\n",
-			mem->iova, mem->size, mem->kva);
-
 out:
 	return ret;
 }
