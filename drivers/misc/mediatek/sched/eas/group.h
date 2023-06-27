@@ -78,6 +78,7 @@ int __sched_set_grp_id(struct task_struct *p, int group_id);
 inline struct grp *lookup_grp(int grp_id);
 inline struct grp *task_grp(struct task_struct *p);
 int get_grp_id(struct task_struct *p);
+int __set_task_to_group(int pid, int grp_id);
 int set_task_to_group(int pid, int grp_id);
 inline bool check_and_get_grp_id(struct task_struct *p, int *grp_id);
 void group_update_ws(struct rq *rq);

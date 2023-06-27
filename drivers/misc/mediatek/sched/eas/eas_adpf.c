@@ -43,8 +43,8 @@ int sched_adpf_callback(struct _SESSION *session)
 		}
 		mutex_lock(&adpf_mutex);
 		for(i = 0; i < session->threadIds_size; i++) {
-			set_task_to_group(session->threadIds[i], -1);
-			set_task_to_group(session->threadIds[i], GROUP_ID_2);
+			__set_task_to_group(session->threadIds[i], -1);
+			__set_task_to_group(session->threadIds[i], GROUP_ID_2);
 			set_task_basic_vip(session->threadIds[i]);
 		}
 		mutex_unlock(&adpf_mutex);
@@ -84,7 +84,7 @@ int sched_adpf_callback(struct _SESSION *session)
 		}
 		mutex_lock(&adpf_mutex);
 		for(i = 0; i < session->threadIds_size; i++)
-			set_task_to_group(session->threadIds[i], -1);
+			__set_task_to_group(session->threadIds[i], -1);
 		set_group_active_ratio_cap(GROUP_ID_2, 0);
 		mutex_unlock(&adpf_mutex);
 		break;
@@ -104,8 +104,8 @@ int sched_adpf_callback(struct _SESSION *session)
 		}
 		mutex_lock(&adpf_mutex);
 		for(i = 0; i < session->threadIds_size; i++) {
-			set_task_to_group(session->threadIds[i], -1);
-			set_task_to_group(session->threadIds[i], GROUP_ID_2);
+			__set_task_to_group(session->threadIds[i], -1);
+			__set_task_to_group(session->threadIds[i], GROUP_ID_2);
 			set_task_basic_vip(session->threadIds[i]);
 		}
 		mutex_unlock(&adpf_mutex);
