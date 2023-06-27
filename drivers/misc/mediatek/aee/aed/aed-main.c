@@ -203,9 +203,11 @@ struct aed_kerec {		/* TODO: kernel exception record */
 struct aed_dev {
 	struct aed_eerec *eerec;
 	wait_queue_head_t eewait;
+	struct mutex ee_mutex;
 
 	struct aed_kerec kerec;
 	wait_queue_head_t kewait;
+	struct mutex ke_mutex;
 };
 
 
@@ -628,18 +630,24 @@ static void ke_destroy_log(void)
 {
 	struct aee_oops *lastlog = aed_dev.kerec.lastlog;
 
+	mutex_lock(&aed_dev.ke_mutex);
 	msg_destroy(&aed_dev.kerec.msg);
 
 	if (aed_dev.kerec.lastlog) {
 		aed_dev.kerec.lastlog = NULL;
 		aee_oops_free(lastlog);
 	}
+	mutex_unlock(&aed_dev.ke_mutex);
 }
 
 static int ke_log_avail(void)
 {
-	if (aed_dev.kerec.lastlog)
+	mutex_lock(&aed_dev.ke_mutex);
+	if (aed_dev.kerec.lastlog) {
+		mutex_unlock(&aed_dev.ke_mutex);
 		return 1;
+	}
+	mutex_unlock(&aed_dev.ke_mutex);
 	return 0;
 }
 
@@ -889,6 +897,7 @@ static void ee_destroy_log(void)
 	if (!eerec)
 		return;
 
+	mutex_lock(&aed_dev.ee_mutex);
 	aed_dev.eerec = NULL;
 	msg_destroy(&eerec->msg);
 
@@ -903,17 +912,32 @@ static void ee_destroy_log(void)
 	/*after this, another ee can enter */
 	eerec->ee_log = NULL;
 	kfree(eerec);
+	mutex_unlock(&aed_dev.ee_mutex);
 }
 
 static int ee_log_avail(void)
 {
-	return (aed_dev.eerec != NULL);
+	int ret = 0;
+
+	mutex_lock(&aed_dev.ee_mutex);
+
+	if (aed_dev.eerec != NULL)
+		ret = 1;
+	else
+		ret = 0;
+
+	mutex_unlock(&aed_dev.ee_mutex);
+	return ret;
 }
 
 static char *ee_msg_avail(void)
 {
-	if (aed_dev.eerec)
+	mutex_lock(&aed_dev.ee_mutex);
+	if (aed_dev.eerec) {
+		mutex_unlock(&aed_dev.ee_mutex);
 		return aed_dev.eerec->msg;
+	}
+	mutex_unlock(&aed_dev.ee_mutex);
 	return NULL;
 }
 
@@ -2326,6 +2350,9 @@ static int __init aed_init(void)
 
 	INIT_WORK(&ke_work, ke_worker);
 	INIT_WORK(&ee_work, ee_worker);
+
+	mutex_init(&aed_dev.ee_mutex);
+	mutex_init(&aed_dev.ke_mutex);
 
 	aee_register_api(&kernel_api);
 
