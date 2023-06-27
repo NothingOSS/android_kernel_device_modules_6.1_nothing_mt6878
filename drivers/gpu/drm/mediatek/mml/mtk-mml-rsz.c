@@ -157,7 +157,7 @@ static const struct rsz_data mt6989_rsz_data = {
 static const struct rsz_data mt6989_rsz2_data = {
 	.tile_width = 544,
 	.rsz_dbg = RSZ_DBG_MT6989,
-	.aal_crop = false,
+	.aal_crop = true,
 };
 
 struct mml_comp_rsz {
@@ -357,7 +357,6 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 		}
 	}
 	data->rsz.max_width = rsz->data->tile_width;
-	data->rsz.frame_out = cfg->frame_out[ccfg->node->out_idx];
 	data->rsz.crop_aal_tile_loss = !rsz->data->aal_crop && dest->pq_config.en_dre;
 	/* RSZ support crop capability */
 	func->type = TILE_TYPE_CROP_EN;

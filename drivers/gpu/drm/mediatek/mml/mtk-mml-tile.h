@@ -41,7 +41,6 @@ struct rsz_tile_data {
 	bool ver_first;
 	bool ver_cubic_trunc;
 	u32 max_width;
-	struct mml_frame_size frame_out;
 	bool crop_aal_tile_loss;
 };
 

@@ -185,16 +185,11 @@ enum isp_tile_message tile_prz_init(struct tile_func_block *ptr_func,
 				ptr_func->out_tile_width = (data->max_width >> 1) - 2;
 				data->prz_out_tile_w = data->max_width >> 1;
 			}
-			if (ptr_func->out_tile_width > data->frame_out.width)
-				ptr_func->out_tile_width = data->frame_out.width;
 		}
 	}
 
 	ptr_func->in_tile_height = 65535;
-	if (data->hor_scale && !data->ver_first)
-		ptr_func->out_tile_height = data->frame_out.height;
-	else
-		ptr_func->out_tile_height = 65535;
+	ptr_func->out_tile_height = 65535;
 
 	// urs: C24 upsampler input frame width
 	data->c24_in_frame_w = (ptr_func->full_size_x_out + 0x01) & ~0x1;
