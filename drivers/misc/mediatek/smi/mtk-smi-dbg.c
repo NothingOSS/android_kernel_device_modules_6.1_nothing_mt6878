@@ -1001,10 +1001,10 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 	mtk_smi_driver_register_notifier(&smi->suspend_nb);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
-	if (smmu_v3_enabled())
+	if (smmu_v3_enabled() && !of_property_read_bool(dev->of_node, "hwccf-support"))
 		mtk_smmu_set_pm_ops(MM_SMMU, &mtk_smi_pm_ops);
 	else
-		dev_notice(dev, "smmu not support\n");
+		dev_notice(dev, "smmu not support or hwccf support\n");
 #endif
 
 	smi->probe = true;
