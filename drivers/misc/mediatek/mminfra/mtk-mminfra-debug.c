@@ -95,6 +95,7 @@ static bool skip_apsrc;
 #define	MM_SYS_RESUME		GIPC4_SETCLR_BIT_0
 #define	MM_SYS_SUSPEND		GIPC4_SETCLR_BIT_1
 #define	MM_INFRA_OFF		GIPC4_SETCLR_BIT_2
+#define	MM_INFRA_LOG		GIPC4_SETCLR_BIT_3
 
 static bool mminfra_check_scmi_status(void)
 {
@@ -425,6 +426,43 @@ static struct kernel_param_ops mminfra_ut_ops = {
 };
 module_param_cb(mminfra_ut, &mminfra_ut_ops, NULL, 0644);
 MODULE_PARM_DESC(mminfra_ut, "mminfra ut");
+
+
+int mminfra_log(const char *val, const struct kernel_param *kp)
+{
+	int ret;
+	unsigned int test_case;
+
+	ret = kstrtouint(val, 0, &test_case);
+	if (ret) {
+		pr_notice("%s: invalid input: %s, result(%d)\n", __func__, val, ret);
+		return -EINVAL;
+	}
+
+	pr_notice("%s: input: %s\n", __func__, val);
+	switch (test_case) {
+	case 0:
+		if (vcp_gipc) {
+			pm_runtime_get_sync(dev);
+			writel(MM_INFRA_LOG, dbg->vcp_gipc_in_set);
+			pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
+			pm_runtime_put_sync(dev);
+		}
+		break;
+	default:
+		pr_notice("%s: wrong test_case(%d)\n", __func__, test_case);
+		break;
+	}
+
+	return 0;
+}
+
+static const struct kernel_param_ops mminfra_log_ops = {
+	.set = mminfra_log,
+	.get = param_get_int,
+};
+module_param_cb(mminfra_log, &mminfra_log_ops, NULL, 0644);
+MODULE_PARM_DESC(mminfra_log, "mminfra log");
 
 static int vcp_mminfra_on(void)
 {
