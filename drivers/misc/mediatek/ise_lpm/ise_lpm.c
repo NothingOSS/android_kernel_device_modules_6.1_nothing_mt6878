@@ -246,6 +246,7 @@ void ise_lpm_work_handle(struct work_struct *ws)
 	pr_notice("%s cmd=%d\n", __func__, ise_lpm_cmd);
 	switch (ise_lpm_cmd) {
 	case ISE_LPM_FREERUN:
+		ise_scmi_init();
 		ret = mtk_ise_awake_unlock(ISE_PM_INIT);
 		if (ret != ISE_SUCCESS) {
 			pr_notice("%s err %d", __func__, ret);
@@ -355,7 +356,6 @@ static int ise_lpm_probe(struct platform_device *pdev)
 		ise_awake_cnt = 1;
 		ise_awake_user_list[ISE_PM_INIT] = 1;
 		mutex_unlock(&mutex_ise_lpm);
-		ise_scmi_init();
 		proc_create("ise_lpm_dbg", 0664, NULL, &ise_lpm_dbg_fops);
 	}
 
