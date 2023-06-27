@@ -13163,6 +13163,15 @@
 		status = "disabled";
 	};
 
+	mtkheap_region_tui: mtkheap-region-tui {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_tui_region";
+		trusted-mem-type = <8>;
+		region-heap-align-name = "mtk_tui_region-aligned";
+		mtk,smmu-shared = <&mm_smmu_srt_protected>;
+		status = "disabled";
+	};
+
 	mtk-iommu-debug {
 		compatible = "mediatek,mt6989-smmu-debug";
 	};
