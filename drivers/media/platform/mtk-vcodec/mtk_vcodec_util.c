@@ -1353,28 +1353,23 @@ void mtk_vcodec_get_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 	mtk_v4l2_debug(0, "val: %s, log_index: %d", val, log_index);
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_get_log);
-static void mtk_vcodec_addList(struct task_struct *task)
+
+static void mtk_vcodec_add_list(struct task_struct *task)
 {
 	struct task_struct *task_child;
 	int ret = 0;
 
 	for_each_thread(task, task_child) {
 		if (task_child != NULL) {
-			ret = set_task_to_group(
-			 task_child->pid,
-			 GROUP_ID_1);
+			ret = set_task_to_group(task_child->pid, GROUP_ID_1);
 			if (ret == -1)
-				pr_info("put tid %d fail\n",
-				task_child->pid);
+				mtk_v4l2_err("put tid %d fail", task_child->pid);
 			else {
 				if (group_list_size < VCODEC_MAX_GROUP_SIZE) {
-					group_list[group_list_size] =
-					task_child->pid;
+					group_list[group_list_size] = task_child->pid;
 					group_list_size ++;
-				} else {
-					pr_info("invalid grouplist size %d\n",
-					group_list_size);
-				}
+				} else
+					mtk_v4l2_err("invalid grouplist size %d", group_list_size);
 			}
 		}
 	}
@@ -1388,18 +1383,17 @@ static void mtk_vcodec_make_group_list(void)
 
 	rcu_read_lock();
 	for_each_process(task) {
-		if (task != NULL) {
-			if (!strcmp(task->comm, "c2@1.2-mediatek") ||
-			!strcmp(task->comm, "mtk-vcodec-dec") ||
-			!strcmp(task->comm, "vdec_ipi_recv") ||
-			!strcmp(task->comm, "mtk-vcodec-enc") ||
-			!strcmp(task->comm, "venc_ipi_recv")) {
-				mtk_vcodec_addList(task);
-			}
-		}
+		if (task != NULL && (
+		    !strcmp(task->comm, "c2@1.2-mediatek") ||
+		    !strcmp(task->comm, "mtk-vcodec-dec") ||
+		    !strcmp(task->comm, "vdec_ipi_recv") ||
+		    !strcmp(task->comm, "mtk-vcodec-enc") ||
+		    !strcmp(task->comm, "venc_ipi_recv")))
+			mtk_vcodec_add_list(task);
 	}
 	rcu_read_unlock();
 }
+
 void mtk_vcodec_config_group_list(void)
 {
 	int i = 0;
