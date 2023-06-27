@@ -49,7 +49,7 @@
 #include "mtk-smmu-v3.h"
 #include "smmu_secure.h"
 
-#define SMMU_LME_MAX_COUNTERS		14
+#define SMMU_LME_MAX_COUNTERS		16
 
 #define EVENT_R_LAT_MAX			0
 #define EVENT_R_LAT_MAX_AXID		1
@@ -65,6 +65,8 @@
 #define EVENT_W_TRNAS_TOT		11
 #define EVENT_W_LAT_AVG			12
 #define EVENT_W_OOS_TRANS_TOT		13
+#define EVENT_TBUS_TRANS_TOT		14
+#define EVENT_TBUS_LAT_AVG		15
 
 #define FILTER_TXU_ID_TCU		0
 #define FILTER_TXU_ID_TBU0		1
@@ -76,6 +78,7 @@ static const char *PMU_SMMU_PROP_NAME = "mtk,smmu";
 static int cpuhp_state_num;
 /* 1 TCU + at most 4 TBU, each has SMMU_LME_MAX_COUNTERS counters */
 static u64 lmu_stats[SMMU_TBU_CNT_MAX + 1][SMMU_LME_MAX_COUNTERS];
+static u64 lmu_tbus_lat_avg;
 
 struct smmu_lmu {
 	struct hlist_node node;
@@ -148,7 +151,7 @@ static inline void smmu_write_reg(void __iomem *base,
 	writel_relaxed(val, base + offset);
 }
 
-static inline u64 smmu_lmu_counter_get_value(struct smmu_lmu *smmu_lmu,
+static u64 smmu_lmu_counter_get_value(struct smmu_lmu *smmu_lmu,
 					     struct perf_event *event)
 {
 	unsigned int tcu_lat_max, tcu_pend_max, tcu_lat_tot;
@@ -167,6 +170,9 @@ static inline u64 smmu_lmu_counter_get_value(struct smmu_lmu *smmu_lmu,
 	unsigned int tbu_woos_trans_tot[SMMU_TBU_CNT_MAX];
 	unsigned int tbu_avg_rlat[SMMU_TBU_CNT_MAX];
 	unsigned int tbu_avg_wlat[SMMU_TBU_CNT_MAX];
+	unsigned int tbus_trans_tot = 0;
+	unsigned int tbus_trans_tot_accu = 0;
+	unsigned int tbus_lat_tot = 0;
 	void __iomem *wp_base = smmu_lmu->smmu->wp_base;
 	unsigned long irq_flags;
 	unsigned int regval;
@@ -184,10 +190,10 @@ static inline u64 smmu_lmu_counter_get_value(struct smmu_lmu *smmu_lmu,
 
 	raw_spin_lock_irqsave(&smmu_lmu->counter_lock, irq_flags);
 	/*
-	 * skip continuous read in the following 10ms.
+	 * skip continuous read in the following 1ms.
 	 * Since all events share a global reset register
 	 */
-	if (ktime_ms_delta(cur, smmu_lmu->last_read) < 10) {
+	if (ktime_ms_delta(cur, smmu_lmu->last_read) < 1) {
 		raw_spin_unlock_irqrestore(&smmu_lmu->counter_lock, irq_flags);
 		goto out_get_val;
 	}
@@ -257,6 +263,11 @@ static inline u64 smmu_lmu_counter_get_value(struct smmu_lmu *smmu_lmu,
 		/* average write cmd latency */
 		tbu_avg_wlat[i] = tbu_wtrans_tot[i] > 0 ?
 				  (tbu_wlat_tot[i] / tbu_wtrans_tot[i]) : 0;
+
+		tbus_trans_tot += tbu_rtrans_tot[i];
+		tbus_trans_tot += tbu_wtrans_tot[i];
+		tbus_lat_tot += tbu_rlat_tot[i];
+		tbus_lat_tot += tbu_wlat_tot[i];
 	}
 
 	/* update tcu counter */
@@ -285,10 +296,22 @@ static inline u64 smmu_lmu_counter_get_value(struct smmu_lmu *smmu_lmu,
 		lmu_stats[i][EVENT_W_OOS_TRANS_TOT] += tbu_woos_trans_tot[i - 1];
 	}
 
+	/* update tbus latency */
+	lmu_tbus_lat_avg += tbus_trans_tot > 0 ? tbus_lat_tot / tbus_trans_tot : 0;
 	smmu_lmu->last_read = cur;
+
 	raw_spin_unlock_irqrestore(&smmu_lmu->counter_lock, irq_flags);
 
 out_get_val:
+	if (event_id == EVENT_TBUS_TRANS_TOT) {
+		for (i = 1; i < tbu_cnt + 1; i++) {
+			tbus_trans_tot_accu += lmu_stats[i][EVENT_R_TRANS_TOT];
+			tbus_trans_tot_accu += lmu_stats[i][EVENT_W_TRNAS_TOT];
+		}
+		return tbus_trans_tot_accu;
+	} else if (event_id == EVENT_TBUS_LAT_AVG) {
+		return lmu_tbus_lat_avg;
+	}
 
 	return lmu_stats[txu_id][event_id];
 }
@@ -405,6 +428,7 @@ static void smmu_lmu_reset_counters(struct smmu_lmu *smmu_lmu)
 		lmu_stats[i][EVENT_W_LAT_AVG] = 0;
 		lmu_stats[i][EVENT_W_OOS_TRANS_TOT] = 0;
 	}
+	lmu_tbus_lat_avg = 0;
 
 }
 
@@ -434,19 +458,19 @@ static int smmu_lmu_event_init(struct perf_event *event)
 		return -ENOENT;
 
 	if (hwc->sample_period) {
-		dev_dbg(dev, "Sampling not supported\n");
+		dev_info(dev, "Sampling not supported\n");
 		return -EOPNOTSUPP;
 	}
 
 	if (event->cpu < 0) {
-		dev_dbg(dev, "Per-task mode not supported\n");
+		dev_info(dev, "Per-task mode not supported\n");
 		return -EOPNOTSUPP;
 	}
 
 	/* Verify specified event is supported on this PMU */
 	event_id = get_event(event);
 	if (event_id >= SMMU_LME_MAX_COUNTERS) {
-		dev_dbg(dev, "Invalid event %d for this PMU\n", event_id);
+		dev_info(dev, "Invalid event %d for this PMU\n", event_id);
 		return -EINVAL;
 	}
 
@@ -543,15 +567,12 @@ static int smmu_lmu_event_add(struct perf_event *event, int flags)
 			return -EPERM;
 		}
 		smmu_lmu->take_power = true;
-		pr_info("%s, pm get ok, smmu:%d.\n",
-			__func__, smmu_lmu->smmu_type);
 	}
 
 	hwc->idx = idx;
 	hwc->state = PERF_HES_STOPPED | PERF_HES_UPTODATE;
 	smmu_lmu->events[idx] = event;
 	local64_set(&hwc->prev_count, 0);
-
 	if (smmu_lmu->used_counters == 0) {
 		/* apply filter only for the fisrt event */
 		smmu_lmu_apply_event_filter(smmu_lmu, event);
@@ -598,9 +619,6 @@ static void smmu_lmu_event_del(struct perf_event *event, int flags)
 			if (err)
 				pr_info("%s, pm put fail, smmu:%d, err:%d\n",
 					__func__, smmu_lmu->smmu_type, err);
-			else
-				pr_info("%s, pm put ok, smmu:%d.\n",
-					__func__, smmu_lmu->smmu_type);
 		}
 	}
 	raw_spin_unlock_irqrestore(&smmu_lmu->counter_lock, irq_flags);
@@ -667,6 +685,8 @@ static struct attribute *smmu_lmu_events[] = {
 	SMMU_EVENT_ATTR(w_trans_tot, 11),
 	SMMU_EVENT_ATTR(w_lat_avg, 12),
 	SMMU_EVENT_ATTR(w_oos_trans_tot, 13),
+	SMMU_EVENT_ATTR(tbus_trans_tot, 14),
+	SMMU_EVENT_ATTR(tbus_lat_avg, 15),
 	NULL
 };
 
