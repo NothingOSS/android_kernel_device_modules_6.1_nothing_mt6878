@@ -18,6 +18,7 @@
 #define ADPF_MAX_SESSION 64
 
 static DEFINE_MUTEX(adpf_mutex);
+static int eas_adpf_enable = 1;
 
 int sched_adpf_callback(struct _SESSION *session)
 {
@@ -31,6 +32,8 @@ int sched_adpf_callback(struct _SESSION *session)
 
 	if (unlikely(group_get_mode() == GP_MODE_0) && !vip_enable)
 		return -1;
+	if(!eas_adpf_enable)
+		return 0;
 
 	switch(cmd) {
 	case ADPF_CREATE_HINT_SESSION:
@@ -119,4 +122,16 @@ int sched_adpf_callback(struct _SESSION *session)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(sched_adpf_callback);
+
+void set_eas_adpf_enable(int val)
+{
+	eas_adpf_enable = val;
+}
+EXPORT_SYMBOL_GPL(set_eas_adpf_enable);
+
+int get_eas_adpf_enable(void)
+{
+	return eas_adpf_enable;
+}
+EXPORT_SYMBOL_GPL(get_eas_adpf_enable);
 
