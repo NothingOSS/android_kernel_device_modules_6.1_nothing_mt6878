@@ -175,6 +175,9 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_ISTATUS_PM			0x19C
 #define PCIE_L1PM_SM			GENMASK(10, 8)
 
+#define PCIE_AXI_IF_CTRL		0x1a8
+#define PCIE_AXI0_SLV_RESP_MASK		BIT(12)
+
 #define PCIE_MISC_CTRL_REG		0x348
 #define PCIE_DVFS_REQ_FORCE_ON		BIT(1)
 #define PCIE_MAC_SLP_DIS		BIT(7)
@@ -2068,6 +2071,11 @@ static int mtk_pcie_pre_init_6989(struct mtk_pcie_port *port)
 	val = readl_relaxed(port->base + PCIE_RESOURCE_CTRL);
 	val |= PCIE_APSRC_ACK;
 	writel_relaxed(val, port->base + PCIE_RESOURCE_CTRL);
+
+	/* Don't let PCIe AXI0 port reply slave error */
+	val = readl_relaxed(port->base + PCIE_AXI_IF_CTRL);
+	val |= PCIE_AXI0_SLV_RESP_MASK;
+	writel_relaxed(val, port->base + PCIE_AXI_IF_CTRL);
 
 	return 0;
 }
