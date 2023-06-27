@@ -8563,6 +8563,11 @@
 			reg = <0 0x14614000 0 0x1ec000>;
 		};
 
+
+		mtk-aie-debug-7sp-1 {
+			compatible = "mediatek,mtk-aie-debug-7sp-1";
+		};
+
 		aie: aie@15310000 {
 			compatible = "mediatek,aie-isp7sp-1";
 			reg = <0 0x15310000 0 0x1000>;
