@@ -3027,6 +3027,8 @@ void _mtk_crtc_wb_addon_module_disconnect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v4) ||
 			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA0_v5) ||
+			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0)) {
 			if (mtk_crtc->is_dual_pipe) {
 				/* disconnect left pipe */
@@ -3092,6 +3094,8 @@ static void _mtk_crtc_cwb_addon_module_disconnect(
 			addon_module->module == DISP_WDMA0_v3) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v4) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA0_v5) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0)) {
 			if (mtk_crtc->is_dual_pipe) {
@@ -3274,6 +3278,8 @@ _mtk_crtc_wb_addon_module_connect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v4) ||
 			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA0_v5) ||
+			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0)) {
 			struct mtk_rect src_roi = {0};
 			struct mtk_rect dst_roi = {0};
@@ -3444,6 +3450,8 @@ _mtk_crtc_cwb_addon_module_connect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v4) ||
 			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA0_v5) ||
+			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0)) {
 			buf_idx = cwb_info->buf_idx;
 			fb = cwb_info->buffer[buf_idx].fb;
@@ -3561,12 +3569,19 @@ _mtk_crtc_cwb_addon_module_connect(
 				addon_config.addon_wdma_config.wdma_dst_roi =
 					dst_roi_r;
 				addon_config.addon_wdma_config.addr += (u64)r_buff_off * (u64)Bpp;
+				cwb_info->buf_idx += 1;
+				if (cwb_info->buf_idx == CWB_BUFFER_NUM)
+					cwb_info->buf_idx = 0;
 				/* connect right pipe */
 				mtk_addon_connect_after(crtc, ddp_mode, addon_module,
 							  &addon_config, cmdq_handle);
-			} else
+			} else {
+				cwb_info->buf_idx += 1;
+				if (cwb_info->buf_idx == CWB_BUFFER_NUM)
+					cwb_info->buf_idx = 0;
 				mtk_addon_connect_after(crtc, ddp_mode, addon_module,
 							  &addon_config, cmdq_handle);
+			}
 		} else
 			DDPPR_ERR("addon type:%d + module:%d not support\n",
 				  addon_module->type, addon_module->module);
@@ -16301,6 +16316,11 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		/* use it when CRTC not define ability in DTS */
 		if (pipe == 0) {
 			mtk_crtc->crtc_caps.wb_caps[0].support = 1;
+			/* HW support cwb dump */
+			if (priv->data->mmsys_id == MMSYS_MT6985 ||
+				priv->data->mmsys_id == MMSYS_MT6989 ||
+				priv->data->mmsys_id == MMSYS_MT6897)
+				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_IDLEMGR;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_ESD_CHECK;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PQ;

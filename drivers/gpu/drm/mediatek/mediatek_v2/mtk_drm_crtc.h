@@ -47,6 +47,7 @@
 #define MTK_MIN_BPC 3
 #define BW_MODULE 21
 #define COLOR_MATRIX_PARAMS 17
+#define CWB_BUFFER_NUM 10
 
 #define PRIMARY_OVL_PHY_LAYER_NR 6L
 
@@ -724,7 +725,7 @@ struct mtk_cwb_info {
 	bool is_sec;
 
 	unsigned int buf_idx;
-	struct mtk_cwb_buffer_info buffer[2];
+	struct mtk_cwb_buffer_info buffer[CWB_BUFFER_NUM];
 	unsigned int copy_w;
 	unsigned int copy_h;
 

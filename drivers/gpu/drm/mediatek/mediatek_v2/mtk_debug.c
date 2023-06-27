@@ -70,6 +70,7 @@ static struct dentry *mtkfb_dbgfs;
 
 #if IS_ENABLED(CONFIG_PROC_FS)
 static struct proc_dir_entry *mtkfb_procfs;
+static struct proc_dir_entry *cwb_procfs;
 static struct proc_dir_entry *disp_lowpower_proc;
 static struct proc_dir_entry *mtkfb_debug_procfs;
 #endif
@@ -110,7 +111,9 @@ int gCapturePriLayerDownY = 20;
 int gCaptureOutLayerDownX = 20;
 int gCaptureOutLayerDownY = 20;
 int gCaptureAssignLayer;
+int cwb_buffer_idx;
 u64 vfp_backup;
+unsigned int cwb_output_index;
 static int hrt_lp_switch;
 
 static struct completion cwb_cmp;
@@ -1186,7 +1189,7 @@ static void set_cwb_info_buffer(struct drm_crtc *crtc, int format)
 	struct drm_mode_fb_cmd2 mode = {0};
 	struct mtk_drm_gem_obj *mtk_gem;
 	u32 color_format = DRM_FORMAT_RGB888;
-	int Bpp;
+	int i, Bpp;
 
 	/*alloc && config two fb if WDMA after PQ, use width height affcted by resolution switch*/
 	mtk_crtc_set_width_height(&mode.width, &mode.height,
@@ -1201,29 +1204,19 @@ static void set_cwb_info_buffer(struct drm_crtc *crtc, int format)
 	Bpp = mtk_get_format_bpp(mode.pixel_format);
 	mode.pitches[0] = mode.width * Bpp;
 
-	mtk_gem = mtk_drm_gem_create(
+	for (i=0;i<CWB_BUFFER_NUM;i++) {
+		mtk_gem = mtk_drm_gem_create(
 		crtc->dev, mode.pitches[0] * mode.height, true);
-	cwb_info->buffer[0].addr_mva = mtk_gem->dma_addr;
-	cwb_info->buffer[0].addr_va = (u64)mtk_gem->kvaddr;
+		cwb_info->buffer[i].addr_mva = mtk_gem->dma_addr;
+		cwb_info->buffer[i].addr_va = (u64)mtk_gem->kvaddr;
 
-	cwb_info->buffer[0].fb  =
-		mtk_drm_framebuffer_create(
-		crtc->dev, &mode, &mtk_gem->base);
-	DDPMSG("[capture] b[0].addr_mva:0x%pad, addr_va:0x%llx\n",
-			&cwb_info->buffer[0].addr_mva,
-			cwb_info->buffer[0].addr_va);
-
-	mtk_gem = mtk_drm_gem_create(
-		crtc->dev, mode.pitches[0] * mode.height, true);
-	cwb_info->buffer[1].addr_mva = mtk_gem->dma_addr;
-	cwb_info->buffer[1].addr_va = (u64)mtk_gem->kvaddr;
-
-	cwb_info->buffer[1].fb  =
-		mtk_drm_framebuffer_create(
-		crtc->dev, &mode, &mtk_gem->base);
-	DDPMSG("[capture] b[1].addr_mva:0x%pad, addr_va:0x%llx\n",
-			&cwb_info->buffer[1].addr_mva,
-			cwb_info->buffer[1].addr_va);
+		cwb_info->buffer[i].fb  =
+			mtk_drm_framebuffer_create(
+			crtc->dev, &mode, &mtk_gem->base);
+		DDPMSG("[capture] b[%d].addr_mva:0x%pad, addr_va:0x%llx\n",
+			i, &cwb_info->buffer[i].addr_mva,
+			cwb_info->buffer[i].addr_va);
+	}
 }
 
 int mtk_ddic_dsi_read_cmd(struct mtk_ddic_dsi_msg *cmd_msg)
@@ -1830,8 +1823,11 @@ static void mtk_drm_cwb_info_init(struct drm_crtc *crtc)
 		crtc, (cwb_info->scn == WDMA_WRITE_BACK));
 
 	if (crtc_idx == 0) {
-		if (cwb_info->scn == WDMA_WRITE_BACK)
+		if (cwb_info->scn == WDMA_WRITE_BACK) {
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA0];
+			if (priv->data->mmsys_id == MMSYS_MT6989)
+				cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA1];
+		}
 		else if ((priv->data->mmsys_id == MMSYS_MT6985 ||
 					priv->data->mmsys_id == MMSYS_MT6897)
 			&& cwb_info->scn == WDMA_WRITE_BACK_OVL)
@@ -1904,6 +1900,8 @@ bool mtk_drm_cwb_enable(int en,
 		mtk_drm_cwb_info_init(crtc);
 	else
 		DDPMSG("[capture] disable capture");
+	cwb_buffer_idx = 0;
+	cwb_output_index = 0;
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	return true;
@@ -1914,6 +1912,7 @@ bool mtk_drm_set_cwb_roi(struct mtk_rect rect)
 	struct drm_crtc *crtc;
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_cwb_info *cwb_info;
+	int i;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPPR_ERR("%s, invalid drm dev\n", __func__);
@@ -1964,10 +1963,10 @@ bool mtk_drm_set_cwb_roi(struct mtk_rect rect)
 		set_cwb_info_buffer(crtc, 0);
 
 	/* update roi */
-	mtk_rect_make(&cwb_info->buffer[0].dst_roi,
+	for (i = 0; i < CWB_BUFFER_NUM; i++) {
+		mtk_rect_make(&cwb_info->buffer[i].dst_roi,
 		rect.x, rect.y, rect.width, rect.height);
-	mtk_rect_make(&cwb_info->buffer[1].dst_roi,
-		rect.x, rect.y, rect.width, rect.height);
+	}
 
 	DDPMSG("[capture] change roi:(%d,%d,%d,%d)\n",
 		cwb_info->buffer[0].dst_roi.x,
@@ -4511,6 +4510,51 @@ static ssize_t debug_write(struct file *file, const char __user *ubuf,
 	return ret;
 }
 
+static ssize_t cwb_debug_read(struct file *file, char __user *ubuf, size_t count,
+			  loff_t *ppos)
+{
+	static int n;
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_cwb_info *cwb_info;
+	int width, height, ret, cwb_buffer_size;
+	unsigned long addr_va;
+	int Bpp;
+
+	drm_for_each_crtc(crtc, drm_dev)
+		if (drm_crtc_index(crtc) == cwb_output_index)
+			break;
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("find crtc fail\n");
+		return -EINVAL;
+	}
+	mtk_crtc = to_mtk_crtc(crtc);
+	cwb_info = mtk_crtc->cwb_info;
+	if (!cwb_info)
+		return -EINVAL;
+
+	width = cwb_info->src_roi.width;
+	height = cwb_info->src_roi.height;
+	Bpp = mtk_get_format_bpp(cwb_info->buffer[0].fb->format->format);
+	cwb_buffer_size = sizeof(u8) * width * height * Bpp;
+	addr_va = cwb_info->buffer[cwb_buffer_idx].addr_va;
+	if (*ppos != 0)
+		goto out;
+
+	n = cwb_buffer_size;
+out:
+	if (n < 0)
+		return -EINVAL;
+	ret = simple_read_from_buffer(ubuf, count, ppos, (void *)addr_va, n);
+	if (ret == 0) {
+		cwb_buffer_idx += 1;
+		if (cwb_buffer_idx >= CWB_BUFFER_NUM)
+			cwb_buffer_idx = 0;
+	}
+	return ret;
+}
+
+
 static const struct file_operations debug_fops = {
 	.read = debug_read, .write = debug_write, .open = debug_open,
 };
@@ -4518,6 +4562,11 @@ static const struct file_operations debug_fops = {
 static const struct proc_ops debug_proc_fops = {
 	.proc_read = debug_read,
 	.proc_write = debug_write,
+	.proc_open = debug_open,
+};
+
+static const struct proc_ops cwb_proc_fops = {
+	.proc_read = cwb_debug_read,
 	.proc_open = debug_open,
 };
 
@@ -5085,6 +5134,15 @@ void disp_dbg_probe(void)
 				   &debug_proc_fops);
 	if (!mtkfb_procfs) {
 		DDPPR_ERR("[%s %d]failed to create mtkfb in /proc/disp_ddp\n",
+			__func__, __LINE__);
+		goto out;
+	}
+
+	cwb_procfs = proc_create("cwbfb", S_IFREG | 0440,
+				   NULL,
+				   &cwb_proc_fops);
+	if (!cwb_procfs) {
+		DDPPR_ERR("[%s %d]failed to create cwbfb in /proc/cwb_procfs\n",
 			__func__, __LINE__);
 		goto out;
 	}

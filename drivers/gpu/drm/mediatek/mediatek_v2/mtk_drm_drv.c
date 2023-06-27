@@ -3113,6 +3113,11 @@ static const struct mtk_addon_module_data mt6985_addon_wdma1_data[] = {
 	{DISP_WDMA1, ADDON_AFTER, DDP_COMPONENT_MERGE1_OUT_CB0},
 };
 
+static const struct mtk_addon_module_data mt6989_addon_wdma0_data[] = {
+	/* Leroy CWB */
+	{DISP_WDMA0_v5, ADDON_AFTER, DDP_COMPONENT_COMP0_IN_CB4},
+};
+
 static const struct mtk_addon_module_data mt6897_addon_wdma0_data[] = {
 	{DISP_WDMA0_v4, ADDON_AFTER, DDP_COMPONENT_PANEL0_COMP_OUT_CB0},
 };
@@ -3473,6 +3478,11 @@ static const struct mtk_addon_scenario_data mt6985_dual_data_ext[ADDON_SCN_NR] =
 static const struct mtk_addon_scenario_data mt6989_addon_main[ADDON_SCN_NR] = {
 	[NONE] = {
 		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[WDMA_WRITE_BACK] = {
+		.module_num = ARRAY_SIZE(mt6989_addon_wdma0_data),
+		.module_data = mt6989_addon_wdma0_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 	[TRIPLE_DISP] = {

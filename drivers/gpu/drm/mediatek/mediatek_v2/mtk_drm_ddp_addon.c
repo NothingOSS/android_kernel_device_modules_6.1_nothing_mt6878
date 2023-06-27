@@ -84,6 +84,12 @@ static const int disp_wdma0_path_v4[] = {
 	DDP_COMPONENT_WDMA0,
 };
 
+/* Leroy CWB */
+static const int disp_wdma0_path_v5[] = {
+	DDP_COMPONENT_COMP0_OUT_CB7,
+	DDP_COMPONENT_MERGE0_OUT_CB3,
+	DDP_COMPONENT_WDMA1,
+};
 
 static const int disp_wdma1_path[] = {
 	DDP_COMPONENT_WDMA1,
@@ -263,6 +269,10 @@ static const struct mtk_addon_path_data addon_module_path[ADDON_MODULE_NUM] = {
 		[DISP_WDMA0_v4] = {
 				.path = disp_wdma0_path_v4,
 				.path_len = ARRAY_SIZE(disp_wdma0_path_v4),
+			},
+		[DISP_WDMA0_v5] = {
+				.path = disp_wdma0_path_v5,
+				.path_len = ARRAY_SIZE(disp_wdma0_path_v5),
 			},
 		[DISP_WDMA1] = {
 				.path = disp_wdma1_path,
