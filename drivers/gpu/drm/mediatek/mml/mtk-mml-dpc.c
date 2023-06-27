@@ -29,7 +29,7 @@ EXPORT_SYMBOL_GPL(mml_dpc_register);
 void mml_dpc_enable(bool en)
 {
 	if (mml_dpc_driver.dpc_enable == NULL) {
-		mml_err("%s dpc_enable not exist", __func__);
+		mml_msg_dpc("%s dpc_enable not exist", __func__);
 		return;
 	}
 
@@ -39,7 +39,7 @@ void mml_dpc_enable(bool en)
 void mml_dpc_dc_force_enable(bool en)
 {
 	if (mml_dpc_driver.dpc_dc_force_enable == NULL) {
-		mml_err("%s dpc_dc_force_enable not exist", __func__);
+		mml_msg_dpc("%s dpc_dc_force_enable not exist", __func__);
 		return;
 	}
 
@@ -49,7 +49,7 @@ void mml_dpc_dc_force_enable(bool en)
 void mml_dpc_group_enable(const u16 group, bool en)
 {
 	if (mml_dpc_driver.dpc_group_enable == NULL) {
-		mml_err("%s dpc_group_enable not exist", __func__);
+		mml_msg_dpc("%s dpc_group_enable not exist", __func__);
 		return;
 	}
 
@@ -70,7 +70,7 @@ void mml_dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys,
 			 const u8 thread, const bool en)
 {
 	if (mml_dpc_driver.dpc_mtcmos_vote == NULL) {
-		mml_err("%s dpc_mtcmos_vote not exist", __func__);
+		mml_msg_dpc("%s dpc_mtcmos_vote not exist", __func__);
 		return;
 	}
 
@@ -80,7 +80,7 @@ void mml_dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys,
 int mml_dpc_power_keep(void)
 {
 	if (mml_dpc_driver.vidle_power_keep == NULL) {
-		mml_err("%s dpc_power_keep not exist", __func__);
+		mml_msg_dpc("%s dpc_power_keep not exist", __func__);
 		return -1;
 	}
 
@@ -91,7 +91,7 @@ int mml_dpc_power_keep(void)
 void mml_dpc_power_release(void)
 {
 	if (mml_dpc_driver.vidle_power_release == NULL) {
-		mml_err("%s dpc_power_release not exist", __func__);
+		mml_msg_dpc("%s dpc_power_release not exist", __func__);
 		return;
 	}
 
@@ -100,33 +100,36 @@ void mml_dpc_power_release(void)
 }
 
 void mml_dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys,
-			const u32 bw_in_mb)
+			const u32 bw_in_mb,
+			bool force_keep)
 {
 	if (mml_dpc_driver.dpc_hrt_bw_set == NULL) {
-		mml_err("%s dpc_hrt_bw_set not exist", __func__);
+		mml_msg_dpc("%s dpc_hrt_bw_set not exist", __func__);
 		return;
 	}
 
-	mml_dpc_driver.dpc_hrt_bw_set(subsys, bw_in_mb, true);
+	mml_dpc_driver.dpc_hrt_bw_set(subsys, bw_in_mb, force_keep);
 }
 
 void mml_dpc_srt_bw_set(const enum mtk_dpc_subsys subsys,
-			const u32 bw_in_mb)
+			const u32 bw_in_mb,
+			bool force_keep)
 {
 	if (mml_dpc_driver.dpc_srt_bw_set == NULL) {
-		mml_err("%s dpc_srt_bw_set not exist", __func__);
+		mml_msg_dpc("%s dpc_srt_bw_set not exist", __func__);
 		return;
 	}
 
-	mml_dpc_driver.dpc_srt_bw_set(subsys, bw_in_mb, true);
+	mml_dpc_driver.dpc_srt_bw_set(subsys, bw_in_mb, force_keep);
 }
 void mml_dpc_dvfs_set(const enum mtk_dpc_subsys subsys,
-		      const u8 level)
+		      const u8 level,
+		      bool force_keep)
 {
 	if (mml_dpc_driver.dpc_dvfs_set == NULL) {
-		mml_err("%s dpc_dvfs_set not exist", __func__);
+		mml_msg_dpc("%s dpc_dvfs_set not exist", __func__);
 		return;
 	}
 
-	mml_dpc_driver.dpc_dvfs_set(subsys, level, true);
+	mml_dpc_driver.dpc_dvfs_set(subsys, level, force_keep);
 }

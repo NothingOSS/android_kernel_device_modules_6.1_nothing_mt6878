@@ -597,24 +597,23 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 	cmdq_mbox_enable(((struct cmdq_client *)task->pkts[pipe]->cl)->chan);
 	mml_trace_ex_end();
 
-	if (task->config->info.mode == MML_MODE_RACING && task->config->dpc) {
-		/* keep and release pw off until next DT */
-		mml_msg("%s dpc exception flow for IR", __func__);
-		mml_dpc_exc_keep(task);
-		mml_dpc_exc_release(task);
-	} else if (task->config->info.mode == MML_MODE_MML_DECOUPLE) {
-		mml_msg("%s dpc flow enable for DC", __func__);
-		mml_dpc_exc_keep(task);
-		mml_dpc_dc_enable(task, true);
-	}
-
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, pw_enable);
 	}
-
 	mml_trace_ex_end();
+
+	if (task->config->info.mode == MML_MODE_RACING && task->config->dpc) {
+		/* keep and release pw off until next DT */
+		mml_msg_dpc("%s dpc exception flow for IR", __func__);
+		mml_dpc_exc_keep(task);
+		mml_dpc_exc_release(task);
+	} else if (task->config->info.mode == MML_MODE_MML_DECOUPLE) {
+		mml_msg_dpc("%s dpc flow enable for DC", __func__);
+		mml_dpc_exc_keep(task);
+		mml_dpc_dc_enable(task, true);
+	}
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
 	if (path->mmlsys)
@@ -671,11 +670,18 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 
 	if (task->config->dpc) {
 		/* set dpc total hrt/srt bw to 0 */
-		mml_dpc_srt_bw_set(DPC_SUBSYS_MML1, 0);
-		mml_dpc_hrt_bw_set(DPC_SUBSYS_MML1, 0);
+		mml_msg("%s dpc total_bw total_peak to 0", __func__);
+		mml_dpc_srt_bw_set(DPC_SUBSYS_MML1, 0, false);
+		mml_dpc_hrt_bw_set(DPC_SUBSYS_MML1, 0, false);
 	}
 
 	mml_trace_ex_end();
+
+	if (task->config->info.mode == MML_MODE_MML_DECOUPLE) {
+		mml_msg_dpc("%s dpc flow disable for DC", __func__);
+		mml_dpc_dc_enable(task, false);
+		mml_dpc_exc_release(task);
+	}
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
 	mml_dpc_exc_keep(task);
@@ -685,14 +691,7 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 		call_hw_op(comp, pw_disable);
 	}
 	mml_dpc_exc_release(task);
-
 	mml_trace_ex_end();
-
-	if (task->config->info.mode == MML_MODE_MML_DECOUPLE) {
-		mml_msg("%s dpc flow disable for DC", __func__);
-		mml_dpc_dc_enable(task, false);
-		mml_dpc_exc_release(task);
-	}
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "cmdq", pipe);
 	cmdq_mbox_disable(((struct cmdq_client *)task->pkts[pipe]->cl)->chan);
@@ -728,8 +727,9 @@ static void mml_core_qos_set(struct mml_task *task, u32 pipe, u32 throughput, u3
 
 	if (task->config->dpc) {
 		/* set dpc total hrt/srt bw */
-		mml_dpc_srt_bw_set(DPC_SUBSYS_MML1, total_bw);
-		mml_dpc_hrt_bw_set(DPC_SUBSYS_MML1, total_peak);
+		mml_msg("%s dpc total_bw %d total_peak %d", __func__, total_bw, total_peak);
+		mml_dpc_srt_bw_set(DPC_SUBSYS_MML1, total_bw, false);
+		mml_dpc_hrt_bw_set(DPC_SUBSYS_MML1, total_peak, false);
 	}
 }
 

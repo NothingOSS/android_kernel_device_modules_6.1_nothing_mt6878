@@ -269,7 +269,7 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc)
 		mml_msg("%s dpc set rate %uMHz volt %d (%u) tput %u",
 			__func__, tp->opp_speeds[i], volt, i, tput);
 
-		mml_dpc_dvfs_set(DPC_SUBSYS_MML, i);
+		mml_dpc_dvfs_set(DPC_SUBSYS_MML, i, false);
 	} else {
 		if (tp->reg) {
 			ret = regulator_set_voltage(tp->reg, volt, INT_MAX);
@@ -834,7 +834,6 @@ void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
 		struct mml_comp *comp;
 
 		mml_msg_dpc("%s scenario in, dpc start", __func__);
-		mml_dpc_exc_keep(task);
 		comp = path->mmlsys;
 		call_hw_op(comp, pw_enable);
 		if (mml->dpc.mmlsys_26m_clk) {
@@ -843,6 +842,7 @@ void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
 				mml_err("%s clk_prepare_enable fail %d",
 					__func__, ret);
 		}
+		mml_dpc_exc_keep(task);
 		mml_dpc_enable(true);
 		mml_dpc_config(DPC_SUBSYS_MML1, true);
 		mml_dpc_exc_release(task);
@@ -878,11 +878,11 @@ void mml_dpc_task_cnt_dec(struct mml_task *task, bool addon_task)
 		mml_msg_dpc("%s scenario out, dpc end", __func__);
 		mml_dpc_exc_keep(task);
 		mml_dpc_config(DPC_SUBSYS_MML1, false);
+		mml_dpc_exc_release(task);
 		if (mml->dpc.mmlsys_26m_clk)
 			clk_disable_unprepare(mml->dpc.mmlsys_26m_clk);
 		comp = path->mmlsys;
 		call_hw_op(comp, pw_disable);
-		mml_dpc_exc_release(task);
 	}
 }
 

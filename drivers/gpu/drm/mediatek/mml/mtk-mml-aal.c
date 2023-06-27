@@ -649,14 +649,11 @@ static void clarity_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 
 		if (aal_get_rb_mode(aal) == RB_EOF_MODE) {
 			mml_clock_lock(task->config->mml);
-			if (task->config->dpc) {
-				/* dpc exception flow on */
-				mml_msg("%s dpc exception flow on", __func__);
-				mml_dpc_exc_keep(task);
-			} else {
-				/* ccf power on */
-				call_hw_op(comp, pw_enable);
-			}
+			/* ccf power on */
+			call_hw_op(comp, pw_enable);
+			/* dpc exception flow on */
+			mml_msg_dpc("%s dpc exception flow on", __func__);
+			mml_dpc_exc_keep(task);
 			call_hw_op(comp, clk_enable);
 			mml_clock_unlock(task->config->mml);
 			mml_lock_wake_lock(aal->mml, true);
@@ -708,14 +705,11 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 	 */
 	if (aal_get_rb_mode(aal) == RB_SOF_MODE) {
 		mml_clock_lock(task->config->mml);
-		if (task->config->dpc) {
-			/* dpc exception flow on */
-			mml_msg("%s dpc exception flow on", __func__);
-			mml_dpc_exc_keep(task);
-		} else {
-			/* ccf power on */
-			call_hw_op(comp, pw_enable);
-		}
+		/* ccf power on */
+		call_hw_op(comp, pw_enable);
+		/* dpc exception flow on */
+		mml_msg_dpc("%s dpc exception flow on", __func__);
+		mml_dpc_exc_keep(task);
 		call_hw_op(comp, clk_enable);
 		mml_clock_unlock(task->config->mml);
 	}
@@ -771,14 +765,11 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 
 		if (aal_get_rb_mode(aal) == RB_EOF_MODE) {
 			mml_clock_lock(task->config->mml);
-			if (task->config->dpc) {
-				/* dpc exception flow on */
-				mml_msg("%s dpc exception flow on", __func__);
-				mml_dpc_exc_keep(task);
-			} else {
-				/* ccf power on */
-				call_hw_op(comp, pw_enable);
-			}
+			/* ccf power on */
+			call_hw_op(comp, pw_enable);
+			/* dpc exception flow on */
+			mml_msg_dpc("%s dpc exception flow on", __func__);
+			mml_dpc_exc_keep(task);
 			call_hw_op(comp, clk_enable);
 			mml_clock_unlock(task->config->mml);
 			mml_lock_wake_lock(aal->mml, true);
@@ -2217,14 +2208,11 @@ static void aal_readback_work(struct work_struct *work_item)
 		aal_get_rb_mode(aal) == RB_SOF_MODE) {
 		mml_clock_lock(aal->mml);
 		call_hw_op(comp, clk_disable, aal->pq_task->task);
-		if (aal->pq_task->task->config->dpc) {
-			/* dpc exception flow off */
-			mml_msg("%s dpc exception flow off", __func__);
-			mml_dpc_exc_release(aal->pq_task->task);
-		} else {
-			/* ccf power off */
-			call_hw_op(comp, pw_disable);
-		}
+		/* dpc exception flow off */
+		mml_msg_dpc("%s dpc exception flow off", __func__);
+		mml_dpc_exc_release(aal->pq_task->task);
+		/* ccf power off */
+		call_hw_op(comp, pw_disable);
 		mml_clock_unlock(aal->mml);
 		mml_lock_wake_lock(aal->mml, false);
 	}
@@ -2269,14 +2257,11 @@ static void clarity_histdone_cb(struct cmdq_cb_data data)
 	if (aal_get_rb_mode(aal) == RB_EOF_MODE) {
 		mml_clock_lock(aal->mml);
 		call_hw_op(comp, clk_disable, aal->pq_task->task);
-		if (aal->pq_task->task->config->dpc) {
-			/* dpc exception flow off */
-			mml_msg("%s dpc exception flow off", __func__);
-			mml_dpc_exc_release(aal->pq_task->task);
-		} else {
-			/* ccf power off */
-			call_hw_op(comp, pw_disable);
-		}
+		/* dpc exception flow off */
+		mml_msg_dpc("%s dpc exception flow off", __func__);
+		mml_dpc_exc_release(aal->pq_task->task);
+		/* ccf power off */
+		call_hw_op(comp, pw_disable);
 		mml_clock_unlock(aal->mml);
 		mml_lock_wake_lock(aal->mml, false);
 	}

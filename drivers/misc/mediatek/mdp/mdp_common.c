@@ -317,6 +317,7 @@ static void cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 		}
 		ret = pm_runtime_resume_and_get(larb);
 		mdp_dpc_power_keep();
+		mdp_dpc_dc_force_enable(true);
 		cmdq_mdp_get_func()->mdpEnableCommonClock(enable, engine_flag);
 
 		if (ret)
@@ -324,6 +325,7 @@ static void cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 				__func__, ret);
 	} else {
 		cmdq_mdp_get_func()->mdpEnableCommonClock(enable, engine_flag);
+		mdp_dpc_dc_force_enable(false);
 		mdp_dpc_power_release();
 		pm_runtime_put_sync(larb);
 		if (mdpdev) {

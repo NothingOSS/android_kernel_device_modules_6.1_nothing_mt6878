@@ -1241,9 +1241,9 @@ static void sys_ddp_disable_locked(const struct mml_topology_path *path,
 
 	if (task->config->dpc) {
 		/* set dpc total hrt/srt bw to 0 */
-		mml_msg("%s dpc total_bw total_peak to 0", __func__);
-		mml_dpc_srt_bw_set(DPC_SUBSYS_MML1, 0);
-		mml_dpc_hrt_bw_set(DPC_SUBSYS_MML1, 0);
+		mml_msg_dpc("%s dpc total_bw total_peak to 0", __func__);
+		mml_dpc_srt_bw_set(DPC_SUBSYS_MML1, 0, false);
+		mml_dpc_hrt_bw_set(DPC_SUBSYS_MML1, 0, false);
 	}
 
 	mml_trace_ex_end();
