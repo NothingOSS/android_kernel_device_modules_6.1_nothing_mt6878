@@ -59,8 +59,21 @@ config SCSI_UFS_MEDIATEK_DBG
 
 	  If unsure, say N.
 
+source "$(KCONFIG_EXT_PREFIX)drivers/ufs/vendor/Kconfig"
+
+config MTK_UFS_DEBUG
+	bool "Support Mediatek UFS upstreaming features"
+	depends on SCSI_UFSHCD
+	help
+	  If it is enabled, all code sections that is under
+	  upstream process or not pulled from the mainstream
+	  are enabled.
+
+	  If unsure, say N.
+
 config MTK_UFS_DEBUG_BUILD
-	depends on SCSI_UFS_MEDIATEK_DBG
+	bool "Support Mediatek UFS facilities in debug build only"
+	depends on SCSI_UFSHCD
 	help
 	  This selects the debugging facility for Mediatek UFS platforms
 	  existed in debug build only.
@@ -69,10 +82,3 @@ config MTK_UFS_DEBUG_BUILD
 
 	  If unsure, say N.
 
-source "$(KCONFIG_EXT_PREFIX)drivers/ufs/vendor/Kconfig"
-
-config MTK_UFS_DEBUG
-	bool "Support Mediatek UFS debug feature"
-	depends on SCSI_UFSHCD
-	help
-	  If it is enabled, UFS flow will change for GKI
