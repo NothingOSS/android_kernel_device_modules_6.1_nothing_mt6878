@@ -278,7 +278,7 @@ static inline void eenv_init(struct energy_env *eenv,
 		eenv->pds_cap[pd_idx] = -1;
 	}
 
-	eenv->wl_support = is_wl_support();
+	eenv->wl_support = get_eas_dsu_ctrl();
 	eenv->total_util = 0;
 	for (; pd_ptr; pd_ptr = pd_ptr->next) {
 		unsigned long cpu_thermal_cap;

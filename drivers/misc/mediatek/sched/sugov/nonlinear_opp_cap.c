@@ -138,17 +138,21 @@ bool get_eas_dsu_ctrl(void)
 }
 EXPORT_SYMBOL_GPL(get_eas_dsu_ctrl);
 
+static int wl_type_manual = -1;
 void set_eas_dsu_ctrl(bool set)
 {
 	int i;
 
 	if (freq_state.is_eas_dsu_support) {
+		iowrite32(set ? 1 : 0, l3ctl_sram_base_addr + 0x1C);
 		freq_state.is_eas_dsu_ctrl = set;
-		if (!freq_state.is_eas_dsu_ctrl) {
+		if (freq_state.is_eas_dsu_ctrl == false) {
+			wl_type_manual = 0;
 			freq_state.dsu_target_freq = 0;
 			for (i = 0; i < freq_state.pd_count; i++)
 				freq_state.dsu_freq_vote[i] = 0;
-		}
+		} else
+			wl_type_manual = -1;
 	}
 }
 EXPORT_SYMBOL_GPL(set_eas_dsu_ctrl);
@@ -212,7 +216,6 @@ skip_single_idle_cpu:
 static struct dsu_table dsu_tbl;
 static int nr_wl_type = 1;
 static int wl_type_curr;
-static int wl_type_manual = -1;
 static int wl_type_delay;
 static int wl_type_delay_cnt;
 static int last_wl_type;
