@@ -1427,7 +1427,7 @@
 		      <0 0x1cc01000 0 0x000100>,
 		      <0 0x1c014000 0 0x0008ff>,
 		      <0 0x1cc01800 0 0x000100>;
-		reg-names = "pmif-m", "spmimst-m","pmif-p","spmimst-p";
+		reg-names = "pmif", "spmimst","pmif-p","spmimst-p";
 		interrupts-extended = <&pio 267 IRQ_TYPE_LEVEL_HIGH>,
 				<&gic GIC_SPI 544 IRQ_TYPE_LEVEL_HIGH 0>,
 				<&gic GIC_SPI 543 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -1437,9 +1437,22 @@
 		interrupt-controller;
 		#interrupt-cells = <1>;
 		irq-event-en = <0xc0000000 0x0 0x0 0x0 0x0>;
-		spmi-dev-mask = <0x03f0 0x01e0>;
+		spmi-dev-mask = <0x01e0>;
 		#address-cells = <2>;
 		#size-cells = <0>;
+	};
+
+	spmi_pmif_mpu: spmi-pmif-mpu@1cc04900 {
+		compatible = "mediatek,mt6989-spmi-pmif-mpu";
+		reg = <0 0x1cc04900 0 0x000500>,
+			  <0 0x1c014900 0 0x000500>;
+		reg-names = "pmif_mpu", "pmif_p_mpu";
+		mediatek,pmic-all-rgn-en = <0x00000001>;
+		mediatek,pmic-all-rgn-en-2 = <0x0>;
+		mediatek,pmic-all-rgn-en-p = <0x00060149>;
+		mediatek,pmic-all-rgn-en-p-2 = <0x0>;
+		mediatek,kernel-enable-time = <0x3c>;
+		disable = <0>;
 	};
 
 	firmware: firmware {
