@@ -2573,7 +2573,7 @@ static u32 mt6989_get_valid_tf_id(int tf_id, u32 type, int id)
 	u32 vld_id = 0;
 
 	if (type == APU_SMMU)
-		vld_id = tf_id & GENMASK(12, 8);
+		vld_id = FIELD_GET(GENMASK(12, 8), tf_id);
 	else
 		vld_id = tf_id & F_MMU_INT_TF_MSK;
 
