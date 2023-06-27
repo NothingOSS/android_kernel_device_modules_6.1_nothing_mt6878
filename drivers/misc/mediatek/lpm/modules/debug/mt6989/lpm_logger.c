@@ -472,7 +472,8 @@ static int lpm_get_common_status(void)
 		return -EINVAL;
 
 	help->wakesrc->debug_flag2 = plat_mmio_read(SPM_SW_RSV_2);
-	help->wakesrc->common_cnt = plat_mmio_read(SPM_SW_RSV_0);
+	help->wakesrc->common_cnt0 = plat_mmio_read(SPM_SW_RSV_0);
+	help->wakesrc->common_cnt1 = plat_mmio_read(PCM_WDT_LATCH_SPARE_9);
 
 	return 0;
 }
@@ -487,8 +488,8 @@ static int lpm_log_common_info(void)
 	lpm_get_common_status();
 	log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size,
-			"Common: debug = %x, cnt = %x\n",
-			wakesrc->debug_flag2, wakesrc->common_cnt);
+			"Common: debug_flag = 0x%x, cnt = 0x%x 0x%x\n",
+			wakesrc->debug_flag2, wakesrc->common_cnt0, wakesrc->common_cnt1);
 
 	pr_info("[name:spm&][SPM] %s", log_buf);
 
@@ -974,6 +975,16 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 #endif
 	} else
 		pr_info("[name:spm&][SPM] %s", log_buf);
+
+	if (wakesrc->sw_flag1
+		& (SPM_FLAG1_ENABLE_WAKE_PROF | SPM_FLAG1_ENABLE_SLEEP_PROF)) {
+		uint32_t addr;
+
+		for (addr = SYS_TIMER_LATCH_L_00; addr <= SYS_TIMER_LATCH_L_15; addr += 8) {
+			pr_info("[name:spm&][SPM][timestamp] 0x%08x 0x%08x\n",
+				plat_mmio_read(addr + 4), plat_mmio_read(addr));
+		}
+	}
 
 end:
 	return wr;
