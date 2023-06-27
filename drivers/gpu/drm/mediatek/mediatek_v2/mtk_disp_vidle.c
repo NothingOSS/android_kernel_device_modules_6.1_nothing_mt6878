@@ -101,22 +101,22 @@ static void mtk_vidle_dt_enable(unsigned int en)
 
 void mtk_vidle_power_keep(void)
 {
-	if (disp_dpc_driver.vidle_power_keep == NULL)
+	if (disp_dpc_driver.dpc_vidle_power_keep == NULL)
 		return;
 
 	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
 		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
-		disp_dpc_driver.vidle_power_keep(DISP_VIDLE_USER_DISP);
+		disp_dpc_driver.dpc_vidle_power_keep(DISP_VIDLE_USER_DISP);
 }
 
 void mtk_vidle_power_release(void)
 {
-	if (disp_dpc_driver.vidle_power_release == NULL)
+	if (disp_dpc_driver.dpc_vidle_power_release == NULL)
 		return;
 
 	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
 		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
-		disp_dpc_driver.vidle_power_release(DISP_VIDLE_USER_DISP);
+		disp_dpc_driver.dpc_vidle_power_release(DISP_VIDLE_USER_DISP);
 }
 
 void mtk_vidle_sync_mmdvfsrc_status_rc(unsigned int rc_en)
@@ -228,8 +228,9 @@ void mtk_vidle_register(const struct dpc_funcs *funcs)
 	disp_dpc_driver.dpc_enable = funcs->dpc_enable;
 	disp_dpc_driver.dpc_config = funcs->dpc_config;
 	disp_dpc_driver.dpc_group_enable = funcs->dpc_group_enable;
-	disp_dpc_driver.vidle_power_keep = funcs->vidle_power_keep;
-	disp_dpc_driver.vidle_power_release = funcs->vidle_power_release;
+	disp_dpc_driver.dpc_vidle_power_keep = funcs->dpc_vidle_power_keep;
+	disp_dpc_driver.dpc_vidle_power_release =
+		funcs->dpc_vidle_power_release;
 	disp_dpc_driver.dpc_hrt_bw_set = funcs->dpc_hrt_bw_set;
 	disp_dpc_driver.dpc_srt_bw_set = funcs->dpc_srt_bw_set;
 	disp_dpc_driver.dpc_dvfs_set = funcs->dpc_dvfs_set;

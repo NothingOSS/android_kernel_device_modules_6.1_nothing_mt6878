@@ -8,30 +8,30 @@
 #include "cmdq_helper_ext.h"
 #include <linux/atomic.h>
 
-struct dpc_funcs mdp_dpc_driver;
+static struct dpc_funcs mdp_dpc_funcs;
 atomic_t mdp_dpc_exc_pw_cnt;
 
 void mdp_dpc_register(const struct dpc_funcs *funcs)
 {
-	mdp_dpc_driver.dpc_dc_force_enable = funcs->dpc_dc_force_enable;
-	mdp_dpc_driver.vidle_power_keep = funcs->vidle_power_keep;
-	mdp_dpc_driver.vidle_power_release = funcs->vidle_power_release;
+	mdp_dpc_funcs.dpc_dc_force_enable = funcs->dpc_dc_force_enable;
+	mdp_dpc_funcs.dpc_vidle_power_keep = funcs->dpc_vidle_power_keep;
+	mdp_dpc_funcs.dpc_vidle_power_release = funcs->dpc_vidle_power_release;
 }
 EXPORT_SYMBOL_GPL(mdp_dpc_register);
 
 void mdp_dpc_dc_force_enable(bool en)
 {
-	if (mdp_dpc_driver.dpc_dc_force_enable == NULL)
+	if (mdp_dpc_funcs.dpc_dc_force_enable == NULL)
 		return;
 
-	mdp_dpc_driver.dpc_dc_force_enable(en);
+	mdp_dpc_funcs.dpc_dc_force_enable(en);
 }
 
 void mdp_dpc_power_keep(void)
 {
 	s32 cur_dpc_exc_pw_cnt;
 
-	if (mdp_dpc_driver.vidle_power_keep == NULL)
+	if (mdp_dpc_funcs.dpc_vidle_power_keep == NULL)
 		return;
 
 	cur_dpc_exc_pw_cnt = atomic_inc_return(&mdp_dpc_exc_pw_cnt);
@@ -43,14 +43,14 @@ void mdp_dpc_power_keep(void)
 		return;
 	}
 
-	mdp_dpc_driver.vidle_power_keep(DISP_VIDLE_USER_MDP);
+	mdp_dpc_funcs.dpc_vidle_power_keep(DISP_VIDLE_USER_MDP);
 }
 
 void mdp_dpc_power_release(void)
 {
 	s32 cur_dpc_exc_pw_cnt;
 
-	if (mdp_dpc_driver.vidle_power_release == NULL)
+	if (mdp_dpc_funcs.dpc_vidle_power_release == NULL)
 		return;
 
 	cur_dpc_exc_pw_cnt = atomic_dec_return(&mdp_dpc_exc_pw_cnt);
@@ -62,5 +62,5 @@ void mdp_dpc_power_release(void)
 		return;
 	}
 
-	mdp_dpc_driver.vidle_power_release(DISP_VIDLE_USER_MDP);
+	mdp_dpc_funcs.dpc_vidle_power_release(DISP_VIDLE_USER_MDP);
 }

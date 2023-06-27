@@ -581,10 +581,18 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 			cmdq_thread_dump(cfg->path[0]->clt->chan, task->pkts[0], NULL, NULL);
 	}
 
+	comp = path->mmlsys;
+	call_hw_op(comp, pw_enable);
+	mml_dpc_exc_keep(task);
+
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		call_dbg_op(comp, dump);
 	}
+
+	comp = path->mmlsys;
+	call_hw_op(comp, pw_disable);
+	mml_dpc_exc_release(task);
 }
 
 static s32 core_enable(struct mml_task *task, u32 pipe)
@@ -652,6 +660,8 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	const struct mml_topology_path *path = task->config->path[pipe];
 	struct mml_comp *comp;
 	int i;
+	s32 cur_task_cnt;
+	bool pw_disable_exc;
 
 	mml_clock_lock(task->config->mml);
 
@@ -688,13 +698,24 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	}
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
-	mml_dpc_exc_keep(task);
+
+	/* no need exception flow for DL/IR until scenario out */
+	cur_task_cnt = mml_dpc_task_cnt_get(task, false);
+	pw_disable_exc = task->config->info.mode == MML_MODE_MML_DECOUPLE ||
+		(task->config->dpc && cur_task_cnt == 1);
+
+	if (pw_disable_exc)
+		mml_dpc_exc_keep(task);
+
 	/* backward disable all power */
 	for (i = path->node_cnt - 1; i >= 0; i--) {
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, pw_disable);
 	}
-	mml_dpc_exc_release(task);
+
+	if (pw_disable_exc)
+		mml_dpc_exc_release(task);
+
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "cmdq", pipe);
@@ -1296,14 +1317,14 @@ static void core_taskdone(struct work_struct *work)
 
 	core_buffer_unmap(task);
 
+	if (cfg->dpc && cfg->info.mode != MML_MODE_DDP_ADDON)
+		mml_dpc_task_cnt_dec(task, false);
+
 	if (unlikely(task->config->task_ops->frame_err && !task->pkts[0] &&
 		(!task->config->dual || !task->pkts[1])))
 		task->config->task_ops->frame_err(task);
 	else
 		task->config->task_ops->frame_done(task);
-
-	if (cfg->dpc && cfg->info.mode != MML_MODE_DDP_ADDON)
-		mml_dpc_task_cnt_dec(task, false);
 
 	mml_trace_end();
 }
@@ -1727,7 +1748,7 @@ static void core_config_pipe(struct mml_task *task, u32 pipe)
 	mml_msg("%s task %p job %u pipe %u pkt %p done",
 		__func__, task, task->job.jobid, pipe, task->pkts[pipe]);
 exit:
-	if (cfg->dpc && err < 0)
+	if (cfg->info.mode != MML_MODE_DDP_ADDON && cfg->dpc && err < 0)
 		mml_dpc_task_cnt_dec(task, false);
 
 	mml_trace_ex_end();

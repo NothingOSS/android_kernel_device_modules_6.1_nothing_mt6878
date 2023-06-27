@@ -12,6 +12,8 @@
 
 #include "mtk_dpc.h"
 
+static struct dpc_funcs mml_dpc_funcs;
+
 /*
  * mml_dpc_register - register dpc driver functions.
  *

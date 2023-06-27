@@ -76,6 +76,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 throughput, u32 tput_up);
 void mml_comp_qos_clear(struct mml_comp *comp, struct mml_task *task);
 
+s32 mml_dpc_task_cnt_get(struct mml_task *task, bool addon_task);
 void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task);
 void mml_dpc_task_cnt_dec(struct mml_task *task, bool addon_task);
 void mml_dpc_exc_keep(struct mml_task *task);

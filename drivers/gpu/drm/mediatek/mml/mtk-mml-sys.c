@@ -904,6 +904,7 @@ s32 mml_sys_pw_enable(struct mml_comp *comp)
 	if (ret)
 		mml_err("%s enable pw-domain fail ret:%d", __func__, ret);
 
+	mml_msg_dpc("%s comp %u pm_runtime_resume_and_get", __func__, comp->id);
 	ret = pm_runtime_resume_and_get(comp->larb_dev);
 	if (ret)
 		mml_err("%s enable larb pm fail ret:%d", __func__, ret);
@@ -936,6 +937,7 @@ s32 mml_sys_pw_disable(struct mml_comp *comp)
 	ret = pm_runtime_resume_and_get(sys->dev);
 	if (ret)
 		mml_err("%s enable pw-domain fail ret:%d", __func__, ret);
+	mml_msg_dpc("%s comp %u pm_runtime_put_sync", __func__, comp->id);
 	pm_runtime_put_sync(comp->larb_dev);
 	pm_runtime_put_sync(sys->dev);
 

@@ -817,6 +817,16 @@ struct device *mml_smmu_get_shared_device(struct device *dev, const char *name)
 	return shared_dev;
 }
 
+s32 mml_dpc_task_cnt_get(struct mml_task *task, bool addon_task)
+{
+	struct mml_dev *mml = task->config->mml;
+
+	if (addon_task)
+		return atomic_read(&mml->dpc.addon_task_cnt);
+	else
+		return atomic_read(&mml->dpc.task_cnt);
+}
+
 void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
 {
 	struct mml_dev *mml = task->config->mml;
@@ -842,8 +852,8 @@ void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
 				mml_err("%s clk_prepare_enable fail %d",
 					__func__, ret);
 		}
-		mml_dpc_exc_keep(task);
 		mml_dpc_enable(true);
+		mml_dpc_exc_keep(task);
 		mml_dpc_config(DPC_SUBSYS_MML1, true);
 		mml_dpc_exc_release(task);
 	}
@@ -878,11 +888,12 @@ void mml_dpc_task_cnt_dec(struct mml_task *task, bool addon_task)
 		mml_msg_dpc("%s scenario out, dpc end", __func__);
 		mml_dpc_exc_keep(task);
 		mml_dpc_config(DPC_SUBSYS_MML1, false);
-		mml_dpc_exc_release(task);
+		mml_dpc_enable(false);
 		if (mml->dpc.mmlsys_26m_clk)
 			clk_disable_unprepare(mml->dpc.mmlsys_26m_clk);
 		comp = path->mmlsys;
 		call_hw_op(comp, pw_disable);
+		mml_dpc_exc_release(task);
 	}
 }
 
