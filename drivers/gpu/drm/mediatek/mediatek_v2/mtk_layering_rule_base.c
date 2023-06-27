@@ -3068,7 +3068,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 
 	comp_id_nr = mtk_ddp_ovl_resource_list(priv, &comp_id_list);
 	exclusive_chance = ((disp_info->gles_head[idx] == -1) &&
-			    (disp_info->layer_num[idx] < (2 * comp_id_nr)));
+			(disp_info->layer_num[idx] < (2 * comp_id_nr)));
 
 	/* TODO: check BW monitor with SPHRT */
 	if (disp_idx == HRT_PRIMARY) {
@@ -3151,12 +3151,14 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			rpo_comp = comp_state.comp_id;
 
 		if (mml_comp && (mml_comp == rpo_comp)) {
-			DDPMSG("MML RPO use the same OVL\n");
-			if (exclusive_chance && (mml_comp != comp_id_list[comp_id_nr - 1])) {
+			if (exclusive_chance && (mml_comp != comp_id_list[comp_id_nr - 1]) &&
+				(priv->data->mmsys_id != MMSYS_MT6897)) {
+				DDPMSG("MML RPO use the same OVL,got exclusive_chance\n");
 				layer_map |= (layer_map_idx << 1);
 				i--;
 				continue;
 			} else {
+				DDPMSG("MML RPO use the same OVL, change layer_cap\n");
 				if (mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER)) {
 					layer_info->layer_caps &= ~MTK_DISP_RSZ_LAYER;
 					mtk_gles_incl_layer(disp_info, idx, i);
