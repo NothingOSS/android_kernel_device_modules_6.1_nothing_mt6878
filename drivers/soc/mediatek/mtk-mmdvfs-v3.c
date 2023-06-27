@@ -1868,22 +1868,26 @@ EXPORT_SYMBOL(mmdvfs_mux_set_opp);
 
 static int mmdvfs_mux_get_opp(const char *name)
 {
+	u8 id = ARRAY_SIZE(mmdvfs_mux), opp = 0xff;
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(mmdvfs_mux); i++)
 		if (!strncmp(mmdvfs_mux[i].target_name, name, 16))
-			break;
+			if (mmdvfs_mux[i].opp < opp) {
+				id = i;
+				opp = mmdvfs_mux[i].opp;
+			}
 
-	if (i >= ARRAY_SIZE(mmdvfs_mux)) {
-		MMDVFS_ERR("invalid name:%s i:%d", name, i);
+	if (id >= ARRAY_SIZE(mmdvfs_mux)) {
+		MMDVFS_ERR("invalid name:%s id:%d", name, id);
 		return -EINVAL;
 	}
 
 	if (log_level & (1 << log_clk_ops))
-		MMDVFS_DBG("name:%s mux:%hhu name:%s rate:%llu opp:%hhd", name, mmdvfs_mux[i].id,
-			mmdvfs_mux[i].name, mmdvfs_mux[i].rate, mmdvfs_mux[i].opp);
+		MMDVFS_DBG("name:%s opp:%d mux:%d name:%s rate:%llu opp:%hhd", name, opp, id,
+			mmdvfs_mux[id].name, mmdvfs_mux[id].rate, mmdvfs_mux[id].opp);
 
-	return mmdvfs_mux[i].opp;
+	return opp;
 }
 
 static unsigned long mmdvfs_mux_get_rate(const char *name)
