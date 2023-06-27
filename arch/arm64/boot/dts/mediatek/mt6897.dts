@@ -10330,6 +10330,10 @@
 				"l15_common_w_1";
 		};
 
+		mtk-aie-debug-7sp {
+			compatible = "mediatek,mtk-aie-debug-7sp";
+		};
+
 		aie: aie@15310000 {
 			compatible = "mediatek,aie-isp7sp";
 			reg = <0 0x15310000 0 0x1000>;
