@@ -7,10 +7,10 @@
 #include "tile_mdp_func.h"
 #include "mtk-mml-color.h"
 
-enum isp_tile_message tile_rdma_init(struct tile_func_block *ptr_func,
-				     struct tile_reg_map *ptr_tile_reg_map)
+enum isp_tile_message tile_rdma_init(struct tile_func_block *func,
+				     struct tile_reg_map *reg_map)
 {
-	struct rdma_tile_data *data = &ptr_func->data->rdma;
+	struct rdma_tile_data *data = &func->data->rdma;
 
 	if (unlikely(!data))
 		return MDP_MESSAGE_NULL_DATA;
@@ -30,31 +30,31 @@ enum isp_tile_message tile_rdma_init(struct tile_func_block *ptr_func,
 		 * and may exceed max tile width 640. So reduce width
 		 * to prevent it.
 		 */
-		ptr_func->in_tile_width = ((data->max_width >> 5) - 1) << 5;
+		func->in_tile_width = ((data->max_width >> 5) - 1) << 5;
 	} else if (MML_FMT_AFBC_YUV(data->src_fmt)) {
-		ptr_func->in_tile_width = ((data->max_width >> 4) - 1) << 4;
+		func->in_tile_width = ((data->max_width >> 4) - 1) << 4;
 	} else if (MML_FMT_HYFBC(data->src_fmt)) {
 		/* For HyFBC block size 32x16, so tile rule same as RGB AFBC */
-		ptr_func->in_tile_width = ((data->max_width >> 5) - 1) << 5;
+		func->in_tile_width = ((data->max_width >> 5) - 1) << 5;
 	} else if (MML_FMT_BLOCK(data->src_fmt)) {
-		ptr_func->in_tile_width = (data->max_width >> 6) << 6;
+		func->in_tile_width = (data->max_width >> 6) << 6;
 	} else if (MML_FMT_YUV420(data->src_fmt)) {
-		ptr_func->in_tile_width = data->max_width;
+		func->in_tile_width = data->max_width;
 	} else if (MML_FMT_YUV422(data->src_fmt)) {
-		ptr_func->in_tile_width = data->max_width * 2;
+		func->in_tile_width = data->max_width * 2;
 	} else {
-		ptr_func->in_tile_width = data->max_width * 4;
+		func->in_tile_width = data->max_width * 4;
 	}
 
 	if (MML_FMT_H_SUBSAMPLE(data->src_fmt)) {
 		/* YUV422 or YUV420 */
 		/* Tile alignment constraints */
-		ptr_func->in_const_x = 2;
+		func->in_const_x = 2;
 
 		if (MML_FMT_V_SUBSAMPLE(data->src_fmt) &&
 		    !MML_FMT_INTERLACED(data->src_fmt)) {
 			/* YUV420 */
-			ptr_func->in_const_y = 2;
+			func->in_const_y = 2;
 		}
 	}
 
@@ -63,26 +63,25 @@ enum isp_tile_message tile_rdma_init(struct tile_func_block *ptr_func,
 	    !MML_FMT_ALPHA(data->src_fmt) &&
 	    !MML_FMT_BLOCK(data->src_fmt)) {
 		/* 10-bit packed, not compress, not alpha 32-bit, not blk */
-		ptr_func->in_const_x = 4;
+		func->in_const_x = 4;
 	}
 
-	ptr_func->in_tile_height = 65535;
-	ptr_func->out_tile_height = 65535;
+	func->in_tile_height = 65535;
+	func->out_tile_height = 65535;
 
-	ptr_func->crop_bias_x = data->crop.left;
-	ptr_func->crop_bias_y = data->crop.top;
+	func->crop_bias_x = data->crop.left;
+	func->crop_bias_y = data->crop.top;
 
 	return ISP_MESSAGE_TILE_OK;
 }
 
-enum isp_tile_message tile_rrot_init(struct tile_func_block *ptr_func,
-				     struct tile_reg_map *ptr_tile_reg_map)
+enum isp_tile_message tile_rrot_init(struct tile_func_block *func,
+				     struct tile_reg_map *reg_map)
 {
-	struct rdma_tile_data *data = &ptr_func->data->rdma;
+	struct rdma_tile_data *data = &func->data->rdma;
 
 	if (unlikely(!data))
 		return MDP_MESSAGE_NULL_DATA;
-
 
 	/* Specific constraints implied by different formats */
 
@@ -99,27 +98,27 @@ enum isp_tile_message tile_rrot_init(struct tile_func_block *ptr_func,
 		 * and may exceed max tile width 640. So reduce width
 		 * to prevent it.
 		 */
-		ptr_func->in_tile_width = ((data->max_width >> 5) - 1) << 5;
+		func->in_tile_width = ((data->max_width >> 5) - 1) << 5;
 	} else if (MML_FMT_AFBC_YUV(data->src_fmt)) {
-		ptr_func->in_tile_width = ((data->max_width >> 4) - 1) << 4;
+		func->in_tile_width = ((data->max_width >> 4) - 1) << 4;
 	} else if (MML_FMT_HYFBC(data->src_fmt)) {
 		/* For HyFBC block size 32x16, so tile rule same as RGB AFBC */
-		ptr_func->in_tile_width = ((data->max_width >> 5) - 1) << 5;
+		func->in_tile_width = ((data->max_width >> 5) - 1) << 5;
 	} else if (MML_FMT_BLOCK(data->src_fmt)) {
-		ptr_func->in_tile_width = (data->max_width >> 6) << 6;
+		func->in_tile_width = (data->max_width >> 6) << 6;
 	} else {
-		ptr_func->in_tile_width = data->max_width;
+		func->in_tile_width = data->max_width;
 	}
 
 	if (MML_FMT_H_SUBSAMPLE(data->src_fmt)) {
 		/* YUV422 or YUV420 */
 		/* Tile alignment constraints */
-		ptr_func->in_const_x = 2;
+		func->in_const_x = 2;
 
 		if (MML_FMT_V_SUBSAMPLE(data->src_fmt) &&
 		    !MML_FMT_INTERLACED(data->src_fmt)) {
 			/* YUV420 */
-			ptr_func->in_const_y = 2;
+			func->in_const_y = 2;
 		}
 	}
 
@@ -128,30 +127,30 @@ enum isp_tile_message tile_rrot_init(struct tile_func_block *ptr_func,
 	    !MML_FMT_ALPHA(data->src_fmt) &&
 	    !MML_FMT_BLOCK(data->src_fmt)) {
 		/* 10-bit packed, not compress, not alpha 32-bit, not blk */
-		ptr_func->in_const_x = 4;
+		func->in_const_x = 4;
 	}
 
-	ptr_func->in_tile_height = 65535;
-	ptr_func->out_tile_height = 65535;
+	func->in_tile_height = 65535;
+	func->out_tile_height = 65535;
 	if (data->read_rotate == MML_ROT_90 || data->read_rotate == MML_ROT_270)
-		swap(ptr_func->in_const_x, ptr_func->in_const_y);
+		swap(func->in_const_x, func->in_const_y);
 
-	ptr_func->crop_bias_x = data->crop.left;
-	ptr_func->crop_bias_y = data->crop.top;
+	func->crop_bias_x = data->crop.left;
+	func->crop_bias_y = data->crop.top;
 
 	return ISP_MESSAGE_TILE_OK;
 }
 
-enum isp_tile_message tile_prz_init(struct tile_func_block *ptr_func,
-				    struct tile_reg_map *ptr_tile_reg_map)
+enum isp_tile_message tile_prz_init(struct tile_func_block *func,
+				    struct tile_reg_map *reg_map)
 {
-	struct rsz_tile_data *data = &ptr_func->data->rsz;
+	struct rsz_tile_data *data = &func->data->rsz;
 
 	if (unlikely(!data))
 		return MDP_MESSAGE_NULL_DATA;
 
 	// drs: C42 downsampler output frame width
-	data->c42_out_frame_w = (ptr_func->full_size_x_in + 0x01) & ~0x01;
+	data->c42_out_frame_w = (func->full_size_x_in + 0x01) & ~0x01;
 
 	// prz
 	if (data->ver_scale) {
@@ -172,58 +171,58 @@ enum isp_tile_message tile_prz_init(struct tile_func_block *ptr_func,
 			/* vertical first */
 			if (data->ver_algo == SCALER_6_TAPS ||
 			    data->ver_cubic_trunc) {
-				ptr_func->in_tile_width = data->max_width;
+				func->in_tile_width = data->max_width;
 			} else {
-				ptr_func->in_tile_width = data->max_width >> 1;
+				func->in_tile_width = data->max_width >> 1;
 			}
 		} else {
 			if (data->ver_algo == SCALER_6_TAPS ||
 			    data->ver_cubic_trunc) {
-				ptr_func->out_tile_width = data->max_width - 2;
+				func->out_tile_width = data->max_width - 2;
 				data->prz_out_tile_w = data->max_width;
 			} else {
-				ptr_func->out_tile_width = (data->max_width >> 1) - 2;
+				func->out_tile_width = (data->max_width >> 1) - 2;
 				data->prz_out_tile_w = data->max_width >> 1;
 			}
 		}
 	}
 
-	ptr_func->in_tile_height = 65535;
-	ptr_func->out_tile_height = 65535;
+	func->in_tile_height = 65535;
+	func->out_tile_height = 65535;
 
 	// urs: C24 upsampler input frame width
-	data->c24_in_frame_w = (ptr_func->full_size_x_out + 0x01) & ~0x1;
+	data->c24_in_frame_w = (func->full_size_x_out + 0x01) & ~0x1;
 
 	return ISP_MESSAGE_TILE_OK;
 }
 
-enum isp_tile_message tile_tdshp_init(struct tile_func_block *ptr_func,
-				      struct tile_reg_map *ptr_tile_reg_map)
+enum isp_tile_message tile_tdshp_init(struct tile_func_block *func,
+				      struct tile_reg_map *reg_map)
 {
-	struct tdshp_tile_data *data = &ptr_func->data->tdshp;
+	struct tdshp_tile_data *data = &func->data->tdshp;
 
 	if (unlikely(!data))
 		return MDP_MESSAGE_NULL_DATA;
 
-	ptr_func->in_tile_width   = data->max_width;
-	ptr_func->out_tile_width  = data->max_width;
-	ptr_func->in_tile_height  = 65535;
-	ptr_func->out_tile_height = 65535;
+	func->in_tile_width   = data->max_width;
+	func->out_tile_width  = data->max_width;
+	func->in_tile_height  = 65535;
+	func->out_tile_height = 65535;
 
 	if (!data->relay_mode) {
-		ptr_func->l_tile_loss = 3;
-		ptr_func->r_tile_loss = 3;
-		ptr_func->t_tile_loss = 2;
-		ptr_func->b_tile_loss = 2;
+		func->l_tile_loss = 3;
+		func->r_tile_loss = 3;
+		func->t_tile_loss = 2;
+		func->b_tile_loss = 2;
 	}
 
 	return ISP_MESSAGE_TILE_OK;
 }
 
-enum isp_tile_message tile_wrot_init(struct tile_func_block *ptr_func,
-				     struct tile_reg_map *ptr_tile_reg_map)
+enum isp_tile_message tile_wrot_init(struct tile_func_block *func,
+				     struct tile_reg_map *reg_map)
 {
-	struct wrot_tile_data *data = &ptr_func->data->wrot;
+	struct wrot_tile_data *data = &func->data->wrot;
 
 	if (unlikely(!data))
 		return MDP_MESSAGE_NULL_DATA;
@@ -231,33 +230,33 @@ enum isp_tile_message tile_wrot_init(struct tile_func_block *ptr_func,
 	if (data->racing) {
 		if (data->rotate == MML_ROT_90 ||
 		    data->rotate == MML_ROT_270) {
-			ptr_func->out_tile_width  = data->racing_h;
-			ptr_func->in_tile_height  = 65535;
-			ptr_func->out_tile_height = 65535;
+			func->out_tile_width  = data->racing_h;
+			func->in_tile_height  = 65535;
+			func->out_tile_height = 65535;
 		} else {
-			ptr_func->out_tile_width  = data->max_width;
-			ptr_func->in_tile_height  = data->racing_h;
-			ptr_func->out_tile_height = data->racing_h;
+			func->out_tile_width  = data->max_width;
+			func->in_tile_height  = data->racing_h;
+			func->out_tile_height = data->racing_h;
 		}
 	} else {
 		if (data->rotate == MML_ROT_0 && MML_FMT_IS_RGB(data->dest_fmt) &&
 			!MML_FMT_COMPRESS(data->dest_fmt)) {
 			/* output rgb will directly output to dram, no limit */
-			ptr_func->out_tile_width = 65535;
+			func->out_tile_width = 65535;
 		} else if (data->rotate == MML_ROT_90 ||
 		    data->rotate == MML_ROT_270 ||
 		    data->flip) {
 			/* 90, 270 degrees and flip */
-			ptr_func->out_tile_width = data->max_width;
+			func->out_tile_width = data->max_width;
 		} else {
-			ptr_func->out_tile_width = data->max_width * 2;
+			func->out_tile_width = data->max_width * 2;
 		}
-		ptr_func->in_tile_height  = 65535;
-		ptr_func->out_tile_height = 65535;
+		func->in_tile_height  = 65535;
+		func->out_tile_height = 65535;
 	}
 
 	if (MML_FMT_AFBC(data->dest_fmt))
-		ptr_func->out_tile_width = min(128, ptr_func->out_tile_width);
+		func->out_tile_width = min(128, func->out_tile_width);
 
 	/* For tile calculation */
 	if (MML_FMT_YUV422(data->dest_fmt)) {
@@ -265,146 +264,142 @@ enum isp_tile_message tile_wrot_init(struct tile_func_block *ptr_func,
 		if (data->rotate == MML_ROT_90 ||
 		    data->rotate == MML_ROT_270) {
 			/* 90, 270 degrees & YUV422 */
-			ptr_func->out_const_x = 2;
-			ptr_func->out_const_y = 2;
+			func->out_const_x = 2;
+			func->out_const_y = 2;
 		} else {
-			ptr_func->out_const_x = 2;
+			func->out_const_x = 2;
 		}
 	} else if (MML_FMT_YUV420(data->dest_fmt)) {
-		ptr_func->out_const_x = 2;
-		ptr_func->out_const_y = 2;
+		func->out_const_x = 2;
+		func->out_const_y = 2;
 	}
 
 	return ISP_MESSAGE_TILE_OK;
 }
 
-enum isp_tile_message tile_rdma_for(struct tile_func_block *ptr_func,
-				    struct tile_reg_map *ptr_tile_reg_map)
+enum isp_tile_message tile_rdma_for(struct tile_func_block *func,
+				    struct tile_reg_map *reg_map)
 {
-	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
-		ptr_func->out_pos_xs = ptr_func->in_pos_xs - ptr_func->crop_bias_x;
-		ptr_func->out_pos_xe = ptr_func->in_pos_xe - ptr_func->crop_bias_x;
+	if (!reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
+		func->out_pos_xs = func->in_pos_xs - func->crop_bias_x;
+		func->out_pos_xe = func->in_pos_xe - func->crop_bias_x;
 	}
 
-	if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
-		ptr_func->out_pos_ys = ptr_func->in_pos_ys - ptr_func->crop_bias_y;
-		ptr_func->out_pos_ye = ptr_func->in_pos_ye - ptr_func->crop_bias_y;
+	if (!reg_map->skip_y_cal && !func->tdr_v_disable_flag) {
+		func->out_pos_ys = func->in_pos_ys - func->crop_bias_y;
+		func->out_pos_ye = func->in_pos_ye - func->crop_bias_y;
 	}
 
-	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
-		if (ptr_func->backward_output_xs_pos >= ptr_func->out_pos_xs) {
-			ptr_func->bias_x = ptr_func->backward_output_xs_pos -
-				       ptr_func->out_pos_xs;
-			ptr_func->out_pos_xs = ptr_func->backward_output_xs_pos;
+	if (!reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
+		if (func->backward_output_xs_pos >= func->out_pos_xs) {
+			func->bias_x = func->backward_output_xs_pos -
+				       func->out_pos_xs;
+			func->out_pos_xs = func->backward_output_xs_pos;
 		} else {
 			return MDP_MESSAGE_BACKWARD_START_LESS_THAN_FORWARD;
 		}
 
-		if (ptr_func->out_pos_xe > ptr_func->backward_output_xe_pos)
-			ptr_func->out_pos_xe = ptr_func->backward_output_xe_pos;
+		if (func->out_pos_xe > func->backward_output_xe_pos)
+			func->out_pos_xe = func->backward_output_xe_pos;
 	}
 
-	if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
-		if (ptr_func->backward_output_ys_pos >= ptr_func->out_pos_ys) {
-			ptr_func->bias_y = ptr_func->backward_output_ys_pos -
-				       ptr_func->out_pos_ys;
-			ptr_func->out_pos_ys = ptr_func->backward_output_ys_pos;
+	if (!reg_map->skip_y_cal && !func->tdr_v_disable_flag) {
+		if (func->backward_output_ys_pos >= func->out_pos_ys) {
+			func->bias_y = func->backward_output_ys_pos -
+				       func->out_pos_ys;
+			func->out_pos_ys = func->backward_output_ys_pos;
 		} else {
 			return MDP_MESSAGE_BACKWARD_START_LESS_THAN_FORWARD;
 		}
 
-		if (ptr_func->out_pos_ye > ptr_func->backward_output_ye_pos)
-			ptr_func->out_pos_ye = ptr_func->backward_output_ye_pos;
+		if (func->out_pos_ye > func->backward_output_ye_pos)
+			func->out_pos_ye = func->backward_output_ye_pos;
 	}
 
 	return ISP_MESSAGE_TILE_OK;
 }
 
-enum isp_tile_message tile_crop_for(struct tile_func_block *ptr_func,
-				    struct tile_reg_map *ptr_tile_reg_map)
+enum isp_tile_message tile_crop_for(struct tile_func_block *func,
+				    struct tile_reg_map *reg_map)
 {
-	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
-		if (ptr_func->backward_output_xs_pos >= ptr_func->out_pos_xs) {
-			ptr_func->bias_x = ptr_func->backward_output_xs_pos -
-				       ptr_func->out_pos_xs;
-			ptr_func->out_pos_xs = ptr_func->backward_output_xs_pos;
+	if (!reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
+		if (func->backward_output_xs_pos >= func->out_pos_xs) {
+			func->bias_x = func->backward_output_xs_pos -
+				       func->out_pos_xs;
+			func->out_pos_xs = func->backward_output_xs_pos;
 		} else {
 			return MDP_MESSAGE_BACKWARD_START_LESS_THAN_FORWARD;
 		}
 
-		if (ptr_func->out_pos_xe > ptr_func->backward_output_xe_pos)
-			ptr_func->out_pos_xe = ptr_func->backward_output_xe_pos;
+		if (func->out_pos_xe > func->backward_output_xe_pos)
+			func->out_pos_xe = func->backward_output_xe_pos;
 	}
 
-	if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
-		if (ptr_func->backward_output_ys_pos >= ptr_func->out_pos_ys) {
-			ptr_func->bias_y = ptr_func->backward_output_ys_pos -
-				       ptr_func->out_pos_ys;
-			ptr_func->out_pos_ys = ptr_func->backward_output_ys_pos;
+	if (!reg_map->skip_y_cal && !func->tdr_v_disable_flag) {
+		if (func->backward_output_ys_pos >= func->out_pos_ys) {
+			func->bias_y = func->backward_output_ys_pos -
+				       func->out_pos_ys;
+			func->out_pos_ys = func->backward_output_ys_pos;
 		} else {
 			return MDP_MESSAGE_BACKWARD_START_LESS_THAN_FORWARD;
 		}
 
-		if (ptr_func->out_pos_ye > ptr_func->backward_output_ye_pos)
-			ptr_func->out_pos_ye = ptr_func->backward_output_ye_pos;
+		if (func->out_pos_ye > func->backward_output_ye_pos)
+			func->out_pos_ye = func->backward_output_ye_pos;
 	}
 
 	return ISP_MESSAGE_TILE_OK;
 }
 
-enum isp_tile_message tile_aal_for(struct tile_func_block *ptr_func,
-				   struct tile_reg_map *ptr_tile_reg_map)
+enum isp_tile_message tile_aal_for(struct tile_func_block *func,
+				   struct tile_reg_map *reg_map)
 {
 	/* skip frame mode */
-	if (ptr_tile_reg_map->first_frame)
+	if (reg_map->first_frame)
 		return ISP_MESSAGE_TILE_OK;
 
-	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
-		if (ptr_func->out_tile_width &&
-		    ptr_func->out_pos_xe + 1 >
-				ptr_func->out_pos_xs + ptr_func->out_tile_width) {
-			ptr_func->out_pos_xe =
-				ptr_func->out_pos_xs + ptr_func->out_tile_width - 1;
-			ptr_func->h_end_flag = false;
+	if (!reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
+		if (func->out_tile_width &&
+		    func->out_pos_xe + 1 > func->out_pos_xs + func->out_tile_width) {
+			func->out_pos_xe = func->out_pos_xs + func->out_tile_width - 1;
+			func->h_end_flag = false;
 		}
 	}
 
-	if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
-		if (ptr_func->out_tile_height &&
-		    ptr_func->out_pos_ye + 1 >
-				ptr_func->out_pos_ys + ptr_func->out_tile_height)
-			ptr_func->out_pos_ye =
-				ptr_func->out_pos_ys + ptr_func->out_tile_height - 1;
+	if (!reg_map->skip_y_cal && !func->tdr_v_disable_flag) {
+		if (func->out_tile_height &&
+		    func->out_pos_ye + 1 > func->out_pos_ys + func->out_tile_height)
+			func->out_pos_ye = func->out_pos_ys + func->out_tile_height - 1;
 	}
 
 	return ISP_MESSAGE_TILE_OK;
 }
 
-enum isp_tile_message tile_prz_for(struct tile_func_block *ptr_func,
-				   struct tile_reg_map *ptr_tile_reg_map)
+enum isp_tile_message tile_prz_for(struct tile_func_block *func,
+				   struct tile_reg_map *reg_map)
 {
 	s32 C42OutXLeft = 0;
 	s32 C42OutXRight = 0;
 	s32 C24InXLeft = 0;
 	s32 C24InXRight = 0;
-	struct rsz_tile_data *data = &ptr_func->data->rsz;
+	struct rsz_tile_data *data = &func->data->rsz;
 
 	if (unlikely(!data))
 		return MDP_MESSAGE_NULL_DATA;
 
-	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
+	if (!reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
 		/* drs: C42 downsampler forward */
-		if (data->use_121filter && ptr_func->in_pos_xs > 0) {
+		if (data->use_121filter && func->in_pos_xs > 0) {
 			/* Fixed 2 column tile loss for 121 filter */
-			C42OutXLeft = ptr_func->in_pos_xs + 2;
+			C42OutXLeft = func->in_pos_xs + 2;
 		} else {
-			C42OutXLeft = ptr_func->in_pos_xs;
+			C42OutXLeft = func->in_pos_xs;
 		}
 
-		if (ptr_func->in_pos_xe + 1 >= ptr_func->full_size_x_in) {
+		if (func->in_pos_xe + 1 >= func->full_size_x_in) {
 			C42OutXRight = data->c42_out_frame_w - 1;
 		} else {
-			C42OutXRight = ptr_func->in_pos_xe;
+			C42OutXRight = func->in_pos_xe;
 			if (data->crop_aal_tile_loss)
 				C42OutXRight -= 8;
 
@@ -417,7 +412,7 @@ enum isp_tile_message tile_prz_for(struct tile_func_block *ptr_func,
 			 * can match tile calculation
 			 * HW only needs drs in size and urs out size
 			 */
-			if (!(ptr_func->in_pos_xe & 0x1))
+			if (!(func->in_pos_xe & 0x1))
 				C42OutXRight -= 1;
 		}
 
@@ -434,13 +429,13 @@ enum isp_tile_message tile_prz_for(struct tile_func_block *ptr_func,
 				       data->c24_in_frame_w - 1,
 				       2,
 				       data->prz_back_xs,
-				       ptr_func->out_cal_order,
+				       func->out_cal_order,
 				       &C24InXLeft,	/* C24 in = Scaler output */
 				       &C24InXRight,	/* C24 in = Scaler output */
-				       &ptr_func->bias_x,
-				       &ptr_func->offset_x,
-				       &ptr_func->bias_x_c,
-				       &ptr_func->offset_x_c);
+				       &func->bias_x,
+				       &func->offset_x,
+				       &func->bias_x_c,
+				       &func->offset_x_c);
 			break;
 		case SCALER_SRC_ACC:
 			forward_src_acc(C42OutXLeft,	/* C42 out = Scaler input */
@@ -453,13 +448,13 @@ enum isp_tile_message tile_prz_for(struct tile_func_block *ptr_func,
 					data->c24_in_frame_w - 1,
 					2,
 					data->prz_back_xs,
-					ptr_func->out_cal_order,
+					func->out_cal_order,
 					&C24InXLeft,	/* C24 in = Scaler output */
 					&C24InXRight,	/* C24 in = Scaler output */
-					&ptr_func->bias_x,
-					&ptr_func->offset_x,
-					&ptr_func->bias_x_c,
-					&ptr_func->offset_x_c);
+					&func->bias_x,
+					&func->offset_x,
+					&func->bias_x_c,
+					&func->offset_x_c);
 			break;
 		case SCALER_CUB_ACC:
 			forward_cub_acc(C42OutXLeft,	/* C42 out = Scaler input */
@@ -472,13 +467,13 @@ enum isp_tile_message tile_prz_for(struct tile_func_block *ptr_func,
 					data->c24_in_frame_w - 1,
 					2,
 					data->prz_back_xs,
-					ptr_func->out_cal_order,
+					func->out_cal_order,
 					&C24InXLeft,	/* C24 in = Scaler output */
 					&C24InXRight,	/* C24 in = Scaler output */
-					&ptr_func->bias_x,
-					&ptr_func->offset_x,
-					&ptr_func->bias_x_c,
-					&ptr_func->offset_x_c);
+					&func->bias_x,
+					&func->offset_x,
+					&func->bias_x_c,
+					&func->offset_x_c);
 			break;
 		default:
 			ASSERT(0);
@@ -491,87 +486,87 @@ enum isp_tile_message tile_prz_for(struct tile_func_block *ptr_func,
 			C24InXRight = data->prz_back_xe;
 
 		/* urs: C24 upsampler forward */
-		ptr_func->out_pos_xs = C24InXLeft;
+		func->out_pos_xs = C24InXLeft;
 		/* Fixed 1 column tile loss for C24 upsampling while end is even */
-		ptr_func->out_pos_xe = C24InXRight - 1;
+		func->out_pos_xe = C24InXRight - 1;
 
 		if (C24InXRight >= data->c24_in_frame_w - 1)
-			ptr_func->out_pos_xe = ptr_func->full_size_x_out - 1;
+			func->out_pos_xe = func->full_size_x_out - 1;
 
-		if (ptr_func->out_pos_xe > ptr_func->backward_output_xe_pos)
-			ptr_func->out_pos_xe = ptr_func->backward_output_xe_pos;
+		if (func->out_pos_xe > func->backward_output_xe_pos)
+			func->out_pos_xe = func->backward_output_xe_pos;
 	}
 
-	if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
+	if (!reg_map->skip_y_cal && !func->tdr_v_disable_flag) {
 		/* drs: C42 downsampler forward */
 		/* prz */
 		switch (data->ver_algo) {
 		case SCALER_6_TAPS:
-			forward_6_taps(ptr_func->in_pos_ys,
-					ptr_func->in_pos_ye,
-					ptr_func->full_size_y_in - 1,
+			forward_6_taps(func->in_pos_ys,
+					func->in_pos_ye,
+					func->full_size_y_in - 1,
 					data->coeff_step_y,
 					data->precision_y,
 					data->crop.r.top,
 					data->crop.y_sub_px,
-					ptr_func->full_size_y_out - 1,
-					ptr_func->out_const_y,
-					ptr_func->backward_output_ys_pos,
-					ptr_func->out_cal_order,
-					&ptr_func->out_pos_ys,
-					&ptr_func->out_pos_ye,
-					&ptr_func->bias_y,
-					&ptr_func->offset_y,
-					&ptr_func->bias_y_c,
-					&ptr_func->offset_y_c);
+					func->full_size_y_out - 1,
+					func->out_const_y,
+					func->backward_output_ys_pos,
+					func->out_cal_order,
+					&func->out_pos_ys,
+					&func->out_pos_ye,
+					&func->bias_y,
+					&func->offset_y,
+					&func->bias_y_c,
+					&func->offset_y_c);
 			break;
 		case SCALER_SRC_ACC:
-			forward_src_acc(ptr_func->in_pos_ys,
-					ptr_func->in_pos_ye,
-					ptr_func->full_size_y_in - 1,
+			forward_src_acc(func->in_pos_ys,
+					func->in_pos_ye,
+					func->full_size_y_in - 1,
 					data->coeff_step_y,
 					data->precision_y,
 					data->crop.r.top,
 					data->crop.y_sub_px,
-					ptr_func->full_size_y_out - 1,
-					ptr_func->out_const_y,
-					ptr_func->backward_output_ys_pos,
-					ptr_func->out_cal_order,
-					&ptr_func->out_pos_ys,
-					&ptr_func->out_pos_ye,
-					&ptr_func->bias_y,
-					&ptr_func->offset_y,
-					&ptr_func->bias_y_c,
-					&ptr_func->offset_y_c);
+					func->full_size_y_out - 1,
+					func->out_const_y,
+					func->backward_output_ys_pos,
+					func->out_cal_order,
+					&func->out_pos_ys,
+					&func->out_pos_ye,
+					&func->bias_y,
+					&func->offset_y,
+					&func->bias_y_c,
+					&func->offset_y_c);
 			break;
 		case SCALER_CUB_ACC:
-			forward_cub_acc(ptr_func->in_pos_ys,
-					ptr_func->in_pos_ye,
-					ptr_func->full_size_y_in - 1,
+			forward_cub_acc(func->in_pos_ys,
+					func->in_pos_ye,
+					func->full_size_y_in - 1,
 					data->coeff_step_y,
 					data->precision_y,
 					data->crop.r.top,
 					data->crop.y_sub_px,
-					ptr_func->full_size_y_out - 1,
-					ptr_func->out_const_y,
-					ptr_func->backward_output_ys_pos,
-					ptr_func->out_cal_order,
-					&ptr_func->out_pos_ys,
-					&ptr_func->out_pos_ye,
-					&ptr_func->bias_y,
-					&ptr_func->offset_y,
-					&ptr_func->bias_y_c,
-					&ptr_func->offset_y_c);
+					func->full_size_y_out - 1,
+					func->out_const_y,
+					func->backward_output_ys_pos,
+					func->out_cal_order,
+					&func->out_pos_ys,
+					&func->out_pos_ye,
+					&func->bias_y,
+					&func->offset_y,
+					&func->bias_y_c,
+					&func->offset_y_c);
 			break;
 		default:
 			ASSERT(0);
 			return MDP_MESSAGE_RESIZER_SCALING_ERROR;
 		}
 
-		ptr_func->out_pos_ys = ptr_func->backward_output_ys_pos;
+		func->out_pos_ys = func->backward_output_ys_pos;
 
-		if (ptr_func->out_pos_ye > ptr_func->backward_output_ye_pos)
-			ptr_func->out_pos_ye = ptr_func->backward_output_ye_pos;
+		if (func->out_pos_ye > func->backward_output_ye_pos)
+			func->out_pos_ye = func->backward_output_ye_pos;
 
 		/* urs: C24 upsampler forward */
 	}
@@ -580,7 +575,7 @@ enum isp_tile_message tile_prz_for(struct tile_func_block *ptr_func,
 }
 
 static enum isp_tile_message tile_wrot_align_out_width(
-	struct tile_func_block *ptr_func, const struct wrot_tile_data *data,
+	struct tile_func_block *func, const struct wrot_tile_data *data,
 	int full_size_x_out)
 {
 	s32 alignment = 1;
@@ -600,102 +595,101 @@ static enum isp_tile_message tile_wrot_align_out_width(
 		    (data->rotate == MML_ROT_180 && !data->flip) ||
 		    (data->rotate == MML_ROT_270)) {
 			/* first tile padding */
-			if (ptr_func->out_pos_xs == 0) {
+			if (func->out_pos_xs == 0) {
 				remain = TILE_MOD(full_size_x_out -
-						  ptr_func->out_pos_xe - 1,
+						  func->out_pos_xe - 1,
 						  alignment);
 				if (remain)
 					remain = alignment - remain;
 			} else {
-				remain = TILE_MOD(ptr_func->out_pos_xe -
-						  ptr_func->out_pos_xs + 1,
+				remain = TILE_MOD(func->out_pos_xe -
+						  func->out_pos_xs + 1,
 						  alignment);
 			}
 		} else {
 			/* last tile padding */
-			if (ptr_func->out_pos_xe + 1 < full_size_x_out)
-				remain = TILE_MOD(ptr_func->out_pos_xe -
-						  ptr_func->out_pos_xs + 1,
+			if (func->out_pos_xe + 1 < full_size_x_out)
+				remain = TILE_MOD(func->out_pos_xe -
+						  func->out_pos_xs + 1,
 						  alignment);
 		}
 		if (remain)
-			ptr_func->out_pos_xe -= remain;
+			func->out_pos_xe -= remain;
 	}
 
 	return ISP_MESSAGE_TILE_OK;
 }
 
-enum isp_tile_message tile_wrot_for(struct tile_func_block *ptr_func,
-				    struct tile_reg_map *ptr_tile_reg_map)
+enum isp_tile_message tile_wrot_for(struct tile_func_block *func,
+				    struct tile_reg_map *reg_map)
 {
-	struct wrot_tile_data *data = &ptr_func->data->wrot;
+	struct wrot_tile_data *data = &func->data->wrot;
 	s32 remain = 0;
 
 	if (unlikely(!data))
 		return MDP_MESSAGE_NULL_DATA;
 
 	/* frame mode */
-	if (ptr_tile_reg_map->first_frame) {
+	if (reg_map->first_frame) {
 		if (data->enable_x_crop &&
-		    !ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
-			if (ptr_func->min_out_pos_xs > ptr_func->out_pos_xs)
-				ptr_func->out_pos_xs = ptr_func->min_out_pos_xs;
-			if (ptr_func->out_pos_xe > ptr_func->max_out_pos_xe)
-				ptr_func->out_pos_xe = ptr_func->max_out_pos_xe;
+		    !reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
+			if (func->min_out_pos_xs > func->out_pos_xs)
+				func->out_pos_xs = func->min_out_pos_xs;
+			if (func->out_pos_xe > func->max_out_pos_xe)
+				func->out_pos_xe = func->max_out_pos_xe;
 		} else if (data->enable_y_crop &&
-			   !ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
-			if (ptr_func->min_out_pos_ys > ptr_func->out_pos_ys)
-				ptr_func->out_pos_ys = ptr_func->min_out_pos_ys;
-			if (ptr_func->out_pos_ye > ptr_func->max_out_pos_ye)
-				ptr_func->out_pos_ye = ptr_func->max_out_pos_ye;
+			   !reg_map->skip_y_cal && !func->tdr_v_disable_flag) {
+			if (func->min_out_pos_ys > func->out_pos_ys)
+				func->out_pos_ys = func->min_out_pos_ys;
+			if (func->out_pos_ye > func->max_out_pos_ye)
+				func->out_pos_ye = func->max_out_pos_ye;
 		}
 		return ISP_MESSAGE_TILE_OK;
 	}
 
-	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
-		if (ptr_func->backward_output_xs_pos >= ptr_func->out_pos_xs) {
-			ptr_func->bias_x = ptr_func->backward_output_xs_pos -
-				       ptr_func->out_pos_xs;
-			ptr_func->out_pos_xs = ptr_func->backward_output_xs_pos;
+	if (!reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
+		if (func->backward_output_xs_pos >= func->out_pos_xs) {
+			func->bias_x = func->backward_output_xs_pos -
+				       func->out_pos_xs;
+			func->out_pos_xs = func->backward_output_xs_pos;
 		} else {
 			return MDP_MESSAGE_BACKWARD_START_LESS_THAN_FORWARD;
 		}
 
-		if (ptr_func->out_pos_xe >= ptr_func->backward_output_xe_pos) {
-			ptr_func->out_pos_xe = ptr_func->backward_output_xe_pos;
+		if (func->out_pos_xe >= func->backward_output_xe_pos) {
+			func->out_pos_xe = func->backward_output_xe_pos;
 		} else {
 			/* Check out xe alignment */
-			if (ptr_func->out_const_x > 1) {
-				remain = TILE_MOD(ptr_func->out_pos_xe + 1,
-						  ptr_func->out_const_x);
+			if (func->out_const_x > 1) {
+				remain = TILE_MOD(func->out_pos_xe + 1,
+						  func->out_const_x);
 				if (remain)
-					ptr_func->out_pos_xe -= remain;
+					func->out_pos_xe -= remain;
 			}
 
 			/* Check out width alignment */
-			tile_wrot_align_out_width(ptr_func, data,
-						  ptr_func->full_size_x_out);
+			tile_wrot_align_out_width(func, data, func->full_size_x_out);
 		}
 	}
 
-	if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
-		if (ptr_func->backward_output_ys_pos >= ptr_func->out_pos_ys) {
-			ptr_func->bias_y = ptr_func->backward_output_ys_pos -
-				       ptr_func->out_pos_ys;
-			ptr_func->out_pos_ys = ptr_func->backward_output_ys_pos;
+	if (!reg_map->skip_y_cal && !func->tdr_v_disable_flag) {
+		if (func->backward_output_ys_pos >= func->out_pos_ys) {
+			func->bias_y = func->backward_output_ys_pos -
+				       func->out_pos_ys;
+			func->out_pos_ys = func->backward_output_ys_pos;
 		} else {
 			return MDP_MESSAGE_BACKWARD_START_LESS_THAN_FORWARD;
 		}
 
-		if (ptr_func->out_pos_ye >= ptr_func->backward_output_ye_pos) {
-			ptr_func->out_pos_ye = ptr_func->backward_output_ye_pos;
+		if (func->out_pos_ye >= func->backward_output_ye_pos) {
+			func->out_pos_ye = func->backward_output_ye_pos;
 		} else {
 			/* Check out ye alignment */
-			if (ptr_func->out_const_y > 1) {
-				remain = TILE_MOD(ptr_func->out_pos_ye + 1,
-						  ptr_func->out_const_y);
+			if (func->out_const_y > 1) {
+				remain = TILE_MOD(func->out_pos_ye + 1,
+						  func->out_const_y);
 				if (remain)
-					ptr_func->out_pos_ye -= remain;
+					func->out_pos_ye -= remain;
 			}
 		}
 	}
@@ -703,188 +697,184 @@ enum isp_tile_message tile_wrot_for(struct tile_func_block *ptr_func,
 	return ISP_MESSAGE_TILE_OK;
 }
 
-enum isp_tile_message tile_rdma_back(struct tile_func_block *ptr_func,
-				     struct tile_reg_map *ptr_tile_reg_map)
+enum isp_tile_message tile_rdma_back(struct tile_func_block *func,
+				     struct tile_reg_map *reg_map)
 {
-	struct rdma_tile_data *data = &ptr_func->data->rdma;
+	struct rdma_tile_data *data = &func->data->rdma;
 	s32 remain = 0, start = 0;
 
 	if (unlikely(!data))
 		return MDP_MESSAGE_NULL_DATA;
 
-	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
-		ptr_func->in_pos_xs = ptr_func->out_pos_xs + ptr_func->crop_bias_x;
-		ptr_func->in_pos_xe = ptr_func->out_pos_xe + ptr_func->crop_bias_x;
+	if (!reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
+		func->in_pos_xs = func->out_pos_xs + func->crop_bias_x;
+		func->in_pos_xe = func->out_pos_xe + func->crop_bias_x;
 	}
 
-	if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
-		ptr_func->in_pos_ys = ptr_func->out_pos_ys + ptr_func->crop_bias_y;
-		ptr_func->in_pos_ye = ptr_func->out_pos_ye + ptr_func->crop_bias_y;
+	if (!reg_map->skip_y_cal && !func->tdr_v_disable_flag) {
+		func->in_pos_ys = func->out_pos_ys + func->crop_bias_y;
+		func->in_pos_ye = func->out_pos_ye + func->crop_bias_y;
 	}
 
 	/* frame mode */
-	if (ptr_tile_reg_map->first_frame) {
+	if (reg_map->first_frame) {
 		/* Specific handle for block format */
-		if (ptr_func->in_pos_xe + 1 > data->crop.left + data->crop.width)
-			ptr_func->in_pos_xe = data->crop.left + data->crop.width - 1;
+		if (func->in_pos_xe + 1 > data->crop.left + data->crop.width)
+			func->in_pos_xe = data->crop.left + data->crop.width - 1;
 
 		if (MML_FMT_BLOCK(data->src_fmt)) {
 			/* Alignment x right in block boundary */
-			ptr_func->in_pos_xe = ((1 + (ptr_func->in_pos_xe >>
+			func->in_pos_xe = ((1 + (func->in_pos_xe >>
 				data->blk_shift_w)) << data->blk_shift_w) - 1;
 
-			if (ptr_func->in_pos_xe + 1 > ptr_func->full_size_x_in)
-				ptr_func->in_pos_xe = ptr_func->full_size_x_in - 1;
+			if (func->in_pos_xe + 1 > func->full_size_x_in)
+				func->in_pos_xe = func->full_size_x_in - 1;
 		}
 
-		if (ptr_func->in_const_x > 1) {
-			remain = TILE_MOD(ptr_func->in_pos_xe + 1, ptr_func->in_const_x);
+		if (func->in_const_x > 1) {
+			remain = TILE_MOD(func->in_pos_xe + 1, func->in_const_x);
 			if (remain)
-				ptr_func->in_pos_xe += ptr_func->in_const_x - remain;
+				func->in_pos_xe += func->in_const_x - remain;
 
-			remain = TILE_MOD(ptr_func->in_pos_xs, ptr_func->in_const_x);
+			remain = TILE_MOD(func->in_pos_xs, func->in_const_x);
 			if (remain)
-				ptr_func->in_pos_xs -= remain;
+				func->in_pos_xs -= remain;
 		}
 
-		if (ptr_func->in_pos_ye + 1 > data->crop.top + data->crop.height)
-			ptr_func->in_pos_ye = data->crop.top + data->crop.height - 1;
+		if (func->in_pos_ye + 1 > data->crop.top + data->crop.height)
+			func->in_pos_ye = data->crop.top + data->crop.height - 1;
 
 		if (MML_FMT_BLOCK(data->src_fmt)) {
 			/* Alignment y bottom in block boundary */
-			ptr_func->in_pos_ye = ((1 + (ptr_func->in_pos_ye >>
+			func->in_pos_ye = ((1 + (func->in_pos_ye >>
 				data->blk_shift_h)) << data->blk_shift_h) - 1;
 
-			if (ptr_func->in_pos_ye + 1 > ptr_func->full_size_y_in)
-				ptr_func->in_pos_ye = ptr_func->full_size_y_in - 1;
+			if (func->in_pos_ye + 1 > func->full_size_y_in)
+				func->in_pos_ye = func->full_size_y_in - 1;
 		}
 
-		if (ptr_func->in_const_y > 1) {
-			remain = TILE_MOD(ptr_func->in_pos_ye + 1, ptr_func->in_const_y);
+		if (func->in_const_y > 1) {
+			remain = TILE_MOD(func->in_pos_ye + 1, func->in_const_y);
 			if (remain)
-				ptr_func->in_pos_ye += ptr_func->in_const_y - remain;
+				func->in_pos_ye += func->in_const_y - remain;
 
-			remain = TILE_MOD(ptr_func->in_pos_ys, ptr_func->in_const_y);
+			remain = TILE_MOD(func->in_pos_ys, func->in_const_y);
 			if (remain)
-				ptr_func->in_pos_ys -= remain;
+				func->in_pos_ys -= remain;
 		}
 		return ISP_MESSAGE_TILE_OK;
 	}
 
 	/* Specific handle for block format */
-	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
-		if (ptr_func->in_pos_xe + 1 > data->crop.left + data->crop.width)
-			ptr_func->in_pos_xe = data->crop.left + data->crop.width - 1;
+	if (!reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
+		if (func->in_pos_xe + 1 > data->crop.left + data->crop.width)
+			func->in_pos_xe = data->crop.left + data->crop.width - 1;
 
 		if (MML_FMT_BLOCK(data->src_fmt)) {
 			/* Alignment x left in block boundary */
-			start = ((ptr_func->in_pos_xs >> data->blk_shift_w) << data->blk_shift_w);
+			start = ((func->in_pos_xs >> data->blk_shift_w) << data->blk_shift_w);
 
 			/* For video block mode, FIFO limit is before crop */
-			if (ptr_func->in_pos_xe + 1 > start + ptr_func->in_tile_width)
-				ptr_func->in_pos_xe = start + ptr_func->in_tile_width - 1;
+			if (func->in_pos_xe + 1 > start + func->in_tile_width)
+				func->in_pos_xe = start + func->in_tile_width - 1;
 
 			/* Alignment x right in block boundary */
-			ptr_func->in_pos_xe = ((1 + (ptr_func->in_pos_xe >>
+			func->in_pos_xe = ((1 + (func->in_pos_xe >>
 				data->blk_shift_w)) << data->blk_shift_w) - 1;
 
-			if (ptr_func->in_pos_xe + 1 > ptr_func->full_size_x_in)
-				ptr_func->in_pos_xe = ptr_func->full_size_x_in - 1;
+			if (func->in_pos_xe + 1 > func->full_size_x_in)
+				func->in_pos_xe = func->full_size_x_in - 1;
 		}
 
-		if (ptr_func->in_const_x > 1) {
-			remain = TILE_MOD(ptr_func->in_pos_xe + 1, ptr_func->in_const_x);
+		if (func->in_const_x > 1) {
+			remain = TILE_MOD(func->in_pos_xe + 1, func->in_const_x);
 			if (remain)
-				ptr_func->in_pos_xe += ptr_func->in_const_x - remain;
+				func->in_pos_xe += func->in_const_x - remain;
 
-			remain = TILE_MOD(ptr_func->in_pos_xs, ptr_func->in_const_x);
+			remain = TILE_MOD(func->in_pos_xs, func->in_const_x);
 			if (remain)
-				ptr_func->in_pos_xs -= remain;
+				func->in_pos_xs -= remain;
 
-			if (ptr_func->in_tile_width &&
-			    ptr_func->in_pos_xe + 1 >
-					ptr_func->in_pos_xs + ptr_func->in_tile_width)
-				ptr_func->in_pos_xe =
-					ptr_func->in_pos_xs + ptr_func->in_tile_width - 1;
+			if (func->in_tile_width &&
+			    func->in_pos_xe + 1 > func->in_pos_xs + func->in_tile_width)
+				func->in_pos_xe = func->in_pos_xs + func->in_tile_width - 1;
 		}
 	}
 
-	if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
-		if (ptr_func->in_pos_ye + 1 > data->crop.top + data->crop.height)
-			ptr_func->in_pos_ye = data->crop.top + data->crop.height - 1;
+	if (!reg_map->skip_y_cal && !func->tdr_v_disable_flag) {
+		if (func->in_pos_ye + 1 > data->crop.top + data->crop.height)
+			func->in_pos_ye = data->crop.top + data->crop.height - 1;
 
 		if (MML_FMT_BLOCK(data->src_fmt)) {
 			/* Alignment y top in block boundary */
-			start = ((ptr_func->in_pos_ys >> data->blk_shift_h) << data->blk_shift_h);
+			start = ((func->in_pos_ys >> data->blk_shift_h) << data->blk_shift_h);
 
 			/* For video block mode, FIFO limit is before crop */
-			if (ptr_func->in_pos_ye + 1 > start + ptr_func->in_tile_height)
-				ptr_func->in_pos_ye = start + ptr_func->in_tile_height - 1;
+			if (func->in_pos_ye + 1 > start + func->in_tile_height)
+				func->in_pos_ye = start + func->in_tile_height - 1;
 
 			/* Alignment y bottom in block boundary */
-			ptr_func->in_pos_ye = ((1 + (ptr_func->in_pos_ye >>
+			func->in_pos_ye = ((1 + (func->in_pos_ye >>
 				data->blk_shift_h)) << data->blk_shift_h) - 1;
 
-			if (ptr_func->in_pos_ye + 1 > ptr_func->full_size_y_in)
-				ptr_func->in_pos_ye = ptr_func->full_size_y_in - 1;
+			if (func->in_pos_ye + 1 > func->full_size_y_in)
+				func->in_pos_ye = func->full_size_y_in - 1;
 		}
 
-		if (ptr_func->in_const_y > 1) {
-			remain = TILE_MOD(ptr_func->in_pos_ye + 1, ptr_func->in_const_y);
+		if (func->in_const_y > 1) {
+			remain = TILE_MOD(func->in_pos_ye + 1, func->in_const_y);
 			if (remain)
-				ptr_func->in_pos_ye += ptr_func->in_const_y - remain;
+				func->in_pos_ye += func->in_const_y - remain;
 
-			remain = TILE_MOD(ptr_func->in_pos_ys, ptr_func->in_const_y);
+			remain = TILE_MOD(func->in_pos_ys, func->in_const_y);
 			if (remain)
-				ptr_func->in_pos_ys -= remain;
+				func->in_pos_ys -= remain;
 
-			if (ptr_func->in_tile_height &&
-			    ptr_func->in_pos_ye + 1 >
-					ptr_func->in_pos_ys + ptr_func->in_tile_height)
-				ptr_func->in_pos_ye =
-					ptr_func->in_pos_ys + ptr_func->in_tile_height - 1;
+			if (func->in_tile_height &&
+			    func->in_pos_ye + 1 > func->in_pos_ys + func->in_tile_height)
+				func->in_pos_ye = func->in_pos_ys + func->in_tile_height - 1;
 		}
 	}
 	return ISP_MESSAGE_TILE_OK;
 }
 
-enum isp_tile_message tile_prz_back(struct tile_func_block *ptr_func,
-				    struct tile_reg_map *ptr_tile_reg_map)
+enum isp_tile_message tile_prz_back(struct tile_func_block *func,
+				    struct tile_reg_map *reg_map)
 {
 	s32 C24InXLeft = 0;
 	s32 C24InXRight = 0;
 	s32 C42OutXLeft = 0;
 	s32 C42OutXRight = 0;
-	struct rsz_tile_data *data = &ptr_func->data->rsz;
+	struct rsz_tile_data *data = &func->data->rsz;
 
 	if (unlikely(!data))
 		return MDP_MESSAGE_NULL_DATA;
 
-	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
+	if (!reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
 		/* urs: C24 upsampler backward */
-		C24InXLeft = ptr_func->out_pos_xs;
+		C24InXLeft = func->out_pos_xs;
 
 		if (C24InXLeft & 0x1)
 			C24InXLeft -= 1;
 
-		if (ptr_func->out_tile_width &&
-		    ptr_func->out_pos_xe + 1 > C24InXLeft + ptr_func->out_tile_width) {
-			ptr_func->out_pos_xe = C24InXLeft + ptr_func->out_tile_width - 1;
-			ptr_func->h_end_flag = false;
+		if (func->out_tile_width &&
+		    func->out_pos_xe + 1 > C24InXLeft + func->out_tile_width) {
+			func->out_pos_xe = C24InXLeft + func->out_tile_width - 1;
+			func->h_end_flag = false;
 		}
 
-		if (ptr_func->out_pos_xe + 1 >= ptr_func->full_size_x_out) {
+		if (func->out_pos_xe + 1 >= func->full_size_x_out) {
 			C24InXRight = data->c24_in_frame_w - 1;
 		} else {
 			/* Fixed 2 column tile loss for C24 upsampling while end is odd */
-			C24InXRight = ptr_func->out_pos_xe + 2;
+			C24InXRight = func->out_pos_xe + 2;
 
-			if (!(ptr_func->out_pos_xe & 0x1))
+			if (!(func->out_pos_xe & 0x1))
 				C24InXRight -= 1;
 		}
 
 		/* prz */
-		if (data->prz_out_tile_w && ptr_func->out_tile_width &&
+		if (data->prz_out_tile_w && func->out_tile_width &&
 		    C24InXRight + 1 > C24InXLeft + data->prz_out_tile_w)
 			C24InXRight = C24InXLeft + data->prz_out_tile_w - 1;
 
@@ -947,70 +937,70 @@ enum isp_tile_message tile_prz_back(struct tile_func_block *ptr_func,
 				C42OutXRight = data->c42_out_frame_w - 1;
 		}
 
-		if (ptr_func->in_tile_width &&
-		    C42OutXRight + 1 > C42OutXLeft + ptr_func->in_tile_width)
-			C42OutXRight = C42OutXLeft + ptr_func->in_tile_width - 1;
+		if (func->in_tile_width &&
+		    C42OutXRight + 1 > C42OutXLeft + func->in_tile_width)
+			C42OutXRight = C42OutXLeft + func->in_tile_width - 1;
 		data->prz_back_xs = C24InXLeft;
 		data->prz_back_xe = C24InXRight;
 
 		/* drs: C42 downsampler backward */
-		ptr_func->in_pos_xs = C42OutXLeft;
-		ptr_func->in_pos_xe = C42OutXRight;
+		func->in_pos_xs = C42OutXLeft;
+		func->in_pos_xe = C42OutXRight;
 
 		if (data->use_121filter) {
 			/* Fixed 2 column tile loss for 121 filter */
-			ptr_func->in_pos_xs -= 2;
+			func->in_pos_xs -= 2;
 		}
 
-		if (ptr_func->in_pos_xs < 0)
-			ptr_func->in_pos_xs = 0;
-		if (ptr_func->in_pos_xe + 1 > ptr_func->full_size_x_in)
-			ptr_func->in_pos_xe = ptr_func->full_size_x_in - 1;
+		if (func->in_pos_xs < 0)
+			func->in_pos_xs = 0;
+		if (func->in_pos_xe + 1 > func->full_size_x_in)
+			func->in_pos_xe = func->full_size_x_in - 1;
 	}
 
-	if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
+	if (!reg_map->skip_y_cal && !func->tdr_v_disable_flag) {
 		/* urs: C24 upsampler backward */
 
 		/* prz */
 		switch (data->ver_algo) {
 		case SCALER_6_TAPS:
-			backward_6_taps(ptr_func->out_pos_ys,
-					ptr_func->out_pos_ye,
-					ptr_func->full_size_y_out - 1,
+			backward_6_taps(func->out_pos_ys,
+					func->out_pos_ye,
+					func->full_size_y_out - 1,
 					data->coeff_step_y,
 					data->precision_y,
 					data->crop.r.top,
 					data->crop.y_sub_px,
-					ptr_func->full_size_y_in - 1,
-					ptr_func->in_const_y,
-					&ptr_func->in_pos_ys,
-					&ptr_func->in_pos_ye);
+					func->full_size_y_in - 1,
+					func->in_const_y,
+					&func->in_pos_ys,
+					&func->in_pos_ye);
 			break;
 		case SCALER_SRC_ACC:
-			backward_src_acc(ptr_func->out_pos_ys,
-					ptr_func->out_pos_ye,
-					ptr_func->full_size_y_out - 1,
+			backward_src_acc(func->out_pos_ys,
+					func->out_pos_ye,
+					func->full_size_y_out - 1,
 					data->coeff_step_y,
 					data->precision_y,
 					data->crop.r.top,
 					data->crop.y_sub_px,
-					ptr_func->full_size_y_in - 1,
-					ptr_func->in_const_y,
-					&ptr_func->in_pos_ys,
-					&ptr_func->in_pos_ye);
+					func->full_size_y_in - 1,
+					func->in_const_y,
+					&func->in_pos_ys,
+					&func->in_pos_ye);
 			break;
 		case SCALER_CUB_ACC:
-			backward_cub_acc(ptr_func->out_pos_ys,
-					ptr_func->out_pos_ye,
-					ptr_func->full_size_y_out - 1,
+			backward_cub_acc(func->out_pos_ys,
+					func->out_pos_ye,
+					func->full_size_y_out - 1,
 					data->coeff_step_y,
 					data->precision_y,
 					data->crop.r.top,
 					data->crop.y_sub_px,
-					ptr_func->full_size_y_in - 1,
-					ptr_func->in_const_y,
-					&ptr_func->in_pos_ys,
-					&ptr_func->in_pos_ye);
+					func->full_size_y_in - 1,
+					func->in_const_y,
+					&func->in_pos_ys,
+					&func->in_pos_ye);
 			break;
 		default:
 			ASSERT(0);
@@ -1023,95 +1013,95 @@ enum isp_tile_message tile_prz_back(struct tile_func_block *ptr_func,
 	return ISP_MESSAGE_TILE_OK;
 }
 
-enum isp_tile_message tile_wrot_back(struct tile_func_block *ptr_func,
-				     struct tile_reg_map *ptr_tile_reg_map)
+enum isp_tile_message tile_wrot_back(struct tile_func_block *func,
+				     struct tile_reg_map *reg_map)
 {
-	struct wrot_tile_data *data = &ptr_func->data->wrot;
+	struct wrot_tile_data *data = &func->data->wrot;
 
 	if (unlikely(!data))
 		return MDP_MESSAGE_NULL_DATA;
 
 	/* frame mode */
-	if (ptr_tile_reg_map->first_frame) {
+	if (reg_map->first_frame) {
 		if (data->enable_x_crop &&
-		    !ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
-			ptr_func->out_pos_xs = data->crop.left;
-			ptr_func->out_pos_xe = data->crop.left + data->crop.width - 1;
-			ptr_func->in_pos_xs = ptr_func->out_pos_xs;
-			ptr_func->in_pos_xe = ptr_func->out_pos_xe;
-			ptr_func->min_out_pos_xs = ptr_func->out_pos_xs;
-			ptr_func->max_out_pos_xe = ptr_func->out_pos_xe;
+		    !reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
+			func->out_pos_xs = data->crop.left;
+			func->out_pos_xe = data->crop.left + data->crop.width - 1;
+			func->in_pos_xs = func->out_pos_xs;
+			func->in_pos_xe = func->out_pos_xe;
+			func->min_out_pos_xs = func->out_pos_xs;
+			func->max_out_pos_xe = func->out_pos_xe;
 		} else if (data->enable_y_crop &&
-			   !ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
-			ptr_func->out_pos_ys = data->crop.top;
-			ptr_func->out_pos_ye = data->crop.top + data->crop.height - 1;
-			ptr_func->in_pos_ys = ptr_func->out_pos_ys;
-			ptr_func->in_pos_ye = ptr_func->out_pos_ye;
-			ptr_func->min_out_pos_ys = ptr_func->out_pos_ys;
-			ptr_func->max_out_pos_ye = ptr_func->out_pos_ye;
+			   !reg_map->skip_y_cal && !func->tdr_v_disable_flag) {
+			func->out_pos_ys = data->crop.top;
+			func->out_pos_ye = data->crop.top + data->crop.height - 1;
+			func->in_pos_ys = func->out_pos_ys;
+			func->in_pos_ye = func->out_pos_ye;
+			func->min_out_pos_ys = func->out_pos_ys;
+			func->max_out_pos_ye = func->out_pos_ye;
 		}
 		return ISP_MESSAGE_TILE_OK;
 	}
 
-	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
-		int full_size_x_out = ptr_func->full_size_x_out;
+	if (!reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
+		int full_size_x_out = func->full_size_x_out;
 
 		if (data->enable_x_crop) {
-			if (ptr_func->valid_h_no == 0) {
+			if (func->valid_h_no == 0) {
 				/* first tile */
-				ptr_func->out_pos_xs = data->crop.left;
-				ptr_func->in_pos_xs = ptr_func->out_pos_xs;
+				func->out_pos_xs = data->crop.left;
+				func->in_pos_xs = func->out_pos_xs;
 			}
-			if (ptr_func->out_tile_width) {
-				ptr_func->out_pos_xe = ptr_func->out_pos_xs +
-						   ptr_func->out_tile_width - 1;
-				ptr_func->in_pos_xe = ptr_func->out_pos_xe;
+			if (func->out_tile_width) {
+				func->out_pos_xe = func->out_pos_xs +
+						   func->out_tile_width - 1;
+				func->in_pos_xe = func->out_pos_xe;
 			}
 
 			full_size_x_out = data->crop.left + data->crop.width;
 
-			if (ptr_func->out_pos_xe + 1 >= full_size_x_out) {
-				ptr_func->out_pos_xe = full_size_x_out - 1;
-				ptr_func->in_pos_xe = ptr_func->out_pos_xe;
-				/* ptr_func->h_end_flag = true; */
+			if (func->out_pos_xe + 1 >= full_size_x_out) {
+				func->out_pos_xe = full_size_x_out - 1;
+				func->in_pos_xe = func->out_pos_xe;
+				/* func->h_end_flag = true; */
 			}
 		}
 
 		if (data->alpharot) {
-			if (ptr_func->out_pos_xe + 1 < full_size_x_out &&
-			    ptr_func->out_pos_xe + 9 + 1 > full_size_x_out &&
-			    ptr_func->out_pos_xe != ptr_func->out_pos_xs) {
-				ptr_func->out_pos_xe =
+			if (func->out_pos_xe + 1 < full_size_x_out &&
+			    func->out_pos_xe + 9 + 1 > full_size_x_out &&
+			    func->out_pos_xe != func->out_pos_xs) {
+				func->out_pos_xe =
 					((full_size_x_out - 9 - 1 + 1) >> 2 << 2) - 1;
-				ptr_func->in_pos_xe = ptr_func->out_pos_xe;
+				func->in_pos_xe = func->out_pos_xe;
 			}
 		}
 
 		/* Check out width alignment */
-		tile_wrot_align_out_width(ptr_func, data, full_size_x_out);
+		tile_wrot_align_out_width(func, data, full_size_x_out);
 	}
 
-	if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
-		int full_size_y_out = ptr_func->full_size_y_out;
+	if (!reg_map->skip_y_cal && !func->tdr_v_disable_flag) {
+		int full_size_y_out = func->full_size_y_out;
 
 		if (data->enable_y_crop) {
-			if (ptr_func->valid_v_no == 0) {
+			if (func->valid_v_no == 0) {
 				/* first tile */
-				ptr_func->out_pos_ys = data->crop.top;
-				ptr_func->in_pos_ys = ptr_func->out_pos_ys;
+				func->out_pos_ys = data->crop.top;
+				func->in_pos_ys = func->out_pos_ys;
 			}
-			if (ptr_func->out_tile_height) {
-				ptr_func->out_pos_ye = ptr_func->out_pos_ys +
-						   ptr_func->out_tile_height - 1;
-				ptr_func->in_pos_ye = ptr_func->out_pos_ye;
+			if (func->out_tile_height) {
+				func->out_pos_ye = func->out_pos_ys +
+						   func->out_tile_height - 1;
+				func->in_pos_ye = func->out_pos_ye;
 			}
 
 			full_size_y_out = data->crop.top + data->crop.height;
 
-			if (ptr_func->out_pos_ye + 1 >= full_size_y_out) {
-				ptr_func->out_pos_ye = full_size_y_out - 1;
-				ptr_func->in_pos_ye = ptr_func->out_pos_ye;
-				/* ptr_func->v_end_flag = true; */
+			if (func->out_pos_ye + 1 >= full_size_y_out) {
+				func->out_pos_ye = full_size_y_out - 1;
+				func->in_pos_ye = func->out_pos_ye;
+				/* func->v_end_flag = true; */
 			}
 		}
 
@@ -1121,55 +1111,55 @@ enum isp_tile_message tile_wrot_back(struct tile_func_block *ptr_func,
 	return ISP_MESSAGE_TILE_OK;
 }
 
-enum isp_tile_message tile_dlo_back(struct tile_func_block *ptr_func,
-				    struct tile_reg_map *ptr_tile_reg_map)
+enum isp_tile_message tile_dlo_back(struct tile_func_block *func,
+				    struct tile_reg_map *reg_map)
 {
-	struct dlo_tile_data *data = &ptr_func->data->dlo;
+	struct dlo_tile_data *data = &func->data->dlo;
 
 	if (unlikely(!data))
 		return MDP_MESSAGE_NULL_DATA;
 
 	/* frame mode */
-	if (ptr_tile_reg_map->first_frame) {
-		if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
-			ptr_func->out_pos_xs = data->crop.left;
-			ptr_func->out_pos_xe = data->crop.left + data->crop.width - 1;
-			ptr_func->in_pos_xs = ptr_func->out_pos_xs;
-			ptr_func->in_pos_xe = ptr_func->out_pos_xe;
-			ptr_func->min_out_pos_xs = ptr_func->out_pos_xs;
-			ptr_func->max_out_pos_xe = ptr_func->out_pos_xe;
-			if (ptr_func->in_pos_xs > 0)
-				ptr_func->tdr_edge &= ~TILE_EDGE_LEFT_MASK;
+	if (reg_map->first_frame) {
+		if (!reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
+			func->out_pos_xs = data->crop.left;
+			func->out_pos_xe = data->crop.left + data->crop.width - 1;
+			func->in_pos_xs = func->out_pos_xs;
+			func->in_pos_xe = func->out_pos_xe;
+			func->min_out_pos_xs = func->out_pos_xs;
+			func->max_out_pos_xe = func->out_pos_xe;
+			if (func->in_pos_xs > 0)
+				func->tdr_edge &= ~TILE_EDGE_LEFT_MASK;
 		}
-		if (!ptr_tile_reg_map->skip_y_cal && !ptr_func->tdr_v_disable_flag) {
-			ptr_func->out_pos_ys = data->crop.top;
-			ptr_func->out_pos_ye = data->crop.top + data->crop.height - 1;
-			ptr_func->in_pos_ys = ptr_func->out_pos_ys;
-			ptr_func->in_pos_ye = ptr_func->out_pos_ye;
-			ptr_func->min_out_pos_ys = ptr_func->out_pos_ys;
-			ptr_func->max_out_pos_ye = ptr_func->out_pos_ye;
-			if (ptr_func->in_pos_ys > 0)
-				ptr_func->tdr_edge &= ~TILE_EDGE_TOP_MASK;
+		if (!reg_map->skip_y_cal && !func->tdr_v_disable_flag) {
+			func->out_pos_ys = data->crop.top;
+			func->out_pos_ye = data->crop.top + data->crop.height - 1;
+			func->in_pos_ys = func->out_pos_ys;
+			func->in_pos_ye = func->out_pos_ye;
+			func->min_out_pos_ys = func->out_pos_ys;
+			func->max_out_pos_ye = func->out_pos_ye;
+			if (func->in_pos_ys > 0)
+				func->tdr_edge &= ~TILE_EDGE_TOP_MASK;
 		}
 		return ISP_MESSAGE_TILE_OK;
 	}
 
-	if (!ptr_tile_reg_map->skip_x_cal && !ptr_func->tdr_h_disable_flag) {
-		int full_size_x_out = ptr_func->full_size_x_out;
+	if (!reg_map->skip_x_cal && !func->tdr_h_disable_flag) {
+		int full_size_x_out = func->full_size_x_out;
 
 		if (data->enable_x_crop) {
-			if (ptr_func->valid_h_no == 0) {
+			if (func->valid_h_no == 0) {
 				/* first tile */
-				ptr_func->out_pos_xs = data->crop.left;
-				ptr_func->in_pos_xs = ptr_func->out_pos_xs;
+				func->out_pos_xs = data->crop.left;
+				func->in_pos_xs = func->out_pos_xs;
 			}
 
 			full_size_x_out = data->crop.left + data->crop.width;
 
-			if (ptr_func->out_pos_xe + 1 >= full_size_x_out) {
-				ptr_func->out_pos_xe = full_size_x_out - 1;
-				ptr_func->in_pos_xe = ptr_func->out_pos_xe;
-				/* ptr_func->h_end_flag = true; */
+			if (func->out_pos_xe + 1 >= full_size_x_out) {
+				func->out_pos_xe = full_size_x_out - 1;
+				func->in_pos_xe = func->out_pos_xe;
+				/* func->h_end_flag = true; */
 			}
 		}
 	}
