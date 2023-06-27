@@ -194,7 +194,7 @@ static void ise_power_off(void)
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct scmi_tinysys_status rvalue;
 	struct ise_scmi_data_t ise_scmi_data;
-	uint32_t ret = 0, retry = 20;
+	uint32_t ret = 0, retry = 400;
 
 	ise_scmi_data.cmd = SCMI_MBOX_CMD_ISE_PWR_OFF;
 	do {
@@ -211,7 +211,7 @@ static void ise_power_off(void)
 			pr_info("[mailbox]iSE power off done, retry=%d\n", retry);
 			break;
 		}
-		udelay(500);
+		udelay(1000);
 	} while (--retry);
 
 	if(retry == 0)
