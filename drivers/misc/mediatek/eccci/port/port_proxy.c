@@ -1005,6 +1005,12 @@ int port_recv_skb(struct port_t *port, struct sk_buff *skb)
 
 		atomic_inc(&port->rx_pkg_cnt);
 		spin_unlock_irqrestore(&port->rx_skb_list.lock, flags);
+		//print log after unlock
+		if (ccci_h->channel == CCCI_STATUS_RX) {
+			CCCI_NORMAL_LOG(0, TAG,
+				"received MD status response 0x%x\n", *(((u32 *)skb->data) + 2));
+			ccci_free_skb(skb);
+		}
 		__pm_wakeup_event(port->rx_wakelock, jiffies_to_msecs(HZ/2));
 		spin_lock_irqsave(&port->rx_wq.lock, flags);
 		wake_up_all_locked(&port->rx_wq);

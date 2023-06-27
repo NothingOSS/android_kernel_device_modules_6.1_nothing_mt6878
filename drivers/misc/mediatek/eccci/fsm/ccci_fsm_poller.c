@@ -156,14 +156,12 @@ int ccci_fsm_recv_status_packet(struct sk_buff *skb)
 		return -CCCI_ERR_INVALID_PARAM;
 	poller_ctl = &ctl->poller_ctl;
 
-	CCCI_NORMAL_LOG(0, FSM,
-		"received MD status response %x\n", *(((u32 *)skb->data) + 2));
 	/*
 	 * ccci_util_cmpt_mem_dump(CCCI_DUMP_REPEAT, skb->data, skb->len);
 	 */
 	poller_ctl->poller_state = FSM_POLLER_RECEIVED_RESPONSE;
 	wake_up(&poller_ctl->status_rx_wq);
-	ccci_free_skb(skb);
+
 	return 0;
 }
 
