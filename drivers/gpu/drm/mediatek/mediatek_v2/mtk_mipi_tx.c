@@ -450,6 +450,26 @@ unsigned int _dsi_get_data_rate_mt6983(struct phy *phy)
 	return i > 0 ? 26 * 2 * pcw * fb_sel / i : 0;
 }
 
+unsigned int _dsi_get_data_rate_N4(struct phy *phy)
+{
+	int i = 0;
+	unsigned int pcw;
+	unsigned int posdiv;
+	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
+
+	pcw = readl(mipi_tx->regs + MIPITX_PLL_CON0);
+	pcw = (pcw >> 24) & 0xff;
+
+	posdiv = DISP_REG_GET_FIELD(FLD_RG_DSI_PLL_POSDIV_,
+					MIPITX_PLL_CON1 + mipi_tx->regs);
+	posdiv = (1 << posdiv);
+
+	DDPINFO("%s, pcw: %d, posdiv: %d\n", __func__, pcw, posdiv);
+	i = posdiv;
+
+	return i > 0 ? 26 * 2 * pcw / i : 0;
+}
+
 unsigned int mtk_mipi_tx_pll_get_rate(struct phy *phy)
 {
 #ifndef CONFIG_FPGA_EARLY_PORTING
@@ -4753,7 +4773,7 @@ void mtk_mipi_tx_pll_rate_switch_gce_mt6983(struct phy *phy,
 	DDPINFO("%s-\n", __func__);
 }
 
-void mtk_mipi_tx_pll_rate_switch_gce_mt6897(struct phy *phy,
+void mtk_mipi_tx_pll_rate_switch_gce_N4(struct phy *phy,
 		void *handle, unsigned long rate)
 {
 	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
@@ -5761,10 +5781,10 @@ static const struct mtk_mipitx_data mt6989_mipitx_data = {
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6989,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6989,
 	.dsi_get_pcw = _dsi_get_pcw_mt6989,
-	.dsi_get_data_rate = _dsi_get_data_rate_mt6983,
+	.dsi_get_data_rate = _dsi_get_data_rate_N4,
 	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
 	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
-	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_mt6983,
+	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_N4,
 	.phy = MIPITX_DPHY,
 	.mipi_tx_ssc_en = mtk_mipi_tx_ssc_en_N4,
 };
@@ -5795,7 +5815,7 @@ static const struct mtk_mipitx_data mt6897_mipitx_data = {
 	.dsi_get_data_rate = _dsi_get_data_rate_mt6983,
 	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
 	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
-	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_mt6897,
+	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_N4,
 	.mipi_tx_ssc_en = mtk_mipi_tx_ssc_en_N4,
 };
 
