@@ -1718,12 +1718,14 @@ static int mtk_iommu_dump_fops_proc_show(struct seq_file *s, void *unused)
 
 		/* dump all smmu if exist */
 		for (i = 0; i < SMMU_TYPE_NUM; i++) {
+			/* skip GPU SMMU */
+			if (i == GPU_SMMU)
+				continue;
+
 			ret = mtk_smmu_power_get(i);
 			iommu_dump(s, "\nsmmu_%d: %s\n", i, get_power_status_str(ret));
-			if (ret) {
-				pr_info("[%s] smmu_%d, failed ret:%d\n", __func__, i, ret);
+			if (ret)
 				continue;
-			}
 
 			mtk_smmu_wpreg_dump(s, i);
 			mtk_smmu_power_put(i);
