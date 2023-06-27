@@ -2573,8 +2573,10 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	struct platform_device *smi_pdev;
 	struct device_link *link;
 	struct property *prop;
+	struct of_phandle_args	args;
 	const char *name;
 	int ret, i = 0;
+	u32 flags, is_pwr_decp;
 
 	is_mpu_violation(dev, true);
 	larb = devm_kzalloc(dev, sizeof(*larb), GFP_KERNEL);
@@ -2607,12 +2609,12 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	atomic_set(&larb->smi.ref_count, 0);
 
 	for (i = 0; i < LARB_MAX_COMMON; i++) {
-		smi_node = of_parse_phandle(dev->of_node, "mediatek,smi-supply", i);
-		if (!smi_node)
+		ret = of_parse_phandle_with_fixed_args(dev->of_node,
+					"mediatek,smi-supply", 1, i, &args);
+		if (ret)
 			break;
-
-		smi_pdev = of_find_device_by_node(smi_node);
-		of_node_put(smi_node);
+		is_pwr_decp = args.args[0];
+		smi_pdev = of_find_device_by_node(args.np);
 		if (smi_pdev) {
 			if (!platform_get_drvdata(smi_pdev)) {
 				dev_notice(dev, "%s: probe defer: can't find %s\n", __func__,
@@ -2620,8 +2622,9 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 				return -EPROBE_DEFER;
 			}
 			larb->smi_common_dev[i] = &smi_pdev->dev;
-			link = device_link_add(dev, larb->smi_common_dev[i],
-					DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+			flags = is_pwr_decp ?
+				DL_FLAG_STATELESS : (DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+			link = device_link_add(dev, larb->smi_common_dev[i], flags);
 			if (!link) {
 				dev_notice(dev, "Unable to link smi_common device %d\n", i);
 				return -ENODEV;
@@ -2640,7 +2643,11 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	larb->smi_common = larb->smi_common_dev[0];
 	for (;;) {
 		smi_node = smi_dev->of_node;
-		smi_node = of_parse_phandle(smi_node, "mediatek,smi-supply", 0);
+		ret = of_parse_phandle_with_fixed_args(smi_node,
+					"mediatek,smi-supply", 1, 0, &args);
+		if (ret)
+			break;
+		smi_node = args.np;
 		if (smi_node) {
 			smi_pdev = of_find_device_by_node(smi_node);
 			of_node_put(smi_node);
@@ -3825,12 +3832,13 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 	struct mtk_smi *common;
 	struct resource *res;
 	struct task_struct *kthr;
-	struct device_node *smi_node;
 	struct platform_device *smi_pdev;
 	struct device_link *link;
 	struct property *prop;
+	struct of_phandle_args	args;
 	const char *name;
 	int i = 0, ret;
+	u32 flags, is_pwr_decp;
 
 	is_mpu_violation(dev, true);
 	common = devm_kzalloc(dev, sizeof(*common), GFP_KERNEL);
@@ -3882,43 +3890,22 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 			return PTR_ERR(common->base);
 	}
 
-	smi_node = of_parse_phandle(dev->of_node, "mediatek,smi-supply", 0);
-	if (smi_node) {
-		smi_pdev = of_find_device_by_node(smi_node);
-		of_node_put(smi_node);
+	for (i = 0; i < LARB_MAX_COMMON; i++) {
+		ret = of_parse_phandle_with_fixed_args(dev->of_node,
+					"mediatek,smi-supply", 1, i, &args);
+		if (ret)
+			break;
+		is_pwr_decp = args.args[0];
+		smi_pdev = of_find_device_by_node(args.np);
 		if (smi_pdev) {
 			if (!platform_get_drvdata(smi_pdev)) {
 				dev_notice(dev, "%s: probe defer: can't find %s\n", __func__,
 								dev_name(&smi_pdev->dev));
 				return -EPROBE_DEFER;
 			}
-			link = device_link_add(dev, &smi_pdev->dev,
-					       DL_FLAG_PM_RUNTIME |
-					       DL_FLAG_STATELESS);
-			if (!link) {
-				dev_notice(dev,
-					"Unable to link sram smi-common dev\n");
-				return -ENODEV;
-			}
-		} else {
-			dev_notice(dev, "Failed to get sram smi_common device\n");
-			return -EINVAL;
-		}
-	}
-
-	smi_node = of_parse_phandle(dev->of_node, "mediatek,smi-supply", 1);
-	if (smi_node) {
-		smi_pdev = of_find_device_by_node(smi_node);
-		of_node_put(smi_node);
-		if (smi_pdev) {
-			if (!platform_get_drvdata(smi_pdev)) {
-				dev_notice(dev, "%s: probe defer: can't find %s\n", __func__,
-								dev_name(&smi_pdev->dev));
-				return -EPROBE_DEFER;
-			}
-			link = device_link_add(dev, &smi_pdev->dev,
-					       DL_FLAG_PM_RUNTIME |
-					       DL_FLAG_STATELESS);
+			flags = is_pwr_decp ?
+				DL_FLAG_STATELESS : (DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+			link = device_link_add(dev, &smi_pdev->dev, flags);
 			if (!link) {
 				dev_notice(dev,
 					"Unable to link sram smi-common dev\n");
