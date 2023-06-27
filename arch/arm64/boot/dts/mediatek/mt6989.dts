@@ -11203,6 +11203,7 @@
 			compatible = "mediatek,usb-offload";
 			xhci-host = <&usb_host>;
 			adv-lowpower;
+			smc-ctrl;
 		};
 
 		ssusb: usb0@11201000 {
