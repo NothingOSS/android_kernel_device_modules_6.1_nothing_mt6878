@@ -167,7 +167,7 @@ extern unsigned long pd_get_freq_util(int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_opp(int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_pwr_eff(int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_opp_legacy(int cpu, unsigned long freq);
-extern struct mtk_em_perf_state *pd_get_util_ps(int cpu, unsigned long util, int *opp);
+extern struct mtk_em_perf_state *pd_get_util_ps(int wl_type, int cpu, unsigned long util, int *opp);
 extern unsigned long pd_get_util_freq(int cpu, unsigned long util);
 extern unsigned long pd_get_util_pwr_eff(int cpu, unsigned long util);
 extern unsigned long pd_get_util_opp(int cpu, unsigned long util);

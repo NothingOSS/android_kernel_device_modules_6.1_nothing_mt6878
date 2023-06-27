@@ -588,14 +588,17 @@ static inline int map_util_idx_by_tbl(struct pd_capacity_info *pd_info, unsigned
 	return idx;
 }
 
-struct mtk_em_perf_state *pd_get_util_ps(int cpu, unsigned long util, int *opp)
+struct mtk_em_perf_state *pd_get_util_ps(int wl_type, int cpu, unsigned long util, int *opp)
 {
 	int i, idx;
 	struct pd_capacity_info *pd_info;
 	struct mtk_em_perf_state *ps;
 
 	i = per_cpu(gear_id, cpu);
-	pd_info = &pd_capacity_tbl[i];
+	if (wl_type < 0 || wl_type >= nr_wl_type)
+		wl_type = wl_type_curr;
+	pd_info = &pd_wl_type[wl_type][i];
+
 	idx = map_util_idx_by_tbl(pd_info, util);
 	idx = pd_info->util_opp_map[idx];
 	ps = &pd_info->table[idx];
