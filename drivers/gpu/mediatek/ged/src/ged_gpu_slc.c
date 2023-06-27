@@ -100,7 +100,7 @@ GED_ERROR ged_gpu_slc_init(void)
 		g_slc_stat->policy = 0;
 		g_slc_stat->hit_rate_r = 0;
 		g_slc_stat->isoverflow = 0;
-		GED_LOGI("[GPU_SLC] %s get slc stat successfully.");
+		GED_LOGI("[GPU_SLC] %s get slc stat successfully.",  __func__);
 		GED_LOGI("[GPU_SLC] mode: %d, ptr: %x, addr: %x\n", g_slc_stat->mode, &g_slc_stat->mode, &g_slc_stat);
 	} else {
 		GED_LOGE("[GPU_SLC]%s null slc stat", __func__);
