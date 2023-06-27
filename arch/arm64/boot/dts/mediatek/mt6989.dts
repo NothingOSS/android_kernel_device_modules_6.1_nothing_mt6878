@@ -1150,6 +1150,7 @@
 
 		cm-perf-mode-enable = <1>;
 		cm-perf-mode-ceiling-opp = <0>;
+		cm-perf-mode-thd = <5>;
 	};
 
 	fpsgo: fpsgo {
@@ -13754,7 +13755,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-6 = "SSPM_CM_MGR_OPP",
 				"v_dram_opp,v_dram_opp_cur,c_opp_cur_0,c_opp_cur_1,c_opp_cur_2,d_times_up,",
 				"d_times_down,c_map_dram_enable,perf_mode_enable,perf_mode_ceiling_opp,",
-				"mode";
+				"perf_mode_thd,mode";
 
 			node-7 = "SSPM_CM_MGR_RATIO",
 				"stall_0,stall_1,stall_2,stall_3,stall_4,",
