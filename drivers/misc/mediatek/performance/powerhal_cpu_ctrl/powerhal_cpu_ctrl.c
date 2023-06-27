@@ -452,7 +452,9 @@ static ssize_t perfmgr_perfserv_freq_proc_show(struct file *file,
 		goto out;
 
 	for (i = 0; i < policy_num; i++) {
-		scnprintf(_buf, 64, "%d %d ", freq_to_set[i].min, freq_to_set[i].max);
+		if(scnprintf(_buf, 64, "%d %d ", freq_to_set[i].min,
+			freq_to_set[i].max) != strlen(_buf))
+			return -EINVAL;
 		strncat(buffer, _buf, strlen(_buf));
 	}
 	n = scnprintf(buffer, 512, "%s\n", buffer);
@@ -746,13 +748,8 @@ int adpf_report_actual_work_duaration(unsigned int sid,
 		pr_debug("[%s], idx: %d, timeStampNanos: %ld, durationNanos: %ld",
 				__func__, i,
 				workDuration[i].timeStampNanos, workDuration[i].durationNanos);
-		if (sprintf(log, "timeStampNanos[%d]: %ld, durationNanos[%d]: %ld, ",
-				i, workDuration[i].timeStampNanos,
-				i, workDuration[i].durationNanos) < 0) {
-			pr_debug("[%s] sprintf failed!", __func__);
-			mutex_unlock(&adpf_mutex);
-			return -1;
-		}
+		ts = workDuration[i].timeStampNanos;
+		wd = workDuration[i].durationNanos;
 	}
 
 	sessionList[sid]->sid = sid;

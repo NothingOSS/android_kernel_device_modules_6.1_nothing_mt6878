@@ -296,7 +296,7 @@ static int ktchboost_thread(void *ptr)
 static int ktchboost_interrupt_thread(void *ptr)
 {
 	while (!kthread_should_stop()) {
-		if(fpsgo_wait_fstb_active_fp)
+		if(fpsgo_wait_fstb_active_fp && deboost_when_render)
 			fpsgo_wait_fstb_active_fp();
 		else
 			msleep(60000);
