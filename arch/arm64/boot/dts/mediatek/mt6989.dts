@@ -1840,21 +1840,21 @@
 				"connsys-pin-pmic-en-clr",
 				"connsys-pin-pmic-faultb-default",
 				"connsys-pin-pmic-faultb-enable",
-				"connsys-pin-pmic-vsel-low",
-				"connsys-pin-pmic-vsel-high",
 				"connsys-combo-gpio-init",
 				"connsys-combo-gpio-pre-on",
-				"connsys-combo-gpio-on";
+				"connsys-combo-gpio-on",
+				"connsys-pin-pmic-vsel-low",
+				"connsys-pin-pmic-vsel-high";
 		pinctrl-0 = <&connsys_pin_pmic_en_default>;
 		pinctrl-1 = <&connsys_pin_pmic_en_set>;
 		pinctrl-2 = <&connsys_pin_pmic_en_clr>;
 		pinctrl-3 = <&connsys_pin_pmic_faultb_default>;
 		pinctrl-4 = <&connsys_pin_pmic_faultb_enable>;
-		pinctrl-5 = <&connsys_pin_pmic_vsel_low>;
-		pinctrl-6 = <&connsys_pin_pmic_vsel_high>;
-		pinctrl-7 = <&connsys_combo_gpio_init>;
-		pinctrl-8 = <&connsys_combo_gpio_pre_on>;
-		pinctrl-9 = <&connsys_combo_gpio_on>;
+		pinctrl-5 = <&connsys_combo_gpio_init>;
+		pinctrl-6 = <&connsys_combo_gpio_pre_on>;
+		pinctrl-7 = <&connsys_combo_gpio_on>;
+		pinctrl-8 = <&connsys_pin_pmic_vsel_low>;
+		pinctrl-9 = <&connsys_pin_pmic_vsel_high>;
 
 		interrupt-parent = <&pio>;
 		interrupts = <158 IRQ_TYPE_EDGE_FALLING>;
@@ -16769,20 +16769,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 		};
 	};
 
-	connsys_pin_pmic_vsel_low: connsys-pin-pmic-vsel-low {
-		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO115__FUNC_GPIO115>;
-			output-low;
-		};
-	};
-
-	connsys_pin_pmic_vsel_high: connsys-pin-pmic-vsel-high {
-		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO115__FUNC_GPIO115>;
-			output-high;
-		};
-	};
-
 	connsys_combo_gpio_init: connsys-combo-gpio-init {
 		/* 141 SCP_WB_UTXD */
 		pins-cmd1-dat {
@@ -16821,6 +16807,20 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 		/* 142 SCP_WB_URXD */
 		pins-cmd2-dat {
 			pinmux = <PINMUX_GPIO142__FUNC_TP_URXD_CONSYS_VLP>;
+		};
+	};
+
+	connsys_pin_pmic_vsel_low: connsys-pin-pmic-vsel-low {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO115__FUNC_GPIO115>;
+			output-low;
+		};
+	};
+
+	connsys_pin_pmic_vsel_high: connsys-pin-pmic-vsel-high {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO115__FUNC_GPIO115>;
+			output-high;
 		};
 	};
 };
