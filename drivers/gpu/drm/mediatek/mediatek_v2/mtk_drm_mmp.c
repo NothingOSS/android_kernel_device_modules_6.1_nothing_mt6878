@@ -192,6 +192,8 @@ void init_crtc_mmp_event(void)
 			mmprofile_register_event(crtc_mmp_root, "warn_sf_pf_0");
 		g_CRTC_MMP_Events[i].warn_sf_pf_2 =
 			mmprofile_register_event(crtc_mmp_root, "warn_sf_pf_2");
+		g_CRTC_MMP_Events[i].ovl_bw_monitor = mmprofile_register_event(
+			crtc_mmp_root, "ovl_bw_monitor");
 		g_CRTC_MMP_Events[i].atomic_begin = mmprofile_register_event(
 			crtc_mmp_root, "atomic_begin");
 		g_CRTC_MMP_Events[i].atomic_flush = mmprofile_register_event(

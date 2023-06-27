@@ -6654,6 +6654,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	unsigned int width = crtc->state->adjusted_mode.hdisplay;
 	struct total_tile_overhead to_info;
+	unsigned int pipe = crtc->index;
 
 	plane_mask = old_crtc_state->plane_mask;
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
@@ -6779,11 +6780,27 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			ovl_win_size, is_compress, bpp, src_w_align, src_h_align);
 		DDPDBG_BWM("BWM: avg_inter_value:%u peak_inter_value:%u\n",
 			avg_inter_value, peak_inter_value);
-		if (!need_skip)
+		if (!need_skip) {
+			unsigned long record0 = 0;
+			unsigned long record1 = 0;
+			unsigned long record2 = 0;
+			unsigned long record3 = 0;
+
 			DDPINFO("BWM:p:%u f:%u i:%d l:%d e:%d w:%d c:%d b:%d s:%d s:%d a:%u p:%u\n",
 				plane_index, fn, index, lye_id, ext_lye_id,
 				ovl_win_size, is_compress, bpp, src_w_align, src_h_align,
 				avg_inter_value, peak_inter_value);
+
+			record0 = ((0xFF & plane_index) << 24) | ((0xFF & fn) << 16) |
+			((0xFF & index) << 8) | (0xFF & lye_id);
+			record1 = ((0xFF & ext_lye_id) << 24) | ((0xFF & ovl_win_size) << 16) |
+			((0xFF & is_compress) << 8) | (0xFF & bpp);
+			record2 = ((0xFFFF & src_w_align) << 16) | (0xFFFF & src_h_align);
+			record3 = ((0xFFFF & avg_inter_value) << 16) | (0xFFFF & peak_inter_value);
+
+			CRTC_MMP_MARK((int) pipe, ovl_bw_monitor, record0, record1);
+			CRTC_MMP_MARK((int) pipe, ovl_bw_monitor, record2, record3);
+		}
 
 		if (!comp) {
 			DDPPR_ERR("%s:%d comp is NULL\n", __func__, __LINE__);
