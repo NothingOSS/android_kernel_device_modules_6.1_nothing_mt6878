@@ -11877,46 +11877,99 @@
 			force-glp-enable = <1>; /* 0: disable; 1: enable */
 
 			mtk-iomem-ver = "mt6989";
+			/* for clock scaling bind vcore */
+			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			/*
+			 * description phy dvfs step <[0] [1]>, <[2] [3]>, <[4]>, <[5] [6]>
+			 * step: 0-N, or modification by dvfs table. (N: step maximum)
+			 * [0]: cphy-4d1c
+			 * [1]: cphy-2d1c
+			 * [2]: dphy-4d1c
+			 * [3]: dphy-2d1c
+			 * [4]: step-csi-clk
+			 * [5]: step-voltage-4d1c (lowest)
+			 * [6]: step-voltage-2d1c (lowest)
+			 */
+			cdphy-dvfs-step0 = <5820 4300>, <8640 8640>, <312>, <575000 575000>;
+			cdphy-dvfs-step1 = <6640 5000>, <9000 9000>, <356>, <600000 600000>;
+			cdphy-dvfs-step2 = <7760 5800>, <9000 9000>, <416>, <650000 650000>;
+			cdphy-dvfs-step3 = <8000 7000>, <9000 9000>, <499>, <725000 725000>;
 
 			power-domains =
 						<&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>,
 						<&scpsys MT6989_POWER_DOMAIN_CSI_RX>;
 
 			operating-points-v2 = <&opp_table_cam>;
-			//dvfsrc-vmm-supply = <&vmm_proxy_label>;
 
 			clocks =
-				 <&camsys_main_clk CLK_CAM_MAIN_SENINF>,
-				 <&camsys_main_clk CLK_CAM_MAIN_CAM>,
-				 <&camsys_main_clk CLK_CAM_MAIN_CAMTG>,
-				 <&topckgen_clk CLK_TOP_SENINF0_SEL>,
-				 <&topckgen_clk CLK_TOP_SENINF1_SEL>,
-				 <&topckgen_clk CLK_TOP_SENINF2_SEL>,
-				 <&topckgen_clk CLK_TOP_SENINF3_SEL>,
-				 <&topckgen_clk CLK_TOP_SENINF4_SEL>,
-				 <&topckgen_clk CLK_TOP_SENINF5_SEL>,
-				 <&topckgen_clk CLK_TOP_CAMTM_SEL>,
-				 <&topckgen_clk CLK_TOP_OSC_D4>,
-				 <&topckgen_clk CLK_TOP_UNIVPLL2_D4_D2>,
-				 <&topckgen_clk CLK_TOP_OSC_D20>,
-				 <&topckgen_clk CLK_TOP_TCK_26M_MX9>,
-				 <&mmdvfs_mux MMDVFS_USER_CAM>;
+				<&camsys_main_clk CLK_CAM_MAIN_SENINF>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAMTG>,
+				<&topckgen_clk CLK_TOP_SENINF0_SEL>,
+				<&topckgen_clk CLK_TOP_SENINF1_SEL>,
+				<&topckgen_clk CLK_TOP_SENINF2_SEL>,
+				<&topckgen_clk CLK_TOP_SENINF3_SEL>,
+				<&topckgen_clk CLK_TOP_SENINF4_SEL>,
+				<&topckgen_clk CLK_TOP_SENINF5_SEL>,
+				<&topckgen_clk CLK_TOP_CAMTM_SEL>,
+				<&topckgen_clk CLK_TOP_OSC_D4>,
+				<&topckgen_clk CLK_TOP_UNIVPLL2_D4_D2>,
+				<&topckgen_clk CLK_TOP_UNIVPLL2_D7>,
+				<&topckgen_clk CLK_TOP_UNIVPLL2_D6>,
+				<&topckgen_clk CLK_TOP_UNIVPLL2_D5>,
+				<&mmdvfs_mux MMDVFS_USER_CAM>;
 
 			clock-names = "clk_cam_seninf",
-				 "clk_cam_cam",
-				 "clk_cam_camtg",
-				 "clk_top_seninf",
-				 "clk_top_seninf1",
-				 "clk_top_seninf2",
-				 "clk_top_seninf3",
-				 "clk_top_seninf4",
-				 "clk_top_seninf5",
-				 "clk_top_camtm",
-				 "clk_top_osc_d4",
-				 "clk_top_univpll2_d4_d2",
-				 "clk_top_osc_d20",
-				 "clk_top_tck_26m_mx9",
-				 "mmdvfs_mux";
+				"clk_cam_cam",
+				"clk_cam_camtg",
+				"clk_top_seninf",
+				"clk_top_seninf1",
+				"clk_top_seninf2",
+				"clk_top_seninf3",
+				"clk_top_seninf4",
+				"clk_top_seninf5",
+				"clk_top_camtm",
+				"clk_top_aov_step0",
+				"clk_top_ap_step0",
+				"clk_top_ap_step1",
+				"clk_top_ap_step2",
+				"clk_top_ap_step3",
+				"mmdvfs_mux";
+
+			clk-fmeter-isp {
+				fmeter-type = "CKGEN_CK2";
+				fmeter-no = <17>;
+			};
+
+			clk-fmeter-csi0 {
+				fmeter-type = "CKGEN_CK2";
+				fmeter-no = <8>;
+			};
+
+			clk-fmeter-csi1 {
+				fmeter-type = "CKGEN_CK2";
+				fmeter-no = <9>;
+			};
+
+			clk-fmeter-csi2 {
+				fmeter-type = "CKGEN_CK2";
+				fmeter-no = <10>;
+			};
+
+			clk-fmeter-csi3 {
+				fmeter-type = "CKGEN_CK2";
+				fmeter-no = <11>;
+			};
+
+			clk-fmeter-csi4 {
+				fmeter-type = "CKGEN_CK2";
+				fmeter-no = <12>;
+			};
+
+			clk-fmeter-csi5 {
+				fmeter-type = "CKGEN_CK2";
+				fmeter-no = <13>;
+			};
 		};
 	};
 
