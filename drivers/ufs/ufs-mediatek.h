@@ -27,6 +27,7 @@
 #define MCQ_MULTI_INTR_EN       0x4
 #define MCQ_CMB_INTR_EN         0x8
 #define MCQ_AH8                 0x10
+#define MON_EN			0x20
 
 #define MCQ_INTR_EN_MSK         (MCQ_MULTI_INTR_EN | MCQ_CMB_INTR_EN)
 

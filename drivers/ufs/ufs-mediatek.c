@@ -343,6 +343,11 @@ static int ufs_mtk_hce_enable_notify(struct ufs_hba *hba,
 			      ufshcd_readl(hba, REG_UFS_XOUFS_CTRL) | 0x80,
 			      REG_UFS_XOUFS_CTRL);
 
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+		/* Turn on H8 monitor */
+		ufshcd_rmwl(hba, MON_EN, MON_EN, REG_UFS_MMIO_OPT_CTRL_0);
+#endif
+
 		/* DDR_EN setting */
 		if (host->ip_ver >= IP_VER_MT6989) {
 			ufshcd_rmwl(hba, UFS_MASK(0x7FFF, 8),
