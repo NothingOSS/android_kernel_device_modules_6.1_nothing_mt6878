@@ -6770,7 +6770,7 @@
 			reg = <0 0x11e60000 0 0x5000>;
 			mediatek,vs-voter = <&pmic 0x149a 0x20 1>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_DP_TX>;
-			interrupts = <GIC_SPI 792 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 837 IRQ_TYPE_LEVEL_HIGH 0>;
 			#phy-cells = <0>;
 			dptx,phy-params = <0x221c1814 0x24241e18 0x0000302a
 					0x0e080400 0x000c0600 0x00000006>;
