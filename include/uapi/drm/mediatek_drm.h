@@ -1542,6 +1542,7 @@ enum mtk_pq_frame_cfg_cmd {
 	PQ_TDSHP_SET_REG = 600,
 	PQ_DITHER_SET_DITHER_PARAM = 700,
 	PQ_VIRTUAL_SET_PROPERTY = 800,
+	PQ_VIRTUAL_CHECK_TRIGGER,
 	/* Get cmd begin */
 	/* Notice:
 	 * Command for getting must be added after the PQ_GET_CMD_START.
