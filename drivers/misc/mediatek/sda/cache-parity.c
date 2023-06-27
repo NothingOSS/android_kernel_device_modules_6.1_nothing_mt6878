@@ -102,11 +102,10 @@ struct cache_parity {
 static struct cache_parity cache_parity;
 static struct parity_irq_record_t *parity_irq_record;
 static DEFINE_SPINLOCK(parity_isr_lock);
-static int bypass_emi_slverr_ecc_err;
 
 void __attribute__((weak)) ecc_dump_debug_info(void)
 {
-	/* pr_notice("%s is not implemented\n", __func__); */
+	pr_notice("%s is not implemented\n", __func__);
 }
 
 static ssize_t cache_status_show(struct device_driver *driver, char *buf)
@@ -371,16 +370,6 @@ static irqreturn_t cache_parity_isr_v3(int irq, void *dev_id)
 		 *    KLEIN Core will get ECC Error with SERR = 0x12.
 		 */
 		if (is_midr_in_range_list(read_cpuid_id(), cpu_list)) {
-
-			/* SERR[7:0]
-			 * 0x6 : suffer serr=0x6 when enable EMI m0/m1 mpu vio slverr
-			 */
-			if (bypass_emi_slverr_ecc_err &&
-			    atomic_read(&cache_parity.nr_err) == 1 && serr == 0x6) {
-				/* ECC_LOG("Cache ECC error, cpu%d serviced irq%d\n", cpu, irq); */
-				/* ECC_LOG("SERR[7:0] = 0x%x, bypass this error!\n", serr); */
-				goto check_nr_err;
-			}
 
 			/* SERR[7:0]
 			 * 0xC : Data value from (non-associative) external memory
@@ -858,13 +847,6 @@ static int cache_parity_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "no arm-dsu-ecc-hwir");
 			return -ENXIO;
 		}
-
-		ret = of_property_read_u32(pdev->dev.of_node,
-					"bypass-emi-slverr-ecc-err",
-					&bypass_emi_slverr_ecc_err);
-		if (ret)
-			dev_info(&pdev->dev, "no bypass-emi-slverr-ecc-err");
-
 		len = of_property_count_elems_of_size(pdev->dev.of_node,
 							"arm-complex-ecc-hwirq", 4);
 		if (len <= 0) {
