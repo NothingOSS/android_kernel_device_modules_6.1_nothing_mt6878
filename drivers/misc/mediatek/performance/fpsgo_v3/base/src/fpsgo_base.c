@@ -2368,6 +2368,77 @@ int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
 	return 0;
 }
 
+static unsigned long long fpsgo_traverse_render_rb_tree(struct rb_root *rbr,
+	unsigned long long target_addr)
+{
+	int i;
+	unsigned long long ret = 0;
+	unsigned long long local_addr = 0;
+	struct render_info *r_iter = NULL;
+	struct fbt_proc *proc_iter = NULL;
+	struct work_struct *work_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	for (rbn = rb_first(rbr); rbn; rbn = rb_next(rbn)) {
+		if (rbr == &render_pid_tree)
+			r_iter = rb_entry(rbn, struct render_info, render_key_node);
+		else if (rbr == &linger_tree)
+			r_iter = rb_entry(rbn, struct render_info, linger_node);
+		else {
+			FPSGO_LOGE("[base] %s rbr wrong\n", __func__);
+			break;
+		}
+
+		fpsgo_thread_lock(&(r_iter->thr_mlock));
+		proc_iter = &r_iter->boost_info.proc;
+		for (i = 0; i < RESCUE_TIMER_NUM; i++) {
+			work_iter = &(proc_iter->jerks[i].work);
+			local_addr = (unsigned long long)work_iter;
+			if (target_addr && local_addr == target_addr) {
+				ret = local_addr;
+				break;
+			} else if (!target_addr)
+				FPSGO_LOGE("[base] rtid:%d bufID:0x%llx work-%d:0x%llx\n",
+					r_iter->pid, r_iter->buffer_id, i, local_addr);
+		}
+		fpsgo_thread_unlock(&(r_iter->thr_mlock));
+
+		if (ret)
+			break;
+	}
+
+	return ret;
+}
+
+int fpsgo_check_fbt_jerk_work_addr_invalid(struct work_struct *target_work)
+{
+	int ret = -EFAULT;
+	unsigned long long local_addr = 0;
+	unsigned long long target_addr = 0;
+
+	target_addr = (unsigned long long)target_work;
+
+	local_addr = fpsgo_traverse_render_rb_tree(&render_pid_tree, target_addr);
+	if (local_addr) {
+		ret = 0;
+		goto out;
+	}
+
+	local_addr = fpsgo_traverse_render_rb_tree(&linger_tree, target_addr);
+	if (local_addr) {
+		ret = 0;
+		goto out;
+	}
+
+	if (ret) {
+		fpsgo_traverse_render_rb_tree(&render_pid_tree, 0);
+		fpsgo_traverse_render_rb_tree(&linger_tree, 0);
+	}
+
+out:
+	return ret;
+}
+
 static ssize_t fpsgo_enable_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)

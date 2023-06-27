@@ -3017,6 +3017,7 @@ EXIT:
 
 static void fbt_do_jerk(struct work_struct *work)
 {
+	int ret;
 	struct fbt_jerk *jerk;
 	struct fbt_proc *proc;
 	struct fbt_boost_info *boost;
@@ -3024,8 +3025,16 @@ static void fbt_do_jerk(struct work_struct *work)
 	int tofree = 0;
 
 	fpsgo_render_tree_lock(__func__);
+
+	ret = fpsgo_check_fbt_jerk_work_addr_invalid(work);
+	if (ret) {
+		fpsgo_render_tree_unlock(__func__);
+		return;
+	}
+
 	jerk = container_of(work, struct fbt_jerk, work);
 	if (!jerk || jerk->id < 0 || jerk->id > RESCUE_TIMER_NUM - 1) {
+		fpsgo_render_tree_unlock(__func__);
 		FPSGO_LOGE("ERROR %d\n", __LINE__);
 		return;
 	}
@@ -3033,18 +3042,21 @@ static void fbt_do_jerk(struct work_struct *work)
 	proc = container_of(jerk, struct fbt_proc, jerks[jerk->id]);
 	if (!proc || proc->active_jerk_id < 0 ||
 		proc->active_jerk_id > RESCUE_TIMER_NUM - 1) {
+		fpsgo_render_tree_unlock(__func__);
 		FPSGO_LOGE("ERROR %d\n", __LINE__);
 		return;
 	}
 
 	boost = container_of(proc, struct fbt_boost_info, proc);
 	if (!boost) {
+		fpsgo_render_tree_unlock(__func__);
 		FPSGO_LOGE("ERROR %d\n", __LINE__);
 		return;
 	}
 
 	thr = container_of(boost, struct render_info, boost_info);
 	if (!thr) {
+		fpsgo_render_tree_unlock(__func__);
 		FPSGO_LOGE("ERROR %d\n", __LINE__);
 		return;
 	}
