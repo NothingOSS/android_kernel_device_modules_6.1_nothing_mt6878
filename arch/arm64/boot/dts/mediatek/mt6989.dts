@@ -62,6 +62,7 @@
 			y2r4 = &ovl_y2r0;
 			y2r6 = &ovl1_y2r0;
 			y2r0 = &disp_y2r0;
+			r2y0 = &disp1_r2y0;
 			ovl3 = &disp_ovl0_2l;
 			ovl4 = &disp_ovl1_2l;
 			ovl5 = &disp_ovl2_2l;
@@ -6677,6 +6678,13 @@
 			clocks = <&dispsys_config_clk CLK_MM_DISP_Y2R0>;
 		};
 
+		disp1_r2y0: disp1-r2y0@14216000 {
+			compatible = "mediatek,disp1_r2y0",
+					"mediatek,mt6989-disp1-r2y";
+			reg = <0 0x14216000 0 0x1000>;
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_R2Y0>;
+		};
+
 		i2c@14025000 {
 			compatible = "mediatek,i2c";
 			reg = <0 0x14025000 0 0x1000>;
@@ -6912,11 +6920,6 @@
 		disp1-mmsram-sub-comm1@14215000 {
 			compatible = "mediatek,disp1_mmsram_sub_comm1";
 			reg = <0 0x14215000 0 0x1000>;
-		};
-
-		disp1-disp-r2y0@14216000 {
-			compatible = "mediatek,disp1_disp_r2y0";
-			reg = <0 0x14216000 0 0x1000>;
 		};
 
 		disp_wdma2: disp1-disp-wdma1@14217000 {
