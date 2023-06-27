@@ -128,6 +128,28 @@
 /*Reference to core layer timeout (ns) */
 #define SPI_FIFO_POLLING_TIMEOUT (200000000)
 
+#define SPI_CG_ADDR 0x11036000
+#define SPI_SEL_ADDR 0x10000080
+#define SPI_PLL_MERG_EN_ADDR 0x1000c914
+#define SPI_PLL_MERG_RSTB_ADDR 0x1000c920
+
+#define UNIVPLL_EN_SHIFT         3
+#define UNIVPLL_RSTB_SHIFT       2
+
+#define SPI6_SEL_SHIFT           31
+
+#define CG_STA_OFFSET 0x10
+#define CG_SET_OFFSET 0x24
+#define CG_CLR_OFFSET 0x28
+#define SPI0_B_CG_OFFSET 12
+#define SPI1_B_CG_OFFSET 13
+#define SPI2_B_CG_OFFSET 14
+#define SPI3_B_CG_OFFSET 15
+#define SPI4_B_CG_OFFSET 16
+#define SPI5_B_CG_OFFSET 17
+#define SPI6_B_CG_OFFSET 18
+#define SPI7_B_CG_OFFSET 19
+
 struct mtk_spi_compatible {
 	bool need_pad_sel;
 	/* Must explicitly send dummy Rx bytes to do Tx only transfer */
@@ -147,6 +169,8 @@ struct mtk_spi_compatible {
 	bool sw_cs;
 	/* some IC enhance patcket length to 4GB*/
 	bool enhance_packet_len;
+	/* some IC need clk check for HWR debug*/
+	bool clk_check;
 };
 
 struct mtk_spi {
@@ -192,6 +216,7 @@ static const struct mtk_spi_compatible mt6989_compat = {
 	.no_need_unprepare = false,
 	.sw_cs = true,
 	.enhance_packet_len = true,
+	.clk_check = true,
 };
 
 static const struct mtk_spi_compatible mt6985_compat = {
@@ -474,6 +499,38 @@ static int mtk_spi_set_hw_cs_timing(struct spi_device *spi)
 	return 0;
 }
 
+static int spi_clock_check(struct device *dev)
+{
+	uint32_t spi_cg_value, spi_sel_value, spi_pll_merg_en_value, spi_pll_merg_rstb_value;
+
+	spi_cg_value = readl(ioremap(SPI_CG_ADDR + CG_STA_OFFSET, 0x8));
+	spi_sel_value = readl(ioremap(SPI_SEL_ADDR, 0x8));
+	spi_pll_merg_en_value = readl(ioremap(SPI_PLL_MERG_EN_ADDR, 0x8));
+	spi_pll_merg_rstb_value = readl(ioremap(SPI_PLL_MERG_RSTB_ADDR, 0x8));
+
+	/*check PLL*/
+	if (!(spi_pll_merg_en_value & (1 << UNIVPLL_EN_SHIFT)) ||
+	    !(spi_pll_merg_rstb_value & (1 << UNIVPLL_RSTB_SHIFT))) {
+		dev_err(dev,"SPI PLL ERROR: spi_pll_merg_en_value:0x%x, spi_pll_merg_rstb_value:0x%x!\n",
+			spi_pll_merg_en_value, spi_pll_merg_rstb_value);
+		return -1;
+	}
+
+	/*check SEL*/
+	if (spi_sel_value & (1 << SPI6_SEL_SHIFT)) {
+		dev_err(dev,"SPI SEL ERROR: spi_sel_value:0x%x!\n", spi_sel_value);
+		return -1;
+	}
+
+	/*check SPI6 CG*/
+	if (spi_cg_value & (1 << SPI6_B_CG_OFFSET)) {
+		dev_err(dev,"SPI CG ERROR: spi cg:0x%x!\n", spi_cg_value);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int mtk_spi_prepare_message(struct spi_master *master,
 				   struct spi_message *msg)
 {
@@ -485,6 +542,11 @@ static int mtk_spi_prepare_message(struct spi_master *master,
 
 	cpha = spi->mode & SPI_CPHA ? 1 : 0;
 	cpol = spi->mode & SPI_CPOL ? 1 : 0;
+
+	if (mdata->dev_comp->clk_check) {
+		if (spi_clock_check(&master->dev))
+			return -1;
+	}
 
 	spi_debug("cpha:%d cpol:%d. chip_config as below\n", cpha, cpol);
 	spi_dump_config(master, msg);
@@ -814,6 +876,11 @@ static void mtk_spi_enable_transfer(struct spi_master *master)
 {
 	u32 cmd;
 	struct mtk_spi *mdata = spi_master_get_devdata(master);
+
+	if (mdata->dev_comp->clk_check) {
+		if (spi_clock_check(&master->dev))
+			return;
+	}
 
 	cmd = readl(mdata->base + SPI_CMD_REG);
 	if (mdata->state == MTK_SPI_IDLE)
@@ -1719,6 +1786,9 @@ static int mtk_spi_runtime_resume(struct device *dev)
 		dev_err(dev, "failed to enable spi_clk (%d)\n", ret);
 		return ret;
 	}
+
+	if (mdata->dev_comp->clk_check)
+		spi_clock_check(dev);
 
 	return 0;
 }
