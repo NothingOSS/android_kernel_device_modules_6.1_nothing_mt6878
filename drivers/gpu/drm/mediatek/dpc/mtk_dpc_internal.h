@@ -16,6 +16,9 @@
 #define DPCERR(fmt, args...) \
 	pr_info("[dpc][err] %s:%d " fmt "\n", __func__, __LINE__, ##args)
 
+#define DPCDUMP(fmt, args...) \
+	pr_info("[dpc] " fmt "\n", ##args)
+
 #define VLP_DISP_SW_VOTE_SET 0x414
 #define VLP_DISP_SW_VOTE_CLR 0x418
 #define SPM_DIS0_PWR_CON 0xE98
@@ -23,6 +26,7 @@
 #define SPM_OVL0_PWR_CON 0xEA0
 #define SPM_OVL1_PWR_CON 0xEA4
 #define SPM_MML1_PWR_CON 0xE94
+#define SPM_PWR_STATUS_MSB 0xf78 /* vcore[3] mml[4][5] dis[6][7] ovl[8][9] mminfra[10] */
 
 #define DISP_REG_DPC_EN                                  0x000UL
 #define DISP_REG_DPC_RESET                               0x004UL

@@ -46,7 +46,8 @@ struct mtk_disp_dpc_data {
 
 void mtk_vidle_sync_mmdvfsrc_status_rc(unsigned int rc_en);
 void mtk_vidle_sync_mmdvfsrc_status_wdt(unsigned int wdt_en);
-void mtk_vidle_enable(void *crtc);
+void mtk_vidle_flag_init(void *crtc);
+void mtk_vidle_enable(bool en, void *crtc);
 void mtk_vidle_power_keep(void);
 void mtk_vidle_power_release(void);
 void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop);

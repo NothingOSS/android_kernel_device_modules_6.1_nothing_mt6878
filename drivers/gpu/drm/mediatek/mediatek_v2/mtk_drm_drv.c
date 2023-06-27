@@ -5558,6 +5558,7 @@ void mtk_drm_top_clk_prepare_enable(struct drm_device *drm)
 	//set_swpm_disp_active(true);
 	mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 	mtk_vidle_config_ff(false);
+	mtk_vidle_enable(false, NULL);
 
 	for (i = 0; i < priv->top_clk_num; i++) {
 		if (IS_ERR(priv->top_clk[i])) {

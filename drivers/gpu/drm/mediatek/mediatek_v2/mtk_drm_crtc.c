@@ -11503,8 +11503,8 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	/* 9. set CRTC SW status */
 	mtk_crtc_set_status(crtc, true);
 
-	/* 10. v-idle enable */
-	mtk_vidle_enable(crtc);
+	/* 10. check v-idle enable */
+	mtk_vidle_flag_init(crtc);
 
 	/* move power off mtcmos to kms init flow for multiple display in LK */
 }
@@ -11832,6 +11832,8 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 	case MML_STOP_LINKING:
 		DDP_PROFILE("MML_STOP_LINKING\n");
 		mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle, false);
+		mtk_vidle_config_ff(false);
+		mtk_vidle_enable(false, crtc);
 		break;
 	default:
 		break;
@@ -14935,8 +14937,11 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	}
 
 	/* need to check mml is submit done */
-	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl)
+	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
 		mtk_drm_wait_mml_submit_done(&(mtk_crtc->mml_cb));
+		mtk_vidle_config_ff(true);
+		mtk_vidle_enable(true, crtc);
+	}
 
 	if (mtk_crtc_state->lye_state.need_repaint) {
 		drm_trigger_repaint(DRM_REPAINT_FOR_SWITCH_DECOUPLE_MIRROR, crtc->dev);

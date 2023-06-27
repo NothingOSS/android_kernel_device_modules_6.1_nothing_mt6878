@@ -14,6 +14,7 @@ enum mtk_dpc_subsys {
 	DPC_SUBSYS_OVL1 = 3,
 	DPC_SUBSYS_MML = 4,
 	DPC_SUBSYS_MML1 = 4,
+	DPC_CHECK_DISP_VCORE,
 };
 
 /* NOTE: user 0 to 7 only */

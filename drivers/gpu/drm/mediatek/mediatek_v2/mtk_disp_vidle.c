@@ -38,20 +38,19 @@ struct mtk_disp_vidle {
 	const struct mtk_disp_vidle_data *data;
 };
 
-static void mtk_vidle_flag_init(struct drm_crtc *crtc)
+void mtk_vidle_flag_init(void *_crtc)
 {
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_ddp_comp *output_comp = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct drm_crtc *crtc = NULL;
 
-	//init
 	mtk_disp_vidle_flag.vidle_en = 0;
-	mtk_disp_vidle_flag.vidle_stop = 0;
 
-	if (crtc == NULL)
+	if (_crtc == NULL)
 		return;
+	crtc = (struct drm_crtc *)_crtc;
 	mtk_crtc = to_mtk_crtc(crtc);
-
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	priv = crtc->dev->dev_private;
 	if (priv == NULL || output_comp == NULL)
@@ -62,24 +61,11 @@ static void mtk_vidle_flag_init(struct drm_crtc *crtc)
 		return;
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_TOP_EN))
-		mtk_disp_vidle_flag.vidle_en = mtk_disp_vidle_flag.vidle_en | DISP_VIDLE_TOP_EN;
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_MTCMOS_DT_EN))
-		mtk_disp_vidle_flag.vidle_en =
-			mtk_disp_vidle_flag.vidle_en | DISP_VIDLE_MTCMOS_DT_EN;
+		mtk_disp_vidle_flag.vidle_en |= DISP_VIDLE_TOP_EN;
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_MMINFRA_DT_EN))
-		mtk_disp_vidle_flag.vidle_en =
-			mtk_disp_vidle_flag.vidle_en | DISP_VIDLE_MMINFRA_DT_EN;
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DVFS_DT_EN))
-		mtk_disp_vidle_flag.vidle_en = mtk_disp_vidle_flag.vidle_en | DISP_VIDLE_DVFS_DT_EN;
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_QOS_DT_EN))
-		mtk_disp_vidle_flag.vidle_en = mtk_disp_vidle_flag.vidle_en | DISP_VIDLE_QOS_DT_EN;
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_GCE_TS_EN))
-		mtk_disp_vidle_flag.vidle_en = mtk_disp_vidle_flag.vidle_en | DISP_VIDLE_GCE_TS_EN;
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DPC_PRE_TE_EN))
-		mtk_disp_vidle_flag.vidle_en = mtk_disp_vidle_flag.vidle_en | DISP_DPC_PRE_TE_EN;
+		mtk_disp_vidle_flag.vidle_en |= DISP_VIDLE_MMINFRA_DT_EN;
 
 	/* TODO: CHECK LCM_IS_CONNECTED, if not, auto mtcmos cannot be enabled */
-
 }
 
 static unsigned int mtk_vidle_enable_check(unsigned int vidle_item)
@@ -176,23 +162,15 @@ void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop)
 		mtk_vidle_stop();
 }
 
-void mtk_vidle_enable(void *_crtc)
+void mtk_vidle_enable(bool en, void *_crtc)
 {
-	struct drm_crtc *crtc = NULL;
+	static bool last_en;
 
-	if (_crtc == NULL)
+	if (!disp_dpc_driver.dpc_enable)
 		return;
 
-	crtc = (struct drm_crtc *)_crtc;
-
-	if (mtk_vidle_enable_check(DISP_VIDLE_TOP_EN))
-		DDPINFO("vidle en(0x%x), stop(0x%x)\n",
-			mtk_disp_vidle_flag.vidle_en, mtk_disp_vidle_flag.vidle_stop);
-
-	if (mtk_disp_vidle_flag.vidle_init == 0) {
-		mtk_vidle_flag_init(crtc);
-		mtk_disp_vidle_flag.vidle_init = 1;
-	}
+	if (!mtk_disp_vidle_flag.vidle_en)
+		return;
 
 	/* some case, like multi crtc we need to stop V-idle */
 	if (mtk_disp_vidle_flag.vidle_stop) {
@@ -200,11 +178,16 @@ void mtk_vidle_enable(void *_crtc)
 		return;
 	}
 
-	if (disp_dpc_driver.dpc_enable && mtk_vidle_enable_check(DISP_VIDLE_TOP_EN)) {
-		mtk_vidle_dt_enable(1);
-		disp_dpc_driver.dpc_enable(1);
-	}
+	if (en == last_en)
+		return;
+	last_en = en;
 
+	if (_crtc) {
+		struct drm_crtc *crtc = (struct drm_crtc *)_crtc;
+
+		mtk_drm_set_idlemgr(crtc, !en, 0);
+	}
+	disp_dpc_driver.dpc_enable(en);
 	/* TODO: enable timestamp */
 }
 
@@ -226,6 +209,15 @@ void mtk_vidle_dvfs_set(const u8 level)
 }
 void mtk_vidle_config_ff(bool en)
 {
+	static bool last_en;
+
+	if (en && !mtk_disp_vidle_flag.vidle_en)
+		return;
+
+	if (en == last_en)
+		return;
+	last_en = en;
+
 	if (disp_dpc_driver.dpc_config)
 		disp_dpc_driver.dpc_config(DPC_SUBSYS_DISP, en);
 }

@@ -1936,7 +1936,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"vidle", 21, perf_string, true);
 	/* 15. v-idle enable */
-	mtk_vidle_enable(crtc);
+	// mtk_vidle_enable(crtc);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"STOP", -1, perf_string, true);
