@@ -1946,8 +1946,10 @@ static void ufs_mtk_config_pwr_mode(struct ufs_hba *hba, int mode,
 	}
 
 	/* Scale up, change clk mux before change gear */
-	if ((mode == CLK_FORCE_SCALE_UP) && scale_allow)
+	if ((mode == CLK_FORCE_SCALE_UP) && scale_allow) {
+		ufs_mtk_pm_qos(hba, true);
 		_ufs_mtk_clk_scale(hba, true);
+	}
 
 	/* Start change power mode */
 	err = ufshcd_config_pwr_mode(hba, &pwr_info);
@@ -1963,8 +1965,10 @@ static void ufs_mtk_config_pwr_mode(struct ufs_hba *hba, int mode,
 	}
 
 	/* Scale down, change clk mux after change gear */
-	if ((mode != CLK_FORCE_SCALE_UP) && scale_allow)
+	if ((mode != CLK_FORCE_SCALE_UP) && scale_allow) {
+		ufs_mtk_pm_qos(hba, false);
 		_ufs_mtk_clk_scale(hba, false);
+	}
 
 out:
 	ufshcd_release(hba);
