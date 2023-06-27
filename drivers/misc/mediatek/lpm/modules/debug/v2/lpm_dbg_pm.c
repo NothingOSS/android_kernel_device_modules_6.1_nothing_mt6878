@@ -15,7 +15,9 @@
 #include <lpm.h>
 #include <lpm_module.h>
 #include <lpm_dbg_common_v2.h>
+#include <lpm_timer.h>
 
+struct lpm_timer common_sodi_enable_timer;
 
 static int lpm_dbg_probe(struct platform_device *pdev)
 {
@@ -24,6 +26,8 @@ static int lpm_dbg_probe(struct platform_device *pdev)
 
 #define LPM_KERNEL_SUSPEND "lpm-kernel-suspend"
 #define COMMON_SODI_DTS_NAME "common-sodi"
+#define COMMON_SODI_ENABLE_MS 120000
+
 int kernel_suspend_only;
 
 static int lpm_dbg_suspend_noirq(struct device *dev)
@@ -60,6 +64,16 @@ static struct platform_driver lpm_dbg_driver = {
 	}
 };
 
+int common_sodi_enable_func(unsigned long long dur, void *priv)
+{
+	lpm_smc_spm_dbg(MT_SPM_DBG_SMC_COMMON_SODI5_CTRL,
+		MT_LPM_SMC_ACT_SET,
+		1, 0);
+	pr_info("[name:mtk_lpm][P] - common sodi5 = %d (%s:%d)\n",
+					1, __func__, __LINE__);
+
+	return 0;
+};
 
 int lpm_dbg_pm_init(void)
 {
@@ -87,11 +101,15 @@ int lpm_dbg_pm_init(void)
 
 		ret = of_property_read_u32(lpm_node, COMMON_SODI_DTS_NAME, &common_sodi_enable);
 
-		if (ret == 0)
-			lpm_smc_spm_dbg(MT_SPM_DBG_SMC_COMMON_SODI5_CTRL,
-				MT_LPM_SMC_ACT_SET,
-				common_sodi_enable, 0);
-		else
+		if (ret == 0) {
+			if (common_sodi_enable) {
+				common_sodi_enable_timer.timeout = common_sodi_enable_func;
+				lpm_timer_init(&common_sodi_enable_timer, LPM_TIMER_ONECE);
+				lpm_timer_interval_update(&common_sodi_enable_timer,
+							COMMON_SODI_ENABLE_MS);
+				lpm_timer_start(&common_sodi_enable_timer);
+			}
+		} else
 			common_sodi_enable = 0;
 
 		of_node_put(lpm_node);
@@ -99,8 +117,10 @@ int lpm_dbg_pm_init(void)
 		common_sodi_enable = 0;
 	}
 
-	pr_info("[name:mtk_lpm][P] - common sodi5 = %d (%s:%d)\n",
-					common_sodi_enable, __func__, __LINE__);
+	if (common_sodi_enable == 0)
+		pr_info("[name:mtk_lpm][P] - common sodi5 = %d (%s:%d)\n",
+						0, __func__, __LINE__);
+
 	pr_info("[name:mtk_lpm][P] - kernel suspend only = %d (%s:%d)\n",
 					kernel_suspend_only, __func__, __LINE__);
 
