@@ -18,6 +18,8 @@
 
 #include "mt-plat/aee.h"
 
+#include "apusys_rv_trace.h"
+
 #include "apusys_power.h"
 #include "apusys_secure.h"
 #include "apu_regdump.h"
@@ -648,7 +650,11 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 				apu->sub_latency[2] = profile_end(&ts, &te);
 
 				profile_start(&ts);
+				if (apu->apusys_rv_trace_on)
+					apusys_rv_trace_begin("apu_power_ctrl(%d/%d/%d)", id, on, off);
 				ret = apu_power_ctrl(apu, 1);
+				if (apu->apusys_rv_trace_on)
+					apusys_rv_trace_end();
 				apu->sub_latency[3] = profile_end(&ts, &te);
 
 				profile_start(&ts);
@@ -664,12 +670,10 @@ static int mt6989_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 					if (apu->ce_dbg_polling_dump_mode)
 						apu_ce_start_timer_dump_reg();
 
-					if (apu->pwr_on_polling_dbg_mode) {
-
+					if (apu->pwr_on_polling_dbg_mode)
 						queue_delayed_work(apu_workq,
 							&apu_polling_on_work,
 							msecs_to_jiffies(APU_PWRON_TIMEOUT_MS));
-					}
 				} else {
 					mt6989_apu_pwr_wake_unlock(apu, id);
 					apu->ipi_pwr_ref_cnt[id]--;
@@ -1066,8 +1070,10 @@ static int mt6989_rproc_init(struct mtk_apu *apu)
 	mt6989_apu_pwr_wake_lock(apu, APU_IPI_INIT);
 #endif
 
-	/* TODO: change to false to reduce latency */
+	/* TODO: change pwr_on_polling_dbg_mode to false to reduce latency */
 	apu->pwr_on_polling_dbg_mode = true;
+	apu->ce_dbg_polling_dump_mode = false;
+	apu->apusys_rv_trace_on = false;
 
 	is_under_lp_scp_recovery_flow = false;
 

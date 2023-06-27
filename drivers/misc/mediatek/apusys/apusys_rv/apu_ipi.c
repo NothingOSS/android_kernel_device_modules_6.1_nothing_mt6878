@@ -16,6 +16,8 @@
 #include <linux/delay.h>
 #include <linux/random.h>
 
+#include "apusys_rv_trace.h"
+
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 #include <linux/debugfs.h>
 #include <linux/proc_fs.h>
@@ -441,9 +443,13 @@ static irqreturn_t apu_ipi_handler(int irq, void *priv)
 		goto out;
 	}
 
+	if (apu->apusys_rv_trace_on)
+		apusys_rv_trace_begin("apu_ipi_handle(%d)", id);
 	current_ipi_handler_id = id;
 	handler(temp_buf, len, apu->ipi_desc[id].priv);
 	current_ipi_handler_id = -1;
+	if (apu->apusys_rv_trace_on)
+		apusys_rv_trace_end();
 
 	ipi_usage_cnt_update(apu, id, -1);
 
@@ -614,6 +620,9 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 		return -EOPNOTSUPP;
 	}
 
+	if (apu->apusys_rv_trace_on)
+		apusys_rv_trace_begin("apu_pwr(%d/%d/%d)", id, on, off);
+
 	if (pwr_profile_polling_mode && hw_ops->polling_rpc_status) {
 		mutex_lock(&apu->power_profile_lock);
 		ktime_get_ts64(&ts_polling);
@@ -631,7 +640,8 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 		apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_OFF_FAIL");
 		if (pwr_profile_polling_mode && hw_ops->polling_rpc_status)
 			mutex_unlock(&apu->power_profile_lock);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 	spin_unlock(&apu->usage_cnt_lock);
 
@@ -667,6 +677,10 @@ int apu_power_on_off(struct platform_device *pdev, u32 id, u32 on, u32 off)
 
 	apu_info_ratelimited(dev, "%s: id(%u), on(%u), off(%u), latency = %llu ns\n",
 		__func__, id, on, off, time_diff);
+
+out:
+	if (apu->apusys_rv_trace_on)
+		apusys_rv_trace_end();
 
 	return ret;
 }
@@ -809,15 +823,16 @@ static uint32_t rcx_off_ce_ts_max;
 static uint32_t warmboot_on_ts_last;
 static uint32_t dpidle_off_ts_last;
 static uint32_t smmu_hw_sem_ts_last;
-static uint32_t mdw_abort_ts_last;
+static uint32_t dvfs_skip_ts_last;
 static uint32_t warmboot_on_ts_avg;
 static uint32_t dpidle_off_ts_avg;
 static uint32_t smmu_hw_sem_ts_avg;
-static uint32_t mdw_abort_ts_avg;
+static uint32_t dvfs_skip_ts_avg;
 static uint32_t warmboot_on_ts_max;
 static uint32_t dpidle_off_ts_max;
 static uint32_t smmu_hw_sem_ts_max;
-static uint32_t mdw_abort_ts_max;
+static uint32_t dvfs_skip_ts_max;
+static uint32_t smmu_hw_sem_ts_larger_1ms_cnt;
 
 static uint64_t apu_on_ts_last;
 static uint64_t apu_off_ts_last;
@@ -1039,16 +1054,17 @@ static int apu_ipi_ut_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 		warmboot_on_ts_last = d->data[7];
 		dpidle_off_ts_last = d->data[8];
 		smmu_hw_sem_ts_last = d->data[9];
-		mdw_abort_ts_last = d->data[10];
+		dvfs_skip_ts_last = d->data[10];
 		warmboot_on_ts_avg = d->data[11];
 		dpidle_off_ts_avg = d->data[12];
 		smmu_hw_sem_ts_avg = d->data[13];
-		mdw_abort_ts_avg = d->data[14];
+		dvfs_skip_ts_avg = d->data[14];
 		warmboot_on_ts_max = d->data[15];
 		dpidle_off_ts_max = d->data[16];
 		smmu_hw_sem_ts_max = d->data[17];
-		mdw_abort_ts_max = d->data[18];
-		boot_count = d->data[19];
+		dvfs_skip_ts_max = d->data[18];
+		smmu_hw_sem_ts_larger_1ms_cnt = d->data[19];
+		boot_count = d->data[20];
 	}
 
 	if (polling_mode)
@@ -1111,6 +1127,7 @@ static int apu_ipi_dbg_show(struct seq_file *s, void *unused)
 		seq_printf(s, "pwr_profile_polling_mode = %u\n", pwr_profile_polling_mode);
 		seq_printf(s, "pwr_on_polling_dbg_mode = %u\n", apu->pwr_on_polling_dbg_mode);
 		seq_printf(s, "ce_dbg_polling_dump_mode = %u\n", apu->ce_dbg_polling_dump_mode);
+		seq_printf(s, "apusys_rv_trace_on = %u\n", apu->apusys_rv_trace_on);
 
 		seq_printf(s, "rcx_on_avg_time = %u us\n",
 			warmboot_on_ts_avg + rcx_on_ce_ts_avg);
@@ -1124,18 +1141,23 @@ static int apu_ipi_dbg_show(struct seq_file *s, void *unused)
 		seq_printf(s, "rcx_on_ce_ts_max = %u us\n", rcx_on_ce_ts_max);
 		seq_printf(s, "rcx_off_ce_ts_max = %u us\n", rcx_off_ce_ts_max);
 
+		seq_puts(s, "--------------------------------\n");
+
 		seq_printf(s, "warmboot_on_ts_last = %u us\n", warmboot_on_ts_last);
 		seq_printf(s, "dpidle_off_ts_last = %u us\n", dpidle_off_ts_last);
 		seq_printf(s, "smmu_hw_sem_ts_last = %u us\n", smmu_hw_sem_ts_last);
-		seq_printf(s, "mdw_abort_ts_last = %u us\n", mdw_abort_ts_last);
+		seq_printf(s, "dvfs_skip_ts_last = %u us\n", dvfs_skip_ts_last);
 		seq_printf(s, "warmboot_on_ts_avg = %u us\n", warmboot_on_ts_avg);
 		seq_printf(s, "dpidle_off_ts_avg = %u us\n", dpidle_off_ts_avg);
 		seq_printf(s, "smmu_hw_sem_ts_avg = %u us\n", smmu_hw_sem_ts_avg);
-		seq_printf(s, "mdw_abort_ts_avg = %u us\n", mdw_abort_ts_avg);
+		seq_printf(s, "dvfs_skip_ts_avg = %u us\n", dvfs_skip_ts_avg);
 		seq_printf(s, "warmboot_on_ts_max = %u us\n", warmboot_on_ts_max);
 		seq_printf(s, "dpidle_off_ts_max = %u us\n", dpidle_off_ts_max);
 		seq_printf(s, "smmu_hw_sem_ts_max = %u us\n", smmu_hw_sem_ts_max);
-		seq_printf(s, "mdw_abort_ts_max = %u us\n", mdw_abort_ts_max);
+		seq_printf(s, "dvfs_skip_ts_max = %u us\n", dvfs_skip_ts_max);
+		seq_printf(s, "smmu_hw_sem_ts_larger_1ms_cnt = %u\n", smmu_hw_sem_ts_larger_1ms_cnt);
+
+		seq_puts(s, "--------------------------------\n");
 
 		seq_printf(s, "apu_on_ts_last = %llu us\n", apu_on_ts_last);
 		seq_printf(s, "apu_off_ts_last = %llu us\n", apu_off_ts_last);
@@ -1212,6 +1234,7 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 	bool change_pwr_profile_polling_mode = false;
 	bool change_pwr_on_polling_dbg_mode = false;
 	bool ce_dbg_polling_dump_mode = false;
+	bool change_apusys_rv_trace_on = false;
 
 	tmp = kzalloc(count + 1, GFP_KERNEL);
 	if (!tmp)
@@ -1242,6 +1265,8 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 		change_pwr_on_polling_dbg_mode = true;
 	} else if (strcmp(token, "ce_dbg_polling_dump_mode") == 0) {
 		ce_dbg_polling_dump_mode = true;
+	} else if (strcmp(token, "apusys_rv_trace_on") == 0) {
+		change_apusys_rv_trace_on = true;
 	} else {
 		ret = -EINVAL;
 		pr_info("%s: unknown ipi dbg cmd: %s\n", __func__, token);
@@ -1268,6 +1293,10 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 		goto out;
 	} else if (ce_dbg_polling_dump_mode) {
 		apu->ce_dbg_polling_dump_mode = args[0];
+		ret = count;
+		goto out;
+	} else if (change_apusys_rv_trace_on) {
+		apu->apusys_rv_trace_on = args[0];
 		ret = count;
 		goto out;
 	}
