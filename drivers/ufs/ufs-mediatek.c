@@ -226,10 +226,15 @@ static void ufs_mtk_crypto_enable(struct ufs_hba *hba)
 	IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
 static void ufs_mtk_pt_callback(struct ufs_hba *hba, bool pt_on)
 {
-	if (pt_on)
-		ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_G1);
-	else
-		ufs_mtk_dynamic_clock_scaling(hba, CLK_SCALE_FREE_RUN);
+	bool atomic_context = in_atomic() || irqs_disabled();
+
+	if (!atomic_context) {
+		if (pt_on)
+			ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_G1);
+		else
+			ufs_mtk_dynamic_clock_scaling(hba, CLK_SCALE_FREE_RUN);
+	}
+
 }
 #endif
 
