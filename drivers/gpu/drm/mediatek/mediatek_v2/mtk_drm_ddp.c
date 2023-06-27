@@ -2420,12 +2420,12 @@
 #define MT6989_MUTEX1_MOD0_DISP_SPLITTER0	BIT(5)
 #define MT6989_MUTEX1_MOD0_DISP_SPLITTER1	BIT(6)
 #define MT6989_MUTEX1_MOD0_DISP_VDCM0		BIT(7)
-#define MT6989_MUTEX1_MOD0_DISP_DSC0		BIT(8)
-#define MT6989_MUTEX1_MOD0_DISP_DSC1		BIT(9)
-#define MT6989_MUTEX1_MOD0_DISP_DSC2		BIT(10)
-#define MT6989_MUTEX1_MOD0_DISP_DSC3		BIT(11)
-#define MT6989_MUTEX1_MOD0_DISP_DSC4		BIT(12)
-#define MT6989_MUTEX1_MOD0_DISP_DSC5		BIT(13)
+#define MT6989_MUTEX1_MOD0_DISP_DSC0_0		BIT(8)
+#define MT6989_MUTEX1_MOD0_DISP_DSC0_1		BIT(9)
+#define MT6989_MUTEX1_MOD0_DISP_DSC1_0		BIT(10)
+#define MT6989_MUTEX1_MOD0_DISP_DSC1_1		BIT(11)
+#define MT6989_MUTEX1_MOD0_DISP_DSC2_0		BIT(12)
+#define MT6989_MUTEX1_MOD0_DISP_DSC2_1		BIT(13)
 #define MT6989_MUTEX1_MOD0_DISP_DP_INTF0	BIT(14)
 #define MT6989_MUTEX1_MOD0_DISP_DSI0		BIT(15)
 #define MT6989_MUTEX1_MOD0_DISP_DSI1		BIT(16)
@@ -4138,12 +4138,12 @@ static const unsigned int mt6989_mutex_mod[DDP_COMPONENT_ID_MAX] = {
 	[DDP_COMPONENT_WDMA0] = MT6989_MUTEX_MOD1_DISP_WDMA0,
 	[DDP_COMPONENT_Y2R0] = MT6989_MUTEX_MOD1_DISP_Y2R0,
 /* DISPSYS1 */
-	[DDP_COMPONENT_DSC0] = MT6989_MUTEX1_MOD0_DISP_DSC0,
-	[DDP_COMPONENT_DSC1] = MT6989_MUTEX1_MOD0_DISP_DSC1,
-	[DDP_COMPONENT_DSC2] = MT6989_MUTEX1_MOD0_DISP_DSC2,
-	[DDP_COMPONENT_DSC3] = MT6989_MUTEX1_MOD0_DISP_DSC3,
-	[DDP_COMPONENT_DSC4] = MT6989_MUTEX1_MOD0_DISP_DSC4,
-	[DDP_COMPONENT_DSC5] = MT6989_MUTEX1_MOD0_DISP_DSC5,
+	[DDP_COMPONENT_DSC0] = MT6989_MUTEX1_MOD0_DISP_DSC0_0, //DSC WAP0_0
+	[DDP_COMPONENT_DSC1] = MT6989_MUTEX1_MOD0_DISP_DSC1_0, //DSC WAP1_0
+	[DDP_COMPONENT_DSC2] = MT6989_MUTEX1_MOD0_DISP_DSC2_0, //DSC WAP2_0
+	[DDP_COMPONENT_DSC3] = MT6989_MUTEX1_MOD0_DISP_DSC0_1, //DSC WAP0_1
+	[DDP_COMPONENT_DSC4] = MT6989_MUTEX1_MOD0_DISP_DSC1_1, //DSC WAP1_1
+	[DDP_COMPONENT_DSC5] = MT6989_MUTEX1_MOD0_DISP_DSC2_1, //DSC WAP2_1
 	[DDP_COMPONENT_DSI0] = MT6989_MUTEX1_MOD0_DISP_DSI0,
 	[DDP_COMPONENT_DSI1] = MT6989_MUTEX1_MOD0_DISP_DSI1,
 	[DDP_COMPONENT_DSI2] = MT6989_MUTEX1_MOD0_DISP_DSI2,
@@ -20741,6 +20741,48 @@ void mtk_ddp_remove_dsc_prim_MT6985(struct mtk_drm_crtc *mtk_crtc,
 
 }
 
+void mtk_ddp_insert_dsc_ext_MT6989(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle)
+{
+	unsigned int addr, value;
+
+	/* DDP_COMPONENT_COMP0_IN_CB8 to DISP_DSC_WRAP1 */
+	addr = MT6989_COMP_IN_CROSSBAR8_MOUT_EN;
+	value = MT6989_DISP_SPLITTER_IN_CROSSBAR6_TO_DSC1_0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+	/* DISP_DSC_WRAP1 to DDP_COMPONENT_MERGE0_OUT_CB4 */
+	addr =  MT6989_COMP_OUT_CROSSBAR2_MOUT_EN;
+	value = MT6989_DISP_DSC1_TO_MERGE_OUT_CROSSBAR4;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+	/* clear COMP_OUT_CROSSBAR8 */
+	addr =  MT6989_COMP_OUT_CROSSBAR8_MOUT_EN;
+	value = 0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+}
+
+void mtk_ddp_remove_dsc_ext_MT6989(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle)
+{
+	unsigned int addr, value;
+
+	/* clear COMP_IN_CROSSBAR8 */
+	addr = MT6989_COMP_IN_CROSSBAR8_MOUT_EN;
+	value = 0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+	/* clear COMP_OUT_CROSSBAR2 */
+	addr =  MT6989_COMP_OUT_CROSSBAR2_MOUT_EN;
+	value = 0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+}
+
 void mtk_ddp_insert_dsc_prim_MT6989(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle)
 {
@@ -20780,7 +20822,6 @@ void mtk_ddp_remove_dsc_prim_MT6989(struct mtk_drm_crtc *mtk_crtc,
 	value = 0;
 	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 		       mtk_crtc->side_config_regs_pa + addr, value, ~0);
-
 }
 
 void mtk_ddp_insert_dsc_prim_mt6897(struct mtk_drm_crtc *mtk_crtc,
