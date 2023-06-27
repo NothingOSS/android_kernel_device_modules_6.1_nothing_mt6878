@@ -16776,13 +16776,15 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 	};
 	bt_find_my_phone_high: bt-find-my-phone-high {
 		pins-cmd1-dat {
-			pinmux = <PINMUX_GPIO150__FUNC_GPIO150>;
+			/* COANT PIN */
+			pinmux = <PINMUX_GPIO58__FUNC_GPIO58>;
 			output-high;
 		};
 	};
 	bt_find_my_phone_low: bt-find-my-phone-low {
 		pins-cmd1-dat {
-			pinmux = <PINMUX_GPIO150__FUNC_GPIO150>;
+			/* COANT PIN */
+			pinmux = <PINMUX_GPIO58__FUNC_GPIO58>;
 			output-low;
 		};
 	};
