@@ -910,6 +910,7 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 
 			pr_info("[name:spm&][SPM] ms suspend %llu, %s",
 				suspend_time, sys_res_log_buf);
+			sys_res_log_size = 0;
 
 			for (i = 0; i <= VCORE_REQ; i++){
 				local_ptr = sys_res_group_info[i].name;
@@ -918,11 +919,23 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 				threshold = sys_res_group_info[i].threshold;
 				ratio = sys_res_ops->get_detail(sys_res_record,
 							SYS_RES_SIG_SUSPEND_RATIO, sys_index);
-				pr_info("[name:spm&][SPM] sys %s, threshold %llu, active ratio %llu\n",
-					local_ptr, threshold, ratio);
 
-				if (ratio < threshold)
+				sys_res_log_size += scnprintf(
+						sys_res_log_buf + sys_res_log_size,
+						LOG_BUF_OUT_SZ - sys_res_log_size,
+						"sys %s, threshold %llu, active ratio %llu",
+						local_ptr, threshold, ratio);
+
+				if (ratio < threshold) {
+					pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
+					sys_res_log_size = 0;
 					continue;
+				}
+
+				sys_res_log_size += scnprintf(
+						sys_res_log_buf + sys_res_log_size,
+						LOG_BUF_OUT_SZ - sys_res_log_size,
+						" group %d high active ratio signal:", i);
 
 				for (j = 0; j < sys_res_group_info[i].group_num; j++) {
 					ratio = sys_res_ops->get_detail(sys_res_record,
@@ -932,12 +945,26 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 					if (ratio < threshold)
 						continue;
 
-					pr_info("[name:spm&][SPM] group %d, sig id 0x%llx, active ratio %llu\n",
-						i,
+					if (sys_res_log_size > LOG_BUF_OUT_SZ - 20) {
+						pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
+						sys_res_log_size = 0;
+						sys_res_log_size += scnprintf(
+							sys_res_log_buf + sys_res_log_size,
+							LOG_BUF_OUT_SZ - sys_res_log_size,
+							" group %d high active ratio signal:", i);
+					}
+
+					sys_res_log_size += scnprintf(
+						sys_res_log_buf + sys_res_log_size,
+						LOG_BUF_OUT_SZ - sys_res_log_size,
+						" 0x%llx(%llu%%)",
 						sys_res_ops->get_detail(sys_res_record,
-								SYS_RES_SIG_ID, j + sig_tbl_index),
+							SYS_RES_SIG_ID, j + sig_tbl_index),
 						ratio);
 				}
+
+				pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
+				sys_res_log_size = 0;
 			}
 			spin_unlock_irqrestore(&sys_res_ops->lock, flag);
 		}
