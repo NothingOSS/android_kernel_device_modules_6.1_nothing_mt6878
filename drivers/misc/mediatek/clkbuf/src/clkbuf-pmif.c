@@ -506,7 +506,7 @@ static struct clkbuf_dts *pmif_parse_dts_v2(struct clkbuf_dts *array,
 			}
 
 			/* Parse PMIF REG by reg-names */
-			if (!strcmp(pmif_reg_name, "pmif-m")) {
+			if (!strcmp(pmif_reg_name, "pmif")) {
 				CLKBUF_DBG("PMIF_M dts found!");
 				pmif_m_array = array;
 				pmif_m_base = of_iomap(pmif_node, pmif_reg_idx);
