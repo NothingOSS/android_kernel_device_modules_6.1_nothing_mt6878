@@ -485,7 +485,8 @@ void mhal_DPTx_SetTU_SetEncoder(struct mtk_dp *mtk_dp)
 	msWriteByteMask(mtk_dp, REG_3300_DP_ENCODER1_P0 + 1, 0x02, BIT(1)|BIT(0));
 	msWriteByteMask(mtk_dp, REG_3364_DP_ENCODER1_P0 + 1, 0x40, 0x70);
 	if (mtk_dp->priv && mtk_dp->priv->data &&
-			mtk_dp->priv->data->mmsys_id == MMSYS_MT6897)
+			(mtk_dp->priv->data->mmsys_id == MMSYS_MT6897 ||
+			mtk_dp->priv->data->mmsys_id == MMSYS_MT6989))
 		msWrite2Byte(mtk_dp, REG_3368_DP_ENCODER1_P0,
 			(0x1 << BS_FOLLOW_SEL_DP_ENCODER1_P0_FLDMASK_POS) |
 			(0x4 << BS2BS_MODE_DP_ENCODER1_P0_FLDMASK_POS) |

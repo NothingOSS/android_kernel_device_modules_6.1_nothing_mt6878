@@ -2664,7 +2664,8 @@ void mdrv_DPTx_I2S_Audio_Config(struct mtk_dp *mtk_dp)
 	mdrv_DPTx_I2S_Audio_Ch_Status_Set(mtk_dp, ucChannel,
 		ucFs, ucWordlength);
 
-	if (g_mtk_dp->priv->data->mmsys_id != MMSYS_MT6897)
+	if (g_mtk_dp->priv->data->mmsys_id != MMSYS_MT6897
+		&& g_mtk_dp->priv->data->mmsys_id != MMSYS_MT6989)
 		mhal_DPTx_Audio_PG_EN(mtk_dp, ucChannel, ucFs, false);
 	else
 		mhal_DPTx_Audio_TDM_PG_EN(mtk_dp, ucChannel, ucFs, false);//DPTX audio for TDM
