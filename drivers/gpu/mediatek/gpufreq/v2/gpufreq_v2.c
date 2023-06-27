@@ -95,6 +95,7 @@ static struct gpuppm_platform_fp *gpuppm_fp;
 static struct gpufreq_ipi_data g_recv_msg;
 static unsigned long g_irq_flags;
 static raw_spinlock_t gpufreq_ipi_lock;
+static DEFINE_MUTEX(gpufreq_power_lock);
 
 /**
  * ===============================================
@@ -269,6 +270,8 @@ EXPORT_SYMBOL(gpufreq_get_segment_id);
  ***********************************************************************************/
 void gpufreq_dump_infra_status(void)
 {
+	mutex_lock(&gpufreq_power_lock);
+
 	gpueb_dump_footprint();
 	gpufreq_dump_dvfs_status();
 	gpufreq_dump_power_tracker_status();
@@ -278,6 +281,8 @@ void gpufreq_dump_infra_status(void)
 		gpufreq_fp->dump_infra_status();
 	else
 		GPUFREQ_LOGE("null gpufreq platform function pointer (ENOENT)");
+
+	mutex_unlock(&gpufreq_power_lock);
 }
 EXPORT_SYMBOL(gpufreq_dump_infra_status);
 
@@ -710,6 +715,8 @@ int gpufreq_power_control(enum gpufreq_power_state power)
 		goto done;
 	}
 
+	mutex_lock(&gpufreq_power_lock);
+
 	/* implement on EB */
 	if (g_gpueb_support) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_irq_flags);
@@ -736,6 +743,8 @@ done:
 	if (unlikely(ret < 0))
 		GPUFREQ_LOGE("fail to control power state: %s (%d)",
 			power ? "GPU_PWR_ON" : "GPU_PWR_OFF", ret);
+
+	mutex_unlock(&gpufreq_power_lock);
 
 	GPUFREQ_TRACE_END();
 
@@ -1557,14 +1566,34 @@ static int gpufreq_validate_target(unsigned int *target)
  ***********************************************************************************/
 static void gpufreq_dump_dvfs_status(void)
 {
+	int cur_oppidx_gpu = 0, cur_oppidx_stack = 0;
+	int vgpu_diff = 0, vstack_diff = 0;
+	unsigned int cur_vgpu = 0, cur_vstack = 0, opp_vgpu = 0, opp_vstack = 0;
+	struct gpufreq_ptp3_shared_status ptp3_status = {};
+
 	if (g_shared_status) {
-		GPUFREQ_LOGI("== [GPUFREQ DVFS STATUS: 0x%llx] ==", (unsigned long long)g_shared_status);
-		GPUFREQ_LOGI("GPU[%d] Freq: %d, Volt: %d, Vsram: %d",
+		cur_oppidx_gpu = g_shared_status->cur_oppidx_gpu;
+		cur_vgpu = g_shared_status->cur_vgpu;
+		opp_vgpu = g_shared_status->working_table_gpu[cur_oppidx_gpu].volt;
+		vgpu_diff = (int)cur_vgpu - (int)opp_vgpu;
+
+		cur_oppidx_stack = g_shared_status->cur_oppidx_stack;
+		cur_vstack = g_shared_status->cur_vstack;
+		opp_vstack = g_shared_status->working_table_stack[cur_oppidx_stack].volt;
+		vstack_diff = (int)cur_vstack - (int)opp_vstack;
+
+		ptp3_status = g_shared_status->ptp3_status;
+		GPUFREQ_LOGI("== [GPUFREQ DVFS STATUS: %s] ==",
+			(ptp3_status.dvfs_mode == HW_DUAL_LOOP_DVFS ? "HW_LOOP" :
+			(ptp3_status.dvfs_mode == SW_DUAL_LOOP_DVFS ? "SW_LOOP" : "LEGACY")));
+		GPUFREQ_LOGI("GPU[%d] Freq: %d, Volt: %d (%d), Vsram: %d",
 			g_shared_status->cur_oppidx_gpu, g_shared_status->cur_fgpu,
-			g_shared_status->cur_vgpu, g_shared_status->cur_vsram_gpu);
-		GPUFREQ_LOGI("STACK[%d] Freq: %d, Volt: %d, Vsram: %d",
+			g_shared_status->cur_vgpu, vgpu_diff,
+			g_shared_status->cur_vsram_gpu);
+		GPUFREQ_LOGI("STACK[%d] Freq: %d, Volt: %d (%d), Vsram: %d",
 			g_shared_status->cur_oppidx_stack, g_shared_status->cur_fstack,
-			g_shared_status->cur_vstack, g_shared_status->cur_vsram_stack);
+			g_shared_status->cur_vstack, vstack_diff,
+			g_shared_status->cur_vsram_stack);
 		GPUFREQ_LOGI("Temperature: %d'C, GPUTemperComp: %d/%d, STACKTemperComp: %d/%d",
 			g_shared_status->temperature,
 			g_shared_status->temper_comp_norm_gpu,
@@ -1574,10 +1603,11 @@ static void gpufreq_dump_dvfs_status(void)
 		GPUFREQ_LOGI("Ceiling/Floor: %d/%d, Limiter: %d/%d",
 			g_shared_status->cur_ceiling, g_shared_status->cur_floor,
 			g_shared_status->cur_c_limiter, g_shared_status->cur_f_limiter);
-		GPUFREQ_LOGI("PowerCount: %d, AgingMargin: %d, AVSMargin: %d",
-			g_shared_status->power_count, g_shared_status->aging_margin,
-			g_shared_status->avs_margin);
-		GPUFREQ_LOGI("inFreq: %d/%d, outFreq: %d/%d, CC:%d/%d, FC:%d/%d",
+		GPUFREQ_LOGI("PowerCount: %d, ActiveCount: %d, Buck: %d, MTCMOS: %d, CG: %d",
+			g_shared_status->power_count, g_shared_status->active_count,
+			g_shared_status->buck_count, g_shared_status->mtcmos_count,
+			g_shared_status->cg_count);
+		GPUFREQ_LOGI("InFreq: %d/%d, OutFreq: %d/%d, CC:%d/%d, FC:%d/%d",
 			g_shared_status->ptp3_info.infreq0,
 			g_shared_status->ptp3_info.infreq1,
 			g_shared_status->ptp3_info.outfreq0,

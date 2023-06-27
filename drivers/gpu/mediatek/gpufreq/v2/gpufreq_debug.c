@@ -148,7 +148,7 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		g_gpueb_support ? "On" : "Off",
 		g_shared_status->stress_test == STRESS_RANDOM ? "Random" :
 		g_shared_status->stress_test == STRESS_TRAVERSE ? "Traverse" :
-		g_shared_status->stress_test == STRESS_MAX_MIN ? "Max_Min" : "Disable");
+		g_shared_status->stress_test == STRESS_MAX_MIN ? "Max_Min" : "Off");
 	seq_printf(m,
 		"%-16s AgingMargin: %s, AVSMargin: %s, GPM1.0: %s, GPM3.0: %s, PTP3: %s\n",
 		"[MFGSYS Config]",
@@ -179,25 +179,26 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		(ptp3_status.dvfs_mode == HW_DUAL_LOOP_DVFS ? "HW_LOOP" :
 		(ptp3_status.dvfs_mode == SW_DUAL_LOOP_DVFS ? "SW_LOOP" : "LEGACY")),
 		(ptp3_status.gpm3_prot_mode == GPM3_5_IMAX_PROT ? "3.5" :
-		(ptp3_status.gpm3_prot_mode == GPM3_0_IMAX_PROT ? "3.0" : "Disable")),
-		ptp3_status.hbvc_freq_ctrl_support ? "Enable" : "Disable",
-		ptp3_status.hbvc_volt_ctrl_support ? "Enable" : "Disable");
+		(ptp3_status.gpm3_prot_mode == GPM3_0_IMAX_PROT ? "3.0" : "Off")),
+		ptp3_status.hbvc_freq_ctrl_support ? "On" : "Off",
+		ptp3_status.hbvc_volt_ctrl_support ? "On" : "Off");
 	seq_printf(m,
 		"%-16s BRCAST: %s, DELSEL: %s, PreOC: %s\n",
 		"[PTP3 Config]",
 		ptp3_status.brcast_mode == BRCAST_WITH_AUTO_DMA ? "AutoDMA" : "SW",
 		ptp3_status.delsel_mode == HW_DELSEL ? "HW" : "SW",
-		ptp3_status.hbvc_preoc_mode ? "Enable" : "Disable");
+		ptp3_status.hbvc_preoc_mode ? "On" : "Off");
 	seq_printf(m,
-		"%-16s FLL: %s, ATMC: %s, Vmeter: %s, Tmeter: %s, CPmeter: %s\n",
+		"%-16s FLL: %s, ATMC: %s, Vmeter: %s, Tmeter: %s, CPmeter: %s, CTT: %s\n",
 		"[PTP3 Config]",
-		ptp3_status.brisket_fll_mode ? "Enable" : "Disable",
-		ptp3_status.brisket_atmc_mode ? "Enable" : "Disable",
-		ptp3_status.brisket_vmeter_mode ? "Enable" : "Disable",
-		ptp3_status.brisket_tmeter_mode ? "Enable" : "Disable",
-		ptp3_status.brisket_cpmeter_mode ? "Enable" : "Disable");
+		ptp3_status.brisket_fll_mode ? "On" : "Off",
+		ptp3_status.brisket_atmc_mode ? "On" : "Off",
+		ptp3_status.brisket_vmeter_mode ? "On" : "Off",
+		ptp3_status.brisket_tmeter_mode ? "On" : "Off",
+		ptp3_status.brisket_cpmeter_mode ? "On" : "Off",
+		ptp3_status.brisket_ctt_mode ? "On" : "Off");
 	seq_printf(m,
-		"%-16s inFreq: %d/%d, outFreq: %d/%d, CC: %d/%d, FC: %d/%d\n",
+		"%-16s InFreq: %d/%d, OutFreq: %d/%d, CC: %d/%d, FC: %d/%d\n",
 		"[PTP3 Config]",
 		g_shared_status->ptp3_info.infreq0, g_shared_status->ptp3_info.infreq1,
 		g_shared_status->ptp3_info.outfreq0, g_shared_status->ptp3_info.outfreq1,

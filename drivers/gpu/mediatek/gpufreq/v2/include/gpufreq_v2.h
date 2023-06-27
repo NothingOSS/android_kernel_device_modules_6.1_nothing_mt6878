@@ -291,6 +291,7 @@ struct gpufreq_ptp3_shared_status {
 	unsigned int brisket_vmeter_mode;
 	unsigned int brisket_tmeter_mode;
 	unsigned int brisket_cpmeter_mode;
+	unsigned int brisket_ctt_mode;
 	unsigned int auto_dma_refill_top_brisket;
 	unsigned int auto_dma_refill_top_gpm;
 };

@@ -232,6 +232,7 @@ static void __iomem *g_semi_mi32_mi33_smi;
 static void __iomem *g_gpueb_sram_base;
 static void __iomem *g_gpueb_cfgreg_base;
 static void __iomem *g_mcdi_mbox_base;
+static void __iomem *g_mcusys_par_wrap_base;
 static struct gpufreq_pmic_info *g_pmic;
 static struct gpufreq_clk_info *g_clk;
 static struct gpufreq_status g_gpu;
@@ -324,6 +325,7 @@ static struct gpufreq_platform_fp platform_ap_fp = {
 
 static struct gpufreq_platform_fp platform_eb_fp = {
 	.dump_infra_status = __gpufreq_dump_infra_status,
+	.dump_power_tracker_status = __gpufreq_dump_power_tracker_status,
 	.get_dyn_pgpu = __gpufreq_get_dyn_pgpu,
 	.get_dyn_pstack = __gpufreq_get_dyn_pstack,
 	.get_core_mask_table = __gpufreq_get_core_mask_table,
@@ -1334,8 +1336,8 @@ void __gpufreq_dump_infra_status(void)
 		return;
 
 	GPUFREQ_LOGI("== [GPUFREQ INFRA STATUS] ==");
-	GPUFREQ_LOGI("[CLK] MFG_PLL: %d, MFG_SC0_PLL: %d, MFG_SC1_PLL: %d, MFG_SEL: 0x%08x",
-		__gpufreq_get_pll_fgpu(), __gpufreq_get_pll_fstack0(),
+	GPUFREQ_LOGI("%-11s MFG_PLL: %d, MFG_SC0_PLL: %d, MFG_SC1_PLL: %d, MFG_SEL: 0x%08x",
+		"[CLK]", __gpufreq_get_pll_fgpu(), __gpufreq_get_pll_fstack0(),
 		__gpufreq_get_pll_fstack1(), DRV_Reg32(MFG_RPC_MFG_CK_FAST_REF_SEL));
 
 	/* MFG_QCHANNEL_CON 0x13FBF0B4 [0] MFG_ACTIVE_SEL = 1'b1 */
@@ -1417,11 +1419,34 @@ void __gpufreq_dump_infra_status(void)
 		"INFRA_BUS1_DBG_CTRL", DRV_Reg32(INFRA_AO1_BUS1_U_DEBUG_CTRL0),
 		"NTH_EMI_BUS_DBG_CTRL", DRV_Reg32(NTH_EMI_AO_BUS_U_DEBUG_CTRL0),
 		"STH_EMI_BUS_DBG_CTRL", DRV_Reg32(STH_EMI_AO_BUS_U_DEBUG_CTRL0));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[MFG_ACP]",
+		"MCUSYS_ACP_GALS", DRV_Reg32(MCUSYS_PAR_WRAP_ACP_GALS_DBG),
+		"NTH_DVM_GALS_MST", DRV_Reg32(NTH_MFG_ACP_DVM_GALS_MST_DBG),
+		"NTH_GALS_SLV", DRV_Reg32(NTH_MFG_ACP_GALS_SLV_DBG),
+		"STH_DVM_GALS_MST", DRV_Reg32(STH_MFG_ACP_DVM_GALS_MST_DBG),
+		"STH_GALS_SLV", DRV_Reg32(STH_MFG_ACP_GALS_SLV_DBG));
 	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08lx",
 		"[MISC]",
 		"SPM_SRC_REQ", DRV_Reg32(SPM_SRC_REQ),
 		"SPM_SOC_BUCK_ISO", DRV_Reg32(SPM_SOC_BUCK_ISO_CON),
 		"PWR_STATUS", MFG_0_22_37_PWR_STATUS);
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[HBVC]",
+		"CFG", DRV_Reg32(MFG_HBVC_CFG),
+		"SAMPLE_EN", DRV_Reg32(MFG_HBVC_SAMPLE_EN),
+		"GRP0_BACKEND0", DRV_Reg32(MFG_HBVC_GRP0_DBG_BACKEND0),
+		"GRP1_BACKEND0", DRV_Reg32(MFG_HBVC_GRP1_DBG_BACKEND0),
+		"FLL0_FRONTEND0", DRV_Reg32(MFG_HBVC_FLL0_DBG_FRONTEND0),
+		"FLL1_FRONTEND0", DRV_Reg32(MFG_HBVC_FLL1_DBG_FRONTEND0));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[BRCAST]",
+		"ERROR_IRQ", DRV_Reg32(MFG_BRCAST_ERROR_IRQ),
+		"DEBUG_INFO_9", DRV_Reg32(MFG_BRCAST_DEBUG_INFO_9),
+		"DEBUG_INFO_10", DRV_Reg32(MFG_BRCAST_DEBUG_INFO_10),
+		"DEBUG_INFO_11", DRV_Reg32(MFG_BRCAST_DEBUG_INFO_11),
+		"CONFIG_0", DRV_Reg32(MFG_BRCAST_CONFIG_0),
+		"CONFIG_1", DRV_Reg32(MFG_BRCAST_CONFIG_1));
 	GPUFREQ_LOGI("%s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
 		"MFG0", DRV_Reg32(SPM_MFG0_PWR_CON),
 		"MFG1", DRV_Reg32(MFG_RPC_MFG1_PWR_CON),
@@ -1448,31 +1473,33 @@ void __gpufreq_dump_infra_status(void)
 		"MFG18", DRV_Reg32(MFG_RPC_MFG18_PWR_CON),
 		"MFG19", DRV_Reg32(MFG_RPC_MFG19_PWR_CON),
 		"MFG20", DRV_Reg32(MFG_RPC_MFG20_PWR_CON));
-	GPUFREQ_LOGI("%s=0x%08x, %s=0x%08x, %s=0x%08x",
-		"SHADER_READY_LO", DRV_Reg32(MALI_SHADER_READY_LO),
-		"TILER_READY_LO", DRV_Reg32(MALI_TILER_READY_LO),
-		"MALI_L2_READY_LO", DRV_Reg32(MALI_L2_READY_LO));
-	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
-		"[HBVC]",
-		"MFG_HBVC_CFG", DRV_Reg32(MFG_HBVC_CFG),
-		"MFG_HBVC_SAMPLE_EN", DRV_Reg32(MFG_HBVC_SAMPLE_EN),
-		"HBVC_GRP0_BACKEND0", DRV_Reg32(MFG_HBVC_GRP0_DBG_BACKEND0),
-		"HBVC_GRP1_BACKEND0", DRV_Reg32(MFG_HBVC_GRP1_DBG_BACKEND0),
-		"MFG_HBVC_FLL0_FRONTEND0", DRV_Reg32(MFG_HBVC_FLL0_DBG_FRONTEND0),
-		"MFG_HBVC_FLL1_FRONTEND0", DRV_Reg32(MFG_HBVC_FLL1_DBG_FRONTEND0));
-	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
-		"[BRCAST]",
-		"ERROR_IRQ", DRV_Reg32(MFG_BRCAST_ERROR_IRQ),
-		"DEBUG_INFO_9", DRV_Reg32(MFG_BRCAST_DEBUG_INFO_9),
-		"DEBUG_INFO_10", DRV_Reg32(MFG_BRCAST_DEBUG_INFO_10),
-		"DEBUG_INFO_11", DRV_Reg32(MFG_BRCAST_DEBUG_INFO_11),
-		"CONFIG_0", DRV_Reg32(MFG_BRCAST_CONFIG_0),
-		"CONFIG_1", DRV_Reg32(MFG_BRCAST_CONFIG_1));
 }
 
 void __gpufreq_dump_power_tracker_status(void)
 {
-	/* do nothing */
+	int i = 0;
+	unsigned int val = 0, cur_point = 0, read_point = 0;
+
+	if (!g_gpufreq_ready)
+		return;
+
+	cur_point = (DRV_Reg32(MFG_POWER_TRACKER_SETTING) >> 10) & GENMASK(5, 0);
+	GPUFREQ_LOGI("== [PDC POWER TRAKER STATUS: %d] ==", cur_point);
+	for (i = 1; i <= 16; i++) {
+		/* only dump last 16 record */
+		read_point = (cur_point + ~i + 1) & GENMASK(5, 0);
+		val = (DRV_Reg32(MFG_POWER_TRACKER_SETTING) & ~GENMASK(9, 4)) | (read_point << 4);
+		DRV_WriteReg32(MFG_POWER_TRACKER_SETTING, val);
+		udelay(1);
+
+		GPUFREQ_LOGI("[%d][%d] STA 1=0x%08x, 2=0x%08x, 3=0x%08x, 4=0x%08x, 5=0x%08x",
+			read_point, DRV_Reg32(MFG_POWER_TRACKER_PDC_STATUS0),
+			DRV_Reg32(MFG_POWER_TRACKER_PDC_STATUS1),
+			DRV_Reg32(MFG_POWER_TRACKER_PDC_STATUS2),
+			DRV_Reg32(MFG_POWER_TRACKER_PDC_STATUS3),
+			DRV_Reg32(MFG_POWER_TRACKER_PDC_STATUS4),
+			DRV_Reg32(MFG_POWER_TRACKER_PDC_STATUS5));
+	}
 }
 
 /* API: get working OPP index of GPU limited by BATTERY_OC via given level */
@@ -5973,6 +6000,18 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 	g_mcdi_mbox_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
 	if (unlikely(!g_mcdi_mbox_base)) {
 		GPUFREQ_LOGE("fail to ioremap MCDI_MBOX: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x0C000000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mcusys_par_wrap");
+	if (unlikely(!res)) {
+		GPUFREQ_LOGE("fail to get resource MCUSYS_PAR_WRAP");
+		goto done;
+	}
+	g_mcusys_par_wrap_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (unlikely(!g_mcusys_par_wrap_base)) {
+		GPUFREQ_LOGE("fail to ioremap MCUSYS_PAR_WRAP: 0x%llx", res->start);
 		goto done;
 	}
 

@@ -135,6 +135,13 @@
 #define MFG_DREQ_TOP_DBG_CON_0                 (g_mfg_top_base + 0x1F0)            /* 0x13FBF1F0 */
 #define MFG_SRAM_FUL_SEL_ULV                   (g_mfg_top_base + 0x080)            /* 0x13FBF080 */
 #define MFG_SRAM_FUL_SEL_ULV_TOP               (g_mfg_top_base + 0x084)            /* 0x13FBF084 */
+#define MFG_POWER_TRACKER_SETTING              (g_mfg_top_base + 0xFE0)            /* 0x13FBFFE0 */
+#define MFG_POWER_TRACKER_PDC_STATUS0          (g_mfg_top_base + 0xFE4)            /* 0x13FBFFE4 */
+#define MFG_POWER_TRACKER_PDC_STATUS1          (g_mfg_top_base + 0xFE8)            /* 0x13FBFFE8 */
+#define MFG_POWER_TRACKER_PDC_STATUS2          (g_mfg_top_base + 0xFEC)            /* 0x13FBFFEC */
+#define MFG_POWER_TRACKER_PDC_STATUS3          (g_mfg_top_base + 0xFF0)            /* 0x13FBFFF0 */
+#define MFG_POWER_TRACKER_PDC_STATUS4          (g_mfg_top_base + 0xFF4)            /* 0x13FBFFF4 */
+#define MFG_POWER_TRACKER_PDC_STATUS5          (g_mfg_top_base + 0xFF8)            /* 0x13FBFFF8 */
 
 #define MFG_CG_CFG_BASE                        (0x13E90000)
 #define MFG_CG_DUMMY_REG                       (g_mfg_cg_base + 0x000)             /* 0x13E90000 */
@@ -369,6 +376,8 @@
 #define NTH_APU_EMI0_GALS_SLV_DBG              (g_nth_emicfg_base + 0x844)         /* 0x1021C844 */
 #define NTH_MFG_EMI1_GALS_SLV_DBG              (g_nth_emicfg_base + 0x848)         /* 0x1021C848 */
 #define NTH_MFG_EMI0_GALS_SLV_DBG              (g_nth_emicfg_base + 0x84C)         /* 0x1021C84C */
+#define NTH_MFG_ACP_DVM_GALS_MST_DBG           (g_nth_emicfg_base + 0x804)         /* 0x1021C804 */
+#define NTH_MFG_ACP_GALS_SLV_DBG               (g_nth_emicfg_base + 0x814)         /* 0x1021C814 */
 
 #define STH_EMICFG_BASE                        (0x1021E000)
 #define STH_MFG_ACP_GALS_SLV_DBG               (g_sth_emicfg_base + 0x814)         /* 0x1021E814 */
@@ -377,6 +386,8 @@
 #define STH_APU_EMI0_GALS_SLV_DBG              (g_sth_emicfg_base + 0x844)         /* 0x1021E844 */
 #define STH_MFG_EMI1_GALS_SLV_DBG              (g_sth_emicfg_base + 0x848)         /* 0x1021E848 */
 #define STH_MFG_EMI0_GALS_SLV_DBG              (g_sth_emicfg_base + 0x84C)         /* 0x1021E84C */
+#define STH_MFG_ACP_DVM_GALS_MST_DBG           (g_sth_emicfg_base + 0x804)         /* 0x1021E804 */
+#define STH_MFG_ACP_GALS_SLV_DBG               (g_sth_emicfg_base + 0x814)         /* 0x1021E814 */
 
 #define NTH_EMICFG_AO_MEM_BASE                 (0x10270000)
 #define NTH_AO_SLEEP_PROT_START                (g_nth_emicfg_ao_mem_base + 0x000)  /* 0x10270000 */
@@ -450,7 +461,10 @@
 #define GPUEB_CFGREG_BASE                      (0x13C60000)
 #define GPUEB_CFGREG_SW_RSTN                   (g_gpueb_cfgreg_base + 0x600)       /* 0x13C60600 */
 
-#define MCDI_MBOX_BASE                         (0x0C0DF7E0)                        /* 0x0C0DF7E0 */
+#define MCDI_MBOX_BASE                         (0x0C0DF7E0)
 #define MCDI_MBOX_GPU_STA                      (g_mcdi_mbox_base + 0x008)          /* 0x0C0DF7E8 */
+
+#define MCUSYS_PAR_WRAP_BASE                   (0x0C000000)
+#define MCUSYS_PAR_WRAP_ACP_GALS_DBG           (g_mcusys_par_wrap_base + 0xB2C)    /* 0x0C000B2C */
 
 #endif /* __GPUFREQ_REG_MT6989_H__ */
