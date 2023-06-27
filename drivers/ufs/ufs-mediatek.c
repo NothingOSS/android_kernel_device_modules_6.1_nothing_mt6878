@@ -474,10 +474,17 @@ static void ufs_mtk_dbg_sel(struct ufs_hba *hba)
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	if (((host->ip_ver >> 16) & 0xFF) >= 0x36) {
+		/* select byte0: mru, byte1: mru, byte2: mru, byte3: mru */
 		ufshcd_writel(hba, 0x820820, REG_UFS_DEBUG_SEL);
+		/* select 4th mru */
+		ufshcd_writel(hba, 0x40, REG_UFS_DEBUG_MSEL_G0);
+		/* select output byte0 (for all module) */
 		ufshcd_writel(hba, 0x0, REG_UFS_DEBUG_SEL_B0);
+		/* select output byte1 (for all module) */
 		ufshcd_writel(hba, 0x55555555, REG_UFS_DEBUG_SEL_B1);
+		/* select output byte2 (for all module) */
 		ufshcd_writel(hba, 0xaaaaaaaa, REG_UFS_DEBUG_SEL_B2);
+		/* select output byte3 (for all module) */
 		ufshcd_writel(hba, 0xffffffff, REG_UFS_DEBUG_SEL_B3);
 	} else {
 		ufshcd_writel(hba, 0x20, REG_UFS_DEBUG_SEL);
