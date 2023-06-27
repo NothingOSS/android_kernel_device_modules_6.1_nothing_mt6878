@@ -2562,6 +2562,11 @@ static void mdp_request_voltage(unsigned long frequency, bool is_mdp)
 	u64 *freqs = is_mdp ? mdp_pmqos_freq : isp_pmqos_freq;
 	int *volts = is_mdp ? mdp_volts : isp_volts;
 
+	if (!freqs || !volts) {
+		CMDQ_ERR("%s freqs or volts is NULL\n", __func__);
+		return;
+	}
+
 	if (!frequency) {
 		low_volt = 0;
 	} else {
