@@ -33,6 +33,7 @@ enum swpm_type {
 	AUDIO_SWPM_TYPE,
 	TSFDC_SWPM_TYPE,
 	DISP_SWPM_TYPE,
+	USB_SWPM_TYPE,
 	DUMMY_SWPM_TYPE,
 
 	NR_SWPM_TYPE,
@@ -70,4 +71,3 @@ extern void swpm_v6989_sub_ext_init(void);
 extern void swpm_v6989_power_log(void);
 
 #endif
-
