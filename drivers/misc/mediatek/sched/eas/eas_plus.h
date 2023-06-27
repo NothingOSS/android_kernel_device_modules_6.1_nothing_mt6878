@@ -158,7 +158,10 @@ enum {
 	BACKGROUND_ID,
 	TG_NUM
 };
-
+struct SA_task {
+	int pid;
+	unsigned int mask;
+};
 extern void soft_affinity_init(void);
 extern void set_top_app_cpumask(unsigned int cpumask_val);
 extern void set_foreground_cpumask(unsigned int cpumask_val);
@@ -175,6 +178,7 @@ extern inline void compute_effective_softmask(struct task_struct *p,
 		bool *latency_sensitive, struct cpumask *dst_mask);
 extern void mtk_can_migrate_task(void *data, struct task_struct *p,
 	int dst_cpu, int *can_migrate);
+extern void set_task_ls_prefer_cpus(int pid, unsigned int cpumask_val);
 
 extern void get_most_powerful_pd_and_util_Th(void);
 
@@ -206,6 +210,7 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_SET_CPUMASK_FOREGROUND	_IOW('g', 29,  unsigned int)
 #define EAS_SET_TASK_LS			_IOW('g', 30,  int)
 #define EAS_UNSET_TASK_LS		_IOW('g', 31,  int)
+#define EAS_SET_TASK_LS_PREFER_CPUS		_IOW('g', 32,  struct SA_task)
 
 
 

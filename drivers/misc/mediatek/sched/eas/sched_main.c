@@ -283,6 +283,15 @@ static long eas_ioctl_impl(struct file *filp,
 	unsigned int sync;
 	unsigned int val;
 	int pid;
+	struct cpumask mask;
+	struct SA_task SA_task_args = {
+		.pid = -1,
+		.mask = 0
+	};
+
+	cpumask_clear(&mask);
+	cpumask_copy(&mask, cpu_possible_mask);
+	SA_task_args.mask = mask.bits[0];
 
 	switch (cmd) {
 	case EAS_SYNC_SET:
@@ -354,6 +363,11 @@ static long eas_ioctl_impl(struct file *filp,
 		if (easctl_copy_from_user(&pid, (void *)arg, sizeof(int)))
 			return -1;
 		unset_task_ls(pid);
+		break;
+	case EAS_SET_TASK_LS_PREFER_CPUS:
+		if (easctl_copy_from_user(&SA_task_args, (void *)arg, sizeof(struct SA_task)))
+			return -1;
+		set_task_ls_prefer_cpus(SA_task_args.pid, SA_task_args.mask);
 		break;
 	case EAS_SBB_ALL_SET:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
