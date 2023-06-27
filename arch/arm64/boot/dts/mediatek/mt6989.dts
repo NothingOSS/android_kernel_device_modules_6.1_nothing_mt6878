@@ -5168,6 +5168,41 @@
 			/* dma-coherent; */
 		};
 
+		gpu_smmu_tbu_0_pmu: smmu-pmu@13a42000 {
+			compatible = "arm,smmu-v3-pmcg";
+			reg = <0 0x13a42000 0 0x1000>,
+			      <0 0x13a52000 0 0x1000>;
+			mtk,smmu = <&gpu_smmu>;
+		};
+
+		gpu_smmu_tbu_1_pmu: smmu-pmu@13a62000 {
+			compatible = "arm,smmu-v3-pmcg";
+			reg = <0 0x13a62000 0 0x1000>,
+			      <0 0x13a72000 0 0x1000>;
+			mtk,smmu = <&gpu_smmu>;
+		};
+
+		gpu_smmu_tbu_2_pmu: smmu-pmu@13a82000 {
+			compatible = "arm,smmu-v3-pmcg";
+			reg = <0 0x13a82000 0 0x1000>,
+			      <0 0x13a92000 0 0x1000>;
+			mtk,smmu = <&gpu_smmu>;
+		};
+
+		gpu_smmu_tbu_3_pmu: smmu-pmu@13aa2000 {
+			compatible = "arm,smmu-v3-pmcg";
+			reg = <0 0x13aa2000 0 0x1000>,
+			      <0 0x13ab2000 0 0x1000>;
+			mtk,smmu = <&gpu_smmu>;
+		};
+
+		gpu_smmu_tcu_pmu: smmu-pmu@13a02000 {
+			compatible = "arm,smmu-v3-pmcg";
+			reg = <0 0x13a02000 0 0x1000>,
+			      <0 0x13a22000 0 0x1000>;
+			mtk,smmu = <&gpu_smmu>;
+		};
+
 		dramc-md32-s0-apb@10900000 {
 			compatible = "mediatek,dramc_md32_s0_apb";
 			reg = <0 0x10900000 0 0x40000>;
@@ -13210,6 +13245,11 @@
 		mtk,smmu = <&mm_smmu>;
 	};
 
+	gpu-smmu-lmu {
+		compatible = "mtk,smmu-v3-lmu";
+		mtk,smmu = <&gpu_smmu>;
+	};
+
 	soc-smmu-mpam-mon {
 		compatible = "mtk,smmu-v3-mpam-mon";
 		mtk,smmu = <&soc_smmu>;
@@ -13223,6 +13263,11 @@
 	mm-smmu-mpam-mon {
 		compatible = "mtk,smmu-v3-mpam-mon";
 		mtk,smmu = <&mm_smmu>;
+	};
+
+	gpu-smmu-mpam-mon {
+		compatible = "mtk,smmu-v3-mpam-mon";
+		mtk,smmu = <&gpu_smmu>;
 	};
 
 	/* smmu test devices */
