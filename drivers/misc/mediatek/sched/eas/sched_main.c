@@ -133,7 +133,8 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 
 		trace_sched_queue_task(cpu, p->pid, type, util,
 				rq->uclamp[UCLAMP_MIN].value, rq->uclamp[UCLAMP_MAX].value,
-				p->uclamp[UCLAMP_MIN].value, p->uclamp[UCLAMP_MAX].value);
+				p->uclamp[UCLAMP_MIN].value, p->uclamp[UCLAMP_MAX].value,
+				p->cpus_ptr->bits[0]);
 	}
 
 	irq_log_store();

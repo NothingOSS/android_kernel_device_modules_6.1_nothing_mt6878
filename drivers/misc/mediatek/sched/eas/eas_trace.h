@@ -297,8 +297,9 @@ TRACE_EVENT(sched_queue_task,
 	TP_PROTO(int cpu, int pid, int enqueue,
 		unsigned long cfs_util,
 		unsigned int min, unsigned int max,
-		unsigned int task_min, unsigned int task_max),
-	TP_ARGS(cpu, pid, enqueue, cfs_util, min, max, task_min, task_max),
+		unsigned int task_min, unsigned int task_max,
+		unsigned int tsk_mask),
+	TP_ARGS(cpu, pid, enqueue, cfs_util, min, max, task_min, task_max, tsk_mask),
 	TP_STRUCT__entry(
 		__field(int, cpu)
 		__field(int, pid)
@@ -308,6 +309,7 @@ TRACE_EVENT(sched_queue_task,
 		__field(unsigned int, max)
 		__field(unsigned int, task_min)
 		__field(unsigned int, task_max)
+		__field(unsigned int, tsk_mask)
 	),
 	TP_fast_assign(
 		__entry->cpu = cpu;
@@ -318,9 +320,10 @@ TRACE_EVENT(sched_queue_task,
 		__entry->max = max;
 		__entry->task_min = task_min;
 		__entry->task_max = task_max;
+		__entry->tsk_mask = tsk_mask;
 	),
 	TP_printk(
-		"cpu=%d pid=%d enqueue=%d cfs_util=%lu min=%u max=%u task_min=%u task_max=%u",
+		"cpu=%d pid=%d enqueue=%d cfs_util=%lu min=%u max=%u task_min=%u task_max=%u, cpus_ptr=0x%x",
 		__entry->cpu,
 		__entry->pid,
 		__entry->enqueue,
@@ -328,7 +331,8 @@ TRACE_EVENT(sched_queue_task,
 		__entry->min,
 		__entry->max,
 		__entry->task_min,
-		__entry->task_max)
+		__entry->task_max,
+		__entry->tsk_mask)
 );
 
 TRACE_EVENT(sched_task_util,
