@@ -6223,6 +6223,9 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 		cmdq_dump_pkt(mtk_crtc->trig_loop_cmdq_handle, trig_pc, true);
 
 		DDPMSG("------ Dump trigger loop ------\n");
+		DDPMSG("++++++ Dump event 479 ++++++\n");
+		cmdq_get_event(cl->chan, 479);
+		DDPMSG("------ Dump event 479 ------\n");
 	}
 	atomic_set(&mtk_crtc->cmdq_trig, 1);
 #endif
