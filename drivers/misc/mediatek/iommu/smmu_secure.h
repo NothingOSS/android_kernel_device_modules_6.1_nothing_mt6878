@@ -10,6 +10,12 @@
 #define SMC_SMMU_FAIL				(1)
 #define SMC_SMMU_NOSUPPORT			(-1)
 
+enum smmu_test_enum {
+	TEST_FUNC_BASIC = 0,
+	TEST_FUNC_FULLY,
+	TEST_FUNC_MAX
+};
+
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 int mtk_smmu_sec_init(u32 smmu_type);
 int mtk_smmu_sec_irq_setup(u32 smmu_type, bool enable);
@@ -60,14 +66,14 @@ static inline int mtk_smmu_dump_sid(uint32_t smmu_type, uint32_t sid)
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE) && IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 int mtk_smmu_sec_config_cqdma(bool enable);
-int mtk_smmu_sec_test(u32 smmu_type);
+int mtk_smmu_sec_test(u32 smmu_type, u32 lvl);
 #else
 static inline int mtk_smmu_sec_config_cqdma(bool enable)
 {
 	return 0;
 }
 
-static inline int mtk_smmu_sec_test(u32 smmu_type)
+static inline int mtk_smmu_sec_test(u32 smmu_type, u32 lvl)
 {
 	return 0;
 }

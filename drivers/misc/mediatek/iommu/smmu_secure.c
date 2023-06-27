@@ -275,11 +275,12 @@ int mtk_smmu_sec_config_cqdma(bool enable)
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_sec_config_cqdma);
 
-int mtk_smmu_sec_test(u32 smmu_type)
+int mtk_smmu_sec_test(u32 smmu_type, u32 lvl)
 {
+	unsigned long cmd = SMMU_ATF_SET_CMD(smmu_type, 1, SMMU_SECURE_TEST);
 	int ret;
 
-	ret = mtk_smmu_atf_call_common(smmu_type, SMMU_SECURE_TEST);
+	ret = mtk_smmu_atf_call(smmu_type, cmd, lvl, 0, 0, 0, 0, 0);
 	if (ret) {
 		pr_info("%s, smc call fail:%d, type:%u\n", __func__, ret, smmu_type);
 		return SMC_SMMU_FAIL;
