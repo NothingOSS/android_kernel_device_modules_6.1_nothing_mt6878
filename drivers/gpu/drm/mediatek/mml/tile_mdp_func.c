@@ -465,6 +465,7 @@ enum isp_tile_message tile_prz_for(struct tile_func_block *func,
 					data->c24_in_frame_w - 1,
 					2,
 					data->prz_back_xs,
+					func->backward_output_xe_pos + 1 >= func->full_size_x_out,
 					&C24InXLeft,	/* C24 in = Scaler output */
 					&C24InXRight,	/* C24 in = Scaler output */
 					&func->bias_x,
@@ -476,6 +477,13 @@ enum isp_tile_message tile_prz_for(struct tile_func_block *func,
 			ASSERT(0);
 			return MDP_MESSAGE_RESIZER_SCALING_ERROR;
 		}
+		mml_msg(
+			"%s  crop:%u.%u prz in w:%d (%d,%d) out w:%d (%d,%d) back (%d,%d) c24 back w:%d (%d,%d)",
+			__func__, data->crop.r.left, data->crop.x_sub_px,
+			data->c42_out_frame_w, C42OutXLeft, C42OutXRight,
+			data->c24_in_frame_w, C24InXLeft, C24InXRight,
+			data->prz_back_xs, data->prz_back_xe, func->full_size_x_out,
+			func->backward_output_xs_pos, func->backward_output_xe_pos);
 
 		C24InXLeft = data->prz_back_xs;
 
@@ -545,6 +553,7 @@ enum isp_tile_message tile_prz_for(struct tile_func_block *func,
 					func->full_size_y_out - 1,
 					func->out_const_y,
 					func->backward_output_ys_pos,
+					func->backward_output_ye_pos + 1 >= func->full_size_y_out,
 					&func->out_pos_ys,
 					&func->out_pos_ye,
 					&func->bias_y,
@@ -918,6 +927,12 @@ enum isp_tile_message tile_prz_back(struct tile_func_block *func,
 			ASSERT(0);
 			return MDP_MESSAGE_RESIZER_SCALING_ERROR;
 		}
+		mml_msg(
+			"%s crop:%u.%u prz in w:%d (%d,%d) out w:%d (%d,%d) c24 out w:%d (%d,%d)",
+			__func__, data->crop.r.left, data->crop.x_sub_px,
+			data->c42_out_frame_w, C42OutXLeft, C42OutXRight,
+			data->c24_in_frame_w, C24InXLeft, C24InXRight,
+			func->full_size_x_out, func->out_pos_xs, func->out_pos_xe);
 
 		if (data->crop_aal_tile_loss) {
 			C42OutXLeft -= 8;

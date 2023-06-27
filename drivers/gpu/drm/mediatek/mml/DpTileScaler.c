@@ -282,6 +282,7 @@ void forward_cub_acc(s32 in_start,
 		     s32 out_max,
 		     s32 out_align,
 		     s32 back_out_start,
+		     bool back_out_end_flag,
 		     s32 *out_start,
 		     s32 *out_end,
 		     s32 *luma,
@@ -300,7 +301,7 @@ void forward_cub_acc(s32 in_start,
 		return; /* ISP_MESSAGE_RESIZER_CUBIC_ACC_SCALING_UP_ERROR; */
 	}
 
-	if (in_end >= in_max) {
+	if (in_end >= in_max && back_out_end_flag) {
 		*out_end = out_max;
 	} else {
 		s64 end = (s64)in_end * coeff -
