@@ -24,6 +24,7 @@
 #include <linux/platform_device.h>
 
 #include "../../../misc/mediatek/gate_ic/gate_i2c.h"
+#include "../mediatek/mediatek_v2/mtk_corner_pattern/nt37801_cmd_120hz_rc.h"
 
 #define CONFIG_MTK_PANEL_EXT
 #if defined(CONFIG_MTK_PANEL_EXT)
@@ -875,6 +876,12 @@ static struct mtk_panel_params ext_params = {
 	.dyn_fps = {
 		.vact_timing_fps = 120,
 	},
+	.round_corner_en = 0,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_tp_size_l = sizeof(nt37801_cmd_120hz_top_pattern_l),
+	.corner_pattern_tp_size_r = sizeof(nt37801_cmd_120hz_top_pattern_r),
+	.corner_pattern_lt_addr_l = (void *)nt37801_cmd_120hz_top_pattern_l,
+	.corner_pattern_lt_addr_r = (void *)nt37801_cmd_120hz_top_pattern_r,
 	.mode_switch_cmdq = MODE_SWITCH_CMDQ_ENABLE,
 	.real_te_duration = 8333,
 };
@@ -944,6 +951,12 @@ static struct mtk_panel_params ext_params_90hz = {
 	.dyn_fps = {
 		.vact_timing_fps = 90,
 	},
+	.round_corner_en = 0,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_tp_size_l = sizeof(nt37801_cmd_120hz_top_pattern_l),
+	.corner_pattern_tp_size_r = sizeof(nt37801_cmd_120hz_top_pattern_r),
+	.corner_pattern_lt_addr_l = (void *)nt37801_cmd_120hz_top_pattern_l,
+	.corner_pattern_lt_addr_r = (void *)nt37801_cmd_120hz_top_pattern_r,
 	.mode_switch_cmdq = MODE_SWITCH_CMDQ_ENABLE,
 	.real_te_duration = 11111,
 };
@@ -1013,6 +1026,12 @@ static struct mtk_panel_params ext_params_60hz = {
 	.dyn_fps = {
 		.vact_timing_fps = 60,
 	},
+	.round_corner_en = 0,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_tp_size_l = sizeof(nt37801_cmd_120hz_top_pattern_l),
+	.corner_pattern_tp_size_r = sizeof(nt37801_cmd_120hz_top_pattern_r),
+	.corner_pattern_lt_addr_l = (void *)nt37801_cmd_120hz_top_pattern_l,
+	.corner_pattern_lt_addr_r = (void *)nt37801_cmd_120hz_top_pattern_r,
 	.mode_switch_cmdq = MODE_SWITCH_CMDQ_ENABLE,
 	.real_te_duration = 8333,
 };
@@ -1483,6 +1502,16 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 		value = 0;
 	else
 		ctx->gate_ic = value;
+
+	value = 0;
+	ret = of_property_read_u32(dev->of_node, "rc-enable", &value);
+	if (ret < 0)
+		value = 0;
+	else {
+		ext_params.round_corner_en = value;
+		ext_params_90hz.round_corner_en = value;
+		ext_params_60hz.round_corner_en = value;
+	}
 
 	backlight = of_parse_phandle(dev->of_node, "backlight", 0);
 	if (backlight) {
