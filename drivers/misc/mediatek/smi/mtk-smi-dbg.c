@@ -91,8 +91,9 @@
 #define INT_SMI_LARB_CMD_THRT_STAT	(0x5b8)
 #define INT_SMI_LARB_DBG_CON		(0x500 + (SMI_LARB_DBG_CON))
 #define INT_SMI_LARB_OSTD_MON_PORT(p)	(0x500 + SMI_LARB_OSTD_MON_PORT(p))
+#define INT_SMI_LARB_OSTDL_PORT(p)	(0x500 + SMI_LARB_OSTDL_PORT(p))
 
-#define SMI_LARB_REGS_NR		(199)
+#define SMI_LARB_REGS_NR		(231)
 static u32	smi_larb_regs[SMI_LARB_REGS_NR] = {
 	SMI_LARB_STAT, SMI_LARB_IRQ_EN, SMI_LARB_IRQ_STATUS, SMI_LARB_SLP_CON,
 	SMI_LARB_CON, SMI_LARB_CON_SET, SMI_LARB_CON_CLR, SMI_LARB_VC_PRI_MODE,
@@ -168,6 +169,22 @@ static u32	smi_larb_regs[SMI_LARB_REGS_NR] = {
 	INT_SMI_LARB_STAT, INT_SMI_LARB_CMD_THRT_CON,
 	INT_SMI_LARB_OSTDL_EN, INT_SMI_LARB_FIFO_STAT,
 	INT_SMI_LARB_BUS_STAT, INT_SMI_LARB_CMD_THRT_STAT, INT_SMI_LARB_DBG_CON,
+	INT_SMI_LARB_OSTDL_PORT(0), INT_SMI_LARB_OSTDL_PORT(1),
+	INT_SMI_LARB_OSTDL_PORT(2), INT_SMI_LARB_OSTDL_PORT(3),
+	INT_SMI_LARB_OSTDL_PORT(4), INT_SMI_LARB_OSTDL_PORT(5),
+	INT_SMI_LARB_OSTDL_PORT(6), INT_SMI_LARB_OSTDL_PORT(7),
+	INT_SMI_LARB_OSTDL_PORT(8), INT_SMI_LARB_OSTDL_PORT(9),
+	INT_SMI_LARB_OSTDL_PORT(10), INT_SMI_LARB_OSTDL_PORT(11),
+	INT_SMI_LARB_OSTDL_PORT(12), INT_SMI_LARB_OSTDL_PORT(13),
+	INT_SMI_LARB_OSTDL_PORT(14), INT_SMI_LARB_OSTDL_PORT(15),
+	INT_SMI_LARB_OSTDL_PORT(16), INT_SMI_LARB_OSTDL_PORT(17),
+	INT_SMI_LARB_OSTDL_PORT(18), INT_SMI_LARB_OSTDL_PORT(19),
+	INT_SMI_LARB_OSTDL_PORT(20), INT_SMI_LARB_OSTDL_PORT(21),
+	INT_SMI_LARB_OSTDL_PORT(22), INT_SMI_LARB_OSTDL_PORT(23),
+	INT_SMI_LARB_OSTDL_PORT(24), INT_SMI_LARB_OSTDL_PORT(25),
+	INT_SMI_LARB_OSTDL_PORT(26), INT_SMI_LARB_OSTDL_PORT(27),
+	INT_SMI_LARB_OSTDL_PORT(28), INT_SMI_LARB_OSTDL_PORT(29),
+	INT_SMI_LARB_OSTDL_PORT(30), INT_SMI_LARB_OSTDL_PORT(31),
 	INT_SMI_LARB_OSTD_MON_PORT(0), INT_SMI_LARB_OSTD_MON_PORT(1),
 	INT_SMI_LARB_OSTD_MON_PORT(2), INT_SMI_LARB_OSTD_MON_PORT(3),
 	INT_SMI_LARB_OSTD_MON_PORT(4), INT_SMI_LARB_OSTD_MON_PORT(5),
@@ -403,6 +420,8 @@ struct mtk_smi_dbg {
 static struct mtk_smi_dbg	*gsmi;
 static bool smi_enter_met;
 
+#define LINE_MAX_LEN		(1024)
+
 static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 				const bool rsi, const u32 id, bool skip_pm_runtime)
 {
@@ -410,7 +429,7 @@ static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 	const char		*name = rsi ? "rsi" : (larb ? "LARB" : "COMM");
 	const u32		regs_nr = node.regs_nr;
 
-	char	buf[LINK_MAX + 1] = {0};
+	char	buf[LINE_MAX_LEN + 1] = {0};
 	u32	val, comm_id = 0;
 	s32	i, len, ret = 0;
 	bool	dump_with = false;
@@ -450,10 +469,10 @@ static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 		if (!val)
 			continue;
 
-		ret = snprintf(buf + len, LINK_MAX - len, " %#x=%#x,",
+		ret = snprintf(buf + len, LINE_MAX_LEN - len, " %#x=%#x,",
 			node.regs[i], val);
-		if (ret < 0 || ret >= LINK_MAX - len) {
-			ret = snprintf(buf + len, LINK_MAX - len, "%c", '\0');
+		if (ret < 0 || ret >= LINE_MAX_LEN - len) {
+			ret = snprintf(buf + len, LINE_MAX_LEN - len, "%c", '\0');
 			if (ret < 0)
 				dev_notice(node.dev, "smi dbg print error:%d\n", ret);
 
@@ -461,14 +480,14 @@ static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 
 			len = 0;
 			memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
-			ret = snprintf(buf + len, LINK_MAX - len, " %#x=%#x,",
+			ret = snprintf(buf + len, LINE_MAX_LEN - len, " %#x=%#x,",
 				node.regs[i], val);
 			if (ret < 0)
 				dev_notice(node.dev, "smi dbg print error:%d\n", ret);
 		}
 		len += ret;
 	}
-	ret = snprintf(buf + len, LINK_MAX - len, "%c", '\0');
+	ret = snprintf(buf + len, LINE_MAX_LEN - len, "%c", '\0');
 	if (ret < 0)
 		dev_notice(node.dev, "smi dbg print error:%d\n", ret);
 
@@ -821,12 +840,13 @@ static int smi_dbg_suspend_cb(struct notifier_block *nb,
 {
 	bool is_larb = (v != NULL);
 
-	pr_notice("[SMI] %s: %d - %ld\n", __func__, is_larb, value);
 	if (value == TRIGGER_SMI_HANG_DETECT) {
+		pr_notice("[SMI] %s: hang detect triggered from smi driver\n", __func__);
 		mtk_smi_dbg_hang_detect("SMI DRIVER");
 		return 0;
 	}
 
+	pr_notice("[SMI] %s: %s%ld\n", __func__, is_larb ? "larb" : "common", value);
 	mtk_smi_dbg_print(gsmi, is_larb, false, value, true);
 	return 0;
 }
