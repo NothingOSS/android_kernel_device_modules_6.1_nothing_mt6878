@@ -6243,7 +6243,9 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 
 		DDPMSG("------ Dump trigger loop ------\n");
 		DDPMSG("++++++ Dump event 479 ++++++\n");
-		cmdq_get_event(cl->chan, 479);
+		DDPMSG("gce event 479 %d\n", cmdq_get_event(cl->chan, 479));
+		DDPMSG("TE fence time %lld,current time %lld\n",
+			mtk_crtc->pf_time, ktime_get());
 		DDPMSG("------ Dump event 479 ------\n");
 	}
 	atomic_set(&mtk_crtc->cmdq_trig, 1);
