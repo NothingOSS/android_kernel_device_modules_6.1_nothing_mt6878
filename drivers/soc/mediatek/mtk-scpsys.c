@@ -34,7 +34,7 @@
 #define MTK_POLL_100MS_TIMEOUT		(100 * USEC_PER_MSEC)
 #define MTK_POLL_IRQ_DELAY_US		3
 #define MTK_POLL_IRQ_TIMEOUT		USEC_PER_SEC
-#define MTK_POLL_HWV_PREPARE_CNT	100
+#define MTK_POLL_HWV_PREPARE_CNT	2500
 #define MTK_POLL_HWV_PREPARE_US		2
 
 #define MTK_SCPD_CAPS(_scpd, _x)	((_scpd)->data->caps & (_x))
@@ -1271,9 +1271,9 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 
 	/* write twice to prevent clk idle */
 	regmap_write(regmap, vote_ofs, val);
-	udelay(1);
-	regmap_write(regmap, vote_ofs, val);
+
 	do {
+		regmap_write(regmap, vote_ofs, val);
 		regmap_read(regmap, vote_sta, &val);
 		if ((val & vote_msk) == vote_ack)
 			break;
