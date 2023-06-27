@@ -179,10 +179,8 @@ static inline void alloc_skb_to_tbl(int skb_cnt)
 #ifdef RX_PAGE_POOL
 update:
 #endif
-		/*
-		 * The wmb() flushes writes to dram before read g_skb_tbl data.
-		 */
-		wmb();
+		/* The smp_wmb() flushes writes to dram before read g_skb_tbl data. */
+		smp_wmb();
 
 		skb_tbl_wdx = get_ringbuf_next_idx(g_skb_tbl_cnt, skb_tbl_wdx, 1);
 		atomic_set(&g_skb_tbl_wdx, skb_tbl_wdx);
@@ -197,9 +195,14 @@ static inline int get_skb_from_tbl(struct temp_skb_info *skb_info)
 		(!get_ringbuf_used_cnt(g_skb_tbl_cnt, skb_tbl_rdx, atomic_read(&g_skb_tbl_wdx))))
 		return -1;
 
+	/* The rmb() flushes writes to dram before read g_skb_tbl data. */
+	rmb();
 	(*skb_info) = g_skb_tbl[skb_tbl_rdx];
 
 	skb_tbl_rdx = get_ringbuf_next_idx(g_skb_tbl_cnt, skb_tbl_rdx, 1);
+
+	/* The smp_wmb() flushes writes to dram before set skb_tbl_rdx data. */
+	smp_wmb();
 	atomic_set(&g_skb_tbl_rdx, skb_tbl_rdx);
 
 	return 0;
