@@ -521,10 +521,11 @@ err_res_prepare:
 			pll->data->hwv_shift, CLK_EVT_HWV_PLL_TIMEOUT);
 }
 
+#define MAX_PLL_SETCLR_RSTB_RETRY 20
 static int mtk_pll_setclr_prepare(struct clk_hw *hw)
 {
 	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
-	int ret = 0;
+	int ret = 0, rstb_retries = 0;
 
 	ret = mtk_hwv_pll_res_prepare(pll);
 	if (ret)
@@ -536,8 +537,17 @@ static int mtk_pll_setclr_prepare(struct clk_hw *hw)
 
 	udelay(20);
 
-	if (pll->data->flags & HAVE_RST_BAR)
-		writel(pll->rstb_msk, pll->rstb_set_addr);
+	if (pll->data->flags & HAVE_RST_BAR) {
+		while ((!(readl(pll->rstb_addr) & pll->rstb_msk)) &&
+				rstb_retries < MAX_PLL_SETCLR_RSTB_RETRY) {
+			writel(pll->rstb_msk, pll->rstb_set_addr);
+			rstb_retries += 1;
+			udelay(1);
+		}
+		if (rstb_retries == MAX_PLL_SETCLR_RSTB_RETRY)
+			pr_err("PLL RSTB SET fail, rstb: (0x%lx = 0x%x), msk: %x\n",
+				(unsigned long)pll->rstb_addr, readl(pll->rstb_addr), pll->rstb_msk);
+	}
 
 	return 0;
 }
@@ -545,9 +555,19 @@ static int mtk_pll_setclr_prepare(struct clk_hw *hw)
 static void mtk_pll_setclr_unprepare(struct clk_hw *hw)
 {
 	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
+	int rstb_retries = 0;
 
-	if (pll->data->flags & HAVE_RST_BAR)
-		writel(pll->rstb_msk, pll->rstb_clr_addr);
+	if (pll->data->flags & HAVE_RST_BAR) {
+		while ((readl(pll->rstb_addr) & pll->rstb_msk) &&
+				rstb_retries < MAX_PLL_SETCLR_RSTB_RETRY) {
+			writel(pll->rstb_msk, pll->rstb_clr_addr);
+			rstb_retries += 1;
+			udelay(1);
+		}
+		if (rstb_retries == MAX_PLL_SETCLR_RSTB_RETRY)
+			pr_err("PLL RSTB CLR fail, rstb: (0x%lx = 0x%x), msk: %x\n",
+				(unsigned long)pll->rstb_addr, readl(pll->rstb_addr), pll->rstb_msk);
+	}
 
 	__mtk_pll_tuner_disable(pll);
 
