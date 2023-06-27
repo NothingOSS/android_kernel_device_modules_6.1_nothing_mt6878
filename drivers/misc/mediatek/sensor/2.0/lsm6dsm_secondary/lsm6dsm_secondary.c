@@ -39,8 +39,8 @@ struct lsm6dsm_device {
 static sensor_info support_sensors[] = {
 	.sensor_type = SENSOR_TYPE_GYRO_SECONDARY,
 	.gain = 1,
-	.name = {'a', 'c', 'c', 'e', 'l'},
-	.vendor = {'m', 't', 'k'},
+	.name = "gyro_second",
+	.vendor = "mtk",
 };
 
 static int lsm6dsm_enable(struct hf_device *hfdev, int sensor_type, int en)

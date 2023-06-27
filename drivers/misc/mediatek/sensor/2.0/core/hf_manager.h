@@ -24,6 +24,9 @@
 #define HF_DEVICE_IO_INTERRUPT 0
 #define HF_DEVICE_IO_POLLING   1
 
+#define HF_DEVICE_COMMON_WORKER 0
+#define HF_DEVICE_SINGLE_WORKER 1
+
 #define HF_CLIENT_FIFO_SIZE 128
 
 struct sensor_state {
@@ -53,7 +56,7 @@ struct hf_core {
 	struct mutex device_lock;
 	struct list_head device_list;
 
-	struct kthread_worker kworker;
+	struct kthread_worker *kworker;
 };
 
 struct hf_device {
@@ -74,6 +77,7 @@ struct hf_device {
 
 	unsigned char device_poll;
 	unsigned char device_bus;
+	unsigned char device_worker;
 	struct sensor_info *support_list;
 	unsigned int support_size;
 
@@ -102,6 +106,7 @@ struct hf_client_fifo {
 struct hf_manager {
 	struct list_head list;
 	struct tasklet_struct io_work_tasklet;
+	struct kthread_worker *kworker;
 	struct kthread_work io_kthread_work;
 	struct hrtimer io_poll_timer;
 	atomic64_t io_poll_interval;

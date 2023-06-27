@@ -39,10 +39,9 @@ static const struct coordinate coordinates[] = {
 	{ { -1, -1, -1}, {1, 0, 2} },
 };
 
-static int major;
+static int hf_manager_major;
 static struct class *hf_manager_class;
-static struct task_struct *task;
-static uint8_t debug_sensor_type;
+static uint8_t hf_manager_debug_sensor_type;
 
 static DECLARE_BITMAP(sensor_list_bitmap, SENSOR_TYPE_SENSOR_MAX);
 static struct hf_core hfcore;
@@ -68,8 +67,6 @@ static void init_hf_core(struct hf_core *core)
 
 	mutex_init(&core->device_lock);
 	INIT_LIST_HEAD(&core->device_list);
-
-	kthread_init_worker(&core->kworker);
 }
 
 void coordinate_map(unsigned char direction, int32_t *data)
@@ -175,14 +172,23 @@ static int hf_manager_report_event(struct hf_client *client,
 static void hf_manager_io_schedule(struct hf_manager *manager,
 		int64_t timestamp)
 {
+	unsigned char device_bus = READ_ONCE(manager->hf_dev->device_bus);
+	unsigned char device_worker = READ_ONCE(manager->hf_dev->device_worker);
+
 	if (!atomic_read(&manager->io_enabled))
 		return;
 	set_interrupt_timestamp(manager, timestamp);
-	if (READ_ONCE(manager->hf_dev->device_bus) == HF_DEVICE_IO_ASYNC)
+	if (device_bus == HF_DEVICE_IO_ASYNC) {
 		tasklet_schedule(&manager->io_work_tasklet);
-	else if (READ_ONCE(manager->hf_dev->device_bus) == HF_DEVICE_IO_SYNC)
-		kthread_queue_work(&manager->core->kworker,
-			&manager->io_kthread_work);
+	} else if (device_bus == HF_DEVICE_IO_SYNC) {
+		if (device_worker == HF_DEVICE_COMMON_WORKER) {
+			kthread_queue_work(manager->core->kworker,
+				&manager->io_kthread_work);
+		} else if (device_worker == HF_DEVICE_SINGLE_WORKER) {
+			kthread_queue_work(manager->kworker,
+				&manager->io_kthread_work);
+		}
+	}
 }
 
 static int hf_manager_io_report(struct hf_manager *manager,
@@ -288,6 +294,7 @@ int hf_manager_create(struct hf_device *device)
 	int i = 0, err = 0;
 	uint32_t gain = 0;
 	struct hf_manager *manager = NULL;
+	struct sched_param param = { .sched_priority = MAX_RT_PRIO / 2 };
 
 	if (!device || !device->dev_name ||
 			!device->support_list || !device->support_size)
@@ -317,12 +324,24 @@ int hf_manager_create(struct hf_device *device)
 	manager->report = hf_manager_io_report;
 	manager->complete = hf_manager_io_complete;
 
-	if (device->device_bus == HF_DEVICE_IO_ASYNC)
+	if (device->device_bus == HF_DEVICE_IO_ASYNC) {
 		tasklet_init(&manager->io_work_tasklet,
 			hf_manager_io_tasklet, (unsigned long)manager);
-	else if (device->device_bus == HF_DEVICE_IO_SYNC)
+	} else if (device->device_bus == HF_DEVICE_IO_SYNC) {
 		kthread_init_work(&manager->io_kthread_work,
 			hf_manager_io_kthread_work);
+		if (device->device_worker == HF_DEVICE_SINGLE_WORKER) {
+			manager->kworker = kthread_create_worker(0,
+				"hf_manager_%s", device->dev_name);
+			if (IS_ERR(manager->kworker)) {
+				err = PTR_ERR(manager->kworker);
+				manager->kworker = NULL;
+				goto out_err;
+			}
+			sched_setscheduler_nocheck(manager->kworker->task,
+				SCHED_FIFO, &param);
+		}
+	}
 
 	for (i = 0; i < device->support_size; ++i) {
 		sensor_type = device->support_list[i].sensor_type;
@@ -382,10 +401,16 @@ void hf_manager_destroy(struct hf_manager *manager)
 	mutex_unlock(&manager->core->manager_lock);
 	if (device->device_poll == HF_DEVICE_IO_POLLING)
 		hrtimer_cancel(&manager->io_poll_timer);
-	if (device->device_bus == HF_DEVICE_IO_ASYNC)
+	if (device->device_bus == HF_DEVICE_IO_ASYNC) {
 		tasklet_kill(&manager->io_work_tasklet);
-	else if (device->device_bus == HF_DEVICE_IO_SYNC)
-		kthread_flush_work(&manager->io_kthread_work);
+	} else if (device->device_bus == HF_DEVICE_IO_SYNC) {
+		if (device->device_worker == HF_DEVICE_COMMON_WORKER) {
+			/* common kworker only flush itself's work */
+			kthread_flush_work(&manager->io_kthread_work);
+		} else if (device->device_worker == HF_DEVICE_SINGLE_WORKER) {
+			kthread_destroy_worker(manager->kworker);
+		}
+	}
 
 	while (test_bit(HF_MANAGER_IO_IN_PROGRESS, &manager->flags))
 		cpu_relax();
@@ -1531,10 +1556,11 @@ static int hf_manager_proc_show_manager(struct seq_file *m, void *v)
 			atomic_read(&manager->io_enabled),
 			print_s64((int64_t)atomic64_read(
 				&manager->io_poll_interval)));
-		seq_printf(m, " device:%s poll:%s bus:%s online\n",
+		seq_printf(m, " device:%s poll:%s bus:%s worker:%s online\n",
 			device->dev_name,
 			device->device_poll ? "io_polling" : "io_interrupt",
-			device->device_bus ? "io_async" : "io_sync");
+			device->device_bus ? "io_async" : "io_sync",
+			device->device_worker ? "single" : "common");
 		for (i = 0; i < device->support_size; ++i) {
 			sensor_type = device->support_list[i].sensor_type;
 			seq_printf(m, "  (%d) type:%u info:[%u,%s,%s]\n",
@@ -1643,7 +1669,7 @@ out:
 
 static int hf_manager_proc_show(struct seq_file *m, void *v)
 {
-	uint8_t sensor_type = READ_ONCE(debug_sensor_type);
+	uint8_t sensor_type = READ_ONCE(hf_manager_debug_sensor_type);
 
 	if (sensor_type == SENSOR_TYPE_INVALID)
 		hf_manager_proc_show_manager(m, v);
@@ -1674,7 +1700,7 @@ static ssize_t hf_manager_proc_write(struct file *file,
 		return -EINVAL;
 	if (unlikely(sensor_type >= SENSOR_TYPE_SENSOR_MAX))
 		return -EINVAL;
-	WRITE_ONCE(debug_sensor_type, sensor_type);
+	WRITE_ONCE(hf_manager_debug_sensor_type, sensor_type);
 	return count;
 }
 
@@ -1694,10 +1720,10 @@ static int __init hf_manager_init(void)
 
 	init_hf_core(&hfcore);
 
-	major = register_chrdev(0, "hf_manager", &hf_manager_fops);
-	if (major < 0) {
+	hf_manager_major = register_chrdev(0, "hf_manager", &hf_manager_fops);
+	if (hf_manager_major < 0) {
 		pr_err("Unable to get major\n");
-		ret = major;
+		ret = hf_manager_major;
 		goto err_exit;
 	}
 
@@ -1708,7 +1734,7 @@ static int __init hf_manager_init(void)
 		goto err_chredev;
 	}
 
-	dev = device_create(hf_manager_class, NULL, MKDEV(major, 0),
+	dev = device_create(hf_manager_class, NULL, MKDEV(hf_manager_major, 0),
 		NULL, "hf_manager");
 	if (IS_ERR(dev)) {
 		pr_err("Failed to create device\n");
@@ -1720,32 +1746,32 @@ static int __init hf_manager_init(void)
 			&hf_manager_proc_fops, &hfcore))
 		pr_err("Failed to create proc\n");
 
-	task = kthread_run(kthread_worker_fn,
-			&hfcore.kworker, "hf_manager");
-	if (IS_ERR(task)) {
+	hfcore.kworker = kthread_create_worker(0, "hf_manager");
+	if (IS_ERR(hfcore.kworker)) {
 		pr_err("Failed to create kthread\n");
-		ret = PTR_ERR(task);
+		ret = PTR_ERR(hfcore.kworker);
+		hfcore.kworker = NULL;
 		goto err_device;
 	}
-	sched_setscheduler_nocheck(task, SCHED_FIFO, &param);
+	sched_setscheduler_nocheck(hfcore.kworker->task, SCHED_FIFO, &param);
 	return 0;
 
 err_device:
-	device_destroy(hf_manager_class, MKDEV(major, 0));
+	device_destroy(hf_manager_class, MKDEV(hf_manager_major, 0));
 err_class:
 	class_destroy(hf_manager_class);
 err_chredev:
-	unregister_chrdev(major, "hf_manager");
+	unregister_chrdev(hf_manager_major, "hf_manager");
 err_exit:
 	return ret;
 }
 
 static void __exit hf_manager_exit(void)
 {
-	kthread_stop(task);
-	device_destroy(hf_manager_class, MKDEV(major, 0));
+	kthread_destroy_worker(hfcore.kworker);
+	device_destroy(hf_manager_class, MKDEV(hf_manager_major, 0));
 	class_destroy(hf_manager_class);
-	unregister_chrdev(major, "hf_manager");
+	unregister_chrdev(hf_manager_major, "hf_manager");
 }
 
 subsys_initcall(hf_manager_init);

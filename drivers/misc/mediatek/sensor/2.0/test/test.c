@@ -20,34 +20,34 @@ struct test_device test_driver4;
 
 static struct sensor_info support_sensors1[] = {
 	{
-		.sensor_type = SENSOR_TYPE_ACCELEROMETER,
+		.sensor_type = SENSOR_TYPE_PEDOMETER,
 		.gain = 1,
-		.name = {'a', 'c', 'c', 'e', 'l'},
-		.vendor = {'m', 't', 'k'},
+		.name = "pedometer",
+		.vendor = "mtk",
 	},
 };
 static struct sensor_info support_sensors2[] = {
 	{
-		.sensor_type = SENSOR_TYPE_MAGNETIC_FIELD,
+		.sensor_type = SENSOR_TYPE_IN_POCKET,
 		.gain = 1,
-		.name = {'m', 'a', 'g'},
-		.vendor = {'m', 't', 'k'},
+		.name = "inpocket",
+		.vendor = "mtk",
 	},
 };
 static struct sensor_info support_sensors3[] = {
 	{
-		.sensor_type = SENSOR_TYPE_GYROSCOPE,
+		.sensor_type = SENSOR_TYPE_ACTIVITY,
 		.gain = 1,
-		.name = {'g', 'y', 'r', 'o'},
-		.vendor = {'m', 't', 'k'},
+		.name = "activity",
+		.vendor = "mtk",
 	},
 };
 static struct sensor_info support_sensors4[] = {
 	{
-		.sensor_type = SENSOR_TYPE_PRESSURE,
+		.sensor_type = SENSOR_TYPE_PDR,
 		.gain = 1,
-		.name = {'p', 'r', 'e', 's', 's'},
-		.vendor = {'m', 't', 'k'},
+		.name = "pdr",
+		.vendor = "mtk",
 	},
 };
 
@@ -108,6 +108,7 @@ static int tests_init(void)
 	test_driver2.hf_dev.dev_name = "test_driver2";
 	test_driver2.hf_dev.device_poll = HF_DEVICE_IO_POLLING;
 	test_driver2.hf_dev.device_bus = HF_DEVICE_IO_SYNC;
+	test_driver2.hf_dev.device_worker = HF_DEVICE_SINGLE_WORKER;
 	test_driver2.hf_dev.support_list = support_sensors2;
 	test_driver2.hf_dev.support_size = ARRAY_SIZE(support_sensors2);
 	test_driver2.hf_dev.enable = test_enable;
@@ -152,13 +153,21 @@ static int tests_init(void)
 	return 0;
 
 out4:
-	hf_device_unregister_manager_destroy(test_driver3.hf_dev.manager);
+	hf_device_unregister_manager_destroy(&test_driver3.hf_dev);
 out3:
-	hf_device_unregister_manager_destroy(test_driver2.hf_dev.manager);
+	hf_device_unregister_manager_destroy(&test_driver2.hf_dev);
 out2:
-	hf_device_unregister_manager_destroy(test_driver1.hf_dev.manager);
+	hf_device_unregister_manager_destroy(&test_driver1.hf_dev);
 out1:
 	return -EINVAL;
+}
+
+static void tests_uninit(void)
+{
+	hf_device_unregister_manager_destroy(&test_driver4.hf_dev);
+	hf_device_unregister_manager_destroy(&test_driver3.hf_dev);
+	hf_device_unregister_manager_destroy(&test_driver2.hf_dev);
+	hf_device_unregister_manager_destroy(&test_driver1.hf_dev);
 }
 
 static int __init test_init(void)
@@ -169,7 +178,7 @@ static int __init test_init(void)
 
 static void __exit test_exit(void)
 {
-
+	tests_uninit();
 }
 
 module_init(test_init);
