@@ -30,7 +30,7 @@
 #include "sap.h"
 
 #define SCP_SECURE_DUMP_MEASURE 0
-#define POLLING_RETRY 200
+#define POLLING_RETRY 400
 #if SCP_RESERVED_MEM && IS_ENABLED(CONFIG_OF_RESERVED_MEM) && SCP_SECURE_DUMP_MEASURE
 	struct cal {
 		uint64_t start, end;
