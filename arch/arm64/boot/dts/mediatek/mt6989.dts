@@ -13356,7 +13356,7 @@
 
 	pmsr: pmsr {
 		compatible = "mediatek,mtk-pmsr";
-		dpmsr-count = <4>;
+		dpmsr-count = <3>;
 	};
 
 	lk_charger: lk-charger {
