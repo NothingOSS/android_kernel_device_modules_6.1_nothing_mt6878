@@ -18,6 +18,7 @@
 #include "mtk-smi-dbg.h"
 #include "tinysys-scmi.h"
 #include "vcp_status.h"
+#include "clk-mtk.h"
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
 #endif
@@ -691,6 +692,29 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	return ret;
 }
 
+static int mminfra_pm_prepare(struct device *dev)
+{
+	pr_notice("mminfra prepare\n");
+	if (vcp_gipc) {
+		mtk_clk_mminfra_hwv_power_ctrl(true);
+		writel(MM_SYS_SUSPEND, dbg->vcp_gipc_in_set);
+		pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
+		mtk_clk_mminfra_hwv_power_ctrl(false);
+	}
+	return 0;
+}
+
+static void mminfra_pm_complete(struct device *dev)
+{
+	pr_notice("mminfra complete\n");
+	if (vcp_gipc) {
+		mtk_clk_mminfra_hwv_power_ctrl(true);
+		writel(MM_SYS_RESUME, dbg->vcp_gipc_in_set);
+		pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
+		mtk_clk_mminfra_hwv_power_ctrl(false);
+	}
+}
+
 static int mminfra_pm_suspend(struct device *dev)
 {
 	mtk_smi_dbg_cg_status();
@@ -704,6 +728,8 @@ static int mminfra_pm_suspend_noirq(struct device *dev)
 }
 
 static const struct dev_pm_ops mminfra_debug_pm_ops = {
+	.prepare = mminfra_pm_prepare,
+	.complete = mminfra_pm_complete,
 	.suspend = mminfra_pm_suspend,
 	.suspend_noirq = mminfra_pm_suspend_noirq,
 };
