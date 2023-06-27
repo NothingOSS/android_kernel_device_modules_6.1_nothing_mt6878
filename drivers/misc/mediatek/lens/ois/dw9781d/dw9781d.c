@@ -12,6 +12,10 @@
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
 
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#include <aee.h>
+#endif
+
 #include "hf_manager.h"
 
 #define DRIVER_NAME "dw9781d"
@@ -22,10 +26,10 @@
 #define DW9781D_NAME				"dw9781d"
 
 // #define FOR_DEBUG
-// #define FW_UPDATE
+#define FW_UPDATE
 
 #ifdef FW_UPDATE
-#include "VIVO_CPD2210_FW_v0C.F0_d0601_set_Word_Format.h"
+#include "OIS_DW9781D_FW_v0C.F0_d0601_set_Word_Format.h"
 #endif
 
 #define DW9781D_CTRL_DELAY_US			5000
@@ -130,6 +134,15 @@ enum DW9781D_mode {
 
 static struct i2c_client *m_client;
 
+
+static u16 ois_ctrl_data;
+static int32_t ois_log_dbg_en;
+static int32_t ois_data_dbg_en;
+static int32_t ois_fw_update;
+static int32_t ois_hall_check;
+static int32_t ois_hall_cnt;
+static int32_t ois_hall_warn;
+
 /* Control commnad */
 #define VIDIOC_MTK_S_OIS_MODE _IOW('V', BASE_VIDIOC_PRIVATE + 2, int32_t)
 
@@ -175,20 +188,32 @@ static int ois_i2c_rd_u16(struct i2c_client *i2c_client, u16 reg, u16 *val)
 	return 0;
 }
 
-static int ois_i2c_rd_s16(struct i2c_client *i2c_client, u16 reg, s16 *val)
+static int ois_i2c_rd_u32(struct i2c_client *i2c_client, u16 reg, u32 *val)
 {
-	int ret = 0;
-	u16 uval;
+	int ret;
+	u8 buf[4];
+	struct i2c_msg msg[2];
+	u16 addr = i2c_client->addr;
 
-	ret = ois_i2c_rd_u16(m_client, reg, &uval);
+	buf[0] = reg >> 8;
+	buf[1] = reg & 0xff;
+	msg[0].addr = addr;
+	msg[0].flags = i2c_client->flags;
+	msg[0].buf = buf;
+	msg[0].len = 2;
+	msg[1].addr  = addr;
+	msg[1].flags = i2c_client->flags | I2C_M_RD;
+	msg[1].buf = buf;
+	msg[1].len = 4;
+	ret = i2c_transfer(i2c_client->adapter, msg, 2);
 	if (ret < 0) {
 		LOG_INF("i2c transfer failed (%d)\n", ret);
 		return ret;
 	}
+	*val = ((u32)buf[0] << 24) | ((u32)buf[1] << 16) |
+	  ((u32)buf[2] << 8) | buf[3];
 
-	*val = (s16)uval;
-
-	return ret;
+	return 0;
 }
 
 static int ois_i2c_wr_u16(struct i2c_client *i2c_client, u16 reg, u16 val)
@@ -224,88 +249,13 @@ static void I2C_OPERATION_CHECK(int val)
 	}
 }
 
-static void readhall(s16 *gyro_x, s16 *gyro_y, s16 *target_x, s16 *target_y, s16 *len_x, s16 *len_y)
-{
-	int ret = 0;
-	u16 nRet = 0;
-	unsigned int nTargetAddressX = 0, nTargetAddressY = 0;
-
-	// get x gyro
-	ret = ois_i2c_rd_s16(m_client, DW9781D_REG_OIS_GYROX, gyro_x);
-	if (ret < 0) {
-		LOG_INF("Get x GYRO fail\n");
-		return;
-	}
-
-	// get y gyro
-	ret = ois_i2c_rd_s16(m_client, DW9781D_REG_OIS_GYROY, gyro_y);
-	if (ret < 0) {
-		LOG_INF("Get y GYRO fail\n");
-		return;
-	}
-
-	// get OIS_CTRL register value
-	ret = ois_i2c_rd_u16(m_client, DW9781D_REG_OIS_CTRL, &nRet);
-	if (ret < 0) {
-		LOG_INF("Get OIS_CTRL fail\n");
-		return;
-	}
-
-	// According to OIS_CTRL register value to decide what target address to use
-	if (nRet == OIS_ON) {
-		nTargetAddressX = DW9781D_REG_OIS_TARGETX;
-		nTargetAddressY = DW9781D_REG_OIS_TARGETY;
-	} else {
-		nTargetAddressX = DW9781D_REG_OIS_CL_TARGETX;
-		nTargetAddressY = DW9781D_REG_OIS_CL_TARGETY;
-	}
-
-#ifdef FOR_DEBUG
-	LOG_INF("DW9781D_REG_OIS_CTRL: (%d), nTargetAddressX/Y: (0x%x/0x%x)\n",
-		nRet, nTargetAddressX, nTargetAddressY);
-#endif
-
-	// get x target
-	ret = ois_i2c_rd_s16(m_client, nTargetAddressX, target_x);
-	if (ret < 0) {
-		LOG_INF("Get x target fail\n");
-		return;
-	}
-
-	// get y target
-	ret = ois_i2c_rd_s16(m_client, nTargetAddressY, target_y);
-	if (ret < 0) {
-		LOG_INF("Get y target fail\n");
-		return;
-	}
-
-	// get x len position
-	ret = ois_i2c_rd_s16(m_client, DW9781D_REG_OIS_LENS_POSX, len_x);
-	if (ret < 0) {
-		LOG_INF("Get lens x position fail\n");
-		return;
-	}
-
-	// get y len position
-	ret = ois_i2c_rd_s16(m_client, DW9781D_REG_OIS_LENS_POSY, len_y);
-	if (ret < 0) {
-		LOG_INF("Get lens y position fail\n");
-		return;
-	}
-#ifdef FOR_DEBUG
-	LOG_INF("Gyro, Target, Lens position (x/y) : (%d/%d), (%d/%d), (%d/%d)\n",
-			*gyro_x, *gyro_y,
-			*target_x, *target_y,
-			*len_x, *len_y);
-#endif
-}
-
 static void fixmode(u16 code_x, u16 code_y)
 {
 	int ret = 0;
 
 	// set ic servo on / ois off
 	ret = ois_i2c_wr_u16(m_client, DW9781D_REG_OIS_CTRL, SERVO_ON);
+	ois_ctrl_data = SERVO_ON;
 	LOG_INF("targetX (%d), targetY (%d)", code_x, code_y);
 
 	// set targetX
@@ -323,6 +273,7 @@ static int dw9781d_release(struct dw9781d_device *dw9781d)
 	struct i2c_client *client = v4l2_get_subdevdata(&dw9781d->sd);
 
 	ret = ois_i2c_wr_u16(client, DW9781D_REG_OIS_CTRL, SERVO_OFF);
+	ois_ctrl_data = SERVO_OFF;
 	I2C_OPERATION_CHECK(ret);
 	mdelay(4);
 	ret = ois_i2c_wr_u16(client, DW9781D_REG_CHIP_CTRL, OFF);
@@ -513,19 +464,21 @@ static int dw9781d_init(struct dw9781d_device *dw9781d)
 	LOG_INF("FW_VER (0x%x), FW_DATE (0x%x)", i2cret_ver, i2cret_date);
 
 #ifdef FW_UPDATE
-	// firmware update
-	if (i2cret_date != 0x0601) {
-		// Uodate firmware
-		if (FlashDownload_Seq() < 0) {
-			LOG_INF("FlashDownload_Seq fail!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-			return -1;
+	if (ois_fw_update > 0) {
+		// firmware update
+		if (i2cret_date != 0x0601) {
+			// Update firmware
+			if (FlashDownload_Seq() < 0) {
+				LOG_INF("FlashDownload_Seq fail!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+				return -1;
+			}
+			LOG_INF("FlashDownload_Seq Pass!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		}
-		LOG_INF("FlashDownload_Seq Pass!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-	}
 
-	ret = ois_i2c_rd_u16(client, 0x7001, &i2cret_ver);
-	ret = ois_i2c_rd_u16(client, 0x7002, &i2cret_date);
-	LOG_INF("after update, FW_VER (0x%x), FW_DATE (0x%x)", i2cret_ver, i2cret_date);
+		ret = ois_i2c_rd_u16(client, 0x7001, &i2cret_ver);
+		ret = ois_i2c_rd_u16(client, 0x7002, &i2cret_date);
+		LOG_INF("after update, FW_VER (0x%x), FW_DATE (0x%x)", i2cret_ver, i2cret_date);
+	}
 #endif
 
 	// check is master or intercept
@@ -597,6 +550,7 @@ static int dw9781d_init(struct dw9781d_device *dw9781d)
 	} else {
 		// set OIS ON/SERVO ON
 		ret = ois_i2c_wr_u16(client, DW9781D_REG_OIS_CTRL, OIS_ON);
+		ois_ctrl_data = OIS_ON;
 		I2C_OPERATION_CHECK(ret);
 		mdelay(1);
 	}
@@ -764,6 +718,7 @@ static int dw9781d_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 static int dw9781d_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	pm_runtime_put(sd->dev);
+
 	return 0;
 }
 
@@ -859,6 +814,7 @@ static int dw9781d_enable(struct hf_device *hfdev, int sensor_type, int en)
 			return err;
 		}
 	}
+	ois_hall_cnt = 0;
 
 	return err;
 }
@@ -883,11 +839,45 @@ static int dw9781d_sample(struct hf_device *hfdev)
 	s16 gyro_x = 0, gyro_y = 0;
 	s16 target_x = 0, target_y = 0;
 	s16 len_x = 0, len_y = 0;
-
-	readhall(&gyro_x, &gyro_y, &target_x, &target_y, &len_x, &len_y);
+	u32 reg_val = 0;
 
 	memset(&event, 0, sizeof(struct hf_manager_event));
+
+	ois_i2c_rd_u32(m_client, DW9781D_REG_OIS_LENS_POSX, &reg_val);
 	event.timestamp = get_interrupt_timestamp(manager);
+	len_x = (s16)((reg_val >> 16) & 0xffff);
+	len_y = (s16)(reg_val & 0xffff);
+
+	if (ois_data_dbg_en == 1) {
+		ois_i2c_rd_u32(m_client, DW9781D_REG_OIS_GYROX, &reg_val);
+		gyro_x = (s16)((reg_val >> 16) & 0xffff);
+		gyro_y = (s16)(reg_val & 0xffff);
+		if (ois_ctrl_data == OIS_ON)
+			ois_i2c_rd_u32(m_client, DW9781D_REG_OIS_TARGETX, &reg_val);
+		else
+			ois_i2c_rd_u32(m_client, DW9781D_REG_OIS_CL_TARGETX, &reg_val);
+		target_x = (s16)((reg_val >> 16) & 0xffff);
+		target_y = (s16)(reg_val & 0xffff);
+	}
+
+	if (ois_log_dbg_en == 1) {
+		LOG_INF("Gyro, Target, Lens position (x/y) : (%d/%d), (%d/%d), (%d/%d)\n",
+			gyro_x, gyro_y,
+			target_x, target_y,
+			len_x, len_y);
+	}
+
+	if (ois_hall_check == 1) {
+		ois_hall_cnt++;
+		if ((ois_hall_warn == 1 && ois_hall_cnt > 5000) &&
+		    (abs(len_x) > 1000 || abs(len_y) > 1000)) {
+			aee_kernel_warning("OV64B-OIS check fail",
+				"\nCRDISPATCH_KEY:OIS_CHECK\nLEVEL Hall pos");
+			ois_hall_warn = 0;
+		}
+	}
+
+	// event.timestamp = get_interrupt_timestamp(manager);
 	event.sensor_type = dw9781d->hf_dev.support_list[0].sensor_type;
 	event.accurancy = SENSOR_ACCURANCY_HIGH;
 	event.action = DATA_ACTION;
@@ -919,6 +909,7 @@ static int dw9781d_custom_cmd(struct hf_device *hfdev, int sensor_type,
 			LOG_INF("unlock\n");
 #endif
 			ret = ois_i2c_wr_u16(m_client, DW9781D_REG_OIS_CTRL, OIS_ON); // OIS ON/SERVO ON
+			ois_ctrl_data = OIS_ON;
 			I2C_OPERATION_CHECK(ret);
 		} else {
 #ifdef FOR_DEBUG
@@ -936,6 +927,7 @@ static int dw9781d_custom_cmd(struct hf_device *hfdev, int sensor_type,
 
 		// set ic servo on / ois off
 		ret = ois_i2c_wr_u16(m_client, DW9781D_REG_OIS_CTRL, SERVO_ON);
+		ois_ctrl_data = OIS_ON;
 		I2C_OPERATION_CHECK(ret);
 
 		// set targetX
@@ -951,6 +943,39 @@ static int dw9781d_custom_cmd(struct hf_device *hfdev, int sensor_type,
 
 	return 0;
 }
+
+static struct class *ois_class;
+static struct device *ois_device;
+static dev_t ois_devno;
+/* torch status sysfs */
+static ssize_t ois_debug_show(
+		struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return 0;
+}
+static ssize_t ois_debug_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int val = 0, ret = 0;
+
+	ret = kstrtoint(buf, 10, &val);
+	if (ret < 0)
+		LOG_INF("ret fail\n");
+
+	ois_log_dbg_en = val & 0x1;
+	ois_data_dbg_en = (val >> 1) & 0x1;
+	ois_fw_update = (val >> 2) & 0x1;
+	ois_hall_check = (val >> 3) & 0x1;
+
+	if (ois_hall_check)
+		ois_hall_warn = 1;
+
+	LOG_INF("hall(%d) fw(%d) log(%d), data(%d), buf:%s\n",
+		ois_hall_check, ois_fw_update, ois_log_dbg_en, ois_data_dbg_en, buf);
+
+	return size;
+}
+static DEVICE_ATTR_RW(ois_debug);
 
 static struct sensor_info support_sensors[] = {
 	{
@@ -1098,8 +1123,42 @@ static int dw9781d_probe(struct i2c_client *client)
 
 	pm_runtime_enable(dev);
 
+	/* create class */
+	ois_class = class_create(THIS_MODULE, DW9781D_NAME);
+	if (IS_ERR(ois_class)) {
+		pr_info("Failed to create class (%d)\n",
+				(int)PTR_ERR(ois_class));
+		goto err_create_ois_class;
+	}
+
+	/* create device */
+	ois_device =
+	    device_create(ois_class, NULL, ois_devno,
+				NULL, DW9781D_NAME);
+	if (!ois_device) {
+		pr_info("Failed to create device\n");
+		goto err_create_ois_device;
+	}
+
+	if (device_create_file(ois_device, &dev_attr_ois_debug)) {
+		pr_info("Failed to create device file(ois_debug)\n");
+		goto err_create_ois_device_file;
+	}
+
 	LOG_INF("-\n");
 
+	return 0;
+
+err_create_ois_device_file:
+	device_destroy(ois_class, ois_devno);
+	class_destroy(ois_class);
+	return 0;
+
+err_create_ois_device:
+	class_destroy(ois_class);
+	return 0;
+
+err_create_ois_class:
 	return 0;
 
 err_cleanup:
@@ -1121,6 +1180,10 @@ static void dw9781d_remove(struct i2c_client *client)
 	if (!pm_runtime_status_suspended(&client->dev))
 		dw9781d_power_off(dw9781d);
 	pm_runtime_set_suspended(&client->dev);
+
+	device_remove_file(&client->dev, &dev_attr_ois_debug);
+	device_destroy(ois_class, ois_devno);
+	class_destroy(ois_class);
 
 	LOG_INF("-\n");
 }
