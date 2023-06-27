@@ -13463,7 +13463,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon";
 		reg = <0 0x1e801000 0 0x1000>;
-		mediatek,smi-supply = <&disp_ssc0_smi_2x1_sub_comm &disp_ssc1_smi_2x1_sub_comm>;
+		mediatek,smi-supply = <&disp_ssc0_smi_2x1_sub_comm 0 &disp_ssc1_smi_2x1_sub_comm 0>;
 		mediatek,common-id = <0>;
 		emimpu-check;
 		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
@@ -13481,7 +13481,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon";
 		reg = <0 0x1e80f000 0 0x1000>;
-		mediatek,smi-supply = <&mdp_ssc4_smi_2x1_sub_comm &mdp_ssc5_smi_2x1_sub_comm>;
+		mediatek,smi-supply = <&mdp_ssc4_smi_2x1_sub_comm 0 &mdp_ssc5_smi_2x1_sub_comm 0>;
 		mediatek,common-id = <1>;
 		emimpu-check;
 		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
@@ -13499,7 +13499,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon";
 		reg = <0 0x1e80b000 0 0x1000>;
-		mediatek,smi-supply = <&mmsram_smi_2x1_sub_comm3 &mmsram_smi_2x1_sub_comm4>;
+		mediatek,smi-supply = <&mmsram_smi_2x1_sub_comm3 0 &mmsram_smi_2x1_sub_comm4 0>;
 		mediatek,common-id = <2>;
 		emimpu-check;
 		smi-common;
@@ -13515,7 +13515,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x1e819000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_common>;
+		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,common-id = <9>;
 		mediatek,dump-with-comm = <1>;
 		emimpu-check;
@@ -13531,7 +13531,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x1421e000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_common>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,common-id = <11>;
 		emimpu-check;
 		init-power-on;
@@ -13547,7 +13547,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x1421f000 0 0x1000>;
-		mediatek,smi-supply = <&smi_sysram_common>;
+		mediatek,smi-supply = <&smi_sysram_common 0>;
 		mediatek,common-id = <12>;
 		emimpu-check;
 		init-power-on;
@@ -13563,7 +13563,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x1401e000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_common>;
+		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,common-id = <13>;
 		emimpu-check;
 		init-power-on;
@@ -13579,7 +13579,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x1401f000 0 0x1000>;
-		mediatek,smi-supply = <&smi_sysram_common>;
+		mediatek,smi-supply = <&smi_sysram_common 0>;
 		mediatek,common-id = <14>;
 		emimpu-check;
 		init-power-on;
@@ -13595,7 +13595,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x1440e000 0 0x1000>;
-		mediatek,smi-supply = <&smi_sram_disp1_2x1_subcomm0>;
+		mediatek,smi-supply = <&smi_sram_disp1_2x1_subcomm0 0>;
 		mediatek,common-id = <22>;
 		emimpu-check;
 		init-power-on;
@@ -13611,7 +13611,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x1460e000 0 0x1000>;
-		mediatek,smi-supply = <&smi_sram_disp1_2x1_subcomm1>;
+		mediatek,smi-supply = <&smi_sram_disp1_2x1_subcomm1 0>;
 		mediatek,common-id = <23>;
 		emimpu-check;
 		init-power-on;
@@ -13627,7 +13627,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x15002000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_common>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,common-id = <15>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_ISP_MAIN>;
@@ -13642,7 +13642,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x15003000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_common>;
+		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,common-id = <18>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_ISP_MAIN>;
@@ -13657,7 +13657,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x1a005000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_common>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,common-id = <16>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_MAIN>;
@@ -13672,7 +13672,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x1a006000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_common>;
+		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,common-id = <19>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_MAIN>;
@@ -13687,7 +13687,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x1a007000 0 0x1000>;
-		mediatek,smi-supply = <&smi_sysram_common>;
+		mediatek,smi-supply = <&smi_sysram_common 0>;
 		mediatek,common-id = <20>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_MAIN>;
@@ -13704,7 +13704,7 @@
 		reg = <0 0x17870000 0 0x1000>;
 		mediatek,common-id = <17>;
 		emimpu-check;
-		mediatek,smi-supply = <&smi_mdp_common>;
+		mediatek,smi-supply = <&smi_mdp_common 0>;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_VEN1>;
 		clocks = <&venc_gcon_core1_clk CLK_VEN_C1_CKE0_LARB>,
 				<&venc_gcon_core1_clk CLK_VEN_C1_CKE0_LARB>,
@@ -13717,7 +13717,7 @@
 		compatible = "mediatek,mt6985-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x17880000 0 0x1000>;
-		mediatek,smi-supply = <&smi_sysram_common>;
+		mediatek,smi-supply = <&smi_sysram_common 0>;
 		mediatek,common-id = <21>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_VEN1>;
@@ -13907,7 +13907,7 @@
 		compatible = "mediatek,smi_larb0",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1440c000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_common &smi_sram_ovl_2x1_subcomm0>;
+		mediatek,smi-supply = <&smi_disp_common 0 &smi_sram_ovl_2x1_subcomm0 0>;
 		mediatek,larb-id = <0>;
 		emimpu-check;
 		init-power-on;
@@ -13922,7 +13922,7 @@
 		compatible = "mediatek,smi_larb1",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1440d000 0 0x1000>;
-		mediatek,smi-supply = <&smi_dram_disp1_2x1_subcomm0 &smi_sram_ovl_2x1_subcomm0>;
+		mediatek,smi-supply = <&smi_dram_disp1_2x1_subcomm0 0 &smi_sram_ovl_2x1_subcomm0 0>;
 		mediatek,larb-id = <1>;
 		emimpu-check;
 		init-power-on;
@@ -13937,7 +13937,7 @@
 		compatible = "mediatek,smi_larb20",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1460c000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_common &smi_sram_ovl_2x1_subcomm1>;
+		mediatek,smi-supply = <&smi_mdp_common 0 &smi_sram_ovl_2x1_subcomm1 0>;
 		mediatek,larb-id = <20>;
 		emimpu-check;
 		init-power-on;
@@ -13952,7 +13952,7 @@
 		compatible = "mediatek,smi_larb21",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1460d000 0 0x1000>;
-		mediatek,smi-supply = <&smi_dram_disp1_2x1_subcomm1 &smi_sram_ovl_2x1_subcomm1>;
+		mediatek,smi-supply = <&smi_dram_disp1_2x1_subcomm1 0 &smi_sram_ovl_2x1_subcomm1 0>;
 		mediatek,larb-id = <21>;
 		emimpu-check;
 		init-power-on;
@@ -13967,7 +13967,8 @@
 		compatible = "mediatek,smi_larb32",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1401d000 0 0x1000>;
-		mediatek,smi-supply = <&smi_dram_disp1_2x1_subcomm0 &smi_sram_disp1_2x1_subcomm0>;
+		mediatek,smi-supply = <&smi_dram_disp1_2x1_subcomm0 0
+						&smi_sram_disp1_2x1_subcomm0 0>;
 		mediatek,larb-id = <32>;
 		emimpu-check;
 		init-power-on;
@@ -13982,7 +13983,8 @@
 		compatible = "mediatek,smi_larb33",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1421d000 0 0x1000>;
-		mediatek,smi-supply = <&smi_dram_disp1_2x1_subcomm1 &smi_sram_disp1_2x1_subcomm1>;
+		mediatek,smi-supply = <&smi_dram_disp1_2x1_subcomm1 0
+						&smi_sram_disp1_2x1_subcomm1 0>;
 		mediatek,larb-id = <33>;
 		emimpu-check;
 		init-power-on;
@@ -14002,7 +14004,7 @@
 		compatible = "mediatek,smi_larb2",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1f002000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_common>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,larb-id = <2>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_MDP0_SHUTDOWN>;
@@ -14016,7 +14018,7 @@
 		compatible = "mediatek,smi_larb3",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1f802000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_2x1_subcommon &smi_sysram_common>;
+		mediatek,smi-supply = <&smi_mdp_2x1_subcommon 0 &smi_sysram_common 0>;
 		mediatek,larb-id = <3>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_MDP1_SHUTDOWN>;
@@ -14030,7 +14032,7 @@
 		compatible = "mediatek,smi_larb4",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1602e000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_common>;
+		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,larb-id = <4>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_VDE1>;
@@ -14044,7 +14046,7 @@
 		compatible = "mediatek,smi_larb5",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1600d000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_common>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,larb-id = <5>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_VDE0>;
@@ -14058,7 +14060,7 @@
 		compatible = "mediatek,smi_larb6",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x16009000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_common>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,larb-id = <6>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_VDE0>;
@@ -14072,7 +14074,7 @@
 		compatible = "mediatek,smi_larb7",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x17010000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_common &smi_sysram_common>;
+		mediatek,smi-supply = <&smi_disp_common 0 &smi_sysram_common 0>;
 		mediatek,larb-id = <7>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_VEN0>;
@@ -14086,7 +14088,7 @@
 		compatible = "mediatek,smi_larb8",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x17810000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_venc_2x1_subcomm0 &smi_sram_venc_2x1_subcomm1>;
+		mediatek,smi-supply = <&smi_mdp_venc_2x1_subcomm0 0 &smi_sram_venc_2x1_subcomm1 0>;
 		mediatek,larb-id = <8>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_VEN1>;
@@ -14100,7 +14102,7 @@
 		compatible = "mediatek,smi_larb37",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x17c10000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_venc_2x1_subcomm0 &smi_sram_venc_2x1_subcomm1>;
+		mediatek,smi-supply = <&smi_mdp_venc_2x1_subcomm0 0 &smi_sram_venc_2x1_subcomm1 0>;
 		mediatek,larb-id = <37>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_VEN2>;
@@ -14114,7 +14116,7 @@
 		compatible = "mediatek,smi_larb9",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x15001000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_img_5x1_subcomm1>;
+		mediatek,smi-supply = <&smi_mdp_img_5x1_subcomm1 0>;
 		mediatek,larb-id = <9>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_ISP_MAIN>;
@@ -14128,7 +14130,7 @@
 		compatible = "mediatek,smi_larb10",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x15120000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_img_4x1_subcomm0>;
+		mediatek,smi-supply = <&smi_disp_img_4x1_subcomm0 0>;
 		mediatek,larb-id = <10>;
 		emimpu-check;
 		mediatek,comm-port-id = <1>;
@@ -14143,7 +14145,7 @@
 		compatible = "mediatek,smi_larb11",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x15230000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_img_5x1_subcomm1>;
+		mediatek,smi-supply = <&smi_mdp_img_5x1_subcomm1 0>;
 		mediatek,larb-id = <11>;
 		emimpu-check;
 		mediatek,comm-port-id = <2>;
@@ -14158,7 +14160,7 @@
 		compatible = "mediatek,smi_larb12",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x15340000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_img_5x1_subcomm1>;
+		mediatek,smi-supply = <&smi_mdp_img_5x1_subcomm1 0>;
 		mediatek,larb-id = <12>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_ISP_MAIN>;
@@ -14172,7 +14174,7 @@
 		compatible = "mediatek,smi_larb15",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x15140000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_img_5x1_subcomm1>;
+		mediatek,smi-supply = <&smi_mdp_img_5x1_subcomm1 0>;
 		mediatek,larb-id = <15>;
 		emimpu-check;
 		mediatek,comm-port-id = <1>;
@@ -14187,7 +14189,7 @@
 		compatible = "mediatek,smi_larb18",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x15006000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_img_5x1_subcomm1>;
+		mediatek,smi-supply = <&smi_mdp_img_5x1_subcomm1 0>;
 		mediatek,larb-id = <18>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_ISP_MAIN>;
@@ -14201,7 +14203,7 @@
 		compatible = "mediatek,smi_larb22",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x15530000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_img_4x1_subcomm0>;
+		mediatek,smi-supply = <&smi_disp_img_4x1_subcomm0 0>;
 		mediatek,larb-id = <22>;
 		emimpu-check;
 		mediatek,comm-port-id = <2>;
@@ -14216,7 +14218,7 @@
 		compatible = "mediatek,smi_larb23",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x15630000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_img_4x1_subcomm0>;
+		mediatek,smi-supply = <&smi_disp_img_4x1_subcomm0 0>;
 		mediatek,larb-id = <23>;
 		emimpu-check;
 		mediatek,comm-port-id = <3>;
@@ -14231,7 +14233,7 @@
 		compatible = "mediatek,smi_larb28",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x15720000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_img_4x1_subcomm0>;
+		mediatek,smi-supply = <&smi_disp_img_4x1_subcomm0 0>;
 		mediatek,larb-id = <28>;
 		emimpu-check;
 		mediatek,comm-port-id = <0>;
@@ -14246,7 +14248,7 @@
 		compatible = "mediatek,smi_larb13",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a001000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_cam_7x1_subcomm1>;
+		mediatek,smi-supply = <&smi_mdp_cam_7x1_subcomm1 0>;
 		mediatek,larb-id = <13>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_MAIN>;
@@ -14260,7 +14262,7 @@
 		compatible = "mediatek,smi_larb14",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a002000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_common>;
+		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,larb-id = <14>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_MAIN>;
@@ -14274,7 +14276,7 @@
 		compatible = "mediatek,smi_larb16",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a026000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0>;
+		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0 0>;
 		mediatek,larb-id = <16>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_SUBA>;
@@ -14288,7 +14290,7 @@
 		compatible = "mediatek,smi_larb17",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a027000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0 &smi_mdp_cam_7x1_subcomm1>;
+		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0 0 &smi_mdp_cam_7x1_subcomm1 0>;
 		mediatek,larb-id = <17>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_SUBA>;
@@ -14302,7 +14304,7 @@
 		compatible = "mediatek,smi_larb19",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1b201000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0 &smi_sram_cam_2x1_subcomm2>;
+		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0 0 &smi_sram_cam_2x1_subcomm2 0>;
 		mediatek,larb-id = <19>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_MRAW>;
@@ -14316,7 +14318,7 @@
 		compatible = "mediatek,smi_larb25",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a02c000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0>;
+		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0 0>;
 		mediatek,larb-id = <25>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_MRAW>;
@@ -14330,7 +14332,7 @@
 		compatible = "mediatek,smi_larb26",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a02d000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_cam_7x1_subcomm1>;
+		mediatek,smi-supply = <&smi_mdp_cam_7x1_subcomm1 0>;
 		mediatek,larb-id = <26>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_MRAW>;
@@ -14344,7 +14346,7 @@
 		compatible = "mediatek,smi_larb27",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a003000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_cam_7x1_subcomm1 &smi_sram_cam_2x1_subcomm2>;
+		mediatek,smi-supply = <&smi_mdp_cam_7x1_subcomm1 0 &smi_sram_cam_2x1_subcomm2 0>;
 		mediatek,larb-id = <27>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_MAIN>;
@@ -14358,7 +14360,7 @@
 		compatible = "mediatek,smi_larb29",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a004000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0>;
+		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0 0>;
 		mediatek,larb-id = <29>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_MAIN>;
@@ -14372,7 +14374,7 @@
 		compatible = "mediatek,smi_larb30",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a028000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_cam_7x1_subcomm1>;
+		mediatek,smi-supply = <&smi_mdp_cam_7x1_subcomm1 0>;
 		mediatek,larb-id = <30>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_SUBB>;
@@ -14386,7 +14388,7 @@
 		compatible = "mediatek,smi_larb31",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a02a000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0>;
+		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0 0>;
 		mediatek,larb-id = <31>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_SUBC>;
@@ -14400,7 +14402,7 @@
 		compatible = "mediatek,smi_larb34",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a029000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0>;
+		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0 0>;
 		mediatek,larb-id = <34>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_SUBB>;
@@ -14414,7 +14416,7 @@
 		compatible = "mediatek,smi_larb35",
 			"mediatek,mt6985-smi-larb", "mediatek,smi-larb";
 		reg = <0 0x1a02b000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0 &smi_mdp_cam_7x1_subcomm1>;
+		mediatek,smi-supply = <&smi_disp_cam_8x1_subcomm0 0 &smi_mdp_cam_7x1_subcomm1 0>;
 		mediatek,larb-id = <35>;
 		emimpu-check;
 		power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_SUBC>;
