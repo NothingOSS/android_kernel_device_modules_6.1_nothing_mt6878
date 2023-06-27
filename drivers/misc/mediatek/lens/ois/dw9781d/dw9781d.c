@@ -136,12 +136,17 @@ static struct i2c_client *m_client;
 
 
 static u16 ois_ctrl_data;
+static int32_t ois_echo_en;
 static int32_t ois_log_dbg_en;
 static int32_t ois_data_dbg_en;
 static int32_t ois_fw_update;
 static int32_t ois_hall_check;
 static int32_t ois_hall_cnt;
 static int32_t ois_hall_warn;
+static int32_t ois_debug_en;
+static int32_t ois_hfmgr_test;
+
+static struct hf_manager_event hf_mgr_event;
 
 /* Control commnad */
 #define VIDIOC_MTK_S_OIS_MODE _IOW('V', BASE_VIDIOC_PRIVATE + 2, int32_t)
@@ -815,6 +820,7 @@ static int dw9781d_enable(struct hf_device *hfdev, int sensor_type, int en)
 		}
 	}
 	ois_hall_cnt = 0;
+	memset(&hf_mgr_event, 0, sizeof(struct hf_manager_event));
 
 	return err;
 }
@@ -827,6 +833,8 @@ static int dw9781d_batch(struct hf_device *hfdev, int sensor_type,
 	return 0;
 }
 
+static int64_t prv_sample_ts;
+
 static int dw9781d_sample(struct hf_device *hfdev)
 {
 	struct device *dev = hf_device_get_private_data(hfdev);
@@ -834,61 +842,81 @@ static int dw9781d_sample(struct hf_device *hfdev)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct dw9781d_device *dw9781d = sd_to_dw9781d_ois(sd);
 	struct hf_manager *manager = dw9781d->hf_dev.manager;
-	struct hf_manager_event event;
 
-	s16 gyro_x = 0, gyro_y = 0;
-	s16 target_x = 0, target_y = 0;
 	s16 len_x = 0, len_y = 0;
 	u32 reg_val = 0;
+	int32_t w0 = 0, w1 = 0, w2 = 0, w3 = 0;
 
-	memset(&event, 0, sizeof(struct hf_manager_event));
+	if (ois_echo_en > 0) {
+		s16 gyro_x = 0, gyro_y = 0;
+		s16 target_x = 0, target_y = 0;
+		int64_t ts1 = 0;
 
-	ois_i2c_rd_u32(m_client, DW9781D_REG_OIS_LENS_POSX, &reg_val);
-	event.timestamp = get_interrupt_timestamp(manager);
-	len_x = (s16)((reg_val >> 16) & 0xffff);
-	len_y = (s16)(reg_val & 0xffff);
+		if (ois_debug_en == 1)
+			ts1 = ktime_get_boottime_ns();
 
-	if (ois_data_dbg_en == 1) {
-		ois_i2c_rd_u32(m_client, DW9781D_REG_OIS_GYROX, &reg_val);
-		gyro_x = (s16)((reg_val >> 16) & 0xffff);
-		gyro_y = (s16)(reg_val & 0xffff);
-		if (ois_ctrl_data == OIS_ON)
-			ois_i2c_rd_u32(m_client, DW9781D_REG_OIS_TARGETX, &reg_val);
-		else
-			ois_i2c_rd_u32(m_client, DW9781D_REG_OIS_CL_TARGETX, &reg_val);
-		target_x = (s16)((reg_val >> 16) & 0xffff);
-		target_y = (s16)(reg_val & 0xffff);
-	}
+		if (ois_hfmgr_test == 0)
+			ois_i2c_rd_u32(m_client, DW9781D_REG_OIS_LENS_POSX, &reg_val);
 
-	if (ois_log_dbg_en == 1) {
-		LOG_INF("Gyro, Target, Lens position (x/y) : (%d/%d), (%d/%d), (%d/%d)\n",
-			gyro_x, gyro_y,
-			target_x, target_y,
-			len_x, len_y);
-	}
+		hf_mgr_event.timestamp = ktime_get_boottime_ns();
 
-	if (ois_hall_check == 1) {
-		ois_hall_cnt++;
-		if ((ois_hall_warn == 1 && ois_hall_cnt > 5000) &&
-		    (abs(len_x) > 1000 || abs(len_y) > 1000)) {
-			aee_kernel_warning("OV64B-OIS check fail",
-				"\nCRDISPATCH_KEY:OIS_CHECK\nLEVEL Hall pos");
-			ois_hall_warn = 0;
+		if (ois_debug_en == 1) {
+			len_x = (hf_mgr_event.timestamp - prv_sample_ts) / 100000;
+			len_y = (hf_mgr_event.timestamp - ts1) / 100000;
+			prv_sample_ts = hf_mgr_event.timestamp;
+		} else {
+			len_x = (s16)((reg_val >> 16) & 0xffff);
+			len_y = (s16)(reg_val & 0xffff);
 		}
+
+		if (ois_data_dbg_en == 1) {
+			ois_i2c_rd_u32(m_client, DW9781D_REG_OIS_GYROX, &reg_val);
+			gyro_x = (s16)((reg_val >> 16) & 0xffff);
+			gyro_y = (s16)(reg_val & 0xffff);
+			if (ois_ctrl_data == OIS_ON)
+				ois_i2c_rd_u32(m_client, DW9781D_REG_OIS_TARGETX, &reg_val);
+			else
+				ois_i2c_rd_u32(m_client, DW9781D_REG_OIS_CL_TARGETX, &reg_val);
+			target_x = (s16)((reg_val >> 16) & 0xffff);
+			target_y = (s16)(reg_val & 0xffff);
+
+			w0 = gyro_x * 1000 / 131 * 1000;	// ois gyro x
+			w1 = gyro_y * 1000 / 131 * 1000;	// ois gyro y
+			w2 = target_x * 1000000;		// target x
+			w3 = target_y * 1000000;		// target y
+		}
+		if (ois_log_dbg_en == 1) {
+			LOG_INF("Ts(%lld),  Gyro(%d/%d), Target(%d/%d), Lens position(%d/%d)\n",
+				hf_mgr_event.timestamp, gyro_x, gyro_y,
+				target_x, target_y, len_x, len_y);
+		}
+		if (ois_hall_check == 1) {
+			ois_hall_cnt++;
+			if ((ois_hall_warn == 1 && ois_hall_cnt > 5000) &&
+			    (abs(len_x) > 1000 || abs(len_y) > 1000)) {
+				aee_kernel_warning("OV64B-OIS check fail",
+					"\nCRDISPATCH_KEY:OIS_CHECK\nLEVEL Hall pos");
+				ois_hall_warn = 0;
+			}
+		}
+	} else {
+		ois_i2c_rd_u32(m_client, DW9781D_REG_OIS_LENS_POSX, &reg_val);
+		hf_mgr_event.timestamp = ktime_get_boottime_ns();
+		len_x = (s16)((reg_val >> 16) & 0xffff);
+		len_y = (s16)(reg_val & 0xffff);
 	}
 
-	// event.timestamp = get_interrupt_timestamp(manager);
-	event.sensor_type = dw9781d->hf_dev.support_list[0].sensor_type;
-	event.accurancy = SENSOR_ACCURANCY_HIGH;
-	event.action = DATA_ACTION;
+	hf_mgr_event.sensor_type = dw9781d->hf_dev.support_list[0].sensor_type;
+	hf_mgr_event.accurancy = SENSOR_ACCURANCY_HIGH;
+	hf_mgr_event.action = DATA_ACTION;
 	// unit transform, full scale is +-250dps, 65536/500=131(code/dps)
-	event.word[0] = gyro_x * 1000 / 131 * 1000;	// ois gyro x
-	event.word[1] = gyro_y * 1000 / 131 * 1000;	// ois gyro y
-	event.word[2] = target_x * 1000000;	// target x
-	event.word[3] = target_y * 1000000;	// target y
-	event.word[4] = len_x * 1000000;	// HALL_X
-	event.word[5] = len_y * 1000000;	// HALL_Y
-	manager->report(manager, &event);
+	hf_mgr_event.word[0] = w0;		// ois gyro x
+	hf_mgr_event.word[1] = w1;		// ois gyro y
+	hf_mgr_event.word[2] = w2;		// target x
+	hf_mgr_event.word[3] = w3;		// target y
+	hf_mgr_event.word[4] = len_x * 1000000;	// HALL_X
+	hf_mgr_event.word[5] = len_y * 1000000;	// HALL_Y
+	manager->report(manager, &hf_mgr_event);
 	manager->complete(manager);
 
 	return 0;
@@ -962,16 +990,20 @@ static ssize_t ois_debug_store(struct device *dev,
 	if (ret < 0)
 		LOG_INF("ret fail\n");
 
+	ois_echo_en = val;
 	ois_log_dbg_en = val & 0x1;
 	ois_data_dbg_en = (val >> 1) & 0x1;
 	ois_fw_update = (val >> 2) & 0x1;
 	ois_hall_check = (val >> 3) & 0x1;
+	ois_debug_en = (val >> 4) & 0x1;
+	ois_hfmgr_test = (val >> 5) & 0x1;
 
 	if (ois_hall_check)
 		ois_hall_warn = 1;
 
-	LOG_INF("hall(%d) fw(%d) log(%d), data(%d), buf:%s\n",
-		ois_hall_check, ois_fw_update, ois_log_dbg_en, ois_data_dbg_en, buf);
+	LOG_INF("hfmgr(%d) dbg(%d) hall(%d) fw(%d) log(%d), data(%d), buf:%s\n",
+		ois_hfmgr_test, ois_debug_en, ois_hall_check, ois_fw_update,
+		ois_log_dbg_en, ois_data_dbg_en, buf);
 
 	return size;
 }
