@@ -306,6 +306,8 @@ int tmem_core_alloc_page(enum TRUSTED_MEM_TYPE mem_type, u32 size,
 	if (!buf_info)
 		return TMEM_PARAMETER_ERROR;
 
+	trusted_mem_enable_high_freq();
+
 	start = sched_clock();
 	info = ssheap_alloc_non_contig(size, 0, mem_type);
 	if (!info) {
@@ -314,6 +316,9 @@ int tmem_core_alloc_page(enum TRUSTED_MEM_TYPE mem_type, u32 size,
 		return TMEM_GENERAL_ERROR;
 	}
 	end = sched_clock();
+
+	trusted_mem_disable_high_freq();
+
 	if (end - start > 10000000ULL) {/* unit is ns */
 		pr_info("%s alloc_non_contig len: 0x%x time: %lld ns\n",
 			__func__, size, end - start);

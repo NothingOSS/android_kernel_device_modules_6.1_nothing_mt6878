@@ -28,6 +28,9 @@ trusted_mem-y += ssheap_proc.o
 trusted_mem-y += alloc_api.o
 trusted_mem-y += ssmr/memory_ssmr.o
 trusted_mem-y += ssheap/ssheap_lib.o
+ifneq ($(filter y m,$(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)),)
+trusted_mem-y += tmemperf/tmemperf.o
+endif # !CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ
 
 ifneq ($(filter y m,$(CONFIG_ARM_FFA_TRANSPORT)),)
 obj-m += tmem_ffa.o
@@ -41,6 +44,9 @@ tmem_ffa-y += ssheap_proc.o
 tmem_ffa-y += alloc_api.o
 tmem_ffa-y += ssmr/memory_ssmr.o
 tmem_ffa-y += ssheap/ssheap_lib.o
+ifneq ($(filter y m,$(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)),)
+tmem_ffa-y += tmemperf/tmemperf.o
+endif # !CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ
 endif # CONFIG_ARM_FFA_TRANSPORT
 
 ifeq ($(TCORE_PROFILING_SUPPORT),y)
@@ -152,3 +158,7 @@ endif # !CONFIG_MICROTRUST_TEE_SUPPORT
 ifneq ($(filter y m,$(CONFIG_BLOWFISH_TEE_SUPPORT)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/tzdev
 endif # !CONFIG_BLOWFISH_TEE_SUPPORT
+
+ifneq ($(filter y m,$(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/tmemperf
+endif # !CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ

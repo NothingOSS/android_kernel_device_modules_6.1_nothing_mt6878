@@ -1531,8 +1531,12 @@ static int page_base_alloc_v2(struct secure_heap_page *sec_heap,
 	buffer->ssheap->elems = table->orig_nents;
 	buffer->len = buffer->ssheap->aligned_req_size;
 	atomic64_add(buffer->len, &sec_heap->total_size);
+
+	trusted_mem_enable_high_freq();
 	// mtee_assign assign pa to protected pa
 	smc_ret = mtee_assign_buffer_v2(buffer->ssheap, sec_heap->tmem_type);
+	trusted_mem_disable_high_freq();
+
 	if (smc_ret != 0) {
 		pr_err("%s:mtee_assign_buffer_v2 smc_ret=%d\n", __func__,
 		       smc_ret);

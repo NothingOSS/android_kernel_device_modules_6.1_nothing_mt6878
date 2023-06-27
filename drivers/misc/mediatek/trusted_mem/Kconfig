@@ -78,6 +78,16 @@ config MTK_SDSP_SHARED_MEM_SUPPORT
 	  Say Y if you would like to enable this feature.
 	  If unsure, say N.
 
+config ALLOC_TMEM_WITH_HIGH_FREQ
+        bool "MTK Improve High Freq When Alloc Trusted mem"
+        default y
+        help
+           Enable the support of reducing the costing time when trusted mem allocated.
+           It can improve the cpu group freq when needed.
+           This function is valid only at the tmem allocating starting
+           and invalid at the end
+           If unsure, say N.
+
 choice
 	prompt "MTK VPU/MTEE/MTEE Shared Memory Support"
 	depends on MTK_SDSP_SHARED_MEM_SUPPORT

@@ -19,6 +19,9 @@
 #include "public/trusted_mem_api.h"
 #include "public/mtee_regions.h"
 #include "mtee_impl/tmem_ffa.h"
+#if IS_ENABLED(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)
+#include "tmemperf.h"
+#endif
 
 static inline void trusted_mem_type_enum_validate(void)
 {
@@ -253,3 +256,23 @@ int trusted_mem_page_based_free(u64 handle)
 	return 0;
 }
 EXPORT_SYMBOL(trusted_mem_page_based_free);
+
+void trusted_mem_enable_high_freq(void)
+{
+#if IS_ENABLED(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)
+//	tmemperf_set_cpu_group_to_hfreq(CPU_BIG_GROUP,1);
+//	tmemperf_set_cpu_group_to_hfreq(CPU_SUPER_GROUP,1);
+	tmemperf_set_cpu_group_to_hfreq(CPU_LITTLE_GROUP,1);
+#endif
+}
+EXPORT_SYMBOL(trusted_mem_enable_high_freq);
+
+void trusted_mem_disable_high_freq(void)
+{
+#if IS_ENABLED(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)
+//	tmemperf_set_cpu_group_to_hfreq(CPU_BIG_GROUP,0);
+//	tmemperf_set_cpu_group_to_hfreq(CPU_SUPER_GROUP,0);
+	tmemperf_set_cpu_group_to_hfreq(CPU_LITTLE_GROUP,0);
+#endif
+}
+EXPORT_SYMBOL(trusted_mem_disable_high_freq);

@@ -70,6 +70,8 @@ bool trusted_mem_is_page_v2_enabled(void);
 int trusted_mem_page_based_alloc(enum TRUSTED_MEM_REQ_TYPE req_mem_type,
 				struct sg_table *sg_tbl, u64 *handle, u32 size);
 int trusted_mem_page_based_free(u64 handle);
+void trusted_mem_enable_high_freq(void);
+void trusted_mem_disable_high_freq(void);
 #endif
 
 #endif /* end of TRUSTED_MEM_API_H */

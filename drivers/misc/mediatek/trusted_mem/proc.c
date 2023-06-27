@@ -38,6 +38,10 @@
 #include "memory_ssmr.h"
 #include "memory_ssheap.h"
 
+#if IS_ENABLED(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)
+u32 cpu_map;
+#endif
+
 static int tmem_open(struct inode *inode, struct file *file)
 {
 	UNUSED(inode);
@@ -274,6 +278,11 @@ MODULE_PARM_DESC(ut_saturation_stress_pmem_min_chunk_size,
 
 static int trusted_mem_init(struct platform_device *pdev)
 {
+#if IS_ENABLED(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)
+	struct device_node *node = pdev->dev.of_node;
+	int ret = 0;
+#endif
+
 	pr_info("%s:%d\n", __func__, __LINE__);
 
 #if WITH_SSHEAP_PROC
@@ -311,6 +320,19 @@ static int trusted_mem_init(struct platform_device *pdev)
 	if (is_ffa_enabled()) {
 		tmem_register_ffa_module();
 	}
+
+#if IS_ENABLED(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)
+	if (IS_ERR(node)) {
+		pr_info("cannot find device node\n");
+		return -ENODEV;
+	}
+
+	ret = of_property_read_u32(node, "cpu-map", &cpu_map);
+	if (ret || !cpu_map) {
+		pr_info("invalid cpu map\n");
+		return -EINVAL;
+	}
+#endif
 
 	pr_info("%s:%d (end)\n", __func__, __LINE__);
 	return TMEM_OK;
