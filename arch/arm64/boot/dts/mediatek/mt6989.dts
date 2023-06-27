@@ -17925,6 +17925,13 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 			io-channel-names = "pmic_hpofs_cal";
 			nvmem = <&mt6681_efuse>;
 			nvmem-names = "pmic-hp-efuse";
+			reg-vaud18-supply = <&mt6681_vaud18>;
+		};
+		regulators {
+			mt6681_vaud18: vaud18 {
+				regulator-compatible = "VAUD18";
+				regulator-name = "mt6681_vaud18";
+			};
 		};
 		mt6681_efuse: mt6681-efuse {
 			compatible = "mediatek,mt6681-efuse";
