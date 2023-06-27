@@ -283,6 +283,7 @@ int mmqos_set_vcp_mmqos_log(const char *val, const struct kernel_param *kp)
 
 	vcp_mmqos_log = log;
 	mtk_mmqos_enable_vcp(true);
+	ret = mmqos_vcp_ipi_send(FUNC_SYNC_STATE, mmqos_state, NULL);
 	mtk_mmqos_enable_vcp(false);
 	return 0;
 }
@@ -323,6 +324,7 @@ int mmqos_set_vcp_smi_log(const char *val, const struct kernel_param *kp)
 
 	vcp_smi_log = log;
 	mtk_mmqos_enable_vcp(true);
+	ret = mmqos_vcp_ipi_send(FUNC_SYNC_STATE, mmqos_state, NULL);
 	mtk_mmqos_enable_vcp(false);
 
 	return 0;

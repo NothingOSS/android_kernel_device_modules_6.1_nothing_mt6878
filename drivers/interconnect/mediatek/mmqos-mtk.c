@@ -1971,6 +1971,7 @@ static int mmqos_debug_set_ftrace(const char *val,
 			MMQOS_DBG("disable");
 			if (kthr) {
 				ret = kthread_stop(kthr);
+				kthr = NULL;
 				if (!ret)
 					MMQOS_DBG("stop kthread mmqos-dbg-ftrace");
 			}
