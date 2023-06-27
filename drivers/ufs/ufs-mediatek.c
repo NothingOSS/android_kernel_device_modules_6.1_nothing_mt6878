@@ -948,7 +948,18 @@ static void ufs_mtk_trace_vh_update_sdev(void *data, struct scsi_device *sdev)
 		/* set affinity */
 		if (is_mcq_enabled(hba))
 			ufs_mtk_mcq_set_irq_affinity(hba);
+
+#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
+		register_low_battery_notify(&ufs_mtk_low_battery_callback,
+					    LOW_BATTERY_PRIO_UFS, (void *) hba);
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
+		register_battery_oc_notify(&ufs_mtk_battery_oc_callback,
+					   BATTERY_OC_PRIO_UFS, (void *) hba);
+#endif
 	}
+
 }
 
 void ufs_mtk_trace_vh_ufs_prepare_command(void *data, struct ufs_hba *hba,
@@ -1477,16 +1488,6 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	ufs_mtk_init_clocks(hba);
 
 	ufs_mtk_init_sysfs(hba);
-
-#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
-	register_low_battery_notify(&ufs_mtk_low_battery_callback,
-				    LOW_BATTERY_PRIO_UFS, (void *) hba);
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
-	register_battery_oc_notify(&ufs_mtk_battery_oc_callback,
-				   BATTERY_OC_PRIO_UFS, (void *) hba);
-#endif
 
 	/*
 	 * ufshcd_vops_init() is invoked after
