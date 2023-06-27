@@ -401,25 +401,36 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 /* PCIe pinmux start */
 &pio {
 	pcie0_pins_default: pcie0-default {
-		pins_cmd_dat {
-			/* PINMUX_GPIO144__FUNC_PCIE_WAKEN for Falcon */
+		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO143__FUNC_PCIE_PERSTN>,
 				 <PINMUX_GPIO145__FUNC_PCIE_CLKREQN>;
 			bias-pull-up;
 		};
-	};
 
-	pcie0_pins_sleep: pcie0-sleep {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO143__FUNC_GPIO143>,
-				 <PINMUX_GPIO145__FUNC_GPIO145>;
+		pins-cmd-dat1 {
+			pinmux = <PINMUX_GPIO144__FUNC_GPIO144>;
 			bias-pull-down;
 			input-enable;
 		};
 	};
 
+	pcie0_pins_sleep: pcie0-sleep {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO143__FUNC_GPIO143>;
+			bias-pull-down;
+			input-enable;
+		};
+
+		pins-cmd-dat1 {
+			pinmux = <PINMUX_GPIO144__FUNC_GPIO144>,
+				 <PINMUX_GPIO145__FUNC_GPIO145>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+
 	pcie1_pins_default: pcie1-default {
-		pins_cmd_dat {
+		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO2__FUNC_PCIE_CLKREQN_P1>,
 				 <PINMUX_GPIO3__FUNC_PCIE_WAKEN_P1>,
 				 <PINMUX_GPIO4__FUNC_PCIE_PERSTN_P1>;
