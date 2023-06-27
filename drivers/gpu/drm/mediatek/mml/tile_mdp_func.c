@@ -255,24 +255,53 @@ enum isp_tile_message tile_wrot_init(struct tile_func_block *func,
 		func->out_tile_height = 65535;
 	}
 
-	if (MML_FMT_AFBC(data->dest_fmt))
-		func->out_tile_width = min(128, func->out_tile_width);
-
 	/* For tile calculation */
-	if (MML_FMT_YUV422(data->dest_fmt)) {
-		/* To update with rotation */
-		if (data->rotate == MML_ROT_90 ||
-		    data->rotate == MML_ROT_270) {
-			/* 90, 270 degrees & YUV422 */
+	if (MML_FMT_AFBC(data->dest_fmt)) {
+		func->out_tile_width = min(128, func->out_tile_width);
+		data->align_x = 32;
+		data->align_y = 8;
+	} else if (MML_FMT_10BIT_PACKED(data->dest_fmt) &&
+		   !MML_FMT_ALPHA(data->dest_fmt)) {
+		/* 10-bit packed, not alpha 32-bit */
+		data->align_x = 4;
+		data->align_y = 2;
+	} else if (data->yuv_pending) {
+		/* use wrot pending */
+		if (MML_FMT_YUV422(data->dest_fmt)) {
+			data->align_x = 2;
+			/* To update with rotation */
+			if (data->rotate == MML_ROT_90 ||
+			    data->rotate == MML_ROT_270) {
+				/* 90, 270 degrees & YUV422 */
+				data->align_y = 2;
+			}
+		} else if (MML_FMT_YUV420(data->dest_fmt)) {
+			data->align_x = 2;
+			data->align_y = 2;
+		}
+	} else {
+		/* use tile alignment */
+		if (MML_FMT_YUV422(data->dest_fmt)) {
+			func->out_const_x = 2;
+			/* To update with rotation */
+			if (data->rotate == MML_ROT_90 ||
+			    data->rotate == MML_ROT_270) {
+				/* 90, 270 degrees & YUV422 */
+				func->out_const_y = 2;
+			}
+		} else if (MML_FMT_YUV420(data->dest_fmt)) {
 			func->out_const_x = 2;
 			func->out_const_y = 2;
-		} else {
-			func->out_const_x = 2;
 		}
-	} else if (MML_FMT_YUV420(data->dest_fmt)) {
-		func->out_const_x = 2;
-		func->out_const_y = 2;
 	}
+	data->first_x_pad =
+		(data->rotate == MML_ROT_0 && data->flip) ||
+		(data->rotate == MML_ROT_180 && !data->flip) ||
+		(data->rotate == MML_ROT_270);
+	data->first_y_pad =
+		(data->rotate == MML_ROT_90 && !data->flip) ||
+		(data->rotate == MML_ROT_180) ||
+		(data->rotate == MML_ROT_270 && data->flip);
 
 	return ISP_MESSAGE_TILE_OK;
 }
@@ -577,50 +606,51 @@ enum isp_tile_message tile_prz_for(struct tile_func_block *func,
 	return ISP_MESSAGE_TILE_OK;
 }
 
-static enum isp_tile_message tile_wrot_align_out_width(
-	struct tile_func_block *func, const struct wrot_tile_data *data,
-	int full_size_x_out)
+static int tile_wrot_align_out(
+	const int alignment, const bool first_padding, const int full_size_out,
+	const int out_str, int out_end)
 {
-	s32 alignment = 1;
-	s32 remain = 0;
+	int remain = 0;
 
-	if (MML_FMT_AFBC(data->dest_fmt)) {
-		alignment = 32;
-	} else if (MML_FMT_10BIT_PACKED(data->dest_fmt) &&
-		   !MML_FMT_ALPHA(data->dest_fmt)) {
-		/* 10-bit packed, not alpha 32-bit */
-		alignment = 4;
-	}
-
-	if (alignment > 1) {
-		remain = 0;
-		if ((data->rotate == MML_ROT_0 && data->flip) ||
-		    (data->rotate == MML_ROT_180 && !data->flip) ||
-		    (data->rotate == MML_ROT_270)) {
-			/* first tile padding */
-			if (func->out_pos_xs == 0) {
-				remain = TILE_MOD(full_size_x_out -
-						  func->out_pos_xe - 1,
-						  alignment);
-				if (remain)
-					remain = alignment - remain;
-			} else {
-				remain = TILE_MOD(func->out_pos_xe -
-						  func->out_pos_xs + 1,
-						  alignment);
-			}
+	if (first_padding) {
+		/* first tile padding */
+		if (out_str == 0) {
+			remain = TILE_MOD(full_size_out - out_end - 1, alignment);
+			if (remain)
+				remain = alignment - remain;
 		} else {
-			/* last tile padding */
-			if (func->out_pos_xe + 1 < full_size_x_out)
-				remain = TILE_MOD(func->out_pos_xe -
-						  func->out_pos_xs + 1,
-						  alignment);
+			remain = TILE_MOD(out_end - out_str + 1, alignment);
 		}
-		if (remain)
-			func->out_pos_xe -= remain;
+	} else {
+		/* last tile padding */
+		if (out_end + 1 < full_size_out)
+			remain = TILE_MOD(out_end - out_str + 1, alignment);
 	}
+	if (remain)
+		out_end -= remain;
+	return out_end;
+}
 
-	return ISP_MESSAGE_TILE_OK;
+static void tile_wrot_align_out_width(
+	struct tile_func_block *func, const struct wrot_tile_data *data,
+	const int full_size_x_out)
+{
+	if (data->align_x > 1) {
+		func->out_pos_xe = tile_wrot_align_out(
+			data->align_x, data->first_x_pad, full_size_x_out,
+			func->out_pos_xs, func->out_pos_xe);
+	}
+}
+
+static void tile_wrot_align_out_height(
+	struct tile_func_block *func, const struct wrot_tile_data *data,
+	const int full_size_y_out)
+{
+	if (data->align_y > 1) {
+		func->out_pos_ye = tile_wrot_align_out(
+			data->align_y, data->first_y_pad, full_size_y_out,
+			func->out_pos_ys, func->out_pos_ye);
+	}
 }
 
 enum isp_tile_message tile_wrot_for(struct tile_func_block *func,
@@ -694,6 +724,9 @@ enum isp_tile_message tile_wrot_for(struct tile_func_block *func,
 				if (remain)
 					func->out_pos_ye -= remain;
 			}
+
+			/* Check out height alignment */
+			tile_wrot_align_out_height(func, data, func->full_size_y_out);
 		}
 	}
 
@@ -1109,6 +1142,7 @@ enum isp_tile_message tile_wrot_back(struct tile_func_block *func,
 		}
 
 		/* Check out height alignment */
+		tile_wrot_align_out_height(func, data, full_size_y_out);
 	}
 
 	return ISP_MESSAGE_TILE_OK;

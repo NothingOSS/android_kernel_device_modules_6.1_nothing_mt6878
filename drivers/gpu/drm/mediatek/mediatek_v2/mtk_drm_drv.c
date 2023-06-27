@@ -1394,7 +1394,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
 		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_LINE_TIME_NS, &line_time);
-	submit_kernel->info.act_time = line_time * submit_pq->info.dest[0].data.height;
+	submit_kernel->info.act_time = line_time * submit_pq->info.dest[0].compose.height;
 
 #define _ATOMIC_MML_FMT \
 	"fps=%d vtotal=%d line_time=%d dst_h=%d act_time=%d dma=0x%lx src_fmt=%#010x plane=%d\n"

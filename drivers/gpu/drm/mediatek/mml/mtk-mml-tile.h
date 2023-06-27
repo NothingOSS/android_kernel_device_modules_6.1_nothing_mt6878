@@ -55,11 +55,16 @@ struct wrot_tile_data {
 	bool flip;
 	bool alpharot;
 	bool racing;
+	u8 racing_h;
 	bool enable_x_crop;
 	bool enable_y_crop;
+	bool yuv_pending;
 	struct mml_rect crop;
 	u32 max_width;
-	u8 racing_h;
+	u8 align_x;
+	u8 align_y;
+	bool first_x_pad;
+	bool first_y_pad;
 };
 
 struct dlo_tile_data {

@@ -1914,12 +1914,12 @@ static u32 calc_mml_rsz_ratio(struct mml_frame_info *mml_info)
 
 	src_w = mml_info->dest[0].crop.r.width;
 	src_h = mml_info->dest[0].crop.r.height;
-	dst_w = mml_info->dest[0].data.width;
-	dst_h = mml_info->dest[0].data.height;
+	dst_w = mml_info->dest[0].compose.width;
+	dst_h = mml_info->dest[0].compose.height;
 
 	if (mml_info->dest[0].rotate == MML_ROT_90 || mml_info->dest[0].rotate == MML_ROT_270) {
-		dst_w = mml_info->dest[0].data.height;
-		dst_h = mml_info->dest[0].data.width;
+		dst_w = mml_info->dest[0].compose.height;
+		dst_h = mml_info->dest[0].compose.width;
 	}
 
 	if (src_w > dst_w)
@@ -3991,7 +3991,7 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 		goto mode_mapping;
 	}
 
-	mml_info->act_time = mml_info->dest[0].data.height * line_time_ns;
+	mml_info->act_time = mml_info->dest[0].compose.height * line_time_ns;
 
 	/* set to DC if another display is on */
 	drm_for_each_crtc(crtcx, dev) {

@@ -96,6 +96,7 @@ struct rsz_data {
 	u32 tile_width;
 	u8 rsz_dbg;
 	bool aal_crop;
+	bool wrot_pending;
 };
 
 static const struct rsz_data mt6893_rsz_data = {
@@ -152,12 +153,14 @@ static const struct rsz_data mt6989_rsz_data = {
 	.tile_width = 3348,
 	.rsz_dbg = RSZ_DBG_MT6989,
 	.aal_crop = true,
+	.wrot_pending = true,
 };
 
 static const struct rsz_data mt6989_rsz2_data = {
 	.tile_width = 544,
 	.rsz_dbg = RSZ_DBG_MT6989,
 	.aal_crop = true,
+	.wrot_pending = true,
 };
 
 struct mml_comp_rsz {
@@ -185,7 +188,7 @@ static inline struct mml_comp_rsz *comp_to_rsz(struct mml_comp *comp)
 }
 
 static bool rsz_can_relay(const struct mml_frame_config *cfg,
-			  const struct mml_frame_data *src,
+			  const struct mml_comp_rsz *rsz,
 			  const struct mml_frame_dest *dest,
 			  const struct mml_crop *crop,
 			  const struct mml_frame_size *frame_out)
@@ -193,6 +196,8 @@ static bool rsz_can_relay(const struct mml_frame_config *cfg,
 	const u32 srcw = cfg->frame_in.width;
 	const u32 srch = cfg->frame_in.height;
 
+	if (!rsz->data->aal_crop && dest->pq_config.en_dre)
+		return false;
 	if (cfg->info.dest_cnt > 1)
 		return false;
 
@@ -201,10 +206,10 @@ static bool rsz_can_relay(const struct mml_frame_config *cfg,
 	    crop->r.height == srch &&
 	    srch == frame_out->height &&
 	    crop->x_sub_px == 0 && crop->y_sub_px == 0 &&
-	    crop->w_sub_px == 0 && crop->h_sub_px == 0 &&
-	    dest->data.width == dest->compose.width &&
-	    dest->data.height == dest->compose.height)
-		return true;
+	    crop->w_sub_px == 0 && crop->h_sub_px == 0)
+		return rsz->data->wrot_pending ||
+			(dest->data.width == dest->compose.width &&
+			dest->data.height == dest->compose.height);
 
 	return false;
 }
@@ -226,10 +231,7 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	rsz_frm = kzalloc(sizeof(*rsz_frm), GFP_KERNEL);
 	ccfg->data = rsz_frm;
-	if (!rsz->data->aal_crop && dest->pq_config.en_dre)
-		rsz_frm->relay_mode = false;
-	else
-		rsz_frm->relay_mode = rsz_can_relay(cfg, src, dest, crop, frame_out);
+	rsz_frm->relay_mode = rsz_can_relay(cfg, rsz, dest, crop, frame_out);
 	/* C42 conversion: drop if source is YUV422 or YUV420 */
 	rsz_frm->use121filter = !MML_FMT_H_SUBSAMPLE(src->format);
 
@@ -325,6 +327,7 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	const struct mml_frame_size *frame_in = &cfg->frame_in;
+	const struct mml_frame_size *frame_out = &cfg->frame_out[ccfg->node->out_idx];
 	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
 	const struct mml_comp_rsz *rsz = comp_to_rsz(comp);
 	const u8 rotate = cfg->out_rotate[ccfg->node->out_idx];
@@ -373,14 +376,16 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	    (crop->r.width != frame_in->width || crop->r.height != frame_in->height)) {
 		func->full_size_x_in = cfg->frame_tile_sz.width;
 		func->full_size_y_in = cfg->frame_tile_sz.height;
-
 		data->rsz.crop.r.left -= crop->r.left;
 		data->rsz.crop.r.top -= crop->r.top;
 	} else {
 		func->full_size_x_in = frame_in->width;
 		func->full_size_y_in = frame_in->height;
 	}
-	if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
+	if (rsz->data->wrot_pending) {
+		func->full_size_x_out = frame_out->width;
+		func->full_size_y_out = frame_out->height;
+	} else if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
 		func->full_size_x_out = dest->data.height;
 		func->full_size_y_out = dest->data.width;
 	} else {
@@ -518,9 +523,8 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	/* frame data should not change between each tile */
 	const struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
-	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_frame_size *frame_out = &cfg->frame_out[ccfg->node->out_idx];
 	const phys_addr_t base_pa = comp->base_pa;
-	const u8 rotate = cfg->out_rotate[ccfg->node->out_idx];
 
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
 
@@ -536,26 +540,14 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	/* Odd coordinate, should pad 1 column */
 	drs_padding_dis = tile->in.xe & 0x1;
-
 	drs_lclip_en = rsz_frm->use121filter && tile->in.xs;
+	/* YUV422 to YUV444 upsampler */
+	urs_clip_en = tile->out.xe < frame_out->width - 1;
 
 	rsz_input_w = tile->in.xe - tile->in.xs + 1;
 	rsz_input_h = tile->in.ye - tile->in.ys + 1;
 	rsz_output_w = tile->out.xe - tile->out.xs + 1;
 	rsz_output_h = tile->out.ye - tile->out.ys + 1;
-
-	/* YUV422 to YUV444 upsampler */
-	if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
-		if (tile->out.xe >= dest->compose.height - 1)
-			urs_clip_en = false;
-		else
-			urs_clip_en = true;
-	} else {
-		if (tile->out.xe >= dest->compose.width - 1)
-			urs_clip_en = false;
-		else
-			urs_clip_en = true;
-	}
 
 	if (mml_rsz_fw_comb)
 		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CON_2,

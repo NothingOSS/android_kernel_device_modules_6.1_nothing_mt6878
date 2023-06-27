@@ -212,6 +212,7 @@ struct wrot_data {
 	u32 sram_size;
 	u8 rb_swap;	/* version for rb channel swap behavior */
 	u8 read_mode;
+	bool yuv_pending;
 };
 
 static const struct wrot_data mt6983_wrot_data = {
@@ -234,6 +235,7 @@ static const struct wrot_data mt6989_wrot_data = {
 	.tile_width = 512,
 	.sram_size = 512 * 1024,
 	.read_mode = MML_PQ_SOF_MODE,
+	.yuv_pending = true,
 	/* .rb_swap = 2 */
 };
 
@@ -289,10 +291,12 @@ struct wrot_frame_data {
 
 	/* calculate in prepare and use as tile input */
 	enum mml_orientation rotate;
+	bool flip;
 	bool en_x_crop;
 	bool en_y_crop;
-	bool flip;
 	struct mml_rect out_crop;
+	bool pending_x;
+	bool pending_y;
 
 	/* following data calculate in init and use in tile command */
 	u8 mat_en;
@@ -409,135 +413,141 @@ static bool is_change_wx(u16 r, bool f)
 		r == MML_ROT_270);
 }
 
+static bool is_change_hy(u16 r, bool f)
+{
+	return ((r == MML_ROT_90 && !f) ||
+		r == MML_ROT_180 ||
+		(r == MML_ROT_270 && f));
+}
+
 static void wrot_config_left(struct mml_frame_dest *dest,
+			     const struct mml_rect *out_crop,
 			     struct wrot_frame_data *wrot_frm)
 {
 	wrot_frm->en_x_crop = true;
 	wrot_frm->out_crop.left = 0;
-	wrot_frm->out_crop.width = wrot_frm->out_w >> 1;
+	wrot_frm->out_crop.width = out_crop->width >> 1;
 
-	if (MML_FMT_AFBC_ARGB(dest->data.format) &&
-	    wrot_frm->out_crop.width & 31) {
-		wrot_frm->out_crop.width =
-			(wrot_frm->out_crop.width & ~31) + 32;
-		if (is_change_wx(wrot_frm->rotate, wrot_frm->flip))
-			wrot_frm->out_crop.width = wrot_frm->out_w -
-						   wrot_frm->out_crop.width;
-	} else if (MML_FMT_10BIT_PACKED(dest->data.format) &&
-		 wrot_frm->out_crop.width & 3) {
-		wrot_frm->out_crop.width = (wrot_frm->out_crop.width & ~3) + 4;
-		if (is_change_wx(wrot_frm->rotate, wrot_frm->flip))
-			wrot_frm->out_crop.width = wrot_frm->out_w -
-						   wrot_frm->out_crop.width;
-	} else if (wrot_frm->out_crop.width & 1) {
-		wrot_frm->out_crop.width++;
-	}
+	if (MML_FMT_AFBC_ARGB(dest->data.format))
+		wrot_frm->out_crop.width = round_up(wrot_frm->out_crop.width, 32);
+	else if (MML_FMT_10BIT_PACKED(dest->data.format))
+		wrot_frm->out_crop.width = round_up(wrot_frm->out_crop.width, 4);
+	else if (wrot_frm->out_crop.width & 1)
+		wrot_frm->out_crop.width++; /* round_up(2) */
+
+	if (is_change_wx(wrot_frm->rotate, wrot_frm->flip))
+		wrot_frm->out_crop.width = out_crop->width - wrot_frm->out_crop.width;
 }
 
 static void wrot_config_right(struct mml_frame_dest *dest,
+			      const struct mml_rect *out_crop,
 			      struct wrot_frame_data *wrot_frm)
 {
 	wrot_frm->en_x_crop = true;
-	wrot_frm->out_crop.left = wrot_frm->out_w >> 1;
+	wrot_frm->out_crop.left = out_crop->width >> 1;
 
-	if (MML_FMT_AFBC_ARGB(dest->data.format) &&
-	    wrot_frm->out_crop.left & 31) {
-		wrot_frm->out_crop.left =
-			(wrot_frm->out_crop.left & ~31) + 32;
-		if (is_change_wx(wrot_frm->rotate, wrot_frm->flip))
-			wrot_frm->out_crop.left = wrot_frm->out_w -
-						   wrot_frm->out_crop.left;
-	} else if (MML_FMT_10BIT_PACKED(dest->data.format) &&
-	    wrot_frm->out_crop.left & 3) {
-		wrot_frm->out_crop.left = (wrot_frm->out_crop.left & ~3) + 4;
-		if (is_change_wx(wrot_frm->rotate, wrot_frm->flip))
-			wrot_frm->out_crop.left = wrot_frm->out_w -
-						  wrot_frm->out_crop.left;
-	} else if (wrot_frm->out_crop.left & 1) {
-		wrot_frm->out_crop.left++;
-	}
+	if (MML_FMT_AFBC_ARGB(dest->data.format))
+		wrot_frm->out_crop.left = round_up(wrot_frm->out_crop.left, 32);
+	else if (MML_FMT_10BIT_PACKED(dest->data.format))
+		wrot_frm->out_crop.left = round_up(wrot_frm->out_crop.left, 4);
+	else if (wrot_frm->out_crop.left & 1)
+		wrot_frm->out_crop.left++; /* round_up(2) */
 
-	wrot_frm->out_crop.width = wrot_frm->out_w - wrot_frm->out_crop.left;
+	if (is_change_wx(wrot_frm->rotate, wrot_frm->flip))
+		wrot_frm->out_crop.left = out_crop->width - wrot_frm->out_crop.left;
+	wrot_frm->out_crop.width = out_crop->width - wrot_frm->out_crop.left;
 }
 
 static void wrot_config_top(struct mml_frame_data *src,
-			    struct mml_frame_dest *dest,
+			    const struct mml_rect *out_crop,
 			    struct wrot_frame_data *wrot_frm)
 {
 	wrot_frm->en_y_crop = true;
 	wrot_frm->out_crop.top = 0;
-	wrot_frm->out_crop.height = wrot_frm->out_h >> 1;
+	wrot_frm->out_crop.height = out_crop->height >> 1;
+
 	if (MML_FMT_IS_YUV(src->format) || MML_FMT_COMPRESS(src->format))
 		wrot_frm->out_crop.height = round_up(wrot_frm->out_crop.height, 16);
-	else if (wrot_frm->out_crop.height & 0x1)
-		wrot_frm->out_crop.height++;
-	wrot_frm->out_crop.width = dest->data.height;
+	else if (wrot_frm->out_crop.height & 1)
+		wrot_frm->out_crop.height++; /* round_up(2) */
+
+	if (wrot_frm->pending_y && is_change_hy(wrot_frm->rotate, wrot_frm->flip))
+		wrot_frm->out_crop.height = out_crop->height - wrot_frm->out_crop.height;
+	wrot_frm->out_crop.width = out_crop->width;
 }
 
 static void wrot_config_bottom(struct mml_frame_data *src,
-			       struct mml_frame_dest *dest,
+			       const struct mml_rect *out_crop,
 			       struct wrot_frame_data *wrot_frm)
 {
 	wrot_frm->en_y_crop = true;
-	wrot_frm->out_crop.top = wrot_frm->out_h >> 1;
+	wrot_frm->out_crop.top = out_crop->height >> 1;
+
 	if (MML_FMT_IS_YUV(src->format) || MML_FMT_COMPRESS(src->format))
 		wrot_frm->out_crop.top = round_up(wrot_frm->out_crop.top, 16);
-	else if (wrot_frm->out_crop.top & 0x1)
-		wrot_frm->out_crop.top++;
-	wrot_frm->out_crop.height = wrot_frm->out_h - wrot_frm->out_crop.top;
-	wrot_frm->out_crop.width = dest->data.height;
+	else if (wrot_frm->out_crop.top & 1)
+		wrot_frm->out_crop.top++; /* round_up(2) */
+
+	if (wrot_frm->pending_y && is_change_hy(wrot_frm->rotate, wrot_frm->flip))
+		wrot_frm->out_crop.top = out_crop->height - wrot_frm->out_crop.top;
+	wrot_frm->out_crop.height = out_crop->height - wrot_frm->out_crop.top;
+	wrot_frm->out_crop.width = out_crop->width;
 }
 
 static void wrot_config_pipe0(struct mml_frame_config *cfg,
 			      struct mml_frame_dest *dest,
+			      const struct mml_rect *out_crop,
 			      struct wrot_frame_data *wrot_frm)
 {
 	if (cfg->info.mode == MML_MODE_RACING) {
 		if ((wrot_frm->rotate == MML_ROT_90 && !wrot_frm->flip) ||
 		    (wrot_frm->rotate == MML_ROT_270 && wrot_frm->flip))
-			wrot_config_bottom(&cfg->info.src, dest, wrot_frm);
+			wrot_config_bottom(&cfg->info.src, out_crop, wrot_frm);
 		else if ((wrot_frm->rotate == MML_ROT_90 && wrot_frm->flip) ||
 			 (wrot_frm->rotate == MML_ROT_270 && !wrot_frm->flip))
-			wrot_config_top(&cfg->info.src, dest, wrot_frm);
+			wrot_config_top(&cfg->info.src, out_crop, wrot_frm);
 		else if ((wrot_frm->rotate == MML_ROT_0 && !wrot_frm->flip) ||
 			 (wrot_frm->rotate == MML_ROT_180 && wrot_frm->flip))
-			wrot_config_left(dest, wrot_frm);
+			wrot_config_left(dest, out_crop, wrot_frm);
 		else if ((wrot_frm->rotate == MML_ROT_0 && wrot_frm->flip) ||
 			 (wrot_frm->rotate == MML_ROT_180 && !wrot_frm->flip))
-			wrot_config_right(dest, wrot_frm);
+			wrot_config_right(dest, out_crop, wrot_frm);
 	} else {
-		wrot_config_left(dest, wrot_frm);
+		wrot_config_left(dest, out_crop, wrot_frm);
 	}
 }
 
 static void wrot_config_pipe1(struct mml_frame_config *cfg,
 			      struct mml_frame_dest *dest,
+			      const struct mml_rect *out_crop,
 			      struct wrot_frame_data *wrot_frm)
 {
 	if (cfg->info.mode == MML_MODE_RACING) {
 		if ((wrot_frm->rotate == MML_ROT_90 && !wrot_frm->flip) ||
 		    (wrot_frm->rotate == MML_ROT_270 && wrot_frm->flip))
-			wrot_config_top(&cfg->info.src, dest, wrot_frm);
+			wrot_config_top(&cfg->info.src, out_crop, wrot_frm);
 		else if ((wrot_frm->rotate == MML_ROT_90 && wrot_frm->flip) ||
 			 (wrot_frm->rotate == MML_ROT_270 && !wrot_frm->flip))
-			wrot_config_bottom(&cfg->info.src, dest, wrot_frm);
+			wrot_config_bottom(&cfg->info.src, out_crop, wrot_frm);
 		else if ((wrot_frm->rotate == MML_ROT_0 && !wrot_frm->flip) ||
 			 (wrot_frm->rotate == MML_ROT_180 && wrot_frm->flip))
-			wrot_config_right(dest, wrot_frm);
+			wrot_config_right(dest, out_crop, wrot_frm);
 		else if ((wrot_frm->rotate == MML_ROT_0 && wrot_frm->flip) ||
 			 (wrot_frm->rotate == MML_ROT_180 && !wrot_frm->flip))
-			wrot_config_left(dest, wrot_frm);
+			wrot_config_left(dest, out_crop, wrot_frm);
 	} else {
-		wrot_config_right(dest, wrot_frm);
+		wrot_config_right(dest, out_crop, wrot_frm);
 	}
 }
 
 static s32 wrot_prepare(struct mml_comp *comp, struct mml_task *task,
 			struct mml_comp_config *ccfg)
 {
+	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct wrot_frame_data *wrot_frm;
 	struct mml_frame_dest *dest;
+	struct mml_rect out_crop;
 	u8 i;
 
 	/* initialize component frame data for current frame config */
@@ -573,11 +583,27 @@ static s32 wrot_prepare(struct mml_comp *comp, struct mml_task *task,
 	for (i = 0; i < task->buf.dest[wrot_frm->out_idx].cnt; i++)
 		wrot_frm->plane_offset[i] = dest->data.plane_offset[i];
 
+	out_crop.left = 0;
+	out_crop.top = 0;
+	if (wrot->data->yuv_pending) {
+		out_crop.width = wrot_frm->compose.width;
+		out_crop.height = wrot_frm->compose.height;
+		if (MML_FMT_H_SUBSAMPLE(dest->data.format) &&
+		    !MML_FMT_COMPRESS(dest->data.format)) {
+			/* Enable YUV422/420 pending zero on compose != dest */
+			wrot_frm->pending_x = wrot_frm->out_w > wrot_frm->compose.width;
+			wrot_frm->pending_y = wrot_frm->out_h > wrot_frm->compose.height;
+		}
+	} else {
+		out_crop.width = wrot_frm->out_w;
+		out_crop.height = wrot_frm->out_h;
+	}
+
 	if (cfg->dual) {
 		if (ccfg->pipe == 0)
-			wrot_config_pipe0(cfg, dest, wrot_frm);
+			wrot_config_pipe0(cfg, dest, &out_crop, wrot_frm);
 		else
-			wrot_config_pipe1(cfg, dest, wrot_frm);
+			wrot_config_pipe1(cfg, dest, &out_crop, wrot_frm);
 
 		if (cfg->info.mode == MML_MODE_RACING) {
 			if (wrot_frm->rotate == MML_ROT_0)
@@ -600,10 +626,7 @@ static s32 wrot_prepare(struct mml_comp *comp, struct mml_task *task,
 	} else {
 		/* assign full frame */
 		wrot_frm->en_x_crop = true;
-		wrot_frm->out_crop.left = 0;
-		wrot_frm->out_crop.top = 0;
-		wrot_frm->out_crop.width = wrot_frm->out_w;
-		wrot_frm->out_crop.height = wrot_frm->out_h;
+		wrot_frm->out_crop = out_crop;
 	}
 
 	return 0;
@@ -719,10 +742,18 @@ static s32 wrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	data->wrot.enable_x_crop = wrot_frm->en_x_crop;
 	data->wrot.enable_y_crop = wrot_frm->en_y_crop;
 	data->wrot.crop = wrot_frm->out_crop;
-	func->full_size_x_in = wrot_frm->out_w;
-	func->full_size_y_in = wrot_frm->out_h;
-	func->full_size_x_out = wrot_frm->out_w;
-	func->full_size_y_out = wrot_frm->out_h;
+	data->wrot.yuv_pending = wrot->data->yuv_pending;
+	if (wrot->data->yuv_pending) {
+		func->full_size_x_in = wrot_frm->compose.width;
+		func->full_size_y_in = wrot_frm->compose.height;
+		func->full_size_x_out = wrot_frm->compose.width;
+		func->full_size_y_out = wrot_frm->compose.height;
+	} else {
+		func->full_size_x_in = wrot_frm->out_w;
+		func->full_size_y_in = wrot_frm->out_h;
+		func->full_size_x_out = wrot_frm->out_w;
+		func->full_size_y_out = wrot_frm->out_h;
+	}
 
 	data->wrot.max_width = wrot->data->tile_width;
 	/* WROT support crop capability */
@@ -1048,8 +1079,7 @@ static void wrot_config_addr(const struct mml_frame_dest *dest,
 }
 
 static void wrot_config_ready(struct mml_comp_wrot *wrot,
-	struct mml_frame_config *cfg,
-	struct wrot_frame_data *wrot_frm, u32 pipe, struct cmdq_pkt *pkt,
+	struct mml_frame_config *cfg, u32 pipe, struct cmdq_pkt *pkt,
 	bool enable)
 {
 	const struct mml_topology_path *path = cfg->path[pipe];
@@ -1209,7 +1239,7 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 				GENMASK(19, 16), GENMASK(19, 16));
 
 		/* config ready signal from disp0 or disp1 */
-		wrot_config_ready(wrot, cfg, wrot_frm, ccfg->pipe, pkt, true);
+		wrot_config_ready(wrot, cfg, ccfg->pipe, pkt, true);
 
 		/* inline rotate case always write to sram pa */
 		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_BASE_ADDR,
@@ -1253,7 +1283,7 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		wrot_config_addr(dest, dest_fmt, base_pa,
 				 wrot_frm, pkt, reuse, cache);
 		/* always turn off ready to wrot */
-		wrot_config_ready(wrot, cfg, wrot_frm, ccfg->pipe, pkt, false);
+		wrot_config_ready(wrot, cfg, ccfg->pipe, pkt, false);
 
 		/* and clear inlinerot enable since last frame maybe racing mode */
 		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_IN_LINE_ROT, 0, U32_MAX);
@@ -1290,6 +1320,8 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 			scan_10bit = 1;
 		pending_zero = 1;
 		bit_num = 1;
+	} else if (wrot_frm->pending_x || wrot_frm->pending_y) {
+		pending_zero = 1;
 	}
 	/* DMA_SUPPORT_AFBC */
 	if (MML_FMT_AFBC(dest_fmt)) {
@@ -1429,8 +1461,8 @@ static void wrot_tile_calc(const struct mml_task *task,
 			   struct wrot_ofst_addr *ofst)
 {
 	/* Following data retrieve from tile calc result */
-	u64 out_xs = tile->out.xs;
-	u64 out_ys = tile->out.ys;
+	u64 out_xs = wrot_frm->pending_x ? round_up(tile->out.xs, 2) : tile->out.xs;
+	u64 out_ys = wrot_frm->pending_y ? round_up(tile->out.ys, 2) : tile->out.ys;
 	u32 out_w = wrot_frm->out_w;
 	u32 out_h = wrot_frm->out_h;
 	u32 sram_block = 0;		/* buffer block number for sram */
@@ -1837,6 +1869,23 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		       (wrot_crop_ofst_y << 16) + (wrot_crop_ofst_x <<  0),
 		       U32_MAX);
 
+	/* round up target footprint size for internal buffer and output */
+	if (wrot->data->yuv_pending) {
+		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270) {
+			if (MML_FMT_H_SUBSAMPLE(dest->data.format)) {
+				wrot_tar_xsize = round_up(wrot_tar_xsize, 2);
+				wrot_tar_ysize = round_up(wrot_tar_ysize, 2);
+			} else if (MML_FMT_V_SUBSAMPLE(dest->data.format)) {
+				wrot_tar_xsize = round_up(wrot_tar_xsize, 2);
+			}
+		} else {
+			if (MML_FMT_H_SUBSAMPLE(dest->data.format))
+				wrot_tar_xsize = round_up(wrot_tar_xsize, 2);
+			if (MML_FMT_V_SUBSAMPLE(dest->data.format))
+				wrot_tar_ysize = round_up(wrot_tar_ysize, 2);
+		}
+	}
+
 	/* set max internal buffer for tile usage,
 	 * and check for internal buffer size
 	 */
@@ -2185,9 +2234,7 @@ static const struct mml_comp_config_ops wrot_cfg_ops = {
 
 u32 wrot_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
 {
-	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
-
-	return wrot_frm->datasize;
+	return wrot_frm_data(ccfg)->datasize;
 }
 
 u32 wrot_format_get(struct mml_task *task, struct mml_comp_config *ccfg)

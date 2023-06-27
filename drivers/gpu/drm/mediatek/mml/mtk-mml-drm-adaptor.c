@@ -828,7 +828,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 	 *	1000000000 / 120 / 3228 = 2581
 	 */
 	if (submit->info.mode == MML_MODE_RACING && !submit->info.act_time)
-		submit->info.act_time = 2581 * submit->info.dest[0].data.height;
+		submit->info.act_time = 2581 * submit->info.dest[0].compose.height;
 
 	/* always do frame info adjust for now
 	 * but this flow should call from hwc/disp in future version

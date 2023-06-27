@@ -104,6 +104,7 @@ struct tdshp_data {
 	u16 cpr[MML_PIPE_CNT];
 	const u16 *reg_table;
 	u8 rb_mode;
+	bool wrot_pending;
 };
 
 static const struct tdshp_data mt6893_tdshp_data = {
@@ -160,6 +161,7 @@ static const struct tdshp_data mt6989_tdshp_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = tdshp_reg_table_mt6985,
 	.rb_mode = RB_EOF_MODE,
+	.wrot_pending = true,
 };
 
 struct mml_comp_tdshp {
@@ -246,10 +248,11 @@ static s32 tdshp_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 {
 	const struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	const struct mml_frame_size *frame_out = &cfg->frame_out[ccfg->node->out_idx];
 	const struct mml_comp_tdshp *tdshp = comp_to_tdshp(comp);
 	const u8 rotate = cfg->out_rotate[ccfg->node->out_idx];
 
-	data->tdshp.relay_mode = dest->pq_config.en_sharp ? false : true;
+	data->tdshp.relay_mode = !dest->pq_config.en_sharp;
 	data->tdshp.max_width = tdshp->data->tile_width;
 	/* TDSHP support crop capability, if no HFG. */
 	func->type = TILE_TYPE_CROP_EN;
@@ -260,8 +263,12 @@ static s32 tdshp_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	func->enable_flag = dest->pq_config.en_sharp ||
 			    (cfg->info.mode == MML_MODE_DDP_ADDON ||
 			    cfg->info.mode == MML_MODE_DIRECT_LINK);
-
-	if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
+	if (tdshp->data->wrot_pending) {
+		func->full_size_x_in = frame_out->width;
+		func->full_size_y_in = frame_out->height;
+		func->full_size_x_out = frame_out->width;
+		func->full_size_y_out = frame_out->height;
+	} else if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
 		func->full_size_x_in = dest->data.height;
 		func->full_size_y_in = dest->data.width;
 		func->full_size_x_out = dest->data.height;
