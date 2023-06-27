@@ -330,8 +330,7 @@ void __gpu_smmu_config(enum gpufreq_power_state power)
 		/* Signal HW semaphore: SPM_SEMA_M3 0x2C0016A8 [3] = 1'b1 */
 		if ((DRV_Reg32(g_sleep + SPM_SEMA_M3_OFFSET) & BIT(3)) == BIT(3)) {
 			gpu_smmu_pr_debug("Release SPM_SEMA_M3 if CR0.SMMUEN=1\n");
-			DRV_WriteReg32(g_sleep + SPM_SEMA_M3_OFFSET,
-				DRV_Reg32(g_sleep + SPM_SEMA_M3_OFFSET) | BIT(3));
+			DRV_WriteReg32(g_sleep + SPM_SEMA_M3_OFFSET, BIT(3));
 			__smmu_footprint_power_step(0x0E);
 		} else {
 			gpu_smmu_pr_debug("Skip release SPM_SEMA_M3 at first boot\n"); //TODO
@@ -353,8 +352,7 @@ void __gpu_smmu_config(enum gpufreq_power_state power)
 		i = 0;
 #if ENABLE_MFG_SMMU_SPM_SEMA
 		do {
-			DRV_WriteReg32(g_sleep + SPM_SEMA_M3_OFFSET,
-				DRV_Reg32(g_sleep + SPM_SEMA_M3_OFFSET) | BIT(3));
+			DRV_WriteReg32(g_sleep + SPM_SEMA_M3_OFFSET, BIT(3));
 			udelay(10);
 			if (++i > 5000) {
 				/* 50ms timeout */
