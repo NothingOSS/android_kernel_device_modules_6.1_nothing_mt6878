@@ -700,7 +700,7 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
 		scpd->rtff_flag = false;
 	}
 
-	if (!MTK_SCPD_CAPS(scpd, MTK_SCPD_BYPASS_CLK) || scpsys_init_flag) {
+	if (!MTK_SCPD_CAPS(scpd, MTK_SCPD_BYPASS_CLK)) {
 		ret = scpsys_clk_enable(scpd->subsys_clk, MAX_SUBSYS_CLKS);
 		if (ret < 0)
 			goto err_pwr_ack;
@@ -724,7 +724,8 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
 	if (ret < 0)
 		goto err_sram;
 
-	scpsys_clk_disable(scpd->subsys_lp_clk, MAX_SUBSYS_CLKS);
+	if (!scpsys_init_flag)
+		scpsys_clk_disable(scpd->subsys_lp_clk, MAX_SUBSYS_CLKS);
 
 	scpsys_clk_disable(scpd->lp_clk, MAX_CLKS);
 
