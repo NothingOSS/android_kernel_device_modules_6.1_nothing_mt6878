@@ -56,7 +56,7 @@ static void clear_violation(struct smpu *mpu)
 	mpu_base = mpu->mpu_base;
 
 	set_regs(mpu->clear_reg, mpu->clear_cnt, mpu_base);
-	pr_info("smpu clear vio done\n");
+//	pr_info("smpu clear vio done\n");
 }
 static void clear_kp_violation(unsigned int emi_id)
 {
@@ -227,7 +227,7 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 	else
 		goto clear_violation;
 
-	pr_info("%s:vio_type = %d\n", __func__, vio_type);
+//	pr_info("%s:vio_type = %d\n", __func__, vio_type);
 	//record dump reg
 	for (i = 0; i < mpu->dump_cnt; i++)
 		dump_reg[i].value = readl(mpu_base + dump_reg[i].offset);

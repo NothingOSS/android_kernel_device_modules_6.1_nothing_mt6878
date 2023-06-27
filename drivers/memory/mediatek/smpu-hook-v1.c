@@ -129,7 +129,7 @@ static irqreturn_t smpu_isr_vio_hook(struct smpu_reg_info_t *dump, unsigned int 
 	}
 
 	}
-	pr_info("bypass is %d", bypass);
+//	pr_info("bypass is %d", bypass);
 	return (bypass) ? IRQ_HANDLED : IRQ_NONE;
 }
 
