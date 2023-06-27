@@ -23,7 +23,7 @@
 #define RG_OTP_DOUT_SW		0xE
 #define RG_OTP_RD_BUSY		0xF
 /* mask of OTP_PA */
-#define RG_OTP_PA_MASK		0x4FF
+#define RG_OTP_PA_MASK		0x7FF
 /* Mask definition for EFUSE control engine clock register */
 #define RG_EFUSE_CK_PDN_HWEN_MASK	BIT(0)
 #define RG_EFUSE_CK_PDN_MASK		BIT(2)
