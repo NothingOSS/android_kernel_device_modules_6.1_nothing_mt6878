@@ -7,8 +7,34 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
+#include <linux/panic_notifier.h>
+#include <linux/kdebug.h>
 
 #define MTK_SIP_DVFSRC_START		0x01
+#define VCOREFS_SMC_CMD_PAUSE_ENABLE	0x21
+
+static int panic_pause_dvfsrc(struct notifier_block *this, unsigned long event, void *ptr)
+{
+	static atomic_t first_exception = ATOMIC_INIT(0);
+	struct arm_smccc_res ares;
+
+	if (atomic_cmpxchg(&first_exception, 0, 1) != 0)
+		return NOTIFY_DONE;
+	arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, VCOREFS_SMC_CMD_PAUSE_ENABLE, 1, 0, 0,
+		0, 0, 0, &ares);
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block panic_blk = {
+	.notifier_call = panic_pause_dvfsrc,
+	.priority = INT_MAX,
+};
+
+static struct notifier_block die_blk = {
+	.notifier_call = panic_pause_dvfsrc,
+	.priority = INT_MAX,
+};
 
 /* We let dvfsrc working on parent main driver and setup
  * framework (interconnect, regulator, ..) for user register
@@ -24,6 +50,8 @@ static int mtk_dvfsrc_start_probe(struct platform_device *pdev)
 
 	arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_DVFSRC_START, 0, 0, 0,
 		0, 0, 0, &ares);
+	atomic_notifier_chain_register(&panic_notifier_list, &panic_blk);
+	register_die_notifier(&die_blk);
 
 	return 0;
 }
