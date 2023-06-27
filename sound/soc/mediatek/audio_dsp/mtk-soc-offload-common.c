@@ -59,7 +59,6 @@ static struct afe_offload_service_t afe_offload_service = {
 	.offload_volume  = {0x10000, 0x10000},
 	.scene           = TASK_SCENE_PLAYBACK_MP3,
 	.vp_sync_support = false,
-	.timer_init      = false,
 };
 
 static struct afe_offload_param_t afe_offload_block = {
@@ -202,19 +201,6 @@ static int offloadservice_gettargetrate(struct snd_kcontrol *kcontrol,
 {
 	ucontrol->value.integer.value[0] = afe_offload_codec_info.target_samplerate;
 	return 0;
-}
-
-/* timer callback is use to replace vp sync if vp is not send */
-static void offload_time_cb(struct timer_list *t)
-{
-	unsigned long flags;
-	spin_lock_irqsave(&afe_offload_service.timer_spinlock, flags);
-	if (afe_offload_service.timer_init) {
-		notify_vb_audio_control(NOTIFIER_VP_AUDIO_TIMER, NULL);
-		mod_timer(&afe_offload_service.offload_timer,
-			  jiffies + msecs_to_jiffies(OFFLOAD_VPSYNC_TIMEOUT));
-	}
-	spin_unlock_irqrestore(&afe_offload_service.timer_spinlock, flags);
 }
 
 static int offloadservice_sethasvideo(struct snd_kcontrol *kcontrol,
@@ -369,7 +355,6 @@ static int mtk_compr_offload_open(struct snd_soc_component *component,
 				  struct snd_compr_stream *stream)
 {
 	int ret = 0;
-	unsigned long flags;
 #ifdef use_wake_lock
 	mtk_compr_offload_int_wakelock(true);
 #endif
@@ -424,21 +409,6 @@ static int mtk_compr_offload_open(struct snd_soc_component *component,
 
 	afe_offload_service.vp_sync_support = adsp_task_get_latency_support();
 
-	/*
-	 * offload with vidoe will get vp sync event from vp,
-	 * this timer is using if video do not send sync event , need to sync event to adsp
-	 */
-	if (afe_offload_service.vp_sync_support && afe_offload_codec_info.has_video) {
-		spin_lock_irqsave(&afe_offload_service.timer_spinlock, flags);
-		if (afe_offload_service.timer_init == false) {
-			afe_offload_service.offload_timer.expires =
-				jiffies + msecs_to_jiffies(OFFLOAD_VPSYNC_TIMEOUT);
-			timer_setup(&afe_offload_service.offload_timer, offload_time_cb, 0);
-			add_timer(&afe_offload_service.offload_timer);
-			afe_offload_service.timer_init = true;
-		}
-		spin_unlock_irqrestore(&afe_offload_service.timer_spinlock, flags);
-	}
 	return 0;
 }
 
@@ -458,16 +428,7 @@ static int mtk_afe_dloffload_probe(struct snd_soc_component *component)
 static int mtk_compr_offload_free(struct snd_soc_component *component,
 				  struct snd_compr_stream *stream)
 {
-	unsigned long flags;
 	offloadservice_setwriteblocked(false);
-	if (afe_offload_service.vp_sync_support && afe_offload_codec_info.has_video) {
-		/* del_timer_sync will hold timer spinlock, cannot lock */
-		spin_lock_irqsave(&afe_offload_service.timer_spinlock, flags);
-		afe_offload_codec_info.has_video = false;
-		afe_offload_service.timer_init = false;
-		spin_unlock_irqrestore(&afe_offload_service.timer_spinlock, flags);
-		del_timer_sync(&afe_offload_service.offload_timer);
-	}
 
 	if (dsp)
 		mtk_adsp_genpool_free_sharemem_ring(&dsp->dsp_mem[ID], ID);
@@ -1134,25 +1095,17 @@ static const struct snd_soc_component_driver mtk_dloffload_soc_platform = {
 	.probe      = mtk_afe_dloffload_probe,
 };
 
-// long running function to be executed inside a thread, this will run for 30 secs.
 int offload_vp_function(void *data)
 {
-	unsigned long flags;
 	int ret = 0;
 
 	while (!kthread_should_stop()) {
 		ret = wait_event_interruptible(afe_offload_service.offload_wq,
 					       afe_offload_service.vp_sync_event);
-		if (ret == 0) {
-			spin_lock_irqsave(&afe_offload_service.timer_spinlock, flags);
+		afe_offload_service.vp_sync_event = false;
+		if (ret == 0 )
 			notify_vb_audio_control(NOTIFIER_VP_AUDIO_TIMER, NULL);
-			afe_offload_service.vp_sync_event = false;
-			if (afe_offload_service.timer_init) {
-				mod_timer(&afe_offload_service.offload_timer,
-				jiffies + msecs_to_jiffies(OFFLOAD_VPSYNC_TIMEOUT));
-			}
-			spin_unlock_irqrestore(&afe_offload_service.timer_spinlock, flags);
-		} else
+		else
 			pr_info("%s ret = %d\n", __func__, ret);
 	}
 	return 0;
@@ -1186,7 +1139,6 @@ int offload_vp_sync(void)
 static int mtk_offload_init(void)
 {
 	mutex_init(&afe_offload_service.ts_lock);
-	spin_lock_init(&afe_offload_service.timer_spinlock);
 
 	init_waitqueue_head(&afe_offload_service.offload_wq);
 	offload_init_thread(afe_offload_service.offload_thread_task);
