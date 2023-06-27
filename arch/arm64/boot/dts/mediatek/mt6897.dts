@@ -4824,6 +4824,7 @@
 					<&ccu_main_clk CLK_CCU_LARB30_CON>,
 					<&ccu_main_clk CLK_CCU_AHB_CON>,
 					<&ccu_main_clk CLK_CCUSYS_CCU0_CON>,
+					<&ccu_main_clk CLK_CCUSYS_CCU1_CON>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM_CON_0>,
 					<&cam_vcore_clk CLK_CAM_VCORE_MM0_SUBCOMMON_DCM_DIS>;
 			clock-names = "TOP_CAM",
@@ -4834,6 +4835,7 @@
 					"CCU_LARB",
 					"CCU_AHB",
 					"CCUSYS_CCU0",
+					"CCUSYS_CCU1",
 					"CAM_CG",
 					"CAM_VCORE_CG";
 			mediatek,ccu_rproc1 = <&ccu_rproc1>;
@@ -4856,15 +4858,26 @@
 			ccu_dramSize = <0x00100000>;
 			ccu_dramAddr = <0x80000000>;
 			ccu_emiRegion = <20>;
+			ccu-cores = <2>;
 		};
 
-		ccu_rproc1: ccu_rproc1 {
+		ccu_rproc1: ccu_rproc1@0x1b180000 {
 			#address-cells = <2>;
 			#size-cells = <2>;
 			compatible = "mediatek,ccu_rproc1";
+			reg = <0 0x1b180000 0 0x9000>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&mdp_iommu M4U_L30_P3_CCUO_1>,
 				<&mdp_iommu M4U_L30_P2_CCUI_1>;
+			interconnects =
+			<&mmqos MASTER_LARB_PORT(M4U_L30_P3_CCUO_1)
+				&mmqos SLAVE_COMMON(1)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L30_P2_CCUI_1)
+				&mmqos SLAVE_COMMON(1)>;
+			interconnect-names =
+				"ccu_o",
+				"ccu_i";
+			ccu-cores = <2>;
 		};
 
 		mtk_apu_mem_data: mtk-apu-mem-data {
