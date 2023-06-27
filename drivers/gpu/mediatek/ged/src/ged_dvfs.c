@@ -810,13 +810,13 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 			if (eCommitType != GED_DVFS_EB_DESIRE_COMMIT) {
 				if (policy_state != POLICY_STATE_INIT) {
 					ged_set_prev_policy_state(policy_state);
-					trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
+					trace_GPU_DVFS__Policy__Common(eCommitType, policy_state, g_CommitType);
 				}
 			}
 		} else {
 			if (policy_state != POLICY_STATE_INIT) {
 				ged_set_prev_policy_state(policy_state);
-				trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
+				trace_GPU_DVFS__Policy__Common(eCommitType, policy_state, g_CommitType);
 			}
 		}
 	}
@@ -939,13 +939,13 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 		if (eCommitType != GED_DVFS_EB_DESIRE_COMMIT) {
 			if (policy_state != POLICY_STATE_INIT) {
 				ged_set_prev_policy_state(policy_state);
-				trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
+				trace_GPU_DVFS__Policy__Common(eCommitType, policy_state, g_CommitType);
 			}
 		}
 	} else {
 		if (policy_state != POLICY_STATE_INIT) {
 			ged_set_prev_policy_state(policy_state);
-			trace_GPU_DVFS__Policy__Common(eCommitType, policy_state);
+			trace_GPU_DVFS__Policy__Common(eCommitType, policy_state, g_CommitType);
 		}
 	}
 
@@ -2187,8 +2187,11 @@ static bool ged_dvfs_policy(
 
 		// overwrite FB fallback to LB if there're no pending main head frames
 		if (policy_state == POLICY_STATE_FB_FALLBACK &&
-				ged_kpi_get_main_bq_uncomplete_count() <= 0)
+				ged_kpi_get_main_bq_uncomplete_count() <= 0) {
 			ged_set_policy_state(POLICY_STATE_LB);
+			g_CommitType = MTK_GPU_DVFS_TYPE_IDLE;
+		} else
+			g_CommitType = MTK_GPU_DVFS_TYPE_FALLBACK;
 
 		trace_GPU_DVFS__Policy__Loading_based__Margin(
 			g_tb_dvfs_margin_value*10, gx_tb_dvfs_margin*10,
@@ -2288,10 +2291,9 @@ static bool ged_dvfs_policy(
 			if (fb_tmp_timer > timeout_val) {
 				ged_set_policy_state(POLICY_STATE_FB);
 				ged_set_backup_timer_timeout(fb_tmp_timer);
-				g_CommitType = MTK_GPU_DVFS_TYPE_VSYNCBASED;
+				g_CommitType = MTK_GPU_DVFS_TYPE_SKIPFALLBACK;
 			}
-		} else
-			g_CommitType = MTK_GPU_DVFS_TYPE_FALLBACK;
+		}
 	}
 
 	if (i32NewFreqID > minfreq_idx)
@@ -2825,7 +2827,8 @@ void ged_dvfs_run(
 			if (freq_change_flag || policy_state != prev_policy_state) {
 				// correct eCommitType in case fallback is triggered in LB
 				if (policy_state == POLICY_STATE_LB ||
-						policy_state == POLICY_STATE_FORCE_LB)
+						policy_state == POLICY_STATE_FORCE_LB ||
+						g_CommitType == MTK_GPU_DVFS_TYPE_SKIPFALLBACK)
 					eCommitType = GED_DVFS_LOADING_BASE_COMMIT;
 				else if (policy_state == POLICY_STATE_FB)
 					eCommitType = GED_DVFS_FRAME_BASE_COMMIT;

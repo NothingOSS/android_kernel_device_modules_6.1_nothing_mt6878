@@ -82,22 +82,24 @@ TRACE_EVENT(GPU_DVFS__Loading,
 
 TRACE_EVENT(GPU_DVFS__Policy__Common,
 
-	TP_PROTO(unsigned int commit_type, unsigned int policy_state),
+	TP_PROTO(unsigned int commit_type, unsigned int policy_state, unsigned int commit_reason),
 
-	TP_ARGS(commit_type, policy_state),
+	TP_ARGS(commit_type, policy_state, commit_reason),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, commit_type)
 		__field(unsigned int, policy_state)
+		__field(unsigned int, commit_reason)
 	),
 
 	TP_fast_assign(
 		__entry->commit_type = commit_type;
 		__entry->policy_state = policy_state;
+		__entry->commit_reason = commit_reason;
 	),
 
-	TP_printk("commit_type=%u, policy_state=%u",
-		__entry->commit_type, __entry->policy_state)
+	TP_printk("commit_type=%u, policy_state=%u, commit_reason=%u",
+		__entry->commit_type, __entry->policy_state, __entry->commit_reason)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__Common__Commit_Reason,
