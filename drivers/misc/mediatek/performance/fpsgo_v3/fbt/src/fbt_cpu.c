@@ -1391,10 +1391,6 @@ int fbt_get_dep_list(struct render_info *thr)
 
 	count = fpsgo_fbt2xgf_get_dep_list(pid, MAX_DEP_NUM,
 		dep_new, thr->buffer_id);
-	if (count <= 0) {
-		ret = 3;
-		goto EXIT;
-	}
 
 	sort(dep_new, count, sizeof(struct fpsgo_loading), __cmp1, NULL);
 

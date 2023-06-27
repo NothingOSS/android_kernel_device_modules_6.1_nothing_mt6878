@@ -853,7 +853,7 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 	mutex_lock(&xgf_main_lock);
 
 	render_iter = xgf_get_render_if(pid, bufID, 0, 0, 0);
-	if (!render_iter) {
+	if (!render_iter || !render_iter->raw_t_cpu) {
 		mutex_unlock(&xgf_main_lock);
 		return index;
 	}
