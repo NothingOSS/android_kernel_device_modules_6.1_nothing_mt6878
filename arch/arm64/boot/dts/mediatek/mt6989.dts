@@ -4959,6 +4959,7 @@
 			interrupts = <GIC_SPI 722 IRQ_TYPE_EDGE_RISING 0>;
 			interrupt-names = "combined";
 			#iommu-cells = <1>;
+			tcu-prefetch = <2>;
 
 			iommu-groups {
 				apu_iommu_group_0: apu-iommu-group-code {
@@ -5015,6 +5016,7 @@
 			interrupts = <GIC_SPI 536 IRQ_TYPE_EDGE_RISING 0>;
 			interrupt-names = "combined";
 			#iommu-cells = <1>;
+			tcu-prefetch = <2>;
 
 			iommu-groups {
 				mm_iommu_group_0: mm-iommu-group-common {
