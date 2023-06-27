@@ -32,8 +32,9 @@
 #define CAM_CAL_ERR_NO_Stereo_Data  0x00100000
 #define CAM_CAL_ERR_DUMP_FAILED     0x00200000
 #define CAM_CAL_ERR_NO_LENS_ID      0x00400000
+#define CAM_CAL_ERR_NO_SHADING_16_9 0x00800000
 
-#define CamCalReturnErr_MAX 7
+#define CamCalReturnErr_MAX 8
 
 /*****************************************************************************
  * Enums
@@ -51,6 +52,7 @@ enum ENUM_CAMERA_CAM_CAL_TYPE_ENUM {
 	CAMERA_CAM_CAL_DATA_STEREO_DATA,
 	CAMERA_CAM_CAL_DATA_DUMP,
 	CAMERA_CAM_CAL_DATA_LENS_ID,
+	CAMERA_CAM_CAL_DATA_SHADING_TABLE_16_9,
 	CAMERA_CAM_CAL_DATA_LIST
 };
 
@@ -250,7 +252,8 @@ static const unsigned int CamCalReturnErr[CAMERA_CAM_CAL_DATA_LIST] = {
 	CAM_CAL_ERR_NO_PDAF,
 	CAM_CAL_ERR_NO_Stereo_Data,
 	CAM_CAL_ERR_DUMP_FAILED,
-	CAM_CAL_ERR_NO_LENS_ID
+	CAM_CAL_ERR_NO_LENS_ID,
+	CAM_CAL_ERR_NO_SHADING_16_9
 };
 
 static const char CamCalErrString[CAMERA_CAM_CAL_DATA_LIST][24] = {
@@ -261,7 +264,8 @@ static const char CamCalErrString[CAMERA_CAM_CAL_DATA_LIST][24] = {
 	{"ERR_NO_PDAF"},
 	{"ERR_NO_Stereo_Data"},
 	{"ERR_Dump_Failed"},
-	{"ERR_NO_LENS_ID"}
+	{"ERR_NO_LENS_ID"},
+	{"ERR_NO_SHADING_16_9"}
 };
 
 #endif /* __CAM_CAL_FORMAT_H */
