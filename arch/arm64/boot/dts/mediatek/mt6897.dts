@@ -14157,8 +14157,8 @@
 
 	low-battery-throttling {
 		compatible = "mediatek,low_battery_throttling";
-		thd-volts-l = <3400 3100 2900>;
-		thd-volts-h = <3500 3400 3100>;
+		thd-volts-l = <3550 3100 2900>;
+		thd-volts-h = <3600 3550 3100>;
 		lvsys-thd-enable = <1>;
 		vbat-thd-enable = <1>;
 	};
