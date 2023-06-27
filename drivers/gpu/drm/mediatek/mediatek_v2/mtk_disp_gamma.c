@@ -322,6 +322,9 @@ static int mtk_gamma_write_gain_reg(struct mtk_ddp_comp *comp,
 
 	if (lock)
 		mutex_lock(&gamma->primary_data->global_lock);
+	if(comp == NULL || handle == NULL)
+		goto unlock;
+
 	if (sb_gain_range != gamma_gain_range)
 		ratio = mtk_gamma_gain_range_ratio(sb_gain_range, gamma_gain_range);
 	for (i = 0; i < DISP_GAMMA_GAIN_SIZE; i++) {

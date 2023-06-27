@@ -732,7 +732,7 @@ static bool mtk_atomic_need_force_doze_switch(struct drm_crtc *crtc)
 	    drm_atomic_crtc_needs_modeset(crtc->state))
 		return false;
 
-	DDPINFO("%s crtc%d, active:%d, doze_active:%d\n", __func__,
+	DDPINFO("%s crtc%d, active:%d, doze_active:%llu\n", __func__,
 		drm_crtc_index(crtc), crtc->state->active,
 		mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]);
 	return true;
@@ -861,7 +861,7 @@ static void mtk_atomic_aod_scp_ipi(struct drm_crtc *crtc, bool prepare)
 
 	mtk_state = to_mtk_crtc_state(crtc->state);
 
-	DDPDBG("%s: update AOD-SCP active=%d, doze state=%d, prepare=%d, idle=%d\n", __func__,
+	DDPDBG("%s: update AOD-SCP active=%d, doze state=%lld, prepare=%d, idle=%d\n", __func__,
 			crtc->state->active,
 			mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE],
 			prepare,
@@ -883,7 +883,7 @@ static void mtk_atomic_doze_update_dsi_state(struct drm_device *dev,
 	struct mtk_drm_private *priv = dev->dev_private;
 
 	mtk_state = to_mtk_crtc_state(crtc->state);
-	DDPINFO("%s doze_changed:%d, needs_modeset:%d, doze_active:%d\n",
+	DDPINFO("%s doze_changed:%d, needs_modeset:%d, doze_active:%llu\n",
 		__func__, mtk_state->doze_changed,
 		drm_atomic_crtc_needs_modeset(crtc->state),
 		mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]);
@@ -1683,6 +1683,28 @@ static int mtk_atomic_check(struct drm_device *dev,
 			new_state->lye_state.rpo_lye = 0;
 			new_state->lye_state.mml_ir_lye = 0;
 			new_state->lye_state.mml_dl_lye = 0;
+		}
+
+		if (new_state->prop_val[CRTC_PROP_BL_SYNC_GAMMA_GAIN]) {
+			unsigned int gamma_gain[3] = {0};
+
+			ret = copy_from_user(gamma_gain,
+			(unsigned int __user *)(new_state->prop_val[CRTC_PROP_BL_SYNC_GAMMA_GAIN]),
+				sizeof(unsigned int) * 3);
+			if (ret)
+				DDPINFO("copy GAMMA_GAIN from user error, ret = %d, addr[%llx]\n",
+					ret, new_state->prop_val[CRTC_PROP_BL_SYNC_GAMMA_GAIN]);
+
+			DDPINFO("BL_SYNC_GAMMA_GAIN[%d][%d][%d]\n",
+				gamma_gain[0], gamma_gain[1], gamma_gain[2]);
+			new_state->bl_sync_gamma_gain[0] = gamma_gain[0];
+			new_state->bl_sync_gamma_gain[1] = gamma_gain[1];
+			new_state->bl_sync_gamma_gain[2] = gamma_gain[2];
+		} else {
+			DDPINFO("BL_SYNC_GAMMA_GAIN, no update\n");
+			new_state->bl_sync_gamma_gain[0] = old_state->bl_sync_gamma_gain[0];
+			new_state->bl_sync_gamma_gain[1] = old_state->bl_sync_gamma_gain[1];
+			new_state->bl_sync_gamma_gain[2] = old_state->bl_sync_gamma_gain[2];
 		}
 
 		if (old_state->prop_val[CRTC_PROP_DOZE_ACTIVE] ==

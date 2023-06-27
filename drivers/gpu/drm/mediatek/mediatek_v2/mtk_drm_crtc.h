@@ -425,6 +425,7 @@ enum MTK_CRTC_PROP {
 	CRTC_PROP_CAPS_BLOB_ID,
 	CRTC_PROP_AOSP_CCORR_LINEAR,
 	CRTC_PROP_PARTIAL_UPDATE_ENABLE,
+	CRTC_PROP_BL_SYNC_GAMMA_GAIN,
 	CRTC_PROP_MAX,
 };
 
@@ -1029,9 +1030,10 @@ struct mtk_crtc_state {
 	atomic_t plane_enabled_num;
 	bool pending_usage_update;
 	unsigned int pending_usage_list;
+	unsigned int bl_sync_gamma_gain[3];
 
 	/* property */
-	unsigned int prop_val[CRTC_PROP_MAX];
+	uint64_t prop_val[CRTC_PROP_MAX];
 	bool doze_changed;
 };
 

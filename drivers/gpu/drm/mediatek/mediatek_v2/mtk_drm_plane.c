@@ -348,7 +348,7 @@ static int mtk_plane_atomic_check(struct drm_plane *plane,
 				mtk_drm_crtc_avail_disp_mode(new_plane_state->crtc,
 					mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
 
-			DDPDBG("%s++ from %u to %u\n", __func__,
+			DDPDBG("%s++ from %llu to %llu\n", __func__,
 					old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
 					mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
 

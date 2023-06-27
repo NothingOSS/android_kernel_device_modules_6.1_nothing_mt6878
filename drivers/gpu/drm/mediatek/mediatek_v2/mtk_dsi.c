@@ -393,8 +393,8 @@ enum DSI_MODE_CON {
 	MODE_CON_BURST_VDO,
 };
 static struct mtk_drm_property mtk_connector_property[CONNECTOR_PROP_MAX] = {
-	{DRM_MODE_PROP_IMMUTABLE, "CAPS_BLOB_ID", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "CSC_BL", 0, UINT_MAX, 0},
+	{DRM_MODE_PROP_IMMUTABLE, "CAPS_BLOB_ID", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "CSC_BL", 0, ULONG_MAX, 0},
 };
 
 static bool set_partial_update;
@@ -2355,7 +2355,7 @@ void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
 {
 	struct mtk_connector_state *mtk_conn_state = NULL;
 	unsigned int index;
-	static unsigned int csc_bl[MAX_CONNECTOR] = {0};
+	static unsigned long long csc_bl[MAX_CONNECTOR] = {0};
 
 	if (dsi == NULL) {
 		DDPINFO("%s, dsi is null\n", __func__);
@@ -2378,19 +2378,18 @@ void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
 			return;
 
 		csc_bl[index] = mtk_conn_state->prop_val[index][CONNECTOR_PROP_CSC_BL];
-		DDPINFO("%s,csc_bl i:%d, bl_lv:%d\n", __func__,
-			index, csc_bl[index]);
+		DDPINFO("%s, csc_bl[%d] = %llu\n", __func__, index, csc_bl[index]);
 		mtk_drm_setbacklight(&mtk_crtc->base, csc_bl[index], 0, (0X1<<SET_BACKLIGHT_LEVEL), 0);
 
 		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_AAL, 0);
-		//if (comp)
-		//	disp_aal_notify_backlight_changed(comp, csc_bl[index], -1, 0);
+		if (comp)
+			disp_aal_notify_backlight_changed(comp, csc_bl[index], -1, 0);
 
-		//comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_GAMMA, 0);
-		//if (comp)
-		//	mtk_gamma_set_silky_brightness_gain(comp,
-		//		mtk_crtc_state->cmdq_handle,
-		//		mtk_crtc_state->bl_sync_gamma_gain);
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_GAMMA, 0);
+		if (comp)
+			mtk_gamma_set_silky_brightness_gain(comp,
+				mtk_crtc_state->cmdq_handle,
+				mtk_crtc_state->bl_sync_gamma_gain);
 	}
 }
 
@@ -3732,16 +3731,14 @@ static int mtk_dsi_connector_set_property(struct drm_connector *connector,
 
 	for (i = 0; i < CONNECTOR_PROP_MAX; i++) {
 		if (private->connector_property[index][i] == property) {
-			mtk_conn_state->prop_val[index][i] = (unsigned int)val;
-			DDPINFO("connector:%d set property:%s %d\n",
-					index, property->name,
-					(unsigned int)val);
+			mtk_conn_state->prop_val[index][i] = val;
+			DDPINFO("connector:%d set property:%s %llu\n",
+					index, property->name, val);
 			return ret;
 		}
 	}
 
-	DDPPR_ERR("fail to set property:%s %d\n", property->name,
-		  (unsigned int)val);
+	DDPPR_ERR("fail to set property:%s %llu\n", property->name, val);
 	return -EINVAL;
 }
 

@@ -77,33 +77,34 @@
 #include <soc/mediatek/mmqos.h>
 
 static struct mtk_drm_property mtk_crtc_property[CRTC_PROP_MAX] = {
-	{DRM_MODE_PROP_ATOMIC, "OVERLAP_LAYER_NUM", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "LAYERING_IDX", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "PRESENT_FENCE", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "SF_PRESENT_FENCE", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "DOZE_ACTIVE", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "OUTPUT_ENABLE", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "OUTPUT_BUFF_IDX", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "OUTPUT_X", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "OUTPUT_Y", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "OUTPUT_WIDTH", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "OUTPUT_HEIGHT", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "OUTPUT_DST_WIDTH", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "OUTPUT_DST_HEIGHT", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "OUTPUT_FB_ID", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "INTF_BUFF_IDX", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "DISP_MODE_IDX", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "HBM_ENABLE", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "COLOR_TRANSFORM", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "USER_SCEN", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "HDR_ENABLE", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "MSYNC2_0_ENABLE", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "OVL_DSI_SEQ", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "OUTPUT_SCENARIO", 0, UINT_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "OVERLAP_LAYER_NUM", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "LAYERING_IDX", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "PRESENT_FENCE", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "SF_PRESENT_FENCE", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "DOZE_ACTIVE", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "OUTPUT_ENABLE", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "OUTPUT_BUFF_IDX", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "OUTPUT_X", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "OUTPUT_Y", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "OUTPUT_WIDTH", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "OUTPUT_HEIGHT", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "OUTPUT_DST_WIDTH", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "OUTPUT_DST_HEIGHT", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "OUTPUT_FB_ID", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "INTF_BUFF_IDX", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "DISP_MODE_IDX", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "HBM_ENABLE", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "COLOR_TRANSFORM", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "USER_SCEN", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "HDR_ENABLE", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "MSYNC2_0_ENABLE", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "OVL_DSI_SEQ", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "OUTPUT_SCENARIO", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC | DRM_MODE_PROP_IMMUTABLE,
-						"CAPS_BLOB_ID", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "AOSP_CCORR_LINEAR", 0, UINT_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "PARTIAL_UPDATE_ENABLE", 0, UINT_MAX, 0},
+						"CAPS_BLOB_ID", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "AOSP_CCORR_LINEAR", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "PARTIAL_UPDATE_ENABLE", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "BL_SYNC_GAMMA_GAIN", 0, ULONG_MAX, 0},
 };
 
 static struct cmdq_pkt *sb_cmdq_handle;
@@ -1287,16 +1288,15 @@ static int mtk_drm_crtc_set_property(struct drm_crtc *crtc,
 
 	for (i = 0; i < CRTC_PROP_MAX; i++) {
 		if (private->crtc_property[index][i] == property) {
-			crtc_state->prop_val[i] = (unsigned int)val;
-			DDPINFO("crtc:%d set property:%s %d\n",
+			crtc_state->prop_val[i] = val;
+			DDPINFO("crtc:%d set property:%s %llu\n",
 					index, property->name,
-					(unsigned int)val);
+					val);
 			return ret;
 		}
 	}
 
-	DDPPR_ERR("fail to set property:%s %d\n", property->name,
-		  (unsigned int)val);
+	DDPPR_ERR("fail to set property:%s %llu\n", property->name, val);
 	return -EINVAL;
 }
 
@@ -4712,7 +4712,7 @@ void mtk_drm_crtc_mode_check(struct drm_crtc *crtc,
 	/*connector is changed , update mode_idx to new one*/
 	if (of_property_read_bool(priv->mmsys_dev->of_node, "enable-output-int-switch")
 		&& old_state->connectors_changed) {
-		DDPMSG("%s++ from %u to %u when connectors changed\n", __func__,
+		DDPMSG("%s++ from %llu to %llu when connectors changed\n", __func__,
 		old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
 		new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
 
@@ -4728,7 +4728,7 @@ void mtk_drm_crtc_mode_check(struct drm_crtc *crtc,
 		}
 	}
 
-	DDPMSG("%s++ from %u to %u\n", __func__,
+	DDPMSG("%s++ from %llu to %llu\n", __func__,
 		old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
 		new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
 
@@ -5192,7 +5192,7 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 		old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
 		mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
 
-	DDPMSG("%s++ from %u to %u\n", __func__,
+	DDPMSG("%s++ from %llu to %llu\n", __func__,
 		old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
 		mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
 
@@ -5824,7 +5824,7 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 	/*set_hrt_bw for pan display ,set 4 for two RGB layer*/
 	if ((index == 0 || mtk_crtc->path_data->is_discrete_path) && hrt_valid == false) {
 		if (mtk_drm_helper_get_opt(mtk_drm->helper_opt, MTK_DRM_OPT_HRT))
-			DDPMSG("%s frame:%u correct invalid hrt to:%u, mode:%u->%u\n",
+			DDPMSG("%s frame:%u correct invalid hrt to:%u, mode:%llu->%llu\n",
 				__func__, prop_lye_idx, pan_disp_frame_weight,
 				old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
 				crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
@@ -11762,7 +11762,7 @@ int mtk_crtc_check_out_sec(struct drm_crtc *crtc)
 				mtk_drm_framebuffer_lookup(crtc->dev,
 				state->prop_val[CRTC_PROP_OUTPUT_FB_ID]));
 
-		DDPINFO("%s lookup wb fb:%u sec:%d\n", __func__,
+		DDPINFO("%s lookup wb fb:%llu sec:%d\n", __func__,
 			state->prop_val[CRTC_PROP_OUTPUT_FB_ID], out_sec);
 	}
 
@@ -13461,12 +13461,12 @@ static void mtk_crtc_wb_comp_config(struct drm_crtc *crtc,
 	memset(&cfg, 0x0, sizeof(struct mtk_ddp_config));
 	if (state->prop_val[CRTC_PROP_OUTPUT_ENABLE]) {
 		/* Output buffer configuration for virtual display */
-		DDPINFO("lookup wb fb:%u\n",
+		DDPINFO("lookup wb fb:%llu\n",
 			state->prop_val[CRTC_PROP_OUTPUT_FB_ID]);
 		comp->fb = mtk_drm_framebuffer_lookup(crtc->dev,
 				state->prop_val[CRTC_PROP_OUTPUT_FB_ID]);
 		if (comp->fb == NULL) {
-			DDPPR_ERR("%s cannot find fb fb_id:%u\n", __func__,
+			DDPPR_ERR("%s cannot find fb fb_id:%llu\n", __func__,
 				state->prop_val[CRTC_PROP_OUTPUT_FB_ID]);
 			return;
 		}
@@ -18555,7 +18555,7 @@ unsigned int mtk_drm_primary_display_get_debug_state(
 			  (mtk_drm_lcm_is_connect(mtk_crtc) ? "Y" : "N"));
 
 	len += scnprintf(stringbuf + len, buf_len - len,
-			 "FPS = %d, display mode idx = %u, %s mode %d\n",
+			 "FPS = %d, display mode idx = %llu, %s mode %d\n",
 			 drm_mode_vrefresh(&crtc->state->adjusted_mode),
 			 mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
 			 (mtk_crtc_is_frame_trigger_mode(crtc) ?
