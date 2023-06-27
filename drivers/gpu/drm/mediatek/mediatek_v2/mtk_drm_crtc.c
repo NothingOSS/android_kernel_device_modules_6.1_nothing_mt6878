@@ -6736,9 +6736,14 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			src_h_align = src_h_half_align;
 		}
 
-		if ((dst_x < width / 2) &&
-			(dst_x + src_w_align >= width / 2))
-			cross_mid_line = true;
+		if (mtk_crtc->is_dual_pipe && (dst_x < (width / 2))) {
+			if (mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_TILE_OVERHEAD) &&
+				((dst_x + src_w_align) >= ((width / 2) + to_info.left_in_width)))
+				cross_mid_line = true;
+			else if ((dst_x + src_w_align) >= (width / 2))
+				cross_mid_line = true;
+		}
 
 		if (mtk_crtc->is_dual_pipe && cross_mid_line &&
 			mtk_drm_helper_get_opt(priv->helper_opt,

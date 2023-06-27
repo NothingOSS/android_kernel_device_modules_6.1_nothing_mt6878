@@ -2536,6 +2536,8 @@ static int calc_hrt_num(struct drm_device *dev,
 	mtk_oddmr_hrt_cal_notify(&comp_hrt_added);
 
 	sum_overlap_w += comp_hrt_added;
+	if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR))
+		sum_overlap_w_of_bwm += comp_hrt_added;
 
 	emi_hrt_level = get_hrt_level(sum_overlap_w, false);
 
