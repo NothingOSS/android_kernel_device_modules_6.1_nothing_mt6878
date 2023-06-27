@@ -5481,15 +5481,8 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 			pm_runtime_get_sync(priv->ovlsys_dev);
 		if (priv->side_ovlsys_dev)
 			pm_runtime_get_sync(priv->side_ovlsys_dev);
-
-		/* mminfra power release */
-		if (priv->dpc_dev)
-			pm_runtime_put_sync(priv->dpc_dev);
 		break;
 	case DISP_PM_PUT:
-		if (priv->dpc_dev)
-			pm_runtime_get_sync(priv->dpc_dev);
-
 		if (priv->side_ovlsys_dev)
 			pm_runtime_put_sync(priv->side_ovlsys_dev);
 		if (priv->ovlsys_dev)

@@ -11833,6 +11833,7 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 	struct mtk_crtc_state *mtk_crtc_state = NULL;
 	const enum mtk_ddp_comp_id id[] = {DDP_COMPONENT_INLINE_ROTATE0,
 					   DDP_COMPONENT_INLINE_ROTATE1};
+	static bool dpc_controlling;
 
 	if (!crtc || !cmdq_handle)
 		return;
@@ -11858,13 +11859,34 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 		}
 		fallthrough;
 	case MML_DIRECT_LINKING:
+		if (priv->dpc_dev) {
+			if (!dpc_controlling) {
+				dpc_controlling = true;
+				mtk_vidle_config_ff(true);
+				mtk_vidle_enable(true, crtc);
+				pm_runtime_put_sync(priv->dpc_dev);
+			}
+
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000414,
+				1 << DISP_VIDLE_USER_OTHER, 1 << DISP_VIDLE_USER_OTHER);
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000414,
+				1 << DISP_VIDLE_USER_OTHER, 1 << DISP_VIDLE_USER_OTHER);
+			cmdq_pkt_clear_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+			cmdq_pkt_wfe(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+		}
+
 		mml_drm_racing_config_sync(mml_ctx, cmdq_handle);
 		break;
 	case MML_STOP_LINKING:
 		DDP_PROFILE("MML_STOP_LINKING\n");
 		mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle, false);
-		mtk_vidle_config_ff(false);
-		mtk_vidle_enable(false, crtc);
+		if (priv->dpc_dev && dpc_controlling) {
+			dpc_controlling = false;
+			pm_runtime_get_sync(priv->dpc_dev);
+			mtk_vidle_config_ff(false);
+			mtk_vidle_enable(false, crtc);
+		}
 		break;
 	default:
 		break;
@@ -14968,11 +14990,8 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	}
 
 	/* need to check mml is submit done */
-	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
+	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl)
 		mtk_drm_wait_mml_submit_done(&(mtk_crtc->mml_cb));
-		mtk_vidle_config_ff(true);
-		mtk_vidle_enable(true, crtc);
-	}
 
 	if (mtk_crtc_state->lye_state.need_repaint) {
 		drm_trigger_repaint(DRM_REPAINT_FOR_SWITCH_DECOUPLE_MIRROR, crtc->dev);
@@ -14994,6 +15013,12 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 
 	mtk_drm_idlemgr_kick(__func__, crtc, false); /* update kick timestamp */
 
+	if (priv->dpc_dev) {
+		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000418,
+			1 << DISP_VIDLE_USER_OTHER, 1 << DISP_VIDLE_USER_OTHER);
+		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000418,
+			1 << DISP_VIDLE_USER_OTHER, 1 << DISP_VIDLE_USER_OTHER);
+	}
 #ifndef DRM_CMDQ_DISABLE
 #ifdef MTK_DRM_CMDQ_ASYNC
 	ret = mtk_crtc_gce_flush(crtc, ddp_cmdq_cb, cb_data, cmdq_handle);
@@ -15392,6 +15417,9 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 	case EVENT_SYNC_TOKEN_CHECK_TRIGGER_MERGE:
 		len = snprintf(buf, buf_len, "disp_token_disp_check_trigger_merge%d",
 					drm_crtc_index(&mtk_crtc->base));
+		break;
+	case EVENT_DPC_DISP1_PRETE:
+		len = snprintf(buf, buf_len, "dpc_disp1_prete");
 		break;
 	case EVENT_OVLSYS_WDMA1_EOF:
 		len = snprintf(buf, buf_len, "disp_ovlsys_wdma1_eof%d",

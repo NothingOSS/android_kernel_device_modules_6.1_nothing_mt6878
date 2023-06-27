@@ -24,6 +24,8 @@
 #include "mtk_drm_crtc.h"
 #include "platform/mtk_drm_platform.h"
 
+static atomic_t g_ff_enabled;
+
 struct mtk_disp_vidle_para mtk_disp_vidle_flag = {
 	0,	/* vidle_en */
 	0,	/* vidle_init */
@@ -164,8 +166,6 @@ void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop)
 
 void mtk_vidle_enable(bool en, void *_crtc)
 {
-	static bool last_en;
-
 	if (!disp_dpc_driver.dpc_enable)
 		return;
 
@@ -178,9 +178,9 @@ void mtk_vidle_enable(bool en, void *_crtc)
 		return;
 	}
 
-	if (en == last_en)
+	if (en == (bool)atomic_read(&g_ff_enabled))
 		return;
-	last_en = en;
+	atomic_set(&g_ff_enabled, en);
 
 	if (_crtc) {
 		struct drm_crtc *crtc = (struct drm_crtc *)_crtc;
@@ -194,29 +194,30 @@ void mtk_vidle_enable(bool en, void *_crtc)
 void mtk_vidle_hrt_bw_set(const u32 bw_in_mb)
 {
 	if (disp_dpc_driver.dpc_hrt_bw_set)
-		disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, true);
+		disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb,
+					       atomic_read(&g_ff_enabled));
 	/* TODO: false if auto mode */
 }
 void mtk_vidle_srt_bw_set(const u32 bw_in_mb)
 {
 	if (disp_dpc_driver.dpc_srt_bw_set)
-		disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, true);
+		disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb,
+					       atomic_read(&g_ff_enabled));
 }
 void mtk_vidle_dvfs_set(const u8 level)
 {
 	if (disp_dpc_driver.dpc_dvfs_set)
-		disp_dpc_driver.dpc_dvfs_set(DPC_SUBSYS_DISP, level, true);
+		disp_dpc_driver.dpc_dvfs_set(DPC_SUBSYS_DISP, level,
+					     atomic_read(&g_ff_enabled));
 }
 void mtk_vidle_config_ff(bool en)
 {
-	static bool last_en;
-
 	if (en && !mtk_disp_vidle_flag.vidle_en)
 		return;
 
-	if (en == last_en)
+	if (en == (bool)atomic_read(&g_ff_enabled))
 		return;
-	last_en = en;
+	atomic_set(&g_ff_enabled, en);
 
 	if (disp_dpc_driver.dpc_config)
 		disp_dpc_driver.dpc_config(DPC_SUBSYS_DISP, en);

@@ -25,15 +25,13 @@ void dpc_mmp_init(void)
 	mmprofile_enable(1);
 	folder = mmprofile_register_event(MMP_ROOT_EVENT, "DPC");
 	dpc_mmp_events.folder = folder;
-	dpc_mmp_events.disp_on = mmprofile_register_event(folder, "disp_on");
-	dpc_mmp_events.disp_off = mmprofile_register_event(folder, "disp_off");
+	dpc_mmp_events.idle_off = mmprofile_register_event(folder, "idle_off");
 	dpc_mmp_events.prete = mmprofile_register_event(folder, "prete");
 	dpc_mmp_events.mminfra = mmprofile_register_event(folder, "mminfra");
 	dpc_mmp_events.vlp_vote = mmprofile_register_event(folder, "vlp_vote");
 	dpc_mmp_events.mml_rrot_done = mmprofile_register_event(folder, "mml_rrot_done");
+	dpc_mmp_events.mml_sof = mmprofile_register_event(folder, "mml_sof");
 	dpc_mmp_events.mtcmos_ovl0 = mmprofile_register_event(folder, "mtcmos_ovl0");
-	dpc_mmp_events.mtcmos_ovl1 = mmprofile_register_event(folder, "mtcmos_ovl1");
-	dpc_mmp_events.mtcmos_disp0 = mmprofile_register_event(folder, "mtcmos_disp0");
 	dpc_mmp_events.mtcmos_disp1 = mmprofile_register_event(folder, "mtcmos_disp1");
 	dpc_mmp_events.mtcmos_mml1 = mmprofile_register_event(folder, "mtcmos_mml1");
 

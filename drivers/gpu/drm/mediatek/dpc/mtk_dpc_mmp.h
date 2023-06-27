@@ -23,15 +23,21 @@ static inline void dpc_mmp_init(void) {}
 
 struct dpc_mmp_events_t {
 	mmp_event folder;
-	mmp_event disp_on;
-	mmp_event disp_off;
+	// mmp_event dt_te;
+	// mmp_event dt_sof;
+	// mmp_event dsi_start;
+	mmp_event idle_off;
 	mmp_event prete;
 	mmp_event mminfra;
 	mmp_event vlp_vote;
 	mmp_event mml_rrot_done;
+	mmp_event mml_sof;
+	// mmp_event mml_mutex40;
+	// mmp_event mml_mutex48;
+	// mmp_event mml_mutex50;
 	mmp_event mtcmos_ovl0;
-	mmp_event mtcmos_ovl1;
-	mmp_event mtcmos_disp0;
+	// mmp_event mtcmos_ovl1;
+	// mmp_event mtcmos_disp0;
 	mmp_event mtcmos_disp1;
 	mmp_event mtcmos_mml1;
 };
