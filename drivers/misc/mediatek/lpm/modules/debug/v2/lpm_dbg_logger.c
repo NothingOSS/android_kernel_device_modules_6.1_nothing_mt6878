@@ -16,6 +16,7 @@
 #include <linux/syscore_ops.h>
 #include <linux/ctype.h>
 #include <linux/spinlock.h>
+#include <linux/delay.h>
 
 #include <lpm.h>
 #include <lpm_timer.h>
@@ -741,7 +742,7 @@ void log_md_sleep_info(void)
 }
 EXPORT_SYMBOL(log_md_sleep_info);
 #endif
-
+static int common_status;
 static int lpm_dbg_logger_event(struct notifier_block *notifier,
 			unsigned long pm_event, void *unused)
 {
@@ -751,8 +752,41 @@ static int lpm_dbg_logger_event(struct notifier_block *notifier,
 	case PM_SUSPEND_PREPARE:
 		ktime_get_real_ts64(&tv);
 		rtc_time64_to_tm(tv.tv_sec, &suspend_tm);
+		// disable common sodi
+
+		common_status = lpm_smc_spm_dbg(MT_SPM_DBG_SMC_COMMON_SODI5_CTRL,
+				MT_LPM_SMC_ACT_GET, 0, 0);
+		cpuidle_pause_and_lock();
+		/* To avoid racing of spmfw swflag,
+		 * add delay to wait spm resume back to common.
+		 */
+		udelay(1500);
+		lpm_smc_spm_dbg(MT_SPM_DBG_SMC_COMMON_SODI5_CTRL,
+					MT_LPM_SMC_ACT_SET,
+					0, 0);
+		/* To make sure spmfw swflag update done,
+		 * add delay to wait spm re-enter common
+		 */
+		udelay(1500);
+		cpuidle_resume_and_unlock();
+
 		return NOTIFY_DONE;
 	case PM_POST_SUSPEND:
+		// enable common sodi
+		cpuidle_pause_and_lock();
+		/* To avoid racing of spmfw swflag,
+		 * add delay to wait spm resume back to common.
+		 */
+		udelay(1500);
+		lpm_smc_spm_dbg(MT_SPM_DBG_SMC_COMMON_SODI5_CTRL,
+					MT_LPM_SMC_ACT_SET,
+					common_status, 0);
+		/* To make sure spmfw swflag update done,
+		 * add delay to wait spm re-enter common
+		 */
+		udelay(1500);
+		cpuidle_resume_and_unlock();
+
 		return NOTIFY_DONE;
 	default:
 		return NOTIFY_DONE;
