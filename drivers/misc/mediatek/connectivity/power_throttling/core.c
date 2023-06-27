@@ -94,10 +94,11 @@ int conn_pwr_get_low_battery_level(struct conn_pwr_update_info *info)
 		 info->drv == CONN_PWR_DRV_WIFI && info->status == CONN_PWR_DRV_STATUS_ON)) {
 		switch (low_battery_power_level) {
 		case LOW_BATTERY_LEVEL_0:
-			break;
 		case LOW_BATTERY_LEVEL_1:
 		case LOW_BATTERY_LEVEL_2:
-			ret = CONN_PWR_THR_LV_4;
+			break;
+		case LOW_BATTERY_LEVEL_3:
+			ret = CONN_PWR_THR_LV_1;
 			break;
 		default:
 			break;
