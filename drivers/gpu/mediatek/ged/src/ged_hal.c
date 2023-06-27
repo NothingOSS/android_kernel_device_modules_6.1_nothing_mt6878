@@ -30,6 +30,10 @@
 #include "ged_global.h"
 #include "ged_dcs.h"
 #include "ged_eb.h"
+#if defined(MTK_GPU_SLC_POLICY)
+#include "ged_gpu_slc.h"
+#endif /* MTK_GPU_SLC_POLICY */
+
 
 static struct kobject *hal_kobj;
 
@@ -1398,6 +1402,63 @@ static ssize_t loading_window_size_store(struct kobject *kobj,
 static KOBJ_ATTR_RW(loading_window_size);
 
 //-----------------------------------------------------------------------------
+#if defined(MTK_GPU_SLC_POLICY)
+static ssize_t gpu_slc_policy_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int pos = 0;
+	struct gpu_slc_stat *slc_stat = NULL;
+
+	slc_stat = get_gpu_slc_stat();
+
+	if (slc_stat != NULL) {
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+					"mode:			%d\n", slc_stat->mode);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+					"(1)Common Hitrate:	%d\n", slc_stat->policy_0_hit_rate_r);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+					"(2)RT Hitrate:		%d\n", slc_stat->policy_1_hit_rate_r);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+					"(4)Common_LSC Hitrate:	%d\n", slc_stat->policy_2_hit_rate_r);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+					"(8)Common_TEX Hitrate:	%d\n", slc_stat->policy_3_hit_rate_r);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+					"Final Policy:		%d\n", slc_stat->policy);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+					"Final HitRate:		%d\n", slc_stat->hit_rate_r);
+		if(slc_stat->isoverflow == 1)
+			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+					"(bw overflow)\n", slc_stat->hit_rate_r);
+	} else {
+		pos = scnprintf(buf + pos, PAGE_SIZE - pos,
+					"GPU SLC sysFS not supports\n");
+	}
+
+	return pos;
+}
+
+static ssize_t gpu_slc_policy_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	unsigned int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				ged_gpu_slc_dynamic_mode(i32Value);
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(gpu_slc_policy);
+#endif /* MTK_GPU_SLC_POLICY */
+
+//-----------------------------------------------------------------------------
+
 GED_ERROR ged_hal_init(void)
 {
 	GED_ERROR err = GED_OK;
@@ -1631,6 +1692,14 @@ GED_ERROR ged_hal_init(void)
 		goto ERROR;
 	}
 
+#if defined(MTK_GPU_SLC_POLICY)
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_gpu_slc_policy);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create gpu_slc_policy entry!\n");
+		goto ERROR;
+	}
+#endif /* MTK_GPU_SLC_POLICY */
+
 	return err;
 
 ERROR:
@@ -1682,6 +1751,9 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_force_hint);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_status);
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
+#if defined(MTK_GPU_SLC_POLICY)
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_gpu_slc_policy);
+#endif /* MTK_GPU_SLC_POLICY */
 
 	ged_sysfs_remove_dir(&hal_kobj);
 }

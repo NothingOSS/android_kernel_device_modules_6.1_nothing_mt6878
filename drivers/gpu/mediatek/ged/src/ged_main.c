@@ -52,6 +52,9 @@
 #else
 #include <ged_gpufreq_v1.h>
 #endif /* CONFIG_MTK_GPUFREQ_V2 */
+#if defined(MTK_GPU_SLC_POLICY)
+#include "ged_gpu_slc.h"
+#endif /* MTK_GPU_SLC_POLICY */
 
 /**
  * ===============================================
@@ -713,6 +716,14 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 		goto ERROR;
 	}
 
+#if defined(MTK_GPU_SLC_POLICY)
+	err = ged_gpu_slc_init();
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to init GPU SLC!\n");
+		goto ERROR;
+	}
+#endif /*MTK_GPU_SLC_POLICY */
+
 #ifndef GED_BUFFER_LOG_DISABLE
 	ghLogBuf_GPU = ged_log_buf_alloc(512, 128 * 512,
 		GED_LOG_BUF_TYPE_RINGBUFFER, "GPU_FENCE", NULL);
@@ -808,6 +819,10 @@ static int ged_pdrv_remove(struct platform_device *pdev)
 #ifdef GED_DCS_POLICY
 	ged_dcs_exit();
 #endif
+
+#if defined(MTK_GPU_SLC_POLICY)
+	ged_gpu_slc_exit();
+#endif /*MTK_GPU_SLC_POLICY */
 
 	ged_gpufreq_exit();
 

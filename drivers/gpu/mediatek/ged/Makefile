@@ -32,6 +32,7 @@ ccflags-y += -DGED_DVFS_DEBUG_BUF
 ccflags-y += -DMTK_GPU_BM_2
 ccflags-y += -DCONFIG_MTK_GPU_FW_IDLE
 ccflags-y += -DCONFIG_MTK_GPU_APO_SUPPORT
+ccflags-y += -DMTK_GPU_SLC_POLICY
 
 ifeq ($(CONFIG_MTK_ENABLE_GMO), y)
 ccflags-y += -DGED_BUFFER_LOG_DISABLE
@@ -106,7 +107,8 @@ ged-y += \
 	src/ged_gpu_tuner.o \
 	src/ged_kpi.o \
 	src/ged_eb.o \
-	src/ged_gpu_bm.o
+	src/ged_gpu_bm.o \
+	src/ged_gpu_slc.o
 
 ged-$(CONFIG_SYNC_FILE) += src/ged_sync.o
 
