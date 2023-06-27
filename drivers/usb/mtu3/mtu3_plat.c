@@ -75,7 +75,8 @@ static void ssusb_hwrscs_req(struct ssusb_mtk *ssusb,
 		break;
 	case MTU3_STATE_OFFLOAD:
 		spm_ctrl &= ~SSUSB_SPM_REQ_MSK;
-		spm_ctrl |= (SSUSB_SPM_SRCCLKENA | SSUSB_SPM_INFRE_REQ);
+		spm_ctrl |= (SSUSB_SPM_SRCCLKENA | SSUSB_SPM_INFRE_REQ
+				| SSUSB_SPM_VRF18_REQ);
 		break;
 	case MTU3_STATE_RESUME:
 		spm_ctrl |= SSUSB_SPM_REQ_MSK;
