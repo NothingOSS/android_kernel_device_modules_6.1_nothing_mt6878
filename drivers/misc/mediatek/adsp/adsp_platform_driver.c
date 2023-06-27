@@ -266,7 +266,7 @@ int adsp_core1_resume(void)
 void adsp_logger_init0_cb(struct work_struct *ws)
 {
 	int ret;
-	uint64_t info[6];
+	uint64_t info[8];
 
 	info[0] = adsp_get_reserve_mem_phys(ADSP_A_LOGGER_MEM_ID);
 	info[1] = adsp_get_reserve_mem_size(ADSP_A_LOGGER_MEM_ID);
@@ -274,6 +274,8 @@ void adsp_logger_init0_cb(struct work_struct *ws)
 	info[3] = adsp_get_reserve_mem_size(ADSP_A_CORE_DUMP_MEM_ID);
 	info[4] = adsp_get_reserve_mem_phys(ADSP_A_DEBUG_DUMP_MEM_ID);
 	info[5] = adsp_get_reserve_mem_size(ADSP_A_DEBUG_DUMP_MEM_ID);
+	info[6] = adsp_get_reserve_mem_phys(ADSP_L2SRAM_CTRL_MEM_ID);
+	info[7] = adsp_get_reserve_mem_size(ADSP_L2SRAM_CTRL_MEM_ID);
 
 	_adsp_register_feature(ADSP_A_ID, ADSP_LOGGER_FEATURE_ID, 0);
 
@@ -289,7 +291,7 @@ void adsp_logger_init0_cb(struct work_struct *ws)
 void adsp_logger_init1_cb(struct work_struct *ws)
 {
 	int ret;
-	uint64_t info[6];
+	uint64_t info[8];
 
 	info[0] = adsp_get_reserve_mem_phys(ADSP_B_LOGGER_MEM_ID);
 	info[1] = adsp_get_reserve_mem_size(ADSP_B_LOGGER_MEM_ID);
@@ -297,6 +299,8 @@ void adsp_logger_init1_cb(struct work_struct *ws)
 	info[3] = adsp_get_reserve_mem_size(ADSP_B_CORE_DUMP_MEM_ID);
 	info[4] = adsp_get_reserve_mem_phys(ADSP_B_DEBUG_DUMP_MEM_ID);
 	info[5] = adsp_get_reserve_mem_size(ADSP_B_DEBUG_DUMP_MEM_ID);
+	info[6] = adsp_get_reserve_mem_phys(ADSP_L2SRAM_CTRL_MEM_ID);
+	info[7] = adsp_get_reserve_mem_size(ADSP_L2SRAM_CTRL_MEM_ID);
 
 	_adsp_register_feature(ADSP_B_ID, ADSP_LOGGER_FEATURE_ID, 0);
 
@@ -372,24 +376,6 @@ static void adsp_slb_init_handler(int id, void *data, unsigned int len)
 		pr_info("%s, fail send msg to cid %d, ret %d", __func__, cid, ret);
 }
 
-static void adsp_l2sram_init_handler(int id, void *data, unsigned int len)
-{
-	int ret;
-	uint64_t info[2];
-	u32 cid = *(u32 *)data;
-
-	info[0] = adsp_get_reserve_mem_phys(ADSP_L2SRAM_CTRL_MEM_ID);
-	info[1] = adsp_get_reserve_mem_size(ADSP_L2SRAM_CTRL_MEM_ID);
-	pr_info("%s(), addr:0x%llx, size:0x%llx, cid %d\n", __func__, info[0], info[1], cid);
-
-	if (info[0] != 0 && info[1] != 0) {
-		ret = adsp_push_message(ADSP_IPI_L2SRAM_INIT, (void *)info, sizeof(info), 20, cid);
-
-		if (ret != ADSP_IPI_DONE)
-			pr_err("%s, fail to send msg to cid %d, ret %d\n", __func__, cid, ret);
-	}
-}
-
 int adsp_core_common_init(struct adsp_priv *pdata)
 {
 	int ret = 0;
@@ -409,9 +395,6 @@ int adsp_core_common_init(struct adsp_priv *pdata)
 
 	/* slb init ipi */
 	adsp_ipi_registration(ADSP_IPI_SLB_INIT, adsp_slb_init_handler, "slb_init");
-
-	/* l2sram init ipi */
-	adsp_ipi_registration(ADSP_IPI_L2SRAM_INIT, adsp_l2sram_init_handler, "l2sram init");
 
 	/* register misc device */
 	pdata->mdev.minor = MISC_DYNAMIC_MINOR;
