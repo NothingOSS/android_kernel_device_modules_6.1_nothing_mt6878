@@ -129,6 +129,7 @@ enum DW9781C_mode {
 };
 
 static struct i2c_client *m_client;
+static int32_t fixmode00;
 
 /* Control commnad */
 #define VIDIOC_MTK_S_OIS_MODE _IOW('V', BASE_VIDIOC_PRIVATE + 2, int32_t)
@@ -593,6 +594,7 @@ static int dw9781c_init(struct dw9781c_device *dw9781c)
 
 	// lock OIS, because DW hw limitation (can't get gyro data)
 	fixmode(0, 0);
+	fixmode00 = 1;
 
 	// set ois mode
 	ret = ois_i2c_wr_u16(client, DW9781C_REG_OIS_MODE, DW9781C_STILL_MODE);
@@ -877,7 +879,8 @@ static int dw9781c_sample(struct hf_device *hfdev)
 	s16 target_x = 0, target_y = 0;
 	s16 len_x = 0, len_y = 0;
 
-	readhall(&gyro_x, &gyro_y, &target_x, &target_y, &len_x, &len_y);
+	if (fixmode00 == 0)
+		readhall(&gyro_x, &gyro_y, &target_x, &target_y, &len_x, &len_y);
 
 	memset(&event, 0, sizeof(struct hf_manager_event));
 	event.timestamp = get_interrupt_timestamp(manager);
@@ -912,12 +915,14 @@ static int dw9781c_custom_cmd(struct hf_device *hfdev, int sensor_type,
 			LOG_INF("unlock\n");
 #endif
 			ret = ois_i2c_wr_u16(m_client, DW9781C_REG_OIS_CTRL, OIS_ON); // OIS ON/SERVO ON
+			fixmode00 = 0;
 			I2C_OPERATION_CHECK(ret);
 		} else {
 #ifdef FOR_DEBUG
 			LOG_INF("lock!\n");
 #endif
 			fixmode(0, 0);
+			fixmode00 = 1;
 		}
 
 	// OIS_POSTURE_CONFIG
