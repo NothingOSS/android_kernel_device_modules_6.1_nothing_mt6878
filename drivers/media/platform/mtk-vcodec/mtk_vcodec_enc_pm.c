@@ -394,6 +394,7 @@ static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 	unsigned int reg_val, i;
 	unsigned long flags;
 	void __iomem *reg_base = NULL;
+	enum mtk_venc_hw_break_mode break_mode;
 
 	mtk_v4l2_debug(3, "%s +", __func__);
 
@@ -406,6 +407,12 @@ static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 				mtk_v4l2_err("Core %d hw still active 0x%x\n", i, reg_val);
 				need_break = true;
 			}
+			reg_val = readl(reg_base + 0x1448);
+			mtk_v4l2_err("Core %d hw break mode %d\n", i, (reg_val & 0x7f));
+			if ((reg_val & 0x7f) == 127)
+				break_mode = MTK_VENC_HW_BREAK_SMI_LOCK_MODE;
+			else
+				break_mode = MTK_VENC_HW_BREAK_PAUSE_MODE;
 		}
 		spin_unlock_irqrestore(&dev->enc_power_lock[i], flags);
 	}
@@ -422,11 +429,14 @@ static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 				continue;
 			}
 			spin_unlock_irqrestore(&dev->enc_power_lock[i], flags);
+			if (break_mode == MTK_VENC_HW_BREAK_SMI_LOCK_MODE) {
+				writel(1, (reg_base + 0x13B8));
+			} else {
+				if (i == MTK_VENC_CORE_0)
+					writel(0xf0000000, (reg_base + 0x5040));
 
-			if (i == MTK_VENC_CORE_0)
-				writel(0xf0000000, (reg_base + 0x5040));
-
-			writel(1, (reg_base + 0x1228));
+				writel(1, (reg_base + 0x1228));
+			}
 		}
 
 		for (i = 0; i < MTK_VENC_HW_NUM; i++) {
@@ -440,16 +450,31 @@ static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 			}
 			spin_unlock_irqrestore(&dev->enc_power_lock[i], flags);
 
-			mtk_venc_do_gettimeofday(&tv_start);
-			while ((readl(reg_base + 0x1228) & 0x7FFFFDFC) != 0) {
-				mtk_v4l2_err("wait core %d stop value 0x%x\n"
-					, i, readl(reg_base + 0x1228));
-				mtk_venc_do_gettimeofday(&tv_end);
-				usec = (tv_end.tv_sec - tv_start.tv_sec) * 1000000
-						+ (tv_end.tv_nsec - tv_start.tv_nsec);
-				if (usec > timeout) {
-					timeout_fg = true;
-					break;
+			if (break_mode == MTK_VENC_HW_BREAK_SMI_LOCK_MODE) {
+				mtk_venc_do_gettimeofday(&tv_start);
+				while ((readl(reg_base + 0x13B8) & 0x80000000) != 0) {
+					mtk_v4l2_err("wait core %d stop value 0x%x\n"
+						, i, readl(reg_base + 0x13B8));
+					mtk_venc_do_gettimeofday(&tv_end);
+					usec = (tv_end.tv_sec - tv_start.tv_sec) * 1000000
+							+ (tv_end.tv_nsec - tv_start.tv_nsec);
+					if (usec > timeout) {
+						timeout_fg = true;
+						break;
+					}
+				}
+			} else {
+				mtk_venc_do_gettimeofday(&tv_start);
+				while ((readl(reg_base + 0x1228) & 0x7FFFFDFC) != 0) {
+					mtk_v4l2_err("wait core %d stop value 0x%x\n"
+						, i, readl(reg_base + 0x1228));
+					mtk_venc_do_gettimeofday(&tv_end);
+					usec = (tv_end.tv_sec - tv_start.tv_sec) * 1000000
+							+ (tv_end.tv_nsec - tv_start.tv_nsec);
+					if (usec > timeout) {
+						timeout_fg = true;
+						break;
+					}
 				}
 			}
 
@@ -491,6 +516,21 @@ static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 			mtk_v4l2_err("0x133C: 0x%x, 0x1340: 0x%x, 0x1344: 0x%x, 0x1348: 0x%x",
 				readl(reg_base + 0x133C), readl(reg_base + 0x1340),
 				readl(reg_base + 0x1344), readl(reg_base + 0x1348));
+			mtk_v4l2_err("0x13B8: 0x%x 0x13BC: 0x%x, 0x13C0: 0x%x, 0x13C4: 0x%x, 0x13C8: 0x%x",
+				readl(reg_base + 0x13B8), readl(reg_base + 0x13BC),
+				readl(reg_base + 0x13C0), readl(reg_base + 0x13C4),
+				readl(reg_base + 0x13C8));
+			mtk_v4l2_err("0x13CC: 0x%x 0x13D0: 0x%x, 0x13D4: 0x%x, 0x13D8: 0x%x, 0x13DC: 0x%x",
+				readl(reg_base + 0x13CC), readl(reg_base + 0x13D0),
+				readl(reg_base + 0x13D4), readl(reg_base + 0x13D8),
+				readl(reg_base + 0x13DC));
+			mtk_v4l2_err("0x13E0: 0x%x 0x13E4: 0x%x, 0x13E8: 0x%x, 0x13EC: 0x%x, 0x13F0: 0x%x",
+				readl(reg_base + 0x13E0), readl(reg_base + 0x13E4),
+				readl(reg_base + 0x13E8), readl(reg_base + 0x13EC),
+				readl(reg_base + 0x13F0));
+			mtk_v4l2_err("0x13F4: 0x%x 0x13F8: 0x%x, 0x13FC: 0x%x, 0x1400: 0x%x",
+				readl(reg_base + 0x13F4), readl(reg_base + 0x13F8),
+				readl(reg_base + 0x13FC), readl(reg_base + 0x1400));
 			mtk_v4l2_err("0x1420: 0x%x, 0x1424: 0x%x", readl(reg_base + 0x1420),
 				readl(reg_base + 0x1424));
 			mtk_v4l2_err("0x13c: 0x%x, 0x484: 0x%x, 0x568: 0x%x",
