@@ -18,13 +18,9 @@ struct ch_reg {
 };
 
 struct pmif {
-	void __iomem	*base;
-	void __iomem	*base_m;
-	void __iomem	*base_p;
+	void __iomem	*pmif_base[2];
 	const u32	*regs;
-	void __iomem	*spmimst_base;
-	void __iomem	*spmimst_base_m;
-	void __iomem	*spmimst_base_p;
+	void __iomem	*spmimst_base[2];
 	const u32	*spmimst_regs;
 	const u32	*dbgregs;
 	const u32	*busdbgregs;
@@ -73,7 +69,7 @@ struct pmif {
 struct spmi_dev {
 	int exist;
 	int slvid;
-	int mstid;
+	unsigned int path;
 	unsigned short hwcid_addr;
 	unsigned char hwcid_val;
 };

@@ -382,25 +382,19 @@ struct spmi_dev *get_spmi_device(int slaveid)
 static void spmi_dev_parse(struct platform_device *pdev)
 {
 	int i = 0, j = 0, ret = 0;
-	u32 spmi_dev_mask[2] = {0};
+	u32 spmi_dev_mask = 0;
 
-	ret = of_property_read_u32_array(pdev->dev.of_node, "spmi-dev-mask",
-		spmi_dev_mask, ARRAY_SIZE(spmi_dev_mask));
+	ret = of_property_read_u32(pdev->dev.of_node, "spmi-dev-mask",
+				  &spmi_dev_mask);
+	if (ret)
+		dev_info(&pdev->dev, "No spmi-dev-mask found in dts, default all PMIC on SPMI-M\n");
 
-	j = spmi_dev_mask[0];
-	for (i = 0; i < 16; i++) {
-		spmidev[i].slvid = i;
-		if (j & (1 << i))
-			spmidev[i].exist = 1;
-		else
-			spmidev[i].exist = 0;
-	}
-	j = spmi_dev_mask[1];
+	j = spmi_dev_mask;
 	for (i = 0; i < 16; i++) {
 		if (j & (1 << i))
-			spmidev[i].mstid = SPMI_MASTER_P_1;
+			spmidev[i].path = 1; //slvid i is in path p
 		else
-			spmidev[i].mstid = SPMI_MASTER_1;
+			spmidev[i].path = 0;
 	}
 }
 unsigned long long get_current_time_ms(void)
@@ -412,14 +406,14 @@ unsigned long long get_current_time_ms(void)
 	return cur_ts;
 }
 
-static u32 pmif_readl(struct pmif *arb, enum pmif_regs reg)
+static u32 pmif_readl(void __iomem *addr, struct pmif *arb, enum pmif_regs reg)
 {
-	return readl(arb->base + arb->regs[reg]);
+	return readl(addr + arb->regs[reg]);
 }
 
-static void pmif_writel(struct pmif *arb, u32 val, enum pmif_regs reg)
+static void pmif_writel(void __iomem *addr, struct pmif *arb, u32 val, enum pmif_regs reg)
 {
-	writel(val, arb->base + arb->regs[reg]);
+	writel(val, addr + arb->regs[reg]);
 }
 
 static void mtk_spmi_writel(void __iomem *addr, struct pmif *arb, u32 val, enum spmi_regs reg)
@@ -433,11 +427,11 @@ static u32 mtk_spmi_readl(void __iomem *addr, struct pmif *arb, enum spmi_regs r
 	return readl(addr + arb->spmimst_regs[reg]);
 }
 
-static bool pmif_is_fsm_vldclr(struct pmif *arb)
+static bool pmif_is_fsm_vldclr(void __iomem *addr, struct pmif *arb)
 {
 	u32 reg_rdata;
 
-	reg_rdata = pmif_readl(arb, arb->chan.ch_sta);
+	reg_rdata = pmif_readl(addr, arb, arb->chan.ch_sta);
 	return GET_SWINF(reg_rdata) == SWINF_WFVLDCLR;
 }
 
@@ -460,8 +454,8 @@ static int pmif_arb_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid)
 	else
 		return -EINVAL;
 
-	mtk_spmi_writel(arb->spmimst_base, arb, (cmd << 0x4) | sid, SPMI_OP_ST_CTRL);
-	ret = readl_poll_timeout_atomic(arb->spmimst_base + arb->spmimst_regs[SPMI_OP_ST_STA],
+	mtk_spmi_writel(arb->spmimst_base[spmidev[sid].path], arb, (cmd << 0x4) | sid, SPMI_OP_ST_CTRL);
+	ret = readl_poll_timeout_atomic(arb->spmimst_base[spmidev[sid].path] + arb->spmimst_regs[SPMI_OP_ST_STA],
 					rdata, (rdata & SPMI_OP_ST_BUSY) == SPMI_OP_ST_BUSY,
 					PMIF_DELAY_US, PMIF_TIMEOUT);
 	if (ret < 0)
@@ -474,7 +468,6 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 			      u16 addr, u8 *buf, size_t len)
 {
 	struct pmif *arb = spmi_controller_get_drvdata(ctrl);
-	struct spmi_dev *sdev = NULL;
 	struct ch_reg *inf_reg = NULL;
 	int ret;
 	u32 data = 0;
@@ -500,42 +493,26 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		return -EINVAL;
 
 	raw_spin_lock_irqsave(&arb->lock_m, flags_m);
-	sdev = get_spmi_device(sid);
-	if (sdev != NULL) {
-		if (sdev->mstid == SPMI_MASTER_1) {
-			arb->base = arb->base_m;
-			arb->spmimst_base = arb->spmimst_base_m;
-		} else {
-			arb->base = arb->base_p;
-			arb->spmimst_base = arb->spmimst_base_p;
-		}
-	} else {
-		dev_notice(&ctrl->dev, "sdev is NULL in pmif read\n");
-		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
-		return -ENODEV;
-	}
 
 	/* Wait for Software Interface FSM state to be IDLE. */
-	ret = readl_poll_timeout_atomic(arb->base + arb->regs[inf_reg->ch_sta],
+	ret = readl_poll_timeout_atomic(arb->pmif_base[spmidev[sid].path] + arb->regs[inf_reg->ch_sta],
 					data, GET_SWINF(data) == SWINF_IDLE,
 					PMIF_DELAY_US, PMIF_TIMEOUT);
 	if (ret < 0) {
 		dev_err(&ctrl->dev, "check IDLE timeout, read 0x%x, sta=0x%x, SPMI_DBG=0x%x\n",
-			addr, pmif_readl(arb, inf_reg->ch_sta),
-			readl(arb->spmimst_base + arb->spmimst_regs[SPMI_MST_DBG]));
+			addr, pmif_readl(arb->pmif_base[spmidev[sid].path], arb, inf_reg->ch_sta),
+			readl(arb->spmimst_base[spmidev[sid].path] + arb->spmimst_regs[SPMI_MST_DBG]));
 		/* set channel ready if the data has transferred */
-		if (pmif_is_fsm_vldclr(arb))
-			pmif_writel(arb, 1, inf_reg->ch_rdy);
+		if (pmif_is_fsm_vldclr(arb->pmif_base[spmidev[sid].path], arb))
+			pmif_writel(arb->pmif_base[spmidev[sid].path], arb, 1, inf_reg->ch_rdy);
 
-		arb->base = arb->base_m;
-		arb->spmimst_base = arb->spmimst_base_m;
 		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 
 		return ret;
 	}
 
 	/* Send the command. */
-	pmif_writel(arb,
+	pmif_writel(arb->pmif_base[spmidev[sid].path], arb,
 		    (opc << 30) | (sid << 24) | (bc << 16) | addr,
 		    inf_reg->ch_send);
 
@@ -543,28 +520,22 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	 *
 	 * read the data and clear the valid flag.
 	 */
-	ret = readl_poll_timeout_atomic(arb->base + arb->regs[inf_reg->ch_sta],
+	ret = readl_poll_timeout_atomic(arb->pmif_base[spmidev[sid].path] + arb->regs[inf_reg->ch_sta],
 					data, GET_SWINF(data) == SWINF_WFVLDCLR,
 					PMIF_DELAY_US, PMIF_TIMEOUT);
 	if (ret < 0) {
 		dev_err(&ctrl->dev, "check WFVLDCLR timeout, read 0x%x, sta=0x%x, SPMI_DBG=0x%x\n",
-			addr, pmif_readl(arb, inf_reg->ch_sta),
-			readl(arb->spmimst_base + arb->spmimst_regs[SPMI_MST_DBG]));
-
-		arb->base = arb->base_m;
-		arb->spmimst_base = arb->spmimst_base_m;
+			addr, pmif_readl(arb->pmif_base[spmidev[sid].path], arb, inf_reg->ch_sta),
+			readl(arb->spmimst_base[spmidev[sid].path] + arb->spmimst_regs[SPMI_MST_DBG]));
 
 		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 
 		return ret;
 	}
 
-	data = pmif_readl(arb, inf_reg->rdata);
+	data = pmif_readl(arb->pmif_base[spmidev[sid].path], arb, inf_reg->rdata);
 	memcpy(buf, &data, (bc & 3) + 1);
-	pmif_writel(arb, 1, inf_reg->ch_rdy);
-
-	arb->base = arb->base_m;
-	arb->spmimst_base = arb->spmimst_base_m;
+	pmif_writel(arb->pmif_base[spmidev[sid].path], arb, 1, inf_reg->ch_rdy);
 
 	raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 
@@ -575,7 +546,6 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 			       u16 addr, const u8 *buf, size_t len)
 {
 	struct pmif *arb = spmi_controller_get_drvdata(ctrl);
-	struct spmi_dev *sdev = NULL;
 	struct ch_reg *inf_reg = NULL;
 	int ret;
 	u32 data = 0;
@@ -604,36 +574,17 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		return -EINVAL;
 
 	raw_spin_lock_irqsave(&arb->lock_m, flags_m);
-	sdev = get_spmi_device(sid);
-	if (sdev != NULL) {
-		if (sdev->mstid == SPMI_MASTER_1) {
-			arb->base = arb->base_m;
-			arb->spmimst_base = arb->spmimst_base_m;
-		} else {
-			arb->base = arb->base_p;
-			arb->spmimst_base = arb->spmimst_base_p;
-		}
-	} else {
-		dev_notice(&ctrl->dev, "sdev is NULL in pmif write\n");
-		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
-		return -ENODEV;
-
-	}
-
 	/* Wait for Software Interface FSM state to be IDLE. */
-	ret = readl_poll_timeout_atomic(arb->base + arb->regs[inf_reg->ch_sta],
+	ret = readl_poll_timeout_atomic(arb->pmif_base[spmidev[sid].path] + arb->regs[inf_reg->ch_sta],
 					data, GET_SWINF(data) == SWINF_IDLE,
 					PMIF_DELAY_US, PMIF_TIMEOUT);
 	if (ret < 0) {
 		dev_err(&ctrl->dev, "check IDLE timeout, read 0x%x, sta=0x%x, SPMI_DBG=0x%x\n",
-			addr, pmif_readl(arb, inf_reg->ch_sta),
-			readl(arb->spmimst_base + arb->spmimst_regs[SPMI_MST_DBG]));
+			addr, pmif_readl(arb->pmif_base[spmidev[sid].path], arb, inf_reg->ch_sta),
+			readl(arb->spmimst_base[spmidev[sid].path] + arb->spmimst_regs[SPMI_MST_DBG]));
 		/* set channel ready if the data has transferred */
-		if (pmif_is_fsm_vldclr(arb))
-			pmif_writel(arb, 1, inf_reg->ch_rdy);
-
-		arb->base = arb->base_m;
-		arb->spmimst_base = arb->spmimst_base_m;
+		if (pmif_is_fsm_vldclr(arb->pmif_base[spmidev[sid].path], arb))
+			pmif_writel(arb->pmif_base[spmidev[sid].path], arb, 1, inf_reg->ch_rdy);
 
 		raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 
@@ -642,15 +593,12 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 
 	/* Set the write data. */
 	memcpy(&data, buf, (bc & 3) + 1);
-	pmif_writel(arb, data, inf_reg->wdata);
+	pmif_writel(arb->pmif_base[spmidev[sid].path], arb, data, inf_reg->wdata);
 
 	/* Send the command. */
-	pmif_writel(arb,
+	pmif_writel(arb->pmif_base[spmidev[sid].path], arb,
 		    (opc << 30) | BIT(29) | (sid << 24) | (bc << 16) | addr,
 		    inf_reg->ch_send);
-
-	arb->base = arb->base_m;
-	arb->spmimst_base = arb->spmimst_base_m;
 
 	raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 
@@ -688,9 +636,7 @@ static struct pmif mt6893_pmif_arb[] = {
 
 static struct pmif mt6xxx_pmif_arb[] = {
 	{
-		.base = 0x0,
 		.regs = mt6xxx_regs,
-		.spmimst_base = 0x0,
 		.spmimst_regs = mt6853_spmi_regs,
 		.soc_chan = 2,
 		.mstid = SPMI_MASTER_1,
@@ -739,10 +685,26 @@ static void pmif_lat_limit_reached_irq_handler(int irq, void *data)
 
 static void pmif_acc_vio_irq_handler(int irq, void *data)
 {
-	pr_notice("[PMIF]:PMIF ACC violation\n");
-	pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_0 = 0x%x\n", pmif_readl(data, PMIF_ACC_VIO_INFO_0));
-	pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_1 = 0x%x\n", pmif_readl(data, PMIF_ACC_VIO_INFO_1));
-	pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_2 = 0x%x\n", pmif_readl(data, PMIF_ACC_VIO_INFO_2));
+	struct pmif *arb = data;
+
+	pr_notice("[PMIF]:PMIF ACC violation debug info\n");
+	pr_notice("[PMIF]:PMIF-M\n");
+	pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_0 = 0x%x\n", pmif_readl(arb->pmif_base[0],
+		arb, PMIF_ACC_VIO_INFO_0));
+	pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_1 = 0x%x\n", pmif_readl(arb->pmif_base[0],
+		arb, PMIF_ACC_VIO_INFO_1));
+	pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_2 = 0x%x\n", pmif_readl(arb->pmif_base[0],
+		arb, PMIF_ACC_VIO_INFO_2));
+
+	if (!IS_ERR(arb->pmif_base[1])) {
+		pr_notice("[PMIF]:PMIF-P\n");
+		pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_0 = 0x%x\n", pmif_readl(arb->pmif_base[1],
+			arb, PMIF_ACC_VIO_INFO_0));
+		pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_1 = 0x%x\n", pmif_readl(arb->pmif_base[1],
+			arb, PMIF_ACC_VIO_INFO_1));
+		pr_notice("[PMIF]:PMIF_ACC_VIO_INFO_2 = 0x%x\n", pmif_readl(arb->pmif_base[1],
+			arb, PMIF_ACC_VIO_INFO_2));
+	}
 }
 
 static void pmif_hw_monitor_irq_handler(int irq, void *data)
@@ -756,71 +718,115 @@ static void pmif_hw_monitor_irq_handler(int irq, void *data)
 
 static void pmif_wdt_irq_handler(int irq, void *data)
 {
+	struct pmif *arb = data;
+
 	spmi_dump_pmif_busy_reg();
 	spmi_dump_pmif_record_reg();
 	spmi_dump_wdt_reg();
-	pmif_writel(data, 0x40000000, PMIF_IRQ_CLR_0);
+	pmif_writel(arb->pmif_base[0], arb, 0x40000000, PMIF_IRQ_CLR_0);
+	if (!IS_ERR(arb->pmif_base[1]))
+		pmif_writel(arb->pmif_base[1], arb, 0x40000000, PMIF_IRQ_CLR_0);
 	pr_notice("[PMIF]:WDT IRQ HANDLER DONE\n");
 }
 
 static void pmif_swinf_acc_err_0_irq_handler(int irq, void *data)
 {
-	pmif_writel(data, 0x0, MD_AUXADC_RDATA_0_ADDR);
-	pmif_writel(data, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	struct pmif *arb = data;
+
+	pmif_writel(arb->pmif_base[0], arb, 0x0, MD_AUXADC_RDATA_0_ADDR);
+	pmif_writel(arb->pmif_base[0], arb, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	if (!IS_ERR(arb->pmif_base[1])) {
+		pmif_writel(arb->pmif_base[1], arb, 0x0, MD_AUXADC_RDATA_0_ADDR);
+		pmif_writel(arb->pmif_base[1], arb, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	}
 	pr_notice("[PMIF]:SWINF_ACC_ERR_0\n");
 }
 
 static void pmif_swinf_acc_err_1_irq_handler(int irq, void *data)
 {
-	pmif_writel(data, 0x1, MD_AUXADC_RDATA_0_ADDR);
-	pmif_writel(data, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	struct pmif *arb = data;
+
+	pmif_writel(arb->pmif_base[0], arb, 0x1, MD_AUXADC_RDATA_0_ADDR);
+	pmif_writel(arb->pmif_base[0], arb, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	if (!IS_ERR(arb->pmif_base[1])) {
+		pmif_writel(arb->pmif_base[1], arb, 0x1, MD_AUXADC_RDATA_0_ADDR);
+		pmif_writel(arb->pmif_base[1], arb, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	}
 	pr_notice("[PMIF]:SWINF_ACC_ERR_1\n");
 }
 
 static void pmif_swinf_acc_err_2_irq_handler(int irq, void *data)
 {
-	pmif_writel(data, 0x2, MD_AUXADC_RDATA_0_ADDR);
-	pmif_writel(data, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	struct pmif *arb = data;
+
+	pmif_writel(arb->pmif_base[0], arb, 0x2, MD_AUXADC_RDATA_0_ADDR);
+	pmif_writel(arb->pmif_base[0], arb, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	if (!IS_ERR(arb->pmif_base[1])) {
+		pmif_writel(arb->pmif_base[1], arb, 0x2, MD_AUXADC_RDATA_0_ADDR);
+		pmif_writel(arb->pmif_base[1], arb, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	}
 	pr_notice("[PMIF]:SWINF_ACC_ERR_2\n");
 }
 
 static void pmif_swinf_acc_err_3_irq_handler(int irq, void *data)
 {
-	pmif_writel(data, 0x3, MD_AUXADC_RDATA_0_ADDR);
-	pmif_writel(data, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	struct pmif *arb = data;
+
+	pmif_writel(arb->pmif_base[0], arb, 0x3, MD_AUXADC_RDATA_0_ADDR);
+	pmif_writel(arb->pmif_base[0], arb, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	if (!IS_ERR(arb->pmif_base[1])) {
+		pmif_writel(arb->pmif_base[1], arb, 0x3, MD_AUXADC_RDATA_0_ADDR);
+		pmif_writel(arb->pmif_base[1], arb, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	}
 	pr_notice("[PMIF]:SWINF_ACC_ERR_3\n");
 }
 
 static void pmif_swinf_acc_err_4_irq_handler(int irq, void *data)
 {
-	pmif_writel(data, 0x4, MD_AUXADC_RDATA_0_ADDR);
-	pmif_writel(data, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	struct pmif *arb = data;
+
+	pmif_writel(arb->pmif_base[0], arb, 0x4, MD_AUXADC_RDATA_0_ADDR);
+	pmif_writel(arb->pmif_base[0], arb, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	if (!IS_ERR(arb->pmif_base[1])) {
+		pmif_writel(arb->pmif_base[1], arb, 0x4, MD_AUXADC_RDATA_0_ADDR);
+		pmif_writel(arb->pmif_base[1], arb, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	}
 	pr_notice("[PMIF]:SWINF_ACC_ERR_4\n");
 }
 
 static void pmif_swinf_acc_err_5_irq_handler(int irq, void *data)
 {
-	pmif_writel(data, 0x5, MD_AUXADC_RDATA_0_ADDR);
-	pmif_writel(data, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	struct pmif *arb = data;
+
+	pmif_writel(arb->pmif_base[0], arb, 0x5, MD_AUXADC_RDATA_0_ADDR);
+	pmif_writel(arb->pmif_base[0], arb, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	if (!IS_ERR(arb->pmif_base[1])) {
+		pmif_writel(arb->pmif_base[1], arb, 0x5, MD_AUXADC_RDATA_0_ADDR);
+		pmif_writel(arb->pmif_base[1], arb, (u32)get_current_time_ms(), MD_AUXADC_RDATA_1_ADDR);
+	}
 	pr_notice("[PMIF]:SWINF_ACC_ERR_5\n");
 }
 
 static irqreturn_t pmif_event_0_irq_handler(int irq, void *data)
 {
 	struct pmif *arb = data;
-	int irq_f = 0, idx = 0;
+	int irq_f = 0, irq_f_p = 0, idx = 0;
 
 	__pm_stay_awake(arb->pmif_m_Thread_lock);
 	mutex_lock(&arb->pmif_m_mutex);
-	irq_f = pmif_readl(arb, PMIF_IRQ_FLAG_0);
-	if (irq_f == 0) {
+
+	irq_f = pmif_readl(arb->pmif_base[0], arb, PMIF_IRQ_FLAG_0);
+	if (!IS_ERR(arb->pmif_base[1]))
+		irq_f_p = pmif_readl(arb->pmif_base[1], arb, PMIF_IRQ_FLAG_0);
+
+	if ((irq_f == 0) && (irq_f_p == 0)) {
 		mutex_unlock(&arb->pmif_m_mutex);
 		__pm_relax(arb->pmif_m_Thread_lock);
 		return IRQ_NONE;
 	}
 
 	for (idx = 0; idx < 32; idx++) {
-		if ((irq_f & (0x1 << idx)) != 0) {
+		if (((irq_f & (0x1 << idx)) != 0) || ((irq_f_p & (0x1 << idx)) != 0)) {
 			switch (idx) {
 			case IRQ_PMIF_ACC_VIO_V3:
 				pmif_acc_vio_irq_handler(irq, data);
@@ -837,7 +843,13 @@ static irqreturn_t pmif_event_0_irq_handler(int irq, void *data)
 				spmi_dump_pmif_record_reg();
 			break;
 			}
-			pmif_writel(arb, irq_f, PMIF_IRQ_CLR_0);
+			if (irq_f)
+				pmif_writel(arb->pmif_base[0], arb, irq_f, PMIF_IRQ_CLR_0);
+			else if (irq_f_p)
+				pmif_writel(arb->pmif_base[1], arb, irq_f_p, PMIF_IRQ_CLR_0);
+			else
+				pr_notice("%s IRQ[%d] is not cleared due to empty flags\n",
+					__func__, idx);
 			break;
 		}
 	}
@@ -850,19 +862,23 @@ static irqreturn_t pmif_event_0_irq_handler(int irq, void *data)
 static irqreturn_t pmif_event_1_irq_handler(int irq, void *data)
 {
 	struct pmif *arb = data;
-	int irq_f = 0, idx = 0;
+	int irq_f = 0, irq_f_p = 0, idx = 0;
 
 	__pm_stay_awake(arb->pmif_m_Thread_lock);
 	mutex_lock(&arb->pmif_m_mutex);
-	irq_f = pmif_readl(arb, PMIF_IRQ_FLAG_1);
-	if (irq_f == 0) {
+
+	irq_f = pmif_readl(arb->pmif_base[0], arb, PMIF_IRQ_FLAG_1);
+	if (!IS_ERR(arb->pmif_base[1]))
+		irq_f_p = pmif_readl(arb->pmif_base[1], arb, PMIF_IRQ_FLAG_1);
+
+	if ((irq_f == 0) && (irq_f_p == 0)) {
 		mutex_unlock(&arb->pmif_m_mutex);
 		__pm_relax(arb->pmif_m_Thread_lock);
 		return IRQ_NONE;
 	}
 
 	for (idx = 0; idx < 32; idx++) {
-		if ((irq_f & (0x1 << idx)) != 0) {
+		if (((irq_f & (0x1 << idx)) != 0) || ((irq_f_p & (0x1 << idx)) != 0)) {
 			switch (idx) {
 			default:
 				pr_notice("%s IRQ[%d] triggered\n",
@@ -870,7 +886,13 @@ static irqreturn_t pmif_event_1_irq_handler(int irq, void *data)
 				spmi_dump_pmif_record_reg();
 			break;
 			}
-			pmif_writel(arb, irq_f, PMIF_IRQ_CLR_1);
+			if (irq_f)
+				pmif_writel(arb->pmif_base[0], arb, irq_f, PMIF_IRQ_CLR_1);
+			else if (irq_f_p)
+				pmif_writel(arb->pmif_base[1], arb, irq_f_p, PMIF_IRQ_CLR_1);
+			else
+				pr_notice("%s IRQ[%d] is not cleared due to empty flags\n",
+					__func__, idx);
 			break;
 		}
 	}
@@ -883,19 +905,23 @@ static irqreturn_t pmif_event_1_irq_handler(int irq, void *data)
 static irqreturn_t pmif_event_2_irq_handler(int irq, void *data)
 {
 	struct pmif *arb = data;
-	int irq_f = 0, idx = 0;
+	int irq_f = 0, irq_f_p = 0, idx = 0;
 
 	__pm_stay_awake(arb->pmif_m_Thread_lock);
 	mutex_lock(&arb->pmif_m_mutex);
-	irq_f = pmif_readl(arb, PMIF_IRQ_FLAG_2);
-	if (irq_f == 0) {
+
+	irq_f = pmif_readl(arb->pmif_base[0], arb, PMIF_IRQ_FLAG_2);
+	if (!IS_ERR(arb->pmif_base[1]))
+		irq_f_p = pmif_readl(arb->pmif_base[1], arb, PMIF_IRQ_FLAG_2);
+
+	if ((irq_f == 0) && (irq_f_p == 0)) {
 		mutex_unlock(&arb->pmif_m_mutex);
 		__pm_relax(arb->pmif_m_Thread_lock);
 		return IRQ_NONE;
 	}
 
 	for (idx = 0; idx < 32; idx++) {
-		if ((irq_f & (0x1 << idx)) != 0) {
+		if (((irq_f & (0x1 << idx)) != 0) || ((irq_f_p & (0x1 << idx)) != 0)) {
 			switch (idx) {
 			case IRQ_PMIC_CMD_ERR_PARITY_ERR:
 				pmif_cmd_err_parity_err_irq_handler(irq, data);
@@ -912,7 +938,13 @@ static irqreturn_t pmif_event_2_irq_handler(int irq, void *data)
 				spmi_dump_pmif_record_reg();
 			break;
 			}
-			pmif_writel(arb, irq_f, PMIF_IRQ_CLR_2);
+			if (irq_f)
+				pmif_writel(arb->pmif_base[0], arb, irq_f, PMIF_IRQ_CLR_2);
+			else if (irq_f_p)
+				pmif_writel(arb->pmif_base[1], arb, irq_f_p, PMIF_IRQ_CLR_2);
+			else
+				pr_notice("%s IRQ[%d] is not cleared due to empty flags\n",
+					__func__, idx);
 			break;
 		}
 	}
@@ -925,19 +957,23 @@ static irqreturn_t pmif_event_2_irq_handler(int irq, void *data)
 static irqreturn_t pmif_event_3_irq_handler(int irq, void *data)
 {
 	struct pmif *arb = data;
-	int irq_f = 0, idx = 0;
+	int irq_f = 0, irq_f_p = 0, idx = 0;
 
 	__pm_stay_awake(arb->pmif_m_Thread_lock);
 	mutex_lock(&arb->pmif_m_mutex);
-	irq_f = pmif_readl(arb, PMIF_IRQ_FLAG_3);
-	if (irq_f == 0) {
+
+	irq_f = pmif_readl(arb->pmif_base[0], arb, PMIF_IRQ_FLAG_3);
+	if (!IS_ERR(arb->pmif_base[1]))
+		irq_f_p = pmif_readl(arb->pmif_base[1], arb, PMIF_IRQ_FLAG_3);
+
+	if ((irq_f == 0) && (irq_f_p == 0)) {
 		mutex_unlock(&arb->pmif_m_mutex);
 		__pm_relax(arb->pmif_m_Thread_lock);
 		return IRQ_NONE;
 	}
 
 	for (idx = 0; idx < 32; idx++) {
-		if ((irq_f & (0x1 << idx)) != 0) {
+		if (((irq_f & (0x1 << idx)) != 0) || ((irq_f_p & (0x1 << idx)) != 0)) {
 			switch (idx) {
 			case IRQ_PMIF_SWINF_ACC_ERR_0:
 				pmif_swinf_acc_err_0_irq_handler(irq, data);
@@ -982,8 +1018,16 @@ static irqreturn_t pmif_event_3_irq_handler(int irq, void *data)
 				spmi_dump_pmif_record_reg();
 			break;
 			}
-			if (!(irq_f & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0)))
-				pmif_writel(arb, irq_f, PMIF_IRQ_CLR_3);
+			/* Don't clear MD SW SWINF ACC ERR flag for re-send mechanism */
+			if (irq_f) {
+				if (!(irq_f & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0)))
+					pmif_writel(arb->pmif_base[0], arb, irq_f, PMIF_IRQ_CLR_3);
+			} else if (irq_f_p) {
+				if (!(irq_f_p & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0)))
+					pmif_writel(arb->pmif_base[1], arb, irq_f_p, PMIF_IRQ_CLR_3);
+			} else
+				pr_notice("%s IRQ[%d] is not cleared due to empty flags\n",
+					__func__, idx);
 			break;
 		}
 	}
@@ -996,19 +1040,23 @@ static irqreturn_t pmif_event_3_irq_handler(int irq, void *data)
 static irqreturn_t pmif_event_4_irq_handler(int irq, void *data)
 {
 	struct pmif *arb = data;
-	int irq_f = 0, idx = 0;
+	int irq_f = 0, irq_f_p = 0, idx = 0;
 
 	__pm_stay_awake(arb->pmif_m_Thread_lock);
 	mutex_lock(&arb->pmif_m_mutex);
-	irq_f = pmif_readl(arb, PMIF_IRQ_FLAG_4);
-	if (irq_f == 0) {
+
+	irq_f = pmif_readl(arb->pmif_base[0], arb, PMIF_IRQ_FLAG_4);
+	if (!IS_ERR(arb->pmif_base[1]))
+		irq_f_p = pmif_readl(arb->pmif_base[1], arb, PMIF_IRQ_FLAG_4);
+
+	if ((irq_f == 0) && (irq_f_p == 0)) {
 		mutex_unlock(&arb->pmif_m_mutex);
 		__pm_relax(arb->pmif_m_Thread_lock);
 		return IRQ_NONE;
 	}
 
 	for (idx = 0; idx < 32; idx++) {
-		if ((irq_f & (0x1 << idx)) != 0) {
+		if (((irq_f & (0x1 << idx)) != 0) || ((irq_f_p & (0x1 << idx)) != 0)) {
 			switch (idx) {
 			default:
 				pr_notice("%s IRQ[%d] triggered\n",
@@ -1016,7 +1064,13 @@ static irqreturn_t pmif_event_4_irq_handler(int irq, void *data)
 				spmi_dump_pmif_record_reg();
 			break;
 			}
-			pmif_writel(arb, irq_f, PMIF_IRQ_CLR_4);
+			if (irq_f)
+				pmif_writel(arb->pmif_base[0], arb, irq_f, PMIF_IRQ_CLR_4);
+			else if (irq_f_p)
+				pmif_writel(arb->pmif_base[1], arb, irq_f_p, PMIF_IRQ_CLR_4);
+			else
+				pr_notice("%s IRQ[%d] is not cleared due to empty flags\n",
+					__func__, idx);
 			break;
 		}
 	}
@@ -1058,16 +1112,29 @@ static void pmif_irq_register(struct platform_device *pdev,
 	ret = of_property_read_u32_array(pdev->dev.of_node, "irq-event-en",
 		irq_event_en, ARRAY_SIZE(irq_event_en));
 
-	pmif_writel(arb, irq_event_en[0] | pmif_readl(arb, PMIF_IRQ_EVENT_EN_0),
-			PMIF_IRQ_EVENT_EN_0);
-	pmif_writel(arb, irq_event_en[1] | pmif_readl(arb, PMIF_IRQ_EVENT_EN_1),
-			PMIF_IRQ_EVENT_EN_1);
-	pmif_writel(arb, irq_event_en[2] | pmif_readl(arb, PMIF_IRQ_EVENT_EN_2),
-			PMIF_IRQ_EVENT_EN_2);
-	pmif_writel(arb, irq_event_en[3] | pmif_readl(arb, PMIF_IRQ_EVENT_EN_3),
-			PMIF_IRQ_EVENT_EN_3);
-	pmif_writel(arb, irq_event_en[4] | pmif_readl(arb, PMIF_IRQ_EVENT_EN_4),
-			PMIF_IRQ_EVENT_EN_4);
+	pmif_writel(arb->pmif_base[0], arb, irq_event_en[0] | pmif_readl(arb->pmif_base[0],
+		arb, PMIF_IRQ_EVENT_EN_0), PMIF_IRQ_EVENT_EN_0);
+	pmif_writel(arb->pmif_base[0], arb, irq_event_en[1] | pmif_readl(arb->pmif_base[0],
+		arb, PMIF_IRQ_EVENT_EN_1), PMIF_IRQ_EVENT_EN_1);
+	pmif_writel(arb->pmif_base[0], arb, irq_event_en[2] | pmif_readl(arb->pmif_base[0],
+		arb, PMIF_IRQ_EVENT_EN_2), PMIF_IRQ_EVENT_EN_2);
+	pmif_writel(arb->pmif_base[0], arb, irq_event_en[3] | pmif_readl(arb->pmif_base[0],
+		arb, PMIF_IRQ_EVENT_EN_3), PMIF_IRQ_EVENT_EN_3);
+	pmif_writel(arb->pmif_base[0], arb, irq_event_en[4] | pmif_readl(arb->pmif_base[0],
+		arb, PMIF_IRQ_EVENT_EN_4), PMIF_IRQ_EVENT_EN_4);
+
+	if (!IS_ERR(arb->pmif_base[1])) {
+		pmif_writel(arb->pmif_base[1], arb, irq_event_en[0] | pmif_readl(arb->pmif_base[1],
+			arb, PMIF_IRQ_EVENT_EN_0), PMIF_IRQ_EVENT_EN_0);
+		pmif_writel(arb->pmif_base[1], arb, irq_event_en[1] | pmif_readl(arb->pmif_base[1],
+			arb, PMIF_IRQ_EVENT_EN_1), PMIF_IRQ_EVENT_EN_1);
+		pmif_writel(arb->pmif_base[1], arb, irq_event_en[2] | pmif_readl(arb->pmif_base[1],
+			arb, PMIF_IRQ_EVENT_EN_2), PMIF_IRQ_EVENT_EN_2);
+		pmif_writel(arb->pmif_base[1], arb, irq_event_en[3] | pmif_readl(arb->pmif_base[1],
+			arb, PMIF_IRQ_EVENT_EN_3), PMIF_IRQ_EVENT_EN_3);
+		pmif_writel(arb->pmif_base[1], arb, irq_event_en[4] | pmif_readl(arb->pmif_base[1],
+			arb, PMIF_IRQ_EVENT_EN_4), PMIF_IRQ_EVENT_EN_4);
+	}
 }
 static void dump_pmic_dbg_rg(struct pmif *arb)
 {
@@ -1129,18 +1196,18 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	__pm_stay_awake(arb->pmif_m_Thread_lock);
 	mutex_lock(&arb->pmif_m_mutex);
 
-	spmi_nack = mtk_spmi_readl(arb->spmimst_base, arb, SPMI_REC0);
-	spmi_nack_data = mtk_spmi_readl(arb->spmimst_base, arb, SPMI_REC1);
-	spmi_rcs_nack = mtk_spmi_readl(arb->spmimst_base, arb, SPMI_REC_CMD_DEC);
-	spmi_debug_nack = mtk_spmi_readl(arb->spmimst_base, arb, SPMI_DEC_DBG);
-	spmi_mst_nack = mtk_spmi_readl(arb->spmimst_base, arb, SPMI_MST_DBG);
+	spmi_nack = mtk_spmi_readl(arb->spmimst_base[0], arb, SPMI_REC0);
+	spmi_nack_data = mtk_spmi_readl(arb->spmimst_base[0], arb, SPMI_REC1);
+	spmi_rcs_nack = mtk_spmi_readl(arb->spmimst_base[0], arb, SPMI_REC_CMD_DEC);
+	spmi_debug_nack = mtk_spmi_readl(arb->spmimst_base[0], arb, SPMI_DEC_DBG);
+	spmi_mst_nack = mtk_spmi_readl(arb->spmimst_base[0], arb, SPMI_MST_DBG);
 
-	if (arb->spmimst_base_p != NULL) {
-		spmi_p_nack = mtk_spmi_readl(arb->spmimst_base_p, arb, SPMI_REC0);
-		spmi_p_nack_data = mtk_spmi_readl(arb->spmimst_base_p, arb, SPMI_REC1);
-		spmi_p_rcs_nack = mtk_spmi_readl(arb->spmimst_base_p, arb, SPMI_REC_CMD_DEC);
-		spmi_p_debug_nack = mtk_spmi_readl(arb->spmimst_base_p, arb, SPMI_DEC_DBG);
-		spmi_p_mst_nack = mtk_spmi_readl(arb->spmimst_base_p, arb, SPMI_MST_DBG);
+	if (!IS_ERR(arb->spmimst_base[1])) {
+		spmi_p_nack = mtk_spmi_readl(arb->spmimst_base[1], arb, SPMI_REC0);
+		spmi_p_nack_data = mtk_spmi_readl(arb->spmimst_base[1], arb, SPMI_REC1);
+		spmi_p_rcs_nack = mtk_spmi_readl(arb->spmimst_base[1], arb, SPMI_REC_CMD_DEC);
+		spmi_p_debug_nack = mtk_spmi_readl(arb->spmimst_base[1], arb, SPMI_DEC_DBG);
+		spmi_p_mst_nack = mtk_spmi_readl(arb->spmimst_base[1], arb, SPMI_MST_DBG);
 	}
 
 	if ((spmi_nack & 0xD8) || (spmi_p_nack & 0xD8)) {
@@ -1235,10 +1302,10 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	/* clear irq*/
 	if ((spmi_nack & 0xF8) || (spmi_rcs_nack & 0xC0000) ||
 		(spmi_debug_nack & 0xF0000) || (spmi_mst_nack & 0xC0000))
-		mtk_spmi_writel(arb->spmimst_base, arb, 0x3, SPMI_REC_CTRL);
+		mtk_spmi_writel(arb->spmimst_base[0], arb, 0x3, SPMI_REC_CTRL);
 	else if ((spmi_p_nack & 0xF8) || (spmi_p_rcs_nack & 0xC0000) ||
 		(spmi_p_debug_nack & 0xF0000) || (spmi_p_mst_nack & 0xC0000))
-		mtk_spmi_writel(arb->spmimst_base_p, arb, 0x3, SPMI_REC_CTRL);
+		mtk_spmi_writel(arb->spmimst_base[1], arb, 0x3, SPMI_REC_CTRL);
 	else
 		pr_notice("%s IRQ not cleared\n", __func__);
 
@@ -1324,23 +1391,40 @@ static const struct irq_domain_ops rcs_irq_domain_ops = {
 static irqreturn_t rcs_irq_handler(int irq, void *data)
 {
 	struct pmif *arb = data;
-	unsigned int slv_irq_sta;
+	unsigned int slv_irq_sta, slv_irq_sta_p;
 	int i;
 
 	for (i = 0; i < SPMI_MAX_SLAVE_ID; i++) {
-		slv_irq_sta = mtk_spmi_readl(arb->spmimst_base, arb, SPMI_SLV_3_0_EINT + (i / 4));
+		slv_irq_sta = mtk_spmi_readl(arb->spmimst_base[0], arb, SPMI_SLV_3_0_EINT + (i / 4));
 		slv_irq_sta = (slv_irq_sta >> ((i % 4) * 8)) & 0xFF;
+
+		if (!IS_ERR(arb->spmimst_base[1])) {
+			slv_irq_sta_p = mtk_spmi_readl(arb->spmimst_base[1], arb, SPMI_SLV_3_0_EINT + (i / 4));
+			slv_irq_sta_p = (slv_irq_sta_p >> ((i % 4) * 8)) & 0xFF;
+		}
 
 		/* need to clear using 0xFF to avoid new irq happen
 		 * after read SPMI_SLV_3_0_EINT + (i/4) value then use
 		 * this value to clean
 		 */
-		mtk_spmi_writel(arb->spmimst_base, arb, (0xFF << ((i % 4) * 8)),
-				SPMI_SLV_3_0_EINT + (i / 4));
-		if (arb->rcs_enable_hwirq[i] && slv_irq_sta) {
-			dev_info(&arb->spmic->dev,
-				 "hwirq=%d, sta=0x%x\n", i, slv_irq_sta);
-			handle_nested_irq(irq_find_mapping(arb->domain, i));
+		if (slv_irq_sta) {
+			mtk_spmi_writel(arb->spmimst_base[0], arb, (0xFF << ((i % 4) * 8)),
+					SPMI_SLV_3_0_EINT + (i / 4));
+			if (arb->rcs_enable_hwirq[i] && slv_irq_sta) {
+				dev_info(&arb->spmic->dev,
+					"hwirq=%d, sta=0x%x\n", i, slv_irq_sta);
+				handle_nested_irq(irq_find_mapping(arb->domain, i));
+			}
+		} else {
+			if (!IS_ERR(arb->spmimst_base[1])) {
+				mtk_spmi_writel(arb->spmimst_base[1], arb, (0xFF << ((i % 4) * 8)),
+					SPMI_SLV_3_0_EINT + (i / 4));
+				if (arb->rcs_enable_hwirq[i] && slv_irq_sta_p) {
+					dev_info(&arb->spmic->dev,
+						"hwirq=%d, sta=0x%x\n", i, slv_irq_sta_p);
+					handle_nested_irq(irq_find_mapping(arb->domain, i));
+				}
+			}
 		}
 	}
 	return IRQ_HANDLED;
@@ -1369,8 +1453,12 @@ static int rcs_irq_register(struct platform_device *pdev,
 	}
 	/* clear all slave irq status */
 	for (i = 0; i < SPMI_MAX_SLAVE_ID; i++) {
-		mtk_spmi_writel(arb->spmimst_base, arb, (0xFF << ((i % 4) * 8)),
+		mtk_spmi_writel(arb->spmimst_base[0], arb, (0xFF << ((i % 4) * 8)),
 				SPMI_SLV_3_0_EINT + (i / 4));
+		if (!IS_ERR(arb->spmimst_base[1])) {
+			mtk_spmi_writel(arb->spmimst_base[1], arb, (0xFF << ((i % 4) * 8)),
+				SPMI_SLV_3_0_EINT + (i / 4));
+		}
 	}
 	ret = devm_request_threaded_irq(&pdev->dev, irq, NULL,
 					rcs_irq_handler, IRQF_ONESHOT,
@@ -1401,15 +1489,27 @@ static void pmif_spmi_mrdump_register(struct platform_device *pdev, struct pmif 
 		dev_info(&pdev->dev, "%s: dump size > 4K\n", __func__);
 		return;
 	}
-	ret = mrdump_mini_add_extra_file((unsigned long)arb->base, reg[1], reg[3], "PMIF_DATA");
+
+	ret = mrdump_mini_add_extra_file((unsigned long)arb->pmif_base[0], reg[1], reg[3], "PMIF_M_DATA");
 	if (ret)
-		dev_info(&pdev->dev, "%s: PMIF_DATA add fail(%d)\n",
+		dev_info(&pdev->dev, "%s: PMIF_M_DATA add fail(%d)\n",
 			 __func__, ret);
 
-	ret = mrdump_mini_add_extra_file((unsigned long)arb->spmimst_base,
-					reg[5], reg[7], "SPMI_DATA");
+	ret = mrdump_mini_add_extra_file((unsigned long)arb->pmif_base[1], reg[1], reg[3], "PMIF_P_DATA");
 	if (ret)
-		dev_info(&pdev->dev, "%s: SPMI_DATA add fail(%d)\n",
+		dev_info(&pdev->dev, "%s: PMIF_P_DATA add fail(%d)\n",
+			 __func__, ret);
+
+	ret = mrdump_mini_add_extra_file((unsigned long)arb->spmimst_base[0],
+					reg[5], reg[7], "SPMI_M_DATA");
+	if (ret)
+		dev_info(&pdev->dev, "%s: SPMI_M_DATA add fail(%d)\n",
+			__func__, ret);
+
+	ret = mrdump_mini_add_extra_file((unsigned long)arb->spmimst_base[1],
+					reg[5], reg[7], "SPMI_P_DATA");
+	if (ret)
+		dev_info(&pdev->dev, "%s: SPMI_P_DATA add fail(%d)\n",
 			__func__, ret);
 
 	ret = mrdump_mini_add_extra_file((unsigned long)arb->busdbgregs,
@@ -1443,28 +1543,26 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	arb = spmi_controller_get_drvdata(ctrl);
 	arb->spmic = ctrl;
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pmif-m");
-	arb->base = arb->base_m = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(arb->base_m)) {
-		err = PTR_ERR(arb->base_m);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pmif");
+	arb->pmif_base[0] = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(arb->pmif_base[0])) {
+		err = PTR_ERR(arb->pmif_base[0]);
 		goto err_put_ctrl;
 	}
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "spmimst-m");
-	arb->spmimst_base = arb->spmimst_base_m = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(arb->spmimst_base_m)) {
-		err = PTR_ERR(arb->spmimst_base_m);
-		goto err_put_ctrl;
-	}
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "spmimst");
+	arb->spmimst_base[0] = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(arb->spmimst_base[0]))
+		dev_notice(&pdev->dev, "[PMIF]:no spmimst found\n");
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pmif-p");
-	arb->base_p = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(arb->base_p))
+	arb->pmif_base[1] = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(arb->pmif_base[1]))
 		dev_notice(&pdev->dev, "[PMIF]:no pmif-p found\n");
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "spmimst-p");
-	arb->spmimst_base_p = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(arb->spmimst_base_p))
+	arb->spmimst_base[1] = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(arb->spmimst_base[1]))
 		dev_notice(&pdev->dev, "[PMIF]:no spmimst-p found\n");
 
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
@@ -1527,11 +1625,18 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	if (arb->caps == 2) {
 		arb->irq = platform_get_irq_byname(pdev, "pmif_irq");
 		if (arb->irq < 0) {
-			err = arb->irq;
 			dev_notice(&pdev->dev,
 				   "Failed to get pmif_irq, ret = %d\n", arb->irq);
 		}
 		pmif_irq_register(pdev, arb, arb->irq);
+
+
+		arb->irq_p = platform_get_irq_byname(pdev, "pmif_p_irq");
+		if (arb->irq_p < 0) {
+			dev_notice(&pdev->dev,
+				   "Failed to get pmif_p_irq, ret = %d\n", arb->irq_p);
+		}
+		pmif_irq_register(pdev, arb, arb->irq_p);
 
 		arb->rcs_irq = platform_get_irq_byname(pdev, "rcs_irq");
 		if (arb->rcs_irq < 0) {
@@ -1558,7 +1663,7 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 		arb->spmi_p_nack_irq = platform_get_irq_byname(pdev, "spmi_p_nack_irq");
 		if (arb->spmi_p_nack_irq < 0) {
 			dev_notice(&pdev->dev,
-				"Failed to get spmi_nack_irq, ret = %d\n", arb->spmi_p_nack_irq);
+				"Failed to get spmi_p_nack_irq, ret = %d\n", arb->spmi_p_nack_irq);
 		} else {
 			err = spmi_nack_irq_register(pdev, arb, arb->spmi_p_nack_irq);
 			if (err)
@@ -1570,12 +1675,23 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	spmi_dev_parse(pdev);
 #if defined(CONFIG_FPGA_EARLY_PORTING)
 	/* pmif/spmi initial setting */
-	pmif_writel(arb, 0xffffffff, PMIF_INF_EN);
-	pmif_writel(arb, 0xffffffff, PMIF_ARB_EN);
-	pmif_writel(arb, 0x1, PMIF_CMDISSUE_EN);
-	pmif_writel(arb, 0x1, PMIF_INIT_DONE);
+	pmif_writel(arb->pmif_base[0], arb, 0xffffffff, PMIF_INF_EN);
+	pmif_writel(arb->pmif_base[0], arb, 0xffffffff, PMIF_ARB_EN);
+	pmif_writel(arb->pmif_base[0], arb, 0x1, PMIF_CMDISSUE_EN);
+	pmif_writel(arb->pmif_base[0], arb, 0x1, PMIF_INIT_DONE);
 
-	mtk_spmi_writel(arb->spmimst_base, arb, 0x1, SPMI_MST_REQ_EN);
+	if (!IS_ERR(arb->pmif_base[1])) {
+		pmif_writel(arb->pmif_base[1], arb, 0xffffffff, PMIF_INF_EN);
+		pmif_writel(arb->pmif_base[1], arb, 0xffffffff, PMIF_ARB_EN);
+		pmif_writel(arb->pmif_base[1], arb, 0x1, PMIF_CMDISSUE_EN);
+		pmif_writel(arb->pmif_base[1], arb, 0x1, PMIF_INIT_DONE);
+	}
+
+	mtk_spmi_writel(arb->spmimst_base[0], arb, 0x1, SPMI_MST_REQ_EN);
+
+	if (!IS_ERR(arb->spmimst_base[1]))
+		mtk_spmi_writel(arb->spmimst_base[1], arb, 0x1, SPMI_MST_REQ_EN);
+
 	/* r/w verification */
 	ctrl->read_cmd(ctrl, 0x38, test_id, hwcid_l_addr, &id_l, 1);
 	ctrl->read_cmd(ctrl, 0x38, test_id, hwcid_h_addr, &id_h, 1);

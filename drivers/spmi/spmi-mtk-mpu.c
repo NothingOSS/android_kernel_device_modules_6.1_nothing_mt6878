@@ -13,7 +13,7 @@ struct pmif_mpu_data {
 };
 
 struct pmif_mpu {
-	void __iomem	*base;
+	void __iomem	*pmif_mpu_base[2];
 	const struct pmif_mpu_data *data;
 };
 
@@ -37,14 +37,14 @@ static const u32 pmif_mpu_regs[] = {
 
 static struct pmif_mpu_timer mpu_timer;
 
-static u32 pmif_mpu_readl(struct pmif_mpu *arb, enum pmif_mpu_regs reg)
+static u32 pmif_mpu_readl(void __iomem *addr, struct pmif_mpu *arb, enum pmif_mpu_regs reg)
 {
-	return readl(arb->base + arb->data->regs[reg]);
+	return readl(addr + arb->data->regs[reg]);
 }
 
-static void pmif_mpu_writel(struct pmif_mpu *arb, u32 val, enum pmif_mpu_regs reg)
+static void pmif_mpu_writel(void __iomem *addr, struct pmif_mpu *arb, u32 val, enum pmif_mpu_regs reg)
 {
-	writel(val, arb->base + arb->data->regs[reg]);
+	writel(val, addr + arb->data->regs[reg]);
 }
 
 static const struct pmif_mpu_data pmif_mpu_arb = {
@@ -83,24 +83,47 @@ static void enable_kernel_mpu(void)
 
 	if (!of_property_read_u32(mpu_pdev->dev.of_node, "mediatek,pmic-all-rgn-en",
 				  &pmic_all_rgn_en)) {
-		rgn_en = pmif_mpu_readl(mpu_arb, PMIF_PMIC_ALL_RGN_EN);
+		rgn_en = pmif_mpu_readl(mpu_arb->pmif_mpu_base[0], mpu_arb, PMIF_PMIC_ALL_RGN_EN);
 		rgn_en |= pmic_all_rgn_en;
-		pmif_mpu_writel(mpu_arb, rgn_en, PMIF_PMIC_ALL_RGN_EN);
-		rgn_en = pmif_mpu_readl(mpu_arb, PMIF_PMIC_ALL_RGN_EN);
+		pmif_mpu_writel(mpu_arb->pmif_mpu_base[0], mpu_arb, rgn_en, PMIF_PMIC_ALL_RGN_EN);
+		rgn_en = pmif_mpu_readl(mpu_arb->pmif_mpu_base[0], mpu_arb, PMIF_PMIC_ALL_RGN_EN);
 	}
 
 	if (!of_property_read_u32(mpu_pdev->dev.of_node, "mediatek,pmic-all-rgn-en-2",
 				  &pmic_all_rgn_en)) {
-		rgn_en_2 = pmif_mpu_readl(mpu_arb, PMIF_PMIC_ALL_RGN_EN_2);
+		rgn_en_2 = pmif_mpu_readl(mpu_arb->pmif_mpu_base[0], mpu_arb, PMIF_PMIC_ALL_RGN_EN_2);
 		rgn_en_2 |= pmic_all_rgn_en;
-		pmif_mpu_writel(mpu_arb, rgn_en_2, PMIF_PMIC_ALL_RGN_EN_2);
-		rgn_en_2 = pmif_mpu_readl(mpu_arb, PMIF_PMIC_ALL_RGN_EN_2);
+		pmif_mpu_writel(mpu_arb->pmif_mpu_base[0], mpu_arb, rgn_en_2, PMIF_PMIC_ALL_RGN_EN_2);
+		rgn_en_2 = pmif_mpu_readl(mpu_arb->pmif_mpu_base[0], mpu_arb, PMIF_PMIC_ALL_RGN_EN_2);
 	}
 
-	pmif_mpu_writel(mpu_arb, 1, PMIF_MPU_CTRL);
+	pmif_mpu_writel(mpu_arb->pmif_mpu_base[0], mpu_arb, 1, PMIF_MPU_CTRL);
 
-	dev_info(&mpu_pdev->dev, "PMIC_ALL_RGN_EN=0x%x, PMIC_ALL_RGN_EN_2=0x%x MPU late init setting done\n",
-		 rgn_en, rgn_en_2);
+	dev_info(&mpu_pdev->dev, "[PMIF-M]PMIC_ALL_RGN_EN=0x%x, PMIC_ALL_RGN_EN_2=0x%x MPU late init setting done\n",
+		rgn_en, rgn_en_2);
+
+	if (!IS_ERR(mpu_arb->pmif_mpu_base[1])) {
+		if (!of_property_read_u32(mpu_pdev->dev.of_node, "mediatek,pmic-all-rgn-en-p",
+					&pmic_all_rgn_en)) {
+			rgn_en = pmif_mpu_readl(mpu_arb->pmif_mpu_base[1], mpu_arb, PMIF_PMIC_ALL_RGN_EN);
+			rgn_en |= pmic_all_rgn_en;
+			pmif_mpu_writel(mpu_arb->pmif_mpu_base[1], mpu_arb, rgn_en, PMIF_PMIC_ALL_RGN_EN);
+			rgn_en = pmif_mpu_readl(mpu_arb->pmif_mpu_base[1], mpu_arb, PMIF_PMIC_ALL_RGN_EN);
+		}
+
+		if (!of_property_read_u32(mpu_pdev->dev.of_node, "mediatek,pmic-all-rgn-en-p-2",
+					&pmic_all_rgn_en)) {
+			rgn_en_2 = pmif_mpu_readl(mpu_arb->pmif_mpu_base[1], mpu_arb, PMIF_PMIC_ALL_RGN_EN_2);
+			rgn_en_2 |= pmic_all_rgn_en;
+			pmif_mpu_writel(mpu_arb->pmif_mpu_base[1], mpu_arb, rgn_en_2, PMIF_PMIC_ALL_RGN_EN_2);
+			rgn_en_2 = pmif_mpu_readl(mpu_arb->pmif_mpu_base[1], mpu_arb, PMIF_PMIC_ALL_RGN_EN_2);
+		}
+
+		pmif_mpu_writel(mpu_arb->pmif_mpu_base[1], mpu_arb, 1, PMIF_MPU_CTRL);
+
+		dev_info(&mpu_pdev->dev, "[PMIF-P]PMIC_ALL_RGN_EN=0x%x, PMIC_ALL_RGN_EN_2=0x%x MPU late init setting done\n",
+			rgn_en, rgn_en_2);
+	}
 }
 
 static void enable_kernel_mpu_handler(struct timer_list *t)
@@ -111,7 +134,7 @@ static void enable_kernel_mpu_handler(struct timer_list *t)
 static int mtk_spmi_pmif_mpu_probe(struct platform_device *pdev)
 {
 	struct pmif_mpu *arb = NULL;
-	int err = 0;
+	struct resource *res;
 	u32 disable_pmif_mpu = 0, mpu_delay_enable_time = 0;
 
 	arb = devm_kzalloc(&pdev->dev, sizeof(*arb), GFP_KERNEL);
@@ -124,19 +147,28 @@ static int mtk_spmi_pmif_mpu_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	arb->base = devm_platform_ioremap_resource_byname(pdev, "pmif_mpu");
-	if (IS_ERR(arb->base)) {
-		err = PTR_ERR(arb->base);
-		dev_info(&pdev->dev, "failed to get remapped address\n");
-		return PTR_ERR(arb->base);
-	}
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pmif_mpu");
+	arb->pmif_mpu_base[0] = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(arb->pmif_mpu_base[0]))
+		dev_info(&pdev->dev, "failed to get remapped pmif-m-mpu address\n");
+
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pmif_p_mpu");
+	arb->pmif_mpu_base[1] = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(arb->pmif_mpu_base[1]))
+		dev_info(&pdev->dev, "failed to get remapped pmif-p-mpu address\n");
+
 
 	platform_set_drvdata(pdev, arb);
 
 	if (!of_property_read_u32(pdev->dev.of_node, "disable", &disable_pmif_mpu)) {
 		if (disable_pmif_mpu) {
-			pmif_mpu_writel(arb, 0, PMIF_PMIC_ALL_RGN_EN);
-			pmif_mpu_writel(arb, 0, PMIF_PMIC_ALL_RGN_EN_2);
+			pmif_mpu_writel(arb->pmif_mpu_base[0], arb, 0, PMIF_PMIC_ALL_RGN_EN);
+			pmif_mpu_writel(arb->pmif_mpu_base[0], arb, 0, PMIF_PMIC_ALL_RGN_EN_2);
+			if (!IS_ERR(arb->pmif_mpu_base[1])) {
+				pmif_mpu_writel(arb->pmif_mpu_base[1], arb, 0, PMIF_PMIC_ALL_RGN_EN);
+				pmif_mpu_writel(arb->pmif_mpu_base[1], arb, 0, PMIF_PMIC_ALL_RGN_EN_2);
+			}
 			dev_info(&pdev->dev, "Disable PMIF MPU\n");
 			return 0;
 		}
@@ -182,7 +214,7 @@ static const struct of_device_id mtk_spmi_pmif_mpu_match_table[] = {
 		.compatible = "mediatek,mt6985-spmi_pmif_mpu",
 		.data = &pmif_mpu_arb,
 	}, {
-		.compatible = "mediatek,mt6989-spmi_pmif_mpu",
+		.compatible = "mediatek,mt6989-spmi-pmif-mpu",
 		.data = &pmif_mpu_arb,
 	}, {
 		/* sentinel */
