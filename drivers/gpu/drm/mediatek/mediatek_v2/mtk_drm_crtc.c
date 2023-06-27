@@ -6758,9 +6758,9 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 		if (mtk_crtc->is_dual_pipe && (dst_x < (width / 2))) {
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_TILE_OVERHEAD) &&
-				((dst_x + src_w_align) >= ((width / 2) + to_info.left_in_width)))
+				((dst_x + src_w) >= to_info.left_in_width))
 				cross_mid_line = true;
-			else if ((dst_x + src_w_align) >= (width / 2))
+			else if ((dst_x + src_w) >= (width / 2))
 				cross_mid_line = true;
 		}
 
@@ -6812,6 +6812,8 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			unsigned long record1 = 0;
 			unsigned long record2 = 0;
 			unsigned long record3 = 0;
+			unsigned long record4 = 0;
+			unsigned long record5 = 0;
 
 			DDPINFO("BWM:p:%u f:%u i:%d l:%d e:%d w:%d c:%d b:%d s:%d s:%d a:%u p:%u\n",
 				plane_index, fn, index, lye_id, ext_lye_id,
@@ -6824,9 +6826,12 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			((0xFF & is_compress) << 8) | (0xFF & bpp);
 			record2 = ((0xFFFF & src_w_align) << 16) | (0xFFFF & src_h_align);
 			record3 = ((0xFFFF & avg_inter_value) << 16) | (0xFFFF & peak_inter_value);
+			record4 = ((0xFFFF & dst_x) << 16) | (0xFFFF & src_w);
+			record5 = ((0xFFFF & to_info.left_in_width) << 16) | (0xFFFF & to_info.right_in_width);
 
 			CRTC_MMP_MARK((int) pipe, ovl_bw_monitor, record0, record1);
 			CRTC_MMP_MARK((int) pipe, ovl_bw_monitor, record2, record3);
+			CRTC_MMP_MARK((int) pipe, ovl_bw_monitor, record4, record5);
 		}
 
 		if (!comp) {
