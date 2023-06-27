@@ -3866,6 +3866,14 @@
 					bus-status-num = <3>;
 					bus-freq-mhz = <156>;
 				};
+				monitor7 {
+					monitor-name = "debug_ctrl_ao_MM_AO";
+					base = <0x1e825000>;
+					num-ports = <29>;
+					bus-status-offset = <0x10>;
+					bus-status-num = <3>;
+					bus-freq-mhz = <688>;
+				};
 			};
 		};
 
