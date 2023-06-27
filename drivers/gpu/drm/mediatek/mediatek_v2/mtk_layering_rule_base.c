@@ -3840,7 +3840,7 @@ static int check_cross_pipe_rpo(
 	return 0;
 }
 
-static void RPO_rule(struct drm_crtc *crtc,
+static void RPO_rule(struct mtk_drm_private *priv, struct drm_crtc *crtc,
 		struct drm_mtk_layering_info *disp_info, int disp_idx)
 {
 	struct drm_mtk_layer_config *c = NULL;
@@ -3927,7 +3927,8 @@ static void RPO_rule(struct drm_crtc *crtc,
 					 MTK_MML_DISP_DIRECT_LINK_LAYER))
 			continue;
 
-		if (mtk_has_layer_cap(c, MTK_MDP_RSZ_LAYER))
+		if (mtk_has_layer_cap(c, MTK_MDP_RSZ_LAYER) &&
+			priv->data->mmsys_id != MMSYS_MT6897)
 			continue;
 
 		if (scale_cnt >= l_rule_info->rpo_scale_num)
@@ -3953,7 +3954,7 @@ static void resizing_rule(struct drm_device *dev,
 		struct drm_crtc *crtc = priv->crtc[disp_idx];
 
 		if (crtc)
-			RPO_rule(crtc, disp_info, disp_idx);
+			RPO_rule(priv, crtc, disp_info, disp_idx);
 	}
 
 	/* for crtc N layers that cannot supported by RPO */
