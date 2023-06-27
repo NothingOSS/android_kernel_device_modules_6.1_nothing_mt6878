@@ -1751,7 +1751,7 @@ static irqreturn_t arm_smmu_combined_irq_thread(int irq, void *dev)
 
 	ret = arm_smmu_rpm_get(smmu);
 	if (ret) {
-		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
 		return IRQ_HANDLED;
 	}
 
@@ -1771,7 +1771,7 @@ static irqreturn_t arm_smmu_combined_irq_handler(int irq, void *dev)
 
 	ret = arm_smmu_rpm_get(smmu);
 	if (ret) {
-		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
 		return IRQ_WAKE_THREAD;
 	}
 
@@ -2059,7 +2059,7 @@ void arm_smmu_tlb_inv_range_asid(unsigned long iova, size_t size, int asid,
 
 	ret = arm_smmu_rpm_get(smmu_domain->smmu);
 	if (ret) {
-		dev_info(smmu_domain->smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		dev_info(smmu_domain->smmu->dev, "[%s] power_status:%d\n", __func__, ret);
 		return;
 	}
 
@@ -2512,7 +2512,7 @@ static void arm_smmu_detach_dev(struct arm_smmu_master *master)
 
 	ret = arm_smmu_rpm_get(master->smmu);
 	if (ret) {
-		dev_info(smmu_domain->smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		dev_info(smmu_domain->smmu->dev, "[%s] power_status:%d\n", __func__, ret);
 		return;
 	}
 
@@ -2563,7 +2563,7 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
 	mutex_lock(&smmu_domain->init_mutex);
 	ret = arm_smmu_rpm_get(smmu);
 	if (ret) {
-		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
 		goto out_unlock;
 	}
 
@@ -2851,7 +2851,7 @@ static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 
 			ret = arm_smmu_rpm_get(smmu);
 			if (ret) {
-				dev_info(smmu->dev, "[%s] pm get failed ret:%d\n", __func__, ret);
+				dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
 				goto out_unlock;
 			}
 
@@ -4145,7 +4145,7 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 	if (!delay_hw_init) {
 		ret = arm_smmu_rpm_get(smmu);
 		if (ret) {
-			dev_info(smmu->dev, "[%s] pm get failed ret:%d\n", __func__, ret);
+			dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
 			return ret;
 		}
 
@@ -4218,7 +4218,7 @@ static int arm_smmu_device_remove(struct platform_device *pdev)
 
 	ret = arm_smmu_rpm_get(smmu);
 	if (ret) {
-		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
 		return ret;
 	}
 
@@ -4246,7 +4246,7 @@ static void arm_smmu_device_shutdown(struct platform_device *pdev)
 
 	ret = arm_smmu_rpm_get(smmu);
 	if (ret) {
-		dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
 		return;
 	}
 

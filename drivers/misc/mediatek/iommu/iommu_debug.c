@@ -925,7 +925,7 @@ static void dump_wrapper_register(struct seq_file *s,
 				   readl_relaxed(wp_base + smmuwp_regs[i + 2].offset),
 				   smmuwp_regs[i + 3].name, smmuwp_regs[i + 3].offset,
 				   readl_relaxed(wp_base + smmuwp_regs[i + 3].offset),
-				   smmuwp_regs[i + 4].name, smmuwp_regs[i + 3].offset,
+				   smmuwp_regs[i + 4].name, smmuwp_regs[i + 4].offset,
 				   readl_relaxed(wp_base + smmuwp_regs[i + 4].offset));
 			i = i + 4;
 		} else {
@@ -1723,7 +1723,7 @@ static int mtk_iommu_dump_fops_proc_show(struct seq_file *s, void *unused)
 				continue;
 
 			ret = mtk_smmu_power_get(i);
-			iommu_dump(s, "\nsmmu_%d: %s\n", i, get_power_status_str(ret));
+			iommu_dump(s, "smmu_%d: %s\n", i, get_power_status_str(ret));
 			if (ret)
 				continue;
 
@@ -1765,10 +1765,8 @@ static int mtk_smmu_wp_fops_proc_show(struct seq_file *s, void *unused)
 		for (i = 0; i < SMMU_TYPE_NUM; i++) {
 			ret = mtk_smmu_power_get(i);
 			iommu_dump(s, "smmu_%d: %s\n", i, get_power_status_str(ret));
-			if (ret) {
-				pr_info("[%s] smmu_%d, failed ret:%d\n", __func__, i, ret);
+			if (ret)
 				continue;
-			}
 
 			mtk_smmu_wpreg_dump(s, i);
 			mtk_smmu_power_put(i);
