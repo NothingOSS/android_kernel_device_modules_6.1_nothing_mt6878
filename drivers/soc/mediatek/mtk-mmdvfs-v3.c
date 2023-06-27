@@ -55,6 +55,7 @@ static DEFINE_MUTEX(mmdvfs_vcp_pwr_mutex);
 static struct workqueue_struct *vmm_notify_wq;
 
 static bool mmdvfs_vcp_cb_ready;
+static DEFINE_MUTEX(mmdvfs_vcp_cb_mutex);
 static int mmdvfs_ipi_status;
 static DEFINE_MUTEX(mmdvfs_vcp_ipi_mutex);
 static struct ipi_callbacks clkmux_cb;
@@ -298,8 +299,15 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 	writel(val | (1 << func), MEM_IPI_SYNC_FUNC);
 	gen = vcp_cmd_ex(VCP_GET_GEN, "mmdvfs_task");
 
+	mutex_lock(&mmdvfs_vcp_cb_mutex);
+	if (!mmdvfs_vcp_cb_ready) {
+		mutex_unlock(&mmdvfs_vcp_cb_mutex);
+		goto ipi_lock_end;
+	}
+
 	ret = mtk_ipi_send(vcp_get_ipidev(), IPI_OUT_MMDVFS, IPI_SEND_WAIT,
 		&slot, PIN_OUT_SIZE_MMDVFS, IPI_TIMEOUT_MS);
+	mutex_unlock(&mmdvfs_vcp_cb_mutex);
 	if (ret != IPI_ACTION_DONE)
 		goto ipi_lock_end;
 
@@ -1345,7 +1353,9 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 			dpc_fp(true, mmdvfs_vcp_stop);
 		mmdvfs_vcp_stop = false;
 		mmdvfs_vcp_ipi_send(FUNC_MMDVFSRC_INIT, MAX_OPP, MAX_OPP, NULL);
+		mutex_lock(&mmdvfs_vcp_cb_mutex);
 		mmdvfs_vcp_cb_ready = true;
+		mutex_unlock(&mmdvfs_vcp_cb_mutex);
 		if (hqa_enable)
 			mtk_mmdvfs_enable_vmm(true);
 		break;
@@ -1353,7 +1363,9 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 		if (dpc_fp)
 			dpc_fp(false, true);
 		mmdvfs_vcp_stop = true;
+		mutex_lock(&mmdvfs_vcp_cb_mutex);
 		mmdvfs_vcp_cb_ready = false;
+		mutex_unlock(&mmdvfs_vcp_cb_mutex);
 		break;
 	case VCP_EVENT_SUSPEND:
 		if (dpc_fp)
@@ -1385,7 +1397,9 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 			mtk_mmdvfs_enable_vmm(false);
 		}
 		mmdvfs_reset_clk(false);
+		mutex_lock(&mmdvfs_vcp_cb_mutex);
 		mmdvfs_vcp_cb_ready = false;
+		mutex_unlock(&mmdvfs_vcp_cb_mutex);
 		break;
 	}
 	return NOTIFY_DONE;
