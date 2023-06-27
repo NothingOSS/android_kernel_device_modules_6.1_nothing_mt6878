@@ -2829,6 +2829,7 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		if (!vow_service_SetApAddr(arg)) {
 			strcpy(ioctl_type, "VOW_READ_VOICE_DATA");
 			ret = -EFAULT;
+			break;
 		}
 		if ((vowserv.recording_flag == true)
 		    && (vowserv.firstRead == true)) {
