@@ -203,6 +203,17 @@
 #define REG_ENABLE_VSCALING REG_FLD_MSB_LSB(1, 1)
 #define REG_DE_ALIGN8_EN REG_FLD_MSB_LSB(6, 6)
 #define REG_HSD_2X4X_SEL REG_FLD_MSB_LSB(7, 7)
+#define DISP_ODDMR_OD_DUMMY_0 (0x01C4 + DISP_ODDMR_REG_OD_BASE)
+#define REG_CUR_LINE_BUFFER_DE_2P_ALIGN REG_FLD_MSB_LSB(0, 0)
+#define REG_UDMA_HSIZE_USER_MODE REG_FLD_MSB_LSB(1, 1)
+#define REG_UDMA_VSIZE_USER_MODE REG_FLD_MSB_LSB(2, 2)
+#define REG_HVSP2UDMA_W_LAST_MASK REG_FLD_MSB_LSB(3, 3)
+#define REG_BUF_LV_INVERSE REG_FLD_MSB_LSB(4, 4)
+#define REG_BYPASS_MIU2SMI_W_BRIDGE REG_FLD_MSB_LSB(7, 7)
+#define DISP_ODDMR_OD_DUMMY_1 (0x01C8 + DISP_ODDMR_REG_OD_BASE)
+#define DISP_ODDMR_OD_DUMMY_2 (0x01CC + DISP_ODDMR_REG_OD_BASE)
+#define DISP_ODDMR_OD_DUMMY_3 (0x01D0 + DISP_ODDMR_REG_OD_BASE)
+
 
 /* SPR2RGB */
 #define DISP_ODDMR_REG_SPR2RGB_BASE 0x800
@@ -303,10 +314,10 @@
 
 #define OD_H_ALIGN_BITS 128
 
-#define ODDMR_READ_IN_PRE_ULTRA(size)     (size * 2 / 3)
-#define ODDMR_READ_IN_ULTRA(size)         (size * 1 / 3)
-#define ODDMR_READ_OUT_PRE_ULTRA(size)    (size * 3 / 4)
-#define ODDMR_READ_OUT_ULTRA(size)        (size * 2 / 4)
+#define ODDMR_READ_IN_PRE_ULTRA(size)     (size * 2 / 3 + 3135)
+#define ODDMR_READ_IN_ULTRA(size)         (size * 1 / 3 + 3135)
+#define ODDMR_READ_OUT_PRE_ULTRA(size)    (size * 3 / 4 + 3135)
+#define ODDMR_READ_OUT_ULTRA(size)        (size * 2 / 4 + 3135)
 #define ODDMR_WRITE_IN_PRE_ULTRA(size)    (size * 1 / 3)
 #define ODDMR_WRITE_IN_ULTRA(size)        (size * 2 / 3)
 #define ODDMR_WRITE_OUT_PRE_ULTRA(size)   (size * 1 / 4)
@@ -315,22 +326,22 @@
 #define ODDMR_ENABLE_IRQ
 #define ODDMR_IRQ_MASK_VAL 0x2F
 
-static bool debug_flow_log = true;
+static bool debug_flow_log;
 #define ODDMRFLOW_LOG(fmt, arg...) do { \
 	if (debug_flow_log) \
-		DDPINFO("[FLOW]%s:" fmt, __func__, ##arg); \
+		DDPMSG("[FLOW]%s:" fmt, __func__, ##arg); \
 	} while (0)
 
 static bool debug_low_log;
 #define ODDMRLOW_LOG(fmt, arg...) do { \
 	if (debug_low_log) \
-		DDPINFO("[LOW]%s:" fmt, __func__, ##arg); \
+		DDPMSG("[LOW]%s:" fmt, __func__, ##arg); \
 	} while (0)
 
 static bool debug_api_log;
 #define ODDMRAPI_LOG(fmt, arg...) do { \
 	if (debug_api_log) \
-		DDPINFO("[API]%s:" fmt, __func__, ##arg); \
+		DDPMSG("[API]%s:" fmt, __func__, ##arg); \
 	} while (0)
 
 //TODO split dmr table in sw for dynamic overhead
@@ -416,6 +427,7 @@ static uint32_t mtk_oddmr_od_get_data_size(uint32_t width, uint32_t height,
 static int mtk_oddmr_od_get_bpc(uint32_t od_mode, uint32_t channel);
 static uint32_t mtk_oddmr_od_get_ln_offset(struct mtk_ddp_comp *comp, uint32_t width,
 		uint32_t height, uint32_t scaling_mode, uint32_t od_mode, uint32_t channel);
+static void mtk_oddmr_od_dummy(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
 
 static inline unsigned int mtk_oddmr_read(struct mtk_ddp_comp *comp,
 		unsigned int offset)
@@ -793,21 +805,40 @@ static void mtk_oddmr_od_common_init(struct mtk_ddp_comp *comp, struct cmdq_pkt 
 	/* od basic pq */
 	mtk_oddmr_set_pq(comp, pkg, &g_od_param.od_basic_info.basic_pq);
 }
-
 static void mtk_oddmr_od_hsk(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 {
-	uint32_t tile_overhead = 0, hsk_0, hsk_1, hsk_2, merge_lines;
+	uint32_t comp_width, hsk_0, hsk_1, hsk_2;
 	struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
-	struct mtk_drm_private *priv = default_comp->mtk_crtc->base.dev->dev_private;
 
 	if (oddmr_priv == NULL)
 		return;
-	if (oddmr_priv->data != NULL && comp->mtk_crtc->is_dual_pipe)
-		tile_overhead = oddmr_priv->cfg.comp_overhead;
+	//merge_lines = oddmr_priv->od_data.merge_lines;
+	hsk_0 = oddmr_priv->cfg.comp_in_width / 2;
+	hsk_1 = oddmr_priv->cfg.height;
+
+	comp_width = oddmr_priv->cfg.comp_in_width;
+	if(oddmr_priv->data->p_num != 0)
+		hsk_2 = comp_width / oddmr_priv->data->p_num;
+	else
+		hsk_2 = comp_width / 2;
+
+	mtk_oddmr_write(comp, hsk_0, DISP_ODDMR_OD_HSK_0, pkg);
+	mtk_oddmr_write(comp, hsk_1, DISP_ODDMR_OD_HSK_1, pkg);
+	mtk_oddmr_write(comp, hsk_2, DISP_ODDMR_OD_HSK_2, pkg);
+	mtk_oddmr_write(comp, 1, DISP_ODDMR_OD_HSK_3, pkg);
+	mtk_oddmr_write(comp, 0x8003, DISP_ODDMR_OD_HSK_4, pkg);
+}
+
+static void mtk_oddmr_od_hsk_6985(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
+{
+	uint32_t hsk_0, hsk_1, hsk_2, merge_lines;
+	struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
+
+	if (oddmr_priv == NULL)
+		return;
+
 	merge_lines = oddmr_priv->od_data.merge_lines;
 	hsk_0 = oddmr_priv->cfg.comp_in_width * merge_lines;
-	if (priv->data->mmsys_id == MMSYS_MT6989)
-		hsk_0 = hsk_0 / 2;
 	hsk_1 = oddmr_priv->cfg.height / merge_lines;
 	hsk_2 = (4368 + hsk_0) / 16;
 
@@ -824,9 +855,10 @@ static void mtk_oddmr_od_hsk(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 static void mtk_oddmr_od_set_res_udma(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 {
 	struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
-	uint32_t scaling_mode, od_mode;
+	uint32_t scaling_mode, hsize_scale, od_mode, dummy_1, hsize_align, hscaling;
 	uint32_t comp_width, width, height, line_offset = 0, hsize = 0, vsize = 0, merge_lines;
 	uint32_t reg_value = 0, reg_mask = 0, is_hscaling, is_vscaling, is_h_2x4x_sel;
+	struct mtk_drm_private *priv = default_comp->mtk_crtc->base.dev->dev_private;
 
 	if (oddmr_priv == NULL)
 		return;
@@ -841,8 +873,27 @@ static void mtk_oddmr_od_set_res_udma(struct mtk_ddp_comp *comp, struct cmdq_pkt
 	line_offset = mtk_oddmr_od_get_ln_offset(comp, comp_width, height,
 						scaling_mode, od_mode, 0);
 	merge_lines = oddmr_priv->od_data.merge_lines;
-	hsize = comp_width * merge_lines;
-	vsize = height / merge_lines;
+	if (priv->data->mmsys_id == MMSYS_MT6989) {
+		hsize = comp_width;
+		vsize = height;
+		line_offset = line_offset > hsize ? line_offset:hsize;
+		ODDMRAPI_LOG("line_offset %u, hsize %u\n", line_offset, hsize);
+
+		hscaling = is_hscaling ? (is_h_2x4x_sel ? 4 : 2) : 1;
+		hsize_align = is_hscaling ?
+			(is_h_2x4x_sel ?
+			DIV_ROUND_UP(comp_width, 8) * 8 : DIV_ROUND_UP(comp_width, 4) * 4)
+			: comp_width;
+		hsize_scale = hsize_align / hscaling;
+		dummy_1 = hsize_scale * merge_lines;
+		ODDMRAPI_LOG("hscaling %u, hsize_align %u, hsize_scale %u\n",
+			hscaling, hsize_align, hsize_scale);
+		line_offset = line_offset > dummy_1 ? line_offset : dummy_1;
+		ODDMRAPI_LOG("line_offset %u, dummy_1 %u\n", line_offset, dummy_1);
+	} else {
+		hsize = comp_width * merge_lines;
+		vsize = height / merge_lines;
+	}
 	mtk_oddmr_write(comp, 0, DISP_ODDMR_OD_UMDA_CTRL_0, pkg);
 	mtk_oddmr_write(comp, line_offset, DISP_ODDMR_OD_UMDA_CTRL_1, pkg);
 	mtk_oddmr_write(comp, hsize, DISP_ODDMR_OD_UMDA_CTRL_2, pkg);
@@ -875,7 +926,13 @@ static void mtk_oddmr_od_init_end(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 		mtk_oddmr_write(comp, 1, DISP_ODDMR_UDMA_R_CTRL88, handle);
 	}
 	//force clk off
-	mtk_oddmr_od_hsk(comp, handle);
+	if (priv->data->mmsys_id == MMSYS_MT6985)
+		mtk_oddmr_od_hsk_6985(comp, handle);
+	else {
+		mtk_oddmr_od_hsk(comp, handle);
+		mtk_oddmr_od_dummy(comp, handle);
+	}
+
 	//bypass off
 	mtk_oddmr_write(comp, 0,
 			DISP_ODDMR_TOP_OD_BYASS, handle);
@@ -1551,6 +1608,7 @@ void mtk_oddmr_dump(struct mtk_ddp_comp *comp)
 
 	if (g_oddmr_dump_en == false)
 		return;
+
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	DDPDUMP("-- Start dump oddmr registers --\n");
 	mbaddr = baddr;
@@ -1925,6 +1983,71 @@ static uint32_t mtk_oddmr_od_get_dram_size(struct mtk_ddp_comp *comp, uint32_t w
 		dram_ln_beats, dram_ln_beats_aligned, ln_offset);
 	return size;
 }
+/*
+ *od_dummy_0 = bit0~bit4,bit7 always 1
+ *hscaling = hsacling_enable ? (h_2x4x_sel ? 4 : 2) : 1
+ *hsize_align = hscaling_en ? (h_2x4x_sel ?
+ *      DIV_ROUND_UP(width, 8) * 8 : DIV_ROUND_UP(width, 4) * 4) : width;
+ *hsize_scale = hsize_align / hscaling
+ *od_dummy_1 = hsize_scale * merge_line
+ *vsize_scale = height / vscaling;
+ *od_dummy_2 = vsize_scale / merge_lines;
+ *od_dummy_3 = merge_line - 1
+ */
+static void mtk_oddmr_od_dummy(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
+{
+	uint32_t hscaling, h_2x4x_sel, vscaling, hsize_align, hsize_scale, scaling_mode;
+	uint32_t hscaling_en, merge_lines, value, mask, width, height, vsize_scale;
+	struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
+	struct mtk_drm_private *priv = default_comp->mtk_crtc->base.dev->dev_private;
+
+	ODDMRAPI_LOG("+\n");
+	if (priv->data->mmsys_id != MMSYS_MT6989)
+		return;
+
+	if (oddmr_priv == NULL)
+		return;
+
+	width = oddmr_priv->cfg.comp_in_width;
+	height = oddmr_priv->cfg.height;
+	scaling_mode = g_od_param.od_basic_info.basic_param.scaling_mode;
+
+	ODDMRFLOW_LOG("scaling_mode %u,width %u\n",scaling_mode,width);
+	hscaling_en = (scaling_mode & BIT(0)) ? 1 : 0;
+	ODDMRFLOW_LOG("hscaling_en %u\n",hscaling_en);
+	vscaling = (scaling_mode & BIT(1)) ? 2 : 1;
+	h_2x4x_sel = (scaling_mode & BIT(2)) ? 1 : 0;
+	hscaling = hscaling_en ? (h_2x4x_sel ? 4 : 2) : 1;
+
+	hsize_align = hscaling_en ?
+		(h_2x4x_sel ?
+		DIV_ROUND_UP(width, 8) * 8 : DIV_ROUND_UP(width, 4) * 4)
+		: width;
+	hsize_scale = hsize_align / hscaling;
+	merge_lines = oddmr_priv->od_data.merge_lines;
+
+	ODDMRFLOW_LOG("hscaling %u h_2x4x_sel %u hsize_align %u hsize_scale %u merge_lines %u\n",
+		hscaling, h_2x4x_sel, hsize_align, hsize_scale, merge_lines);
+	value = 0;
+	mask = 0;
+	SET_VAL_MASK(value, mask, 1, REG_CUR_LINE_BUFFER_DE_2P_ALIGN);
+	SET_VAL_MASK(value, mask, 1, REG_UDMA_HSIZE_USER_MODE);
+	SET_VAL_MASK(value, mask, 1, REG_UDMA_VSIZE_USER_MODE);
+	SET_VAL_MASK(value, mask, 1, REG_HVSP2UDMA_W_LAST_MASK);
+	SET_VAL_MASK(value, mask, 1, REG_BUF_LV_INVERSE);
+	SET_VAL_MASK(value, mask, 1, REG_BYPASS_MIU2SMI_W_BRIDGE);
+	mtk_oddmr_write(comp, value, DISP_ODDMR_OD_DUMMY_0, pkg);
+
+	value = hsize_scale * merge_lines;
+	mtk_oddmr_write(comp, value, DISP_ODDMR_OD_DUMMY_1, pkg);
+	vsize_scale = height / vscaling;
+	value = vsize_scale / merge_lines;
+	ODDMRFLOW_LOG("vsize_scale %u,vscaling %u\n",vsize_scale,vscaling);
+	mtk_oddmr_write(comp, value, DISP_ODDMR_OD_DUMMY_2, pkg);
+	value = merge_lines - 1;
+	mtk_oddmr_write(comp, value, DISP_ODDMR_OD_DUMMY_3, pkg);
+}
+
 static uint32_t mtk_oddmr_od_find_max_dram_size(struct mtk_ddp_comp *comp,
 	uint32_t scaling_mode, uint32_t od_mode)
 {
@@ -2038,8 +2161,10 @@ static int mtk_oddmr_od_init_sram(struct mtk_ddp_comp *comp,
 	struct mtk_oddmr_od_table *table;
 	struct mtk_oddmr_pq_pair *param_pq;
 	uint8_t *raw_table, tmp_data;
-	int channel, srams, cols, rows, raw_idx, i;
+	int channel, srams, cols, rows, raw_idx, i, change_channel;
 	uint32_t value, mask, tmp_r_sel, tmp_w_sel, table_size;
+	uint32_t sram_write_change;
+	struct mtk_drm_private *priv = default_comp->mtk_crtc->base.dev->dev_private;
 
 	ODDMRAPI_LOG("+\n");
 	if (!IS_TABLE_VALID(table_idx, g_od_param.valid_table)) {
@@ -2058,23 +2183,37 @@ static int mtk_oddmr_od_init_sram(struct mtk_ddp_comp *comp,
 	for (i = 0; i < table->pq_od.counts; i++)
 		mtk_oddmr_write(comp, param_pq[i].value, param_pq[i].addr, pkg);
 
+	if(priv->data->mmsys_id == MMSYS_MT6985 ||
+		priv->data->mmsys_id == MMSYS_MT6989)
+		sram_write_change = 1;
+	else
+		sram_write_change = 0;
+
 	/* B:0-bit1, G:1-bit2, R:2-bit3*/
 	for (channel = 0; channel < 3; channel++) {
-		//mtk_oddmr_write(comp, 0, DISP_ODDMR_OD_SRAM_CTRL_0, pkg);
 		/* 1: 17x17 2:16x17 3:17x16 4:16x16*/
+
+		//change begin
+		//B:0-bit1, G:1-bit2, R:2-bit3 -->> B:2-bit1, G:1-bit2, R:0-bit3
+		if(sram_write_change)
+			change_channel = channel - (channel-1)*2;
+		else
+			change_channel = channel;
+		//change end
+
 		for (srams = 1; srams < 5; srams++) {
 			value = 0;
 			mask = 0;
 			tmp_w_sel = sram_idx;
 			tmp_r_sel = !sram_idx;
-			SET_VAL_MASK(value, mask, 1 << (channel + 1), REG_WBGR_OD_SRAM_IO_EN);
+			SET_VAL_MASK(value, mask, 1 << (change_channel  + 1), REG_WBGR_OD_SRAM_IO_EN);
 			SET_VAL_MASK(value, mask, 0, REG_AUTO_SRAM_ADR_INC_EN);
 			SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
 			SET_VAL_MASK(value, mask, tmp_r_sel, REG_OD_SRAM_READ_SEL);
 			mtk_oddmr_write_mask(comp, value, DISP_ODDMR_OD_SRAM_CTRL_0, mask, pkg);
 			rows = (srams < 3) ? 17 : 16;
 			cols = (srams % 2 == 1) ? 17 : 16;
-			ODDMRFLOW_LOG("channel%d sram%d size %dx%d\n", channel, srams, rows, cols);
+			ODDMRFLOW_LOG("channel%d sram%d size %dx%d\n", change_channel , srams, rows, cols);
 			for (i = 0; i < rows * cols; i++) {
 				tmp_data = raw_table[raw_idx];
 				raw_idx++;
@@ -2306,9 +2445,10 @@ static void mtk_oddmr_od_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 	uint32_t value, mask, buf_size;
 	struct mtk_disp_oddmr *oddmr = comp_to_oddmr(comp);
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-
 	if (priv->data->mmsys_id != MMSYS_MT6989)
 		return;
+
+	ODDMRAPI_LOG();
 
 	value = 0;
 	mask = 0;
@@ -2319,18 +2459,12 @@ static void mtk_oddmr_od_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 	buf_size = oddmr->data->odr_buffer_size;
 	value = ODDMR_READ_IN_PRE_ULTRA(buf_size);//read in pre-ultra
 	mtk_oddmr_write_mask(comp, value, DISP_ODDMR_SMI_SB_FLG_ODR_0, 0xFFFF, pkg);
-	mtk_oddmr_write_mask(comp, value >> 16,
-			DISP_ODDMR_SMI_SB_FLG_ODR_1, 0xFFFF, pkg);
 	value = ODDMR_READ_IN_ULTRA(buf_size);//read in ultra
 	mtk_oddmr_write_mask(comp, value, DISP_ODDMR_SMI_SB_FLG_ODR_4, 0xFFFF, pkg);
-	mtk_oddmr_write_mask(comp, value >> 16, DISP_ODDMR_SMI_SB_FLG_ODR_5, 0xFFFF, pkg);
 	value = ODDMR_READ_OUT_PRE_ULTRA(buf_size);//read out pre-ultra
 	mtk_oddmr_write_mask(comp, value, DISP_ODDMR_SMI_SB_FLG_ODR_2, 0xFFFF, pkg);
-	mtk_oddmr_write_mask(comp, value >> 16,
-			DISP_ODDMR_SMI_SB_FLG_ODR_3, 0xFFFF, pkg);
 	value = ODDMR_READ_OUT_ULTRA(buf_size);//read out ultra
 	mtk_oddmr_write_mask(comp, value, DISP_ODDMR_SMI_SB_FLG_ODR_6, 0xFFFF, pkg);
-	mtk_oddmr_write_mask(comp, value >> 16, DISP_ODDMR_SMI_SB_FLG_ODR_7, 0xFFFF, pkg);
 	value = 0;
 	mask = 0;
 	/* odw*/
@@ -2340,18 +2474,12 @@ static void mtk_oddmr_od_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 	buf_size = oddmr->data->odw_buffer_size;
 	value = ODDMR_WRITE_IN_PRE_ULTRA(buf_size);//write in pre-ultra
 	mtk_oddmr_write_mask(comp, value, DISP_ODDMR_SMI_SB_FLG_ODW_0, 0xFFFF, pkg);
-	mtk_oddmr_write_mask(comp, value >> 16,
-			DISP_ODDMR_SMI_SB_FLG_ODW_1, 0xFFFF, pkg);
 	value = ODDMR_WRITE_IN_ULTRA(buf_size);//write in ultra
 	mtk_oddmr_write_mask(comp, value, DISP_ODDMR_SMI_SB_FLG_ODW_4, 0xFFFF, pkg);
-	mtk_oddmr_write_mask(comp, value >> 16, DISP_ODDMR_SMI_SB_FLG_ODW_5, 0xFFFF, pkg);
 	value = ODDMR_WRITE_OUT_PRE_ULTRA(buf_size);//write out pre-ultra
 	mtk_oddmr_write_mask(comp, value, DISP_ODDMR_SMI_SB_FLG_ODW_2, 0xFFFF, pkg);
-	mtk_oddmr_write_mask(comp, value >> 16,
-			DISP_ODDMR_SMI_SB_FLG_ODW_3, 0xFFFF, pkg);
 	value = ODDMR_WRITE_OUT_ULTRA(buf_size);//write out ultra
 	mtk_oddmr_write_mask(comp, value, DISP_ODDMR_SMI_SB_FLG_ODW_6, 0xFFFF, pkg);
-	mtk_oddmr_write_mask(comp, value >> 16, DISP_ODDMR_SMI_SB_FLG_ODW_7, 0xFFFF, pkg);
 }
 
 
@@ -3230,6 +3358,14 @@ static void mtk_oddmr_od_tuning_write_sram(struct mtk_ddp_comp *comp,
 {
 	uint32_t channel, sram, idx, val, ctl;
 	uint32_t value = 0, mask = 0, tmp_r_sel = 0, tmp_w_sel = 0;
+	uint32_t sram_write_change;
+	struct mtk_drm_private *priv = default_comp->mtk_crtc->base.dev->dev_private;
+
+	if(priv->data->mmsys_id == MMSYS_MT6985 ||
+		priv->data->mmsys_id == MMSYS_MT6989)
+		sram_write_change = 1;
+	else
+		sram_write_change = 0;
 
 	channel = tuning_data->channel;
 	sram = tuning_data->sram;
@@ -3242,6 +3378,11 @@ static void mtk_oddmr_od_tuning_write_sram(struct mtk_ddp_comp *comp,
 	tmp_w_sel = tmp_r_sel;
 	value = 0;
 	mask = 0;
+	//change begin
+	//B:0-bit1, G:1-bit2, R:2-bit3 -->> B:2-bit1, G:1-bit2, R:0-bit3
+	if(sram_write_change)
+		channel = channel - (channel-1)*2;
+	//change end
 	SET_VAL_MASK(value, mask, 1 << (channel + 1), REG_WBGR_OD_SRAM_IO_EN);
 	SET_VAL_MASK(value, mask, 0, REG_AUTO_SRAM_ADR_INC_EN);
 	SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
@@ -3267,6 +3408,14 @@ static void mtk_oddmr_od_tuning_read_sram(struct mtk_ddp_comp *comp,
 {
 	uint32_t channel, sram, idx, ctl;
 	uint32_t value = 0, mask = 0, tmp_r_sel = 0, tmp_w_sel = 0;
+	uint32_t sram_write_change;
+	struct mtk_drm_private *priv = default_comp->mtk_crtc->base.dev->dev_private;
+
+	if(priv->data->mmsys_id == MMSYS_MT6985 ||
+		priv->data->mmsys_id == MMSYS_MT6989)
+		sram_write_change = 1;
+	else
+		sram_write_change = 0;
 
 	channel = tuning_data->channel;
 	sram = tuning_data->sram;
@@ -3278,6 +3427,11 @@ static void mtk_oddmr_od_tuning_read_sram(struct mtk_ddp_comp *comp,
 	tmp_w_sel = tmp_r_sel;
 	value = 0;
 	mask = 0;
+	//change begin
+	//B:0-bit1, G:1-bit2, R:2-bit3 -->> B:2-bit1, G:1-bit2, R:0-bit3
+	if(sram_write_change)
+		channel = channel - (channel-1)*2;
+	//change end
 	SET_VAL_MASK(value, mask, 1 << (channel + 1), REG_WBGR_OD_SRAM_IO_EN);
 	SET_VAL_MASK(value, mask, 0, REG_AUTO_SRAM_ADR_INC_EN);
 	SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
@@ -4608,7 +4762,6 @@ static void mtk_oddmr_update_table_handle(struct work_struct *data)
 	CRTC_MMP_EVENT_START(0, oddmr_ctl,
 		g_oddmr_priv->od_data.od_dram_sel[0], g_oddmr_priv->od_data.od_dram_sel[1]);
 	ODDMRFLOW_LOG("ODDMR_TABLE_UPDATING\n");
-	g_oddmr_dump_en = true;
 	g_oddmr_priv->od_state = ODDMR_TABLE_UPDATING;
 
 	update_sram_idx = (uint32_t)!g_oddmr_priv->od_data.od_sram_read_sel;
@@ -4636,7 +4789,6 @@ static void mtk_oddmr_update_table_handle(struct work_struct *data)
 	ODDMRFLOW_LOG("now sram %d, update_sram %d, dram %d\n",
 		g_oddmr_priv->od_data.od_sram_read_sel,update_sram_idx, updata_dram_idx);
 	g_oddmr_priv->od_state = ODDMR_INIT_DONE;
-	g_oddmr_dump_en = false;
 	ODDMRFLOW_LOG("ODDMR_INIT_DONE\n");
 	CRTC_MMP_EVENT_END(0, oddmr_ctl, update_sram_idx, updata_dram_idx);
 }
@@ -4823,12 +4975,13 @@ static const struct mtk_disp_oddmr_data mt6989_oddmr_driver_data = {
 	.is_od_need_crop_garbage = false,
 	.is_od_need_force_clk = false,
 	.is_od_support_sec = false,
-	.is_od_merge_lines = false,
+	.is_od_merge_lines = true,
 	.is_od_4_table = true,
+	.p_num = 2,
 	.tile_overhead = 8,
 	.dmr_buffer_size = 458,
-	.odr_buffer_size = 264,
-	.odw_buffer_size = 264,
+	.odr_buffer_size = 960,
+	.odw_buffer_size = 960,
 	.irq_handler = mtk_oddmr_check_framedone,
 };
 

@@ -94,6 +94,8 @@ struct mtk_disp_oddmr_data {
 	uint32_t dmr_buffer_size;
 	uint32_t odr_buffer_size;
 	uint32_t odw_buffer_size;
+	/*p_num: 1tNp, pixel num*/
+	uint32_t p_num;
 	irqreturn_t (*irq_handler)(int irq, void *dev_id);
 };
 
