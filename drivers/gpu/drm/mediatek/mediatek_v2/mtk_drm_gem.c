@@ -423,7 +423,7 @@ static int mtk_drm_gem_object_mmap(struct drm_gem_object *obj,
 	 * dma_alloc_attrs() allocated a struct page table for mtk_gem, so clear
 	 * VM_PFNMAP flag that was set by drm_gem_mmap_obj()/drm_gem_mmap().
 	 */
-	vma->vm_flags &= ~VM_PFNMAP;
+	vm_flags_clear(vma, VM_PFNMAP);
 	vma->vm_pgoff = 0;
 
 	ret = dma_mmap_attrs(mtk_smmu_get_shared_device(priv->dma_dev), vma,
