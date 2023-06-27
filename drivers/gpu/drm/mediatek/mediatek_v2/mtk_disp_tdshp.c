@@ -88,14 +88,16 @@ static int mtk_disp_tdshp_write_reg(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_TDSHP_CFG, 0x2 | primary_data->relay_value, 0x11);
 
-	if (primary_data->aal_clarity_support && *primary_data->aal_clarity_support)
+	if (primary_data->aal_clarity_support && *primary_data->aal_clarity_support) {
+		DDPINFO("%s, aal_clarity_support is true\n", __func__);
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_00,
 			(disp_tdshp_regs->tdshp_softcoring_gain << 0 |
 					disp_tdshp_regs->tdshp_ink_sel << 24 |
 					disp_tdshp_regs->tdshp_bypass_high << 29 |
 					disp_tdshp_regs->tdshp_bypass_mid << 30 |
-					disp_tdshp_regs->tdshp_en << 31), ~0);
-	else
+					disp_tdshp_regs->tdshp_en << 31), 0xFF0000FF);
+	} else {
+		DDPINFO("%s, aal_clarity_support is false\n", __func__);
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_00,
 			(disp_tdshp_regs->tdshp_softcoring_gain << 0 |
 					disp_tdshp_regs->tdshp_gain_high << 8 |
@@ -104,6 +106,7 @@ static int mtk_disp_tdshp_write_reg(struct mtk_ddp_comp *comp,
 					disp_tdshp_regs->tdshp_bypass_high << 29 |
 					disp_tdshp_regs->tdshp_bypass_mid << 30 |
 					disp_tdshp_regs->tdshp_en << 31), ~0);
+	}
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_01,
 		(disp_tdshp_regs->tdshp_limit_ratio << 0 |
@@ -588,9 +591,12 @@ static void mtk_disp_tdshp_config(struct mtk_ddp_comp *comp,
 	// for Display Clarity
 	if (primary_data->aal_clarity_support && *primary_data->aal_clarity_support) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_TDSHP_00, (0x1 << 31), (0x1 << 31));
+			comp->regs_pa + DISP_TDSHP_00, 0x1 << 31, 0x1 << 31);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_TDSHP_CFG, (0x1F << 12), (0x1F << 12));
+			comp->regs_pa + DISP_TDSHP_CFG, 0x1F << 12, 0x1F << 12);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_TDSHP_CFG, 0, 0x1 << 12);
 	}
 
 	primary_data->tdshp_size.height = cfg->h;
