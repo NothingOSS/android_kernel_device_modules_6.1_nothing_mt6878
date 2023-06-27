@@ -1033,11 +1033,6 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		goto decouple_user;
 	}
 
-	if (!MML_FMT_COMPRESS(info->src.format)) {
-		*reason = mml_query_format;
-		return MML_MODE_MML_DECOUPLE;
-	}
-
 	/* for alpha rotate */
 	if (MML_FMT_ALPHA(info->src.format) &&
 		MML_FMT_AFBC(info->src.format) &&
@@ -1045,6 +1040,11 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		info->dest[0].rotate == MML_ROT_270)) {
 		*reason = mml_query_alpha;
 		goto not_support;
+	}
+
+	if (!MML_FMT_COMPRESS(info->src.format)) {
+		*reason = mml_query_format;
+		return MML_MODE_MML_DECOUPLE;
 	}
 
 	/* rotate go to racing (inline rotate) */
