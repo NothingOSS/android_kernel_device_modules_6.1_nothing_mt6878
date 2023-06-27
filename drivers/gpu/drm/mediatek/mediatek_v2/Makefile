@@ -118,6 +118,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/        \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/		\
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/        \
+             -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common/ \
              -I$(srctree)/drivers/gpu/drm/mediatek \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv/ \

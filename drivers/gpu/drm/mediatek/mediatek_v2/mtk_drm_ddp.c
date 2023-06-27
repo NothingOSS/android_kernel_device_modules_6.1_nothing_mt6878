@@ -37,6 +37,9 @@
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #include "vcp_status.h"
 #endif
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
+#include "mtk-afe-external.h"
+#endif
 
 #define DISPSYS0	0
 #define DISPSYS1	1
@@ -22152,6 +22155,21 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 				mtk_crtc0->sof_time = ktime_get();
 				mtk_wakeup_pf_wq(m_id);
 			}
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
+			if (m_id == 0) {
+				if (irq_time_index < IRQ_DEBUG_MAX) {
+					irq_time[irq_time_index].comp = NULL;
+					irq_time[irq_time_index].time = sched_clock();
+					irq_time_index++;
+				}
+				notify_vb_audio_control(NOTIFIER_VP_AUDIO_TRIGGER, NULL);
+				if (irq_time_index < IRQ_DEBUG_MAX) {
+					irq_time[irq_time_index].comp = NULL;
+					irq_time[irq_time_index].time = sched_clock();
+					irq_time_index++;
+				}
+			}
+#endif
 			if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 				if (irq_time_index < IRQ_DEBUG_MAX) {
 					irq_time[irq_time_index].comp = NULL;
