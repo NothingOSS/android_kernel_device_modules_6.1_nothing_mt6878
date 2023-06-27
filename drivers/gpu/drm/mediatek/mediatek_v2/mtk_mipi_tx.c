@@ -4753,6 +4753,59 @@ void mtk_mipi_tx_pll_rate_switch_gce_mt6983(struct phy *phy,
 	DDPINFO("%s-\n", __func__);
 }
 
+void mtk_mipi_tx_pll_rate_switch_gce_mt6897(struct phy *phy,
+		void *handle, unsigned long rate)
+{
+	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
+	unsigned int txdiv, txdiv0, tmp;
+	u32 reg_val;
+
+	DDPINFO("%s+ %lu\n", __func__, rate);
+
+	/* parameter rate should be MHz */
+	if (rate >= 2000) {
+		txdiv = 1;
+		txdiv0 = 0;
+	} else if (rate >= 1000) {
+		txdiv = 2;
+		txdiv0 = 1;
+	} else if (rate >= 500) {
+		txdiv = 4;
+		txdiv0 = 2;
+	} else if (rate > 250) {
+		txdiv = 8;
+		txdiv0 = 3;
+	} else if (rate >= 125) {
+		txdiv = 16;
+		txdiv0 = 4;
+	} else {
+		return;
+	}
+	tmp = mipi_tx->driver_data->dsi_get_pcw(rate, txdiv);
+
+	cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + MIPITX_PLL_CON0, tmp, ~0);
+
+	reg_val = readl(mipi_tx->regs + MIPITX_PLL_CON1);
+
+	reg_val = reg_val & ~(mipi_tx->driver_data->dsi_pll_sdm_pcw_chg);
+
+	cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + MIPITX_PLL_CON1, reg_val, ~0);
+
+	reg_val = reg_val | mipi_tx->driver_data->dsi_pll_sdm_pcw_chg;
+
+	cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + MIPITX_PLL_CON1, reg_val, ~0);
+
+	reg_val = reg_val & ~(mipi_tx->driver_data->dsi_pll_sdm_pcw_chg);
+
+	cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + MIPITX_PLL_CON1, reg_val, ~0);
+
+	DDPINFO("%s-\n", __func__);
+}
+
 void mtk_mipi_tx_pll_rate_switch_cphy_gce_mt6983(struct phy *phy,
 		void *handle, unsigned long rate)
 {
@@ -5742,7 +5795,7 @@ static const struct mtk_mipitx_data mt6897_mipitx_data = {
 	.dsi_get_data_rate = _dsi_get_data_rate_mt6983,
 	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
 	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
-	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_mt6983,
+	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_mt6897,
 	.mipi_tx_ssc_en = mtk_mipi_tx_ssc_en_N4,
 };
 
@@ -5920,7 +5973,6 @@ static const struct mtk_mipitx_data mt6897_mipitx_cphy_data = {
 	.dsi_get_data_rate = _dsi_get_data_rate_mt6983,
 	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
 	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
-	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_cphy_gce_mt6983,
 };
 
 static const struct mtk_mipitx_data mt6895_mipitx_cphy_data = {
