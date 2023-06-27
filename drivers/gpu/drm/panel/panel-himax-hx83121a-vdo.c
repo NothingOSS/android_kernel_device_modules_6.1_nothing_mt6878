@@ -124,8 +124,13 @@ static int himax_panel_power_disable(struct himax *ctx)
 	return ret;
 }
 
+/* rc_buf_thresh will right shift 6bits (which means the values here will be divided by 64)
+ * when setting to PPS8~PPS11 registers in mtk_dsc_config() function, so the original values
+ * need left sihft 6bit (which means the original values are multiplied by 64), so that
+ * PPS8~PPS11 registers can get right setting
+ */
 unsigned int hx8312a_wqxga_dsi_vdo_120hz_dphy_buf_thresh[14] = {
-	14, 28, 42, 56, 70, 84, 98, 105, 112, 119, 121, 123, 125, 126};
+	896, 1792, 2688, 3584, 4480, 5376, 6272, 6720, 7168, 7616, 7744, 7872, 8000, 8064};
 unsigned int hx8312a_wqxga_dsi_vdo_120hz_dphy_range_min_qp[15] = {
 	0, 0, 1, 1, 3, 3, 3, 3, 3, 3, 5, 5, 5, 7, 13};
 unsigned int hx8312a_wqxga_dsi_vdo_120hz_dphy_range_max_qp[15] = {
