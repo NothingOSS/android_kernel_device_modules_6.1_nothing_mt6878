@@ -137,6 +137,8 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 			... CMDQ_SYNC_TOKEN_IMGSYS_POOL_221:
 		case CMDQ_SYNC_TOKEN_IMGSYS_POOL_222
 			... CMDQ_SYNC_TOKEN_IMGSYS_POOL_250:
+		case CMDQ_SYNC_TOKEN_IMGSYS_POOL_251
+			... CMDQ_SYNC_TOKEN_IMGSYS_POOL_300:
 			return "IMGSYS";
 		case CMDQ_SYNC_TOKEN_APUSYS_APU:
 			return "APUSYS_EDMA";
