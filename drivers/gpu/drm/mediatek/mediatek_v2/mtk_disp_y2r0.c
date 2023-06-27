@@ -233,10 +233,18 @@ static void mtk_y2r_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct mtk_drm_private *priv = NULL;
+	struct drm_crtc *crtc = &mtk_crtc->base;
 
 	priv = mtk_crtc->base.dev->dev_private;
 	DDPDBG("%s, comp->regs_pa=0x%llx\n", __func__, comp->regs_pa);
 	if (priv->data->mmsys_id == MMSYS_MT6989) {
+		int hsize = 0, vsize = 0;
+
+		hsize = crtc->state->adjusted_mode.hdisplay & 0x1FFF;
+		vsize = crtc->state->adjusted_mode.vdisplay & 0x1FFF;
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_SIZE,
+				((hsize << 16) | vsize), ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_1TNP,
 				MT6989_DISP_1T2P, MT6989_DISP_1T2P);

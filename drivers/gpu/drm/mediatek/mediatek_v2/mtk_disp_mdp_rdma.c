@@ -280,7 +280,9 @@ static void mtk_mdp_rdma_pattern_config(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *cfg_handle;
 	dma_addr_t addr;
 	unsigned int con = 0;
-
+#ifdef RDMA_PAT_DEBUG
+	unsigned int i, j, x;
+#endif
 	mtk_gem = mdp_rdma->fill_gem;
 	if (IS_ERR_OR_NULL(mtk_gem)) {
 		mode.width = crtc->state->adjusted_mode.hdisplay;
@@ -289,7 +291,19 @@ static void mtk_mdp_rdma_pattern_config(struct mtk_ddp_comp *comp,
 		mode.pitches[0] = mode.width * Bpp;
 		mtk_gem = mtk_drm_gem_create(
 			crtc->dev, mode.pitches[0] * mode.height, true);
+#ifdef RDMA_PAT_DEBUG
+		for (i = 0; i < mode.height; i++)
+			for (j = 0; j < mode.width; j++) {
+				x = (i * mode.width + j) * Bpp;
+
+				*((unsigned char *)mtk_gem->kvaddr + x++) = (i + j) % 256;
+				*((unsigned char *)mtk_gem->kvaddr + x++) = (i + j) % 256;
+				*((unsigned char *)mtk_gem->kvaddr + x++) = (i + j) % 256;
+				*((unsigned char *)mtk_gem->kvaddr + x++) = 255;
+			}
+#else
 		memset(mtk_gem->kvaddr, 0x77, mode.pitches[0] * mode.height);
+#endif
 		mdp_rdma->fill_gem = mtk_gem;
 		DDPINFO("[discrete] create dummy buffer:0x%llx\n", mtk_gem->dma_addr);
 	}
