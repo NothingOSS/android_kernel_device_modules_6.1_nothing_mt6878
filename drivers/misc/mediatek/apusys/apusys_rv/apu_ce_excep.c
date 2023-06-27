@@ -71,12 +71,14 @@ struct apu_coredump_work_struct {
 	struct work_struct work;
 };
 
+static int exception_job_id = -1;
 static struct delayed_work timeout_work;
 static struct workqueue_struct *apu_workq;
 static struct mtk_apu *ce_apu;
 
 static struct apu_coredump_work_struct apu_ce_coredump_work;
 #define APU_CE_DUMP_TIMEOUT_MS (1)
+#define CHECK_BIT(var, pos) ((var) & (1<<(pos)))
 
 static void apu_ce_timer_dump_reg(struct work_struct *work);
 
@@ -85,14 +87,12 @@ static uint32_t apusys_rv_smc_call(struct device *dev, uint32_t smc_id,
 {
 	struct arm_smccc_res res;
 
-	dev_info(dev, "%s: smc call %d, param %d\n", __func__, smc_id, param);
-
 	arm_smccc_smc(MTK_SIP_APUSYS_CONTROL, smc_id,
 				param, 0, 0, 0, 0, 0, &res);
 
 	if (res.a0 != 0) {
-		dev_info(dev, "%s: smc call %d return error(%ld)\n",
-			__func__, smc_id, res.a0);
+		dev_info(dev, "%s: smc call %d param %d return error(%ld)\n",
+			__func__, smc_id, param, res.a0);
 	} else {
 		if (ret0 != NULL)
 			*ret0 = res.a1;
@@ -101,8 +101,8 @@ static uint32_t apusys_rv_smc_call(struct device *dev, uint32_t smc_id,
 		if (ret2 != NULL)
 			*ret2 = res.a3;
 
-		dev_info(dev, "%s: smc call %d return (%ld %ld %ld %ld)\n",
-			__func__, smc_id, res.a0, res.a1, res.a2, res.a3);
+		dev_info(dev, "%s: smc call %d param %d return (%ld %ld %ld %ld)\n",
+			__func__, smc_id, param, res.a0, res.a1, res.a2, res.a3);
 	}
 
 	return res.a0;
@@ -167,17 +167,148 @@ static void apu_ce_coredump_work_func(struct work_struct *p_work)
 			container_of(p_work, struct apu_coredump_work_struct, work);
 	struct mtk_apu *apu = apu_coredump_work->apu;
 	struct device *dev = apu->dev;
-	uint32_t ret, job_id = 0;
 
 	dev_info(dev, "%s +\n", __func__);
 
-	apu_regdump();
+	if (exception_job_id >= 0) {
+		apusys_rv_smc_call(dev,
+			MTK_APUSYS_KERNEL_OP_APUSYS_CE_SRAM_DUMP, 0, NULL, NULL, NULL);
 
-	ret = apusys_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_RESET,
-		0, &job_id, NULL, NULL);
+		apu_regdump();
 
-	if (ret == 0)
-		apusys_ce_exception_aee_warn(job_id_mapping(job_id));
+		apusys_ce_exception_aee_warn(job_id_mapping(exception_job_id));
+
+		exception_job_id = -1;
+	}
+}
+
+static int get_exception_job_id(struct device *dev)
+{
+	uint32_t op;
+	uint32_t ce_flag = 0, ace_flag = 0, user_flag = 0;
+	uint32_t ce0_task = 0, ce1_task = 0, ce2_task = 0, ce3_task = 0;
+	uint32_t apb_out_status = 0, apb_in_status = 0, apb_status = 0;
+
+	op = (
+		SMC_OP_APU_ACE_ABN_IRQ_FLAG_CE |
+		SMC_OP_APU_ACE_ABN_IRQ_FLAG_ACE_SW << (BYTE_WIDTH * 1) |
+		SMC_OP_APU_ACE_ABN_IRQ_FLAG_USER << (BYTE_WIDTH * 2)
+	);
+	if (apusys_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP,
+			op, &ce_flag, &ace_flag, &user_flag))
+		return -1;
+
+	dev_info(dev, "APU_ACE_ABN_IRQ_FLAG_CE: 0x%08x\n", ce_flag);
+	dev_info(dev, "APU_ACE_ABN_IRQ_FLAG_ACE_SW: 0x%08x\n", ace_flag);
+	dev_info(dev, "APU_ACE_ABN_IRQ_FLAG_USER: 0x%08x\n", user_flag);
+
+	op = (
+		SMC_OP_APU_ACE_CE0_TASK_ING |
+		SMC_OP_APU_ACE_CE1_TASK_ING << (BYTE_WIDTH * 1) |
+		SMC_OP_APU_ACE_CE2_TASK_ING << (BYTE_WIDTH * 2)
+	);
+	if (apusys_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP,
+			op, &ce0_task, &ce1_task, &ce2_task))
+		return -1;
+
+	dev_info(dev, "APU_ACE_CE0_TASK_ING: 0x%08x\n", ce0_task);
+	dev_info(dev, "APU_ACE_CE1_TASK_ING: 0x%08x\n", ce1_task);
+	dev_info(dev, "APU_ACE_CE2_TASK_ING: 0x%08x\n", ce2_task);
+
+	op = (
+		SMC_OP_APU_ACE_CE3_TASK_ING |
+		SMC_OP_APU_ACE_APB_MST_OUT_STATUS_ERR << (BYTE_WIDTH * 1) |
+		SMC_OP_APU_ACE_APB_MST_IN_STATUS_ERR << (BYTE_WIDTH * 2)
+	);
+	if (apusys_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP,
+			op, &ce3_task, &apb_out_status, &apb_in_status))
+		return -1;
+
+	dev_info(dev, "APU_ACE_CE3_TASK_ING: 0x%08x\n", ce3_task);
+	dev_info(dev, "APU_ACE_APB_MST_OUT_STATUS_ERR: 0x%08x\n", apb_out_status);
+	dev_info(dev, "APU_ACE_APB_MST_IN_STATUS_ERR: 0x%08x\n", apb_in_status);
+
+	if (ce_flag == 0 && ace_flag == 0 && user_flag == 0) {
+		dev_info(dev, "no error flag\n");
+		return -1;
+	}
+
+	if (ce_flag) {
+		if (ce_flag & CE_0_IRQ_MASK)
+			return GET_JOB_ID_FROM_TASK(ce0_task);
+		else if (ce_flag & CE_1_IRQ_MASK)
+			return GET_JOB_ID_FROM_TASK(ce1_task);
+		else if (ce_flag & CE_2_IRQ_MASK)
+			return GET_JOB_ID_FROM_TASK(ce2_task);
+		else if (ce_flag & CE_3_IRQ_MASK)
+			return GET_JOB_ID_FROM_TASK(ce3_task);
+	} else if (ace_flag) {
+		if (ace_flag & CE_MISS_TYPE2_REQ_FLAG_0_MSK)
+			return GET_JOB_ID_FROM_TASK(ce0_task);
+		else if (ace_flag & CE_MISS_TYPE2_REQ_FLAG_1_MSK)
+			return GET_JOB_ID_FROM_TASK(ce1_task);
+		else if (ace_flag & CE_MISS_TYPE2_REQ_FLAG_2_MSK)
+			return GET_JOB_ID_FROM_TASK(ce2_task);
+		else if (ace_flag & CE_MISS_TYPE2_REQ_FLAG_3_MSK)
+			return GET_JOB_ID_FROM_TASK(ce3_task);
+
+		else if (ace_flag & CE_NON_ALIGNED_APB_FLAG_MSK) {
+			if (ace_flag & CE_NON_ALIGNED_APB_OUT_FLAG_MSK)
+				apb_status = apb_out_status;
+			else if (ace_flag & CE_NON_ALIGNED_APB_IN_FLAG_MSK)
+				apb_status = apb_in_status;
+
+			if (apb_status & CE_APB_ERR_STATUS_CE0_MSK)
+				return GET_JOB_ID_FROM_TASK(ce0_task);
+			else if (apb_status & CE_APB_ERR_STATUS_CE1_MSK)
+				return GET_JOB_ID_FROM_TASK(ce1_task);
+			else if (apb_status & CE_APB_ERR_STATUS_CE2_MSK)
+				return GET_JOB_ID_FROM_TASK(ce2_task);
+			else if (apb_status & CE_APB_ERR_STATUS_CE3_MSK)
+				return GET_JOB_ID_FROM_TASK(ce3_task);
+		}
+	}
+
+	return -1;
+}
+
+static void log_ce_register(struct device *dev)
+{
+	uint32_t op, res0 = 0, res1 = 0, res2 = 0;
+
+	op = (
+		SMC_OP_APU_CE0_RUN_INSTR |
+		SMC_OP_APU_CE1_RUN_INSTR << (BYTE_WIDTH * 1) |
+		SMC_OP_APU_CE2_RUN_INSTR << (BYTE_WIDTH * 2)
+	);
+	if (apusys_rv_smc_call(
+			dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, &res2) == 0) {
+		dev_info(dev, "APU_CE0_RUN_INSTR: 0x%08x\n", res0);
+		dev_info(dev, "APU_CE1_RUN_INSTR: 0x%08x\n", res1);
+		dev_info(dev, "APU_CE2_RUN_INSTR: 0x%08x\n", res2);
+	}
+
+	op = (
+		SMC_OP_APU_CE3_RUN_INSTR |
+		SMC_OP_APU_CE0_TIMEOUT_INSTR << (BYTE_WIDTH * 1) |
+		SMC_OP_APU_CE1_TIMEOUT_INSTR << (BYTE_WIDTH * 2)
+	);
+	if (apusys_rv_smc_call(
+			dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, &res2) == 0) {
+		dev_info(dev, "APU_CE3_RUN_INSTR: 0x%08x\n", res0);
+		dev_info(dev, "APU_CE0_TIMEOUT_INSTR: 0x%08x\n", res1);
+		dev_info(dev, "APU_CE1_TIMEOUT_INSTR: 0x%08x\n", res2);
+	}
+
+	op = (
+		SMC_OP_APU_CE2_TIMEOUT_INSTR |
+		SMC_OP_APU_CE3_TIMEOUT_INSTR << (BYTE_WIDTH * 1)
+	);
+	if (apusys_rv_smc_call(
+			dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, NULL) == 0) {
+		dev_info(dev, "APU_CE1_TIMEOUT_INSTR: 0x%08x\n", res0);
+		dev_info(dev, "APU_CE2_TIMEOUT_INSTR: 0x%08x\n", res1);
+	}
 }
 
 static irqreturn_t apu_ce_isr(int irq, void *private_data)
@@ -185,7 +316,6 @@ static irqreturn_t apu_ce_isr(int irq, void *private_data)
 	struct mtk_apu *apu = (struct mtk_apu *) private_data;
 	struct device *dev = apu->dev;
 	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
-	uint32_t op, res0 = 0, res1 = 0, res2 = 0;
 
 	if (!hw_ops->check_apu_exp_irq) {
 		dev_info(dev, "%s ,not support handle apu exception\n", __func__);
@@ -194,84 +324,31 @@ static irqreturn_t apu_ce_isr(int irq, void *private_data)
 
 	if (hw_ops->check_apu_exp_irq(apu, "are_abnormal_irq")) {
 		dev_info(dev, "%s ,are_abnormal_irq\n", __func__);
+		disable_irq_nosync(apu->ce_exp_irq_number);
 
-		op = (
-			SMC_OP_APU_ACE_ABN_IRQ_FLAG_CE |
-			SMC_OP_APU_ACE_ABN_IRQ_FLAG_ACE_SW << (BYTE_WIDTH * 1) |
-			SMC_OP_APU_ACE_ABN_IRQ_FLAG_USER << (BYTE_WIDTH * 2)
-		);
-		if (apusys_rv_smc_call(
-				dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, &res2) == 0) {
-			dev_info(dev, "APU_ACE_ABN_IRQ_FLAG_CE: 0x%08x\n", res0);
-			dev_info(dev, "APU_ACE_ABN_IRQ_FLAG_ACE_SW: 0x%08x\n", res1);
-			dev_info(dev, "APU_ACE_ABN_IRQ_FLAG_USER: 0x%08x\n", res2);
-		}
+		/* find exception job id */
+		exception_job_id = get_exception_job_id(dev);
+		dev_info(dev, "CE exception job id %d\n", exception_job_id);
 
-		op = (
-			SMC_OP_APU_ACE_CE0_TASK_ING |
-			SMC_OP_APU_ACE_CE1_TASK_ING << (BYTE_WIDTH * 1) |
-			SMC_OP_APU_ACE_CE2_TASK_ING << (BYTE_WIDTH * 2)
-		);
-		if (apusys_rv_smc_call(
-				dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, &res2) == 0) {
-			dev_info(dev, "APU_ACE_CE0_TASK_ING: 0x%08x\n", res0);
-			dev_info(dev, "APU_ACE_CE1_TASK_ING: 0x%08x\n", res1);
-			dev_info(dev, "APU_ACE_CE2_TASK_ING: 0x%08x\n", res2);
-		}
+		/* log important register */
+		log_ce_register(dev);
 
-		op = (
-			SMC_OP_APU_ACE_CE3_TASK_ING |
-			SMC_OP_APU_CE0_RUN_INSTR << (BYTE_WIDTH * 1) |
-			SMC_OP_APU_CE1_RUN_INSTR << (BYTE_WIDTH * 2)
-		);
-		if (apusys_rv_smc_call(
-				dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, &res2) == 0) {
-			dev_info(dev, "APU_ACE_CE3_TASK_ING: 0x%08x\n", res0);
-			dev_info(dev, "APU_CE0_RUN_INSTR: 0x%08x\n", res1);
-			dev_info(dev, "APU_CE1_RUN_INSTR: 0x%08x\n", res2);
-		}
-
-		op = (
-			SMC_OP_APU_CE2_RUN_INSTR |
-			SMC_OP_APU_CE3_RUN_INSTR << (BYTE_WIDTH * 1) |
-			SMC_OP_APU_CE0_TIMEOUT_INSTR << (BYTE_WIDTH * 2)
-		);
-		if (apusys_rv_smc_call(
-				dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, &res2) == 0) {
-			dev_info(dev, "APU_CE2_RUN_INSTR: 0x%08x\n", res0);
-			dev_info(dev, "APU_CE3_RUN_INSTR: 0x%08x\n", res1);
-			dev_info(dev, "APU_CE0_TIMEOUT_INSTR: 0x%08x\n", res2);
-		}
-
-		op = (
-			SMC_OP_APU_CE1_TIMEOUT_INSTR |
-			SMC_OP_APU_CE2_TIMEOUT_INSTR << (BYTE_WIDTH * 1) |
-			SMC_OP_APU_CE3_TIMEOUT_INSTR << (BYTE_WIDTH * 2)
-		);
-		if (apusys_rv_smc_call(
-				dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, &res2) == 0) {
-			dev_info(dev, "APU_CE1_TIMEOUT_INSTR: 0x%08x\n", res0);
-			dev_info(dev, "APU_CE2_TIMEOUT_INSTR: 0x%08x\n", res1);
-			dev_info(dev, "APU_CE3_TIMEOUT_INSTR: 0x%08x\n", res2);
-		}
-
-		op = (
-			SMC_OP_APU_ACE_APB_MST_OUT_STATUS_ERR |
-			SMC_OP_APU_ACE_APB_MST_IN_STATUS_ERR << (BYTE_WIDTH * 1)
-		);
-		if (apusys_rv_smc_call(
-				dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, NULL) == 0) {
-			dev_info(dev, "APU_ACE_APB_MST_OUT_STATUS_ERR: 0x%08x\n", res0);
-			dev_info(dev, "APU_ACE_APB_MST_IN_STATUS_ERR: 0x%08x\n", res1);
-		}
-
+		/* dump ce register to apusys_ce_fw_sram buffer */
 		if (apusys_rv_smc_call(
 				dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP, 0, NULL, NULL, NULL) == 0) {
-			dev_info(dev, "Dump CE register to APUSYS_CE_FW_SRAM\n");
+			dev_info(dev, "Dump CE register to apusys_ce_fw_sram\n");
 		}
 
+		if (exception_job_id == -1)
+			return -EINVAL;
+
+		/**
+		 * schedule task, the task will
+		 * 1. dump ARE SRAM to apusys_ce_fw_sram buffer
+		 * 2. dump register to apusys_regdump buffer
+		 * 3. trigger aee by ce exception
+		 */
 		schedule_work(&(apu_ce_coredump_work.work));
-		disable_irq_nosync(apu->ce_exp_irq_number);
 	}
 	return IRQ_HANDLED;
 }
@@ -307,7 +384,7 @@ void apu_ce_timer_dump_reg(struct work_struct *work)
 		dev_info(dev, "%s +\n", __func__);
 
 		ret = apusys_rv_smc_call(dev,
-					MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP, 0, NULL, NULL, NULL);
+			MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP, 0, NULL, NULL, NULL);
 	}
 }
 

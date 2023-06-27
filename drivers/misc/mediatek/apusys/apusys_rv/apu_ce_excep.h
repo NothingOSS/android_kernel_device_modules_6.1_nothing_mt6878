@@ -246,6 +246,25 @@ void apu_ce_stop_timer_dump_reg(void);
 #define CE_REG_DUMP_ACE_END        (APU_CE3_OVERFLOW)
 #define CE_REG_DUMP_HW_SEMA_START             (0xe08)
 #define CE_REG_DUMP_HW_SEMA_END               (0xe0c)
+#define CE_0_IRQ_MASK                           (0xF)
+#define CE_1_IRQ_MASK                          (0xF0)
+#define CE_2_IRQ_MASK                         (0xF00)
+#define CE_3_IRQ_MASK                        (0xF000)
+#define CE_TASK_JOB_SFT                        (0x10)
+#define CE_TASK_JOB_MSK                        (0x1F)
+#define CE_MISS_TYPE2_REQ_FLAG_0_MSK          (0x100)
+#define CE_MISS_TYPE2_REQ_FLAG_1_MSK          (0x200)
+#define CE_MISS_TYPE2_REQ_FLAG_2_MSK          (0x400)
+#define CE_MISS_TYPE2_REQ_FLAG_3_MSK          (0x800)
+#define CE_NON_ALIGNED_APB_FLAG_MSK       (0x6000000)
+#define CE_NON_ALIGNED_APB_OUT_FLAG_MSK   (0x2000000)
+#define CE_NON_ALIGNED_APB_IN_FLAG_MSK    (0x4000000)
+#define CE_APB_ERR_STATUS_CE0_MSK               (0x1)
+#define CE_APB_ERR_STATUS_CE1_MSK               (0x2)
+#define CE_APB_ERR_STATUS_CE2_MSK               (0x4)
+#define CE_APB_ERR_STATUS_CE3_MSK               (0x8)
+
+#define GET_JOB_ID_FROM_TASK(task) ((task >> CE_TASK_JOB_SFT) & CE_TASK_JOB_MSK)
 
 enum {
 	SMC_OP_APU_CE_NULL = 0,
