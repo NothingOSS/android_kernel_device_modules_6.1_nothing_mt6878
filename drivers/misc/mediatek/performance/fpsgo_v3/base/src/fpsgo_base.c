@@ -2160,6 +2160,7 @@ int fpsgo_check_all_render_blc(int render_tid, unsigned long long buffer_id)
 			continue;
 
 		if (r_iter->frame_type == FRAME_HINT_TYPE ||
+			r_iter->hwui == RENDER_INFO_HWUI_TYPE ||
 			fpsgo_search_and_add_sbe_info(r_iter->pid, 0))
 			continue;
 
