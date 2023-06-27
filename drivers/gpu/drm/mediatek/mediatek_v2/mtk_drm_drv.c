@@ -6495,7 +6495,6 @@ int mtk_drm_ioctl_kick_idle(struct drm_device *dev, void *data,
 	int ret = 0;
 	unsigned int *crtc_id = data;
 	struct drm_crtc *crtc;
-	struct mtk_drm_private *priv = dev->dev_private;
 
 	crtc = drm_crtc_find(dev, file_priv, *crtc_id);
 	if (!crtc) {
@@ -6506,10 +6505,7 @@ int mtk_drm_ioctl_kick_idle(struct drm_device *dev, void *data,
 	DDPINFO("[%s CRTC:%d:%s]\n", __func__, crtc->base.id, crtc->name);
 
 	/* async kick idle */
-
-	/* disable async kick idle,workaround for mt6897 */
-	if (priv->data->mmsys_id != MMSYS_MT6897)
-		mtk_drm_idlemgr_kick_async(crtc);
+	mtk_drm_idlemgr_kick_async(crtc);
 
 	return ret;
 }
