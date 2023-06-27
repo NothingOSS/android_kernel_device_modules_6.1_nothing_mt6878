@@ -35,6 +35,17 @@
 
 #define REQUEST_MAX_COUNT 20
 #define CHECK_TRIGGER_DELAY 1
+#define TUNING_COMPS_MAX_COUNT 15
+
+#if defined(DISP_COLOR_ON)
+#define COLOR_MODE			(1)
+#elif defined(MDP_COLOR_ON)
+#define COLOR_MODE			(2)
+#elif defined(DISP_MDP_COLOR_ON)
+#define COLOR_MODE			(3)
+#else
+#define COLOR_MODE			(0)	/*color feature off */
+#endif
 
 struct pq_module_match {
 	enum mtk_pq_module_type pq_type;
@@ -53,30 +64,298 @@ static struct pq_module_match pq_module_matches[MTK_DISP_PQ_TYPE_MAX] = {
 	{MTK_DISP_PQ_TDSHP, MTK_DISP_TDSHP},
 };
 
+static const char *const mtk_tuning_mdp_comps_name[TUNING_COMPS_MAX_COUNT] = {
+	"mediatek,mdp_rsz0",              // 0
+	"mediatek,mdp_rsz1",
+	"mediatek,mdp_rdma0",
+	"mediatek,mdp-tuning-mdp_hdr0",
+	"mediatek,mml-tuning-mml_hdr0",
+	"mediatek,mdp-tuning-mdp_color0", // 5
+	"mediatek,mml-tuning-mml_color0",
+	"mediatek,mdp-tuning-mdp_aal0",
+	"mediatek,mml-tuning-mml_aal0",
+	"mediatek,mdp-tuning-mdp_tdshp0",
+	"mediatek,mml-tuning-mml_tdshp0", // 10
+	"mediatek,disp_oddmr0",
+	"mediatek,disp1_oddmr0",
+};
+
 static int mtk_drm_ioctl_pq_get_irq_impl(struct drm_crtc *crtc, void *data);
 static int mtk_drm_ioctl_pq_get_persist_property_impl(struct drm_crtc *crtc, void *data);
 
-int mtk_drm_ioctl_pq_frame_config(struct drm_device *dev, void *data,
-	struct drm_file *file_priv)
+static bool mtk_drm_get_resource_from_dts(struct resource *res, const char *node_name)
 {
-	struct drm_crtc *crtc;
-	struct mtk_drm_pq_config_ctl *params = data;
-	int ret;
+	int rc = 0;
+	struct device_node *node = NULL;
 
-	if (data == NULL) {
-		DDPPR_ERR("%s, null data!\n", __func__);
-		return -1;
+	if (!node_name)
+		return false;
+
+	node = of_find_compatible_node(NULL, NULL, node_name);
+	rc = of_address_to_resource(node, 0, res);
+
+	// check if fail to get reg.
+	if (rc) {
+		DDPINFO("Fail to get %s\n", node_name);
+		return false;
 	}
 
-	crtc = drm_crtc_find(dev, file_priv, params->crtc_id);
-	if (!crtc) {
-		DDPPR_ERR("%s, invalid crtc id:%d!\n", __func__, params->crtc_id);
-		return -1;
+	DDPDBG("%s REG: 0x%llx ~ 0x%llx\n", node_name, res->start, res->end);
+	return true;
+}
+
+int mtk_drm_ioctl_sw_read_impl(struct drm_crtc *crtc, void *data)
+{
+	struct DISP_READ_REG *rParams = data;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+	unsigned int ret = 0;
+	unsigned int reg_id = rParams->reg;
+	struct resource res;
+	int index = drm_crtc_index(crtc);
+
+	switch (reg_id) {
+	case SWREG_COLOR_BASE_ADDRESS:
+		ret = pq_data->tuning_pa_table[TUNING_DISP_COLOR].pa_base;
+		break;
+	case SWREG_GAMMA_BASE_ADDRESS:
+		ret = pq_data->tuning_pa_table[TUNING_DISP_GAMMA].pa_base;
+		break;
+	case SWREG_AAL_BASE_ADDRESS:
+		ret = pq_data->tuning_pa_table[TUNING_DISP_AAL].pa_base;
+		break;
+#if defined(CCORR_SUPPORT)
+	case SWREG_CCORR_BASE_ADDRESS:
+		ret = pq_data->tuning_pa_table[TUNING_DISP_CCORR].pa_base;
+		break;
+#endif
+	case SWREG_DISP_TDSHP_BASE_ADDRESS:
+		ret = pq_data->tuning_pa_table[TUNING_DISP_TDSHP].pa_base;
+		break;
+	case SWREG_MML_HDR_BASE_ADDRESS:
+		if (mtk_drm_get_resource_from_dts(&res, "mediatek,mml-tuning-mml_hdr0"))
+			ret = res.start;
+		break;
+	case SWREG_MML_AAL_BASE_ADDRESS:
+		if (mtk_drm_get_resource_from_dts(&res, "mediatek,mml-tuning-mml_aal0"))
+			ret = res.start;
+		break;
+	case SWREG_MML_TDSHP_BASE_ADDRESS:
+		if (mtk_drm_get_resource_from_dts(&res, "mediatek,mml-tuning-mml_tdshp0"))
+			ret = res.start;
+		break;
+	case SWREG_MML_COLOR_BASE_ADDRESS:
+		if (mtk_drm_get_resource_from_dts(&res, "mediatek,mml-tuning-mml_color0"))
+			ret = res.start;
+		break;
+	case SWREG_TDSHP_BASE_ADDRESS:
+		if (mtk_drm_get_resource_from_dts(&res, "mediatek,mdp-tuning-mdp_tdshp0"))
+			ret = res.start;
+		break;
+	case SWREG_MDP_COLOR_BASE_ADDRESS:
+		if (mtk_drm_get_resource_from_dts(&res, "mediatek,mdp-tuning-mdp_color0"))
+			ret = res.start;
+		break;
+	case SWREG_COLOR_MODE:
+		ret = COLOR_MODE;
+		break;
+	case SWREG_RSZ_BASE_ADDRESS:
+#if defined(SUPPORT_ULTRA_RESOLUTION)
+		ret = MDP_RSZ0_PA_BASE;
+#endif
+		break;
+	case SWREG_MDP_RDMA_BASE_ADDRESS:
+		if (!mtk_drm_get_resource_from_dts(&res, "mediatek,mdp-tuning-mdp_hdr0") &&
+			mtk_drm_get_resource_from_dts(&res, "mediatek,mdp_rdma0"))
+			ret = res.start;
+		break;
+	case SWREG_MDP_AAL_BASE_ADDRESS:
+		if (mtk_drm_get_resource_from_dts(&res, "mediatek,mdp-tuning-mdp_aal0"))
+			ret = res.start;
+		break;
+	case SWREG_MDP_HDR_BASE_ADDRESS:
+		if (mtk_drm_get_resource_from_dts(&res, "mediatek,mdp-tuning-mdp_hdr0"))
+			ret = res.start;
+		break;
+	case SWREG_TDSHP_TUNING_MODE:
+		ret = pq_data->tdshp_flag;
+		break;
+	case SWREG_MIRAVISION_VERSION:
+		ret = MIRAVISION_VERSION;
+		break;
+	case SWREG_SW_VERSION_VIDEO_DC:
+		ret = SW_VERSION_VIDEO_DC;
+		break;
+	case SWREG_SW_VERSION_AAL:
+		ret = SW_VERSION_AAL;
+		break;
+	default:
+		DDPINFO("%s, ret = 0x%08x. unknown reg_id: 0x%08x",
+				__func__, ret, reg_id);
 	}
 
-	ret = mtk_pq_helper_frame_config(crtc, NULL, data, true);
-
+	rParams->val = ret;
+	DDPDBG("%s, crtc_idx:%d, read sw reg 0x%x = 0x%x",
+			__func__, index, rParams->reg, rParams->val);
 	return ret;
+}
+
+int mtk_drm_ioctl_sw_write_impl(struct drm_crtc *crtc, void *data)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+	struct DISP_WRITE_REG *wParams = data;
+	unsigned int reg_id = wParams->reg;
+	unsigned int value = wParams->val;
+
+	if (reg_id == SWREG_TDSHP_TUNING_MODE)
+		pq_data->tdshp_flag = value;
+	return 0;
+}
+
+static int mtk_drm_get_table_index(struct drm_crtc *crtc, unsigned int pa)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+	unsigned int pa_base = pa & 0xFFFFF000;
+	int i;
+
+	for (i = 0; i < TUNING_REG_MAX; i++) {
+		if (pq_data->tuning_pa_table[i].pa_base == pa_base)
+			return i;
+	}
+	return -1;
+}
+
+static bool mtk_drm_tuning_pa_valid(struct drm_crtc *crtc, unsigned int pa)
+{
+	int i;
+	struct resource res;
+
+	if (!pa) {
+		DDPPR_ERR("addr is NULL\n");
+		return false;
+	}
+	if ((pa & 0x3) != 0) {
+		DDPPR_ERR("addr is not 4-byte aligned!\n");
+		return false;
+	}
+	if (mtk_drm_get_table_index(crtc, pa) >= 0)
+		return true;
+
+	for (i = 0; i < TUNING_COMPS_MAX_COUNT; i ++) {
+		if (mtk_drm_get_resource_from_dts(&res, mtk_tuning_mdp_comps_name[i])) {
+			if (pa >= res.start && pa <= res.end)
+				return true;
+		}
+	}
+	return false;
+}
+
+int mtk_drm_ioctl_hw_read_impl(struct drm_crtc *crtc, void *data)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	int ret = 0;
+	struct DISP_READ_REG *rParams = data;
+	void __iomem *va = 0;
+	unsigned int pa;
+
+	pa = (unsigned int)rParams->reg;
+
+	if (!mtk_drm_tuning_pa_valid(crtc, pa)) {
+		DDPPR_ERR("reg read, addr invalid, pa:0x%x\n", pa);
+		return -EFAULT;
+	}
+
+	va = ioremap(pa, sizeof(*va));
+
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	rParams->val = readl(va) & rParams->mask;
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDPINFO("%s, read pa:0x%x(va:0x%lx) = 0x%x (0x%x)\n",
+		__func__, pa, (long)va, rParams->val, rParams->mask);
+
+	iounmap(va);
+	return ret;
+}
+
+static void frame_cmdq_cb(struct cmdq_cb_data data)
+{
+	struct mtk_cmdq_cb_data *cb_data = data.data;
+
+	cmdq_pkt_destroy(cb_data->cmdq_handle);
+	kfree(cb_data);
+}
+
+int mtk_drm_ioctl_hw_write_impl(struct drm_crtc *crtc, void *data)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct DISP_WRITE_REG *wParams = data;
+	unsigned int pa = (unsigned int)wParams->reg;
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+	struct mtk_cmdq_cb_data *cb_data = NULL;
+	struct cmdq_pkt *cmdq_handle = NULL;
+
+	if (!mtk_drm_tuning_pa_valid(crtc, pa)) {
+		DDPPR_ERR("reg write, addr invalid, pa:0x%x\n", pa);
+		return -EFAULT;
+	}
+
+	cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	if (!cmdq_handle) {
+		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		return -EFAULT;
+	}
+	if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
+		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_SECOND_PATH, 0);
+	else
+		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
+
+	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+						pa, wParams->val, wParams->mask);
+
+	if (mtk_crtc->is_dual_pipe) {
+		unsigned int companion_pa = 0;
+		int offset = pa & 0xfff;
+		int index_table = mtk_drm_get_table_index(crtc, pa);
+
+		if (index_table >= 0) {
+			companion_pa = pq_data->tuning_pa_table[index_table].companion_pa_base;
+			if (companion_pa)
+				companion_pa += offset;
+		}
+		if (companion_pa) {
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+						companion_pa, wParams->val, wParams->mask);
+			if (index_table == TUNING_DISP_COLOR && offset == DISP_COLOR_POS_MAIN) {
+				struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+						mtk_crtc, MTK_DISP_COLOR, 0);
+
+				if (comp)
+					disp_color_write_pos_main_for_dual_pipe(comp,
+						cmdq_handle, wParams, pa, companion_pa);
+			}
+		}
+	}
+
+	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
+	if (!cb_data) {
+		DDPPR_ERR("cb data creation failed\n");
+		cmdq_pkt_destroy(cmdq_handle);
+		return -EFAULT;
+	}
+
+	cb_data->crtc = crtc;
+	cb_data->cmdq_handle = cmdq_handle;
+
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	if (cmdq_pkt_flush_threaded(cmdq_handle, frame_cmdq_cb, cb_data) < 0) {
+		DDPPR_ERR("failed to flush %s\n", __func__);
+		kfree(cb_data);
+	}
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+	return 0;
 }
 
 int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
@@ -94,8 +373,20 @@ int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
 	case PQ_VIRTUAL_GET_IRQ:
 		ret = mtk_drm_ioctl_pq_get_irq_impl(crtc, kdata);
 		break;
-	default:
+	case PQ_COLOR_WRITE_REG:
+		ret = mtk_drm_ioctl_hw_write_impl(crtc, kdata);
 		break;
+	case PQ_COLOR_WRITE_SW_REG:
+		ret = mtk_drm_ioctl_sw_write_impl(crtc, kdata);
+		break;
+	case PQ_COLOR_READ_REG:
+		ret = mtk_drm_ioctl_hw_read_impl(crtc, kdata);
+		break;
+	case PQ_COLOR_READ_SW_REG:
+		ret = mtk_drm_ioctl_sw_read_impl(crtc, kdata);
+		break;
+	default:
+		DDPPR_ERR("%s, unknown cmd:%d\n", __func__, cmd);
 	}
 	return ret;
 }
@@ -172,14 +463,27 @@ err:
 	return ret;
 }
 
-static void frame_cmdq_cb(struct cmdq_cb_data data)
+int mtk_drm_ioctl_pq_frame_config(struct drm_device *dev, void *data,
+	struct drm_file *file_priv)
 {
-	struct mtk_cmdq_cb_data *cb_data = data.data;
+	struct drm_crtc *crtc;
+	struct mtk_drm_pq_config_ctl *params = data;
+	int ret;
 
-	cmdq_pkt_destroy(cb_data->cmdq_handle);
-	kfree(cb_data);
+	if (data == NULL) {
+		DDPPR_ERR("%s, null data!\n", __func__);
+		return -1;
+	}
+
+	crtc = drm_crtc_find(dev, file_priv, params->crtc_id);
+	if (!crtc) {
+		DDPPR_ERR("%s, invalid crtc id:%d!\n", __func__, params->crtc_id);
+		return -1;
+	}
+
+	ret = mtk_pq_helper_frame_config(crtc, NULL, data, true);
+	return ret;
 }
-
 
 int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle,
 	void *data, bool user_lock)
@@ -330,6 +634,54 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	return 0;
 }
 
+static void mtk_pq_helper_fill_tuning_table(struct mtk_drm_crtc *mtk_crtc,
+	int comp_type, int path_order, resource_size_t pa, resource_size_t companion_pa)
+{
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+	unsigned int table_index = TUNING_REG_MAX;
+
+	switch (comp_type) {
+	case MTK_DISP_COLOR:
+		table_index = TUNING_DISP_COLOR;
+		break;
+	case MTK_DISP_CCORR:
+		if (path_order)
+			table_index = TUNING_DISP_CCORR1;
+		else
+			table_index = TUNING_DISP_CCORR;
+		break;
+	case MTK_DISP_AAL:
+		table_index = TUNING_DISP_AAL;
+		break;
+	case MTK_DISP_GAMMA:
+		table_index = TUNING_DISP_GAMMA;
+		break;
+	case MTK_DISP_DITHER:
+		table_index = TUNING_DISP_DITHER;
+		break;
+	case MTK_DISP_TDSHP:
+		table_index = TUNING_DISP_TDSHP;
+		break;
+	case MTK_DISP_C3D:
+		table_index = TUNING_DISP_C3D;
+		break;
+	case MTK_DMDP_AAL:
+		table_index = TUNING_DISP_MDP_AAL;
+		break;
+	case MTK_DISP_ODDMR:
+		table_index = TUNING_DISP_ODDMR_TOP;
+		break;
+	default:
+		DDPPR_ERR("%s, unknown comp_type:%d\n", __func__, comp_type);
+	}
+
+	if (table_index < TUNING_REG_MAX) {
+		pq_data->tuning_pa_table[table_index].type = comp_type;
+		pq_data->tuning_pa_table[table_index].pa_base = pa;
+		pq_data->tuning_pa_table[table_index].companion_pa_base = companion_pa;
+	}
+}
+
 int mtk_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_order,
 	bool *is_right_pipe, struct mtk_ddp_comp **companion)
 {
@@ -348,25 +700,33 @@ int mtk_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_order
 		*path_order = _path_order;
 	DDPMSG("%s %s order %d pipe %d\n", __func__,
 					mtk_dump_comp_str(comp), _path_order, _is_right_pipe);
-	if (!comp->mtk_crtc->is_dual_pipe || !companion)
-		return ret;
-
 	comp_type = mtk_ddp_comp_get_type(comp->id);
 	if (comp_type < 0) {
 		DDPPR_ERR("%s comp id %d is invalid\n", __func__, comp->id);
 		return comp_type;
 	}
-	if (!_is_right_pipe)
-		_companion = mtk_ddp_comp_sel_in_dual_pipe(comp->mtk_crtc,
-					comp_type, _path_order);
-	else
-		_companion = mtk_ddp_comp_sel_in_cur_crtc_path(comp->mtk_crtc,
-					comp_type, _path_order);
-	if (!_companion)
-		ret = -1;
-	if (_companion && companion)
-		*companion = _companion;
-	DDPMSG("%s companion %s\n", __func__, mtk_dump_comp_str(_companion));
+	if (comp->mtk_crtc->is_dual_pipe && companion) {
+		if (!_is_right_pipe)
+			_companion = mtk_ddp_comp_sel_in_dual_pipe(comp->mtk_crtc,
+						comp_type, _path_order);
+		else
+			_companion = mtk_ddp_comp_sel_in_cur_crtc_path(comp->mtk_crtc,
+						comp_type, _path_order);
+		if (!_companion)
+			ret = -1;
+		if (_companion)
+			*companion = _companion;
+		DDPMSG("%s companion %s\n", __func__, mtk_dump_comp_str(_companion));
+	}
+
+	if (!_is_right_pipe) {
+		resource_size_t companion_regs_pa = 0;
+
+		if (_companion)
+			companion_regs_pa = _companion->regs_pa;
+		mtk_pq_helper_fill_tuning_table(comp->mtk_crtc, comp_type, _path_order,
+					comp->regs_pa, companion_regs_pa);
+	}
 	return ret;
 }
 

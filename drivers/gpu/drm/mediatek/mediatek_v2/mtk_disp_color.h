@@ -45,21 +45,6 @@ enum LUT_REG {
 	LUT_REG_TOTAL
 };
 
-enum PQ_REG_TABLE_IDX {
-	TUNING_DISP_COLOR = 0,
-	TUNING_DISP_CCORR,	// 1
-	TUNING_DISP_AAL,	// 2
-	TUNING_DISP_GAMMA,	// 3
-	TUNING_DISP_DITHER,	// 4
-	TUNING_DISP_CCORR1,	// 5
-	TUNING_DISP_TDSHP,	// 6
-	TUNING_DISP_C3D,	// 7
-	TUNING_DISP_MDP_AAL,	// 8
-	TUNING_DISP_ODDMR_TOP,  // 9
-	TUNING_DISP_ODDMR_OD,   // 10
-	TUNING_REG_MAX
-};
-
 struct mtk_disp_color_data {
 	unsigned int color_offset;
 	bool support_color21;
@@ -418,6 +403,9 @@ int mtk_drm_ioctl_write_sw_reg(struct drm_device *dev, void *data,
 
 void disp_color_set_bypass(struct drm_crtc *crtc, int bypass);
 void mtk_color_regdump(struct mtk_ddp_comp *comp);
+void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, struct DISP_WRITE_REG *wParams,
+	unsigned int pa, unsigned int pa1);
 
 #endif
 

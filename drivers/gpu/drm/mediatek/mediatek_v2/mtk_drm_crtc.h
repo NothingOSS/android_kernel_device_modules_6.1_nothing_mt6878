@@ -31,6 +31,7 @@
 #include "mtk_drm_ddp_addon.h"
 #include "mtk_disp_pmqos.h"
 #include "slbc_ops.h"
+#include "mtk_disp_pq_helper.h"
 
 #define MAX_CRTC 4
 #define OVL_LAYER_NR 12L
@@ -806,6 +807,8 @@ struct pq_common_data {
 	wait_queue_head_t pq_get_irq_wq;
 	unsigned int old_persist_property[32];
 	unsigned int new_persist_property[32];
+	struct pq_tuning_pa_base tuning_pa_table[TUNING_REG_MAX];
+	int tdshp_flag; /* 0: normal, 1: tuning mode */
 };
 /**
  * struct mtk_drm_crtc - MediaTek specific crtc structure.
