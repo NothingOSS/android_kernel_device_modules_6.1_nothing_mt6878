@@ -697,6 +697,20 @@ static struct devapc_power_callbacks devapc_power_handle = {
 };
 #endif
 
+static int mminfra_put_after_boot_up(void *data)
+{
+	u32 cnt;
+
+	for (cnt = 0; cnt < 120; cnt++) {
+		pr_notice("mminfra default_on in boot stage, cnt:%d", cnt);
+		msleep(1000);
+	}
+	pr_notice("mminfra end default_on\n");
+	pm_runtime_put_sync(dev);
+
+	return 0 ;
+}
+
 static int mminfra_debug_probe(struct platform_device *pdev)
 {
 	struct device_node *node;
@@ -835,6 +849,10 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 	register_devapc_power_callback(&devapc_power_handle);
 #endif
+	if (vcp_gipc) {
+		pm_runtime_get_sync(dev);
+		kthread_run(mminfra_put_after_boot_up, NULL, "mminfra_put_after_boot_up");
+	}
 
 	return ret;
 }
