@@ -690,6 +690,7 @@ int vcp_dec_ipi_handler(void *arg)
 			case VCU_IPIMSG_DEC_RESET_DONE:
 			case VCU_IPIMSG_DEC_SET_PARAM_DONE:
 			case VCU_IPIMSG_DEC_BACKUP_DONE:
+			case VCU_IPIMSG_DEC_RESUME_DONE:
 				vcu->signaled = true;
 				wake_up(&vcu->wq);
 				break;
@@ -793,6 +794,7 @@ int vcp_dec_ipi_handler(void *arg)
 			case VCU_IPIMSG_DEC_SET_PARAM_DONE:
 			case VCU_IPIMSG_DEC_QUERY_CAP_DONE:
 			case VCU_IPIMSG_DEC_BACKUP_DONE:
+			case VCU_IPIMSG_DEC_RESUME_DONE:
 				vcu->failure = msg->status;
 				vcu->signaled = true;
 				wake_up(&vcu->wq);
@@ -865,6 +867,27 @@ static int vdec_vcp_backup(struct vdec_inst *inst)
 
 	memset(&msg, 0, sizeof(msg));
 	msg.msg_id = AP_IPIMSG_DEC_BACKUP;
+	msg.ctx_id = inst->ctx->id;
+	msg.vcu_inst_addr = inst->vcu.inst_addr;
+
+	err = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, false, false);
+	mtk_vcodec_debug(inst, "- ret=%d", err);
+
+	return err;
+}
+
+static int vdec_vcp_resume(struct vdec_inst *inst)
+{
+	struct vdec_ap_ipi_cmd msg;
+	int err = 0;
+
+	if (!inst)
+		return -EINVAL;
+
+	mtk_vcodec_debug_enter(inst);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_id = AP_IPIMSG_DEC_RESUME;
 	msg.ctx_id = inst->ctx->id;
 	msg.vcu_inst_addr = inst->vcu.inst_addr;
 
@@ -1051,6 +1074,17 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 
 		dev->dvfs_is_suspend_off = false;
 		mutex_unlock(&dev->dec_dvfs_mutex);
+
+		if (ctx) {
+			mtk_v4l2_debug(0, "[%d] restore (dvfs freq %d)(pw ref %d, %d %d)(hw active %d %d)",
+				ctx->id, dev->vdec_dvfs_params.target_freq,
+				atomic_read(&dev->dec_larb_ref_cnt),
+				atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
+				atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),
+				atomic_read(&dev->dec_hw_active[MTK_VDEC_LAT]),
+				atomic_read(&dev->dec_hw_active[MTK_VDEC_CORE]));
+			vdec_vcp_resume((struct vdec_inst *)ctx->drv_handle);
+		}
 
 		dev->is_codec_suspending = 0;
 	break;
