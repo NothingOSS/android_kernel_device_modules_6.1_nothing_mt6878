@@ -615,6 +615,18 @@ void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 		writel(0x30c, dpc_base + 0xc44);
 		writel(0x30c, dpc_base + 0xd44);
 		writel(0x30c, dpc_base + 0xe44);
+
+		dpc_mtcmos_vote(DPC_SUBSYS_DISP0, 7, 0);
+		dpc_mtcmos_vote(DPC_SUBSYS_DISP1, 7, 0);
+		dpc_mtcmos_vote(DPC_SUBSYS_OVL0, 7, 0);
+		dpc_mtcmos_vote(DPC_SUBSYS_OVL1, 7, 0);
+		dpc_mtcmos_vote(DPC_SUBSYS_MML1, 7, 0);
+	} else {
+		dpc_mtcmos_vote(DPC_SUBSYS_DISP0, 7, 1);
+		dpc_mtcmos_vote(DPC_SUBSYS_DISP1, 7, 1);
+		dpc_mtcmos_vote(DPC_SUBSYS_OVL0, 7, 1);
+		dpc_mtcmos_vote(DPC_SUBSYS_OVL1, 7, 1);
+		dpc_mtcmos_vote(DPC_SUBSYS_MML1, 7, 1);
 	}
 
 	dpc_pm_ctrl(false);

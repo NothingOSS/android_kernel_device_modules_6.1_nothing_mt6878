@@ -215,8 +215,8 @@ void mtk_vidle_config_ff(bool en)
 	if (en && !mtk_disp_vidle_flag.vidle_en)
 		return;
 
-	if (en == (bool)atomic_read(&g_ff_enabled))
-		return;
+	//if (en == (bool)atomic_read(&g_ff_enabled))
+	//	return;
 	atomic_set(&g_ff_enabled, en);
 
 	if (disp_dpc_driver.dpc_config)
