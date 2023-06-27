@@ -644,7 +644,7 @@ static int smem_dev_mmap(struct file *fp, struct vm_area_struct *vma)
 		pfn = ccb_ctl->base_ap_view_phy;
 		pfn >>= PAGE_SHIFT;
 		/* ensure that memory does not get swapped to disk */
-		vma->vm_flags |= VM_IO;
+		vm_flags_set(vma, VM_IO);
 		/* ensure non-cacheable */
 		vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 		ret = remap_pfn_range(vma, vma->vm_start, pfn,
@@ -687,7 +687,7 @@ static int smem_dev_mmap(struct file *fp, struct vm_area_struct *vma)
 		pfn = smem_port->addr_phy;
 		pfn >>= PAGE_SHIFT;
 		/* ensure that memory does not get swapped to disk */
-		vma->vm_flags |= VM_IO;
+		vm_flags_set(vma, VM_IO);
 		/* ensure non-cacheable */
 		vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 		ret = remap_pfn_range(vma, vma->vm_start, pfn, len,
