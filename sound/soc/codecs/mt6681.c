@@ -6959,6 +6959,7 @@ static int mt_vaud18_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	int status = 0;
 
 	dev_dbg(priv->dev, "%s(), event = 0x%x\n", __func__, event);
 
@@ -6986,19 +6987,24 @@ static int mt_vaud18_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_OP_CFG1_SET,
 				   RG_LDO_VAUD18_HW8_OP_CFG_MASK_SFT,
 				   0x1 << RG_LDO_VAUD18_SW_OP_CFG_SFT);
-		regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
-				   RG_LDO_VAUD18_EN_0_MASK_SFT,
-				   0x1 << RG_LDO_VAUD18_EN_0_SFT);
+		if (!IS_ERR(priv->reg_vaud18)) {
+			status = regulator_enable(priv->reg_vaud18);
+			if (status)
+				dev_info(priv->dev, "%s() failed to enable vaud18(%d)\n",
+					__func__, status);
+		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
-				   RG_LDO_VAUD18_EN_0_MASK_SFT,
-				   0x0 << RG_LDO_VAUD18_EN_0_SFT);
+		if (!IS_ERR(priv->reg_vaud18)) {
+			status = regulator_disable(priv->reg_vaud18);
+			if (status)
+				dev_info(priv->dev, "%s() failed to disable vaud18(%d)\n",
+					__func__, status);
+		}
 		break;
 	default:
 		break;
 	}
-
 	return 0;
 }
 
@@ -13615,7 +13621,7 @@ static const struct snd_soc_dapm_widget mt6681_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY_S("NCP_CK_208", SUPPLY_SEQ_CKTST,
 			      MT6681_TOP_CKTST_CON0,
 			      RG_DSPPLL_208M_CK_TST_DIS_SFT, 0, NULL, 0),
-	/* SND_SOC_DAPM_REGULATOR_SUPPLY("vaud18", 0, 0),*/
+	SND_SOC_DAPM_REGULATOR_SUPPLY("mt6681_vaud18", 0, 0),
 	SND_SOC_DAPM_SUPPLY_S("LDO_VAUD18", SUPPLY_SEQ_LDO_VAUD18, SND_SOC_NOPM,
 			      0, 0, mt_vaud18_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
@@ -14414,6 +14420,7 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	{"DL Power Supply", NULL, "NCP_CK"},
 	{"DL Power Supply", NULL, "NCP_CK_208"},
 	{"DL Power Supply", NULL, "LDO_VAUD18"},
+	{"DL Power Supply", NULL, "mt6681_vaud18"},
 	{"DL Power Supply", NULL, "CLKSQ Audio"},
 	{"DL Power Supply", NULL, "PLL18 EN", is_need_pll_208M},
 	{"DL Power Supply", NULL, "PLL18 Audio", is_need_pll_208M},
@@ -23930,6 +23937,10 @@ static int mt6681_codec_init_reg(struct mt6681_priv *priv)
 #if IS_ENABLED(CONFIG_MT6685_AUDCLK)
 	mt6685_set_dcxo(false);
 #endif
+
+	/* disable sw control vaud18 en1, en2, we only use en0 to control ldo */
+	regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_0, 0x0);
+	regmap_write(priv->regmap, MT6681_LDO_VAUD18_MULTI_SW_1, 0x0);
 
 	return 0;
 }
@@ -40203,6 +40214,15 @@ static int mt6681_parse_dt(struct mt6681_priv *priv)
 				 __func__, ret);
 	}
 #endif
+
+	/* get pmic regulator handler */
+	priv->reg_vaud18 = devm_regulator_get_optional(dev, "reg-vaud18");
+	ret = IS_ERR(priv->reg_vaud18);
+	if (ret) {
+		dev_info(dev, "%s() Get regulator failed (%d)\n",
+			 __func__, ret);
+		return ret;
+	}
 	return 0;
 }
 
