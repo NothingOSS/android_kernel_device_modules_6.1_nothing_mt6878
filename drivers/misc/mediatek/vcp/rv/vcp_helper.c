@@ -2231,10 +2231,8 @@ static int vcp_reserve_memory_ioremap(struct platform_device *pdev, struct devic
 
 			if (vcp_reserve_mblock[id].start_phys < iova_lower)
 				iova_lower = vcp_reserve_mblock[id].start_phys;
-			if ((vcp_reserve_mblock[id].start_phys + vcp_reserve_mblock[id].size)
-				> iova_upper)
-				iova_upper = vcp_reserve_mblock[id].start_phys +
-					vcp_reserve_mblock[id].size;
+			if ((vcp_reserve_mblock[id].start_phys + alloc_mem_size) > iova_upper)
+				iova_upper = vcp_reserve_mblock[id].start_phys + alloc_mem_size;
 
 			if (id == VCP_A_LOGGER_MEM_ID) {
 				mrdump_mini_add_extra_file(
