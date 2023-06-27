@@ -366,7 +366,7 @@ MODULE_PARM_DESC(scmi_test, "scmi test");
 
 int mminfra_ut(const char *val, const struct kernel_param *kp)
 {
-#ifdef MMINFRA_DEBUG
+#if IS_ENABLED(CONFIG_MTK_MMINFRA_DEBUG)
 	int ret, arg0;
 	unsigned int test_case, value;
 	void __iomem *test_base;
