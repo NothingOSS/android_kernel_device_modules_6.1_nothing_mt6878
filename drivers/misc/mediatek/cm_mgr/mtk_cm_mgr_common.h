@@ -117,5 +117,7 @@ extern void cm_mgr_set_perf_mode_enable(int enable);
 extern int cm_mgr_get_perf_mode_enable(void);
 extern void cm_mgr_set_perf_mode_ceiling_opp(int opp);
 extern int cm_mgr_get_perf_mode_ceiling_opp(void);
+extern void cm_mgr_set_perf_mode_thd(int thd);
+extern int cm_mgr_get_perf_mode_thd(void);
 
 #endif /* __MTK_CM_MGR_H__ */

@@ -103,6 +103,7 @@ static unsigned int cm_hint;
 static unsigned int cm_mgr_sspm_version;
 static unsigned int cm_perf_mode_enable;
 static unsigned int cm_perf_mode_ceiling_opp;
+static unsigned int cm_perf_mode_thd;
 static unsigned int *cpu_power_ratio_down;
 static unsigned int *cpu_power_ratio_up;
 static unsigned int *vcore_power_ratio_down;
@@ -316,6 +317,18 @@ int cm_mgr_get_perf_mode_ceiling_opp(void)
 	return cm_perf_mode_ceiling_opp;
 }
 EXPORT_SYMBOL_GPL(cm_mgr_get_perf_mode_ceiling_opp);
+
+void cm_mgr_set_perf_mode_thd(int thd)
+{
+	cm_perf_mode_thd = thd;
+}
+EXPORT_SYMBOL_GPL(cm_mgr_set_perf_mode_thd);
+
+int cm_mgr_get_perf_mode_thd(void)
+{
+	return cm_perf_mode_thd;
+}
+EXPORT_SYMBOL_GPL(cm_mgr_get_perf_mode_thd);
 
 void cm_mgr_register_hook(struct cm_mgr_hook *hook)
 {
@@ -536,6 +549,8 @@ static ssize_t dbg_cm_mgr_show(struct kobject *kobj,
 		    cm_mgr_get_perf_mode_enable());
 	len += cm_mgr_print("cm_perf_mode_ceiling_opp %d\n",
 		    cm_mgr_get_perf_mode_ceiling_opp());
+	len += cm_mgr_print("cm_perf_mode_thd %d\n",
+		    cm_mgr_get_perf_mode_thd());
 	len += cm_mgr_print("cpu_power_ratio_up");
 	for (i = 0; i < cm_mgr_num_array; i++)
 		len += cm_mgr_print(" %d", cpu_power_ratio_up[i]);
@@ -788,6 +803,9 @@ static ssize_t dbg_cm_mgr_store(struct kobject *kobj,
 	} else if (!strcmp(cmd, "cm_perf_mode_ceiling_opp")) {
 		cm_mgr_set_perf_mode_ceiling_opp(val_1);
 		cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_CEILING_OPP, val_1);
+	} else if (!strcmp(cmd, "cm_perf_mode_thd")) {
+		cm_mgr_set_perf_mode_thd(val_1);
+		cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_THD, val_1);
 #endif
 	} else if (!strcmp(cmd, "cm_dbg_info")) {
 		cm_dbg_info = val_1;
