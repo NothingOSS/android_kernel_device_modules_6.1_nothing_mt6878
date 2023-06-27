@@ -176,7 +176,7 @@ static int mtk_disp_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 	return 0;
 }
 
-static void mtk_disp_pwm_get_state(struct pwm_chip *chip,
+static int mtk_disp_pwm_get_state(struct pwm_chip *chip,
 				   struct pwm_device *pwm,
 				   struct pwm_state *state)
 {
@@ -188,14 +188,14 @@ static void mtk_disp_pwm_get_state(struct pwm_chip *chip,
 	err = clk_prepare_enable(mdp->clk_main);
 	if (err < 0) {
 		dev_err(chip->dev, "Can't enable mdp->clk_main: %pe\n", ERR_PTR(err));
-		return;
+		return 0;
 	}
 
 	err = clk_prepare_enable(mdp->clk_mm);
 	if (err < 0) {
 		dev_err(chip->dev, "Can't enable mdp->clk_mm: %pe\n", ERR_PTR(err));
 		clk_disable_unprepare(mdp->clk_main);
-		return;
+		return 0;
 	}
 
 	rate = clk_get_rate(mdp->clk_main);
@@ -210,7 +210,7 @@ static void mtk_disp_pwm_get_state(struct pwm_chip *chip,
 	 */
 	if (rate == 0) {
 		pr_notice("%s rate[%llx] will divide by zero", __func__, rate);
-		return;
+		return 0;
 	}
 	state->period = DIV64_U64_ROUND_UP(period * (clk_div + 1) * NSEC_PER_SEC, rate);
 	high_width = FIELD_GET(PWM_HIGH_WIDTH_MASK, con1);
@@ -219,6 +219,8 @@ static void mtk_disp_pwm_get_state(struct pwm_chip *chip,
 	state->polarity = PWM_POLARITY_NORMAL;
 	clk_disable_unprepare(mdp->clk_mm);
 	clk_disable_unprepare(mdp->clk_main);
+
+	return 0;
 }
 
 static const struct pwm_ops mtk_disp_pwm_ops = {
