@@ -3201,6 +3201,9 @@
 		mminfra-gals-sel = <14 15 16 17 18 19>;
 		bkrs-reg = <0x1e800250>;
 		spm-base = <0x1c001000>;
+		mm-voter-base = <0x1ec45130>;
+		mm-mtcmos-base = <0x1c001ea8>;
+		mm-mtcmos-mask = <0xc0000000>;
 		mminfra-ao-base;
 		init-clk-on;
 		clocks = <&mminfra_ao_config_clk CLK_MMINFRA_AO_GCE_D>,
