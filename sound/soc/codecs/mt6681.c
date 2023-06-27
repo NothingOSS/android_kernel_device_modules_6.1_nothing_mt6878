@@ -39844,6 +39844,7 @@ static int mt6681_platform_driver_probe(struct platform_device *pdev)
 	priv->regmap = dev_get_regmap(pdev->dev.parent, NULL);
 	if (!priv->regmap) {
 		dev_info(&pdev->dev, "Faled to get parent regmap\n");
+		mt6681_probe_done = false;
 		return -ENODEV;
 	}
 	/* get i2c client for scp_request/release */
@@ -39866,6 +39867,8 @@ static int mt6681_platform_driver_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_info(&pdev->dev, "%s() fail to parse dts: %d\n", __func__,
 			 ret);
+		mt6681_probe_done = false;
+		return -ENODEV;
 	}
 
 	return devm_snd_soc_register_component(

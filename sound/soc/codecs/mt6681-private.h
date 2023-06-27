@@ -603,4 +603,7 @@ void mt6681_set_mtkaif_calibration_phase(struct snd_soc_component *cmpnt,
 					 int phase_1, int phase_2, int phase_3);
 extern int scp_wake_request(struct i2c_adapter *);
 extern int scp_wake_release(struct i2c_adapter *);
+
+extern bool mt6681_probe_done;
+
 #endif

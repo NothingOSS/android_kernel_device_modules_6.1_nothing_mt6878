@@ -4411,7 +4411,7 @@
 #define MT6681_MAX_REGISTER MT6681_ACCDET_CON40
 
 
-#define MT6681_SWCID_H_CODE		                                 0x38
+#define MT6681_SWCID_H_CODE		                                 0x81
 
 /* TOP0_ID */
 #define TOP0_ANA_ID_SFT                             0

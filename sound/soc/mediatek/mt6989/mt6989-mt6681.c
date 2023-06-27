@@ -26,7 +26,6 @@
  * mt6989_mt6681_spk_amp_event()
  */
 #define EXT_SPK_AMP_W_NAME "Ext_Speaker_Amp"
-#define MT6681_PROBE_DONE 1
 #define BYPASS_FOR_61_BRINGUP 1
 
 
@@ -392,7 +391,7 @@ static int mt6989_mt6681_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dapm_context *dapm = &rtd->card->dapm;
 	struct mt6681_codec_ops ops;
 
-	if (!MT6681_PROBE_DONE) {
+	if (!mt6681_probe_done) {
 		dev_info(afe->dev, "%s(), mt6681_probe_done == false, gonna return 0\n", __func__);
 		return 0;
 	}
@@ -2012,7 +2011,7 @@ static int mt6989_mt6681_dev_probe(struct platform_device *pdev)
 	}
 
 	/* codec probe fail, bypass codec driver */
-	if (!MT6681_PROBE_DONE)
+	if (!mt6681_probe_done)
 		mt6989_mt6681_bypass_primary_codec(pdev);
 
 	card->dev = &pdev->dev;

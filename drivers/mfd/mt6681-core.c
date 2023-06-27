@@ -15,6 +15,9 @@
 #include <linux/mfd/mt6681.h>
 #include <linux/mfd/mt6681-private.h>
 
+bool mt6681_probe_done;
+EXPORT_SYMBOL_GPL(mt6681_probe_done);
+
 #define MT6681_MFD_CELL(_name)					\
 	{							\
 		.name = #_name,					\
@@ -58,9 +61,7 @@ static int mt6681_check_id(struct mt6681_pmic_info *mpi)
 		dev_info(mpi->dev, "data = %d, not mt6681 chip\n", data);
 		//return -ENODEV;
 	}
-	mpi->chip_rev = (data << 8);
-	ret = regmap_read(mpi->regmap, MT6681_SWCID_L, &data);
-	mpi->chip_rev |= data;
+	mpi->chip_rev = data;
 
 	return 0;
 }
@@ -178,6 +179,7 @@ static int mt6681_pmic_probe(struct i2c_client *client,
 	struct mt6681_pmic_info *mpi;
 	struct regmap_config *regmap_config = &mt6681_regmap_config;
 	int ret;
+	mt6681_probe_done = false;
 
 	dev_info(&client->dev, "+%s()\n", __func__);
 
@@ -199,7 +201,11 @@ static int mt6681_pmic_probe(struct i2c_client *client,
 		return PTR_ERR(mpi->regmap);
 	}
 	/* chip id check */
-	mt6681_check_id(mpi);
+	ret = mt6681_check_id(mpi);
+	if (ret < 0) {
+		dev_info(&client->dev, "mt6681_check_id fail, return 0\n");
+		return ret;
+	}
 
 	/* mfd cell register */
 	ret = devm_mfd_add_devices(&client->dev, PLATFORM_DEVID_NONE,
@@ -218,6 +224,7 @@ static int mt6681_pmic_probe(struct i2c_client *client,
 	mt6681_Suspend_Setting(mpi);
 
 	dev_info(&client->dev, "Successfully probed\n");
+	mt6681_probe_done = true;
 	return 0;
 out:
 	i2c_unregister_device(mpi->i2c);
