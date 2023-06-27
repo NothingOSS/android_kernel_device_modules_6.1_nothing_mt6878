@@ -296,6 +296,7 @@ static inline int typec_norp_src_attached_entry(struct tcpc_device *tcpc)
 	tcpc->typec_a2c_cable = true;
 #endif	/* CONFIG_TYPEC_CAP_A2C_C2C */
 
+	tcpci_set_cc(tcpc, TYPEC_CC_RD);
 	tcpci_report_power_control(tcpc, true);
 	tcpci_sink_vbus(tcpc, TCP_VBUS_CTRL_TYPEC, TCPC_VBUS_SINK_5V, 500);
 
@@ -2056,8 +2057,6 @@ int tcpc_typec_init(struct tcpc_device *tcpc, uint8_t typec_role)
 		tcpc->typec_power_ctrl = true;
 #endif	/* CONFIG_TYPEC_CAP_NORP_SRC */
 
-	tcpci_set_cc(tcpc, TYPEC_CC_OPEN);
-	usleep_range(20000, 30000);
 	typec_unattached_entry(tcpc);
 	return ret;
 }

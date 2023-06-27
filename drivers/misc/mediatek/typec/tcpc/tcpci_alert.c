@@ -207,10 +207,11 @@ static int tcpci_alert_recv_msg(struct tcpc_device *tcpc)
 	struct pd_msg *pd_msg = NULL;
 	enum tcpm_transmit_type type = TCPC_TX_SOP;
 	struct pd_port *pd_port = &tcpc->pd_port;
+	bool locked = false;
 
 	pd_msg = pd_alloc_msg(tcpc);
 	if (pd_msg == NULL) {
-		rv = -EINVAL;
+		rv = -ENOMEM;
 		goto out;
 	}
 
@@ -223,10 +224,11 @@ static int tcpci_alert_recv_msg(struct tcpc_device *tcpc)
 
 	pd_msg->frame_type = type;
 	mutex_lock(&pd_port->rxbuf_lock);
+	locked = true;
 	pd_put_pd_msg_event(tcpc, pd_msg);
 out:
 	tcpci_alert_status_clear(tcpc, TCPC_REG_ALERT_RX_MASK);
-	if (rv >= 0)
+	if (locked)
 		mutex_unlock(&pd_port->rxbuf_lock);
 
 	return rv;

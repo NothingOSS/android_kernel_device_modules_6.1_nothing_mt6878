@@ -486,12 +486,11 @@ enum dpm_cap_dr_check_prefer {
 	DPM_CAP_DR_CHECK_PREFER_DFP = 2,
 };
 
-#define DPM_CAP_DR_CHECK_PROP(cap)		((cap & 0x03) << 22)
-#define DPM_CAP_EXTRACT_DR_CHECK(raw)		((raw >> 22) & 0x03)
-#define DPM_CAP_DR_SWAP_REJECT_AS_DFP		(1<<24)
-#define DPM_CAP_DR_SWAP_REJECT_AS_UFP		(1<<25)
-
-#define DPM_CAP_DP_PREFER_MF				(1<<29)
+#define DPM_CAP_DR_CHECK_PROP(cap)		((cap & 0x03) << 24)
+#define DPM_CAP_EXTRACT_DR_CHECK(raw)		((raw >> 24) & 0x03)
+#define DPM_CAP_DR_SWAP_REJECT_AS_DFP		(1<<26)
+#define DPM_CAP_DR_SWAP_REJECT_AS_UFP		(1<<27)
+#define DPM_CAP_DP_PREFER_MF			(1<<28)
 
 
 /* Power Data Object related structure */
