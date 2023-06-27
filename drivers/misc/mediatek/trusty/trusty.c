@@ -18,6 +18,7 @@
 #include <linux/trusty/trusty.h>
 #include <linux/trusty/trusty_shm.h>
 #include <linux/soc/mediatek/mtk-ise-mbox.h>
+#include <linux/soc/mediatek/mtk_ise_lpm.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 
 struct trusty_state;
@@ -73,8 +74,13 @@ enum ise_type {
 static inline ulong smc(ulong r0, ulong r1, ulong r2, ulong r3)
 {
 	mailbox_request_t request;
-	mailbox_reply_t reply;
+	mailbox_reply_t reply = {0};
 	uint8_t status;
+
+	if (mtk_ise_awake_lock(ISE_REE)) {
+		pr_info("%s: ise power on failed\n", __func__);
+		goto out;
+	}
 
 	status = mailbox_init_securyzr();
 	pr_info("%s: init securyzr mailbox status %u\n", __func__, status);
@@ -89,6 +95,10 @@ static inline ulong smc(ulong r0, ulong r1, ulong r2, ulong r3)
 	if (reply.status.error != MAILBOX_SUCCESS)
 		pr_info("%s: request mailbox failed 0x%x\n", __func__, reply.status.error);
 
+	if (mtk_ise_awake_unlock(ISE_REE))
+		pr_info("%s: ise power off failed\n", __func__);
+
+out:
 	return reply.payload.fields[0];
 }
 

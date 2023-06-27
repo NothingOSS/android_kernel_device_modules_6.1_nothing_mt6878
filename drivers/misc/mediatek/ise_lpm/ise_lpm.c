@@ -5,15 +5,18 @@
 
 #include <asm/compiler.h>
 #include <linux/delay.h>
+#include <linux/jiffies.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
+#include <linux/sched/clock.h>
 #include <linux/slab.h>
 #include <linux/stat.h>
 #include <linux/string.h>
+#include <linux/timer.h>
 #include <linux/proc_fs.h>
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
@@ -31,6 +34,8 @@
 #define SCMI_MBOX_ACK_ISE_PWR_ON_DONE		(0x1)
 #define SCMI_MBOX_ACK_ISE_PWR_OFF_DONE		(0x2)
 
+#define ISE_LPM_FREERUN_TIMEOUT_MS		60000
+
 enum ise_power_state {
 	ISE_NO_DEFINE = 0x0,
 	ISE_ACTIVE,
@@ -41,6 +46,16 @@ enum ise_power_state {
 
 struct ise_scmi_data_t {
 	uint32_t cmd;
+};
+
+struct ise_lpm_work_struct {
+	struct work_struct work;
+	unsigned int flags;
+	unsigned int id;
+};
+
+enum ise_lpm_wq_cmd {
+	ISE_LPM_FREERUN
 };
 
 enum ise_pwr_ut_id_enum {
@@ -56,9 +71,14 @@ static struct scmi_tinysys_info_st *_tinfo;
 #endif
 
 struct mutex mutex_ise_lpm;
+static struct timer_list ise_lpm_timer;
+static struct ise_lpm_work_struct ise_lpm_work;
+static struct workqueue_struct *ise_lpm_wq;
 
 static uint32_t ise_wakelock_en;
+static uint32_t ise_lpm_freerun_en;
 static uint32_t ise_awake_user_list[ISE_AWAKE_ID_NUM];
+static uint64_t ise_boot_cnt;
 
 static void ise_power_on(void);
 static void ise_power_off(void);
@@ -78,6 +98,7 @@ static void dec_ise_awake_cnt(enum mtk_ise_awake_id_t mtk_ise_awake_id)
 
 enum mtk_ise_awake_ack_t mtk_ise_awake_lock(enum mtk_ise_awake_id_t mtk_ise_awake_id)
 {
+	uint64_t start_time, end_time;
 	if (!ise_wakelock_en) {
 		pr_notice("ise wakelock disable!!\n");
 		return ISE_ERR_WAKELOCK_DISABLE;
@@ -86,12 +107,16 @@ enum mtk_ise_awake_ack_t mtk_ise_awake_lock(enum mtk_ise_awake_id_t mtk_ise_awak
 		pr_notice("err id %d\n", mtk_ise_awake_id);
 		return ISE_ERR_UID;
 	}
+
+	start_time = cpu_clock(0);
 	mutex_lock(&mutex_ise_lpm);
 	inc_ise_awake_cnt(mtk_ise_awake_id);
 	if (ise_awake_cnt == 1)
 		ise_power_on();
-	else
-		pr_info("ise still awake, cnt = %d\n", ise_awake_cnt);
+	end_time = cpu_clock(0);
+	pr_notice("%s cnt%d user%d start=%llu, end=%llu diff=%llu\n",
+		__func__, ise_awake_cnt, mtk_ise_awake_id,
+		start_time, end_time, end_time - start_time);
 	mutex_unlock(&mutex_ise_lpm);
 
 	return ISE_SUCCESS;
@@ -100,6 +125,7 @@ EXPORT_SYMBOL_GPL(mtk_ise_awake_lock);
 
 enum mtk_ise_awake_ack_t mtk_ise_awake_unlock(enum mtk_ise_awake_id_t mtk_ise_awake_id)
 {
+	uint64_t start_time, end_time;
 	if (!ise_wakelock_en) {
 		pr_notice("ise wakelock disable!!\n");
 		return ISE_ERR_WAKELOCK_DISABLE;
@@ -117,12 +143,15 @@ enum mtk_ise_awake_ack_t mtk_ise_awake_unlock(enum mtk_ise_awake_id_t mtk_ise_aw
 		return ISE_ERR_REF_CNT;
 	}
 
+	start_time = cpu_clock(0);
 	mutex_lock(&mutex_ise_lpm);
 	dec_ise_awake_cnt(mtk_ise_awake_id);
 	if (ise_awake_cnt == 0)
 		ise_power_off();
-	else
-		pr_info("ise still awake, cnt = %d\n", ise_awake_cnt);
+	end_time = cpu_clock(0);
+	pr_notice("%s cnt%d user%d start=%llu, end=%llu diff=%llu\n",
+		__func__, ise_awake_cnt, mtk_ise_awake_id,
+		start_time, end_time, end_time - start_time);
 	mutex_unlock(&mutex_ise_lpm);
 
 	return ISE_SUCCESS;
@@ -148,7 +177,8 @@ static void ise_power_on(void)
 			pr_notice("mailbox scmi cmd %d send fail, ret = %d\n",
 					ise_scmi_data.cmd, ret);
 		if (rvalue.r1 == (uint32_t)ISE_ACTIVE) {
-			pr_info("[mailbox]iSE power on done\n");
+			pr_info("[mailbox]iSE power on done, retry=%d, cnt%llu\n",
+				retry, ++ise_boot_cnt);
 			break;
 		}
 		udelay(500);
@@ -178,7 +208,7 @@ static void ise_power_off(void)
 			pr_notice("[mailbox]mailbox scmi cmd %d send fail, ret = %d\n",
 					ise_scmi_data.cmd, ret);
 		if (rvalue.r1 == (uint32_t)ISE_POWER_OFF) {
-			pr_info("[mailbox]iSE power off done\n");
+			pr_info("[mailbox]iSE power off done, retry=%d\n", retry);
 			break;
 		}
 		udelay(500);
@@ -189,6 +219,41 @@ static void ise_power_off(void)
 #endif
 }
 
+static void ise_lpm_schedule_work(struct ise_lpm_work_struct *ise_lpm_ws)
+{
+	queue_work(ise_lpm_wq, &ise_lpm_ws->work);
+}
+
+static void ise_lpm_send_wq(enum ise_lpm_wq_cmd cmd)
+{
+	ise_lpm_work.flags = (uint32_t) cmd;
+	ise_lpm_schedule_work(&ise_lpm_work);
+}
+
+static void ise_lpm_timeout(struct timer_list *t)
+{
+	ise_lpm_send_wq(ISE_LPM_FREERUN);
+	del_timer(&ise_lpm_timer);
+}
+
+void ise_lpm_work_handle(struct work_struct *ws)
+{
+	struct ise_lpm_work_struct *ise_lpm_ws
+		= container_of(ws, struct ise_lpm_work_struct, work);
+	uint32_t ise_lpm_cmd = ise_lpm_ws->flags;
+	int ret;
+
+	pr_notice("%s cmd=%d\n", __func__, ise_lpm_cmd);
+	switch (ise_lpm_cmd) {
+	case ISE_LPM_FREERUN:
+		ret = mtk_ise_awake_unlock(ISE_PM_INIT);
+		if (ret != ISE_SUCCESS) {
+			pr_notice("%s err %d", __func__, ret);
+			WARN_ON_ONCE(1);
+		}
+		break;
+	}
+}
 
 static void ise_scmi_init(void)
 {
@@ -270,13 +335,14 @@ static int ise_lpm_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	ise_boot_cnt = 0;
 	ise_wakelock_en = 0;
-	if (!of_property_read_u32(pdev->dev.of_node, "ise-wakelock", &ise_wakelock_en)) {
-		if (ise_wakelock_en)
-			pr_notice("ise-wakelock %d\n", ise_wakelock_en);
-		else
-			pr_notice("ise-wakelock %d\n", ise_wakelock_en);
-	}
+	if (!of_property_read_u32(pdev->dev.of_node, "ise-wakelock", &ise_wakelock_en))
+		pr_notice("ise-wakelock %d\n", ise_wakelock_en);
+
+	ise_lpm_freerun_en = 0;
+	if (!of_property_read_u32(pdev->dev.of_node, "ise-lpm-freerun", &ise_lpm_freerun_en))
+		pr_notice("ise_lpm_freerun_en %d\n", ise_lpm_freerun_en);
 
 	if (ise_wakelock_en) {
 		mutex_init(&mutex_ise_lpm);
@@ -292,6 +358,15 @@ static int ise_lpm_probe(struct platform_device *pdev)
 		ise_scmi_init();
 		proc_create("ise_lpm_dbg", 0664, NULL, &ise_lpm_dbg_fops);
 	}
+
+	if (ise_lpm_freerun_en) {
+		timer_setup(&ise_lpm_timer, ise_lpm_timeout, 0);
+		mod_timer(&ise_lpm_timer,
+			jiffies + msecs_to_jiffies(ISE_LPM_FREERUN_TIMEOUT_MS));
+	}
+
+	ise_lpm_wq = create_singlethread_workqueue("ISE_LPM_WQ");
+	INIT_WORK(&ise_lpm_work.work, ise_lpm_work_handle);
 
 	return 0;
 }
