@@ -251,12 +251,6 @@ enum {
 enum {
 	CLK_HOPPING = 0,
 	CLK_F26M,
-	CLK_DL0_DAC_CLK,
-	CLK_DL0_DAC_HIRES_CLK,
-	CLK_DL0_DAC_PREDIS_CLK,
-	CLK_DL1_DAC_CLK,
-	CLK_DL1_DAC_HIRES_CLK,
-	CLK_DL1_DAC_PREDIS_CLK,
 	CLK_UL0_ADC_CLK,
 	CLK_UL0_ADC_HIRES_CLK,
 	CLK_UL1_ADC_CLK,
@@ -280,8 +274,6 @@ enum {
 	CLK_TOP_MUX_AUD_ENG2,
 	CLK_TOP_APLL2_D4,
 	CLK_TOP_MUX_AUDIO_H,
-	CLK_TOP_APLL1_D2,
-	CLK_TOP_APLL2_D2,
 	CLK_TOP_I2SIN0_M_SEL,
 	CLK_TOP_I2SIN1_M_SEL,
 	CLK_TOP_FMI2S_M_SEL,
@@ -307,6 +299,7 @@ struct mtk_base_afe;
 int mt6989_init_clock(struct mtk_base_afe *afe);
 int mt6989_afe_enable_clock(struct mtk_base_afe *afe);
 void mt6989_afe_disable_clock(struct mtk_base_afe *afe);
+int mt6989_afe_disable_apll(struct mtk_base_afe *afe);
 int mt6989_afe_enable_ao_clock(struct mtk_base_afe *afe);
 
 

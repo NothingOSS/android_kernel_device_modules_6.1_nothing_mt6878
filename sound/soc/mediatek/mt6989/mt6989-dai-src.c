@@ -958,6 +958,7 @@ static int mtk_afe_src_en_connect(struct snd_soc_dapm_widget *source,
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	struct mt6989_afe_private *afe_priv = afe->platform_priv;
 	struct mtk_afe_src_priv *src_priv;
+	int ret = 0;
 
 	if (strcmp(w->name, HW_SRC_0_EN_W_NAME) == 0)
 		src_priv = afe_priv->dai_priv[MT6989_DAI_SRC_0];
@@ -968,12 +969,14 @@ static int mtk_afe_src_en_connect(struct snd_soc_dapm_widget *source,
 	else
 		src_priv = afe_priv->dai_priv[MT6989_DAI_SRC_3];
 
-	dev_info(afe->dev,
-		 "%s(), source %s, sink %s, dl_rate %d, ul_rate %d\n",
-		 __func__, source->name, sink->name,
-		 src_priv->dl_rate, src_priv->ul_rate);
+	ret = (src_priv->dl_rate > 0 && src_priv->ul_rate > 0) ? 1 : 0;
+	if (ret)
+		dev_info(afe->dev,
+			 "%s(), source %s, sink %s, dl_rate %d, ul_rate %d\n",
+			 __func__, source->name, sink->name,
+			 src_priv->dl_rate, src_priv->ul_rate);
 
-	return (src_priv->dl_rate > 0 && src_priv->ul_rate > 0) ? 1 : 0;
+	return ret;
 }
 
 static int mtk_afe_src_apll_connect(struct snd_soc_dapm_widget *source,

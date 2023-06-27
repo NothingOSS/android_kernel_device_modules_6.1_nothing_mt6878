@@ -1314,13 +1314,6 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 	/* clock */
 	SND_SOC_DAPM_CLOCK_SUPPLY("top_mux_audio_h"),
 
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dl0_dac_clk"),
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dl0_dac_hires_clk"),
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dl0_dac_predis_clk"),
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dl1_dac_clk"),
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dl1_dac_hires_clk"),
-	SND_SOC_DAPM_CLOCK_SUPPLY("aud_dl1_dac_predis_clk"),
-
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_ul0_adc_clk"),
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_ul0_adc_hires_clk"),
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_ul1_adc_clk"),
@@ -1330,23 +1323,6 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 
 #define HIRES_THRESHOLD 48000
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
-static int mtk_afe_dac_hires_connect(struct snd_soc_dapm_widget *source,
-				     struct snd_soc_dapm_widget *sink)
-{
-	struct snd_soc_dapm_widget *w = source;
-	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
-	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
-	struct mtk_afe_adda_priv *adda_priv;
-
-	adda_priv = get_adda_priv_by_name(afe, w->name);
-
-	if (!adda_priv) {
-		AUDIO_AEE("adda_priv == NULL");
-		return 0;
-	}
-
-	return (adda_priv->dl_rate > HIRES_THRESHOLD) ? 1 : 0;
-}
 
 static int mtk_afe_adc_hires_connect(struct snd_soc_dapm_widget *source,
 				     struct snd_soc_dapm_widget *sink)
@@ -1512,16 +1488,6 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
 
 	/* clk */
-	{"ADDA Playback", NULL, "aud_dl0_dac_clk"},
-	{"ADDA Playback", NULL, "aud_dl0_dac_predis_clk"},
-	{"ADDA Playback", NULL, "aud_dl0_dac_hires_clk",
-	 mtk_afe_dac_hires_connect},
-
-	{"ADDA CH34 Playback", NULL, "aud_dl1_dac_clk"},
-	{"ADDA CH34 Playback", NULL, "aud_dl1_dac_predis_clk"},
-	{"ADDA CH34 Playback", NULL, "aud_dl1_dac_hires_clk",
-	 mtk_afe_dac_hires_connect},
-
 	{"ADDA Capture Enable", NULL, "aud_ul0_adc_clk"},
 	{"ADDA Capture Enable", NULL, "aud_ul0_adc_hires_clk",
 	 mtk_afe_adc_hires_connect},
@@ -1529,11 +1495,6 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"ADDA CH34 Capture Enable", NULL, "aud_ul1_adc_hires_clk",
 	 mtk_afe_adc_hires_connect},
 
-	/* hires source from apll1 */
-	{"top_mux_audio_h", NULL, APLL2_W_NAME},
-
-	{"aud_dl0_dac_hires_clk", NULL, "top_mux_audio_h"},
-	{"aud_dl1_dac_hires_clk", NULL, "top_mux_audio_h"},
 	{"aud_ul0_adc_hires_clk", NULL, "top_mux_audio_h"},
 	{"aud_ul1_adc_hires_clk", NULL, "top_mux_audio_h"},
 #endif

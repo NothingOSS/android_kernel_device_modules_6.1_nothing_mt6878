@@ -4862,6 +4862,8 @@ static int mt6989_afe_runtime_suspend(struct device *dev)
 			   INNER_LOOP_BACK_MODE_MASK_SFT,
 			   0xff << INNER_LOOP_BACK_MODE_SFT);
 
+	regmap_write(afe->regmap, AUDIO_TOP_CON4, 0x3fff);
+
 	/* cache only */
 	regcache_cache_only(afe->regmap, true);
 	regcache_mark_dirty(afe->regmap);
@@ -4900,6 +4902,8 @@ static int mt6989_afe_runtime_resume(struct device *dev)
 	regmap_write(afe->regmap, AUDIO_TOP_CON2, 0x0);
 	regmap_write(afe->regmap, AUDIO_TOP_CON3, 0x0);
 	/* Can't set AUDIO_TOP_CON3 to be 0x0, it will hang in FPGA env */
+
+	regmap_write(afe->regmap, AUDIO_TOP_CON3, 0x0);
 
 	regmap_update_bits(afe->regmap, AFE_CBIP_CFG0, 0x1, 0x1);
 
@@ -9881,22 +9885,10 @@ static int mt6989_afe_pcm_dev_probe(struct platform_device *pdev)
 		return PTR_ERR(afe->regmap);
 
 	/* IPM2.0 clock flow, need debug */
-	regmap_read(afe->regmap, AUDIO_TOP_CON4, &tmp_reg);
-	dev_info(dev, "%s(), before write AUDIO_TOP_CON4 = 0x%x\n", __func__, tmp_reg);
-	regcache_cache_only(afe->regmap, false);
-	dev_info(dev, "%s(), [Patrick] debug 1\n", __func__);
-	regcache_sync(afe->regmap);
-	dev_info(dev, "%s(), [Patrick] debug 2\n", __func__);
-	regmap_write(afe->regmap, AUDIO_TOP_CON4, 0x0);
-	dev_info(dev, "%s(), [Patrick] debug 3\n", __func__);
-	regmap_read(afe->regmap, AUDIO_TOP_CON4, &tmp_reg);
-	dev_info(dev, "%s(), after write AUDIO_TOP_CON4 = 0x%x\n", __func__, tmp_reg);
 
 	regmap_read(afe->regmap, AFE_IRQ_MCU_EN, &tmp_reg);
-	dev_info(dev, "%s(), before write AFE_IRQ_MCU_EN = 0x%x\n", __func__, tmp_reg);
 	regmap_write(afe->regmap, AFE_IRQ_MCU_EN, 0xffffffff);
 	regmap_read(afe->regmap, AFE_IRQ_MCU_EN, &tmp_reg);
-	dev_info(dev, "%s(), after write AFE_IRQ_MCU_EN = 0x%x\n", __func__, tmp_reg);
 	/* IPM2.0 clock flow, need debug */
 
 	pm_runtime_put_sync(&pdev->dev);
@@ -9958,7 +9950,6 @@ static int mt6989_afe_pcm_dev_probe(struct platform_device *pdev)
 		dev_info(dev, "%pOFn no irq found\n", dev->of_node);
 		return irq_id < 0 ? irq_id : -ENXIO;
 	}
-	dev_info(dev, "%s(), [Patrick] debug4, irq_id = %d\n", __func__, irq_id);
 	ret = devm_request_irq(dev, irq_id, mt6989_afe_irq_handler,
 			       IRQF_TRIGGER_NONE,
 			       "Afe_ISR_Handle", (void *)afe);
@@ -9966,11 +9957,9 @@ static int mt6989_afe_pcm_dev_probe(struct platform_device *pdev)
 		dev_info(dev, "could not request_irq for Afe_ISR_Handle\n");
 		return ret;
 	}
-	dev_info(dev, "%s(), [Patrick] debug 5\n", __func__);
 	ret = enable_irq_wake(irq_id);
 	if (ret < 0)
 		dev_info(dev, "enable_irq_wake %d err: %d\n", irq_id, ret);
-	dev_info(dev, "%s(), [Patrick] debug 6\n", __func__);
 #endif
 
 #if !defined(SKIP_SMCC_SB)
