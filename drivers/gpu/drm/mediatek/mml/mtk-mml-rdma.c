@@ -337,6 +337,8 @@ enum rdma_label {
 
 int mml_rdma_crc;
 module_param(mml_rdma_crc, int, 0644);
+int mml_rdma_dbg = 0x13;
+module_param(mml_rdma_dbg, int, 0644);
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 u32 *rdma_crc_va[MML_PIPE_CNT];
 dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
@@ -436,7 +438,6 @@ enum rdma_golden_fmt {
 struct rdma_data {
 	u32 tile_width;
 	u32 sram_size;
-	u16 gpr[MML_PIPE_CNT];
 	u8 rb_swap;	/* version for rb channel swap behavior */
 	bool write_sec_reg;
 	bool tile_reset;
@@ -602,7 +603,6 @@ static const struct rdma_data mt6886_rdma_data = {
 static const struct rdma_data mt6989_rdma_data = {
 	.tile_width = 3520,
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
-	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.rb_swap = 1,
 	.tile_reset = true,
 	.golden = {
@@ -1911,9 +1911,9 @@ static s32 rdma_wait(struct mml_comp *comp, struct mml_task *task,
 
 static void rdma_reset(struct mml_comp *comp, struct mml_task *task, struct mml_comp_config *ccfg)
 {
-	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	struct mml_frame_data *src = &task->config->info.src;
 
 	if (!rdma_tile_reset)
 		return;
@@ -1925,9 +1925,18 @@ static void rdma_reset(struct mml_comp *comp, struct mml_task *task, struct mml_
 		return;
 
 force_reset:
-	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_RESET, 0x1, U32_MAX);
-	cmdq_pkt_poll_timeout_reuse(pkt, 0x0, SUBSYS_NO_SUPPORT, comp->base_pa + RDMA_RESET,
-		0x1, 3, rdma->data->gpr[ccfg->pipe], &rdma_frm->poll_reset);
+	/* write dummy register to force rdma tick and clean up */
+	if (mml_rdma_crc) {
+		if (MML_FMT_COMPRESS(src->format))
+			cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DEBUG_CON,
+				(mml_rdma_dbg << 13) + 0x1, U32_MAX);
+		else
+			cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DEBUG_CON,
+				0x1, U32_MAX);
+	} else {
+		/* keep disable */
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DEBUG_CON, 0x0, U32_MAX);
+	}
 }
 
 static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
