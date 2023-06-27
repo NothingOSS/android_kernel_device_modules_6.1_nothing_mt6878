@@ -146,6 +146,7 @@ int gzvm_arch_destroy_vcpu(gzvm_id_t vm_id, int vcpuid);
 int gzvm_arch_create_device(gzvm_id_t vm_id, struct gzvm_create_device *gzvm_dev);
 int gzvm_arch_inject_irq(struct gzvm *gzvm, unsigned int vcpu_idx, u32 irq_type,
 			 u32 irq, bool level);
+int gzvm_arch_inform_exit(gzvm_id_t vm_id);
 
 void gzvm_notify_acked_irq(struct gzvm *gzvm, unsigned int gsi);
 int gzvm_irqfd(struct gzvm *gzvm, struct gzvm_irqfd *args);

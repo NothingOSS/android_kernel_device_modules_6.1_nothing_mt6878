@@ -11,6 +11,17 @@
 #include <linux/gzvm_drv.h>
 #include "gzvm_arch_common.h"
 
+int gzvm_arch_inform_exit(gzvm_id_t vm_id)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_hvc(MT_HVC_GZVM_INFORM_EXIT, vm_id, 0, 0, 0, 0, 0, 0, &res);
+	if (res.a0 == 0)
+		return 0;
+
+	return -ENXIO;
+}
+
 int gzvm_arch_probe(void)
 {
 	struct arm_smccc_res res;

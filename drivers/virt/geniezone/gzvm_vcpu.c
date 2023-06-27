@@ -167,6 +167,8 @@ out:
 
 	if (signal_pending(current)) {
 		vcpu->gzvm->exit_start_time = ktime_get();
+		// invoke hvc to inform gz to map memory
+		gzvm_arch_inform_exit(vcpu->gzvm->vm_id);
 		return -ERESTARTSYS;
 	}
 	return 0;
