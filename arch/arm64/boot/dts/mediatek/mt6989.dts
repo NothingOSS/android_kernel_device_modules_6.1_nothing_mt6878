@@ -3164,6 +3164,7 @@
 		clock-names = "clk0", "clk1", "clk2", "clk3";
 		mediatek,vcp-supply = <&vcp>;
 		vcp-gipc;
+		skip-apsrc;
 	};
 
 	mmqos-wrapper {
