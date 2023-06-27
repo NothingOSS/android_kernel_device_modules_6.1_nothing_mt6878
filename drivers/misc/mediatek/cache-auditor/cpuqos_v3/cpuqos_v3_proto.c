@@ -861,6 +861,7 @@ static ssize_t show_l3m_status(struct kobject *kobj,
 	int css_id = -1;
 	struct task_struct *p;
 	int i;
+	int ct_flag = 0;
 
 	len += snprintf(buf+len, max_len-len,
 			"L3 manage perf mode = %d, CT task group = ", cpuqos_perf_mode);
@@ -889,9 +890,18 @@ static ssize_t show_l3m_status(struct kobject *kobj,
 
 		get_task_struct(p);
 		rcu_read_unlock();
+
+		switch (cpuqos_v3_map_task_pd(p)) {
+		case PD2:
+		case PD6:
+		case PD7:
+		case PD8:
+		case PD9:
+			ct_flag = 1;
+		}
+
 		len += snprintf(buf+len, max_len-len, ", pid %d is %s",
-				q_pid, (cpuqos_v3_map_task_pd(p) ==
-					PD2?"CT":"NCT"));
+				q_pid, ct_flag?"CT":"NCT");
 		put_task_struct(p);
 	}
 
