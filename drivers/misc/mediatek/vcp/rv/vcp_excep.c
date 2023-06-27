@@ -159,6 +159,12 @@ void vcp_dump_last_regs(int mmup_enable)
 	pr_notice("[VCP] c0_pc_latch = %08x\n", c0_m->pc_latch);
 	pr_debug("[VCP] c0_lr_latch = %08x\n", c0_m->lr_latch);
 	pr_debug("[VCP] c0_sp_latch = %08x\n", c0_m->sp_latch);
+	pr_notice("[VCP] RSTN_CLR = %08x RSTN_CLR = %08x\n",
+		readl(R_CORE0_SW_RSTN_CLR), readl(R_CORE0_SW_RSTN_SET));
+	if (!IS_ERR((void const *) vcpreg.cfg_pwr))
+		pr_notice("[VCP] SLP_EN = %08x PWR_STATUS = %08x\n",
+			readl(VCP_R_SLP_EN), readl(VCP_POWER_STATUS));
+
 	if (vcpreg.twohart) {
 		pr_notice("[VCP] c0_t1_pc = %08x\n", c0_t1_m->pc);
 		pr_notice("[VCP] c0_t1_pc2 = %08x\n", readl(R_CORE0_T1_MON_PC));

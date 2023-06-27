@@ -2921,6 +2921,12 @@ static int vcp_device_probe(struct platform_device *pdev)
 	}
 	pr_debug("[VCP] cfg_core0 base = 0x%p\n", vcpreg.cfg_core0);
 
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_pwr_ctl");
+	vcpreg.cfg_pwr = devm_ioremap_resource(dev, res);
+	if (IS_ERR((void const *) vcpreg.cfg_pwr))
+		pr_debug("[VCP] vcpreg.cfg_pwr not support\n");
+	pr_debug("[VCP] per_ctl base = 0x%p\n", vcpreg.cfg_pwr);
+
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_cfgreg_core1");
 	vcpreg.cfg_core1 = devm_ioremap_resource(dev, res);
 	if (IS_ERR((void const *) vcpreg.cfg_core1)) {

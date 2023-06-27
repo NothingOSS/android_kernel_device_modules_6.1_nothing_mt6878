@@ -128,6 +128,7 @@ struct vcp_regs {
 	void __iomem *clkctrl;
 	void __iomem *l1cctrl;
 	void __iomem *cfg_core0;
+	void __iomem *cfg_pwr;
 	void __iomem *cfg_core1;
 	void __iomem *cfg_sec;
 	void __iomem *cfg_mmu;

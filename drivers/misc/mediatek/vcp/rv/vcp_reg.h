@@ -143,6 +143,10 @@
 #define VCP_GPR_C1_H1_REBOOT		(vcpreg.cfg_core1 + 0x0058)
 #define VCP_A_GENERAL_REG7		(vcpreg.cfg_core0 + 0x005C)
 
+/* pwr ctl */
+#define VCP_R_SLP_EN			(vcpreg.cfg_pwr)
+#define VCP_POWER_STATUS		(vcpreg.cfg_pwr + 0x068)
+
 /* bus tracker reg */
 #define VCP_BUS_DBG_CON			(vcpreg.bus_tracker)
 #define VCP_BUS_DBG_AR_TRACK0_L		(vcpreg.bus_tracker + 0x100)
