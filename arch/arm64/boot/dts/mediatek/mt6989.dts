@@ -1720,10 +1720,11 @@
 		ch-offset-dma = <0x80>;
 		scl-gpio-id = <176>;
 		sda-gpio-id = <177>;
-		scp-wake = <0x1c00c900 0x1 0x1>;
-		sleep-reg-offset = <0x2c>;
-		sleep-stat-offset = <0x30>;
-		scp-awake = <0x1>;
+		scp-wake-en = <1>;
+		vlpcfg-base = <0x1c00c000>;
+		scp-power-stat = <0x1cb21124 0xf0000>;
+		vlp-scp-sleep = <0x92c 0x1 0x2>;
+		vlp-scp-sleep-stat = <0x930 0x1>;
 	};
 
 	memory@40000000 {
