@@ -6269,10 +6269,6 @@
 			ch-offset-dma = <0x80>;
 			scl-gpio-id = <49>;
 			sda-gpio-id = <50>;
-			scp-wake = <0x1c00c900 0x2 0x4>;
-			sleep-reg-offset = <0x0>;
-			sleep-stat-offset = <0x0>;
-			scp-awake = <0x4>;
 		};
 
 		dvfsrc: dvfsrc@1c00f000 {
