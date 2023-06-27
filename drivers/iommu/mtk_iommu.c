@@ -1007,11 +1007,9 @@ static void mtk_iommu_tlb_flush(struct mtk_iommu_data *data)
 		u32 ctrl_reg = readl_relaxed(data->base + REG_MMU_CTRL_REG);
 		u32 sync_en = ctrl_reg & F_MMU_SYNC_INVLDT_EN;
 
-		if (!sync_en) {
-			pr_info("skip flush all polling, 0x%x, (%d, %d)\n", ctrl_reg,
-				data->plat_data->iommu_type, data->plat_data->iommu_id);
+		if (!sync_en)
 			goto skip_polling;
-		}
+
 		/* tlb sync */
 		ret = readl_poll_timeout_atomic(data->base + REG_MMU_CPE_DONE,
 						tmp, tmp != 0, 10, 1000);
