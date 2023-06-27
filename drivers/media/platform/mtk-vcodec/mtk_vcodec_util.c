@@ -37,7 +37,8 @@ char mtk_venc_tmp_prop[LOG_PROPERTY_SIZE];
 
 static int group_list[VCODEC_MAX_GROUP_SIZE];
 static unsigned int group_list_size;
-static struct mutex grouplock;
+static spinlock_t group_lock;
+
 
 
 
@@ -1394,7 +1395,7 @@ void mtk_vcodec_config_group_list(void)
 	if (unlikely(group_get_mode() == GP_MODE_0))
 		return;
 
-	mutex_lock(&grouplock);
+	spin_lock(&group_lock);
 	if (group_list_size != 0) {
 		//pr_info("clean group_list_size %d\n", group_list_size);
 		for (i = 0; i < group_list_size; i++) {
@@ -1404,8 +1405,7 @@ void mtk_vcodec_config_group_list(void)
 		group_list_size = 0;
 	}
 	mtk_vcodec_make_group_list();
-	mutex_unlock(&grouplock);
-
+	spin_unlock(&group_lock);
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_config_group_list);
 
@@ -1415,7 +1415,7 @@ void mtk_vcodec_init_group_list_lock(void)
 
 	if (init_flag == 0) {
 		init_flag = 1;
-		mutex_init(&grouplock);
+		spin_lock_init(&group_lock);
 		group_list_size = 0;
 	}
 
