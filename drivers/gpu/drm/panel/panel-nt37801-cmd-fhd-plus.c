@@ -46,7 +46,7 @@
 #define VBP            (16)
 #define VTOTAL         (FRAME_HEIGHT + VFP + VSA + VBP)
 #define FRAME_TOTAL    (HTOTAL * VTOTAL)
-#define PLL_CLOCK      (420)
+#define PLL_CLOCK      (390)
 #define VREFRESH_DEF   (120)
 #define VREFRESH_60    (60)
 #define VREFRESH_90    (90)
@@ -300,6 +300,9 @@ static void lcm_panel_init(struct lcm *ctx)
 	lcm_dcs_write_seq_static(ctx, 0xFF, 0xAA, 0x55, 0xA5, 0x80);
 	lcm_dcs_write_seq_static(ctx, 0x6F, 0x1B);
 	lcm_dcs_write_seq_static(ctx, 0xF4, 0x55);
+	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x01);
+	lcm_dcs_write_seq_static(ctx, 0x6F, 0x01);
+	lcm_dcs_write_seq_static(ctx, 0xC4, 0xF4);
 	lcm_dcs_write_seq_static(ctx, 0x8F, 0x01);
 	lcm_dcs_write_seq_static(ctx, 0x90, 0x03);
 	lcm_dcs_write_seq_static(ctx, 0x91,
