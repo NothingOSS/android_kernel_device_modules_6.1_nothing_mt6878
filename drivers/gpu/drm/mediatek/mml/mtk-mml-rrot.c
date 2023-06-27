@@ -1440,6 +1440,8 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 		swap(tile.in.xe, tile.in.ye);
 		swap(tile.out.xs, tile.out.ys);
 		swap(tile.out.xe, tile.out.ye);
+		swap(tile.luma.x, tile.luma.y);
+		swap(tile.luma.x_sub, tile.luma.y_sub);
 	}
 
 	if (rrot->pipe == 0) {
