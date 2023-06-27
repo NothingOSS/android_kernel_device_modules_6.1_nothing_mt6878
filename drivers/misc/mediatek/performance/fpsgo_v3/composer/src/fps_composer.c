@@ -628,6 +628,7 @@ void fpsgo_ctrl2comp_enqueue_start(int pid,
 		FPSGO_COM_TRACE("update pid[%d] tgid[%d] buffer_id:%llu api:%d",
 			f_render->pid, f_render->tgid,
 			f_render->buffer_id, f_render->api);
+		fpsgo_com_notify_fpsgo_is_boost(1);
 		break;
 	case BY_PASS_TYPE:
 		f_render->t_enqueue_start = enqueue_start_time;
@@ -646,9 +647,6 @@ void fpsgo_ctrl2comp_enqueue_start(int pid,
 exit:
 	fpsgo_thread_unlock(&f_render->thr_mlock);
 	fpsgo_render_tree_unlock(__func__);
-
-	if (f_render->frame_type == NON_VSYNC_ALIGNED_TYPE)
-		fpsgo_com_notify_fpsgo_is_boost(1);
 
 	mutex_lock(&recycle_lock);
 	if (recycle_idle_cnt) {
