@@ -114,6 +114,34 @@ static void memory_cleanup(void)
 	xhci_mtk_free_event_ring(uodev);
 }
 
+static void init_fake_rsv_sram(void)
+{
+	int ret;
+
+	if (uodev->adv_lowpwr) {
+		ret = mtk_offload_init_rsv_sram(MIN_USB_OFFLOAD_SHIFT);
+
+		if (ret != 0) {
+			USB_OFFLOAD_INFO("adv_lowpwr:%d->0\n", uodev->adv_lowpwr);
+			uodev->adv_lowpwr = false;
+		}
+	}
+}
+
+static void deinit_fake_rsv_sram(void)
+{
+	if (uodev->adv_lowpwr)
+		mtk_offload_deinit_rsv_sram();
+
+	uodev->adv_lowpwr = uodev->enable_adv_lowpwr;
+}
+
+static void fake_sram_pwr_ctrl(bool power)
+{
+	if (uodev->adv_lowpwr)
+		mtk_offload_rsv_sram_pwr_ctrl(power);
+}
+
 static void adsp_ee_recovery(void)
 {
 	u32 temp, irq_pending;
@@ -1346,8 +1374,7 @@ static void xhci_mtk_free_dcbaa(struct xhci_hcd *xhci)
 	else
 		USB_OFFLOAD_MEM_DBG("Free mem DCBAA DONE\n");
 
-	if (uodev->adv_lowpwr)
-		mtk_offload_deinit_rsv_sram();
+	deinit_fake_rsv_sram();
 
 	kfree(buf_ctx);
 	kfree(buf_dcbaa);
@@ -1867,8 +1894,7 @@ static struct xhci_ring *xhci_mtk_alloc_transfer_ring(struct xhci_hcd *xhci,
 		return NULL;
 	}
 
-	if (uodev->adv_lowpwr)
-		mtk_offload_init_rsv_sram(MIN_USB_OFFLOAD_SHIFT);
+	init_fake_rsv_sram();
 
 	ring = xhci_mtk_alloc_ring(xhci, num_segs, cycle_state,
 			ring_type, max_packet, mem_flags, lowpwr_mem_type(), true);
@@ -2138,8 +2164,8 @@ static int usb_offload_release(struct inode *ip, struct file *fp)
 	USB_OFFLOAD_INFO("%d\n", __LINE__);
 
 	ret = usb_offload_cleanup();
-	if (!ret && uodev->adv_lowpwr)
-		mtk_offload_deinit_rsv_sram();
+	if (!ret)
+		deinit_fake_rsv_sram();
 
 	return ret;
 }
@@ -2174,9 +2200,6 @@ static long usb_offload_ioctl(struct file *fp,
 			goto fail;
 		}
 
-		if (uodev->adv_lowpwr)
-			mtk_offload_init_rsv_sram(MIN_USB_OFFLOAD_SHIFT);
-
 		/* Fiil in info of reserved region */
 		if (value == 1) {
 			xhci_mem->adv_lowpwr = uodev->adv_lowpwr;
@@ -2184,38 +2207,40 @@ static long usb_offload_ioctl(struct file *fp,
 				&xhci_mem->xhci_dram_addr, &xhci_mem->xhci_dram_size);
 			mtk_offload_get_rsv_mem_info(USB_OFFLOAD_MEM_SRAM_ID,
 				&xhci_mem->xhci_sram_addr, &xhci_mem->xhci_sram_size);
+
+			init_fake_rsv_sram();
+
+			ret = xhci_mtk_alloc_event_ring(uodev);
+			if (ret) {
+				USB_OFFLOAD_ERR("error allocating event ring\n");
+				kfree(xhci_mem);
+				goto fail;
+			}
+
+			ret = xhci_mtk_alloc_erst(uodev);
+			if (ret) {
+				USB_OFFLOAD_ERR("error allocating erst\n");
+				kfree(xhci_mem);
+				goto fail;
+			}
+
+			xhci_mem->erst_table = (unsigned long long)uodev->erst->erst_dma_addr;
+			xhci_mem->ev_ring = (unsigned long long)uodev->event_ring->first_seg->dma;
+
+			USB_OFFLOAD_MEM_DBG("ev_ring:0x%llx erst_table:0x%llx\n",
+			xhci_mem->ev_ring, xhci_mem->erst_table);
 		} else {
+			xhci_mem->adv_lowpwr = false;
 			xhci_mem->xhci_dram_addr = 0;
 			xhci_mem->xhci_dram_size = 0;
 			xhci_mem->xhci_sram_addr = 0;
 			xhci_mem->xhci_sram_size = 0;
+			xhci_mem->erst_table = 0;
+			xhci_mem->ev_ring = 0;
 		}
 
 		USB_OFFLOAD_INFO("adsp_exception:%d, adsp_ready:%d\n",
 				uodev->adsp_exception, uodev->adsp_ready);
-
-		if (uodev->adv_lowpwr)
-			mtk_offload_init_rsv_sram(MIN_USB_OFFLOAD_SHIFT);
-
-		ret = xhci_mtk_alloc_event_ring(uodev);
-		if (ret) {
-			USB_OFFLOAD_ERR("error allocating event ring\n");
-			kfree(xhci_mem);
-			goto fail;
-		}
-
-		ret = xhci_mtk_alloc_erst(uodev);
-		if (ret) {
-			USB_OFFLOAD_ERR("error allocating erst\n");
-			kfree(xhci_mem);
-			goto fail;
-		}
-
-		xhci_mem->erst_table = (unsigned long long)uodev->erst->erst_dma_addr;
-		xhci_mem->ev_ring = (unsigned long long)uodev->event_ring->first_seg->dma;
-
-		USB_OFFLOAD_MEM_DBG("ev_ring:0x%llx erst_table:0x%llx\n",
-			xhci_mem->ev_ring, xhci_mem->erst_table);
 
 		ret = send_init_ipi_msg_to_adsp(xhci_mem);
 		if (ret || (value == 0)) {
@@ -2390,7 +2415,9 @@ static int usb_offload_probe(struct platform_device *pdev)
 	}
 
 	uodev->dev = &pdev->dev;
-	uodev->adv_lowpwr = of_property_read_bool(pdev->dev.of_node, "adv-lowpower");
+	uodev->enable_adv_lowpwr =
+		of_property_read_bool(pdev->dev.of_node, "adv-lowpower");
+	uodev->adv_lowpwr = uodev->enable_adv_lowpwr;
 	uodev->smc_ctrl = of_property_read_bool(pdev->dev.of_node, "smc-ctrl");
 	uodev->smc_suspend = uodev->smc_ctrl ? OFFLOAD_SMC_AUD_SUSPEND : -1;
 	uodev->smc_resume = uodev->smc_ctrl ? OFFLOAD_SMC_AUD_RESUME : -1;
@@ -2513,32 +2540,50 @@ static int usb_offload_smc_ctrl(int smc_req)
 
 static int __maybe_unused usb_offload_suspend(struct device *dev)
 {
-	if (!uodev->is_streaming)
+	if (!uodev->is_streaming) {
+		/* turn rsv_sram off if it's not streaming */
+		fake_sram_pwr_ctrl(false);
 		return 0;
+	}
 
+	/* if it's streaming, call to TFA if it's required */
 	return usb_offload_smc_ctrl(uodev->smc_suspend);
 }
 
 static int __maybe_unused usb_offload_resume(struct device *dev)
 {
-	if (!uodev->is_streaming)
+	if (!uodev->is_streaming) {
+		fake_sram_pwr_ctrl(true);
 		return 0;
+	}
 
 	return usb_offload_smc_ctrl(uodev->smc_resume);
 }
 
 static int __maybe_unused usb_offload_runtime_suspend(struct device *dev)
 {
-	if (!uodev->is_streaming || !device_may_wakeup(dev))
+	if (!device_may_wakeup(dev))
 		return 0;
 
+	if (!uodev->is_streaming) {
+		/* turn rsv_sram off if it's not streaming */
+		fake_sram_pwr_ctrl(false);
+		return 0;
+	}
+
+	/* if it's streaming, call to TFA if it's required */
 	return usb_offload_smc_ctrl(uodev->smc_suspend);
 }
 
 static int __maybe_unused usb_offload_runtime_resume(struct device *dev)
 {
-	if (!uodev->is_streaming || !device_may_wakeup(dev))
+	if (!device_may_wakeup(dev))
 		return 0;
+
+	if (!uodev->is_streaming) {
+		fake_sram_pwr_ctrl(true);
+		return 0;
+	}
 
 	return usb_offload_smc_ctrl(uodev->smc_resume);
 }

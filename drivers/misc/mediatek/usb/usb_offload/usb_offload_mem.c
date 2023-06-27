@@ -75,7 +75,6 @@ static void reset_mem_info(struct usb_offload_mem_info *mem_info)
 	mem_info->va_addr = 0;
 	mem_info->size = 0;
 	mem_info->is_valid = false;
-	mem_info->try_init = false;
 	mem_info->pool = NULL;
 }
 
@@ -227,17 +226,34 @@ static void sram_power_ctrl(unsigned int sram_type, bool power)
 		return;
 	}
 
-	if (sram_runtime_pm_ctrl(sram_type, power))
-		return;
+	/* decrease cnt prior to sram power if power=0 */
+	if (!power) {
+		if (atomic_read(&sram_pwr[sram_type].cnt))
+			atomic_dec(&sram_pwr[sram_type].cnt);
+		else {
+			USB_OFFLOAD_ERR("%s's cnt is already 0\n",
+				memory_type(true, sram_type));
+			goto DONE_SRAM_PWR_CTRL;
+		}
+	}
 
+	/* only control sram power if cnt=0 */
+	if (!atomic_read(&sram_pwr[sram_type].cnt))
+		sram_runtime_pm_ctrl(sram_type, power);
+
+	/* increase cnt after setting sram power if power=1 */
 	if (power)
 		atomic_inc(&sram_pwr[sram_type].cnt);
-	else
-		atomic_dec(&sram_pwr[sram_type].cnt);
 
+DONE_SRAM_PWR_CTRL:
 	USB_OFFLOAD_INFO("sram_type:%s cnt:%d\n",
 		memory_type(true, sram_type),
 		atomic_read(&sram_pwr[sram_type].cnt));
+}
+
+int mtk_offload_rsv_sram_pwr_ctrl(bool power)
+{
+	return sram_runtime_pm_ctrl(rsv_sram.type, power);
 }
 
 int mtk_offload_init_rsv_sram(int min_alloc_order)
@@ -256,13 +272,6 @@ int mtk_offload_init_rsv_sram(int min_alloc_order)
 		ret = 0;
 		goto INIT_RSV_SRAM_DONE;
 	}
-
-	if (usb_offload_mem_buffer[mem_id].try_init) {
-		USB_OFFLOAD_MEM_DBG("rsv_sram has tried init before\n");
-		ret = 0;
-		goto INIT_RSV_SRAM_DONE;
-	}
-	usb_offload_mem_buffer[mem_id].try_init = true;
 
 	/* we use allocated sram to pretend resered sram */
 	ret = soc_alloc_sram(&rsv_sram, size);
@@ -312,7 +321,6 @@ int mtk_offload_deinit_rsv_sram(void)
 		goto DEINIT_RSV_SRAM_DONE;
 	}
 
-	usb_offload_mem_buffer[mem_id].try_init = false;
 	USB_OFFLOAD_INFO("phy:0x%llx vir:%p size:%llu\n",
 		usb_offload_mem_buffer[mem_id].phy_addr,
 		usb_offload_mem_buffer[mem_id].vir_addr,
@@ -409,7 +417,6 @@ int mtk_offload_init_rsv_dram(int min_alloc_order)
 		usb_offload_mem_buffer[mem_id].is_valid = false;
 		return -EPROBE_DEFER;
 	}
-	usb_offload_mem_buffer[mem_id].try_init = true;
 	usb_offload_mem_buffer[mem_id].phy_addr = adsp_get_reserve_mem_phys(ADSP_XHCI_MEM_ID);
 	usb_offload_mem_buffer[mem_id].va_addr =
 			(unsigned long long) adsp_get_reserve_mem_virt(ADSP_XHCI_MEM_ID);

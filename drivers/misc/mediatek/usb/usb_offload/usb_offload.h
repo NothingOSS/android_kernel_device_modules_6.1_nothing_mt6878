@@ -45,16 +45,20 @@ struct usb_offload_mem_info {
 	unsigned long long size;
 	unsigned char *vir_addr;
 	bool is_valid;
-	bool try_init;
 	struct gen_pool *pool;
-	u8 type;
 };
 
+/* struct usb_offload_buffer
+ * @dma_addr: physical address (not accessible from main CPU).
+ * @dma_area: viutal address for main CPU.
+ * @is_sram: indicate it's placed on sram.
+ * @type: indicate type of sram, useful when is_sram=1.
+ */
 struct usb_offload_buffer {
 	/* -- DMA -- */
-	unsigned char *dma_area;	/* DMA area */
-	dma_addr_t dma_addr;		/* physical bus address (not accessible from main CPU) */
-	size_t dma_bytes;			/* size of DMA area */
+	unsigned char *dma_area;
+	dma_addr_t dma_addr;
+	size_t dma_bytes;
 	bool allocated;
 	bool is_sram;
 	bool is_rsv;
@@ -214,6 +218,15 @@ struct usb_audio_dev {
 	struct intf_info *info;
 };
 
+/* struct usb_offload_dev
+ * @event_ring: event ring for interrupter target 1.
+ * @erst: event ring segment table for interrupter target 1.
+ * @num_entries_in_use: number of entry of erst.
+ * @enable_adv_lowpwr: if platform supports sram mode.
+ * @adv_lowpwr: in this round, if it's under sram mode.
+ * @smc_ctrl: if platform needs specific action in tfa.
+ * @smc_suspned/resume: identifier of suspend/resume smc case.
+ */
 struct usb_offload_dev {
 	struct device *dev;
 	struct xhci_hcd *xhci;
@@ -226,6 +239,7 @@ struct usb_offload_dev {
 	bool smc_ctrl;
 	int smc_suspend;
 	int smc_resume;
+	bool enable_adv_lowpwr;
 	bool adv_lowpwr;
 	bool is_streaming;
 	bool tx_streaming;
@@ -272,6 +286,7 @@ extern int soc_init_aud_intf(void);
 extern int mtk_offload_init_rsv_dram(int min_alloc_order);
 extern int mtk_offload_init_rsv_sram(int min_alloc_order);
 extern int mtk_offload_deinit_rsv_sram(void);
+extern int mtk_offload_rsv_sram_pwr_ctrl(bool power);
 extern int mtk_offload_alloc_mem(struct usb_offload_buffer *buf, unsigned int size,
 	int align, enum usb_offload_mem_id mem_id, bool is_rsv);
 extern int mtk_offload_free_mem(struct usb_offload_buffer *buf);
