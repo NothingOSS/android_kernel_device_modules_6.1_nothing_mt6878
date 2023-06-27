@@ -39,6 +39,7 @@
 #include "memory_ssheap.h"
 
 #if IS_ENABLED(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)
+u32 tmem_high_freq;
 u32 cpu_map;
 #endif
 
@@ -281,6 +282,8 @@ static int trusted_mem_init(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)
 	struct device_node *node = pdev->dev.of_node;
 	int ret = 0;
+
+	tmem_high_freq = 1;
 #endif
 
 	pr_info("%s:%d\n", __func__, __LINE__);
@@ -323,14 +326,14 @@ static int trusted_mem_init(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)
 	if (IS_ERR(node)) {
-		pr_info("cannot find device node\n");
-		return -ENODEV;
+		pr_info("ALLOC_TMEM_WITH_HIGH_FREQ: cannot find device node\n");
+		tmem_high_freq = 0;
 	}
 
 	ret = of_property_read_u32(node, "cpu-map", &cpu_map);
 	if (ret || !cpu_map) {
-		pr_info("invalid cpu map\n");
-		return -EINVAL;
+		pr_info("ALLOC_TMEM_WITH_HIGH_FREQ: invalid cpu map\n");
+		tmem_high_freq = 0;
 	}
 #endif
 

@@ -21,6 +21,7 @@
 #include "mtee_impl/tmem_ffa.h"
 #if IS_ENABLED(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)
 #include "tmemperf.h"
+extern u32 tmem_high_freq;
 #endif
 
 static inline void trusted_mem_type_enum_validate(void)
@@ -262,7 +263,8 @@ void trusted_mem_enable_high_freq(void)
 #if IS_ENABLED(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)
 //	tmemperf_set_cpu_group_to_hfreq(CPU_BIG_GROUP,1);
 //	tmemperf_set_cpu_group_to_hfreq(CPU_SUPER_GROUP,1);
-	tmemperf_set_cpu_group_to_hfreq(CPU_LITTLE_GROUP,1);
+	if (tmem_high_freq)
+		tmemperf_set_cpu_group_to_hfreq(CPU_LITTLE_GROUP,1);
 #endif
 }
 EXPORT_SYMBOL(trusted_mem_enable_high_freq);
@@ -272,7 +274,8 @@ void trusted_mem_disable_high_freq(void)
 #if IS_ENABLED(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)
 //	tmemperf_set_cpu_group_to_hfreq(CPU_BIG_GROUP,0);
 //	tmemperf_set_cpu_group_to_hfreq(CPU_SUPER_GROUP,0);
-	tmemperf_set_cpu_group_to_hfreq(CPU_LITTLE_GROUP,0);
+	if (tmem_high_freq)
+		tmemperf_set_cpu_group_to_hfreq(CPU_LITTLE_GROUP,0);
 #endif
 }
 EXPORT_SYMBOL(trusted_mem_disable_high_freq);
