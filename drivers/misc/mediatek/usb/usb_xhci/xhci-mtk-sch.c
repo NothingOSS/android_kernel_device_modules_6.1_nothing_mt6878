@@ -425,6 +425,7 @@ static int check_fs_bus_bw(struct mu3h_sch_ep_info *sch_ep, int offset)
 
 static int check_sch_tt(struct mu3h_sch_ep_info *sch_ep, u32 offset)
 {
+	u32 extra_cs_count = 0;
 	u32 start_ss, last_ss;
 	u32 start_cs, last_cs;
 
@@ -459,6 +460,12 @@ static int check_sch_tt(struct mu3h_sch_ep_info *sch_ep, u32 offset)
 
 		if (last_cs > 7)
 			return -ESCH_CS_OVERFLOW;
+
+		/* add one extra_cs for INT IN EP, fix some devices issue */
+		if (sch_ep->ep_type == INT_IN_EP)
+			extra_cs_count = 1;
+
+		cs_count += extra_cs_count;
 
 		if (cs_count > 7)
 			cs_count = 7; /* HW limit */
