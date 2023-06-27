@@ -674,7 +674,6 @@ struct rdma_frame_data {
 	u16 crop_off_l;		/* crop offset left */
 	u16 crop_off_t;		/* crop offset top */
 	u32 gmcif_con;
-	struct cmdq_poll_reuse poll_reset;
 	bool ultra_off;
 
 	/* array of indices to one of entry in cache entry list,
@@ -2091,9 +2090,6 @@ static s32 rdma_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			 rdma_frm->labels[RDMA_LABEL_BASE_2],
 			 rdma_frm->labels[RDMA_LABEL_BASE_2_MSB],
 			 iova[2]);
-
-	if (rdma_frm->poll_reset.jump_to_begin.offset && rdma_frm->poll_reset.jump_to_end.offset)
-		cmdq_pkt_reuse_poll(task->pkts[ccfg->pipe], &rdma_frm->poll_reset);
 
 	return 0;
 }
