@@ -11,6 +11,8 @@
 #include "apu_ipi.h"
 
 #define MDW_IS_HIGHADDR(addr) ((addr & 0xffffffff00000000) ? true : false)
+#define MDW_POLL_TOTAL_TIME (4000) //us
+#define MDW_POLL_TIME (1) //us
 
 struct mdw_rv_msg_cmd {
 	/* ids */
@@ -378,7 +380,7 @@ out:
 	return rc;
 }
 
-static void mdw_rv_cmd_done(struct mdw_rv_cmd *rc, int ret)
+static void mdw_rv_cmd_cp_execinfo(struct mdw_rv_cmd *rc)
 {
 	struct mdw_cmd *c = rc->c;
 	struct mdw_rv_msg_cmd *rmc = NULL;
@@ -404,9 +406,33 @@ static void mdw_rv_cmd_done(struct mdw_rv_cmd *rc, int ret)
 			rmc->link_offset, c->num_links,
 			rc->cb->size);
 	}
+}
+
+static void mdw_rv_cmd_done(struct mdw_rv_cmd *rc, int ret)
+{
+	struct mdw_cmd *c = rc->c;
 
 	/* complete cmd */
 	c->complete(c, ret);
+}
+
+static bool mdw_rv_cmd_poll(struct mdw_rv_cmd *rc)
+{
+	struct mdw_rv_msg_cmd *rmc = NULL;
+	int i = 0;
+	bool poll_ret = false;
+
+	rmc = (struct mdw_rv_msg_cmd *)rc->cb->vaddr;
+
+	/* poll cmd done result */
+	for(i = 0; i< MDW_POLL_TOTAL_TIME; i++) {
+		if(rmc->cmd_done == MDW_PERF_CMD_DONE) {
+			poll_ret = true;
+			break;
+		}
+		udelay(MDW_POLL_TIME);
+	}
+	return poll_ret;
 }
 
 /* kernel-tinysys version v4 */
@@ -414,4 +440,6 @@ const struct mdw_rv_cmd_func mdw_rv_cmd_func_v4 = {
 	.create = mdw_rv_cmd_create,
 	.delete = mdw_rv_cmd_delete,
 	.done = mdw_rv_cmd_done,
+	.poll = mdw_rv_cmd_poll,
+	.cp_execinfo = mdw_rv_cmd_cp_execinfo,
 };

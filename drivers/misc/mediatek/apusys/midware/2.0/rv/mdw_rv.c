@@ -152,6 +152,22 @@ static int mdw_rv_dtime_handle(struct mdw_cmd *c)
 	return mdw_rv_dev_dtime_handle(mrdev, c);
 }
 
+static bool mdw_rv_poll_cmd(struct mdw_cmd *c)
+{
+	struct mdw_device *mdev = c->mpriv->mdev;
+	struct mdw_rv_dev *mrdev = (struct mdw_rv_dev *)mdev->dev_specific;
+
+	return mdw_rv_dev_poll_cmd(mrdev, c);
+}
+
+static void mdw_rv_cp_execinfo(struct mdw_cmd *c)
+{
+	struct mdw_device *mdev = c->mpriv->mdev;
+	struct mdw_rv_dev *mrdev = (struct mdw_rv_dev *)mdev->dev_specific;
+
+	mdw_rv_dev_cp_execinfo(mrdev, c);
+}
+
 static const struct mdw_dev_func mdw_rv_func = {
 	.sw_init = mdw_rv_sw_init,
 	.sw_deinit = mdw_rv_sw_deinit,
@@ -166,6 +182,8 @@ static const struct mdw_dev_func mdw_rv_func = {
 	.unregister_device = mdw_rv_unregister_device,
 	.power_onoff = mdw_rv_power_onoff,
 	.dtime_handle = mdw_rv_dtime_handle,
+	.poll_cmd = mdw_rv_poll_cmd,
+	.cp_execinfo = mdw_rv_cp_execinfo,
 };
 
 void mdw_rv_set_func(struct mdw_device *mdev)

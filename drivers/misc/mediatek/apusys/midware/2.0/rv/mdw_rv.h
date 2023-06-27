@@ -24,6 +24,8 @@ struct mdw_rv_cmd_func {
 		struct mdw_cmd *c);
 	int (*delete)(struct mdw_cmd *c);
 	void (*done)(struct mdw_rv_cmd *rc, int ret);
+	bool (*poll)(struct mdw_rv_cmd *rc);
+	void (*cp_execinfo)(struct mdw_rv_cmd *rc);
 };
 
 struct mdw_rv_dev {
@@ -63,6 +65,8 @@ int mdw_rv_dev_set_param(struct mdw_rv_dev *mrdev, uint32_t idx, uint32_t val);
 int mdw_rv_dev_get_param(struct mdw_rv_dev *mrdev, uint32_t idx, uint32_t *val);
 int mdw_rv_dev_power_onoff(struct mdw_rv_dev *mrdev, enum mdw_power_type power_onoff);
 int mdw_rv_dev_dtime_handle(struct mdw_rv_dev *mrdev, struct mdw_cmd *c);
+bool mdw_rv_dev_poll_cmd(struct mdw_rv_dev *mrdev, struct mdw_cmd *c);
+void mdw_rv_dev_cp_execinfo(struct mdw_rv_dev *mrdev, struct mdw_cmd *c);
 
 /* rv cmd functions */
 extern const struct mdw_rv_cmd_func mdw_rv_cmd_func_v2;

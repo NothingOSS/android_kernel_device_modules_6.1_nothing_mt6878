@@ -53,9 +53,17 @@
 /* dtime */
 #define MAX_DTIME (2000) /* 2s */
 
+/* stale cmd timeout */
+#define MDW_STALE_CMD_TIMEOUT (5*1000) //ms
+
 struct mdw_fpriv;
 struct mdw_device;
 struct mdw_mem;
+
+enum mdw_perf_cmd_state {
+	MDW_PERF_CMD_INIT,
+	MDW_PERF_CMD_DONE,
+};
 
 enum mdw_power_type {
 	MDW_APU_POWER_OFF,
@@ -398,10 +406,13 @@ struct mdw_cmd {
 	/* set dtime */
 	uint64_t is_dtime_set;
 	/* polling cmd result */
-	uint32_t cmd_done;
 
 	/* ext operation */
 	uint64_t ext_id; // for apuext unique id
+
+	/* cmd poll */
+	uint32_t cmd_state;
+	struct completion cmplt;
 };
 
 struct mdw_dev_func {
@@ -418,6 +429,8 @@ struct mdw_dev_func {
 	int (*unregister_device)(struct apusys_device *adev);
 	int (*power_onoff)(struct mdw_device *mdev, enum mdw_power_type power_onoff);
 	int (*dtime_handle)(struct mdw_cmd *c);
+	bool (*poll_cmd)(struct mdw_cmd *c);
+	void (*cp_execinfo)(struct mdw_cmd *c);
 };
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)

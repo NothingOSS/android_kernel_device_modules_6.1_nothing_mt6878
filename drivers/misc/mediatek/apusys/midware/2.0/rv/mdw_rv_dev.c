@@ -385,6 +385,42 @@ out:
 	return ret;
 }
 
+bool mdw_rv_dev_poll_cmd(struct mdw_rv_dev *mrdev, struct mdw_cmd *c)
+{
+	struct mdw_rv_cmd *rc = (struct mdw_rv_cmd *)c->internal_cmd;
+	bool poll_ret = false;
+
+	if (mrdev->rv_version < 4) {
+		mdw_flw_debug("not support poll cmd\n");
+		goto out;
+	}
+
+	/* poll cmd done */
+	poll_ret = mrdev->cmd_funcs->poll(rc);
+
+	if (poll_ret) {
+		mdw_flw_debug("c(0x%llx) poll cmd done\n",
+			c->kid);
+	} else {
+		mdw_flw_debug("poll cmd c(0x%llx) is running\n",
+			c->kid);
+	}
+out:
+	return poll_ret;
+}
+
+void mdw_rv_dev_cp_execinfo(struct mdw_rv_dev *mrdev, struct mdw_cmd *c)
+{
+	struct mdw_rv_cmd *rc = (struct mdw_rv_cmd *)c->internal_cmd;
+
+	if (mrdev->rv_version < 4) {
+		mdw_flw_debug("not support cp execinfo\n");
+		return;
+	}
+	/* cp execinfo */
+	mrdev->cmd_funcs->cp_execinfo(rc);
+}
+
 static int mdw_rv_callback(struct rpmsg_device *rpdev, void *data,
 	int len, void *priv, u32 src)
 {

@@ -765,6 +765,23 @@ static int mdw_cmd_sc_sanity_check(struct mdw_cmd *c)
 	return 0;
 }
 
+static void mdw_cmd_poll_cmd(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
+{
+	struct mdw_device *mdev = mpriv->mdev;
+	bool poll_ret = false;
+
+	poll_ret = mdev->dev_funcs->poll_cmd(c);
+
+	if (poll_ret) {
+		c->cmd_state = MDW_PERF_CMD_DONE;
+
+		/* copy exec info */
+		mdev->dev_funcs->cp_execinfo(c);
+		/* copy cmdbuf to user */
+		mdw_cmd_cmdbuf_out(mpriv, c);
+	}
+}
+
 static int mdw_cmd_run(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 {
 	struct mdw_device *mdev = mpriv->mdev;
@@ -791,6 +808,8 @@ static int mdw_cmd_run(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 	} else {
 		mdw_flw_debug("s(0x%llx) cmd(0x%llx) run\n",
 			(uint64_t)c->mpriv, c->kid);
+		if (c->power_plcy == MDW_POWERPOLICY_PERFORMANCE)
+			mdw_cmd_poll_cmd(mpriv, c);
 	}
 
 	return ret;
@@ -1131,6 +1150,14 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	mdw_trace_begin("apumdw:cmd_complete|cmd:0x%llx/0x%llx", c->uid, c->kid);
 	mutex_lock(&c->mtx);
 
+	/* copy exec info and cmdbuf out */
+	if (c->cmd_state == MDW_PERF_CMD_INIT) {
+		mdev->dev_funcs->cp_execinfo(c);
+		mdw_cmd_cmdbuf_out(mpriv, c);
+	} else {
+		c->cmd_state = MDW_PERF_CMD_INIT;
+	}
+
 	c->end_ts = sched_clock();
 	atomic_dec(&mdev->cmd_running);
 	c->einfos->c.total_us = (c->end_ts - c->start_ts) / 1000;
@@ -1165,11 +1192,8 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 			c->einfos->c.total_us, c->pid, c->tgid);
 	}
 
-	mdw_cmd_cmdbuf_out(mpriv, c);
-
 	/* signal done */
 	c->fence = NULL;
-	atomic_dec(&c->is_running);
 	if (dma_fence_signal(f)) {
 		mdw_drv_warn("c(0x%llx) signal fence fail\n", (uint64_t)c);
 		if (f->ops->get_timeline_name && f->ops->get_driver_name) {
@@ -1178,7 +1202,6 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 		}
 	}
 	dma_fence_put(f);
-	atomic_dec(&mpriv->active_cmds);
 
 	/* check cmd mode */
 	if (!mdw_cmd_is_perf_mode(c)) {
@@ -1219,10 +1242,14 @@ power_out:
 		mdw_drv_err("rpmsg_sendto(power) fail(%d)\n", ret);
 
 out:
+	mdw_flw_debug("c(0x%llx) complete done\n", c->kid);
+	atomic_dec(&c->is_running);
+	complete(&c->cmplt);
 	mutex_unlock(&c->mtx);
 
 	/* check mpriv to clean cmd */
 	mutex_lock(&mpriv->mtx);
+	atomic_dec(&mpriv->active_cmds);
 	mdw_cmd_mpriv_release(mpriv);
 	mutex_unlock(&mpriv->mtx);
 
@@ -1231,6 +1258,22 @@ out:
 	mdw_trace_end();
 
 	return 0;
+}
+
+static int mdw_cmd_wait_cmd_done(struct mdw_cmd *c)
+{
+	int ret = 0;
+	unsigned long timeout = msecs_to_jiffies(MDW_STALE_CMD_TIMEOUT);
+
+	/* wait for cmd done */
+	if (!wait_for_completion_timeout(&c->cmplt, timeout)) {
+		mdw_drv_err("s(0x%llx) c(0x%llx) cmd timeout\n",
+			(uint64_t)c->mpriv, c->kid);
+		ret = -ETXTBSY;
+	} else {
+		mdw_flw_debug("c(0x%llx) cmd done", c->kid);
+	}
+	return ret;
 }
 
 static void mdw_cmd_trigger_func(struct work_struct *wk)
@@ -1372,6 +1415,7 @@ static struct mdw_cmd *mdw_cmd_create(struct mdw_fpriv *mpriv,
 	c->mpriv->get(c->mpriv);
 	c->complete = mdw_cmd_complete;
 	INIT_WORK(&c->t_wk, &mdw_cmd_trigger_func);
+	init_completion(&c->cmplt);
 	kref_init(&c->ref);
 	mdw_cmd_show(c, mdw_drv_debug);
 
@@ -1462,10 +1506,11 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 	} else if (in->op == MDW_CMD_IOCTL_RUN_STALE) {
 		is_running = atomic_read(&c->is_running);
 		if (is_running) {
-			mdw_drv_err("s(0x%llx) c(0x%llx) is running(%d), can't execute again\n",
+			mdw_cmd_debug("s(0x%llx) c(0x%llx) is running(%d), wait cmd done\n",
 				(uint64_t)mpriv, (uint64_t)c, is_running);
-			ret = -ETXTBSY;
-			goto out;
+			ret = mdw_cmd_wait_cmd_done(c);
+			if (ret)
+				goto out;
 		}
 		/* run stale cmd */
 		mdw_cmd_debug("s(0x%llx) run stale(0x%llx)\n",
@@ -1546,6 +1591,8 @@ exec:
 		ret = -ENOMEM;
 		goto put_fd;
 	}
+	/* reinit completion */
+	reinit_completion(&c->cmplt);
 
 	/* get cmd execution ref */
 	atomic_inc(&c->is_running);
@@ -1580,6 +1627,7 @@ exec:
 	/* return fd */
 	args->out.exec.fence = fd;
 	args->out.exec.id = c->id;
+	args->out.exec.cmd_done_usr = c->cmd_state;
 	mdw_flw_debug("async fd(%d) id(%d)\n", fd, c->id);
 	mutex_unlock(&c->mtx);
 	goto out;
