@@ -29,6 +29,8 @@
 #define MTK_SLBMPU_CLEAR                8
 #define MTK_EMIMPU_CLEAR_KP		9
 #define MTK_EMI_CLEAR			10
+#define MTK_SLC_PARITY_SELECT		11
+#define MTK_SLC_PARITY_CLEAR		12
 
 #define MTK_EMIMPU_READ_SA		0
 #define MTK_EMIMPU_READ_EA		1
@@ -38,6 +40,7 @@
 
 #define MTK_EMI_MAX_TOKEN		4
 #define MTK_EMI_MAX_CMD_LEN		256
+#define MTK_SLC_PARITY_MAX_LEN		512
 
 #define EMIMPUVER1			1
 #define EMIMPUVER2			2

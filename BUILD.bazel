@@ -205,6 +205,7 @@ mgk_64_k61_device_modules = [
     "drivers/memory/mediatek/emi-mpu-test.ko",
     "drivers/memory/mediatek/emi-mpu-test-v2.ko",
     "drivers/memory/mediatek/emi-slb.ko",
+    "drivers/memory/mediatek/slc-parity.ko",
     "drivers/memory/mediatek/mtk_dramc.ko",
     "drivers/memory/mediatek/smpu.ko",
     "drivers/memory/mediatek/smpu-hook-v1.ko",

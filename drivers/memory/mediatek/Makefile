@@ -7,6 +7,7 @@ obj-$(CONFIG_MTK_EMI) += emi-mpu.o
 obj-$(CONFIG_MTK_EMI) += emi-fake-eng.o
 obj-$(CONFIG_MTK_EMI) += smpu.o
 obj-$(CONFIG_MTK_EMI) += emi-slb.o
+obj-$(CONFIG_MTK_EMI) += slc-parity.o
 obj-$(CONFIG_MTK_EMI) += smpu-hook-v1.o
 obj-$(CONFIG_MTK_EMI_MPU_TEST) += emi-mpu-test.o
 obj-$(CONFIG_MTK_EMI_MPU_TEST) += emi-mpu-test-v2.o
