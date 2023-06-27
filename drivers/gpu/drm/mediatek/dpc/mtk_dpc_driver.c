@@ -668,6 +668,7 @@ void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bo
 
 	writel(1, dpc_base + addr);
 	// DPCFUNC("subsys(%u:%u) addr(0x%x) vote %s", subsys, thread, addr, en ? "SET" : "CLR");
+	dpc_pm_ctrl(false);
 }
 EXPORT_SYMBOL(dpc_mtcmos_vote);
 
