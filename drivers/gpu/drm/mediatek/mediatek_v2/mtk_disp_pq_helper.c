@@ -82,6 +82,7 @@ static const char *const mtk_tuning_mdp_comps_name[TUNING_COMPS_MAX_COUNT] = {
 
 static int mtk_drm_ioctl_pq_get_irq_impl(struct drm_crtc *crtc, void *data);
 static int mtk_drm_ioctl_pq_get_persist_property_impl(struct drm_crtc *crtc, void *data);
+static int mtk_drm_ioctl_pq_check_trigger(struct drm_crtc *crtc, void *data);
 
 static bool mtk_drm_get_resource_from_dts(struct resource *res, const char *node_name)
 {
@@ -385,6 +386,9 @@ int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
 	case PQ_COLOR_READ_SW_REG:
 		ret = mtk_drm_ioctl_sw_read_impl(crtc, kdata);
 		break;
+	case PQ_VIRTUAL_CHECK_TRIGGER:
+		ret = mtk_drm_ioctl_pq_check_trigger(crtc, kdata);
+		break;
 	default:
 		DDPPR_ERR("%s, unknown cmd:%d\n", __func__, cmd);
 	}
@@ -622,6 +626,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 		} else if (check_trigger)
 			mtk_crtc_check_trigger(mtk_crtc, check_trigger == CHECK_TRIGGER_DELAY
 						|| mtk_crtc->msync2.msync_frame_status, !user_lock);
+		DDPINFO("%s msync_frame_status:%d\n", __func__, mtk_crtc->msync2.msync_frame_status);
 		mtk_drm_trace_end();
 
 		if (user_lock)
@@ -897,6 +902,7 @@ int mtk_drm_ioctl_pq_get_persist_property(struct drm_device *dev, void *data,
 	return mtk_drm_ioctl_pq_get_persist_property_impl(crtc, data);
 }
 
+
 struct drm_crtc *get_crtc_from_connector(int connector_id, struct drm_device *drm_dev)
 {
 	struct drm_crtc *crtc = NULL;
@@ -916,5 +922,30 @@ struct drm_crtc *get_crtc_from_connector(int connector_id, struct drm_device *dr
 			return crtc;
 	}
 	return NULL;
+}
+static int mtk_drm_ioctl_pq_check_trigger(struct drm_crtc *crtc, void *data)
+{
+
+	int ret = 0;
+	bool delay_trigger;
+	struct mtk_drm_crtc *mtk_crtc;
+
+	if ((!crtc) || (!data)) {
+		DDPMSG("%s: failed!\n", __func__);
+		return -EFAULT;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (!mtk_crtc ) {
+		DDPMSG("%s invalid mtk_crtc\n", __func__);
+		return -EFAULT;
+	}
+
+	delay_trigger = *(bool *)data;
+	DDPINFO("%s msync_frame_status:%d, delay_trigger:%d\n",
+		__func__, mtk_crtc->msync2.msync_frame_status, delay_trigger);
+	mtk_crtc_check_trigger(mtk_crtc, delay_trigger || mtk_crtc->msync2.msync_frame_status, true);
+
+	return ret;
 }
 
