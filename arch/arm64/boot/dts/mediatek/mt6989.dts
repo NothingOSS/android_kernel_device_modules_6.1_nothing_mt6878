@@ -7061,7 +7061,7 @@
 
 		disp_dpc: disp-dpc@14226000 {
 			compatible = "mediatek,mt6989-disp-dpc";
-			power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
+			// power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 			reg =
 				<0 0x14226000 0 0x1000>,
 				<0 0x1c000000 0 0x1000>,
