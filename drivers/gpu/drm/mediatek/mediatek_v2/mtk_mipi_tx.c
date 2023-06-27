@@ -1533,7 +1533,7 @@ int mtk_mipi_tx_ssc_en_mt6886(struct phy *phy, struct mtk_panel_ext *mtk_panel)
 	return 0;
 }
 
-int mtk_mipi_tx_ssc_en_mt6897(struct phy *phy, struct mtk_panel_ext *mtk_panel)
+int mtk_mipi_tx_ssc_en_N4(struct phy *phy, struct mtk_panel_ext *mtk_panel)
 {
 	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
 	unsigned int data_rate;
@@ -5713,6 +5713,7 @@ static const struct mtk_mipitx_data mt6989_mipitx_data = {
 	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
 	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_mt6983,
 	.phy = MIPITX_DPHY,
+	.mipi_tx_ssc_en = mtk_mipi_tx_ssc_en_N4,
 };
 
 static const struct mtk_mipitx_data mt6897_mipitx_data = {
@@ -5742,7 +5743,7 @@ static const struct mtk_mipitx_data mt6897_mipitx_data = {
 	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
 	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
 	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_mt6983,
-	.mipi_tx_ssc_en = mtk_mipi_tx_ssc_en_mt6897,
+	.mipi_tx_ssc_en = mtk_mipi_tx_ssc_en_N4,
 };
 
 static const struct mtk_mipitx_data mt6895_mipitx_data = {
