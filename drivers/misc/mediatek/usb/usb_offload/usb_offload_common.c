@@ -1014,17 +1014,33 @@ struct urb_information {
 	unsigned int urb_packs;
 };
 
+static unsigned int get_usb_speed_rate(bool is_full_speed, unsigned int rate)
+{
+	if (is_full_speed)
+		return ((rate << 13) + 62) / 125;
+	else
+		return ((rate << 10) + 62) / 125;
+}
+
 static struct urb_information mtk_usb_offload_calculate_urb(
 	struct usb_audio_stream_info *uainfo, struct snd_usb_substream *subs)
 {
 	struct urb_information urb_info;
 	struct snd_usb_endpoint *ep = subs->data_endpoint;
 	struct snd_usb_audio *chip = ep->chip;
+	unsigned int freqn, freqmax;
 	unsigned int maxsize, packs_per_ms, max_packs_per_urb, urb_packs, nurbs;
 	unsigned int buffer_size, align = 64 - 1;
-	int frame_bits = ep->cur_frame_bytes * 8, packets;
+	int frame_bits, packets;
 
-	maxsize = (((ep->freqmax << ep->datainterval) + 0xffff) >> 16) * (frame_bits >> 3);
+	frame_bits = uainfo->bit_depth * uainfo->number_of_ch;
+	freqn = get_usb_speed_rate(
+		get_speed_info(subs->dev->speed) == USB_AUDIO_DEVICE_SPEED_FULL,
+		uainfo->bit_rate);
+	freqmax = freqn + (freqn >> 1);
+	maxsize = (((freqmax << ep->datainterval) + 0xffff) >> 16) * (frame_bits >> 3);
+	USB_OFFLOAD_INFO("maxsize:%d frame_bits:%d freqmax:%d datainterval:%d\n",
+		maxsize, frame_bits, freqmax, ep->datainterval);
 
 	if (chip->dev->speed != USB_SPEED_FULL) {
 		packs_per_ms = 8 >> ep->datainterval;
