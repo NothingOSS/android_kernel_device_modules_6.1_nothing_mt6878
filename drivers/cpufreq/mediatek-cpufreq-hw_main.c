@@ -8,10 +8,13 @@
 #include <linux/energy_model.h>
 #include <linux/init.h>
 #include <linux/iopoll.h>
+#include <linux/kdebug.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/notifier.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
+#include <linux/panic_notifier.h>
 #include <linux/pm_qos.h>
 #include <linux/slab.h>
 #include <linux/sched/clock.h>
@@ -25,7 +28,8 @@
 #define SVS_HW_STATUS			BIT(1)
 #define POLL_USEC			1000
 #define TIMEOUT_USEC			300000
-#define REG_FREQ_SCALING		0x4cc
+#define REG_FREQ_SCALING		0x4cc/* from csram_base */
+#define REG_STOP_CPUDVFS_LOG		0x128 /* from csram_base */
 #define REG_QOS_OFF			0x20
 #define CHECK_VAL			0X55AA55AA
 
@@ -96,6 +100,36 @@ mtk_cpufreq_get_cpu_power(struct device *cpu_dev, unsigned long *uW,
 
 	return 0;
 }
+
+int stop_dvfs_log(struct notifier_block *self, unsigned long cmd, void *ptr)
+{
+	static atomic_t first_exception = ATOMIC_INIT(0);
+	struct cpufreq_mtk *c = mtk_freq_domain_map[0];
+	void __iomem *csram_base_add_0x10;
+	void __iomem *stop_dvfs_log;
+
+	pr_info("cpufreq stop DVFS log\n");
+
+	if(c) {
+		if(atomic_cmpxchg(&first_exception, 0, 1) != 0)
+			return NOTIFY_DONE;
+		csram_base_add_0x10 = c->reg_bases[REG_FREQ_LUT_TABLE];
+		stop_dvfs_log = csram_base_add_0x10 + REG_STOP_CPUDVFS_LOG - 0x10;
+		writel_relaxed(0x1, stop_dvfs_log);
+	}
+	return NOTIFY_DONE;
+}
+EXPORT_SYMBOL_GPL(stop_dvfs_log);
+
+static struct notifier_block die_blk = {
+	.notifier_call = stop_dvfs_log,
+	.priority = INT_MAX,
+};
+
+static struct notifier_block panic_blk = {
+	.notifier_call = stop_dvfs_log,
+	.priority = INT_MAX,
+};
 
 static int mtk_cpufreq_hw_target_index(struct cpufreq_policy *policy,
 				       unsigned int index)
@@ -509,6 +543,9 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "CPUFreq HW driver failed to register\n");
 		return ret;
 	}
+
+	register_die_notifier(&die_blk);
+	atomic_notifier_chain_register(&panic_notifier_list, &panic_blk);
 
 	return 0;
 
