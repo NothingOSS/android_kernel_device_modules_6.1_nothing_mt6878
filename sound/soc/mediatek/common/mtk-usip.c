@@ -180,7 +180,7 @@ int usip_mmap_data(struct usip_info *usip, struct vm_area_struct *area)
 
 	pfn = usip->addr_phy >> PAGE_SHIFT;
 	/* ensure that memory does not get swapped to disk */
-	area->vm_flags |= VM_IO;
+	vm_flags_set(area, VM_IO);
 	/* ensure non-cacheable */
 	area->vm_page_prot = pgprot_noncached(area->vm_page_prot);
 	ret = remap_pfn_range(area, area->vm_start,
@@ -201,8 +201,8 @@ static int usip_mmap(struct file *file, struct vm_area_struct *area)
 	unsigned long offset;
 	struct usip_info *usip = file->private_data;
 
-	pr_debug("%s(), vm_flags 0x%lx, vm_pgoff 0x%lx\n",
-		 __func__, area->vm_flags, area->vm_pgoff);
+	pr_debug("%s(), vm_pgoff 0x%lx\n",
+		 __func__, area->vm_pgoff);
 
 	offset = area->vm_pgoff << PAGE_SHIFT;
 	switch (offset) {
