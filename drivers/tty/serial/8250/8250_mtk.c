@@ -120,6 +120,8 @@ enum dma_rx_status {
 #endif
 
 struct mtk8250_dump {
+	unsigned long long start_time;
+	unsigned long long end_time;
 	unsigned long long trans_time;
 	unsigned int trans_len;
 	int r_rx_pos;
@@ -538,16 +540,19 @@ void mtk8250_data_dump(void)
 		unsigned int len_ = rx_record.rec[idx].trans_len;
 		unsigned char raw_buf[256 * 3 + 4];
 		const unsigned char *ptr = rx_record.rec[idx].rec_buf;
-		unsigned long long endtime = rx_record.rec[idx].trans_time;
-		unsigned long ns = do_div(endtime, 1000000000);
+		unsigned long long start_sec = rx_record.rec[idx].start_time;
+		unsigned long long end_sec = rx_record.rec[idx].end_time;
+		unsigned long start_ns = do_div(start_sec, 1000000000);
+		unsigned long end_ns = do_div(end_sec, 1000000000);
 
-		pr_info("[%s] [%s: %5lu.%06lu] total=%llu,idx=%d,port_id=%d,len=%d,pos=%d,copy=%d\n",
-			__func__, "rx_complete_t", (unsigned long)endtime, ns / 1000,
-			rx_record.rec_total, idx, rx_record.rec[idx].port_id, len_,
-			rx_record.rec[idx].r_rx_pos, rx_record.rec[idx].r_copied);
+		pr_info("[%s] [%s: %5lu.%06lu] [%s: %5lu.%06lu] total=%llu, idx=%d, port_id=%d\n",
+			__func__, "rx_complete_start", (unsigned long)start_sec, start_ns / 1000,
+			"rx_complete_end", (unsigned long)end_sec, end_ns / 1000,
+			rx_record.rec_total, idx, rx_record.rec[idx].port_id);
 
-		pr_info("[%s] tty_port: 0x%llx, cpu:%d, pid:%d, comm:%s\n",
-			__func__, rx_record.rec[idx].tty_port_addr, rx_record.rec[idx].cur_cpu,
+		pr_info("[%s] len=%d, pos=%d, copy=%d, tty_port=0x%llx, cpu=%d, pid=%d, comm=%s\n",
+			__func__, len_, rx_record.rec[idx].r_rx_pos, rx_record.rec[idx].r_copied,
+			rx_record.rec[idx].tty_port_addr, rx_record.rec[idx].cur_cpu,
 			rx_record.rec[idx].cur_pid, rx_record.rec[idx].cur_comm);
 
 		if (len_ <= UART_DUMP_BUF_LEN) {
@@ -1086,6 +1091,10 @@ static void mtk8250_dma_rx_complete(void *param)
 	unsigned char *ptr;
 	unsigned long flags;
 	unsigned int idx = 0, polling_cnt = TTY_BUF_POLLING_COUNT;
+	unsigned long long rx_start_time = 0;
+	unsigned long long rx_end_time = 0;
+	unsigned long start_ns = 0;
+	unsigned long end_ns = 0;
 #ifdef CONFIG_UART_DATA_RECORD
 	bool is_exceed_buf_size = false;
 #endif
@@ -1093,6 +1102,7 @@ static void mtk8250_dma_rx_complete(void *param)
 	if (data->rx_status == DMA_RX_SHUTDOWN)
 		return;
 
+	rx_start_time = sched_clock();
 	if ((data->support_hub == 1) && rx_record.rec_total) {
 		//first assign as last record idx
 		idx = (unsigned int)((rx_record.rec_total - 1) % UART_DUMP_RECORE_NUM);
@@ -1135,7 +1145,7 @@ static void mtk8250_dma_rx_complete(void *param)
 		idx = (unsigned int)(rx_record.rec_total % UART_DUMP_RECORE_NUM);
 		rx_record.rec_total++;
 		rx_record.rec[idx].trans_len = total;
-		rx_record.rec[idx].trans_time = sched_clock();
+		rx_record.rec[idx].start_time = rx_start_time;
 		rx_record.rec[idx].r_rx_pos = data->rx_pos;
 		rx_record.rec[idx].cur_pid = current->pid;
 		memcpy(rx_record.rec[idx].cur_comm, current->comm,
@@ -1149,7 +1159,7 @@ static void mtk8250_dma_rx_complete(void *param)
 		idx = (unsigned int)(rx_record.rec_total % UART_DUMP_RECORE_NUM);
 		rx_record.rec_total++;
 		rx_record.rec[idx].trans_len = total;
-		rx_record.rec[idx].trans_time = sched_clock();
+				rx_record.rec[idx].start_time = rx_start_time;
 		rx_record.rec[idx].r_rx_pos = data->rx_pos;
 		rx_record.rec[idx].cur_pid = current->pid;
 		memcpy(rx_record.rec[idx].cur_comm, current->comm,
@@ -1204,16 +1214,6 @@ static void mtk8250_dma_rx_complete(void *param)
 		copied += copied_sec;
 	}
 
-	if (data->support_hub == 1) {
-		rx_record.rec[idx].r_copied = copied;
-		rx_record.rec[idx].tty_port_addr = (unsigned long long)tty_port;
-	}
-
-	if ((of_device_get_match_data(up->port.dev) != NULL) && !data->support_hub) {
-		rx_record.rec[idx].r_copied = copied;
-		rx_record.rec[idx].tty_port_addr = (unsigned long long)tty_port;
-	}
-
 	up->port.icount.rx += copied;
 	mtk8250_uart_rx_setting(dma->rxchan, copied, total);
 
@@ -1222,13 +1222,31 @@ static void mtk8250_dma_rx_complete(void *param)
 	else
 		tty_flip_buffer_push(tty_port);
 
+	rx_end_time = sched_clock();
+
+	if (data->support_hub == 1) {
+		rx_record.rec[idx].r_copied = copied;
+		rx_record.rec[idx].tty_port_addr = (unsigned long long)tty_port;
+		rx_record.rec[idx].end_time = rx_end_time;
+	}
+
+	if ((of_device_get_match_data(up->port.dev) != NULL) && !data->support_hub) {
+		rx_record.rec[idx].r_copied = copied;
+		rx_record.rec[idx].tty_port_addr = (unsigned long long)tty_port;
+		rx_record.rec[idx].end_time = rx_end_time;
+	}
+
 	mtk8250_rx_dma(up);
 
 	spin_unlock_irqrestore(&up->port.lock, flags);
 #ifdef CONFIG_UART_DATA_RECORD
-	if (is_exceed_buf_size)
-		pr_info("[%s] total = %d, cnt = %d, exceeds buf size:%lu\n",
-			__func__, total, cnt, UART_DUMP_BUF_LEN);
+	if (is_exceed_buf_size) {
+		start_ns = do_div(rx_start_time, 1000000000);
+		end_ns = do_div(rx_end_time, 1000000000);
+		pr_info("[%s] total: %d, s_time:[%5lu.%06lu], e_time:[%5lu.%06lu], copied: %d\n",
+			__func__, total, (unsigned long)rx_start_time, start_ns / 1000,
+			(unsigned long)rx_end_time, end_ns / 1000, copied);
+	}
 #endif
 }
 
@@ -1312,6 +1330,11 @@ static int mtk8250_startup(struct uart_port *port)
 	/* disable DMA for console */
 	if (uart_console(port))
 		up->dma = NULL;
+
+	if (!uart_console(port) && (data->dma != NULL) && (up->dma == NULL)) {
+		pr_info("[%s]: up->dma is null!!\n", __func__);
+		up->dma = data->dma;
+	}
 
 	if (up->dma) {
 		data->rx_status = DMA_RX_START;
