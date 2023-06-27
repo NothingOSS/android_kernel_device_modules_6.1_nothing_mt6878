@@ -28,6 +28,7 @@
 #define RETRY_UPDATE_MS (1000)
 #define CORE_SRAM (share_idx_ref_ext->core_idx_ext)
 #define DDR_SRAM (share_idx_ref_ext->mem_idx_ext)
+#define XPU_SRAM (share_idx_ref_ext->xpu_idx_ext)
 #define SUSPEND_SRAM (share_idx_ref_ext->suspend)
 #define DURATION_SRAM (share_idx_ref_ext->duration)
 
@@ -52,8 +53,9 @@ static unsigned int update_interval_ms = DEFAULT_UPDATE_MS;
 
 /* core voltage time distribution */
 static struct vol_duration core_vol_duration[NR_CORE_VOLT];
-/* core ip stat with time distribution */
-static struct ip_stats core_ip_stats[NR_CORE_IP];
+
+/* xpu ip stat with time distribution */
+static struct ip_stats xpu_ip_stats[NR_XPU_IP];
 
 /* ddr freq in active time distribution */
 static struct ddr_act_times ddr_act_duration[NR_DDR_FREQ];
@@ -71,9 +73,8 @@ struct duration_time duration_time;
 static uint64_t total_suspend_us;
 static uint64_t total_duration_us;
 
-/* core ip (mmsys, venc, vdec, scp )*/
-static char core_ip_str[NR_CORE_IP][MAX_IP_NAME_LENGTH] = {
-	"DISP0", "DISP1", "VENC0", "VENC1", "VDEC0", "VDEC1", "SCP",
+static char xpu_ip_str[NR_XPU_IP][MAX_IP_NAME_LENGTH] = {
+	"DISP0", "DISP1", "VENC0", "VENC1", "VDEC0", "VDEC1", "SCP", "ADSP", "MCU"
 };
 /* ddr bw ip (total r/total w/cpu/gpu/mm/md) */
 static char ddr_bc_ip_str[NR_DDR_BC_IP][MAX_IP_NAME_LENGTH] = {
@@ -85,7 +86,7 @@ static unsigned int retry_cnt;
 static void swpm_sp_internal_update(void)
 {
 	int i, j;
-	struct core_ip_pwr_sta *core_ip_sta_ptr;
+	struct xpu_ip_pwr_sta *xpu_ip_sta_ptr;
 	struct mem_ip_bc *ddr_ip_bc_ptr;
 	unsigned int word_L, word_H;
 	uint64_t duration_time_temp;
@@ -114,16 +115,16 @@ static void swpm_sp_internal_update(void)
 			readl(&DDR_SRAM.acc_sr_time) / 1000;
 		ddr_sr_pd_duration.pd_time +=
 			readl(&DDR_SRAM.acc_pd_time) / 1000;
-		for (i = 0; i < NR_CORE_IP; i++) {
-			if (!core_ip_stats[i].times)
+		for (i = 0; i < NR_XPU_IP; i++) {
+			if (!xpu_ip_stats[i].times)
 				continue;
-			core_ip_sta_ptr = &(CORE_SRAM.pwr_state[i]);
-			core_ip_stats[i].times->active_time +=
-			readl(&core_ip_sta_ptr->state[PMSR_ACTIVE]) / 1000;
-			core_ip_stats[i].times->idle_time +=
-			readl(&core_ip_sta_ptr->state[PMSR_IDLE]) / 1000;
-			core_ip_stats[i].times->off_time +=
-			readl(&core_ip_sta_ptr->state[PMSR_OFF]) / 1000;
+			xpu_ip_sta_ptr = &(XPU_SRAM.pwr_state[i]);
+			xpu_ip_stats[i].times->active_time +=
+			readl(&xpu_ip_sta_ptr->state[PMSR_ACTIVE]) / 1000;
+			xpu_ip_stats[i].times->idle_time +=
+			readl(&xpu_ip_sta_ptr->state[PMSR_IDLE]) / 1000;
+			xpu_ip_stats[i].times->off_time +=
+			readl(&xpu_ip_sta_ptr->state[PMSR_OFF]) / 1000;
 		}
 		for (i = 0; i < NR_DDR_BC_IP; i++) {
 			if (!ddr_ip_stats[i].bc_stats)
@@ -248,6 +249,7 @@ static int32_t swpm_ddr_freq_data_ip_stats(int32_t data_ip_num,
 	}
 	return 0;
 }
+/* TODO: deprecated, it will be removed soon */
 static int32_t swpm_vcore_ip_vol_stats(int32_t ip_num,
 				       int32_t vol_num,
 				       void *stats)
@@ -256,14 +258,14 @@ static int32_t swpm_vcore_ip_vol_stats(int32_t ip_num,
 	int i;
 	struct ip_stats *p = stats;
 
-	if (p && ip_num == NR_CORE_IP && vol_num == NR_CORE_VOLT) {
+	if (p && ip_num == NR_XPU_IP) {
 		spin_lock_irqsave(&swpm_sp_spinlock, flags);
-		for (i = 0; i < NR_CORE_IP && p[i].times; i++) {
+		for (i = 0; i < NR_XPU_IP && p[i].times; i++) {
 			strncpy(p[i].ip_name,
-				core_ip_stats[i].ip_name,
+				xpu_ip_stats[i].ip_name,
 				MAX_IP_NAME_LENGTH - 1);
 			memcpy(p[i].times,
-			       core_ip_stats[i].times,
+			       xpu_ip_stats[i].times,
 			       sizeof(struct ip_times));
 		}
 		spin_unlock_irqrestore(&swpm_sp_spinlock, flags);
@@ -304,6 +306,27 @@ static int32_t swpm_res_sig_stats(struct res_sig_stats *stats)
 	}
 	return 0;
 }
+static int32_t swpm_xpu_ip_stats(int32_t ip_num,
+				 void *stats)
+{
+	unsigned long flags;
+	int i;
+	struct ip_stats *p = stats;
+
+	if (p && ip_num == NR_XPU_IP) {
+		spin_lock_irqsave(&swpm_sp_spinlock, flags);
+		for (i = 0; i < NR_XPU_IP && p[i].times; i++) {
+			strncpy(p[i].ip_name,
+				xpu_ip_stats[i].ip_name,
+				MAX_IP_NAME_LENGTH - 1);
+			memcpy(p[i].times,
+			       xpu_ip_stats[i].times,
+			       sizeof(struct ip_times));
+		}
+		spin_unlock_irqrestore(&swpm_sp_spinlock, flags);
+	}
+	return 0;
+}
 static int32_t swpm_plat_nums(enum swpm_num_type type)
 {
 	switch (type) {
@@ -311,10 +334,13 @@ static int32_t swpm_plat_nums(enum swpm_num_type type)
 		return NR_DDR_BC_IP;
 	case DDR_FREQ:
 		return NR_DDR_FREQ;
+	/* TODO: deprecated, it will be returned 0 soon */
 	case CORE_IP:
-		return NR_CORE_IP;
+		return NR_XPU_IP;
 	case CORE_VOL:
 		return NR_CORE_VOLT;
+	case XPU_IP:
+		return NR_XPU_IP;
 	default:
 		return 0;
 	}
@@ -331,6 +357,8 @@ static struct swpm_internal_ops plat_ops = {
 		swpm_vcore_ip_vol_stats,
 	.vcore_vol_duration_get =
 		swpm_vcore_vol_duration,
+	.xpu_ip_stats_get =
+		swpm_xpu_ip_stats,
 	.res_sig_stats_get =
 		swpm_res_sig_stats,
 	.num_get = swpm_plat_nums,
@@ -387,16 +415,16 @@ void swpm_v6989_ext_init(void)
 		core_swpm_data_ptr = NULL;
 	}
 
-	/* core_ip_stats initialize */
-	for (i = 0; i < NR_CORE_IP; i++) {
-		strncpy(core_ip_stats[i].ip_name,
-			core_ip_str[i], MAX_IP_NAME_LENGTH - 1);
-		core_ip_stats[i].times =
-		kmalloc(sizeof(struct ip_vol_times), GFP_KERNEL);
-		if (core_ip_stats[i].times) {
-			core_ip_stats[i].times->active_time = 0;
-			core_ip_stats[i].times->idle_time = 0;
-			core_ip_stats[i].times->off_time = 0;
+	/* xpu_ip_stats initialize */
+	for (i = 0; i < NR_XPU_IP; i++) {
+		strncpy(xpu_ip_stats[i].ip_name,
+			xpu_ip_str[i], MAX_IP_NAME_LENGTH - 1);
+		xpu_ip_stats[i].times =
+		kmalloc(sizeof(struct ip_times), GFP_KERNEL);
+		if (xpu_ip_stats[i].times) {
+			xpu_ip_stats[i].times->active_time = 0;
+			xpu_ip_stats[i].times->idle_time = 0;
+			xpu_ip_stats[i].times->off_time = 0;
 		}
 	}
 	/* core duration initialize */

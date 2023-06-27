@@ -1,16 +1,17 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2021 MediaTek Inc.
+ * SWPM Module with Power Service Pack
+ * Copyright (c) 2023 MediaTek Inc.
  */
 
-#ifndef __SWPM_MODULE_EXT_H__
-#define __SWPM_MODULE_EXT_H__
+#ifndef __SWPM_MODULE_PSP_H__
+#define __SWPM_MODULE_PSP_H__
 
 #include <linux/types.h>
 
 #define MAX_IP_NAME_LENGTH (16)
 
-/* swpm extension interface types */
+/* swpm power service pack interface types */
 enum swpm_num_type {
 	DDR_DATA_IP,
 	DDR_FREQ,
@@ -19,7 +20,7 @@ enum swpm_num_type {
 	XPU_IP,
 };
 
-/* swpm extension structure */
+/* swpm power service pack structure */
 struct ip_vol_times {
 	int32_t vol;
 	int64_t active_time;
@@ -70,7 +71,7 @@ struct res_sig_stats {
 	uint64_t suspend_time;
 };
 
-/* swpm extension internal ops structure */
+/* swpm power service pack internal ops structure */
 struct swpm_internal_ops {
 	void (*const cmd)(unsigned int type,
 			  unsigned int val);
@@ -120,5 +121,5 @@ extern int32_t get_xpu_ip_stats(int32_t ip_num, void *stats);
 extern int32_t get_res_sig_stats(struct res_sig_stats *stats);
 extern int mtk_register_swpm_ops(struct swpm_internal_ops *ops);
 
-#endif /* __SWPM_MODULE_EXT_H__ */
+#endif /* __SWPM_MODULE_PSP_H__ */
 

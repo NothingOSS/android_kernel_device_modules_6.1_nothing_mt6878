@@ -229,9 +229,9 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 {
 	char *p = ToUser;
 	int i;
-	int32_t core_vol_num, core_ip_num;
+	int32_t core_vol_num, xpu_ip_num;
 
-	struct ip_stats *core_ip_stats_ptr = NULL;
+	struct ip_stats *xpu_ip_stats_ptr = NULL;
 	struct vol_duration *core_duration_ptr = NULL;
 	struct res_sig_stats *spm_res_sig_stats_ptr = NULL;
 
@@ -239,12 +239,12 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 		return -EINVAL;
 
 	core_vol_num = get_vcore_vol_num();
-	core_ip_num = get_vcore_ip_num();
+	xpu_ip_num = get_xpu_ip_num();
 
 	core_duration_ptr =
 	kcalloc(core_vol_num, sizeof(struct vol_duration), GFP_KERNEL);
-	core_ip_stats_ptr =
-	kcalloc(core_ip_num, sizeof(struct ip_stats), GFP_KERNEL);
+	xpu_ip_stats_ptr =
+	kcalloc(xpu_ip_num, sizeof(struct ip_stats), GFP_KERNEL);
 	spm_res_sig_stats_ptr =
 	kzalloc(sizeof(struct res_sig_stats), GFP_KERNEL);
 
@@ -252,23 +252,27 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 		swpm_dbg_log("core_duration_idx failure\n");
 		goto End;
 	}
-	if (!core_ip_stats_ptr) {
-		swpm_dbg_log("core_ip_stats_idx failure\n");
+	if (!xpu_ip_stats_ptr) {
+		swpm_dbg_log("xpu_ip_stats_idx failure\n");
+		goto End;
+	}
+	if (!spm_res_sig_stats_ptr) {
+		swpm_dbg_log("spm_res_sig_stats_idx failure\n");
 		goto End;
 	}
 
-	for (i = 0; i < core_ip_num; i++) {
-		core_ip_stats_ptr[i].times =
+	for (i = 0; i < xpu_ip_num; i++) {
+		xpu_ip_stats_ptr[i].times =
 		kzalloc(sizeof(struct ip_times), GFP_KERNEL);
-		if (!core_ip_stats_ptr[i].times)
+		if (!xpu_ip_stats_ptr[i].times)
 			goto End;
 	}
 
 	sync_latest_data();
 
 	get_vcore_vol_duration(core_vol_num, core_duration_ptr);
-	get_vcore_ip_vol_stats(core_ip_num, core_vol_num,
-			       core_ip_stats_ptr);
+	get_xpu_ip_stats(xpu_ip_num, xpu_ip_stats_ptr);
+
 
 	get_res_sig_stats(spm_res_sig_stats_ptr);
 
@@ -277,21 +281,21 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 	swpm_dbg_log("duration_time (ms) : %llu\n",
 		     spm_res_sig_stats_ptr->duration_time);
 
-	for (i = 0; i < core_ip_num; i++) {
+	for (i = 0; i < xpu_ip_num; i++) {
 		swpm_dbg_log("%s ",
-			     core_ip_stats_ptr[i].ip_name);
+			     xpu_ip_stats_ptr[i].ip_name);
 		swpm_dbg_log("active/idle/off (ms) : %lld/%lld/%lld\n",
-		core_ip_stats_ptr[i].times->active_time,
-		core_ip_stats_ptr[i].times->idle_time,
-		core_ip_stats_ptr[i].times->off_time);
+		xpu_ip_stats_ptr[i].times->active_time,
+		xpu_ip_stats_ptr[i].times->idle_time,
+		xpu_ip_stats_ptr[i].times->off_time);
 	}
 End:
 	kfree(core_duration_ptr);
 
-	if (core_ip_stats_ptr) {
-		for (i = 0; i < core_ip_num; i++)
-			kfree(core_ip_stats_ptr[i].times);
-		kfree(core_ip_stats_ptr);
+	if (xpu_ip_stats_ptr) {
+		for (i = 0; i < xpu_ip_num; i++)
+			kfree(xpu_ip_stats_ptr[i].times);
+		kfree(xpu_ip_stats_ptr);
 	}
 
 	kfree(spm_res_sig_stats_ptr);

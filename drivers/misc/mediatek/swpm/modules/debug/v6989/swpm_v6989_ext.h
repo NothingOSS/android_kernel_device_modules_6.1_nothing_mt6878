@@ -19,20 +19,19 @@ enum pmsr_power_state {
 };
 /* #define NR_POWER_STATE (3) */
 
-/* core ip (mdp, disp, venc, vdec, scp) */
-enum core_ip_state {
-	// CORE_IP_MDP,
-	CORE_IP_DISP0,
-	CORE_IP_DISP1,
-	CORE_IP_VENC0,
-	CORE_IP_VENC1,
-	CORE_IP_VDEC0,
-	CORE_IP_VDEC1,
-	CORE_IP_SCP,
+enum xpu_ip_state {
+	XPU_IP_DISP0,
+	XPU_IP_DISP1,
+	XPU_IP_VENC0,
+	XPU_IP_VENC1,
+	XPU_IP_VDEC0,
+	XPU_IP_VDEC1,
+	XPU_IP_SCP,
+	XPU_IP_ADSP,
+	XPU_IP_MCU,
 
-	NR_CORE_IP,
+	NR_XPU_IP,
 };
-/* #define NR_CORE_IP (4) */
 
 /* ddr byte count ip (total read, total write, cpu, mm, gpu, others) */
 enum ddr_bc_ip {
@@ -62,18 +61,10 @@ enum spm_group {
 	NR_SPM_GRP,
 };
 
-/* core extension ip state */
-struct core_ip_pwr_sta {
-	unsigned int state[NR_POWER_STATE];
-};
-
 /* core extension index structure */
 struct core_index_ext {
 	/* core voltage distribution (us) */
 	unsigned int acc_time[NR_CORE_VOLT];
-
-	/* core ip power state distribution */
-	struct core_ip_pwr_sta pwr_state[NR_CORE_IP];
 };
 
 /* mem extension ip word count (1 word -> 8 bytes @ 64bits) */
@@ -97,6 +88,15 @@ struct mem_index_ext {
 	struct mem_ip_bc data[NR_DDR_BC_IP];
 };
 
+struct xpu_ip_pwr_sta {
+	unsigned int state[NR_POWER_STATE];
+};
+
+struct xpu_index_ext {
+	/* xpu ip power state distribution */
+	struct xpu_ip_pwr_sta pwr_state[NR_XPU_IP];
+};
+
 struct suspend_time {
 	/* total suspended time H/L*/
 	unsigned int time_L;
@@ -118,6 +118,7 @@ struct share_spm_sig {
 struct share_index_ext {
 	struct core_index_ext core_idx_ext;
 	struct mem_index_ext mem_idx_ext;
+	struct xpu_index_ext xpu_idx_ext;
 	struct suspend_time suspend;
 	struct duration_time duration;
 
