@@ -2866,6 +2866,7 @@ static int mt6375_chg_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto out;
 	}
+
 	INIT_WORK(&ddata->bc12_work, mt6375_chg_bc12_work_func);
 	INIT_DELAYED_WORK(&ddata->pwr_rdy_dwork, mt6375_chg_pwr_rdy_dwork_func);
 	platform_set_drvdata(pdev, ddata);
@@ -2888,6 +2889,12 @@ static int mt6375_chg_probe(struct platform_device *pdev)
 		goto out_attr;
 	}
 
+	ret = mt6375_chg_init_multi_ports(ddata);
+	if (ret < 0) {
+		dev_notice(dev, "failed to init multi ports\n");
+		goto out_chgdev;
+	}
+
 	ret = mt6375_chg_init_psy(ddata);
 	if (ret < 0) {
 		dev_err(dev, "failed to init power supply\n");
@@ -2906,12 +2913,6 @@ static int mt6375_chg_probe(struct platform_device *pdev)
 		goto out_attr;
 	}
 
-	ret = mt6375_chg_init_multi_ports(ddata);
-	if (ret < 0) {
-		dev_notice(dev, "failed to init multi ports\n");
-		goto out_chgdev;
-	}
-
 	ret = mt6375_chg_init_irq(ddata);
 	if (ret < 0) {
 		dev_err(dev, "failed to init irq\n");
@@ -2920,7 +2921,9 @@ static int mt6375_chg_probe(struct platform_device *pdev)
 	queue_delayed_work(system_freezable_wq, &ddata->pwr_rdy_dwork,
 			   msecs_to_jiffies(2000));
 	mt_dbg(dev, "successfully\n");
+
 	return 0;
+
 out_chgdev:
 	charger_device_unregister(ddata->chgdev);
 out_attr:
@@ -2952,6 +2955,7 @@ static int mt6375_chg_remove(struct platform_device *pdev)
 		mutex_destroy(&ddata->pe_lock);
 		mutex_destroy(&ddata->attach_lock);
 	}
+
 	return 0;
 }
 
