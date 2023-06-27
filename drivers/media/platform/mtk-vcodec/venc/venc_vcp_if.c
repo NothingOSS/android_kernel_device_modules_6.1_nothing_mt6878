@@ -709,23 +709,7 @@ static int venc_vcp_backup(struct venc_inst *inst)
 
 	return err;
 }
-static int venc_vcp_mmdvfs_resume(struct mtk_vcodec_ctx *ctx)
-{
-	int err = 0;
-	struct venc_inst *inst = (struct venc_inst *) ctx->drv_handle;
-	struct venc_ap_ipi_msg_set_param msg;
 
-	mtk_v4l2_debug(0, "[VDVFS] VENC resume");
-	memset(&msg, 0, sizeof(msg));
-	msg.msg_id = AP_IPIMSG_ENC_SET_PARAM;
-	msg.vcu_inst_addr = inst->vcu_inst.inst_addr;
-	msg.ctx_id = inst->ctx->id;
-	msg.param_id = VENC_SET_PARAM_MMDVFS;
-
-	err = venc_vcp_ipi_send(inst, &msg, sizeof(msg), false, false, true);
-
-	return err;
-}
 
 static struct mtk_vcodec_ctx *get_valid_ctx(struct mtk_vcodec_dev *dev)
 {
@@ -810,10 +794,6 @@ static int vcp_venc_notify_callback(struct notifier_block *this,
 		ctx = get_valid_ctx(dev);
 		mutex_unlock(&dev->ctx_mutex);
 
-		mutex_lock(&dev->enc_dvfs_mutex);
-		if (ctx)
-			venc_vcp_mmdvfs_resume(ctx);
-		mutex_unlock(&dev->enc_dvfs_mutex);
 		dev->is_codec_suspending = 0;
 		break;
 	}
