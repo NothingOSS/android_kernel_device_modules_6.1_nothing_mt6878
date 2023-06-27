@@ -1387,22 +1387,22 @@
 		/* GIC_IRQ ID(sej_axgpt_irq) - 32 = 442 - 32 = 410 */
 	};
 
-	pmu-x4 {
+	pmu_x4: pmu-x4 {
 		compatible = "arm,armv8-pmuv3";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH &ppi_cluster2>;
 	};
-	pmu-Hunter-ELP {
+	pmu_hunter_elp: pmu-hunter-elp {
 		compatible = "arm,armv8-pmuv3";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH &ppi_cluster1>;
 	};
-	pmu-Hunter {
+	pmu_hunter: pmu-hunter {
 		compatible = "arm,armv8-pmuv3";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH &ppi_cluster0>;
 	};
-	dsu-pmu-0 {
+	dsu_pmu_0: dsu-pmu-0 {
 		compatible = "arm,dsu-pmu";
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH 0>;
 		cpus = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>,
