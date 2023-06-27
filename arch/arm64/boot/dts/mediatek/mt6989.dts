@@ -4802,6 +4802,18 @@
 			mpu-base-clear = <1>;
 		};
 
+		slc-parity@10342000 {
+			compatible = "mediatek,common-slc-parity";
+			reg = <0 0x10342000 0 0x1000>,
+				<0 0x10343000 0 0x1000>;
+			interrupts = <GIC_SPI 379 IRQ_TYPE_LEVEL_HIGH 0>;
+			dump = <0xc00 0xd80 0xc04 0xd70>;
+			port-num = <10>;
+			cs-num = <2>;
+			chn-num = <2>;
+			clear = <0x014>;
+		};
+
 		nemi-hre-emi-apb@10344000 {
 			compatible = "mediatek,nemi_hre_emi_apb";
 			reg = <0 0x10344000 0 0x1000>;
