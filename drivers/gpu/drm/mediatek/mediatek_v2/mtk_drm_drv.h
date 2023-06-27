@@ -429,6 +429,7 @@ extern unsigned int emi_eff_tb[MAX_EMI_EFF_LEVEL];
 extern int aod_scp_flag;
 extern int mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
 				 unsigned int cfg_flag);
+extern int mtkfb_set_backlight_level_AOD(unsigned int level);
 
 int mtk_drm_ioctl_set_dither_param(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);

@@ -459,21 +459,6 @@ fail:
 	return 0;
 }
 
-
-int mtk_aod_scp_doze_update(int doze)
-{
-	if (!AOD_STAT_MATCH(AOD_STAT_ENABLE))
-		return 0;
-
-	if (doze) {
-		AOD_STAT_SET(AOD_STAT_ACTIVE);
-		mtk_prepare_config_map();
-	} else
-		AOD_STAT_CLR(AOD_STAT_ACTIVE);
-
-	return 0;
-}
-
 int mtk_aod_scp_ipi_send(int value)
 {
 	unsigned int retry_cnt = 0;
@@ -493,6 +478,25 @@ int mtk_aod_scp_ipi_send(int value)
 		DDPMSG("%s ipi send msg fail:%d\n", __func__, ret);
 
 	return ret;
+}
+
+int mtk_aod_scp_doze_update(int doze)
+{
+	if (!AOD_STAT_MATCH(AOD_STAT_ENABLE))
+		return 0;
+
+	if (doze) {
+		mtkfb_set_backlight_level_AOD(1800);
+		AOD_STAT_SET(AOD_STAT_ACTIVE);
+		mtk_prepare_config_map();
+		DDPMSG("Ahsin mdelay 10000\n");
+		mtk_aod_scp_ipi_send(0);
+		mtk_aod_scp_set_semaphore_noirq(0);
+		mdelay(10000);
+	} else
+		AOD_STAT_CLR(AOD_STAT_ACTIVE);
+
+	return 0;
 }
 
 static int mtk_aod_scp_recv_handler(unsigned int id, void *prdata, void *data, unsigned int len)

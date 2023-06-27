@@ -459,6 +459,29 @@ void mtk_dprec_snapshot(void)
 	spin_unlock_irqrestore(dprec_logger_lock(DPREC_LOGGER_DEBUG), flag);
 }
 
+int mtkfb_set_backlight_level_AOD(unsigned int level)
+{
+	struct drm_crtc *crtc;
+	int ret = 0;
+
+	if (IS_ERR_OR_NULL(drm_dev)) {
+		DDPINFO("%s, invalid drm dev\n", __func__);
+		return -EINVAL;
+	}
+
+	/* this debug cmd only for crtc0 */
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPINFO("%s failed to find crtc\n", __func__);
+		return -EINVAL;
+	}
+	ret = mtk_drm_setbacklight(crtc, level, 0, (0X1<<SET_BACKLIGHT_LEVEL), 0);
+
+	return ret;
+}
+EXPORT_SYMBOL(mtkfb_set_backlight_level_AOD);
+
 int __mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
 			       unsigned int cfg_flag, bool group)
 {
