@@ -401,8 +401,7 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 		final_offset, final_scale, initial_scale_value, group_total,
 		nfl_bpg_offset, slice_bpg_offset, scale_increment_interval,
 		scale_decrement_interval;
-	unsigned int rc_tgt_offset_hi, rc_tgt_offset_lo, rc_edge_factor,
-		rct_on, bp_enable;
+	unsigned int rc_tgt_offset_hi, rc_tgt_offset_lo, rc_edge_factor, bp_enable;
 	unsigned int dsc_param_load_mode =
 		comp->mtk_crtc->panel_ext->params->dsc_param_load_mode;
 	unsigned int i = 0;
@@ -416,9 +415,7 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 	dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params;
 	spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
 
-	bit_per_pixel = dsc_params->bit_per_pixel;
-	bit_per_channel = dsc_params->bit_per_channel;
-	line_buf_depth = dsc_params->bit_per_channel + 1;
+
 
 	if (spr_params->enable == 1 && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1)
 		dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params_spr_in;
@@ -427,6 +424,10 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 	range_min_qp = dsc_params->ext_pps_cfg.range_min_qp;
 	range_max_qp = dsc_params->ext_pps_cfg.range_max_qp;
 	range_bpg_ofs = dsc_params->ext_pps_cfg.range_bpg_ofs;
+
+	bit_per_pixel = dsc_params->bit_per_pixel;
+	bit_per_channel = dsc_params->bit_per_channel;
+	line_buf_depth = dsc_params->bit_per_channel + 1;
 
 	if (dsc_params->enable == 1) {
 		DDPINFO("%s, w:%d, h:%d, slice_mode:%d,slice(%d,%d),bpp:%d\n",
@@ -606,9 +607,6 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 			(((dsc_params->ver & 0xf) == 2) ? 0x40 : 0x20),
 			DISP_REG_DSC_SHADOW + DISP_REG_DSC1_OFFSET, 0x60, handle);
 
-		rct_on = 1;
-		bp_enable = 1;
-
 		reg_val = line_buf_depth & 0xF;
 		if (dsc_params->bit_per_channel == 0)
 			reg_val |= (0x8 << 4);
@@ -619,7 +617,8 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 		else
 			reg_val |= (dsc_params->bit_per_pixel << 8);
 
-		reg_val |= (rct_on << 18);
+		bp_enable = 1;
+		reg_val |= (dsc_params->rct_on<< 18);
 		reg_val |= (bp_enable << 19);
 
 		mtk_ddp_write_relaxed(comp,	reg_val,
