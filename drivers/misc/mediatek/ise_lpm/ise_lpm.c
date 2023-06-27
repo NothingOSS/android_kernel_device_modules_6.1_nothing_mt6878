@@ -35,6 +35,7 @@
 #define SCMI_MBOX_ACK_ISE_PWR_OFF_DONE		(0x2)
 
 #define ISE_LPM_FREERUN_TIMEOUT_MS		60000
+#define ISE_LPM_PWR_OFF_DEBOUNCE_MS		1000
 
 enum ise_power_state {
 	ISE_NO_DEFINE = 0x0,
@@ -55,7 +56,8 @@ struct ise_lpm_work_struct {
 };
 
 enum ise_lpm_wq_cmd {
-	ISE_LPM_FREERUN
+	ISE_LPM_FREERUN,
+	ISE_PWR_OFF
 };
 
 enum ise_pwr_ut_id_enum {
@@ -72,11 +74,13 @@ static struct scmi_tinysys_info_st *_tinfo;
 
 struct mutex mutex_ise_lpm;
 static struct timer_list ise_lpm_timer;
+static struct timer_list ise_lpm_pd_timer;
 static struct ise_lpm_work_struct ise_lpm_work;
 static struct workqueue_struct *ise_lpm_wq;
 
 static uint32_t ise_wakelock_en;
 static uint32_t ise_lpm_freerun_en;
+static uint32_t ise_req_pending_cnt;
 static uint32_t ise_awake_user_list[ISE_AWAKE_ID_NUM];
 static uint64_t ise_boot_cnt;
 
@@ -111,8 +115,12 @@ enum mtk_ise_awake_ack_t mtk_ise_awake_lock(enum mtk_ise_awake_id_t mtk_ise_awak
 	start_time = cpu_clock(0);
 	mutex_lock(&mutex_ise_lpm);
 	inc_ise_awake_cnt(mtk_ise_awake_id);
-	if (ise_awake_cnt == 1)
-		ise_power_on();
+	if (ise_awake_cnt == 1) {
+		if (ise_req_pending_cnt == 1)
+			ise_req_pending_cnt--;
+		else
+			ise_power_on();
+	}
 	end_time = cpu_clock(0);
 	pr_notice("%s cnt%d user%d start=%llu, end=%llu diff=%llu\n",
 		__func__, ise_awake_cnt, mtk_ise_awake_id,
@@ -146,8 +154,11 @@ enum mtk_ise_awake_ack_t mtk_ise_awake_unlock(enum mtk_ise_awake_id_t mtk_ise_aw
 	start_time = cpu_clock(0);
 	mutex_lock(&mutex_ise_lpm);
 	dec_ise_awake_cnt(mtk_ise_awake_id);
-	if (ise_awake_cnt == 0)
-		ise_power_off();
+	if (ise_awake_cnt == 0) {
+		ise_req_pending_cnt++;
+		mod_timer(&ise_lpm_pd_timer,
+			jiffies + msecs_to_jiffies(ISE_LPM_PWR_OFF_DEBOUNCE_MS));
+	}
 	end_time = cpu_clock(0);
 	pr_notice("%s cnt%d user%d start=%llu, end=%llu diff=%llu\n",
 		__func__, ise_awake_cnt, mtk_ise_awake_id,
@@ -236,6 +247,11 @@ static void ise_lpm_timeout(struct timer_list *t)
 	del_timer(&ise_lpm_timer);
 }
 
+static void ise_lpm_pwr_off_cb(struct timer_list *t)
+{
+	ise_lpm_send_wq(ISE_PWR_OFF);
+}
+
 void ise_lpm_work_handle(struct work_struct *ws)
 {
 	struct ise_lpm_work_struct *ise_lpm_ws
@@ -252,6 +268,15 @@ void ise_lpm_work_handle(struct work_struct *ws)
 			pr_notice("%s err %d", __func__, ret);
 			WARN_ON_ONCE(1);
 		}
+		break;
+	case ISE_PWR_OFF:
+		mutex_lock(&mutex_ise_lpm);
+		if (ise_req_pending_cnt > 0) {
+			ise_req_pending_cnt--;
+			ise_power_off();
+		} else
+			pr_notice("%s drop pwr off %d", __func__, ise_req_pending_cnt);
+		mutex_unlock(&mutex_ise_lpm);
 		break;
 	}
 }
@@ -355,6 +380,9 @@ static int ise_lpm_probe(struct platform_device *pdev)
 		 */
 		ise_awake_cnt = 1;
 		ise_awake_user_list[ISE_PM_INIT] = 1;
+
+		ise_req_pending_cnt = 0;
+		timer_setup(&ise_lpm_pd_timer, ise_lpm_pwr_off_cb, 0);
 		mutex_unlock(&mutex_ise_lpm);
 		proc_create("ise_lpm_dbg", 0664, NULL, &ise_lpm_dbg_fops);
 	}
