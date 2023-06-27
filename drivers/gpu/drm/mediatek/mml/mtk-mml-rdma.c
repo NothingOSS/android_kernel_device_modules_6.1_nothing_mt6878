@@ -314,6 +314,13 @@ static const enum cpr_reg_idx rdma_preultra_th[] = {
 int mml_racing_rh = MML_RDMA_RACING_MAX;
 module_param(mml_racing_rh, int, 0644);
 
+/* 0: force disable
+ * 1: force enable
+ * 2: check by platform setting and format
+ */
+int rdma_tile_reset = 2;
+module_param(rdma_tile_reset, int, 0644);
+
 enum rdma_label {
 	RDMA_LABEL_BASE_0 = 0,
 	RDMA_LABEL_BASE_0_MSB,
@@ -429,8 +436,10 @@ enum rdma_golden_fmt {
 struct rdma_data {
 	u32 tile_width;
 	u32 sram_size;
+	u16 gpr[MML_PIPE_CNT];
 	u8 rb_swap;	/* version for rb channel swap behavior */
 	bool write_sec_reg;
+	bool tile_reset;
 
 	/* threshold golden setting for racing mode */
 	struct rdma_golden golden[GOLDEN_FMT_TOTAL];
@@ -593,7 +602,9 @@ static const struct rdma_data mt6886_rdma_data = {
 static const struct rdma_data mt6989_rdma_data = {
 	.tile_width = 3520,
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.rb_swap = 1,
+	.tile_reset = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6985),
@@ -663,6 +674,7 @@ struct rdma_frame_data {
 	u16 crop_off_l;		/* crop offset left */
 	u16 crop_off_t;		/* crop offset top */
 	u32 gmcif_con;
+	struct cmdq_poll_reuse poll_reset;
 	bool ultra_off;
 
 	/* array of indices to one of entry in cache entry list,
@@ -1897,6 +1909,27 @@ static s32 rdma_wait(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+static void rdma_reset(struct mml_comp *comp, struct mml_task *task, struct mml_comp_config *ccfg)
+{
+	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
+	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+
+	if (!rdma_tile_reset)
+		return;
+
+	if (rdma_tile_reset == 1)
+		goto force_reset;
+
+	if (!rdma->data->tile_reset || !MML_FMT_AFBC(task->config->info.src.format))
+		return;
+
+force_reset:
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_RESET, 0x1, U32_MAX);
+	cmdq_pkt_poll_timeout_reuse(pkt, 0x0, SUBSYS_NO_SUPPORT, comp->base_pa + RDMA_RESET,
+		0x1, 3, rdma->data->gpr[ccfg->pipe], &rdma_frm->poll_reset);
+}
+
 static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
@@ -2050,6 +2083,9 @@ static s32 rdma_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			 rdma_frm->labels[RDMA_LABEL_BASE_2_MSB],
 			 iova[2]);
 
+	if (rdma_frm->poll_reset.jump_to_begin.offset && rdma_frm->poll_reset.jump_to_end.offset)
+		cmdq_pkt_reuse_poll(task->pkts[ccfg->pipe], &rdma_frm->poll_reset);
+
 	return 0;
 }
 
@@ -2062,6 +2098,7 @@ static const struct mml_comp_config_ops rdma_cfg_ops = {
 	.frame = rdma_config_frame,
 	.tile = rdma_config_tile,
 	.wait = rdma_wait,
+	.reset = rdma_reset,
 	.post = rdma_post,
 	.reframe = rdma_reconfig_frame,
 };
