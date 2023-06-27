@@ -726,7 +726,6 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 	int ui32CurFreqID, ui32CeilingID, ui32FloorID;
 	unsigned int cur_freq = 0;
 	enum gpu_dvfs_policy_state policy_state;
-	unsigned int cur_minfreq, cur_top, cur_stack, cur_real_stack;
 
 	ui32CurFreqID = ged_get_cur_oppidx();
 
@@ -788,19 +787,11 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 				gpufreq_get_cur_freq(TARGET_DEFAULT) / 1000,
 				gpufreq_get_cur_freq(TARGET_GPU) / 1000);
 		} else {
-			cur_minfreq = ged_get_freq_by_idx(ged_get_min_oppidx());
-			cur_top = ged_get_cur_top_freq();
-			cur_stack = ged_get_cur_stack_freq();
-			cur_real_stack = gpufreq_get_cur_freq(TARGET_DEFAULT);
+			trace_tracing_mark_write(5566, "gpu_freq",
+				(long long) ged_get_cur_stack_freq() / 1000);
 
-			if (cur_top >= cur_minfreq &&
-				cur_real_stack >= cur_minfreq) {
-				trace_tracing_mark_write(5566, "gpu_freq",
-				(long long) cur_stack / 1000);
-
-				trace_GPU_DVFS__Frequency(cur_stack / 1000,
-					cur_real_stack / 1000, cur_top / 1000);
-			}
+			trace_GPU_DVFS__Frequency(ged_get_cur_stack_freq() / 1000,
+				ged_get_cur_real_stack_freq() / 1000, ged_get_cur_top_freq() / 1000);
 		}
 
 		trace_tracing_mark_write(5566, "gpu_freq_ceil",
@@ -841,7 +832,6 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	int ui32CurFreqID, ui32CeilingID, ui32FloorID, newTopFreq;
 	unsigned int cur_freq = 0;
 	enum gpu_dvfs_policy_state policy_state;
-	unsigned int cur_minfreq, cur_top, cur_stack, cur_real_stack;
 	int ret = GED_OK;
 
 	ui32CurFreqID = ged_get_cur_oppidx();
@@ -926,19 +916,11 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 			gpufreq_get_cur_freq(TARGET_DEFAULT) / 1000,
 			gpufreq_get_cur_freq(TARGET_GPU) / 1000);
 	} else {
-		cur_minfreq = ged_get_freq_by_idx(ged_get_min_oppidx());
-		cur_top = ged_get_cur_top_freq();
-		cur_stack = ged_get_cur_stack_freq();
-		cur_real_stack = gpufreq_get_cur_freq(TARGET_DEFAULT);
+		trace_tracing_mark_write(5566, "gpu_freq",
+			(long long) ged_get_cur_stack_freq() / 1000);
 
-		if (cur_top >= cur_minfreq &&
-			cur_real_stack >= cur_minfreq) {
-			trace_tracing_mark_write(5566, "gpu_freq",
-			(long long) cur_stack / 1000);
-
-			trace_GPU_DVFS__Frequency(cur_stack / 1000,
-				cur_real_stack / 1000, cur_top / 1000);
-		}
+		trace_GPU_DVFS__Frequency(ged_get_cur_stack_freq() / 1000,
+			ged_get_cur_real_stack_freq() / 1000, ged_get_cur_top_freq() / 1000);
 	}
 
 	trace_tracing_mark_write(5566, "gpu_freq_ceil",
@@ -1709,7 +1691,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 			t_gpu_target_hd = t_gpu_target;
 		// from this point on, t_gpu_target & t_gpu_target_hd would be > 0
 
-		if (t_gpu > (t_gpu_target * OVERDUE_TH / 10) &&
+		if (t_gpu_pipe > (t_gpu_target * OVERDUE_TH / 10) &&
 			gpu_freq_pre > gpu_freq_overdue_max)
 			overdue_counter = OVERDUE_LIMIT_FRAME;
 

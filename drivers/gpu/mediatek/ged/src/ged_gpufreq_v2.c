@@ -367,19 +367,18 @@ unsigned int ged_get_cur_freq(void)
 	return freq;
 }
 
-unsigned int ged_get_cur_top_freq(void)
+int ged_get_min_oppidx(void)
 {
-	return gpufreq_get_cur_freq(TARGET_GPU);
-}
+	if (is_dcs_enable() && g_async_virtual_table_support)
+		return g_virtual_async_oppnum - 1;
 
-unsigned int ged_get_cur_stack_freq(void)
-{
-	return ged_get_cur_freq();
-}
+	if (is_dcs_enable() && g_min_virtual_oppidx)
+		return g_min_virtual_oppidx;
 
-unsigned int ged_get_cur_volt(void)
-{
-	return gpufreq_get_cur_volt(TARGET_DEFAULT);
+	if (g_min_working_oppidx)
+		return g_min_working_oppidx;
+	else
+		return gpufreq_get_opp_num(TARGET_DEFAULT) - 1;
 }
 
 unsigned int ged_get_freq_by_idx(int oppidx)
@@ -397,6 +396,72 @@ unsigned int ged_get_freq_by_idx(int oppidx)
 		oppidx = g_min_working_oppidx;
 
 	return g_working_table[oppidx].freq;
+}
+
+unsigned int ged_get_cur_top_freq(void)
+{
+	unsigned int cur_minfreq = ged_get_freq_by_idx(ged_get_min_oppidx());
+	unsigned int cur_top_freq = gpufreq_get_cur_freq(TARGET_GPU);
+
+	//if GPU power off the freq is 26M ,the current oppidx is last oppidx. So get the freq
+	if (cur_top_freq < cur_minfreq)
+		return ged_get_freq_by_idx(gpufreq_get_cur_oppidx(TARGET_GPU));
+	else
+		return cur_top_freq;
+}
+
+unsigned int ged_get_cur_stack_freq(void)
+{
+	unsigned int cur_minfreq = ged_get_freq_by_idx(ged_get_min_oppidx());
+	unsigned int core_num = 0;
+	int i = 0;
+	int oppidx = 0;
+	unsigned int cur_stack_freq = ged_get_cur_freq();
+
+	//if GPU power off the freq is 26M ,the current oppidx is last oppidx. So get the freq
+	if ( cur_stack_freq < cur_minfreq) {
+
+		oppidx = gpufreq_get_cur_oppidx(TARGET_DEFAULT);
+
+		if (!is_dcs_enable())
+			return ged_get_freq_by_idx(oppidx);
+
+		core_num = dcs_get_cur_core_num();
+
+		if (core_num == g_max_core_num)
+			return ged_get_freq_by_idx(oppidx);
+
+		for (i = 0; i < g_avail_mask_num; i++) {
+			if (g_mask_table[i].num == core_num)
+				break;
+		}
+
+		if (g_async_ratio_support)
+			oppidx += i * g_oppnum_eachmask;
+		else
+			oppidx = g_min_working_oppidx + i;
+
+		return ged_get_freq_by_idx(oppidx);
+	}else
+		return cur_stack_freq;
+
+}
+
+unsigned int ged_get_cur_real_stack_freq(void)
+{
+	unsigned int cur_minfreq = ged_get_freq_by_idx(ged_get_min_oppidx());
+	unsigned int cur_real_stack_freq = gpufreq_get_cur_freq(TARGET_DEFAULT);
+
+	//if GPU power off the freq is 26M ,the current oppidx is last oppidx. So get the freq
+	if (cur_real_stack_freq < cur_minfreq)
+		return ged_get_freq_by_idx(gpufreq_get_cur_oppidx(TARGET_DEFAULT));
+	else
+		return cur_real_stack_freq;
+}
+
+unsigned int ged_get_cur_volt(void)
+{
+	return gpufreq_get_cur_volt(TARGET_DEFAULT);
 }
 
 int ged_get_sc_freq_by_virt_opp(int oppidx)
@@ -509,20 +574,6 @@ int ged_get_max_freq_in_opp(void)
 int ged_get_max_oppidx(void)
 {
 	return g_max_working_oppidx;
-}
-
-int ged_get_min_oppidx(void)
-{
-	if (is_dcs_enable() && g_async_virtual_table_support)
-		return g_virtual_async_oppnum - 1;
-
-	if (is_dcs_enable() && g_min_virtual_oppidx)
-		return g_min_virtual_oppidx;
-
-	if (g_min_working_oppidx)
-		return g_min_working_oppidx;
-	else
-		return gpufreq_get_opp_num(TARGET_DEFAULT) - 1;
 }
 
 int ged_get_min_oppidx_real(void)
