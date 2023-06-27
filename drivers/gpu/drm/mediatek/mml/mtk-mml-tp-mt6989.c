@@ -46,7 +46,7 @@ module_param(mml_path_mode, int, 0644);
 int mml_racing;
 module_param(mml_racing, int, 0644);
 
-int mml_dl;
+int mml_dl = 2;
 module_param(mml_dl, int, 0644);
 
 int mml_rrot;
@@ -64,7 +64,7 @@ module_param(mml_dpc, int, 0644);
 /* 0: off
  * 1: on
  */
-int mml_binning = 1;
+int mml_binning;
 module_param(mml_binning, int, 0644);
 
 struct path_node {
