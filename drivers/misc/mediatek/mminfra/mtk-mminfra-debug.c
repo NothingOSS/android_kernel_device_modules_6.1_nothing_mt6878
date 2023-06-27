@@ -61,6 +61,7 @@ static u32 bkrs_reg_pa;
 static bool mminfra_ao_base;
 static bool vcp_gipc;
 static bool no_sleep_pd_cb;
+static bool skip_apsrc;
 
 #define MMINFRA_BASE		0x1e800000
 #define MMINFRA_AO_BASE		0x1e8ff000
@@ -274,20 +275,23 @@ static int mtk_mminfra_pd_callback(struct notifier_block *nb,
 				BUG_ON(1);
 			}
 			iounmap(test_base);
-
-			writel(0x20002, dbg->gce_base + GCE_GCTL_VALUE);
-			pr_notice("%s: enable gce apsrc: %#x=%#x\n",
-				__func__, GCE_BASE + GCE_GCTL_VALUE,
-				readl(dbg->gce_base + GCE_GCTL_VALUE));
+			if (!skip_apsrc) {
+				writel(0x20002, dbg->gce_base + GCE_GCTL_VALUE);
+				pr_notice("%s: enable gce apsrc: %#x=%#x\n",
+					__func__, GCE_BASE + GCE_GCTL_VALUE,
+					readl(dbg->gce_base + GCE_GCTL_VALUE));
+			}
 			mtk_mminfra_gce_sram_en();
 		}
 		pr_notice("%s: enable clk ref_cnt=%d\n", __func__, count);
 	} else if (flags == GENPD_NOTIFY_PRE_OFF) {
 		if (!no_sleep_pd_cb) {
-			writel(0, dbg->gce_base + GCE_GCTL_VALUE);
-			pr_notice("%s: disable gce apsrc: %#x=%#x\n",
-				__func__, GCE_BASE + GCE_GCTL_VALUE,
-				readl(dbg->gce_base + GCE_GCTL_VALUE));
+			if (!skip_apsrc) {
+				writel(0, dbg->gce_base + GCE_GCTL_VALUE);
+				pr_notice("%s: disable gce apsrc: %#x=%#x\n",
+					__func__, GCE_BASE + GCE_GCTL_VALUE,
+					readl(dbg->gce_base + GCE_GCTL_VALUE));
+			}
 			test_base = ioremap(bkrs_reg_pa, 4);
 			bk_val = readl_relaxed(test_base);
 			if (mminfra_bkrs)
@@ -493,8 +497,9 @@ int mtk_mminfra_dbg_hang_detect(const char *user)
 		dev_info(dev, "%s\n", buf);
 
 		mminfra_gals_dump();
-		pr_notice("%s: gce apsrc: %#x=%#x\n",
-			__func__, GCE_BASE + GCE_GCTL_VALUE, readl(dbg->gce_base + GCE_GCTL_VALUE));
+		if (!skip_apsrc)
+			pr_notice("%s: gce apsrc: %#x=%#x\n", __func__, GCE_BASE + GCE_GCTL_VALUE,
+					readl(dbg->gce_base + GCE_GCTL_VALUE));
 		pm_runtime_put(dbg->comm_dev[i]);
 		return 0;
 	}
@@ -610,6 +615,8 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 		vcp_gipc = of_property_read_bool(node, "vcp-gipc");
 		no_sleep_pd_cb = of_property_read_bool(node, "no-sleep-pd-cb");
 	}
+
+	skip_apsrc = of_property_read_bool(node, "skip-apsrc");
 
 	if (!of_property_read_u32(node, "spm-base", &spm_base_pa)) {
 		pr_notice("[mminfra] spm_base_pa=%#x\n", spm_base_pa);
