@@ -899,7 +899,6 @@
 		hfrp-1-bus = <&hfrp_1_bus>;
 		hw-voter-regmap = <&hwv>;
 		mm-hw-ccf-regmap = <&mm_hwv>;
-		dis1-shutdown-supply = <&mt6363_vbuck1>;
 	};
 
 	vlpcfg_bus: syscon@1c00c000 {
@@ -1054,7 +1053,6 @@
 		compatible = "mediatek,mt6989-vdisp-ctrl";
 		reg = <0 0x1c001000 0 0x1000>;
 		reg-names = "SPM_BASE";
-		dis1-shutdown-supply = <&mt6363_vbuck1>;
 	};
 
 	mminfra_config_clk: syscon@1e800000 {
@@ -17835,6 +17833,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 	regulator-min-microvolt = <0>;
 };
 
+/delete-node/ &mt6363_vbuck1;
 /delete-node/ &mt6363_vbuck1_sshub;
 /delete-node/ &mt6363_vbuck2_sshub;
 /delete-node/ &mt6363_vbuck4_sshub;
