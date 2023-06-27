@@ -3118,7 +3118,7 @@
 		suspend-check;
 	};
 
-	smi-dbg {
+	smi_dbg: smi-dbg {
 		compatible = "mediatek,mtk-smi-dbg";
 		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb20 &smi_larb21 &smi_larb32
 					&smi_larb33 &smi_larb2 &smi_larb3 &smi_larb4 &smi_larb5
