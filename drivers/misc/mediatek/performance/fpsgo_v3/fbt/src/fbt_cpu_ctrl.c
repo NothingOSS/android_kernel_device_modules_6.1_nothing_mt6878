@@ -134,6 +134,7 @@ static void __update_cpu_freq_locked(void)
 				__cpu_ctrl_freq_systrace(i, fbt_final_ceiling[i]);
 			}
 		} else {
+			fbt_final_ceiling[i] = 0;
 			freq_qos_update_request(&(fbt_cpu_rq[i]), fbt_max_freq[i]);
 			__cpu_ctrl_freq_systrace(i, fbt_max_freq[i]);
 		}
