@@ -261,6 +261,7 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 #define DISP_REG_OVL_ADDR_MT6779 0x0f40
 #define DISP_REG_OVL_ADDR_MT8173 0x0f40
 #define DISP_REG_OVL_ADDR(module, n) ((module)->data->addr + 0x20 * (n))
+#define DISP_REG_OVL_STASH_CFG0 (0xAE0UL)
 
 #define DISP_REG_OVL_PQ_LOOP_CON (0x2E0UL)
 #define DISP_OVL_PQ_OUT_SIZE_SEL BIT(0)
@@ -414,6 +415,7 @@ enum GS_OVL_FLD {
 	GS_OVL_RDMA_PRE_ULTRA_HIGH_DIS,
 	GS_OVL_BLOCK_EXT_ULTRA,
 	GS_OVL_BLOCK_EXT_PRE_ULTRA,
+	GS_OVL_STASH_EN,
 	GS_OVL_FLD_NUM,
 };
 
@@ -3372,6 +3374,11 @@ void mtk_ovl_cal_golden_setting(struct mtk_ddp_config *cfg,
 	/* OVL_EN */
 	gs[GS_OVL_BLOCK_EXT_ULTRA] = (!is_dc) ? 0 : 1;
 	gs[GS_OVL_BLOCK_EXT_PRE_ULTRA] = (!is_dc) ? 0 : 1;
+
+	if (data->stash_en)
+		gs[GS_OVL_STASH_EN] = data->stash_en;
+	else
+		gs[GS_OVL_STASH_EN] = 0;
 }
 
 static int mtk_ovl_golden_setting(struct mtk_ddp_comp *comp,
@@ -3459,6 +3466,12 @@ static int mtk_ovl_golden_setting(struct mtk_ddp_comp *comp,
 		 (gs[GS_OVL_BLOCK_EXT_PRE_ULTRA] << 19);
 	cmdq_pkt_write(handle, comp->cmdq_base, baddr + DISP_REG_OVL_EN,
 		       regval, 0x3 << 18);
+
+	/* OVL_STASH_EN */
+	regval = gs[GS_OVL_STASH_EN];
+	if (regval)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+		       baddr + DISP_REG_OVL_STASH_CFG0, regval, ~0);
 
 	return 0;
 }
@@ -4885,12 +4898,13 @@ static const struct mtk_disp_ovl_data mt6989_ovl_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.preultra_th_dc = 0x3c0,
-	.fifo_size = 1024,
+	.fifo_size = 1536,
 	.issue_req_th_dl = 511,
 	.issue_req_th_dc = 31,
 	.issue_req_th_urg_dl = 255,
 	.issue_req_th_urg_dc = 31,
 	.greq_num_dl = 0xFFFF,
+	.stash_en = 0x73,
 	.is_support_34bits = true,
 	.aid_sel_mapping = &mtk_ovl_aid_sel_MT6989,
 	.aid_per_layer_setting = true,

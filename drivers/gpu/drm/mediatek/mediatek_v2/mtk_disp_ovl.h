@@ -33,6 +33,7 @@ struct mtk_disp_ovl_data {
 	unsigned int issue_req_th_urg_dl;
 	unsigned int issue_req_th_urg_dc;
 	unsigned int greq_num_dl;
+	unsigned int stash_en;
 	bool is_support_34bits;
 	unsigned int (*aid_sel_mapping)(struct mtk_ddp_comp *comp);
 	bool aid_per_layer_setting;

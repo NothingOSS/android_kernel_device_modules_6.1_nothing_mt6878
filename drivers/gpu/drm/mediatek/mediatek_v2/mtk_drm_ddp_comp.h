@@ -29,6 +29,9 @@ struct drm_crtc_state;
 #define MMSYS_SODI_REQ_MASK                       0xF4
 #define MMSYS_EMI_REQ_CTL                         0xF8
 
+#define DISPSYS0_DDREN_ACK_CON                    0x50
+#define DISPSYS1_DDREN_ACK_CON                    0x3F4
+
 #define MMSYS_DUMMY0 0x0400
 #define DISP_REG_CONFIG_MMSYS_MISC                0x0F0
 

@@ -78,6 +78,13 @@
 
 #define MT6985_SODI_REQ_VAL 0x13F6C0
 
+#define MT6989_DISP0_SODI_REQ_VAL 0x10f500
+#define MT6989_DISP1_SODI_REQ_VAL 0xf00f00f
+#define MT6989_DISP0_DDREN_ACK_CON 0x100
+#define MT6989_DISP1_DDREN_ACK_CON 0x3f
+#define MT6989_OVL_SODI_REQ_SEL (BIT(8))
+#define MT6989_OVL_SODI_REQ_VAL (BIT(12) | BIT(13) | BIT(14) | BIT(15))
+
 #define MT6879_DVFS_HALT_MASK_SEL_ALL             REG_FLD_MSB_LSB(21, 16)
 	#define MT6879_DVFS_HALT_MASK_SEL_RDMA0       REG_FLD_MSB_LSB(16, 16)
 	#define MT6879_DVFS_HALT_MASK_SEL_RDMA1       REG_FLD_MSB_LSB(17, 17)
@@ -2339,48 +2346,84 @@ void mt6989_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 		 *	& (~sodi_req_mask));
 		 * v += (sodi_req_val & sodi_req_mask);
 		 */
-		/* 0xF4/0xF8: only config on DISPSYS(HARD CODE) */
-		v = MT6985_SODI_REQ_VAL;
+		/* 0xF4/0xF8: config on DISPSYS(HARD CODE) */
+		v = MT6989_DISP0_SODI_REQ_VAL;
 		writel_relaxed(v, priv->config_regs + MMSYS_SODI_REQ_MASK);
-		if (priv->side_config_regs)
+		if (priv->side_config_regs) {
+			v = MT6989_DISP1_SODI_REQ_VAL;
 			writel_relaxed(v, priv->side_config_regs + MMSYS_SODI_REQ_MASK);
+		}
 		v = 0x0;
 		writel_relaxed(v, priv->config_regs +  MMSYS_EMI_REQ_CTL);
 		if (priv->side_config_regs)
 			writel_relaxed(v, priv->side_config_regs +  MMSYS_EMI_REQ_CTL);
 
-		/* 0xF0: only config on OVLSYS(HARD CODE) */
+		/* DDREN_ACK_CON 0x3F4 */
+		v = MT6989_DISP0_DDREN_ACK_CON;
+		writel_relaxed(v, priv->config_regs + DISPSYS0_DDREN_ACK_CON);
+		if (priv->side_config_regs) {
+			v = MT6989_DISP1_DDREN_ACK_CON;
+			writel_relaxed(v, priv->side_config_regs + DISPSYS1_DDREN_ACK_CON);
+		}
+
+		/* 0xF0/0xF4: only config on OVLSYS(HARD CODE) */
 		if (priv->ovlsys0_regs) {
 			v = (readl(priv->ovlsys0_regs + MMSYS_MISC)
 				& (~0x3FFFC));
 			v |= 0x28000;
 			writel_relaxed(v, priv->ovlsys0_regs + MMSYS_MISC);
+
+			v = readl(priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
+			v = (v | MT6989_OVL_SODI_REQ_SEL);
+			v = (v & ~(MT6989_OVL_SODI_REQ_VAL));
+			writel_relaxed(v, priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
 		}
 		if (priv->ovlsys1_regs) {
 			v = (readl(priv->ovlsys1_regs + MMSYS_MISC)
 				& (~0x3FFFC));
 			writel_relaxed(v, priv->ovlsys1_regs + MMSYS_MISC);
+
+			v = readl(priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
+			v = (v | MT6989_OVL_SODI_REQ_SEL);
+			v = (v & ~(MT6989_OVL_SODI_REQ_VAL));
+			writel_relaxed(v, priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
 		}
 	} else {
-		/* 0xF4/0xF8: only config on DISPSYS(HARD CODE) */
+		/* 0xF4/0xF8: config on DISPSYS(HARD CODE) */
 		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
-			MMSYS_SODI_REQ_MASK, MT6985_SODI_REQ_VAL, ~0);
+			MMSYS_SODI_REQ_MASK, MT6989_DISP0_SODI_REQ_VAL, ~0);
 		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
 			MMSYS_EMI_REQ_CTL, 0, ~0);
+		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+			DISPSYS0_DDREN_ACK_CON, MT6989_DISP0_DDREN_ACK_CON, ~0);
 		if (priv->side_config_regs_pa) {
 			cmdq_pkt_write(handle, NULL, priv->side_config_regs_pa +
-				MMSYS_SODI_REQ_MASK, MT6985_SODI_REQ_VAL, ~0);
+				MMSYS_SODI_REQ_MASK, MT6989_DISP1_SODI_REQ_VAL, ~0);
 			cmdq_pkt_write(handle, NULL, priv->side_config_regs_pa +
 				MMSYS_EMI_REQ_CTL, 0, ~0);
+			cmdq_pkt_write(handle, NULL, priv->side_config_regs_pa +
+				DISPSYS1_DDREN_ACK_CON, MT6989_DISP1_DDREN_ACK_CON, ~0);
 		}
-		/* 0xF0: only config on OVLSYS(HARD CODE) */
+		/* 0xF0/0xF4: config on OVLSYS(HARD CODE) */
 		if (priv->ovlsys0_regs_pa) {
 			cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
 				MMSYS_MISC, 0x28000, 0x3FFFC);
+
+			cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
+				MMSYS_SODI_REQ_MASK, MT6989_OVL_SODI_REQ_SEL,
+				MT6989_OVL_SODI_REQ_SEL);
+			cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
+				MMSYS_SODI_REQ_MASK, 0, MT6989_OVL_SODI_REQ_VAL);
 		}
 		if (priv->ovlsys1_regs_pa) {
 			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
 				MMSYS_MISC, 0x0, 0x3FFFC);
+
+			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
+				MMSYS_SODI_REQ_MASK, MT6989_OVL_SODI_REQ_SEL,
+				MT6989_OVL_SODI_REQ_SEL);
+			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
+				MMSYS_SODI_REQ_MASK, 0, MT6989_OVL_SODI_REQ_VAL);
 		}
 	}
 }
