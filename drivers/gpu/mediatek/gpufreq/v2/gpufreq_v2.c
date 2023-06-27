@@ -1911,6 +1911,7 @@ static int gpufreq_wrapper_pdrv_probe(struct platform_device *pdev)
 
 	/* init spinlock */
 	raw_spin_lock_init(&gpufreq_ipi_lock);
+	raw_spin_lock_init(&gpufreq_power_lock);
 
 	/* init shared memory */
 	ret = gpufreq_shared_memory_init();
