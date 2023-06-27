@@ -248,6 +248,12 @@
 #define STRTAB_STE_1_EATS_TRANS		1UL
 #define STRTAB_STE_1_EATS_S1CHK		2UL
 
+#define STRTAB_STE_1_TCU_PF		GENMASK_ULL(57, 56)
+#define STRTAB_STE_1_TCU_PF_DIS		0UL
+#define STRTAB_STE_1_TCU_PF_RSV		1UL
+#define STRTAB_STE_1_TCU_PF_FP		2UL
+#define STRTAB_STE_1_TCU_PF_BP		3UL
+
 #define STRTAB_STE_1_STRW		GENMASK_ULL(31, 30)
 #define STRTAB_STE_1_STRW_NSEL1		0UL
 #define STRTAB_STE_1_STRW_EL2		2UL
@@ -669,6 +675,7 @@ struct arm_smmu_device {
 #define ARM_SMMU_FEAT_SVA		(1 << 17)
 #define ARM_SMMU_FEAT_E2H		(1 << 18)
 #define ARM_SMMU_FEAT_MPAM		(1 << 19)
+#define ARM_SMMU_FEAT_TCU_PF		(1 << 20)
 	u32				features;
 
 #define ARM_SMMU_OPT_SKIP_PREFETCH	(1 << 0)
@@ -785,6 +792,8 @@ struct arm_smmu_impl {
 	int (*report_device_fault)(struct arm_smmu_master *master,
 				   u64 *evt,
 				   struct iommu_fault_event *fault_evt);
+	void (*smmu_setup_features)(struct arm_smmu_master *master,
+				    u32 sid, __le64 *dst);
 	int (*def_domain_type)(struct device *dev);
 	bool (*dev_has_feature)(struct device *dev,
 				enum iommu_dev_features feat);

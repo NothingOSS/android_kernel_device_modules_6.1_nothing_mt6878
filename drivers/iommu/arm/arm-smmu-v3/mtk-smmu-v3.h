@@ -502,6 +502,7 @@ struct mtk_smmu_data {
 	u32				txu_mpam_data_cnt;
 	u32				partid_max;
 	u32				pmg_max;
+	u32				tcu_prefetch;
 
 	u32				irq_cnt;
 	unsigned long			irq_first_jiffies;

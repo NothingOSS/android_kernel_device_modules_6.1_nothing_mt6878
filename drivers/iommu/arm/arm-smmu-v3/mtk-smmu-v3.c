@@ -1354,6 +1354,26 @@ static bool mtk_smmu_dev_disable_feature(struct device *dev,
 	}
 }
 
+static void mtk_smmu_setup_features(struct arm_smmu_master *master,
+				    u32 sid, __le64 *dst)
+{
+	struct arm_smmu_device *smmu;
+	struct mtk_smmu_data *data;
+	u64 val;
+
+	if (!master || !master->smmu || !dst)
+		return;
+
+	smmu = master->smmu;
+	data = to_mtk_smmu_data(smmu);
+
+	/* setup tcu prefetch */
+	if ((smmu->features & ARM_SMMU_FEAT_TCU_PF) && !master->ats_enabled) {
+		val = FIELD_PREP(STRTAB_STE_1_TCU_PF, data->tcu_prefetch);
+		dst[1] |= cpu_to_le64(val);
+	}
+}
+
 //=====================================================
 // SMMU IRQ rate limit setup
 //=====================================================
@@ -2022,6 +2042,7 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.smmu_power_put = mtk_smmu_power_put,
 	.smmu_runtime_suspend = mtk_smmu_runtime_suspend,
 	.smmu_runtime_resume = mtk_smmu_runtime_resume,
+	.smmu_setup_features = mtk_smmu_setup_features,
 	.get_resv_regions = mtk_get_resv_regions,
 	.smmu_irq_handler = mtk_smmu_irq_handler,
 	.smmu_evt_handler = mtk_smmu_evt_handler,
@@ -2134,6 +2155,21 @@ static const struct mtk_smmu_ops mtk_smmu_dbg_ops = {
 	.smmu_power_put		= mtk_smmu_power_put,
 };
 
+static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
+{
+	struct arm_smmu_device *smmu = &data->smmu;
+	u32 prefetch;
+	int ret;
+
+	/* parse tcu prefetch config */
+	ret = of_property_read_u32(smmu->dev->of_node, "tcu-prefetch", &prefetch);
+	if (!ret) {
+		smmu->features |= ARM_SMMU_FEAT_TCU_PF;
+		data->tcu_prefetch = prefetch;
+		dev_info(smmu->dev, "parse tcu-prefetch:%d\n", prefetch);
+	}
+}
+
 static int mtk_smmu_config_translation(struct mtk_smmu_data *data)
 {
 	struct device *dev = data->smmu.dev;
@@ -2244,6 +2280,8 @@ static int mtk_smmu_data_init(struct mtk_smmu_data *data)
 	dev_info(dev, "[%s] plat_data{smmu_plat:%d, flags:0x%x, smmu_type:%d}\n",
 		 __func__, data->plat_data->smmu_plat, data->plat_data->flags,
 		 data->plat_data->smmu_type);
+
+	mtk_smmu_parse_driver_properties(data);
 
 	mtk_smmu_config_translation(data);
 
