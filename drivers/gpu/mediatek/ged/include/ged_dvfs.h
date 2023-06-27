@@ -165,6 +165,11 @@ unsigned long long ged_get_apo_threshold_us(void);
 void ged_set_apo_threshold_us(unsigned long long apo_threshold_us);
 unsigned long long ged_get_apo_wakeup_us(void);
 void ged_set_apo_wakeup_us(unsigned long long apo_wakeup_us);
+unsigned long long ged_get_apo_lp_threshold_us(void);
+void ged_set_apo_lp_threshold_us(unsigned long long apo_lp_threshold_us);
+int ged_get_apo_hint(void);
+int ged_get_apo_force_hint(void);
+void ged_set_apo_force_hint(int apo_force_hint);
 
 void ged_get_active_time(void);
 void ged_get_idle_time(void);
@@ -198,6 +203,7 @@ unsigned long ged_dvfs_write_sysram_last_commit_dual_test(int top_idx, int stack
 void ged_dvfs_set_sysram_last_commit_top_idx(int commit_idx);
 void ged_dvfs_set_sysram_last_commit_dual_idx(int top_idx, int stack_idx);
 void ged_dvfs_set_sysram_last_commit_stack_idx(int commit_idx);
+int ged_write_sysram_pwr_hint(int pwr_hint);
 
 extern void (*ged_kpi_set_gpu_dvfs_hint_fp)(int t_gpu_target,
 	int boost_accum_gpu);

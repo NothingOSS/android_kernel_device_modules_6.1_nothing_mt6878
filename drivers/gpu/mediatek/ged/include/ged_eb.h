@@ -64,6 +64,7 @@ enum gpu_fastdvfs_counter {
 	FASTDVFS_GPU_EB_MARGIN,
 	FASTDVFS_GPU_EB_CUR_POLICY_STATE,
 	FASTDVFS_GPU_EB_GED_MIN_OPPIDX,
+	FASTDVFS_GPU_PWR_HINT,
 
 	NR_FASTDVFS_COUNTER,
 };
@@ -253,7 +254,10 @@ enum gpu_fastdvfs_share_info {
 (									   \
 (FASTDVFS_GPU_EB_GED_MIN_OPPIDX*SYSRAM_LOG_SIZE) \
 )
-
+#define SYSRAM_GPU_PWR_HINT               \
+(									   \
+(FASTDVFS_GPU_PWR_HINT*SYSRAM_LOG_SIZE) \
+)
 
 enum action_map {
 	ACTION_MAP_FASTDVFS = 0,

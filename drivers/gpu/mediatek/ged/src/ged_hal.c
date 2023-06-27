@@ -963,6 +963,73 @@ static ssize_t apo_wakeup_us_store(struct kobject *kobj,
 }
 static KOBJ_ATTR_RW(apo_wakeup_us);
 
+static ssize_t apo_lp_threshold_us_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	unsigned long long apo_lp_threshold_us = 0;
+	int pos = 0;
+
+	apo_lp_threshold_us = ged_get_apo_lp_threshold_us();
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[APO-LP-Threshold]: %llu us\n", apo_lp_threshold_us);
+
+	return pos;
+}
+
+static ssize_t apo_lp_threshold_us_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	u32 i32Value = 0;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf))
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				ged_set_apo_lp_threshold_us((unsigned long long)i32Value);
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(apo_lp_threshold_us);
+
+static ssize_t apo_force_hint_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int apo_force_hint = -1;
+	int pos = 0;
+
+	apo_force_hint = ged_get_apo_force_hint();
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[APO-Force-Hint]: %d\n", apo_force_hint);
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[Help]:\n0: APO_NORMAL_HINT, 1: APO_LP_HINT, Others: No Operation (APO_INVALID_HINT)\n");
+
+	return pos;
+}
+
+static ssize_t apo_force_hint_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	u32 i32Value = 0;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf))
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				ged_set_apo_force_hint((int)i32Value);
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(apo_force_hint);
+
 static ssize_t apo_status_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -971,12 +1038,14 @@ static ssize_t apo_status_show(struct kobject *kobj,
 	bool bGPUPredictAPO;
 	long long ns_gpu_off_duration;
 	long long ns_gpu_predict_off_duration;
+	int apo_hint;
 	int pos = 0;
 
 	bGPUAPO = ged_gpu_apo_notify();
 	bGPUPredictAPO = ged_gpu_predict_apo_notify();
 	ns_gpu_off_duration = ged_get_power_duration();
 	ns_gpu_predict_off_duration = ged_get_predict_power_duration();
+	apo_hint = ged_get_apo_hint();
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"[APO]: %d, [Predict-APO]: %d\n", bGPUAPO, bGPUPredictAPO);
@@ -984,6 +1053,10 @@ static ssize_t apo_status_show(struct kobject *kobj,
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"[Dur]: %lld, [Predict-Dur]: %lld\n",
 				ns_gpu_off_duration, ns_gpu_predict_off_duration);
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[APO-Hint]: %d\n",
+				apo_hint);
 
 	return pos;
 }
@@ -1469,6 +1542,18 @@ GED_ERROR ged_hal_init(void)
 		goto ERROR;
 	}
 
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_lp_threshold_us);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create apo_lp_threshold_us entry!\n");
+		goto ERROR;
+	}
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_force_hint);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create apo_force_hint entry!\n");
+		goto ERROR;
+	}
+
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_status);
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE("Failed to create apo_status entry!\n");
@@ -1593,6 +1678,8 @@ void ged_hal_exit(void)
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_threshold_us);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_wakeup_us);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_lp_threshold_us);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_force_hint);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_status);
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 

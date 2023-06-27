@@ -710,6 +710,14 @@ unsigned long ged_dvfs_get_last_commit_dual_idx(void)
 }
 EXPORT_SYMBOL(ged_dvfs_get_last_commit_dual_idx);
 
+int ged_write_sysram_pwr_hint(int pwr_hint)
+{
+	mtk_gpueb_sysram_write(SYSRAM_GPU_PWR_HINT, pwr_hint);
+
+	return pwr_hint;
+}
+EXPORT_SYMBOL(ged_write_sysram_pwr_hint);
+
 bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 	unsigned long ui32NewFreq, GED_DVFS_COMMIT_TYPE eCommitType)
 {

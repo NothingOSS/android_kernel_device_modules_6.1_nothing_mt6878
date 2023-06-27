@@ -74,6 +74,7 @@ static enum gpu_dvfs_policy_state g_prev_policy_state = POLICY_STATE_INIT;
 
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 #define GED_APO_THRESHOLD_US 2000
+#define GED_APO_LP_THRESHOLD_US 4000
 
 static spinlock_t g_sApoLock;
 
@@ -81,6 +82,8 @@ static unsigned long long g_apo_threshold_us;
 static unsigned long long g_apo_threshold_ns;
 static unsigned long long g_apo_wakeup_us;
 static unsigned long long g_apo_wakeup_ns;
+static unsigned long long g_apo_lp_threshold_us;
+static unsigned long long g_apo_lp_threshold_ns;
 
 static unsigned long long g_ns_gpu_active_ts;
 static unsigned long long g_ns_gpu_idle_ts;
@@ -92,6 +95,8 @@ static long long g_ns_gpu_predict_off_duration;
 
 static bool g_bGPUAPO;
 static bool g_bGPUPredictAPO;
+static int g_apo_hint;
+static int g_apo_force_hint;
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 
 int (*ged_sw_vsync_event_fp)(bool bMode) = NULL;
@@ -582,6 +587,49 @@ void ged_set_apo_wakeup_us(unsigned long long apo_wakeup_us)
 }
 EXPORT_SYMBOL(ged_set_apo_wakeup_us);
 
+unsigned long long ged_get_apo_lp_threshold_us(void)
+{
+	return g_apo_lp_threshold_us;
+}
+EXPORT_SYMBOL(ged_get_apo_lp_threshold_us);
+
+void ged_set_apo_lp_threshold_us(unsigned long long apo_lp_threshold_us)
+{
+	unsigned long ulIRQFlags;
+
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
+	g_apo_lp_threshold_us = apo_lp_threshold_us;
+	g_apo_lp_threshold_ns = g_apo_lp_threshold_us * 1000;
+
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
+}
+EXPORT_SYMBOL(ged_set_apo_lp_threshold_us);
+
+int ged_get_apo_hint(void)
+{
+	return g_apo_hint;
+}
+EXPORT_SYMBOL(ged_get_apo_hint);
+
+int ged_get_apo_force_hint(void)
+{
+	return g_apo_force_hint;
+}
+EXPORT_SYMBOL(ged_get_apo_force_hint);
+
+void ged_set_apo_force_hint(int apo_force_hint)
+{
+	unsigned long ulIRQFlags;
+
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
+	g_apo_force_hint = apo_force_hint;
+
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
+}
+EXPORT_SYMBOL(ged_set_apo_force_hint);
+
 void ged_get_active_time(void)
 {
 	unsigned long ulIRQFlags;
@@ -616,10 +664,27 @@ void ged_check_power_duration(void)
 	g_ns_gpu_off_duration =
 		(long long)(g_ns_gpu_active_ts - g_ns_gpu_idle_ts);
 	llDiff = g_ns_gpu_off_duration;
+
 	if ((llDiff > 0) && (llDiff < g_apo_threshold_ns))
 		g_bGPUAPO = true;
 	else {
 		g_bGPUAPO = false;
+
+		if (g_apo_threshold_ns == 0) {
+			if (g_ged_apo_support == APO_NORMAL_AND_LP_SUPPORT &&
+				(llDiff >= g_apo_threshold_ns) &&
+				(llDiff < g_apo_lp_threshold_ns))
+				g_apo_hint = APO_LP_HINT;
+			else
+				g_apo_hint = APO_NORMAL_HINT;
+
+			if (g_apo_force_hint >= APO_NORMAL_HINT &&
+				g_apo_force_hint < APO_INVALID_HINT)
+				g_apo_hint = g_apo_force_hint;
+
+			ged_write_sysram_pwr_hint(g_apo_hint);
+		}
+
 		g_ns_gpu_active_ts = 0;
 		g_ns_gpu_idle_ts = 0;
 		g_ns_gpu_off_duration = 0;
@@ -693,10 +758,24 @@ void ged_check_predict_power_duration(void)
 	g_ns_gpu_predict_off_duration =
 		(long long)(g_ns_gpu_predict_active_ts - g_ns_gpu_predict_idle_ts);
 	llDiff = g_ns_gpu_predict_off_duration;
+
 	if ((llDiff > 0) && (llDiff < g_apo_threshold_ns))
 		g_bGPUPredictAPO = true;
 	else {
 		g_bGPUPredictAPO = false;
+
+		if (g_ged_apo_support == APO_NORMAL_AND_LP_SUPPORT &&
+			(llDiff >= g_apo_threshold_ns) &&
+			(llDiff < g_apo_lp_threshold_ns))
+			g_apo_hint = APO_LP_HINT;
+		else
+			g_apo_hint = APO_NORMAL_HINT;
+
+		if (g_apo_force_hint >= APO_NORMAL_HINT && g_apo_force_hint < APO_INVALID_HINT)
+			g_apo_hint = g_apo_force_hint;
+
+		ged_write_sysram_pwr_hint(g_apo_hint);
+
 		g_ns_gpu_predict_active_ts = 0;
 		g_ns_gpu_predict_idle_ts = 0;
 		g_ns_gpu_predict_off_duration = 0;
@@ -724,6 +803,7 @@ void ged_gpu_predict_apo_reset(void)
 	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
 
 	g_bGPUPredictAPO = false;
+	g_apo_hint = APO_NORMAL_HINT;
 	g_ns_gpu_predict_active_ts = 0;
 	g_ns_gpu_predict_idle_ts = 0;
 	g_ns_gpu_predict_off_duration = 0;
@@ -836,8 +916,17 @@ GED_ERROR ged_notify_sw_vsync_system_init(void)
 	g_apo_wakeup_us = g_apo_threshold_us + 1000;
 	g_apo_wakeup_ns = g_apo_wakeup_us * 1000;
 
+	g_apo_lp_threshold_us = GED_APO_LP_THRESHOLD_US;
+	g_apo_lp_threshold_ns = g_apo_lp_threshold_us * 1000;
+
 	g_ns_gpu_off_duration = 0;
 	g_ns_gpu_predict_off_duration = 0;
+
+	g_bGPUAPO = false;
+	g_bGPUPredictAPO = false;
+
+	g_apo_hint = APO_NORMAL_HINT;
+	g_apo_force_hint = APO_INVALID_HINT;
 
 	spin_lock_init(&g_sApoLock);
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
