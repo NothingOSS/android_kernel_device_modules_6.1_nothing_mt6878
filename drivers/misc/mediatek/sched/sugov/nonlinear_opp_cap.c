@@ -1858,15 +1858,18 @@ EXPORT_SYMBOL(get_group_hint_hook);
 
 int group_aware_dvfs_util(struct cpumask *cpumask)
 {
-	unsigned long cpu_util;
-	unsigned long ret_util;
+	unsigned long cpu_util = 0;
+	unsigned long ret_util = 0;
 	unsigned long max_ret_util = 0;
-	unsigned long umax;
+	unsigned long umax = 0;
 	int cpu;
 	struct rq *rq;
 	int am = 0;
 
 	for_each_cpu(cpu, cpumask) {
+		if (available_idle_cpu(cpu))
+			goto skip_idle;
+
 		am = get_adaptive_margin(cpu);
 
 		cpu_util = flt_get_cpu_util_hook(cpu);
@@ -1874,12 +1877,12 @@ int group_aware_dvfs_util(struct cpumask *cpumask)
 		umax = rq->uclamp[UCLAMP_MAX].value;
 		ret_util = min_t(unsigned long,
 			cpu_util, umax * am >> SCHED_CAPACITY_SHIFT);
-		max_ret_util = max(max_ret_util, ret_util);
 
+		max_ret_util = max(max_ret_util, ret_util);
+skip_idle:
 		if (trace_sugov_ext_tar_enabled())
 			trace_sugov_ext_tar(cpu, ret_util, cpu_util, umax, am);
 	}
-
 	return max_ret_util;
 }
 
@@ -2002,7 +2005,7 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 	}
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
-	if (flt_get_cpu_util_hook && grp_dvfs_ctrl_mode)
+	if (flt_get_cpu_util_hook && grp_dvfs_ctrl_mode && wl_type_curr != 4)
 		flt_util = group_aware_dvfs_util(cpumask);
 	if (grp_dvfs_ctrl_mode == 9)
 		flt_util = 0;

@@ -1721,7 +1721,7 @@ TRACE_EVENT(sched_adpf_get_value,
 	),
 
 	TP_fast_assign(
-		__entry->sid = cmd;
+		__entry->cmd = cmd;
 		__entry->sid = sid;
 		__entry->tgid = tgid;
 		__entry->uid = uid;
