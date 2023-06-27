@@ -1368,7 +1368,7 @@ static void mtk_vcodec_make_group_list(void)
 			for_each_thread(task, task_child) {
 				ret = set_task_to_group(
 				task_child->thread_pid->numbers[0].nr,
-				GROUP_ID_3);
+				GROUP_ID_1);
 				if (ret == -1)
 					pr_info("put tid %d fail\n",
 					task_child->thread_pid->numbers[0].nr);
