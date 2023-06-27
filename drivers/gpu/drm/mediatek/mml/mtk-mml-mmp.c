@@ -16,7 +16,7 @@ struct mml_mmp_events_t *mml_mmp_get_event(void)
 
 void mml_mmp_init(void)
 {
-	mmp_event mml, command, addon, dle;
+	mmp_event mml, command, addon, dle, dpc;
 
 	if (mml_mmp_events.mml)
 		return;
@@ -70,6 +70,13 @@ void mml_mmp_init(void)
 	mml_mmp_events.dle_config_create = mmprofile_register_event(dle, "config_create");
 	mml_mmp_events.dle_buf = mmprofile_register_event(dle, "buf");
 	mml_mmp_events.dle_aal_irq_done = mmprofile_register_event(dle, "aal_irq_done");
+
+	dpc = mmprofile_register_event(mml, "dpc");
+	mml_mmp_events.dpc = dpc;
+	mml_mmp_events.dpc_cfg = mmprofile_register_event(dpc, "dpc_cfg");
+	mml_mmp_events.dpc_exception_flow = mmprofile_register_event(dpc, "dpc_exception_flow");
+	mml_mmp_events.dpc_pm_runtime_get = mmprofile_register_event(dpc, "dpc_pm_runtime_get");
+	mml_mmp_events.dpc_pm_runtime_put = mmprofile_register_event(dpc, "dpc_pm_runtime_put");
 
 	mmprofile_enable_event_recursive(mml, 1);
 	mmprofile_start(1);

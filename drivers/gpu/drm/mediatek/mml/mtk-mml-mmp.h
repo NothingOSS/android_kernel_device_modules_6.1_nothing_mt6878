@@ -77,6 +77,12 @@ struct mml_mmp_events_t {
 
 	/*events for dle PQ irq*/
 	mmp_event dle_aal_irq_done;
+
+	mmp_event dpc;
+	mmp_event dpc_cfg;
+	mmp_event dpc_exception_flow;
+	mmp_event dpc_pm_runtime_get;
+	mmp_event dpc_pm_runtime_put;
 };
 
 void mml_mmp_init(void);

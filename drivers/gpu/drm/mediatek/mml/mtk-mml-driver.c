@@ -716,6 +716,7 @@ s32 mml_comp_pw_enable(struct mml_comp *comp)
 
 #ifndef MML_FPGA
 	mml_msg_dpc("%s comp %u pm_runtime_resume_and_get", __func__, comp->id);
+	mml_mmp(dpc_pm_runtime_get, MMPROFILE_FLAG_PULSE, comp->id, 0);
 	ret = pm_runtime_resume_and_get(comp->larb_dev);
 	if (ret)
 		mml_err("%s enable fail ret:%d", __func__, ret);
@@ -742,6 +743,7 @@ s32 mml_comp_pw_disable(struct mml_comp *comp)
 
 #ifndef MML_FPGA
 	mml_msg_dpc("%s comp %u pm_runtime_put_sync", __func__, comp->id);
+	mml_mmp(dpc_pm_runtime_put, MMPROFILE_FLAG_PULSE, comp->id, 0);
 	pm_runtime_put_sync(comp->larb_dev);
 #endif
 
@@ -854,6 +856,7 @@ void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
 		}
 		mml_dpc_enable(true);
 		mml_dpc_exc_keep(task);
+		mml_mmp(dpc_cfg, MMPROFILE_FLAG_START, 1, 0);
 		mml_dpc_config(DPC_SUBSYS_MML1, true);
 		mml_dpc_exc_release(task);
 	}
@@ -887,6 +890,7 @@ void mml_dpc_task_cnt_dec(struct mml_task *task, bool addon_task)
 
 		mml_msg_dpc("%s scenario out, dpc end", __func__);
 		mml_dpc_exc_keep(task);
+		mml_mmp(dpc_cfg, MMPROFILE_FLAG_END, 0, 0);
 		mml_dpc_config(DPC_SUBSYS_MML1, false);
 		mml_dpc_enable(false);
 		if (mml->dpc.mmlsys_26m_clk)
@@ -902,6 +906,8 @@ void mml_dpc_exc_keep(struct mml_task *task)
 	struct mml_dev *mml = task->config->mml;
 	s32 cur_exc_pw_cnt = atomic_inc_return(&mml->dpc.exc_pw_cnt);
 
+	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_PULSE, 1, 0);
+
 	if (cur_exc_pw_cnt > 1)
 		return;
 	if (cur_exc_pw_cnt <= 0) {
@@ -909,6 +915,7 @@ void mml_dpc_exc_keep(struct mml_task *task)
 		return;
 	}
 
+	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_START, 1, 0);
 	mml_dpc_power_keep();
 }
 
@@ -917,6 +924,8 @@ void mml_dpc_exc_release(struct mml_task *task)
 	struct mml_dev *mml = task->config->mml;
 	s32 cur_exc_pw_cnt = atomic_dec_return(&mml->dpc.exc_pw_cnt);
 
+	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_PULSE, 0, 0);
+
 	if (cur_exc_pw_cnt > 0)
 		return;
 	if (cur_exc_pw_cnt < 0) {
@@ -924,6 +933,7 @@ void mml_dpc_exc_release(struct mml_task *task)
 		return;
 	}
 
+	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_END, 0, 0);
 	mml_dpc_power_release();
 }
 
