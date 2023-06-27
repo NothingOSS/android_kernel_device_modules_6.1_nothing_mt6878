@@ -3283,8 +3283,6 @@ static void mtk_ovl_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 			value, mask);
 	cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa + DISP_REG_OVL_PQ_LOOP_CON,
 			0, DISP_OVL_PQ_OUT_SIZE_SEL);
-	cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa + DISP_REG_OVL_PQ_OUT_SIZE,
-			0, ~0);
 }
 
 static void mtk_ovl_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,

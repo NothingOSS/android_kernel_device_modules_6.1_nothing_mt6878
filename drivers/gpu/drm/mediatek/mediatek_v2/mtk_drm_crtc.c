@@ -1271,6 +1271,8 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 			old_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
 		state->prop_val[CRTC_PROP_PRES_FENCE_IDX] =
 			old_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
+		state->prop_val[CRTC_PROP_LYE_IDX] =
+			old_state->prop_val[CRTC_PROP_LYE_IDX];
 	}
 
 	return &state->base;
