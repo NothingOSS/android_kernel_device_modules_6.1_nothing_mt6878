@@ -10,6 +10,7 @@
 #include <linux/interrupt.h>
 #include <linux/suspend.h>
 #include <linux/arm-smccc.h>    /* for Kernel Native SMC API */
+#include <linux/pm_domain.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h> /* for SMC ID table */
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 #include <linux/soc/mediatek/devapc_public.h>
@@ -417,6 +418,30 @@ static struct notifier_block adsp_pm_notifier_block = {
 };
 #endif
 
+static int adsp_pd_event(struct notifier_block *nb,
+				  unsigned long flags , void *data)
+{
+	switch (flags) {
+	case GENPD_NOTIFY_ON:
+		pr_info("%s() pwr on\n", __func__);
+		adsp_smc_send(MTK_ADSP_KERNEL_OP_DUMP_PWR_CLK, flags, 0);
+		break;
+	case GENPD_NOTIFY_PRE_OFF:
+		pr_info("%s() pwr pre off\n", __func__);
+		adsp_smc_send(MTK_ADSP_KERNEL_OP_DUMP_PWR_CLK, flags, 0);
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+struct notifier_block adsp_pd_notifier_block = {
+	.notifier_call = adsp_pd_event,
+	.priority = 0,
+};
+
 void adsp_select_clock_mode(enum adsp_clk_mode mode)
 {
 	if (adspsys)
@@ -603,6 +628,12 @@ static int adsp_system_init(void)
 	if (ret)
 		pr_warn("[ADSP] failed to register PM notifier %d\n", ret);
 #endif
+	if (likely(adspsys->dev)) {
+		ret = dev_pm_genpd_add_notifier(adspsys->dev, &adsp_pd_notifier_block);
+		if (ret)
+			pr_warn("[ADSP] failed to register pd notifier %d\n", ret);
+	} else
+		pr_warn("[ADSP] dev null, cannot register pd notifier\n");
 	/* register misc device */
 	adspsys->mdev.minor = MISC_DYNAMIC_MINOR;
 	adspsys->mdev.name = "adsp";
