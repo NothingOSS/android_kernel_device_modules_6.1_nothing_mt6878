@@ -21,7 +21,7 @@
 #include "clk-mtk.h"
 #include "clk-gate.h"
 
-#define MTK_POLL_HWV_VOTE_CNT		100
+#define MTK_POLL_HWV_VOTE_CNT		(2500)
 #define MTK_POLL_HWV_VOTE_US		2
 #define MTK_POLL_DELAY_US		10
 #define MTK_POLL_100MS_TIMEOUT		(100 * USEC_PER_MSEC)
@@ -108,9 +108,8 @@ int __mminfra_hwv_power_ctrl(struct mtk_hwv_domain *hwvd,
 	}
 	/* write twice to prevent clk idle */
 	regmap_write(hwvd->regmap, vote_ofs, vote_msk);
-	udelay(1);
-	regmap_write(hwvd->regmap, vote_ofs, vote_msk);
 	do {
+		regmap_write(hwvd->regmap, vote_ofs, vote_msk);
 		regmap_read(hwvd->regmap, en_ofs, &val);
 		if ((val & vote_msk) == vote_ack)
 			break;
@@ -137,8 +136,8 @@ err_hwv_done:
 	dev_err(hwvd->dev, "Failed to hwv done timeout %s(%x)\n", hwvd->data->name, val2);
 err_hwv_vote:
 	regmap_read(hwvd->regmap, en_ofs, &val);
-	dev_err(hwvd->dev, "Failed to hwv vote %s timeout %s(%d %x)\n", onoff ? "on" : "off",
-			hwvd->data->name, ret, val);
+	dev_err(hwvd->dev, "Failed to hwv vote %s timeout %s(%d %x %x)\n", onoff ? "on" : "off",
+			hwvd->data->name, ret, vote_msk, val);
 
 	mtk_clk_notify(NULL, hwvd->regmap, hwvd->data->name,
 			hwvd->data->en_ofs, 0,
