@@ -1038,6 +1038,18 @@
 		vmm-pmic-supply = <&mt6363_vbuck2>;
 	};
 
+	camsys_vcore_power: camsys-vcore-power {
+		compatible = "mediatek,vmm_notifier";
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_VCORE>;
+		pd-id = <2>;
+	};
+
+	imgsys_vcore_power: imgsys-vcore-power {
+		compatible = "mediatek,vmm_notifier";
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_VCORE>;
+		pd-id = <3>;
+	};
+
 	vdisp-ctrl@0 {
 		compatible = "mediatek,mt6989-vdisp-ctrl";
 		reg = <0 0x1c001000 0 0x1000>;
