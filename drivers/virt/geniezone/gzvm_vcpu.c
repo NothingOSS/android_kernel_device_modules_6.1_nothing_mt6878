@@ -111,7 +111,7 @@ static enum hrtimer_restart gzvm_mtimer_expire(struct hrtimer *hrt)
 static long gzvm_vcpu_run(struct gzvm_vcpu *vcpu, void * __user argp)
 {
 	bool need_userspace = false;
-	u64 exit_reason;
+	u64 exit_reason = 0;
 
 	if (copy_from_user(vcpu->run, argp, sizeof(struct gzvm_vcpu_run)))
 		return -EFAULT;
@@ -149,6 +149,8 @@ static long gzvm_vcpu_run(struct gzvm_vcpu *vcpu, void * __user argp)
 			need_userspace = true;
 			break;
 		case GZVM_EXIT_IRQ:
+			fallthrough;
+		case GZVM_EXIT_GZ:
 			break;
 		case GZVM_EXIT_UNKNOWN:
 			fallthrough;
