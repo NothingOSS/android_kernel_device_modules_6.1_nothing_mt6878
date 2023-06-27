@@ -408,8 +408,6 @@ static s32 translate_meta(struct op_meta *meta,
 		unsigned long mva = translate_fd(meta, mapping_job, handle);
 		s32 rdma_idx = translate_engine_rdma(meta->engine);
 
-		rdma_idx = translate_engine_rdma(meta->engine);
-
 		if (!mva) {
 			CMDQ_ERR("%s: op:%u, get mva fail, engine %d, fd 0x%x, fd_offset 0x%x\n",
 				 __func__, meta->op, meta->engine, meta->fd, meta->fd_offset);

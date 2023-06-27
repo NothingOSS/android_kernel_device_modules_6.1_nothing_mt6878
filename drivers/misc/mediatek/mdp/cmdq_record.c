@@ -27,6 +27,14 @@
 
 #define CMDQ_TASK_CPR_POSITION_ARRAY_UNIT_SIZE	(32)
 
+/* Range check */
+#define SPR_MIN_REG_INDEX 0x0
+#define SPR_MAX_REG_INDEX 0x3
+#define GPR_MIN_REG_INDEX 0x44
+#define GPR_MAX_REG_INDEX 0x47
+#define CPR_MIN_REG_INDEX 0x8000
+#define CPR_MAX_REG_INDEX 0x84DF
+
 struct cmdq_async_data {
 	CmdqAsyncFlushCB cb;
 	u64 user_data;
@@ -1587,6 +1595,18 @@ s32 cmdq_op_poll_ex(struct cmdqRecStruct *handle,
 s32 cmdq_op_assign_reg_idx_ex(struct cmdqRecStruct *handle,
 	struct cmdq_command_buffer *cmd_buf, u16 reg_idx, CMDQ_VARIABLE value)
 {
+	bool range_check = false;
+
+	if (reg_idx > SPR_MIN_REG_INDEX && reg_idx < SPR_MAX_REG_INDEX)
+		range_check = true;
+	if (reg_idx > GPR_MIN_REG_INDEX && reg_idx < GPR_MAX_REG_INDEX)
+		range_check = true;
+
+	if (!range_check) {
+		CMDQ_ERR("reg_idx not in available range\n");
+		return -EFAULT;
+	}
+
 	return cmdq_instr_encoder(handle, cmd_buf,
 		CMDQ_GET_ARG_C(value), CMDQ_GET_ARG_B(value), reg_idx,
 		CMDQ_LOGIC_ASSIGN,
