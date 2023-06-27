@@ -775,34 +775,13 @@ unsigned long aligned_freq_to_legacy_freq(int cpu, unsigned long freq)
 }
 
 __always_inline
-unsigned long calc_pwr(int cpu, unsigned long task_util)
-{
-	int opp;
-	struct mtk_em_perf_state *ps;
-	unsigned long dyn_pwr, static_pwr, pwr;
-
-	ps = pd_get_util_ps(cpu, map_util_perf(task_util), &opp);
-
-	dyn_pwr = ps->pwr_eff * task_util;
-	static_pwr = (mtk_get_leakage(cpu, opp, get_cpu_temp(cpu)/1000) * task_util) / ps->capacity;
-	pwr = dyn_pwr + static_pwr;
-
-	if (trace_sched_em_cpu_energy_enabled())
-		trace_sched_em_cpu_energy(opp,
-				aligned_freq_to_legacy_freq(cpu, ps->freq), "pwr_eff",
-				ps->pwr_eff, ps->capacity, dyn_pwr, static_pwr);
-
-	return pwr;
-}
-
-__always_inline
-unsigned long calc_pwr_eff(int cpu, unsigned long cpu_util)
+unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long cpu_util)
 {
 	int opp;
 	struct mtk_em_perf_state *ps;
 	unsigned long static_pwr_eff, pwr_eff;
 
-	ps = pd_get_util_ps(cpu, map_util_perf(cpu_util), &opp);
+	ps = pd_get_util_ps(wl_type, cpu, map_util_perf(cpu_util), &opp);
 
 	static_pwr_eff = mtk_get_leakage(cpu, opp, get_cpu_temp(cpu)/1000) / ps->capacity;
 	pwr_eff = ps->pwr_eff + static_pwr_eff;
@@ -815,7 +794,7 @@ unsigned long calc_pwr_eff(int cpu, unsigned long cpu_util)
 }
 #else
 __always_inline
-unsigned long calc_pwr(int cpu, unsigned long task_util)
+unsigned long calc_pwr_eff(int wl_type, int cpu, unsigned long task_util)
 {
 	return 0;
 }

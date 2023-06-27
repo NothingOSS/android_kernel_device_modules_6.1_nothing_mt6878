@@ -2021,7 +2021,9 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 		/* Evaluate the energy impact of using this CPU. */
 		if (unlikely(in_irq)) {
-			cur_delta = calc_pwr_eff(cpu, cpu_utils[uint_cpu]);
+			int wl_type = get_em_wl();
+
+			cur_delta = calc_pwr_eff(wl_type, cpu, cpu_utils[uint_cpu]);
 			base_energy = 0;
 		} else {
 			target_pd = find_pd(target_pd, cpu);
