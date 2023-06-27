@@ -150,6 +150,7 @@ static void fpsgo_notifier_wq_cb_vsync(unsigned long long ts)
 	if (!fpsgo_is_enable())
 		return;
 
+	fpsgo_ctrl2fstb_vsync(ts);
 	fpsgo_ctrl2fbt_vsync(ts);
 }
 

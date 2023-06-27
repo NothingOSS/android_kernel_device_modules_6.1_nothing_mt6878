@@ -69,6 +69,7 @@ static int fbt_ux_cal_perf(
 	long long t_cpu_cur,
 	long long target_time,
 	unsigned int target_fps,
+	unsigned int target_fps_ori,
 	unsigned int fps_margin,
 	struct render_info *thread_info,
 	unsigned long long ts,
@@ -112,7 +113,7 @@ static int fbt_ux_cal_perf(
 
 		if (fpsgo_ux_gcc_enable == 2) {
 			fbt_cal_target_time_ns(thread_info->pid, thread_info->buffer_id,
-				fbt_get_rl_ko_is_ready(), 2, target_fps, cooler_on, target_fpks,
+				fbt_get_rl_ko_is_ready(), 2, target_fps_ori, target_fpks,
 				target_time, 0, boost_info->last_target_time_ns, thread_info->Q2Q_time,
 				0, 0, thread_info->attr.expected_fps_margin_by_pid, 10, 10,
 				0, 0, aa_n, aa_n, aa_n, 100, 100, 100, &t2);
@@ -229,7 +230,7 @@ void fbt_ux_frame_end(struct render_info *thr,
 {
 	struct fbt_boost_info *boost;
 	long long runtime;
-	int targettime, targetfps, targetfpks, fps_margin, cooler_on;
+	int targettime, targetfps, targetfps_ori, targetfpks, fps_margin, cooler_on;
 	int loading = 0L;
 	int q_c_time, q_g_time;
 	int ret;
@@ -243,7 +244,7 @@ void fbt_ux_frame_end(struct render_info *thr,
 	boost->frame_info[boost->f_iter].running_time = runtime;
 	// fstb_query_dfrc
 	fpsgo_fbt2fstb_query_fps(thr->pid, thr->buffer_id,
-			&targetfps, &targettime, &fps_margin,
+			&targetfps, &targetfps_ori, &targettime, &fps_margin,
 			&q_c_time, &q_g_time, &targetfpks, &cooler_on);
 	boost->quantile_cpu_time = q_c_time;
 	boost->quantile_gpu_time = q_g_time;	// [ux] unavailable, for statistic only.
@@ -294,7 +295,7 @@ void fbt_ux_frame_end(struct render_info *thr,
 	}
 
 	thr->ux_blc_next = fbt_ux_cal_perf(runtime,
-			targettime, targetfps, fps_margin,
+			targettime, targetfps, targetfps_ori, fps_margin,
 			thr, end_ts, loading, targetfpks, cooler_on);
 
 EXIT:

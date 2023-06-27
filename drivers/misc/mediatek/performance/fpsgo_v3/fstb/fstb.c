@@ -33,6 +33,7 @@
 #include "ged_kpi.h"
 #endif
 
+#define FSTB_USEC_DIVIDER 1000000
 #define mtk_fstb_dprintk_always(fmt, args...) \
 	pr_debug("[FSTB]" fmt, ##args)
 
@@ -66,6 +67,11 @@ static int total_fstb_policy_cmd_num;
 static int fstb_max_dep_path_num = DEFAULT_MAX_DEP_PATH_NUM;
 static int fstb_max_dep_task_num = DEFAULT_MAX_DEP_TASK_NUM;
 static int gpu_slowdown_check;
+static int dfrc_period;
+static int vsync_period;
+static unsigned long long vsync_ts_last;
+static unsigned int vsync_count;
+static unsigned long long vsync_duration_sum;
 
 int fstb_no_r_timer_enable;
 EXPORT_SYMBOL(fstb_no_r_timer_enable);
@@ -455,7 +461,7 @@ static void fstb_post_process_target_fps(int tfps, int margin, int diff,
 {
 	int local_tfps, local_margin;
 	int min_limit = min_fps_limit * 1000;
-	int max_limit = dfps_ceiling * 1000;
+	int max_limit = min(dfps_ceiling * 1000, FSTB_USEC_DIVIDER * 1000 / vsync_period);
 	unsigned long long local_time = 1000000000000ULL;
 
 	local_tfps = tfps * 1000;
@@ -827,10 +833,41 @@ static int cmplonglong(const void *a, const void *b)
 
 void fpsgo_ctrl2fstb_dfrc_fps(int fps)
 {
+	int tmp_dfrc_period;
 	mutex_lock(&fstb_lock);
 
 	if (fps <= CFG_MAX_FPS_LIMIT && fps >= CFG_MIN_FPS_LIMIT)
 		dfps_ceiling = fps;
+	tmp_dfrc_period = FSTB_USEC_DIVIDER / fps;
+	if (dfrc_period != tmp_dfrc_period) {
+		dfrc_period = tmp_dfrc_period;
+		vsync_count = 0;
+		vsync_duration_sum = 0;
+	}
+
+	mutex_unlock(&fstb_lock);
+}
+
+void fpsgo_ctrl2fstb_vsync(unsigned long long ts)
+{
+	unsigned long long vsync_duration, tmp;
+
+	mutex_lock(&fstb_lock);
+
+	// check VSync duration
+	tmp = vsync_duration = div64_u64(ts - vsync_ts_last, 1000ULL);
+
+	// calculate the VSync count by rounding the VSync duration
+	tmp += (dfrc_period / 2);
+	do_div(tmp, dfrc_period);
+	vsync_count += tmp;
+
+	vsync_duration_sum += vsync_duration;
+	vsync_ts_last = ts;
+
+	fpsgo_systrace_c_fstb(-100, 0, vsync_duration, "vsync_duration");
+	fpsgo_systrace_c_fstb(-100, 0, vsync_duration_sum, "vsync_duration_sum");
+	fpsgo_systrace_c_fstb(-100, 0, vsync_count, "vsync_count");
 
 	mutex_unlock(&fstb_lock);
 }
@@ -1636,13 +1673,13 @@ void fpsgo_fbt_ux2fstb_query_dfrc(int *fps, int *time)
 }
 
 void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,
-		int *target_fps, int *target_cpu_time, int *fps_margin,
+		int *target_fps, int *target_fps_ori, int *target_cpu_time, int *fps_margin,
 		int *quantile_cpu_time, int *quantile_gpu_time,
 		int *target_fpks, int *cooler_on)
 {
 	struct FSTB_FRAME_INFO *iter = NULL;
 	unsigned long long total_time;
-	int local_tfps;
+	int local_tfps = 0;
 	int tolerence_fps = 0;
 	int local_final_tfps = dfps_ceiling;
 	int local_final_tfpks = dfps_ceiling * 1000;
@@ -1686,10 +1723,16 @@ void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,
 		iter->target_time = total_time;
 	}
 
-	*target_fps = local_final_tfps;
-	*target_fpks = local_final_tfpks;
-	*fps_margin = tolerence_fps;
-	*target_cpu_time = total_time;
+	if (target_fps)
+		*target_fps = local_final_tfps;
+	if (target_fpks)
+		*target_fpks = local_final_tfpks;
+	if (target_fps_ori)
+		*target_fps_ori = local_tfps;
+	if (fps_margin)
+		*fps_margin = tolerence_fps;
+	if (target_cpu_time)
+		*target_cpu_time = total_time;
 
 	mutex_unlock(&fstb_lock);
 }
@@ -1789,6 +1832,11 @@ static void fstb_fps_stats(struct work_struct *work)
 		kfree(work);
 
 	mutex_lock(&fstb_lock);
+	if (vsync_count) {
+		vsync_period = div64_u64(vsync_duration_sum, vsync_count);
+		vsync_count = 0;
+		vsync_duration_sum = 0;
+	}
 
 	if (gbe_fstb2gbe_poll_fp)
 		gbe_fstb2gbe_poll_fp(&fstb_frame_infos);
@@ -1815,6 +1863,8 @@ static void fstb_fps_stats(struct work_struct *work)
 
 			fpsgo_systrace_c_fstb_man(iter->pid, 0,
 					dfps_ceiling, "dfrc");
+			fpsgo_systrace_c_fstb_man(iter->pid, 0,
+					vsync_period, "vsync_period");
 			fpsgo_systrace_c_fstb(iter->pid, iter->bufid,
 				iter->target_fps, "fstb_target_fps1");
 			fpsgo_systrace_c_fstb(iter->pid, iter->bufid,

@@ -96,8 +96,8 @@ unsigned int fbt_cal_blc(long aa, unsigned long long target_time,
 	unsigned int *blc_wt);
 int fbt_cal_aa(long loading, unsigned long long t_cpu, unsigned long long t_q2q, long *aa);
 int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
-	int rl_is_ready, int rl_active, unsigned int target_fps,
-	int cooler_on, unsigned int eara_target_fpks,
+	int rl_is_ready, int rl_active, unsigned int target_fps_ori,
+	unsigned int target_fpks,
 	unsigned long long target_t, int target_fps_margin,
 	unsigned long long last_target_t_ns, unsigned long long t_q2q_ns,
 	unsigned long long t_queue_end, unsigned long long next_vsync,

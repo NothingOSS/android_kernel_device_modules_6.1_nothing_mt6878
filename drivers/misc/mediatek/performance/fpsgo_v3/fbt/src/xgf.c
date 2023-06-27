@@ -1581,8 +1581,6 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 		*enq_running_time = local_enq_t_cpu > 0 ? local_enq_t_cpu : 0;
 
 	fpsgo_systrace_c_fbt(iter->pid, iter->bufid, local_raw_t_cpu, "raw_t_cpu");
-	if (iter->ema2_enable)
-		fpsgo_systrace_c_fbt(iter->pid, iter->bufid, local_ema_t_cpu, "ema2_t_cpu");
 
 	xgf_print_critical_path_info(iter->pid, iter->bufid, raw_dep_list, raw_dep_list_num);
 

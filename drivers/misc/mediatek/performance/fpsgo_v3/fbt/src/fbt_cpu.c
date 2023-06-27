@@ -437,11 +437,11 @@ void fpsgo_put_blc_mlock(const char *tag)
 	mutex_unlock(&blc_mlock);
 }
 
-
-int (*fbt_cal_target_time_fp)(int pid, unsigned long long bufID, int cooler_on, int target_fpks,
-		unsigned long long t_queue_end, unsigned long long t_Q2Q,
-		int quota_v2_clamp_max, int learning_rate_p, int learning_rate_n,
-		unsigned long long next_vsync, unsigned long long *target_t_ns);
+int (*fbt_cal_target_time_fp)(int pid, unsigned long long bufID, int target_fpks,
+		unsigned int target_fps_ori, unsigned long long t_queue_end,
+		unsigned long long t_Q2Q, int quota_v2_clamp_max, int learning_rate_p,
+		int learning_rate_n, unsigned long long next_vsync,
+		unsigned long long *target_t_ns);
 EXPORT_SYMBOL(fbt_cal_target_time_fp);
 
 void (*fpsgo_set_last_target_t_fp)(int pid, unsigned long long bufId,
@@ -455,9 +455,9 @@ EXPORT_SYMBOL(fpsgo_set_last_quota_fp);
 int (*fpsgo_rl_create_render_in_list_fp)(int pid, unsigned long long bufID);
 EXPORT_SYMBOL(fpsgo_rl_create_render_in_list_fp);
 
-void (*fpsgo_set_last_quota_fpks_fp)(int pid, unsigned long long bufId,
-	int quota_fpks);
-EXPORT_SYMBOL(fpsgo_set_last_quota_fpks_fp);
+void (*fpsgo_set_last_quota_fps_ori_fp)(int pid, unsigned long long bufId,
+	unsigned int target_fps_ori);
+EXPORT_SYMBOL(fpsgo_set_last_quota_fps_ori_fp);
 
 static unsigned long long nsec_to_100usec_ull(unsigned long long nsec)
 {
@@ -4168,8 +4168,8 @@ int fbt_get_rl_ko_is_ready(void)
 }
 
 int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
-	int rl_is_ready, int rl_active, unsigned int target_fps,
-	int cooler_on, unsigned int eara_target_fpks, unsigned long long target_t,
+	int rl_is_ready, int rl_active, unsigned int target_fps_ori,
+	unsigned int target_fpks, unsigned long long target_t,
 	int target_fps_margin, unsigned long long last_target_t_ns, unsigned long long t_q2q_ns,
 	unsigned long long t_queue_end, unsigned long long next_vsync,
 	int expected_fps_margin, int learning_rate_p, int learning_rate_n, int quota_clamp_max,
@@ -4184,12 +4184,11 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 
 	if (out_target_t_ns)
 		*out_target_t_ns = target_t;
-	rl_target_fpks = cooler_on ? eara_target_fpks : target_fps * 1000;
-	rl_target_fpks = rl_target_fpks + expected_fps_margin * 100;
+	rl_target_fpks = target_fpks + expected_fps_margin * 100;
 
 	if (rl_is_ready && rl_active == 2) {
 		if (fbt_cal_target_time_fp) {
-			ret = fbt_cal_target_time_fp(pid, buffer_id, cooler_on, rl_target_fpks,
+			ret = fbt_cal_target_time_fp(pid, buffer_id, rl_target_fpks, target_fps_ori,
 				t_queue_end, t_q2q_ns, quota_clamp_max, learning_rate_p,
 				learning_rate_n, next_vsync, &rl_target_t);
 		}
@@ -4241,6 +4240,7 @@ static int fbt_boost_policy(
 	long long t_cpu_cur,
 	long long target_time,
 	unsigned int target_fps,
+	unsigned int target_fps_ori,
 	unsigned int fps_margin,
 	struct render_info *thread_info,
 	unsigned long long ts,
@@ -4340,8 +4340,8 @@ static int fbt_boost_policy(
 	t2 = target_time;
 
 	next_vsync = fbt_get_next_vsync_locked(ts);
-	fbt_cal_target_time_ns(pid, buffer_id, rl_ko_is_ready, gcc_enable_active, target_fps,
-		cooler_on, target_fpks, target_time, fps_margin, boost_info->last_target_time_ns,
+	fbt_cal_target_time_ns(pid, buffer_id, rl_ko_is_ready, gcc_enable_active, target_fps_ori,
+		target_fpks, target_time, fps_margin, boost_info->last_target_time_ns,
 		thread_info->Q2Q_time, ts, next_vsync, expected_fps_margin_final,
 		rl_learning_rate_p, rl_learning_rate_n, quota_v2_clamp_max, separate_aa_final,
 		filtered_aa_n, filtered_aa_b, filtered_aa_m,
@@ -4366,7 +4366,7 @@ static int fbt_boost_policy(
 	}
 
 	/* update quota */
-	if (qr_enable_active || gcc_enable_active == 1) {
+	if (qr_enable_active && gcc_enable_active == 1) {
 		s32_target_time = update_quota(boost_info,
 				target_fps,
 				thread_info->Q2Q_time,
@@ -4484,18 +4484,15 @@ static int fbt_boost_policy(
 				rescue_target_t * 1000;
 
 			// Quota V1 for rescue
-			if (boost_info->quota_mod > 0) { /* qr_quota, unit: 1us */
+			if (boost_info->quota_mod > 0) /* qr_quota, unit: 1us */
 				/* qr_t2wnt_y_p: percentage */
-				qr_quota_adj = (qr_t2wnt_y_p_final != 100) ?
-					(long long)boost_info->quota_mod * 10 *
-					(long long)qr_t2wnt_y_p_final :
-					(long long)boost_info->quota_mod * 1000;
-			} else {
+				qr_quota_adj = (long long)qr_t2wnt_y_p_final *
+				(long long)boost_info->quota_mod * 10;
+			else
 				/* qr_t2wnt_y_n: percentage */
-				qr_quota_adj = (qr_t2wnt_y_n_final != 0) ?
-					(long long)boost_info->quota_mod * 10 *
-					(long long)qr_t2wnt_y_n_final : 0;
-			}
+				qr_quota_adj = (long long)qr_t2wnt_y_n_final *
+				(long long)boost_info->quota_mod * 10;
+
 			t2wnt = (rescue_target_t + qr_quota_adj > 0)
 				? rescue_target_t + qr_quota_adj : 0;
 
@@ -5246,7 +5243,7 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 {
 	struct fbt_boost_info *boost;
 	long long runtime;
-	int targettime, targetfps, targetfpks, fps_margin, cooler_on;
+	int targettime, targetfps, targetfps_ori, targetfpks, fps_margin, cooler_on;
 	unsigned int limited_cap = 0;
 	int blc_wt = 0;
 	long loading = 0L;
@@ -5265,7 +5262,7 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 	boost->f_iter = fbt_get_next_frame_iter(boost->f_iter);
 
 	fpsgo_fbt2fstb_query_fps(thr->pid, thr->buffer_id,
-			&targetfps, &targettime, &fps_margin,
+			&targetfps, &targetfps_ori, &targettime, &fps_margin,
 			&q_c_time, &q_g_time, &targetfpks, &cooler_on);
 	boost->quantile_cpu_time = q_c_time;
 	boost->quantile_gpu_time = q_g_time;
@@ -5273,14 +5270,12 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 		targetfps = TARGET_UNLIMITED_FPS;
 
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, targetfps, "expected_fps");
-	fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id,
-		targettime, "expected_time");
+	fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id, targettime, "expected_time");
 
 	fbt_set_render_boost_attr(thr);
 
 	loading = fbt_get_loading(thr, -1, ts);
-	fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id,
-		loading, "compute_loading");
+	fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id, loading, "compute_loading");
 
 	if (thr->Q2Q_time != 0)
 		thr->avg_freq = loading / nsec_to_100usec(thr->Q2Q_time);
@@ -5295,12 +5290,11 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 	fbt_set_down_throttle_locked(0);
 
 	blc_wt = fbt_boost_policy(runtime,
-			targettime, targetfps, fps_margin,
+			targettime, targetfps, targetfps_ori, fps_margin,
 			thr, ts, loading, targetfpks, cooler_on);
 
 	limited_cap = fbt_get_max_userlimit_freq();
-	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
-		limited_cap, "limited_cap");
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, limited_cap, "limited_cap");
 
 EXIT:
 	fpsgo_fbt2fstb_update_cpu_frame_info(thr->pid, thr->buffer_id,
@@ -8394,75 +8388,43 @@ void __exit fbt_cpu_exit(void)
 
 	minitop_exit();
 
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_light_loading_policy);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_fbt_info);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_enable_switch_down_throttle);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_rescue_enable);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_ultra_rescue);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_llf_task_policy);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_boost_ta);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_limit_uclamp);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_limit_ruclamp);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_limit_uclamp_m);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_limit_ruclamp_m);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_limit_cfreq);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_limit_rfreq);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_limit_cfreq_m);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_limit_rfreq_m);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_enable_ceiling);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_enable_uclamp_boost);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-				&kobj_attr_switch_filter_frame);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_filter_f_window_size);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_filter_f_kmin);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_enable_separate_aa);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_separate_pct_b);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_separate_pct_m);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_separate_release_sec);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_blc_boost);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_heavy_task_num);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_boost_VIP);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_RT_prio1);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_RT_prio2);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_RT_prio3);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_light_loading_policy);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_fbt_info);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_enable_switch_down_throttle);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_rescue_enable);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_ultra_rescue);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_llf_task_policy);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_boost_ta);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_uclamp);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_ruclamp);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_uclamp_m);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_ruclamp_m);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_cfreq);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_rfreq);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_cfreq_m);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_rfreq_m);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_enable_ceiling);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_enable_uclamp_boost);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_switch_filter_frame);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_filter_f_window_size);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_filter_f_kmin);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_enable_separate_aa);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_separate_pct_b);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_separate_pct_m);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_separate_release_sec);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_blc_boost);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_heavy_task_num);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_boost_VIP);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_RT_prio1);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_RT_prio2);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_RT_prio3);
 
 	fpsgo_sysfs_remove_dir(&fbt_kobj);
 	fbt_delete_cpu_loading_info();
 
 #if FPSGO_MW
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_fbt_attr_by_pid);
-	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_fbt_attr_by_tid);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_fbt_attr_by_pid);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_fbt_attr_by_tid);
 #endif  // FPSGO_MW
 #if FPSGO_DYNAMIC_WL
 #else  // FPSGO_DYNAMIC_WL
@@ -8589,23 +8551,16 @@ int __init fbt_cpu_init(void)
 	if (cluster_num <= 0)
 		FPSGO_LOGE("cpufreq policy not found");
 
-	base_opp =
-		kcalloc(cluster_num, sizeof(unsigned int), GFP_KERNEL);
+	base_opp = kcalloc(cluster_num, sizeof(unsigned int), GFP_KERNEL);
 
-	clus_obv =
-		kcalloc(cluster_num, sizeof(unsigned int), GFP_KERNEL);
+	clus_obv = kcalloc(cluster_num, sizeof(unsigned int), GFP_KERNEL);
 
-	clus_status =
-		kcalloc(cluster_num, sizeof(unsigned int), GFP_KERNEL);
+	clus_status = kcalloc(cluster_num, sizeof(unsigned int), GFP_KERNEL);
 
-	cpu_dvfs =
-		kcalloc(cluster_num, sizeof(struct fbt_cpu_dvfs_info),
-				GFP_KERNEL);
+	cpu_dvfs = kcalloc(cluster_num, sizeof(struct fbt_cpu_dvfs_info), GFP_KERNEL);
 	for (i = 0; i < cluster_num; i++) {
-		cpu_dvfs[i].power =
-			kcalloc(nr_freq_cpu, sizeof(unsigned int), GFP_KERNEL);
-		cpu_dvfs[i].capacity_ratio =
-			kcalloc(nr_freq_cpu, sizeof(unsigned int), GFP_KERNEL);
+		cpu_dvfs[i].power = kcalloc(nr_freq_cpu, sizeof(unsigned int), GFP_KERNEL);
+		cpu_dvfs[i].capacity_ratio = kcalloc(nr_freq_cpu, sizeof(unsigned int), GFP_KERNEL);
 	}
 
 	clus_max_cap =
@@ -8624,78 +8579,44 @@ int __init fbt_cpu_init(void)
 
 
 	if (!fpsgo_sysfs_create_dir(NULL, "fbt", &fbt_kobj)) {
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_light_loading_policy);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_fbt_info);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_enable_switch_down_throttle);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_rescue_enable);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_ultra_rescue);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_llf_task_policy);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_boost_ta);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_limit_uclamp);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_limit_ruclamp);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_limit_uclamp_m);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_limit_ruclamp_m);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_limit_cfreq);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_limit_rfreq);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_limit_cfreq_m);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_limit_rfreq_m);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_enable_ceiling);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_enable_uclamp_boost);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_switch_filter_frame);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_filter_f_window_size);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_filter_f_kmin);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_enable_separate_aa);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_separate_pct_b);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_separate_pct_m);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_separate_release_sec);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_blc_boost);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_heavy_task_num);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_boost_VIP);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_RT_prio1);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_RT_prio2);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_RT_prio3);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_light_loading_policy);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_fbt_info);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_enable_switch_down_throttle);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_rescue_enable);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_ultra_rescue);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_llf_task_policy);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_boost_ta);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_uclamp);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_ruclamp);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_uclamp_m);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_ruclamp_m);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_cfreq);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_rfreq);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_cfreq_m);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_rfreq_m);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_enable_ceiling);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_enable_uclamp_boost);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_switch_filter_frame);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_filter_f_window_size);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_filter_f_kmin);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_enable_separate_aa);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_separate_pct_b);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_separate_pct_m);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_separate_release_sec);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_blc_boost);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_heavy_task_num);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_boost_VIP);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_RT_prio1);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_RT_prio2);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_RT_prio3);
 #if FPSGO_MW
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_fbt_attr_by_pid);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_fbt_attr_by_tid);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_fbt_attr_by_pid);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_fbt_attr_by_tid);
 #endif  // FPSGO_MW
 #if FPSGO_DYNAMIC_WL
 #else  // FPSGO_DYNAMIC_WL
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_table_freq);
-		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_table_cap);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_table_freq);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_table_cap);
 #endif  // FPSGO_DYNAMIC_WL
 
 	}
