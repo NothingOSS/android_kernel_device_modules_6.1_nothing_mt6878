@@ -2882,7 +2882,7 @@ static const enum mtk_ddp_comp_id mt6989_mtk_ddp_ext_dp[] = {
 	DDP_COMPONENT_PANEL0_COMP_OUT_CB3,
 	DDP_COMPONENT_DLO_ASYNC3,
 	DDP_COMPONENT_DLI_ASYNC11,
-	DDP_COMPONENT_COMP0_IN_CB8,
+	DDP_COMPONENT_COMP0_IN_CB9,
 	DDP_COMPONENT_COMP0_OUT_CB9,
 	DDP_COMPONENT_MERGE0_OUT_CB5,
 	DDP_COMPONENT_DP_INTF0,
@@ -2890,15 +2890,15 @@ static const enum mtk_ddp_comp_id mt6989_mtk_ddp_ext_dp[] = {
 
 static const enum mtk_ddp_comp_id mt6989_mtk_ddp_secondary[] = {
 	DDP_COMPONENT_OVL5_2L,
-	DDP_COMPONENT_OVLSYS_DLO_ASYNC5,
-	DDP_COMPONENT_DLI_ASYNC2,
-	DDP_COMPONENT_PQ0_OUT_CB5,
-	DDP_COMPONENT_PANEL0_COMP_OUT_CB2,
-	DDP_COMPONENT_DLO_ASYNC2,
-	DDP_COMPONENT_DLI_ASYNC10,
-	DDP_COMPONENT_COMP0_IN_CB5,
-	DDP_COMPONENT_COMP0_OUT_CB6,
-	DDP_COMPONENT_MERGE0_OUT_CB2,
+	DDP_COMPONENT_OVLSYS_DLO_ASYNC13,
+	DDP_COMPONENT_DLI_ASYNC7,
+	DDP_COMPONENT_PQ0_OUT_CB7,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB4,
+	DDP_COMPONENT_DLO_ASYNC4,
+	DDP_COMPONENT_DLI_ASYNC12,
+	DDP_COMPONENT_COMP0_IN_CB8,
+	DDP_COMPONENT_COMP0_OUT_CB8,
+	DDP_COMPONENT_MERGE0_OUT_CB4,
 	DDP_COMPONENT_DSI1,
 };
 
@@ -4436,6 +4436,7 @@ static const struct mtk_crtc_path_data mt6989_mtk_dp_wo_tdshp_path_data = {
 static const struct mtk_crtc_path_data mt6989_mtk_secondary_path_data = {
 	.path[DDP_MAJOR][0] = mt6989_mtk_ddp_secondary,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6989_mtk_ddp_secondary),
+	.path_req_hrt[DDP_MAJOR][0] = true,
 //	.dual_path[0] = mt6989_mtk_ddp_dual_secondary_dp,
 //	.dual_path_len[0] = ARRAY_SIZE(mt6989_mtk_ddp_dual_secondary_dp),
 	.addon_data = mt6989_addon_secondary_path,
