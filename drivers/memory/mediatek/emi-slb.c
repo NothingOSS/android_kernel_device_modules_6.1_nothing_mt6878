@@ -120,22 +120,21 @@ static irqreturn_t emislb_violation_irq(int irq, void *dev_id)
 				violation = true;
 		}
 
-		if (!violation)
-			continue;
-
-		nr_vio++;
-		if (msg_len < MTK_EMI_MAX_CMD_LEN)
-			msg_len += scnprintf(slb->vio_msg + msg_len,
-					MTK_EMI_MAX_CMD_LEN - msg_len,
-					"\n[SLBMPU]\n");
-		for (i = 0; i < slb->dump_cnt; i++)
-			if (msg_len < MTK_EMI_MAX_CMD_LEN) {
-				n = snprintf(slb->vio_msg + msg_len,
-					MTK_EMI_MAX_CMD_LEN - msg_len,
-					"id%d,%x,%x;\n", emi_id,
-					dump_reg[i].offset, dump_reg[i].value);
-				msg_len += (n < 0) ? 0 : (ssize_t)n;
-			}
+		if (violation) {
+			nr_vio++;
+			if (msg_len < MTK_EMI_MAX_CMD_LEN)
+				msg_len += scnprintf(slb->vio_msg + msg_len,
+						MTK_EMI_MAX_CMD_LEN - msg_len,
+						"\n[SLBMPU]\n");
+			for (i = 0; i < slb->dump_cnt; i++)
+				if (msg_len < MTK_EMI_MAX_CMD_LEN) {
+					n = snprintf(slb->vio_msg + msg_len,
+						MTK_EMI_MAX_CMD_LEN - msg_len,
+						"id%d,%x,%x;\n", emi_id,
+						dump_reg[i].offset, dump_reg[i].value);
+					msg_len += (n < 0) ? 0 : (ssize_t)n;
+				}
+		}
 
 		clear_violation(slb, emi_id);
 	}
@@ -267,8 +266,9 @@ static int emislb_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to get irq resource\n");
 		return -ENXIO;
 	}
-	ret = request_irq(slb->irq, (irq_handler_t)emislb_violation_irq,
-		IRQF_TRIGGER_NONE, "emislb", slb);
+	ret = request_threaded_irq(slb->irq, NULL,
+		(irq_handler_t)emislb_violation_irq,
+		IRQF_TRIGGER_NONE | IRQF_ONESHOT, "emislb", slb);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to request irq");
 		return -EINVAL;
