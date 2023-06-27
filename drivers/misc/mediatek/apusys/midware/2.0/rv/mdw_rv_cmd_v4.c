@@ -354,6 +354,7 @@ reuse:
 	/* clear exec ret */
 	c->einfos->c.ret = 0;
 	c->einfos->c.sc_rets = 0;
+	rmc->cmd_done = 0;
 
 	/* update histroy ip time */
 	rmsc = (void *)rmc + rmc->subcmds_offset;
@@ -426,7 +427,7 @@ static bool mdw_rv_cmd_poll(struct mdw_rv_cmd *rc)
 
 	/* poll cmd done result */
 	for(i = 0; i< MDW_POLL_TOTAL_TIME; i++) {
-		if(rmc->cmd_done == MDW_PERF_CMD_DONE) {
+		if(rmc->cmd_done) {
 			poll_ret = true;
 			break;
 		}
