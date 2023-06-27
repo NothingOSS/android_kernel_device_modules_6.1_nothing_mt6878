@@ -171,8 +171,15 @@ def main(**args):
 
     file_text.append("DIST_CMDS='cp -p ${OUT_DIR}/.config ${DIST_DIR}'\n")
 
+    gen_build_config_gki_goals = '%s.gki_goals' % (gen_build_config)
+    file_handle = open(gen_build_config_gki_goals, 'w')
+    file_handle.write('MAKE_GOALS=\"${MAKE_GOALS} Image.lz4 Image.gz\"')
+    file_handle.close()
+    gki_build_config_fragments = '  GKI_BUILD_CONFIG_FRAGMENTS=${REL_GEN_BUILD_CONFIG_DIR}/build.config.gki_goals'
+
     file_text.append("if [ \"x${PROJECT_DEFCONFIG_NAME}\" != \"xgki_defconfig\" ]; then")
     file_text.append("  GKI_BUILD_CONFIG=${KERNEL_DIR}/build.config.gki.aarch64.vendor")
+    file_text.append(gki_build_config_fragments)
     file_text.append("fi")
     file_text.append("GKI_PATH=${ROOT_DIR}/../prebuilts/perl/linux-x86/bin:${ROOT_DIR}/build/kernel/build-tools/path/linux-x86:/usr/bin:/bin")
     file_text.append("GKI_KCONFIG_EXT_PREFIX=${KCONFIG_EXT_PREFIX}")
