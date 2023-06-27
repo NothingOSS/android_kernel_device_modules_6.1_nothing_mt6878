@@ -49,10 +49,10 @@ struct mdw_ext_cmd_in {
 
 struct mdw_ext_cmd_out {
 	int64_t fence;
+	uint64_t u_done;
 
 	uint64_t reserve0;
 	uint64_t reserve1;
-	uint64_t reserve2;
 };
 
 union mdw_ext_cmd_args {

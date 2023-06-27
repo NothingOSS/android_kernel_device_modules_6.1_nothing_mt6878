@@ -358,6 +358,7 @@ struct mdw_cmd {
 	uint64_t kid;
 	uint64_t uid;
 	uint64_t rvid;
+	uint32_t u_pid;
 	uint32_t priority;
 	uint32_t hardlimit;
 	uint32_t softlimit;
@@ -461,12 +462,15 @@ long mdw_ioctl(struct file *filep, unsigned int cmd, unsigned long arg);
 int mdw_hs_ioctl(struct mdw_fpriv *mpriv, void *data);
 int mdw_mem_ioctl(struct mdw_fpriv *mpriv, void *data);
 int mdw_cmd_ioctl(struct mdw_fpriv *mpriv, void *data);
+int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args);
 int mdw_util_ioctl(struct mdw_fpriv *mpriv, void *data);
 
 void mdw_cmd_delete(struct mdw_cmd *c);
 int mdw_cmd_invoke_map(struct mdw_cmd *c, struct mdw_mem_map *map);
 void mdw_cmd_mpriv_release(struct mdw_fpriv *mpriv);
 void mdw_mem_mpriv_release(struct mdw_fpriv *mpriv);
+void mdw_cmd_put(struct mdw_cmd *c);
+void mdw_cmd_get(struct mdw_cmd *c);
 
 void mdw_mem_all_print(struct mdw_fpriv *mpriv);
 

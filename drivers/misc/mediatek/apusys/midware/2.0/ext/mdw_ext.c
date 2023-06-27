@@ -3,13 +3,25 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 
+#include "mdw.h"
 #include "mdw_ext.h"
+#include "mdw_ext_cmn.h"
+#include "mdw_ext_export.h"
 #include "mdw_ext_ioctl.h"
 
 #define MDWEXT_DEV_NAME "apuext"
 
 struct mdw_ext_device *mdw_ext_dev;
-u32 g_mdwext_klog = 15;
+
+void mdw_ext_lock(void)
+{
+	mutex_lock(&mdw_ext_dev->ext_mtx);
+}
+
+void mdw_ext_unlock(void)
+{
+	mutex_unlock(&mdw_ext_dev->ext_mtx);
+}
 
 static int mdw_ext_open(struct inode *inode, struct file *filp)
 {
@@ -38,11 +50,10 @@ static struct miscdevice mdw_ext_misc_dev = {
 //----------------------------------------
 int mdw_ext_init(void)
 {
-	int ret = 0;
+	int ret = -EINVAL;
 
 	pr_info("%s register misc...\n", __func__);
-	ret = misc_register(&mdw_ext_misc_dev);
-	if (ret) {
+	if (misc_register(&mdw_ext_misc_dev)) {
 		pr_info("failed to register apu ext misc driver\n");
 		goto out;
 	}
@@ -50,20 +61,29 @@ int mdw_ext_init(void)
 	/* alloc ext device */
 	mdw_ext_dev = kzalloc(sizeof(*mdw_ext_dev), GFP_KERNEL);
 	if (mdw_ext_dev == NULL) {
-		ret = -ENOMEM;
-		goto out;
+		goto deregister_ext;
 	}
 
 	mdw_ext_dev->misc_dev = &mdw_ext_misc_dev;
+	idr_init(&mdw_ext_dev->ext_ids);
+	mutex_init(&mdw_ext_dev->ext_mtx);
 	pr_info("%s register misc done\n", __func__);
 
+	ret = 0;
+
+	goto out;
+
+deregister_ext:
+	misc_deregister(&mdw_ext_misc_dev);
 out:
 	return ret;
 }
 
 void mdw_ext_deinit(void)
 {
-	misc_deregister(&mdw_ext_misc_dev);
-	if (mdw_ext_dev != NULL)
+	/* free ext driver */
+	if (mdw_ext_dev != NULL) {
+		misc_deregister(&mdw_ext_misc_dev);
 		kfree(mdw_ext_dev);
+	}
 }

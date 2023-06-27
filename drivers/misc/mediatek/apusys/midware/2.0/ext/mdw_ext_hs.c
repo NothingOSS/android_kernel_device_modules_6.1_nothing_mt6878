@@ -12,7 +12,7 @@
 static int mdw_ext_hs_version(union mdw_ext_hs_args *args)
 {
 		memset(args, 0, sizeof(*args));
-		args->out.out0 = 4;
+		args->out.out0 = MDW_EXT_SUPPORT_VER;
 		mdwext_drv_debug("ext hs version(%llu)\n", args->out.out0);
 
 	return 0;

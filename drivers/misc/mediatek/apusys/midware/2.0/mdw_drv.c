@@ -14,7 +14,7 @@
 #include "mdw_cmn.h"
 #include "mdw_mem.h"
 #include "mdw_mem_pool.h"
-#include "mdw_ext.h"
+#include "mdw_ext_export.h"
 
 struct mdw_device *mdw_dev;
 static struct apusys_core_info *g_info;

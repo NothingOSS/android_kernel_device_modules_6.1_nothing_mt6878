@@ -15,6 +15,7 @@
 #include "mdw_mem_pool.h"
 #include "apummu_export.h"
 #include "rv/mdw_rv_tag.h"
+#include "mdw_ext_export.h"
 
 #define mdw_cmd_show(c, f) \
 	f("cmd(0x%llx/0x%llx/0x%llx/0x%llx/%d/%u)param(%u/%u/%u/%u/"\
@@ -627,6 +628,8 @@ static void mdw_cmd_release(struct kref *ref)
 	struct mdw_fpriv *mpriv = c->mpriv;
 
 	mdw_cmd_show(c, mdw_drv_debug);
+	/* remove ext id */
+	mdw_ext_cmd_put_id(c);
 	mdw_trace_begin("apumdw:cmd_release|c:0x%llx", c->kid);
 	if (c->del_internal)
 		c->del_internal(c);
@@ -646,10 +649,12 @@ static void mdw_cmd_release(struct kref *ref)
 
 void mdw_cmd_put(struct mdw_cmd *c)
 {
+	mdw_ext_lock();
 	kref_put(&c->ref, mdw_cmd_release);
+	mdw_ext_unlock();
 }
 
-static void mdw_cmd_get(struct mdw_cmd *c)
+void mdw_cmd_get(struct mdw_cmd *c)
 {
 	kref_get(&c->ref);
 }
@@ -1329,6 +1334,7 @@ static struct mdw_cmd *mdw_cmd_create(struct mdw_fpriv *mpriv,
 	c->tgid = task_tgid_nr(current);
 	c->kid = (uint64_t)c;
 	c->uid = in->exec.uid;
+	c->u_pid = in->exec.u_pid;
 	get_task_comm(c->comm, current);
 	c->priority = in->exec.priority;
 	c->hardlimit = in->exec.hardlimit;
@@ -1417,6 +1423,10 @@ static struct mdw_cmd *mdw_cmd_create(struct mdw_fpriv *mpriv,
 	INIT_WORK(&c->t_wk, &mdw_cmd_trigger_func);
 	init_completion(&c->cmplt);
 	kref_init(&c->ref);
+
+	/* get ext id */
+	mdw_ext_cmd_get_id(c);
+
 	mdw_cmd_show(c, mdw_drv_debug);
 
 	goto out;
@@ -1484,7 +1494,7 @@ static void mdw_cmd_ch_tbl_sc_check(struct mdw_cmd_history_tbl *ch_tbl,
 	}
 }
 
-static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
+int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 {
 	struct mdw_cmd_in *in = (struct mdw_cmd_in *)args;
 	struct mdw_cmd *c = NULL, *priv_c = NULL;
@@ -1628,7 +1638,8 @@ exec:
 	args->out.exec.fence = fd;
 	args->out.exec.id = c->id;
 	args->out.exec.cmd_done_usr = c->cmd_state;
-	mdw_flw_debug("async fd(%d) id(%d)\n", fd, c->id);
+	args->out.exec.ext_id = c->ext_id;
+	mdw_flw_debug("async fd(%d) id(%d) extid(0x%llx)\n", fd, c->id, c->ext_id);
 	mutex_unlock(&c->mtx);
 	goto out;
 

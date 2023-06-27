@@ -10,9 +10,8 @@
 #include <linux/seq_file.h>
 #include <linux/time.h>
 
+#include "mdw_cmn.h"
 #include "mdw_ext.h"
-
-extern u32 g_mdwext_klog;
 
 enum {
 	MDWEXT_DBG_DRV = 0x01,
@@ -25,7 +24,7 @@ extern struct mdw_ext_device *mdw_ext_dev;
 static inline
 int mdwext_debug_on(int mask)
 {
-	return g_mdwext_klog & mask;
+	return g_mdw_klog & mask;
 }
 
 #define mdwext_debug(mask, x, ...) do { if (mdwext_debug_on(mask)) \
