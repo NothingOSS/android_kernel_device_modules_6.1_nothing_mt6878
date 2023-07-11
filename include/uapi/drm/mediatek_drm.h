@@ -1316,90 +1316,103 @@ struct DISP_TDSHP_CLARITY_REG {
 	// Active Parameters Frequency D
 	__u32 D_active_parameter_N_gain;
 	__u32 D_active_parameter_N_offset;
+	__u32 D_active_parameter_P_offset ;
 	__u32 D_active_parameter_P_gain;
-	__u32 D_active_parameter_P_offset;
 
 	// Active Parameters Frequency H
 	__u32 High_active_parameter_N_gain;
 	__u32 High_active_parameter_N_offset;
-	__u32 High_active_parameter_P_gain;
 	__u32 High_active_parameter_P_offset;
+	__u32 High_active_parameter_P_gain;
 
 	// Active Parameters Frequency L
 	__u32 L_active_parameter_N_gain;
 	__u32 L_active_parameter_N_offset;
-	__u32 L_active_parameter_P_gain;
 	__u32 L_active_parameter_P_offset;
+	__u32 L_active_parameter_P_gain;
 
 	// Active Parameters Frequency M
 	__u32 Mid_active_parameter_N_gain;
 	__u32 Mid_active_parameter_N_offset;
-	__u32 Mid_active_parameter_P_gain;
 	__u32 Mid_active_parameter_P_offset;
+	__u32 Mid_active_parameter_P_gain;
 
 	// Size Parameters
-	__u32 SIZE_PARA_BIG_HUGE;
-	__u32 SIZE_PARA_MEDIUM_BIG;
 	__u32 SIZE_PARA_SMALL_MEDIUM;
+	__u32 SIZE_PARA_MEDIUM_BIG;
+	__u32 SIZE_PARA_BIG_HUGE;
 
 	// Final Size Adaptive Weight Huge
-	__u32 high_auto_adaptive_weight_HUGE;
-	__u32 high_size_adaptive_weight_HUGE;
-	__u32 Mid_auto_adaptive_weight_HUGE;
 	__u32 Mid_size_adaptive_weight_HUGE;
+	__u32 Mid_auto_adaptive_weight_HUGE;
+	__u32 high_size_adaptive_weight_HUGE;
+	__u32 high_auto_adaptive_weight_HUGE;
 
 	// Final Size Adaptive Weight Big
-	__u32 high_auto_adaptive_weight_BIG;
-	__u32 high_size_adaptive_weight_BIG;
-	__u32 Mid_auto_adaptive_weight_BIG;
 	__u32 Mid_size_adaptive_weight_BIG;
+	__u32 Mid_auto_adaptive_weight_BIG;
+	__u32 high_size_adaptive_weight_BIG;
+	__u32 high_auto_adaptive_weight_BIG;
 
 	// Final Size Adaptive Weight Medium
-	__u32 high_auto_adaptive_weight_MEDIUM;
-	__u32 high_size_adaptive_weight_MEDIUM;
-	__u32 Mid_auto_adaptive_weight_MEDIUM;
 	__u32 Mid_size_adaptive_weight_MEDIUM;
+	__u32 Mid_auto_adaptive_weight_MEDIUM;
+	__u32 high_size_adaptive_weight_MEDIUM;
+	__u32 high_auto_adaptive_weight_MEDIUM;
 
 	// Final Size Adaptive Weight Small
-	__u32 high_auto_adaptive_weight_SMALL;
-	__u32 high_size_adaptive_weight_SMALL;
-	__u32 Mid_auto_adaptive_weight_SMALL;
 	__u32 Mid_size_adaptive_weight_SMALL;
+	__u32 Mid_auto_adaptive_weight_SMALL;
+	__u32 high_size_adaptive_weight_SMALL;
+	__u32 high_auto_adaptive_weight_SMALL;
 
 	// Config
-	__u32 FILTER_HIST_EN;
 	__u32 FREQ_EXTRACT_ENHANCE;
+	__u32 FILTER_HIST_EN;
 
 	// Frequency Weighting
-	__u32 freq_D_weighting;
-	__u32 freq_H_weighting;
-	__u32 freq_L_weighting;
 	__u32 freq_M_weighting;
+	__u32 freq_H_weighting;
+	__u32 freq_D_weighting;
+	__u32 freq_L_weighting;
 
 	// Frequency Weighting Final
+	__u32 freq_M_final_weighting;
 	__u32 freq_D_final_weighting;
 	__u32 freq_L_final_weighting;
-	__u32 freq_M_final_weighting;
 	__u32 freq_WH_final_weighting;
-	__u32 SIZE_PARAMETER;
+
 
 	// Luma Chroma Parameters
-	__u32 chroma_high_gain;
-	__u32 chroma_high_index;
-	__u32 chroma_low_gain;
-	__u32 chroma_low_index;
-	__u32 luma_high_gain;
-	__u32 luma_high_index;
+	__u32 Luma_adaptive_mode;
+	__u32 Chroma_adaptive_mode;
+
+	__u32 SIZE_PARAMETER;
+	__u32 SEG_data_length;
+	__u32 Luma_shift;
+	__u32 Chroma_shift;
+	__u32 Regional_en;
+
+	/* GROUP : LUMA_CHROMA_PARAMETER */
 	__u32 luma_low_gain;
 	__u32 luma_low_index;
-	__u32 Chroma_adaptive_mode;
-	__u32 Chroma_shift;
-	__u32 Luma_adaptive_mode;
-	__u32 Luma_shift;
+	__u32 luma_high_index;
+	__u32 luma_high_gain;
+	__u32 chroma_low_gain;
+	__u32 chroma_low_index;
+	__u32 chroma_high_index;
+	__u32 chroma_high_gain;
+
+
+
 
 	// Base Black & White edges
 	__u32 class_0_positive_gain;
 	__u32 class_0_negative_gain;
+	__u32 class_1_positive_gain;
+	__u32 class_1_negative_gain;
+	__u32 class_2_positive_gain;
+	__u32 class_2_negative_gain;
 };
 
 struct DISP_CLARITY_REG {
