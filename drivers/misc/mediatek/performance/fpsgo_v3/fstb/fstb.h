@@ -29,6 +29,8 @@ void fpsgo_comp2fstb_prepare_calculate_target_fps(int pid,
 int fpsgo_ctrl2fstb_gblock(int tid, int start);
 void fpsgo_ctrl2fstb_get_fps(int *pid, int *fps);
 int fpsgo_ctrl2fstb_wait_fstb_active(void);
+void fpsgo_ctrl2fstb_cam_queue_time_update(unsigned long long ts);
+int fpsgo_other2fstb_check_cam_do_frame(void);
 int fpsgo_comp2fstb_do_recycle(void);
 int fpsgo_comp2fstb_adpf_set_target_time(int tgid, int rtid, unsigned long long bufID,
 	unsigned long long target_time, int create);

@@ -374,44 +374,6 @@ ser_out:
 	}
 }
 
-void fpsgo_ctrl2base_wait_cam(int cmd, int *pid)
-{
-	struct cam_cmd_node *node = NULL;
-
-	switch (cmd) {
-	case CAMERA_APK:
-		wait_event_interruptible(cam_apk_pid_queue, cond_get_cam_apk_pid);
-		mutex_lock(&fpsgo2cam_apk_lock);
-		if (!list_empty(&cam_apk_pid_list)) {
-			node = list_first_entry(&cam_apk_pid_list,
-				struct cam_cmd_node, queue_list);
-			*pid = node->target_pid;
-			list_del(&node->queue_list);
-			kfree(node);
-		}
-		if (list_empty(&cam_apk_pid_list))
-			cond_get_cam_apk_pid = 0;
-		mutex_unlock(&fpsgo2cam_apk_lock);
-		break;
-	case CAMERA_SERVER:
-		wait_event_interruptible(cam_ser_pid_queue, cond_get_cam_ser_pid);
-		mutex_lock(&fpsgo2cam_ser_lock);
-		if (!list_empty(&cam_ser_pid_list)) {
-			node = list_first_entry(&cam_ser_pid_list,
-				struct cam_cmd_node, queue_list);
-			*pid = node->target_pid;
-			list_del(&node->queue_list);
-			kfree(node);
-		}
-		if (list_empty(&cam_ser_pid_list))
-			cond_get_cam_ser_pid = 0;
-		mutex_unlock(&fpsgo2cam_ser_lock);
-		break;
-	default:
-		break;
-	}
-}
-
 static void fpsgo_get_cam_pid(int cmd, int *pid)
 {
 	int local_camera_server_pid = 0;
@@ -421,6 +383,8 @@ static void fpsgo_get_cam_pid(int cmd, int *pid)
 
 	if (!pid)
 		return;
+
+	*pid = 0;
 
 	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
 		r_iter = rb_entry(rbn, struct render_info, render_key_node);
@@ -460,14 +424,116 @@ static void fpsgo_get_cam_pid(int cmd, int *pid)
 	}
 }
 
+static void fpsgo_check_consumer_is_hwui(int *pid)
+{
+	int i;
+	int ret = 0;
+	int *r_hwui_arr = NULL;
+	int r_hwui_num = 0;
+	struct render_info *r_iter = NULL;
+	struct acquire_info *a_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	if (!pid)
+		return;
+
+	*pid = 0;
+
+	r_hwui_arr = kcalloc(5, sizeof(int), GFP_KERNEL);
+	if (!r_hwui_arr)
+		return;
+
+	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
+		r_iter = rb_entry(rbn, struct render_info, render_key_node);
+		fpsgo_thread_lock(&r_iter->thr_mlock);
+		if (r_iter->hwui == RENDER_INFO_HWUI_TYPE &&
+			r_hwui_num < 5) {
+			r_hwui_arr[r_hwui_num] = r_iter->pid;
+			r_hwui_num++;
+		}
+		fpsgo_thread_unlock(&r_iter->thr_mlock);
+	}
+
+	if (!r_hwui_num) {
+		kfree(r_hwui_arr);
+		fpsgo_main_trace("[base] %s no hwui", __func__);
+		return;
+	}
+
+	for (rbn = rb_first(&acquire_info_tree); rbn; rbn = rb_next(rbn)) {
+		a_iter = rb_entry(rbn, struct acquire_info, entry);
+		if (a_iter->api == NATIVE_WINDOW_API_CAMERA) {
+			ret = -1;
+			for (i = 0; i < r_hwui_num; i++) {
+				if (a_iter->c_tid == r_hwui_arr[i]) {
+					ret = a_iter->c_tid;
+					break;
+				}
+			}
+			if (ret > 0)
+				break;
+		}
+	}
+
+	*pid = ret;
+
+	kfree(r_hwui_arr);
+}
+
 void fpsgo_ctrl2base_get_cam_pid(int cmd, int *pid)
 {
 	if (!pid)
 		return;
 
 	fpsgo_render_tree_lock(__func__);
-	fpsgo_get_cam_pid(cmd, pid);
+	if (cmd == CAMERA_HWUI)
+		fpsgo_check_consumer_is_hwui(pid);
+	else
+		fpsgo_get_cam_pid(cmd, pid);
 	fpsgo_render_tree_unlock(__func__);
+}
+
+void fpsgo_ctrl2base_wait_cam(int cmd, int *pid)
+{
+	struct cam_cmd_node *node = NULL;
+
+	switch (cmd) {
+	case CAMERA_APK:
+		wait_event_interruptible(cam_apk_pid_queue, cond_get_cam_apk_pid);
+		mutex_lock(&fpsgo2cam_apk_lock);
+		if (!list_empty(&cam_apk_pid_list)) {
+			node = list_first_entry(&cam_apk_pid_list,
+				struct cam_cmd_node, queue_list);
+			*pid = node->target_pid;
+			list_del(&node->queue_list);
+			kfree(node);
+		}
+		if (list_empty(&cam_apk_pid_list))
+			cond_get_cam_apk_pid = 0;
+		mutex_unlock(&fpsgo2cam_apk_lock);
+		break;
+	case CAMERA_SERVER:
+		wait_event_interruptible(cam_ser_pid_queue, cond_get_cam_ser_pid);
+		mutex_lock(&fpsgo2cam_ser_lock);
+		if (!list_empty(&cam_ser_pid_list)) {
+			node = list_first_entry(&cam_ser_pid_list,
+				struct cam_cmd_node, queue_list);
+			*pid = node->target_pid;
+			list_del(&node->queue_list);
+			kfree(node);
+		}
+		if (list_empty(&cam_ser_pid_list))
+			cond_get_cam_ser_pid = 0;
+		mutex_unlock(&fpsgo2cam_ser_lock);
+		break;
+	case CAMERA_HWUI:
+		fpsgo_render_tree_lock(__func__);
+		fpsgo_check_consumer_is_hwui(pid);
+		fpsgo_render_tree_unlock(__func__);
+		break;
+	default:
+		break;
+	}
 }
 
 void fpsgo_ctrl2base_notify_cam_close(void)
@@ -1814,11 +1880,6 @@ int fpsgo_check_thread_status(void)
 	fpsgo_traverse_linger(ts);
 	fpsgo_check_adpf_render_status();
 
-	if (fpsgo_get_acquire_hint_is_enable())
-		fpsgo_get_cam_pid(CAMERA_APK, &global_cam_apk_pid);
-	else
-		global_cam_apk_pid = 0;
-
 	fpsgo_render_tree_unlock(__func__);
 
 	fpsgo_base2comp_check_connect_api();
@@ -2246,12 +2307,10 @@ struct acquire_info *fpsgo_add_acquire_info(int p_pid, int c_pid, int c_tid,
 
 	if (api == NATIVE_WINDOW_API_CAMERA) {
 		if (wq_has_sleeper(&cam_apk_pid_queue)) {
-			local_tgid = 0;
 			fpsgo_get_cam_pid(CAMERA_APK, &local_tgid);
 			fpsgo2cam_sentcmd(CAMERA_APK, local_tgid);
 		}
 		if (wq_has_sleeper(&cam_ser_pid_queue)) {
-			local_tgid = 0;
 			fpsgo_get_cam_pid(CAMERA_SERVER, &local_tgid);
 			fpsgo2cam_sentcmd(CAMERA_SERVER, local_tgid);
 		}

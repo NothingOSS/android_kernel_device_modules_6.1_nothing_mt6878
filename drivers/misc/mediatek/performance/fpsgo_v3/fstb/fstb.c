@@ -72,6 +72,7 @@ static int vsync_period;
 static unsigned long long vsync_ts_last;
 static unsigned int vsync_count;
 static unsigned long long vsync_duration_sum;
+static unsigned long long last_cam_queue_ts;
 
 int fstb_no_r_timer_enable;
 EXPORT_SYMBOL(fstb_no_r_timer_enable);
@@ -213,6 +214,26 @@ int fpsgo_ctrl2fstb_wait_fstb_active(void)
 	condition_fstb_active = 0;
 	mutex_unlock(&fstb_lock);
 	return 0;
+}
+
+void fpsgo_ctrl2fstb_cam_queue_time_update(unsigned long long ts)
+{
+	last_cam_queue_ts = ts;
+}
+
+int fpsgo_other2fstb_check_cam_do_frame(void)
+{
+	int ret = 1;
+	unsigned long long cur_ts = fpsgo_get_time();
+
+	if (cur_ts > last_cam_queue_ts &&
+		(cur_ts - last_cam_queue_ts) >= 1000000000ULL) {
+		ret = 0;
+		fpsgo_main_trace("[fstb] cur_ts:%llu last_cam_queue_ts:%llu",
+			cur_ts, last_cam_queue_ts);
+	}
+
+	return ret;
 }
 
 static int fstb_arbitrate_target_fps(int raw_target_fps, int *margin,

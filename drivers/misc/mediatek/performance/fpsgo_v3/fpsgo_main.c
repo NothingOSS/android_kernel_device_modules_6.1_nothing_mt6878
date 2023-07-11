@@ -814,18 +814,30 @@ int fpsgo_wait_fstb_active(void)
 	return fpsgo_ctrl2fstb_wait_fstb_active();
 }
 
-void fpsgo_get_pid(int cmd, int *pid, int op, int close)
+void fpsgo_get_pid(int cmd, int *pid, int op)
 {
+	unsigned long long cur_ts;
+
 	if (!pid)
 		return;
 
-	if (close)
+	switch (cmd) {
+	case CAMERA_CLOSE:
 		fpsgo_ctrl2base_notify_cam_close();
-	else {
-		if (op)
-			fpsgo_ctrl2base_wait_cam(cmd, pid);
-		else
+		break;
+	case CAMERA_APK:
+	case CAMERA_SERVER:
+	case CAMERA_HWUI:
+		op ? fpsgo_ctrl2base_wait_cam(cmd, pid) :
 			fpsgo_ctrl2base_get_cam_pid(cmd, pid);
+		break;
+	case CAMERA_DO_FRAME:
+		cur_ts = fpsgo_get_time();
+		fpsgo_ctrl2fstb_cam_queue_time_update(cur_ts);
+		break;
+	default:
+		FPSGO_LOGE("[FPSGO_CTRL] wrong cmd:%d\n", cmd);
+		break;
 	}
 }
 

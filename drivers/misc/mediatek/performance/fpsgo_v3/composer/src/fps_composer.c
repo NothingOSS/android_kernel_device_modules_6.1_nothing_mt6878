@@ -491,7 +491,7 @@ static int fpsgo_com_check_BQ_type(int *bq_type,
 	if (local_bq_type == ACQUIRE_CAMERA_TYPE)
 		goto out;
 
-	if (fpsgo_check_cam_do_frame())
+	if (fpsgo_other2fstb_check_cam_do_frame())
 		local_bq_type = fpsgo_check_all_render_blc(pid, buffer_id);
 	if (local_bq_type == ACQUIRE_OTHER_TYPE)
 		fpsgo_systrace_c_fbt(pid, buffer_id, local_bq_type, "bypass_acquire");
