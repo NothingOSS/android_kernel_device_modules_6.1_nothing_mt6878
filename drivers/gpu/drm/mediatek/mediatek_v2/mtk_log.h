@@ -123,11 +123,11 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define DDP_MUTEX_LOCK(lock, name, line)                                       \
 	do {                                                                   \
 		DDPINFO("M_LOCK:%s[%d] +\n", name, line);		   \
-		mtk_vidle_power_keep();		\
 		DRM_MMP_EVENT_START(mutex_lock, (unsigned long)lock,	   \
 				line);	   \
 		mtk_drm_trace_tag_begin("M_LOCK_%s", name);	\
 		mutex_lock(lock);		   \
+		mtk_vidle_power_keep();		\
 		mutex_time_start = sched_clock();		   \
 		mutex_locker = name;		   \
 	} while (0)
@@ -144,11 +144,11 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 				(unsigned long)mutex_time_period, 0);   \
 			dump_stack();		   \
 		}		   \
+		mtk_vidle_power_release();			\
 		mutex_unlock(lock);		   \
 		DRM_MMP_EVENT_END(mutex_lock, (unsigned long)lock,	   \
 			line);	   \
 		mtk_drm_trace_tag_end("M_LOCK_%s", name);	\
-		mtk_vidle_power_release();			\
 		DDPINFO("M_ULOCK:%s[%d] -\n", name, line);		   \
 	} while (0)
 

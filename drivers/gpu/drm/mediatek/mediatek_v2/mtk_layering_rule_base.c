@@ -4122,7 +4122,7 @@ static void check_is_mml_layer(const int disp_idx,
 
 		if (!output_comp) {
 			/* Check line time and slbc state once per HRT */
-			DDP_MUTEX_LOCK(&priv->commit.lock, __func__, hrt_idx);
+			mutex_lock(&priv->commit.lock);
 			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 			if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
 				mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_LINE_TIME_NS, &ns);
@@ -4133,7 +4133,7 @@ static void check_is_mml_layer(const int disp_idx,
 				else
 					mtk_crtc->slbc_state = SLBC_CAN_ALLOC;
 			}
-			DDP_MUTEX_UNLOCK(&priv->commit.lock, __func__, hrt_idx);
+			mutex_unlock(&priv->commit.lock);
 		}
 
 		c->layer_caps |= query_MML(dev, crtc, mml_info, ns);
