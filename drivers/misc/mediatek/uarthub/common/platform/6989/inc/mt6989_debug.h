@@ -95,8 +95,8 @@
 	DEBUG_3, null, "tx_offset_dma", _print_ap, _def_tag, _tag, "%d", _last)
 
 #define UARTHUB_DEBUG_GET_XCSTATE_WSEND_XOFF_VAL(base) \
-	((((UARTHUB_REG_READ(DEBUG_1(base)) & 0xE0) >> 5) == 1) ? 1 : 0)
-#define UARTHUB_DEBUG_GET_XCSTATE_WSEND_XOFF(_v1)	((((_v1 & 0xE0) >> 5) == 1) ? 1 : 0)
+	((UARTHUB_REG_READ(DEBUG_1(base)) & 0xE0) >> 5)
+#define UARTHUB_DEBUG_GET_XCSTATE_WSEND_XOFF(_v1)	((_v1 & 0xE0) >> 5)
 #define UARTHUB_DEBUG_PRINT_XCSTATE_WSEND_XOFF(_def_tag, _tag, _print_ap, _last) \
 	UARTHUB_DEBUG_PRINT(UARTHUB_DEBUG_READ_1_REG, UARTHUB_DEBUG_GET_XCSTATE_WSEND_XOFF,\
 	DEBUG_1, null, "xcstate_wsend_xoff", _print_ap, _def_tag, _tag, "%d", _last)

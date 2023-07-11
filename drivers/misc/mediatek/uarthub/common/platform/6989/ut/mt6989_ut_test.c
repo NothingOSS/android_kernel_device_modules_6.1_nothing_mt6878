@@ -247,7 +247,7 @@ int uarthub_is_uartip_throw_xoff_mt6989(int dev_index)
 	}
 
 	return ((UARTHUB_DEBUG_GET_XCSTATE_WSEND_XOFF_VAL(
-		uartip_base_map[dev_index]) == 1) ? 0 : 1);
+		uartip_base_map[dev_index]) & 0x6) ? 1 : 0);
 }
 
 int uarthub_config_uartip_rx_fifo_trig_thr_mt6989(int dev_index, int size)
