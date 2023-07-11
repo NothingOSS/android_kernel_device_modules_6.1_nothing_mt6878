@@ -120,8 +120,10 @@ struct mml_dev {
 	struct mutex clock_mutex;
 	u32 current_volt;
 
-	/* sram operation */
+	bool dl_en;
 	bool racing_en;
+
+	/* sram operation */
 	struct slbc_data sram_data[mml_sram_mode_total];
 	s32 sram_cnt[mml_sram_mode_total];
 	struct mutex sram_mutex;
@@ -1145,6 +1147,12 @@ done:
 #endif
 }
 
+bool mml_dl_enable(struct mml_dev *mml)
+{
+	return mml->dl_en;
+}
+EXPORT_SYMBOL_GPL(mml_dl_enable);
+
 bool mml_racing_enable(struct mml_dev *mml)
 {
 	return mml->racing_en;
@@ -1624,6 +1632,10 @@ static int mml_probe(struct platform_device *pdev)
 		dev->of_node, "mboxes", "#mbox-cells");
 	if (thread_cnt <= 0 || thread_cnt > MML_MAX_CMDQ_CLTS)
 		thread_cnt = MML_MAX_CMDQ_CLTS;
+
+	mml->dl_en = of_property_read_bool(dev->of_node, "dl-enable");
+	if (mml->dl_en)
+		mml_log("direct link mode enable");
 
 	mml->racing_en = of_property_read_bool(dev->of_node, "racing-enable");
 

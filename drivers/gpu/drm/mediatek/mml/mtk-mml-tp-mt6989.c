@@ -844,7 +844,8 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 			goto decouple;
 		else if (mml_dl == 1)
 			goto dl_force;
-	}
+	} else if (!mml_dl_enable(mml))
+		goto decouple;
 
 	/* no fg/c3d support for dl mode */
 	if (info->dest[0].pq_config.en_fg) {
