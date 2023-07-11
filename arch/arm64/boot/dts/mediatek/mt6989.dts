@@ -14327,7 +14327,8 @@ ST1_CC4,ST3_CC4,ST4_CC4,ST5_CC4,ST6_CC4,TOP_CC4";
 				<&level_apusys_rv_apu_wdt>,
 				<&level_apusys_rv_mbox0 &level_apusys_rv_mbox1>,
 				<&level_apusys_rv_ce_exp>,
-				<&level_apusys_hw_apu_logtop>;
+				<&level_apusys_hw_apu_logtop>,
+				<&level_dsi0>;
 
 		resource-ctrl = <&bus26m &infra &syspll>,
 				<&dram_s0 &dram_s1 &spm_emi>,
@@ -14380,6 +14381,10 @@ ST1_CC4,ST3_CC4,ST4_CC4,ST5_CC4,ST6_CC4,TOP_CC4";
 			};
 			level_apusys_hw_apu_logtop: level-apusys-hw-apu-logtop {
 				target = <&apusys_hw_logger>;
+				value = <0 0 0 0>;
+			};
+			level_dsi0: level-dsi0 {
+				target = <&dsi0>;
 				value = <0 0 0 0>;
 			};
 		};
