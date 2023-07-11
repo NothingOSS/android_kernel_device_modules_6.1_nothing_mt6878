@@ -12,15 +12,17 @@
 #include <linux/io.h>
 #include <linux/seq_file.h>
 #include <linux/proc_fs.h>
-#include <linux/mutex.h>
+#include <linux/spinlock.h>
 
 #include "mtk_peak_power_budget.h"
 
 #define STR_SIZE 512
 #define MAX_VALUE 0x7FFF
+#define MAX_POWER_DRAM 4100
+#define MAX_POWER_DISPLAY 2000
 #define SOC_ERROR 3000
 
-static DEFINE_MUTEX(ppb_mutex);
+static spinlock_t ppb_lock;
 void __iomem *ppb_sram_base;
 struct fg_cus_data fg_data;
 struct power_budget_t pb;
@@ -37,8 +39,9 @@ struct ppb ppb = {
 	.loading_flash = 0,
 	.loading_audio = 0,
 	.loading_camera = 0,
-	.loading_display = 0,
+	.loading_display = MAX_POWER_DISPLAY,
 	.loading_apu = 0,
+	.loading_dram = MAX_POWER_DRAM,
 	.vsys_budget = 0,
 };
 
@@ -48,6 +51,7 @@ struct ppb ppb_manual = {
 	.loading_camera = 0,
 	.loading_display = 0,
 	.loading_apu = 0,
+	.loading_dram = 0,
 	.vsys_budget = 0,
 };
 
@@ -66,7 +70,7 @@ static void ppb_write_sram(unsigned int val, int offset)
 static void ppb_allocate_budget_manager(void)
 {
 	int vsys_budget = 0, remain_budget = 0;
-	int flash, audio, camera, display, apu;
+	int flash, audio, camera, display, apu, dram;
 
 	if (ppb_ctrl.manual_mode == 1) {
 		flash = ppb_manual.loading_flash;
@@ -74,8 +78,10 @@ static void ppb_allocate_budget_manager(void)
 		camera = ppb_manual.loading_camera;
 		display = ppb_manual.loading_display;
 		apu = ppb_manual.loading_apu;
+		dram = ppb_manual.loading_dram;
 		vsys_budget = ppb_manual.vsys_budget;
-		remain_budget = vsys_budget - (flash + audio + camera + display + apu);
+		remain_budget = vsys_budget - (flash + audio + camera + display + apu + dram);
+		remain_budget = (remain_budget > 0) ? remain_budget : 0;
 		ppb_manual.remain_budget = remain_budget;
 	} else {
 		flash = ppb.loading_flash;
@@ -83,20 +89,23 @@ static void ppb_allocate_budget_manager(void)
 		camera = ppb.loading_camera;
 		display = ppb.loading_display;
 		apu = ppb.loading_apu;
+		dram = ppb.loading_dram;
 		vsys_budget = ppb.vsys_budget;
-		remain_budget = vsys_budget - (flash + audio + camera + display + apu);
+		remain_budget = vsys_budget - (flash + audio + camera + display + apu + dram);
+		remain_budget = (remain_budget > 0) ? remain_budget : 0;
 		ppb.remain_budget = remain_budget;
-
-		ppb_write_sram(remain_budget, PPB_VSYS_PWR);
-		ppb_write_sram(flash, PPB_FLASH_PWR);
-		ppb_write_sram(audio, PPB_AUDIO_PWR);
-		ppb_write_sram(camera, PPB_CAMERA_PWR);
-		ppb_write_sram(apu, PPB_APU_PWR);
-		ppb_write_sram(display, PPB_DISPLAY_PWR);
 	}
 
-	pr_info("(VSYS_BUDGET/REMAIN_BUDGET)=%u,%u,(F/A/C/D/APU)=%u,%u,%u,%u,%u\n",
-		vsys_budget, remain_budget, flash, audio, camera, display, apu);
+	ppb_write_sram(remain_budget, PPB_VSYS_PWR);
+	ppb_write_sram(flash, PPB_FLASH_PWR);
+	ppb_write_sram(audio, PPB_AUDIO_PWR);
+	ppb_write_sram(camera, PPB_CAMERA_PWR);
+	ppb_write_sram(apu, PPB_APU_PWR);
+	ppb_write_sram(display, PPB_DISPLAY_PWR);
+	ppb_write_sram(dram, PPB_DRAM_PWR);
+
+	pr_info("(VSYS_BGT/REMAIN_BGT)=%u,%u (FLASH/AUDIO/CAM/DISP/APU/DRAM)=%u,%u,%u,%u,%u,%u\n",
+		vsys_budget, remain_budget, flash, audio, camera, display, apu, dram);
 }
 
 static bool ppb_func_enable_check(void)
@@ -120,7 +129,7 @@ static bool ppb_update_table_info(enum ppb_kicker kicker, struct ppb *req_ppb)
 			is_update = true;
 		}
 		break;
-	case KR_FLASH:
+	case KR_FLASHLIGHT:
 		if (ppb.loading_flash != req_ppb->loading_flash) {
 			ppb.loading_flash = req_ppb->loading_flash;
 			is_update = true;
@@ -176,9 +185,9 @@ static void mtk_power_budget_manager(enum ppb_kicker kicker, struct ppb *req_ppb
 	if (!ppb_update)
 		return;
 
-	mutex_lock(&ppb_mutex);
+	spin_lock(&ppb_lock);
 	ppb_allocate_budget_manager();
-	mutex_unlock(&ppb_mutex);
+	spin_unlock(&ppb_lock);
 }
 
 void kicker_ppb_request_power(enum ppb_kicker kicker, unsigned int power)
@@ -189,7 +198,7 @@ void kicker_ppb_request_power(enum ppb_kicker kicker, unsigned int power)
 	case KR_BUDGET:
 		ppb.vsys_budget = power;
 		break;
-	case KR_FLASH:
+	case KR_FLASHLIGHT:
 		ppb.loading_flash = power;
 		break;
 	case KR_AUDIO:
@@ -790,12 +799,13 @@ static int mt_ppb_debug_proc_show(struct seq_file *m, void *v)
 		ppb_read_sram(PPB_VSYS_PWR),
 		ppb_read_sram(PPB_VSYS_ACK));
 
-	seq_printf(m, "(F/A/C/D/APU)=%u,%u,%u,%u,%u\n",
+	seq_printf(m, "(FLASH/AUDIO/CAMERA/DISPLAY/APU/DRAM)=%u,%u,%u,%u,%u,%u\n",
 		ppb_read_sram(PPB_FLASH_PWR),
 		ppb_read_sram(PPB_AUDIO_PWR),
 		ppb_read_sram(PPB_CAMERA_PWR),
+		ppb_read_sram(PPB_DISPLAY_PWR),
 		ppb_read_sram(PPB_APU_PWR),
-		ppb_read_sram(PPB_DISPLAY_PWR));
+		ppb_read_sram(PPB_DRAM_PWR));
 
 	return 0;
 }
@@ -804,23 +814,29 @@ static int mt_ppb_manual_mode_proc_show(struct seq_file *m, void *v)
 {
 	seq_printf(m, "manual_mode: %d\n", ppb_ctrl.manual_mode);
 	if (ppb_ctrl.manual_mode > 0) {
-		seq_printf(m, "(VSYS_BUDGET/REMAIN_BUDGET)=%u,%u,(F/A/C/D/APU)=%u,%u,%u,%u,%u\n",
+		seq_printf(m, "(VSYS_BUDGET/REMAIN_BUDGET)=%u,%u\n",
 			ppb_manual.vsys_budget,
-			ppb_manual.remain_budget,
+			ppb_manual.remain_budget);
+
+		seq_printf(m, "(FLASH/AUDIO/CAMERA/DISPLAY/APU/DRAM)=%u,%u,%u,%u,%u,%u\n",
 			ppb_manual.loading_flash,
 			ppb_manual.loading_audio,
 			ppb_manual.loading_camera,
 			ppb_manual.loading_display,
-			ppb_manual.loading_apu);
+			ppb_manual.loading_apu,
+			ppb_manual.loading_dram);
 	} else {
-		seq_printf(m, "(VSYS_BUDGET/REMAIN_BUDGET)=%u,%u,(F/A/C/D/APU)=%u,%u,%u,%u,%u\n",
+		seq_printf(m, "(VSYS_BUDGET/REMAIN_BUDGET)=%u,%u\n",
 			ppb.vsys_budget,
-			ppb.remain_budget,
+			ppb.remain_budget);
+
+		seq_printf(m, "(FLASH/AUDIO/CAMERAC/DISPLAY/APU/DRAM)=%u,%u,%u,%u,%u,%u\n",
 			ppb.loading_flash,
 			ppb.loading_audio,
 			ppb.loading_camera,
 			ppb.loading_display,
-			ppb.loading_apu);
+			ppb.loading_apu,
+			ppb.loading_dram);
 	}
 
 	return 0;
@@ -832,16 +848,17 @@ static ssize_t mt_ppb_manual_mode_proc_write
 	char desc[64], cmd[21];
 	int len = 0, manual_mode = 0;
 	int vsys_budget;
-	int loading_flash, loading_audio;
-	int loading_camera, loading_display, loading_apu;
+	int loading_flash, loading_audio, loading_camera;
+	int loading_display, loading_apu, loading_dram;
 
 	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
 	if (copy_from_user(desc, buffer, len))
 		return 0;
 	desc[len] = '\0';
 
-	if (sscanf(desc, "%20s %d %d %d %d %d %d %d", cmd, &manual_mode, &vsys_budget,
-		&loading_flash, &loading_audio, &loading_camera, &loading_display, &loading_apu) != 8) {
+	if (sscanf(desc, "%20s %d %d %d %d %d %d %d %d", cmd, &manual_mode, &vsys_budget,
+		&loading_flash, &loading_audio, &loading_camera, &loading_display,
+		&loading_apu, &loading_dram) != 9) {
 		pr_notice("parameter number not correct\n");
 		return -EPERM;
 	}
@@ -857,10 +874,12 @@ static ssize_t mt_ppb_manual_mode_proc_write
 		ppb_manual.loading_camera = loading_camera;
 		ppb_manual.loading_display = loading_display;
 		ppb_manual.loading_apu = loading_apu;
+		ppb_manual.loading_dram = loading_dram;
 		ppb_allocate_budget_manager();
-	} else if (manual_mode == 0)
-		ppb_ctrl.manual_mode = 0;
-	else
+	} else if (manual_mode == 0) {
+		ppb_ctrl.manual_mode = manual_mode;
+		ppb_allocate_budget_manager();
+	} else
 		pr_notice("ppb manual setting should be 0 or 1\n");
 
 	return count;
@@ -1055,6 +1074,8 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 		return PTR_ERR(addr);
 
 	ppb_sram_base = addr;
+
+	spin_lock_init(&ppb_lock);
 
 	mt_ppb_create_procfs();
 

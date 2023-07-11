@@ -10,7 +10,7 @@
 
 enum ppb_kicker {
 	KR_BUDGET,
-	KR_FLASH,
+	KR_FLASHLIGHT,
 	KR_AUDIO,
 	KR_CAMERA,
 	KR_DISPLAY,
@@ -49,6 +49,7 @@ struct ppb {
 	unsigned int loading_camera;
 	unsigned int loading_display;
 	unsigned int loading_apu;
+	unsigned int loading_dram;
 	unsigned int vsys_budget;
 	unsigned int remain_budget;
 };
@@ -90,7 +91,7 @@ struct fg_cus_data {
 	struct fg_info_t fg_info[10];
 };
 
-extern void kicker_pbm_request_power(enum ppb_kicker kicker, unsigned int power);
+extern void kicker_ppb_request_power(enum ppb_kicker kicker, unsigned int power);
 
 
 #endif /* __MTK_PEAK_POWER_BUDGETING_H__ */
