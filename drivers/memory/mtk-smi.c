@@ -193,6 +193,7 @@ struct mtk_smi_larb { /* larb: local arbiter */
 
 	unsigned char			*bank;
 	bool				skip_busy_check;
+	bool				skip_restore;
 };
 
 #define MAX_COMMON_FOR_CLAMP		(3)
@@ -581,6 +582,13 @@ static void mtk_smi_larb_config_port_gen2_general(struct device *dev)
 	for (i = 0; i < larb->larb_gen->port_in_larb_gen2[larb->larbid]; i++)
 		mtk_smi_larb_bw_set(larb->smi.dev, i, larb->larb_gen->bwl[
 			larb->larbid * SMI_LARB_PORT_NR_MAX + i]);
+
+	if (larb->skip_restore) {
+		if (log_level & 1 << log_config_bit)
+			dev_notice(dev, "[SMI]larb%d skip restore\n", larb->larbid);
+		return;
+	}
+
 	for (i = 0; i < SMI_LARB_MISC_NR; i++)
 		writel_relaxed(larb->larb_gen->misc[
 			larb->larbid * SMI_LARB_MISC_NR + i].value,
@@ -2702,6 +2710,10 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	if (of_property_read_bool(dev->of_node, "skip-busy-check")) {
 		larb->skip_busy_check = true;
 		dev_notice(dev, "skip busy check\n");
+	}
+	if (of_property_read_bool(dev->of_node, "skip-restore")) {
+		larb->skip_restore = true;
+		dev_notice(dev, "skip restore\n");
 	}
 
 	is_mpu_violation(dev, false);
