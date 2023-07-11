@@ -879,8 +879,6 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 
 	fclks = mt_get_fmeter_clks();
 
-	release_mt6989_hwv_secure();
-
 	set_subsys_reg_dump_mt6989(debug_dump_id);
 
 	get_subsys_reg_dump_mt6989();

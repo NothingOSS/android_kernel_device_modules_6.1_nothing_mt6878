@@ -36,7 +36,6 @@
 
 #define HWV_DOMAIN_KEY			0x055C
 #define HWV_IRQ_STATUS			0x0500
-#define HWV_SECURE_KEY			0x10907
 #define HWV_CG_SET(xpu, id)		((0x0200 * (xpu)) + (id * 0x8))
 #define HWV_CG_STA(id)			(0x1800 + (id * 0x4))
 #define HWV_CG_EN(id)			(0x1900 + (id * 0x4))
@@ -2043,12 +2042,6 @@ static void set_mt6989_reg_value(u32 id, u32 ofs, u32 mask, u32 val)
 	clk_writel(rb[id].virt + ofs, (clk_readl(rb[id].virt + ofs) & ~mask) | val);
 }
 
-void release_mt6989_hwv_secure(void)
-{
-	write_mt6989_reg_value(hwv_wrt, HWV_DOMAIN_KEY, HWV_SECURE_KEY);
-}
-EXPORT_SYMBOL_GPL(release_mt6989_hwv_secure);
-
 /*
  * clkchk pwr_data
  */
@@ -2423,7 +2416,6 @@ static enum chk_sys_id devapc_dump_id[] = {
 
 static void devapc_dump(void)
 {
-	release_mt6989_hwv_secure();
 	set_subsys_reg_dump_mt6989(devapc_dump_id);
 	get_subsys_reg_dump_mt6989();
 
@@ -2543,7 +2535,6 @@ static void dump_hwv_history(struct regmap *regmap, u32 id)
 	u32 set[XPU_NUM] = {0}, sta = 0, en = 0, done = 0;
 	int i;
 
-	release_mt6989_hwv_secure();
 	set_subsys_reg_dump_mt6989(history_dump_id);
 
 	if (regmap != NULL) {
@@ -2675,7 +2666,6 @@ static enum chk_sys_id pll_dump_id[] = {
 
 static void dump_pll_reg(bool bug_on)
 {
-	release_mt6989_hwv_secure();
 	set_subsys_reg_dump_mt6989(pll_dump_id);
 	get_subsys_reg_dump_mt6989();
 
