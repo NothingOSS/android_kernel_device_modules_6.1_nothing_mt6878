@@ -3106,6 +3106,7 @@
 		mediatek,vcp-supply = <&vcp>;
 		vcp-gipc;
 		no-sleep-pd-cb;
+		skip-apsrc;
 	};
 
 	mmqos-wrapper {
