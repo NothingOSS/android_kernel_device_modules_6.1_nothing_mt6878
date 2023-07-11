@@ -14232,6 +14232,9 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"p1_L1_2,p1_L1_2_DEEP,p1_L2,p1_L1_2_EXIT,",
 				"p1_RECOVER_A_1,p1_RECOVER_A_2,p1_RECOVER_B,p1_RECOVER_C,",
 				"pcie_ck_freq";
+			node-119 = "SSPM_SWPM_VDEC__STATE_RATIO",
+				"vdec_core_active,vdec_core_idle,vdec_core_off,",
+				"vdec_soc_active,vdec_soc_idle,vdec_soc_off";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
