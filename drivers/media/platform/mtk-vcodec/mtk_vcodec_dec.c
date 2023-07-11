@@ -4472,6 +4472,9 @@ static int mtk_vdec_g_v_ctrl(struct v4l2_ctrl *ctrl)
 		mtk_vcodec_get_log(
 			ctx, ctx->dev, ctrl->p_new.p_char, MTK_VCODEC_LOG_INDEX_PROP, NULL);
 		break;
+	case V4L2_CID_VDEC_SLC_SUPPORT_VER:
+		ctrl->val = ctx->dev->dec_slc_ver;
+		break;
 	default:
 		ret = -EINVAL;
 	}
@@ -4742,6 +4745,18 @@ int mtk_vcodec_dec_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.def = 0;
 	cfg.ops = ops;
 	cfg.dims[0] = (sizeof(struct mtk_color_desc)/sizeof(u32));
+	mtk_vcodec_dec_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_VDEC_SLC_SUPPORT_VER;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
+	cfg.name = "MTK vdec SLC support ver";
+	cfg.min = 0;
+	cfg.max = 1;
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.ops = ops;
 	mtk_vcodec_dec_custom_ctrls_check(handler, &cfg, NULL);
 
 	/* s_ctrl */
