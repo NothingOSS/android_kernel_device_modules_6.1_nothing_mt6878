@@ -2706,7 +2706,9 @@ static irqreturn_t ufs_mtk_mcq_intr(int irq, void *__intr_info)
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	struct ufs_mtk_mcq_intr_info *mcq_intr_info = __intr_info;
 	struct ufs_hba *hba = mcq_intr_info->hba;
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+#endif
 	struct ufs_hw_queue *hwq;
 	u32 events;
 	int i = mcq_intr_info->qid;
