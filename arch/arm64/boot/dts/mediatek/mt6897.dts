@@ -6761,9 +6761,9 @@
 				nvmem-cell-masks = <0x3f 0xf00>;
 				mediatek,efuse-intr = <0x25>;
 				mediatek,efuse-term = <0x8>;
-				mediatek,eye-vrt = <0x2>;
+				mediatek,eye-vrt = <0x5>;
 				mediatek,eye-vrt-host = <0x2>;
-				mediatek,rx-sqth = <0x5>;
+				mediatek,rx-sqth = <0x2>;
 				mediatek,discth = <0xb>;
 				mediatek,pll-fbksel = <0x0>;
 				mediatek,pll-posdiv = <0x0>;
