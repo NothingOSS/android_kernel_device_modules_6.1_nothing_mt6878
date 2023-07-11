@@ -2421,6 +2421,7 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 
 	ufs_mtk_dbg_dump(100);
 
+	ufs_mtk_dbg_phy_trace(hba, UFS_MPHY_ERR);
 	ufs_mtk_dbg_phy_dump(hba);
 
 	ufs_mtk_eh_err_cnt();
