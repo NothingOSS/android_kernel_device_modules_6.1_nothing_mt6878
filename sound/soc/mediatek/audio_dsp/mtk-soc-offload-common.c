@@ -846,7 +846,9 @@ Error:
 static int mtk_compr_send_query_tstamp(void)
 {
 	mutex_lock(&afe_offload_service.ts_lock);
-	if (!afe_offload_service.tswait && afe_offload_block.state != OFFLOAD_STATE_PAUSED) {
+	if (!afe_offload_service.tswait &&
+	    (afe_offload_block.state == OFFLOAD_STATE_RUNNING ||
+	     afe_offload_block.state == OFFLOAD_STATE_DRAIN)) {
 		mtk_scp_ipi_send(get_dspscene_by_dspdaiid(ID),
 		AUDIO_IPI_MSG_ONLY, AUDIO_IPI_MSG_BYPASS_ACK,
 		OFFLOAD_TSTAMP, 0, 0, NULL);
@@ -928,6 +930,7 @@ static int mtk_compr_offload_start(struct snd_compr_stream *stream)
 
 	afe_offload_block.state = OFFLOAD_STATE_PREPARE;
 	afe_offload_block.drain_state = AUDIO_DRAIN_NONE;
+	afe_offload_service.tswait = false;
 	memset(&afe_offload_block.time_pcm, 0, sizeof(ktime_t));
 	ret = mtk_scp_ipi_send(get_dspscene_by_dspdaiid(ID), AUDIO_IPI_MSG_ONLY,
 			       AUDIO_IPI_MSG_DIRECT_SEND, AUDIO_DSP_TASK_START,
