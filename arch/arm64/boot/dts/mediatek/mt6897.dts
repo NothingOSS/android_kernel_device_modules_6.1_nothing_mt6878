@@ -13700,7 +13700,7 @@
 				<0x160000>; /* dram */
 
 			vcp-mem-tbl = <0 0x78000>, /* VDEC_MEM_ID 480KB */
-				<1 0x8000>, /* VENC_MEM_ID 32KB */
+				<1 0x12000>, /* VENC_MEM_ID 72KB */
 				<2 0x180000>, /* LOGGER 1MB 512KB*/
 				<3 0x400>, /* VDEC_SET_PROP_MEM_ID 1KB */
 				<4 0x400>, /* VENC_SET_PROP_MEM_ID 1KB */
