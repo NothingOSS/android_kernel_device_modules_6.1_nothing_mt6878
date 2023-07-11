@@ -2362,6 +2362,7 @@
 		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,larb-id = <4>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE1>;
+		skip-busy-check;
 	};
 
 	smi_larb5: smi-larb5@1600d000 {
@@ -2371,6 +2372,7 @@
 		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,larb-id = <5>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE0>;
+		skip-busy-check;
 	};
 
 	smi_disp_venc_sub_comm0: smi-disp-venc-sub-comm0@17070000 {
@@ -2380,6 +2382,7 @@
 		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,common-id = <15>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN0>;
+		skip-busy-check;
 	};
 
 	smi_mdp_venc_sub_comm1: smi-mdp-venc-sub-comm1@17870000 {
@@ -2389,6 +2392,7 @@
 		mediatek,smi-supply = <&smi_mdp_common 0 &smi_disp_venc_sub_comm0 0>;
 		mediatek,common-id = <16>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
+		skip-busy-check;
 	};
 
 	smi_sram_venc_sub_comm: smi-sram-venc-sub-comm@17880000 {
@@ -2398,6 +2402,7 @@
 		mediatek,smi-supply = <&smi_sysram_common 0 &smi_disp_venc_sub_comm0 0>;
 		mediatek,common-id = <17>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
+		skip-busy-check;
 	};
 
 	smi_mdp_venc_sub_comm2: smi-mdp-venc-sub-comm2@17c70000 {
@@ -2407,11 +2412,7 @@
 		mediatek,smi-supply = <&smi_mdp_venc_sub_comm1 0 &smi_disp_venc_sub_comm0 0>;
 		mediatek,common-id = <18>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN2>;
-		clocks = <&venc_gcon_core2_clk CLK_VEN_C2_CKE0_LARB>,
-				<&venc_gcon_core2_clk CLK_VEN_C2_CKE0_LARB>,
-				<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC>,
-				<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC>;
-		clock-names = "apb", "smi", "gals0", "gals1";
+		skip-busy-check;
 	};
 
 	smi_larb7: smi-larb7@17010000 {
@@ -2421,6 +2422,7 @@
 		mediatek,smi-supply = <&smi_disp_venc_sub_comm0 0>;
 		mediatek,larb-id = <7>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN0>;
+		skip-busy-check;
 	};
 
 	smi_larb8: smi-larb8@17810000 {
@@ -2430,6 +2432,7 @@
 		mediatek,smi-supply = <&smi_mdp_venc_sub_comm1 0 &smi_sram_venc_sub_comm 0>;
 		mediatek,larb-id = <8>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
+		skip-busy-check;
 	};
 
 	smi_larb24: smi-larb24@17c10000 {
