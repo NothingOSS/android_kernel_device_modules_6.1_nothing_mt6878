@@ -1566,6 +1566,23 @@ mtk_ovl_map_lcm_color_mode(enum mtk_drm_color_mode cm)
 	return ds;
 }
 
+/* WCG must on first                 */
+/* customization condition, from HWC */
+/* return default is 0 ==> WCG on    */
+static unsigned int mtk_crtc_dynamic_WCG_off(struct drm_crtc *crtc)
+{
+	struct mtk_crtc_state *mtk_crtc_state;
+	unsigned int ret = 0;
+
+	if (crtc == NULL)
+		return ret;
+
+	mtk_crtc_state = to_mtk_crtc_state(crtc->state);
+	if (mtk_crtc_state)
+		ret = mtk_crtc_state->prop_val[CRTC_PROP_DYNAMIC_WCG_OFF];
+
+	return ret;
+}
 
 /* we want WCG first ==> bri ==> CT                              */
 /* for combination:                                              */
@@ -1794,6 +1811,7 @@ static int mtk_ovl_color_manage(struct mtk_ddp_comp *comp, unsigned int idx,
 
 	priv = crtc->dev->dev_private;
 	if ((mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_WCG) &&
+		(mtk_crtc_dynamic_WCG_off(crtc) == 0) &&
 		pending->enable) ||	/* WCG condition */
 	    csc_bc_en) {	/* ovl csc condition */
 		params = mtk_drm_get_lcm_ext_params(crtc);
@@ -1813,6 +1831,7 @@ static int mtk_ovl_color_manage(struct mtk_ddp_comp *comp, unsigned int idx,
 
 		/* get WCG CSC */
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_WCG) &&
+			(mtk_crtc_dynamic_WCG_off(crtc) == 0) &&
 			pending->enable)
 			mtk_ovl_do_csc(idx, plane_ds, lcm_ds, &csc_wcg_en, &csc);
 	}
@@ -1850,8 +1869,9 @@ done:
 				     FLD_Ln_GAMMA_SEL(lye_idx));
 		}
 	}
-	DDPDBG("%s, lye_idx%d,ext_lye_idx%d,csc_wcg_en%d,ovl_csc_en%d,wcg_value0x%x,sel_value0x%x\n",
-		__func__, lye_idx, ext_lye_idx, csc_wcg_en, csc_bc_en, wcg_value, sel_value);
+	DDPDBG("%s, lye_idx%d,ext_lye_idx%d,csc_wcg_en%d,ovl_csc_en%d,Doff%d,wcg_value0x%x,sel_value0x%x\n",
+		__func__, lye_idx, ext_lye_idx, csc_wcg_en, csc_bc_en,
+		mtk_crtc_dynamic_WCG_off(crtc), wcg_value, sel_value);
 
 	/* enable, gamma, igamma */
 	cmdq_pkt_write(handle, comp->cmdq_base,
