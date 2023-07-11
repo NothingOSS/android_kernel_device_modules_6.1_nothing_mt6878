@@ -18,7 +18,6 @@
 #define MAX_VCORE_IP_NUM			16
 #define MAX_IP_NAME_LENGTH			(16)
 #define MAX_NOTIFY_CPUFREQ_NUM			8
-#define MAX_SUSPEND_INFO_SZ			128
 #define MAX_FREQ_SZ				64
 #define MAX_WAKEUP_SOURCE_NUM			12
 #define MAX_NAME_SZ						64
@@ -166,18 +165,6 @@ struct mbraink_cpufreq_notify_struct_data {
 	unsigned short notify_idx;
 	unsigned short notify_count;
 	struct mbraink_cpufreq_notify_struct drv_data[MAX_NOTIFY_CPUFREQ_NUM];
-};
-
-struct mbraink_suspend_info_struct {
-	unsigned short datatype;
-	int reason;
-	long long timestamp;
-};
-
-struct mbraink_suspend_info_struct_data {
-	unsigned short count;
-	bool is_continue;
-	struct mbraink_suspend_info_struct drv_data[MAX_SUSPEND_INFO_SZ];
 };
 
 struct mbraink_battery_data {

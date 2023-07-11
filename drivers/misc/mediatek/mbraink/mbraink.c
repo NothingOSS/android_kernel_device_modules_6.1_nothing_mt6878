@@ -15,6 +15,8 @@
 #include <linux/mutex.h>
 #include <linux/netlink.h>
 #include <linux/skbuff.h>
+#include <linux/rtc.h>
+#include <linux/sched/clock.h>
 
 #include "mbraink_power.h"
 #include "mbraink_video.h"
@@ -24,7 +26,6 @@
 #include "mbraink_gpu.h"
 #include "mbraink_audio.h"
 #include "mbraink_cpufreq.h"
-#include "mbraink_suspend_info.h"
 #include "mbraink_battery.h"
 #include "mbraink_pmu.h"
 
@@ -535,27 +536,6 @@ static long mbraink_ioctl(struct file *filp,
 		break;
 	}
 
-	case RO_SUSPEND_INFO:
-	{
-		struct mbraink_suspend_info_struct_data *psuspend_info_buffer =
-			vmalloc(sizeof(struct mbraink_suspend_info_struct_data));
-
-		if (psuspend_info_buffer == NULL) {
-			pr_notice("can't allocate suspend_info_buffer\n");
-			return -EPERM;
-		}
-
-		mbraink_get_suspend_info_list_record(psuspend_info_buffer, (MAX_SUSPEND_INFO_SZ));
-		if (copy_to_user((struct mbraink_suspend_info_struct_data *) arg,
-					psuspend_info_buffer,
-					sizeof(struct mbraink_suspend_info_struct_data))) {
-			pr_notice("Copy suspend_info_buffer to UserSpace error!\n");
-			vfree(psuspend_info_buffer);
-			return -EPERM;
-		}
-		vfree(psuspend_info_buffer);
-		break;
-	}
 	case RO_BATTERY_INFO:
 	{
 		struct mbraink_battery_data battery_buffer;
@@ -675,9 +655,7 @@ static const struct file_operations mbraink_fops = {
 static int mbraink_suspend(struct device *dev)
 {
 	int ret;
-
-	pr_info("[MBK_INFO] %s\n",
-			__func__);
+	struct timespec64 tv = { 0 };
 
 	mutex_lock(&power_lock);
 	if (mbraink_priv.suspend_power_info_en[0] == '1') {
@@ -696,8 +674,12 @@ static int mbraink_suspend(struct device *dev)
 		uninit_pmu_keep_data();
 	mutex_unlock(&pmu_lock);
 
-	mbraink_set_suspend_info_list_record(SUSPEND_DATA);
+	ktime_get_real_ts64(&tv);
+	mbraink_priv.last_suspend_timestamp =
+		(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 
+	pr_info("[MBK_INFO] %s: suspend time: %lld\n",
+			__func__, mbraink_priv.last_suspend_timestamp);
 	ret = pm_generic_suspend(dev);
 
 	return ret;
@@ -706,12 +688,10 @@ static int mbraink_suspend(struct device *dev)
 static int mbraink_resume(struct device *dev)
 {
 	int ret;
+	int n = 0;
+	char netlink_buf[MAX_BUF_SZ] = {'\0'};
 
-	pr_info("[MBK_INFO] %s\n",
-			__func__);
 	ret = pm_generic_resume(dev);
-
-	mbraink_set_suspend_info_list_record(RESUME_DATA);
 
 	mutex_lock(&power_lock);
 	if (mbraink_priv.suspend_power_info_en[0] == '1') {
@@ -730,7 +710,14 @@ static int mbraink_resume(struct device *dev)
 		init_pmu_keep_data();
 	mutex_unlock(&pmu_lock);
 
-	mbraink_netlink_send_msg(NETLINK_EVENT_SYSRESUME);
+	n += snprintf(netlink_buf, MAX_BUF_SZ, "%s %lld\n",
+				NETLINK_EVENT_SYSRESUME, mbraink_priv.last_suspend_timestamp);
+	pr_info("[MBK_INFO] %s: %s\n",
+		__func__, netlink_buf);
+
+	mbraink_netlink_send_msg(netlink_buf);
+
+	mbraink_priv.last_suspend_timestamp = 0;
 
 	return ret;
 }
@@ -839,6 +826,7 @@ static int mbraink_dev_init(void)
 	mbraink_priv.resume_power_buffer[0] = '\0';
 	mbraink_priv.resume_power_data_size = 0;
 	mbraink_priv.suspend_power_info_en[0] = '0';
+	mbraink_priv.last_suspend_timestamp = 0;
 	mbraink_priv.feature_en = 0;
 	mbraink_priv.pmu_en = 0;
 
@@ -990,8 +978,6 @@ static int mbraink_init(void)
 	ret = mbraink_pmu_init();
 	if (ret)
 		pr_notice("mbraink pmu init failed.\n");
-
-	mbraink_suspend_info_list_init();
 
 	return ret;
 }

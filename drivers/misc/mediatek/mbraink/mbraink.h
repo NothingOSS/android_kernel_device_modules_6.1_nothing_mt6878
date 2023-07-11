@@ -31,7 +31,6 @@
 #define TRACE_PROCESS_INFO      'a'
 #define VCORE_INFO              'b'
 #define CPUFREQ_NOTIFY_INFO		'c'
-#define SUSPEND_INFO			'd'
 #define BATTERY_INFO			'e'
 #define FEATURE_EN				'f'
 #define WAKEUP_INFO				'g'
@@ -62,8 +61,6 @@
 							struct mbraink_power_vcoreInfo*)
 #define RO_CPUFREQ_NOTIFY		_IOR(IOC_MAGIC, CPUFREQ_NOTIFY_INFO, \
 							struct mbraink_cpufreq_notify_struct_data*)
-#define RO_SUSPEND_INFO			_IOR(IOC_MAGIC, SUSPEND_INFO, \
-							struct mbraink_suspend_info_struct_data*)
 #define RO_BATTERY_INFO			_IOR(IOC_MAGIC, BATTERY_INFO, \
 							struct mbraink_battery_data*)
 #define WO_FEATURE_EN		_IOW(IOC_MAGIC, FEATURE_EN, \
@@ -94,6 +91,7 @@ struct mbraink_data {
 	char suspend_power_info_en[2];
 	int suspend_power_data_size;
 	int resume_power_data_size;
+	long long last_suspend_timestamp;
 	struct sock *mbraink_sock;
 	int client_pid;
 	unsigned int feature_en;
