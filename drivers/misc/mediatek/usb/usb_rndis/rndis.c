@@ -808,11 +808,13 @@ void mtk_rndis_uninit(struct rndis_params *params)
 
 	if (!params)
 		return;
+	pr_info("%s - start\n", __func__);
 	params->state = RNDIS_UNINITIALIZED;
 
 	/* drain the response queue */
 	while ((buf = mtk_rndis_get_next_response(params, &length)))
 		mtk_rndis_free_response(params, buf);
+	pr_info("%s - end\n", __func__);
 }
 EXPORT_SYMBOL_GPL(mtk_rndis_uninit);
 
