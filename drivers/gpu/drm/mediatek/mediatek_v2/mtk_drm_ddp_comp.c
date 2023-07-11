@@ -834,6 +834,8 @@ struct mtk_ddp_comp *mtk_ddp_comp_sel_in_cur_crtc_path(struct mtk_drm_crtc *mtk_
 {
 	struct mtk_ddp_comp *comp, *ret = NULL;
 	int i, j, _num = -1;
+	const char *comp_name = "invalid";
+	unsigned int index;
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (mtk_ddp_comp_get_type(comp->id) == comp_type) {
@@ -844,7 +846,10 @@ struct mtk_ddp_comp *mtk_ddp_comp_sel_in_cur_crtc_path(struct mtk_drm_crtc *mtk_
 			}
 		}
 	}
-	DDPDBG("%s type %d num %d %s\n", __func__, comp_type, num, mtk_dump_comp_str(ret));
+	if (ret)
+		comp_name = mtk_dump_comp_str(ret);
+	index = drm_crtc_index(&mtk_crtc->base);
+	DDPDBG("%s crtc %d, comp type %d num %d %s\n", __func__, index, comp_type, num, comp_name);
 	return ret;
 }
 
@@ -853,6 +858,8 @@ struct mtk_ddp_comp *mtk_ddp_comp_sel_in_dual_pipe(struct mtk_drm_crtc *mtk_crtc
 {
 	struct mtk_ddp_comp *comp, *ret = NULL;
 	int i, j, _num = -1;
+	const char *comp_name = "invalid";
+	unsigned int index;
 
 	for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
 		if (mtk_ddp_comp_get_type(comp->id) == comp_type) {
@@ -863,7 +870,10 @@ struct mtk_ddp_comp *mtk_ddp_comp_sel_in_dual_pipe(struct mtk_drm_crtc *mtk_crtc
 			}
 		}
 	}
-	DDPDBG("%s type %d num %d %s\n", __func__, comp_type, num, mtk_dump_comp_str(ret));
+	if (ret)
+		comp_name = mtk_dump_comp_str(ret);
+	index = drm_crtc_index(&mtk_crtc->base);
+	DDPDBG("%s crtc %d, comp type %d num %d %s\n", __func__, index, comp_type, num, comp_name);
 	return ret;
 }
 
@@ -872,6 +882,8 @@ struct mtk_ddp_comp *mtk_ddp_comp_last_in_cur_crtc_path(struct mtk_drm_crtc *mtk
 {
 	struct mtk_ddp_comp *comp, *ret = NULL;
 	int i, j;
+	const char *comp_name = "invalid";
+	unsigned int index;
 
 	for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
 		if (mtk_ddp_comp_get_type(comp->id) == comp_type) {
@@ -879,7 +891,10 @@ struct mtk_ddp_comp *mtk_ddp_comp_last_in_cur_crtc_path(struct mtk_drm_crtc *mtk
 			break;
 		}
 	}
-	DDPDBG("%s type %d %s\n", __func__, comp_type, mtk_dump_comp_str(ret));
+	if (ret)
+		comp_name = mtk_dump_comp_str(ret);
+	index = drm_crtc_index(&mtk_crtc->base);
+	DDPDBG("%s crtc %d, comp type %d %s\n", __func__, index, comp_type, comp_name);
 	return ret;
 }
 
@@ -888,6 +903,8 @@ struct mtk_ddp_comp *mtk_ddp_comp_last_in_dual_pipe(struct mtk_drm_crtc *mtk_crt
 {
 	struct mtk_ddp_comp *comp, *ret = NULL;
 	int i, j;
+	const char *comp_name = "invalid";
+	unsigned int index;
 
 	for_each_comp_in_dual_pipe_reverse(comp, mtk_crtc, i, j) {
 		if (mtk_ddp_comp_get_type(comp->id) == comp_type) {
@@ -895,7 +912,10 @@ struct mtk_ddp_comp *mtk_ddp_comp_last_in_dual_pipe(struct mtk_drm_crtc *mtk_crt
 			break;
 		}
 	}
-	DDPDBG("%s type %d %s\n", __func__, comp_type, mtk_dump_comp_str(ret));
+	if (ret)
+		comp_name = mtk_dump_comp_str(ret);
+	index = drm_crtc_index(&mtk_crtc->base);
+	DDPDBG("%s crtc %d, comp type %d %s\n", __func__, index, comp_type, comp_name);
 	return ret;
 }
 
@@ -906,6 +926,7 @@ int mtk_ddp_comp_locate_in_cur_crtc_path(struct mtk_drm_crtc *mtk_crtc, enum mtk
 	int i, j, _num = -1, ret = -1;
 	bool _is_right_pipe = false;
 	int comp_type = mtk_ddp_comp_get_type(id);
+	const char *comp_name = "invalid";
 
 	if (comp_type < 0)
 		goto done;
@@ -937,8 +958,11 @@ done:
 		*is_right_pipe = _is_right_pipe;
 	if (comp_order && !ret)
 		*comp_order = _num;
+
+	if (comp)
+		comp_name = mtk_dump_comp_str(comp);
 	DDPDBG("%s num %d, is_right_pipe %d %s\n", __func__,
-		_num, _is_right_pipe, mtk_dump_comp_str(comp));
+		_num, _is_right_pipe, comp_name);
 	return ret;
 }
 

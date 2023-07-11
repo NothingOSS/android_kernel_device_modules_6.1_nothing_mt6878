@@ -4848,7 +4848,7 @@ void disp_aal_debug(struct drm_crtc *crtc, const char *opt)
 		pr_notice("[debug] debug_dump_reg_irq=%d\n",
 			debug_dump_reg_irq);
 	} else if (strncmp(opt, "dumpdre3hist:", 13) == 0) {
-		if (sscanf(opt + 13, "%d %d",
+		if (sscanf(opt + 13, "%d,%d\n",
 			&dump_blk_x, &dump_blk_y) == 2)
 			pr_notice("[debug] dump_blk_x=%d dump_blk_y=%d\n",
 				dump_blk_x, dump_blk_y);

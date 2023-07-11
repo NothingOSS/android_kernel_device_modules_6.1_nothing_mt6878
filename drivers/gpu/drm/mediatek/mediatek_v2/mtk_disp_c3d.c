@@ -1295,6 +1295,18 @@ int mtk_c3d_cfg_set_lut(struct mtk_ddp_comp *comp,
 			}
 		}
 		primary_data->set_lut_flag = false;
+		if (primary_data->skip_update_sram) {
+			pr_notice("%s, skip_update_sram %d return\n", __func__,
+					primary_data->skip_update_sram);
+			mutex_unlock(&primary_data->c3d_power_lock);
+			return -EFAULT;
+		}
+		ret = disp_c3d_cfg_set_lut(comp, handle, data);
+		if (ret < 0) {
+			DDPPR_ERR("SET_PARAM: fail\n");
+			mutex_unlock(&primary_data->c3d_power_lock);
+			return -EFAULT;
+		}
 	} else {
 		DDPINFO("%s(line: %d): skip write_3dlut(mtk_crtc:%d)\n",
 				__func__, __LINE__, mtk_crtc->enabled ? 1 : 0);
@@ -1303,20 +1315,7 @@ int mtk_c3d_cfg_set_lut(struct mtk_ddp_comp *comp,
 
 		return -1;
 	}
-
 	mutex_unlock(&primary_data->c3d_power_lock);
-
-	if (primary_data->skip_update_sram) {
-		pr_notice("%s, skip_update_sram %d return\n", __func__,
-				primary_data->skip_update_sram);
-		return -EFAULT;
-	}
-
-	ret = disp_c3d_cfg_set_lut(comp, handle, data);
-	if (ret < 0) {
-		DDPPR_ERR("SET_PARAM: fail\n");
-		return -EFAULT;
-	}
 
 	return ret;
 }

@@ -4086,7 +4086,7 @@ static void process_dbg_opt(const char *opt)
 		int dump_crtc, crtc_idx;
 		int i, j, ret;
 
-		ret = sscanf(opt, "pq_dump:%d, %x\n", &dump_crtc, &dump_flag);
+		ret = sscanf(opt, "pq_dump:%d,%x\n", &dump_crtc, &dump_flag);
 		if (ret != 2) {
 			DDPPR_ERR("%d error to parse cmd %s\n", __LINE__, opt);
 			return;

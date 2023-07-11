@@ -57,18 +57,18 @@ struct mtk_disp_gamma_sb_param {
 struct mtk_disp_gamma_primary {
 	struct mtk_disp_gamma_sb_param sb_param;
 	struct gamma_color_protect color_protect;
-	struct DISP_GAMMA_LUT_T *gamma_lut;
-	struct DISP_GAMMA_12BIT_LUT_T *gamma_12bit_lut;
-	struct DISP_GAMMA_LUT_T gamma_lut_db;
-	struct DISP_GAMMA_12BIT_LUT_T gamma_12bit_lut_db;
-	struct DISP_GAMMA_12BIT_LUT_T ioctl_data;
+	struct DISP_GAMMA_LUT_T gamma_lut_cur;
+	struct DISP_GAMMA_12BIT_LUT_T gamma_12b_lut_cur;
+	struct DISP_GAMMA_12BIT_LUT_T gamma_12b_lut_update;
 
 	atomic_t irq_event;
 	struct wait_queue_head sof_irq_wq;
 	struct task_struct *sof_irq_event_task;
 
 	spinlock_t power_lock;
+	/* lock for hw reg & related data, inner lock of sram_lock/crtc_lock */
 	struct mutex global_lock;
+	/* lock for sram ops and data, outer lock of global_lock/crtc_lock */
 	struct mutex sram_lock;
 
 	atomic_t clock_on;
