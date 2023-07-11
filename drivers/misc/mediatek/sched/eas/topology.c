@@ -7,6 +7,7 @@
 #include <linux/notifier.h>
 #include <linux/pm_qos.h>
 #include <linux/slab.h>
+#include <linux/minmax.h>
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <sugov/cpufreq.h>
@@ -21,6 +22,7 @@ MODULE_LICENSE("GPL");
  *	unit: frequency
  */
 DEFINE_PER_CPU(unsigned long, max_freq_scale) = SCHED_CAPACITY_SCALE;
+DEFINE_PER_CPU(unsigned long, min_freq_scale) = 0;
 DEFINE_PER_CPU(unsigned long, min_freq) = 0;
 
 #if IS_ENABLED(CONFIG_MTK_EAS)
@@ -57,8 +59,11 @@ static int freq_limit_min_notifier_call(struct notifier_block *nb,
 	}
 
 	for_each_possible_cpu(cpu) {
-		if (per_cpu(gear_id, cpu) == gear_idx)
+		if (per_cpu(gear_id, cpu) == gear_idx) {
 			per_cpu(min_freq, cpu) = freq_limit_min;
+			WRITE_ONCE(per_cpu(min_freq_scale, cpu),
+				pd_get_freq_util(cpu, freq_limit_min));
+		}
 	}
 
 	return 0;
@@ -107,18 +112,18 @@ void mtk_update_cpu_capacity(void *data, int cpu, unsigned long *capacity)
 {
 	unsigned long cap_ceiling;
 
-	cap_ceiling = min_t(unsigned long,
-		READ_ONCE(per_cpu(max_freq_scale, cpu)), get_cpu_gear_uclamp_max(cpu));
-	*capacity = min(cap_ceiling, *capacity);
+	cap_ceiling = min_t(unsigned long, *capacity, get_cpu_gear_uclamp_max(cpu));
+	*capacity = clamp_t(unsigned long, cap_ceiling,
+		READ_ONCE(per_cpu(min_freq_scale, cpu)), READ_ONCE(per_cpu(max_freq_scale, cpu)));
 }
 
 unsigned long cpu_cap_ceiling(int cpu)
 {
 	unsigned long cap_ceiling;
 
-	cap_ceiling = min_t(unsigned long,
-		READ_ONCE(per_cpu(max_freq_scale, cpu)), get_cpu_gear_uclamp_max(cpu));
-	return min(capacity_orig_of(cpu), cap_ceiling);
+	cap_ceiling = min_t(unsigned long, capacity_orig_of(cpu), get_cpu_gear_uclamp_max(cpu));
+	return clamp_t(unsigned long, cap_ceiling,
+		READ_ONCE(per_cpu(min_freq_scale, cpu)), READ_ONCE(per_cpu(max_freq_scale, cpu)));
 }
 
 #endif
