@@ -773,6 +773,43 @@ void display_exit_tui(void)
 }
 EXPORT_SYMBOL(display_exit_tui);
 
+unsigned int mtk_disp_get_dsi_data_rate(unsigned int info_idx)
+{
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_panel_ext *panel_ext;
+
+	if (IS_ERR_OR_NULL(drm_dev)) {
+		DDPPR_ERR("%s, invalid drm dev\n", __func__);
+		return 0;
+	}
+
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("find crtc fail\n");
+		return 0;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	panel_ext = mtk_crtc->panel_ext;
+
+	if (unlikely(panel_ext == NULL))
+		return 0;
+
+	//info_idx 0 represent query dsi clk
+	if (info_idx == 0)
+		return (panel_ext->params->data_rate) ? panel_ext->params->data_rate :
+			panel_ext->params->pll_clk * 2;
+	//info_idx 1 represent query mipitx is cphy or not
+	else if (info_idx == 1)
+		return !!(panel_ext->params->is_cphy);
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_disp_get_dsi_data_rate);
+
 static int debug_get_info(unsigned char *stringbuf, int buf_len)
 {
 	int n = 0;
