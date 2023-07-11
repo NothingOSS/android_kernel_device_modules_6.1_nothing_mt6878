@@ -4821,7 +4821,7 @@ static int mt6989_afe_runtime_suspend(struct device *dev)
 	unsigned int value = 0;
 	int ret;
 
-	dev_info(afe->dev, "%s() successfully start\n", __func__);
+	dev_dbg(afe->dev, "%s() successfully start\n", __func__);
 
 	if (!afe->regmap) {
 		dev_info(afe->dev, "%s() skip regmap\n", __func__);

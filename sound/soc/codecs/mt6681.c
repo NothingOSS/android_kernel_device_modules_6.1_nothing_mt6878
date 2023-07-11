@@ -648,7 +648,7 @@ static void mt6681_set_2nd_dl_src(struct mt6681_priv *priv, bool enable)
 {
 	unsigned int rate;
 
-	dev_info(priv->dev, "%s() successfully starts\n", __func__);
+	dev_info(priv->dev, "%s() enable = %d\n", __func__, enable);
 
 	if (priv->dl_rate[0] != 0)
 		rate = mt6681_dlsrc_rate_transform(priv->dl_rate[0]);
@@ -6832,7 +6832,7 @@ static int mt_vow_sram_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 
-	dev_info(priv->dev, "%s(), event = 0x%x\n", __func__, event);
+	dev_dbg(priv->dev, "%s(), event = 0x%x\n", __func__, event);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -6861,7 +6861,7 @@ static int mt_sram_event(struct snd_soc_dapm_widget *w,
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 	unsigned int value = 0;
 
-	dev_info(priv->dev, "%s(), event = 0x%x\n", __func__, event);
+	dev_dbg(priv->dev, "%s(), event = 0x%x\n", __func__, event);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -7690,7 +7690,7 @@ static int mt_sdm_fifo_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 
-	dev_info(priv->dev, "%s(), event = 0x%x\n", __func__, event);
+	dev_dbg(priv->dev, "%s(), event = 0x%x\n", __func__, event);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -11215,11 +11215,9 @@ static int mt_pga_3_event(struct snd_soc_dapm_widget *w,
 	/* if vow is enabled, always set volume as 12 (18dB) */
 	mic_gain_3 = priv->vow_setup ? 12 :
 		     priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP3];
-	dev_info(
-		priv->dev,
-		"%s(), event = 0x%x, mic_type %d, mic_gain_3 %d, mux_pga %d, vow_setup %d\n",
-		__func__, event, mic_type, mic_gain_3, mux_pga,
-		priv->vow_setup);
+	dev_info(priv->dev,
+		 "%s(), event = 0x%x, mic_type %d, mic_gain_3 %d, mux_pga %d, vow_setup %d\n",
+		 __func__, event, mic_type, mic_gain_3, mux_pga, priv->vow_setup);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -11901,9 +11899,10 @@ static int mt_hp_ana_trim_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 	struct hp_trim_data *trim;
-	unsigned int value = 0;
+	unsigned int value = 0, value1 = 0, value2 = 0, value3 = 0;
 
-	dev_info(priv->dev, "%s() successfully starts\n", __func__);
+	dev_dbg(priv->dev, "%s() successfully starts\n", __func__);
+
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		/* TODO: 3/4 pole */
@@ -11912,18 +11911,15 @@ static int mt_hp_ana_trim_event(struct snd_soc_dapm_widget *w,
 		/* set hp l trim */
 		value = trim->hp_trim_l << RG_AUDHPLTRIM_VAUDP18_SFT
 			| trim->hp_fine_trim_l << RG_AUDHPLFINETRIM_VAUDP18_SFT;
-		dev_info(priv->dev, "%s(), value = %d\n", __func__, value);
 		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON34, value);
-		regmap_read(priv->regmap, MT6681_AUDDEC_PMU_CON34, &value);
-		dev_info(priv->dev, "%s(), value = %d\n", __func__, value);
+		regmap_read(priv->regmap, MT6681_AUDDEC_PMU_CON34, &value1);
 
 		/* set hp r trim */
-		value = trim->hp_trim_r << RG_AUDHPLTRIM_VAUDP18_SFT
-			| trim->hp_fine_trim_r << RG_AUDHPLFINETRIM_VAUDP18_SFT;
-		dev_info(priv->dev, "%s(), value = %d\n", __func__, value);
-		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON35, value);
-		regmap_read(priv->regmap, MT6681_AUDDEC_PMU_CON35, &value);
-		dev_info(priv->dev, "%s(), value = %d\n", __func__, value);
+		value2 = trim->hp_trim_r << RG_AUDHPLTRIM_VAUDP18_SFT
+			 | trim->hp_fine_trim_r << RG_AUDHPLFINETRIM_VAUDP18_SFT;
+		regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON35, value2);
+		regmap_read(priv->regmap, MT6681_AUDDEC_PMU_CON35, &value3);
+		dev_info(priv->dev, "%s(), L: %d/%d, R: %d/%d\n", __func__, value, value1, value2, value3);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		/* Clear the analog trim value */
@@ -11977,7 +11973,7 @@ static int mt_ldo_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 
-	dev_info(priv->dev, "%s() successfully starts\n", __func__);
+	dev_dbg(priv->dev, "%s() successfully starts\n", __func__);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		/*
@@ -12117,7 +12113,7 @@ static int mt_zcd_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 
-	dev_info(priv->dev, "%s() successfully starts\n", __func__);
+	dev_dbg(priv->dev, "%s() successfully starts\n", __func__);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		if (priv->hp_hifi_mode) {
@@ -12513,7 +12509,7 @@ static int mt_clh_post_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 
-	dev_info(priv->dev, "%s() successfully starts\n", __func__);
+	dev_dbg(priv->dev, "%s() successfully starts\n", __func__);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		mt_clh_post_enable(priv);
@@ -12534,7 +12530,7 @@ static int mt_nvreg_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 
-	dev_info(priv->dev, "%s() successfully starts\n", __func__);
+	dev_dbg(priv->dev, "%s() successfully starts\n", __func__);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		/*
@@ -12773,8 +12769,8 @@ static int mt_sdm_3rd_event(struct snd_soc_dapm_widget *w,
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 	unsigned int rate;
 
-	dev_info(priv->dev, "%s() dl sample_rate = %d", __func__,
-		 priv->dl_rate[0]);
+	dev_dbg(priv->dev, "%s() dl sample_rate = %d", __func__,
+		priv->dl_rate[0]);
 	if (priv->dl_rate[0] != 0)
 		rate = mt6681_rate_transform(priv->dl_rate[0]);
 	else
@@ -13158,7 +13154,7 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 
-	dev_info(priv->dev, "%s() + ", __func__);
+	dev_dbg(priv->dev, "%s() + ", __func__);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		if (priv->hp_hifi_mode) {
@@ -13693,8 +13689,8 @@ static int mt_dc_trim_event(struct snd_soc_dapm_widget *w,
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 	struct dc_trim_data *dc_trim = &priv->dc_trim;
 
-	dev_info(priv->dev, "%s(), event = 0x%x, dc_trim->calibrated %u\n",
-		 __func__, event, dc_trim->calibrated);
+	dev_dbg(priv->dev, "%s(), event = 0x%x, dc_trim->calibrated %u\n",
+		__func__, event, dc_trim->calibrated);
 
 	if (dc_trim->calibrated)
 		return 0;
