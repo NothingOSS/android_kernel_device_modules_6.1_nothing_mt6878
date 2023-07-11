@@ -235,6 +235,41 @@ static inline bool dpc_pm_check_and_get(void)
 	return pm_runtime_get_if_in_use(g_priv->pd_dev) > 0 ? true : false;
 }
 
+static int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
+{
+	int ret = 0;
+	u32 value = 0;
+	u32 addr = 0;
+
+	switch (subsys) {
+	case DPC_SUBSYS_DISP0:
+		addr = DISP_REG_DPC_DISP0_DEBUG1;
+		break;
+	case DPC_SUBSYS_DISP1:
+		addr = DISP_REG_DPC_DISP1_DEBUG1;
+		break;
+	case DPC_SUBSYS_OVL0:
+		addr = DISP_REG_DPC_OVL0_DEBUG1;
+		break;
+	case DPC_SUBSYS_OVL1:
+		addr = DISP_REG_DPC_OVL1_DEBUG1;
+		break;
+	case DPC_SUBSYS_MML1:
+		addr = DISP_REG_DPC_MML1_DEBUG1;
+		break;
+	default:
+		/* unknown subsys type */
+		return ret;
+	}
+
+	/* delay_us, timeout_us */
+	ret = readl_poll_timeout_atomic(dpc_base + addr, value, 0xB, 1, 200);
+	if (ret < 0)
+		DPCERR("wait subsys(%d) power on timeout\n", subsys);
+
+	return ret;
+}
+
 static void dpc_dt_enable(u16 dt, bool en)
 {
 	u32 value = 0;
@@ -580,6 +615,27 @@ void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 	if (dpc_pm_ctrl(true))
 		return;
 
+	if (!en) {
+		if (subsys == DPC_SUBSYS_DISP) {
+			dpc_mtcmos_vote(DPC_SUBSYS_DISP1, 6, 1);
+			mtk_disp_wait_pwr_ack(DPC_SUBSYS_DISP1);
+			dpc_mtcmos_vote(DPC_SUBSYS_DISP0, 6, 1);
+			mtk_disp_wait_pwr_ack(DPC_SUBSYS_DISP0);
+			dpc_mtcmos_vote(DPC_SUBSYS_OVL0, 6, 1);
+			mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL0);
+			dpc_mtcmos_vote(DPC_SUBSYS_OVL1, 6, 1);
+			mtk_disp_wait_pwr_ack(DPC_SUBSYS_OVL1);
+			if (readl(dpc_base + DISP_REG_DPC_MML1_MTCMOS_CFG)) {
+				dpc_mtcmos_vote(DPC_SUBSYS_MML1, 6, 1);
+				mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML1);
+			}
+		} else {
+			dpc_mtcmos_vote(DPC_SUBSYS_MML1, 6, 1);
+			mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML1);
+		}
+		udelay(30);
+	}
+
 	if (subsys == DPC_SUBSYS_DISP) {
 		dpc_group_enable(DPC_DISP_VIDLE_MTCMOS, en);
 		dpc_group_enable(DPC_DISP_VIDLE_MTCMOS_DISP1, en);
@@ -613,17 +669,13 @@ void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 		writel(0x30c, dpc_base + 0xd44);
 		writel(0x30c, dpc_base + 0xe44);
 
-		dpc_mtcmos_vote(DPC_SUBSYS_DISP0, 6, 0);
-		dpc_mtcmos_vote(DPC_SUBSYS_DISP1, 6, 0);
-		dpc_mtcmos_vote(DPC_SUBSYS_OVL0, 6, 0);
-		dpc_mtcmos_vote(DPC_SUBSYS_OVL1, 6, 0);
-		dpc_mtcmos_vote(DPC_SUBSYS_MML1, 6, 0);
-	} else {
-		dpc_mtcmos_vote(DPC_SUBSYS_DISP0, 6, 1);
-		dpc_mtcmos_vote(DPC_SUBSYS_DISP1, 6, 1);
-		dpc_mtcmos_vote(DPC_SUBSYS_OVL0, 6, 1);
-		dpc_mtcmos_vote(DPC_SUBSYS_OVL1, 6, 1);
-		dpc_mtcmos_vote(DPC_SUBSYS_MML1, 6, 1);
+		if (subsys == DPC_SUBSYS_DISP) {
+			dpc_mtcmos_vote(DPC_SUBSYS_DISP1, 6, 0);
+			dpc_mtcmos_vote(DPC_SUBSYS_DISP0, 6, 0);
+			dpc_mtcmos_vote(DPC_SUBSYS_OVL0, 6, 0);
+			dpc_mtcmos_vote(DPC_SUBSYS_OVL1, 6, 0);
+		} else
+			dpc_mtcmos_vote(DPC_SUBSYS_MML1, 6, 0);
 	}
 
 	dpc_mmp(config, MMPROFILE_FLAG_PULSE, BIT(subsys), en);
@@ -986,45 +1038,6 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 	dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, thread, vote_set);
 }
 
-
-static int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
-{
-	int ret = 0;
-	u32 value = 0;
-	u32 check_bit = 0;
-
-	switch (subsys) {
-	case DPC_SUBSYS_DISP0:
-		check_bit = BIT(6);
-		break;
-	case DPC_SUBSYS_DISP1:
-		check_bit = BIT(7);
-		break;
-	case DPC_SUBSYS_OVL0:
-		check_bit = BIT(8);
-		break;
-	case DPC_SUBSYS_OVL1:
-		check_bit = BIT(9);
-		break;
-	case DPC_SUBSYS_MML1:
-		check_bit = BIT(5);
-		break;
-	case DPC_CHECK_DISP_VCORE:
-		check_bit = BIT(3);
-		break;
-	default:
-		/* unknown subsys type */
-		return ret;
-	}
-
-	ret = readl_poll_timeout_atomic(g_priv->spm_base + SPM_PWR_STATUS_MSB, value,
-					value & check_bit, 1, 200); /* delay_us, timeout_us */
-	if (ret < 0)
-		DPCERR("wait subsys(%d) power on timeout\n", subsys);
-
-	return ret;
-}
-
 int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 {
 	if (unlikely(!debug_force_power))
@@ -1052,8 +1065,15 @@ EXPORT_SYMBOL(dpc_vidle_power_release);
 
 static void dpc_analysis(void)
 {
-	if (mtk_disp_wait_pwr_ack(DPC_CHECK_DISP_VCORE) != 0)
+	int ret = 0;
+	u32 value = 0;
+
+	ret = readl_poll_timeout_atomic(g_priv->spm_base + SPM_PWR_STATUS_MSB, value,
+					value & BIT(3), 1, 200); /* delay_us, timeout_us */
+	if (ret < 0) {
+		DPCFUNC("disp vcore is not power on");
 		return;
+	}
 
 	if (dpc_pm_ctrl(true))
 		return;

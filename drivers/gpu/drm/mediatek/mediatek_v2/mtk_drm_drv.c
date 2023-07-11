@@ -5684,6 +5684,7 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
 		clk_disable_unprepare(priv->top_clk[i]);
 	}
 
+	mtk_vidle_config_ff(false);
 	mtk_vidle_enable(false, priv);
 	mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 
