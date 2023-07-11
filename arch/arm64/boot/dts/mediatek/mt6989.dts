@@ -13395,6 +13395,9 @@
 		dual-polling-ieoc = <450000>;
 		slave-mivr-diff = <100000>;
 		vbat-threshold = <4150>;
+
+		/* rcable */
+		enable-inductor-protect = <1>;
 	};
 
 	pe4: pe4 {
