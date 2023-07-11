@@ -18,6 +18,7 @@
 
 #define STR_SIZE 512
 #define MAX_VALUE 0x7FFF
+#define SOC_ERROR 3000
 
 static DEFINE_MUTEX(ppb_mutex);
 void __iomem *ppb_sram_base;
@@ -259,7 +260,11 @@ static int soc_to_ocv(int soc, unsigned int table_idx)
 	int dod, ret, i;
 	int high_dod, low_dod, high_volt, low_volt;
 
-	dod = 10000 - soc - 3000;
+	dod = 10000 - soc + SOC_ERROR;
+	if (dod > 10000)
+		dod = 10000;
+	else if (dod < 0)
+		dod = 0;
 
 	for (i = 0; i < info_p->ocv_table_size; i++) {
 		table_p = &info_p->ocv_table[i];
@@ -308,9 +313,9 @@ void dump_ocv_table(int idx)
 	}
 }
 
-void update_ocv_table(int temp)
+void update_ocv_table(int temp, int qmax)
 {
-	int i, ht, lt;
+	int i, j, ht, lt;
 	struct fg_info_t *h_info_p, *l_info_p, *c_info_p;
 	struct ocv_table_t *h_table_p, *l_table_p, *c_table_p;
 
@@ -327,14 +332,30 @@ void update_ocv_table(int temp)
 	c_info_p->temp = temp;
 	if (i == 1) {
 		c_info_p->qmax = fg_data.fg_info[1].qmax;
+		c_info_p->ocv_table_size = fg_data.fg_info[1].ocv_table_size;
 		memcpy(&c_info_p->ocv_table[0], &fg_data.fg_info[1].ocv_table[0],
 			sizeof(struct ocv_table_t) * c_info_p->ocv_table_size);
+		if (qmax != 0) {
+			c_info_p->qmax = qmax;
+			for (j = 0; j < c_info_p->ocv_table_size; j++) {
+				c_table_p = &c_info_p->ocv_table[j];
+				c_table_p->dod = c_table_p->mah * 10000 / qmax;
+			}
+		}
 		goto out;
 	} else if (i == fg_data.fg_info_size + 1) {
 		c_info_p->qmax = fg_data.fg_info[fg_data.fg_info_size].qmax;
+		c_info_p->ocv_table_size = fg_data.fg_info[fg_data.fg_info_size].ocv_table_size;
 		memcpy(&c_info_p->ocv_table[0],
 			&fg_data.fg_info[fg_data.fg_info_size].ocv_table[0],
 			sizeof(struct ocv_table_t) * c_info_p->ocv_table_size);
+		if (qmax != 0) {
+			c_info_p->qmax = qmax;
+			for (j = 0; j < c_info_p->ocv_table_size; j++) {
+				c_table_p = &c_info_p->ocv_table[j];
+				c_table_p->dod = c_table_p->mah * 10000 / qmax;
+			}
+		}
 		goto out;
 	}
 
@@ -343,7 +364,10 @@ void update_ocv_table(int temp)
 	ht = h_info_p->temp;
 	lt = l_info_p->temp;
 
-	c_info_p->qmax = interpolation(ht, h_info_p->qmax, lt, l_info_p->qmax, temp);
+	if (qmax != 0)
+		c_info_p->qmax = qmax;
+	else
+		c_info_p->qmax = interpolation(ht, h_info_p->qmax, lt, l_info_p->qmax, temp);
 
 	for (i = 0; i < h_info_p->ocv_table_size; i++) {
 		h_table_p = &h_info_p->ocv_table[i];
@@ -351,9 +375,14 @@ void update_ocv_table(int temp)
 		c_table_p = &c_info_p->ocv_table[i];
 
 		c_table_p->mah = interpolation(ht, h_table_p->mah, lt, l_table_p->mah, temp);
-		c_table_p->dod = interpolation(ht, h_table_p->dod, lt, l_table_p->dod, temp);
 		c_table_p->voltage = interpolation(ht, h_table_p->voltage, lt, l_table_p->voltage,
 			temp);
+		if (qmax != 0) {
+			c_table_p->dod = c_table_p->mah * 10000 / qmax;
+		} else {
+			c_table_p->dod = interpolation(ht, h_table_p->dod, lt, l_table_p->dod,
+				temp);
+		}
 	}
 out:
 	dump_ocv_table(0);
@@ -422,7 +451,7 @@ static void bat_handler(struct work_struct *work)
 	union power_supply_propval val;
 	static int last_soc = MAX_VALUE, last_temp = MAX_VALUE;
 	unsigned int temp_stage;
-	int ret = 0, soc, temp, sys_power, volt;
+	int ret = 0, soc, temp, sys_power, volt, qmax;
 	bool loop;
 
 	if (!pb.psy)
@@ -439,6 +468,12 @@ static void bat_handler(struct work_struct *work)
 	soc = val.intval / 100;
 	if (soc == 0)
 		return;
+
+	ret = power_supply_get_property(psy_mtk, POWER_SUPPLY_PROP_ENERGY_FULL, &val);
+	if (ret)
+		qmax = 0;
+	else
+		qmax = val.intval;
 
 	if (strcmp(psy->desc->name, "battery") != 0)
 		return;
@@ -468,7 +503,7 @@ static void bat_handler(struct work_struct *work)
 		pb.cur_rdc = pb.rdc[temp_stage];
 		pb.cur_rac = pb.rac[temp_stage];
 		pb.temp_cur_stage = temp_stage;
-		update_ocv_table(temp);
+		update_ocv_table(temp, qmax);
 	}
 
 	if (temp != last_temp || soc != last_soc) {
