@@ -1003,7 +1003,8 @@ static int mtk_usb_offload_free_allocated(bool is_in)
 		return 0;
 	}
 
-	mtk_offload_free_mem(buf);
+	if (mtk_offload_free_mem(buf))
+		USB_OFFLOAD_ERR("Fail to free urb\n");
 	return 0;
 }
 
@@ -1871,9 +1872,18 @@ static void xhci_mtk_free_erst(struct usb_offload_dev *udev)
 {
 	USB_OFFLOAD_MEM_DBG("\n");
 
-	mtk_offload_free_mem(buf_ev_table);
-	udev->erst->entries = NULL;
-	udev->num_entries_in_use = 0;
+	if (!udev->erst) {
+		USB_OFFLOAD_INFO("ERST has already freed\n");
+		return;
+	}
+
+	if (mtk_offload_free_mem(buf_ev_table))
+		USB_OFFLOAD_ERR("Fail to free erst\n");
+	else {
+		udev->erst->entries = NULL;
+		udev->erst = NULL;
+		udev->num_entries_in_use = 0;
+	}
 }
 
 static struct xhci_ring *xhci_mtk_alloc_transfer_ring(struct xhci_hcd *xhci,
@@ -2000,7 +2010,8 @@ static int xhci_mtk_alloc_erst(struct usb_offload_dev *udev)
 	return 0;
 FAIL_TO_ALLOC_XHCI_ERST:
 	udev->num_entries_in_use = 0;
-	mtk_offload_free_mem(buf_ev_table);
+	if (mtk_offload_free_mem(buf_ev_table))
+		USB_OFFLOAD_ERR("Fail to free erst\n");
 FAIL_TO_ALLOC_ERST:
 	return ret;
 }
