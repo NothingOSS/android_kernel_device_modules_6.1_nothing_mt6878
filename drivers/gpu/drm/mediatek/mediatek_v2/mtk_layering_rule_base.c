@@ -4086,7 +4086,13 @@ static void check_is_mml_layer(const int disp_idx,
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
 		c = &disp_info->input_config[disp_idx][i];
 		if (MTK_MML_OVL_LAYER & c->layer_caps) {
-			mml_ovl_layers |= (1 << i);
+			if (i < 32)
+				mml_ovl_layers |= (1 << i);
+			else{
+				DDPMSG("disp can't handle layer_idx%d as mml layer\n", i);
+				c->layer_caps &= ~MTK_MML_OVL_LAYER;
+				return;
+			}
 			if (calc_mml_rsz_ratio(&(disp_info->mml_cfg[disp_idx][i])) > 100)
 				down_scale_cnt++;
 		}
