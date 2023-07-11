@@ -7825,6 +7825,12 @@
 			qos-value = <0>;
 		};
 
+		gpu_dvfs_mode: gpu-loading-mode {
+			compatible = "mediatek,gpu_loading_mode";
+			dvfs-loading-mode = <5>;
+			dvfs-workload-mode = <5>;
+		};
+
 		gpueb: gpueb@13c00000 {
 			compatible = "mediatek,gpueb";
 			gpueb-support = <1>;
