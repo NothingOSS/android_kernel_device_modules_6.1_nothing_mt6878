@@ -407,6 +407,7 @@ struct mtk_charger {
 	bool force_disable_pp[CHG2_SETTING + 1];
 	bool enable_pp[CHG2_SETTING + 1];
 	struct mutex pp_lock[CHG2_SETTING + 1];
+	int cmd_pp;
 
 	/* enable boot volt*/
 	bool enable_boot_volt;

@@ -2095,6 +2095,64 @@ static ssize_t sc_ibat_limit_store(
 }
 static DEVICE_ATTR_RW(sc_ibat_limit);
 
+static ssize_t enable_power_path_show(
+	struct device *dev, struct device_attribute *attr,
+					char *buf)
+{
+	struct power_supply *chg_psy = NULL;
+	struct mtk_charger *info = NULL;
+	bool power_path_en = true;
+
+	chg_psy = power_supply_get_by_name("mtk-master-charger");
+	if (chg_psy == NULL || IS_ERR(chg_psy)) {
+		chr_err("%s Couldn't get chg_psy\n", __func__);
+		return -EINVAL;
+	}
+	info = (struct mtk_charger *)power_supply_get_drvdata(chg_psy);
+	if (info == NULL)
+		return -EINVAL;
+
+	charger_dev_is_powerpath_enabled(info->chg1_dev, &power_path_en);
+	return sprintf(buf, "%d\n", power_path_en);
+}
+
+static ssize_t enable_power_path_store(
+	struct device *dev, struct device_attribute *attr,
+					 const char *buf, size_t size)
+{
+	long val = 0;
+	int ret;
+	bool enable = true;
+	struct power_supply *chg_psy = NULL;
+	struct mtk_charger *info = NULL;
+
+	chg_psy = power_supply_get_by_name("mtk-master-charger");
+	if (chg_psy == NULL || IS_ERR(chg_psy)) {
+		chr_err("%s Couldn't get chg_psy\n", __func__);
+		return -EINVAL;
+	}
+	info = (struct mtk_charger *)power_supply_get_drvdata(chg_psy);
+	if (info == NULL)
+		return -EINVAL;
+
+	if (buf != NULL && size != 0) {
+		ret = kstrtoul(buf, 10, &val);
+		if (ret == -ERANGE || ret == -EINVAL)
+			return -EINVAL;
+		if (val == 0)
+			enable = false;
+		else
+			enable = true;
+
+		charger_dev_enable_powerpath(info->chg1_dev, enable);
+		info->cmd_pp = enable;
+		chr_err("%s: enable power path = %d\n", __func__, enable);
+	}
+
+	return size;
+}
+static DEVICE_ATTR_RW(enable_power_path);
+
 int mtk_chg_enable_vbus_ovp(bool enable)
 {
 	static struct mtk_charger *pinfo;
@@ -2954,7 +3012,7 @@ static int charger_routine_thread(void *arg)
 		if (vbat_min != 0)
 			vbat_min = vbat_min / 1000;
 
-		chr_err("Vbat=%d vbats=%d vbus:%d ibus:%d I=%d T=%d uisoc:%d type:%s>%s pd:%d swchg_ibat:%d cv:%d\n",
+		chr_err("Vbat=%d vbats=%d vbus:%d ibus:%d I=%d T=%d uisoc:%d type:%s>%s pd:%d swchg_ibat:%d cv:%d cmd_pp:%d\n",
 			get_battery_voltage(info),
 			vbat_min,
 			get_vbus(info),
@@ -2964,7 +3022,7 @@ static int charger_routine_thread(void *arg)
 			get_uisoc(info),
 			dump_charger_type(info->chr_type, info->usb_type),
 			dump_charger_type(get_charger_type(info), get_usb_type(info)),
-			info->pd_type, get_ibat(info), chg_cv);
+			info->pd_type, get_ibat(info), chg_cv, info->cmd_pp);
 
 		is_charger_on = mtk_is_charger_on(info);
 
@@ -3175,6 +3233,10 @@ static int mtk_charger_setup_files(struct platform_device *pdev)
 		goto _out;
 
 	ret = device_create_file(&(pdev->dev), &dev_attr_sc_ibat_limit);
+	if (ret)
+		goto _out;
+
+	ret = device_create_file(&(pdev->dev), &dev_attr_enable_power_path);
 	if (ret)
 		goto _out;
 
@@ -3898,6 +3960,7 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	info->enable_meta_current_limit = 1;
 	info->is_charging = false;
 	info->safety_timer_cmd = -1;
+	info->cmd_pp = -1;
 
 	/* 8 = KERNEL_POWER_OFF_CHARGING_BOOT */
 	/* 9 = LOW_POWER_OFF_CHARGING_BOOT */
