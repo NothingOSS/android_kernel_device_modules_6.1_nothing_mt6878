@@ -223,6 +223,7 @@ extern bool is_gearless_support(void);
 extern int wl_type_delay_ch_cnt;
 extern bool get_eas_dsu_ctrl(void);
 extern void set_eas_dsu_ctrl(bool set);
+extern void set_dsu_ctrl(bool set);
 extern struct cpu_dsu_freq_state *get_dsu_freq_state(void);
 
 /* adaptive margin */

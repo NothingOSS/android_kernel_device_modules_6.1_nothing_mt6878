@@ -139,12 +139,12 @@ bool get_eas_dsu_ctrl(void)
 EXPORT_SYMBOL_GPL(get_eas_dsu_ctrl);
 
 static int wl_type_manual = -1;
+// eas dsu ctrl on / off
 void set_eas_dsu_ctrl(bool set)
 {
 	int i;
 
 	if (freq_state.is_eas_dsu_support) {
-		iowrite32(set ? 1 : 0, l3ctl_sram_base_addr + 0x1C);
 		freq_state.is_eas_dsu_ctrl = set;
 		if (freq_state.is_eas_dsu_ctrl == false) {
 			freq_state.dsu_target_freq = 0;
@@ -154,6 +154,16 @@ void set_eas_dsu_ctrl(bool set)
 	}
 }
 EXPORT_SYMBOL_GPL(set_eas_dsu_ctrl);
+
+// eas or legacy dsu ctrl
+void set_dsu_ctrl(bool set)
+{
+	if (freq_state.is_eas_dsu_support) {
+		iowrite32(set ? 1 : 0, l3ctl_sram_base_addr + 0x1C);
+		set_eas_dsu_ctrl(set);
+	}
+}
+EXPORT_SYMBOL_GPL(set_dsu_ctrl);
 
 struct cpu_dsu_freq_state *get_dsu_freq_state(void)
 {
