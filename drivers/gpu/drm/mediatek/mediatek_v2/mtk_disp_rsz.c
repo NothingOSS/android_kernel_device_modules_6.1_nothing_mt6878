@@ -744,11 +744,14 @@ static void mtk_rsz_sw_reset(struct mtk_ddp_comp *comp)
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	bool async = false;
+	struct cmdq_client *client;
 
-	mtk_crtc_pkt_create(&handle, &mtk_crtc->base,
-		mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	client = mtk_crtc->gce_obj.client[CLIENT_CFG];
+	mtk_crtc_pkt_create(&handle, &mtk_crtc->base, client);
 	DDPINFO("%s+:RSZ idx%d cmdq_handle0x%lx\n", __func__, comp->id, (unsigned long)handle);
 	async = mtk_drm_idlemgr_get_async_status(crtc);
+	if (async == false)
+		cmdq_mbox_enable(client->chan);
 
 	if (comp->id == DDP_COMPONENT_RSZ0)
 		mtk_ddp_reset_comp(comp, handle, 0);
@@ -758,6 +761,8 @@ static void mtk_rsz_sw_reset(struct mtk_ddp_comp *comp)
 	if (async == false) {
 		cmdq_pkt_flush(handle);
 		cmdq_pkt_destroy(handle);
+		cmdq_mbox_stop(client);
+		cmdq_mbox_disable(client->chan);
 	} else {
 		int ret = 0;
 
