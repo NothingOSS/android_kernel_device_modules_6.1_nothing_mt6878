@@ -360,7 +360,7 @@ static const uint32_t kHWGainMap[] = {
 
 /* IPM hw remap */
 static const uint32_t kHWGainMap_IPM2P[] = {
-	0x52C,
+	0x0, // 0x52C(-64dB) change to mute
 	0x57A,
 	0x5CD,
 	0x625,
