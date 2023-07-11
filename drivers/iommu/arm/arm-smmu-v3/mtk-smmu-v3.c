@@ -2981,16 +2981,66 @@ static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu)
 		 FIELD_GET(CTL0_CFG_TAB_DCM_EN, regval));
 }
 
-void mtk_smmu_debug_dump(enum mtk_smmu_type type)
+void mtk_smmu_reg_dump(enum mtk_smmu_type type,
+		       struct device *master_dev,
+		       int sid)
 {
-	struct mtk_smmu_data *data = mkt_get_smmu_data(type);
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
+	static DEFINE_RATELIMIT_STATE(dbg_rs, SMMU_FAULT_RS_INTERVAL,
+				      SMMU_FAULT_RS_BURST);
+	struct arm_smmu_device *smmu;
+	struct mtk_smmu_data *data;
+	struct device *shared_dev;
+	bool s1_bypass;
+	bool sid_valid;
+	u32 sid_max;
+	int ret;
 
+	if (!master_dev || type >= SMMU_TYPE_NUM)
+		return;
+
+	data = mkt_get_smmu_data(type);
 	if (!data)
 		return;
 
-	smmu_debug_dump(&data->smmu, true);
+	if (!__ratelimit(&dbg_rs))
+		return;
+
+	smmu = &data->smmu;
+	if (data->hw_init_flag != 1) {
+		dev_info(smmu->dev, "[%s] smmu:%s hw not init\n",
+			 __func__, get_smmu_name(type));
+		return;
+	}
+
+	ret = mtk_smmu_power_get(smmu);
+	if (ret) {
+		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
+		return;
+	}
+
+	shared_dev = mtk_smmu_get_shared_device(master_dev);
+	s1_bypass = is_dev_bypass_smmu_s1_enabled(shared_dev);
+	sid_max = 1ULL << smmu->sid_bits;
+	sid_valid = sid >= 0 && sid < sid_max;
+
+	dev_info(smmu->dev,
+		 "[%s] smmu:%s dev:[%s, %s] sid:[0x%x, 0x%x] s1_bypass:%d\n",
+		 __func__, get_smmu_name(type), dev_name(master_dev),
+		 dev_name(shared_dev), sid, sid_valid, s1_bypass);
+
+	dump_global_register(smmu);
+	mtk_smmu_wpreg_dump(NULL, type);
+
+	if (sid_valid) {
+		mtk_smmu_ste_cd_info_dump(NULL, type, sid);
+		mtk_smmu_sid_dump(smmu, sid);
+	}
+
+	mtk_smmu_power_put(smmu);
+#endif
 }
-EXPORT_SYMBOL_GPL(mtk_smmu_debug_dump);
+EXPORT_SYMBOL_GPL(mtk_smmu_reg_dump);
 
 int mtk_smmu_start_transaction_counter(struct device *dev)
 {
