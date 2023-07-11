@@ -459,6 +459,28 @@
 #define GPUEB_SRAM_GPUFREQ_FOOTPRINT_GPR       (g_gpueb_sram_base + 0x4FD60)       /* 0x13C4FD60 */
 
 #define GPUEB_CFGREG_BASE                      (0x13C60000)
+#define GPUEB_AUTO_DMA_0_STATUS                (g_gpueb_cfgreg_base + 0x060)       /* 0x13C60060 */
+#define GPUEB_AUTO_DMA_0_CUR_PC                (g_gpueb_cfgreg_base + 0x064)       /* 0x13C60064 */
+#define GPUEB_AUTO_DMA_0_TRIGGER_STATUS        (g_gpueb_cfgreg_base + 0x06C)       /* 0x13C6006C */
+#define GPUEB_AUTO_DMA_0_R0                    (g_gpueb_cfgreg_base + 0x070)       /* 0x13C60070 */
+#define GPUEB_AUTO_DMA_0_R1                    (g_gpueb_cfgreg_base + 0x074)       /* 0x13C60074 */
+#define GPUEB_AUTO_DMA_0_R2                    (g_gpueb_cfgreg_base + 0x078)       /* 0x13C60078 */
+#define GPUEB_AUTO_DMA_0_R3                    (g_gpueb_cfgreg_base + 0x07C)       /* 0x13C6007C */
+#define GPUEB_AUTO_DMA_0_R4                    (g_gpueb_cfgreg_base + 0x080)       /* 0x13C60080 */
+#define GPUEB_AUTO_DMA_0_R5                    (g_gpueb_cfgreg_base + 0x084)       /* 0x13C60084 */
+#define GPUEB_AUTO_DMA_0_R6                    (g_gpueb_cfgreg_base + 0x088)       /* 0x13C60088 */
+#define GPUEB_AUTO_DMA_0_R7                    (g_gpueb_cfgreg_base + 0x08C)       /* 0x13C6008C */
+#define GPUEB_AUTO_DMA_1_STATUS                (g_gpueb_cfgreg_base + 0x160)       /* 0x13C60160 */
+#define GPUEB_AUTO_DMA_1_CUR_PC                (g_gpueb_cfgreg_base + 0x164)       /* 0x13C60164 */
+#define GPUEB_AUTO_DMA_1_TRIGGER_STATUS        (g_gpueb_cfgreg_base + 0x16C)       /* 0x13C6016C */
+#define GPUEB_AUTO_DMA_1_R0                    (g_gpueb_cfgreg_base + 0x170)       /* 0x13C60170 */
+#define GPUEB_AUTO_DMA_1_R1                    (g_gpueb_cfgreg_base + 0x174)       /* 0x13C60174 */
+#define GPUEB_AUTO_DMA_1_R2                    (g_gpueb_cfgreg_base + 0x178)       /* 0x13C60178 */
+#define GPUEB_AUTO_DMA_1_R3                    (g_gpueb_cfgreg_base + 0x17C)       /* 0x13C6017C */
+#define GPUEB_AUTO_DMA_1_R4                    (g_gpueb_cfgreg_base + 0x180)       /* 0x13C60180 */
+#define GPUEB_AUTO_DMA_1_R5                    (g_gpueb_cfgreg_base + 0x184)       /* 0x13C60184 */
+#define GPUEB_AUTO_DMA_1_R6                    (g_gpueb_cfgreg_base + 0x188)       /* 0x13C60188 */
+#define GPUEB_AUTO_DMA_1_R7                    (g_gpueb_cfgreg_base + 0x18C)       /* 0x13C6018C */
 #define GPUEB_CFGREG_SW_RSTN                   (g_gpueb_cfgreg_base + 0x600)       /* 0x13C60600 */
 
 #define MCDI_MBOX_BASE                         (0x0C0DF7E0)
