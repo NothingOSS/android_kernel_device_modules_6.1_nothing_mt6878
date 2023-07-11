@@ -561,7 +561,7 @@ void flashlight_kicker_pbm_by_device_id(
 		total_mW = total_mW + fdev->cur_mW;
 	}
 
-	pr_info("kicker ppb (%u)mW", total_mW);
+	pr_info_ratelimited("kicker ppb (%u)mW", total_mW);
 
 	kicker_ppb_request_power(KR_FLASHLIGHT, total_mW);
 }
@@ -891,8 +891,6 @@ static int flashlight_open(struct inode *inode, struct file *file)
 		if (!fdev->ops)
 			continue;
 
-		pr_debug("Open(%d,%d,%d)\n", fdev->dev_id.type,
-				fdev->dev_id.ct, fdev->dev_id.part);
 		fdev->ops->flashlight_open();
 	}
 	mutex_unlock(&fl_mutex);
@@ -909,8 +907,6 @@ static int flashlight_release(struct inode *inode, struct file *file)
 		if (!fdev->ops)
 			continue;
 
-		pr_debug("Release(%d,%d,%d)\n", fdev->dev_id.type,
-				fdev->dev_id.ct, fdev->dev_id.part);
 		fdev->ops->flashlight_release();
 	}
 	mutex_unlock(&fl_mutex);

@@ -404,7 +404,7 @@ static int lm3643_set_ctrl(struct v4l2_ctrl *ctrl, enum lm3643_led_id led_no)
 	struct lm3643_flash *flash = to_lm3643_flash(ctrl, led_no);
 	int rval = -EINVAL;
 
-	pr_info("%s led:%d ID:%d", __func__, led_no, ctrl->id);
+	pr_info_ratelimited("%s led:%d ID:%d", __func__, led_no, ctrl->id);
 	mutex_lock(&flash->lock);
 
 	switch (ctrl->id) {
