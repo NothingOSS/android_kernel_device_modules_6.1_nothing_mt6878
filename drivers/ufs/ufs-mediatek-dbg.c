@@ -310,9 +310,9 @@ static void probe_android_vh_ufs_send_tm_command(void *data, struct ufs_hba *hba
 	if (!cmd_hist_enabled)
 		return;
 
-	lun = (be32_to_cpu(d->header.dword_0) >> 8) & 0xFF;
-	task_tag = be32_to_cpu(d->header.dword_0) & 0xFF;
-	tm_func = (be32_to_cpu(d->header.dword_1) >> 16) & 0xFFFF;
+	lun = (be32_to_cpu(d->upiu_req.req_header.dword_0) >> 8) & 0xFF;
+	task_tag = be32_to_cpu(d->upiu_req.input_param2);
+	tm_func = (be32_to_cpu(d->upiu_req.req_header.dword_1) >> 16) & 0xFFFF;
 
 	switch (_str_t){
 	case UFS_TM_SEND:
