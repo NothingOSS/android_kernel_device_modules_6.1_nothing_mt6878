@@ -698,6 +698,7 @@ enum mtk_ddp_io_cmd {
 	/*AOD-SCP cmd end*/
 	DSI_SET_CSC_BL,
 	DSI_GET_PANEL_STATE,
+	NOTIFY_MODE_SWITCH,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {
@@ -758,6 +759,10 @@ struct mtk_oddmr_timing {
 	unsigned int old_vrefresh;
 	u16 hdisplay;
 	u16 vdisplay;
+};
+
+struct mtk_modeswitch_param {
+	unsigned int fps;
 };
 
 struct mtk_ddp_fb_info {

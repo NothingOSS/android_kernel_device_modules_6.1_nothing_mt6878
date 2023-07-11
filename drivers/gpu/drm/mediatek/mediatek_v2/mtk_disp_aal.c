@@ -974,7 +974,7 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 	aal_data->primary_data->hist.ess_enable = aal_data->primary_data->ess_en;
 	aal_data->primary_data->hist.dre_enable = aal_data->primary_data->dre_en;
 	aal_data->primary_data->hist.fps = aal_data->primary_data->fps;
-
+	AALFLOW_LOG("%s fps:%d\n", __func__, aal_data->primary_data->fps);
 	if (aal_data->primary_data->isDualPQ) {
 		aal_data->primary_data->hist.pipeLineNum = 2;
 		aal_data->primary_data->hist.srcWidth = aal_data->primary_data->dual_size.width;
@@ -1101,22 +1101,6 @@ void dump_base_voltage(struct DISP_PANEL_BASE_VOLTAGE *data)
 static bool debug_dump_aal_hist;
 int mtk_drm_ioctl_aal_get_hist_impl(struct mtk_ddp_comp *comp, void *data)
 {
-	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct drm_display_mode *mode;
-
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
-
-	mode = mtk_crtc_get_display_mode_by_comp(__func__, crtc, comp, false);
-	if (mode == NULL)
-		DDPPR_ERR("display_mode is NULL can not get fps\n");
-	else
-		aal_data->primary_data->fps = drm_mode_vrefresh(mode);
-
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-
-	DDPINFO("%s fps=%d +\n", __func__, aal_data->primary_data->fps);
 
 	disp_aal_wait_hist(comp);
 	if (disp_aal_copy_hist_to_user(comp, (struct DISP_AAL_HIST *) data) < 0)
@@ -3878,6 +3862,15 @@ int mtk_aal_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 	}
 		break;
+	case NOTIFY_MODE_SWITCH:
+	{
+		struct mtk_modeswitch_param *modeswitch_param = (struct mtk_modeswitch_param *)params;
+
+		aal_data->primary_data->fps = modeswitch_param->fps;
+		AALFLOW_LOG("AAL_FPS_CHG fps:%d\n", aal_data->primary_data->fps);
+	}
+		break;
+
 	default:
 		break;
 	}
@@ -3941,6 +3934,7 @@ static int mtk_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	struct mtk_ddp_comp *output_comp = NULL;
 	unsigned int connector_id = 0;
+	int prev_elvsspn = 0;
 
 	if (debug_skip_set_param) {
 		pr_notice("skip_set_param for debug\n");
@@ -3958,6 +3952,8 @@ static int mtk_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 
 	prev_backlight = aal_data->primary_data->backlight_set;
 	aal_data->primary_data->backlight_set = aal_data->primary_data->aal_param.FinalBacklight;
+	prev_elvsspn = aal_data->primary_data->elvsspn_set;
+	aal_data->primary_data->elvsspn_set = aal_data->primary_data->ess20_spect_param.ELVSSPN;
 
 	mutex_lock(&aal_data->primary_data->sram_lock);
 	ret = disp_aal_set_param(comp, handle, data);
@@ -3976,6 +3972,8 @@ static int mtk_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 		aal_data->primary_data->ess20_spect_param.flag &= (~(1 << SET_BACKLIGHT_LEVEL));
 	else
 		aal_data->primary_data->ess20_spect_param.flag |= (1 << SET_BACKLIGHT_LEVEL);
+	if (prev_elvsspn == aal_data->primary_data->elvsspn_set)
+		aal_data->primary_data->ess20_spect_param.flag &= (~(1 << SET_ELVSS_PN));
 
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
 		if (aal_data->primary_data->aal_param.silky_bright_flag == 0) {
@@ -3985,7 +3983,8 @@ static int mtk_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 				aal_data->primary_data->ess20_spect_param.ELVSSPN,
 				aal_data->primary_data->ess20_spect_param.flag);
 
-			mtk_leds_brightness_set(connector_id,
+			if(! aal_data->primary_data->ess20_spect_param.flag)
+				mtk_leds_brightness_set(connector_id,
 					aal_data->primary_data->backlight_set,
 					aal_data->primary_data->ess20_spect_param.ELVSSPN,
 					aal_data->primary_data->ess20_spect_param.flag);
@@ -4007,7 +4006,9 @@ static int mtk_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 			connector_id, prev_backlight, aal_data->primary_data->backlight_set,
 			aal_data->primary_data->ess20_spect_param.ELVSSPN,
 			aal_data->primary_data->ess20_spect_param.flag);
-		mtk_leds_brightness_set(connector_id, aal_data->primary_data->backlight_set,
+
+		if(! aal_data->primary_data->ess20_spect_param.flag)
+			mtk_leds_brightness_set(connector_id, aal_data->primary_data->backlight_set,
 					aal_data->primary_data->ess20_spect_param.ELVSSPN,
 					aal_data->primary_data->ess20_spect_param.flag);
 	}

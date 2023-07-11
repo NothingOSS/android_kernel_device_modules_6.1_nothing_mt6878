@@ -5191,6 +5191,7 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 	struct drm_crtc_state *old_state, struct mtk_crtc_state *mtk_state,
 	struct cmdq_pkt *cmdq_handle)
 {
+	int i, j;
 	struct mtk_crtc_state *old_mtk_state = to_mtk_crtc_state(old_state);
 	struct mtk_ddp_config cfg;
 	struct mtk_oddmr_timing oddmr_timing;
@@ -5203,6 +5204,7 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 	struct mtk_ddp_comp *output_comp;
 	struct mtk_ddp_comp *oddmr_comp;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_modeswitch_param modeswitch_param;
 
 	/* Check if disp_mode_idx change */
 	if (old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
@@ -5285,6 +5287,11 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 	oddmr_timing.mode_chg_index = mode_chg_index;
 	oddmr_timing.vrefresh = fps_dst;
 	mtk_ddp_comp_io_cmd(oddmr_comp, cmdq_handle, ODDMR_TIMING_CHG, &oddmr_timing);
+
+	/* notify fps to comps */
+	modeswitch_param.fps = fps_dst;
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+		mtk_ddp_comp_io_cmd(comp, cmdq_handle, NOTIFY_MODE_SWITCH, &modeswitch_param);
 
 	drm_invoke_fps_chg_callbacks(fps_dst);
 
