@@ -3472,7 +3472,7 @@
 
 		dfd_mcu: dfd-mcu {
 			compatible = "mediatek,dfd_mcu";
-			enabled = <1>;
+			enabled = <0>;
 			hw-version = <35>;
 			sw-version = <1>;
 			dfd-timeout = <0x2710>;
