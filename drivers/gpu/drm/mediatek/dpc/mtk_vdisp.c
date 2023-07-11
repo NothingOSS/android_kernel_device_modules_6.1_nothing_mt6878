@@ -3,10 +3,13 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 
-#include <linux/io.h>
 #include <linux/device.h>
+#include <linux/io.h>
+#include <linux/iopoll.h>
 #include <linux/module.h>
 #include <linux/of_platform.h>
+#include <linux/pm_domain.h>
+#include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 
 
@@ -31,64 +34,128 @@
 #define SPM_AOC_VDISP_SRAM_ISO_DIN   BIT(1)
 #define SPM_AOC_VDISP_SRAM_LATCH_ENB BIT(2)
 
+#define VLP_DISP_SW_VOTE_CON 0x410	/* for mminfra pwr on */
+#define VLP_DISP_SW_VOTE_SET 0x414
+#define VLP_DISP_SW_VOTE_CLR 0x418
+#define VLP_MMINFRA_DONE_OFS 0x91c
+#define POLL_DELAY_US 10
+#define TIMEOUT_300MS 300000
+
+/* This id is only for disp internal use */
+enum disp_pd_id {
+	DISP_PD_DISP_VCORE,
+	DISP_PD_DISP1,
+	DISP_PD_DISP0,
+	DISP_PD_OVL1,
+	DISP_PD_OVL0,
+	DISP_PD_MML1,
+	DISP_PD_MML0,
+	DISP_PD_DPTX,
+};
+
 struct mtk_vdisp {
 	void __iomem *spm_base;
-	struct notifier_block nb;
+	void __iomem *vlp_base;
+	struct notifier_block rgu_nb;
+	struct notifier_block pd_nb;
+	enum disp_pd_id pd_id;
 };
-static struct mtk_vdisp *g_priv;
 
 static int regulator_event_notifier(struct notifier_block *nb,
 				    unsigned long event, void *data)
 {
+	struct mtk_vdisp *priv = container_of(nb, struct mtk_vdisp, rgu_nb);
 	u32 val = 0;
 	void __iomem *addr = 0;
 
 	if (event == REGULATOR_EVENT_ENABLE) {
-		addr = g_priv->spm_base + SPM_ISO_CON_CLR;
+		addr = priv->spm_base + SPM_ISO_CON_CLR;
 		writel_relaxed(SPM_VDISP_EXT_BUCK_ISO, addr);
 		writel_relaxed(SPM_AOC_VDISP_SRAM_ISO_DIN, addr);
 		writel_relaxed(SPM_AOC_VDISP_SRAM_LATCH_ENB, addr);
 
-		// addr = g_priv->spm_base + SPM_ISO_CON_STA;
+		// addr = priv->spm_base + SPM_ISO_CON_STA;
 		// pr_info("REGULATOR_EVENT_ENABLE (%#llx) ", (u64)readl(addr));
 	} else if (event == REGULATOR_EVENT_PRE_DISABLE) {
-		addr = g_priv->spm_base + SPM_MML0_PWR_CON;
+		addr = priv->spm_base + SPM_MML0_PWR_CON;
 		val = readl_relaxed(addr);
 		val &= ~SPM_RTFF_SAVE_FLAG;
 		writel_relaxed(val, addr);
 
-		addr = g_priv->spm_base + SPM_MML1_PWR_CON;
+		addr = priv->spm_base + SPM_MML1_PWR_CON;
 		val = readl_relaxed(addr);
 		val &= ~SPM_RTFF_SAVE_FLAG;
 		writel_relaxed(val, addr);
 
-		addr = g_priv->spm_base + SPM_DIS0_PWR_CON;
+		addr = priv->spm_base + SPM_DIS0_PWR_CON;
 		val = readl_relaxed(addr);
 		val &= ~SPM_RTFF_SAVE_FLAG;
 		writel_relaxed(val, addr);
 
-		addr = g_priv->spm_base + SPM_DIS1_PWR_CON;
+		addr = priv->spm_base + SPM_DIS1_PWR_CON;
 		val = readl_relaxed(addr);
 		val &= ~SPM_RTFF_SAVE_FLAG;
 		writel_relaxed(val, addr);
 
-		addr = g_priv->spm_base + SPM_OVL0_PWR_CON;
+		addr = priv->spm_base + SPM_OVL0_PWR_CON;
 		val = readl_relaxed(addr);
 		val &= ~SPM_RTFF_SAVE_FLAG;
 		writel_relaxed(val, addr);
 
-		addr = g_priv->spm_base + SPM_OVL1_PWR_CON;
+		addr = priv->spm_base + SPM_OVL1_PWR_CON;
 		val = readl_relaxed(addr);
 		val &= ~SPM_RTFF_SAVE_FLAG;
 		writel_relaxed(val, addr);
 
-		addr = g_priv->spm_base + SPM_ISO_CON_SET;
+		addr = priv->spm_base + SPM_ISO_CON_SET;
 		writel_relaxed(SPM_AOC_VDISP_SRAM_LATCH_ENB, addr);
 		writel_relaxed(SPM_AOC_VDISP_SRAM_ISO_DIN, addr);
 		writel_relaxed(SPM_VDISP_EXT_BUCK_ISO, addr);
 
-		// addr = g_priv->spm_base + SPM_ISO_CON_STA;
+		// addr = priv->spm_base + SPM_ISO_CON_STA;
 		// pr_info("REGULATOR_EVENT_PRE_DISABLE (%#llx) ", (u64)readl(addr));
+	}
+
+	return 0;
+}
+
+static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
+{
+	if (on) {
+		int ret;
+		u32 value;
+
+		writel_relaxed(BIT(priv->pd_id), priv->vlp_base + VLP_DISP_SW_VOTE_SET);
+		writel_relaxed(BIT(priv->pd_id), priv->vlp_base + VLP_DISP_SW_VOTE_SET);
+		while ((readl(priv->vlp_base + VLP_DISP_SW_VOTE_CON) == 0))
+			;
+
+		ret = readl_poll_timeout_atomic(priv->vlp_base + VLP_MMINFRA_DONE_OFS,
+						value, value & 0x1, POLL_DELAY_US, TIMEOUT_300MS);
+		if (ret < 0)
+			VDISPERR("failed to power on mminfra\n");
+	} else {
+		writel_relaxed(BIT(priv->pd_id), priv->vlp_base + VLP_DISP_SW_VOTE_CLR);
+		writel_relaxed(BIT(priv->pd_id), priv->vlp_base + VLP_DISP_SW_VOTE_CLR);
+	}
+}
+
+static int genpd_event_notifier(struct notifier_block *nb,
+			  unsigned long event, void *data)
+{
+	struct mtk_vdisp *priv = container_of(nb, struct mtk_vdisp, pd_nb);
+
+	switch (event) {
+	case GENPD_NOTIFY_PRE_OFF:
+	case GENPD_NOTIFY_PRE_ON:
+		mminfra_hwv_pwr_ctrl(priv, true);
+		break;
+	case GENPD_NOTIFY_OFF:
+	case GENPD_NOTIFY_ON:
+		mminfra_hwv_pwr_ctrl(priv, false);
+		break;
+	default:
+		break;
 	}
 
 	return 0;
@@ -101,35 +168,53 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	struct regulator *rgu;
 	struct resource *res;
 	int ret = 0;
+	u32 pd_id = 0;
 
 	VDISPDBG("+");
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
-	g_priv = priv;
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		VDISPERR("fail to get resource SPM_BASE");
-		return -EINVAL;
-	}
-	priv->spm_base = devm_ioremap(dev, res->start, resource_size(res));
-	if (!priv->spm_base) {
-		VDISPERR("fail to ioremap SPM_BASE: 0x%llx", res->start);
-		return -EINVAL;
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "SPM_BASE");
+	if (res) {
+		priv->spm_base = devm_ioremap(dev, res->start, resource_size(res));
+		if (!priv->spm_base) {
+			VDISPERR("fail to ioremap SPM_BASE: 0x%llx", res->start);
+			return -EINVAL;
+		}
 	}
 
-	rgu = devm_regulator_get(dev, "dis1-shutdown");
-	if (IS_ERR(rgu)) {
-		VDISPERR("devm_regulator_get dis1-shutdown-supply fail");
-		return PTR_ERR(rgu);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "VLP_BASE");
+	if (res) {
+		priv->vlp_base = devm_ioremap(dev, res->start, resource_size(res));
+		if (!priv->vlp_base) {
+			VDISPERR("fail to ioremap VLP_BASE: 0x%llx", res->start);
+			return -EINVAL;
+		}
 	}
 
-	priv->nb.notifier_call = regulator_event_notifier;
-	ret = devm_regulator_register_notifier(rgu, &priv->nb);
+	if (of_find_property(dev->of_node, "dis1-shutdown-supply", NULL)) {
+		rgu = devm_regulator_get(dev, "dis1-shutdown");
+		if (!IS_ERR(rgu)) {
+			priv->rgu_nb.notifier_call = regulator_event_notifier;
+			ret = devm_regulator_register_notifier(rgu, &priv->rgu_nb);
+			if (ret)
+				VDISPERR("Failed to register notifier ret(%d)", ret);
+		}
+	}
+
+	ret = of_property_read_u32(dev->of_node, "disp-pd-id", &pd_id);
+	if (ret) {
+		VDISPERR("disp-pd-id property read fail(%d)", ret);
+		return -ENODEV;
+	}
+	if (!pm_runtime_enabled(dev))
+		pm_runtime_enable(dev);
+	priv->pd_nb.notifier_call = genpd_event_notifier;
+	priv->pd_id = pd_id;
+	ret = dev_pm_genpd_add_notifier(dev, &priv->pd_nb);
 	if (ret)
-		VDISPERR("Failed to register notifier ret(%d)", ret);
+		VDISPERR("dev_pm_genpd_add_notifier fail(%d)", ret);
 
 	return ret;
 }

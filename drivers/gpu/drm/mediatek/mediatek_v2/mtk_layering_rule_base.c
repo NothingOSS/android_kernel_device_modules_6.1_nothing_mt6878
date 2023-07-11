@@ -4018,6 +4018,13 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 	if (mml_ctx != NULL) {
 		mode = mml_drm_query_cap(mml_ctx, mml_info);
 		DDPDBG("%s, mml_drm_query_cap mode:%d\n", __func__, mode);
+
+		if (mode == MML_MODE_DIRECT_LINK) {
+			if (mml_info->dest[0].data.width & 0x1) {
+				mode = MML_MODE_NOT_SUPPORT;
+				DDPINFO("%s DL width odd, to GPU\n", __func__);
+			}
+		}
 	} else
 		return ret;
 

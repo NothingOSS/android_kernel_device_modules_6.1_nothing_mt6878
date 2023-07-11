@@ -5512,15 +5512,8 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 
 		pm_runtime_put_sync(priv->mmsys_dev);
 
-		if (priv->dpc_dev) {
-			u32 value = 0;
-
-			ret = readl_poll_timeout_atomic(priv->dispvcore_pwr_chk, value,
-							(value & 0xC0000000) == 0, 1, 3000000);
-			if (ret < 0)
-				DDPMSG("wait disp vcore power off timeout\n");
+		if (priv->dpc_dev)
 			pm_runtime_put_sync(priv->dpc_dev);
-		}
 		break;
 	case DISP_PM_CHECK:
 		if (priv->dpc_dev && pm_runtime_get_if_in_use(priv->dpc_dev) <= 0)
