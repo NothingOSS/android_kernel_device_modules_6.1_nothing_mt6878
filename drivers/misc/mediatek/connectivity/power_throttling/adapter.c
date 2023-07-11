@@ -53,6 +53,7 @@ static CONN_PWR_EVENT_CB g_event_cb_tbl[CONN_PWR_DRV_MAX];
 static int g_drv_status_tbl[CONN_PWR_DRV_MAX];
 #ifdef CONN_PWR_LOW_BATTERY_ENABLE
 static int g_low_battery_level = LOW_BATTERY_LEVEL_0;
+static int g_low_battery_level_cb = LOW_BATTERY_LEVEL_0;
 #else
 static int g_low_battery_level = 0;
 #endif
@@ -223,9 +224,39 @@ static long conn_pwr_dev_compat_ioctl(struct file *filp, unsigned int cmd, unsig
 #endif
 
 #ifdef CONN_PWR_LOW_BATTERY_ENABLE
+static void delay_work_func(struct work_struct *work)
+{
+
+	if (!work) {
+		pr_notice("%s work is NULL\n", __func__);
+		return;
+	}
+
+	pr_info("%s data = %d\n", __func__, g_low_battery_level_cb);
+
+	conn_pwr_set_battery_level(g_low_battery_level_cb);
+
+	kvfree(work);
+}
+
+static void conn_pwr_delay_work(unsigned int val)
+{
+	struct work_struct *work;
+
+	work = kmalloc(sizeof(struct work_struct), GFP_ATOMIC);
+	if (!work)
+		return;
+
+	pr_info("%s val = %d\n", __func__, val);
+	g_low_battery_level_cb = val;
+
+	INIT_WORK(work, delay_work_func);
+	schedule_work(work);
+}
+
 static void conn_pwr_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 {
-	conn_pwr_set_battery_level(level);
+	conn_pwr_delay_work(level);
 }
 #endif
 
