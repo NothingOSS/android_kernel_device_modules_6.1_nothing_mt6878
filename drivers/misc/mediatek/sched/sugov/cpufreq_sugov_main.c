@@ -131,21 +131,19 @@ static bool sugov_up_down_rate_limit(struct sugov_policy *sg_policy, u64 time,
 	return false;
 }
 
+static int wl_cnt_cached;
 static bool sugov_update_next_freq(struct sugov_policy *sg_policy, u64 time,
 				   unsigned int next_freq)
 {
-	bool need_dsu_freq_update = false;
-
 	if (sugov_up_down_rate_limit(sg_policy, time, next_freq))
 		return false;
 
-	need_dsu_freq_update = set_dsu_target_freq(sg_policy->policy);
-
 	if (sg_policy->need_freq_update)
 		sg_policy->need_freq_update = false;
-	else if (sg_policy->next_freq == next_freq && need_dsu_freq_update == false)
+	else if (sg_policy->next_freq == next_freq && wl_cnt_cached == wl_type_delay_ch_cnt)
 		return false;
 
+	wl_cnt_cached = wl_type_delay_ch_cnt;
 	sg_policy->next_freq = next_freq;
 	sg_policy->last_freq_update_time = time;
 

@@ -163,7 +163,7 @@ struct cpu_dsu_freq_state *get_dsu_freq_state(void)
 }
 EXPORT_SYMBOL_GPL(get_dsu_freq_state);
 
-bool set_dsu_target_freq(struct cpufreq_policy *policy)
+void set_dsu_target_freq(struct cpufreq_policy *policy)
 {
 	int i, cpu = policy->cpu, opp, dsu_target_freq = 0;
 	unsigned int wl_type = get_em_wl();
@@ -171,17 +171,7 @@ bool set_dsu_target_freq(struct cpufreq_policy *policy)
 	struct mtk_em_perf_state *ps;
 	struct cpufreq_mtk *c = policy->driver_data;
 
-	if (freq_state.is_eas_dsu_support == false)
-		return false;
-
 	freq_state.cpu_freq[per_cpu(gear_id, cpu)] = policy->cached_target_freq;
-
-	if (!freq_state.is_eas_dsu_ctrl) {
-		c->sb_ch = -1;
-		if (trace_sugov_ext_dsu_freq_vote_enabled())
-			trace_sugov_ext_dsu_freq_vote(wl_type, UINT_MAX, UINT_MAX, UINT_MAX);
-		return false;
-	}
 
 	for (i = 0; i < pd_count; i++) {
 		pd_info = &pd_capacity_tbl[i];
@@ -195,8 +185,8 @@ bool set_dsu_target_freq(struct cpufreq_policy *policy)
 		ps = pd_get_freq_ps(wl_type, cpu, freq_state.cpu_freq[i], &opp);
 		freq_state.dsu_freq_vote[i] = ps->dsu_freq;
 
-		if (dsu_target_freq < freq_state.dsu_freq_vote[i])
-			dsu_target_freq = freq_state.dsu_freq_vote[i];
+		if (dsu_target_freq < ps->dsu_freq)
+			dsu_target_freq = ps->dsu_freq;
 
 skip_single_idle_cpu:
 		if (trace_sugov_ext_dsu_freq_vote_enabled())
@@ -205,14 +195,11 @@ skip_single_idle_cpu:
 	}
 
 	freq_state.dsu_target_freq = dsu_target_freq;
-	c->sb_ch  = dsu_target_freq;
-	if (dsu_target_freq != freq_state.dsu_target_freq_last) {
-		freq_state.dsu_target_freq_last = dsu_target_freq;
-		return true;
-	}
-	return false;
+	c->sb_ch = dsu_target_freq;
+	return;
 }
 
+int wl_type_delay_ch_cnt = 1; // change counter
 static struct dsu_table dsu_tbl;
 static int nr_wl_type = 1;
 static int wl_type_curr;
@@ -295,6 +282,7 @@ void update_wl_tbl(int cpu)
 				if (wl_type_delay_cnt > wl_type_delay_update_tick) {
 					wl_type_delay_cnt = 0;
 					wl_type_delay = wl_type_curr;
+					wl_type_delay_ch_cnt++;
 				}
 			} else
 				wl_type_delay_cnt = 0;
@@ -1649,6 +1637,19 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 
 	if (is_gearless_support())
 		mtk_arch_set_freq_scale_gearless(policy, target_freq);
+
+	if (freq_state.is_eas_dsu_support) {
+		if (freq_state.is_eas_dsu_ctrl)
+			set_dsu_target_freq(policy);
+		else {
+			struct cpufreq_mtk *c = policy->driver_data;
+
+			c->sb_ch = -1;
+			if (trace_sugov_ext_dsu_freq_vote_enabled())
+				trace_sugov_ext_dsu_freq_vote(UINT_MAX,
+					per_cpu(gear_id, cpu), *target_freq, UINT_MAX);
+		}
+	}
 
 	irq_log_store();
 }

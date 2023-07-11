@@ -135,7 +135,6 @@ struct cpu_dsu_freq_state {
 	bool is_eas_dsu_ctrl;
 	unsigned int pd_count;
 	unsigned int dsu_target_freq;
-	unsigned int dsu_target_freq_last;
 	unsigned int *cpu_freq;
 	unsigned int *dsu_freq_vote;
 };
@@ -221,10 +220,10 @@ extern unsigned int get_nr_gears(void);
 extern struct cpumask *get_gear_cpumask(unsigned int gear);
 extern bool is_gearless_support(void);
 /* dsu ctrl */
+extern int wl_type_delay_ch_cnt;
 extern bool get_eas_dsu_ctrl(void);
 extern void set_eas_dsu_ctrl(bool set);
 extern struct cpu_dsu_freq_state *get_dsu_freq_state(void);
-bool set_dsu_target_freq(struct cpufreq_policy *);
 
 /* adaptive margin */
 extern int am_support;
