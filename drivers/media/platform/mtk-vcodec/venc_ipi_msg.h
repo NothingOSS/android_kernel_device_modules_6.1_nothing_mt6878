@@ -601,6 +601,9 @@ struct venc_vsi {
 	__u64 qpmap_addr;
 	__u64 dynamicparams_addr;
 	__u32 dynamicparams_size;
+	__u64 general_buf_dma;
+	__s32 general_buf_fd;
+	__u32 general_buf_size;
 	__u32 reserved;
 };
 

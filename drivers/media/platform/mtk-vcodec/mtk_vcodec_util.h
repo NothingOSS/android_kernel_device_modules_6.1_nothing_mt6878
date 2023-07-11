@@ -86,6 +86,9 @@ struct mtk_vcodec_mem {
 	__u32 index;
 	__s64 buf_fd;
 	struct hdr10plus_info *hdr10plus_buf;
+	int general_buf_fd;
+	struct dma_buf *dma_general_buf;
+	dma_addr_t dma_general_addr;
 };
 
 /**

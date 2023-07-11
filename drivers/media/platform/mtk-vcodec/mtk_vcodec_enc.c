@@ -1783,10 +1783,17 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 				buf->m.planes[0].bytesused,
 				buf->length, mtkbuf, vb->timestamp);
 		}
-	} else
-		mtk_v4l2_debug(1, "[%d] id=%d BS (%d) vb=%p",
+	} else {
+		if (buf->reserved == 0xFFFFFFFF)
+			mtkbuf->general_user_fd = -1;
+		else
+			mtkbuf->general_user_fd = (int)buf->reserved;
+
+		mtk_v4l2_debug(1, "[%d] id=%d BS (%d) vb=%p, general_buf_fd=%d, mtkbuf->general_user_fd = %d",
 				ctx->id, buf->index,
-				buf->length, mtkbuf);
+				buf->length, mtkbuf,
+				buf->reserved, mtkbuf->general_user_fd);
+	}
 
 	if (buf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN) {
 		mtk_v4l2_debug(4, "[%d] No need for Cache clean, buf->index:%d. mtkbuf:%p",
@@ -2014,7 +2021,12 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 static int vidioc_venc_dqbuf(struct file *file, void *priv,
 			     struct v4l2_buffer *buf)
 {
+	int ret = 0;
 	struct mtk_vcodec_ctx *ctx = fh_to_ctx(priv);
+	struct vb2_queue *vq;
+	struct vb2_buffer *vb;
+	struct mtk_video_enc_buf *mtkbuf;
+	struct vb2_v4l2_buffer  *vb2_v4l2;
 
 	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT)) {
 		mtk_v4l2_err("[%d] Call on QBUF after unrecoverable error",
@@ -2022,7 +2034,29 @@ static int vidioc_venc_dqbuf(struct file *file, void *priv,
 		return -EIO;
 	}
 
-	return v4l2_m2m_dqbuf(file, ctx->m2m_ctx, buf);
+	ret = v4l2_m2m_dqbuf(file, ctx->m2m_ctx, buf);
+	if (buf->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE &&
+		ret == 0) {
+		vq = v4l2_m2m_get_vq(ctx->m2m_ctx, buf->type);
+		if (buf->index >= vq->num_buffers) {
+			mtk_v4l2_err("[%d] buffer index %d out of range %d",
+				ctx->id, buf->index, vq->num_buffers);
+			return -EINVAL;
+		}
+		vb = vq->bufs[buf->index];
+		vb2_v4l2 = container_of(vb, struct vb2_v4l2_buffer, vb2_buf);
+		mtkbuf = container_of(vb2_v4l2, struct mtk_video_enc_buf, vb);
+
+		if (mtkbuf->general_user_fd < 0)
+			buf->reserved = 0xFFFFFFFF;
+		else
+			buf->reserved = mtkbuf->general_user_fd;
+		mtk_v4l2_debug(2,
+			"dqbuf index %d general_buf_fd=%d, mtkbuf->general_user_fd = %d",
+			buf->index, buf->reserved, mtkbuf->general_user_fd);
+	}
+
+	return ret;
 }
 
 static int vidioc_try_encoder_cmd(struct file *file, void *priv,
@@ -2188,6 +2222,147 @@ static int vb2ops_venc_queue_setup(struct vb2_queue *vq,
 	return 0;
 }
 
+static struct dma_gen_buf *create_general_buffer_info(struct mtk_vcodec_ctx *ctx, int fd)
+{
+	struct dma_gen_buf *gen_buf_info = NULL;
+	struct iosys_map map;
+	struct dma_buf *dmabuf = NULL;
+	struct dma_buf_attachment *buf_att = NULL;
+	struct sg_table *sgt = NULL;
+	dma_addr_t dma_general_addr = 0;
+	void *va = NULL;
+	int i = 0;
+	int ret;
+
+	memset(&map, 0, sizeof(struct iosys_map));
+
+	dmabuf = dma_buf_get(fd);
+	dma_buf_begin_cpu_access(dmabuf, DMA_BIDIRECTIONAL);
+	ret = dma_buf_vmap(dmabuf, &map);
+	va = ret ? NULL : map.vaddr;
+
+	buf_att = dma_buf_attach(dmabuf, ctx->general_dev);
+	if (IS_ERR_OR_NULL(buf_att)) {
+		mtk_v4l2_err("attach fail ret %ld", PTR_ERR(buf_att));
+		dma_buf_vunmap(dmabuf, &map);
+		dma_buf_put(dmabuf);
+		return NULL;
+	}
+	sgt = dma_buf_map_attachment(buf_att, DMA_BIDIRECTIONAL);
+	if (IS_ERR_OR_NULL(sgt)) {
+		mtk_v4l2_err("map attachment fail ret %ld", PTR_ERR(sgt));
+		dma_buf_detach(dmabuf, buf_att);
+		dma_buf_vunmap(dmabuf, &map);
+		dma_buf_put(dmabuf);
+		return NULL;
+	}
+	dma_general_addr  = sg_dma_address(sgt->sgl);
+
+	//save va and dmabuf
+	for (i = 0; i < MAX_GEN_BUF_CNT; i++) {
+		if (ctx->dma_buf_list[i].dmabuf == NULL) {
+			gen_buf_info = &ctx->dma_buf_list[i];
+			gen_buf_info->va = va;
+			gen_buf_info->dmabuf = dmabuf;
+			gen_buf_info->dma_general_addr = dma_general_addr;
+			gen_buf_info->buf_att = buf_att;
+			gen_buf_info->sgt = sgt;
+			mtk_v4l2_debug(4, "save general buf va %p dmabuf %p addr:%llx at %d",
+				va, dmabuf, (u64)dma_general_addr, i);
+			break;
+		}
+	}
+	if (gen_buf_info == NULL) {
+		mtk_v4l2_err("dma_buf_list is overflow!");
+		dma_buf_unmap_attachment(buf_att, sgt, DMA_BIDIRECTIONAL);
+		dma_buf_detach(dmabuf, buf_att);
+		dma_buf_vunmap(dmabuf, &map);
+		dma_buf_put(dmabuf);
+	}
+
+	return gen_buf_info;
+}
+
+static struct dma_gen_buf *get_general_buffer_info(struct mtk_vcodec_ctx *ctx,
+	struct dma_buf *dmabuf)
+{
+	struct dma_gen_buf *gen_buf_info = NULL;
+	int i;
+
+	for (i = 0; i < MAX_GEN_BUF_CNT; i++) {
+		if (ctx->dma_buf_list[i].dmabuf == dmabuf) {
+			gen_buf_info = &ctx->dma_buf_list[i];
+			mtk_v4l2_debug(4, "get general buf va %p dmabuf %p addr:%llx at %d",
+				gen_buf_info->va, dmabuf, (u64)gen_buf_info->dma_general_addr, i);
+			return gen_buf_info;
+		}
+	}
+	return NULL;
+}
+
+static void release_general_buffer_info(struct dma_gen_buf *gen_buf_info)
+{
+	struct iosys_map map;
+	struct dma_buf *dmabuf;
+
+	if (gen_buf_info == NULL) {
+		mtk_v4l2_debug(1, "gen_buf_info NULL, may be already released");
+		return;
+	}
+
+	mtk_v4l2_debug(8, "dma_buf_put general_buf %p, dmabuf:%p, dma_addr:%llx",
+		gen_buf_info->va, gen_buf_info->dmabuf, (u64)gen_buf_info->dma_general_addr);
+
+	iosys_map_set_vaddr(&map, gen_buf_info->va);
+	dmabuf = gen_buf_info->dmabuf;
+
+	dma_buf_unmap_attachment(gen_buf_info->buf_att, gen_buf_info->sgt, DMA_BIDIRECTIONAL);
+	dma_buf_detach(dmabuf, gen_buf_info->buf_att);
+	dma_buf_vunmap(dmabuf, &map);
+	dma_buf_end_cpu_access(dmabuf, DMA_BIDIRECTIONAL);
+	dma_buf_put(dmabuf);
+
+	memset((void *)gen_buf_info, 0, sizeof(struct dma_gen_buf));
+}
+
+static void set_general_buffer(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_mem *bs_buffer, int fd)
+{
+	struct dma_gen_buf *gen_buf_info;
+
+	mutex_lock(&ctx->gen_buf_list_lock);
+	gen_buf_info = create_general_buffer_info(ctx, fd);
+	if (gen_buf_info != NULL) {
+		bs_buffer->dma_general_buf  = gen_buf_info->dmabuf;
+		bs_buffer->dma_general_addr = gen_buf_info->dma_general_addr;
+		bs_buffer->general_buf_fd = fd;
+	} else {
+		bs_buffer->dma_general_buf = 0;
+		bs_buffer->dma_general_addr = 0;
+		bs_buffer->general_buf_fd = 0;
+	}
+	mutex_unlock(&ctx->gen_buf_list_lock);
+}
+
+static void release_general_buffer_info_by_dmabuf(struct mtk_vcodec_ctx *ctx,
+	struct dma_buf *dmabuf)
+{
+	mutex_lock(&ctx->gen_buf_list_lock);
+	release_general_buffer_info(get_general_buffer_info(ctx, dmabuf));
+	mutex_unlock(&ctx->gen_buf_list_lock);
+}
+
+static void release_all_general_buffer_info(struct mtk_vcodec_ctx *ctx)
+{
+	int i;
+
+	mutex_lock(&ctx->gen_buf_list_lock);
+	for (i = 0; i < MAX_GEN_BUF_CNT; i++) {
+		if (ctx->dma_buf_list[i].dmabuf)
+			release_general_buffer_info(&ctx->dma_buf_list[i]);
+	}
+	mutex_unlock(&ctx->gen_buf_list_lock);
+}
+
 static int vb2ops_venc_buf_prepare(struct vb2_buffer *vb)
 {
 	struct mtk_vcodec_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
@@ -2217,6 +2392,20 @@ static int vb2ops_venc_buf_prepare(struct vb2_buffer *vb)
 		// Check if need to proceed cache operations
 		vb2_v4l2 = container_of(vb, struct vb2_v4l2_buffer, vb2_buf);
 		mtkbuf = container_of(vb2_v4l2, struct mtk_video_enc_buf, vb);
+
+		if (vb->vb2_queue->type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+			if (mtkbuf->general_user_fd > 0)
+				set_general_buffer(ctx, &mtkbuf->bs_buf, mtkbuf->general_user_fd);
+			else
+				mtkbuf->bs_buf.dma_general_buf = 0;
+
+			mtk_v4l2_debug(4, "[%d] general_buf fd = %d, dma_buf = %p, DMA=%pad",
+				ctx->id,
+				mtkbuf->general_user_fd,
+				mtkbuf->bs_buf.dma_general_buf,
+				&mtkbuf->bs_buf.dma_general_addr);
+		}
+
 		if (!(mtkbuf->flags & NO_CAHCE_CLEAN)) {
 			struct mtk_vcodec_mem src_mem;
 			struct dma_buf_attachment *buf_att;
@@ -2261,6 +2450,15 @@ static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 
 	vb2_v4l2 = container_of(vb, struct vb2_v4l2_buffer, vb2_buf);
 	mtkbuf = container_of(vb2_v4l2, struct mtk_video_enc_buf, vb);
+
+	if (mtkbuf->bs_buf.dma_general_buf != 0) {
+		release_general_buffer_info_by_dmabuf(ctx, mtkbuf->bs_buf.dma_general_buf);
+		mtkbuf->bs_buf.dma_general_buf = 0;
+		mtk_v4l2_debug(4, "dma_buf_put general_buf fd=%d, dma_buf=%p, DMA=%pad",
+			mtkbuf->general_user_fd,
+			mtkbuf->bs_buf.dma_general_buf,
+			&mtkbuf->bs_buf.dma_general_addr);
+	}
 
 	if (vb2_v4l2->flags & V4L2_BUF_FLAG_LAST)
 		mtk_v4l2_debug(0, "[%d] type(%d) flags=%x idx=%d pts=%llu",
@@ -2549,6 +2747,7 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 				v4l2_m2m_buf_done(dst_vb2_v4l2, VB2_BUF_STATE_ERROR);
 		}
 		mutex_unlock(&ctx->buf_lock);
+		release_all_general_buffer_info(ctx);
 	} else {
 		mutex_lock(&ctx->buf_lock);
 		while ((src_vb2_v4l2 = v4l2_m2m_src_buf_remove(ctx->m2m_ctx))) {
@@ -4131,6 +4330,8 @@ void mtk_vcodec_enc_release(struct mtk_vcodec_ctx *ctx)
 
 	if (ret)
 		mtk_v4l2_err("venc_if_deinit failed=%d", ret);
+
+	release_all_general_buffer_info(ctx);
 }
 
 MODULE_IMPORT_NS(DMA_BUF);

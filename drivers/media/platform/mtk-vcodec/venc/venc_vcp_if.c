@@ -1033,6 +1033,22 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 		vsi->venc.bs_addr = bs_buf->dma_addr;
 		vsi->venc.bs_dma = bs_buf->dma_addr;
 		out.bs_size = bs_buf->size;
+
+		if (bs_buf->dma_general_buf != 0) {
+			vsi->general_buf_fd = bs_buf->general_buf_fd;
+			vsi->general_buf_size = bs_buf->dma_general_buf->size;
+			vsi->general_buf_dma = bs_buf->dma_general_addr;
+			mtk_vcodec_debug(inst, "dma_general_buf=%p general_buf_fd=%d general_buf_dma=%llx size=%lu",
+			    bs_buf->dma_general_buf, inst->vsi->general_buf_fd,
+			    vsi->general_buf_dma,
+			    bs_buf->dma_general_buf->size);
+		} else {
+			bs_buf->general_buf_fd = -1;
+			vsi->general_buf_fd = -1;
+			vsi->general_buf_size = 0;
+			mtk_vcodec_debug(inst, "no general buf dmabuf");
+		}
+
 		mtk_vcodec_debug(inst, " output (dma:%lx)",
 			(unsigned long)bs_buf->dmabuf);
 	}

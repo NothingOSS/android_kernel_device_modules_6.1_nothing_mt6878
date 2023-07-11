@@ -593,9 +593,11 @@ struct mtk_vcodec_mem *mtk_vcodec_get_bs(struct mtk_vcodec_ctx *ctx)
 		dst_vb2_v4l2 = v4l2_m2m_dst_buf_remove(ctx->m2m_ctx);
 		dst_buf = &dst_vb2_v4l2->vb2_buf;
 		if (dst_buf != NULL) {
-			mtk_v4l2_debug(8, "[%d] index=%d, num_rdy_bufs=%d\n", ctx->id,
-				dst_buf->index,
-				v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx));
+			mtk_v4l2_debug(8, "[%d] index=%d, num_rdy_bufs=%d, dma_general_buf = %p, general_buf_fd = %d\n",
+				ctx->id, dst_buf->index,
+				v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx),
+				pbs_buf->dma_general_buf,
+				pbs_buf->general_buf_fd);
 		}
 
 	} else {

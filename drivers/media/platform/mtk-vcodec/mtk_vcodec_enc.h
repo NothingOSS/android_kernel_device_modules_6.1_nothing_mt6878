@@ -28,6 +28,7 @@ struct mtk_video_enc_buf {
 	struct mtk_enc_params enc_params;
 	enum eos_types lastframe;
 	int    flags;
+	int    general_user_fd;
 	struct mtk_vcodec_mem bs_buf;
 	struct venc_frm_buf frm_buf;
 };
