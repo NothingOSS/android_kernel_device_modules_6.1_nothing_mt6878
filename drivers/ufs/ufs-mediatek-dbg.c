@@ -10,11 +10,14 @@
 #include <linux/module.h>
 #include <linux/proc_fs.h>
 #include <linux/sched/clock.h>
+#include <linux/sched/cputime.h>
+#include <linux/sched/debug.h>
 #include <linux/seq_file.h>
 #include <linux/smp.h>
 #include <linux/spinlock.h>
 #include <linux/sysfs.h>
 #include <linux/tracepoint.h>
+#include <sched/sched.h>
 #include "governor.h"
 #include "ufshcd-priv.h"
 #include <ufs/ufshcd.h>
@@ -71,6 +74,9 @@ void ufs_mtk_eh_unipro_set_lpm(struct ufs_hba *hba, int ret)
 
 	/* Check if irq is pending */
 	mt_irq_dump_status(hba->irq);
+	/* dump CPU3 callstack for debugging */
+	dev_info(hba->dev, "%s: Task dump on CPU3\n", __func__);
+	sched_show_task(cpu_curr(3));
 
 	ret2 = ufshcd_dme_get(hba,
 		UIC_ARG_MIB(VS_UNIPROPOWERDOWNCONTROL), &val);
