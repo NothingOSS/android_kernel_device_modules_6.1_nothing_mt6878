@@ -1057,15 +1057,13 @@
 	};
 
 	vmmspm: vmmspm {
-		compatible = "mediatek,vmm_spm_mt6989_bringup";
+		compatible = "mediatek,vmm_spm_mt6989";
 		reg =
 			<0 0x1c001000 0 0x1000>,
 			<0 0x1ec00000 0 0x40000>;
 		reg-names =
 			"SPM_BASE",
 			"HFRP_BASE";
-
-		vmm-pmic-supply = <&mt6363_vbuck2>;
 	};
 
 	camsys_vcore_power: camsys-vcore-power {
@@ -18166,10 +18164,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 			compatible = "richtek,rt6160-dbg";
 		};
 	};
-};
-
-&mt6363_vbuck2 {
-	regulator-always-on;
 };
 
 &mt6363_vbuck4 {
