@@ -45,6 +45,7 @@ struct lastbus_monitor {
 	struct lastbus_idle_mask idle_masks[NR_MAX_LASTBUS_IDLE_MASK];
 	unsigned int num_bus_status;
 	unsigned int offset_bus_status;
+	unsigned int isr_dump;
 };
 
 struct cfg_lastbus {

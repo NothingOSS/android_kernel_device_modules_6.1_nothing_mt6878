@@ -119,8 +119,8 @@ static void lastbus_dump_monitor(const struct lastbus_monitor *m, void __iomem *
 
 	buf_point = check_buf_size(50);
 	dump_buf_size += snprintf(dump_buf + buf_point, DUMP_BUFF_SIZE - buf_point,
-		"%s 0x%08x %d\n", m->name, m->base, m->num_ports);
-	pr_info("%s 0x%08x %d\n", m->name, m->base, m->num_ports);
+		"--- %s 0x%08x %d ---\n", m->name, m->base, m->num_ports);
+	pr_info("--- %s 0x%08x %d ---\n", m->name, m->base, m->num_ports);
 
 	for (i = 0; i < m->num_ports; i++) {
 		buf_point = check_buf_size(10);
@@ -172,6 +172,9 @@ int lastbus_dump(int force_dump)
 	for (i = 0; i < monitors_num; i++) {
 		is_timeout = false;
 		m = &my_cfg_lastbus.monitors[i];
+		if (my_cfg_lastbus.monitors[i].isr_dump == 0)
+			continue;
+
 		base = ioremap(m->base, ((0x408 + m->num_ports * 4) / 0x100 + 1) * 0x100);
 		value = readl(base);
 		is_timeout = value & LASTBUS_TIMEOUT;
@@ -334,6 +337,12 @@ static int last_bus_probe(struct platform_device *pdev)
 			dev_err(dev, "couldn't find property bus-status-num(%d)\n", ret);
 			my_cfg_lastbus.monitors[num].num_bus_status = 0;
 		}
+
+		/* get monitor isr-dump, default is on */
+		ret = of_property_read_u32(child_part, "isr-dump",
+			&my_cfg_lastbus.monitors[num].isr_dump);
+		if (ret < 0)
+			my_cfg_lastbus.monitors[num].isr_dump = 1;
 
 		num++;
 	}
