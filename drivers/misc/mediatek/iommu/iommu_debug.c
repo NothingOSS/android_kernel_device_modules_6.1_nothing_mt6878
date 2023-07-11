@@ -1118,8 +1118,13 @@ static void ste_dump(struct seq_file *s, u32 sid, __le64 *ste)
 
 	iommu_dump(s, "SMMU STE values:\n");
 	for (i = 0; i < STRTAB_STE_DWORDS; i++) {
-		iommu_dump(s, "u64[%d]:0x%016llx\n", i, *ste);
-		ste++;
+		if (i + 3 < STRTAB_STE_DWORDS) {
+			iommu_dump(s, "u64[%d~%d]:0x%016llx|0x%016llx|0x%016llx|0x%016llx\n",
+				   i, i + 3, ste[i + 0], ste[i + 1], ste[i + 2], ste[i + 3]);
+			i = i + 3;
+		} else {
+			iommu_dump(s, "u64[%d]:0x%016llx\n", i, ste[i]);
+		}
 	}
 }
 
@@ -1136,9 +1141,14 @@ static void cd_dump(struct seq_file *s, u32 ssid, __le64 *cd)
 	}
 
 	iommu_dump(s, "SMMU CD values:\n");
-	for (i = 0; i < CTXDESC_CD_DWORDS; i++) {
-		iommu_dump(s, "u64[%d]:0x%016llx\n", i, *cd);
-		cd++;
+	for (i = 0; i < STRTAB_STE_DWORDS; i++) {
+		if (i + 3 < STRTAB_STE_DWORDS) {
+			iommu_dump(s, "u64[%d~%d]:0x%016llx|0x%016llx|0x%016llx|0x%016llx\n",
+				   i, i + 3, cd[i + 0], cd[i + 1], cd[i + 2], cd[i + 3]);
+			i = i + 3;
+		} else {
+			iommu_dump(s, "u64[%d]:0x%016llx\n", i, cd[i]);
+		}
 	}
 }
 

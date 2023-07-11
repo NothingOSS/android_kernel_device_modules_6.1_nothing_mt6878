@@ -1669,8 +1669,8 @@ static void mtk_smmu_evt_dump(struct arm_smmu_device *smmu, u64 *evt)
 	ptr += sprintf(ptr, ", InputAddr:0x%llx", FIELD_GET(EVTQ_2_ADDR, evt[2]));
 	ptr += sprintf(ptr, ", AlignedIPA:0x%llx", evt[3] & EVTQ_3_IPA);
 
-	pr_info("smmu:%s EVTQ_INFO: %s\n",
-		get_smmu_name(data->plat_data->smmu_type), evt_str);
+	dev_info(smmu->dev, "smmu:%s EVTQ_INFO: %s\n",
+		 get_smmu_name(data->plat_data->smmu_type), evt_str);
 }
 
 static int mtk_smmu_evt_handler(int irq, void *dev, u64 *evt)
@@ -1679,14 +1679,11 @@ static int mtk_smmu_evt_handler(int irq, void *dev, u64 *evt)
 				      SMMU_FAULT_RS_BURST);
 	struct arm_smmu_device *smmu = dev;
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	u32 smmu_type = data->plat_data->smmu_type;
 	u8 id = FIELD_GET(EVTQ_0_ID, evt[0]);
 	bool ssid_valid = evt[0] & EVTQ_0_SSV;
 	u32 sid = FIELD_GET(EVTQ_0_SID, evt[0]);
 	u32 ssid = 0;
-
-	/* skip invalid id */
-	if (id == 0)
-		return IRQ_HANDLED;
 
 	if (!__ratelimit(&evtq_rs))
 		return IRQ_HANDLED;
@@ -1694,15 +1691,19 @@ static int mtk_smmu_evt_handler(int irq, void *dev, u64 *evt)
 	if (ssid_valid)
 		ssid = FIELD_GET(EVTQ_0_SSID, evt[0]);
 
-	pr_info("smmu:%s EVTQ_INFO: irq:0x%x, id:0x%x, reason:%s, evt{[0]:0x%llx, [1]:0x%llx, [2]:0x%llx}, ssid_valid:%d, sid:0x%x, ssid:0x%x\n",
-		get_smmu_name(data->plat_data->smmu_type),
-		irq, id, get_fault_reason_str(id),
-		evt[0], evt[1], evt[2],
-		ssid_valid, sid, ssid);
+	dev_info(smmu->dev,
+		 "smmu:%s EVTQ_INFO: irq:0x%x, id:0x%x, reason:%s, evt{[0]:0x%llx, [1]:0x%llx, [2]:0x%llx}, ssid_valid:%d, sid:0x%x, ssid:0x%x\n",
+		 get_smmu_name(smmu_type),
+		 irq, id, get_fault_reason_str(id),
+		 evt[0], evt[1], evt[2],
+		 ssid_valid, sid, ssid);
 
 	mtk_smmu_evt_dump(smmu, evt);
 
-	mtk_smmu_ste_cd_info_dump(NULL, data->plat_data->smmu_type, sid);
+	dump_global_register(smmu);
+	mtk_smmu_wpreg_dump(NULL, smmu_type);
+
+	mtk_smmu_ste_cd_info_dump(NULL, smmu_type, sid);
 
 	return IRQ_HANDLED;
 }
@@ -1979,9 +1980,6 @@ static int mtk_report_device_fault(struct arm_smmu_master *master,
 	}
 
 	if (flt->type == IOMMU_FAULT_DMA_UNRECOV) {
-		dump_global_register(smmu);
-		mtk_smmu_wpreg_dump(NULL, data->plat_data->smmu_type);
-
 		fault_param = smmuwp_process_tf(master, &mtk_fault_evt);
 
 #ifdef MTK_SMMU_DEBUG
