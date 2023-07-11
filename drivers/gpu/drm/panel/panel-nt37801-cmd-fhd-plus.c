@@ -743,6 +743,7 @@ static struct mtk_panel_params ext_params = {
 	.dyn_fps = {
 		.vact_timing_fps = 120,
 	},
+	.real_te_duration = 8333,
 };
 
 static struct mtk_panel_params ext_params_90hz = {
@@ -805,6 +806,7 @@ static struct mtk_panel_params ext_params_90hz = {
 		.switch_en = 1,
 		.pll_clk = PLL_CLOCK + 1,
 	},
+	.real_te_duration = 11111,
 };
 
 static struct mtk_panel_params ext_params_60hz = {
@@ -867,6 +869,7 @@ static struct mtk_panel_params ext_params_60hz = {
 		.switch_en = 1,
 		.pll_clk = PLL_CLOCK + 1,
 	},
+	.real_te_duration = 8333,
 };
 
 struct drm_display_mode *get_mode_by_id(struct drm_connector *connector,
@@ -898,28 +901,25 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 
 	if (drm_mode_vrefresh(m) == 120) {
 		ext_params.skip_vblank = 0;
-		ext_params.real_te_duration = 8333;
 		ext_params.vblank_off = false;
 		ext->params = &ext_params;
 	} else if (drm_mode_vrefresh(m) == 90) {
-		ext_params.real_te_duration = 11111;
+		ext_params.vblank_off = false;
 		ext->params = &ext_params_90hz;
 	} else if (drm_mode_vrefresh(m) == 60) {
-		ext_params.real_te_duration = 16666;
+		ext_params_60hz.skip_vblank = 2;
+		ext_params.vblank_off = false;
 		ext->params = &ext_params_60hz;
 	} else if (drm_mode_vrefresh(m) == 30) {
 		ext_params.skip_vblank = 4;
-		ext_params.real_te_duration = 8333;
 		ext_params.vblank_off = false;
 		ext->params = &ext_params;
 	} else if (drm_mode_vrefresh(m) == 24) {
 		ext_params.skip_vblank = 5;
-		ext_params.real_te_duration = 8333;
 		ext_params.vblank_off = false;
 		ext->params = &ext_params;
 	} else if (drm_mode_vrefresh(m) == 10) {
 		ext_params.skip_vblank = 12;
-		ext_params.real_te_duration = 8333;
 		ext_params.vblank_off = true;
 		ext->params = &ext_params;
 	} else
@@ -928,6 +928,31 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	return ret;
 }
 
+static int mtk_panel_ext_param_get(struct drm_panel *panel,
+	struct drm_connector *connector,
+	struct mtk_panel_params **ext_param,
+	unsigned int mode)
+{
+	int ret = 0;
+	struct drm_display_mode *m = get_mode_by_id(connector, mode);
+
+	if (drm_mode_vrefresh(m) == 120)
+		*ext_param = &ext_params;
+	else if (drm_mode_vrefresh(m) == 90)
+		*ext_param = &ext_params_90hz;
+	else if (drm_mode_vrefresh(m) == 60)
+		*ext_param = &ext_params_60hz;
+	else if (drm_mode_vrefresh(m) == 30)
+		*ext_param = &ext_params;
+	else if (drm_mode_vrefresh(m) == 24)
+		*ext_param = &ext_params;
+	else if (drm_mode_vrefresh(m) == 10)
+		*ext_param = &ext_params;
+	else
+		ret = 1;
+
+	return ret;
+}
 static void mode_switch_to_120(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
@@ -950,7 +975,7 @@ static void mode_switch_to_60(struct drm_panel *panel)
 	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0x6F, 0x1C);
 	lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x5A, 0x01);
+	lcm_dcs_write_seq_static(ctx, 0x5A, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
 }
 
@@ -1030,6 +1055,7 @@ static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
 	.ext_param_set = mtk_panel_ext_param_set,
+	.ext_param_get = mtk_panel_ext_param_get,
 	.mode_switch = mode_switch,
 	.set_bl_elvss_cmdq = lcm_set_bl_elvss_cmdq,
 	/* Not real backlight cmd in AOD, just for QC purpose */
