@@ -29,6 +29,7 @@ static inline void rt_energy_aware_output_init(struct rt_energy_aware_output *rt
 	rt_ea_output->rt_lowest_cpu = -1;
 	rt_ea_output->rt_lowest_prio = p->prio;
 	rt_ea_output->rt_lowest_pid = -1;
+	rt_ea_output->select_reason = 0;
 }
 
 #if IS_ENABLED(CONFIG_RT_SOFTINT_OPTIMIZATION)
@@ -503,6 +504,9 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			break;
 	}
 
+	if (cluster > end_index)
+		rt_ea_output->select_reason = LB_FAIL;
+
 	weight = cpumask_weight(&candidates);
 	irq_log_store();
 
@@ -606,7 +610,7 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 	if (target != -1 &&
 		(may_not_preempt || p->prio < cpu_rq(target)->rt.highest_prio.curr)) {
 		*target_cpu = target;
-		select_reason = LB_RT_IDLE;
+		select_reason = LB_RT_IDLE | rt_ea_output.select_reason;
 	} else if (rt_ea_output.cfs_lowest_cpu != -1) {
 		*target_cpu = rt_ea_output.cfs_lowest_cpu;
 		select_reason = LB_RT_LOWEST_PRIO_NORMAL;
@@ -660,7 +664,7 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 	/* best energy cpu found */
 	if (target != -1) {
 		*lowest_cpu = target;
-		select_reason = LB_RT_IDLE;
+		select_reason = LB_RT_IDLE | rt_ea_output.select_reason;
 		goto out;
 	}
 

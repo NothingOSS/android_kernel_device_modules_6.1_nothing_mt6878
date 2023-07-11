@@ -100,6 +100,7 @@ struct rt_energy_aware_output {
 	int rt_lowest_cpu;
 	int rt_lowest_prio;
 	int rt_lowest_pid;
+	int select_reason;
 };
 
 #ifdef CONFIG_SMP

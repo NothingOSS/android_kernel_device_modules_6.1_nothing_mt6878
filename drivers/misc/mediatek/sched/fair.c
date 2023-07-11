@@ -1348,7 +1348,7 @@ int set_gear_indices(int pid, int gear_start, int num_gear, int reverse)
 		goto done;
 
 	/* check gear_start validity */
-	if (gear_start < 0 || gear_start > num_sched_clusters-1)
+	if (gear_start < -1 || gear_start > num_sched_clusters-1)
 		goto done;
 
 	/* check num_gear validity */
@@ -1632,27 +1632,28 @@ void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_ind
 	/* task has customized gear prefer */
 	if (gear_hints_enable && ghts->gear_start >= 0) {
 		*order_index = ghts->gear_start;
-		if (ghts->reverse)
-			max_num_gear = ghts->gear_start + 1;
-		else
-			max_num_gear = num_sched_clusters - ghts->gear_start;
+	} else {
+		for (i = *order_index; i < num_sched_clusters - 1; i++) {
+			if (task_demand_fits(p, cpumask_first(&cpu_array[i][0][0])))
+				break;
+		}
 
-		if (ghts->num_gear > 0 && ghts->num_gear <= max_num_gear)
-			*end_index = ghts->num_gear - 1;
-		else
-			*end_index = max_num_gear - 1;
+		*order_index = i;
+	}
 
+	if (gear_hints_enable && ghts->reverse)
+		max_num_gear = *order_index + 1;
+	else
+		max_num_gear = num_sched_clusters - *order_index;
+
+	if (gear_hints_enable && ghts->num_gear > 0 && ghts->num_gear <= max_num_gear)
+		*end_index = ghts->num_gear - 1;
+	else
+		*end_index = max_num_gear - 1;
+
+	if (gear_hints_enable)
 		*reverse     = ghts->reverse;
-		goto out;
-	}
 
-	for (i = *order_index; i < num_sched_clusters - 1; i++) {
-		if (task_demand_fits(p, cpumask_first(&cpu_array[i][0][0])))
-			break;
-	}
-
-	*order_index = i;
-	*end_index = num_sched_clusters - 1 - i;
 out:
 	if (trace_sched_get_gear_indices_enabled())
 		trace_sched_get_gear_indices(p, uclamp_task_util(p), gear_hints_enable,
@@ -1667,6 +1668,7 @@ struct find_best_candidates_parameters {
 	int order_index;
 	int end_index;
 	int reverse;
+	int fbc_reason;
 };
 
 DEFINE_PER_CPU(cpumask_var_t, mtk_fbc_mask);
@@ -1899,6 +1901,9 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 		}
 	}
 
+	if (cluster > end_index)
+		fbc_params->fbc_reason = LB_FAIL;
+
 	if (trace_sched_find_best_candidates_enabled())
 		trace_sched_find_best_candidates(p, is_vip, candidates, order_index, end_index,
 				allowed_cpu_mask);
@@ -1994,6 +1999,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	fbc_params.order_index = order_index;
 	fbc_params.end_index = end_index;
 	fbc_params.reverse = reverse;
+	fbc_params.fbc_reason = 0;
 
 	/* Pre-select a set of candidate CPUs. */
 	candidates = this_cpu_ptr(&energy_cpus);
@@ -2053,7 +2059,7 @@ unlock:
 	if (latency_sensitive) {
 		if (best_energy_cpu >= 0) {
 			*new_cpu = best_energy_cpu;
-			select_reason = LB_LATENCY_SENSITIVE_BEST_IDLE_CPU;
+			select_reason = LB_LATENCY_SENSITIVE_BEST_IDLE_CPU | fbc_params.fbc_reason;
 			goto done;
 		}
 		if (idle_max_spare_cap_cpu >= 0) {
@@ -2073,7 +2079,7 @@ unlock:
 	/* All cpu failed on !fit_capacity, use sys_max_spare_cap_cpu */
 	if (best_energy_cpu >= 0) {
 		*new_cpu = best_energy_cpu;
-		select_reason = LB_BEST_ENERGY_CPU;
+		select_reason = LB_BEST_ENERGY_CPU | fbc_params.fbc_reason;
 		goto done;
 	}
 
