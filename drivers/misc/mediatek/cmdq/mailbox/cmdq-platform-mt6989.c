@@ -6,9 +6,13 @@
 #include <dt-bindings/gce/mt6989-gce.h>
 
 #include "cmdq-util.h"
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+#include <mtk-smmu-v3.h>
+#endif
 
 #define GCE_D_PA	0x1e980000
 #define GCE_M_PA	0x1e990000
+#define MMSID_SRT_NORMAL	31
 
 const char *cmdq_thread_module_dispatch(phys_addr_t gce_pa, s32 thread)
 {
@@ -233,6 +237,16 @@ bool cmdq_mbox_hw_trace_thread(void *chan)
 	return true;
 }
 
+void cmdq_error_irq_debug(void *chan)
+{
+	struct device *dev = cmdq_mbox_get_dev(chan);
+
+	//dump smmu info to check gce va mode
+	mtk_smmu_reg_dump(MM_SMMU, dev, MMSID_SRT_NORMAL);
+	//dump gce req
+	cmdq_mbox_dump_gce_req(chan);
+}
+
 struct cmdq_util_platform_fp platform_fp = {
 	.thread_module_dispatch = cmdq_thread_module_dispatch,
 	.event_module_dispatch = cmdq_event_module_dispatch,
@@ -242,6 +256,7 @@ struct cmdq_util_platform_fp platform_fp = {
 	.util_hw_name = cmdq_util_hw_name,
 	.thread_ddr_module = cmdq_thread_ddr_module,
 	.hw_trace_thread = cmdq_mbox_hw_trace_thread,
+	.dump_error_irq_debug = cmdq_error_irq_debug,
 };
 
 static int __init cmdq_platform_init(void)

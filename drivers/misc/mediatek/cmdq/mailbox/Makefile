@@ -10,6 +10,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdp/$(MTK_PLATFORM) \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3 \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv/ \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include/
 

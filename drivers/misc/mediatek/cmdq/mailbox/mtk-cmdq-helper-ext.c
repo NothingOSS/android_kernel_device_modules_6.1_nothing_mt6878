@@ -2594,6 +2594,8 @@ static void cmdq_pkt_err_irq_dump(struct cmdq_pkt *pkt)
 	}
 
 	cmdq_util_helper->dump_smi();
+	if (client)
+		cmdq_util_helper->dump_error_irq_debug(client->chan);
 
 	if (inst) {
 		/* not sync case, print raw */

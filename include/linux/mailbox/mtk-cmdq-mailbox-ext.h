@@ -322,6 +322,7 @@ extern int cmdq_trace;
 
 void cmdq_mbox_mtcmos_by_fast(void *cmdq_mbox, bool on);
 void cmdq_mbox_dump_fast_mtcmos(void *cmdq_mbox);
+void cmdq_mbox_dump_gce_req(struct mbox_chan *chan);
 dma_addr_t cmdq_thread_get_pc(struct cmdq_thread *thread);
 dma_addr_t cmdq_thread_get_end(struct cmdq_thread *thread);
 void cmdq_thread_set_spr(struct mbox_chan *chan, u8 id, u32 val);
@@ -341,6 +342,7 @@ void cmdq_mbox_enable(void *chan);
 void cmdq_mbox_disable(void *chan);
 s32 cmdq_mbox_get_usage(void *chan);
 void *cmdq_mbox_get_base(void *chan);
+struct device *cmdq_mbox_get_dev(void *chan);
 phys_addr_t cmdq_mbox_get_base_pa(void *chan);
 phys_addr_t cmdq_dev_get_base_pa(struct device *dev);
 phys_addr_t cmdq_mbox_get_dummy_reg(void *chan);

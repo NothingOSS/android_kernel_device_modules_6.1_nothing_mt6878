@@ -474,6 +474,16 @@ void cmdq_mbox_dump_fast_mtcmos(void *cmdq_mbox)
 }
 EXPORT_SYMBOL(cmdq_mbox_dump_fast_mtcmos);
 
+void cmdq_mbox_dump_gce_req(struct mbox_chan *chan)
+{
+	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
+
+	cmdq_mtcmos_by_fast(cmdq, true);
+	cmdq_msg("%s dump GCE_GCTL_VALUE:%#x", __func__, (u32)readl(cmdq->base + GCE_GCTL_VALUE));
+	cmdq_mtcmos_by_fast(cmdq, false);
+}
+EXPORT_SYMBOL(cmdq_mbox_dump_gce_req);
+
 dma_addr_t cmdq_thread_get_pc(struct cmdq_thread *thread)
 {
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq, mbox);
@@ -3092,6 +3102,7 @@ struct device *cmdq_mbox_get_dev(void *chan)
 
 	return cmdq->mbox.dev;
 }
+EXPORT_SYMBOL(cmdq_mbox_get_dev);
 
 s32 cmdq_mbox_set_hw_id(void *cmdq_mbox)
 {
