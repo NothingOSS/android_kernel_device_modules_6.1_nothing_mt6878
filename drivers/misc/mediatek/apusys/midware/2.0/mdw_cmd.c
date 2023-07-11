@@ -443,6 +443,17 @@ out:
 	return ret;
 }
 
+static void mdw_cmd_history_reset(struct mdw_fpriv *mpriv)
+{
+	struct mdw_device *mdev = mpriv->mdev;
+	int i = 0;
+
+	/* reset min heap */
+	mdev->heap.nr = 0;
+	for (i = 0; i < MDW_NUM_PREDICT_CMD; i++)
+		mdev->predict_cmd_ts[i] = 0;
+}
+
 static void mdw_cmd_history_tbl_delete(struct mdw_fpriv *mpriv)
 {
 	struct mdw_cmd_history_tbl *ch_tbl = NULL, *tmp = NULL;
@@ -454,6 +465,7 @@ static void mdw_cmd_history_tbl_delete(struct mdw_fpriv *mpriv)
 		kfree(ch_tbl->h_sc_einfo);
 		kfree(ch_tbl);
 	}
+	mdw_cmd_history_reset(mpriv);
 }
 
 void mdw_cmd_mpriv_release(struct mdw_fpriv *mpriv)
@@ -1002,6 +1014,14 @@ static void mdw_cmd_history_check_interval(struct mdw_cmd_history_tbl *ch_tbl,
 	}
 }
 
+static void mdw_cmd_min_heap_sanity_check(struct mdw_cmd *c)
+{
+	struct mdw_device *mdev = c->mpriv->mdev;
+
+	if (mdev->heap.nr >= MDW_NUM_PREDICT_CMD)
+		mdw_cmd_history_reset(c->mpriv);
+}
+
 static int mdw_cmd_record(struct mdw_cmd *c)
 {
 	struct mdw_cmd_history_tbl *ch_tbl = NULL;
@@ -1045,6 +1065,7 @@ static int mdw_cmd_record(struct mdw_cmd *c)
 	/* calculate predict cmd_start_ts and push to min heap */
 	if (ch_tbl->period_cnt >= MDW_NUM_HISTORY) {
 		predict_start_ts = c->start_ts + ch_tbl->h_period;
+		mdw_cmd_min_heap_sanity_check(c);
 		min_heap_push(&mdev->heap, &predict_start_ts, &mdw_min_heap_funcs);
 		mdw_cmd_debug("predict_start_ts(%llu) nr(%d)",
 				 mdev->predict_cmd_ts[0], mdev->heap.nr);
@@ -1059,17 +1080,6 @@ out:
 	return ret;
 }
 
-static void mdw_cmd_history_reset(struct mdw_cmd *c)
-{
-	struct mdw_device *mdev = c->mpriv->mdev;
-	int i = 0;
-
-	/* reset min heap */
-	mdev->heap.nr = 0;
-	for (i = 0; i < MDW_NUM_PREDICT_CMD; i++)
-		mdev->predict_cmd_ts[i] = 0;
-}
-
 static bool mdw_cmd_is_perf_mode(struct mdw_cmd *c)
 {
 	/* check cmd mode */
@@ -1077,7 +1087,7 @@ static bool mdw_cmd_is_perf_mode(struct mdw_cmd *c)
 		c->power_plcy == MDW_POWERPOLICY_SUSTAINABLE) {
 		mdw_flw_debug("cmd is performace policy\n");
 		/* reset history */
-		mdw_cmd_history_reset(c);
+		mdw_cmd_history_reset(c->mpriv);
 		return true;
 	}
 	return false;
