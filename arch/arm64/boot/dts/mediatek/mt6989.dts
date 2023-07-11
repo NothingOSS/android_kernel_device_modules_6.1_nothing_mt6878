@@ -2404,9 +2404,6 @@
 		mediatek,smi-supply = <&smi_disp_venc_sub_comm0 0>;
 		mediatek,larb-id = <7>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN0>;
-		clocks = <&venc_gcon_clk CLK_VEN1_CKE0_LARB>,
-				<&venc_gcon_clk CLK_VEN1_CKE1_VENC>;
-		clock-names = "apb", "smi";
 	};
 
 	smi_larb8: smi-larb8@17810000 {
@@ -2416,9 +2413,6 @@
 		mediatek,smi-supply = <&smi_mdp_venc_sub_comm1 0 &smi_sram_venc_sub_comm 0>;
 		mediatek,larb-id = <8>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
-		clocks = <&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB>,
-				<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC>;
-		clock-names = "apb", "smi";
 	};
 
 	smi_larb24: smi-larb24@17c10000 {
@@ -2428,9 +2422,6 @@
 		mediatek,smi-supply = <&smi_mdp_venc_sub_comm2 0 &smi_sram_venc_sub_comm 0>;
 		mediatek,larb-id = <24>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN2>;
-		clocks = <&venc_gcon_core2_clk CLK_VEN_C2_CKE0_LARB>,
-				<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC>;
-		clock-names = "apb", "smi";
 	};
 
 	smi_larb41: smi-larb41@17090000 {
@@ -2440,9 +2431,6 @@
 		mediatek,smi-supply = <&smi_disp_venc_sub_comm0 0>;
 		mediatek,larb-id = <41>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN0>;
-		clocks = <&venc_gcon_clk CLK_VEN1_CKE0_LARB>,
-				<&venc_gcon_clk CLK_VEN1_CKE1_VENC>;
-		clock-names = "apb", "smi";
 	};
 
 	smi_larb42: smi-larb42@17890000 {
@@ -2452,9 +2440,6 @@
 		mediatek,smi-supply = <&smi_mdp_venc_sub_comm1 0>;
 		mediatek,larb-id = <42>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
-		clocks = <&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB>,
-				<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC>;
-		clock-names = "apb", "smi";
 	};
 
 	smi_larb47: smi-larb47@17c90000 {
@@ -2464,9 +2449,6 @@
 		mediatek,smi-supply = <&smi_mdp_venc_sub_comm2 0>;
 		mediatek,larb-id = <47>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN2>;
-		clocks = <&venc_gcon_core2_clk CLK_VEN_C2_CKE0_LARB>,
-				<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC>;
-		clock-names = "apb", "smi";
 	};
 
 	smi_img_vcore_sub_comm0: smi-img-vcore-sub-comm0@15781000 {
