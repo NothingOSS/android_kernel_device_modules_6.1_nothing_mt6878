@@ -227,7 +227,10 @@ static enum hrtimer_restart histtimer_fn(struct hrtimer *h)
 {
 	struct gov_info *gov = this_cpu_ptr(&gov_infos);
 
-	gov->hist_invalid = 1;
+	if (gov->shallow.timer_need_cancel)
+		gov->shallow.timer_need_cancel = false;
+	else
+		gov->hist_invalid = 1;
 
 	return HRTIMER_NORESTART;
 }
@@ -241,7 +244,7 @@ static void histtimer_start(uint64_t time_ns)
 	hrtimer_start(cpu_histtimer, hist_ktime, HRTIMER_MODE_REL_PINNED);
 }
 
-static void histtimer_cancel(void)
+static void histtimer_check(void)
 {
 	struct gov_info *gov = this_cpu_ptr(&gov_infos);
 	struct hrtimer *cpu_histtimer = &gov->shallow.histtimer;
@@ -254,7 +257,7 @@ static void histtimer_cancel(void)
 	if (ktime_to_ns(time_rem) <= 0)
 		return;
 
-	hrtimer_try_to_cancel(cpu_histtimer);
+	gov->shallow.timer_need_cancel = true;
 }
 
 static int start_prediction_timer(struct gov_info *gov, struct cpuidle_driver *drv,
@@ -487,12 +490,13 @@ static int gov_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 	int64_t latency_req = cpuidle_governor_latency_req(dev->cpu);
 	uint64_t predicted_ns;
 	ktime_t delta, delta_tick;
-	int i, idx = 0;
+	int i, idx = 0, disable_state_count = 0;
 
 	gov->is_cpuidle = true;
 
 	update_cpu_history(gov, drv, dev);
 
+	gov->latency_req = latency_req;
 	gov->predicted = gov->predict_info = gov->slp_hist.stddev = 0;
 #if IS_ENABLED(CONFIG_MTK_CPU_IDLE_IPI_SUPPORT)
 	gov->ipi_hist.stddev = 0;
@@ -518,7 +522,12 @@ static int gov_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 		 */
 		*stop_tick = !(drv->states[0].flags & CPUIDLE_FLAG_POLLING);
 		gov->last_cstate = idx;
-		gov->predict_info |= PREDICT_ERR_NEXT_EVENT_SHORT;
+		if (drv->state_count < 2)
+			gov->predict_info |= PREDICT_ERR_ONLY_ONE_STATE;
+		else if (latency_req < drv->states[1].exit_latency_ns)
+			gov->predict_info |= PREDICT_ERR_LATENCY_REQ;
+		else
+			gov->predict_info |= PREDICT_ERR_NEXT_EVENT_SHORT;
 		return 0;
 	}
 
@@ -538,8 +547,10 @@ static int gov_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 	for (i = 0; i < drv->state_count; i++) {
 		struct cpuidle_state *s = &drv->states[i];
 
-		if (dev->states_usage[i].disable)
+		if (dev->states_usage[i].disable) {
+			disable_state_count++;
 			continue;
+		}
 
 		if (idx == -1)
 			idx = i; /* first enabled state */
@@ -556,6 +567,9 @@ static int gov_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 	if (idx == -1)
 		idx = 0; /* No states enabled. Must use 0. */
 
+	if ((idx == 0) && (disable_state_count == gov->deepest_state))
+		gov->predict_info |= PREDICT_ERR_NO_STATE_ENABLE;
+
 	gov->last_cstate = idx;
 	start_prediction_timer(gov, drv, (uint64_t)delta);
 
@@ -564,6 +578,13 @@ static int gov_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 
 static void gov_reflect(struct cpuidle_device *dev, int index)
 {
+	struct gov_info *gov = this_cpu_ptr(&gov_infos);
+	struct hrtimer *cpu_histtimer = &gov->shallow.histtimer;
+
+	if (gov->shallow.timer_need_cancel) {
+		hrtimer_try_to_cancel(cpu_histtimer);
+		gov->shallow.timer_need_cancel = false;
+	}
 	dev->last_state_idx = index;
 }
 
@@ -601,11 +622,13 @@ static void cpuidle_enter_prepare(void *unused, int *state, struct cpuidle_devic
 #if IS_ENABLED(CONFIG_MTK_CPU_IDLE_IPI_SUPPORT)
 	trace_lpm_gov(*state, smp_processor_id(), gov->ipi_pending,
 		      gov->predict_info, gov->predicted, gov->next_timer_ns,
-		      gov->htmr_wkup, gov->slp_hist.stddev, gov->ipi_hist.stddev);
+		      gov->htmr_wkup, gov->slp_hist.stddev, gov->ipi_hist.stddev,
+		      gov->latency_req);
 #else
 	trace_lpm_gov(*state, smp_processor_id(), gov->ipi_pending,
 		      gov->predict_info, gov->predicted, gov->next_timer_ns,
-		      gov->htmr_wkup, gov->slp_hist.stddev, 0);
+		      gov->htmr_wkup, gov->slp_hist.stddev, 0,
+		      gov->latency_req);
 #endif
 }
 
@@ -617,9 +640,9 @@ static void cpuidle_exit_post(void *unused, int state, struct cpuidle_device *de
 		gov->ipi_wkup ? CPUIDLE_WAKE_IPI : CPUIDLE_WAKE_EVENT;
 
 	gov->is_cpuidle = false;
-	histtimer_cancel();
+	histtimer_check();
 
-	trace_lpm_gov(-1, smp_processor_id(), 0, 0, 0, 0, 0, 0, 0);
+	trace_lpm_gov(-1, smp_processor_id(), 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
 static void lpm_cpu_gov_info_parsing(struct gov_info *gov, struct cpuidle_driver *drv)

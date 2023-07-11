@@ -14,10 +14,12 @@ TRACE_EVENT(lpm_gov,
 	TP_PROTO(unsigned int state, int cpu, bool ipi_abort,
 		 uint32_t predict_info, uint64_t predict,
 		 uint64_t next_timer_ns, bool htmr_wkup,
-		 uint64_t slp_std, uint64_t ipi_std),
+		 uint64_t slp_std, uint64_t ipi_std,
+		 int64_t latency_req),
 
 	TP_ARGS(state, cpu, ipi_abort, predict_info, predict,
-		next_timer_ns, htmr_wkup, slp_std, ipi_std),
+		next_timer_ns, htmr_wkup, slp_std, ipi_std,
+		latency_req),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, state)
@@ -29,6 +31,7 @@ TRACE_EVENT(lpm_gov,
 		__field(bool, htmr_wkup)
 		__field(uint64_t, slp_std)
 		__field(uint64_t, ipi_std)
+		__field(int64_t, latency_req)
 	),
 
 	TP_fast_assign(
@@ -41,13 +44,15 @@ TRACE_EVENT(lpm_gov,
 		__entry->htmr_wkup = htmr_wkup;
 		__entry->slp_std = slp_std;
 		__entry->ipi_std = ipi_std;
+		__entry->latency_req = latency_req;
 	),
 
-	TP_printk("state=%u cpu_id=%d ipi_abort=%d predict=0x%x time=%llu next=%llu shallow=%d std1=%llu std2=%llu",
+	TP_printk("state=%u cpu_id=%d ipi_abort=%d predict=0x%x time=%llu next=%llu shallow=%d std1=%llu std2=%llu latency_req=%lld",
 		  __entry->state, __entry->cpu, __entry->ipi_abort,
 		  __entry->predict_info, __entry->predict,
 		  __entry->next_timer_ns, __entry->htmr_wkup,
-		  __entry->slp_std, __entry->ipi_std)
+		  __entry->slp_std, __entry->ipi_std,
+		  __entry->latency_req)
 );
 
 #endif /* _TRACE_MTK_POLICY_H */

@@ -32,7 +32,10 @@
 #define PREDICT_ERR_HR_SEL_NEXT_EVENT	(1u << 17)
 #define PREDICT_ERR_HR_EN		(1u << 19)
 
-#define PREDICT_ERR_NEXT_EVENT_SHORT	(1u << 20)
+#define PREDICT_ERR_ONLY_ONE_STATE	(1u << 20)
+#define PREDICT_ERR_LATENCY_REQ		(1u << 21)
+#define PREDICT_ERR_NEXT_EVENT_SHORT	(1u << 22)
+#define PREDICT_ERR_NO_STATE_ENABLE	(1u << 23)
 
 enum cpuidle_wake_reason {
 	CPUIDLE_WAKE_EVENT = 0,
@@ -65,6 +68,7 @@ struct gov_criteria {
 };
 
 struct shallow_handle {
+	bool timer_need_cancel;
 	int nsamp;
 	s64 state_ns;
 	uint32_t cur;
@@ -115,6 +119,7 @@ struct gov_info {
 	int cpu;
 	int enable;
 	int last_cstate;
+	int64_t latency_req;
 	uint64_t predicted;
 	uint64_t next_timer_ns;
 	uint32_t deepest_state;
