@@ -2070,6 +2070,24 @@ static int ufs_mtk_mcq_config_cqid(struct ufs_hba *hba)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+static void _ufshcd_enable_intr(struct ufs_hba *hba, u32 intrs)
+{
+	u32 set = ufshcd_readl(hba, REG_INTERRUPT_ENABLE);
+
+	if (hba->ufs_version == ufshci_version(1, 0)) {
+		u32 rw;
+
+		rw = set & INTERRUPT_MASK_RW_VER_10;
+		set = rw | ((set ^ intrs) & intrs);
+	} else {
+		set |= intrs;
+	}
+
+	ufshcd_writel(hba, set, REG_INTERRUPT_ENABLE);
+}
+#endif
+
 static int ufs_mtk_link_set_hpm(struct ufs_hba *hba)
 {
 	int err;
@@ -2107,6 +2125,8 @@ static int ufs_mtk_link_set_hpm(struct ufs_hba *hba)
 	} else {
 		ufs_mtk_config_mcq(hba, false);
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+		/* Enable required interrupts */
+		_ufshcd_enable_intr(hba, UFSHCD_ENABLE_MTK_MCQ_INTRS);
 		ufshcd_mcq_make_queues_operational(hba);
 		ufs_mtk_mcq_config_cqid(hba);
 		ufshcd_mcq_config_mac(hba, hba->nutrs);
