@@ -62,6 +62,7 @@ static struct pq_module_match pq_module_matches[MTK_DISP_PQ_TYPE_MAX] = {
 	{MTK_DISP_PQ_CHIST, MTK_DISP_CHIST}, // 5
 	{MTK_DISP_PQ_C3D, MTK_DISP_C3D},
 	{MTK_DISP_PQ_TDSHP, MTK_DISP_TDSHP},
+	{MTK_DISP_PQ_DMR, MTK_DISP_ODDMR},
 };
 
 static const char *const mtk_tuning_mdp_comps_name[TUNING_COMPS_MAX_COUNT] = {

@@ -28,6 +28,10 @@
 #define DMR_GAIN_MAX 15
 #define OD_GAIN_MAX 15
 
+#define DMR_DBV_TABLE_MAX 4
+#define DMR_FPS_TABLE_MAX 4
+
+
 enum ODDMR_STATE {
 	ODDMR_INVALID = 0,
 	ODDMR_LOAD_PARTS,
@@ -80,6 +84,73 @@ enum MTK_ODDMR_DMR_MODE_TYPE {
 	DMR_MODE_TYPE_RGB7X8Q = 8,
 };
 
+struct mtk_drm_dmr_basic_info {
+	unsigned int panel_id_len;
+	unsigned char panel_id[16];
+	unsigned int panel_width;
+	unsigned int panel_height;
+	unsigned int h_num;
+	unsigned int v_num;
+	unsigned int catch_bit;
+	unsigned int blank_bit;
+	unsigned int zero_bit;
+};
+
+struct mtk_drm_dmr_static_cfg {
+	unsigned int reg_num;
+	unsigned int *reg_offset;
+	unsigned int *reg_mask;
+	unsigned int *reg_value;
+};
+
+struct mtk_drm_dmr_table_index {
+	unsigned int DBV_table_num;
+	unsigned int FPS_table_num;
+	unsigned int table_byte_num;
+	bool DC_table_flag;
+	unsigned int *DBV_table_idx; // 0, 2048
+	unsigned int *FPS_table_idx; // 0, 60
+
+};
+
+struct mtk_drm_dmr_table_content {
+	unsigned char *table_single;     // table_single[dbv0][fps0][0~table_bit_num]
+	unsigned char *table_single_DC;
+
+	unsigned char *table_L_single;
+	unsigned char *table_L_single_DC;
+	unsigned char *table_R_single;
+	unsigned char *table_R_single_DC;
+};
+
+struct mtk_drm_dmr_fps_dbv_node {
+	unsigned int DBV_num;
+	unsigned int FPS_num;
+	bool DC_flag;
+	unsigned int *DBV_node; // 0, 1024, 2048, 4095
+	unsigned int *FPS_node; // 0, 30, 60, 120
+
+};
+
+struct mtk_drm_dmr_fps_dbv_change_cfg {
+	unsigned int reg_num;
+	unsigned int *reg_offset;
+	unsigned int *reg_mask;
+	unsigned int reg_total_count;
+	unsigned int *reg_value; // 3D changed_reg[DBV_ind][FPS_ind],
+	unsigned int reg_DC_total_count;
+	unsigned int *reg_DC_value; // 3D changed_reg_DC[DBV_ind][FPS_ind],
+};
+
+struct mtk_drm_dmr_cfg_info {
+	struct mtk_drm_dmr_basic_info basic_info;
+	struct mtk_drm_dmr_static_cfg static_cfg;
+	struct mtk_drm_dmr_fps_dbv_node fps_dbv_node;
+	struct mtk_drm_dmr_fps_dbv_change_cfg fps_dbv_change_cfg;
+	struct mtk_drm_dmr_table_index table_index;
+	struct mtk_drm_dmr_table_content table_content;
+};
+
 struct mtk_disp_oddmr_data {
 	/* dujac not support update od table */
 	bool is_od_support_table_update;
@@ -117,8 +188,11 @@ struct mtk_disp_oddmr_od_data {
 };
 
 struct mtk_disp_oddmr_dmr_data {
-	atomic_t cur_table_idx;
-	struct mtk_drm_gem_obj *mura_table;
+	atomic_t cur_dbv_node;
+	atomic_t cur_fps_node;
+	atomic_t cur_dbv_table_idx;
+	atomic_t cur_fps_table_idx;
+	struct mtk_drm_gem_obj *mura_table[DMR_DBV_TABLE_MAX][DMR_FPS_TABLE_MAX];
 };
 
 struct mtk_disp_oddmr_cfg {
@@ -169,6 +243,7 @@ struct mtk_disp_oddmr {
 	/* only use in pipe0 */
 	enum ODDMR_STATE od_state;
 	enum ODDMR_STATE dmr_state;
+	struct mtk_drm_dmr_cfg_info dmr_cfg_info;
 	uint32_t od_user_gain;
 	/* workqueue */
 	struct workqueue_struct *oddmr_wq;

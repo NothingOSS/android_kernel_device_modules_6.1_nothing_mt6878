@@ -3387,11 +3387,11 @@ static void process_dbg_opt(const char *opt)
 
 		ddic_dsi_read_cmd_test(case_num);
 	} else if (strncmp(opt, "ddic_page_switch:", 17) == 0) {
-		u8 addr, val1, val2, val3;
-		u8 val4, val5, val6;
+		unsigned int addr, val1, val2, val3;
+		unsigned int val4, val5, val6;
 		unsigned int cmd_num, ret;
 
-		ret = sscanf(opt, "ddic_page_switch:%d,%c,%c,%c,%c,%c,%c,%c\n",
+		ret = sscanf(opt, "ddic_page_switch:%d,%x,%x,%x,%x,%x,%x,%x\n",
 				&cmd_num, &addr, &val1, &val2, &val3,
 				&val4, &val5, &val6);
 
