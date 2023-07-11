@@ -62,6 +62,14 @@ static void mtk_drm_idlemgr_get_private_data(struct drm_crtc *crtc,
 		data->hw_async = true;     // enable gce/ulps async
 		data->sram_sleep = false;
 		break;
+	case MMSYS_MT6897:
+		data->cpu_mask = 0xf; //cpu0~3
+		data->cpu_freq = 1000000; // 1Ghz
+		data->cpu_dma_latency = 0;
+		data->vblank_async = false;
+		data->hw_async = true;
+		data->sram_sleep = false;
+		break;
 	default:
 		data->cpu_mask = 0;
 		data->cpu_freq = 0;
