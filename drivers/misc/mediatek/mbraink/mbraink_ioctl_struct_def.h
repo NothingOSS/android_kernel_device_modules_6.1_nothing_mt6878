@@ -8,7 +8,7 @@
 #include <linux/kallsyms.h>
 
 #define MAX_STRUCT_SZ				64
-#define MAX_MEM_STRUCT_SZ			4
+#define MAX_MEM_LIST_SZ				512
 #define MAX_MONITOR_PROCESSNAME_SZ		64
 #define MAX_MONITOR_PROCESS_NUM			16
 #define MAX_DDR_FREQ_NUM			12
@@ -52,20 +52,10 @@ struct mbraink_process_stat_data {
 	struct mbraink_process_stat_struct drv_data[MAX_STRUCT_SZ];
 };
 
-struct mbraink_process_memory_struct {
-	unsigned short pid;
-	unsigned long pss;
-	unsigned long uss;
-	unsigned long rss;
-	unsigned long swap;
-	unsigned long java_heap;
-	unsigned long native_heap;
-};
-
 struct mbraink_process_memory_data {
 	unsigned short pid;
 	unsigned short pid_count;
-	struct mbraink_process_memory_struct drv_data[MAX_MEM_STRUCT_SZ];
+	unsigned short drv_data[MAX_MEM_LIST_SZ];
 };
 
 struct mbraink_thread_stat_struct {
@@ -236,7 +226,7 @@ struct mbraink_power_spm_raw {
 	unsigned char spm_data[MAX_POWER_SPM_TBL_SEC_SZ];
 };
 
-struct mbraink_modem_raw{
+struct mbraink_modem_raw {
 	unsigned char md_data[MAX_MD_TOTAL_SZ];
 };
 

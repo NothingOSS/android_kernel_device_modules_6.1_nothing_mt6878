@@ -51,163 +51,7 @@ static DEFINE_SPINLOCK(tracing_pidlist_lock);
 struct mbraink_tracing_pidlist mbraink_tracing_pidlist_data[MAX_TRACE_NUM];
 
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_EXPORT_DEPENDED)
-#if IS_ENABLED(CONFIG_ANON_VMA_NAME)
-struct anon_vma_name *mbraink_anon_vma_name(struct vm_area_struct *vma)
-{
-	if (vma->vm_file)
-		return NULL;
-
-	return vma->anon_name;
-}
 #else
-struct anon_vma_name *mbraink_anon_vma_name(struct vm_area_struct *vma)
-{
-	return NULL;
-}
-#endif
-
-void mbraink_map_vma(struct vm_area_struct *vma, unsigned long cur_pss,
-			unsigned long *native_heap, unsigned long *java_heap)
-{
-	struct mm_struct *mm = vma->vm_mm;
-	const char *name = NULL;
-
-	if (vma->vm_file)
-		return;
-	/*
-	 * Print the dentry name for named mappings, and a
-	 * special [heap] marker for the heap:
-	 */
-
-	if (vma->vm_ops && vma->vm_ops->name) {
-		name = vma->vm_ops->name(vma);
-		if (name) {
-			if (strncmp(name, "dev/ashmem/libc malloc", 23) == 0)
-				(*native_heap) += cur_pss;
-			return;
-		}
-	}
-
-	name = arch_vma_name(vma);
-	if (!name) {
-		struct anon_vma_name *anon_name;
-
-		if (!mm)
-			return;
-
-		if (vma->vm_start <= mm->brk && vma->vm_end >= mm->start_brk) {
-			(*native_heap) += cur_pss;
-			return;
-		}
-
-		if (vma->vm_start <= vma->vm_mm->start_stack &&
-			vma->vm_end >= vma->vm_mm->start_stack)
-			return;
-
-		anon_name = mbraink_anon_vma_name(vma);
-		if (anon_name) {
-			if (strstr(anon_name->name, "scudo"))
-				(*native_heap) += cur_pss;
-			else if (strstr(anon_name->name, "libc_malloc"))
-				(*native_heap) += cur_pss;
-			else if (strstr(anon_name->name, "GWP-ASan"))
-				(*native_heap) += cur_pss;
-			else if (strstr(anon_name->name, "dalvik-alloc space"))
-				(*java_heap) += cur_pss;
-			else if (strstr(anon_name->name, "dalvik-main space"))
-				(*java_heap) += cur_pss;
-			else if (strstr(anon_name->name, "dalvik-large object space"))
-				(*java_heap) += cur_pss;
-			else if (strstr(anon_name->name, "dalvik-free list large object space"))
-				(*java_heap) += cur_pss;
-			else if (strstr(anon_name->name, "dalvik-non moving space"))
-				(*java_heap) += cur_pss;
-			else if (strstr(anon_name->name, "dalvik-zygote space"))
-				(*java_heap) += cur_pss;
-		}
-	}
-}
-
-void mbraink_get_process_memory_info(pid_t current_pid,
-				struct mbraink_process_memory_data *process_memory_buffer)
-{
-	struct task_struct *t = NULL;
-	struct mm_struct *mm = NULL;
-	struct vm_area_struct *vma = NULL;
-	struct mem_size_stats mss;
-	unsigned short pid_count = 0;
-	unsigned long pss, uss, rss, swap, cur_pss;
-	unsigned long java_heap = 0, native_heap = 0;
-	struct vma_iterator vmi;
-
-	memset(process_memory_buffer, 0, sizeof(struct mbraink_process_memory_data));
-	process_memory_buffer->pid = 0;
-
-	read_lock(&tasklist_lock);
-	for_each_process(t) {
-		if (t->pid <= current_pid)
-			continue;
-
-		mm = t->mm;
-		if (mm) {
-			java_heap = 0;
-			native_heap = 0;
-			pid_count = process_memory_buffer->pid_count;
-
-			process_memory_buffer->drv_data[pid_count].pid =
-				(unsigned short)(t->pid);
-			process_memory_buffer->pid =
-				(unsigned short)(t->pid);
-
-			memset(&mss, 0, sizeof(mss));
-			get_task_struct(t);
-			mmgrab(mm);
-			read_unlock(&tasklist_lock);
-			mmap_read_lock(mm);
-			vma_iter_init(&vmi, mm, 0);
-			for_each_vma(vmi, vma) {
-				cur_pss = (unsigned long)(mss.pss >> PSS_SHIFT);
-				smap_gather_stats(vma, &mss, 0);
-				cur_pss =
-					((unsigned long)(mss.pss >> PSS_SHIFT)) - cur_pss;
-				cur_pss = cur_pss / 1024;
-				mbraink_map_vma(vma, cur_pss, &native_heap, &java_heap);
-			}
-			mmap_read_unlock(mm);
-			read_lock(&tasklist_lock);
-			mmdrop(mm);
-
-			pss = (unsigned long)(mss.pss >> PSS_SHIFT)/1024;
-			uss = (mss.private_clean+mss.private_dirty)/1024;
-			rss = (mss.resident) / 1024;
-			swap = (mss.swap) / 1024;
-
-			process_memory_buffer->drv_data[pid_count].pss = pss;
-			process_memory_buffer->drv_data[pid_count].uss = uss;
-			process_memory_buffer->drv_data[pid_count].rss = rss;
-			process_memory_buffer->drv_data[pid_count].swap = swap;
-			process_memory_buffer->drv_data[pid_count].java_heap =
-									java_heap;
-			process_memory_buffer->drv_data[pid_count].native_heap =
-									native_heap;
-			process_memory_buffer->pid_count++;
-
-			put_task_struct(t);
-			break;
-		} else {
-			/*pr_info("kthread case ...\n");*/
-		}
-	}
-	read_unlock(&tasklist_lock);
-}
-#else
-void mbraink_get_process_memory_info(pid_t current_pid,
-					struct mbraink_process_memory_data *process_memory_buffer)
-{
-	pr_info("%s: not support yet...", __func__);
-	memset(process_memory_buffer, 0, sizeof(struct mbraink_process_memory_data));
-	process_memory_buffer->pid = 0;
-}
 
 static int register_trace_android_vh_do_fork(void *t, void *p)
 {
@@ -232,6 +76,37 @@ static int unregister_trace_android_vh_do_exit(void *t, void *p)
 	return 0;
 }
 #endif
+
+void mbraink_get_process_memory_info(pid_t current_pid,
+				struct mbraink_process_memory_data *process_memory_buffer)
+{
+	struct task_struct *t = NULL;
+	unsigned short pid_count = 0;
+
+	memset(process_memory_buffer, 0, sizeof(struct mbraink_process_memory_data));
+	process_memory_buffer->pid = 0;
+
+	read_lock(&tasklist_lock);
+	for_each_process(t) {
+		if (t->pid < current_pid)
+			continue;
+
+		if (t->mm) {
+			pid_count = process_memory_buffer->pid_count;
+			if (pid_count < MAX_STRUCT_SZ) {
+				process_memory_buffer->drv_data[pid_count] =
+							(unsigned short)(t->pid);
+				process_memory_buffer->pid_count++;
+			} else {
+				process_memory_buffer->pid = (unsigned short)(t->pid);
+				break;
+			}
+		} else {
+			/*pr_info("kthread case ...\n");*/
+		}
+	}
+	read_unlock(&tasklist_lock);
+}
 
 void mbraink_get_process_stat_info(pid_t current_pid,
 		struct mbraink_process_stat_data *process_stat_buffer)
@@ -854,7 +729,7 @@ void mbraink_process_tracer_exit(void)
 	pr_info("%s: Do not support mbraink tracing...\n", __func__);
 }
 
-int mbraink_get_tracing_pid_info(unsigned short *current_idx,
+int mbraink_get_tracing_pid_info(unsigned short current_idx,
 				struct mbraink_tracing_pid_data *tracing_pid_buffer)
 {
 	pr_info("%s: Do not support mbraink tracing...\n", __func__);
