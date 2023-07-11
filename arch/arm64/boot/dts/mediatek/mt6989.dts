@@ -5657,6 +5657,8 @@
 				<0 0x1c001000 0 0x1000>,   /* SLEEP */
 				<0 0x10000000 0 0x1000>,   /* TOPCKGEN */
 				<0 0x1002c000 0 0x1000>,   /* IFRBUS_AO */
+				<0 0x10219000 0 0x1000>,   /* EMI */
+				<0 0x1021d000 0 0x1000>,   /* SUB_EMI */
 				<0 0x1021c000 0 0x1000>,   /* NTH_EMICFG */
 				<0 0x1021e000 0 0x1000>,   /* STH_EMICFG */
 				<0 0x10270000 0 0x1000>,   /* NTH_EMICFG_AO_MEM */
@@ -5698,6 +5700,8 @@
 				"sleep",
 				"topckgen",
 				"ifrbus_ao",
+				"emi",
+				"sub_emi",
 				"nth_emicfg",
 				"sth_emicfg",
 				"nth_emicfg_ao_mem",
