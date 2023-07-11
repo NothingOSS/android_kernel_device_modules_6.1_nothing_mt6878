@@ -648,11 +648,11 @@ static int fbt_cluster_X2Y(int cluster, unsigned long input, enum sugov_type in_
 	if (out_type == CAP && is_to_scale_cap)
 		output = output * 100 >> 10;
 
-	fpsgo_systrace_c_fbt_debug(-100, 0, cluster, "EAS_X2Y_cluster");
-	fpsgo_systrace_c_fbt_debug(-100, 0, input, "EAS_X2Y_input");
-	fpsgo_systrace_c_fbt_debug(-100, 0, in_type, "EAS_X2Y_in_type");
-	fpsgo_systrace_c_fbt_debug(-100, 0, out_type, "EAS_X2Y_out_type");
-	fpsgo_systrace_c_fbt_debug(-100, 0, output, "EAS_X2Y_in_output");
+	// fpsgo_systrace_c_fbt_debug(-100, 0, cluster, "EAS_X2Y_cluster");
+	// fpsgo_systrace_c_fbt_debug(-100, 0, input, "EAS_X2Y_input");
+	// fpsgo_systrace_c_fbt_debug(-100, 0, in_type, "EAS_X2Y_in_type");
+	// fpsgo_systrace_c_fbt_debug(-100, 0, out_type, "EAS_X2Y_out_type");
+	// fpsgo_systrace_c_fbt_debug(-100, 0, output, "EAS_X2Y_in_output");
 	xgf_trace("[%s][%s] clus=%d,cpu=%d,input=%lu,intype=%d,outtype=%d, output=%lu",
 		__func__, caller, cluster, cpu, input, in_type, out_type, output);
 	return (int)output;
