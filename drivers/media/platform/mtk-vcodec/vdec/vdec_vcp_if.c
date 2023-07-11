@@ -901,29 +901,6 @@ static int vdec_vcp_resume(struct vdec_inst *inst)
 	return err;
 }
 
-static void vdec_vcp_mmdvfs_resume(struct mtk_vcodec_ctx *ctx)
-{
-	struct vdec_inst *inst = (struct vdec_inst *)ctx->drv_handle;
-	struct vdec_ap_ipi_set_param msg;
-	int err = 0;
-
-	mtk_vcodec_debug_enter(inst);
-	if (!inst)
-		return;
-
-
-	memset(&msg, 0, sizeof(msg));
-	msg.msg_id = AP_IPIMSG_DEC_SET_PARAM;
-	msg.id = SET_PARAM_MMDVFS;
-	msg.ctx_id = inst->ctx->id;
-	msg.vcu_inst_addr = inst->vcu.inst_addr;
-	msg.data[0] = MTK_INST_RESUME;
-	err = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, false, true);
-
-
-	mtk_vcodec_debug(inst, "- ret=%d", err);
-}
-
 static struct mtk_vcodec_ctx *get_valid_ctx(struct mtk_vcodec_dev *dev)
 {
 	struct list_head *p, *q;
@@ -1030,15 +1007,8 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 			atomic_read(&dev->dec_hw_active[MTK_VDEC_LAT]),
 			atomic_read(&dev->dec_hw_active[MTK_VDEC_CORE]));
 
-		mutex_lock(&dev->dec_dvfs_mutex);
 		if (ctx)
 			vdec_vcp_backup((struct vdec_inst *)ctx->drv_handle);
-
-		// if power always on, put pw ref cnt before suspend
-		if (mtk_vdec_dvfs_is_pw_always_on(dev))
-			mtk_vcodec_dec_pw_off(&dev->pm);
-		dev->dvfs_is_suspend_off = true;
-		mutex_unlock(&dev->dec_dvfs_mutex);
 
 		// check all hw lock is released
 		for (i = 0; i < MTK_VDEC_HW_NUM; i++) {
@@ -1068,16 +1038,6 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 		ctx = get_valid_ctx(dev);
 		mtk_vcodec_alive_checker_resume(dev);
 		mutex_unlock(&dev->ctx_mutex);
-
-		mutex_lock(&dev->dec_dvfs_mutex);
-		// if power always on before suspend, get pw ref cnt after resume
-		if (mtk_vdec_dvfs_is_pw_always_on(dev))
-			mtk_vcodec_dec_pw_on(&dev->pm);
-		if (ctx)
-			vdec_vcp_mmdvfs_resume(ctx);
-
-		dev->dvfs_is_suspend_off = false;
-		mutex_unlock(&dev->dec_dvfs_mutex);
 
 		if (ctx) {
 			mtk_v4l2_debug(0, "[%d] restore (dvfs freq %d)(pw ref %d, %d %d)(hw active %d %d)",

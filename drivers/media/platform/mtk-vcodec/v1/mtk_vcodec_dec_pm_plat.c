@@ -688,7 +688,3 @@ void mtk_vdec_dvfs_update_dvfs_params(struct mtk_vcodec_ctx *ctx)
 	}
 }
 
-bool mtk_vdec_dvfs_is_pw_always_on(struct mtk_vcodec_dev *dev)
-{
-	return (dev->vdec_dvfs_params.target_freq == VDEC_HIGHEST_FREQ);
-}
