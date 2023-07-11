@@ -5948,7 +5948,7 @@
 				"user-vcore", "user-vmm", "user-vdisp", "user-vdec",
 				"dummy-dis", "dummy-mdp", "dummy-mml", "dummy-smi",
 				"dummy-ven", "dummy-vde", "dummy-img", "dummy-cam";
-			// mediatek,free-run;
+			mediatek,free-run;
 			mediatek,dpsw-thres = <1>;
 			mediatek,vdec-larb = <&smi_larb5>;
 		};
