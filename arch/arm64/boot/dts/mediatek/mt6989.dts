@@ -11129,7 +11129,7 @@
 			compatible = "mediatek,mt6989-adspsys";
 			status = "okay";
 			reg = <0 0x1e000000 0 0x6000>, /* CFG */
-				<0 0x1e00b000 0 0xb000>, /* CFG 2 */
+				<0 0x1e00b000 0 0xd000>, /* CFG 2 */
 				<0 0x1002c904 0 0x4>, /* IFRBUS_AO HRT CFG */
 				<0 0x1e006000 0 0x100>, /* MBOX0 base */
 				<0 0x1e006100 0 0x4>, /* MBOX0 set */
