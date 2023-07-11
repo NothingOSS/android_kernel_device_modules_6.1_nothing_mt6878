@@ -151,7 +151,7 @@ void pd_dpm_inform_cable_id(struct pd_port *pd_port, bool src_startup)
 			snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
 				 ", 0x%08x", payload[i]);
 		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "\n");
-		DPM_DBG(buf);
+		DPM_DBG("%s", buf);
 
 		memcpy(pd_port->pe_data.cable_vdos, payload,
 			sizeof(uint32_t) * cnt);
@@ -1151,7 +1151,7 @@ void pd_dpm_dfp_inform_id(struct pd_port *pd_port, bool ack)
 			snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
 				 ", 0x%08x", payload[i]);
 		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "\n");
-		DPM_DBG(buf);
+		DPM_DBG("%s", buf);
 
 		dpm_dfp_update_partner_id(pd_port, payload);
 	}
