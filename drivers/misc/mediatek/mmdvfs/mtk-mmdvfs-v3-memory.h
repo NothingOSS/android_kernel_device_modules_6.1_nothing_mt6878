@@ -44,29 +44,27 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_VMM_EFUSE_HIGH	(MEM_BASE + 0x9C)
 
 #define MEM_VMM_OPP_VOLT(x)	(MEM_BASE + 0xA0 + 0x4 * (x)) // VMM_OPP_NUM(8)
+#define MEM_VDISP_AVS_STEP(x)	(MEM_BASE + 0xC0 + 0x4 * (x)) // OPP_LEVEL(8)
+#define MEM_PROFILE_TIMES	(MEM_BASE + 0xE0)
+/* reserved: 0xE4/0xE8/0xEC */
 
-#define MEM_USR_OPP(x)		(MEM_BASE + 0xC0 + 0x4 * (x)) // USER_NUM(16)
-#define MEM_MUX_OPP(x)		(MEM_BASE + 0x100 + 0x4 * (x)) // MUX_NUM(16)
-#define MEM_PWR_OPP(x)		(MEM_BASE + 0x140 + 0x4 * (x)) // POWER_NUM(4)
-#define MEM_PWR_CUR_GEAR(x)	(MEM_BASE + 0x150 + 0x4 * (x)) // POWER_NUM(4)
-#define MEM_USR_FREQ(x)		(MEM_BASE + 0x160 + 0x4 * (x)) // USER_NUM(16)
-#define MEM_MUX_MIN(x)		(MEM_BASE + 0x1A0 + 0x4 * (x)) // MUX_NUM(16)
-#define MEM_FORCE_VOL(x)	(MEM_BASE + 0x1E0 + 0x4 * (x)) // POWER_NUM(4)
-#define MEM_FORCE_CLK(x)	(MEM_BASE + 0x1F0 + 0x4 * (x)) // MUX_NUM(16)
-#define MEM_PROFILE_TIMES	(MEM_BASE + 0x230)
-/* reserved: 0x234/0x238/0x23C */
+#define MEM_USR_OPP_SEC(x)	(MEM_BASE + 0xF0 + 0x4 * (x))  // USER_NUM(32)
+#define MEM_USR_OPP_USEC(x)	(MEM_BASE + 0x170 + 0x4 * (x)) // USER_NUM(32)
+#define MEM_USR_OPP(x)		(MEM_BASE + 0x1F0 + 0x4 * (x)) // USER_NUM(32)
+#define MEM_USR_FREQ(x)		(MEM_BASE + 0x270 + 0x4 * (x)) // USER_NUM(32)
 
-#define MEM_USR_OPP_SEC(x)	(MEM_BASE + 0x240 + 0x4 * (x)) // USER_NUM(16)
-#define MEM_USR_OPP_USEC(x)	(MEM_BASE + 0x280 + 0x4 * (x)) // USER_NUM(16)
-#define MEM_MUX_OPP_SEC(x)	(MEM_BASE + 0x2C0 + 0x4 * (x)) // MUX_NUM(16)
-#define MEM_MUX_OPP_USEC(x)	(MEM_BASE + 0x300 + 0x4 * (x)) // MUX_NUM(16)
-#define MEM_PWR_OPP_SEC(x)	(MEM_BASE + 0x340 + 0x4 * (x)) // POWER_NUM(4)
-#define MEM_PWR_OPP_USEC(x)	(MEM_BASE + 0x350 + 0x4 * (x)) // POWER_NUM(4)
+#define MEM_MUX_OPP_SEC(x)	(MEM_BASE + 0x2F0 + 0x4 * (x)) // MUX_NUM(16)
+#define MEM_MUX_OPP_USEC(x)	(MEM_BASE + 0x330 + 0x4 * (x)) // MUX_NUM(16)
+#define MEM_MUX_OPP(x)		(MEM_BASE + 0x370 + 0x4 * (x)) // MUX_NUM(16)
+#define MEM_MUX_MIN(x)		(MEM_BASE + 0x3B0 + 0x4 * (x)) // MUX_NUM(16)
+#define MEM_FORCE_CLK(x)	(MEM_BASE + 0x3F0 + 0x4 * (x)) // MUX_NUM(16)
 
-#define MEM_VDISP_AVS_STEP(x)	(MEM_BASE + 0x360 + 0x4 * (x)) // OPP_LEVEL(5)
-/* reserved: 0x374/0x378/0x37C */
-
-/* next start: 0x380 */
+#define MEM_PWR_OPP_SEC(x)	(MEM_BASE + 0x430 + 0x4 * (x)) // POWER_NUM(4)
+#define MEM_PWR_OPP_USEC(x)	(MEM_BASE + 0x440 + 0x4 * (x)) // POWER_NUM(4)
+#define MEM_PWR_OPP(x)		(MEM_BASE + 0x450 + 0x4 * (x)) // POWER_NUM(4)
+#define MEM_PWR_CUR_GEAR(x)	(MEM_BASE + 0x460 + 0x4 * (x)) // POWER_NUM(4)
+#define MEM_FORCE_VOL(x)	(MEM_BASE + 0x470 + 0x4 * (x)) // POWER_NUM(4)
+/* next start: 0x480 */
 
 #define MEM_REC_PWR_OBJ		4
 #define MEM_REC_USR_OBJ		5
