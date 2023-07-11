@@ -36,6 +36,7 @@
 #define MTK_POLL_IRQ_TIMEOUT		USEC_PER_SEC
 #define MTK_POLL_HWV_PREPARE_CNT	2500
 #define MTK_POLL_HWV_PREPARE_US		2
+#define MTK_PROFILE_TIMEOUT		10
 
 #define MTK_SCPD_CAPS(_scpd, _x)	((_scpd)->data->caps & (_x))
 
@@ -592,6 +593,10 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
 	void __iomem *ctl_addr = scp->base + scpd->data->ctl_offs;
 	u32 val;
 	int ret, tmp;
+	unsigned int pd_start_time, pd_end_time;
+
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PROFILE))
+		pd_start_time = jiffies_to_msecs(jiffies);
 
 	ret = scpsys_regulator_enable(scpd);
 	if (ret < 0)
@@ -729,6 +734,13 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
 
 	scpsys_clk_disable(scpd->lp_clk, MAX_CLKS);
 
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PROFILE)) {
+		pd_end_time = jiffies_to_msecs(jiffies);
+		if ((pd_end_time - pd_start_time) > MTK_PROFILE_TIMEOUT)
+			dev_err(scp->dev, "%s profile time(%u)\n",
+				genpd->name, (pd_end_time - pd_start_time));
+	}
+
 	return 0;
 
 err_sram:
@@ -753,6 +765,10 @@ static int scpsys_power_off(struct generic_pm_domain *genpd)
 	void __iomem *ctl_addr = scp->base + scpd->data->ctl_offs;
 	u32 val;
 	int ret, tmp;
+	unsigned int pd_start_time, pd_end_time;
+
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PROFILE))
+		pd_start_time = jiffies_to_msecs(jiffies);
 
 	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_BYPASS_OFF)) {
 		dev_err(scp->dev, "bypass power off %s for bringup\n", genpd->name);
@@ -867,6 +883,13 @@ static int scpsys_power_off(struct generic_pm_domain *genpd)
 	ret = scpsys_regulator_disable(scpd);
 	if (ret < 0)
 		goto out;
+
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PROFILE)) {
+		pd_end_time = jiffies_to_msecs(jiffies);
+		if ((pd_end_time - pd_start_time) > MTK_PROFILE_TIMEOUT)
+			dev_err(scp->dev, "%s profile time(%u)\n",
+				genpd->name, (pd_end_time - pd_start_time));
+	}
 
 	return 0;
 

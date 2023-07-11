@@ -406,7 +406,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 				MT6897_TOP_AXI_PROT_EN_MMSYS2_MM_PROC_2ND),
 		},
 		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_SRAM_SLP |
-			MTK_SCPD_IS_PWR_CON_ON,
+			MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_ISP_MAIN] = {
 		.name = "isp-main",
@@ -425,7 +425,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6897_TOP_AXI_PROT_EN_MMSYS2_ISP_MAIN_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_ISP_DIP1] = {
 		.name = "isp_dip1",
@@ -439,7 +439,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6897_TOP_AXI_PROT_EN_MMSYS2_ISP_DIP1_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_ISP_VCORE] = {
 		.name = "isp_vcore",
@@ -453,7 +453,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6897_TOP_AXI_PROT_EN_MMSYS2_ISP_VCORE),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_VDE0] = {
 		.name = "vde0",
@@ -496,7 +496,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6897_TOP_AXI_PROT_EN_MMSYS1_VEN0_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_VEN1] = {
 		.name = "ven1",
@@ -515,7 +515,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6897_TOP_AXI_PROT_EN_MMSYS1_VEN1_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_CAM_MAIN] = {
 		.name = "cam-main",
@@ -529,7 +529,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x224, 0x228, 0x220, 0x22c,
 				MT6897_TOP_AXI_PROT_EN_MMSYS2_CAM_MAIN),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_CAM_MRAW] = {
 		.name = "cam_mraw",
@@ -543,7 +543,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6897_TOP_AXI_PROT_EN_MMSYS1_CAM_MRAW_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_CAM_SUBA] = {
 		.name = "cam_suba",
@@ -557,7 +557,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6897_TOP_AXI_PROT_EN_MMSYS0_CAM_SUBA_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_CAM_SUBB] = {
 		.name = "cam_subb",
@@ -571,7 +571,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6897_TOP_AXI_PROT_EN_MMSYS0_CAM_SUBB_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_CAM_SUBC] = {
 		.name = "cam_subc",
@@ -585,7 +585,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x1e4, 0x1e8, 0x1e0, 0x1ec,
 				MT6897_TOP_AXI_PROT_EN_MMSYS0_CAM_SUBC_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_CAM_VCORE] = {
 		.name = "cam_vcore",
@@ -604,7 +604,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6897_TOP_AXI_PROT_EN_MMSYS1_CAM_VCORE),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_CAM_CCU] = {
 		.name = "cam_ccu",
@@ -619,7 +619,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x264, 0x268, 0x260, 0x26c,
 				MT6897_TOP_AXI_PROT_EN_CCUSYS0_CAM_CCU_2ND),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_CAM_CCU_AO] = {
 		.name = "cam_ccu_ao",
@@ -643,7 +643,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6897_TOP_AXI_PROT_EN_MMSYS1_MDP0_2ND),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON,
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_MDP1_SHUTDOWN] = {
 		.name = "mdp1_shutdown",
@@ -662,7 +662,7 @@ static const struct scp_domain_data scp_domain_mt6897_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x204, 0x208, 0x200, 0x20c,
 				MT6897_TOP_AXI_PROT_EN_MMSYS1_MDP1_2ND),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON,
+		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_PROFILE,
 	},
 	[MT6897_POWER_DOMAIN_DIS0_SHUTDOWN] = {
 		.name = "dis0_shutdown",
