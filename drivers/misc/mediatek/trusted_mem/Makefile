@@ -120,13 +120,15 @@ endif
 ifneq ($(filter y m,$(CONFIG_MTK_GZ_KREE)),)
 trusted_mem-y += mtee_impl/mtee_ops.o
 trusted_mem-y += mtee_impl/mtee_invoke.o
-trusted_mem-y += mtee_impl/tmem_carveout_heap.o
 ifneq ($(filter y m,$(CONFIG_ARM_FFA_TRANSPORT)),)
 tmem_ffa-y += mtee_impl/mtee_ops.o
 tmem_ffa-y += mtee_impl/mtee_invoke.o
+endif
+endif
+ifneq ($(filter y m,$(CONFIG_ARM_FFA_TRANSPORT)),)
 tmem_ffa-y += mtee_impl/tmem_ffa.o
 endif
-endif
+trusted_mem-y += mtee_impl/tmem_carveout_heap.o
 endif # !CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM
 
 #==========================================================================

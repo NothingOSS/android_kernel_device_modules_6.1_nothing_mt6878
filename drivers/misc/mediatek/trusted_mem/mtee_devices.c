@@ -247,7 +247,9 @@ create_mtee_mchunk_device(enum TRUSTED_MEM_TYPE mem_type,
 		return NULL;
 	}
 
+#if IS_ENABLED(CONFIG_MTK_GZ_KREE)
 	get_mtee_peer_ops(&t_device->peer_ops);
+#endif
 	t_device->dev_desc = dev_desc;
 
 	snprintf(t_device->name, MAX_DEVICE_NAME_LEN, "%s", dev_name);

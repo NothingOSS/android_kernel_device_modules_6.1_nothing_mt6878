@@ -635,6 +635,13 @@ int tmem_query_gz_handle_to_pa(enum TRUSTED_MEM_TYPE mem_type, u32 alignment,
 
 	return ret;
 }
+#else
+int tmem_query_gz_handle_to_pa(enum TRUSTED_MEM_TYPE mem_type, u32 alignment,
+			u32 size, u32 *refcount, u32 *gz_handle,
+			u8 *owner, u32 id, u32 clean, uint64_t *phy_addr)
+{
+	return 0;
+}
 #endif
 
 #define SECMEM_PATTERN (0x3C2D37A4)
