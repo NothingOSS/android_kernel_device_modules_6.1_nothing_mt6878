@@ -500,10 +500,6 @@ int mtk_aod_scp_doze_update(int doze)
 			mtkfb_set_backlight_level_AOD(1800);
 			AOD_STAT_SET(AOD_STAT_ACTIVE);
 			mtk_prepare_config_map();
-			DDPMSG("Ahsin mdelay 10000\n");
-			mtk_aod_scp_ipi_send(0);
-			mtk_aod_scp_set_semaphore_noirq(0);
-			mdelay(10000);
 		} else {
 			AOD_STAT_SET(AOD_STAT_ACTIVE);
 			mtk_prepare_config_map();
