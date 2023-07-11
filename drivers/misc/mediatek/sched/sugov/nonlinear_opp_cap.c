@@ -1777,7 +1777,7 @@ EXPORT_SYMBOL_GPL(get_turn_point_freq);
 
 /* adaptive margin */
 static int am_wind_dura = 4000; /* microsecond */
-static int am_wind_cnt_shift = 1; /* wind_cnt = 1 << am_wind_cnt_shift */
+static int am_window = 2;
 static int am_floor = 1024; /* 1024: 0% margin */
 static int am_ceiling = 1280; /* 1280: 20% margin */
 static int am_target_active_ratio_cap[MAX_NR_CPUS] = {
@@ -1945,15 +1945,13 @@ EXPORT_SYMBOL(update_active_ratio_all);
 
 inline void update_adaptive_margin(struct cpufreq_policy *policy)
 {
-	unsigned int i, ptr = 0;
+	unsigned int i;
 	int cpu = cpumask_first(policy->cpus);
 	int gearid = per_cpu(gear_id, cpu);
 	unsigned int adaptive_margin_tmp;
 
 	if (gear_update_active_ratio_cnt_last[gearid] != gear_update_active_ratio_cnt[gearid]) {
 		gear_update_active_ratio_cnt_last[gearid] = gear_update_active_ratio_cnt[gearid];
-		his_ptr[gearid]++;
-		his_ptr[gearid] %= MAX_NR_CPUS;
 
 		if (ramp_up[gearid] == 0) {
 			unsigned int adaptive_ratio = ((gear_max_active_ratio_cap[gearid] <<
@@ -1965,21 +1963,14 @@ inline void update_adaptive_margin(struct cpufreq_policy *policy)
 				>> SCHED_CAPACITY_SHIFT;
 			adaptive_margin_tmp =
 				clamp_val(adaptive_margin_tmp, am_floor, am_ceiling);
+			his_ptr[gearid]++;
+			his_ptr[gearid] %= am_window;
 			margin_his[gearid][his_ptr[gearid]] = adaptive_margin_tmp;
-			if (adaptive_ratio < SCHED_CAPACITY_SCALE) {
-				adaptive_margin_tmp = 0;
-				ptr = (his_ptr[gearid] + MAX_NR_CPUS - (1 << am_wind_cnt_shift) + 1)
-					% MAX_NR_CPUS;
-				for (i = 0; i < (1 << am_wind_cnt_shift); i++) {
-					adaptive_margin_tmp += margin_his[gearid][ptr];
-					ptr++;
-					ptr %= MAX_NR_CPUS;
-				}
-				adaptive_margin_tmp >>= am_wind_cnt_shift;
-				margin_his[gearid][his_ptr[gearid]] = adaptive_margin_tmp;
-			}
+			for (i = 0; i < am_window; i++)
+				if (margin_his[gearid][i] > adaptive_margin_tmp)
+					adaptive_margin_tmp = margin_his[gearid][i];
 		} else {
-			margin_his[gearid][his_ptr[gearid]] = adaptive_margin_tmp = util_scale;
+			adaptive_margin_tmp = util_scale;
 			ramp_up[gearid]--;
 		}
 		WRITE_ONCE(adaptive_margin[gearid], adaptive_margin_tmp);
