@@ -24,10 +24,61 @@ static void mtk_audio_sram_update_block_valid(struct mtk_audio_sram *sram,
 	}
 }
 
-static bool mtk_audio_sram_avail(struct mtk_audio_sram *sram,
-				 unsigned int size,
-				 unsigned int *blk_idx,
-				 unsigned int *blk_num)
+static bool mtk_audio_sram_avail_from_end(struct mtk_audio_sram *sram,
+					  unsigned int size,
+					  unsigned int *blk_idx,
+					  unsigned int *blk_num)
+{
+	unsigned int max_avail_size = 0;
+	bool start_record = false;
+	struct mtk_audio_sram_block *sram_blk = NULL;
+	int i = 0;
+	int blk_idx_off = (mtk_audio_sram_get_size(sram, sram->sram_mode) / sram->block_size) - 1;
+
+	*blk_idx = 0;
+
+	for (i = blk_idx_off; i >= 0; i--) {
+		sram_blk = &sram->blocks[i];
+		if ((sram_blk->user == NULL) && sram_blk->valid) {
+			max_avail_size += sram->block_size;
+			(*blk_num)++;
+
+			/* can callocate sram */
+			if (max_avail_size >= size) {
+				if (start_record == false) {
+					start_record = true;
+					*blk_idx = i;
+				}
+				break;
+			}
+		}
+
+		/* when reach allocate buffer , reset condition*/
+		if ((sram_blk->user != NULL) && sram_blk->valid) {
+			max_avail_size = 0;
+			*blk_num = 0;
+			*blk_idx = 0;
+			start_record = false;
+			break;
+		}
+
+		if (sram_blk->valid == 0) {
+			dev_warn(sram->dev, "%s(), sram_blk->valid == 0, i = %d\n",
+				 __func__, i);
+			break;
+		}
+	}
+
+	dev_info(sram->dev, "%s(), max_avail_size = %d, size = %d, blk_idx = %d, blk_num = %d\n",
+		 __func__, max_avail_size, size, *blk_idx, *blk_num);
+
+	return max_avail_size >= size;
+}
+
+static bool mtk_audio_sram_avail_from_offset(struct mtk_audio_sram *sram,
+					     unsigned int size,
+					     unsigned int *blk_idx,
+					     unsigned int *blk_num)
 {
 	unsigned int max_avail_size = 0;
 	bool start_record = false;
@@ -70,6 +121,16 @@ static bool mtk_audio_sram_avail(struct mtk_audio_sram *sram,
 		 __func__, max_avail_size, size, *blk_idx, *blk_num);
 
 	return max_avail_size >= size;
+}
+
+static bool mtk_audio_sram_avail(struct mtk_audio_sram *sram,
+				 unsigned int size,
+				 unsigned int *blk_idx,
+				 unsigned int *blk_num,
+				 bool end_avail)
+{
+	return end_avail? mtk_audio_sram_avail_from_end(sram, size, blk_idx, blk_num) :
+			  mtk_audio_sram_avail_from_offset(sram, size, blk_idx, blk_num);
 }
 
 int mtk_audio_sram_init(struct device *dev,
@@ -189,7 +250,8 @@ EXPORT_SYMBOL_GPL(mtk_audio_sram_init);
 int mtk_audio_sram_allocate(struct mtk_audio_sram *sram,
 			    dma_addr_t *phys_addr, unsigned char **virt_addr,
 			    unsigned int size, void *user,
-			    snd_pcm_format_t format, bool force_normal)
+			    snd_pcm_format_t format, bool force_normal,
+			    bool force_end_alloc)
 {
 	unsigned int block_num = 0;
 	unsigned int block_idx = 0;
@@ -247,7 +309,7 @@ int mtk_audio_sram_allocate(struct mtk_audio_sram *sram,
 		dev_warn(sram->dev, "%s(), set_sram_mode == NULL\n",
 			 __func__);
 
-	if (mtk_audio_sram_avail(sram, size, &block_idx, &block_num) == true) {
+	if (mtk_audio_sram_avail(sram, size, &block_idx, &block_num, force_end_alloc) == true) {
 		*phys_addr = sram->blocks[block_idx].phys_addr;
 		*virt_addr = (char *)sram->blocks[block_idx].virt_addr;
 

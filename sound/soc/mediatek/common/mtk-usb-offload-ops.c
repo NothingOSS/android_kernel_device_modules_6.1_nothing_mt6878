@@ -70,6 +70,7 @@ static int mtk_audio_usb_offload_event_handler(unsigned long event, void *ptr)
 		pm_runtime_put(g_auo_sram.afe->dev);
 	break;
 	case EVENT_AFE_SRAM_ALLOCATE:
+	case EVENT_AFE_SRAM_ALLOCATE_FROM_END:
 	if (g_auo_sram.afe && ptr) {
 		umem = (struct mtk_audio_usb_mem *)ptr;
 
@@ -79,7 +80,8 @@ static int mtk_audio_usb_offload_event_handler(unsigned long event, void *ptr)
 					    umem->size,
 					    ptr,
 					    SNDRV_PCM_FORMAT_S24,
-					    true);
+					    true,
+					    event == EVENT_AFE_SRAM_ALLOCATE ? false : true);
 		if (ret == 0)
 			umem->sram_inited = true;
 	}
@@ -244,7 +246,9 @@ struct mtk_audio_usb_mem
 	//request allocate size
 	target_alloc->size = size;
 
-	mtk_audio_usb_offload_event_handler(EVENT_AFE_SRAM_ALLOCATE, (void *)target_alloc);
+	mtk_audio_usb_offload_event_handler(avail_idx == 0 ?
+					    EVENT_AFE_SRAM_ALLOCATE_FROM_END : EVENT_AFE_SRAM_ALLOCATE,
+					    (void *)target_alloc);
 
 	if (!target_alloc->sram_inited) {
 		AUDIO_USB_OFFLOAD_ERR("Failed.\n");

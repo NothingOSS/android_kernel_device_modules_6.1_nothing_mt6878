@@ -233,7 +233,7 @@ int mtk_afe_fe_hw_params(struct snd_pcm_substream *substream,
 				    &substream->runtime->dma_area,
 				    substream->runtime->dma_bytes,
 				    substream,
-				    params_format(params), false) == 0) {
+				    params_format(params), false, false) == 0) {
 		memif->using_sram = 1;
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
 		if (memif->vow_barge_in_enable) {
