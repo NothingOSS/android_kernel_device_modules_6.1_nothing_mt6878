@@ -621,11 +621,12 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	wmb(); /* Make sure the above parameters are set before update */
 	mtk_plane_state->pending.dirty = true;
 
-	DDPINFO("%s en%d pitch%d fmt:%p4cc addr:0x%llx x%d y%d w%d h%d\n", __func__,
+	DDPINFO("%s en%d pitch%d fmt:%p4cc addr:0x%llx x%d y%d w%d h%d mml:%d\n", __func__,
 		(unsigned int)mtk_plane_state->pending.enable, mtk_plane_state->pending.pitch,
 		&mtk_plane_state->pending.format, mtk_plane_state->pending.addr,
 		mtk_plane_state->pending.dst_x, mtk_plane_state->pending.dst_y,
-		mtk_plane_state->pending.width,	mtk_plane_state->pending.height);
+		mtk_plane_state->pending.width,	mtk_plane_state->pending.height,
+		mtk_plane_state->pending.mml_mode);
 
 	written = scnprintf(dbg_msg, 512, "prop_val:");
 	for (i = 0; i < PLANE_PROP_MAX; i++) {
