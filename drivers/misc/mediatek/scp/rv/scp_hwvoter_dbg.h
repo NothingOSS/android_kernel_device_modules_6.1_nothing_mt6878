@@ -8,6 +8,7 @@
 
 enum {
 	HW_VOTER_DBG_CMD_TEST,
+	HW_VOTER_DBG_CMD_ENABLE,
 };
 
 struct hwvoter_ipi_test_t {

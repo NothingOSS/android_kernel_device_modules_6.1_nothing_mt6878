@@ -62,7 +62,7 @@ static ssize_t scp_hw_voter_dbg_proc_write(
 					size_t count,
 					loff_t *data)
 {
-	char desc[64];
+	char desc[64], cmd[16];
 	unsigned int len = 0;
 	int ret = 0;
 	int n;
@@ -74,6 +74,26 @@ static ssize_t scp_hw_voter_dbg_proc_write(
 
 	desc[len] = '\0';
 	pr_notice("%s: %s\n", __func__, desc);
+
+	n = sscanf(desc, "%15s %hu", cmd, &ipi_data.val);
+	if (n == 2 && !strncmp(cmd, "hwv_dbg_enable", 16)) {
+		ipi_data.cmd = HW_VOTER_DBG_CMD_ENABLE;
+
+		ret = mtk_ipi_send_compl(
+				&scp_ipidev,
+				IPI_OUT_SCP_HWVOTER_DEBUG,
+				IPI_SEND_WAIT,
+				&ipi_data,
+				PIN_OUT_SIZE_SCP_HWVOTER_DEBUG,
+				500);
+		if (ret != IPI_ACTION_DONE)
+			pr_notice("[%s]: SCP send IPI failed - %d\n",
+				__func__, ret);
+
+		pr_notice("[%s]: SCP send IPI HWV DBG CMD\n",
+			__func__);
+		return count;
+	}
 
 	n = sscanf(desc, "%hhu %hhu %hhu %hu %hu",
 			&ipi_data.type,
