@@ -948,7 +948,7 @@ static int dump_native_maps(pid_t pid, struct task_struct *current_task)
 	int mapcount = 0;
 	struct file *file;
 	int flags;
-	struct mm_struct *mm;
+	struct mm_struct *mm, *current_mm;
 	struct pt_regs *user_ret;
 	char tpath[512];
 	char *path_p = NULL;
@@ -958,7 +958,6 @@ static int dump_native_maps(pid_t pid, struct task_struct *current_task)
 
 	if (!current_task)
 		return -ESRCH;
-	mas.tree = &current_task->mm->mm_mt;
 	user_ret = task_pt_regs(current_task);
 
 	if (!user_mode(user_ret)) {
@@ -966,18 +965,19 @@ static int dump_native_maps(pid_t pid, struct task_struct *current_task)
 				current_task->comm);
 		return -1;
 	}
-
-	if (!get_task_mm(current_task)) {
+	current_mm = get_task_mm(current_task);
+	if (!current_mm) {
 		pr_info(" %s,%d:%s: current_task->mm == NULL", __func__, pid,
 				current_task->comm);
 		return -1;
 	}
+	mas.tree = &current_mm->mm_mt;
 
-	mmap_read_lock(current_task->mm);
+	mmap_read_lock(current_mm);
 	log_hang_info("Dump native maps files:\n");
 	hang_log("Dump native maps files:\n");
 	mas_for_each(&mas, vma, ULONG_MAX) {
-		if (mapcount >= current_task->mm->map_count)
+		if (mapcount >= current_mm->map_count)
 			break;
 		file = vma->vm_file;
 		flags = vma->vm_flags;
@@ -1041,8 +1041,8 @@ static int dump_native_maps(pid_t pid, struct task_struct *current_task)
 		}
 		mapcount++;
 	}
-	mmap_read_unlock(current_task->mm);
-	mmput(current_task->mm);
+	mmap_read_unlock(current_mm);
+	mmput(current_mm);
 	return 0;
 }
 
