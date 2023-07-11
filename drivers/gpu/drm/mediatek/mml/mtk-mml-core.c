@@ -1518,7 +1518,6 @@ static void core_taskdump(struct mml_task *task, u32 pipe, int err)
 		cost = sched_clock() - cost;
 		mutex_unlock(&mml_dump_mutex);
 		mml_log("dump input frame cost %lluus", (u64)div_u64(cost, 1000));
-		mml_timeout_dump = false;
 	}
 #endif
 

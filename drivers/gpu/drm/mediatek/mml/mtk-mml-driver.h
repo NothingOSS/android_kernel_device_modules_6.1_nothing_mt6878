@@ -284,6 +284,45 @@ enum mml_mon_mods {
 };
 #endif
 
+/*
+ * mml_backup_crc - Backup crc register to dma buffer for later record or debug.
+ *
+ * Note if buffer not exist in mml_dev, create it by call cmdq alloc api with pipe 0 pkt client.
+ *
+ * @task:	Current mml task.
+ * @ccfg:	Current config cache.
+ * @crc_reg:	Register address to backup.
+ * @crc_idx_out:	Output an index of crc buffer.
+ *
+ * Return: Instruction offset of giving task pkt[pipe]. 0 if fail.
+ */
+u32 mml_backup_crc(struct mml_task *task, struct mml_comp_config *ccfg, phys_addr_t crc_reg,
+	u32 *crc_idx_out);
+
+/*
+ * mml_backup_crc_update - Update backup instruction destination buffer pa.
+ *
+ * @task:	Current mml task.
+ * @ccfg:	Current config cache.
+ * @crc_inst_offset:	Offset to the crc backup instruction
+ * @crc_idx_out:	Output an new index of crc buffer.
+ */
+void mml_backup_crc_update(struct mml_task *task, struct mml_comp_config *ccfg,
+	u32 crc_inst_offset, u32 *crc_idx_out);
+
+/*
+ * mml_backup_crc_get - Get CRC value by index.
+ *
+ * Note if buffer not exist in mml_dev, create it by call cmdq alloc api with pipe 0 pkt client.
+ *
+ * @task:	Current mml task.
+ * @ccfg:	Current config cache.
+ * @crc_idx:	Index of crc buffer.
+ *
+ * Return: crc value
+ */
+u32 mml_backup_crc_get(struct mml_task *task, struct mml_comp_config *ccfg, u32 crc_idx);
+
 extern struct platform_driver mml_sys_driver;
 extern struct platform_driver mml_aal_driver;
 extern struct platform_driver mml_color_driver;

@@ -147,6 +147,7 @@ extern int mml_racing_ut;
 extern int mml_racing_eoc;
 extern int mml_rdma_urgent;
 extern int mml_rdma_crc;
+extern int mml_rdma_dbg;
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 extern u32 *rdma_crc_va[MML_PIPE_CNT];
@@ -501,6 +502,7 @@ struct mml_task {
 	struct kref ref;
 	struct mml_task_pipe pipe[MML_PIPE_CNT];
 	u32 wrot_crc_idx[MML_PIPE_CNT];
+	u32 rdma_crc_idx[MML_PIPE_CNT]; /* rdma or rrot0 and rrot0_2nd */
 
 	/* mml context */
 	void *ctx;

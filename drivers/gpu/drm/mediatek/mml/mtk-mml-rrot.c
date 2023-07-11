@@ -118,6 +118,12 @@
 
 int mml_rrot_msg;
 module_param(mml_rrot_msg, int, 0644);
+/* HyFBC decode done checksum
+ * 0x10 Y
+ * 0x11 C
+ */
+int rrot_dbg_con = 0x10;
+module_param(rrot_dbg_con, int, 0644);
 
 #define rrot_msg(fmt, args...) \
 do { \
@@ -291,6 +297,7 @@ struct rrot_frame_data {
 	 * use in reuse command
 	 */
 	u16 labels[RROT_LABEL_TOTAL];
+	u32 crc_inst_offset;
 };
 
 static s32 rrot_write_addr(struct cmdq_pkt *pkt,
@@ -1032,7 +1039,7 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	if (mml_rdma_crc) {
 		if (MML_FMT_COMPRESS(src->format))
 			cmdq_pkt_write(pkt, NULL, base_pa + RROT_DEBUG_CON,
-				(0x10 << 13) + 0x1, U32_MAX);
+				(rrot_dbg_con << 13) + 0x1, U32_MAX);
 		else
 			cmdq_pkt_write(pkt, NULL, base_pa + RROT_DEBUG_CON,
 				0x1, U32_MAX);
@@ -1787,6 +1794,42 @@ static s32 rrot_wait(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+static void rrot_backup_crc(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
+	const phys_addr_t crc_reg = MML_FMT_COMPRESS(task->config->info.src.format) ?
+		(comp->base_pa + RROT_MON_STA_0 + 16 * 8) : (comp->base_pa + RROT_CHKS_EXTR);
+	const u32 rrot_idx = comp_to_rrot(comp)->pipe;
+
+	if (likely(!mml_rdma_crc))
+		return;
+
+	rrot_frm->crc_inst_offset = mml_backup_crc(task, ccfg,
+		crc_reg, &task->rdma_crc_idx[rrot_idx]);
+	if (!rrot_frm->crc_inst_offset) {
+		mml_err("%s fail to backup CRC", __func__);
+		mml_rdma_crc = 0;
+	}
+#endif
+}
+
+static void rrot_backup_crc_update(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
+	const u32 rrot_idx = comp_to_rrot(comp)->pipe;
+
+	if (!mml_rdma_crc || !rrot_frm->crc_inst_offset)
+		return;
+
+	mml_backup_crc_update(task, ccfg, rrot_frm->crc_inst_offset,
+		&task->rdma_crc_idx[rrot_idx]);
+#endif
+}
+
 static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
@@ -1812,34 +1855,7 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 	mml_msg("%s task %p pipe %u data %u pixel %u",
 		__func__, task, pipe, rrot_frm->datasize, pixel);
 
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	if (unlikely(mml_rdma_crc)) {
-		if (!rdma_crc_va[pipe] && !rdma_crc_pa[pipe]) {
-			rdma_crc_va[pipe] =
-				cmdq_mbox_buf_alloc(cfg->path[ccfg->pipe]->clt, &rdma_crc_pa[pipe]);
-			mml_log("%s rrot component %u job %u pipe %u va %p pa %llx",
-				__func__, comp->id, task->job.jobid,
-				pipe, rdma_crc_va[pipe], rdma_crc_pa[pipe]);
-		}
-
-		if (unlikely(!rdma_crc_va[pipe]) || unlikely(!rdma_crc_pa[pipe])) {
-			mml_err("%s rrot component %u job %u pipe %u get dram va %p pa %llx failed",
-				__func__, comp->id, task->job.jobid,
-				pipe, rdma_crc_va[pipe], rdma_crc_pa[pipe]);
-		} else {
-			/* read reg value to spr : CMDQ_THR_SPR_IDX2*/
-			cmdq_pkt_read_addr(task->pkts[ccfg->pipe],
-				MML_FMT_COMPRESS(task->config->info.src.format) ?
-				(comp->base_pa + RROT_MON_STA_0 + 27 * 8) :
-				(comp->base_pa + RROT_CHKS_EXTR),
-				CMDQ_THR_SPR_IDX2);
-
-			/* write spr to dram pa */
-			cmdq_pkt_write_indriect(task->pkts[ccfg->pipe],
-				NULL, rdma_crc_pa[pipe], CMDQ_THR_SPR_IDX2, UINT_MAX);
-		}
-	}
-#endif
+	rrot_backup_crc(comp, task, ccfg);
 
 	/* after rdma stops read, call ddren to sleep */
 	if (ccfg->pipe == 0)
@@ -1925,6 +1941,8 @@ static s32 rrot_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			 rrot_frm->labels[RROT_LABEL_BASE_2_MSB],
 			 iova[2]);
 
+	rrot_backup_crc_update(comp, task, ccfg);
+
 	return 0;
 }
 
@@ -1953,18 +1971,26 @@ static u32 rrot_format_get(struct mml_task *task, struct mml_comp_config *ccfg)
 	return task->config->info.dest[ccfg->node->out_idx].data.format;
 }
 
-static void rrot_task_done(struct mml_comp *comp, struct mml_task *task,
+static void rrot_store_crc(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg)
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	if (mml_rdma_crc && rdma_crc_va[ccfg->pipe]) {
-		task->src_crc[ccfg->pipe] = readl(rdma_crc_va[ccfg->pipe]);
-		mml_msg("%s rrot component %u job %u pipe %u crc %#010x",
-			__func__, comp->id, task->job.jobid,
-			ccfg->pipe, task->src_crc[ccfg->pipe]);
-	}
-#endif
+	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 
+	if (!mml_rdma_crc)
+		return;
+
+	task->src_crc[rrot->pipe] = mml_backup_crc_get(task, ccfg, task->rdma_crc_idx[rrot->pipe]);
+	mml_msg("%s rrot0%s component %u job %u pipe %u crc %#010x idx %u",
+		__func__, rrot->pipe == 0 ? "    " : "_2nd", comp->id, task->job.jobid,
+		ccfg->pipe, task->src_crc[rrot->pipe], task->rdma_crc_idx[rrot->pipe]);
+#endif
+}
+
+static void rrot_task_done(struct mml_comp *comp, struct mml_task *task,
+			   struct mml_comp_config *ccfg)
+{
+	rrot_store_crc(comp, task, ccfg);
 }
 
 static const struct mml_comp_hw_ops rrot_hw_ops = {
@@ -2040,13 +2066,6 @@ static void rrot_debug_dump(struct mml_comp *comp)
 
 	value[2] = readl(base + RROT_SRC_CON);
 	value[3] = readl(base + RROT_COMP_CON);
-	/* for afbc case enable more debug info */
-	if (value[3] & BIT(22)) {
-		u32 debug_con = readl(base + RROT_DEBUG_CON);
-
-		debug_con |= 0xe000;
-		writel(debug_con, base + RROT_DEBUG_CON);
-	}
 	value[4] = readl(base + RROT_TRANSFORM_0);
 	mml_err("RROT_SRC_CON %#010x RROT_COMP_CON %#010x RROT_TRANSFORM_0 %#010x",
 		value[2], value[3], value[4]);
@@ -2091,9 +2110,9 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	value[17] = readl(base + RROT_SRC_BASE_ADD_1);
 	value[18] = readl(base + RROT_SRC_BASE_ADD_2);
 
-	mml_err("RROT_SRC   OFFSET_0 %#010x    OFFSET_1 %#010x    OFFSET_2 %#010x",
+	mml_err("RROT_SRC   OFFSET_0 %#011x   OFFSET_1 %#011x   OFFSET_2 %#011x",
 		value[13], value[14], value[15]);
-	mml_err("RROT_SRC BASE_ADD_0 %#010x  BASE_ADD_1 %#010x  BASE_ADD_2 %#010x",
+	mml_err("RROT_SRC BASE_ADD_0 %#011x BASE_ADD_1 %#011x BASE_ADD_2 %#011x",
 		value[16], value[17], value[18]);
 
 	value[25] = readl(base + RROT_UFO_DEC_LENGTH_BASE_Y_MSB);
@@ -2103,10 +2122,8 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	value[29] = readl(base + RROT_AFBC_PAYLOAD_OST);
 	value[30] = readl(base + RROT_GMCIF_CON);
 
-	mml_err("RROT_UFO_DEC_LENGTH BASE_Y %#03x%08x",
-		value[25], value[26]);
-	mml_err("RROT_UFO_DEC_LENGTH BASE_C %#03x%08x",
-		value[27], value[28]);
+	mml_err("RROT_UFO_DEC_LENGTH BASE_Y %#03x%08x BASE_C %#03x%08x",
+		value[25], value[26], value[27], value[28]);
 	mml_err("RROT_AFBC_PAYLOAD_OST %#010x RROT_GMCIF_CON %#010x",
 		value[29], value[30]);
 

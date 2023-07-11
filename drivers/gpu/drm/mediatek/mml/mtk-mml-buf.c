@@ -113,7 +113,9 @@ int mml_buf_iova_get(struct device *dev, struct mml_file_buf *buf)
 			return ret;
 		}
 	}
-	mml_mmp(buf_map, MMPROFILE_FLAG_PULSE, 0, 0);
+	mml_mmp(buf_map, MMPROFILE_FLAG_PULSE,
+		buf->dma[0].iova,
+		buf->dma[0].dmabuf ? (u32)buf->dma[0].dmabuf->size : 0);
 
 	buf->map_time = sched_clock();
 

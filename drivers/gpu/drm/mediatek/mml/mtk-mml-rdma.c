@@ -676,6 +676,7 @@ struct rdma_frame_data {
 	u16 crop_off_l;		/* crop offset left */
 	u16 crop_off_t;		/* crop offset top */
 	u32 gmcif_con;
+	u32 crc_inst_offset;
 	bool ultra_off;
 
 	/* array of indices to one of entry in cache entry list,
@@ -1320,7 +1321,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	if (mml_rdma_crc) {
 		if (MML_FMT_COMPRESS(src->format))
 			cmdq_pkt_write(pkt, NULL, base_pa + RDMA_DEBUG_CON,
-				(0x10 << 13) + 0x1, U32_MAX);
+				(mml_rdma_dbg << 13) + 0x1, U32_MAX);
 		else
 			cmdq_pkt_write(pkt, NULL, base_pa + RDMA_DEBUG_CON,
 				0x1, U32_MAX);
@@ -1940,6 +1941,40 @@ force_reset:
 	}
 }
 
+static void rdma_backup_crc(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
+	const phys_addr_t crc_reg = MML_FMT_COMPRESS(task->config->info.src.format) ?
+		(comp->base_pa + RDMA_MON_STA_0 + 27 * 8) : (comp->base_pa + RDMA_CHKS_EXTR);
+
+	if (likely(!mml_rdma_crc))
+		return;
+
+	rdma_frm->crc_inst_offset = mml_backup_crc(task, ccfg,
+		crc_reg, &task->rdma_crc_idx[ccfg->pipe]);
+	if (!rdma_frm->crc_inst_offset) {
+		mml_err("%s fail to backup CRC", __func__);
+		mml_rdma_crc = 0;
+	}
+#endif
+}
+
+static void rdma_backup_crc_update(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
+
+	if (!mml_rdma_crc || !rdma_frm->crc_inst_offset)
+		return;
+
+	mml_backup_crc_update(task, ccfg, rdma_frm->crc_inst_offset,
+		&task->rdma_crc_idx[ccfg->pipe]);
+#endif
+}
+
 static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
@@ -1977,35 +2012,7 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 			comp->base_pa + APU_DIRECT_COUPLE_CONTROL_EN, 0, U32_MAX);
 	}
 
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	if (unlikely(mml_rdma_crc)) {
-		if (!rdma_crc_va[ccfg->pipe] && !rdma_crc_pa[ccfg->pipe]) {
-			rdma_crc_va[ccfg->pipe] =
-				cmdq_mbox_buf_alloc(cfg->path[ccfg->pipe]->clt,
-					&rdma_crc_pa[ccfg->pipe]);
-			mml_log("%s rdma component %u job %u pipe %u va[%p] pa[%llx]",
-				__func__, comp->id, task->job.jobid,
-				ccfg->pipe, rdma_crc_va[ccfg->pipe], rdma_crc_pa[ccfg->pipe]);
-		}
-
-		if (unlikely(!rdma_crc_va[ccfg->pipe]) || unlikely(!rdma_crc_pa[ccfg->pipe])) {
-			mml_err("%s rdma component %u job %u pipe %u get dram va[%p] pa[%llx] failed",
-				__func__, comp->id, task->job.jobid,
-				ccfg->pipe, rdma_crc_va[ccfg->pipe], rdma_crc_pa[ccfg->pipe]);
-		} else {
-			/* read reg value to spr : CMDQ_THR_SPR_IDX2*/
-			cmdq_pkt_read_addr(task->pkts[ccfg->pipe],
-				MML_FMT_COMPRESS(task->config->info.src.format) ?
-				(comp->base_pa + RDMA_MON_STA_0 + 27 * 8) :
-				(comp->base_pa + RDMA_CHKS_EXTR),
-				CMDQ_THR_SPR_IDX2);
-
-			/* write spr to dram pa */
-			cmdq_pkt_write_indriect(task->pkts[ccfg->pipe],
-				NULL, rdma_crc_pa[ccfg->pipe], CMDQ_THR_SPR_IDX2, UINT_MAX);
-		}
-	}
-#endif
+	rdma_backup_crc(comp, task, ccfg);
 
 	/* after rdma stops read, call ddren to sleep */
 	if (ccfg->pipe == 0)
@@ -2097,6 +2104,8 @@ static s32 rdma_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			 rdma_frm->labels[RDMA_LABEL_BASE_2_MSB],
 			 iova[2]);
 
+	rdma_backup_crc_update(comp, task, ccfg);
+
 	return 0;
 }
 
@@ -2126,17 +2135,26 @@ u32 rdma_format_get(struct mml_task *task, struct mml_comp_config *ccfg)
 	return task->config->info.src.format;
 }
 
-static void rdma_task_done(struct mml_comp *comp, struct mml_task *task,
+static void rdma_store_crc(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg)
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	if (mml_rdma_crc && rdma_crc_va[ccfg->pipe]) {
-		task->src_crc[ccfg->pipe] = readl(rdma_crc_va[ccfg->pipe]);
-		mml_msg("%s rdma component %u job %u pipe %u crc %#010x",
-			__func__, comp->id, task->job.jobid,
-			ccfg->pipe, task->src_crc[ccfg->pipe]);
-	}
+	const u32 pipe = ccfg->pipe;
+
+	if (!mml_rdma_crc)
+		return;
+
+	task->src_crc[pipe] = mml_backup_crc_get(task, ccfg, task->rdma_crc_idx[pipe]);
+	mml_msg("%s rdma component %u job %u pipe %u crc %#010x idx %u",
+		__func__, comp->id, task->job.jobid, ccfg->pipe, task->src_crc[ccfg->pipe],
+		task->rdma_crc_idx[pipe]);
 #endif
+}
+
+static void rdma_task_done(struct mml_comp *comp, struct mml_task *task,
+			   struct mml_comp_config *ccfg)
+{
+	rdma_store_crc(comp, task, ccfg);
 }
 
 static const struct mml_comp_hw_ops rdma_hw_ops = {
@@ -2208,13 +2226,6 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	value[1] = readl(base + RDMA_RESET);
 	value[2] = readl(base + RDMA_SRC_CON);
 	value[3] = readl(base + RDMA_COMP_CON);
-	/* for afbc case enable more debug info */
-	if (!write_sec && (value[3] & BIT(22))) {
-		u32 debug_con = readl(base + RDMA_DEBUG_CON);
-
-		debug_con |= 0xe000;
-		writel(debug_con, base + RDMA_DEBUG_CON);
-	}
 
 	apu_en = readl(base + APU_DIRECT_COUPLE_CONTROL_EN);
 

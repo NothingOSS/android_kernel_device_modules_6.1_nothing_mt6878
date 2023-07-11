@@ -115,9 +115,6 @@
 #define WROT_POLL_SLEEP_TIME_US		(10)
 #define WROT_MAX_POLL_TIME_US		(1000)
 
-#define CMDQ_GET_ADDR_LOW(addr)		((u16)(addr & GENMASK(15, 0)) | BIT(1))
-
-
 /* debug option to change sram write height */
 int mml_racing_h = MML_WROT_RACING_MAX;
 module_param(mml_racing_h, int, 0644);
@@ -128,12 +125,6 @@ module_param(mml_racing_rdone, int, 0644);
 /* 0x1 for input crc, 0xd for output crc */
 int mml_wrot_crc;
 module_param(mml_wrot_crc, int, 0644);
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-static u32 *wrot_crc_va[MML_PIPE_CNT];
-static dma_addr_t wrot_crc_pa[MML_PIPE_CNT];
-static u32 wrot_crc_idx[MML_PIPE_CNT];
-#define WROT_CRC_CNT	1024
-#endif
 
 int mml_wrot_bkgd_en;
 module_param(mml_wrot_bkgd_en, int, 0644);
@@ -2092,39 +2083,16 @@ static void wrot_backup_crc(struct mml_comp *comp, struct mml_task *task,
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
-	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
-	dma_addr_t pa_addr;
 
 	if (likely(!mml_wrot_crc))
 		return;
 
-	if (!wrot_crc_va[ccfg->pipe] && !wrot_crc_pa[ccfg->pipe]) {
-		wrot_crc_va[ccfg->pipe] =
-			cmdq_mbox_buf_alloc(task->config->path[ccfg->pipe]->clt,
-				&wrot_crc_pa[ccfg->pipe]);
-		mml_log("%s wrot component %u job %u pipe %u va %p pa %#llx",
-			__func__, comp->id, task->job.jobid,
-			ccfg->pipe, wrot_crc_va[ccfg->pipe], wrot_crc_pa[ccfg->pipe]);
+	wrot_frm->crc_inst_offset = mml_backup_crc(task, ccfg,
+		comp->base_pa + VIDO_CRC_VALUE, &task->wrot_crc_idx[ccfg->pipe]);
+	if (!wrot_frm->crc_inst_offset) {
+		mml_err("%s fail to backup CRC", __func__);
+		mml_wrot_crc = 0;
 	}
-
-	if (unlikely(!wrot_crc_va[ccfg->pipe]) || unlikely(!wrot_crc_pa[ccfg->pipe])) {
-		mml_err("%s wrot component %u job %u pipe %u get dram va %p pa %#llx failed",
-			__func__, comp->id, task->job.jobid,
-			ccfg->pipe, wrot_crc_va[ccfg->pipe], wrot_crc_pa[ccfg->pipe]);
-		return;
-	}
-
-	pa_addr = wrot_crc_pa[ccfg->pipe] + wrot_crc_idx[ccfg->pipe] * 4;
-	task->wrot_crc_idx[ccfg->pipe] = wrot_crc_idx[ccfg->pipe]++;
-	if (wrot_crc_idx[ccfg->pipe] >= WROT_CRC_CNT)
-		wrot_crc_idx[ccfg->pipe] = 0;
-
-	/* read reg value to spr : CMDQ_THR_SPR_IDX2*/
-	cmdq_pkt_read_addr(pkt, comp->base_pa + VIDO_CRC_VALUE, CMDQ_THR_SPR_IDX2);
-
-	/* write spr to dram pa */
-	cmdq_pkt_write_indriect(pkt, NULL, pa_addr, CMDQ_THR_SPR_IDX2, UINT_MAX);
-	wrot_frm->crc_inst_offset = pkt->cmd_buf_size - CMDQ_INST_SIZE;
 #endif
 }
 
@@ -2133,20 +2101,12 @@ static void wrot_backup_crc_update(struct mml_comp *comp, struct mml_task *task,
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
-	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
-	dma_addr_t pa_addr;
-	u32 *inst;
 
-	if (!mml_wrot_crc || !wrot_crc_pa[ccfg->pipe] || !wrot_frm->crc_inst_offset)
+	if (!mml_wrot_crc || !wrot_frm->crc_inst_offset)
 		return;
 
-	pa_addr = wrot_crc_pa[ccfg->pipe] + wrot_crc_idx[ccfg->pipe] * 4;
-	task->wrot_crc_idx[ccfg->pipe] =  wrot_crc_idx[ccfg->pipe]++;
-	if (wrot_crc_idx[ccfg->pipe] >= WROT_CRC_CNT)
-		wrot_crc_idx[ccfg->pipe] = 0;
-
-	inst = (u32 *)cmdq_pkt_get_va_by_offset(pkt, wrot_frm->crc_inst_offset);
-	inst[1] = (inst[1] & 0xff00ffff) | CMDQ_GET_ADDR_LOW(pa_addr);
+	mml_backup_crc_update(task, ccfg, wrot_frm->crc_inst_offset,
+		&task->wrot_crc_idx[ccfg->pipe]);
 #endif
 }
 
@@ -2266,19 +2226,16 @@ static void wrot_store_crc(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg)
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	const u32 pipe = ccfg->pipe;
 	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
-	u32 *crc_va;
-	u32 cur_crc;
 
-	if (!mml_wrot_crc || !wrot_crc_va[ccfg->pipe])
+	if (!mml_wrot_crc)
 		return;
 
-	crc_va = wrot_crc_va[ccfg->pipe] + task->wrot_crc_idx[ccfg->pipe];
-	cur_crc = readl(crc_va);
-	task->dest_crc[ccfg->pipe] = cur_crc;
-	mml_msg("%s wrot%d component %u job %u pipe %u crc %#010x",
+	task->dest_crc[pipe] = mml_backup_crc_get(task, ccfg, task->wrot_crc_idx[pipe]);
+	mml_msg("%s wrot%d component %u job %u pipe %u crc %#010x idx %u",
 		__func__, wrot->idx, comp->id, task->job.jobid,
-		ccfg->pipe, task->dest_crc[ccfg->pipe]);
+		ccfg->pipe, task->dest_crc[ccfg->pipe], task->wrot_crc_idx[pipe]);
 #endif
 }
 

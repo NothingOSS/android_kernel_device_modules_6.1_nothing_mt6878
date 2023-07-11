@@ -32,6 +32,8 @@
 #include "mtk-mml-mmp.h"
 #include "mtk-mml-color.h"
 
+#define CMDQ_GET_ADDR_LOW(addr)		((u16)(addr & GENMASK(15, 0)) | BIT(1))
+
 struct mml_record {
 	u32 jobid;
 
@@ -75,6 +77,8 @@ struct mml_record {
 #define MML_RECORD_NUM		(1 << 8)
 #endif
 #define MML_RECORD_NUM_MASK	(MML_RECORD_NUM - 1)
+
+#define MML_CRC_CNT	1024
 
 int mml_pipe0_dest_crc;
 module_param(mml_pipe0_dest_crc, int, 0644);
@@ -141,6 +145,13 @@ struct mml_dev {
 	u16 record_idx;
 
 	struct mml_dpc dpc;
+
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	/* crc backup */
+	u32 *crc_va[MML_PIPE_CNT];
+	dma_addr_t crc_pa[MML_PIPE_CNT];
+	u32 crc_idx[MML_PIPE_CNT];
+#endif
 };
 
 int mml_racing_bw;
@@ -1449,6 +1460,98 @@ static void mml_record_init(struct mml_dev *mml)
 		dput(dir);
 
 	mml_log("%s done with size %zu", __func__, sizeof(mml->records));
+}
+
+u32 mml_backup_crc(struct mml_task *task, struct mml_comp_config *ccfg, phys_addr_t crc_reg,
+	u32 *crc_idx_out)
+{
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	const u32 pipe = ccfg->pipe;
+	struct mml_dev *mml = task->config->mml;
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	dma_addr_t pa_addr;
+	u32 crc_inst_offset = 0;
+
+	if (!mml->crc_va[pipe] && !mml->crc_pa[pipe]) {
+		mml->crc_va[pipe] =
+			cmdq_mbox_buf_alloc(task->config->path[pipe]->clt, &mml->crc_pa[pipe]);
+		mml_log("%s CRC backup buffer pipe %u va %p pa %pa",
+			__func__, pipe, mml->crc_va[pipe], &mml->crc_pa[pipe]);
+	}
+
+	if (unlikely(!mml->crc_va[pipe]) || unlikely(!mml->crc_pa[pipe])) {
+		mml_err("%s CRC backup buffer failed pipe %u", __func__, pipe);
+		goto done;
+	}
+
+	pa_addr = mml->crc_pa[pipe] + mml->crc_idx[pipe] * 4;
+	*crc_idx_out = mml->crc_idx[pipe]++;
+	if (mml->crc_idx[pipe] >= MML_CRC_CNT)
+		mml->crc_idx[pipe] = 0;
+
+	/* read reg value to spr : CMDQ_THR_SPR_IDX2*/
+	cmdq_pkt_read_addr(pkt, crc_reg, CMDQ_THR_SPR_IDX2);
+
+	/* write spr to dram pa */
+	cmdq_pkt_write_indriect(pkt, NULL, pa_addr, CMDQ_THR_SPR_IDX2, UINT_MAX);
+	crc_inst_offset = pkt->cmd_buf_size - CMDQ_INST_SIZE;
+
+	mml_msg("[crc]backup %#x to %pa offset %u idx %u",
+		(u32)crc_reg, &pa_addr, crc_inst_offset, *crc_idx_out);
+
+done:
+	return crc_inst_offset;
+#else
+	return 0;
+#endif
+}
+
+void mml_backup_crc_update(struct mml_task *task, struct mml_comp_config *ccfg,
+	u32 crc_inst_offset, u32 *crc_idx_out)
+{
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	const u32 pipe = ccfg->pipe;
+	struct mml_dev *mml = task->config->mml;
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	dma_addr_t pa_addr;
+	u32 *inst;
+
+	if (!mml->crc_pa[ccfg->pipe] || !mml->crc_va[pipe])
+		return;
+
+	pa_addr = mml->crc_pa[pipe] + mml->crc_idx[pipe] * 4;
+	*crc_idx_out =  mml->crc_idx[pipe]++;
+	if (mml->crc_idx[pipe] >= MML_CRC_CNT)
+		mml->crc_idx[pipe] = 0;
+
+	inst = (u32 *)cmdq_pkt_get_va_by_offset(pkt, crc_inst_offset);
+	inst[1] = (inst[1] & 0xffff0000) | CMDQ_GET_ADDR_LOW(pa_addr);
+
+	mml_msg("[crc]update offset %u idx %u to %pa",
+		crc_inst_offset, *crc_idx_out, &pa_addr);
+#endif
+}
+
+u32 mml_backup_crc_get(struct mml_task *task, struct mml_comp_config *ccfg, u32 crc_idx)
+{
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	const u32 pipe = ccfg->pipe;
+	struct mml_dev *mml = task->config->mml;
+	u32 *crc_va;
+	u32 cur_crc;
+
+	if (!mml->crc_va[pipe])
+		return 0;
+
+	crc_va = mml->crc_va[pipe] + crc_idx;
+	cur_crc = readl(crc_va);
+
+	mml_msg("[crc]get idx %u val %#010x", crc_idx, cur_crc);
+
+	return cur_crc;
+#else
+	return 0;
+#endif
 }
 
 static int sys_bind(struct device *dev, struct device *master, void *data)
