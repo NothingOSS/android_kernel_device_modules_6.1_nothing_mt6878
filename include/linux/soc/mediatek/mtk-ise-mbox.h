@@ -20,7 +20,9 @@ typedef enum {
 	REQUEST_EVITA,
 	REQUEST_PKCS11,
 	REQUEST_CUSTOM,
-	REQUEST_TRUSTY
+	REQUEST_TRUSTY,
+	REQUEST_LOWPOWER,
+	REQUEST_RPMB
 } request_type_enum;
 
 typedef enum {
