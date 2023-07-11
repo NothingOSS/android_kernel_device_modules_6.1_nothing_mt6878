@@ -697,6 +697,7 @@ enum mtk_ddp_io_cmd {
 	DSI_AOD_SCP_GET_DSI_PARAM,
 	/*AOD-SCP cmd end*/
 	DSI_SET_CSC_BL,
+	DSI_GET_PANEL_STATE,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {

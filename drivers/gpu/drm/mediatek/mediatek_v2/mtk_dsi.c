@@ -10016,6 +10016,20 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		mtk_dsi_set_backlight(dsi);
 	}
 		break;
+	case DSI_GET_PANEL_STATE:
+	{
+		struct mtk_dsi *dsi =
+			container_of(comp, struct mtk_dsi, ddp_comp);
+		struct drm_panel *panel = dsi ? dsi->panel : NULL;
+
+		panel_ext = mtk_dsi_get_panel_ext(comp);
+
+		if (panel_ext && panel_ext->funcs
+			&& panel_ext->funcs->get_lcm_power_state)
+			panel_ext->funcs->get_lcm_power_state(panel);
+		DDPMSG("Print DSI_GET_PANEL_STATE\n");
+	}
+		break;
 	default:
 		break;
 	}

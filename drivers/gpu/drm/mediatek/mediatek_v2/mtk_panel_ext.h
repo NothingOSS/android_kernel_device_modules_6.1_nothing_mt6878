@@ -689,6 +689,7 @@ struct mtk_panel_funcs {
 	int (*lcm_update_roi_cmdq)(void *dsi_drv,
 		dcs_write_gce cb, void *handle,
 		unsigned int x, unsigned int y, unsigned int w, unsigned int h);
+	int (*get_lcm_power_state)(struct drm_panel *panel);
 };
 
 void mtk_panel_init(struct mtk_panel_ctx *ctx);

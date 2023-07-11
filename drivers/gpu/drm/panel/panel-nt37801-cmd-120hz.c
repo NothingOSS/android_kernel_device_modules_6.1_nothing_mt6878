@@ -78,6 +78,7 @@
 			(FHD_CLK_10_X10 / 10 + 1) : (FHD_CLK_10_X10 / 10))
 
 #define MODE_SWITCH_CMDQ_ENABLE 1
+#define PANEL_SUPPORT_READBACK
 
 struct mtk_mode_switch_cmd cmd_table_120fps[] = {
 	{2, {0x2F, 0x00}}
@@ -216,7 +217,7 @@ static int lcm_dcs_read(struct lcm *ctx, u8 cmd, void *data, size_t len)
 
 	ret = mipi_dsi_dcs_read(dsi, cmd, data, len);
 	if (ret < 0) {
-		dev_err(ctx->dev, "error %d reading dcs seq:(%#x)\n", ret, cmd);
+		dev_err(ctx->dev, "error %zd reading dcs seq:(%#x)\n", ret, cmd);
 		ctx->error = ret;
 	}
 
@@ -234,6 +235,34 @@ static void lcm_panel_get_data(struct lcm *ctx)
 			 ret, buffer[0] | (buffer[1] << 8));
 	}
 }
+
+static int lcm_panel_get_ab_data(struct drm_panel *panel)
+{
+	struct lcm *ctx = panel_to_lcm(panel);
+	u8 buffer[3] = {0};
+	int ret;
+
+	if (!ctx->enabled)
+		return 0;
+
+	ret = lcm_dcs_read(ctx,  0xAB, buffer, 1);
+	dev_info(ctx->dev, "return %d data(0x%08x) to 0xAB\n",
+		 ret, buffer[0] | (buffer[1] << 8));
+	ret = lcm_dcs_read(ctx,  0x0A, buffer, 1);
+	dev_info(ctx->dev, "return %d data(0x%08x) to 0x0A\n",
+		 ret, buffer[0] | (buffer[1] << 8));
+
+	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
+	ret = lcm_dcs_read(ctx,  0xC3, buffer, 1);
+	dev_info(ctx->dev, "return %d data(0x%08x) to 0xC3\n",
+		 ret, buffer[0] | (buffer[1] << 8));
+	ret = lcm_dcs_read(ctx,  0xEA, buffer, 1);
+	dev_info(ctx->dev, "return %d data(0x%08x) to 0xEA\n",
+		 ret, buffer[0] | (buffer[1] << 8));
+
+	return ret;
+}
+
 #endif
 
 #if defined(CONFIG_RT5081_PMU_DSV) || defined(CONFIG_MT6370_PMU_DSV)
@@ -1273,6 +1302,7 @@ static struct mtk_panel_funcs ext_funcs = {
 	.ata_check = panel_ata_check,
 	.lcm_update_roi = lcm_update_roi,
 	.lcm_update_roi_cmdq = lcm_update_roi_cmdq,
+	.get_lcm_power_state = lcm_panel_get_ab_data,
 };
 #endif
 
