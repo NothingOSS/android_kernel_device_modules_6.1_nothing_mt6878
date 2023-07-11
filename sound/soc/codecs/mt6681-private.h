@@ -548,6 +548,7 @@ struct mt6681_priv {
 	/* vow dmic low power mode, 1: enable, 0: disable */
 	int vow_dmic_lp;
 	int vow_single_mic_select;
+	int bypass_hpdet_dump;
 
 	/* regulator */
 	struct regulator *reg_vaud18;

@@ -2703,6 +2703,20 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_AUDHPR_TRIM_MODE_VAUDP18_MASK_SFT,
 				   0x1 << RG_AUDHPR_TRIM_MODE_VAUDP18_SFT);
+		/* Step 128: Set HPL trim code */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON34,
+				   RG_AUDHPLFINETRIM_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPLFINETRIM_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON34,
+				   RG_AUDHPLTRIM_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPLTRIM_VAUDP18_SFT);
+		/* Step 129: Set HPR trim code */
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON35,
+				   RG_AUDHPRFINETRIM_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPRFINETRIM_VAUDP18_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON35,
+				   RG_AUDHPRTRIM_VAUDP18_MASK_SFT,
+				   0x0 << RG_AUDHPRTRIM_VAUDP18_SFT);
 		/* Step 130: Enable HPTRIM */
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_AUDHPTRIM_EN_VAUDP18_MASK_SFT,
@@ -5360,106 +5374,127 @@ static void mtk_hp_disable(struct mt6681_priv *priv)
 
 static int mtk_hp_impedance_enable(struct mt6681_priv *priv)
 {
-#ifndef SKIP_SB
-	/* 0:normal path & bypass HWgain1/2 */
-	regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x4);
+	dev_info(priv->dev, "%s() successfully starts\n", __func__);
 
-	/* Enable AUD_CLK */
-	mt6681_set_decoder_clk(priv, true, true);
+	regmap_write(priv->regmap, MT6681_TOP_DIG_WPK, 0x81);
+	regmap_write(priv->regmap, MT6681_TOP_DIG_WPK_H, 0x66);
+	regmap_write(priv->regmap, MT6681_TOP_TMA_KEY, 0x7E);
+	regmap_write(priv->regmap, MT6681_TOP_TMA_KEY_H, 0x99);
+	regmap_write(priv->regmap, MT6681_LDO_VAUD18_CON0, 0x01);
+	regmap_write(priv->regmap, MT6681_CLKSQ_PMU_CON0, 0x0A);
+	regmap_write(priv->regmap, MT6681_AUD_TOP_CKPDN_CON0, 0x00);
+	regmap_write(priv->regmap, MT6681_AUD_TOP_SRAM_CON, 0x01);
+	usleep_range(250, 270);
+	regmap_write(priv->regmap, MT6681_AUDIO_TOP_CON0, 0x00);
+	usleep_range(250, 270);
+	regmap_write(priv->regmap, MT6681_AUDIO_TOP_CON2, 0x00);
+	regmap_write(priv->regmap, MT6681_AUDIO_TOP_CON3, 0x01);
+	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON0_L, 0x00);
+	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_H, 0xD1);
+	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON19_L, 0xA0);
+	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_H, 0x70);
+	regmap_write(priv->regmap, MT6681_AFUNC_AUD_CON20_L, 0x4B);
+	regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_SDM_DCCOMP_CON_H, 0x80);
+	regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0_H, 0x8F);
+	regmap_write(priv->regmap, MT6681_AFE_NLE_CFG_H, 0x01);
+	regmap_write(priv->regmap, MT6681_AFE_NLE_CFG_H, 0x81);
+	regmap_write(priv->regmap, MT6681_AFE_NLE_PRE_BUF_CFG_H, 0x04);
+	regmap_write(priv->regmap, MT6681_AFE_NLE_CFG_H, 0x81);
+	regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_CFG_H, 0x86);
+	regmap_write(priv->regmap, MT6681_AFE_SINEGEN_CON0, 0x00);
+	regmap_write(priv->regmap, MT6681_AFE_SINEGEN_CON1, 0xAA);
+	regmap_write(priv->regmap, MT6681_AFE_SINEGEN_CON2, 0x06);
+	regmap_write(priv->regmap, MT6681_AFE_SINEGEN_CON3, 0xE2);
+	regmap_write(priv->regmap, MT6681_AFE_SINEGEN_CON4, 0xE2);
+	regmap_write(priv->regmap, MT6681_CLH_COM_CON0, 0x00);
+	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON2, 0x00);
+	regmap_write(priv->regmap, MT6681_CLH_LUT_SEL, 0x00);
+	regmap_write(priv->regmap, MT6681_CLH_COM_CON1, 0x01);
+	regmap_write(priv->regmap, MT6681_CLH_V18N_CON0, 0x18);
+	regmap_write(priv->regmap, MT6681_CLH_V18N_CON1, 0x01);
+	regmap_write(priv->regmap, MT6681_CLH_TONREF_CON0, 0x07);
+	regmap_write(priv->regmap, MT6681_CLH_TONREF_CON1, 0x16);
+	regmap_write(priv->regmap, MT6681_CLH_TONEND_CON0, 0x02);
+	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON0, 0xFC);
+	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON1, 0x07);
+	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON7, 0x50);
+	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON8, 0x00);
+	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON9, 0x0F);
+	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON10, 0x0C);
+	regmap_write(priv->regmap, MT6681_CLH_COM_CON0, 0x00);
+	regmap_write(priv->regmap, MT6681_CLH_COM_CON0, 0x40);
+	regmap_write(priv->regmap, MT6681_AFE_CLH_HP_FIFO_CON0, 0x3E);
+	regmap_write(priv->regmap, MT6681_AFE_CLH_HP_FIFO_CON0, 0x3D);
+	regmap_write(priv->regmap, MT6681_AFE_TOP_CON0, 0x01);
+	regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_SRC_CON0, 0x01);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON39, 0x04);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON57, 0x00);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON60, 0xC0);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON61, 0x0F);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON58, 0x00);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON59, 0x00);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON59, 0x00);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON62, 0x03);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON62, 0x0F);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON62, 0x3F);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON58, 0x07);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON60, 0xFF);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON56, 0x00);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON56, 0x00);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON57, 0x00);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON65, 0x10);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON65, 0x30);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON65, 0xF0);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON73, 0x06);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON64, 0x3F);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON85, 0x0C);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON75, 0x2F);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON76, 0xF8);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON77, 0x07);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON83, 0x07);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON84, 0x03);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON89, 0x0C);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON77, 0x0F);
+	regmap_write(priv->regmap, MT6681_CLH_COM_CON0, 0x41);
+	usleep_range(200, 220);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON33, 0x80);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON69, 0x02);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON2, 0x08);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON25, 0x30);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON33, 0x80);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON31, 0x00);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON28, 0x00);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON39, 0x04);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON12, 0x01);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON1, 0x00);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON1, 0x01);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON31, 0x00);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON3, 0x44);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON2, 0x08);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON2, 0x09);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON1, 0x31);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON5, 0x02);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON5, 0x03);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON7, 0x10);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON9, 0x00);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON10, 0x05);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON10, 0x55);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON9, 0x03);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON8, 0x00);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON8, 0x03);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON0, 0x11);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON5, 0x83);
+	usleep_range(100, 120);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON7, 0x17);
+	usleep_range(100, 120);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON7, 0x16);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON52, 0xA1);
 
-	ldo_select_to_min(priv, true, true);
-	regmap_write(priv->regmap, MT6681_AFE_NCP_CFG1, 0xCB);
-	regmap_write(priv->regmap, MT6681_AFE_NCP_CFG0, 0x1);
-	nvreg_select_to_min(priv, true, true);
+	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON29, 0x0);
 
-	/* Disable HP mute */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON7,
-			   RG_HPLMUTE_EN_VAUDP18_MASK_SFT
-				   | RG_HPRMUTE_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_HPLMUTE_EN_VAUDP18_SFT);
-
-	/* Disable shortcut */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON5,
-			   RG_AUDHPLSCDISABLE_VAUDP18_MASK_SFT
-				   | RG_AUDHPRSCDISABLE_VAUDP18_MASK_SFT,
-			   0x3 << RG_AUDHPLSCDISABLE_VAUDP18_SFT);
-
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON3, 0x1c);
-
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON7,
-			   RG_HPROUTPUTSTBENH_VAUDP18_MASK_SFT,
-			   0x0 << RG_HPROUTPUTSTBENH_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON6,
-			   RG_HPLOUTPUTSTBENH_VAUDP18_MASK_SFT,
-			   0x0 << RG_HPLOUTPUTSTBENH_VAUDP18_SFT);
-
-	/* Disable Pull-down HPL/R to AVSS28_AUD */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON11,
-			   RG_HPPSHORT2VCM_VAUDP18_MASK_SFT,
-			   0x0 << RG_HPPSHORT2VCM_VAUDP18_SFT);
-	/* Disable HP damping circuit & HPN 4K load */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON48, 0x0);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_2_PMU_CON0,
-			   RG_AUDDACHPL_TRIM_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDDACHPL_TRIM_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_2_PMU_CON2,
-			   RG_AUDDACHPR_TRIM_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDDACHPR_TRIM_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_2_PMU_CON8,
-			   RG_AUDDACHP_HOLD_SW_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDDACHP_HOLD_SW_EN_VAUDP18_SFT);
-
-	/* Enable TRIMBUF circuit, select HPR as TRIMBUF input */
-	/* Enable TRIMBUF circuit 2nd stage */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON47, 0x0);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON0,
-			   RG_AUDDACL_PWRUP_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDDACL_PWRUP_VAUDP18_SFT);
-
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON0,
-			   RG_AUDDACL_BIAS_PWRUP_VA32_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDDACL_BIAS_PWRUP_VA32_VAUDP18_SFT);
-
-	/* Select to AVDD30_AUD */
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON43, 0x1);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON1,
-			   RG_AUDDAC_L_RPWM_EN_VAUDP18_MASK_SFT
-				   | RG_AUDDAC_R_RPWM_EN_VAUDP18_MASK_SFT,
-			   0x0 << RG_AUDDAC_L_RPWM_EN_VAUDP18_SFT);
-
-	/* Enable low-noise mode of DAC */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON1,
-			   RG_AUDDAC_IREF_LN_SEL_VA32_MASK_SFT,
-			   0x3 << RG_AUDDAC_IREF_LN_SEL_VA32_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON1,
-			   RG_AUDDAC_IREF_LN_EN_VA32_MASK_SFT,
-			   0x1 << RG_AUDDAC_IREF_LN_EN_VA32_SFT);
-	/* Enable low-noise mode of DAC */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON2,
-			   RG_AUDDAC_ILOCAL_LN_SEL_VA32_VAUDP18_MASK_SFT,
-			   0x3 << RG_AUDDAC_ILOCAL_LN_SEL_VA32_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON2,
-			   RG_AUDDAC_ILOCAL_LN_EN_VA32_MASK_SFT,
-			   0x1 << RG_AUDDAC_ILOCAL_LN_EN_VA32_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON2,
-			   RG_AUDDAC_OPAMP_LN_EN_VA32_MASK_SFT,
-			   0x1 << RG_AUDDAC_OPAMP_LN_EN_VA32_SFT);
-
-	/* Enable HPDET circuit */
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON29,
-			   RG_AUDHPSPKDET_EN_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPSPKDET_EN_VAUDP18_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON29,
-			   RG_AUDHPSPKDET_INPUTMUXSEL_VAUDP18_MASK_SFT,
-			   0x1 << RG_AUDHPSPKDET_INPUTMUXSEL_VAUDP18_SFT);
-
-	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON29,
-			   RG_AUDHPSPKDET_OUTPUTMUXSEL_VAUDP18_MASK_SFT,
-			   0x2 << RG_AUDHPSPKDET_OUTPUTMUXSEL_VAUDP18_SFT);
-	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON47, 0x1);
-#endif
 	return 0;
 }
+
 
 static int mtk_hp_impedance_disable(struct mt6681_priv *priv)
 {
@@ -13182,7 +13217,7 @@ static int mt_clh_event(struct snd_soc_dapm_widget *w,
 			regmap_update_bits(priv->regmap, MT6681_CLH_LUT_SEL,
 					   RG_CLH_LUT_SEL_MASK_SFT,
 					   0x0 << RG_CLH_LUT_SEL_SFT);
-			/* Step 54: Enable DA_CLH_CLK26M = 010101… */
+			/* Step 54: Enable DA_CLH_CLK26M = 010101*/
 			regmap_update_bits(priv->regmap, MT6681_CLH_COM_CON1,
 					   RG_CLH_ANA_CLK26MCG_MASK_SFT,
 					   0x1 << RG_CLH_ANA_CLK26MCG_SFT);
@@ -14954,6 +14989,21 @@ static int mt6681_get_hpofs_auxadc(struct mt6681_priv *priv)
 	struct iio_channel *auxadc = priv->hpofs_cal_auxadc;
 
 	regmap_update_bits(priv->regmap, MT6681_AUXADC_RQST0, 0x4, 0x4);
+	if (priv->dc_trim.calibrated && !priv->bypass_hpdet_dump) {
+		int value = 0;
+
+		dev_info(priv->dev, "[HPDET] %s Just observe the dc value\n",
+			 __func__);
+		regmap_read(priv->regmap, MT6681_AFE_ADDA_DL_DC_COMP_CFG0_H, &value);
+		dev_info(priv->dev, "[HPDET] %s MT6681_AFE_ADDA_DL_DC_COMP_CFG0_H (%x)\n",
+			 __func__, value);
+		regmap_read(priv->regmap, MT6681_AFE_ADDA_DL_DC_COMP_CFG0_M, &value);
+		dev_info(priv->dev, "[HPDET] %s MT6681_AFE_ADDA_DL_DC_COMP_CFG0_M (%x)\n",
+			 __func__, value);
+		regmap_read(priv->regmap, MT6681_AFE_ADDA_DL_DC_COMP_CFG0_L, &value);
+		dev_info(priv->dev, "[HPDET] %s MT6681_AFE_ADDA_DL_DC_COMP_CFG0_L (%x)\n",
+			 __func__, value);
+	}
 	if (!IS_ERR(auxadc)) {
 		ret = iio_read_channel_raw(auxadc, &value);
 		if (ret < 0) {
@@ -14970,9 +15020,16 @@ static int mt6681_get_hpofs_auxadc(struct mt6681_priv *priv)
 int mt6681_enable_dc_compensation(struct mt6681_priv *priv, bool enable)
 {
 	regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SDM_DCCOMP_CON_L,
-			   MT6681_AFE_DL_AUD_DC_COMP_EN_MASK_SFT,
-			   (enable ? 1 : 0)
-				   << MT6681_AFE_DL_AUD_DC_COMP_EN_SFT);
+			   AFE_DL_AUD_DC_COMP_EN_MASK_SFT,
+			   (enable ? 1 : 0) << AFE_DL_AUD_DC_COMP_EN_SFT);
+	/* Step 120: Toggle bit for update Dccomp */
+	regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SDM_DCCOMP_CON_L,
+			   AFE_DL_DCCOMP_SYNC_TOGGLE_MASK_SFT,
+			   0x0 << AFE_DL_DCCOMP_SYNC_TOGGLE_SFT);
+	/* Step 121: Toggle bit for update Dccomp */
+	regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SDM_DCCOMP_CON_L,
+			   AFE_DL_DCCOMP_SYNC_TOGGLE_MASK_SFT,
+			   0x1 << AFE_DL_DCCOMP_SYNC_TOGGLE_SFT);
 	return 0;
 }
 
@@ -14982,6 +15039,14 @@ int mt6681_set_lch_dc_compensation(struct mt6681_priv *priv, int value)
 		     ((value >> 8) & 0xff));
 	regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_DC_COMP_CFG0_M,
 		     (value & 0xff));
+	/* Step 120: Toggle bit for update Dccomp */
+	regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SDM_DCCOMP_CON_L,
+			   AFE_DL_DCCOMP_SYNC_TOGGLE_MASK_SFT,
+			   0x0 << AFE_DL_DCCOMP_SYNC_TOGGLE_SFT);
+	/* Step 121: Toggle bit for update Dccomp */
+	regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SDM_DCCOMP_CON_L,
+			   AFE_DL_DCCOMP_SYNC_TOGGLE_MASK_SFT,
+			   0x1 << AFE_DL_DCCOMP_SYNC_TOGGLE_SFT);
 	return 0;
 }
 
@@ -14991,6 +15056,14 @@ int mt6681_set_rch_dc_compensation(struct mt6681_priv *priv, int value)
 		     (value >> 8));
 	regmap_write(priv->regmap, MT6681_AFE_ADDA_DL_DC_COMP_CFG1_M,
 		     (value & 0xff));
+	/* Step 120: Toggle bit for update Dccomp */
+	regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SDM_DCCOMP_CON_L,
+			   AFE_DL_DCCOMP_SYNC_TOGGLE_MASK_SFT,
+			   0x0 << AFE_DL_DCCOMP_SYNC_TOGGLE_SFT);
+	/* Step 121: Toggle bit for update Dccomp */
+	regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_DL_SDM_DCCOMP_CON_L,
+			   AFE_DL_DCCOMP_SYNC_TOGGLE_MASK_SFT,
+			   0x1 << AFE_DL_DCCOMP_SYNC_TOGGLE_SFT);
 	return 0;
 }
 
@@ -18448,6 +18521,8 @@ static int calculate_impedance(struct mt6681_priv *priv, int dc_init,
 
 	dc_value = dc_input - dc_init;
 	r_tmp = mtk_calculate_impedance_formula(pcm_offset - 1, dc_value);
+	dev_info(priv->dev, "%s [HPDET] pcm_offset(%d) dc_input(%d) dc_init(%d) r_tmp(%d)",
+		 __func__, pcm_offset, dc_input, dc_init, r_tmp);
 	r_tmp = DIV_ROUND_CLOSEST(r_tmp, detect_times);
 
 	/* Efuse calibration */
@@ -18540,8 +18615,15 @@ static int detect_impedance(struct mt6681_priv *priv)
 		if (cur_dc == 0) {
 			usleep_range(1 * 1000, 1 * 1000);
 			dc_sum = 0;
-			for (i = 0; i < num_detect; i++)
+			for (i = 0; i < num_detect; i++){
 				dc_sum += mt6681_get_hpofs_auxadc(priv);
+				if (i == 0 && !priv->bypass_hpdet_dump) {
+					dev_info(priv->dev,
+						 "[HPDET] cur_dc(%d) dc_sum(%d) HPR Volatge 1\n",
+						 cur_dc, dc_sum);
+					usleep_range(5 * 1000 * 1000, 6 * 1000 * 1000);
+				}
+			}
 
 			if ((dc_sum / num_detect) > auxadc_upper_bound) {
 				dev_info(
@@ -18559,6 +18641,11 @@ static int detect_impedance(struct mt6681_priv *priv)
 			usleep_range(1 * 1000, 1 * 1000);
 			detect_sum = 0;
 			detect_sum = mt6681_get_hpofs_auxadc(priv);
+			{
+				dev_info(priv->dev, "[HPDET] cur_dc(%d) detect_sum(%d) HPR Volatge 2\n",
+					 cur_dc, detect_sum);
+				usleep_range(5 * 1000 * 1000, 6 * 1000 * 1000);
+			}
 
 			if ((dc_sum / num_detect) == detect_sum) {
 				dev_info(
@@ -18612,8 +18699,14 @@ static int detect_impedance(struct mt6681_priv *priv)
 		if (phase_flag == 2 && cur_dc == dc_phase2) {
 			usleep_range(1 * 1000, 1 * 1000);
 			detect_sum = 0;
-			for (i = 0; i < num_detect; i++)
+			for (i = 0; i < num_detect; i++) {
 				detect_sum += mt6681_get_hpofs_auxadc(priv);
+				if (i == 0 && !priv->bypass_hpdet_dump) {
+					dev_info(priv->dev, "[HPDET] cur_dc(%d) detect_sum(%d) HPR Volatge 3\n",
+						 cur_dc, detect_sum);
+					usleep_range(5 * 1000 * 1000, 6 * 1000 * 1000);
+				}
+			}
 
 			impedance = calculate_impedance(
 				priv, dc_sum, detect_sum, cur_dc, num_detect);
@@ -18816,6 +18909,30 @@ static int audio_dctrim_set(struct snd_kcontrol *kcontrol,
 
 	kthread_run(start_trim_hardware_thread, priv,
 		    "start_trim_hardware_debug");
+	return 0;
+}
+
+static int audio_hpdet_get(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	dev_info(priv->dev, "%s(), %s = 0x%x\n", __func__, kcontrol->id.name,
+		 0);
+
+	ucontrol->value.integer.value[0] = priv->bypass_hpdet_dump;
+	return 0;
+}
+
+static int audio_hpdet_set(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+
+	priv->bypass_hpdet_dump = ucontrol->value.integer.value[0];
 	return 0;
 }
 
@@ -19283,6 +19400,8 @@ static const struct snd_kcontrol_new mt6681_snd_misc_controls[] = {
 		     hwgain_enable_set),
 	SOC_SINGLE_EXT("Codec_DL_HwGain", SND_SOC_NOPM, 0, 0x10000, 0,
 		       NULL, mt6681_hwgain_set),
+	SOC_SINGLE_EXT("HPDET_DEBUG", SND_SOC_NOPM, 0, 0x80000, 0,
+		       audio_hpdet_get, audio_hpdet_set),
 };
 
 static void keylock_set(struct mt6681_priv *priv)
@@ -24195,6 +24314,7 @@ static int mt6681_codec_init_reg(struct mt6681_priv *priv)
 	priv->vow_pbuf_active_bit = 0;
 	priv->vow_hdr_concurrent = 0;
 	priv->vow_cic_type = 0;
+	priv->bypass_hpdet_dump = 1;
 	/* mic type setting */
 	mic_type_default_init(priv);
 	regmap_read(priv->regmap, MT6681_STRUP_ELR_1, &value);
