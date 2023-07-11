@@ -391,6 +391,12 @@ static void mtk_mdp_rdma_frame_check(struct mtk_ddp_comp *comp,
 	cfg_h = mdp_rdma->cfg_h; //rdma config height
 	mdp_rdma->cfg_h = 0;
 
+	if (height != cfg_h) {
+		DDPPR_ERR("[discrete]%s, lcm out_h:%d != cfg_h:%d\n",
+			__func__, height, cfg_h);
+		return;
+	}
+
 	if (height > cfg_h) {
 		fill_h = height - cfg_h;
 		DDPINFO("[discrete] %s, out_h:%d, already_cfg_h:%d, need_fill:%d\n",
