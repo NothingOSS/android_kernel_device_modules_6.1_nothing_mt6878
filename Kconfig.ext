@@ -101,3 +101,5 @@ source "$(KCONFIG_EXT_PREFIX)drivers/pci/controller/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/pinctrl/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/mtk-isp/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)fs/f2fs/Kconfig"
