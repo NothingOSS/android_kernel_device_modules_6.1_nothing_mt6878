@@ -6762,7 +6762,10 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 				MTK_DRM_OPT_TILE_OVERHEAD) &&
 				((dst_x + src_w) >= to_info.left_in_width))
 				cross_mid_line = true;
-			else if ((dst_x + src_w) >= (width / 2))
+
+			if (!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_TILE_OVERHEAD) &&
+				((dst_x + src_w) >= (width / 2)))
 				cross_mid_line = true;
 		}
 
