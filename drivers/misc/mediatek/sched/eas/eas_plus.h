@@ -140,7 +140,7 @@ extern void mtk_set_wake_flags(void *data, int *wake_flags, unsigned int *mode);
 extern void mtk_update_cpu_capacity(void *data, int cpu, unsigned long *capacity);
 extern unsigned long cpu_cap_ceiling(int cpu);
 extern void mtk_pelt_rt_tp(void *data, struct rq *rq);
-extern void mtk_sched_switch(void *data, struct task_struct *prev,
+extern void mtk_sched_switch(void *data, unsigned int sched_mode, struct task_struct *prev,
 		struct task_struct *next, struct rq *rq);
 
 extern void set_wake_sync(unsigned int sync);

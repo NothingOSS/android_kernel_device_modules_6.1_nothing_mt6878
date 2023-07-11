@@ -806,7 +806,7 @@ void mtk_pelt_rt_tp(void *data, struct rq *rq)
 	cpufreq_update_util(rq, 0);
 }
 
-void mtk_sched_switch(void *data, struct task_struct *prev,
+void mtk_sched_switch(void *data, unsigned int sched_mode, struct task_struct *prev,
 		struct task_struct *next, struct rq *rq)
 {
 	if (next->pid == 0)

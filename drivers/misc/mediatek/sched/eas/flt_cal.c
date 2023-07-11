@@ -1213,8 +1213,8 @@ static void flt_android_rvh_tick_entry(void *unused, struct rq *rq)
 	flt_update_task_ravg(rq->curr, rq, TASK_UPDATE, wallclock, 0);
 }
 
-static void flt_android_rvh_schedule(void *unused, struct task_struct *prev,
-		struct task_struct *next, struct rq *rq)
+static void flt_android_rvh_schedule(void *unused, unsigned int sched_mode,
+		struct task_struct *prev, struct task_struct *next, struct rq *rq)
 {
 	u64 wallclock;
 
