@@ -91,7 +91,8 @@
 #define DEFAULT_GCC_DEQ_BOUND_THRS 20
 #define DEFAULT_GCC_DEQ_BOUND_QUOTA 6
 #define DEFAULT_BLC_BOOST 0
-#define DEFAULT_HEAVY_TASK_NUM 0
+#define DEFAULT_HEAVY_GROUP_NUM 0
+#define DEFAULT_SECOND_GROUP_NUM 0
 
 #define FPSGO_TPOLICY_NONE 0
 #define FPSGO_TPOLICY_AFFINITY 1
@@ -193,6 +194,12 @@ enum FPSGO_FILTER_STATE {
 	FPSGO_FILTER_WINDOWS_NOT_ENOUGH,
 	FPSGO_FILTER_INACTIVE,
 	FPSGO_FILTER_FRAME_ERR,
+};
+
+enum FPSGO_TASK_GROUP {
+	FPSGO_GROUP_OTHERS = 0,
+	FPSGO_GROUP_SECOND,
+	FPSGO_GROUP_HEAVY,
 };
 
 static struct kobject *fbt_kobj;
@@ -358,9 +365,12 @@ static int enable_ceiling;
 static int separate_aa;
 static int separate_pct_b;
 static int separate_pct_m;
+static int separate_pct_other;
 static int separate_release_sec;
 static int blc_boost;
-static int heavy_task_num;
+static int heavy_group_num;
+static int second_group_num;
+static int group_by_lr;
 
 static int cluster_num;
 static int nr_freq_cpu;
@@ -959,6 +969,27 @@ static int fbt_find_second_heavy(struct fpsgo_loading *dep_arr,
 	return ret_pid;
 }
 
+static int fbt_get_heaviest_pid(struct fpsgo_loading *dep_arr, int dep_size)
+{
+	int i;
+	int max_loading = 0;
+	int ret_pid = 0;
+
+	if (!dep_arr || !dep_size)
+		return 0;
+
+	for (i = 0; i < dep_size; i++) {
+		struct fpsgo_loading *fl = &dep_arr[i];
+
+		if (!fl->pid || fl->rmidx)
+			continue;
+		if (fl->loading > max_loading) {
+			ret_pid = fl->pid;
+			max_loading = fl->loading;
+		}
+	}
+	return ret_pid;
+}
 
 /* render thread and the heaviest thread */
 static int  fbt_is_R_L_task(int pid, int heaviest_pid, int second_pid, int thr_pid)
@@ -996,6 +1027,42 @@ EXIT:
 	return ori_nice;
 }
 
+static void fbt_task_cap(int pid, int min_cap, int min_cap_heavy, int min_cap_second,
+		int min_cap_other, int max_cap, int max_cap_heavy, int max_cap_second,
+		int max_cap_other, int separate_aa, int separate_release_sec, int group,
+		int action, int light_thread, int light_loading_pct)
+{
+	if ((light_thread && bhr_opp != (nr_freq_cpu - 1) && action == XGF_ADD_DEP) ||
+			(action == XGF_ADD_DEP_FORCE_LLF)) {
+		fbt_set_per_task_cap(pid,(!light_loading_pct) ? 0
+			: min_cap * light_loading_pct / 100, max_cap);
+		goto EXIT;
+	} else if (separate_aa) {
+		switch (group) {
+		case FPSGO_GROUP_HEAVY:
+			fbt_set_per_task_cap(pid, min_cap_heavy, max_cap_heavy);
+			break;
+		case FPSGO_GROUP_SECOND:
+			max_cap_second = separate_release_sec ? max_cap_heavy : max_cap_second;
+			fbt_set_per_task_cap(pid, min_cap_second, max_cap_second);
+			break;
+		case FPSGO_GROUP_OTHERS:
+			max_cap_other = separate_release_sec ? max_cap_heavy : max_cap_other;
+			if (min_cap_other)
+				fbt_set_per_task_cap(pid, min_cap_other, max_cap_other);
+			else
+				fbt_set_per_task_cap(pid, 0, 100);
+			break;
+		default:
+			break;
+		}
+	} else {
+		fbt_set_per_task_cap(pid, min_cap, max_cap);
+	}
+EXIT:
+	return;
+}
+
 static void fbt_nice_task(int pid, int set_nice, int *prev_nice)
 {
 	int ori_nice = -1;
@@ -1016,7 +1083,7 @@ static void fbt_nice_task(int pid, int set_nice, int *prev_nice)
 	}
 }
 
-static int fbt_affinity_task(int affinity, int pid, int is_heavy, int heaviest_pid,
+static int fbt_affinity_task(int affinity, int pid, int group, int heaviest_pid,
 				int second_heavy_pid, int render_pid, int llf_light, int llf_policy,
 				int reset_taskmask, int spid_action, int *prev_affinity,
 				int *prev_prefer, int *ori_ls)
@@ -1053,31 +1120,30 @@ static int fbt_affinity_task(int affinity, int pid, int is_heavy, int heaviest_p
 	policy = affinity;
 	switch (policy)  {
 	case FPSGO_BAFFINITY_B:
-		if (is_heavy)
+		if (group == FPSGO_GROUP_HEAVY)
 			prefer = FPSGO_PREFER_BIG;
 		else
 			prefer = FPSGO_PREFER_L_M;
 		ret = fbt_set_affinity(pid, prefer);
 		break;
 	case FPSGO_BAFFINITY_B_ADJ:
-		if (is_heavy)
+		if (group == FPSGO_GROUP_HEAVY)
 			prefer = FPSGO_PREFER_NONE;
 		else
 			prefer = FPSGO_PREFER_L_M;
 		ret = fbt_set_affinity(pid, prefer);
 		break;
 	case FPSGO_BAFFINITY_B_M:
-		if (is_heavy)
+		if (group == FPSGO_GROUP_HEAVY)
 			prefer = FPSGO_PREFER_B_M;
 		else
 			prefer = FPSGO_PREFER_M;
 		ret = fbt_set_affinity(pid, prefer);
 		break;
 	case FPSGO_BAFFINITY_L_R:
-		if (is_heavy)
+		if (group == FPSGO_GROUP_HEAVY)
 			prefer = FPSGO_PREFER_B_M;
-		else if (fbt_is_R_L_task(pid, heaviest_pid, second_heavy_pid,
-			render_pid) || spid_action == XGF_ADD_DEP_VIP)
+		else if (group == FPSGO_GROUP_SECOND || spid_action == XGF_ADD_DEP_VIP)
 			prefer = FPSGO_PREFER_M;
 		else
 			prefer = FPSGO_PREFER_L_M;
@@ -1086,7 +1152,7 @@ static int fbt_affinity_task(int affinity, int pid, int is_heavy, int heaviest_p
 	case FPSGO_SOFTAFFINITY:
 		if (*prev_affinity != FPSGO_SOFTAFFINITY)
 			*ori_ls = fbt_check_ls(pid) == 1 ? 1 : 0;
-		if (is_heavy)
+		if (group == FPSGO_GROUP_HEAVY)
 			prefer = FPSGO_PREFER_NONE;
 		else
 			prefer = FPSGO_PREFER_LITTLE;
@@ -1504,75 +1570,76 @@ int fbt_is_light_loading(int loading, int loading_threshold)
 	return 1;
 }
 
-static int fbt_find_heavy_task(struct fpsgo_loading dep_arr[], int dep_size,
-					int heavy_num, int *heaviest_pid)
+/* group dep tasks by loading */
+static int fbt_group_by_loading(struct fpsgo_loading dep_arr[], int dep_size,
+					int group_num, int group)
 {
 	int ret = -1;
 	int i, j;
 	int *heavy_loading, *heavy_idx;
-	int heaviest = 0;
 	int least_heavy = 100, least_heavy_index = 0;
+	int group_count = 0;
 
-	if (dep_size <= 0 || heavy_num <= 0)
+	if (dep_size <= 0)
 		return ret;
 
-	heavy_loading = kcalloc(heavy_num, sizeof(int), GFP_KERNEL);
-	heavy_idx = kcalloc(heavy_num, sizeof(int), GFP_KERNEL);
+	if (group_num <= 0) {
+		ret = 0;
+		return ret;
+	}
 
+	heavy_loading = kcalloc(group_num, sizeof(int), GFP_KERNEL);
+	heavy_idx = kcalloc(group_num, sizeof(int), GFP_KERNEL);
 	if (!heavy_loading || !heavy_idx)
 		goto EXIT;
 
-	/* heavy task array is not full */
-	for (i = 0; i < dep_size && i < heavy_num; i++) {
+	/* group task array is not full */
+	for (i = 0; i < dep_size && group_count < group_num; i++) {
 		struct fpsgo_loading *fl;
 
 		fl = &(dep_arr[i]);
-		if (!fl->pid || fl->rmidx)
+		if (!fl->pid || fl->rmidx || fl->heavyidx > group)
 			continue;
 
-		heavy_loading[i] = fl->loading;
-		heavy_idx[i] = i;
-		fl->heavyidx = 1;
-
-		if (heaviest < fl->loading) {
-			heaviest = fl->loading;
-			*heaviest_pid = fl->pid;
-		}
+		heavy_loading[group_count] = fl->loading;
+		heavy_idx[group_count] = i;
+		fl->heavyidx = group;
+		group_count ++;
 	}
 
-	if (dep_size <= heavy_num) {
+	if (i == dep_size) {
 		ret = 0;
 		goto EXIT;
 	}
 
 	/* find the least heavy task to be replaced */
-	for (j = 0; j < heavy_num; j++) {
+	for (j = 0; j < group_num; j++) {
 		if (heavy_loading[j] < least_heavy) {
 			least_heavy = heavy_loading[j];
 			least_heavy_index = j;
 		}
 	}
 
-	/* heavy task array is full, compare with the upcoming task */
-	for (i = heavy_num; i < dep_size; i++) {
+	/* group task array is full, compare with the upcoming task */
+	for (; i < dep_size; i++) {
 		struct fpsgo_loading *fl;
 
 		fl = &(dep_arr[i]);
-		if (!fl->pid || fl->rmidx)
+		if (!fl->pid || fl->rmidx || fl->heavyidx > group)
 			continue;
 
 		if (fl->loading > least_heavy) {
 			int replace = heavy_idx[least_heavy_index];
 			struct fpsgo_loading *fl_replace = &(dep_arr[replace]);
 
-			fl->heavyidx = 1;
+			fl->heavyidx = group;
 			fl_replace->heavyidx = 0;
 			heavy_loading[least_heavy_index] = fl->loading;
 			heavy_idx[least_heavy_index] = i;
 
 			least_heavy = 100;
 			least_heavy_index = 0;
-			for (j = 0; j < heavy_num; j++) {
+			for (j = 0; j < group_num; j++) {
 				if (heavy_loading[j] < least_heavy) {
 					least_heavy = heavy_loading[j];
 					least_heavy_index = j;
@@ -1580,17 +1647,54 @@ static int fbt_find_heavy_task(struct fpsgo_loading dep_arr[], int dep_size,
 			}
 		}
 
-		if (heaviest < fl->loading) {
-			heaviest = fl->loading;
-			*heaviest_pid = fl->pid;
-		}
 	}
-
 	ret = 0;
-
 EXIT:
 	kfree(heavy_loading);
 	kfree(heavy_idx);
+	return ret;
+}
+
+static int fbt_group_by_lr(struct fpsgo_loading dep_arr[], int dep_size, int heaviest_pid,
+			int second_pid, int thr_pid)
+{
+	int ret = -1;
+	int i;
+
+	if (!dep_arr || dep_size <= 0)
+		goto EXIT;
+	if (!heaviest_pid || !second_pid || !thr_pid)
+		goto EXIT;
+
+	for (i = 0; i < dep_size; i++) {
+		struct fpsgo_loading *fl = &dep_arr[i];
+
+		if (fbt_is_R_L_task(fl->pid, heaviest_pid, second_pid, thr_pid)) {
+			if (fl->pid == heaviest_pid)
+				fl->heavyidx = FPSGO_GROUP_HEAVY;
+			else
+				fl->heavyidx = FPSGO_GROUP_SECOND;
+		}
+	}
+	ret = 0;
+EXIT:
+	return ret;
+}
+
+static int fbt_group_dep(int group_by_lr, struct fpsgo_loading *dep_arr, int dep_size,
+			int heavy_group_num, int second_group_num, int heaviest_pid,
+			int second_pid, int thr_pid)
+{
+	int ret = 0;
+
+	if (group_by_lr)
+		ret = fbt_group_by_lr(dep_arr, dep_size, heaviest_pid, second_pid, thr_pid);
+	else {
+		heavy_group_num = heavy_group_num ? heavy_group_num : max_cl_core_num;
+		ret = fbt_group_by_loading(dep_arr, dep_size, heavy_group_num, FPSGO_GROUP_HEAVY);
+		if (!ret)
+			ret = fbt_group_by_loading(dep_arr, dep_size, second_group_num, FPSGO_GROUP_SECOND);
+	}
 	return ret;
 }
 
@@ -1906,10 +2010,14 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	int temp_size_need_set = 0;
 	char temp[MAX_PID_DIGIT] = {"\0"};
 	int light_thread = 0;
+	int group_by_lr_final;
+	int heavy_group_num_final;
+	int second_group_num_final;
 	int loading_th_final;
 	int loading_policy_final;
 	int llf_task_policy_final;
 	int separate_aa_final;
+	int separate_pct_other_final;
 	int separate_release_sec_final;
 	int boost_affinity_final;
 	int boost_VIP_final;
@@ -1917,6 +2025,8 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	int RT_prio1_final;
 	int RT_prio2_final;
 	int RT_prio3_final;
+	int min_cap_other;
+	int max_cap_other;
 
 	if (!uclamp_boost_enable)
 		return;
@@ -1924,11 +2034,15 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	if (!thr)
 		return;
 
+	group_by_lr_final = thr->attr.group_by_lr_by_pid;
+	heavy_group_num_final = thr->attr.heavy_group_num_by_pid;
+	second_group_num_final = thr->attr.second_group_num_by_pid;
 	loading_th_final = thr->attr.loading_th_by_pid;
 	loading_policy_final = thr->attr.light_loading_policy_by_pid;
 	llf_task_policy_final = thr->attr.llf_task_policy_by_pid;
 	separate_aa_final = thr->attr.separate_aa_by_pid;
 	separate_release_sec_final = thr->attr.separate_release_sec_by_pid;
+	separate_pct_other_final = thr->attr.separate_pct_other_by_pid;
 	boost_affinity_final = thr->attr.boost_affinity_by_pid;
 	boost_LR_final = thr->attr.boost_lr_by_pid;
 	boost_VIP_final = thr->attr.boost_vip_by_pid;
@@ -2016,15 +2130,15 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 				fl->loading = fpsgo_fbt2minitop_query_single(fl->pid);
 		}
 
-		ret = fbt_find_heavy_task(&(thr->dep_arr[0]), thr->dep_valid_size,
-			(heavy_task_num) ? heavy_task_num : max_cl_core_num, &heaviest_pid);
+
+		heaviest_pid = fbt_get_heaviest_pid(thr->dep_arr, thr->dep_valid_size);
 		second_heavy_pid = fbt_find_second_heavy(thr->dep_arr,
 						thr->dep_valid_size, heaviest_pid);
+		ret = fbt_group_dep(group_by_lr, thr->dep_arr, thr->dep_valid_size, heavy_group_num_final,
+			second_group_num_final, heaviest_pid, second_heavy_pid, thr->pid);
 		if (ret)
 			goto EXIT;
 	}
-
-
 
 	for (i = 0; i < thr->dep_valid_size; i++) {
 		struct fpsgo_loading *fl;
@@ -2044,40 +2158,34 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 				fl->loading, "dep-loading");
 			fpsgo_systrace_c_fbt_debug(fl->pid, thr->buffer_id,
 				fl->action, "dep-action");
+			fpsgo_systrace_c_fbt_debug(fl->pid, thr->buffer_id,
+				fl->heavyidx, "dep-group");
+		}
+
+		if (fl->heavyidx == FPSGO_GROUP_HEAVY) {
+			if (heaviest_pid && heaviest_pid == fl->pid)
+				fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
+						heaviest_pid, "heavy_pid");
+			fpsgo_systrace_c_fbt_debug(fl->pid, 0, 1, "is_heavy");
+			fpsgo_systrace_c_fbt_debug(fl->pid, 0, 0, "is_heavy");
 		}
 
 		light_thread = fbt_is_light_loading(fl->loading, loading_th_final);
 
-		if ((light_thread &&
-			bhr_opp != (nr_freq_cpu - 1) && fl->action == XGF_ADD_DEP) ||
-			(fl->action == XGF_ADD_DEP_FORCE_LLF)) {
-			fbt_set_per_task_cap(fl->pid,
-				(!loading_policy_final) ? 0
-				: min_cap * loading_policy_final / 100, max_cap);
-		} else if (fl->heavyidx) {
-			if (heaviest_pid && heaviest_pid == fl->pid)
-				fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
-						heaviest_pid, "heavy_pid");
-			if (separate_aa_final)
-				fbt_set_per_task_cap(fl->pid, min_cap_b, max_cap_b);
-			else
-				fbt_set_per_task_cap(fl->pid, min_cap, max_cap);
-			fpsgo_systrace_c_fbt_debug(fl->pid, 0, 1, "is_heavy");
-			fpsgo_systrace_c_fbt_debug(fl->pid, 0, 0, "is_heavy");
-		} else {
-			if (separate_aa_final) {
-				if (separate_release_sec_final)
-					fbt_set_per_task_cap(fl->pid, min_cap_m,
-							max(max_cap_m, max_cap_b));
-				else
-					fbt_set_per_task_cap(fl->pid, min_cap_m, max_cap_m);
-			} else
-				fbt_set_per_task_cap(fl->pid, min_cap, max_cap);
-		}
+		min_cap_other = min_cap_m * separate_pct_other_final / 100;
+		max_cap_other = max_cap_m;
+		min_cap_other = (min_cap_other > max_cap_other) ? max_cap_other : min_cap_other;
+
+		fbt_task_cap(fl->pid, min_cap, min_cap_b, min_cap_m, min_cap_other, max_cap,
+				max_cap_b,max_cap_m, max_cap_other, separate_aa_final,
+				separate_release_sec_final,fl->heavyidx,
+				fl->action, light_thread, loading_policy_final);
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, min_cap_other, "perf_idx_other");
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, max_cap_other, "perf_idx_max_other");
 
 		if ((boost_LR_final && fbt_is_R_L_task(fl->pid, heaviest_pid, second_heavy_pid, thr->pid)) ||
 				(boost_affinity_final && fl->heavyidx) ||
-				(boost_affinity_final == FPSGO_BAFFINITY_B_M && fl->ori_nice))
+				(boost_affinity_final == FPSGO_BAFFINITY_B_M && fl->action == XGF_ADD_DEP_NO_LLF))
 			fbt_nice_task(fl->pid, 1, &fl->ori_nice);
 		else
 			fbt_nice_task(fl->pid, 0, &fl->ori_nice);
@@ -2088,14 +2196,15 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			&fl->policy, &fl->prefer_type, &fl->ori_ls);
 
 		if (boost_VIP_final) {
-			int RTprio = 0;
 			int ori_prio = 0;
 			int sched_ret = 0;
 
-			if (fbt_is_R_L_task(fl->pid, heaviest_pid,
-						second_heavy_pid,thr->pid)) {
-				RTprio = (heaviest_pid == fl->pid) ? RT_prio1_final : RT_prio2_final;
-				fbt_set_task_sched_policy(fl->pid, RTprio, &ori_prio);
+			if (fl->heavyidx == FPSGO_GROUP_HEAVY) {
+				fbt_set_task_sched_policy(fl->pid, RT_prio1_final, &ori_prio);
+				if (!fl->ori_rtprio)
+					fl->ori_rtprio = ori_prio == 0 ? -1 : ori_prio;
+			} else if (fl->heavyidx == FPSGO_GROUP_SECOND) {
+				fbt_set_task_sched_policy(fl->pid, RT_prio2_final, &ori_prio);
 				if (!fl->ori_rtprio)
 					fl->ori_rtprio = ori_prio == 0 ? -1 : ori_prio;
 			} else if (fl->action == XGF_ADD_DEP_VIP) {
@@ -2161,6 +2270,9 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->rescue_second_enable_by_pid = rescue_second_enable;
 	render_attr->rescue_second_group_by_pid = rescue_second_group;
 	render_attr->rescue_second_time_by_pid = rescue_second_time;
+	render_attr->group_by_lr_by_pid = group_by_lr;
+	render_attr->heavy_group_num_by_pid = heavy_group_num;
+	render_attr->second_group_num_by_pid = second_group_num;
 	render_attr->llf_task_policy_by_pid = llf_task_policy;
 	render_attr->light_loading_policy_by_pid = loading_policy;
 	render_attr->loading_th_by_pid = loading_th;
@@ -2177,6 +2289,7 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->limit_ruclamp_m_by_pid = limit_ruclamp_m;
 	render_attr->separate_pct_b_by_pid = separate_pct_b;
 	render_attr->separate_pct_m_by_pid = separate_pct_m;
+	render_attr->separate_pct_other_by_pid = separate_pct_other;
 	render_attr->blc_boost_by_pid = blc_boost;
 	render_attr->boost_vip_by_pid = boost_VIP;
 	render_attr->rt_prio1_by_pid = RT_prio1;
@@ -2223,6 +2336,15 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	if (pid_attr.rescue_second_time_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->rescue_second_time_by_pid =
 			pid_attr.rescue_second_time_by_pid;
+	if (pid_attr.group_by_lr_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->group_by_lr_by_pid =
+			pid_attr.group_by_lr_by_pid;
+	if (pid_attr.heavy_group_num_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->heavy_group_num_by_pid =
+			pid_attr.heavy_group_num_by_pid;
+	if (pid_attr.second_group_num_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->second_group_num_by_pid =
+			pid_attr.second_group_num_by_pid;
 	if (pid_attr.llf_task_policy_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->llf_task_policy_by_pid =
 			pid_attr.llf_task_policy_by_pid;
@@ -2269,6 +2391,9 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	if (pid_attr.separate_pct_m_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->separate_pct_m_by_pid =
 			pid_attr.separate_pct_m_by_pid;
+	if (pid_attr.separate_pct_other_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->separate_pct_other_by_pid =
+			pid_attr.separate_pct_other_by_pid;
 	if (pid_attr.blc_boost_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->blc_boost_by_pid =
 			pid_attr.blc_boost_by_pid;
@@ -6778,6 +6903,21 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->rescue_second_group_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->rescue_second_group_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "group_by_lr")) {
+		if ((val == 0 || val == 1) && action == 's')
+			boost_attr->group_by_lr_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->group_by_lr_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "heavy_group_num")) {
+		if ((val <= 10 && val >= 0) && action == 's')
+			boost_attr->heavy_group_num_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->heavy_group_num_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "second_group_num")) {
+		if ((val <= 50 && val >= 0) && action == 's')
+			boost_attr->second_group_num_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->second_group_num_by_pid = BY_PID_DEFAULT_VAL;
 	} else if (!strcmp(cmd, "loading_th")) {
 		if (val <= 100 && val >= 0 && action == 's')
 			boost_attr->loading_th_by_pid = val;
@@ -6871,6 +7011,11 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->separate_pct_m_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->separate_pct_m_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "separate_pct_other")) {
+		if (val >= 0 && val <= 100 && action == 's')
+			boost_attr->separate_pct_other_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->separate_pct_other_by_pid = BY_PID_DEFAULT_VAL;
 	} else if (!strcmp(cmd, "blc_boost")) {
 		if (val >= 0 && val < 200 && action == 's')
 			boost_attr->blc_boost_by_pid = val;
@@ -8047,6 +8192,50 @@ out:
 
 static KOBJ_ATTR_RW(separate_pct_m);
 
+static ssize_t separate_pct_other_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int val = -1;
+
+	mutex_lock(&fbt_mlock);
+	val = separate_pct_other;
+	mutex_unlock(&fbt_mlock);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
+}
+
+static ssize_t separate_pct_other_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	int val = -1;
+	char *acBuffer = NULL;
+	int arg;
+
+	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!acBuffer)
+		goto out;
+
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) == 0) {
+				val = arg;
+				if (val <= 100 && val >= 0) {
+					mutex_lock(&fbt_mlock);
+					separate_pct_other = val;
+					mutex_unlock(&fbt_mlock);
+				}
+			}
+		}
+	}
+
+out:
+	kfree(acBuffer);
+	return count;
+}
+
+static KOBJ_ATTR_RW(separate_pct_other);
+
 static ssize_t separate_release_sec_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -8132,20 +8321,20 @@ out:
 
 static KOBJ_ATTR_RW(blc_boost);
 
-static ssize_t heavy_task_num_show(struct kobject *kobj,
+static ssize_t heavy_group_num_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
 	int val = -1;
 
 	mutex_lock(&fbt_mlock);
-	val = heavy_task_num;
+	val = heavy_group_num;
 	mutex_unlock(&fbt_mlock);
 
 	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
 }
 
-static ssize_t heavy_task_num_store(struct kobject *kobj,
+static ssize_t heavy_group_num_store(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		const char *buf, size_t count)
 {
@@ -8163,7 +8352,7 @@ static ssize_t heavy_task_num_store(struct kobject *kobj,
 				val = arg;
 				if (val <= 10 && val >= 0) {
 					mutex_lock(&fbt_mlock);
-					heavy_task_num = val;
+					heavy_group_num = val;
 					mutex_unlock(&fbt_mlock);
 				}
 			}
@@ -8175,7 +8364,95 @@ out:
 	return count;
 }
 
-static KOBJ_ATTR_RW(heavy_task_num);
+static KOBJ_ATTR_RW(heavy_group_num);
+
+static ssize_t second_group_num_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int val = -1;
+
+	mutex_lock(&fbt_mlock);
+	val = second_group_num;
+	mutex_unlock(&fbt_mlock);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
+}
+
+static ssize_t second_group_num_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	int val = -1;
+	char *acBuffer = NULL;
+	int arg;
+
+	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!acBuffer)
+		goto out;
+
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) == 0) {
+				val = arg;
+				if (val <= 50 && val >= 0) {
+					mutex_lock(&fbt_mlock);
+					second_group_num = val;
+					mutex_unlock(&fbt_mlock);
+				}
+			}
+		}
+	}
+
+out:
+	kfree(acBuffer);
+	return count;
+}
+
+static KOBJ_ATTR_RW(second_group_num);
+
+static ssize_t group_by_lr_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int val = -1;
+
+	mutex_lock(&fbt_mlock);
+	val = group_by_lr;
+	mutex_unlock(&fbt_mlock);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
+}
+
+static ssize_t group_by_lr_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	int val = -1;
+	char *acBuffer = NULL;
+	int arg;
+
+	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!acBuffer)
+		goto out;
+
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) == 0) {
+				val = !!arg;
+				mutex_lock(&fbt_mlock);
+				group_by_lr = val;
+				mutex_unlock(&fbt_mlock);
+			}
+		}
+	}
+
+out:
+	kfree(acBuffer);
+	return count;
+}
+
+static KOBJ_ATTR_RW(group_by_lr);
 
 static ssize_t boost_VIP_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -8423,9 +8700,12 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_enable_separate_aa);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_separate_pct_b);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_separate_pct_m);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_separate_pct_other);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_separate_release_sec);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_blc_boost);
-	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_heavy_task_num);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_heavy_group_num);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_second_group_num);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_group_by_lr);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_boost_VIP);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_RT_prio1);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_RT_prio2);
@@ -8549,9 +8829,12 @@ int __init fbt_cpu_init(void)
 	separate_aa = 0;
 	separate_pct_b = 0;
 	separate_pct_m = 0;
+	separate_pct_other = 100;
 	separate_release_sec = 0;
 	blc_boost = DEFAULT_BLC_BOOST;
-	heavy_task_num = DEFAULT_HEAVY_TASK_NUM;
+	heavy_group_num = DEFAULT_HEAVY_GROUP_NUM;
+	second_group_num = DEFAULT_SECOND_GROUP_NUM;
+	group_by_lr = 0;
 
 	rl_learning_rate_p = 10;
 	rl_learning_rate_n = 10;
@@ -8614,9 +8897,12 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_enable_separate_aa);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_separate_pct_b);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_separate_pct_m);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_separate_pct_other);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_separate_release_sec);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_blc_boost);
-		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_heavy_task_num);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_heavy_group_num);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_second_group_num);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_group_by_lr);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_boost_VIP);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_RT_prio1);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_RT_prio2);

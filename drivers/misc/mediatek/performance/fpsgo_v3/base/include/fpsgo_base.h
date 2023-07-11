@@ -181,6 +181,11 @@ struct fpsgo_boost_attr {
 	int rescue_second_time_by_pid;
 	int rescue_second_group_by_pid;
 
+	/*   grouping   */
+	int group_by_lr_by_pid;
+	int heavy_group_num_by_pid;
+	int second_group_num_by_pid;
+
 	/* filter frame */
 	int filter_frame_enable_by_pid;
 	int filter_frame_window_size_by_pid;
@@ -200,6 +205,7 @@ struct fpsgo_boost_attr {
 	int limit_ruclamp_m_by_pid;
 	int separate_pct_b_by_pid;
 	int separate_pct_m_by_pid;
+	int separate_pct_other_by_pid;
 	int separate_release_sec_by_pid;
 
 	/* blc boost*/

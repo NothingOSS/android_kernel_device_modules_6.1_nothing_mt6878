@@ -822,6 +822,10 @@ void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->rescue_second_time_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->rescue_second_group_by_pid = BY_PID_DEFAULT_VAL;
 
+		boost_attr->group_by_lr_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->heavy_group_num_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->second_group_num_by_pid = BY_PID_DEFAULT_VAL;
+
 		boost_attr->filter_frame_enable_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->filter_frame_window_size_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->filter_frame_kmin_by_pid = BY_PID_DEFAULT_VAL;
@@ -837,6 +841,7 @@ void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->limit_ruclamp_m_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->separate_pct_b_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->separate_pct_m_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->separate_pct_other_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->qr_enable_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->qr_t2wnt_x_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->qr_t2wnt_y_p_by_pid = BY_PID_DEFAULT_VAL;
@@ -1091,6 +1096,9 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.rescue_second_enable_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.rescue_second_time_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.rescue_second_group_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.group_by_lr_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.heavy_group_num_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.second_group_num_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.llf_task_policy_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.light_loading_policy_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.loading_th_by_pid == BY_PID_DEFAULT_VAL &&
@@ -1107,6 +1115,7 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.limit_ruclamp_m_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.separate_pct_b_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.separate_pct_m_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.separate_pct_other_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.qr_enable_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.qr_t2wnt_x_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.qr_t2wnt_y_n_by_pid == BY_PID_DEFAULT_VAL &&
@@ -1136,6 +1145,9 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.rescue_second_enable_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.rescue_second_time_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.rescue_second_group_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.group_by_lr_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.heavy_group_num_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.second_group_num_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.llf_task_policy_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.light_loading_policy_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.loading_th_by_pid == BY_PID_DELETE_VAL ||
@@ -1152,6 +1164,7 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.limit_ruclamp_m_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.separate_pct_b_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.separate_pct_m_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.separate_pct_other_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.qr_enable_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.qr_t2wnt_x_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.qr_t2wnt_y_n_by_pid == BY_PID_DELETE_VAL ||
@@ -2593,6 +2606,10 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 	pos += length;
 
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+		" group_by_lr, heavy_group_num, second_group_num\n");
+	pos += length;
+
+	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 		" ff_enable, ff_window_size, ff_k_min\n");
 	pos += length;
 
@@ -2601,7 +2618,7 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 	pos += length;
 
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-		" separate_aa, separate_release_sec_by_pid, pct_b, pct_m, blc_boost\n");
+		" separate_aa, separate_release_sec_by_pid, pct_b, pct_m, pct_other, blc_boost\n");
 	pos += length;
 
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
@@ -2663,6 +2680,13 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 
 			length = scnprintf(temp + pos,
 				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d\n",
+				attr_item.group_by_lr_by_pid,
+				attr_item.heavy_group_num_by_pid,
+				attr_item.second_group_num_by_pid);
+			pos += length;
+
+			length = scnprintf(temp + pos,
+				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d\n",
 				attr_item.filter_frame_enable_by_pid,
 				attr_item.filter_frame_window_size_by_pid,
 				attr_item.filter_frame_kmin_by_pid);
@@ -2675,11 +2699,12 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 			pos += length;
 
 			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
+				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d, %4d\n",
 				attr_item.separate_aa_by_pid,
 				attr_item.separate_release_sec_by_pid,
 				attr_item.separate_pct_b_by_pid,
 				attr_item.separate_pct_m_by_pid,
+				attr_item.separate_pct_other_by_pid,
 				attr_item.blc_boost_by_pid);
 			pos += length;
 
