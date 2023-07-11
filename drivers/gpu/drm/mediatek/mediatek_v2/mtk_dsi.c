@@ -8964,7 +8964,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	void **out_params;
 	struct mtk_panel_ext *panel_ext = NULL;
 	struct drm_display_mode **mode;
-	bool *enable, *async;
+	bool *enable, async;
 	unsigned int vfp_low_power = 0;
 	int ret;
 
@@ -9010,16 +9010,16 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	}
 		break;
 	case CONNECTOR_ENABLE:
-		async = (bool *)params;
-		mtk_dsi_leave_idle(dsi, 0, *async);
+		async = params ? *((bool *)params) : 0;
+		mtk_dsi_leave_idle(dsi, 0, async);
 		if (dsi->slave_dsi)
-			mtk_dsi_leave_idle(dsi->slave_dsi, 0, *async);
+			mtk_dsi_leave_idle(dsi->slave_dsi, 0, async);
 		break;
 	case CONNECTOR_DISABLE:
-		async = (bool *)params;
-		mtk_dsi_enter_idle(dsi, 0, *async);
+		async = params ? *((bool *)params) : 0;
+		mtk_dsi_enter_idle(dsi, 0, async);
 		if (dsi->slave_dsi)
-			mtk_dsi_enter_idle(dsi->slave_dsi, 0, *async);
+			mtk_dsi_enter_idle(dsi->slave_dsi, 0, async);
 		break;
 	case CONNECTOR_POWEROFF:
 		if (atomic_read(&dsi->ulps_async) != 0)
