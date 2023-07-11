@@ -205,20 +205,20 @@ void mtk_vidle_hrt_bw_set(const u32 bw_in_mb)
 {
 	if (disp_dpc_driver.dpc_hrt_bw_set)
 		disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb,
-					       atomic_read(&g_ff_enabled));
+					       !atomic_read(&g_ff_enabled));
 	/* TODO: false if auto mode */
 }
 void mtk_vidle_srt_bw_set(const u32 bw_in_mb)
 {
 	if (disp_dpc_driver.dpc_srt_bw_set)
 		disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb,
-					       atomic_read(&g_ff_enabled));
+					       !atomic_read(&g_ff_enabled));
 }
 void mtk_vidle_dvfs_set(const u8 level)
 {
 	if (disp_dpc_driver.dpc_dvfs_set)
 		disp_dpc_driver.dpc_dvfs_set(DPC_SUBSYS_DISP, level,
-					     atomic_read(&g_ff_enabled));
+					     !atomic_read(&g_ff_enabled));
 }
 void mtk_vidle_config_ff(bool en)
 {

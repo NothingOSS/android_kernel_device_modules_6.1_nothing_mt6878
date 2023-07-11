@@ -241,10 +241,8 @@ static void dpc_dt_enable(u16 dt, bool en)
 	u32 addr = 0;
 
 	if (dt < DPC_DISP_DT_CNT) {
-		DPCFUNC("DISP dt(%u) en(%u)", dt, en);
 		addr = DISP_REG_DPC_DISP_DT_EN;
 	} else {
-		DPCFUNC("MML dt(%u) en(%u)", dt, en);
 		addr = DISP_REG_DPC_MML_DT_EN;
 		dt -= DPC_DISP_DT_CNT;
 	}
@@ -261,7 +259,6 @@ static void dpc_dt_set(u16 dt, u32 us)
 	u32 value = us * 26;	/* 26M base, 20 bits range, 38.46 ns ~ 38.46 ms*/
 
 	writel(value, dpc_base + DISP_REG_DPC_DTx_COUNTER(dt));
-	DPCFUNC("dt(%u) counter(%u)us", dt, us);
 }
 
 static void dpc_dt_sw_trig(u16 dt)
@@ -274,8 +271,6 @@ static void dpc_disp_group_enable(const enum mtk_dpc_disp_vidle group, bool en)
 {
 	int i;
 	u32 value = 0;
-
-	DPCFUNC("group(%u) en(%u)", group, en);
 
 	switch (group) {
 	case DPC_DISP_VIDLE_MTCMOS:
@@ -335,8 +330,6 @@ static void dpc_mml_group_enable(const enum mtk_dpc_mml_vidle group, bool en)
 {
 	int i;
 	u32 value = 0;
-
-	DPCFUNC("group(%u) en(%u)", group, en);
 
 	switch (group) {
 	case DPC_MML_VIDLE_MTCMOS:
