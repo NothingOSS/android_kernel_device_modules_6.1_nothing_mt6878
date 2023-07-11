@@ -3085,6 +3085,7 @@
 					&smi_img_sub_comm4 &smi_img_sub_comm2 &smi_cam_sub_comm0
 					&smi_cam_sub_comm2 &smi_cam_vcore_sub_comm
 					&smi_ccu_sub_comm0>;
+		hwccf-support;
 	};
 
 	mminfra_debug: mminfra-debug@1e827000 {
