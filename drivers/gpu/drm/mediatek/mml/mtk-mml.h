@@ -154,6 +154,7 @@ struct mml_pq_param {
 	uint32_t user_info;
 	uint32_t app_hint;
 	uint32_t connector_id;
+	uint32_t current_panel_lum;
 };
 
 struct mml_color_desc {
