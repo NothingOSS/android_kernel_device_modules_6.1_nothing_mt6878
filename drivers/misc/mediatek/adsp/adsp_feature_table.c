@@ -10,10 +10,6 @@
 #include "adsp_platform.h"
 #include "adsp_core.h"
 
-#define BTAUDIO_FEATURE_BITS   \
-	(BIT(A2DP_PLAYBACK_FEATURE_ID) | \
-	 BIT(BLEDL_FEATURE_ID))
-
 struct adsp_feature_tb {
 	const char *name;
 	int counter[ADSP_CORE_TOTAL];
@@ -101,11 +97,6 @@ ssize_t adsp_dump_feature_state(u32 cid, char *buffer, int size)
 	return n;
 }
 
-static bool is_adsp_btaudio_feature(u32 fid)
-{
-	return !!(BIT(fid) & BTAUDIO_FEATURE_BITS);
-}
-
 bool adsp_feature_is_active(u32 cid)
 {
 	if (cid >= get_adsp_core_total())
@@ -150,14 +141,6 @@ int _adsp_register_feature(u32 cid, u32 fid, u32 opt)
 		ctrl->total += 1;
 	}
 
-	if (is_adsp_btaudio_feature(fid)) {
-		if (ctrl->total_btaud == 0) {
-			adsp_enable_uart_clock();
-			adsp_select_uart_clock_mode(CLK_LOW_POWER);
-		}
-		ctrl->total_btaud += 1;
-	}
-
 	mutex_unlock(&ctrl->lock);
 	return ret;
 }
@@ -178,12 +161,6 @@ int _adsp_deregister_feature(u32 cid, u32 fid, u32 opt)
 		return -EINVAL;
 
 	mutex_lock(&ctrl->lock);
-
-	if (is_adsp_btaudio_feature(fid)) {
-		ctrl->total_btaud -= 1;
-		if (ctrl->total_btaud == 0)
-			adsp_disable_uart_clock();
-	}
 
 	if (item->counter[cid] == 0) {
 		pr_err("[%s] error to deregister id=%d\n", __func__, fid);

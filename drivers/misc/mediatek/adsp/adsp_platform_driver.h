@@ -105,7 +105,6 @@ struct adspsys_priv {
 	struct workqueue_struct *workq;
 
 	struct adsp_clk_operations clk_ops;
-	struct adsp_clk_operations uart_clk_ops;
 
 	const struct adspsys_description *desc;
 };
