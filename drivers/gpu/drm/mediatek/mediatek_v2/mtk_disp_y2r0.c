@@ -229,6 +229,31 @@ int mtk_y2r_analysis(struct mtk_ddp_comp *comp)
 	return 0;
 }
 
+static void mtk_y2r_discrete_config(struct mtk_ddp_comp *comp,
+		unsigned int idx, struct mtk_plane_state *state, struct cmdq_pkt *handle)
+{
+	struct mtk_plane_pending_state *pending = &state->pending;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	unsigned int width = pending->width;
+	unsigned int height = pending->height;
+	struct mtk_drm_private *priv = NULL;
+
+	priv = mtk_crtc->base.dev->dev_private;
+
+	if (priv->data->mmsys_id == MMSYS_MT6989) {
+		if (idx == 0)
+			//plane 0 config, need to clear prev atomic commit frame done event
+			mtk_crtc_clr_comp_done(mtk_crtc, handle, comp, 0);
+		else
+			//plane n need to wait prev plane n-1 frame done event
+			mtk_crtc_wait_comp_done(mtk_crtc, handle, comp, 0);
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_SIZE,
+			((width << 16) | height), ~0);
+	}
+}
+
 static void mtk_y2r_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
@@ -283,6 +308,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_y2r_funcs = {
 	.start = mtk_y2r_start,
 	.stop = mtk_y2r_stop,
 	.addon_config = mtk_y2r_addon_config,
+	.discrete_config = mtk_y2r_discrete_config,
 	.prepare = mtk_y2r_prepare,
 	.unprepare = mtk_y2r_unprepare,
 };

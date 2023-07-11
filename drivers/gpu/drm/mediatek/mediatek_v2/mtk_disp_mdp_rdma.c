@@ -225,6 +225,7 @@ static unsigned int mdp_rdma_fmt_convert(unsigned int fmt)
 	case DRM_FORMAT_NV21:	//0x3132564e
 		return MEM_MODE_INPUT_FORMAT_NV12 | SWAP;
 	default:
+		/* DRM_FORMAT_ABGR8888 0x34324241 */
 		DDPPR_ERR("[discrete] not support fmt:0x%x\n", fmt);
 		return 0;
 	}
@@ -365,8 +366,6 @@ static void mtk_mdp_rdma_pattern_config(struct mtk_ddp_comp *comp,
 			0, ~0);
 
 	if (cfg_h != 0) {
-		mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, comp->id,
-			0, cfg_handle, 1);
 		mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[1],
 			cfg_handle, comp->cmdq_base);
 	}
@@ -533,42 +532,23 @@ static void mtk_mdp_rdma_layer_config_core(struct mtk_ddp_comp *comp,
 	}
 }
 
-static void mtk_mdp_rdma_layer_config(struct mtk_ddp_comp *comp,
+static void mtk_mdp_rdma_discrete_config(struct mtk_ddp_comp *comp,
 		unsigned int idx, struct mtk_plane_state *state, struct cmdq_pkt *handle)
 {
 	struct mtk_plane_pending_state *pending = &state->pending;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	struct drm_crtc *crtc;
-	struct cmdq_client *client;
-	struct cmdq_pkt *pending_handle;
 
 	if (!mtk_mdp_rdma_format_check(pending))
 		return;
 
-	if (idx == 0) {
-		//plane0 config, need clear prev atomic commit frame done event
+	if (idx == 0)
+		//plane 0 config, need to clear prev atomic commit frame done event
 		mtk_crtc_clr_comp_done(mtk_crtc, handle, comp, 0);
-		mtk_mdp_rdma_layer_config_core(comp, idx, state, handle);
-		return;
-	}
+	else
+		//plane n need to wait prev plane n-1 frame done event
+		mtk_crtc_wait_comp_done(mtk_crtc, handle, comp, 0);
 
-	//after plane0 config, need to wait prev plane done first
-	if (!mtk_crtc->pending_handle) {
-		crtc = &mtk_crtc->base;
-		client = mtk_crtc->gce_obj.client[CLIENT_CFG];
-		mtk_crtc_pkt_create(&pending_handle, crtc, client);
-		mtk_crtc->pending_handle = pending_handle;
-		DDPINFO("[discrete] %s create hnd:0x%lx\n",
-			__func__, (unsigned long)pending_handle);
-	} else
-		pending_handle = mtk_crtc->pending_handle;
-
-	mtk_crtc_wait_comp_done(mtk_crtc, pending_handle, comp, 0);
-
-	mtk_mdp_rdma_layer_config_core(comp, idx, state, pending_handle);
-
-	mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, comp->id,
-		0, pending_handle, 1);
+	mtk_mdp_rdma_layer_config_core(comp, idx, state, handle);
 }
 
 static int mtk_mdp_rdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -609,7 +589,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_mdp_rdma_funcs = {
 	.prepare = mtk_mdp_rdma_prepare,
 	.unprepare = mtk_mdp_rdma_unprepare,
 	.config = mtk_mdp_rdma_config,
-	.layer_config = mtk_mdp_rdma_layer_config,
+	.discrete_config = mtk_mdp_rdma_discrete_config,
 	.io_cmd = mtk_mdp_rdma_io_cmd,
 };
 

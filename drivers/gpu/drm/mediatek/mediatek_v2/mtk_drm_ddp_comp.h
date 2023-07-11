@@ -787,6 +787,9 @@ struct mtk_ddp_comp_funcs {
 	void (*layer_config)(struct mtk_ddp_comp *comp, unsigned int idx,
 			     struct mtk_plane_state *state,
 			     struct cmdq_pkt *handle);
+	void (*discrete_config)(struct mtk_ddp_comp *comp, unsigned int idx,
+			     struct mtk_plane_state *state,
+			     struct cmdq_pkt *handle);
 	void (*gamma_set)(struct mtk_ddp_comp *comp,
 			  struct drm_crtc_state *state,
 			  struct cmdq_pkt *handle);
@@ -967,6 +970,17 @@ static inline void mtk_ddp_comp_layer_config(struct mtk_ddp_comp *comp,
 			comp->funcs, comp->funcs->layer_config);
 
 		comp->funcs->layer_config(comp, idx, state, handle);
+	}
+}
+
+static inline void mtk_ddp_comp_discrete_config(struct mtk_ddp_comp *comp,
+					     unsigned int idx,
+					     struct mtk_plane_state *state,
+					     struct cmdq_pkt *handle)
+{
+	if (comp && comp->funcs && comp->funcs->discrete_config &&
+			!comp->blank_mode) {
+		comp->funcs->discrete_config(comp, idx, state, handle);
 	}
 }
 

@@ -6037,6 +6037,8 @@ int get_comp_wait_event(struct mtk_drm_crtc *mtk_crtc,
 		return mtk_crtc->gce_obj.event[EVENT_MDP_RDMA0_EOF];
 	} else if (comp->id == DDP_COMPONENT_MDP_RDMA1) {
 		return mtk_crtc->gce_obj.event[EVENT_MDP_RDMA1_EOF];
+	} else if (comp->id == DDP_COMPONENT_Y2R0) {
+		return mtk_crtc->gce_obj.event[EVENT_Y2R_EOF];
 	}
 
 	DDPPR_ERR("The component has not frame done event\n");
@@ -6079,7 +6081,8 @@ void mtk_crtc_clr_comp_done(struct mtk_drm_crtc *mtk_crtc,
 	if (gce_event < 0)
 		return;
 	if (gce_event == mtk_crtc->gce_obj.event[EVENT_MDP_RDMA0_EOF] ||
-		gce_event == mtk_crtc->gce_obj.event[EVENT_MDP_RDMA1_EOF])
+		gce_event == mtk_crtc->gce_obj.event[EVENT_MDP_RDMA1_EOF] ||
+		gce_event == mtk_crtc->gce_obj.event[EVENT_Y2R_EOF])
 		cmdq_pkt_clear_event(cmdq_handle, gce_event);
 	else
 		DDPPR_ERR("The component has not frame done event\n");
@@ -6096,7 +6099,8 @@ void mtk_crtc_wait_comp_done(struct mtk_drm_crtc *mtk_crtc,
 	if (gce_event < 0)
 		return;
 	if (gce_event == mtk_crtc->gce_obj.event[EVENT_MDP_RDMA0_EOF] ||
-		gce_event == mtk_crtc->gce_obj.event[EVENT_MDP_RDMA1_EOF])
+		gce_event == mtk_crtc->gce_obj.event[EVENT_MDP_RDMA1_EOF] ||
+		gce_event == mtk_crtc->gce_obj.event[EVENT_Y2R_EOF])
 		cmdq_pkt_wfe(cmdq_handle, gce_event);
 	else
 		DDPPR_ERR("The component has not frame done event\n");
@@ -13347,6 +13351,43 @@ void mtk_drm_crtc_plane_disable(struct drm_crtc *crtc, struct drm_plane *plane,
 	DDPINFO("%s-\n", __func__);
 }
 
+void mtk_drm_crtc_discrete_update(struct drm_crtc *crtc,
+					     unsigned int idx,
+					     struct mtk_plane_state *state,
+					     struct cmdq_pkt *handle)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct cmdq_client *client;
+	struct cmdq_pkt *pending_handle = handle;
+	struct mtk_ddp_comp *comp = NULL;
+	int i, j;
+	bool is_frame_mode;
+
+	is_frame_mode = mtk_crtc_is_frame_trigger_mode(crtc);
+
+	if (idx != 0) {
+		if (!mtk_crtc->pending_handle) {
+			client = mtk_crtc->gce_obj.client[CLIENT_CFG];
+			mtk_crtc_pkt_create(&pending_handle, crtc, client);
+			mtk_crtc->pending_handle = pending_handle;
+		} else
+			pending_handle = mtk_crtc->pending_handle;
+	}
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_MDP_RDMA ||
+				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_Y2R))
+			mtk_ddp_comp_discrete_config(comp, idx, state, pending_handle);
+
+		mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, comp->id,
+					is_frame_mode, pending_handle, 1);
+	}
+	//discrete path need re-trigger by itself after plane 0
+	if (idx != 0 && mtk_crtc->pending_handle) {
+		mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[1],
+			mtk_crtc->pending_handle, mtk_crtc->gce_obj.base);
+	}
+}
+
 void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 			       struct mtk_plane_state *plane_state)
 {
@@ -13402,12 +13443,9 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 		else
 			mtk_ddp_comp_layer_config(comp, plane_index, plane_state, cmdq_handle);
 
-		//discrete path need re-trigger by itself after plane 0
-		if (mtk_crtc->path_data->is_discrete_path &&
-			plane_index != 0 && mtk_crtc->pending_handle) {
-			mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[1],
-				mtk_crtc->pending_handle, mtk_crtc->gce_obj.base);
-		}
+		if (mtk_crtc->path_data->is_discrete_path)
+			mtk_drm_crtc_discrete_update(crtc, plane_index, plane_state, cmdq_handle);
+
 #ifndef DRM_CMDQ_DISABLE
 		mtk_wb_atomic_commit(mtk_crtc, v, h, state->cmdq_handle);
 #else
@@ -13963,7 +14001,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		CRTC_MMP_MARK(crtc_index, discrete, 0,
 			(unsigned long)pending_handle);
 		if (cmdq_pkt_flush_threaded(pending_handle,
-			mtk_drm_discrete_cb, discrete_cb_data))
+			mtk_drm_discrete_cb, discrete_cb_data) < 0)
 			DDPPR_ERR("failed to flush gce_cb threaded\n");
 	}
 
@@ -13993,7 +14031,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		wb_cb_data->wb_fence_idx = state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX];
 		CRTC_MMP_MARK(crtc_index, wbBmpDump, (unsigned long)handle,
 							wb_cb_data->wb_fence_idx);
-		if (cmdq_pkt_flush_threaded(handle, mtk_drm_wb_cb, wb_cb_data))
+		if (cmdq_pkt_flush_threaded(handle, mtk_drm_wb_cb, wb_cb_data) < 0)
 			DDPPR_ERR("failed to flush gce_cb threaded\n");
 	}
 
@@ -15424,6 +15462,10 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 	case EVENT_MDP_RDMA1_EOF:
 		len = snprintf(buf, buf_len, "disp_mdp_rdma1_eof%d",
 			       drm_crtc_index(&mtk_crtc->base));
+		break;
+	case EVENT_Y2R_EOF:
+		len = snprintf(buf, buf_len, "disp_y2r_eof%d",
+				   drm_crtc_index(&mtk_crtc->base));
 		break;
 	default:
 		DDPPR_ERR("%s invalid event_id:%d\n", __func__, event_id);
