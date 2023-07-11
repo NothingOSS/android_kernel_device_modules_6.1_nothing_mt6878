@@ -2192,10 +2192,7 @@ static int cmdq_mdp_init_larb(struct platform_device *pdev)
 	of_node_put(node);
 
 	mdp_ctx.larb = &larb_pdev->dev;
-	if (!device_link_add(&pdev->dev, mdp_ctx.larb, DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
-		CMDQ_ERR("%s larb device link fail\n", __func__);
-		return -EINVAL;
-	}
+
 	CMDQ_LOG("%s success\n", __func__);
 
 	return 0;

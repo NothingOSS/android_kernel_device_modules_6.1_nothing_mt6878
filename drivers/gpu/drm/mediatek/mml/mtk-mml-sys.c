@@ -901,6 +901,7 @@ s32 mml_sys_pw_enable(struct mml_comp *comp)
 	/* Note: Do manually pw_enable and disable during mml/disp mtcmos on or off,
 	 * cause mminfra must power on before other mtcmos, and must off after it.
 	 */
+	mml_msg_dpc("%s mminfra pm_runtime_resume_and_get", __func__);
 	ret = pm_runtime_resume_and_get(sys->dev);
 	if (ret)
 		mml_err("%s enable pw-domain fail ret:%d", __func__, ret);
@@ -912,6 +913,7 @@ s32 mml_sys_pw_enable(struct mml_comp *comp)
 		mml_err("%s enable larb pm fail ret:%d", __func__, ret);
 
 	/* turn off mminfra */
+	mml_msg_dpc("%s mminfra pm_runtime_put_sync", __func__);
 	pm_runtime_put_sync(sys->dev);
 
 	return ret;
@@ -936,12 +938,14 @@ s32 mml_sys_pw_disable(struct mml_comp *comp)
 		return 0;
 	}
 
+	mml_msg_dpc("%s mminfra pm_runtime_resume_and_get", __func__);
 	ret = pm_runtime_resume_and_get(sys->dev);
 	if (ret)
 		mml_err("%s enable pw-domain fail ret:%d", __func__, ret);
 	mml_msg_dpc("%s comp %u pm_runtime_put_sync", __func__, comp->id);
 	mml_mmp(dpc_pm_runtime_put, MMPROFILE_FLAG_PULSE, comp->id, 0);
 	pm_runtime_put_sync(comp->larb_dev);
+	mml_msg_dpc("%s mminfra pm_runtime_put_sync", __func__);
 	pm_runtime_put_sync(sys->dev);
 
 	return 0;

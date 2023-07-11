@@ -1521,10 +1521,6 @@ struct device *mdp_init_larb(struct platform_device *pdev, u8 idx)
 	}
 	of_node_put(node);
 
-	if (!device_link_add(&pdev->dev, &larb_pdev->dev, DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
-		CMDQ_ERR("%s larb device link fail\n", __func__);
-		return NULL;
-	}
 	CMDQ_LOG("%s pdev %p idx %hhu\n", __func__, pdev, idx);
 
 	return &larb_pdev->dev;
