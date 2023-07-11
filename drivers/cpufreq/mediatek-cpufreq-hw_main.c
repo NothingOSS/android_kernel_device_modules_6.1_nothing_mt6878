@@ -186,9 +186,8 @@ static unsigned int mtk_cpufreq_hw_fast_switch(struct cpufreq_policy *policy,
 		index = cpufreq_table_find_index_dl(policy, target_freq, false);
 
 	if (fdvfs_enabled) {
-		if(c->sb_ch)
-			c->sb_ch == -1 ? cpufreq_fdvfs_cci_switch(0):
-					cpufreq_fdvfs_cci_switch(c->sb_ch);
+		if(c->sb_ch && c->sb_ch != -1)
+			cpufreq_fdvfs_cci_switch(c->sb_ch);
 		cpufreq_fdvfs_switch(target_freq, policy);
 	}
 	else {
