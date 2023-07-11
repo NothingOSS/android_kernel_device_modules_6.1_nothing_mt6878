@@ -21,6 +21,14 @@ struct golden_setting {
 		u32 ultra;
 		u32 urgent;
 	} plane[DMABUF_CON_CNT];
+
+	/* [0]: Rotate 0/180
+	 * [1]: Rotate 90/270
+	 */
+	struct prefetch_rotate {
+		u32 prefetch_ctrl1;
+		u32 prefetch_ctrl2;
+	} pfrot[2];
 };
 
 struct rrot_golden {
@@ -32,18 +40,8 @@ struct rrot_golden {
 /* begin of mt6989 golden settings */
 
 /* !!Following code generate by golden parser (goldenparser.py)!! */
-#define MT6989_NV12BLK_4K_URGENT_0		(173 << 16 | 138)
-#define MT6989_NV12BLK_4K_ULTRA_0		(242 << 16 | 207)
-#define MT6989_NV12BLK_4K_PREULTRA_0		(311 << 16 | 276)
-#define MT6989_NV12BLK_4K_URGENT_1		(86 << 16 | 69)
-#define MT6989_NV12BLK_4K_ULTRA_1		(121 << 16 | 104)
-#define MT6989_NV12BLK_4K_PREULTRA_1		(155 << 16 | 138)
-#define MT6989_NV12BLK_4K_URGENT_2		0
-#define MT6989_NV12BLK_4K_ULTRA_2		0
-#define MT6989_NV12BLK_4K_PREULTRA_2		0
-#define MT6989_NV12BLK_4K_URGENT_3		0
-#define MT6989_NV12BLK_4K_ULTRA_3		0
-#define MT6989_NV12BLK_4K_PREULTRA_3		0
+
+/* pre-ultra, ultra and urgent settings */
 #define MT6989_3PLANE_4K_URGENT_0		(173 << 16 | 138)
 #define MT6989_3PLANE_4K_ULTRA_0		(242 << 16 | 207)
 #define MT6989_3PLANE_4K_PREULTRA_0		(311 << 16 | 276)
@@ -68,18 +66,6 @@ struct rrot_golden {
 #define MT6989_2PLANE_4K_URGENT_3		0
 #define MT6989_2PLANE_4K_ULTRA_3		0
 #define MT6989_2PLANE_4K_PREULTRA_3		0
-#define MT6989_UYVY_4K_URGENT_0			(345 << 16 | 276)
-#define MT6989_UYVY_4K_ULTRA_0			(483 << 16 | 414)
-#define MT6989_UYVY_4K_PREULTRA_0		(621 << 16 | 552)
-#define MT6989_UYVY_4K_URGENT_1			0
-#define MT6989_UYVY_4K_ULTRA_1			0
-#define MT6989_UYVY_4K_PREULTRA_1		0
-#define MT6989_UYVY_4K_URGENT_2			0
-#define MT6989_UYVY_4K_ULTRA_2			0
-#define MT6989_UYVY_4K_PREULTRA_2		0
-#define MT6989_UYVY_4K_URGENT_3			0
-#define MT6989_UYVY_4K_ULTRA_3			0
-#define MT6989_UYVY_4K_PREULTRA_3		0
 #define MT6989_RGB_4K_URGENT_0			(518 << 16 | 414)
 #define MT6989_RGB_4K_ULTRA_0			(725 << 16 | 621)
 #define MT6989_RGB_4K_PREULTRA_0		(932 << 16 | 829)
@@ -104,18 +90,6 @@ struct rrot_golden {
 #define MT6989_ARGB_4K_URGENT_3			0
 #define MT6989_ARGB_4K_ULTRA_3			0
 #define MT6989_ARGB_4K_PREULTRA_3		0
-#define MT6989_Y8_4K_URGENT_0			(173 << 16 | 138)
-#define MT6989_Y8_4K_ULTRA_0			(242 << 16 | 207)
-#define MT6989_Y8_4K_PREULTRA_0			(311 << 16 | 276)
-#define MT6989_Y8_4K_URGENT_1			0
-#define MT6989_Y8_4K_ULTRA_1			0
-#define MT6989_Y8_4K_PREULTRA_1			0
-#define MT6989_Y8_4K_URGENT_2			0
-#define MT6989_Y8_4K_ULTRA_2			0
-#define MT6989_Y8_4K_PREULTRA_2			0
-#define MT6989_Y8_4K_URGENT_3			0
-#define MT6989_Y8_4K_ULTRA_3			0
-#define MT6989_Y8_4K_PREULTRA_3			0
 #define MT6989_AFBC_4K_URGENT_0			(691 << 16 | 552)
 #define MT6989_AFBC_4K_ULTRA_0			(967 << 16 | 829)
 #define MT6989_AFBC_4K_PREULTRA_0		(1243 << 16 | 1105)
@@ -140,18 +114,6 @@ struct rrot_golden {
 #define MT6989_HYFBC_4K_URGENT_3		(1 << 16)
 #define MT6989_HYFBC_4K_ULTRA_3			(2 << 16 | 1)
 #define MT6989_HYFBC_4K_PREULTRA_3		(3 << 16 | 2)
-#define MT6989_NV12BLK_2K_URGENT_0		(77 << 16 | 61)
-#define MT6989_NV12BLK_2K_ULTRA_0		(107 << 16 | 92)
-#define MT6989_NV12BLK_2K_PREULTRA_0		(138 << 16 | 123)
-#define MT6989_NV12BLK_2K_URGENT_1		(38 << 16 | 31)
-#define MT6989_NV12BLK_2K_ULTRA_1		(54 << 16 | 46)
-#define MT6989_NV12BLK_2K_PREULTRA_1		(69 << 16 | 61)
-#define MT6989_NV12BLK_2K_URGENT_2		0
-#define MT6989_NV12BLK_2K_ULTRA_2		0
-#define MT6989_NV12BLK_2K_PREULTRA_2		0
-#define MT6989_NV12BLK_2K_URGENT_3		0
-#define MT6989_NV12BLK_2K_ULTRA_3		0
-#define MT6989_NV12BLK_2K_PREULTRA_3		0
 #define MT6989_3PLANE_2K_URGENT_0		(77 << 16 | 61)
 #define MT6989_3PLANE_2K_ULTRA_0		(107 << 16 | 92)
 #define MT6989_3PLANE_2K_PREULTRA_0		(138 << 16 | 123)
@@ -176,18 +138,6 @@ struct rrot_golden {
 #define MT6989_2PLANE_2K_URGENT_3		0
 #define MT6989_2PLANE_2K_ULTRA_3		0
 #define MT6989_2PLANE_2K_PREULTRA_3		0
-#define MT6989_UYVY_2K_URGENT_0			(153 << 16 | 123)
-#define MT6989_UYVY_2K_ULTRA_0			(215 << 16 | 184)
-#define MT6989_UYVY_2K_PREULTRA_0		(276 << 16 | 246)
-#define MT6989_UYVY_2K_URGENT_1			0
-#define MT6989_UYVY_2K_ULTRA_1			0
-#define MT6989_UYVY_2K_PREULTRA_1		0
-#define MT6989_UYVY_2K_URGENT_2			0
-#define MT6989_UYVY_2K_ULTRA_2			0
-#define MT6989_UYVY_2K_PREULTRA_2		0
-#define MT6989_UYVY_2K_URGENT_3			0
-#define MT6989_UYVY_2K_ULTRA_3			0
-#define MT6989_UYVY_2K_PREULTRA_3		0
 #define MT6989_RGB_2K_URGENT_0			(230 << 16 | 184)
 #define MT6989_RGB_2K_ULTRA_0			(322 << 16 | 276)
 #define MT6989_RGB_2K_PREULTRA_0		(414 << 16 | 368)
@@ -212,18 +162,6 @@ struct rrot_golden {
 #define MT6989_ARGB_2K_URGENT_3			0
 #define MT6989_ARGB_2K_ULTRA_3			0
 #define MT6989_ARGB_2K_PREULTRA_3		0
-#define MT6989_Y8_2K_URGENT_0			(77 << 16 | 61)
-#define MT6989_Y8_2K_ULTRA_0			(107 << 16 | 92)
-#define MT6989_Y8_2K_PREULTRA_0			(138 << 16 | 123)
-#define MT6989_Y8_2K_URGENT_1			0
-#define MT6989_Y8_2K_ULTRA_1			0
-#define MT6989_Y8_2K_PREULTRA_1			0
-#define MT6989_Y8_2K_URGENT_2			0
-#define MT6989_Y8_2K_ULTRA_2			0
-#define MT6989_Y8_2K_PREULTRA_2			0
-#define MT6989_Y8_2K_URGENT_3			0
-#define MT6989_Y8_2K_ULTRA_3			0
-#define MT6989_Y8_2K_PREULTRA_3			0
 #define MT6989_AFBC_2K_URGENT_0			(307 << 16 | 246)
 #define MT6989_AFBC_2K_ULTRA_0			(430 << 16 | 368)
 #define MT6989_AFBC_2K_PREULTRA_0		(552 << 16 | 491)
@@ -248,18 +186,6 @@ struct rrot_golden {
 #define MT6989_HYFBC_2K_URGENT_3		(1 << 16)
 #define MT6989_HYFBC_2K_ULTRA_3			(2 << 16 | 1)
 #define MT6989_HYFBC_2K_PREULTRA_3		(3 << 16 | 2)
-#define MT6989_NV12BLK_FHD_URGENT_0		(43 << 16 | 35)
-#define MT6989_NV12BLK_FHD_ULTRA_0		(60 << 16 | 52)
-#define MT6989_NV12BLK_FHD_PREULTRA_0		(78 << 16 | 69)
-#define MT6989_NV12BLK_FHD_URGENT_1		(22 << 16 | 17)
-#define MT6989_NV12BLK_FHD_ULTRA_1		(30 << 16 | 26)
-#define MT6989_NV12BLK_FHD_PREULTRA_1		(39 << 16 | 35)
-#define MT6989_NV12BLK_FHD_URGENT_2		0
-#define MT6989_NV12BLK_FHD_ULTRA_2		0
-#define MT6989_NV12BLK_FHD_PREULTRA_2		0
-#define MT6989_NV12BLK_FHD_URGENT_3		0
-#define MT6989_NV12BLK_FHD_ULTRA_3		0
-#define MT6989_NV12BLK_FHD_PREULTRA_3		0
 #define MT6989_3PLANE_FHD_URGENT_0		(43 << 16 | 35)
 #define MT6989_3PLANE_FHD_ULTRA_0		(60 << 16 | 52)
 #define MT6989_3PLANE_FHD_PREULTRA_0		(78 << 16 | 69)
@@ -284,18 +210,6 @@ struct rrot_golden {
 #define MT6989_2PLANE_FHD_URGENT_3		0
 #define MT6989_2PLANE_FHD_ULTRA_3		0
 #define MT6989_2PLANE_FHD_PREULTRA_3		0
-#define MT6989_UYVY_FHD_URGENT_0		(86 << 16 | 69)
-#define MT6989_UYVY_FHD_ULTRA_0			(121 << 16 | 104)
-#define MT6989_UYVY_FHD_PREULTRA_0		(155 << 16 | 138)
-#define MT6989_UYVY_FHD_URGENT_1		0
-#define MT6989_UYVY_FHD_ULTRA_1			0
-#define MT6989_UYVY_FHD_PREULTRA_1		0
-#define MT6989_UYVY_FHD_URGENT_2		0
-#define MT6989_UYVY_FHD_ULTRA_2			0
-#define MT6989_UYVY_FHD_PREULTRA_2		0
-#define MT6989_UYVY_FHD_URGENT_3		0
-#define MT6989_UYVY_FHD_ULTRA_3			0
-#define MT6989_UYVY_FHD_PREULTRA_3		0
 #define MT6989_RGB_FHD_URGENT_0			(129 << 16 | 104)
 #define MT6989_RGB_FHD_ULTRA_0			(181 << 16 | 155)
 #define MT6989_RGB_FHD_PREULTRA_0		(233 << 16 | 207)
@@ -320,18 +234,6 @@ struct rrot_golden {
 #define MT6989_ARGB_FHD_URGENT_3		0
 #define MT6989_ARGB_FHD_ULTRA_3			0
 #define MT6989_ARGB_FHD_PREULTRA_3		0
-#define MT6989_Y8_FHD_URGENT_0			(43 << 16 | 35)
-#define MT6989_Y8_FHD_ULTRA_0			(60 << 16 | 52)
-#define MT6989_Y8_FHD_PREULTRA_0		(78 << 16 | 69)
-#define MT6989_Y8_FHD_URGENT_1			0
-#define MT6989_Y8_FHD_ULTRA_1			0
-#define MT6989_Y8_FHD_PREULTRA_1		0
-#define MT6989_Y8_FHD_URGENT_2			0
-#define MT6989_Y8_FHD_ULTRA_2			0
-#define MT6989_Y8_FHD_PREULTRA_2		0
-#define MT6989_Y8_FHD_URGENT_3			0
-#define MT6989_Y8_FHD_ULTRA_3			0
-#define MT6989_Y8_FHD_PREULTRA_3		0
 #define MT6989_AFBC_FHD_URGENT_0		(173 << 16 | 138)
 #define MT6989_AFBC_FHD_ULTRA_0			(242 << 16 | 207)
 #define MT6989_AFBC_FHD_PREULTRA_0		(311 << 16 | 276)
@@ -356,7 +258,80 @@ struct rrot_golden {
 #define MT6989_HYFBC_FHD_URGENT_3		(1 << 16)
 #define MT6989_HYFBC_FHD_ULTRA_3		(2 << 16 | 1)
 #define MT6989_HYFBC_FHD_PREULTRA_3		(3 << 16 | 2)
-/* !!Above code generate by golden parser (goldenparser.py)!! */
+
+/* prefetch control settings */
+#define MT6989_ARGB_4KROT0_PF1			(3 << 16)
+#define MT6989_ARGB_4KROT0_PF2			0
+#define MT6989_RGB_4KROT0_PF1			(3 << 16)
+#define MT6989_RGB_4KROT0_PF2			0
+#define MT6989_2PLANE_4KROT0_PF1		(3 << 16 | 2)
+#define MT6989_2PLANE_4KROT0_PF2		0
+#define MT6989_3PLANE_4KROT0_PF1		(3 << 16 | 2)
+#define MT6989_3PLANE_4KROT0_PF2		(2 << 16)
+#define MT6989_AFBC_4KROT0_PF1			(20 << 16)
+#define MT6989_AFBC_4KROT0_PF2			(1 << 16)
+#define MT6989_HYFBC_4KROT0_PF1			(20 << 16 | 20)
+#define MT6989_HYFBC_4KROT0_PF2			(1 << 16 | 1)
+#define MT6989_ARGB_4KROT90_PF1			(156 << 16)
+#define MT6989_ARGB_4KROT90_PF2			0
+#define MT6989_RGB_4KROT90_PF1			(156 << 16)
+#define MT6989_RGB_4KROT90_PF2			0
+#define MT6989_2PLANE_4KROT90_PF1		(78 << 16 | 39)
+#define MT6989_2PLANE_4KROT90_PF2		0
+#define MT6989_3PLANE_4KROT90_PF1		(78 << 16 | 39)
+#define MT6989_3PLANE_4KROT90_PF2		(39 << 16)
+#define MT6989_AFBC_4KROT90_PF1			(20 << 16)
+#define MT6989_AFBC_4KROT90_PF2			(20 << 16)
+#define MT6989_HYFBC_4KROT90_PF1		(20 << 16 | 20)
+#define MT6989_HYFBC_4KROT90_PF2		(20 << 16 | 20)
+#define MT6989_ARGB_2KROT0_PF1			(2 << 16)
+#define MT6989_ARGB_2KROT0_PF2			0
+#define MT6989_RGB_2KROT0_PF1			(2 << 16)
+#define MT6989_RGB_2KROT0_PF2			0
+#define MT6989_2PLANE_2KROT0_PF1		(2 << 16 | 1)
+#define MT6989_2PLANE_2KROT0_PF2		0
+#define MT6989_3PLANE_2KROT0_PF1		(2 << 16 | 1)
+#define MT6989_3PLANE_2KROT0_PF2		(1 << 16)
+#define MT6989_AFBC_2KROT0_PF1			(9 << 16)
+#define MT6989_AFBC_2KROT0_PF2			(1 << 16)
+#define MT6989_HYFBC_2KROT0_PF1			(9 << 16 | 9)
+#define MT6989_HYFBC_2KROT0_PF2			(1 << 16 | 1)
+#define MT6989_ARGB_2KROT90_PF1			(70 << 16)
+#define MT6989_ARGB_2KROT90_PF2			0
+#define MT6989_RGB_2KROT90_PF1			(70 << 16)
+#define MT6989_RGB_2KROT90_PF2			0
+#define MT6989_2PLANE_2KROT90_PF1		(35 << 16 | 18)
+#define MT6989_2PLANE_2KROT90_PF2		0
+#define MT6989_3PLANE_2KROT90_PF1		(35 << 16 | 18)
+#define MT6989_3PLANE_2KROT90_PF2		(18 << 16)
+#define MT6989_AFBC_2KROT90_PF1			(9 << 16)
+#define MT6989_AFBC_2KROT90_PF2			(9 << 16)
+#define MT6989_HYFBC_2KROT90_PF1		(9 << 16 | 9)
+#define MT6989_HYFBC_2KROT90_PF2		(9 << 16 | 9)
+#define MT6989_ARGB_FHDROT0_PF1			(2 << 16)
+#define MT6989_ARGB_FHDROT0_PF2			0
+#define MT6989_RGB_FHDROT0_PF1			(2 << 16)
+#define MT6989_RGB_FHDROT0_PF2			0
+#define MT6989_2PLANE_FHDROT0_PF1		(2 << 16 | 1)
+#define MT6989_2PLANE_FHDROT0_PF2		0
+#define MT6989_3PLANE_FHDROT0_PF1		(2 << 16 | 1)
+#define MT6989_3PLANE_FHDROT0_PF2		(1 << 16)
+#define MT6989_AFBC_FHDROT0_PF1			(5 << 16)
+#define MT6989_AFBC_FHDROT0_PF2			(1 << 16)
+#define MT6989_HYFBC_FHDROT0_PF1		(5 << 16 | 5)
+#define MT6989_HYFBC_FHDROT0_PF2		(1 << 16 | 1)
+#define MT6989_ARGB_FHDROT90_PF1		(39 << 16)
+#define MT6989_ARGB_FHDROT90_PF2		0
+#define MT6989_RGB_FHDROT90_PF1			(39 << 16)
+#define MT6989_RGB_FHDROT90_PF2			0
+#define MT6989_2PLANE_FHDROT90_PF1		(20 << 16 | 10)
+#define MT6989_2PLANE_FHDROT90_PF2		0
+#define MT6989_3PLANE_FHDROT90_PF1		(20 << 16 | 10)
+#define MT6989_3PLANE_FHDROT90_PF2		(10 << 16)
+#define MT6989_AFBC_FHDROT90_PF1		(5 << 16)
+#define MT6989_AFBC_FHDROT90_PF2		(5 << 16)
+#define MT6989_HYFBC_FHDROT90_PF1		(5 << 16 | 5)
+#define MT6989_HYFBC_FHDROT90_PF2		(5 << 16 | 5)
 
 static const struct golden_setting th_argb_mt6989[] = {
 	{
@@ -366,6 +341,27 @@ static const struct golden_setting th_argb_mt6989[] = {
 				.preultra	= MT6989_ARGB_FHD_PREULTRA_0,
 				.ultra		= MT6989_ARGB_FHD_ULTRA_0,
 				.urgent		= MT6989_ARGB_FHD_URGENT_0,
+			}, {
+				.preultra	= MT6989_ARGB_FHD_PREULTRA_1,
+				.ultra		= MT6989_ARGB_FHD_ULTRA_1,
+				.urgent		= MT6989_ARGB_FHD_URGENT_1,
+			}, {
+				.preultra	= MT6989_ARGB_FHD_PREULTRA_2,
+				.ultra		= MT6989_ARGB_FHD_ULTRA_2,
+				.urgent		= MT6989_ARGB_FHD_URGENT_2,
+			}, {
+				.preultra	= MT6989_ARGB_FHD_PREULTRA_3,
+				.ultra		= MT6989_ARGB_FHD_ULTRA_3,
+				.urgent		= MT6989_ARGB_FHD_URGENT_3,
+			},
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_ARGB_FHDROT0_PF1,
+				.prefetch_ctrl2 = MT6989_ARGB_FHDROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_ARGB_FHDROT90_PF1,
+				.prefetch_ctrl2 = MT6989_ARGB_FHDROT90_PF2,
 			},
 		},
 	}, {
@@ -375,6 +371,27 @@ static const struct golden_setting th_argb_mt6989[] = {
 				.preultra	= MT6989_ARGB_2K_PREULTRA_0,
 				.ultra		= MT6989_ARGB_2K_ULTRA_0,
 				.urgent		= MT6989_ARGB_2K_URGENT_0,
+			}, {
+				.preultra	= MT6989_ARGB_2K_PREULTRA_1,
+				.ultra		= MT6989_ARGB_2K_ULTRA_1,
+				.urgent		= MT6989_ARGB_2K_URGENT_1,
+			}, {
+				.preultra	= MT6989_ARGB_2K_PREULTRA_2,
+				.ultra		= MT6989_ARGB_2K_ULTRA_2,
+				.urgent		= MT6989_ARGB_2K_URGENT_2,
+			}, {
+				.preultra	= MT6989_ARGB_2K_PREULTRA_3,
+				.ultra		= MT6989_ARGB_2K_ULTRA_3,
+				.urgent		= MT6989_ARGB_2K_URGENT_3,
+			},
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_ARGB_2KROT0_PF1,
+				.prefetch_ctrl2 = MT6989_ARGB_2KROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_ARGB_2KROT90_PF1,
+				.prefetch_ctrl2 = MT6989_ARGB_2KROT90_PF2,
 			},
 		},
 	}, {
@@ -384,6 +401,27 @@ static const struct golden_setting th_argb_mt6989[] = {
 				.preultra	= MT6989_ARGB_4K_PREULTRA_0,
 				.ultra		= MT6989_ARGB_4K_ULTRA_0,
 				.urgent		= MT6989_ARGB_4K_URGENT_0,
+			}, {
+				.preultra	= MT6989_ARGB_4K_PREULTRA_1,
+				.ultra		= MT6989_ARGB_4K_ULTRA_1,
+				.urgent		= MT6989_ARGB_4K_URGENT_1,
+			}, {
+				.preultra	= MT6989_ARGB_4K_PREULTRA_2,
+				.ultra		= MT6989_ARGB_4K_ULTRA_2,
+				.urgent		= MT6989_ARGB_4K_URGENT_2,
+			}, {
+				.preultra	= MT6989_ARGB_4K_PREULTRA_3,
+				.ultra		= MT6989_ARGB_4K_ULTRA_3,
+				.urgent		= MT6989_ARGB_4K_URGENT_3,
+			},
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_ARGB_4KROT0_PF1,
+				.prefetch_ctrl2 = MT6989_ARGB_4KROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_ARGB_4KROT90_PF1,
+				.prefetch_ctrl2 = MT6989_ARGB_4KROT90_PF2,
 			},
 		},
 	},
@@ -397,6 +435,27 @@ static const struct golden_setting th_rgb_mt6989[] = {
 				.preultra	= MT6989_RGB_FHD_PREULTRA_0,
 				.ultra		= MT6989_RGB_FHD_ULTRA_0,
 				.urgent		= MT6989_RGB_FHD_URGENT_0,
+			}, {
+				.preultra	= MT6989_RGB_FHD_PREULTRA_1,
+				.ultra		= MT6989_RGB_FHD_ULTRA_1,
+				.urgent		= MT6989_RGB_FHD_URGENT_1,
+			}, {
+				.preultra	= MT6989_RGB_FHD_PREULTRA_2,
+				.ultra		= MT6989_RGB_FHD_ULTRA_2,
+				.urgent		= MT6989_RGB_FHD_URGENT_2,
+			}, {
+				.preultra	= MT6989_RGB_FHD_PREULTRA_3,
+				.ultra		= MT6989_RGB_FHD_ULTRA_3,
+				.urgent		= MT6989_RGB_FHD_URGENT_3,
+			},
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_RGB_FHDROT0_PF1,
+				.prefetch_ctrl2 = MT6989_RGB_FHDROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_RGB_FHDROT90_PF1,
+				.prefetch_ctrl2 = MT6989_RGB_FHDROT90_PF2,
 			},
 		},
 	}, {
@@ -406,6 +465,27 @@ static const struct golden_setting th_rgb_mt6989[] = {
 				.preultra	= MT6989_RGB_2K_PREULTRA_0,
 				.ultra		= MT6989_RGB_2K_ULTRA_0,
 				.urgent		= MT6989_RGB_2K_URGENT_0,
+			}, {
+				.preultra	= MT6989_RGB_2K_PREULTRA_1,
+				.ultra		= MT6989_RGB_2K_ULTRA_1,
+				.urgent		= MT6989_RGB_2K_URGENT_1,
+			}, {
+				.preultra	= MT6989_RGB_2K_PREULTRA_2,
+				.ultra		= MT6989_RGB_2K_ULTRA_2,
+				.urgent		= MT6989_RGB_2K_URGENT_2,
+			}, {
+				.preultra	= MT6989_RGB_2K_PREULTRA_3,
+				.ultra		= MT6989_RGB_2K_ULTRA_3,
+				.urgent		= MT6989_RGB_2K_URGENT_3,
+			},
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_RGB_2KROT0_PF1,
+				.prefetch_ctrl2 = MT6989_RGB_2KROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_RGB_2KROT90_PF1,
+				.prefetch_ctrl2 = MT6989_RGB_2KROT90_PF2,
 			},
 		},
 	}, {
@@ -415,6 +495,27 @@ static const struct golden_setting th_rgb_mt6989[] = {
 				.preultra	= MT6989_RGB_4K_PREULTRA_0,
 				.ultra		= MT6989_RGB_4K_ULTRA_0,
 				.urgent		= MT6989_RGB_4K_URGENT_0,
+			}, {
+				.preultra	= MT6989_RGB_4K_PREULTRA_1,
+				.ultra		= MT6989_RGB_4K_ULTRA_1,
+				.urgent		= MT6989_RGB_4K_URGENT_1,
+			}, {
+				.preultra	= MT6989_RGB_4K_PREULTRA_2,
+				.ultra		= MT6989_RGB_4K_ULTRA_2,
+				.urgent		= MT6989_RGB_4K_URGENT_2,
+			}, {
+				.preultra	= MT6989_RGB_4K_PREULTRA_3,
+				.ultra		= MT6989_RGB_4K_ULTRA_3,
+				.urgent		= MT6989_RGB_4K_URGENT_3,
+			},
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_RGB_4KROT0_PF1,
+				.prefetch_ctrl2 = MT6989_RGB_4KROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_RGB_4KROT90_PF1,
+				.prefetch_ctrl2 = MT6989_RGB_4KROT90_PF2,
 			},
 		},
 	},
@@ -432,6 +533,23 @@ static const struct golden_setting th_yuv420_mt6989[] = {
 				.preultra	= MT6989_2PLANE_FHD_PREULTRA_1,
 				.ultra		= MT6989_2PLANE_FHD_ULTRA_1,
 				.urgent		= MT6989_2PLANE_FHD_URGENT_1,
+			}, {
+				.preultra	= MT6989_2PLANE_FHD_PREULTRA_2,
+				.ultra		= MT6989_2PLANE_FHD_ULTRA_2,
+				.urgent		= MT6989_2PLANE_FHD_URGENT_2,
+			}, {
+				.preultra	= MT6989_2PLANE_FHD_PREULTRA_3,
+				.ultra		= MT6989_2PLANE_FHD_ULTRA_3,
+				.urgent		= MT6989_2PLANE_FHD_URGENT_3,
+			},
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_2PLANE_FHDROT0_PF1,
+				.prefetch_ctrl2 = MT6989_2PLANE_FHDROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_2PLANE_FHDROT90_PF1,
+				.prefetch_ctrl2 = MT6989_2PLANE_FHDROT90_PF2,
 			},
 		},
 	}, {
@@ -445,6 +563,23 @@ static const struct golden_setting th_yuv420_mt6989[] = {
 				.preultra	= MT6989_2PLANE_2K_PREULTRA_1,
 				.ultra		= MT6989_2PLANE_2K_ULTRA_1,
 				.urgent		= MT6989_2PLANE_2K_URGENT_1,
+			}, {
+				.preultra	= MT6989_2PLANE_2K_PREULTRA_2,
+				.ultra		= MT6989_2PLANE_2K_ULTRA_2,
+				.urgent		= MT6989_2PLANE_2K_URGENT_2,
+			}, {
+				.preultra	= MT6989_2PLANE_2K_PREULTRA_3,
+				.ultra		= MT6989_2PLANE_2K_ULTRA_3,
+				.urgent		= MT6989_2PLANE_2K_URGENT_3,
+			},
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_2PLANE_2KROT0_PF1,
+				.prefetch_ctrl2 = MT6989_2PLANE_2KROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_2PLANE_2KROT90_PF1,
+				.prefetch_ctrl2 = MT6989_2PLANE_2KROT90_PF2,
 			},
 		},
 	}, {
@@ -458,6 +593,23 @@ static const struct golden_setting th_yuv420_mt6989[] = {
 				.preultra	= MT6989_2PLANE_4K_PREULTRA_1,
 				.ultra		= MT6989_2PLANE_4K_ULTRA_1,
 				.urgent		= MT6989_2PLANE_4K_URGENT_1,
+			}, {
+				.preultra	= MT6989_2PLANE_4K_PREULTRA_2,
+				.ultra		= MT6989_2PLANE_4K_ULTRA_2,
+				.urgent		= MT6989_2PLANE_4K_URGENT_2,
+			}, {
+				.preultra	= MT6989_2PLANE_4K_PREULTRA_3,
+				.ultra		= MT6989_2PLANE_4K_ULTRA_3,
+				.urgent		= MT6989_2PLANE_4K_URGENT_3,
+			},
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_2PLANE_4KROT0_PF1,
+				.prefetch_ctrl2 = MT6989_2PLANE_4KROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_2PLANE_4KROT90_PF1,
+				.prefetch_ctrl2 = MT6989_2PLANE_4KROT90_PF2,
 			},
 		},
 	},
@@ -479,8 +631,20 @@ static const struct golden_setting th_yv12_mt6989[] = {
 				.preultra	= MT6989_3PLANE_FHD_PREULTRA_2,
 				.ultra		= MT6989_3PLANE_FHD_ULTRA_2,
 				.urgent		= MT6989_3PLANE_FHD_URGENT_2,
+			}, {
+				.preultra	= MT6989_3PLANE_FHD_PREULTRA_3,
+				.ultra		= MT6989_3PLANE_FHD_ULTRA_3,
+				.urgent		= MT6989_3PLANE_FHD_URGENT_3,
 			},
-
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_3PLANE_FHDROT0_PF1,
+				.prefetch_ctrl2 = MT6989_3PLANE_FHDROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_3PLANE_FHDROT90_PF1,
+				.prefetch_ctrl2 = MT6989_3PLANE_FHDROT90_PF2,
+			},
 		},
 	}, {
 		.pixel = GOLDEN_PIXEL_2K,
@@ -497,8 +661,20 @@ static const struct golden_setting th_yv12_mt6989[] = {
 				.preultra	= MT6989_3PLANE_2K_PREULTRA_2,
 				.ultra		= MT6989_3PLANE_2K_ULTRA_2,
 				.urgent		= MT6989_3PLANE_2K_URGENT_2,
+			}, {
+				.preultra	= MT6989_3PLANE_2K_PREULTRA_3,
+				.ultra		= MT6989_3PLANE_2K_ULTRA_3,
+				.urgent		= MT6989_3PLANE_2K_URGENT_3,
 			},
-
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_3PLANE_2KROT0_PF1,
+				.prefetch_ctrl2 = MT6989_3PLANE_2KROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_3PLANE_2KROT90_PF1,
+				.prefetch_ctrl2 = MT6989_3PLANE_2KROT90_PF2,
+			},
 		},
 	}, {
 		.pixel = GOLDEN_PIXEL_4K,
@@ -515,8 +691,20 @@ static const struct golden_setting th_yv12_mt6989[] = {
 				.preultra	= MT6989_3PLANE_4K_PREULTRA_2,
 				.ultra		= MT6989_3PLANE_4K_ULTRA_2,
 				.urgent		= MT6989_3PLANE_4K_URGENT_2,
+			}, {
+				.preultra	= MT6989_3PLANE_4K_PREULTRA_3,
+				.ultra		= MT6989_3PLANE_4K_ULTRA_3,
+				.urgent		= MT6989_3PLANE_4K_URGENT_3,
 			},
-
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_3PLANE_4KROT0_PF1,
+				.prefetch_ctrl2 = MT6989_3PLANE_4KROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_3PLANE_4KROT90_PF1,
+				.prefetch_ctrl2 = MT6989_3PLANE_4KROT90_PF2,
+			},
 		},
 	},
 };
@@ -537,6 +725,19 @@ static const struct golden_setting th_afbc_mt6989[] = {
 				.preultra	= MT6989_AFBC_FHD_PREULTRA_2,
 				.ultra		= MT6989_AFBC_FHD_ULTRA_2,
 				.urgent		= MT6989_AFBC_FHD_URGENT_2,
+			}, {
+				.preultra	= MT6989_AFBC_FHD_PREULTRA_3,
+				.ultra		= MT6989_AFBC_FHD_ULTRA_3,
+				.urgent		= MT6989_AFBC_FHD_URGENT_3,
+			},
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_AFBC_FHDROT0_PF1,
+				.prefetch_ctrl2 = MT6989_AFBC_FHDROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_AFBC_FHDROT90_PF1,
+				.prefetch_ctrl2 = MT6989_AFBC_FHDROT90_PF2,
 			},
 		},
 	}, {
@@ -554,6 +755,19 @@ static const struct golden_setting th_afbc_mt6989[] = {
 				.preultra	= MT6989_AFBC_2K_PREULTRA_2,
 				.ultra		= MT6989_AFBC_2K_ULTRA_2,
 				.urgent		= MT6989_AFBC_2K_URGENT_2,
+			}, {
+				.preultra	= MT6989_AFBC_2K_PREULTRA_3,
+				.ultra		= MT6989_AFBC_2K_ULTRA_3,
+				.urgent		= MT6989_AFBC_2K_URGENT_3,
+			},
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_AFBC_2KROT0_PF1,
+				.prefetch_ctrl2 = MT6989_AFBC_2KROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_AFBC_2KROT90_PF1,
+				.prefetch_ctrl2 = MT6989_AFBC_2KROT90_PF2,
 			},
 		},
 	}, {
@@ -571,6 +785,19 @@ static const struct golden_setting th_afbc_mt6989[] = {
 				.preultra	= MT6989_AFBC_4K_PREULTRA_2,
 				.ultra		= MT6989_AFBC_4K_ULTRA_2,
 				.urgent		= MT6989_AFBC_4K_URGENT_2,
+			}, {
+				.preultra	= MT6989_AFBC_4K_PREULTRA_3,
+				.ultra		= MT6989_AFBC_4K_ULTRA_3,
+				.urgent		= MT6989_AFBC_4K_URGENT_3,
+			},
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_AFBC_4KROT0_PF1,
+				.prefetch_ctrl2 = MT6989_AFBC_4KROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_AFBC_4KROT90_PF1,
+				.prefetch_ctrl2 = MT6989_AFBC_4KROT90_PF2,
 			},
 		},
 	},
@@ -597,7 +824,15 @@ static const struct golden_setting th_hyfbc_mt6989[] = {
 				.ultra		= MT6989_HYFBC_FHD_ULTRA_3,
 				.urgent		= MT6989_HYFBC_FHD_URGENT_3,
 			},
-
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_HYFBC_FHDROT0_PF1,
+				.prefetch_ctrl2 = MT6989_HYFBC_FHDROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_HYFBC_FHDROT90_PF1,
+				.prefetch_ctrl2 = MT6989_HYFBC_FHDROT90_PF2,
+			},
 		},
 	}, {
 		.pixel = GOLDEN_PIXEL_2K,
@@ -619,7 +854,15 @@ static const struct golden_setting th_hyfbc_mt6989[] = {
 				.ultra		= MT6989_HYFBC_2K_ULTRA_3,
 				.urgent		= MT6989_HYFBC_2K_URGENT_3,
 			},
-
+		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_HYFBC_2KROT0_PF1,
+				.prefetch_ctrl2 = MT6989_HYFBC_2KROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_HYFBC_2KROT90_PF1,
+				.prefetch_ctrl2 = MT6989_HYFBC_2KROT90_PF2,
+			},
 		},
 	}, {
 		.pixel = GOLDEN_PIXEL_4K,
@@ -642,8 +885,22 @@ static const struct golden_setting th_hyfbc_mt6989[] = {
 				.urgent		= MT6989_HYFBC_4K_URGENT_3,
 			},
 		},
+		.pfrot = {
+			{
+				.prefetch_ctrl1 = MT6989_HYFBC_4KROT0_PF1,
+				.prefetch_ctrl2 = MT6989_HYFBC_4KROT0_PF2,
+			}, {
+				.prefetch_ctrl1 = MT6989_HYFBC_4KROT90_PF1,
+				.prefetch_ctrl2 = MT6989_HYFBC_4KROT90_PF2,
+			},
+		},
 	},
 };
+
+
+
+/* !!Above code generate by golden parser (goldenparser.py)!! */
+
 
 /* end of mt6989 */
 

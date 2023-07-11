@@ -876,13 +876,15 @@ static void rrot_reset_threshold(struct mml_comp_rrot *rrot,
 
 static void rrot_select_threshold_hrt(struct mml_comp_rrot *rrot,
 	struct cmdq_pkt *pkt, const phys_addr_t base_pa,
-	u32 format, u32 width, u32 height)
+	u32 format, u32 width, u32 height, u32 rot)
 {
 	const struct rrot_golden *golden;
 	const struct golden_setting *golden_set;
 	u32 pixel = width * height;
 	u32 idx, i;
 	u32 plane = MML_FMT_PLANE(format);
+
+	rot = rot & 0x1; /* only hort and vert case*/
 
 	if (MML_FMT_HYFBC(format)) {
 		golden = &rrot->data->golden[GOLDEN_FMT_HYFBC];
@@ -915,6 +917,11 @@ static void rrot_select_threshold_hrt(struct mml_comp_rrot *rrot,
 		cmdq_pkt_write(pkt, NULL, base_pa + rrot_preultra_th[i],
 			golden_set->plane[i].preultra, U32_MAX);
 	}
+
+	cmdq_pkt_write(pkt, NULL, base_pa + RROT_PREFETCH_CONTROL_1,
+		golden_set->pfrot[rot].prefetch_ctrl1, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + RROT_PREFETCH_CONTROL_2,
+		golden_set->pfrot[rot].prefetch_ctrl2, U32_MAX);
 }
 
 static void rrot_config_slice(struct mml_comp *comp, struct mml_frame_config *cfg,
@@ -955,28 +962,14 @@ done:
 static void rrot_config_stash(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
-	struct mml_frame_data *src = &task->config->info.src;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
-	u32 prefetch_con1, prefetch_con2;
-
-	if (MML_FMT_AFBC(src->format)) {
-		prefetch_con1 = 25 << 16;
-		prefetch_con2 = 6 << 16;
-	} else if (MML_FMT_HYFBC(src->format)) {
-		prefetch_con1 = 25 << 16 | 25;
-		prefetch_con2 = 6 << 16 | 6;
-	} else {
-		prefetch_con1 = 0;
-		prefetch_con2 = 0;
-	}
 
 	if (unlikely(rrot_stash_con1))
-		prefetch_con1 = rrot_stash_con1;
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_1,
+			rrot_stash_con1, U32_MAX);
 	if (unlikely(rrot_stash_con2))
-		prefetch_con1 = rrot_stash_con2;
-
-	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_1, prefetch_con1, U32_MAX);
-	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_2, prefetch_con2, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_PREFETCH_CONTROL_2,
+			rrot_stash_con2, U32_MAX);
 }
 
 static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
@@ -1095,13 +1088,13 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 			gmcif_con |= BIT(14) | BIT(12);	/* URGENT_EN */
 		if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK)
 			rrot_select_threshold_hrt(rrot, pkt, comp->base_pa, src->format,
-				frame_in->width, frame_in->height);
+				frame_in->width, frame_in->height, dest->rotate);
 		else
 			rrot_reset_threshold(rrot, pkt, base_pa);
 	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		gmcif_con |= BIT(14) | BIT(12);	/* URGENT_EN and ULTRA_EN */
 		rrot_select_threshold_hrt(rrot, pkt, comp->base_pa, src->format,
-			frame_in->width, frame_in->height);
+			frame_in->width, frame_in->height, dest->rotate);
 	} else {
 		rrot_reset_threshold(rrot, pkt, comp->base_pa);
 	}
@@ -1743,11 +1736,11 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_SRC_OFFSET_WP, src_offset_wp, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_SRC_OFFSET_HP, src_offset_hp, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_MF_SRC_SIZE,
-		   (mf_src_h << 16) + mf_src_w, U32_MAX);
+		(mf_src_h << 16) + mf_src_w, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_MF_CLIP_SIZE,
-		   (mf_clip_h << 16) + mf_clip_w, U32_MAX);
+		(mf_clip_h << 16) + mf_clip_w, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_MF_OFFSET_1,
-		    (mf_offset_h_1 << 16) + mf_offset_w_1, U32_MAX);
+		(mf_offset_h_1 << 16) + mf_offset_w_1, U32_MAX);
 
 	if (dest->rotate == MML_ROT_0 || dest->rotate == MML_ROT_180) {
 		cfg->rrot_out[rrot->pipe].width = mf_clip_w >> cfg->bin_x;
