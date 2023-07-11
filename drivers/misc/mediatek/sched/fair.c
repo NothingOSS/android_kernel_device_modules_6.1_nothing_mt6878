@@ -521,7 +521,7 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 		shared_pwr_base = mtk_compute_energy_cpu(share_buck.gear_idx, eenv, share_buck_pd,
 							share_buck.cpus, p, -1);
 
-		delta_share_pwr = shared_pwr_new - shared_pwr_base;
+		delta_share_pwr = max(shared_pwr_new, shared_pwr_base) - shared_pwr_base;
 calc_sharebuck_done:
 		rcu_read_unlock();
 	}
@@ -2044,7 +2044,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 								cpu);
 			base_energy = mtk_compute_energy(&eenv, target_pd, cpus, p, -1);
 		}
-		cur_delta = cur_delta - base_energy;
+		cur_delta = max(cur_delta, base_energy) - base_energy;
 		if (cur_delta < best_delta) {
 			best_delta = cur_delta;
 			best_energy_cpu = cpu;
