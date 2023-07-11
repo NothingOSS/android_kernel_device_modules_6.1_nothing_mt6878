@@ -295,8 +295,8 @@ struct wrot_frame_data {
 	bool en_x_crop;
 	bool en_y_crop;
 	struct mml_rect out_crop;
-	bool pending_x;
-	bool pending_y;
+	u8 pending_x;
+	u8 pending_y;
 
 	/* following data calculate in init and use in tile command */
 	u8 mat_en;
@@ -591,8 +591,8 @@ static s32 wrot_prepare(struct mml_comp *comp, struct mml_task *task,
 		if (MML_FMT_H_SUBSAMPLE(dest->data.format) &&
 		    !MML_FMT_COMPRESS(dest->data.format)) {
 			/* Enable YUV422/420 pending zero on compose != dest */
-			wrot_frm->pending_x = wrot_frm->out_w > wrot_frm->compose.width;
-			wrot_frm->pending_y = wrot_frm->out_h > wrot_frm->compose.height;
+			wrot_frm->pending_x = wrot_frm->out_w - wrot_frm->compose.width;
+			wrot_frm->pending_y = wrot_frm->out_h - wrot_frm->compose.height;
 		}
 	} else {
 		out_crop.width = wrot_frm->out_w;
@@ -1324,21 +1324,17 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 			scan_10bit = 3;
 		else
 			scan_10bit = 1;
-		pending_zero = 1;
+		pending_zero = BIT(26);
 		bit_num = 1;
-	} else if (wrot_frm->pending_x || wrot_frm->pending_y) {
-		pending_zero = 1;
 	}
 	/* DMA_SUPPORT_AFBC */
 	if (MML_FMT_AFBC(dest_fmt)) {
 		scan_10bit = 0;
-		pending_zero = 1;
+		pending_zero = BIT(26);
 	}
 	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_SCAN_10BIT, scan_10bit, U32_MAX);
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_PENDING_ZERO,
-		       pending_zero << 26, 0x04000000);
-	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_CTRL_2, bit_num,
-		       0x00000007);
+	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_PENDING_ZERO, pending_zero, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_CTRL_2, bit_num, 0x00000007);
 
 	if (MML_FMT_AFBC(dest_fmt)) {
 		pvric |= BIT(0);
@@ -1874,6 +1870,18 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + VIDO_CROP_OFST,
 		       (wrot_crop_ofst_y << 16) + (wrot_crop_ofst_x <<  0),
 		       U32_MAX);
+
+	if (wrot_frm->pending_x || wrot_frm->pending_y) {
+		/* Not use auto mode */
+		u32 pending_zero = ((wrot_frm->pending_x & wrot_tar_xsize) << 2) +
+				   ((wrot_frm->pending_y & wrot_tar_ysize) << 9);
+
+		if (wrot_frm->pending_x && !is_change_wx(wrot_frm->rotate, wrot_frm->flip))
+			pending_zero |= BIT(0);
+		if (wrot_frm->pending_y && !is_change_hy(wrot_frm->rotate, wrot_frm->flip))
+			pending_zero |= BIT(1);
+		cmdq_pkt_write(pkt, NULL, base_pa + VIDO_PENDING_ZERO, pending_zero, U32_MAX);
+	}
 
 	/* round up target footprint size for internal buffer and output */
 	if (wrot->data->yuv_pending) {
