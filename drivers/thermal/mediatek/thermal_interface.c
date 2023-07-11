@@ -24,6 +24,7 @@
 #include <linux/types.h>
 #include <linux/debugfs.h>
 #include <linux/thermal.h>
+#include <soc/mediatek/dramc.h>
 
 #include <linux/io.h>
 #if IS_ENABLED(CONFIG_MTK_GPUFREQ_V2)
@@ -1545,6 +1546,19 @@ static ssize_t catm_p_store(struct kobject *kobj,
 	return -EINVAL;
 }
 
+static ssize_t dram_data_rate_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len = snprintf(buf, PAGE_SIZE, "%d\n",
+		mtk_dramc_get_data_rate());
+	if (len < 0 || len >= sizeof(buf))
+		pr_info("%s: snprintf return negative and buf %s\n", __func__, buf);
+
+	return len;
+}
+
 static ssize_t pid_info_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
@@ -1664,6 +1678,7 @@ static struct kobj_attribute cg_policy_mode_attr = __ATTR_RW(cg_policy_mode);
 static struct kobj_attribute vtskin_info_attr = __ATTR_RW(vtskin_info);
 static struct kobj_attribute vtskin_temp_attr = __ATTR_RW(vtskin_temp);
 static struct kobj_attribute catm_p_attr = __ATTR_RW(catm_p);
+static struct kobj_attribute dram_data_rate_attr = __ATTR_RO(dram_data_rate);
 static struct kobj_attribute pid_info_attr = __ATTR_RW(pid_info);
 static struct kobj_attribute bat_type_attr = __ATTR_RO(bat_type);
 
@@ -1697,6 +1712,7 @@ static struct attribute *thermal_attrs[] = {
 	&vtskin_info_attr.attr,
 	&vtskin_temp_attr.attr,
 	&catm_p_attr.attr,
+	&dram_data_rate_attr.attr,
 	&pid_info_attr.attr,
 	&bat_type_attr.attr,
 	NULL
