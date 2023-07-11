@@ -1636,7 +1636,6 @@ static int smmu_test_cqdma_tf(int dma_engine, struct platform_device *pdev)
 	dma_free(dev, TEST_SMMU_ADDRESS_NUM, 2, res);
 
 	pr_info("%s before TF, dev:%s\n", __func__, dev_name(dev));
-	mtk_smmu_fault_dump(smmu);
 
 	/* dump all smmu if exist */
 	for (i = 0; i < SMMU_TYPE_NUM; i++)
@@ -1663,7 +1662,6 @@ static int smmu_test_cqdma_tf(int dma_engine, struct platform_device *pdev)
 	res[1].dma_addr = dma_addr1;
 
 	pr_info("%s after TF, dev:%s\n", __func__, dev_name(dev));
-	mtk_smmu_fault_dump(smmu);
 
 	dma_free(dev, TEST_SMMU_ADDRESS_NUM - 2, 0, res);
 	pr_info("%s done, dev:%s\n", __func__, dev_name(dev));

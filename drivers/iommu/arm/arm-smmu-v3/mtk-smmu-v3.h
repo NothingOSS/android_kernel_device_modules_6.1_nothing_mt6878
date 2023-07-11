@@ -721,7 +721,7 @@ static inline int mtk_smmu_set_pm_ops(u32 smmu_type, const struct mtk_pm_ops *op
 }
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
-void mtk_smmu_fault_dump(struct arm_smmu_device *smmu);
+void mtk_smmu_debug_dump(enum mtk_smmu_type type);
 
 int mtk_smmu_start_transaction_counter(struct device *dev);
 void mtk_smmu_end_transaction_counter(struct device *dev,
@@ -741,7 +741,7 @@ void mtk_smmu_dump_dcm_en(struct device *dev);
 int mtk_smmu_register_pmu_device(struct smmuv3_pmu_device *pmu_device);
 void mtk_smmu_unregister_pmu_device(struct smmuv3_pmu_device *pmu_device);
 #else
-static inline void mtk_smmu_fault_dump(struct arm_smmu_device *smmu)
+static inline void mtk_smmu_debug_dump(enum mtk_smmu_type type)
 {
 }
 

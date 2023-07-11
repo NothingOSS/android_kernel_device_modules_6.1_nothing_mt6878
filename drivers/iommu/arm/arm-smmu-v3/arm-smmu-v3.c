@@ -860,6 +860,13 @@ static int arm_smmu_cmdq_issue_cmdlist(struct arm_smmu_device *smmu,
 					    llq.prod,
 					    readl_relaxed(cmdq->q.prod_reg),
 					    readl_relaxed(cmdq->q.cons_reg));
+
+			dev_info_ratelimited(smmu->dev,
+					     "CMDS[0x%016llx,0x%016llx] CMD_SYNC[0x%016llx,0x%016llx]\n",
+					     (unsigned long long)cmds[0],
+					     (unsigned long long)cmds[1],
+					     (unsigned long long)cmd_sync[0],
+					     (unsigned long long)cmd_sync[1]);
 		}
 
 		/*
@@ -873,6 +880,10 @@ static int arm_smmu_cmdq_issue_cmdlist(struct arm_smmu_device *smmu,
 	}
 
 	local_irq_restore(flags);
+
+	if (sync && ret && smmu->impl && smmu->impl->fault_dump)
+		smmu->impl->fault_dump(smmu);
+
 	return ret;
 }
 
@@ -990,7 +1001,7 @@ static void arm_smmu_sync_cd(struct arm_smmu_domain *smmu_domain,
 	size_t i;
 	unsigned long flags;
 	struct arm_smmu_master *master;
-	struct arm_smmu_cmdq_batch cmds;
+	struct arm_smmu_cmdq_batch cmds = {0};
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
 	struct arm_smmu_cmdq_ent cmd = {
 		.opcode	= CMDQ_OP_CFGI_CD,
@@ -1855,8 +1866,8 @@ arm_smmu_atc_inv_to_cmd(int ssid, unsigned long iova, size_t size,
 static int arm_smmu_atc_inv_master(struct arm_smmu_master *master)
 {
 	int i;
-	struct arm_smmu_cmdq_ent cmd;
-	struct arm_smmu_cmdq_batch cmds;
+	struct arm_smmu_cmdq_ent cmd = {0};
+	struct arm_smmu_cmdq_batch cmds = {0};
 
 	arm_smmu_atc_inv_to_cmd(0, 0, 0, &cmd);
 
@@ -1874,9 +1885,9 @@ int arm_smmu_atc_inv_domain(struct arm_smmu_domain *smmu_domain, int ssid,
 {
 	int i;
 	unsigned long flags;
-	struct arm_smmu_cmdq_ent cmd;
+	struct arm_smmu_cmdq_ent cmd = {0};
 	struct arm_smmu_master *master;
-	struct arm_smmu_cmdq_batch cmds;
+	struct arm_smmu_cmdq_batch cmds = {0};
 
 	if (!(smmu_domain->smmu->features & ARM_SMMU_FEAT_ATS))
 		return 0;
@@ -1922,7 +1933,7 @@ static void arm_smmu_tlb_inv_context(void *cookie)
 {
 	struct arm_smmu_domain *smmu_domain = cookie;
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
-	struct arm_smmu_cmdq_ent cmd;
+	struct arm_smmu_cmdq_ent cmd = {0};
 
 	/*
 	 * NOTE: when io-pgtable is in non-strict mode, we may get here with
@@ -1953,7 +1964,7 @@ static void __arm_smmu_tlb_inv_range(struct arm_smmu_cmdq_ent *cmd,
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
 	unsigned long end = iova + size, num_pages = 0, tg = 0;
 	size_t inv_range = granule;
-	struct arm_smmu_cmdq_batch cmds;
+	struct arm_smmu_cmdq_batch cmds = {0};
 
 	if (!size)
 		return;
@@ -3394,10 +3405,16 @@ static int arm_smmu_write_reg_sync(struct arm_smmu_device *smmu, u32 val,
 				   unsigned int reg_off, unsigned int ack_off)
 {
 	u32 reg;
+	int ret;
 
 	writel_relaxed(val, smmu->base + reg_off);
-	return readl_relaxed_poll_timeout(smmu->base + ack_off, reg, reg == val,
-					  1, ARM_SMMU_POLL_TIMEOUT_US);
+	ret = readl_relaxed_poll_timeout(smmu->base + ack_off, reg, reg == val,
+					 1, ARM_SMMU_POLL_TIMEOUT_US);
+
+	if (ret && smmu->impl && smmu->impl->fault_dump)
+		smmu->impl->fault_dump(smmu);
+
+	return ret;
 }
 
 /* GBPA is "special" */
@@ -3582,7 +3599,7 @@ static int arm_smmu_device_reset(struct arm_smmu_device *smmu, bool bypass)
 {
 	int ret;
 	u32 reg, enables;
-	struct arm_smmu_cmdq_ent cmd;
+	struct arm_smmu_cmdq_ent cmd = {0};
 
 	/* Clear CR0 and sync (disables SMMU and queue processing) */
 	reg = readl_relaxed(smmu->base + ARM_SMMU_CR0);

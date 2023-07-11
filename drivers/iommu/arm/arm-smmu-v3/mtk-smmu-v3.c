@@ -121,7 +121,7 @@ static void smmuwp_dump_outstanding_monitor(struct arm_smmu_device *smmu);
 static void smmuwp_dump_io_interface_signals(struct arm_smmu_device *smmu);
 static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu);
 static void dump_global_register(struct arm_smmu_device *smmu);
-static void dump_all_register(struct arm_smmu_device *smmu);
+static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm);
 static __le64 *arm_smmu_get_step_for_sid(struct arm_smmu_device *smmu,
 					 u32 sid);
 
@@ -1733,8 +1733,8 @@ static void dump_global_register(struct arm_smmu_device *smmu)
 		 readl_relaxed(smmu->base + ARM_SMMU_CMDQ_PROD),
 		 readl_relaxed(smmu->base + ARM_SMMU_CMDQ_CONS),
 		 readq_relaxed(smmu->base + ARM_SMMU_EVTQ_BASE),
-		 readl_relaxed(smmu->base + ARM_SMMU_EVTQ_PROD),
-		 readl_relaxed(smmu->base + ARM_SMMU_EVTQ_CONS));
+		 readl_relaxed(smmu->page1 + ARM_SMMU_EVTQ_PROD),
+		 readl_relaxed(smmu->page1 + ARM_SMMU_EVTQ_CONS));
 }
 
 static void __maybe_unused smmu_dump_reg(void __iomem *base,
@@ -1997,53 +1997,55 @@ static int mtk_report_device_fault(struct arm_smmu_master *master,
 	return 0;
 }
 
-static void dump_all_register(struct arm_smmu_device *smmu)
+static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm)
 {
 #ifdef MTK_SMMU_DEBUG
-	struct mtk_smmu_data *data;
-
-	if (!smmu) {
-		pr_info("%s, ERROR\n", __func__);
-		return;
-	}
-
-	data = to_mtk_smmu_data(smmu);
-	if (data->hw_init_flag != 1) {
-		pr_info("%s, hw not init\n", __func__);
-		return;
-	}
-
-	dev_info(smmu->dev, "[%s] smmu:%s\n", __func__,
-		 get_smmu_name(data->plat_data->smmu_type));
-
-	dump_global_register(smmu);
-	mtk_smmu_wpreg_dump(NULL, data->plat_data->smmu_type);
-#endif
-}
-
-void mtk_smmu_fault_dump(struct arm_smmu_device *smmu)
-{
-	static DEFINE_RATELIMIT_STATE(fault_rs, SMMU_FAULT_RS_INTERVAL,
+	static DEFINE_RATELIMIT_STATE(debug_rs, SMMU_FAULT_RS_INTERVAL,
 				      SMMU_FAULT_RS_BURST);
+	struct mtk_smmu_data *data;
+	u32 type;
 	int ret;
 
 	if (!smmu)
 		return;
 
-	if (!__ratelimit(&fault_rs))
+	if (!__ratelimit(&debug_rs))
 		return;
 
-	ret = mtk_smmu_power_get(smmu);
-	if (ret) {
-		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
+	data = to_mtk_smmu_data(smmu);
+	type = data->plat_data->smmu_type;
+	if (data->hw_init_flag != 1) {
+		pr_info("[%s] smmu:%s hw not init\n", __func__, get_smmu_name(type));
 		return;
 	}
 
-	dump_all_register(smmu);
+	pr_info("[%s] smmu:%s, check_pm:%d\n", __func__, get_smmu_name(type), check_pm);
 
-	mtk_smmu_power_put(smmu);
+	if (check_pm) {
+		ret = mtk_smmu_power_get(smmu);
+		if (ret) {
+			dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
+			return;
+		}
+	}
+
+	dump_global_register(smmu);
+	mtk_smmu_wpreg_dump(NULL, type);
+
+	smmuwp_dump_outstanding_monitor(smmu);
+	smmuwp_dump_io_interface_signals(smmu);
+
+	/* TODO: hyp_smmu dump */
+
+	if (check_pm)
+		mtk_smmu_power_put(smmu);
+#endif
 }
-EXPORT_SYMBOL_GPL(mtk_smmu_fault_dump);
+
+static void mtk_smmu_fault_dump(struct arm_smmu_device *smmu)
+{
+	smmu_debug_dump(smmu, false);
+}
 
 static bool mtk_smmu_skip_shutdown(struct arm_smmu_device *smmu)
 {
@@ -2084,40 +2086,12 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 
 static void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
 {
-	static DEFINE_RATELIMIT_STATE(hang_rs, SMMU_FAULT_RS_INTERVAL,
-				      SMMU_FAULT_RS_BURST);
 	struct mtk_smmu_data *data = mkt_get_smmu_data(type);
-	struct arm_smmu_device *smmu;
-	int ret;
 
 	if (!data)
 		return;
 
-	if (!__ratelimit(&hang_rs))
-		return;
-
-	if (data->hw_init_flag != 1) {
-		pr_info("%s, hw not init\n", __func__);
-		return;
-	}
-
-	pr_info("%s, smmu:%s\n", __func__, get_smmu_name(type));
-
-	smmu = &data->smmu;
-	ret = mtk_smmu_power_get(smmu);
-	if (ret) {
-		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
-		return;
-	}
-
-	dump_global_register(smmu);
-	mtk_smmu_wpreg_dump(NULL, type);
-
-	smmuwp_dump_outstanding_monitor(smmu);
-	smmuwp_dump_io_interface_signals(smmu);
-	smmuwp_dump_dcm_en(smmu);
-
-	mtk_smmu_power_put(smmu);
+	smmu_debug_dump(&data->smmu, true);
 }
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
@@ -2136,39 +2110,6 @@ static struct notifier_block mtk_smmu_dbg_hang_nb = {
 		.notifier_call = mtk_smmu_dbg_hang_cb,
 };
 #endif
-
-static inline int smmu_compare_of(struct device *dev, void *data)
-{
-	return dev->of_node == data;
-}
-
-static inline void smmu_release_of(struct device *dev, void *data)
-{
-	of_node_put(data);
-}
-
-static inline int mtk_smmu_bind(struct device *dev)
-{
-	struct arm_smmu_device *smmu = dev_get_drvdata(dev);
-
-	dev_info(smmu->dev, "[%s] dev:%s\n", __func__, dev_name(dev));
-
-	return component_bind_all(dev, &to_mtk_smmu_data(smmu)->larb_imu);
-}
-
-static inline void mtk_smmu_unbind(struct device *dev)
-{
-	struct arm_smmu_device *smmu = dev_get_drvdata(dev);
-
-	dev_info(smmu->dev, "[%s] dev:%s\n", __func__, dev_name(dev));
-
-	component_unbind_all(dev, &to_mtk_smmu_data(smmu)->larb_imu);
-}
-
-static const struct component_master_ops mtk_iommu_com_ops = {
-	.bind		= mtk_smmu_bind,
-	.unbind		= mtk_smmu_unbind,
-};
 
 static const struct mtk_smmu_ops mtk_smmu_dbg_ops = {
 	.get_smmu_data		= mkt_get_smmu_data,
@@ -3041,6 +2982,17 @@ static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu)
 		 __func__, SMMUWP_GLB_CTL0, regval, FIELD_GET(CTL0_DCM_EN, regval),
 		 FIELD_GET(CTL0_CFG_TAB_DCM_EN, regval));
 }
+
+void mtk_smmu_debug_dump(enum mtk_smmu_type type)
+{
+	struct mtk_smmu_data *data = mkt_get_smmu_data(type);
+
+	if (!data)
+		return;
+
+	smmu_debug_dump(&data->smmu, true);
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_debug_dump);
 
 int mtk_smmu_start_transaction_counter(struct device *dev)
 {
