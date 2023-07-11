@@ -2497,12 +2497,14 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				mtk_drm_crtc_analysis(dsi->encoder.crtc);
 				mtk_drm_crtc_dump(dsi->encoder.crtc);
 				dsi_underrun_trigger = 0;
-				if ((dsi->driver_data && !dsi->driver_data->smi_dbg_disable) ||
-				     mtk_drm_helper_get_opt(priv->helper_opt,
-				     MTK_DRM_OPT_DSI_UNDERRUN_AEE))
-					mtk_smi_dbg_hang_detect("dsi-underrun");
 				mtk_crtc->last_aee_trigger_ts = aee_now_ts;
 			}
+
+			/* could dump SMI register while dsi not attached to CRTC */
+			if (trigger_aee && ((dsi->driver_data &&
+			    !dsi->driver_data->smi_dbg_disable) ||
+			    mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE)))
+				mtk_smi_dbg_hang_detect("dsi-underrun");
 
 			if (!atomic_read(&priv->need_recover)) {
 				struct mtk_crtc_state *state;
