@@ -401,7 +401,7 @@ static void fpsgo_notifier_wq_cb_magt_dep_list(struct fpsgo_magt_dep_list *iter)
 	if (!iter || !fpsgo_is_enable())
 		return;
 
-	fpsgo_ctrl2xgf_magt_set_dep_list(iter->pid, iter->dep_task_arr, iter->dep_task_num);
+	fpsgo_ctrl2xgf_magt_set_dep_list(iter->pid, iter->dep_task_arr, iter->dep_task_num, XGF_ADD_DEP);
 	fpsgo_free(iter, sizeof(struct fpsgo_magt_dep_list));
 }
 

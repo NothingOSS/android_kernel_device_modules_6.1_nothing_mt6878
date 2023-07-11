@@ -148,7 +148,7 @@ int fpsgo_comp2xgf_get_dep_list(int pid, int count,
 int fpsgo_comp2xgf_adpf_set_dep_list(int tgid, int rtid, unsigned long long bufID,
 	int *dep_arr, int dep_num, int op);
 int has_xgf_dep(pid_t tid);
-void fpsgo_ctrl2xgf_magt_set_dep_list(int tgid, int *dep_arr, int dep_num);
+void fpsgo_ctrl2xgf_magt_set_dep_list(int tgid, int *dep_arr, int dep_num, int action);
 int fpsgo_ktf2xgf_add_delete_render_info(int mode, int pid, unsigned long long bufID);
 struct xgf_thread_loading fbt_xgff_list_loading_add(int pid,
 	unsigned long long buffer_id, unsigned long long ts);

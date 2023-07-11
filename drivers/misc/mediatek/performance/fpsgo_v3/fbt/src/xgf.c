@@ -1634,7 +1634,7 @@ malloc_err:
 	return -ENOMEM;
 }
 
-void fpsgo_ctrl2xgf_magt_set_dep_list(int tgid, int *dep_arr, int dep_num)
+void fpsgo_ctrl2xgf_magt_set_dep_list(int tgid, int *dep_arr, int dep_num, int action)
 {
 	int i;
 	struct xgf_render_if *r_iter = NULL;
@@ -1651,7 +1651,7 @@ void fpsgo_ctrl2xgf_magt_set_dep_list(int tgid, int *dep_arr, int dep_num)
 		if (dep_num > 0) {
 			for (i = 0; i < dep_num; i++) {
 				xgf_add_pid2prev_dep(r_iter, MAGT_TYPE,
-					dep_arr[i], XGF_ADD_DEP_FORCE_CPU_TIME);
+					dep_arr[i], action);
 				xgf_trace("[xgf][%d][0x%llx] | %dth magt_dep_task:%d",
 					r_iter->pid, r_iter->bufid, i+1, dep_arr[i]);
 			}
