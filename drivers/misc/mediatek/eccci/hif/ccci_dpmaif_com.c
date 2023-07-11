@@ -2167,6 +2167,8 @@ static inline int dpmaif_txq_set_skb_data_to_drb(struct dpmaif_tx_queue *txq,
 	if (ret) {
 		ops.drv_dump_register(CCCI_DUMP_REGISTER);
 		tx_force_md_assert("HW_REG_CHK_FAIL");
+		ccci_port_queue_status_notify(dpmaif_ctl->hif_id, txq->index, OUT, TX_FULL);
+		return 0;
 	} else
 		mtk_ccci_add_ul_pkt_bytes(txq->index, total_size);
 
