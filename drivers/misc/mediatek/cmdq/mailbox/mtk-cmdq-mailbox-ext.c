@@ -626,12 +626,14 @@ static void cmdq_thread_disable(struct cmdq *cmdq, struct cmdq_thread *thread)
 #endif
 	// power
 	if (mminfra_power_cb && !mminfra_power_cb())
-		cmdq_err("hwid:%hu idx:%u mminfra power not enable",
-			cmdq->hwid, thread->idx);
+		cmdq_err("hwid:%u idx:%u mbox_enable:%llu mbox_disable:%llu usage:%d mminfra power not enable",
+			cmdq->hwid, thread->idx, thread->mbox_en, thread->mbox_dis,
+			atomic_read(&thread->usage));
 	// clock
 	if (mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid))
-		cmdq_err("hwid:%hu idx:%u gce clock not enable",
-			cmdq->hwid, thread->idx);
+		cmdq_err("hwid:%u idx:%u mbox_enable:%llu mbox_disable:%llu usage:%d gce clock not enable",
+			cmdq->hwid, thread->idx, thread->mbox_en, thread->mbox_dis,
+			atomic_read(&thread->usage));
 
 	cmdq_thread_reset(cmdq, thread);
 	writel(CMDQ_THR_DISABLED, thread->base + CMDQ_THR_ENABLE_TASK);
@@ -902,15 +904,17 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 	if (list_empty(&thread->task_busy_list)) {
 		// power
 		if (mminfra_power_cb && !mminfra_power_cb()) {
-			cmdq_err("hwid:%u idx:%u mminfra power not enable",
-				cmdq->hwid, thread->idx);
+			cmdq_err("hwid:%u idx:%u mbox_enable:%llu mbox_disable:%llu usage:%d mminfra power not enable",
+				cmdq->hwid, thread->idx, thread->mbox_en, thread->mbox_dis,
+				atomic_read(&thread->usage));
 			cmdq_mtcmos_by_fast(cmdq, false);
 			return;
 		}
 		// clock
 		if (mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid)) {
-			cmdq_err("hwid:%u idx:%u gce clock not enable",
-				cmdq->hwid, thread->idx);
+			cmdq_err("hwid:%u idx:%u mbox_enable:%llu mbox_disable:%llu usage:%d gce clock not enable",
+				cmdq->hwid, thread->idx, thread->mbox_en, thread->mbox_dis,
+				atomic_read(&thread->usage));
 			cmdq_mtcmos_by_fast(cmdq, false);
 			return;
 		}
