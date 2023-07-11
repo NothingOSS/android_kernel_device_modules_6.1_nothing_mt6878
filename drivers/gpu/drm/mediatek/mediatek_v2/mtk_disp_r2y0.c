@@ -16,18 +16,26 @@
 #include "mtk_rect.h"
 #include "mtk_drm_drv.h"
 
-#define MT6989_DISP_REG_DISP_R2Y_EN   0x000
-	#define MT6989_R2Y_EN BIT(0)
-#define MT6989_DISP_REG_DISP_R2Y_RST  0x004
-#define MT6989_DISP_REG_DISP_R2Y_SIZE 0x018
-#define MT6989_DISP_REG_DISP_R2Y_1TNP 0x01C
-	#define MT6989_R2Y_SW_1T2P BIT(0)
-#define MT6989_DISP_REG_DISP_R2Y_RELAY 0x024
-	#define MT6989_DISP_R2Y_RELAY_MODE BIT(0)
-#define MT6989_DISP_REG_DISP_R2Y_CT_CFG 0x02C
-	#define MT6989_DISP_R2Y_CT_EN BIT(0)
-#define MT6989_DISP_REG_DISP_R2Y_DATA_CFG 0x034
-	#define MT6989_DISP_R2Y_DATACONV_EN BIT(0)
+#define DISP_REG_DISP_R2Y_EN   0x000
+	#define R2Y_EN BIT(0)
+#define DISP_REG_DISP_R2Y_RST  0x004
+#define DISP_REG_DISP_R2Y_SIZE 0x018
+#define DISP_REG_DISP_R2Y_1TNP 0x01C
+	#define R2Y_SW_1T2P BIT(0)
+#define DISP_REG_DISP_R2Y_RELAY 0x024
+	#define DISP_R2Y_RELAY_MODE BIT(0)
+#define DISP_REG_DISP_R2Y_CT_CFG 0x02C
+	#define DISP_R2Y_CT_EN BIT(0)
+	#define RGB_TO_JPEG (0x0 << 4)
+	#define RGB_TO_FULL709 (0x1 << 4)
+	#define RGB_TO_BT601 (0x2 << 4)
+	#define RGB_TO_BT709 (0x3 << 4)
+
+#define DISP_REG_DISP_R2Y_DATA_CFG 0x034
+	#define DISP_R2Y_DATACONV_EN BIT(0)
+	#define YUV444 (0x0 << 4)
+	#define YUV422 (0x1 << 4)
+	#define YUV420 (0x2 << 4)
 
 /**
  * struct mtk_disp_r2y - DISP_RSZ driver structure
@@ -61,39 +69,24 @@ static inline struct mtk_disp_r2y *comp_to_r2y(struct mtk_ddp_comp *comp)
 	return container_of(comp, struct mtk_disp_r2y, ddp_comp);
 }
 
-static void mtk_r2y_config(struct mtk_drm_crtc *mtk_crtc,
-				 struct mtk_ddp_comp *comp,
-				 union mtk_addon_config *addon_config,
+static void mtk_r2y_config(struct mtk_ddp_comp *comp,
+				 struct mtk_ddp_config *cfg,
 				 struct cmdq_pkt *handle)
 {
-	DDPDBG("%s+\n", __func__);
-	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-			comp->regs_pa + MT6989_DISP_REG_DISP_R2Y_1TNP,
-			MT6989_R2Y_SW_1T2P, MT6989_R2Y_SW_1T2P);
-	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-			comp->regs_pa + MT6989_DISP_REG_DISP_R2Y_EN,
-			MT6989_R2Y_EN, MT6989_R2Y_EN);
+	unsigned int hsize = 0, vsize = 0;
 
-	DDPDBG("%s-\n", __func__);
-}
+	DDPDBG("%s, regs_pa=0x%llx, w=%d, h=%d\n", __func__, comp->regs_pa, cfg->w, cfg->h);
 
-static void mtk_r2y_addon_config(struct mtk_ddp_comp *comp,
-				 enum mtk_ddp_comp_id prev,
-				 enum mtk_ddp_comp_id next,
-				 union mtk_addon_config *addon_config,
-				 struct cmdq_pkt *handle)
-{
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	hsize = cfg->w & 0x1FFF;
+	vsize = cfg->h & 0x1FFF;
 
-	if (!mtk_crtc) {
-		DDPINFO("%s mtk_crtc is not assigned\n", __func__);
-		return;
-	}
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_DISP_R2Y_SIZE,
+			((hsize << 16) | vsize), ~0);
 
-	if (addon_config->config_type.type == ADDON_DISCONNECT)
-		return;
-
-	mtk_r2y_config(mtk_crtc, comp,addon_config, handle);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_DISP_R2Y_1TNP,
+			R2Y_SW_1T2P, R2Y_SW_1T2P);
 }
 
 int mtk_r2y_analysis(struct mtk_ddp_comp *comp)
@@ -103,31 +96,19 @@ int mtk_r2y_analysis(struct mtk_ddp_comp *comp)
 
 static void mtk_r2y_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	int hsize = 0, vsize = 0;
-
 	DDPDBG("%s, comp->regs_pa=0x%llx\n", __func__, comp->regs_pa);
 
-	hsize = crtc->state->adjusted_mode.hdisplay & 0x1FFF;
-	vsize = crtc->state->adjusted_mode.vdisplay & 0x1FFF;
 	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + MT6989_DISP_REG_DISP_R2Y_SIZE,
-			((hsize << 16) | vsize), ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + MT6989_DISP_REG_DISP_R2Y_1TNP,
-			MT6989_R2Y_SW_1T2P, MT6989_R2Y_SW_1T2P);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + MT6989_DISP_REG_DISP_R2Y_EN,
-			MT6989_R2Y_EN, MT6989_R2Y_EN);
+			comp->regs_pa + DISP_REG_DISP_R2Y_EN,
+			R2Y_EN, R2Y_EN);
 }
 
 static void mtk_r2y_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	DDPDBG("%s, comp->regs_pa=0x%llx\n", __func__, comp->regs_pa);
 	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + MT6989_DISP_REG_DISP_R2Y_EN,
-			0, MT6989_R2Y_EN);
+			comp->regs_pa + DISP_REG_DISP_R2Y_EN,
+			0, R2Y_EN);
 }
 
 static void mtk_r2y_prepare(struct mtk_ddp_comp *comp)
@@ -145,7 +126,7 @@ static void mtk_r2y_unprepare(struct mtk_ddp_comp *comp)
 static const struct mtk_ddp_comp_funcs mtk_disp_r2y_funcs = {
 	.start = mtk_r2y_start,
 	.stop = mtk_r2y_stop,
-	.addon_config = mtk_r2y_addon_config,
+	.config = mtk_r2y_config,
 	.prepare = mtk_r2y_prepare,
 	.unprepare = mtk_r2y_unprepare,
 };
