@@ -198,6 +198,8 @@ struct rrot_data {
 
 	/* threshold golden setting for racing mode */
 	struct rrot_golden golden[GOLDEN_FMT_TOTAL];
+
+	u8 px_per_tick;
 };
 
 static const struct rrot_data mt6989_rrot_data = {
@@ -228,6 +230,7 @@ static const struct rrot_data mt6989_rrot_data = {
 			.settings = th_afbc_mt6989,
 		},
 	},
+	.px_per_tick = 2,
 };
 
 struct mml_comp_rrot {
@@ -1787,10 +1790,12 @@ static s32 rrot_wait(struct mml_comp *comp, struct mml_task *task,
 static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
+	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
 	u32 pipe = comp_to_rrot(comp)->pipe;
+	u32 pixel = rrot_frm->pixel_acc;
 
 	/* ufo case */
 	if (MML_FMT_UFO(cfg->info.src.format))
@@ -1799,11 +1804,13 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 	/* Data size add to task and pixel,
 	 * it is ok for rdma to directly assign and accumulate in wrot.
 	 */
+	if (rrot->data->px_per_tick)
+		pixel = pixel / rrot->data->px_per_tick + 1;
 	cache->total_datasize = rrot_frm->datasize;
-	cache->max_pixel = max(cache->max_pixel, rrot_frm->pixel_acc);
+	cache->max_pixel = max(cache->max_pixel, pixel);
 
 	mml_msg("%s task %p pipe %u data %u pixel %u",
-		__func__, task, pipe, rrot_frm->datasize, rrot_frm->pixel_acc);
+		__func__, task, pipe, rrot_frm->datasize, pixel);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	if (unlikely(mml_rdma_crc)) {

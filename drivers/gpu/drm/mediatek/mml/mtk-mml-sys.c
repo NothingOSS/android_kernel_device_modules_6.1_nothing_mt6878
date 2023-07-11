@@ -79,6 +79,7 @@ struct mml_data {
 		struct mml_comp_config *ccfg);
 	u8 gpr[MML_PIPE_CNT];
 	enum mml_aidsel_mode aidsel_mode;
+	u8 px_per_tick;
 	bool pw_mminfra;
 	bool set_mml_uid;
 };
@@ -1757,16 +1758,6 @@ static s32 dl_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u32 size = (dl_h << 16) + dl_w;
 
 	cmdq_pkt_write(pkt, NULL, base_pa + offset, size, U32_MAX);
-
-	if (task->config->info.mode == MML_MODE_DIRECT_LINK) {
-		static u32 last[MML_PIPE_CNT];
-
-		if (last[ccfg->pipe] != size) {
-			mml_log("%s comp %u size %u %u", __func__, comp->id, dl_w, dl_h);
-			last[ccfg->pipe] = size;
-		}
-	}
-
 	return 0;
 }
 
@@ -1775,8 +1766,12 @@ static s32 dl_post(struct mml_comp *comp, struct mml_task *task,
 {
 	if (task->config->info.mode == MML_MODE_DIRECT_LINK) {
 		struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
+		struct mml_sys *sys = comp_to_sys(comp);
 		u32 out_pixel = task->config->dl_out[ccfg->pipe].width *
 			task->config->dl_out[ccfg->pipe].height;
+
+		if (sys->data->px_per_tick)
+			out_pixel = out_pixel / sys->data->px_per_tick + 1;
 
 		cache->max_pixel = max(cache->max_pixel, out_pixel);
 	}
@@ -2258,6 +2253,7 @@ static const struct mml_data mt6989_mml_data = {
 	},
 	.aid_sel = sys_config_aid_sel_bits,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.px_per_tick = 2,
 	.aidsel_mode = MML_AIDSEL_ENGINEBITS,
 	.pw_mminfra = true,
 };

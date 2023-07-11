@@ -439,6 +439,7 @@ struct rdma_data {
 	u32 tile_width;
 	u32 sram_size;
 	u8 rb_swap;	/* version for rb channel swap behavior */
+	u8 px_per_tick;
 	bool write_sec_reg;
 	bool tile_reset;
 
@@ -604,6 +605,7 @@ static const struct rdma_data mt6989_rdma_data = {
 	.tile_width = 3520,
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
 	.rb_swap = 1,
+	.px_per_tick = 2,
 	.tile_reset = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
@@ -1941,9 +1943,11 @@ force_reset:
 static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
+	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
+	u32 pixel = rdma_frm->pixel_acc;
 
 	/* ufo case */
 	if (MML_FMT_UFO(cfg->info.src.format))
@@ -1952,11 +1956,13 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 	/* Data size add to task and pixel,
 	 * it is ok for rdma to directly assign and accumulate in wrot.
 	 */
+	if (rdma->data->px_per_tick)
+		pixel = pixel / rdma->data->px_per_tick + 1;
 	cache->total_datasize = rdma_frm->datasize;
-	cache->max_pixel = rdma_frm->pixel_acc;
+	cache->max_pixel = pixel;
 
 	mml_msg("%s task %p pipe %hhu data %u pixel %u",
-		__func__, task, ccfg->pipe, rdma_frm->datasize, rdma_frm->pixel_acc);
+		__func__, task, ccfg->pipe, rdma_frm->datasize, pixel);
 
 	/* for sram test rollback smi config */
 	if (cfg->info.mode == MML_MODE_APUDC ||

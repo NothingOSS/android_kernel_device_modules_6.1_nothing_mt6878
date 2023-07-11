@@ -212,6 +212,7 @@ struct wrot_data {
 	u32 sram_size;
 	u8 rb_swap;	/* version for rb channel swap behavior */
 	u8 read_mode;
+	u8 px_per_tick;
 	bool yuv_pending;
 };
 
@@ -235,6 +236,7 @@ static const struct wrot_data mt6989_wrot_data = {
 	.tile_width = 512,
 	.sram_size = 512 * 1024,
 	.read_mode = MML_PQ_SOF_MODE,
+	.px_per_tick = 2,
 	.yuv_pending = true,
 	/* .rb_swap = 2 */
 };
@@ -2151,15 +2153,19 @@ static void wrot_backup_crc_update(struct mml_comp *comp, struct mml_task *task,
 static s32 wrot_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
+	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
+	u32 pixel = wrot_frm->pixel_acc;
 
 	/* accmulate data size and use max pixel */
+	if (wrot->data->px_per_tick)
+		pixel = pixel / wrot->data->px_per_tick + 1;
 	cache->total_datasize += wrot_frm->datasize;
-	cache->max_pixel = max(cache->max_pixel, wrot_frm->pixel_acc);
+	cache->max_pixel = max(cache->max_pixel, pixel);
 
 	mml_msg("%s task %p pipe %hhu data %u pixel %u eol %u",
-		__func__, task, ccfg->pipe, wrot_frm->datasize, wrot_frm->pixel_acc,
+		__func__, task, ccfg->pipe, wrot_frm->datasize, pixel,
 		wrot_frm->wdone_cnt);
 
 	if (task->config->info.mode == MML_MODE_RACING) {
