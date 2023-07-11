@@ -1543,6 +1543,7 @@ enum mtk_pq_frame_cfg_cmd {
 	PQ_DITHER_SET_DITHER_PARAM = 700,
 	PQ_VIRTUAL_SET_PROPERTY = 800,
 	PQ_VIRTUAL_CHECK_TRIGGER,
+	PQ_VIRTUAL_RELAY_ENGINES,
 	/* Get cmd begin */
 	/* Notice:
 	 * Command for getting must be added after the PQ_GET_CMD_START.
@@ -1565,6 +1566,24 @@ enum mtk_pq_frame_cfg_cmd {
 	PQ_VIRTUAL_GET_MASTER_INFO = 60600,
 	PQ_VIRTUAL_GET_IRQ,
 	PQ_CMD_MAX = 65535,
+};
+
+enum mtk_pq_relay_engine {
+	MTK_DISP_PQ_COLOR_RELAY = 0x1,
+	MTK_DISP_PQ_CCORR_RELAY = 0x2,
+	MTK_DISP_PQ_C3D_RELAY = 0x4,
+	MTK_DISP_PQ_TDSHP_RELAY = 0x8,
+	MTK_DISP_PQ_AAL_RELAY = 0x10,
+	MTK_DISP_PQ_DMDP_AAL_RELAY = 0x20,
+	MTK_DISP_PQ_GAMMA_RELAY = 0x40,
+	MTK_DISP_PQ_DITHER_RELAY = 0x80,
+	MTK_DISP_PQ_CHIST_RELAY = 0x100,
+};
+
+struct mtk_pq_relay_enable {
+	bool enable;
+	bool wait_hw_config_done;
+	uint32_t relay_engines;
 };
 
 #define GET_PANELS_STR_LEN 64
