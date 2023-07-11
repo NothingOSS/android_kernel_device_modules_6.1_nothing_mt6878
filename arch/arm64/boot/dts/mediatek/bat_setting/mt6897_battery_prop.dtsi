@@ -37,8 +37,10 @@
 	/* Battery temperature T2 */
 	temperature-t3 = <(0)>;
 	/* Battery temperature T3 */
-	temperature-t4 = <(-10)>;
+	temperature-t4 = <(-7)>;
 	/* Battery temperature T4 */
+	temperature-t5 = <(-10)>;
+	/* Battery temperature T5 */
 	g-fg-pseudo100-t0 = <(100)>;
 	/* Pseudo 100% percentage at T0 */
 	g-fg-pseudo100-t1 = <(100)>;
