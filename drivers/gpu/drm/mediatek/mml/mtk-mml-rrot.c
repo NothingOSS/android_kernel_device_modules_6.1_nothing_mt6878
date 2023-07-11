@@ -125,7 +125,7 @@ do { \
 		pr_notice("[mml]" fmt "\n", ##args); \
 } while (0)
 
-int rrot_binning;
+int rrot_binning = 1;
 module_param(rrot_binning, int, 0644);
 
 /* Debug parameter to force config stash cmd RROT_PREFETCH_CONTROL_1 and RROT_PREFETCH_CONTROL_2
