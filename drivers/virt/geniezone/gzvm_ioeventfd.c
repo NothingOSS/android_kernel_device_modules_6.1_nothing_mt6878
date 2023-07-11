@@ -26,6 +26,10 @@ struct gzvm_ioevent {
  * ioeventfd_check_collision() - Check collison assumes gzvm->slots_lock held.
  * @gzvm: Pointer to gzvm.
  * @p: Pointer to gzvm_ioevent.
+ *
+ * Return:
+ * * true			- collison found
+ * * false			- no collison
  */
 static bool ioeventfd_check_collision(struct gzvm *gzvm, struct gzvm_ioevent *p)
 {
@@ -179,8 +183,9 @@ err_free:
  * gzvm_ioeventfd_check_valid() - Check user arguments is valid.
  * @args: Pointer to gzvm_ioeventfd.
  *
- * Return true if user arguments are valid.
- * Return false if user arguments are invalid.
+ * Return:
+ * * true if user arguments are valid.
+ * * false if user arguments are invalid.
  */
 static bool gzvm_ioeventfd_check_valid(struct gzvm_ioeventfd *args)
 {
@@ -219,6 +224,10 @@ static bool gzvm_ioeventfd_check_valid(struct gzvm_ioeventfd *args)
  * gzvm_ioeventfd() - Register ioevent to ioevent list.
  * @gzvm: Pointer to gzvm.
  * @args: Pointer to gzvm_ioeventfd.
+ *
+ * Return:
+ * * 0			- Success.
+ * * Negative		- Failure.
  */
 int gzvm_ioeventfd(struct gzvm *gzvm, struct gzvm_ioeventfd *args)
 {
@@ -238,8 +247,9 @@ int gzvm_ioeventfd(struct gzvm *gzvm, struct gzvm_ioeventfd *args)
  * @len: mmio size.
  * @val: Pointer to void.
  *
- * Return true if this io is already sent to ioeventfd's listener.
- * Return false if we cannot find any ioeventfd registering this mmio write.
+ * Return:
+ * * true if this io is already sent to ioeventfd's listener.
+ * * false if we cannot find any ioeventfd registering this mmio write.
  */
 bool gzvm_ioevent_write(struct gzvm_vcpu *vcpu, __u64 addr, int len,
 			const void *val)

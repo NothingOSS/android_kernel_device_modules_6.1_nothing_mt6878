@@ -51,11 +51,8 @@ static u64 gzvm_mtimer_delay_time(u64 delay)
 {
 	u64 ns;
 
-	ns = clocksource_cyc2ns(
-		delay,
-		timecycle.mult,
-		timecycle.shift
-	);
+	ns = clocksource_cyc2ns(delay, clock_scale_factor.mult,
+				clock_scale_factor.shift);
 
 	return ns;
 }
@@ -72,8 +69,7 @@ static void gzvm_mtimer_catch(struct hrtimer *hrt, u64 delay)
 	u64 ns;
 
 	ns = gzvm_mtimer_delay_time(delay);
-	hrtimer_start(hrt, ktime_add_ns(ktime_get(), ns),
-				HRTIMER_MODE_ABS_HARD);
+	hrtimer_start(hrt, ktime_add_ns(ktime_get(), ns), HRTIMER_MODE_ABS_HARD);
 }
 
 int gzvm_arch_vcpu_run(struct gzvm_vcpu *vcpu, __u64 *exit_reason)
@@ -98,7 +94,7 @@ int gzvm_arch_vcpu_run(struct gzvm_vcpu *vcpu, __u64 *exit_reason)
 	return ret;
 }
 
-int gzvm_arch_destroy_vcpu(gzvm_id_t vm_id, int vcpuid)
+int gzvm_arch_destroy_vcpu(u16 vm_id, int vcpuid)
 {
 	struct arm_smccc_res res;
 	unsigned long a1;
@@ -112,9 +108,13 @@ int gzvm_arch_destroy_vcpu(gzvm_id_t vm_id, int vcpuid)
 
 /**
  * gzvm_arch_create_vcpu() - Call smc to gz hypervisor to create vcpu
+ * @vm_id: vm id
+ * @vcpuid: vcpu id
  * @run: Virtual address of vcpu->run
+ *
+ * Return: The wrapper helps caller to convert geniezone errno to Linux errno.
  */
-int gzvm_arch_create_vcpu(gzvm_id_t vm_id, int vcpuid, void *run)
+int gzvm_arch_create_vcpu(u16 vm_id, int vcpuid, void *run)
 {
 	struct arm_smccc_res res;
 	unsigned long a1, a2;

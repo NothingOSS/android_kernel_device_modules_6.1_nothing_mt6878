@@ -10,21 +10,21 @@
 
 enum {
 	GZVM_FUNC_CREATE_VM = 0,
-	GZVM_FUNC_DESTROY_VM,
-	GZVM_FUNC_CREATE_VCPU,
-	GZVM_FUNC_DESTROY_VCPU,
-	GZVM_FUNC_SET_MEMREGION,
-	GZVM_FUNC_RUN,
-	GZVM_FUNC_GET_REGS,
-	GZVM_FUNC_SET_REGS,
-	GZVM_FUNC_GET_ONE_REG,
-	GZVM_FUNC_SET_ONE_REG,
-	GZVM_FUNC_IRQ_LINE,
-	GZVM_FUNC_CREATE_DEVICE,
-	GZVM_FUNC_PROBE,
-	GZVM_FUNC_ENABLE_CAP,
-	GZVM_FUNC_INFORM_EXIT,
-	NR_GZVM_FUNC
+	GZVM_FUNC_DESTROY_VM = 1,
+	GZVM_FUNC_CREATE_VCPU = 2,
+	GZVM_FUNC_DESTROY_VCPU = 3,
+	GZVM_FUNC_SET_MEMREGION = 4,
+	GZVM_FUNC_RUN = 5,
+	GZVM_FUNC_GET_ONE_REG = 8,
+	GZVM_FUNC_SET_ONE_REG = 9,
+	GZVM_FUNC_IRQ_LINE = 10,
+	GZVM_FUNC_CREATE_DEVICE = 11,
+	GZVM_FUNC_PROBE = 12,
+	GZVM_FUNC_ENABLE_CAP = 13,
+	GZVM_FUNC_INFORM_EXIT = 14,
+	GZVM_FUNC_MEMREGION_PURPOSE = 15,
+	GZVM_FUNC_SET_DTB_CONFIG = 16,
+	NR_GZVM_FUNC,
 };
 
 #define SMC_ENTITY_MTK			59
@@ -39,8 +39,6 @@ enum {
 #define MT_HVC_GZVM_DESTROY_VCPU	GZVM_HCALL_ID(GZVM_FUNC_DESTROY_VCPU)
 #define MT_HVC_GZVM_SET_MEMREGION	GZVM_HCALL_ID(GZVM_FUNC_SET_MEMREGION)
 #define MT_HVC_GZVM_RUN			GZVM_HCALL_ID(GZVM_FUNC_RUN)
-#define MT_HVC_GZVM_GET_REGS		GZVM_HCALL_ID(GZVM_FUNC_GET_REGS)
-#define MT_HVC_GZVM_SET_REGS		GZVM_HCALL_ID(GZVM_FUNC_SET_REGS)
 #define MT_HVC_GZVM_GET_ONE_REG		GZVM_HCALL_ID(GZVM_FUNC_GET_ONE_REG)
 #define MT_HVC_GZVM_SET_ONE_REG		GZVM_HCALL_ID(GZVM_FUNC_SET_ONE_REG)
 #define MT_HVC_GZVM_IRQ_LINE		GZVM_HCALL_ID(GZVM_FUNC_IRQ_LINE)
@@ -48,10 +46,15 @@ enum {
 #define MT_HVC_GZVM_PROBE		GZVM_HCALL_ID(GZVM_FUNC_PROBE)
 #define MT_HVC_GZVM_ENABLE_CAP		GZVM_HCALL_ID(GZVM_FUNC_ENABLE_CAP)
 #define MT_HVC_GZVM_INFORM_EXIT		GZVM_HCALL_ID(GZVM_FUNC_INFORM_EXIT)
+#define MT_HVC_GZVM_MEMREGION_PURPOSE	GZVM_HCALL_ID(GZVM_FUNC_MEMREGION_PURPOSE)
+#define MT_HVC_GZVM_SET_DTB_CONFIG	GZVM_HCALL_ID(GZVM_FUNC_SET_DTB_CONFIG)
+
 #define GIC_V3_NR_LRS			16
 
 /**
- * gzvm_hypercall_wrapper()
+ * gzvm_hypcall_wrapper() - the wrapper for hvc calls
+ * @a0-a7: arguments passed in registers 0 to 7
+ * @res: result values from registers 0 to 3
  *
  * Return: The wrapper helps caller to convert geniezone errno to Linux errno.
  */
@@ -65,32 +68,46 @@ static int gzvm_hypcall_wrapper(unsigned long a0, unsigned long a1,
 	return gz_err_to_errno(res->a0);
 }
 
-static inline gzvm_id_t get_vmid_from_tuple(unsigned int tuple)
+static inline u16 get_vmid_from_tuple(unsigned int tuple)
 {
-	return (gzvm_id_t)(tuple >> 16);
+	return (u16)(tuple >> 16);
 }
 
-static inline gzvm_vcpu_id_t get_vcpuid_from_tuple(unsigned int tuple)
+static inline u16 get_vcpuid_from_tuple(unsigned int tuple)
 {
-	return (gzvm_vcpu_id_t)(tuple & 0xffff);
+	return (u16)(tuple & 0xffff);
 }
 
+/**
+ * struct gzvm_vcpu_hwstate: Sync architecture state back to host for handling
+ * @nr_lrs: The available LRs(list registers) in Soc.
+ * @__pad: add an explicit '__u32 __pad;' in the middle to make it clear
+ *         what the actual layout is and make it portable.
+ * @lr: The array of LRs(list registers).
+ * @vtimer_delay: The remaining time until the next tick of guest VM.
+ * @vtimer_migrate: The switch flag used for guest VM to do vtimer migration or not.
+ *
+ * - Keep the same layout of hypervisor data struct.
+ * - Sync list registers back for acking virtual device interrupt status.
+ * - Sync timer registers back for migrating timer to host's hwtimer to keep
+ *   timer working in background.
+ */
 struct gzvm_vcpu_hwstate {
-	__u32 nr_lrs;
-	__u64 lr[GIC_V3_NR_LRS];
-	__u64 vtimer_delay;
-	__u32 vtimer_migrate;
+	__le32 nr_lrs;
+	__le32 __pad;
+	__le64 lr[GIC_V3_NR_LRS];
+	__le64 vtimer_delay;
+	__le32 vtimer_migrate;
 };
 
 static inline unsigned int
-assemble_vm_vcpu_tuple(gzvm_id_t vmid, gzvm_vcpu_id_t vcpuid)
+assemble_vm_vcpu_tuple(u16 vmid, u16 vcpuid)
 {
 	return ((unsigned int)vmid << 16 | vcpuid);
 }
 
 static inline void
-disassemble_vm_vcpu_tuple(unsigned int tuple, gzvm_id_t *vmid,
-			  gzvm_vcpu_id_t *vcpuid)
+disassemble_vm_vcpu_tuple(unsigned int tuple, u16 *vmid, u16 *vcpuid)
 {
 	*vmid = get_vmid_from_tuple(tuple);
 	*vcpuid = get_vcpuid_from_tuple(tuple);

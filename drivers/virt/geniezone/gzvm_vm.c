@@ -18,27 +18,32 @@
 static DEFINE_MUTEX(gzvm_list_lock);
 static LIST_HEAD(gzvm_list);
 
-struct timecycle timecycle;
+struct timecycle clock_scale_factor;
 
 /**
- * hva_to_pa_fast() converts hva to pa in generic fast way
+ * hva_to_pa_fast() - converts hva to pa in generic fast way
+ * @hva: Host virtual address.
+ *
  * Return: 0 if translation error
  */
 static u64 hva_to_pa_fast(u64 hva)
 {
 	struct page *page[1];
+
 	u64 pfn;
 
 	if (get_user_page_fast_only(hva, 0, page)) {
 		pfn = page_to_phys(page[0]);
 		put_page((struct page *)page);
 		return pfn;
-	} else
+	} else {
 		return 0;
+	}
 }
 
 /**
- * hva_to_pa_slow() note that this function may sleep.
+ * hva_to_pa_slow() - note that this function may sleep
+ * @hva: Host virtual address.
  *
  * Return: 0 if translation error
  */
@@ -89,12 +94,16 @@ static u64 __gzvm_gfn_to_pfn_memslot(struct gzvm_memslot *memslot, u64 gfn)
 /**
  * gzvm_gfn_to_pfn_memslot() - Translate gfn (guest ipa) to pfn (host pa),
  *			       result is in @pfn
+ * @memslot: Pointer to struct gzvm_memslot.
+ * @gfn: Guest frame number.
+ * @pfn: Host page frame number.
  *
  * Return:
  * * 0			- Succeed
  * * -EFAULT		- Failed to convert
  */
-int gzvm_gfn_to_pfn_memslot(struct gzvm_memslot *memslot, u64 gfn, u64 *pfn)
+static int gzvm_gfn_to_pfn_memslot(struct gzvm_memslot *memslot, u64 gfn,
+				   u64 *pfn)
 {
 	u64 __pfn;
 
@@ -114,6 +123,12 @@ int gzvm_gfn_to_pfn_memslot(struct gzvm_memslot *memslot, u64 gfn, u64 *pfn)
 
 /**
  * fill_constituents() - Populate pa to buffer until full
+ * @consti: Pointer to struct mem_region_addr_range.
+ * @consti_cnt: Constituent count.
+ * @max_nr_consti: Maximum number of constituent count.
+ * @gfn: Guest frame number.
+ * @total_pages: Total page numbers.
+ * @slot: Pointer to struct gzvm_memslot.
  *
  * Return: how many pages we've fill in, negative if error
  */
@@ -121,8 +136,7 @@ static int fill_constituents(struct mem_region_addr_range *consti,
 			     int *consti_cnt, int max_nr_consti, u64 gfn,
 			     u32 total_pages, struct gzvm_memslot *slot)
 {
-	u64 pfn, prev_pfn;
-	u64 gfn_end;
+	u64 pfn, prev_pfn, gfn_end;
 	int nr_pages = 1;
 	int i = 0;
 
@@ -213,8 +227,8 @@ register_memslot_addr_range(struct gzvm *gzvm, struct gzvm_memslot *memslot)
 
 /**
  * gzvm_vm_ioctl_set_memory_region() - Set memory region of guest
- *
- * @mem: input memory region from user
+ * @gzvm: Pointer to struct gzvm.
+ * @mem: Input memory region from user.
  *
  * Return:
  * * -EXIO		- memslot is out-of-range
@@ -225,6 +239,7 @@ static int
 gzvm_vm_ioctl_set_memory_region(struct gzvm *gzvm,
 				struct gzvm_userspace_memory_region *mem)
 {
+	int ret;
 	struct vm_area_struct *vma;
 	struct gzvm_memslot *memslot;
 	unsigned long size;
@@ -249,6 +264,13 @@ gzvm_vm_ioctl_set_memory_region(struct gzvm *gzvm,
 	memslot->vma = vma;
 	memslot->flags = mem->flags;
 	memslot->slot_id = mem->slot;
+
+	ret = gzvm_arch_memregion_purpose(gzvm, mem);
+	if (ret) {
+		dev_info(&gzvm_debug_dev->dev,
+			"Failed to config memory region for the specified purpose\n");
+		return -EFAULT;
+	}
 	return register_memslot_addr_range(gzvm, memslot);
 }
 
@@ -256,16 +278,15 @@ static int gzvm_vm_ioctl_irq_line(struct gzvm *gzvm,
 				  struct gzvm_irq_level *irq_level)
 {
 	u32 irq = irq_level->irq;
-	unsigned int irq_type, vcpu_idx, irq_num;
+	u32 irq_type, vcpu_idx, vcpu2_idx, irq_num;
 	bool level = irq_level->level;
 
-	irq_type = (irq >> GZVM_IRQ_TYPE_SHIFT) & GZVM_IRQ_TYPE_MASK;
-	vcpu_idx = (irq >> GZVM_IRQ_VCPU_SHIFT) & GZVM_IRQ_VCPU_MASK;
-	vcpu_idx += ((irq >> GZVM_IRQ_VCPU2_SHIFT) & GZVM_IRQ_VCPU2_MASK) *
-		(GZVM_IRQ_VCPU_MASK + 1);
-	irq_num = (irq >> GZVM_IRQ_NUM_SHIFT) & GZVM_IRQ_NUM_MASK;
+	irq_type = FIELD_GET(GZVM_IRQ_LINE_TYPE, irq);
+	vcpu_idx = FIELD_GET(GZVM_IRQ_LINE_VCPU, irq);
+	vcpu2_idx = FIELD_GET(GZVM_IRQ_LINE_VCPU2, irq) * (GZVM_IRQ_VCPU_MASK + 1);
+	irq_num = FIELD_GET(GZVM_IRQ_LINE_NUM, irq);
 
-	return gzvm_irqchip_inject_irq(gzvm, vcpu_idx, irq_type, irq_num,
+	return gzvm_irqchip_inject_irq(gzvm, vcpu_idx + vcpu2_idx, irq_type, irq_num,
 				       level);
 }
 
@@ -341,20 +362,20 @@ static long gzvm_vm_ioctl(struct file *filp, unsigned int ioctl,
 	case GZVM_SET_USER_MEMORY_REGION: {
 		struct gzvm_userspace_memory_region userspace_mem;
 
-		ret = -EFAULT;
-		if (copy_from_user(&userspace_mem, argp,
-				   sizeof(userspace_mem)))
+		if (copy_from_user(&userspace_mem, argp, sizeof(userspace_mem))) {
+			ret = -EFAULT;
 			goto out;
+		}
 		ret = gzvm_vm_ioctl_set_memory_region(gzvm, &userspace_mem);
 		break;
 	}
 	case GZVM_IRQ_LINE: {
 		struct gzvm_irq_level irq_event;
 
-		ret = -EFAULT;
-		if (copy_from_user(&irq_event, argp, sizeof(irq_event)))
+		if (copy_from_user(&irq_event, argp, sizeof(irq_event))) {
+			ret = -EFAULT;
 			goto out;
-
+		}
 		ret = gzvm_vm_ioctl_irq_line(gzvm, &irq_event);
 		break;
 	}
@@ -365,29 +386,41 @@ static long gzvm_vm_ioctl(struct file *filp, unsigned int ioctl,
 	case GZVM_IRQFD: {
 		struct gzvm_irqfd data;
 
-		ret = -EFAULT;
-		if (copy_from_user(&data, argp, sizeof(data)))
+		if (copy_from_user(&data, argp, sizeof(data))) {
+			ret = -EFAULT;
 			goto out;
+		}
 		ret = gzvm_irqfd(gzvm, &data);
 		break;
 	}
 	case GZVM_IOEVENTFD: {
 		struct gzvm_ioeventfd data;
 
-		ret = -EFAULT;
-		if (copy_from_user(&data, argp, sizeof(data)))
+		if (copy_from_user(&data, argp, sizeof(data))) {
+			ret = -EFAULT;
 			goto out;
+		}
 		ret = gzvm_ioeventfd(gzvm, &data);
 		break;
 	}
 	case GZVM_ENABLE_CAP: {
 		struct gzvm_enable_cap cap;
 
-		ret = -EFAULT;
-		if (copy_from_user(&cap, argp, sizeof(cap)))
+		if (copy_from_user(&cap, argp, sizeof(cap))) {
+			ret = -EFAULT;
 			goto out;
-
+		}
 		ret = gzvm_vm_ioctl_enable_cap(gzvm, &cap, argp);
+		break;
+	}
+	case GZVM_SET_DTB_CONFIG: {
+		struct gzvm_dtb_config cfg;
+
+		if (copy_from_user(&cfg, argp, sizeof(cfg))) {
+			ret = -EFAULT;
+			goto out;
+		}
+		ret = gzvm_arch_set_dtb_config(gzvm, &cfg);
 		break;
 	}
 	default:
@@ -425,7 +458,6 @@ static int gzvm_vm_release(struct inode *inode, struct file *filp)
 	struct gzvm *gzvm = filp->private_data;
 
 	gzvm_destroy_vm(gzvm);
-
 	return 0;
 }
 
@@ -444,7 +476,7 @@ static struct gzvm *gzvm_create_vm(unsigned long vm_type)
 	if (!gzvm)
 		return ERR_PTR(-ENOMEM);
 
-	ret = gzvm_arch_create_vm();
+	ret = gzvm_arch_create_vm(vm_type);
 	if (ret < 0) {
 		kfree(gzvm);
 		return ERR_PTR(ret);
@@ -470,13 +502,12 @@ static struct gzvm *gzvm_create_vm(unsigned long vm_type)
 		return ERR_PTR(ret);
 	}
 
-	/* timecycle init mult shift */
-	clocks_calc_mult_shift(
-		&timecycle.mult,
-		&timecycle.shift,
-		arch_timer_get_cntfrq(),
-		NSEC_PER_SEC,
-		10);
+	/* clock_scale_factor init mult shift */
+	clocks_calc_mult_shift(&clock_scale_factor.mult,
+			       &clock_scale_factor.shift,
+			       arch_timer_get_cntfrq(),
+			       NSEC_PER_SEC,
+			       10);
 
 	mutex_lock(&gzvm_list_lock);
 	list_add(&gzvm->vm_list, &gzvm_list);
@@ -489,23 +520,20 @@ static struct gzvm *gzvm_create_vm(unsigned long vm_type)
 
 /**
  * gzvm_dev_ioctl_create_vm - Create vm fd
+ * @vm_type: VM type. Only supports Linux VM now.
  *
  * Return: fd of vm, negative if error
  */
 int gzvm_dev_ioctl_create_vm(unsigned long vm_type)
 {
 	struct gzvm *gzvm;
-	int ret;
 
 	gzvm = gzvm_create_vm(vm_type);
 	if (IS_ERR(gzvm))
 		return PTR_ERR(gzvm);
 
-	ret = anon_inode_getfd("gzvm-vm", &gzvm_vm_fops, gzvm,
+	return anon_inode_getfd("gzvm-vm", &gzvm_vm_fops, gzvm,
 			       O_RDWR | O_CLOEXEC);
-	if (ret)
-		return ret;
-	return 0;
 }
 
 void destroy_all_vm(void)

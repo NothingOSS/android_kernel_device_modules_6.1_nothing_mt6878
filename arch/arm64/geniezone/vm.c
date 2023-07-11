@@ -3,6 +3,7 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 
+#include <asm/sysreg.h>
 #include <linux/arm-smccc.h>
 #include <linux/err.h>
 #include <linux/uaccess.h>
@@ -11,7 +12,9 @@
 #include <linux/gzvm_drv.h>
 #include "gzvm_arch_common.h"
 
-int gzvm_arch_inform_exit(gzvm_id_t vm_id)
+#define PAR_PA47_MASK ((((1UL << 48) - 1) >> 12) << 12)
+
+int gzvm_arch_inform_exit(u16 vm_id)
 {
 	struct arm_smccc_res res;
 
@@ -33,7 +36,7 @@ int gzvm_arch_probe(void)
 	return -ENXIO;
 }
 
-int gzvm_arch_set_memregion(gzvm_id_t vm_id, size_t buf_size,
+int gzvm_arch_set_memregion(u16 vm_id, size_t buf_size,
 			    phys_addr_t region)
 {
 	struct arm_smccc_res res;
@@ -77,19 +80,20 @@ int gzvm_arch_check_extension(struct gzvm *gzvm, __u64 cap, void __user *argp)
 }
 
 /**
- * gzvm_arch_create_vm()
+ * gzvm_arch_create_vm() - create vm
+ * @vm_type: VM type. Only supports Linux VM now.
  *
  * Return:
  * * positive value	- VM ID
  * * -ENOMEM		- Memory not enough for storing VM data
  */
-int gzvm_arch_create_vm(void)
+int gzvm_arch_create_vm(unsigned long vm_type)
 {
 	struct arm_smccc_res res;
 	int ret;
 
-	ret = gzvm_hypcall_wrapper(MT_HVC_GZVM_CREATE_VM, 0, 0, 0, 0, 0, 0, 0,
-				   &res);
+	ret = gzvm_hypcall_wrapper(MT_HVC_GZVM_CREATE_VM, vm_type, 0, 0, 0, 0,
+				   0, 0, &res);
 
 	if (ret == 0)
 		return res.a1;
@@ -97,7 +101,7 @@ int gzvm_arch_create_vm(void)
 		return ret;
 }
 
-int gzvm_arch_destroy_vm(gzvm_id_t vm_id)
+int gzvm_arch_destroy_vm(u16 vm_id)
 {
 	struct arm_smccc_res res;
 
@@ -105,7 +109,27 @@ int gzvm_arch_destroy_vm(gzvm_id_t vm_id)
 				    0, 0, &res);
 }
 
-static int gzvm_vm_arch_enable_cap(struct gzvm *gzvm, struct gzvm_enable_cap *cap,
+int gzvm_arch_memregion_purpose(struct gzvm *gzvm,
+				struct gzvm_userspace_memory_region *mem)
+{
+	struct arm_smccc_res res;
+
+	return gzvm_hypcall_wrapper(MT_HVC_GZVM_MEMREGION_PURPOSE, gzvm->vm_id,
+				    mem->guest_phys_addr, mem->memory_size,
+				    mem->flags, 0, 0, 0, &res);
+}
+
+int gzvm_arch_set_dtb_config(struct gzvm *gzvm, struct gzvm_dtb_config *cfg)
+{
+	struct arm_smccc_res res;
+
+	return gzvm_hypcall_wrapper(MT_HVC_GZVM_SET_DTB_CONFIG, gzvm->vm_id,
+				    cfg->dtb_addr, cfg->dtb_size, 0, 0, 0, 0,
+				    &res);
+}
+
+static int gzvm_vm_arch_enable_cap(struct gzvm *gzvm,
+				   struct gzvm_enable_cap *cap,
 				   struct arm_smccc_res *res)
 {
 	return gzvm_hypcall_wrapper(MT_HVC_GZVM_ENABLE_CAP, gzvm->vm_id,
@@ -116,7 +140,10 @@ static int gzvm_vm_arch_enable_cap(struct gzvm *gzvm, struct gzvm_enable_cap *ca
 
 /**
  * gzvm_vm_ioctl_get_pvmfw_size() - Get pvmfw size from hypervisor, return
- *				    in x1, and return to userspace in args.
+ *				    in x1, and return to userspace in args
+ * @gzvm: Pointer to struct gzvm.
+ * @cap: Pointer to struct gzvm_enable_cap.
+ * @argp: Pointer to struct gzvm_enable_cap in user space.
  *
  * Return:
  * * 0			- Succeed
@@ -141,12 +168,16 @@ static int gzvm_vm_ioctl_get_pvmfw_size(struct gzvm *gzvm,
 
 /**
  * gzvm_vm_ioctl_cap_pvm() - Proceed GZVM_CAP_ARM_PROTECTED_VM's subcommands
+ * @gzvm: Pointer to struct gzvm.
+ * @cap: Pointer to struct gzvm_enable_cap.
+ * @argp: Pointer to struct gzvm_enable_cap in user space.
  *
  * Return:
  * * 0			- Succeed
  * * -EINVAL		- Invalid subcommand or arguments
  */
-static int gzvm_vm_ioctl_cap_pvm(struct gzvm *gzvm, struct gzvm_enable_cap *cap,
+static int gzvm_vm_ioctl_cap_pvm(struct gzvm *gzvm,
+				 struct gzvm_enable_cap *cap,
 				 void __user *argp)
 {
 	int ret = -EINVAL;
@@ -169,7 +200,8 @@ static int gzvm_vm_ioctl_cap_pvm(struct gzvm *gzvm, struct gzvm_enable_cap *cap,
 	return ret;
 }
 
-int gzvm_vm_ioctl_arch_enable_cap(struct gzvm *gzvm, struct gzvm_enable_cap *cap,
+int gzvm_vm_ioctl_arch_enable_cap(struct gzvm *gzvm,
+				  struct gzvm_enable_cap *cap,
 				  void __user *argp)
 {
 	int ret = -EINVAL;
@@ -187,7 +219,9 @@ int gzvm_vm_ioctl_arch_enable_cap(struct gzvm *gzvm, struct gzvm_enable_cap *cap
 }
 
 /**
- * hva_to_pa_arch() converts hva to pa with arch-specific way
+ * hva_to_pa_arch() - converts hva to pa with arch-specific way
+ * @hva: Host virtual address.
+ *
  * Return: 0 if translation error
  */
 u64 hva_to_pa_arch(u64 hva)

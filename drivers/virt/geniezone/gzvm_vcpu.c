@@ -12,11 +12,13 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/gzvm_drv.h>
+#include "gzvm_common.h"
 
 /* maximum size needed for holding an integer */
 #define ITOA_MAX_LEN 12
 
-static long gzvm_vcpu_update_one_reg(struct gzvm_vcpu *vcpu, void * __user argp,
+static long gzvm_vcpu_update_one_reg(struct gzvm_vcpu *vcpu,
+				     void * __user argp,
 				     bool is_write)
 {
 	struct gzvm_one_reg reg;
@@ -77,19 +79,18 @@ static bool gzvm_vcpu_handle_mmio(struct gzvm_vcpu *vcpu)
 static void mtimer_irq_forward(struct gzvm_vcpu *vcpu)
 {
 	struct gzvm *gzvm;
-	unsigned int irq_num, irq_type, vcpu_idx;
-	u32 irq;
+	u32 irq_num, irq_type, vcpu_idx, vcpu2_idx;
 
 	gzvm = vcpu->gzvm;
-	irq = 27;
 
-	irq_num = (irq >> GZVM_IRQ_NUM_SHIFT) & GZVM_IRQ_NUM_MASK;
-	irq_type = (irq >> GZVM_IRQ_TYPE_SHIFT) & GZVM_IRQ_TYPE_MASK;
-	vcpu_idx = (irq >> GZVM_IRQ_VCPU_SHIFT) & GZVM_IRQ_VCPU_MASK;
-	vcpu_idx += ((irq >> GZVM_IRQ_VCPU2_SHIFT) & GZVM_IRQ_VCPU2_MASK) *
-		(GZVM_IRQ_VCPU_MASK + 1);
+	irq_num = FIELD_GET(GZVM_IRQ_LINE_NUM, GZVM_VTIMER_IRQ);
+	irq_type = FIELD_GET(GZVM_IRQ_LINE_TYPE, GZVM_VTIMER_IRQ);
+	vcpu_idx = FIELD_GET(GZVM_IRQ_LINE_VCPU, GZVM_VTIMER_IRQ);
+	vcpu2_idx = FIELD_GET(GZVM_IRQ_LINE_VCPU2, GZVM_VTIMER_IRQ) *
+		    (GZVM_IRQ_VCPU_MASK + 1);
 
-	gzvm_arch_inject_irq(gzvm, vcpu_idx, irq_type, irq_num, 1);
+	gzvm_irqchip_inject_irq(gzvm, vcpu_idx + vcpu2_idx,
+				irq_type, irq_num, 1);
 }
 
 static enum hrtimer_restart gzvm_mtimer_expire(struct hrtimer *hrt)
@@ -106,7 +107,12 @@ static enum hrtimer_restart gzvm_mtimer_expire(struct hrtimer *hrt)
 /**
  * gzvm_vcpu_run() - Handle vcpu run ioctl, entry point to guest and exit
  *		     point from guest
+ * @vcpu: Pointer to struct gzvm_vcpu
  * @argp: Pointer to struct gzvm_vcpu_run in userspace
+ *
+ * Return:
+ * * 0			- Success.
+ * * Negative		- Failure.
  */
 static long gzvm_vcpu_run(struct gzvm_vcpu *vcpu, void * __user argp)
 {
@@ -164,7 +170,6 @@ static long gzvm_vcpu_run(struct gzvm_vcpu *vcpu, void * __user argp)
 out:
 	if (copy_to_user(argp, vcpu->run, sizeof(struct gzvm_vcpu_run)))
 		return -EFAULT;
-
 	if (signal_pending(current)) {
 		vcpu->gzvm->exit_start_time = ktime_get();
 		// invoke hvc to inform gz to map memory
@@ -245,8 +250,8 @@ static int create_vcpu_fd(struct gzvm_vcpu *vcpu)
 }
 
 /**
- * gzvm_vm_ioctl_create_vcpu()
- *
+ * gzvm_vm_ioctl_create_vcpu() - for GZVM_CREATE_VCPU
+ * @gzvm: Pointer to struct gzvm
  * @cpuid: equals arg
  *
  * Return: Fd of vcpu, negative errno if error occurs

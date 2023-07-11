@@ -7,7 +7,6 @@
 #define __GZVM_ARCH_H__
 
 #include <linux/types.h>
-#include <asm/sysreg.h>
 
 #define GZVM_CAP_ARM_VM_IPA_SIZE	165
 #define GZVM_CAP_ARM_PROTECTED_VM	0xffbadab1
@@ -17,8 +16,6 @@
 #define GZVM_CAP_ARM_PVM_GET_PVMFW_SIZE		1
 /* GZVM_CAP_ARM_PVM_SET_PROTECTED_VM only sets protected but not load pvmfw */
 #define GZVM_CAP_ARM_PVM_SET_PROTECTED_VM	2
-
-#define PAR_PA47_MASK ((((1UL << 48) - 1) >> 12) << 12)
 
 /*
  * Architecture specific registers are to be defined in arch headers and
@@ -47,7 +44,8 @@
 
 /* Normal registers are mapped as coprocessor 16. */
 #define GZVM_REG_ARM_CORE		(0x0010 << GZVM_REG_ARM_COPROC_SHIFT)
-#define GZVM_REG_ARM_CORE_REG(name)	(offsetof(struct gzvm_regs, name) / sizeof(__u32))
+#define GZVM_REG_ARM_CORE_REG(name)	\
+	(offsetof(struct gzvm_regs, name) / sizeof(__u32))
 
 #define GZVM_VGIC_NR_SGIS		16
 #define GZVM_VGIC_NR_PPIS		16

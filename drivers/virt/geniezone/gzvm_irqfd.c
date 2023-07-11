@@ -17,10 +17,10 @@ struct gzvm_irq_ack_notifier {
 /**
  * struct gzvm_kernel_irqfd_resampler - irqfd resampler descriptor.
  * @gzvm: Poiner to gzvm.
- * @list_head list: List of resampling struct _irqfd objects sharing this gsi.
+ * @list: List of resampling struct _irqfd objects sharing this gsi.
  *		    RCU list modified under gzvm->irqfds.resampler_lock.
  * @notifier: gzvm irq ack notifier.
- * @list_head link: Entry in list of gzvm->irqfd.resampler_list.
+ * @link: Entry in list of gzvm->irqfd.resampler_list.
  *		    Use for sharing esamplers among irqfds on the same gsi.
  *		    Accessed and modified under gzvm->irqfds.resampler_lock.
  *
@@ -43,13 +43,16 @@ struct gzvm_kernel_irqfd_resampler {
 
 /**
  * struct gzvm_kernel_irqfd: gzvm kernel irqfd descriptor.
- * @gzvm: Pointer to gzvm.
+ * @gzvm: Pointer to struct gzvm.
  * @wait: Wait queue entry.
  * @gsi: Used for level IRQ fast-path.
  * @resampler: The resampler used by this irqfd (resampler-only).
  * @resamplefd: Eventfd notified on resample (resampler-only).
  * @resampler_link: Entry in list of irqfds for a resampler (resampler-only).
  * @eventfd: Used for setup/shutdown.
+ * @list: struct list_head.
+ * @pt: struct poll_table_struct.
+ * @shutdown: struct work_struct.
  */
 struct gzvm_kernel_irqfd {
 	struct gzvm *gzvm;
@@ -192,6 +195,9 @@ static void irqfd_shutdown(struct work_struct *work)
 /**
  * irqfd_is_active() - Assumes gzvm->irqfds.lock is held.
  * @irqfd: Pointer to gzvm_kernel_irqfd.
+ *
+ * Return:
+ * * true			- irqfd is active.
  */
 static bool irqfd_is_active(struct gzvm_kernel_irqfd *irqfd)
 {
@@ -219,6 +225,9 @@ static void irqfd_deactivate(struct gzvm_kernel_irqfd *irqfd)
  * @mode:
  * @sync:
  * @key:
+ *
+ * Return:
+ * * 0			- Success
  */
 static int irqfd_wakeup(wait_queue_entry_t *wait, unsigned int mode, int sync,
 			void *key)
@@ -433,6 +442,10 @@ void gzvm_notify_acked_irq(struct gzvm *gzvm, unsigned int gsi)
  * gzvm_irqfd_deassign() - Shutdown any irqfd's that match fd+gsi.
  * @gzvm: Pointer to gzvm.
  * @args: Pointer to gzvm_irqfd.
+ *
+ * Return:
+ * * 0			- Success.
+ * * Negative value	- Failure.
  */
 static int gzvm_irqfd_deassign(struct gzvm *gzvm, struct gzvm_irqfd *args)
 {
@@ -477,6 +490,12 @@ int gzvm_irqfd(struct gzvm *gzvm, struct gzvm_irqfd *args)
 
 /**
  * gzvm_vm_irqfd_init() - Initialize irqfd data structure per VM
+ *
+ * @gzvm: Pointer to struct gzvm.
+ *
+ * Return:
+ * * 0			- Success.
+ * * Negative		- Failure.
  */
 int gzvm_vm_irqfd_init(struct gzvm *gzvm)
 {
@@ -517,6 +536,10 @@ void gzvm_vm_irqfd_release(struct gzvm *gzvm)
 
 /**
  * gzvm_drv_irqfd_init() - Erase flushing work items when a VM exits.
+ *
+ * Return:
+ * * 0			- Success.
+ * * Negative		- Failure.
  *
  * Create a host-wide workqueue for issuing deferred shutdown requests
  * aggregated from all vm* instances. We need our own isolated

@@ -18,9 +18,6 @@
 
 #include <asm/gzvm_arch.h>
 
-typedef __u16 gzvm_id_t;
-typedef __u16 gzvm_vcpu_id_t;
-
 /* GZVM ioctls */
 #define GZVM_IOC_MAGIC			0x92	/* gz */
 
@@ -41,14 +38,11 @@ struct gzvm_memory_region {
 
 #define GZVM_SET_MEMORY_REGION     _IOW(GZVM_IOC_MAGIC,  0x40, \
 					struct gzvm_memory_region)
-/**
- * for irqfd, GZVM_CREATE_VCPU receives as a parameter the vcpu slot,
+/*
+ * GZVM_CREATE_VCPU receives as a parameter the vcpu slot,
  * and returns a vcpu fd.
  */
 #define GZVM_CREATE_VCPU           _IO(GZVM_IOC_MAGIC,   0x41)
-
-#define GZVM_ENABLE_CAP            _IOW(GZVM_IOC_MAGIC,  0xa3, \
-					struct gzvm_enable_cap)
 
 /* for GZVM_SET_USER_MEMORY_REGION */
 struct gzvm_userspace_memory_region {
@@ -62,17 +56,16 @@ struct gzvm_userspace_memory_region {
 };
 
 #define GZVM_SET_USER_MEMORY_REGION _IOW(GZVM_IOC_MAGIC, 0x46, \
-					struct gzvm_userspace_memory_region)
+					 struct gzvm_userspace_memory_region)
+
+#define GZVM_VTIMER_IRQ			27
 
 /* for GZVM_IRQ_LINE, irq field index values */
-#define GZVM_IRQ_VCPU2_SHIFT		28
-#define GZVM_IRQ_VCPU2_MASK		0xf
-#define GZVM_IRQ_TYPE_SHIFT		24
-#define GZVM_IRQ_TYPE_MASK		0xf
-#define GZVM_IRQ_VCPU_SHIFT		16
 #define GZVM_IRQ_VCPU_MASK		0xff
-#define GZVM_IRQ_NUM_SHIFT		0
-#define GZVM_IRQ_NUM_MASK		0xffff
+#define GZVM_IRQ_LINE_TYPE		GENMASK(27, 24)
+#define GZVM_IRQ_LINE_VCPU		GENMASK(23, 16)
+#define GZVM_IRQ_LINE_VCPU2		GENMASK(31, 28)
+#define GZVM_IRQ_LINE_NUM		GENMASK(15, 0)
 
 /* irq_type field */
 #define GZVM_IRQ_TYPE_CPU		0
@@ -95,23 +88,35 @@ struct gzvm_irq_level {
 					struct gzvm_irq_level)
 
 enum gzvm_device_type {
-	GZVM_DEV_TYPE_ARM_VGIC_V3_DIST,
-	GZVM_DEV_TYPE_ARM_VGIC_V3_REDIST,
+	GZVM_DEV_TYPE_ARM_VGIC_V3_DIST = 0,
+	GZVM_DEV_TYPE_ARM_VGIC_V3_REDIST = 1,
 	GZVM_DEV_TYPE_MAX,
 };
 
+/**
+ * struct gzvm_create_device: for GZVM_CREATE_DEVICE.
+ *
+ * Store information needed to create device.
+ */
 struct gzvm_create_device {
-	__u32 dev_type;			/* device type */
-	__u32 id;			/* out: device id */
-	__u64 flags;			/* device specific flags */
-	__u64 dev_addr;			/* device ipa address in VM's view */
-	__u64 dev_reg_size;		/* device register range size */
+	/* private: internal use only */
+	/* device type */
+	__u32 dev_type;
+	/* out: device id */
+	__u32 id;
+	/* device specific flags */
+	__u64 flags;
+	/* device ipa address in VM's view */
+	__u64 dev_addr;
+	/* device register range size */
+	__u64 dev_reg_size;
 	/*
 	 * If user -> kernel, this is user virtual address of device specific
 	 * attributes (if needed). If kernel->hypervisor, this is ipa.
 	 */
 	__u64 attr_addr;
-	__u64 attr_size;		/* size of device specific attributes */
+	/* size of device specific attributes */
+	__u64 attr_size;
 };
 
 #define GZVM_CREATE_DEVICE	   _IOWR(GZVM_IOC_MAGIC,  0xe0, \
@@ -125,29 +130,31 @@ struct gzvm_create_device {
 /* VM exit reason */
 enum {
 	GZVM_EXIT_UNKNOWN = 0x92920000,
-	GZVM_EXIT_MMIO,
-	GZVM_EXIT_HYPERCALL,
-	GZVM_EXIT_IRQ,
-	GZVM_EXIT_EXCEPTION,
-	GZVM_EXIT_DEBUG,
-	GZVM_EXIT_FAIL_ENTRY,
-	GZVM_EXIT_INTERNAL_ERROR,
-	GZVM_EXIT_SYSTEM_EVENT,
-	GZVM_EXIT_SHUTDOWN,
-	GZVM_EXIT_GZ,
+	GZVM_EXIT_MMIO = 0x92920001,
+	GZVM_EXIT_HYPERCALL = 0x92920002,
+	GZVM_EXIT_IRQ = 0x92920003,
+	GZVM_EXIT_EXCEPTION = 0x92920004,
+	GZVM_EXIT_DEBUG = 0x92920005,
+	GZVM_EXIT_FAIL_ENTRY = 0x92920006,
+	GZVM_EXIT_INTERNAL_ERROR = 0x92920007,
+	GZVM_EXIT_SYSTEM_EVENT = 0x92920008,
+	GZVM_EXIT_SHUTDOWN = 0x92920009,
+	GZVM_EXIT_GZ = 0x9292000a,
 };
 
 /**
- * struct gzvm_cpu_run: Same purpose as kvm_run, this struct is
+ * struct gzvm_vcpu_run: Same purpose as kvm_run, this struct is
  *			shared between userspace, kernel and
  *			GenieZone hypervisor
  *
  * Keep identical layout between the 3 modules
  */
 struct gzvm_vcpu_run {
+	/* private: internal use only */
 	/* to userspace */
 	__u32 exit_reason;
 	__u8 immediate_exit;
+	/* reserved for future use and must be zero filled */
 	__u8 padding1[3];
 	/* union structure of collection of guest exit reason */
 	union {
@@ -203,17 +210,18 @@ struct gzvm_vcpu_run {
 
 /* for GZVM_ENABLE_CAP */
 struct gzvm_enable_cap {
-			 /* in */
-			__u64 cap;
-			/**
-			 * we have total 5 (8 - 3) registers can be used for
-			 * additional args
-			 */
-			 __u64 args[5];
+	/* in */
+	__u64 cap;
+	/**
+	 * we have total 5 (8 - 3) registers can be used for
+	 * additional args
+	 */
+	__u64 args[5];
 };
 
 #define GZVM_ENABLE_CAP            _IOW(GZVM_IOC_MAGIC,  0xa3, \
 					struct gzvm_enable_cap)
+
 /* for GZVM_GET/SET_ONE_REG */
 struct gzvm_one_reg {
 	__u64 id;
@@ -227,28 +235,38 @@ struct gzvm_one_reg {
 
 #define GZVM_REG_GENERIC	   0x0000000000000000ULL
 
-#define GZVM_IRQFD_FLAG_DEASSIGN	(1 << 0)
-/**
+#define GZVM_IRQFD_FLAG_DEASSIGN	BIT(0)
+/*
  * GZVM_IRQFD_FLAG_RESAMPLE indicates resamplefd is valid and specifies
  * the irqfd to operate in resampling mode for level triggered interrupt
  * emulation.
  */
-#define GZVM_IRQFD_FLAG_RESAMPLE	(1 << 1)
+#define GZVM_IRQFD_FLAG_RESAMPLE	BIT(1)
 
+/**
+ * struct gzvm_irqfd: gzvm irqfd descriptor
+ * @fd: File descriptor.
+ * @gsi: Used for level IRQ fast-path.
+ * @flags: FLAG_DEASSIGN or FLAG_RESAMPLE.
+ * @resamplefd: The file descriptor of the resampler.
+ */
 struct gzvm_irqfd {
 	__u32 fd;
 	__u32 gsi;
 	__u32 flags;
 	__u32 resamplefd;
+	/* private: reserved as padding; use zero, this may
+	 * be used in the future
+	 */
 	__u8  pad[16];
 };
 
 #define GZVM_IRQFD	_IOW(GZVM_IOC_MAGIC, 0x76, struct gzvm_irqfd)
 
 enum {
-	gzvm_ioeventfd_flag_nr_datamatch,
-	gzvm_ioeventfd_flag_nr_pio,
-	gzvm_ioeventfd_flag_nr_deassign,
+	gzvm_ioeventfd_flag_nr_datamatch = 0,
+	gzvm_ioeventfd_flag_nr_pio = 1,
+	gzvm_ioeventfd_flag_nr_deassign = 2,
 	gzvm_ioeventfd_flag_nr_max,
 };
 
@@ -259,8 +277,10 @@ enum {
 
 struct gzvm_ioeventfd {
 	__u64 datamatch;
-	__u64 addr;        /* legal pio/mmio address */
-	__u32 len;         /* 1, 2, 4, or 8 bytes; or 0 to ignore length */
+	/* private: legal pio/mmio address */
+	__u64 addr;
+	/* private: 1, 2, 4, or 8 bytes; or 0 to ignore length */
+	__u32 len;
 	__s32 fd;
 	__u32 flags;
 	__u8  pad[36];
@@ -268,4 +288,18 @@ struct gzvm_ioeventfd {
 
 #define GZVM_IOEVENTFD	_IOW(GZVM_IOC_MAGIC, 0x79, struct gzvm_ioeventfd)
 
-#endif /* __GZVM__H__ */
+/**
+ * struct gzvm_dtb_config: store address and size of dtb passed from userspace
+ *
+ * @dtb_addr: dtb address set by VMM (guset memory)
+ * @dtb_size: dtb size
+ */
+struct gzvm_dtb_config {
+	__u64 dtb_addr;
+	__u64 dtb_size;
+};
+
+#define GZVM_SET_DTB_CONFIG       _IOW(GZVM_IOC_MAGIC, 0xff, \
+				       struct gzvm_dtb_config)
+
+#endif /* __GZVM_H__ */
