@@ -216,6 +216,8 @@ static void __iomem *g_brisket_st5_base;
 static void __iomem *g_brisket_st6_base;
 static void __iomem *g_sleep;
 static void __iomem *g_topckgen_base;
+static void __iomem *g_emi_base;
+static void __iomem *g_sub_emi_base;
 static void __iomem *g_nth_emicfg_base;
 static void __iomem *g_sth_emicfg_base;
 static void __iomem *g_nth_emicfg_ao_mem_base;
@@ -1350,16 +1352,48 @@ void __gpufreq_dump_infra_status(void)
 		"MALI_TILER", DRV_Reg32(MALI_TILER_READY_LO),
 		"MALI_L2", DRV_Reg32(MALI_L2_READY_LO),
 		"MALI_GPU_IRQ", DRV_Reg32(MALI_GPU_IRQ_STATUS));
-	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x",
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
 		"[MFG_DBG]",
 		"MFG_DEBUG_SEL", DRV_Reg32(MFG_DEBUG_SEL),
 		"MFG_DEBUG_TOP", DRV_Reg32(MFG_DEBUG_TOP),
-		"RPC_AO_CLK_CFG", DRV_Reg32(MFG_RPC_AO_CLK_CFG));
-	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"RPC_AO_CLK_CFG", DRV_Reg32(MFG_RPC_AO_CLK_CFG),
+		"MFG_RPC_SLP_PROT", DRV_Reg32(MFG_RPC_SLP_PROT_EN_STA));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
 		"[BUS_PROT]",
-		"MFG_RPC_SLP_PROT", DRV_Reg32(MFG_RPC_SLP_PROT_EN_STA),
-		"IFR_EMISYS_PROT_0", DRV_Reg32(IFR_EMISYS_PROTECT_EN_STA_0),
-		"IFR_EMISYS_PROT_1", DRV_Reg32(IFR_EMISYS_PROTECT_EN_STA_1));
+		"EMISYS_PROT_EN_0", DRV_Reg32(IFR_EMISYS_PROTECT_EN_STA_0),
+		"EMISYS_PROT_RDY_0", DRV_Reg32(IFR_EMISYS_PROTECT_RDY_STA_0),
+		"EMISYS_PROT_EN_1", DRV_Reg32(IFR_EMISYS_PROTECT_EN_STA_1),
+		"EMISYS_PROT_RDY_1", DRV_Reg32(IFR_EMISYS_PROTECT_RDY_STA_1));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[NEMI_THRO]",
+		"URGENT_CNT", DRV_Reg32(EMI_URGENT_CNT),
+		"MD_LAT", DRV_Reg32(EMI_MD_LAT_HRT_URGENT_CNT),
+		"MD", DRV_Reg32(EMI_MD_HRT_URGENT_CNT),
+		"DISP", DRV_Reg32(EMI_DISP_HRT_URGENT_CNT),
+		"CAM", DRV_Reg32(EMI_CAM_HRT_URGENT_CNT),
+		"MDMCU", DRV_Reg32(EMI_MDMCU_HRT_URGENT_CNT));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[NEMI_THRO]",
+		"MD_WR_LAT", DRV_Reg32(EMI_MD_WR_LAT_HRT_URGENT_CNT),
+		"MDMCU_LOW", DRV_Reg32(EMI_MDMCU_LOW_LAT_URGENT_CNT),
+		"MDMCU_HIGH", DRV_Reg32(EMI_MDMCU_HIGH_LAT_URGENT_CNT),
+		"MDMCU_LOW_WR", DRV_Reg32(EMI_MDMCU_LOW_WR_LAT_URGENT_CNT),
+		"MDMCU_HIGH_WR", DRV_Reg32(EMI_MDMCU_HIGH_WR_LAT_URGENT_CNT));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[SEMI_THRO]",
+		"URGENT_CNT", DRV_Reg32(SUB_EMI_URGENT_CNT),
+		"MD_LAT", DRV_Reg32(SUB_EMI_MD_LAT_HRT_URGENT_CNT),
+		"MD", DRV_Reg32(SUB_EMI_MD_HRT_URGENT_CNT),
+		"DISP", DRV_Reg32(SUB_EMI_DISP_HRT_URGENT_CNT),
+		"CAM", DRV_Reg32(SUB_EMI_CAM_HRT_URGENT_CNT),
+		"MDMCU", DRV_Reg32(SUB_EMI_MDMCU_HRT_URGENT_CNT));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[SEMI_THRO]",
+		"MD_WR_LAT", DRV_Reg32(SUB_EMI_MD_WR_LAT_HRT_URGENT_CNT),
+		"MDMCU_LOW", DRV_Reg32(SUB_EMI_MDMCU_LOW_LAT_URGENT_CNT),
+		"MDMCU_HIGH", DRV_Reg32(SUB_EMI_MDMCU_HIGH_LAT_URGENT_CNT),
+		"MDMCU_LOW_WR", DRV_Reg32(SUB_EMI_MDMCU_LOW_WR_LAT_URGENT_CNT),
+		"MDMCU_HIGH_WR", DRV_Reg32(SUB_EMI_MDMCU_HIGH_WR_LAT_URGENT_CNT));
 	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
 		"[EMI_GALS]",
 		"NTH_MFG_EMI1_GALS_SLV", DRV_Reg32(NTH_MFG_EMI1_GALS_SLV_DBG),
@@ -1476,32 +1510,66 @@ void __gpufreq_dump_infra_status(void)
 		"R5", DRV_Reg32(GPUEB_AUTO_DMA_1_R5),
 		"R6", DRV_Reg32(GPUEB_AUTO_DMA_1_R6),
 		"R7", DRV_Reg32(GPUEB_AUTO_DMA_1_R7));
-	GPUFREQ_LOGI("%s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[MTCMOS]",
 		"MFG0", DRV_Reg32(SPM_MFG0_PWR_CON),
 		"MFG1", DRV_Reg32(MFG_RPC_MFG1_PWR_CON),
 		"MFG37", DRV_Reg32(MFG_RPC_MFG37_PWR_CON),
 		"MFG2", DRV_Reg32(MFG_RPC_MFG2_PWR_CON),
 		"MFG3", DRV_Reg32(MFG_RPC_MFG3_PWR_CON),
 		"MFG4", DRV_Reg32(MFG_RPC_MFG4_PWR_CON));
-	GPUFREQ_LOGI("%s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[MTCMOS]",
 		"MFG22", DRV_Reg32(MFG_RPC_MFG22_PWR_CON),
 		"MFG6", DRV_Reg32(MFG_RPC_MFG6_PWR_CON),
 		"MFG7", DRV_Reg32(MFG_RPC_MFG7_PWR_CON),
 		"MFG8", DRV_Reg32(MFG_RPC_MFG8_PWR_CON),
 		"MFG9", DRV_Reg32(MFG_RPC_MFG9_PWR_CON),
 		"MFG10", DRV_Reg32(MFG_RPC_MFG10_PWR_CON));
-	GPUFREQ_LOGI("%s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[MTCMOS]",
 		"MFG11", DRV_Reg32(MFG_RPC_MFG11_PWR_CON),
 		"MFG12", DRV_Reg32(MFG_RPC_MFG12_PWR_CON),
 		"MFG13", DRV_Reg32(MFG_RPC_MFG13_PWR_CON),
 		"MFG14", DRV_Reg32(MFG_RPC_MFG14_PWR_CON),
 		"MFG15", DRV_Reg32(MFG_RPC_MFG15_PWR_CON),
 		"MFG16", DRV_Reg32(MFG_RPC_MFG16_PWR_CON));
-	GPUFREQ_LOGI("%s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[MTCMOS]",
 		"MFG17", DRV_Reg32(MFG_RPC_MFG17_PWR_CON),
 		"MFG18", DRV_Reg32(MFG_RPC_MFG18_PWR_CON),
 		"MFG19", DRV_Reg32(MFG_RPC_MFG19_PWR_CON),
 		"MFG20", DRV_Reg32(MFG_RPC_MFG20_PWR_CON));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[NEMI_THRO]",
+		"URGENT_CNT", DRV_Reg32(EMI_URGENT_CNT),
+		"MD_LAT", DRV_Reg32(EMI_MD_LAT_HRT_URGENT_CNT),
+		"MD", DRV_Reg32(EMI_MD_HRT_URGENT_CNT),
+		"DISP", DRV_Reg32(EMI_DISP_HRT_URGENT_CNT),
+		"CAM", DRV_Reg32(EMI_CAM_HRT_URGENT_CNT),
+		"MDMCU", DRV_Reg32(EMI_MDMCU_HRT_URGENT_CNT));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[NEMI_THRO]",
+		"MD_WR_LAT", DRV_Reg32(EMI_MD_WR_LAT_HRT_URGENT_CNT),
+		"MDMCU_LOW", DRV_Reg32(EMI_MDMCU_LOW_LAT_URGENT_CNT),
+		"MDMCU_HIGH", DRV_Reg32(EMI_MDMCU_HIGH_LAT_URGENT_CNT),
+		"MDMCU_LOW_WR", DRV_Reg32(EMI_MDMCU_LOW_WR_LAT_URGENT_CNT),
+		"MDMCU_HIGH_WR", DRV_Reg32(EMI_MDMCU_HIGH_WR_LAT_URGENT_CNT));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[SEMI_THRO]",
+		"URGENT_CNT", DRV_Reg32(SUB_EMI_URGENT_CNT),
+		"MD_LAT", DRV_Reg32(SUB_EMI_MD_LAT_HRT_URGENT_CNT),
+		"MD", DRV_Reg32(SUB_EMI_MD_HRT_URGENT_CNT),
+		"DISP", DRV_Reg32(SUB_EMI_DISP_HRT_URGENT_CNT),
+		"CAM", DRV_Reg32(SUB_EMI_CAM_HRT_URGENT_CNT),
+		"MDMCU", DRV_Reg32(SUB_EMI_MDMCU_HRT_URGENT_CNT));
+	GPUFREQ_LOGI("%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[SEMI_THRO]",
+		"MD_WR_LAT", DRV_Reg32(SUB_EMI_MD_WR_LAT_HRT_URGENT_CNT),
+		"MDMCU_LOW", DRV_Reg32(SUB_EMI_MDMCU_LOW_LAT_URGENT_CNT),
+		"MDMCU_HIGH", DRV_Reg32(SUB_EMI_MDMCU_HIGH_LAT_URGENT_CNT),
+		"MDMCU_LOW_WR", DRV_Reg32(SUB_EMI_MDMCU_LOW_WR_LAT_URGENT_CNT),
+		"MDMCU_HIGH_WR", DRV_Reg32(SUB_EMI_MDMCU_HIGH_WR_LAT_URGENT_CNT));
 }
 
 void __gpufreq_dump_power_tracker_status(void)
@@ -5843,6 +5911,30 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 	g_ifrbus_ao_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
 	if (!g_ifrbus_ao_base) {
 		GPUFREQ_LOGE("fail to ioremap IFRBUS_AO: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x10219000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "emi");
+	if (!res) {
+		GPUFREQ_LOGE("fail to get resource EMI");
+		goto done;
+	}
+	g_emi_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (!g_emi_base) {
+		GPUFREQ_LOGE("fail to ioremap EMI: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x1021D000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "sub_emi");
+	if (!res) {
+		GPUFREQ_LOGE("fail to get resource SUB_EMI");
+		goto done;
+	}
+	g_sub_emi_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (!g_sub_emi_base) {
+		GPUFREQ_LOGE("fail to ioremap SUB_EMI: 0x%llx", res->start);
 		goto done;
 	}
 

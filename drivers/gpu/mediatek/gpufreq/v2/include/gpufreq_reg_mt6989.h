@@ -369,6 +369,32 @@
 #define IFR_MFGSYS_PROTECT_EN_W1C_0            (g_ifrbus_ao_base + 0x1A8)          /* 0x1002C1A8 */
 #define IFR_MFGSYS_PROTECT_RDY_STA_0           (g_ifrbus_ao_base + 0x1AC)          /* 0x1002C1AC */
 
+#define EMI_BASE                               (0x10219000)
+#define EMI_URGENT_CNT                         (g_emi_base + 0x81C)                /* 0x1021981C */
+#define EMI_MD_LAT_HRT_URGENT_CNT              (g_emi_base + 0x860)                /* 0x10219860 */
+#define EMI_MD_HRT_URGENT_CNT                  (g_emi_base + 0x864)                /* 0x10219864 */
+#define EMI_DISP_HRT_URGENT_CNT                (g_emi_base + 0x868)                /* 0x10219868 */
+#define EMI_CAM_HRT_URGENT_CNT                 (g_emi_base + 0x86C)                /* 0x1021986C */
+#define EMI_MDMCU_HRT_URGENT_CNT               (g_emi_base + 0x870)                /* 0x10219870 */
+#define EMI_MD_WR_LAT_HRT_URGENT_CNT           (g_emi_base + 0x9A4)                /* 0x102199A4 */
+#define EMI_MDMCU_LOW_LAT_URGENT_CNT           (g_emi_base + 0xCC0)                /* 0x10219CC0 */
+#define EMI_MDMCU_HIGH_LAT_URGENT_CNT          (g_emi_base + 0xCC4)                /* 0x10219CC4 */
+#define EMI_MDMCU_LOW_WR_LAT_URGENT_CNT        (g_emi_base + 0xCC8)                /* 0x10219CC8 */
+#define EMI_MDMCU_HIGH_WR_LAT_URGENT_CNT       (g_emi_base + 0xCCC)                /* 0x10219CCC */
+
+#define SUB_EMI_BASE                           (0x1021D000)
+#define SUB_EMI_URGENT_CNT                     (g_sub_emi_base + 0x81C)            /* 0x1021D81C */
+#define SUB_EMI_MD_LAT_HRT_URGENT_CNT          (g_sub_emi_base + 0x860)            /* 0x1021D860 */
+#define SUB_EMI_MD_HRT_URGENT_CNT              (g_sub_emi_base + 0x864)            /* 0x1021D864 */
+#define SUB_EMI_DISP_HRT_URGENT_CNT            (g_sub_emi_base + 0x868)            /* 0x1021D868 */
+#define SUB_EMI_CAM_HRT_URGENT_CNT             (g_sub_emi_base + 0x86C)            /* 0x1021D86C */
+#define SUB_EMI_MDMCU_HRT_URGENT_CNT           (g_sub_emi_base + 0x870)            /* 0x1021D870 */
+#define SUB_EMI_MD_WR_LAT_HRT_URGENT_CNT       (g_sub_emi_base + 0x9A4)            /* 0x1021D9A4 */
+#define SUB_EMI_MDMCU_LOW_LAT_URGENT_CNT       (g_sub_emi_base + 0xCC0)            /* 0x1021DCC0 */
+#define SUB_EMI_MDMCU_HIGH_LAT_URGENT_CNT      (g_sub_emi_base + 0xCC4)            /* 0x1021DCC4 */
+#define SUB_EMI_MDMCU_LOW_WR_LAT_URGENT_CNT    (g_sub_emi_base + 0xCC8)            /* 0x1021DCC8 */
+#define SUB_EMI_MDMCU_HIGH_WR_LAT_URGENT_CNT   (g_sub_emi_base + 0xCCC)            /* 0x1021DCCC */
+
 #define NTH_EMICFG_BASE                        (0x1021C000)
 #define NTH_MFG_ACP_GALS_SLV_DBG               (g_nth_emicfg_base + 0x814)         /* 0x1021C814 */
 #define NTH_APU_ACP_GALS_SLV_DBG               (g_nth_emicfg_base + 0x81C)         /* 0x1021C81C */
