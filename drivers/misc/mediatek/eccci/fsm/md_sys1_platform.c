@@ -233,6 +233,34 @@ u32 get_expected_boot_status_val(void)
 	return boot_status_val;
 }
 
+/* MD team need pmic dump, so add it as general flow */
+static void md_pmic_information_dump(void)
+{
+	int idx, ret = 0;
+
+	CCCI_NORMAL_LOG(-1, TAG, "%s start\n", __func__);
+	spmi_dump_pmif_record_reg();
+
+	for (idx = 0; idx < ARRAY_SIZE(md_reg_table); idx++) {
+		if (IS_ERR(md_reg_table[idx].reg_ref)) {
+			ret = PTR_ERR(md_reg_table[idx].reg_ref);
+			if (ret != -ENODEV) {
+				CCCI_ERROR_LOG(-1, TAG,
+					"%s:get regulator(%s) fail, ret = %d\n",
+					__func__, md_reg_table[idx].reg_name, ret);
+				CCCI_NORMAL_LOG(-1, TAG, "bypass pmic_%s set\n",
+					md_reg_table[idx].reg_name);
+				continue;
+			}
+		} else
+			CCCI_NORMAL_LOG(-1, TAG,
+				"[PMIC DUMP]pmic get_voltage %s=%d uV\n",
+				md_reg_table[idx].reg_name,
+				regulator_get_voltage(
+				md_reg_table[idx].reg_ref));
+	}
+}
+
 static atomic_t reg_dump_ongoing;
 static void md_cd_dump_debug_register(struct ccci_modem *md, bool isr_skip_dump)
 {
@@ -274,6 +302,7 @@ static void md_cd_dump_debug_register(struct ccci_modem *md, bool isr_skip_dump)
 		return;
 	}
 
+	md_pmic_information_dump();
 	md_cd_lock_modem_clock_src(1);
 	md_dump_reg(md);
 	md_cd_lock_modem_clock_src(0);
