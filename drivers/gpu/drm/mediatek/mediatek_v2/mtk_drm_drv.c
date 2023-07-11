@@ -5503,13 +5503,6 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 			pm_runtime_get_sync(priv->side_ovlsys_dev);
 		break;
 	case DISP_PM_PUT:
-		if (priv->dpc_dev) {
-			if (unlikely(0x3 != ((readl(priv->mminfra_pwr_chk) & 0xC0000000) >> 30))) {
-				DDPMSG("%s mminfra no power, get before put\n", __func__);
-				pm_runtime_resume_and_get(priv->dpc_dev);
-			}
-		}
-
 		if (priv->side_ovlsys_dev)
 			pm_runtime_put_sync(priv->side_ovlsys_dev);
 		if (priv->ovlsys_dev)
@@ -5519,8 +5512,15 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 
 		pm_runtime_put_sync(priv->mmsys_dev);
 
-		if (priv->dpc_dev)
+		if (priv->dpc_dev) {
+			u32 value = 0;
+
+			ret = readl_poll_timeout_atomic(priv->dispvcore_pwr_chk, value,
+							(value & 0xC0000000) == 0, 1, 3000000);
+			if (ret < 0)
+				DDPMSG("wait disp vcore power off timeout\n");
 			pm_runtime_put_sync(priv->dpc_dev);
+		}
 		break;
 	case DISP_PM_CHECK:
 		if (priv->dpc_dev && pm_runtime_get_if_in_use(priv->dpc_dev) <= 0)
@@ -8629,7 +8629,7 @@ SKIP_OVLSYS_CONFIG:
 	if (private->dpc_dev) {
 		pm_runtime_irq_safe(private->dpc_dev);
 		g_dpc_dev = private->dpc_dev;
-		private->mminfra_pwr_chk = ioremap(0x1c001ea8, 0x4);
+		private->dispvcore_pwr_chk = ioremap(0x1c001e8c, 0x4);
 	}
 	mtk_drm_pm_ctrl(private, DISP_PM_ENABLE);
 

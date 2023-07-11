@@ -7502,7 +7502,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	}
 
 	DDP_MUTEX_LOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, cb_data->pres_fence_idx);
+	mutex_lock(&mtk_crtc->lock);
 	if ((id == 0) && (priv && priv->power_state)) {
 		ovl_status = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_OVL_STATUS);
@@ -7650,7 +7650,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		}
 	}
 
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, cb_data->pres_fence_idx);
+	mutex_unlock(&mtk_crtc->lock);
 	DDP_MUTEX_UNLOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 #ifdef MTK_DRM_ASYNC_HANDLE
 	cmdq_pkt_wait_complete(cb_data->cmdq_handle);
