@@ -150,13 +150,12 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		g_shared_status->stress_test == STRESS_TRAVERSE ? "Traverse" :
 		g_shared_status->stress_test == STRESS_MAX_MIN ? "Max_Min" : "Off");
 	seq_printf(m,
-		"%-16s AgingMargin: %s, AVSMargin: %s, GPM1.0: %s, GPM3.0: %s, PTP3: %s\n",
+		"%-16s AgingMargin: %s, AVSMargin: %s, GPM1.0: %s, GPM3.0: %s\n",
 		"[MFGSYS Config]",
 		g_shared_status->aging_margin ? "On" : "Off",
 		g_shared_status->avs_margin ? "On" : "Off",
 		g_shared_status->gpm1_mode ? "On" : "Off",
-		g_shared_status->gpm3_mode ? "On" : "Off",
-		g_shared_status->ptp3_mode ? "On" : "Off");
+		g_shared_status->gpm3_mode ? "On" : "Off");
 	seq_printf(m,
 		"%-16s Temperature: %d'C, GPUTemperComp: %d/%d, STACKTemperComp: %d/%d\n",
 		"[MFGSYS Config]",
@@ -174,8 +173,9 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 
 	ptp3_status = g_shared_status->ptp3_status;
 	seq_printf(m,
-		"%-16s DVFSMode: %s, ImaxProt: %s, HBVCFreqCtrl: %s, HBVCVoltCtrl: %s\n",
+		"%-16s PTP3: %s, DVFSMode: %s, ImaxProt: %s, HBVCFreq: %s, HBVCVolt: %s\n",
 		"[PTP3 Config]",
+		ptp3_status.ptp3_mode ? "On" : "Off",
 		(ptp3_status.dvfs_mode == HW_DUAL_LOOP_DVFS ? "HW_LOOP" :
 		(ptp3_status.dvfs_mode == SW_DUAL_LOOP_DVFS ? "SW_LOOP" : "LEGACY")),
 		(ptp3_status.gpm3_prot_mode == GPM3_5_IMAX_PROT ? "3.5" :

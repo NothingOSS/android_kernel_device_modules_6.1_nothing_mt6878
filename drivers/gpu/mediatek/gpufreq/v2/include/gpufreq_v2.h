@@ -62,6 +62,7 @@ enum gpufreq_return {
 	GPUFREQ_ENOMEM   = -ENOMEM,  /* -12 */
 	GPUFREQ_ENOENT   = -ENOENT,  /* -2  */
 	GPUFREQ_ENODEV   = -ENODEV,  /* -19 */
+	GPUFREQ_EACCES   = -EACCES,  /* -13 */
 };
 
 enum gpufreq_posdiv {
@@ -283,6 +284,7 @@ struct gpufreq_ptp3_shared_status {
 	enum gpufreq_gpm3_prot_mode gpm3_prot_mode;
 	enum gpufreq_brcast_mode brcast_mode;
 	enum gpufreq_delsel_mode delsel_mode;
+	unsigned int ptp3_mode;
 	unsigned int hbvc_freq_ctrl_support;
 	unsigned int hbvc_volt_ctrl_support;
 	unsigned int hbvc_preoc_support;
@@ -384,7 +386,6 @@ struct gpufreq_shared_status {
 	unsigned int stress_test;
 	unsigned int test_mode;
 	unsigned int ips_mode;
-	unsigned int ptp3_mode;
 	unsigned int temper_comp_mode;
 	unsigned int ht_temper_comp_mode;
 	unsigned int power_tracker_mode;
