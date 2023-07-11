@@ -114,6 +114,7 @@ struct flashlight_dev {
 	int charger_status;
 	int sw_disable_status;
 	int torch_status;
+	unsigned int cur_mW;
 };
 
 /* device arguments */
@@ -159,6 +160,9 @@ int flashlight_pt_is_low(void);
 #endif
 #ifdef CONFIG_MTK_FLASHLIGHT_DLPT
 void flashlight_kicker_pbm(bool status);
+void flashlight_kicker_pbm_by_device_id(
+		struct flashlight_device_id *dev_id,
+		unsigned int cur_mW);
 #endif
 
 #endif /* _FLASHLIGHT_CORE_H */

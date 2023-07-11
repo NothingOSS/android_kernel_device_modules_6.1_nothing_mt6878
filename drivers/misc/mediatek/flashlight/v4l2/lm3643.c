@@ -70,6 +70,8 @@
 #define LM3643_TORCH_BRT_REG_TO_uA(a)		\
 	((a) * LM3643_TORCH_BRT_STEP + LM3643_TORCH_BRT_MIN)
 
+#define LM3643_VIN (3.6)
+
 #define LM3643_COOLER_MAX_STATE 4
 static const int flash_state_to_current_limit[LM3643_COOLER_MAX_STATE] = {
 	150000, 100000, 50000, 25000
@@ -136,6 +138,7 @@ struct lm3643_flash {
 	unsigned long target_state;
 	unsigned long target_current[LM3643_LED_MAX];
 	unsigned long ori_current[LM3643_LED_MAX];
+	unsigned int cur_mA[LM3643_LED_MAX];
 };
 
 /* define usage count */
@@ -255,7 +258,6 @@ static int lm3643_enable_ctrl(struct lm3643_flash *flash,
 	pr_info_ratelimited("%s led:%d enable:%d", __func__, led_no, on);
 
 #if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_PT)
-	flashlight_kicker_pbm(on);
 	if (flashlight_pt_is_low()) {
 		pr_info_ratelimited("pt is low\n");
 		return 0;
@@ -303,6 +305,7 @@ static int lm3643_torch_brt_ctrl(struct lm3643_flash *flash,
 		}
 	}
 
+	flash->cur_mA[led_no] = brt / 1000;
 	br_bits = LM3643_TORCH_BRT_uA_TO_REG(brt);
 	if (led_no == LM3643_LED0)
 		rval = regmap_update_bits(flash->regmap,
@@ -334,6 +337,7 @@ static int lm3643_flash_brt_ctrl(struct lm3643_flash *flash,
 		pr_info("thermal limit current:%d\n", brt);
 	}
 
+	flash->cur_mA[led_no] = brt / 1000;
 	br_bits = LM3643_FLASH_BRT_uA_TO_REG(brt);
 	if (led_no == LM3643_LED0)
 		rval = regmap_update_bits(flash->regmap,
@@ -679,6 +683,12 @@ static int lm3643_init(struct lm3643_flash *flash)
 	int rval = 0;
 	unsigned int reg_val;
 
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_DLPT)
+	flashlight_kicker_pbm_by_device_id(
+				&flash->flash_dev_id[LM3643_LED0],
+				LM3643_TORCH_BRT_MAX / 1000 * LM3643_VIN * 2);
+	mdelay(1);
+#endif
 	lm3643_pinctrl_set(flash, LM3643_PINCTRL_PIN_HWEN, LM3643_PINCTRL_PINSTATE_HIGH);
 
 	/* set timeout */
@@ -709,7 +719,11 @@ static int lm3643_uninit(struct lm3643_flash *flash)
 {
 	lm3643_pinctrl_set(flash,
 			LM3643_PINCTRL_PIN_HWEN, LM3643_PINCTRL_PINSTATE_LOW);
-
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_DLPT)
+	flashlight_kicker_pbm_by_device_id(
+				&flash->flash_dev_id[LM3643_LED0],
+				0);
+#endif
 	return 0;
 }
 
@@ -726,7 +740,7 @@ static int lm3643_flash_release(void)
 static int lm3643_ioctl(unsigned int cmd, unsigned long arg)
 {
 	struct flashlight_dev_arg *fl_arg;
-	int channel;
+	int channel, scenario;
 
 	fl_arg = (struct flashlight_dev_arg *)arg;
 	channel = fl_arg->channel;
@@ -747,6 +761,20 @@ static int lm3643_ioctl(unsigned int cmd, unsigned long arg)
 				lm3643_enable_ctrl(lm3643_flash_data, channel, false);
 			}
 		}
+		break;
+	case FLASH_IOC_SET_SCENARIO:
+		scenario = (int)fl_arg->arg;
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_DLPT)
+		if (scenario & FLASHLIGHT_SCENARIO_CAMERA_MASK) {
+			flashlight_kicker_pbm_by_device_id(
+				&lm3643_flash_data->flash_dev_id[LM3643_LED0],
+				LM3643_FLASH_BRT_MAX / 1000 * LM3643_VIN);
+		} else {
+			flashlight_kicker_pbm_by_device_id(
+				&lm3643_flash_data->flash_dev_id[LM3643_LED0],
+				LM3643_TORCH_BRT_MAX / 1000 * LM3643_VIN * 2);
+		}
+#endif
 		break;
 	default:
 		pr_info("No such command and arg(%d): (%d, %d)\n",

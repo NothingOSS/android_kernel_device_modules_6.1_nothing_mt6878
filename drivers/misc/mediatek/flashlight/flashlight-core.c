@@ -34,6 +34,7 @@
 
 #ifdef CONFIG_MTK_FLASHLIGHT_DLPT
 #include "mtk_pbm.h" /* DLPT */
+#include "mtk_peak_power_budget.h"
 #endif
 
 
@@ -369,6 +370,7 @@ int flashlight_dev_register(
 			fdev->low_pt_level = -1;
 			fdev->charger_status = FLASHLIGHT_CHARGER_READY;
 			fdev->torch_status = FLASHLIGHT_TORCH_OFF;
+			fdev->cur_mW = 0;
 			list_add_tail(&fdev->node, &flashlight_list);
 			mutex_unlock(&fl_mutex);
 		}
@@ -453,6 +455,7 @@ int flashlight_dev_register_by_device_id(
 	fdev->low_pt_level = -1;
 	fdev->charger_status = FLASHLIGHT_CHARGER_READY;
 	fdev->torch_status = FLASHLIGHT_TORCH_OFF;
+	fdev->cur_mW = 0;
 	list_add_tail(&fdev->node, &flashlight_list);
 	mutex_unlock(&fl_mutex);
 
@@ -538,6 +541,31 @@ void flashlight_kicker_pbm(bool status)
 	kicker_pbm_by_flash(status);
 }
 EXPORT_SYMBOL(flashlight_kicker_pbm);
+
+void flashlight_kicker_pbm_by_device_id(
+		struct flashlight_device_id *dev_id,
+		unsigned int cur_mW)
+{
+	struct flashlight_dev *fdev;
+	unsigned int total_mW = 0;
+
+	list_for_each_entry(fdev, &flashlight_list, node) {
+		if (!fdev->ops)
+			continue;
+
+		if (fdev->dev_id.type == dev_id->type &&
+				fdev->dev_id.ct == dev_id->ct &&
+				fdev->dev_id.part == dev_id->part){
+			fdev->cur_mW = cur_mW;
+		}
+		total_mW = total_mW + fdev->cur_mW;
+	}
+
+	pr_info("kicker ppb (%u)mW", total_mW);
+
+	kicker_ppb_request_power(KR_FLASHLIGHT, total_mW);
+}
+EXPORT_SYMBOL(flashlight_kicker_pbm_by_device_id);
 #endif
 #ifdef CONFIG_MTK_FLASHLIGHT_PT
 int flashlight_pt_is_low(void)
