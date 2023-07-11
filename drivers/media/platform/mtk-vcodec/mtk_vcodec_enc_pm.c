@@ -408,7 +408,7 @@ static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 				need_break = true;
 			}
 			reg_val = readl(reg_base + 0x1448);
-			mtk_v4l2_err("Core %d hw break mode %d\n", i, (reg_val & 0x7f));
+			mtk_v4l2_debug(3, "Core %d hw break mode %d\n", i, (reg_val & 0x7f));
 			if ((reg_val & 0x7f) == 127)
 				break_mode = MTK_VENC_HW_BREAK_SMI_LOCK_MODE;
 			else
