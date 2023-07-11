@@ -107,7 +107,7 @@ u64 get_cpu_pmu(int cpu, u32 offset)
 }
 
  /* 3GHz * 4ms * 10 IPC * 3 chances */
-#define MAX_PMU_VALUE	360000000
+#define MAX_PMU_VALUE	(360000000L * CPU_INST_SPEC_UPDATE_INTEVAL) // with update interval
 #define DEFINE_GET_CUR_CPU_PMU_FUNC(_name, _pmu_offset)						\
 u64 get_cur_cpu_##_name(int cpu)							\
 {											\
