@@ -11683,6 +11683,7 @@
 			mtk,iommu-dma-axid = <SMMU_L48_GCE_DM>;
 			mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;
 			prebuilt-enable;
+			gce-fast-mtcmos;
 		};
 
 		gce_sec: gce-mbox-sec@1e980000 {
