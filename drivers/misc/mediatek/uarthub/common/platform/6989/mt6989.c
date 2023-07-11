@@ -84,9 +84,6 @@ static int uarthub_get_trx_timeout_info_mt6989(
 static int uarthub_get_irq_err_type_mt6989(void);
 static int uarthub_init_remap_reg_mt6989(void);
 static int uarthub_deinit_unmap_reg_mt6989(void);
-#if !(UARTHUB_SUPPORT_FPGA)
-static int uarthub_get_spm_sys_timer_mt6989(uint32_t *hi, uint32_t *lo);
-#endif
 static int uarthub_pll_clk_on_mt6989(int on, const char *tag);
 
 #if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)

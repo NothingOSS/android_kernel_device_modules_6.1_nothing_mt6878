@@ -94,6 +94,7 @@ int uarthub_get_spm_res_info_mt6989(
 	int *p_spm_res_uarthub, int *p_spm_res_internal, int *p_spm_res_26m_off);
 int uarthub_get_uarthub_cg_info_mt6989(int *p_topckgen_cg, int *p_peri_cg);
 int uarthub_get_uart_src_clk_info_mt6989(void);
+int uarthub_get_spm_sys_timer_mt6989(uint32_t *hi, uint32_t *lo);
 #endif
 int uarthub_get_uart_mux_info_mt6989(void);
 int uarthub_get_uarthub_mux_info_mt6989(void);

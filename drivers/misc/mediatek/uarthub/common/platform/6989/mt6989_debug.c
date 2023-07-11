@@ -1086,6 +1086,7 @@ int uarthub_dump_debug_clk_info_mt6989(const char *tag)
 #if !(UARTHUB_SUPPORT_FPGA)
 	int spm_res_uarthub = 0, spm_res_internal = 0, spm_res_26m_off = 0;
 	int topckgen_cg = 0, peri_cg = 0;
+	uint32_t timer_h = 0, timer_l = 0;
 #endif
 	unsigned char dmp_info_buf[DBG_LOG_LEN];
 	int dev0_sta = 0, dev1_sta = 0, dev2_sta = 0;
@@ -1190,6 +1191,14 @@ int uarthub_dump_debug_clk_info_mt6989(const char *tag)
 		if (ret > 0)
 			len += ret;
 	}
+
+	val = uarthub_get_spm_sys_timer_mt6989(&timer_h, &timer_l);
+	if (val == 1) {
+		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
+			",sys_timer=[H:%x,L:%x]", timer_h, timer_l);
+		if (ret > 0)
+			len += ret;
+	}
 #endif
 
 	dev0_sta = UARTHUB_REG_READ(DEV0_STA_ADDR);
@@ -1262,6 +1271,9 @@ int uarthub_dump_debug_byte_cnt_info_mt6989(const char *tag)
 	int tx_monitor_pointer = 0, rx_monitor_pointer = 0;
 	int check_data_mode_sel = 0;
 	int fsm_dbg_sta = 0;
+#if !(UARTHUB_SUPPORT_FPGA)
+	uint32_t timer_h = 0, timer_l = 0;
+#endif
 
 	val = DBG_CTRL_GET_intfhub_dbg_sel(DBG_CTRL_ADDR);
 	len = 0;
@@ -1341,6 +1353,14 @@ int uarthub_dump_debug_byte_cnt_info_mt6989(const char *tag)
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
 			",HUB_MUX=[0x%x(%s)]", val,
 			((val == 0) ? "26M" : ((val == 1) ? "104M" : "208M")));
+		if (ret > 0)
+			len += ret;
+	}
+
+	val = uarthub_get_spm_sys_timer_mt6989(&timer_h, &timer_l);
+	if (val == 1) {
+		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
+			",sys_timer=[H:%x,L:%x]", timer_h, timer_l);
 		if (ret > 0)
 			len += ret;
 	}

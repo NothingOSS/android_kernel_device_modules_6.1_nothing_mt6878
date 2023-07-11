@@ -674,7 +674,7 @@ int uarthub_core_dev0_set_tx_request(void)
 {
 	int retry = 0;
 	int val = 0;
-#if UARTHUB_INFO_LOG
+#if UARTHUB_DEBUG_LOG
 	uint32_t timer_h = 0, timer_l = 0;
 #endif
 
@@ -702,7 +702,7 @@ int uarthub_core_dev0_set_tx_request(void)
 	g_plat_ic_core_ops->uarthub_plat_set_host_trx_request(0, TX);
 	mutex_unlock(&g_uarthub_reset_lock);
 
-#if UARTHUB_INFO_LOG
+#if UARTHUB_DEBUG_LOG
 	if (g_plat_ic_core_ops->uarthub_plat_get_spm_sys_timer) {
 		g_plat_ic_core_ops->uarthub_plat_get_spm_sys_timer(&timer_h, &timer_l);
 		pr_info("[%s] sys_timer=[%x][%x]\n", __func__, timer_h, timer_l);
@@ -749,7 +749,7 @@ int uarthub_core_dev0_set_rx_request(void)
 {
 	int retry = 0;
 	int val = 0;
-#if UARTHUB_INFO_LOG
+#if UARTHUB_DEBUG_LOG
 	uint32_t timer_h = 0, timer_l = 0;
 #endif
 
@@ -770,7 +770,7 @@ int uarthub_core_dev0_set_rx_request(void)
 		return UARTHUB_ERR_MUTEX_LOCK_FAIL;
 	}
 
-#if UARTHUB_INFO_LOG
+#if UARTHUB_DEBUG_LOG
 	if (g_plat_ic_core_ops->uarthub_plat_get_spm_sys_timer) {
 		g_plat_ic_core_ops->uarthub_plat_get_spm_sys_timer(&timer_h, &timer_l);
 		pr_info("[%s] sys_timer=[%x][%x]\n", __func__, timer_h, timer_l);
