@@ -4018,13 +4018,6 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 	if (mml_ctx != NULL) {
 		mode = mml_drm_query_cap(mml_ctx, mml_info);
 		DDPDBG("%s, mml_drm_query_cap mode:%d\n", __func__, mode);
-
-		if (mode == MML_MODE_DIRECT_LINK) {
-			if (mml_info->dest[0].data.width & 0x1) {
-				mode = MML_MODE_MML_DECOUPLE;
-				DDPINFO("%s DL width odd, to DC\n", __func__);
-			}
-		}
 	} else
 		return ret;
 
@@ -4196,6 +4189,12 @@ static void check_is_mml_layer(const int disp_idx,
 			disp_info->disp_caps[disp_idx] |= MTK_NEED_REPAINT;
 			DDPINFO("Use MDP for DL-IR transition\n");
 			DRM_MMP_MARK(layering, 0x331, __LINE__);
+		}
+
+		if (mtk_crtc->dli_relay_1tnp && (MTK_MML_DISP_MDP_LAYER & c->layer_caps)) {
+			c->layer_caps &= ~MTK_MML_DISP_MDP_LAYER;
+			c->layer_caps |= MTK_MML_DISP_NOT_SUPPORT;
+			DDPINFO("WA: replace MDP by GPU\n");
 		}
 
 		if (MTK_MML_DISP_NOT_SUPPORT & c->layer_caps)
