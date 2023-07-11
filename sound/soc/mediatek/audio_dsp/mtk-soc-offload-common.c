@@ -433,6 +433,7 @@ static int mtk_compr_offload_free(struct snd_soc_component *component,
 	if (dsp)
 		mtk_adsp_genpool_free_sharemem_ring(&dsp->dsp_mem[ID], ID);
 	afe_offload_block.state = OFFLOAD_STATE_INIT;
+	afe_offload_codec_info.has_video = false;
 #ifdef use_wake_lock
 	mtk_compr_offload_int_wakelock(false);
 #endif
