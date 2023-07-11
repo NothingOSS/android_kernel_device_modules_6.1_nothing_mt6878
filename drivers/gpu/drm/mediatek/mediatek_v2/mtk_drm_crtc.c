@@ -1680,6 +1680,83 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	return ret;
 }
 
+int mtk_drm_relay_spr(struct drm_crtc *crtc, unsigned int relay)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct cmdq_pkt *cmdq_handle;
+	int ret = 0;
+	struct mtk_panel_params *params =
+			mtk_drm_get_lcm_ext_params(crtc);
+
+
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+	if (!(mtk_crtc->enabled)) {
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	if (params && (params->spr_params.enable == 0 || params->spr_params.relay == 1)) {
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	if (relay == mtk_crtc->spr_is_on) {
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return ret;
+	}
+
+	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+
+	if (params && params->spr_params.enable == 1 &&
+		params->spr_params.relay == 0) {
+		cmdq_handle =
+			cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+
+			if (!cmdq_handle) {
+				DDPMSG("[ERROR] %s:%d NULL cmdq handle\n", __func__, __LINE__);
+				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+				return -EINVAL;
+			}
+
+			if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
+				mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
+					DDP_SECOND_PATH, 0);
+			else
+				mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
+					DDP_FIRST_PATH, 0);
+
+			mtk_crtc->spr_is_on = relay;
+			mtk_crtc_spr_switch_cfg(mtk_crtc, cmdq_handle);
+			if (mtk_crtc->spr_is_on)
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_PANEL_SPR_EN), 1, ~0);
+			else
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_PANEL_SPR_EN), 2, ~0);
+			cmdq_pkt_set_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+
+
+		cmdq_pkt_flush(cmdq_handle);
+		cmdq_pkt_destroy(cmdq_handle);
+
+		atomic_set(&mtk_crtc->spr_switching, 1);
+		if (!readl(mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_PANEL_SPR_EN))) {
+			atomic_set(&mtk_crtc->spr_switching, 0);
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			return ret;
+		}
+
+	}
+
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+	return ret;
+}
+
 int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);

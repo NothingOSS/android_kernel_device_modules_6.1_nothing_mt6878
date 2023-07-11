@@ -1033,10 +1033,16 @@ static int mtk_drm_ioctl_pq_relay_engines(struct drm_crtc *crtc, void *data)
 	struct mtk_ddp_comp *comp = NULL;
 	int ret = 0;
 	int i, j;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	struct mtk_ddp_comp *spr0_comp;
 
 	relay = relayCtlSet->enable ? 1 : 0;
 	wait_config_done = relayCtlSet->wait_hw_config_done;
 	relay_engines = relayCtlSet->relay_engines;
+
+	spr0_comp = priv->ddp_comp[DDP_COMPONENT_SPR0];
+	if (spr0_comp && spr0_comp->funcs && spr0_comp->funcs->bypass)
+		spr0_comp->funcs->bypass(spr0_comp, relay, NULL);
 
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 

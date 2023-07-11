@@ -1400,6 +1400,7 @@ void mtk_crtc_exec_atf_prebuilt_instr(struct mtk_drm_crtc *mtk_crtc,
 			struct cmdq_pkt *handle);
 
 int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en);
+int mtk_drm_relay_spr(struct drm_crtc *crtc, unsigned int relay);
 
 int mtk_vblank_config_rec_init(struct drm_crtc *crtc);
 dma_addr_t mtk_vblank_config_rec_get_slot_pa(struct mtk_drm_crtc *mtk_crtc,

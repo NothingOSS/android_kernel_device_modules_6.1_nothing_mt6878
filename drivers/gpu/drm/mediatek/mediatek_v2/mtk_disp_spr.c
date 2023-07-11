@@ -1499,6 +1499,16 @@ int mtk_spr_analysis(struct mtk_ddp_comp *comp)
 	return 0;
 }
 
+static void mtk_spr_bypass(struct mtk_ddp_comp *comp, int bypass,
+		struct cmdq_pkt *handle)
+{
+	DDPMSG("%s bypass=%d\n", __func__, bypass);
+	if (bypass == 0)
+		mtk_drm_relay_spr(&comp->mtk_crtc->base, 1);
+	else if (bypass == 1)
+		mtk_drm_relay_spr(&comp->mtk_crtc->base, 0);
+}
+
 static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
 {
@@ -1508,7 +1518,7 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
 
-	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
+	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
 	set_partial_update = enable;
@@ -1586,6 +1596,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_spr_funcs = {
 	.unprepare = mtk_spr_unprepare,
 	.config_overhead = mtk_disp_spr_config_overhead,
 	.partial_update = mtk_spr_set_partial_update,
+	.bypass = mtk_spr_bypass,
 };
 
 static int mtk_disp_spr_bind(struct device *dev, struct device *master,
