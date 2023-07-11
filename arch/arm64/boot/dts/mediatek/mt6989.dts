@@ -5605,6 +5605,8 @@
 			gpueb-mem-name-table =
 				"MEM_ID_GPUFREQ", /* GPUFREQ */
 				"MEM_ID_LOG";     /* LOGGER */
+
+			gpueb-diagnosis-mode = <0>;
 		};
 
 		gpu_dvfs_async: gpu-async-ratio {

@@ -7902,6 +7902,8 @@
 			gpueb-mem-name-table =
 				"MEM_ID_GPUFREQ", /* GPUFREQ */
 				"MEM_ID_LOG";     /* LOGGER */
+
+			gpueb-diagnosis-mode = <0>;
 		};
 
 		gpufreq: gpufreq@13fbf000 {
