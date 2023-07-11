@@ -355,10 +355,47 @@ static void apply_demand(struct cluster_data *cluster)
 		wake_up_core_ctl_thread(cluster);
 }
 
+static int test_set_val(struct cluster_data *cluster, unsigned int val)
+{
+	unsigned long flags;
+	struct cpumask disable_mask;
+	unsigned int disable_cpus;
+	unsigned int test_cluster_min_cpus[MAX_CLUSTERS];
+	unsigned int total_min_cpus = 0;
+	int i;
+
+	cpumask_clear(&disable_mask);
+	cpumask_complement(&disable_mask, cpu_online_mask);
+	cpumask_or(&disable_mask, &disable_mask, cpu_pause_mask);
+	disable_cpus = cpumask_weight(&disable_mask);
+	if (disable_cpus >= (nr_cpu_ids-2))
+		return -EINVAL;
+
+	spin_lock_irqsave(&state_lock, flags);
+	for(i=0; i<MAX_CLUSTERS; i++)
+		test_cluster_min_cpus[i] = cluster_state[i].min_cpus;
+
+	test_cluster_min_cpus[cluster->cluster_id] = val;
+	spin_unlock_irqrestore(&state_lock, flags);
+
+	for(i=0; i<MAX_CLUSTERS; i++)
+		total_min_cpus += test_cluster_min_cpus[i];
+	if (total_min_cpus < 2){
+		pr_info("%s: invalid setting, retain cpus should >= 2", TAG);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static void set_min_cpus(struct cluster_data *cluster, unsigned int val)
 {
 	unsigned long flags;
 
+	if(val < cluster->min_cpus){
+		if (test_set_val(cluster, val))
+			return;
+	}
 	spin_lock_irqsave(&state_lock, flags);
 	cluster->min_cpus = min(val, cluster->max_cpus);
 	spin_unlock_irqrestore(&state_lock, flags);
@@ -368,6 +405,11 @@ static void set_min_cpus(struct cluster_data *cluster, unsigned int val)
 static void set_max_cpus(struct cluster_data *cluster, unsigned int val)
 {
 	unsigned long flags;
+
+	if(val < cluster->min_cpus){
+		if (test_set_val(cluster, val))
+			return;
+	}
 
 	spin_lock_irqsave(&state_lock, flags);
 	val = min(val, cluster->num_cpus);
@@ -635,6 +677,7 @@ EXPORT_SYMBOL(core_ctl_set_up_thres);
  *
  *  return 0 if success, else return errno
  */
+static bool test_disable_cpu(unsigned int cpu);
 int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
 {
 	int ret;
@@ -647,6 +690,14 @@ int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
 
 	if (!cpu_online(cpu))
 		return -EBUSY;
+
+	/* Avoid hotplug change online mask */
+	cpu_hotplug_disable();
+	if (is_pause && !test_disable_cpu(cpu)){
+		cpu_hotplug_enable();
+		pr_info("%s: force pause failed, retain cpus should >= 2", TAG);
+		return -EBUSY;
+	}
 
 	c = &per_cpu(cpu_state, cpu);
 	cluster = c->cluster;
@@ -675,6 +726,7 @@ int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
 
 unlock:
 	spin_unlock_irqrestore(&core_ctl_force_lock, flags);
+	cpu_hotplug_enable();
 	return ret;
 }
 EXPORT_SYMBOL(core_ctl_force_pause_cpu);
@@ -1329,6 +1381,9 @@ again:
 		if (!is_active(c))
 			continue;
 
+		if (!test_disable_cpu(cpu))
+			continue;
+
 		if (check_busy && c->is_busy)
 			continue;
 
@@ -1347,7 +1402,6 @@ again:
 			continue;
 
 		spin_unlock_irqrestore(&state_lock, flags);
-
 		core_ctl_debug("%s: Trying to pause CPU%u\n", TAG, c->cpu);
 		if (!sched_pause_cpu(c->cpu)) {
 			success = true;
@@ -1462,12 +1516,15 @@ static void __ref do_core_ctl(struct cluster_data *cluster)
 		core_ctl_debug("%s: Trying to adjust cluster %u from %u to %u\n",
 				TAG, cluster->cluster_id, cluster->active_cpus, need);
 
+		/* Avoid hotplug change online mask */
+		cpu_hotplug_disable();
 		spin_lock_irqsave(&core_ctl_force_lock, flags);
 		if (cluster->active_cpus > need)
 			try_to_pause(cluster, need);
 		else if (cluster->active_cpus < need)
 			try_to_resume(cluster, need);
 		spin_unlock_irqrestore(&core_ctl_force_lock, flags);
+		cpu_hotplug_enable();
 	} else
 		core_ctl_debug("%s: failed to adjust cluster %u from %u to %u. (min = %u, max = %u)\n",
 				TAG, cluster->cluster_id, cluster->active_cpus, need,
@@ -1511,6 +1568,7 @@ static int cpu_pause_cpuhp_state(unsigned int cpu,  bool online)
 	bool do_wakeup = false, resume = false;
 	unsigned long flags;
 	struct cpumask cpu_resume_req;
+	unsigned int pause_cpus;
 
 	if (unlikely(!cluster || !cluster->inited))
 		return 0;
@@ -1520,11 +1578,19 @@ static int cpu_pause_cpuhp_state(unsigned int cpu,  bool online)
 	if (online)
 		cluster->active_cpus = get_active_cpu_count(cluster);
 	else {
+		pause_cpus = cpumask_weight(cpu_pause_mask);
+		if (pause_cpus > 0){
+			if (!test_disable_cpu(cpu)) {
+				spin_unlock_irqrestore(&state_lock, flags);
+				return -EINVAL;
+			}
+		}
+
 		/*
-		 * When CPU is offline, CPU should be un-isolated.
-		 * Thus, un-isolate this CPU that is going down if
-		 * it was isolated by core_ctl.
-		 */
+		* When CPU is offline, CPU should be un-isolated.
+		* Thus, un-isolate this CPU that is going down if
+		* it was isolated by core_ctl.
+		*/
 		if (state->paused_by_cc) {
 			state->paused_by_cc = false;
 			cluster->nr_paused_cpus--;
@@ -1558,6 +1624,22 @@ static int core_ctl_prepare_online_cpu(unsigned int cpu)
 static int core_ctl_prepare_dead_cpu(unsigned int cpu)
 {
 	return cpu_pause_cpuhp_state(cpu, false);
+}
+
+static bool test_disable_cpu(unsigned int cpu)
+{
+	struct cpumask disable_mask;
+	unsigned int disable_cpus;
+
+	cpumask_clear(&disable_mask);
+	cpumask_complement(&disable_mask, cpu_online_mask);
+	cpumask_or(&disable_mask, &disable_mask, cpu_pause_mask);
+	cpumask_set_cpu(cpu, &disable_mask);
+	disable_cpus = cpumask_weight(&disable_mask);
+	if (disable_cpus > 6)
+		return false;
+
+	return true;
 }
 
 static struct cluster_data *find_cluster_by_first_cpu(unsigned int first_cpu)
