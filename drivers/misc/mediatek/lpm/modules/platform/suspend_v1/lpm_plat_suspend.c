@@ -33,7 +33,6 @@
 #include <lpm_type.h>
 #include <lpm_call_type.h>
 #include <lpm_dbg_common_v1.h>
-#include <mtk_cpuidle_status.h>
 
 #include "lpm_plat.h"
 #include "lpm_plat_comm.h"
@@ -178,7 +177,6 @@ static int lpm_spm_suspend_pm_event(struct notifier_block *notifier,
 	/* android time */
 	struct rtc_time tm_android;
 	struct timespec64 tv_android = { 0 };
-	int ret;
 
 	ktime_get_real_ts64(&tv);
 	tv_android = tv;
@@ -194,9 +192,6 @@ static int lpm_spm_suspend_pm_event(struct notifier_block *notifier,
 	case PM_POST_HIBERNATION:
 		return NOTIFY_DONE;
 	case PM_SUSPEND_PREPARE:
-		ret = mtk_s2idle_state_enable(1);
-		if (ret)
-			return NOTIFY_BAD;
 		pr_info("[name:spm&][SPM] suspend start %d-%02d-%02d %02d:%02d:%02d.%u UTC;"
 			"android time %d-%02d-%02d %02d:%02d:%02d.%03d\n",
 			tm.tm_year + 1900, tm.tm_mon + 1,
@@ -217,8 +212,6 @@ static int lpm_spm_suspend_pm_event(struct notifier_block *notifier,
 			tm_android.tm_min, tm_android.tm_sec,
 			(unsigned int)(tv_android.tv_nsec / 1000));
 		cpu_hotplug_enable();
-		/* make sure the rest of callback proceeds*/
-		mtk_s2idle_state_enable(0);
 		return NOTIFY_DONE;
 	}
 	return NOTIFY_OK;
@@ -309,8 +302,6 @@ static int lpm_s2idle_barrier(void)
 			      drv->states[i-1].exit_latency)/2;
 
 	cpu_latency_qos_add_request(&lpm_qos_request, s2idle_block_value);
-
-	mtk_s2idle_state_enable(0);
 
 	return 0;
 }
