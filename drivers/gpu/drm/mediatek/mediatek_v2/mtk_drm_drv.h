@@ -168,6 +168,7 @@ struct mtk_drm_private {
 	struct device_node *comp_node[DDP_COMPONENT_ID_MAX];
 	struct mtk_ddp_comp *ddp_comp[DDP_COMPONENT_ID_MAX];
 	const struct mtk_mmsys_driver_data *data;
+	void __iomem *mminfra_pwr_chk;
 
 	struct {
 		struct drm_atomic_state *state;

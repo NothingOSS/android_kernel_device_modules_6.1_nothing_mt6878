@@ -169,7 +169,7 @@ bool mtk_vidle_is_ff_enabled(void)
 	return (bool)atomic_read(&g_ff_enabled);
 }
 
-void mtk_vidle_enable(bool en, void *_crtc)
+void mtk_vidle_enable(bool en, void *_drm_priv)
 {
 	if (!disp_dpc_driver.dpc_enable)
 		return;
@@ -187,10 +187,15 @@ void mtk_vidle_enable(bool en, void *_crtc)
 		return;
 	atomic_set(&g_ff_enabled, en);
 
-	if (_crtc) {
-		struct drm_crtc *crtc = (struct drm_crtc *)_crtc;
+	if (_drm_priv) {
+		struct mtk_drm_private *drm_priv = _drm_priv;
 
-		mtk_drm_set_idlemgr(crtc, !en, 0);
+		if (drm_priv->dpc_dev) {
+			if (en)
+				pm_runtime_put_sync(drm_priv->dpc_dev);
+			else
+				pm_runtime_get_sync(drm_priv->dpc_dev);
+		}
 	}
 	disp_dpc_driver.dpc_enable(en);
 	/* TODO: enable timestamp */

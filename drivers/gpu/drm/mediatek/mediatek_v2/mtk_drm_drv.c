@@ -1551,13 +1551,11 @@ static void mtk_atomic_mml(struct drm_device *dev,
 		if ((mtk_crtc->mml_link_state == MML_DIRECT_LINKING) &&
 		    !mtk_vidle_is_ff_enabled()) {
 			mtk_vidle_config_ff(true);
-			mtk_vidle_enable(true, NULL);
-			pm_runtime_put_sync(priv->dpc_dev);
+			mtk_vidle_enable(true, priv);
 		} else if ((mtk_crtc->mml_link_state == MML_STOP_LINKING) &&
 			   mtk_vidle_is_ff_enabled()) {
-			pm_runtime_get_sync(priv->dpc_dev);
 			mtk_vidle_config_ff(false);
-			mtk_vidle_enable(false, NULL);
+			mtk_vidle_enable(false, priv);
 		}
 	}
 }
@@ -5498,6 +5496,13 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 			pm_runtime_get_sync(priv->side_ovlsys_dev);
 		break;
 	case DISP_PM_PUT:
+		if (priv->dpc_dev) {
+			if (0x3 != ((readl(priv->mminfra_pwr_chk) & 0xC0000000) >> 30)) {
+				DDPMSG("%s mminfra no power, get before put\n", __func__);
+				pm_runtime_get_sync(priv->dpc_dev);
+			}
+		}
+
 		if (priv->side_ovlsys_dev)
 			pm_runtime_put_sync(priv->side_ovlsys_dev);
 		if (priv->ovlsys_dev)
@@ -5588,7 +5593,7 @@ void mtk_drm_top_clk_prepare_enable(struct drm_device *drm)
 	//set_swpm_disp_active(true);
 	mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 	mtk_vidle_config_ff(false);
-	mtk_vidle_enable(mtk_vidle_is_ff_enabled(), NULL);
+	mtk_vidle_enable(mtk_vidle_is_ff_enabled(), priv);
 
 	for (i = 0; i < priv->top_clk_num; i++) {
 		if (IS_ERR(priv->top_clk[i])) {
@@ -5649,7 +5654,7 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
 		clk_disable_unprepare(priv->top_clk[i]);
 	}
 
-	mtk_vidle_enable(false, NULL);
+	mtk_vidle_enable(false, priv);
 	mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 
 	DRM_MMP_MARK(top_clk, atomic_read(&top_clk_ref),
@@ -8584,8 +8589,10 @@ SKIP_OVLSYS_CONFIG:
 	}
 
 	private->dpc_dev = mtk_drm_get_pd_device(dev, "mminfra_in_dpc");
-	if (private->dpc_dev)
+	if (private->dpc_dev) {
 		pm_runtime_irq_safe(private->dpc_dev);
+		private->mminfra_pwr_chk = ioremap(0x1c001ea8, 0x4);
+	}
 	mtk_drm_pm_ctrl(private, DISP_PM_ENABLE);
 
 
