@@ -726,6 +726,8 @@ static int mbraink_resume(struct device *dev)
 		init_pmu_keep_data();
 	mutex_unlock(&pmu_lock);
 
+	mbraink_netlink_send_msg(NETLINK_EVENT_SYSRESUME);
+
 	return ret;
 }
 
