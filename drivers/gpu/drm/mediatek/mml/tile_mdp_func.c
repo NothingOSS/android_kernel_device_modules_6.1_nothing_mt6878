@@ -448,40 +448,46 @@ enum isp_tile_message tile_prz_for(struct tile_func_block *func,
 		/* prz */
 		switch (data->hor_algo) {
 		case SCALER_6_TAPS:
-			forward_6_taps(C42OutXLeft,	/* C42 out = Scaler input */
-				       C42OutXRight,	/* C42 out = Scaler input */
-				       data->c42_out_frame_w - 1,
-				       data->coeff_step_x,
-				       data->precision_x,
-				       data->crop.r.left,
-				       data->crop.x_sub_px,
-				       data->c24_in_frame_w - 1,
-				       2,
-				       data->prz_back_xs,
-				       &C24InXLeft,	/* C24 in = Scaler output */
-				       &C24InXRight,	/* C24 in = Scaler output */
-				       &func->bias_x,
-				       &func->offset_x,
-				       &func->bias_x_c,
-				       &func->offset_x_c);
+			forward_6_taps(
+				C42OutXLeft,	/* C42 out = Scaler input */
+				C42OutXRight,	/* C42 out = Scaler input */
+				data->c42_out_frame_w - 1,
+				data->coeff_step_x,
+				data->precision_x,
+				data->crop.r.left,
+				data->crop.x_sub_px,
+				data->c24_in_frame_w - 1,
+				2,
+				data->prz_back_xs,
+				reg_map->first_frame ||
+				func->backward_output_xe_pos >= func->max_out_pos_xe,
+				&C24InXLeft,	/* C24 in = Scaler output */
+				&C24InXRight,	/* C24 in = Scaler output */
+				&func->bias_x,
+				&func->offset_x,
+				&func->bias_x_c,
+				&func->offset_x_c);
 			break;
 		case SCALER_SRC_ACC:
-			forward_src_acc(C42OutXLeft,	/* C42 out = Scaler input */
-					C42OutXRight,	/* C42 out = Scaler input */
-					data->c42_out_frame_w - 1,
-					data->coeff_step_x,
-					data->precision_x,
-					data->crop.r.left,
-					data->crop.x_sub_px,
-					data->c24_in_frame_w - 1,
-					2,
-					data->prz_back_xs,
-					&C24InXLeft,	/* C24 in = Scaler output */
-					&C24InXRight,	/* C24 in = Scaler output */
-					&func->bias_x,
-					&func->offset_x,
-					&func->bias_x_c,
-					&func->offset_x_c);
+			forward_src_acc(
+				C42OutXLeft,	/* C42 out = Scaler input */
+				C42OutXRight,	/* C42 out = Scaler input */
+				data->c42_out_frame_w - 1,
+				data->coeff_step_x,
+				data->precision_x,
+				data->crop.r.left,
+				data->crop.x_sub_px,
+				data->c24_in_frame_w - 1,
+				2,
+				data->prz_back_xs,
+				reg_map->first_frame ||
+				func->backward_output_xe_pos >= func->max_out_pos_xe,
+				&C24InXLeft,	/* C24 in = Scaler output */
+				&C24InXRight,	/* C24 in = Scaler output */
+				&func->bias_x,
+				&func->offset_x,
+				&func->bias_x_c,
+				&func->offset_x_c);
 			break;
 		case SCALER_CUB_ACC:
 			forward_cub_acc(
@@ -509,12 +515,12 @@ enum isp_tile_message tile_prz_for(struct tile_func_block *func,
 			return MDP_MESSAGE_RESIZER_SCALING_ERROR;
 		}
 		mml_msg(
-			"%s  crop:%u.%u prz in w:%d (%d,%d) out w:%d (%d,%d) back (%d,%d) c24 back w:%d (%d,%d)",
-			__func__, data->crop.r.left, data->crop.x_sub_px,
-			data->c42_out_frame_w, C42OutXLeft, C42OutXRight,
+			"%s  prz in w:%d (%d,%d) out w:%d (%d,%d) back (%d,%d) c24 back w:%d (%d,%d) crop:%u.%u",
+			__func__, data->c42_out_frame_w, C42OutXLeft, C42OutXRight,
 			data->c24_in_frame_w, C24InXLeft, C24InXRight,
 			data->prz_back_xs, data->prz_back_xe, func->full_size_x_out,
-			func->backward_output_xs_pos, func->backward_output_xe_pos);
+			func->backward_output_xs_pos, func->backward_output_xe_pos,
+			data->crop.r.left, data->crop.x_sub_px);
 
 		C24InXLeft = data->prz_back_xs;
 
@@ -538,40 +544,46 @@ enum isp_tile_message tile_prz_for(struct tile_func_block *func,
 		/* prz */
 		switch (data->ver_algo) {
 		case SCALER_6_TAPS:
-			forward_6_taps(func->in_pos_ys,
-					func->in_pos_ye,
-					func->full_size_y_in - 1,
-					data->coeff_step_y,
-					data->precision_y,
-					data->crop.r.top,
-					data->crop.y_sub_px,
-					func->full_size_y_out - 1,
-					func->out_const_y,
-					func->backward_output_ys_pos,
-					&func->out_pos_ys,
-					&func->out_pos_ye,
-					&func->bias_y,
-					&func->offset_y,
-					&func->bias_y_c,
-					&func->offset_y_c);
+			forward_6_taps(
+				func->in_pos_ys,
+				func->in_pos_ye,
+				func->full_size_y_in - 1,
+				data->coeff_step_y,
+				data->precision_y,
+				data->crop.r.top,
+				data->crop.y_sub_px,
+				func->full_size_y_out - 1,
+				func->out_const_y,
+				func->backward_output_ys_pos,
+				reg_map->first_frame ||
+				func->backward_output_ye_pos >= func->max_out_pos_ye,
+				&func->out_pos_ys,
+				&func->out_pos_ye,
+				&func->bias_y,
+				&func->offset_y,
+				&func->bias_y_c,
+				&func->offset_y_c);
 			break;
 		case SCALER_SRC_ACC:
-			forward_src_acc(func->in_pos_ys,
-					func->in_pos_ye,
-					func->full_size_y_in - 1,
-					data->coeff_step_y,
-					data->precision_y,
-					data->crop.r.top,
-					data->crop.y_sub_px,
-					func->full_size_y_out - 1,
-					func->out_const_y,
-					func->backward_output_ys_pos,
-					&func->out_pos_ys,
-					&func->out_pos_ye,
-					&func->bias_y,
-					&func->offset_y,
-					&func->bias_y_c,
-					&func->offset_y_c);
+			forward_src_acc(
+				func->in_pos_ys,
+				func->in_pos_ye,
+				func->full_size_y_in - 1,
+				data->coeff_step_y,
+				data->precision_y,
+				data->crop.r.top,
+				data->crop.y_sub_px,
+				func->full_size_y_out - 1,
+				func->out_const_y,
+				func->backward_output_ys_pos,
+				reg_map->first_frame ||
+				func->backward_output_ye_pos >= func->max_out_pos_ye,
+				&func->out_pos_ys,
+				&func->out_pos_ye,
+				&func->bias_y,
+				&func->offset_y,
+				&func->bias_y_c,
+				&func->offset_y_c);
 			break;
 		case SCALER_CUB_ACC:
 			forward_cub_acc(
@@ -925,51 +937,50 @@ enum isp_tile_message tile_prz_back(struct tile_func_block *func,
 
 		switch (data->hor_algo) {
 		case SCALER_6_TAPS:
-			backward_6_taps(C24InXLeft,	/* C24 in = Scaler output */
-					C24InXRight,	/* C24 in = Scaler output */
-					data->coeff_step_x,
-					data->precision_x,
-					data->crop.r.left,
-					data->crop.x_sub_px,
-					data->c42_out_frame_w - 1,
-					2,
-					&C42OutXLeft,	/* C42 out = Scaler input */
-					&C42OutXRight);	/* C42 out = Scaler input */
+			backward_6_taps(
+				C24InXLeft,	/* C24 in = Scaler output */
+				C24InXRight,	/* C24 in = Scaler output */
+				data->coeff_step_x,
+				data->precision_x,
+				data->crop.r.left,
+				data->crop.x_sub_px,
+				data->c42_out_frame_w - 1,
+				2,
+				&C42OutXLeft,	/* C42 out = Scaler input */
+				&C42OutXRight);	/* C42 out = Scaler input */
 			break;
 		case SCALER_SRC_ACC:
-			backward_src_acc(C24InXLeft,	/* C24 in = Scaler output */
-					 C24InXRight,	/* C24 in = Scaler output */
-					 data->coeff_step_x,
-					 data->precision_x,
-					 data->crop.r.left,
-					 data->crop.x_sub_px,
-					 data->c42_out_frame_w - 1,
-					 2,
-					 &C42OutXLeft,	/* C42 out = Scaler input */
-					 &C42OutXRight);	/* C42 out = Scaler input */
+			backward_src_acc(
+				C24InXLeft,	/* C24 in = Scaler output */
+				C24InXRight,	/* C24 in = Scaler output */
+				data->coeff_step_x,
+				data->precision_x,
+				data->crop.r.left,
+				data->crop.x_sub_px,
+				data->c42_out_frame_w - 1,
+				2,
+				&C42OutXLeft,	/* C42 out = Scaler input */
+				&C42OutXRight);	/* C42 out = Scaler input */
 			break;
 		case SCALER_CUB_ACC:
-			backward_cub_acc(C24InXLeft,	/* C24 in = Scaler output */
-					 C24InXRight,	/* C24 in = Scaler output */
-					 data->coeff_step_x,
-					 data->precision_x,
-					 data->crop.r.left,
-					 data->crop.x_sub_px,
-					 data->c42_out_frame_w - 1,
-					 2,
-					 &C42OutXLeft,	/* C42 out = Scaler input */
-					 &C42OutXRight);	/* C42 out = Scaler input */
+			backward_cub_acc(
+				C24InXLeft,	/* C24 in = Scaler output */
+				C24InXRight,	/* C24 in = Scaler output */
+				data->coeff_step_x,
+				data->precision_x,
+				data->crop.r.left,
+				data->crop.x_sub_px,
+				data->c42_out_frame_w - 1,
+				2,
+				&C42OutXLeft,	/* C42 out = Scaler input */
+				&C42OutXRight);	/* C42 out = Scaler input */
 			break;
 		default:
 			ASSERT(0);
 			return MDP_MESSAGE_RESIZER_SCALING_ERROR;
 		}
-		mml_msg(
-			"%s crop:%u.%u prz in w:%d (%d,%d) out w:%d (%d,%d) c24 out w:%d (%d,%d)",
-			__func__, data->crop.r.left, data->crop.x_sub_px,
-			data->c42_out_frame_w, C42OutXLeft, C42OutXRight,
-			data->c24_in_frame_w, C24InXLeft, C24InXRight,
-			func->full_size_x_out, func->out_pos_xs, func->out_pos_xe);
+		mml_msg("%s prz in w:%d (%d,%d)",
+			__func__, data->c42_out_frame_w, C42OutXLeft, C42OutXRight);
 
 		if (data->crop_aal_tile_loss) {
 			C42OutXLeft -= 8;
@@ -1007,40 +1018,43 @@ enum isp_tile_message tile_prz_back(struct tile_func_block *func,
 		/* prz */
 		switch (data->ver_algo) {
 		case SCALER_6_TAPS:
-			backward_6_taps(func->out_pos_ys,
-					func->out_pos_ye,
-					data->coeff_step_y,
-					data->precision_y,
-					data->crop.r.top,
-					data->crop.y_sub_px,
-					func->full_size_y_in - 1,
-					func->in_const_y,
-					&func->in_pos_ys,
-					&func->in_pos_ye);
+			backward_6_taps(
+				func->out_pos_ys,
+				func->out_pos_ye,
+				data->coeff_step_y,
+				data->precision_y,
+				data->crop.r.top,
+				data->crop.y_sub_px,
+				func->full_size_y_in - 1,
+				func->in_const_y,
+				&func->in_pos_ys,
+				&func->in_pos_ye);
 			break;
 		case SCALER_SRC_ACC:
-			backward_src_acc(func->out_pos_ys,
-					func->out_pos_ye,
-					data->coeff_step_y,
-					data->precision_y,
-					data->crop.r.top,
-					data->crop.y_sub_px,
-					func->full_size_y_in - 1,
-					func->in_const_y,
-					&func->in_pos_ys,
-					&func->in_pos_ye);
+			backward_src_acc(
+				func->out_pos_ys,
+				func->out_pos_ye,
+				data->coeff_step_y,
+				data->precision_y,
+				data->crop.r.top,
+				data->crop.y_sub_px,
+				func->full_size_y_in - 1,
+				func->in_const_y,
+				&func->in_pos_ys,
+				&func->in_pos_ye);
 			break;
 		case SCALER_CUB_ACC:
-			backward_cub_acc(func->out_pos_ys,
-					func->out_pos_ye,
-					data->coeff_step_y,
-					data->precision_y,
-					data->crop.r.top,
-					data->crop.y_sub_px,
-					func->full_size_y_in - 1,
-					func->in_const_y,
-					&func->in_pos_ys,
-					&func->in_pos_ye);
+			backward_cub_acc(
+				func->out_pos_ys,
+				func->out_pos_ye,
+				data->coeff_step_y,
+				data->precision_y,
+				data->crop.r.top,
+				data->crop.y_sub_px,
+				func->full_size_y_in - 1,
+				func->in_const_y,
+				&func->in_pos_ys,
+				&func->in_pos_ye);
 			break;
 		default:
 			ASSERT(0);
