@@ -51,4 +51,8 @@
 #define GZVM_VGIC_NR_PPIS		16
 #define GZVM_VGIC_NR_PRIVATE_IRQS	(GZVM_VGIC_NR_SGIS + GZVM_VGIC_NR_PPIS)
 
+struct gzvm_arch_exception {
+	__u64 esr_el2;
+};
+
 #endif /* __GZVM_ARCH_H__ */

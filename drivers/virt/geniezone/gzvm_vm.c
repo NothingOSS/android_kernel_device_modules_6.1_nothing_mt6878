@@ -102,8 +102,7 @@ static u64 __gzvm_gfn_to_pfn_memslot(struct gzvm_memslot *memslot, u64 gfn)
  * * 0			- Succeed
  * * -EFAULT		- Failed to convert
  */
-static int gzvm_gfn_to_pfn_memslot(struct gzvm_memslot *memslot, u64 gfn,
-				   u64 *pfn)
+int gzvm_gfn_to_pfn_memslot(struct gzvm_memslot *memslot, u64 gfn, u64 *pfn)
 {
 	u64 __pfn;
 
@@ -119,6 +118,29 @@ static int gzvm_gfn_to_pfn_memslot(struct gzvm_memslot *memslot, u64 gfn,
 	*pfn = __pfn;
 
 	return 0;
+}
+
+/**
+ * gzvm_find_memslot() - Find memslot containing this @gpa
+ *
+ * Return:
+ * * >=0		- Index of memslot
+ * * -EFAULT		- Not found
+ */
+int gzvm_find_memslot(struct gzvm *vm, u64 gfn)
+{
+	int i;
+
+	for (i = 0; i < GZVM_MAX_MEM_REGION; i++) {
+		if (vm->memslot[i].npages == 0)
+			continue;
+
+		if (gfn >= vm->memslot[i].base_gfn &&
+		    gfn < vm->memslot[i].base_gfn + vm->memslot[i].npages)
+			return i;
+	}
+
+	return -EFAULT;
 }
 
 /**

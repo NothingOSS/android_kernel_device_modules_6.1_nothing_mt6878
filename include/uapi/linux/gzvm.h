@@ -142,6 +142,12 @@ enum {
 	GZVM_EXIT_GZ = 0x9292000a,
 };
 
+/* exception definitions of GZVM_EXIT_EXCEPTION */
+enum {
+	GZVM_EXCEPTION_UNKNOWN = 0x0,
+	GZVM_EXCEPTION_PAGE_FAULT = 0x1,
+};
+
 /**
  * struct gzvm_vcpu_run: Same purpose as kvm_run, this struct is
  *			shared between userspace, kernel and
@@ -179,6 +185,13 @@ struct gzvm_vcpu_run {
 		struct {
 			__u32 exception;
 			__u32 error_code;
+			__u64 fault_gpa;
+			/**
+			 * future-proof reservation and should be zeroed, and this can also
+			 * fix the offset of `gzvm_arch_exception`
+			 */
+			__u64 reserved[6];
+			struct gzvm_arch_exception arch;
 		} exception;
 		/* GZVM_EXIT_HYPERCALL */
 		struct {
