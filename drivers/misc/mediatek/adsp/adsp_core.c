@@ -232,7 +232,7 @@ enum adsp_ipi_status adsp_send_vp_irq(unsigned int busy_wait)
 		return ADSP_IPI_ERROR;
 
 	if (!is_adsp_ready(ADSP_A_ID)) {
-		pr_notice("%s, adsp is not active", __func__);
+		pr_info_ratelimited("%s, adsp is not active", __func__);
 		return ADSP_IPI_ERROR;
 	}
 

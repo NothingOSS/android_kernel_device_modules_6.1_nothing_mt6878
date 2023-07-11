@@ -586,7 +586,7 @@ int notify_vp_audio_event(struct notifier_block *nb,
 		if (has_video) {
 			result = adsp_send_vp_irq(true);
 			if (result)
-				pr_info("adsp_send_vp_irq result = %d\n", result);
+				pr_info_ratelimited("adsp_send_vp_irq result = %d\n", result);
 		}
 	}
 	return status;
