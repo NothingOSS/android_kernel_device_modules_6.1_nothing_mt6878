@@ -103,6 +103,8 @@ static atomic_t top_isr_ref; /* irq power status protection */
 static atomic_t top_clk_ref; /* top clk status protection*/
 static spinlock_t top_clk_lock; /* power status protection*/
 
+struct device *g_dpc_dev; /* mminfra power control */
+
 unsigned long long mutex_time_start;
 unsigned long long mutex_time_end;
 long long mutex_time_period;
@@ -5456,7 +5458,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 
 	switch (action) {
 	case DISP_PM_ENABLE:
-		if (priv->dpc_dev)
+		if (priv->dpc_dev && (!pm_runtime_enabled(priv->dpc_dev)))
 			pm_runtime_enable(priv->dpc_dev);
 
 		pm_runtime_enable(priv->mmsys_dev);
@@ -5483,8 +5485,13 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		break;
 	case DISP_PM_GET:
 		/* mminfra power request */
-		if (priv->dpc_dev)
-			pm_runtime_get_sync(priv->dpc_dev);
+		if (priv->dpc_dev) {
+			ret = pm_runtime_resume_and_get(priv->dpc_dev);
+			if (unlikely(ret)) {
+				DDPMSG("request mminfra power failed\n");
+				return ret;
+			}
+		}
 
 		pm_runtime_get_sync(priv->mmsys_dev);
 
@@ -5497,9 +5504,9 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		break;
 	case DISP_PM_PUT:
 		if (priv->dpc_dev) {
-			if (0x3 != ((readl(priv->mminfra_pwr_chk) & 0xC0000000) >> 30)) {
+			if (unlikely(0x3 != ((readl(priv->mminfra_pwr_chk) & 0xC0000000) >> 30))) {
 				DDPMSG("%s mminfra no power, get before put\n", __func__);
-				pm_runtime_get_sync(priv->dpc_dev);
+				pm_runtime_resume_and_get(priv->dpc_dev);
 			}
 		}
 
@@ -5516,9 +5523,32 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 			pm_runtime_put_sync(priv->dpc_dev);
 		break;
 	case DISP_PM_CHECK:
+		if (priv->dpc_dev && pm_runtime_get_if_in_use(priv->dpc_dev) <= 0)
+			return -1;
+		if (priv->mmsys_dev && pm_runtime_get_if_in_use(priv->mmsys_dev) <= 0)
+			goto err_mmsys;
+		if (priv->side_mmsys_dev && pm_runtime_get_if_in_use(priv->side_mmsys_dev) <= 0)
+			goto err_side_mmsys;
+		if (priv->ovlsys_dev && pm_runtime_get_if_in_use(priv->ovlsys_dev) <= 0)
+			goto err_ovlsys;
+		if (priv->side_ovlsys_dev && pm_runtime_get_if_in_use(priv->side_ovlsys_dev) <= 0)
+			goto err_side_ovlsys;
 		break;
 	}
 	return ret;
+
+err_side_ovlsys:
+	if (priv->ovlsys_dev)
+		pm_runtime_put_sync(priv->ovlsys_dev);
+err_ovlsys:
+	if (priv->side_mmsys_dev)
+		pm_runtime_put_sync(priv->side_mmsys_dev);
+err_side_mmsys:
+	pm_runtime_put_sync(priv->mmsys_dev);
+err_mmsys:
+	if (priv->dpc_dev)
+		pm_runtime_put(priv->dpc_dev);
+	return -1;
 }
 
 static void mtk_drm_get_top_clk(struct mtk_drm_private *priv)
@@ -5674,6 +5704,8 @@ bool mtk_drm_top_clk_isr_get(char *master)
 			return false;
 		}
 		atomic_inc(&top_isr_ref);
+		if (g_dpc_dev)
+			pm_runtime_resume_and_get(g_dpc_dev);
 		spin_unlock_irqrestore(&top_clk_lock, flags);
 	}
 	return true;
@@ -5688,11 +5720,15 @@ void mtk_drm_top_clk_isr_put(char *master)
 		spin_lock_irqsave(&top_clk_lock, flags);
 
 		/* when timeout of polling isr ref in unpreare top clk*/
-		if (atomic_read(&top_clk_ref) <= 0)
+		if (atomic_read(&top_clk_ref) <= 0) {
 			DDPPR_ERR("%s, top clk off at %s\n",
 				  __func__, master ? master : "NULL");
-
+			spin_unlock_irqrestore(&top_clk_lock, flags);
+			return;
+		}
 		atomic_dec(&top_isr_ref);
+		if (g_dpc_dev)
+			pm_runtime_put(g_dpc_dev);
 		spin_unlock_irqrestore(&top_clk_lock, flags);
 	}
 }
@@ -8591,10 +8627,10 @@ SKIP_OVLSYS_CONFIG:
 	private->dpc_dev = mtk_drm_get_pd_device(dev, "mminfra_in_dpc");
 	if (private->dpc_dev) {
 		pm_runtime_irq_safe(private->dpc_dev);
+		g_dpc_dev = private->dpc_dev;
 		private->mminfra_pwr_chk = ioremap(0x1c001ea8, 0x4);
 	}
 	mtk_drm_pm_ctrl(private, DISP_PM_ENABLE);
-
 
 	/* Get and enable top clk align to HW */
 	mtk_drm_get_top_clk(private);

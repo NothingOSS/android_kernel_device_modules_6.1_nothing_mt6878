@@ -310,16 +310,8 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (priv->mmsys_dev && pm_runtime_get_if_in_use(priv->mmsys_dev) <= 0)
+	if (mtk_drm_pm_ctrl(priv, DISP_PM_CHECK))
 		goto done_return;
-	if (priv->side_mmsys_dev && pm_runtime_get_if_in_use(priv->side_mmsys_dev) <= 0)
-		goto done_return;
-	if (priv->ovlsys_dev && pm_runtime_get_if_in_use(priv->ovlsys_dev) <= 0)
-		goto done_return;
-	if (priv->side_ovlsys_dev && pm_runtime_get_if_in_use(priv->side_ovlsys_dev) <= 0)
-		goto done_return;
-
-	//DDPFUNC("crtc%d\n", crtc_id);
 
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT2701:
@@ -466,16 +458,9 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		if (priv->mmsys_dev && pm_runtime_get_if_in_use(priv->mmsys_dev) <= 0)
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+		if (mtk_drm_pm_ctrl(priv, DISP_PM_CHECK))
 			goto done_return;
-		if (priv->side_mmsys_dev && pm_runtime_get_if_in_use(priv->side_mmsys_dev) <= 0)
-			goto done_return;
-		if (priv->ovlsys_dev && pm_runtime_get_if_in_use(priv->ovlsys_dev) <= 0)
-			goto done_return;
-		if (priv->side_ovlsys_dev && pm_runtime_get_if_in_use(priv->side_ovlsys_dev) <= 0)
-			goto done_return;
-	}
 
 	DDPFUNC("crtc%d\n", crtc_id);
 
@@ -739,16 +724,8 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (priv->mmsys_dev && pm_runtime_get_if_in_use(priv->mmsys_dev) <= 0)
+	if (mtk_drm_pm_ctrl(priv, DISP_PM_CHECK))
 		goto done_return;
-	if (priv->side_mmsys_dev && pm_runtime_get_if_in_use(priv->side_mmsys_dev) <= 0)
-		goto done_return;
-	if (priv->ovlsys_dev && pm_runtime_get_if_in_use(priv->ovlsys_dev) <= 0)
-		goto done_return;
-	if (priv->side_ovlsys_dev && pm_runtime_get_if_in_use(priv->side_ovlsys_dev) <= 0)
-		goto done_return;
-
-	//DDPFUNC("crtc%d\n", crtc_id);
 
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT2701:
@@ -927,16 +904,9 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		if (priv->mmsys_dev && pm_runtime_get_if_in_use(priv->mmsys_dev) <= 0)
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+		if (mtk_drm_pm_ctrl(priv, DISP_PM_CHECK))
 			goto done_return;
-		if (priv->side_mmsys_dev && pm_runtime_get_if_in_use(priv->side_mmsys_dev) <= 0)
-			goto done_return;
-		if (priv->ovlsys_dev && pm_runtime_get_if_in_use(priv->ovlsys_dev) <= 0)
-			goto done_return;
-		if (priv->side_ovlsys_dev && pm_runtime_get_if_in_use(priv->side_ovlsys_dev) <= 0)
-			goto done_return;
-	}
 
 	DDPFUNC("crtc%d\n", crtc_id);
 

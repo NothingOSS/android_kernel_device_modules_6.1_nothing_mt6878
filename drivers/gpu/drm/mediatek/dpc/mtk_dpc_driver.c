@@ -1270,7 +1270,8 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 
 	if (of_find_property(dev->of_node, "power-domains", NULL)) {
 		priv->pd_dev = dev;
-		pm_runtime_enable(priv->pd_dev);
+		if (!pm_runtime_enabled(priv->pd_dev))
+			pm_runtime_enable(priv->pd_dev);
 		pm_runtime_irq_safe(priv->pd_dev);
 	}
 

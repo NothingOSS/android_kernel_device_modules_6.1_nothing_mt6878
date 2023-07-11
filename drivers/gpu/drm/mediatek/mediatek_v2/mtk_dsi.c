@@ -2435,9 +2435,6 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		goto out;
 	}
 
-	if (priv->dpc_dev)
-		pm_runtime_get_sync(priv->dpc_dev);
-
 	status = readl(dsi->regs + DSI_INTSTA);
 	if (!status) {
 		ret = IRQ_NONE;
@@ -2654,9 +2651,6 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 out:
 	mtk_drm_top_clk_isr_put("dsi_irq");
-
-	if (priv->dpc_dev)
-		pm_runtime_put_sync(priv->dpc_dev);
 
 	return ret;
 }
