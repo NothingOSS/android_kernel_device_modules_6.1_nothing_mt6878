@@ -10189,7 +10189,10 @@
 
 		dvs: dvs@1a1a0000 {
 			compatible = "mediatek,dvs";
-			reg = <0 0x1a1a0000 0 0x1000>;
+			reg = <0 0x1a1a0000 0 0x1000>,
+				<0 0x1a000000 0 0x1000>,
+				<0 0x1a170000 0 0x1000>,
+				<0 0x1a1d0000 0 0x1000>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
 			//mediatek-larb-supply = <&smi_larb19>;
