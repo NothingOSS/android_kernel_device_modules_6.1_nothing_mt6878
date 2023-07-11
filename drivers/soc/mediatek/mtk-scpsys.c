@@ -31,7 +31,7 @@
 #define MTK_POLL_DELAY_US		10
 #define MTK_POLL_TIMEOUT		USEC_PER_SEC
 #define MTK_POLL_DELAY_US		10
-#define MTK_POLL_100MS_TIMEOUT		(100 * USEC_PER_MSEC)
+#define MTK_POLL_300MS_TIMEOUT		(300 * USEC_PER_MSEC)
 #define MTK_POLL_IRQ_DELAY_US		3
 #define MTK_POLL_IRQ_TIMEOUT		USEC_PER_SEC
 #define MTK_POLL_HWV_PREPARE_CNT	2500
@@ -1137,7 +1137,7 @@ static int scpsys_hwv_power_on(struct generic_pm_domain *genpd)
 
 	/* wait until VOTER_ACK = 1 */
 	ret = readx_poll_timeout_atomic(mtk_hwv_is_enable_done, scpd, tmp, tmp > 0,
-			MTK_POLL_DELAY_US, MTK_POLL_100MS_TIMEOUT);
+			MTK_POLL_DELAY_US, MTK_POLL_300MS_TIMEOUT);
 	if (ret < 0)
 		goto err_hwv_done;
 
@@ -1205,7 +1205,7 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 
 	/* wait until VOTER_ACK = 0 */
 	ret = readx_poll_timeout_atomic(mtk_hwv_is_disable_done, scpd, tmp, tmp > 0,
-			MTK_POLL_DELAY_US, MTK_POLL_100MS_TIMEOUT);
+			MTK_POLL_DELAY_US, MTK_POLL_300MS_TIMEOUT);
 	if (ret < 0)
 		goto err_hwv_done;
 
@@ -1289,7 +1289,7 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 	if (onoff) {
 		/* wait until VOTER_ACK = 1 */
 		ret = readx_poll_timeout_atomic(mtk_mminfra_hwv_is_enable_done, scpd, tmp, tmp > 0,
-				MTK_POLL_DELAY_US, MTK_POLL_100MS_TIMEOUT);
+				MTK_POLL_DELAY_US, MTK_POLL_300MS_TIMEOUT);
 		if (ret < 0)
 			goto err_hwv_done;
 	}
