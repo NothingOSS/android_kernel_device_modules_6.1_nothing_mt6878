@@ -18,6 +18,7 @@
 #include <linux/trusty/trusty.h>
 #include <linux/trusty/trusty_shm.h>
 #include <linux/soc/mediatek/mtk-ise-mbox.h>
+#include <linux/soc/mediatek/mtk_ise.h>
 #include <linux/soc/mediatek/mtk_ise_lpm.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 
@@ -521,7 +522,8 @@ static int trusty_probe(struct platform_device *pdev)
 		goto err_allocate_state;
 	}
 
-	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL, ISE_TYPE_SHM, 0, 0, 0, 0, 0, 0, &res);
+	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL,
+		ISE_MODULE_TRUSTY, ISE_TYPE_SHM, 0, 0, 0, 0, 0, &res);
 	if (res.a0) {
 		dev_err(&pdev->dev, "Failed to get shm memory region: 0x%lx\n", res.a0);
 		ret = -EINVAL;
@@ -541,7 +543,8 @@ static int trusty_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "pa 0x%llx, ioremap_pa 0x%llx, size 0x%zx, va 0x%lx\n",
 		gshm.paddr, gshm.ioremap_paddr, gshm.mem_size, (uintptr_t)gshm.vaddr);
 
-	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL, ISE_TYPE_MCIA, 0, 0, 0, 0, 0, 0, &res);
+	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL,
+		ISE_MODULE_TRUSTY, ISE_TYPE_MCIA, 0, 0, 0, 0, 0, &res);
 	if (res.a0) {
 		dev_err(&pdev->dev, "Failed to get mcia memory region: 0x%lx\n", res.a0);
 		ret = -EINVAL;
