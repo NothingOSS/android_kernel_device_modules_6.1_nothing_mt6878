@@ -96,7 +96,7 @@
 #define TTY_BUF_POLLING_INTERVAL 10 /*ms*/
 #define TTY_BUF_POLLING_COUNT  10
 
-#define DMA_RX_POLLING_CNT	100
+#define DMA_RX_POLLING_CNT	300
 
 #define FIFO_TX_STATUS_MASK  0xF
 #define FIFO_TX_CNT_MASK 0x1F
@@ -947,8 +947,8 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 				#if defined(KERNEL_mtk_uart_set_apdma_clk)
 					KERNEL_mtk_uart_set_apdma_clk(true);
 				#endif
-				#if defined(KERNEL_mtk_uart_set_apdma_idle)
-					KERNEL_mtk_uart_set_apdma_idle(true);
+				#if defined(KERNEL_mtk_uart_apdma_enable_vff)
+					KERNEL_mtk_uart_apdma_enable_vff(true);
 				#endif
 				/* make sure clock ready */
 				mb();
@@ -1051,12 +1051,17 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 				break;
 			}
 		}
+		if (count == 0)
+			pr_info("%s: polling check dma rx complete fail!!\n", __func__);
+
+		/*stop VFF*/
+		#if defined(KERNEL_mtk_uart_apdma_enable_vff)
+			KERNEL_mtk_uart_apdma_enable_vff(false);
+		#endif
+
 		/*close apdma clk*/
 		#if defined(KERNEL_mtk_uart_set_apdma_clk)
 			KERNEL_mtk_uart_set_apdma_clk(false);
-		#endif
-		#if defined(KERNEL_mtk_uart_set_apdma_idle)
-			KERNEL_mtk_uart_set_apdma_idle(false);
 		#endif
 		/*clear uart wakeup status and enable wakeup*/
 		mtk8250_set_wakeup_irq(hub_uart_data, true);
@@ -1908,8 +1913,8 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 		#if defined(KERNEL_mtk_uart_set_apdma_clk)
 		KERNEL_mtk_uart_set_apdma_clk(true);
 		#endif
-		#if defined(KERNEL_mtk_uart_set_apdma_idle)
-		KERNEL_mtk_uart_set_apdma_idle(true);
+		#if defined(KERNEL_mtk_uart_apdma_enable_vff)
+		KERNEL_mtk_uart_apdma_enable_vff(true);
 		#endif
 		/* make sure clock ready */
 		mb();

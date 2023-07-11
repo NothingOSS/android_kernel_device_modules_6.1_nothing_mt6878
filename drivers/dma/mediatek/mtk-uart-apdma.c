@@ -164,12 +164,6 @@ struct mtk_chan {
 	struct uart_info rec_info[UART_RECORD_COUNT];
 };
 
-struct apdma_idle_en_data {
-	unsigned int addr;
-	unsigned int mask;
-	unsigned int value;
-};
-
 static unsigned long long num;
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 static unsigned int res_status;
@@ -179,8 +173,6 @@ atomic_t dma_clk_count;
 static unsigned int clk_count;
 struct mtk_chan *hub_dma_tx_chan;
 struct mtk_chan *hub_dma_rx_chan;
-void __iomem *apdma_idle_en;
-struct apdma_idle_en_data idle_data;
 #endif
 
 static inline struct mtk_uart_apdmadev *
@@ -449,17 +441,35 @@ void mtk_uart_set_apdma_clk(bool enable)
 }
 EXPORT_SYMBOL(mtk_uart_set_apdma_clk);
 
-
-void mtk_uart_set_apdma_idle(bool enable)
+void mtk_uart_apdma_enable_vff(bool enable)
 {
-	if (!enable)
-		writel((readl(apdma_idle_en) & (~idle_data.mask)), (void *)apdma_idle_en);
-	else
-		writel(((readl(apdma_idle_en) & (~idle_data.mask))
-			| idle_data.value), (void *)apdma_idle_en);
-}
-EXPORT_SYMBOL(mtk_uart_set_apdma_idle);
+	int ret = 0;
+	unsigned int status;
 
+	if (enable == false) {
+		/* TX & RX vff stop */
+		mtk_uart_apdma_write(hub_dma_tx_chan, VFF_STOP, VFF_STOP_B);
+		ret = readx_poll_timeout(readl, hub_dma_tx_chan->base + VFF_EN,
+			 status, !status, 10, 100);
+		if (ret)
+			pr_info("[%s]stop: fail, status=0x%x\n", __func__,
+				mtk_uart_apdma_read(hub_dma_tx_chan, VFF_DEBUG_STATUS));
+		mtk_uart_apdma_write(hub_dma_tx_chan, VFF_STOP, VFF_STOP_CLR_B);
+
+		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_STOP, VFF_STOP_B);
+		ret = readx_poll_timeout(readl, hub_dma_rx_chan->base + VFF_EN,
+			status, !status, 10, 100);
+		if (ret)
+			pr_info("[%s]stop: fail, status=0x%x\n", __func__,
+				mtk_uart_apdma_read(hub_dma_tx_chan, VFF_DEBUG_STATUS));
+		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_STOP, VFF_STOP_CLR_B);
+	} else {
+		/* enable RX VFF */
+		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_RPT, 0x0);
+		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_EN, VFF_EN_B);
+	}
+}
+EXPORT_SYMBOL(mtk_uart_apdma_enable_vff);
 
 void mtk_uart_set_res_status(unsigned int status)
 {
@@ -1150,9 +1160,6 @@ static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 	vchan_get_all_descriptors(&c->vc, &head);
 	spin_unlock_irqrestore(&c->vc.lock, flags);
 
-	if (c->chan_desc_count > 0)
-		pr_info("[WARN] %s, c->chan_desc_count[%d]\n", __func__, c->chan_desc_count);
-
 	vchan_dma_desc_free_list(&c->vc, &head);
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	if (mtkd->support_hub && (mtkd->support_wakeup))
@@ -1248,48 +1255,6 @@ static void mtk_uart_apdma_parse_peri(struct platform_device *pdev)
 		dev_info(&pdev->dev, "apdma clock protection:0x%x=0x%x",
 			peri_apdma_base, readl(peri_remap_apdma));
 
-}
-
-static int mtk_uart_apdma_parse_idle_data(struct platform_device *pdev)
-{
-		unsigned int index = 0;
-
-		index = of_property_read_u32_index(pdev->dev.of_node,
-			"idle-en-regs", 0, &idle_data.addr);
-		if (index) {
-			pr_notice("[%s] get dma idle reg fail\n", __func__);
-			return index;
-		}
-
-		index = of_property_read_u32_index(pdev->dev.of_node,
-			"idle-en-regs", 1, &idle_data.mask);
-		if (index) {
-			pr_notice("[%s] get dma idle mask fail\n", __func__);
-			return index;
-		}
-
-		index = of_property_read_u32_index(pdev->dev.of_node,
-			"idle-en-regs", 2, &idle_data.value);
-		if (index) {
-			pr_notice("[%s] get dma idle value fail\n", __func__);
-			return index;
-		}
-
-		apdma_idle_en = ioremap(idle_data.addr, 0x10);
-		if (!apdma_idle_en) {
-			pr_notice("[%s] idle_data addr(%x) ioremap fail\n",
-					__func__, idle_data.addr);
-			index = -1;
-			return index;
-		}
-
-		writel(((readl(apdma_idle_en) & (~idle_data.mask)) | idle_data.value),
-			(void *)apdma_idle_en);
-
-		dev_info(&pdev->dev, "apdma clock protection:0x%x=0x%x",
-			idle_data.addr, readl(apdma_idle_en));
-
-		return index;
 }
 
 #endif
@@ -1394,11 +1359,6 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 		} else {
 			g_dma_clk = mtkd->clk;
 			atomic_set(&dma_clk_count, 0);
-			rc = mtk_uart_apdma_parse_idle_data(pdev);
-			if (rc) {
-				pr_info("[%s]: mtk_uart_apdma_parse_idle_data fail!!\n", __func__);
-				return rc;
-			}
 		}
 		mtk_uart_apdma_parse_peri(pdev);
 	}
@@ -1474,11 +1434,6 @@ static int mtk_uart_apdma_remove(struct platform_device *pdev)
 	struct mtk_uart_apdmadev *mtkd = platform_get_drvdata(pdev);
 
 	of_dma_controller_free(pdev->dev.of_node);
-
-	if (mtkd->support_hub == 1 && mtkd->support_hub == 1) {
-		if (apdma_idle_en)
-			iounmap(apdma_idle_en);
-	}
 
 	mtk_uart_apdma_free(mtkd);
 
