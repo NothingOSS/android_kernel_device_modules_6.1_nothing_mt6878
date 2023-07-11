@@ -500,6 +500,7 @@ mgk_64_k61_device_modules = [
     "drivers/power/supply/mtk_pep.ko",
     "drivers/power/supply/mtk_pep20.ko",
     "drivers/power/supply/mtk_pep40.ko",
+    "drivers/power/supply/mtk_pep45.ko",
     "drivers/power/supply/mtk_pep50.ko",
     "drivers/power/supply/mtk_pep50p.ko",
     "drivers/power/supply/rt9490-charger.ko",
