@@ -1561,6 +1561,10 @@ u32 mtk_pcie_dump_link_info(int port)
 	if (val & PCIE_AXI_READ_ERR)
 		ret_val |= BIT(6);
 
+	if (val & PCIE_AER_EVT)
+		writel_relaxed(PCIE_AER_EVT,
+			       pcie_port->base + PCIE_INT_STATUS_REG);
+
 	/* PCIe RxErr */
 	val = PCIE_CFG_FORCE_BYTE_EN | PCIE_CFG_BYTE_EN(0xf) |
 	      PCIE_CFG_HEADER(0, 0);
