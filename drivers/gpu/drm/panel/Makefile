@@ -42,6 +42,7 @@ obj-$(CONFIG_DRM_PANEL_NT37705_ALPHA_CMD) += k6985v1_64_alpha/panel-nt37705-alph
 endif
 ifneq ($(wildcard $(srctree)/$(src)/k6989v1_64_alpha),)
 obj-$(CONFIG_DRM_PANEL_ILI7838E_ALPHA_CMD) += k6989v1_64_alpha/panel-ili7838e-alpha-cmd.o
+obj-$(CONFIG_DRM_PANEL_ILI7838E_DV2_ALPHA_CMD) += k6989v1_64_alpha/panel-ili7838e-dv2-alpha-cmd.o
 endif
 
 mediatek-drm-gateic-y := mtk_drm_panel_i2c.o \
