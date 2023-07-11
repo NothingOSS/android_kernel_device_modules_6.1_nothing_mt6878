@@ -172,11 +172,12 @@ struct mtk_smi {
 	struct clk			*clk_async; /*only needed by mt2701*/
 	union {
 		void __iomem		*smi_ao_base; /* only for gen1 */
-		void __iomem		*base;	      /* only for gen2 */
+		void __iomem		*base;        /* only for gen2 */
 	};
 	const struct mtk_smi_common_plat *plat;
-	int			commid;
-	atomic_t		ref_count;
+	int				commid;
+	bool				skip_busy_check;
+	atomic_t			ref_count;
 };
 
 #define LARB_MAX_COMMON		(2)
@@ -191,6 +192,7 @@ struct mtk_smi_larb { /* larb: local arbiter */
 	u32				*mmu;
 
 	unsigned char			*bank;
+	bool				skip_busy_check;
 };
 
 #define MAX_COMMON_FOR_CLAMP		(3)
@@ -2685,6 +2687,10 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 			pm_runtime_put_sync(dev);
 		}
 	}
+	if (of_property_read_bool(dev->of_node, "skip-busy-check")) {
+		larb->skip_busy_check = true;
+		dev_notice(dev, "skip busy check\n");
+	}
 
 	is_mpu_violation(dev, false);
 	return ret;
@@ -2931,8 +2937,9 @@ static int __maybe_unused mtk_smi_larb_suspend(struct device *dev)
 	}
 
 	if (larb->larbid != 12) {
-		if (readl_relaxed(larb->base + SMI_LARB_STAT) ||
-				readl_relaxed(larb->base + INT_SMI_LARB_STAT)) {
+		if (!larb->skip_busy_check
+			&& (readl_relaxed(larb->base + SMI_LARB_STAT) ||
+			readl_relaxed(larb->base + INT_SMI_LARB_STAT))) {
 			pr_notice("[SMI]larb:%d, suspend but busy\n", larb->larbid);
 			raw_notifier_call_chain(&smi_driver_notifier_list, larb->larbid, larb);
 		}
@@ -3934,6 +3941,11 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 			pm_runtime_put_sync(dev);
 		}
 	}
+	if (of_property_read_bool(dev->of_node, "skip-busy-check")) {
+		common->skip_busy_check = true;
+		dev_notice(dev, "skip busy check\n");
+	}
+
 	spin_lock_init(&smi_lock.lock);
 	is_mpu_violation(dev, false);
 
@@ -3997,7 +4009,7 @@ static int __maybe_unused mtk_smi_common_suspend(struct device *dev)
 {
 	struct mtk_smi *common = dev_get_drvdata(dev);
 
-	if (!(readl_relaxed(common->base + SMI_DEBUG_MISC) & 0x1)) {
+	if (!common->skip_busy_check && !(readl_relaxed(common->base + SMI_DEBUG_MISC) & 0x1)) {
 		pr_notice("[SMI]common:%d suspend but busy\n", common->commid);
 		raw_notifier_call_chain(&smi_driver_notifier_list, common->commid, NULL);
 	}
