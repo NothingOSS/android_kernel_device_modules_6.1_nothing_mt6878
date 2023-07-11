@@ -29,7 +29,23 @@ static struct mtk_audio_usb_offload *aud_intf;
 static struct mtk_sram_pwr sram_pwr[MEM_TYPE_NUM];
 #define RESERVED_SRAM_TYPE	MEM_TYPE_SRAM_AFE
 
-static struct usb_offload_mem_info usb_offload_mem_buffer[USB_OFFLOAD_MEM_NUM];
+static struct usb_offload_mem_info
+usb_offload_mem_buffer[USB_OFFLOAD_MEM_NUM] = {
+	{	.phy_addr = 0,
+		.va_addr  = 0,
+		.size     = 0,
+		.vir_addr = NULL,
+		.is_valid = false,
+		.pool     = NULL,
+	},
+	{	.phy_addr = 0,
+		.va_addr  = 0,
+		.size     = 0,
+		.vir_addr = NULL,
+		.is_valid = false,
+		.pool     = NULL,
+	},
+};
 static struct usb_offload_buffer rsv_sram;
 static DEFINE_MUTEX(rsv_sram_lock);
 
@@ -74,6 +90,7 @@ static void reset_mem_info(struct usb_offload_mem_info *mem_info)
 	mem_info->phy_addr = 0;
 	mem_info->va_addr = 0;
 	mem_info->size = 0;
+	mem_info->vir_addr = NULL;
 	mem_info->is_valid = false;
 	mem_info->pool = NULL;
 }
@@ -184,6 +201,7 @@ static int soc_alloc_sram(struct usb_offload_buffer *buf, unsigned int size)
 		buf->is_rsv = false;
 		buf->type = audio_sram->type;
 	} else {
+		USB_OFFLOAD_MEM_DBG("SRAM is insufficient");
 		reset_buffer(buf);
 		ret = -ENOMEM;
 	}
@@ -264,11 +282,9 @@ int mtk_offload_init_rsv_sram(int min_alloc_order)
 	int ret = 0;
 
 	mutex_lock(&rsv_sram_lock);
-	USB_OFFLOAD_MEM_DBG("++\n");
 	mem_id = USB_OFFLOAD_MEM_SRAM_ID;
 
 	if (usb_offload_mem_buffer[mem_id].is_valid) {
-		USB_OFFLOAD_MEM_DBG("rsv_sram is already inited\n");
 		ret = 0;
 		goto INIT_RSV_SRAM_DONE;
 	}
@@ -301,7 +317,6 @@ int mtk_offload_init_rsv_sram(int min_alloc_order)
 		dump_mtk_usb_offload_gen_pool();
 
 INIT_RSV_SRAM_DONE:
-	USB_OFFLOAD_MEM_DBG("--\n");
 	mutex_unlock(&rsv_sram_lock);
 	return ret;
 }
@@ -313,10 +328,8 @@ int mtk_offload_deinit_rsv_sram(void)
 	int ret;
 
 	mutex_lock(&rsv_sram_lock);
-	USB_OFFLOAD_MEM_DBG("++\n");
 	if (!usb_offload_mem_buffer[mem_id].is_valid) {
-		USB_OFFLOAD_INFO("%s: Not support sram or it's already freed\n",
-			__func__);
+		USB_OFFLOAD_INFO("Not support sram or it's already freed\n");
 		ret = 0;
 		goto DEINIT_RSV_SRAM_DONE;
 	}
@@ -329,12 +342,14 @@ int mtk_offload_deinit_rsv_sram(void)
 	ret = soc_free_sram(&rsv_sram);
 	if (!ret) {
 		sram_power_ctrl(rsv_sram.type, false);
+		USB_OFFLOAD_INFO("destroy pool[%d]:%p\n",
+			mem_id, usb_offload_mem_buffer[mem_id].pool);
+		gen_pool_destroy(usb_offload_mem_buffer[mem_id].pool);
 		iounmap((void *) usb_offload_mem_buffer[mem_id].va_addr);
 		reset_mem_info(&usb_offload_mem_buffer[mem_id]);
 	}
 
 DEINIT_RSV_SRAM_DONE:
-	USB_OFFLOAD_MEM_DBG("--\n");
 	mutex_unlock(&rsv_sram_lock);
 	return ret;
 }
@@ -365,11 +380,8 @@ static struct gen_pool *mtk_get_gen_pool(enum usb_offload_mem_id mem_id)
 
 static bool is_rsv_mem_valid(enum usb_offload_mem_id mem_id)
 {
-	if (mem_id < USB_OFFLOAD_MEM_NUM) {
-		USB_OFFLOAD_MEM_DBG("mem_id%d is %s\n", mem_id,
-			usb_offload_mem_buffer[mem_id].is_valid ? "valid" : "invalid");
+	if (mem_id < USB_OFFLOAD_MEM_NUM)
 		return usb_offload_mem_buffer[mem_id].is_valid;
-	}
 	return false;
 }
 
@@ -399,9 +411,14 @@ static int mtk_usb_offload_init_pool(int min_alloc_order, uint32_t mem_id)
 		USB_OFFLOAD_ERR("idx: %d failed, va_start: 0x%lx, va_chunk: %zu\n",
 			mem_id, va_start, va_chunk);
 	}
+	if (usb_offload_mem_buffer[mem_id].pool) {
+		USB_OFFLOAD_INFO("destroy pool[%d]:%p\n",
+			mem_id, usb_offload_mem_buffer[mem_id].pool);
+		gen_pool_destroy(usb_offload_mem_buffer[mem_id].pool);
+	}
 	usb_offload_mem_buffer[mem_id].pool = pool;
-	USB_OFFLOAD_MEM_DBG("idx:%d success, va_start:0x%lx, va_chunk:%zu, pool[%d]:%p\n",
-		mem_id, va_start, va_chunk, mem_id, pool);
+	USB_OFFLOAD_MEM_DBG("create pool[%d]:%p addr:0x%lx size:%zu\n",
+		mem_id, pool, va_start, va_chunk);
 
 	return 0;
 }
@@ -440,7 +457,7 @@ static int mtk_usb_offload_genpool_allocate_memory(unsigned char **vaddr,
 	struct gen_pool *gen_pool_usb_offload = mtk_get_gen_pool(mem_id);
 
 	if (gen_pool_usb_offload == NULL) {
-		USB_OFFLOAD_ERR("gen_pool_usb_offload == NULL\n");
+		USB_OFFLOAD_ERR("pool is NULL, mem_id:%d\n", mem_id);
 		return -1;
 	}
 
@@ -451,9 +468,9 @@ static int mtk_usb_offload_genpool_allocate_memory(unsigned char **vaddr,
 		*paddr = gen_pool_virt_to_phys(gen_pool_usb_offload,
 					(unsigned long)*vaddr);
 	}
-	USB_OFFLOAD_MEM_DBG("size: %u, id: %d, vaddr: %p, DMA paddr: 0x%llx\n",
-			size, mem_id, vaddr, (unsigned long long)*paddr);
 
+	USB_OFFLOAD_MEM_DBG("va:%p phy:0x%llx size:%u, mem_id:%d\n",
+		vaddr, (unsigned long long)*paddr, size, mem_id);
 	return 0;
 }
 
@@ -464,19 +481,17 @@ static int mtk_usb_offload_genpool_free_memory(unsigned char **vaddr,
 	struct gen_pool *gen_pool_usb_offload = mtk_get_gen_pool(mem_id);
 
 	if (gen_pool_usb_offload == NULL) {
-		USB_OFFLOAD_ERR("gen_pool_usb_offload == NULL\n");
+		USB_OFFLOAD_ERR("pool is NULL, mem_id:%d\n", mem_id);
 		return -1;
 	}
 
 	if (!gen_pool_has_addr(gen_pool_usb_offload, (unsigned long)*vaddr, *size)) {
-		USB_OFFLOAD_ERR("vaddr is not in genpool\n");
+		USB_OFFLOAD_ERR("vaddr is not in pool[%d]:%p\n", mem_id, gen_pool_usb_offload);
 		return -1;
 	}
 
 	/* allocate VA with gen pool */
 	if (*vaddr) {
-		USB_OFFLOAD_MEM_DBG("size: %zu, id: %d, vaddr: %p\n",
-				*size, mem_id, vaddr);
 		gen_pool_free(gen_pool_usb_offload, (unsigned long)*vaddr, *size);
 		*vaddr = NULL;
 		*size = 0;
@@ -541,7 +556,6 @@ static int mtk_usb_offload_free_rsv_mem(struct usb_offload_buffer *buf,
  * If either "reserved sram" or "allocated sram" is not enough or
  * not supported, allocating it on "reserved dram" instead.
  */
-
 int mtk_offload_alloc_mem(struct usb_offload_buffer *buf,
 	unsigned int size, int align,
 	enum usb_offload_mem_id mem_id, bool is_rsv)
@@ -552,9 +566,6 @@ int mtk_offload_alloc_mem(struct usb_offload_buffer *buf,
 		USB_OFFLOAD_ERR("buf:%p is NULL\n", buf);
 		return -1;
 	}
-
-	USB_OFFLOAD_MEM_DBG("buf:%p size:%d align:%d is_sram:%d is_rsv:%d\n",
-		buf, size, align, is_sram(mem_id), is_rsv);
 
 	if (uodev->adv_lowpwr && mem_id == USB_OFFLOAD_MEM_SRAM_ID) {
 		ret = is_rsv ?
@@ -581,8 +592,8 @@ ALLOC_SUCCESS:
 		list_add_tail(&buf->list, &downgrade_list);
 	}
 
-	USB_OFFLOAD_MEM_DBG("va:%p phy:0x%llx size:%zu is_sram:%d is_rsv:%d type:%s\n",
-		buf->dma_area, (unsigned long long)buf->dma_addr,
+	USB_OFFLOAD_MEM_DBG("buf:%p va:%p phy:0x%llx size:%zu (%d,%d,%s)\n",
+		buf, buf->dma_area, (unsigned long long)buf->dma_addr,
 		buf->dma_bytes, buf->is_sram, buf->is_rsv,
 		memory_type(buf->is_sram, buf->type));
 	return 0;
@@ -601,13 +612,18 @@ int mtk_offload_free_mem(struct usb_offload_buffer *buf)
 	int ret = 0;
 	u8 type;
 
-	if (!buf || !buf->allocated) {
+	if (!buf) {
+		USB_OFFLOAD_MEM_DBG("buf is NULL\n");
+		return 0;
+	}
+
+	if (!buf->allocated) {
 		USB_OFFLOAD_MEM_DBG("buf:%p has already freed\n", buf);
 		return 0;
 	}
 
-	USB_OFFLOAD_MEM_DBG("va:%p phy:0x%llx size:%zu is_sram:%d is_rsv:%d type:%s\n",
-		buf->dma_area, (unsigned long long)buf->dma_addr,
+	USB_OFFLOAD_MEM_DBG("buf:%p va:%p phy:0x%llx size:%zu (%d,%d,%s)\n",
+		buf, buf->dma_area, (unsigned long long)buf->dma_addr,
 		buf->dma_bytes, buf->is_sram, buf->is_rsv,
 		memory_type(buf->is_sram, buf->type));
 

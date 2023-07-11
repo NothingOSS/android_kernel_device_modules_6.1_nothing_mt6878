@@ -89,12 +89,8 @@ static struct xhci_ring *xhci_mtk_alloc_ring(struct xhci_hcd *xhci,
 	int num_segs, int cycle_state, enum xhci_ring_type ring_type,
 	unsigned int max_packet, gfp_t mem_flags,
 	enum usb_offload_mem_id mem_id, bool is_rsv);
-static void xhci_mtk_free_ring(struct xhci_hcd *xhci,
-	struct xhci_ring *ring, unsigned int ep_index);
+static void xhci_mtk_free_ring(struct xhci_hcd *xhci, struct xhci_ring *ring);
 static int xhci_mtk_alloc_erst(struct usb_offload_dev *udev);
-static struct xhci_ring *xhci_mtk_alloc_transfer_ring(struct xhci_hcd *xhci,
-	u32 endpoint_type, enum xhci_ring_type ring_type,
-	unsigned int max_packet, gfp_t mem_flags);
 static int xhci_mtk_alloc_event_ring(struct usb_offload_dev *udev);
 static void xhci_mtk_free_erst(struct usb_offload_dev *udev);
 static void xhci_mtk_free_event_ring(struct usb_offload_dev *udev);
@@ -105,6 +101,7 @@ static int xhci_mtk_update_erst(struct usb_offload_dev *udev,
 
 static void memory_cleanup(void)
 {
+	USB_OFFLOAD_MEM_DBG("++\n");
 	/* urb buffers aren't freed if plug-out event is prior to disable stream*/
 	mtk_usb_offload_free_allocated(true);
 	mtk_usb_offload_free_allocated(false);
@@ -112,6 +109,8 @@ static void memory_cleanup(void)
 	/* free event ring related resource */
 	xhci_mtk_free_erst(uodev);
 	xhci_mtk_free_event_ring(uodev);
+
+	USB_OFFLOAD_MEM_DBG("--\n");
 }
 
 static void init_fake_rsv_sram(void)
@@ -996,6 +995,7 @@ static int mtk_usb_offload_free_allocated(bool is_in)
 	unsigned int buf_idx = is_in ? 1 : 0;
 	struct usb_offload_buffer *buf;
 
+	USB_OFFLOAD_MEM_DBG("(%s)\n", is_in ? "IN" : "OUT");
 	buf = &buf_allocated[buf_idx];
 	if (!buf) {
 		USB_OFFLOAD_INFO("buf(%s) has already freed\n",
@@ -1390,12 +1390,13 @@ static void xhci_mtk_free_dcbaa(struct xhci_hcd *xhci)
 	else
 		USB_OFFLOAD_MEM_DBG("Free mem DCBAA DONE\n");
 
-	deinit_fake_rsv_sram();
-
 	kfree(buf_ctx);
 	kfree(buf_dcbaa);
 	buf_ctx = NULL;
 	buf_dcbaa = NULL;
+
+	memory_cleanup();
+	deinit_fake_rsv_sram();
 }
 
 static int get_first_avail_buf_ctx_idx(struct xhci_hcd *xhci)
@@ -1403,13 +1404,6 @@ static int get_first_avail_buf_ctx_idx(struct xhci_hcd *xhci)
 	unsigned int idx;
 
 	for (idx = 0; idx <= BUF_CTX_SIZE; idx++) {
-		USB_OFFLOAD_MEM_DBG("idx: %d, alloc: %d, DMA area: %p, addr: %llx, bytes: %zu\n",
-					idx,
-					buf_ctx[idx].allocated,
-					buf_ctx[idx].dma_area,
-					buf_ctx[idx].dma_addr,
-					buf_ctx[idx].dma_bytes);
-
 		if (!buf_ctx[idx].allocated)
 			return idx;
 	}
@@ -1442,12 +1436,6 @@ static void xhci_mtk_free_container_ctx(struct xhci_hcd *xhci, struct xhci_conta
 	unsigned int idx;
 
 	for (idx = 0; idx < BUF_CTX_SIZE; idx++) {
-		USB_OFFLOAD_MEM_DBG("ctx[%d], alloc: %d, dma_addr: %llx, dma: %llx\n",
-				idx,
-				buf_ctx[idx].allocated,
-				buf_ctx[idx].dma_addr,
-				ctx->dma);
-
 		if (buf_ctx[idx].allocated && buf_ctx[idx].dma_addr == ctx->dma) {
 			if (mtk_offload_free_mem(&buf_ctx[idx]))
 				USB_OFFLOAD_ERR("FAIL: free mem ctx: %d\n", idx);
@@ -1472,13 +1460,12 @@ static int get_first_avail_buf_seg_idx(void)
 	}
 
 	for (idx = 0; idx < BUF_SEG_SIZE; idx++) {
-		USB_OFFLOAD_MEM_DBG("seg[%d], alloc: %d, DMA area: %p, addr: %llx, bytes: %zu\n",
-				idx,
-				buf_seg[idx].allocated,
-				buf_seg[idx].dma_area,
-				buf_seg[idx].dma_addr,
-				buf_seg[idx].dma_bytes);
-
+		USB_OFFLOAD_MEM_DBG("buf_seg[%d] alloc:%d va:%p phy:0x%llx size:%zu\n",
+					idx,
+					buf_seg[idx].allocated,
+					buf_seg[idx].dma_area,
+					buf_seg[idx].dma_addr,
+					buf_seg[idx].dma_bytes);
 		if (!buf_seg[idx].allocated)
 			return idx;
 	}
@@ -1498,18 +1485,15 @@ static void xhci_mtk_usb_offload_segment_free(struct xhci_hcd *xhci,
 
 	if (seg->trbs) {
 		for (idx = 0; idx < BUF_SEG_SIZE; idx++) {
-			USB_OFFLOAD_MEM_DBG("seg[%d] alloc:%d dma_addr:%llx dma:%llx size:%zu\n",
+			USB_OFFLOAD_MEM_DBG("buf_seg[%d] alloc:%d va:%p phy:0x%llx size:%zu\n",
 					idx,
 					buf_seg[idx].allocated,
+					buf_seg[idx].dma_area,
 					buf_seg[idx].dma_addr,
-					seg->dma,
 					buf_seg[idx].dma_bytes);
-
 			if (buf_seg[idx].allocated && buf_seg[idx].dma_addr == seg->dma) {
 				if (mtk_offload_free_mem(&buf_seg[idx]))
 					USB_OFFLOAD_ERR("FAIL: free mem seg: %d\n", idx);
-				else
-					USB_OFFLOAD_MEM_DBG("Free mem seg: %d DONE\n", idx);
 				goto done;
 			}
 		}
@@ -1569,7 +1553,7 @@ static struct xhci_segment *xhci_mtk_usb_offload_segment_alloc(struct xhci_hcd *
 	seg->trbs = (void *) buf_seg[buf_seg_slot].dma_area;
 	seg->dma = 0;
 	dma = buf_seg[buf_seg_slot].dma_addr;
-	USB_OFFLOAD_MEM_DBG("seg->trbs: %p, dma: %llx, size: %lu\n",
+	USB_OFFLOAD_MEM_DBG("seg->trbs:%p, dma:0x%llx, size:%lu\n",
 			seg->trbs,
 			dma,
 			sizeof(buf_seg[buf_seg_slot]));
@@ -1859,11 +1843,8 @@ fail:
 	return NULL;
 }
 
-static void xhci_mtk_free_ring(struct xhci_hcd *xhci,
-		struct xhci_ring *ring, unsigned int ep_index)
+static void xhci_mtk_free_ring(struct xhci_hcd *xhci, struct xhci_ring *ring)
 {
-	USB_OFFLOAD_MEM_DBG("\n");
-
 	if (!ring)
 		return;
 
@@ -1882,7 +1863,7 @@ static void xhci_mtk_free_event_ring(struct usb_offload_dev *udev)
 		return;
 	}
 
-	xhci_mtk_free_ring(udev->xhci, udev->event_ring, 0);
+	xhci_mtk_free_ring(udev->xhci, udev->event_ring);
 	udev->event_ring = NULL;
 }
 
@@ -1920,6 +1901,53 @@ static struct xhci_ring *xhci_mtk_alloc_transfer_ring(struct xhci_hcd *xhci,
 	}
 
 	return ring;
+}
+
+static int get_segment_buf(struct xhci_ring *ring, struct usb_offload_buffer **buf)
+{
+	struct xhci_segment *seg;
+	unsigned int idx;
+
+	if (!ring || !ring->first_seg)
+		return -1;
+
+	seg = ring->first_seg;
+	if (!buf_seg || !seg->trbs)
+		return -1;
+
+	*buf = NULL;
+	for (idx = 0; idx < BUF_SEG_SIZE; idx++) {
+		if (buf_seg[idx].allocated && buf_seg[idx].dma_addr == seg->dma) {
+			*buf = &buf_seg[idx];
+			break;
+		}
+	}
+
+	return 0;
+}
+
+/* Xhci checkes ep type before allocating transfer ring but it doesn't
+ * when it comes to freeing transfer ring. So here, prior to actually
+ * free memory, we'll check if segment lies on buf_seg.
+ */
+static void xhci_mtk_free_transfer_ring(struct xhci_hcd *xhci,
+	struct xhci_ring *ring, unsigned int ep_index)
+{
+	int ret;
+	struct usb_offload_buffer *buf;
+
+	USB_OFFLOAD_MEM_DBG("ep_index:%d\n", ep_index);
+
+	ret = get_segment_buf(ring, &buf);
+	if (ret != 0)
+		return;
+
+	if (buf)
+		xhci_mtk_free_ring(xhci, ring);
+	else {
+		USB_OFFLOAD_MEM_DBG("phy:0x%llx isn't under mamaged\n", ring->first_seg->dma);
+		xhci_ring_free_(xhci, ring);
+	}
 }
 
 static int xhci_mtk_alloc_event_ring(struct usb_offload_dev *udev)
@@ -2176,14 +2204,8 @@ GET_OF_NODE_FAIL:
 
 static int usb_offload_release(struct inode *ip, struct file *fp)
 {
-	int ret;
 	USB_OFFLOAD_INFO("%d\n", __LINE__);
-
-	ret = usb_offload_cleanup();
-	if (!ret)
-		deinit_fake_rsv_sram();
-
-	return ret;
+	return usb_offload_cleanup();
 }
 
 static long usb_offload_ioctl(struct file *fp,
@@ -2397,7 +2419,7 @@ static struct xhci_vendor_ops xhci_mtk_vendor_ops = {
 	.alloc_container_ctx = xhci_mtk_alloc_container_ctx,
 	.free_container_ctx = xhci_mtk_free_container_ctx,
 	.alloc_transfer_ring = xhci_mtk_alloc_transfer_ring,
-	.free_transfer_ring = xhci_mtk_free_ring,
+	.free_transfer_ring = xhci_mtk_free_transfer_ring,
 	.is_streaming = xhci_mtk_is_streaming,
 };
 
