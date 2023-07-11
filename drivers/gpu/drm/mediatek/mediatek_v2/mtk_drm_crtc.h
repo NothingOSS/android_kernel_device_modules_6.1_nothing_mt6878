@@ -811,6 +811,8 @@ struct pq_common_data {
 	unsigned int new_persist_property[32];
 	struct pq_tuning_pa_base tuning_pa_table[TUNING_REG_MAX];
 	int tdshp_flag; /* 0: normal, 1: tuning mode */
+	atomic_t pq_hw_relay_cfg_done;
+	wait_queue_head_t pq_hw_relay_cb_wq;
 };
 /**
  * struct mtk_drm_crtc - MediaTek specific crtc structure.

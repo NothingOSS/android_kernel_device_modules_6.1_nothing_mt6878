@@ -83,6 +83,7 @@ static const char *const mtk_tuning_mdp_comps_name[TUNING_COMPS_MAX_COUNT] = {
 static int mtk_drm_ioctl_pq_get_irq_impl(struct drm_crtc *crtc, void *data);
 static int mtk_drm_ioctl_pq_get_persist_property_impl(struct drm_crtc *crtc, void *data);
 static int mtk_drm_ioctl_pq_check_trigger(struct drm_crtc *crtc, void *data);
+static int mtk_drm_ioctl_pq_relay_engines(struct drm_crtc *crtc, void *data);
 
 static bool mtk_drm_get_resource_from_dts(struct resource *res, const char *node_name)
 {
@@ -388,6 +389,9 @@ int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
 		break;
 	case PQ_VIRTUAL_CHECK_TRIGGER:
 		ret = mtk_drm_ioctl_pq_check_trigger(crtc, kdata);
+		break;
+	case PQ_VIRTUAL_RELAY_ENGINES:
+		ret = mtk_drm_ioctl_pq_relay_engines(crtc, kdata);
 		break;
 	default:
 		DDPPR_ERR("%s, unknown cmd:%d\n", __func__, cmd);
@@ -923,6 +927,7 @@ struct drm_crtc *get_crtc_from_connector(int connector_id, struct drm_device *dr
 	}
 	return NULL;
 }
+
 static int mtk_drm_ioctl_pq_check_trigger(struct drm_crtc *crtc, void *data)
 {
 
@@ -949,3 +954,129 @@ static int mtk_drm_ioctl_pq_check_trigger(struct drm_crtc *crtc, void *data)
 	return ret;
 }
 
+static bool mtk_drm_pq_is_relay_engines(struct mtk_ddp_comp *comp, uint32_t engine)
+{
+	bool ret = false;
+
+	if (((engine & 0x1) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_COLOR))
+		|| ((engine & 0x2) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR))
+		|| ((engine & 0x4) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_C3D))
+		|| ((engine & 0x8) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_TDSHP))
+		|| ((engine & 0x10) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_AAL))
+		|| ((engine & 0x20) && (mtk_ddp_comp_get_type(comp->id) == MTK_DMDP_AAL))
+		|| ((engine & 0x40) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_GAMMA))
+		|| ((engine & 0x80) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DITHER))
+		|| ((engine & 0x100) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CHIST)))
+		ret = true;
+
+	return ret;
+}
+
+static void relay_cmdq_cb(struct cmdq_cb_data data)
+{
+	struct mtk_cmdq_cb_data *cb_data = data.data;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(cb_data->crtc);
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+
+	atomic_set(&pq_data->pq_hw_relay_cfg_done, 1);
+	wake_up_interruptible(&pq_data->pq_hw_relay_cb_wq);
+
+	DDPMSG("%s: config hw done\n", __func__);
+
+	cmdq_pkt_destroy(cb_data->cmdq_handle);
+	kfree(cb_data);
+}
+
+static int mtk_drm_ioctl_pq_relay_engines(struct drm_crtc *crtc, void *data)
+{
+	int relay = 0;
+	bool wait_config_done = false;
+	uint32_t relay_engines = 0x0;
+
+	struct mtk_pq_relay_enable *relayCtlSet = data;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+	struct mtk_cmdq_cb_data *cb_data = NULL;
+	struct cmdq_pkt *cmdq_handle = NULL;
+	struct mtk_ddp_comp *comp = NULL;
+	int ret = 0;
+	int i, j;
+
+	relay = relayCtlSet->enable ? 1 : 0;
+	wait_config_done = relayCtlSet->wait_hw_config_done;
+	relay_engines = relayCtlSet->relay_engines;
+
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+	if (!(mtk_crtc->enabled)) {
+		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return 1;
+	}
+
+	DDPMSG("%s: relay: %d, wait: %d, engine: 0x%x\n", __func__,
+			relay, wait_config_done, relay_engines);
+
+	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+
+	cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	if (!cmdq_handle) {
+		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -EFAULT;
+	}
+	if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
+		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_SECOND_PATH, 0);
+	else
+		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
+
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		if (comp && comp->funcs && comp->funcs->bypass
+			&& mtk_drm_pq_is_relay_engines(comp, relay_engines))
+			mtk_ddp_comp_bypass(comp, relay, cmdq_handle);
+	}
+
+	if (mtk_crtc->is_dual_pipe) {
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
+			if (comp && comp->funcs && comp->funcs->bypass
+				&& mtk_drm_pq_is_relay_engines(comp, relay_engines))
+				mtk_ddp_comp_bypass(comp, relay, cmdq_handle);
+		}
+	}
+
+	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
+	if (!cb_data) {
+		DDPPR_ERR("cb data creation failed\n");
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -1;
+	}
+
+	if (wait_config_done)
+		atomic_set(&pq_data->pq_hw_relay_cfg_done, 0);
+
+	cb_data->crtc = crtc;
+	cb_data->cmdq_handle = cmdq_handle;
+	if (cmdq_pkt_flush_threaded(cmdq_handle, relay_cmdq_cb, cb_data) < 0) {
+		DDPPR_ERR("failed to flush %s\n", __func__);
+		kfree(cb_data);
+	}
+
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+	if (wait_config_done) {
+		if (atomic_read(&pq_data->pq_hw_relay_cfg_done) == 0) {
+			DDPDBG("%s: wait_event_interruptible ++\n", __func__);
+			ret = wait_event_interruptible(pq_data->pq_hw_relay_cb_wq,
+				(atomic_read(&pq_data->pq_hw_relay_cfg_done) == 1));
+			if (ret >= 0)
+				DDPDBG("%s: wait_event_interruptible --\n", __func__);
+			else
+				DDPDBG("%s: interrupted unexpected\n", __func__);
+		} else
+			DDPDBG("%s(%d)\n", __func__, atomic_read(&pq_data->pq_hw_relay_cfg_done));
+
+		atomic_set(&pq_data->pq_hw_relay_cfg_done, 0);
+	}
+
+	return 0;
+}

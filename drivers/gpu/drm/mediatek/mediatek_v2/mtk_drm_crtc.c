@@ -16253,6 +16253,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		return -ENOMEM;
 	}
 	init_waitqueue_head(&mtk_crtc->pq_data->pq_get_irq_wq);
+	init_waitqueue_head(&mtk_crtc->pq_data->pq_hw_relay_cb_wq);
 
 	if (priv->data->mmsys_id == MMSYS_MT6985 ||
 		priv->data->mmsys_id == MMSYS_MT6989 ||
