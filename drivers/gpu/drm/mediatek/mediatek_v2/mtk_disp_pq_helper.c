@@ -555,6 +555,9 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 			mtk_crtc_wait_frame_done(mtk_crtc, pq_cmdq_handle, DDP_FIRST_PATH, 0);
 	}
 
+	/* Record Vblank start timestamp */
+	mtk_vblank_config_rec_start(mtk_crtc, pq_cmdq_handle, PQ_HELPER_CONFIG);
+
 	/* call comp frame config */
 	for (index = 0; index < cmds_len; index++) {
 		unsigned int pq_type = requests[index].cmd >> 16;
@@ -623,6 +626,9 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 			return -1;
 		}
+
+		/* Record Vblank end timestamp and calculate duration */
+		mtk_vblank_config_rec_end_cal(mtk_crtc, pq_cmdq_handle, PQ_HELPER_CONFIG);
 
 		mtk_drm_trace_begin("flush+check_trigger");
 		if (cmdq_pkt_flush_threaded(pq_cmdq_handle, frame_cmdq_cb, cb_data) < 0) {

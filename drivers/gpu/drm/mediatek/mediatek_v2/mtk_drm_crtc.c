@@ -1614,6 +1614,9 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 		&& (drm_mode_vrefresh(&crtc->state->adjusted_mode) == 60))
 		cmdq_pkt_sleep(cmdq_handle, CMDQ_US_TO_TICK(panel_ext->SilkyBrightnessDelay), CMDQ_GPR_R06);
 
+	/* Record Vblank start timestamp */
+	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, SET_BL);
+
 	/* set backlight */
 	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
 	mtk_ddp_comp_io_cmd(oddmr_comp, cmdq_handle, ODDMR_BL_CHG, &level);
@@ -1626,12 +1629,21 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 		if (comp && comp->funcs && comp->funcs->io_cmd)
 			comp->funcs->io_cmd(comp, cmdq_handle, DSI_SET_BL, &level);
 
+		/* Record Vblank end timestamp and calculate duration */
+		mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
 	} else {
 
 		/* set backlight and elvss*/
 		bl_ext_config.cfg_flag = cfg_flag;
 		bl_ext_config.backlight_level = level;
 		bl_ext_config.elvss_pn = panel_ext_param;
+
+		if (!is_frame_mode) {
+			/* In video mode, DSI_SET_BL_ELVSS will stop video mode to command mode, */
+			/* so no need to record the DSI_SET_BL_ELVSS duration */
+			/* Record Vblank end timestamp and calculate duration */
+			mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
+		}
 
 		if (comp && comp->funcs && comp->funcs->io_cmd)
 			comp->funcs->io_cmd(comp, cmdq_handle, DSI_SET_BL_ELVSS, &bl_ext_config);
@@ -1642,6 +1654,9 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 		cmdq_pkt_set_event(cmdq_handle,
 			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+
+		/* Record Vblank end timestamp and calculate duration */
+		mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
 	}
 
 	CRTC_MMP_MARK(index, backlight, bl_cnt, 0);
@@ -1804,6 +1819,10 @@ int mtk_drm_setbacklight_grp(struct drm_crtc *crtc, unsigned int level,
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
 			DDP_FIRST_PATH, 0);
 
+	if (is_frame_mode) {
+		/* Record Vblank start timestamp */
+		mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, SET_BL);
+	}
 
 	if ((cfg_flag & (0x1<<SET_BACKLIGHT_LEVEL)) && !(cfg_flag & (0x1<<SET_ELVSS_PN))) {
 		if (comp && comp->funcs && comp->funcs->io_cmd)
@@ -1823,6 +1842,9 @@ int mtk_drm_setbacklight_grp(struct drm_crtc *crtc, unsigned int level,
 			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 		cmdq_pkt_set_event(cmdq_handle,
 			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+
+		/* Record Vblank end timestamp and calculate duration */
+		mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
 	}
 
 	cmdq_pkt_flush(cmdq_handle);
@@ -1926,6 +1948,10 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 	else
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
 			DDP_FIRST_PATH, 0);
+
+	/* Record Vblank start timestamp */
+	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, SET_BL);
+
 	/* set backlight */
 	if (output_comp->funcs && output_comp->funcs->io_cmd)
 		output_comp->funcs->io_cmd(output_comp,
@@ -1937,6 +1963,9 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		cmdq_pkt_set_event(cmdq_handle,
 			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
 	}
+
+	/* Record Vblank end timestamp and calculate duration */
+	mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
 
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);
@@ -2394,6 +2423,9 @@ int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 	}
 	CRTC_MMP_MARK(index, user_cmd, user_cmd_cnt, 2);
 
+	/* Record Vblank start timestamp */
+	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, USER_COMMAND);
+
 	/* set user command */
 	if (comp && comp->funcs && comp->funcs->user_cmd && !comp->blank_mode)
 		comp->funcs->user_cmd(comp, cmdq_handle, cmd, (void *)params);
@@ -2414,6 +2446,10 @@ int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 		primary_data = ccorr_data->primary_data;
 		is_ccorr_type = true;
 	}
+
+	/* Record Vblank end timestamp and calculate duration */
+	mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, USER_COMMAND);
+
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
 		if (is_ccorr_type &&
 			((ccorr_data->path_order == 1) ||
@@ -11935,6 +11971,8 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
 	}
 
+	/* Record Vblank start timestamp */
+	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, FRAME_CONFIG);
 
 	if (mtk_crtc->sec_on) {
 		comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -13851,6 +13889,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	struct mtk_ddp_comp *first_comp, *r_comp;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
+
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return -EINVAL;
@@ -13969,6 +14008,9 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			return -EINVAL;
 		}
 	}
+
+	/* Record Vblank end timestamp and calculate duration */
+	mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, FRAME_CONFIG);
 
 	if (cmdq_pkt_flush_async(cmdq_handle, gce_cb, cb_data) < 0)
 		DDPPR_ERR("failed to flush gce_cb async\n");
@@ -16669,6 +16711,13 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		mtk_ddp_comp_io_cmd(output_comp, NULL, DUAL_TE_INIT,
 				&mtk_crtc->base);
 	mtk_crtc->last_aee_trigger_ts = 0;
+
+	if ((drm_crtc_index(&mtk_crtc->base) == 0) &&
+		(mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_VBLANK_CONFIG_REC))) {
+		mtk_vblank_config_rec_init(&mtk_crtc->base);
+	}
+
 	DDPMSG("%s-CRTC%d create successfully\n", __func__,
 		priv->num_pipes - 1);
 
@@ -19089,3 +19138,480 @@ void mtk_addon_get_module(const enum addon_scenario scn,
 
 	*addon_module_dual = &addon_data_dual->module_data[0];
 }
+
+/****** Vblank Configure Record Start ******/
+
+int mtk_vblank_config_rec_get_index(struct mtk_drm_crtc *mtk_crtc,
+	enum DISP_VBLANK_REC_THREAD_TYPE thread_type, enum DISP_VBLANK_REC_JOB_TYPE job_type,
+	enum DISP_VBLANK_REC_DATA_TYPE data_type)
+{
+	int index;
+
+	switch (data_type) {
+	case T_START:
+		index = thread_type * (DISP_REC_JOB_TYPE_MAX + 2);
+		break;
+	case T_END:
+		index = (thread_type * (DISP_REC_JOB_TYPE_MAX + 2)) + 1;
+		break;
+	case T_DURATION:
+		index = (thread_type * (DISP_REC_JOB_TYPE_MAX + 2)) + 2 + job_type;
+		break;
+	default:
+		DDPPR_ERR("%s, invalid data_type:%d!\n", __func__, data_type);
+		index = -1;
+		break;
+	}
+
+	return index;
+}
+
+
+unsigned int *mtk_vblank_config_rec_get_slot_va(struct mtk_drm_crtc *mtk_crtc,
+	enum DISP_VBLANK_REC_THREAD_TYPE thread_type,
+	enum DISP_VBLANK_REC_JOB_TYPE job_type,
+	enum DISP_VBLANK_REC_DATA_TYPE data_type)
+{
+	int index = 0;
+	unsigned int *slot_va = NULL;
+
+//	DDPINFO("%s +\n", __func__);
+
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
+		return NULL;
+	}
+
+	if (thread_type >= DISP_REC_THREAD_TYPE_MAX) {
+		DDPPR_ERR("%s, invalid thread_type:%d!\n", __func__, thread_type);
+		return NULL;
+	}
+
+	if (job_type >= DISP_REC_JOB_TYPE_MAX) {
+		DDPPR_ERR("%s, invalid job_type:%d!\n", __func__, job_type);
+		return NULL;
+	}
+
+	if (data_type >= DISP_VBLANK_REC_DATA_TYPE_MAX) {
+		DDPPR_ERR("%s, invalid data_type:%d!\n", __func__, data_type);
+		return NULL;
+	}
+
+	index = mtk_vblank_config_rec_get_index(mtk_crtc, thread_type, job_type, data_type);
+
+	if (index < 0 || index > (MAX_DISP_VBLANK_REC_THREAD * (MAX_DISP_VBLANK_REC_JOB + 2))) {
+		DDPPR_ERR("%s, invalid index:%d!\n", __func__, index);
+		return NULL;
+	}
+
+	slot_va = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_VBLANK_REC(index));
+
+	if (!slot_va) {
+		DDPPR_ERR("%s, slot_va is NULL!\n", __func__);
+		return NULL;
+	}
+
+/*
+ *	DDPINFO("%s, thread_type:%d, job_type:%d, data_type:%d, index:%d, slot_va:%p\n",
+ *		__func__, thread_type, job_type, data_type, index, slot_va);
+ */
+
+	return slot_va;
+}
+
+dma_addr_t mtk_vblank_config_rec_get_slot_pa(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *pkt, enum DISP_VBLANK_REC_JOB_TYPE job_type, enum DISP_VBLANK_REC_DATA_TYPE data_type)
+{
+	enum DISP_VBLANK_REC_THREAD_TYPE thread_type;
+	int index = 0;
+	dma_addr_t slot_pa;
+
+//	DDPINFO("%s +\n", __func__);
+
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
+		return 0;
+	}
+
+	if (!pkt) {
+		DDPPR_ERR("%s, pkt is NULL\n", __func__);
+		return 0;
+	}
+
+	if (job_type >= DISP_REC_JOB_TYPE_MAX) {
+		DDPPR_ERR("%s, invalid job_type:%d!\n", __func__, job_type);
+		return 0;
+	}
+
+	if (data_type >= DISP_VBLANK_REC_DATA_TYPE_MAX) {
+		DDPPR_ERR("%s, invalid data_type:%d!\n", __func__, data_type);
+		return 0;
+	}
+
+	if (pkt->cl == mtk_crtc->gce_obj.client[CLIENT_CFG])
+		thread_type = CLIENT_CFG_REC;
+	else if (pkt->cl == mtk_crtc->gce_obj.client[CLIENT_SUB_CFG])
+		thread_type = CLIENT_SUB_CFG_REC;
+	else if (pkt->cl == mtk_crtc->gce_obj.client[CLIENT_DSI_CFG])
+		thread_type = CLIENT_DSI_CFG_REC;
+	else {
+		DDPPR_ERR("%s, gce client is out of the range to be recorded!\n", __func__);
+		return 0;
+	}
+
+	index = mtk_vblank_config_rec_get_index(mtk_crtc, thread_type, job_type, data_type);
+
+	if (index < 0 || index > (MAX_DISP_VBLANK_REC_THREAD * (MAX_DISP_VBLANK_REC_JOB + 2))) {
+		DDPPR_ERR("%s, invalid index:%d!\n", __func__, index);
+		return 0;
+	}
+
+	slot_pa = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_VBLANK_REC(index));
+
+	if (!slot_pa) {
+		DDPPR_ERR("%s, slot_va is invalid!\n", __func__);
+		return 0;
+	}
+
+/*
+ *	DDPINFO("%s, thread_type:%d, job_type:%d, data_type:%d, index:%d, slot_pa:0x%lx\n",
+ *		__func__, thread_type, job_type, data_type, index, (unsigned long)slot_pa);
+ */
+
+	return slot_pa;
+}
+
+int mtk_vblank_config_rec_start(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *cmdq_handle, enum DISP_VBLANK_REC_JOB_TYPE job_type)
+{
+	struct mtk_drm_private *priv;
+	dma_addr_t vblank_rec_s;
+
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	priv = mtk_crtc->base.dev->dev_private;
+
+	if (!priv) {
+		DDPPR_ERR("%s, priv is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt,
+					MTK_DRM_OPT_VBLANK_CONFIG_REC)) {
+		vblank_rec_s = mtk_vblank_config_rec_get_slot_pa(mtk_crtc,
+			cmdq_handle, job_type, T_START);
+		cmdq_pkt_write_indriect(cmdq_handle, NULL,
+			vblank_rec_s, CMDQ_TPR_ID, ~0);
+	}
+
+	return 0;
+}
+
+int mtk_vblank_config_rec_end_cal(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *cmdq_handle, enum DISP_VBLANK_REC_JOB_TYPE job_type)
+{
+	struct mtk_drm_private *priv;
+	dma_addr_t vblank_rec_s;
+	dma_addr_t vblank_rec_e;
+	dma_addr_t vblank_rec_dur;
+	struct cmdq_operand lop;
+	struct cmdq_operand rop;
+
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	priv = mtk_crtc->base.dev->dev_private;
+
+	if (!priv) {
+		DDPPR_ERR("%s, priv is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt,
+					MTK_DRM_OPT_VBLANK_CONFIG_REC)) {
+		vblank_rec_s =
+			mtk_vblank_config_rec_get_slot_pa(mtk_crtc,
+			cmdq_handle, job_type, T_START);
+		vblank_rec_e =
+			mtk_vblank_config_rec_get_slot_pa(mtk_crtc,
+			cmdq_handle, job_type, T_END);
+		vblank_rec_dur =
+			mtk_vblank_config_rec_get_slot_pa(mtk_crtc,
+			cmdq_handle, job_type, T_DURATION);
+		cmdq_pkt_write_indriect(cmdq_handle, NULL, vblank_rec_e, CMDQ_TPR_ID, ~0);
+		cmdq_pkt_read_addr(cmdq_handle, vblank_rec_s, CMDQ_THR_SPR_IDX2);
+		cmdq_pkt_read_addr(cmdq_handle, vblank_rec_e, CMDQ_THR_SPR_IDX3);
+		lop.reg = true;
+		lop.idx = CMDQ_THR_SPR_IDX3;
+		rop.reg = true;
+		rop.idx = CMDQ_THR_SPR_IDX2;
+		cmdq_pkt_logic_command(cmdq_handle,
+			CMDQ_LOGIC_SUBTRACT, CMDQ_THR_SPR_IDX1, &lop, &rop);
+		cmdq_pkt_write_indriect(cmdq_handle,
+			NULL, vblank_rec_dur, CMDQ_THR_SPR_IDX1, ~0);
+	}
+
+	return 0;
+}
+
+unsigned int mtk_drm_dump_vblank_config_rec(
+	struct mtk_drm_private *priv, char *stringbuf, int buf_len)
+{
+	unsigned int len = 0;
+	int i = 0;
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_vblank_config_rec *vblank_rec;
+	struct mtk_vblank_config_node *v_rec_node = NULL;
+	struct list_head *pos;
+	struct list_head *nex;
+
+	if (!priv) {
+		DDPPR_ERR("%s, priv is NULL\n", __func__);
+		return 0;
+	}
+
+	if (!mtk_drm_helper_get_opt(priv->helper_opt,
+						MTK_DRM_OPT_VBLANK_CONFIG_REC))
+		return 0;
+
+	crtc = priv->crtc[0];
+
+	if (!crtc) {
+		DDPPR_ERR("%s, crtc is NULL\n", __func__);
+		return 0;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
+		return 0;
+	}
+
+	vblank_rec = mtk_crtc->vblank_rec;
+
+	len += scnprintf(stringbuf + len, buf_len - len, "\n");
+
+	/* Dump Top 10 */
+	len += scnprintf(stringbuf + len, buf_len - len,
+		"===== Vblank Configure Duration Record =====\n");
+
+	list_for_each_safe(pos, nex, &vblank_rec->top_list) {
+		v_rec_node = list_entry(pos, struct mtk_vblank_config_node, link);
+		i++;
+		len += scnprintf(stringbuf + len, buf_len - len,
+			"DISP Rec Top %d: %d us\n", i, v_rec_node->total_dur);
+	}
+	len += scnprintf(stringbuf + len, buf_len - len,
+		"============================================\n");
+
+	return len;
+}
+
+static int mtk_vblank_config_rec_statistics(struct mtk_vblank_config_rec *vblank_rec, int total_dur)
+{
+	struct mtk_vblank_config_node *v_rec_node_new = NULL;
+	struct mtk_vblank_config_node *v_rec_node = NULL;
+	struct list_head *pos;
+	struct list_head *nex;
+	unsigned int list_cnt = 0;
+//	unsigned int i = 0;
+
+
+	v_rec_node_new = kmalloc(sizeof(struct mtk_vblank_config_node), GFP_KERNEL);
+	if (v_rec_node_new == NULL) {
+		DDPPR_ERR("%s, failed to allocate v_rec_node\n", __func__);
+		return -ENOMEM;
+	}
+
+	/* Statistics top 10 */
+	v_rec_node_new->total_dur = total_dur;
+
+	/* Sorted and insert new node to list */
+	list_for_each_safe(pos, nex, &vblank_rec->top_list) {
+		v_rec_node = list_entry(pos, struct mtk_vblank_config_node, link);
+		if (v_rec_node_new->total_dur > v_rec_node->total_dur)
+			break;
+	}
+	list_add(&v_rec_node_new->link, pos->prev);
+
+	/* If list number > 10, del last node */
+	list_for_each_safe(pos, nex, &vblank_rec->top_list) {
+		v_rec_node = list_entry(pos, struct mtk_vblank_config_node, link);
+		list_cnt++;
+		if (list_is_last(pos, &vblank_rec->top_list)) {
+			if (list_cnt > 10) {
+				list_del(&v_rec_node->link);
+				kfree(v_rec_node);
+			}
+		}
+	}
+
+	/* Dump Top 10 */
+/*
+ *	DDPINFO("========== Dump Vblank Configure Duration Record Top 10 ==========\n");
+ *	list_for_each_safe(pos, nex, &vblank_rec->top_list) {
+ *		v_rec_node = list_entry(pos, struct mtk_vblank_config_node, link);
+ *		i++;
+ *		DDPINFO("DISP Rec Top %d: %d us\n", i, v_rec_node->total_dur);
+ *	}
+ *	DDPINFO("================================================================\n");
+ */
+
+	return 0;
+}
+
+static int mtk_vblank_config_rec_thread(void *data)
+{
+	struct sched_param param = {.sched_priority = 87};
+	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *)data;
+	struct drm_crtc *crtc;
+	struct mtk_vblank_config_rec *vblank_rec = NULL;
+	unsigned int i, j;
+	int total_dur;
+	int total_dur_threshold = 200; //us
+
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	crtc = &mtk_crtc->base;
+	vblank_rec = mtk_crtc->vblank_rec;
+
+	if (!vblank_rec) {
+		DDPPR_ERR("%s, vblank_rec is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	sched_setscheduler(current, SCHED_RR, &param);
+
+	while (!kthread_should_stop()) {
+		wait_event_interruptible(vblank_rec->vblank_rec_wq,
+				 atomic_read(&vblank_rec->vblank_rec_event));
+		atomic_set(&vblank_rec->vblank_rec_event, 0);
+
+//		DDPINFO("%s +\n", __func__);
+		CRTC_MMP_EVENT_START(0, vblank_rec_thread, 0, 0);
+
+		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+		CRTC_MMP_MARK(0, vblank_rec_thread, 0, 1);
+
+		if (!mtk_crtc->enabled) {
+			DDPMSG("crtc%d disable skip %s\n",
+				drm_crtc_index(&mtk_crtc->base), __func__);
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			CRTC_MMP_EVENT_END(0, vblank_rec_thread, 0, 1);
+//			DDPINFO("%s -\n", __func__);
+			continue;
+		}
+
+		if (mtk_drm_is_idle(crtc)) {
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			CRTC_MMP_EVENT_END(0, vblank_rec_thread, 0, 2);
+//			DDPINFO("%s -\n", __func__);
+			continue;
+		}
+
+		/* Reset variable */
+		total_dur = 0;
+
+		/* Calculate Vblank config total duration */
+		for (i = 0; i < DISP_REC_THREAD_TYPE_MAX; i++) {
+			for (j = 0; j < DISP_REC_JOB_TYPE_MAX; j++) {
+				vblank_rec->job_dur[i][j] =
+					readl(mtk_vblank_config_rec_get_slot_va(mtk_crtc, i, j, T_DURATION));
+				/* Clear all gce job duration */
+				writel(0, mtk_vblank_config_rec_get_slot_va(mtk_crtc, i, j, T_DURATION));
+				total_dur += vblank_rec->job_dur[i][j];
+/*
+ *				DDPINFO("%s, total_dur:%d, vblank_rec->job_dur:%d\n",
+ *					__func__, total_dur, vblank_rec->job_dur[i][j]);
+ */
+			}
+		}
+		total_dur = total_dur/ 26; //us
+
+		CRTC_MMP_MARK(0, vblank_rec_thread, total_dur, total_dur_threshold);
+
+		/* If total_dur > total_dur_threshold*/
+		if (total_dur > total_dur_threshold) {
+			DDPAEE("%s, total_dur:%d us > total_dur_threshold:%d us\n",
+				__func__, total_dur, total_dur_threshold);
+		}
+
+		/* Dump Current Info */
+		DDPINFO("========== Dump Vblank Configure Duration Record Info ==========\n");
+		DDPINFO("Total Duration:%d us, Total Duration Threshold:%d us\n", total_dur, total_dur_threshold);
+		for (i = 0; i < DISP_REC_THREAD_TYPE_MAX; i++) {
+			DDPINFO("DISP Rec GCE thread:%d\n", i);
+			for (j = 0; j < DISP_REC_JOB_TYPE_MAX; j++)
+				DDPINFO("    DISP Rec Job:%d, Duration:%d us\n", j, (vblank_rec->job_dur[i][j] / 26));
+		}
+		DDPINFO("================================================================\n");
+
+		if (mtk_vblank_config_rec_statistics(vblank_rec, total_dur)) {
+			DDPPR_ERR("%s, statistics fail\n", __func__);
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			CRTC_MMP_EVENT_END(0, vblank_rec_thread, 0, 3);
+//			DDPINFO("%s -\n", __func__);
+			continue;
+		}
+
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		CRTC_MMP_EVENT_END(0, vblank_rec_thread, 0, 0);
+//		DDPINFO("%s -\n", __func__);
+	}
+
+	return 0;
+}
+
+int mtk_vblank_config_rec_init(struct drm_crtc *crtc)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_vblank_config_rec *vblank_rec = NULL;
+	char name[30] = {0};
+	static cpumask_t cpumask;
+
+	DDPMSG("%s +\n", __func__);
+
+	vblank_rec = kzalloc(sizeof(*vblank_rec), GFP_KERNEL);
+
+	if (!vblank_rec) {
+		DDPPR_ERR("%s, vblank_rec allocate fail\n", __func__);
+		return -ENOMEM;
+	}
+
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	mtk_crtc->vblank_rec = vblank_rec;
+
+	INIT_LIST_HEAD(&vblank_rec->top_list);
+
+	snprintf(name, 30, "mtk_vblank_config_rec-0");
+	vblank_rec->vblank_rec_task =
+			kthread_create(mtk_vblank_config_rec_thread, mtk_crtc, name);
+	init_waitqueue_head(&vblank_rec->vblank_rec_wq);
+	/* Do not use CPU0 to avoid serious delays */
+	cpumask_xor(&cpumask, cpu_all_mask, cpumask_of(0));
+	kthread_bind_mask(vblank_rec->vblank_rec_task, &cpumask);
+	atomic_set(&vblank_rec->vblank_rec_event, 0);
+	wake_up_process(vblank_rec->vblank_rec_task);
+
+	DDPMSG("%s -\n", __func__);
+
+	return 0;
+}
+
+/****** Vblank Configure Record End ******/
+

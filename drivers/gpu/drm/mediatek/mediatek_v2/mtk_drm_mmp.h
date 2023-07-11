@@ -156,6 +156,7 @@ struct CRTC_MMP_Events {
 	mmp_event notify_backlight;
 	/* csc_bl sync */
 	mmp_event csc_bl;
+	mmp_event vblank_rec_thread;
 };
 
 struct DRM_MMP_Events *get_drm_mmp_events(void);

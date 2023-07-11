@@ -54,7 +54,6 @@
 
 #define PRIMARY_OVL_EXT_LAYER_NR 6L
 
-
 #define pgc	_get_context()
 
 #ifndef IF_ONE
@@ -85,6 +84,40 @@ enum DISP_PMQOS_SLOT {
 	DISP_PMQOS_WDMA0_BW,
 	DISP_PMQOS_WDMA1_BW,
 	DISP_PMQOS_OVLSYS_WDMA2_BW
+};
+
+#define MAX_DISP_VBLANK_REC_THREAD 3
+#define MAX_DISP_VBLANK_REC_JOB 8
+
+/* Vblank record GCE thread type */
+enum DISP_VBLANK_REC_DATA_TYPE {
+	T_START = 0,
+	T_END,
+	T_DURATION,
+	DISP_VBLANK_REC_DATA_TYPE_MAX
+};
+
+/* Vblank record GCE thread type */
+/* Add type need modify MAX_DISP_REC_THREAD at same time */
+enum DISP_VBLANK_REC_THREAD_TYPE {
+	CLIENT_CFG_REC = 0,
+	CLIENT_SUB_CFG_REC,
+	CLIENT_DSI_CFG_REC,
+	DISP_REC_THREAD_TYPE_MAX
+};
+
+/* Vblank record GCE job type */
+/* Add type need modify MAX_DISP_REC_JOB at same time */
+enum DISP_VBLANK_REC_JOB_TYPE {
+	FRAME_CONFIG = 0,
+	USER_COMMAND,
+	PQ_HELPER_CONFIG,
+	SET_BL,
+	ESD_CHECK,
+	WRITE_DDIC,
+	READ_DDIC,
+	MIPI_HOP,
+	DISP_REC_JOB_TYPE_MAX
 };
 
 #define IGNORE_MODULE_IRQ
@@ -138,9 +171,23 @@ enum DISP_PMQOS_SLOT {
 	(DISP_SLOT_OVL_RT_LOG_END + 0x14 + (0x8 * (n)))
 #define DISP_SLOT_LAYER_PEAK_RATIO(n)                                          \
 	(DISP_SLOT_LAYER_AVG_RATIO(n) + 0x4)
-#define DISP_SLOT_SIZE            \
-	(DISP_SLOT_LAYER_PEAK_RATIO(MAX_FRAME_RATIO_NUMBER*MAX_LAYER_RATIO_NUMBER) + 0x4)
 
+/*
+ *	Vblank Configure Duration Record
+ *
+ *		Vblank one GCE thread record data:
+ *			--Ts					:Configure Start
+ *			--Te					:Configure End
+ *			--Td[MAX_DISP_REC_JOB]	:Configure Duration (Record MAX_DISP_REC_JOB gce job)
+ *
+ *		Vblank recore MAX_DISP_REC_THREAD gce thread data
+ *
+ */
+#define DISP_SLOT_VBLANK_REC(n)		\
+	(DISP_SLOT_LAYER_PEAK_RATIO(MAX_FRAME_RATIO_NUMBER * MAX_LAYER_RATIO_NUMBER) + 0x4 + (0x4 * (n)))
+
+#define DISP_SLOT_SIZE            \
+	(DISP_SLOT_VBLANK_REC(MAX_DISP_VBLANK_REC_THREAD * (MAX_DISP_VBLANK_REC_JOB + 2)) + 0x4)
 
 #if DISP_SLOT_SIZE > CMDQ_BUF_ALLOC_SIZE
 #error "DISP_SLOT_SIZE exceed CMDQ_BUF_ALLOC_SIZE"
@@ -815,6 +862,21 @@ struct pq_common_data {
 	atomic_t pq_hw_relay_cfg_done;
 	wait_queue_head_t pq_hw_relay_cb_wq;
 };
+
+struct mtk_vblank_config_rec {
+	struct task_struct *vblank_rec_task;
+	wait_queue_head_t vblank_rec_wq;
+	atomic_t vblank_rec_event;
+	int job_dur[DISP_REC_THREAD_TYPE_MAX][DISP_REC_JOB_TYPE_MAX];
+	struct list_head top_list;
+
+};
+
+struct mtk_vblank_config_node {
+	int total_dur;
+	struct list_head link;
+};
+
 /**
  * struct mtk_drm_crtc - MediaTek specific crtc structure.
  * @base: crtc object.
@@ -1011,6 +1073,9 @@ struct mtk_drm_crtc {
 	unsigned int spr_is_on;
 	wait_queue_head_t spr_switch_wait_queue;
 	atomic_t spr_switching;
+
+	struct mtk_vblank_config_rec *vblank_rec;
+
 };
 
 struct mtk_crtc_state {
@@ -1334,5 +1399,20 @@ void mtk_crtc_exec_atf_prebuilt_instr(struct mtk_drm_crtc *mtk_crtc,
 			struct cmdq_pkt *handle);
 
 int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en);
+
+int mtk_vblank_config_rec_init(struct drm_crtc *crtc);
+dma_addr_t mtk_vblank_config_rec_get_slot_pa(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *pkt, enum DISP_VBLANK_REC_JOB_TYPE job_type, enum DISP_VBLANK_REC_DATA_TYPE data_type);
+unsigned int *mtk_vblank_config_rec_get_slot_va(struct mtk_drm_crtc *mtk_crtc,
+	enum DISP_VBLANK_REC_THREAD_TYPE thread_type,
+	enum DISP_VBLANK_REC_JOB_TYPE job_type,
+	enum DISP_VBLANK_REC_DATA_TYPE data_type);
+int mtk_vblank_config_rec_start(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *cmdq_handle, enum DISP_VBLANK_REC_JOB_TYPE job_type);
+int mtk_vblank_config_rec_end_cal(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *cmdq_handle, enum DISP_VBLANK_REC_JOB_TYPE job_type);
+unsigned int mtk_drm_dump_vblank_config_rec(
+	struct mtk_drm_private *priv, char *stringbuf, int buf_len);
+
 
 #endif /* MTK_DRM_CRTC_H */

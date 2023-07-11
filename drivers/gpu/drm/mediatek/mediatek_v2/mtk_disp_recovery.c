@@ -199,11 +199,17 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 		cmdq_pkt_wfe(cmdq_handle,
 				     mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 
+		/* Record Vblank start timestamp */
+		mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, ESD_CHECK);
+
 		mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, ESD_CHECK_READ,
 				    (void *)mtk_crtc);
 
 		cmdq_pkt_set_event(cmdq_handle,
 				   mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+
+		/* Record Vblank end timestamp and calculate duration */
+		mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, ESD_CHECK);
 	} else { /* VDO mode */
 		if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
 			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_SECOND_PATH,

@@ -22232,6 +22232,7 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 				mtk_crtc0->sof_time = ktime_get();
 				mtk_wakeup_pf_wq(m_id);
 			}
+
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 			if (m_id == 0) {
 				if (irq_time_index < IRQ_DEBUG_MAX) {
@@ -22247,6 +22248,16 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 				}
 			}
 #endif
+
+			/* Wake up Vblank config record thread */
+			if ((m_id == 0) && priv && priv->helper_opt &&
+				mtk_crtc0 && mtk_crtc0->vblank_rec &&
+				(mtk_drm_helper_get_opt(priv->helper_opt,
+					MTK_DRM_OPT_VBLANK_CONFIG_REC))) {
+				atomic_set(&mtk_crtc0->vblank_rec->vblank_rec_event, 1);
+				wake_up(&mtk_crtc0->vblank_rec->vblank_rec_wq);
+			}
+
 			if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 				if (irq_time_index < IRQ_DEBUG_MAX) {
 					irq_time[irq_time_index].comp = NULL;

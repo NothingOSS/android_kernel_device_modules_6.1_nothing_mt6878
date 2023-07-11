@@ -849,6 +849,9 @@ static int debug_get_info(unsigned char *stringbuf, int buf_len)
 	n += mtk_drm_helper_get_opt_list(private->helper_opt, stringbuf + n,
 					 buf_len - n);
 
+	n += mtk_drm_dump_vblank_config_rec(private, stringbuf + n,
+					 buf_len - n);
+
 	n += mtk_dprec_logger_get_buf(DPREC_LOGGER_ERROR, stringbuf + n,
 				      buf_len - n);
 
@@ -1422,7 +1425,7 @@ void ddic_dsi_send_cmd_test(unsigned int case_num)
 	{
 		/* Send 0x29 */
 		cmd_msg->channel = 0;
-		cmd_msg->flags |= MIPI_DSI_MSG_USE_LPM;
+//		cmd_msg->flags |= MIPI_DSI_MSG_USE_LPM;
 		cmd_msg->tx_cmd_num = 1;
 		cmd_msg->type[0] = 0x05;
 		tx[0] = 0x29;
