@@ -12412,7 +12412,7 @@
 		scp-protect = "enable";   /* enable scp protections */
 		secure-dump = "enable";   /* enable dump via secure world*/
 		secure-dump-size = <0x608000>;
-		scp-pm-notify = "disable";
+		scp-pm-notify = "enable";
 		scp-thermal-wq = "disable";
 		scp-low-pwr-dbg = "disable";
 		scp-cfgreg-ap-en = "enable";
