@@ -96,7 +96,7 @@ void irq_mon_test_irq_disable(void)
 	unsigned long flags;
 
 	local_irq_save(flags);
-	mdelay(600);
+	mdelay(1000);
 	local_irq_restore(flags);
 
 	/* The test will trigger KernelAPI Dump */

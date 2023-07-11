@@ -122,9 +122,17 @@ static struct irq_mon_tracer ipi_tracer __read_mostly = {
 static struct irq_mon_tracer irq_off_tracer __read_mostly = {
 	.tracing = false,
 	.name = "irq_off_tracer",
+#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_IRQ_TIMER_OVERRIDE)
+	.th1_ms = 200,
+	.th2_ms = 200,
+	.th3_ms = 1000,
+	.aee_limit = 1,
+#else
 	.th1_ms = 9,
 	.th2_ms = 500,
 	.th3_ms = 500,
+	.aee_limit = 0,
+#endif
 	.aee_debounce_ms = 60000
 };
 
@@ -226,6 +234,7 @@ static void check_preemptirq_stat(struct preemptirq_stat *pi_stat, int irq)
 		(irq) ? &irq_off_tracer : &preempt_off_tracer;
 	unsigned long long duration;
 	unsigned int out;
+	char msg[MAX_MSG_LEN];
 
 	/* skip <idle-0> task */
 	if (current->pid == 0)
@@ -236,12 +245,13 @@ static void check_preemptirq_stat(struct preemptirq_stat *pi_stat, int irq)
 	if (!out)
 		return;
 
-	irq_mon_msg(out, "%s off, duration %llu ms, from %llu ns to %llu ns on CPU:%d",
-		    irq ? "irq" : "preempt",
-		    msec_high(duration),
-		    pi_stat->disable_timestamp,
-		    pi_stat->enable_timestamp,
-		    raw_smp_processor_id());
+	scnprintf(msg, sizeof(msg), "%s off, duration %llu ms, from %llu ns to %llu ns on CPU:%d",
+		  irq ? "irq" : "preempt",
+		  msec_high(duration),
+		  pi_stat->disable_timestamp,
+		  pi_stat->enable_timestamp,
+		  raw_smp_processor_id());
+	irq_mon_msg(out, "%s", msg);
 	irq_mon_msg(out, "disable_ip       : [<%px>] %pS",
 		    (void *)pi_stat->disable_ip,
 		    (void *)pi_stat->disable_ip);
@@ -258,6 +268,13 @@ static void check_preemptirq_stat(struct preemptirq_stat *pi_stat, int irq)
 
 	if (out & TO_KERNEL_LOG)
 		dump_stack();
+
+	if (out & TO_AEE && tracer->aee_limit &&
+	    irq_mon_aee_debounce_check(true))
+		aee_kernel_warning_api(__FILE__, __LINE__,
+				       DB_OPT_DEFAULT | DB_OPT_FTRACE,
+				       irq ? "LONG IRQOFF" : "LONG PREEMPTOFF",
+				       msg);
 }
 
 /* reference kernel/irq/internals.h */
