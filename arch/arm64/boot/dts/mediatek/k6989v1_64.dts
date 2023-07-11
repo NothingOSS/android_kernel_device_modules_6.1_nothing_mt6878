@@ -184,7 +184,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 
 &dsi1_te {
 	interrupt-parent = <&pio>;
-	interrupts = <74 1 74 1>;
+	interrupts = <10 1 10 1>;
 	status = "okay";
 };
 

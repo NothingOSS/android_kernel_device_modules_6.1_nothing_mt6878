@@ -6148,7 +6148,9 @@
 				"disp_ovlsys_wdma0_eof0",
 				"disp_token_disp_v_idle_power_on0",
 				"disp_token_disp_check_trigger_merge0",
-				"dpc_disp1_prete";
+				"dpc_disp1_prete",
+				"disp_mdp_rdma0_eof3",
+				"disp_y2r_eof3";
 
 			gce-events =
 				<&gce CMDQ_EVENT_OVL0_STREAM_DONE_ENG_EVENT_0>,
@@ -6193,7 +6195,9 @@
 				<&gce CMDQ_EVENT_OVL0_DISP_WDMA0_FRAME_DONE>,
 				<&gce CMDQ_SYNC_TOKEN_VIDLE_POWER_ON>,
 				<&gce CMDQ_SYNC_TOKEN_CHECK_TRIGGER_MERGE>,
-				<&gce CMDQ_EVENT_DPC_DT6_DONE>;
+				<&gce CMDQ_EVENT_DPC_DT6_DONE>,
+				<&gce CMDQ_EVENT_DISP0EVENT0_DISP_MDP_RDMA0_FRAME_DONE>,
+				<&gce CMDQ_EVENT_DISP0EVENT1_DISP_Y2R0_FRAME_DONE>;
 
 			helper-name = "MTK_DRM_OPT_STAGE",
 				"MTK_DRM_OPT_USE_CMDQ",
