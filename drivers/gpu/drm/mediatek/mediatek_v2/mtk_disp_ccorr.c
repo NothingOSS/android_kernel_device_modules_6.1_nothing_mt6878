@@ -360,36 +360,6 @@ static void disp_ccorr_on_start_of_frame(struct mtk_ddp_comp *comp)
 	}
 }
 
-static void disp_ccorr_on_end_of_frame(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
-	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
-	unsigned int intsta;
-	unsigned long flags;
-
-	spin_lock_irqsave(&primary_data->ccorr_clock_lock, flags);
-
-	if (atomic_read(&ccorr_data->is_clock_on) != 1) {
-		DDPINFO("%s: clock is off. enabled:%d\n", __func__, 0);
-
-		spin_unlock_irqrestore(&primary_data->ccorr_clock_lock, flags);
-		return;
-	}
-	intsta = readl(comp->regs + DISP_REG_CCORR_INTSTA);
-
-	if (intsta & 0x2) {	/* End of frame */
-		// Clear irq
-		writel(intsta & ~0x3, comp->regs
-			+ DISP_REG_CCORR_INTSTA);
-
-//		if (index == 0) {
-//			atomic_set(&primary_data->ccorr_get_irq, 1);
-//			wake_up_interruptible(&primary_data->ccorr_get_irq_wq);
-//		}
-	}
-	spin_unlock_irqrestore(&primary_data->ccorr_clock_lock, flags);
-}
-
 static void disp_ccorr_set_interrupt(struct mtk_ddp_comp *comp,
 					int enabled)
 {
@@ -397,84 +367,39 @@ static void disp_ccorr_set_interrupt(struct mtk_ddp_comp *comp,
 		SET_INTERRUPT, &enabled);
 }
 
-static void disp_ccorr_clear_irq_only(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
-	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
-	unsigned int intsta;
-	unsigned long flags;
-
-	DDPDBG("%s @ %d......... spin_trylock_irqsave ++ ",
-		__func__, __LINE__);
-	if (spin_trylock_irqsave(&primary_data->ccorr_clock_lock, flags)) {
-		DDPDBG("%s @ %d......... spin_trylock_irqsave -- ",
-			__func__, __LINE__);
-		if (atomic_read(&ccorr_data->is_clock_on) != 1) {
-			DDPINFO("%s: clock is off. enabled:%d\n", __func__, 0);
-
-			spin_unlock_irqrestore(&primary_data->ccorr_clock_lock, flags);
-			DDPDBG("%s @ %d......... spin_unlock_irqrestore -- ",
-				__func__, __LINE__);
-			return;
-		}
-		intsta = readl(comp->regs + DISP_REG_CCORR_INTSTA);
-
-		DDPINFO("%s: intsta: 0x%x\n", __func__, intsta);
-
-		if (intsta & 0x2) { /* End of frame */
-			writel(intsta & ~0x3, comp->regs
-					+ DISP_REG_CCORR_INTSTA);
-		}
-		spin_unlock_irqrestore(&primary_data->ccorr_clock_lock, flags);
-		DDPDBG("%s @ %d......... spin_unlock_irqrestore -- ",
-			__func__, __LINE__);
-	} else {
-		DDPINFO("%s @ %d......... Failed to spin_trylock_irqsave -- ",
-			__func__, __LINE__);
-	}
-
-
-	/* disable interrupt */
-	//disp_ccorr_set_interrupt(comp, 0);
-
-	DDPDBG("%s @ %d......... spin_trylock_irqsave ++ ",
-		__func__, __LINE__);
-	if (spin_trylock_irqsave(&primary_data->ccorr_clock_lock, flags)) {
-		DDPDBG("%s @ %d......... spin_trylock_irqsave -- ",
-			__func__, __LINE__);
-		if (atomic_read(&ccorr_data->is_clock_on) != 1) {
-			DDPINFO("%s: clock is off. enabled:%d\n", __func__, 0);
-
-			spin_unlock_irqrestore(&primary_data->ccorr_clock_lock, flags);
-			DDPDBG("%s @ %d......... spin_unlock_irqrestore -- ",
-				__func__, __LINE__);
-			return;
-		}
-
-		{
-			/* Disable output frame end interrupt */
-			writel(0x0, comp->regs + DISP_REG_CCORR_INTEN);
-			DDPINFO("%s: Interrupt disabled\n", __func__);
-		}
-			spin_unlock_irqrestore(&primary_data->ccorr_clock_lock, flags);
-			DDPDBG("%s @ %d......... spin_unlock_irqrestore -- ",
-				__func__, __LINE__);
-	} else {
-		DDPINFO("%s @ %d......... Failed to spin_trylock_irqsave -- ",
-			__func__, __LINE__);
-	}
-
-
-}
-
 static irqreturn_t mtk_disp_ccorr_irq_handler(int irq, void *dev_id)
 {
-	struct mtk_disp_ccorr *priv = dev_id;
-	struct mtk_ddp_comp *ccorr = &priv->ddp_comp;
+	struct mtk_disp_ccorr *ccorr = dev_id;
+	struct mtk_ddp_comp *comp = &ccorr->ddp_comp;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	unsigned int intsta;
+	irqreturn_t ret = IRQ_NONE;
 
-	disp_ccorr_on_end_of_frame(ccorr);
+	if (IS_ERR_OR_NULL(ccorr))
+		return IRQ_NONE;
 
-	return IRQ_HANDLED;
+	if (mtk_drm_top_clk_isr_get("ccorr_irq") == false) {
+		DDPIRQ("%s, top clk off\n", __func__);
+		return IRQ_NONE;
+	}
+
+	mtk_crtc = ccorr->ddp_comp.mtk_crtc;
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s mtk_crtc is NULL\n", __func__);
+		ret = IRQ_NONE;
+		goto out;
+	}
+
+	intsta = readl(comp->regs + DISP_REG_CCORR_INTSTA);
+	writel(intsta & ~0x3, comp->regs + DISP_REG_CCORR_INTSTA);
+	//if (intsta & 0x2){
+		//atomic_set(&primary_data->ccorr_get_irq, 1);
+		//wake_up_interruptible(&primary_data->ccorr_get_irq_wq);
+	//}
+	ret = IRQ_HANDLED;
+out:
+	mtk_drm_top_clk_isr_put("ccorr_irq");
+	return ret;
 }
 
 static int disp_ccorr_wait_irq(struct mtk_ddp_comp *comp, unsigned long timeout)
@@ -613,43 +538,18 @@ static int mtk_disp_ccorr_set_interrupt(struct mtk_ddp_comp *comp, void *data)
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 	int enabled = *((int *)data);
-	unsigned long flags;
 	int ret = 0;
 
-	DDPDBG("%s:%d spin_lock_irqsave ++ %s\n", __func__, __LINE__, mtk_dump_comp_str(comp));
-	spin_lock_irqsave(&primary_data->ccorr_clock_lock, flags);
-	DDPDBG("%s:%d spin_lock_irqsave -- ",
-		__func__, __LINE__);
-	if (atomic_read(&ccorr_data->is_clock_on) != 1) {
-		DDPINFO("%s: clock is off. enabled:%d\n",
-			__func__, enabled);
-
-		spin_unlock_irqrestore(&primary_data->ccorr_clock_lock, flags);
-		DDPDBG("%s:%d spin_unlock_irqrestore --\n",
-			__func__, __LINE__);
-		return ret;
-	}
-
 	if (enabled || primary_data->old_pq_backlight != primary_data->pq_backlight) {
-		if (readl(comp->regs + DISP_REG_CCORR_EN) == 0) {
-			/* Print error message */
-			DDPINFO("[WARNING] DISP_REG_CCORR_EN not enabled!\n");
-		}
-		/* Enable output frame end interrupt */
-		writel(0x2, comp->regs + DISP_REG_CCORR_INTEN);
 		if (ccorr_data->path_order == 0)
 			atomic_set(&primary_data->ccorr_irq_en, 1);
 		DDPINFO("%s: Interrupt enabled\n", __func__);
 	} else {
 		/* Disable output frame end interrupt */
-		writel(0x0, comp->regs + DISP_REG_CCORR_INTEN);
 		if (ccorr_data->path_order == 0)
 			atomic_set(&primary_data->ccorr_irq_en, 0);
 		DDPINFO("%s: Interrupt disabled\n", __func__);
 	}
-	spin_unlock_irqrestore(&primary_data->ccorr_clock_lock, flags);
-	DDPDBG("%s @ %d......... spin_unlock_irqrestore -- ",
-		__func__, __LINE__);
 	return ret;
 }
 
@@ -1060,12 +960,8 @@ int mtk_ccorr_cfg_eventctl(struct mtk_ddp_comp *comp,
 	DDPINFO("ccorr_eventctl, enabled = %d, pq_backlight = %d, old_pq_backlight = %d\n",
 		   *enabled, primary_data->pq_backlight, primary_data->old_pq_backlight);
 
-	if ((!atomic_read(&primary_data->irq_backlight_change)) || (*enabled == 1)) {
-
+	if ((!atomic_read(&primary_data->irq_backlight_change)) || (*enabled == 1))
 		mtk_disp_ccorr_set_interrupt(comp, data);
-		if (comp->mtk_crtc->is_dual_pipe)
-			mtk_disp_ccorr_set_interrupt(ccorr_data->companion, data);
-	}
 
 	return ret;
 }
@@ -1458,9 +1354,6 @@ static void ddp_ccorr_backup(struct mtk_ddp_comp *comp)
 
 	primary_data->backup.REG_CCORR_CFG =
 			readl(comp->regs + DISP_REG_CCORR_CFG);
-	if (!ccorr_data->is_right_pipe)
-		primary_data->backup.REG_CCORR_INTEN =
-				readl(comp->regs + DISP_REG_CCORR_INTEN);
 }
 
 static void ddp_ccorr_restore(struct mtk_ddp_comp *comp)
@@ -1468,9 +1361,6 @@ static void ddp_ccorr_restore(struct mtk_ddp_comp *comp)
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 
-	if (!ccorr_data->is_right_pipe)
-		writel(primary_data->backup.REG_CCORR_INTEN,
-				comp->regs + DISP_REG_CCORR_INTEN);
 	writel(primary_data->backup.REG_CCORR_CFG,
 			comp->regs + DISP_REG_CCORR_CFG);
 }
@@ -1494,19 +1384,12 @@ static void mtk_ccorr_prepare(struct mtk_ddp_comp *comp)
 
 static void mtk_ccorr_unprepare(struct mtk_ddp_comp *comp)
 {
-	unsigned long flags;
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 
 	ddp_ccorr_backup(comp);
-	disp_ccorr_clear_irq_only(comp);
 
-	DDPINFO("%s @ %d......... spin_lock_irqsave ++ ", __func__, __LINE__);
-	spin_lock_irqsave(&primary_data->ccorr_clock_lock, flags);
-	DDPINFO("%s @ %d......... spin_lock_irqsave -- ", __func__, __LINE__);
 	atomic_set(&ccorr_data->is_clock_on, 0);
-	spin_unlock_irqrestore(&primary_data->ccorr_clock_lock, flags);
-	DDPDBG("%s @ %d......... spin_unlock_irqrestore ", __func__, __LINE__);
 	wake_up_interruptible(&primary_data->ccorr_get_irq_wq); // wake up who's waiting isr
 	mtk_ddp_comp_clk_unprepare(comp);
 

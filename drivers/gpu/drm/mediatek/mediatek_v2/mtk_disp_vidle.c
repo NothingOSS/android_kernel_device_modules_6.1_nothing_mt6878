@@ -36,6 +36,9 @@ struct mtk_disp_vidle_para mtk_disp_vidle_flag = {
 
 struct dpc_funcs disp_dpc_driver;
 
+static atomic_t g_vidle_pq_ref = ATOMIC_INIT(0);
+static DEFINE_MUTEX(g_vidle_pq_ref_lock);
+
 struct mtk_disp_vidle {
 	const struct mtk_disp_vidle_data *data;
 };
@@ -117,6 +120,52 @@ void mtk_vidle_power_release(void)
 	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
 		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
 		disp_dpc_driver.dpc_vidle_power_release(DISP_VIDLE_USER_DISP);
+}
+
+void mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
+{
+	if (disp_dpc_driver.dpc_vidle_power_keep == NULL)
+		return;
+
+	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
+		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
+		disp_dpc_driver.dpc_vidle_power_keep(user);
+}
+
+void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user)
+{
+	if (disp_dpc_driver.dpc_vidle_power_release == NULL)
+		return;
+
+	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
+		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
+		disp_dpc_driver.dpc_vidle_power_release(user);
+}
+
+void mtk_vidle_pq_power_get(const char *caller)
+{
+	s32 ref;
+
+	mutex_lock(&g_vidle_pq_ref_lock);
+	ref = atomic_inc_return(&g_vidle_pq_ref);
+	if (ref == 1)
+		mtk_vidle_user_power_keep(DISP_VIDLE_USER_PQ);
+	mutex_unlock(&g_vidle_pq_ref_lock);
+	if (ref <= 0)
+		DDPPR_ERR("%s  get invalid cnt %d\n", caller, ref);
+}
+
+void mtk_vidle_pq_power_put(const char *caller)
+{
+	s32 ref;
+
+	mutex_lock(&g_vidle_pq_ref_lock);
+	ref = atomic_dec_return(&g_vidle_pq_ref);
+	if (!ref)
+		mtk_vidle_user_power_release(DISP_VIDLE_USER_PQ);
+	mutex_unlock(&g_vidle_pq_ref_lock);
+	if (ref < 0)
+		DDPPR_ERR("%s  put invalid cnt %d\n", caller, ref);
 }
 
 void mtk_vidle_sync_mmdvfsrc_status_rc(unsigned int rc_en)

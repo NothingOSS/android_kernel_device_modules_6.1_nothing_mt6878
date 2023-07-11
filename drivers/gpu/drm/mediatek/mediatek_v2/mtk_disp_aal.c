@@ -264,6 +264,8 @@ void disp_aal_refresh_by_kernel(struct mtk_disp_aal *aal_data, int need_lock)
 	struct mtk_ddp_comp *comp = &aal_data->ddp_comp;
 
 	if (atomic_read(&aal_data->primary_data->is_init_regs_valid) == 1) {
+		if (!need_lock)
+			mtk_vidle_pq_power_get(__func__);
 		spin_lock_irqsave(&aal_data->primary_data->irq_en_lock, flags);
 		atomic_set(&aal_data->primary_data->force_enable_irq, 1);
 
@@ -279,6 +281,8 @@ void disp_aal_refresh_by_kernel(struct mtk_disp_aal *aal_data, int need_lock)
 		spin_unlock_irqrestore(&aal_data->primary_data->clock_lock, clockflags);
 
 		spin_unlock_irqrestore(&aal_data->primary_data->irq_en_lock, flags);
+		if (!need_lock)
+			mtk_vidle_pq_power_put(__func__);
 		/* Backlight or Kernel API latency should be smallest */
 		if (atomic_read(&aal_data->primary_data->force_delay_check_trig) == 1)
 			mtk_crtc_check_trigger(comp->mtk_crtc, true, need_lock);
@@ -1880,8 +1884,8 @@ static bool disp_aal_read_dre3(struct mtk_ddp_comp *comp,
 	void __iomem *dre3_va = mtk_aal_dre3_va(comp);
 
 	/* Read Global histogram for ESS */
-	if (disp_aal_read_single_hist(comp) != true)
-		return false;
+	//if (disp_aal_read_single_hist(comp) != true)
+		//return false;
 
 	AALIRQ_LOG("start\n");
 	if (dump_blk_x >= 0 && dump_blk_x < 16
@@ -4183,9 +4187,10 @@ void disp_aal_on_end_of_frame(struct mtk_ddp_comp *comp, unsigned int status)
 	atomic_set(&aal_data->eof_irq, 1);
 
 	if (aal_data->primary_data->aal_fo->mtk_dre30_support
-			&& aal_data->primary_data->dre30_enabled)
+			&& aal_data->primary_data->dre30_enabled) {
+		disp_aal_read_single_hist(comp);
 		disp_aal_dre3_irq_handle(comp);
-	else
+	} else
 		disp_aal_single_pipe_hist_update(comp, status);
 
 	AALIRQ_LOG("[SRAM] clean dre_config in (EOF)  comp->id = %d\n", comp->id);
@@ -4215,6 +4220,7 @@ static void disp_aal_wait_sof_irq(struct mtk_ddp_comp *comp)
 
 	AALIRQ_LOG("[SRAM] g_aal_dre_config(%d) in SOF\n",
 			atomic_read(&aal_data->dre_config));
+	mtk_vidle_pq_power_get(__func__);
 	mutex_lock(&aal_data->primary_data->sram_lock);
 	spin_lock_irqsave(&aal_data->primary_data->clock_lock, flags);
 	if (atomic_read(&aal_data->is_clock_on) != 1)
@@ -4260,6 +4266,7 @@ static void disp_aal_wait_sof_irq(struct mtk_ddp_comp *comp)
 			mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
 			atomic_set(&aal_data->first_frame, 0);
 			atomic_set(&aal1_data->first_frame, 0);
+			mtk_vidle_pq_power_put(__func__);
 			CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 3);
 			return;
 		}
@@ -4270,6 +4277,7 @@ static void disp_aal_wait_sof_irq(struct mtk_ddp_comp *comp)
 			mtk_crtc_user_cmd(aal_data->crtc, comp, FLIP_SRAM, NULL);
 			mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
 			atomic_set(&aal_data->first_frame, 0);
+			mtk_vidle_pq_power_put(__func__);
 			CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 4);
 			return;
 		}
@@ -4284,6 +4292,7 @@ static void disp_aal_wait_sof_irq(struct mtk_ddp_comp *comp)
 		mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
 		atomic_set(&aal_data->primary_data->dre30_write, 0);
 	}
+	mtk_vidle_pq_power_put(__func__);
 	CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 5);
 }
 
@@ -4347,31 +4356,37 @@ static int mtk_aal_sof_irq_trigger(void *data)
 static irqreturn_t mtk_disp_aal_irq_handler(int irq, void *dev_id)
 {
 	unsigned int status0 = 0, status1 = 0;
-	struct mtk_disp_aal *priv = dev_id;
-	struct mtk_ddp_comp *comp = &priv->ddp_comp;
-	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct mtk_ddp_comp *comp1 = aal_data->companion;
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_disp_aal *aal = dev_id;
+	struct mtk_ddp_comp *comp = &aal->ddp_comp;
+	struct mtk_ddp_comp *comp1 = aal->companion;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	irqreturn_t ret = IRQ_NONE;
 
-	if (IS_ERR_OR_NULL(priv))
+	if (IS_ERR_OR_NULL(aal))
 		return IRQ_NONE;
 
 	if (mtk_drm_top_clk_isr_get("aal_irq") == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
 		return IRQ_NONE;
 	}
+	mtk_crtc = aal->ddp_comp.mtk_crtc;
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s mtk_crtc is NULL\n", __func__);
+		ret = IRQ_NONE;
+		goto out;
+	}
 
 	status0 = disp_aal_read_clear_irq(comp);
-	if (comp->mtk_crtc->is_dual_pipe && comp1)
+	if (mtk_crtc->is_dual_pipe && comp1)
 		status1 = disp_aal_read_clear_irq(comp1);
 
 	AALIRQ_LOG("irq, val:0x%x,0x%x\n", status0, status1);
 
-	if (atomic_read(&aal_data->primary_data->force_relay) == 1) {
+	if (atomic_read(&aal->primary_data->force_relay) == 1) {
 		AALIRQ_LOG("aal is force_relay\n");
 		disp_aal_set_interrupt(comp, false);
-		mtk_drm_top_clk_isr_put("aal_irq");
-		return IRQ_HANDLED;
+		ret = IRQ_HANDLED;
+		goto out;
 	}
 
 	DRM_MMP_MARK(IRQ, irq, status0);
@@ -4382,9 +4397,12 @@ static irqreturn_t mtk_disp_aal_irq_handler(int irq, void *dev_id)
 		disp_aal_on_end_of_frame(comp1, status1);
 
 	DRM_MMP_MARK(aal0, status0, 1);
+
+	ret = IRQ_HANDLED;
+out:
 	mtk_drm_top_clk_isr_put("aal_irq");
 
-	return IRQ_HANDLED;
+	return ret;
 }
 
 static int mtk_disp_aal_probe(struct platform_device *pdev)

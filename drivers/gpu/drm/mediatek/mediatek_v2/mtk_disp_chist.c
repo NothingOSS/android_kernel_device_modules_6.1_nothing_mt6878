@@ -1058,8 +1058,9 @@ static int mtk_chist_read_kthread(void *data)
 			DDPDBG("%s: get_irq = 0", __func__);
 		}
 		atomic_set(&(chist_data->primary_data->irq_event), 0);
-
+		mtk_vidle_pq_power_get(__func__);
 		mtk_get_chist((struct mtk_ddp_comp *)data);
+		mtk_vidle_pq_power_put(__func__);
 	}
 	return 0;
 }
@@ -1117,29 +1118,37 @@ void mtk_chist_first_cfg(struct mtk_ddp_comp *comp,
 
 static irqreturn_t mtk_disp_chist_irq_handler(int irq, void *dev_id)
 {
-	irqreturn_t ret = IRQ_NONE;
+	struct mtk_disp_chist *chist = dev_id;
+	struct mtk_ddp_comp *comp = &chist->ddp_comp;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
 	unsigned int intsta;
-	struct mtk_disp_chist *priv = dev_id;
-	struct mtk_ddp_comp *comp = &priv->ddp_comp;
-	struct mtk_disp_chist *chist_data = comp_to_chist(comp);
-	unsigned long flags;
+	irqreturn_t ret = IRQ_NONE;
 
-	spin_lock_irqsave(&chist_data->primary_data->power_lock, flags);
-	if (atomic_read(&(chist_data->primary_data->clock_on)) == 0) {
-		spin_unlock_irqrestore(&chist_data->primary_data->power_lock, flags);
+	if (IS_ERR_OR_NULL(chist))
 		return IRQ_NONE;
+
+	if (mtk_drm_top_clk_isr_get("chist_irq") == false) {
+		DDPIRQ("%s, top clk off\n", __func__);
+		return IRQ_NONE;
+	}
+
+	mtk_crtc = chist->ddp_comp.mtk_crtc;
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s mtk_crtc is NULL\n", __func__);
+		ret = IRQ_NONE;
+		goto out;
 	}
 
 	intsta = readl(comp->regs + DISP_CHIST_INSTA);
 	if (intsta & 0x2) {
-		// Clear irq
 		writel(0, comp->regs + DISP_CHIST_INSTA);
-		atomic_set(&(priv->primary_data->irq_event), 1);
-		wake_up_interruptible(&chist_data->primary_data->event_wq);
+		atomic_set(&(chist->primary_data->irq_event), 1);
+		wake_up_interruptible(&chist->primary_data->event_wq);
 	}
-	spin_unlock_irqrestore(&chist_data->primary_data->power_lock, flags);
 
 	ret = IRQ_HANDLED;
+out:
+	mtk_drm_top_clk_isr_put("chist_irq");
 	return ret;
 }
 

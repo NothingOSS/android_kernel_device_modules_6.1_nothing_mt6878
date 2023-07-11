@@ -32,6 +32,7 @@
 #include "mtk_disp_color.h"
 #include "mtk_disp_dither.h"
 #include "mtk_disp_gamma.h"
+#include "mtk_disp_vidle.h"
 
 #define REQUEST_MAX_COUNT 20
 #define CHECK_TRIGGER_DELAY 1
@@ -400,6 +401,25 @@ int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
 	return ret;
 }
 
+bool is_pq_cmd_need_pm(enum mtk_pq_frame_cfg_cmd cmd)
+{
+	bool ret = true;
+
+	switch (cmd) {
+	case PQ_AAL_GET_HIST:
+	case PQ_AAL_GET_SIZE:
+	case PQ_CCORR_GET_IRQ:
+	case PQ_C3D_GET_IRQ:
+	case PQ_TDSHP_GET_SIZE:
+	case PQ_VIRTUAL_GET_IRQ:
+		ret = false;
+		break;
+	default:
+		break;
+	}
+	return ret;
+}
+
 int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	struct drm_crtc *crtc;
@@ -441,7 +461,8 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 
 	if (copy_from_user(kdata, (void __user *)params->data, params->size) != 0)
 		goto err;
-
+	if (is_pq_cmd_need_pm(cmd))
+		mtk_vidle_pq_power_get(__func__);
 	if (pq_type == MTK_DISP_VIRTUAL_TYPE) {
 		ret = mtk_drm_virtual_type_impl(crtc, dev, cmd, kdata, file_priv);
 	} else {
@@ -455,6 +476,8 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 			}
 		}
 	}
+	if (is_pq_cmd_need_pm(cmd))
+		mtk_vidle_pq_power_put(__func__);
 
 	if (cmd > PQ_GET_CMD_START) {
 		if (copy_to_user((void __user *)params->data, kdata,  params->size) != 0)
@@ -559,6 +582,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	mtk_vblank_config_rec_start(mtk_crtc, pq_cmdq_handle, PQ_HELPER_CONFIG);
 
 	/* call comp frame config */
+	mtk_vidle_pq_power_get(__func__);
 	for (index = 0; index < cmds_len; index++) {
 		unsigned int pq_type = requests[index].cmd >> 16;
 		unsigned int cmd = requests[index].cmd & 0xffff;
@@ -599,6 +623,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 			}
 		}
 	}
+	mtk_vidle_pq_power_put(__func__);
 
 	/* atomic commit will flush in crtc */
 	if (!is_atomic_commit) {
