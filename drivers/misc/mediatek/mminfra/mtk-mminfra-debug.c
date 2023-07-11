@@ -67,6 +67,8 @@ static bool mminfra_ao_base;
 static bool vcp_gipc;
 static bool no_sleep_pd_cb;
 static bool skip_apsrc;
+static bool mminfra_default_on;
+static struct task_struct *kthr_mminfra;
 
 #define MMINFRA_BASE		0x1e800000
 #define MMINFRA_AO_BASE		0x1e8ff000
@@ -702,13 +704,20 @@ static int mminfra_put_after_boot_up(void *data)
 	u32 cnt;
 
 	for (cnt = 0; cnt < 120; cnt++) {
+		if (kthread_should_stop()) {
+			pr_notice("enter suspend prepare: mminfra end default_on\n");
+			pm_runtime_put_sync(dev);
+			mminfra_default_on = false;
+			return 0;
+		}
 		pr_notice("mminfra default_on in boot stage, cnt:%d", cnt);
 		msleep(1000);
 	}
 	pr_notice("mminfra end default_on\n");
 	pm_runtime_put_sync(dev);
+	mminfra_default_on = false;
 
-	return 0 ;
+	return 0;
 }
 
 static int mminfra_debug_probe(struct platform_device *pdev)
@@ -851,7 +860,8 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 #endif
 	if (vcp_gipc) {
 		pm_runtime_get_sync(dev);
-		kthread_run(mminfra_put_after_boot_up, NULL, "mminfra_put_after_boot_up");
+		mminfra_default_on = true;
+		kthr_mminfra = kthread_run(mminfra_put_after_boot_up, NULL, "mminfra_put_after_boot_up");
 	}
 
 	return ret;
@@ -859,12 +869,21 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 
 static int mminfra_pm_prepare(struct device *dev)
 {
+	int ret;
+
 	pr_notice("mminfra prepare\n");
 	if (vcp_gipc) {
 		mtk_clk_mminfra_hwv_power_ctrl(true);
 		writel(MM_SYS_SUSPEND, dbg->vcp_gipc_in_set);
 		pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
 		mtk_clk_mminfra_hwv_power_ctrl(false);
+
+		if (kthr_mminfra && mminfra_default_on) {
+			ret = kthread_stop(kthr_mminfra);
+			kthr_mminfra = NULL;
+			if (!ret)
+				pr_notice("stop kthread mminfra when suspend prepare");
+		}
 	}
 	return 0;
 }
