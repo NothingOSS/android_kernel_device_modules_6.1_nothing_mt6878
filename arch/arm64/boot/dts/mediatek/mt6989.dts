@@ -163,6 +163,9 @@
 	chosen: chosen {
 		bootargs = "console=tty0 root=/dev/ram \
 			    nosoftlockup kasan.page_alloc.sample=1 \
+			    transparent_hugepage=never \
+			    cgroup.memory=nosocket,nokmem \
+			    disable_dma32=on \
 			    8250.nr_uarts=4 \
 			    androidboot.hardware=mt6989 \
 			    vmalloc=400M swiotlb=noforce \
