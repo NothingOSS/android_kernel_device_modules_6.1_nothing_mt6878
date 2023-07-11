@@ -100,6 +100,8 @@ void gpueb_dump_status(void)
 			readl(g_gpueb_gpr_base + 0x44));
 		gpueb_pr_info("@%s: GPUEB_DRAM_RES_STA_GPR: 0x%08x\n", __func__,
 			readl(g_gpueb_gpr_base + 0x40));
+		gpueb_pr_info("@%s: GPUEB_DIAGNOSIS_GPR: 0x%08x\n", __func__,
+			readl(g_gpueb_gpr_base + 0x48));
 	} else
 		gpueb_pr_info("@%s: skip null g_gpueb_gpr_base\n", __func__);
 

@@ -1564,7 +1564,7 @@ static int gpufreq_validate_target(unsigned int *target)
  ***********************************************************************************/
 static void gpufreq_dump_infra_status_no_lock(void)
 {
-	gpueb_dump_footprint();
+	gpueb_dump_status();
 	gpufreq_dump_dvfs_status();
 	gpufreq_dump_power_tracker_status();
 
@@ -1659,7 +1659,6 @@ static void gpufreq_dump_power_tracker_status(void)
  ***********************************************************************************/
 static void gpufreq_abort(void)
 {
-	gpueb_dump_status();
 	gpufreq_dump_infra_status_no_lock();
 
 #if GPUFREQ_FORCE_WDT_ENABLE
