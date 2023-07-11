@@ -3170,6 +3170,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 					/* for both IR and DL */
 					layer_info->layer_caps &= ~DISP_MML_CAPS_MASK;
 					layer_info->layer_caps |= MTK_MML_DISP_MDP_LAYER;
+					disp_info->disp_caps[disp_idx] |= MTK_NEED_REPAINT;
 				}
 			}
 		}
@@ -4176,11 +4177,10 @@ static void check_is_mml_layer(const int disp_idx,
 				    (mml_capacity ? mml_capacity : MTK_MML_DISP_NOT_SUPPORT);
 			}
 		}
-		if ((MTK_MML_DISP_MDP_LAYER & c->layer_caps) ||
-		    ((MTK_MML_DISP_DECOUPLE_LAYER & c->layer_caps) &&
+		if ((MTK_MML_DISP_DECOUPLE_LAYER & c->layer_caps) &&
 		    (kref_read(&mtk_crtc->mml_ir_sram.ref) ||
 		     (mtk_crtc->mml_link_state == MML_IR_IDLE) ||
-		     mtk_crtc->is_mml_dl || l_rule_info->bk_mml_dl_lye))) {
+		     mtk_crtc->is_mml_dl || l_rule_info->bk_mml_dl_lye)) {
 			c->layer_caps &= ~MTK_MML_DISP_DECOUPLE_LAYER;
 			c->layer_caps |= MTK_MML_DISP_MDP_LAYER;
 			disp_info->disp_caps[disp_idx] |= MTK_NEED_REPAINT;
@@ -4193,6 +4193,7 @@ static void check_is_mml_layer(const int disp_idx,
 		    l_rule_info->bk_mml_dl_lye) {
 			c->layer_caps &= ~MTK_MML_DISP_DIRECT_DECOUPLE_LAYER;
 			c->layer_caps |= MTK_MML_DISP_MDP_LAYER;
+			disp_info->disp_caps[disp_idx] |= MTK_NEED_REPAINT;
 			DDPINFO("Use MDP for DL-IR transition\n");
 			DRM_MMP_MARK(layering, 0x331, __LINE__);
 		}
