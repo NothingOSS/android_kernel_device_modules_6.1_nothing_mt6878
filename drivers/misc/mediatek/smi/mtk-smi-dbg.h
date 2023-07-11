@@ -14,6 +14,11 @@ enum smi_mon_id {
 	SMI_BW_IMGSYS,
 };
 
+enum smi_isp_id {
+	ISP_TRAW = BIT(0),
+	ISP_DIP = BIT(1),
+};
+
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 
 int mtk_smi_dbg_register_notifier(struct notifier_block *nb);

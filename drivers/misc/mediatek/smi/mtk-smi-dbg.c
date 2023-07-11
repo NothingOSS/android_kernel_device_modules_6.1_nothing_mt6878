@@ -1555,6 +1555,30 @@ static void smi_hang_detect_bw_monitor(bool is_start)
 	}
 }
 
+void mtk_smi_dbg_dump_for_isp_fast(u32 isp_id)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	s32			i, PRINT_NR = 5;
+
+	pr_notice("%s: isp_id=%#x\n", __func__, isp_id);
+	for (i = 0; i < PRINT_NR; i++) {
+		if (isp_id & ISP_TRAW) {
+			mtk_smi_dbg_print(smi, true, false, 28, true);
+			mtk_smi_dbg_print(smi, true, false, 40, true);
+		}
+		if (isp_id & ISP_DIP) {
+			mtk_smi_dbg_print(smi, true, false, 10, true);
+			mtk_smi_dbg_print(smi, true, false, 11, true);
+			mtk_smi_dbg_print(smi, true, false, 15, true);
+			mtk_smi_dbg_print(smi, true, false, 22, true);
+			mtk_smi_dbg_print(smi, true, false, 23, true);
+			mtk_smi_dbg_print(smi, true, false, 38, true);
+			mtk_smi_dbg_print(smi, true, false, 39, true);
+		}
+	}
+}
+EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_isp_fast);
+
 s32 mtk_smi_dbg_hang_detect(char *user)
 {
 	struct mtk_smi_dbg	*smi = gsmi;

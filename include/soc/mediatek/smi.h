@@ -32,6 +32,7 @@ void mtk_smi_common_bw_set(struct device *dev, const u32 port, const u32 val);
 void mtk_smi_common_ostdl_set(struct device *dev, const u32 port, bool is_write, const u32 val);
 void mtk_smi_larb_bw_set(struct device *dev, const u32 port, const u32 val);
 s32 mtk_smi_dbg_hang_detect(char *user);
+void mtk_smi_dbg_dump_for_isp_fast(u32 isp_id);
 void mtk_smi_init_power_off(void);
 void mtk_smi_dump_last_pd(const char *user);
 void mtk_smi_larb_clamp_and_lock(struct device *larbdev, bool on);
@@ -66,6 +67,8 @@ static inline s32 mtk_smi_dbg_hang_detect(char *user)
 {
 	return 0;
 }
+
+static inline void mtk_smi_dbg_dump_for_isp_fast(u32 isp_id) { }
 
 static inline s32 mtk_smi_dbg_cg_status(void)
 {
