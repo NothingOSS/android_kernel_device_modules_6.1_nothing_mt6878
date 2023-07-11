@@ -198,16 +198,24 @@ not_support:
 }
 EXPORT_SYMBOL_GPL(mml_drm_query_cap);
 
-static void mml_adjust_src(struct mml_frame_data *src)
+static void mml_adjust_src(struct mml_frame_data *src, struct mml_frame_dest *dest)
 {
 	const u32 srcw = src->width;
 	const u32 srch = src->height;
 
-	if (MML_FMT_H_SUBSAMPLE(src->format) && (srcw & 0x1))
-		src->width &= ~1;
+	if (MML_FMT_H_SUBSAMPLE(src->format) && (srcw & 0x1)) {
+		if (src->width == dest->crop.r.width)
+			src->width += 1;
+		else
+			src->width &= ~1;
+	}
 
-	if (MML_FMT_V_SUBSAMPLE(src->format) && (srch & 0x1))
-		src->height &= ~1;
+	if (MML_FMT_V_SUBSAMPLE(src->format) && (srch & 0x1)) {
+		if (src->height == dest->crop.r.height)
+			src->height += 1;
+		else
+			src->height &= ~1;
+	}
 }
 
 static void mml_adjust_dest(struct mml_frame_data *src, struct mml_frame_dest *dest)
@@ -243,10 +251,7 @@ void mml_drm_try_frame(struct mml_drm_ctx *ctx, struct mml_frame_info *info)
 {
 	u32 i;
 
-	mml_adjust_src(&info->src);
-
-	if (info->dest[0].pq_config.en_region_pq)
-		mml_adjust_src(&info->seg_map);
+	mml_adjust_src(&info->src, &info->dest[0]);
 
 	if (info->mode == MML_MODE_DIRECT_LINK) {
 		struct mml_frame_dest *dest = &info->dest[0];
