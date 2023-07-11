@@ -511,6 +511,7 @@
 	};
 
 	mminfra_hwv: syscon@1c000000 {
+		compatible = "mediatek,mt6989-mminfra_hwv", "syscon";
 		reg = <0 0x1c000000 0 0x1000>;
 	};
 
@@ -557,6 +558,7 @@
 		compatible = "mediatek,mt6989-topckgen", "syscon";
 		reg = <0 0x10000000 0 0x1000>;
 		hw-voter-regmap = <&hwv>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
@@ -570,6 +572,7 @@
 		compatible = "mediatek,mt6989-apmixedsys", "syscon";
 		reg = <0 0x1000c000 0 0x1000>;
 		hw-voter-regmap = <&hwv>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
@@ -704,114 +707,133 @@
 	dispsys_config_clk: syscon@14000000 {
 		compatible = "mediatek,mt6989-mmsys0", "syscon";
 		reg = <0 0x14000000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
 	dispsys1_config_clk: syscon@14200000 {
 		compatible = "mediatek,mt6989-mmsys1", "syscon";
 		reg = <0 0x14200000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
 	ovlsys_config_clk: syscon@14400000 {
 		compatible = "mediatek,mt6989-ovlsys_config", "syscon";
 		reg = <0 0x14400000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
 	ovlsys1_config_clk: syscon@14600000 {
 		compatible = "mediatek,mt6989-ovlsys1_config", "syscon";
 		reg = <0 0x14600000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
 	imgsys_main_clk: syscon@15000000 {
 		compatible = "mediatek,mt6989-imgsys_main", "syscon";
 		reg = <0 0x15000000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
 	dip_top_dip1_clk: syscon@15110000 {
 		compatible = "mediatek,mt6989-dip_top_dip1", "syscon";
 		reg = <0 0x15110000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
 	dip_nr1_dip1_clk: syscon@15130000 {
 		compatible = "mediatek,mt6989-dip_nr1_dip1", "syscon";
 		reg = <0 0x15130000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
 	dip_nr2_dip1_clk: syscon@15170000 {
 		compatible = "mediatek,mt6989-dip_nr2_dip1", "syscon";
 		reg = <0 0x15170000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
 	wpe1_dip1_clk: syscon@15220000 {
 		compatible = "mediatek,mt6989-wpe1_dip1", "syscon";
 		reg = <0 0x15220000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
 	wpe2_dip1_clk: syscon@15520000 {
 		compatible = "mediatek,mt6989-wpe2_dip1", "syscon";
 		reg = <0 0x15520000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
 	wpe3_dip1_clk: syscon@15620000 {
 		compatible = "mediatek,mt6989-wpe3_dip1", "syscon";
 		reg = <0 0x15620000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
 	traw_dip1_clk: syscon@15710000 {
 		compatible = "mediatek,mt6989-traw_dip1", "syscon";
 		reg = <0 0x15710000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
 	traw_cap_dip1_clk: syscon@15740000 {
 		compatible = "mediatek,mt6989-traw_cap_dip1", "syscon";
 		reg = <0 0x15740000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
 	img_vcore_d1a_clk: syscon@15780000 {
 		compatible = "mediatek,mt6989-img_vcore_d1a", "syscon";
 		reg = <0 0x15780000 0 0x1000>;
+		hw-voter-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
 	vdec_soc_gcon_base_clk: syscon@1600f000 {
 		compatible = "mediatek,mt6989-vdecsys_soc", "syscon";
 		reg = <0 0x1600f000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
 	vdec_gcon_base_clk: syscon@1602f000 {
 		compatible = "mediatek,mt6989-vdecsys", "syscon";
 		reg = <0 0x1602f000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
 	venc_gcon_clk: syscon@17000000 {
 		compatible = "mediatek,mt6989-vencsys", "syscon";
 		reg = <0 0x17000000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
 	venc_gcon_core1_clk: syscon@17800000 {
 		compatible = "mediatek,mt6989-vencsys_c1", "syscon";
 		reg = <0 0x17800000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
 	venc_gcon_core2_clk: syscon@17c00000 {
 		compatible = "mediatek,mt6989-vencsys_c2", "syscon";
 		reg = <0 0x17c00000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
@@ -902,7 +924,7 @@
 		hfrp-1-bus = <&hfrp_1_bus>;
 		hw-voter-regmap = <&hwv>;
 		mm-hw-ccf-regmap = <&mm_hwv>;
-		dis1-shutdown-supply = <&mt6363_vbuck1>;
+		mminfra-hwv-regmap = <&mminfra_hwv>;
 	};
 
 	vlpcfg_bus: syscon@1c00c000 {
@@ -913,6 +935,7 @@
 	vlp_cksys_clk: syscon@1c013000 {
 		compatible = "mediatek,mt6989-vlp_cksys", "syscon";
 		reg = <0 0x1c013000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
@@ -947,6 +970,7 @@
 
 	camsys_main_clk: syscon@1a000000 {
 		compatible = "mediatek,mt6989-camsys_main", "syscon";
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		reg = <0 0x1a000000 0 0x1000>;
 		#clock-cells = <1>;
 	};
@@ -1008,18 +1032,21 @@
 	camsys_mraw_clk: syscon@1a170000 {
 		compatible = "mediatek,mt6989-camsys_mraw", "syscon";
 		reg = <0 0x1a170000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
 	camsys_ipe_clk: syscon@1a1d0000 {
 		compatible = "mediatek,mt6989-camsys_ipe", "syscon";
 		reg = <0 0x1a1d0000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
 	ccu_main_clk: syscon@1b200000 {
 		compatible = "mediatek,mt6989-ccu", "syscon";
 		reg = <0 0x1b200000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
@@ -1057,24 +1084,26 @@
 		compatible = "mediatek,mt6989-vdisp-ctrl";
 		reg = <0 0x1c001000 0 0x1000>;
 		reg-names = "SPM_BASE";
-		dis1-shutdown-supply = <&mt6363_vbuck1>;
 	};
 
 	mminfra_config_clk: syscon@1e800000 {
 		compatible = "mediatek,mt6989-mminfra_config", "syscon";
 		reg = <0 0x1e800000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
 	mminfra_ao_config_clk: syscon@1e8ff000 {
 		compatible = "mediatek,mt6989-mminfra_ao_config", "syscon";
 		reg = <0 0x1e8ff000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
 	mdpsys_config_clk: syscon@1f000000 {
 		compatible = "mediatek,mt6989-mdpsys", "syscon";
 		reg = <0 0x1f000000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
@@ -7038,7 +7067,7 @@
 
 		disp_dpc: disp-dpc@14226000 {
 			compatible = "mediatek,mt6989-disp-dpc";
-			// power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
+			power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 			reg =
 				<0 0x14226000 0 0x1000>,
 				<0 0x1c000000 0 0x1000>,
@@ -12908,7 +12937,7 @@
 				  "mbox4";
 
 		mtk,smmu-shared = <&mm_smmu_mmup_normal>;
-		mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;
+		/*mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;*/
 
 		core-0 = "enable";
 		vcp-sram-size = <0x00060000>;
@@ -12978,7 +13007,7 @@
 			      <8 0x1000>, /* MMDVFS_MEM_ID 4KB */
 			      <9 0x1000>, /* MMQOS_MEM_ID 4KB */
 			      <10 0x0>; /* secure dump, its size is in secure_dump_size */
-		/*vcp-ao-feature;*/
+		vcp-ao-feature;
 
 	};
 
@@ -18205,6 +18234,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 	regulator-min-microvolt = <0>;
 };
 
+/delete-node/ &mt6363_vbuck1;
 /delete-node/ &mt6363_vbuck1_sshub;
 /delete-node/ &mt6363_vbuck2_sshub;
 /delete-node/ &mt6363_vbuck4_sshub;
