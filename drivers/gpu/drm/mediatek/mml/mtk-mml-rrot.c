@@ -1314,8 +1314,9 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 static void rrot_config_left(struct mml_tile_engine *tile)
 {
 	u32 in_xe = tile->in.xs + (tile->in.xe - tile->in.xs + 1) / 2 - 1;
+	u32 out_w = round_up(tile->out.xe - tile->out.xs + 1, 2);
 
-	tile->out.xe = tile->out.xs + (tile->out.xe - tile->out.xs + 1) / 2 - 1;
+	tile->out.xe = tile->out.xs + out_w / 2 - 1;
 	tile->in.xe = round_up(in_xe + 1, 32) - 1;
 	tile->out.xe += tile->in.xe - in_xe;
 
@@ -1328,8 +1329,9 @@ static void rrot_config_left(struct mml_tile_engine *tile)
 static void rrot_config_right(struct mml_tile_engine *tile)
 {
 	u32 in_xs = tile->in.xs + (tile->in.xe - tile->in.xs + 1) / 2;
+	u32 out_w = round_up(tile->out.xe - tile->out.xs + 1, 2);
 
-	tile->out.xs = tile->out.xs + (tile->out.xe - tile->out.xs + 1) / 2;
+	tile->out.xs = tile->out.xs + out_w / 2;
 	tile->luma.x = 0;
 	tile->in.xs = round_up(in_xs, 32);
 	tile->out.xs += tile->in.xs - in_xs;
@@ -1338,8 +1340,9 @@ static void rrot_config_right(struct mml_tile_engine *tile)
 static void rrot_config_top(struct mml_tile_engine *tile)
 {
 	u32 in_ye = tile->in.ys + (tile->in.ye - tile->in.ys + 1) / 2 - 1;
+	u32 out_h = round_up(tile->out.ye - tile->out.ys + 1, 2);
 
-	tile->out.ye = tile->out.ys + (tile->out.ye - tile->out.ys + 1) / 2 - 1;
+	tile->out.ye = tile->out.ys + out_h / 2 - 1;
 	tile->in.ye = round_up(in_ye + 1, 16) - 1;
 	tile->out.ye += tile->in.ye - in_ye;
 
@@ -1352,8 +1355,9 @@ static void rrot_config_top(struct mml_tile_engine *tile)
 static void rrot_config_bottom(struct mml_tile_engine *tile)
 {
 	u32 in_ys = tile->in.ys + (tile->in.ye - tile->in.ys + 1) / 2;
+	u32 out_h = round_up(tile->out.ye - tile->out.ys + 1, 2);
 
-	tile->out.ys = tile->out.ys + (tile->out.ye - tile->out.ys + 1) / 2;
+	tile->out.ys = tile->out.ys + out_h / 2;
 	tile->luma.y = 0;
 	tile->in.ys = round_up(in_ys, 16);
 	tile->out.ys += tile->in.ys - in_ys;
@@ -1401,6 +1405,13 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 	const struct mml_frame_dest *dest = &task->config->info.dest[0];
 	const struct mml_frame_config *cfg = task->config;
 	struct mml_tile_engine tile = *tile_merge;
+
+	rrot_msg("%s frame in crop %u %u %u %u in %u %u %u %u out %u %u %u %u",
+		__func__,
+		cfg->frame_in_crop[0].r.left, cfg->frame_in_crop[0].r.top,
+		cfg->frame_in_crop[0].r.width, cfg->frame_in_crop[0].r.height,
+		tile.in.xs, tile.in.xe, tile.in.ys, tile.in.ye,
+		tile.out.xs, tile.out.xe, tile.out.ys, tile.out.ye);
 
 	if ((dest->rotate == MML_ROT_0 && dest->flip) ||
 		(dest->rotate == MML_ROT_180 && !dest->flip) ||
@@ -1757,12 +1768,12 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	if (plane > 2)
 		rrot_frm->datasize += mml_color_get_min_uv_size(src->format, mf_src_w, mf_src_h);
 
-	rrot_msg("rrot%s src %u %u clip %u %u whp %u %u crop off %u %u pixel %u data %u rotate %u",
+	rrot_msg("rrot%s whp %u %u src %u %u clip off %u %u clip %u %u pixel %u data %u rotate %u",
 		rrot->pipe == 1 ? "_2nd" : "    ",
-		mf_src_w, mf_src_h,
-		mf_clip_w, mf_clip_h,
 		src_offset_wp, src_offset_hp,
+		mf_src_w, mf_src_h,
 		mf_offset_w_1, mf_offset_h_1,
+		mf_clip_w, mf_clip_h,
 		rrot_frm->pixel_acc, rrot_frm->datasize,
 		dest->rotate);
 
@@ -2040,15 +2051,27 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	mml_err("RROT_SRC_CON %#010x RROT_COMP_CON %#010x RROT_TRANSFORM_0 %#010x",
 		value[2], value[3], value[4]);
 
-	value[4] = readl(base + RROT_MF_BKGD_SIZE_IN_BYTE);
-	value[5] = readl(base + RROT_MF_BKGD_SIZE_IN_PXL);
-	value[6] = readl(base + RROT_MF_SRC_SIZE);
-	value[7] = readl(base + RROT_MF_CLIP_SIZE);
-	value[8] = readl(base + RROT_MF_OFFSET_1);
-	value[9] = readl(base + RROT_SF_BKGD_SIZE_IN_BYTE);
-	value[10] = readl(base + RROT_MF_BKGD_H_SIZE_IN_PXL);
-	value[11] = readl(base + RROT_SRC_OFFSET_WP);
-	value[12] = readl(base + RROT_SRC_OFFSET_HP);
+	value[4] = readl(base + RROT_MF_BKGD_SIZE_IN_PXL);
+	value[5] = readl(base + RROT_MF_BKGD_H_SIZE_IN_PXL);
+	value[6] = readl(base + RROT_SRC_OFFSET_WP);
+	value[7] = readl(base + RROT_SRC_OFFSET_HP);
+	value[8] = readl(base + RROT_MF_SRC_SIZE);
+	value[9] = readl(base + RROT_MF_OFFSET_1);
+	value[10] = readl(base + RROT_MF_CLIP_SIZE);
+	value[11] = readl(base + RROT_MF_BKGD_SIZE_IN_BYTE);
+	value[12] = readl(base + RROT_SF_BKGD_SIZE_IN_BYTE);
+
+	mml_err("RROT_MF_BKGD_SIZE_IN_BYTE %#010x RROT_SF_BKGD_SIZE_IN_BYTE %#010x",
+		value[4], value[5]);
+
+	/* following log dump by order out to in: bkgd(frame), src(tile), clip(crop) */
+	mml_err("RROT_MF_BKGD_SIZE_IN_PXL %#010x RROT_MF_BKGD_H_SIZE_IN_PXL %#010x",
+		value[6], value[7]);
+	mml_err("RROT_SRC_OFFSET_WP %#010x RROT_SRC_OFFSET_HP %#010x RROT_MF_SRC_SIZE %#010x",
+		value[8], value[9], value[10]);
+	mml_err("RROT_MF_OFFSET_1 %#010x RROT_MF_CLIP_SIZE %#010x",
+		value[11], value[12]);
+
 	value[13] = readl(base + RROT_SRC_BASE_0_MSB);
 	value[14] = readl(base + RROT_SRC_BASE_0);
 	value[15] = readl(base + RROT_SRC_BASE_1_MSB);
@@ -2056,14 +2079,6 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	value[17] = readl(base + RROT_SRC_BASE_2_MSB);
 	value[18] = readl(base + RROT_SRC_BASE_2);
 
-	mml_err("RROT_MF_BKGD_SIZE_IN_BYTE %#010x RROT_MF_BKGD_SIZE_IN_PXL %#010x",
-		value[4], value[5]);
-	mml_err("RROT_MF_SRC_SIZE %#010x RROT_MF_CLIP_SIZE %#010x RROT_MF_OFFSET_1 %#010x",
-		value[6], value[7], value[8]);
-	mml_err("RROT_SF_BKGD_SIZE_IN_BYTE %#010x RROT_MF_BKGD_H_SIZE_IN_PXL %#010x",
-		value[9], value[10]);
-	mml_err("RROT_SRC_OFFSET_WP %#010x RROT_SRC_OFFSET_HP %#010x",
-		value[11], value[12]);
 	mml_err("RROT_SRC     BASE_0 %#03x%08x     BASE_1 %#03x%08x     BASE_2 %#03x%08x",
 		value[13], value[14],
 		value[15], value[16],
