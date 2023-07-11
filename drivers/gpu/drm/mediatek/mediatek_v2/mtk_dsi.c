@@ -3678,11 +3678,11 @@ static int mtk_dsi_atomic_check(struct drm_encoder *encoder,
 
 void mtk_dsi_connector_reset(struct drm_connector *connector)
 {
-	struct drm_connector_state *conn_state =
-		kzalloc(sizeof(*conn_state), GFP_KERNEL);
+	struct drm_connector_state *conn_state;
 	struct mtk_connector_state *state;
 
 	if (connector->state) {
+		conn_state = kzalloc(sizeof(*conn_state), GFP_KERNEL);
 		__drm_atomic_helper_connector_destroy_state(connector->state);
 		kfree(connector->state);
 		__drm_atomic_helper_connector_reset(connector, conn_state);
