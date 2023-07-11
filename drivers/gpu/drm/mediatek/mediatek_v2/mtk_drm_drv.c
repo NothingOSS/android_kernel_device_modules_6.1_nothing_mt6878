@@ -1489,6 +1489,7 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	int i = 0;
 	enum mml_mode new_mode = MML_MODE_UNKNOWN;
+	struct mtk_drm_private *priv = dev->dev_private;
 
 	for_each_oldnew_crtc_in_state(state, crtc, old_cs, new_cs, i) {
 		if (drm_crtc_index(crtc) == 0)
@@ -1545,6 +1546,20 @@ static void mtk_atomic_mml(struct drm_device *dev,
 		mtk_crtc->mml_link_state = MML_DIRECT_LINKING;
 	else
 		mtk_crtc->mml_link_state = NON_MML;
+
+	if (priv && priv->dpc_dev) {
+		if ((mtk_crtc->mml_link_state == MML_DIRECT_LINKING) &&
+		    !mtk_vidle_is_ff_enabled()) {
+			mtk_vidle_config_ff(true);
+			mtk_vidle_enable(true, NULL);
+			pm_runtime_put_sync(priv->dpc_dev);
+		} else if ((mtk_crtc->mml_link_state == MML_STOP_LINKING) &&
+			   mtk_vidle_is_ff_enabled()) {
+			pm_runtime_get_sync(priv->dpc_dev);
+			mtk_vidle_config_ff(false);
+			mtk_vidle_enable(false, NULL);
+		}
+	}
 }
 
 static void mtk_set_first_config(struct drm_device *dev,
