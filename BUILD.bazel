@@ -14,6 +14,7 @@ load("//kernel-6.1:mgk_modules.bzl",
      "mgk_module_user_outs"
 )
 
+mgk_kmi_symbol_list = "//kernel-6.1:android/abi_gki_aarch64_mtk"
 
 mgk_64_k61_kleaf_modules = [
     # keep sorted
@@ -812,4 +813,5 @@ define_mgk(
     platform_device_userdebug_modules = mgk_64_k61_platform_device_userdebug_modules,
     device_user_modules = mgk_64_k61_device_user_modules,
     platform_device_user_modules = mgk_64_k61_platform_device_user_modules,
+    symbol_list = mgk_kmi_symbol_list,
 )

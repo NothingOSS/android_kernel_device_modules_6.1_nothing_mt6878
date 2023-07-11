@@ -71,7 +71,7 @@ $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_GOAL := //$(patsubst kernel/%,%,$(KERNE
 endif
 $(KERNEL_ZIMAGE_OUT): $(KERNEL_MAKE_DEPENDENCIES)
 	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base build $(PRIVATE_BAZEL_BUILD_FLAG) $(PRIVATE_BAZEL_BUILD_GOAL)
-	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base run $(PRIVATE_BAZEL_BUILD_FLAG) $(PRIVATE_BAZEL_DIST_GOAL) -- --dist_dir=$(abspath $(PRIVATE_BAZEL_DIST_OUT))
+	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base run $(PRIVATE_BAZEL_BUILD_FLAG) --nokmi_symbol_list_violations_check $(PRIVATE_BAZEL_DIST_GOAL) -- --dist_dir=$(abspath $(PRIVATE_BAZEL_DIST_OUT))
 endif
 
 ifneq ($(BUILT_KERNEL_TARGET),$(KERNEL_ZIMAGE_OUT))
