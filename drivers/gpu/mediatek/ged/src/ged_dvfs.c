@@ -220,8 +220,8 @@ struct gpu_utilization_history {
 };
 static struct gpu_utilization_history g_util_hs;
 
-static int gx_dvfs_loading_mode = LOADING_MAX_ITERMCU;
-static int gx_dvfs_workload_mode = WORKLOAD_MAX_ITERMCU;
+static int gx_dvfs_loading_mode = LOADING_ACTIVE;
+static int gx_dvfs_workload_mode = WORKLOAD_ACTIVE;
 struct GpuUtilization_Ex g_Util_Ex;
 static int ged_get_dvfs_loading_mode(void);
 static int ged_get_dvfs_workload_mode(void);
@@ -3073,6 +3073,7 @@ GED_ERROR ged_dvfs_system_init(void)
 {
 	struct device_node *async_dvfs_node = NULL;
 	struct device_node *reduce_mips_dvfs_node = NULL;
+	struct device_node *dvfs_loading_mode_node = NULL;
 
 	mutex_init(&gsDVFSLock);
 	mutex_init(&gsPolicyLock);
@@ -3182,6 +3183,16 @@ GED_ERROR ged_dvfs_system_init(void)
 		GED_LOGI("dts support gpueb dvfs, min_oppidx=%u", get_min_oppidx);
 	} else
 		GED_LOGI("dts not support gpueb dvfs");
+
+	dvfs_loading_mode_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_loading_mode");
+	if (unlikely(!dvfs_loading_mode_node)) {
+		GED_LOGI("Failed to find dvfs_loading_mode_node");
+	} else {
+		of_property_read_u32(dvfs_loading_mode_node, "dvfs-loading-mode",
+							&gx_dvfs_loading_mode);
+		of_property_read_u32(dvfs_loading_mode_node, "dvfs-workload-mode",
+							&gx_dvfs_workload_mode);
+	}
 
 	async_dvfs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_async_ratio");
 	if (unlikely(!async_dvfs_node)) {
