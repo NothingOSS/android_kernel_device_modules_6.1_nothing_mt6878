@@ -3233,10 +3233,22 @@ static inline void fbt_init_jerk(struct fbt_jerk *jerk, int id)
 	INIT_WORK(&jerk->work, fbt_do_jerk);
 }
 
+static enum hrtimer_restart fbt_sjerk_tfn(struct hrtimer *timer)
+{
+	struct fbt_sjerk *sjerk;
+
+	sjerk = container_of(timer, struct fbt_sjerk, timer);
+	if (wq_jerk)
+		queue_work(wq_jerk, &sjerk->work);
+	else
+		schedule_work(&sjerk->work);
+	return HRTIMER_NORESTART;
+}
+
 static void fbt_init_sjerk(void)
 {
 	hrtimer_init(&sjerk.timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	sjerk.timer.function = &fbt_jerk_tfn;
+	sjerk.timer.function = &fbt_sjerk_tfn;
 	INIT_WORK(&sjerk.work, fbt_do_sjerk);
 }
 
@@ -5898,8 +5910,10 @@ int fpsgo_ctrl2fbt_buffer_quota(unsigned long long ts, int pid, int quota,
 
 	if (no_buffer_rescue) {
 		jerk = &(thr->boost_info.proc.jerks[thr->boost_info.proc.active_jerk_id]);
-		if (jerk->last_check == FPSGO_JERK_ENOUGH_BUFFER)
+		if (jerk->last_check == FPSGO_JERK_ENOUGH_BUFFER) {
+			jerk->jerking = 1;
 			schedule_work(&jerk->work);
+		}
 	}
 
 	fpsgo_thread_unlock(&thr->thr_mlock);

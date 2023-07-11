@@ -67,6 +67,8 @@ static int cond_get_cam_apk_pid;
 static int cond_get_cam_ser_pid;
 static int global_cam_apk_pid;
 static int global_kfps_mask = 0xFFF;
+static int total_render_info_num;
+static int total_linger_num;
 
 static struct kobject *base_kobj;
 static struct rb_root render_pid_tree;
@@ -795,6 +797,7 @@ void fpsgo_add_linger(struct render_info *thr)
 
 	rb_link_node(&thr->linger_node, parent, p);
 	rb_insert_color(&thr->linger_node, &linger_tree);
+	total_linger_num++;
 	thr->linger_ts = fpsgo_get_time();
 	FPSGO_LOGI("add to linger %d(%p)(%llu)\n",
 			thr->pid, thr, thr->linger_ts);
@@ -808,6 +811,7 @@ void fpsgo_del_linger(struct render_info *thr)
 		return;
 
 	rb_erase(&thr->linger_node, &linger_tree);
+	total_linger_num--;
 	FPSGO_LOGI("del from linger %d(%p)\n", thr->pid, thr);
 }
 
@@ -992,6 +996,29 @@ struct render_info *eara2fpsgo_search_render_info(int pid,
 	return NULL;
 }
 
+static int fpsgo_is_exceed_render_info_limit(void)
+{
+	int ret = 0;
+	struct render_info *r_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	if (total_render_info_num + total_linger_num > FPSGO_MAX_RENDER_INFO_SIZE) {
+		ret = 1;
+		for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
+			r_iter = rb_entry(rbn, struct render_info, render_key_node);
+			FPSGO_LOGE("[base] %s render %d 0x%llx exist\n",
+				__func__, r_iter->pid, r_iter->buffer_id);
+		}
+		for (rbn = rb_first(&linger_tree); rbn; rbn = rb_next(rbn)) {
+			r_iter = rb_entry(rbn, struct render_info, linger_node);
+			FPSGO_LOGE("[base] %s linger %d 0x%llx exist\n",
+				__func__, r_iter->pid, r_iter->buffer_id);
+		}
+	}
+
+	return ret;
+}
+
 struct render_info *fpsgo_search_and_add_render_info(int pid,
 	unsigned long long identifier, int force)
 {
@@ -1021,7 +1048,7 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 			return iter_thr;
 	}
 
-	if (!force)
+	if (!force || fpsgo_is_exceed_render_info_limit())
 		return NULL;
 
 	iter_thr = vzalloc(sizeof(struct render_info));
@@ -1048,6 +1075,7 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 
 	rb_link_node(&iter_thr->render_key_node, parent, p);
 	rb_insert_color(&iter_thr->render_key_node, &render_pid_tree);
+	total_render_info_num++;
 
 	return iter_thr;
 }
@@ -1074,6 +1102,7 @@ void fpsgo_delete_render_info(int pid,
 		check_max_blc = 1;
 
 	rb_erase(&data->render_key_node, &render_pid_tree);
+	total_render_info_num--;
 	list_del(&(data->bufferid_list));
 	fpsgo_base2fbt_item_del(data->p_blc, data->dep_arr, data);
 	data->p_blc = NULL;
@@ -1703,6 +1732,7 @@ static void fpsgo_check_adpf_render_status(void)
 			fpsgo_thread_unlock(&iter->thr_mlock);
 		} else {
 			rb_erase(rbn, &render_pid_tree);
+			total_render_info_num--;
 			fpsgo_thread_unlock(&iter->thr_mlock);
 			kfree(iter);
 			rbn = rb_first(&render_pid_tree);
@@ -1837,6 +1867,7 @@ int fpsgo_check_thread_status(void)
 				check_max_blc = 1;
 
 			rb_erase(&iter->render_key_node, &render_pid_tree);
+			total_render_info_num--;
 			list_del(&(iter->bufferid_list));
 			fpsgo_base2fbt_item_del(iter->p_blc, iter->dep_arr, iter);
 			iter->p_blc = NULL;
@@ -1877,7 +1908,6 @@ int fpsgo_check_thread_status(void)
 
 	fpsgo_check_BQid_status();
 	fpsgo_check_acquire_info_status();
-	fpsgo_traverse_linger(ts);
 	fpsgo_check_adpf_render_status();
 
 	fpsgo_render_tree_unlock(__func__);
@@ -1916,6 +1946,7 @@ void fpsgo_clear(void)
 		fpsgo_thread_lock(&iter->thr_mlock);
 
 		rb_erase(&iter->render_key_node, &render_pid_tree);
+		total_render_info_num--;
 		list_del(&(iter->bufferid_list));
 		fpsgo_base2fbt_item_del(iter->p_blc, iter->dep_arr, iter);
 		iter->p_blc = NULL;
