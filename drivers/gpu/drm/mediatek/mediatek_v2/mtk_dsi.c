@@ -1633,12 +1633,15 @@ static unsigned int mtk_get_dsi_buf_bpp(struct mtk_dsi *dsi)
 
 static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 {
-	u32 ps_wc = 0, size = 0, val = 0;
+	u32 ps_wc, size, val;
 	u32 value = 0, mask = 0;
-	u32 width = 0, height = 0;
-	struct mtk_panel_ext *ext = NULL;
-	struct mtk_panel_dsc_params *dsc_params = NULL;
-	struct mtk_panel_spr_params *spr_params = NULL;
+	u32 width, height;
+	struct mtk_panel_ext *ext = dsi->is_slave ?
+		mtk_dsi_get_panel_ext(&dsi->master_dsi->ddp_comp) : mtk_dsi_get_panel_ext(&dsi->ddp_comp);
+	struct mtk_panel_dsc_params *dsc_params = dsi->is_slave ?
+		&dsi->master_dsi->ext->params->dsc_params : &ext->params->dsc_params;
+	struct mtk_panel_spr_params *spr_params = dsi->is_slave ?
+		&dsi->master_dsi->ext->params->spr_params : &ext->params->spr_params;
 	u32 dsi_buf_bpp = mtk_get_dsi_buf_bpp(dsi);
 	struct mtk_drm_crtc *mtk_crtc =	dsi->is_slave ?
 			dsi->master_dsi->ddp_comp.mtk_crtc : dsi->ddp_comp.mtk_crtc;
@@ -1655,18 +1658,12 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 			height = roi_height;
 	} else {
 		if (!dsi->is_slave) {
-			ext = mtk_dsi_get_panel_ext(&dsi->ddp_comp);
-			dsc_params = &ext->params->dsc_params;
-			spr_params = &ext->params->spr_params;
 			width = mtk_dsi_get_virtual_width(dsi, dsi->encoder.crtc);
 			if (!set_partial_update)
 				height = mtk_dsi_get_virtual_heigh(dsi, dsi->encoder.crtc);
 			else
 				height = roi_height;
 		} else {
-			ext = mtk_dsi_get_panel_ext(&dsi->master_dsi->ddp_comp);
-			dsc_params = &dsi->master_dsi->ext->params->dsc_params;
-			spr_params = &dsi->master_dsi->ext->params->spr_params;
 			width = mtk_dsi_get_virtual_width(dsi,
 					dsi->master_dsi->encoder.crtc);
 			height = mtk_dsi_get_virtual_heigh(dsi,
