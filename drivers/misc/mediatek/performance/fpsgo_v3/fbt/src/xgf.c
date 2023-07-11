@@ -853,13 +853,13 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 	mutex_lock(&xgf_main_lock);
 
 	render_iter = xgf_get_render_if(pid, bufID, 0, 0, 0);
-	if (!render_iter || !render_iter->raw_t_cpu) {
+	if (!render_iter || (!render_iter->raw_t_cpu &&
+				!test_bit(ADPF_TYPE, &render_iter->master_type))) {
 		mutex_unlock(&xgf_main_lock);
 		return index;
 	}
 
-	xgf_add_pid2prev_dep(render_iter, FPSGO_TYPE, pid, 0);
-
+	xgf_add_pid2prev_dep(render_iter, FPSGO_TYPE, pid, XGF_ADD_DEP);
 	if (render_iter->spid > 0)
 		xgf_add_pid2prev_dep(render_iter, FPSGO_TYPE, render_iter->spid, XGF_ADD_DEP);
 
