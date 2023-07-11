@@ -264,7 +264,7 @@ void apu_ce_stop_timer_dump_reg(void);
 #define CE_APB_ERR_STATUS_CE2_MSK               (0x4)
 #define CE_APB_ERR_STATUS_CE3_MSK               (0x8)
 
-#define GET_JOB_ID_FROM_TASK(task) ((task >> CE_TASK_JOB_SFT) & CE_TASK_JOB_MSK)
+#define GET_SMC_OP(op1, op2, op3) (op1 | op2 << (8 * 1) | op3 << (8 * 2))
 
 enum {
 	SMC_OP_APU_CE_NULL = 0,
@@ -285,6 +285,10 @@ enum {
 	SMC_OP_APU_CE3_TIMEOUT_INSTR,
 	SMC_OP_APU_ACE_APB_MST_OUT_STATUS_ERR,
 	SMC_OP_APU_ACE_APB_MST_IN_STATUS_ERR,
+	SMC_OP_APU_CE0_RUN_PC,
+	SMC_OP_APU_CE1_RUN_PC,
+	SMC_OP_APU_CE2_RUN_PC,
+	SMC_OP_APU_CE3_RUN_PC,
 	SMC_OP_APU_CE_NUM
 };
 

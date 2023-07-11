@@ -21,49 +21,75 @@
 #include "hw_logger.h"
 #include "apu_regdump.h"
 
-#define BYTE_WIDTH 8
-
-enum apusys_assert_module {
-	//job id
-	assert_apusys_ce_TPPA_plus_BW_acc = 0,
-	assert_apusys_ce_norm2lp,
-	assert_apusys_ce_lp2norm,
-	assert_apusys_ce_acx_mdla_mtcmos_off,
-	assert_apusys_ce_rcx_mdla_mtcmos_off,
-	assert_apusys_ce_RCX_Wakeup,
-	assert_apusys_ce_RCX_Sleep,
-	assert_apusys_ce_TPPA_plus_PSC,
-	assert_apusys_ce_BW_Prediction,
-	assert_apusys_ce_QoS_event_driven,
-	assert_apusys_ce_sMMU_restore,
-	assert_apusys_ce_RCX_NoC_BW_acc,
-	assert_apusys_ce_ACX0_NoC_BW_acc,
-	assert_apusys_ce_ACX1_NoC_BW_acc,
-	assert_apusys_ce_NCX_NoC_BW_acc,
-	assert_apusys_ce_DVFS,
-	assert_apusys_ce_no_module,
-
-	assert_ce_module_max,
+enum CE_JOB_ID {
+	CE_JOB_ID_TPPA_PLUS_BW_ACC = 0,
+	CE_JOB_ID_NORM2LP,
+	CE_JOB_ID_LP2NORM,
+	CE_JOB_ID_RESERVED_3,
+	CE_JOB_ID_RESERVED_4,
+	CE_JOB_ID_RESERVED_5,
+	CE_JOB_ID_RESERVED_6,
+	CE_JOB_ID_RESERVED_7,
+	CE_JOB_ID_RESERVED_8,
+	CE_JOB_ID_RESERVED_9,
+	CE_JOB_ID_RESERVED_10,
+	CE_JOB_ID_RESERVED_11,
+	CE_JOB_ID_RESERVED_12,
+	CE_JOB_ID_RESERVED_13,
+	CE_JOB_ID_ACX_MDLA_MTCMOS_OFF,
+	CE_JOB_ID_RCX_MDLA_MTCMOS_OFF,
+	CE_JOB_ID_RCX_WAKEUP,
+	CE_JOB_ID_RCX_SLEEP,
+	CE_JOB_ID_TPPA_PLUS_PSC,
+	CE_JOB_ID_RESERVED_19,
+	CE_JOB_ID_RESERVED_20,
+	CE_JOB_ID_RESERVED_21,
+	CE_JOB_ID_BW_PREDICTION,
+	CE_JOB_ID_QOS_EVENT_DRIVEN,
+	CE_JOB_ID_RESERVED_24,
+	CE_JOB_ID_RESERVED_25,
+	CE_JOB_ID_SMMU_RESTORE,
+	CE_JOB_ID_RCX_NOC_BW_ACC,
+	CE_JOB_ID_ACX0_NOC_BW_ACC,
+	CE_JOB_ID_ACX1_NOC_BW_ACC,
+	CE_JOB_ID_NCX_NOC_BW_ACC,
+	CE_JOB_ID_DVFS,
+	CE_JOB_ID_MAX
 };
 
-static const char * const apusys_ce_assert_module_name[assert_ce_module_max] = {
+const char *CE_JOB_NAME[CE_JOB_ID_MAX] = {
 	"APUSYS_CE_TPPA_PLUS_BW_ACC",
 	"APUSYS_CE_NORM2LP",
 	"APUSYS_CE_LP2NORM",
+	"APUSYS_CE_RESERVED_3",
+	"APUSYS_CE_RESERVED_4",
+	"APUSYS_CE_RESERVED_5",
+	"APUSYS_CE_RESERVED_6",
+	"APUSYS_CE_RESERVED_7",
+	"APUSYS_CE_RESERVED_8",
+	"APUSYS_CE_RESERVED_9",
+	"APUSYS_CE_RESERVED_10",
+	"APUSYS_CE_RESERVED_11",
+	"APUSYS_CE_RESERVED_12",
+	"APUSYS_CE_RESERVED_13",
 	"APUSYS_CE_ACX_MDLA_MTCMOS_OFF",
 	"APUSYS_CE_RCX_MDLA_MTCMOS_OFF",
 	"APUSYS_CE_RCX_WAKEUP",
 	"APUSYS_CE_RCX_SLEEP",
 	"APUSYS_CE_TPPA_PLUS_PSC",
+	"APUSYS_CE_RESERVED_19",
+	"APUSYS_CE_RESERVED_20",
+	"APUSYS_CE_RESERVED_21",
 	"APUSYS_CE_BW_PREDICTION",
 	"APUSYS_CE_QOS_EVENT_DRIVEN",
+	"APUSYS_CE_RESERVED_24",
+	"APUSYS_CE_RESERVED_25",
 	"APUSYS_CE_SMMU_RESTORE",
 	"APUSYS_CE_RCX_NOC_BW_ACC",
 	"APUSYS_CE_ACX0_NOC_BW_ACC",
 	"APUSYS_CE_ACX1_NOC_BW_ACC",
 	"APUSYS_CE_NCX_NOC_BW_ACC",
-	"APUSYS_CE_DVFS",
-	"APUSYS_CE_NO_MODULE",
+	"APUSYS_CE_DVFS"
 };
 
 struct apu_coredump_work_struct {
@@ -108,45 +134,12 @@ static uint32_t apusys_rv_smc_call(struct device *dev, uint32_t smc_id,
 	return res.a0;
 }
 
-static const char *job_id_mapping(uint32_t job_id)
+static const char *get_ce_job_name_by_id(uint32_t job_id)
 {
-	switch (job_id) {
-	case 0:
-		return apusys_ce_assert_module_name[assert_apusys_ce_TPPA_plus_BW_acc];
-	case 1:
-		return apusys_ce_assert_module_name[assert_apusys_ce_norm2lp];
-	case 2:
-		return apusys_ce_assert_module_name[assert_apusys_ce_lp2norm];
-	case 14:
-		return apusys_ce_assert_module_name[assert_apusys_ce_acx_mdla_mtcmos_off];
-	case 15:
-		return apusys_ce_assert_module_name[assert_apusys_ce_rcx_mdla_mtcmos_off];
-	case 16:
-		return apusys_ce_assert_module_name[assert_apusys_ce_RCX_Wakeup];
-	case 17:
-		return apusys_ce_assert_module_name[assert_apusys_ce_RCX_Sleep];
-	case 18:
-		return apusys_ce_assert_module_name[assert_apusys_ce_TPPA_plus_PSC];
-	case 22:
-		return apusys_ce_assert_module_name[assert_apusys_ce_BW_Prediction];
-	case 23:
-		return apusys_ce_assert_module_name[assert_apusys_ce_QoS_event_driven];
-	case 26:
-		return apusys_ce_assert_module_name[assert_apusys_ce_sMMU_restore];
-	case 27:
-		return apusys_ce_assert_module_name[assert_apusys_ce_RCX_NoC_BW_acc];
-	case 28:
-		return apusys_ce_assert_module_name[assert_apusys_ce_ACX0_NoC_BW_acc];
-	case 29:
-		return apusys_ce_assert_module_name[assert_apusys_ce_ACX1_NoC_BW_acc];
-	case 30:
-		return apusys_ce_assert_module_name[assert_apusys_ce_NCX_NoC_BW_acc];
-	case 31:
-		return apusys_ce_assert_module_name[assert_apusys_ce_DVFS];
-	default:
-		return apusys_ce_assert_module_name[assert_apusys_ce_no_module];
-	}
-
+	if (job_id < CE_JOB_ID_MAX)
+		return CE_JOB_NAME[job_id];
+	else
+		return "APUSYS_CE_UNDEFINED";
 }
 
 uint32_t apu_ce_reg_dump(struct mtk_apu *apu)
@@ -176,7 +169,7 @@ static void apu_ce_coredump_work_func(struct work_struct *p_work)
 
 		apu_regdump();
 
-		apusys_ce_exception_aee_warn(job_id_mapping(exception_job_id));
+		apusys_ce_exception_aee_warn(get_ce_job_name_by_id(exception_job_id));
 
 		exception_job_id = -1;
 	}
@@ -185,15 +178,15 @@ static void apu_ce_coredump_work_func(struct work_struct *p_work)
 static int get_exception_job_id(struct device *dev)
 {
 	uint32_t op;
+	uint32_t ce_task[4];
+	int32_t job_id, exception_ce_id;
 	uint32_t ce_flag = 0, ace_flag = 0, user_flag = 0;
-	uint32_t ce0_task = 0, ce1_task = 0, ce2_task = 0, ce3_task = 0;
 	uint32_t apb_out_status = 0, apb_in_status = 0, apb_status = 0;
 
-	op = (
-		SMC_OP_APU_ACE_ABN_IRQ_FLAG_CE |
-		SMC_OP_APU_ACE_ABN_IRQ_FLAG_ACE_SW << (BYTE_WIDTH * 1) |
-		SMC_OP_APU_ACE_ABN_IRQ_FLAG_USER << (BYTE_WIDTH * 2)
-	);
+	op = GET_SMC_OP(SMC_OP_APU_ACE_ABN_IRQ_FLAG_CE,
+					SMC_OP_APU_ACE_ABN_IRQ_FLAG_ACE_SW,
+					SMC_OP_APU_ACE_ABN_IRQ_FLAG_USER);
+
 	if (apusys_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP,
 			op, &ce_flag, &ace_flag, &user_flag))
 		return -1;
@@ -202,29 +195,27 @@ static int get_exception_job_id(struct device *dev)
 	dev_info(dev, "APU_ACE_ABN_IRQ_FLAG_ACE_SW: 0x%08x\n", ace_flag);
 	dev_info(dev, "APU_ACE_ABN_IRQ_FLAG_USER: 0x%08x\n", user_flag);
 
-	op = (
-		SMC_OP_APU_ACE_CE0_TASK_ING |
-		SMC_OP_APU_ACE_CE1_TASK_ING << (BYTE_WIDTH * 1) |
-		SMC_OP_APU_ACE_CE2_TASK_ING << (BYTE_WIDTH * 2)
-	);
+	op = GET_SMC_OP(SMC_OP_APU_ACE_CE0_TASK_ING,
+					SMC_OP_APU_ACE_CE1_TASK_ING,
+					SMC_OP_APU_ACE_CE2_TASK_ING);
+
 	if (apusys_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP,
-			op, &ce0_task, &ce1_task, &ce2_task))
+			op, &ce_task[0], &ce_task[1], &ce_task[2]))
 		return -1;
 
-	dev_info(dev, "APU_ACE_CE0_TASK_ING: 0x%08x\n", ce0_task);
-	dev_info(dev, "APU_ACE_CE1_TASK_ING: 0x%08x\n", ce1_task);
-	dev_info(dev, "APU_ACE_CE2_TASK_ING: 0x%08x\n", ce2_task);
+	dev_info(dev, "APU_ACE_CE0_TASK_ING: 0x%08x\n", ce_task[0]);
+	dev_info(dev, "APU_ACE_CE1_TASK_ING: 0x%08x\n", ce_task[1]);
+	dev_info(dev, "APU_ACE_CE2_TASK_ING: 0x%08x\n", ce_task[2]);
 
-	op = (
-		SMC_OP_APU_ACE_CE3_TASK_ING |
-		SMC_OP_APU_ACE_APB_MST_OUT_STATUS_ERR << (BYTE_WIDTH * 1) |
-		SMC_OP_APU_ACE_APB_MST_IN_STATUS_ERR << (BYTE_WIDTH * 2)
-	);
+	op = GET_SMC_OP(SMC_OP_APU_ACE_CE3_TASK_ING,
+					SMC_OP_APU_ACE_APB_MST_OUT_STATUS_ERR,
+					SMC_OP_APU_ACE_APB_MST_IN_STATUS_ERR);
+
 	if (apusys_rv_smc_call(dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP,
-			op, &ce3_task, &apb_out_status, &apb_in_status))
+			op, &ce_task[3], &apb_out_status, &apb_in_status))
 		return -1;
 
-	dev_info(dev, "APU_ACE_CE3_TASK_ING: 0x%08x\n", ce3_task);
+	dev_info(dev, "APU_ACE_CE3_TASK_ING: 0x%08x\n", ce_task[3]);
 	dev_info(dev, "APU_ACE_APB_MST_OUT_STATUS_ERR: 0x%08x\n", apb_out_status);
 	dev_info(dev, "APU_ACE_APB_MST_IN_STATUS_ERR: 0x%08x\n", apb_in_status);
 
@@ -233,24 +224,26 @@ static int get_exception_job_id(struct device *dev)
 		return -1;
 	}
 
+	exception_ce_id = -1;
+
 	if (ce_flag) {
 		if (ce_flag & CE_0_IRQ_MASK)
-			return GET_JOB_ID_FROM_TASK(ce0_task);
+			exception_ce_id = 0;
 		else if (ce_flag & CE_1_IRQ_MASK)
-			return GET_JOB_ID_FROM_TASK(ce1_task);
+			exception_ce_id = 1;
 		else if (ce_flag & CE_2_IRQ_MASK)
-			return GET_JOB_ID_FROM_TASK(ce2_task);
+			exception_ce_id = 2;
 		else if (ce_flag & CE_3_IRQ_MASK)
-			return GET_JOB_ID_FROM_TASK(ce3_task);
+			exception_ce_id = 3;
 	} else if (ace_flag) {
 		if (ace_flag & CE_MISS_TYPE2_REQ_FLAG_0_MSK)
-			return GET_JOB_ID_FROM_TASK(ce0_task);
+			exception_ce_id = 0;
 		else if (ace_flag & CE_MISS_TYPE2_REQ_FLAG_1_MSK)
-			return GET_JOB_ID_FROM_TASK(ce1_task);
+			exception_ce_id = 1;
 		else if (ace_flag & CE_MISS_TYPE2_REQ_FLAG_2_MSK)
-			return GET_JOB_ID_FROM_TASK(ce2_task);
+			exception_ce_id = 2;
 		else if (ace_flag & CE_MISS_TYPE2_REQ_FLAG_3_MSK)
-			return GET_JOB_ID_FROM_TASK(ce3_task);
+			exception_ce_id = 3;
 
 		else if (ace_flag & CE_NON_ALIGNED_APB_FLAG_MSK) {
 			if (ace_flag & CE_NON_ALIGNED_APB_OUT_FLAG_MSK)
@@ -259,28 +252,37 @@ static int get_exception_job_id(struct device *dev)
 				apb_status = apb_in_status;
 
 			if (apb_status & CE_APB_ERR_STATUS_CE0_MSK)
-				return GET_JOB_ID_FROM_TASK(ce0_task);
+				exception_ce_id = 0;
 			else if (apb_status & CE_APB_ERR_STATUS_CE1_MSK)
-				return GET_JOB_ID_FROM_TASK(ce1_task);
+				exception_ce_id = 1;
 			else if (apb_status & CE_APB_ERR_STATUS_CE2_MSK)
-				return GET_JOB_ID_FROM_TASK(ce2_task);
+				exception_ce_id = 2;
 			else if (apb_status & CE_APB_ERR_STATUS_CE3_MSK)
-				return GET_JOB_ID_FROM_TASK(ce3_task);
+				exception_ce_id = 3;
 		}
 	}
 
-	return -1;
+	if (exception_ce_id < 0)
+		return -1;
+
+	dev_info(dev, "CE_%d cause exception\n", exception_ce_id);
+
+	job_id = (ce_task[exception_ce_id] >> CE_TASK_JOB_SFT) & CE_TASK_JOB_MSK;
+
+	dev_info(dev, "CE_%d is running job %d (%s)\n",
+		exception_ce_id, job_id, get_ce_job_name_by_id(job_id));
+
+	return job_id;
 }
 
 static void log_ce_register(struct device *dev)
 {
 	uint32_t op, res0 = 0, res1 = 0, res2 = 0;
 
-	op = (
-		SMC_OP_APU_CE0_RUN_INSTR |
-		SMC_OP_APU_CE1_RUN_INSTR << (BYTE_WIDTH * 1) |
-		SMC_OP_APU_CE2_RUN_INSTR << (BYTE_WIDTH * 2)
-	);
+	op = GET_SMC_OP(SMC_OP_APU_CE0_RUN_INSTR,
+					SMC_OP_APU_CE1_RUN_INSTR,
+					SMC_OP_APU_CE2_RUN_INSTR);
+
 	if (apusys_rv_smc_call(
 			dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, &res2) == 0) {
 		dev_info(dev, "APU_CE0_RUN_INSTR: 0x%08x\n", res0);
@@ -288,26 +290,25 @@ static void log_ce_register(struct device *dev)
 		dev_info(dev, "APU_CE2_RUN_INSTR: 0x%08x\n", res2);
 	}
 
-	op = (
-		SMC_OP_APU_CE3_RUN_INSTR |
-		SMC_OP_APU_CE0_TIMEOUT_INSTR << (BYTE_WIDTH * 1) |
-		SMC_OP_APU_CE1_TIMEOUT_INSTR << (BYTE_WIDTH * 2)
-	);
+	op = GET_SMC_OP(SMC_OP_APU_CE3_RUN_INSTR,
+					SMC_OP_APU_CE0_RUN_PC,
+					SMC_OP_APU_CE1_RUN_PC);
+
 	if (apusys_rv_smc_call(
 			dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, &res2) == 0) {
 		dev_info(dev, "APU_CE3_RUN_INSTR: 0x%08x\n", res0);
-		dev_info(dev, "APU_CE0_TIMEOUT_INSTR: 0x%08x\n", res1);
-		dev_info(dev, "APU_CE1_TIMEOUT_INSTR: 0x%08x\n", res2);
+		dev_info(dev, "SMC_OP_APU_CE0_RUN_PC: 0x%08x\n", res1);
+		dev_info(dev, "SMC_OP_APU_CE1_RUN_PC: 0x%08x\n", res2);
 	}
 
-	op = (
-		SMC_OP_APU_CE2_TIMEOUT_INSTR |
-		SMC_OP_APU_CE3_TIMEOUT_INSTR << (BYTE_WIDTH * 1)
-	);
+	op = GET_SMC_OP(SMC_OP_APU_CE2_RUN_PC,
+					SMC_OP_APU_CE3_RUN_PC,
+					0x0);
+
 	if (apusys_rv_smc_call(
 			dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, NULL) == 0) {
-		dev_info(dev, "APU_CE1_TIMEOUT_INSTR: 0x%08x\n", res0);
-		dev_info(dev, "APU_CE2_TIMEOUT_INSTR: 0x%08x\n", res1);
+		dev_info(dev, "SMC_OP_APU_CE2_RUN_PC: 0x%08x\n", res0);
+		dev_info(dev, "SMC_OP_APU_CE3_RUN_PC: 0x%08x\n", res1);
 	}
 }
 
