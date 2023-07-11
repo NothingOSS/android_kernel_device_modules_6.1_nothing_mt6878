@@ -6679,6 +6679,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 	unsigned int width = crtc->state->adjusted_mode.hdisplay;
 	struct total_tile_overhead to_info;
 	unsigned int pipe = crtc->index;
+	static struct bwm_plane_info plane_info[OVL_LAYER_NR];
 
 	plane_mask = old_crtc_state->plane_mask;
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
@@ -6767,6 +6768,15 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 				MTK_DRM_OPT_TILE_OVERHEAD) &&
 				((dst_x + src_w) >= (width / 2)))
 				cross_mid_line = true;
+
+			if (cross_mid_line &&
+				(plane_info[plane_index].plane_index == plane_index) &&
+				(plane_info[plane_index].width == src_w) &&
+				(plane_info[plane_index].height == src_h) &&
+				(plane_info[plane_index].lye_id == lye_id) &&
+				(plane_info[plane_index].ext_lye_id == ext_lye_id) &&
+				(plane_info[plane_index].dst_x != dst_x))
+				need_skip = true;
 		}
 
 		if (mtk_crtc->is_dual_pipe && cross_mid_line &&
@@ -6805,6 +6815,14 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 						src_w_align, ovl_win_size);
 			}
 		}
+
+		/* Record last frame plane info */
+		plane_info[plane_index].plane_index = plane_index;
+		plane_info[plane_index].width = src_w;
+		plane_info[plane_index].height = src_h;
+		plane_info[plane_index].lye_id = lye_id;
+		plane_info[plane_index].ext_lye_id = ext_lye_id;
+		plane_info[plane_index].dst_x = dst_x;
 
 		DDPDBG_BWM("BWM: plane_index:%u fn:%u index:%d lye_id:%d ext_lye_id:%d\n",
 			plane_index, fn, index, lye_id, ext_lye_id);

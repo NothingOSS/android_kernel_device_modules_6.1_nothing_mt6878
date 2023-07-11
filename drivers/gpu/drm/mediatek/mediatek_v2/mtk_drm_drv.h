@@ -305,6 +305,15 @@ struct layer_compress_ratio_data {
 	__u32 active;
 };
 
+struct bwm_plane_info {
+	__u32 plane_index;
+	__u32 width;
+	__u32 height;
+	__u32 lye_id;
+	__u32 ext_lye_id;
+	__u32 dst_x;
+};
+
 struct layer_compress_ratio_item {
 	__u32 frame_idx;
 	__u64 key_value;
