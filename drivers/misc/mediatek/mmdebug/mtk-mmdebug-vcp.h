@@ -15,6 +15,7 @@
 /* vcp/.../mmdebug_public.h */
 enum MMDEBUG_FUNC {
 	MMDEBUG_FUNC_SMI_DUMP,
+	MMDEBUG_FUNC_KERNEL_WARN,
 	MMDEBUG_FUNC_NUM
 };
 

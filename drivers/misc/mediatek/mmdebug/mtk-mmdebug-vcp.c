@@ -13,6 +13,10 @@
 #include <linux/platform_device.h>
 #include <soc/mediatek/smi.h>
 
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#include <aee.h>
+#endif
+
 #include "vcp_helper.h"
 #include "vcp_reg.h"
 #include "vcp_status.h"
@@ -72,6 +76,14 @@ static int mmdebug_vcp_ipi_cb(unsigned int ipi_id, void *prdata, void *data,
 	switch (slot.func) {
 	case MMDEBUG_FUNC_SMI_DUMP:
 		mtk_smi_dbg_hang_detect("SMI VCP DRIVER");
+		break;
+	case MMDEBUG_FUNC_KERNEL_WARN:
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+		aee_kernel_warning("MMDEBUG", "kernel warning idx:%hhu ack:%hhu base:%hhu",
+			slot.idx, slot.ack, slot.base);
+#endif
+		MMDEBUG_ERR("MMDEBUG kernel warning idx:%hhu ack:%hhu base:%hhu",
+			slot.idx, slot.ack, slot.base);
 		break;
 	default:
 		MMDEBUG_ERR("ipi_id:%u func:%hhu idx:%hhu ack:%hhu base:%hhu",
