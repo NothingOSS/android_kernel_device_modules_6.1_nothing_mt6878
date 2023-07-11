@@ -14227,12 +14227,15 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"ssusb_u2_phy_l0_ip0,ssusb_u2_phy_l1_ip0,ssusb_u2_phy_l2_ip0,",
 				"ssusb_usb2_l2_ip0,ssusb_usb2_l1_ip0,ssusb_usb2_l0_ip0,ssusb_usb3_u3_ip0,ssusb_usb3_u2_ip0,",
 				"ssusb_usb3_u1_ip0,ssusb_usb3_u0_ip0,usb_ck_freq";
-			node-123 = "SSPM_SWPM_MML__ENG_ACTIVE",
+			node-115 = "SSPM_SWPM_MML__ENG_ACTIVE",
 				"MML_ACTIVE,MML_FREQ,",
 				"WROT0_ACTIVE,WROT1_ACTIVE,WROT2_ACTIVE,WROT3_ACTIVE,",
 				"RROT0,RROT0_2ND,RDMA0,RDMA1,RDMA2,RDMA3,FG0,HDR0,HDR1,AAL0,AAL1,C3D0,",
 				"RSZ0,RSZ1,RSZ2,RSZ3,BIRSZ0,BIRSZ1,THSHP0,TDSHP1,COLOR0,COLOR1,",
 				"WROT0,WROT1,WROT2,WROT3";
+			node-116 = "SSPM_SWPM_INFRA",
+				"socsys_freq,socsys_bw,socsys_d0_ratio,socsys_d2_ratio,",
+				"peri_freq,peri_m0_busy_ratio,peri_m1_busy_ratio,peri_d1_ratio,peri_d2_ratio";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
