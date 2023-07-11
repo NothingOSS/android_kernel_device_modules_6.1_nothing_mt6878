@@ -196,7 +196,7 @@ static void rsz_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 	}
 }
 
-static u32 rsz_tbl_sel(u32 alg, u32 step)
+static u32 rsz_tbl_sel(u32 alg, u32 step, bool alpha)
 {
 	u32 table = 0;
 
@@ -204,9 +204,9 @@ static u32 rsz_tbl_sel(u32 alg, u32 step)
 		if (step == 32768)
 			table = 7;
 		else
-			table = 9;
+			table = alpha ? 10 : 9;
 	} else if (alg == 1 || alg == 2) {
-		table = 17;
+		table = alpha ? 19 : 17;
 	}
 
 	return table;
@@ -555,8 +555,10 @@ void rsz_fw(struct rsz_fw_in *in, struct rsz_fw_out *out, bool en_ur)
 		cal_param.signal_enhance_mode = 0;
 	}
 
-	cal_param.hori_tbl = rsz_tbl_sel(out->hori_algo, out->hori_step);
-	cal_param.vert_tbl = rsz_tbl_sel(out->vert_algo, out->vert_step);
+	cal_param.hori_tbl = rsz_tbl_sel(out->hori_algo, out->hori_step, false);
+	cal_param.vert_tbl = rsz_tbl_sel(out->vert_algo, out->vert_step, false);
+	cal_param.hori_alpha_tbl = rsz_tbl_sel(out->hori_algo, out->hori_step, true);
+	cal_param.vert_alpha_tbl = rsz_tbl_sel(out->vert_algo, out->vert_step, true);
 	rsz_auto_align(in, out, true, &cal_param);
 	rsz_auto_align(in, out, false, &cal_param);
 	rsz_ofst_check(out, &cal_param);
@@ -627,6 +629,8 @@ void rsz_fw(struct rsz_fw_in *in, struct rsz_fw_out *out, bool en_ur)
 		    cal_param.vert_chroma_cubic_trunc_bit << 21 |
 		    cal_param.vert_luma_cubic_trunc_bit << 24 |
 		    out->vert_cubic_trunc << 27;
+	out->con3 = cal_param.vert_alpha_tbl << 5 |
+		    cal_param.hori_alpha_tbl;
 	out->tap_adapt = cal_param.tap_adapt_slope |
 			 cal_param.tap_adapt_fallback_ratio << 4 |
 			 cal_param.tap_adapt_var_coring << 10 |

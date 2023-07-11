@@ -36,6 +36,7 @@ struct rsz_fw_out {
 	u32 vert_cubic_trunc;
 	u32 con1;
 	u32 con2;
+	u32 con3;
 	u32 tap_adapt;
 	u32 etc_ctrl;
 	u32 etc_switch_max_min1;
@@ -66,6 +67,8 @@ struct rsz_cal_param {
 	u32 signal_enhance_mode;
 	u32 hori_tbl;
 	u32 vert_tbl;
+	u32 hori_alpha_tbl;
+	u32 vert_alpha_tbl;
 	bool hori_cubic_trunc_en;
 	u32 hori_luma_cubic_trunc_bit;
 	u32 hori_chroma_cubic_trunc_bit;
