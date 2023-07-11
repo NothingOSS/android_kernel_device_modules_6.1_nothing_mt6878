@@ -41,5 +41,7 @@ bool is_infrabus_timeout(void);
 
 void adsp_hardware_init(struct adspsys_priv *adspsys);
 
-#endif
+int adsp_mt_inc_lock_cnt(u32 cid);
+int adsp_mt_dec_lock_cnt(u32 cid);
 
+#endif

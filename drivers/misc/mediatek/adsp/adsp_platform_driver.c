@@ -403,6 +403,9 @@ int adsp_core_common_init(struct adsp_priv *pdata)
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 	pdata->mdev.groups = adsp_core_attr_groups;
 #endif
+
+	spin_lock_init(&pdata->wakelock);
+
 	ret = misc_register(&pdata->mdev);
 	if (unlikely(ret != 0))
 		pr_info("%s(), misc_register fail, %d\n", __func__, ret);

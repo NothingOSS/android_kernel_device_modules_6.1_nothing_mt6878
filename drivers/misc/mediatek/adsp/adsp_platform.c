@@ -122,6 +122,41 @@ u32 adsp_mt_get_semaphore(u32 bit)
 	return (readl(ADSP_SEMAPHORE) >> bit) & 0x1;
 }
 
+int adsp_mt_inc_lock_cnt(u32 cid)
+{
+	void __iomem *lock_reg;
+
+	if (unlikely(cid >= get_adsp_core_total()))
+		return -1;
+
+	if (cid == ADSP_A_ID)
+		lock_reg = ADSP_A_PRELOCK_REG;
+	else
+		lock_reg = ADSP_B_PRELOCK_REG;
+
+	writel(readl(lock_reg) + 1, lock_reg);
+
+	return (int)readl(lock_reg);
+}
+
+int adsp_mt_dec_lock_cnt(u32 cid)
+{
+	void __iomem *lock_reg;
+
+	if (unlikely(cid >= get_adsp_core_total()))
+		return -1;
+
+	if (cid == ADSP_A_ID)
+		lock_reg = ADSP_A_PRELOCK_REG;
+	else
+		lock_reg = ADSP_B_PRELOCK_REG;
+
+	if (readl(lock_reg) != 0)
+		writel(readl(lock_reg) - 1, lock_reg);
+
+	return (int)readl(lock_reg);
+}
+
 void adsp_hardware_init(struct adspsys_priv *adspsys)
 {
 	if (unlikely(!adspsys))

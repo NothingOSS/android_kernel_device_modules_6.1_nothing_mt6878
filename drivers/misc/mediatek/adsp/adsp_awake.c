@@ -3,6 +3,7 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
+#include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/mutex.h>
 #include <linux/ktime.h>
@@ -11,6 +12,7 @@
 #include "adsp_reserved_mem.h"
 #include "adsp_platform.h"
 #include "adsp_platform_driver.h"
+#include "adsp_reg.h"
 
 #define WAIT_MS                     (1000)
 #define AP_AWAKE_LOCK_BIT           (0)
@@ -18,6 +20,51 @@
 #define AP_AWAKE_LOCK_MASK          (0x1 << AP_AWAKE_LOCK_BIT)
 #define AP_AWAKE_UNLOCK_MASK        (0x1 << AP_AWAKE_UNLOCK_BIT)
 
+int adsp_pre_wake_lock(u32 cid)
+{
+	unsigned long flags;
+	int ret = 0, retry = 1000;
+	u32 mask;
+	struct adsp_priv *pdata = get_adsp_core_by_id(cid);
+
+	spin_lock_irqsave(&pdata->wakelock, flags);
+	ret = adsp_mt_inc_lock_cnt(cid);
+	spin_unlock_irqrestore(&pdata->wakelock, flags);
+
+	/* wakeup */
+	adsp_mt_set_swirq(cid);
+
+	/* polling adsp status */
+	if (cid == ADSP_A_ID)
+		mask = ADSP_A_IS_WFI;
+	else
+		mask = ADSP_B_IS_WFI;
+
+	while (check_hifi_status(mask) && --retry)
+		usleep_range(20, 50);
+
+	if (retry == 0) {
+		pr_info("%s cannot wakeup adsp, hifi_status: %x, retry: %d\n",
+			__func__, check_hifi_status(mask), retry);
+		return -ETIME;
+
+	}
+
+	return 0;
+}
+
+int adsp_pre_wake_unlock(u32 cid)
+{
+	unsigned long flags;
+	int ret = 0;
+	struct adsp_priv *pdata = get_adsp_core_by_id(cid);
+
+	spin_lock_irqsave(&pdata->wakelock, flags);
+	ret = adsp_mt_dec_lock_cnt(cid);
+	spin_unlock_irqrestore(&pdata->wakelock, flags);
+
+	return 0;
+}
 
 /*
  * acquire adsp lock flag, keep adsp awake

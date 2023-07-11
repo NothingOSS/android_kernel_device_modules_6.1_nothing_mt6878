@@ -84,6 +84,8 @@ struct adsp_priv {
 
 	/* method */
 	const struct adsp_core_operations *ops;
+
+	spinlock_t wakelock;
 };
 
 struct adspsys_priv {

@@ -72,5 +72,7 @@ int adsp_awake_unlock(u32 cid);
 int adsp_enable_uart_clock(void);
 void adsp_disable_uart_clock(void);
 void adsp_select_uart_clock_mode(enum adsp_clk_mode mode);
+int adsp_pre_wake_lock(u32 cid);
+int adsp_pre_wake_unlock(u32 cid);
 
 #endif

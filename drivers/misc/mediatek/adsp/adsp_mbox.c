@@ -10,6 +10,8 @@
 #include "adsp_platform.h"
 #include "adsp_mbox.h"
 
+#include "adsp_platform_driver.h"
+
 static int (*ipi_queue_recv_msg_hanlder)(
 	uint32_t core_id, /* enum adsp_core_id */
 	uint32_t ipi_id,  /* enum adsp_ipi_id */
@@ -114,6 +116,20 @@ void adsp_mbox_dump(void)
 	mtk_mbox_dump_recv_pin(&adsp_mboxdev, &adsp_mbox_pin_recv[1]);
 }
 
+static int mbox_pin_send_num_to_core(u32 mbox)
+{
+	struct mtk_mbox_pin_send *mbox_pin = NULL;
+	u32 cid;
+
+	for (cid = 0; cid < ADSP_CORE_TOTAL; cid++) {
+		mbox_pin = adsp_cores[cid]->send_mbox;
+		if (mbox_pin->mbox == mbox)
+			return adsp_cores[cid]->id;
+	}
+
+	return -1;
+}
+
 int adsp_mbox_send(struct mtk_mbox_pin_send *pin_send, void *msg,
 		unsigned int wait)
 {
@@ -121,12 +137,21 @@ int adsp_mbox_send(struct mtk_mbox_pin_send *pin_send, void *msg,
 	struct mtk_mbox_device *mbdev = &adsp_mboxdev;
 	ktime_t start_time;
 	s64 time_ipc_us;
+	int cid;
 
 	if (mutex_trylock(&pin_send->mutex_send) == 0) {
 		pr_info("%s, mbox %d mutex_trylock busy",
 			__func__, pin_send->mbox);
 		return MBOX_PIN_BUSY;
 	}
+
+	/* wakeup & lock ADSP before AP access ADSP REG/SRAM */
+	cid = mbox_pin_send_num_to_core(pin_send->mbox);
+	if (cid < 0 || cid >= ADSP_CORE_TOTAL) {
+		result = MBOX_CONFIG_ERR;
+		goto EXIT_MUTEX;
+	}
+	adsp_pre_wake_lock((u32)cid);
 
 	if (mtk_mbox_check_send_irq(mbdev, pin_send->mbox,
 				    pin_send->pin_index)) {
@@ -136,6 +161,7 @@ int adsp_mbox_send(struct mtk_mbox_pin_send *pin_send, void *msg,
 
 	result = mtk_mbox_write_hd(mbdev, pin_send->mbox,
 				pin_send->offset, msg);
+
 
 	if (result != MBOX_DONE) {
 		pr_err("%s() error mbox%d write, result %d\n",
@@ -166,6 +192,8 @@ int adsp_mbox_send(struct mtk_mbox_pin_send *pin_send, void *msg,
 		}
 	}
 EXIT:
+	adsp_pre_wake_unlock((u32)cid);
+EXIT_MUTEX:
 	mutex_unlock(&pin_send->mutex_send);
 	return result;
 }

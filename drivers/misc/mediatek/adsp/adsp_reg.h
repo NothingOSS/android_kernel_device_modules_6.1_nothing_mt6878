@@ -63,6 +63,8 @@
 
 #define ADSP_CFGREG_RSV_RW_REG0     (ADSP_BASE + 0x008C)
 #define ADSP_CFGREG_RSV_RW_REG1     (ADSP_BASE + 0x0090)
+#define ADSP_A_PRELOCK_REG          (ADSP_CFGREG_RSV_RW_REG0)
+#define ADSP_B_PRELOCK_REG          (ADSP_CFGREG_RSV_RW_REG1)
 
 /* Latch Debug info after WDT */
 #define ADSP_A_WDT_DEBUG_PC_REG     (ADSP_BASE + 0x0170)
