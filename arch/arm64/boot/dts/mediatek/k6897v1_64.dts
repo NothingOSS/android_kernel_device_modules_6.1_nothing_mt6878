@@ -327,6 +327,30 @@ bootargs_ext = "8250.nr_uarts=4";
 	};
 };
 
+&mt6363_vbuck1 {
+	regulator-always-on;
+};
+
+&mt6363_vbuck2 {
+	regulator-always-on;
+};
+
+&mt6363_vsram_digrf {
+	regulator-always-on;
+};
+
+&mt6363_vsram_modem {
+	regulator-always-on;
+};
+
+&mt6363_vcn15 {
+	regulator-always-on;
+};
+
+&mt6363_vrf12 {
+	regulator-always-on;
+};
+
 #include "mediatek/cust_k6897_connfem.dtsi"
 #include "mediatek/cust_mt6897_touch_1080x2400.dtsi"
 #include "mediatek/cust_mt6897_camera_v4l2.dtsi"
