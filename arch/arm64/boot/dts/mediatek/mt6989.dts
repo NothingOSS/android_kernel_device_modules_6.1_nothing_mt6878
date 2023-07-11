@@ -14202,6 +14202,8 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-115 = "SSPM_SWPM_INFRA",
 				"socsys_freq,socsys_bw,socsys_d0_ratio,socsys_d2_ratio,",
 				"peri_freq,peri_m0_busy_ratio,peri_m1_busy_ratio,peri_d1_ratio,peri_d2_ratio";
+			node-116 = "SSPM_SWPM_VCP__POWER_STATE", "hfrp_active,hfrp_sleep,hfrp_wfi,",
+				"hfrp_pwr,hfrp_frequency";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
