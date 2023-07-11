@@ -230,7 +230,7 @@ static const struct rrot_data mt6989_rrot_data = {
 			.settings = th_afbc_mt6989,
 		},
 	},
-	.px_per_tick = 2,
+	.px_per_tick = 1,
 };
 
 struct mml_comp_rrot {
