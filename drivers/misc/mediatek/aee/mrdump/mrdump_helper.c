@@ -290,6 +290,7 @@ void *aee_log_buf_addr_get(void)
 	pr_info("%s failed", __func__);
 	return NULL;
 }
+EXPORT_SYMBOL(aee_log_buf_addr_get);
 
 unsigned long aee_get_kallsyms_addresses(void)
 {
@@ -364,8 +365,9 @@ static void aee_base_addrs_init(void)
 			continue;
 		}
 
-		if (!p_log_ptr && strcmp(strbuf, "prb") == 0) {
-			p_log_ptr = (void *)mrdump_idx2addr(i);
+		if (strcmp(strbuf, "prb") == 0) {
+			if (!p_log_ptr)
+				p_log_ptr = (void *)mrdump_idx2addr(i);
 			search_num--;
 			continue;
 		}

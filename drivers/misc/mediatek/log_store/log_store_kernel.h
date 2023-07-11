@@ -55,17 +55,17 @@ struct pl_lk_log {
 	u32 lk_flag;        // lk log flag
 };
 
-/* total 40 bytes <= u32(4 bytes) * 10 = 40 bytes */
+/* total 52 bytes <= u32(4 bytes) * 7 + u64(8 bytes) * 3 = 52 bytes */
 struct dram_buf_header {
 	u32 sig;
 	u32 flag;
-	u32 buf_addr;
+	u64 buf_addr;
 	u32 buf_size;
 	u32 buf_offsize;
 	u32 buf_point;
-	u32 klog_addr;
+	u64 klog_addr;
 	u32 klog_size;
-	u32 atf_log_addr;
+	u64 atf_log_addr;
 	u32 atf_log_len;
 } __packed;
 
@@ -74,15 +74,16 @@ struct sram_log_header {
 	u32 sig;
 	u32 reboot_count;
 	u32 save_to_emmc;
-	struct dram_buf_header dram_buf;        // 40 bytes
+	struct dram_buf_header dram_buf;        // 52 bytes
 	struct pl_lk_log dram_curlog_header;    // 32 bytes
-	u32 gz_log_addr;
+	u64 gz_log_addr;
 	u32 gz_log_len;
-	u32 reserve[41];        // reserve 41 * 4 char size	u32 reserve[37];
+	u32 reserve[37];                        // reserve 37 * 4 char size(148 bytes)
 	/* reserve[0] sram_log record log size */
-	/* reserve[1] save block size for kernel use */
+	/* reserve[1] save block size for kernel use*/
 	/* reserve[2] pmic save boot phase enable/disable */
 	/* reserve[3] save history boot phase */
+	/* reserve[4] save pl/lk log size/point */
 } __packed;
 #define SRAM_RECORD_LOG_SIZE 0X00
 #define SRAM_BLOCK_SIZE 0x01

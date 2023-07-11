@@ -25,7 +25,9 @@
 #include <linux/kmsg_dump.h>
 #include <linux/suspend.h>
 #include <linux/platform_device.h>
+#include <printk/printk_ringbuffer.h>
 #include "log_store_kernel.h"
+#include "mrdump_helper.h"
 
 static struct sram_log_header *sram_header;
 static int sram_log_store_status = BUFF_NOT_READY;
@@ -42,6 +44,7 @@ static u32 pmic_addr;
 
 #define LOG_BLOCK_SIZE (512)
 #define EXPDB_LOG_SIZE (2*1024*1024)
+#define EMMC_LOG_BUF_SIZE (0x200000)
 
 bool get_pmic_interface(void)
 {
@@ -169,6 +172,8 @@ void log_store_bootup(void)
 	/* Boot up finish, don't save log to emmc in next boot.*/
 	store_log_to_emmc_enable(false);
 	set_boot_phase(BOOT_PHASE_ANDROID);
+	/* store printk log buff information to DRAM */
+	store_printk_buff();
 }
 EXPORT_SYMBOL_GPL(log_store_bootup);
 
@@ -349,7 +354,7 @@ static int __init log_store_late_init(void)
 		dram_log_store_status = BUFF_ALLOC_ERROR;
 		return -1;
 	}
-	pr_notice("log store:sram_dram_buff addr 0x%x, size 0x%x.\n",
+	pr_notice("log store:sram_dram_buff addr 0x%llx, size 0x%x.\n",
 		sram_dram_buff->buf_addr, sram_dram_buff->buf_size);
 
 	pbuff = remap_lowmem(sram_dram_buff->buf_addr,
@@ -394,39 +399,34 @@ static int __init log_store_late_init(void)
 /* need mapping virtual address to phy address */
 void store_printk_buff(void)
 {
-/*
-	phys_addr_t log_buf;
+	struct printk_ringbuffer **pprb;
+	struct printk_ringbuffer *prb;
 	char *buff;
-	int size;
+	u32 buff_size;
 
 	if (!sram_dram_buff) {
 		pr_notice("log_store: sram_dram_buff is null.\n");
 		return;
 	}
 
-	buff = log_buf_addr_get();
-	log_buf = __virt_to_phys_nodebug(buff);
-	size = log_buf_len_get();
-*/
+	pprb = (struct printk_ringbuffer **)aee_log_buf_addr_get();
+	if (!pprb || !*pprb)
+		return;
+	prb = *pprb;
 
-	/* support 32/64 bits */
-/*
-#ifdef CONFIG_PHYS_ADDR_T_64BIT
-	if ((log_buf >> 32) == 0)
-		sram_dram_buff->klog_addr = (u32)(log_buf & 0xffffffff);
-	else
-		sram_dram_buff->klog_addr = 0;
-#else
-	sram_dram_buff->klog_addr = log_buf;
-#endif
-	sram_dram_buff->klog_size = size;
+	buff = prb->text_data_ring.data;
+	buff_size = (u32)(1 << prb->text_data_ring.size_bits);
+	sram_dram_buff->klog_addr = __virt_to_phys_nodebug(buff);
+	sram_dram_buff->klog_size = buff_size;
+	if (buff_size > EMMC_LOG_BUF_SIZE/4)
+		sram_dram_buff->klog_size = EMMC_LOG_BUF_SIZE/4;
+
 	if (!early_log_disable)
 		sram_dram_buff->flag |= BUFF_EARLY_PRINTK;
-	pr_notice("log_store printk_buff addr:0x%x,sz:0x%x,buff-flag:0x%x.\n",
+	pr_notice("log_store printk_buff addr:0x%llx,sz:0x%x,buff-flag:0x%x.\n",
 		sram_dram_buff->klog_addr,
 		sram_dram_buff->klog_size,
 		sram_dram_buff->flag);
-*/
 }
 EXPORT_SYMBOL_GPL(store_printk_buff);
 
@@ -518,15 +518,11 @@ static int __init log_store_early_init(void)
 		return -1;
 	}
 
-
-	/* store printk log buff information to DRAM */
-	store_printk_buff();
-
 	if (sram_header->reserve[1] == 0 ||
 		sram_header->reserve[1] > EXPDB_LOG_SIZE)
 		sram_header->reserve[1] = LOG_BLOCK_SIZE;
 
-	pr_notice("sig 0x%x flag 0x%x add 0x%x size 0x%x offsize 0x%x point 0x%x\n",
+	pr_notice("sig 0x%x flag 0x%x add 0x%llx size 0x%x offsize 0x%x point 0x%x\n",
 		sram_dram_buff->sig, sram_dram_buff->flag,
 		sram_dram_buff->buf_addr, sram_dram_buff->buf_size,
 		sram_dram_buff->buf_offsize, sram_dram_buff->buf_point);
