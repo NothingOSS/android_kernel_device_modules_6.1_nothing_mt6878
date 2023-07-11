@@ -4317,6 +4317,7 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 	int rl_target_fpks;
 	int ret = 0;
 	int test_blc_wt_b, test_blc_wt_m, test_blc_wt;
+	unsigned long long t_fps_margin_exp_time;
 	unsigned long long rl_target_t = last_target_t_ns;
 
 	if (out_target_t_ns)
@@ -4355,11 +4356,16 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 					rl_target_t = last_target_t_ns;
 			}
 			if (target_fps_margin > 0) {
-				if (rl_target_t > last_target_t_ns) {
+				t_fps_margin_exp_time = 1000000000000ULL /
+					(unsigned long long) ((unsigned long long) target_fpks +
+					(unsigned long long) target_fps_margin * 1000);
+				if (t_fps_margin_exp_time < rl_target_t)
+					rl_target_t = t_fps_margin_exp_time;
+				if (rl_target_t > last_target_t_ns)
 					rl_target_t = last_target_t_ns;
-					fpsgo_main_trace("[%s] target_fps_margin=%d,",
-						__func__, target_fps_margin);
-				}
+				fpsgo_main_trace(
+					"[%s] target_fps_margin=%d, fps_margin_exp_time=%llu",
+						__func__, target_fps_margin, t_fps_margin_exp_time);
 			}
 		}
 
@@ -4485,8 +4491,10 @@ static int fbt_boost_policy(
 		limit_max_cap, limit_cap_b, limit_cap_m, &t2);
 
 	boost_info->last_target_time_ns = t2;
-	if (fpsgo_set_last_target_t_fp)
-		fpsgo_set_last_target_t_fp(pid, buffer_id, t2);
+	if (!fps_margin) {
+		if (fpsgo_set_last_target_t_fp)
+			fpsgo_set_last_target_t_fp(pid, buffer_id, t2);
+	}
 
 	t2 = nsec_to_100usec_ull(t2);
 
