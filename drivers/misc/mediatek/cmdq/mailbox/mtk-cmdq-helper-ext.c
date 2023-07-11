@@ -1042,6 +1042,7 @@ struct cmdq_pkt *cmdq_pkt_create(struct cmdq_client *client)
 		cmdq_pkt_hw_trace(pkt, 0);
 #endif
 	pkt->task_alive = true;
+	pkt->create_instr_cnt = pkt->cmd_buf_size / CMDQ_INST_SIZE;
 	return pkt;
 }
 EXPORT_SYMBOL(cmdq_pkt_create);
@@ -2622,6 +2623,7 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 	u32 debug_cnt = 0;
 	u8 irq_long_times;
 	struct cmdq_client *client = pkt->cl;
+	struct cmdq_thread *thread = (struct cmdq_thread *)client->chan->con_priv;
 #endif
 #endif
 
@@ -2651,8 +2653,7 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 	if (!pkt->sec_data) {
 		irq_long_times = cmdq_get_irq_long_times(client->chan);
 		if (debug_end[1] - debug_end[0] >= 500000 && !irq_long_times)
-			cmdq_util_err("IRQ_LONG:%llu in user callback",
-				debug_end[1] - debug_end[0]);
+			thread->user_cb_cost = debug_end[1] - debug_end[0];
 	}
 #endif
 #endif
@@ -2898,6 +2899,11 @@ s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 	err = cmdq_pkt_finalize(pkt);
 	if (err < 0)
 		return err;
+
+	if (pkt->create_instr_cnt == (pkt->cmd_buf_size / CMDQ_INST_SIZE)) {
+		cmdq_err("pkt is non-cmd");
+		return -EINVAL;
+	}
 
 	if (append_by_event && pkt->pause_offset) {
 		struct cmdq_instruction *cmdq_inst, inst;
