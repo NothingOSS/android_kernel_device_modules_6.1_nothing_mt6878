@@ -16,6 +16,7 @@
 #endif
 
 #include "mtk_drm_crtc.h"
+#include "mtk_drm_ddp.h"
 #include "mtk_drm_ddp_comp.h"
 #include "mtk_dump.h"
 #include "mtk_rect.h"
@@ -737,9 +738,54 @@ int mtk_rsz_analysis(struct mtk_ddp_comp *comp)
 	return 0;
 }
 
+static void mtk_rsz_sw_reset(struct mtk_ddp_comp *comp)
+{
+	struct cmdq_pkt *handle;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	bool async = false;
+
+	mtk_crtc_pkt_create(&handle, &mtk_crtc->base,
+		mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	DDPINFO("%s+:RSZ idx%d cmdq_handle0x%lx\n", __func__, comp->id, (unsigned long)handle);
+	async = mtk_drm_idlemgr_get_async_status(crtc);
+
+	if (comp->id == DDP_COMPONENT_RSZ0)
+		mtk_ddp_reset_comp(comp, handle, 0);
+	else
+		mtk_ddp_reset_comp(comp, handle, 1);
+
+	if (async == false) {
+		cmdq_pkt_flush(handle);
+		cmdq_pkt_destroy(handle);
+	} else {
+		int ret = 0;
+
+		ret = mtk_drm_idle_async_flush_cust(crtc, comp->id,
+					handle, true, NULL);
+		if (ret < 0) {
+			cmdq_pkt_flush(handle);
+			cmdq_pkt_destroy(handle);
+			DDPMSG("%s, failed of async flush, %d\n", __func__, ret);
+		}
+	}
+
+	DDPINFO("%s-\n", __func__);
+}
+
+
 static void mtk_rsz_prepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_rsz *rsz = comp_to_rsz(comp);
+	struct mtk_drm_private *priv = NULL;
+
+	if (comp->mtk_crtc && comp->mtk_crtc->base.dev->dev_private &&
+		(comp->id == DDP_COMPONENT_RSZ0 || comp->id == DDP_COMPONENT_RSZ2)) {
+		priv = comp->mtk_crtc->base.dev->dev_private;
+		if (priv->data->mmsys_id == MMSYS_MT6897)
+			mtk_rsz_sw_reset(comp);
+	} else
+		DDPINFO("%s comp%d crtc=null", __func__, comp->id);
 
 	mtk_ddp_comp_clk_prepare(comp);
 

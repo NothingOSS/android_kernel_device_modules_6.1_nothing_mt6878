@@ -313,5 +313,7 @@ void mtk_ddp_clean_ovl_pq_crossbar(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle);
 
 char *mtk_ddp_get_mutex_sof_name(unsigned int regval);
+void mtk_ddp_reset_comp(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, unsigned int pipe);
+
 
 #endif /* MTK_DRM_DDP_H */

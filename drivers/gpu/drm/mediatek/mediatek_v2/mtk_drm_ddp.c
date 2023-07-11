@@ -975,6 +975,9 @@
 #define MT6897_DISP_REG_OVLSYS_DL_READY_5 0xE7C
 #define MT6897_DISP_REG_OVLSYS_SMI_LARB0_GREQ 0x8DC
 #define MT6897_DISP_REG_OVLSYS_SMI_LARB1_GREQ 0x8E0
+#define MT6897_MMSYS_SW_RST_0	0x160
+#define MT6897_MMSYS_SW_RST_0_DISP_RSZ0		BIT(31)
+
 
 
 #define MT6985_OVLSYS_BYPASS_MUX_SHADOW	0xF00
@@ -17765,6 +17768,36 @@ void mtk_disp_ultra_offset(void __iomem *config_regs,
 	} else {
 		reg = readl_relaxed(config_regs + addr) & ~(0x0 << shift);
 		writel_relaxed(reg | (0x0 << shift), config_regs + addr);
+	}
+}
+
+void mtk_ddp_reset_comp(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, unsigned int pipe)
+{
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	resource_size_t config_regs_pa;
+	unsigned int addr = 0xffffffff, bit = 0;
+
+	if (comp == NULL || handle == NULL)
+		return;
+
+	if (pipe == 0)
+		config_regs_pa = mtk_crtc->config_regs_pa;
+	else
+		config_regs_pa = mtk_crtc->side_config_regs_pa;
+
+	switch (comp->id) {
+	case DDP_COMPONENT_RSZ0:
+	case DDP_COMPONENT_RSZ2:
+		addr = MT6897_MMSYS_SW_RST_0;
+		bit = MT6897_MMSYS_SW_RST_0_DISP_RSZ0;
+		break;
+	default:
+		break;
+	}
+
+	if (addr != 0xffffffff) {
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base, config_regs_pa + addr, 0, bit);
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base, config_regs_pa + addr, bit, bit);
 	}
 }
 
