@@ -69,12 +69,14 @@ static int mt6681_check_id(struct mt6681_pmic_info *mpi)
 
 void mt6681_Keyunlock(struct mt6681_pmic_info *mpi)
 {
-	regmap_write(mpi->regmap, MT6681_TOP_DIG_WPK, 0x38);
-	regmap_write(mpi->regmap, MT6681_TOP_DIG_WPK_H, 0x63);
-	regmap_write(mpi->regmap, MT6681_TOP_TMA_KEY, 0xc7);
-	regmap_write(mpi->regmap, MT6681_TOP_TMA_KEY_H, 0x9c);
-	regmap_write(mpi->regmap, MT6681_TOP2_ELR2, 0x2a);
-	regmap_write(mpi->regmap, MT6681_TOP2_ELR3, 0x2a);
+	regmap_write(mpi->regmap, MT6681_TOP_DIG_WPK, 0x81);
+	regmap_write(mpi->regmap, MT6681_TOP_DIG_WPK_H, 0x66);
+	regmap_write(mpi->regmap, MT6681_TOP_TMA_KEY, 0x7e);
+	regmap_write(mpi->regmap, MT6681_TOP_TMA_KEY_H, 0x99);
+	regmap_write(mpi->regmap, MT6681_PSC_WPK_L, 0x29);
+	regmap_write(mpi->regmap, MT6681_PSC_WPK_H, 0x47);
+	regmap_write(mpi->regmap, MT6681_HK_TOP_WKEY_L, 0x81);
+	regmap_write(mpi->regmap, MT6681_HK_TOP_WKEY_H, 0x66);
 }
 
 void mt6681_Keylock(struct mt6681_pmic_info *mpi)
