@@ -1392,6 +1392,7 @@ static void venc_get_free_buffers(struct venc_inst *inst,
 	pResult->bs_va = list->venc_bs_va_list[list->read_idx];
 	pResult->frm_va = list->venc_fb_va_list[list->read_idx];
 	pResult->is_last_slc = list->is_last_slice[list->read_idx];
+	pResult->flags = list->flags[list->read_idx];
 
 	mtk_vcodec_debug(inst, "bsva %lx frva %lx bssize %d iskey %d is_last_slc=%d",
 		pResult->bs_va,
