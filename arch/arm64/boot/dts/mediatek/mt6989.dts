@@ -9703,7 +9703,7 @@
 				<SMMU_L14_P2_CAMSV_A1_WDMA>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L14_P0_CAMSV_A_CQI_E1)
-					&mmqos SLAVE_COMMON(0)>,
+					&mmqos SLAVE_COMMON(1)>,
 				<&mmqos MASTER_LARB_PORT(SMMU_L14_P1_CAMSV_A0_WDMA)
 					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(SMMU_L14_P1_CAMSV_A0_WDMA)
@@ -9763,7 +9763,7 @@
 				<SMMU_L13_P2_CAMSV_B1_WDMA>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L13_P0_CAMSV_B_CQI_E1)
-					&mmqos SLAVE_COMMON(0)>,
+					&mmqos SLAVE_COMMON(1)>,
 				<&mmqos MASTER_LARB_PORT(SMMU_L13_P1_CAMSV_B0_WDMA)
 					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(SMMU_L13_P1_CAMSV_B0_WDMA)
@@ -9823,7 +9823,7 @@
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L29_P0_CAMSV_C_CQI_E1)
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(SMMU_L29_P0_CAMSV_C_CQI_E1)
+				<&mmqos MASTER_LARB_PORT(SMMU_L29_P4_CAMSV_C_WDMA)
 					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names =
 				"l29_cqi_c",

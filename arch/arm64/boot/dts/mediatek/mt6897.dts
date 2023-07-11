@@ -11526,7 +11526,7 @@
 						"topckgen_top_camtm_sel";
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L14_P0_CAMSV_A_CQI_E1)
-					&mmqos SLAVE_COMMON(0)>,
+					&mmqos SLAVE_COMMON(1)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L14_P1_CAMSV_A0_WDMA)
 					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L14_P1_CAMSV_A0_WDMA)
@@ -11584,7 +11584,7 @@
 						"topckgen_top_camtm_sel";
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(M4U_L13_P0_CAMSV_B_CQI_E1)
-					&mmqos SLAVE_COMMON(0)>,
+					&mmqos SLAVE_COMMON(1)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L13_P1_CAMSV_B0_WDMA)
 					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos MASTER_LARB_PORT(M4U_L13_P1_CAMSV_B0_WDMA)
