@@ -745,14 +745,19 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
 		memcpy(&aal->frame_data.size_info.frame_in_crop_s[0],
 			&cfg->frame_in_crop[0],	MML_MAX_OUTPUTS * sizeof(struct mml_crop));
-		memcpy(&aal->frame_data.size_info.frame_in_s, &cfg->frame_in,
-			sizeof(struct mml_frame_size));
+
+		aal->frame_data.size_info.crop_size_s.width =
+			cfg->frame_tile_sz.width;
+		aal->frame_data.size_info.crop_size_s.height=
+			cfg->frame_tile_sz.height;
+		aal->frame_data.size_info.frame_size_s.width = cfg->frame_in.width;
+		aal->frame_data.size_info.frame_size_s.height = cfg->frame_in.height;
 		aal->jobid = task->job.jobid;
 
 		if (task->config->dual)
 			aal->cut_pos_x = cfg->hist_div[ccfg->tile_eng_idx];
 		else
-			aal->cut_pos_x = dest->crop.r.width;
+			aal->cut_pos_x = task->config->frame_tile_sz.width;
 
 		aal->dre_blk_width = aal_frm->dre_blk_width;
 		aal->dre_blk_height = aal_frm->dre_blk_height;
@@ -875,6 +880,7 @@ static void aal_write_curve(struct mml_comp *comp, struct mml_task *task,
 		}
 		sram_staus = true;
 	} while (0);
+
 	for (i = 0; i < AAL_CURVE_NUM; i++, addr += 4)
 		if (sram_staus)
 			writel(curve[i], base + aal->data->reg_table[AAL_SRAM_RW_IF_1]);
@@ -1024,12 +1030,9 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	const phys_addr_t base_pa = comp->base_pa;
 	struct aal_frame_data *aal_frm = aal_frm_data(ccfg);
-	const struct mml_crop *crop = &cfg->frame_in_crop[ccfg->node->out_idx];
 	struct mml_comp_aal *aal = comp_to_aal(comp);
 
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
-	u32 src_frame_width = cfg->frame_in.width;
-	u32 src_frame_height = cfg->frame_in.height;
 	u16 tile_cnt = cfg->frame_tile[ccfg->pipe]->tile_cnt;
 
 	u32 aal_input_w;
@@ -1083,7 +1086,7 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 		if (task->config->dual)
 			aal_frm->cut_pos_x = cfg->hist_div[ccfg->tile_eng_idx];
 		else
-			aal_frm->cut_pos_x = crop->r.width;
+			aal_frm->cut_pos_x = task->config->frame_tile_sz.width;
 		if (ccfg->pipe)
 			aal_frm->out_hist_xs = aal_frm->cut_pos_x;
 	}
@@ -1121,7 +1124,7 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 	tile_pxl_x_start = tile->in.xs;
 	tile_pxl_x_end = tile->in.xe;
 
-	last_tile_x_flag = (tile->in.xe+1 >= src_frame_width) ? 1:0;
+	last_tile_x_flag = (tile->in.xe+1 >= task->config->frame_tile_sz.width) ? 1:0;
 
 	mml_pq_msg("%s %d: %d: %d: [tile_pxl] [xs, xe] = [%d, %d]",
 		__func__, task->job.jobid, comp->id, idx, tile_pxl_x_start, tile_pxl_x_end);
@@ -1131,7 +1134,7 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 	tile_pxl_y_start = 0;
 	tile_pxl_y_end = tile->in.ye - tile->in.ys;
 
-	last_tile_y_flag = (tile_pxl_y_end+1 >= src_frame_height) ? 1:0;
+	last_tile_y_flag = (tile_pxl_y_end+1 >= task->config->frame_tile_sz.height) ? 1:0;
 	roi_x_start = 0;
 	roi_x_end = tile->in.xe - tile->in.xs;
 	roi_y_start = 0;
@@ -1715,8 +1718,8 @@ static bool get_dre_block(u32 *phist, const int block_x, const int block_y,
 static void aal_hist_blk_calc(struct mml_comp_aal *aal, u32 *dre_blk_x_num,
 			u32 *dre_blk_y_num)
 {
-	u32 src_width = aal->frame_data.size_info.frame_in_s.width;
-	u32 src_height = aal->frame_data.size_info.frame_in_s.height;
+	u32 src_width = aal->frame_data.size_info.frame_size_s.width;
+	u32 src_height = aal->frame_data.size_info.frame_size_s.height;
 	u32 blk_height = 1;
 	u32 j = MAX_HIST_CHECK_BLK_Y_NUM;
 
@@ -1814,8 +1817,8 @@ static bool aal_hist_check(struct mml_comp *comp, struct mml_task *task,
 	if (IS_ERR_OR_NULL(cfg) || IS_ERR_OR_NULL(aal_frm))
 		return false;
 
-	crop_width = cfg->frame_in_crop[ccfg->node->out_idx].r.width;
-	crop_height = cfg->frame_in_crop[ccfg->node->out_idx].r.height;
+	crop_width = cfg->frame_tile_sz.width;
+	crop_height = cfg->frame_tile_sz.height;
 	cut_pos_x = aal_frm->cut_pos_x;
 	dre_blk_width = aal_frm->dre_blk_width;
 	dre_blk_height = aal_frm->dre_blk_height;

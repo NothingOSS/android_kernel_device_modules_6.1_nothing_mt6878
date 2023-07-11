@@ -43,9 +43,10 @@ struct mml_pq_tile_init_result {
 };
 
 struct mml_pq_frame_info {
-	struct mml_crop frame_in_crop_s[MML_MAX_OUTPUTS];
-	struct mml_frame_size frame_in_s;
-	uint16_t out_rotate[MML_MAX_OUTPUTS];
+	struct mml_crop frame_in_crop_s[MML_MAX_OUTPUTS]; /*rsz out size*/
+	struct mml_frame_size crop_size_s; /*video crop in size*/
+	struct mml_frame_size frame_size_s; /*video frame in size*/
+	u16 out_rotate[MML_MAX_OUTPUTS];
 };
 
 struct mml_pq_tile_init_job {

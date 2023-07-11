@@ -422,8 +422,13 @@ static s32 tdshp_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 				MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
 			memcpy(&tdshp->frame_data.size_info.frame_in_crop_s[0],
 				&cfg->frame_in_crop[0],	MML_MAX_OUTPUTS * sizeof(struct mml_crop));
-			memcpy(&tdshp->frame_data.size_info.frame_in_s, &cfg->frame_in,
-				sizeof(struct mml_frame_size));
+
+			tdshp->frame_data.size_info.crop_size_s.width =
+				cfg->frame_tile_sz.width;
+			tdshp->frame_data.size_info.crop_size_s.height=
+				cfg->frame_tile_sz.height;
+			tdshp->frame_data.size_info.frame_size_s.width = cfg->frame_in.width;
+			tdshp->frame_data.size_info.frame_size_s.height = cfg->frame_in.height;
 
 
 			tdshp->hist_pkts[ccfg->pipe]->no_irq = !task->config->irq;

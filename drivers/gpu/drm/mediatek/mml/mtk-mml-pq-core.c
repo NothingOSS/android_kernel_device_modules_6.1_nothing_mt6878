@@ -795,8 +795,14 @@ static int set_sub_task(struct mml_task *task,
 		memcpy(&sub_task->frame_data.size_info.frame_in_crop_s[0],
 			&task->config->frame_in_crop[0],
 			MML_MAX_OUTPUTS *sizeof(struct mml_crop));
-		memcpy(&sub_task->frame_data.size_info.frame_in_s,
-			&task->config->frame_in, sizeof(struct mml_frame_size));
+
+		sub_task->frame_data.size_info.crop_size_s.width =
+			task->config->frame_tile_sz.width;
+		sub_task->frame_data.size_info.crop_size_s.height=
+			task->config->frame_tile_sz.height;
+		sub_task->frame_data.size_info.frame_size_s.width = task->config->frame_in.width;
+		sub_task->frame_data.size_info.frame_size_s.height = task->config->frame_in.height;
+
 		sub_task->readback_data.is_dual = task->config->dual;
 
 		mml_pq_msg("%s out_rotate[%d %d]", __func__,

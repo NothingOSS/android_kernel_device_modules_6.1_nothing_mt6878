@@ -1183,9 +1183,15 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		memcpy(&wrot->frame_data.frame_out, &task->config->frame_out,
 			MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
 		memcpy(&wrot->frame_data.size_info.frame_in_crop_s[0],
-			&cfg->frame_in_crop[0],	MML_MAX_OUTPUTS * sizeof(struct mml_crop));
-		memcpy(&wrot->frame_data.size_info.frame_in_s, &cfg->frame_in,
-			sizeof(struct mml_frame_size));
+			&cfg->frame_in_crop[0],
+			MML_MAX_OUTPUTS *sizeof(struct mml_crop));
+
+		wrot->frame_data.size_info.crop_size_s.width =
+			cfg->frame_tile_sz.width;
+		wrot->frame_data.size_info.crop_size_s.height =
+			cfg->frame_tile_sz.height;
+		wrot->frame_data.size_info.frame_size_s.width = cfg->frame_in.width;
+		wrot->frame_data.size_info.frame_size_s.height = cfg->frame_in.height;
 	}
 
 	/* Enable engine */
