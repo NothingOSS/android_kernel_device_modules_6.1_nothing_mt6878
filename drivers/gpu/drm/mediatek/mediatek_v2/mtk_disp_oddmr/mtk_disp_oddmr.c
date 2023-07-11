@@ -2382,11 +2382,17 @@ static int mtk_oddmr_common_gain_lookup(int item, void *table, uint32_t cnt)
 	ODDMRAPI_LOG("cnt %u\n", cnt);
 	gain_table = (struct mtk_oddmr_table_gain *)table;
 	tmp_item = item;
-	if (tmp_item <= gain_table[0].item) {
+	if (tmp_item < gain_table[0].item) {
 		if (tmp_item != 0)
 			ODDMRFLOW_LOG("item %d outof range (%u, %u)\n", tmp_item,
 					gain_table[0].item, gain_table[cnt - 1].item);
 		result = 0;
+		return result;
+	}
+	if (tmp_item == gain_table[0].item) {
+		result = gain_table[0].value;
+		ODDMRFLOW_LOG("L:(%d,%d) V:(%d,%d)\n",
+			gain_table[0].item, gain_table[0].value, tmp_item, result);
 		return result;
 	}
 	for (i = 1; i < cnt; i++) {
