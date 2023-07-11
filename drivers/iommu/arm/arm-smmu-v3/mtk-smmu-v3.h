@@ -720,7 +720,7 @@ static inline int mtk_smmu_set_pm_ops(u32 smmu_type, const struct mtk_pm_ops *op
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3) && IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 		       struct device *master_dev,
 		       int sid);

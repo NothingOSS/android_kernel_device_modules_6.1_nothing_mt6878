@@ -68,8 +68,8 @@
 static const char *IOMMU_GROUP_PROP_NAME = "mtk,iommu-group";
 static const char *SMMU_MPAM_CONFIG = "mtk,mpam-cfg";
 static const char *SMMU_MPAM_CMAX = "mtk,mpam-cmax";
-static const char *PMU_SMMU_PROP_NAME = "mtk,smmu";
 static const char *SMMU_GMAPM_CONFIG = "mtk,gmpam-cfg";
+static const __maybe_unused char *PMU_SMMU_PROP_NAME = "mtk,smmu";
 
 enum hyp_smmu_cmd {
 	HYP_SMMU_TF_DUMP,
@@ -2715,7 +2715,7 @@ static void smmuwp_check_latency_counter(struct arm_smmu_device *smmu,
  * Used to performance debug:
  * Start TCU and TBU counter before translation.
  */
-static int smmuwp_start_transaction_counter(struct arm_smmu_device *smmu)
+static int __maybe_unused smmuwp_start_transaction_counter(struct arm_smmu_device *smmu)
 {
 	void __iomem *wp_base = smmu->wp_base;
 	unsigned int lmu_ctl0, glb_ctl0;
@@ -2758,9 +2758,9 @@ static int smmuwp_start_transaction_counter(struct arm_smmu_device *smmu)
  * TBU or TCU counters are expected to increase after translation
  * when stop TCU and TBU counter.
  */
-static void smmuwp_end_transaction_counter(struct arm_smmu_device *smmu,
-					   unsigned long *tcu_tot,
-					   unsigned long *tbu_tot)
+static void __maybe_unused smmuwp_end_transaction_counter(struct arm_smmu_device *smmu,
+							  unsigned long *tcu_tot,
+							  unsigned long *tbu_tot)
 {
 	void __iomem *wp_base = smmu->wp_base;
 
@@ -2781,9 +2781,9 @@ static void smmuwp_end_transaction_counter(struct arm_smmu_device *smmu,
  * @lat_spec: latency water mark, used with SMMUWP_TCU_MON4,
  * SMMUWP_TBUx_MON9, SMMUWP_TBUx_MON10
  */
-static int smmuwp_start_latency_monitor(struct arm_smmu_device *smmu,
-					int mon_axiid,
-					int lat_spec)
+static int __maybe_unused smmuwp_start_latency_monitor(struct arm_smmu_device *smmu,
+						       int mon_axiid,
+						       int lat_spec)
 {
 	unsigned long tcu_rlat_tots, tbu_lat_tots, oos_trans_tot;
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
@@ -2865,11 +2865,11 @@ static int smmuwp_start_latency_monitor(struct arm_smmu_device *smmu,
 }
 
 /* Used to performance debug */
-static void smmuwp_end_latency_monitor(struct arm_smmu_device *smmu,
-				       unsigned int *maxlat_axiid,
-				       unsigned long *tcu_rlat_tots,
-				       unsigned long *tbu_lat_tots,
-				       unsigned long *oos_trans_tot)
+static void __maybe_unused smmuwp_end_latency_monitor(struct arm_smmu_device *smmu,
+						      unsigned int *maxlat_axiid,
+						      unsigned long *tcu_rlat_tots,
+						      unsigned long *tbu_lat_tots,
+						      unsigned long *oos_trans_tot)
 {
 	void __iomem *wp_base = smmu->wp_base;
 
@@ -2969,7 +2969,7 @@ static void smmuwp_dump_io_interface_signals(struct arm_smmu_device *smmu)
  * If the power consumption issue still exists after DCM is enabled,
  * you can consider turning off SMMU to check power consumption.
  */
-static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu)
+static void __maybe_unused smmuwp_dump_dcm_en(struct arm_smmu_device *smmu)
 {
 	void __iomem *wp_base = smmu->wp_base;
 	unsigned int regval;
@@ -2981,11 +2981,11 @@ static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu)
 		 FIELD_GET(CTL0_CFG_TAB_DCM_EN, regval));
 }
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3) && IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 		       struct device *master_dev,
 		       int sid)
 {
-#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	static DEFINE_RATELIMIT_STATE(dbg_rs, SMMU_FAULT_RS_INTERVAL,
 				      SMMU_FAULT_RS_BURST);
 	struct arm_smmu_device *smmu;
@@ -3038,7 +3038,6 @@ void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 	}
 
 	mtk_smmu_power_put(smmu);
-#endif
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_reg_dump);
 
@@ -3269,6 +3268,7 @@ void mtk_smmu_unregister_pmu_device(struct smmuv3_pmu_device *pmu_device)
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_unregister_pmu_device);
+#endif
 
 MODULE_DESCRIPTION("MediaTek SMMUv3 Customization");
 MODULE_LICENSE("GPL");
