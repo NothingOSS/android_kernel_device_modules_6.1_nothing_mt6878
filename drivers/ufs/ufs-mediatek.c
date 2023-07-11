@@ -45,6 +45,12 @@
 #include <mtk_battery_oc_throttling.h>
 #endif
 
+/* For bus hang issue debugging */
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+#include "../../clk/mediatek/clk-fmeter.h"
+#include "../../clk/mediatek/clk-mt6897-fmeter.h"
+#endif
+
 extern void mt_irq_dump_status(unsigned int irq);
 static int ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba);
 static int ufs_mtk_config_mcq(struct ufs_hba *hba, bool irq);
@@ -1385,12 +1391,110 @@ static void ufs_mtk_delay_eh_work_fn(struct work_struct *dwork)
 	queue_work(hba->eh_wq, &hba->eh_work);
 }
 
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+
+static void __iomem *reg_msdc_cfg;
+static void __iomem *reg_ufscfg_ao;
+static void __iomem *reg_vlp_ao;
+static void __iomem *reg_vlp_cfg;
+static void __iomem *reg_ifrbus_ao;
+
+static void bus_hang_check_init(void)
+{
+	if (reg_msdc_cfg == NULL)
+		reg_msdc_cfg = ioremap(0x11240000, 0x3000);
+
+	if (reg_ufscfg_ao == NULL)
+		reg_ufscfg_ao = ioremap(0x112B8000, 0x1000);
+
+	if (reg_vlp_ao == NULL)
+		reg_vlp_ao = ioremap(0x1c001000, 0x1000);
+
+	if (reg_vlp_cfg == NULL)
+		reg_vlp_cfg = ioremap(0x1C00C000, 0x1000);
+
+	if (reg_ifrbus_ao == NULL)
+		reg_ifrbus_ao = ioremap(0x1002C000, 0x1000);
+
+	pr_info("%s: init done\n", __func__);
+}
+
+static void bus_hang_check_path(void)
+{
+	void __iomem *reg;
+
+	if ((reg_msdc_cfg == NULL) || (reg_ufscfg_ao == NULL) || (reg_vlp_ao == NULL)
+		|| (reg_vlp_cfg == NULL) || (reg_ifrbus_ao == NULL))
+		return;
+
+	/* MSDC1 0x112400A0[15:0], default = 0 */
+	reg = reg_msdc_cfg + 0xA0;
+	writel(readl(reg), reg);
+
+	/* MSDC2 0x112420A0[15:0], default = 0 */
+	reg = reg_msdc_cfg + 0x20A0;
+	writel(readl(reg), reg);
+
+	/* UFSAO 0x112B80B0[15:0], default = 0 */
+	reg = reg_ufscfg_ao + 0xB0;
+	writel(readl(reg), reg);
+
+	/* Check ufs clock: ufs_axi_ck and ufs_ck */
+	if (mt_get_fmeter_freq(FM_U_CK, CKGEN) == 0) {
+		pr_err("%s: hf_fufs_faxi_ck off\n", __func__);
+		BUG_ON(1);
+	}
+
+	if (mt_get_fmeter_freq(FM_U_FAXI_CK, CKGEN) == 0) {
+		pr_err("%s: hf_fufs_ck off\n", __func__);
+		BUG_ON(1);
+	}
+
+	/*
+	 * bus protect setting:
+	 * VLPCFG 0x1C00C23C[7:6], expect = 0
+	 * IFRBUS 0x1002C0E0[8:0], expect = 0
+	 */
+	reg = reg_vlp_cfg + 0x23C;
+	if ((readl(reg) | 0xC0) != 0) {
+		pr_err("%s: VLPCFG bus protect on\n", __func__);
+		BUG_ON(1);
+	}
+
+	reg = reg_ifrbus_ao + 0xE0;
+	if ((readl(reg) | 0x1FF) != 0) {
+		pr_err("%s: INFRA AO bus protect on\n", __func__);
+		BUG_ON(1);
+	}
+
+	/* UFS0 MTCMOS 0x1C001E10[31:30], expect = 0 */
+	reg = reg_vlp_ao + 0xE10;
+	if ((readl(reg) >> 30) != 0x3) {
+		pr_err("%s: UFS0 MTCMOS off\n", __func__);
+		BUG_ON(1);
+	}
+
+	/* UFS0_PHY MTCMOS 0x1C001E14[31:30], expect = 0 */
+	reg = reg_vlp_ao + 0xE14;
+	if ((readl(reg) >> 30) != 0x3) {
+		pr_err("%s: UFS0_PHY MTCMOS off\n", __func__);
+		BUG_ON(1);
+	}
+}
+
+#endif
+
 static void ufs_mtk_init_mcq_irq(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct platform_device *pdev;
 	int i;
 	int irq;
+
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+	if (host->ip_ver == IP_VER_MT6897)
+		bus_hang_check_init();
+#endif
 
 	host->mcq_nr_intr = UFSHCD_MAX_Q_NR;
 	pdev = container_of(hba->dev, struct platform_device, dev);
@@ -2700,11 +2804,17 @@ static irqreturn_t ufs_mtk_mcq_intr(int irq, void *__intr_info)
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	struct ufs_mtk_mcq_intr_info *mcq_intr_info = __intr_info;
 	struct ufs_hba *hba = mcq_intr_info->hba;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct ufs_hw_queue *hwq;
 	u32 events;
 	int i = mcq_intr_info->qid;
 
 	hwq = &hba->uhq[i];
+
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+	if (host->ip_ver == IP_VER_MT6897)
+		bus_hang_check_path();
+#endif
 
 	events = ufshcd_mcq_read_cqis(hba, i);
 	if (events)
