@@ -187,6 +187,9 @@
 
 #define SSPXTP_DAIG_LN_RX0_40	((SSPXTP_SIFSLV_DIG_LN_RX0) + 0x040)
 
+#define SSPXTP_DAIG_LN_RX0_70	((SSPXTP_SIFSLV_DIG_LN_RX0) + 0x070)
+#define RG_XTP0_CDR_PPATH_DVN_G2_LTD1	GENMASK(15, 8)
+
 #define SSPXTP_DAIG_LN_DAIF_00	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x00)
 #define RG_XTP0_DAIF_FRC_LN_TX_LCTXCM1		BIT(7)
 #define RG_XTP0_DAIF_FRC_LN_TX_LCTXC0		BIT(8)
@@ -215,6 +218,9 @@
 #define SSPXTP_DAIG_LN_DAIF_2C	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x02C)
 #define RG_XTP0_DAIF_LN_G2_RX_SGDT_HF		GENMASK(23, 22)
 
+#define SSPXTP_DAIG_LN_DAIF_44	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x044)
+#define RG_XTP0_DAIF_LN_G2_CDR_IIR_GAIN		GENMASK(15, 13)
+
 #define SSPXTP_PHYA_LN_04	((SSPXTP_SIFSLV_PHYA_LN) + 0x04)
 #define RG_XTP_LN0_TX_IMPSEL		GENMASK(4, 0)
 
@@ -227,6 +233,9 @@
 
 #define SSPXTP_PHYA_LN_30	((SSPXTP_SIFSLV_PHYA_LN) + 0x030)
 #define RG_XTP_LN0_RX_AEQ_ATT		BIT(14)
+
+#define SSPXTP_PHYA_LN_3C	((SSPXTP_SIFSLV_PHYA_LN) + 0x03C)
+#define RG_XTP_LN0_RX_AEQ_CTLE_ERR_TYPE		GENMASK(14, 13)
 
 #define XSP_REF_CLK		26	/* MHZ */
 #define XSP_SLEW_RATE_COEF	17
@@ -331,6 +340,7 @@ struct xsphy_instance {
 	int tx_lctxc0;
 	int tx_lctxcp1;
 	bool u3_rx_fix;
+	bool u3_gen2_hqa;
 	struct proc_dir_entry *phy_root;
 	struct work_struct procfs_work;
 };
@@ -1243,6 +1253,18 @@ static void u3_phy_instance_power_on(struct mtk_xsphy *xsphy,
 	} else
 		dev_info(xsphy->dev, "%s apply u3_rx_fix.\n", __func__);
 
+	if (inst->u3_gen2_hqa) {
+		dev_info(xsphy->dev, "%s apply u3_gen2_hqa.\n", __func__);
+		/* RG_XTP0_CDR_PPATH_DVN_G2_LTD1[15:8], 8'b10000100 */
+		mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_RX0_70, RG_XTP0_CDR_PPATH_DVN_G2_LTD1, 0x84);
+
+		/* RG_XTP0_DAIF_LN_G2_CDR_IIR_GAIN[15:13], 3'b010 */
+		mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_44, RG_XTP0_DAIF_LN_G2_CDR_IIR_GAIN, 0x2);
+
+		/* RG_XTP_LN0_RX_AEQ_CTLE_ERR_TYPE[14:13], 2'b01 */
+		mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_3C, RG_XTP_LN0_RX_AEQ_CTLE_ERR_TYPE, 0x1);
+	}
+
 	/* Ponsot */
 	if (of_device_is_compatible(np, "mediatek,mt6897-xsphy")) {
 		dev_info(xsphy->dev, "%s set RG_XTP_LN0_RX_CDR_RESERVE\n", __func__);
@@ -1679,9 +1701,11 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 					 &inst->tx_lctxcp1))
 			inst->tx_lctxcp1 = -1;
 		inst->u3_rx_fix = device_property_read_bool(dev, "mediatek,u3-rx-fix");
-		dev_dbg(dev, "intr:%d, tx-imp:%d, rx-imp:%d, u3_rx_fix:%d\n",
+		inst->u3_gen2_hqa = device_property_read_bool(dev, "mediatek,u3-gen2-hqa");
+
+		dev_dbg(dev, "intr:%d, tx-imp:%d, rx-imp:%d, u3_rx_fix:%d, u3_gen2_hqa:%d\n",
 			inst->efuse_intr, inst->efuse_tx_imp,
-			inst->efuse_rx_imp, inst->u3_rx_fix);
+			inst->efuse_rx_imp, inst->u3_rx_fix, inst->u3_gen2_hqa);
 		break;
 	default:
 		dev_err(xsphy->dev, "incompatible phy type\n");
