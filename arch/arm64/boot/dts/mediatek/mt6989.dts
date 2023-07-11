@@ -4259,7 +4259,9 @@
 				clock-names = "apdma";
 				dma-requests = <8>;
 				support-hub = <0xc0>;  /*bit 0~7 to ch 0~7*/
+				idle-en-regs = <0x11036020 0x4000 0x4000>;
 				#dma-cells = <1>;
+				wakeup-irq-support = <1>;
 		};
 
 		uart0: serial@11001000 {
@@ -4298,19 +4300,21 @@
 		uart3: serial@11004000 {
 			compatible = "mediatek,mt6985-uart";
 			reg = <0 0x11004000 0 0x1000>;
-			interrupts = <GIC_SPI 348 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 348 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 946 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&clk104m>, <&pericfg_ao_clk CLK_PERAOP_UART3>;
 			clock-names = "baud", "bus";
 			dmas = <&apdma 6 &apdma 7>;
 			dma-names = "tx", "rx";
 			peri-clock-con = <0x11036020 0xf 0x8>;  /*UART ClOCK SEL*/
-			peri-wakeup = <0x11036050 0x3 0x3 0x1>;   /*reg* mask* val* toggal*/
+			peri-wakeup = <0x11036050 0x2 0x2 0x1>;   /*reg* mask* val* toggal*/
 			peri-wakeup-sta = <0x11036054>;
 			peri-reset = <0x11036000>;
 			peri-reset-set = <0x11036004 0x40000 0x40000>;	/*reg* mask* val*/
 			peri-reset-clr = <0x11036008 0x40000 0x40000>;	/*reg* mask* val*/
 			uart-line = <3>;
 			hub-baud = <12000000>;
+			wakeup-irq-support = <1>;
 		};
 
 		spi0: spi0@11010000 {
