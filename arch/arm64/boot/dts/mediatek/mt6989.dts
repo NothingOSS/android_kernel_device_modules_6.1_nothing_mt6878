@@ -11295,6 +11295,7 @@
 			mediatek,clk-mgr;
 			mediatek,usb3-drd;
 			mediatek,noise-still-tr;
+			mediatek,gen1-txdeemph;
 			mediatek,hwrscs-vers = <1>;
 			mediatek,syscon-wakeup = <&pericfg_ao_clk 0x200 103>;
 			wakeup-source;
@@ -11413,6 +11414,7 @@
 				clock-names = "ref";
 				#phy-cells = <1>;
 				mediatek,u3-rx-fix;
+				mediatek,u3-gen2-hqa;
 			};
 		};
 
