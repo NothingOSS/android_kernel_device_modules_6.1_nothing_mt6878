@@ -3387,6 +3387,17 @@
 			u-volt-3-cluster = <0x514>;
 		};
 
+		mbraink_pmu_info: mbraink-pmu-info {
+			compatible = "mediatek,mbraink-pmu-info";
+			cdfv-tcm-base = <0x0c0dd350>;  /* 0x0c080000 + 0x0005d350 */
+			cdfv-tcm-base-len = <0x1400>;
+			u-tcm-base = <0x0c0dc350>;
+			u-tcm-base-len = <0xa4>;
+			pmu-tcm-base = <0x0c0dbf50>;   /* 0x0c080000 + 0x0c0dbf50 */
+			pmu-tcm-base-len = <0x64>;
+			cpu-inst-spec-offset = <0x20>;
+		};
+
 		flt: flt@c0d4270 {
 			compatible = "mediatek,flt";
 			reg = <0 0xc0d4270 0 0x91c>;
