@@ -1446,7 +1446,7 @@ static const struct scp_subdomain scp_subdomain_mt6989_hfrp[] = {
 };
 
 static const struct scp_soc_data mt6989_spm_data = {
-	.domains = scp_domain_mt6989_spm_data,
+	.domains = scp_domain_mt6989_hwv_data,
 	.num_domains = MT6989_SPM_POWER_DOMAIN_NR,
 	.subdomains = scp_subdomain_mt6989_spm,
 	.num_subdomains = ARRAY_SIZE(scp_subdomain_mt6989_spm),
