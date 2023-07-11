@@ -526,6 +526,9 @@ int dump_setting(char *buf, const struct kernel_param *kp)
 	u32 i, j;
 	int length = 0;
 
+	if (!drv_data)
+		return 0;
+
 	length += snprintf(buf + length, MAX_DUMP  - length,
 		"mux number:%d\n", drv_data->num_muxes);
 	length += snprintf(buf + length, MAX_DUMP  - length,
