@@ -4252,7 +4252,6 @@
 				clock-names = "apdma";
 				dma-requests = <8>;
 				support-hub = <0xc0>;  /*bit 0~7 to ch 0~7*/
-				idle-en-regs = <0x11036020 0x4000 0x4000>;
 				#dma-cells = <1>;
 				wakeup-irq-support = <1>;
 		};
