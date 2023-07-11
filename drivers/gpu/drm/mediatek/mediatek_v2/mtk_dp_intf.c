@@ -88,6 +88,7 @@
     #define BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK	BIT(4)
 #define DP_BUF_CON1						0x0214
 #define DP_BUF_RW_TIMES					0x0220
+#define DP_SW_NP_SEL					0x0250
 #define DP_PATTERN_CTRL0				0x0F00
 	#define DP_PATTERN_COLOR_BAR			BIT(6)
     #define DP_PATTERN_EN					BIT(0)
@@ -504,6 +505,7 @@ static const struct mtk_dp_intf_video_clock mt6989_dp_intf_video_clock = {
 
 struct mtk_dp_intf_driver_data {
 	const u32 reg_cmdq_ofs;
+	const u8 np_sel;
 	s32 (*poll_for_idle)(struct mtk_dp_intf *dp_intf,
 		struct cmdq_pkt *handle);
 	irqreturn_t (*irq_handler)(int irq, void *dev_id);
@@ -951,6 +953,8 @@ static void mtk_dp_intf_config(struct mtk_ddp_comp *comp,
 			DP_BUF_CON0, BUF_BUF_EN, handle);
 	mtk_ddp_write_mask(comp, BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK,
 			DP_BUF_CON0, BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK, handle);
+	mtk_ddp_write_relaxed(comp, dp_intf->driver_data->np_sel,
+			DP_SW_NP_SEL, handle);
 
 	DPTXMSG("%s config done\n",
 			mtk_dump_comp_str(comp));
@@ -1445,6 +1449,7 @@ static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
 
 static const struct mtk_dp_intf_driver_data mt6885_dp_intf_driver_data = {
 	.reg_cmdq_ofs = 0x200,
+	.np_sel = 0,
 	.poll_for_idle = mtk_dp_intf_poll_for_idle,
 	.irq_handler = mtk_dp_intf_irq_status,
 	.video_clock_cfg = &mt6983_dp_intf_video_clock,
@@ -1453,6 +1458,7 @@ static const struct mtk_dp_intf_driver_data mt6885_dp_intf_driver_data = {
 
 static const struct mtk_dp_intf_driver_data mt6895_dp_intf_driver_data = {
 	.reg_cmdq_ofs = 0x200,
+	.np_sel = 0,
 	.poll_for_idle = mtk_dp_intf_poll_for_idle,
 	.irq_handler = mtk_dp_intf_irq_status,
 	.video_clock_cfg = &mt6895_dp_intf_video_clock,
@@ -1461,6 +1467,7 @@ static const struct mtk_dp_intf_driver_data mt6895_dp_intf_driver_data = {
 
 static const struct mtk_dp_intf_driver_data mt6985_dp_intf_driver_data = {
 	.reg_cmdq_ofs = 0x200,
+	.np_sel = 0,
 	.poll_for_idle = mtk_dp_intf_poll_for_idle,
 	.irq_handler = mtk_dp_intf_irq_status,
 	.video_clock_cfg = &mt6985_dp_intf_video_clock,
@@ -1469,6 +1476,7 @@ static const struct mtk_dp_intf_driver_data mt6985_dp_intf_driver_data = {
 
 static const struct mtk_dp_intf_driver_data mt6897_dp_intf_driver_data = {
 	.reg_cmdq_ofs = 0x200,
+	.np_sel = 0,
 	.poll_for_idle = mtk_dp_intf_poll_for_idle,
 	.irq_handler = mtk_dp_intf_irq_status,
 	.video_clock_cfg = &mt6897_dp_intf_video_clock,
@@ -1477,6 +1485,7 @@ static const struct mtk_dp_intf_driver_data mt6897_dp_intf_driver_data = {
 
 static const struct mtk_dp_intf_driver_data mt6989_dp_intf_driver_data = {
 	.reg_cmdq_ofs = 0x200,
+	.np_sel = 2,
 	.poll_for_idle = mtk_dp_intf_poll_for_idle,
 	.irq_handler = mtk_dp_intf_irq_status,
 	.video_clock_cfg = &mt6989_dp_intf_video_clock,
