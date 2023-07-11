@@ -1586,8 +1586,10 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 			(struct GED_KPI_HEAD *)
 			ged_hashtable_find(gs_hashtable, (unsigned long)ulID);
 
-		if (!psHead)
+		if (!psHead) {
 			GED_LOGD("@%s: no such renderer for BQ_ID: %llu", __func__, ulID);
+			break;
+		}
 
 		ged_kpi_update_TargetTimeAndTargetFps(psHead,
 			target_FPS&0x000000ff,

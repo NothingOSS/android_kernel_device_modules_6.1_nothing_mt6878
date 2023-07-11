@@ -33,6 +33,7 @@ struct async_counter {
 };
 
 struct GpuRawCounter {
+	unsigned int util_active_raw;
 	unsigned int util_iter_raw;
 	unsigned int util_mcu_raw;
 	unsigned int util_irq_raw;

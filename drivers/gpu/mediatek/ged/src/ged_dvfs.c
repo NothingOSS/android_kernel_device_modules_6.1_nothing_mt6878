@@ -326,6 +326,7 @@ static void gpu_util_history_update(struct GpuUtilization_Ex *util_ex)
 	g_util_hs.current_idx = current_idx;
 
 #if ENABLE_ASYNC_RATIO
+	g_counter_hs.util_active_raw		+= util_ex->util_active_raw;
 	g_counter_hs.util_iter_raw		+= util_ex->util_iter_raw;
 	g_counter_hs.util_mcu_raw		+= util_ex->util_mcu_raw;
 	g_counter_hs.util_sc_comp_raw		+= util_ex->util_sc_comp_raw;
@@ -1353,6 +1354,7 @@ static bool checkInDCS(int oppidx)
 
 static void reset_async_counters(void)
 {
+	g_counter_hs.util_active_raw		= 0;
 	g_counter_hs.util_iter_raw		= 0;
 	g_counter_hs.util_mcu_raw		= 0;
 	g_counter_hs.util_sc_comp_raw		= 0;
@@ -1381,8 +1383,13 @@ static int get_async_counters(struct async_counter *counters)
 	 * 029:MemSysCounters.L2_EXT_READ
 	 * 054:CSHWCounters.CSHWIF1_IRQ_ACTIVE
 	 */
-	counters->gpuactive = (long)(g_counter_hs.util_iter_raw > g_counter_hs.util_mcu_raw ?
-					g_counter_hs.util_iter_raw : g_counter_hs.util_mcu_raw);
+	if (ged_get_dvfs_workload_mode() == WORKLOAD_MAX_ITERMCU)
+		counters->gpuactive =
+			(long)(g_counter_hs.util_iter_raw > g_counter_hs.util_mcu_raw ?
+			g_counter_hs.util_iter_raw : g_counter_hs.util_mcu_raw);
+	else
+		counters->gpuactive = (long)g_counter_hs.util_active_raw;
+
 	counters->iter		= (long)g_counter_hs.util_iter_raw;
 	counters->compute	= (long)(g_counter_hs.util_sc_comp_raw / shader_conter_scale);
 	counters->l2ext		= (long)g_counter_hs.util_l2ext_raw / memory_conter_scale;
@@ -1638,6 +1645,13 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 			// reset frame property for FB control in the next iteration
 			reset_async_counters();
 #endif /*ENABLE_ASYNC_RATIO*/
+
+		/* check overdue at last frame time of LB */
+		if (t_gpu > (t_gpu_target * OVERDUE_TH / 10) &&
+			gpu_freq_pre > gpu_freq_overdue_max)
+			overdue_counter = OVERDUE_LIMIT_FRAME;
+		else
+			overdue_counter = 0;
 
 		return gpu_freq_pre;
 	}
@@ -2285,7 +2299,11 @@ static bool ged_dvfs_policy(
 		if (g_ged_frame_base_optimize &&
 				ged_get_policy_state() == POLICY_STATE_FB_FALLBACK &&
 				((u64)t_gpu_uncomplete * 1000) < fb_timeout) {
-			u64 fb_tmp_timer = fb_timeout - ((u64)t_gpu_uncomplete * 1000) - TIMER_LATENCY;
+			u64 fb_tmp_timer = fb_timeout - ((u64)t_gpu_uncomplete * 1000);
+			// consider workqueue latency
+			if (fb_tmp_timer > TIMER_LATENCY)
+				fb_tmp_timer -= TIMER_LATENCY;
+
 			u64 timeout_val = ged_get_fallback_time();
 
 			if (fb_tmp_timer > timeout_val) {
@@ -2827,10 +2845,10 @@ void ged_dvfs_run(
 			if (freq_change_flag || policy_state != prev_policy_state) {
 				// correct eCommitType in case fallback is triggered in LB
 				if (policy_state == POLICY_STATE_LB ||
-						policy_state == POLICY_STATE_FORCE_LB ||
-						g_CommitType == MTK_GPU_DVFS_TYPE_SKIPFALLBACK)
+						policy_state == POLICY_STATE_FORCE_LB)
 					eCommitType = GED_DVFS_LOADING_BASE_COMMIT;
-				else if (policy_state == POLICY_STATE_FB)
+				else if (policy_state == POLICY_STATE_FB &&
+						g_CommitType != MTK_GPU_DVFS_TYPE_SKIPFALLBACK)
 					eCommitType = GED_DVFS_FRAME_BASE_COMMIT;
 				else
 					eCommitType = GED_DVFS_FALLBACK_COMMIT;

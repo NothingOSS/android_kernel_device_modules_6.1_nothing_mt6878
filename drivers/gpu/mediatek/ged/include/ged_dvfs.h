@@ -106,6 +106,7 @@ struct GpuUtilization_Ex {
 	unsigned int util_iter;
 	unsigned int util_mcu;
 
+	unsigned int util_active_raw;
 	unsigned int util_iter_raw;
 	unsigned int util_mcu_raw;
 	unsigned int util_irq_raw;
