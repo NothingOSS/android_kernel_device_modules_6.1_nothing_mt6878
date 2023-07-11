@@ -24,6 +24,11 @@
 #include "ufs-mediatek.h"
 #include "ufs-mediatek-dbg.h"
 
+/* For bus hang issue debugging */
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+#include "../../clk/mediatek/clk-fmeter.h"
+#endif
+
 #define MAX_CMD_HIST_ENTRY_CNT (500)
 #define UFS_AEE_BUFFER_SIZE (100 * 1024)
 
@@ -108,6 +113,103 @@ void ufs_mtk_eh_err_cnt(void)
 		ufs_mtk_aee_warning("Error Dump %d", err_count);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_eh_err_cnt);
+
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+static void __iomem *reg_msdc_cfg;
+static void __iomem *reg_ufscfg_ao;
+static void __iomem *reg_vlp_ao;
+static void __iomem *reg_vlp_cfg;
+static void __iomem *reg_ifrbus_ao;
+
+void bus_hang_check_init(void)
+{
+	if (reg_msdc_cfg == NULL)
+		reg_msdc_cfg = ioremap(0x11240000, 0x3000);
+
+	if (reg_ufscfg_ao == NULL)
+		reg_ufscfg_ao = ioremap(0x112B8000, 0x1000);
+
+	if (reg_vlp_ao == NULL)
+		reg_vlp_ao = ioremap(0x1c001000, 0x1000);
+
+	if (reg_vlp_cfg == NULL)
+		reg_vlp_cfg = ioremap(0x1C00C000, 0x1000);
+
+	if (reg_ifrbus_ao == NULL)
+		reg_ifrbus_ao = ioremap(0x1002C000, 0x1000);
+
+	pr_info("%s: init done\n", __func__);
+}
+EXPORT_SYMBOL_GPL(bus_hang_check_init);
+
+/* only for IP_VER_MT6897 */
+#define FM_U_FAXI_CK		3
+#define FM_U_CK		44
+
+void bus_hang_check_path(void)
+{
+	void __iomem *reg;
+
+	if ((reg_msdc_cfg == NULL) || (reg_ufscfg_ao == NULL) || (reg_vlp_ao == NULL)
+		|| (reg_vlp_cfg == NULL) || (reg_ifrbus_ao == NULL))
+		return;
+
+	/* MSDC1 0x112400A0[15:0], default = 0 */
+	reg = reg_msdc_cfg + 0xA0;
+	writel(readl(reg), reg);
+
+	/* MSDC2 0x112420A0[15:0], default = 0 */
+	reg = reg_msdc_cfg + 0x20A0;
+	writel(readl(reg), reg);
+
+	/* UFSAO 0x112B80B0[15:0], default = 0 */
+	reg = reg_ufscfg_ao + 0xB0;
+	writel(readl(reg), reg);
+
+	/* Check ufs clock: ufs_axi_ck and ufs_ck */
+	if (mt_get_fmeter_freq(FM_U_CK, CKGEN) == 0) {
+		pr_err("%s: hf_fufs_faxi_ck off\n", __func__);
+		BUG_ON(1);
+	}
+
+	if (mt_get_fmeter_freq(FM_U_FAXI_CK, CKGEN) == 0) {
+		pr_err("%s: hf_fufs_ck off\n", __func__);
+		BUG_ON(1);
+	}
+
+	/*
+	 * bus protect setting:
+	 * VLPCFG 0x1C00C23C[7:6], expect = 0
+	 * IFRBUS 0x1002C0E0[8:0], expect = 0
+	 */
+	reg = reg_vlp_cfg + 0x23C;
+	if ((readl(reg) | 0xC0) != 0) {
+		pr_err("%s: VLPCFG bus protect on\n", __func__);
+		BUG_ON(1);
+	}
+
+	reg = reg_ifrbus_ao + 0xE0;
+	if ((readl(reg) | 0x1FF) != 0) {
+		pr_err("%s: INFRA AO bus protect on\n", __func__);
+		BUG_ON(1);
+	}
+
+	/* UFS0 MTCMOS 0x1C001E10[31:30], expect = 0 */
+	reg = reg_vlp_ao + 0xE10;
+	if ((readl(reg) >> 30) != 0x3) {
+		pr_err("%s: UFS0 MTCMOS off\n", __func__);
+		BUG_ON(1);
+	}
+
+	/* UFS0_PHY MTCMOS 0x1C001E14[31:30], expect = 0 */
+	reg = reg_vlp_ao + 0xE14;
+	if ((readl(reg) >> 30) != 0x3) {
+		pr_err("%s: UFS0_PHY MTCMOS off\n", __func__);
+		BUG_ON(1);
+	}
+}
+EXPORT_SYMBOL_GPL(bus_hang_check_path);
+#endif
 
 static void ufs_mtk_dbg_print_err_hist(char **buff, unsigned long *size,
 				  struct seq_file *m, u32 id,

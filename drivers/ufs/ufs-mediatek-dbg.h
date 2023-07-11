@@ -197,11 +197,15 @@ void ufs_mtk_dbg_phy_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 				    enum ufs_notify_change_status status);
 void ufs_mtk_dbg_phy_dump(struct ufs_hba *hba);
 void ufs_mtk_dbg_phy_trace(struct ufs_hba *hba, u8 stage);
+void bus_hang_check_init(void);
+void bus_hang_check_path(void);
 #else
 #define ufs_mtk_dbg_phy_enable(...)
 #define ufs_mtk_dbg_phy_hibern8_notify(...)
 #define ufs_mtk_dbg_phy_dump(...)
 #define ufs_mtk_dbg_phy_trace(...)
+#define bus_hang_check_init(...)
+#define bus_hang_check_path(...)
 #endif
 
 #endif /* _UFS_MEDIATEK_DBG_H */
