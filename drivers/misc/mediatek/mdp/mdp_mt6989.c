@@ -332,7 +332,8 @@ static void cmdq_core_dump_mmsys_config(void)
 		{0xFF0, "MDPSYS_DL_READY0"},
 		{0xFF4, "MDPSYS_DL_READY1"},
 		{0xFF8, "MDPSYS_DL_READY2"},
-		{0xFDC, "MDPSYS_DL_READY3"}
+		{0xFDC, "MDPSYS_DL_READY3"},
+		{0xE20, "MDPSYS_DDREN_DEBUG"}
 	};
 
 	CMDQ_ERR("============ [MDP] MMSYS_CONFIG ============\n");
