@@ -693,11 +693,9 @@ void dump_lvts_error_info(struct lvts_data *lvts_data)
 	read_controller_reg_when_error(lvts_data);
 	dump_lvts_controller_temp_and_raw(lvts_data);
 
-	/*disable controller by set LVTSMONCTL0[3:0] = 4'h0*/
-	disable_all_sensing_points(lvts_data);
-	lvts_wait_for_all_sensing_point_idle(lvts_data);
-
 	dump_lvts_controller_register_value(lvts_data);
+
+	lvts_wait_for_all_sensing_point_idle(lvts_data);
 
 	read_device_reg_when_error(lvts_data);
 	dump_lvts_device_register_value(lvts_data);
@@ -1360,6 +1358,7 @@ static irqreturn_t irq_handler(int irq, void *dev_id)
 	int thermintst_str_size = sizeof(thermintst_str);
 	int thermintst_str_offset = 0;
 
+	disable_all_sensing_points(lvts_data);
 	for (i = 0; i < lvts_data->num_domain; i++) {
 		base = lvts_data->domain[i].base;
 		lvts_data->irq_bitmap[i] = readl(THERMINTST + base);
