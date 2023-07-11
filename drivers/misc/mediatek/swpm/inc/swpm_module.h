@@ -76,8 +76,6 @@ enum swpm_cmd_type {
 	APU_CMD_TYPE,
 	AUDIO_CMD_TYPE,
 	USB_CMD_TYPE,
-	MML_CMD_TYPE,
-
 
 	NR_SWPM_CMD_TYPE,
 };
