@@ -1319,7 +1319,7 @@ struct device *cmdq_mdp_get_mdp_device(void)
 	return mdpdev;
 }
 
-void cmdq_mdp_enable_APB_MUTEX(bool enable, u64 engineFlag)
+s32 cmdq_mdp_enable_APB_MUTEX(bool enable, u64 engineFlag)
 {
 	if (enable) {
 		cmdq_mdp_enable_clock_APB(enable);
@@ -1328,6 +1328,8 @@ void cmdq_mdp_enable_APB_MUTEX(bool enable, u64 engineFlag)
 		cmdq_mdp_enable_clock_MDP_MUTEX0(enable);
 		cmdq_mdp_enable_clock_APB(enable);
 	}
+
+	return 0;
 }
 
 static void cmdq_mdp_check_hw_status(struct cmdqRecStruct *handle)
