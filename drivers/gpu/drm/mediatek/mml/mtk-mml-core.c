@@ -770,11 +770,12 @@ static u64 time_dur_us(const struct timespec64 *lhs, const struct timespec64 *rh
 	return div_u64((u64)delta.tv_sec * 1000000000 + delta.tv_nsec, 1000);
 }
 
-static u32 mml_core_calc_tput_racing(struct mml_task *task, u32 pixel, u32 pipe)
+static u32 mml_core_calc_tput_couple(struct mml_task *task, u32 pixel, u32 pipe)
 {
-	u32 act_time_us = div_u64(task->config->info.act_time, 1000);
-	struct mml_frame_data *src = &task->config->info.src;
-	struct mml_frame_dest *dest = &task->config->info.dest[0];
+	const struct mml_frame_info *info = &task->config->info;
+	const struct mml_frame_data *src = &info->src;
+	const struct mml_frame_dest *dest = &info->dest[0];
+	u32 act_time_us = div_u64(info->act_time, 1000);
 
 	if (!act_time_us)
 		act_time_us = 1;
@@ -784,10 +785,12 @@ static u32 mml_core_calc_tput_racing(struct mml_task *task, u32 pixel, u32 pipe)
 	task->pipe[pipe].throughput = div_u64(pixel, act_time_us);
 	mml_mmp(throughput, MMPROFILE_FLAG_PULSE, task->pipe[pipe].throughput, act_time_us);
 
-	/* for compress format afbc and hyfbc read block overhead */
-	if (MML_FMT_COMPRESS(src->format) &&
-		((dest->crop.r.width & 0x1f) || (dest->crop.r.height & 0xf)))
-		task->pipe[pipe].throughput = (task->pipe[pipe].throughput * 38) >> 5;
+	if (info->mode == MML_MODE_RACING) {
+		/* for compress format afbc and hyfbc read block overhead */
+		if (MML_FMT_COMPRESS(src->format) &&
+			((dest->crop.r.width & 0x1f) || (dest->crop.r.height & 0xf)))
+			task->pipe[pipe].throughput = (task->pipe[pipe].throughput * 38) >> 5;
+	}
 
 	return act_time_us;
 }
@@ -879,7 +882,7 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 		/* racing mode uses different calculation since start time
 		 * consistent with disp
 		 */
-		duration = mml_core_calc_tput_racing(task, max_pixel, pipe);
+		duration = mml_core_calc_tput_couple(task, max_pixel, pipe);
 
 	} else if (timespec64_compare(&task->submit_time, &task->end_time) < 0) {
 		/* calculate remaining time to complete pixels */
