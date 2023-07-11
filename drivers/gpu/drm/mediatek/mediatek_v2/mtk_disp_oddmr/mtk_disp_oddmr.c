@@ -409,7 +409,6 @@ static struct task_struct *oddmr_sof_irq_event_task;
 static DECLARE_WAIT_QUEUE_HEAD(g_oddmr_sof_irq_wq);
 static DECLARE_WAIT_QUEUE_HEAD(g_oddmr_hrt_wq);
 static DEFINE_SPINLOCK(g_oddmr_clock_lock);
-static DEFINE_SPINLOCK(g_oddmr_od_sram_lock);
 static DEFINE_SPINLOCK(g_oddmr_timing_lock);
 
 static void mtk_oddmr_od_hsk_force_clk(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
@@ -471,6 +470,10 @@ static inline void mtk_oddmr_write_cpu(struct mtk_ddp_comp *comp,
 static inline void mtk_oddmr_write(struct mtk_ddp_comp *comp, unsigned int value,
 		unsigned int offset, void *handle)
 {
+	if (comp == NULL) {
+		DDPPR_ERR("%s: invalid comp\n", __func__);
+		return;
+	}
 	if (offset >= 0x2000 || (offset % 4) != 0) {
 		DDPPR_ERR("%s: invalid addr 0x%x\n",
 				__func__, offset);
@@ -861,6 +864,8 @@ static void mtk_oddmr_od_set_res_udma(struct mtk_ddp_comp *comp, struct cmdq_pkt
 	struct mtk_drm_private *priv = default_comp->mtk_crtc->base.dev->dev_private;
 
 	if (oddmr_priv == NULL)
+		return;
+	if (priv == NULL)
 		return;
 	scaling_mode = g_od_param.od_basic_info.basic_param.scaling_mode;
 	od_mode = g_od_param.od_basic_info.basic_param.od_mode;
@@ -2288,7 +2293,7 @@ static int _mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *priv,
 	if ((idx == cnts) ||
 			!IS_TABLE_VALID(idx, g_od_param.valid_table)) {
 		ODDMRFLOW_LOG("not find table!\n");
-		idx = 0;
+		idx = -1;
 	}
 	ODDMRFLOW_LOG("table_idx %d\n", idx);
 	return idx;
@@ -3021,6 +3026,7 @@ void mtk_oddmr_od_sec_bypass(uint32_t sec_on, struct cmdq_pkt *handle)
 	uint32_t enable;
 	static uint32_t prev;
 
+	ODDMRAPI_LOG();
 	if (is_oddmr_od_support) {
 		enable = g_oddmr_priv->od_enable && (!sec_on);
 		mtk_oddmr_set_od_enable_dual(NULL, enable, handle);
@@ -3227,12 +3233,10 @@ static void mtk_oddmr_od_table_chg(struct cmdq_pkt *handle)
 {
 	uint32_t weight = 0;
 	int table_idx,ret;
-	unsigned long flags;
 
 	if ((g_oddmr_priv->od_state >= ODDMR_INIT_DONE) &&
 		(g_oddmr_current_timing.old_vrefresh != g_oddmr_current_timing.vrefresh ||
 		g_oddmr_current_timing.old_bl_level != g_oddmr_current_timing.bl_level)) {
-		spin_lock_irqsave(&g_oddmr_od_sram_lock, flags);
 		ODDMRAPI_LOG("+\n");
 		ret = mtk_oddmr_od_table_lookup(g_oddmr_priv, &g_oddmr_current_timing, &table_idx);
 		if (ret >= 0) {
@@ -3263,7 +3267,6 @@ static void mtk_oddmr_od_table_chg(struct cmdq_pkt *handle)
 			if (default_comp->mtk_crtc->is_dual_pipe)
 				g_oddmr1_priv->od_force_off = 1;
 		}
-		spin_unlock_irqrestore(&g_oddmr_od_sram_lock, flags);
 	}
 }
 
@@ -3702,6 +3705,8 @@ static int mtk_oddmr_od_init(void)
 		mtk_oddmr_od_alloc_dram_dual();
 		mtk_oddmr_od_set_dram_dual(NULL);
 		table_idx = _mtk_oddmr_od_table_lookup(g_oddmr_priv, &g_oddmr_current_timing);
+		if (table_idx == -1)
+			table_idx = 0;
 		ODDMRFLOW_LOG("init table_idx %d\n", table_idx);
 		//for 6985 force en clk, need to restore od_hsk later
 		if (g_oddmr_priv->data->is_od_need_force_clk)
