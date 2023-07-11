@@ -55,7 +55,7 @@ static char bl_tb0[] = { 0x51, 0xff };
 #define FHD_FRAME_HEIGHT   (2400)
 #define FHD_VFP_120        (94)
 #define FHD_VFP_90         (927)
-#define FHD_VFP_60         (2578)
+#define FHD_VFP_60         (2583)
 #define FHD_VSA            (10)
 #define FHD_VBP            (10)
 #define FHD_VTOTAL_120     (FHD_FRAME_HEIGHT + FHD_VFP_120 + FHD_VSA + FHD_VBP)
