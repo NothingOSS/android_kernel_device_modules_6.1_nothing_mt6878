@@ -384,6 +384,7 @@ struct mml_comp_aal {
 	bool ddp_bound;
 	bool dual;
 	bool clk_on;
+	bool dpc;
 	u32 jobid;
 	u8 pipe;
 	u8 out_idx;
@@ -774,6 +775,7 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			call_hw_op(comp, clk_enable);
 			mml_clock_unlock(task->config->mml);
 			mml_lock_wake_lock(aal->mml, true);
+			aal->dpc = task->config->dpc;
 
 			if (is_config)
 				mml_write(pkt, base_pa + aal->data->reg_table[AAL_INTEN],
@@ -886,7 +888,7 @@ static void aal_write_curve(struct mml_comp *comp, struct mml_task *task,
 			writel(curve[i], base + aal->data->reg_table[AAL_SRAM_RW_IF_1]);
 
 	mml_clock_lock(task->config->mml);
-	call_hw_op(comp, clk_disable, task);
+	call_hw_op(comp, clk_disable, task->config->dpc);
 	if (task->config->dpc) {
 		/* dpc exception flow off */
 		mml_msg("%s dpc exception flow off", __func__);
@@ -2229,7 +2231,7 @@ static void aal_readback_work(struct work_struct *work_item)
 	if (aal_get_rb_mode(aal) == RB_EOF_MODE ||
 		aal_get_rb_mode(aal) == RB_SOF_MODE) {
 		mml_clock_lock(aal->mml);
-		call_hw_op(comp, clk_disable, aal->pq_task->task);
+		call_hw_op(comp, clk_disable, aal->dpc);
 		/* dpc exception flow off */
 		mml_msg_dpc("%s dpc exception flow off", __func__);
 		mml_dpc_exc_release(aal->pq_task->task);
@@ -2278,7 +2280,7 @@ static void clarity_histdone_cb(struct cmdq_cb_data data)
 
 	if (aal_get_rb_mode(aal) == RB_EOF_MODE) {
 		mml_clock_lock(aal->mml);
-		call_hw_op(comp, clk_disable, aal->pq_task->task);
+		call_hw_op(comp, clk_disable, aal->dpc);
 		/* dpc exception flow off */
 		mml_msg_dpc("%s dpc exception flow off", __func__);
 		mml_dpc_exc_release(aal->pq_task->task);

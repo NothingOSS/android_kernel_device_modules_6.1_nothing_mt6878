@@ -178,6 +178,7 @@ struct mml_comp_tdshp {
 	bool hist_cmd_done;
 	bool clarity_readback;
 	bool dc_readback;
+	bool dpc;
 	struct mutex hist_cmd_lock;
 	struct mml_pq_readback_buffer *tdshp_hist[MML_PIPE_CNT];
 	struct cmdq_client *clt;
@@ -443,6 +444,7 @@ static s32 tdshp_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 				call_hw_op(comp, clk_enable);
 				mml_clock_unlock(task->config->mml);
 				mml_lock_wake_lock(tdshp->mml, true);
+				tdshp->dpc = task->config->dpc;
 			}
 
 			queue_work(tdshp->tdshp_hist_wq, &tdshp->tdshp_hist_task);
@@ -1138,7 +1140,7 @@ static void tdshp_histdone_cb(struct cmdq_cb_data data)
 
 	if (tdshp->data->rb_mode == RB_EOF_MODE) {
 		mml_clock_lock(tdshp->mml);
-		call_hw_op(comp, clk_disable, tdshp->pq_task->task);
+		call_hw_op(comp, clk_disable, tdshp->dpc);
 		/* dpc exception flow off */
 		mml_msg_dpc("%s dpc exception flow off", __func__);
 		mml_dpc_exc_release(tdshp->pq_task->task);

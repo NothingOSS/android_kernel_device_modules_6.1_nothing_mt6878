@@ -986,14 +986,14 @@ static s32 mml_sys_comp_clk_enable(struct mml_comp *comp)
 }
 
 static s32 mml_sys_comp_clk_disable(struct mml_comp *comp,
-				    struct mml_task *task)
+				    bool dpc)
 {
 	int ret;
 
 	mml_update_comp_status(mml_mon_mmlsys, 0);
 
 	/* original clk enable */
-	ret = mml_comp_clk_disable(comp, task);
+	ret = mml_comp_clk_disable(comp, dpc);
 	if (ret < 0)
 		return ret;
 
@@ -1234,13 +1234,13 @@ static void sys_ddp_disable_locked(const struct mml_topology_path *path,
 		if (i == path->mmlsys_idx || i == path->mutex_idx)
 			continue;
 		comp = path->nodes[i].comp;
-		call_hw_op(comp, clk_disable, task);
+		call_hw_op(comp, clk_disable, task->config->dpc);
 	}
 
 	if (path->mutex)
-		call_hw_op(path->mutex, clk_disable, task);
+		call_hw_op(path->mutex, clk_disable, task->config->dpc);
 	if (path->mmlsys)
-		call_hw_op(path->mmlsys, clk_disable, task);
+		call_hw_op(path->mmlsys, clk_disable, task->config->dpc);
 
 	if (task->config->dpc) {
 		/* set dpc total hrt/srt bw to 0 */

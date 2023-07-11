@@ -149,6 +149,7 @@ struct mml_comp_hdr {
 	struct mml_pq_task *pq_task;
 	struct mml_pq_task *curve_pq_task;
 	bool dual;
+	bool dpc;
 	bool hist_cmd_done;
 	struct mutex hist_cmd_lock;
 	struct mml_pq_frame_data frame_data;
@@ -379,6 +380,7 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 				call_hw_op(comp, clk_enable);
 				mml_clock_unlock(task->config->mml);
 				mml_lock_wake_lock(hdr->mml, true);
+				hdr->dpc = task->config->dpc;
 			}
 
 			queue_work(hdr->hdr_hist_wq, &hdr->hdr_hist_task);
@@ -1495,7 +1497,7 @@ static void hdr_histdone_cb(struct cmdq_cb_data data)
 
 	if (hdr->data->rb_mode == RB_EOF_MODE) {
 		mml_clock_lock(hdr->mml);
-		call_hw_op(comp, clk_disable, hdr->pq_task->task);
+		call_hw_op(comp, clk_disable, hdr->dpc);
 		/* dpc exception flow off */
 		mml_msg_dpc("%s dpc exception flow off", __func__);
 		mml_dpc_exc_release(hdr->pq_task->task);

@@ -60,7 +60,7 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev);
 s32 mml_comp_pw_enable(struct mml_comp *comp);
 s32 mml_comp_pw_disable(struct mml_comp *comp);
 s32 mml_comp_clk_enable(struct mml_comp *comp);
-s32 mml_comp_clk_disable(struct mml_comp *comp, struct mml_task *task);
+s32 mml_comp_clk_disable(struct mml_comp *comp, bool dpc);
 
 /*
  * mml_comp_get_smmu_node - check if platform use smmu v3 and parse normal/secure smmu shared node
@@ -74,7 +74,7 @@ struct device *mml_smmu_get_shared_device(struct device *dev, const char *name);
 
 void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 throughput, u32 tput_up);
-void mml_comp_qos_clear(struct mml_comp *comp, struct mml_task *task);
+void mml_comp_qos_clear(struct mml_comp *comp, bool dpc);
 
 s32 mml_dpc_task_cnt_get(struct mml_task *task, bool addon_task);
 void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task);

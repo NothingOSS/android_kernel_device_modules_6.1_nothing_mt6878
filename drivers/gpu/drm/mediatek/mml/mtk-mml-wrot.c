@@ -2271,7 +2271,7 @@ static s32 mml_wrot_comp_clk_enable(struct mml_comp *comp)
 }
 
 static s32 mml_wrot_comp_clk_disable(struct mml_comp *comp,
-				     struct mml_task *task)
+				     bool dpc)
 {
 	int ret;
 	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
@@ -2279,7 +2279,7 @@ static s32 mml_wrot_comp_clk_disable(struct mml_comp *comp,
 	mml_update_comp_status(mml_mon_wrot + wrot->idx, 0);
 
 	/* original clk enable */
-	ret = mml_comp_clk_disable(comp, task);
+	ret = mml_comp_clk_disable(comp, dpc);
 	if (ret < 0)
 		return ret;
 

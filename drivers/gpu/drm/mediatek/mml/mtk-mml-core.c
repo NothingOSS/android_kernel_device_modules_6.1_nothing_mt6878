@@ -677,13 +677,13 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 		if (i == path->mmlsys_idx || i == path->mutex_idx)
 			continue;
 		comp = path->nodes[i].comp;
-		call_hw_op(comp, clk_disable, task);
+		call_hw_op(comp, clk_disable, task->config->dpc);
 	}
 
 	if (path->mutex)
-		call_hw_op(path->mutex, clk_disable, task);
+		call_hw_op(path->mutex, clk_disable, task->config->dpc);
 	if (path->mmlsys)
-		call_hw_op(path->mmlsys, clk_disable, task);
+		call_hw_op(path->mmlsys, clk_disable, task->config->dpc);
 
 	if (task->config->dpc) {
 		/* set dpc total hrt/srt bw to 0 */
