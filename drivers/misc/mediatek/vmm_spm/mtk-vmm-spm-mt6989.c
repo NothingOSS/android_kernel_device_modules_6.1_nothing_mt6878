@@ -159,6 +159,7 @@ static void vmm_spm_iso_ctrl_mt6989(void __iomem *base, bool iso_on)
 	}
 }
 
+#ifdef HFRP_REG_SET_ISSUE_FIXED
 static void vmm_hfrp_iso_ctrl_mt6989(void __iomem *base, bool iso_on)
 {
 	void __iomem *addr;
@@ -197,6 +198,7 @@ static void vmm_hfrp_iso_ctrl_mt6989(void __iomem *base, bool iso_on)
 		writel_relaxed(reg_buck_iso_val, addr);
 	}
 }
+#endif
 
 static void vmm_hfrp_iso_reg_check(void __iomem *base, bool iso_on)
 {
@@ -339,9 +341,11 @@ static int vmm_spm_probe_mt6989(struct platform_device *pdev)
 		spm_ver = VMM_SPM_DEFAULT;
 
 	if (spm_ver == VMM_SPM_MT6989) {
-		/* formal flow */
-		vmm_hfrp_iso_ctrl_mt6989(drv_data->hfrp_reg, true);
-		vmm_hfrp_iso_reg_check(drv_data->hfrp_reg, true);
+		/* formal flow: This flow had been replaced by preloader, we just check iso status here. */
+#ifdef HFRP_REG_SET_ISSUE_FIXED
+		vmm_hfrp_iso_ctrl_mt6989(drv_data->hfrp_reg, false);
+#endif
+		vmm_hfrp_iso_reg_check(drv_data->hfrp_reg, false);
 	} else if (VMM_SPM_MT6989_BRINGUP) {
 		/* bringup flow */
 		vmm_spm_iso_ctrl_mt6989(drv_data->spm_reg, false);
