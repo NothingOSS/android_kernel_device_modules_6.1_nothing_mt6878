@@ -11,6 +11,7 @@
 #include <linux/io.h>
 #include <linux/regmap.h>
 #include <sound/soc.h>
+#include <mtk_peak_power_budget.h>
 
 #include "../common/mtk-afe-fe-dai.h"
 #include "../common/mtk-afe-platform-driver.h"
@@ -784,11 +785,43 @@ static int mt6989_afe_vow_barge_in_set(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
+static int mt6989_dev_power_get(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	int power = 0;
+
+	ucontrol->value.integer.value[0] = power;
+
+	return 0;
+}
+
+static int mt6989_dev_power_set(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	int power = 0;
+
+	power = ucontrol->value.integer.value[0];
+
+	dev_info(afe->dev, "%s(), power = %d\n", __func__, power);
+	kicker_ppb_request_power(KR_AUDIO, power);
+
+	return 0;
+}
+
 
 static const struct snd_kcontrol_new mt6989_afe_barge_in_controls[] = {
 	SOC_SINGLE_EXT("Vow_bargein_echo_ref", SND_SOC_NOPM, 0, 0x1, 0,
 		       mt6989_afe_vow_barge_in_get,
 		       mt6989_afe_vow_barge_in_set),
+};
+
+
+static const struct snd_kcontrol_new mt6989_afe_power_controls[] = {
+	SOC_SINGLE_EXT("Dev_Power", SND_SOC_NOPM, 0, 0xffff, 0,
+		       mt6989_dev_power_get,
+		       mt6989_dev_power_set),
 };
 
 /* VOW scp dmic control */
@@ -840,6 +873,10 @@ int mt6989_add_misc_control(struct snd_soc_component *component)
 	snd_soc_add_component_controls(component,
 				       mt6989_afe_barge_in_controls,
 				       ARRAY_SIZE(mt6989_afe_barge_in_controls));
+
+	snd_soc_add_component_controls(component,
+				       mt6989_afe_power_controls,
+				       ARRAY_SIZE(mt6989_afe_power_controls));
 
 	snd_soc_add_component_controls(component,
 				       mt6989_afe_scp_dmic_controls,

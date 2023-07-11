@@ -13,6 +13,9 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/audio_dsp
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
 
+# pbm include path
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm
+
 # platform driver
 obj-$(CONFIG_SND_SOC_MT6989) += snd-soc-mt6989-afe.o
 snd-soc-mt6989-afe-objs += \
