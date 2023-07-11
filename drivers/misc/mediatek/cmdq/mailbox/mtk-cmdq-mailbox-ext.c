@@ -2490,7 +2490,9 @@ int cmdq_iommu_fault_callback(int port, dma_addr_t mva, void *cb_data)
 		break;
 	}
 
+	cmdq_set_alldump(true);
 	cmdq_thread_dump_all(cmdq, true, true, true);
+	cmdq_set_alldump(false);
 	return 0;
 }
 
