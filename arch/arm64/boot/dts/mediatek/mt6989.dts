@@ -13400,23 +13400,26 @@
 		enable-inductor-protect = <1>;
 	};
 
-	pe4: pe4 {
-		compatible = "mediatek,charger,pe4";
+	pe45: pe45 {
+		compatible = "mediatek,charger,pe45";
 		gauge = <&mtk_gauge>;
 
 		min-charger-voltage = <4600000>;
-		pe40-stop-battery-soc = <80>;
+		pe45-stop-battery-soc = <80>;
 
-		high-temp-to-leave-pe40 = <46>;
-		high-temp-to-enter-pe40 = <39>;
-		low-temp-to-leave-pe40 = <10>;
-		low-temp-to-enter-pe40 = <16>;
+		high-temp-to-leave-pe45 = <46>;
+		high-temp-to-enter-pe45 = <39>;
+		low-temp-to-leave-pe45 = <10>;
+		low-temp-to-enter-pe45 = <16>;
 		ibus-err = <14>;
 
-		/* PE 4.0 cable impedance (mohm) */
-		pe40-r-cable-1a-lower = <500>;
-		pe40-r-cable-2a-lower = <351>;
-		pe40-r-cable-3a-lower = <240>;
+		/* PE 4.5 cable impedance (mohm) */
+		pe45-r-cable-1a-lower = <500>;
+		pe45-r-cable-2a-lower = <351>;
+		pe45-r-cable-3a-lower = <240>;
+		pe45-r-cable-level = <200 300 400 500 500>;
+		pe45-r-cable-voltage = <5000 5500 6000 6500 7000>;
+		pe45-r-cable-current-limit = <3000 3000 3000 2500 2200>;
 
 		/* single charger */
 		sc-input-current = <3200000>;

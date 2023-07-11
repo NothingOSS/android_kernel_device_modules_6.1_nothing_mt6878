@@ -24,7 +24,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 };
 
 &pdc {
-	pd-vbus-upper-bound = <12000000>;
+	pd-vbus-upper-bound = <9000000>;
 };
 
 &pio {

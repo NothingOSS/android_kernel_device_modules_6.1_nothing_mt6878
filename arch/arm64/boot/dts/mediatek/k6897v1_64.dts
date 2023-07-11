@@ -24,7 +24,7 @@ bootargs_ext = "8250.nr_uarts=4";
 };
 
 &pdc {
-	pd-vbus-upper-bound = <12000000>;
+	pd-vbus-upper-bound = <9000000>;
 };
 
 &connfem {
