@@ -148,7 +148,7 @@ enum gpuppm_limiter {
 	LIMIT_SEGMENT      = 0,
 	LIMIT_DEBUG        = 1,
 	LIMIT_GPM3         = 2,
-	LIMIT_TEMPER_COMP  = 3,
+	LIMIT_PEAK_POWER   = 3,
 	LIMIT_THERMAL_AP   = 4,
 	LIMIT_THERMAL_EB   = 5,
 	LIMIT_SRAMRC       = 6,
