@@ -2963,48 +2963,6 @@
 		mediatek,dump-with-comm = <1>;
 	};
 
-	smi_pd_venc0: smi-pd-venc0 {
-		compatible = "mediatek,smi-pd";
-		mediatek,suspend-check-dev-supply = <&smi_disp_common &smi_sysram_common
-				&smi_mdp_common>;
-		mediatek,suspend-check-port = <0x8 0x18 0x10>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN0>;
-		suspend-check;
-	};
-
-	smi_pd_venc1: smi-pd-venc1 {
-		compatible = "mediatek,smi-pd";
-		mediatek,suspend-check-dev-supply = <&smi_mdp_common &smi_sysram_common>;
-		mediatek,suspend-check-port = <0x10 0x10>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
-		suspend-check;
-	};
-
-	smi_pd_venc2: smi-pd-venc2 {
-		compatible = "mediatek,smi-pd";
-		mediatek,suspend-check-dev-supply = <&smi_mdp_venc_sub_comm1
-				&smi_sram_venc_sub_comm>;
-		mediatek,suspend-check-port = <0x2 0x2>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN2>;
-		suspend-check;
-	};
-
-	smi_pd_vdec_vcore0: smi-pd-vdec-vcore0 {
-		compatible = "mediatek,smi-pd";
-		mediatek,suspend-check-dev-supply = <&smi_disp_common>;
-		mediatek,suspend-check-port = <0x4>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE_VCORE0>;
-		suspend-check;
-	};
-
-	smi_pd_vdec_vcore1: smi-pd-vdec-vcore1 {
-		compatible = "mediatek,smi-pd";
-		mediatek,suspend-check-dev-supply = <&smi_mdp_common>;
-		mediatek,suspend-check-port = <0x8>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_VDE_VCORE1>;
-		suspend-check;
-	};
-
 	smi_pd_img_vcore: smi-pd-img-vcore {
 		compatible = "mediatek,smi-pd";
 		mediatek,suspend-check-dev-supply = <&smi_disp_common
