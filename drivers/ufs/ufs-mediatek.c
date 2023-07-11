@@ -789,6 +789,11 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 	if (of_property_read_bool(np, "mediatek,ufs-mphy-debug"))
 		ufs_mtk_dbg_phy_enable(hba);
 
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
+	if (of_property_read_bool(np, "mediatek,ufs-broken-rtc"))
+		host->caps |= UFS_MTK_CAP_MCQ_BROKEN_RTC;
+#endif
+
 #if !IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	/* Disable MCQ in user load temporarily */
 	host->caps |= UFS_MTK_CAP_DISABLE_MCQ;
@@ -1482,7 +1487,8 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	hba->quirks |= UFSHCI_QUIRK_SKIP_MANUAL_WB_FLUSH_CTRL;
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	hba->quirks |= UFSHCD_QUIRK_MCQ_BROKEN_INTR;
-	hba->quirks |= UFSHCD_QUIRK_MCQ_BROKEN_RTC;
+	if (host->caps & UFS_MTK_CAP_MCQ_BROKEN_RTC)
+		hba->quirks |= UFSHCD_QUIRK_MCQ_BROKEN_RTC;
 #endif
 
 	hba->vps->wb_flush_threshold = UFS_WB_BUF_REMAIN_PERCENT(80);

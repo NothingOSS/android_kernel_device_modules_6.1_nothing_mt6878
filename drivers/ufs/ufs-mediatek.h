@@ -146,11 +146,13 @@ enum ufs_mtk_host_caps {
 	 * allow vccqx upstream to enter LPM
 	 */
 	UFS_MTK_CAP_ALLOW_VCCQX_LPM            = 1 << 5,
-	UFS_MTK_CAP_PMC_VIA_FASTAUTO	       = 1 << 6,
-	UFS_MTK_CAP_TX_SKEW_FIX	               = 1 << 7,
-	UFS_MTK_CAP_DISABLE_MCQ	               = 1 << 8,
+	UFS_MTK_CAP_PMC_VIA_FASTAUTO           = 1 << 6,
+	UFS_MTK_CAP_TX_SKEW_FIX                = 1 << 7,
+	UFS_MTK_CAP_DISABLE_MCQ                = 1 << 8,
 	/* Control MTCMOS with RTFF */
-	UFS_MTK_CAP_RTFF_MTCMOS	               = 1 << 9,
+	UFS_MTK_CAP_RTFF_MTCMOS                = 1 << 9,
+
+	UFS_MTK_CAP_MCQ_BROKEN_RTC             = 1 << 10,
 };
 
 struct ufs_mtk_crypt_cfg {
