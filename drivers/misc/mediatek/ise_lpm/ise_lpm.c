@@ -14,6 +14,8 @@
 #include <linux/platform_device.h>
 #include <linux/sched/clock.h>
 #include <linux/slab.h>
+#include <linux/soc/mediatek/mtk_ise.h>
+#include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/stat.h>
 #include <linux/string.h>
 #include <linux/timer.h>
@@ -43,6 +45,12 @@ enum ise_power_state {
 	ISE_SLEEP,
 	ISE_STAND_BY,
 	ISE_POWER_OFF
+};
+
+enum MTK_ISE_LPM_KERNEL_OP {
+	MTK_ISE_LPM_KERNEL_OP_REQ_DRAM = 0,
+	MTK_ISE_LPM_KERNEL_OP_REL_DRAM,
+	MTK_ISE_LPM_KERNEL_OP_NUM
 };
 
 struct ise_scmi_data_t {
@@ -88,6 +96,28 @@ static void ise_power_on(void);
 static void ise_power_off(void);
 static void ise_scmi_init(void);
 
+static unsigned long ise_req_dram(void)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL,
+			ISE_MODULE_LPM,
+			MTK_ISE_LPM_KERNEL_OP_REQ_DRAM,
+			0, 0, 0, 0, 0, &res);
+	return res.a0;
+}
+
+static unsigned long ise_rel_dram(void)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL,
+			ISE_MODULE_LPM,
+			MTK_ISE_LPM_KERNEL_OP_REL_DRAM,
+			0, 0, 0, 0, 0, &res);
+	return res.a0;
+}
+
 static void inc_ise_awake_cnt(enum mtk_ise_awake_id_t mtk_ise_awake_id)
 {
 	ise_awake_user_list[mtk_ise_awake_id]++;
@@ -114,6 +144,7 @@ enum mtk_ise_awake_ack_t mtk_ise_awake_lock(enum mtk_ise_awake_id_t mtk_ise_awak
 
 	start_time = cpu_clock(0);
 	mutex_lock(&mutex_ise_lpm);
+	pr_notice("%s cnt%d user%d\n", __func__, ise_awake_cnt, mtk_ise_awake_id);
 	inc_ise_awake_cnt(mtk_ise_awake_id);
 	if (ise_awake_cnt == 1) {
 		if (ise_req_pending_cnt == 1)
@@ -153,6 +184,7 @@ enum mtk_ise_awake_ack_t mtk_ise_awake_unlock(enum mtk_ise_awake_id_t mtk_ise_aw
 
 	start_time = cpu_clock(0);
 	mutex_lock(&mutex_ise_lpm);
+	pr_notice("%s cnt%d user%d\n", __func__, ise_awake_cnt, mtk_ise_awake_id);
 	dec_ise_awake_cnt(mtk_ise_awake_id);
 	if (ise_awake_cnt == 0) {
 		ise_req_pending_cnt++;
@@ -176,6 +208,7 @@ static void ise_power_on(void)
 	struct ise_scmi_data_t ise_scmi_data;
 	uint32_t ret = 0, retry = 20;
 
+	ise_req_dram();
 	ise_scmi_data.cmd = SCMI_MBOX_CMD_ISE_PWR_ON;
 	do {
 		ret = scmi_tinysys_common_get(_tinfo->ph, ise_scmi_id,
@@ -185,18 +218,21 @@ static void ise_power_on(void)
 				rvalue.r2,
 				rvalue.r3);
 		if (ret)
-			pr_notice("mailbox scmi cmd %d send fail, ret = %d\n",
+			pr_notice("[ise_lpm] scmi cmd %d send fail, ret = %d\n",
 					ise_scmi_data.cmd, ret);
 		if (rvalue.r1 == (uint32_t)ISE_ACTIVE) {
-			pr_info("[mailbox]iSE power on done, retry=%d, cnt%llu\n",
+			pr_info("[ise_lpm] power on done, retry=%d, cnt%llu\n",
 				retry, ++ise_boot_cnt);
 			break;
 		}
 		udelay(500);
 	} while (--retry);
 
-	if(retry == 0)
-		pr_notice("[mailbox]iSE power on failed\n");
+	if(retry == 0) {
+		pr_notice("[ise_lpm]iSE power on failed\n");
+		WARN_ON_ONCE(1);
+		ise_rel_dram();
+	}
 #endif
 }
 
@@ -216,17 +252,20 @@ static void ise_power_off(void)
 				rvalue.r2,
 				rvalue.r3);
 		if (ret)
-			pr_notice("[mailbox]mailbox scmi cmd %d send fail, ret = %d\n",
+			pr_notice("[ise_lpm] scmi cmd %d send fail, ret = %d\n",
 					ise_scmi_data.cmd, ret);
 		if (rvalue.r1 == (uint32_t)ISE_POWER_OFF) {
-			pr_info("[mailbox]iSE power off done, retry=%d\n", retry);
+			pr_info("[ise_lpm] power off done, retry=%d\n", retry);
 			break;
 		}
 		udelay(1000);
 	} while (--retry);
 
-	if(retry == 0)
-		pr_notice("[mailbox]iSE power off failed\n");
+	if(retry == 0) {
+		pr_notice("[ise_lpm] power off failed\n");
+		WARN_ON_ONCE(1);
+	}
+	ise_rel_dram();
 #endif
 }
 
@@ -373,6 +412,7 @@ static int ise_lpm_probe(struct platform_device *pdev)
 	if (ise_wakelock_en) {
 		mutex_init(&mutex_ise_lpm);
 		mutex_lock(&mutex_ise_lpm);
+		ise_req_dram();
 		/*
 		 * Since iSE already boot up at BL2 phase, so init following
 		 * ise_awake_cnt = 1
