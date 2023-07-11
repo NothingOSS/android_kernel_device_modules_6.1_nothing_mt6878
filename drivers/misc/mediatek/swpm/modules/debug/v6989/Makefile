@@ -29,6 +29,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/mtk_swpm_fs/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/modules/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/modules/debug/$(MTK_SWPM_DBG_VERSION)/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mml/
 ccflags-y += -I$(SWPM_MODULES_FOLDER)/debug/v6989/
 ccflags-y += -I$(SWPM_MODULES_FOLDER)/debug/v6989/subsys/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
@@ -64,3 +65,7 @@ obj-$(CONFIG_MTK_SWPM_MODULE) += ${BUILD_SWPM_AUDIO_DBG_MODUDLE_NAME}.o
 ${BUILD_SWPM_AUDIO_DBG_MODUDLE_NAME}-objs += subsys/swpm_audio_v6989.o
 ${BUILD_SWPM_AUDIO_DBG_MODUDLE_NAME}-objs += subsys/swpm_audio_v6989_dbg_init.o
 
+BUILD_SWPM_MML_DBG_MODUDLE_NAME=mtk-swpm-mml-dbg-v6989
+obj-$(CONFIG_MTK_SWPM_MODULE) += ${BUILD_SWPM_MML_DBG_MODUDLE_NAME}.o
+${BUILD_SWPM_MML_DBG_MODUDLE_NAME}-objs += subsys/swpm_mml_v6989.o
+${BUILD_SWPM_MML_DBG_MODUDLE_NAME}-objs += subsys/swpm_mml_v6989_dbg_init.o

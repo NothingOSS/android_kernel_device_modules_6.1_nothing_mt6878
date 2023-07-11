@@ -35,6 +35,7 @@ enum swpm_type {
 	DISP_SWPM_TYPE,
 	USB_SWPM_TYPE,
 	DUMMY_SWPM_TYPE,
+	MML_SWPM_TYPE,
 
 	NR_SWPM_TYPE,
 };
