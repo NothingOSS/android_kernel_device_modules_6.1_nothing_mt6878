@@ -2380,11 +2380,6 @@
 		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,common-id = <15>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN0>;
-		clocks = <&venc_gcon_clk CLK_VEN1_CKE0_LARB>,
-				<&venc_gcon_clk CLK_VEN1_CKE0_LARB>,
-				<&venc_gcon_clk CLK_VEN1_CKE1_VENC>,
-				<&venc_gcon_clk CLK_VEN1_CKE1_VENC>;
-		clock-names = "apb", "smi", "gals0", "gals1";
 	};
 
 	smi_mdp_venc_sub_comm1: smi-mdp-venc-sub-comm1@17870000 {
@@ -2394,11 +2389,6 @@
 		mediatek,smi-supply = <&smi_mdp_common 0 &smi_disp_venc_sub_comm0 0>;
 		mediatek,common-id = <16>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
-		clocks = <&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB>,
-				<&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB>,
-				<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC>,
-				<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC>;
-		clock-names = "apb", "smi", "gals0", "gals1";
 	};
 
 	smi_sram_venc_sub_comm: smi-sram-venc-sub-comm@17880000 {
@@ -2408,11 +2398,6 @@
 		mediatek,smi-supply = <&smi_sysram_common 0 &smi_disp_venc_sub_comm0 0>;
 		mediatek,common-id = <17>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_VEN1>;
-		clocks = <&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB>,
-				<&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB>,
-				<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC>,
-				<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC>;
-		clock-names = "apb", "smi", "gals0", "gals1";
 	};
 
 	smi_mdp_venc_sub_comm2: smi-mdp-venc-sub-comm2@17c70000 {
