@@ -958,7 +958,7 @@ void mtk_tdshp_regdump(struct mtk_ddp_comp *comp)
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp),
 			&comp->regs_pa);
 	DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(comp));
-	for (k = 0; k <= 0x67c; k += 16) {
+	for (k = 0; k <= 0x720; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 			readl(baddr + k),
 			readl(baddr + k + 0x4),
@@ -971,7 +971,7 @@ void mtk_tdshp_regdump(struct mtk_ddp_comp *comp)
 		DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(tdshp->companion),
 				&tdshp->companion->regs_pa);
 		DDPDUMP("[%s REGS Start Dump]\n", mtk_dump_comp_str(tdshp->companion));
-		for (k = 0; k <= 0x67c; k += 16) {
+		for (k = 0; k <= 0x720; k += 16) {
 			DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 				readl(baddr + k),
 				readl(baddr + k + 0x4),
