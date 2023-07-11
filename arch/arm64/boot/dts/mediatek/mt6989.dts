@@ -6642,9 +6642,7 @@
 			mediatek,larb = <&smi_larb32 SMMU_L32_P5_DISP_ODDMR0_DMRR>,
 					<&smi_larb32 SMMU_L32_P6_DISP_ODDMR0_ODR>,
 					<&smi_larb32 SMMU_L32_P7_DISP_ODDMR0_ODW>;
-			iommus = <&mm_smmu SMMU_L32_P5_DISP_ODDMR0_DMRR>,
-				<&mm_smmu SMMU_L32_P6_DISP_ODDMR0_ODR>,
-				<&mm_smmu SMMU_L32_P7_DISP_ODDMR0_ODW>;
+			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L32_P5_DISP_ODDMR0_DMRR)
 						&mmqos SLAVE_COMMON(1)>,
