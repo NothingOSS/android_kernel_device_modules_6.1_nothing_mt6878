@@ -31,6 +31,7 @@
 #include "adsp_platform_driver.h"
 #include "adsp_excep.h"
 #include "adsp_logger.h"
+#include "adsp_bus_monitor.h"
 
 #define ADSP_MAGIC_PATTERN      (0xAD5BAD5B)
 #define ADSP_MISC_BUF_SIZE      0x10000 //64KB
@@ -378,6 +379,8 @@ void adsp_aed_worker(struct work_struct *ws)
 
 	adsp_register_feature(SYSTEM_FEATURE_ID);
 	adsp_extern_notify_chain(ADSP_EVENT_STOP);
+
+	adsp_bus_monitor_dump();
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 	/* exception dump */

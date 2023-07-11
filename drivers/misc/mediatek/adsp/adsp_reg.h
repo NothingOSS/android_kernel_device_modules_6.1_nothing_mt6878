@@ -89,7 +89,6 @@
 #define ADSP_A_DEBUG_PC_REG         (ADSP_BASE + 0x013C)
 #define ADSP_DBG_PEND_CNT           (ADSP_BASE + 0x015C)
 #define ADSP_SLEEP_STATUS_REG       (ADSP_BASE + 0x0158)
-#define ADSP_BUS_MON_BASE           (ADSP_BASE + 0x5000)
 
 /* adsp power state*/
 #define ADSP_A_IS_RESET             (0x00)

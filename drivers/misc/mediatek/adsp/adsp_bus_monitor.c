@@ -5,69 +5,36 @@
 
 #include <linux/io.h>
 #include "adsp_helper.h"
+#include "adsp_core.h"
 #include "adsp_bus_monitor.h"
-
-/**
- * TIMEOUT_VALUE = value * unit(15 cycle count) / clk_src
- */
-#define BUS_MON_STAGE1_TIMEOUT_VALUE    (0x01DA0A2B) /* 1.00 sec @ 466MHz */
-#define BUS_MON_STAGE2_TIMEOUT_VALUE    (0x03B41456) /* 2.00 sec @ 466MHz */
-
-#define ADSP_BUS_MON_STATE              (ADSP_BUS_MON_BACKUP_BASE)
-#define ADSP_BUS_MON_1ST_STAGE_BASE     (ADSP_BUS_MON_BACKUP_BASE + sizeof(u32))
-#define ADSP_BUS_MON_2ND_STAGE_BASE     (ADSP_BUS_MON_1ST_STAGE_BASE + \
-					 sizeof(struct bus_monitor_cblk))
-#define ADSP_BUS_MON_BACKUP_SIZE        (sizeof(u32) + \
-					 2 * sizeof(struct bus_monitor_cblk))
-
-int adsp_bus_monitor_init(void)
-{
-	/* Clear bus monitor register backup in DTCM */
-	memset_io((void *)ADSP_BUS_MON_BACKUP_BASE, 0,
-		  (size_t)ADSP_BUS_MON_BACKUP_SIZE);
-
-	/* initialize bus monitor */
-	writel(BUS_MON_STAGE1_TIMEOUT_VALUE, ADSP_BUS_DBG_TIMER_CON0);
-	writel(BUS_MON_STAGE2_TIMEOUT_VALUE, ADSP_BUS_DBG_TIMER_CON1);
-	writel(0x0, ADSP_BUS_DBG_WP);
-	writel(0x0, ADSP_BUS_DBG_WP_MASK);
-	writel(0x00002037, ADSP_BUS_DBG_CON); /* timeout control */
-	writel(STAGE_RUN, ADSP_BUS_MON_STATE);
-
-	return 0;
-}
-
-bool is_adsp_bus_monitor_alert(void)
-{
-	return readl(ADSP_BUS_MON_STATE) > STAGE_RUN;
-}
-
-static void adsp_bus_monitor_stage_info(void *addr)
-{
-	int i = 0;
-	struct bus_monitor_cblk cblk;
-
-	memcpy_fromio(&cblk, addr, sizeof(struct bus_monitor_cblk));
-
-	pr_info("BUS_DBG_CON = 0x%08x", cblk.ctrl);
-	pr_info("TIMER_CON0 = 0x%08x, TIMER_CON01 = 0x%08x",
-		cblk.timer_ctrl[0], cblk.timer_ctrl[1]);
-
-	for (i = 0; i < 8; i++) {
-		if (!cblk.r_tracks[i] && !cblk.w_tracks[i])
-			continue;
-
-		pr_info("R_TRACK[%d] = 0x%08x, W_TRACK[%d] = 0x%08x",
-			i, cblk.r_tracks[i],
-			i, cblk.w_tracks[i]);
-	}
-}
+#include "adsp_platform_driver.h"
 
 void adsp_bus_monitor_dump(void)
 {
-	pr_info("%s(), BUS_MON_1ST_STAGE BACKUP", __func__);
-	adsp_bus_monitor_stage_info((void *)ADSP_BUS_MON_1ST_STAGE_BASE);
+	struct adsp_priv *pdata = NULL;
+	struct bus_monitor_debug_info debug_info;
+	const struct sharedmem_info *item;
+	void __iomem *dump_addr;
+	u32 nums_core = get_adsp_core_total();
 
-	pr_info("%s(), BUS_MON_2ST_STAGE BACKUP", __func__);
-	adsp_bus_monitor_stage_info((void *)ADSP_BUS_MON_2ND_STAGE_BASE);
+	if (nums_core == 0)
+		return;
+
+	/* obtain bus mon dump address */
+	pdata = get_adsp_core_by_id(ADSP_A_ID);
+	item = pdata->mapping_table + ADSP_SHAREDMEM_BUS_MON_DUMP;
+	dump_addr = pdata->dtcm + pdata->dtcm_size - item->offset;
+
+	adsp_enable_clock();
+	memcpy_fromio(&debug_info, dump_addr, sizeof(struct bus_monitor_debug_info));
+	adsp_disable_clock();
+
+	if (debug_info.state <= STATE_RUN)
+		return;
+
+	pr_info("%s(), ADSP Bus Monitor Timeout!!, state: 0x%x, time: %d.%d",
+		__func__, debug_info.state, debug_info.second, debug_info.mini_second);
+	pr_info("%s(), ADSP debug info dump offset on Core 0 DTCM: 0x%x", __func__, item->offset);
+
 }
+EXPORT_SYMBOL(adsp_bus_monitor_dump);
