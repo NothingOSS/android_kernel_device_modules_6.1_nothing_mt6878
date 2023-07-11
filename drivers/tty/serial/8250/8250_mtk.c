@@ -21,6 +21,7 @@
 #include <linux/tty.h>
 #include <linux/tty_flip.h>
 #include <linux/sched/clock.h>
+#include <linux/atomic.h>
 
 #include "8250.h"
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
@@ -95,6 +96,8 @@
 #define TTY_BUF_POLLING_INTERVAL 10 /*ms*/
 #define TTY_BUF_POLLING_COUNT  10
 
+#define DMA_RX_POLLING_CNT	100
+
 #define FIFO_TX_STATUS_MASK  0xF
 #define FIFO_TX_CNT_MASK 0x1F
 
@@ -139,6 +142,14 @@ struct mtk8250_info_dump {
 	struct mtk8250_dump rec[UART_DUMP_RECORE_NUM];
 };
 
+struct mtk8250_reg_data {
+	unsigned int addr;
+	unsigned int mask;
+	unsigned int val;
+	unsigned int toggle;
+	unsigned int addr_sta;
+};
+
 struct mtk8250_data {
 	int			line;
 	unsigned int		rx_pos;
@@ -153,19 +164,18 @@ struct mtk8250_data {
 	unsigned int   support_hub;
 	unsigned int   hub_baud;
 	struct mutex uart_mutex;
+	unsigned int   support_wakeup;
 	struct workqueue_struct  *uart_workqueue;
+	int wakeup_irq;
+	struct mutex clk_mutex;
+	atomic_t wakeup_state;
+	struct mtk8250_reg_data peri_wakeup_info;
+	void __iomem *peri_wakeup_ctl;
+	void __iomem *peri_wakeup_sta;
 };
 
 struct mtk8250_comp {
 	unsigned int support_hub;
-};
-
-struct mtk8250_reg_data {
-	unsigned int addr;
-	unsigned int mask;
-	unsigned int val;
-	unsigned int toggle;
-	unsigned int addr_sta;
 };
 
 struct mtk8250_reset_data {
@@ -189,6 +199,7 @@ struct mtk8250_info_dump rx_record;
 
 static struct mtk8250_reset_data peri_reset = {0};
 static struct mtk8250_reg_data peri_wakeup = {0};
+static struct mtk8250_data *hub_uart_data;
 
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 static void mtk8250_clear_wakeup(void)
@@ -225,6 +236,36 @@ static void mtk8250_clear_wakeup(void)
 
 	if (peri_remap_wakeup_sta)
 		iounmap(peri_remap_wakeup_sta);
+}
+
+static void mtk8250_set_wakeup_irq(struct mtk8250_data *data, bool enable)
+{
+	if (data == NULL) {
+		pr_info("[%s] para error. data is NULL\n", __func__);
+		return;
+	}
+
+	if (enable) {
+		/*clear wakeup irq*/
+		UART_REG_WRITE(data->peri_wakeup_ctl,
+			((readl(data->peri_wakeup_ctl)
+			& (~data->peri_wakeup_info.mask)) | data->peri_wakeup_info.val));
+		UART_REG_WRITE(data->peri_wakeup_ctl,
+			(readl(data->peri_wakeup_ctl) & (~data->peri_wakeup_info.mask)));
+		/*enable wakeup irq*/
+		UART_REG_WRITE(data->peri_wakeup_ctl,
+			(UART_REG_READ(data->peri_wakeup_ctl) | data->peri_wakeup_info.toggle));
+	} else {
+		/*disable wakeup irq*/
+		UART_REG_WRITE(data->peri_wakeup_ctl,
+			(UART_REG_READ(data->peri_wakeup_ctl) & (~data->peri_wakeup_info.toggle)));
+		/*clear wakeup irq*/
+		UART_REG_WRITE(data->peri_wakeup_ctl,
+			((readl(data->peri_wakeup_ctl)
+			& (~data->peri_wakeup_info.mask)) | data->peri_wakeup_info.val));
+		UART_REG_WRITE(data->peri_wakeup_ctl,
+			(readl(data->peri_wakeup_ctl) & (~data->peri_wakeup_info.mask)));
+	}
 }
 
 static void mtk8250_reset_peri(struct uart_8250_port *up)
@@ -327,12 +368,12 @@ static int mtk8250_clear_fifo(struct tty_struct *tty)
 
     //disable DMA mode
 	serial_out(up, MTK_UART_DMA_EN,
-		serial_in(up, MTK_UART_DMA_EN) & (~MTK_UART_DMA_TRX_EN));
+	serial_in(up, MTK_UART_DMA_EN) & (~MTK_UART_DMA_TRX_EN));
 
 	//polling existed apdma request util finish
 	#if defined(KERNEL_mtk_uart_apdma_polling_rx_finish)
 	if (up->dma && up->dma->rxchan)
-		KERNEL_mtk_uart_apdma_polling_rx_finish(up->dma->rxchan);
+		KERNEL_mtk_uart_apdma_polling_rx_finish();
 	else
 		pr_info("[%s] para error. up->dma,rxchan is NULL\n", __func__);
 	#endif
@@ -405,9 +446,7 @@ static int mtk8250_polling_tx_fifo_empty(struct tty_struct *tty)
 			break;
 	}
 
-	if (count)
-		pr_info("polling done, still clear.\n");
-	else
+	if (count == 0)
 		pr_info("polling failed, need clear fifo.\n");
 
 exit:
@@ -657,8 +696,18 @@ int mtk8250_uart_dump(struct tty_struct *tty)
 		ret = -EINVAL;
 		goto err_unlock_exit;
 	}
+	if (data->support_wakeup) {
+		#if defined(KERNEL_mtk_uart_set_apdma_clk)
+		KERNEL_mtk_uart_set_apdma_clk(true);
+		#endif
+	}
 	mtk8250_save_uart_apdma_reg(up->dma->rxchan, apdma_rx_reg_buf);
 	mtk8250_save_uart_apdma_reg(up->dma->txchan, apdma_tx_reg_buf);
+	if (data->support_wakeup) {
+		#if defined(KERNEL_mtk_uart_set_apdma_clk)
+		KERNEL_mtk_uart_set_apdma_clk(false);
+		#endif
+	}
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
@@ -755,8 +804,18 @@ void mtk8250_uart_start_record(struct tty_struct *tty)
 		pr_info("[%s] para error. up->dma,rx,tx is NULL\n", __func__);
 		return;
 	}
+	if (data->support_wakeup) {
+		#if defined(KERNEL_mtk_uart_set_apdma_clk)
+		KERNEL_mtk_uart_set_apdma_clk(true);
+		#endif
+	}
 	mtk8250_uart_apdma_start_record(up->dma->rxchan);
 	mtk8250_uart_apdma_start_record(up->dma->txchan);
+	if (data->support_wakeup) {
+		#if defined(KERNEL_mtk_uart_set_apdma_clk)
+		KERNEL_mtk_uart_set_apdma_clk(false);
+		#endif
+	}
 #endif
 }
 EXPORT_SYMBOL(mtk8250_uart_start_record);
@@ -827,8 +886,18 @@ void mtk8250_uart_end_record(struct tty_struct *tty)
 		return;
 	}
 
+	if (data->support_wakeup) {
+		#if defined(KERNEL_mtk_uart_set_apdma_clk)
+		KERNEL_mtk_uart_set_apdma_clk(true);
+		#endif
+	}
 	mtk8250_uart_apdma_end_record(up->dma->rxchan);
 	mtk8250_uart_apdma_end_record(up->dma->txchan);
+	if (data->support_wakeup) {
+		#if defined(KERNEL_mtk_uart_set_apdma_clk)
+		KERNEL_mtk_uart_set_apdma_clk(false);
+		#endif
+	}
 #endif
 }
 EXPORT_SYMBOL(mtk8250_uart_end_record);
@@ -869,6 +938,31 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 	#if defined(KERNEL_UARTHUB_dev0_set_tx_request)
 		int ret  = 0;
 
+		if (hub_uart_data != NULL && hub_uart_data->support_wakeup) {
+			mutex_lock(&hub_uart_data->clk_mutex);
+			if (atomic_read(&hub_uart_data->wakeup_state) == 0) {
+				/* clear wakeup */
+				mtk8250_set_wakeup_irq(hub_uart_data, false);
+				/* enable apdma clk */
+				#if defined(KERNEL_mtk_uart_set_apdma_clk)
+					KERNEL_mtk_uart_set_apdma_clk(true);
+				#endif
+				#if defined(KERNEL_mtk_uart_set_apdma_idle)
+					KERNEL_mtk_uart_set_apdma_idle(true);
+				#endif
+				/* make sure clock ready */
+				mb();
+				udelay(100);
+				/*unmask dma irq*/
+				#if defined(KERNEL_mtk_uart_set_apdma_rx_irq)
+					KERNEL_mtk_uart_set_apdma_rx_irq(true);
+				#endif
+				atomic_set(&hub_uart_data->wakeup_state, 1);
+				pr_info("[%s]: atomic_set wakeup_state 1\n", __func__);
+			}
+			mutex_unlock(&hub_uart_data->clk_mutex);
+		}
+
 		ret = KERNEL_UARTHUB_dev0_set_tx_request();
 		if (ret) {
 			pr_info("[%s]dev0_set_tx_request error. ret is %d\n",
@@ -876,11 +970,10 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 			goto exit;
 		}
 
-	#if defined(KERNEL_mtk_uart_set_res_status)
-		KERNEL_mtk_uart_set_res_status(1);
-		pr_info("%s: set res status as 1\n", __func__);
-	#endif
-
+		#if defined(KERNEL_mtk_uart_set_res_status)
+			KERNEL_mtk_uart_set_res_status(1);
+			pr_info("%s: set res status as 1\n", __func__);
+		#endif
 exit:
 		return ret;
 	#else
@@ -912,9 +1005,12 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 {
 #if defined(KERNEL_UARTHUB_dev0_clear_rx_request)
 	int ret = 0;
+	int count = DMA_RX_POLLING_CNT;
+	int dma_state  = 0;
 
-	/*clear ap uart*/
-	mtk8250_clear_wakeup();
+	if (hub_uart_data != NULL && hub_uart_data->support_wakeup == 0)
+		/*clear ap uart*/
+		mtk8250_clear_wakeup();
 
 	/*polling tx fifo empty*/
 	mtk8250_polling_tx_fifo_empty(tty);
@@ -928,10 +1024,45 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 		goto exit;
 	}
 
-#if defined(KERNEL_mtk_uart_set_res_status)
-	KERNEL_mtk_uart_set_res_status(0);
-	pr_info("%s: set res status as 0\n", __func__);
-#endif
+	#if defined(KERNEL_mtk_uart_set_res_status)
+		KERNEL_mtk_uart_set_res_status(0);
+		pr_info("%s: set res status as 0\n", __func__);
+	#endif
+
+	if (hub_uart_data != NULL && hub_uart_data->support_wakeup == 1) {
+		mutex_lock(&hub_uart_data->clk_mutex);
+		/*mask dma irq*/
+		#if defined(KERNEL_mtk_uart_set_apdma_rx_irq)
+			KERNEL_mtk_uart_set_apdma_rx_irq(false);
+		#endif
+		/*polling existed apdma request util finish*/
+		#if defined(KERNEL_mtk_uart_apdma_polling_rx_finish)
+			KERNEL_mtk_uart_apdma_polling_rx_finish();
+		#endif
+		/*polling check dma rx complete*/
+		while (count) {
+			#if defined(KERNEL_mtk_uart_get_apdma_rx_state)
+			dma_state = KERNEL_mtk_uart_get_apdma_rx_state();
+			#endif
+			if (dma_state) {
+				usleep_range(1000, 1500);
+				count--;
+			} else {
+				break;
+			}
+		}
+		/*close apdma clk*/
+		#if defined(KERNEL_mtk_uart_set_apdma_clk)
+			KERNEL_mtk_uart_set_apdma_clk(false);
+		#endif
+		#if defined(KERNEL_mtk_uart_set_apdma_idle)
+			KERNEL_mtk_uart_set_apdma_idle(false);
+		#endif
+		/*clear uart wakeup status and enable wakeup*/
+		mtk8250_set_wakeup_irq(hub_uart_data, true);
+		atomic_set(&hub_uart_data->wakeup_state, 0);
+		mutex_unlock(&hub_uart_data->clk_mutex);
+	}
 
 exit:
 	return ret;
@@ -940,6 +1071,7 @@ exit:
 #endif
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_dev0_clear_rx_request);
+
 int mtk8250_uart_hub_get_uart_cmm_rx_count(void)
 {
 	#if defined(KERNEL_UARTHUB_get_uart_cmm_rx_count)
@@ -1238,6 +1370,11 @@ static void mtk8250_dma_rx_complete(void *param)
 
 	mtk8250_rx_dma(up);
 
+#if defined(KERNEL_mtk_uart_set_apdma_rx_state)
+	if (data->support_hub == 1 && data->support_wakeup == 1)
+		KERNEL_mtk_uart_set_apdma_rx_state(0);
+#endif
+
 	spin_unlock_irqrestore(&up->port.lock, flags);
 #ifdef CONFIG_UART_DATA_RECORD
 	if (is_exceed_buf_size) {
@@ -1370,7 +1507,10 @@ static void mtk8250_shutdown(struct uart_port *port)
 #if defined(KERNEL_UARTHUB_close)
 	if (data->support_hub == 1) {
 		KERNEL_UARTHUB_close();
-		mtk8250_clear_wakeup();
+		if (data->support_wakeup == 1)
+			mtk8250_set_wakeup_irq(data, true);
+		else
+			mtk8250_clear_wakeup();
 	}
 #endif
 
@@ -1488,7 +1628,17 @@ mtk8250_set_termios(struct uart_port *port, struct ktermios *termios,
 			devm_kfree(up->port.dev, up->dma);
 			up->dma = NULL;
 		} else {
+			if (data->support_wakeup) {
+				#if defined(KERNEL_mtk_uart_set_apdma_clk)
+				KERNEL_mtk_uart_set_apdma_clk(true);
+				#endif
+			}
 			mtk8250_dma_enable(up);
+			if (data->support_wakeup) {
+				#if defined(KERNEL_mtk_uart_set_apdma_clk)
+				KERNEL_mtk_uart_set_apdma_clk(false);
+				#endif
+			}
 		}
 	}
 #endif
@@ -1736,6 +1886,164 @@ static bool mtk8250_dma_filter(struct dma_chan *chan, void *param)
 }
 #endif
 
+static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
+{
+	struct platform_device *pdev = NULL;
+	struct mtk8250_data *data = NULL;
+	struct uart_8250_port *up = NULL;
+
+	pdev= (struct platform_device *)dev_id;
+	data = platform_get_drvdata(pdev);
+	if (data != NULL)
+		up = serial8250_get_port(data->line);
+
+	if (up == NULL || up->dma == NULL) {
+		pr_info("[%s] dma para is NULL\n", __func__);
+		return IRQ_HANDLED;
+	}
+
+	mutex_lock(&data->clk_mutex);
+	if (atomic_read(&data->wakeup_state) == 0) {
+		/*open apdma clk*/
+		#if defined(KERNEL_mtk_uart_set_apdma_clk)
+		KERNEL_mtk_uart_set_apdma_clk(true);
+		#endif
+		#if defined(KERNEL_mtk_uart_set_apdma_idle)
+		KERNEL_mtk_uart_set_apdma_idle(true);
+		#endif
+		/* make sure clock ready */
+		mb();
+		udelay(100);
+		/*unmask dma irq*/
+		#if defined(KERNEL_mtk_uart_set_apdma_rx_irq)
+			KERNEL_mtk_uart_set_apdma_rx_irq(true);
+		#endif
+
+		atomic_set(&data->wakeup_state, 1);
+		pr_info("[%s]: atomic_set wakeup_state 1\n", __func__);
+	}
+	mutex_unlock(&data->clk_mutex);
+
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t wakeup_irq_handler(int irq, void *dev_id)
+{
+	struct platform_device *pdev = NULL;
+	struct mtk8250_data *data = NULL;
+	struct uart_8250_port *up = NULL;
+	int ret = 0;
+
+	pdev= (struct platform_device *)dev_id;
+	data = platform_get_drvdata(pdev);
+	if (data != NULL)
+		up = serial8250_get_port(data->line);
+
+	if (up == NULL || up->dma == NULL) {
+		pr_info("[%s] para error. data is NULL\n", __func__);
+		ret = -EINVAL;
+	}
+
+	/*clear wakeup irq*/
+	mtk8250_set_wakeup_irq(data, false);
+
+	if (ret != 0)
+		return IRQ_HANDLED;
+
+	return IRQ_WAKE_THREAD;
+}
+
+static int mtk8250_wakeup_probe_of(struct platform_device *pdev, struct uart_port *port)
+{
+	struct mtk8250_data *data = NULL;
+	int ret = 0;
+
+	data = port->private_data;
+	if (data == NULL) {
+		pr_info("[%s] para error. data is NULL\n", __func__);
+		ret = -1;
+	}
+
+	/*get peri-wakeup info from dts*/
+	ret = of_property_read_u32_index(pdev->dev.of_node,
+		"peri-wakeup", 0, &data->peri_wakeup_info.addr);
+	if (ret) {
+		pr_notice("[%s] get peri-wakeup addr fail\n", __func__);
+		return -1;
+	}
+
+	ret = of_property_read_u32_index(pdev->dev.of_node,
+		"peri-wakeup", 1, &data->peri_wakeup_info.mask);
+	if (ret) {
+		pr_notice("[%s] get peri-wakeup_mask fail\n", __func__);
+		return -1;
+	}
+
+	ret = of_property_read_u32_index(pdev->dev.of_node,
+		"peri-wakeup", 2, &data->peri_wakeup_info.val);
+	if (ret) {
+		pr_notice("[%s] get peri-wakeup_value fail\n", __func__);
+		return -1;
+	}
+
+	ret = of_property_read_u32_index(pdev->dev.of_node,
+		"peri-wakeup", 3, &data->peri_wakeup_info.toggle);
+	if (ret) {
+		pr_notice("[%s] get peri-wakeup.toggle fail\n", __func__);
+		return -1;
+	}
+
+	ret = of_property_read_u32_index(pdev->dev.of_node,
+		"peri-wakeup-sta", 0, &data->peri_wakeup_info.addr_sta);
+	if (ret) {
+		pr_notice("[%s] get peri-wakeup-sta.addr-sta fail\n", __func__);
+		return -1;
+	}
+
+	/*ioremap peri_remap_wakeup & peri_remap_wakeup_sta*/
+	data->peri_wakeup_ctl = ioremap(data->peri_wakeup_info.addr, 0x10);
+	if (!data->peri_wakeup_ctl) {
+		pr_notice("[%s] peri_wakeup_ctl(%x) ioremap fail\n",
+			__func__, data->peri_wakeup_info.addr);
+		return -1;
+	}
+
+	data->peri_wakeup_sta = ioremap(data->peri_wakeup_info.addr_sta, 0x10);
+	if (!data->peri_wakeup_sta) {
+		pr_notice("[%s] peri_wakeup_sta(%x) ioremap fail\n",
+			__func__, data->peri_wakeup_info.addr_sta);
+		iounmap(data->peri_wakeup_ctl);
+		return -1;
+	}
+
+	mutex_init(&data->clk_mutex);
+	/*get wakeup irq id*/
+	data->wakeup_irq = platform_get_irq(pdev, 1);
+	if (data->wakeup_irq < 0) {
+		pr_notice("[%s] wakeup_irq NULL!!\n", __func__);
+		return 0;
+	}
+	/*disable wakeup irq*/
+	UART_REG_WRITE(data->peri_wakeup_ctl,
+		(UART_REG_READ(data->peri_wakeup_ctl) & (~data->peri_wakeup_info.toggle)));
+	/*clear wakeup irq*/
+	UART_REG_WRITE(data->peri_wakeup_ctl,
+		((readl(data->peri_wakeup_ctl)
+		& (~data->peri_wakeup_info.mask)) | data->peri_wakeup_info.val));
+
+	UART_REG_WRITE(data->peri_wakeup_ctl,
+		(readl(data->peri_wakeup_ctl) & (~data->peri_wakeup_info.mask)));
+
+	ret = request_threaded_irq(data->wakeup_irq, wakeup_irq_handler,
+			wakeup_irq_handler_bottom_half,
+			IRQF_TRIGGER_NONE, KBUILD_MODNAME, pdev);
+	if (ret) {
+		pr_info("Request wakeup_irq[%d] failed rc = %d!", data->wakeup_irq, ret);
+		return -1;
+	}
+	return 0;
+}
+
 static int mtk8250_probe_of(struct platform_device *pdev, struct uart_port *p,
 			   struct mtk8250_data *data)
 {
@@ -1830,6 +2138,11 @@ static int mtk8250_probe_of(struct platform_device *pdev, struct uart_port *p,
 	}
 
 	if (data->support_hub) {
+		index = of_property_read_u32_index(pdev->dev.of_node,
+			"wakeup-irq-support", 0, &data->support_wakeup);
+		if (index)
+			pr_notice("[%s] get wakeup-irq-support fail\n", __func__);
+
 		/*switch clock*/
 		dev_info(&pdev->dev, "switch clock as 104M\n");
 		index = of_property_read_u32_index(pdev->dev.of_node,
@@ -1870,42 +2183,49 @@ static int mtk8250_probe_of(struct platform_device *pdev, struct uart_port *p,
 			return -1;
 		}
 
-		/*parse wakeup*/
-		index = of_property_read_u32_index(pdev->dev.of_node,
-			"peri-wakeup", 0, &peri_wakeup.addr);
-		if (index) {
-			pr_notice("[%s] get peri-wakeup addr fail\n", __func__);
-			return -1;
-		}
+		if (data->support_wakeup == 0) {
+			/*parse wakeup*/
+			index = of_property_read_u32_index(pdev->dev.of_node,
+				"peri-wakeup", 0, &peri_wakeup.addr);
+			if (index) {
+				pr_notice("[%s] get peri-wakeup addr fail\n", __func__);
+				return -1;
+			}
 
-		index = of_property_read_u32_index(pdev->dev.of_node,
-			"peri-wakeup", 1, &peri_wakeup.mask);
-		if (index) {
-			pr_notice("[%s] get peri-wakeup_mask fail\n", __func__);
-			return -1;
-		}
+			index = of_property_read_u32_index(pdev->dev.of_node,
+				"peri-wakeup", 1, &peri_wakeup.mask);
+			if (index) {
+				pr_notice("[%s] get peri-wakeup_mask fail\n", __func__);
+				return -1;
+			}
 
-		index = of_property_read_u32_index(pdev->dev.of_node,
-			"peri-wakeup", 2, &peri_wakeup.val);
-		if (index) {
-			pr_notice("[%s] get peri-wakeup_value fail\n", __func__);
-			return -1;
-		}
+			index = of_property_read_u32_index(pdev->dev.of_node,
+				"peri-wakeup", 2, &peri_wakeup.val);
+			if (index) {
+				pr_notice("[%s] get peri-wakeup_value fail\n", __func__);
+				return -1;
+			}
 
-		index = of_property_read_u32_index(pdev->dev.of_node,
-			"peri-wakeup", 3, &peri_wakeup.toggle);
-		if (index) {
-			pr_notice("[%s] get peri-wakeup.toggle fail\n", __func__);
-			return -1;
-		}
+			index = of_property_read_u32_index(pdev->dev.of_node,
+				"peri-wakeup", 3, &peri_wakeup.toggle);
+			if (index) {
+				pr_notice("[%s] get peri-wakeup.toggle fail\n", __func__);
+				return -1;
+			}
 
-		index = of_property_read_u32_index(pdev->dev.of_node,
-			"peri-wakeup-sta", 0, &peri_wakeup.addr_sta);
-		if (index) {
-			pr_notice("[%s] get peri-wakeup-sta.addr-sta fail\n", __func__);
-			return -1;
+			index = of_property_read_u32_index(pdev->dev.of_node,
+				"peri-wakeup-sta", 0, &peri_wakeup.addr_sta);
+			if (index) {
+				pr_notice("[%s] get peri-wakeup-sta.addr-sta fail\n", __func__);
+				return -1;
+			}
+		} else {
+			index = mtk8250_wakeup_probe_of(pdev, p);
+			if (index) {
+				pr_info("[%s] mtk8250_wakeup_probe_of fail!!\n", __func__);
+				return -1;
+			}
 		}
-
 		/*parse reset*/
 		index = of_property_read_u32_index(pdev->dev.of_node,
 			"peri-reset-set", 0, &peri_reset.addr_set);
@@ -2005,15 +2325,19 @@ static int mtk8250_probe(struct platform_device *pdev)
 	data->clk_count = 0;
 	mutex_init(&data->uart_mutex);
 
+	uart.port.private_data = data;
 #ifndef CONFIG_FPGA_EARLY_PORTING
 	if (pdev->dev.of_node) {
 		err = mtk8250_probe_of(pdev, &uart.port, data);
-		if (err)
+		if (err) {
+			pr_info("[%s]: mtk8250_probe_of fail!!\n", __func__);
 			return err;
+		}
 	} else
 		return -ENODEV;
 #endif
-
+	if (data->support_hub && (hub_uart_data == NULL))
+		hub_uart_data = data;
 	if ((data->support_hub) && (data->uart_workqueue == NULL)) {
 		data->uart_workqueue = alloc_workqueue("UART_RX_WQ", WQ_HIGHPRI | WQ_UNBOUND |
 						WQ_MEM_RECLAIM, 1);
@@ -2033,7 +2357,6 @@ static int mtk8250_probe(struct platform_device *pdev)
 	uart.port.dev = &pdev->dev;
 	uart.port.iotype = UPIO_MEM32;
 	uart.port.regshift = 2;
-	uart.port.private_data = data;
 	uart.port.shutdown = mtk8250_shutdown;
 	uart.port.startup = mtk8250_startup;
 	uart.port.set_termios = mtk8250_set_termios;
@@ -2072,7 +2395,10 @@ static int mtk8250_probe(struct platform_device *pdev)
 		goto err_pm_disable;
 	}
 
-	data->rx_wakeup_irq = platform_get_irq_optional(pdev, 1);
+	if (data->support_wakeup)
+		data->rx_wakeup_irq = platform_get_irq_optional(pdev, 2);
+	else
+		data->rx_wakeup_irq = platform_get_irq_optional(pdev, 1);
 
 	return 0;
 
@@ -2087,6 +2413,12 @@ static int mtk8250_remove(struct platform_device *pdev)
 	struct mtk8250_data *data = platform_get_drvdata(pdev);
 
 	pm_runtime_get_sync(&pdev->dev);
+	if (data->support_hub == 1 && data->support_wakeup == 1) {
+		if (data->peri_wakeup_ctl)
+			iounmap(data->peri_wakeup_ctl);
+		if (data->peri_wakeup_sta)
+			iounmap(data->peri_wakeup_sta);
+	}
 
 	serial8250_unregister_port(data->line);
 
