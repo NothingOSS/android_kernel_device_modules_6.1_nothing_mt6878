@@ -201,9 +201,13 @@ static void fbt_ux_set_cap_with_sbe(struct render_info *thr)
 
 	fpsgo_get_fbt_mlock(__func__);
 	local_min_cap = set_blc_wt;
-	if (local_min_cap != 0)
-		local_max_cap = fbt_ux_get_max_cap(thr->pid, thr->buffer_id,
-					set_blc_wt);
+	if (local_min_cap != 0) {
+		if (thr->sbe_enhance > 0)
+			local_max_cap = 100;
+		else
+			local_max_cap = fbt_ux_get_max_cap(thr->pid,
+				thr->buffer_id, set_blc_wt);
+	}
 
 	if (local_min_cap == 0 && local_max_cap == 100)
 		fbt_check_max_blc_locked(thr->pid);
