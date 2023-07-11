@@ -33,9 +33,7 @@ obj-$(CONFIG_MTK_MML) := mtk-mml.o
 
 mtk-mml-legacy-objs := mtk-mml.o
 
-ifeq ($(strip $(CONFIG_MTK_MML_DEBUG)),y)
 mtk-mml-objs += mtk-mml-monitor.o
-endif
 
 mtk-mml-objs += mtk-mml-driver.o
 mtk-mml-objs += mtk-mml-core.o

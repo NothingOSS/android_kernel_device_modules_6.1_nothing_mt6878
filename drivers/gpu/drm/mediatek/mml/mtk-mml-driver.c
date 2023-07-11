@@ -310,9 +310,7 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc)
 	}
 	mml_trace_end();
 
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	mml_update_freq_status(tp->opp_speeds[i]);
-#endif
 
 done:
 	return tp->opp_speeds[i];

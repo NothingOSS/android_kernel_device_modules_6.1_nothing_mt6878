@@ -270,7 +270,6 @@ void *mml_get_sys(struct mml_dev *mml);
 phys_addr_t mml_get_node_base_pa(struct platform_device *pdev, const char *name,
 	u32 idx, void __iomem **base);
 
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 /*
  * mml for swpm
  */
@@ -291,7 +290,6 @@ enum mml_mon_mods {
 	mml_mon_wrot = 1, /* wrot 0~3 occupy index 1~4 */
 	mml_mon_total = 5
 };
-#endif
 
 /*
  * mml_backup_crc - Backup crc register to dma buffer for later record or debug.

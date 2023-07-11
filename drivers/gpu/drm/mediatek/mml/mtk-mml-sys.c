@@ -976,9 +976,7 @@ static s32 mml_sys_comp_clk_enable(struct mml_comp *comp)
 	if (ret < 0)
 		return ret;
 
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	mml_update_comp_status(mml_mon_mmlsys, 1);
-#endif
 
 	return 0;
 }
@@ -988,9 +986,7 @@ static s32 mml_sys_comp_clk_disable(struct mml_comp *comp,
 {
 	int ret;
 
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	mml_update_comp_status(mml_mon_mmlsys, 0);
-#endif
 
 	/* original clk enable */
 	ret = mml_comp_clk_disable(comp, task);
@@ -1147,9 +1143,7 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 	comp->config_ops = &sys_config_ops;
 	comp->debug_ops = &sys_debug_ops;
 
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	mml_init_swpm_comp(mml_mon_mmlsys, comp);
-#endif
 
 #ifndef MML_FPGA
 	/* scmi(sspm) config aid/uid support */
