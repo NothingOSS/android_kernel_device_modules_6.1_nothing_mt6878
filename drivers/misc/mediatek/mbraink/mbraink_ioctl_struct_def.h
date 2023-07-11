@@ -38,7 +38,12 @@
 
 #define MAX_POWER_SPM_TBL_SEC_SZ (928)
 
-#define MAX_MD_TOTAL_SZ 200
+#define MD_HD_SZ 8
+#define MD_MDHD_SZ 8
+#define MD_BLK_SZ 300
+#define MD_SECBLK_NUM 6
+#define MD_SEC_SZ (MD_SECBLK_NUM*MD_BLK_SZ)
+
 
 struct mbraink_process_stat_struct {
 	unsigned short pid;
@@ -228,7 +233,12 @@ struct mbraink_power_spm_raw {
 };
 
 struct mbraink_modem_raw {
-	unsigned char md_data[MAX_MD_TOTAL_SZ];
+	uint8_t type;
+	uint8_t is_has_data;
+	unsigned short count;
+	unsigned char data1[MD_HD_SZ];
+	unsigned char data2[MD_MDHD_SZ];
+	unsigned char data3[MD_SEC_SZ];
 };
 
 

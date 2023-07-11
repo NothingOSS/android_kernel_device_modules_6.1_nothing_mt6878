@@ -629,8 +629,12 @@ static long mbraink_ioctl(struct file *filp,
 	{
 		struct mbraink_modem_raw modem_buffer;
 
-		memset(&modem_buffer, 0,
-			sizeof(struct mbraink_modem_raw));
+		if (copy_from_user(&modem_buffer,
+					(struct mbraink_modem_raw *) arg,
+					sizeof(modem_buffer))) {
+			pr_notice("Data write modem_buffer from UserSpace Err!\n");
+			return -EPERM;
+		}
 		mbraink_power_get_modem_info(&modem_buffer);
 
 		if (copy_to_user((struct mbraink_modem_raw *) arg,

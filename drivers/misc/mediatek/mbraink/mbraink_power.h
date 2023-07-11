@@ -92,6 +92,20 @@ int is_md_sleep_info_valid(struct md_sleep_status *md_data);
 void get_md_sleep_time(struct md_sleep_status *md_data);
 #endif /*end of CONFIG_MTK_LPM_MT6985 && CONFIG_MTK_LOW_POWER_MODULE && CONFIG_MTK_ECCCI_DRIVER*/
 
+
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
+
+#define MD_BLK_MAX_NUM 108
+#define MD_DATA_TOTAL_SZ (MD_MDHD_SZ+MD_BLK_SZ*MD_BLK_MAX_NUM)
+#define MD_MAX_SZ (MD_HD_SZ+MD_DATA_TOTAL_SZ)
+
+#define MD_STATUS_W_DONE 0xEDEDEDED
+#define MD_STATUS_W_ING  0xEEEEEEEE
+#define MD_STATUS_R_DONE 0xFFFFFFFF
+
+#endif
+
+
 int mbraink_get_power_info(char *buffer, unsigned int size, int datatype);
 int mbraink_power_getVcoreInfo(struct mbraink_power_vcoreInfo *pmbrainkPowerVcoreInfo);
 

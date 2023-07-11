@@ -23,6 +23,10 @@ unsigned int g_data_size;
 
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 #include "mtk_ccci_common.h"
+
+unsigned int g_md_last_has_data_blk_idx;
+unsigned int g_md_last_read_blk_idx;
+unsigned int g_md_read_count;
 #endif
 
 
@@ -403,26 +407,89 @@ int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
 
 int mbraink_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
 {
-	int size = 0;
-	void __iomem *addrVir = NULL;
+	int shm_size = 0;
+	void __iomem *shm_addr = NULL;
+	unsigned char *base_addr = NULL;
+	unsigned char *read_addr = NULL;
+	int i = 0;
+	unsigned int mem_status = 0;
+	unsigned int read_blk_idx = 0;
+	unsigned int offset = 0;
+	bool ret = true;
 
-	addrVir = get_smem_start_addr(SMEM_USER_32K_LOW_POWER, &size);
-	if (addrVir == NULL) {
+	if (modem_buffer == NULL)
+		return 0;
+
+	shm_addr = get_smem_start_addr(SMEM_USER_32K_LOW_POWER, &shm_size);
+	if (shm_addr == NULL) {
 		pr_notice("get_smem_start_addr addr is null\n");
 		return 0;
 	}
 
-	if (size == 0) {
-		pr_notice("get_smem_start_addr size is 0\n");
+	if (shm_size == 0 || MD_MAX_SZ > shm_size) {
+		pr_notice("get_smem_start_addr size(%d) is incorrect\n", shm_size);
 		return 0;
 	}
 
-	if (size >= MAX_MD_TOTAL_SZ) {
-		memcpy(modem_buffer->md_data, addrVir, MAX_MD_TOTAL_SZ);
-	} else {
-		pr_notice("share memory virtual addr(0x%llx), size:(0x%x)",
-			(u64)addrVir, size);
+	base_addr = (unsigned char *)shm_addr;
+
+	if (modem_buffer->type == 0) {
+		read_addr = base_addr;
+		memcpy(modem_buffer->data1, read_addr, MD_HD_SZ);
+		read_addr = base_addr + MD_HD_SZ;
+		memcpy(modem_buffer->data2, read_addr, MD_MDHD_SZ);
+
+		if (modem_buffer->data1[0] != 1 ||  modem_buffer->data1[2] != 8) {
+			modem_buffer->is_has_data = 0;
+			modem_buffer->count = 0;
+			return 0;
+		}
+
+		g_md_read_count = 0;
+		g_md_last_read_blk_idx = g_md_last_has_data_blk_idx;
+
+		pr_notice("g_md_last_read_blk_idx(%d)", g_md_last_read_blk_idx);
 	}
+
+	read_blk_idx = g_md_last_read_blk_idx;
+	i = 0;
+	ret = true;
+	while ((g_md_read_count < MD_BLK_MAX_NUM) && (i < MD_SECBLK_NUM)) {
+		offset = MD_HD_SZ + MD_MDHD_SZ + read_blk_idx*MD_BLK_SZ;
+		if (offset > shm_size) {
+			ret = false;
+			break;
+		}
+		read_addr = base_addr + offset;
+		memcpy(&mem_status, read_addr, sizeof(mem_status));
+
+		read_blk_idx = (read_blk_idx + 1) % MD_BLK_MAX_NUM;
+		g_md_read_count++;
+
+		if (mem_status == MD_STATUS_W_DONE) {
+			offset = i*MD_BLK_SZ;
+			if ((offset + MD_BLK_SZ) > sizeof(modem_buffer->data3)) {
+				ret = false;
+				break;
+			}
+
+			memcpy(modem_buffer->data3 + offset, read_addr, MD_BLK_SZ);
+			//reset mem_status mem_count after read data
+			mem_status = MD_STATUS_R_DONE;
+			memcpy(read_addr, &mem_status, sizeof(mem_status));
+			memset(read_addr + sizeof(mem_status), 0, 4); //mem_count
+			i++;
+			g_md_last_has_data_blk_idx = read_blk_idx;
+		}
+	}
+
+	if ((g_md_read_count < MD_BLK_MAX_NUM) && (ret == true))
+		modem_buffer->is_has_data = 1;
+	else
+		modem_buffer->is_has_data = 0;
+
+	g_md_last_read_blk_idx = read_blk_idx;
+	modem_buffer->count = i;
 
 	return 0;
 }
