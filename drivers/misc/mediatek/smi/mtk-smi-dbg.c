@@ -420,7 +420,7 @@ struct mtk_smi_dbg {
 static struct mtk_smi_dbg	*gsmi;
 static bool smi_enter_met;
 
-#define LINE_MAX_LEN		(1024)
+#define LINE_MAX_LEN		(800)
 
 static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 				const bool rsi, const u32 id, bool skip_pm_runtime)
