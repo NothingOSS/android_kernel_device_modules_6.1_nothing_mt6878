@@ -479,6 +479,22 @@ struct msync_cmd_table {
 	struct msync_trigger_level_te_table trigger_level_te_tb;
 };
 
+enum DISPLAY_MODE {
+	DISPLAY_MODE_0 = 0,
+	DISPLAY_MODE_1,
+	DISPLAY_MODE_2,
+	DISPLAY_MODE_3,
+	DISPLAY_MODE_4,
+	DISPLAY_MODE_5,
+	DISPLAY_MODE_6,
+	DISPLAY_MODE_7,
+	DISPLAY_MODE_8,
+	DISPLAY_MODE_9,
+	DISPLAY_MODE_10,
+	DISPLAY_MODE_11,
+	DISPLAY_MODE_NUM,
+};
+
 struct mtk_panel_params {
 	unsigned int pll_clk;
 	unsigned int data_rate;
@@ -613,6 +629,8 @@ struct mtk_panel_funcs {
 			void *handle, unsigned int flag);
 	int (*get_virtual_heigh)(void);
 	int (*get_virtual_width)(void);
+	void (*get_switch_mode_delay)(enum SWITCH_MODE_DELAY **switch_mode_delay,
+		unsigned int mode_num);
 	/**
 	 * @doze_enable_start:
 	 *

@@ -2608,8 +2608,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 						cnt = 0;
 					}
 					cnt++;
-				} else
+				} else {
 					mtk_crtc_vblank_irq(&mtk_crtc->base);
+				}
 			}
 		}
 

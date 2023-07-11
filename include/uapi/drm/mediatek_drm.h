@@ -842,11 +842,27 @@ struct mtk_drm_connector_caps {
 	unsigned int height_after_pq[MAX_MODES];
 };
 
+enum SWITCH_MODE_DELAY {
+	DELAY_INVAL = 0,
+	DELAY_0,
+	DELAY_1,
+	DELAY_2,
+	DELAY_3,
+	DELAY_4,
+	DELAY_5,
+	DELAY_6,
+	DELAY_7,
+	DELAY_8,
+	DELAY_9,
+	DELAY_10,
+};
+
 struct mtk_drm_mode_ext_info {
 	unsigned int crtc_id;
 	unsigned int mode_num;
 	unsigned int *total_offset;
 	unsigned int *real_te_duration;
+	enum SWITCH_MODE_DELAY **switch_mode_delay;
 };
 
 struct mtk_drm_crtc_caps {

@@ -15288,6 +15288,7 @@ void mtk_crtc_ddp_irq(struct drm_crtc *crtc, struct mtk_ddp_comp *comp)
 
 void mtk_crtc_vblank_irq(struct drm_crtc *crtc)
 {
+	int index = drm_crtc_index(crtc);
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	char tag_name[100] = {'\0'};
 	ktime_t ktime = ktime_get();
@@ -15297,6 +15298,7 @@ void mtk_crtc_vblank_irq(struct drm_crtc *crtc)
 	sprintf(tag_name, "%d|HW_VSYNC|%lld",
 		DRM_TRACE_VSYNC_ID, ktime);
 	mtk_drm_trace_c("%s", tag_name);
+	CRTC_MMP_MARK((int) index, enable_vblank, 0, ktime);
 
 /*
  *	DDPMSG("%s CRTC%d %s\n", __func__,

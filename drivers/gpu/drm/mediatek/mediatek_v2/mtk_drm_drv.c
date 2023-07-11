@@ -6527,9 +6527,12 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 	struct mtk_drm_mode_ext_info *args = (struct mtk_drm_mode_ext_info *)data;
 	unsigned int *total_offset = NULL;
 	unsigned int *real_te_duration = NULL;
+	enum SWITCH_MODE_DELAY (**switch_mode_delay) = NULL;
+	enum SWITCH_MODE_DELAY (**user_switch_mode_delay) = NULL;
 	struct mtk_drm_private *priv = dev->dev_private;
 	unsigned int copy_num;
-	int i = 0;
+	int i = 0, j = 0;
+	struct mtk_panel_ext *panel_ext;
 
 	crtc = drm_crtc_find(dev, file_priv, args->crtc_id);
 	if (!crtc) {
@@ -6542,19 +6545,54 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 		DDPPR_ERR("%s mtk_crtc is null\n", __func__);
 		return  -EFAULT;
 	}
+	panel_ext = mtk_crtc->panel_ext;
 
 	if (drm_crtc_index(crtc) != 0 || !mtk_crtc_is_frame_trigger_mode(crtc))
 		return 0;
+
+	//memory allocate of array, getting user space pointer of first layer of 2D array
+	user_switch_mode_delay = kcalloc(1, sizeof(enum SWITCH_MODE_DELAY *)
+		* mtk_crtc->avail_modes_num, GFP_KERNEL);
+	if (copy_from_user(user_switch_mode_delay, args->switch_mode_delay,
+			sizeof(enum SWITCH_MODE_DELAY *) * mtk_crtc->avail_modes_num) != 0) {
+		DDPPR_ERR("%s alloc mem fail\n", __func__);
+		kfree(user_switch_mode_delay);
+		return  -EFAULT;
+	}
 
 	total_offset = kcalloc(1, sizeof(unsigned int) * mtk_crtc->avail_modes_num,
 			GFP_KERNEL);
 	real_te_duration = kcalloc(1, sizeof(unsigned int) * mtk_crtc->avail_modes_num,
 			GFP_KERNEL);
-	if (!total_offset || !real_te_duration) {
+	switch_mode_delay = kcalloc(1, sizeof(enum SWITCH_MODE_DELAY *)
+		* mtk_crtc->avail_modes_num, GFP_KERNEL);
+	for (i = 0;  i < mtk_crtc->avail_modes_num; i++) {
+		switch_mode_delay[i] =
+			kcalloc(1, sizeof(enum SWITCH_MODE_DELAY) * mtk_crtc->avail_modes_num,
+			GFP_KERNEL);
+	}
+	if (!total_offset || !real_te_duration || !switch_mode_delay) {
 		DDPPR_ERR("%s alloc mem fail\n", __func__);
 		kfree(real_te_duration);
 		kfree(total_offset);
+		for (i = 0;  i < mtk_crtc->avail_modes_num; i++)
+			kfree(switch_mode_delay[i]);
+		kfree(switch_mode_delay);
+		kfree(user_switch_mode_delay);
 		return -EFAULT;
+	}
+
+	for (i = 0;  i < mtk_crtc->avail_modes_num; i++) {
+		if (!switch_mode_delay[i]) {
+			DDPPR_ERR("%s alloc mem fail\n", __func__);
+			kfree(real_te_duration);
+			kfree(total_offset);
+			for (j = 0;  j < mtk_crtc->avail_modes_num; j++)
+				kfree(switch_mode_delay[j]);
+			kfree(switch_mode_delay);
+			kfree(user_switch_mode_delay);
+			return -EFAULT;
+		}
 	}
 
 	for (i = 0;  i < mtk_crtc->avail_modes_num; i++) {
@@ -6584,6 +6622,11 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 			real_te_duration[i] = 0; //TE duration is same to SW vsync
 	}
 
+	//fill the structure from panel driver
+	if(panel_ext && panel_ext->funcs && panel_ext->funcs->get_switch_mode_delay) {
+		panel_ext->funcs->get_switch_mode_delay(switch_mode_delay, mtk_crtc->avail_modes_num);
+	}
+
 	if (args->mode_num > mtk_crtc->avail_modes_num) {
 		copy_num = mtk_crtc->avail_modes_num;
 		DDPPR_ERR("%s mode_num:%d > avail_mode_num:%d\n", __func__,
@@ -6603,6 +6646,10 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 
 		kfree(real_te_duration);
 		kfree(total_offset);
+		for (i = 0;  i < mtk_crtc->avail_modes_num; i++)
+			kfree(switch_mode_delay[i]);
+		kfree(switch_mode_delay);
+		kfree(user_switch_mode_delay);
 		return -EFAULT;
 	}
 
@@ -6614,11 +6661,36 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 
 		kfree(real_te_duration);
 		kfree(total_offset);
+		for (i = 0;  i < mtk_crtc->avail_modes_num; i++)
+			kfree(switch_mode_delay[i]);
+		kfree(switch_mode_delay);
+		kfree(user_switch_mode_delay);
 		return -EFAULT;
+	}
+
+	for (j = 0;  j < copy_num; j++) {
+		if (copy_to_user(user_switch_mode_delay[j], switch_mode_delay[j],
+			sizeof(enum SWITCH_MODE_DELAY) * copy_num)) {
+			DDPPR_ERR("%s copy failed:(0x%p,0x%p), size:%ld\n",
+				__func__, user_switch_mode_delay[j], switch_mode_delay[j],
+				sizeof(enum SWITCH_MODE_DELAY) * copy_num);
+
+			kfree(real_te_duration);
+			kfree(total_offset);
+			for (i = 0;  i < mtk_crtc->avail_modes_num; i++)
+				kfree(switch_mode_delay[i]);
+			kfree(switch_mode_delay);
+			kfree(user_switch_mode_delay);
+			return -EFAULT;
+		}
 	}
 
 	kfree(real_te_duration);
 	kfree(total_offset);
+	for (i = 0;  i < mtk_crtc->avail_modes_num; i++)
+		kfree(switch_mode_delay[i]);
+	kfree(switch_mode_delay);
+	kfree(user_switch_mode_delay);
 
 	return 0;
 }
