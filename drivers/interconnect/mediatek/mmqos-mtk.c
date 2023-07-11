@@ -52,7 +52,6 @@
 #define MAX_RECORD_PORT_NUM	(9)
 #define VIRT_COMM_PORT_ID	(8)
 
-#define HRT_BONUS		(10 / 7)
 #define MAX_BW_VALUE_NUM	(24)
 #define MAX_REG_VALUE_NUM	(8)
 #define MAX_BW_UNIT		(1023)
@@ -354,9 +353,9 @@ static u32 get_max_channel_bw_in_common(u32 comm_id)
 	u32 max_bw = 0, i;
 
 	for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
-		max_bw = max_t(u32, max_bw, chn_hrt_r_bw[comm_id][i] * HRT_BONUS);
+		max_bw = max_t(u32, max_bw, chn_hrt_r_bw[comm_id][i] * 10 / 7);
 		max_bw = max_t(u32, max_bw, chn_srt_r_bw[comm_id][i]);
-		max_bw = max_t(u32, max_bw, chn_hrt_w_bw[comm_id][i] * HRT_BONUS);
+		max_bw = max_t(u32, max_bw, chn_hrt_w_bw[comm_id][i] * 10 / 7);
 		max_bw = max_t(u32, max_bw, chn_srt_w_bw[comm_id][i]);
 	}
 
@@ -407,12 +406,16 @@ static void set_freq_by_mmdvfs(struct common_node *comm_node, unsigned long smi_
 */
 
 static void store_bw_value(const u32 comm_id, const u32 chnn_id,
-	bool is_srt, bool is_write, bool is_on, const u32 bw)
+	bool is_srt, bool is_write, bool is_on, u32 bw)
 {
 	int bw_value_idx;
 
 	bw_value_idx = (comm_id << 2) + (chnn_id << 1) + (is_srt ? 0 : 12)
 		+ (is_write ? 1 : 0);
+
+	if (!is_srt)
+		bw = bw * 10 / 7;
+
 	if (is_on)
 		on_bw_value[bw_value_idx] = bw;
 	else
