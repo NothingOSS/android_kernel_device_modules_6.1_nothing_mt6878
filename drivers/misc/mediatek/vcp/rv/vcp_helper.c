@@ -509,12 +509,16 @@ int vcp_turn_mminfra_on(void)
 	if (vcp_ao && vcp_mminfra_on_off.mminfra_on != NULL) {
 		spin_lock_irqsave(&vcp_mminfra_spinlock, spin_flags);
 
-		ret = mtk_clk_mminfra_hwv_power_ctrl_optional(true,
-			CLK_MMINFRA_PWR_VOTE_BIT_VCP);
+		if (vcp_mminfra_on_off.mminfra_ref == 0) {
+			ret = mtk_clk_mminfra_hwv_power_ctrl_optional(true,
+				CLK_MMINFRA_PWR_VOTE_BIT_VCP);
+			if (ret < 0)
+				pr_notice("[VCP] %s(): turn mminfra on fail %d %d\n",
+					__func__, ret, vcp_mminfra_on_off.mminfra_ref);
+			else
+				pr_debug("[VCP] %s(): turn mminfra on\n", __func__);
+		}
 		vcp_mminfra_on_off.mminfra_ref = vcp_mminfra_on_off.mminfra_ref + 1;
-		if (ret < 0)
-			pr_notice("[VCP] %s(): turn mminfra on fail %d %d\n",
-				__func__, ret, vcp_mminfra_on_off.mminfra_ref);
 		pr_debug("%s(): ref count: %d\n", __func__, vcp_mminfra_on_off.mminfra_ref);
 
 		spin_unlock_irqrestore(&vcp_mminfra_spinlock, spin_flags);
@@ -536,12 +540,14 @@ int vcp_turn_mminfra_off(void)
 			pr_notice("[VCP] %s mminfra_ref %d < 0\n",
 				__func__, vcp_mminfra_on_off.mminfra_ref);
 			vcp_mminfra_on_off.mminfra_ref = 0;
-		} else {
+		} else if (vcp_mminfra_on_off.mminfra_ref == 0) {
 			ret = mtk_clk_mminfra_hwv_power_ctrl_optional(false,
 				CLK_MMINFRA_PWR_VOTE_BIT_VCP);
 			if (ret < 0)
 				pr_notice("[VCP] %s(): turn mminfra off fail %d %d\n",
 					__func__, ret, vcp_mminfra_on_off.mminfra_ref);
+			else
+				pr_debug("[VCP] %s(): turn mminfra off\n", __func__);
 		}
 		pr_debug("%s(): ref count: %d\n", __func__, vcp_mminfra_on_off.mminfra_ref);
 
