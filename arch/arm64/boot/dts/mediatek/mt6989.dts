@@ -11171,17 +11171,11 @@
 
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_ADSP_TOP_DORMANT>;
 			clocks = <&topckgen_clk CLK_TOP_ADSP_SEL>,
-				 <&topckgen_clk CLK_TOP_ADSP_UARTHUB_BCLK_SEL>,
 				 <&topckgen_clk CLK_TOP_TCK_26M_MX9>,
-				 <&topckgen_clk CLK_TOP_ADSPPLL>,
-				 <&topckgen_clk CLK_TOP_UNIVPLL_D6_D4>,
-				 <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>;
+				 <&topckgen_clk CLK_TOP_ADSPPLL>;
 			clock-names = "clk_top_adsp_sel",
-				      "clk_top_adsp_uarthub_bclk_sel",
 				      "clk_top_clk26m",
-				      "clk_top_adsppll",
-				      "clk_top_univpll_d6_d4",
-				      "clk_top_univpll_d6_d2";
+				      "clk_top_adsppll";
 			interconnects = <&dvfsrc MT6873_MASTER_HRT_ADSP
 					 &dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
 			interconnect-names = "icc-hrt-bw";
