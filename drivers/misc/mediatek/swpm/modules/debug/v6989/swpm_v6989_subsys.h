@@ -37,7 +37,7 @@ enum swpm_type {
 	DUMMY_SWPM_TYPE,
 	INFRA_SWPM_TYPE,
 	VCP_SWPM_TYPE,
-
+	MML_SWPM_TYPE,
 
 	NR_SWPM_TYPE,
 };
