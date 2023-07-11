@@ -6521,8 +6521,10 @@ static void mtk_crtc_release_input_layer_fence(
 	unsigned int fence_idx = 0;
 
 	/* fence release already during suspend */
-	if (priv->power_state == false)
+	if (priv->power_state == false) {
+		DDPFENCE("%s:%d power_state == false\n", __func__, __LINE__);
 		return;
+	}
 
 	for (i = 0; i < mtk_crtc->layer_nr; i++) {
 		unsigned int subtractor = 0;
