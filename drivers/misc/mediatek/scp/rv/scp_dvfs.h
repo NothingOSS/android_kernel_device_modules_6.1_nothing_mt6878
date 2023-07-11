@@ -287,6 +287,7 @@ struct wlock_duration_t {
 struct slp_ack_t {
 	struct wlock_duration_t wlock;
 	struct res_duration_t res;
+	uint64_t suspend_time;
 };
 
 extern int scp_pll_ctrl_set(unsigned int pll_ctrl_flag, unsigned int pll_sel);

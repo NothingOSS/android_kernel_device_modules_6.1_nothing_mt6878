@@ -99,7 +99,6 @@
 #define FM_FREQ2CNT(freq)	(freq * CALI_DIV_VAL / 26)
 
 unsigned int scp_ipi_ackdata0, scp_ipi_ackdata1;
-struct slp_ack_t *addr[2];
 struct ipi_tx_data_t {
 	unsigned int arg1;
 	unsigned int arg2;
@@ -273,7 +272,6 @@ static bool is_core_online(uint32_t core_id)
 static void slp_ipi_init(void)
 {
 	int ret;
-	size_t size;
 
 	ret = mtk_ipi_register(&scp_ipidev, IPI_OUT_C_SLEEP_0,
 		NULL, NULL, &scp_ipi_ackdata0);
@@ -290,15 +288,6 @@ static void slp_ipi_init(void)
 	}
 	if (!ret)
 		g_dvfs_dev.sleep_init_done = true;
-
-	if (scpreg.low_pwr_dbg) {
-		addr[0] = (struct slp_ack_t *)scp_get_reserve_mem_virt(SCP_LOW_PWR_DBG_MEM_ID);
-		size = scp_get_reserve_mem_size(SCP_LOW_PWR_DBG_MEM_ID);
-		if (!addr[0])
-			pr_notice("scp get reserve mem failed\n");
-		memset(addr[0], 0, size);
-		addr[1] = addr[0] + 0x40;
-	}
 }
 
 static int scp_get_vcore_table(unsigned int gear)
@@ -2257,7 +2246,17 @@ static void mt_scp_stop_res_prof(void)
 	struct wlock_duration_t wlock;
 	struct res_duration_t res;
 	struct ipi_tx_data_t ipi_data;
+	struct slp_ack_t *addr[2];
+	uint64_t suspend_time;
+	size_t size = 0;
 	int ret = 0;
+
+	addr[SCP_CORE_0] = (struct slp_ack_t *)scp_get_reserve_mem_virt(SCP_LOW_PWR_DBG_MEM_ID);
+	if (!addr[SCP_CORE_0])
+		return;
+	size = scp_get_reserve_mem_size(SCP_LOW_PWR_DBG_MEM_ID);
+	memset(addr[SCP_CORE_0], 0, size);
+	addr[SCP_CORE_1] = addr[SCP_CORE_0] + 0x100;
 
 	ipi_data.arg1 = SCP_SLEEP_STOP_RES_PROF;
 	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_0,
@@ -2270,6 +2269,10 @@ static void mt_scp_stop_res_prof(void)
 
 	wlock = addr[SCP_CORE_0]->wlock;
 	res = addr[SCP_CORE_0]->res;
+	suspend_time = addr[SCP_CORE_0]->suspend_time;
+
+	pr_notice("[SCP] [%s:%d] [%d] susepnd time: %llums\n",
+				__func__, __LINE__, SCP_CORE_0, suspend_time);
 
 	if (wlock.total_duration) {
 		pr_notice("[SCP] [%s:%d] [%d] [wakelock] total: %llums, lock %s: %llums\n",
@@ -2297,6 +2300,10 @@ static void mt_scp_stop_res_prof(void)
 
 	wlock = addr[SCP_CORE_1]->wlock;
 	res = addr[SCP_CORE_1]->res;
+	suspend_time = addr[SCP_CORE_1]->suspend_time;
+
+	pr_notice("[SCP] [%s:%d] [%d] susepnd time: %llums\n",
+				__func__, __LINE__, SCP_CORE_1, suspend_time);
 
 	if (wlock.total_duration) {
 		pr_notice("[SCP] [%s:%d] [%d] [wakelock] total: %llums, lock %s: %llums\n",
