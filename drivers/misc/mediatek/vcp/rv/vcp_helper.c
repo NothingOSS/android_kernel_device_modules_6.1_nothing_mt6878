@@ -3496,8 +3496,17 @@ static int __init vcp_init(void)
 	register_devapc_power_callback(&devapc_power_handle);
 #endif
 
-	if (vcp_ao)
+	if (vcp_ao) {
+		writel(CORE_REBOOT_OK, VCP_GPR_C0_H0_REBOOT);
+		if (vcpreg.twohart)
+			writel(CORE_REBOOT_OK, VCP_GPR_C0_H1_REBOOT);
+		if (vcpreg.core_nums == 2) {
+			writel(CORE_REBOOT_OK, VCP_GPR_C1_H0_REBOOT);
+			if (vcpreg.twohart)
+				writel(CORE_REBOOT_OK, VCP_GPR_C1_H1_REBOOT);
+		}
 		vcp_register_feature(RTOS_FEATURE_ID);
+	}
 
 	return ret;
 err:
