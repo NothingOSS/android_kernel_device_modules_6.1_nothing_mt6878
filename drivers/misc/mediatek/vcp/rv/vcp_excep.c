@@ -165,6 +165,18 @@ void vcp_dump_last_regs(int mmup_enable)
 		pr_notice("[VCP] SLP_EN = %08x PWR_STATUS = %08x\n",
 			readl(VCP_R_SLP_EN), readl(VCP_POWER_STATUS));
 
+	pr_notice("[VCP] SRAM region: %08x,%08x,%08x,%08x\n",
+		readl(vcpreg.sram), readl(vcpreg.sram + 0x4),
+		readl(vcpreg.sram + 0x8), readl(vcpreg.sram + 0xc));
+
+	pr_notice("[VCP] SRAM loader: %08x,%08x,%08x,%08x\n",
+		readl(vcpreg.sram + 0x300), readl(vcpreg.sram + 0x304),
+		readl(vcpreg.sram + 0x308), readl(vcpreg.sram + 0x30c));
+
+	pr_notice("[VCP] SRAM image: %08x,%08x,%08x,%08x\n",
+		readl(vcpreg.sram + 0x2000), readl(vcpreg.sram + 0x2004),
+		readl(vcpreg.sram + 0x2008), readl(vcpreg.sram + 0x200c));
+
 	if (vcpreg.twohart) {
 		pr_notice("[VCP] c0_t1_pc = %08x\n", c0_t1_m->pc);
 		pr_notice("[VCP] c0_t1_pc2 = %08x\n", readl(R_CORE0_T1_MON_PC));
