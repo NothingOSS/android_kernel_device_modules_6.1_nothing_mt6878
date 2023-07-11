@@ -7,6 +7,7 @@
 #define __MTK_CPUIDLE_STATUS_H__
 
 #define sec_to_ns(v)	((v) * 1000 * 1000 * 1000ULL)
+#define LPM_CPU_OFF_BLOCK_VALUE	2
 
 enum idle_param {
 	IDLE_PARAM_EN,
@@ -44,9 +45,11 @@ enum idle_param {
 #define mtk_cpuidle_set_param(drv, state, param, val)           \
 do {                                                            \
 	if (param == IDLE_PARAM_LAT) {                          \
-		u64 __time_ns = val;				\
-		__time_ns = __time_ns * NSEC_PER_USEC;		\
-		get_latency(drv, state) = (unsigned int)val;	\
+		u64 __time = val, __time_ns;			\
+		if (__time <= LPM_CPU_OFF_BLOCK_VALUE)		\
+			__time = LPM_CPU_OFF_BLOCK_VALUE+1;	\
+		__time_ns = __time * NSEC_PER_USEC;		\
+		get_latency(drv, state) = (unsigned int)__time;	\
 		get_latency_ns(drv, state) = __time_ns;		\
 	} else if (param == IDLE_PARAM_RES) {			\
 		u64 __time_ns = val;				\

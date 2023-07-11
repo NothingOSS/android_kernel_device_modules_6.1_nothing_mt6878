@@ -17,6 +17,7 @@
 
 #include <lpm_plat_apmcu.h>
 #include <lpm_module.h>
+#include <mtk_cpuidle_status.h>
 
 
 void __iomem *cpu_pm_mcusys_base;
@@ -31,7 +32,7 @@ static struct pm_qos_request lpm_plat_qos_req;
 	cpu_latency_qos_add_request(&lpm_plat_qos_req,\
 		PM_QOS_DEFAULT_VALUE)
 #define lpm_cpu_off_block()\
-	cpu_latency_qos_update_request(&lpm_plat_qos_req, 2)
+	cpu_latency_qos_update_request(&lpm_plat_qos_req, LPM_CPU_OFF_BLOCK_VALUE)
 #define lpm_cpu_off_allow()\
 	cpu_latency_qos_update_request(&lpm_plat_qos_req, PM_QOS_DEFAULT_VALUE)
 #define lpm_plat_qos_uninit()\
