@@ -591,6 +591,7 @@ static int ccci_rpc_remap_queue(struct ccci_rpc_queue_mapping *remap)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DEBUG_LOG)
 int port_rpc_ecid_print(struct rpc_ecid_info *buff)
 {
 	unsigned int i, num;
@@ -610,7 +611,7 @@ int port_rpc_ecid_print(struct rpc_ecid_info *buff)
 	}
 	for (i = 0; i < num; i++) {
 		CCCI_NORMAL_LOG(0, RPC,
-			"[USB6_RF][%u]mipi_port:%hhu new_usid:%hhu vpa_type_name:%s vpa_type_id:%hu ecid_x_pox:%hu ecid_x_pox:%hu\n",
+			"[USB6_RF][%u]mipi_port: %hhu usid: %hhu type_name: %s type_id: 0x%x ecid_x_pox: 0x%x ecid_y_pox: 0x%x\n",
 			i, buff->rpc_vpa_public_info[i].mipi_port,
 			buff->rpc_vpa_public_info[i].new_usid,
 			buff->rpc_vpa_public_info[i].vpa_type_name,
@@ -621,6 +622,51 @@ int port_rpc_ecid_print(struct rpc_ecid_info *buff)
 
 	return 0;
 }
+
+struct rpc_ecid_info ecid_info_node;
+void port_rpc_ecid_save(struct rpc_ecid_info *buff)
+{
+	if (buff == NULL) {
+		CCCI_ERROR_LOG(0, RPC, "[%s] buff is NULL\n", __func__);
+		return;
+	}
+
+	memcpy(&ecid_info_node, buff, sizeof(struct rpc_ecid_info));
+}
+
+ssize_t port_rpc_ecid_show(char *buf)
+{
+	unsigned int i, info_num, size = 4095;
+	int len = 0;
+
+	info_num = ecid_info_node.vpa_info_num;
+	len += scnprintf(buf + len , size - len,
+		"sub6_rf Name: %s info_num: %u ecid_i: 0x%x ecid_h: 0x%x\n",
+		ecid_info_node.sub6_rf_name,
+		ecid_info_node.vpa_info_num,
+		ecid_info_node.sub6_rf_ecid_i,
+		ecid_info_node.sub6_rf_ecid_h);
+
+	if (info_num > 10) {
+		CCCI_ERROR_LOG(0, RPC, "vpa_info_num [%u] invalid\n", info_num);
+		len += scnprintf(buf + len, size - len, "vpa_info_num [%u] invalid\n",
+			info_num);
+		return len;
+	}
+	for (i = 0; i < info_num; i++) {
+		len += snprintf(buf + len , size - len,
+			"mipi_port: %hhu usid: %hhu type_name: %s type_id: 0x%x ecid_x_pox: 0x%x ecid_y_pox: 0x%x\n",
+			ecid_info_node.rpc_vpa_public_info[i].mipi_port,
+			ecid_info_node.rpc_vpa_public_info[i].new_usid,
+			ecid_info_node.rpc_vpa_public_info[i].vpa_type_name,
+			ecid_info_node.rpc_vpa_public_info[i].vpa_type_id,
+			ecid_info_node.rpc_vpa_public_info[i].ecid_x_pox,
+			ecid_info_node.rpc_vpa_public_info[i].ecid_y_pox);
+	}
+
+	return len;
+}
+#endif
 
 static void ccci_rpc_work_helper(struct port_t *port, struct rpc_pkt *pkt,
 	struct rpc_buffer *p_rpc_buf, unsigned int tmp_data[])
@@ -1136,6 +1182,7 @@ static void ccci_rpc_work_helper(struct port_t *port, struct rpc_pkt *pkt,
 				break;
 			}
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DEBUG_LOG)
+			port_rpc_ecid_save((struct rpc_ecid_info *)pkt[0].buf);
 			port_rpc_ecid_print((struct rpc_ecid_info *)pkt[0].buf);
 #endif
 			tmp_data[0] = 0;
@@ -1474,6 +1521,11 @@ static int port_rpc_init(struct port_t *port)
 		get_md_dtsi_debug();
 		first_init = 0;
 	}
+
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DEBUG_LOG)
+	memset(&ecid_info_node, 0x0, sizeof(struct rpc_ecid_info));
+#endif
+
 	return 0;
 }
 

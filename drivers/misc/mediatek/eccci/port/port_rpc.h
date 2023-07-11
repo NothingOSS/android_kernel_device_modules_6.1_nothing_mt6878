@@ -275,5 +275,8 @@ extern void clk_buf_get_rf_drv_curr(void *rf_drv_curr);
 extern void clk_buf_save_afc_val(unsigned int afcdac);
 extern int ccci_get_adc_val(void);
 
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DEBUG_LOG)
+ssize_t port_rpc_ecid_show(char *buf);
+#endif
 
 #endif	/* __PORT_RPC_H__ */

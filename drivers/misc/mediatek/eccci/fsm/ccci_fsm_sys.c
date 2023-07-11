@@ -5,6 +5,7 @@
 #include <linux/kobject.h>
 #include "ccci_fsm_internal.h"
 #include "ccci_fsm_sys.h"
+#include "port_rpc.h"
 
 #define CCCI_KOBJ_NAME "md"
 
@@ -82,11 +83,18 @@ static ssize_t ccci_mdee_info_show(char *buf)
 	return curr;
 }
 
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DEBUG_LOG)
+CCCI_ATTR(ecid, 0444, &port_rpc_ecid_show, NULL);
+#endif
+
 CCCI_ATTR(mdee, 0444, &ccci_mdee_info_show, NULL);
 
 /* Sys -- Add to group */
 static struct attribute *ccci_default_attrs[] = {
 	&ccci_attr_mdee.attr,
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DEBUG_LOG)
+	&ccci_attr_ecid.attr,
+#endif
 	NULL
 };
 ATTRIBUTE_GROUPS(ccci_default);
