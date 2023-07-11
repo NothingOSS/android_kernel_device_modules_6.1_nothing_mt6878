@@ -18,7 +18,8 @@
 
 #define ROUNDUP(a, b)		        (((a) + ((b)-1)) & ~((b)-1))
 
-/* scp config reg. definition*/
+/* scp config reg. definition */
+#define SCP_PREFIX_PATTERN	(0x53435000)
 #define SCP_TCM_SIZE		(scpreg.total_tcmsize)
 #define SCP_A_TCM_SIZE		(scpreg.scp_tcmsize)
 #define SCP_TCM			(scpreg.sram)

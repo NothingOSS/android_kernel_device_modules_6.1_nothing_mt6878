@@ -2883,7 +2883,7 @@ static void scp_device_shutdown(struct platform_device *dev)
 	struct scpctl_cmd_s cmd;
 
 	cmd.type = 5; // AP_SHUTDOWN
-	cmd.op = 1;
+	cmd.op = (SCP_PREFIX_PATTERN | 0x1);
 
 	ret = mtk_ipi_send(&scp_ipidev, IPI_OUT_SCPCTL_1, 0, &cmd,
 			PIN_OUT_SIZE_SCPCTL_1, 0);
