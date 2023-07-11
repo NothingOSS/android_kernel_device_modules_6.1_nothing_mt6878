@@ -191,6 +191,7 @@ struct slbc_ops {
 extern unsigned int slbc_enable;
 extern unsigned int slbc_all_cache_mode;
 extern char *slbc_uid_str[UID_MAX + 1];
+extern char *slc_ach_uid_str[ID_MAX + 1];
 extern int popcount(unsigned int x);
 
 #if IS_ENABLED(CONFIG_MTK_SLBC)

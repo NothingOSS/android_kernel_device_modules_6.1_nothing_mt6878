@@ -67,6 +67,22 @@ char *slbc_uid_str[UID_MAX + 1] = {
 };
 EXPORT_SYMBOL_GPL(slbc_uid_str);
 
+/* need to modify enum slc_ach_uid */
+char *slc_ach_uid_str[ID_MAX + 1] = {
+	"ID_PD",
+	"ID_CPU",
+	"ID_GPU",
+	"ID_GPU_W",
+	"ID_OVL_R",
+	"ID_VDEC_FRAME",
+	"ID_VDEC_UBE",
+	"ID_SMMU",
+	"ID_MD",
+	"ID_ADSP",
+	"ID_MAX",
+};
+EXPORT_SYMBOL_GPL(slc_ach_uid_str);
+
 /* bit count */
 int popcount(unsigned int x)
 {

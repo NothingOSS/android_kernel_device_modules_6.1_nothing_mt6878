@@ -35,8 +35,9 @@
 #include <linux/wait.h>
 #include <linux/jiffies.h>
 #include <linux/delay.h>
+#include <linux/scmi_protocol.h>
 
-#define SLBC_WAY_SIZE			0x80000
+#include <tinysys-scmi.h>
 
 #if IS_ENABLED(CONFIG_MTK_L3C_PART)
 #include <l3c_part.h>
@@ -294,10 +295,8 @@ static u32 slbc_read_debug_sram(int sid)
 
 void slbc_force_cmd(unsigned int force)
 {
-	if ((force & 0xffff) < FR_MAX) {
-		slbc_force = force;
-		slbc_force_scmi_cmd(force);
-	}
+	slbc_force = force;
+	slbc_force_scmi_cmd(force);
 }
 
 static int slbc_activate_thread(void *arg)
@@ -1117,6 +1116,7 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	int i;
 	int sid;
 	int ret;
+	struct scmi_tinysys_status rvalue = {0};
 
 	slbc_sspm_sram_update();
 
@@ -1225,6 +1225,23 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 				rel_val_count, rel_val_min,
 				rel_val_total / rel_val_count, rel_val_max);
 	}
+
+	for (i = 0; i < ID_MAX; i++) {
+		ret = slbc_get_cache_user_pmu(i, &rvalue);
+		if (!ret) {
+			seq_printf(m, "PMU %s : 0x%x, 0x%x, 0x%x\n",
+					slc_ach_uid_str[i], rvalue.r1, rvalue.r2, rvalue.r3);
+		}
+	}
+
+	for (i = 0; i < ID_MAX; i++) {
+		ret = slbc_get_cache_user_status(i, &rvalue);
+		if (!ret) {
+			seq_printf(m, "STATUS %s : 0x%x, 0x%x, 0x%x\n",
+					slc_ach_uid_str[i], rvalue.r1, rvalue.r2, rvalue.r3);
+		}
+	}
+
 	seq_puts(m, "emi_pmu_read");
 	for (i = 34; i <= 59; i++)
 		seq_printf(m, " [%d]%d", i, emi_pmu_read_counter(i));
