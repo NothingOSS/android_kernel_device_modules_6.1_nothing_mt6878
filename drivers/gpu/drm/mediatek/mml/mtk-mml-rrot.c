@@ -236,7 +236,7 @@ static const struct rrot_data mt6989_rrot_data = {
 			.settings = th_afbc_mt6989,
 		},
 	},
-	.px_per_tick = 1,
+	.px_per_tick = 2,
 };
 
 struct mml_comp_rrot {
@@ -2070,15 +2070,15 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	mml_err("RROT_SRC_CON %#010x RROT_COMP_CON %#010x RROT_TRANSFORM_0 %#010x",
 		value[2], value[3], value[4]);
 
-	value[4] = readl(base + RROT_MF_BKGD_SIZE_IN_PXL);
-	value[5] = readl(base + RROT_MF_BKGD_H_SIZE_IN_PXL);
-	value[6] = readl(base + RROT_SRC_OFFSET_WP);
-	value[7] = readl(base + RROT_SRC_OFFSET_HP);
-	value[8] = readl(base + RROT_MF_SRC_SIZE);
-	value[9] = readl(base + RROT_MF_OFFSET_1);
-	value[10] = readl(base + RROT_MF_CLIP_SIZE);
-	value[11] = readl(base + RROT_MF_BKGD_SIZE_IN_BYTE);
-	value[12] = readl(base + RROT_SF_BKGD_SIZE_IN_BYTE);
+	value[4] = readl(base + RROT_MF_BKGD_SIZE_IN_BYTE);
+	value[5] = readl(base + RROT_SF_BKGD_SIZE_IN_BYTE);
+	value[6] = readl(base + RROT_MF_BKGD_SIZE_IN_PXL);
+	value[7] = readl(base + RROT_MF_BKGD_H_SIZE_IN_PXL);
+	value[8] = readl(base + RROT_SRC_OFFSET_WP);
+	value[9] = readl(base + RROT_SRC_OFFSET_HP);
+	value[10] = readl(base + RROT_MF_SRC_SIZE);
+	value[11] = readl(base + RROT_MF_OFFSET_1);
+	value[12] = readl(base + RROT_MF_CLIP_SIZE);
 
 	mml_err("RROT_MF_BKGD_SIZE_IN_BYTE %#010x RROT_SF_BKGD_SIZE_IN_BYTE %#010x",
 		value[4], value[5]);
