@@ -404,6 +404,12 @@ int mtk_uart_get_apdma_rx_state(void)
 }
 EXPORT_SYMBOL(mtk_uart_get_apdma_rx_state);
 
+int mtk_uart_get_apdma_rx_flag(void)
+{
+	return  mtk_uart_apdma_read(hub_dma_rx_chan, VFF_INT_FLAG);
+}
+EXPORT_SYMBOL(mtk_uart_get_apdma_rx_flag);
+
 void mtk_uart_set_apdma_rx_state(int value)
 {
 	atomic_set(&hub_dma_rx_chan->rxdma_state, value);
@@ -461,7 +467,7 @@ void mtk_uart_apdma_enable_vff(bool enable)
 			status, !status, 10, 100);
 		if (ret)
 			pr_info("[%s]stop: fail, status=0x%x\n", __func__,
-				mtk_uart_apdma_read(hub_dma_tx_chan, VFF_DEBUG_STATUS));
+				mtk_uart_apdma_read(hub_dma_rx_chan, VFF_DEBUG_STATUS));
 		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_STOP, VFF_STOP_CLR_B);
 	} else {
 		/* enable RX VFF */

@@ -1007,6 +1007,7 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 	int ret = 0;
 	int count = DMA_RX_POLLING_CNT;
 	int dma_state  = 0;
+	int dma_flag_state  = 0;
 
 	if (hub_uart_data != NULL && hub_uart_data->support_wakeup == 0)
 		/*clear ap uart*/
@@ -1041,10 +1042,13 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 		#endif
 		/*polling check dma rx complete*/
 		while (count) {
+			#if defined(KERNEL_mtk_uart_get_apdma_rx_flag)
+			dma_flag_state = KERNEL_mtk_uart_get_apdma_rx_flag();
+			#endif
 			#if defined(KERNEL_mtk_uart_get_apdma_rx_state)
 			dma_state = KERNEL_mtk_uart_get_apdma_rx_state();
 			#endif
-			if (dma_state) {
+			if (dma_state != 0 || dma_flag_state != 0) {
 				usleep_range(1000, 1500);
 				count--;
 			} else {
