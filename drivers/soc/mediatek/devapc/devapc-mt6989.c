@@ -333,7 +333,23 @@ static const char *mt6989_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 		return mminfra_domain[domain];
 	} else if (slave_type == SLAVE_TYPE_GPU) {
 		/* PD_BUS */
-		if ((vio_addr >= GPU_PD_START) && (vio_addr <= GPU_PD_END)) {
+		if (domain == 0x6) {
+			if (((bus_id & 0xf800) == 0x0) && ((bus_id & 0x3f) == 0x2a)) {
+				if (((bus_id >> 6) & 0x3) == 0x0)
+					return "GPUEB_RV33_P";
+				else if (((bus_id >> 6) & 0x3) == 0x1)
+					return "GPUEB_RV33_D";
+				else if (((bus_id >> 6) & 0x3) == 0x2)
+					return "GPUEB_DMA";
+				else
+					return "GPUEB_AutoDMA";
+			} else
+				return "GPU_BRCAST";
+		} else
+			return infra_mi_trans(bus_id);
+	} else if (slave_type == SLAVE_TYPE_GPU1) {
+		/* PD_BUS */
+		if ((vio_addr >= GPU1_PD_START) && (vio_addr <= GPU1_PD_END)) {
 			if (domain == 0x6) {
 				if ((bus_id & 0x3) == 0x0)
 					return "GPUEB_RV33_P";
@@ -342,28 +358,25 @@ static const char *mt6989_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 				else if ((bus_id & 0x3) == 0x2)
 					return "GPUEB_DMA";
 				else
-					return "UNKNOWN_MASTER_TO_GPU";
-			} else {
+					return "GPUEB_AutoDMA";
+			} else
 				return infra_mi_trans(bus_id);
-			}
 		/* AO_BUS */
 		} else {
-			if ((bus_id & 0x3f) == 0x2a) {
-				if (((bus_id >> 8) & 0x3) == 0x0)
+			if (domain == 0x6) {
+				if (((bus_id >> 6) & 0x3) == 0x0)
 					return "GPUEB_RV33_P";
-				else if (((bus_id >> 8) & 0x3) == 0x1)
+				else if (((bus_id >> 6) & 0x3) == 0x1)
 					return "GPUEB_RV33_D";
-				else if (((bus_id >> 8) & 0x3) == 0x2)
+				else if (((bus_id >> 6) & 0x3) == 0x2)
 					return "GPUEB_DMA";
 				else
-					return "UNKNOWN_MASTER_TO_GPU";
-			} else {
+					return "GPUEB_AutoDMA";
+			} else
 				return infra_mi_trans(bus_id);
-			}
 		}
-	} else {
+	} else
 		return infra_mi_trans(bus_id);
-	}
 }
 
 /* violation index corresponds to subsys */
