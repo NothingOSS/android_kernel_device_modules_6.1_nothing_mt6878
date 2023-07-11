@@ -41,8 +41,12 @@ u32 mtk_pcie_dump_link_info(int port);
 
 /* pextp register, CG,HW mode */
 #define PCIE_PEXTP_CG_0			0x14
+#define PEXTP_CLOCK_CON			0x20
+#define CLKREQ_SAMPLE_CON		BIT(0)
 #define PEXTP_PWRCTL_0			0x40
 #define PCIE_HW_MTCMOS_EN_P0		BIT(0)
+#define PEXTP_TIMER_SET			GENMASK(31, 8)
+#define CK_DIS_TIMER_32K		0x400
 #define PEXTP_PWRCTL_1			0x44
 #define PCIE_HW_MTCMOS_EN_P1		BIT(0)
 #define PEXTP_PWRCTL_3			0x4c
@@ -257,9 +261,13 @@ struct mtk_pcie_port;
 /**
  * struct mtk_pcie_data - PCIe data for each SoC
  * @pre_init: Specific init data, called before linkup
+ * @suspend_l12: To implement special setting in L1.2 suspend flow
+ * @resume_l12: To implement special setting in L1.2 resume flow
  */
 struct mtk_pcie_data {
 	int (*pre_init)(struct mtk_pcie_port *port);
+	int (*suspend_l12)(struct mtk_pcie_port *port);
+	int (*resume_l12)(struct mtk_pcie_port *port);
 };
 
 /**
@@ -1818,6 +1826,12 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 			 readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 			 readl_relaxed(port->base + PCIE_ISTATUS_PM));
 
+		if (port->data->suspend_l12) {
+			err = port->data->suspend_l12(port);
+			if (err)
+				return err;
+		}
+
 		if (port->port_num == 0) {
 			err = mtk_pcie_hw_control_vote(0, true, 0);
 			if (err)
@@ -1827,19 +1841,6 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 			val |= PCIE_HW_MTCMOS_EN_P1;
 			writel_relaxed(val, port->pextpcfg + PEXTP_PWRCTL_1);
 		}
-
-		/* Binding of BBCK1 and BBCK2 */
-		err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, BBCK2_BIND);
-		if (err)
-			dev_info(port->dev, "Fail to bind BBCK2 with BBCK1\n");
-
-		/* Wait 400us for BBCK2 bind ready */
-		udelay(400);
-
-		/* Enable Bypass BBCK2 */
-		val = readl_relaxed(port->pextpcfg + PEXTP_RSV_0);
-		val |= PCIE_BBCK2_BYPASS;
-		writel_relaxed(val, port->pextpcfg + PEXTP_RSV_0);
 
 		mtk_pcie_clkbuf_control(dev, false);
 
@@ -1899,11 +1900,6 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 		/* Wait 400us for BBCK2 switch SW Mode ready */
 		udelay(400);
 
-		/* Unbinding of BBCK1 and BBCK2 */
-		err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, BBCK2_UNBIND);
-		if (err)
-			dev_info(port->dev, "Fail to unbind BBCK2 with BBCK1\n");
-
 		if (port->port_num == 0) {
 			err = mtk_pcie_hw_control_vote(0, false, 0);
 			if (err)
@@ -1916,6 +1912,12 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 			val = readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_1);
 			val &= ~PCIE_HW_MTCMOS_EN_P1;
 			writel_relaxed(val, port->pextpcfg + PEXTP_PWRCTL_1);
+		}
+
+		if (port->data->resume_l12) {
+			err = port->data->resume_l12(port);
+			if (err)
+				return err;
 		}
 	} else {
 		/* The user controls the exit from L2 by himself */
@@ -2059,12 +2061,48 @@ static int mtk_pcie_pre_init_6985(struct mtk_pcie_port *port)
 	return 0;
 }
 
+static int mtk_pcie_suspend_l12_6985(struct mtk_pcie_port *port)
+{
+	int err;
+	u32 val;
+
+	/* Binding of BBCK1 and BBCK2 */
+	err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, BBCK2_BIND);
+	if (err)
+		dev_info(port->dev, "Fail to bind BBCK2 with BBCK1\n");
+
+	/* Wait 400us for BBCK2 bind ready */
+	udelay(400);
+
+	/* Enable Bypass BBCK2 */
+	val = readl_relaxed(port->pextpcfg + PEXTP_RSV_0);
+	val |= PCIE_BBCK2_BYPASS;
+	writel_relaxed(val, port->pextpcfg + PEXTP_RSV_0);
+
+	return 0;
+}
+
+static int mtk_pcie_resume_l12_6985(struct mtk_pcie_port *port)
+{
+	int err;
+
+	/* Unbinding of BBCK1 and BBCK2 */
+	err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, BBCK2_UNBIND);
+	if (err)
+		dev_info(port->dev, "Fail to unbind BBCK2 with BBCK1\n");
+
+	return 0;
+}
+
 static const struct mtk_pcie_data mt6985_data = {
 	.pre_init = mtk_pcie_pre_init_6985,
+	.suspend_l12 = mtk_pcie_suspend_l12_6985,
+	.resume_l12 = mtk_pcie_resume_l12_6985,
 };
 
 static int mtk_pcie_pre_init_6989(struct mtk_pcie_port *port)
 {
+	void __iomem *pextp_pwrctl;
 	u32 val;
 
 	/* Make PCIe RC wait apsrc_ack signal before access EMI */
@@ -2077,11 +2115,48 @@ static int mtk_pcie_pre_init_6989(struct mtk_pcie_port *port)
 	val |= PCIE_AXI0_SLV_RESP_MASK;
 	writel_relaxed(val, port->base + PCIE_AXI_IF_CTRL);
 
+	if (port->port_num == 0)
+		pextp_pwrctl = port->pextpcfg + PEXTP_PWRCTL_0;
+	else
+		pextp_pwrctl = port->pextpcfg + PEXTP_PWRCTL_1;
+
+	/* Adjust pextp timer to match 32K sample clock */
+	val = readl_relaxed(pextp_pwrctl);
+	val &= ~PEXTP_TIMER_SET;
+	val |= CK_DIS_TIMER_32K;
+	writel_relaxed(val, pextp_pwrctl);
+
+	return 0;
+}
+
+static int mtk_pcie_suspend_l12_6989(struct mtk_pcie_port *port)
+{
+	u32 val;
+
+	/* Set CLKREQ sample clock rate to 32K */
+	val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
+	val |= CLKREQ_SAMPLE_CON;
+	writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
+
+	return 0;
+}
+
+static int mtk_pcie_resume_l12_6989(struct mtk_pcie_port *port)
+{
+	u32 val;
+
+	/* Set CLKREQ sample clock rate to 26M */
+	val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
+	val &= ~CLKREQ_SAMPLE_CON;
+	writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
+
 	return 0;
 }
 
 static const struct mtk_pcie_data mt6989_data = {
 	.pre_init = mtk_pcie_pre_init_6989,
+	.suspend_l12 = mtk_pcie_suspend_l12_6989,
+	.resume_l12 = mtk_pcie_resume_l12_6989,
 };
 
 static const struct of_device_id mtk_pcie_of_match[] = {
