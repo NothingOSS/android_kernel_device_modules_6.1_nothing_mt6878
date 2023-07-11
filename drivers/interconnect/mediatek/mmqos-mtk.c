@@ -63,6 +63,12 @@
 
 #define IS_ON_TABLE		(true)
 
+enum mmqos_rw_type {
+	path_no_type = 0,
+	path_write,		//1
+	path_read,		//2
+};
+
 static u32 ftrace_ena;
 
 struct comm_port_bw_record {
@@ -821,6 +827,7 @@ void update_channel_bw(const u32 comm_id, const u32 chnn_id,
 }
 EXPORT_SYMBOL_GPL(update_channel_bw);
 
+static u32 is_path_write = path_no_type;
 static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 {
 	struct larb_node *larb_node;
@@ -922,23 +929,28 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			}
 #endif
 			if (mmqos_met_enabled()) {
-				if (!larb_node->is_write)
-					r_w_type = "r";
-				trace_comm_id = (larb_node->channel_v2 >> 4) & 0xf;
-				trace_chnn_id = larb_node->channel_v2 & 0xf;
-				trace_chnn_id -= 1;
-				trace_mmqos__larb_avg_bw(
-					r_w_type,
-					src->name,
-					icc_to_MBps(src->avg_bw),
-					trace_comm_id,
-					trace_chnn_id);
-				trace_mmqos__larb_peak_bw(
-					r_w_type,
-					src->name,
-					icc_to_MBps(src->peak_bw),
-					trace_comm_id,
-					trace_chnn_id);
+				if (is_path_write == path_no_type) {
+					if (!larb_node->is_write)
+						r_w_type = "r";
+					else
+						r_w_type = "w";
+					trace_comm_id = (larb_node->channel_v2 >> 4) & 0xf;
+					trace_chnn_id = larb_node->channel_v2 & 0xf;
+					trace_chnn_id -= 1;
+					trace_mmqos__larb_avg_bw(
+						r_w_type,
+						src->name,
+						icc_to_MBps(src->avg_bw),
+						trace_comm_id,
+						trace_chnn_id);
+					trace_mmqos__larb_peak_bw(
+						r_w_type,
+						src->name,
+						icc_to_MBps(src->peak_bw),
+						trace_comm_id,
+						trace_chnn_id);
+				}
+				is_path_write = path_no_type;
 #ifdef ENABLE_INTERCONNECT_V1
 				trace_mmqos__chn_bw(comm_id, chnn_id,
 					icc_to_MBps(chn_srt_r_bw[comm_id][chnn_id]),
@@ -1102,8 +1114,13 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				value);
 
 		if (mmqos_met_enabled()) {
-			if (!larb_port_node->is_write)
+			if (!larb_port_node->is_write) {
 				r_w_type = "r";
+				is_path_write = path_read;
+			} else {
+				r_w_type = "w";
+				is_path_write = path_write;
+			}
 			trace_comm_id = (larb_node->channel_v2 >> 4) & 0xf;
 			trace_chnn_id = larb_node->channel_v2 & 0xf;
 			trace_chnn_id -= 1;
