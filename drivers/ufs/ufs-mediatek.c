@@ -1997,6 +1997,7 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 	static int scale_mode = CLK_SCALE_FREE_RUN;
 	static u32 saved_gear;
 	static bool is_forced;
+	unsigned long flags;
 	bool scale_allow = true;
 
 	/* Already in desire mode */
@@ -2029,7 +2030,11 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 	} else {
 		if (!is_forced) {
 			if (scale_allow) {
+				/* TODO: Export __ufshcd_suspend_clkscaling() */
 				devfreq_suspend_device(hba->devfreq);
+				spin_lock_irqsave(hba->host->host_lock, flags);
+				hba->clk_scaling.window_start_t = 0;
+				spin_unlock_irqrestore(hba->host->host_lock, flags);
 				hba->caps &= ~UFSHCD_CAP_CLK_SCALING;
 			}
 
