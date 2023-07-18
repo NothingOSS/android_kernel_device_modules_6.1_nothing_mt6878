@@ -1335,8 +1335,6 @@ static void fstb_notifier_wq_cb(struct work_struct *psWork)
 	struct FSTB_NOTIFIER_PUSH_TAG *vpPush = NULL;
 
 	vpPush = container_of(psWork, struct FSTB_NOTIFIER_PUSH_TAG, sWork);
-	if (!vpPush)
-		return;
 
 	fstb_calculate_target_fps(vpPush->tgid, vpPush->pid, vpPush->bufid,
 		vpPush->target_fps_margin, vpPush->target_fps_hint, vpPush->eara_is_active,

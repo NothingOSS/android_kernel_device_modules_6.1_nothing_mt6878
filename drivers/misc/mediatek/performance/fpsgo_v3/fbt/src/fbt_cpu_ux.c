@@ -76,6 +76,7 @@ static int fbt_ux_cal_perf(
 	long aa, unsigned int target_fpks, int cooler_on)
 {
 	unsigned int blc_wt = 0U;
+	unsigned int last_blc_wt = 0U;
 	unsigned long long cur_ts;
 	struct fbt_boost_info *boost_info;
 	int pid;
@@ -102,11 +103,14 @@ static int fbt_ux_cal_perf(
 	t_Q2Q = nsec_to_100usec(t_Q2Q);
 	aa_n = aa;
 
-	if (aa_n < 0) {
+	if (thread_info->p_blc) {
 		fpsgo_get_blc_mlock(__func__);
-		if (thread_info->p_blc)
-			blc_wt = thread_info->p_blc->blc;
+		last_blc_wt = thread_info->p_blc->blc;
 		fpsgo_put_blc_mlock(__func__);
+	}
+
+	if (aa_n < 0) {
+		blc_wt = last_blc_wt;
 		aa_n = 0;
 	} else {
 		fbt_cal_aa(aa, t1, t_Q2Q, &aa_n);
@@ -122,7 +126,7 @@ static int fbt_ux_cal_perf(
 
 		t2 = nsec_to_100usec(t2);
 
-		fbt_cal_blc(aa_n, t2, thread_info->p_blc->blc, t_Q2Q, 0, &blc_wt);
+		fbt_cal_blc(aa_n, t2, last_blc_wt, t_Q2Q, 0, &blc_wt);
 	}
 
 	fpsgo_systrace_c_fbt(pid, buffer_id, aa_n, "[ux]aa");
@@ -152,6 +156,7 @@ static void fbt_ux_set_cap(struct render_info *thr, int min_cap, int max_cap)
 	char temp[7] = {"\0"};
 	char *local_dep_str = NULL;
 	struct fpsgo_loading *local_dep_arr = NULL;
+	int ret = 0;
 
 	local_dep_str = kcalloc(MAX_DEP_NUM + 1, 7 * sizeof(char), GFP_KERNEL);
 	if (!local_dep_str)
@@ -170,11 +175,11 @@ static void fbt_ux_set_cap(struct render_info *thr, int min_cap, int max_cap)
 		fbt_set_per_task_cap(local_dep_arr[i].pid, min_cap, max_cap);
 
 		if (strlen(local_dep_str) == 0)
-			snprintf(temp, sizeof(temp), "%d", local_dep_arr[i].pid);
+			ret = snprintf(temp, sizeof(temp), "%d", local_dep_arr[i].pid);
 		else
-			snprintf(temp, sizeof(temp), ",%d", local_dep_arr[i].pid);
+			ret = snprintf(temp, sizeof(temp), ",%d", local_dep_arr[i].pid);
 
-		if (strlen(local_dep_str) + strlen(temp) < 256)
+		if (ret > 0 && strlen(local_dep_str) + strlen(temp) < 256)
 			strncat(local_dep_str, temp, strlen(temp));
 	}
 
@@ -236,7 +241,7 @@ void fbt_ux_frame_end(struct render_info *thr,
 	long long runtime;
 	int targettime, targetfps, targetfps_ori, targetfpks, fps_margin, cooler_on;
 	int loading = 0L;
-	int q_c_time, q_g_time;
+	int q_c_time = 0L, q_g_time = 0L;
 	int ret;
 
 	if (!thr)
@@ -245,6 +250,9 @@ void fbt_ux_frame_end(struct render_info *thr,
 	boost = &(thr->boost_info);
 
 	runtime = thr->running_time;
+
+	if (boost->f_iter < 0)
+		boost->f_iter = 0;
 	boost->frame_info[boost->f_iter].running_time = runtime;
 	// fstb_query_dfrc
 	fpsgo_fbt2fstb_query_fps(thr->pid, thr->buffer_id,

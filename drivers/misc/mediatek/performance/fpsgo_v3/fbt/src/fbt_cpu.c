@@ -2138,7 +2138,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 		heaviest_pid = fbt_get_heaviest_pid(thr->dep_arr, thr->dep_valid_size);
 		second_heavy_pid = fbt_find_second_heavy(thr->dep_arr,
 						thr->dep_valid_size, heaviest_pid);
-		ret = fbt_group_dep(group_by_lr, thr->dep_arr, thr->dep_valid_size, heavy_group_num_final,
+		ret = fbt_group_dep(group_by_lr_final, thr->dep_arr, thr->dep_valid_size, heavy_group_num_final,
 			second_group_num_final, heaviest_pid, second_heavy_pid, thr->pid);
 		if (ret)
 			goto EXIT;
@@ -3162,14 +3162,14 @@ static void fbt_do_jerk(struct work_struct *work)
 	}
 
 	jerk = container_of(work, struct fbt_jerk, work);
-	if (!jerk || jerk->id < 0 || jerk->id > RESCUE_TIMER_NUM - 1) {
+	if (jerk->id < 0 || jerk->id > RESCUE_TIMER_NUM - 1) {
 		fpsgo_render_tree_unlock(__func__);
 		FPSGO_LOGE("ERROR %d\n", __LINE__);
 		return;
 	}
 
 	proc = container_of(jerk, struct fbt_proc, jerks[jerk->id]);
-	if (!proc || proc->active_jerk_id < 0 ||
+	if (proc->active_jerk_id < 0 ||
 		proc->active_jerk_id > RESCUE_TIMER_NUM - 1) {
 		fpsgo_render_tree_unlock(__func__);
 		FPSGO_LOGE("ERROR %d\n", __LINE__);
@@ -3177,18 +3177,8 @@ static void fbt_do_jerk(struct work_struct *work)
 	}
 
 	boost = container_of(proc, struct fbt_boost_info, proc);
-	if (!boost) {
-		fpsgo_render_tree_unlock(__func__);
-		FPSGO_LOGE("ERROR %d\n", __LINE__);
-		return;
-	}
 
 	thr = container_of(boost, struct render_info, boost_info);
-	if (!thr) {
-		fpsgo_render_tree_unlock(__func__);
-		FPSGO_LOGE("ERROR %d\n", __LINE__);
-		return;
-	}
 
 	fpsgo_thread_lock(&(thr->thr_mlock));
 
