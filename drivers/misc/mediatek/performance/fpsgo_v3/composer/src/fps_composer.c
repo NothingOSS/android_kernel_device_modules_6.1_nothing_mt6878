@@ -668,7 +668,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 	struct sbe_info *s_info;
 	struct fps_control_pid_info *f_info;
 	int check_render;
-	unsigned long long running_time = 0;
+	unsigned long long running_time = 0, raw_runtime = 0;
 	unsigned long long enq_running_time = 0;
 	int ret;
 
@@ -752,7 +752,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 			enqueue_end_time);
 
 		fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
-			&running_time, &enq_running_time,
+			&raw_runtime, &running_time, &enq_running_time,
 			0, f_render->t_enqueue_end,
 			f_render->t_dequeue_start, f_render->t_dequeue_end,
 			f_render->t_enqueue_start, f_render->t_enqueue_end, 0);
@@ -760,6 +760,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 						f_render->enqueue_length - enq_running_time : 0;
 		fpsgo_systrace_c_fbt_debug(pid, f_render->buffer_id,
 			f_render->enqueue_length_real, "enq_length_real");
+		f_render->raw_runtime = raw_runtime;
 		if (running_time != 0)
 			f_render->running_time = running_time;
 
@@ -791,7 +792,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 			enqueue_end_time, f_render->enqueue_length);
 
 		fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
-			&running_time, &enq_running_time,
+			&raw_runtime, &running_time, &enq_running_time,
 			0, f_render->t_enqueue_end,
 			f_render->t_dequeue_start, f_render->t_dequeue_end,
 			f_render->t_enqueue_start, f_render->t_enqueue_end, 1);
@@ -982,7 +983,7 @@ void fpsgo_frame_end(struct render_info *f_render,
 	unsigned long long frame_end_time,
 	unsigned long long bufID)
 {
-	unsigned long long running_time = 0;
+	unsigned long long running_time = 0, raw_runtime = 0;
 	unsigned long long enq_running_time = 0;
 
 	if (f_render->t_enqueue_end)
@@ -1000,9 +1001,10 @@ void fpsgo_frame_end(struct render_info *f_render,
 		f_render->hwui);
 
 	fpsgo_comp2xgf_qudeq_notify(f_render->pid, f_render->buffer_id,
-		&running_time, &enq_running_time,
+		&raw_runtime, &running_time, &enq_running_time,
 		frame_start_time, frame_end_time,
 		0, 0, 0, 0, 0);
+	f_render->raw_runtime = raw_runtime;
 	if (running_time != 0)
 		f_render->running_time = running_time;
 	fbt_ux_frame_end(f_render, frame_start_time, frame_end_time);
@@ -1416,6 +1418,7 @@ static void fpsgo_adpf_boost(int render_tid, unsigned long long buffer_id,
 	iter->enqueue_length_real = 0;
 	iter->dequeue_length = 0;
 	if (iter->t_enqueue_end && !skip) {
+		iter->raw_runtime = tcpu;
 		iter->running_time = tcpu;
 		iter->Q2Q_time = ts - iter->t_enqueue_end;
 		fpsgo_comp2fbt_frame_start(iter, ts);

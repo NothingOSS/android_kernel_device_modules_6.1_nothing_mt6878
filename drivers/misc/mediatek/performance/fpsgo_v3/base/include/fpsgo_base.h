@@ -278,6 +278,7 @@ struct render_info {
 	unsigned long long dequeue_length;
 	unsigned long long Q2Q_time;
 	unsigned long long running_time;
+	unsigned long long raw_runtime;
 
 	/*ux*/
 	unsigned long long t_last_start;

@@ -136,7 +136,8 @@ void fpsgo_ctrl2xgf_switch_xgf(int val);
 void xgf_trace(const char *fmt, ...);
 
 void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
-	unsigned long long *run_time, unsigned long long *enq_running_time,
+	unsigned long long *raw_runtime, unsigned long long *run_time,
+	unsigned long long *enq_running_time,
 	unsigned long long def_start_ts, unsigned long long def_end_ts,
 	unsigned long long t_dequeue_start, unsigned long long t_dequeue_end,
 	unsigned long long t_enqueue_start, unsigned long long t_enqueue_end,

@@ -1455,8 +1455,12 @@ int fbt_get_dep_list(struct render_info *thr)
 		goto EXIT;
 	}
 
-	count = fpsgo_fbt2xgf_get_dep_list(pid, MAX_DEP_NUM,
-		dep_new, thr->buffer_id);
+	if (thr->attr.gcc_enable_by_pid || thr->raw_runtime) {
+		count = fpsgo_fbt2xgf_get_dep_list(pid, MAX_DEP_NUM,
+			dep_new, thr->buffer_id);
+	} else {
+		count = 0;
+	}
 
 	sort(dep_new, count, sizeof(struct fpsgo_loading), __cmp1, NULL);
 
@@ -5411,7 +5415,10 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 
 	boost = &(thr->boost_info);
 
-	runtime = thr->running_time;
+	if (thr->raw_runtime)
+		runtime = thr->running_time;
+	else
+		runtime = thr->Q2Q_time;
 
 	if (boost->f_iter < 0)
 		boost->f_iter = 0;

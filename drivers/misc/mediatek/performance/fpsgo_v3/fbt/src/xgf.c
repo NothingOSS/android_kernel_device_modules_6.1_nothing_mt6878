@@ -853,8 +853,7 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 	mutex_lock(&xgf_main_lock);
 
 	render_iter = xgf_get_render_if(pid, bufID, 0, 0, 0);
-	if (!render_iter || (!render_iter->raw_t_cpu &&
-				!test_bit(ADPF_TYPE, &render_iter->master_type))) {
+	if (!render_iter) {
 		mutex_unlock(&xgf_main_lock);
 		return index;
 	}
@@ -1458,7 +1457,8 @@ tsk_out:
 }
 
 void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
-	unsigned long long *run_time, unsigned long long *enq_running_time,
+	unsigned long long *raw_runtime, unsigned long long *run_time,
+	unsigned long long *enq_running_time,
 	unsigned long long def_start_ts, unsigned long long def_end_ts,
 	unsigned long long t_dequeue_start, unsigned long long t_dequeue_end,
 	unsigned long long t_enqueue_start, unsigned long long t_enqueue_end,
@@ -1575,6 +1575,8 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 	xgf_reset_render_dep_list(iter, FPSGO_TYPE);
 	xgf_setup_render_dep_list(local_dep_list, local_dep_list_num, iter, FPSGO_TYPE);
 
+	if (raw_runtime)
+		*raw_runtime = local_raw_t_cpu;
 	if (run_time)
 		*run_time = local_ema_t_cpu;
 	if (enq_running_time)
