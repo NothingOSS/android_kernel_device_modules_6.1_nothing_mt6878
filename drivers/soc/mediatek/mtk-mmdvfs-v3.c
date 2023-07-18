@@ -315,7 +315,7 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 
 	retry = 0;
 	while (!(readl(MEM_IPI_SYNC_DATA) & (1 << func))) {
-		if (++retry > VCP_SYNC_TIMEOUT_MS) {
+		if (++retry > 1000000) {
 			ret = IPI_COMPL_TIMEOUT;
 			break;
 		}
@@ -323,7 +323,7 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 			ret = -ETIMEDOUT;
 			break;
 		}
-		mdelay(1);
+		udelay(1);
 	}
 
 	if (!ret)
