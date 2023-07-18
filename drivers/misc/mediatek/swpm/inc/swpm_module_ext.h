@@ -19,6 +19,13 @@ enum swpm_num_type {
 	XPU_IP,
 };
 
+enum swpm_psp_return_type {
+	SWPM_PSP_SUCCESS = 0,
+	SWPM_NOT_EXE = 1,
+	SWPM_FLAG_ERR = 2,
+	SWPM_LOCK_ERR = 3,
+};
+
 /* swpm extension structure */
 struct ip_vol_times {
 	int32_t vol;
@@ -72,7 +79,7 @@ struct res_sig_stats {
 
 /* swpm extension internal ops structure */
 struct swpm_internal_ops {
-	void (*const cmd)(unsigned int type,
+	int32_t (*const cmd)(unsigned int type,
 			  unsigned int val);
 	int32_t (*const ddr_act_times_get)
 		(int32_t freq_num,

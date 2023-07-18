@@ -24,10 +24,11 @@ static struct swpm_psp_manager swpm_psp_m;
 
 int32_t sync_latest_data(void)
 {
+	int ret = SWPM_NOT_EXE;
 	if (SWPM_PSP_OPS && SWPM_PSP_OPS->cmd)
-		SWPM_PSP_OPS->cmd(SYNC_DATA, 0);
+		ret = SWPM_PSP_OPS->cmd(SYNC_DATA, 0);
 
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL(sync_latest_data);
 

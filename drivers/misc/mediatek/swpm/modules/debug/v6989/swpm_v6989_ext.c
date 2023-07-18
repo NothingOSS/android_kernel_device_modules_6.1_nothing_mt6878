@@ -50,6 +50,7 @@ static struct mem_swpm_data *mem_swpm_data_ptr;
 static struct core_swpm_data *core_swpm_data_ptr;
 
 static unsigned int update_interval_ms = DEFAULT_UPDATE_MS;
+unsigned int sp_ret = SWPM_NOT_EXE;
 
 /* core voltage time distribution */
 static struct vol_duration core_vol_duration[NR_CORE_VOLT];
@@ -93,12 +94,15 @@ static void swpm_sp_internal_update(void)
 
 	if (share_idx_ref_ext && share_idx_ctrl_ext) {
 
-		if (readl(&share_idx_ctrl_ext->clear_flag))
+		if (readl(&share_idx_ctrl_ext->clear_flag)) {
+			sp_ret = SWPM_FLAG_ERR;
 			return;
+		}
 
 		if (readl(&share_idx_ctrl_ext->write_lock)) {
 			update_interval_ms = RETRY_UPDATE_MS;
 			retry_cnt++;
+			sp_ret = SWPM_LOCK_ERR;
 			return;
 		}
 		writel(1, &share_idx_ctrl_ext->read_lock);
@@ -167,6 +171,8 @@ static void swpm_sp_internal_update(void)
 		writel(1, &share_idx_ctrl_ext->clear_flag);
 		writel(0, &share_idx_ctrl_ext->read_lock);
 	}
+
+	sp_ret = SWPM_PSP_SUCCESS;
 }
 
 static void swpm_sp_routine(struct timer_list *t)
@@ -188,18 +194,23 @@ static void swpm_sp_routine(struct timer_list *t)
 	update_interval_ms = DEFAULT_UPDATE_MS;
 }
 
-static void swpm_sp_dispatcher(unsigned int type,
+static int swpm_sp_dispatcher(unsigned int type,
 			       unsigned int val)
 {
+	int ret = SWPM_NOT_EXE;
+
 	switch (type) {
 	case SYNC_DATA:
 		/* do update */
 		swpm_sp_routine(&swpm_sp_timer);
+		ret = sp_ret;
 		break;
 	case SET_INTERVAL:
 		/* set update interval */
 		break;
 	}
+
+	return ret;
 }
 
 static int32_t swpm_ddr_act_times(int32_t freq_num,

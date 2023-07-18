@@ -160,7 +160,7 @@ static void swpm_sp_routine(struct timer_list *t)
 	update_interval_ms = DEFAULT_UPDATE_MS;
 }
 
-static void swpm_sp_dispatcher(unsigned int type,
+static int swpm_sp_dispatcher(unsigned int type,
 			       unsigned int val)
 {
 	switch (type) {
@@ -172,6 +172,8 @@ static void swpm_sp_dispatcher(unsigned int type,
 		/* set update interval */
 		break;
 	}
+
+	return 0;
 }
 
 static int32_t swpm_ddr_act_times(int32_t freq_num,
