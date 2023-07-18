@@ -5682,8 +5682,10 @@ void mtk_drm_top_clk_prepare_enable(struct drm_device *drm)
 
 	spin_lock_irqsave(&top_clk_lock, flags);
 	atomic_inc(&top_clk_ref);
-	if (atomic_read(&top_clk_ref) == 1)
+	if (atomic_read(&top_clk_ref) == 1) {
+		DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
 		priv->power_state = true;
+	}
 
 	spin_unlock_irqrestore(&top_clk_lock, flags);
 

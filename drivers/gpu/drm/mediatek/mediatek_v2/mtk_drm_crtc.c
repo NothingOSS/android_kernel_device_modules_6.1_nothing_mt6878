@@ -2060,6 +2060,7 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		mtk_ddp_comp_io_cmd(output_comp, NULL, CONNECTOR_DISABLE, NULL);
 
 		cmdq_mbox_disable(client->chan);
+		DDPFENCE("%s:%d power_state = false\n", __func__, __LINE__);
 		mtk_drm_top_clk_disable_unprepare(crtc->dev);
 	}
 
@@ -11771,6 +11772,7 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 
 		/* 10. power off MTCMOS*/
 		/* TODO: need to check how to unprepare MTCMOS */
+		DDPFENCE("%s:%d power_state = false\n", __func__, __LINE__);
 		mtk_drm_top_clk_disable_unprepare(crtc->dev);
 	}
 
@@ -12996,6 +12998,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 				cmdq_mbox_disable(client->chan);
 #endif
 				mtk_crtc_ddp_unprepare(mtk_crtc);
+				DDPFENCE("%s:%d power_state = false\n", __func__, __LINE__);
 				mtk_drm_top_clk_disable_unprepare(crtc->dev);
 			}
 			if (comp)
