@@ -856,12 +856,14 @@ struct pq_common_data {
 	atomic_t pq_get_irq;
 	atomic_t pq_irq_trig_src;
 	wait_queue_head_t pq_get_irq_wq;
+	wait_queue_head_t crtc_ready_wq;
 	unsigned int old_persist_property[32];
 	unsigned int new_persist_property[32];
 	struct pq_tuning_pa_base tuning_pa_table[TUNING_REG_MAX];
 	int tdshp_flag; /* 0: normal, 1: tuning mode */
 	atomic_t pq_hw_relay_cfg_done;
 	wait_queue_head_t pq_hw_relay_cb_wq;
+	atomic_t pipe_info_filled;
 };
 
 struct mtk_vblank_config_rec {

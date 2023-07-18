@@ -83,18 +83,10 @@ static int mtk_disp_c3d_create_gce_pkt(struct drm_crtc *crtc,
 		struct cmdq_pkt **pkt)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	int index = 0;
 
 	if (!mtk_crtc) {
 		DDPPR_ERR("%s:%d, invalid crtc:0x%p\n",
 				__func__, __LINE__, crtc);
-		return -1;
-	}
-
-	index = drm_crtc_index(crtc);
-	if (index) {
-		DDPPR_ERR("%s:%d, invalid crtc:0x%p, index:%d\n",
-				__func__, __LINE__, crtc, index);
 		return -1;
 	}
 
@@ -1237,7 +1229,6 @@ static void mtk_c3d_primary_data_init(struct mtk_ddp_comp *comp)
 void mtk_disp_c3d_first_cfg(struct mtk_ddp_comp *comp,
 	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
-	mtk_c3d_primary_data_init(comp);
 	mtk_disp_c3d_config(comp, cfg, handle);
 }
 
@@ -1333,7 +1324,7 @@ static int mtk_c3d_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_ddp_comp **companion = &data->companion;
 		struct mtk_disp_c3d *companion_data;
 
-		if (data->is_right_pipe)
+		if (atomic_read(&comp->mtk_crtc->pq_data->pipe_info_filled) == 1)
 			break;
 		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order,
 							is_right_pipe, companion);
@@ -1343,6 +1334,9 @@ static int mtk_c3d_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			companion_data->is_right_pipe = !data->is_right_pipe;
 			companion_data->companion = comp;
 		}
+		mtk_c3d_primary_data_init(comp);
+		if (comp->mtk_crtc->is_dual_pipe && data->companion)
+			mtk_c3d_primary_data_init(data->companion);
 	}
 		break;
 	default:

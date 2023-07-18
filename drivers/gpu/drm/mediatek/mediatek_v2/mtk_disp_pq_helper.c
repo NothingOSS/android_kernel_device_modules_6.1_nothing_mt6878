@@ -362,6 +362,23 @@ int mtk_drm_ioctl_hw_write_impl(struct drm_crtc *crtc, void *data)
 	return 0;
 }
 
+static int wait_crtc_ready(struct drm_crtc *crtc, void *data)
+{
+	int *ready = (int *)data;
+	struct pq_common_data *pq_data = to_mtk_crtc(crtc)->pq_data;
+	int ret = 0;
+
+	if (atomic_read(&pq_data->pipe_info_filled) == 1)
+		return ret;
+	ret = wait_event_interruptible(pq_data->crtc_ready_wq,
+		atomic_read(&pq_data->pipe_info_filled) == 1);
+	if (ret < 0)
+		DDPPR_ERR("%s: interrupted unexpected\n", __func__);
+	else
+		*ready = 1;
+	return ret;
+}
+
 int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
 		unsigned int cmd, char *kdata, struct drm_file *file_priv)
 {
@@ -395,6 +412,9 @@ int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
 	case PQ_VIRTUAL_RELAY_ENGINES:
 		ret = mtk_drm_ioctl_pq_relay_engines(crtc, kdata);
 		break;
+	case PQ_VIRTUAL_WAIT_CRTC_READY:
+		ret = wait_crtc_ready(crtc, kdata);
+		break;
 	default:
 		DDPPR_ERR("%s, unknown cmd:%d\n", __func__, cmd);
 	}
@@ -422,6 +442,7 @@ bool is_pq_cmd_need_pm(enum mtk_pq_frame_cfg_cmd cmd)
 
 int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
+	struct mtk_drm_private *private = dev->dev_private;
 	struct drm_crtc *crtc;
 	struct mtk_drm_pq_proxy_ctl *params = data;
 	struct mtk_ddp_comp *comp;
@@ -446,8 +467,16 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 
 	pq_type = params->cmd >> 16;
 	cmd = params->cmd & 0xffff;
-	time = sched_clock();
+	if (cmd == PQ_VIRTUAL_GET_MASTER_INFO)
+		crtc = private->crtc[0];
+	if (atomic_read(&to_mtk_crtc(crtc)->pq_data->pipe_info_filled) != 1 &&
+			cmd != PQ_VIRTUAL_WAIT_CRTC_READY) {
+		DDPPR_ERR("%s, crtc %d not ready! cmd:%d\n",
+				__func__, params->crtc_id, cmd);
+		return -1;
+	}
 
+	time = sched_clock();
 	if (params->size <= sizeof(stack_kdata))
 		kdata = stack_kdata;
 	else
@@ -512,6 +541,10 @@ int mtk_drm_ioctl_pq_frame_config(struct drm_device *dev, void *data,
 		DDPPR_ERR("%s, invalid crtc id:%d!\n", __func__, params->crtc_id);
 		return -1;
 	}
+	if (atomic_read(&to_mtk_crtc(crtc)->pq_data->pipe_info_filled) != 1) {
+		DDPPR_ERR("%s, crtc %d not ready!\n", __func__, params->crtc_id);
+		return -1;
+	}
 
 	ret = mtk_pq_helper_frame_config(crtc, NULL, data, true);
 	return ret;
@@ -546,12 +579,6 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	if (copy_from_user(&requests, params->data, sizeof(struct mtk_drm_pq_param) * cmds_len)) {
 		mtk_drm_trace_end();
 
-		return -1;
-	}
-	if (index) {
-		DDPPR_ERR("%s:%d, invalid crtc:0x%p, index:%d\n",
-				__func__, __LINE__, crtc, index);
-		mtk_drm_trace_end();
 		return -1;
 	}
 

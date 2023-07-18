@@ -1691,12 +1691,12 @@
 
 #define MT6989_PQ_PATH_SEL          0x34
 	#define MT6989_PQ_FAST_PATH_DISABLE        0
-	#define MT6989_PQ_FAST_PATH1               1
-	#define MT6989_PQ_FAST_PATH5               5
-	#define MT6989_PQ_FAST_PATH7               7
-	#define MT6989_PQ_FAST_PATH10              10
-	#define MT6989_PQ_FAST_PATH15              15
-	#define MT6989_PQ_FAST_PATH19              19
+	#define MT6989_PQ_FAST_PATH1               0x101
+	#define MT6989_PQ_FAST_PATH5               0x505
+	#define MT6989_PQ_FAST_PATH7               0x707
+	#define MT6989_PQ_FAST_PATH10              0xa0a
+	#define MT6989_PQ_FAST_PATH15              0xf0f
+	#define MT6989_PQ_FAST_PATH19              0x1313
 
 #define MT6989_DISPSYS_BYPASS_MUX_SHADOW	0xC30
 
@@ -15470,6 +15470,11 @@ static int mtk_ddp_mout_en_MT6989(const struct mtk_mmsys_reg_data *data,
 		/* dsi1 PQ_IN_CROSSBAR */
 		*addr = MT6989_PQ_IN_CROSSBAR7_MOUT_EN;
 		value = MT6989_DISP_DLI_RELAY7_TO_PQ_OUT_CROSSBAR7;
+	} else if ((cur == DDP_COMPONENT_DLI_ASYNC7 &&
+		next == DDP_COMPONENT_RSZ1)){
+		/* dsi1 PQ_IN_CROSSBAR */
+		*addr = MT6989_PQ_IN_CROSSBAR7_MOUT_EN;
+		value = MT6989_DISP_DLI_RELAY7_TO_RSZ1;
 	} else if ((cur == DDP_COMPONENT_PQ0_OUT_CB0 &&
 		next == DDP_COMPONENT_SPR0)) {
 		/* PQ_OUT_CROSSBAR */
@@ -15489,6 +15494,11 @@ static int mtk_ddp_mout_en_MT6989(const struct mtk_mmsys_reg_data *data,
 		/* PQ_OUT_CROSSBAR */
 		*addr = MT6989_PQ_OUT_CROSSBAR2_MOUT_EN;
 		value = MT6989_DISP_DITHER2_TO_PANEL_COMP_OUT_CROSSBAR1;
+	} else if ((cur == DDP_COMPONENT_PQ0_OUT_CB2 &&
+		next == DDP_COMPONENT_PANEL0_COMP_OUT_CB4)) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6989_PQ_OUT_CROSSBAR2_MOUT_EN;
+		value = MT6989_DISP_DITHER2_TO_PANEL_COMP_OUT_CROSSBAR4;
 	} else if ((cur == DDP_COMPONENT_PQ0_OUT_CB4 &&
 		next == DDP_COMPONENT_PANEL0_COMP_OUT_CB1)) {
 		/* PQ_OUT_CROSSBAR */

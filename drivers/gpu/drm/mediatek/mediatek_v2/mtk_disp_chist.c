@@ -68,6 +68,7 @@
 static bool debug_dump_hist;
 
 static unsigned int sel_index;
+static void mtk_chist_primary_data_init(struct mtk_ddp_comp *comp);
 
 static int g_rgb_2_yuv[4][DISP_CHIST_YUV_PARAM_COUNT] = {
 	// BT601 full
@@ -861,7 +862,7 @@ int mtk_chist_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_ddp_comp **companion = &data->companion;
 		struct mtk_disp_chist *companion_data;
 
-		if (data->is_right_pipe)
+		if (atomic_read(&comp->mtk_crtc->pq_data->pipe_info_filled) == 1)
 			break;
 		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
 		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
@@ -870,6 +871,9 @@ int mtk_chist_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			companion_data->is_right_pipe = !data->is_right_pipe;
 			companion_data->companion = comp;
 		}
+		mtk_chist_primary_data_init(comp);
+		if (comp->mtk_crtc->is_dual_pipe && data->companion)
+			mtk_chist_primary_data_init(data->companion);
 	}
 		break;
 	default:
@@ -1065,7 +1069,7 @@ static int mtk_chist_read_kthread(void *data)
 	return 0;
 }
 
-void mtk_chist_data_init(struct mtk_ddp_comp *comp)
+static void mtk_chist_primary_data_init(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_chist *chist_data = comp_to_chist(comp);
 	struct mtk_disp_chist *companion_data = comp_to_chist(chist_data->companion);
@@ -1112,7 +1116,6 @@ void mtk_chist_first_cfg(struct mtk_ddp_comp *comp,
 	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
 	DDPINFO("%s, comp->id:%s\n", __func__, mtk_dump_comp_str(comp));
-	mtk_chist_data_init(comp);
 	mtk_chist_config(comp, cfg, handle);
 }
 

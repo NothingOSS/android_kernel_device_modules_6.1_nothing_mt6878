@@ -129,6 +129,13 @@ static inline struct mtk_disp_rsz *comp_to_rsz(struct mtk_ddp_comp *comp)
 
 static void mtk_rsz_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+
+	if (priv->data->mmsys_id == MMSYS_MT6989 && comp->id == DDP_COMPONENT_RSZ1) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+		       comp->regs_pa + DISP_REG_RSZ_ENABLE, 0, ~0);
+		return;
+	}
 	if ((!comp->mtk_crtc->scaling_ctx.scaling_en)
 		&& mtk_crtc_check_is_scaling_comp(comp->mtk_crtc, comp->id)) {
 		DDPDBG("%s: scaling-up disable, no need to start %s\n", __func__,

@@ -900,7 +900,8 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 		return -1;
 	}
 	mtk_crtc = to_mtk_crtc(crtc);
-	if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_PQ)) {
+	if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_PQ) ||
+			atomic_read(&mtk_crtc->pq_data->pipe_info_filled) != 1) {
 		DDPINFO("%s, bl %d no need pq, connector_id:%d, crtc_id:%d\n", __func__,
 				led_conf->cdev.brightness, led_conf->connector_id, drm_crtc_index(crtc));
 		led_conf->aal_enable = 0;
@@ -1397,51 +1398,6 @@ static void mtk_ccorr_unprepare(struct mtk_ddp_comp *comp)
 
 }
 
-static int mtk_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
-							enum mtk_ddp_io_cmd cmd, void *params)
-{
-	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
-	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
-	int enable = 1;
-
-	switch (cmd) {
-	case FRAME_DIRTY:
-	{
-		if (ccorr_data->path_order != 0 || ccorr_data->is_right_pipe ||
-				!primary_data->is_aibld_cv_mode)
-			break;
-		DDPDBG("%s FRAME_DIRTY comp id:%d\n", __func__, comp->id);
-		mtk_disp_ccorr_set_interrupt(comp, &enable);
-	}
-		break;
-	case PQ_FILL_COMP_PIPE_INFO:
-	{
-		struct mtk_disp_ccorr *data = comp_to_ccorr(comp);
-		bool *is_right_pipe = &data->is_right_pipe;
-		int ret, *path_order = &data->path_order;
-		struct mtk_ddp_comp **companion = &data->companion;
-		struct mtk_disp_ccorr *companion_data;
-
-		DDPINFO("%s,ccorr pipe info comp id(%d)\n", __func__, comp->id);
-
-		if (data->is_right_pipe)
-			break;
-		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
-		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
-			DDPINFO("%s,c3d dual pipe info comp id(%d)\n", __func__, comp->id);
-			companion_data = comp_to_ccorr(data->companion);
-			companion_data->path_order = data->path_order;
-			companion_data->is_right_pipe = !data->is_right_pipe;
-			companion_data->companion = comp;
-		}
-	}
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
-
 static void mtk_ccorr_data_init(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
@@ -1474,11 +1430,57 @@ static void mtk_ccorr_primary_data_init(struct mtk_ddp_comp *comp)
 	mutex_init(&primary_data->ccorr_global_lock);
 }
 
+static int mtk_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+							enum mtk_ddp_io_cmd cmd, void *params)
+{
+	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
+	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
+	int enable = 1;
+
+	switch (cmd) {
+	case FRAME_DIRTY:
+	{
+		if (ccorr_data->path_order != 0 || ccorr_data->is_right_pipe ||
+				!primary_data->is_aibld_cv_mode)
+			break;
+		DDPDBG("%s FRAME_DIRTY comp id:%d\n", __func__, comp->id);
+		mtk_disp_ccorr_set_interrupt(comp, &enable);
+	}
+		break;
+	case PQ_FILL_COMP_PIPE_INFO:
+	{
+		struct mtk_disp_ccorr *data = comp_to_ccorr(comp);
+		bool *is_right_pipe = &data->is_right_pipe;
+		int ret, *path_order = &data->path_order;
+		struct mtk_ddp_comp **companion = &data->companion;
+		struct mtk_disp_ccorr *companion_data;
+
+		if (atomic_read(&comp->mtk_crtc->pq_data->pipe_info_filled) == 1)
+			break;
+		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
+		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
+			companion_data = comp_to_ccorr(data->companion);
+			companion_data->path_order = data->path_order;
+			companion_data->is_right_pipe = !data->is_right_pipe;
+			companion_data->companion = comp;
+		}
+		mtk_ccorr_data_init(comp);
+		mtk_ccorr_primary_data_init(comp);
+		if (comp->mtk_crtc->is_dual_pipe && data->companion) {
+			mtk_ccorr_data_init(data->companion);
+			mtk_ccorr_primary_data_init(data->companion);
+		}
+	}
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
 void mtk_ccorr_first_cfg(struct mtk_ddp_comp *comp,
 	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
-	mtk_ccorr_data_init(comp);
-	mtk_ccorr_primary_data_init(comp);
 	mtk_ccorr_config(comp, cfg, handle);
 }
 

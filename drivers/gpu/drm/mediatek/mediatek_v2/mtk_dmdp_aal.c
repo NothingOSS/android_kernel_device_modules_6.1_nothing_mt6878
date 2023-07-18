@@ -312,7 +312,7 @@ static void mtk_dmdp_aal_config(struct mtk_ddp_comp *comp,
 		readl(comp->regs + DMDP_AAL_CFG));
 }
 
-void mtk_dmdp_aal_data_init(struct mtk_ddp_comp *comp)
+static void mtk_dmdp_aal_primary_data_init(struct mtk_ddp_comp *comp)
 {
 	struct mtk_dmdp_aal *aal_data = comp_to_dmdp_aal(comp);
 	struct mtk_dmdp_aal *companion_data = comp_to_dmdp_aal(aal_data->companion);
@@ -557,7 +557,7 @@ int mtk_dmdp_aal_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_ddp_comp **companion = &data->companion;
 		struct mtk_dmdp_aal *companion_data;
 
-		if (data->is_right_pipe)
+		if (atomic_read(&comp->mtk_crtc->pq_data->pipe_info_filled) == 1)
 			break;
 		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
 		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
@@ -566,6 +566,9 @@ int mtk_dmdp_aal_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			companion_data->is_right_pipe = !data->is_right_pipe;
 			companion_data->companion = comp;
 		}
+		mtk_dmdp_aal_primary_data_init(comp);
+		if (comp->mtk_crtc->is_dual_pipe && data->companion)
+			mtk_dmdp_aal_primary_data_init(data->companion);
 	}
 		break;
 	default:
@@ -709,8 +712,6 @@ static int mtk_dmdp_aal_probe(struct platform_device *pdev)
 		DDPMSG("Failed to initialize component: %d\n", ret);
 		goto error_primary;
 	}
-
-	mtk_dmdp_aal_data_init(&priv->ddp_comp);
 
 	aal_node = of_find_compatible_node(NULL, NULL, "mediatek,disp_aal0");
 	if (of_property_read_u32(aal_node, "mtk-dre30-support",

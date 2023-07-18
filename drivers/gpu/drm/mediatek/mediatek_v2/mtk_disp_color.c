@@ -1695,322 +1695,6 @@ int mtk_drm_ioctl_pq_set_window(struct drm_device *dev, void *data,
 	return mtk_drm_ioctl_pq_set_window_impl(comp, data);
 }
 
-static int mtk_color_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
-							enum mtk_ddp_io_cmd cmd, void *params)
-{
-	switch (cmd) {
-	case PQ_FILL_COMP_PIPE_INFO:
-	{
-		struct mtk_disp_color *data = comp_to_color(comp);
-		bool *is_right_pipe = &data->is_right_pipe;
-		int ret, *path_order = &data->path_order;
-		struct mtk_ddp_comp **companion = &data->companion;
-		struct mtk_disp_color *companion_data;
-
-		DDPMSG("%s,color pipe info comp id(%d)\n", __func__, comp->id);
-
-		if (data->is_right_pipe)
-			break;
-		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
-		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
-			DDPMSG("%s,color dual pipe info comp id(%d)\n", __func__, comp->id);
-			companion_data = comp_to_color(data->companion);
-			companion_data->path_order = data->path_order;
-			companion_data->is_right_pipe = !data->is_right_pipe;
-			companion_data->companion = comp;
-		}
-	}
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
-
-static void mtk_color_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
-{
-	//struct mtk_disp_color *color = comp_to_color(comp);
-	struct mtk_disp_color_primary *primary_data =
-		comp_to_color(comp)->primary_data;
-
-	DpEngine_COLORonInit(comp, handle);
-
-	mutex_lock(&primary_data->reg_lock);
-	if (primary_data->color_reg_valid) {
-		color_write_hw_reg(comp, &primary_data->color_reg, handle);
-		mutex_unlock(&primary_data->reg_lock);
-	} else {
-		mutex_unlock(&primary_data->reg_lock);
-		DpEngine_COLORonConfig(comp, handle);
-	}
-	/*
-	 *cmdq_pkt_write(handle, comp->cmdq_base,
-	 *	       comp->regs_pa + DISP_COLOR_CFG_MAIN,
-	 *	       COLOR_BYPASS_ALL | COLOR_SEQ_SEL, ~0);
-	 *cmdq_pkt_write(handle, comp->cmdq_base,
-	 *	       comp->regs_pa + DISP_COLOR_START(color), 0x1, ~0);
-	 */
-}
-
-static void mtk_color_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
-{
-
-}
-
-static void mtk_color_bypass(struct mtk_ddp_comp *comp, int bypass,
-	struct cmdq_pkt *handle)
-{
-	struct mtk_disp_color *color = comp_to_color(comp);
-
-	DDPINFO("%s: bypass: %d\n", __func__, bypass);
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		       comp->regs_pa + DISP_COLOR_CFG_MAIN,
-		       COLOR_BYPASS_ALL | COLOR_SEQ_SEL, ~0);
-
-	/* disable R2Y/Y2R in Color Wrapper */
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_COLOR_CM1_EN(color), 0, 0x1);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_COLOR_CM2_EN(color), 0, 0x1);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_COLOR_START(color), 0x3, 0x3);
-
-	/*
-	 * writel(0, comp->regs + DISP_COLOR_CM1_EN);
-	 * writel(0, comp->regs + DISP_COLOR_CM2_EN);
-	 * writel(0x1, comp->regs + DISP_COLOR_START(color));
-	 */
-}
-
-void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, struct DISP_WRITE_REG *wParams,
-	unsigned int pa, unsigned int pa1)
-{
-	unsigned int pos_x, pos_y, val, val1, mask;
-	struct mtk_disp_color_primary *primary_data =
-		comp_to_color(comp)->primary_data;
-
-	val = wParams->val;
-	mask = wParams->mask;
-	pos_x = (wParams->val & 0xffff);
-	pos_y = ((wParams->val & (0xffff0000)) >> 16);
-	DDPINFO("write POS_MAIN: pos_x[%d] pos_y[%d]\n",
-		pos_x, pos_y);
-	if (pos_x < primary_data->width) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			pa, val, mask);
-		DDPINFO("dual pipe write pa:0x%x(va:0) = 0x%x (0x%x)\n"
-			, pa, val, mask);
-		val1 = ((pos_x + primary_data->width) | ((pos_y << 16)));
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			pa1, val1, mask);
-		DDPINFO("dual pipe write pa1:0x%x(va:0) = 0x%x (0x%x)\n"
-			, pa1, val1, mask);
-	} else {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			pa, val, mask);
-		DDPINFO("dual pipe write pa:0x%x(va:0) = 0x%x (0x%x)\n"
-			, pa, val, mask);
-		val1 = ((pos_x - primary_data->width) | ((pos_y << 16)));
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			pa1, val1, mask);
-		DDPINFO("dual pipe write pa1:0x%x(va:0) = 0x%x (0x%x)\n"
-			, pa1, val1, mask);
-	}
-}
-
-static int mtk_color_cfg_drecolor_set_sgy(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, void *data, unsigned int data_size)
-{
-	struct mtk_disp_color *priv_data = comp_to_color(comp);
-	struct mtk_disp_color_primary *primary_data =
-			comp_to_color(comp)->primary_data;
-	struct DISP_AAL_DRECOLOR_PARAM *param = data;
-	struct DISP_AAL_DRECOLOR_PARAM *drecolor_sgy = &priv_data->primary_data->drecolor_sgy;
-
-	if (sizeof(struct DISP_AAL_DRECOLOR_PARAM) < data_size) {
-		DDPPR_ERR("%s param size error %lu, %u\n", __func__, sizeof(*param), data_size);
-		return -EFAULT;
-	}
-	mutex_lock(&primary_data->reg_lock);
-	memcpy(drecolor_sgy, param, sizeof(struct DISP_AAL_DRECOLOR_PARAM));
-	if (!drecolor_sgy->sgy_trans_trigger) {
-		DDPINFO("%s set skip\n", __func__);
-		mutex_unlock(&primary_data->reg_lock);
-		return 0;
-	}
-	DDPINFO("%s set now\n", __func__);
-	disp_color_set_sgy(comp, handle, drecolor_sgy->sgy_out_gain);
-	if (comp->mtk_crtc->is_dual_pipe)
-		disp_color_set_sgy(priv_data->companion, handle, drecolor_sgy->sgy_out_gain);
-	mutex_unlock(&primary_data->reg_lock);
-	return 0;
-}
-
-static int mtk_color_pq_frame_config(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, unsigned int cmd, void *data, unsigned int data_size)
-{
-	int ret = -1;
-
-	DDPINFO("%s,SET COLOR REG id(%d) cmd = %d\n", __func__, comp->id, cmd);
-	/* will only call left path */
-	switch (cmd) {
-	/* TYPE1 no user cmd */
-	case PQ_COLOR_MUTEX_CONTROL:
-		/*set ncs mode*/
-		ret = mtk_color_cfg_mutex_control(comp, handle, data, data_size);
-		break;
-	case PQ_COLOR_BYPASS:
-		ret = mtk_color_cfg_bypass(comp, handle, data, data_size);
-		break;
-	case PQ_COLOR_SET_PQINDEX:
-		/*just memcpy user data*/
-		ret = mtk_drm_color_cfg_set_pqindex(comp, handle, data, data_size);
-		break;
-	case PQ_COLOR_SET_PQPARAM:
-		ret = mtk_drm_color_cfg_set_pqparam(comp, handle, data, data_size);
-		break;
-	case PQ_COLOR_SET_COLOR_REG:
-		ret = mtk_color_cfg_set_color_reg(comp, handle, data, data_size);
-		break;
-	case PQ_COLOR_SET_WINDOW:
-		ret = mtk_drm_color_cfg_pq_set_window(comp, handle, data, data_size);
-		break;
-	case PQ_COLOR_DRECOLOR_SET_SGY:
-		ret = mtk_color_cfg_drecolor_set_sgy(comp, handle, data, data_size);
-		break;
-	default:
-		break;
-	}
-	return ret;
-}
-
-static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, unsigned int cmd, void *data)
-{
-	struct mtk_disp_color *color = comp_to_color(comp);
-	struct mtk_disp_color_primary *primary_data = color->primary_data;
-
-	DDPINFO("%s: cmd: %d\n", __func__, cmd);
-	switch (cmd) {
-	case SET_PQPARAM:
-	{
-		/* normal mode */
-		DpEngine_COLORonInit(comp, handle);
-		DpEngine_COLORonConfig(comp, handle);
-		if (comp->mtk_crtc->is_dual_pipe) {
-			struct mtk_ddp_comp *comp_color1 = color->companion;
-
-			DpEngine_COLORonInit(comp_color1, handle);
-			DpEngine_COLORonConfig(comp_color1, handle);
-		}
-	}
-	break;
-	case SET_COLOR_REG:
-	{
-		mutex_lock(&primary_data->reg_lock);
-
-		if (data != NULL) {
-			memcpy(&primary_data->color_reg, (struct DISPLAY_COLOR_REG *)data,
-				sizeof(struct DISPLAY_COLOR_REG));
-
-			color_write_hw_reg(comp, &primary_data->color_reg, handle);
-			if (comp->mtk_crtc->is_dual_pipe) {
-				struct mtk_ddp_comp *comp_color1 = color->companion;
-
-				color_write_hw_reg(comp_color1, &primary_data->color_reg, handle);
-			}
-		} else {
-			DDPINFO("%s: data is NULL", __func__);
-		}
-
-		primary_data->color_reg_valid = 1;
-		mutex_unlock(&primary_data->reg_lock);
-	}
-	break;
-	case BYPASS_COLOR:
-	{
-		unsigned int *value = data;
-
-		ddp_color_bypass_color(comp, *value, handle);
-		if (comp->mtk_crtc->is_dual_pipe) {
-			struct mtk_ddp_comp *comp_color1 = color->companion;
-
-			ddp_color_bypass_color(comp_color1, *value, handle);
-		}
-	}
-	break;
-	case PQ_SET_WINDOW:
-	{
-		struct DISP_PQ_WIN_PARAM *win_param = data;
-
-		ddp_color_set_window(comp, win_param, handle);
-	}
-	break;
-	default:
-		DDPPR_ERR("%s: error cmd: %d\n", __func__, cmd);
-		return -EINVAL;
-	}
-	return 0;
-}
-
-static void ddp_color_backup(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_color_primary *primary_data =
-		comp_to_color(comp)->primary_data;
-
-	primary_data->color_backup.COLOR_CFG_MAIN =
-		readl(comp->regs + DISP_COLOR_CFG_MAIN);
-}
-
-static void ddp_color_restore(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_color_primary *primary_data =
-		comp_to_color(comp)->primary_data;
-
-	writel(primary_data->color_backup.COLOR_CFG_MAIN, comp->regs + DISP_COLOR_CFG_MAIN);
-}
-
-static void mtk_color_prepare(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_color *color = comp_to_color(comp);
-
-	mtk_ddp_comp_clk_prepare(comp);
-	atomic_set(&color->color_is_clock_on, 1);
-
-	/* Bypass shadow register and read shadow register */
-	if (color->data->need_bypass_shadow)
-		mtk_ddp_write_mask_cpu(comp, COLOR_BYPASS_SHADOW,
-			DISP_COLOR_SHADOW_CTRL, COLOR_BYPASS_SHADOW);
-
-	// restore DISP_COLOR_CFG_MAIN register
-	ddp_color_restore(comp);
-}
-
-static void mtk_color_unprepare(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_color *color_data = comp_to_color(comp);
-	unsigned long flags;
-
-	DDPINFO("%s @ %d......... spin_lock_irqsave ++ ", __func__, __LINE__);
-	spin_lock_irqsave(&color_data->clock_lock, flags);
-	DDPINFO("%s @ %d......... spin_lock_irqsave -- ", __func__, __LINE__);
-	atomic_set(&color_data->color_is_clock_on, 0);
-	spin_unlock_irqrestore(&color_data->clock_lock, flags);
-	DDPINFO("%s @ %d......... spin_unlock_irqrestore ", __func__, __LINE__);
-	// backup DISP_COLOR_CFG_MAIN register
-	ddp_color_backup(comp);
-	mtk_ddp_comp_clk_unprepare(comp);
-}
-
-static void mtk_color_data_init(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_color *color_data = comp_to_color(comp);
-
-	spin_lock_init(&color_data->clock_lock);
-}
-
 static void mtk_color_primary_data_init(struct mtk_ddp_comp *comp)
 {
 	int i;
@@ -2878,10 +2562,325 @@ COLOR_3D :
 	mutex_init(&primary_data->reg_lock);
 }
 
+static int mtk_color_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+							enum mtk_ddp_io_cmd cmd, void *params)
+{
+	switch (cmd) {
+	case PQ_FILL_COMP_PIPE_INFO:
+	{
+		struct mtk_disp_color *data = comp_to_color(comp);
+		bool *is_right_pipe = &data->is_right_pipe;
+		int ret, *path_order = &data->path_order;
+		struct mtk_ddp_comp **companion = &data->companion;
+		struct mtk_disp_color *companion_data;
+
+		if (atomic_read(&comp->mtk_crtc->pq_data->pipe_info_filled) == 1)
+			break;
+		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
+		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
+			companion_data = comp_to_color(data->companion);
+			companion_data->path_order = data->path_order;
+			companion_data->is_right_pipe = !data->is_right_pipe;
+			companion_data->companion = comp;
+		}
+		mtk_color_primary_data_init(comp);
+		if (comp->mtk_crtc->is_dual_pipe && data->companion)
+			mtk_color_primary_data_init(data->companion);
+	}
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
+static void mtk_color_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+{
+	//struct mtk_disp_color *color = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary_data =
+		comp_to_color(comp)->primary_data;
+
+	DpEngine_COLORonInit(comp, handle);
+
+	mutex_lock(&primary_data->reg_lock);
+	if (primary_data->color_reg_valid) {
+		color_write_hw_reg(comp, &primary_data->color_reg, handle);
+		mutex_unlock(&primary_data->reg_lock);
+	} else {
+		mutex_unlock(&primary_data->reg_lock);
+		DpEngine_COLORonConfig(comp, handle);
+	}
+	/*
+	 *cmdq_pkt_write(handle, comp->cmdq_base,
+	 *	       comp->regs_pa + DISP_COLOR_CFG_MAIN,
+	 *	       COLOR_BYPASS_ALL | COLOR_SEQ_SEL, ~0);
+	 *cmdq_pkt_write(handle, comp->cmdq_base,
+	 *	       comp->regs_pa + DISP_COLOR_START(color), 0x1, ~0);
+	 */
+}
+
+static void mtk_color_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+{
+
+}
+
+static void mtk_color_bypass(struct mtk_ddp_comp *comp, int bypass,
+	struct cmdq_pkt *handle)
+{
+	struct mtk_disp_color *color = comp_to_color(comp);
+
+	DDPINFO("%s: bypass: %d\n", __func__, bypass);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		       comp->regs_pa + DISP_COLOR_CFG_MAIN,
+		       COLOR_BYPASS_ALL | COLOR_SEQ_SEL, ~0);
+
+	/* disable R2Y/Y2R in Color Wrapper */
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_COLOR_CM1_EN(color), 0, 0x1);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_COLOR_CM2_EN(color), 0, 0x1);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_COLOR_START(color), 0x3, 0x3);
+
+	/*
+	 * writel(0, comp->regs + DISP_COLOR_CM1_EN);
+	 * writel(0, comp->regs + DISP_COLOR_CM2_EN);
+	 * writel(0x1, comp->regs + DISP_COLOR_START(color));
+	 */
+}
+
+void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, struct DISP_WRITE_REG *wParams,
+	unsigned int pa, unsigned int pa1)
+{
+	unsigned int pos_x, pos_y, val, val1, mask;
+	struct mtk_disp_color_primary *primary_data =
+		comp_to_color(comp)->primary_data;
+
+	val = wParams->val;
+	mask = wParams->mask;
+	pos_x = (wParams->val & 0xffff);
+	pos_y = ((wParams->val & (0xffff0000)) >> 16);
+	DDPINFO("write POS_MAIN: pos_x[%d] pos_y[%d]\n",
+		pos_x, pos_y);
+	if (pos_x < primary_data->width) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			pa, val, mask);
+		DDPINFO("dual pipe write pa:0x%x(va:0) = 0x%x (0x%x)\n"
+			, pa, val, mask);
+		val1 = ((pos_x + primary_data->width) | ((pos_y << 16)));
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			pa1, val1, mask);
+		DDPINFO("dual pipe write pa1:0x%x(va:0) = 0x%x (0x%x)\n"
+			, pa1, val1, mask);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			pa, val, mask);
+		DDPINFO("dual pipe write pa:0x%x(va:0) = 0x%x (0x%x)\n"
+			, pa, val, mask);
+		val1 = ((pos_x - primary_data->width) | ((pos_y << 16)));
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			pa1, val1, mask);
+		DDPINFO("dual pipe write pa1:0x%x(va:0) = 0x%x (0x%x)\n"
+			, pa1, val1, mask);
+	}
+}
+
+static int mtk_color_cfg_drecolor_set_sgy(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, void *data, unsigned int data_size)
+{
+	struct mtk_disp_color *priv_data = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary_data =
+			comp_to_color(comp)->primary_data;
+	struct DISP_AAL_DRECOLOR_PARAM *param = data;
+	struct DISP_AAL_DRECOLOR_PARAM *drecolor_sgy = &priv_data->primary_data->drecolor_sgy;
+
+	if (sizeof(struct DISP_AAL_DRECOLOR_PARAM) < data_size) {
+		DDPPR_ERR("%s param size error %lu, %u\n", __func__, sizeof(*param), data_size);
+		return -EFAULT;
+	}
+	mutex_lock(&primary_data->reg_lock);
+	memcpy(drecolor_sgy, param, sizeof(struct DISP_AAL_DRECOLOR_PARAM));
+	if (!drecolor_sgy->sgy_trans_trigger) {
+		DDPINFO("%s set skip\n", __func__);
+		mutex_unlock(&primary_data->reg_lock);
+		return 0;
+	}
+	DDPINFO("%s set now\n", __func__);
+	disp_color_set_sgy(comp, handle, drecolor_sgy->sgy_out_gain);
+	if (comp->mtk_crtc->is_dual_pipe)
+		disp_color_set_sgy(priv_data->companion, handle, drecolor_sgy->sgy_out_gain);
+	mutex_unlock(&primary_data->reg_lock);
+	return 0;
+}
+
+static int mtk_color_pq_frame_config(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, unsigned int cmd, void *data, unsigned int data_size)
+{
+	int ret = -1;
+
+	DDPINFO("%s,SET COLOR REG id(%d) cmd = %d\n", __func__, comp->id, cmd);
+	/* will only call left path */
+	switch (cmd) {
+	/* TYPE1 no user cmd */
+	case PQ_COLOR_MUTEX_CONTROL:
+		/*set ncs mode*/
+		ret = mtk_color_cfg_mutex_control(comp, handle, data, data_size);
+		break;
+	case PQ_COLOR_BYPASS:
+		ret = mtk_color_cfg_bypass(comp, handle, data, data_size);
+		break;
+	case PQ_COLOR_SET_PQINDEX:
+		/*just memcpy user data*/
+		ret = mtk_drm_color_cfg_set_pqindex(comp, handle, data, data_size);
+		break;
+	case PQ_COLOR_SET_PQPARAM:
+		ret = mtk_drm_color_cfg_set_pqparam(comp, handle, data, data_size);
+		break;
+	case PQ_COLOR_SET_COLOR_REG:
+		ret = mtk_color_cfg_set_color_reg(comp, handle, data, data_size);
+		break;
+	case PQ_COLOR_SET_WINDOW:
+		ret = mtk_drm_color_cfg_pq_set_window(comp, handle, data, data_size);
+		break;
+	case PQ_COLOR_DRECOLOR_SET_SGY:
+		ret = mtk_color_cfg_drecolor_set_sgy(comp, handle, data, data_size);
+		break;
+	default:
+		break;
+	}
+	return ret;
+}
+
+static int mtk_color_user_cmd(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, unsigned int cmd, void *data)
+{
+	struct mtk_disp_color *color = comp_to_color(comp);
+	struct mtk_disp_color_primary *primary_data = color->primary_data;
+
+	DDPINFO("%s: cmd: %d\n", __func__, cmd);
+	switch (cmd) {
+	case SET_PQPARAM:
+	{
+		/* normal mode */
+		DpEngine_COLORonInit(comp, handle);
+		DpEngine_COLORonConfig(comp, handle);
+		if (comp->mtk_crtc->is_dual_pipe) {
+			struct mtk_ddp_comp *comp_color1 = color->companion;
+
+			DpEngine_COLORonInit(comp_color1, handle);
+			DpEngine_COLORonConfig(comp_color1, handle);
+		}
+	}
+	break;
+	case SET_COLOR_REG:
+	{
+		mutex_lock(&primary_data->reg_lock);
+
+		if (data != NULL) {
+			memcpy(&primary_data->color_reg, (struct DISPLAY_COLOR_REG *)data,
+				sizeof(struct DISPLAY_COLOR_REG));
+
+			color_write_hw_reg(comp, &primary_data->color_reg, handle);
+			if (comp->mtk_crtc->is_dual_pipe) {
+				struct mtk_ddp_comp *comp_color1 = color->companion;
+
+				color_write_hw_reg(comp_color1, &primary_data->color_reg, handle);
+			}
+		} else {
+			DDPINFO("%s: data is NULL", __func__);
+		}
+
+		primary_data->color_reg_valid = 1;
+		mutex_unlock(&primary_data->reg_lock);
+	}
+	break;
+	case BYPASS_COLOR:
+	{
+		unsigned int *value = data;
+
+		ddp_color_bypass_color(comp, *value, handle);
+		if (comp->mtk_crtc->is_dual_pipe) {
+			struct mtk_ddp_comp *comp_color1 = color->companion;
+
+			ddp_color_bypass_color(comp_color1, *value, handle);
+		}
+	}
+	break;
+	case PQ_SET_WINDOW:
+	{
+		struct DISP_PQ_WIN_PARAM *win_param = data;
+
+		ddp_color_set_window(comp, win_param, handle);
+	}
+	break;
+	default:
+		DDPPR_ERR("%s: error cmd: %d\n", __func__, cmd);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static void ddp_color_backup(struct mtk_ddp_comp *comp)
+{
+	struct mtk_disp_color_primary *primary_data =
+		comp_to_color(comp)->primary_data;
+
+	primary_data->color_backup.COLOR_CFG_MAIN =
+		readl(comp->regs + DISP_COLOR_CFG_MAIN);
+}
+
+static void ddp_color_restore(struct mtk_ddp_comp *comp)
+{
+	struct mtk_disp_color_primary *primary_data =
+		comp_to_color(comp)->primary_data;
+
+	writel(primary_data->color_backup.COLOR_CFG_MAIN, comp->regs + DISP_COLOR_CFG_MAIN);
+}
+
+static void mtk_color_prepare(struct mtk_ddp_comp *comp)
+{
+	struct mtk_disp_color *color = comp_to_color(comp);
+
+	mtk_ddp_comp_clk_prepare(comp);
+	atomic_set(&color->color_is_clock_on, 1);
+
+	/* Bypass shadow register and read shadow register */
+	if (color->data->need_bypass_shadow)
+		mtk_ddp_write_mask_cpu(comp, COLOR_BYPASS_SHADOW,
+			DISP_COLOR_SHADOW_CTRL, COLOR_BYPASS_SHADOW);
+
+	// restore DISP_COLOR_CFG_MAIN register
+	ddp_color_restore(comp);
+}
+
+static void mtk_color_unprepare(struct mtk_ddp_comp *comp)
+{
+	struct mtk_disp_color *color_data = comp_to_color(comp);
+	unsigned long flags;
+
+	DDPINFO("%s @ %d......... spin_lock_irqsave ++ ", __func__, __LINE__);
+	spin_lock_irqsave(&color_data->clock_lock, flags);
+	DDPINFO("%s @ %d......... spin_lock_irqsave -- ", __func__, __LINE__);
+	atomic_set(&color_data->color_is_clock_on, 0);
+	spin_unlock_irqrestore(&color_data->clock_lock, flags);
+	DDPINFO("%s @ %d......... spin_unlock_irqrestore ", __func__, __LINE__);
+	// backup DISP_COLOR_CFG_MAIN register
+	ddp_color_backup(comp);
+	mtk_ddp_comp_clk_unprepare(comp);
+}
+
+static void mtk_color_data_init(struct mtk_ddp_comp *comp)
+{
+	struct mtk_disp_color *color_data = comp_to_color(comp);
+
+	spin_lock_init(&color_data->clock_lock);
+}
+
 void mtk_color_first_cfg(struct mtk_ddp_comp *comp,
 	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
-	mtk_color_primary_data_init(comp);
 	mtk_color_config(comp, cfg, handle);
 }
 

@@ -381,7 +381,8 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 		return -1;
 	}
 	mtk_crtc = to_mtk_crtc(crtc);
-	if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_PQ)) {
+	if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_PQ) ||
+			atomic_read(&mtk_crtc->pq_data->pipe_info_filled) != 1) {
 		DDPINFO("%s, bl %d no need pq, connector_id:%d, crtc_id:%d\n", __func__,
 				led_conf->cdev.brightness, led_conf->connector_id, drm_crtc_index(crtc));
 		led_conf->aal_enable = 0;
@@ -3817,8 +3818,6 @@ void mtk_aal_first_cfg(struct mtk_ddp_comp *comp,
 	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
 	AALFLOW_LOG("\n");
-	mtk_aal_data_init(comp);
-	mtk_aal_primary_data_init(comp);
 	mtk_aal_config(comp, cfg, handle);
 }
 
@@ -3851,7 +3850,7 @@ int mtk_aal_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_ddp_comp **companion = &data->companion;
 		struct mtk_disp_aal *companion_data;
 
-		if (data->is_right_pipe)
+		if (atomic_read(&comp->mtk_crtc->pq_data->pipe_info_filled) == 1)
 			break;
 		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
 		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
@@ -3859,6 +3858,12 @@ int mtk_aal_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			companion_data->path_order = data->path_order;
 			companion_data->is_right_pipe = !data->is_right_pipe;
 			companion_data->companion = comp;
+		}
+		mtk_aal_data_init(comp);
+		mtk_aal_primary_data_init(comp);
+		if (comp->mtk_crtc->is_dual_pipe && data->companion) {
+			mtk_aal_data_init(data->companion);
+			mtk_aal_primary_data_init(data->companion);
 		}
 	}
 		break;

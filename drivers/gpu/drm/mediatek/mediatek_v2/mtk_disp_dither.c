@@ -516,7 +516,6 @@ static void mtk_dither_first_cfg(struct mtk_ddp_comp *comp,
 {
 	DDPINFO("%s cfg->bpc=%d\n", __func__, cfg->bpc);
 
-	mtk_dither_primary_data_init(comp);
 	mtk_dither_config(comp, cfg, handle);
 }
 
@@ -583,19 +582,18 @@ static int mtk_dither_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_ddp_comp **companion = &data->companion;
 		struct mtk_disp_dither *companion_data;
 
-		DDPMSG("%s,dither pipe info comp id(%d)\n", __func__, comp->id);
-
-		if (data->is_right_pipe)
+		if (atomic_read(&comp->mtk_crtc->pq_data->pipe_info_filled) == 1)
 			break;
 		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
 		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
-
-			DDPMSG("%s,dither dual pipe info comp id(%d)\n", __func__, comp->id);
 			companion_data = comp_to_dither(data->companion);
 			companion_data->path_order = data->path_order;
 			companion_data->is_right_pipe = !data->is_right_pipe;
 			companion_data->companion = comp;
 		}
+		mtk_dither_primary_data_init(comp);
+		if (comp->mtk_crtc->is_dual_pipe && data->companion)
+			mtk_dither_primary_data_init(data->companion);
 	}
 		break;
 	default:

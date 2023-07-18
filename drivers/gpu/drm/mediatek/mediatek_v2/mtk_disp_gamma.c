@@ -545,7 +545,7 @@ static int mtk_gamma_sof_irq_trigger(void *data)
 	return 0;
 }
 
-void mtk_gamma_data_init(struct mtk_ddp_comp *comp)
+static void mtk_gamma_primary_data_init(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_gamma *data = comp_to_gamma(comp);
 	struct mtk_disp_gamma *companion_data = comp_to_gamma(data->companion);
@@ -953,7 +953,7 @@ int mtk_gamma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_ddp_comp **companion = &data->companion;
 		struct mtk_disp_gamma *companion_data;
 
-		if (data->is_right_pipe)
+		if (atomic_read(&comp->mtk_crtc->pq_data->pipe_info_filled) == 1)
 			break;
 		ret = mtk_pq_helper_fill_comp_pipe_info(comp, path_order, is_right_pipe, companion);
 		if (!ret && comp->mtk_crtc->is_dual_pipe && data->companion) {
@@ -962,6 +962,9 @@ int mtk_gamma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			companion_data->is_right_pipe = !data->is_right_pipe;
 			companion_data->companion = comp;
 		}
+		mtk_gamma_primary_data_init(comp);
+		if (comp->mtk_crtc->is_dual_pipe && data->companion)
+			mtk_gamma_primary_data_init(data->companion);
 	}
 		break;
 	default:
@@ -973,7 +976,6 @@ int mtk_gamma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 void mtk_gamma_first_cfg(struct mtk_ddp_comp *comp,
 	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
-	mtk_gamma_data_init(comp);
 	mtk_gamma_config(comp, cfg, handle);
 }
 
