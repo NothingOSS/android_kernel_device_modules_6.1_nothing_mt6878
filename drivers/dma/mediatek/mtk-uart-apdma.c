@@ -161,6 +161,7 @@ struct mtk_chan {
 	unsigned int start_addr;
 	unsigned int start_stop;
 	unsigned int start_valid_size;
+	unsigned int cur_rec_idx;
 	struct uart_info rec_info[UART_RECORD_COUNT];
 };
 
@@ -556,8 +557,10 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 	int poll_cnt = MAX_POLLING_CNT;
 
 	if (c->is_hub_port) {
-		if (!res_status)
+		if (!res_status) {
 			pr_info("[WARN]%s, txrx_request is not set\n", __func__);
+			return;
+		}
 	}
 
 	vff_sz = c->cfg.dst_port_window_size;
@@ -725,15 +728,24 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 	struct dmaengine_desc_callback cb;
 	unsigned int idx = 0;
 	unsigned int wpt = 0;
+	unsigned int rpt = 0;
 	unsigned long long recv_sec = 0;
 	unsigned long long recv_ns = 0;
 	unsigned long long start_sec = 0;
 	unsigned long long end_sec = 0;
 	unsigned long long start_ns = 0;
 	unsigned long long end_ns = 0;
+	unsigned long long cost_time = 0;
+
 	LIST_HEAD(head);
 
-	start_sec = sched_clock();
+	if (c->dir == DMA_MEM_TO_DEV) {
+		idx = c->cur_rec_idx;
+	} else {
+		idx = (unsigned int)((c->rec_idx - 1 + UART_RECORD_COUNT) % UART_RECORD_COUNT);
+		start_sec = sched_clock();
+	}
+
 	spin_lock_irq(&vc->lock);
 	list_splice_tail_init(&vc->desc_completed, &head);
 	vd = vc->cyclic;
@@ -754,20 +766,33 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 		dmaengine_desc_callback_invoke(&cb, &vd->tx_result);
 		vchan_vdesc_fini(vd);
 	}
-	idx = (unsigned int)((c->rec_idx - 1 + UART_RECORD_COUNT) % UART_RECORD_COUNT);
 	c->rec_info[idx].complete_time = sched_clock();
 
-	if (c->rec_info[idx].trans_len >= UART_DUMP_MAXLEN && c->dir == DMA_DEV_TO_MEM) {
+	if ((c->dir == DMA_DEV_TO_MEM) && (c->rec_info[idx].trans_len >= UART_DUMP_MAXLEN)) {
 		recv_sec = c->rec_info[idx].trans_duration_time;
 		recv_ns = do_div(recv_sec, 1000000000);
 		start_ns = do_div(start_sec, 1000000000);
 		end_sec = c->rec_info[idx].complete_time;
 		end_ns = do_div(end_sec, 1000000000);
 		wpt =  mtk_uart_apdma_read(c, VFF_WPT);
-		pr_info("rx handle_t:[%5lu.%06llu], cb_s:[%5lu.%06llu], cb_e:[%5lu.%06llu],wpt: 0x%x\n",
-			(unsigned long)recv_sec, recv_ns / 1000, (unsigned long)start_sec,
-			start_ns / 1000,(unsigned long)end_sec, end_ns / 1000, wpt);
-	}
+		pr_info("rx h_t:[%5lu.%06llu], cb_s:[%5lu.%06llu], cb_e:[%5lu.%06llu], wpt:0x%x, len:%d\n",
+			(unsigned long)recv_sec, recv_ns / 1000, (unsigned long)start_sec, start_ns / 1000,
+			(unsigned long)end_sec, end_ns / 1000, wpt, c->rec_info[idx].trans_len);
+	} else if ((c->dir == DMA_MEM_TO_DEV) && (c->rec_info[idx].trans_len >= UART_DUMP_MAXLEN)) {
+		start_sec = c->rec_info[idx].trans_time;
+		end_sec = c->rec_info[idx].complete_time;
+		cost_time = end_sec - start_sec;
+		start_ns = do_div(start_sec, 1000000000);
+		recv_sec = c->rec_info[idx].trans_duration_time;
+		recv_ns = do_div(recv_sec, 1000000000);
+		end_ns = do_div(end_sec, 1000000000);
+		rpt =  mtk_uart_apdma_read(c, VFF_RPT);
+		if (cost_time > 10000000)
+			pr_info("tx s_t:[%5lu.%06llu], h_t:[%5lu.%06llu], cb_e:[%5lu.%06llu], rpt:0x%x, len:%d\n",
+				(unsigned long)start_sec, start_ns / 1000, (unsigned long)recv_sec, recv_ns / 1000,
+				(unsigned long)end_sec, end_ns / 1000, rpt, c->rec_info[idx].trans_len);
+	} else
+		return IRQ_HANDLED;
 
 	return IRQ_HANDLED;
 }
@@ -775,7 +800,9 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 static int mtk_uart_apdma_tx_handler(struct mtk_chan *c)
 {
 	struct mtk_uart_apdma_desc *d = c->desc;
-	int idx = (unsigned int)(c->rec_idx % UART_RECORD_COUNT);
+	unsigned int idx = (c->rec_idx - 1 + UART_RECORD_COUNT) % UART_RECORD_COUNT;
+
+	c->cur_rec_idx = idx;
 
 	mtk_uart_apdma_write(c, VFF_INT_FLAG, VFF_TX_INT_CLR_B);
 	if (unlikely(d == NULL))
@@ -1403,6 +1430,7 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 		}
 		c->irq = rc;
 		c->rec_idx = 0;
+		c->cur_rec_idx = 0;
 
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 		c->is_hub_port = mtkd->support_hub & (1 << i);
