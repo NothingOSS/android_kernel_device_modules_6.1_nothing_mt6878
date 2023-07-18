@@ -14174,7 +14174,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"cam_ccu_ao,cam_ccu,cam_main,cam_subc,cam_subb,cam_suba,cam_mraw,isp_main,isp_dip1,",
 				"isp_traw,infra,ufs_phy,peri_usb,pextp_mac1,pextp_mac0,south_emi,north_emi,adsp_infra,",
 				"scp,mm_proc,mminfra,ufs,peri_audio,peri,ovl1,ovl0,mml1,mml0,cam_vcore,isp_vcore,",
-				"venc2,venc1,venc0,vdec1,vdec0,dis1,dis0";
+				"venc2,venc1,venc0,vdec1,vdec0,dis1,dis0,dpm,mcu";
 			node-74 = "SSPM_SPM_DBG__PWR_ACT",
 				"scp,adsp,venc0,venc1,audio,cam,img,mminfra,",
 				"sspm,disp0,disp1,ovl0,ovl1,md0,md1,conn";
