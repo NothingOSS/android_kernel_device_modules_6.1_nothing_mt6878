@@ -13043,9 +13043,6 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		mtk_crtc_state->base.event = NULL;
 	}
 
-	/* set backlight value from HWC */
-	mtk_drm_set_backlight(mtk_crtc);
-
 	/*Msync 2.0: add Msync trace info*/
 	mtk_drm_trace_begin("mtk_drm_crtc_atomic:%d-%d-%d-%d",
 				crtc_idx, mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX],
@@ -13065,6 +13062,9 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		mtk_crtc_gce_commit_begin(crtc, old_crtc_state, mtk_crtc_state, true);
 	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, 0);
 	drm_trace_tag_mark("atomic_begin");
+
+	/* set backlight value from HWC */
+	mtk_drm_set_backlight(mtk_crtc);
 
 	if (mtk_crtc->dsi_null_pkt_postpone == true) {
 		if (output_comp) {
