@@ -27,6 +27,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <linux/sched/clock.h>
 
 #define I2C_CONFERR			(1 << 9)
 #define I2C_RS_TRANSFER			(1 << 4)
@@ -350,6 +351,13 @@ struct mtk_i2c {
 	struct mtk_i2c_ac_timing ac_timing;
 	const struct mtk_i2c_compatible *dev_comp;
 	spinlock_t multi_host_lock;
+	u16 clk_flag;
+	u16 timeout_flag;
+	u16 complete_flag;
+	u16 clk_ex_flag;
+	unsigned long long complete_time;
+	unsigned long complete_ns;
+	u16 last_addr;
 };
 
 /**
@@ -636,6 +644,9 @@ static int mtk_i2c_clock_enable(struct mtk_i2c *i2c)
 {
 	int ret;
 
+	if (i2c->ch_offset_i2c == I2C_OFFSET_AP)
+		i2c->clk_flag = 1;
+
 	ret = clk_prepare_enable(i2c->clk_dma);
 	if (ret)
 		return ret;
@@ -643,6 +654,9 @@ static int mtk_i2c_clock_enable(struct mtk_i2c *i2c)
 	ret = clk_prepare_enable(i2c->clk_main);
 	if (ret)
 		goto err_main;
+
+	if (i2c->ch_offset_i2c == I2C_OFFSET_AP)
+		i2c->clk_flag = 2;
 
 	if (i2c->have_pmic) {
 		ret = clk_prepare_enable(i2c->clk_pmic);
@@ -677,8 +691,14 @@ static void mtk_i2c_clock_disable(struct mtk_i2c *i2c)
 	if (i2c->have_pmic)
 		clk_disable_unprepare(i2c->clk_pmic);
 
+	if (i2c->ch_offset_i2c == I2C_OFFSET_AP)
+		i2c->clk_flag = 3;
+
 	clk_disable_unprepare(i2c->clk_main);
 	clk_disable_unprepare(i2c->clk_dma);
+
+	if (i2c->ch_offset_i2c == I2C_OFFSET_AP)
+		i2c->clk_flag = 4;
 }
 
 int mtk_i2c_clock_enable_ex(struct i2c_adapter *adap)
@@ -699,6 +719,7 @@ int mtk_i2c_clock_enable_ex(struct i2c_adapter *adap)
 	}
 
 	if (i2c->ch_offset_i2c == I2C_OFFSET_AP) {
+		i2c->clk_ex_flag = 1;
 		spin_lock_irqsave(&i2c->multi_host_lock, flags);
 		if (mtk_i2c_readw(i2c, OFFSET_TIMING) == 0) {
 			mtk_i2c_writew_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
@@ -1518,6 +1539,9 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 	bool isDMA = false;
 	int i = 0;
 	int ret;
+	u16 intr_stata;
+	u16 intr_mask;
+	u16 intr_statb;
 
 	i2c->irq_stat = 0;
 
@@ -1862,6 +1886,8 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 
 	if (ret == 0) {
 		u16 start_reg = mtk_i2c_readw(i2c, OFFSET_START);
+		intr_stata = mtk_i2c_readw(i2c, OFFSET_INTR_STAT);
+		intr_mask = mtk_i2c_readw(i2c, OFFSET_INTR_MASK);
 		mtk_i2c_writew(i2c, 0, OFFSET_INTR_MASK);
 		if (i2c->ch_offset_i2c != 0)
 			mtk_i2c_writew_shadow(i2c, I2C_FSM_RST | I2C_SOFT_RST, OFFSET_SOFTRESET);
@@ -1877,13 +1903,22 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 		mtk_i2c_init_hw(i2c);
 		if ((i2c->ch_offset_i2c) && (start_reg & I2C_RESUME_ARBIT)) {
 			mtk_i2c_writew_shadow(i2c, I2C_RESUME_ARBIT, OFFSET_START);
-			dev_dbg(i2c->dev, "bus channel transferred\n");
+			dev_info(i2c->dev, "bus channel transferred\n");
 		}
+		intr_statb = mtk_i2c_readw(i2c, OFFSET_INTR_STAT);
+
+		if (i2c->ch_offset_i2c == I2C_OFFSET_AP)
+			i2c->timeout_flag = 2;
+
+		dev_info(i2c->dev, "intr_stata=0x%x, intr_mask=0x%x, intr_statb=0x%x,last_addr=0x%x\n",
+			intr_stata, intr_mask, intr_statb, i2c->last_addr);
 
 		return -ETIMEDOUT;
+
 	}
 
 	if (i2c->irq_stat & (I2C_HS_NACKERR | I2C_ACKERR)) {
+		i2c->last_addr = mtk_i2c_readw(i2c, OFFSET_SLAVE_ADDR1);
 		dev_dbg(i2c->dev, "addr: %x, transfer ACK error\n", msgs->addr);
 		mtk_i2c_init_hw(i2c);
 		if (i2c->ch_offset_i2c) {
@@ -1906,6 +1941,14 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 			ptr++;
 		}
 	}
+	if (i2c->ch_offset_i2c == I2C_OFFSET_AP) {
+		i2c->complete_flag = 3;
+		i2c->complete_time = sched_clock();
+		i2c->complete_ns = do_div(i2c->complete_time, 1000000000);
+	}
+
+	i2c->last_addr = mtk_i2c_readw(i2c, OFFSET_SLAVE_ADDR1);
+
 	return 0;
 }
 
@@ -1922,6 +1965,19 @@ static int mtk_i2c_transfer(struct i2c_adapter *adap,
 	ret = mtk_i2c_clock_enable(i2c);
 	if (ret)
 		return ret;
+
+	if ((i2c->ch_offset_i2c == I2C_OFFSET_AP) && (i2c->timeout_flag == 2)) {
+		dev_info(i2c->dev,"%s: i2c->clk_flag=%d, i2c->timeout_flag=%d, i2c->complete_flag=%d\n",
+			__func__, i2c->clk_flag, i2c->timeout_flag, i2c->complete_flag);
+		dev_info(i2c->dev,"%s: i2c->clk_ex_flag = %d, i2c_complete_t:[%5lu.%06lu]",
+			__func__, i2c->clk_ex_flag, (unsigned long)i2c->complete_time, i2c->complete_ns / 1000);
+	}
+
+	if (i2c->ch_offset_i2c == I2C_OFFSET_AP) {
+		i2c->timeout_flag = 1;
+		i2c->complete_flag = 1;
+	}
+
 
 	i2c->master_code_sended = false;
 	i2c->auto_restart = i2c->dev_comp->auto_restart;
@@ -2028,6 +2084,14 @@ static irqreturn_t mtk_i2c_irq(int irqno, void *dev_id)
 	intr_stat = mtk_i2c_readw(i2c, OFFSET_INTR_STAT);
 	mtk_i2c_writew(i2c, intr_stat, OFFSET_INTR_STAT);
 
+	if (i2c->ch_offset_i2c == I2C_OFFSET_AP) {
+		if ((i2c->timeout_flag == 2) || (i2c->complete_flag == 3)) {
+			dev_info(i2c->dev,"%s: i2c->clk_flag=%d, i2c->timeout_flag=%d, i2c->complete_flag=%d\n",
+				__func__, i2c->clk_flag, i2c->timeout_flag, i2c->complete_flag);
+			dev_info(i2c->dev,"%s: i2c->clk_ex_flag = %d, i2c_complete_t:[%5lu.%06lu]",
+				__func__, i2c->clk_ex_flag, (unsigned long)i2c->complete_time, i2c->complete_ns / 1000);
+		}
+	}
 	/*
 	 * when occurs ack error, i2c controller generate two interrupts
 	 * first is the ack error interrupt, then the complete interrupt
@@ -2205,6 +2269,13 @@ static int mtk_i2c_probe(struct platform_device *pdev)
 	i2c->adap.timeout = 2 * HZ;
 	i2c->adap.retries = 1;
 	i2c->adap.bus_regulator = devm_regulator_get_optional(&pdev->dev, "vbus");
+	i2c->clk_flag = 0;
+	i2c->timeout_flag = 0;
+	i2c->complete_flag = 0;
+	i2c->clk_ex_flag = 0;
+	i2c->complete_time = 0;
+	i2c->complete_ns = 0;
+	i2c->last_addr = 0;
 	if (IS_ERR(i2c->adap.bus_regulator)) {
 		if (PTR_ERR(i2c->adap.bus_regulator) == -ENODEV)
 			i2c->adap.bus_regulator = NULL;
