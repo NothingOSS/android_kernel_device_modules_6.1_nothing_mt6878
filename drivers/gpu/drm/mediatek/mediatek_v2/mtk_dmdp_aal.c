@@ -156,15 +156,22 @@ static void mtk_dmdp_aal_stop(struct mtk_ddp_comp *comp,
 		       0x0, ~0);
 }
 
-void mtk_dmdp_aal_bypass(struct mtk_ddp_comp *comp, int bypass,
-	struct cmdq_pkt *handle)
+void mtk_dmdp_aal_bypass_flag(struct mtk_ddp_comp *comp, int bypass)
+{
+	struct mtk_dmdp_aal *data = comp_to_dmdp_aal(comp);
+
+	DDPINFO("%s : bypass = %d\n", __func__, bypass);
+
+	atomic_set(&data->primary_data->force_relay, bypass);
+}
+
+void mtk_dmdp_aal_bypass_reg(struct mtk_ddp_comp *comp, int bypass, struct cmdq_pkt *handle)
 {
 	struct mtk_dmdp_aal *data = comp_to_dmdp_aal(comp);
 
 	DDPINFO("%s : bypass = %d dre30_support = %d\n",
 			__func__, bypass, data->primary_data->dre30_support);
 
-	atomic_set(&data->primary_data->force_relay, bypass);
 	if (data->primary_data->dre30_support) {
 		if (bypass == 1) {
 			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_EN,
@@ -178,6 +185,13 @@ void mtk_dmdp_aal_bypass(struct mtk_ddp_comp *comp, int bypass,
 				   0x00400026, ~0);
 		}
 	}
+}
+
+void mtk_dmdp_aal_bypass(struct mtk_ddp_comp *comp, int bypass,
+	struct cmdq_pkt *handle)
+{
+	mtk_dmdp_aal_bypass_flag(comp, bypass);
+	mtk_dmdp_aal_bypass_reg(comp, bypass, handle);
 }
 
 static void mtk_disp_mdp_aal_config_overhead(struct mtk_ddp_comp *comp,
@@ -240,11 +254,9 @@ static void mtk_dmdp_aal_config(struct mtk_ddp_comp *comp,
 
 	if (data->primary_data->dre30_support == 0
 				|| atomic_read(&data->primary_data->force_relay) == 1)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DMDP_AAL_CFG, 1, 0x1);
+		mtk_dmdp_aal_bypass_reg(comp, 1, handle);
 	else
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DMDP_AAL_CFG, 0, 0x1);
+		mtk_dmdp_aal_bypass_reg(comp, 0, handle);
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_SIZE,
 			val, ~0);

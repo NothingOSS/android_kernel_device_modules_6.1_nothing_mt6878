@@ -313,8 +313,6 @@ struct mtk_disp_aal_primary {
 	struct wait_queue_head sof_irq_wq;
 	spinlock_t clock_lock;
 	spinlock_t hist_lock;
-	spinlock_t irq_en_lock;
-	spinlock_t get_irq_lock;
 	struct DISP_AAL_HIST hist;
 	struct DISP_AAL_HIST hist_db;
 	atomic_t hist_wait_dualpipe;
@@ -323,8 +321,8 @@ struct mtk_disp_aal_primary {
 	atomic_t backlight_notified;
 	atomic_t initialed;
 	atomic_t allowPartial;
-	atomic_t force_enable_irq;
 	atomic_t force_relay;
+	atomic_t should_stop;
 	atomic_t dre30_write;
 	atomic_t interrupt_enabled;
 	atomic_t force_delay_check_trig;
