@@ -591,6 +591,8 @@ static void mtk_gamma_primary_data_init(struct mtk_ddp_comp *comp)
 	data->primary_data->gamma_12b_lut_cur.hw_id = DISP_GAMMA_TOTAL;
 	data->primary_data->gamma_lut_cur.hw_id = DISP_GAMMA_TOTAL;
 
+	data->primary_data->hwc_ctl_silky_brightness_support = false;
+
 	len = sprintf(thread_name, "gamma_sof_%d", comp->id);
 	if (len < 0)
 		strcpy(thread_name, "gamma_sof_0");
@@ -614,7 +616,8 @@ static void mtk_gamma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_GAMMA_EN, GAMMA_EN, ~0);
-	if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS])
+	if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS] ||
+		gamma->primary_data->hwc_ctl_silky_brightness_support)
 		mtk_gamma_write_gain_reg(comp, handle, 1);
 
 	if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_8BIT ||
@@ -1472,7 +1475,7 @@ void disp_gamma_set_bypass(struct drm_crtc *crtc, int bypass)
 
 // for HWC LayerBrightness, backlight & gamma gain update by atomic
 int mtk_gamma_set_silky_brightness_gain(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
-	unsigned int gain[3])
+	unsigned int gain[3], unsigned int gain_range)
 {
 	int ret = 0;
 	bool support_gamma_gain;
@@ -1486,6 +1489,10 @@ int mtk_gamma_set_silky_brightness_gain(struct mtk_ddp_comp *comp, struct cmdq_p
 		gamma->primary_data->sb_param.gain[gain_r] = gain[gain_r];
 		gamma->primary_data->sb_param.gain[gain_g] = gain[gain_g];
 		gamma->primary_data->sb_param.gain[gain_b] = gain[gain_b];
+		gamma->primary_data->sb_param.gain_range = gain_range;
+
+		if (!gamma->primary_data->hwc_ctl_silky_brightness_support)
+			gamma->primary_data->hwc_ctl_silky_brightness_support = true;
 
 		if (support_gamma_gain) {
 			if (mtk_gamma_set_gain(comp, handle, &gamma->primary_data->sb_param) < 0)
@@ -1496,10 +1503,11 @@ int mtk_gamma_set_silky_brightness_gain(struct mtk_ddp_comp *comp, struct cmdq_p
 			return -EFAULT;
 		}
 
-		DDPINFO("%s : gain(r: %d, g: %d, b: %d)\n", __func__,
+		DDPINFO("%s : gain(r: %d, g: %d, b: %d), range: %d, handle: %p\n", __func__,
 			gamma->primary_data->sb_param.gain[gain_r],
 			gamma->primary_data->sb_param.gain[gain_g],
-			gamma->primary_data->sb_param.gain[gain_b]);
+			gamma->primary_data->sb_param.gain[gain_b],
+			gamma->primary_data->sb_param.gain_range, handle);
 	}
 
 	return ret;

@@ -79,6 +79,7 @@ struct mtk_disp_gamma_primary {
 	unsigned int back_up_cfg;
 	unsigned int relay_value;
 	unsigned int data_mode;
+	bool hwc_ctl_silky_brightness_support;
 };
 
 struct mtk_disp_gamma {
@@ -116,6 +117,6 @@ void mtk_gamma_regdump(struct mtk_ddp_comp *comp);
 
 // for HWC LayerBrightness, backlight & gamma gain update by atomic
 int mtk_gamma_set_silky_brightness_gain(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
-	unsigned int gain[3]);
+	unsigned int gain[3], unsigned int gain_range);
 #endif
 
