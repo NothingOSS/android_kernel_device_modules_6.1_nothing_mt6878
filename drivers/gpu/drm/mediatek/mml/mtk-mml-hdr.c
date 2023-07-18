@@ -370,7 +370,7 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			if (!(hdr->hdr_hist[ccfg->pipe]))
 				mml_pq_get_readback_buffer(task, ccfg->pipe,
 					&(hdr->hdr_hist[ccfg->pipe]));
-			hdr->hist_pkts[ccfg->pipe]->no_irq = !task->config->irq;
+			hdr->hist_pkts[ccfg->pipe]->no_irq = task->config->dpc;
 
 			if (hdr->data->rb_mode == RB_EOF_MODE) {
 				mml_clock_lock(task->config->mml);

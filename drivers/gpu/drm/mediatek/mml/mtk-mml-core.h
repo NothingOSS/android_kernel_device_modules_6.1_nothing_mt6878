@@ -396,7 +396,6 @@ struct mml_frame_config {
 	bool framemode:1;
 	bool nocmd:1;
 	bool err:1;
-	bool irq:1;
 	bool dpc:1;
 
 	/* tile */

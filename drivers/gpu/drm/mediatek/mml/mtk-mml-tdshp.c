@@ -432,7 +432,7 @@ static s32 tdshp_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			tdshp->frame_data.size_info.frame_size_s.height = cfg->frame_in.height;
 
 
-			tdshp->hist_pkts[ccfg->pipe]->no_irq = !task->config->irq;
+			tdshp->hist_pkts[ccfg->pipe]->no_irq = task->config->dpc;
 
 			if (tdshp->data->rb_mode == RB_EOF_MODE) {
 				mml_clock_lock(task->config->mml);

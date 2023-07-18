@@ -55,9 +55,6 @@ module_param(mml_rrot, int, 0644);
 int mml_racing_rsz = 1;
 module_param(mml_racing_rsz, int, 0644);
 
-int mml_need_irq;
-module_param(mml_need_irq, int, 0644);
-
 int mml_dpc = 1;
 module_param(mml_dpc, int, 0644);
 
@@ -768,14 +765,7 @@ static s32 tp_select(struct mml_topology_cache *cache,
 	cfg->path[0] = path;
 	cfg->alpharot = cfg->info.alpha && MML_FMT_ALPHA(cfg->info.src.format);
 
-	if (mml_need_irq ||
-	    cfg->info.mode == MML_MODE_MML_DECOUPLE ||
-	    cfg->info.mode == MML_MODE_MDP_DECOUPLE)
-		cfg->irq = true;
-	else
-		cfg->irq = false;
-
-	if (mml_dpc && !cfg->disp_vdo &&
+	if (mml_dpc && !cfg->disp_vdo && !mml_dpc_disable(cfg->mml) &&
 	    !(cfg->info.dest[0].pq_config.en_ur ||
 	      cfg->info.dest[0].pq_config.en_dc ||
 	      cfg->info.dest[0].pq_config.en_hdr ||
@@ -787,6 +777,8 @@ static s32 tp_select(struct mml_topology_cache *cache,
 	     cfg->info.mode == MML_MODE_RACING ||
 	     cfg->info.mode == MML_MODE_DDP_ADDON))
 		cfg->dpc = true;
+	else
+		cfg->dpc = false;
 
 	tp_dump_path_short(path);
 

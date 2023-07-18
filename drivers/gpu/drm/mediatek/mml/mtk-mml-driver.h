@@ -118,6 +118,15 @@ u8 mml_sram_get_racing_height(struct mml_dev *mml);
 bool mml_dl_enable(struct mml_dev *mml);
 
 /*
+ * mml_dpc_disable - dpc disable or not
+ *
+ * @mml:	The mml driver instance
+ *
+ * Return:	True for enable, false for disable.
+ */
+bool mml_dpc_disable(struct mml_dev *mml);
+
+/*
  * mml_racing_enable - enable racing mode (inline rotate) or not
  *
  * @mml:	The mml driver instance

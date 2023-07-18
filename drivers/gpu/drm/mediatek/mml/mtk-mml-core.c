@@ -323,7 +323,7 @@ static s32 command_make(struct mml_task *task, u32 pipe)
 		return PTR_ERR(pkt);
 	}
 	task->pkts[pipe] = pkt;
-	task->pkts[pipe]->no_irq = !task->config->irq;
+	task->pkts[pipe]->no_irq = task->config->dpc;
 	pkt->user_data = (void *)task;
 
 	if (!task->config->frame_tile[pipe]) {
@@ -491,7 +491,7 @@ static void dump_inout(struct mml_task *task)
 	s32 ret;
 
 	get_frame_str(frame, sizeof(frame), &cfg->info.src);
-	mml_log("in:%s plane:%hhu%s%s%s job:%u mode:%hhu acttime %u",
+	mml_log("in:%s plane:%hhu%s%s%s job:%u mode:%hhu %s acttime %u",
 		frame,
 		task->buf.src.cnt,
 		(cfg->info.alpha || cfg->alpharot) ? " alpha" : "",
@@ -499,6 +499,7 @@ static void dump_inout(struct mml_task *task)
 		task->buf.src.flush ? " flush" : "",
 		task->job.jobid,
 		cfg->info.mode,
+		cfg->disp_vdo ? "vdo" : "cmd",
 		cfg->info.act_time);
 	if (cfg->info.dest[0].pq_config.en_region_pq) {
 		get_frame_str(frame, sizeof(frame), &cfg->info.seg_map);
@@ -1700,7 +1701,7 @@ static void core_config_pipe(struct mml_task *task, u32 pipe)
 	if (cfg->info.mode != MML_MODE_DDP_ADDON && cfg->dpc)
 		mml_dpc_task_cnt_inc(task, false);
 
-	if (!cfg->irq) {
+	if (cfg->dpc) {
 		cmdq_check_thread_complete(tp_clt->chan);
 
 		if (cfg->info.mode == MML_MODE_DDP_ADDON ||

@@ -122,6 +122,7 @@ struct mml_dev {
 
 	bool dl_en;
 	bool racing_en;
+	bool dpc_disable;
 
 	/* sram operation */
 	struct slbc_data sram_data[mml_sram_mode_total];
@@ -1143,6 +1144,12 @@ bool mml_dl_enable(struct mml_dev *mml)
 }
 EXPORT_SYMBOL_GPL(mml_dl_enable);
 
+bool mml_dpc_disable(struct mml_dev *mml)
+{
+	return mml->dpc_disable;
+}
+EXPORT_SYMBOL_GPL(mml_dpc_disable);
+
 bool mml_racing_enable(struct mml_dev *mml)
 {
 	return mml->racing_en;
@@ -1626,6 +1633,10 @@ static int mml_probe(struct platform_device *pdev)
 	mml->dl_en = of_property_read_bool(dev->of_node, "dl-enable");
 	if (mml->dl_en)
 		mml_log("direct link mode enable");
+
+	mml->dpc_disable = of_property_read_bool(dev->of_node, "dpc-disable");
+	if (mml->dpc_disable)
+		mml_log("dpc disable by project");
 
 	mml->racing_en = of_property_read_bool(dev->of_node, "racing-enable");
 

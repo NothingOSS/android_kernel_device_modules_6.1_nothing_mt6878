@@ -642,7 +642,7 @@ static void clarity_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 
 	if (aal->clarity_hist[ccfg->pipe] && aal->clarity_hist[ccfg->pipe]->va && readback) {
 		mml_pq_get_pq_task(aal->pq_task);
-		aal->hist_pkts[ccfg->pipe]->no_irq = !task->config->irq;
+		aal->hist_pkts[ccfg->pipe]->no_irq = task->config->dpc;
 
 		if (aal_get_rb_mode(aal) == RB_EOF_MODE) {
 			mml_clock_lock(task->config->mml);

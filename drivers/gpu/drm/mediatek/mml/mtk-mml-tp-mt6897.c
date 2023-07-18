@@ -1142,8 +1142,6 @@ static s32 tp_select(struct mml_topology_cache *cache,
 				cfg->alpharot = false;
 	}
 
-	cfg->irq = true;
-
 	tp_dump_path_short(path[0]);
 	if (cfg->dual && path[1])
 		tp_dump_path_short(path[1]);
