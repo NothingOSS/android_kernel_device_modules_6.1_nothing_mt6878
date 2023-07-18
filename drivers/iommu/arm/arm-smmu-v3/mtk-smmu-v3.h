@@ -365,6 +365,11 @@
 #define WTFM2_FAULT_SSIDV		F_BIT_SET(16)
 #define WTFM2_FAULT_SECSID		F_BIT_SET(17)
 
+/* SMMU TBU Manual OG Control High Register0 */
+#define SMMUWP_TBU0_MOGH0		(0x3b4)
+#define MOGH_EN				F_BIT_SET(29)
+#define MOGH_RW				F_BIT_SET(28)
+
 /* SMMU translation fault TBUx */
 #define SMMUWP_TF_MSK			GENMASK(23, 0)
 #define SMMUWP_TF_TBU_MSK		GENMASK(26, 24)

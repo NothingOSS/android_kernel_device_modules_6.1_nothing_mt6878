@@ -426,6 +426,11 @@ static int smmu_init_wpcfg(struct arm_smmu_device *smmu)
 		smmu_write_field(wp_base, SMMUWP_GLB_CTL0, CTL0_STD_AXI_MODE_DIS,
 				 CTL0_STD_AXI_MODE_DIS);
 
+	if (data->plat_data->smmu_type == SOC_SMMU)
+		/* Set SOC_SMMU TBU0 to use in-ordering */
+		smmu_write_field(wp_base, SMMUWP_TBU0_MOGH0, MOGH_EN | MOGH_RW,
+				 MOGH_EN | MOGH_RW);
+
 	if (data->smmu_trans_type == SMMU_TRANS_WP_BYPASS) {
 		dev_info(smmu->dev, "[%s] smmu:%s, smmuwp bypasss\n",
 			 __func__, get_smmu_name(plat_data->smmu_type));
