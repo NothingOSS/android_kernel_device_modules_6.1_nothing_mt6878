@@ -64,6 +64,7 @@ static struct proc_dir_entry *log_seqlogL;
 static struct proc_dir_entry *log_aov_log;
 #ifdef HW_LOG_DUMP_RAW_BUF
 static struct proc_dir_entry *log_raw_log;
+static struct proc_dir_entry *log_aov_tcm_log;
 #endif
 
 /* logtop mmap address */
@@ -78,6 +79,7 @@ static void *apu_rpc;
 static unsigned int hw_log_lbc_size;
 static char *hw_log_buf;
 static char *aov_hw_log_buf;
+static char *aov_tcm_buf;
 static dma_addr_t hw_log_buf_addr;
 static dma_addr_t aov_hw_log_buf_addr;
 
@@ -159,6 +161,7 @@ static void hw_logger_buf_invalidate(void)
 static int hw_logger_buf_alloc(struct device *dev)
 {
 	struct device_node *np = dev->of_node;
+	struct arm_smccc_res smc_res;
 	int ret = 0;
 
 	ret = dma_set_coherent_mask(dev, DMA_BIT_MASK(64));
@@ -207,6 +210,22 @@ static int hw_logger_buf_alloc(struct device *dev)
 			goto out;
 		}
 
+		aov_tcm_buf = kzalloc(aov_log_buf_sz, GFP_KERNEL);
+		if (!aov_tcm_buf) {
+			ret = -ENOMEM;
+			goto out;
+		}
+
+		arm_smccc_smc(MTK_SIP_APUSYS_CONTROL,
+			MTK_APUSYS_KERNEL_OP_APUSYS_SETUP_TCM_LOG_MEM,
+			__pa_nodebug(aov_tcm_buf), aov_log_buf_sz, 0, 0, 0, 0, &smc_res);
+
+		if (smc_res.a0 != 0) {
+			HWLOGR_ERR("arm_smccc_smc setup_tcm_log_mem error ret: 0x%lx", smc_res.a0);
+			ret = -ENOMEM;
+			goto out;
+		}
+
 		aov_hw_log_buf_addr = dma_map_single(dev, aov_hw_log_buf,
 			aov_log_buf_sz, DMA_FROM_DEVICE);
 		ret = dma_mapping_error(dev, aov_hw_log_buf_addr);
@@ -234,6 +253,12 @@ static int hw_logger_buf_alloc(struct device *dev)
 			(unsigned long)aov_hw_log_buf,
 			__pa_nodebug(aov_hw_log_buf),
 			aov_log_buf_sz, "APUSYS_AOV_LOG");
+
+	if (aov_tcm_buf && aov_log_buf_sz != 0)
+		(void)mrdump_mini_add_extra_file(
+			(unsigned long)aov_tcm_buf,
+			__pa_nodebug(aov_tcm_buf),
+			aov_log_buf_sz, "APUSYS_AOV_TCM_LOG");
 #endif
 
 	HWLOGR_INFO("local_log_buf = 0x%llx\n", (unsigned long long)local_log_buf);
@@ -244,6 +269,21 @@ static int hw_logger_buf_alloc(struct device *dev)
 
 out:
 	return ret;
+}
+
+int hw_logger_dump_tcm_log(void)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_APUSYS_CONTROL,
+		MTK_APUSYS_KERNEL_OP_APUSYS_DUMP_TCM_LOG,
+		0, 0, 0, 0, 0, 0, &res);
+
+	if (res.a0 != 0) {
+		HWLOGR_ERR("arm_smccc_smc dump_tcm_log error ret: 0x%lx", res.a0);
+		return -1;
+	}
+	return 0;
 }
 
 static int ioread32_atf(uint8_t op_num, void **addr, uint32_t **ret_val)
@@ -1536,6 +1576,63 @@ static const struct proc_ops raw_log_ops = {
 	.proc_lseek		= seq_lseek,
 	.proc_release	= single_release
 };
+
+static int aov_tcm_seq_show(struct seq_file *s, void *v)
+{
+	seq_write(s, aov_tcm_buf, aov_log_buf_sz);
+	return 0;
+}
+
+static int aov_tcm_log_sqopen(struct inode *inode, struct file *file)
+{
+	return single_open(file, aov_tcm_seq_show, NULL);
+}
+
+static ssize_t aov_tcm_seq_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *pos)
+{
+	char tmp[16] = {0};
+	int ret;
+	unsigned int input = 0;
+
+	if (count + 1 >= 16)
+		return -ENOMEM;
+
+	ret = copy_from_user(tmp, buffer, count);
+	if (ret) {
+		HWLOGR_WARN("copy_from_user failed (%d)\n", ret);
+		goto out;
+	}
+
+	tmp[count] = '\0';
+	ret = kstrtouint(tmp, 16, &input);
+	if (ret) {
+		HWLOGR_WARN("kstrtouint failed (%d)\n", ret);
+		goto out;
+	}
+
+	HWLOGR_INFO("dump ops (0x%x)\n", input);
+
+	if (input & (0x1)) {
+		if (hw_logger_dump_tcm_log() == 0) {
+			HWLOGR_INFO("dump tcm log success\n");
+			goto out;
+		} else {
+			HWLOGR_WARN("dump tcm log smc call fail\n");
+			goto out;
+		}
+	}
+out:
+	return count;
+}
+
+static const struct proc_ops aov_tcm_log_ops = {
+	.proc_open		= aov_tcm_log_sqopen,
+	.proc_write     = aov_tcm_seq_write,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= single_release
+};
 #endif
 
 #ifdef HW_LOG_SYSFS_BIN
@@ -1635,6 +1732,7 @@ static void hw_logger_remove_procfs(struct device *dev)
 	remove_proc_entry("aov_log", log_root);
 #ifdef HW_LOG_DUMP_RAW_BUF
 	remove_proc_entry("raw_log", log_root);
+	remove_proc_entry("aov_tcm_log", log_root);
 #endif
 	remove_proc_entry("attr", log_root);
 	remove_proc_entry(APUSYS_HWLOGR_DIR, NULL);
@@ -1690,6 +1788,14 @@ static int hw_logger_create_procfs(struct device *dev)
 	ret = IS_ERR_OR_NULL(log_raw_log);
 	if (ret) {
 		HWLOGR_ERR("create raw_log fail (%d)\n", ret);
+		goto out;
+	}
+
+	log_aov_tcm_log = proc_create("aov_tcm_log", 0440,
+		log_root, &aov_tcm_log_ops);
+	ret = IS_ERR_OR_NULL(log_aov_tcm_log);
+	if (ret) {
+		HWLOGR_ERR("create aov_tcm_log fail (%d)\n", ret);
 		goto out;
 	}
 #endif
@@ -1899,6 +2005,9 @@ static int hw_logger_remove(struct platform_device *pdev)
 		kfree(aov_hw_log_buf);
 		aov_hw_log_buf = NULL;
 	}
+
+	kfree(aov_tcm_buf);
+	aov_tcm_buf = NULL;
 
 	iounmap(apu_logtop);
 	apu_logtop = NULL;

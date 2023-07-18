@@ -181,5 +181,6 @@ int hw_logger_power_on(void);
 int hw_logger_deep_idle_enter_pre(void);
 int hw_logger_deep_idle_enter_post(void);
 int hw_logger_deep_idle_leave(void);
+int hw_logger_dump_tcm_log(void);
 
 #endif /* __HW_LOGGER_H__ */

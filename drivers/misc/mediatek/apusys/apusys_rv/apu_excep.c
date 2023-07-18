@@ -16,6 +16,7 @@
 #include "apusys_secure.h"
 #include "hw_logger.h"
 #include "apu_regdump.h"
+#include "hw_logger.h"
 
 static const uint32_t TaskContext[] = {
 	0x0, // GPR
@@ -325,8 +326,10 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 				MTK_APUSYS_KERNEL_OP_APUSYS_RV_CLEAR_WDT_ISR, 0);
 		}
 
-		if ((apu->platdata->flags & F_BRINGUP) == 0)
+		if ((apu->platdata->flags & F_BRINGUP) == 0) {
 			apu_regdump();
+			hw_logger_dump_tcm_log();
+		}
 		/* since exception is triggered, so bypass power off timeout check */
 		apu->bypass_pwr_off_chk = true;
 		apusys_rv_exception_aee_warn(
@@ -496,8 +499,10 @@ static void apu_coredump_work_func(struct work_struct *p_work)
 		dsb(SY); /* may take lots of time */
 	}
 
-	if ((apu->platdata->flags & F_BRINGUP) == 0)
+	if ((apu->platdata->flags & F_BRINGUP) == 0) {
 		apu_regdump();
+		hw_logger_dump_tcm_log();
+	}
 	/* since exception is triggered, so bypass power off timeout check */
 	apu->bypass_pwr_off_chk = true;
 	apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
