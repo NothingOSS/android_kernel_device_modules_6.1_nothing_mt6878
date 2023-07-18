@@ -42,6 +42,7 @@ struct mminfra_dbg {
 	void __iomem *mminfra_base;
 	void __iomem *mminfra_ao_base;
 	void __iomem *gce_base;
+	void __iomem *vlp_base;
 	void __iomem *spm_base;
 	void __iomem *vcp_gipc_in_set;
 	ssize_t ctrl_size;
@@ -711,7 +712,7 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	struct resource *res;
 	const char *name;
 	struct clk *clk;
-	u32 comm_id, spm_base_pa, tmp;
+	u32 comm_id, vlp_base_pa, spm_base_pa, tmp;
 	int ret = 0, i = 0, irq, comm_nr = 0, clk_nr = 0;
 
 	dbg = kzalloc(sizeof(*dbg), GFP_KERNEL);
@@ -759,6 +760,12 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	}
 
 	skip_apsrc = of_property_read_bool(node, "skip-apsrc");
+
+	if (!of_property_read_u32(node, "vlp-base", &vlp_base_pa)) {
+		pr_notice("[mminfra] vlp_base_pa=%#x\n", vlp_base_pa);
+		dbg->vlp_base = ioremap(vlp_base_pa, 0x1000);
+	} else
+		dbg->vlp_base = NULL;
 
 	if (!of_property_read_u32(node, "spm-base", &spm_base_pa)) {
 		pr_notice("[mminfra] spm_base_pa=%#x\n", spm_base_pa);
@@ -863,7 +870,9 @@ static void mminfra_pm_complete(struct device *dev)
 	pr_notice("mminfra complete\n");
 	if (vcp_gipc) {
 		mtk_clk_mminfra_hwv_power_ctrl(true);
-		pr_notice("hfrp mtcmos = 0x%x\n", readl(dbg->spm_base+0xeac));
+		pr_notice("mminfra mtcmos = 0x%x, hfrp mtcmos = 0x%x, done bits=0x%x\n",
+			readl(dbg->spm_base+0xea8), readl(dbg->spm_base+0xeac),
+			readl(dbg->vlp_base+0x91c));
 		writel(MM_SYS_RESUME, dbg->vcp_gipc_in_set);
 		pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
 		mtk_clk_mminfra_hwv_power_ctrl(false);
