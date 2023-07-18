@@ -144,7 +144,9 @@ static long gzvm_vcpu_run(struct gzvm_vcpu *vcpu, void * __user argp)
 				need_userspace = true;
 			break;
 		case GZVM_EXIT_HYPERCALL:
-			fallthrough;
+			if (!gzvm_handle_guest_hvc(vcpu))
+				need_userspace = true;
+			break;
 		case GZVM_EXIT_DEBUG:
 			fallthrough;
 		case GZVM_EXIT_FAIL_ENTRY:
@@ -174,7 +176,6 @@ out:
 		return -EFAULT;
 	if (signal_pending(current)) {
 		vcpu->gzvm->exit_start_time = ktime_get();
-		// invoke hvc to inform gz to map memory
 		gzvm_arch_inform_exit(vcpu->gzvm->vm_id);
 		return -ERESTARTSYS;
 	}

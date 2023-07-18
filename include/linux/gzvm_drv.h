@@ -14,6 +14,8 @@
 #include <linux/gzvm.h>
 #include <linux/srcu.h>
 #include <linux/ktime.h>
+#include <linux/rbtree.h>
+#include <linux/mm.h>
 
 #define MODULE_NAME	"gzvm"
 #define GZVM_VCPU_MMAP_SIZE  PAGE_SIZE
@@ -86,6 +88,12 @@ struct gzvm_vcpu {
 	struct hrtimer gzvm_mtimer;
 };
 
+struct gzvm_pinned_page {
+	struct rb_node node;
+	struct page *page;
+	u64 ipa;
+};
+
 struct gzvm {
 	struct gzvm_vcpu *vcpus[GZVM_MAX_VCPUS];
 	/* userspace tied to this vm */
@@ -115,6 +123,9 @@ struct gzvm {
 
 	/* record time spent in exit*/
 	ktime_t exit_start_time;
+
+	/* Use rb-tree to record pin/unpin page */
+	struct rb_root pinned_pages;
 };
 
 long gzvm_dev_ioctl_check_extension(struct gzvm *gzvm, unsigned long args);
@@ -147,9 +158,15 @@ int gzvm_arch_vcpu_run(struct gzvm_vcpu *vcpu, __u64 *exit_reason);
 int gzvm_arch_destroy_vcpu(u16 vm_id, int vcpuid);
 int gzvm_arch_inform_exit(u16 vm_id);
 
-int gzvm_gfn_to_pfn_memslot(struct gzvm_memslot *memslot, u64 gfn, u64 *pfn);
 int gzvm_find_memslot(struct gzvm *vm, u64 gpa);
+int gzvm_gfn_to_pfn_memslot(struct gzvm_memslot *memslot, u64 gfn, u64 *pfn);
+u64 gzvm_gfn_to_hva_memslot(struct gzvm_memslot *memslot, u64 gfn);
+u64 hva_to_pa_fast(u64 hva);
+u64 hva_to_pa_slow(u64 hva);
+int gzvm_handle_page_fault(struct gzvm_vcpu *vcpu);
+int gzvm_handle_relinquish(struct gzvm_vcpu *vcpu, phys_addr_t ipa);
 bool gzvm_handle_guest_exception(struct gzvm_vcpu *vcpu);
+bool gzvm_handle_guest_hvc(struct gzvm_vcpu *vcpu);
 
 int gzvm_arch_create_device(u16 vm_id, struct gzvm_create_device *gzvm_dev);
 int gzvm_arch_inject_irq(struct gzvm *gzvm, unsigned int vcpu_idx,
