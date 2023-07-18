@@ -34,16 +34,18 @@ u64 hva_to_pa_fast(u64 hva)
  */
 u64 hva_to_pa_slow(u64 hva)
 {
-	struct page *page;
+	struct page *page = NULL;
+	u64 pfn = 0;
 	int npages;
-	u64 pfn;
 
 	npages = get_user_pages_unlocked(hva, 1, &page, 0);
 	if (npages != 1)
 		return 0;
 
-	pfn = page_to_phys(page);
-	put_page(page);
+	if (page) {
+		pfn = page_to_phys(page);
+		put_page(page);
+	}
 
 	return pfn;
 }
