@@ -1781,10 +1781,8 @@ static irqreturn_t arm_smmu_combined_irq_handler(int irq, void *dev)
 	int ret;
 
 	ret = arm_smmu_rpm_get(smmu);
-	if (ret) {
-		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
+	if (ret)
 		return IRQ_WAKE_THREAD;
-	}
 
 	arm_smmu_gerror_handler(irq, dev);
 
