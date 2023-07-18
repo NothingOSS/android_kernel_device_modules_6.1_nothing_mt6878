@@ -125,7 +125,7 @@ static int __init init_perfctl(void)
 	parent = proc_mkdir("perfmgr_touch_boost", NULL);
 	perfmgr_root = parent;
 
-	pe = proc_create("ioctl_touch_boost", 0664, parent, &Fops);
+	pe = proc_create("ioctl_touch_boost", 0440, parent, &Fops);
 	if (!pe) {
 		pr_debug(TAG"%s failed with %d\n",
 				"Creating file node ",

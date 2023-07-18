@@ -271,7 +271,7 @@ static int __init init_perfctl(void)
 	parent = proc_mkdir("perfmgr_powerhal", NULL);
 	perfmgr_root = parent;
 
-	pe = proc_create("ioctl_powerhal_adpf", 0664, parent, &adpf_Fops);
+	pe = proc_create("ioctl_powerhal_adpf", 0440, parent, &adpf_Fops);
 	if (!pe) {
 		pr_debug(TAG"%s failed with %d\n",
 				"Creating file node ",
@@ -280,7 +280,7 @@ static int __init init_perfctl(void)
 		goto out_wq;
 	}
 
-	pe = proc_create("ioctl_powerhal", 0664, parent, &Fops);
+	pe = proc_create("ioctl_powerhal", 0440, parent, &Fops);
 	if (!pe) {
 		pr_debug(TAG"%s failed with %d\n",
 				"Creating file node ",
