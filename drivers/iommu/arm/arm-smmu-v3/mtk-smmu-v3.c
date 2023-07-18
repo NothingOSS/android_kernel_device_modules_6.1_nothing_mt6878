@@ -1724,7 +1724,7 @@ static void dump_global_register(struct arm_smmu_device *smmu)
 {
 	/* SMMU ID and control registers */
 	dev_info(smmu->dev,
-		 "IDR0:0x%x IDR1:0x%x IDR3:0x%x IDR5:0x%x CR0:[0x%x 0x%x] CR1:0x%x CR2:0x%x GBPA:0x%x\n",
+		 "IDR0:0x%x IDR1:0x%x IDR3:0x%x IDR5:0x%x CR0:[0x%x 0x%x] CR1:0x%x CR2:0x%x GBPA:0x%x GERROR:[0x%x 0x%x]\n",
 		 readl_relaxed(smmu->base + ARM_SMMU_IDR0),
 		 readl_relaxed(smmu->base + ARM_SMMU_IDR1),
 		 readl_relaxed(smmu->base + ARM_SMMU_IDR3),
@@ -1733,7 +1733,9 @@ static void dump_global_register(struct arm_smmu_device *smmu)
 		 readl_relaxed(smmu->base + ARM_SMMU_CR0ACK),
 		 readl_relaxed(smmu->base + ARM_SMMU_CR1),
 		 readl_relaxed(smmu->base + ARM_SMMU_CR2),
-		 readl_relaxed(smmu->base + ARM_SMMU_GBPA));
+		 readl_relaxed(smmu->base + ARM_SMMU_GBPA),
+		 readl_relaxed(smmu->base + ARM_SMMU_GERROR),
+		 readl_relaxed(smmu->base + ARM_SMMU_GERRORN));
 
 	/* SMMU stream table, IRQ, command queue and event queue registers */
 	dev_info(smmu->dev,
