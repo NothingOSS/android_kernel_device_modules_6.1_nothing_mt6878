@@ -11789,6 +11789,7 @@
 			clock-names = "gce","gce-timer";
 			dma-mask-bit = <35>;
 			cmdq-log-perf-off;
+			error-irq-bug-on = <1>;
 			mtk,smmu-shared = <&mm_smmu_srt_normal>;
 			mtk,iommu-dma-axid = <SMMU_L48_GCE_DM>;
 			mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;
@@ -11833,6 +11834,7 @@
 			clock-names = "gce","gce-timer";
 			dma-mask-bit = <35>;
 			cmdq-log-perf-off;
+			error-irq-bug-on = <1>;
 			mtk,smmu-shared = <&mm_smmu_srt_normal>;
 			mtk,iommu-dma-axid = <SMMU_L48_GCE_MM>;
 			mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;
