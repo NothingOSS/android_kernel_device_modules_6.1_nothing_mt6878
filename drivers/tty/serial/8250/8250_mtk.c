@@ -1970,7 +1970,7 @@ static int mtk8250_wakeup_probe_of(struct platform_device *pdev, struct uart_por
 	data = port->private_data;
 	if (data == NULL) {
 		pr_info("[%s] para error. data is NULL\n", __func__);
-		ret = -1;
+		return -1;
 	}
 
 	/*get peri-wakeup info from dts*/
