@@ -3363,7 +3363,7 @@ static ssize_t kfps_cpu_mask_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "%x\n", global_kfps_mask);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", global_kfps_mask);
 }
 
 static ssize_t kfps_cpu_mask_store(struct kobject *kobj,
