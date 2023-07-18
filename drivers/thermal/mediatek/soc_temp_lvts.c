@@ -1323,6 +1323,8 @@ static void tc_irq_handler(struct lvts_data *lvts_data, int tc_id, char thermint
 		ret = readl(LVTSMONINTSTS_0 + base);
 		if (!(ret & THERMAL_PROTECTION_STAGE_3))
 			return;
+		else
+			dev_info(dev, "%s", thermintst_str);
 	}
 
 #ifdef DUMP_MORE_LOG
@@ -1380,7 +1382,7 @@ static irqreturn_t irq_handler(int irq, void *dev_id)
 	for (i = 0; i < lvts_data->num_domain; i++) {
 		base = lvts_data->domain[i].base;
 		lvts_data->irq_bitmap[i] = readl(THERMINTST + base);
-		if (!IS_ENABLE(FEATURE_SCP_OC))
+		if ((!IS_ENABLE(FEATURE_SCP_OC))&&(!IS_ENABLE(FEATURE_6989_SCP_OC)))
 			dev_info(dev, "%s : THERMINTST = 0x%x\n", __func__,
 				lvts_data->irq_bitmap[i]);
 		else
