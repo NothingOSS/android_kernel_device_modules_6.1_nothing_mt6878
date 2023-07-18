@@ -14660,7 +14660,6 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	{"VOW TX", NULL, "KEY"},
 	{"VOW TX", NULL, "VOW_UL_SRC_MUX"},
 	{"VOW TX", NULL, "VOW_CIC_MUX"},
-	{"VOW TX", NULL, "AUDGLB"},
 	{"VOW TX", NULL, "PLL18 EN"},
 	{"VOW TX", NULL, "PLL18_VOW"},
 	{"VOW TX", NULL, "VOW SRAM Audio"},
