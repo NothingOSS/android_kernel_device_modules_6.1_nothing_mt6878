@@ -1317,6 +1317,17 @@ static void tc_irq_handler(struct lvts_data *lvts_data, int tc_id, char thermint
 		}
 		dev_info(dev, "%s", thermintst_str);
 	}
+
+	base = GET_BASE_ADDR(tc_id);
+	ret = readl(LVTSMONINT_0 + base);
+	dev_info(dev, "tc_id:%d MONINT %p: 0x%x\n", tc_id, (LVTSMONINT_0 + base), ret);
+	ret = readl(LVTSMONINTSTS_0 + base);
+	dev_info(dev, "tc_id:%d INTST %p: 0x%x\n", tc_id, (LVTSMONINTSTS_0 + base), ret);
+	if (!(ret & THERMAL_PROTECTION_STAGE_3)) {
+		dev_info(dev, "not thermal protect, return directly\n");
+		return;
+	}
+
 #ifdef DUMP_MORE_LOG
 	temp = lvts_read_all_tc_temperature(lvts_data, true);
 	dump_lvts_error_info(lvts_data);
@@ -1358,7 +1369,17 @@ static irqreturn_t irq_handler(int irq, void *dev_id)
 	int thermintst_str_size = sizeof(thermintst_str);
 	int thermintst_str_offset = 0;
 
-	disable_all_sensing_points(lvts_data);
+	if (IS_ENABLE(FEATURE_6989_SCP_OC)) {
+		for (i = 0; i < lvts_data->num_tc; i++) {
+			base = GET_BASE_ADDR(i);
+			if (readl(LVTSMONINTSTS_0 + base) & THERMAL_PROTECTION_STAGE_3) {
+				disable_all_sensing_points(lvts_data);
+				break;
+			}
+		}
+	} else {
+		disable_all_sensing_points(lvts_data);
+	}
 	for (i = 0; i < lvts_data->num_domain; i++) {
 		base = lvts_data->domain[i].base;
 		lvts_data->irq_bitmap[i] = readl(THERMINTST + base);
@@ -4665,7 +4686,7 @@ static struct lvts_data mt6989_lvts_data = {
 		.check_cal_data = mt6989_check_cal_data,
 		.update_coef_data = mt6989_update_coef_data,
 	},
-	.feature_bitmap = FEATURE_DEVICE_AUTO_RCK,
+	.feature_bitmap = FEATURE_DEVICE_AUTO_RCK | FEATURE_6989_SCP_OC,
 	.num_efuse_addr = 33,
 	.num_efuse_block = 5,
 	.cal_data = {

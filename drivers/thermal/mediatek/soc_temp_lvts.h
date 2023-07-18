@@ -23,6 +23,7 @@
 #define FEATURE_DEVICE_AUTO_RCK	(BIT(0))
 #define FEATURE_CK26M_ACTIVE	(BIT(1))
 #define FEATURE_SCP_OC		(BIT(2))
+#define FEATURE_6989_SCP_OC		(BIT(3))
 #define SCP_OC_DUMP_LOG         (0)
 #define ENABLE_FEATURE(feature)		(lvts_data->feature_bitmap |= feature)
 #define DISABLE_FEATURE(feature)	(lvts_data->feature_bitmap &= (~feature))
