@@ -25,8 +25,8 @@ int apu_power_budget(enum pbm_mode mode, int counter);
  */
 int apu_power_budget_checker(enum pbm_mode mode);
 
-#define PBM_NORMAL_PWR			(15000) // 8w
-#define PBM_PERFORMANCE_PWR		(15000) // 15w
+#define PBM_NORMAL_PWR			(9000) // 9w
+#define PBM_PERFORMANCE_PWR		(9000) // 9w
 
 #define NORM_OFF_DELAY	(20) // ms
 #define PERF_OFF_DELAY	(20) // ms

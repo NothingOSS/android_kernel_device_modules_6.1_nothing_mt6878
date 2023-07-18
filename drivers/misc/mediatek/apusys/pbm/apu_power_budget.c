@@ -22,7 +22,7 @@
 #include "apu_power_budget.h"
 
 #define APU_PBM_DRV_UT	(0)
-#define LOCAL_DBG	(1)
+#define LOCAL_DBG	(0)
 
 #define APU_MBOX_BASE	(0x190E2000)
 #define APU_PBM_MONITOR	(apu_mbox + 0x400)
@@ -164,8 +164,10 @@ static void apu_power_budget_judgement(void)
 	// max budget change, and we treat it as apu budget in this moment
 	if (max_budget != _max_budget) {
 		max_budget = _max_budget;
+#if LOCAL_DBG
 		pr_notice("%s max_budget %d -> %d (mW)\n",
 				__func__, prev_max_budget, max_budget);
+#endif
 		soc_pbm_request(max_budget);
 		prev_max_budget = max_budget;
 	}
@@ -182,8 +184,10 @@ int apu_power_budget(enum pbm_mode mode, int counter)
 	}
 
 	if (apu_pbm_param_arr[mode].enabled == 0) {
+#if LOCAL_DBG
 		pr_debug("%s#%d mode_%d is disabled, bypass budget control\n",
 				__func__, __LINE__, mode);
+#endif
 		return 0;
 	}
 
@@ -195,8 +199,10 @@ int apu_power_budget(enum pbm_mode mode, int counter)
 
 			// cancal off_timer which was triggered by mode 1 -> 0
 			if (timer_pending(&apu_pbm_param_arr[mode].off_timer)) {
+#if LOCAL_DBG
 				pr_debug("%s mode:%d cancel off_timer\n",
 						__func__, mode);
+#endif
 				del_timer(&apu_pbm_param_arr[mode].off_timer);
 			}
 
@@ -209,9 +215,11 @@ int apu_power_budget(enum pbm_mode mode, int counter)
 	} else {
 		// mode 1 -> 0
 		if (--apu_pbm_param_arr[mode].counter == 0) {
+#if LOCAL_DBG
 			// delay N ms to recalculate budget
 			pr_debug("%s mode:%d delay_off_flag set to 1\n",
 					__func__, mode);
+#endif
 			apu_pbm_param_arr[mode].delay_off_flag = 1;
 			mod_timer(&apu_pbm_param_arr[mode].off_timer,
 				jiffies + msecs_to_jiffies(
@@ -221,8 +229,8 @@ int apu_power_budget(enum pbm_mode mode, int counter)
 				"APUSYS_POWER", "APU_PBM_COUNTER_UNBALANCE");
 		}
 	}
-#if LOCAL_DBG
-	pr_notice("%s m:%d b:%d c:%d f:%u d:%d max_b:%d ret:%d\n",
+
+	pr_debug("%s m:%d b:%d c:%d f:%u d:%d max_b:%d ret:%d\n",
 			__func__,
 			apu_pbm_param_arr[mode].mode,
 			apu_pbm_param_arr[mode].budget,
@@ -231,7 +239,7 @@ int apu_power_budget(enum pbm_mode mode, int counter)
 			apu_pbm_param_arr[mode].delay_off_ms,
 			max_budget,
 			ret);
-#endif
+
 	spin_unlock_irqrestore(&apu_pbm_lock, flags);
 
 	return ret;
@@ -260,7 +268,9 @@ static void apu_pbm_off_timer_func(struct timer_list *timer)
 	struct apu_pbm_param *apu_pbm_instance;
 	int mode;
 
+#if LOCAL_DBG
 	pr_debug("%s ++\n", __func__);
+#endif
 	spin_lock_irqsave(&apu_pbm_lock, flags);
 
 	apu_pbm_instance = container_of(timer, struct apu_pbm_param, off_timer);
@@ -269,15 +279,20 @@ static void apu_pbm_off_timer_func(struct timer_list *timer)
 	if (mode < 0 || mode >= PBM_MODE_MAX) {
 		pr_notice("%s#%d mode is over range\n", __func__, __LINE__);
 	} else {
+#if LOCAL_DBG
 		pr_debug("%s mode:%d delay_off_flag set to 0\n",
 				__func__, mode);
+#endif
 		// recalculate power budget since mode 1 -> 0 before N ms ago
 		apu_pbm_param_arr[mode].delay_off_flag = 0;
 		apu_power_budget_judgement();
 	}
 
 	spin_unlock_irqrestore(&apu_pbm_lock, flags);
+
+#if LOCAL_DBG
 	pr_debug("%s --\n", __func__);
+#endif
 }
 
 // caller is middleware
