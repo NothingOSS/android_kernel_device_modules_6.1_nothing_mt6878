@@ -43,7 +43,9 @@ static const struct mfd_cell mt6681_devs[] = {
 	MT6681_MFD_CELL(mt6681-auxadc),
 	MT6681_MFD_CELL(mt6681-sound),
 	MT6681_MFD_CELL(mt6681-efuse),
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	MT6681_MFD_CELL(mt6681-regulator),
+#endif
 	/* debug dev */
 	/* { .name = "mt6360_dbg", },*/
 };

@@ -51,7 +51,6 @@
 /* #define NLE_IMP */
 #define SKIP_SB
 #define ALIGN_SWING
-/* #define REGULATOR_DEBUG */
 
 
 static ssize_t mt6681_codec_sysfs_read(struct file *filep, struct kobject *kobj,
@@ -7032,11 +7031,11 @@ static int mt_vaud18_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-#ifndef REGULATOR_DEBUG
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	int status = 0;
 #endif
 
-	dev_dbg(priv->dev, "%s(), event = 0x%x\n", __func__, event);
+	dev_info(priv->dev, "%s(), event = 0x%x\n", __func__, event);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -7062,31 +7061,31 @@ static int mt_vaud18_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_OP_CFG1_SET,
 				   RG_LDO_VAUD18_HW8_OP_CFG_MASK_SFT,
 				   0x1 << RG_LDO_VAUD18_SW_OP_CFG_SFT);
-#ifdef REGULATOR_DEBUG
-		regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
-				   RG_LDO_VAUD18_EN_0_MASK_SFT,
-				   0x1 << RG_LDO_VAUD18_EN_0_SFT);
-#else
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 		if (!IS_ERR(priv->reg_vaud18)) {
 			status = regulator_enable(priv->reg_vaud18);
 			if (status)
 				dev_info(priv->dev, "%s() failed to enable vaud18(%d)\n",
 					__func__, status);
 		}
+#else
+		regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
+				   RG_LDO_VAUD18_EN_0_MASK_SFT,
+				   0x1 << RG_LDO_VAUD18_EN_0_SFT);
 #endif
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-#ifdef REGULATOR_DEBUG
-		regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
-				   RG_LDO_VAUD18_EN_0_MASK_SFT,
-				   0x0 << RG_LDO_VAUD18_EN_0_SFT);
-#else
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 		if (!IS_ERR(priv->reg_vaud18)) {
 			status = regulator_disable(priv->reg_vaud18);
 			if (status)
 				dev_info(priv->dev, "%s() failed to disable vaud18(%d)\n",
 					__func__, status);
 		}
+#else
+		regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
+				   RG_LDO_VAUD18_EN_0_MASK_SFT,
+				   0x0 << RG_LDO_VAUD18_EN_0_SFT);
 #endif
 		break;
 	default:
@@ -13753,7 +13752,9 @@ static const struct snd_soc_dapm_widget mt6681_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY_S("NCP_CK_208", SUPPLY_SEQ_CKTST,
 			      MT6681_TOP_CKTST_CON0,
 			      RG_DSPPLL_208M_CK_TST_DIS_SFT, 0, NULL, 0),
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	SND_SOC_DAPM_REGULATOR_SUPPLY("mt6681_vaud18", 0, 0),
+#endif
 	SND_SOC_DAPM_SUPPLY_S("LDO_VAUD18", SUPPLY_SEQ_LDO_VAUD18, SND_SOC_NOPM,
 			      0, 0, mt_vaud18_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
@@ -14336,7 +14337,7 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	{"AIFTX_Supply", NULL, "AUDIO_TOP_ADDA6_ADC_CTL"},
 	{"AIFTX_Supply", NULL, "AUDIO_TOP_ADDA7_ADC_CTL"},
 	{"AIFTX_Supply", NULL, "AFE_ON"},
-	{"AIFTX_Supply", NULL, "mt6681_vaud18"},
+	{"AIFTX_Supply", NULL, "LDO_VAUD18"},
 
 	/* ul ch 12 */
 	{"AIF1TX", NULL, "AIFTX_Supply"},
@@ -14562,7 +14563,6 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	{"DL Power Supply", NULL, "NCP_CK"},
 	{"DL Power Supply", NULL, "NCP_CK_208"},
 	{"DL Power Supply", NULL, "LDO_VAUD18"},
-	{"DL Power Supply", NULL, "mt6681_vaud18"},
 	{"DL Power Supply", NULL, "CLKSQ DL Audio"},
 	{"DL Power Supply", NULL, "PLL18 EN", is_need_pll_208M},
 	{"DL Power Supply", NULL, "PLL18 Audio", is_need_pll_208M},
@@ -14667,8 +14667,8 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 	{"VOW TX", NULL, "AUDGLB_VOW", mt_vow_amic_connect},
 	{"VOW TX", NULL, "AUD_CK", mt_vow_amic_connect},
 	{"VOW TX", NULL, "VOW_DIG_CFG"},
-	{"VOW TX", NULL, "mt6681_vaud18"},
 	{"VOW TX", NULL, "CLKSQ UL Audio"},
+	{"VOW TX", NULL, "LDO_VAUD18"},
 	{"VOW_CIC_MUX", "LOW_Q", "VOW_LEGACY_CIC"},
 	{"VOW_CIC_MUX", "HIGH_Q", "VOW_NEW_CIC"},
 	{"VOW_LEGACY_CIC", NULL, "VOW_LEGACY_CIC_CFG"},
@@ -15115,22 +15115,22 @@ static void prepare_enable_trim_buf(struct mt6681_priv *priv, bool enable,
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 static void enable_trim_circuit(struct mt6681_priv *priv, bool enable)
 {
-#ifndef REGULATOR_DEBUG
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	int status = 0;
 #endif
 
 	if (enable) {
-#ifdef REGULATOR_DEBUG
-		regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
-				   RG_LDO_VAUD18_EN_0_MASK_SFT,
-				   0x1 << RG_LDO_VAUD18_EN_0_SFT);
-#else
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 		if (!IS_ERR(priv->reg_vaud18)) {
 			status = regulator_enable(priv->reg_vaud18);
 			if (status)
 				dev_info(priv->dev, "%s() failed to enable vaud18(%d)\n",
 					__func__, status);
 		}
+#else
+		regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
+				   RG_LDO_VAUD18_EN_0_MASK_SFT,
+				   0x1 << RG_LDO_VAUD18_EN_0_SFT);
 #endif
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_AUDHPTRIM_EN_VAUDP18_MASK_SFT,
@@ -15141,24 +15141,24 @@ static void enable_trim_circuit(struct mt6681_priv *priv, bool enable)
 		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON33,
 				   RG_AUDHPTRIM_EN_VAUDP18_MASK_SFT,
 				   0x0 << RG_AUDHPTRIM_EN_VAUDP18_SFT);
-#ifdef REGULATOR_DEBUG
-		regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
-				   RG_LDO_VAUD18_EN_0_MASK_SFT,
-				   0x0 << RG_LDO_VAUD18_EN_0_SFT);
-#else
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 		if (!IS_ERR(priv->reg_vaud18)) {
 			status = regulator_disable(priv->reg_vaud18);
 			if (status)
 				dev_info(priv->dev, "%s() failed to disable vaud18(%d)\n",
 					__func__, status);
 		}
+#else
+		regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
+				   RG_LDO_VAUD18_EN_0_MASK_SFT,
+				   0x0 << RG_LDO_VAUD18_EN_0_SFT);
 #endif
 	}
 }
 
 static void start_trim_hardware(struct mt6681_priv *priv)
 {
-#ifndef REGULATOR_DEBUG
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	int status = 0;
 #endif
 
@@ -15190,17 +15190,17 @@ static void start_trim_hardware(struct mt6681_priv *priv)
 	 * Valid once RG_LDO_VAUD18_SW_OP_EN = 1'b1 (default 1'b1)
 	 * 0x1B8E=0x80
 	 */
-#ifdef REGULATOR_DEBUG
-	regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
-			   RG_LDO_VAUD18_EN_0_MASK_SFT,
-			   0x1 << RG_LDO_VAUD18_EN_0_SFT);
-#else
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	if (!IS_ERR(priv->reg_vaud18)) {
 		status = regulator_enable(priv->reg_vaud18);
 		if (status)
 			dev_info(priv->dev, "%s() failed to enable vaud18(%d)\n",
 				__func__, status);
 	}
+#else
+	regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
+			   RG_LDO_VAUD18_EN_0_MASK_SFT,
+			   0x1 << RG_LDO_VAUD18_EN_0_SFT);
 #endif
 	/*
 	 * Step 6:
@@ -16825,7 +16825,7 @@ static void start_trim_hardware(struct mt6681_priv *priv)
 
 static void stop_trim_hardware(struct mt6681_priv *priv)
 {
-#ifndef REGULATOR_DEBUG
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	int status = 0;
 #endif
 
@@ -17881,17 +17881,17 @@ static void stop_trim_hardware(struct mt6681_priv *priv)
 	/* Reset playback gpio (mosi/clk/sync) */
 	mt6681_reset_playback_gpio(priv);
 
-#ifdef REGULATOR_DEBUG
-	regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
-			   RG_LDO_VAUD18_EN_0_MASK_SFT,
-			   0x0 << RG_LDO_VAUD18_EN_0_SFT);
-#else
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	if (!IS_ERR(priv->reg_vaud18)) {
 		status = regulator_disable(priv->reg_vaud18);
 		if (status)
 			dev_info(priv->dev, "%s() failed to disable vaud18(%d)\n",
 				__func__, status);
 	}
+#else
+	regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
+			   RG_LDO_VAUD18_EN_0_MASK_SFT,
+			   0x0 << RG_LDO_VAUD18_EN_0_SFT);
 #endif
 
 	dev_info(priv->dev, "%s(), --\n", __func__);
@@ -18641,7 +18641,7 @@ static int detect_impedance(struct mt6681_priv *priv)
 			usleep_range(1 * 1000, 1 * 1000);
 			detect_sum = 0;
 			detect_sum = mt6681_get_hpofs_auxadc(priv);
-			{
+			if (i == 0 && !priv->bypass_hpdet_dump) {
 				dev_info(priv->dev, "[HPDET] cur_dc(%d) detect_sum(%d) HPR Volatge 2\n",
 					 cur_dc, detect_sum);
 				usleep_range(5 * 1000 * 1000, 6 * 1000 * 1000);
@@ -19128,7 +19128,7 @@ static int mt6681_rcv_dcc_set(struct snd_kcontrol *kcontrol,
 #ifndef SKIP_SB
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-#ifndef REGULATOR_DEBUG
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	int status = 0;
 #endif
 
@@ -19138,16 +19138,16 @@ static int mt6681_rcv_dcc_set(struct snd_kcontrol *kcontrol,
 	/* receiver downlink */
 	mt6681_set_playback_gpio(priv);
 
-#ifdef REGULATOR_DEBUG
-	regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
-			   RG_LDO_VAUD18_EN_0_MASK_SFT, 0x1);
-#else
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	if (!IS_ERR(priv->reg_vaud18)) {
 		status = regulator_enable(priv->reg_vaud18);
 		if (status)
 			dev_info(priv->dev, "%s() failed to enable vaud18(%d)\n",
 				__func__, status);
 	}
+#else
+	regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
+			   RG_LDO_VAUD18_EN_0_MASK_SFT, 0x1);
 #endif
 
 	regmap_write(priv->regmap, MT6681_VPLL18_PMU_CON0, 0xc0);
@@ -19274,16 +19274,16 @@ static int mt6681_rcv_dcc_set(struct snd_kcontrol *kcontrol,
 	/* Switch HS MUX to audio DACL */
 	regmap_write(priv->regmap, MT6681_AUDDEC_PMU_CON22, 0x2);
 
-#ifdef REGULATOR_DEBUG
-	regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
-			   RG_LDO_VAUD18_EN_0_MASK_SFT, 0x0);
-#else
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	if (!IS_ERR(priv->reg_vaud18)) {
 		status = regulator_disable(priv->reg_vaud18);
 		if (status)
 			dev_info(priv->dev, "%s() failed to disable vaud18(%d)\n",
 				__func__, status);
 	}
+#else
+	regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
+			   RG_LDO_VAUD18_EN_0_MASK_SFT, 0x0);
 #endif
 #endif
 	return 0;
@@ -23895,6 +23895,8 @@ static void mt6681_clh_lut_init(struct mt6681_priv *priv)
 
 static void mt6681_adc_init(struct mt6681_priv *priv)
 {
+	dev_dbg(priv->dev, "%s() %d\n", __func__, priv->mic_hifi_mode);
+
 	if (priv->mic_hifi_mode) {
 		regmap_update_bits(priv->regmap, MT6681_AUDENC_PMU_CON9,
 				   RG_AUDADC1STSTAGEIDDTEST_MASK_SFT,
@@ -40610,7 +40612,7 @@ static int mt6681_parse_dt(struct mt6681_priv *priv)
 #endif
 
 	/* get pmic regulator handler */
-#ifndef REGULATOR_DEBUG
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	priv->reg_vaud18 = devm_regulator_get_optional(dev, "reg-vaud18");
 	ret = IS_ERR(priv->reg_vaud18);
 	if (ret) {
