@@ -1246,25 +1246,24 @@ out:
 	/* parse cpu time of each frame to ged_kpi */
 	iter->cpu_time = cpu_time_ns;
 
-	local_final_tfps = iter->self_ctrl_fps_enable ?
-				iter->target_fps_v2 : iter->target_fps;
-	tolerence_fps = iter->self_ctrl_fps_enable ?
-				iter->target_fps_margin_v2 : iter->target_fps_margin;
+	if (!test_bit(ADPF_TYPE, &iter->master_type)) {
+		local_final_tfps = iter->self_ctrl_fps_enable ?
+					iter->target_fps_v2 : iter->target_fps;
+		tolerence_fps = iter->self_ctrl_fps_enable ?
+					iter->target_fps_margin_v2 : iter->target_fps_margin;
 
-	if (gpu_slowdown_check && !iter->target_fps_diff &&
-			iter->cpu_time > Target_time && iter->cpu_time > iter->gpu_time)
-		local_final_tfps = iter->target_fps;
+		if (gpu_slowdown_check && !iter->target_fps_diff &&
+				iter->cpu_time > Target_time && iter->cpu_time > iter->gpu_time)
+			local_final_tfps = iter->target_fps;
 
-	if (test_bit(ADPF_TYPE, &iter->master_type))
-		local_final_tfps = div64_u64(1000000000ULL, iter->target_time);
-	else {
 		local_final_tfps = fstb_arbitrate_target_fps(local_final_tfps,
 				&tolerence_fps, iter);
 		fstb_post_process_target_fps(local_final_tfps, tolerence_fps, iter->target_fps_diff,
 				&local_final_tfps, NULL, NULL);
+
+		ged_kpi_set_target_FPS_margin(iter->bufid, local_final_tfps, tolerence_fps,
+			iter->target_fps_diff, iter->cpu_time);
 	}
-	ged_kpi_set_target_FPS_margin(iter->bufid, local_final_tfps, tolerence_fps,
-		iter->target_fps_diff, iter->cpu_time);
 
 	if (fpsgo2msync_hint_frameinfo_fp)
 		fpsgo2msync_hint_frameinfo_fp((unsigned int)iter->pid, iter->bufid,

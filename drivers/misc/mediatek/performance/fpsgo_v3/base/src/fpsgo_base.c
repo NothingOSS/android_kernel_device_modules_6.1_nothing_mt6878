@@ -1734,7 +1734,7 @@ static void fpsgo_check_adpf_render_status(void)
 			rb_erase(rbn, &render_pid_tree);
 			total_render_info_num--;
 			fpsgo_thread_unlock(&iter->thr_mlock);
-			kfree(iter);
+			vfree(iter);
 			rbn = rb_first(&render_pid_tree);
 		}
 	}
