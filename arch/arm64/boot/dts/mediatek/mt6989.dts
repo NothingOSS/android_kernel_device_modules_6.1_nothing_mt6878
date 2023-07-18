@@ -8542,6 +8542,7 @@
 				"MMG_CG",
 				"mmdvfs_mux";
 			operating-points-v2 = <&opp_table_img>;
+			mediatek,imgsys-dvfs-pix-mode = <4>;
 			mediatek,imgsys-qos-sc-motr = <2>;
 			mediatek,imgsys-qos-sc-nums = <2>;
 			mediatek,imgsys-qos-sc-id = <19 20>;
