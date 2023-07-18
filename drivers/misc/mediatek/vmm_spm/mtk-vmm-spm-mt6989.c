@@ -198,7 +198,6 @@ static void vmm_hfrp_iso_ctrl_mt6989(void __iomem *base, bool iso_on)
 		writel_relaxed(reg_buck_iso_val, addr);
 	}
 }
-#endif
 
 static void vmm_hfrp_iso_reg_check(void __iomem *base, bool iso_on)
 {
@@ -237,6 +236,7 @@ static void vmm_hfrp_iso_reg_check(void __iomem *base, bool iso_on)
 			spm_ver,
 			iso_on);
 }
+#endif
 
 static void vmm_spm_iso_reg_check(void __iomem *base, bool iso_on)
 {
@@ -303,7 +303,10 @@ static int vmm_spm_probe_mt6989(struct platform_device *pdev)
 {
 	struct vmm_spm_drv_data *drv_data = &g_drv_data;
 	struct device *dev = &pdev->dev;
-	struct resource *spm_res, *hfrp_res;
+	struct resource *spm_res;
+#ifdef HFRP_REG_SET_ISSUE_FIXED
+	struct resource *hfrp_res;
+#endif
 	struct regulator *reg;
 	s32 ret = 0;
 
@@ -313,11 +316,13 @@ static int vmm_spm_probe_mt6989(struct platform_device *pdev)
 		ISP_LOGE("fail to get resource SPM_BASE");
 		return -EINVAL;
 	}
+#ifdef HFRP_REG_SET_ISSUE_FIXED
 	hfrp_res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	if (!hfrp_res) {
 		ISP_LOGE("fail to get resource HFRP_BASE");
 		return -EINVAL;
 	}
+#endif
 
 	/* remap regs */
 	drv_data->spm_reg = devm_ioremap(dev, spm_res->start, resource_size(spm_res));
@@ -325,12 +330,13 @@ static int vmm_spm_probe_mt6989(struct platform_device *pdev)
 		ISP_LOGE("fail to ioremap SPM_BASE: 0x%llx", spm_res->start);
 		return -EINVAL;
 	}
-
+#ifdef HFRP_REG_SET_ISSUE_FIXED
 	drv_data->hfrp_reg = devm_ioremap(dev, hfrp_res->start, resource_size(hfrp_res));
 	if (!(drv_data->hfrp_reg)) {
 		ISP_LOGE("fail to ioremap HFRP_BASE: 0x%llx", hfrp_res->start);
 		return -EINVAL;
 	}
+#endif
 
 	/* get spm ver */
 	if (of_device_is_compatible(dev->of_node, "mediatek,vmm_spm_mt6989"))
@@ -344,8 +350,9 @@ static int vmm_spm_probe_mt6989(struct platform_device *pdev)
 		/* formal flow: This flow had been replaced by preloader, we just check iso status here. */
 #ifdef HFRP_REG_SET_ISSUE_FIXED
 		vmm_hfrp_iso_ctrl_mt6989(drv_data->hfrp_reg, false);
-#endif
 		vmm_hfrp_iso_reg_check(drv_data->hfrp_reg, false);
+#endif
+		ISP_LOGI("VMMSPM boot success, ver = %u\n", spm_ver);
 	} else if (VMM_SPM_MT6989_BRINGUP) {
 		/* bringup flow */
 		vmm_spm_iso_ctrl_mt6989(drv_data->spm_reg, false);
