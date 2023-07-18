@@ -22,6 +22,12 @@
 #include "tile_driver.h"
 #include "tile_mdp_func.h"
 
+#define mrg_msg(fmt, args...) \
+do { \
+	if (mtk_mml_msg || mml_rrot_msg) \
+		pr_notice("[mml]" fmt "\n", ##args); \
+} while (0)
+
 /* MERGE register offset */
 #define VPP_MERGE_ENABLE		0x000
 #define VPP_MERGE_SHADOW_CTRL		0x008
@@ -138,8 +144,13 @@ static s32 merge_config_frame(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_SHADOW_CTRL,
 		((cfg->shadow ? 0 : BIT(1)) << 1) | 0x1, U32_MAX);
 
-	/* bit[7:0] 8'd24:  CFG_2PI_2PI_2PO_0PO_MERGE */
-	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_12, 24, U32_MAX);
+	if (cfg->rrot_dual) {
+		/* bit[7:0] 8'd24:  CFG_2PI_2PI_2PO_0PO_MERGE */
+		cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_12, 24, U32_MAX);
+	} else {
+		/* bit[7:0] 8'd08 : CFG_2PI_0PI_2PO_0PO_BUF_MODE */
+		cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_12, 8, U32_MAX);
+	}
 
 	return 0;
 }
@@ -169,7 +180,13 @@ static s32 merge_config_tile(struct mml_comp *comp, struct mml_task *task,
 	/* vpp_merge_sram_0_fwidth, vpp_merge_sram_0_fheight */
 	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_24, input0, U32_MAX);
 	/* vpp_merge_sram_1_fwidth, vpp_merge_sram_1_fheight */
-	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_25, input1, U32_MAX);
+	if (cfg->rrot_dual) {
+		/* config sram as input 1 size */
+		cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_25, input1, U32_MAX);
+	} else {
+		/* config sram as input 0 size, since buf mode use both sram */
+		cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_25, input0, U32_MAX);
+	}
 
 	/* vpp_merge_merge_0_fwidth, vpp_merge_merge_0_fheight */
 	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_26, input0, U32_MAX);
@@ -180,8 +197,9 @@ static s32 merge_config_tile(struct mml_comp *comp, struct mml_task *task,
 	merge_frm->pixel_acc += width * height;
 
 	if (cfg->rrot_out[0].width + cfg->rrot_out[1].width == width &&
-		cfg->rrot_out[0].height == height && cfg->rrot_out[1].height == height)
-		mml_msg("[merge]in0 %u %u in1 %u %u out %u %u full %u %u",
+		cfg->rrot_out[0].height == height &&
+		((cfg->rrot_dual && cfg->rrot_out[1].height == height) || !cfg->rrot_dual))
+		mrg_msg("[merge]in0 %u %u in1 %u %u out %u %u full %u %u",
 			cfg->rrot_out[0].width, cfg->rrot_out[0].height,
 			cfg->rrot_out[1].width, cfg->rrot_out[1].height,
 			width, height,

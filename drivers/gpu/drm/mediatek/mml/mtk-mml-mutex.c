@@ -98,14 +98,28 @@ static s32 mutex_enable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 	if (mutex_id < 0)
 		return -EINVAL;
 
-	for (i = 0; i < mutex->data->mod_cnt; i++) {
-		u32 offset = mutex->data->mod_offsets[i];
+	/* Do config mutex mod only in dc mode.
+	 * For direct link mode, config from mml side (which mutex_sof is empty),
+	 * since mml flow has correct topology.
+	 */
+	if (mode != MML_MODE_DIRECT_LINK || !mutex_sof) {
+		for (i = 0; i < mutex->data->mod_cnt; i++) {
+			u32 offset = mutex->data->mod_offsets[i];
 
-		cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_MOD(mutex_id, offset),
-			       mutex_mod[i], U32_MAX);
+			cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_MOD(mutex_id, offset),
+				       mutex_mod[i], U32_MAX);
+		}
 	}
-	cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_SOF(mutex_id), mutex_sof, U32_MAX);
-	cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_EN(mutex_id), 0x1, U32_MAX);
+
+	/* Enable mutex for dc mode, which trigger directly.
+	 * For DL mode enable mutex from disp addon
+	 * (which mutex_sof contains disp signal bit) and wait disp signal.
+	 */
+	if (mode != MML_MODE_DIRECT_LINK || mutex_sof) {
+		cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_SOF(mutex_id), mutex_sof, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_EN(mutex_id), 0x1, U32_MAX);
+	}
+
 	return 0;
 }
 
@@ -136,6 +150,10 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 	struct mml_mutex *mutex = comp_to_mutex(comp);
 	const struct mml_topology_path *path = task->config->path[ccfg->pipe];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	s32 ret;
+
+	/* DL mode config sof only, other modes enable to trigger directly */
+	ret = mutex_enable(mutex, pkt, path, 0x0, task->config->info.mode);
 
 	if (task->config->info.mode == MML_MODE_DIRECT_LINK) {
 		if (ccfg->pipe == 0) {
@@ -150,10 +168,9 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 			cmdq_pkt_set_event(pkt, mutex->event_pipe1_mml);
 			cmdq_pkt_wfe(pkt, mutex->event_pipe0_mml);
 		}
-		return 0;
 	}
 
-	return mutex_enable(mutex, pkt, path, 0x0, task->config->info.mode);
+	return ret;
 }
 
 static s32 mutex_disconnect(struct mml_comp *comp, struct mml_task *task,

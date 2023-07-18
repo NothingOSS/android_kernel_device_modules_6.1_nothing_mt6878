@@ -1709,7 +1709,6 @@ static void mml_drm_split_info_dl(struct mml_submit *submit, struct mml_submit *
 	u32 i;
 
 	submit_pq->info = submit->info;
-	submit_pq->info.src = submit->info.dest[0].data;
 	submit_pq->layer = submit->layer;
 	for (i = 0; i < MML_MAX_OUTPUTS; i++)
 		if (submit_pq->pq_param[i] && submit->pq_param[i])
@@ -1729,11 +1728,36 @@ EXPORT_SYMBOL_GPL(mml_drm_split_info);
 const struct mml_topology_path *mml_drm_query_dl_path(struct mml_drm_ctx *ctx,
 	struct mml_submit *submit, u32 pipe)
 {
+	struct mml_frame_config *cfg;
+	const struct mml_topology_path *path = NULL;
 	struct mml_topology_cache *tp = mml_topology_get_cache(ctx->mml);
+
+	if (submit) {
+		/* from mml_mutex ddp addon, construct sof, assume use last dl config */
+		mutex_lock(&ctx->config_mutex);
+		list_for_each_entry(cfg, &ctx->configs, entry) {
+			if (cfg->info.mode != MML_MODE_DIRECT_LINK)
+				continue;
+
+			path = cfg->path[pipe];
+
+			/* The tp path not select, yet, in first task.
+			 * Hence use same info do query.
+			 */
+			if (!path)
+				path = tp->op->get_dl_path(tp, &cfg->info, pipe);
+
+			break;
+		}
+		mutex_unlock(&ctx->config_mutex);
+
+		if (path)
+			return path;
+	}
 
 	if (!tp || !tp->op->get_dl_path)
 		return NULL;
 
-	return tp->op->get_dl_path(tp, submit, pipe);
+	return tp->op->get_dl_path(tp, submit ? &submit->info : NULL, pipe);
 }
 

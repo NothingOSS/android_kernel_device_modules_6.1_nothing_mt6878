@@ -27,7 +27,7 @@
 #define MML_OUT_MIN_W		784	/* wqhd 1440/2+64=784 */
 #define MML_DL_MAX_W		3840
 #define MML_DL_MAX_H		2176
-
+#define MML_DL_RROT_S_PX	(1920 * 1088)
 
 /* use OPP index 0(229Mhz) 1(273Mhz) 2(458Mhz) */
 #define MML_IR_MAX_OPP		2
@@ -51,6 +51,14 @@ module_param(mml_dl, int, 0644);
 
 int mml_rrot;
 module_param(mml_rrot, int, 0644);
+
+/* Single RROT support
+ * 0: (default)auto query
+ * 1: force enable and don't case performance
+ * 2: force disable
+ */
+int mml_rrot_single = 2;
+module_param(mml_rrot_single, int, 0644);
 
 int mml_racing_rsz = 1;
 module_param(mml_racing_rsz, int, 0644);
@@ -86,6 +94,11 @@ enum topology_scenario {
 	PATH_MML_RR_DL_2IN_2OUT,
 	PATH_MML_RR_DL2,
 	PATH_MML_RR_DL2_2IN_2OUT,
+	PATH_MML_RRS,
+	PATH_MML_RRS_DL,
+	PATH_MML_RRS_DL_2IN_2OUT,
+	PATH_MML_RRS_DL2,
+	PATH_MML_RRS_DL2_2IN_2OUT,
 	PATH_MML_MAX
 };
 
@@ -276,6 +289,99 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_MUTEX,},
 		{MML_RROT0, MML_MERGE0,},
 		{MML_RROT0_2ND, MML_MERGE0,},
+		{MML_MERGE0, MML_DMA0_SEL,},
+		{MML_DMA0_SEL, MML_DLI0_SEL, MML_RSZ2,},
+		{MML_DLI0_SEL, MML_FG0,},
+		{MML_FG0, MML_HDR0,},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_PQ_AAL0_SEL, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_RDMA2, MML_BIRSZ0,},
+		{MML_BIRSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_WROT0_SEL,},
+		{MML_WROT0_SEL, MML_DLO2,},
+		{MML_RSZ2, MML_WROT2,},
+		{MML_DLO2,},
+		{MML_WROT2,},
+	},
+	[PATH_MML_RRS] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RROT0, MML_MERGE0,},
+		{MML_MERGE0, MML_DMA0_SEL,},
+		{MML_DMA0_SEL, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_FG0,},
+		{MML_FG0, MML_HDR0,},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_PQ_AAL0_SEL, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_WROT0_SEL,},
+		{MML_WROT0_SEL, MML_WROT0,},
+		{MML_WROT0,},
+	},
+	[PATH_MML_RRS_DL] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RROT0, MML_MERGE0,},
+		{MML_MERGE0, MML_DMA0_SEL,},
+		{MML_DMA0_SEL, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_FG0,},
+		{MML_FG0, MML_HDR0,},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_PQ_AAL0_SEL, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_WROT0_SEL,},
+		{MML_WROT0_SEL, MML_DLO0,},
+		{MML_DLO0,},
+	},
+	[PATH_MML_RRS_DL_2IN_2OUT] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RROT0, MML_MERGE0,},
+		{MML_MERGE0, MML_DMA0_SEL,},
+		{MML_DMA0_SEL, MML_DLI0_SEL, MML_RSZ2,},
+		{MML_DLI0_SEL, MML_FG0,},
+		{MML_FG0, MML_HDR0,},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_PQ_AAL0_SEL, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_RDMA2, MML_BIRSZ0,},
+		{MML_BIRSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_WROT0_SEL,},
+		{MML_WROT0_SEL, MML_DLO0,},
+		{MML_RSZ2, MML_WROT2,},
+		{MML_DLO0,},
+		{MML_WROT2,},
+	},
+	[PATH_MML_RRS_DL2] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RROT0, MML_MERGE0,},
+		{MML_MERGE0, MML_DMA0_SEL,},
+		{MML_DMA0_SEL, MML_DLI0_SEL,},
+		{MML_DLI0_SEL, MML_FG0,},
+		{MML_FG0, MML_HDR0,},
+		{MML_HDR0, MML_AAL0,},
+		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_PQ_AAL0_SEL, MML_RSZ0,},
+		{MML_RSZ0, MML_TDSHP0,},
+		{MML_TDSHP0, MML_COLOR0,},
+		{MML_COLOR0, MML_WROT0_SEL,},
+		{MML_WROT0_SEL, MML_DLO2,},
+		{MML_DLO2,},
+	},
+	[PATH_MML_RRS_DL2_2IN_2OUT] = {
+		{MML_MMLSYS,},
+		{MML_MUTEX,},
+		{MML_RROT0, MML_MERGE0,},
 		{MML_MERGE0, MML_DMA0_SEL,},
 		{MML_DMA0_SEL, MML_DLI0_SEL, MML_RSZ2,},
 		{MML_DLI0_SEL, MML_FG0,},
@@ -660,12 +766,94 @@ static inline bool tp_need_resize(struct mml_frame_info *info, bool *can_binning
 		info->dest[0].compose.height != info->dest[0].data.height;
 }
 
+static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache *tp, bool *dual)
+{
+	const u32 srcw = info->dest[0].crop.r.width;
+	const u32 srch = info->dest[0].crop.r.height;
+	const u32 destw = info->dest[0].data.width;
+	const u32 desth = info->dest[0].data.height;
+	u32 tput, pixel;
+
+	/* always assign dual as default */
+	*dual = true;
+
+	/* disp not provide act time, assume throughput ok */
+	if (!info->act_time)
+		return true;
+
+	pixel = max(srcw * srch, destw * desth);
+
+	/* binning case */
+	if ((srcw >> 1) > destw)
+		pixel = pixel >> 1;
+	if ((srch >> 1) > desth)
+		pixel = pixel >> 1;
+
+	if (!tp->opp_cnt) {
+		mml_err("no opp table support");
+		return false;
+	}
+
+	/* not support if exceeding max throughput
+	 * pixel per-pipe is:
+	 *	pipe_pixel = pixel / 2 * 1.1
+	 * and necessary throughput:
+	 *	pipe_pixel / active_time(ns) * 1000
+	 * so merge all constant:
+	 *	tput = pixel * 1.1 * 1000 / act_time
+	 *	     = pixel * 1100 / act_time
+	 */
+	tput = pixel * 1100 / info->act_time;
+	if (mml_rrot_single == 0 && srcw * srch <= MML_DL_RROT_S_PX &&
+		tput < tp->opp_speeds[tp->opp_cnt / 2]) {
+		*dual = false;
+		return true;
+	} else if (mml_rrot_single == 1) {
+		*dual = false;
+		return true;
+	}
+
+	/* with RROT0_2nd, tput / 2 and round up 32x16 block */
+	tput = round_up(tput / 2, 512);
+	if (tput < tp->opp_speeds[tp->opp_cnt - 1]) {
+		*dual = true;
+		return true;
+	}
+
+	return false;
+}
+
+static enum topology_scenario scene_to_ovl1(u32 layer_id, enum topology_scenario scene)
+{
+	if (layer_id == MML_DLO_OVLSYS0)
+		return scene;
+
+	switch (scene) {
+	case PATH_MML_RR_DL:
+		scene = PATH_MML_RR_DL2;
+		break;
+	case PATH_MML_RRS_DL:
+		scene = PATH_MML_RRS_DL2;
+		break;
+	case PATH_MML_RR_DL_2IN_2OUT:
+		scene = PATH_MML_RR_DL2_2IN_2OUT;
+		break;
+	case PATH_MML_RRS_DL_2IN_2OUT:
+		scene = PATH_MML_RRS_DL2_2IN_2OUT;
+		break;
+	default:
+		break;
+	}
+
+	return scene;
+}
+
 static void tp_select_path(struct mml_topology_cache *cache,
 	struct mml_frame_config *cfg,
 	struct mml_topology_path **path)
 {
 	enum topology_scenario scene = 0;
-	bool en_rsz, en_pq, can_binning = false;
+	bool en_rsz, en_pq, can_binning = false, dual = true;
 
 	if (cfg->info.mode == MML_MODE_RACING) {
 		/* always rdma to wrot for racing case */
@@ -715,32 +903,30 @@ static void tp_select_path(struct mml_topology_cache *cache,
 	}
 
 check_rr:
+	tp_check_tput(&cfg->info, cache, &dual);
+
 	if (cfg->info.mode == MML_MODE_DIRECT_LINK && mml_rrot != 2) {
 		/* direct link mode and not force disalbe, change to RROT */
 		if (cfg->info.dest_cnt == 2 && cfg->info.dest[0].pq_config.en_region_pq)
-			scene = PATH_MML_RR_DL_2IN_2OUT;
+			scene = dual ? PATH_MML_RR_DL_2IN_2OUT : PATH_MML_RRS_DL_2IN_2OUT;
 		else
-			scene = PATH_MML_RR_DL;
+			scene = dual ? PATH_MML_RR_DL : PATH_MML_RRS_DL;
 	} else if (cfg->info.mode == MML_MODE_MML_DECOUPLE && mml_rrot == 1) {
 		/* dc mode but force enable RROT */
 		if (scene == PATH_MML_PQ)
-			scene = PATH_MML_RR;
+			scene = dual ? PATH_MML_RR : PATH_MML_RRS;
 		else if (scene == PATH_MML_NOPQ)
-			scene = PATH_MML_RR_NOPQ;
+			scene = dual ? PATH_MML_RR_NOPQ : PATH_MML_RRS;
 		else if (scene == PATH_MML_2IN_2OUT)
-			scene = PATH_MML_RR_2IN_2OUT;
+			scene = dual ? PATH_MML_RR_2IN_2OUT : PATH_MML_RRS;
 		else
-			scene = PATH_MML_RR;
+			scene = dual ? PATH_MML_RR : PATH_MML_RRS;
 	}
 
 	/* check if connect to ovlsys1 */
-	if (cfg->info.layer_id == MML_DLO_OVLSYS1) {
-		if (scene == PATH_MML_RR_DL)
-			scene = PATH_MML_RR_DL2;
-		else if (scene == PATH_MML_RR_DL_2IN_2OUT)
-			scene = PATH_MML_RR_DL2_2IN_2OUT;
-	}
+	scene = scene_to_ovl1(cfg->info.layer_id, scene);
 
+	cfg->rrot_dual = dual;
 	*path = &cache->paths[scene];
 }
 
@@ -785,51 +971,11 @@ static s32 tp_select(struct mml_topology_cache *cache,
 	return 0;
 }
 
-static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache *tp)
-{
-	const u32 srcw = info->dest[0].crop.r.width;
-	const u32 srch = info->dest[0].crop.r.height;
-	const u32 destw = info->dest[0].data.width;
-	const u32 desth = info->dest[0].data.height;
-	u32 tput, pixel;
-
-	/* disp not provide act time, assume throughput ok */
-	if (!info->act_time)
-		return true;
-
-	pixel = max(srcw * srch, destw * desth);
-
-	/* binning case */
-	if ((srcw >> 1) > destw)
-		pixel = pixel >> 1;
-	if ((srch >> 1) > desth)
-		pixel = pixel >> 1;
-
-	if (!tp->opp_cnt) {
-		mml_err("no opp table support");
-		return false;
-	}
-
-	/* not support if exceeding max throughput
-	 * pixel per-pipe is:
-	 *	pipe_pixel = pixel / 2 * 1.1
-	 * and necessary throughput:
-	 *	pipe_pixel / active_time(ns) * 1000
-	 * so merge all constant:
-	 *	tput = pixel / 2 * 1.1 * 1000 / act_time
-	 *	     = pixel * 550 / act_time
-	 */
-	tput = pixel * 550 / info->act_time;
-	if (tput > tp->opp_speeds[tp->opp_cnt - 1])
-		return false;
-
-	return true;
-}
-
 static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info *info,
 	u32 *reason)
 {
 	struct mml_topology_cache *tp;
+	bool dual = true;
 
 	if (unlikely(mml_dl)) {
 		if (mml_dl == 2)
@@ -880,7 +1026,7 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 		goto decouple;
 	}
 
-	if (!tp_check_tput(info, tp)) {
+	if (!tp_check_tput(info, tp, &dual)) {
 		*reason = mml_query_opp_out;
 		goto decouple;
 	}
@@ -1049,27 +1195,37 @@ static struct cmdq_client *get_racing_clt(struct mml_topology_cache *cache, u32 
 }
 
 static const struct mml_topology_path *tp_get_dl_path(struct mml_topology_cache *cache,
-	struct mml_submit *submit, u32 pipe)
+	struct mml_frame_info *info, u32 pipe)
 {
+	u32 scene;
+	bool dual = true;
+
 	if (mml_rrot == 0 || mml_rrot == 1)
 		goto use_rrot;
 
-	if (!submit)
-		return &cache->paths[PATH_MML_PQ_DL + pipe];
+	if (!info)
+		return &cache->paths[PATH_MML_PQ_DL];
 
-	if (submit->info.dest_cnt == 2 && submit->info.dest[0].pq_config.en_region_pq)
-		return &cache->paths[PATH_MML_RR_DL_2IN_2OUT + pipe];
+	if (info->dest_cnt == 2 && info->dest[0].pq_config.en_region_pq)
+		return &cache->paths[PATH_MML_RR_DL_2IN_2OUT];
 
-	return &cache->paths[PATH_MML_PQ_DL + pipe];
+	return &cache->paths[PATH_MML_PQ_DL];
 
 use_rrot:
-	if (!submit)
-		return &cache->paths[PATH_MML_RR_DL + pipe];
+	if (!info)
+		return &cache->paths[PATH_MML_RR_DL];
 
-	if (submit->info.dest_cnt == 2 && submit->info.dest[0].pq_config.en_region_pq)
-		return &cache->paths[PATH_MML_RR_DL_2IN_2OUT + pipe];
+	tp_check_tput(info, cache, &dual);
 
-	return &cache->paths[PATH_MML_RR_DL + pipe];
+	if (info->dest_cnt == 2 && info->dest[0].pq_config.en_region_pq)
+		scene = dual ? PATH_MML_RR_DL_2IN_2OUT : PATH_MML_RRS_DL_2IN_2OUT;
+	else
+		scene = dual ? PATH_MML_RR_DL : PATH_MML_RRS_DL;
+
+	/* check if connect to ovlsys1 */
+	scene = scene_to_ovl1(info->layer_id, scene);
+
+	return &cache->paths[scene];
 }
 
 static const struct mml_topology_ops tp_ops_mt6989 = {

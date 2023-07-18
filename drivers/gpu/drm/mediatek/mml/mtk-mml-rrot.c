@@ -1458,32 +1458,34 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 		swap(tile.luma.x_sub, tile.luma.y_sub);
 	}
 
-	if (rrot->pipe == 0) {
-		if ((dest->rotate == MML_ROT_90 && !dest->flip) ||
-		    (dest->rotate == MML_ROT_270 && dest->flip))
-			rrot_config_bottom(&tile);
-		else if ((dest->rotate == MML_ROT_90 && dest->flip) ||
-			 (dest->rotate == MML_ROT_270 && !dest->flip))
-			rrot_config_top(&tile);
-		else if ((dest->rotate == MML_ROT_0 && !dest->flip) ||
-			 (dest->rotate == MML_ROT_180 && dest->flip))
-			rrot_config_left(&tile);
-		else if ((dest->rotate == MML_ROT_0 && dest->flip) ||
-			 (dest->rotate == MML_ROT_180 && !dest->flip))
-			rrot_config_right(&tile);
-	} else {
-		if ((dest->rotate == MML_ROT_90 && !dest->flip) ||
-		    (dest->rotate == MML_ROT_270 && dest->flip))
-			rrot_config_top(&tile);
-		else if ((dest->rotate == MML_ROT_90 && dest->flip) ||
-			 (dest->rotate == MML_ROT_270 && !dest->flip))
-			rrot_config_bottom(&tile);
-		else if ((dest->rotate == MML_ROT_0 && !dest->flip) ||
-			 (dest->rotate == MML_ROT_180 && dest->flip))
-			rrot_config_right(&tile);
-		else if ((dest->rotate == MML_ROT_0 && dest->flip) ||
-			 (dest->rotate == MML_ROT_180 && !dest->flip))
-			rrot_config_left(&tile);
+	if (cfg->rrot_dual) {
+		if (rrot->pipe == 0) {
+			if ((dest->rotate == MML_ROT_90 && !dest->flip) ||
+			    (dest->rotate == MML_ROT_270 && dest->flip))
+				rrot_config_bottom(&tile);
+			else if ((dest->rotate == MML_ROT_90 && dest->flip) ||
+				 (dest->rotate == MML_ROT_270 && !dest->flip))
+				rrot_config_top(&tile);
+			else if ((dest->rotate == MML_ROT_0 && !dest->flip) ||
+				 (dest->rotate == MML_ROT_180 && dest->flip))
+				rrot_config_left(&tile);
+			else if ((dest->rotate == MML_ROT_0 && dest->flip) ||
+				 (dest->rotate == MML_ROT_180 && !dest->flip))
+				rrot_config_right(&tile);
+		} else {
+			if ((dest->rotate == MML_ROT_90 && !dest->flip) ||
+			    (dest->rotate == MML_ROT_270 && dest->flip))
+				rrot_config_top(&tile);
+			else if ((dest->rotate == MML_ROT_90 && dest->flip) ||
+				 (dest->rotate == MML_ROT_270 && !dest->flip))
+				rrot_config_bottom(&tile);
+			else if ((dest->rotate == MML_ROT_0 && !dest->flip) ||
+				 (dest->rotate == MML_ROT_180 && dest->flip))
+				rrot_config_right(&tile);
+			else if ((dest->rotate == MML_ROT_0 && dest->flip) ||
+				 (dest->rotate == MML_ROT_180 && !dest->flip))
+				rrot_config_left(&tile);
+		}
 	}
 
 	rrot_calc_unbin(task->config, &tile);

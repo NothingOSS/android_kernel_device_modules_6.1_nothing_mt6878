@@ -437,6 +437,8 @@ static void case_general_submit(struct mml_test *test,
 		mml_drm_split_info(&task, &nouse_submit);
 	}
 
+	task.info.act_time = mml_test_interval * 1000000;
+
 	fences = kcalloc(run_cnt, sizeof(*fences), GFP_KERNEL);
 	ktime_get_real_ts64((struct timespec64 *)&task.end);
 	for (i = 0; i < run_cnt; i++) {

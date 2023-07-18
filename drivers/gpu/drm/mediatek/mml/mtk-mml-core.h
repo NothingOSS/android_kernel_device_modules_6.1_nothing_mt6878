@@ -37,6 +37,7 @@ extern int mml_cmdq_err;
 extern int mml_qos;
 extern int mml_qos_log;
 extern int mml_dpc_log;
+extern int mml_rrot_msg;
 
 /* define in mtk-mml-wrot.c */
 extern int mml_wrot_bkgd_en;
@@ -278,7 +279,7 @@ struct mml_topology_ops {
 	struct cmdq_client *(*get_racing_clt)(struct mml_topology_cache *cache,
 					      u32 pipe);
 	const struct mml_topology_path *(*get_dl_path)(struct mml_topology_cache *cache,
-						       struct mml_submit *submit,
+						       struct mml_frame_info *info,
 						       u32 pipe);
 };
 
@@ -397,6 +398,7 @@ struct mml_frame_config {
 	bool nocmd:1;
 	bool err:1;
 	bool dpc:1;
+	bool rrot_dual:1;
 
 	/* tile */
 	struct mml_frame_tile *frame_tile[MML_PIPE_CNT];

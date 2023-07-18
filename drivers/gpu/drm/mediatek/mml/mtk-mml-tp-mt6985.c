@@ -1356,17 +1356,17 @@ static struct cmdq_client *get_racing_clt(struct mml_topology_cache *cache, u32 
 }
 
 static const struct mml_topology_path *tp_get_dl_path(struct mml_topology_cache *cache,
-	struct mml_submit *submit, u32 pipe)
+	struct mml_frame_info *info, u32 pipe)
 {
-	if (!submit)
+	if (!info)
 		return &cache->paths[PATH_MML_PQ_DL0 + pipe];
 
-	if (submit->info.dest_cnt == 2)
-		if (submit->info.dest[0].pq_config.en_region_pq)
+	if (info->dest_cnt == 2)
+		if (info->dest[0].pq_config.en_region_pq)
 			return &cache->paths[PATH_MML_2IN_2OUT_DL0 + pipe];
 		else
 			return &cache->paths[PATH_MML_2OUT_DL0 + pipe];
-	else if (submit->info.dest[0].pq_config.en_region_pq)
+	else if (info->dest[0].pq_config.en_region_pq)
 		return &cache->paths[PATH_MML_2IN_1OUT_DL0 + pipe];
 	else
 		return &cache->paths[PATH_MML_PQ_DL0 + pipe];
