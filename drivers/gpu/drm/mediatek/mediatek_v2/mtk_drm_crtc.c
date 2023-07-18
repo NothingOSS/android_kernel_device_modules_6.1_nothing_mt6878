@@ -19700,16 +19700,16 @@ int mtk_vblank_config_rec_init(struct drm_crtc *crtc)
 
 	DDPMSG("%s +\n", __func__);
 
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
+		return -EINVAL;
+	}
+
 	vblank_rec = kzalloc(sizeof(*vblank_rec), GFP_KERNEL);
 
 	if (!vblank_rec) {
 		DDPPR_ERR("%s, vblank_rec allocate fail\n", __func__);
 		return -ENOMEM;
-	}
-
-	if (!mtk_crtc) {
-		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
-		return -EINVAL;
 	}
 
 	mtk_crtc->vblank_rec = vblank_rec;
