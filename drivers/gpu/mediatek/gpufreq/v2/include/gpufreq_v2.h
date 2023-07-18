@@ -195,6 +195,12 @@ enum gpufreq_brcast_mode {
 	BRCAST_WITH_AUTO_DMA = 1,
 };
 
+enum gpufreq_brisket_mode {
+	BRISKET_UNSUPPORTED = -1,
+	BRISKET_DISABLE     = 0, /* default */
+	BRISKET_ENABLE      = 1,
+};
+
 /**************************************************
  * Structure
  **************************************************/
@@ -294,9 +300,9 @@ struct gpufreq_ptp3_shared_status {
 	unsigned int hbvc_vstack_upper_bound;
 	unsigned int hbvc_vstack_lower_bound;
 	unsigned int brisket_fll_mode;
-	unsigned int brisket_atmc_mode;
-	unsigned int brisket_vmeter_mode;
-	unsigned int brisket_tmeter_mode;
+	enum gpufreq_brisket_mode brisket_atmc_mode;
+	enum gpufreq_brisket_mode brisket_vmeter_mode;
+	enum gpufreq_brisket_mode brisket_tmeter_mode;
 	unsigned int brisket_cpmeter_mode;
 	unsigned int brisket_ctt_mode;
 	unsigned int auto_dma_refill_top_brisket;

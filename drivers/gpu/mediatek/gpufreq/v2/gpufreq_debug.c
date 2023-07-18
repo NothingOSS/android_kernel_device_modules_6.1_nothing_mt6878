@@ -192,9 +192,12 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		"%-16s FLL: %s, ATMC: %s, Vmeter: %s, Tmeter: %s, CPmeter: %s, CTT: %s\n",
 		"[PTP3 Config]",
 		ptp3_status.brisket_fll_mode ? "On" : "Off",
-		ptp3_status.brisket_atmc_mode ? "On" : "Off",
-		ptp3_status.brisket_vmeter_mode ? "On" : "Off",
-		ptp3_status.brisket_tmeter_mode ? "On" : "Off",
+		(ptp3_status.brisket_atmc_mode == BRISKET_ENABLE ? "On" :
+		(ptp3_status.brisket_atmc_mode == BRISKET_UNSUPPORTED ? "NSup" : "Off")),
+		(ptp3_status.brisket_vmeter_mode == BRISKET_ENABLE ? "On" :
+		(ptp3_status.brisket_vmeter_mode == BRISKET_UNSUPPORTED ? "NSup" : "Off")),
+		(ptp3_status.brisket_tmeter_mode == BRISKET_ENABLE ? "On" :
+		(ptp3_status.brisket_tmeter_mode == BRISKET_UNSUPPORTED ? "NSup" : "Off")),
 		ptp3_status.brisket_cpmeter_mode ? "On" : "Off",
 		ptp3_status.brisket_ctt_mode ? "On" : "Off");
 	seq_printf(m,
