@@ -1020,14 +1020,16 @@ static int fbt_set_nice(int pid, long nice)
 
 	ori_nice = task_nice(tsk);
 
-	set_user_nice(tsk, nice);
+	if(ori_nice != nice)
+		set_user_nice(tsk, nice);
 
 	put_task_struct(tsk);
 
 EXIT:
 	rcu_read_unlock();
 
-	fpsgo_systrace_c_fbt(pid, 0, nice, "nice");
+	if(ori_nice != nice)
+		fpsgo_systrace_c_fbt(pid, 0, nice, "nice");
 
 	return ori_nice;
 }
