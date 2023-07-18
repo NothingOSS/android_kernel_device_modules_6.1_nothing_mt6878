@@ -4012,7 +4012,7 @@ static int mtk_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 			aal_data->primary_data->ess20_spect_param.ELVSSPN,
 			aal_data->primary_data->ess20_spect_param.flag);
 
-		if(! aal_data->primary_data->ess20_spect_param.flag)
+		if (aal_data->primary_data->ess20_spect_param.flag)
 			mtk_leds_brightness_set(connector_id, aal_data->primary_data->backlight_set,
 					aal_data->primary_data->ess20_spect_param.ELVSSPN,
 					aal_data->primary_data->ess20_spect_param.flag);
