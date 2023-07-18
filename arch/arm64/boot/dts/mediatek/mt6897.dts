@@ -7542,6 +7542,7 @@
 				"PWR";
 			system-coherency = <0>;
 			protected-memory-allocator = <&gpu_protected_memory_allocator>;
+			quirks-ext = <0x00000001>;
 			operating-points-v2 = <&gpu_mali_opp>;
 			#cooling-cells = <2>;
 			ged-supply = <&ged>;
