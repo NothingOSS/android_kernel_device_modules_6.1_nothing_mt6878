@@ -289,6 +289,10 @@ struct gpufreq_ptp3_shared_status {
 	unsigned int hbvc_volt_ctrl_support;
 	unsigned int hbvc_preoc_support;
 	unsigned int hbvc_preoc_mode;
+	unsigned int hbvc_vgpu_upper_bound;
+	unsigned int hbvc_vgpu_lower_bound;
+	unsigned int hbvc_vstack_upper_bound;
+	unsigned int hbvc_vstack_lower_bound;
 	unsigned int brisket_fll_mode;
 	unsigned int brisket_atmc_mode;
 	unsigned int brisket_vmeter_mode;
