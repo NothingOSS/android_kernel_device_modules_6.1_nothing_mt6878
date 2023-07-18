@@ -65,7 +65,6 @@
 #include "mtk_drm_trace.h"
 #include "mtk_disp_pq_helper.h"
 #include "mtk_disp_vidle.h"
-#include "mtk_vdisp.h"
 
 #include "mtk_drm_mmp.h"
 /* *******Panel Master******** */
@@ -7369,12 +7368,6 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	 */
 	mtk_smi_init_power_off();
 	mtk_mminfra_off_gipc();
-
-	/* All MTCMOS ref cnt has been get in mtk_vdisp probe earlier,
-	 * after display actually get its MTCMOS, the ref cnt should be put.
-	 */
-	if (vdisp_func.genpd_put)
-		vdisp_func.genpd_put();
 
 	return 0;
 

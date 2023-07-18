@@ -420,7 +420,6 @@ extern struct platform_driver mtk_mmlsys_bypass_driver;
 extern struct platform_driver mtk_disp_postalign_driver;
 extern struct mtk_drm_disp_sec_cb disp_sec_cb;
 extern struct mtk_aod_scp_cb aod_scp_ipi;
-extern struct mtk_vdisp_funcs vdisp_func;
 
 /* For overlay bandwidth monitor */
 extern struct layer_compress_ratio_data

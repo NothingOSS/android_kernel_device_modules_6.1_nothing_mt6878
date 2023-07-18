@@ -35,7 +35,6 @@ struct mtk_disp_vidle_para mtk_disp_vidle_flag = {
 };
 
 struct dpc_funcs disp_dpc_driver;
-struct mtk_vdisp_funcs vdisp_func;
 
 static atomic_t g_vidle_pq_ref = ATOMIC_INIT(0);
 static DEFINE_MUTEX(g_vidle_pq_ref_lock);
@@ -256,6 +255,7 @@ void mtk_vidle_hrt_bw_set(const u32 bw_in_mb)
 	if (disp_dpc_driver.dpc_hrt_bw_set)
 		disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb,
 					       !atomic_read(&g_ff_enabled));
+	/* TODO: false if auto mode */
 }
 void mtk_vidle_srt_bw_set(const u32 bw_in_mb)
 {
@@ -274,14 +274,12 @@ void mtk_vidle_config_ff(bool en)
 	if (en && !mtk_disp_vidle_flag.vidle_en)
 		return;
 
+	//if (en == (bool)atomic_read(&g_ff_enabled))
+	//	return;
+	// atomic_set(&g_ff_enabled, en);
+
 	if (disp_dpc_driver.dpc_config)
 		disp_dpc_driver.dpc_config(DPC_SUBSYS_DISP, en);
-}
-
-void mtk_vidle_dpc_analysis(void)
-{
-	if (disp_dpc_driver.dpc_analysis)
-		disp_dpc_driver.dpc_analysis();
 }
 
 void mtk_vidle_register(const struct dpc_funcs *funcs)
@@ -295,12 +293,5 @@ void mtk_vidle_register(const struct dpc_funcs *funcs)
 	disp_dpc_driver.dpc_hrt_bw_set = funcs->dpc_hrt_bw_set;
 	disp_dpc_driver.dpc_srt_bw_set = funcs->dpc_srt_bw_set;
 	disp_dpc_driver.dpc_dvfs_set = funcs->dpc_dvfs_set;
-	disp_dpc_driver.dpc_analysis = funcs->dpc_analysis;
 }
 EXPORT_SYMBOL(mtk_vidle_register);
-
-void mtk_vdisp_register(const struct mtk_vdisp_funcs *fp)
-{
-	vdisp_func.genpd_put = fp->genpd_put;
-}
-EXPORT_SYMBOL(mtk_vdisp_register);
