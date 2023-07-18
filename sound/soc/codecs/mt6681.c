@@ -1051,6 +1051,10 @@ static void mt6681_set_ul_src(struct mt6681_priv *priv, bool enable)
 		regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_UL_SRC_CON0_1,
 				   ADDA_UL_IIR_ON_TMP_CTL_MASK_SFT,
 				   0x1 << ADDA_UL_IIR_ON_TMP_CTL_SFT);
+		/* bypass hwgain3 */
+		regmap_update_bits(priv->regmap, MT6681_AFE_TOP_DEBUG1,
+				   BYPASS_HWGAIN3_MASK_SFT,
+				   0x1 << BYPASS_HWGAIN3_SFT);
 
 		/* [0] ul_src_on = 1 */
 		regmap_update_bits(priv->regmap, MT6681_AFE_ADDA_UL_SRC_CON0_0,
@@ -1096,6 +1100,10 @@ static void mt6681_set_ul34_src(struct mt6681_priv *priv, bool enable)
 		regmap_update_bits(priv->regmap, MT6681_AFE_ADDA6_UL_SRC_CON0_1,
 				   ADDA6_UL_IIR_ON_TMP_CTL_MASK_SFT,
 				   0x1 << ADDA6_UL_IIR_ON_TMP_CTL_SFT);
+		/* bypass hwgain4 */
+		regmap_update_bits(priv->regmap, MT6681_AFE_TOP_DEBUG1,
+				   BYPASS_HWGAIN4_MASK_SFT,
+				   0x1 << BYPASS_HWGAIN4_SFT);
 
 		/* [0] ul_src_on = 1 */
 		regmap_update_bits(priv->regmap, MT6681_AFE_ADDA6_UL_SRC_CON0_0,
@@ -1142,6 +1150,10 @@ static void mt6681_set_ul56_src(struct mt6681_priv *priv, bool enable)
 		regmap_update_bits(priv->regmap, MT6681_AFE_ADDA7_UL_SRC_CON0_1,
 				   ADDA7_UL_IIR_ON_TMP_CTL_MASK_SFT,
 				   0x1 << ADDA7_UL_IIR_ON_TMP_CTL_SFT);
+		/* bypass hwgain5 */
+		regmap_update_bits(priv->regmap, MT6681_AFE_TOP_DEBUG2,
+				   BYPASS_HWGAIN5_MASK_SFT,
+				   0x1 << BYPASS_HWGAIN5_SFT);
 
 		/* [0] ul_src_on = 1 */
 		regmap_update_bits(priv->regmap, MT6681_AFE_ADDA7_UL_SRC_CON0_0,
