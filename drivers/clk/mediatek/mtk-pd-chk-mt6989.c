@@ -855,10 +855,6 @@ static enum chk_sys_id debug_dump_id[] = {
 	bcrm_infra1_bus,
 	ifr_bus,
 	bcrm_ssr_bus,
-	gpu_eb_rpc,
-	mfg_ao,
-	mfgsc0_ao,
-	mfgsc1_ao,
 	vlpcfg,
 	vlp_ck,
 	hfrp_2_bus,
@@ -866,6 +862,9 @@ static enum chk_sys_id debug_dump_id[] = {
 	hfrp_1_bus,
 	hwv,
 	hwv_ext,
+	mm_hwv,
+	mm_hwv_ext,
+	vlp_ao,
 	chk_sys_num,
 };
 

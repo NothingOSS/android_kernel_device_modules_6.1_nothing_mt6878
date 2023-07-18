@@ -53,7 +53,7 @@
 
 #define EVT_LEN				40
 #define CLK_ID_SHIFT			0
-#define CLK_STA_SHIFT			8
+#define CLK_STA_SHIFT			12
 
 static DEFINE_SPINLOCK(clk_trace_lock);
 static unsigned int clk_event[EVT_LEN];
@@ -1419,7 +1419,7 @@ static struct regbase rb[] = {
 	[mm_hwv] = REGBASE_V(0x1EC3A000, hwv, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	[mm_hwv_ext] = REGBASE_V(0x1EC3B000, mm_hwv_ext, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	[hfrp_hwv] = REGBASE_V(0x1EC45000, hfrp_hwv, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
-	[hfrp_irq] = REGBASE_V(0x1EC32000, hfrp_hwv, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
+	[hfrp_irq] = REGBASE_V(0x1EC32000, hfrp_irq, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	[vlp_ao] = REGBASE_V(0x1C000000, vlp_ao, CLK_NULL, CLK_NULL),
 	{},
 };
@@ -1996,7 +1996,10 @@ static struct regname rn[] = {
 	REGNAME(hfrp_hwv, 0x138, HFRP_HWV_SW_RECORD),
 	REGNAME(hfrp_hwv, 0x140, HFRP_HWV_ALL_VOTE_STA),
 	REGNAME(hfrp_irq, 0x008, HFRP_IRQ_STA),
+	REGNAME(vlp_ao, 0x400, VLP_MMINFRA_VOTE),
+	REGNAME(vlp_ao, 0x410, VLP_DISP_VOTE),
 	REGNAME(vlp_ao, 0x420, HFRP_VLP_CTRL),
+	REGNAME(vlp_ao, 0x91C, VLP_VOTE_DONE),
 	{},
 };
 
@@ -2401,26 +2404,30 @@ static enum chk_sys_id devapc_dump_id[] = {
 	hfrp,
 	top,
 	apmixed,
-	ifr_bus,
-	vlpcfg,
 	vlp_ck,
-	hfrp_2_bus,
-	hfrp,
-	hfrp_1_bus,
 	hwv,
 	hwv_ext,
 	mm_hwv,
 	mm_hwv_ext,
+	vlp_ao,
 	chk_sys_num,
 };
 
 static void devapc_dump(void)
 {
+	const struct fmeter_clk *fclks;
+
+	fclks = mt_get_fmeter_clks();
 	set_subsys_reg_dump_mt6989(devapc_dump_id);
 	get_subsys_reg_dump_mt6989();
 
 	dump_clk_event();
 	pdchk_dump_trace_evt();
+	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
+		if (fclks->type != VLPCK && fclks->type != SUBSYS)
+			pr_notice("[%s] %d khz\n", fclks->name,
+				mt_get_fmeter_freq(fclks->id, fclks->type));
+	}
 }
 
 static void serror_dump(void)
@@ -2562,6 +2569,7 @@ static enum chk_sys_id bus_dump_id[] = {
 	top,
 	apmixed,
 	hfrp,
+	vlp_ao,
 	chk_sys_num,
 };
 
@@ -2586,6 +2594,7 @@ static enum chk_sys_id vlp_dump_id[] = {
 	hfrp_hwv,
 	spm,
 	hfrp,
+	vlp_ao,
 	chk_sys_num,
 };
 
@@ -2661,6 +2670,7 @@ static enum chk_sys_id pll_dump_id[] = {
 	hwv_ext,
 	mm_hwv,
 	mm_hwv_ext,
+	vlp_ao,
 	chk_sys_num,
 };
 
