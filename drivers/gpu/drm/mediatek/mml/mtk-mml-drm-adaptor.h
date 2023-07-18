@@ -25,20 +25,21 @@ enum mml_query_mode_reason {
 	mml_query_norsz,
 	mml_query_sec,
 	mml_query_pqen,
-	mml_query_2out,
+	mml_query_2out,		/* 5 */
 	mml_query_opp_out,
 	mml_query_acttime,
 	mml_query_rot,
 	mml_query_highpixel,
-	mml_query_lowpixel,
+	mml_query_lowpixel,	/* 10 */
 	mml_query_outwidth,
 	mml_query_rszratio,
 	mml_query_format,
 	mml_query_apudc,
-	mml_query_inwidth,
+	mml_query_inwidth,	/* 15 */
 	mml_query_inheight,
 	mml_query_flip,
 	mml_query_alpha,
+	mml_query_min_size,
 };
 
 struct mml_drm_param {

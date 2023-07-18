@@ -28,6 +28,7 @@
 #define MML_DL_MAX_W		3840
 #define MML_DL_MAX_H		2176
 #define MML_DL_RROT_S_PX	(1920 * 1088)
+#define MML_MIN_SIZE		64
 
 /* use OPP index 0(229Mhz) 1(273Mhz) 2(458Mhz) */
 #define MML_IR_MAX_OPP		2
@@ -975,6 +976,8 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 	u32 *reason)
 {
 	struct mml_topology_cache *tp;
+	const struct mml_frame_dest *dest = &info->dest[0];
+	const bool rotated = dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270;
 	bool dual = true;
 
 	if (unlikely(mml_dl)) {
@@ -986,19 +989,19 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 		goto decouple;
 
 	/* no fg/c3d support for dl mode */
-	if (info->dest[0].pq_config.en_fg) {
+	if (dest->pq_config.en_fg) {
 		*reason = mml_query_pqen;
 		goto decouple;
 	}
 
 	/* TODO: remove after AI region PQ DL mode enable */
-	if (info->dest[0].pq_config.en_dc ||
-		info->dest[0].pq_config.en_color ||
-		info->dest[0].pq_config.en_hdr ||
-		info->dest[0].pq_config.en_ccorr ||
-		info->dest[0].pq_config.en_dre ||
-		info->dest[0].pq_config.en_region_pq ||
-		info->dest[0].pq_config.en_fg) {
+	if (dest->pq_config.en_dc ||
+		dest->pq_config.en_color ||
+		dest->pq_config.en_hdr ||
+		dest->pq_config.en_ccorr ||
+		dest->pq_config.en_dre ||
+		dest->pq_config.en_region_pq ||
+		dest->pq_config.en_fg) {
 		*reason = mml_query_pqen;
 		goto decouple;
 	}
@@ -1013,8 +1016,14 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 		goto decouple;
 	}
 
+	if ((!rotated && dest->crop.r.width < MML_MIN_SIZE) ||
+		(rotated && dest->crop.r.height < MML_MIN_SIZE)) {
+		*reason = mml_query_min_size;
+		goto decouple;
+	}
+
 	/* destination width must cross display pipe width */
-	if (info->dest[0].data.width < MML_OUT_MIN_W) {
+	if (dest->data.width < MML_OUT_MIN_W) {
 		*reason = mml_query_outwidth;
 		goto decouple;
 	}
