@@ -500,8 +500,6 @@ static void cm_mgr_cpu_map_update_table(void)
 	for (i = 0; i < cm_mgr_cpu_opp_size; i++) {
 		if (i < cm_mgr_cpu_map_skip_cpu_opp)
 			cm_mgr_cpu_opp_to_dram[i] = cm_mgr_cpu_map_emi_opp;
-		else
-			cm_mgr_cpu_opp_to_dram[i] = cm_mgr_num_perf;
 		CM_DBG_PRINT("CM CPU MAP TALBLE UPDATE [%d] %d\n", i, cm_mgr_cpu_opp_to_dram[i]);
 	}
 }
