@@ -762,7 +762,7 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 
 	if (!of_property_read_u32(node, "spm-base", &spm_base_pa)) {
 		pr_notice("[mminfra] spm_base_pa=%#x\n", spm_base_pa);
-		dbg->spm_base = ioremap(bkrs_reg_pa, 0x1000);
+		dbg->spm_base = ioremap(spm_base_pa, 0x1000);
 	} else
 		dbg->spm_base = NULL;
 
@@ -863,6 +863,7 @@ static void mminfra_pm_complete(struct device *dev)
 	pr_notice("mminfra complete\n");
 	if (vcp_gipc) {
 		mtk_clk_mminfra_hwv_power_ctrl(true);
+		pr_notice("hfrp mtcmos = 0x%x\n", readl(dbg->spm_base+0xeac));
 		writel(MM_SYS_RESUME, dbg->vcp_gipc_in_set);
 		pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
 		mtk_clk_mminfra_hwv_power_ctrl(false);
