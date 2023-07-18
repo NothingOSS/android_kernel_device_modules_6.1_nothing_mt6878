@@ -49,7 +49,7 @@ struct sys_res_group_info {
 
 struct lpm_sys_res_ops {
 	struct sys_res_record* (*get)(unsigned int scene);
-	void (*update)(void);
+	int (*update)(void);
 	struct sys_res_record* (*get_last_suspend)(void);
 	uint64_t (*get_detail)(struct sys_res_record *record, int op, unsigned int val);
 	unsigned int (*get_threshold)(void);

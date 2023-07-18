@@ -56,7 +56,6 @@ struct sys_res_group_info sys_res_group_info[NR_SPM_GRP] = {
 	{SYS_STA,     "SYS_STA",   0, 284,  11, 30},
 };
 
-
 static int lpm_sys_res_alloc(struct sys_res_record *record)
 {
 	struct res_sig_stats *spm_res_sig_stats_ptr;
@@ -100,15 +99,18 @@ static void lpm_sys_res_free(struct sys_res_record *record)
 }
 
 
-static void __sync_lastest_lpm_sys_res_record(struct sys_res_record *record)
+static int __sync_lastest_lpm_sys_res_record(struct sys_res_record *record)
 {
-	if (!record)
-		return;
+	int ret = 0;
 #if IS_ENABLED(CONFIG_MTK_SWPM_MODULE)
-	sync_latest_data();
-	get_res_sig_stats(record->spm_res_sig_stats_ptr);
-#endif
+	if (!record)
+		return ret;
 
+	ret = sync_latest_data();
+	if(!ret)
+		get_res_sig_stats(record->spm_res_sig_stats_ptr);
+#endif
+	return ret;
 }
 static void __lpm_sys_res_record_diff(struct sys_res_record *result,
 				   struct sys_res_record *prev,
@@ -155,11 +157,14 @@ static void __lpm_sys_res_record_add(struct sys_res_record *result,
 	}
 }
 
-static void update_lpm_sys_res_record(void)
+static int update_lpm_sys_res_record(void)
 {
 	unsigned int temp;
+	int ret;
 
-	__sync_lastest_lpm_sys_res_record(&sys_res_record[sys_res_temp_buffer_index]);
+	ret = __sync_lastest_lpm_sys_res_record(&sys_res_record[sys_res_temp_buffer_index]);
+	if(ret)
+		return ret;
 
 	__lpm_sys_res_record_diff(&sys_res_record[sys_res_last_diff_buffer_index],
 			&sys_res_record[sys_res_temp_buffer_index],
@@ -181,6 +186,8 @@ static void update_lpm_sys_res_record(void)
 	temp = sys_res_temp_buffer_index;
 	sys_res_temp_buffer_index = sys_res_last_buffer_index;
 	sys_res_last_buffer_index = temp;
+
+	return ret;
 }
 
 static struct sys_res_record *get_lpm_sys_res_record(unsigned int scene)
@@ -271,6 +278,152 @@ static void lpm_sys_res_set_threshold(unsigned int val)
 		sys_res_group_info[i].threshold = val;
 }
 
+static int lpm_sys_res_pm_event(struct notifier_block *notifier,
+			unsigned long pm_event, void *unused)
+{
+	#define LOG_BUF_OUT_SZ		(768)
+
+	unsigned long flag;
+	struct lpm_sys_res_ops *sys_res_ops;
+	struct sys_res_record *sys_res_record;
+	char *local_ptr = NULL;
+	uint64_t suspend_time, sys_index, sig_tbl_index;
+	uint64_t threshold, ratio;
+	char sys_res_log_buf[LOG_BUF_OUT_SZ] = { 0 };
+	int i, j = 0, sys_res_log_size = 0, sys_res_update = 0;
+
+	switch (pm_event) {
+	case PM_POST_SUSPEND:
+		sys_res_ops = get_lpm_sys_res_ops();
+		if (!sys_res_ops ||
+		    !sys_res_ops->update ||
+		    !sys_res_ops->get_last_suspend ||
+		    !sys_res_ops->get_detail) {
+			pr_info("[name:spm&][SPM] Get sys res operations fail\n");
+			break;
+		}
+
+		spin_lock_irqsave(&sys_res_ops->lock, flag);
+		sys_res_update = sys_res_ops->update();
+		spin_unlock_irqrestore(&sys_res_ops->lock, flag);
+
+		if (!sys_res_update) {
+			spin_lock_irqsave(&sys_res_ops->lock, flag);
+			sys_res_record = sys_res_ops->get_last_suspend();
+			suspend_time = sys_res_ops->get_detail(sys_res_record,
+							SYS_RES_SUSPEND_TIME, 0);
+
+			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"Vcore %llu, ",
+				sys_res_ops->get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, SPM_SYS_RES_VCORE_INDEX));
+
+			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"26M %llu, ",
+				sys_res_ops->get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, SPM_SYS_RES_26M_INDEX));
+
+			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"pmic %llu, ",
+				sys_res_ops->get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, SPM_SYS_RES_PMIC_INDEX));
+
+			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"infra %llu, ",
+				sys_res_ops->get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, SPM_SYS_RES_INFRA_INDEX));
+
+			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"buspll %llu, ",
+				sys_res_ops->get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, SPM_SYS_RES_BUSPLL_INDEX));
+
+			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"emi %llu, ",
+				sys_res_ops->get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, SPM_SYS_RES_EMI_INDEX));
+
+			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"apsrc %llu",
+				sys_res_ops->get_detail(sys_res_record,
+					SYS_RES_SIG_TIME, SPM_SYS_RES_APSRC_INDEX));
+
+			pr_info("[name:spm&][SPM] ms suspend %llu, %s",
+				suspend_time, sys_res_log_buf);
+			sys_res_log_size = 0;
+
+			for (i = 0; i <= VCORE_REQ; i++){
+				local_ptr = sys_res_group_info[i].name;
+				sys_index = sys_res_group_info[i].sys_index;
+				sig_tbl_index = sys_res_group_info[i].sig_table_index;
+				threshold = sys_res_group_info[i].threshold;
+				ratio = sys_res_ops->get_detail(sys_res_record,
+							SYS_RES_SIG_SUSPEND_RATIO, sys_index);
+
+				sys_res_log_size += scnprintf(
+						sys_res_log_buf + sys_res_log_size,
+						LOG_BUF_OUT_SZ - sys_res_log_size,
+						"sys %s, threshold %llu, active ratio %llu",
+						local_ptr, threshold, ratio);
+
+				if (ratio < threshold) {
+					pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
+					sys_res_log_size = 0;
+					continue;
+				}
+
+				sys_res_log_size += scnprintf(
+						sys_res_log_buf + sys_res_log_size,
+						LOG_BUF_OUT_SZ - sys_res_log_size,
+						" group %d high active ratio signal:", i);
+
+				for (j = 0; j < sys_res_group_info[i].group_num; j++) {
+					ratio = sys_res_ops->get_detail(sys_res_record,
+								SYS_RES_SIG_SUSPEND_RATIO,
+								j + sig_tbl_index);
+
+					if (ratio < threshold)
+						continue;
+
+					if (sys_res_log_size > LOG_BUF_OUT_SZ - 20) {
+						pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
+						sys_res_log_size = 0;
+						sys_res_log_size += scnprintf(
+							sys_res_log_buf + sys_res_log_size,
+							LOG_BUF_OUT_SZ - sys_res_log_size,
+							" group %d high active ratio signal:", i);
+					}
+
+					sys_res_log_size += scnprintf(
+						sys_res_log_buf + sys_res_log_size,
+						LOG_BUF_OUT_SZ - sys_res_log_size,
+						" 0x%llx(%llu%%)",
+						sys_res_ops->get_detail(sys_res_record,
+							SYS_RES_SIG_ID, j + sig_tbl_index),
+						ratio);
+				}
+
+				pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
+				sys_res_log_size = 0;
+			}
+			spin_unlock_irqrestore(&sys_res_ops->lock, flag);
+		} else if (sys_res_ops && sys_res_update) {
+			pr_info("[name:spm&][SPM] PMSR data is invalid\n");
+		}
+		return NOTIFY_DONE;
+	default:
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_OK;
+}
+
 static struct lpm_sys_res_ops sys_res_ops = {
 	.get = get_lpm_sys_res_record,
 	.update = update_lpm_sys_res_record,
@@ -278,6 +431,11 @@ static struct lpm_sys_res_ops sys_res_ops = {
 	.get_detail = lpm_sys_res_get_detail,
 	.get_threshold = lpm_sys_res_get_threshold,
 	.set_threshold = lpm_sys_res_set_threshold,
+};
+
+static struct notifier_block lpm_sys_res_pm_notifier_func = {
+	.notifier_call = lpm_sys_res_pm_event,
+	.priority = 0,
 };
 
 int lpm_sys_res_plat_init(void)
@@ -301,6 +459,16 @@ int lpm_sys_res_plat_init(void)
 	sys_res_last_diff_buffer_index = SYS_RES_SCENE_LAST_DIFF;
 
 	ret = register_lpm_sys_res_ops(&sys_res_ops);
+	if (ret) {
+		pr_debug("[name:spm&][SPM] Failed to register LPM sys_res operations.\n");
+		return ret;
+	}
+
+	ret = register_pm_notifier(&lpm_sys_res_pm_notifier_func);
+	if (ret) {
+		pr_debug("[name:spm&][SPM] Failed to register PM notifier.\n");
+		return ret;
+	}
 
 	return 0;
 }

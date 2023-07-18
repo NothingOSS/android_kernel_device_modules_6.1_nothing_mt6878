@@ -577,15 +577,6 @@ static void suspend_show_detailed_wakeup_reason
 {
 }
 
-#define SPM_SYS_RES_VCORE_INDEX (294)
-#define SPM_SYS_RES_PMIC_INDEX  (293)
-#define SPM_SYS_RES_26M_INDEX   (292)
-#define SPM_SYS_RES_INFRA_INDEX (291)
-#define SPM_SYS_RES_BUSPLL_INDEX    (290)
-#define SPM_SYS_RES_EMI_INDEX   (289)
-#define SPM_SYS_RES_APSRC_INDEX (288)
-
-
 static int lpm_show_message(int type, const char *prefix, void *data)
 {
 	struct lpm_spm_wake_status *wakesrc = log_help.wakesrc;
@@ -605,17 +596,7 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 	int i = 0, log_size = 0, log_type = 0;
 	unsigned int wr = WR_UNKNOWN;
 	const char *scenario = prefix ?: "UNKNOWN";
-#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
-	unsigned long flag;
-	struct lpm_sys_res_ops *sys_res_ops;
-	struct sys_res_record *sys_res_record;
-	uint64_t suspend_time, sys_index, sig_tbl_index;
-	uint64_t threshold, ratio;
-	char sys_res_log_buf[LOG_BUF_OUT_SZ] = { 0 };
-	int j = 0, sys_res_log_size = 0;
 
-	sys_res_ops = get_lpm_sys_res_ops();
-#endif
 	log_type = ((struct lpm_issuer *)data)->log_type;
 
 	if (log_type == LOG_MCUSYS_NOT_OFF) {
@@ -854,122 +835,6 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 			PCM_TICK_TO_SEC((wakesrc->timer_out %
 				PCM_32K_TICKS_PER_SEC)
 			* 1000));
-#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
-		if (sys_res_ops && sys_res_ops->update) {
-			spin_lock_irqsave(&sys_res_ops->lock, flag);
-			sys_res_ops->update();
-			spin_unlock_irqrestore(&sys_res_ops->lock, flag);
-		}
-
-		if (sys_res_ops && sys_res_ops->get_last_suspend) {
-			spin_lock_irqsave(&sys_res_ops->lock, flag);
-			sys_res_record = sys_res_ops->get_last_suspend();
-			suspend_time = sys_res_ops->get_detail(sys_res_record,
-							SYS_RES_SUSPEND_TIME, 0);
-
-			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
-				LOG_BUF_OUT_SZ - sys_res_log_size,
-				"Vcore %llu, ",
-				sys_res_ops->get_detail(sys_res_record,
-					SYS_RES_SIG_TIME, SPM_SYS_RES_VCORE_INDEX));
-
-			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
-				LOG_BUF_OUT_SZ - sys_res_log_size,
-				"26M %llu, ",
-				sys_res_ops->get_detail(sys_res_record,
-					SYS_RES_SIG_TIME, SPM_SYS_RES_26M_INDEX));
-
-			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
-				LOG_BUF_OUT_SZ - sys_res_log_size,
-				"pmic %llu, ",
-				sys_res_ops->get_detail(sys_res_record,
-					SYS_RES_SIG_TIME, SPM_SYS_RES_PMIC_INDEX));
-
-			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
-				LOG_BUF_OUT_SZ - sys_res_log_size,
-				"infra %llu, ",
-				sys_res_ops->get_detail(sys_res_record,
-					SYS_RES_SIG_TIME, SPM_SYS_RES_INFRA_INDEX));
-
-			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
-				LOG_BUF_OUT_SZ - sys_res_log_size,
-				"buspll %llu, ",
-				sys_res_ops->get_detail(sys_res_record,
-					SYS_RES_SIG_TIME, SPM_SYS_RES_BUSPLL_INDEX));
-
-			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
-				LOG_BUF_OUT_SZ - sys_res_log_size,
-				"emi %llu, ",
-				sys_res_ops->get_detail(sys_res_record,
-					SYS_RES_SIG_TIME, SPM_SYS_RES_EMI_INDEX));
-
-			sys_res_log_size += scnprintf(sys_res_log_buf + sys_res_log_size,
-				LOG_BUF_OUT_SZ - sys_res_log_size,
-				"apsrc %llu",
-				sys_res_ops->get_detail(sys_res_record,
-					SYS_RES_SIG_TIME, SPM_SYS_RES_APSRC_INDEX));
-
-			pr_info("[name:spm&][SPM] ms suspend %llu, %s",
-				suspend_time, sys_res_log_buf);
-			sys_res_log_size = 0;
-
-			for (i = 0; i <= VCORE_REQ; i++){
-				local_ptr = sys_res_group_info[i].name;
-				sys_index = sys_res_group_info[i].sys_index;
-				sig_tbl_index = sys_res_group_info[i].sig_table_index;
-				threshold = sys_res_group_info[i].threshold;
-				ratio = sys_res_ops->get_detail(sys_res_record,
-							SYS_RES_SIG_SUSPEND_RATIO, sys_index);
-
-				sys_res_log_size += scnprintf(
-						sys_res_log_buf + sys_res_log_size,
-						LOG_BUF_OUT_SZ - sys_res_log_size,
-						"sys %s, threshold %llu, active ratio %llu",
-						local_ptr, threshold, ratio);
-
-				if (ratio < threshold) {
-					pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
-					sys_res_log_size = 0;
-					continue;
-				}
-
-				sys_res_log_size += scnprintf(
-						sys_res_log_buf + sys_res_log_size,
-						LOG_BUF_OUT_SZ - sys_res_log_size,
-						" group %d high active ratio signal:", i);
-
-				for (j = 0; j < sys_res_group_info[i].group_num; j++) {
-					ratio = sys_res_ops->get_detail(sys_res_record,
-								SYS_RES_SIG_SUSPEND_RATIO,
-								j + sig_tbl_index);
-
-					if (ratio < threshold)
-						continue;
-
-					if (sys_res_log_size > LOG_BUF_OUT_SZ - 20) {
-						pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
-						sys_res_log_size = 0;
-						sys_res_log_size += scnprintf(
-							sys_res_log_buf + sys_res_log_size,
-							LOG_BUF_OUT_SZ - sys_res_log_size,
-							" group %d high active ratio signal:", i);
-					}
-
-					sys_res_log_size += scnprintf(
-						sys_res_log_buf + sys_res_log_size,
-						LOG_BUF_OUT_SZ - sys_res_log_size,
-						" 0x%llx(%llu%%)",
-						sys_res_ops->get_detail(sys_res_record,
-							SYS_RES_SIG_ID, j + sig_tbl_index),
-						ratio);
-				}
-
-				pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
-				sys_res_log_size = 0;
-			}
-			spin_unlock_irqrestore(&sys_res_ops->lock, flag);
-		}
-#endif
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 		log_md_sleep_info();
 #endif
