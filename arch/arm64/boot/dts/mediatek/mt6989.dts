@@ -798,7 +798,7 @@
 	img_vcore_d1a_clk: syscon@15780000 {
 		compatible = "mediatek,mt6989-img_vcore_d1a", "syscon";
 		reg = <0 0x15780000 0 0x1000>;
-		hw-voter-regmap = <&mm_hwv>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
 		#clock-cells = <1>;
 	};
 
