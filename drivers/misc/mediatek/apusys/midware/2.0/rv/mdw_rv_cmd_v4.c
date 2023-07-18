@@ -229,6 +229,7 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 			cb_size, c->num_cmdbufs, sizeof(struct mdw_rv_msg_cb));
 		goto free_rc;
 	}
+	cb_size = MDW_ALIGN(cb_size, MDW_DEFAULT_ALIGN);
 	apummu_tbl_infos_ofs = cb_size;       /* APUMMU add tail of cmd buf */
 	cb_size += sizeof(struct mdw_rv_msg_ammu);
 	exec_infos_ofs = cb_size;

@@ -200,6 +200,7 @@ static int mdw_cmd_get_cmdbufs(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 	}
 
 	/* handle apummu table */
+	ofs = MDW_ALIGN(ofs, MDW_DEFAULT_ALIGN);
 	if ((c->size_apummutable + ofs) == c->size_cmdbufs) {
 		mdw_cmd_debug("apummu table kva(0x%llx) copy to cmdbuf tail kva(0x%llx)\n",
 		 (uint64_t)c->tbl_kva, (uint64_t)c->cmdbufs->vaddr + ofs);
@@ -344,6 +345,14 @@ static unsigned int mdw_cmd_create_infos(struct mdw_fpriv *mpriv,
 			total_size = tmp_size;
 		}
 	}
+	/* align cmdbuf tail offset for apummu table */
+	tmp_size = MDW_ALIGN(total_size, MDW_DEFAULT_ALIGN);
+	if (tmp_size < total_size) {
+		mdw_drv_err("cmdbuf end size align overflow(%u/%u)\n",
+			total_size, tmp_size);
+		goto free_cmdbufs;
+	}
+	total_size = tmp_size;
 	c->size_cmdbufs = total_size;
 
 	mdw_cmd_debug("sc(0x%llx) cb_num(%u) total size(%u)\n",
