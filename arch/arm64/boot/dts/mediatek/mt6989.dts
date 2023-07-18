@@ -1059,11 +1059,11 @@
 	vmmspm: vmmspm {
 		compatible = "mediatek,vmm_spm_mt6989";
 		reg =
-			<0 0x1c001000 0 0x1000>,
-			<0 0x1ec00000 0 0x40000>;
+			<0 0x1c001000 0 0x1000>;
+			//<0 0x1ec00000 0 0x40000>;
 		reg-names =
-			"SPM_BASE",
-			"HFRP_BASE";
+			"SPM_BASE";
+			//"HFRP_BASE";
 	};
 
 	camsys_vcore_power: camsys-vcore-power {
@@ -18319,6 +18319,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 };
 
 /delete-node/ &mt6363_vbuck1;
+/delete-node/ &mt6363_vbuck2;
 /delete-node/ &mt6363_vbuck1_sshub;
 /delete-node/ &mt6363_vbuck2_sshub;
 /delete-node/ &mt6363_vbuck4_sshub;
