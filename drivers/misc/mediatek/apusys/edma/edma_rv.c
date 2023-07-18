@@ -186,7 +186,7 @@ static ssize_t loglv_store(struct kobject *kobj, struct kobj_attribute *attr,
 }
 
 static struct kobj_attribute edma_loglv_attr =
-	__ATTR(edma_rv_log_lv, 0644, loglv_show, loglv_store);
+	__ATTR(edma_rv_log_lv, 0640, loglv_show, loglv_store);
 
 static int edma_sysfs_init(void)
 {
