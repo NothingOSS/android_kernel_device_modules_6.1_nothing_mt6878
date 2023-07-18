@@ -795,7 +795,7 @@ static u32 mml_core_calc_tput_couple(struct mml_task *task, u32 pixel, u32 pipe)
 			task->pipe[pipe].throughput = (task->pipe[pipe].throughput * 38) >> 5;
 	} else if (info->mode == MML_MODE_DIRECT_LINK) {
 		/* workaround, increase mml throughput to avoid underrun */
-		task->pipe[pipe].throughput = task->pipe[pipe].throughput * 11 / 10;
+		task->pipe[pipe].throughput = task->pipe[pipe].throughput * 12 / 10;
 	}
 
 	return act_time_us;
