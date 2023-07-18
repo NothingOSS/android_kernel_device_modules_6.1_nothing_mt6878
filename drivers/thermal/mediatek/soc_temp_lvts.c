@@ -1318,14 +1318,11 @@ static void tc_irq_handler(struct lvts_data *lvts_data, int tc_id, char thermint
 		dev_info(dev, "%s", thermintst_str);
 	}
 
-	base = GET_BASE_ADDR(tc_id);
-	ret = readl(LVTSMONINT_0 + base);
-	dev_info(dev, "tc_id:%d MONINT %p: 0x%x\n", tc_id, (LVTSMONINT_0 + base), ret);
-	ret = readl(LVTSMONINTSTS_0 + base);
-	dev_info(dev, "tc_id:%d INTST %p: 0x%x\n", tc_id, (LVTSMONINTSTS_0 + base), ret);
-	if (!(ret & THERMAL_PROTECTION_STAGE_3)) {
-		dev_info(dev, "not thermal protect, return directly\n");
-		return;
+	if (IS_ENABLE(FEATURE_6989_SCP_OC)) {
+		base = GET_BASE_ADDR(tc_id);
+		ret = readl(LVTSMONINTSTS_0 + base);
+		if (!(ret & THERMAL_PROTECTION_STAGE_3))
+			return;
 	}
 
 #ifdef DUMP_MORE_LOG
