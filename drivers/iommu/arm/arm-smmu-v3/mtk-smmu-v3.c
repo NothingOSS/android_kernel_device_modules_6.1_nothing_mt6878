@@ -117,6 +117,7 @@ static unsigned int smmuwp_consume_intr(struct arm_smmu_device *smmu,
 					unsigned int irq_bit);
 static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu);
 static struct mtk_smmu_fault_param *smmuwp_process_tf(
+		struct arm_smmu_device *smmu,
 		struct arm_smmu_master *master,
 		struct mtk_iommu_fault_event *fault_evt);
 static void smmuwp_clear_tf(struct arm_smmu_device *smmu);
@@ -1852,13 +1853,10 @@ static u64 smmu_iova_to_iopte(struct arm_smmu_master *master, u64 iova)
 
 static phys_addr_t smmu_iova_to_phys(struct arm_smmu_master *master, u64 iova)
 {
-	struct arm_smmu_domain *smmu_domain = master->domain;
-	struct io_pgtable_ops *ops = smmu_domain->pgtbl_ops;
-
-	if (!ops)
+	if (!master || !master->domain || !master->domain->pgtbl_ops)
 		return 0;
 
-	return ops->iova_to_phys(ops, iova);
+	return master->domain->pgtbl_ops->iova_to_phys(master->domain->pgtbl_ops, iova);
 }
 
 static void mtk_smmu_fault_iova_dump(struct arm_smmu_master *master,
@@ -1928,28 +1926,26 @@ static void mtk_smmu_sid_dump(struct arm_smmu_device *smmu, u32 sid)
 #endif
 }
 
-static int mtk_report_device_fault(struct arm_smmu_master *master,
+static int mtk_report_device_fault(struct arm_smmu_device *smmu,
+				   struct arm_smmu_master *master,
 				   u64 *evt,
 				   struct iommu_fault_event *fault_evt)
 {
 	static DEFINE_RATELIMIT_STATE(fault_rs, SMMU_FAULT_RS_INTERVAL,
 				      SMMU_FAULT_RS_BURST);
-	struct arm_smmu_domain *smmu_domain = master->domain;
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	struct mtk_iommu_fault_event mtk_fault_evt = { };
-	struct dev_iommu *param = master->dev->iommu;
-	struct mtk_smmu_fault_param *fault_param;
-	struct arm_smmu_device *smmu;
-	struct mtk_smmu_data *data;
+	struct mtk_smmu_fault_param *fault_param = NULL;
+	u32 smmu_type = data->plat_data->smmu_type;
+	struct dev_iommu *param;
 	struct iommu_fault *flt;
 	u64 fault_iova, fault_ipa;
+	bool unknown_evt = false;
 	int id, ret = 0;
 	bool ssid_valid;
 	u32 sid, ssid;
 	u64 s2_trans;
 	u64 tab_id;
-
-	smmu = master->smmu;
-	data = to_mtk_smmu_data(smmu);
 
 	/* limit TF handle dump rate */
 	if (!__ratelimit(&fault_rs)) {
@@ -1968,10 +1964,44 @@ static int mtk_report_device_fault(struct arm_smmu_master *master,
 	ssid = FIELD_GET(EVTQ_0_SSID, evt[0]);
 	id = FIELD_GET(EVTQ_0_ID, evt[0]);
 	s2_trans = evt[1] & EVTQ_1_S2;
-	tab_id = get_smmu_tab_id_by_domain(&smmu_domain->domain);
+
+	/**
+	 * when master is NULL, mean invalid evt content or unknown fault id,
+	 * still need to report fault by wrapper register
+	 */
+	if (!master) {
+		unknown_evt = true;
+		fault_param = smmuwp_process_tf(smmu, NULL, &mtk_fault_evt);
+		if (fault_param == NULL) {
+			dev_info(smmu->dev, "[%s] No TRANSLATION FAULT detected\n", __func__);
+			return 0;
+		}
+
+		fault_iova = fault_param->fault_iova;
+		sid = fault_param->fault_sid;
+		ssid = fault_param->fault_ssid;
+		ssid_valid = fault_param->fault_ssidv;
+
+		/* can't get: fault_ipa, id, s2_trans */
+
+		mtk_smmu_ste_cd_info_dump(NULL, smmu_type, sid);
+
+		mutex_lock(&smmu->streams_mutex);
+		master = arm_smmu_find_master(smmu, sid);
+		if (!master) {
+			ret = -EINVAL;
+			dev_info(smmu->dev, "[%s] sid:%u no master\n", __func__, sid);
+			mutex_unlock(&smmu->streams_mutex);
+			return ret;
+		}
+		fault_param->fault_pa = smmu_iova_to_phys(master, fault_iova);
+	}
+
+	param = master->dev->iommu;
+	tab_id = get_smmu_tab_id_by_domain(&master->domain->domain);
 
 	dev_info(master->dev, "[%s] smmu:%s, fault_iova=0x%llx, fault_ipa=0x%llx, sid=0x%x, ssid=0x%x, ssid_valid:0x%x, id:0x%x, reason:%s, s2_trans:0x%llx, tab_id:0x%llx\n",
-		 __func__, get_smmu_name(data->plat_data->smmu_type),
+		 __func__, get_smmu_name(smmu_type),
 		 fault_iova, fault_ipa, sid, ssid, ssid_valid, id,
 		 get_fault_reason_str(id), s2_trans, tab_id);
 
@@ -1987,24 +2017,26 @@ static int mtk_report_device_fault(struct arm_smmu_master *master,
 	ret = iommu_report_device_fault(master->dev, &mtk_fault_evt.fault_evt);
 	if (ret) {
 		if (!param || !param->fault_param || !param->fault_param->handler) {
-			dev_dbg(master->dev,
+			dev_dbg(smmu->dev,
 				"[%s] ret:%d, dev:%s not register device fault handler",
 				__func__, ret, dev_name(master->dev));
 		}
 	}
 
-	if (flt->type == IOMMU_FAULT_DMA_UNRECOV) {
-		fault_param = smmuwp_process_tf(master, &mtk_fault_evt);
+	if (fault_param == NULL)
+		fault_param = smmuwp_process_tf(smmu, master, &mtk_fault_evt);
 
 #ifdef MTK_SMMU_DEBUG
-		if (fault_param != NULL) {
-			report_custom_smmu_fault(fault_param->fault_iova,
-						 fault_param->fault_pa,
-						 fault_param->fault_id,
-						 data->plat_data->smmu_type);
-		}
-#endif
+	if (fault_param != NULL) {
+		report_custom_smmu_fault(fault_param->fault_iova,
+					 fault_param->fault_pa,
+					 fault_param->fault_id,
+					 smmu_type);
 	}
+#endif
+
+	if (unknown_evt)
+		mutex_unlock(&smmu->streams_mutex);
 
 	return 0;
 }
@@ -2478,10 +2510,10 @@ static u32 smmuwp_fault_id(u32 axi_id, u32 tbu_id)
 
 /* Process TBU translation fault Monitor */
 static struct mtk_smmu_fault_param *smmuwp_process_tf(
+		struct arm_smmu_device *smmu,
 		struct arm_smmu_master *master,
 		struct mtk_iommu_fault_event *fault_evt)
 {
-	struct arm_smmu_device *smmu = master->smmu;
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	struct mtk_smmu_fault_param *first_fault_param = NULL;
 	void __iomem *wp_base = smmu->wp_base;

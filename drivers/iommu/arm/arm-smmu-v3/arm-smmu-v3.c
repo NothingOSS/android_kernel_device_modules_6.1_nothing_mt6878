@@ -1483,7 +1483,7 @@ static int arm_smmu_init_l2_strtab(struct arm_smmu_device *smmu, u32 sid)
 	return 0;
 }
 
-static struct arm_smmu_master *
+struct arm_smmu_master *
 arm_smmu_find_master(struct arm_smmu_device *smmu, u32 sid)
 {
 	struct rb_node *node;
@@ -1516,6 +1516,19 @@ static int arm_smmu_handle_evt(struct arm_smmu_device *smmu, u64 *evt)
 	u32 sid = FIELD_GET(EVTQ_0_SID, evt[0]);
 	struct iommu_fault_event fault_evt = { };
 	struct iommu_fault *flt = &fault_evt.fault;
+	u8 id = FIELD_GET(EVTQ_0_ID, evt[0]);
+
+	/* invalid evt content or unknown fault id, still need to report fault */
+	if (evt[0] == 0 || (evt[1] & EVTQ_1_S2) ||
+	    (id != EVT_ID_TRANSLATION_FAULT &&
+	     id != EVT_ID_ADDR_SIZE_FAULT &&
+	     id != EVT_ID_ACCESS_FAULT &&
+	     id != EVT_ID_PERMISSION_FAULT)) {
+		if (smmu->impl && smmu->impl->report_device_fault) {
+			smmu->impl->report_device_fault(smmu, NULL, evt, &fault_evt);
+			return -EFAULT;
+		}
+	}
 
 	switch (FIELD_GET(EVTQ_0_ID, evt[0])) {
 	case EVT_ID_TRANSLATION_FAULT:
@@ -1586,7 +1599,7 @@ static int arm_smmu_handle_evt(struct arm_smmu_device *smmu, u64 *evt)
 	}
 
 	if (smmu->impl && smmu->impl->report_device_fault)
-		ret = smmu->impl->report_device_fault(master, evt, &fault_evt);
+		ret = smmu->impl->report_device_fault(smmu, master, evt, &fault_evt);
 	else
 		ret = iommu_report_device_fault(master->dev, &fault_evt);
 	if (ret && flt->type == IOMMU_FAULT_PAGE_REQ) {

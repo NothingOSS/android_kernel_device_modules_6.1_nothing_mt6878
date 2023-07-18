@@ -789,7 +789,8 @@ struct arm_smmu_impl {
 	void (*get_resv_regions)(struct device *dev, struct list_head *head);
 	int (*smmu_irq_handler)(int irq, void *dev);
 	int (*smmu_evt_handler)(int irq, void *dev, u64 *evt);
-	int (*report_device_fault)(struct arm_smmu_master *master,
+	int (*report_device_fault)(struct arm_smmu_device *smmu,
+				   struct arm_smmu_master *master,
 				   u64 *evt,
 				   struct iommu_fault_event *fault_evt);
 	void (*smmu_setup_features)(struct arm_smmu_master *master,
@@ -840,6 +841,8 @@ void arm_smmu_cmdq_batch_add(struct arm_smmu_device *smmu,
 int arm_smmu_cmdq_batch_submit(struct arm_smmu_device *smmu,
 			       struct arm_smmu_cmdq_batch *cmds);
 int arm_smmu_init_sid_strtab(struct arm_smmu_device *smmu, u32 sid);
+struct arm_smmu_master *arm_smmu_find_master(struct arm_smmu_device *smmu,
+					     u32 sid);
 
 #ifdef CONFIG_ARM_SMMU_V3_SVA
 bool arm_smmu_sva_supported(struct arm_smmu_device *smmu);
