@@ -2084,6 +2084,10 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 		last_vote_step[i] = MAX_OPP;
 		last_force_step[i] = MAX_OPP;
 	}
+	of_property_read_s32(node, "kernel-log-level", &log_level);
+	of_property_read_s32(node, "vcp-log-level", &vcp_log_level);
+	of_property_read_s32(node, "vmrc-log-level", &vmrc_log_level);
+	of_property_read_s32(node, "vmm-ceil-step", &vmm_ceil_step);
 	force_vol = 0xff;
 	of_property_read_u32(node, "force-voltage", &force_vol);
 	force_rc_clk = 0xff;

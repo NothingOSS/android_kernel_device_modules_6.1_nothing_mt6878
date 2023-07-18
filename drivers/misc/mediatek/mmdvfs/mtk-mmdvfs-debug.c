@@ -317,7 +317,7 @@ static int mmdvfs_v3_debug_thread(void *data)
 {
 	phys_addr_t pa = 0ULL;
 	unsigned long va;
-	int ret = 0, retry = 0;
+	int ret = 0, retry = 0, i;
 
 	while (!mmdvfs_is_init_done()) {
 		if (++retry > 100) {
@@ -350,13 +350,18 @@ static int mmdvfs_v3_debug_thread(void *data)
 		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VMM, -1);
 
 	if (g_mmdvfs->vote_step != 0xff)
-		mtk_mmdvfs_v3_set_vote_step(
-			g_mmdvfs->vote_step >> 4 & 0xf, g_mmdvfs->vote_step & 0xf);
+		for (i = 0; i < PWR_MMDVFS_NUM; i++) {
+			mtk_mmdvfs_v3_set_vote_step(
+				g_mmdvfs->vote_step >> 4 & 0xf, g_mmdvfs->vote_step & 0xf);
+			g_mmdvfs->vote_step = g_mmdvfs->vote_step >> 8;
+		}
 
 	if (g_mmdvfs->force_step != 0xff)
-		mtk_mmdvfs_v3_set_force_step(
-			g_mmdvfs->force_step >> 4 & 0xf, g_mmdvfs->force_step & 0xf);
-
+		for (i = 0; i < PWR_MMDVFS_NUM; i++) {
+			mtk_mmdvfs_v3_set_force_step(
+				g_mmdvfs->force_step >> 4 & 0xf, g_mmdvfs->force_step & 0xf);
+			g_mmdvfs->force_step = g_mmdvfs->force_step >> 8;
+		}
 
 init_done:
 	mmdvfs_v3_debug_init_done = true;
@@ -711,6 +716,7 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	of_property_read_u32(g_mmdvfs->dev->of_node, "vote-step", &g_mmdvfs->vote_step);
 	g_mmdvfs->force_step = 0xff;
 	of_property_read_u32(g_mmdvfs->dev->of_node, "force-step", &g_mmdvfs->force_step);
+	of_property_read_u32(g_mmdvfs->dev->of_node, "release-step0", &g_mmdvfs->release_step0);
 
 	ret = mmdvfs_debug_parse_fmeter();
 
