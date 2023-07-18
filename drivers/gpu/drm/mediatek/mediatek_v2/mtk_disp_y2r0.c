@@ -184,12 +184,12 @@ static void mtk_y2r_addon_config(struct mtk_ddp_comp *comp,
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct mtk_drm_private *priv = NULL;
 
-	priv = mtk_crtc->base.dev->dev_private;
-
 	if (!mtk_crtc) {
 		DDPINFO("%s mtk_crtc is not assigned\n", __func__);
 		return;
 	}
+
+	priv = mtk_crtc->base.dev->dev_private;
 
 	if (!mtk_crtc->is_force_mml_scen)
 		return;

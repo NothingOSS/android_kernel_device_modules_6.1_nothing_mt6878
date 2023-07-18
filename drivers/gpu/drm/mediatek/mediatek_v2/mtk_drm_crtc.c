@@ -15079,6 +15079,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	cb_data->misc = mtk_crtc->ddp_mode;
 	cb_data->msync2_enable = 0;
 	cb_data->is_mml = mtk_crtc->is_mml;
+	cb_data->hrt_idx = 0;
 
 	if (mtk_crtc_state->prop_val[CRTC_PROP_LYE_IDX] != (unsigned int)-1)
 		cb_data->hrt_idx = mtk_crtc_state->prop_val[CRTC_PROP_LYE_IDX];
