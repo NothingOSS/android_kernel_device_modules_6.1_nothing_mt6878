@@ -14,7 +14,8 @@
 #include <linux/proc_fs.h>
 #include <linux/spinlock.h>
 
-#include "mtk_peak_power_budget.h"
+#define CREATE_TRACE_POINTS
+#include "mtk_peak_power_budget_trace.h"
 
 #define STR_SIZE 512
 #define MAX_VALUE 0x7FFF
@@ -22,6 +23,7 @@
 #define MAX_POWER_DISPLAY 2000
 #define SOC_ERROR 3000
 
+static bool mt_ppb_debug;
 static spinlock_t ppb_lock;
 void __iomem *ppb_sram_base;
 struct fg_cus_data fg_data;
@@ -80,7 +82,7 @@ static void ppb_allocate_budget_manager(void)
 		apu = ppb_manual.loading_apu;
 		dram = ppb_manual.loading_dram;
 		vsys_budget = ppb_manual.vsys_budget;
-		remain_budget = vsys_budget - (flash + audio + camera + display + apu + dram);
+		remain_budget = vsys_budget - (flash + audio + camera + display + dram);
 		remain_budget = (remain_budget > 0) ? remain_budget : 0;
 		ppb_manual.remain_budget = remain_budget;
 	} else {
@@ -91,7 +93,7 @@ static void ppb_allocate_budget_manager(void)
 		apu = ppb.loading_apu;
 		dram = ppb.loading_dram;
 		vsys_budget = ppb.vsys_budget;
-		remain_budget = vsys_budget - (flash + audio + camera + display + apu + dram);
+		remain_budget = vsys_budget - (flash + audio + camera + display + dram);
 		remain_budget = (remain_budget > 0) ? remain_budget : 0;
 		ppb.remain_budget = remain_budget;
 	}
@@ -103,9 +105,12 @@ static void ppb_allocate_budget_manager(void)
 	ppb_write_sram(apu, PPB_APU_PWR);
 	ppb_write_sram(display, PPB_DISPLAY_PWR);
 	ppb_write_sram(dram, PPB_DRAM_PWR);
+	ppb_write_sram(0, PPB_APU_PWR_ACK);
 
-	pr_info("(VSYS_BGT/REMAIN_BGT)=%u,%u (FLASH/AUDIO/CAM/DISP/APU/DRAM)=%u,%u,%u,%u,%u,%u\n",
-		vsys_budget, remain_budget, flash, audio, camera, display, apu, dram);
+	if (mt_ppb_debug)
+		pr_info("(S_BGT/R_BGT)=%u,%u (FLASH/AUD/CAM/DISP/APU/DRAM)=%u,%u,%u,%u,%u,%u\n",
+			vsys_budget, remain_budget, flash, audio, camera, display, apu, dram);
+	trace_peak_power_budget(&ppb);
 }
 
 static bool ppb_func_enable_check(void)
@@ -192,7 +197,12 @@ static void mtk_power_budget_manager(enum ppb_kicker kicker, struct ppb *req_ppb
 
 void kicker_ppb_request_power(enum ppb_kicker kicker, unsigned int power)
 {
+	bool ppb_enable = false;
 	struct ppb ppb = {0};
+
+	ppb_enable = ppb_func_enable_check();
+	if (!ppb_enable)
+		return;
 
 	switch (kicker) {
 	case KR_BUDGET:
@@ -297,14 +307,15 @@ static int soc_to_ocv(int soc, unsigned int table_idx)
 	return ret;
 }
 
-void dump_ocv_table(int idx)
+void dump_ocv_table(unsigned int idx)
 {
 	int i, j, offset, cnt = 5;
 	char str[256];
 
-	pr_info("table[%d] temp=%d qmax=%d table_size=%d [idx, mah, vol, soc]\n", idx,
-		fg_data.fg_info[idx].temp, fg_data.fg_info[idx].qmax,
-		fg_data.fg_info[idx].ocv_table_size);
+	if (mt_ppb_debug)
+		pr_info("table[%d] temp=%d qmax=%d table_size=%d [idx, mah, vol, soc]\n", idx,
+			fg_data.fg_info[idx].temp, fg_data.fg_info[idx].qmax,
+			fg_data.fg_info[idx].ocv_table_size);
 
 	for (i = 0; i * cnt < fg_data.fg_info[idx].ocv_table_size; i++) {
 		offset = 0;
@@ -522,8 +533,10 @@ static void bat_handler(struct work_struct *work)
 		last_temp = temp;
 		last_soc = soc;
 		kicker_ppb_request_power(KR_BUDGET, sys_power);
-		pr_info("%s: power=%d ocv=%d soc=%d Rdc,Rac=%d,%d temp,stage=%d,%d\n", __func__,
-			sys_power, pb.ocv, soc, pb.cur_rdc, pb.cur_rac, temp,pb.temp_cur_stage);
+		if (mt_ppb_debug)
+			pr_info("%s: power=%d ocv=%d soc=%d Rdc,Rac=%d,%d temp,stage=%d,%d\n",
+				__func__, sys_power, pb.ocv, soc, pb.cur_rdc, pb.cur_rac, temp,
+				pb.temp_cur_stage);
 	}
 }
 
@@ -810,6 +823,41 @@ static int mt_ppb_debug_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
+static int mt_ppb_debug_log_proc_show(struct seq_file *m, void *v)
+{
+	if (mt_ppb_debug)
+		seq_puts(m, "ppb debug log enabled\n");
+	else
+		seq_puts(m, "ppb debug log disabled\n");
+
+	return 0;
+}
+
+static ssize_t mt_ppb_debug_log_proc_write
+(struct file *file, const char __user *buffer, size_t count, loff_t *data)
+{
+	char desc[32];
+	unsigned int len = 0;
+	int debug = 0;
+
+	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
+	if (copy_from_user(desc, buffer, len))
+		return 0;
+	desc[len] = '\0';
+
+	if (kstrtoint(desc, 10, &debug) == 0) {
+		if (debug == 0)
+			mt_ppb_debug = 0;
+		else if (debug == 1)
+			mt_ppb_debug = 1;
+		else
+			pr_notice("should be [0:disable,1:enable]\n");
+	} else
+		pr_notice("should be [0:disable,1:enable]\n");
+
+	return count;
+}
+
 static int mt_ppb_manual_mode_proc_show(struct seq_file *m, void *v)
 {
 	seq_printf(m, "manual_mode: %d\n", ppb_ctrl.manual_mode);
@@ -846,8 +894,8 @@ static ssize_t mt_ppb_manual_mode_proc_write
 (struct file *file, const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[64], cmd[21];
-	int len = 0, manual_mode = 0;
-	int vsys_budget;
+	unsigned int len = 0;
+	int vsys_budget, manual_mode = 0;
 	int loading_flash, loading_audio, loading_camera;
 	int loading_display, loading_apu, loading_dram;
 
@@ -895,7 +943,7 @@ static ssize_t mt_ppb_stop_proc_write
 (struct file *file, const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[64], cmd[21];
-	int len = 0, stop = 0;
+	unsigned int len = 0, stop = 0;
 
 	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
 	if (copy_from_user(desc, buffer, len))
@@ -931,7 +979,7 @@ static ssize_t mt_peak_power_mode_proc_write
 (struct file *file, const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[64], cmd[21];
-	int len = 0, mode = 0;
+	unsigned int len = 0, mode = 0;
 
 	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
 	if (copy_from_user(desc, buffer, len))
@@ -957,10 +1005,10 @@ static ssize_t mt_peak_power_mode_proc_write
 
 static int mt_ppb_cg_min_power_proc_show(struct seq_file *m, void *v)
 {
-	int power;
+	unsigned int power;
 
 	power = ppb_read_sram(PPB_CG_PWR);
-	seq_printf(m, "ppb CG min power: %d\n", power);
+	seq_printf(m, "ppb CG min power: %u\n", power);
 	return 0;
 }
 
@@ -968,7 +1016,43 @@ static ssize_t mt_ppb_cg_min_power_proc_write
 (struct file *file, const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[64], cmd[21];
-	int len = 0, power = 0;
+	unsigned int len = 0, power = 0;
+
+	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
+	if (copy_from_user(desc, buffer, len))
+		return 0;
+	desc[len] = '\0';
+
+	if (sscanf(desc, "%20s %u", cmd, &power) != 2) {
+		pr_notice("parameter number not correct\n");
+		return -EPERM;
+	}
+
+	ppb_write_sram(power, PPB_CG_PWR);
+
+	return count;
+}
+
+static int mt_ppb_camera_power_proc_show(struct seq_file *m, void *v)
+{
+	int manual_mode = ppb_ctrl.manual_mode;
+
+	if (manual_mode == 0)
+		seq_printf(m, "ppb manual mode: %d, camera power: %d\n",
+						manual_mode, ppb.loading_camera);
+	else
+		seq_printf(m, "ppb manual mode: %d, camera power: %d\n",
+						manual_mode, ppb_manual.loading_camera);
+
+	return 0;
+}
+
+static ssize_t mt_ppb_camera_power_proc_write
+(struct file *file, const char __user *buffer, size_t count, loff_t *data)
+{
+	char desc[64], cmd[21];
+	unsigned int len = 0;
+	int power = 0;
 
 	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
 	if (copy_from_user(desc, buffer, len))
@@ -980,11 +1064,12 @@ static ssize_t mt_ppb_cg_min_power_proc_write
 		return -EPERM;
 	}
 
-	if (power >= 0)
-		ppb_write_sram(power, PPB_CG_PWR);
-	else
-		pr_notice("ppb CG min power should greater than 0\n");
+	if (power < 0) {
+		pr_notice("ppb camera power should not be negative value\n");
+		return count;
+	}
 
+	kicker_ppb_request_power(KR_CAMERA, power);
 	return count;
 }
 
@@ -1015,10 +1100,12 @@ static const struct proc_ops mt_ ## name ## _proc_fops = {	\
 
 #define PROC_ENTRY(name)	{__stringify(name), &mt_ ## name ## _proc_fops}
 PROC_FOPS_RO(ppb_debug);
+PROC_FOPS_RW(ppb_debug_log);
 PROC_FOPS_RW(ppb_manual_mode);
 PROC_FOPS_RW(ppb_stop);
 PROC_FOPS_RW(peak_power_mode);
 PROC_FOPS_RW(ppb_cg_min_power);
+PROC_FOPS_RW(ppb_camera_power);
 
 
 static int mt_ppb_create_procfs(void)
@@ -1033,10 +1120,12 @@ static int mt_ppb_create_procfs(void)
 
 	const struct pentry entries[] = {
 		PROC_ENTRY(ppb_debug),
+		PROC_ENTRY(ppb_debug_log),
 		PROC_ENTRY(ppb_manual_mode),
 		PROC_ENTRY(ppb_stop),
 		PROC_ENTRY(peak_power_mode),
 		PROC_ENTRY(ppb_cg_min_power),
+		PROC_ENTRY(ppb_camera_power),
 	};
 
 	dir = proc_mkdir("ppb", NULL);

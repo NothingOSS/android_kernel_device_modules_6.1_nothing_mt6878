@@ -29,10 +29,11 @@ enum ppb_sram_offset {
 	PPB_APU_PWR,
 	PPB_DISPLAY_PWR,
 	PPB_DRAM_PWR,
-	PPB_RESERVE2,
-	PPB_RESERVE3,
+	PPB_MD_PWR,
+	PPB_WIFI_PWR,
 	PPB_RESERVE4,
 	PPB_RESERVE5,
+	PPB_APU_PWR_ACK,
 	PPB_OFFSET_NUM
 };
 
@@ -88,7 +89,7 @@ struct fg_info_t {
 struct fg_cus_data {
 	unsigned int fg_info_size;
 	unsigned int bat_type;
-	struct fg_info_t fg_info[10];
+	struct fg_info_t fg_info[11];
 };
 
 extern void kicker_ppb_request_power(enum ppb_kicker kicker, unsigned int power);
