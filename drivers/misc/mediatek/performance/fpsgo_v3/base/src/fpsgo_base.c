@@ -2429,6 +2429,7 @@ int fpsgo_check_is_cam_apk(int tgid)
 int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
 	int *out_tid_arr, int *out_tid_num, int out_tid_max_num)
 {
+	int i;
 	int find_flag = 0;
 	int local_index = 0;
 	struct render_info *render_iter = NULL;
@@ -2458,7 +2459,12 @@ int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
 		if (!find_flag)
 			continue;
 
-		if (local_index < out_tid_max_num) {
+		for (i = 0; i < local_index; i++) {
+			if (out_tid_arr[i] == render_iter->pid)
+				break;
+		}
+
+		if (i == local_index && local_index < out_tid_max_num) {
 			out_tid_arr[local_index] = render_iter->pid;
 			local_index++;
 		}

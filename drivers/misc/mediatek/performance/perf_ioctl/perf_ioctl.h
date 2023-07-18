@@ -59,6 +59,8 @@ struct _FPSGO_SBE_PACKAGE {
 	__u64 mask;
 	__u8 name[16];
 	__s32 value;
+	__u8 specific_name[100];
+	__s32 num;
 };
 
 struct _XGFFRAME_PACKAGE {

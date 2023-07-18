@@ -78,8 +78,8 @@ void fpsgo_ctrl2comp_disconnect_api(int pid, int api,
 			unsigned long long identifier);
 void fpsgo_ctrl2comp_acquire(int p_pid, int c_pid, int c_tid,
 	int api, unsigned long long buffer_id, unsigned long long ts);
-int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name,
-	unsigned long mask, int start);
+int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
+	int start, char *specific_name, int num);
 void fpsgo_base2comp_check_connect_api(void);
 int fpsgo_base2comp_check_connect_api_tree_empty(void);
 int switch_ui_ctrl(int pid, int set_ctrl);

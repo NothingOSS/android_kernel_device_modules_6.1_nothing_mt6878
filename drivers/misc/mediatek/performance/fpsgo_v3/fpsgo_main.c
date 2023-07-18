@@ -114,6 +114,8 @@ struct FPSGO_NOTIFIER_PUSH_TAG {
 
 	char name[16];
 	unsigned long mask;
+	char specific_name[100];
+	int num;
 
 	struct fpsgo_adpf_session adpf_hint;
 	struct fpsgo_magt_target_fps *magt_tfps_hint;
@@ -487,7 +489,8 @@ static void fpsgo_notifier_wq_cb(void)
 		break;
 	case FPSGO_NOTIFIER_SBE_POLICY:
 		fpsgo_ctrl2comp_set_sbe_policy(vpPush->pid,
-				vpPush->name, vpPush->mask, vpPush->qudeq_cmd);
+				vpPush->name, vpPush->mask, vpPush->qudeq_cmd,
+				vpPush->specific_name, vpPush->num);
 		break;
 	case FPSGO_NOTIFIER_ADPF_HINT:
 		fpsgo_notifier_wq_cb_adpf_hint(&vpPush->adpf_hint);
@@ -953,7 +956,8 @@ int fpsgo_notify_frame_hint(int qudeq,
 	return ret;
 }
 
-void fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask, int start, int *ret)
+void fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask,
+	int start, char *specific_name, int num)
 {
 	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
 
@@ -979,6 +983,8 @@ void fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask, int start,
 	vpPush->mask = mask;
 	vpPush->qudeq_cmd = start;
 	memcpy(vpPush->name, name, 16);
+	memcpy(vpPush->specific_name, specific_name, 100);
+	vpPush->num = num;
 	fpsgo_queue_work(vpPush);
 }
 

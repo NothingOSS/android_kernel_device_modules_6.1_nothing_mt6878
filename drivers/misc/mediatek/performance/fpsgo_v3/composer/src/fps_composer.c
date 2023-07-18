@@ -1335,7 +1335,8 @@ void fpsgo_ctrl2comp_acquire(int p_pid, int c_pid, int c_tid,
 	fpsgo_render_tree_unlock(__func__);
 }
 
-int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask, int start)
+int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
+	int start, char *specific_name, int num)
 {
 	char *thread_name = NULL;
 	int ret = 0;
@@ -1389,10 +1390,18 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask, int
 				if (test_bit(FPSGO_QUOTA_DISABLE, &mask))
 					attr_iter->attr.qr_enable_by_pid = 0;
 			}
-		} else {
+		} else
 			delete_attr_by_pid(final_pid_arr[i]);
-		}
 		fpsgo_render_tree_unlock(__func__);
+	}
+
+	if (final_pid_arr_idx > 0) {
+		if (start)
+			fpsgo_other2xgf_set_dep_list(tgid, final_pid_arr,
+				final_pid_arr_idx, specific_name, num);
+		else
+			fpsgo_other2xgf_unset_dep_list(tgid, final_pid_arr,
+				final_pid_arr_idx);
 	}
 
 	ret = final_pid_arr_idx;
