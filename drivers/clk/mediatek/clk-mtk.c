@@ -17,6 +17,7 @@
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
+#include <linux/spinlock.h>
 
 #include "clk-mtk.h"
 #include "clk-gate.h"
@@ -28,6 +29,7 @@
 
 #define MMINFRA_DONE_STA		BIT(0)
 
+static DEFINE_SPINLOCK(mminfra_vote_lock);
 static ATOMIC_NOTIFIER_HEAD(mtk_clk_notifier_list);
 static struct ipi_callbacks *g_clk_cb;
 static struct mtk_hwv_domain mminfra_hwv_domain;
@@ -94,9 +96,12 @@ int __mminfra_hwv_power_ctrl(struct mtk_hwv_domain *hwvd,
 	u32 vote_ofs;
 	u32 vote_ack;
 	u32 val = 0, val2 = 0;
+	unsigned long flags = 0;
 	int ret = 0;
 	int tmp = 0;
 	int i = 0;
+
+	spin_lock_irqsave(&mminfra_vote_lock, flags);
 
 	en_ofs = hwvd->data->en_ofs;
 	if (onoff) {
@@ -129,6 +134,8 @@ int __mminfra_hwv_power_ctrl(struct mtk_hwv_domain *hwvd,
 			goto err_hwv_done;
 	}
 
+	spin_unlock_irqrestore(&mminfra_vote_lock, flags);
+
 	return 0;
 
 err_hwv_done:
@@ -138,6 +145,8 @@ err_hwv_vote:
 	regmap_read(hwvd->regmap, en_ofs, &val);
 	dev_err(hwvd->dev, "Failed to hwv vote %s timeout %s(%d %x %x)\n", onoff ? "on" : "off",
 			hwvd->data->name, ret, vote_msk, val);
+
+	spin_unlock_irqrestore(&mminfra_vote_lock, flags);
 
 	mtk_clk_notify(NULL, hwvd->regmap, hwvd->data->name,
 			hwvd->data->en_ofs, 0,
