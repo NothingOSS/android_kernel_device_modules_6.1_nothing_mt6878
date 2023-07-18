@@ -999,11 +999,11 @@ int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
 	last = &last_force_step[pwr_idx];
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-		opp < dpsw_thr && *last >= dpsw_thr)
+		opp >= 0 && opp < dpsw_thr && (*last < 0 || *last >= dpsw_thr))
 		mtk_mmdvfs_enable_vmm(true);
 	ret = mmdvfs_vcp_ipi_send(FUNC_FORCE_OPP, pwr_idx, opp, NULL);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-		opp >= dpsw_thr && *last < dpsw_thr)
+		(opp < 0 || opp >= dpsw_thr) && *last >= 0 && *last < dpsw_thr)
 		mtk_mmdvfs_enable_vmm(false);
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
 	*last = opp;
@@ -1126,11 +1126,11 @@ int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp)
 	last = &last_vote_step[pwr_idx];
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_VOTE);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-		opp < dpsw_thr && *last >= dpsw_thr)
+		opp >= 0 && opp < dpsw_thr && (*last < 0 || *last >= dpsw_thr))
 		mtk_mmdvfs_enable_vmm(true);
 	ret = clk_set_rate(mmdvfs_user_clk[idx], mux->freq[level]);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-		opp >= dpsw_thr && *last < dpsw_thr)
+		(opp < 0 || opp >= dpsw_thr) && *last >= 0 && *last < dpsw_thr)
 		mtk_mmdvfs_enable_vmm(false);
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
 	*last = opp;
@@ -1313,19 +1313,24 @@ static inline void mmdvfs_reset_vcp(void)
 	mutex_unlock(&mmdvfs_vcp_pwr_mutex);
 }
 
-static int mmdvfs_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
+static void mmdvfs_v3_release_step(void)
 {
 	int i;
 
+	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
+		if (last_vote_step[i] != -1)
+			mtk_mmdvfs_v3_set_vote_step(i, -1);
+
+		if (last_force_step[i] != -1)
+			mtk_mmdvfs_v3_set_force_step(i, -1);
+	}
+}
+
+static int mmdvfs_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
+{
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
-		for (i = 0; i < PWR_MMDVFS_NUM; i++) {
-			if (last_vote_step[i] != -1)
-				mtk_mmdvfs_v3_set_vote_step(i, -1);
-
-			if (last_force_step[i] != -1)
-				mtk_mmdvfs_v3_set_force_step(i, -1);
-		}
+		mmdvfs_v3_release_step();
 		mmdvfs_reset_ccu();
 		cb_timestamp[0] = sched_clock();
 		mmdvfs_reset_vcp();
@@ -1376,6 +1381,7 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 		mutex_unlock(&mmdvfs_vcp_cb_mutex);
 		break;
 	case VCP_EVENT_SUSPEND:
+		mmdvfs_v3_release_step();
 		if (dpc_fp)
 			dpc_fp(false, false);
 		if (mmdvfs_swrgo) {
@@ -2081,8 +2087,8 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 		vmm_notify_wq = create_singlethread_workqueue("vmm_notify_wq");
 
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
-		last_vote_step[i] = MAX_OPP;
-		last_force_step[i] = MAX_OPP;
+		last_vote_step[i] = -1;
+		last_force_step[i] = -1;
 	}
 	of_property_read_s32(node, "kernel-log-level", &log_level);
 	of_property_read_s32(node, "vcp-log-level", &vcp_log_level);
