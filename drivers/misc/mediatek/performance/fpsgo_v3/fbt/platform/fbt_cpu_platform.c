@@ -228,6 +228,20 @@ static int generate_cpu_mask(void)
 	return ret;
 }
 
+struct cpumask fbt_generate_user_cpu_mask(int mask_int)
+{
+	unsigned long cpumask_ulval = mask_int;
+	struct cpumask cpumask_setting;
+	int cpu;
+
+	cpumask_clear(&cpumask_setting);
+	for_each_possible_cpu(cpu) {
+		if (cpumask_ulval & (1 << cpu))
+			cpumask_set_cpu(cpu, &cpumask_setting);
+	}
+	return cpumask_setting;
+}
+
 static int generate_sbe_rescue_enable(void)
 {
 	int ret = 0, retval = 0;

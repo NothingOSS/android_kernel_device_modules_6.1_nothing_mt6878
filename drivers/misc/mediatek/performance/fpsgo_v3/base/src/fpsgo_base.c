@@ -901,6 +901,9 @@ void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->filter_frame_kmin_by_pid = BY_PID_DEFAULT_VAL;
 
 		boost_attr->boost_affinity_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->cpumask_heavy_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->cpumask_second_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->cpumask_others_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->boost_lr_by_pid = BY_PID_DEFAULT_VAL;
 
 		boost_attr->separate_aa_by_pid = BY_PID_DEFAULT_VAL;
@@ -1201,6 +1204,9 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.filter_frame_window_size_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.filter_frame_kmin_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.boost_affinity_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.cpumask_heavy_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.cpumask_second_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.cpumask_others_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.boost_lr_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.separate_aa_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.separate_release_sec_by_pid == BY_PID_DEFAULT_VAL &&
@@ -1250,6 +1256,8 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.filter_frame_window_size_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.filter_frame_kmin_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.boost_affinity_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.cpumask_heavy_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.cpumask_others_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.boost_lr_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.separate_aa_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.separate_release_sec_by_pid == BY_PID_DELETE_VAL ||
@@ -2710,7 +2718,7 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 	pos += length;
 
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-		" boost_affinity, boost_LR\n");
+		" boost_affinity, cpumask_heavy, cpumask_second, cpumask_others, boost_LR\n");
 	pos += length;
 
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
@@ -2789,8 +2797,11 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 			pos += length;
 
 			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d\n",
+				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
 				attr_item.boost_affinity_by_pid,
+				attr_item.cpumask_heavy_by_pid,
+				attr_item.cpumask_second_by_pid,
+				attr_item.cpumask_others_by_pid,
 				attr_item.boost_lr_by_pid);
 			pos += length;
 
