@@ -19,6 +19,7 @@
 #define SPEED_MODE_NORMAL		(0x0)
 #define SPEED_MODE_SPEED		(0x1)
 
+#define DEFAULT_SELTYPE			(0)
 #define DEFAULT_MONTYPE			MONTYPE_HIGH_LEVEL
 #define DEFAULT_SPEED_MODE		SPEED_MODE_NORMAL
 
@@ -36,6 +37,7 @@
 #define PMSR_TOOL_ACT_SIGNUM		(1u << 5)
 #define PMSR_TOOL_ACT_EN			(1u << 6)
 #define PMSR_TOOL_ACT_TEST			(1u << 7)
+#define PMSR_TOOL_ACT_SELTYPE			(1u << 8)
 
 #define SET_CH_MAX 4
 #define MTK_PMSR_BUF_WRITESZ 512
@@ -57,6 +59,7 @@ struct pmsr_channel {
 };
 
 struct pmsr_dpmsr_cfg {
+	unsigned int seltype;   /* dpmsr select type */
 	unsigned int montype;	/* 2 bits, monitor type */
 	unsigned int signum;
 	unsigned int en;

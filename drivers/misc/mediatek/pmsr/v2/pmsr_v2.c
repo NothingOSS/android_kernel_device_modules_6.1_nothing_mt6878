@@ -63,6 +63,7 @@ static void pmsr_cfg_init(void)
 	}
 
 	for (i = 0 ; i < cfg.dpmsr_count; i++) {
+		cfg.dpmsr[i].seltype = DEFAULT_SELTYPE;
 		cfg.dpmsr[i].montype = DEFAULT_MONTYPE;
 		cfg.dpmsr[i].signum = 0;
 		cfg.dpmsr[i].en = 0;
@@ -174,6 +175,19 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 				if (ret)
 					cfg.err |= pmsr_scmi_data.action;
 			}
+			/* pass the seltype */
+			for (i = 0; i < cfg.dpmsr_count; i++) {
+				pmsr_scmi_data.uid = 0x0;
+				pmsr_scmi_data.action = PMSR_TOOL_ACT_SELTYPE;
+				pmsr_scmi_data.param1 = i;
+				pmsr_scmi_data.param2 = cfg.dpmsr[i].seltype;
+				ret = scmi_tinysys_common_set(tinfo->ph, scmi_apmcupm_id,
+					pmsr_scmi_data.uid, pmsr_scmi_data.action,
+					pmsr_scmi_data.param1, pmsr_scmi_data.param2,
+					0);
+				if (ret)
+					cfg.err |= pmsr_scmi_data.action;
+			}
 			/* pass the montype */
 			for (i = 0; i < cfg.dpmsr_count; i++) {
 				pmsr_scmi_data.uid = 0x0;
@@ -277,8 +291,9 @@ static ssize_t local_ipi_read(struct file *fp, char __user *userbuf,
 			log("ch%d: off\n", i);
 	}
 	for (i = 0; i < cfg.dpmsr_count; i++) {
-		log("dpmsr %u montype %u (%s) signum %u en %u\n",
+		log("dpmsr %u seltype %u montype %u (%s) signum %u en %u\n",
 				i,
+				cfg.dpmsr[i].seltype,
 				cfg.dpmsr[i].montype,
 				cfg.dpmsr[i].montype == 0 ? "rising" :
 				cfg.dpmsr[i].montype == 1 ? "falling" :
@@ -363,6 +378,9 @@ static int pmsr_procfs_init(void)
 			snprintf(name, sizeof(name), "dpmsr%d", i);
 			dpmsr_dir_entry = proc_mkdir(name, pmsr_droot);
 			if (dpmsr_dir_entry) {
+				proc_create_data("seltype",
+						 0644, dpmsr_dir_entry, &local_ipi_fops,
+						 (void *)&(cfg.dpmsr[i].seltype));
 				proc_create_data("montype",
 						 0644, dpmsr_dir_entry, &local_ipi_fops,
 						 (void *)&(cfg.dpmsr[i].montype));
