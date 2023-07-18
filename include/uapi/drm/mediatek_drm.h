@@ -1108,84 +1108,98 @@ struct DISP_TDSHP_DISPLAY_SIZE {
 };
 
 struct DISP_MDP_AAL_CLARITY_REG {
-	// Bilateral
-	__u32 bilateral_impulse_noise_en;
-	__u32 dre_bilateral_detect_en;
-	__u32 bilateral_range_flt_slope;
-	__u32 bilateral_flt_en;
-	__u32 have_bilateral_filter;
-	__u32 dre_output_mode;
+	/* GROUP : MDP_AAL_CFG_MAIN */
+	__u32 aal_round_9bit_out_en;                                   //[MSB:LSB] = [01:01]
+	__u32 dre_max_diff_mode;                                       //[MSB:LSB] = [02:02]
+	__u32 dre_max_hist_mode;                                       //[MSB:LSB] = [03:03]
+	__u32 dre_alg_mode;                                            //[MSB:LSB] = [04:04]
+	__u32 dre_output_mode;                                         //[MSB:LSB] = [05:05]
+	__u32 aal_tile_mode_en;                                        //[MSB:LSB] = [06:06]
 
-	// Bilateral Blending
-	__u32 dre_bilateral_activate_blending_A;
-	__u32 dre_bilateral_activate_blending_B;
-	__u32 dre_bilateral_activate_blending_C;
-	__u32 dre_bilateral_activate_blending_D;
-	__u32 dre_bilateral_activate_blending_wgt_gain;
-	__u32 dre_bilateral_blending_en;
-	__u32 dre_bilateral_blending_wgt;
-	__u32 dre_bilateral_blending_wgt_mode;
-	__u32 dre_bilateral_size_blending_wgt;
+	/* GROUP : MDP_AAL_DRE_BILATERAL */
+	__u32 have_bilateral_filter;                                   //[MSB:LSB] = [00:00]
+	__u32 bilateral_flt_en;                                        //[MSB:LSB] = [01:01]
+	__u32 bilateral_range_flt_slope;                               //[MSB:LSB] = [07:04]
+	__u32 dre_bilateral_detect_en;                                 //[MSB:LSB] = [08:08]
+	__u32 bilateral_impulse_noise_en;                              //[MSB:LSB] = [09:09]
 
-	// Filter 1
-	__u32 bilateral_custom_range_flt1_0_0;
-	__u32 bilateral_custom_range_flt1_0_1;
-	__u32 bilateral_custom_range_flt1_0_2;
-	__u32 bilateral_custom_range_flt1_0_3;
-	__u32 bilateral_custom_range_flt1_0_4;
+	/* GROUP : MDP_AAL_DRE_BILATERAL_Blending_00 */
+	__u32 dre_bilateral_blending_en;                               //[MSB:LSB] = [00:00]
+	__u32 dre_bilateral_blending_wgt;                              //[MSB:LSB] = [08:04]
+	__u32 dre_bilateral_blending_wgt_mode;                         //[MSB:LSB] = [10:09]
+	__u32 dre_bilateral_activate_blending_wgt_gain;                //[MSB:LSB] = [14:11]
+	__u32 dre_bilateral_activate_blending_A;                       //[MSB:LSB] = [18:15]
+	__u32 dre_bilateral_activate_blending_B;                       //[MSB:LSB] = [22:19]
+	__u32 dre_bilateral_activate_blending_C;                       //[MSB:LSB] = [26:23]
+	__u32 dre_bilateral_activate_blending_D;                       //[MSB:LSB] = [30:27]
 
-	__u32 bilateral_custom_range_flt1_1_0;
-	__u32 bilateral_custom_range_flt1_1_1;
-	__u32 bilateral_custom_range_flt1_1_2;
-	__u32 bilateral_custom_range_flt1_1_3;
-	__u32 bilateral_custom_range_flt1_1_4;
+	/* GROUP : MDP_AAL_DRE_BILATERAL_Blending_01 */
+	__u32 dre_bilateral_size_blending_wgt;                         //[MSB:LSB] = [03:00]
 
-	__u32 bilateral_custom_range_flt1_2_0;
-	__u32 bilateral_custom_range_flt1_2_1;
-	__u32 bilateral_custom_range_flt1_2_2;
-	__u32 bilateral_custom_range_flt1_2_3;
-	__u32 bilateral_custom_range_flt1_2_4;
+	/* GROUP : MDP_AAL_DRE_BILATERAL_CUST_FLT1_00 */
+	__u32 bilateral_custom_range_flt1_0_0;                         //[MSB:LSB] = [05:00]
+	__u32 bilateral_custom_range_flt1_0_1;                         //[MSB:LSB] = [11:06]
+	__u32 bilateral_custom_range_flt1_0_2;                         //[MSB:LSB] = [17:12]
+	__u32 bilateral_custom_range_flt1_0_3;                         //[MSB:LSB] = [23:18]
+	__u32 bilateral_custom_range_flt1_0_4;                         //[MSB:LSB] = [29:24]
 
-	// Filter 2
-	__u32 bilateral_custom_range_flt2_0_0;
-	__u32 bilateral_custom_range_flt2_0_1;
-	__u32 bilateral_custom_range_flt2_0_2;
-	__u32 bilateral_custom_range_flt2_0_3;
-	__u32 bilateral_custom_range_flt2_0_4;
+	/* GROUP : MDP_AAL_DRE_BILATERAL_CUST_FLT1_01 */
+	__u32 bilateral_custom_range_flt1_1_0;                         //[MSB:LSB] = [05:00]
+	__u32 bilateral_custom_range_flt1_1_1;                         //[MSB:LSB] = [11:06]
+	__u32 bilateral_custom_range_flt1_1_2;                         //[MSB:LSB] = [17:12]
+	__u32 bilateral_custom_range_flt1_1_3;                         //[MSB:LSB] = [23:18]
+	__u32 bilateral_custom_range_flt1_1_4;                         //[MSB:LSB] = [29:24]
 
-	__u32 bilateral_custom_range_flt2_1_0;
-	__u32 bilateral_custom_range_flt2_1_1;
-	__u32 bilateral_custom_range_flt2_1_2;
-	__u32 bilateral_custom_range_flt2_1_3;
-	__u32 bilateral_custom_range_flt2_1_4;
+	/* GROUP : MDP_AAL_DRE_BILATERAL_CUST_FLT1_02 */
+	__u32 bilateral_custom_range_flt1_2_0;                         //[MSB:LSB] = [05:00]
+	__u32 bilateral_custom_range_flt1_2_1;                         //[MSB:LSB] = [11:06]
+	__u32 bilateral_custom_range_flt1_2_2;                         //[MSB:LSB] = [17:12]
+	__u32 bilateral_custom_range_flt1_2_3;                         //[MSB:LSB] = [23:18]
+	__u32 bilateral_custom_range_flt1_2_4;                         //[MSB:LSB] = [29:24]
 
-	__u32 bilateral_custom_range_flt2_2_0;
-	__u32 bilateral_custom_range_flt2_2_1;
-	__u32 bilateral_custom_range_flt2_2_2;
-	__u32 bilateral_custom_range_flt2_2_3;
-	__u32 bilateral_custom_range_flt2_2_4;
+	/* GROUP : MDP_AAL_DRE_BILATERAL_CUST_FLT2_00 */
+	__u32 bilateral_custom_range_flt2_0_0;                         //[MSB:LSB] = [05:00]
+	__u32 bilateral_custom_range_flt2_0_1;                         //[MSB:LSB] = [11:06]
+	__u32 bilateral_custom_range_flt2_0_2;                         //[MSB:LSB] = [17:12]
+	__u32 bilateral_custom_range_flt2_0_3;                         //[MSB:LSB] = [23:18]
+	__u32 bilateral_custom_range_flt2_0_4;                         //[MSB:LSB] = [29:24]
 
-	// Bilateral Flt Config
-	__u32 bilateral_contrary_blending_wgt;
-	__u32 bilateral_custom_range_flt_gain;
-	__u32 bilateral_custom_range_flt_slope;
-	__u32 bilateral_range_flt_gain;
-	__u32 bilateral_size_blending_wgt;
+	/* GROUP : MDP_AAL_DRE_BILATERAL_CUST_FLT2_01 */
+	__u32 bilateral_custom_range_flt2_1_0;                         //[MSB:LSB] = [05:00]
+	__u32 bilateral_custom_range_flt2_1_1;                         //[MSB:LSB] = [11:06]
+	__u32 bilateral_custom_range_flt2_1_2;                         //[MSB:LSB] = [17:12]
+	__u32 bilateral_custom_range_flt2_1_3;                         //[MSB:LSB] = [23:18]
+	__u32 bilateral_custom_range_flt2_1_4;                         //[MSB:LSB] = [29:24]
 
-	// Bilateral Frequency Blending
-	__u32 bilateral_contrary_blending_out_wgt;
-	__u32 bilateral_custom_range_flt1_out_wgt;
-	__u32 bilateral_custom_range_flt2_out_wgt;
-	__u32 bilateral_range_flt_out_wgt;
-	__u32 bilateral_size_blending_out_wgt;
+	/* GROUP : MDP_AAL_DRE_BILATERAL_CUST_FLT2_02 */
+	__u32 bilateral_custom_range_flt2_2_0;                         //[MSB:LSB] = [05:00]
+	__u32 bilateral_custom_range_flt2_2_1;                         //[MSB:LSB] = [11:06]
+	__u32 bilateral_custom_range_flt2_2_2;                         //[MSB:LSB] = [17:12]
+	__u32 bilateral_custom_range_flt2_2_3;                         //[MSB:LSB] = [23:18]
+	__u32 bilateral_custom_range_flt2_2_4;                         //[MSB:LSB] = [29:24]
 
-	// Bilateral Region Protection
-	__u32 dre_bilateral_blending_region_protection_en;
-	__u32 dre_bilateral_region_protection_activate_A;
-	__u32 dre_bilateral_region_protection_activate_B;
-	__u32 dre_bilateral_region_protection_activate_C;
-	__u32 dre_bilateral_region_protection_activate_D;
-	__u32 dre_bilateral_region_protection_input_shift_bit;
+	/* GROUP : MDP_AAL_DRE_BILATERAL_FLT_CONFIG */
+	__u32 bilateral_range_flt_gain;                                //[MSB:LSB] = [02:00]
+	__u32 bilateral_custom_range_flt_gain;                         //[MSB:LSB] = [05:03]
+	__u32 bilateral_custom_range_flt_slope;                        //[MSB:LSB] = [09:06]
+	__u32 bilateral_contrary_blending_wgt;                         //[MSB:LSB] = [11:10]
+	__u32 bilateral_size_blending_wgt;                             //[MSB:LSB] = [18:12]
+
+	/* GROUP : MDP_AAL_DRE_BILATERAL_FREQ_BLENDING */
+	__u32 bilateral_contrary_blending_out_wgt;                     //[MSB:LSB] = [04:00]
+	__u32 bilateral_size_blending_out_wgt;                         //[MSB:LSB] = [09:05]
+	__u32 bilateral_range_flt_out_wgt;                             //[MSB:LSB] = [14:10]
+	__u32 bilateral_custom_range_flt1_out_wgt;                     //[MSB:LSB] = [19:15]
+	__u32 bilateral_custom_range_flt2_out_wgt;                     //[MSB:LSB] = [24:20]
+
+	/* GROUP : MDP_AAL_DRE_BILATERAL_REGION_PROTECTION */
+	__u32 dre_bilateral_blending_region_protection_en;             //[MSB:LSB] = [00:00]
+	__u32 dre_bilateral_region_protection_activate_A;              //[MSB:LSB] = [04:01]
+	__u32 dre_bilateral_region_protection_activate_B;              //[MSB:LSB] = [12:05]
+	__u32 dre_bilateral_region_protection_activate_C;              //[MSB:LSB] = [20:13]
+	__u32 dre_bilateral_region_protection_activate_D;              //[MSB:LSB] = [24:21]
+	__u32 dre_bilateral_region_protection_input_shift_bit;         //[MSB:LSB] = [27:25]
+
 };
 
 struct DISP_TDSHP_CLARITY_REG {
