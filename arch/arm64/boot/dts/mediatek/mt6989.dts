@@ -10612,6 +10612,10 @@
 				interconnect-names = "icc-bw", "icc-hrt-bw";
 				compatible = "mediatek,dvfsrc-met";
 			};
+
+			dvfsrc-mb {
+				compatible = "mediatek,dvfsrc-mb";
+			};
 		};
 
 		scp_clk_ctrl: scp-clk-ctrl@1cb21000 {
