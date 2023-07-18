@@ -26,7 +26,7 @@
 #define AP_IPIMSG_VENC_ACK_BASE 0x4000
 
 #define VDEC_TF_INFO_OFFSET 0x70000
-#define VENC_TF_INFO_OFFSET 0x7F00
+#define VENC_TF_INFO_OFFSET 0x10000
 
 enum mtk_venc_hw_id {
 	MTK_VENC_CORE_0 = 0,

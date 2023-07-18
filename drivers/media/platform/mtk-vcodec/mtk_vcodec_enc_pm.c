@@ -603,7 +603,7 @@ static int mtk_venc_translation_fault_callback(
 	} else if (larb_id == 8) {
 		reg_base = dev->enc_reg_base[VENC_C1_SYS];
 		hw_id = MTK_VENC_CORE_1;
-	} else if (larb_id == 37) {
+	} else if ((larb_id == 37) || (larb_id == 24)) {
 		reg_base = dev->enc_reg_base[VENC_C2_SYS];
 		hw_id = MTK_VENC_CORE_2;
 	}
@@ -613,6 +613,9 @@ static int mtk_venc_translation_fault_callback(
 		dev->tf_info->port   = (__u32)port;
 		dev->tf_info->tf_mva = (__u64)mva;
 		dev->tf_info->has_tf = 1;
+		mtk_v4l2_err("TF set tf_info 0x%lx hw_id %d port %d mva 0x%llx",
+			(unsigned long)dev->tf_info, dev->tf_info->hw_id,
+			dev->tf_info->port & 0x1F, dev->tf_info->tf_mva);
 	}
 
 	spin_lock_irqsave(&dev->enc_power_lock[hw_id], flags);
