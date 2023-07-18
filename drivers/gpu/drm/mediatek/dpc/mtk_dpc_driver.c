@@ -44,8 +44,12 @@ int debug_check_event;
 module_param(debug_check_event, int, 0644);
 int debug_mtcmos_off;
 module_param(debug_mtcmos_off, int, 0644);
-int debug_irq_handler;
-module_param(debug_irq_handler, int, 0644);
+int debug_irq;
+module_param(debug_irq, int, 0644);
+int mminfra_ao;
+module_param(mminfra_ao, int, 0644);
+int mtcmos_ao;
+module_param(mtcmos_ao, int, 0644);
 
 /* TODO: move to mtk_dpc_test.c */
 #define SPM_REQ_STA_4 0x85C	/* D1: BIT30 APSRC_REQ, DDRSRC_REQ */
@@ -338,6 +342,8 @@ static void dpc_disp_group_enable(const enum mtk_dpc_disp_vidle group, bool en)
 	case DPC_DISP_VIDLE_MAINPLL_OFF:
 		/* TODO: check SEL is 0b00 or 0b10 for ALL_PWR_ACK */
 		value = en ? 0 : 0x181818;
+		if (mminfra_ao)
+			value = 0x181818;
 		writel(value, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
 		break;
 	default:
@@ -390,6 +396,8 @@ static void dpc_mml_group_enable(const enum mtk_dpc_mml_vidle group, bool en)
 	case DPC_MML_VIDLE_MAINPLL_OFF:
 		/* TODO: check SEL is 0b00 or 0b10 for ALL_PWR_ACK */
 		value = en ? 0 : 0x181818;
+		if (mminfra_ao)
+			value = 0x181818;
 		writel(value, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
 		break;
 	default:
@@ -445,6 +453,8 @@ void dpc_infra_force_enable(const enum mtk_dpc_subsys subsys, const bool en)
 	else if (subsys == DPC_SUBSYS_MML)
 		addr = DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG;
 
+	if (mminfra_ao)
+		value = 0x181818;
 	writel(value, dpc_base + addr);
 
 	dpc_pm_ctrl(false);
@@ -655,12 +665,6 @@ void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 		writel(0x3ff, dpc_base + DISP_REG_DPC_MML_DT_FOLLOW_CFG); /* all follow 39~41 */
 	}
 
-	writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG);
-	writel(0, dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG);
-
-	/* wla ddren ack */
-	writel(1, dpc_base + DISP_REG_DPC_DDREN_ACK_SEL);
-
 	if (en) {
 		/* pwr on delay default 100 + 50 us, modify to 30 us */
 		writel(0x30c, dpc_base + 0xa44);
@@ -674,8 +678,42 @@ void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 			dpc_mtcmos_vote(DPC_SUBSYS_DISP0, 6, 0);
 			dpc_mtcmos_vote(DPC_SUBSYS_OVL0, 6, 0);
 			dpc_mtcmos_vote(DPC_SUBSYS_OVL1, 6, 0);
+			if (readl(dpc_base + DISP_REG_DPC_MML1_MTCMOS_CFG)) {
+				dpc_mtcmos_vote(DPC_SUBSYS_MML1, 6, 0);
+				mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML1);
+			}
 		} else
 			dpc_mtcmos_vote(DPC_SUBSYS_MML1, 6, 0);
+	}
+
+	writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG);
+	writel(0, dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG);
+
+	/* wla ddren ack */
+	writel(1, dpc_base + DISP_REG_DPC_DDREN_ACK_SEL);
+
+	if (debug_irq) {
+		/* enable irq for DISP0 OVL0 OVL1 DISP1 */
+		writel(DISP_DPC_INT_DISP1_ON | DISP_DPC_INT_DISP1_OFF |
+			DISP_DPC_INT_OVL0_ON | DISP_DPC_INT_OVL0_OFF |
+			DISP_DPC_INT_MMINFRA_OFF_END | DISP_DPC_INT_MMINFRA_OFF_START |
+			DISP_DPC_INT_DT6 | DISP_DPC_INT_DT3,
+			dpc_base + DISP_REG_DPC_DISP_INTEN);
+		writel(0x33000, dpc_base + DISP_REG_DPC_MML_INTEN);
+	}
+
+	if (mtcmos_ao) {
+		dpc_mtcmos_vote(DPC_SUBSYS_DISP1, 5, 1);
+		dpc_mtcmos_vote(DPC_SUBSYS_DISP0, 5, 1);
+		dpc_mtcmos_vote(DPC_SUBSYS_OVL0, 5, 1);
+		dpc_mtcmos_vote(DPC_SUBSYS_OVL1, 5, 1);
+		dpc_mtcmos_vote(DPC_SUBSYS_MML1, 5, 1);
+	} else {
+		dpc_mtcmos_vote(DPC_SUBSYS_DISP1, 5, 0);
+		dpc_mtcmos_vote(DPC_SUBSYS_DISP0, 5, 0);
+		dpc_mtcmos_vote(DPC_SUBSYS_OVL0, 5, 0);
+		dpc_mtcmos_vote(DPC_SUBSYS_OVL1, 5, 0);
+		dpc_mtcmos_vote(DPC_SUBSYS_MML1, 5, 0);
 	}
 
 	dpc_mmp(config, MMPROFILE_FLAG_PULSE, BIT(subsys), en);
@@ -962,16 +1000,6 @@ static int dpc_irq_init(struct mtk_dpc *priv)
 	writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INTSTA);
 	writel(0, dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG);
 	writel(0, dpc_base + DISP_REG_DPC_MERGE_MML_INTSTA);
-
-	/* enable irq for DISP0 OVL0 OVL1 DISP1 */
-	writel(DISP_DPC_INT_DISP1_ON | DISP_DPC_INT_DISP1_OFF |
-	       DISP_DPC_INT_OVL0_ON | DISP_DPC_INT_OVL0_OFF |
-	       DISP_DPC_INT_MMINFRA_OFF_END | DISP_DPC_INT_MMINFRA_OFF_START |
-	       DISP_DPC_INT_DT6 | DISP_DPC_INT_DT3,
-	       dpc_base + DISP_REG_DPC_DISP_INTEN);
-
-	/* enable irq for MML1 RROT_DONE MML_SOF TE */
-	writel(0x33000, dpc_base + DISP_REG_DPC_MML_INTEN);
 
 	dpc_pm_ctrl(false);
 
@@ -1299,6 +1327,10 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	ret = dpc_irq_init(priv);
+	if (ret)
+		return ret;
+
 	/* enable external signal from DSI and TE */
 	writel(0x1F, dpc_base + DISP_REG_DPC_DISP_EXT_INPUT_EN);
 	writel(0x3, dpc_base + DISP_REG_DPC_MML_EXT_INPUT_EN);
@@ -1306,8 +1338,8 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	/* SW_CTRL and SW_VAL=1 */
 	dpc_ddr_force_enable(DPC_SUBSYS_DISP, true);
 	dpc_ddr_force_enable(DPC_SUBSYS_MML, true);
-	writel(0x1A1A1A, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
-	writel(0x1A1A1A, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
+	writel(0x181818, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
+	writel(0x181818, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
 
 	/* keep vdisp opp */
 	writel(0x1, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
