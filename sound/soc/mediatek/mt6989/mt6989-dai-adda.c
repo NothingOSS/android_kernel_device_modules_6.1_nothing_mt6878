@@ -552,6 +552,13 @@ static int mtk_adda_pad_top_event(struct snd_soc_dapm_widget *w,
 			regmap_write(afe->regmap, AFE_AUD_PAD_TOP_CFG0, 0xB0);
 		else
 			regmap_write(afe->regmap, AFE_AUD_PAD_TOP_CFG0, 0xB0);
+
+		regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_TX_CFG0,
+				MTKAIFV4_TXIF_AFE_ON_MASK_SFT,
+				0x1 << MTKAIFV4_TXIF_AFE_ON_SFT);
+		regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_TX_CFG0,
+				ADDA6_MTKAIFV4_TXIF_AFE_ON_MASK_SFT,
+				0x1 << ADDA6_MTKAIFV4_TXIF_AFE_ON_SFT);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
@@ -604,6 +611,15 @@ static int mtk_adda_mtkaif_cfg_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 #ifdef MTKAIF4
+		if ((strcmp(w->name, "ADDA_MTKAIF_CFG") == 0) ||
+		    (strcmp(w->name, "ADDA6_MTKAIF_CFG") == 0))
+			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+					MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
+					0x1 << MTKAIFV4_RXIF_AFE_ON_SFT);
+		else
+			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
+					ADDA6_MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
+					0x1 << ADDA6_MTKAIFV4_RXIF_AFE_ON_SFT);
 		/* mtkaif_rxif_clkinv_adc inverse for calibration */
 		regmap_update_bits(afe->regmap, AFE_MTKAIF0_CFG0,
 				   RG_MTKAIF0_RXIF_CLKINV_MASK_SFT,
@@ -1556,9 +1572,6 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_TX_CFG0,
 					MTKAIFV4_TXIF_EN_SEL_MASK_SFT,
 					0x0 << MTKAIFV4_TXIF_EN_SEL_SFT);
-			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_TX_CFG0,
-					MTKAIFV4_TXIF_AFE_ON_MASK_SFT,
-					0x1 << MTKAIFV4_TXIF_AFE_ON_SFT);
 #endif
 			/* clean predistortion */
 		} else {
@@ -1574,9 +1587,6 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_TX_CFG0,
 					ADDA6_MTKAIFV4_TXIF_EN_SEL_MASK_SFT,
 					0x1 << ADDA6_MTKAIFV4_TXIF_EN_SEL_SFT);
-			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_TX_CFG0,
-					ADDA6_MTKAIFV4_TXIF_AFE_ON_MASK_SFT,
-					0x1 << ADDA6_MTKAIFV4_TXIF_AFE_ON_SFT);
 #endif
 		}
 	} else {
@@ -1628,9 +1638,6 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
 					MTKAIFV4_TXIF_EN_SEL_MASK_SFT,
 					0x0 << MTKAIFV4_TXIF_EN_SEL_SFT);
-			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
-					MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
-					0x1 << MTKAIFV4_RXIF_AFE_ON_SFT);
 #endif
 
 			/* 35Hz @ 48k */
@@ -1678,9 +1685,6 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 			 * 0: loopback adda tx to adda rx
 			 * 1: loopback adda6 tx to adda rx
 			 */
-			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
-					MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
-					0x1 << MTKAIFV4_RXIF_AFE_ON_SFT);
 #endif
 
 			/* 35Hz @ 48k */
@@ -1719,9 +1723,6 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
 					ADDA6_MTKAIFV4_RXIF_EN_SEL_MASK_SFT,
 					0x1 << ADDA6_MTKAIFV4_RXIF_EN_SEL_SFT);
-			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
-					ADDA6_MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
-					0x1 << ADDA6_MTKAIFV4_RXIF_AFE_ON_SFT);
 			break;
 		default:
 			break;
