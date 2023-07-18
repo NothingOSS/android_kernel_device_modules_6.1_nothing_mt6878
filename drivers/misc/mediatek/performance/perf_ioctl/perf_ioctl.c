@@ -41,7 +41,7 @@ EXPORT_SYMBOL_GPL(fpsgo_notify_sbe_rescue_fp);
 void (*fpsgo_notify_sbe_policy_fp)(int pid,  char *name,
 	unsigned long mask, int start, int *ret);
 EXPORT_SYMBOL_GPL(fpsgo_notify_sbe_policy_fp);
-void (*fpsgo_notify_frame_hint_fp)(int qudeq,
+int (*fpsgo_notify_frame_hint_fp)(int qudeq,
 		int pid, int frameID,
 		unsigned long long id);
 EXPORT_SYMBOL_GPL(fpsgo_notify_frame_hint_fp);
@@ -539,8 +539,10 @@ static long device_ioctl(struct file *filp,
 		break;
 	case FPSGO_HINT_FRAME:
 		if (fpsgo_notify_frame_hint_fp)
-			fpsgo_notify_frame_hint_fp(msgKM->start, msgKM->tid, msgKM->frame_id,
-			msgKM->identifier);
+			msgKM->value2 = fpsgo_notify_frame_hint_fp(msgKM->start,
+				msgKM->tid, msgKM->frame_id, msgKM->identifier);
+		perfctl_copy_to_user(msgUM, msgKM,
+			sizeof(struct _FPSGO_PACKAGE));
 		break;
 #else
 	case FPSGO_TOUCH:

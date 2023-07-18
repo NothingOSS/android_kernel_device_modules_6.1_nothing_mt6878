@@ -9,7 +9,7 @@
 extern void (*cpufreq_notifier_fp)(int cid, unsigned long freq);
 extern int (*fpsgo_notify_qudeq_fp)(int qudeq, unsigned int startend,
 		int pid, unsigned long long identifier);
-extern void (*fpsgo_notify_frame_hint_fp)(int qudeq,
+extern int (*fpsgo_notify_frame_hint_fp)(int qudeq,
 		int pid, int frameID, unsigned long long id);
 extern void (*fpsgo_notify_connect_fp)(int pid, int connectedAPI,
 		unsigned long long identifier);

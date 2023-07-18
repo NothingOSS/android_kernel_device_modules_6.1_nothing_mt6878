@@ -902,30 +902,32 @@ void fpsgo_notify_buffer_quota(int pid, int quota, unsigned long long identifier
 	fpsgo_queue_work(vpPush);
 }
 
-void fpsgo_notify_frame_hint(int qudeq,
+int fpsgo_notify_frame_hint(int qudeq,
 		int pid, int frameID, unsigned long long id)
 {
+	int ret;
 	unsigned long long cur_ts;
 	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
+	struct render_info *r_iter = NULL;
 
 	FPSGO_LOGI("[FPSGO_CTRL] ux_qudeq %d, id %llu pid %d\n",
 		qudeq, id, pid);
 
 	if (!fpsgo_is_enable())
-		return;
+		return -EINVAL;
 
 	vpPush =
 		(struct FPSGO_NOTIFIER_PUSH_TAG *)
 		fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
 	if (!vpPush) {
 		FPSGO_LOGE("[FPSGO_CTRL] OOM\n");
-		return;
+		return -ENOMEM;
 	}
 
 	if (!kfpsgo_tsk) {
 		FPSGO_LOGE("[FPSGO_CTRL] NULL WorkQueue\n");
 		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
-		return;
+		return -ENOMEM;
 	}
 
 	cur_ts = fpsgo_get_time();
@@ -938,6 +940,17 @@ void fpsgo_notify_frame_hint(int qudeq,
 	// FPSGO UX: bufid magic number.
 	vpPush->identifier = 5566;
 	fpsgo_queue_work(vpPush);
+
+	fpsgo_render_tree_lock(__func__);
+	r_iter = fpsgo_search_and_add_render_info(pid, 5566, 0);
+	if (!r_iter) {
+		fpsgo_render_tree_unlock(__func__);
+		return -ENOMEM;
+	}
+	ret = r_iter->boost_info.last_blc;
+	fpsgo_render_tree_unlock(__func__);
+
+	return ret;
 }
 
 void fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask, int start, int *ret)

@@ -447,7 +447,8 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		if (thr->boost_info.sbe_rescue != 0)
 			goto leave;
 		thr->boost_info.sbe_rescue = 1;
-		thr->sbe_enhance = enhance < 0 ?  sbe_enhance_f : enhance;
+		// thr->sbe_enhance = enhance < 0 ?  sbe_enhance_f : enhance;
+		thr->sbe_enhance = enhance < 0 ?  sbe_enhance_f : (enhance + sbe_enhance_f);
 		fbt_ux_set_cap_with_sbe(thr);
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "[ux]sbe_rescue");
 	} else {
