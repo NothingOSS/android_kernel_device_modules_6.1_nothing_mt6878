@@ -216,13 +216,13 @@ out:
 	return ret;
 }
 
-#if SET_HW_DEFAULT_IOVA_EN
 int apummu_remote_set_hw_default_iova_one_shot(void *drvinfo)
 {
 	struct apummu_dev_info *adv = NULL;
 	struct apummu_msg req, reply;
 	int ret = 0;
 	int widx = 0;
+	uint32_t type, in_addr = 0, size = 0;
 
 	if (drvinfo == NULL) {
 		AMMU_LOG_ERR("invalid argument\n");
@@ -242,8 +242,17 @@ int apummu_remote_set_hw_default_iova_one_shot(void *drvinfo)
 	req.cmd = APUMMU_CMD_HW_DEFAULT_IOVA_ONE_SHOT;
 	req.option = APUMMU_OPTION_SET;
 
+	type = APUMMU_MEM_TYPE_GENERAL_S;
+	if (adv->remote.is_general_SLB_alloc) { // if SLB allocated
+		in_addr = (uint32_t) adv->rsc.genernal_SLB.iova;
+		size = adv->rsc.genernal_SLB.size;
+	}
+
 	AMMU_RPMSG_write(&adv->rsc.vlm_dram.iova, req.data,
 			sizeof(adv->rsc.vlm_dram.iova), widx);
+	AMMU_RPMSG_write(&type, req.data, sizeof(type), widx);
+	AMMU_RPMSG_write(&in_addr, req.data, sizeof(in_addr), widx);
+	AMMU_RPMSG_write(&size, req.data, sizeof(size), widx);
 
 	ret = apummu_remote_send_cmd_sync(drvinfo, (void *) &req, (void *) &reply, 0);
 	if (ret) {
@@ -258,7 +267,6 @@ int apummu_remote_set_hw_default_iova_one_shot(void *drvinfo)
 out:
 	return ret;
 }
-#endif
 
 int apummu_remote_mem_add_pool(void *drvinfo)
 {
@@ -276,8 +284,6 @@ int apummu_remote_mem_add_pool(void *drvinfo)
 		AMMU_LOG_ERR("Remote Not Init\n");
 		return -EINVAL;
 	}
-
-	AMMU_LOG_INFO("APUMMU remote general SLB add pool\n");
 
 	adv = (struct apummu_dev_info *)drvinfo;
 

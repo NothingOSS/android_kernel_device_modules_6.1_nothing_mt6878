@@ -23,18 +23,26 @@ enum APUMMU_MEM_TYPE {
 	APUMMU_MEM_TYPE_MAX
 };
 
+struct ammu_mem_map {
+	struct dma_buf_attachment *attach;
+	struct sg_table *sgt;
+	struct kref map_ref;
+	struct apummu_mem *m;
+	void (*get)(struct ammu_mem_map *map);
+	void (*put)(struct ammu_mem_map *map);
+};
+
 struct apummu_mem {
-	uint64_t uva;
 	uint64_t kva;
 	uint64_t iova;
 	uint32_t size;
+	uint32_t dva_size;
 
-	uint32_t align;
-	uint32_t cache;
-	uint32_t type;
-
-	uint64_t handle;
-	struct sg_table sgt;
+	void *vaddr;
+	void *dbuf;
+	void *priv;
+	struct mutex mtx;
+	struct ammu_mem_map *map;
 };
 
 #endif

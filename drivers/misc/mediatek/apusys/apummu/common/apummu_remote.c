@@ -142,7 +142,7 @@ int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint3
 			break;
 		}
 
-		AMMU_LOG_ERR("Wake up by signal!, retry again %d\n", retry++);
+		AMMU_LOG_WRN("Wake up by signal!, retry again %d\n", retry++);
 		msleep(20);
 	} while (ret == -ERESTARTSYS);
 

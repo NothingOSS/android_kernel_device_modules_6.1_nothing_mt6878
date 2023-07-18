@@ -25,6 +25,7 @@ struct apummu_tbl {
 	struct kref session_tbl_cnt;
 	struct mutex table_lock;
 	bool is_stable_exist;
+	bool is_SLB_set;
 };
 
 struct apummu_tbl g_ammu_table_set;
@@ -143,6 +144,7 @@ static void free_memory(struct kref *kref)
 	}
 
 	g_ammu_table_set.is_stable_exist = false;
+	g_ammu_table_set.is_SLB_set = false;
 }
 
 /**
@@ -155,7 +157,7 @@ static void free_memory(struct kref *kref)
  */
 static int session_table_alloc(void)
 {
-	int i, ret = 0;
+	int ret = 0;
 	struct apummu_session_tbl *sTable_ptr = NULL;
 
 	sTable_ptr = kvmalloc(sizeof(struct apummu_session_tbl), GFP_KERNEL);
@@ -173,42 +175,55 @@ static int session_table_alloc(void)
 		ret = apummu_dram_remap_runtime_alloc(g_adv);
 		if (ret)
 			goto out;
-
-		/* TODO: merge multi DRAM fallback in a single IPI */
-		// ret = apummu_remote_set_hw_default_iova_one_shot(g_adv);
-		for (i = 0; i < g_adv->remote.dram_max; i++) {
-			ret = apummu_remote_set_hw_default_iova(g_adv,
-				i, g_adv->rsc.vlm_dram[i].iova);
-
-			if (ret) {
-				AMMU_LOG_ERR("Remote set hw IOVA fail!!\n");
-				goto free_DRAM;
-			}
-		}
 	}
 #endif
 
 	if (!(g_adv->remote.is_general_SLB_alloc)) { // SLB retry
-		if (!(apummu_alloc_general_SLB(g_adv))) // alloc SLB
-			if (apummu_remote_mem_add_pool(g_adv)) // send to RV
-				goto free_general_SLB;
+		ret = apummu_alloc_general_SLB(g_adv);
+		if (ret)
+			AMMU_LOG_VERBO("general SLB alloc fail...\n");
 	}
 
 	if (!g_ammu_table_set.is_stable_exist) {
+	#if DRAM_FALL_BACK_IN_RUNTIME
+		ret = apummu_remote_set_hw_default_iova_one_shot(g_adv);
+		if (ret) {
+			AMMU_LOG_ERR("Remote set hw IOVA one shot fail!!\n");
+			goto free_DRAM;
+		}
+	#else
+		if (g_adv->remote.is_general_SLB_alloc) {
+			if (apummu_remote_mem_add_pool(g_adv))
+				goto free_general_SLB;
+		}
+	#endif
+		g_ammu_table_set.is_SLB_set = g_adv->remote.is_general_SLB_alloc;
+
 		AMMU_LOG_VERBO("kref init\n");
 		kref_init(&g_ammu_table_set.session_tbl_cnt);
 		g_ammu_table_set.is_stable_exist = true;
 	} else {
 		AMMU_LOG_VERBO("kref get\n");
 		kref_get(&g_ammu_table_set.session_tbl_cnt);
+
+		/* SLB retry IPI */
+		if (!g_ammu_table_set.is_SLB_set && g_adv->remote.is_general_SLB_alloc) {
+			ret = apummu_remote_mem_add_pool(g_adv);
+			if (ret)
+				goto free_general_SLB;
+		}
+
+		g_ammu_table_set.is_SLB_set = true;
 	}
 
 	return ret;
 
-free_general_SLB:
-	apummu_free_general_SLB(g_adv);
+#if DRAM_FALL_BACK_IN_RUNTIME
 free_DRAM:
 	apummu_dram_remap_runtime_free(g_adv);
+#endif
+free_general_SLB:
+	apummu_free_general_SLB(g_adv);
 out:
 	return ret;
 }
@@ -681,6 +696,7 @@ void ammu_session_table_check_SLB(uint32_t type)
 void apummu_mgt_init(void)
 {
 	g_ammu_table_set.is_stable_exist = false;
+	g_ammu_table_set.is_SLB_set = false;
 	INIT_LIST_HEAD(&g_ammu_table_set.g_stable_head);
 	mutex_init(&g_ammu_table_set.table_lock);
 }
