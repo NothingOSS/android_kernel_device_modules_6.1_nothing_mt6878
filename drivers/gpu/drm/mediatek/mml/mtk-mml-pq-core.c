@@ -57,14 +57,7 @@ struct mml_pq_mbox {
 	struct mml_pq_chan dc_readback_chan;
 };
 
-#define FG_BUF_NUM_LIMIT 5
-/*
- * FG_BUF_SIZE = luma_grain_size(11984) +
- *               cb_grain_size(11984) +
- *               cr_grain_size(11984) +
- *               SCALING_LUT_SIZE(1024) * 3
- */
-#define FG_BUF_SIZE 39024
+#define FG_BUF_NUM_LIMIT (5)
 
 struct mml_pq_dev_data {
 	struct mutex aal_hist_mutex;
@@ -543,8 +536,8 @@ void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe,
 
 		mutex_lock(&task->pq_task->fg_buffer_mutex);
 		*lut_buf = temp_buffer;
-		temp_buffer->va =
-			dma_alloc_coherent(dev, FG_BUF_SIZE, &temp_buffer->pa, GFP_KERNEL);
+		temp_buffer->va = dma_alloc_noncoherent(
+			dev, FG_BUF_SIZE, &temp_buffer->pa, DMA_TO_DEVICE, GFP_KERNEL);
 		mutex_unlock(&task->pq_task->fg_buffer_mutex);
 
 		mml_pq_msg("%s aal reallocate jobid[%d] va[%p] pa[%llx]", __func__,
@@ -571,7 +564,8 @@ void mml_pq_put_fg_buffer(struct mml_task *task, u8 pipe,
 	if (fg_buffer_num > FG_BUF_NUM_LIMIT) {
 		mml_pq_msg("%s buffer num[%d] exceeds limit[%d]",
 			__func__, fg_buffer_num, FG_BUF_NUM_LIMIT);
-		dma_free_coherent(dev, FG_BUF_SIZE, (*lut_buf)->va, (*lut_buf)->pa);
+		dma_free_noncoherent(
+			dev, FG_BUF_SIZE, (*lut_buf)->va, (*lut_buf)->pa, DMA_TO_DEVICE);
 		fg_buffer_num--;
 	} else
 		list_add_tail(&((*lut_buf)->buffer_list), &fg_buf_list);

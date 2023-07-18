@@ -313,6 +313,7 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth);
+	dma_sync_single_range_for_device(dev_buf, fg_table_pa, 0, FG_BUF_SIZE, DMA_TO_DEVICE);
 
 	// enable filmGrain
 	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CTRL_0], relay_mode << 0, 1 << 0);
@@ -452,6 +453,7 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth);
+	dma_sync_single_range_for_device(dev_buf, fg_table_pa, 0, FG_BUF_SIZE, DMA_TO_DEVICE);
 
 	/* set FilmGrain Table Address */
 	mml_pq_msg("%s FG_CB_TBL_ADDR[%llx]", __func__,

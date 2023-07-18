@@ -36,6 +36,13 @@
 #define MAX_ENG_RB_BUF (8)
 #define TOTAL_RB_BUF_NUM (MML_PQ_RB_ENGINE*MML_PIPE_CNT*MAX_ENG_RB_BUF)
 #define INVALID_OFFSET_ADDR (4096*TOTAL_RB_BUF_NUM)
+/*
+ * FG_BUF_SIZE = luma_grain_size(11984) +
+ *               cb_grain_size(11984) +
+ *               cr_grain_size(11984) +
+ *               SCALING_LUT_SIZE(1024) * 3
+ */
+#define FG_BUF_SIZE (39024)
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define DB_OPT_MML_PQ	(DB_OPT_DEFAULT | DB_OPT_PROC_CMDQ_INFO | \
