@@ -1186,6 +1186,8 @@ static void core_dump_inst(struct cmdq_pkt *pkt)
 {
 	kfree(mml_inst_dump);
 	kfree(mml_inst_raw);
+	mml_inst_dump = NULL;
+	mml_inst_raw = NULL;
 	mml_inst_dump = cmdq_pkt_parse_buf(pkt, &mml_inst_dump_sz, &mml_inst_raw, &mml_inst_raw_sz);
 
 	mml_log("%s raw buffer %p size %u", __func__, mml_inst_raw, mml_inst_raw_sz);
