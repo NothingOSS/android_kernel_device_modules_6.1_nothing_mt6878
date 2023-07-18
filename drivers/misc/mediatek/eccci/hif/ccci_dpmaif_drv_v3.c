@@ -587,7 +587,12 @@ static void drv3_mask_dl_lro1_interrupt(void)
 
 static inline void check_ul_mask_state_register(unsigned int L2TIMR0)
 {
-	if ((L2TIMR0 & AP_UL_L2INTR_Msk_Check) != AP_UL_L2INTR_Msk_Check) {
+	unsigned int ul_mask_reg_chk;
+
+	/* ignore check md_pwr_not_rdy bits */
+	ul_mask_reg_chk = AP_UL_L2INTR_Msk_Check & (~DPMAIF_UL_INT_MD_PWR_NOTREADY_MSK);
+
+	if ((L2TIMR0 & ul_mask_reg_chk) != ul_mask_reg_chk) {
 		/* if has error bit, set mask */
 		DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMSR0, ~(AP_UL_L2INTR_En_Msk));
 		/* use msk to clear dummy interrupt */
@@ -647,9 +652,22 @@ static irqreturn_t drv3_isr0(int irq, void *data)
 			CCCI_ERROR_LOG(0, TAG, "[%s] dpmaif: ul error L2(%x)\n",
 				__func__, L2TISAR0);
 
-		/* tx done */
-		if (L2TISAR0 & DPMAIF_UL_INT_QDONE_MSK)
+		if (L2TISAR0 & DPMAIF_UL_INT_QDONE_MSK) {
+			/* rcv tx_done irq */
+
 			drv3_irq_tx_done(L2TISAR0 & DPMAIF_UL_INT_QDONE_MSK);
+
+			/* unmask md_pwr_not_rdy if it had ever been masked */
+			if (L2TIMR0 & DPMAIF_UL_INT_MD_PWR_NOTREADY_MSK)
+				DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMCR0,
+						DPMAIF_UL_INT_MD_PWR_NOTREADY_MSK);
+		} else if (L2TISAR0 & DPMAIF_UL_INT_MD_PWR_NOTREADY_MSK) {
+			/* rcv md_pwr_not_rdy irq */
+
+			/* mask md_pwr_not_rdy */
+			DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMSR0,
+					DPMAIF_UL_INT_MD_PWR_NOTREADY_MSK);
+		}
 	}
 
 	/* RX interrupt */
@@ -765,7 +783,6 @@ static irqreturn_t drv3_isr(int irq, void *data)
 	/* TX interrupt */
 	if (L2TISAR0) {
 		L2TISAR0 &= ~(L2TIMR0);
-
 		DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_UL_L2TISAR0, L2TISAR0);
 
 		/* this log may be printed frequently, so first cancel it*/
@@ -773,9 +790,22 @@ static irqreturn_t drv3_isr(int irq, void *data)
 			CCCI_ERROR_LOG(0, TAG, "[%s] dpmaif: ul error L2(%x)\n",
 				__func__, L2TISAR0);
 
-		/* tx done */
-		if (L2TISAR0 & DPMAIF_UL_INT_QDONE_MSK)
+		if (L2TISAR0 & DPMAIF_UL_INT_QDONE_MSK) {
+			/* rcv tx_done irq */
+
 			drv3_irq_tx_done(L2TISAR0 & DPMAIF_UL_INT_QDONE_MSK);
+
+			/* unmask md_pwr_not_rdy if it had ever been masked */
+			if (L2TIMR0 & DPMAIF_UL_INT_MD_PWR_NOTREADY_MSK)
+				DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMCR0,
+						DPMAIF_UL_INT_MD_PWR_NOTREADY_MSK);
+		} else if (L2TISAR0 & DPMAIF_UL_INT_MD_PWR_NOTREADY_MSK) {
+			/* rcv md_pwr_not_rdy irq */
+
+			/* mask md_pwr_not_rdy */
+			DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMSR0,
+					DPMAIF_UL_INT_MD_PWR_NOTREADY_MSK);
+		}
 	}
 
 	/* RX interrupt */
