@@ -670,6 +670,18 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		}
 	}
 
+	//addon for DL
+	if (!crtc->state)
+		DDPDUMP("%s dump nothing for null state\n", __func__);
+	else {
+		state = to_mtk_crtc_state(crtc->state);
+		if (state->lye_state.mml_dl_lye && priv->data->mmsys_id == MMSYS_MT6989) {
+			addon_data = mtk_addon_get_scenario_data(__func__, crtc,
+					MML_DL);
+			mtk_drm_crtc_addon_dump(crtc, addon_data);
+		}
+	}
+
 	if (panel_ext && panel_ext->dsc_params.enable) {
 		if (crtc_id == 3)
 			comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
