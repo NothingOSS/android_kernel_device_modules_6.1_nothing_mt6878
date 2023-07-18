@@ -999,6 +999,7 @@ void fpsgo_frame_end(struct render_info *f_render,
 		frame_end_time,
 		f_render->api,
 		f_render->hwui);
+	switch_thread_max_fps(f_render->pid, 1);
 
 	fpsgo_comp2xgf_qudeq_notify(f_render->pid, f_render->buffer_id,
 		&raw_runtime, &running_time, &enq_running_time,
