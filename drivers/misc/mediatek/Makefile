@@ -64,6 +64,7 @@ obj-$(CONFIG_MTK_MDPM) += mdpm/
 obj-$(CONFIG_MTK_PWM)	    += pwm/
 obj-$(CONFIG_MTK_IRTX_PWM_SUPPORT) += irtx/
 obj-$(CONFIG_MTK_PBM) += pbm/
+obj-$(CONFIG_MTK_CG_PEAK_POWER_THROTTLING) += cg_ppt/
 obj-$(CONFIG_MTK_CCU) += ccu/src/
 obj-$(CONFIG_MEDIATEK_CPUFREQ_DEBUG) += cpufreq_v1/
 obj-$(CONFIG_MEDIATEK_CPUFREQ_DEBUG_LITE) += cpufreq_lite/

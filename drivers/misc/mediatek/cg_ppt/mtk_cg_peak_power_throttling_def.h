@@ -56,7 +56,7 @@ extern void cg_ppt_dlpt_sram_remap(uintptr_t virtual_addr);
 
 /*
  * ========================================================
- * [EB]
+ * [SW Runner]
  * ========================================================
  */
 #elif defined(CFG_CPU_PEAKPOWERTHROTTLING) ||                                  \
@@ -73,6 +73,9 @@ extern void cg_ppt_dlpt_sram_remap(uintptr_t virtual_addr);
 
 #define pp_print(fmt, ...) PRINTF_I(fmt, ##__VA_ARGS__)
 
+extern void ppt_critical_enter(void);
+extern void ppt_critical_exit(void);
+
 /*
  * ========================================================
  * [UNKNOWN]
@@ -82,12 +85,6 @@ extern void cg_ppt_dlpt_sram_remap(uintptr_t virtual_addr);
 #pragma message("pp def compiled as UNKNOWN")
 
 #endif
-
-/*
- * ========================================================
- * Common
- * ========================================================
- */
 
 /*
  * ...................................
@@ -151,18 +148,6 @@ struct DlptCsramCtrlBlock {
 	int apu_peak_power_ack; /*15*/
 };
 
-/*
- * ========================================================
- * Macros
- * ========================================================
- */
-// #ifndef DRV_WriteReg32
-// #define DRV_WriteReg32(addr, data) \
-// ((*(unsigned int *)(addr)) = (unsigned int)(data))
-// #endif
-// #ifndef DRV_Reg32
-// #define DRV_Reg32(addr) (*(unsigned int *)(addr))
-// #endif
 
 /*
  * ========================================================
@@ -172,8 +157,6 @@ struct DlptCsramCtrlBlock {
 struct ThermalCsramCtrlBlock *thermal_csram_ctrl_block_get(void);
 void thermal_csram_ctrl_block_release(
 	struct ThermalCsramCtrlBlock *remap_status_base);
-struct DlptDramCtrlBlock *dlpt_dram_ctrl_block_get(void);
-void dlpt_dram_ctrl_block_release(struct DlptDramCtrlBlock *remap_status_base);
 struct DlptCsramCtrlBlock *dlpt_csram_ctrl_block_get(void);
 void dlpt_csram_ctrl_block_release(
 	struct DlptCsramCtrlBlock *remap_status_base);

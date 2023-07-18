@@ -47,49 +47,20 @@ void cg_ppt_dlpt_sram_remap(uintptr_t virtual_addr)
  * ========================================================
  */
 #if defined(CFG_GPU_PEAKPOWERTHROTTLING)
-#include <tinysys_reg.h>
-#include <remap.h>
-#include <mt_mpu.h>
+#include <FreeRTOS.h>
+#include <task.h>
 
-/*
- * ...................................
- * DLPT DRAM Ctrl Block
- * ...................................
- */
-static int b_init_dlpt_dram_ctrl_block; /*= 0*/
-static void init_dlpt_dram_ctrl_block(void)
+void ppt_critical_enter(void)
 {
-	unsigned int remap_status_base;
-	/* declare memory address 0x8c01fe08 ~ 0x8c01fe18 to pass MPU */
-	while ((remap_status_base = dram_remap(DRAM_ID_PEAK_POWER_BUDGET,
-					       DLPT_DRAM_BASE)) == 0) {
-	};
-	mpu_set_sc(MPU_REGION_PEAK_POWER_BUDGET_MPU, remap_status_base,
-		   remap_status_base + 0x1000);
-	mpu_region_enable(MPU_REGION_PEAK_POWER_BUDGET_MPU);
-	dram_unremap(DRAM_ID_PEAK_POWER_BUDGET, remap_status_base);
-	//indicate one-time initial ok
-	b_init_dlpt_dram_ctrl_block = 1;
+	if (!_is_in_isr())
+		taskENTER_CRITICAL();
 }
 
-struct DlptDramCtrlBlock *dlpt_dram_ctrl_block_get(void)
+void ppt_critical_exit(void)
 {
-	unsigned int remap_status_base;
-
-	if (b_init_dlpt_dram_ctrl_block != 1)
-		init_dlpt_dram_ctrl_block();
-	while ((remap_status_base = dram_remap(DRAM_ID_PEAK_POWER_BUDGET,
-					       DLPT_DRAM_BASE)) == 0) {
-	};
-	return (struct DlptDramCtrlBlock *)remap_status_base;
+	if (!_is_in_isr())
+		taskEXIT_CRITICAL();
 }
-
-void dlpt_dram_ctrl_block_release(struct DlptDramCtrlBlock *remap_status_base)
-{
-	dram_unremap(DRAM_ID_PEAK_POWER_BUDGET,
-		     (unsigned int)remap_status_base);
-}
-
 #endif /*CFG_GPU_PEAKPOWERTHROTTLING*/
 
 /*
