@@ -105,6 +105,8 @@ static bool skip_apsrc;
 
 #define MM_MON_CNT		(100)
 
+#define CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA	(27)
+
 u32 mm_pwr_cnt;
 u32 voter_cnt[32] = {0};
 
@@ -857,10 +859,10 @@ static int mminfra_pm_prepare(struct device *dev)
 {
 	pr_notice("mminfra prepare\n");
 	if (vcp_gipc) {
-		mtk_clk_mminfra_hwv_power_ctrl(true);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(true, CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA);
 		writel(MM_SYS_SUSPEND, dbg->vcp_gipc_in_set);
 		pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
-		mtk_clk_mminfra_hwv_power_ctrl(false);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(false, CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA);
 	}
 	return 0;
 }
@@ -869,13 +871,13 @@ static void mminfra_pm_complete(struct device *dev)
 {
 	pr_notice("mminfra complete\n");
 	if (vcp_gipc) {
-		mtk_clk_mminfra_hwv_power_ctrl(true);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(true, CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA);
 		pr_notice("mminfra mtcmos = 0x%x, hfrp mtcmos = 0x%x, done bits=0x%x\n",
 			readl(dbg->spm_base+0xea8), readl(dbg->spm_base+0xeac),
 			readl(dbg->vlp_base+0x91c));
 		writel(MM_SYS_RESUME, dbg->vcp_gipc_in_set);
 		pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
-		mtk_clk_mminfra_hwv_power_ctrl(false);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(false, CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA);
 	}
 }
 
