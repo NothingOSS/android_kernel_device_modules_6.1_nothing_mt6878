@@ -18,16 +18,16 @@ struct sys_res_mbrain_header header = {
 };
 
 static int group_release[NR_SPM_GRP] = {
-	RELEASE_GROUP, /* DDREN_REQ */
-	RELEASE_GROUP, /* APSRC_REQ */
-	NOT_RELEASE,   /* EMI_REQ */
-	NOT_RELEASE,   /* MAINPLL_REQ */
-	NOT_RELEASE,   /* INFRA_REQ */
-	RELEASE_GROUP, /* F26M_REQ */
-	NOT_RELEASE,   /* PMIC_REQ */
-	RELEASE_GROUP, /* VCORE_REQ */
-	NOT_RELEASE,   /* PWR_ACT */
-	NOT_RELEASE,   /* SYS_STA */
+	RELEASE_GROUP,
+	RELEASE_GROUP,
+	NOT_RELEASE,
+	NOT_RELEASE,
+	NOT_RELEASE,
+	RELEASE_GROUP,
+	NOT_RELEASE,
+	RELEASE_GROUP,
+	NOT_RELEASE,
+	NOT_RELEASE,
 };
 
 void get_sys_res_header(void)
@@ -75,9 +75,6 @@ int lpm_mbrain_get_sys_res_data(void *address, uint32_t size)
 	    size < header.index_data_length + header.data_offset)
 		ret = -1;
 
-	/* Copy header */
-	address = sys_res_data_copy(address, &header, sizeof(struct sys_res_mbrain_header));
-
 	sys_res_ops = get_lpm_sys_res_ops();
 	if (!sys_res_ops ||
 	    !sys_res_ops->update ||
@@ -89,6 +86,9 @@ int lpm_mbrain_get_sys_res_data(void *address, uint32_t size)
 
 	if (ret)
 		return ret;
+
+	/* Copy header */
+	address = sys_res_data_copy(address, &header, sizeof(struct sys_res_mbrain_header));
 
 	spin_lock_irqsave(&sys_res_ops->lock, flag);
 	sys_res_ops->update();
