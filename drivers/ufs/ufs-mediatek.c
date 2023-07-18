@@ -2473,6 +2473,15 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 		}
 	}
 
+	if (evt == UFS_EVT_FATAL_ERR) {
+		if (reg & (CONTROLLER_FATAL_ERROR | SYSTEM_BUS_FATAL_ERROR)) {
+			set = ufshcd_readl(hba, REG_INTERRUPT_ENABLE);
+			set &= ~UFSHCD_ERROR_MASK;
+			ufshcd_writel(hba, set, REG_INTERRUPT_ENABLE);
+			/* for fatal error, eh will be queued automatically */
+		}
+	}
+
 	if (evt == UFS_EVT_DL_ERR) {
 		for_each_set_bit(bit, &reg, ARRAY_SIZE(ufs_uic_dl_err_str))
 			dev_info(hba->dev, "%s\n", ufs_uic_dl_err_str[bit]);
