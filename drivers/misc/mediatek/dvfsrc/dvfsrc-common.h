@@ -47,4 +47,5 @@ static inline int unregister_dvfsrc_debug_notifier(struct notifier_block *nb)
 
 extern int __init mtk_dvfsrc_met_init(void);
 extern void __exit mtk_dvfsrc_met_exit(void);
-
+extern int __init mtk_dvfsrc_mb_init(void);
+extern void __exit mtk_dvfsrc_mb_exit(void);

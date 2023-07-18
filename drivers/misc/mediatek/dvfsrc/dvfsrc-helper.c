@@ -1344,6 +1344,13 @@ static int __init mtk_dvfsrc_helper_init(void)
 		return ret;
 	}
 #endif
+#if IS_ENABLED(CONFIG_MTK_DVFSRC_MB)
+	ret = mtk_dvfsrc_mb_init();
+	if (ret) {
+		platform_driver_unregister(&mtk_dvfsrc_helper_driver);
+		return ret;
+	}
+#endif
 	return 0;
 }
 late_initcall_sync(mtk_dvfsrc_helper_init)
@@ -1353,6 +1360,9 @@ static void __exit mtk_dvfsrc_helper_exit(void)
 	platform_driver_unregister(&mtk_dvfsrc_helper_driver);
 #if IS_ENABLED(CONFIG_MTK_DVFSRC_MET)
 	mtk_dvfsrc_met_exit();
+#endif
+#if IS_ENABLED(CONFIG_MTK_DVFSRC_MB)
+	mtk_dvfsrc_mb_exit();
 #endif
 }
 module_exit(mtk_dvfsrc_helper_exit);
