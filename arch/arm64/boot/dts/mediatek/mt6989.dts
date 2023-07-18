@@ -10983,7 +10983,8 @@
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L3_P0_MDP_RDMA0)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MTK_SMMU_PORT_ID(48, 0) &mmqos SLAVE_COMMON(1)>;
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 0))
+					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 		};
 
@@ -11068,8 +11069,9 @@
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L3_P1_MDP_WROT0)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MTK_SMMU_PORT_ID(48, 1) &mmqos SLAVE_COMMON(1)>;
-			interconnect-names = "mml_dma";
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 1))
+					&mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "mml_dma", "mml_dma_dpc";
 		};
 
 		mml_rdma2: mml-rdma2@1f811000 {
@@ -11084,9 +11086,11 @@
 				<CMDQ_EVENT_MMLSYS1_MDP_RDMA2_FRAME_DONE>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
-			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L3_P4_MDP_RDMA2)
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L3_P4_MDP_RDMA2)
 					&mmqos SLAVE_COMMON(1)>,
-					<&mmqos MTK_SMMU_PORT_ID(48, 4) &mmqos SLAVE_COMMON(1)>;
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 4))
+					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 		};
 
@@ -11114,7 +11118,8 @@
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L3_P5_MDP_WROT2)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MTK_SMMU_PORT_ID(48, 5) &mmqos SLAVE_COMMON(1)>;
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 5))
+					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 		};
 
@@ -11148,7 +11153,8 @@
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L3_P10_MDP_RROT0_STASH)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MTK_SMMU_PORT_ID(48, 10) &mmqos SLAVE_COMMON(1)>;
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 10))
+					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 		};
 
@@ -11168,7 +11174,8 @@
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L3_P11_MDP_RROT0_2ND_STASH)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MTK_SMMU_PORT_ID(48, 11) &mmqos SLAVE_COMMON(1)>;
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 11))
+					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
 		};
 
