@@ -1462,6 +1462,39 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		readl_relaxed(port->vlpcfg_base + SRCLKEN_RC_REQ_STA));
 }
 
+static int mtk_pcie_sleep_protect_status(struct mtk_pcie_port *port)
+{
+	return readl_relaxed(port->vlpcfg_base + PCIE_VLP_AXI_PROTECT_STA) &
+	       PCIE_SUM_SLP_READY(port->port_num);
+}
+
+static bool mtk_pcie_sleep_protect_ready(struct mtk_pcie_port *port)
+{
+	u32 sleep_protect;
+
+	sleep_protect = mtk_pcie_sleep_protect_status(port);
+	if (!sleep_protect) {
+		/*
+		 * Sleep-protect signal will be de-asserted about 2.59us and
+		 * asserted again in HW MTCMOS-on flow. If we run subsequent
+		 * flow immediately after seen sleep-protect ready, it may
+		 * cause unexcepted errors.
+		 * Add SW debounce time here to avoid that corner case and
+		 * check again.
+		 */
+		usleep_range(5, 6);
+
+		sleep_protect = mtk_pcie_sleep_protect_status(port);
+		if (!sleep_protect)
+			return true;
+	}
+
+	dev_info(port->dev, "PCIe%d sleep protect not ready = #%x\n",
+		 port->port_num, sleep_protect);
+
+	return false;
+}
+
 #if IS_ENABLED(CONFIG_ANDROID_FIX_PCIE_SLAVE_ERROR)
 static void pcie_android_rvh_do_serror(void *data, struct pt_regs *regs,
 				       unsigned int esr, int *ret)
@@ -1481,12 +1514,8 @@ static void pcie_android_rvh_do_serror(void *data, struct pt_regs *regs,
 
 		pr_info("PCIe%d port found\n", pcie_port->port_num);
 
-		val = readl_relaxed(pcie_port->vlpcfg_base + PCIE_VLP_AXI_PROTECT_STA);
-		val &= PCIE_SUM_SLP_READY(pcie_port->port_num);
-		if (val) {
-			pr_info("PCIe%d sleep protect not ready=%#x\n", pcie_port->port_num, val);
+		if (!mtk_pcie_sleep_protect_ready(pcie_port))
 			continue;
-		}
 
 		/* Debug monitor pcie design internal signal */
 		writel_relaxed(0x80810001, pcie_port->base + PCIE_DEBUG_SEL_0);
@@ -1542,12 +1571,8 @@ u32 mtk_pcie_dump_link_info(int port)
 	}
 
 	/* Check the sleep protect ready */
-	val = readl_relaxed(pcie_port->vlpcfg_base + PCIE_VLP_AXI_PROTECT_STA);
-	val &= PCIE_SUM_SLP_READY(pcie_port->port_num);
-	if (val) {
-		pr_info("PCIe sleep protect is not ready=%#x\n", val);
+	if (!mtk_pcie_sleep_protect_ready(pcie_port))
 		return 0;
-	}
 
 	mtk_pcie_monitor_mac(pcie_port);
 
@@ -1604,12 +1629,8 @@ int mtk_pcie_disable_data_trans(int port)
 	}
 
 	/* Check the sleep protect ready */
-	val = readl_relaxed(pcie_port->vlpcfg_base + PCIE_VLP_AXI_PROTECT_STA);
-	val &= PCIE_SUM_SLP_READY(pcie_port->port_num);
-	if (val) {
-		pr_info("PCIe sleep protect is not ready=%#x\n", val);
+	if (!mtk_pcie_sleep_protect_ready(pcie_port))
 		return -EPERM;
-	}
 
 	val = readl_relaxed(pcie_port->base + PCIE_RST_CTRL_REG);
 	val |= PCIE_MAC_RSTB;
