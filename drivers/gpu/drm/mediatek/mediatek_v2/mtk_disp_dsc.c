@@ -638,9 +638,6 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 		dec_delay = hrd_delay - initial_xmit_delay;
 		xmit_delay = initial_xmit_delay;
 		if (dsc_param_load_mode == 1) {
-			if (xmit_delay == 0)
-				reg_val = 0x200;
-			else
 				reg_val = (xmit_delay);
 			if (dec_delay == 0)
 				reg_val |= (0x268 << 16);
@@ -1253,9 +1250,6 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 		dec_delay = hrd_delay - initial_xmit_delay;
 		xmit_delay = initial_xmit_delay;
 		if (dsc_param_load_mode == 1) {
-			if (xmit_delay == 0)
-				reg_val = 0x200;
-			else
 				reg_val = (xmit_delay);
 			if (dec_delay == 0)
 				reg_val |= (0x268 << 16);
