@@ -35,6 +35,7 @@
 #include "ufs-mediatek-btag.h"
 #include "ufs-mediatek-rpmb.h"
 #include "ufs-mediatek-sysfs.h"
+#include "ufs-mediatek-priv.h"
 
 /* Power Throttling */
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
@@ -46,7 +47,6 @@
 #endif
 
 extern void mt_irq_dump_status(unsigned int irq);
-static int ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba);
 static int ufs_mtk_config_mcq(struct ufs_hba *hba, bool irq);
 static void _ufs_mtk_clk_scale(struct ufs_hba *hba, bool scale_up);
 
@@ -1441,6 +1441,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	struct ufs_mtk_host *host;
 	int err = 0;
 	struct arm_smccc_res res;
+	struct tag_ufs *atag;
 
 	host = devm_kzalloc(dev, sizeof(*host), GFP_KERNEL);
 	if (!host) {
@@ -1451,6 +1452,13 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	host->hba = hba;
 	ufshcd_set_variant(hba, host);
+
+	atag = (struct tag_ufs *)ufs_mtk_get_boot_property(dev->of_node,
+			"atag,ufs", NULL);
+	if (!atag)
+		dev_err(hba->dev, "cannot find atag,ufs");
+	else
+		host->atag = atag;
 
 	id = of_match_device(ufs_mtk_of_match, dev);
 	if (!id) {
@@ -2496,7 +2504,7 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 
 }
 
-static int ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba)
+int ufs_mtk_auto_hibern8_disable(struct ufs_hba *hba)
 {
 	unsigned long flags;
 	int ret;

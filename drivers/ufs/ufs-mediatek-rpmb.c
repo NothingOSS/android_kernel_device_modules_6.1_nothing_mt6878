@@ -6,13 +6,19 @@
  *	Peter Wang <peter.wang@mediatek.com>
  */
 
+#include <asm-generic/errno-base.h>
 #include <asm/unaligned.h>
 #include <linux/async.h>
+#include <linux/delay.h>
 #include <linux/rpmb.h>
+#include <linux/soc/mediatek/mtk_ise_lpm.h>
+#include <linux/soc/mediatek/mtk-ise-mbox.h>
 #include <scsi/scsi_cmnd.h>
 #include <scsi/scsi_dbg.h>
 #include <ufs/ufshcd.h>
+
 #include "ufs-mediatek.h"
+#include "ufs-mediatek-ise.h"
 
 static struct rpmb_dev *rawdev_ufs_rpmb;
 static int ufs_mtk_rpmb_cmd_seq(struct device *dev,
@@ -173,6 +179,8 @@ static int ufs_mtk_rpmb_cmd_seq(struct device *dev,
 	return ret;
 }
 
+
+struct ufs_hba *g_hba;
 /**
  * ufs_mtk_rpmb_ddd - add mtk rpmb cdev
  * @data: host controller instance (hba)
@@ -193,6 +201,7 @@ static void ufs_mtk_rpmb_add(void *data, async_cookie_t cookie)
 	struct scsi_device *sdev = NULL;
 
 	host = ufshcd_get_variant(hba);
+	g_hba = hba;
 
 	sema_init(&host->rpmb_sem, 0);
 
@@ -260,6 +269,7 @@ out:
 	up(&host->rpmb_sem);
 }
 
+
 struct rpmb_dev *ufs_mtk_rpmb_get_raw_dev(void)
 {
 	return rawdev_ufs_rpmb;
@@ -268,6 +278,7 @@ EXPORT_SYMBOL_GPL(ufs_mtk_rpmb_get_raw_dev);
 
 void ufs_mtk_rpmb_init(struct ufs_hba *hba)
 {
+	ufs_mtk_ise_rpmb_probe(hba);
 	async_schedule(ufs_mtk_rpmb_add, hba);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_rpmb_init);

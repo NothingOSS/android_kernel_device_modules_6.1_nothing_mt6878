@@ -9,7 +9,7 @@
 #include <linux/bitops.h>
 #include <linux/pm_qos.h>
 #include <linux/of_device.h>
-
+#include <linux/cdev.h>
 #include <ufs/ufs.h>
 #include <ufs/ufshci.h>
 #include <ufs/ufshcd.h>
@@ -193,6 +193,16 @@ struct tag_chipid {
 };
 #endif
 
+enum rpmb_key_state {
+	RPMB_KEY_ST_UNKNOWN = 0x1,
+	RPMB_KEY_ST_PROGRAMMED,
+	RPMB_KEY_ST_NOT_PROGRAMMED,
+};
+
+struct tag_ufs {
+	enum rpmb_key_state rpmb_r2_kst;  /* RPMB Region 2 Key State*/
+};
+
 struct ufs_mtk_mcq_intr_info {
 	struct ufs_hba *hba;
 	u32 irq;
@@ -237,10 +247,14 @@ struct ufs_mtk_host {
 	struct semaphore rpmb_sem;
 	struct scsi_device *sdev_rpmb;
 	struct device *phy_dev;
+	struct cdev ise_rpmb_cdev;
+	struct device *rpmb_bsg_dev;
+	struct request_queue	*rpmb_bsg_queue;
 
 	bool mcq_set_intr;
 	int mcq_nr_intr;
 	struct ufs_mtk_mcq_intr_info mcq_intr_info[UFSHCD_MAX_Q_NR];
+	struct tag_ufs *atag;
 };
 
 #define UFSHCD_MAX_TAG	256
