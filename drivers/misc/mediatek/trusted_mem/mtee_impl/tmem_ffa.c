@@ -161,11 +161,11 @@ static void set_memory_region_attrs(enum MTEE_MCHUNKS_ID mchunk_id,
 	ffa_args->attrs = mem_region_attrs;
 }
 
-int tmem_ffa_page_alloc(struct sg_table *sg_tbl, u64 *handle)
+int tmem_ffa_page_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
+						struct sg_table *sg_tbl, u64 *handle)
 {
 	struct ffa_mem_ops_args ffa_args;
 	struct ffa_mem_region_attributes mem_region_attrs[ATTRS_NUM];
-	enum MTEE_MCHUNKS_ID mchunk_id = MTEE_MCHUNKS_PROT;
 	int ret;
 
 	if (tmem_ffa_dev == NULL) {
@@ -178,8 +178,11 @@ int tmem_ffa_page_alloc(struct sg_table *sg_tbl, u64 *handle)
 	/* set ffa_mem_ops_args */
 	set_memory_region_attrs(mchunk_id, &ffa_args, mem_region_attrs, 0);
 	ffa_args.use_txbuf = true;
-	/* set bit[31]=1 then ffa_lend will do retrieve_req */
-	ffa_args.flags = PAGED_BASED_FFA_FLAGS;
+	if ((mchunk_id == MTEE_MCHUNKS_PROT) ||
+		(mchunk_id == MTEE_MCHUNKS_SAPU_DATA_SHM)) {
+		/* set bit[31]=1 then ffa_lend will do retrieve_req */
+		ffa_args.flags = PAGED_BASED_FFA_FLAGS;
+	}
 	ffa_args.tag = 0;
 	ffa_args.g_handle = 0;
 	ffa_args.sg = sg_tbl->sgl;

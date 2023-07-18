@@ -47,5 +47,6 @@ bool is_svp_on_mtee(void);
 bool is_svp_enabled(void);
 bool is_ffa_enabled(void);
 bool is_page_based_v2_enabled(void);
+bool is_tee_mmap_by_page_enabled(void);
 
 #endif

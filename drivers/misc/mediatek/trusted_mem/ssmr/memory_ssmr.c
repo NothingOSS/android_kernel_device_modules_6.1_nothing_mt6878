@@ -35,6 +35,7 @@
 
 #define SSMR_FEATURES_DT_UNAME "memory-ssmr-features"
 #define FFA_ENABLED_DT_UNAME "memory-ffa-enabled"
+#define TEE_MMAP_BY_PAGE_ENABLED_DT_UNAME "tee-mmap-by-page-enabled"
 #define PAGE_BASED_V2_ENABLED_DT_UNAME "page-based-v2-enabled"
 #define SVP_FEATURES_DT_UNAME "SecureVideoPath"
 #define SVP_ON_MTEE_DT_UNAME "MTEE"
@@ -624,6 +625,17 @@ bool is_page_based_v2_enabled(void)
 	struct device_node *dt_node;
 
 	dt_node = of_find_node_by_name(NULL, PAGE_BASED_V2_ENABLED_DT_UNAME);
+	if (!dt_node)
+		return false;
+
+	return true;
+}
+
+bool is_tee_mmap_by_page_enabled(void)
+{
+	struct device_node *dt_node;
+
+	dt_node = of_find_node_by_name(NULL, TEE_MMAP_BY_PAGE_ENABLED_DT_UNAME);
 	if (!dt_node)
 		return false;
 

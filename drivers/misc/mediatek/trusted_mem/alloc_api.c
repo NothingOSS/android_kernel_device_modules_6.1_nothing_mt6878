@@ -240,12 +240,20 @@ int trusted_mem_page_based_alloc(enum TRUSTED_MEM_REQ_TYPE req_mem_type,
 {
 	enum TRUSTED_MEM_TYPE mem_type = get_mem_type(req_mem_type);
 
-	if (is_ffa_enabled() &&
-		((mem_type == TRUSTED_MEM_PROT_PAGE) ||
-		 (mem_type == TRUSTED_MEM_SAPU_PAGE))) {
-		pr_info("[TMEM][%d] page-based: size = 0x%x\n", mem_type, size);
-		return tmem_ffa_page_alloc(sg_tbl, handle);
-	}
+	if (!is_ffa_enabled())
+		return 0;
+
+	pr_info("[TMEM][%d] page-based: size = 0x%x\n", mem_type, size);
+
+	/* we need the FF-A handle of SEL2/EL3 to do memory mapping at TEE */
+	if (is_tee_mmap_by_page_enabled() &&
+		((mem_type == TRUSTED_MEM_SVP_PAGE) || (mem_type == TRUSTED_MEM_WFD_PAGE)))
+		return tmem_ffa_page_alloc(MTEE_MCHUNKS_SVP, sg_tbl, handle);
+
+	/* we need the FF-A handle of EL2 SPM to do memory mapping at MTEE */
+	if ((mem_type == TRUSTED_MEM_PROT_PAGE) || (mem_type == TRUSTED_MEM_SAPU_PAGE))
+		return tmem_ffa_page_alloc(MTEE_MCHUNKS_PROT, sg_tbl, handle);
+
 	return 0;
 }
 EXPORT_SYMBOL(trusted_mem_page_based_alloc);
