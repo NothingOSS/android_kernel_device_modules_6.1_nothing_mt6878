@@ -1078,6 +1078,7 @@ static s32 cmdq_mdp_consume_handle(void)
 		/* lock thread for counting and clk */
 		err = cmdq_mdp_lock_thread(handle);
 		if (err != 0) {
+			mutex_unlock(&mdp_thread_mutex);
 			CMDQ_ERR("fail to lock handle or power on: 0x%p\n", handle);
 			continue;
 		}
