@@ -169,7 +169,7 @@
 			    allow_mismatched_32bit_el0 \
 			    8250.nr_uarts=4 cgroup.memory=nosocket,nokmem \
 			    androidboot.hardware=mt6897 disable_dma32=on \
-			    vmalloc=400M swiotlb=noforce cma=64M \
+			    vmalloc=400M swiotlb=noforce \
 			    firmware_class.path=/vendor/firmware";
 		kaslr-seed = <0 0>;
 		mkp_panic="on";
