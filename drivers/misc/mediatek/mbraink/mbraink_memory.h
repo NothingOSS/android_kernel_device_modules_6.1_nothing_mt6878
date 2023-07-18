@@ -10,6 +10,7 @@
 #include <linux/io.h>
 #include "mbraink_ioctl_struct_def.h"
 int mbraink_memory_getDdrInfo(struct mbraink_memory_ddrInfo *pMemoryDdrInfo);
+int mbraink_memory_getMdvInfo(struct mbraink_memory_mdvInfo *pMemoryMdv);
 
 #endif /*end of MBRAINK_MEMORY_H*/
 

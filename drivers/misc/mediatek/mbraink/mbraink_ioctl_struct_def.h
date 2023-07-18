@@ -21,6 +21,7 @@
 #define MAX_FREQ_SZ				64
 #define MAX_WAKEUP_SOURCE_NUM			12
 #define MAX_NAME_SZ						64
+#define MAX_MDV_SZ						6
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -226,6 +227,15 @@ struct mbraink_modem_raw {
 	unsigned char data1[MD_HD_SZ];
 	unsigned char data2[MD_MDHD_SZ];
 	unsigned char data3[MD_SEC_SZ];
+};
+
+struct mbraink_memory_mdvInfo {
+	uint8_t type;
+	uint8_t mid;
+	uint8_t ver;
+	uint16_t pos;
+	uint32_t size;
+	uint32_t raw[MAX_MDV_SZ];
 };
 
 

@@ -38,6 +38,7 @@
 #define PMU_INFO				'i'
 #define POWER_SPM_RAW			'j'
 #define MODEM_INFO				'k'
+#define MEMORY_MDV_INFO			'l'
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -77,6 +78,9 @@
 
 #define RO_MODEM_INFO			_IOR(IOC_MAGIC, MODEM_INFO, \
 							struct mbraink_modem_raw*)
+
+#define RO_MEMORY_MDV_INFO			_IOR(IOC_MAGIC, MEMORY_MDV_INFO, \
+							struct mbraink_memory_mdvInfo*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

@@ -249,6 +249,33 @@ static long handlePmuInfo(unsigned long arg)
 	return ret;
 }
 
+static long handleMdvInfo(unsigned long arg)
+{
+	long ret = 0;
+	struct mbraink_memory_mdvInfo memory_mdv_info;
+
+	memset(&memory_mdv_info,
+			0,
+			sizeof(struct mbraink_memory_mdvInfo));
+
+	if (copy_from_user(&memory_mdv_info,
+				(struct mbraink_memory_mdvInfo *) arg,
+				sizeof(memory_mdv_info))) {
+		pr_notice("Data write memory mdv info from UserSpace Err!\n");
+		return -EPERM;
+	}
+	ret = mbraink_memory_getMdvInfo(&memory_mdv_info);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_memory_mdvInfo *) arg,
+					&memory_mdv_info,
+					sizeof(memory_mdv_info))) {
+			pr_notice("Copy memory_mdv_info to UserSpace error!\n");
+			return -EPERM;
+		}
+	}
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -623,6 +650,11 @@ static long mbraink_ioctl(struct file *filp,
 			pr_notice("Copy modem_buffer to UserSpace error!\n");
 			return -EPERM;
 		}
+		break;
+	}
+	case RO_MEMORY_MDV_INFO:
+	{
+		ret = handleMdvInfo(arg);
 		break;
 	}
 	default:
