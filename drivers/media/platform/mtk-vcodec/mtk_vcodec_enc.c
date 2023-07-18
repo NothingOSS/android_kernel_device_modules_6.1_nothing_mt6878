@@ -2038,6 +2038,10 @@ static int vidioc_venc_dqbuf(struct file *file, void *priv,
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE &&
 		ret == 0) {
 		vq = v4l2_m2m_get_vq(ctx->m2m_ctx, buf->type);
+		if (vq == NULL) {
+			mtk_v4l2_debug(1, "vq is NULL");
+			return -EINVAL;
+		}
 		if (buf->index >= vq->num_buffers) {
 			mtk_v4l2_err("[%d] buffer index %d out of range %d",
 				ctx->id, buf->index, vq->num_buffers);

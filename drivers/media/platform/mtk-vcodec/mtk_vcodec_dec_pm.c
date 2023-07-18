@@ -497,7 +497,7 @@ void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, unsigned int hw_id)
 	struct mtk_vdec_clks_data *clks_data;
 	unsigned long flags;
 
-	if (hw_id < 0 || hw_id >= MTK_VDEC_HW_NUM) {
+	if (hw_id >= MTK_VDEC_HW_NUM) {
 		mtk_v4l2_err("invalid hw_id %d", hw_id);
 		return;
 	}
@@ -618,7 +618,7 @@ void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, unsigned int hw_id)
 	struct mtk_vdec_clks_data *clks_data;
 	unsigned long flags;
 
-	if (hw_id < 0 || hw_id >= MTK_VDEC_HW_NUM) {
+	if (hw_id >= MTK_VDEC_HW_NUM) {
 		mtk_v4l2_err("invalid hw_id %d", hw_id);
 		return;
 	}
