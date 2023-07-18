@@ -57,6 +57,7 @@ static struct workqueue_struct *vmm_notify_wq;
 static bool mmdvfs_vcp_cb_ready;
 static DEFINE_MUTEX(mmdvfs_vcp_cb_mutex);
 static int mmdvfs_ipi_status;
+static u64 cb_timestamp[3];
 static DEFINE_MUTEX(mmdvfs_vcp_ipi_mutex);
 static struct ipi_callbacks clkmux_cb;
 static struct notifier_block vcp_ready_notifier;
@@ -338,11 +339,15 @@ ipi_lock_end:
 	mutex_unlock(&mmdvfs_vcp_ipi_mutex);
 
 ipi_send_end:
-	if (ret || (log_level & (1 << log_ipi)))
+	if (ret || (log_level & (1 << log_ipi))) {
 		MMDVFS_ERR(
 			"ret:%d retry:%d ready:%d cb_ready:%d slot:%#llx vcp_power:%d unfinish func:%#x",
 			ret, retry, is_vcp_ready_ex(VCP_A_ID), mmdvfs_vcp_cb_ready,
 			*(u64 *)&slot, vcp_power, val);
+		MMDVFS_ERR("rst_clk:%d sync_data:%#x ts_pm_suspend:%llu ts_vcp_suspend:%llu ts_vcp_ready:%llu",
+			mmdvfs_rst_clk_done, readl(MEM_IPI_SYNC_DATA),
+			cb_timestamp[0], cb_timestamp[1], cb_timestamp[2]);
+	}
 	mmdvfs_ipi_status = ret;
 	return ret;
 }
@@ -1322,6 +1327,7 @@ static int mmdvfs_pm_notifier(struct notifier_block *notifier, unsigned long pm_
 				mtk_mmdvfs_v3_set_force_step(i, -1);
 		}
 		mmdvfs_reset_ccu();
+		cb_timestamp[0] = sched_clock();
 		mmdvfs_reset_vcp();
 		break;
 	}
@@ -1348,6 +1354,7 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 {
 	switch (action) {
 	case VCP_EVENT_READY:
+		cb_timestamp[2] = sched_clock();
 		mmdvfs_rst_clk_done = false;
 		mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, MAX_OPP, MAX_OPP, NULL);
 		if (dpc_fp)
@@ -1397,6 +1404,7 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 				mmdvfs_mux[mmdvfs_user[0].target_id].freq_num - 1);
 			mtk_mmdvfs_enable_vmm(false);
 		}
+		cb_timestamp[1] = sched_clock();
 		mmdvfs_reset_clk(false);
 		mutex_lock(&mmdvfs_vcp_cb_mutex);
 		mmdvfs_vcp_cb_ready = false;
