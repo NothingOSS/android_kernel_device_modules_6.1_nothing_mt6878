@@ -165,6 +165,8 @@ struct mtk_chan {
 };
 
 static unsigned long long num;
+static unsigned int flag_state;
+static unsigned int g_vff_sz;
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 static unsigned int res_status;
 static unsigned int peri_0_axi_dbg;
@@ -472,6 +474,7 @@ void mtk_uart_apdma_enable_vff(bool enable)
 	} else {
 		/* enable RX VFF */
 		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_RPT, 0x0);
+		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_THRE, VFF_RX_THRE(g_vff_sz));
 		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_EN, VFF_EN_B);
 	}
 }
@@ -678,6 +681,7 @@ static void mtk_uart_apdma_start_rx(struct mtk_chan *c)
 	c->rec_info[idx].trans_time = sched_clock();
 
 	vff_sz = c->cfg.src_port_window_size;
+	g_vff_sz = vff_sz;
 	if (!mtk_uart_apdma_read(c, VFF_LEN)) {
 		mtk_uart_apdma_write(c, VFF_ADDR, d->addr);
 		mtk_uart_apdma_write(c, VFF_LEN, vff_sz);
@@ -808,6 +812,7 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 		left_data = mtk_uart_apdma_read(c, VFF_DEBUG_STATUS);
 		poll_cnt--;
 	}
+	flag_state = mtk_uart_apdma_read(c, VFF_INT_FLAG);
 	mtk_uart_apdma_write(c, VFF_INT_FLAG, VFF_RX_INT_CLR_B);
 	//Read VFF_VALID_FLAG value
 	mb();
@@ -884,8 +889,9 @@ static irqreturn_t mtk_uart_apdma_irq_handler(int irq, void *dev_id)
 	//spin_unlock_irqrestore(&c->vc.lock, flags);
 	spin_unlock(&c->vc.lock);
 	if (current_dir == DMA_DEV_TO_MEM) {
-		if (num % 5000 == 2)
-			pr_debug("debug: %s: VFF_VALID_SIZE=0, num[%llu]\n", __func__, num);
+		if (num % 5000 == 1)
+			pr_debug("debug: %s: VFF_VALID_SIZE=0, num[%llu], flag_state[0x%x]\n",
+				__func__, num, flag_state);
 	} else if (current_dir == DMA_MEM_TO_DEV) {
 		if (dump_tx_err)
 			pr_info("debug: %s: TX[%d] FIX ME!", __func__, current_irq);
@@ -905,10 +911,10 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 	if (mtkd->support_hub) {
 		if (mtkd->support_wakeup)
 			mtk_uart_set_apdma_clk(true);
-		if (c->dir == DMA_MEM_TO_DEV) {
-			pr_info("[%s]:INT_EN[0x%x] INT_FLAG[0x%x],"
-						"WPT[0x%x] RPT[0x%x] THRE[0x%x] LEN[0x%x]\n",
-				__func__,
+		if (c->dir == DMA_DEV_TO_MEM) {
+			pr_info("[%s] after:VFF_EN[%d], INT_EN[0x%x] INT_FLAG[0x%x],"
+				"WPT[0x%x] RPT[0x%x] THRE[0x%x] LEN[0x%x]\n",
+				__func__, mtk_uart_apdma_read(c, VFF_EN),
 				mtk_uart_apdma_read(c, VFF_INT_EN),
 				mtk_uart_apdma_read(c, VFF_INT_FLAG),
 				mtk_uart_apdma_read(c, VFF_WPT),
@@ -964,9 +970,11 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 		goto err_pm;
 	}
 
-	if (c->dir == DMA_MEM_TO_DEV) {
-		pr_info("INT_FLAG[0x%x] WPT[0x%x],\n"
-					"RPT[0x%x] THRE[0x%x] LEN[0x%x]\n",
+	if (c->dir == DMA_DEV_TO_MEM) {
+		pr_info("[%s] after: VFF_EN[%d], INT_EN[0x%x] INT_FLAG[0x%x],"
+			"WPT[0x%x] RPT[0x%x] THRE[0x%x] LEN[0x%x]\n",
+			__func__, mtk_uart_apdma_read(c, VFF_EN),
+			mtk_uart_apdma_read(c, VFF_INT_EN),
 			mtk_uart_apdma_read(c, VFF_INT_FLAG),
 			mtk_uart_apdma_read(c, VFF_WPT),
 			mtk_uart_apdma_read(c, VFF_RPT),
