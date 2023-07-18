@@ -17783,13 +17783,13 @@ void mtk_disp_ultra_offset(void __iomem *config_regs,
 
 void mtk_ddp_reset_comp(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, unsigned int pipe)
 {
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
 	resource_size_t config_regs_pa;
 	unsigned int addr = 0xffffffff, bit = 0;
 
-	if (comp == NULL || handle == NULL)
+	if (comp == NULL || comp->mtk_crtc == NULL || handle == NULL)
 		return;
-
+	mtk_crtc = comp->mtk_crtc;
 	if (pipe == 0)
 		config_regs_pa = mtk_crtc->config_regs_pa;
 	else
