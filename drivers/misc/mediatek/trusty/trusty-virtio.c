@@ -669,13 +669,10 @@ err_load_descr:
 
 static irqreturn_t trusty_virtio_irq_handler(int irq, void *data)
 {
-	struct trusty_ctx *tctx = data;
-
 	if (!(trusty_read(RSVD_OFFSET) & APMCU_ACK))
 		trusty_setbits(RSVD_OFFSET, APMCU_ACK);
 
 	trusty_notifier_call();
-	dev_info(tctx->dev, "%s: handled\n", __func__);
 
 	return IRQ_HANDLED;
 }
