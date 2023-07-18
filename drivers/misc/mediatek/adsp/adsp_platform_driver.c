@@ -263,6 +263,31 @@ int adsp_core1_resume(void)
 	return 0;
 }
 
+int adsp_logger_init_message(uint32_t id, void *info, uint32_t size)
+{
+	int ret;
+	unsigned int retry_count = 10;
+
+	if (id >= ADSP_CORE_TOTAL)
+		return ADSP_IPI_ERROR;
+
+	_adsp_register_feature(id, ADSP_LOGGER_FEATURE_ID, 0);
+
+	do {
+		ret = adsp_push_message(ADSP_IPI_LOGGER_INIT, info,
+			size, 20, id);
+		retry_count--;
+		if (ret != ADSP_IPI_DONE)
+			usleep_range(1000, 1500);
+	} while ((retry_count > 0) && (ret != ADSP_IPI_BUSY));
+
+	_adsp_deregister_feature(id, ADSP_LOGGER_FEATURE_ID, 0);
+
+	if (ret != ADSP_IPI_DONE)
+		pr_info("[ADSP]logger initial fail, ipi ret=%d\n", ret);
+	return ret;
+}
+
 void adsp_logger_init0_cb(struct work_struct *ws)
 {
 	int ret;
@@ -277,15 +302,7 @@ void adsp_logger_init0_cb(struct work_struct *ws)
 	info[6] = adsp_get_reserve_mem_phys(ADSP_L2SRAM_CTRL_MEM_ID);
 	info[7] = adsp_get_reserve_mem_size(ADSP_L2SRAM_CTRL_MEM_ID);
 
-	_adsp_register_feature(ADSP_A_ID, ADSP_LOGGER_FEATURE_ID, 0);
-
-	ret = adsp_push_message(ADSP_IPI_LOGGER_INIT, (void *)info,
-		sizeof(info), 20, ADSP_A_ID);
-
-	_adsp_deregister_feature(ADSP_A_ID, ADSP_LOGGER_FEATURE_ID, 0);
-
-	if (ret != ADSP_IPI_DONE)
-		pr_err("[ADSP]logger initial fail, ipi ret=%d\n", ret);
+	ret = adsp_logger_init_message(ADSP_A_ID, (void *)info, sizeof(info));
 }
 
 void adsp_logger_init1_cb(struct work_struct *ws)
@@ -302,15 +319,8 @@ void adsp_logger_init1_cb(struct work_struct *ws)
 	info[6] = adsp_get_reserve_mem_phys(ADSP_L2SRAM_CTRL_MEM_ID);
 	info[7] = adsp_get_reserve_mem_size(ADSP_L2SRAM_CTRL_MEM_ID);
 
-	_adsp_register_feature(ADSP_B_ID, ADSP_LOGGER_FEATURE_ID, 0);
+	ret = adsp_logger_init_message(ADSP_B_ID, (void *)info, sizeof(info));
 
-	ret = adsp_push_message(ADSP_IPI_LOGGER_INIT, (void *)info,
-		sizeof(info), 20, ADSP_B_ID);
-
-	_adsp_deregister_feature(ADSP_B_ID, ADSP_LOGGER_FEATURE_ID, 0);
-
-	if (ret != ADSP_IPI_DONE)
-		pr_err("[ADSP]logger initial fail, ipi ret=%d\n", ret);
 }
 
 static struct slbc_data slb_data = {
