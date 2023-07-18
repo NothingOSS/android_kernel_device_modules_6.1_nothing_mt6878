@@ -285,6 +285,13 @@ union mdw_cmd_args {
 enum mdw_util_ioctl_op {
 	MDW_UTIL_IOCTL_SETPOWER,
 	MDW_UTIL_IOCTL_UCMD,
+	MDW_UTIL_IOCTL_INFO,
+};
+
+enum mdw_util_info_type {
+	MDW_UTIL_INFO_POWERPOLICY,
+
+	MDW_UTIL_INFO_MAX,
 };
 
 struct mdw_util_in {
@@ -301,6 +308,11 @@ struct mdw_util_in {
 			uint32_t size;
 			uint64_t handle;
 		} ucmd;
+		struct {
+			uint32_t type;
+			uint64_t value;
+			uint64_t reserve;
+		} info;
 	};
 };
 

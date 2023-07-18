@@ -68,6 +68,11 @@ int mdw_rv_dev_dtime_handle(struct mdw_rv_dev *mrdev, struct mdw_cmd *c);
 bool mdw_rv_dev_poll_cmd(struct mdw_rv_dev *mrdev, struct mdw_cmd *c);
 void mdw_rv_dev_cp_execinfo(struct mdw_rv_dev *mrdev, struct mdw_cmd *c);
 
+/* power budget functions */
+int mdw_rv_pb_get(enum mdw_pwrplcy_type  type, uint32_t debounce_ms);
+int mdw_rv_pb_put(enum mdw_pwrplcy_type  type);
+void mdw_rv_pb_init(struct mdw_device *mdev);
+
 /* rv cmd functions */
 extern const struct mdw_rv_cmd_func mdw_rv_cmd_func_v2;
 extern const struct mdw_rv_cmd_func mdw_rv_cmd_func_v3;

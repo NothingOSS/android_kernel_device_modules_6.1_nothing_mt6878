@@ -184,10 +184,14 @@ static const struct mdw_dev_func mdw_rv_func = {
 	.dtime_handle = mdw_rv_dtime_handle,
 	.poll_cmd = mdw_rv_poll_cmd,
 	.cp_execinfo = mdw_rv_cp_execinfo,
+	.pb_get = mdw_rv_pb_get,
+	.pb_put = mdw_rv_pb_put,
 };
 
 void mdw_rv_set_func(struct mdw_device *mdev)
 {
+	mdw_rv_pb_init(mdev);
+
 	mdev->dev_funcs = &mdw_rv_func;
 	mdev->uapi_ver = 4;
 }

@@ -807,6 +807,9 @@ static int mdw_cmd_run(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 
 	mdw_cmd_show(c, mdw_cmd_debug);
 
+	/* get power budget */
+	mdev->dev_funcs->pb_get(c->power_plcy, 0);
+
 	c->start_ts = sched_clock();
 	atomic_inc(&mdev->cmd_running);
 	ret = mdev->dev_funcs->run_cmd(mpriv, c);
@@ -1164,6 +1167,9 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 
 	mdw_trace_begin("apumdw:cmd_complete|cmd:0x%llx/0x%llx", c->uid, c->kid);
 	mutex_lock(&c->mtx);
+
+	/*  put power budget */
+	mdev->dev_funcs->pb_put(c->power_plcy);
 
 	/* copy exec info and cmdbuf out */
 	if (c->cmd_state == MDW_PERF_CMD_INIT) {

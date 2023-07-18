@@ -50,6 +50,9 @@
 #define MDW_PERIOD_TOLERANCE_TH(x) (x*10/100) //ms
 #define MDW_IPTIME_TOLERANCE_TH(x) (x*10/100) //ms
 
+/* power budget debounce time */
+#define MDW_PB_DEBOUNCE_MS (50*1000)
+
 /* dtime */
 #define MAX_DTIME (2000) /* 2s */
 
@@ -204,7 +207,7 @@ enum mdw_info_dir {
 	MDW_INFO_GET
 };
 
-enum {
+enum mdw_pwrplcy_type {
 	MDW_POWERPOLICY_DEFAULT = 0, //do nothing
 	MDW_POWERPOLICY_SUSTAINABLE = 1,
 	MDW_POWERPOLICY_PERFORMANCE = 2,
@@ -432,6 +435,9 @@ struct mdw_dev_func {
 	int (*dtime_handle)(struct mdw_cmd *c);
 	bool (*poll_cmd)(struct mdw_cmd *c);
 	void (*cp_execinfo)(struct mdw_cmd *c);
+	/* power budget funcs */
+	int (*pb_get)(enum mdw_pwrplcy_type type, uint32_t deboundce_ms);
+	int (*pb_put)(enum mdw_pwrplcy_type type);
 };
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)

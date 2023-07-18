@@ -87,6 +87,9 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 		atomic_inc(&g_inited);
 	}
 
+	/* get normal power budget */
+	mdw_dev->dev_funcs->pb_get(MDW_POWERPOLICY_DEFAULT, MDW_PB_DEBOUNCE_MS);
+
 	ret = mdw_mem_pool_create(mpriv, &mpriv->cmd_buf_pool,
 		MDW_MEM_TYPE_MAIN, MDW_MEM_POOL_CHUNK_SIZE,
 		MDW_DEFAULT_ALIGN, F_MDW_MEM_32BIT);
