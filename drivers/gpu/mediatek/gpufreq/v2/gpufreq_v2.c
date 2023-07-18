@@ -1589,13 +1589,18 @@ static void gpufreq_dump_dvfs_status(void)
 	if (g_shared_status) {
 		cur_oppidx_gpu = g_shared_status->cur_oppidx_gpu;
 		cur_vgpu = g_shared_status->cur_vgpu;
-		opp_vgpu = g_shared_status->working_table_gpu[cur_oppidx_gpu].volt;
-		vgpu_diff = (int)cur_vgpu - (int)opp_vgpu;
-
+		if (cur_oppidx_gpu >= 0 && cur_oppidx_gpu < g_shared_status->opp_num_gpu) {
+			opp_vgpu = g_shared_status->working_table_gpu[cur_oppidx_gpu].volt;
+			vgpu_diff = (int)cur_vgpu - (int)opp_vgpu;
+		} else
+			GPUFREQ_LOGE("abnormal cur_oppidx_gpu: %d", cur_oppidx_gpu);
 		cur_oppidx_stack = g_shared_status->cur_oppidx_stack;
 		cur_vstack = g_shared_status->cur_vstack;
-		opp_vstack = g_shared_status->working_table_stack[cur_oppidx_stack].volt;
-		vstack_diff = (int)cur_vstack - (int)opp_vstack;
+		if (cur_oppidx_stack >= 0 && cur_oppidx_stack < g_shared_status->opp_num_stack) {
+			opp_vstack = g_shared_status->working_table_stack[cur_oppidx_stack].volt;
+			vstack_diff = (int)cur_vstack - (int)opp_vstack;
+		} else
+			GPUFREQ_LOGE("abnormal cur_oppidx_stack: %d", cur_oppidx_stack);
 
 		ptp3_status = g_shared_status->ptp3_status;
 		GPUFREQ_LOGI("== [GPUFREQ DVFS STATUS: %s] ==",
