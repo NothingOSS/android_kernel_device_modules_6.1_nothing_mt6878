@@ -756,7 +756,7 @@ static void mtk_spr_prepare(struct mtk_ddp_comp *comp)
 				DDPINFO("%s: spr ip shrink config\n", __func__);
 				for (i = 1; i < DISP_V2_SPR_IP_SHRINK_PARAMS_NUM; i++)
 					mtk_ddp_write_relaxed(comp,
-						*(spr_params->spr_ip_params + i),
+						*(spr_params->spr_ip_shrink_params + i),
 						(DISP_REG_V2_SPR_IP_CFG_0 + 0x4 * i), NULL);
 			}
 		}
