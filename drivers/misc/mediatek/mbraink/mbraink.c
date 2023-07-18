@@ -434,7 +434,7 @@ static long mbraink_ioctl(struct file *filp,
 			monitor_processlist_buffer.monitor_process_count;
 
 		mbraink_processname_to_pid(monitor_process_count,
-					&monitor_processlist_buffer);
+					&monitor_processlist_buffer, 0);
 		break;
 	}
 	case RO_THREAD_STAT:
@@ -655,6 +655,61 @@ static long mbraink_ioctl(struct file *filp,
 	case RO_MEMORY_MDV_INFO:
 	{
 		ret = handleMdvInfo(arg);
+		break;
+	}
+	case WO_MONITOR_BINDER_PROCESS:
+	{
+		struct mbraink_monitor_processlist monitor_binder_processlist_buffer;
+		unsigned short monitor_binder_process_count = 0;
+
+		if (copy_from_user(&monitor_binder_processlist_buffer,
+				(struct mbraink_monitor_processlist *) arg,
+				sizeof(monitor_binder_processlist_buffer))) {
+			pr_notice("copy monitor_binder_processlist from user Err!\n");
+			return -EPERM;
+		}
+
+		monitor_binder_process_count =
+			monitor_binder_processlist_buffer.monitor_process_count;
+		if (monitor_binder_process_count > MAX_MONITOR_PROCESS_NUM) {
+			pr_notice("Invalid monitor_binder_process_count!\n");
+			monitor_binder_process_count = MAX_MONITOR_PROCESS_NUM;
+			monitor_binder_processlist_buffer.monitor_process_count =
+								MAX_MONITOR_PROCESS_NUM;
+		}
+
+		mbraink_processname_to_pid(monitor_binder_process_count,
+					&monitor_binder_processlist_buffer, 1);
+		break;
+	}
+	case RO_TRACE_BINDER:
+	{
+		struct mbraink_binder_trace_data binder_trace_buffer;
+		unsigned short tracing_idx = 0;
+
+		if (copy_from_user(&binder_trace_buffer,
+			(struct mbraink_binder_trace_data *) arg,
+			sizeof(binder_trace_buffer))) {
+			pr_notice("copy binder_trace_buffer data from user Err!\n");
+			return -EPERM;
+		}
+
+		if (binder_trace_buffer.tracing_idx > MAX_BINDER_TRACE_NUM) {
+			pr_notice("invalid binder tracing_idx %u !\n",
+				binder_trace_buffer.tracing_idx);
+			return -EINVAL;
+		}
+
+		tracing_idx = binder_trace_buffer.tracing_idx;
+
+		mbraink_get_binder_trace_info(tracing_idx, &binder_trace_buffer);
+
+		if (copy_to_user((struct mbraink_binder_trace_data *) arg,
+				&binder_trace_buffer, sizeof(binder_trace_buffer))) {
+			pr_notice("%s: Copy binder_trace_buffer to UserSpace error!\n",
+				__func__);
+			return -EPERM;
+		}
 		break;
 	}
 	default:
@@ -929,7 +984,7 @@ int mbraink_netlink_send_msg(const char *msg)
 		msg_size = strlen(msg);
 
 		/*Allocate a new netlink message: skb_out*/
-		skb_out = nlmsg_new(msg_size, 0);
+		skb_out = nlmsg_new(msg_size, GFP_ATOMIC);
 		if (!skb_out) {
 			pr_notice("Failed to allocate new skb\n");
 			return -ENOMEM;

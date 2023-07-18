@@ -13,7 +13,7 @@
 #define MAX_MONITOR_PROCESS_NUM			16
 #define MAX_DDR_FREQ_NUM			12
 #define MAX_DDR_IP_NUM				8
-#define MAX_TRACE_PID_NUM			32
+#define MAX_TRACE_PID_NUM			16
 #define MAX_VCORE_NUM				8
 #define MAX_VCORE_IP_NUM			16
 #define MAX_IP_NAME_LENGTH			(16)
@@ -26,6 +26,7 @@
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
 #define NETLINK_EVENT_SYSRESUME		"NLEvent_SysResume"
+#define NETLINK_EVENT_SYSBINDER		"NLEvent_SysBinder"
 #define NETLINK_EVENT_MESSAGE_SIZE		1024
 
 #define MBRAINK_LANDING_FEATURE_CHECK 1
@@ -238,5 +239,16 @@ struct mbraink_memory_mdvInfo {
 	uint32_t raw[MAX_MDV_SZ];
 };
 
+struct mbraink_binder_trace {
+	unsigned short from_pid;
+	unsigned short from_tid;
+	unsigned short to_pid;
+	unsigned int count;
+};
 
+struct mbraink_binder_trace_data {
+	unsigned short tracing_idx;
+	unsigned short tracing_count;
+	struct mbraink_binder_trace drv_data[MAX_TRACE_PID_NUM];
+};
 #endif

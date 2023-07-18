@@ -31,14 +31,22 @@
 #include <linux/sched/clock.h>
 #include <trace/hooks/sched.h>
 #include <linux/mm_inline.h>
+#include <trace/hooks/binder.h>
+#include <uapi/linux/android/binder.h>
 
 #include "mbraink_process.h"
+#include "../../../../../kernel-6.1/drivers/android/binder_internal.h"
 
 #define PROCESS_INFO_STR	\
 	"pid=%-10u:uid=%u,priority=%d,utime=%llu,stime=%llu,cutime=%llu,cstime=%llu,name=%s\n"
 
 #define THREAD_INFO_STR		\
 	"--> pid=%-10u:uid=%u,priority=%d,utime=%llu,stime=%llu,cutime=%llu,cstime=%llu,name=%s\n"
+
+/*spinlock for mbraink monitored binder pidlist*/
+static DEFINE_SPINLOCK(monitor_binder_pidlist_lock);
+/*Please make sure that monitor binder pidlist is protected by spinlock*/
+struct mbraink_monitor_pidlist mbraink_monitor_binder_pidlist_data;
 
 /*spinlock for mbraink monitored pidlist*/
 static DEFINE_SPINLOCK(monitor_pidlist_lock);
@@ -49,6 +57,11 @@ struct mbraink_monitor_pidlist mbraink_monitor_pidlist_data;
 static DEFINE_SPINLOCK(tracing_pidlist_lock);
 /*Please make sure that tracing pidlist is protected by spinlock*/
 struct mbraink_tracing_pidlist mbraink_tracing_pidlist_data[MAX_TRACE_NUM];
+
+/*spinlock for mbraink binder provider tracelist*/
+static DEFINE_SPINLOCK(binder_trace_lock);
+/*Please make sure that binder trace list is protected by spinlock*/
+struct mbraink_binder_tracelist mbraink_binder_tracelist_data[MAX_BINDER_TRACE_NUM];
 
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_EXPORT_DEPENDED)
 #else
@@ -315,7 +328,8 @@ char *strcasestr(const char *s1, const char *s2)
 }
 
 void mbraink_processname_to_pid(unsigned short monitor_process_count,
-				const struct mbraink_monitor_processlist *processname_inputlist)
+				const struct mbraink_monitor_processlist *processname_inputlist,
+				bool is_binder)
 {
 	struct task_struct *t = NULL;
 	char *cmdline = NULL;
@@ -324,10 +338,17 @@ void mbraink_processname_to_pid(unsigned short monitor_process_count,
 	unsigned short processlist_temp[MAX_MONITOR_PROCESS_NUM];
 	unsigned long flags;
 
-	spin_lock_irqsave(&monitor_pidlist_lock, flags);
-	mbraink_monitor_pidlist_data.is_set = 0;
-	mbraink_monitor_pidlist_data.monitor_process_count = 0;
-	spin_unlock_irqrestore(&monitor_pidlist_lock, flags);
+	if (is_binder) {
+		spin_lock_irqsave(&monitor_binder_pidlist_lock, flags);
+		mbraink_monitor_binder_pidlist_data.is_set = 0;
+		mbraink_monitor_binder_pidlist_data.monitor_process_count = 0;
+		spin_unlock_irqrestore(&monitor_binder_pidlist_lock, flags);
+	} else {
+		spin_lock_irqsave(&monitor_pidlist_lock, flags);
+		mbraink_monitor_pidlist_data.is_set = 0;
+		mbraink_monitor_pidlist_data.monitor_process_count = 0;
+		spin_unlock_irqrestore(&monitor_pidlist_lock, flags);
+	}
 
 	read_lock(&tasklist_lock);
 	for_each_process(t) {
@@ -362,16 +383,30 @@ void mbraink_processname_to_pid(unsigned short monitor_process_count,
 	}
 	read_unlock(&tasklist_lock);
 
-	spin_lock_irqsave(&monitor_pidlist_lock, flags);
-	mbraink_monitor_pidlist_data.monitor_process_count = count;
-	for (index = 0; index < mbraink_monitor_pidlist_data.monitor_process_count; index++) {
-		mbraink_monitor_pidlist_data.monitor_pid[index] = processlist_temp[index];
-		pr_info("mbraink_monitor_pidlist_data.monitor_pid[%d] = %u, total count = %u\n",
-			index, processlist_temp[index],
-			mbraink_monitor_pidlist_data.monitor_process_count);
+	if (is_binder) {
+		spin_lock_irqsave(&monitor_binder_pidlist_lock, flags);
+		mbraink_monitor_binder_pidlist_data.monitor_process_count = count;
+		for (index = 0; index < count; index++) {
+			mbraink_monitor_binder_pidlist_data.monitor_pid[index] =
+								processlist_temp[index];
+			pr_info("monitor_binder_pidlist_data.monitor_pid[%d] = %u, count = %u\n",
+				index, processlist_temp[index],
+				mbraink_monitor_binder_pidlist_data.monitor_process_count);
+		}
+		mbraink_monitor_binder_pidlist_data.is_set = 1;
+		spin_unlock_irqrestore(&monitor_binder_pidlist_lock, flags);
+	} else {
+		spin_lock_irqsave(&monitor_pidlist_lock, flags);
+		mbraink_monitor_pidlist_data.monitor_process_count = count;
+		for (index = 0; index < count; index++) {
+			mbraink_monitor_pidlist_data.monitor_pid[index] = processlist_temp[index];
+			pr_info("mbraink_monitor_pidlist_data.monitor_pid[%d] = %u, count = %u\n",
+				index, processlist_temp[index],
+				mbraink_monitor_pidlist_data.monitor_process_count);
+		}
+		mbraink_monitor_pidlist_data.is_set = 1;
+		spin_unlock_irqrestore(&monitor_pidlist_lock, flags);
 	}
-	mbraink_monitor_pidlist_data.is_set = 1;
-	spin_unlock_irqrestore(&monitor_pidlist_lock, flags);
 }
 
 void mbraink_show_process_info(void)
@@ -523,6 +558,31 @@ static int is_monitor_process(unsigned short pid)
 	return ret;
 }
 
+static int is_monitor_binder_process(unsigned short pid)
+{
+	int ret = 0, index = 0;
+	unsigned short monitor_process_count = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&monitor_binder_pidlist_lock, flags);
+	if (mbraink_monitor_binder_pidlist_data.is_set == 0) {
+		spin_unlock_irqrestore(&monitor_binder_pidlist_lock, flags);
+		return ret;
+	}
+
+	monitor_process_count = mbraink_monitor_binder_pidlist_data.monitor_process_count;
+
+	for (index = 0; index < monitor_process_count; index++) {
+		if (mbraink_monitor_binder_pidlist_data.monitor_pid[index] == pid) {
+			ret = 1;
+			break;
+		}
+	}
+
+	spin_unlock_irqrestore(&monitor_binder_pidlist_lock, flags);
+	return ret;
+}
+
 static void mbraink_trace_android_vh_do_exit(void *data, struct task_struct *t)
 {
 	int i = 0;
@@ -625,12 +685,93 @@ static void mbraink_trace_android_vh_do_fork(void *data, struct task_struct *p)
 	}
 }
 
+static void mbraink_trace_android_vh_binder_trans(void *data,
+						struct binder_proc *target_proc,
+						struct binder_proc *proc,
+						struct binder_thread *thread,
+						struct binder_transaction_data *tr)
+{
+	unsigned long  flags;
+	int idx = 0;
+
+	if (!is_monitor_binder_process((unsigned short)(target_proc->tsk->pid)))
+		return;
+
+	spin_lock_irqsave(&binder_trace_lock, flags);
+	for (idx = 0; idx < MAX_BINDER_TRACE_NUM; idx++) {
+		if (mbraink_binder_tracelist_data[idx].dirty == true &&
+			mbraink_binder_tracelist_data[idx].from_pid == proc->tsk->pid &&
+			mbraink_binder_tracelist_data[idx].to_pid == target_proc->tsk->pid &&
+			mbraink_binder_tracelist_data[idx].from_tid == thread->task->pid)
+			break;
+	}
+
+	if (idx < MAX_BINDER_TRACE_NUM) {
+		mbraink_binder_tracelist_data[idx].count++;
+	} else {
+		for (idx = 0; idx < MAX_BINDER_TRACE_NUM; idx++) {
+			if (mbraink_binder_tracelist_data[idx].dirty == false)
+				break;
+		}
+		if (idx == MAX_BINDER_TRACE_NUM) {
+			char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+			int n = 0;
+			int pos = 0;
+
+			pr_info("%s: binder string record is full %d\n", __func__, idx);
+
+			for (idx = 0; idx < MAX_BINDER_TRACE_NUM; idx++) {
+				if (idx % 16 == 0) {
+					pos = 0;
+					n = snprintf(netlink_buf,
+								NETLINK_EVENT_MESSAGE_SIZE, "%s ",
+								NETLINK_EVENT_SYSBINDER);
+					if(n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE)
+						break;
+					pos += n;
+				}
+				n = snprintf(netlink_buf + pos,
+						NETLINK_EVENT_MESSAGE_SIZE - pos, "%u:%u:%u:%d ",
+						mbraink_binder_tracelist_data[idx].from_pid,
+						mbraink_binder_tracelist_data[idx].from_tid,
+						mbraink_binder_tracelist_data[idx].to_pid,
+						mbraink_binder_tracelist_data[idx].count);
+				if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+					break;
+				pos += n;
+
+				if (idx % 16 == 15) {
+					mbraink_netlink_send_msg(netlink_buf);
+					memset(netlink_buf, 0, NETLINK_EVENT_MESSAGE_SIZE);
+				}
+			}
+			memset(mbraink_binder_tracelist_data, 0,
+				sizeof(struct mbraink_binder_tracelist) * MAX_BINDER_TRACE_NUM);
+			mbraink_binder_tracelist_data[0].from_pid = proc->tsk->pid;
+			mbraink_binder_tracelist_data[0].to_pid = target_proc->tsk->pid;
+			mbraink_binder_tracelist_data[0].from_tid = thread->task->pid;
+			mbraink_binder_tracelist_data[0].count = 1;
+			mbraink_binder_tracelist_data[0].dirty = true;
+		} else {
+			mbraink_binder_tracelist_data[idx].from_pid = proc->tsk->pid;
+			mbraink_binder_tracelist_data[idx].to_pid = target_proc->tsk->pid;
+			mbraink_binder_tracelist_data[idx].from_tid = thread->task->pid;
+			mbraink_binder_tracelist_data[idx].count = 1;
+			mbraink_binder_tracelist_data[idx].dirty = true;
+		}
+	}
+	spin_unlock_irqrestore(&binder_trace_lock, flags);
+}
+
 int mbraink_process_tracer_init(void)
 {
 	int ret = 0;
 
 	memset(mbraink_tracing_pidlist_data, 0,
-			sizeof(struct mbraink_tracing_pidlist) * MAX_TRACE_NUM);
+		sizeof(struct mbraink_tracing_pidlist) * MAX_TRACE_NUM);
+
+	memset(mbraink_binder_tracelist_data, 0,
+		sizeof(struct mbraink_binder_tracelist) * MAX_BINDER_TRACE_NUM);
 
 	ret = register_trace_android_vh_do_fork(mbraink_trace_android_vh_do_fork, NULL);
 	if (ret) {
@@ -642,8 +783,16 @@ int mbraink_process_tracer_init(void)
 		pr_notice("register register_trace_android_vh_do_exit failed.\n");
 		goto register_trace_android_vh_do_exit;
 	}
+	ret = register_trace_android_vh_binder_trans(mbraink_trace_android_vh_binder_trans,
+						NULL);
+	if (ret) {
+		pr_notice("register_trace_android_vh_binder_trans failed.\n");
+		goto register_trace_android_vh_binder_trans;
+	}
 	return ret;
 
+register_trace_android_vh_binder_trans:
+	unregister_trace_android_vh_do_exit(mbraink_trace_android_vh_do_exit, NULL);
 register_trace_android_vh_do_exit:
 	unregister_trace_android_vh_do_fork(mbraink_trace_android_vh_do_fork, NULL);
 register_trace_android_vh_do_fork:
@@ -654,6 +803,7 @@ void mbraink_process_tracer_exit(void)
 {
 	unregister_trace_android_vh_do_fork(mbraink_trace_android_vh_do_fork, NULL);
 	unregister_trace_android_vh_do_exit(mbraink_trace_android_vh_do_exit, NULL);
+	unregister_trace_android_vh_binder_trans(mbraink_trace_android_vh_binder_trans, NULL);
 }
 
 void mbraink_get_tracing_pid_info(unsigned short current_idx,
@@ -717,6 +867,45 @@ void mbraink_get_tracing_pid_info(unsigned short current_idx,
 		__func__, tracing_pid_buffer->tracing_idx, tracing_pid_buffer->tracing_count);
 	spin_unlock_irqrestore(&tracing_pidlist_lock, flags);
 }
+
+void mbraink_get_binder_trace_info(unsigned short current_idx,
+				struct mbraink_binder_trace_data *binder_trace_buffer)
+{
+	int i = 0;
+	int ret = 0;
+	unsigned long flags;
+	unsigned short tracing_cnt = 0;
+
+	spin_lock_irqsave(&binder_trace_lock, flags);
+
+	memset(binder_trace_buffer, 0, sizeof(struct mbraink_binder_trace_data));
+
+	for (i = current_idx; i < MAX_BINDER_TRACE_NUM; i++) {
+		if (mbraink_binder_tracelist_data[i].dirty == false)
+			continue;
+		else {
+			tracing_cnt = binder_trace_buffer->tracing_count;
+			if (tracing_cnt < MAX_TRACE_PID_NUM) {
+				binder_trace_buffer->drv_data[tracing_cnt].from_pid =
+						mbraink_binder_tracelist_data[i].from_pid;
+				binder_trace_buffer->drv_data[tracing_cnt].from_tid =
+						mbraink_binder_tracelist_data[i].from_tid;
+				binder_trace_buffer->drv_data[tracing_cnt].to_pid =
+						mbraink_binder_tracelist_data[i].to_pid;
+				binder_trace_buffer->drv_data[tracing_cnt].count =
+						mbraink_binder_tracelist_data[i].count;
+				binder_trace_buffer->tracing_count++;
+				mbraink_binder_tracelist_data[i].dirty = false;
+			} else {
+				ret = -1;
+				binder_trace_buffer->tracing_idx = i;
+				break;
+			}
+		}
+	}
+	spin_unlock_irqrestore(&binder_trace_lock, flags);
+}
+
 #else
 int mbraink_process_tracer_init(void)
 {
@@ -734,5 +923,10 @@ int mbraink_get_tracing_pid_info(unsigned short current_idx,
 {
 	pr_info("%s: Do not support mbraink tracing...\n", __func__);
 	return 0;
+}
+void mbraink_get_binder_trace_info(unsigned short current_idx,
+				struct mbraink_binder_trace_data *binder_trace_buffer)
+{
+	pr_info("%s: Do not support mbraink binder tracing...\n", __func__);
 }
 #endif

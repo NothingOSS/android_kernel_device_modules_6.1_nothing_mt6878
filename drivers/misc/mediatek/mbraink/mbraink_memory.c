@@ -17,7 +17,7 @@ int mbraink_memory_getDdrInfo(struct mbraink_memory_ddrInfo *pMemoryDdrInfo)
 {
 	int ret = 0;
 	int i, j;
-	int32_t ddr_freq_num=0, ddr_bc_ip_num=0;
+	int32_t ddr_freq_num = 0, ddr_bc_ip_num = 0;
 	int32_t ddr_freq_check = 0, ddr_bc_ip_check = 0;
 
 	struct ddr_act_times *ddr_act_times_ptr = NULL;
@@ -99,13 +99,13 @@ End:
 	if (ddr_sr_pd_times_ptr != NULL)
 		kfree(ddr_sr_pd_times_ptr);
 
-	for (i = 0; i < ddr_bc_ip_num; i++) {
-		if(ddr_ip_stats_ptr[i].bc_stats != NULL)
-			kfree(ddr_ip_stats_ptr[i].bc_stats);
-	}
-
-	if (ddr_ip_stats_ptr != NULL)
+	if (ddr_ip_stats_ptr != NULL) {
+		for (i = 0; i < ddr_bc_ip_num; i++) {
+			if (ddr_ip_stats_ptr[i].bc_stats != NULL)
+				kfree(ddr_ip_stats_ptr[i].bc_stats);
+		}
 		kfree(ddr_ip_stats_ptr);
+	}
 
 	return ret;
 }

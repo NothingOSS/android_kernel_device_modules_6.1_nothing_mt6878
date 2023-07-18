@@ -39,6 +39,8 @@
 #define POWER_SPM_RAW			'j'
 #define MODEM_INFO				'k'
 #define MEMORY_MDV_INFO			'l'
+#define MONITOR_BINDER_PROCESS         'm'
+#define TRACE_BINDER_INFO              'o'
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -78,6 +80,10 @@
 
 #define RO_MODEM_INFO			_IOR(IOC_MAGIC, MODEM_INFO, \
 							struct mbraink_modem_raw*)
+#define WO_MONITOR_BINDER_PROCESS	_IOW(IOC_MAGIC,	MONITOR_BINDER_PROCESS,	\
+						struct mbraink_monitor_processlist*)
+#define RO_TRACE_BINDER			_IOR(IOC_MAGIC, TRACE_BINDER_INFO,	\
+						struct mbraink_binder_trace_data*)
 
 #define RO_MEMORY_MDV_INFO			_IOR(IOC_MAGIC, MEMORY_MDV_INFO, \
 							struct mbraink_memory_mdvInfo*)
