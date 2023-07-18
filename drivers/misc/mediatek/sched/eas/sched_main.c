@@ -661,7 +661,7 @@ static int __init mtk_scheduler_init(void)
 
 	pr_debug(TAG"Start to init eas_ioctl driver\n");
 	parent = proc_mkdir("easmgr", NULL);
-	pe = proc_create("eas_ioctl", 0664, parent, &eas_Fops);
+	pe = proc_create("eas_ioctl", 0660, parent, &eas_Fops);
 	if (!pe) {
 		pr_debug(TAG"%s failed with %d\n",
 				"Creating file node ",
