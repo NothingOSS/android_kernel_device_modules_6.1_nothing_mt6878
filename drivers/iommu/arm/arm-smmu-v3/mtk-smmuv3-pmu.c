@@ -694,6 +694,21 @@ static const struct attribute_group *smmu_pmu_attr_grps[] = {
 /*
  * Generic device handlers
  */
+static int smmu_pmu_online_cpu(unsigned int cpu, struct hlist_node *node)
+{
+	struct smmu_pmu *smmu_pmu;
+
+	smmu_pmu = hlist_entry_safe(node, struct smmu_pmu, node);
+	if (!smmu_pmu)
+		return -ENODEV;
+
+	if (smmu_pmu->on_cpu == -1) {
+		smmu_pmu->on_cpu = cpu;
+		irq_set_affinity(smmu_pmu->irq, cpumask_of(cpu));
+	}
+
+	return 0;
+}
 
 static int smmu_pmu_offline_cpu(unsigned int cpu, struct hlist_node *node)
 {
@@ -701,6 +716,9 @@ static int smmu_pmu_offline_cpu(unsigned int cpu, struct hlist_node *node)
 	unsigned int target;
 
 	smmu_pmu = hlist_entry_safe(node, struct smmu_pmu, node);
+	if (!smmu_pmu)
+		return -ENODEV;
+
 	if (cpu != smmu_pmu->on_cpu)
 		return 0;
 
@@ -710,7 +728,7 @@ static int smmu_pmu_offline_cpu(unsigned int cpu, struct hlist_node *node)
 
 	perf_pmu_migrate_context(&smmu_pmu->pmu, cpu, target);
 	smmu_pmu->on_cpu = target;
-	WARN_ON(irq_set_affinity(smmu_pmu->irq, cpumask_of(target)));
+	irq_set_affinity(smmu_pmu->irq, cpumask_of(target));
 
 	return 0;
 }
@@ -1092,7 +1110,7 @@ static int __init arm_smmu_pmu_init(void)
 {
 	cpuhp_state_num = cpuhp_setup_state_multi(CPUHP_AP_ONLINE_DYN,
 						  "perf/arm/pmcg:online",
-						  NULL,
+						  smmu_pmu_online_cpu,
 						  smmu_pmu_offline_cpu);
 	if (cpuhp_state_num < 0)
 		return cpuhp_state_num;
