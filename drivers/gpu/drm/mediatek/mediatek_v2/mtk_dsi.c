@@ -1881,7 +1881,10 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		width, height, ps_wc, rw_times, ext->params->lp_perline_en);
 
 	mtk_dsi_mask(dsi, DSI_BUF_CON1, 0x7fff, tmp);
-	mtk_dsi_mask(dsi, DSI_DEBUG_SEL, MM_RST_SEL, MM_RST_SEL);
+	if (dsi->driver_data->new_rst_dsi)
+		mtk_dsi_mask(dsi, DSI_DEBUG_SEL, MM_RST_SEL, 0);
+	else
+		mtk_dsi_mask(dsi, DSI_DEBUG_SEL, MM_RST_SEL, MM_RST_SEL);
 
 	/* enable ultra signal between SOF to VACT */
 	mtk_dsi_mask(dsi, DSI_RESERVED, DSI_VDE_BLOCK_ULTRA, 0);
@@ -10348,6 +10351,7 @@ static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {
 	.max_vfp = 0xffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
 	.n_verion = VER_N4,
+	.new_rst_dsi = true,
 };
 
 static const struct mtk_dsi_driver_data mt6895_dsi_driver_data = {

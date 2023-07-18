@@ -52,6 +52,7 @@ struct mtk_dsi_driver_data {
 	bool support_shadow;
 	bool need_bypass_shadow;
 	bool need_wait_fifo;
+	bool new_rst_dsi;
 	const u32 buffer_unit;
 	const u32 sram_unit;
 	const u32 urgent_lo_fifo_us;
