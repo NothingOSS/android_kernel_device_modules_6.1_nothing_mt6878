@@ -191,7 +191,10 @@ static ssize_t proc_generate_wdt_write(struct file *file,
 
 	/* create kernel threads and bind on every cpu */
 	for (i = 0; i < nr_cpu_ids; i++) {
-		sprintf(name, "wd-test-%d", i);
+		int len = snprintf(name, sizeof(name), "wd-test-%d", i);
+
+		if (len < 0)
+			pr_notice("%s: snprintf failed\n", __func__);
 		pr_notice("[WDK]thread name: %s\n", name);
 		wk_tsk[i] = kthread_create(kwdt_thread_test, NULL, name);
 		if (IS_ERR(wk_tsk[i])) {
