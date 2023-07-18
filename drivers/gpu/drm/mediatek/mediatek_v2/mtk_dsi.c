@@ -7869,9 +7869,6 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 	struct mtk_ddp_comp *comp = dsi->is_slave ?
 		(&dsi->master_dsi->ddp_comp) : (&dsi->ddp_comp);
 	struct total_tile_overhead to_info;
-	struct mtk_panel_dsc_params *dsc_params = &ext->params->dsc_params;
-	bool adjust_pixclk = ((mtk_crtc->is_dual_pipe && dsc_params->enable) ||
-		(mtk_crtc->dli_relay_1tnp));
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
 	DDPINFO("%s:overhead is_support:%d, width L:%d R:%d\n", __func__,
@@ -7902,8 +7899,8 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 		return;
 	}
 
-	if (dsc_params->enable)
-		bpp = dsc_params->bit_per_channel * 3;
+	if (ext->params->dsc_params.enable)
+		bpp = ext->params->dsc_params.bit_per_channel * 3;
 
 	compress_rate = mtk_dsi_get_dsc_compress_rate(dsi);
 
@@ -7927,14 +7924,14 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 			pixclk_min = pixclk_min * bubble_rate / 100;
 
 			pixclk = vact * hact * vrefresh / 1000;
-			if (dsc_params->enable)
+			if (ext->params->dsc_params.enable)
 				pixclk = pixclk * vtotal / vact;
 			else
 				pixclk = pixclk * (vtotal * htotal * 100 /
 					(vact * hact)) / 100;
 			pixclk = pixclk * bubble_rate / 100;
 			pixclk = (unsigned int)(pixclk / 1000);
-			if (adjust_pixclk)
+			if (mtk_crtc->is_dual_pipe && ext->params->dsc_params.enable)
 				pixclk /= 2;
 
 			pixclk = (pixclk_min > pixclk) ? pixclk_min : pixclk;
@@ -7944,7 +7941,7 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 			if (data_rate && ext->params->is_cphy)
 				pixclk = pixclk * 16 / 7;
 			pixclk = pixclk / bpp / 100;
-			if (adjust_pixclk)
+			if (mtk_crtc->is_dual_pipe && ext->params->dsc_params.enable)
 				pixclk /= 2;
 			pixclk = pixclk * bubble_rate / 100;
 		}
@@ -7978,14 +7975,14 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 			pixclk_min = pixclk_min * bubble_rate / 100;
 
 			pixclk = vact * hact * vrefresh / 1000;
-			if (dsc_params->enable)
+			if (ext->params->dsc_params.enable)
 				pixclk = pixclk * vtotal / vact;
 			else
 				pixclk = pixclk * (vtotal * htotal * 100 /
 					(vact * hact)) / 100;
 			pixclk = pixclk * bubble_rate / 100;
 			pixclk = (unsigned int)(pixclk / 1000);
-			if (adjust_pixclk)
+			if (mtk_crtc->is_dual_pipe && ext->params->dsc_params.enable)
 				pixclk /= 2;
 
 			//pixclk = (pixclk_min > pixclk) ? pixclk_min : pixclk;
@@ -7996,12 +7993,13 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 			u32 ui = 0, cycle_time = 0;
 			struct mtk_dsi_phy_timcon *phy_timcon = NULL;
 			u32 dsi_buf_bpp = mtk_get_dsi_buf_bpp(dsi);
+			struct mtk_panel_dsc_params *dsc_params = &ext->params->dsc_params;
 
 			pixclk = data_rate * dsi->lanes * compress_rate;
 			if (data_rate && ext->params->is_cphy)
 				pixclk = pixclk * 16 / 7;
 			pixclk = pixclk / bpp / 100;
-			if (adjust_pixclk)
+			if (mtk_crtc->is_dual_pipe && dsc_params->enable)
 				pixclk /= 2;
 			pixclk = pixclk * bubble_rate / 100;
 
