@@ -2243,6 +2243,7 @@ static int ufs_mtk_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 {
 	int err;
 	struct arm_smccc_res res;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	if (status == PRE_CHANGE) {
 		if (!ufshcd_is_auto_hibern8_supported(hba))
@@ -2272,6 +2273,10 @@ static int ufs_mtk_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 
 	ufs_mtk_sram_pwr_ctrl(false, res);
 
+	/* Release pm_qos if enter suspend is scale up mode */
+	if (ufshcd_is_clkscaling_supported(hba) && (host->clk_scale_up))
+		ufs_mtk_pm_qos(hba, false);
+
 	return 0;
 fail:
 	/*
@@ -2287,6 +2292,7 @@ static int ufs_mtk_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 {
 	int err;
 	struct arm_smccc_res res;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	if (hba->ufshcd_state != UFSHCD_STATE_OPERATIONAL)
 		ufs_mtk_dev_vreg_set_lpm(hba, false);
@@ -2302,6 +2308,10 @@ static int ufs_mtk_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		if (err)
 			goto fail;
 	}
+
+	/* Request pm_qos if enter suspend is scale up mode */
+	if (ufshcd_is_clkscaling_supported(hba) && (host->clk_scale_up))
+		ufs_mtk_pm_qos(hba, true);
 
 	return 0;
 fail:
