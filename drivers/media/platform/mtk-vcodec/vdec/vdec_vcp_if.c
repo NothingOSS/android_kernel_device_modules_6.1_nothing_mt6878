@@ -133,7 +133,9 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len,
 		msg_mutex = &inst->ctx->dev->ipi_mutex;
 
 	if (!is_ack) {
+		vcodec_trace_begin("msg_mutex(msg 0x%x)", *(u32 *)msg);
 		mutex_lock(msg_mutex);
+		vcodec_trace_end();
 
 		if (need_wait_suspend) {
 			while (inst->ctx->dev->is_codec_suspending == 1) {
@@ -203,11 +205,14 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len,
 
 	mtk_v4l2_debug(2, "id %d len %d msg 0x%x is_ack %d %d", obj.id, obj.len, *(u32 *)msg,
 		is_ack, *msg_signaled);
+	vcodec_trace_begin("mtk_ipi_send(msg 0x%x is_ack %d)", *(u32 *)msg, is_ack);
 	ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_VDEC_1, ipi_wait_type, &obj,
 		ipi_size, IPI_TIMEOUT_MS);
 
-	if (is_ack)
+	if (is_ack) {
+		vcodec_trace_end();
 		return 0;
+	}
 
 	if (ret != IPI_ACTION_DONE) {
 		mtk_vcodec_err(inst, "mtk_ipi_send %X fail %d", *(u32 *)msg, ret);
@@ -250,6 +255,8 @@ wait_ack:
 			mtk_vcodec_err(inst, "wait vcp ipi %X ack fail ret %d! (%d)",
 				*(u32 *)msg, ret, inst->vcu.failure);
 		}
+
+		vcodec_trace_end();
 	}
 	mutex_unlock(msg_mutex);
 
@@ -260,6 +267,7 @@ wait_ack:
 
 ipi_err_wait_and_unlock:
 	timeout = 0;
+	vcodec_trace_end();
 	if (inst->vcu.daemon_pid == get_vcp_generation()) {
 		trigger_vcp_halt(VCP_A_ID, "vdec_srv");
 		while (inst->vcu.daemon_pid == get_vcp_generation() ||
@@ -1257,7 +1265,9 @@ int vdec_vcp_reset(struct vdec_inst *inst, enum vdec_reset_type drain_type)
 	msg.vcu_inst_addr = inst->vcu.inst_addr;
 	msg.drain_type = drain_type;
 
+	vcodec_trace_begin("%s(drain_type %d)", __func__, drain_type);
 	err = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
+	vcodec_trace_end();
 	mtk_vcodec_debug(inst, "- ret=%d", err);
 
 	return err;
