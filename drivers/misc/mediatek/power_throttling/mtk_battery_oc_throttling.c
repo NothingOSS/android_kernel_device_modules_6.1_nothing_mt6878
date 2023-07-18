@@ -415,7 +415,7 @@ static irqreturn_t fg_cur_l_int_handler(int irq, void *data)
 	struct battery_oc_priv *priv = data;
 
 	// filter wrong level
-	if (priv->oc_level > BATTERY_OC_LEVEL_NUM - 2 || priv->oc_level < 0) {
+	if (priv->oc_level > BATTERY_OC_LEVEL_NUM - 2) {
 		pr_info("%s: wrong current oc_level=%d\n", __func__, priv->oc_level);
 		return IRQ_HANDLED;
 	}
