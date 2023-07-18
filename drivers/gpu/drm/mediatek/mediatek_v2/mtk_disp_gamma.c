@@ -160,11 +160,15 @@ static int mtk_gamma_write_lut_reg(struct mtk_ddp_comp *comp,
 	if (lock)
 		mutex_lock(&gamma->primary_data->global_lock);
 	if (gamma_lut == NULL) {
+		DDPINFO("%s: gamma_lut null\n", __func__);
+		ret = -EFAULT;
+		goto gamma_write_lut_unlock;
+	}
+	if (gamma_lut->hw_id == DISP_GAMMA_TOTAL) {
 		DDPINFO("%s: table not initialized\n", __func__);
 		ret = -EFAULT;
 		goto gamma_write_lut_unlock;
 	}
-
 	for (i = 0; i < DISP_GAMMA_LUT_SIZE; i++) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			(comp->regs_pa + DISP_GAMMA_LUT + i * 4),
@@ -226,11 +230,15 @@ static int mtk_gamma_write_12bit_lut_reg(struct mtk_ddp_comp *comp,
 	if (lock)
 		mutex_lock(&gamma->primary_data->global_lock);
 	if (gamma_12b_lut == NULL) {
+		DDPINFO("%s: gamma_12b_lut null\n", __func__);
+		ret = -EFAULT;
+		goto gamma_write_lut_unlock;
+	}
+	if (gamma_12b_lut->hw_id == DISP_GAMMA_TOTAL) {
 		DDPINFO("%s: table not initialized\n", __func__);
 		ret = -EFAULT;
 		goto gamma_write_lut_unlock;
 	}
-
 	if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_10BIT) {
 		block_num = DISP_GAMMA_12BIT_LUT_SIZE / DISP_GAMMA_BLOCK_SIZE;
 	} else if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_8BIT) {
@@ -580,6 +588,8 @@ static void mtk_gamma_primary_data_init(struct mtk_ddp_comp *comp)
 	atomic_set(&(data->primary_data->sof_filp), 0);
 	atomic_set(&(data->primary_data->sof_irq_available), 0);
 	atomic_set(&(data->primary_data->force_delay_check_trig), 0);
+	data->primary_data->gamma_12b_lut_cur.hw_id = DISP_GAMMA_TOTAL;
+	data->primary_data->gamma_lut_cur.hw_id = DISP_GAMMA_TOTAL;
 
 	len = sprintf(thread_name, "gamma_sof_%d", comp->id);
 	if (len < 0)
