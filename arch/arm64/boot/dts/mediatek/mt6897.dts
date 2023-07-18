@@ -620,6 +620,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_BCLK>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		scl-gpio-id = <137>;
+		sda-gpio-id = <138>;
 	};
 
 	i2c1: i2c@11d01000 {
@@ -631,6 +633,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_BCLK>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		scl-gpio-id = <139>;
+		sda-gpio-id = <140>;
 	};
 
 	i2c2: i2c@11b70000 {
@@ -642,6 +646,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_BCLK>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		scl-gpio-id = <141>;
+		sda-gpio-id = <142>;
 	};
 
 	i2c3: i2c@11f00000 {
@@ -653,6 +659,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_BCLK>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		scl-gpio-id = <143>;
+		sda-gpio-id = <144>;
 	};
 
 	i2c4: i2c@11b71000 {
@@ -664,6 +672,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_BCLK>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		scl-gpio-id = <145>;
+		sda-gpio-id = <146>;
 	};
 
 	i2c5: i2c@11f01000 {
@@ -675,6 +685,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_BCLK>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		scl-gpio-id = <147>;
+		sda-gpio-id = <148>;
 	};
 
 	i2c6: i2c@11280000 {
@@ -688,6 +700,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_BCLK>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		scl-gpio-id = <149>;
+		sda-gpio-id = <150>;
 	};
 
 	i2c7: i2c@11d02000 {
@@ -699,6 +713,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_BCLK>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		scl-gpio-id = <151>;
+		sda-gpio-id = <152>;
 	};
 
 	i2c8: i2c@11cc0000 {
@@ -710,6 +726,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_BCLK>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		scl-gpio-id = <153>;
+		sda-gpio-id = <154>;
 	};
 
 	i2c9: i2c@11cc1000 {
@@ -721,6 +739,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_BCLK>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		scl-gpio-id = <155>;
+		sda-gpio-id = <156>;
 	};
 
 	i2c10: i2c@11b72000 {
@@ -732,6 +752,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_BCLK>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		scl-gpio-id = <157>;
+		sda-gpio-id = <158>;
 	};
 
 	i2c11: i2c@11b73000 {
@@ -743,6 +765,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_BCLK>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		scl-gpio-id = <159>;
+		sda-gpio-id = <160>;
 	};
 
 	i2c12: i2c@11cc2000 {
@@ -754,6 +778,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_BCLK>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		scl-gpio-id = <161>;
+		sda-gpio-id = <162>;
 	};
 
 	i2c13: i2c@11cc3000 {
@@ -765,6 +791,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_DMA_BCLK>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+		scl-gpio-id = <163>;
+		sda-gpio-id = <164>;
 	};
 
 	pmu_a715: pmu-a715 {
