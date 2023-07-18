@@ -402,8 +402,7 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 		nfl_bpg_offset, slice_bpg_offset, scale_increment_interval,
 		scale_decrement_interval;
 	unsigned int rc_tgt_offset_hi, rc_tgt_offset_lo, rc_edge_factor, bp_enable;
-	unsigned int dsc_param_load_mode =
-		comp->mtk_crtc->panel_ext->params->dsc_param_load_mode;
+	unsigned int dsc_param_load_mode;
 	unsigned int i = 0;
 
 	if (!comp->mtk_crtc || (!comp->mtk_crtc->panel_ext
@@ -414,8 +413,7 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 
 	dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params;
 	spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
-
-
+	dsc_param_load_mode = comp->mtk_crtc->panel_ext->params->dsc_param_load_mode;
 
 	if (spr_params->enable == 1 && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1)
 		dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params_spr_in;
@@ -1016,13 +1014,13 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 		scale_decrement_interval;
 	unsigned int rc_tgt_offset_hi, rc_tgt_offset_lo, rc_edge_factor,
 		bp_enable;
-	unsigned int dsc_param_load_mode =
-		comp->mtk_crtc->panel_ext->params->dsc_param_load_mode;
+	unsigned int dsc_param_load_mode;
 	unsigned int i = 0;
 
 	if (!comp->mtk_crtc || (!comp->mtk_crtc->panel_ext
 				&& !comp->mtk_crtc->is_dual_pipe))
 		return;
+
 	dsc_params =
 	 &comp->mtk_crtc->panel_ext->params->dsc_params;
 	default_dsc_params = mtk_dsc_default_setting();
@@ -1030,6 +1028,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 
 	dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params;
 	spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
+	dsc_param_load_mode = comp->mtk_crtc->panel_ext->params->dsc_param_load_mode;
 
 	if (spr_params->enable == 1 && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1)
 		dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params_spr_in;
