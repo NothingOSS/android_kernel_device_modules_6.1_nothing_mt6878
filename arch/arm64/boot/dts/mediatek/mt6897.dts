@@ -10342,9 +10342,7 @@
 			      "MMG_CG",
 			      "mmdvfs_clk";
 			operating-points-v2 = <&opp_table_img>;
-#if 0
-			dvfsrc-vmm-supply = <&vmm_proxy_label>;
-#endif
+			mediatek,imgsys-dvfs-pix-mode = <2>;
 			mediatek,imgsys-qos-sc-motr = <2>;
 			mediatek,imgsys-qos-sc-nums = <2>;
 			mediatek,imgsys-qos-sc-id = <29 30>;
