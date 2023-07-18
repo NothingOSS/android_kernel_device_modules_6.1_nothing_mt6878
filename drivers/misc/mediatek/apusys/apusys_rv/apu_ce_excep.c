@@ -145,7 +145,8 @@ static const char *get_ce_job_name_by_id(uint32_t job_id)
 uint32_t apu_ce_reg_dump(struct mtk_apu *apu)
 {
 	return apusys_rv_smc_call(apu->dev,
-		MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP, 0, NULL, NULL, NULL);
+		MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP,
+		(unsigned int)exception_job_id, NULL, NULL, NULL);
 }
 
 uint32_t apu_ce_sram_dump(struct mtk_apu *apu)
@@ -336,7 +337,8 @@ static irqreturn_t apu_ce_isr(int irq, void *private_data)
 
 		/* dump ce register to apusys_ce_fw_sram buffer */
 		if (apusys_rv_smc_call(
-				dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP, 0, NULL, NULL, NULL) == 0) {
+				dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP,
+				(unsigned int)exception_job_id, NULL, NULL, NULL) == 0) {
 			dev_info(dev, "Dump CE register to apusys_ce_fw_sram\n");
 		}
 
@@ -385,7 +387,8 @@ void apu_ce_timer_dump_reg(struct work_struct *work)
 		dev_info(dev, "%s +\n", __func__);
 
 		ret = apusys_rv_smc_call(dev,
-			MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP, 0, NULL, NULL, NULL);
+			MTK_APUSYS_KERNEL_OP_APUSYS_CE_DEBUG_REGDUMP,
+			(unsigned int)exception_job_id, NULL, NULL, NULL);
 	}
 }
 

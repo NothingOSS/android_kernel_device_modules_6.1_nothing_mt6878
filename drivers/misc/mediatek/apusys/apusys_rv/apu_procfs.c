@@ -129,35 +129,23 @@ static int ce_fw_sram_show(struct seq_file *s, void *v)
 {
 	uint32_t *ce_reg_addr = NULL;
 	uint32_t *ce_sram_addr = NULL;
-	uint32_t size;
+	uint32_t start, end, size, offset = 0;
 	struct mtk_apu *apu = (struct mtk_apu *)platform_get_drvdata(g_apu_pdev);
 
 	ce_reg_addr = (uint32_t *)((unsigned long)apu->apu_aee_coredump_mem_base +
 		(unsigned long)apu->apusys_aee_coredump_info->ce_bin_ofs);
 
-	if (ce_reg_addr[0] == CE_REG_DUMP_MAGIC_NUM &&
-		ce_reg_addr[1] == CE_REG_DUMP_MAGIC_NUM) {
+	while (ce_reg_addr[offset++] == CE_REG_DUMP_MAGIC_NUM) {
+		start = ce_reg_addr[offset++];
+		end = ce_reg_addr[offset++];
+		size = end - start;
 
 		seq_printf(s, "---- dump ce register from 0x%08x to 0x%08x ----\n",
-			APU_ARE_REG_BASE + CE_REG_DUMP_ACE_START,
-			APU_ARE_REG_BASE + CE_REG_DUMP_ACE_END);
+			start, end - 4);
 
-		ce_reg_addr += 2;
-		size = CE_REG_DUMP_ACE_END - CE_REG_DUMP_ACE_START + 4;
-		seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 16, 4, ce_reg_addr, size, false);
-
-		seq_printf(s, "---- dump hw sema from 0x%08x to 0x%08x----\n",
-			APU_ARE_REG_BASE + CE_REG_DUMP_HW_SEMA_START,
-			APU_ARE_REG_BASE + CE_REG_DUMP_HW_SEMA_END);
-
-		ce_reg_addr += size / 4;
-		size = CE_REG_DUMP_HW_SEMA_END - CE_REG_DUMP_HW_SEMA_START + 4;
-		seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 8, 4, ce_reg_addr, size, false);
-	} else {
-		seq_printf(s, "---- memory header invalid [0x%08x][0x%08x] ----\n",
-			ce_reg_addr[0], ce_reg_addr[1]);
+		seq_hex_dump(s, "", DUMP_PREFIX_OFFSET, 16, 4, ce_reg_addr + offset, size, false);
+		offset += size / 4;
 	}
-
 
 	seq_printf(s, "---- dump ce sram start from 0x%08x ----\n", APU_ARE_SRAMBASE);
 	ce_sram_addr = (uint32_t *)((unsigned long)apu->apu_aee_coredump_mem_base +

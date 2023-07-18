@@ -241,7 +241,7 @@ void apu_ce_stop_timer_dump_reg(void);
 #define APU_CE3_BREAKPOINT	                  (0x9a8)
 #define APU_CE3_OVERFLOW	                  (0x9b0)
 
-#define CE_REG_DUMP_MAGIC_NUM            (0xEEEEEEEE)
+#define CE_REG_DUMP_MAGIC_NUM            (0xA5A5A5A5)
 #define CE_REG_DUMP_ACE_START      (APU_ACE_SW_REQ_0)
 #define CE_REG_DUMP_ACE_END        (APU_CE3_OVERFLOW)
 #define CE_REG_DUMP_HW_SEMA_START             (0xe08)
