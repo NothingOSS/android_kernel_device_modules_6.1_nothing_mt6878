@@ -220,11 +220,12 @@ static void irqfd_deactivate(struct gzvm_kernel_irqfd *irqfd)
 }
 
 /**
- * irqfd_wakeup() - Wake up irqfd to do virtual interrupt injection.
+ * irqfd_wakeup() - Callback of irqfd wait queue, would be woken by writing to
+ *                  irqfd to do virtual interrupt injection.
  * @wait: Pointer to wait_queue_entry_t.
- * @mode:
- * @sync:
- * @key:
+ * @mode: Unused.
+ * @sync: Unused.
+ * @key: Get flags about Epoll events.
  *
  * Return:
  * * 0			- Success

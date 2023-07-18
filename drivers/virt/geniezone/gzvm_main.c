@@ -7,14 +7,11 @@
 #include <linux/device.h>
 #include <linux/file.h>
 #include <linux/kdev_t.h>
-#include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/gzvm_drv.h>
-
-struct platform_device *gzvm_debug_dev;
 
 /**
  * gz_err_to_errno() - Convert geniezone return value to standard errno
@@ -95,7 +92,7 @@ static const struct file_operations gzvm_chardev_ops = {
 	.llseek		= noop_llseek,
 };
 
-static struct miscdevice gzvm_dev = {
+struct miscdevice gzvm_dev = {
 	.minor = MISC_DYNAMIC_MINOR,
 	.name = MODULE_NAME,
 	.fops = &gzvm_chardev_ops,
@@ -110,10 +107,13 @@ static int gzvm_drv_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	ret = gzvm_arch_drv_init();
+	if (ret)
+		return ret;
+
 	ret = misc_register(&gzvm_dev);
 	if (ret)
 		return ret;
-	gzvm_debug_dev = pdev;
 
 	return gzvm_drv_irqfd_init();
 }
@@ -123,6 +123,7 @@ static int gzvm_drv_remove(struct platform_device *pdev)
 	gzvm_drv_irqfd_exit();
 	destroy_all_vm();
 	misc_deregister(&gzvm_dev);
+	gzvm_arch_drv_exit();
 	return 0;
 }
 

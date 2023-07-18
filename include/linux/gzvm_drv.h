@@ -10,7 +10,7 @@
 #include <linux/eventfd.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
-#include <linux/platform_device.h>
+#include <linux/miscdevice.h>
 #include <linux/gzvm.h>
 #include <linux/srcu.h>
 #include <linux/ktime.h>
@@ -43,13 +43,6 @@
 #define GZVM_MAX_MEM_REGION	10
 
 #define GZVM_VCPU_RUN_MAP_SIZE		(PAGE_SIZE * 2)
-
-struct timecycle {
-	u32 mult;
-	u32 shift;
-};
-
-extern struct timecycle clock_scale_factor;
 
 /* struct mem_region_addr_range - Identical to ffa memory constituent */
 struct mem_region_addr_range {
@@ -153,10 +146,12 @@ u64 hva_to_pa_arch(u64 hva);
 int gzvm_vm_ioctl_create_vcpu(struct gzvm *gzvm, u32 cpuid);
 int gzvm_arch_vcpu_update_one_reg(struct gzvm_vcpu *vcpu, __u64 reg_id,
 				  bool is_write, __u64 *data);
-int gzvm_arch_create_vcpu(u16 vm_id, int vcpuid, void *run);
+int gzvm_arch_create_vcpu(struct gzvm_vcpu *vcpu);
 int gzvm_arch_vcpu_run(struct gzvm_vcpu *vcpu, __u64 *exit_reason);
-int gzvm_arch_destroy_vcpu(u16 vm_id, int vcpuid);
+int gzvm_arch_destroy_vcpu(struct gzvm_vcpu *vcpu);
 int gzvm_arch_inform_exit(u16 vm_id);
+int gzvm_arch_drv_init(void);
+void gzvm_arch_drv_exit(void);
 
 int gzvm_find_memslot(struct gzvm *vm, u64 gpa);
 int gzvm_gfn_to_pfn_memslot(struct gzvm_memslot *memslot, u64 gfn, u64 *pfn);
@@ -179,8 +174,6 @@ void gzvm_drv_irqfd_exit(void);
 int gzvm_vm_irqfd_init(struct gzvm *gzvm);
 void gzvm_vm_irqfd_release(struct gzvm *gzvm);
 
-extern struct platform_device *gzvm_debug_dev;
-
 int gzvm_arch_memregion_purpose(struct gzvm *gzvm,
 				struct gzvm_userspace_memory_region *mem);
 int gzvm_arch_set_dtb_config(struct gzvm *gzvm, struct gzvm_dtb_config *args);
@@ -193,6 +186,8 @@ void eventfd_ctx_do_read(struct eventfd_ctx *ctx, __u64 *cnt);
 struct vm_area_struct *vma_lookup(struct mm_struct *mm, unsigned long addr);
 void add_wait_queue_priority(struct wait_queue_head *wq_head,
 			     struct wait_queue_entry *wq_entry);
+
+extern struct miscdevice gzvm_dev;
 
 #define GZVM_INFO(fmt...) pr_info("[GZVM]" fmt)
 #define GZVM_DEBUG(fmt...) pr_info("[GZVM][DBG]" fmt)

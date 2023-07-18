@@ -22,9 +22,15 @@
 #define GZVM_IOC_MAGIC			0x92	/* gz */
 
 /* ioctls for /dev/gzvm fds */
-#define GZVM_GET_API_VERSION       _IO(GZVM_IOC_MAGIC,   0x00)
-#define GZVM_CREATE_VM             _IO(GZVM_IOC_MAGIC,   0x01)
+#define GZVM_CREATE_VM             _IO(GZVM_IOC_MAGIC,   0x01) /* Returns a Geniezone VM fd */
 
+/*
+ * Check if the given capability is supported or not.
+ * The argument is capability. Ex. GZVM_CAP_ARM_PROTECTED_VM or GZVM_CAP_ARM_VM_IPA_SIZE
+ * return is 0 (supported, no error)
+ * return is -EOPNOTSUPP (unsupported)
+ * return is -EFAULT (failed to get the argument from userspace)
+ */
 #define GZVM_CHECK_EXTENSION       _IO(GZVM_IOC_MAGIC,   0x03)
 
 /* ioctls for VM fds */
@@ -57,8 +63,6 @@ struct gzvm_userspace_memory_region {
 
 #define GZVM_SET_USER_MEMORY_REGION _IOW(GZVM_IOC_MAGIC, 0x46, \
 					 struct gzvm_userspace_memory_region)
-
-#define GZVM_VTIMER_IRQ			27
 
 /* for GZVM_IRQ_LINE, irq field index values */
 #define GZVM_IRQ_VCPU_MASK		0xff
@@ -94,28 +98,27 @@ enum gzvm_device_type {
 };
 
 /**
- * struct gzvm_create_device: for GZVM_CREATE_DEVICE.
+ * struct gzvm_create_device: For GZVM_CREATE_DEVICE.
+ * @dev_type: Device type.
+ * @id: Device id.
+ * @flags: Bypass to hypervisor to handle them and these are flags of virtual
+ *         devices.
+ * @dev_addr: Device ipa address in VM's view.
+ * @dev_reg_size: Device register range size.
+ * @attr_addr: If user -> kernel, this is user virtual address of device
+ *             specific attributes (if needed). If kernel->hypervisor,
+ *             this is ipa.
+ * @attr_size: The size of device specific attributes.
  *
  * Store information needed to create device.
  */
 struct gzvm_create_device {
-	/* private: internal use only */
-	/* device type */
 	__u32 dev_type;
-	/* out: device id */
 	__u32 id;
-	/* device specific flags */
 	__u64 flags;
-	/* device ipa address in VM's view */
 	__u64 dev_addr;
-	/* device register range size */
 	__u64 dev_reg_size;
-	/*
-	 * If user -> kernel, this is user virtual address of device specific
-	 * attributes (if needed). If kernel->hypervisor, this is ipa.
-	 */
 	__u64 attr_addr;
-	/* size of device specific attributes */
 	__u64 attr_size;
 };
 
@@ -157,15 +160,53 @@ enum {
  * struct gzvm_vcpu_run: Same purpose as kvm_run, this struct is
  *			shared between userspace, kernel and
  *			GenieZone hypervisor
+ * @exit_reason: The reason why gzvm_vcpu_run has stopped running the vCPU
+ * @immediate_exit: Polled when the vcpu is scheduled.
+ *                  If set, immediately returns -EINTR
+ * @padding1: Reserved for future-proof and must be zero filled
+ * @mmio: The nested struct in anonymous union. Handle mmio in host side
+ * @phys_addr: The address guest tries to access
+ * @data: The value to be written (is_write is 1) or
+ *        be filled by user for reads (is_write is 0)
+ * @size: The size of written data.
+ *        Only the first `size` bytes of `data` are handled
+ * @reg_nr: The register number where the data is stored
+ * @is_write: 1 for VM to perform a write or 0 for VM to perform a read
+ * @fail_entry: The nested struct in anonymous union.
+ *              Handle invalid entry address at the first run
+ * @hardware_entry_failure_reason: The reason codes about hardware entry failure
+ * @cpu: The current processor number via smp_processor_id()
+ * @exception: The nested struct in anonymous union.
+ *             Handle exception occurred in VM
+ * @exception: Which exception vector
+ * @error_code: Exception error codes
+ * @fault_gpa: Fault GPA (guest physical address or IPA in ARM)
+ * @reserved: Future-proof reservation and should be zeroed, and this can also
+ *            fix the offset of `gzvm_arch_exception`
+ * @arch: struct gzvm_arch_exception, architecture information for guest
+ *        exception
+ * @hypercall: The nested struct in anonymous union.
+ *             Some hypercalls issued from VM must be handled
+ * @args: The hypercall's arguments
+ * @internal: The nested struct in anonymous union. The errors from hypervisor
+ * @suberror: The errors codes about GZVM_EXIT_INTERNAL_ERROR
+ * @ndata: The number of elements used in data[]
+ * @data: Keep the detailed information about GZVM_EXIT_INTERNAL_ERROR
+ * @system_event: The nested struct in anonymous union.
+ *                VM's PSCI must be handled by host
+ * @type: System event type.
+ *        Ex. GZVM_SYSTEM_EVENT_SHUTDOWN or GZVM_SYSTEM_EVENT_RESET...etc.
+ * @ndata: The number of elements used in data[]
+ * @data: Keep the detailed information about GZVM_EXIT_SYSTEM_EVENT
+ * @padding: Fix it to a reasonable size future-proof for keeping the same
+ *           struct size when adding new variables in the union is needed
  *
  * Keep identical layout between the 3 modules
  */
 struct gzvm_vcpu_run {
-	/* private: internal use only */
 	/* to userspace */
 	__u32 exit_reason;
 	__u8 immediate_exit;
-	/* reserved for future use and must be zero filled */
 	__u8 padding1[3];
 	/* union structure of collection of guest exit reason */
 	union {
@@ -191,10 +232,6 @@ struct gzvm_vcpu_run {
 			__u32 exception;
 			__u32 error_code;
 			__u64 fault_gpa;
-			/**
-			 * future-proof reservation and should be zeroed, and this can also
-			 * fix the offset of `gzvm_arch_exception`
-			 */
 			__u64 reserved[6];
 			struct gzvm_arch_exception arch;
 		} exception;
@@ -221,7 +258,6 @@ struct gzvm_vcpu_run {
 			__u32 ndata;
 			__u64 data[16];
 		} system_event;
-		/* Fix the size of the union. */
 		char padding[256];
 	};
 };
@@ -267,15 +303,13 @@ struct gzvm_one_reg {
  * @gsi: Used for level IRQ fast-path.
  * @flags: FLAG_DEASSIGN or FLAG_RESAMPLE.
  * @resamplefd: The file descriptor of the resampler.
+ * @pad: Reserved for future-proof and must be zero filled.
  */
 struct gzvm_irqfd {
 	__u32 fd;
 	__u32 gsi;
 	__u32 flags;
 	__u32 resamplefd;
-	/* private: reserved as padding; use zero, this may
-	 * be used in the future
-	 */
 	__u8  pad[16];
 };
 

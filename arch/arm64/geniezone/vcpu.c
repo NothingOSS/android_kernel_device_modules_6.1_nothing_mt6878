@@ -72,6 +72,39 @@ static void gzvm_mtimer_catch(struct hrtimer *hrt, u64 delay)
 	hrtimer_start(hrt, ktime_add_ns(ktime_get(), ns), HRTIMER_MODE_ABS_HARD);
 }
 
+static void mtimer_irq_forward(struct gzvm_vcpu *vcpu)
+{
+	struct gzvm *gzvm;
+	u32 irq_num, vcpu_idx, vcpu2_idx;
+
+	gzvm = vcpu->gzvm;
+
+	irq_num = FIELD_GET(GZVM_IRQ_LINE_NUM, GZVM_VTIMER_IRQ);
+	vcpu_idx = FIELD_GET(GZVM_IRQ_LINE_VCPU, GZVM_VTIMER_IRQ);
+	vcpu2_idx = FIELD_GET(GZVM_IRQ_LINE_VCPU2, GZVM_VTIMER_IRQ) *
+		    (GZVM_IRQ_VCPU_MASK + 1);
+
+	gzvm_vgic_inject_ppi(gzvm, vcpu_idx + vcpu2_idx, irq_num, 1);
+}
+
+static enum hrtimer_restart gzvm_mtimer_expire(struct hrtimer *hrt)
+{
+	struct gzvm_vcpu *vcpu;
+
+	vcpu = container_of(hrt, struct gzvm_vcpu, gzvm_mtimer);
+
+	mtimer_irq_forward(vcpu);
+
+	return HRTIMER_NORESTART;
+}
+
+static void vtimer_init(struct gzvm_vcpu *vcpu)
+{
+	/* gzvm_mtimer init based on hrtimer */
+	hrtimer_init(&vcpu->gzvm_mtimer, CLOCK_MONOTONIC, HRTIMER_MODE_ABS_HARD);
+	vcpu->gzvm_mtimer.function = gzvm_mtimer_expire;
+}
+
 int gzvm_arch_vcpu_run(struct gzvm_vcpu *vcpu, __u64 *exit_reason)
 {
 	struct arm_smccc_res res;
@@ -94,12 +127,14 @@ int gzvm_arch_vcpu_run(struct gzvm_vcpu *vcpu, __u64 *exit_reason)
 	return ret;
 }
 
-int gzvm_arch_destroy_vcpu(u16 vm_id, int vcpuid)
+int gzvm_arch_destroy_vcpu(struct gzvm_vcpu *vcpu)
 {
 	struct arm_smccc_res res;
 	unsigned long a1;
 
-	a1 = assemble_vm_vcpu_tuple(vm_id, vcpuid);
+	hrtimer_cancel(&vcpu->gzvm_mtimer);
+
+	a1 = assemble_vm_vcpu_tuple(vcpu->gzvm->vm_id, vcpu->vcpuid);
 	gzvm_hypcall_wrapper(MT_HVC_GZVM_DESTROY_VCPU, a1, 0, 0, 0, 0, 0, 0,
 			     &res);
 
@@ -108,20 +143,20 @@ int gzvm_arch_destroy_vcpu(u16 vm_id, int vcpuid)
 
 /**
  * gzvm_arch_create_vcpu() - Call smc to gz hypervisor to create vcpu
- * @vm_id: vm id
- * @vcpuid: vcpu id
- * @run: Virtual address of vcpu->run
+ * @vcpu: Pointer to struct gzvm_vcpu
  *
  * Return: The wrapper helps caller to convert geniezone errno to Linux errno.
  */
-int gzvm_arch_create_vcpu(u16 vm_id, int vcpuid, void *run)
+int gzvm_arch_create_vcpu(struct gzvm_vcpu *vcpu)
 {
 	struct arm_smccc_res res;
 	unsigned long a1, a2;
 	int ret;
 
-	a1 = assemble_vm_vcpu_tuple(vm_id, vcpuid);
-	a2 = (__u64)virt_to_phys(run);
+	vtimer_init(vcpu);
+
+	a1 = assemble_vm_vcpu_tuple(vcpu->gzvm->vm_id, vcpu->vcpuid);
+	a2 = (__u64)virt_to_phys(vcpu->run);
 	ret = gzvm_hypcall_wrapper(MT_HVC_GZVM_CREATE_VCPU, a1, a2, 0, 0, 0, 0,
 				   0, &res);
 

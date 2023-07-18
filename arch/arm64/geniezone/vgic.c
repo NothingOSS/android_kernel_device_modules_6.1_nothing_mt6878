@@ -4,7 +4,6 @@
  */
 
 #include <linux/irqchip/arm-gic-v3.h>
-
 #include <linux/gzvm.h>
 #include <linux/gzvm_drv.h>
 #include "gzvm_arch_common.h"
@@ -90,6 +89,22 @@ static int gzvm_vgic_inject_spi(struct gzvm *gzvm, unsigned int vcpu_idx,
 	return gzvm_vgic_inject_irq(gzvm, 0, GZVM_IRQ_TYPE_SPI,
 				    spi_irq + GZVM_VGIC_NR_PRIVATE_IRQS,
 				    level);
+}
+
+/**
+ * gzvm_vgic_inject_ppi() - Inject virtual ppi interrupt
+ * @gzvm: Pointer to struct gzvm
+ * @vcpu_idx: vcpu index
+ * @irq: This is spi interrupt number (starts from 0 instead of 32)
+ * @level: 1 if true else 0
+ *
+ * Return:
+ * * 0 if succeed else other negative values indicating each errors
+ */
+int gzvm_vgic_inject_ppi(struct gzvm *gzvm, unsigned int vcpu_idx,
+			 u32 irq, bool level)
+{
+	return gzvm_vgic_inject_irq(gzvm, 0, GZVM_IRQ_TYPE_PPI, irq, level);
 }
 
 int gzvm_arch_create_device(u16 vm_id, struct gzvm_create_device *gzvm_dev)

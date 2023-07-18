@@ -8,6 +8,6 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/include
 
 include $(DEVICE_MODULES_PATH)/drivers/virt/geniezone/Makefile
 
-gzvm-y += vm.o vcpu.o vgic.o
+gzvm-y += vm.o vcpu.o vgic.o driver.o
 
 obj-$(CONFIG_MTK_GZVM) += gzvm.o

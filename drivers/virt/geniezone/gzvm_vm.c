@@ -4,10 +4,8 @@
  */
 
 #include <linux/anon_inodes.h>
-#include <linux/clocksource.h>
 #include <linux/file.h>
 #include <linux/kdev_t.h>
-#include <linux/miscdevice.h>
 #include <linux/mm.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
@@ -18,8 +16,6 @@
 static DEFINE_MUTEX(gzvm_list_lock);
 static LIST_HEAD(gzvm_list);
 
-struct timecycle clock_scale_factor;
-
 u64 gzvm_gfn_to_hva_memslot(struct gzvm_memslot *memslot, u64 gfn)
 {
 	u64 offset = gfn - memslot->base_gfn;
@@ -29,6 +25,8 @@ u64 gzvm_gfn_to_hva_memslot(struct gzvm_memslot *memslot, u64 gfn)
 
 /**
  * gzvm_find_memslot() - Find memslot containing this @gpa
+ * @vm: Pointer to struct gzvm
+ * @gfn: Guest frame number
  *
  * Return:
  * * >=0		- Index of memslot
@@ -144,8 +142,8 @@ register_memslot_addr_range(struct gzvm *gzvm, struct gzvm_memslot *memslot)
 
 		if (gzvm_arch_set_memregion(gzvm->vm_id, buf_size,
 					    virt_to_phys(region))) {
-			dev_info(&gzvm_debug_dev->dev,
-				"Failed to register memregion to hypervisor\n");
+			dev_info(gzvm_dev.this_device,
+				 "Failed to register memregion to hypervisor\n");
 			free_pages_exact(region, buf_size);
 			return -EFAULT;
 		}
@@ -196,7 +194,7 @@ gzvm_vm_ioctl_set_memory_region(struct gzvm *gzvm,
 
 	ret = gzvm_arch_memregion_purpose(gzvm, mem);
 	if (ret) {
-		dev_info(&gzvm_debug_dev->dev,
+		dev_info(gzvm_dev.this_device,
 			"Failed to config memory region for the specified purpose\n");
 		return -EFAULT;
 	}
@@ -376,7 +374,7 @@ static void gzvm_destroy_ppage(struct gzvm *gzvm)
 
 static void gzvm_destroy_vm(struct gzvm *gzvm)
 {
-	dev_info(&gzvm_debug_dev->dev,
+	dev_info(gzvm_dev.this_device,
 		 "VM-%u is going to be destroyed\n", gzvm->vm_id);
 
 	mutex_lock(&gzvm->lock);
@@ -435,7 +433,7 @@ static struct gzvm *gzvm_create_vm(unsigned long vm_type)
 
 	ret = gzvm_vm_irqfd_init(gzvm);
 	if (ret) {
-		dev_info(&gzvm_debug_dev->dev,
+		dev_info(gzvm_dev.this_device,
 			"Failed to initialize irqfd\n");
 		kfree(gzvm);
 		return ERR_PTR(ret);
@@ -443,18 +441,11 @@ static struct gzvm *gzvm_create_vm(unsigned long vm_type)
 
 	ret = gzvm_init_ioeventfd(gzvm);
 	if (ret) {
-		dev_info(&gzvm_debug_dev->dev,
+		dev_info(gzvm_dev.this_device,
 			"Failed to initialize ioeventfd\n");
 		kfree(gzvm);
 		return ERR_PTR(ret);
 	}
-
-	/* clock_scale_factor init mult shift */
-	clocks_calc_mult_shift(&clock_scale_factor.mult,
-			       &clock_scale_factor.shift,
-			       arch_timer_get_cntfrq(),
-			       NSEC_PER_SEC,
-			       10);
 
 	mutex_lock(&gzvm_list_lock);
 	list_add(&gzvm->vm_list, &gzvm_list);

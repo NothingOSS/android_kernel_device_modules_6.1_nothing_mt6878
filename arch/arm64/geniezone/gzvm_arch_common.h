@@ -53,6 +53,15 @@ enum {
 
 #define GIC_V3_NR_LRS			16
 
+#define GZVM_VTIMER_IRQ			27
+
+struct timecycle {
+	u32 mult;
+	u32 shift;
+};
+
+extern struct timecycle clock_scale_factor;
+
 /**
  * gzvm_hypcall_wrapper() - the wrapper for hvc calls
  * @a0-a7: arguments passed in registers 0 to 7
@@ -60,11 +69,11 @@ enum {
  *
  * Return: The wrapper helps caller to convert geniezone errno to Linux errno.
  */
-static int gzvm_hypcall_wrapper(unsigned long a0, unsigned long a1,
-				unsigned long a2, unsigned long a3,
-				unsigned long a4, unsigned long a5,
-				unsigned long a6, unsigned long a7,
-				struct arm_smccc_res *res)
+static inline int gzvm_hypcall_wrapper(unsigned long a0, unsigned long a1,
+				       unsigned long a2, unsigned long a3,
+				       unsigned long a4, unsigned long a5,
+				       unsigned long a6, unsigned long a7,
+				       struct arm_smccc_res *res)
 {
 	arm_smccc_hvc(a0, a1, a2, a3, a4, a5, a6, a7, res);
 	return gz_err_to_errno(res->a0);
@@ -84,7 +93,7 @@ static inline u16 get_vcpuid_from_tuple(unsigned int tuple)
  * struct gzvm_vcpu_hwstate: Sync architecture state back to host for handling
  * @nr_lrs: The available LRs(list registers) in Soc.
  * @__pad: add an explicit '__u32 __pad;' in the middle to make it clear
- *         what the actual layout is and make it portable.
+ *         what the actual layout is.
  * @lr: The array of LRs(list registers).
  * @vtimer_delay: The remaining time until the next tick of guest VM.
  * @vtimer_migrate: The switch flag used for guest VM to do vtimer migration or not.
@@ -114,5 +123,8 @@ disassemble_vm_vcpu_tuple(unsigned int tuple, u16 *vmid, u16 *vcpuid)
 	*vmid = get_vmid_from_tuple(tuple);
 	*vcpuid = get_vcpuid_from_tuple(tuple);
 }
+
+int gzvm_vgic_inject_ppi(struct gzvm *gzvm, unsigned int vcpu_idx,
+			 u32 irq, bool level);
 
 #endif /* __GZVM_ARCH_COMMON_H__ */
