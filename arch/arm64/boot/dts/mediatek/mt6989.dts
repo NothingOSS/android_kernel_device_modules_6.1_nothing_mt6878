@@ -1230,7 +1230,9 @@
 				<&dvfsrc_freq_opp5>,
 				<&dvfsrc_freq_opp6>,
 				<&dvfsrc_freq_opp7>,
-				<&dvfsrc_freq_opp8>;
+				<&dvfsrc_freq_opp8>,
+				<&dvfsrc_freq_opp9>,
+				<&dvfsrc_freq_opp10>;
 		cm-mgr-enable = <1>;
 		cm-mgr-arch = "v1p";
 
