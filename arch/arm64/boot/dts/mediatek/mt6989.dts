@@ -1906,6 +1906,10 @@
 		compatible = "mediatek,memory-ffa-enabled";
 	};
 
+	tee: tee-mmap-by-page-enabled {
+		compatible = "mediatek,tee-mmap-by-page-enabled";
+	};
+
 	page_based_v2: page-based-v2-enabled {
 		compatible = "mediatek,page-based-v2-enabled";
 	};
