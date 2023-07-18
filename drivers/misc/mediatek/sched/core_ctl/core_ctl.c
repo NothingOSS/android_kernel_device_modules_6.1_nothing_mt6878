@@ -2113,7 +2113,7 @@ static int __init core_ctl_init(void)
 
 	pr_info("%s: start to init core_ioctl driver\n", TAG);
 	parent = proc_mkdir("cpumgr", NULL);
-	pe = proc_create("core_ioctl", 0664, parent, &core_ctl_Fops);
+	pe = proc_create("core_ioctl", 0660, parent, &core_ctl_Fops);
 	if (!pe) {
 		pr_info("%s: Could not create /proc/cpumgr/core_ioctl.\n", TAG);
 		ret = -ENOMEM;
