@@ -3168,6 +3168,7 @@
 		mminfra-bkrs = <0>;
 		mminfra-gals-sel = <14 15 16 17 18 19>;
 		bkrs-reg = <0x1e800250>;
+		vlp-base = <0x1c000000>;
 		spm-base = <0x1c001000>;
 		mm-voter-base = <0x1ec45130>;
 		mm-mtcmos-base = <0x1c001ea8>;
