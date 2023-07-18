@@ -697,6 +697,11 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
 
+	if (task->config->info.mode == MML_MODE_MML_DECOUPLE) {
+		/* must before pw_disable */
+		mml_dpc_dc_enable(task, false);
+	}
+
 	/* no need exception flow for DL/IR until scenario out */
 	cur_task_cnt = mml_dpc_task_cnt_get(task, false);
 	pw_disable_exc = task->config->dpc && cur_task_cnt == 1;
@@ -713,12 +718,9 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	if (pw_disable_exc)
 		mml_dpc_exc_release(task);
 
-	if (task->config->info.mode == MML_MODE_MML_DECOUPLE) {
-		mml_msg_dpc("%s dpc exception flow disable for DC", __func__);
-		mml_dpc_dc_enable(task, false);
-		mml_dpc_exc_release(task);
-	} else if (!task->config->dpc) {
-		mml_msg_dpc("%s dpc exception flow disable for IR/DL no dpc", __func__);
+	if (task->config->info.mode == MML_MODE_MML_DECOUPLE ||
+	    !task->config->dpc) {
+		mml_msg_dpc("%s dpc exception flow disable for DC or IR/DL no dpc", __func__);
 		mml_dpc_exc_release(task);
 	}
 
