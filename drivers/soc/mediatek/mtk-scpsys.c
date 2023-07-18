@@ -89,6 +89,7 @@
 #define PWR_ACK_2ND			BIT(31)
 
 #define MMINFRA_DONE_STA		BIT(0)
+#define VCP_READY_STA		BIT(1)
 
 #define PWR_STATUS_CONN			BIT(1)
 #define PWR_STATUS_DISP			BIT(3)
@@ -1264,7 +1265,19 @@ static int mtk_mminfra_hwv_is_enable_done(struct scp_domain *scpd)
 
 	regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
 
-	if ((val & MMINFRA_DONE_STA) == 1)
+	if (val == (VCP_READY_STA | MMINFRA_DONE_STA))
+		return 1;
+
+	return 0;
+}
+
+static int mtk_check_vcp_is_ready(struct scp_domain *scpd)
+{
+	u32 val = 0;
+
+	regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
+
+	if ((val & VCP_READY_STA) == VCP_READY_STA)
 		return 1;
 
 	return 0;
@@ -1281,6 +1294,12 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 	int ret = 0;
 	int tmp = 0;
 	int i = 0;
+
+	/* wait until vcp is ready, check 0x1c00091c[1] = 1 */
+	ret = readx_poll_timeout_atomic(mtk_check_vcp_is_ready, scpd, tmp, tmp > 0,
+			MTK_POLL_DELAY_US, MTK_POLL_300MS_TIMEOUT);
+	if (ret < 0)
+		goto err_vcp_ready;
 
 	val = BIT(scpd->data->hwv_shift);
 	vote_msk = BIT(scpd->data->hwv_shift);
@@ -1310,6 +1329,7 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 	} while (1);
 
 	if (onoff) {
+		tmp = 0;
 		/* wait until VOTER_ACK = 1 */
 		ret = readx_poll_timeout_atomic(mtk_mminfra_hwv_is_enable_done, scpd, tmp, tmp > 0,
 				MTK_POLL_DELAY_US, MTK_POLL_300MS_TIMEOUT);
@@ -1319,6 +1339,9 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 
 	return 0;
 
+err_vcp_ready:
+	regmap_read(regmap, scpd->data->hwv_done_ofs, &val2);
+	dev_err(dev, "Failed to vcp ready timeout %s(%d)\n", name, val2);
 err_hwv_done:
 	regmap_read(regmap, scpd->data->hwv_done_ofs, &val2);
 	dev_err(dev, "Failed to hwv done timeout %s(%d)\n", name, val2);

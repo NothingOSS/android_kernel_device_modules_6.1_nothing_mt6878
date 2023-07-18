@@ -28,6 +28,8 @@
 #define MTK_POLL_300MS_TIMEOUT		(300 * USEC_PER_MSEC)
 
 #define MMINFRA_DONE_STA		BIT(0)
+#define VCP_READY_STA			BIT(1)
+#define MMINFRA_DURING_OFF_STA		BIT(2)
 
 static DEFINE_SPINLOCK(mminfra_vote_lock);
 static ATOMIC_NOTIFIER_HEAD(mtk_clk_notifier_list);
@@ -77,13 +79,25 @@ struct ipi_callbacks *mtk_clk_get_ipi_cb(void)
 }
 EXPORT_SYMBOL_GPL(mtk_clk_get_ipi_cb);
 
+static int mtk_vcp_is_ready(struct mtk_hwv_domain *hwvd)
+{
+	u32 val = 0;
+
+	regmap_read(hwvd->regmap, hwvd->data->done_ofs, &val);
+
+	if ((val & VCP_READY_STA) == VCP_READY_STA)
+		return 1;
+
+	return 0;
+}
+
 static int mtk_mminfra_hwv_is_enable_done(struct mtk_hwv_domain *hwvd)
 {
 	u32 val = 0;
 
 	regmap_read(hwvd->regmap, hwvd->data->done_ofs, &val);
 
-	if ((val & MMINFRA_DONE_STA) == MMINFRA_DONE_STA)
+	if (val == (MMINFRA_DONE_STA | VCP_READY_STA))
 		return 1;
 
 	return 0;
@@ -95,13 +109,19 @@ int __mminfra_hwv_power_ctrl(struct mtk_hwv_domain *hwvd,
 	u32 en_ofs;
 	u32 vote_ofs;
 	u32 vote_ack;
-	u32 val = 0, val2 = 0;
+	u32 val = 0;
 	unsigned long flags = 0;
 	int ret = 0;
 	int tmp = 0;
 	int i = 0;
 
 	spin_lock_irqsave(&mminfra_vote_lock, flags);
+
+	/* wait until VCP_READY_ACK = 1 */
+	ret = readx_poll_timeout_atomic(mtk_vcp_is_ready, hwvd, tmp, tmp > 0,
+			MTK_POLL_DELAY_US, MTK_POLL_300MS_TIMEOUT);
+	if (ret < 0)
+		goto err_hwv_prepare;
 
 	en_ofs = hwvd->data->en_ofs;
 	if (onoff) {
@@ -139,12 +159,15 @@ int __mminfra_hwv_power_ctrl(struct mtk_hwv_domain *hwvd,
 	return 0;
 
 err_hwv_done:
-	regmap_read(hwvd->regmap, hwvd->data->done_ofs, &val2);
-	dev_err(hwvd->dev, "Failed to hwv done timeout %s(%x)\n", hwvd->data->name, val2);
+	regmap_read(hwvd->regmap, hwvd->data->done_ofs, &val);
+	dev_err(hwvd->dev, "Failed to hwv done timeout %s(%x)\n", hwvd->data->name, val);
 err_hwv_vote:
 	regmap_read(hwvd->regmap, en_ofs, &val);
 	dev_err(hwvd->dev, "Failed to hwv vote %s timeout %s(%d %x %x)\n", onoff ? "on" : "off",
 			hwvd->data->name, ret, vote_msk, val);
+err_hwv_prepare:
+	regmap_read(hwvd->regmap, hwvd->data->done_ofs, &val);
+	dev_err(hwvd->dev, "Failed to vcp boot-up timeout %s(%x)\n", hwvd->data->name, val);
 
 	spin_unlock_irqrestore(&mminfra_vote_lock, flags);
 
