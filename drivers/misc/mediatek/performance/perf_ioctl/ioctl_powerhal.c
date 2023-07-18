@@ -75,11 +75,6 @@ static long adpf_device_ioctl(struct file *filp,
 	struct _ADPF_PACKAGE t_smsgKM;
 	__s32 *threadIds = NULL;
 	struct _ADPF_WORK_DURATION *workDuration = NULL;
-	int _cmd = -1;
-	int _value = -1;
-	struct _CPU_CTRL_PACKAGE *t_msgKM_boost = NULL,
-			*t_msgUM_boost = (struct _CPU_CTRL_PACKAGE *)arg;
-	struct _CPU_CTRL_PACKAGE t_smsgKM_boost;
 
 	t_msgKM = &t_smsgKM;
 	if (perfctl_copy_from_user(t_msgKM, t_msgUM,
@@ -177,6 +172,34 @@ static long adpf_device_ioctl(struct file *filp,
 			}
 		}
 		break;
+	default:
+		pr_debug(TAG "%s %d: unknown cmd %x\n", __FILE__, __LINE__, cmd);
+		ret = -1;
+		goto ret_ioctl;
+	}
+
+ret_ioctl:
+	return ret;
+}
+
+static long device_ioctl(struct file *filp,
+		unsigned int cmd, unsigned long arg)
+{
+	ssize_t ret = 0;
+	struct _POWERHAL_PACKAGE *t_msgKM = NULL,
+			*t_msgUM = (struct _POWERHAL_PACKAGE *)arg;
+	struct _POWERHAL_PACKAGE t_smsgKM;
+	int _cmd = -1;
+	int _value = -1;
+	struct _CPU_CTRL_PACKAGE *t_msgKM_boost = NULL,
+			*t_msgUM_boost = (struct _CPU_CTRL_PACKAGE *)arg;
+	struct _CPU_CTRL_PACKAGE t_smsgKM_boost;
+
+	t_msgKM = &t_smsgKM;
+
+	pr_debug(TAG "cmd: %d\n", cmd);
+
+	switch (cmd) {
 	case NOTIFY_BOOST:
 		t_msgKM_boost = &t_smsgKM_boost;
 
@@ -198,36 +221,14 @@ static long adpf_device_ioctl(struct file *filp,
 			goto ret_ioctl;
 		}
 		break;
-	default:
-		pr_debug(TAG "%s %d: unknown cmd %x\n", __FILE__, __LINE__, cmd);
-		ret = -1;
-		goto ret_ioctl;
-	}
-
-ret_ioctl:
-	return ret;
-}
-
-static long device_ioctl(struct file *filp,
-		unsigned int cmd, unsigned long arg)
-{
-	ssize_t ret = 0;
-	struct _POWERHAL_PACKAGE *t_msgKM = NULL,
-			*t_msgUM = (struct _POWERHAL_PACKAGE *)arg;
-	struct _POWERHAL_PACKAGE t_smsgKM;
-
-	t_msgKM = &t_smsgKM;
-	if (perfctl_copy_from_user(t_msgKM, t_msgUM,
-				sizeof(struct _POWERHAL_PACKAGE))) {
-		pr_debug("POWERHAL_SET_DATA error: %d", cmd);
-		ret = -EFAULT;
-		goto ret_ioctl;
-	}
-
-	pr_debug(TAG "cmd: %d\n", cmd);
-
-	switch (cmd) {
 	case DSU_CCI_SPORT_MODE:
+		if (perfctl_copy_from_user(t_msgKM, t_msgUM,
+			sizeof(struct _POWERHAL_PACKAGE))) {
+			pr_debug("POWERHAL_SET_DATA error: %d", cmd);
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
 		if (powerhal_dsu_sport_mode_fp)
 			powerhal_dsu_sport_mode_fp(t_msgKM->value);
 		break;

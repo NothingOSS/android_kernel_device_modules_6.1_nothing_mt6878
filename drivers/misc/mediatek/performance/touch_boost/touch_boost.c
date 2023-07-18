@@ -74,6 +74,8 @@ static int idleprefer_ta = 1;
 static int idleprefer_fg = 1;
 static int boost_opp_cluster[CLUSTER_MAX];
 static int deboost_when_render = 1;
+static int boost_up;
+static int boost_down = 1;
 static int force_stop_boost;
 static long long active_time = TOUCH_FSTB_ACTIVE_MS;
 static long long boost_duration = TOUCH_TIMEOUT_MS;
@@ -122,6 +124,8 @@ struct k_list {
 	int _cpufreq_c0;
 	int _cpufreq_c1;
 	int _cpufreq_c2;
+	int _boost_up;
+	int _boost_down;
 };
 
 static LIST_HEAD(head);
@@ -151,6 +155,8 @@ void send_boost_cmd(int enable)
 	node->_cpufreq_c0 = freq_to_set[0].min;
 	node->_cpufreq_c1 = freq_to_set[1].min;
 	node->_cpufreq_c2 = freq_to_set[2].min;
+	node->_boost_up = boost_up;
+	node->_boost_down = boost_down;
 
 	list_add_tail(&node->queue_list, &head);
 	condition_get_cmd = 1;
@@ -163,7 +169,7 @@ out:
 void touch_boost_get_cmd(int *cmd, int *enable,
 	int *deboost_when_render, int *active_time, int *boost_duration,
 	int *idleprefer_ta, int *idleprefer_fg, int *util_ta, int *util_fg,
-	int *cpufreq_c0, int *cpufreq_c1, int *cpufreq_c2)
+	int *cpufreq_c0, int *cpufreq_c1, int *cpufreq_c2, int *boost_up, int *boost_down)
 {
 	static struct k_list *node;
 
@@ -186,6 +192,8 @@ void touch_boost_get_cmd(int *cmd, int *enable,
 		*cpufreq_c0 = node->_cpufreq_c0;
 		*cpufreq_c1 = node->_cpufreq_c1;
 		*cpufreq_c2 = node->_cpufreq_c2;
+		*boost_up = node->_boost_up;
+		*boost_down = node->_boost_down;
 
 		list_del(&node->queue_list);
 		kmem_cache_free(touch_boost_cache, node);
@@ -287,7 +295,7 @@ static int ktchboost_thread(void *ptr)
 
 		atomic_dec(&ktchboost.event);
 		event = ktchboost.touch_event;
-		_cpu_ctrl_systrace(event, "touch_down");
+		_cpu_ctrl_systrace(event, "touch_event");
 		touch_boost();
 	}
 	return 0;
@@ -308,6 +316,78 @@ static int ktchboost_interrupt_thread(void *ptr)
 		_cpu_ctrl_systrace(0, "fpsgo_wait_fstb_active");
 	}
 	return 0;
+}
+
+static ssize_t perfmgr_boost_down_proc_write(struct file *filp,
+		const char *ubuf, size_t cnt, loff_t *data)
+{
+	char buf[64];
+	int value;
+	int ret;
+
+	if (cnt >= sizeof(buf) || copy_from_user(buf, ubuf, cnt))
+		return -EINVAL;
+
+	buf[cnt] = 0;
+	ret = kstrtoint(buf, 10, &value);
+	if (ret < 0)
+		return ret;
+
+	boost_down = value;
+
+	return cnt;
+}
+
+static ssize_t perfmgr_boost_down_proc_show(struct file *file,
+		char __user *ubuf, size_t count, loff_t *ppos)
+{
+	int n = 0;
+	char buffer[64];
+
+	if (*ppos != 0)
+		goto out;
+	n = scnprintf(buffer, 64, "%d\n", boost_down);
+out:
+	if (n < 0)
+		return -EINVAL;
+
+	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
+}
+
+static ssize_t perfmgr_boost_up_proc_write(struct file *filp,
+		const char *ubuf, size_t cnt, loff_t *data)
+{
+	char buf[64];
+	int value;
+	int ret;
+
+	if (cnt >= sizeof(buf) || copy_from_user(buf, ubuf, cnt))
+		return -EINVAL;
+
+	buf[cnt] = 0;
+	ret = kstrtoint(buf, 10, &value);
+	if (ret < 0)
+		return ret;
+
+	boost_up = value;
+
+	return cnt;
+}
+
+static ssize_t perfmgr_boost_up_proc_show(struct file *file,
+		char __user *ubuf, size_t count, loff_t *ppos)
+{
+	int n = 0;
+	char buffer[64];
+
+	if (*ppos != 0)
+		goto out;
+	n = scnprintf(buffer, 64, "%d\n", boost_up);
+out:
+	if (n < 0)
+		return -EINVAL;
+
+	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
 }
 
 static ssize_t perfmgr_deboost_when_render_proc_write(struct file *filp,
@@ -761,24 +841,34 @@ out:
 	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
 }
 
-static void dbs_input_event(struct input_handle *handle, unsigned int type,
+static void dbs_input_touch_boost(unsigned int type,
 		unsigned int code, int value)
 {
 	unsigned long flags;
 
+	pr_debug("input cb, type:%d, code:%d, value:%d\n",
+				type, code, value);
+	spin_lock_irqsave(&ktchboost.touch_lock, flags);
+	ktchboost.touch_event = value;
+	spin_unlock_irqrestore(&ktchboost.touch_lock, flags);
+
+	atomic_inc(&ktchboost.event);
+	wake_up(&ktchboost.wq);
+}
+
+static void dbs_input_event(struct input_handle *handle, unsigned int type,
+		unsigned int code, int value)
+{
 	if (!enable)
 		return;
 
-	if ((type == EV_KEY) && (code == BTN_TOUCH) && (value == TOUCH_DOWN)) {
-		pr_debug("input cb, type:%d, code:%d, value:%d\n",
-				type, code, value);
-		spin_lock_irqsave(&ktchboost.touch_lock, flags);
-		ktchboost.touch_event = value;
-		spin_unlock_irqrestore(&ktchboost.touch_lock, flags);
+	if (!((type == EV_KEY) && (code == BTN_TOUCH)))
+		return;
 
-		atomic_inc(&ktchboost.event);
-		wake_up(&ktchboost.wq);
-	}
+	if (((value == TOUCH_DOWN) && (boost_down)) ||
+		((value == TOUCH_UP) && (boost_up)))
+		dbs_input_touch_boost(type, code, value);
+
 }
 
 static int dbs_input_connect(struct input_handler *handler,
@@ -978,6 +1068,8 @@ PROC_FOPS_RW(boost_opp_cluster_1);
 PROC_FOPS_RW(boost_opp_cluster_2);
 PROC_FOPS_RW(force_stop_boost);
 PROC_FOPS_RW(deboost_when_render);
+PROC_FOPS_RW(boost_up);
+PROC_FOPS_RW(boost_down);
 
 
 static int __init touch_boost_init(void)
@@ -1004,6 +1096,8 @@ static int __init touch_boost_init(void)
 		PROC_ENTRY(boost_opp_cluster_2),
 		PROC_ENTRY(force_stop_boost),
 		PROC_ENTRY(deboost_when_render),
+		PROC_ENTRY(boost_up),
+		PROC_ENTRY(boost_down),
 	};
 
 	lt_dir = proc_mkdir("touch_boost", parent);

@@ -36,6 +36,8 @@ struct _TOUCH_BOOST_PACKAGE {
 	__s32 cpufreq_c0;
 	__s32 cpufreq_c1;
 	__s32 cpufreq_c2;
+	__s32 boost_up;
+	__s32 boost_down;
 };
 
 #define TOUCH_BOOST_GET_CMD   _IOW('g', 1, struct _TOUCH_BOOST_PACKAGE)

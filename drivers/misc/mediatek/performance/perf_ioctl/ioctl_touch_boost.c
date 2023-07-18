@@ -9,7 +9,7 @@
 void (*touch_boost_get_cmd_fp)(int *cmd, int *enable,
 	int *deboost_when_render, int *active_time, int *boost_duration,
 	int *idleprefer_ta, int *idleprefer_fg, int *util_ta, int *util_fg,
-	int *cpufreq_c0, int *cpufreq_c1, int *cpufreq_c2);
+	int *cpufreq_c0, int *cpufreq_c1, int *cpufreq_c2, int *boost_up, int *boost_down);
 EXPORT_SYMBOL_GPL(touch_boost_get_cmd_fp);
 
 struct proc_dir_entry *perfmgr_root;
@@ -51,6 +51,7 @@ static long device_ioctl(struct file *filp,
 	int deboost_when_render = -1, active_time = -1, boost_duration = -1;
 	int cpufreq_c0 = -1, cpufreq_c1 = -1, cpufreq_c2 = -1;
 	int idleprefer_ta = -1, idleprefer_fg = -1, util_ta = -1, util_fg = -1;
+	int boost_up = -1, boost_down = -1;
 
 	struct _TOUCH_BOOST_PACKAGE *t_msgKM = NULL,
 			*t_msgUM = (struct _TOUCH_BOOST_PACKAGE *)arg;
@@ -72,7 +73,8 @@ static long device_ioctl(struct file *filp,
 			&active_time, &boost_duration,
 			&idleprefer_ta, &idleprefer_fg,
 			&util_ta, &util_fg,
-			&cpufreq_c0, &cpufreq_c1, &cpufreq_c2);
+			&cpufreq_c0, &cpufreq_c1, &cpufreq_c2,
+			&boost_up, &boost_down);
 			t_msgKM->cmd = _cmd;
 			t_msgKM->enable = enable;
 			t_msgKM->deboost_when_render = deboost_when_render;
@@ -85,6 +87,8 @@ static long device_ioctl(struct file *filp,
 			t_msgKM->cpufreq_c0 = cpufreq_c0;
 			t_msgKM->cpufreq_c1 = cpufreq_c1;
 			t_msgKM->cpufreq_c2 = cpufreq_c2;
+			t_msgKM->boost_up = boost_up;
+			t_msgKM->boost_down = boost_down;
 		} else
 			ret = -1;
 

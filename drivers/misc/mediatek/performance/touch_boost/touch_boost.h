@@ -13,7 +13,7 @@ extern int (*fpsgo_get_fstb_active_fp)(long long time_diff);
 extern void (*touch_boost_get_cmd_fp)(int *cmd, int *enable,
 	int *deboost_when_render, int *active_time, int *boost_duration,
 	int *idleprefer_ta, int *idleprefer_fg, int *util_ta, int *util_fg,
-	int *cpufreq_c0, int *cpufreq_c1, int *cpufreq_c2);
+	int *cpufreq_c0, int *cpufreq_c1, int *cpufreq_c2, int *boost_up, int *boost_down);
 extern int (*fpsgo_wait_fstb_active_fp)(void);
 
 struct _cpufreq {
