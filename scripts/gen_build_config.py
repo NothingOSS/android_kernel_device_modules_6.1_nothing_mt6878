@@ -173,7 +173,7 @@ def main(**args):
 
     gen_build_config_gki_goals = '%s.gki_goals' % (gen_build_config)
     file_handle = open(gen_build_config_gki_goals, 'w')
-    file_handle.write('MAKE_GOALS=\"${MAKE_GOALS} Image.lz4 Image.gz\"')
+    file_handle.write('MAKE_GOALS=\"PAHOLE_FLAGS=\"--btf_gen_floats\" ${MAKE_GOALS} Image.lz4 Image.gz\"')
     file_handle.close()
     gki_build_config_fragments = '  GKI_BUILD_CONFIG_FRAGMENTS=%s' % (gen_build_config_gki_goals)
 
