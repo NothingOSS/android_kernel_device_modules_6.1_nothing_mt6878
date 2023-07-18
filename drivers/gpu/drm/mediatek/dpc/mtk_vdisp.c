@@ -39,6 +39,8 @@
 #define VLP_DISP_SW_VOTE_SET 0x414
 #define VLP_DISP_SW_VOTE_CLR 0x418
 #define VLP_MMINFRA_DONE_OFS 0x91c
+#define VOTE_RETRY_CNT 2500
+#define VOTE_DELAY_US 2
 #define POLL_DELAY_US 10
 #define TIMEOUT_300MS 300000
 
@@ -124,22 +126,33 @@ static int regulator_event_notifier(struct notifier_block *nb,
 
 static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 {
-	if (on) {
-		int ret;
-		u32 value;
+	u32 addr = on ? VLP_DISP_SW_VOTE_SET : VLP_DISP_SW_VOTE_CLR;
+	u32 ack = on ? BIT(priv->pd_id) : 0;
+	u16 i = 0;
 
-		writel_relaxed(BIT(priv->pd_id), priv->vlp_base + VLP_DISP_SW_VOTE_SET);
-		writel_relaxed(BIT(priv->pd_id), priv->vlp_base + VLP_DISP_SW_VOTE_SET);
-		while ((readl(priv->vlp_base + VLP_DISP_SW_VOTE_CON) == 0))
-			;
+	writel_relaxed(BIT(priv->pd_id), priv->vlp_base + addr);
+	do {
+		writel_relaxed(BIT(priv->pd_id), priv->vlp_base + addr);
+		if ((readl(priv->vlp_base + VLP_DISP_SW_VOTE_CON) & BIT(priv->pd_id)) == ack)
+			break;
+
+		if (i > VOTE_RETRY_CNT) {
+			VDISPERR("vlp vote bit(%u) timeout", priv->pd_id);
+			return;
+		}
+
+		udelay(VOTE_DELAY_US);
+		i++;
+	} while (1);
+
+	if (on) {
+		int ret = 0;
+		u32 value = 0;
 
 		ret = readl_poll_timeout_atomic(priv->vlp_base + VLP_MMINFRA_DONE_OFS,
-						value, value & 0x1, POLL_DELAY_US, TIMEOUT_300MS);
+						value, value > 0, POLL_DELAY_US, TIMEOUT_300MS);
 		if (ret < 0)
-			VDISPERR("failed to power on mminfra\n");
-	} else {
-		writel_relaxed(BIT(priv->pd_id), priv->vlp_base + VLP_DISP_SW_VOTE_CLR);
-		writel_relaxed(BIT(priv->pd_id), priv->vlp_base + VLP_DISP_SW_VOTE_CLR);
+			VDISPERR("failed to power on mminfra");
 	}
 }
 
