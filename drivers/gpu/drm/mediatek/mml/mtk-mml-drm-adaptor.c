@@ -165,6 +165,21 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *ctx,
 				dest->crop.r.width);
 			goto not_support;
 		}
+
+		if ((dest->compose.width || dest->compose.height) &&
+			(dest->compose.width != dest->data.width ||
+			dest->compose.height != dest->data.height)) {
+			/* compress format or rgb format, compose must same as out size */
+			if (MML_FMT_COMPRESS(dest->data.format) ||
+				!MML_FMT_IS_YUV(dest->data.format))
+				goto not_support;
+
+			/* set compose, use h/v subsample (420/422), out size must even */
+			if (MML_FMT_H_SUBSAMPLE(dest->data.format) && dest->data.width & 0x1)
+				goto not_support;
+			if (MML_FMT_V_SUBSAMPLE(dest->data.format) && dest->data.height & 0x1)
+				goto not_support;
+		}
 	}
 
 	if (!tp || !tp->op->query_mode)
