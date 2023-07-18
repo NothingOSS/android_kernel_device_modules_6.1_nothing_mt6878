@@ -746,7 +746,7 @@ static inline bool tp_need_resize(struct mml_frame_info *info, bool *can_binning
 		*can_binning = false;
 
 	/* for binning */
-	if (mml_binning) {
+	if (mml_binning && info->mode == MML_MODE_DIRECT_LINK) {
 		if (can_binning && (cw >= w * 2 || ch >= h * 2))
 			*can_binning = true;
 
