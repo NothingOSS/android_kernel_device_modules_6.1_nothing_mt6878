@@ -480,6 +480,8 @@ static void mtk_atomic_rsz_calc_dual_params(
 	       param[tile_idx].out_len,
 	       param[tile_idx].out_x);
 
+	if (int_offset[0] < -1)
+		DDPINFO("%s,%d:pipe0_scale_err\n", __func__, __LINE__);
 	if (!is_dual)
 		return;
 
@@ -531,6 +533,9 @@ static void mtk_atomic_rsz_calc_dual_params(
 	       param[1].in_len,
 	       param[1].out_len,
 	       param[1].out_x);
+
+	if (int_offset[1] < -1 || tile_out_len[1] >= dst_roi->width)
+		DDPINFO("%s,%d:pipe1_scale_err\n", __func__, __LINE__);
 }
 
 static void mtk_atomic_disp_rsz_roi(struct drm_device *dev,

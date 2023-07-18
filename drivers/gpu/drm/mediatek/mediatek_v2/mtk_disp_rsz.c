@@ -220,6 +220,8 @@ int mtk_rsz_calc_tile_params(u32 frm_in_len, u32 frm_out_len, bool tile_mode,
 	       tile_mode ? "dual" : "single", t[0].step, t[0].int_offset,
 	       t[0].sub_offset, t[0].in_len, t[0].out_len);
 
+	if (int_offset[0] < -1)
+		DDPINFO("%s :pipe0_scale_err\n", __func__);
 	if (!tile_mode)
 		return 0;
 
@@ -259,6 +261,8 @@ int mtk_rsz_calc_tile_params(u32 frm_in_len, u32 frm_out_len, bool tile_mode,
 	       tile_mode ? "dual" : "single", t[1].step, t[1].int_offset,
 	       t[1].sub_offset, t[1].in_len, t[1].out_len);
 
+	if (int_offset[1] < -1 || tile_out_len[1] >= frm_out_len)
+		DDPINFO("%s :pipe1_scale_err\n", __func__);
 	return 0;
 }
 

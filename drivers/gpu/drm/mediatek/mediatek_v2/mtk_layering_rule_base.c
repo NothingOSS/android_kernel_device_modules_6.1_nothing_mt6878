@@ -3793,6 +3793,11 @@ static int check_cross_pipe_rpo(
 	param[tile_idx].in_len = tile_in_len[0];
 	param[tile_idx].out_len = tile_out_len[0];
 
+	if (int_offset[0] < -1){
+		DDPDBG("pipe0_scale_err\n");
+		return -1;
+	}
+
 	/* right half */
 	out_tile_loss[1] = (to_info.is_support ? to_info.right_overhead : 0);
 	in_tile_loss[1] = out_tile_loss[1] + 4;
@@ -3830,8 +3835,9 @@ static int check_cross_pipe_rpo(
 		param[1].int_offset, param[1].sub_offset, param[1].in_len, param[1].out_len,
 		param[1].out_x, out_tile_loss[1], in_tile_loss[1]);
 
-	if (param[1].in_len == param[1].out_len) {
-		DDPDBG("skip_pipe1_no_scale\n");
+	if ((param[1].in_len == param[1].out_len) ||
+		(int_offset[1] < -1 || tile_out_len[1] >= dst_w)) {
+		DDPDBG("pipe1_scale_err\n");
 		return -1;
 	}
 
