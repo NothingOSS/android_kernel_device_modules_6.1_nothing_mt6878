@@ -381,7 +381,7 @@ static int mtk_smmu_sec_debug_init(void)
 		pr_info("%s failed to create debug dir\n", __func__);
 
 	debug_file = proc_create_data("debug",
-		S_IFREG | 0644, debug_root, &mtk_smmu_sec_debug_fops, NULL);
+		S_IFREG | 0640, debug_root, &mtk_smmu_sec_debug_fops, NULL);
 
 	if (IS_ERR_OR_NULL(debug_file))
 		pr_info("%s failed to create debug file\n", __func__);

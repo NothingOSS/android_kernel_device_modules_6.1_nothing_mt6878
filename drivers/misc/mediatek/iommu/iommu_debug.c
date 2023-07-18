@@ -1943,39 +1943,39 @@ static int m4u_debug_init(struct mtk_m4u_data *data)
 		pr_err("failed to create debug dir\n");
 
 	debug_file = proc_create_data("debug",
-		S_IFREG | 0644, data->debug_root, &m4u_debug_fops, NULL);
+		S_IFREG | 0640, data->debug_root, &m4u_debug_fops, NULL);
 
 	if (IS_ERR_OR_NULL(debug_file))
 		pr_err("failed to create debug file\n");
 
 	debug_file = proc_create_data("help",
-		S_IFREG | 0644, data->debug_root, &mtk_iommu_help_fops, NULL);
+		S_IFREG | 0640, data->debug_root, &mtk_iommu_help_fops, NULL);
 	if (IS_ERR_OR_NULL(debug_file))
 		pr_err("failed to proc_create help file\n");
 
 	debug_file = proc_create_data("iommu_dump",
-		S_IFREG | 0644, data->debug_root, &mtk_iommu_dump_fops, NULL);
+		S_IFREG | 0640, data->debug_root, &mtk_iommu_dump_fops, NULL);
 	if (IS_ERR_OR_NULL(debug_file))
 		pr_err("failed to proc_create iommu_dump file\n");
 
 	debug_file = proc_create_data("iova_alloc",
-		S_IFREG | 0644, data->debug_root, &mtk_iommu_iova_alloc_fops, NULL);
+		S_IFREG | 0640, data->debug_root, &mtk_iommu_iova_alloc_fops, NULL);
 	if (IS_ERR_OR_NULL(debug_file))
 		pr_err("failed to proc_create iova_alloc file\n");
 
 	debug_file = proc_create_data("iova_map",
-		S_IFREG | 0644, data->debug_root, &mtk_iommu_iova_map_fops, NULL);
+		S_IFREG | 0640, data->debug_root, &mtk_iommu_iova_map_fops, NULL);
 	if (IS_ERR_OR_NULL(debug_file))
 		pr_err("failed to proc_create iova_map file\n");
 
 	if (smmu_v3_enable) {
 		debug_file = proc_create_data("smmu_wp",
-			S_IFREG | 0644, data->debug_root, &mtk_smmu_wp_fops, NULL);
+			S_IFREG | 0640, data->debug_root, &mtk_smmu_wp_fops, NULL);
 		if (IS_ERR_OR_NULL(debug_file))
 			pr_err("failed to proc_create smmu_wp file\n");
 
 		debug_file = proc_create_data("smmu_pgtable",
-			S_IFREG | 0644, data->debug_root, &mtk_smmu_pgtable_fops, NULL);
+			S_IFREG | 0640, data->debug_root, &mtk_smmu_pgtable_fops, NULL);
 		if (IS_ERR_OR_NULL(debug_file))
 			pr_err("failed to proc_create smmu_pgtable file\n");
 	}
