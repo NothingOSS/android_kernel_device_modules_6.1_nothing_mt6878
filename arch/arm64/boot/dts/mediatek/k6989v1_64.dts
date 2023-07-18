@@ -23,14 +23,6 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	};
 };
 
-&disp_aal0 {
-	mtk-dre30-support = <0>;
-};
-
-&disp_aal1 {
-	mtk-dre30-support = <0>;
-};
-
 &pdc {
 	pd-vbus-upper-bound = <9000000>;
 };
