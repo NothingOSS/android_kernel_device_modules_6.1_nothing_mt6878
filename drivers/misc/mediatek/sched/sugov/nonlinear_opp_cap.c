@@ -1955,7 +1955,7 @@ inline void update_adaptive_margin(struct cpufreq_policy *policy)
 {
 	unsigned int i;
 	int cpu = cpumask_first(policy->cpus);
-	int gearid = per_cpu(gear_id, cpu);
+	unsigned int gearid = per_cpu(gear_id, cpu);
 	unsigned int adaptive_margin_tmp;
 
 	if (gear_update_active_ratio_cnt_last[gearid] != gear_update_active_ratio_cnt[gearid]) {
