@@ -37,6 +37,10 @@
 #include <lpm_sys_res_mbrain_plat.h>
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
+#include <lpm_ccci_dump.h>
+#endif
+
 #define PCM_32K_TICKS_PER_SEC		(32768)
 #define PCM_TICK_TO_SEC(TICK)	(TICK / PCM_32K_TICKS_PER_SEC)
 
@@ -887,6 +891,10 @@ static int __init mt6989_dbg_device_initcall(void)
 		pr_info("[name:spm&][SPM] Failed to init sys_res plat\n");
 
 	lpm_sys_res_mbrain_plat_init();
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
+	ret = lpm_ccci_dump_init();
 #endif
 	return 0;
 }

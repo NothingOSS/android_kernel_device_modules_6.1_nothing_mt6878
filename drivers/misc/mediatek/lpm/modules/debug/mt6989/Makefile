@@ -28,4 +28,6 @@ ${BUILD_LPM_DBG_MODUDLE_NAME}-objs += lpm_sys_res_plat.o
 ${BUILD_LPM_DBG_MODUDLE_NAME}-objs += lpm_sys_res_mbrain_plat.o
 endif
 
-
+ifeq ($(CONFIG_MTK_ECCCI_DRIVER),m)
+${BUILD_LPM_DBG_MODUDLE_NAME}-objs += lpm_ccci_dump.o
+endif

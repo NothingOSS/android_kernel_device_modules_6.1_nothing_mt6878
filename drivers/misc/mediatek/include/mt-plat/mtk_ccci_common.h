@@ -588,6 +588,8 @@ enum KERNEL_MD_STATE_RECEIVER {
 	/*/vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/mgmt/*/
 	KERN_MD_STAT_RCV_MDDP,
 	KERN_MD_KERN_INTF,
+	/* drivers/misc/mediatek/lpm: check if MDEE is related to low power */
+	KERN_MD_LPM_DUMP,
 	KERN_MD_STAT_RCV_MAX, /* <32 for static unsigned int kern_reg_cb_bitmap */
 };
 
