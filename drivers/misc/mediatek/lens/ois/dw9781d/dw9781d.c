@@ -16,6 +16,12 @@
 #include <aee.h>
 #endif
 
+/* OIS Workqueue */
+// #include <linux/hrtimer.h>
+// #include <linux/init.h>
+// #include <linux/ktime.h>
+/* ------------------------- */
+
 #include "hf_manager.h"
 
 #define DRIVER_NAME "dw9781d"
@@ -147,6 +153,12 @@ static int32_t ois_debug_en;
 static int32_t ois_hfmgr_test;
 
 static struct hf_manager_event hf_mgr_event;
+
+/* OIS Workqueue */
+static struct workqueue_struct *ois_init_wq;
+static struct work_struct ois_init_work;
+static int32_t ois_init_done;
+static struct dw9781d_device *g_dw9781d;
 
 /* Control commnad */
 #define VIDIOC_MTK_S_OIS_MODE _IOW('V', BASE_VIDIOC_PRIVATE + 2, int32_t)
@@ -779,6 +791,29 @@ static long dw9781d_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, voi
 	return ret;
 }
 
+/* OIS Workqueue */
+static void ois_init_fx(struct work_struct *data)
+{
+	int err = 0;
+
+	LOG_INF("+\n");
+	// power on OIS pmic
+	err = dw9781d_power_on(g_dw9781d);
+	if (err < 0) {
+		LOG_INF("OIS power on fail!\n");
+		ois_init_done = 1;
+		return;
+	}
+
+	// OIS init
+	err = dw9781d_init(g_dw9781d);
+	if (err < 0)
+		LOG_INF("OIS init fail!\n");
+
+	ois_init_done = 1;
+	LOG_INF("-\n");
+}
+
 static int dw9781d_enable(struct hf_device *hfdev, int sensor_type, int en)
 {
 	int err = 0;
@@ -786,26 +821,43 @@ static int dw9781d_enable(struct hf_device *hfdev, int sensor_type, int en)
 	struct i2c_client *client = to_i2c_client(dev);
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct dw9781d_device *dw9781d = sd_to_dw9781d_ois(sd);
+	int wait_loop = 0;
 
 	LOG_INF("id:%d en:%d\n", sensor_type, en);
 	if (en) {
-		// power on OIS pmic
-		err = dw9781d_power_on(dw9781d);
-		if (err < 0) {
-			LOG_INF("OIS power on fail!\n");
-			return err;
+		/* OIS Workqueue */
+		if (ois_init_wq == NULL) {
+			ois_init_wq =
+				create_singlethread_workqueue("ois_init_work");
+			if (!ois_init_wq) {
+				LOG_INF("create_singlethread_workqueue fail\n");
+				return -ENOMEM;
+			}
+
+			/* init work queue */
+			INIT_WORK(&ois_init_work, ois_init_fx);
+			ois_init_done = 0;
+			queue_work(ois_init_wq, &ois_init_work);
 		}
 
-		// Confirm hardware requirements and adjust/remove the delay.
-		usleep_range(DW9781D_CTRL_DELAY_US, DW9781D_CTRL_DELAY_US + 100);
-
-		// OIS init
-		err = dw9781d_init(dw9781d);
-		if (err < 0) {
-			LOG_INF("OIS init fail!\n");
-			return err;
-		}
 	} else {
+		wait_loop = 1000;
+
+		while (wait_loop > 0) {
+			if (ois_init_done)
+				break;
+			mdelay(1);
+			wait_loop--;
+		}
+		/* OIS Workqueue */
+		if (ois_init_wq) {
+			/* flush work queue */
+			flush_work(&ois_init_work);
+
+			flush_workqueue(ois_init_wq);
+			destroy_workqueue(ois_init_wq);
+			ois_init_wq = NULL;
+		}
 
 		// OIS uninit
 		err = dw9781d_release(dw9781d);
@@ -1154,6 +1206,8 @@ static int dw9781d_probe(struct i2c_client *client)
 		goto err_cleanup;
 
 	pm_runtime_enable(dev);
+
+	g_dw9781d = dw9781d;
 
 	/* create class */
 	ois_class = class_create(THIS_MODULE, DW9781D_NAME);
