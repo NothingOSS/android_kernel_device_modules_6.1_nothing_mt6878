@@ -596,15 +596,22 @@ void tcpc_tx_pending_work_func(struct work_struct *work)
 
 static void tcpc_wait_tx_done(struct tcpc_device *tcpc)
 {
+#if TCPC_INFO_ENABLE
 	long ret = 0;
+#endif /* TCPC_INFO_ENABLE */
 	const u64 j = jiffies;
 
 	if (time_after_eq64(j, tcpc->tx_jiffies + tcpc->tx_jiffies_max))
 		return;
 
+#if TCPC_INFO_ENABLE
 	ret = wait_event_timeout(tcpc->tx_wait_que,
 				 !atomic_read(&tcpc->tx_pending),
 				 tcpc->tx_jiffies + tcpc->tx_jiffies_max - j);
+#else
+	wait_event_timeout(tcpc->tx_wait_que, !atomic_read(&tcpc->tx_pending),
+			   tcpc->tx_jiffies + tcpc->tx_jiffies_max - j);
+#endif /* TCPC_INFO_ENABLE */
 	TCPC_INFO("%s ret = %ld\n", __func__, ret);
 }
 

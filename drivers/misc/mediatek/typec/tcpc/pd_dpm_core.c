@@ -126,6 +126,7 @@ int pd_dpm_send_source_caps(struct pd_port *pd_port)
 	for (i = 0; i < src_cap0->nr; i++) {
 		src_cap1->pdos[i] =
 			pd_reset_pdo_power(tcpc, src_cap0->pdos[i], cable_curr);
+		DPM_DBG("SrcCap%d: 0x%08x\n", i+1, src_cap1->pdos[i]);
 	}
 
 	return pd_send_sop_data_msg(pd_port, PD_DATA_SOURCE_CAP,
@@ -1653,15 +1654,18 @@ void pd_dpm_vcs_enable_vconn(struct pd_port *pd_port, uint8_t role)
 #if CONFIG_USB_PD_REV30_SRC_CAP_EXT_REMOTE
 void pd_dpm_inform_source_cap_ext(struct pd_port *pd_port)
 {
+#if DPM_INFO2_ENABLE
 	struct pd_source_cap_ext *scedb;
+#endif /* DPM_INFO2_ENABLE */
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
 	if (dpm_check_ext_msg_event(pd_port, PD_EXT_SOURCE_CAP_EXT)) {
+#if DPM_INFO2_ENABLE
 		scedb = pd_get_msg_data_payload(pd_port);
 		DPM_INFO2("vid=0x%04x, pid=0x%04x\n", scedb->vid, scedb->pid);
 		DPM_INFO2("fw_ver=0x%02x, hw_ver=0x%02x\n",
 			scedb->fw_ver, scedb->hw_ver);
-
+#endif /* DPM_INFO2_ENABLE */
 		dpm_reaction_clear(pd_port,
 			DPM_REACTION_GET_SOURCE_CAP_EXT);
 	}
@@ -1678,6 +1682,7 @@ int pd_dpm_send_source_cap_ext(struct pd_port *pd_port)
 
 void pd_dpm_inform_sink_cap_ext(struct pd_port *pd_port)
 {
+#if DPM_INFO2_ENABLE
 	struct pd_sink_cap_ext *skedb;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
@@ -1690,6 +1695,7 @@ void pd_dpm_inform_sink_cap_ext(struct pd_port *pd_port)
 		DPM_INFO2("min_pdp=%d, max_pdp=%d\n",
 			skedb->min_pdp, skedb->max_pdp);
 	}
+#endif /* DPM_INFO2_ENABLE */
 }
 
 int pd_dpm_send_sink_cap_ext(struct pd_port *pd_port)
@@ -1731,6 +1737,7 @@ int pd_dpm_send_battery_cap(struct pd_port *pd_port)
 #if CONFIG_USB_PD_REV30_BAT_CAP_REMOTE
 void pd_dpm_inform_battery_cap(struct pd_port *pd_port)
 {
+#if DPM_INFO2_ENABLE
 	struct pd_battery_capabilities *bcdb;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
@@ -1739,6 +1746,7 @@ void pd_dpm_inform_battery_cap(struct pd_port *pd_port)
 		DPM_INFO2("vid=0x%04x, pid=0x%04x\n",
 			bcdb->vid, bcdb->pid);
 	}
+#endif /* DPM_INFO2_ENABLE */
 }
 #endif	/* CONFIG_USB_PD_REV30_BAT_CAP_REMOTE */
 
@@ -1775,6 +1783,7 @@ int pd_dpm_send_battery_status(struct pd_port *pd_port)
 #if CONFIG_USB_PD_REV30_BAT_STATUS_REMOTE
 void pd_dpm_inform_battery_status(struct pd_port *pd_port)
 {
+#if DPM_INFO2_ENABLE
 	uint32_t *payload;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
@@ -1782,6 +1791,7 @@ void pd_dpm_inform_battery_status(struct pd_port *pd_port)
 		payload = pd_get_msg_data_payload(pd_port);
 		DPM_INFO2("0x%08x\n", payload[0]);
 	}
+#endif /* DPM_INFO2_ENABLE */
 }
 #endif	/* CONFIG_USB_PD_REV30_BAT_STATUS_REMOTE */
 
@@ -1821,6 +1831,7 @@ int pd_dpm_send_mfrs_info(struct pd_port *pd_port)
 #if CONFIG_USB_PD_REV30_MFRS_INFO_REMOTE
 void pd_dpm_inform_mfrs_info(struct pd_port *pd_port)
 {
+#if DPM_INFO2_ENABLE
 	struct pd_manufacturer_info *midb;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
@@ -1828,6 +1839,7 @@ void pd_dpm_inform_mfrs_info(struct pd_port *pd_port)
 		midb = pd_get_msg_data_payload(pd_port);
 		DPM_INFO2("vid=0x%x, pid=0x%x\n", midb->vid, midb->pid);
 	}
+#endif /* DPM_INFO2_ENABLE */
 }
 #endif	/* CONFIG_USB_PD_REV30_MFRS_INFO_REMOTE */
 
@@ -1835,6 +1847,7 @@ void pd_dpm_inform_mfrs_info(struct pd_port *pd_port)
 #if CONFIG_USB_PD_REV30_COUNTRY_CODE_REMOTE
 void pd_dpm_inform_country_codes(struct pd_port *pd_port)
 {
+#if DPM_INFO2_ENABLE
 	struct pd_country_codes *ccdb;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
@@ -1843,6 +1856,7 @@ void pd_dpm_inform_country_codes(struct pd_port *pd_port)
 		DPM_INFO2("len=%d, country_code[0]=0x%04x\n",
 			ccdb->length, ccdb->country_code[0]);
 	}
+#endif /* DPM_INFO2_ENABLE */
 }
 #endif	/* CONFIG_USB_PD_REV30_COUNTRY_CODE_REMOTE */
 
@@ -1867,6 +1881,7 @@ int pd_dpm_send_country_codes(struct pd_port *pd_port)
 #if CONFIG_USB_PD_REV30_COUNTRY_INFO_REMOTE
 void pd_dpm_inform_country_info(struct pd_port *pd_port)
 {
+#if DPM_INFO2_ENABLE
 	struct pd_country_info *cidb;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
@@ -1875,6 +1890,7 @@ void pd_dpm_inform_country_info(struct pd_port *pd_port)
 		DPM_INFO2("cc=0x%04x, ci=%d\n",
 			cidb->country_code, cidb->country_special_data[0]);
 	}
+#endif /* DPM_INFO2_ENABLE */
 }
 #endif	/* CONFIG_USB_PD_REV30_COUNTRY_INFO_REMOTE */
 
@@ -1995,6 +2011,7 @@ int pd_dpm_send_status(struct pd_port *pd_port)
 #if CONFIG_USB_PD_REV30_PPS_SINK
 void pd_dpm_inform_pps_status(struct pd_port *pd_port)
 {
+#if DPM_INFO2_ENABLE
 	struct pd_pps_status_raw *ppssdb;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
@@ -2004,6 +2021,7 @@ void pd_dpm_inform_pps_status(struct pd_port *pd_port)
 			PD_PPS_GET_OUTPUT_MV(ppssdb->output_vol_raw),
 			PD_PPS_GET_OUTPUT_MA(ppssdb->output_curr_raw));
 	}
+#endif /* DPM_INFO2_ENABLE */
 }
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
 
@@ -2014,6 +2032,7 @@ void pd_dpm_inform_not_support(struct pd_port *pd_port)
 
 void pd_dpm_inform_revision(struct pd_port *pd_port)
 {
+#if DPM_INFO2_ENABLE
 	uint32_t *payload;
 	uint32_t rmdo;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
@@ -2025,6 +2044,7 @@ void pd_dpm_inform_revision(struct pd_port *pd_port)
 			  RMDO_REV_MAJ(rmdo), RMDO_REV_MIN(rmdo),
 			  RMDO_VER_MAJ(rmdo), RMDO_VER_MIN(rmdo));
 	}
+#endif /* DPM_INFO2_ENABLE */
 }
 
 static const uint32_t c_rmdo = RMDO(3, 1, 1, 4);

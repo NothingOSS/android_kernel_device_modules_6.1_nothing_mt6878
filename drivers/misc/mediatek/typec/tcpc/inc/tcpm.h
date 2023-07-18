@@ -540,11 +540,6 @@ struct tcpm_power_cap_val {
 	};
 };
 
-struct tcpm_power_cap_list {
-	uint8_t nr;
-	struct tcpm_power_cap_val cap_val[PDO_MAX_NR];
-};
-
 /* Request TCPM to execure PD/VDM function */
 
 struct tcp_dpm_event;
@@ -607,6 +602,7 @@ enum TCP_DPM_EVT_ID {
 	TCP_DPM_EVT_GET_SOURCE_CAP,
 	TCP_DPM_EVT_GET_SINK_CAP,
 
+	TCP_DPM_EVT_SOURCE_CAP,
 	TCP_DPM_EVT_REQUEST,
 	TCP_DPM_EVT_REQUEST_EX,
 	TCP_DPM_EVT_REQUEST_AGAIN,
@@ -970,14 +966,19 @@ extern int tcpm_inquire_pd_sink_cap(
 extern bool tcpm_extract_power_cap_val(
 	uint32_t pdo, struct tcpm_power_cap_val *cap);
 
-extern bool tcpm_extract_power_cap_list(
-	struct tcpm_power_cap *cap, struct tcpm_power_cap_list *cap_list);
-
 extern int tcpm_get_remote_power_cap(struct tcpc_device *tcpc,
 	struct tcpm_remote_power_cap *cap);
 
 extern int tcpm_inquire_select_source_cap(
 	struct tcpc_device *tcpc, struct tcpm_power_cap_val *cap_val);
+
+extern int tcpm_inquire_pd_local_source_cap(
+	struct tcpc_device *tcpc, struct tcpm_power_cap *cap);
+
+extern int tcpm_set_pd_local_source_cap(
+	struct tcpc_device *tcpc, struct tcpm_power_cap *cap);
+
+extern bool tcpm_inquire_usb_comm(struct tcpc_device *tcpc);
 
 /* Request TCPM to send PD Request */
 
@@ -995,6 +996,8 @@ extern int tcpm_dpm_pd_get_source_cap(struct tcpc_device *tcpc,
 	const struct tcp_dpm_event_cb_data *data);
 extern int tcpm_dpm_pd_get_sink_cap(struct tcpc_device *tcpc,
 	const struct tcp_dpm_event_cb_data *data);
+extern int tcpm_dpm_pd_source_cap(struct tcpc_device *tcpc,
+	const struct tcp_dpm_event_cb_data *data);
 extern int tcpm_dpm_pd_request(struct tcpc_device *tcpc,
 	int mv, int ma, const struct tcp_dpm_event_cb_data *data);
 extern int tcpm_dpm_pd_request_ex(struct tcpc_device *tcpc,
@@ -1002,7 +1005,6 @@ extern int tcpm_dpm_pd_request_ex(struct tcpc_device *tcpc,
 	const struct tcp_dpm_event_cb_data *data);
 extern int tcpm_dpm_pd_bist_cm2(struct tcpc_device *tcpc,
 	const struct tcp_dpm_event_cb_data *data);
-extern bool tcpm_inquire_usb_comm(struct tcpc_device *tcpc);
 
 #if CONFIG_USB_PD_REV30
 extern int tcpm_dpm_pd_get_source_cap_ext(struct tcpc_device *tcpc,
@@ -1130,7 +1132,8 @@ extern uint8_t tcpm_inquire_pd_charging_policy_default(
 extern int tcpm_set_direct_charge_en(struct tcpc_device *tcpc, bool en);
 extern bool tcpm_inquire_during_direct_charge(struct tcpc_device *tcpc);
 #endif	/* CONFIG_USB_PD_DIRECT_CHARGE */
-
+extern int tcpm_set_exit_attached_snk_via_cc(struct tcpc_device *tcpc, bool en);
+extern bool tcpm_inquire_exit_attached_snk_via_cc(struct tcpc_device *tcpc);
 
 #if CONFIG_TCPC_VCONN_SUPPLY_MODE
 extern int tcpm_dpm_set_vconn_supply_mode(
@@ -1543,12 +1546,6 @@ static inline bool tcpm_extract_power_cap_val(
 	return false;
 }
 
-static inline bool tcpm_extract_power_cap_list(
-	struct tcpm_power_cap *cap, struct tcpm_power_cap_list *cap_list)
-{
-	return false;
-}
-
 static inline int tcpm_get_remote_power_cap(struct tcpc_device *tcpc,
 	struct tcpm_remote_power_cap *cap)
 {
@@ -1559,6 +1556,23 @@ static inline int tcpm_inquire_select_source_cap(
 	struct tcpc_device *tcpc, struct tcpm_power_cap_val *cap_val)
 {
 	return TCPM_ERROR_NO_IMPLEMENT;
+}
+
+static inline int tcpm_inquire_pd_local_source_cap(
+	struct tcpc_device *tcpc, struct tcpm_power_cap *cap)
+{
+	return TCPM_ERROR_NO_IMPLEMENT;
+}
+
+static inline int tcpm_set_pd_local_source_cap(
+	struct tcpc_device *tcpc, struct tcpm_power_cap *cap)
+{
+	return TCPM_ERROR_NO_IMPLEMENT;
+}
+
+static inline bool tcpm_inquire_usb_comm(struct tcpc_device *tcpc)
+{
+	return false;
 }
 
 static inline int tcpm_dpm_pd_power_swap(struct tcpc_device *tcpc,
@@ -1603,6 +1617,12 @@ static inline int tcpm_dpm_pd_get_sink_cap(struct tcpc_device *tcpc,
 	return TCPM_ERROR_NO_IMPLEMENT;
 }
 
+static inline int tcpm_dpm_pd_source_cap(struct tcpc_device *tcpc,
+	const struct tcp_dpm_event_cb_data *data)
+{
+	return TCPM_ERROR_NO_IMPLEMENT;
+}
+
 static inline int tcpm_dpm_pd_request(struct tcpc_device *tcpc,
 	int mv, int ma, const struct tcp_dpm_event_cb_data *data)
 {
@@ -1618,11 +1638,6 @@ static inline int tcpm_dpm_pd_request_ex(struct tcpc_device *tcpc,
 
 static inline int tcpm_dpm_pd_bist_cm2(struct tcpc_device *tcpc,
 	const struct tcp_dpm_event_cb_data *data)
-{
-	return TCPM_ERROR_NO_IMPLEMENT;
-}
-
-static inline bool tcpm_inquire_usb_comm(struct tcpc_device *tcpc)
 {
 	return TCPM_ERROR_NO_IMPLEMENT;
 }
@@ -1872,9 +1887,24 @@ static inline int tcpm_set_direct_charge_en(
 static inline bool tcpm_inquire_during_direct_charge(
 	struct tcpc_device *tcpc)
 {
-	return TCPM_ERROR_NO_IMPLEMENT;
+	return false;
 }
 #endif	/* USB_PD_DIRECT_CHARGE_NA */
+
+#ifdef USB_POWER_DELIVERY_NA
+static inline int tcpm_set_exit_attached_snk_via_cc(
+	struct tcpc_device *tcpc, bool en)
+{
+	return TCPM_ERROR_NO_IMPLEMENT;
+}
+
+static inline bool tcpm_inquire_exit_attached_snk_via_cc(
+	struct tcpc_device *tcpc)
+{
+	return false;
+}
+#endif	/* USB_POWER_DELIVERY_NA */
+
 #ifdef TCPC_VCONN_SUPPLY_MODE_NA
 static inline int tcpm_dpm_set_vconn_supply_mode(
 	struct tcpc_device *tcpc, uint8_t mode)

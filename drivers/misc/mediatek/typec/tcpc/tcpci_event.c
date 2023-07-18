@@ -1236,12 +1236,6 @@ void pd_notify_pe_direct_charge(struct pd_port *pd_port, bool en)
 {
 	struct tcpc_device *tcpc = pd_port->tcpc;
 
-#if CONFIG_USB_PD_REV30_PPS_SINK
-	/* TODO: check it later */
-	if (pd_port->request_apdo)
-		en = true;
-#endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
-
 	mutex_lock(&tcpc->access_lock);
 	tcpc->pd_during_direct_charge = en;
 	mutex_unlock(&tcpc->access_lock);

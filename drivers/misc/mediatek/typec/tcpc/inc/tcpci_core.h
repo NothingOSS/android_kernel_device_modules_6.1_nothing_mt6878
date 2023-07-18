@@ -426,7 +426,7 @@ struct tcpc_device {
 #if CONFIG_USB_PD_DIRECT_CHARGE
 	bool pd_during_direct_charge;
 #endif	/* CONFIG_USB_PD_DIRECT_CHARGE */
-
+	bool pd_exit_attached_snk_via_cc;
 #if CONFIG_USB_PD_RETRY_CRC_DISCARD
 	bool pd_discard_pending;
 #endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
@@ -572,14 +572,14 @@ static inline bool pd_check_rev30(struct pd_port *pd_port)
 	RT_DBG_INFO(CONFIG_TCPC_DBG_PRESTR "DPM:" format, ##args)
 #else
 #define DPM_INFO(format, args...)
-#endif /* DPM_DBG_INFO */
+#endif /* DPM_INFO_ENABLE */
 
 #if DPM_INFO2_ENABLE
 #define DPM_INFO2(format, args...)	\
 	RT_DBG_INFO(CONFIG_TCPC_DBG_PRESTR "DPM:" format, ##args)
 #else
 #define DPM_INFO2(format, args...)
-#endif /* DPM_DBG_INFO */
+#endif /* DPM_INFO2_ENABLE */
 
 #if DPM_DBG_ENABLE
 #define DPM_DBG(format, args...)	\

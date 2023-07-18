@@ -278,47 +278,43 @@ static inline uint8_t dpm_reaction_alert_status_changed(struct pd_port *pd_port)
 
 static inline uint8_t dpm_reaction_alert_battry_changed(struct pd_port *pd_port)
 {
-	uint8_t i;
-	uint8_t mask;
-	uint8_t bat_change_i = 255;
-	uint8_t bat_change_mask1, bat_change_mask2;
+	int i = 0;
+	uint32_t bat_change_i = 255;
+	uint32_t *remote_alert = &pd_port->pe_data.remote_alert;
+	uint8_t bat_change_mask_f = ADO_FIXED_BAT(*remote_alert);
+	uint8_t bat_change_mask_hs = ADO_HOT_SWAP_BAT(*remote_alert);
+	uint8_t mask = 0;
 
-	bat_change_mask1 = ADO_FIXED_BAT(pd_port->pe_data.remote_alert);
-	bat_change_mask2 = ADO_HOT_SWAP_BAT(pd_port->pe_data.remote_alert);
-
-	if (bat_change_mask1) {
+	if (bat_change_mask_f) {
 		for (i = 0; i < 4; i++) {
-			mask = 1<<i;
-			if (bat_change_mask1 & mask) {
+			mask = 1 << i;
+			if (bat_change_mask_f & mask) {
 				bat_change_i = i;
-				bat_change_mask1 &= ~mask;
-				pd_port->pe_data.remote_alert &=
-					~ADO_FIXED_BAT_SET(bat_change_mask1);
+				bat_change_mask_f &= ~mask;
+				*remote_alert &= ~ADO_FIXED_BAT_SET(mask);
 				break;
 			}
 		}
-	} else if (bat_change_mask2) {
+	} else if (bat_change_mask_hs) {
 		for (i = 0; i < 4; i++) {
-			mask = 1<<i;
-			if (bat_change_mask2 & mask) {
+			mask = 1 << i;
+			if (bat_change_mask_hs & mask) {
 				bat_change_i = i + 4;
-				bat_change_mask2 &= ~mask;
-				pd_port->pe_data.remote_alert &=
-					~ADO_HOT_SWAP_BAT_SET(bat_change_mask2);
+				bat_change_mask_hs &= ~mask;
+				*remote_alert &= ~ADO_HOT_SWAP_BAT_SET(mask);
 				break;
 			}
 		}
 	}
 
-	if (bat_change_mask1 == 0 && bat_change_mask2 == 0) {
-		pd_port->pe_data.remote_alert &=
-			~ADO_ALERT_TYPE_SET(ADO_ALERT_BAT_CHANGED);
-	}
+	if (bat_change_mask_f == 0 && bat_change_mask_hs == 0)
+		*remote_alert &= ~ADO_ALERT_TYPE_SET(ADO_ALERT_BAT_CHANGED);
 
-	if (bat_change_i == 255)
+	if (bat_change_i > 7)
 		return 0;
 
-	pd_port->tcp_event.tcp_dpm_data.data_object[0] = bat_change_i;
+	pd_port->tcp_event.tcp_dpm_data.data_object[0] =
+		cpu_to_le32(bat_change_i);
 	return TCP_DPM_EVT_GET_BAT_STATUS;
 }
 
@@ -394,6 +390,8 @@ static uint8_t dpm_reaction_update_pe_ready(struct pd_port *pd_port)
 	pd_dpm_dynamic_disable_vconn(pd_port);
 
 #if CONFIG_USB_PD_REV30_COLLISION_AVOID
+	if (tcpc->tcp_event_count)
+		return 0;
 	pd_port->pe_data.pd_traffic_idle = true;
 	if (pd_check_rev30(pd_port) &&
 		(pd_port->power_role == PD_ROLE_SOURCE))

@@ -178,6 +178,7 @@ static const char *const tcp_dpm_evt_name[] = {
 	"cable_soft_reset",
 	"get_src_cap",
 	"get_snk_cap",
+	"src_cap",
 	"request",
 	"request_ex",
 	"request_again",

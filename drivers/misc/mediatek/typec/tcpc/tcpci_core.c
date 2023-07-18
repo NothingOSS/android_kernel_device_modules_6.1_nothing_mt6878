@@ -25,7 +25,7 @@
 #endif /* CONFIG_USB_POWER_DELIVERY */
 #include "inc/rt-regmap.h"
 
-#define TCPC_CORE_VERSION		"2.0.20_MTK"
+#define TCPC_CORE_VERSION		"2.0.21_MTK"
 
 static ssize_t tcpc_show_property(struct device *dev,
 				  struct device_attribute *attr, char *buf);
@@ -862,6 +862,13 @@ MODULE_VERSION(TCPC_CORE_VERSION);
 MODULE_LICENSE("GPL");
 
 /* Release Version
+ * 2.0.21_MTK
+ * (1) Add tcpm functions for manipulating local source caps
+ * (2) Add tcpm functions for exiting Attached.SNK when CC opens during PD
+ * (3) Enable force discharge during TYPEC_WAIT_PS_SRC_VSAFE0V
+ * (4) Keep pd_traffic_idle false if tcp_event_count not zero
+ * (5) Fix NoRp.SRC support
+ *
  * 2.0.20_MTK
  * (1) Revise pd_dbg_info
  *
