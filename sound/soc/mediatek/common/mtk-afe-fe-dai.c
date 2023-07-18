@@ -402,6 +402,9 @@ int mtk_afe_fe_hw_free(struct snd_pcm_substream *substream,
 		 substream->runtime->dma_bytes,
 		 memif->vow_barge_in_enable);
 
+	if (memif->err_close_order)
+		dump_stack();
+
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
 	afe_pcm_ipi_to_dsp(AUDIO_DSP_TASK_PCM_HWFREE,
 			   substream, NULL, dai, afe);

@@ -239,6 +239,7 @@ struct mtk_base_afe_memif {
 	dma_addr_t dma_addr;
 	size_t dma_bytes;
 	int use_adsp_share_mem;
+	bool err_close_order;
 	bool ack_enable;
 	int (*ack)(struct snd_pcm_substream *substream);
 	int use_mmap_share_mem;  // 1: dl, 2: ul

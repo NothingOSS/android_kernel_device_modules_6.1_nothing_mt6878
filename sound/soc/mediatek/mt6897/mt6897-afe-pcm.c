@@ -113,6 +113,11 @@ void mt6897_fe_shutdown(struct snd_pcm_substream *substream,
 	struct mtk_base_afe_memif *memif = &afe->memif[memif_num];
 	int irq_id = memif->irq_usage;
 
+	if (memif->err_close_order) {
+		dump_stack();
+		memif->err_close_order = false;
+	}
+
 	memif->substream = NULL;
 	afe_priv->irq_cnt[memif_num] = 0;
 	afe_priv->xrun_assert[memif_num] = 0;
@@ -1274,8 +1279,10 @@ static int mt6897_adsp_mem_set(struct snd_kcontrol *kcontrol,
 		pr_info("%s(), dl:%s, use_adsp_share_mem %d->%d\n",
 			__func__, memif->data->name, old_value, memif->use_adsp_share_mem);
 
-		if (memif->substream && memif->use_adsp_share_mem == 0 && old_value)
+		if (memif->substream && memif->use_adsp_share_mem == 0 && old_value) {
+			memif->err_close_order = true;
 			AUDIO_AEE("disable adsp memory used before substream shutdown");
+		}
 	}
 
 	if (ul_memif_num >= 0) {
@@ -1286,8 +1293,10 @@ static int mt6897_adsp_mem_set(struct snd_kcontrol *kcontrol,
 		pr_info("%s(), ul:%s, use_adsp_share_mem %d->%d\n",
 			__func__, memif->data->name, old_value, memif->use_adsp_share_mem);
 
-		if (memif->substream && memif->use_adsp_share_mem == 0 && old_value)
+		if (memif->substream && memif->use_adsp_share_mem == 0 && old_value) {
+			memif->err_close_order = true;
 			AUDIO_AEE("disable adsp memory used before substream shutdown");
+		}
 	}
 
 	if (ref_memif_num >= 0) {
@@ -1298,8 +1307,10 @@ static int mt6897_adsp_mem_set(struct snd_kcontrol *kcontrol,
 		pr_info("%s(), ref:%s, use_adsp_share_mem %d->%d\n",
 			__func__, memif->data->name, old_value, memif->use_adsp_share_mem);
 
-		if (memif->substream && memif->use_adsp_share_mem == 0 && old_value)
+		if (memif->substream && memif->use_adsp_share_mem == 0 && old_value) {
+			memif->err_close_order = true;
 			AUDIO_AEE("disable adsp memory used before substream shutdown");
+		}
 	}
 
 	return 0;
