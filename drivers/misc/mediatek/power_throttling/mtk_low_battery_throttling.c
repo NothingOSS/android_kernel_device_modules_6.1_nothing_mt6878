@@ -139,6 +139,11 @@ void exec_throttle(unsigned int level)
 	}
 
 	for (i = 0; i < ARRAY_SIZE(lbcb_tb); i++) {
+		if (i == LOW_BATTERY_PRIO_UFS && lbcb_tb[i].data == 0) {
+			pr_info("[%s] lbcb_tb[i].data not ready", __func__);
+			return;
+		}
+
 		if (lbcb_tb[i].lbcb)
 			lbcb_tb[i].lbcb(low_bat_thl_data->low_bat_thl_level, lbcb_tb[i].data);
 	}
