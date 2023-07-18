@@ -191,6 +191,11 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/inc
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/inc/platform/
 obj-$(CONFIG_MTK_APUSYS_SUPPORT) += power/
 
+# apusys power budget
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/pbm/
+apusys-objs += pbm/apu_power_budget.o
+
 # mdla
 MDLA=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys
 ccflags-y += -I$(srctree)/$(src)/mdla/
