@@ -883,6 +883,8 @@ static void smmu_pmu_delay_init(struct smmu_pmu *smmu_pmu)
 	u32 cfgr, reg_size;
 	u64 ceid_64[2];
 
+	smmu_pmu_get_iidr(smmu_pmu);
+
 	cfgr = readl_relaxed(smmu_pmu->reg_base + SMMU_PMCG_CFGR);
 
 	/* Determine if page 1 is present */
@@ -997,8 +999,6 @@ static int smmu_pmu_probe(struct platform_device *pdev)
 			return err;
 		}
 	}
-
-	smmu_pmu_get_iidr(smmu_pmu);
 
 	name = devm_kasprintf(&pdev->dev, GFP_KERNEL, "smmuv3_pmcg_%llx",
 			      (res_0->start) >> SMMU_PMCG_PA_SHIFT);
