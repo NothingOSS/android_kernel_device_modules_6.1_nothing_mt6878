@@ -925,7 +925,7 @@ static int mtk_dither_set_partial_update(struct mtk_ddp_comp *comp,
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
 
-	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
+	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
 	set_partial_update = enable;

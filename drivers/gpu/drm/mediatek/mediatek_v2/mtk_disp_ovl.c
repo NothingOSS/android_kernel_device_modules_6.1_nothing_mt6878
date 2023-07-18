@@ -4567,7 +4567,7 @@ static int mtk_ovl_set_partial_update(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
 {
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
-						&comp->mtk_crtc->base, comp, true);
+						&comp->mtk_crtc->base, comp, false);
 	struct total_tile_overhead_v to_v_info;
 	unsigned int y_overhead;
 

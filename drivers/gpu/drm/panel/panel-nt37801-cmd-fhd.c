@@ -1031,7 +1031,7 @@ static int lcm_update_roi_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 	char roi_x[] = { 0x2A, x0_msb, x0_lsb, x1_msb, x1_lsb};
 	char roi_y[] = { 0x2B, y0_msb, y0_lsb, y1_msb, y1_lsb};
 
-	pr_info("%s\n", __func__);
+	pr_info("%s (x,y,w,h): (%d,%d,%d,%d)\n", __func__, x, y, w, h);
 
 	if (!cb)
 		return -1;
