@@ -2403,7 +2403,7 @@ void cmdq_mdp_dump_rsz_virtual(const unsigned long base, const char *label)
 
 void cmdq_mdp_dump_tdshp_virtual(const unsigned long base, const char *label)
 {
-	u32 value[8] = { 0 };
+	u32 value[9] = { 0 };
 
 	value[0] = CMDQ_REG_GET32(base + 0x114);
 	value[1] = CMDQ_REG_GET32(base + 0x11C);
@@ -2413,6 +2413,7 @@ void cmdq_mdp_dump_tdshp_virtual(const unsigned long base, const char *label)
 	value[5] = CMDQ_REG_GET32(base + 0x120);
 	value[6] = CMDQ_REG_GET32(base + 0x128);
 	value[7] = CMDQ_REG_GET32(base + 0x110);
+	value[8] = CMDQ_REG_GET32(base + 0x680);
 
 	CMDQ_ERR(
 		"=============== [CMDQ] %s Status ====================================\n",
@@ -2423,6 +2424,7 @@ void cmdq_mdp_dump_tdshp_virtual(const unsigned long base, const char *label)
 		value[2], value[3], value[4]);
 	CMDQ_ERR("TDSHP CFG: 0x%08x, IN_SIZE: 0x%08x, OUT_SIZE: 0x%08x\n",
 		value[7], value[5], value[6]);
+	CMDQ_ERR("TDSHP SEG: 0x%08x\n", value[8]);
 }
 
 /* MDP callback function */
@@ -3963,6 +3965,79 @@ const char *cmdq_mdp_get_rdma_state(u32 state)
 	default:
 		return "";
 	}
+}
+
+void cmdq_mdp_dump_birsz(const unsigned long base, const char *label)
+{
+	u32 value[20];
+	u32 debug[8];
+
+	CMDQ_ERR(
+		"=============== [CMDQ] %s Status ====================================\n",
+		label);
+
+	value[0] = CMDQ_REG_GET32(base + 0X00000000);
+	value[1] = CMDQ_REG_GET32(base + 0X00000004);
+	value[2] = CMDQ_REG_GET32(base + 0X00000008);
+	value[3] = CMDQ_REG_GET32(base + 0X0000000C);
+	value[4] = CMDQ_REG_GET32(base + 0X00000010);
+	value[5] = CMDQ_REG_GET32(base + 0X00000014);
+	value[6] = CMDQ_REG_GET32(base + 0X00000018);
+	value[7] = CMDQ_REG_GET32(base + 0X0000001C);
+	value[8] = CMDQ_REG_GET32(base + 0X00000020);
+	value[9] = CMDQ_REG_GET32(base + 0X00000024);
+	value[10] = CMDQ_REG_GET32(base + 0X00000028);
+	value[11] = CMDQ_REG_GET32(base + 0X0000002C);
+	value[12] = CMDQ_REG_GET32(base + 0X00000030);
+	value[13] = CMDQ_REG_GET32(base + 0X00000034);
+	value[14] = CMDQ_REG_GET32(base + 0X00000038);
+	value[15] = CMDQ_REG_GET32(base + 0X0000003C);
+	value[16] = CMDQ_REG_GET32(base + 0X00000040);
+	value[17] = CMDQ_REG_GET32(base + 0X00000044);
+	value[18] = CMDQ_REG_GET32(base + 0X00000048);
+	value[19] = CMDQ_REG_GET32(base + 0X0000004C);
+
+	CMDQ_REG_SET32(base + 0X00000054, 0x1);
+	debug[0] = CMDQ_REG_GET32(base + 0X00000058);
+	CMDQ_REG_SET32(base + 0X00000054, 0x2);
+	debug[1] = CMDQ_REG_GET32(base + 0X00000058);
+	CMDQ_REG_SET32(base + 0X00000054, 0x3);
+	debug[2] = CMDQ_REG_GET32(base + 0X00000058);
+	CMDQ_REG_SET32(base + 0X00000054, 0x9);
+	debug[3] = CMDQ_REG_GET32(base + 0X00000058);
+	CMDQ_REG_SET32(base + 0X00000054, 0xa);
+	debug[4] = CMDQ_REG_GET32(base + 0X00000058);
+	CMDQ_REG_SET32(base + 0X00000054, 0xb);
+	debug[5] = CMDQ_REG_GET32(base + 0X00000058);
+	CMDQ_REG_SET32(base + 0X00000054, 0xd);
+	debug[6] = CMDQ_REG_GET32(base + 0X00000058);
+	CMDQ_REG_SET32(base + 0X00000054, 0xe);
+	debug[7] = CMDQ_REG_GET32(base + 0X00000058);
+
+	CMDQ_ERR("BIRSZ_EN %#010x BIRSZ_SEETING %#010x\n",
+		value[0], value[1]);
+	CMDQ_ERR("BIRSZ_SIZE_IN %#010x BIRSZ_SIZE_OUT %#010x\n",
+		value[2], value[3]);
+	CMDQ_ERR("BIRSZ_VERT_STEP %#010x BIRSZ_HORI_STEP %#010x\n",
+		value[4], value[5]);
+	CMDQ_ERR("BIRSZ_HORI_INT_OFST %#010x BIRSZ_HORI_SUB_OFST %#010x\n",
+		value[6], value[7]);
+	CMDQ_ERR("BIRSZ_VERT_INT_OFST %#010x BIRSZ_VERT_SUB_OFST %#010x\n",
+		value[8], value[9]);
+	CMDQ_ERR("BIRSZ_CFG %#010x BIRSZ_RESET %#010x\n",
+		value[10], value[11]);
+	CMDQ_ERR("BIRSZ_INTEN %#010x BIRSZ_INTSTA %#010x BIRSZ_STATUS %#010x\n",
+		value[12], value[13], value[14]);
+	CMDQ_ERR("BIRSZ_INPUT_COUNT %#010x BIRSZ_OUTPUT_COUNT %#010x\n",
+		value[15], value[16]);
+	CMDQ_ERR("BIRSZ_CHKSUM %#010x BIRSZ_DUMMY_REG %#010x BIRSZ_ATPG %#010x\n",
+		value[17], value[18], value[19]);
+	CMDQ_ERR("BIRSZ_DEBUG_1 %#010x BIRSZ_DEBUG_2 %#010x BIRSZ_DEBUG_3 %#010x\n",
+		debug[0], debug[1], debug[2]);
+	CMDQ_ERR("BIRSZ_DEBUG_9 %#010x BIRSZ_DEBUG_10 %#010x BIRSZ_DEBUG_11 %#010x\n",
+		debug[3], debug[4], debug[5]);
+	CMDQ_ERR("BIRSZ_DEBUG_13 %#010x BIRSZ_DEBUG_14 %#010x\n",
+		debug[6], debug[7]);
 }
 
 void cmdq_mdp_dump_rdma(const unsigned long base, const char *label)

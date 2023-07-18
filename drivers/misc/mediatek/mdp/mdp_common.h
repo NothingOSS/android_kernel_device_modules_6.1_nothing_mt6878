@@ -316,6 +316,7 @@ const char *cmdq_mdp_get_rsz_state(const u32 state);
 
 void cmdq_mdp_dump_venc(const unsigned long base, const char *label);
 void cmdq_mdp_dump_rdma(const unsigned long base, const char *label);
+void cmdq_mdp_dump_birsz(const unsigned long base, const char *label);
 void cmdq_mdp_dump_rot(const unsigned long base, const char *label);
 void cmdq_mdp_dump_color(const unsigned long base, const char *label);
 void cmdq_mdp_dump_wdma(const unsigned long base, const char *label);

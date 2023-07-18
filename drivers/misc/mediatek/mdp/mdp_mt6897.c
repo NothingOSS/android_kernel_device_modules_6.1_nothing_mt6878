@@ -915,7 +915,7 @@ void cmdq_mdp_dump_rsz(const unsigned long base, const char *label)
 
 void cmdq_mdp_dump_tdshp(const unsigned long base, const char *label)
 {
-	uint32_t value[11] = { 0 };
+	uint32_t value[12] = { 0 };
 
 	value[0] = CMDQ_REG_GET32(base + 0x114); /* MDP_TDSHP_INPUT_COUNT */
 	value[1] = CMDQ_REG_GET32(base + 0x11C); /* MDP_TDSHP_OUTPUT_COUNT */
@@ -928,11 +928,13 @@ void cmdq_mdp_dump_tdshp(const unsigned long base, const char *label)
 	value[8] = CMDQ_REG_GET32(base + 0x128); /* MDP_TDSHP_OUTPUT_SIZE */
 	value[9] = CMDQ_REG_GET32(base + 0x12C); /* MDP_TDSHP_BLANK_WIDTH */
 	value[10] = CMDQ_REG_GET32(base + 0x680); /* SIZE_PARAMETER_MODE_SEGMENTATION_LENGTH */
+	value[11] = CMDQ_REG_GET32(base + 0x100); /* TDSHP_CTRL */
+
 	CMDQ_ERR(
 		"=============== [CMDQ] %s Status ====================================\n",
 		label);
-	CMDQ_ERR("TDSHP INPUT_CNT: %#010x, OUTPUT_CNT: %#010x\n",
-		value[0], value[1]);
+	CMDQ_ERR("TDSHP INPUT_CNT: %#010x, OUTPUT_CNT: %#010x, CTRL: %#010x\n",
+		value[0], value[1], value[11]);
 	CMDQ_ERR("TDSHP INTEN: %#010x, INTSTA: %#010x, STATUS: %#010x\n",
 		value[2], value[3], value[4]);
 	CMDQ_ERR("TDSHP CFG: %#010x, IN_SIZE: %#010x, OUT_SIZE: %#010x\n",
@@ -1107,6 +1109,12 @@ int32_t cmdqMdpDumpInfo(uint64_t engineFlag, int logLevel)
 
 	if (engineFlag & (1LL << CMDQ_ENG_MDP_AAL1))
 		cmdq_mdp_dump_aal(MDP_AAL1_BASE, "AAL1");
+
+	if (engineFlag & (1LL << CMDQ_ENG_MDP_BIRSZ0))
+		cmdq_mdp_dump_birsz(MDP_BIRSZ0_BASE, "BIRSZ0");
+
+	if (engineFlag & (1LL << CMDQ_ENG_MDP_BIRSZ1))
+		cmdq_mdp_dump_birsz(MDP_BIRSZ1_BASE, "BIRSZ1");
 
 	/* verbose case, dump entire 1KB HW register region */
 	/* for each enabled HW module. */
