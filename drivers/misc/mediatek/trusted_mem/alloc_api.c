@@ -243,7 +243,7 @@ int trusted_mem_page_based_alloc(enum TRUSTED_MEM_REQ_TYPE req_mem_type,
 	if (!is_ffa_enabled())
 		return 0;
 
-	pr_info("[TMEM][%d] page-based: size = 0x%x\n", mem_type, size);
+	pr_debug("[TMEM][%d] page-based: size = 0x%x\n", mem_type, size);
 
 	/* we need the FF-A handle of SEL2/EL3 to do memory mapping at TEE */
 	if (is_tee_mmap_by_page_enabled() &&

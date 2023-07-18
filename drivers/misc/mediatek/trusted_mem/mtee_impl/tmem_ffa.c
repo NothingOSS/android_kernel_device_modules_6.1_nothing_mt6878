@@ -120,7 +120,8 @@ static void set_memory_region_attrs(enum MTEE_MCHUNKS_ID mchunk_id,
 			.attrs = FFA_MEM_RW
 		};
 		ffa_args->nattrs = 1;
-		pr_info("%s: mchunk_id = MTEE_MCHUNKS_SVP\n", __func__);
+		if (show_attr)
+			pr_info("%s: mchunk_id = MTEE_MCHUNKS_SVP\n", __func__);
 		break;
 
 	case MTEE_MCHUNKS_WFD:
@@ -129,7 +130,8 @@ static void set_memory_region_attrs(enum MTEE_MCHUNKS_ID mchunk_id,
 			.attrs = FFA_MEM_RW
 		};
 		ffa_args->nattrs = 1;
-		pr_info("%s: mchunk_id = MTEE_MCHUNKS_WFD\n", __func__);
+		if (show_attr)
+			pr_info("%s: mchunk_id = MTEE_MCHUNKS_WFD\n", __func__);
 		break;
 
 	case MTEE_MCHUNKS_PROT:
