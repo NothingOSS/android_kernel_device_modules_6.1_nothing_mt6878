@@ -563,8 +563,10 @@ static ssize_t max_speed_store(struct device *dev,
 	struct mtu3 *mtu = ssusb->u3d;
 	int speed;
 
-	if (!strncmp(buf, "super-speed-plus", 16))
+	if (!strncmp(buf, "super-speed-plus", 16)) {
 		speed = USB_SPEED_SUPER_PLUS;
+		mtu->u3_lpm = 0;
+	}
 	else if (!strncmp(buf, "super-speed", 11))
 		speed = USB_SPEED_SUPER;
 	else if (!strncmp(buf, "high-speed", 10))
@@ -637,6 +639,9 @@ static ssize_t u3_lpm_store(struct device *dev,
 		return -EINVAL;
 
 	if (of_property_read_bool(dev->of_node, "usb3-lpm-disable"))
+		return -EINVAL;
+
+	if (mtu->max_speed >= USB_SPEED_SUPER_PLUS)
 		return -EINVAL;
 
 	mtu->u3_lpm = enable ? 1 : 0;
