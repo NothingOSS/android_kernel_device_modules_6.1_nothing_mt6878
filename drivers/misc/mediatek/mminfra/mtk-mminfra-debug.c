@@ -51,6 +51,7 @@ struct mminfra_dbg {
 	u32 mm_voter_base;
 	u32 mm_mtcmos_base;
 	u32 mm_mtcmos_mask;
+	bool irq_safe;
 };
 
 static struct notifier_block mtk_pd_notifier;
@@ -688,6 +689,11 @@ static irqreturn_t mminfra_irq_handler(int irq, void *data)
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static bool mminfra_devapc_power_cb(void)
 {
+	if (dbg->irq_safe) {
+		pr_info("%s set mminfra pwr on\n", __func__);
+		vcp_mminfra_on();
+		return true;
+	}
 	return is_mminfra_power_on();
 }
 
@@ -803,6 +809,7 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 
 	if (vcp_gipc) {
 		pm_runtime_irq_safe(dev);
+		dbg->irq_safe = true;
 		vcp_register_mminfra_cb_ex(vcp_mminfra_on, vcp_mminfra_off);
 	}
 
