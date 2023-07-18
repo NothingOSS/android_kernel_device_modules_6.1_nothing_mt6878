@@ -13272,20 +13272,20 @@
 		compatible = "mediatek,soc-smmu-test-ktf1";
 		dma-mmap-reg = <0x10212000 0x1000>;
 		mtk,iommu-group = <&soc_iommu_group_0>;
-		iommus = <&soc_smmu 0xf0>;
+		iommus = <&soc_smmu 0x51>;
 	};
 
 	smmu-test-ktf2 {
 		compatible = "mediatek,soc-smmu-test-ktf2";
 		mtk,iommu-group = <&soc_iommu_group_0>;
-		iommus = <&soc_smmu 0xf1>;
+		iommus = <&soc_smmu 0x53>;
 	};
 
 	smmu-test-ktf3 {
 		#address-cells = <1>;
 		#size-cells = <1>;
 		compatible = "mediatek,soc-smmu-test-ktf3";
-		iommus = <&soc_smmu 0xf2>;
+		iommus = <&soc_smmu 0x55>;
 		mtk,iommu-dma-range = <0x40000000 0x10000000>;
 		mtk,smmu-dma-mode = "bypass";
 	};
@@ -13293,7 +13293,7 @@
 	smmu-test-ktf4 {
 		compatible = "mediatek,soc-smmu-test-ktf4";
 		mtk,smmu-dma-mode = "disable";
-		iommus = <&soc_smmu 0xf3>;
+		iommus = <&soc_smmu 0x57>;
 	};
 
 	smmu-test-ktf5 {
