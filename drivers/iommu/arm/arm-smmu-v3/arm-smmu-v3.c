@@ -1932,6 +1932,15 @@ static void arm_smmu_tlb_inv_context(void *cookie)
 	struct arm_smmu_domain *smmu_domain = cookie;
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
 	struct arm_smmu_cmdq_ent cmd = {0};
+	int ret;
+
+	ret = arm_smmu_rpm_get(smmu);
+	if (ret) {
+		dev_dbg(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
+		if (smmu->impl && smmu->impl->tlb_flush)
+			smmu->impl->tlb_flush(smmu_domain, 0, 0, ret);
+		return;
+	}
 
 	/*
 	 * NOTE: when io-pgtable is in non-strict mode, we may get here with
@@ -1949,9 +1958,11 @@ static void arm_smmu_tlb_inv_context(void *cookie)
 	}
 
 	if (smmu->impl && smmu->impl->tlb_flush)
-		smmu->impl->tlb_flush(smmu_domain, 0, 0);
+		smmu->impl->tlb_flush(smmu_domain, 0, 0, 0);
 
 	arm_smmu_atc_inv_domain(smmu_domain, 0, 0, 0);
+
+	arm_smmu_rpm_put(smmu);
 }
 
 static void __arm_smmu_tlb_inv_range(struct arm_smmu_cmdq_ent *cmd,
@@ -1968,7 +1979,7 @@ static void __arm_smmu_tlb_inv_range(struct arm_smmu_cmdq_ent *cmd,
 		return;
 
 	if (smmu->impl && smmu->impl->tlb_flush)
-		smmu->impl->tlb_flush(smmu_domain, iova, size);
+		smmu->impl->tlb_flush(smmu_domain, iova, size, 0);
 
 	if (smmu->features & ARM_SMMU_FEAT_RANGE_INV) {
 		/* Get the leaf page size */
@@ -2030,8 +2041,14 @@ static void arm_smmu_tlb_inv_range_domain(unsigned long iova, size_t size,
 	int ret;
 
 	ret = arm_smmu_rpm_get(smmu_domain->smmu);
-	if (ret)
+	if (ret) {
+		dev_dbg(smmu_domain->smmu->dev,
+			"[%s] power_status:%d iova:0x%lx size:0x%zx granule:0x%zx leaf:%d\n",
+			__func__, ret, iova, size, granule, leaf);
+		if (smmu_domain->smmu->impl && smmu_domain->smmu->impl->tlb_flush)
+			smmu_domain->smmu->impl->tlb_flush(smmu_domain, iova, size, ret);
 		return;
+	}
 
 	if (smmu_domain->stage == ARM_SMMU_DOMAIN_S1) {
 		cmd.opcode	= smmu_domain->smmu->features & ARM_SMMU_FEAT_E2H ?
@@ -2069,6 +2086,8 @@ void arm_smmu_tlb_inv_range_asid(unsigned long iova, size_t size, int asid,
 	ret = arm_smmu_rpm_get(smmu_domain->smmu);
 	if (ret) {
 		dev_info(smmu_domain->smmu->dev, "[%s] power_status:%d\n", __func__, ret);
+		if (smmu_domain->smmu->impl && smmu_domain->smmu->impl->tlb_flush)
+			smmu_domain->smmu->impl->tlb_flush(smmu_domain, iova, size, ret);
 		return;
 	}
 
@@ -2861,7 +2880,8 @@ static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 			ret = arm_smmu_rpm_get(smmu);
 			if (ret) {
 				dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
-				goto out_unlock;
+				mutex_unlock(&smmu->init_mutex);
+				return ERR_PTR(ret);
 			}
 
 			/* Probe the h/w */
@@ -2943,9 +2963,9 @@ static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 
 out_runtime_put:
 	arm_smmu_rpm_put(smmu);
-out_unlock:
 	mutex_unlock(&smmu->init_mutex);
 	dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+	WARN_ON(ret);
 	return ERR_PTR(ret);
 
 err_free_master:
@@ -3051,8 +3071,11 @@ static int arm_smmu_dev_enable_feature(struct device *dev,
 		return -ENODEV;
 
 	smmu = master->smmu;
-	if (arm_smmu_rpm_get(smmu))
+	ret = arm_smmu_rpm_get(smmu);
+	if (ret) {
+		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
 		return -EINVAL;
+	}
 
 	if (smmu->impl && smmu->impl->dev_has_feature &&
 	    smmu->impl->dev_has_feature(dev, feat) &&
@@ -3093,8 +3116,11 @@ static int arm_smmu_dev_disable_feature(struct device *dev,
 		return -EINVAL;
 
 	smmu = master->smmu;
-	if (arm_smmu_rpm_get(smmu))
+	ret = arm_smmu_rpm_get(smmu);
+	if (ret) {
+		dev_info(smmu->dev, "[%s] power_status:%d\n", __func__, ret);
 		return -EINVAL;
+	}
 
 	if (smmu->impl && smmu->impl->dev_has_feature &&
 	    smmu->impl->dev_has_feature(dev, feat) &&
@@ -4220,6 +4246,7 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 out_runtime_put:
 	arm_smmu_rpm_put(smmu);
 	dev_info(smmu->dev, "[%s] failed ret:%d\n", __func__, ret);
+	WARN_ON(ret);
 	return ret;
 }
 

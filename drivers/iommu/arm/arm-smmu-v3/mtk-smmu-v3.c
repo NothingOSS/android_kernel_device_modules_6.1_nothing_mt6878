@@ -65,6 +65,9 @@
 	((lower_32_bits(_addr) & GENMASK(31, 12)) | upper_32_bits(_addr));\
 })
 
+#define POWER_STA_ON		(0)
+#define POWER_STA_OFF		(1)
+
 static const char *IOMMU_GROUP_PROP_NAME = "mtk,iommu-group";
 static const char *SMMU_MPAM_CONFIG = "mtk,mpam-cfg";
 static const char *SMMU_MPAM_CMAX = "mtk,mpam-cmax";
@@ -380,13 +383,17 @@ static void mtk_iotlb_sync(struct iommu_domain *domain,
 }
 
 static void mtk_tlb_flush(struct arm_smmu_domain *smmu_domain,
-			  unsigned long iova,
-			  size_t size)
+			  unsigned long iova, size_t size,
+			  int power_status)
 {
 #ifdef MTK_SMMU_DEBUG
 	u64 tab_id;
 
 	tab_id = get_smmu_tab_id_by_domain(&smmu_domain->domain);
+
+	if (power_status != POWER_STA_ON)
+		mtk_iommu_pm_trace(IOMMU_POWER_OFF, tab_id, POWER_STA_OFF, iova, NULL);
+
 	mtk_iommu_tlb_sync_trace(iova, size, tab_id);
 #endif
 }
