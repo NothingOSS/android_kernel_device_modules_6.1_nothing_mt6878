@@ -470,7 +470,7 @@ static int mtk_usb_offload_genpool_allocate_memory(unsigned char **vaddr,
 	}
 
 	USB_OFFLOAD_MEM_DBG("va:%p phy:0x%llx size:%u, mem_id:%d\n",
-		vaddr, (unsigned long long)*paddr, size, mem_id);
+		*vaddr, (unsigned long long)*paddr, size, mem_id);
 	return 0;
 }
 
@@ -564,6 +564,11 @@ int mtk_offload_alloc_mem(struct usb_offload_buffer *buf,
 
 	if (!buf) {
 		USB_OFFLOAD_ERR("buf:%p is NULL\n", buf);
+		return -1;
+	}
+
+	if (buf->allocated) {
+		USB_OFFLOAD_ERR("buf:%p is already allocated\n", buf);
 		return -1;
 	}
 

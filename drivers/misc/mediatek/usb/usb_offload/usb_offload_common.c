@@ -137,8 +137,10 @@ static void deinit_fake_rsv_sram(void)
 
 static void fake_sram_pwr_ctrl(bool power)
 {
-	if (uodev->adv_lowpwr)
+	if (uodev->adv_lowpwr) {
+		USB_OFFLOAD_MEM_DBG("power:%d\n", power);
 		mtk_offload_rsv_sram_pwr_ctrl(power);
+	}
 }
 
 static void adsp_ee_recovery(void)
@@ -1301,7 +1303,12 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 			return ret;
 		}
 
-		usb_offload_prepare_msg_ext(&msg, uainfo, subs);
+		ret = usb_offload_prepare_msg_ext(&msg, uainfo, subs);
+		USB_OFFLOAD_INFO("prepare msg ext, ret: %d\n", ret);
+		if (ret < 0) {
+			mutex_unlock(&uodev->dev_lock);
+			return ret;
+		}
 
 	} else {
 		ret = substream->ops->hw_free(substream);
@@ -2589,6 +2596,9 @@ static int usb_offload_smc_ctrl(int smc_req)
 
 static int __maybe_unused usb_offload_suspend(struct device *dev)
 {
+	if (!uodev->connected)
+		return 0;
+
 	if (!uodev->is_streaming) {
 		/* turn rsv_sram off if it's not streaming */
 		fake_sram_pwr_ctrl(false);
@@ -2601,6 +2611,9 @@ static int __maybe_unused usb_offload_suspend(struct device *dev)
 
 static int __maybe_unused usb_offload_resume(struct device *dev)
 {
+	if (!uodev->connected)
+		return 0;
+
 	if (!uodev->is_streaming) {
 		fake_sram_pwr_ctrl(true);
 		return 0;
@@ -2612,6 +2625,9 @@ static int __maybe_unused usb_offload_resume(struct device *dev)
 static int __maybe_unused usb_offload_runtime_suspend(struct device *dev)
 {
 	if (!device_may_wakeup(dev))
+		return 0;
+
+	if (!uodev->connected)
 		return 0;
 
 	if (!uodev->is_streaming) {
@@ -2627,6 +2643,9 @@ static int __maybe_unused usb_offload_runtime_suspend(struct device *dev)
 static int __maybe_unused usb_offload_runtime_resume(struct device *dev)
 {
 	if (!device_may_wakeup(dev))
+		return 0;
+
+	if (!uodev->connected)
 		return 0;
 
 	if (!uodev->is_streaming) {
