@@ -174,6 +174,13 @@ static bool ufs_mtk_is_allow_vccqx_lpm(struct ufs_hba *hba)
 	return !!(host->caps & UFS_MTK_CAP_ALLOW_VCCQX_LPM);
 }
 
+static bool ufs_mtk_is_mphy_dump(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	return !!(host->caps & UFS_MTK_CAP_MPHY_DUMP);
+}
+
 static void ufs_mtk_cfg_unipro_cg(struct ufs_hba *hba, bool enable)
 {
 	u32 tmp;
@@ -787,7 +794,7 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 		host->caps |= UFS_MTK_CAP_RTFF_MTCMOS;
 
 	if (of_property_read_bool(np, "mediatek,ufs-mphy-debug"))
-		ufs_mtk_dbg_phy_enable(hba);
+		host->caps |= UFS_MTK_CAP_MPHY_DUMP;
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	if (of_property_read_bool(np, "mediatek,ufs-broken-rtc"))
@@ -1508,6 +1515,9 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	if (host->caps & UFS_MTK_CAP_DISABLE_AH8)
 		hba->caps |= UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
+
+	if (ufs_mtk_is_mphy_dump(hba))
+		ufs_mtk_dbg_phy_enable(hba);
 
 	ufs_mtk_init_clocks(hba);
 
@@ -2313,6 +2323,7 @@ fail:
 
 static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 {
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	int i;
 
 	mt_irq_dump_status(hba->irq);
@@ -2356,7 +2367,9 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 	ufs_mtk_dbg_dump(100);
 
 	ufs_mtk_dbg_phy_trace(hba, UFS_MPHY_ERR);
-	ufs_mtk_dbg_phy_dump(hba);
+
+	if (ufs_mtk_is_mphy_dump(hba))
+		queue_work(host->phy_dmp_workq, &host->phy_dmp_work);
 
 	ufs_mtk_eh_err_cnt();
 }

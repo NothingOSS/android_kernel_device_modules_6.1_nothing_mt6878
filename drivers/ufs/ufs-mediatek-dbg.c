@@ -1329,7 +1329,6 @@ void ufs_mtk_dbg_phy_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	u32 val;
-	static bool boot_mphy_dump;
 
 	/* clear before hibern8 enter in suspend  */
 	if (status == PRE_CHANGE && cmd == UIC_CMD_DME_HIBER_ENTER &&
@@ -1382,11 +1381,6 @@ void ufs_mtk_dbg_phy_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 		(hba->pm_op_in_progress)) {
 
 		ufs_mtk_dbg_phy_trace(hba, UFS_MPHY_INIT);
-
-		if (!boot_mphy_dump) {
-			ufs_mtk_dbg_phy_dump(hba);
-			boot_mphy_dump = true;
-		}
 	}
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_hibern8_notify);
@@ -1430,11 +1424,25 @@ void ufs_mtk_dbg_phy_dump(struct ufs_hba *hba)
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_dump);
 
+void ufs_mtk_dbg_phy_dump_work(struct work_struct *work)
+{
+	struct ufs_mtk_host *host;
+	struct ufs_hba *hba;
+
+	host = container_of(work, struct ufs_mtk_host, phy_dmp_work);
+	hba = host->hba;
+
+	ufs_mtk_dbg_phy_dump(hba);
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_dump_work);
+
 void ufs_mtk_dbg_phy_enable(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	host->mphy_base = ioremap(0x112a0000, 0x10000);
+	INIT_WORK(&host->phy_dmp_work, ufs_mtk_dbg_phy_dump_work);
+	host->phy_dmp_workq = create_singlethread_workqueue("ufs_mtk_phy_dmp_wq");
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_enable);
 #endif

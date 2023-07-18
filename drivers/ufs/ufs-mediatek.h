@@ -156,6 +156,7 @@ enum ufs_mtk_host_caps {
 	UFS_MTK_CAP_RTFF_MTCMOS                = 1 << 9,
 
 	UFS_MTK_CAP_MCQ_BROKEN_RTC             = 1 << 10,
+	UFS_MTK_CAP_MPHY_DUMP                  = 1 << 11,
 };
 
 struct ufs_mtk_crypt_cfg {
@@ -243,6 +244,9 @@ struct ufs_mtk_host {
 	struct completion luns_added;
 	struct delayed_work delay_eh_work;
 	struct workqueue_struct *delay_eh_workq;
+
+	struct work_struct phy_dmp_work;
+	struct workqueue_struct *phy_dmp_workq;
 
 	struct semaphore rpmb_sem;
 	struct scsi_device *sdev_rpmb;
