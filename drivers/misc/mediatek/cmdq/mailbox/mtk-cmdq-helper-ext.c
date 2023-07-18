@@ -864,9 +864,11 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 		return ERR_PTR(-ENOMEM);
 	}
 	if (use_iommu) {
-		struct iommu_domain *domain;
+		struct iommu_domain *domain = NULL;
 
-		domain = iommu_get_domain_for_dev(device);
+		if (device)
+			domain = iommu_get_domain_for_dev(device);
+
 		if (domain)
 			buf->pa_base =
 				iommu_iova_to_phys(domain, buf->iova_base);
@@ -3556,7 +3558,8 @@ u32 cmdq_buf_cmd_parse_buf(u64 *buf, u32 cmd_nr, dma_addr_t buf_pa,
 	struct cmdq_instruction *cmdq_inst = (struct cmdq_instruction *)buf;
 	u32 i;
 	u16 spr_cache[4] = {0};
-	u32 buf_cur = 0, len;
+	u32 buf_cur = 0;
+	s32 len;
 
 	for (i = 0; i < cmd_nr; i++) {
 		switch (cmdq_inst[i].op) {
@@ -3600,7 +3603,12 @@ u32 cmdq_buf_cmd_parse_buf(u64 *buf, u32 cmd_nr, dma_addr_t buf_pa,
 			break;
 		}
 		len = snprintf(buf_out + buf_cur, buf_out_sz - buf_cur, "%s\n", text);
-		buf_cur += len;
+
+		if (len < 0)
+			cmdq_err("snprintf fail");
+
+		buf_cur += len < 0 ? 0 : len;
+
 		if (buf_cur >= buf_out_sz) {
 			cmdq_msg("%s out buf full %u", __func__, buf_cur);
 			break;

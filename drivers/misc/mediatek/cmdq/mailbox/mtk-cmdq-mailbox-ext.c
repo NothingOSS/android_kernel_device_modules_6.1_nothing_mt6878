@@ -321,6 +321,8 @@ void cmdq_get_usage_cb(struct mbox_chan *chan, cmdq_usage_cb usage_cb)
 		if (cmdq->thread[i].chan == chan)
 			break;
 
+	if (i == ARRAY_SIZE(cmdq->thread))
+		return;
 	cmdq->thread[i].usage_cb = usage_cb;
 }
 EXPORT_SYMBOL(cmdq_get_usage_cb);
@@ -421,7 +423,7 @@ static void cmdq_vcore_resource(struct cmdq *cmdq, bool on)
 static void cmdq_mtcmos_by_fast(struct cmdq *cmdq, bool on)
 {
 	unsigned long flags;
-	u32 usage;
+	s32 usage;
 
 	if (!cmdq || !cmdq->fast_mtcmos)
 		return;
@@ -3236,13 +3238,14 @@ EXPORT_SYMBOL(cmdq_mbox_check_buffer);
 
 s32 cmdq_task_get_thread_pc(struct mbox_chan *chan, dma_addr_t *pc_out)
 {
-	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
+	struct cmdq *cmdq;
 	struct cmdq_thread *thread;
 	dma_addr_t pc = 0;
 
 	if (!pc_out || !chan)
 		return -EINVAL;
 
+	cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 	thread = chan->con_priv;
 	cmdq_mtcmos_by_fast(cmdq, true);
 	pc = cmdq_thread_get_pc(thread);
@@ -3255,12 +3258,13 @@ EXPORT_SYMBOL(cmdq_task_get_thread_pc);
 
 s32 cmdq_task_get_thread_irq(struct mbox_chan *chan, u32 *irq_out)
 {
-	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
+	struct cmdq *cmdq;
 	struct cmdq_thread *thread;
 
 	if (!irq_out || !chan)
 		return -EINVAL;
 
+	cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 	thread = chan->con_priv;
 	cmdq_mtcmos_by_fast(cmdq, true);
 	*irq_out = readl(thread->base + CMDQ_THR_IRQ_STATUS);
@@ -3272,12 +3276,13 @@ EXPORT_SYMBOL(cmdq_task_get_thread_irq);
 
 s32 cmdq_task_get_thread_irq_en(struct mbox_chan *chan, u32 *irq_en_out)
 {
-	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
+	struct cmdq *cmdq;
 	struct cmdq_thread *thread;
 
 	if (!irq_en_out || !chan)
 		return -EINVAL;
 
+	cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 	thread = chan->con_priv;
 	cmdq_mtcmos_by_fast(cmdq, true);
 	*irq_en_out = readl(thread->base + CMDQ_THR_IRQ_ENABLE);
@@ -3289,12 +3294,13 @@ s32 cmdq_task_get_thread_irq_en(struct mbox_chan *chan, u32 *irq_en_out)
 s32 cmdq_task_get_thread_end_addr(struct mbox_chan *chan,
 	dma_addr_t *end_addr_out)
 {
-	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
+	struct cmdq *cmdq;
 	struct cmdq_thread *thread;
 
 	if (!end_addr_out || !chan)
 		return -EINVAL;
 
+	cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 	thread = chan->con_priv;
 	cmdq_mtcmos_by_fast(cmdq, true);
 	*end_addr_out = cmdq_thread_get_end(thread);
