@@ -2389,7 +2389,8 @@ void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
 		if (comp)
 			mtk_gamma_set_silky_brightness_gain(comp,
 				mtk_crtc_state->cmdq_handle,
-				mtk_crtc_state->bl_sync_gamma_gain);
+				mtk_crtc_state->bl_sync_gamma_gain, /* index 0, 1, 2 are gamma gain */
+				mtk_crtc_state->bl_sync_gamma_gain[GAMMA_GAIN_RANGE]); /* index 3 is range */
 	}
 }
 

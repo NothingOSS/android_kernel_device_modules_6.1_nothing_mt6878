@@ -1081,6 +1081,14 @@ struct mtk_drm_crtc {
 
 };
 
+enum BL_GAMMA_GAIN {
+	GAMMA_GAIN_0,
+	GAMMA_GAIN_1,
+	GAMMA_GAIN_2,
+	GAMMA_GAIN_RANGE,
+	GAMMA_GAIN_MAX,
+};
+
 struct mtk_crtc_state {
 	struct drm_crtc_state base;
 	struct cmdq_pkt *cmdq_handle;
@@ -1102,7 +1110,7 @@ struct mtk_crtc_state {
 	atomic_t plane_enabled_num;
 	bool pending_usage_update;
 	unsigned int pending_usage_list;
-	unsigned int bl_sync_gamma_gain[3];
+	unsigned int bl_sync_gamma_gain[GAMMA_GAIN_MAX];
 
 	/* property */
 	uint64_t prop_val[CRTC_PROP_MAX];

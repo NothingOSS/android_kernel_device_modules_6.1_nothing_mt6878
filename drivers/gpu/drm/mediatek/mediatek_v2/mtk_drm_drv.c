@@ -1707,25 +1707,32 @@ static int mtk_atomic_check(struct drm_device *dev,
 		}
 
 		if (new_state->prop_val[CRTC_PROP_BL_SYNC_GAMMA_GAIN]) {
-			unsigned int gamma_gain[3] = {0};
+			unsigned int gamma_gain[GAMMA_GAIN_MAX] = {0};
 
 			ret = copy_from_user(gamma_gain,
 			(unsigned int __user *)(new_state->prop_val[CRTC_PROP_BL_SYNC_GAMMA_GAIN]),
-				sizeof(unsigned int) * 3);
+				sizeof(unsigned int) * GAMMA_GAIN_MAX);
 			if (ret)
 				DDPINFO("copy GAMMA_GAIN from user error, ret = %d, addr[%llx]\n",
 					ret, new_state->prop_val[CRTC_PROP_BL_SYNC_GAMMA_GAIN]);
 
-			DDPINFO("BL_SYNC_GAMMA_GAIN[%d][%d][%d]\n",
-				gamma_gain[0], gamma_gain[1], gamma_gain[2]);
-			new_state->bl_sync_gamma_gain[0] = gamma_gain[0];
-			new_state->bl_sync_gamma_gain[1] = gamma_gain[1];
-			new_state->bl_sync_gamma_gain[2] = gamma_gain[2];
+			DDPINFO("BL_SYNC_GAMMA_GAIN[%d][%d][%d], BL_SYNC_GAMMA_GAIN_RANGE[%d]\n",
+				gamma_gain[GAMMA_GAIN_0], gamma_gain[GAMMA_GAIN_1],
+				gamma_gain[GAMMA_GAIN_2], gamma_gain[GAMMA_GAIN_RANGE]);
+			new_state->bl_sync_gamma_gain[GAMMA_GAIN_0] = gamma_gain[GAMMA_GAIN_0];
+			new_state->bl_sync_gamma_gain[GAMMA_GAIN_1] = gamma_gain[GAMMA_GAIN_1];
+			new_state->bl_sync_gamma_gain[GAMMA_GAIN_2] = gamma_gain[GAMMA_GAIN_2];
+			new_state->bl_sync_gamma_gain[GAMMA_GAIN_RANGE] = gamma_gain[GAMMA_GAIN_RANGE];
 		} else {
 			DDPINFO("BL_SYNC_GAMMA_GAIN, no update\n");
-			new_state->bl_sync_gamma_gain[0] = old_state->bl_sync_gamma_gain[0];
-			new_state->bl_sync_gamma_gain[1] = old_state->bl_sync_gamma_gain[1];
-			new_state->bl_sync_gamma_gain[2] = old_state->bl_sync_gamma_gain[2];
+			new_state->bl_sync_gamma_gain[GAMMA_GAIN_0] =
+				old_state->bl_sync_gamma_gain[GAMMA_GAIN_0];
+			new_state->bl_sync_gamma_gain[GAMMA_GAIN_1] =
+				old_state->bl_sync_gamma_gain[GAMMA_GAIN_1];
+			new_state->bl_sync_gamma_gain[GAMMA_GAIN_2] =
+				old_state->bl_sync_gamma_gain[GAMMA_GAIN_2];
+			new_state->bl_sync_gamma_gain[GAMMA_GAIN_RANGE] =
+				old_state->bl_sync_gamma_gain[GAMMA_GAIN_RANGE];
 		}
 
 		if (old_state->prop_val[CRTC_PROP_DOZE_ACTIVE] ==
