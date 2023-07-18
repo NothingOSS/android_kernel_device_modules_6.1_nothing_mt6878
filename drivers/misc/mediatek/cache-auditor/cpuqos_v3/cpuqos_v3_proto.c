@@ -807,7 +807,7 @@ static int platform_cpuqos_v3_probe(struct platform_device *pdev)
 {
 	int ret = 0, retval = 0;
 	struct platform_device *pdev_temp;
-	struct resource *sram_res;
+	struct resource *sram_res = NULL;
 
 	node = pdev->dev.of_node;
 
@@ -830,8 +830,9 @@ static int platform_cpuqos_v3_probe(struct platform_device *pdev)
 	pdev_temp = of_find_device_by_node(node);
 	if (!pdev_temp)
 		pr_info("failed to find cpuqos_v3 pdev @ %s\n", __func__);
+	else
+		sram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 0);
 
-	sram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 0);
 	if (sram_res) {
 		l3ctl_sram_base_addr = ioremap(sram_res->start,
 				resource_size(sram_res));
