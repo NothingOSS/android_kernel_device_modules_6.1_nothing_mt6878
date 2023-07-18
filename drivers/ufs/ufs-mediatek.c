@@ -2505,6 +2505,8 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 	}
 
 	if (evt == UFS_EVT_FATAL_ERR) {
+		/* intr_status */
+		reg = val;
 		if (reg & (CONTROLLER_FATAL_ERROR | SYSTEM_BUS_FATAL_ERROR)) {
 			set = ufshcd_readl(hba, REG_INTERRUPT_ENABLE);
 			set &= ~UFSHCD_ERROR_MASK;
