@@ -350,6 +350,12 @@ void mbraink_processname_to_pid(unsigned short monitor_process_count,
 		spin_unlock_irqrestore(&monitor_pidlist_lock, flags);
 	}
 
+	if (monitor_process_count == 0) {
+		count = 0;
+		pr_info("monitor_binder_pidlist_data count = 0\n");
+		goto setting;
+	}
+
 	read_lock(&tasklist_lock);
 	for_each_process(t) {
 		if (t->mm) {
@@ -383,6 +389,7 @@ void mbraink_processname_to_pid(unsigned short monitor_process_count,
 	}
 	read_unlock(&tasklist_lock);
 
+setting:
 	if (is_binder) {
 		spin_lock_irqsave(&monitor_binder_pidlist_lock, flags);
 		mbraink_monitor_binder_pidlist_data.monitor_process_count = count;
