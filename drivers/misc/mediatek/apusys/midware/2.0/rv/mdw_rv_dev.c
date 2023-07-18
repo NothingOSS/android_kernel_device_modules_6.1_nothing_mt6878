@@ -59,7 +59,7 @@ static void mdw_rv_dev_timer_callback(struct timer_list *timer)
 	struct mdw_rv_dev *mrdev =
 		container_of(timer, struct mdw_rv_dev, power_off_timer);
 
-	mdw_drv_info("dtime timer up\n");
+	mdw_flw_debug("dtime timer up\n");
 	schedule_work(&mrdev->power_off_wk);
 }
 
@@ -146,7 +146,7 @@ int mdw_rv_dev_power_onoff(struct mdw_rv_dev *mrdev, enum mdw_power_type power_o
 			else
 				mdev->power_state = !power_flag;
 		} else {
-			mdw_drv_info("skip power action power_state(%d)\n", power_flag);
+			mdw_flw_debug("skip power action power_state(%d)\n", power_flag);
 		}
 
 		/* send busy, retry */

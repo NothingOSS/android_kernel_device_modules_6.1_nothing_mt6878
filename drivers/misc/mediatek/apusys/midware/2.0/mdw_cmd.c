@@ -1069,6 +1069,7 @@ static int mdw_cmd_record(struct mdw_cmd *c)
 		} else {
 			ch_tbl->h_sc_einfo[i].ip_time = c_iptime;
 		}
+		mdw_subcmd_trace(c, i, ch_tbl->h_sc_einfo[i].ip_time, MDW_CMD_SCHED);
 	}
 
 	/* calculate interval time */

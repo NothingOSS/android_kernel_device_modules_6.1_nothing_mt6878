@@ -13,6 +13,7 @@ enum mdw_cmd_status {
 	MDW_CMD_ENQUE,
 	MDW_CMD_START,
 	MDW_CMD_DONE,
+	MDW_CMD_SCHED,
 };
 
 struct mdw_rv_tag {
@@ -22,17 +23,29 @@ struct mdw_rv_tag {
 		struct mdw_tag_cmd {
 			uint32_t status;
 			pid_t pid;
-			pid_t tgid;
 			uint64_t uid;
-			uint64_t kid;
 			uint64_t rvid;
 			uint32_t num_subcmds;
-			uint32_t num_cmdbufs;
 			uint32_t priority;
 			uint32_t softlimit;
 			uint32_t pwr_dtime;
 			uint64_t sc_rets;
+			uint32_t pwr_plcy;
+			uint32_t tolerance;
+			uint64_t start_ts;
 		} cmd;
+		struct mdw_tag_subcmd {
+			uint32_t status;
+			uint64_t rvid;
+			uint32_t sc_type;
+			uint32_t sc_idx;
+			uint32_t ipstart_ts;
+			uint32_t ipend_ts;
+			uint32_t was_preempted;
+			uint32_t executed_core_bmp;
+			uint32_t tcm_usage;
+			uint32_t history_iptime;
+		} subcmd;
 	} d;
 };
 
@@ -41,6 +54,8 @@ int mdw_rv_tag_init(void);
 void mdw_rv_tag_deinit(void);
 void mdw_rv_tag_show(struct seq_file *s);
 void mdw_cmd_trace(struct mdw_cmd *c, uint32_t status);
+void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx,
+		uint32_t history_iptime, uint32_t status);
 #else
 static inline int mdw_rv_tag_init(void)
 {
@@ -54,6 +69,10 @@ static inline void mdw_rv_tag_show(struct seq_file *s)
 {
 }
 void mdw_cmd_trace(struct mdw_cmd *c, uint32_t status)
+{
+}
+void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx,
+		uint32_t history_iptime, uint32_t status);
 {
 }
 #endif
