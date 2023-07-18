@@ -40,10 +40,8 @@ int apummu_alloc_slb(uint32_t type, uint32_t size, uint32_t slb_wait_time,
 	}
 
 	ret = slbc_request(&slb);
-	if (ret) {
-		AMMU_LOG_ERR("slbc_request Fail %d, type(%u)\n", ret, type);
+	if (ret)
 		goto out;
-	}
 
 	*ret_addr = (size_t) slb.paddr;
 	*ret_size = slb.size;

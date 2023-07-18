@@ -179,8 +179,8 @@ static int session_table_alloc(void)
 #endif
 
 	if (!(g_adv->remote.is_general_SLB_alloc)) { // SLB retry
-		ret = apummu_alloc_general_SLB(g_adv);
-		if (ret)
+		/* Do not assign return value, since alloc SLB may fail */
+		if (apummu_alloc_general_SLB(g_adv))
 			AMMU_LOG_VERBO("general SLB alloc fail...\n");
 	}
 
