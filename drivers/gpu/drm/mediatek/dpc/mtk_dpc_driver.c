@@ -100,12 +100,12 @@ static struct mtk_dpc *g_priv;
 /*
  * EOF                                                      TE
  *  | OFF0 |                                     | SAFEZONE | OFF1 |
- *  |      |         OVL OFF             |       |          |      | OVL OFF |
- *  |      |<-100->| DISP1 OFF           |<-100->|          |      |         |<-100->| DISP1 OFF
- *  |      |<-100->| MMINFRA OFF |<-800->|       |          |      |         |<-100->| MMINFRA OFF
- *  |      |       |             |       |       |          |      |         |       |
- *  |      OFF     OFF           ON      ON      ON         |      OFF               OFF
- *         0       4,11          12      5       1                 3                 7,13
+ *  |      |         OVL OFF                     |          |      | OVL OFF |
+ *  |      |<-100->| DISP1 OFF           |<-100->|          |      | <-100-> | DISP1 OFF
+ *  |      |<-100->| MMINFRA OFF |<-800->|       |          |      | <-100-> | MMINFRA OFF
+ *  |      |       |             |       |       |          |      |         |
+ *  |      OFF     OFF           ON      ON      ON         |      OFF       OFF
+ *         0       4,11          12      5       1                 3         7,13
  */
 
 #define DT_TE_60 16000
@@ -1093,12 +1093,7 @@ EXPORT_SYMBOL(dpc_vidle_power_release);
 
 static void dpc_analysis(void)
 {
-	int ret = 0;
-	u32 value = 0;
-
-	ret = readl_poll_timeout_atomic(g_priv->spm_base + SPM_PWR_STATUS_MSB, value,
-					value & BIT(3), 1, 200); /* delay_us, timeout_us */
-	if (ret < 0) {
+	if (0 == (readl(g_priv->spm_base + SPM_PWR_STATUS_MSB) & BIT(3))) {
 		DPCFUNC("disp vcore is not power on");
 		return;
 	}
@@ -1243,7 +1238,7 @@ static void process_dbg_opt(const char *opt)
 		if (ret != 2)
 			goto err;
 		writel(v2, MEM_VDISP_AVS_STEP(v1));
-		mmdvfs_force_step_by_vcp(2, v1);
+		mmdvfs_force_step_by_vcp(2, 4 - v1);
 	} else if (strncmp(opt, "vdo", 3) == 0) {
 		writel(DISP_DPC_EN|DISP_DPC_DT_EN|DISP_DPC_VDO_MODE, dpc_base + DISP_REG_DPC_EN);
 	}
@@ -1297,6 +1292,7 @@ static const struct dpc_funcs funcs = {
 	.dpc_hrt_bw_set = dpc_hrt_bw_set,
 	.dpc_srt_bw_set = dpc_srt_bw_set,
 	.dpc_dvfs_set = dpc_dvfs_set,
+	.dpc_analysis = dpc_analysis,
 };
 
 static int mtk_dpc_probe(struct platform_device *pdev)

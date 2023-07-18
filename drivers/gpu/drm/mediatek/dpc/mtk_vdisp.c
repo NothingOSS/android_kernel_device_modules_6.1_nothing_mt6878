@@ -12,6 +12,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 
+#include "mtk_disp_vidle.h"
 
 #define VDISPDBG(fmt, args...) \
 	pr_info("[vdisp] %s:%d " fmt "\n", __func__, __LINE__, ##args)
@@ -51,6 +52,7 @@ enum disp_pd_id {
 	DISP_PD_MML1,
 	DISP_PD_MML0,
 	DISP_PD_DPTX,
+	DISP_PD_NUM,
 };
 
 struct mtk_vdisp {
@@ -60,6 +62,7 @@ struct mtk_vdisp {
 	struct notifier_block pd_nb;
 	enum disp_pd_id pd_id;
 };
+static struct device *g_dev[DISP_PD_NUM];
 
 static int regulator_event_notifier(struct notifier_block *nb,
 				    unsigned long event, void *data)
@@ -161,6 +164,18 @@ static int genpd_event_notifier(struct notifier_block *nb,
 	return 0;
 }
 
+static void mtk_vdisp_genpd_put(void)
+{
+	int i;
+
+	for (i = 0; i < DISP_PD_NUM; i++)
+		pm_runtime_put(g_dev[i]);
+}
+
+static const struct mtk_vdisp_funcs funcs = {
+	.genpd_put = mtk_vdisp_genpd_put,
+};
+
 static int mtk_vdisp_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -208,13 +223,19 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 		VDISPERR("disp-pd-id property read fail(%d)", ret);
 		return -ENODEV;
 	}
-	if (!pm_runtime_enabled(dev))
-		pm_runtime_enable(dev);
+
 	priv->pd_nb.notifier_call = genpd_event_notifier;
 	priv->pd_id = pd_id;
+	g_dev[pd_id] = dev;
+
+	if (!pm_runtime_enabled(dev))
+		pm_runtime_enable(dev);
+	pm_runtime_get(dev);
 	ret = dev_pm_genpd_add_notifier(dev, &priv->pd_nb);
 	if (ret)
 		VDISPERR("dev_pm_genpd_add_notifier fail(%d)", ret);
+
+	mtk_vdisp_register(&funcs);
 
 	return ret;
 }
@@ -253,10 +274,9 @@ static void __exit mtk_vdisp_exit(void)
 	platform_driver_unregister(&mtk_vdisp_driver);
 }
 
-module_init(mtk_vdisp_init);
+late_initcall(mtk_vdisp_init);
 module_exit(mtk_vdisp_exit);
 MODULE_AUTHOR("William Yang <William-tw.Yang@mediatek.com>");
 MODULE_DESCRIPTION("MTK VDISP driver");
-MODULE_SOFTDEP("pre:vcp");
-MODULE_SOFTDEP("post:mtk-scpsys-mt6989");
+MODULE_SOFTDEP("post:mediatek-drm");
 MODULE_LICENSE("GPL");
