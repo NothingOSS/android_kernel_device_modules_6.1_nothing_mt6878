@@ -14306,6 +14306,9 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"vdec_soc_active,vdec_soc_idle,vdec_soc_off";
 			node-120 = "SSPM_SWPM_MMINFRA__INDEX",
 				"vcore,freq,emi_read_bw,emi_write_bw,slb_read_bw,slb_write_bw,active";
+			node-121 = "SSPM_SWPM_UFS__STATE_RATIO",
+				"g4_txrx,g4_tx,g4_rx,g4_idle,g5_txrx,g5_tx,g5_rx,g5_idle,",
+				"h8_ckoff,h8_ckon,off,frequency";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
