@@ -175,7 +175,8 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 	obj.id = inst->vcu_inst.id;
 	obj.len = len;
 	ipi_size = ((sizeof(u32) * 2) + len + 3) / 4;
-	inst->vcu_inst.failure = 0;
+	if (!is_ack)
+		inst->vcu_inst.failure = 0;
 	inst->ctx->err_msg = *(__u32 *)msg;
 
 	mtk_v4l2_debug(2, "id %d len %d msg 0x%x is_ack %d %d", obj.id, obj.len, *(u32 *)msg,
@@ -191,6 +192,7 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 		goto ipi_err_wait_and_unlock;
 	}
 	if (!is_ack) {
+wait_ack:
 		/* wait for VCP's ACK */
 		timeout = msecs_to_jiffies(IPI_TIMEOUT_MS);
 		if (*(__u32 *)msg == AP_IPIMSG_ENC_SET_PARAM &&
@@ -215,13 +217,23 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 				inst->vcu_inst.signaled, timeout);
 		inst->vcu_inst.signaled = false;
 
-		if (ret == 0 || inst->vcu_inst.failure) {
-			mtk_vcodec_err(inst, "wait vcp ipi %X ack time out or fail!%d %d",
+		if (ret == 0) {
+			mtk_vcodec_err(inst, "wait vcp ipi %X ack time out! %d %d",
 				*(u32 *)msg, ret, inst->vcu_inst.failure);
 			goto ipi_err_wait_and_unlock;
+		} else if (-ERESTARTSYS == ret) {
+			mtk_vcodec_err(inst, "wait vcp ipi %X ack ret %d RESTARTSYS retry! (%d)",
+				*(u32 *)msg, ret, inst->vcu_inst.failure);
+			goto wait_ack;
+		} else if (ret < 0) {
+			mtk_vcodec_err(inst, "wait vcp ipi %X ack fail ret %d! (%d)",
+				*(u32 *)msg, ret, inst->vcu_inst.failure);
 		}
 	}
 	mutex_unlock(&inst->ctx->dev->ipi_mutex);
+
+	if (!is_ack)
+		return inst->vcu_inst.failure;
 
 	return 0;
 
@@ -553,7 +565,7 @@ int vcp_enc_ipi_handler(void *arg)
 		case VCU_IPIMSG_ENC_INIT_DONE:
 			handle_enc_init_msg(dev, vcu, (void *)obj->share_buf);
 			if (msg->status != VENC_IPI_MSG_STATUS_OK)
-				vcu->failure = VENC_IPI_MSG_STATUS_FAIL;
+				vcu->failure = msg->status;
 			else
 				mtk_vcodec_set_state_from(ctx, MTK_STATE_INIT, MTK_STATE_FREE);
 			fallthrough;
