@@ -351,8 +351,8 @@ again:
 
 static uint64_t remedy_method(struct gov_info *gov, struct cpuidle_driver *drv)
 {
-	uint32_t count, i, threshold;
-	uint32_t ratio[REMEDY_MAX];
+	uint32_t i, threshold, count = 0;
+	uint32_t ratio[REMEDY_MAX] = {0};
 
 	if (!gov || (gov->remedy.nsamp < REMEDY_VALID_MAX))
 		return 0;
@@ -543,7 +543,6 @@ static int gov_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 	 * Find the idle state with the lowest power while satisfying
 	 * our constraints.
 	 */
-	idx = -1;
 	for (i = 0; i < drv->state_count; i++) {
 		struct cpuidle_state *s = &drv->states[i];
 
@@ -551,9 +550,6 @@ static int gov_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 			disable_state_count++;
 			continue;
 		}
-
-		if (idx == -1)
-			idx = i; /* first enabled state */
 
 		if (s->target_residency_ns > predicted_ns)
 			break;
@@ -563,9 +559,6 @@ static int gov_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 
 		idx = i;
 	}
-
-	if (idx == -1)
-		idx = 0; /* No states enabled. Must use 0. */
 
 	if ((idx == 0) && (disable_state_count == gov->deepest_state))
 		gov->predict_info |= PREDICT_ERR_NO_STATE_ENABLE;
