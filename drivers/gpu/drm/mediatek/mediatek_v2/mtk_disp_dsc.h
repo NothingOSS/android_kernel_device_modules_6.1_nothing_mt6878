@@ -13,6 +13,7 @@ struct mtk_disp_dsc_data {
 	bool dsi_buffer;
 	unsigned int shadow_ctrl_reg;
 	bool decrease_outstream_buf;
+	bool reset_after_eof;
 };
 
 #endif

@@ -20325,6 +20325,42 @@ static void mtk_ddp_ext_insert_dual_pipe_MT6897(struct mtk_drm_crtc *mtk_crtc,
 	writel_relaxed(reg, ovlsys1_regs + addr);
 }
 
+struct mtk_ddp_comp *mtk_ddp_get_path_addon_dsc_comp(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_ddp_comp *comp;
+	struct mtk_drm_private *priv = NULL;
+	const struct mtk_addon_module_data *addon_module[2] = {NULL, NULL};
+	const struct mtk_addon_path_data *addon_path;
+	unsigned int comp_id;
+	struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(&mtk_crtc->base);
+
+	if (!(panel_ext && panel_ext->dsc_params.enable))
+		return NULL;
+
+	/* Query current CRTC utilize which DSC component */
+	mtk_addon_get_module(DSC_COMP, mtk_crtc, &addon_module[0], &addon_module[1]);
+	/* Only check first element, */
+	if (addon_module[0] == NULL)
+		return NULL;
+
+	addon_path = mtk_addon_module_get_path(addon_module[0]->module);
+	if (!addon_path)
+		return NULL;
+
+	priv = mtk_crtc->base.dev->dev_private;
+	if (!priv)
+		return NULL;
+
+	comp_id = addon_path->path[0];
+	if (comp_id >= DDP_COMPONENT_ID_MAX) {
+		DDPPR_ERR("%s invalid comp_id %u\n", __func__, comp_id);
+		return NULL;
+	}
+	comp = priv->ddp_comp[comp_id];
+
+	return comp;
+}
+
 /* the difference between ovl_resource_list is ovlsys_path describe DLI/DLO for crossing ovlsys */
 unsigned int mtk_ddp_ovlsys_path(struct mtk_drm_private *priv, unsigned int **ovl_list)
 {

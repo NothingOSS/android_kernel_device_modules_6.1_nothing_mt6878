@@ -7931,6 +7931,10 @@ static void mtk_crtc_comp_trigger(struct mtk_drm_crtc *mtk_crtc,
 		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j)
 			mtk_ddp_comp_config_trigger(comp, cmdq_handle, trig_flag);
 	}
+
+	/* get DSC comp from path data */
+	comp = mtk_ddp_get_path_addon_dsc_comp(mtk_crtc);
+	mtk_ddp_comp_config_trigger(comp, cmdq_handle, trig_flag);
 }
 
 int mtk_crtc_comp_is_busy(struct mtk_drm_crtc *mtk_crtc)

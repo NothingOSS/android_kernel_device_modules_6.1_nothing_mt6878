@@ -35,6 +35,7 @@ enum addon_scenario {
 	MML_RSZ,       /* MML Inline Rotate and MML RSZ */
 	MML_DL,	       /* MML Direct Link */
 	MML_SRAM_ONLY, /* MML Inline Rotate */
+	DSC_COMP, /* describe which DSC module would apply in this CRTC */
 	ADDON_SCN_NR,
 };
 
@@ -68,6 +69,8 @@ enum addon_module {
 	DISP_MML_SRAM_ONLY,
 	DISP_MML_SRAM_ONLY_1,
 	DISP_MML_IR_PQ_v3,
+	DSC_0,
+	DSC_1,
 	ADDON_MODULE_NUM,
 };
 

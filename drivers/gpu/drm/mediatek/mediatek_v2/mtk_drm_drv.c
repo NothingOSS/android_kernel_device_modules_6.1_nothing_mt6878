@@ -3307,8 +3307,13 @@ static const struct mtk_addon_module_data mt6985_addon_mml_dl_data_1[] = {
 	{DISP_MML_DL_1, ADDON_BEFORE, DDP_COMPONENT_OVL4_2L},
 };
 
+static const struct mtk_addon_module_data addon_dsc0_data[] = {
+	{DSC_0, ADDON_AFTER, DDP_COMPONENT_OVL0_2L},
+};
 
-
+static const struct mtk_addon_module_data addon_dsc1_data[] = {
+	{DSC_1, ADDON_AFTER, DDP_COMPONENT_OVL0_2L},
+};
 
 static const struct mtk_addon_scenario_data mt6779_addon_main[ADDON_SCN_NR] = {
 		[NONE] = {
@@ -3619,6 +3624,11 @@ static const struct mtk_addon_scenario_data mt6989_addon_main[ADDON_SCN_NR] = {
 	[MML_DL] = {
 		.module_num = ARRAY_SIZE(mt6985_addon_mml_dl_data),
 		.module_data = mt6985_addon_mml_dl_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[DSC_COMP] = {
+		.module_num = ARRAY_SIZE(addon_dsc0_data),
+		.module_data = addon_dsc0_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 };

@@ -217,6 +217,14 @@ static const int disp_mml_sram_only_path_1[] = {
 	DDP_COMPONENT_INLINE_ROTATE1,
 };
 
+static const int disp_dsc0_path[] = {
+	DDP_COMPONENT_DSC0,
+};
+
+static const int disp_dsc1_path[] = {
+	DDP_COMPONENT_DSC1,
+};
+
 static const struct mtk_addon_path_data addon_module_path[ADDON_MODULE_NUM] = {
 		[DISP_RSZ] = {
 				.path = disp_rsz_path,
@@ -333,6 +341,14 @@ static const struct mtk_addon_path_data addon_module_path[ADDON_MODULE_NUM] = {
 		[DISP_MML_IR_PQ_v3] = {
 				.path = disp_mml_rsz_path_v3,
 				.path_len = ARRAY_SIZE(disp_mml_rsz_path_v3),
+			},
+		[DSC_0] = {
+				.path = disp_dsc0_path,
+				.path_len = ARRAY_SIZE(disp_dsc0_path),
+			},
+		[DSC_1] = {
+				.path = disp_dsc1_path,
+				.path_len = ARRAY_SIZE(disp_dsc1_path),
 			},
 };
 
