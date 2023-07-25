@@ -245,6 +245,9 @@ extern int mtk_sched_asym_cpucapacity;
 extern void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowest_mask,
 				int ret, int *lowest_cpu);
 
+extern void throttled_rt_tasks_debug(void *unused, int cpu, u64 clock,
+				ktime_t rt_period, u64 rt_runtime, s64 rt_period_timer_expires);
+
 extern bool sched_skip_hiIRQ_enable_get(void);
 extern void init_skip_hiIRQ(void);
 extern int cpu_high_irqload(int cpu);

@@ -766,3 +766,18 @@ out:
 
 	irq_log_store();
 }
+
+void throttled_rt_tasks_debug(void *unused, int cpu, u64 clock,
+		ktime_t rt_period, u64 rt_runtime, s64 rt_period_timer_expires)
+{
+	printk_deferred("sched: RT throttling activated for cpu %d\n", cpu);
+	printk_deferred("sched: cpu=%d, expires=%lld now=%llu rt_time=%llu runtime=%llu period=%llu\n",
+			cpu, rt_period_timer_expires, ktime_get_raw_ns(),
+			task_rq(current)->rt.rt_time, rt_runtime, rt_period);
+#ifdef CONFIG_SCHED_INFO
+	if (sched_info_on())
+		printk_deferred("cpu=%d, current %s (%d) is running for %llu nsec\n",
+				cpu, current->comm, current->pid,
+				clock - current->sched_info.last_arrival);
+#endif
+}
