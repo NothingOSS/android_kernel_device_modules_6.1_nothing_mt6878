@@ -46,10 +46,7 @@
 #include <mtk_battery_oc_throttling.h>
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING) || \
-	IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
 #define UFS_WAKE_LOCK_TIMEOUT_MS	5000
-#endif
 
 extern void mt_irq_dump_status(unsigned int irq);
 static int ufs_mtk_config_mcq(struct ufs_hba *hba, bool irq);
