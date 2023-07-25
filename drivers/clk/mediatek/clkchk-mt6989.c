@@ -2680,7 +2680,7 @@ static void dump_pll_reg(bool bug_on)
 	get_subsys_reg_dump_mt6989();
 
 	if (bug_on) {
-		mdelay(100);
+		mdelay(300);
 		BUG_ON(1);
 	}
 }
