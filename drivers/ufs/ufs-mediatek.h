@@ -244,6 +244,7 @@ struct ufs_mtk_host {
 	struct completion luns_added;
 	struct delayed_work delay_eh_work;
 	struct workqueue_struct *delay_eh_workq;
+	struct wakeup_source *ufs_wake_lock;
 
 	struct work_struct phy_dmp_work;
 	struct workqueue_struct *phy_dmp_workq;

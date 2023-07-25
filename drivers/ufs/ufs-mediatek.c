@@ -46,6 +46,11 @@
 #include <mtk_battery_oc_throttling.h>
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING) || \
+	IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
+#define UFS_WAKE_LOCK_TIMEOUT_MS	5000
+#endif
+
 extern void mt_irq_dump_status(unsigned int irq);
 static int ufs_mtk_config_mcq(struct ufs_hba *hba, bool irq);
 static void _ufs_mtk_clk_scale(struct ufs_hba *hba, bool scale_up);
@@ -241,7 +246,6 @@ static void ufs_mtk_pt_callback(struct ufs_hba *hba, bool pt_on)
 		else
 			ufs_mtk_dynamic_clock_scaling(hba, CLK_SCALE_FREE_RUN);
 	}
-
 }
 #endif
 
@@ -1550,6 +1554,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	init_completion(&host->luns_added);
 	INIT_DELAYED_WORK(&host->delay_eh_work, ufs_mtk_delay_eh_work_fn);
 	host->delay_eh_workq = create_singlethread_workqueue("ufs_mtk_eh_wq");
+	host->ufs_wake_lock = wakeup_source_register(NULL, "ufs_wake_lock");
 
 	ufs_mtk_btag_init(hba);
 
@@ -1941,6 +1946,7 @@ static void ufs_mtk_config_pwr_mode(struct ufs_hba *hba, int mode,
 {
 	struct ufs_pa_layer_attr pwr_info = { 0 };
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	ktime_t timeout, time_checked;
 	int err;
 
 	/* Config desired power info */
@@ -1968,6 +1974,24 @@ static void ufs_mtk_config_pwr_mode(struct ufs_hba *hba, int mode,
 		pwr_info.gear_tx = UFS_HS_G1;
 	}
 
+	__pm_stay_awake(host->ufs_wake_lock);
+
+	/* make sure pm resume done */
+	timeout = ktime_add_ms(ktime_get(), UFS_WAKE_LOCK_TIMEOUT_MS);
+	do {
+		time_checked = ktime_get();
+
+		/* Wait until suspend flow exit */
+		if (pm_suspend_target_state == PM_SUSPEND_ON)
+			goto rpm;
+
+		usleep_range(100, 200);
+	} while (ktime_before(time_checked, timeout));
+
+	dev_warn(hba->dev, "Wait suspend status timeout, status = %d\n", pm_suspend_target_state);
+	__pm_relax(host->ufs_wake_lock);
+	return;
+rpm:
 	ufshcd_rpm_get_sync(hba);
 	ufs_mtk_scsi_block_requests(hba);
 	ufshcd_hold(hba, false);
@@ -2007,6 +2031,7 @@ out:
 	ufshcd_release(hba);
 	ufs_mtk_scsi_unblock_requests(hba);
 	ufshcd_rpm_put(hba);
+	__pm_relax(host->ufs_wake_lock);
 }
 
 void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
