@@ -18,7 +18,7 @@ long mdw_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	/* check nr before any actions */
 	if (nr < APU_MDW_IOCTL_START || nr > APU_MDW_IOCTL_END) {
-		mdw_drv_err("not support nr(%u)\n", nr);
+		mdw_drv_debug("not support nr(%u)\n", nr);
 		return -ENOTTY;
 	}
 
