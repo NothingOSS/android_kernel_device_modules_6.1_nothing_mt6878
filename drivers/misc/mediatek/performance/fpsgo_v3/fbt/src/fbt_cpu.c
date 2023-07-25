@@ -4884,65 +4884,21 @@ static int fbt_overest_loading(int blc_wt, unsigned long long running_time,
 	return FPSGO_ADJ_NONE;
 }
 
-static void fpsgo_update_cpufreq_to_now(unsigned long long new_ts_100us)
+static void fbt_get_loading_to_now(unsigned long long render_last_cb_ts,
+	unsigned long long new_ts_100us, unsigned int freq_last_obv,
+	unsigned long long freq_last_cb_ts, unsigned long long *loading)
 {
-	unsigned long spinlock_flag_freq, spinlock_flag_loading;
-	unsigned int curr_obv = 0U;
-	int i, idx;
-	unsigned int *cpu_cl_obv, *cpu_isolated;
-
-	if (!fbt_enable)
+	if (!loading)
 		return;
 
-	cpu_cl_obv = kcalloc(cluster_num, sizeof(unsigned int), GFP_KERNEL);
-	cpu_isolated = kcalloc(cluster_num, sizeof(unsigned int), GFP_KERNEL);
-	if (!cpu_cl_obv || !cpu_isolated) {
-		fpsgo_main_trace("[%s] new temp array OOM\n", __func__);
-		goto out;
+	*loading = 0ULL;
+	if (freq_last_cb_ts <= new_ts_100us) {
+		if (render_last_cb_ts <= freq_last_cb_ts)
+			*loading = fbt_est_loading(new_ts_100us, freq_last_cb_ts, freq_last_obv);
+		else
+			*loading = fbt_est_loading(new_ts_100us, render_last_cb_ts, freq_last_obv);
 	}
-
-	spin_lock_irqsave(&freq_slock, spinlock_flag_freq);
-	curr_obv = last_obv;
-	for (i = 0; i < cluster_num; i++) {
-		cpu_cl_obv[i] = clus_obv[i];
-		cpu_isolated[i] = clus_status[i];
-	}
-	spin_unlock_irqrestore(&freq_slock, spinlock_flag_freq);
-
-	spin_lock_irqsave(&loading_slock, spinlock_flag_loading);
-	if (last_cb_ts != 0 && last_cb_ts < new_ts_100us) {
-		idx = lastest_idx;
-		idx = (idx + 1) >= LOADING_CNT ? 0 : (idx + 1);
-		if (idx < 0)
-			goto SKIP;
-		// unit: 100us
-		lastest_ts[idx] = new_ts_100us;
-		prev_cb_ts[idx] = last_cb_ts;
-		lastest_obv[idx] = curr_obv;
-		lastest_idx = idx;
-
-		xgf_trace("[%s] idx=%d, prev_cb_ts=%llu, lastest_ts=%llu, last_obv=%u",
-			__func__, idx, prev_cb_ts[idx], lastest_ts[idx], lastest_obv[idx]);
-
-		if (lastest_obv_cl[idx] == NULL || lastest_is_cl_isolated[idx] == NULL)
-			goto SKIP;
-
-		for (i = 0; i < cluster_num; i++) {
-			lastest_obv_cl[idx][i] = cpu_cl_obv[i];
-			lastest_is_cl_isolated[idx][i] = cpu_isolated[i];
-		}
-
-		last_cb_ts = new_ts_100us;
-	}
-
-SKIP:
-	spin_unlock_irqrestore(&loading_slock, spinlock_flag_loading);
-out:
-	kfree(cpu_isolated);
-	kfree(cpu_cl_obv);
 }
-
-
 
 static int fbt_get_loading_exp(int pid, unsigned long long buffer_id,
 	unsigned long long thr_last_cb_ts, unsigned long long *loading, unsigned long long ts_100us,
@@ -4960,9 +4916,6 @@ static int fbt_get_loading_exp(int pid, unsigned long long buffer_id,
 
 	new_ts_100us = ts_100us;
 
-	if (!test_mode)
-		fpsgo_update_cpufreq_to_now(new_ts_100us);
-
 	cpu_freq_ts_prev = kcalloc(LOADING_CNT, sizeof(unsigned long long), GFP_KERNEL);
 	cpu_freq_ts_next = kcalloc(LOADING_CNT, sizeof(unsigned long long), GFP_KERNEL);
 	cpu_obv = kcalloc(LOADING_CNT, sizeof(unsigned int), GFP_KERNEL);
@@ -4972,17 +4925,18 @@ static int fbt_get_loading_exp(int pid, unsigned long long buffer_id,
 		goto out;
 	}
 
+	render_last_cb_ts = thr_last_cb_ts;
+	(*loading) = 0;
+
 	spin_lock_irqsave(&freq_slock, spinlock_flag_freq);
 	cpy_current_obv = (*_freq_last_obv);
+	freq_last_cb_ts = (*_freq_last_cb_ts);
 	spin_unlock_irqrestore(&freq_slock, spinlock_flag_freq);
 	spin_lock_irqsave(&loading_slock, spinlock_flag_loading);
-	freq_last_cb_ts = (*_freq_last_cb_ts);
 	memcpy(cpu_freq_ts_prev, _freq_prev_cb_ts, LOADING_CNT * sizeof(unsigned long long));
 	memcpy(cpu_freq_ts_next, _freq_lastest_ts, LOADING_CNT * sizeof(unsigned long long));
 	memcpy(cpu_obv, _freq_lastest_obv, LOADING_CNT * sizeof(unsigned int));
 	spin_unlock_irqrestore(&loading_slock, spinlock_flag_loading);
-	render_last_cb_ts = thr_last_cb_ts;
-	(*loading) = 0;
 
 	xgf_trace("[FBT][%s]pid=%d, bufferid=%llu, render_cb_ts=%llu, ts=%llu",
 		__func__, pid, buffer_id, render_last_cb_ts, new_ts_100us);
@@ -5000,13 +4954,14 @@ static int fbt_get_loading_exp(int pid, unsigned long long buffer_id,
 		ret = 1;
 		goto out;
 	}
+
+	loading_result = 0;
 	/* Calculate the loading between render_last_cb and the current time. */
-	if (freq_last_cb_ts < new_ts_100us && freq_last_cb_ts >= render_last_cb_ts) {
-		loading_result = fbt_est_loading(new_ts_100us, freq_last_cb_ts, cpy_current_obv);
-		(*loading) += loading_result;
-		xgf_trace("[FBT][%s]pid=%d, freq_last_cb_ts=%llu, current_obv=%u, loading=%llu",
+	fbt_get_loading_to_now(render_last_cb_ts, new_ts_100us, cpy_current_obv,
+		freq_last_cb_ts, &loading_result);
+	(*loading) += loading_result;
+	xgf_trace("[FBT][%s]pid=%d, freq_last_cb_ts=%llu, current_obv=%u, loading=%llu",
 		__func__, pid, freq_last_cb_ts, cpy_current_obv, loading_result);
-	}
 
 	for (i = 0; i < LOADING_CNT; i++) {
 		prev_ts = next_ts = 0;
@@ -5091,10 +5046,9 @@ static int fbt_get_cl_loading_exp(int pid, unsigned long long buffer_id,
 	unsigned long long render_last_cb_ts, freq_last_cb_ts;
 	unsigned long long *cpu_freq_ts_prev = NULL, *cpu_freq_ts_next = NULL;
 	unsigned int *cpu_obv = NULL, *cpu_isolated = NULL, cpy_current_cl_obv;
+	unsigned int freq_clus_status;
 
 	new_ts_100us = ts_100us;
-
-	fpsgo_update_cpufreq_to_now(new_ts_100us);
 
 	if (cid >= cluster_num || cid < 0) {
 		ret = 1;
@@ -5114,10 +5068,11 @@ static int fbt_get_cl_loading_exp(int pid, unsigned long long buffer_id,
 
 	spin_lock_irqsave(&freq_slock, spinlock_flag_freq);
 	cpy_current_cl_obv = clus_obv[cid];
+	freq_last_cb_ts = last_cb_ts;
+	freq_clus_status = clus_status[cid];
 	spin_unlock_irqrestore(&freq_slock, spinlock_flag_freq);
 
 	spin_lock_irqsave(&loading_slock, spinlock_flag_loading);
-	freq_last_cb_ts = last_cb_ts;
 	memcpy(cpu_freq_ts_prev, prev_cb_ts, LOADING_CNT * sizeof(unsigned long long));
 	memcpy(cpu_freq_ts_next, lastest_ts, LOADING_CNT * sizeof(unsigned long long));
 	for (i = 0; i < LOADING_CNT; i++) {
@@ -5149,10 +5104,12 @@ static int fbt_get_cl_loading_exp(int pid, unsigned long long buffer_id,
 	}
 
 	/* Calculate the loading between render_last_cb and the current time. */
-	if (freq_last_cb_ts < new_ts_100us && freq_last_cb_ts >= render_last_cb_ts) {
-		loading_result = fbt_est_loading(new_ts_100us, freq_last_cb_ts, cpy_current_cl_obv);
+	loading_result = 0;
+	if (!freq_clus_status) {
+		fbt_get_loading_to_now(render_last_cb_ts, new_ts_100us, cpy_current_cl_obv,
+			freq_last_cb_ts, &loading_result);
 		(*loading_cl) += loading_result;
-		xgf_trace("[FBT][%s]pid=%d, freq_last_cb_ts=%llu, current_cl_obv=%u, loading=%llu",
+		xgf_trace("[FBT][%s]pid=%d, freq_last_cb_ts=%llu, current_obv=%u, loading=%llu",
 			__func__, pid, freq_last_cb_ts, cpy_current_cl_obv, loading_result);
 	}
 
@@ -5549,10 +5506,10 @@ static void fbt_setting_reset(int reset)
 void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap)
 {
 	unsigned long spinlock_flag_freq, spinlock_flag_loading;
-	unsigned int curr_obv = 0U;
+	unsigned int curr_obv = 0U, last_freq_cap = 0;
 	unsigned long long curr_cb_ts;
-	unsigned long long new_ts;
-	int i, idx;
+	unsigned long long new_ts, last_freq_cb_ts_100us;
+	int i, idx = 0;
 
 	if (!fbt_enable)
 		return;
@@ -5571,7 +5528,6 @@ void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap)
 		spin_unlock_irqrestore(&freq_slock, spinlock_flag_freq);
 		return;
 	}
-	fpsgo_systrace_c_fbt_debug(-100, 0, cap, "curr_cap[%d]", cid);
 
 	spin_lock_irqsave(&loading_slock, spinlock_flag_loading);
 	if (last_cb_ts != 0) {
@@ -5585,9 +5541,6 @@ void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap)
 		lastest_obv[idx] = last_obv;
 		lastest_idx = idx;
 
-		xgf_trace("[%s] idx=%d, prev_cb_ts=%llu, lastest_ts=%llu, last_obv=%u",
-			__func__, idx, prev_cb_ts[idx], lastest_ts[idx], lastest_obv[idx]);
-
 		if (lastest_obv_cl[idx] == NULL || lastest_is_cl_isolated[idx] == NULL)
 			goto SKIP;
 
@@ -5598,6 +5551,8 @@ void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap)
 	}
 
 SKIP:
+	last_freq_cb_ts_100us = last_cb_ts;
+	last_freq_cap = last_obv;
 	last_cb_ts = new_ts;
 	spin_unlock_irqrestore(&loading_slock, spinlock_flag_loading);
 
@@ -5606,7 +5561,7 @@ SKIP:
 		clus_status[i] = fbt_is_cl_isolated(i);
 
 		if (clus_status[i]) {
-			fpsgo_systrace_c_fbt_debug(-100, 0, i, "clus_iso");
+			// fpsgo_systrace_c_fbt_debug(-100, 0, i, "clus_iso");
 			continue;
 		}
 
@@ -5617,6 +5572,9 @@ SKIP:
 	last_obv = curr_obv;
 	spin_unlock_irqrestore(&freq_slock, spinlock_flag_freq);
 
+	xgf_trace("[%s] idx=%d, prev_cb_ts=%llu, lastest_ts=%llu, last_obv=%u",
+			__func__, idx, last_freq_cb_ts_100us, new_ts, last_freq_cap);
+	fpsgo_systrace_c_fbt_debug(-100, 0, cap, "curr_cap[%d]", cid);
 	fpsgo_systrace_c_fbt_debug(-100, 0, curr_obv, "last_obv");
 }
 
