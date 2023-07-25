@@ -210,6 +210,7 @@ s32 cmdq_util_hw_trace_set_client(const u16 hwid, struct cmdq_client *client);
 void cmdq_util_hw_trace_enable(const u16 hwid, const bool dram);
 void cmdq_util_hw_trace_disable(const u16 hwid);
 void cmdq_util_hw_trace_dump(const u16 hwid, const bool dram);
+void cmdq_util_hw_trace_mode_update(const u16 hwid,const bool built_in);
 void cmdq_util_mminfra_cmd(const u8 type);
 void cmdq_util_track(struct cmdq_pkt *pkt);
 void cmdq_util_dump_smi(void);

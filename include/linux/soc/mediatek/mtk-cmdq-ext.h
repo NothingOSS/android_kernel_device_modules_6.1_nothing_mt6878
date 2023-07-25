@@ -95,6 +95,9 @@ enum {CMDQ_PREBUILT_MDP, CMDQ_PREBUILT_MML, CMDQ_PREBUILT_VFMT,
 #define CMDQ_CPR_HW_TRACE_TEMP		0x816f
 #define CMDQ_CPR_HW_TRACE_START		0x8170
 
+#define CMDQ_CPR_HW_TRACE_BUILT_IN_SIZE		184
+#define CMDQ_CPR_HW_TRACE_BUILT_IN_START		0x8184
+
 /* GCE provide 26M timer, thus each tick 1/26M second,
  * which is, 1 microsecond = 26 ticks
  */
@@ -107,6 +110,7 @@ extern bool gce_in_vcp;
 extern bool cpr_not_support_cookie;
 extern bool skip_poll_sleep;
 extern bool append_by_event;
+extern bool hw_trace_built_in[2];
 extern int cmdq_dump_buf_size;
 extern int error_irq_bug_on;
 

@@ -2269,8 +2269,16 @@ EXPORT_SYMBOL(cmdq_hw_trace_check_inst);
 static bool cmdq_pkt_hw_trace_event(struct cmdq_pkt *pkt, const u16 event)
 {
 	struct cmdq_client *client;
+	struct cmdq_thread *thread;
+	u32 hwid;
 
-	if (!cmdq_hw_trace)
+	if (!pkt->cl)
+		return false;
+
+	client = (struct cmdq_client *)pkt->cl;
+	thread = (struct cmdq_thread *)client->chan->con_priv;
+	hwid = cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(client->chan));
+	if (!cmdq_hw_trace || hw_trace_built_in[hwid])
 		return false;
 
 	switch (event) {
@@ -2280,10 +2288,7 @@ static bool cmdq_pkt_hw_trace_event(struct cmdq_pkt *pkt, const u16 event)
 		return false;
 	}
 
-	if (!pkt->cl)
-		return false;
 
-	client = (struct cmdq_client *)pkt->cl;
 	return cmdq_util_helper->hw_trace_thread(client->chan);
 }
 

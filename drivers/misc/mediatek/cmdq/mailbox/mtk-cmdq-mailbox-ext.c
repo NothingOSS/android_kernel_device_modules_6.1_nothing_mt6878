@@ -103,6 +103,7 @@ struct cmdq_util_controller_fp *cmdq_util_controller;
 #define CMDQ_THR_IS_WAITING		BIT(31)
 #define CMDQ_THR_PRIORITY		0x7
 #define CMDQ_TPR_EN			BIT(31)
+#define CMDQ_HW_TRACE_EN		BIT(31)
 
 #define GCE_DBG_CTL			0x3000
 #define GCE_DBG0			0x3004
@@ -135,6 +136,9 @@ EXPORT_SYMBOL(cpr_not_support_cookie);
 
 bool append_by_event;
 EXPORT_SYMBOL(append_by_event);
+
+bool hw_trace_built_in[2];
+EXPORT_SYMBOL(hw_trace_built_in);
 
 /* CMDQ log flag */
 int mtk_cmdq_log;
@@ -169,44 +173,11 @@ module_param(error_irq_bug_on, int, 0644);
 struct cmdq_hw_trace_bit {
 	uint8_t enable : 1;
 	uint8_t dump : 1;
-	uint8_t hwid : 2;
+	uint8_t hwid : 1;
+	uint8_t built_in : 1;
 	uint32_t unused : 28;
 };
 
-int cmdq_hw_trace_set(const char *val, const struct kernel_param *kp)
-{
-	struct cmdq_hw_trace_bit bit;
-	int ret;
-
-	ret = kstrtouint(val, 0, (u32 *)(void *)&bit);
-	cmdq_msg("%s: bit:%#x enable:%d dump:%d hwid:%#x ret:%d",
-		__func__, *((unsigned int *)&bit), bit.enable, bit.dump, bit.hwid, ret);
-
-	if (ret)
-		return ret;
-
-	if (!cmdq_util_check_hw_trace_work(bit.hwid)) {
-		cmdq_err("hw trace disable");
-		return -EINVAL;
-	}
-
-	cmdq_hw_trace = bit.enable ? 1 : 0;
-
-	if (bit.dump && (bit.hwid & 0x1))
-		cmdq_util_hw_trace_dump(
-			0, cmdq_util_get_bit_feature() & CMDQ_LOG_FEAT_PERF);
-
-	if (bit.dump && (bit.hwid & 0x2))
-		cmdq_util_hw_trace_dump(
-			1, cmdq_util_get_bit_feature() & CMDQ_LOG_FEAT_PERF);
-
-	return ret;
-}
-
-static struct kernel_param_ops cmdq_hw_trace_ops = {
-	.set = cmdq_hw_trace_set,
-};
-module_param_cb(cmdq_hw_trace, &cmdq_hw_trace_ops, NULL, 0644);
 
 struct cmdq_task {
 	struct cmdq		*cmdq;
@@ -302,6 +273,52 @@ struct gce_plat {
 #endif
 
 static struct cmdq *g_cmdq[2];
+
+int cmdq_hw_trace_set(const char *val, const struct kernel_param *kp)
+{
+	struct cmdq_hw_trace_bit bit;
+	struct cmdq *cmdq;
+	int ret;
+
+	ret = kstrtouint(val, 0, (u32 *)(void *)&bit);
+	cmdq_msg("%s: bit:%#x enable:%d dump:%d hwid:%#x built_in:%d ret:%d",
+		__func__, *((unsigned int *)&bit), bit.enable, bit.dump, bit.hwid,
+		bit.built_in, ret);
+
+	if (ret)
+		return ret;
+
+	if (!cmdq_util_check_hw_trace_work(bit.hwid)) {
+		cmdq_err("hw trace disable");
+		return -EINVAL;
+	}
+
+	cmdq_hw_trace = bit.enable ? 1 : 0;
+	cmdq_util_hw_trace_mode_update(bit.hwid, (bool)bit.built_in);
+
+	cmdq = g_cmdq[bit.hwid];
+	// power
+	if (mminfra_power_cb && !mminfra_power_cb()) {
+		cmdq_err("hwid:%u mminfra power not enable", cmdq->hwid);
+		return -EINVAL;
+	}
+	// clock
+	if (mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid)) {
+		cmdq_err("hwid:%u gce clock not enable", cmdq->hwid);
+		return -EINVAL;
+	}
+
+	if (bit.dump)
+		cmdq_util_hw_trace_dump(
+			bit.hwid, cmdq_util_get_bit_feature() & CMDQ_LOG_FEAT_PERF);
+
+	return ret;
+}
+
+static const struct kernel_param_ops cmdq_hw_trace_ops = {
+	.set = cmdq_hw_trace_set,
+};
+module_param_cb(cmdq_hw_trace, &cmdq_hw_trace_ops, NULL, 0644);
 
 u8 cmdq_get_irq_long_times(void *chan)
 {
@@ -2593,14 +2610,19 @@ static int cmdq_probe(struct platform_device *pdev)
 	if (of_property_read_bool(dev->of_node, "gce-in-vcp"))
 		gce_in_vcp = true;
 
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	if (!of_property_read_bool(dev->of_node, "cmdq-log-perf-off"))
 		cmdq_util_log_feature_set(NULL, CMDQ_LOG_FEAT_PERF);
+#endif
 
 	if (of_property_read_bool(dev->of_node, "cpr-not-support-cookie"))
 		cpr_not_support_cookie = true;
 
 	if (!of_property_read_bool(dev->of_node, "no-append-by-event"))
 		append_by_event = true;
+
+	if(of_property_read_bool(dev->of_node, "hw-trace-built-in"))
+		hw_trace_built_in[hwid] = true;
 
 	of_property_read_u32(dev->of_node, "cmdq-dump-buf-size", &cmdq_dump_buf_size);
 	of_property_read_u32(dev->of_node, "error-irq-bug-on", &error_irq_bug_on);
@@ -2727,8 +2749,7 @@ static int cmdq_probe(struct platform_device *pdev)
 	cmdq->prebuilt_clt = cmdq_mbox_create(&pdev->dev, 0);
 	cmdq->hw_trace_clt = cmdq_mbox_create(&pdev->dev, 1);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
-	if (cmdq->hw_trace_clt && !IS_ERR(cmdq->hw_trace_clt))
-		cmdq_hw_trace = 1;
+	of_property_read_u32(dev->of_node, "cmdq-dump-hw-trace", &cmdq_hw_trace);
 #endif
 
 	if (!of_parse_phandle_with_args(
@@ -2910,6 +2931,9 @@ void cmdq_mbox_enable(void *chan)
 		if (cmdq->prefetch)
 			writel(cmdq->prefetch,
 				cmdq->base + CMDQ_PREFETCH_GSIZE);
+		if (hw_trace_built_in[cmdq->hwid])
+			writel(readl(cmdq->base + GCE_DBG_CTL) | CMDQ_HW_TRACE_EN,
+				cmdq->base + GCE_DBG_CTL);
 		writel(CMDQ_TPR_EN, cmdq->base + CMDQ_TPR_MASK);
 		spin_unlock_irqrestore(&cmdq->lock, flags);
 
@@ -3528,20 +3552,22 @@ s32 cmdq_pkt_hw_trace(struct cmdq_pkt *pkt, const u16 event_id)
 {
 	struct cmdq_thread *thread;
 	struct cmdq_operand lop, rop;
-
-	if (!cmdq_hw_trace)
-		return 0;
+	struct cmdq *cmdq;
 
 	if (!pkt->cl) {
 		cmdq_log("%s: pkt:%p without client", __func__, pkt);
 		return -EINVAL;
 	}
 
+	thread = (struct cmdq_thread *)
+		((struct cmdq_client *)pkt->cl)->chan->con_priv;
+	cmdq = dev_get_drvdata(thread->chan->mbox->dev);
+	if (!cmdq_hw_trace || hw_trace_built_in[cmdq->hwid])
+		return 0;
+
 	if (cmdq_util_is_secure_client(pkt->cl))
 		return 0;
 
-	thread = (struct cmdq_thread *)
-		((struct cmdq_client *)pkt->cl)->chan->con_priv;
 	cmdq_log("%s: pkt:%p idx:%hu", __func__, pkt, thread->idx);
 
 	// spr = (CMDQ_TPR_ID >> 14) | (idx << 24)
