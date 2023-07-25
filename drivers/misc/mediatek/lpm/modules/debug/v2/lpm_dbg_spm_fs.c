@@ -19,6 +19,8 @@
 #include <lpm_dbg_fs_common.h>
 #include <lpm_dbg_logger.h>
 
+#include <lpm_sys_res.h>
+
 /* Determine for node route */
 #define MT_LP_RQ_NODE	"/proc/mtk_lpm/spm/spm_resource_req"
 
@@ -457,6 +459,10 @@ static ssize_t system_stat_read(char *ToUserBuf, size_t sz, void *priv)
 	struct lpm_dbg_lp_info info;
 	unsigned int i;
 	struct spm_req_sta_list *sta_list;
+	struct sys_res_record *sys_res_record;
+	struct lpm_sys_res_ops *sys_res_ops;
+	struct sys_res_mapping *map = NULL;
+	unsigned int res_mapping_len, tmp_active_time, tmp_id;
 
 	mtk_get_lp_info(&info, SPM_IDLE_STAT);
 	for (i = 0; i < NUM_SPM_STAT; i++) {
@@ -517,7 +523,36 @@ static ssize_t system_stat_read(char *ToUserBuf, size_t sz, void *priv)
 			mtk_dbg_spm_log("%s ", get_spm_scenario_str(i));
 	}
 	mtk_dbg_spm_log("\n");
+
 SKIP_REQ_DUMP:
+
+	sys_res_ops = get_lpm_sys_res_ops();
+	if (!sys_res_ops || !sys_res_ops->get || !sys_res_ops->get_id_name || !sys_res_ops->update)
+		goto SKIP_DUMP;
+
+	if(sys_res_ops->get_id_name(&map, &res_mapping_len) != 0)
+		goto SKIP_DUMP;
+
+	sys_res_ops->update();
+
+	mtk_dbg_spm_log("Subsys accumulated active time\n");
+	sys_res_record = sys_res_ops->get(SYS_RES_SCENE_COMMON);
+	for (i = 0; i < res_mapping_len; i++) {
+		tmp_id = map[i].id;
+		tmp_active_time = sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[tmp_id].time;
+		mtk_dbg_spm_log("common(active) %s: %u.%03u\n",
+				map[i].name, tmp_active_time / 1000, tmp_active_time % 1000);
+	}
+
+	sys_res_record = sys_res_ops->get(SYS_RES_SCENE_SUSPEND);
+	for (i = 0; i < res_mapping_len; i++) {
+		tmp_id = map[i].id;
+		tmp_active_time = sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[tmp_id].time;
+		mtk_dbg_spm_log("Suspend(active) %s: %u.%03u\n",
+				map[i].name, tmp_active_time / 1000, tmp_active_time % 1000);
+	}
+
+SKIP_DUMP:
 	return p - ToUserBuf;
 }
 

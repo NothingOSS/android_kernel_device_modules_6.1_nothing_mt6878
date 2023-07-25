@@ -58,6 +58,16 @@ struct sys_res_group_info sys_res_group_info[NR_SPM_GRP] = {
 	{0, 284,  11, 30},
 };
 
+
+static struct sys_res_mapping sys_res_mapping[] = {
+	{246, "md"},
+	{245, "conn"},
+	{244, "scp"},
+	{243, "adsp"},
+	{242, "pcie"},
+	{240, "uarthub"},
+};
+
 static int lpm_sys_res_alloc(struct sys_res_record *record)
 {
 	struct res_sig_stats *spm_res_sig_stats_ptr;
@@ -400,6 +410,21 @@ static void lpm_sys_res_log(unsigned int scene)
 	spin_unlock_irqrestore(&sys_res_lock, flag);
 }
 
+static int lpm_sys_res_get_id_name(struct sys_res_mapping **map, unsigned int *size)
+{
+	unsigned int res_mapping_len;
+
+	if (!map || !size)
+		return -1;
+
+	res_mapping_len = sizeof(sys_res_mapping) / sizeof(struct sys_res_mapping);
+
+	*size = res_mapping_len;
+	*map = (struct sys_res_mapping *)&sys_res_mapping;
+
+	return 0;
+}
+
 static struct lpm_sys_res_ops sys_res_ops = {
 	.get = get_lpm_sys_res_record,
 	.update = update_lpm_sys_res_record,
@@ -410,6 +435,7 @@ static struct lpm_sys_res_ops sys_res_ops = {
 	.get_log_enable = lpm_sys_res_get_log_enable,
 	.log = lpm_sys_res_log,
 	.lock = &sys_res_lock,
+	.get_id_name = lpm_sys_res_get_id_name,
 };
 
 static int lpm_sys_res_pm_event(struct notifier_block *notifier,

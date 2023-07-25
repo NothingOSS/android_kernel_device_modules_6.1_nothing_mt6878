@@ -45,6 +45,7 @@ int register_lpm_sys_res_ops(struct lpm_sys_res_ops *ops)
 	_lpm_sys_res_ops.get_log_enable = ops->get_log_enable;
 	_lpm_sys_res_ops.log = ops->log;
 	_lpm_sys_res_ops.lock = ops->lock;
+	_lpm_sys_res_ops.get_id_name = ops->get_id_name;
 
 	return 0;
 }
@@ -61,6 +62,7 @@ void unregister_lpm_sys_res_ops(void)
 	_lpm_sys_res_ops.get_log_enable = NULL;
 	_lpm_sys_res_ops.log = NULL;
 	_lpm_sys_res_ops.lock = NULL;
+	_lpm_sys_res_ops.get_id_name = NULL;
 }
 
 EXPORT_SYMBOL(unregister_lpm_sys_res_ops);

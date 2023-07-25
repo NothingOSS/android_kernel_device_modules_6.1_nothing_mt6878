@@ -43,6 +43,12 @@ struct sys_res_group_info {
 	unsigned int threshold;
 };
 
+#define SYS_RES_NAME_LEN (10)
+struct sys_res_mapping {
+	unsigned int id;
+	char name[SYS_RES_NAME_LEN];
+};
+
 struct lpm_sys_res_ops {
 	struct sys_res_record* (*get)(unsigned int scene);
 	int (*update)(void);
@@ -53,6 +59,7 @@ struct lpm_sys_res_ops {
 	int (*get_log_enable)(void);
 	void (*log)(unsigned int scene);
 	spinlock_t *lock;
+	int (*get_id_name)(struct sys_res_mapping **map, unsigned int *size);
 };
 
 int lpm_sys_res_init(void);
