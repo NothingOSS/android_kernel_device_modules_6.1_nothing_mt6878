@@ -35,6 +35,7 @@
 #endif
 
 #define MTKAIFV4_SUPPORT
+
 #define MAX_DEBUG_WRITE_INPUT 256
 #define CODEC_SYS_DEBUG_SIZE (1024 * 192) // 32K
 /* #define MT6681_TOP_DEBUG */
@@ -355,6 +356,10 @@ static void mt6681_set_gpio_smt(struct mt6681_priv *priv)
 /* set gpio SMT mode */
 #if defined(MTKAIFV4_SUPPORT)
 	regmap_update_bits(priv->regmap, MT6681_SMT_CON0, 0xf0, 0xf0);
+	if (priv->audio_r_miso1_enable == 1) {
+		/* [1:1]	RG_SMT_TDMIN_BCK */
+		regmap_update_bits(priv->regmap, MT6681_SMT_CON1, 0x1, 0x1);
+	}
 #else
 	regmap_update_bits(priv->regmap, MT6681_SMT_CON1, 0x7, 0x7);
 #endif
@@ -436,12 +441,20 @@ static void mt6681_set_capture_gpio(struct mt6681_priv *priv)
 {
 /* set gpio miso mode */
 #if defined(MTKAIFV4_SUPPORT)
-	/*
-	 * [3:0] 1: AUD_DAT_MISO0 (O)	2: TDMOUT_DATA0 (O)
-	 * [6:4] 1: AUD_CLK_MOSI (I) 2: TDMOUT_BCK (I)
-	 */
-	regmap_write(priv->regmap, MT6681_GPIO_MODE3_SET, 0x11);
-	regmap_write(priv->regmap, MT6681_GPIO_MODE5_SET, 0x10);
+	if (priv->audio_r_miso1_enable == 1) {
+		/*
+		 * GPIO MODE4
+		 * [6:4] 0: GPIO9 (IO) 1: TDMIN_BCK (I) 2: AUD_DAT_MISO1 (O)
+		 */
+		regmap_write(priv->regmap, MT6681_GPIO_MODE4_SET, 0x20);
+	} else {
+		/*
+		 * [3:0] 1: AUD_DAT_MISO0 (O)	2: TDMOUT_DATA0 (O)
+		 * [6:4] 1: AUD_CLK_MOSI (I) 2: TDMOUT_BCK (I)
+		 */
+		regmap_write(priv->regmap, MT6681_GPIO_MODE3_SET, 0x11);
+		regmap_write(priv->regmap, MT6681_GPIO_MODE5_SET, 0x10);
+	}
 #else
 	regmap_write(priv->regmap, MT6681_GPIO_MODE3_SET, 0x22);
 	/*
@@ -463,8 +476,16 @@ static void mt6681_reset_capture_gpio(struct mt6681_priv *priv)
  */
 
 #if defined(MTKAIFV4_SUPPORT)
-	regmap_write(priv->regmap, MT6681_GPIO_MODE3_CLR, 0xf);
-	regmap_write(priv->regmap, MT6681_GPIO_MODE5_CLR, 0xf);
+	if (priv->audio_r_miso1_enable == 1) {
+		/*
+		 * GPIO MODE4
+		 * [6:4] 0: GPIO9 (IO) 1: TDMIN_BCK (I) 2: AUD_DAT_MISO1 (O)
+		 */
+		regmap_write(priv->regmap, MT6681_GPIO_MODE4_CLR, 0x70);
+	} else {
+		regmap_write(priv->regmap, MT6681_GPIO_MODE3_CLR, 0xf);
+		regmap_write(priv->regmap, MT6681_GPIO_MODE5_CLR, 0xf);
+	}
 #else
 	regmap_write(priv->regmap, MT6681_GPIO_MODE3_CLR, 0xff);
 	regmap_write(priv->regmap, MT6681_GPIO_MODE4_CLR, 0xf0);
@@ -1297,19 +1318,32 @@ static void mt6681_mtkaif_tx_enable(struct mt6681_priv *priv)
 	case MT6681_MTKAIF_PROTOCOL_2_CLK_P2:
 		/* enable aud_pad TX fifos */
 		regmap_write(priv->regmap, MT6681_AFE_AUD_PAD_TOP, 0x39);
-		// regmap_update_bits(priv->regmap, MT6681_AFE_MTKAIFV4_TX_CFG,
-		//	MT6681_MTKAIFV4_TXIF_SEL_MASK_SFT,
-		//	0x1 << MT6681_MTKAIFV4_TXIF_SEL_SFT);
-		/* config mtkaif_tx1 (pmic), 4ch */
-		value = 0x1 << MT6681_MTKAIFV4_TXIF_AFE_ON_SFT
-			| 0x1 << MT6681_MTKAIFV4_TXIF_FOUR_CHANNEL_SFT
-			| rate << MT6681_MTKAIFV4_TXIF_INPUT_MODE_SFT;
-		regmap_write(priv->regmap, MT6681_AFE_ADDA_MTKAIFV4_TX_CFG0,
-			     value);
-		/* config mtkaif_tx1 (pmic), 4ch */
-		regmap_write(priv->regmap, MT6681_AFE_ADDA6_MTKAIFV4_TX_CFG0,
-			     value);
+		if (priv->audio_r_miso1_enable == 1) {
+		/* config mtkaif_tx1 (pmic), 2ch */
+			value = 0x1 << MT6681_MTKAIFV4_TXIF_AFE_ON_SFT |
+					0x0 << MT6681_MTKAIFV4_TXIF_FOUR_CHANNEL_SFT |
+					rate << MT6681_MTKAIFV4_TXIF_INPUT_MODE_SFT;
+			regmap_write(priv->regmap, MT6681_AFE_ADDA_MTKAIFV4_TX_CFG0, value);
+			/* config mtkaif_tx2 (pmic), 4ch */
+			value = 0x1 << MT6681_MTKAIFV4_TXIF_AFE_ON_SFT |
+					0x1 << MT6681_MTKAIFV4_TXIF_FOUR_CHANNEL_SFT |
+					rate << MT6681_MTKAIFV4_TXIF_INPUT_MODE_SFT;
+			regmap_write(priv->regmap, MT6681_AFE_ADDA6_MTKAIFV4_TX_CFG0, value);
+		} else {
+			// regmap_update_bits(priv->regmap, MT6681_AFE_MTKAIFV4_TX_CFG,
+			//	MT6681_MTKAIFV4_TXIF_SEL_MASK_SFT,
+			//	0x1 << MT6681_MTKAIFV4_TXIF_SEL_SFT);
+			/* config mtkaif_tx1 (pmic), 4ch */
+			value = 0x1 << MT6681_MTKAIFV4_TXIF_AFE_ON_SFT
+				| 0x1 << MT6681_MTKAIFV4_TXIF_FOUR_CHANNEL_SFT
+				| rate << MT6681_MTKAIFV4_TXIF_INPUT_MODE_SFT;
+			regmap_write(priv->regmap, MT6681_AFE_ADDA_MTKAIFV4_TX_CFG0,
+				     value);
 
+			/* config mtkaif_tx1 (pmic), 4ch */
+			regmap_write(priv->regmap, MT6681_AFE_ADDA6_MTKAIFV4_TX_CFG0,
+				     value);
+		}
 		/* Set to VD105 = 1.5V */
 		regmap_update_bits(priv->regmap, MT6681_STRUP_ELR_1, 0x1f << 3,
 				   (priv->vd105 - 0xc) << 3);
