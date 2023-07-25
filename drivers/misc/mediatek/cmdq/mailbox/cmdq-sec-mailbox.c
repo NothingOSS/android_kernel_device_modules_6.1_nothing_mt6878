@@ -682,7 +682,7 @@ static void cmdq_sec_irq_notify_work(struct work_struct *work_item)
 
 		if (thread->stop) {
 			stop |= cmdq_sec_irq_handler(
-				thread, thread->wait_cookie, 0);
+				thread, thread->next_cookie, 0);
 
 			cmdq_msg(
 				"%s gce:%pa thread:%u cookie:%u wait cookie:%u task count:%u stop:%d",
