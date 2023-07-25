@@ -224,10 +224,19 @@ u32 mtk_pcie_dump_link_info(int port);
 
 /* PHY sif register */
 #define PCIE_PHY_SIF			0x11100000
+#define PCIE_PHYD_TOP			0x0
+#define PCIE_MISC_PRB_SEL		0x4
+#define PCIE_LN0_PRB_SEL		0x10
 #define PEXTP_DIG_GLB_28		0x28
 #define RG_XTP_PHY_CLKREQ_N_IN		GENMASK(13, 12)
 #define PEXTP_DIG_GLB_50		0x50
 #define RG_XTP_CKM_EN_L1S0		BIT(13)
+#define PEXTP_DIG_PROBE_OUT		0xd0
+
+/* PHY ANA GLB register */
+#define PCIE_PHY_ANA_GLB		0x9000
+#define PEXTP_ANA_GLB_6			(PCIE_PHY_ANA_GLB + 0x18)
+#define PEXTP_ANA_GLB_9			(PCIE_PHY_ANA_GLB + 0x24)
 
 /* PHY ckm register */
 #define PCIE_PHY_CKM			0x11110000
@@ -1398,6 +1407,61 @@ int mtk_pcie_remove_port(int port)
 }
 EXPORT_SYMBOL(mtk_pcie_remove_port);
 
+/* Set partition when use PCIe PHY debug probe table */
+static void mtk_pcie_phy_dbg_set_partition(void __iomem *phy_base, u32 partition)
+{
+	writel_relaxed(partition, phy_base + PCIE_PHYD_TOP);
+}
+
+/* Read the PCIe PHY internal signal corresponding to the debug probe table bus */
+static u32 mtk_pcie_phy_dbg_read_bus(void __iomem *phy_base, u32 sel, u32 bus)
+{
+	writel_relaxed(bus, phy_base + sel);
+	return readl_relaxed(phy_base + PEXTP_DIG_PROBE_OUT);
+}
+
+/* Dump PCIe PHY signal */
+static void mtk_pcie_monitor_phy(void)
+{
+	void __iomem *pcie_phy_sif;
+	u32 phy_table[8] = {0};
+
+	pcie_phy_sif = ioremap(PCIE_PHY_SIF, 0x10000);
+
+	mtk_pcie_phy_dbg_set_partition(pcie_phy_sif, 0x404);
+	phy_table[0] = mtk_pcie_phy_dbg_read_bus(pcie_phy_sif, PCIE_LN0_PRB_SEL,
+						 0x910090);
+	phy_table[1] = mtk_pcie_phy_dbg_read_bus(pcie_phy_sif, PCIE_LN0_PRB_SEL,
+						 0x1180092);
+	phy_table[2] = mtk_pcie_phy_dbg_read_bus(pcie_phy_sif, PCIE_LN0_PRB_SEL,
+						 0x11a011b);
+	phy_table[3] = mtk_pcie_phy_dbg_read_bus(pcie_phy_sif, PCIE_LN0_PRB_SEL,
+						 0x11c011d);
+	phy_table[4] = mtk_pcie_phy_dbg_read_bus(pcie_phy_sif, PCIE_LN0_PRB_SEL,
+						 0x11e011f);
+	pr_info("phy ln0 probe: 0x0x910090=%#x, 0x1180092=%#x, 0x11a011b=%#x, 0x11c011d=%#x, 0x11e011f=%#x\n",
+		phy_table[0], phy_table[1], phy_table[2], phy_table[3], phy_table[4]);
+
+
+	mtk_pcie_phy_dbg_set_partition(pcie_phy_sif, 0x0);
+	writel_relaxed(0x5600038e, pcie_phy_sif + PEXTP_ANA_GLB_6);
+	phy_table[5] = mtk_pcie_phy_dbg_read_bus(pcie_phy_sif, PCIE_MISC_PRB_SEL,
+						 0x1a);
+
+	mtk_pcie_phy_dbg_set_partition(pcie_phy_sif, 0x70002);
+	writel_relaxed(0x98045600, pcie_phy_sif + PEXTP_ANA_GLB_9);
+	phy_table[6] = mtk_pcie_phy_dbg_read_bus(pcie_phy_sif, PCIE_MISC_PRB_SEL,
+						 0x1b1a);
+	pr_info("phy misc probe: 0x1a=%#x, 0x1b1a=%#x\n",
+		phy_table[5], phy_table[6]);
+
+	mtk_pcie_phy_dbg_set_partition(pcie_phy_sif, 0x4);
+	phy_table[7] = mtk_pcie_phy_dbg_read_bus(pcie_phy_sif, PCIE_LN0_PRB_SEL,
+						 0xe2);
+	pr_info("phy ln0 probe: 0xe2=%#x\n", phy_table[7]);
+
+	iounmap(pcie_phy_sif);
+}
 
 /* Set partition when use PCIe MAC debug probe table */
 static void mtk_pcie_mac_dbg_set_partition(struct mtk_pcie_port *port, u32 partition)
@@ -1595,8 +1659,11 @@ u32 mtk_pcie_dump_link_info(int port)
 	      PCIE_CFG_HEADER(0, 0);
 	writel_relaxed(val, pcie_port->base + PCIE_CFGNUM_REG);
 	val = readl_relaxed(pcie_port->base + PCIE_AER_CO_STATUS);
-	if (val & (AER_CO_RE | AER_CO_BTLP))
+	if (val & (AER_CO_RE | AER_CO_BTLP)) {
+		mtk_pcie_monitor_phy();
 		ret_val |= BIT(7);
+	}
+
 	val = readl_relaxed(pcie_port->base + PCIE_AER_UNC_STATUS);
 	if (val & PCIE_AER_UNC_MTLP)
 		ret_val |= BIT(8);
