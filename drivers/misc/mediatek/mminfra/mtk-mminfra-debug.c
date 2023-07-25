@@ -693,6 +693,11 @@ static irqreturn_t mminfra_irq_handler(int irq, void *data)
 static bool mminfra_devapc_power_cb(void)
 {
 	if (dbg->irq_safe) {
+		pr_info("mminfra mtcmos = 0x%x\n", readl(dbg->spm_base+0xea8));
+		pr_info("cg_con0 = 0x%x, ao_cg_con0 = 0x%x, ao_cg_con1 = 0x%x\n",
+			readl(dbg->mminfra_base + MMINFRA_CG_CON0),
+			readl(dbg->mminfra_ao_base + MMINFRA_CG_CON0),
+			readl(dbg->mminfra_ao_base + MMINFRA_CG_CON1));
 		pr_info("%s set mminfra pwr on\n", __func__);
 		vcp_mminfra_on();
 		return true;
@@ -875,6 +880,7 @@ static void mminfra_pm_complete(struct device *dev)
 		pr_notice("mminfra mtcmos = 0x%x, hfrp mtcmos = 0x%x, done bits=0x%x\n",
 			readl(dbg->spm_base+0xea8), readl(dbg->spm_base+0xeac),
 			readl(dbg->vlp_base+0x91c));
+		pr_notice("mminfra dummy2 = 0x%x\n", readl(dbg->mminfra_base+0x408));
 		writel(MM_SYS_RESUME, dbg->vcp_gipc_in_set);
 		pr_notice("VCP_GIPC_IN_SET = 0x%x\n", readl(dbg->vcp_gipc_in_set));
 		mtk_clk_mminfra_hwv_power_ctrl_optional(false, CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA);
