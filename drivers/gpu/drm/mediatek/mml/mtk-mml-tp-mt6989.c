@@ -771,8 +771,11 @@ static inline bool tp_need_resize(struct mml_frame_info *info, bool *can_binning
 static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache *tp, bool *dual)
 {
 	u32 srcw, srch;
+	u32 cropw = info->dest[0].crop.r.width;
+	u32 croph = info->dest[0].crop.r.height;
 	const u32 destw = info->dest[0].data.width;
 	const u32 desth = info->dest[0].data.height;
+	const enum mml_orientation rotate = info->dest[0].rotate;
 	u32 tput, pixel;
 
 	/* always assign dual as default */
@@ -782,22 +785,27 @@ static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache
 	if (!info->act_time)
 		return true;
 
-	srcw = round_up(info->dest[0].crop.r.left + info->dest[0].crop.r.width, 32) -
-		round_down(info->dest[0].crop.r.left, 32);
-	srch = round_up(info->dest[0].crop.r.top + info->dest[0].crop.r.height, 16) -
-		round_down(info->dest[0].crop.r.top, 16);
-	pixel = max(srcw, destw) * max(srch, desth);
-
-	/* binning case */
-	if ((info->dest[0].crop.r.width >> 1) > destw)
-		pixel = pixel >> 1;
-	if ((info->dest[0].crop.r.height >> 1) > desth)
-		pixel = pixel >> 1;
-
 	if (!tp->opp_cnt) {
 		mml_err("no opp table support");
 		return false;
 	}
+
+	srcw = round_up(info->dest[0].crop.r.left + info->dest[0].crop.r.width, 32) -
+		round_down(info->dest[0].crop.r.left, 32);
+	srch = round_up(info->dest[0].crop.r.top + info->dest[0].crop.r.height, 16) -
+		round_down(info->dest[0].crop.r.top, 16);
+
+	/* rotate source */
+	if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
+		swap(srcw, srch);
+		swap(cropw, croph);
+	}
+
+	/* binning case */
+	if ((cropw >> 1) > destw)
+		srcw = srcw >> 1;
+	if ((croph >> 1) > desth)
+		srch = srch >> 1;
 
 	/* not support if exceeding max throughput
 	 * pixel per-pipe is:
@@ -805,23 +813,20 @@ static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache
 	 * and necessary throughput:
 	 *	pipe_pixel / active_time(ns) * 1000
 	 * so merge all constant:
-	 *	tput = pixel * 1.1 * 1000 / act_time
-	 *	     = pixel * 1100 / act_time
+	 *	tput = pixel / 2 * 1.1 * 1000 / act_time
+	 *	     = pixel * 550 / act_time
 	 */
-	tput = pixel * 1100 / info->act_time;
-	if (mml_rrot_single == 0 && srcw * srch <= MML_DL_RROT_S_PX &&
+	pixel = max(srcw, destw) * max(srch, desth);
+	tput = pixel * 550 / info->act_time;
+	if (mml_rrot_single != 2 && srcw * srch <= MML_DL_RROT_S_PX &&
 		tput < tp->opp_speeds[tp->opp_cnt / 2]) {
 		*dual = false;
 		return true;
-	} else if (mml_rrot_single == 1) {
-		*dual = false;
-		return true;
-	}
-
-	/* with RROT0_2nd, tput / 2 and round up 32x16 block */
-	tput = round_up(tput / 2, 512);
-	if (tput < tp->opp_speeds[tp->opp_cnt - 1]) {
-		*dual = true;
+	} else if (tput < tp->opp_speeds[tp->opp_cnt - 1]) {
+		if (mml_rrot_single == 1)
+			*dual = false;
+		else
+			*dual = true;
 		return true;
 	}
 
