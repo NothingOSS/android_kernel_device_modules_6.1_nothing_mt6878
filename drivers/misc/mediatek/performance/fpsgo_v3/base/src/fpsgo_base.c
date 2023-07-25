@@ -1005,11 +1005,12 @@ struct render_info *eara2fpsgo_search_render_info(int pid,
 static int fpsgo_is_exceed_render_info_limit(void)
 {
 	int ret = 0;
-	struct render_info *r_iter = NULL;
-	struct rb_node *rbn = NULL;
 
 	if (total_render_info_num + total_linger_num > FPSGO_MAX_RENDER_INFO_SIZE) {
 		ret = 1;
+#ifdef FPSGO_DEBUG
+		struct render_info *r_iter = NULL;
+		struct rb_node *rbn = NULL;
 		for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
 			r_iter = rb_entry(rbn, struct render_info, render_key_node);
 			FPSGO_LOGE("[base] %s render %d 0x%llx exist\n",
@@ -1020,6 +1021,7 @@ static int fpsgo_is_exceed_render_info_limit(void)
 			FPSGO_LOGE("[base] %s linger %d 0x%llx exist\n",
 				__func__, r_iter->pid, r_iter->buffer_id);
 		}
+#endif
 	}
 
 	return ret;

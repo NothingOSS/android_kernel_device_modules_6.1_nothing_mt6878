@@ -7107,7 +7107,7 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->separate_pct_other_by_pid = BY_PID_DEFAULT_VAL;
 	} else if (!strcmp(cmd, "blc_boost")) {
-		if (val >= 0 && val < 200 && action == 's')
+		if (val >= 0 && val < 2000 && action == 's')
 			boost_attr->blc_boost_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->blc_boost_by_pid = BY_PID_DEFAULT_VAL;
@@ -8412,7 +8412,7 @@ static ssize_t blc_boost_store(struct kobject *kobj,
 		}
 	}
 
-	blc_boost = clamp(val, 0, 200);
+	blc_boost = clamp(val, 0, 2000);
 
 out:
 	kfree(acBuffer);

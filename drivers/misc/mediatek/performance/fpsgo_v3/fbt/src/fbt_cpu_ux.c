@@ -453,6 +453,7 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		if (frame_id)
 			sbe_rescuing_frame_id = frame_id;
 		thr->sbe_enhance = enhance < 0 ?  sbe_enhance_f : (enhance + sbe_enhance_f);
+		thr->sbe_enhance = clamp(thr->sbe_enhance, 0, 100);
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "[ux]sbe_enhance");
 		if (thr->boost_info.sbe_rescue != 0)
 			goto leave;
