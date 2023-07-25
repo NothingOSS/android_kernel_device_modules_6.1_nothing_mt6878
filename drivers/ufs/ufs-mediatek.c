@@ -1399,11 +1399,6 @@ static void ufs_mtk_init_mcq_irq(struct ufs_hba *hba)
 	int i;
 	int irq;
 
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
-	if (host->ip_ver == IP_VER_MT6897)
-		bus_hang_check_init();
-#endif
-
 	host->mcq_nr_intr = UFSHCD_MAX_Q_NR;
 	pdev = container_of(hba->dev, struct platform_device, dev);
 
@@ -1543,6 +1538,10 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	ufs_mtk_setup_clocks(hba, true, POST_CHANGE);
 
 	host->ip_ver = ufshcd_readl(hba, REG_UFS_MTK_IP_VER);
+
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+	ufs_mtk_check_bus_init(host->ip_ver);
+#endif
 
 	cpu_latency_qos_add_request(&host->pm_qos_req,
 	     	   PM_QOS_DEFAULT_VALUE);
@@ -2773,9 +2772,6 @@ static irqreturn_t ufs_mtk_mcq_intr(int irq, void *__intr_info)
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG)
 	struct ufs_mtk_mcq_intr_info *mcq_intr_info = __intr_info;
 	struct ufs_hba *hba = mcq_intr_info->hba;
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-#endif
 	struct ufs_hw_queue *hwq;
 	u32 events;
 	int i = mcq_intr_info->qid;
@@ -2783,8 +2779,7 @@ static irqreturn_t ufs_mtk_mcq_intr(int irq, void *__intr_info)
 	hwq = &hba->uhq[i];
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
-	if (host->ip_ver == IP_VER_MT6897)
-		bus_hang_check_path();
+	ufshcd_vops_check_bus_status(hba);
 #endif
 
 	events = ufshcd_mcq_read_cqis(hba, i);
@@ -2861,6 +2856,11 @@ static void ufs_mtk_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 {
 	ufs_mtk_dbg_phy_hibern8_notify(hba, cmd, status);
 }
+
+void _ufs_mtk_dbg_dump(struct ufs_hba *hba, u32 latest_cnt)
+{
+	ufs_mtk_dbg_dump(latest_cnt);
+}
 #endif
 
 /*
@@ -2893,7 +2893,11 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.get_hba_mac         = ufs_mtk_get_hba_mac,
 	.op_runtime_config   = ufs_mtk_op_runtime_config,
 	.mcq_config_resource = ufs_mtk_mcq_config_resource,
-	.config_esi          = ufs_mtk_config_esi
+	.config_esi          = ufs_mtk_config_esi,
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+	.check_bus_status    = ufs_mtk_check_bus_status,
+	.dbg_dump            = _ufs_mtk_dbg_dump,
+#endif
 };
 
 /**

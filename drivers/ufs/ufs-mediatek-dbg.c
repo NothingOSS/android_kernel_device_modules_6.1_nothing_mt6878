@@ -121,100 +121,130 @@ void ufs_mtk_eh_err_cnt(void)
 EXPORT_SYMBOL_GPL(ufs_mtk_eh_err_cnt);
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
-static void __iomem *reg_msdc_cfg;
 static void __iomem *reg_ufscfg_ao;
-static void __iomem *reg_vlp_ao;
+static void __iomem *reg_ufscfg_pdn;
 static void __iomem *reg_vlp_cfg;
 static void __iomem *reg_ifrbus_ao;
+static void __iomem *reg_pericfg_ao;
+static void __iomem *reg_topckgen;
 
-void bus_hang_check_init(void)
+void ufs_mtk_check_bus_init(u32 ip_ver)
 {
-	if (reg_msdc_cfg == NULL)
-		reg_msdc_cfg = ioremap(0x11240000, 0x3000);
+	if (ip_ver == IP_VER_MT6897) {
+		if (reg_ufscfg_ao == NULL)
+			reg_ufscfg_ao = ioremap(0x112B8000, 0xCC);
 
-	if (reg_ufscfg_ao == NULL)
-		reg_ufscfg_ao = ioremap(0x112B8000, 0x1000);
+		if (reg_ufscfg_pdn == NULL)
+			reg_ufscfg_pdn = ioremap(0x112BB000, 0xB0);
 
-	if (reg_vlp_ao == NULL)
-		reg_vlp_ao = ioremap(0x1c001000, 0x1000);
+		if (reg_vlp_cfg == NULL)
+			reg_vlp_cfg = ioremap(0x1C00C000, 0x930);
 
-	if (reg_vlp_cfg == NULL)
-		reg_vlp_cfg = ioremap(0x1C00C000, 0x1000);
+		if (reg_ifrbus_ao == NULL)
+			reg_ifrbus_ao = ioremap(0x1002C000, 0xB00);
 
-	if (reg_ifrbus_ao == NULL)
-		reg_ifrbus_ao = ioremap(0x1002C000, 0x1000);
+		if (reg_pericfg_ao == NULL)
+			reg_pericfg_ao = ioremap(0x11036000, 0x2A8);
 
-	pr_info("%s: init done\n", __func__);
+		if (reg_topckgen == NULL)
+			reg_topckgen = ioremap(0x10000000, 0x500);
+
+		pr_info("%s: init done\n", __func__);
+	}
 }
-EXPORT_SYMBOL_GPL(bus_hang_check_init);
+EXPORT_SYMBOL_GPL(ufs_mtk_check_bus_init);
 
 /* only for IP_VER_MT6897 */
 #define FM_U_FAXI_CK		3
 #define FM_U_CK		44
 
-void bus_hang_check_path(void)
+void ufs_mtk_check_bus_status(struct ufs_hba *hba)
 {
 	void __iomem *reg;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	if ((reg_msdc_cfg == NULL) || (reg_ufscfg_ao == NULL) || (reg_vlp_ao == NULL)
-		|| (reg_vlp_cfg == NULL) || (reg_ifrbus_ao == NULL))
-		return;
+	if (host->ip_ver == IP_VER_MT6897) {
+		/* Check ufs clock: ufs_axi_ck and ufs_ck */
+		if (mt_get_fmeter_freq(FM_U_CK, CKGEN) == 0) {
+			pr_err("%s: hf_fufs_ck off\n", __func__);
+			BUG_ON(1);
+		}
 
-	/* MSDC1 0x112400A0[15:0], default = 0 */
-	reg = reg_msdc_cfg + 0xA0;
-	writel(readl(reg), reg);
+		if (mt_get_fmeter_freq(FM_U_FAXI_CK, CKGEN) == 0) {
+			pr_err("%s: hf_fufs_faxi_ck off\n", __func__);
+			BUG_ON(1);
+		}
 
-	/* MSDC2 0x112420A0[15:0], default = 0 */
-	reg = reg_msdc_cfg + 0x20A0;
-	writel(readl(reg), reg);
+		if ((reg_ufscfg_ao == NULL) || (reg_ufscfg_pdn == NULL) ||
+		    (reg_vlp_cfg == NULL) || (reg_ifrbus_ao == NULL) ||
+		    (reg_pericfg_ao == NULL) || (reg_topckgen == NULL))
+			return;
+		/*
+		 * bus protect setting:
+		 * UFS_AO2FE_SLPPROT_EN 0x112B8050[0] = 0
+		 * VLP_TOPAXI_PROTECTEN 0x1C00C210[8:6] = 0
+		 * PERISYS_PROTECT_EN 0x1002C0E0[0] = 0
+		 * PERISYS_PROTECT_EN 0x1002C0E0[5:4] = 0
+		 */
+		reg = reg_ufscfg_ao + 0x50;
+		if ((readl(reg) & 0x1) != 0) {
+			pr_err("%s: UFS_AO2FE_SLPPROT_EN = 0x%x\n", __func__, readl(reg));
+			BUG_ON(1);
+		}
 
-	/* UFSAO 0x112B80B0[15:0], default = 0 */
-	reg = reg_ufscfg_ao + 0xB0;
-	writel(readl(reg), reg);
+		reg = reg_vlp_cfg + 0x210;
+		if ((readl(reg) & 0x1C0) != 0) {
+			pr_err("%s: VLP_TOPAXI_PROTECT_EN = 0x%x\n", __func__, readl(reg));
+			BUG_ON(1);
+		}
 
-	/* Check ufs clock: ufs_axi_ck and ufs_ck */
-	if (mt_get_fmeter_freq(FM_U_CK, CKGEN) == 0) {
-		pr_err("%s: hf_fufs_faxi_ck off\n", __func__);
-		BUG_ON(1);
-	}
+		reg = reg_ifrbus_ao + 0xE0;
+		if ((readl(reg) & 0x31) != 0) {
+			pr_err("%s: PERISYS_PROTECT_EN_STA_0 = 0x%x\n", __func__, readl(reg));
+			BUG_ON(1);
+		}
 
-	if (mt_get_fmeter_freq(FM_U_FAXI_CK, CKGEN) == 0) {
-		pr_err("%s: hf_fufs_ck off\n", __func__);
-		BUG_ON(1);
-	}
+		/*
+		 * cg setting:
+		 * PERI_CG_1 0x11036014[22] = 0
+		 * UFS_PDN_CG_0 0x112BB004[0] = 0
+		 * UFS_PDN_CG_0 0x112BB004[3] = 0
+		 * UFS_PDN_CG_0 0x112BB004[5] = 0
+		 * CLK_CFG_0 0X10000010[9:8] = 2'b10
+		 * CLK_CFG_0 0X10000010[12] = 1'b0
+		 * CLK_CFG_0 0X10000010[15] = 1'b0
+		 * CLK_CFG_0 0X10000010[17:16] = 2'b01
+		 * CLK_CFG_0 0X10000010[20] = 1'b0
+		 * CLK_CFG_0 0X10000010[23] = 1'b0
+		 * CLK_CFG_10 0X100000B0[28] = 1'b0
+		 * CLK_CFG_10 0X100000B0[31] = 1'b0
+		 */
+		reg = reg_pericfg_ao + 0x14;
+		if (((readl(reg) >> 22) & 0x1) != 0) {
+			pr_err("%s: PERI_CG_1 = 0x%x\n", __func__, readl(reg));
+			BUG_ON(1);
+		}
 
-	/*
-	 * bus protect setting:
-	 * VLPCFG 0x1C00C23C[7:6], expect = 0
-	 * IFRBUS 0x1002C0E0[8:0], expect = 0
-	 */
-	reg = reg_vlp_cfg + 0x23C;
-	if ((readl(reg) | 0xC0) != 0) {
-		pr_err("%s: VLPCFG bus protect on\n", __func__);
-		BUG_ON(1);
-	}
+		reg = reg_ufscfg_pdn + 0x4;
+		if ((readl(reg) & 0x29) != 0) {
+			pr_err("%s: UFS_PDN_CG_0 = 0x%x\n", __func__, readl(reg));
+			BUG_ON(1);
+		}
 
-	reg = reg_ifrbus_ao + 0xE0;
-	if ((readl(reg) | 0x1FF) != 0) {
-		pr_err("%s: INFRA AO bus protect on\n", __func__);
-		BUG_ON(1);
-	}
+		reg = reg_topckgen + 0x10;
+		if ((readl(reg) & 0x939300) != 0x10200) {
+			pr_err("%s: CLK_CFG_0 = 0x%x\n", __func__, readl(reg));
+			BUG_ON(1);
+		}
 
-	/* UFS0 MTCMOS 0x1C001E10[31:30], expect = 0 */
-	reg = reg_vlp_ao + 0xE10;
-	if ((readl(reg) >> 30) != 0x3) {
-		pr_err("%s: UFS0 MTCMOS off\n", __func__);
-		BUG_ON(1);
-	}
-
-	/* UFS0_PHY MTCMOS 0x1C001E14[31:30], expect = 0 */
-	reg = reg_vlp_ao + 0xE14;
-	if ((readl(reg) >> 30) != 0x3) {
-		pr_err("%s: UFS0_PHY MTCMOS off\n", __func__);
-		BUG_ON(1);
+		reg = reg_topckgen + 0xB0;
+		if (((readl(reg) >> 28) & 0x9) != 0) {
+			pr_err("%s: CLK_CFG_10 = 0x%x\n", __func__, readl(reg));
+			BUG_ON(1);
+		}
 	}
 }
-EXPORT_SYMBOL_GPL(bus_hang_check_path);
+EXPORT_SYMBOL_GPL(ufs_mtk_check_bus_status);
 #endif
 
 static void ufs_mtk_dbg_print_err_hist(char **buff, unsigned long *size,

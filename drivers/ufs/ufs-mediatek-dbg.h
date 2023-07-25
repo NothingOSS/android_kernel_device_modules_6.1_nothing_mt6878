@@ -165,7 +165,7 @@ struct cmd_hist_struct {
 int ufs_mtk_dbg_tp_register(void);
 void ufs_mtk_dbg_tp_unregister(void);
 int ufs_mtk_dbg_register(struct ufs_hba *hba);
-void ufs_mtk_dbg_dump(u32 latest_cnt);
+extern void ufs_mtk_dbg_dump(u32 latest_cnt);
 int ufs_mtk_dbg_cmd_hist_enable(void);
 int ufs_mtk_dbg_cmd_hist_disable(void);
 void ufs_mtk_eh_abort(unsigned int tag);
@@ -198,16 +198,16 @@ void ufs_mtk_dbg_phy_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 void ufs_mtk_dbg_phy_dump(struct ufs_hba *hba);
 void ufs_mtk_dbg_phy_dump_work(struct work_struct *work);
 void ufs_mtk_dbg_phy_trace(struct ufs_hba *hba, u8 stage);
-void bus_hang_check_init(void);
-void bus_hang_check_path(void);
+extern void ufs_mtk_check_bus_init(u32 ip_ver);
+extern void ufs_mtk_check_bus_status(struct ufs_hba *hba);
 #else
 #define ufs_mtk_dbg_phy_enable(...)
 #define ufs_mtk_dbg_phy_hibern8_notify(...)
 #define ufs_mtk_dbg_phy_dump(...)
 #define ufs_mtk_dbg_phy_dump_work(...)
 #define ufs_mtk_dbg_phy_trace(...)
-#define bus_hang_check_init(...)
-#define bus_hang_check_path(...)
+#define ufs_mtk_check_bus_init(...)
+#define ufs_mtk_check_bus_status(...)
 #endif
 
 #endif /* _UFS_MEDIATEK_DBG_H */
