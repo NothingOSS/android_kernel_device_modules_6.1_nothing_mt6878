@@ -24,6 +24,12 @@ KERNEL_MAKE_DEPENDENCIES += $(shell find vendor/mediatek/tests/kernel/ktf_testca
 KERNEL_MAKE_DEPENDENCIES += $(shell find vendor/mediatek/tests/ktf/kernel -name .git -prune -o -type f | sort)
 endif
 
+ifeq (user,$(strip $(KERNEL_BUILD_VARIANT)))
+ifneq (,$(strip $(shell grep "^CONFIG_ABI_MONITOR\s*=\s*y" $(KERNEL_CONFIG_FILE))))
+KERNEL_CHECK_ABI := true
+endif
+endif
+
 $(GEN_KERNEL_BUILD_CONFIG): PRIVATE_GEN_BUILD_CONFIG := $(REL_KERNEL_DIR)/scripts/gen_build_config.py
 $(GEN_KERNEL_BUILD_CONFIG): PRIVATE_KERNEL_DEFCONFIG := $(KERNEL_DEFCONFIG)
 $(GEN_KERNEL_BUILD_CONFIG): PRIVATE_KERNEL_DEFCONFIG_OVERLAYS := $(KERNEL_DEFCONFIG_OVERLAYS)
@@ -42,12 +48,8 @@ $(KERNEL_ZIMAGE_OUT): PRIVATE_KERNEL_OUT := $(REL_KERNEL_OUT)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_DIST_DIR := $(REL_KERNEL_OUT)/dist
 $(KERNEL_ZIMAGE_OUT): PRIVATE_CC_WRAPPER := $(CCACHE_EXEC)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_KERNEL_BUILD_CONFIG := $(REL_GEN_KERNEL_BUILD_CONFIG)
-ifeq (user,$(strip $(KERNEL_BUILD_VARIANT)))
-ifneq (,$(strip $(shell grep "^CONFIG_ABI_MONITOR\s*=\s*y" $(KERNEL_CONFIG_FILE))))
+ifeq (true,$(strip $(KERNEL_CHECK_ABI)))
 $(KERNEL_ZIMAGE_OUT): PRIVATE_KERNEL_BUILD_SCRIPT := ./build/build.sh
-else
-$(KERNEL_ZIMAGE_OUT): PRIVATE_KERNEL_BUILD_SCRIPT := ./build/build.sh
-endif
 else
 $(KERNEL_ZIMAGE_OUT): PRIVATE_KERNEL_BUILD_SCRIPT := ./build/build.sh
 endif
@@ -72,6 +74,9 @@ endif
 $(KERNEL_ZIMAGE_OUT): $(KERNEL_MAKE_DEPENDENCIES)
 	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base build $(PRIVATE_BAZEL_BUILD_FLAG) $(PRIVATE_BAZEL_BUILD_GOAL)
 	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base run $(PRIVATE_BAZEL_BUILD_FLAG) --nokmi_symbol_list_violations_check $(PRIVATE_BAZEL_DIST_GOAL) -- --dist_dir=$(abspath $(PRIVATE_BAZEL_DIST_OUT))
+ifeq (true,$(strip $(KERNEL_CHECK_ABI)))
+	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base run //$(REL_ACK_DIR):kernel_aarch64_abi_dist -- --dist_dir=$(abspath $(PRIVATE_BAZEL_DIST_OUT))/abi
+endif
 endif
 
 ifneq ($(BUILT_KERNEL_TARGET),$(KERNEL_ZIMAGE_OUT))
