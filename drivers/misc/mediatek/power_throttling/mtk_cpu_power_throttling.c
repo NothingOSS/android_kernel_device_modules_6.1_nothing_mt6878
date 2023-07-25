@@ -206,6 +206,8 @@ static int mtk_cpu_power_throttling_probe(struct platform_device *pdev)
 				if (ret < 0) {
 					pr_notice("%s: Fail to add freq constraint (%d)\n",
 						__func__, ret);
+					kfree(pt_policy);
+					kfree(limit_t);
 					return ret;
 				}
 				list_add_tail(&pt_policy->cpu_pt_list, &pt_policy_list);

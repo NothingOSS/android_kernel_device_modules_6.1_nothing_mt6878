@@ -261,7 +261,7 @@ static void mtk_gpufreq_get_max_min_pb(void)
 static void pbm_allocate_budget_manager(void)
 {
 	int _dlpt, md1, dlpt, cpu, gpu, flash, tocpu, togpu;
-	int multiple;
+	int multiple = 0;
 	int cpu_lower_bound = MIN_CPU_POWER;
 	static int pre_tocpu, pre_togpu;
 
@@ -327,8 +327,6 @@ static void pbm_allocate_budget_manager(void)
 		if (togpu < gpu_min_pb)
 			togpu = gpu_min_pb;
 
-		if (tocpu <= 0)
-			tocpu = 1;
 		if (togpu <= 0)
 			togpu = 1;
 
@@ -792,7 +790,8 @@ static ssize_t mt_pbm_manual_mode_proc_write
 (struct file *file, const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[64], cmd[21];
-	int len = 0, manual_mode = 0;
+	unsigned int len = 0;
+	int manual_mode = 0;
 	int loading_dlpt, loading_md1;
 	int loading_cpu, loading_gpu, loading_flash;
 
@@ -836,7 +835,8 @@ static ssize_t mt_pbm_stop_proc_write
 (struct file *file, const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[64], cmd[21];
-	int len = 0, stop = 0;
+	unsigned int len = 0;
+	int stop = 0;
 
 	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
 	if (copy_from_user(desc, buffer, len))
@@ -1003,6 +1003,7 @@ static int pbm_probe(struct platform_device *pdev)
 			if (ret < 0) {
 				pr_notice("%s: Fail to add freq constraint (%d)\n",
 					__func__, ret);
+				kfree(pbm_policy);
 				return ret;
 			}
 			list_add_tail(&pbm_policy->cpu_pbm_list, &pbm_policy_list);
