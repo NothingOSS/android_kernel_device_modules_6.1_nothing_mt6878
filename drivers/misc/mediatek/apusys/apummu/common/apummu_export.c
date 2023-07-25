@@ -93,6 +93,7 @@ out:
 err:
 	AMMU_LOG_ERR("[Alloc][Fail] Mem type(%u), addr(0x%llx), size(0x%llx)\n",
 				type, ret_addr, ret_size);
+	ammu_exception("alloc SLB fail\n");
 	return ret;
 }
 
@@ -152,6 +153,7 @@ out:
 
 err:
 	AMMU_LOG_ERR("[Free][Fail] Mem type(%u)\n", type);
+	ammu_exception("free SLB fail\n");
 	return ret;
 }
 

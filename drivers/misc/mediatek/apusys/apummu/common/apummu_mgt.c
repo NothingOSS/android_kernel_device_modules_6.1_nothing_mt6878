@@ -173,8 +173,10 @@ static int session_table_alloc(void)
 #if DRAM_FALL_BACK_IN_RUNTIME
 	if (!(g_adv->remote.is_dram_IOVA_alloc)) {
 		ret = apummu_dram_remap_runtime_alloc(g_adv);
-		if (ret)
+		if (ret) {
+			ammu_exception("alloc DRAM FB fail\n");
 			goto out;
+		}
 	}
 #endif
 
@@ -189,6 +191,7 @@ static int session_table_alloc(void)
 		ret = apummu_remote_set_hw_default_iova_one_shot(g_adv);
 		if (ret) {
 			AMMU_LOG_ERR("Remote set hw IOVA one shot fail!!\n");
+			ammu_exception("Set DRAM FB + SLB fail\n");
 			goto free_DRAM;
 		}
 	#else
@@ -209,8 +212,10 @@ static int session_table_alloc(void)
 		/* SLB retry IPI */
 		if (!g_ammu_table_set.is_SLB_set && g_adv->remote.is_general_SLB_alloc) {
 			ret = apummu_remote_mem_add_pool(g_adv);
-			if (ret)
+			if (ret) {
+				ammu_exception("Set SLB fail\n");
 				goto free_general_SLB;
+			}
 		}
 
 		g_ammu_table_set.is_SLB_set = true;

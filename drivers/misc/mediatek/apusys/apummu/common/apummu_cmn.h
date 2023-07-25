@@ -61,4 +61,21 @@ static inline int ammu_log_level_check(int log_level)
 #define AMMU_FOOT_PRINT(x, args...) \
 	pr_info(APUMMU_PREFIX "[FootPrint] %s " x, __func__, ##args)
 
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#include <aee.h>
+#define _ammu_exception(key, reason) \
+	do { \
+		char info[150];\
+		if (snprintf(info, 150, "apummu:" reason) > 0) { \
+			aee_kernel_exception(info, \
+				"\nCRDISPATCH_KEY:%s\n", key); \
+		} else { \
+			AMMU_LOG_ERR("apu_ammu: %s snprintf fail(%d)\n", __func__, __LINE__); \
+		} \
+	} while (0)
+#define ammu_exception(reason) _ammu_exception("APUSYS_APUMMU", reason)
+#else
+#define ammu_exception(reason)
+#endif
+
 #endif /* end of __APUSYS_APUMMU_COMMON_H__ */
