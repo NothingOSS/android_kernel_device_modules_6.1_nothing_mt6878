@@ -88,7 +88,7 @@ static int query_aov_reserved_iova(enum npu_scp_mem_service_action act, uint64_t
 			size = reg[1];
 
 			smmu_dev = of_find_device_by_node(smmu_node);
-			if (!smmu_node){
+			if (!smmu_dev){
 				pr_info("%s Failed to get smmu_dev\n", __func__);
 				return -ENODEV;
 			}
