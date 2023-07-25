@@ -182,7 +182,8 @@ static void mtk_vdisp_genpd_put(void)
 	int i;
 
 	for (i = 0; i < DISP_PD_NUM; i++)
-		pm_runtime_put(g_dev[i]);
+		if (g_dev[i])
+			pm_runtime_put(g_dev[i]);
 }
 
 static const struct mtk_vdisp_funcs funcs = {
@@ -243,11 +244,11 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 
 	if (!pm_runtime_enabled(dev))
 		pm_runtime_enable(dev);
-	pm_runtime_get(dev);
 	ret = dev_pm_genpd_add_notifier(dev, &priv->pd_nb);
 	if (ret)
 		VDISPERR("dev_pm_genpd_add_notifier fail(%d)", ret);
 
+	pm_runtime_get(dev);
 	mtk_vdisp_register(&funcs);
 
 	return ret;
