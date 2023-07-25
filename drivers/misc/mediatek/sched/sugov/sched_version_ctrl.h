@@ -15,3 +15,4 @@ extern bool sched_gear_hints_enable_get(void);
 extern bool sched_updown_migration_enable_get(void);
 extern bool sched_skip_hiIRQ_enable_get(void);
 extern bool sched_rt_aggre_preempt_enable_get(void);
+extern bool sched_post_init_util_enable_get(void);

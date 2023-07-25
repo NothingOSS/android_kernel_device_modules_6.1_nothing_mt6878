@@ -640,6 +640,41 @@ TRACE_EVENT(sched_headroom_interval_tick,
 		__entry->tick)
 );
 
+TRACE_EVENT(sched_post_init_entity_util_avg,
+
+	TP_PROTO(struct task_struct *p, unsigned long ori, unsigned long util_avg, unsigned long weight,
+				unsigned int freq, unsigned long desired_cpufreq, int cpu),
+
+	TP_ARGS(p, ori, util_avg, weight, freq, desired_cpufreq, cpu),
+
+	TP_STRUCT__entry(
+		__field(int, pid)
+		__array(char,		comm, TASK_COMM_LEN)
+		__field(unsigned long,	ori)
+		__field(unsigned long,	util_avg)
+		__field(unsigned long,	weight)
+		__field(unsigned int,	freq)
+		__field(unsigned long,	desired_cpufreq)
+		__field(int, cpu)
+	),
+
+	TP_fast_assign(
+		__entry->pid       = p->pid;
+		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+		__entry->ori	= ori;
+		__entry->util_avg	= util_avg;
+		__entry->weight	= weight;
+		__entry->freq	= freq;
+		__entry->desired_cpufreq	= desired_cpufreq;
+		__entry->cpu       = cpu;
+	),
+
+	TP_printk("pid=%d task=%s ori=%lu to suppressed=%lu lw=%lu max_freq=%u suppressed_freq=%lu cpu=%d",
+			__entry->pid, __entry->comm, __entry->ori,
+			__entry->util_avg, __entry->weight,
+			__entry->freq, __entry->desired_cpufreq, __entry->cpu)
+
+);
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 TRACE_EVENT(sched_get_vip_task_prio,
 	TP_PROTO(struct task_struct *p, int vip_prio, bool is_ls, unsigned int ls_vip_threshold,

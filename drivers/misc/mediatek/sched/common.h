@@ -137,6 +137,8 @@ extern void init_gear_hints(void);
 extern bool sched_updown_migration_enable_get(void);
 extern void init_updown_migration(void);
 
+extern bool sched_post_init_util_enable_get(void);
+
 extern int set_gear_indices(int pid, int gear_start, int num_gear, int reverse);
 extern int unset_gear_indices(int pid);
 extern int get_gear_indices(int pid, int *gear_start, int *num_gear, int *reverse);

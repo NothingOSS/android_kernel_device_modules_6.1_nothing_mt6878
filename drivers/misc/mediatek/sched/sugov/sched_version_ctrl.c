@@ -20,6 +20,8 @@ bool gear_hints_enable;
 bool updown_migration_enable;
 bool skip_hiIRQ_enable;
 bool rt_aggre_preempt_enable;
+bool post_init_util_ctl;
+
 int init_sched_ctrl(void)
 {
 	struct device_node *eas_node;
@@ -44,6 +46,7 @@ int init_sched_ctrl(void)
 		skip_hiIRQ_enable = false;
 		rt_aggre_preempt_enable = false;
 		vip_enable = false;
+		post_init_util_ctl = false;
 		break;
 	case EAS_5_5_1:
 		am_support = 0;
@@ -54,6 +57,7 @@ int init_sched_ctrl(void)
 		skip_hiIRQ_enable = false;
 		rt_aggre_preempt_enable = false;
 		vip_enable = false;
+		post_init_util_ctl = false;
 		break;
 	case EAS_6_1:
 		am_support = 1;
@@ -64,6 +68,7 @@ int init_sched_ctrl(void)
 		skip_hiIRQ_enable = true;
 		rt_aggre_preempt_enable = true;
 		vip_enable = true;
+		post_init_util_ctl = true;
 		break;
 	default:
 		am_support = 0;
@@ -74,6 +79,7 @@ int init_sched_ctrl(void)
 		skip_hiIRQ_enable = false;
 		rt_aggre_preempt_enable = false;
 		vip_enable = false;
+		post_init_util_ctl = false;
 		break;
 	}
 	return 0;
@@ -108,3 +114,15 @@ bool sched_rt_aggre_preempt_enable_get(void)
 	return rt_aggre_preempt_enable;
 }
 EXPORT_SYMBOL_GPL(sched_rt_aggre_preempt_enable_get);
+
+bool sched_post_init_util_enable_get(void)
+{
+	return post_init_util_ctl;
+}
+EXPORT_SYMBOL_GPL(sched_post_init_util_enable_get);
+
+void sched_post_init_util_set(bool enable)
+{
+	post_init_util_ctl = enable;
+}
+EXPORT_SYMBOL_GPL(sched_post_init_util_set);

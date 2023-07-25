@@ -210,6 +210,59 @@ static void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
 	}
 }
 
+static void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
+{
+	struct mtk_em_perf_state *ps = NULL;
+	struct cfs_rq *cfs_rq = cfs_rq_of(se);
+	struct sched_avg *sa = &se->avg;
+	int cpu = cpu_of(rq_of(cfs_rq));
+	unsigned long desired_cpu_scale = 0, ori = 0, desired_cpufreq;
+	unsigned long long desired_util_avg = 0;
+	struct task_struct *p = NULL;
+	struct cgroup_subsys_state *css = NULL;
+	bool post_init_util_ctl = sched_post_init_util_enable_get();
+
+	if (!post_init_util_ctl)
+		return;
+
+	if (likely(entity_is_task(se)))
+		p = task_of(se);
+	else
+		return;
+
+	/* vip & ls don't hack*/
+	if (
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+		task_is_vip(p, NOT_VIP)  ||
+#endif
+		is_task_latency_sensitive(p))
+		return;
+
+	/* TA don't hack*/
+	css = task_css(p, cpu_cgrp_id);
+	if (css) {
+		if (!strcmp(css->cgroup->kn->name, "top-app"))
+			return;
+	}
+
+	/*other hack...*/
+	ps = pd_get_opp_ps(0, cpu, 0, false);
+	desired_cpufreq = (ps->freq >> 2) + (ps->freq >> 3);
+	desired_cpu_scale = pd_get_freq_util(cpu, desired_cpufreq);
+	desired_util_avg = (desired_cpu_scale * 819) >> 10;
+
+	/* suppressed to desired freq when fork*/
+	if (sa->util_avg > (unsigned long)desired_util_avg) {
+		ori = sa->util_avg;
+		sa->util_avg = desired_util_avg;
+		if (trace_sched_post_init_entity_util_avg_enabled()) {
+			trace_sched_post_init_entity_util_avg(p, ori, sa->util_avg,
+				se->load.weight, ps->freq, desired_cpufreq, cpu);
+		}
+		sa->runnable_avg = sa->util_avg;
+	}
+}
+
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 static void sched_irq_mon_init(void)
 {
@@ -706,6 +759,11 @@ static int __init mtk_scheduler_init(void)
 	ret = register_trace_android_vh_dump_throttled_rt_tasks(throttled_rt_tasks_debug, NULL);
 	if (ret)
 		pr_info("register dump_throttled_rt_tasks hooks failed, returned %d\n", ret);
+
+	ret = register_trace_android_rvh_post_init_entity_util_avg(
+		mtk_post_init_entity_util_avg, NULL);
+	if (ret)
+		pr_info("register mtk_post_init_entity_util_avg hooks failed, returned %d\n", ret);
 
 #if IS_ENABLED(CONFIG_DETECT_HUNG_TASK)
 	//ret = register_trace_android_vh_check_uninterruptible_tasks(mtk_check_d_tasks, NULL);
