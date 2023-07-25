@@ -983,6 +983,13 @@ void ufs_mtk_trace_vh_ufs_prepare_command(void *data, struct ufs_hba *hba,
 		cmnd[1] &= ~0x08;
 }
 
+void ufs_mtk_trace_vh_check_int_errors(void *data, struct ufs_hba *hba, bool queue_eh_work)
+{
+	/* Disable UIC Error intr since eh work is scheduled */
+	if (queue_eh_work && hba->uic_error)
+		ufsm_disable_intr(hba, UIC_ERROR);
+}
+
 static struct tracepoints_table interests[] = {
 	{
 		.name = "android_vh_ufs_prepare_command",
@@ -999,6 +1006,10 @@ static struct tracepoints_table interests[] = {
 	{
 		.name = "android_vh_ufs_update_sdev",
 		.func = ufs_mtk_trace_vh_update_sdev
+	},
+	{
+		.name = "android_vh_ufs_check_int_errors",
+		.func = ufs_mtk_trace_vh_check_int_errors
 	},
 };
 
@@ -2482,7 +2493,6 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 	unsigned long reg;
 	uint8_t bit;
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	u32 set;
 
 	trace_ufs_mtk_event(evt, val);
 
@@ -2512,9 +2522,7 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 			hba->ufshcd_state = UFSHCD_STATE_EH_SCHEDULED_FATAL;
 
 			/* Disable UIC error intr to stop consecutive irq */
-			set = ufshcd_readl(hba, REG_INTERRUPT_ENABLE);
-			set &= ~UFSHCD_ERROR_MASK;
-			ufshcd_writel(hba, set, REG_INTERRUPT_ENABLE);
+			ufsm_disable_intr(hba, UFSHCD_ERROR_MASK);
 
 			queue_delayed_work(host->delay_eh_workq,
 				&host->delay_eh_work,
@@ -2526,9 +2534,7 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 		/* intr_status */
 		reg = val;
 		if (reg & (CONTROLLER_FATAL_ERROR | SYSTEM_BUS_FATAL_ERROR)) {
-			set = ufshcd_readl(hba, REG_INTERRUPT_ENABLE);
-			set &= ~UFSHCD_ERROR_MASK;
-			ufshcd_writel(hba, set, REG_INTERRUPT_ENABLE);
+			ufsm_disable_intr(hba, UFSHCD_ERROR_MASK);
 			/* for fatal error, eh will be queued automatically */
 		}
 	}

@@ -21,5 +21,6 @@ int ufsm_wait_for_doorbell_clr(struct ufs_hba *hba,
 
 void ufsm_scsi_unblock_requests(struct ufs_hba *hba);
 void ufsm_scsi_block_requests(struct ufs_hba *hba);
+void ufsm_disable_intr(struct ufs_hba *hba, u32 intrs);
 
 #endif /* _UFS_MEDIATEK_MIMIC_ */
