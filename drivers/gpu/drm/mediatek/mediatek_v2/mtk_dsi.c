@@ -2372,10 +2372,18 @@ void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
 	if (csc_bl[index] != mtk_conn_state->prop_val[index][CONNECTOR_PROP_CSC_BL]) {
 		struct mtk_ddp_comp *comp;
 		struct mtk_drm_crtc *mtk_crtc = dsi->ddp_comp.mtk_crtc;
-		struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(mtk_crtc->base.state);
+		struct mtk_crtc_state *mtk_crtc_state = NULL;
 
-		if (mtk_crtc == NULL || mtk_crtc_state == NULL)
+		if (mtk_crtc == NULL) {
+			DDPPR_ERR("%s[%d]:mtk_crtc is NULL\n", __func__, __LINE__);
 			return;
+		}
+
+		mtk_crtc_state = to_mtk_crtc_state(mtk_crtc->base.state);
+		if (mtk_crtc_state == NULL) {
+			DDPPR_ERR("%s[%d]:mtk_crtc_state is NULL\n", __func__, __LINE__);
+			return;
+		}
 
 		csc_bl[index] = mtk_conn_state->prop_val[index][CONNECTOR_PROP_CSC_BL];
 		DDPINFO("%s, csc_bl[%d] = %llu\n", __func__, index, csc_bl[index]);
@@ -3729,8 +3737,6 @@ static int mtk_dsi_connector_set_property(struct drm_connector *connector,
 		return -EINVAL;
 
 	index = connector->index;
-	if (index < 0)
-		return -EINVAL;
 
 	dev = dsi->conn.dev;
 	if (dev == NULL)
@@ -3798,8 +3804,11 @@ mtk_dsi_connector_duplicate_state(struct drm_connector *connector)
 
 	old_state = to_mtk_connector_state(connector->state);
 	state = kmalloc(sizeof(*state), GFP_KERNEL);
-	if (state)
-		__drm_atomic_helper_connector_duplicate_state(connector, &state->base);
+	if (state == NULL) {
+		DDPPR_ERR("%s[%d]:state is null\n", __func__, __LINE__);
+		return 0;
+	}
+	__drm_atomic_helper_connector_duplicate_state(connector, &state->base);
 
 	if (state->base.connector != connector) {
 		DDPAEE("%s:%d, invalid connector:(%p,%p)\n",
@@ -9946,9 +9955,12 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		DDPDBG("[Msync] %s:%d iocmd DSI_READ_VFP_PERIOD\n", __func__, __LINE__);
 		vfp_period_spr = *(u16 *)params;
 		DDPDBG("[Msync] read VFP_PERIOD\n");
-		if (handle)
-			cmdq_pkt_read(handle, NULL, comp->regs_pa + DSI_STATE_DBG7, vfp_period_spr);
+		if (handle == NULL) {
+			DDPPR_ERR("%s[%d]:handle is null\n", __func__, __LINE__);
+			return 0;
+		}
 
+		cmdq_pkt_read(handle, NULL, comp->regs_pa + DSI_STATE_DBG7, vfp_period_spr);
 		cmdq_pkt_mem_move(handle, comp->cmdq_base,
 			comp->regs_pa + DSI_STATE_DBG7,
 			slot, CMDQ_THR_SPR_IDX3);

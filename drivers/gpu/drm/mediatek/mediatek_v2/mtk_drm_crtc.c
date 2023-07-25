@@ -1522,7 +1522,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	unsigned int panel_ext_param, unsigned int cfg_flag, unsigned int lock)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+	struct pq_common_data *pq_data = NULL;
 	struct cmdq_pkt *cmdq_handle;
 	struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output(mtk_crtc);
 	struct mtk_ddp_comp *oddmr_comp;
@@ -1541,8 +1541,6 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	if (lock)
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
-	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])
-		sb_backlight = level;
 
 	if(mtk_crtc == NULL || crtc->state == NULL){
 		DDPINFO("Sleep State set backlight stop --crtc not ebable\n");
@@ -1551,6 +1549,9 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -EINVAL;
 	}
+	pq_data = mtk_crtc->pq_data;
+	if (pq_data && pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])
+		sb_backlight = level;
 
 	if (!(mtk_crtc->enabled)) {
 		DDPINFO("Sleep State set backlight stop --crtc not ebable\n");
@@ -1590,7 +1591,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	is_frame_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
 
 	/* SILKY BRIGHTNESS control flow only support CRTC0 */
-	if (index == 0 && pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS] &&
+	if (index == 0 && pq_data && pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS] &&
 		sb_cmdq_handle != NULL) {
 		cmdq_handle = sb_cmdq_handle;
 		sb_cmdq_handle = NULL;
@@ -13034,7 +13035,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	}
 
 	/*Msync 2.0: add Msync trace info*/
-	mtk_drm_trace_begin("mtk_drm_crtc_atomic:%d-%d-%d-%d",
+	mtk_drm_trace_begin("mtk_drm_crtc_atomic:%u-%llu-%llu-%d",
 				crtc_idx, mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX],
 				mtk_crtc_state->prop_val[CRTC_PROP_MSYNC2_0_ENABLE],
 				mtk_crtc->msync2.msync_disabled);
@@ -14627,6 +14628,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		mtk_crtc->panel_ext->params->is_support_dmr = !partial_enable;
 		mtk_crtc->panel_ext->params->is_support_od = !partial_enable;
 
+		memset(&tile_overhead_v, 0, sizeof(tile_overhead_v));
 		/* calculate total overhead vertical */
 		for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
 			mtk_ddp_comp_config_overhead_v(comp, &tile_overhead_v);
@@ -15304,7 +15306,7 @@ end:
 #endif
 	CRTC_MMP_EVENT_END((int) index, atomic_flush, (unsigned long)crtc_state,
 			(unsigned long)old_crtc_state);
-	mtk_drm_trace_end("mtk_drm_crtc_atomic:%d-%d-%d-%d",
+	mtk_drm_trace_end("mtk_drm_crtc_atomic:%u-%llu-%llu-%d",
 				index, mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX],
 				mtk_crtc_state->prop_val[CRTC_PROP_MSYNC2_0_ENABLE],
 				mtk_crtc->msync2.msync_disabled);

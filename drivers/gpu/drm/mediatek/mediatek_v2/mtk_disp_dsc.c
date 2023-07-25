@@ -634,6 +634,12 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 		rbs_min = rc_model_size - initial_offset +
 		  (initial_xmit_delay * (bit_per_pixel/16)) +
 		  (slice_group_width * first_line_bpg_offset);
+
+		if (bit_per_pixel == 0) {
+			DDPPR_ERR("%s[%d]:bit_per_pixel is 0\n", __func__, __LINE__);
+			return;
+		}
+
 		hrd_delay = (rbs_min + ((bit_per_pixel/16) - 1)) / (bit_per_pixel/16);
 		dec_delay = hrd_delay - initial_xmit_delay;
 		xmit_delay = initial_xmit_delay;

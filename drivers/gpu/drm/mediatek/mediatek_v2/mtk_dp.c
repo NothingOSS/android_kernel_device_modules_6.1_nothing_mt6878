@@ -1294,7 +1294,7 @@ DPTX_TEST_PHY80B_EN)
 
 uint8_t mdrv_DPTx_getSinkCount(struct mtk_dp *mtk_dp)
 {
-	uint8_t temp;
+	uint8_t temp = 0;
 
 	if (mtk_dp->training_info.bSinkEXTCAP_En)
 		drm_dp_dpcd_read(&mtk_dp->aux, DPCD_02002, &temp, 0x1);
