@@ -932,6 +932,8 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	mml_trace_begin("%u_%llu_%llu", throughput, duration, boost_time);
 	task->freq_time[pipe] = sched_clock();
 	path_clt->throughput = throughput;
+	if (cfg->dpc)
+		mml_dpc_dvfs_bw_set(DPC_SUBSYS_MML, cfg->disp_hrt);
 	tput_up = mml_qos_update_tput(cfg->mml, cfg->dpc);
 
 	/* note the running task not always current begin task */
@@ -1066,6 +1068,15 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 
 done:
 	path_clt->throughput = throughput;
+
+	if (task->config->dpc) {
+		if (throughput)
+			mml_dpc_dvfs_bw_set(DPC_SUBSYS_MML,
+				task->config->disp_hrt);
+		else
+			mml_dpc_dvfs_bw_set(DPC_SUBSYS_MML, 0);
+	}
+
 	tput_up = mml_qos_update_tput(task->config->mml, task->config->dpc);
 	if (throughput) {
 		/* clear so that qos set api report max bw */

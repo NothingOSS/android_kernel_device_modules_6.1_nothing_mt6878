@@ -61,6 +61,7 @@ void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bo
 void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
 void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
 void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force);
+void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
 int dpc_vidle_power_keep(const enum mtk_vidle_voter_user);
 void dpc_vidle_power_release(const enum mtk_vidle_voter_user);
 
@@ -77,6 +78,7 @@ struct dpc_funcs {
 	void (*dpc_hrt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
 	void (*dpc_srt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
 	void (*dpc_dvfs_set)(const enum mtk_dpc_subsys subsys, const u8 level, bool force);
+	void (*dpc_dvfs_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
 	void (*dpc_analysis)(void);
 };
 

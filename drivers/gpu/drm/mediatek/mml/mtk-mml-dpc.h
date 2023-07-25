@@ -38,5 +38,7 @@ void mml_dpc_srt_bw_set(const enum mtk_dpc_subsys subsys,
 void mml_dpc_dvfs_set(const enum mtk_dpc_subsys subsys,
 		      const u8 level,
 		      bool force_keep);
+void mml_dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys,
+			 const u32 bw_in_mb);
 
 #endif	/* __MTK_MML_H__ */

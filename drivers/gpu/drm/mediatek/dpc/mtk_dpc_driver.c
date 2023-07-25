@@ -94,6 +94,8 @@ struct mtk_dpc {
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	struct dentry *fs;
 #endif
+	struct mtk_dpc_dvfs_bw dvfs_bw;
+	struct mutex bw_dvfs_mutex;
 };
 static struct mtk_dpc *g_priv;
 
@@ -574,35 +576,106 @@ void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool f
 }
 EXPORT_SYMBOL(dpc_srt_bw_set);
 
+
+static u8 dpc_max_dvfs_level(void)
+{
+	u8 max_level;
+
+	max_level = max(g_priv->dvfs_bw.disp_dvfs_level,
+		g_priv->dvfs_bw.mml_dvfs_level);
+	max_level = max(max_level, g_priv->dvfs_bw.bw_level);
+
+	return max_level;
+}
+
 void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force)
 {
 	u32 addr1 = 0, addr2 = 0;
-
-	if (dpc_pm_ctrl(true))
-		return;
-
-	if (subsys == DPC_SUBSYS_DISP) {
-		addr1 = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
-		addr2 = DISP_REG_DPC_DISP_VDISP_DVFS_CFG;
-	} else if (subsys == DPC_SUBSYS_MML) {
-		addr1 = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
-		addr2 = DISP_REG_DPC_MML_VDISP_DVFS_CFG;
-	}
+	u8 max_level;
 
 	/* support 575, 600, 650, 700, 750 mV */
 	if (level > 4) {
 		DPCERR("vdisp support only 5 levels");
 		return;
 	}
+
+	if (dpc_pm_ctrl(true))
+		return;
+
+	mutex_lock(&g_priv->bw_dvfs_mutex);
+
+	if (subsys == DPC_SUBSYS_DISP) {
+		addr1 = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
+		addr2 = DISP_REG_DPC_DISP_VDISP_DVFS_CFG;
+		g_priv->dvfs_bw.disp_dvfs_level = level;
+	} else if (subsys == DPC_SUBSYS_MML) {
+		addr1 = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
+		addr2 = DISP_REG_DPC_MML_VDISP_DVFS_CFG;
+		g_priv->dvfs_bw.mml_dvfs_level = level;
+	}
+
 	writel(level, dpc_base + addr1);
 	writel(force ? 1 : 0, dpc_base + addr2);
 
 	if (unlikely(debug_dvfs))
 		DPCFUNC("subsys(%u) vdisp level(%u) force(%u)", subsys, level, force);
 
+	max_level = dpc_max_dvfs_level();
+	if (max_level > level)
+		writel(max_level, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL);
+
+	if (unlikely(debug_dvfs) && max_level > level)
+		DPCFUNC("subsys(%u) vdisp level(%u) force(%u)", subsys, max_level, force);
+
+	mutex_unlock(&g_priv->bw_dvfs_mutex);
+
 	dpc_pm_ctrl(false);
 }
 EXPORT_SYMBOL(dpc_dvfs_set);
+
+void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb)
+{
+	u8 level = 0;
+	u32 total_bw;
+	u8 max_level;
+
+	mutex_lock(&g_priv->bw_dvfs_mutex);
+
+	if (subsys == DPC_SUBSYS_DISP)
+		g_priv->dvfs_bw.disp_bw = bw_in_mb * 10 / 7;
+	else if (subsys == DPC_SUBSYS_MML)
+		g_priv->dvfs_bw.mml_bw = bw_in_mb * 10 / 7;
+
+	total_bw = g_priv->dvfs_bw.disp_bw + g_priv->dvfs_bw.mml_bw;
+
+	if (total_bw > 6988)
+		level = 4;
+	else if (total_bw > 5129)
+		level = 3;
+	else if (total_bw > 4076)
+		level = 2;
+	else if (total_bw > 3057)
+		level = 1;
+	else
+		level = 0;
+
+	g_priv->dvfs_bw.bw_level = level;
+
+	if (dpc_pm_ctrl(true))
+		return;
+
+	max_level = dpc_max_dvfs_level();
+	writel(max_level, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL);
+
+	if (unlikely(debug_dvfs))
+		DPCFUNC("subsys(%u) disp_bw(%u) mml_bw(%u) vdisp level(%u)",
+			subsys, g_priv->dvfs_bw.disp_bw, g_priv->dvfs_bw.mml_bw, max_level);
+
+	mutex_unlock(&g_priv->bw_dvfs_mutex);
+
+	dpc_pm_ctrl(false);
+}
+EXPORT_SYMBOL(dpc_dvfs_bw_set);
 
 void dpc_group_enable(const u16 group, bool en)
 {
@@ -1292,6 +1365,7 @@ static const struct dpc_funcs funcs = {
 	.dpc_hrt_bw_set = dpc_hrt_bw_set,
 	.dpc_srt_bw_set = dpc_srt_bw_set,
 	.dpc_dvfs_set = dpc_dvfs_set,
+	.dpc_dvfs_bw_set = dpc_dvfs_bw_set,
 	.dpc_analysis = dpc_analysis,
 };
 
@@ -1352,6 +1426,8 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 #endif
 
 	dpc_mmp_init();
+
+	mutex_init(&g_priv->bw_dvfs_mutex);
 
 	mtk_vidle_register(&funcs);
 	mml_dpc_register(&funcs);

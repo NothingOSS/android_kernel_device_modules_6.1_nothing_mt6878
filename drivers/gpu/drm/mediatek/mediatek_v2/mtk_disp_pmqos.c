@@ -253,6 +253,7 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 			else
 				mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(tmp1));
 
+			mtk_vidle_dvfs_bw_set(tmp1);
 			DDPINFO("%s, CRTC%d HRT bw=%u total=%u larb bw=%u ovl_num=%d bw_base=%d\n",
 				__func__, crtc_idx, tmp, total, tmp1, ovl_num, bw_base);
 		}

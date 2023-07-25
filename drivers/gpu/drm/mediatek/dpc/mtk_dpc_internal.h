@@ -199,6 +199,14 @@ struct mtk_dpc_dt_usage {
 	u16 group;
 };
 
+struct mtk_dpc_dvfs_bw {
+	u8 bw_level;
+	u32 disp_bw;
+	u32 mml_bw;
+	u8 disp_dvfs_level;
+	u8 mml_dvfs_level;
+};
+
 static void dpc_dt_enable(u16 dt, bool en);
 static void dpc_dt_set(u16 dt, u32 counter);
 static void dpc_dt_sw_trig(u16 dt);
