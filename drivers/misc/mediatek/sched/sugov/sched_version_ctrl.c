@@ -19,6 +19,7 @@ bool vip_enable;
 bool gear_hints_enable;
 bool updown_migration_enable;
 bool skip_hiIRQ_enable;
+bool rt_aggre_preempt_enable;
 int init_sched_ctrl(void)
 {
 	struct device_node *eas_node;
@@ -41,6 +42,7 @@ int init_sched_ctrl(void)
 		gear_hints_enable = false;
 		updown_migration_enable = false;
 		skip_hiIRQ_enable = false;
+		rt_aggre_preempt_enable = false;
 		vip_enable = false;
 		break;
 	case EAS_5_5_1:
@@ -50,6 +52,7 @@ int init_sched_ctrl(void)
 		gear_hints_enable = false;
 		updown_migration_enable = true;
 		skip_hiIRQ_enable = false;
+		rt_aggre_preempt_enable = false;
 		vip_enable = false;
 		break;
 	case EAS_6_1:
@@ -59,6 +62,7 @@ int init_sched_ctrl(void)
 		gear_hints_enable = true;
 		updown_migration_enable = true;
 		skip_hiIRQ_enable = true;
+		rt_aggre_preempt_enable = true;
 		vip_enable = true;
 		break;
 	default:
@@ -68,6 +72,7 @@ int init_sched_ctrl(void)
 		gear_hints_enable = false;
 		updown_migration_enable = false;
 		skip_hiIRQ_enable = false;
+		rt_aggre_preempt_enable = false;
 		vip_enable = false;
 		break;
 	}
@@ -97,3 +102,9 @@ bool sched_skip_hiIRQ_enable_get(void)
 	return skip_hiIRQ_enable;
 }
 EXPORT_SYMBOL_GPL(sched_skip_hiIRQ_enable_get);
+
+bool sched_rt_aggre_preempt_enable_get(void)
+{
+	return rt_aggre_preempt_enable;
+}
+EXPORT_SYMBOL_GPL(sched_rt_aggre_preempt_enable_get);

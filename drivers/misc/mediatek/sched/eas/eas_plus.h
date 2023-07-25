@@ -92,6 +92,7 @@ struct energy_env {
 };
 
 struct rt_energy_aware_output {
+	unsigned int rt_cpus;
 	unsigned int cfs_cpus;
 	unsigned int idle_cpus;
 	int cfs_lowest_cpu;
@@ -249,7 +250,9 @@ extern void throttled_rt_tasks_debug(void *unused, int cpu, u64 clock,
 				ktime_t rt_period, u64 rt_runtime, s64 rt_period_timer_expires);
 
 extern bool sched_skip_hiIRQ_enable_get(void);
+extern bool sched_rt_aggre_preempt_enable_get(void);
 extern void init_skip_hiIRQ(void);
+extern void init_rt_aggre_preempt(void);
 extern int cpu_high_irqload(int cpu);
 extern unsigned int mtk_get_idle_exit_latency(int cpu, struct rt_energy_aware_output *rt_ea_output);
 extern unsigned long mtk_sched_cpu_util(int cpu);

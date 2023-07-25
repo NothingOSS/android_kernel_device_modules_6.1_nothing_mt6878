@@ -566,6 +566,7 @@ static int __init mtk_scheduler_init(void)
 #endif
 
 	init_skip_hiIRQ();
+	init_rt_aggre_preempt();
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	init_flt_platform();

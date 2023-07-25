@@ -18,9 +18,16 @@ void init_skip_hiIRQ(void)
 	skip_hiIRQ_enable = sched_skip_hiIRQ_enable_get();
 }
 
+bool rt_aggre_preempt_enable;
+void init_rt_aggre_preempt(void)
+{
+	rt_aggre_preempt_enable = sched_rt_aggre_preempt_enable_get();
+}
+
 static inline void rt_energy_aware_output_init(struct rt_energy_aware_output *rt_ea_output,
 			struct task_struct *p)
 {
+	rt_ea_output->rt_cpus = 0;
 	rt_ea_output->cfs_cpus = 0;
 	rt_ea_output->idle_cpus = 0;
 	rt_ea_output->cfs_lowest_cpu = -1;
@@ -359,20 +366,25 @@ inline unsigned int mtk_get_idle_exit_latency(int cpu,
 
 	if (rt_ea_output) {
 		curr = cpu_rq(cpu)->curr;
-		if (curr && (curr->policy == SCHED_NORMAL)
-				&& (curr->prio > rt_ea_output->cfs_lowest_prio)
-				&& (!task_may_not_preempt(curr, cpu))) {
-			rt_ea_output->cfs_lowest_prio = curr->prio;
-			rt_ea_output->cfs_lowest_cpu = cpu;
+		if (curr && (curr->policy == SCHED_NORMAL)) {
 			rt_ea_output->cfs_cpus = (rt_ea_output->cfs_cpus | (1 << cpu));
-			rt_ea_output->cfs_lowest_pid = curr->pid;
+
+			if ((curr->prio > rt_ea_output->cfs_lowest_prio)
+				&& (!task_may_not_preempt(curr, cpu))) {
+				rt_ea_output->cfs_lowest_prio = curr->prio;
+				rt_ea_output->cfs_lowest_cpu = cpu;
+				rt_ea_output->cfs_lowest_pid = curr->pid;
+			}
 		}
 
-		if (curr && rt_task(curr)
-			&& (curr->prio > rt_ea_output->rt_lowest_prio)) {
-			rt_ea_output->rt_lowest_prio = curr->prio;
-			rt_ea_output->rt_lowest_cpu = cpu;
-			rt_ea_output->rt_lowest_pid = curr->pid;
+		if (curr && rt_task(curr)) {
+			rt_ea_output->rt_cpus = (rt_ea_output->rt_cpus | (1 << cpu));
+
+			if (curr->prio > rt_ea_output->rt_lowest_prio) {
+				rt_ea_output->rt_lowest_prio = curr->prio;
+				rt_ea_output->rt_lowest_cpu = cpu;
+				rt_ea_output->rt_lowest_pid = curr->pid;
+			}
 		}
 	}
 
@@ -391,9 +403,9 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			struct cpumask *lowest_mask, int ret, int *best_cpu, bool energy_eval,
 			struct rt_energy_aware_output *rt_ea_output)
 {
-	int cpu, best_idle_cpu_cluster;
+	int cpu, best_idle_cpu_cluster, best_non_idle_cpu_cluster, non_idle_cpu_prio;
 	unsigned long util_cum[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = ULONG_MAX};
-	unsigned long cpu_util_cum, best_cpu_util_cum = ULONG_MAX;
+	unsigned long cpu_util_cum, non_idle_cpu_util_cum, best_cpu_util_cum = ULONG_MAX;
 	unsigned long min_cap = uclamp_eff_value(p, UCLAMP_MIN);
 	unsigned long max_cap = uclamp_eff_value(p, UCLAMP_MAX);
 	unsigned long best_idle_exit_latency = UINT_MAX;
@@ -428,6 +440,9 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	for (cluster = 0; cluster < num_sched_clusters; cluster++) {
 		best_idle_exit_latency = UINT_MAX;
 		best_idle_cpu_cluster = -1;
+		non_idle_cpu_util_cum = ULONG_MAX;
+		non_idle_cpu_prio = -1;
+		best_non_idle_cpu_cluster = -1;
 		best_cpu_has_lt = true;
 
 		target_pd = rcu_dereference(pd);
@@ -464,6 +479,23 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			if (cpu_has_lt && !best_cpu_has_lt)
 				continue;
 
+			/* record best non-idle cpu in gear if gear don't have idle cpus */
+			irq_log_store();
+			cpu_util_cum = mtk_sched_max_util(p, cpu, min_cap, max_cap);
+			irq_log_store();
+
+			util_cum[cpu] = cpu_util_cum;
+			if (rt_aggre_preempt_enable &&
+				!cpu_has_lt && ((cpu_rq(cpu)->curr->policy) == SCHED_NORMAL)) {
+				if (((cpu_rq(cpu)->curr->prio) > non_idle_cpu_prio) ||
+					(((cpu_rq(cpu)->curr->prio) == non_idle_cpu_prio)
+						&& (non_idle_cpu_util_cum > cpu_util_cum))) {
+					best_non_idle_cpu_cluster = cpu;
+					non_idle_cpu_prio = (cpu_rq(cpu)->curr->prio);
+					non_idle_cpu_util_cum = cpu_util_cum;
+				}
+			}
+
 			/*
 			 * If candidate CPU is the previous CPU, select it.
 			 * Otherwise, if its load is same with best_cpu and in
@@ -478,9 +510,6 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			if (cpu_idle_exit_latency == UINT_MAX)
 				continue;
 
-			irq_log_store();
-			cpu_util_cum = mtk_sched_max_util(p, cpu, min_cap, max_cap);
-			irq_log_store();
 			if (best_idle_exit_latency < cpu_idle_exit_latency)
 				continue;
 
@@ -490,7 +519,6 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 
 			best_idle_exit_latency = cpu_idle_exit_latency;
 			best_cpu_util_cum = cpu_util_cum;
-			util_cum[cpu] = cpu_util_cum;
 			best_idle_cpu_cluster = cpu;
 			best_cpu_has_lt = cpu_has_lt;
 		}
@@ -499,6 +527,8 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 
 		if (best_idle_cpu_cluster != -1)
 			cpumask_set_cpu(best_idle_cpu_cluster, &candidates);
+		else if (best_non_idle_cpu_cluster != -1)
+			cpumask_set_cpu(best_non_idle_cpu_cluster, &candidates);
 
 		if ((cluster >= end_index) && (!cpumask_empty(&candidates)))
 			break;
@@ -611,6 +641,8 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 		(may_not_preempt || p->prio < cpu_rq(target)->rt.highest_prio.curr)) {
 		*target_cpu = target;
 		select_reason = LB_RT_IDLE | rt_ea_output.select_reason;
+		if (!(rt_ea_output.idle_cpus & (1 << target)))
+			select_reason = select_reason | LB_FAIL_IN_REGULAR;
 	} else if (rt_ea_output.cfs_lowest_cpu != -1) {
 		*target_cpu = rt_ea_output.cfs_lowest_cpu;
 		select_reason = LB_RT_LOWEST_PRIO_NORMAL;
@@ -665,6 +697,8 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 	if (target != -1) {
 		*lowest_cpu = target;
 		select_reason = LB_RT_IDLE | rt_ea_output.select_reason;
+		if (!(rt_ea_output.idle_cpus & (1 << target)))
+			select_reason = select_reason | LB_FAIL_IN_REGULAR;
 		goto out;
 	}
 
