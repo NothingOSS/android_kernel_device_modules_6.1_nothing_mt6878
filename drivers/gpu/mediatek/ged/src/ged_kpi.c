@@ -2147,6 +2147,7 @@ GED_ERROR ged_kpi_system_init(void)
 #else
 	ghLogBuf_KPI = 0;
 #endif /* GED_BUFFER_LOG_DISABLE */
+	struct device_node *dvfs_prefence_node = NULL;
 	is_GED_KPI_enabled = ged_gpufreq_bringup() ? 0 : 1;
 	g_eb_workload = 0;
 	force_loading_based_enable = 0;
@@ -2161,6 +2162,13 @@ GED_ERROR ged_kpi_system_init(void)
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_register_fps_chg_callback(ged_dfrc_fps_limit_cb);
 #endif
+
+	dvfs_prefence_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_prefence");
+	if (unlikely(!dvfs_prefence_node))
+		GED_LOGI("Failed to find dvfs_prefence_node");
+	else
+		of_property_read_u32(dvfs_prefence_node, "dvfs-prefence-enable",
+							&g_ged_pre_fence_chk);
 
 	g_psWorkQueue =
 		alloc_ordered_workqueue("ged_kpi",
