@@ -7860,6 +7860,11 @@
 			dvfs-workload-mode = <5>;
 		};
 
+		gpu_dvfs_prefence: gpu-prefence {
+			compatible = "mediatek,gpu_prefence";
+			dvfs-prefence-enable = <1>;
+		};
+
 		gpueb: gpueb@13c00000 {
 			compatible = "mediatek,gpueb";
 			gpueb-support = <1>;
