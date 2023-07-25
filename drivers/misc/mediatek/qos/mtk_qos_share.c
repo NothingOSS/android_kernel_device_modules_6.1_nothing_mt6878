@@ -14,10 +14,13 @@
 
 static void __iomem *qos_share_sram_base;
 static unsigned int qos_share_sram_bound;
+static void __iomem *qos_share_sram_base_ext;
+static unsigned int qos_share_sram_bound_ext;
 
 struct qos_rec_data *qos_share_ref;
 
 static int qos_share_use_sram;
+static int qos_share_use_sram_ext;
 
 /* share dram for subsys related table communication */
 static phys_addr_t rec_phys_addr, rec_virt_addr;
@@ -104,6 +107,24 @@ end:
 }
 EXPORT_SYMBOL_GPL(qos_init_rec_share);
 
+unsigned int qos_rec_get_dramc_hist_bw(unsigned int idx, unsigned int type)
+{
+	unsigned int val = 0;
+
+	if (!qos_share_ref)
+		return val;
+
+	if (idx >= HIST_NUM || type >= BW_TYPE)
+		return val;
+
+	if (qos_share_use_sram_ext)
+		val = qos_share_sram_read_ext((BW_TYPE * idx + type)*4);
+	pr_info("sram_dram: %d\n", val);
+
+	return val;
+}
+EXPORT_SYMBOL_GPL(qos_rec_get_dramc_hist_bw);
+
 unsigned int qos_rec_get_hist_bw(unsigned int idx, unsigned int type)
 {
 	unsigned int val = 0;
@@ -142,6 +163,15 @@ unsigned int qos_rec_get_hist_data_bw(unsigned int idx, unsigned int type)
 }
 EXPORT_SYMBOL_GPL(qos_rec_get_hist_data_bw);
 
+unsigned int qos_rec_check_sram_ext(void)
+{
+	if (qos_share_use_sram_ext)
+		return 0;
+	else
+		return 0xFFFF;
+}
+EXPORT_SYMBOL_GPL(qos_rec_check_sram_ext);
+
 unsigned int qos_rec_get_hist_idx(void)
 {
 	if (qos_share_use_sram)
@@ -170,6 +200,34 @@ int qos_share_init_sram(void __iomem *regs, unsigned int bound)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(qos_share_init_sram);
+
+int qos_share_init_sram_ext(void __iomem *regs, unsigned int bound)
+{
+	int i;
+
+	qos_share_sram_base_ext = regs;
+	qos_share_sram_bound_ext = bound;
+
+	pr_info("qos share sram_ext addr:0x%p len:%d\n",
+		qos_share_sram_base_ext, qos_share_sram_bound_ext);
+	qos_share_use_sram_ext = 1;
+	/* init zero except for version addr */
+	for (i = 0; i < bound; i += 4)
+		writel(0x0, qos_share_sram_base_ext+i);
+
+	pr_info("qos share use ext sram = %d\n", qos_share_use_sram_ext);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(qos_share_init_sram_ext);
+
+extern u32 qos_share_sram_read_ext(u32 offset)
+{
+	if (!qos_share_sram_base_ext || offset >= qos_share_sram_bound_ext)
+		return 0;
+
+	return readl(qos_share_sram_base_ext + offset);
+}
+EXPORT_SYMBOL_GPL(qos_share_sram_read_ext);
 
 extern u32 qos_share_sram_read(u32 offset)
 {

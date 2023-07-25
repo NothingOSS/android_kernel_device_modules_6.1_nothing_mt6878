@@ -146,9 +146,19 @@ int mtk_qos_probe(struct platform_device *pdev,
 	if (IS_ERR(qos->regs))
 		pr_info("mtkqos: share not use sram\n");
 	else {
-		pr_info("mtkoqs: find share sram node\n");
+		pr_info("mtkqos: find share sram node\n");
 		qos->regsize = (unsigned int) resource_size(res);
 		qos_share_init_sram(qos->regs, qos->regsize);
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	qos->regs = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(qos->regs))
+		pr_info("mtkqos: not using ext share sram\n");
+	else {
+		pr_info("mtkqos: find share sram ext node\n");
+		qos->regsize = (unsigned int) resource_size(res);
+		qos_share_init_sram_ext(qos->regs, qos->regsize);
 	}
 
 	if (mtk_qos_enable) {

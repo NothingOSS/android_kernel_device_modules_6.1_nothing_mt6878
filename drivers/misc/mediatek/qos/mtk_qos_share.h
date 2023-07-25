@@ -27,6 +27,8 @@ extern unsigned int qos_rec_get_hist_bw(unsigned int idx,
 										unsigned int type);
 extern unsigned int qos_rec_get_hist_data_bw(unsigned int idx,
 										unsigned int type);
+extern unsigned int qos_rec_get_dramc_hist_bw(unsigned int idx,
+										unsigned int type);
 extern unsigned int qos_rec_get_hist_idx(void);
 #define QOS_SHARE_REC_VER               0x0
 #define QOS_SHARE_CURR_IDX              0x20
@@ -34,5 +36,8 @@ extern unsigned int qos_rec_get_hist_idx(void);
 #define QOS_SHARE_HIST_DATA_BW          0xA4
 
 extern int qos_share_init_sram(void __iomem *regs, unsigned int bound);
+extern int qos_share_init_sram_ext(void __iomem *regs, unsigned int bound);
+extern unsigned int qos_rec_check_sram_ext(void);
 extern u32 qos_share_sram_read(u32 id);
+extern u32 qos_share_sram_read_ext(u32 offset);
 #endif
