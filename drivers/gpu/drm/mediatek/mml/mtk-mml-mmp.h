@@ -62,6 +62,11 @@ struct mml_mmp_events_t {
 	mmp_event command0;
 	mmp_event command1;
 
+	/* events for clock */
+	mmp_event clock;
+	mmp_event clk_enable;
+	mmp_event clk_disable;
+
 	/* events for inline rotate disp addon */
 	mmp_event addon;
 	mmp_event addon_mml_calc_cfg;

@@ -16,7 +16,7 @@ struct mml_mmp_events_t *mml_mmp_get_event(void)
 
 void mml_mmp_init(void)
 {
-	mmp_event mml, command, addon, dle, dpc;
+	mmp_event mml, command, addon, dle, dpc, clock;
 
 	if (mml_mmp_events.mml)
 		return;
@@ -77,6 +77,11 @@ void mml_mmp_init(void)
 	mml_mmp_events.dpc_exception_flow = mmprofile_register_event(dpc, "dpc_exception_flow");
 	mml_mmp_events.dpc_pm_runtime_get = mmprofile_register_event(dpc, "dpc_pm_runtime_get");
 	mml_mmp_events.dpc_pm_runtime_put = mmprofile_register_event(dpc, "dpc_pm_runtime_put");
+
+	clock = mmprofile_register_event(mml, "clock");
+	mml_mmp_events.clock = clock;
+	mml_mmp_events.clk_enable = mmprofile_register_event(clock, "clk_enable");
+	mml_mmp_events.clk_disable = mmprofile_register_event(clock, "clk_disable");
 
 	mmprofile_enable_event_recursive(mml, 1);
 	mmprofile_start(1);

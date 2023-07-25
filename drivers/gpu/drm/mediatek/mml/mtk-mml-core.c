@@ -635,6 +635,8 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 	}
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
+	mml_mmp(clk_enable, MMPROFILE_FLAG_PULSE, 0, 1);
+
 	if (path->mmlsys)
 		call_hw_op(path->mmlsys, clk_enable);
 	if (path->mutex)
@@ -662,6 +664,7 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 		task->config->task_ops->dispen(task, true);
 
 	task->pipe[pipe].en.clk = true;
+	mml_mmp(clk_enable, MMPROFILE_FLAG_PULSE, 0, 0);
 	mml_clock_unlock(task->config->mml);
 
 	return 0;

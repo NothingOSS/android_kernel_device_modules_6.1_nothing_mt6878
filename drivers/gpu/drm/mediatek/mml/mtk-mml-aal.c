@@ -2079,6 +2079,8 @@ s32 aal_clk_enable(struct mml_comp *comp)
 		return -EINVAL;
 	}
 
+	mml_mmp(clk_enable, MMPROFILE_FLAG_START, comp->id, 0);
+
 	for (i = 0; i < ARRAY_SIZE(comp->clks); i++) {
 		if (IS_ERR_OR_NULL(comp->clks[i]))
 			break;
@@ -2088,6 +2090,7 @@ s32 aal_clk_enable(struct mml_comp *comp)
 		else
 			aal->clk_on = true;
 	}
+	mml_mmp(clk_enable, MMPROFILE_FLAG_END, comp->id, 0);
 
 	return 0;
 }

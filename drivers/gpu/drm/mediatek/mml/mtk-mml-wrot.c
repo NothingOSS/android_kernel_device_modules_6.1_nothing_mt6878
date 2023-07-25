@@ -2266,6 +2266,7 @@ static s32 mml_wrot_comp_clk_enable(struct mml_comp *comp)
 		return ret;
 
 	mml_update_comp_status(mml_mon_wrot + wrot->idx, 1);
+	mml_mmp(clk_enable, MMPROFILE_FLAG_PULSE, comp->id, 0);
 
 	return 0;
 }
@@ -2282,6 +2283,7 @@ static s32 mml_wrot_comp_clk_disable(struct mml_comp *comp,
 	ret = mml_comp_clk_disable(comp, dpc);
 	if (ret < 0)
 		return ret;
+	mml_mmp(clk_disable, MMPROFILE_FLAG_PULSE, comp->id, 0);
 
 	return 0;
 }

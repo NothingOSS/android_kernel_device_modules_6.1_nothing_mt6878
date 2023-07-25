@@ -768,6 +768,7 @@ s32 mml_comp_clk_enable(struct mml_comp *comp)
 		return -EINVAL;
 	}
 
+	mml_mmp(clk_enable, MMPROFILE_FLAG_START, comp->id, 0);
 	for (i = 0; i < ARRAY_SIZE(comp->clks); i++) {
 		if (IS_ERR_OR_NULL(comp->clks[i]))
 			break;
@@ -775,6 +776,7 @@ s32 mml_comp_clk_enable(struct mml_comp *comp)
 		if (ret)
 			mml_err("%s clk_prepare_enable fail %d", __func__, ret);
 	}
+	mml_mmp(clk_enable, MMPROFILE_FLAG_END, comp->id, 0);
 
 	return 0;
 }
@@ -798,11 +800,13 @@ s32 mml_comp_clk_disable(struct mml_comp *comp, bool dpc)
 	/* clear bandwidth before disable if this component support dma */
 	call_hw_op(comp, qos_clear, dpc);
 
+	mml_mmp(clk_disable, MMPROFILE_FLAG_START, comp->id, 0);
 	for (i = 0; i < ARRAY_SIZE(comp->clks); i++) {
 		if (IS_ERR_OR_NULL(comp->clks[i]))
 			break;
 		clk_disable_unprepare(comp->clks[i]);
 	}
+	mml_mmp(clk_disable, MMPROFILE_FLAG_END, comp->id, 0);
 
 	return 0;
 }
