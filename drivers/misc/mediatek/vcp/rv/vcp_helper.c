@@ -1632,17 +1632,26 @@ enum ipi_debug_opt {
 	IPI_TRACKING_OFF,
 	IPI_TRACKING_ON,
 	IPIMON_SHOW,
+	IPI_PROFILING,
 };
 
 static inline ssize_t vcp_ipi_test_show(struct device *kobj
 			, struct device_attribute *attr, char *buf)
 {
-	unsigned int value = 0x5A5A;
+	u64 timetick;
+	struct vcp_ipi_profile cmd;
 	int ret;
 
 	if (vcp_ready[VCP_A_ID]) {
-		ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_TEST_0, 0, &value,
-				   PIN_OUT_SIZE_TEST_0, 0);
+		timetick = arch_timer_read_counter();
+		cmd.ipi_time_h = (timetick >> 32) & 0xFFFFFFFF;
+		cmd.ipi_time_l = timetick & 0xFFFFFFFF;
+
+		ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_TEST_0, 0, &cmd,
+			PIN_OUT_SIZE_TEST_0, 0);
+
+		pr_notice("[VCP] tick: %llu\n", timetick);
+
 		return scnprintf(buf, PAGE_SIZE
 			, "VCP A ipi send ret=%d\n", ret);
 	} else
@@ -1652,7 +1661,10 @@ static inline ssize_t vcp_ipi_test_show(struct device *kobj
 static inline ssize_t vcp_ipi_test_store(struct device *kobj
 		, struct device_attribute *attr, const char *buf, size_t n)
 {
-	unsigned int opt;
+	unsigned int opt, i;
+	u64 timetick;
+	int ret;
+	struct vcp_ipi_profile cmd;
 
 	if (kstrtouint(buf, 10, &opt) != 0)
 		return -EINVAL;
@@ -1664,6 +1676,20 @@ static inline ssize_t vcp_ipi_test_store(struct device *kobj
 		break;
 	case IPIMON_SHOW:
 		ipi_monitor_dump(&vcp_ipidev);
+		break;
+	case IPI_PROFILING:
+		for (i = 0; i < 100; i++) {
+			timetick = arch_timer_read_counter();
+			cmd.ipi_time_h = (timetick >> 32) & 0xFFFFFFFF;
+			cmd.ipi_time_l = timetick & 0xFFFFFFFF;
+
+			ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_TEST_0, 0, &cmd,
+				PIN_OUT_SIZE_TEST_0, 0);
+
+			pr_notice("[VCP] times: %d tick: %llu\n", i, timetick);
+
+			udelay(1000);
+		}
 		break;
 	default:
 		pr_info("cmd '%d' is not supported.\n", opt);

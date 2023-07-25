@@ -24,7 +24,7 @@
 #define PIN_OUT_SIZE_DVFS_SET_FREQ_0	 1 /* the following will use mbox 1 */
 #define PIN_OUT_C_SIZE_SLEEP_0           2 /* the following will use mbox 1 */
 #define PIN_OUT_R_SIZE_SLEEP_0           1 /* the following will use mbox 1 */
-#define PIN_OUT_SIZE_TEST_0		 1 /* the following will use mbox 1 */
+#define PIN_OUT_SIZE_TEST_0		 2 /* the following will use mbox 1 */
 #define PIN_OUT_SIZE_AUDIO_ULTRA_SND_0	 9 /* the following will use mbox 1 */
 #define PIN_OUT_SIZE_MMDVFS		 2 /* the following will use mbox 1 */
 #define PIN_OUT_SIZE_MMQOS		 2 /* the following will use mbox 1 */
@@ -49,7 +49,7 @@
 #define PIN_OUT_SIZE_DVFS_SET_FREQ_1	 1 /* the following will use mbox 3 */
 #define PIN_OUT_C_SIZE_SLEEP_1	         2 /* the following will use mbox 3 */
 #define PIN_OUT_R_SIZE_SLEEP_1	         1 /* the following will use mbox 3 */
-#define PIN_OUT_SIZE_TEST_1		 1 /* the following will use mbox 3 */
+#define PIN_OUT_SIZE_TEST_1		 2 /* the following will use mbox 3 */
 #define PIN_OUT_SIZE_LOGGER_CTRL	 6 /* the following will use mbox 3 */
 #define PIN_OUT_SIZE_VCPCTL_1		 2 /* the following will use mbox 3 */
 

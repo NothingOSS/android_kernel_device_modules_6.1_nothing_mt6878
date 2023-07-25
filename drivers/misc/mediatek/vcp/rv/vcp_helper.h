@@ -145,6 +145,11 @@ struct vcp_regs {
 	unsigned int secure_dump;
 };
 
+struct vcp_ipi_profile {
+	unsigned int ipi_time_h;
+	unsigned int ipi_time_l;
+};
+
 /* vcp work struct definition*/
 struct vcp_work_struct {
 	struct work_struct work;
