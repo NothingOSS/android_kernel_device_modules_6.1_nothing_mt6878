@@ -286,6 +286,7 @@ mgk_64_k61_device_modules = [
     "drivers/misc/mediatek/iommu/iommu_secure.ko",
     "drivers/misc/mediatek/iommu/iommu_test.ko",
     "drivers/misc/mediatek/iommu/smmu_secure.ko",
+    "drivers/misc/mediatek/ips/mtk-ips-helper.ko",
     "drivers/misc/mediatek/irtx/mtk_irtx_pwm.ko",
     "drivers/misc/mediatek/ise_lpm/ise_lpm.ko",
     "drivers/misc/mediatek/jpeg/jpeg-driver.ko",

@@ -26,6 +26,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/leakage_table/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mdpm/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/pbm/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cg_ppt/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/ips/Kconfig"
 
 config MTK_WWAN_PWRCTL_SUPPORT
 	bool "Thin modem Power Control driver"
