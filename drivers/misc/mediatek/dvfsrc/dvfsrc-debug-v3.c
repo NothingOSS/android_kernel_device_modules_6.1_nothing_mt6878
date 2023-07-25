@@ -44,6 +44,7 @@ enum dvfsrc_regs {
 	DVFSRC_QOS_DDR_REQUEST,
 	DVFSRC_LEVEL_LABEL_L,
 	DVFSRC_LEVEL_LABEL_H,
+	DVFSRC_CEILING,
 };
 
 static const int mt6779_regs[] = {
@@ -143,6 +144,7 @@ static const int mt6989_regs[] = {
 	[DVFSRC_QOS_DDR_REQUEST] = 0x5E8,
 	[DVFSRC_LEVEL_LABEL_L] = 0xFC,
 	[DVFSRC_LEVEL_LABEL_H] = 0x6B0,
+	[DVFSRC_CEILING] = 0x6A8,
 };
 
 enum dvfsrc_spm_regs {
@@ -221,6 +223,11 @@ static const int mt6897_spm_regs[] = {
 static u32 dvfsrc_read(struct mtk_dvfsrc *dvfs, u32 reg, u32 offset)
 {
 	return readl(dvfs->regs + dvfs->dvd->config->regs[reg] + offset);
+}
+
+static void dvfsrc_write(struct mtk_dvfsrc *dvfs, u32 reg, u32 val)
+{
+	writel(val, dvfs->regs + dvfs->dvd->config->regs[reg]);
 }
 
 static u32 spm_read(struct mtk_dvfsrc *dvfs, u32 reg)
@@ -857,6 +864,20 @@ static u32 dvfsrc_get_opp_gear_info(struct mtk_dvfsrc *dvfsrc, u32 idx)
 	return val;
 }
 
+static void dvfsrc_set_ceiling_ddr_opp(struct mtk_dvfsrc *dvfsrc, u32 gear)
+{
+	u32 val;
+
+	val = dvfsrc_read(dvfsrc, DVFSRC_CEILING, 0);
+	if (gear == 0xFF)
+		dvfsrc_write(dvfsrc, DVFSRC_CEILING, val & ~(1 << 16));
+	else {
+		val = val & ~((0xF << 4) | (1 << 16));
+		val = val | (((gear + 1) & 0xF) << 4) | (1 << 16);
+		dvfsrc_write(dvfsrc, DVFSRC_CEILING, val);
+	}
+}
+
 static int dvfsrc_query_request_status(struct mtk_dvfsrc *dvfsrc, u32 id)
 {
 	int ret = 0;
@@ -1003,4 +1024,5 @@ const struct dvfsrc_config mt6989_dvfsrc_config = {
 	.dump_md_floor_table = dvfsrc_dump_mt6983_md_floor_table,
 	.query_opp_count = dvfsrc_get_opp_count,
 	.query_opp_gear_info = dvfsrc_get_opp_gear_info,
+	.set_ddr_ceiling = dvfsrc_set_ceiling_ddr_opp,
 };

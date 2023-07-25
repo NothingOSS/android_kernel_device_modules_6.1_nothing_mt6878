@@ -304,6 +304,21 @@ int mtk_dvfsrc_query_debug_info(u32 id)
 }
 EXPORT_SYMBOL(mtk_dvfsrc_query_debug_info);
 
+/* Ceiling OPP */
+int (*set_ceiling_opp_handle)(u8 user, u8 freq_opp);
+void register_dvfsrc_ceiling_opp_handler(int (*handler)(u8 user, u8 freq_opp))
+{
+	set_ceiling_opp_handle = handler;
+}
+
+int mtk_dvfsrc_set_ceiling_freq(u8 user, u8 freq_opp)
+{
+	if (set_ceiling_opp_handle != NULL)
+		return set_ceiling_opp_handle(user, freq_opp);
+
+	return 0;
+}
+
 static int dvfsrc_query_debug_info(u32 id)
 {
 	struct mtk_dvfsrc *dvfsrc = dvfsrc_drv;
@@ -316,6 +331,38 @@ static int dvfsrc_query_debug_info(u32 id)
 	return ret;
 }
 
+static DEFINE_MUTEX(ddr_ceil_mutex);
+int mtk_dvfsrc_ceiling_opp(u8 user, u8 ddr_opp)
+{
+	int i;
+	u8 max_freq_opp = 0, max_freq_gear;
+	struct mtk_dvfsrc *dvfsrc = dvfsrc_drv;
+	const struct dvfsrc_config *config;
+
+	if (user >= CEILING_ITEM_MAX){
+		pr_info("ceiling wrong type user = %d\n", user);
+		return -EINVAL;
+	}
+
+	if (ddr_opp >= dvfsrc->opp_desc->num_dram_opp)
+		ddr_opp = 0;
+
+	mutex_lock(&ddr_ceil_mutex);
+	dvfsrc->ceil_ddr_opp[user] = ddr_opp;
+	for (i = 0; i < CEILING_ITEM_MAX; i++)
+		max_freq_opp = max_t(u8, dvfsrc->ceil_ddr_opp[user], max_freq_opp);
+
+	max_freq_gear = dvfsrc->opp_desc->num_dram_opp - max_freq_opp - 1;
+	config = dvfsrc_drv->dvd->config;
+	if (max_freq_opp == 0)
+		config->set_ddr_ceiling(dvfsrc, 0xFF);
+	else
+		config->set_ddr_ceiling(dvfsrc, max_freq_gear);
+
+	mutex_unlock(&ddr_ceil_mutex);
+
+	return 0;
+}
 
 #define DVFSRC_DEBUG_DUMP 0
 #define DVFSRC_DEBUG_AEE 1
@@ -1183,6 +1230,7 @@ static const struct dvfsrc_debug_data mt6989_data = {
 	.config = &mt6989_dvfsrc_config,
 	.opps_desc = dvfsrc_opp_common_desc,
 	.num_opp_desc = 0,
+	.ceiling_support = true,
 };
 
 
@@ -1244,6 +1292,7 @@ static int mtk_dvfsrc_helper_probe(struct platform_device *pdev)
 	struct platform_device *parent_dev;
 	struct resource *res;
 	struct mtk_dvfsrc *dvfsrc;
+	struct device_node *np = pdev->dev.of_node;
 	int ret;
 
 	match = of_match_node(dvfsrc_helper_of_match, dev->parent->of_node);
@@ -1297,6 +1346,11 @@ static int mtk_dvfsrc_helper_probe(struct platform_device *pdev)
 	dvfsrc_debug_notifier_register(dvfsrc);
 	dvfsrc_register_sysfs(dev);
 	register_dvfsrc_debug_handler(dvfsrc_query_debug_info);
+	if (dvfsrc->dvd->ceiling_support) {
+		dvfsrc->ceil_ddr_support = of_property_read_bool(np, "ceil-ddr-support");
+		if (dvfsrc->ceil_ddr_support)
+			register_dvfsrc_ceiling_opp_handler(mtk_dvfsrc_ceiling_opp);
+	}
 
 	return 0;
 }

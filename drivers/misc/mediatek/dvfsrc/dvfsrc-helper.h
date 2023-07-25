@@ -12,6 +12,14 @@
 
 struct mtk_dvfsrc;
 
+/* For ceiling ddr gear operation */
+enum {
+	CEILING_SYSFS,
+	CEILING_IDX1,
+	CEILING_IDX2,
+	CEILING_ITEM_MAX,
+};
+
 /* opp */
 struct dvfsrc_opp {
 	u32 vcore_opp;
@@ -58,6 +66,7 @@ struct dvfsrc_config {
 	u64 (*query_dvfs_time)(struct mtk_dvfsrc *dvfsrc);
 	u32 (*query_opp_count)(struct mtk_dvfsrc *dvfsrc);
 	u32 (*query_opp_gear_info)(struct mtk_dvfsrc *dvfsrc, u32 idx);
+	void (*set_ddr_ceiling)(struct mtk_dvfsrc *dvfsrc, u32 gear);
 };
 
 struct dvfsrc_debug_data {
@@ -66,6 +75,7 @@ struct dvfsrc_debug_data {
 	struct dvfsrc_opp_desc *opps_desc;
 	const struct dvfsrc_config *config;
 	bool spm_stamp_en;
+	bool ceiling_support;
 };
 
 struct mtk_dvfsrc {
@@ -98,6 +108,8 @@ struct mtk_dvfsrc {
 	u32 vcore_range_step;
 	u32 vcore_range_min_uV;
 	u32 qos_mode;
+	u8 ceil_ddr_opp[CEILING_ITEM_MAX];
+	bool ceil_ddr_support;
 	bool vchk_enable;
 };
 

@@ -304,6 +304,34 @@ static ssize_t dvfsrc_md_floor_table_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(dvfsrc_md_floor_table);
 
+static inline ssize_t dvfsrc_ceiling_opp_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d %d %d\n",
+		dvfsrc->ceil_ddr_opp[CEILING_SYSFS],
+		dvfsrc->ceil_ddr_opp[CEILING_IDX1],
+		dvfsrc->ceil_ddr_opp[CEILING_IDX2]);
+}
+
+static inline ssize_t dvfsrc_ceiling_opp_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int magic = 0, ceil_ddr_opp = 0;
+
+	if (sscanf(buf, "%x %d", &magic, &ceil_ddr_opp) != 2)
+		return -EINVAL;
+
+	if (magic != 0xDEBC)
+		return -EINVAL;
+
+	pr_info("dvfsrc_max_opp_store = %d\n", ceil_ddr_opp);
+	mtk_dvfsrc_set_ceiling_freq(CEILING_SYSFS, ceil_ddr_opp);
+
+	return count;
+}
+DEVICE_ATTR_RW(dvfsrc_ceiling_opp);
 
 static struct attribute *dvfsrc_sysfs_attrs[] = {
 	&dev_attr_dvfsrc_req_bw.attr,
@@ -320,6 +348,7 @@ static struct attribute *dvfsrc_sysfs_attrs[] = {
 	&dev_attr_spm_timer_latch_dump.attr,
 	&dev_attr_dvfsrc_qos_mode.attr,
 	&dev_attr_dvfsrc_md_floor_table.attr,
+	&dev_attr_dvfsrc_ceiling_opp.attr,
 	NULL,
 };
 
