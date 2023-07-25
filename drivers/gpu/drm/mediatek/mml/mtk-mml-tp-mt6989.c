@@ -796,7 +796,7 @@ static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache
 		round_down(info->dest[0].crop.r.top, 16);
 
 	/* rotate source */
-	if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
+	if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
 		swap(srcw, srch);
 		swap(cropw, croph);
 	}
