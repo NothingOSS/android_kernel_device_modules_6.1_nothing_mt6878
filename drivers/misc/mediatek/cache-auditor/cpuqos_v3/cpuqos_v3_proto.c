@@ -1089,7 +1089,7 @@ static int __init cpuqos_v3_proto_init(void)
 	/* init cpuqos ioctl */
 	pr_info("%s: start to init cpuqos_ioctl driver\n", TAG);
 	parent = proc_mkdir("cpuqosmgr", NULL);
-	pe = proc_create("cpuqos_ioctl", 0664, parent, &cpuqos_ctl_Fops);
+	pe = proc_create("cpuqos_ioctl", 0660, parent, &cpuqos_ctl_Fops);
 	if (!pe) {
 		pr_info("%s: %s failed with %d\n", TAG,
 				"Creating file node ", ret);
