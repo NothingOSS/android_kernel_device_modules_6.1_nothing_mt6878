@@ -78,7 +78,6 @@
 			(FHD_CLK_10_X10 / 10 + 1) : (FHD_CLK_10_X10 / 10))
 
 #define MODE_SWITCH_CMDQ_ENABLE 1
-#define PANEL_SUPPORT_READBACK
 
 struct mtk_mode_switch_cmd cmd_table_120fps[] = {
 	{2, {0x2F, 0x00}}
@@ -1347,7 +1346,7 @@ static struct mtk_panel_funcs ext_funcs = {
 	.ata_check = panel_ata_check,
 	.lcm_update_roi = lcm_update_roi,
 	.lcm_update_roi_cmdq = lcm_update_roi_cmdq,
-	.get_lcm_power_state = lcm_panel_get_ab_data,
+	//.get_lcm_power_state = lcm_panel_get_ab_data,
 	.get_switch_mode_delay = get_switch_mode_delay,
 };
 #endif

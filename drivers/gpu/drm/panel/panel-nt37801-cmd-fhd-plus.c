@@ -72,8 +72,6 @@
 #define CLK_10		(((CLK_10_X10 % 10) != 0) ?              \
 			(CLK_10_X10 / 10 + 1) : (CLK_10_X10 / 10))
 
-#define PANEL_SUPPORT_READBACK
-
 static atomic_t current_backlight;
 static struct mtk_panel_para_table bl_tb0[] = {
 		{3, { 0x51, 0x0f, 0xff}},
@@ -1061,7 +1059,7 @@ static struct mtk_panel_funcs ext_funcs = {
 	/* Not real backlight cmd in AOD, just for QC purpose */
 	.set_aod_light_mode = lcm_setbacklight_cmdq,
 	.ata_check = panel_ata_check,
-	.get_lcm_power_state = lcm_panel_get_ab_data,
+	//.get_lcm_power_state = lcm_panel_get_ab_data,
 };
 #endif
 

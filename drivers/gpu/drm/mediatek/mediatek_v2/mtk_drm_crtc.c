@@ -6323,7 +6323,6 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 	struct cmdq_client *cl;
 	dma_addr_t trig_pc;
 	u64 *inst;
-	struct mtk_ddp_comp *output_comp;
 #endif
 
 	if (!crtc) {
@@ -6348,14 +6347,6 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 		cmdq_dump_pkt(mtk_crtc->trig_loop_cmdq_handle, trig_pc, true);
 
 		DDPMSG("------ Dump trigger loop ------\n");
-		DDPMSG("++++++ Dump event 479 ++++++\n");
-		DDPMSG("gce event 479 %d\n", cmdq_get_event(cl->chan, 479));
-		DDPMSG("TE fence time %lld,current time %lld\n",
-			mtk_crtc->pf_time, ktime_get());
-		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-		if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)
-			mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_PANEL_STATE, NULL);
-		DDPMSG("------ Dump event 479 ------\n");
 	}
 	atomic_set(&mtk_crtc->cmdq_trig, 1);
 #endif
