@@ -111,7 +111,8 @@ enum disp_hrt_usage {
 
 enum MTK_CONNECTOR_PROP {
 	CONNECTOR_PROP_CAPS_BLOB_ID,
-	CONNECTOR_PROP_CSC_BL,	/* csc bylayer backlight */
+	CONNECTOR_PROP_CSC_BL,        /* csc bylayer backlight */
+	CONNECTOR_PROP_PANEL_NITS,    /* panel nits */
 	CONNECTOR_PROP_MAX,
 };
 

@@ -395,6 +395,7 @@ enum DSI_MODE_CON {
 static struct mtk_drm_property mtk_connector_property[CONNECTOR_PROP_MAX] = {
 	{DRM_MODE_PROP_IMMUTABLE, "CAPS_BLOB_ID", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "CSC_BL", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "PANEL_NITS", 0, ULONG_MAX, 0},
 };
 
 static bool set_partial_update;
@@ -3832,6 +3833,8 @@ mtk_dsi_connector_duplicate_state(struct drm_connector *connector)
 	index = connector->index;
 	state->prop_val[index][CONNECTOR_PROP_CSC_BL] =
 		old_state->prop_val[index][CONNECTOR_PROP_CSC_BL];
+	state->prop_val[index][CONNECTOR_PROP_PANEL_NITS] =
+		old_state->prop_val[index][CONNECTOR_PROP_PANEL_NITS];
 
 	return &state->base;
 }
