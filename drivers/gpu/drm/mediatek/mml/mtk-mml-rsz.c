@@ -95,6 +95,7 @@ enum rsz_dbg_ver {
 struct rsz_data {
 	u32 tile_width;
 	u8 rsz_dbg;
+	u8 px_per_tick;
 	bool aal_crop;
 	bool wrot_pending;
 };
@@ -152,6 +153,7 @@ static const struct rsz_data mt6897_rsz2_data = {
 static const struct rsz_data mt6989_rsz_data = {
 	.tile_width = 3348,
 	.rsz_dbg = RSZ_DBG_MT6989,
+	.px_per_tick = 2,
 	.aal_crop = true,
 	.wrot_pending = true,
 };
@@ -159,6 +161,7 @@ static const struct rsz_data mt6989_rsz_data = {
 static const struct rsz_data mt6989_rsz2_data = {
 	.tile_width = 544,
 	.rsz_dbg = RSZ_DBG_MT6989,
+	.px_per_tick = 2,
 	.aal_crop = true,
 	.wrot_pending = true,
 };
@@ -517,11 +520,13 @@ static s32 rsz_config_frame(struct mml_comp *comp, struct mml_task *task,
 static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg, u32 idx)
 {
+	const struct mml_comp_rsz *rsz = comp_to_rsz(comp);
 	struct mml_frame_config *cfg = task->config;
+	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
 
 	/* frame data should not change between each tile */
-	const struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
 	const struct mml_frame_size *frame_out = &cfg->frame_out[ccfg->node->out_idx];
 	const phys_addr_t base_pa = comp->base_pa;
 
@@ -534,6 +539,8 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u32 rsz_input_h;
 	u32 rsz_output_w;
 	u32 rsz_output_h;
+	u32 bubble;
+	u32 px_per_tick = rsz->data->px_per_tick ? rsz->data->px_per_tick : 1;
 
 	mml_msg("%s idx[%d]", __func__, idx);
 
@@ -579,6 +586,19 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + RSZ_OUTPUT_IMAGE,
 		       (rsz_output_h << 16) + rsz_output_w, U32_MAX);
 
+	if (rsz_input_w < rsz_output_w)
+		bubble = (rsz_input_w - ((rsz_frm->fw_out.hori_step * rsz_output_w) >> 15)) /
+			px_per_tick + 3;
+	else
+		bubble = 2;
+	cache->line_bubble += bubble;
+	cache_max_sz(cache, rsz_input_w, rsz_input_h);
+	cache_max_sz(cache, rsz_output_w, rsz_output_h);
+
+	mml_msg("rsz pixel rsz bubble %u total bubble %u pixel %ux%u",
+		bubble, cache->line_bubble,
+		cache->max_size.width, cache->max_size.height);
+
 	return 0;
 }
 
@@ -590,7 +610,7 @@ static const struct mml_comp_config_ops rsz_cfg_ops = {
 };
 
 static void rsz_task_done_callback(struct mml_comp *comp, struct mml_task *task,
-					 struct mml_comp_config *ccfg)
+	struct mml_comp_config *ccfg)
 {
 	return;
 }

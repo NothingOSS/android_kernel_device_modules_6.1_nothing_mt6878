@@ -770,8 +770,7 @@ static inline bool tp_need_resize(struct mml_frame_info *info, bool *can_binning
 
 static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache *tp, bool *dual)
 {
-	const u32 srcw = info->dest[0].crop.r.width;
-	const u32 srch = info->dest[0].crop.r.height;
+	u32 srcw, srch;
 	const u32 destw = info->dest[0].data.width;
 	const u32 desth = info->dest[0].data.height;
 	u32 tput, pixel;
@@ -783,12 +782,16 @@ static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache
 	if (!info->act_time)
 		return true;
 
-	pixel = max(srcw * srch, destw * desth);
+	srcw = round_up(info->dest[0].crop.r.left + info->dest[0].crop.r.width, 32) -
+		round_down(info->dest[0].crop.r.left, 32);
+	srch = round_up(info->dest[0].crop.r.top + info->dest[0].crop.r.height, 16) -
+		round_down(info->dest[0].crop.r.top, 16);
+	pixel = max(srcw, destw) * max(srch, desth);
 
 	/* binning case */
-	if ((srcw >> 1) > destw)
+	if ((info->dest[0].crop.r.width >> 1) > destw)
 		pixel = pixel >> 1;
-	if ((srch >> 1) > desth)
+	if ((info->dest[0].crop.r.height >> 1) > desth)
 		pixel = pixel >> 1;
 
 	if (!tp->opp_cnt) {

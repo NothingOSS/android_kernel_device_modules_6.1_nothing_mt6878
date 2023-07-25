@@ -204,8 +204,6 @@ struct rrot_data {
 
 	/* threshold golden setting for racing mode */
 	struct rrot_golden golden[GOLDEN_FMT_TOTAL];
-
-	u8 px_per_tick;
 };
 
 static const struct rrot_data mt6989_rrot_data = {
@@ -236,7 +234,6 @@ static const struct rrot_data mt6989_rrot_data = {
 			.settings = th_afbc_mt6989,
 		},
 	},
-	.px_per_tick = 2,
 };
 
 struct mml_comp_rrot {
@@ -284,7 +281,6 @@ struct rrot_frame_data {
 	u32 vdo_blk_shift_h;
 	u32 mf_src_w;
 	u32 mf_src_h;
-	u32 pixel_acc;		/* pixel accumulation */
 	u32 datasize;		/* qos data size in bytes */
 	u16 crop_off_l;		/* crop offset left */
 	u16 crop_off_t;		/* crop offset top */
@@ -1632,6 +1628,7 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 	struct mml_frame_config *cfg = task->config;
+	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	struct mml_frame_data *src = &cfg->info.src;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
@@ -1649,6 +1646,7 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u32 mf_clip_h;
 	u32 mf_offset_w_1;
 	u32 mf_offset_h_1;
+	u32 tput_w, tput_h;
 
 	/* Following data retrieve from tile calc result */
 	struct mml_tile_engine tile = rrot_config_dual(comp, task, ccfg, tile_merge);
@@ -1763,7 +1761,25 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	/* qos accumulate tile pixel */
-	rrot_frm->pixel_acc += mf_src_w * mf_src_h;
+	if (MML_FMT_AFBC(src->format) || MML_FMT_HYFBC(src->format)) {
+		/* align block 32x16 */
+		tput_w = round_up(in_xe + 1, 32) - round_down(in_xs, 32);
+		tput_h = round_up(in_ye + 1, 16) - round_down(in_ys, 16);
+	} else {
+		/* no block align */
+		tput_w = mf_src_w;
+		tput_h = mf_src_h;
+		cache->line_bubble = 0;
+	}
+
+	if (rrot->pipe == 0) {
+		cache->line_bubble = tput_w - mf_src_w;
+		cache->max_size.width = tput_w >> cfg->bin_x;
+		cache->max_size.height = tput_h >> cfg->bin_y;
+	} else {
+		cache->line_bubble = max(cache->line_bubble, tput_w - mf_src_w);
+		cache_max_sz(cache, tput_w >> cfg->bin_x, tput_h >> cfg->bin_y);
+	}
 
 	/* calculate qos for later use */
 	plane = MML_FMT_PLANE(src->format);
@@ -1773,13 +1789,14 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	if (plane > 2)
 		rrot_frm->datasize += mml_color_get_min_uv_size(src->format, mf_src_w, mf_src_h);
 
-	rrot_msg("rrot%s whp %u %u src %u %u clip off %u %u clip %u %u pixel %u data %u rotate %u",
+	rrot_msg("rrot%s whp %u %u src %u %u clip off %u %u clip %u %u pixel %ux%u bubble %u data %u rotate %u",
 		rrot->pipe == 1 ? "_2nd" : "    ",
 		src_offset_wp, src_offset_hp,
 		mf_src_w, mf_src_h,
 		mf_offset_w_1, mf_offset_h_1,
 		mf_clip_w, mf_clip_h,
-		rrot_frm->pixel_acc, rrot_frm->datasize,
+		cache->max_size.width, cache->max_size.height,
+		cache->line_bubble, rrot_frm->datasize,
 		dest->rotate);
 
 	return 0;
@@ -1835,27 +1852,24 @@ static void rrot_backup_crc_update(struct mml_comp *comp, struct mml_task *task,
 static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
-	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
 	u32 pipe = comp_to_rrot(comp)->pipe;
-	u32 pixel = rrot_frm->pixel_acc;
 
 	/* ufo case */
 	if (MML_FMT_UFO(cfg->info.src.format))
 		rrot_frm->datasize = (u32)div_u64((u64)rrot_frm->datasize * 7, 10);
 
-	/* Data size add to task and pixel,
+	/* Data size add to task,
 	 * it is ok for rdma to directly assign and accumulate in wrot.
 	 */
-	if (rrot->data->px_per_tick)
-		pixel = pixel / rrot->data->px_per_tick + 1;
-	cache->total_datasize = rrot_frm->datasize;
-	cache->max_pixel = max(cache->max_pixel, pixel);
+	if (pipe == 0)
+		cache->total_datasize = rrot_frm->datasize;
+	else
+		cache->total_datasize += rrot_frm->datasize;
 
-	mml_msg("%s task %p pipe %u data %u pixel %u",
-		__func__, task, pipe, rrot_frm->datasize, pixel);
+	mml_msg("%s task %p pipe %u data %u", __func__, task, pipe, rrot_frm->datasize);
 
 	rrot_backup_crc(comp, task, ccfg);
 

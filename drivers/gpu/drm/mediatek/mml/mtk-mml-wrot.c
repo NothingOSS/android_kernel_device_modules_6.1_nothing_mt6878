@@ -1788,6 +1788,7 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 	struct mml_frame_config *cfg = task->config;
+	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
 	u32 plane;
@@ -1920,7 +1921,8 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	 */
 
 	/* qos accumulate tile pixel */
-	wrot_frm->pixel_acc += wrot_tar_xsize * wrot_tar_ysize;
+	cache_max_sz(cache, wrot_tar_xsize, wrot_tar_ysize);
+	wrot_frm->pixel_acc += cache_max_pixel(cache);
 
 	/* no bandwidth for racing mode since wrot write to sram */
 	if (cfg->info.mode != MML_MODE_RACING) {
@@ -2120,12 +2122,13 @@ static s32 wrot_post(struct mml_comp *comp, struct mml_task *task,
 
 	/* accmulate data size and use max pixel */
 	if (wrot->data->px_per_tick)
-		pixel = pixel / wrot->data->px_per_tick + 1;
+		pixel = pixel / wrot->data->px_per_tick;
 	cache->total_datasize += wrot_frm->datasize;
 	cache->max_pixel = max(cache->max_pixel, pixel);
 
-	mml_msg("%s task %p pipe %hhu data %u pixel %u eol %u",
-		__func__, task, ccfg->pipe, wrot_frm->datasize, pixel,
+	mml_msg("%s task %p pipe %hhu data %u bubble %u pixel %ux%u %u eol %u",
+		__func__, task, ccfg->pipe, wrot_frm->datasize, cache->line_bubble,
+		cache->max_size.width, cache->max_size.height, cache->max_pixel,
 		wrot_frm->wdone_cnt);
 
 	if (task->config->info.mode == MML_MODE_RACING) {

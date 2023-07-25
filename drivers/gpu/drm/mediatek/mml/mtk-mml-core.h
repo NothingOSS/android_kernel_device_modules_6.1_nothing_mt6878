@@ -317,6 +317,13 @@ struct mml_comp_config {
 	void *data;
 };
 
+#define cache_max_sz(c, w, h) do { \
+	c->max_size.width = max(c->max_size.width, w); \
+	c->max_size.height = max(c->max_size.height, h); \
+} while (0)
+
+#define cache_max_pixel(c)	((c->max_size.width + c->line_bubble) * c->max_size.height)
+
 struct mml_pipe_cache {
 	/* command reuse */
 	u32 label_cnt;
@@ -324,6 +331,8 @@ struct mml_pipe_cache {
 	/* qos part */
 	u32 total_datasize;
 	u32 max_pixel;
+	struct mml_frame_size max_size;
+	u32 line_bubble;	/* accumulate upstream module line bubble */
 
 	/* Set in core and comp prepare. Used in tile prepare and make command */
 	struct mml_comp_config cfg[MML_MAX_PATH_NODES];

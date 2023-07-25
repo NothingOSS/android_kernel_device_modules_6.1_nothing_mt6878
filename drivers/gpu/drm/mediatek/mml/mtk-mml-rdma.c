@@ -439,7 +439,6 @@ struct rdma_data {
 	u32 tile_width;
 	u32 sram_size;
 	u8 rb_swap;	/* version for rb channel swap behavior */
-	u8 px_per_tick;
 	bool write_sec_reg;
 	bool tile_reset;
 
@@ -605,7 +604,6 @@ static const struct rdma_data mt6989_rdma_data = {
 	.tile_width = 3520,
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
 	.rb_swap = 1,
-	.px_per_tick = 2,
 	.tile_reset = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
@@ -671,7 +669,6 @@ struct rdma_frame_data {
 	u32 vdo_blk_shift_w;
 	u32 vdo_blk_height;
 	u32 vdo_blk_shift_h;
-	u32 pixel_acc;		/* pixel accumulation */
 	u32 datasize;		/* qos data size in bytes */
 	u16 crop_off_l;		/* crop offset left */
 	u16 crop_off_t;		/* crop offset top */
@@ -1683,6 +1680,7 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	struct mml_frame_config *cfg = task->config;
+	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 	struct mml_frame_data *src = &cfg->info.src;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
@@ -1872,28 +1870,39 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_MF_OFFSET_1,
 		   (mf_offset_h_1 << 16) + mf_offset_w_1, write_sec);
 
-	if (cfg->info.mode != MML_MODE_APUDC) {
-		if (MML_FMT_COMPRESS(src->format)) {
-			u32 xs = round_down(in_xs, 32);
-			u32 xe = round_up(in_xe, 32);
+	if (MML_FMT_COMPRESS(src->format)) {
+		u32 xs = round_down(in_xs, 32);
+		u32 xe = round_up(in_xe, 32);
 
-			mf_src_w = xe - xs;
-		}
-
-		/* qos accumulate tile pixel */
-		rdma_frm->pixel_acc += mf_src_w * mf_src_h;
-
-		/* calculate qos for later use */
-		plane = MML_FMT_PLANE(src->format);
-		rdma_frm->datasize += mml_color_get_min_y_size(src->format,
-			mf_src_w, mf_src_h);
-		if (plane > 1)
-			rdma_frm->datasize += mml_color_get_min_uv_size(src->format,
-				mf_src_w, mf_src_h);
-		if (plane > 2)
-			rdma_frm->datasize += mml_color_get_min_uv_size(src->format,
-				mf_src_w, mf_src_h);
+		mf_src_w = xe - xs;
 	}
+
+	/* qos accumulate tile pixel */
+	if (MML_FMT_AFBC(src->format) || MML_FMT_HYFBC(src->format)) {
+		/* align block 32x16 */
+		const u32 w = round_up(in_xe + 1, 32) - round_down(in_xs, 32);
+		const u32 h = round_up(in_ye + 1, 16) - round_down(in_ys, 16);
+
+		cache->max_size.width = w;
+		cache->max_size.height = h;
+		cache->line_bubble = w - mf_src_w;
+	} else {
+		/* no block align */
+		cache->max_size.width = mf_src_w;
+		cache->max_size.height = mf_src_h;
+		cache->line_bubble = 0;
+	}
+
+	/* calculate qos for later use */
+	plane = MML_FMT_PLANE(src->format);
+	rdma_frm->datasize += mml_color_get_min_y_size(src->format,
+		mf_src_w, mf_src_h);
+	if (plane > 1)
+		rdma_frm->datasize += mml_color_get_min_uv_size(src->format,
+			mf_src_w, mf_src_h);
+	if (plane > 2)
+		rdma_frm->datasize += mml_color_get_min_uv_size(src->format,
+			mf_src_w, mf_src_h);
 
 	if (write_sec)
 		rdma_cpr_trigger(pkt, hw_pipe, src->secure);
@@ -1978,26 +1987,21 @@ static void rdma_backup_crc_update(struct mml_comp *comp, struct mml_task *task,
 static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
-	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
-	u32 pixel = rdma_frm->pixel_acc;
 
 	/* ufo case */
 	if (MML_FMT_UFO(cfg->info.src.format))
 		rdma_frm->datasize = (u32)div_u64((u64)rdma_frm->datasize * 7, 10);
 
-	/* Data size add to task and pixel,
+	/* Data size add to task,
 	 * it is ok for rdma to directly assign and accumulate in wrot.
 	 */
-	if (rdma->data->px_per_tick)
-		pixel = pixel / rdma->data->px_per_tick + 1;
 	cache->total_datasize = rdma_frm->datasize;
-	cache->max_pixel = pixel;
 
-	mml_msg("%s task %p pipe %hhu data %u pixel %u",
-		__func__, task, ccfg->pipe, rdma_frm->datasize, pixel);
+	mml_msg("%s task %p pipe %hhu data %u",
+		__func__, task, ccfg->pipe, rdma_frm->datasize);
 
 	/* for sram test rollback smi config */
 	if (cfg->info.mode == MML_MODE_APUDC ||

@@ -1761,13 +1761,17 @@ static s32 dl_post(struct mml_comp *comp, struct mml_task *task,
 	if (task->config->info.mode == MML_MODE_DIRECT_LINK) {
 		struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
 		struct mml_sys *sys = comp_to_sys(comp);
-		u32 out_pixel = task->config->dl_out[ccfg->pipe].width *
-			task->config->dl_out[ccfg->pipe].height;
+		u32 pixel;
 
+		cache->line_bubble += task->config->dl_out[ccfg->pipe].left;
+		pixel = cache_max_pixel(cache);
 		if (sys->data->px_per_tick)
-			out_pixel = out_pixel / sys->data->px_per_tick + 1;
+			pixel = pixel / sys->data->px_per_tick;
+		cache->max_pixel = max(cache->max_pixel, pixel);
 
-		cache->max_pixel = max(cache->max_pixel, out_pixel);
+		mml_msg("%s task %p pipe %u bubble %u pixel %ux%u %u",
+			__func__, task, ccfg->pipe, cache->line_bubble,
+			cache->max_size.width, cache->max_size.height, cache->max_pixel);
 	}
 
 	return 0;

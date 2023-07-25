@@ -52,11 +52,9 @@ do { \
 #define MERGE_LABEL_TOTAL		0
 
 struct merge_data {
-	u8 px_per_tick;
 };
 
 static const struct merge_data mt6989_merge_data = {
-	.px_per_tick = 2,
 };
 
 struct mml_comp_merge {
@@ -65,7 +63,6 @@ struct mml_comp_merge {
 };
 
 struct merge_frame_data {
-	u32 pixel_acc;		/* pixel accumulation */
 };
 
 static inline struct mml_comp_merge *comp_to_merge(struct mml_comp *comp)
@@ -159,7 +156,7 @@ static s32 merge_config_tile(struct mml_comp *comp, struct mml_task *task,
 			     struct mml_comp_config *ccfg, u32 idx)
 {
 	struct mml_frame_config *cfg = task->config;
-	struct merge_frame_data *merge_frm = merge_frm_data(ccfg);
+	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	const phys_addr_t base_pa = comp->base_pa;
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
@@ -194,7 +191,7 @@ static s32 merge_config_tile(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_27, input1, U32_MAX);
 
 	/* qos accumulate tile pixel */
-	merge_frm->pixel_acc += width * height;
+	cache_max_sz(cache, width, height);
 
 	if (cfg->rrot_out[0].width + cfg->rrot_out[1].width == width &&
 		cfg->rrot_out[0].height == height &&
@@ -214,28 +211,11 @@ static s32 merge_config_tile(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
-static s32 merge_post(struct mml_comp *comp, struct mml_task *task,
-		      struct mml_comp_config *ccfg)
-{
-	struct mml_comp_merge *merge = comp_to_merge(comp);
-	struct merge_frame_data *merge_frm = merge_frm_data(ccfg);
-	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
-	u32 pixel = merge_frm->pixel_acc;
-
-	/* pixels that merge inputs, which is necessary throughput for downstream */
-	if (merge->data->px_per_tick)
-		pixel = pixel / merge->data->px_per_tick + 1;
-	cache->max_pixel = max(cache->max_pixel, pixel);
-
-	return 0;
-}
-
 static const struct mml_comp_config_ops merge_cfg_ops = {
 	.prepare = merge_prepare,
 	.get_label_count = merge_get_label_count,
 	.frame = merge_config_frame,
 	.tile = merge_config_tile,
-	.post = merge_post,
 };
 
 static void merge_debug_dump(struct mml_comp *comp)
