@@ -537,6 +537,23 @@ static int cmdq_core_reset(struct cmdq *cmdq)
 	return 0;
 }
 
+static void cmdq_task_hw_trace_check(struct cmdq_task *task)
+{
+	if (!cmdq_hw_trace)
+		return;
+
+	if (cmdq_util_is_secure_client(task->pkt->cl))
+		return;
+
+	if (!cmdq_get_event(task->thread->chan, CMDQ_TOKEN_HW_TRACE_LOCK)) {
+		cmdq_err("event %d set:%d, event %d set:%d",
+			CMDQ_TOKEN_HW_TRACE_WAIT, CMDQ_TOKEN_HW_TRACE_LOCK,
+			cmdq_get_event(task->thread->chan, CMDQ_TOKEN_HW_TRACE_WAIT),
+			cmdq_get_event(task->thread->chan, CMDQ_TOKEN_HW_TRACE_LOCK));
+		cmdq_set_event(task->thread->chan, CMDQ_TOKEN_HW_TRACE_LOCK);
+	}
+}
+
 static int cmdq_thread_suspend(struct cmdq *cmdq, struct cmdq_thread *thread)
 {
 	u32 status;
@@ -1332,6 +1349,7 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 			cmdq_err("pkt:0x%p thread:%u err:%d",
 				curr_task->pkt, thread->idx, err);
 			cmdq_buf_dump_schedule(task, false, curr_pa);
+			cmdq_task_hw_trace_check(task);
 			cmdq_task_exec_done(task, err);
 			cmdq_task_handle_error(curr_task);
 			spin_lock_irqsave(&cmdq->irq_removes_lock, flags);
@@ -1675,6 +1693,7 @@ static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 		task = list_first_entry_or_null(&thread->task_busy_list,
 			struct cmdq_task, list_entry);
 		if (timeout_task == task) {
+			cmdq_task_hw_trace_check(task);
 			cmdq_task_exec_done(task, -ETIMEDOUT);
 			kfree(task);
 		} else {
@@ -2232,6 +2251,7 @@ static void cmdq_mbox_thread_stop(struct cmdq_thread *thread)
 		if (timeout_task && (timeout_task == task))
 			continue;
 
+		cmdq_task_hw_trace_check(task);
 		cmdq_task_exec_done(task, -ECONNABORTED);
 		kfree(task);
 	}
