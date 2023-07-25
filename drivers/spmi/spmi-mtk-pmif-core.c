@@ -1351,7 +1351,7 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 		if (IS_ENABLED(CONFIG_MTK_AEE_FEATURE))
 			aee_kernel_warning("SPMI", "SPMI:transaction_fail");
 	}
-
+	spmi_dump_pmif_record_reg();
 	/* clear irq*/
 	if ((spmi_nack & 0xF8) || (spmi_rcs_nack & 0xC0000) ||
 		(spmi_debug_nack & 0xF0000) || (spmi_mst_nack & 0xC0000)) {
@@ -1364,7 +1364,6 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	} else
 		pr_notice("%s IRQ not cleared\n", __func__);
 
-	spmi_dump_pmif_record_reg();
 	mutex_unlock(&arb->pmif_m_mutex);
 	__pm_relax(arb->pmif_m_Thread_lock);
 
