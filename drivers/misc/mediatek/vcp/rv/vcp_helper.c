@@ -81,7 +81,7 @@
 #define SEMAPHORE_3WAY_TIMEOUT 5000
 /* vcp ready timeout definition */
 #define VCP_30MHZ 30000
-#define VCP_READY_TIMEOUT (4 * HZ) /* 4 seconds*/
+#define VCP_READY_TIMEOUT (HZ / 5 * 4) /* 800 milliseconds*/
 #define VCP_A_TIMER 0
 
 /* vcp ipi message buffer */
@@ -3260,6 +3260,20 @@ static int vcp_device_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void vcp_device_shutdown(struct platform_device *pdev)
+{
+	int ret = -1;
+
+	ret = vcp_turn_mminfra_on();
+	if (ret < 0) {
+		pr_notice("[VCP] %s failed to turn mminfra on\n", __func__);
+		return;
+	}
+
+	// trigger halt isr to change spm control power
+	writel(B_GIPC3_SETCLR_2, R_GIPC_IN_SET);
+}
+
 static int mtk_vcp_suspend(struct device *pdev)
 {
 	pr_notice("[VCP] %s done\n", __func__);
@@ -3289,6 +3303,7 @@ static const struct of_device_id vcp_of_ids[] = {
 static struct platform_driver mtk_vcp_device = {
 	.probe = vcp_device_probe,
 	.remove = vcp_device_remove,
+	.shutdown = vcp_device_shutdown,
 	.driver = {
 		.name = "vcp",
 		.owner = THIS_MODULE,
@@ -3390,6 +3405,7 @@ static int __init vcp_init(void)
 {
 	int ret = 0;
 	int i = 0;
+	struct arm_smccc_res res;
 #if VCP_BOOT_TIME_OUT_MONITOR
 	vcp_ready_timer[VCP_A_ID].tid = VCP_A_TIMER;
 	timer_setup(&(vcp_ready_timer[VCP_A_ID].tl), vcp_wait_ready_timeout, 0);
@@ -3529,14 +3545,10 @@ static int __init vcp_init(void)
 #endif
 
 	if (vcp_ao) {
-		writel(CORE_REBOOT_OK, VCP_GPR_C0_H0_REBOOT);
-		if (vcpreg.twohart)
-			writel(CORE_REBOOT_OK, VCP_GPR_C0_H1_REBOOT);
-		if (vcpreg.core_nums == 2) {
-			writel(CORE_REBOOT_OK, VCP_GPR_C1_H0_REBOOT);
-			if (vcpreg.twohart)
-				writel(CORE_REBOOT_OK, VCP_GPR_C1_H1_REBOOT);
-		}
+		pr_notice("[VCP] %s core0 status: 0x%x\n", __func__, readl(R_CORE0_STATUS));
+		arm_smccc_smc(MTK_SIP_TINYSYS_VCP_CONTROL,
+			MTK_TINYSYS_VCP_KERNEL_OP_RESET_SET,
+			1, 0, 0, 0, 0, 0, &res);
 		vcp_register_feature(RTOS_FEATURE_ID);
 	}
 
