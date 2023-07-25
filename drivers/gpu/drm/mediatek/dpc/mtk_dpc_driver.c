@@ -46,7 +46,7 @@ int debug_mtcmos_off;
 module_param(debug_mtcmos_off, int, 0644);
 int debug_irq;
 module_param(debug_irq, int, 0644);
-int mminfra_ao;
+int mminfra_ao = 1;
 module_param(mminfra_ao, int, 0644);
 int mtcmos_ao;
 module_param(mtcmos_ao, int, 0644);
