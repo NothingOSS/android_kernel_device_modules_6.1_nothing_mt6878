@@ -238,6 +238,7 @@ struct GED_KPI_MEOW_DVFS_FREQ_PRED {
 
 static struct GED_KPI_MEOW_DVFS_FREQ_PRED *g_psGIFT;
 
+int g_target_fps = GED_KPI_MAX_FPS;
 int g_target_fps_default = GED_KPI_MAX_FPS;
 
 #define GED_KPI_TOTAL_ITEMS 32
@@ -1598,6 +1599,9 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 			eara_fps_margin,
 			GED_KPI_FRC_DEFAULT_MODE, -1);
 
+		if (g_target_fps != psHead->target_fps)
+			g_target_fps = psHead->target_fps;
+
 		if (is_fdvfs_enable()) {
 			mtk_gpueb_sysram_write(SYSRAM_GPU_FRAME_END_HINT_CNT,
 					(target_FPS&0x000000ff));
@@ -2290,6 +2294,12 @@ int ged_kpi_get_panel_refresh_rate(void)
 	return g_target_fps_default;
 }
 EXPORT_SYMBOL(ged_kpi_get_panel_refresh_rate);
+/* ------------------------------------------------------------------- */
+int ged_kpi_get_target_fps(void)
+{
+	return g_target_fps;
+}
+EXPORT_SYMBOL(ged_kpi_get_target_fps);
 /* ------------------------------------------------------------------- */
 
 static GED_BOOL ged_kpi_find_riskyBQ_func(unsigned long ulID,
