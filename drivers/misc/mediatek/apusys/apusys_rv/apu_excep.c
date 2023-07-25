@@ -184,6 +184,7 @@ enum apusys_assert_module {
 	assert_apusys_mnoc,
 	assert_apusys_qos,
 	assert_apusys_aps,
+	assert_apusys_ce,
 
 	assert_module_max,
 };
@@ -200,6 +201,7 @@ static const char * const apusys_assert_module_name[assert_module_max] = {
 	"APUSYS_MNOC",
 	"APUSYS_QOS",
 	"APUSYS_APS",
+	"APUSYS_CE",
 };
 
 struct apu_coredump_work_struct {
