@@ -243,7 +243,8 @@ struct mml_topology_path {
 	u8 tile_engine_cnt;
 
 	/* Describe which engine is region pq in */
-	u32 pq_rdma_id;
+	u8 pq_rdma_id;
+	u8 tdshp_id;
 
 	/* Describe which engine is out0 and which is out1 */
 	u32 out_engine_ids[MML_MAX_OUTPUTS];
@@ -618,6 +619,8 @@ struct mml_comp_config_ops {
 struct mml_comp_hw_ops {
 	s32 (*pw_enable)(struct mml_comp *comp);
 	s32 (*pw_disable)(struct mml_comp *comp);
+	s32 (*mminfra_pw_enable)(struct mml_comp *comp);
+	s32 (*mminfra_pw_disable)(struct mml_comp *comp);
 	s32 (*clk_enable)(struct mml_comp *comp);
 	s32 (*clk_disable)(struct mml_comp *comp, bool dpc);
 	u32 (*qos_datasize_get)(struct mml_task *task,
@@ -646,6 +649,7 @@ struct mml_comp {
 	phys_addr_t larb_base;
 	u32 larb_port;
 	s32 pw_cnt;
+	s32 mminfra_pw_cnt;
 	s32 clk_cnt;
 	u32 cur_bw;
 	u32 cur_peak;

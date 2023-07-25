@@ -584,7 +584,7 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 
 	comp = path->mmlsys;
 	call_hw_op(comp, pw_enable);
-	mml_dpc_exc_keep(task);
+	mml_dpc_exc_keep(cfg->mml);
 
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
@@ -593,7 +593,7 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 
 	comp = path->mmlsys;
 	call_hw_op(comp, pw_disable);
-	mml_dpc_exc_release(task);
+	mml_dpc_exc_release(cfg->mml);
 }
 
 static s32 core_enable(struct mml_task *task, u32 pipe)
@@ -610,25 +610,28 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 	cmdq_mbox_enable(((struct cmdq_client *)task->pkts[pipe]->cl)->chan);
 	mml_trace_ex_end();
 
+	comp = path->mmlsys;
+
+	mml_trace_ex_begin("%s_%s_%u", __func__, "mminfra_pw", pipe);
+	call_hw_op(comp, mminfra_pw_enable);
+	mml_trace_ex_end();
+
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
-	for (i = 0; i < path->node_cnt; i++) {
-		comp = path->nodes[i].comp;
-		call_hw_op(comp, pw_enable);
-	}
+	call_hw_op(comp, pw_enable);
 	mml_trace_ex_end();
 
 	if (task->config->info.mode == MML_MODE_RACING && task->config->dpc) {
 		/* keep and release pw off until next DT */
 		mml_msg_dpc("%s dpc exception flow for IR", __func__);
-		mml_dpc_exc_keep(task);
-		mml_dpc_exc_release(task);
+		mml_dpc_exc_keep(task->config->mml);
+		mml_dpc_exc_release(task->config->mml);
 	} else if (task->config->info.mode == MML_MODE_MML_DECOUPLE) {
 		mml_msg_dpc("%s dpc exception flow enable for DC", __func__);
-		mml_dpc_exc_keep(task);
-		mml_dpc_dc_enable(task, true);
+		mml_dpc_exc_keep(task->config->mml);
+		mml_dpc_dc_enable(task->config->mml, true);
 	} else if (!task->config->dpc) {
 		mml_msg_dpc("%s dpc exception flow enable for IR/DL no dpc", __func__);
-		mml_dpc_exc_keep(task);
+		mml_dpc_exc_keep(task->config->mml);
 	}
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
@@ -643,6 +646,11 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, clk_enable);
 	}
+	mml_trace_ex_end();
+
+	comp = path->mmlsys;
+	mml_trace_ex_begin("%s_%s_%u", __func__, "mminfra_pw", pipe);
+	call_hw_op(comp, mminfra_pw_disable);
 	mml_trace_ex_end();
 
 #ifndef MML_FPGA
@@ -668,6 +676,11 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	bool pw_disable_exc;
 
 	mml_clock_lock(task->config->mml);
+
+	comp = path->mmlsys;
+	mml_trace_ex_begin("%s_%s_%u", __func__, "mminfra_pw", pipe);
+	call_hw_op(comp, mminfra_pw_enable);
+	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
 
@@ -703,31 +716,33 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 
 	if (task->config->info.mode == MML_MODE_MML_DECOUPLE) {
 		/* must before pw_disable */
-		mml_dpc_dc_enable(task, false);
+		mml_dpc_dc_enable(task->config->mml, false);
 	}
 
-	/* no need exception flow for DL/IR until scenario out */
+	/* no need exception flow for DL/IR with dpc until scenario out */
 	cur_task_cnt = mml_dpc_task_cnt_get(task, false);
 	pw_disable_exc = task->config->dpc && cur_task_cnt == 1;
 
 	if (pw_disable_exc)
-		mml_dpc_exc_keep(task);
+		mml_dpc_exc_keep(task->config->mml);
 
-	/* backward disable all power */
-	for (i = path->node_cnt - 1; i >= 0; i--) {
-		comp = path->nodes[i].comp;
-		call_hw_op(comp, pw_disable);
-	}
+	comp = path->mmlsys;
+	call_hw_op(comp, pw_disable);
 
 	if (pw_disable_exc)
-		mml_dpc_exc_release(task);
+		mml_dpc_exc_release(task->config->mml);
 
 	if (task->config->info.mode == MML_MODE_MML_DECOUPLE ||
 	    !task->config->dpc) {
 		mml_msg_dpc("%s dpc exception flow disable for DC or IR/DL no dpc", __func__);
-		mml_dpc_exc_release(task);
+		mml_dpc_exc_release(task->config->mml);
 	}
 
+	mml_trace_ex_end();
+
+	comp = path->mmlsys;
+	mml_trace_ex_begin("%s_%s_%u", __func__, "mminfra_pw", pipe);
+	call_hw_op(comp, mminfra_pw_disable);
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "cmdq", pipe);

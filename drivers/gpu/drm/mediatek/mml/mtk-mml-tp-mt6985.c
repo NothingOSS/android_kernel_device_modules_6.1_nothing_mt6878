@@ -777,6 +777,7 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 			pq_birsz = &path->nodes[i];
 			continue;
 		} else if (engine_tdshp(eng)) {
+			path->tdshp_id = eng;
 			if (pq_rdma && pq_birsz) {
 				pq_birsz->prev[0] = pq_rdma;
 				pq_rdma->next[0] = pq_birsz;

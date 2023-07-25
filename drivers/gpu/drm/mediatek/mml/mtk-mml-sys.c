@@ -879,22 +879,25 @@ static const struct mml_comp_debug_ops sys_debug_ops = {
 };
 
 #ifndef MML_FPGA
-s32 mml_sys_pw_enable(struct mml_comp *comp)
+s32 mml_mminfra_pw_enable(struct mml_comp *comp)
 {
 	struct mml_sys *sys = comp_to_sys(comp);
 	int ret = 0;
 
-	comp->pw_cnt++;
-	if (comp->pw_cnt > 1)
+	if (!sys->data->pw_mminfra)
+		return ret;
+
+	comp->mminfra_pw_cnt++;
+	if (comp->mminfra_pw_cnt > 1)
 		return 0;
-	if (comp->pw_cnt <= 0) {
+	if (comp->mminfra_pw_cnt <= 0) {
 		mml_err("%s comp %u %s cnt %d",
-			__func__, comp->id, comp->name, comp->pw_cnt);
+			__func__, comp->id, comp->name, comp->mminfra_pw_cnt);
 		return -EINVAL;
 	}
 
-	if (!comp->larb_dev) {
-		mml_err("%s no larb for comp %u", __func__, comp->id);
+	if (!sys->dev) {
+		mml_err("%s no mminfra pw for comp %u", __func__, comp->id);
 		return 0;
 	}
 
@@ -902,50 +905,38 @@ s32 mml_sys_pw_enable(struct mml_comp *comp)
 	 * cause mminfra must power on before other mtcmos, and must off after it.
 	 */
 	mml_msg_dpc("%s mminfra pm_runtime_resume_and_get", __func__);
+	mml_mmp(dpc_pm_runtime_get, MMPROFILE_FLAG_PULSE, 0, 0);
 	ret = pm_runtime_resume_and_get(sys->dev);
 	if (ret)
 		mml_err("%s enable pw-domain fail ret:%d", __func__, ret);
-
-	mml_msg_dpc("%s comp %u pm_runtime_resume_and_get", __func__, comp->id);
-	mml_mmp(dpc_pm_runtime_get, MMPROFILE_FLAG_PULSE, comp->id, 0);
-	ret = pm_runtime_resume_and_get(comp->larb_dev);
-	if (ret)
-		mml_err("%s enable larb pm fail ret:%d", __func__, ret);
-
-	/* turn off mminfra */
-	mml_msg_dpc("%s mminfra pm_runtime_put_sync", __func__);
-	pm_runtime_put_sync(sys->dev);
 
 	return ret;
 }
 
-s32 mml_sys_pw_disable(struct mml_comp *comp)
+s32 mml_mminfra_pw_disable(struct mml_comp *comp)
 {
 	struct mml_sys *sys = comp_to_sys(comp);
-	int ret;
+	int ret = 0;
 
-	comp->pw_cnt--;
-	if (comp->pw_cnt > 0)
+	if (!sys->data->pw_mminfra)
+		return ret;
+
+	comp->mminfra_pw_cnt--;
+	if (comp->mminfra_pw_cnt > 0)
 		return 0;
-	if (comp->pw_cnt < 0) {
+	if (comp->mminfra_pw_cnt < 0) {
 		mml_err("%s comp %u %s cnt %d",
-			__func__, comp->id, comp->name, comp->pw_cnt);
+			__func__, comp->id, comp->name, comp->mminfra_pw_cnt);
 		return -EINVAL;
 	}
 
-	if (!comp->larb_dev) {
-		mml_err("%s no larb for comp %u", __func__, comp->id);
+	if (!sys->dev) {
+		mml_err("%s no mminfra pw for comp %u", __func__, comp->id);
 		return 0;
 	}
 
-	mml_msg_dpc("%s mminfra pm_runtime_resume_and_get", __func__);
-	ret = pm_runtime_resume_and_get(sys->dev);
-	if (ret)
-		mml_err("%s enable pw-domain fail ret:%d", __func__, ret);
-	mml_msg_dpc("%s comp %u pm_runtime_put_sync", __func__, comp->id);
-	mml_mmp(dpc_pm_runtime_put, MMPROFILE_FLAG_PULSE, comp->id, 0);
-	pm_runtime_put_sync(comp->larb_dev);
 	mml_msg_dpc("%s mminfra pm_runtime_put_sync", __func__);
+	mml_mmp(dpc_pm_runtime_put, MMPROFILE_FLAG_PULSE, 0, 0);
 	pm_runtime_put_sync(sys->dev);
 
 	return 0;
@@ -1001,13 +992,17 @@ static s32 mml_sys_comp_clk_disable(struct mml_comp *comp,
 }
 
 static const struct mml_comp_hw_ops sys_hw_ops = {
+	.pw_enable = mml_comp_pw_enable,
+	.pw_disable = mml_comp_pw_disable,
 	.clk_enable = &mml_sys_comp_clk_enable,
 	.clk_disable = &mml_sys_comp_clk_disable,
 };
 
 static const struct mml_comp_hw_ops sys_hw_ops_mminfra = {
-	.pw_enable = &mml_sys_pw_enable,
-	.pw_disable = &mml_sys_pw_disable,
+	.pw_enable = &mml_comp_pw_enable,
+	.pw_disable = &mml_comp_pw_disable,
+	.mminfra_pw_enable = mml_mminfra_pw_enable,
+	.mminfra_pw_disable = mml_mminfra_pw_disable,
 	.clk_enable = &mml_sys_comp_clk_enable,
 	.clk_disable = &mml_sys_comp_clk_disable,
 };
@@ -1023,20 +1018,19 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 	const char *name;
 	const __be32 *p;
 	u32 value, comp_id, selbit, selmask;
+	s32 ret;
 
 	/* This larb_dev represent mmlsys it self for MMINFRA power domain on/off.
 	 * The mml-core will manually do pw_enable/pw_disable by this dev,
 	 * to power on/off mminfra mtcmos.
 	 */
 	if (sys->data->pw_mminfra) {
-		s32 ret;
-
 		sys->dev = dev;
 		pm_runtime_enable(dev);
-		ret = mml_comp_init_larb(comp, dev);
-		if (ret)
-			mml_err("%s init larb fail %d", __func__, ret);
 	}
+	ret = mml_comp_init_larb(comp, dev);
+	if (ret)
+		mml_err("%s init larb fail %d", __func__, ret);
 
 	/* Initialize mux-pins */
 	cnt = of_property_count_elems_of_size(node, "mux-pins",
@@ -1252,10 +1246,10 @@ static void sys_ddp_disable_locked(const struct mml_topology_path *path,
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
-	for (i = 0; i < path->node_cnt; i++) {
-		comp = path->nodes[i].comp;
-		call_hw_op(comp, pw_disable);
-	}
+
+	comp = path->mmlsys;
+	call_hw_op(comp, pw_disable);
+
 	mml_trace_ex_end();
 }
 
@@ -1306,10 +1300,10 @@ static void sys_ddp_enable(struct mml_sys *sys, struct mml_task *task, u32 pipe)
 		goto enabled;
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
-	for (i = 0; i < path->node_cnt; i++) {
-		comp = path->nodes[i].comp;
-		call_hw_op(comp, pw_enable);
-	}
+
+	comp = path->mmlsys;
+	call_hw_op(comp, pw_enable);
+
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
@@ -1783,8 +1777,6 @@ static const struct mml_comp_config_ops dl_config_ops = {
 };
 
 static const struct mml_comp_hw_ops dl_hw_ops = {
-	.pw_enable = mml_comp_pw_enable,
-	.pw_disable = mml_comp_pw_disable,
 	.clk_enable = mml_comp_clk_enable,
 	.clk_disable = mml_comp_clk_disable,
 	/* TODO: pmqos_op

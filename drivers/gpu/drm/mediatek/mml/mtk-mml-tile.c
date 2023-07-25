@@ -115,7 +115,7 @@ static void set_tile_config(struct mml_task *task,
 		set_tile_engine(e, &tile->tile_engines[i], func);
 
 		if (task->config->info.dest[0].pq_config.en_region_pq &&
-		    e->prev[1]) {
+		    e->comp->id == path->tdshp_id) {
 			struct mml_path_node *pq_birsz = e->prev[1];
 			struct mml_path_node *pq_rdma = pq_birsz->prev[0];
 			struct mml_comp *pq_birsz_comp = pq_birsz->comp;

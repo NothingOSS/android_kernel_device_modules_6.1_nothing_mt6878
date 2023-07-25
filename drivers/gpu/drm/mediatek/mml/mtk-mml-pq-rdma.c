@@ -981,8 +981,6 @@ u32 pq_rdma_format_get(struct mml_task *task, struct mml_comp_config *ccfg)
 }
 
 static const struct mml_comp_hw_ops rdma_hw_ops = {
-	.pw_enable = &mml_comp_pw_enable,
-	.pw_disable = &mml_comp_pw_disable,
 	.clk_enable = &mml_comp_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.qos_datasize_get = &pq_rdma_datasize_get,

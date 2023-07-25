@@ -385,6 +385,7 @@ struct mml_comp_aal {
 	bool dual;
 	bool clk_on;
 	bool dpc;
+	struct mml_comp *mmlsys_comp;
 	u32 jobid;
 	u8 pipe;
 	u8 out_idx;
@@ -647,10 +648,10 @@ static void clarity_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 		if (aal_get_rb_mode(aal) == RB_EOF_MODE) {
 			mml_clock_lock(task->config->mml);
 			/* ccf power on */
-			call_hw_op(comp, pw_enable);
+			call_hw_op(task->config->path[0]->mmlsys, pw_enable);
 			/* dpc exception flow on */
 			mml_msg_dpc("%s dpc exception flow on", __func__);
-			mml_dpc_exc_keep(task);
+			mml_dpc_exc_keep(task->config->mml);
 			call_hw_op(comp, clk_enable);
 			mml_clock_unlock(task->config->mml);
 			mml_lock_wake_lock(aal->mml, true);
@@ -703,10 +704,10 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 	if (aal_get_rb_mode(aal) == RB_SOF_MODE) {
 		mml_clock_lock(task->config->mml);
 		/* ccf power on */
-		call_hw_op(comp, pw_enable);
+		call_hw_op(task->config->path[0]->mmlsys, pw_enable);
 		/* dpc exception flow on */
 		mml_msg_dpc("%s dpc exception flow on", __func__);
-		mml_dpc_exc_keep(task);
+		mml_dpc_exc_keep(task->config->mml);
 		call_hw_op(comp, clk_enable);
 		mml_clock_unlock(task->config->mml);
 	}
@@ -768,14 +769,15 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 		if (aal_get_rb_mode(aal) == RB_EOF_MODE) {
 			mml_clock_lock(task->config->mml);
 			/* ccf power on */
-			call_hw_op(comp, pw_enable);
+			call_hw_op(task->config->path[0]->mmlsys, pw_enable);
 			/* dpc exception flow on */
 			mml_msg_dpc("%s dpc exception flow on", __func__);
-			mml_dpc_exc_keep(task);
+			mml_dpc_exc_keep(task->config->mml);
 			call_hw_op(comp, clk_enable);
 			mml_clock_unlock(task->config->mml);
 			mml_lock_wake_lock(aal->mml, true);
 			aal->dpc = task->config->dpc;
+			aal->mmlsys_comp = task->config->path[0]->mmlsys;
 
 			if (is_config)
 				mml_write(pkt, base_pa + aal->data->reg_table[AAL_INTEN],
@@ -846,11 +848,11 @@ static void aal_write_curve(struct mml_comp *comp, struct mml_task *task,
 	u32 sram_cfg_val = 0, temp_val = 0;
 
 	mml_clock_lock(task->config->mml);
-	call_hw_op(comp, pw_enable);
+	call_hw_op(task->config->path[0]->mmlsys, pw_enable);
 	if (task->config->dpc) {
 		/* dpc exception flow on */
 		mml_msg("%s dpc exception flow on", __func__);
-		mml_dpc_exc_keep(task);
+		mml_dpc_exc_keep(task->config->mml);
 	}
 	call_hw_op(comp, clk_enable);
 	mml_clock_unlock(task->config->mml);
@@ -892,9 +894,9 @@ static void aal_write_curve(struct mml_comp *comp, struct mml_task *task,
 	if (task->config->dpc) {
 		/* dpc exception flow off */
 		mml_msg("%s dpc exception flow off", __func__);
-		mml_dpc_exc_release(task);
+		mml_dpc_exc_release(task->config->mml);
 	}
-	call_hw_op(comp, pw_disable);
+	call_hw_op(task->config->path[0]->mmlsys, pw_disable);
 
 	mml_clock_unlock(task->config->mml);
 	mml_lock_wake_lock(aal->mml, false);
@@ -2091,8 +2093,6 @@ s32 aal_clk_enable(struct mml_comp *comp)
 }
 
 static const struct mml_comp_hw_ops aal_hw_ops = {
-	.pw_enable = &mml_comp_pw_enable,
-	.pw_disable = &mml_comp_pw_disable,
 	.clk_enable = &aal_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.qos_clear = &mml_comp_qos_clear,
@@ -2234,9 +2234,9 @@ static void aal_readback_work(struct work_struct *work_item)
 		call_hw_op(comp, clk_disable, aal->dpc);
 		/* dpc exception flow off */
 		mml_msg_dpc("%s dpc exception flow off", __func__);
-		mml_dpc_exc_release(aal->pq_task->task);
+		mml_dpc_exc_release(aal->mml);
 		/* ccf power off */
-		call_hw_op(comp, pw_disable);
+		call_hw_op(aal->mmlsys_comp, pw_disable);
 		mml_clock_unlock(aal->mml);
 		mml_lock_wake_lock(aal->mml, false);
 	}
@@ -2283,9 +2283,9 @@ static void clarity_histdone_cb(struct cmdq_cb_data data)
 		call_hw_op(comp, clk_disable, aal->dpc);
 		/* dpc exception flow off */
 		mml_msg_dpc("%s dpc exception flow off", __func__);
-		mml_dpc_exc_release(aal->pq_task->task);
+		mml_dpc_exc_release(aal->mml);
 		/* ccf power off */
-		call_hw_op(comp, pw_disable);
+		call_hw_op(aal->mmlsys_comp, pw_disable);
 		mml_clock_unlock(aal->mml);
 		mml_lock_wake_lock(aal->mml, false);
 	}
@@ -2438,15 +2438,6 @@ static int probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(dev, "Failed to init mml component: %d\n", ret);
 		return ret;
-	}
-
-	/* init larb for smi and mtcmos */
-	ret = mml_comp_init_larb(&priv->comp, dev);
-	if (ret) {
-		if (ret == -EPROBE_DEFER)
-			return ret;
-		dev_info(dev, "fail to init component %u larb ret %d",
-			priv->comp.id, ret);
 	}
 
 	if (of_property_read_u32(dev->of_node, "sram-curve-base", &priv->sram_curve_start))

@@ -2158,8 +2158,6 @@ static void rdma_task_done(struct mml_comp *comp, struct mml_task *task,
 }
 
 static const struct mml_comp_hw_ops rdma_hw_ops = {
-	.pw_enable = &mml_comp_pw_enable,
-	.pw_disable = &mml_comp_pw_disable,
 	.clk_enable = &mml_comp_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.qos_datasize_get = &rdma_datasize_get,

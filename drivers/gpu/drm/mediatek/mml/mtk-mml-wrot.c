@@ -2287,8 +2287,6 @@ static s32 mml_wrot_comp_clk_disable(struct mml_comp *comp,
 }
 
 static const struct mml_comp_hw_ops wrot_hw_ops = {
-	.pw_enable = &mml_comp_pw_enable,
-	.pw_disable = &mml_comp_pw_disable,
 	.clk_enable = &mml_wrot_comp_clk_enable,
 	.clk_disable = &mml_wrot_comp_clk_disable,
 	.qos_datasize_get = &wrot_datasize_get,

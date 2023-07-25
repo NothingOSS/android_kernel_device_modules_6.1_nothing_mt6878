@@ -179,6 +179,7 @@ struct mml_comp_tdshp {
 	bool clarity_readback;
 	bool dc_readback;
 	bool dpc;
+	struct mml_comp *mmlsys_comp;
 	struct mutex hist_cmd_lock;
 	struct mml_pq_readback_buffer *tdshp_hist[MML_PIPE_CNT];
 	struct cmdq_client *clt;
@@ -437,14 +438,17 @@ static s32 tdshp_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			if (tdshp->data->rb_mode == RB_EOF_MODE) {
 				mml_clock_lock(task->config->mml);
 				/* ccf power on */
-				call_hw_op(comp, pw_enable);
+				call_hw_op(task->config->path[0]->mmlsys,
+					pw_enable);
 				/* dpc exception flow on */
 				mml_msg_dpc("%s dpc exception flow on", __func__);
-				mml_dpc_exc_keep(task);
+				mml_dpc_exc_keep(task->config->mml);
 				call_hw_op(comp, clk_enable);
 				mml_clock_unlock(task->config->mml);
 				mml_lock_wake_lock(tdshp->mml, true);
 				tdshp->dpc = task->config->dpc;
+				tdshp->mmlsys_comp =
+					task->config->path[0]->mmlsys;
 			}
 
 			queue_work(tdshp->tdshp_hist_wq, &tdshp->tdshp_hist_task);
@@ -945,8 +949,6 @@ exit:
 
 
 static const struct mml_comp_hw_ops tdshp_hw_ops = {
-	.pw_enable = &mml_comp_pw_enable,
-	.pw_disable = &mml_comp_pw_disable,
 	.clk_enable = &mml_comp_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.task_done = tdshp_task_done_readback,
@@ -1143,9 +1145,9 @@ static void tdshp_histdone_cb(struct cmdq_cb_data data)
 		call_hw_op(comp, clk_disable, tdshp->dpc);
 		/* dpc exception flow off */
 		mml_msg_dpc("%s dpc exception flow off", __func__);
-		mml_dpc_exc_release(tdshp->pq_task->task);
+		mml_dpc_exc_release(tdshp->mml);
 		/* ccf power off */
-		call_hw_op(comp, pw_disable);
+		call_hw_op(tdshp->mmlsys_comp, pw_disable);
 		mml_clock_unlock(tdshp->mml);
 		mml_lock_wake_lock(tdshp->mml, false);
 	}
@@ -1308,14 +1310,6 @@ static int probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(dev, "Failed to init mml component: %d\n", ret);
 		return ret;
-	}
-
-	ret = mml_comp_init_larb(&priv->comp, dev);
-	if (ret) {
-		if (ret == -EPROBE_DEFER)
-			return ret;
-			dev_err(dev, "fail to init component %u larb ret %d",
-				priv->comp.id, ret);
 	}
 
 	if (of_property_read_u16(dev->of_node, "event-frame-done",

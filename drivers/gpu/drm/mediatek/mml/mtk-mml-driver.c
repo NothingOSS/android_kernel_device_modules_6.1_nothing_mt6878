@@ -859,10 +859,10 @@ void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
 					__func__, ret);
 		}
 		mml_dpc_enable(true);
-		mml_dpc_exc_keep(task);
+		mml_dpc_exc_keep(task->config->mml);
 		mml_mmp(dpc_cfg, MMPROFILE_FLAG_START, 1, 0);
 		mml_dpc_config(DPC_SUBSYS_MML1, true);
-		mml_dpc_exc_release(task);
+		mml_dpc_exc_release(task->config->mml);
 	}
 }
 
@@ -893,7 +893,7 @@ void mml_dpc_task_cnt_dec(struct mml_task *task, bool addon_task)
 		struct mml_comp *comp;
 
 		mml_msg_dpc("%s scenario out, dpc end", __func__);
-		mml_dpc_exc_keep(task);
+		mml_dpc_exc_keep(task->config->mml);
 		mml_mmp(dpc_cfg, MMPROFILE_FLAG_END, 0, 0);
 		mml_dpc_config(DPC_SUBSYS_MML1, false);
 		mml_dpc_enable(false);
@@ -901,13 +901,12 @@ void mml_dpc_task_cnt_dec(struct mml_task *task, bool addon_task)
 			clk_disable_unprepare(mml->dpc.mmlsys_26m_clk);
 		comp = path->mmlsys;
 		call_hw_op(comp, pw_disable);
-		mml_dpc_exc_release(task);
+		mml_dpc_exc_release(task->config->mml);
 	}
 }
 
-void mml_dpc_exc_keep(struct mml_task *task)
+void mml_dpc_exc_keep(struct mml_dev *mml)
 {
-	struct mml_dev *mml = task->config->mml;
 	s32 cur_exc_pw_cnt = atomic_inc_return(&mml->dpc.exc_pw_cnt);
 
 	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_PULSE, 1, 0);
@@ -923,9 +922,8 @@ void mml_dpc_exc_keep(struct mml_task *task)
 	mml_dpc_power_keep();
 }
 
-void mml_dpc_exc_release(struct mml_task *task)
+void mml_dpc_exc_release(struct mml_dev *mml)
 {
-	struct mml_dev *mml = task->config->mml;
 	s32 cur_exc_pw_cnt = atomic_dec_return(&mml->dpc.exc_pw_cnt);
 
 	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_PULSE, 0, 0);
@@ -941,9 +939,8 @@ void mml_dpc_exc_release(struct mml_task *task)
 	mml_dpc_power_release();
 }
 
-void mml_dpc_dc_enable(struct mml_task *task, bool en)
+void mml_dpc_dc_enable(struct mml_dev *mml, bool en)
 {
-	struct mml_dev *mml = task->config->mml;
 	s32 cur_dc_force_cnt;
 
 	if (en) {
