@@ -15,6 +15,7 @@
 #include "clkchk-mt6989.h"
 #include "clk-fmeter.h"
 #include "clk-mt6989-fmeter.h"
+#include "vcp_status.h"
 
 #define TAG				"[pdchk] "
 #define BUG_ON_CHK_ENABLE		0
@@ -23,6 +24,8 @@
 #define PWR_STA_SHIFT			8
 #define HWV_INT_MTCMOS_TRIGGER		0x0008
 #define HWV_IRQ_STATUS			0x0500
+
+#define PWR_EN_ACK			(0xc0000000)
 
 static DEFINE_SPINLOCK(pwr_trace_lock);
 static unsigned int pwr_event[EVT_LEN];
@@ -873,6 +876,7 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 {
 	const struct fmeter_clk *fclks;
 	int i, parent_id = PD_NULL;
+	bool need_chk = false;
 
 	if (id >= MT6989_CHK_PD_NUM)
 		return;
@@ -882,6 +886,24 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 	set_subsys_reg_dump_mt6989(debug_dump_id);
 
 	get_subsys_reg_dump_mt6989();
+
+	if ((get_mt6989_reg_value(spm, 0xea8) & PWR_EN_ACK) == PWR_EN_ACK)
+		need_chk = false;
+	else
+		need_chk = true;
+
+	/* vcp no need to vote mminfra */
+	if (pwr_sta) {
+		if (id == MT6989_CHK_PD_MM_INFRA)
+			vcp_cmd_ex(VCP_SET_HALT_MMINFRA, "scpsys_mminfra_hwv_on");
+		else
+			vcp_cmd_ex(VCP_SET_HALT, "scpsys_hwv_on");
+	} else {
+		if (id == MT6989_CHK_PD_MM_INFRA)
+			vcp_cmd_ex(VCP_SET_HALT_MMINFRA, "scpsys_mminfra_hwv_off");
+		else
+			vcp_cmd_ex(VCP_SET_HALT, "scpsys_hwv_off");
+	}
 
 	for (i = 0; i < ARRAY_SIZE(mtk_subsys_check); i++) {
 		if (mtk_subsys_check[i].pd_id == id) {
@@ -900,13 +922,14 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 	}
 
 	dump_power_event();
+
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
 		if (fclks->type != VLPCK && fclks->type != SUBSYS)
 			pr_notice("[%s] %d khz\n", fclks->name,
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
 
-	mdelay(3000);
+	mdelay(5000);
 	BUG_ON(1);
 }
 
@@ -923,6 +946,25 @@ static void log_dump(unsigned int id, unsigned int pwr_sta)
 	if (id == MT6989_CHK_PD_MD1) {
 		set_subsys_reg_dump_mt6989(log_dump_id);
 		get_subsys_reg_dump_mt6989();
+	}
+}
+
+static void external_dump(void)
+{
+	const struct fmeter_clk *fclks;
+
+	fclks = mt_get_fmeter_clks();
+
+	set_subsys_reg_dump_mt6989(debug_dump_id);
+
+	get_subsys_reg_dump_mt6989();
+
+	dump_power_event();
+
+	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
+		if (fclks->type != VLPCK && fclks->type != SUBSYS)
+			pr_notice("[%s] %d khz\n", fclks->name,
+				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
 }
 
@@ -1111,6 +1153,7 @@ static struct pdchk_ops pdchk_mt6989_ops = {
 	.is_in_pd_list = is_in_pd_list,
 	.debug_dump = debug_dump,
 	.log_dump = log_dump,
+	.external_dump = external_dump,
 	.get_pd_pwr_status = get_pd_pwr_status,
 	.get_off_mtcmos_id = get_off_mtcmos_id,
 	.get_notice_mtcmos_id = get_notice_mtcmos_id,

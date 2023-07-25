@@ -21,7 +21,6 @@
 
 #include "clk-mtk.h"
 #include "clk-gate.h"
-#include "vcp_status.h"
 
 #define MTK_POLL_HWV_VOTE_CNT		(2500)
 #define MTK_POLL_HWV_VOTE_US		2
@@ -176,11 +175,6 @@ err_hwv_prepare:
 	mtk_clk_notify(NULL, hwvd->regmap, hwvd->data->name,
 			hwvd->data->en_ofs, 0,
 			onoff, CLK_EVT_MMINFRA_HWV_TIMEOUT);
-
-	if (onoff)
-		vcp_cmd_ex(VCP_SET_HALT, "clk_mminfra_hwv_on");
-	else
-		vcp_cmd_ex(VCP_SET_HALT, "clk_mminfra_hwv_off");
 
 	return ret;
 }

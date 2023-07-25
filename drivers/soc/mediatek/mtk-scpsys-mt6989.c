@@ -1026,7 +1026,8 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_clr_ofs = 0x0408,
 		.hwv_done_ofs = 0x091C,
 		.hwv_shift = 0,
-		.caps = MTK_SCPD_MMINFRA_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap,
+		.caps = MTK_SCPD_MMINFRA_HWV_OPS | MTK_SCPD_IRQ_SAVE |
+			MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_ISP_TRAW] = {
 		.name = "isp-traw",
@@ -1038,7 +1039,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 27,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_ISP_DIP1] = {
 		.name = "isp-dip1",
@@ -1050,7 +1051,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 28,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_ISP_MAIN] = {
 		.name = "isp-main",
@@ -1062,7 +1063,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 7,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_ISP_VCORE] = {
 		.name = "isp-vcore",
@@ -1074,7 +1075,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 2,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_VDE0] = {
 		.name = "vde0",
@@ -1086,7 +1087,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 8,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_VDE1] = {
 		.name = "vde1",
@@ -1098,7 +1099,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 26,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_VDE_VCORE0] = {
 		.name = "vde-vcore0",
@@ -1110,7 +1111,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 3,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_VDE_VCORE1] = {
 		.name = "vde-vcore1",
@@ -1122,7 +1123,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 13,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_VEN0] = {
 		.name = "ven0",
@@ -1134,7 +1135,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 4,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_VEN1] = {
 		.name = "ven1",
@@ -1146,7 +1147,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 9,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_VEN2] = {
 		.name = "ven2",
@@ -1158,7 +1159,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 14,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_MRAW] = {
 		.name = "cam-mraw",
@@ -1170,7 +1171,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 16,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_SUBA] = {
 		.name = "cam-suba",
@@ -1182,7 +1183,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 17,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_SUBB] = {
 		.name = "cam-subb",
@@ -1194,7 +1195,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 18,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_SUBC] = {
 		.name = "cam-subc",
@@ -1206,7 +1207,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 19,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_MAIN] = {
 		.name = "cam-main",
@@ -1218,7 +1219,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 11,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_VCORE] = {
 		.name = "cam-vcore",
@@ -1230,7 +1231,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 5,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_CCU] = {
 		.name = "cam-ccu",
@@ -1242,7 +1243,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 10,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CAM_CCU_AO] = {
 		.name = "cam-ccu-ao",
@@ -1254,7 +1255,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 15,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_DISP_VCORE] = {
 		.name = "disp-vcore",
@@ -1266,7 +1267,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 6,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_MML0_SHUTDOWN] = {
 		.name = "mml0-shutdown",
@@ -1278,7 +1279,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 23,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_MML1_SHUTDOWN] = {
 		.name = "mml1-shutdown",
@@ -1290,7 +1291,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 24,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_DIS0_SHUTDOWN] = {
 		.name = "dis0-shutdown",
@@ -1302,7 +1303,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 25,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_DIS1_SHUTDOWN] = {
 		.name = "dis1-shutdown",
@@ -1314,7 +1315,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 12,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_OVL0_SHUTDOWN] = {
 		.name = "ovl0-shutdown",
@@ -1326,7 +1327,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 20,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_OVL1_SHUTDOWN] = {
 		.name = "ovl1-shutdown",
@@ -1338,7 +1339,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 21,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_DP_TX] = {
 		.name = "dp-tx",
@@ -1350,7 +1351,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 22,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_CSI_RX] = {
 		.name = "csi-rx",
@@ -1362,7 +1363,7 @@ static const struct scp_domain_data scp_domain_mt6989_hwv_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 1,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_WAIT_VCP | default_cap,
 	},
 	[MT6989_POWER_DOMAIN_SSR] = {
 		.name = "ssrsys",

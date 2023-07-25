@@ -26,6 +26,7 @@
 #include "clkchk-mt6989.h"
 #include "clk-fmeter.h"
 #include "clk-mt6989-fmeter.h"
+#include "vcp_status.h"
 
 #define BUG_ON_CHK_ENABLE		0
 #define CHECK_VCORE_FREQ		0
@@ -54,6 +55,8 @@
 #define EVT_LEN				40
 #define CLK_ID_SHIFT			0
 #define CLK_STA_SHIFT			12
+
+#define PWR_EN_ACK			(0xc0000000)
 
 static DEFINE_SPINLOCK(clk_trace_lock);
 static unsigned int clk_event[EVT_LEN];
@@ -2398,11 +2401,20 @@ static void devapc_dump(void)
 
 	dump_clk_event();
 	pdchk_dump_trace_evt();
+
+	/* kick vcp wdt */
+	if ((get_mt6989_reg_value(spm, 0xea8) & PWR_EN_ACK) == PWR_EN_ACK)
+		vcp_cmd_ex(VCP_SET_HALT_MMINFRA, "clk_devapc");
+	else
+		vcp_cmd_ex(VCP_SET_HALT, "clk_devapc");
+
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
 		if (fclks->type != VLPCK && fclks->type != SUBSYS)
 			pr_notice("[%s] %d khz\n", fclks->name,
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
+
+	mdelay(5000);
 }
 
 static void serror_dump(void)
@@ -2416,11 +2428,20 @@ static void serror_dump(void)
 
 	dump_clk_event();
 	pdchk_dump_trace_evt();
+
+	/* kick vcp wdt */
+	if ((get_mt6989_reg_value(spm, 0xea8) & PWR_EN_ACK) == PWR_EN_ACK)
+		vcp_cmd_ex(VCP_SET_HALT_MMINFRA, "clk_serror");
+	else
+		vcp_cmd_ex(VCP_SET_HALT, "clk_serror");
+
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
 		if (fclks->type != VLPCK && fclks->type != SUBSYS)
 			pr_notice("[%s] %d khz\n", fclks->name,
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
+
+	mdelay(5000);
 }
 
 static struct devapc_vio_callbacks devapc_vio_handle = {
@@ -2544,6 +2565,9 @@ static enum chk_sys_id bus_dump_id[] = {
 	top,
 	apmixed,
 	hfrp,
+	hfrp_hwv,
+	mm_hwv,
+	mm_hwv_ext,
 	vlp_ao,
 	chk_sys_num,
 };
@@ -2560,14 +2584,18 @@ static void dump_bus_reg(struct regmap *regmap, u32 ofs)
 	fclks = mt_get_fmeter_clks();
 	set_subsys_reg_dump_mt6989(bus_dump_id);
 	get_subsys_reg_dump_mt6989();
+	if ((get_mt6989_reg_value(spm, 0xea8) & PWR_EN_ACK) == PWR_EN_ACK)
+		vcp_cmd_ex(VCP_SET_HALT_MMINFRA, "hwv_cg_timeout");
+	else
+		vcp_cmd_ex(VCP_SET_HALT, "hwv_cg_timeout");
+
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
 		if (fclks->type != VLPCK && fclks->type != SUBSYS)
 			pr_notice("[%s] %d khz\n", fclks->name,
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
-	/* sspm need some time to run isr */
-	mdelay(1000);
-
+	/* wait vcp core dump */
+	mdelay(5000);
 	BUG_ON(1);
 }
 
@@ -2577,6 +2605,8 @@ static enum chk_sys_id vlp_dump_id[] = {
 	hfrp_hwv,
 	spm,
 	hfrp,
+	mm_hwv,
+	mm_hwv_ext,
 	vlp_ao,
 	chk_sys_num,
 };
@@ -2589,13 +2619,28 @@ static void dump_vlp_reg(struct regmap *regmap, u32 shift)
 	set_subsys_reg_dump_mt6989(vlp_dump_id);
 	get_subsys_reg_dump_mt6989();
 
+	/* kick vcp wdt */
+	if (shift) {
+		if ((get_mt6989_reg_value(spm, 0xea8) & PWR_EN_ACK) == PWR_EN_ACK)
+			vcp_cmd_ex(VCP_SET_HALT_MMINFRA, "clk_mminfra_hwv_on");
+		else
+			vcp_cmd_ex(VCP_SET_HALT, "clk_mminfra_hwv_on");
+	} else {
+		if ((get_mt6989_reg_value(spm, 0xea8) & PWR_EN_ACK) == PWR_EN_ACK)
+			vcp_cmd_ex(VCP_SET_HALT_MMINFRA, "clk_mminfra_hwv_off");
+		else
+			vcp_cmd_ex(VCP_SET_HALT, "clk_mminfra_hwv_off");
+	}
+
+	/* dump fmeter */
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
 		if (fclks->type != VLPCK && fclks->type != SUBSYS)
 			pr_notice("[%s] %d khz\n", fclks->name,
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
 
-	mdelay(3000);
+	/* wait vcp core dump */
+	mdelay(5000);
 	BUG_ON(1);
 }
 

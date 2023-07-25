@@ -34,6 +34,7 @@ struct pdchk_ops {
 	bool (*is_in_pd_list)(unsigned int id);
 	void (*debug_dump)(unsigned int pd_id, unsigned int pwr_sta);
 	void (*log_dump)(unsigned int pd_id, unsigned int pwr_sta);
+	void (*external_dump)(void);
 	struct pd_msk *(*get_pd_pwr_msk)(int pd_id);
 	u32 (*get_pd_pwr_status)(int pd_id);
 	int (*get_pd_pwr_idx)(int pd_id);
@@ -54,5 +55,6 @@ void pdchk_hwv_irq_init(struct platform_device *pdev);
 extern const struct dev_pm_ops pdchk_dev_pm_ops;
 extern struct clk *clk_chk_lookup(const char *name);
 extern int pwr_hw_is_on(enum PWR_STA_TYPE type, s32 mask);
+extern void pdchk_debug_dump(void);
 
 #endif /* __MTK_PD_CHK_H */

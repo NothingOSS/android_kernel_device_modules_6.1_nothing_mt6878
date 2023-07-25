@@ -19,7 +19,6 @@
 
 #include "scpsys.h"
 #include "mtk-scpsys.h"
-#include "vcp_status.h"
 
 #include <dt-bindings/power/mt2701-power.h>
 #include <dt-bindings/power/mt2712-power.h>
@@ -114,8 +113,6 @@
 #define PWR_STATUS_HIF1			BIT(26)	/* MT7622 */
 #define PWR_STATUS_WB			BIT(27)	/* MT7622 */
 
-#define MMINFRA_DONE_OFS		0x91c
-
 enum regmap_type {
 	INVALID_TYPE = 0,
 	IFR_TYPE,
@@ -135,6 +132,7 @@ static BLOCKING_NOTIFIER_HEAD(scpsys_notifier_list);
 static void __iomem *hwvdbg_infra_base;
 static void __iomem *hwvdbg_mminfra_base;
 static void __iomem *hwvdbg_hfrp_base;
+static struct scp_domain *scpsys_mminfra_hwv;
 
 int register_scpsys_notifier(struct notifier_block *nb)
 {
@@ -1063,6 +1061,18 @@ static int scpsys_apu_power_off(struct generic_pm_domain *genpd)
 	return ret;
 }
 
+static int mtk_check_vcp_is_ready(struct scp_domain *scpd)
+{
+	u32 val = 0;
+
+	regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
+
+	if ((val & VCP_READY_STA) == VCP_READY_STA)
+		return 1;
+
+	return 0;
+}
+
 static int mtk_hwv_is_done(struct scp_domain *scpd)
 {
 	struct scp *scp = scpd->scp;
@@ -1128,16 +1138,23 @@ static int scpsys_hwv_power_on(struct generic_pm_domain *genpd)
 	int tmp;
 	int i = 0;
 
-	if (scpd->data->hwv_comp && (!strcmp(scpd->data->hwv_comp, "mm-hw-ccf-regmap"))) {
-		val = readl(hwvdbg_infra_base + 0x870);
-		val = readl(hwvdbg_mminfra_base + 0x100);
-		val = readl(hwvdbg_hfrp_base + 0xea8);
-	}
-
 	if (scpd->hwv_regmap)
 		hwv_regmap = scpd->hwv_regmap;
 	else
 		hwv_regmap = scp->hwv_regmap;
+
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_WAIT_VCP)) {
+		/* check infra->mminfra->mmup bus state for serror */
+		val = readl(hwvdbg_infra_base + 0x870);
+		val = readl(hwvdbg_mminfra_base + 0x100);
+		val = readl(hwvdbg_hfrp_base + 0xea8);
+
+		/* wait until vcp is ready, check 0x1c00091c[1] = 1 */
+		ret = readx_poll_timeout_atomic(mtk_check_vcp_is_ready, scpsys_mminfra_hwv,
+				tmp, tmp > 0, MTK_POLL_DELAY_US, MTK_POLL_1S_TIMEOUT);
+		if (ret < 0)
+			goto err_vcp_ready;
+	}
 
 	ret = scpsys_regulator_enable(scpd);
 	if (ret < 0)
@@ -1181,6 +1198,8 @@ static int scpsys_hwv_power_on(struct generic_pm_domain *genpd)
 
 	return 0;
 
+err_vcp_ready:
+	dev_notice(scp->dev, "Failed to vcp ready timeout %s\n", genpd->name);
 err_hwv_done:
 	dev_err(scp->dev, "Failed to hwv done timeout %s(%d)\n", genpd->name, ret);
 err_hwv_vote:
@@ -1194,8 +1213,6 @@ err_clk:
 	dev_err(scp->dev, "Failed to enable clk %s(%d)\n", genpd->name, ret);
 err_regulator:
 	dev_err(scp->dev, "Failed to power on domain %s(%d)\n", genpd->name, ret);
-
-	vcp_cmd_ex(VCP_SET_HALT, "scpsys_hwv_on");
 
 	return ret;
 }
@@ -1214,6 +1231,14 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 		hwv_regmap = scpd->hwv_regmap;
 	else
 		hwv_regmap = scp->hwv_regmap;
+
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_WAIT_VCP)) {
+		/* wait until vcp is ready, check 0x1c00091c[1] = 1 */
+		ret = readx_poll_timeout_atomic(mtk_check_vcp_is_ready, scpsys_mminfra_hwv,
+				tmp, tmp > 0, MTK_POLL_DELAY_US, MTK_POLL_1S_TIMEOUT);
+		if (ret < 0)
+			goto err_vcp_ready;
+	}
 
 	ret = scpsys_clk_enable(scpd->lp_clk, MAX_CLKS);
 	if (ret)
@@ -1257,6 +1282,8 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 
 	return 0;
 
+err_vcp_ready:
+	dev_notice(scp->dev, "Failed to vcp ready timeout %s\n", genpd->name);
 err_regulator:
 	dev_err(scp->dev, "Failed to regulator disable %s(%d)\n", genpd->name, ret);
 err_hwv_done:
@@ -1270,8 +1297,6 @@ err_hwv_prepare:
 err_lp_clk:
 	dev_err(scp->dev, "Failed to power off domain %s(%d)\n", genpd->name, ret);
 
-	vcp_cmd_ex(VCP_SET_HALT, "scpsys_hwv_off");
-
 	return ret;
 }
 
@@ -1282,18 +1307,6 @@ static int mtk_mminfra_hwv_is_enable_done(struct scp_domain *scpd)
 	regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
 
 	if (val == (VCP_READY_STA | MMINFRA_DONE_STA))
-		return 1;
-
-	return 0;
-}
-
-static int mtk_check_vcp_is_ready(struct scp_domain *scpd)
-{
-	u32 val = 0;
-
-	regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
-
-	if ((val & VCP_READY_STA) == VCP_READY_STA)
 		return 1;
 
 	return 0;
@@ -1312,10 +1325,12 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 	int i = 0;
 
 	/* wait until vcp is ready, check 0x1c00091c[1] = 1 */
-	ret = readx_poll_timeout_atomic(mtk_check_vcp_is_ready, scpd, tmp, tmp > 0,
-			MTK_POLL_DELAY_US, MTK_POLL_1S_TIMEOUT);
-	if (ret < 0)
-		goto err_vcp_ready;
+	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_WAIT_VCP)) {
+		ret = readx_poll_timeout_atomic(mtk_check_vcp_is_ready, scpd, tmp, tmp > 0,
+				MTK_POLL_DELAY_US, MTK_POLL_1S_TIMEOUT);
+		if (ret < 0)
+			goto err_vcp_ready;
+	}
 
 	val = BIT(scpd->data->hwv_shift);
 	vote_msk = BIT(scpd->data->hwv_shift);
@@ -1363,11 +1378,6 @@ err_hwv_done:
 	dev_err(dev, "Failed to hwv done timeout %s(%d)\n", name, val2);
 err_hwv_vote:
 	dev_err(dev, "Failed to hwv vote timeout %s(%d %x)\n", name, ret, val);
-
-	if (onoff)
-		vcp_cmd_ex(VCP_SET_HALT, "scpsys_mminfra_hwv_on");
-	else
-		vcp_cmd_ex(VCP_SET_HALT, "scpsys_mminfra_hwv_off");
 
 	return ret;
 }
@@ -1642,6 +1652,7 @@ struct scp *init_scp(struct platform_device *pdev,
 		} else if (MTK_SCPD_CAPS(scpd, MTK_SCPD_MMINFRA_HWV_OPS)) {
 			genpd->power_on = scpsys_mminfra_hwv_power_on;
 			genpd->power_off = scpsys_mminfra_hwv_power_off;
+			scpsys_mminfra_hwv = scpd;
 		} else {
 			genpd->power_off = scpsys_power_off;
 			genpd->power_on = scpsys_power_on;
