@@ -241,7 +241,7 @@ static long memory_send(bool share, bool involve_sp,
 	struct ffa_mem_record_table *new_node;
 
 	new_node = kzalloc(sizeof(struct ffa_mem_record_table), GFP_KERNEL);
-	if (IS_ERR_OR_NULL(new_node)) {
+	if (unlikely(!new_node)) {
 		FFA_ERR("Out of memory. %s:%d\n", __FILE__, __LINE__);
 		return -ENOMEM;
 	}
