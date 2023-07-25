@@ -14250,7 +14250,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"gid0,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
 			node-98 = "SSPM_SLBC_CACHE_TOTAL",
 				"gid0,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
-			node-99 = "SSPM_SLBC_CACHE_STATE",
+			node-99 = "SSPM_SLBC_CACHE_STATUS",
 				"pd,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp";
 			node-100 = "SSPM_SLBC_CACHE_SIZE",
 				"pd,cpu,gpu,md,vdec_frame,vdec_ube,gpu_ovl,smmu,adsp,total,valid";
