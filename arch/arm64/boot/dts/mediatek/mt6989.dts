@@ -10652,6 +10652,7 @@
 						<&dvfsrc_freq_opp7>,
 						<&dvfsrc_freq_opp8>,
 						<&dvfsrc_freq_opp9>;
+				ceil-ddr-support;
 			};
 
 			dvfsrc-met {
