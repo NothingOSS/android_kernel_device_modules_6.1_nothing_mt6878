@@ -11801,7 +11801,7 @@
 			send-table =
 			< 0 0 18>,/* IPI_OUT_VDEC_1 */
 			< 2 1  2>,/* IPI_OUT_C_SLEEP_0 */
-			< 3 1  1>,/* IPI_OUT_TEST_0 */
+			< 3 1  2>,/* IPI_OUT_TEST_0 */
 			< 9 1  2>,/* IPI_OUT_MMDVFS */
 			<11 1  2>,/* IPI_OUT_MMQOS */
 			<13 1  2>,/* IPI_OUT_MMDEBUG */
@@ -11809,7 +11809,7 @@
 			<16 2 18>,/* IPI_OUT_VENC_0 */
 			<18 2  4>,/* IPI_OUT_VCP_MPOOL_0 */
 			<20 3  2>,/* IPI_OUT_C_SLEEP_1 */
-			<21 3  1>,/* IPI_OUT_TEST_1 */
+			<21 3  2>,/* IPI_OUT_TEST_1 */
 			<22 3  6>,/* IPI_OUT_LOGGER_CTRL */
 			<23 3  2>,/* IPI_OUT_VCPCTL_1 */
 			<28 4  4>;/* IPI_OUT_VCP_MPOOL_1 */
