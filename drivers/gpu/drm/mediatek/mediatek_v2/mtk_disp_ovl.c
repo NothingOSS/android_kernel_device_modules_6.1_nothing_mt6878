@@ -421,11 +421,21 @@ enum GS_OVL_FLD {
 
 #define CSC_COEF_NUM 9
 
-static s32 sRGB_to_DCI_P3[CSC_COEF_NUM] = {215603, 46541, 0,     8702,  253442,
-					   0,      4478,  18979, 238687};
+static s32 sRGB_to_DCI_P3[CSC_COEF_NUM] = {
+215603,  46541,      0,
+8702,   253442,      0,
+4478,    18979, 238687};
 
 static s32 DCI_P3_to_sRGB[CSC_COEF_NUM] = {
-	321111, -58967, 0, -11025, 273169, 0, -5148, -20614, 287906};
+321111, -58967,      0,
+-11025, 273169,      0,
+-5148,  -20614, 287906};
+
+static s32 identity[CSC_COEF_NUM] = {
+262144,      0,      0,
+0,      262144,      0,
+0,           0, 262144};
+
 
 #define DECLARE_MTK_OVL_COLORSPACE(EXPR)                                       \
 	EXPR(OVL_SRGB)                                                         \
@@ -1483,11 +1493,39 @@ static int mtk_ovl_do_transfer(unsigned int idx,
 	return 0;
 }
 
+static unsigned int mtk_crtc_WCG_by_color_mode(struct drm_crtc *crtc)
+{
+	struct mtk_drm_private *priv = NULL;
+
+	if (crtc && crtc->dev)
+		priv = crtc->dev->dev_private;
+	if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE))
+		return 1;
+	DDPDBG("WCG by color mode off\n");
+	return 0;
+}
+
+static unsigned int mtk_crtc_get_color_mode(struct drm_crtc *crtc)
+{
+	struct mtk_crtc_state *mtk_crtc_state;
+	unsigned int ret = 0;
+
+	if (crtc == NULL)
+		return ret;
+
+	mtk_crtc_state = to_mtk_crtc_state(crtc->state);
+	if (mtk_crtc_state)
+		ret = mtk_crtc_state->prop_val[CRTC_PROP_WCG_BY_COLOR_MODE];
+
+	return ret;
+}
+
 static s32 *mtk_get_ovl_csc(enum mtk_ovl_colorspace in,
-			    enum mtk_ovl_colorspace out)
+			    enum mtk_ovl_colorspace out, struct drm_crtc *crtc)
 {
 	static s32 *ovl_csc[OVL_CS_NUM][OVL_CS_NUM];
-	static bool inited;
+	static unsigned int inited = 0xffffffff;
+	unsigned int i, j;
 
 	if (out < 0) {
 		DDPPR_ERR("%s: Invalid ovl colorspace in:%d\n", __func__, out);
@@ -1499,13 +1537,50 @@ static s32 *mtk_get_ovl_csc(enum mtk_ovl_colorspace in,
 		in = 0;
 	}
 
-	if (inited)
-		goto done;
+	if (mtk_crtc_WCG_by_color_mode(crtc)) {
+		/* WCG by color mode */
+		unsigned int color_mode = mtk_crtc_get_color_mode(crtc);
 
-	ovl_csc[OVL_SRGB][OVL_P3] = sRGB_to_DCI_P3;
-	ovl_csc[OVL_P3][OVL_SRGB] = DCI_P3_to_sRGB;
+		if (inited == color_mode)
+			goto done;
 
-	inited = true;
+		for (i = 0; i < OVL_CS_NUM; i++)
+			for (j = 0; j < OVL_CS_NUM; j++)
+				ovl_csc[i][j] = identity;
+
+		switch (color_mode) {
+		case HAL_COLOR_MODE_DISPLAY_P3:
+		case HAL_COLOR_MODE_DCI_P3:
+			DDPDBG("WCG by color mode[%d], P3 mode\n", color_mode);
+			ovl_csc[OVL_SRGB][OVL_SRGB] = sRGB_to_DCI_P3;
+			ovl_csc[OVL_SRGB][OVL_P3] = sRGB_to_DCI_P3;
+			break;
+		case HAL_COLOR_MODE_SRGB:
+			DDPDBG("WCG by color mode[%d], SRGB mode\n", color_mode);
+			ovl_csc[OVL_P3][OVL_SRGB] = DCI_P3_to_sRGB;
+			ovl_csc[OVL_P3][OVL_P3] = DCI_P3_to_sRGB;
+			break;
+		case HAL_COLOR_MODE_NATIVE:
+		default:
+			DDPDBG("WCG by color mode[%d], NATIVE mode\n", color_mode);
+			/* default: HAL_COLOR_MODE_NATIVE */
+			/* csc do nothing */
+			break;
+		}
+		inited = color_mode;
+	} else {
+		if (inited == 1)
+			goto done;
+
+		for (i = 0; i < OVL_CS_NUM; i++)
+			for (j = 0; j < OVL_CS_NUM; j++)
+				ovl_csc[i][j] = identity;
+
+		DDPDBG("original WCG mode\n");
+		ovl_csc[OVL_SRGB][OVL_P3] = sRGB_to_DCI_P3;
+		ovl_csc[OVL_P3][OVL_SRGB] = DCI_P3_to_sRGB;
+		inited = 1;
+	}
 
 done:
 	return ovl_csc[in][out];
@@ -1513,7 +1588,7 @@ done:
 
 static int mtk_ovl_do_csc(unsigned int idx, enum mtk_drm_dataspace plane_ds,
 			  enum mtk_drm_dataspace lcm_ds, bool *csc_wcg_en,
-			  s32 **csc)
+			  s32 **csc, struct drm_crtc *crtc)
 {
 	enum mtk_ovl_colorspace in = OVL_SRGB, out = OVL_SRGB;
 	bool en = false;
@@ -1523,8 +1598,10 @@ static int mtk_ovl_do_csc(unsigned int idx, enum mtk_drm_dataspace plane_ds,
 
 	DDPDBG("%s+ idx:%d csc:%s->%s\n", __func__, idx,
 	       mtk_ovl_get_colorspace_str(in), mtk_ovl_get_colorspace_str(out));
-
-	en = in != out;
+	if (mtk_crtc_WCG_by_color_mode(crtc))
+		en = 1;
+	else
+		en = in != out;
 
 	if (en)
 		*csc_wcg_en = true;
@@ -1538,7 +1615,7 @@ static int mtk_ovl_do_csc(unsigned int idx, enum mtk_drm_dataspace plane_ds,
 		return 0;
 	}
 
-	*csc = mtk_get_ovl_csc(in, out);
+	*csc = mtk_get_ovl_csc(in, out, crtc);
 	if (!(*csc)) {
 		DDPPR_ERR("%s+ idx:%d no ovl csc %s to %s, disable csc\n",
 			  __func__, idx, mtk_ovl_get_colorspace_str(in),
@@ -1833,7 +1910,7 @@ static int mtk_ovl_color_manage(struct mtk_ddp_comp *comp, unsigned int idx,
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_WCG) &&
 			(mtk_crtc_dynamic_WCG_off(crtc) == 0) &&
 			pending->enable)
-			mtk_ovl_do_csc(idx, plane_ds, lcm_ds, &csc_wcg_en, &csc);
+			mtk_ovl_do_csc(idx, plane_ds, lcm_ds, &csc_wcg_en, &csc, crtc);
 	}
 	DDPDBG("%s, g, ig, gs, igs <%d><%d><%d><%d>\n",
 		__func__, gamma_en, igamma_en, gamma_sel, igamma_sel);
@@ -1869,9 +1946,12 @@ done:
 				     FLD_Ln_GAMMA_SEL(lye_idx));
 		}
 	}
-	DDPDBG("%s, lye_idx%d,ext_lye_idx%d,csc_wcg_en%d,ovl_csc_en%d,Doff%d,wcg_value0x%x,sel_value0x%x\n",
-		__func__, lye_idx, ext_lye_idx, csc_wcg_en, csc_bc_en,
-		mtk_crtc_dynamic_WCG_off(crtc), wcg_value, sel_value);
+	DDPDBG("%s, lye_idx%d,ext_lye_idx%d,csc_wcg_en%d,ovl_csc_en%d,wcg_value0x%x,sel_value0x%x\n",
+		__func__, lye_idx, ext_lye_idx, csc_wcg_en, csc_bc_en, wcg_value, sel_value);
+	DDPDBG("%s, WCG Dymanic off = %d, WCG by color mode[%d][%d]\n", __func__,
+		mtk_crtc_dynamic_WCG_off(crtc),
+		mtk_crtc_WCG_by_color_mode(crtc),
+		mtk_crtc_get_color_mode(crtc));
 
 	/* enable, gamma, igamma */
 	cmdq_pkt_write(handle, comp->cmdq_base,
