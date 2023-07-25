@@ -136,6 +136,8 @@ struct mtk_dsi {
 	atomic_t ulps_async;
 	bool pending_switch;
 	struct mtk_drm_esd_ctx *esd_ctx;
+	unsigned int cnt;
+	unsigned int skip_vblank;
 };
 
 s32 mtk_dsi_poll_for_idle(struct mtk_dsi *dsi, struct cmdq_pkt *handle);

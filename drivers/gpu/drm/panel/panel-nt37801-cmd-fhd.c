@@ -710,6 +710,7 @@ static struct mtk_panel_params ext_params = {
 	.dyn_fps = {
 		.vact_timing_fps = 120,
 	},
+	.real_te_duration = 8333,
 };
 
 static struct mtk_panel_params ext_params_90hz = {
@@ -772,6 +773,7 @@ static struct mtk_panel_params ext_params_90hz = {
 		.switch_en = 1,
 		.pll_clk = PLL_CLOCK + 1,
 	},
+	.real_te_duration = 11111,
 };
 
 static struct mtk_panel_params ext_params_60hz = {
@@ -834,6 +836,7 @@ static struct mtk_panel_params ext_params_60hz = {
 		.switch_en = 1,
 		.pll_clk = PLL_CLOCK + 1,
 	},
+	.real_te_duration = 8333,
 };
 
 struct drm_display_mode *get_mode_by_id(struct drm_connector *connector,
@@ -863,10 +866,11 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 		ext_params.vblank_off = false;
 		ext->params = &ext_params;
 	} else if (drm_mode_vrefresh(m) == 90) {
-		ext_params.real_te_duration = 11111;
+		ext_params_90hz.real_te_duration = 11111;
 		ext->params = &ext_params_90hz;
 	} else if (drm_mode_vrefresh(m) == 60) {
-		ext_params.real_te_duration = 16666;
+		ext_params_60hz.skip_vblank = 2;
+		ext_params_60hz.real_te_duration = 16666;
 		ext->params = &ext_params_60hz;
 	} else if (drm_mode_vrefresh(m) == 30) {
 		ext_params.skip_vblank = 4;

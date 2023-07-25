@@ -2416,8 +2416,6 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	static DEFINE_RATELIMIT_STATE(mmp_rate, 2, 2); /* 8 ms */
 	bool doze_enabled = 0;
 	unsigned int doze_wait = 0;
-	unsigned int skip_vblank = 0;
-	static unsigned int cnt;
 	static unsigned int underrun_cnt;
 	struct mtk_drm_private *priv = NULL;
 	struct drm_crtc *crtc = NULL;
@@ -2597,9 +2595,10 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 							   MTK_DRM_OPT_HBM))
 				wakeup_dsi_wq(&dsi->te_rdy);
 
-			if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
-				mtk_crtc->vblank_en) {
+			if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 				panel_ext = dsi->ext;
+				dsi->skip_vblank = (dsi->skip_vblank == 0) ?
+					1 : dsi->skip_vblank;
 
 				if (dsi->encoder.crtc)
 					doze_enabled = mtk_dsi_doze_state(dsi);
@@ -2608,22 +2607,25 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 					doze_enabled) {
 					doze_wait =
 						panel_ext->params->doze_delay;
-					if (cnt % doze_wait == 0) {
-						mtk_crtc_vblank_irq(
-							&mtk_crtc->base);
-						cnt = 0;
-					}
-					cnt++;
-				} else if (panel_ext && panel_ext->params->skip_vblank) {
-					skip_vblank = panel_ext->params->skip_vblank;
-					if (cnt % skip_vblank == 0) {
+					if (dsi->cnt % doze_wait == 0 && mtk_crtc->vblank_en) {
 						mtk_crtc_vblank_irq(&mtk_crtc->base);
-						cnt = 0;
+						dsi->cnt = 0;
+					} else if (dsi->cnt % doze_wait == 0) {
+						dsi->cnt = 0;
 					}
-					cnt++;
-				} else {
+					dsi->cnt++;
+				} else if (panel_ext && panel_ext->params->skip_vblank) {
+					if (dsi->cnt % dsi->skip_vblank == 0 && mtk_crtc->vblank_en) {
+						dsi->skip_vblank = panel_ext->params->skip_vblank;
+						mtk_crtc_vblank_irq(&mtk_crtc->base);
+						dsi->cnt = 0;
+					} else if (dsi->cnt % dsi->skip_vblank == 0) {
+						dsi->skip_vblank = panel_ext->params->skip_vblank;
+						dsi->cnt = 0;
+					}
+					dsi->cnt++;
+				} else if (mtk_crtc->vblank_en)
 					mtk_crtc_vblank_irq(&mtk_crtc->base);
-				}
 			}
 		}
 
@@ -2645,14 +2647,16 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
 				mtk_crtc->vblank_en) {
 				panel_ext = dsi->ext;
+				dsi->skip_vblank = (dsi->skip_vblank == 0) ?
+					1 : dsi->skip_vblank;
 
 				if (panel_ext && panel_ext->params->skip_vblank) {
-					skip_vblank = panel_ext->params->skip_vblank;
-					if (cnt % skip_vblank == 0) {
+					if (dsi->cnt % dsi->skip_vblank == 0) {
+						dsi->skip_vblank = panel_ext->params->skip_vblank;
 						mtk_crtc_vblank_irq(&mtk_crtc->base);
-						cnt = 0;
+						dsi->cnt = 0;
 					}
-					cnt++;
+					dsi->cnt++;
 				} else
 					mtk_crtc_vblank_irq(&mtk_crtc->base);
 			}
