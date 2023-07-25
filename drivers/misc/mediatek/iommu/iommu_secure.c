@@ -327,7 +327,6 @@ int mtk_iommu_sec_bk_pgtable_dump(uint32_t type, uint32_t id, uint32_t bank,
 	return SMC_IOMMU_SUCCESS;
 }
 EXPORT_SYMBOL_GPL(mtk_iommu_sec_bk_pgtable_dump);
-#endif
 
 static int mtk_iommu_sec_debug_set(void *data, u64 val)
 {
@@ -335,7 +334,6 @@ static int mtk_iommu_sec_debug_set(void *data, u64 val)
 
 	pr_info("%s:val=%llu\n", __func__, val);
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	switch (val) {
 	case 1:
 		ret = mtk_iommu_sec_bk_init_by_atf(MM_IOMMU, DISP_IOMMU);
@@ -369,7 +367,6 @@ static int mtk_iommu_sec_debug_set(void *data, u64 val)
 		pr_info("%s error,val=%llu\n", __func__, val);
 		break;
 	}
-#endif
 
 	if (ret)
 		pr_info("%s failed:val=%llu, ret=%d\n", __func__, val, ret);
@@ -396,12 +393,13 @@ static int mtk_iommu_sec_debug_init(void)
 		pr_info("%s failed to create debug dir\n", __func__);
 
 	debug_file = proc_create_data("debug",
-		S_IFREG | 0644, debug_root, &mtk_iommu_sec_debug_fops, NULL);
+		S_IFREG | 0640, debug_root, &mtk_iommu_sec_debug_fops, NULL);
 	if (IS_ERR_OR_NULL(debug_file))
 		pr_info("%s failed to create debug file\n", __func__);
 
 	return 0;
 }
+#endif
 
 static int mtk_iommu_sec_probe(struct platform_device *pdev)
 {
@@ -706,8 +704,9 @@ static int __init mtk_iommu_sec_init(void)
 	int i;
 
 	pr_info("%s+\n", __func__);
-
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	mtk_iommu_sec_debug_init();
+#endif
 
 	for (i = 0; i < ARRAY_SIZE(mtk_iommu_bk_drivers); i++) {
 		ret = platform_driver_register(mtk_iommu_bk_drivers[i]);
