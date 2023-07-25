@@ -32,14 +32,15 @@ EXPORT_SYMBOL_GPL(global_nsmpu);
 
 struct smpu *global_skp, *global_nkp;
 
-static void set_regs(struct smpu_reg_info_t *reg_list,
-			unsigned int reg_cnt, void __iomem *smpu_base)
+static void set_regs(struct smpu_reg_info_t *reg_list, unsigned int reg_cnt,
+		     void __iomem *smpu_base)
 {
 	unsigned int i, j;
 
 	for (i = 0; i < reg_cnt; i++) {
 		for (j = 0; j < reg_list[i].leng; j++)
-			writel(reg_list[i].value, smpu_base + reg_list[i].offset + 4 * j);
+			writel(reg_list[i].value,
+			       smpu_base + reg_list[i].offset + 4 * j);
 	}
 	/*
 	 * Use the memory barrier to make sure the interrupt signal is
@@ -56,14 +57,14 @@ static void clear_violation(struct smpu *mpu)
 	mpu_base = mpu->mpu_base;
 
 	set_regs(mpu->clear_reg, mpu->clear_cnt, mpu_base);
-//	pr_info("smpu clear vio done\n");
+	//	pr_info("smpu clear vio done\n");
 }
 static void clear_kp_violation(unsigned int emi_id)
 {
 	struct arm_smccc_res smc_res;
 
-	arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIMPU_CLEAR_KP,
-		emi_id, 0, 0, 0, 0, 0, &smc_res);
+	arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIMPU_CLEAR_KP, emi_id, 0, 0,
+		      0, 0, 0, &smc_res);
 }
 void smpu_clear_md_violation(void)
 {
@@ -76,7 +77,8 @@ void smpu_clear_md_violation(void)
 		smpu = global_nsmpu;
 		mpu_base = smpu->mpu_base;
 		if (smpu->clear_md_reg) {
-			set_regs(smpu->clear_md_reg, smpu->clear_md_cnt, mpu_base);
+			set_regs(smpu->clear_md_reg, smpu->clear_md_cnt,
+				 mpu_base);
 			flag = true;
 		}
 	}
@@ -84,19 +86,19 @@ void smpu_clear_md_violation(void)
 		smpu = global_ssmpu;
 		mpu_base = smpu->mpu_base;
 		if (smpu->clear_md_reg)
-			set_regs(smpu->clear_md_reg, smpu->clear_md_cnt, mpu_base);
+			set_regs(smpu->clear_md_reg, smpu->clear_md_cnt,
+				 mpu_base);
 	}
 
 	if (!flag) {
 		pr_info("smpu_clear_md_vio enter\n");
-		arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIMPU_CLEAR_MD,
-				0, 0, 0, 0, 0, 0, &smc_res);
+		arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIMPU_CLEAR_MD, 0, 0,
+			      0, 0, 0, 0, &smc_res);
 		if (smc_res.a0) {
 			pr_info("%s:%d failed to clear md violation, ret=0x%lx\n",
-					__func__, __LINE__, smc_res.a0);
+				__func__, __LINE__, smc_res.a0);
 			return;
 		}
-
 	}
 }
 EXPORT_SYMBOL(smpu_clear_md_violation);
@@ -113,14 +115,12 @@ int mtk_smpu_isr_hook_register(smpu_isr_hook hook)
 	if (!nsmpu || !nkp)
 		return -EINVAL;
 
-
 	pr_info("%s:hook-register half", __func__);
 
 	if (!hook) {
 		pr_info("%s: hook is NULL\n", __func__);
 		return -EINVAL;
 	}
-
 
 	nsmpu->by_plat_isr_hook = hook;
 	nkp->by_plat_isr_hook = hook;
@@ -130,10 +130,7 @@ int mtk_smpu_isr_hook_register(smpu_isr_hook hook)
 		skp->by_plat_isr_hook = hook;
 	}
 
-
-
 	return 0;
-
 }
 EXPORT_SYMBOL(mtk_smpu_isr_hook_register);
 
@@ -171,6 +168,7 @@ EXPORT_SYMBOL(mtk_smpu_md_handling_register);
 static void smpu_violation_callback(struct work_struct *work)
 {
 	struct smpu *ssmpu, *nsmpu, *skp, *nkp, *mpu;
+	struct arm_smccc_res smc_res;
 
 	ssmpu = global_ssmpu;
 	nsmpu = global_nsmpu;
@@ -188,12 +186,29 @@ static void smpu_violation_callback(struct work_struct *work)
 	else
 		return;
 
+	/* check vio region addr */
+	if (nsmpu->is_vio || ssmpu->is_vio) {
+		if (mpu->dump_reg[7].value != 0) {
+			/*type(0sa 1ea) region aid_shift*/
+			arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIMPU_READ,
+				      0, mpu->dump_reg[7].value, 0, 0, 0, 0,
+				      &smc_res);
+			arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIMPU_READ,
+				      1, mpu->dump_reg[7].value, 0, 0, 0, 0,
+				      &smc_res);
+		}
+		if (mpu->dump_reg[16].value != 0) {
+			arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIMPU_READ,
+				      0, mpu->dump_reg[16].value, 0, 0, 0, 0,
+				      &smc_res);
+			arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIMPU_READ,
+				      1, mpu->dump_reg[16].value, 0, 0, 0, 0,
+				      &smc_res);
+		}
+	}
 	printk_deferred("%s: %s", __func__, mpu->vio_msg);
 	aee_kernel_exception("SMPU", mpu->vio_msg);
 	mpu->is_vio = false;
-
-
-
 }
 static DECLARE_WORK(smpu_work, smpu_violation_callback);
 
@@ -206,15 +221,14 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 	int vio_type = 6;
 	bool violation;
 	ssize_t msg_len = 0;
-	char md_str[MTK_SMPU_MAX_CMD_LEN + 5] = {'\0'};
-//	struct task_struct *tsk;
+	char md_str[MTK_SMPU_MAX_CMD_LEN + 5] = { '\0' };
+	//	struct task_struct *tsk;
 
 	irqreturn_t irqret;
 	static DEFINE_RATELIMIT_STATE(ratelimit, 1 * HZ, 3);
 
 	violation = false;
 	mpu_base = mpu->mpu_base;
-
 
 	if (!(strcmp(mpu->name, "nsmpu")))
 		vio_type = VIO_TYPE_NSMPU;
@@ -227,7 +241,7 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 	else
 		goto clear_violation;
 
-//	pr_info("%s:vio_type = %d\n", __func__, vio_type);
+	//	pr_info("%s:vio_type = %d\n", __func__, vio_type);
 	//record dump reg
 	for (i = 0; i < mpu->dump_cnt; i++)
 		dump_reg[i].value = readl(mpu_base + dump_reg[i].offset);
@@ -248,13 +262,12 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 		goto clear_violation;
 	}
 
-
 	if (violation) {
-
 		if (vio_type == VIO_TYPE_NSMPU || vio_type == VIO_TYPE_SSMPU) {
 			//smpu violation
 			if (mpu->by_plat_isr_hook) {
-				irqret = mpu->by_plat_isr_hook(dump_reg, mpu->dump_cnt, vio_type);
+				irqret = mpu->by_plat_isr_hook(
+					dump_reg, mpu->dump_cnt, vio_type);
 
 				if (irqret == IRQ_HANDLED) {
 					violation = false;
@@ -267,27 +280,29 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 		if (msg_len < MTK_SMPU_MAX_CMD_LEN) {
 			prefetch = mtk_clear_smpu_log(vio_type % 2);
 			msg_len += scnprintf(mpu->vio_msg + msg_len,
-			MTK_SMPU_MAX_CMD_LEN - msg_len, "\ncpu-prefetch:%d", prefetch);
-			msg_len += scnprintf(mpu->vio_msg + msg_len, MTK_SMPU_MAX_CMD_LEN - msg_len,
-					"\n[SMPU]%s\n", mpu->name);
+					     MTK_SMPU_MAX_CMD_LEN - msg_len,
+					     "\ncpu-prefetch:%d", prefetch);
+			msg_len += scnprintf(mpu->vio_msg + msg_len,
+					     MTK_SMPU_MAX_CMD_LEN - msg_len,
+					     "\n[SMPU]%s\n", mpu->name);
 		}
 
 		for (i = 0; i < mpu->dump_cnt; i++) {
 			if (msg_len < MTK_SMPU_MAX_CMD_LEN)
-				msg_len += scnprintf(mpu->vio_msg + msg_len,
-						MTK_SMPU_MAX_CMD_LEN - msg_len, "[%x]%x;",
-						dump_reg[i].offset, dump_reg[i].value);
-
+				msg_len += scnprintf(
+					mpu->vio_msg + msg_len,
+					MTK_SMPU_MAX_CMD_LEN - msg_len,
+					"[%x]%x;", dump_reg[i].offset,
+					dump_reg[i].value);
 		}
 		if (mpu->md_handler) {
 			strncpy(md_str, "smpu", 5);
-			strncat(md_str, mpu->vio_msg, sizeof(md_str) - strlen(md_str) - 1);
+			strncat(md_str, mpu->vio_msg,
+				sizeof(md_str) - strlen(md_str) - 1);
 			mpu->md_handler(md_str);
 		}
 		printk_deferred("%s: %s", __func__, mpu->vio_msg);
-
 	}
-
 
 clear_violation:
 	clear_violation(mpu);
@@ -295,14 +310,15 @@ clear_violation:
 		schedule_work(&smpu_work);
 
 	if (vio_type == VIO_TYPE_NKP || vio_type == VIO_TYPE_SKP)
-		clear_kp_violation(vio_type%2);
+		clear_kp_violation(vio_type % 2);
 
 	return IRQ_HANDLED;
-
 }
 
 static const struct of_device_id smpu_of_ids[] = {
-	{.compatible = "mediatek,smpu", },
+	{
+		.compatible = "mediatek,smpu",
+	},
 	{}
 };
 MODULE_DEVICE_TABLE(of, smpu_of_ids);
@@ -313,10 +329,9 @@ static int smpu_probe(struct platform_device *pdev)
 	struct smpu *mpu;
 	const char *name = NULL;
 
-
 	int ret, i, size, axi_set_num;
 	unsigned int *dump_list, *miumpu_bypass_list;
-//	struct resource *res;
+	//	struct resource *res;
 
 	dev_info(&pdev->dev, "driver probe");
 	if (!smpu_node) {
@@ -330,10 +345,10 @@ static int smpu_probe(struct platform_device *pdev)
 
 	if (!of_property_read_string(smpu_node, "name", &name))
 		mpu->name = name;
-//is_vio default value
+	//is_vio default value
 	mpu->is_vio = false;
 
-// dump_reg
+	// dump_reg
 	size = of_property_count_elems_of_size(smpu_node, "dump", sizeof(char));
 	if (size <= 0) {
 		dev_err(&pdev->dev, "No smpu node dump\n");
@@ -351,7 +366,8 @@ static int smpu_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
-	mpu->dump_reg = devm_kmalloc(&pdev->dev, size * sizeof(struct smpu_reg_info_t), GFP_KERNEL);
+	mpu->dump_reg = devm_kmalloc(
+		&pdev->dev, size * sizeof(struct smpu_reg_info_t), GFP_KERNEL);
 	if (!(mpu->dump_reg))
 		return -ENOMEM;
 
@@ -360,9 +376,10 @@ static int smpu_probe(struct platform_device *pdev)
 		mpu->dump_reg[i].value = 0;
 		mpu->dump_reg[i].leng = 0;
 	}
-//dump_reg end
-//dump_clear
-	size = of_property_count_elems_of_size(smpu_node, "clear", sizeof(char));
+	//dump_reg end
+	//dump_clear
+	size = of_property_count_elems_of_size(smpu_node, "clear",
+					       sizeof(char));
 	if (size <= 0) {
 		dev_err(&pdev->dev, "No clear smpu");
 		return -ENXIO;
@@ -373,15 +390,16 @@ static int smpu_probe(struct platform_device *pdev)
 
 	mpu->clear_cnt = size / sizeof(struct smpu_reg_info_t);
 	size >>= 2;
-	ret = of_property_read_u32_array(smpu_node, "clear",
-			(unsigned int *)(mpu->clear_reg), size);
+	ret = of_property_read_u32_array(
+		smpu_node, "clear", (unsigned int *)(mpu->clear_reg), size);
 	if (ret) {
 		dev_err(&pdev->dev, "No clear reg");
 		return -ENXIO;
 	}
-//dump_clear end
-//dump_clear_md
-	size = of_property_count_elems_of_size(smpu_node, "clear-md", sizeof(char));
+	//dump_clear end
+	//dump_clear_md
+	size = of_property_count_elems_of_size(smpu_node, "clear-md",
+					       sizeof(char));
 	if (size <= 0)
 		dev_err(&pdev->dev, "No clear_md smpu");
 	if (size > 0) {
@@ -391,17 +409,19 @@ static int smpu_probe(struct platform_device *pdev)
 
 		mpu->clear_md_cnt = size / sizeof(struct smpu_reg_info_t);
 		size >>= 2;
-		ret = of_property_read_u32_array(smpu_node, "clear-md",
-				(unsigned int *)(mpu->clear_md_reg), size);
+		ret = of_property_read_u32_array(
+			smpu_node, "clear-md",
+			(unsigned int *)(mpu->clear_md_reg), size);
 		if (ret) {
 			dev_err(&pdev->dev, "No clear-md reg");
 			return -ENXIO;
 		}
 	}
 
-//dump_clear_md_end
-//dump vio info
-	size = of_property_count_elems_of_size(smpu_node, "vio-info", sizeof(char));
+	//dump_clear_md_end
+	//dump vio info
+	size = of_property_count_elems_of_size(smpu_node, "vio-info",
+					       sizeof(char));
 
 	mpu->vio_dump_cnt = size / sizeof(struct smpu_vio_dump_info_t);
 	mpu->vio_reg_info = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
@@ -409,14 +429,17 @@ static int smpu_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	size >>= 2;
 	ret = of_property_read_u32_array(smpu_node, "vio-info",
-			(unsigned int *)(mpu->vio_reg_info), size);
+					 (unsigned int *)(mpu->vio_reg_info),
+					 size);
 	if (ret)
 		return -ENXIO;
-//dump vio-info end
-//only for smpu node
-	if ((!(strcmp(mpu->name, "ssmpu"))) || (!(strcmp(mpu->name, "nsmpu")))) {
+	//dump vio-info end
+	//only for smpu node
+	if ((!(strcmp(mpu->name, "ssmpu"))) ||
+	    (!(strcmp(mpu->name, "nsmpu")))) {
 		//bypass_axi
-		size = of_property_count_elems_of_size(smpu_node, "bypass-axi", sizeof(char));
+		size = of_property_count_elems_of_size(smpu_node, "bypass-axi",
+						       sizeof(char));
 		miumpu_bypass_list = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
 		if (!miumpu_bypass_list)
 			return -ENOMEM;
@@ -424,25 +447,32 @@ static int smpu_probe(struct platform_device *pdev)
 		size /= sizeof(unsigned int);
 		axi_set_num = AXI_SET_NUM(size);
 		mpu->bypass_axi_num = axi_set_num;
-		ret = of_property_read_u32_array(smpu_node, "bypass-axi", miumpu_bypass_list, size);
+		ret = of_property_read_u32_array(smpu_node, "bypass-axi",
+						 miumpu_bypass_list, size);
 		if (ret) {
 			pr_info("No bypass miu mpu\n");
 			return -ENXIO;
 		}
-		mpu->bypass_axi = devm_kmalloc(&pdev->dev,
-				axi_set_num * sizeof(struct bypass_axi_info_t), GFP_KERNEL);
+		mpu->bypass_axi = devm_kmalloc(
+			&pdev->dev,
+			axi_set_num * sizeof(struct bypass_axi_info_t),
+			GFP_KERNEL);
 		if (!(mpu->bypass_axi))
 			return -ENOMEM;
 
 		for (i = 0; i < mpu->bypass_axi_num; i++) {
-			mpu->bypass_axi[i].port = miumpu_bypass_list[(i*3)+0];
-			mpu->bypass_axi[i].axi_mask = miumpu_bypass_list[(i*3)+1];
-			mpu->bypass_axi[i].axi_value = miumpu_bypass_list[(i*3)+2];
+			mpu->bypass_axi[i].port =
+				miumpu_bypass_list[(i * 3) + 0];
+			mpu->bypass_axi[i].axi_mask =
+				miumpu_bypass_list[(i * 3) + 1];
+			mpu->bypass_axi[i].axi_value =
+				miumpu_bypass_list[(i * 3) + 2];
 		}
 
 		//bypass_axi end
 		//bypass miumpu start
-		size = of_property_count_elems_of_size(smpu_node, "bypass", sizeof(char));
+		size = of_property_count_elems_of_size(smpu_node, "bypass",
+						       sizeof(char));
 
 		miumpu_bypass_list = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
 		if (!miumpu_bypass_list)
@@ -450,13 +480,14 @@ static int smpu_probe(struct platform_device *pdev)
 
 		size /= sizeof(unsigned int);
 		mpu->bypass_miu_reg_num = size;
-		ret = of_property_read_u32_array(smpu_node, "bypass", miumpu_bypass_list, size);
+		ret = of_property_read_u32_array(smpu_node, "bypass",
+						 miumpu_bypass_list, size);
 		if (ret) {
 			pr_info("No bypass miu mpu\n");
 			return -ENXIO;
 		}
-		mpu->bypass_miu_reg = devm_kmalloc(&pdev->dev,
-				size * sizeof(unsigned int), GFP_KERNEL);
+		mpu->bypass_miu_reg = devm_kmalloc(
+			&pdev->dev, size * sizeof(unsigned int), GFP_KERNEL);
 		if (!(mpu->bypass_miu_reg))
 			return -ENOMEM;
 
@@ -465,29 +496,20 @@ static int smpu_probe(struct platform_device *pdev)
 		//bypass_miumpu end
 
 	} //only for smpu end
-//reg base
-//	mpu->mpu_base = devm_kmalloc(&pdev->dev, sizeof(phys_addr_t), GFP_KERNEL);
-//	if (!(mpu->mpu_base))
-//		return -ENOMEM;
 
+	//reg base
 	mpu->mpu_base = of_iomap(smpu_node, 0);
 	if (IS_ERR(mpu->mpu_base)) {
 		dev_err(&pdev->dev, "Failed to map smpu range base");
 		return -EIO;
 	}
-//	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-//	mpu->mpu_base = devm_ioremap_resource(&pdev->dev, res);
-//	if (IS_ERR(mpu->mpu_base)){
-//		dev_err(&pdev->dev, "Failed to map smpu base\n");
-//		return -EIO;
-//	}
+	//reg base end
 
-//reg base end
-
-	mpu->vio_msg = devm_kmalloc(&pdev->dev, MTK_SMPU_MAX_CMD_LEN, GFP_KERNEL);
+	mpu->vio_msg =
+		devm_kmalloc(&pdev->dev, MTK_SMPU_MAX_CMD_LEN, GFP_KERNEL);
 	if (!(mpu->vio_msg))
 		return -ENOMEM;
-//transt global
+	//transt global
 
 	if (!strcmp(mpu->name, "ssmpu"))
 		global_ssmpu = mpu;
@@ -498,20 +520,19 @@ static int smpu_probe(struct platform_device *pdev)
 	if (!strcmp(mpu->name, "nkp"))
 		global_nkp = mpu;
 
-
 	mpu->irq = irq_of_parse_and_map(smpu_node, 0);
 	if (mpu->irq == 0) {
 		dev_err(&pdev->dev, "Failed to get irq resource\n");
 		return -ENXIO;
 	}
-	ret = request_irq(mpu->irq, (irq_handler_t)smpu_violation, IRQF_TRIGGER_NONE, "smpu", mpu);
+	ret = request_irq(mpu->irq, (irq_handler_t)smpu_violation,
+			  IRQF_TRIGGER_NONE, "smpu", mpu);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to request irq");
 		return -EINVAL;
 	}
 
 	devm_kfree(&pdev->dev, dump_list);
-
 
 	return 0;
 }
@@ -534,7 +555,6 @@ static int smpu_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
 
 static struct platform_driver smpu_driver = {
 	.probe = smpu_probe,
@@ -560,11 +580,6 @@ static __init int smpu_init(void)
 
 	return 0;
 }
-
-
-
-
-
 
 module_init(smpu_init);
 

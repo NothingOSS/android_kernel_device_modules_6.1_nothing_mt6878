@@ -10,25 +10,26 @@
 
 #define VIO_TYPE_NSMPU 0
 #define VIO_TYPE_SSMPU 1
-#define VIO_TYPE_NKP   2
-#define VIO_TYPE_SKP   3
+#define VIO_TYPE_NKP 2
+#define VIO_TYPE_SKP 3
 
 #define MTK_SMPU_MAX_CMD_LEN 256
 
 #ifndef CHECK_BIT
-#define CHECK_BIT(var, pos) ((var) & (1<<(pos)))
+#define CHECK_BIT(var, pos) ((var) & (1 << (pos)))
 #endif
 
 #define MTK_SMPU_CLEAR_KP 1
-#define AXI_SET_NUM(num) (num/3)
+#define AXI_SET_NUM(num) (num / 3)
 
-#define WRITE_SRINFO  0
-#define READ_SRINFO   1
-#define WRITE_AXI     2
-#define READ_AXI      3
+#define WRITE_SRINFO 0
+#define READ_SRINFO 1
+#define WRITE_AXI 2
+#define READ_AXI 3
 #define WRITE_AXI_MSB 4
-#define READ_AXI_MSB  5
+#define READ_AXI_MSB 5
 
+#define MTK_EMIMPU_READ 2
 #define MTK_EMIMPU_CLEAR_MD 7
 #define MTK_EMIMPU_CLEAR_KP 9
 
@@ -50,10 +51,10 @@ struct smpu_vio_dump_info_t {
 };
 
 typedef void (*smpu_md_handler)(const char *vio_msg);
-typedef irqreturn_t(*smpu_isr_hook)(struct smpu_reg_info_t *dump, unsigned int leng, int vio_type);
+typedef irqreturn_t (*smpu_isr_hook)(struct smpu_reg_info_t *dump,
+				     unsigned int leng, int vio_type);
 int mtk_smpu_isr_hook_register(smpu_isr_hook hook);
 void smpu_clear_md_violation(void);
-
 
 struct smpu {
 	const char *name;
@@ -82,11 +83,8 @@ struct smpu {
 	unsigned int bypass_miu_reg_num;
 	struct bypass_axi_info_t *bypass_axi;
 	unsigned int bypass_axi_num;
-
 };
 extern struct smpu *global_nsmpu, *global_ssmpu;
 //static struct smpu *global_ssmpu, *global_nsmpu, *global_skp, *global_nkp;
 
 int mtk_smpu_md_handling_register(smpu_md_handler md_handling_func);
-
-
