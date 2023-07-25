@@ -671,8 +671,12 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
 
-	if (mml_comp_dump)
+	if (mml_comp_dump) {
 		core_comp_dump(task, pipe, -1);
+		/* dump once */
+		if (mml_comp_dump == 2)
+			mml_comp_dump = 0;
+	}
 
 	for (i = 0; i < path->node_cnt; i++) {
 		if (i == path->mmlsys_idx || i == path->mutex_idx)

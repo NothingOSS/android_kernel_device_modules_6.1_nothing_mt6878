@@ -1095,8 +1095,8 @@ static void calc_hyfbc(struct mml_file_buf *src_buf, struct mml_frame_data *src,
 		       u64 *c_header_addr, u64 *c_data_addr)
 {
 	u64 buf_addr = src_buf->dma[0].iova;
-	u32 width = ((src->width + 63) >> 6) << 6;
-	u32 height = ((src->height + 63) >> 6) << 6;
+	u32 width = round_up(src->width, 64);
+	u32 height = round_up(src->height, 64);
 	u32 y_data_sz = width * height;
 	u32 c_data_sz;
 	u32 y_header_sz;
@@ -1110,10 +1110,10 @@ static void calc_hyfbc(struct mml_file_buf *src_buf, struct mml_frame_data *src,
 	y_header_sz = (width * height + 63) >> 6;
 	c_header_sz = ((width * height >> 1) + 63) >> 6;
 
-	*y_data_addr = (((buf_addr + y_header_sz + 4095) >> 12) << 12);
+	*y_data_addr = round_up(buf_addr + y_header_sz, 4096);
 	*y_header_addr = *y_data_addr - y_header_sz;	/* should be 64 aligned */
-	*c_data_addr = ((*y_data_addr + y_data_sz + c_header_sz + 4095) >> 12) << 12;
-	*c_header_addr = ((*c_data_addr - c_header_sz) >> 6) << 6;
+	*c_data_addr = round_up(*y_data_addr + y_data_sz + c_header_sz, 4096);
+	*c_header_addr = round_down(*c_data_addr - c_header_sz, 64);
 
 	total_sz = (u32)(*c_data_addr + c_data_sz - buf_addr);
 	if (src_buf->size[0] != total_sz)
@@ -1439,19 +1439,19 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	if (MML_FMT_HYFBC(src->format)) {
 		hyfbc = 1;
 		ufbdc = 1;
-		width_in_pxl = ((src->width + 31) >> 5) << 5;
-		height_in_pxl = ((src->height + 15) >> 4) << 4;
+		width_in_pxl = round_up(src->width, 32);
+		height_in_pxl = round_up(src->height, 16);
 	} else if (MML_FMT_AFBC(src->format)) {
 		afbc = 1;
 		if (MML_FMT_IS_RGB(src->format))
 			afbc_y2r = 1;
 		ufbdc = 1;
 		if (MML_FMT_IS_YUV(src->format)) {
-			width_in_pxl = ((src->width + 15) >> 4) << 4;
-			height_in_pxl = ((src->height + 15) >> 4) << 4;
+			width_in_pxl = round_up(src->width, 16);
+			height_in_pxl = round_up(src->height, 16);
 		} else {
-			width_in_pxl = ((src->width + 31) >> 5) << 5;
-			height_in_pxl = ((src->height + 7) >> 3) << 3;
+			width_in_pxl = round_up(src->width, 32);
+			height_in_pxl = round_up(src->height, 8);
 		}
 	} else if (rdma_frm->enable_ufo && rdma_frm->blk_10bit) {
 		width_in_pxl = (src->y_stride << 2) / 5;
@@ -2199,12 +2199,16 @@ static const char *rdma_state(u32 state)
 	}
 }
 
+static const u32 rdma_ufbdc_debug_sel[] = {
+	0x18, 0x27, 0x2d, 0x2e, 0x2f,
+};
+
 static void rdma_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	void __iomem *base = comp->base;
 	const bool write_sec = rdma->data->write_sec_reg;
-	u32 value[33];
+	u32 value[33], comp_con;
 	u32 apu_en;
 	u32 state, greq;
 	u32 i;
@@ -2225,7 +2229,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	value[0] = readl(base + RDMA_EN);
 	value[1] = readl(base + RDMA_RESET);
 	value[2] = readl(base + RDMA_SRC_CON);
-	value[3] = readl(base + RDMA_COMP_CON);
+	comp_con = readl(base + RDMA_COMP_CON);
 
 	apu_en = readl(base + APU_DIRECT_COUPLE_CONTROL_EN);
 
@@ -2262,7 +2266,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	value[30] = readl(base + RDMA_GMCIF_CON);
 
 	mml_err("RDMA_EN %#010x RDMA_RESET %#010x RDMA_SRC_CON %#010x RDMA_COMP_CON %#010x",
-		value[0], value[1], value[2], value[3]);
+		value[0], value[1], value[2], comp_con);
 	mml_err("RDMA_MF_BKGD_SIZE_IN_BYTE %#010x RDMA_MF_BKGD_SIZE_IN_PXL %#010x",
 		value[4], value[5]);
 	mml_err("RDMA_MF_SRC_SIZE %#010x RDMA_MF_CLIP_SIZE %#010x RDMA_MF_OFFSET_1 %#010x",
@@ -2328,6 +2332,28 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	}
 	mml_err("RDMA_MON_STA_27 %#010x RDMA_MON_STA_28 %#010x",
 		value[27], value[28]);
+
+	/* ufbdc enable, dump more */
+	if (comp_con & BIT(12)) {
+		writel(rdma_ufbdc_debug_sel[0] << 13, base + RDMA_DEBUG_CON);
+		value[10] = readl(base + RDMA_MON_STA_27);
+		writel(rdma_ufbdc_debug_sel[1] << 13, base + RDMA_DEBUG_CON);
+		value[11] = readl(base + RDMA_MON_STA_27);
+		writel(rdma_ufbdc_debug_sel[2] << 13, base + RDMA_DEBUG_CON);
+		value[12] = readl(base + RDMA_MON_STA_27);
+		mml_err("ufbdc dbg sel %#04x %#010x  %#04x %#010x  %#04x %#010x",
+			rdma_ufbdc_debug_sel[0], value[10],
+			rdma_ufbdc_debug_sel[1], value[11],
+			rdma_ufbdc_debug_sel[2], value[12]);
+
+		writel(rdma_ufbdc_debug_sel[3] << 13, base + RDMA_DEBUG_CON);
+		value[13] = readl(base + RDMA_MON_STA_27);
+		writel(rdma_ufbdc_debug_sel[4] << 13, base + RDMA_DEBUG_CON);
+		value[14] = readl(base + RDMA_MON_STA_27);
+		mml_err("ufbdc dbg sel %#04x %#010x  %#04x %#010x",
+			rdma_ufbdc_debug_sel[3], value[13],
+			rdma_ufbdc_debug_sel[4], value[14]);
+	}
 
 	/* parse state */
 	mml_err("RDMA ack:%u req:%d ufo:%u",
