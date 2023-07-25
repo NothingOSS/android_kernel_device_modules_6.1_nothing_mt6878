@@ -1553,7 +1553,7 @@ static bool mtk_pcie_sleep_protect_ready(struct mtk_pcie_port *port)
 			return true;
 	}
 
-	dev_info(port->dev, "PCIe%d sleep protect not ready = #%x\n",
+	dev_info(port->dev, "PCIe%d sleep protect not ready = %#x\n",
 		 port->port_num, sleep_protect);
 
 	return false;
@@ -1888,12 +1888,16 @@ int mtk_pcie_hw_control_vote(int port, bool hw_mode_en, u8 who)
 			      PCIE_VLP_AXI_PROTECT_STA, val,
 			      !(val & PCIE_SUM_SLP_READY(pcie_port->port_num)),
 			      10, 10 * USEC_PER_MSEC);
-		if (err)
+		if (err) {
 			dev_info(pcie_port->dev, "PCIe sleep protect not ready, %#x, PCIe HW MODE BIT=%#x\n",
 				 readl_relaxed(pcie_port->vlpcfg_base +
 					       PCIE_VLP_AXI_PROTECT_STA),
 				 readl_relaxed(pcie_port->pextpcfg +
 					       PEXTP_PWRCTL_0));
+		} else {
+			if (!mtk_pcie_sleep_protect_ready(pcie_port))
+				err = -EPERM;
+		}
 	}
 
 	spin_unlock_irqrestore(&pcie_port->vote_lock, flags);
