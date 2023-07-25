@@ -11404,6 +11404,7 @@
 			wakeup-source;
 			usb-role-switch;
 			cdp-block;
+			usb3-lpm-disable;
 			port {
 				mtu3_drd_switch: endpoint {
 					remote-endpoint = <&usb_role>;
