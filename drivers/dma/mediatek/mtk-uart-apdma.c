@@ -832,7 +832,7 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 	unsigned int idx = 0;
 	int poll_cnt = MAX_POLL_CNT_RX;
 
-	if (mtkd->support_wakeup) {
+	if (mtkd->support_wakeup && c->is_hub_port) {
 		if (atomic_read(&dma_clk_count) == 0) {
 			pr_info("[%s]: dma_clk_count == 0\n", __func__);
 			return -EINVAL;
@@ -852,7 +852,7 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 
 	if (!mtk_uart_apdma_read(c, VFF_VALID_SIZE)) {
 		num++;
-		if (mtkd->support_wakeup)
+		if (mtkd->support_wakeup  && c->is_hub_port)
 			mtk_uart_set_apdma_rx_state(0);
 		return -EINVAL;
 	}
@@ -922,7 +922,7 @@ static irqreturn_t mtk_uart_apdma_irq_handler(int irq, void *dev_id)
 	//spin_unlock_irqrestore(&c->vc.lock, flags);
 	spin_unlock(&c->vc.lock);
 	if (current_dir == DMA_DEV_TO_MEM) {
-		if (num % 5000 == 1)
+		if (num % 5000 == 2)
 			pr_debug("debug: %s: VFF_VALID_SIZE=0, num[%llu], flag_state[0x%x]\n",
 				__func__, num, flag_state);
 	} else if (current_dir == DMA_MEM_TO_DEV) {
@@ -941,11 +941,11 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 	unsigned int status;
 	int ret;
 
-	if (mtkd->support_hub) {
+	if (mtkd->support_hub && c->is_hub_port) {
 		if (mtkd->support_wakeup)
 			mtk_uart_set_apdma_clk(true);
 		if (c->dir == DMA_DEV_TO_MEM) {
-			pr_info("[%s] after:VFF_EN[%d], INT_EN[0x%x] INT_FLAG[0x%x],"
+			pr_info("[%s] before:VFF_EN[%d], INT_EN[0x%x] INT_FLAG[0x%x],"
 				"WPT[0x%x] RPT[0x%x] THRE[0x%x] LEN[0x%x], ADDR1[0x%x],"
 				"ADDR2[0x%x]\n",
 				__func__, mtk_uart_apdma_read(c, VFF_EN),
@@ -956,7 +956,7 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 				mtk_uart_apdma_read(c, VFF_THRE),
 				mtk_uart_apdma_read(c, VFF_LEN),
 				mtk_uart_apdma_read(c, VFF_ADDR),
-				mtk_uart_apdma_read(c,VFF_4G_SUPPORT));
+				mtk_uart_apdma_read(c, VFF_4G_SUPPORT));
 		}
 	} else {
 		ret = pm_runtime_get_sync(mtkd->ddev.dev);
@@ -1018,14 +1018,14 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 			mtk_uart_apdma_read(c, VFF_THRE),
 			mtk_uart_apdma_read(c, VFF_LEN),
 			mtk_uart_apdma_read(c, VFF_ADDR),
-			mtk_uart_apdma_read(c,VFF_4G_SUPPORT));
+			mtk_uart_apdma_read(c, VFF_4G_SUPPORT));
 	}
 
 	if (mtkd->support_bits > VFF_ORI_ADDR_BITS_NUM)
 		mtk_uart_apdma_write(c, VFF_4G_SUPPORT, VFF_4G_SUPPORT_CLR_B);
 
 err_pm:
-	if (mtkd->support_hub && (mtkd->support_wakeup))
+	if (mtkd->support_hub && (mtkd->support_wakeup) && c->is_hub_port)
 		mtk_uart_set_apdma_clk(false);
 	return ret;
 }
@@ -1043,7 +1043,7 @@ static void mtk_uart_apdma_free_chan_resources(struct dma_chan *chan)
 		pr_info("[WARN] %s, c->chan_desc_count[%d]\n", __func__, c->chan_desc_count);
 	vchan_free_chan_resources(&c->vc);
 
-	if (mtkd->support_hub == 0)
+	if (!c->is_hub_port)
 		pm_runtime_put_sync(mtkd->ddev.dev);
 }
 
@@ -1160,7 +1160,7 @@ static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 	bool state;
 
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
-	if (mtkd->support_hub && (mtkd->support_wakeup))
+	if (mtkd->support_hub && (mtkd->support_wakeup) && c->is_hub_port)
 		mtk_uart_set_apdma_clk(true);
 #endif
 	if (mtk_uart_apdma_read(c, VFF_INT_BUF_SIZE)) {
@@ -1215,7 +1215,7 @@ static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 
 	vchan_dma_desc_free_list(&c->vc, &head);
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
-	if (mtkd->support_hub && (mtkd->support_wakeup))
+	if (mtkd->support_hub && (mtkd->support_wakeup) && c->is_hub_port)
 		mtk_uart_set_apdma_clk(false);
 #endif
 	return 0;
@@ -1543,16 +1543,7 @@ static int mtk_uart_apdma_runtime_suspend(struct device *dev)
 {
 	struct mtk_uart_apdmadev *mtkd = dev_get_drvdata(dev);
 
-#if IS_ENABLED(CONFIG_MTK_UARTHUB)
-	if (mtkd->support_hub && (mtkd->support_wakeup)) {
-		mtk_uart_set_apdma_clk(false);
-		return 0;
-	} else if (mtkd->support_hub) {
-		pr_info("[%s]: support_hub:%d, skip runtime suspend\n", __func__,
-		mtkd->support_hub);
-		return 0;
-		}
-#endif
+	pr_info("[%s]: disable clk\n", __func__);
 	clk_disable_unprepare(mtkd->clk);
 	return 0;
 }
@@ -1562,18 +1553,7 @@ static int mtk_uart_apdma_runtime_resume(struct device *dev)
 	struct mtk_uart_apdmadev *mtkd = dev_get_drvdata(dev);
 	int ret = 0;
 
-#if IS_ENABLED(CONFIG_MTK_UARTHUB)
-	if (mtkd->support_hub && (mtkd->support_wakeup)) {
-		mtk_uart_set_apdma_clk(true);
-		return 0;
-	} else if (mtkd->support_hub) {
-		pr_info("[%s]: support_hub:%d, clk_count: %d\n", __func__,
-			mtkd->support_hub, clk_count);
-		if (clk_count >= 1)
-			return 0;
-		clk_count++;
-	}
-#endif
+	pr_info("[%s]: enable clk\n", __func__);
 	ret = clk_prepare_enable(mtkd->clk);
 	if (ret)
 		pr_info("[%s]: clk_prepare_enable fail\n", __func__);
