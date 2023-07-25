@@ -19598,7 +19598,7 @@ static int mtk_vblank_config_rec_thread(void *data)
 	struct mtk_vblank_config_rec *vblank_rec = NULL;
 	unsigned int i, j;
 	int total_dur;
-	int total_dur_threshold = 200; //us
+	int total_dur_threshold = 150; //us
 
 	if (!mtk_crtc) {
 		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
