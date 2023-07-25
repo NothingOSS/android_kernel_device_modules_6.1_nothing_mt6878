@@ -11083,6 +11083,15 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 		}
 	}
 
+	/* All MTCMOS ref cnt has been get in mtk_vdisp probe earlier,
+	 * after display actually get its MTCMOS, the ref cnt should be put.
+	 * The call here is to ensure that it has been registered.
+	 */
+	if (unlikely(vdisp_func.genpd_put)) {
+		vdisp_func.genpd_put();
+		vdisp_func.genpd_put = NULL;
+	}
+
 	CRTC_MMP_EVENT_START((int) index, resume,
 			mtk_crtc->enabled, index);
 

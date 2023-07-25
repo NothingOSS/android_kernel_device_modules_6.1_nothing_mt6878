@@ -129,6 +129,15 @@ static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 	u32 addr = on ? VLP_DISP_SW_VOTE_SET : VLP_DISP_SW_VOTE_CLR;
 	u32 ack = on ? BIT(priv->pd_id) : 0;
 	u16 i = 0;
+	u32 value = 0;
+	int ret = 0;
+
+	ret = readl_poll_timeout_atomic(priv->vlp_base + VLP_MMINFRA_DONE_OFS, value,
+					(value & 0x2) == 0x2, POLL_DELAY_US, TIMEOUT_300MS);
+	if (ret < 0) {
+		VDISPERR("failed to wait voter free");
+		return;
+	}
 
 	writel_relaxed(BIT(priv->pd_id), priv->vlp_base + addr);
 	do {
@@ -146,9 +155,6 @@ static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 	} while (1);
 
 	if (on) {
-		int ret = 0;
-		u32 value = 0;
-
 		ret = readl_poll_timeout_atomic(priv->vlp_base + VLP_MMINFRA_DONE_OFS,
 						value, value > 0, POLL_DELAY_US, TIMEOUT_300MS);
 		if (ret < 0)
@@ -184,6 +190,7 @@ static void mtk_vdisp_genpd_put(void)
 	for (i = 0; i < DISP_PD_NUM; i++)
 		if (g_dev[i])
 			pm_runtime_put(g_dev[i]);
+	VDISPDBG("%d mtcmos has been put", i+1);
 }
 
 static const struct mtk_vdisp_funcs funcs = {
