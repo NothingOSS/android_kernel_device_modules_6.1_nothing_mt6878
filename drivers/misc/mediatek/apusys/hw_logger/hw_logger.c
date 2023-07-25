@@ -77,6 +77,7 @@ static void *apu_rpc;
 
 /* hw log buffer related */
 static unsigned int hw_log_lbc_size;
+static unsigned int aov_tcm_buf_init;
 static char *hw_log_buf;
 static char *aov_hw_log_buf;
 static char *aov_tcm_buf;
@@ -220,11 +221,10 @@ static int hw_logger_buf_alloc(struct device *dev)
 			MTK_APUSYS_KERNEL_OP_APUSYS_SETUP_TCM_LOG_MEM,
 			__pa_nodebug(aov_tcm_buf), aov_log_buf_sz, 0, 0, 0, 0, &smc_res);
 
-		if (smc_res.a0 != 0) {
+		if (smc_res.a0 != 0)
 			HWLOGR_ERR("arm_smccc_smc setup_tcm_log_mem error ret: 0x%lx", smc_res.a0);
-			ret = -ENOMEM;
-			goto out;
-		}
+		else
+			aov_tcm_buf_init = 1;
 
 		aov_hw_log_buf_addr = dma_map_single(dev, aov_hw_log_buf,
 			aov_log_buf_sz, DMA_FROM_DEVICE);
@@ -254,7 +254,7 @@ static int hw_logger_buf_alloc(struct device *dev)
 			__pa_nodebug(aov_hw_log_buf),
 			aov_log_buf_sz, "APUSYS_AOV_LOG");
 
-	if (aov_tcm_buf && aov_log_buf_sz != 0)
+	if (aov_tcm_buf && aov_tcm_buf_init && aov_log_buf_sz != 0)
 		(void)mrdump_mini_add_extra_file(
 			(unsigned long)aov_tcm_buf,
 			__pa_nodebug(aov_tcm_buf),
@@ -274,6 +274,9 @@ out:
 int hw_logger_dump_tcm_log(void)
 {
 	struct arm_smccc_res res;
+
+	if (aov_tcm_buf_init == 0)
+		return -1;
 
 	arm_smccc_smc(MTK_SIP_APUSYS_CONTROL,
 		MTK_APUSYS_KERNEL_OP_APUSYS_DUMP_TCM_LOG,
