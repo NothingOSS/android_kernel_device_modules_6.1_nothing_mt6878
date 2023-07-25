@@ -3804,6 +3804,7 @@ void mtk_dp_force_hdcp1x(bool enable)
 	g_mtk_dp->info.bForceHDCP1x = enable;
 }
 
+#ifdef MTK_DPINFO
 static char *mtk_hdcp_version(void)
 {
 #ifdef DPTX_HDCP_ENABLE
@@ -3844,7 +3845,6 @@ static char *mtk_hdcp_status(void)
 #endif
 	return "DP_AUTH_STATUS_NONE";
 }
-
 int mtk_dp_hdcp_getInfo(char *buffer, int size)
 {
 	int ret = 0;
@@ -3895,7 +3895,7 @@ int mtk_dp_phy_getInfo(char *buffer, int size)
 
 	return len;
 }
-
+#endif
 void mtk_dp_set_adjust_phy(uint8_t index, uint8_t c0, uint8_t cp1)
 {
 	if (g_mtk_dp == NULL) {

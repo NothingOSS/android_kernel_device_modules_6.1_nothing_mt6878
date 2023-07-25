@@ -5264,9 +5264,9 @@ void disp_dbg_probe(void)
 		goto out;
 	}
 #endif
-
+#ifdef MTK_DPINFO
 	mtk_dp_debugfs_init();
-
+#endif
 out:
 	return;
 }
@@ -5305,7 +5305,9 @@ void disp_dbg_deinit(void)
 		disp_lowpower_proc = NULL;
 	}
 #endif
+#ifdef MTK_DPINFO
 	mtk_dp_debugfs_deinit();
+#endif
 }
 
 void get_disp_dbg_buffer(unsigned long *addr, unsigned long *size,

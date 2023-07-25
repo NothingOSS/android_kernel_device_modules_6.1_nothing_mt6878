@@ -200,7 +200,7 @@ void mtk_dp_debug(const char *opt)
 	}
 }
 
-
+#ifdef MTK_DPINFO
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 static struct dentry *mtkdp_dbgfs;
 #endif
@@ -344,5 +344,5 @@ void mtk_dp_debugfs_deinit(void)
 #endif
 
 }
-
+#endif
 

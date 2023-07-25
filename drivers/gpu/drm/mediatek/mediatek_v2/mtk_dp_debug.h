@@ -10,9 +10,10 @@
 void mtk_dp_debug_enable(bool enable);
 bool mtk_dp_debug_get(void);
 void mtk_dp_debug(const char *opt);
+#ifdef MTK_DPINFO
 int mtk_dp_debugfs_init(void);
 void mtk_dp_debugfs_deinit(void);
-
+#endif
 
 #define DPTXFUNC(fmt, arg...)		\
 	pr_info("[DPTX][%s line:%d]"pr_fmt(fmt), __func__, __LINE__, ##arg)
