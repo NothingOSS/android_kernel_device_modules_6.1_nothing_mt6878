@@ -943,12 +943,12 @@ inline void compute_effective_softmask(struct task_struct *p,
 	struct cpumask *tg_mask;
 
 	*latency_sensitive = is_task_latency_sensitive(p);
-	if (!*latency_sensitive) {
+	css = task_css(p, cpu_cgrp_id);
+	if (!*latency_sensitive || !css) {
 		cpumask_copy(dst_mask, cpu_possible_mask);
 		return;
 	}
 
-	css = task_css(p, cpu_cgrp_id);
 	tg = container_of(css, struct task_group, css);
 	tg_mask = &((struct mtk_tg *) tg->android_vendor_data1)->sa_tg.soft_cpumask;
 
@@ -2203,12 +2203,19 @@ done:
 		struct soft_affinity_task *sa_task = &((struct mtk_task *)
 			p->android_vendor_data1)->sa_task;
 		struct cgroup_subsys_state *css = task_css(p, cpu_cgrp_id);
-		struct task_group *tg = container_of(css, struct task_group, css);
-		struct soft_affinity_tg *sa_tg = &((struct mtk_tg *)
-			tg->android_vendor_data1)->sa_tg;
+		struct cpumask softmask;
 
-			trace_sched_effective_mask(p, *new_cpu, latency_sensitive,
-				&effective_softmask, &sa_task->soft_cpumask, &sa_tg->soft_cpumask);
+		if (css) {
+			struct task_group *tg = container_of(css, struct task_group, css);
+			struct soft_affinity_tg *sa_tg = &((struct mtk_tg *)
+				tg->android_vendor_data1)->sa_tg;
+			softmask = sa_tg->soft_cpumask;
+		} else {
+			cpumask_clear(&softmask);
+			cpumask_copy(&softmask, cpu_possible_mask);
+		}
+		trace_sched_effective_mask(p, *new_cpu, latency_sensitive,
+			&effective_softmask, &sa_task->soft_cpumask, &softmask);
 	}
 
 	irq_log_store();
