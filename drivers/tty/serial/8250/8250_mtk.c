@@ -1812,6 +1812,11 @@ static int __maybe_unused mtk8250_runtime_suspend(struct device *dev)
 	struct mtk8250_data *data = dev_get_drvdata(dev);
 	struct uart_8250_port *up = serial8250_get_port(data->line);
 
+	if (up == NULL) {
+		pr_info("%s: up is null!!\n", __func__);
+		return 0;
+	}
+
 	if (data->support_hub) {
 		dev_dbg(dev, "[%s]:clock count is[%d] support_hub, skip disable clock\n",
 		 __func__, data->clk_count);
