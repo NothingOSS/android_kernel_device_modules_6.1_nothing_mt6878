@@ -132,6 +132,20 @@ static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 	u32 value = 0;
 	int ret = 0;
 
+	/* [0] MMINFRA_DONE_STA
+	 * [1] VCP_READY_STA
+	 * [2] MMINFRA_DURING_OFF_STA
+	 *
+	 * Power on flow
+	 *   polling 91c & 0x2 = 0x2 (wait 300ms timeout)
+	 *   start vote (keep write til vote rg == voting value)
+	 *   polling 91c == 0x3 (wait 300ms timeout)
+	 *
+	 * Power off flow
+	 *   polling 91c & 0x2 = 0x2 (wait 300ms timeout)
+	 *   start unvote (keep write til vote rg == unvoting value)
+	 */
+
 	ret = readl_poll_timeout_atomic(priv->vlp_base + VLP_MMINFRA_DONE_OFS, value,
 					(value & 0x2) == 0x2, POLL_DELAY_US, TIMEOUT_300MS);
 	if (ret < 0) {
@@ -155,8 +169,8 @@ static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 	} while (1);
 
 	if (on) {
-		ret = readl_poll_timeout_atomic(priv->vlp_base + VLP_MMINFRA_DONE_OFS,
-						value, value > 0, POLL_DELAY_US, TIMEOUT_300MS);
+		ret = readl_poll_timeout_atomic(priv->vlp_base + VLP_MMINFRA_DONE_OFS, value,
+						value == 0x3, POLL_DELAY_US, TIMEOUT_300MS);
 		if (ret < 0)
 			VDISPERR("failed to power on mminfra");
 	}
@@ -185,12 +199,15 @@ static int genpd_event_notifier(struct notifier_block *nb,
 
 static void mtk_vdisp_genpd_put(void)
 {
-	int i;
+	int i = 0, j = 0;
 
-	for (i = 0; i < DISP_PD_NUM; i++)
-		if (g_dev[i])
+	for (i = 0; i < DISP_PD_NUM; i++) {
+		if (g_dev[i]) {
 			pm_runtime_put(g_dev[i]);
-	VDISPDBG("%d mtcmos has been put", i+1);
+			j++;
+		}
+	}
+	VDISPDBG("%d mtcmos has been put", j);
 }
 
 static const struct mtk_vdisp_funcs funcs = {
