@@ -1546,7 +1546,7 @@ static bool mtk_pcie_sleep_protect_ready(struct mtk_pcie_port *port)
 		 * Add SW debounce time here to avoid that corner case and
 		 * check again.
 		 */
-		usleep_range(5, 6);
+		udelay(6);
 
 		sleep_protect = mtk_pcie_sleep_protect_status(port);
 		if (!sleep_protect)
