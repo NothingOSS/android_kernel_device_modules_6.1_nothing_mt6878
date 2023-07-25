@@ -102,6 +102,7 @@ struct mbraink_data {
 	int suspend_power_data_size;
 	int resume_power_data_size;
 	long long last_suspend_timestamp;
+	struct mbraink_battery_data suspend_battery_buffer;
 	struct sock *mbraink_sock;
 	int client_pid;
 	unsigned int feature_en;

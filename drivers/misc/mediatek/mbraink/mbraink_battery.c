@@ -9,7 +9,8 @@
 
 struct power_supply *power_supply_get_by_name(const char *name);
 
-void mbraink_get_battery_info(struct mbraink_battery_data *battery_buffer)
+void mbraink_get_battery_info(struct mbraink_battery_data *battery_buffer,
+			      long long timestamp)
 {
 	struct power_supply *psy;
 	int ret;
@@ -20,6 +21,8 @@ void mbraink_get_battery_info(struct mbraink_battery_data *battery_buffer)
 		pr_notice("get battery power supply fail~~~!\n");
 
 	if (psy != NULL) {
+		battery_buffer->timestamp = timestamp;
+
 		ret = power_supply_get_property(psy,
 			POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN, &prop);
 		battery_buffer->qmaxt = prop.intval;
@@ -36,8 +39,9 @@ void mbraink_get_battery_info(struct mbraink_battery_data *battery_buffer)
 			POWER_SUPPLY_PROP_CAPACITY_LEVEL, &prop);
 		battery_buffer->precise_uisoc = prop.intval;
 	}
-	/*
-	 *pr_info("qmaxt=%d, qusec=%d, socc=%d, uisocc=%d\n",
+
+	/*pr_info("timestamp=%lld qmaxt=%d, qusec=%d, socc=%d, uisocc=%d\n",
+	 *	battery_buffer->timestamp,
 	 *	battery_buffer->qmaxt,
 	 *	battery_buffer->quse,
 	 *	battery_buffer->precise_soc,

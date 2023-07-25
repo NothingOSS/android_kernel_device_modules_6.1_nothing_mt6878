@@ -570,7 +570,7 @@ static long mbraink_ioctl(struct file *filp,
 		memset(&battery_buffer,
 				0,
 				sizeof(struct mbraink_battery_data));
-		mbraink_get_battery_info(&battery_buffer);
+		mbraink_get_battery_info(&battery_buffer, 0);
 		if (copy_to_user((struct mbraink_battery_data *) arg,
 					&battery_buffer,
 					sizeof(battery_buffer))) {
@@ -739,10 +739,22 @@ static const struct file_operations mbraink_fops = {
 };
 
 #if IS_ENABLED(CONFIG_PM_SLEEP)
+static int mbraink_prepare(struct device *dev)
+{
+	struct timespec64 tv = { 0 };
+
+	ktime_get_real_ts64(&tv);
+	mbraink_priv.last_suspend_timestamp =
+		(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+
+	mbraink_get_battery_info(&mbraink_priv.suspend_battery_buffer,
+				 mbraink_priv.last_suspend_timestamp);
+
+	return 0;
+}
 static int mbraink_suspend(struct device *dev)
 {
 	int ret;
-	struct timespec64 tv = { 0 };
 
 	mutex_lock(&power_lock);
 	if (mbraink_priv.suspend_power_info_en[0] == '1') {
@@ -761,12 +773,8 @@ static int mbraink_suspend(struct device *dev)
 		uninit_pmu_keep_data();
 	mutex_unlock(&pmu_lock);
 
-	ktime_get_real_ts64(&tv);
-	mbraink_priv.last_suspend_timestamp =
-		(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 
-	pr_info("[MBK_INFO] %s: suspend time: %lld\n",
-			__func__, mbraink_priv.last_suspend_timestamp);
+	pr_info("[MBK_INFO] %s\n", __func__);
 	ret = pm_generic_suspend(dev);
 
 	return ret;
@@ -775,10 +783,10 @@ static int mbraink_suspend(struct device *dev)
 static int mbraink_resume(struct device *dev)
 {
 	int ret;
-	int n = 0;
-	char netlink_buf[MAX_BUF_SZ] = {'\0'};
 
 	ret = pm_generic_resume(dev);
+
+	pr_info("[MBK_INFO] %s\n", __func__);
 
 	mutex_lock(&power_lock);
 	if (mbraink_priv.suspend_power_info_en[0] == '1') {
@@ -797,21 +805,51 @@ static int mbraink_resume(struct device *dev)
 		init_pmu_keep_data();
 	mutex_unlock(&pmu_lock);
 
-	n += snprintf(netlink_buf, MAX_BUF_SZ, "%s %lld\n",
-				NETLINK_EVENT_SYSRESUME, mbraink_priv.last_suspend_timestamp);
-	pr_info("[MBK_INFO] %s: %s\n",
-		__func__, netlink_buf);
+	return ret;
+}
+
+static void mbraink_complete(struct device *dev)
+{
+	struct timespec64 tv = { 0 };
+	char netlink_buf[MAX_BUF_SZ] = {'\0'};
+	int n = 0;
+	long long last_resume_timestamp = 0;
+	struct mbraink_battery_data resume_battery_buffer;
+
+	memset(&resume_battery_buffer, 0,
+		sizeof(struct mbraink_battery_data));
+
+	ktime_get_real_ts64(&tv);
+	last_resume_timestamp =
+		(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+
+	mbraink_get_battery_info(&resume_battery_buffer, last_resume_timestamp);
+
+	n += snprintf(netlink_buf, MAX_BUF_SZ, "%s %lld:%lld %d:%d:%d:%d %d:%d:%d:%d",
+			NETLINK_EVENT_SYSRESUME,
+			mbraink_priv.last_suspend_timestamp,
+			last_resume_timestamp,
+			mbraink_priv.suspend_battery_buffer.quse,
+			mbraink_priv.suspend_battery_buffer.qmaxt,
+			mbraink_priv.suspend_battery_buffer.precise_soc,
+			mbraink_priv.suspend_battery_buffer.precise_uisoc,
+			resume_battery_buffer.quse,
+			resume_battery_buffer.qmaxt,
+			resume_battery_buffer.precise_soc,
+			resume_battery_buffer.precise_uisoc);
 
 	mbraink_netlink_send_msg(netlink_buf);
 
 	mbraink_priv.last_suspend_timestamp = 0;
-
-	return ret;
+	memset(&mbraink_priv.suspend_battery_buffer, 0,
+		sizeof(struct mbraink_battery_data));
 }
 
 static const struct dev_pm_ops mbraink_class_dev_pm_ops = {
+	.prepare	= mbraink_prepare,
 	.suspend	= mbraink_suspend,
-	.resume	= mbraink_resume,
+	.resume		= mbraink_resume,
+	.complete	= mbraink_complete,
 };
 
 #define MBRAINK_CLASS_DEV_PM_OPS (&mbraink_class_dev_pm_ops)
@@ -828,7 +866,7 @@ static struct class mbraink_class = {
 	.name		= "mbraink_host",
 	.owner		= THIS_MODULE,
 	.class_release	= class_create_release,
-	.pm			= MBRAINK_CLASS_DEV_PM_OPS,
+	.pm		= MBRAINK_CLASS_DEV_PM_OPS,
 };
 
 static void device_create_release(struct device *dev)
@@ -916,6 +954,8 @@ static int mbraink_dev_init(void)
 	mbraink_priv.last_suspend_timestamp = 0;
 	mbraink_priv.feature_en = 0;
 	mbraink_priv.pmu_en = 0;
+	memset(&mbraink_priv.suspend_battery_buffer, 0,
+		sizeof(struct mbraink_battery_data));
 
 	/*Allocating Major number*/
 	if ((alloc_chrdev_region(&mbraink_dev_no, 0, 1, CHRDEV_NAME)) < 0) {

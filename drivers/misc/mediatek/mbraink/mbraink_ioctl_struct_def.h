@@ -170,6 +170,7 @@ struct mbraink_cpufreq_notify_struct_data {
 };
 
 struct mbraink_battery_data {
+	long long timestamp;
 	int quse;
 	int qmaxt;
 	int precise_soc;
