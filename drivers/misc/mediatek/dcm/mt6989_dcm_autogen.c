@@ -628,9 +628,9 @@ void dcm_mcusys_par_wrap_mcu_core_qdcm(int on)
 	}
 }
 
-#define MCUSYS_PAR_WRAP_MCU_BKR_LDCM_REG0_MASK ((0x3U << 0))
-#define MCUSYS_PAR_WRAP_MCU_BKR_LDCM_REG0_ON ((0x3U << 0))
-#define MCUSYS_PAR_WRAP_MCU_BKR_LDCM_REG0_OFF ((0x0U << 0))
+#define MCUSYS_PAR_WRAP_MCU_BKR_LDCM_REG0_MASK ((0xffff0003U << 0))
+#define MCUSYS_PAR_WRAP_MCU_BKR_LDCM_REG0_ON ((0x8A080003U << 0))
+#define MCUSYS_PAR_WRAP_MCU_BKR_LDCM_REG0_OFF ((0x8A080000U << 0))
 
 bool dcm_mcusys_par_wrap_mcu_bkr_ldcm_is_on(void)
 {
