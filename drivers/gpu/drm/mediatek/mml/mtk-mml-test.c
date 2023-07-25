@@ -1963,13 +1963,17 @@ module_param_cb(mml_test_ut, &krun_ops, NULL, 0644);
 static int mml_test_inst_print(struct seq_file *seq, void *data)
 {
 	u32 size, raw_size, parsed_sz;
-	void *raw;
-	void *parsed;
+	void *raw = NULL;
+	void *parsed = NULL;
 
 	mml_core_get_dump_inst(&size, &raw, &raw_size);
 
 	parsed_sz = raw_size * 10;
 	parsed = vmalloc(parsed_sz);
+	if (!parsed) {
+		mml_err("%s parsed vmalloc fail", __func__);
+		return 0;
+	}
 	mml_log("[test]%s dump inst buf size %u vbuf %p sz %u", __func__, size, parsed, parsed_sz);
 
 	parsed_sz = cmdq_buf_cmd_parse_buf((u64 *)raw, raw_size / 8, 0, 0,

@@ -1192,12 +1192,18 @@ struct mml_frm_dump_data *mml_core_get_frame_out(void)
 static void core_dump_inst(struct cmdq_pkt *pkt)
 {
 	kfree(mml_inst_dump);
-	kfree(mml_inst_raw);
 	mml_inst_dump = NULL;
+	kfree(mml_inst_raw);
 	mml_inst_raw = NULL;
-	mml_inst_dump = cmdq_pkt_parse_buf(pkt, &mml_inst_dump_sz, &mml_inst_raw, &mml_inst_raw_sz);
 
-	mml_log("%s raw buffer %p size %u", __func__, mml_inst_raw, mml_inst_raw_sz);
+	if (!mml_inst_dump && !mml_inst_raw) {
+		mml_inst_dump = cmdq_pkt_parse_buf(pkt, &mml_inst_dump_sz, &mml_inst_raw, &mml_inst_raw_sz);
+
+		mml_log("%s raw buffer %p size %u", __func__, mml_inst_raw, mml_inst_raw_sz);
+	} else {
+		/* overwrite pointer may leak */
+		mml_err("%s overwrite not NULL pointer mml_inst_dump or mml_inst_raw", __func__);
+	}
 }
 
 char *mml_core_get_dump_inst(u32 *size, void **raw, u32 *size_raw)

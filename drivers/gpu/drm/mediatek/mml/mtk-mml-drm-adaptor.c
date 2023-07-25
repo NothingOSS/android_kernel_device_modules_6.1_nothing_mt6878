@@ -1744,7 +1744,7 @@ const struct mml_topology_path *mml_drm_query_dl_path(struct mml_drm_ctx *ctx,
 			/* The tp path not select, yet, in first task.
 			 * Hence use same info do query.
 			 */
-			if (!path)
+			if (!path && tp)
 				path = tp->op->get_dl_path(tp, &cfg->info, pipe);
 
 			break;
