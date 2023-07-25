@@ -12,6 +12,7 @@
 #include <linux/delay.h>
 #include <linux/semaphore.h>
 #include <linux/module.h>
+#include <linux/interconnect.h>
 
 #include "mtk_vcodec_drv.h"
 #include "mtk_vcodec_enc.h"
@@ -2601,9 +2602,15 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 
 	ctx->enc_params.slbc_encode_performance = isENCODE_PERFORMANCE_USAGE(param.width,
 		param.height, param.frm_rate, param.operationrate);
+	ctx->enc_params.ddr_encode_peak_bw = isENCODE_DDR_PEAK_BW_USAGE(param.width,
+		param.height, param.frm_rate);
+
 	if (ctx->use_slbc == 1) {
 		if (ctx->enc_params.slbc_encode_performance)
 			atomic_inc(&mtk_venc_slb_cb.perf_used_cnt);
+		if (ctx->enc_params.ddr_encode_peak_bw && ctx->dev->venc_peak_bw_req &&
+			ctx->dev->venc_peak_bw)
+			icc_set_bw(ctx->dev->venc_peak_bw_req, 0, ctx->dev->venc_peak_bw);
 	} else {
 		atomic_inc(&mtk_venc_slb_cb.later_cnt);
 		ctx->later_cnt_once = true;
@@ -2614,6 +2621,12 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		ctx->enc_params.slbc_encode_performance,
 		atomic_read(&mtk_venc_slb_cb.perf_used_cnt),
 		atomic_read(&mtk_venc_slb_cb.later_cnt));
+
+	mtk_v4l2_debug(0, "slbc %d, ddr_peak_bw %d %p %d",
+		ctx->use_slbc,
+		ctx->enc_params.ddr_encode_peak_bw,
+		ctx->dev->venc_peak_bw_req,
+		ctx->dev->venc_peak_bw);
 
 	if (ret) {
 		mtk_v4l2_err("venc_if_set_param failed=%d", ret);

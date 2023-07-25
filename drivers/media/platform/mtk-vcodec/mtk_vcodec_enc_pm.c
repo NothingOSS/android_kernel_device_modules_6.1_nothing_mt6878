@@ -11,6 +11,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/delay.h>
 #include <linux/jiffies.h>
+#include <linux/interconnect.h>
 #include <soc/mediatek/smi.h>
 
 #include "mtk_vcodec_enc_pm.h"
@@ -216,6 +217,9 @@ void mtk_venc_deinit_ctx_pm(struct mtk_vcodec_ctx *ctx)
 		}
 		if (ctx->enc_params.slbc_encode_performance)
 			atomic_dec(&mtk_venc_slb_cb.perf_used_cnt);
+		if (ctx->enc_params.ddr_encode_peak_bw && ctx->dev->venc_peak_bw_req &&
+			ctx->dev->venc_peak_bw)
+			icc_set_bw(ctx->dev->venc_peak_bw_req, 0, 0);
 	} else {
 		if (ctx->later_cnt_once)
 			atomic_dec(&mtk_venc_slb_cb.later_cnt);
@@ -227,6 +231,12 @@ void mtk_venc_deinit_ctx_pm(struct mtk_vcodec_ctx *ctx)
 		ctx->enc_params.slbc_encode_performance,
 		atomic_read(&mtk_venc_slb_cb.perf_used_cnt),
 		atomic_read(&mtk_venc_slb_cb.later_cnt));
+
+	mtk_v4l2_debug(0, "slbc %d, ddr_peak_bw %d %p %d",
+		ctx->use_slbc,
+		ctx->enc_params.ddr_encode_peak_bw,
+		ctx->dev->venc_peak_bw_req,
+		ctx->dev->venc_peak_bw);
 }
 
 void mtk_vcodec_enc_pw_on(struct mtk_vcodec_pm *pm)

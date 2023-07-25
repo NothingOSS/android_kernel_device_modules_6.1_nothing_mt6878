@@ -44,6 +44,10 @@
 		((w) >= 1280 && (h) >= 720 && (opr) >= 240) || \
 		((h) >= 1280 && (w) >= 720 && (opr) >= 240)) ? (1) : (0))
 
+#define isENCODE_DDR_PEAK_BW_USAGE(w, h, fr) \
+		((((w) >= 3840 && (h) >= 2160 && (fr) >= 60) || \
+		((h) >= 3840 && (w) >= 2160 && (fr) >= 60)) ? (1) : (0))
+
 #define SNPRINTF(args...)							\
 	do {											\
 		if (snprintf(args) < 0)						\

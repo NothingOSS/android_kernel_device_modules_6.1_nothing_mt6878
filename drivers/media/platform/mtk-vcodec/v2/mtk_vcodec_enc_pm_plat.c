@@ -10,6 +10,7 @@
 #include <linux/delay.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/smi.h>
+#include "dvfsrc-exp.h"
 
 #include "mtk_vcodec_enc_pm.h"
 #include "mtk_vcodec_enc_pm_plat.h"
@@ -389,6 +390,17 @@ void mtk_prepare_venc_emi_bw(struct mtk_vcodec_dev *dev)
 		dev->venc_qos_req[i] = of_mtk_icc_get(&pdev->dev, path_strs[i]);
 		mtk_v4l2_debug(0, "[VENC] %d %p %s", i, dev->venc_qos_req[i], path_strs[i]);
 	}
+
+	dev->venc_peak_bw_req = of_icc_get(&pdev->dev, "venc_peak_bw");
+	if (IS_ERR_OR_NULL(dev->venc_peak_bw_req)) {
+		mtk_v4l2_debug(0, "[VENC] fail to get icc path venc_peak_bw, ret = %ld\n",
+			PTR_ERR(dev->venc_peak_bw_req));
+		dev->venc_peak_bw = 0;
+	} else {
+		dev->venc_peak_bw = dvfsrc_get_required_opp_peak_bw(pdev->dev.of_node, 0);
+		mtk_v4l2_debug(0, "[VENC] venc_peak_bw %d\n", dev->venc_peak_bw);
+	}
+
 #endif
 }
 
