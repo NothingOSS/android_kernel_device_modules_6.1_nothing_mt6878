@@ -1133,7 +1133,7 @@ static int mt6989_sram_size_get(struct snd_kcontrol *kcontrol,
 }
 
 static int mt6989_vow_barge_in_irq_id_get(struct snd_kcontrol *kcontrol,
-		struct snd_ctl_elem_value *ucontrol)
+					  struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);

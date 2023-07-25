@@ -194,8 +194,10 @@ enum vow_ipi_msgid_t {
 	IPIMSG_VOW_GOOGLE_ARCH = 27,
 	IPIMSG_VOW_SET_CUSTOM_MODEL = 28,
 	IPIMSG_VOW_HAL_REBOOT = 29,
-	IPIMSG_VOW_FLUSH = 30,
-	IPIMSG_VOW_SCP_BARGE_IN_RESUME = 31
+	//IPIMSG_VOW_FLUSH = 30,
+	IPIMSG_VOW_SCP_BARGE_IN_RESUME = 31,
+	/*------ sound_soc-vow-kernel ------*/
+	IPIMSG_VOW_PCM_HWFREE = 100
 };
 
 enum vow_eint_status_t {

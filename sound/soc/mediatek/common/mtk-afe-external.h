@@ -17,7 +17,26 @@ enum {
 	NOTIFIER_VP_AUDIO_START,
 	NOTIFIER_VP_AUDIO_STOP,
 	NOTIFIER_VP_AUDIO_TRIGGER,
-	NOTIFIER_VP_AUDIO_TIMER
+	NOTIFIER_VP_AUDIO_TIMER,
+	NOTIFIER_VOW_IPI_SEND
+};
+
+/* sound soc vow ipi related */
+enum vow_sound_soc_ipi_msgid_t {
+	SOUND_SOC_IPIMSG_VOW_PCM_HWFREE = 100
+};
+
+enum {
+	SOUND_SOC_VOW_IPI_BYPASS_ACK = 0,
+	SOUND_SOC_VOW_IPI_NEED_ACK,
+	SOUND_SOC_VOW_IPI_ACK_BACK
+};
+
+struct vow_sound_soc_ipi_send_info {
+	unsigned int msg_id;
+	unsigned int payload_len;
+	unsigned int *payload;
+	unsigned int need_ack;
 };
 
 int register_afe_allocate_mem_notifier(struct notifier_block *nb);
@@ -31,5 +50,9 @@ int notify_3way_semaphore_control(unsigned long module, void *v);
 int register_vp_audio_notifier(struct notifier_block *nb);
 int unregister_vp_audio_notifier(struct notifier_block *nb);
 int notify_vb_audio_control(unsigned long module, void *v);
+
+int register_vow_ipi_send_notifier(struct notifier_block *nb);
+int unregister_vow_ipi_send_notifier(struct notifier_block *nb);
+int notify_vow_ipi_send(unsigned long module, void *v);
 
 #endif /* MTK_MEM_ALLOCATION_CONTROL_H_ */
