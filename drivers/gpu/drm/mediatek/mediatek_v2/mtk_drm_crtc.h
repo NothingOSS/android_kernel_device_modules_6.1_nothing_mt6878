@@ -872,7 +872,7 @@ struct mtk_vblank_config_rec {
 	atomic_t vblank_rec_event;
 	int job_dur[DISP_REC_THREAD_TYPE_MAX][DISP_REC_JOB_TYPE_MAX];
 	struct list_head top_list;
-
+	struct mutex lock;
 };
 
 struct mtk_vblank_config_node {

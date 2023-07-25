@@ -19521,12 +19521,14 @@ unsigned int mtk_drm_dump_vblank_config_rec(
 	len += scnprintf(stringbuf + len, buf_len - len,
 		"===== Vblank Configure Duration Record =====\n");
 
+	mutex_lock(&vblank_rec->lock);
 	list_for_each_safe(pos, nex, &vblank_rec->top_list) {
 		v_rec_node = list_entry(pos, struct mtk_vblank_config_node, link);
 		i++;
 		len += scnprintf(stringbuf + len, buf_len - len,
 			"DISP Rec Top %d: %d us\n", i, v_rec_node->total_dur);
 	}
+	mutex_unlock(&vblank_rec->lock);
 	len += scnprintf(stringbuf + len, buf_len - len,
 		"============================================\n");
 
@@ -19553,6 +19555,7 @@ static int mtk_vblank_config_rec_statistics(struct mtk_vblank_config_rec *vblank
 	v_rec_node_new->total_dur = total_dur;
 
 	/* Sorted and insert new node to list */
+	mutex_lock(&vblank_rec->lock);
 	list_for_each_safe(pos, nex, &vblank_rec->top_list) {
 		v_rec_node = list_entry(pos, struct mtk_vblank_config_node, link);
 		if (v_rec_node_new->total_dur > v_rec_node->total_dur)
@@ -19571,6 +19574,7 @@ static int mtk_vblank_config_rec_statistics(struct mtk_vblank_config_rec *vblank
 			}
 		}
 	}
+	mutex_unlock(&vblank_rec->lock);
 
 	/* Dump Top 10 */
 /*
@@ -19716,6 +19720,7 @@ int mtk_vblank_config_rec_init(struct drm_crtc *crtc)
 	mtk_crtc->vblank_rec = vblank_rec;
 
 	INIT_LIST_HEAD(&vblank_rec->top_list);
+	mutex_init(&vblank_rec->lock);
 
 	snprintf(name, 30, "mtk_vblank_config_rec-0");
 	vblank_rec->vblank_rec_task =
