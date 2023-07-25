@@ -3264,14 +3264,16 @@ static void vcp_device_shutdown(struct platform_device *pdev)
 {
 	int ret = -1;
 
-	ret = vcp_turn_mminfra_on();
-	if (ret < 0) {
-		pr_notice("[VCP] %s failed to turn mminfra on\n", __func__);
-		return;
-	}
+	if (vcp_ao) {
+		ret = vcp_turn_mminfra_on();
+		if (ret < 0) {
+			pr_notice("[VCP] %s failed to turn mminfra on\n", __func__);
+			return;
+		}
 
-	// trigger halt isr to change spm control power
-	writel(B_GIPC3_SETCLR_2, R_GIPC_IN_SET);
+		// trigger halt isr to change spm control power
+		writel(B_GIPC3_SETCLR_2, R_GIPC_IN_SET);
+	}
 }
 
 static int mtk_vcp_suspend(struct device *pdev)
