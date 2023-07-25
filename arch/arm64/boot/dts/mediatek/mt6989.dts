@@ -1742,6 +1742,7 @@
 		clock-names = "main", "dma";
 		clock-div = <1>;
 		ch-offset-i2c = <0x100>;
+		ch-offset-scp = <0x200>;
 		scl-gpio-id = <120>;
 		sda-gpio-id = <121>;
 	};
