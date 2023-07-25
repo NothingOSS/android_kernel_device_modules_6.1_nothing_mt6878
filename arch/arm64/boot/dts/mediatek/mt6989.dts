@@ -1077,7 +1077,7 @@
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_ISP_VCORE>;
 		pd-id = <3>;
 	};
-/*
+
 	disp-vcore-vdisp-ctrl@0 {
 		compatible = "mediatek,mt6989-vdisp-ctrl";
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DISP_VCORE>;
@@ -1133,7 +1133,7 @@
 		reg-names = "VLP_BASE";
 		disp-pd-id = <6>;
 	};
-
+/*
 	dptx-vdisp-ctrl@7 {
 		compatible = "mediatek,mt6989-vdisp-ctrl";
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DP_TX>;
