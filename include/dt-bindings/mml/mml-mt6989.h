@@ -125,6 +125,8 @@
 #define MML_MOUT_MASK1		0xfd4
 #define MML_MOUT_MASK2		0xfd8
 
+#define MML_DDREN_DEBUG		0xe20
+
 /* MML AID for secure */
 #define MML_RDMA0_AIDSEL	0x500
 #define MML_RDMA1_AIDSEL	0x504
