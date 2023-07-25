@@ -14590,6 +14590,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 	peak_power_budget:peak-power-budget@117780 {
 		compatible = "mediatek,peak_power_budget";
+		bootmode = <&chosen>;
 		reg = <0 0x00117780 0 0x30>;
 		reg-names = "ppb_sram";
 		battery-path-rdc-t0 = <95>;
