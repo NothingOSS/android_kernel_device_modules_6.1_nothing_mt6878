@@ -71,6 +71,11 @@ void fpsgo_ctrl2comp_hint_frame_err(int pid,
 			unsigned long long frameID,
 			unsigned long long time,
 			unsigned long long identifier);
+void fpsgo_ctrl2comp_hint_frame_dep_task(int rtid,
+			unsigned long long identifier,
+			int dep_mode,
+			char *dep_name,
+			int dep_num);
 
 void fpsgo_ctrl2comp_connect_api(int pid, int api,
 	unsigned long long identifier);

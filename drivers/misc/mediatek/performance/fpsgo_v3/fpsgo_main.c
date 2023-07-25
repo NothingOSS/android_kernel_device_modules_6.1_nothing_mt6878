@@ -116,6 +116,7 @@ struct FPSGO_NOTIFIER_PUSH_TAG {
 	unsigned long mask;
 	char specific_name[100];
 	int num;
+	int mode;
 
 	struct fpsgo_adpf_session adpf_hint;
 	struct fpsgo_magt_target_fps *magt_tfps_hint;
@@ -314,7 +315,8 @@ static void fpsgo_notifier_wq_cb_enable(int enable)
 
 static void fpsgo_notifier_wq_cb_hint_frame(int qudeq,
 		int cur_pid, unsigned long long frameID,
-		unsigned long long curr_ts, unsigned long long id)
+		unsigned long long curr_ts, unsigned long long id,
+		int dep_mode, char *dep_name, int dep_num)
 {
 	FPSGO_LOGI("[FPSGO_CB] uxframe: %d, pid %d, ts %llu, id %llu\n",
 		qudeq, cur_pid, curr_ts, id);
@@ -341,6 +343,10 @@ static void fpsgo_notifier_wq_cb_hint_frame(int qudeq,
 	default:
 		break;
 	}
+
+	if (dep_mode && dep_num > 0)
+		fpsgo_ctrl2comp_hint_frame_dep_task(cur_pid, id,
+			dep_mode, dep_name, dep_num);
 }
 
 static void fpsgo_notifier_wq_cb_adpf_hint(struct fpsgo_adpf_session *session)
@@ -485,7 +491,8 @@ static void fpsgo_notifier_wq_cb(void)
 	case FPSGO_NOTIFIER_FRAME_HINT:
 		fpsgo_notifier_wq_cb_hint_frame(vpPush->qudeq_cmd,
 				vpPush->pid, vpPush->frameID,
-				vpPush->cur_ts, vpPush->identifier);
+				vpPush->cur_ts, vpPush->identifier,
+				vpPush->mode, vpPush->specific_name, vpPush->num);
 		break;
 	case FPSGO_NOTIFIER_SBE_POLICY:
 		fpsgo_ctrl2comp_set_sbe_policy(vpPush->pid,
@@ -906,7 +913,8 @@ void fpsgo_notify_buffer_quota(int pid, int quota, unsigned long long identifier
 }
 
 int fpsgo_notify_frame_hint(int qudeq,
-		int pid, int frameID, unsigned long long id)
+	int pid, int frameID, unsigned long long id,
+	int dep_mode, char *dep_name, int dep_num)
 {
 	int ret;
 	unsigned long long cur_ts;
@@ -942,6 +950,13 @@ int fpsgo_notify_frame_hint(int qudeq,
 	vpPush->frameID = frameID;
 	// FPSGO UX: bufid magic number.
 	vpPush->identifier = 5566;
+	vpPush->mode = dep_mode;
+	if (dep_mode && dep_num > 0) {
+		memcpy(vpPush->specific_name, dep_name, 100);
+		vpPush->num = dep_num;
+	} else
+		vpPush->num = 0;
+
 	fpsgo_queue_work(vpPush);
 
 	fpsgo_render_tree_lock(__func__);

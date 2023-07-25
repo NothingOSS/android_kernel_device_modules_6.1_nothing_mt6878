@@ -60,6 +60,7 @@ static int recycle_active = 1;
 static int fps_align_margin = 5;
 static int total_fpsgo_com_policy_cmd_num;
 static int fpsgo_is_boosting;
+static unsigned long long last_update_sbe_dep_ts;
 
 static void fpsgo_com_notify_to_do_recycle(struct work_struct *work);
 static DECLARE_WORK(do_recycle_work, fpsgo_com_notify_to_do_recycle);
@@ -1169,6 +1170,38 @@ void fpsgo_ctrl2comp_hint_frame_err(int pid,
 	fpsgo_render_tree_unlock(__func__);
 }
 
+void fpsgo_ctrl2comp_hint_frame_dep_task(int rtid, unsigned long long identifier,
+	int dep_mode, char *dep_name, int dep_num)
+{
+	int local_action = 0;
+	int local_tgid = 0;
+	int local_rtid[1];
+	unsigned long long local_bufID[1];
+	unsigned long long cur_ts;
+
+	cur_ts = fpsgo_get_time();
+	if (cur_ts <= last_update_sbe_dep_ts ||
+		cur_ts - last_update_sbe_dep_ts < 500 * NSEC_PER_MSEC)
+		return;
+	last_update_sbe_dep_ts = cur_ts;
+	fpsgo_main_trace("[comp] last_update_sbe_dep_ts:%llu", last_update_sbe_dep_ts);
+
+	local_tgid = fpsgo_get_tgid(rtid);
+	local_rtid[0] = rtid;
+	local_bufID[0] = identifier;
+
+	switch (dep_mode) {
+	case 1:
+		local_action = XGF_DEL_DEP;
+		break;
+	default:
+		return;
+	}
+
+	fpsgo_other2xgf_set_dep_list(local_tgid, local_rtid, local_bufID, 1,
+		dep_name, dep_num, local_action);
+}
+
 void fpsgo_ctrl2comp_connect_api(int pid, int api,
 		unsigned long long identifier)
 {
@@ -1343,6 +1376,7 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 	int ret = 0;
 	int i;
 	int *final_pid_arr =  NULL;
+	unsigned long long *final_bufID_arr = NULL;
 	int final_pid_arr_idx = 0;
 	struct fpsgo_attr_by_pid *attr_iter = NULL;
 
@@ -1369,8 +1403,14 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 		goto out;
 	}
 
+	final_bufID_arr = kcalloc(10, sizeof(unsigned long long), GFP_KERNEL);
+	if (!final_bufID_arr) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
 	fpsgo_get_render_tid_by_render_name(tgid, thread_name,
-		final_pid_arr, &final_pid_arr_idx, 10);
+		final_pid_arr, final_bufID_arr, &final_pid_arr_idx, 10);
 
 	for (i = 0; i < final_pid_arr_idx; i++) {
 		if (test_bit(FPSGO_CONTROL, &mask))
@@ -1396,13 +1436,10 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 		fpsgo_render_tree_unlock(__func__);
 	}
 
-	if (final_pid_arr_idx > 0) {
-		if (start)
-			fpsgo_other2xgf_set_dep_list(tgid, final_pid_arr,
-				final_pid_arr_idx, specific_name, num);
-		else
-			fpsgo_other2xgf_unset_dep_list(tgid, final_pid_arr,
-				final_pid_arr_idx);
+	if (final_pid_arr_idx > 0 && start) {
+		fpsgo_other2xgf_set_dep_list(tgid, final_pid_arr,
+			final_bufID_arr, final_pid_arr_idx,
+			specific_name, num, XGF_ADD_DEP);
 	}
 
 	ret = final_pid_arr_idx;
@@ -1410,6 +1447,7 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 out:
 	kfree(thread_name);
 	kfree(final_pid_arr);
+	kfree(final_bufID_arr);
 	return ret;
 }
 

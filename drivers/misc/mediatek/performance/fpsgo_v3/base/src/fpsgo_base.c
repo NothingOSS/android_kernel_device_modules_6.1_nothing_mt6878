@@ -2445,7 +2445,8 @@ int fpsgo_check_is_cam_apk(int tgid)
 }
 
 int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
-	int *out_tid_arr, int *out_tid_num, int out_tid_max_num)
+	int *out_tid_arr, unsigned long long *out_bufID_arr,
+	int *out_tid_num, int out_tid_max_num)
 {
 	int i;
 	int find_flag = 0;
@@ -2454,8 +2455,8 @@ int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
 	struct rb_node *rbn = NULL;
 	struct task_struct *tsk = NULL;
 
-	if (tgid <= 0 || !name || !out_tid_arr || !out_tid_num ||
-		out_tid_max_num <= 0)
+	if (tgid <= 0 || !name || !out_tid_arr || !out_bufID_arr ||
+		!out_tid_num || out_tid_max_num <= 0)
 		return -EINVAL;
 
 	fpsgo_render_tree_lock(__func__);
@@ -2478,12 +2479,14 @@ int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
 			continue;
 
 		for (i = 0; i < local_index; i++) {
-			if (out_tid_arr[i] == render_iter->pid)
+			if (out_tid_arr[i] == render_iter->pid &&
+				out_bufID_arr[i] == render_iter->buffer_id)
 				break;
 		}
 
 		if (i == local_index && local_index < out_tid_max_num) {
 			out_tid_arr[local_index] = render_iter->pid;
+			out_bufID_arr[local_index] = render_iter->buffer_id;
 			local_index++;
 		}
 		find_flag = 0;

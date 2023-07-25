@@ -539,6 +539,34 @@ out:
 	return ret;
 }
 
+static void xgf_render_update_wspid_list(int tgid, int rpid, unsigned long long bufID)
+{
+	int exist_flag = 0;
+	struct xgf_spid *xgf_spid_iter = NULL;
+	struct hlist_node *h = NULL;
+	struct task_struct *tsk = NULL;
+
+	hlist_for_each_entry_safe(xgf_spid_iter, h, &xgf_wspid_list, hlist) {
+		if (xgf_spid_iter->rpid == rpid &&
+			xgf_spid_iter->bufID == bufID) {
+			rcu_read_lock();
+			tsk = find_task_by_vpid(xgf_spid_iter->tid);
+			if (tsk)
+				exist_flag = 1;
+			rcu_read_unlock();
+
+			if (exist_flag) {
+				exist_flag = 0;
+				continue;
+			} else {
+				hlist_del(&xgf_spid_iter->hlist);
+				xgf_free(xgf_spid_iter);
+				xgf_wspid_list_length--;
+			}
+		}
+	}
+}
+
 void xgf_ema2_systrace(int pid, unsigned long long bufID,
 	unsigned long long xgf_ema_mse, unsigned long long xgf_ema2_mse)
 {
@@ -754,7 +782,7 @@ static void xgf_wspid_list_add2prev(struct xgf_render_if *render)
 	struct hlist_node *t;
 
 	hlist_for_each_entry_safe(xgf_spid_iter, t, &xgf_wspid_list, hlist) {
-		if (xgf_cfg_spid && xgf_spid_iter->rpid == render->pid &&
+		if (xgf_spid_iter->rpid == render->pid &&
 			xgf_spid_iter->bufID == render->bufid) {
 			if (xgf_spid_iter->action == XGF_DEL_DEP)
 				xgf_del_pid2prev_dep(render, FPSGO_TYPE, xgf_spid_iter->tid);
@@ -762,11 +790,6 @@ static void xgf_wspid_list_add2prev(struct xgf_render_if *render)
 				xgf_add_pid2prev_dep(render, FPSGO_TYPE, xgf_spid_iter->tid,
 					xgf_spid_iter->action);
 		}
-		if (xgf_spid_iter->action == XGF_ADD_USER_DEP &&
-			xgf_spid_iter->pid == render->tgid &&
-			xgf_spid_iter->rpid == render->pid)
-			xgf_add_pid2prev_dep(render, FPSGO_TYPE, xgf_spid_iter->tid,
-				xgf_spid_iter->action);
 	}
 }
 
@@ -1410,8 +1433,8 @@ static int xgf_get_spid(struct xgf_render_if *render)
 		return -1;
 
 	if (xgf_cfg_spid) {
-		xgf_render_reset_wspid_list(render->pid, render->bufid);
 		xgf_render_setup_wspid_list(render->tgid, render->pid, render->bufid);
+		xgf_render_update_wspid_list(render->tgid, render->pid, render->bufid);
 	}
 
 	if (!xgf_sp_name_id)
@@ -1598,36 +1621,23 @@ by_pass_skip:
 	mutex_unlock(&xgf_main_lock);
 }
 
-int fpsgo_other2xgf_set_dep_list(int tgid, int *rtid_arr, int rtid_num,
-	char *specific_name, int specific_num)
+static int xgf_split_dep_name(int tgid, char *dep_name, int dep_num, int *out_tid_arr)
 {
 	char *thread_name = NULL, *remain_str = NULL;
-	int i, j;
-	int ret = 0;
-	int *tid_arr = NULL;
-	int index = 0;
-	int exist_flag = 0;
 	char local_thread_name[16];
-	struct xgf_spid *spid_iter = NULL, *new_spid_iter = NULL;
-	struct hlist_node *h = NULL;
+	int i;
+	int index = 0;
 	struct task_struct *tg = NULL, *sib = NULL;
 
-	if (!rtid_arr || rtid_num <= 0 || !specific_name || specific_num <= 0)
-		return -EINVAL;
+	if (!dep_name || dep_num <= 0 || !out_tid_arr)
+		return index;
 
-	tid_arr = xgf_alloc_array(specific_num, sizeof(int));
-	if (!tid_arr)
-		return -ENOMEM;
-
-	mutex_lock(&xgf_main_lock);
-	remain_str = specific_name;
-	for (i = 0; i < specific_num; i++) {
+	remain_str = dep_name;
+	for (i = 0; i < dep_num; i++) {
 		thread_name = strsep(&remain_str, ",");
 		if (!thread_name ||
-			!strncpy(local_thread_name, thread_name, 16)) {
-			ret = -ENOMEM;
+			!strncpy(local_thread_name, thread_name, 16))
 			break;
-		}
 		local_thread_name[15] = '\0';
 		xgf_trace("[xgf] user add dep task:%s", local_thread_name);
 
@@ -1638,8 +1648,8 @@ int fpsgo_other2xgf_set_dep_list(int tgid, int *rtid_arr, int rtid_num,
 			list_for_each_entry(sib, &tg->thread_group, thread_group) {
 				get_task_struct(sib);
 				if (!strncmp(sib->comm, local_thread_name, 16)) {
-					if (index < specific_num) {
-						tid_arr[index] = sib->pid;
+					if (index < dep_num) {
+						out_tid_arr[index] = sib->pid;
 						index++;
 					}
 				}
@@ -1650,12 +1660,40 @@ int fpsgo_other2xgf_set_dep_list(int tgid, int *rtid_arr, int rtid_num,
 		rcu_read_unlock();
 	}
 
+	return index;
+}
+
+int fpsgo_other2xgf_set_dep_list(int tgid, int *rtid_arr, unsigned long long *bufID_arr,
+	int rtid_num, char *specific_name, int specific_num, int action)
+{
+	int i, j;
+	int ret = 0;
+	int *tid_arr = NULL;
+	int index = 0;
+	int exist_flag = 0;
+	struct xgf_spid *spid_iter = NULL, *new_spid_iter = NULL;
+	struct hlist_node *h = NULL;
+
+	if (!rtid_arr || !bufID_arr || rtid_num <= 0 ||
+		!specific_name || specific_num <= 0)
+		return -EINVAL;
+
+	tid_arr = xgf_alloc_array(specific_num, sizeof(int));
+	if (!tid_arr)
+		return -ENOMEM;
+
+	mutex_lock(&xgf_main_lock);
+	index = xgf_split_dep_name(tgid, specific_name, specific_num, tid_arr);
+	if (index <= 0 || index > specific_num)
+		goto out;
+
 	for (i = 0; i < rtid_num; i++) {
 		for (j = 0; j < index; j++) {
 			hlist_for_each_entry_safe(spid_iter, h, &xgf_wspid_list, hlist) {
 				if (spid_iter->pid == tgid && spid_iter->rpid == rtid_arr[i] &&
+					spid_iter->bufID == bufID_arr[i] &&
 					spid_iter->tid == tid_arr[j] &&
-					spid_iter->action == XGF_ADD_USER_DEP) {
+					spid_iter->action == action) {
 					exist_flag = 1;
 					break;
 				}
@@ -1668,45 +1706,24 @@ int fpsgo_other2xgf_set_dep_list(int tgid, int *rtid_arr, int rtid_num,
 			if (new_spid_iter) {
 				new_spid_iter->pid = tgid;
 				new_spid_iter->rpid = rtid_arr[i];
+				new_spid_iter->bufID = bufID_arr[i];
 				new_spid_iter->tid = tid_arr[j];
-				new_spid_iter->action = XGF_ADD_USER_DEP;
+				new_spid_iter->action = action;
 				hlist_add_head(&new_spid_iter->hlist, &xgf_wspid_list);
 				xgf_wspid_list_length++;
-				xgf_trace("[xgf][%d] user add dep task:%d", rtid_arr[i], tid_arr[j]);
+				xgf_trace("[xgf][%d][0x%llx] user add dep task:%d action:%d",
+					rtid_arr[i], bufID_arr[i], tid_arr[j], action);
 			}
 		}
 	}
 
+out:
 	kfree(tid_arr);
+	for (i = 0; i < rtid_num; i++)
+		xgf_render_update_wspid_list(tgid, rtid_arr[i], bufID_arr[i]);
 	mutex_unlock(&xgf_main_lock);
 
 	return ret;
-}
-
-void fpsgo_other2xgf_unset_dep_list(int tgid, int *rtid_arr, int rtid_num)
-{
-	int i;
-	struct xgf_spid *spid_iter = NULL;
-	struct hlist_node *h = NULL;
-
-	if (!rtid_arr || rtid_num <= 0)
-		return;
-
-	mutex_lock(&xgf_main_lock);
-
-	for (i = 0; i < rtid_num; i++) {
-		hlist_for_each_entry_safe(spid_iter, h, &xgf_wspid_list, hlist) {
-			if (spid_iter->pid == tgid && spid_iter->rpid == rtid_arr[i] &&
-				spid_iter->action == XGF_ADD_USER_DEP) {
-				hlist_del(&spid_iter->hlist);
-				xgf_wspid_list_length--;
-				xgf_trace("[xgf][%d] user del dep task:%d", rtid_arr[i], spid_iter->tid);
-				xgf_free(spid_iter);
-			}
-		}
-	}
-
-	mutex_unlock(&xgf_main_lock);
 }
 
 int fpsgo_comp2xgf_adpf_set_dep_list(int tgid, int rtid, unsigned long long bufID,

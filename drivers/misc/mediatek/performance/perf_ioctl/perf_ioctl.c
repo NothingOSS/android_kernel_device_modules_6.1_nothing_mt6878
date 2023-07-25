@@ -43,7 +43,8 @@ void (*fpsgo_notify_sbe_policy_fp)(int pid,  char *name,
 EXPORT_SYMBOL_GPL(fpsgo_notify_sbe_policy_fp);
 int (*fpsgo_notify_frame_hint_fp)(int qudeq,
 		int pid, int frameID,
-		unsigned long long id);
+		unsigned long long id,
+		int dep_mode, char *dep_name, int dep_num);
 EXPORT_SYMBOL_GPL(fpsgo_notify_frame_hint_fp);
 
 void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota, unsigned long long identifier);
@@ -409,7 +410,7 @@ static long device_ioctl(struct file *filp,
 	struct _FPSGO_SBE_PACKAGE *msgKM_SBE = NULL, *msgUM_SBE = NULL;
 	struct _FPSGO_SBE_PACKAGE smsgKM_SBE;
 
-	if (cmd == FPSGO_SBE_SET_POLICY) {
+	if (cmd == FPSGO_SBE_SET_POLICY || cmd == FPSGO_HINT_FRAME) {
 		msgUM_SBE = (struct _FPSGO_SBE_PACKAGE *)arg;
 		msgKM_SBE = &smsgKM_SBE;
 		if (perfctl_copy_from_user(msgKM_SBE, msgUM_SBE,
@@ -418,10 +419,26 @@ static long device_ioctl(struct file *filp,
 			goto ret_ioctl;
 		}
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3)
-		if (fpsgo_notify_sbe_policy_fp) {
-			fpsgo_notify_sbe_policy_fp(msgKM_SBE->pid, msgKM_SBE->name,
-				msgKM_SBE->mask, msgKM_SBE->start,
-				msgKM_SBE->specific_name, msgKM_SBE->num);
+		switch (cmd) {
+		case FPSGO_SBE_SET_POLICY:
+			if (fpsgo_notify_sbe_policy_fp)
+				fpsgo_notify_sbe_policy_fp(msgKM_SBE->pid, msgKM_SBE->name,
+					msgKM_SBE->mask, msgKM_SBE->start,
+					msgKM_SBE->specific_name, msgKM_SBE->num);
+			break;
+		case FPSGO_HINT_FRAME:
+			if (fpsgo_notify_frame_hint_fp)
+				msgKM_SBE->blc = fpsgo_notify_frame_hint_fp(msgKM_SBE->start,
+					msgKM_SBE->rtid, msgKM_SBE->frame_id, msgKM_SBE->identifier,
+					msgKM_SBE->mode, msgKM_SBE->specific_name, msgKM_SBE->num);
+			perfctl_copy_to_user(msgUM_SBE, msgKM_SBE,
+				sizeof(struct _FPSGO_SBE_PACKAGE));
+			break;
+		default:
+			pr_debug(TAG "%s %d: unknown SBE cmd %x\n",
+				__FILE__, __LINE__, cmd);
+			ret = -1;
+			break;
 		}
 #endif
 		goto ret_ioctl;
@@ -537,13 +554,6 @@ static long device_ioctl(struct file *filp,
 		perfctl_copy_to_user(msgUM, msgKM,
 			sizeof(struct _FPSGO_PACKAGE));
 		break;
-	case FPSGO_HINT_FRAME:
-		if (fpsgo_notify_frame_hint_fp)
-			msgKM->value2 = fpsgo_notify_frame_hint_fp(msgKM->start,
-				msgKM->tid, msgKM->frame_id, msgKM->identifier);
-		perfctl_copy_to_user(msgUM, msgKM,
-			sizeof(struct _FPSGO_PACKAGE));
-		break;
 #else
 	case FPSGO_TOUCH:
 		 [[fallthrough]];
@@ -578,8 +588,6 @@ static long device_ioctl(struct file *filp,
 	case FPSGO_GET_CAM_APK_PID:
 		break;
 	case FPSGO_GET_CAM_SERVER_PID:
-		break;
-	case FPSGO_HINT_FRAME:
 		break;
 #endif
 

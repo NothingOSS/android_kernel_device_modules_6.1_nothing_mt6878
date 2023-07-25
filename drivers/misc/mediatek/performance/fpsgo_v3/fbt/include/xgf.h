@@ -28,8 +28,7 @@ enum XGF_ACTION {
 	XGF_ADD_DEP_NO_LLF = 1,
 	XGF_ADD_DEP_FORCE_LLF = 2,
 	XGF_ADD_DEP_FORCE_CPU_TIME = 3,
-	XGF_ADD_DEP_GROUPING_VIP = 4,
-	XGF_ADD_USER_DEP = 5
+	XGF_ADD_DEP_GROUPING_VIP = 4
 };
 
 enum XGF_EVENT {
@@ -147,9 +146,9 @@ int fpsgo_comp2xgf_do_recycle(void);
 int fpsgo_comp2xgf_get_dep_list_num(int pid, unsigned long long bufID);
 int fpsgo_comp2xgf_get_dep_list(int pid, int count,
 	int *arr, unsigned long long bufID);
-int fpsgo_other2xgf_set_dep_list(int tgid, int *rtid_arr, int rtid_num,
-	char *specific_name, int specific_num);
-void fpsgo_other2xgf_unset_dep_list(int tgid, int *rtid_arr, int rtid_num);
+int fpsgo_other2xgf_set_dep_list(int tgid, int *rtid_arr,
+	unsigned long long *bufID_arr, int rtid_num,
+	char *specific_name, int specific_num, int action);
 int fpsgo_comp2xgf_adpf_set_dep_list(int tgid, int rtid, unsigned long long bufID,
 	int *dep_arr, int dep_num, int op);
 int has_xgf_dep(pid_t tid);
