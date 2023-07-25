@@ -278,6 +278,51 @@ int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable)
 }
 EXPORT_SYMBOL_GPL(slbc_read_invalidate);
 
+int slbc_force_cache(enum slc_ach_uid uid, unsigned int size)
+{
+	if (common_ops && common_ops->slbc_force_cache)
+		return common_ops->slbc_force_cache(uid, size);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_force_cache);
+
+int slbc_ceil(enum slc_ach_uid uid, unsigned int ceil)
+{
+	if (common_ops && common_ops->slbc_ceil)
+		return common_ops->slbc_ceil(uid, ceil);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_ceil);
+
+int slbc_window(unsigned int window)
+{
+	if (common_ops && common_ops->slbc_window)
+		return common_ops->slbc_window(window);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_window);
+
+int slbc_get_cache_size(enum slc_ach_uid uid)
+{
+	if (common_ops && common_ops->slbc_get_cache_size)
+		return common_ops->slbc_get_cache_size(uid);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_get_cache_size);
+
+int slbc_get_cache_hit_rate(enum slc_ach_uid uid)
+{
+	if (common_ops && common_ops->slbc_get_cache_hit_rate)
+		return common_ops->slbc_get_cache_hit_rate(uid);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_get_cache_hit_rate);
+
 void slbc_register_common_ops(struct slbc_common_ops *ops)
 {
 	common_ops = ops;

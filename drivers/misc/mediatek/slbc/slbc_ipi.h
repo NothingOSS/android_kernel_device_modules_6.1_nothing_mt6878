@@ -61,6 +61,12 @@ enum {
 	IPI_EMI_SLC_TEST_RESULT,
 	IPI_SLBC_CACHE_USER_PMU,
 	IPI_SLBC_CACHE_USER_STATUS,
+	IPI_SLBC_CACHE_USER_INFO,
+	IPI_SLBC_CACHE_USER_CONFIG,
+	IPI_SLBC_CACHE_USER_CEIL_SET,
+	IPI_SLBC_CACHE_USER_FLOOR_SET,
+	IPI_SLBC_CACHE_WINDOW_SET,
+	IPI_SLBC_CACHE_WINDOW_GET,
 	NR_IPI_SLBC,
 };
 
@@ -95,8 +101,8 @@ extern int slbc_force_scmi_cmd(unsigned int force);
 extern int slbc_mic_num_cmd(unsigned int num);
 extern int slbc_inner_cmd(unsigned int inner);
 extern int slbc_outer_cmd(unsigned int outer);
-extern int slbc_get_cache_user_pmu(int uid, void *ptr);
-extern int slbc_get_cache_user_status(int uid, void *ptr);
+extern int slbc_set_scmi_info(int uid, uint16_t cmd, int arg, int arg2, int arg3);
+extern int slbc_get_scmi_info(int uid, uint16_t cmd, void *ptr);
 extern int _slbc_request_cache_scmi(void *ptr);
 extern int _slbc_release_cache_scmi(void *ptr);
 extern int _slbc_buffer_status_scmi(void *ptr);
@@ -134,6 +140,8 @@ __weak int slbc_force_scmi_cmd(unsigned int force) {}
 __weak int slbc_mic_num_cmd(unsigned int num) {}
 __weak int slbc_inner_cmd(unsigned int inner) {}
 __weak int slbc_outer_cmd(unsigned int outer) {}
+__weak int slbc_set_scmi_info(int uid, uint16_t cmd, int arg, int arg2, int arg3) {}
+__weak int slbc_get_scmi_info(int uid, uint16_t cmd, void *ptr) {}
 __weak int slbc_get_cache_user_pmu(int uid, void *ptr) {}
 __weak int slbc_get_cache_user_status(int uid, void *ptr) {}
 __weak int _slbc_request_cache_scmi(void *ptr) {}

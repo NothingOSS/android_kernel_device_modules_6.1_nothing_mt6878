@@ -216,6 +216,11 @@ int slbc_roi_update(enum slc_ach_uid uid, int gid, struct slbc_gid_data *data);
 int slbc_validate(enum slc_ach_uid uid, int gid);
 int slbc_invalidate(enum slc_ach_uid uid, int gid);
 int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable);
+int slbc_force_cache(enum slc_ach_uid uid, unsigned int size);
+int slbc_ceil(enum slc_ach_uid uid, unsigned int ceil);
+int slbc_window(unsigned int window);
+int slbc_get_cache_size(enum slc_ach_uid uid);
+int slbc_get_cache_hit_rate(enum slc_ach_uid uid);
 #else
 __weak int slbc_status(struct slbc_data *d)
 {
@@ -279,6 +284,26 @@ __weak int slbc_invalidate(enum slc_ach_uid uid, int gid)
 	return -EDISABLED;
 };
 __weak int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable)
+{
+	return -EDISABLED;
+};
+__weak int slbc_force_cache(enum slc_ach_uid uid, unsigned int size)
+{
+	return -EDISABLED;
+}
+__weak int slbc_ceil(enum slc_ach_uid uid, unsigned int ceil)
+{
+	return -EDISABLED;
+};
+__weak int slbc_window(unsigned int window)
+{
+	return -EDISABLED;
+};
+__weak int slbc_get_cache_size(enum slc_ach_uid uid)
+{
+	return -EDISABLED;
+};
+__weak int slbc_get_cache_hit_rate(enum slc_ach_uid uid)
 {
 	return -EDISABLED;
 };

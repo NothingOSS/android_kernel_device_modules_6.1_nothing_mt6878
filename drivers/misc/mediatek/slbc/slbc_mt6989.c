@@ -121,6 +121,7 @@ static u64 rel_val_max;
 static u64 rel_val_total;
 
 static struct slbc_data test_d;
+static struct slbc_gid_data test_gid_d;
 
 static LIST_HEAD(slbc_ops_list);
 static DEFINE_MUTEX(slbc_ops_lock);
@@ -297,6 +298,18 @@ void slbc_force_cmd(unsigned int force)
 {
 	slbc_force = force;
 	slbc_force_scmi_cmd(force);
+}
+
+int slbc_force_cache(enum slc_ach_uid uid, unsigned int size)
+{
+	unsigned int force_cmd;
+
+	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "uid:%d, size:%u", uid, size);
+
+	force_cmd = ((size & 0xffff) << 16) | (uid & 0xffff);
+	slbc_force = force_cmd;
+
+	return slbc_force_scmi_cmd(force_cmd);
 }
 
 static int slbc_activate_thread(void *arg)
@@ -1083,6 +1096,44 @@ int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable)
 	return 0;
 }
 
+int slbc_ceil(enum slc_ach_uid uid, unsigned int ceil)
+{
+	SLBC_TRACE_REC(LVL_QOS, TYPE_C, uid, 0, "uid:%d, ceil:%u", uid, ceil);
+
+	return slbc_set_scmi_info(uid, IPI_SLBC_CACHE_USER_CEIL_SET, ceil, 0, 0);
+}
+
+int slbc_window(unsigned int window)
+{
+	SLBC_TRACE_REC(LVL_QOS, TYPE_C, 0, 0, "window:%d", window);
+
+	return slbc_set_scmi_info(0, IPI_SLBC_CACHE_WINDOW_SET, window, 0, 0);
+}
+
+int slbc_get_cache_size(enum slc_ach_uid uid)
+{
+	int ret = 0;
+	struct scmi_tinysys_status rvalue = {0};
+
+	ret = slbc_get_scmi_info(uid, IPI_SLBC_CACHE_USER_INFO, &rvalue);
+	if (ret)
+		return -1;
+
+	return rvalue.r1;
+}
+
+int slbc_get_cache_hit_rate(enum slc_ach_uid uid)
+{
+	int ret = 0;
+	struct scmi_tinysys_status rvalue = {0};
+
+	ret = slbc_get_scmi_info(uid, IPI_SLBC_CACHE_USER_INFO, &rvalue);
+	if (ret)
+		return -1;
+
+	return rvalue.r2;
+}
+
 #ifdef SLBC_DUMP_DATA
 static void slbc_dump_data(struct seq_file *m, struct slbc_data *d)
 {
@@ -1226,8 +1277,13 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 				rel_val_total / rel_val_count, rel_val_max);
 	}
 
+	ret = slbc_get_scmi_info(i, IPI_SLBC_CACHE_WINDOW_GET, &rvalue);
+	if (!ret) {
+		seq_printf(m, "SLC Window : %d ms\n", rvalue.r1);
+	}
+
 	for (i = 0; i < ID_MAX; i++) {
-		ret = slbc_get_cache_user_pmu(i, &rvalue);
+		ret = slbc_get_scmi_info(i, IPI_SLBC_CACHE_USER_PMU, &rvalue);
 		if (!ret) {
 			seq_printf(m, "PMU %s : 0x%x, 0x%x, 0x%x\n",
 					slc_ach_uid_str[i], rvalue.r1, rvalue.r2, rvalue.r3);
@@ -1235,9 +1291,17 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	}
 
 	for (i = 0; i < ID_MAX; i++) {
-		ret = slbc_get_cache_user_status(i, &rvalue);
+		ret = slbc_get_scmi_info(i, IPI_SLBC_CACHE_USER_STATUS, &rvalue);
 		if (!ret) {
 			seq_printf(m, "STATUS %s : 0x%x, 0x%x, 0x%x\n",
+					slc_ach_uid_str[i], rvalue.r1, rvalue.r2, rvalue.r3);
+		}
+	}
+
+	for (i = 0; i < ID_MAX; i++) {
+		ret = slbc_get_scmi_info(i, IPI_SLBC_CACHE_USER_CONFIG, &rvalue);
+		if (!ret) {
+			seq_printf(m, "CONFIG %s : %d, %d, %d\n",
 					slc_ach_uid_str[i], rvalue.r1, rvalue.r2, rvalue.r3);
 		}
 	}
@@ -1269,6 +1333,7 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		const char __user *buffer, size_t count, loff_t *pos)
 {
 	int ret = 0;
+	int temp;
 	char *buf = (char *) __get_free_page(GFP_USER);
 	char cmd[64];
 	unsigned long val_1;
@@ -1363,6 +1428,22 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		test_d.uid = val_1;
 		test_d.type  = TP_BUFFER;
 		ret = slbc_release(&test_d);
+	} else if (!strcmp(cmd, "slbc_gid_request")) {
+		temp = val_2;
+		test_gid_d.dma_size = val_3;
+		slbc_gid_request(val_1, &temp, &test_gid_d);
+	} else if (!strcmp(cmd, "slbc_gid_release")) {
+		slbc_gid_release(val_1, val_2);
+	} else if (!strcmp(cmd, "slbc_validate")) {
+		slbc_validate(val_1, (int)val_2);
+	} else if (!strcmp(cmd, "slbc_invalidate")) {
+		slbc_invalidate(val_1, (int)val_2);
+	} else if (!strcmp(cmd, "slbc_read_invalidate")) {
+		slbc_read_invalidate(val_1, val_2, val_3);
+	} else if (!strcmp(cmd, "slbc_ceil")) {
+		slbc_ceil(val_1, val_2);
+	} else if (!strcmp(cmd, "slbc_window")) {
+		slbc_window(val_1);
 	} else if (!strcmp(cmd, "slbc_force")) {
 		slbc_force = val_1;
 		slbc_force_cmd(slbc_force);
@@ -1573,6 +1654,11 @@ static struct slbc_common_ops common_ops = {
 	.slbc_validate = slbc_validate,
 	.slbc_invalidate = slbc_invalidate,
 	.slbc_read_invalidate = slbc_read_invalidate,
+	.slbc_force_cache = slbc_force_cache,
+	.slbc_ceil = slbc_ceil,
+	.slbc_window = slbc_window,
+	.slbc_get_cache_size = slbc_get_cache_size,
+	.slbc_get_cache_hit_rate = slbc_get_cache_hit_rate,
 };
 
 static struct slbc_ipi_ops ipi_ops = {

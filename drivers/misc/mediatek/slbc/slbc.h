@@ -101,6 +101,11 @@ struct slbc_common_ops {
 	int (*slbc_validate)(enum slc_ach_uid uid, int gid);
 	int (*slbc_invalidate)(enum slc_ach_uid uid, int gid);
 	int (*slbc_read_invalidate)(enum slc_ach_uid uid, int gid, int enable);
+	int (*slbc_force_cache)(enum slc_ach_uid uid, unsigned int size);
+	int (*slbc_ceil)(enum slc_ach_uid uid, unsigned int ceil);
+	int (*slbc_window)(unsigned int window);
+	int (*slbc_get_cache_size)(enum slc_ach_uid uid);
+	int (*slbc_get_cache_hit_rate)(enum slc_ach_uid uid);
 };
 
 extern u32 slbc_sram_read(u32 offset);

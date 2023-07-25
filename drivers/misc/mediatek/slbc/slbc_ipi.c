@@ -348,43 +348,54 @@ int emi_slc_test_result(void)
 }
 EXPORT_SYMBOL_GPL(emi_slc_test_result);
 
-int slbc_get_cache_user_pmu(int uid, void *ptr)
+int slbc_set_scmi_info(int uid, uint16_t cmd, int arg, int arg2, int arg3)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	struct slbc_ipi_data slbc_ipi_d;
 	int ret = 0;
 
 	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
-	slbc_ipi_d.cmd = SLBC_IPI(IPI_SLBC_CACHE_USER_PMU, uid);
+	slbc_ipi_d.cmd = SLBC_IPI(cmd, uid);
+	slbc_ipi_d.arg = arg;
+	slbc_ipi_d.arg2 = arg2;
+	slbc_ipi_d.arg3 = arg3;
+
+	ret = slbc_scmi_set(&slbc_ipi_d);
+	if (ret) {
+		pr_info("#@# %s(%d) return fail(%d)\n",
+				__func__, __LINE__, ret);
+		ret = -1;
+	}
+
+	return ret;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
+}
+EXPORT_SYMBOL_GPL(slbc_set_scmi_info);
+
+int slbc_get_scmi_info(int uid, uint16_t cmd, void *ptr)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	struct slbc_ipi_data slbc_ipi_d;
+	int ret = 0;
+
+	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
+	slbc_ipi_d.cmd = SLBC_IPI(cmd, uid);
 
 	ret = slbc_scmi_get(&slbc_ipi_d, (struct scmi_tinysys_status *)ptr);
 	if (ret) {
 		pr_info("#@# %s(%d) return fail(%d)\n",
 			__func__, __LINE__, ret);
-		return -1;
+		ret = -1;
 	}
 
 	return ret;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
-EXPORT_SYMBOL_GPL(slbc_get_cache_user_pmu);
-
-int slbc_get_cache_user_status(int uid, void *ptr)
-{
-	struct slbc_ipi_data slbc_ipi_d;
-	int ret = 0;
-
-	memset(&slbc_ipi_d, 0, sizeof(slbc_ipi_d));
-	slbc_ipi_d.cmd = SLBC_IPI(IPI_SLBC_CACHE_USER_STATUS, uid);
-
-	ret = slbc_scmi_get(&slbc_ipi_d, (struct scmi_tinysys_status *)ptr);
-	if (ret) {
-		pr_info("#@# %s(%d) return fail(%d)\n",
-			__func__, __LINE__, ret);
-		return -1;
-	}
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(slbc_get_cache_user_status);
+EXPORT_SYMBOL_GPL(slbc_get_scmi_info);
 
 int _slbc_request_cache_scmi(void *ptr)
 {
