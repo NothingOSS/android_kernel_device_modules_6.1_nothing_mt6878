@@ -366,17 +366,13 @@ static int wait_crtc_ready(struct drm_crtc *crtc, void *data)
 {
 	int *ready = (int *)data;
 	struct pq_common_data *pq_data = to_mtk_crtc(crtc)->pq_data;
-	int ret = 0;
 
-	if (atomic_read(&pq_data->pipe_info_filled) == 1)
-		return ret;
-	ret = wait_event_interruptible(pq_data->crtc_ready_wq,
-		atomic_read(&pq_data->pipe_info_filled) == 1);
-	if (ret < 0)
-		DDPPR_ERR("%s: interrupted unexpected\n", __func__);
-	else
-		*ready = 1;
-	return ret;
+	if (atomic_read(&pq_data->pipe_info_filled) != 1) {
+		*ready = 0;
+		return -1;
+	}
+	*ready = 1;
+	return 0;
 }
 
 int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
@@ -442,7 +438,6 @@ bool is_pq_cmd_need_pm(enum mtk_pq_frame_cfg_cmd cmd)
 
 int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
-	struct mtk_drm_private *private = dev->dev_private;
 	struct drm_crtc *crtc;
 	struct mtk_drm_pq_proxy_ctl *params = data;
 	struct mtk_ddp_comp *comp;
@@ -467,10 +462,9 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 
 	pq_type = params->cmd >> 16;
 	cmd = params->cmd & 0xffff;
-	if (cmd == PQ_VIRTUAL_GET_MASTER_INFO)
-		crtc = private->crtc[0];
 	if (atomic_read(&to_mtk_crtc(crtc)->pq_data->pipe_info_filled) != 1 &&
-			cmd != PQ_VIRTUAL_WAIT_CRTC_READY) {
+			cmd != PQ_VIRTUAL_WAIT_CRTC_READY &&
+			cmd != PQ_VIRTUAL_GET_MASTER_INFO) {
 		DDPPR_ERR("%s, crtc %d not ready! cmd:%d\n",
 				__func__, params->crtc_id, cmd);
 		return -1;
