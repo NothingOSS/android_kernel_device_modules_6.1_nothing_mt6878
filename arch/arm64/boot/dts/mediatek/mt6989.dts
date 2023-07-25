@@ -1527,7 +1527,7 @@
 		interrupt-names = "rcs_irq","pmif_irq","spmi_nack_irq","pmif_p_irq","spmi_p_nack_irq";
 		interrupt-controller;
 		#interrupt-cells = <1>;
-		irq-event-en = <0xc0000000 0x0 0x0 0x0 0x0>;
+		irq-event-en = <0xc0000000 0x0 0x0 0x1f800000 0x0>;
 		spmi-dev-mask = <0x01e0>;
 		#address-cells = <2>;
 		#size-cells = <0>;
