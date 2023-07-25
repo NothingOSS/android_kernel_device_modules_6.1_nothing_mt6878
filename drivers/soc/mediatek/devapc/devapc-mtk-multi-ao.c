@@ -116,6 +116,14 @@ static bool is_devapc_subsys_power_on(int slave_type)
 		}
 	}
 
+	if (is_devapc_subsys_enabled(slave_type)) {
+		if (slave_type == DEVAPC_TYPE_MMINFRA) {
+			pr_info(PFX "%s: mminfra powercb hasn't registered, force dump!\n",
+						__func__);
+			return true;
+		}
+	}
+
 	return false;
 }
 
