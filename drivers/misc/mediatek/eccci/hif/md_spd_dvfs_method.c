@@ -124,7 +124,7 @@ static const struct dvfs_ref s_dl_dvfs_tbl_v8[] = { /* 4:3:1 for mt6985 */
 	{ 300000000LL, {-1, -1, -1, -1}, -1, 0x02, 0x0D, 0x0D, 0x0D, 0x0D,
 		{0x0D, 0x0D, 0x0D, 0x0D}},
 	/* normal */
-	{0LL,          {-1, -1, -1, -1}, -1, 0x02, 0xFF, 0x7D, 0xFF, 0xFF, {-1, -1, -1, -1}},
+	{0LL,          {-1, -1, -1, -1}, -1, 0x02, 0xFF, 0x0F, 0xFF, 0xFF, {-1, -1, -1, -1}},
 };
 
 /* uplink */
