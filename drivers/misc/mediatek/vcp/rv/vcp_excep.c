@@ -645,6 +645,8 @@ void vcp_aed(enum VCP_RESET_TYPE type, enum vcp_core_id id)
 	vcp_prepare_aed_dump(vcp_aed_title, id);
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+	BUG_ON(vcp_ee_enable == 1);
+
 	/* vcp aed api, only detail information available*/
 	aed_common_exception_api("vcp", NULL, 0, NULL, 0,
 			vcp_dump.detail_buff, DB_OPT_DEFAULT);

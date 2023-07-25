@@ -1593,7 +1593,7 @@ static ssize_t vcp_ee_enable_store(struct device *kobj
 		else if (value == 3)
 			vcp_dbg_log = 1;
 		else
-			pr_notice("[VCP] %s: %d not valied\n", __func__, value);
+			vcp_ee_enable = value;
 
 		pr_debug("[VCP] vcp_ee_enable = %d, vcp_dbg_log = %d (1:enable, 0:disable)\n"
 				, vcp_ee_enable, vcp_dbg_log);
