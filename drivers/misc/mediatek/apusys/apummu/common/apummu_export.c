@@ -30,22 +30,42 @@ int apummu_alloc_mem(uint32_t type, uint32_t size, uint64_t *addr, uint32_t *sid
 
 	switch (type) {
 	case APUMMU_MEM_TYPE_EXT:
-	case APUMMU_MEM_TYPE_RSV_S:
+		if (g_adv->plat.is_external_SLB_alloc) {
+			AMMU_LOG_WRN("External SLB is already alloced\n");
+			/* Still return to prevent unexcept user behavior */
+			ret_addr = g_adv->rsc.external_SLB.iova;
+			ret_size = g_adv->rsc.external_SLB.size;
+			goto out;
+		}
+
+		/* Put alloc inside to prevent alloc twice */
 		ret = apummu_alloc_slb(type, size, g_adv->plat.slb_wait_time,
-							&ret_addr, &ret_size);
+				&ret_addr, &ret_size);
 		if (ret)
 			goto err;
 
-		if (type == APUMMU_MEM_TYPE_EXT) {
-			g_adv->rsc.external_SLB.iova = ret_addr;
-			g_adv->rsc.external_SLB.size = (uint32_t) ret_size;
-			g_adv->plat.is_external_SLB_alloc = true;
-		} else {
-			g_adv->rsc.internal_SLB.iova = ret_addr;
-			g_adv->rsc.internal_SLB.size = (uint32_t) ret_size;
-			g_adv->plat.is_internal_SLB_alloc = true;
+		g_adv->rsc.external_SLB.iova = ret_addr;
+		g_adv->rsc.external_SLB.size = (uint32_t) ret_size;
+		g_adv->plat.is_external_SLB_alloc = true;
+		break;
+	case APUMMU_MEM_TYPE_RSV_S:
+		if (g_adv->plat.is_internal_SLB_alloc) {
+			AMMU_LOG_WRN("Internal SLB is already alloced\n");
+			/* Still return to prevent unexcept user behavior */
+			ret_addr = g_adv->rsc.internal_SLB.iova;
+			ret_size = g_adv->rsc.internal_SLB.size;
+			goto out;
 		}
 
+		/* Put alloc inside to prevent alloc twice */
+		ret = apummu_alloc_slb(type, size, g_adv->plat.slb_wait_time,
+				&ret_addr, &ret_size);
+		if (ret)
+			goto err;
+
+		g_adv->rsc.internal_SLB.iova = ret_addr;
+		g_adv->rsc.internal_SLB.size = (uint32_t) ret_size;
+		g_adv->plat.is_internal_SLB_alloc = true;
 		break;
 	case APUMMU_MEM_TYPE_RSV_T:
 		ret_addr = g_adv->remote.TCM_base_addr;
@@ -61,11 +81,13 @@ int apummu_alloc_mem(uint32_t type, uint32_t size, uint64_t *addr, uint32_t *sid
 		goto err;
 	}
 
+	AMMU_LOG_DBG("[Alloc][Done] Mem type(%u), addr(0x%llx), size(0x%llx)\n",
+				type, ret_addr, ret_size);
+
+out:
 	*addr = ret_addr;
 	*sid = type;
 
-	AMMU_LOG_DBG("[Alloc][Done] Mem type(%u), addr(0x%llx), size(0x%llx)\n",
-				type, ret_addr, ret_size);
 	return ret;
 
 err:
@@ -90,8 +112,8 @@ int apummu_free_mem(uint32_t sid)
 	case APUMMU_MEM_TYPE_RSV_S:
 		if (type == APUMMU_MEM_TYPE_EXT) {
 			if (!g_adv->plat.is_external_SLB_alloc) {
-				AMMU_LOG_ERR("External SLB is not alloced\n");
-				goto err;
+				AMMU_LOG_WRN("External SLB is not alloced\n");
+				goto out;
 			}
 
 			g_adv->plat.is_external_SLB_alloc = false;
@@ -99,8 +121,8 @@ int apummu_free_mem(uint32_t sid)
 			g_adv->rsc.external_SLB.size = 0;
 		} else {
 			if (!g_adv->plat.is_internal_SLB_alloc) {
-				AMMU_LOG_ERR("Internal SLB is not alloced\n");
-				goto err;
+				AMMU_LOG_WRN("Internal SLB is not alloced\n");
+				goto out;
 			}
 
 			g_adv->plat.is_internal_SLB_alloc = false;
@@ -124,6 +146,8 @@ int apummu_free_mem(uint32_t sid)
 	}
 
 	AMMU_LOG_DBG("[Free][Done] Mem type(%u)\n", type);
+
+out:
 	return ret;
 
 err:
