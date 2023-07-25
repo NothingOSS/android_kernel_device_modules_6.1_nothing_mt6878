@@ -63,4 +63,7 @@ union mdw_ext_cmd_args {
 #define MDW_EXT_IOCTL_CMD \
 	_IOWR(APUEXT_MAGICNO, 2, union mdw_ext_cmd_args)
 
+#define MDW_EXT_IOCTL_START (1)
+#define MDW_EXT_IOCTL_END (2)
+
 #endif

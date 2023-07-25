@@ -12,14 +12,21 @@
 long mdw_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;
-	unsigned int usize = 0;
+	unsigned int usize = 0, nr = _IOC_NR(cmd);
 	void *kdata = NULL;
 	struct mdw_fpriv *mpriv = filp->private_data;
 
+	/* check nr before any actions */
+	if (nr < APU_MDW_IOCTL_START || nr > APU_MDW_IOCTL_END) {
+		mdw_drv_err("not support nr(%u)\n", nr);
+		return -ENOTTY;
+	}
+
 	/* allocate for user data */
 	usize = _IOC_SIZE(cmd);
+	/* check kzalloc return */
 	kdata = kzalloc(usize, GFP_KERNEL);
-	if (!kdata)
+	if (unlikely(ZERO_OR_NULL_PTR(kdata)))
 		return -ENOMEM;
 	/* copy from user data */
 	if (cmd & IOC_IN) {

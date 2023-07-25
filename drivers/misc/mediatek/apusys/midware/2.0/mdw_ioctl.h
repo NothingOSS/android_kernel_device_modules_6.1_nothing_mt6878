@@ -323,4 +323,7 @@ union mdw_util_args {
 #define APU_MDW_IOCTL_UTIL \
 	_IOWR(APUSYS_MAGICNO, 35, union mdw_util_args)
 
+#define APU_MDW_IOCTL_START (32)
+#define APU_MDW_IOCTL_END (35)
+
 #endif
