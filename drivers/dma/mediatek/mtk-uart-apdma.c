@@ -477,6 +477,12 @@ void mtk_uart_apdma_enable_vff(bool enable)
 		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_RPT, 0x0);
 		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_THRE, VFF_RX_THRE(g_vff_sz));
 		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_EN, VFF_EN_B);
+		pr_info("[%s] :tx_chan addr1[0x%x], tx_chan addr2[0x%x], "
+			"rx_chan addr1[0x%x],rx_chan addr2[0x%x]\n",
+				__func__, mtk_uart_apdma_read(hub_dma_tx_chan, VFF_ADDR),
+				mtk_uart_apdma_read(hub_dma_tx_chan, VFF_4G_SUPPORT),
+				mtk_uart_apdma_read(hub_dma_rx_chan, VFF_ADDR),
+				mtk_uart_apdma_read(hub_dma_rx_chan, VFF_4G_SUPPORT));
 	}
 }
 EXPORT_SYMBOL(mtk_uart_apdma_enable_vff);
@@ -571,7 +577,7 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 		left_data = mtk_uart_apdma_read(c, VFF_INT_BUF_SIZE);
 		poll_cnt--;
 	}
-	if (poll_cnt != MAX_POLLING_CNT)
+	if (poll_cnt == 0)
 		pr_info("%s: poll_cnt[%d] is not MAX_POLLING_CNT!\n", __func__, poll_cnt);
 
 	if (c->chan_desc_count <= 0) {
@@ -940,14 +946,17 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 			mtk_uart_set_apdma_clk(true);
 		if (c->dir == DMA_DEV_TO_MEM) {
 			pr_info("[%s] after:VFF_EN[%d], INT_EN[0x%x] INT_FLAG[0x%x],"
-				"WPT[0x%x] RPT[0x%x] THRE[0x%x] LEN[0x%x]\n",
+				"WPT[0x%x] RPT[0x%x] THRE[0x%x] LEN[0x%x], ADDR1[0x%x],"
+				"ADDR2[0x%x]\n",
 				__func__, mtk_uart_apdma_read(c, VFF_EN),
 				mtk_uart_apdma_read(c, VFF_INT_EN),
 				mtk_uart_apdma_read(c, VFF_INT_FLAG),
 				mtk_uart_apdma_read(c, VFF_WPT),
 				mtk_uart_apdma_read(c, VFF_RPT),
 				mtk_uart_apdma_read(c, VFF_THRE),
-				mtk_uart_apdma_read(c, VFF_LEN));
+				mtk_uart_apdma_read(c, VFF_LEN),
+				mtk_uart_apdma_read(c, VFF_ADDR),
+				mtk_uart_apdma_read(c,VFF_4G_SUPPORT));
 		}
 	} else {
 		ret = pm_runtime_get_sync(mtkd->ddev.dev);
@@ -999,14 +1008,17 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 
 	if (c->dir == DMA_DEV_TO_MEM) {
 		pr_info("[%s] after: VFF_EN[%d], INT_EN[0x%x] INT_FLAG[0x%x],"
-			"WPT[0x%x] RPT[0x%x] THRE[0x%x] LEN[0x%x]\n",
+			"WPT[0x%x] RPT[0x%x] THRE[0x%x] LEN[0x%x], ADDR1[0x%x],"
+			"ADDR2[0x%x],\n",
 			__func__, mtk_uart_apdma_read(c, VFF_EN),
 			mtk_uart_apdma_read(c, VFF_INT_EN),
 			mtk_uart_apdma_read(c, VFF_INT_FLAG),
 			mtk_uart_apdma_read(c, VFF_WPT),
 			mtk_uart_apdma_read(c, VFF_RPT),
 			mtk_uart_apdma_read(c, VFF_THRE),
-			mtk_uart_apdma_read(c, VFF_LEN));
+			mtk_uart_apdma_read(c, VFF_LEN),
+			mtk_uart_apdma_read(c, VFF_ADDR),
+			mtk_uart_apdma_read(c,VFF_4G_SUPPORT));
 	}
 
 	if (mtkd->support_bits > VFF_ORI_ADDR_BITS_NUM)

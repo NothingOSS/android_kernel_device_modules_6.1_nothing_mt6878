@@ -972,7 +972,6 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 
 		#if defined(KERNEL_mtk_uart_set_res_status)
 			KERNEL_mtk_uart_set_res_status(1);
-			pr_info("%s: set res status as 1\n", __func__);
 		#endif
 exit:
 		return ret;
@@ -1027,7 +1026,6 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 
 	#if defined(KERNEL_mtk_uart_set_res_status)
 		KERNEL_mtk_uart_set_res_status(0);
-		pr_info("%s: set res status as 0\n", __func__);
 	#endif
 
 	if (hub_uart_data != NULL && hub_uart_data->support_wakeup == 1) {
