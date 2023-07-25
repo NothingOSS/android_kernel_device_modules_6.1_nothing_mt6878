@@ -98,6 +98,7 @@ enum mtk_drm_async_user_id {
 	USER_STOP_CRTC,
 	USER_ATF_INSTR,
 	USER_VBLANK_OFF, //0xf00a
+	USER_COMP_RST,
 };
 
 enum mtk_drm_cpu_cmd {

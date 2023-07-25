@@ -19745,3 +19745,51 @@ int mtk_vblank_config_rec_init(struct drm_crtc *crtc)
 
 /****** Vblank Configure Record End ******/
 
+void mtk_crtc_default_path_rst(struct drm_crtc *crtc)
+{
+	int i, j;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_ddp_comp *comp;
+	struct cmdq_pkt *cmdq_handle;
+	bool only_output;
+	bool async = false;
+
+
+	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+		mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	if (!cmdq_handle) {
+		DDPPR_ERR("%s: cmdq_handle is null\n", __func__);
+		return;
+	}
+
+	async = mtk_drm_idlemgr_get_async_status(crtc);
+	only_output = (priv->usage[drm_crtc_index(crtc)] == DISP_OPENING);
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		if (only_output && !mtk_ddp_comp_is_output(comp))
+			continue;
+		mtk_ddp_rst_module(mtk_crtc, comp->id, cmdq_handle);
+	}
+
+	if(mtk_crtc->is_dual_pipe) {
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
+			if (only_output && !mtk_ddp_comp_is_output(comp))
+				continue;
+			mtk_ddp_rst_module(mtk_crtc, comp->id, cmdq_handle);
+		}
+	}
+	if (async == false) {
+		cmdq_pkt_flush(cmdq_handle);
+		cmdq_pkt_destroy(cmdq_handle);
+	} else {
+		int ret = 0;
+
+		ret = mtk_drm_idle_async_flush_cust(crtc, USER_COMP_RST,
+			cmdq_handle, true, NULL);
+		if (ret < 0) {
+			cmdq_pkt_flush(cmdq_handle);
+			cmdq_pkt_destroy(cmdq_handle);
+			DDPMSG("%s, failed of async flush, %d\n", __func__, ret);
+		}
+	}
+}

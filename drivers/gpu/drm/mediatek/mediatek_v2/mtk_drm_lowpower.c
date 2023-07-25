@@ -1835,6 +1835,8 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		/* 1. power on mtcmos & init apsrc*/
 		mtk_drm_top_clk_prepare_enable(crtc->dev);
 
+		mtk_crtc_default_path_rst(crtc);
+
 		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 					"apsrc_ctrl", 3, perf_string, true);
 		mtk_crtc_v_idle_apsrc_control(crtc, NULL, true, true,
@@ -1849,6 +1851,10 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	if (output_comp)
 		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE,
 				&en);
+
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"async_wait0", 41, perf_string, true);
+	mtk_drm_idle_async_wait(crtc, 0, "reset_async");
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"enable_conn", 5, perf_string, true);
