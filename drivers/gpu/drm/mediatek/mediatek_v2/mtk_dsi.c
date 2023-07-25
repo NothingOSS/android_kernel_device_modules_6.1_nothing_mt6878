@@ -9608,6 +9608,25 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			vfree(tmp);
 	}
 		break;
+	case DSI_SET_CRTC_SCALING_MODE_MAPPING:
+	{
+		struct mtk_drm_crtc *crtc = (struct mtk_drm_crtc *)params;
+		unsigned int i = 0;
+
+		panel_ext = mtk_dsi_get_panel_ext(comp);
+		if (panel_ext && panel_ext->funcs
+			&& panel_ext->funcs->scaling_mode_mapping
+			&& (crtc->avail_modes_num > 0)) {
+			for (i = 0; i < crtc->avail_modes_num; i++) {
+				crtc->scaling_ctx.mode_mapping[i] = panel_ext->funcs->scaling_mode_mapping(i);
+				DDPMSG("mode_mapping: %d->%d\n", i, crtc->scaling_ctx.mode_mapping[i]);
+			}
+			crtc->scaling_ctx.cust_mode_mapping = true;
+		} else {
+			crtc->scaling_ctx.cust_mode_mapping = false;
+		}
+	}
+		break;
 	case DSI_FILL_CONNECTOR_PROP_CAPS:
 	{
 		struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *)params;

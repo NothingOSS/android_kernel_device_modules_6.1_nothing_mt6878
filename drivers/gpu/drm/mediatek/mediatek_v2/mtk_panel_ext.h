@@ -615,6 +615,7 @@ struct mtk_panel_funcs {
 		struct mtk_panel_params **ext_para,
 		unsigned int mode);
 	enum RES_SWITCH_TYPE (*get_res_switch_type)(void);
+	int (*scaling_mode_mapping)(int mode_idx);
 	int (*mode_switch)(struct drm_panel *panel,
 		struct drm_connector *connector, unsigned int cur_mode,
 		unsigned int dst_mode, enum MTK_PANEL_MODE_SWITCH_STAGE stage);

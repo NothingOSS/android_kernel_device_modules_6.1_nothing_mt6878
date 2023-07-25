@@ -39,6 +39,7 @@
 #define FRAME_WIDTH				(1440)
 #define FRAME_HEIGHT			(3200)
 #define PLL_CLOCK				(800)
+#define REAL_MODE_NUM           (6)
 
 #define FHD_FRAME_WIDTH    (1080)
 #define FHD_HFP            (40)
@@ -1206,6 +1207,11 @@ enum RES_SWITCH_TYPE mtk_get_res_switch_type(void)
 	return res_switch_type;
 }
 
+int mtk_scaling_mode_mapping(int mode_idx)
+{
+	return (mode_idx % REAL_MODE_NUM);
+}
+
 static void mode_switch_working(struct drm_panel *panel, int fps,
 	struct mtk_mode_switch_cmd *mode_switch_cmd, size_t len)
 {
@@ -1339,6 +1345,7 @@ static struct mtk_panel_funcs ext_funcs = {
 	.ext_param_set = mtk_panel_ext_param_set,
 	.ext_param_get = mtk_panel_ext_param_get,
 	.get_res_switch_type = mtk_get_res_switch_type,
+	.scaling_mode_mapping = mtk_scaling_mode_mapping,
 	.mode_switch = mode_switch,
 	.set_bl_elvss_cmdq = lcm_set_bl_elvss_cmdq,
 	/* Not real backlight cmd in AOD, just for QC purpose */

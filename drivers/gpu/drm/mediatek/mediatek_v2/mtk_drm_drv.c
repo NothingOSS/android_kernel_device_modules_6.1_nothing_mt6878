@@ -1753,7 +1753,7 @@ static int mtk_atomic_check(struct drm_device *dev,
 }
 
 static void mtk_atomic_check_res_scaling(struct mtk_drm_crtc *mtk_crtc,
-	struct drm_display_mode *mode)
+	struct drm_display_mode *mode, int mode_idx)
 {
 	struct drm_display_mode *pmode = NULL;
 	int i;
@@ -1765,7 +1765,13 @@ static void mtk_atomic_check_res_scaling(struct mtk_drm_crtc *mtk_crtc,
 			(mode->vdisplay != mtk_crtc->scaling_ctx.lcm_height)) {
 		mtk_crtc->scaling_ctx.scaling_en = true;
 		/* adjusted_mode -> scaling_mode */
-		if (mtk_crtc->avail_modes_num > 0) {
+		if (mtk_crtc->scaling_ctx.cust_mode_mapping) {
+			mtk_crtc->scaling_ctx.scaling_mode =
+				mtk_drm_crtc_avail_disp_mode(&mtk_crtc->base,
+					mtk_crtc->scaling_ctx.mode_mapping[mode_idx]);
+			DDPMSG("%s mode_idx: %d->%d\n", __func__, mode_idx,
+				mtk_crtc->scaling_ctx.mode_mapping[mode_idx]);
+		} else if (mtk_crtc->avail_modes_num > 0) {
 			for (i = 0; i < mtk_crtc->avail_modes_num; i++) {
 				pmode = &mtk_crtc->avail_modes[i];
 				if ((pmode->hdisplay == mtk_crtc->scaling_ctx.lcm_width)
@@ -1803,19 +1809,23 @@ static void mtk_atomic_check_res_switch(struct mtk_drm_private *private,
 	struct mtk_ddp_config cfg = {0};
 	struct mtk_ddp_config scaling_cfg = {0};
 	struct mtk_ddp_comp *comp;
+	int mode_idx;
+	struct mtk_crtc_state *new_mtk_state = NULL;
 
 	for_each_old_crtc_in_state(old_state, crtc, old_crtc_state, j) {
 
 		mtk_crtc = to_mtk_crtc(crtc);
 		mode = &crtc->state->adjusted_mode;
 		old_mode = &old_crtc_state->adjusted_mode;
+		new_mtk_state = to_mtk_crtc_state(crtc->state);
+		mode_idx = new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
 
 		if ((drm_crtc_index(crtc) == 0)
 			&& (mtk_crtc->res_switch != RES_SWITCH_NO_USE)
 			&& mtk_crtc->mode_chg){
 
 			if (mtk_crtc->res_switch == RES_SWITCH_ON_AP)
-				mtk_atomic_check_res_scaling(mtk_crtc, mode);
+				mtk_atomic_check_res_scaling(mtk_crtc, mode, mode_idx);
 
 			if ((mode->hdisplay == old_mode->hdisplay) &&
 				(mode->vdisplay == old_mode->vdisplay))

@@ -701,6 +701,8 @@ struct mtk_scaling_ctx {
 	int lcm_width;
 	int lcm_height;
 	struct drm_display_mode *scaling_mode;
+	bool cust_mode_mapping;
+	int mode_mapping[MAX_MODES];
 };
 
 struct mtk_drm_fake_vsync {

@@ -11365,10 +11365,12 @@ void mtk_drm_crtc_init_para(struct drm_crtc *crtc)
 		/* 0:no use, 1:on ddic, 2:on ap */
 		DDPMSG("%s resolution switch type: %d\n", __func__, mtk_crtc->res_switch);
 
-		if (mtk_crtc->res_switch == RES_SWITCH_ON_AP)
+		if (mtk_crtc->res_switch == RES_SWITCH_ON_AP) {
 			mtk_drm_crtc_get_panel_original_size(crtc,
 				&mtk_crtc->scaling_ctx.lcm_width,
 				&mtk_crtc->scaling_ctx.lcm_height);
+			mtk_ddp_comp_io_cmd(comp, NULL, DSI_SET_CRTC_SCALING_MODE_MAPPING, mtk_crtc);
+		}
 
 		/* fill connector prop caps for hwc */
 		mtk_ddp_comp_io_cmd(comp, NULL, DSI_FILL_CONNECTOR_PROP_CAPS, mtk_crtc);
