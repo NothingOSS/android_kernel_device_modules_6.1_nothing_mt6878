@@ -12544,7 +12544,10 @@ static void mtk_crtc_msync2_send_cmds_bef_cfg(struct drm_crtc *crtc, unsigned in
 		struct msync_request_te_table *rte_tb =
 			&params->msync_cmd_table.request_te_tb;
 		int level_min_fps = 0;
-
+		if(!rte_tb || (void *)rte_tb->rte_te_level == NULL) {
+			DDPPR_ERR("[Msync2.0] Some pointer is NULL\n");
+			return;
+		}
 		DDPMSG("%s:%d RTE\n", __func__, __LINE__);
 		if (target_fps == 0xFFFF) {
 			DDPMSG("[Msync2.0] Msync Need close R-TE\n");
@@ -12697,7 +12700,10 @@ rte_target:
 		struct msync_multi_te_table *mte_tb =
 			&params->msync_cmd_table.multi_te_tb;
 		int level_min_fps = 0;
-
+		if(!mte_tb || (void *)mte_tb->multi_te_level == NULL) {
+			DDPPR_ERR("[Msync2.0] Some pointer is NULL\n");
+			return;
+		}
 		DDPMSG("[Msync2.0] M-TE\n");
 
 		if (target_fps == 0xFFFF) {
@@ -17043,6 +17049,10 @@ int mtk_drm_get_msync_params_ioctl(struct drm_device *dev, void *data,
 		if (params->msync_cmd_table.te_type == REQUEST_TE) {
 			/* TODO: Add Request Te */
 		} else if (params->msync_cmd_table.te_type == MULTI_TE) {
+			if ((void *)params->msync_cmd_table.multi_te_tb.multi_te_level == NULL) {
+				DDPPR_ERR("[Msync2.0] lcm params pointer is NULL\n");
+				return -EINVAL;
+			}
 			config->msync_max_fps = params->msync_cmd_table.msync_max_fps;
 			config->msync_min_fps = params->msync_cmd_table.msync_min_fps;
 			config->msync_level_num = MSYNC_MAX_LEVEL;

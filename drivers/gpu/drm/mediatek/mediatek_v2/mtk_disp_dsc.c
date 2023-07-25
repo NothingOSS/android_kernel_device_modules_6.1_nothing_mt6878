@@ -443,7 +443,7 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 				(roi_height + slice_height - 1) / slice_height;
 		slice_group_width = (slice_width + 2)/3;
 		/* 128=1/3, 196=1/2 */
-		bit_per_pixel = dsc_params->bit_per_pixel;
+		bit_per_pixel = (dsc_params->bit_per_pixel == 0) ? 0x80 : dsc_params->bit_per_pixel;
 		chunk_size = (slice_width*bit_per_pixel / 8 / 16);
 
 		if (spr_params->enable && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1
@@ -1060,7 +1060,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 				(roi_height + slice_height - 1) / slice_height;
 		slice_group_width = (slice_width + 2)/3;
 		/* 128=1/3, 196=1/2 */
-		bit_per_pixel = dsc_params->bit_per_pixel;
+		bit_per_pixel = (dsc_params->bit_per_pixel == 0) ? 0x80 : dsc_params->bit_per_pixel;
 		chunk_size = (slice_width*bit_per_pixel / 8 / 16);
 
 		if (spr_params->enable && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1
