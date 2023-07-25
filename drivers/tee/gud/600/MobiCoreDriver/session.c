@@ -77,7 +77,7 @@ static inline bool gid_lt(kgid_t left, kgid_t right)
 #include "session.h"
 #include "mci/mcimcp.h"		/* WSM_INVALID */
 
-#define SHA1_HASH_SIZE       20
+#define SHA256_HASH_SIZE     32
 
 static int wsm_create(struct tee_session *session, struct tee_wsm *wsm,
 		      const struct mc_ioctl_buffer *buf)
@@ -188,7 +188,7 @@ static int hash_path_and_data(struct task_struct *task, u8 *hash,
 	path_len = (unsigned int)strnlen(path, PAGE_SIZE);
 	mc_dev_devel("path_len = %u", path_len);
 	/* Compute hash of path */
-	tfm = crypto_alloc_shash("sha1", 0, 0);
+	tfm = crypto_alloc_shash("sha256", 0, 0);
 	if (IS_ERR(tfm)) {
 		ret = PTR_ERR(tfm);
 		mc_dev_err(ret, "cannot allocate shash");
@@ -261,7 +261,7 @@ static int hash_path_and_data(struct task_struct *task, u8 *hash,
 	path_len = (unsigned int)strnlen(path, PAGE_SIZE);
 	mc_dev_devel("path_len = %u", path_len);
 	/* Compute hash of path */
-	tfm = crypto_alloc_shash("sha1", 0, 0);
+	tfm = crypto_alloc_shash("sha256", 0, 0);
 	if (IS_ERR(tfm)) {
 		ret = PTR_ERR(tfm);
 		mc_dev_err(ret, "cannot allocate shash");
@@ -332,7 +332,7 @@ static int hash_path_and_data(struct task_struct *task, u8 *hash,
 	path_len = (unsigned int)strnlen(path, PAGE_SIZE);
 	mc_dev_devel("path_len = %u", path_len);
 	/* Compute hash of path */
-	desc.tfm = crypto_alloc_hash("sha1", 0, CRYPTO_ALG_ASYNC);
+	desc.tfm = crypto_alloc_hash("sha256", 0, CRYPTO_ALG_ASYNC);
 	if (IS_ERR(desc.tfm)) {
 		ret = PTR_ERR(desc.tfm);
 		mc_dev_devel("could not alloc hash = %d", ret);
@@ -399,12 +399,8 @@ static int check_prepare_identity(const struct mc_identity *identity,
 				  struct task_struct *task)
 {
 	struct mc_identity *mcp_id = (struct mc_identity *)mcp_identity;
-	u8 hash[SHA1_HASH_SIZE] = { 0 };
+	u8 hash[SHA256_HASH_SIZE] = { 0 };
 	bool application = false;
-	bool supplied_ca_identity = false;
-	const void *data;
-	unsigned int data_len;
-	static const u8 zero_buffer[sizeof(identity->login_data)] = { 0 };
 
 	/* Copy login type */
 	mcp_identity->login_type = identity->login_type;
@@ -443,27 +439,12 @@ static int check_prepare_identity(const struct mc_identity *identity,
 	switch (identity->login_type) {
 	case LOGIN_PUBLIC:
 	case LOGIN_GROUP:
-		break;
 	case LOGIN_USER:
-		data = NULL;
-		data_len = 0;
 		break;
 	case LOGIN_APPLICATION:
-		application = true;
-		supplied_ca_identity = true;
-		data = NULL;
-		data_len = 0;
-		break;
 	case LOGIN_USER_APPLICATION:
-		application = true;
-		supplied_ca_identity = true;
-		data = &mcp_id->uid;
-		data_len = sizeof(mcp_id->uid);
-		break;
 	case LOGIN_GROUP_APPLICATION:
 		application = true;
-		data = &identity->gid;
-		data_len = sizeof(identity->gid);
 		break;
 	default:
 		/* Any other login_type value is invalid. */
@@ -472,25 +453,40 @@ static int check_prepare_identity(const struct mc_identity *identity,
 		return -EINVAL;
 	}
 
-	/* let the supplied login_data pass through if it is LOGIN_APPLICATION
-	 * or LOGIN_USER_APPLICATION and not a zero-filled buffer
-	 * That buffer is expected to contain a NWd computed hash containing the
-	 * CA identity
-	 */
-	if (supplied_ca_identity &&
-	    memcmp(identity->login_data, zero_buffer,
-		   sizeof(identity->login_data)) != 0) {
-		memcpy(&mcp_id->login_data, identity->login_data,
-		       sizeof(mcp_id->login_data));
-	} else if (application) {
-		int ret = hash_path_and_data(task, hash, data, data_len);
+	if (application) {
+		int ret = -1;
+
+		// Define a structure with all needed data for the hash
+		struct {
+			union {
+				gid_t		gid;	/* Requested group id */
+				struct {
+					uid_t	euid;
+					uid_t	ruid;
+				} uid;
+			};
+			__u8		login_data[16];
+		} data;
+
+		memset((void *)&data, 0x0, sizeof(data));
+
+		// Get the uid/gid previously set
+		memcpy(&data.uid, &mcp_id->uid, sizeof(data.uid));
+
+		if (identity->login_type != LOGIN_GROUP_APPLICATION)
+			memcpy(&data.login_data, identity->login_data,
+			       sizeof(data.login_data));
+
+		ret = hash_path_and_data(task, hash, &data, sizeof(data));
 
 		if (ret) {
 			mc_dev_devel("hash calculation returned %d", ret);
 			return ret;
 		}
 
-		memcpy(&mcp_id->login_data, hash, sizeof(mcp_id->login_data));
+		// Copy the first 16 bytes only
+		memcpy(&mcp_identity->login_data, hash,
+		       sizeof(mcp_identity->login_data));
 	}
 
 	return 0;

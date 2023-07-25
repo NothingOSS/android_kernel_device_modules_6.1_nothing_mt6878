@@ -377,6 +377,15 @@ int fc_trace_deinit(void)
 	return fc_trace_init(0, 0);
 }
 
+int fc_vm_destroy(void)
+{
+	union fc_sched_init fc;
+
+	memset(&fc, 0, sizeof(fc));
+	fc.in.cmd = MC_FC_VM_DESTROY;
+	return smc(&fc);
+}
+
 /* sid, payload only used for debug purpose */
 int fc_nsiq(u32 session_id, u32 payload)
 {

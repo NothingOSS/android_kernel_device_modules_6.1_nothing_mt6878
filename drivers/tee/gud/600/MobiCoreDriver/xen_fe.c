@@ -48,6 +48,9 @@ static irqreturn_t xen_fe_irq_handler_dom0_th(int intr, void *arg)
 	/* Dom0 event, their side of ring locked by them */
 	schedule_work(&xfe->work);
 
+#if KERNEL_VERSION(5, 9, 0) < LINUX_VERSION_CODE
+	xen_irq_lateeoi(intr, 0);
+#endif
 	return IRQ_HANDLED;
 }
 
@@ -81,13 +84,22 @@ static void xen_fe_map_release_pmd_ptes(
 {
 	int i;
 
+#if KERNEL_VERSION(5, 19, 0) > LINUX_VERSION_CODE
+	gnttab_end_foreign_access(buffer->pmd_ref, true, 0);
+#else
 	gnttab_end_foreign_access(buffer->pmd_ref, NULL);
+#endif
 	map->refs_shared--;
 	mc_dev_devel("unmapped PMD ref %llu", buffer->pmd_ref);
 
 	for (i = 0; i < map->nr_pte_tables; i++) {
+#if KERNEL_VERSION(5, 19, 0) > LINUX_VERSION_CODE
+		gnttab_end_foreign_access(
+			map->mmu->pmd_table.entries[i], true, 0);
+#else
 		gnttab_end_foreign_access(
 			map->mmu->pmd_table.entries[i], NULL);
+#endif
 		map->refs_shared--;
 		mc_dev_devel("unmapped PTE %d ref %llu",
 			     i, map->mmu->pmd_table.entries[i]);
@@ -107,9 +119,15 @@ static void xen_fe_map_release(struct protocol_fe_map *map)
 			nr_pages = PTE_ENTRIES_MAX;
 
 		for (j = 0; j < nr_pages; j++) {
+#if KERNEL_VERSION(5, 19, 0) > LINUX_VERSION_CODE
+			gnttab_end_foreign_access(
+				map->mmu->pte_tables[i].entries[j],
+				map->readonly, 0);
+#else
 			gnttab_end_foreign_access(
 				map->mmu->pte_tables[i].entries[j],
 				NULL);
+#endif
 			map->refs_shared--;
 			nr_pages_left--;
 			mc_dev_devel("unmapped [%d, %d] ref %llu, left %d",
@@ -310,7 +328,9 @@ static irqreturn_t xen_fe_irq_handler_domu_th(int intr, void *arg)
 	xfe->ring->fe2be_data.id = 0;
 	complete(&xfe->ring_completion);
 
+#if KERNEL_VERSION(5, 9, 0) < LINUX_VERSION_CODE
 	xen_irq_lateeoi(intr, 0);
+#endif
 	return IRQ_HANDLED;
 }
 
@@ -331,8 +351,12 @@ static inline void xfe_release(struct tee_xfe *xfe)
 		xenbus_free_evtchn(xfe->xdev, xfe->evtchn_dom0);
 
 	if (xfe->ring_ul) {
+#if KERNEL_VERSION(5, 19, 0) > LINUX_VERSION_CODE
+		gnttab_end_foreign_access(xfe->ring_ref, 0, xfe->ring_ul);
+#else
 		gnttab_end_foreign_access(xfe->ring_ref,
 					  (struct page *)&xfe->ring_ul);
+#endif
 		free_page(xfe->ring_ul);
 	}
 
@@ -365,8 +389,12 @@ static inline struct tee_xfe *xfe_create(struct xenbus_device *xdev)
 	xfe->pfe.be2fe_data = &xfe->ring->be2fe_data;
 
 	/* Allow/grant access to Frontend Ring buffer created */
+#if KERNEL_VERSION(6, 0, 0) > LINUX_VERSION_CODE
+	ret = xenbus_grant_ring(xfe->xdev, xfe->ring, 1, &ref);
+#else
 	ret = xenbus_setup_ring(xfe->xdev, GFP_KERNEL, (void **)&xfe->ring,
 				1, &ref);
+#endif
 	if (ret < 0)
 		goto err;
 

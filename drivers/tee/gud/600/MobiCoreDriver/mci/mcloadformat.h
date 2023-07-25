@@ -37,7 +37,14 @@ struct identity {
 	/** GP TA login type */
 	u32	login_type;
 	/** GP TA login data */
-	u8	login_data[16];
+	union {
+		u8		login_data[16];
+		gid_t		gid; /* Requested group id */
+		struct {
+			uid_t	euid;
+			uid_t	ruid;
+		} uid;
+	};
 };
 
 /**

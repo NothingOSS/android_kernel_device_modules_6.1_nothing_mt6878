@@ -326,6 +326,9 @@ static irqreturn_t xen_be_irq_handler_dom0_th(int intr, void *arg)
 	xfe->ring->be2fe_data.cmd_ret = -EPERM;
 	complete(&xfe->ring_completion);
 
+#if KERNEL_VERSION(5, 9, 0) < LINUX_VERSION_CODE
+	xen_irq_lateeoi(intr, 0);
+#endif
 	return IRQ_HANDLED;
 }
 
@@ -335,11 +338,18 @@ static irqreturn_t xen_be_irq_handler_domu_th(int intr, void *arg)
 
 	if (!xfe->ring->fe2be_data.cmd) {
 		mc_dev_devel("Ignore IRQ with no command (on DomU connect)");
+#if KERNEL_VERSION(5, 9, 0) < LINUX_VERSION_CODE
+		xen_irq_lateeoi(intr, 0);
+#endif
 		return IRQ_HANDLED;
 	}
 
 	/* DomU event, their side of ring locked by them */
 	schedule_work(&xfe->work);
+
+#if KERNEL_VERSION(5, 9, 0) < LINUX_VERSION_CODE
+	xen_irq_lateeoi(intr, 0);
+#endif
 
 	return IRQ_HANDLED;
 }

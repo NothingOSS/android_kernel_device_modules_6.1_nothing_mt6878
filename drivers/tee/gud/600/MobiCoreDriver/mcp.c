@@ -244,7 +244,11 @@ end:
 	mutex_unlock(&session->notif_wait_lock);
 	if (ret) {
 #ifdef CONFIG_FREEZER
+#if KERNEL_VERSION(6, 1, 0) <= LINUX_VERSION_CODE
 		if (ret == -ERESTARTSYS && static_key_true(&freezer_active.key))
+#else
+		if (ret == -ERESTARTSYS && system_freezing_cnt.counter == 1)
+#endif
 			mc_dev_devel("freezing session %x", session->sid);
 		else
 #endif
@@ -674,15 +678,6 @@ int mcp_unmap(u32 session_id, const struct mcp_buffer_map *map)
 	return ret;
 }
 
-static int mcp_close(void)
-{
-	union mcp_message cmd;
-
-	memset(&cmd, 0, sizeof(cmd));
-	cmd.cmd_header.cmd_id = MC_MCP_CMD_CLOSE_MCP;
-	return mcp_cmd(&cmd, 0, NULL, NULL);
-}
-
 int mcp_notify(struct mcp_session *session)
 {
 	if (l_ctx.mcp_dead)
@@ -920,5 +915,4 @@ int mcp_start(void)
 
 void mcp_stop(void)
 {
-	mcp_close();
 }

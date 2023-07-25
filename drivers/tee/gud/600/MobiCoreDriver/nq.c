@@ -362,6 +362,12 @@ cpumask_t tee_set_affinity(void)
 #else
 	old_affinity = current->cpus_allowed;
 #endif
+
+	if (current->flags & PF_NO_SETAFFINITY) {
+		mc_dev_devel("skip setting affinity");
+		return old_affinity;
+	}
+
 #if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
 	cpulist_scnprintf(buf_aff, sizeof(buf_aff), &old_affinity);
 	mc_dev_devel("aff = %lx mask = %lx curr_aff = %s (pid = %u)",
@@ -394,6 +400,11 @@ void tee_restore_affinity(cpumask_t old_affinity)
 	char buf_aff[64];
 	char buf_cur_aff[64];
 
+	if (current->flags & PF_NO_SETAFFINITY) {
+		mc_dev_devel("skip restoring affinity");
+		return;
+	}
+
 	cpulist_scnprintf(buf_aff, sizeof(buf_aff), &old_affinity);
 	cpulist_scnprintf(buf_cur_aff,
 			  sizeof(buf_cur_aff),
@@ -414,6 +425,12 @@ void tee_restore_affinity(cpumask_t old_affinity)
 #else
 	cpumask_t current_affinity = current->cpus_allowed;
 #endif
+
+	if (current->flags & PF_NO_SETAFFINITY) {
+		mc_dev_devel("skip restoring affinity");
+		return;
+	}
+
 	mc_dev_devel("aff = %*pbl mask = %lx curr_aff = %*pbl (pid = %u)",
 		     cpumask_pr_args(&old_affinity),
 		     l_ctx.default_affinity_mask,
@@ -1374,6 +1391,11 @@ void nq_stop(void)
 	complete(&l_ctx.irq_bh_complete);
 	kthread_stop(l_ctx.irq_bh_thread);
 	free_irq(l_ctx.irq, NULL);
+
+	/* Destroy NWd VM */
+	fc_vm_destroy();
+	fc_nsiq(0, 0);
+	fc_yield(0, 0, NULL);
 }
 
 static ssize_t debug_tee_affinity_write(struct file *file,
@@ -1635,6 +1657,10 @@ int nq_cpu_off(unsigned int cpu)
 #else
 	old_affinity = current->cpus_allowed;
 #endif
+
+	/* No need to check the threads's affinity flags as this handle is
+	 * called by a kernel thread
+	 */
 	set_cpus_allowed_ptr(current, to_cpumask(&new_affinity));
 
 	err = fc_cpu_off();

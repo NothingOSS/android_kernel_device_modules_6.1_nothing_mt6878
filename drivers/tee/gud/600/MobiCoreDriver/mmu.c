@@ -596,11 +596,12 @@ end:
 
 	if (all_pages) {
 		ret = fc_register_buffer(all_pages, mmu, buf->tag);
+		kfree(all_pages);
 		if (ret) {
+			tee_mmu_delete(mmu);
 			mc_dev_err(ret, "sharing buffer");
 			return ERR_PTR(ret);
 		}
-		kfree(all_pages);
 	}
 
 	mc_dev_devel(

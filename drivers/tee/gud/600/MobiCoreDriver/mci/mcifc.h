@@ -48,6 +48,9 @@
 /**< CPU is removed from system */
 #define MC_FC_CPU_OFF		MC_FC_STD32(60)
 
+/**< VM is destroyed */
+#define MC_FC_VM_DESTROY	MC_FC_STD32(99)
+
 /** @} */
 
 /** @name MobiCore SMC Definition
