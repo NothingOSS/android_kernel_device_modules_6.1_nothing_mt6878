@@ -110,7 +110,7 @@ static void mtk_drm_idlemgr_bind_cpu(struct task_struct *task, struct drm_crtc *
 }
 
 static int mtk_drm_enhance_cpu_freq(struct freq_qos_request *req,
-		unsigned int cpu_id, unsigned int cpu_freq)
+		unsigned int cpu_id, unsigned int cpu_freq, int *cpu_first, int *cpu_last)
 {
 	struct cpufreq_policy *policy = NULL;
 	int ret = 0;
@@ -119,6 +119,7 @@ static int mtk_drm_enhance_cpu_freq(struct freq_qos_request *req,
 		DDPMSG("%s, invalid req\n", __func__);
 		return -EINVAL;
 	}
+
 	policy = cpufreq_cpu_get(cpu_id);
 	if (policy == NULL) {
 		DDPMSG("%s, failed to get cpu %u policy\n", __func__, cpu_id);
@@ -126,11 +127,15 @@ static int mtk_drm_enhance_cpu_freq(struct freq_qos_request *req,
 	}
 
 	ret = freq_qos_add_request(&policy->constraints, req, FREQ_QOS_MIN, cpu_freq);
+	if (cpu_first != NULL)
+		*cpu_first = cpumask_first(policy->related_cpus);
+	if (cpu_last != NULL)
+		*cpu_last = cpumask_last(policy->related_cpus);
 	cpufreq_cpu_put(policy);
 
 	if (ret < 0) {
-		DDPMSG("%s, failed to enhance cpu%u freq%u, ret:%d\n",
-			__func__, cpu_id, cpu_freq, ret);
+		DDPMSG("%s, failed to enhance cpu%u freq%u,first:%d,last:%d,ret:%d\n",
+			__func__, cpu_id, cpu_freq,  *cpu_first, *cpu_last, ret);
 		return ret;
 	}
 
@@ -240,6 +245,7 @@ static void mtk_drm_adjust_cpu_freq(struct drm_crtc *crtc, bool bind,
 	struct mtk_drm_idlemgr_perf *perf = idlemgr->perf;
 	unsigned long long start, end, period;
 	unsigned int freq = 0;
+	static int cpu_first = -1, cpu_last = -1;
 	int ret = 0, i = 0, detail = 0;
 
 	if (count == 0 || cpus == NULL ||
@@ -256,13 +262,16 @@ static void mtk_drm_adjust_cpu_freq(struct drm_crtc *crtc, bool bind,
 	if (bind == true) {
 		freq = idlemgr_ctx->priv.cpu_freq;
 		for (i = 0; i < count; i++) {
+			if ((int)cpus[i] >= cpu_first && (int)cpus[i] <= cpu_last)
+				continue;
+
 			req[i] = kzalloc(sizeof(struct freq_qos_request), GFP_KERNEL);
 			if (req[i] == NULL) {
 				DDPPR_ERR("%s, alloc req:%d failed\n", __func__, i);
 				continue;
 			}
 
-			ret = mtk_drm_enhance_cpu_freq(req[i], cpus[i], freq);
+			ret = mtk_drm_enhance_cpu_freq(req[i], cpus[i], freq, &cpu_first, &cpu_last);
 			if (ret < 0) {
 				kfree(req[i]);
 				req[i] = NULL;
@@ -276,11 +285,13 @@ static void mtk_drm_adjust_cpu_freq(struct drm_crtc *crtc, bool bind,
 				continue;
 			ret = freq_qos_remove_request(req[i]);
 			if (ret < 0)
-				DDPMSG("%s, failed to rollback cpu freq, ret:%d\n",
-					__func__, ret);
+				DDPMSG("%s, failed to rollback freq, id:%d, ret:%d, cluster:%d~%d\n",
+					__func__, i, ret, cpu_first, cpu_last);
 			kfree(req[i]);
 			req[i] = NULL;
 		}
+		cpu_first = -1;
+		cpu_last = -1;
 	}
 
 	if (perf != NULL) {
