@@ -10550,6 +10550,39 @@
 					<SMMU_L26_P9_PDAO_B_0>;
 		};
 
+		ips_east: ips@11db0000 {
+			compatible = "mediatek,mt6989-soc-ips-east";
+			reg = <0 0x11db0000 0 0x100>,
+				<0 0x1c00f000 0 0x1000>;
+			reg-names = "ips", "dvfsrc";
+			clocks = <&topckgen_clk CLK_TOP_MAINPLL_D6>,
+				<&topckgen_clk CLK_TOP_MAINPLL_D5>,
+				<&topckgen_clk CLK_TOP_MAINPLL_D4>,
+				<&topckgen_clk CLK_TOP_MAINPLL_D3>,
+				<&topckgen_clk CLK_TOP_IPSEAST_SEL>;
+			clock-names = "clk_src_0",
+					"clk_src_1",
+					"clk_src_2",
+					"clk_src_3",
+					"ips-clk";
+		};
+
+		ips_west: ips@11fb0000 {
+			compatible = "mediatek,mt6989-soc-ips-west";
+			reg = <0 0x11fb0000 0 0x100>;
+			reg-names = "ips";
+			clocks = <&topckgen_clk CLK_TOP_MAINPLL_D6>,
+				<&topckgen_clk CLK_TOP_MAINPLL_D5>,
+				<&topckgen_clk CLK_TOP_MAINPLL_D4>,
+				<&topckgen_clk CLK_TOP_MAINPLL_D3>,
+				<&topckgen_clk CLK_TOP_IPSWEST_SEL>;
+			clock-names = "clk_src_0",
+					"clk_src_1",
+					"clk_src_2",
+					"clk_src_3",
+					"ips-clk";
+		};
+
 		dvfsrc: dvfsrc@1c00f000 {
 			compatible = "mediatek,mt6989-dvfsrc";
 			reg = <0 0x1c00f000 0 0x1000>,
