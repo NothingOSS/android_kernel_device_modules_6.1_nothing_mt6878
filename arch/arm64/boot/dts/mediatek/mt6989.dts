@@ -2180,7 +2180,7 @@
 		compatible = "mediatek,mt6989-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x14210000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_common 1>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,common-id = <9>;
 		init-power-on;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS1_SHUTDOWN>;
@@ -2195,7 +2195,7 @@
 		compatible = "mediatek,mt6989-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x14211000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_common 1>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,common-id = <10>;
 		init-power-on;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS1_SHUTDOWN>;
@@ -2210,7 +2210,7 @@
 		compatible = "mediatek,mt6989-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x14212000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_common 1>;
+		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,common-id = <11>;
 		init-power-on;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS1_SHUTDOWN>;
@@ -2225,7 +2225,7 @@
 		compatible = "mediatek,mt6989-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x14213000 0 0x1000>;
-		mediatek,smi-supply = <&smi_mdp_common 1>;
+		mediatek,smi-supply = <&smi_mdp_common 0>;
 		mediatek,common-id = <12>;
 		init-power-on;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS1_SHUTDOWN>;
@@ -2240,7 +2240,7 @@
 		compatible = "mediatek,mt6989-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x14214000 0 0x1000>;
-		mediatek,smi-supply = <&smi_sysram_common 1>;
+		mediatek,smi-supply = <&smi_sysram_common 0>;
 		mediatek,common-id = <13>;
 		init-power-on;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS1_SHUTDOWN>;
@@ -2255,7 +2255,7 @@
 		compatible = "mediatek,mt6989-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x14215000 0 0x1000>;
-		mediatek,smi-supply = <&smi_sysram_common 1>;
+		mediatek,smi-supply = <&smi_sysram_common 0>;
 		mediatek,common-id = <14>;
 		init-power-on;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DIS1_SHUTDOWN>;
