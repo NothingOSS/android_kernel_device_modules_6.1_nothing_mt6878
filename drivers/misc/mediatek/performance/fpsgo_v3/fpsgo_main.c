@@ -18,6 +18,7 @@
 #include <linux/tracepoint.h>
 #include <linux/kallsyms.h>
 #include <uapi/linux/sched/types.h>
+#include <trace/hooks/cpufreq.h>
 #include "sugov/cpufreq.h"
 
 #include "mt-plat/fpsgo_common.h"
@@ -851,31 +852,6 @@ void fpsgo_get_pid(int cmd, int *pid, int op)
 	}
 }
 
-#if FPSGO_DYNAMIC_WL
-void fpsgo_notify_cpufreq_cap(int cid, int cap)
-{
-	FPSGO_LOGI("[FPSGO_CTRL] cid %d, cpufreq %d\n", cid, cap);
-
-	if (!fpsgo_enable)
-		return;
-
-	fpsgo_ctrl2fbt_cpufreq_cb_cap(cid, cap);
-}
-#else  // FPSGO_DYNAMIC_WL
-void fpsgo_notify_cpufreq(int cid, unsigned long freq)
-{
-	FPSGO_LOGI("[FPSGO_CTRL] cid %d, cpufreq %lu\n", cid, freq);
-
-	if (rsu_cpufreq_notifier_fp)
-		rsu_cpufreq_notifier_fp(cid, freq);
-
-	if (!fpsgo_enable)
-		return;
-
-	fpsgo_ctrl2fbt_cpufreq_cb_exp(cid, freq);
-}
-#endif  // FPSGO_DYNAMIC_WL
-
 void fpsgo_notify_buffer_quota(int pid, int quota, unsigned long long identifier)
 {
 	unsigned long long cur_ts;
@@ -1234,14 +1210,18 @@ int fpsgo_fstb_thread_fps_range(pid_t pid,
 	return switch_thread_fps_range(pid, nr_level, level);
 }
 
-struct tracepoints_table {
-	const char *name;
-	void *func;
-	struct tracepoint *tp;
-	bool registered;
-};
-
 #if FPSGO_DYNAMIC_WL
+
+void fpsgo_notify_cpufreq_cap(int cid, int cap)
+{
+	FPSGO_LOGI("[FPSGO_CTRL] cid %d, cpufreq %d\n", cid, cap);
+
+	if (!fpsgo_enable)
+		return;
+
+	fpsgo_ctrl2fbt_cpufreq_cb_cap(cid, cap);
+}
+
 static void fpsgo_cpu_frequency_cap_tracer(void *ignore, struct cpufreq_policy *policy)
 {
 	unsigned int cpu_id = 0, cpu = 0, cluster = 0, capacity;
@@ -1288,11 +1268,37 @@ static void fpsgo_cpu_frequency_cap_tracer(void *ignore, struct cpufreq_policy *
 #endif
 }
 
-struct tracepoints_table fpsgo_tracepoints[] = {
-	{.name = "android_rvh_cpufreq_transition", .func = fpsgo_cpu_frequency_cap_tracer},
-};
+void register_fpsgo_android_cpufreq_transition_hook(void)
+{
+	int ret = 0;
+
+	ret = register_trace_android_rvh_cpufreq_transition(fpsgo_cpu_frequency_cap_tracer, NULL);
+	if (ret)
+		pr_info("register android_rvh_cpufreq_transition hooks failed, returned %d\n", ret);
+}
 
 #else  // FPSGO_DYNAMIC_WL
+
+struct tracepoints_table {
+	const char *name;
+	void *func;
+	struct tracepoint *tp;
+	bool registered;
+};
+
+void fpsgo_notify_cpufreq(int cid, unsigned long freq)
+{
+	FPSGO_LOGI("[FPSGO_CTRL] cid %d, cpufreq %lu\n", cid, freq);
+
+	if (rsu_cpufreq_notifier_fp)
+		rsu_cpufreq_notifier_fp(cid, freq);
+
+	if (!fpsgo_enable)
+		return;
+
+	fpsgo_ctrl2fbt_cpufreq_cb_exp(cid, freq);
+}
+
 static void fpsgo_cpu_frequency_tracer(void *ignore, unsigned int frequency, unsigned int cpu_id)
 {
 	int cpu = 0, cluster = 0;
@@ -1345,8 +1351,6 @@ struct tracepoints_table fpsgo_tracepoints[] = {
 	{.name = "cpu_frequency", .func = fpsgo_cpu_frequency_tracer},
 };
 
-#endif  // FPSGO_DYNAMIC_WL
-
 #define FOR_EACH_INTEREST(i) \
 	for (i = 0; i < sizeof(fpsgo_tracepoints) / sizeof(struct tracepoints_table); i++)
 
@@ -1374,6 +1378,29 @@ void tracepoint_cleanup(void)
 	}
 }
 
+void register_fpsgo_cpufreq_transition_hook(void)
+{
+	int i, ret = 0;
+
+	for_each_kernel_tracepoint(lookup_tracepoints, NULL);
+
+	FOR_EACH_INTEREST(i) {
+		if (fpsgo_tracepoints[i].tp == NULL) {
+			FPSGO_LOGE("FPSGO Error, %s not found\n", fpsgo_tracepoints[i].name);
+			tracepoint_cleanup();
+			return -1;
+		}
+	}
+	ret = tracepoint_probe_register(fpsgo_tracepoints[0].tp, fpsgo_tracepoints[0].func,  NULL);
+	if (ret) {
+		FPSGO_LOGE("cpu_frequency: Couldn't activate tracepoint\n");
+		return;
+	}
+	fpsgo_tracepoints[0].registered = true;
+}
+
+#endif  // FPSGO_DYNAMIC_WL
+
 
 static void __exit fpsgo_exit(void)
 {
@@ -1395,9 +1422,6 @@ static void __exit fpsgo_exit(void)
 
 static int __init fpsgo_init(void)
 {
-	int i;
-	int ret;
-
 	FPSGO_LOGI("[FPSGO_CTRL] init\n");
 
 	fpsgo_cpu_policy_init();
@@ -1410,24 +1434,11 @@ static int __init fpsgo_init(void)
 		return -EFAULT;
 	wake_up_process(kfpsgo_tsk);
 
-	for_each_kernel_tracepoint(lookup_tracepoints, NULL);
-
-	FOR_EACH_INTEREST(i) {
-		if (fpsgo_tracepoints[i].tp == NULL) {
-			FPSGO_LOGE("FPSGO Error, %s not found\n", fpsgo_tracepoints[i].name);
-			tracepoint_cleanup();
-			return -1;
-		}
-	}
-	ret = tracepoint_probe_register(fpsgo_tracepoints[0].tp, fpsgo_tracepoints[0].func,  NULL);
-	if (ret) {
-		FPSGO_LOGE("cpu_frequency: Couldn't activate tracepoint\n");
-		goto fail_reg_cpu_frequency_entry;
-	}
-	fpsgo_tracepoints[0].registered = true;
-
-fail_reg_cpu_frequency_entry:
-
+#if FPSGO_DYNAMIC_WL
+	register_fpsgo_android_cpufreq_transition_hook();
+#else  // FPSGO_DYNAMIC_WL
+	register_fpsgo_cpufreq_transition_hook();
+#endif  // FPSGO_DYNAMIC_WL
 
 	mutex_init(&notify_lock);
 
