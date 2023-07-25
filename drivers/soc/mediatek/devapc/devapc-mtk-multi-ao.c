@@ -481,8 +481,11 @@ static uint32_t sync_vio_dbg(int slave_type, uint32_t shift_bit)
 	void __iomem *pd_vio_shift_sta_reg;
 	void __iomem *pd_vio_shift_sel_reg;
 	void __iomem *pd_vio_shift_con_reg;
+	void __iomem *reg;
 	uint32_t shift_count;
 	uint32_t sync_done;
+	uint32_t vio_sta_size = 0;
+	uint32_t i;
 
 	if (slave_type >= slave_type_num ||
 			shift_bit >= (MOD_NO_IN_1_DEVAPC * 2)) {
@@ -491,6 +494,8 @@ static uint32_t sync_vio_dbg(int slave_type, uint32_t shift_bit)
 				"shift_bit", shift_bit);
 		return 0;
 	}
+
+	vio_sta_size = mtk_devapc_ctx->soc->vio_info->vio_mask_sta_num[slave_type];
 
 	pd_vio_shift_sta_reg = mtk_devapc_pd_get(slave_type, VIO_SHIFT_STA, 0);
 	pd_vio_shift_sel_reg = mtk_devapc_pd_get(slave_type, VIO_SHIFT_SEL, 0);
@@ -513,6 +518,17 @@ static uint32_t sync_vio_dbg(int slave_type, uint32_t shift_bit)
 	else {
 		sync_done = 0;
 		pr_info(PFX "sync failed, shift_bit:0x%x\n", shift_bit);
+
+		reg = mtk_devapc_pd_get(slave_type, VIO_SHIFT_STA, 0);
+		pr_info(PFX "sync failed, VIO_SHIFT_STA: 0x%x\n", readl(reg));
+
+		for (i = 0; i < vio_sta_size; i++) {
+			reg = mtk_devapc_pd_get(slave_type, VIO_STA, i);
+			pr_info(PFX "sync failed, VIO_STA_%d: 0x%x\n", i, readl(reg));
+		}
+
+		reg = mtk_devapc_pd_get(slave_type, APC_CON, 0);
+		pr_info(PFX "sync failed, APC_CON: 0x%x\n", readl(reg));
 	}
 
 	/* Disable shift mechanism */
