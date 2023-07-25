@@ -177,6 +177,7 @@ struct mtk_smi {
 	const struct mtk_smi_common_plat *plat;
 	int				commid;
 	bool				skip_busy_check;
+	bool				skip_rpm_cb;
 	atomic_t			ref_count;
 };
 
@@ -2613,7 +2614,7 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 
 	ret = of_property_count_strings(dev->of_node, "clock-names");
 	if (ret < 0) {
-		dev_notice(dev, "%s: can not find clk-name in dts:%d\n", __func__, ret);
+		dev_notice(dev, "%s: not support clk ctrl:%d\n", __func__, ret);
 		larb->smi.nr_clks = 0;
 	} else
 		larb->smi.nr_clks = ret;
@@ -3881,7 +3882,7 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 
 	ret = of_property_count_strings(dev->of_node, "clock-names");
 	if (ret < 0) {
-		dev_notice(dev, "%s: can not find clk-name in dts:%d\n", __func__, ret);
+		dev_notice(dev, "%s: not support clk ctrl:%d\n", __func__, ret);
 		common->nr_clks = 0;
 	} else
 		common->nr_clks = ret;
@@ -3970,6 +3971,11 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 		dev_notice(dev, "skip busy check\n");
 	}
 
+	if (of_property_read_bool(dev->of_node, "skip-rpm-cb")) {
+		common->skip_rpm_cb = true;
+		dev_notice(dev, "skip rpm callback\n");
+	}
+
 	spin_lock_init(&smi_lock.lock);
 	is_mpu_violation(dev, false);
 
@@ -3990,6 +3996,13 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev)
 	struct mtk_smi *common = dev_get_drvdata(dev);
 	u32 bus_sel = common->plat->bus_sel;
 	int i, ret;
+
+	if (common->skip_rpm_cb) {
+		if (log_level & 1 << log_config_bit)
+			dev_notice(dev, "[SMI]%s: common%d skip rpm callback\n",
+						__func__, common->commid);
+		return 0;
+	}
 
 	ret = mtk_smi_clk_enable(common);
 	if (ret) {
@@ -4032,6 +4045,13 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev)
 static int __maybe_unused mtk_smi_common_suspend(struct device *dev)
 {
 	struct mtk_smi *common = dev_get_drvdata(dev);
+
+	if (common->skip_rpm_cb) {
+		if (log_level & 1 << log_config_bit)
+			dev_notice(dev, "[SMI]%s: common%d skip rpm callback\n",
+						__func__, common->commid);
+		return 0;
+	}
 
 	if (!common->skip_busy_check && !(readl_relaxed(common->base + SMI_DEBUG_MISC) & 0x1)) {
 		pr_notice("[SMI]common:%d suspend but busy\n", common->commid);
