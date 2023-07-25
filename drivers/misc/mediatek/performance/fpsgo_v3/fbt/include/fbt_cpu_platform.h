@@ -28,6 +28,8 @@ enum FPSGO_CPU_LIMIT {
 extern void cm_mgr_perf_set_status(int enable);
 extern void set_task_ls_prefer_cpus(int pid, unsigned int cpumask_val);
 extern void unset_task_ls_prefer_cpus(int pid);
+extern void set_task_ls(int pid);
+extern void unset_task_ls(int pid);
 extern bool is_task_latency_sensitive(struct task_struct *p);
 
 

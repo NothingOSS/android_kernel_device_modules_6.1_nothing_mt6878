@@ -285,6 +285,8 @@ static int rl_ko_is_ready;
 static int cpumask_heavy;
 static int cpumask_second;
 static int cpumask_others;
+static int set_ls;
+static int ls_groupmask;
 
 module_param(bhr, int, 0644);
 module_param(bhr_opp, int, 0644);
@@ -1223,6 +1225,21 @@ unlock:
 	return ret;
 }
 
+static void fbt_set_task_ls(int set, int ls_mask, int pid, int group, int *ori_ls)
+{
+	int group_bit = group == FPSGO_GROUP_OTHERS ? 1 : group << 1;
+
+	if (set && (group_bit & ls_mask)){
+		if (*ori_ls == 0)
+			*ori_ls = fbt_check_ls(pid) ? 1 : -1;
+		set_task_ls(pid);
+	} else if (*ori_ls) {
+		if (*ori_ls == -1)
+			unset_task_ls(pid);
+		*ori_ls = 0;
+	}
+}
+
 #define MAX_PID_DIGIT 7
 #define MAIN_LOG_SIZE (256)
 static void print_dep(const char *func,
@@ -1412,6 +1429,7 @@ static void fbt_reset_task_setting(struct fpsgo_loading *fl, int reset_boost)
 		if (!ret)
 			fl->ori_rtprio = 0;
 	}
+	fbt_set_task_ls(0, 0, fl->pid, 0, &fl->ori_ls);
 }
 
 static int __cmp1(const void *a, const void *b)
@@ -2056,6 +2074,8 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	int RT_prio1_final;
 	int RT_prio2_final;
 	int RT_prio3_final;
+	int set_ls_final;
+	int ls_groupmask_final;
 	int min_cap_other;
 	int max_cap_other;
 	int user_cpumask[FPSGO_MAX_GROUP];
@@ -2081,6 +2101,8 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	RT_prio1_final = thr->attr.rt_prio1_by_pid;
 	RT_prio2_final = thr->attr.rt_prio2_by_pid;
 	RT_prio3_final = thr->attr.rt_prio3_by_pid;
+	set_ls_final = thr->attr.set_ls_by_pid;
+	ls_groupmask_final = thr->attr.ls_groupmask_by_pid;
 
 	fbt_get_user_group_setting(thr, user_cpumask);
 
@@ -2260,6 +2282,9 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 				fl->ori_rtprio = 0;
 		}
 
+		fbt_set_task_ls(set_ls_final, ls_groupmask_final, fl->pid,
+			fl->heavyidx, &fl->ori_ls);
+
 		if (strlen(dep_str) == 0)
 			print_ret = snprintf(temp, sizeof(temp), "%d", fl->pid);
 		else
@@ -2332,6 +2357,8 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->rt_prio1_by_pid = RT_prio1;
 	render_attr->rt_prio2_by_pid = RT_prio2;
 	render_attr->rt_prio3_by_pid = RT_prio3;
+	render_attr->set_ls_by_pid = set_ls;
+	render_attr->ls_groupmask_by_pid = ls_groupmask;
 
 	render_attr->qr_enable_by_pid = qr_enable;
 	render_attr->qr_t2wnt_x_by_pid = qr_t2wnt_x;
@@ -2508,6 +2535,10 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 		render_attr->rt_prio2_by_pid = pid_attr.rt_prio2_by_pid;
 	if (pid_attr.rt_prio3_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->rt_prio3_by_pid = pid_attr.rt_prio3_by_pid;
+	if (pid_attr.set_ls_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->set_ls_by_pid = pid_attr.set_ls_by_pid;
+	if (pid_attr.ls_groupmask_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->ls_groupmask_by_pid = pid_attr.ls_groupmask_by_pid;
 
 by_tid:
 	fpsgo_attr_tid = fpsgo_find_attr_by_tid(thr->pid, 0);
@@ -7241,6 +7272,16 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->rt_prio3_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->rt_prio3_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "set_ls")) {
+		if ((val == 0 || val == 1) && action == 's')
+			boost_attr->set_ls_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->set_ls_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "ls_groupmask")) {
+		if ((val <= 7 && val >= 0) && action == 's')
+			boost_attr->ls_groupmask_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->ls_groupmask_by_pid = BY_PID_DEFAULT_VAL;
 	} else if (!strcmp(cmd, "reset_taskmask")) {
 		if ((val == 0 || val == 1) && action == 's')
 			boost_attr->reset_taskmask = val;
@@ -8761,6 +8802,14 @@ FBT_SYSFS_READ(cpumask_others, fbt_mlock, cpumask_others);
 FBT_SYSFS_WRITE_VALUE(cpumask_others, fbt_mlock, cpumask_others, 1, 255);
 static KOBJ_ATTR_RW(cpumask_others);
 
+FBT_SYSFS_READ(set_ls, fbt_mlock, set_ls);
+FBT_SYSFS_WRITE_VALUE(set_ls, fbt_mlock, set_ls, 0, 1);
+static KOBJ_ATTR_RW(set_ls);
+
+FBT_SYSFS_READ(ls_groupmask, fbt_mlock, ls_groupmask);
+FBT_SYSFS_WRITE_VALUE(ls_groupmask, fbt_mlock, ls_groupmask, 0, 7);
+static KOBJ_ATTR_RW(ls_groupmask);
+
 void fbt_init_cpu_loading_info(void)
 {
 	int i = 0, err_exit = 0;
@@ -8843,6 +8892,8 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_cpumask_heavy);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_cpumask_second);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_cpumask_others);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_set_ls);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_ls_groupmask);
 
 
 	fpsgo_sysfs_remove_dir(&fbt_kobj);
@@ -8972,6 +9023,8 @@ int __init fbt_cpu_init(void)
 	cpumask_heavy = 255;
 	cpumask_second = 255;
 	cpumask_others = 255;
+	set_ls = 0;
+	ls_groupmask = 7;
 
 	rl_learning_rate_p = 10;
 	rl_learning_rate_n = 10;
@@ -9047,6 +9100,8 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_cpumask_heavy);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_cpumask_second);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_cpumask_others);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_set_ls);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_ls_groupmask);
 #if FPSGO_MW
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_fbt_attr_by_pid);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_fbt_attr_by_tid);

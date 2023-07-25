@@ -5,6 +5,7 @@
 
 #include "fpsgo_base.h"
 #include <asm/page.h>
+#include <linux/module.h>
 #include <linux/version.h>
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
@@ -938,6 +939,8 @@ void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->rt_prio1_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->rt_prio2_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->rt_prio3_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->set_ls_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->ls_groupmask_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->check_buffer_quota_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->expected_fps_margin_by_pid = BY_PID_DEFAULT_VAL;
 	}
@@ -1226,6 +1229,8 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.rt_prio1_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.rt_prio2_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.rt_prio3_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.set_ls_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.ls_groupmask_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.gcc_deq_bound_quota_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.gcc_deq_bound_thrs_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.gcc_down_sec_pct_by_pid == BY_PID_DEFAULT_VAL &&
@@ -1257,6 +1262,7 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.filter_frame_kmin_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.boost_affinity_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.cpumask_heavy_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.cpumask_second_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.cpumask_others_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.boost_lr_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.separate_aa_by_pid == BY_PID_DELETE_VAL ||
@@ -1277,6 +1283,8 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.rt_prio1_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.rt_prio2_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.rt_prio3_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.set_ls_by_pid == BY_PID_DELETE_VAL ||
+			boost_attr.ls_groupmask_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.gcc_deq_bound_quota_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.gcc_deq_bound_thrs_by_pid == BY_PID_DELETE_VAL ||
 			boost_attr.gcc_down_sec_pct_by_pid == BY_PID_DELETE_VAL ||
@@ -2745,7 +2753,7 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 				" check_buffer_quota, expected_fps_margin\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				" boost_VIP, RT_prio1, RT_prio2, RT_prio3\n");
+				" boost_VIP, RT_prio1, RT_prio2, RT_prio3, set_ls, ls_groupmask\n");
 	pos += length;
 
 	fpsgo_render_tree_lock(__func__);
@@ -2863,11 +2871,13 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 			pos += length;
 
 			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d\n",
+				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d, %4d\n",
 				attr_item.boost_vip_by_pid,
 				attr_item.rt_prio1_by_pid,
 				attr_item.rt_prio2_by_pid,
-				attr_item.rt_prio3_by_pid);
+				attr_item.rt_prio3_by_pid,
+				attr_item.set_ls_by_pid,
+				attr_item.ls_groupmask_by_pid);
 			pos += length;
 
 			put_task_struct(tsk);

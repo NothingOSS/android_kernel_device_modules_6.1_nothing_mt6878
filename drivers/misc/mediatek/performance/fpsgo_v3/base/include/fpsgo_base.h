@@ -201,6 +201,10 @@ struct fpsgo_boost_attr {
 	/* boost LR */
 	int boost_lr_by_pid;
 
+	/* set idle prefer */
+	int set_ls_by_pid;
+	int ls_groupmask_by_pid;
+
 	/* separate cap */
 	int separate_aa_by_pid;
 	int limit_uclamp_by_pid;
