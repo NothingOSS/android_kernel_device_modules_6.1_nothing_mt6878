@@ -1133,7 +1133,7 @@
 		reg-names = "VLP_BASE";
 		disp-pd-id = <6>;
 	};
-
+/*
 	dptx-vdisp-ctrl@7 {
 		compatible = "mediatek,mt6989-vdisp-ctrl";
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_DP_TX>;
@@ -1141,7 +1141,7 @@
 		reg-names = "VLP_BASE";
 		disp-pd-id = <7>;
 	};
-
+*/
 	mminfra_config_clk: syscon@1e800000 {
 		compatible = "mediatek,mt6989-mminfra_config", "syscon";
 		reg = <0 0x1e800000 0 0x1000>;
