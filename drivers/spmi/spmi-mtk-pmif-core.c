@@ -363,6 +363,12 @@ enum {
 	IRQ_PMIF_SWINF_ACC_ERR_3 = 6,
 	IRQ_PMIF_SWINF_ACC_ERR_4 = 7,
 	IRQ_PMIF_SWINF_ACC_ERR_5 = 8,
+	IRQ_PMIF_SWINF_ACC_ERR_0_V2 = 23,
+	IRQ_PMIF_SWINF_ACC_ERR_1_V2 = 24,
+	IRQ_PMIF_SWINF_ACC_ERR_2_V2 = 25,
+	IRQ_PMIF_SWINF_ACC_ERR_3_V2 = 26,
+	IRQ_PMIF_SWINF_ACC_ERR_4_V2 = 27,
+	IRQ_PMIF_SWINF_ACC_ERR_5_V2 = 28,
 };
 static struct spmi_dev spmidev[16];
 
@@ -976,25 +982,31 @@ static irqreturn_t pmif_event_3_irq_handler(int irq, void *data)
 		if (((irq_f & (0x1 << idx)) != 0) || ((irq_f_p & (0x1 << idx)) != 0)) {
 			switch (idx) {
 			case IRQ_PMIF_SWINF_ACC_ERR_0:
+			case IRQ_PMIF_SWINF_ACC_ERR_0_V2:
 				pmif_swinf_acc_err_0_irq_handler(irq, data);
 			break;
 			case IRQ_PMIF_SWINF_ACC_ERR_1:
+			case IRQ_PMIF_SWINF_ACC_ERR_1_V2:
 				pmif_swinf_acc_err_1_irq_handler(irq, data);
 			break;
 			case IRQ_PMIF_SWINF_ACC_ERR_2:
+			case IRQ_PMIF_SWINF_ACC_ERR_2_V2:
 				pmif_swinf_acc_err_2_irq_handler(irq, data);
 			break;
 			/* Use caps to distinguish platform if they have same irq number */
 			case IRQ_LAT_LIMIT_REACHED:
+			case IRQ_PMIF_SWINF_ACC_ERR_3_V2:
 				if (arb->caps == 1)
 					pmif_lat_limit_reached_irq_handler(irq, data);
 				else
 					pmif_swinf_acc_err_3_irq_handler(irq, data);
 			break;
 			case IRQ_PMIF_SWINF_ACC_ERR_4:
+			case IRQ_PMIF_SWINF_ACC_ERR_4_V2:
 				pmif_swinf_acc_err_4_irq_handler(irq, data);
 			break;
 			case IRQ_PMIF_SWINF_ACC_ERR_5:
+			case IRQ_PMIF_SWINF_ACC_ERR_5_V2:
 				pmif_swinf_acc_err_5_irq_handler(irq, data);
 			break;
 			case IRQ_HW_MONITOR_V2:
@@ -1020,10 +1032,12 @@ static irqreturn_t pmif_event_3_irq_handler(int irq, void *data)
 			}
 			/* Don't clear MD SW SWINF ACC ERR flag for re-send mechanism */
 			if (irq_f) {
-				if (!(irq_f & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0)))
+				if ((!(irq_f & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0))) &&
+					(!(irq_f & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0_V2))))
 					pmif_writel(arb->pmif_base[0], arb, irq_f, PMIF_IRQ_CLR_3);
 			} else if (irq_f_p) {
-				if (!(irq_f_p & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0)))
+				if ((!(irq_f_p & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0))) &&
+					(!(irq_f & (0x1 << IRQ_PMIF_SWINF_ACC_ERR_0_V2))))
 					pmif_writel(arb->pmif_base[1], arb, irq_f_p, PMIF_IRQ_CLR_3);
 			} else
 				pr_notice("%s IRQ[%d] is not cleared due to empty flags\n",
