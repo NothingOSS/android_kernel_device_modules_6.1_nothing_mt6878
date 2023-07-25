@@ -143,7 +143,7 @@ enum rpmb_protocol_id {
 static int ise_rpmb_program_key(struct ufs_hba *hba)
 {
 #if IS_ENABLED(CONFIG_MTK_ISE_MBOX) && IS_ENABLED(CONFIG_MTK_ISE_LPM_SUPPORT)
-	mailbox_request_t request;
+	mailbox_request_t request = {0};
 	mailbox_reply_t reply = {0};
 	uint8_t status;
 	uint32_t result = ISE_RPMB_MB_STA_FAILED;
