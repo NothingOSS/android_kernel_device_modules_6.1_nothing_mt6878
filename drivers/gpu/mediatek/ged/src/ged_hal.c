@@ -104,8 +104,6 @@ static ssize_t custom_boost_gpu_freq_store(struct kobject *kobj,
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
-				if (i32Value < 0)
-					i32Value = 0;
 				mtk_custom_boost_gpu_freq(i32Value);
 			}
 		}
@@ -137,8 +135,6 @@ static ssize_t custom_upbound_gpu_freq_store(struct kobject *kobj,
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
-				if (i32Value < 0)
-					i32Value = 0;
 				mtk_custom_upbound_gpu_freq(i32Value);
 			}
 		}
