@@ -30,7 +30,8 @@
 #define DLPT_CSRAM_CTRL_BASE                                                   \
 	(DLPT_CSRAM_BASE + DLPT_CSRAM_SIZE - DLPT_CSRAM_CTRL_RESERVED_SIZE)
 
-#define DLPT_DRAM_BASE (0x8C01FE08)
+#define DLPT_MD_DRAM_BASE (0x8C01FE08)
+#define DLPT_WIFI_DRAM_BASE (0x9D5A07F0)
 
 /*
  * ========================================================
@@ -117,12 +118,16 @@ struct ThermalCsramCtrlBlock {
  * DLPT DRAM Control Block
  * ...................................
  */
-struct DlptDramCtrlBlock {
+struct DlptDramMdCtrlBlock {
 	int modem_peak_power_mw;
 	int ap2md_ack;
+};
+
+struct DlptDramWifiCtrlBlock {
 	int wifi_peak_power_mw;
 	int ap2wifi_ack;
 };
+
 
 /*
  * ...................................
@@ -146,6 +151,7 @@ struct DlptCsramCtrlBlock {
 	int reserved_4; /*13*/
 	int reserved_5; /*14*/
 	int apu_peak_power_ack; /*15*/
+	int boot_mode; /*16*/
 };
 
 

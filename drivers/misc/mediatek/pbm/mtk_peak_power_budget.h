@@ -34,6 +34,7 @@ enum ppb_sram_offset {
 	PPB_RESERVE4,
 	PPB_RESERVE5,
 	PPB_APU_PWR_ACK,
+	PPB_BOOT_MODE,
 	PPB_OFFSET_NUM
 };
 

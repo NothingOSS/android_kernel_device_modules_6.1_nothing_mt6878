@@ -23,6 +23,8 @@
 #define MAX_POWER_DISPLAY 2000
 #define SOC_ERROR 3000
 
+#define NORMAL_BOOT_ID 0
+
 static bool mt_ppb_debug;
 static spinlock_t ppb_lock;
 void __iomem *ppb_sram_base;
@@ -55,6 +57,13 @@ struct ppb ppb_manual = {
 	.loading_apu = 0,
 	.loading_dram = 0,
 	.vsys_budget = 0,
+};
+
+struct tag_bootmode {
+	u32 size;
+	u32 tag;
+	u32 bootmode;
+	u32 boottype;
 };
 
 static int ppb_read_sram(int offset)
@@ -821,6 +830,13 @@ static int mt_ppb_debug_proc_show(struct seq_file *m, void *v)
 		ppb_read_sram(PPB_APU_PWR),
 		ppb_read_sram(PPB_DRAM_PWR));
 
+	seq_printf(m, "(MD/WIFI/CG_POWOR/APU_ACK)=%u,%u,%u,%u,%u\n",
+		ppb_read_sram(PPB_MD_PWR),
+		ppb_read_sram(PPB_WIFI_PWR),
+		ppb_read_sram(PPB_RESERVE4),
+		ppb_read_sram(PPB_APU_PWR_ACK),
+		ppb_read_sram(PPB_BOOT_MODE));
+
 	return 0;
 }
 
@@ -1151,6 +1167,7 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	struct resource *res;
 	void __iomem *addr;
 	struct device_node *np;
+	struct tag_bootmode *tag;
 
 	np = of_find_compatible_node(NULL, NULL, "mediatek,peak_power_budget");
 	if (!np) {
@@ -1176,6 +1193,19 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_notice(&pdev->dev, "power_supply_reg_notifier fail\n");
 		return ret;
+	}
+
+	np = of_parse_phandle(pdev->dev.of_node, "bootmode", 0);
+	if (!np)
+		dev_notice(&pdev->dev, "get bootmode fail\n");
+	else {
+		tag = (struct tag_bootmode *)of_get_property(np, "atag,boot", NULL);
+		if (!tag)
+			dev_notice(&pdev->dev, "failed to get atag,boot\n");
+		else {
+			dev_notice(&pdev->dev, "bootmode:0x%x\n", tag->bootmode);
+			ppb_write_sram((int)tag->bootmode, PPB_BOOT_MODE);
+		}
 	}
 
 	ppb_ctrl.ppb_drv_done = 1;
