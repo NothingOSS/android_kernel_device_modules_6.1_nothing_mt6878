@@ -152,6 +152,7 @@ struct mtk_drm_dmr_cfg_info {
 };
 
 struct mtk_disp_oddmr_data {
+	bool need_bypass_shadow;
 	/* dujac not support update od table */
 	bool is_od_support_table_update;
 	bool is_support_rtff;

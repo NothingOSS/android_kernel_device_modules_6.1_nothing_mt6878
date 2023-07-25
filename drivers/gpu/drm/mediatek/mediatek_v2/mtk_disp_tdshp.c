@@ -704,6 +704,9 @@ static void mtk_disp_tdshp_prepare(struct mtk_ddp_comp *comp)
 	if (tdshp_data->data->need_bypass_shadow)
 		mtk_ddp_write_mask_cpu(comp, TDSHP_BYPASS_SHADOW,
 			DISP_TDSHP_SHADOW_CTRL, TDSHP_BYPASS_SHADOW);
+	else
+		mtk_ddp_write_mask_cpu(comp, 0,
+			DISP_TDSHP_SHADOW_CTRL, TDSHP_BYPASS_SHADOW);
 }
 
 static void mtk_disp_tdshp_unprepare(struct mtk_ddp_comp *comp)
@@ -1080,7 +1083,7 @@ static const struct mtk_disp_tdshp_data mt6897_tdshp_driver_data = {
 
 static const struct mtk_disp_tdshp_data mt6989_tdshp_driver_data = {
 	.support_shadow = false,
-	.need_bypass_shadow = true,
+	.need_bypass_shadow = false,
 };
 
 static const struct of_device_id mtk_disp_tdshp_driver_dt_match[] = {

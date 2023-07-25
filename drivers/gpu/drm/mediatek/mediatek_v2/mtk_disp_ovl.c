@@ -4517,6 +4517,9 @@ static void mtk_ovl_prepare(struct mtk_ddp_comp *comp)
 	if (ovl->data->need_bypass_shadow)
 		mtk_ddp_write_mask_cpu(comp, DISP_OVL_BYPASS_SHADOW,
 			DISP_REG_OVL_EN, DISP_OVL_BYPASS_SHADOW);
+	else
+		mtk_ddp_write_mask_cpu(comp, 0,
+			DISP_REG_OVL_EN, DISP_OVL_BYPASS_SHADOW);
 
 	if (comp->mtk_crtc && comp->mtk_crtc->base.dev) {
 		dev_priv = comp->mtk_crtc->base.dev->dev_private;
@@ -4995,7 +4998,7 @@ static const struct mtk_disp_ovl_data mt6989_ovl_driver_data = {
 	.fmt_yuyv = 5U << 12,
 	.compr_info = &compr_info_mt6989,
 	.support_shadow = false,
-	.need_bypass_shadow = true,
+	.need_bypass_shadow = false,
 	.preultra_th_dc = 0x3c0,
 	.fifo_size = 1536,
 	.issue_req_th_dl = 511,

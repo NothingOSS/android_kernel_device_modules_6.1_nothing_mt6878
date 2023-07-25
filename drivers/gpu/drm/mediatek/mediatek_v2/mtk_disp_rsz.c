@@ -759,6 +759,9 @@ static void mtk_rsz_prepare(struct mtk_ddp_comp *comp)
 	if (rsz->data->need_bypass_shadow)
 		mtk_ddp_write_mask_cpu(comp, RSZ_BYPASS_SHADOW,
 			DISP_REG_RSZ_SHADOW_CTRL, RSZ_BYPASS_SHADOW);
+	else
+		mtk_ddp_write_mask_cpu(comp, 0,
+			DISP_REG_RSZ_SHADOW_CTRL, RSZ_BYPASS_SHADOW);
 }
 
 static void mtk_rsz_unprepare(struct mtk_ddp_comp *comp)
@@ -966,7 +969,7 @@ static const struct mtk_disp_rsz_data mt6985_rsz_driver_data = {
 static const struct mtk_disp_rsz_data mt6989_rsz_driver_data = {
 	.tile_length = 1660, .in_max_height = 4096,
 	.support_shadow = false,
-	.need_bypass_shadow = true,
+	.need_bypass_shadow = false,
 };
 
 static const struct mtk_disp_rsz_data mt6897_rsz_driver_data = {

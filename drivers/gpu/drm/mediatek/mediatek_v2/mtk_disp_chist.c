@@ -43,6 +43,10 @@
 #define DISP_CHIST_Y2R_PAPA_R0       0x50
 #define DISP_CHIST_Y2R_PAPA_POST_A0  0x80
 #define DISP_CHIST_SHADOW_CTRL       0xF0
+#define FLD_APB_MCYC_RD REG_FLD_MSB_LSB(3, 3)
+#define FLD_READ_WRK_REG REG_FLD_MSB_LSB(2, 2)
+#define FLD_FORCE_COMMIT REG_FLD_MSB_LSB(1, 1)
+#define FLD_BYPASS_SHADOW REG_FLD_MSB_LSB(0, 0)
 // channel_n_win_x_main = DISP_CHIST_CH0_WIN_X_MAIN + n * 0x10
 #define DISP_CHIST_CH0_WIN_X_MAIN    0x0460
 #define DISP_CHIST_CH0_WIN_Y_MAIN    0x0464
@@ -772,7 +776,7 @@ static void mtk_chist_config(struct mtk_ddp_comp *comp,
 			     struct mtk_ddp_config *cfg,
 			     struct cmdq_pkt *handle)
 {
-	unsigned int width, height;
+	unsigned int width, height, value;
 	int i = 0;
 	struct mtk_disp_chist *chist_data = comp_to_chist(comp);
 
@@ -797,9 +801,14 @@ static void mtk_chist_config(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			   comp->regs_pa + DISP_CHIST_SIZE,
 			   (width << 16) | height, ~0);
+	if (chist_data->data->need_bypass_shadow)
+		value = REG_FLD_VAL((FLD_BYPASS_SHADOW), 1);
+	else
+		value = REG_FLD_VAL((FLD_FORCE_COMMIT), 1) |
+				REG_FLD_VAL((FLD_APB_MCYC_RD), 1);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_CHIST_SHADOW_CTRL,
-				   0x1, ~0);
+				   value, ~0);
 
 	if (!chist_data->is_right_pipe) {
 		disp_chist_set_interrupt(comp, 1, handle);
@@ -1240,6 +1249,7 @@ static int mtk_disp_chist_remove(struct platform_device *pdev)
 
 static const struct mtk_disp_chist_data mt6983_chist_driver_data = {
 	.support_shadow = true,
+	.need_bypass_shadow = true,
 	.module_count = 2,
 	.color_format = DISP_CHIST_COLOR_FORMAT,
 	.max_channel = 3,
@@ -1249,6 +1259,7 @@ static const struct mtk_disp_chist_data mt6983_chist_driver_data = {
 
 static const struct mtk_disp_chist_data mt6895_chist_driver_data = {
 	.support_shadow = true,
+	.need_bypass_shadow = true,
 	.module_count = 2,
 	.color_format = DISP_CHIST_COLOR_FORMAT,
 	.max_channel = 3,
@@ -1258,6 +1269,7 @@ static const struct mtk_disp_chist_data mt6895_chist_driver_data = {
 
 static const struct mtk_disp_chist_data mt6879_chist_driver_data = {
 	.support_shadow = true,
+	.need_bypass_shadow = true,
 	.module_count = 1,
 	.color_format = DISP_CHIST_COLOR_FORMAT,
 	.max_channel = 3,
@@ -1267,6 +1279,7 @@ static const struct mtk_disp_chist_data mt6879_chist_driver_data = {
 
 static const struct mtk_disp_chist_data mt6985_chist_driver_data = {
 	.support_shadow = true,
+	.need_bypass_shadow = true,
 	.module_count = 2,
 	.color_format = DISP_CHIST_COLOR_FORMAT,
 	.max_channel = 3,
@@ -1276,6 +1289,7 @@ static const struct mtk_disp_chist_data mt6985_chist_driver_data = {
 
 static const struct mtk_disp_chist_data mt6897_chist_driver_data = {
 	.support_shadow = true,
+	.need_bypass_shadow = true,
 	.module_count = 2,
 	.color_format = DISP_CHIST_COLOR_FORMAT,
 	.max_channel = 3,
@@ -1285,6 +1299,7 @@ static const struct mtk_disp_chist_data mt6897_chist_driver_data = {
 
 static const struct mtk_disp_chist_data mt6886_chist_driver_data = {
 	.support_shadow = true,
+	.need_bypass_shadow = true,
 	.module_count = 1,
 	.color_format = DISP_CHIST_COLOR_FORMAT,
 	.max_channel = 3,
@@ -1294,6 +1309,7 @@ static const struct mtk_disp_chist_data mt6886_chist_driver_data = {
 
 static const struct mtk_disp_chist_data mt6989_chist_driver_data = {
 	.support_shadow = true,
+	.need_bypass_shadow = false,
 	.module_count = 2,
 	.color_format = DISP_CHIST_COLOR_FORMAT,
 	.max_channel = 3,

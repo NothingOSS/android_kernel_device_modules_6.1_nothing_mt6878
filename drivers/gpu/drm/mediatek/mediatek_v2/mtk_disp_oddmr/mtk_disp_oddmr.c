@@ -1310,12 +1310,16 @@ static void mtk_oddmr_spr2rgb_prepare(struct mtk_ddp_comp *comp)
 
 static void mtk_oddmr_top_prepare(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
+	struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
 	uint32_t value = 0, mask = 0;
 
 	ODDMRAPI_LOG("+\n");
 	SET_VAL_MASK(value, mask, 1, REG_ODDMR_TOP_CLK_FORCE_EN);
 	SET_VAL_MASK(value, mask, 1, REG_FORCE_COMMIT);
-	SET_VAL_MASK(value, mask, 1, REG_BYPASS_SHADOW);
+	if (oddmr_priv->data->need_bypass_shadow == true)
+		SET_VAL_MASK(value, mask, 1, REG_BYPASS_SHADOW);
+	else
+		SET_VAL_MASK(value, mask, 0, REG_BYPASS_SHADOW);
 	mtk_oddmr_write_mask(comp, value,
 			DISP_ODDMR_TOP_CTR_3, mask, handle);
 
@@ -5277,6 +5281,7 @@ static int mtk_disp_oddmr_remove(struct platform_device *pdev)
 }
 
 static const struct mtk_disp_oddmr_data mt6985_oddmr_driver_data = {
+	.need_bypass_shadow = true,
 	.is_od_support_table_update = false,
 	.is_support_rtff = false,
 	.is_od_support_hw_skip_first_frame = false,
@@ -5293,6 +5298,7 @@ static const struct mtk_disp_oddmr_data mt6985_oddmr_driver_data = {
 };
 
 static const struct mtk_disp_oddmr_data mt6897_oddmr_driver_data = {
+	.need_bypass_shadow = true,
 	.is_od_support_table_update = false,
 	.is_support_rtff = false,
 	.is_od_support_hw_skip_first_frame = false,
@@ -5309,6 +5315,7 @@ static const struct mtk_disp_oddmr_data mt6897_oddmr_driver_data = {
 };
 
 static const struct mtk_disp_oddmr_data mt6989_oddmr_driver_data = {
+	.need_bypass_shadow = false,
 	.is_od_support_table_update = false,
 	.is_support_rtff = false,
 	.is_od_support_hw_skip_first_frame = false,

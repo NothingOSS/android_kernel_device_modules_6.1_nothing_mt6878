@@ -1169,6 +1169,9 @@ static void mtk_disp_c3d_prepare(struct mtk_ddp_comp *comp)
 	if (priv->data->need_bypass_shadow)
 		mtk_ddp_write_mask_cpu(comp, C3D_BYPASS_SHADOW,
 			C3D_SHADOW_CTL, C3D_BYPASS_SHADOW);
+	else
+		mtk_ddp_write_mask_cpu(comp, 0,
+			C3D_SHADOW_CTL, C3D_BYPASS_SHADOW);
 
 	mutex_lock(&primary_data->c3d_lut_lock);
 	if (atomic_read(&c3d_data->c3d_sram_hw_init) == 0) {
@@ -1637,7 +1640,7 @@ static const struct mtk_disp_c3d_data mt6886_c3d_driver_data = {
 
 static const struct mtk_disp_c3d_data mt6989_c3d_driver_data = {
 	.support_shadow = false,
-	.need_bypass_shadow = true,
+	.need_bypass_shadow = false,
 	.bin_num = 17,
 	.c3d_sram_start_addr = 0,
 	.c3d_sram_end_addr = 19648,

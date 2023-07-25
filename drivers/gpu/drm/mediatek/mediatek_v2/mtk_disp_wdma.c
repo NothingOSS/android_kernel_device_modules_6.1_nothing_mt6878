@@ -598,6 +598,9 @@ static void mtk_wdma_prepare(struct mtk_ddp_comp *comp)
 	if (wdma->data->need_bypass_shadow)
 		mtk_ddp_write_mask_cpu(comp, WDMA_BYPASS_SHADOW,
 			DISP_REG_WDMA_SHADOW_CTRL, WDMA_BYPASS_SHADOW);
+	else
+		mtk_ddp_write_mask_cpu(comp, 0,
+			DISP_REG_WDMA_SHADOW_CTRL, WDMA_BYPASS_SHADOW);
 }
 
 static void mtk_wdma_unprepare(struct mtk_ddp_comp *comp)
@@ -2113,7 +2116,7 @@ static const struct mtk_disp_wdma_data mt6989_wdma_driver_data = {
 	.aid_sel = &mtk_wdma_aid_sel_MT6989,
 	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6989,
 	.support_shadow = false,
-	.need_bypass_shadow = true,
+	.need_bypass_shadow = false,
 	.is_support_34bits = true,
 	.use_larb_control_sec = false,
 };

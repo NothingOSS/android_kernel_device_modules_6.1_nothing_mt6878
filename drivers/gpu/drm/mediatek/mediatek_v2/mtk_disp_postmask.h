@@ -8,6 +8,7 @@
 
 struct mtk_disp_postmask_data {
 	bool is_support_34bits;
+	bool need_bypass_shadow;
 };
 
 #endif

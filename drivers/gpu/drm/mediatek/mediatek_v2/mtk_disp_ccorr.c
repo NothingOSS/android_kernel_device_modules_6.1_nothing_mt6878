@@ -1380,6 +1380,9 @@ static void mtk_ccorr_prepare(struct mtk_ddp_comp *comp)
 	if (ccorr->data->need_bypass_shadow)
 		mtk_ddp_write_mask_cpu(comp, CCORR_BYPASS_SHADOW,
 			DISP_REG_CCORR_SHADOW, CCORR_BYPASS_SHADOW);
+	else
+		mtk_ddp_write_mask_cpu(comp, 0,
+			DISP_REG_CCORR_SHADOW, CCORR_BYPASS_SHADOW);
 	ddp_ccorr_restore(comp);
 }
 
@@ -1864,7 +1867,7 @@ static const struct mtk_disp_ccorr_data mt6886_ccorr_driver_data = {
 
 static const struct mtk_disp_ccorr_data mt6989_ccorr_driver_data = {
 	.support_shadow     = false,
-	.need_bypass_shadow = true,
+	.need_bypass_shadow = false,
 };
 
 

@@ -235,7 +235,7 @@
 #define DISP_SL2_SLP_CON3              (0x66C)
 #define DISP_SL2_SIZE                  (0x670)
 #define DISP_HFG_OUTPUT_COUNT          (0x678)
-#define DISP_TDSHP_SHADOW_CTRL         (0x67C)
+#define DISP_TDSHP_SHADOW_CTRL         (0x724)
 
 // MASK
 #define DISP_TDSHP_00_MASK               (0xF7FFFFFF)

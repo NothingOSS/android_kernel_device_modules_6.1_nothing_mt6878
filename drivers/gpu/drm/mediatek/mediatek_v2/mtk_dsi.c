@@ -1456,6 +1456,9 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 	if (dsi->driver_data->need_bypass_shadow)
 		mtk_dsi_mask(dsi, DSI_SHADOW_DEBUG,
 			DSI_BYPASS_SHADOW, DSI_BYPASS_SHADOW);
+	else
+		mtk_dsi_mask(dsi, 0,
+			DSI_BYPASS_SHADOW, DSI_BYPASS_SHADOW);
 
 	DDPDBG("%s-\n", __func__);
 
@@ -4437,7 +4440,7 @@ int mtk_dsi_dump(struct mtk_ddp_comp *comp)
 			readl(dsi->regs + k + 0x8),
 			readl(dsi->regs + k + 0xc));
 	}
-	DDPDUMP("dsi shadow reg 0xc04:0x%x\n", readl(dsi->regs + 0xc04));
+	DDPDUMP("dsi shadow reg 0xc00:0x%x, 0xc04:0x%x\n", readl(dsi->regs + 0xc00), readl(dsi->regs + 0xc04));
 	DDPDUMP("- DSI CMD REGS -\n");
 	for (k = 0; k < 512; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n",

@@ -2850,7 +2850,9 @@ static void mtk_color_prepare(struct mtk_ddp_comp *comp)
 	if (color->data->need_bypass_shadow)
 		mtk_ddp_write_mask_cpu(comp, COLOR_BYPASS_SHADOW,
 			DISP_COLOR_SHADOW_CTRL, COLOR_BYPASS_SHADOW);
-
+	else
+		mtk_ddp_write_mask_cpu(comp, 0,
+			DISP_COLOR_SHADOW_CTRL, COLOR_BYPASS_SHADOW);
 	// restore DISP_COLOR_CFG_MAIN register
 	ddp_color_restore(comp);
 }
@@ -3262,7 +3264,7 @@ static const struct mtk_disp_color_data mt6989_color_driver_data = {
 			0x14013000, 0x14015000, 0x14016000},
 	.color_window = 0x40185E57,
 	.support_shadow = false,
-	.need_bypass_shadow = true,
+	.need_bypass_shadow = false,
 };
 
 static const struct of_device_id mtk_disp_color_driver_dt_match[] = {

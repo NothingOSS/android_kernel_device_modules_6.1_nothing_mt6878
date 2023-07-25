@@ -552,6 +552,9 @@ static void mtk_dmdp_aal_prepare(struct mtk_ddp_comp *comp)
 	if (dmdp_aal->data->need_bypass_shadow)
 		mtk_ddp_write_mask_cpu(comp, AAL_BYPASS_SHADOW,
 			DMDP_AAL_SHADOW_CTRL, AAL_BYPASS_SHADOW);
+	else
+		mtk_ddp_write_mask_cpu(comp, 0,
+			DMDP_AAL_SHADOW_CTRL, AAL_BYPASS_SHADOW);
 
 	mtk_dmdp_aal_restore(comp);
 
@@ -809,7 +812,7 @@ static const struct mtk_dmdp_aal_data mt6897_dmdp_aal_driver_data = {
 
 static const struct mtk_dmdp_aal_data mt6989_dmdp_aal_driver_data = {
 	.support_shadow = false,
-	.need_bypass_shadow = true,
+	.need_bypass_shadow = false,
 	.block_info_00_mask = 0xFFFFFFFF,
 };
 

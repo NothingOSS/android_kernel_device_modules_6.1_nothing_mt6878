@@ -717,8 +717,14 @@ static void mtk_spr_prepare(struct mtk_ddp_comp *comp)
 
 	mtk_ddp_comp_clk_prepare(comp);
 
-	mtk_ddp_write_mask_cpu(comp, SPR_BYPASS_SHADOW,
-		DISP_REG_SPR_EN, SPR_BYPASS_SHADOW);
+	if (spr->data) {
+		if (spr->data->need_bypass_shadow)
+			mtk_ddp_write_mask_cpu(comp, SPR_BYPASS_SHADOW,
+					DISP_REG_SPR_EN, SPR_BYPASS_SHADOW);
+		else
+			mtk_ddp_write_mask_cpu(comp, 0,
+					DISP_REG_SPR_EN, SPR_BYPASS_SHADOW);
+	}
 
 	if (comp && comp->mtk_crtc && comp->mtk_crtc->panel_ext
 		&& comp->mtk_crtc->panel_ext->params
@@ -1147,6 +1153,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 	unsigned int crop_out_hsize = 0;
 	struct mtk_drm_private *priv;
 	struct mtk_ddp_comp *postalign_comp;
+	struct mtk_disp_spr *spr;
 
 	if (!comp || !comp->mtk_crtc || !comp->mtk_crtc->panel_ext)
 		return;
@@ -1170,6 +1177,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 	}
 
 	spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
+	spr = comp_to_spr(comp);
 
 	if (comp->mtk_crtc->is_dual_pipe == true) {
 		postalign_width = cfg->w / 2;
@@ -1246,9 +1254,16 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 		if (priv->data->mmsys_id == MMSYS_MT6989) {
 			mtk_ddp_write_relaxed(postalign_comp, 1, MT6989_DISP_REG_POSTALIGN0_EN,
 				handle);
-			mtk_ddp_write_mask(postalign_comp, MT6989_BYPASS_SHADOW,
-				MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
-				MT6989_BYPASS_SHADOW, handle);
+			if (spr->data) {
+				if (spr->data->need_bypass_shadow)
+					mtk_ddp_write_mask(postalign_comp, MT6989_BYPASS_SHADOW,
+							MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
+							MT6989_BYPASS_SHADOW, handle);
+				else
+					mtk_ddp_write_mask(postalign_comp, 0,
+							MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
+							MT6989_BYPASS_SHADOW, handle);
+			}
 			mtk_ddp_write_mask(postalign_comp, MT6989_RELAY_MODE,
 				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_RELAY_MODE, handle);
 			mtk_ddp_write_mask(postalign_comp, MT6989_POSTALIGN_LUT_EN,
@@ -1275,9 +1290,16 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 		if (priv->data->mmsys_id == MMSYS_MT6989) {
 			mtk_ddp_write_relaxed(postalign_comp, 1, MT6989_DISP_REG_POSTALIGN0_EN,
 				handle);
-			mtk_ddp_write_mask(postalign_comp, MT6989_BYPASS_SHADOW,
-				MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
-				MT6989_BYPASS_SHADOW, handle);
+			if (spr->data) {
+				if (spr->data->need_bypass_shadow)
+					mtk_ddp_write_mask(postalign_comp, MT6989_BYPASS_SHADOW,
+							MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
+							MT6989_BYPASS_SHADOW, handle);
+				else
+					mtk_ddp_write_mask(postalign_comp, 0,
+							MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
+							MT6989_BYPASS_SHADOW, handle);
+			}
 			mtk_ddp_write_mask(postalign_comp,
 				spr_params->postalign_en << spr_params->spr_format_type,
 				MT6989_DISP_REG_POSTALIGN0_CFG,
@@ -1397,9 +1419,16 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 		if (priv->data->mmsys_id == MMSYS_MT6989) {
 			mtk_ddp_write_relaxed(postalign_comp, 1, MT6989_DISP_REG_POSTALIGN0_EN,
 				handle);
-			mtk_ddp_write_mask(postalign_comp, MT6989_BYPASS_SHADOW,
-				MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
-				MT6989_BYPASS_SHADOW, handle);
+			if (spr->data) {
+				if (spr->data->need_bypass_shadow)
+					mtk_ddp_write_mask(postalign_comp, MT6989_BYPASS_SHADOW,
+							MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
+							MT6989_BYPASS_SHADOW, handle);
+				else
+					mtk_ddp_write_mask(postalign_comp, 0,
+							MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
+							MT6989_BYPASS_SHADOW, handle);
+			}
 			mtk_ddp_write_mask(postalign_comp, MT6989_RELAY_MODE,
 				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_RELAY_MODE, handle);
 			mtk_ddp_write_mask(postalign_comp, MT6989_POSTALIGN_LUT_EN,
@@ -1711,7 +1740,7 @@ static const struct mtk_disp_spr_data mt6985_spr_driver_data = {
 
 static const struct mtk_disp_spr_data mt6989_spr_driver_data = {
 	.support_shadow = false,
-	.need_bypass_shadow = true,
+	.need_bypass_shadow = false,
 	.version = MTK_SPR_V2,
 	.shrink_cfg = false,
 };

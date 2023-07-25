@@ -3638,6 +3638,9 @@ static void mtk_aal_prepare(struct mtk_ddp_comp *comp)
 	if (aal_data->data->need_bypass_shadow)
 		mtk_ddp_write_mask_cpu(comp, AAL_BYPASS_SHADOW,
 			DISP_AAL_SHADOW_CTRL, AAL_BYPASS_SHADOW);
+	else
+		mtk_ddp_write_mask_cpu(comp, 0,
+			DISP_AAL_SHADOW_CTRL, AAL_BYPASS_SHADOW);
 
 	ddp_aal_restore(comp);
 
@@ -4734,7 +4737,7 @@ static const struct mtk_disp_aal_data mt6886_aal_driver_data = {
 
 static const struct mtk_disp_aal_data mt6989_aal_driver_data = {
 	.support_shadow     = false,
-	.need_bypass_shadow = true,
+	.need_bypass_shadow = false,
 	.aal_dre_hist_start = 1536,
 	.aal_dre_hist_end   = 4604,
 	.aal_dre_gain_start = 4608,

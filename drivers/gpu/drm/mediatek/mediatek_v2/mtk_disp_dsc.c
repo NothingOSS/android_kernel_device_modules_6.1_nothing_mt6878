@@ -206,9 +206,16 @@ static void mtk_dsc_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	void __iomem *baddr = comp->regs;
 	struct mtk_disp_dsc *dsc = comp_to_dsc(comp);
+	unsigned int val = 0, mask = 0;
 
-	mtk_ddp_write_mask(comp, DSC_FORCE_COMMIT,
-		DISP_REG_DSC_SHADOW, DSC_FORCE_COMMIT, handle);
+	val = DSC_FORCE_COMMIT;
+	mask = DSC_FORCE_COMMIT;
+	if (dsc->data->need_bypass_shadow)
+		val |= DSC_BYPASS_SHADOW;
+	mask |= DSC_BYPASS_SHADOW;
+
+	mtk_ddp_write_mask(comp, val,
+		DISP_REG_SHADOW_CTRL(dsc), mask, handle);
 
 	if (dsc->enable) {
 		mtk_ddp_write_mask(comp, DSC_EN, DISP_REG_DSC_CON,
@@ -219,8 +226,8 @@ static void mtk_dsc_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 			!comp->mtk_crtc->panel_ext->params->dsc_params.dual_dsc_enable &&
 			comp->mtk_crtc->panel_ext->params->output_mode
 				== MTK_PANEL_DUAL_PORT) {
-			mtk_ddp_write_mask(comp, DSC_FORCE_COMMIT,
-				DISP_REG_DSC_SHADOW + DISP_REG_DSC1_OFFSET, DSC_FORCE_COMMIT, handle);
+			mtk_ddp_write_mask(comp, val,
+				DISP_REG_SHADOW_CTRL(dsc) + DISP_REG_DSC1_OFFSET, mask, handle);
 			mtk_ddp_write_mask(comp, DSC_EN, DISP_REG_DSC_CON + DISP_REG_DSC1_OFFSET,
 					DSC_EN, handle);
 		}
@@ -249,17 +256,7 @@ static void mtk_dsc_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 static void mtk_dsc_prepare(struct mtk_ddp_comp *comp)
 {
-	struct mtk_disp_dsc *dsc = comp_to_dsc(comp);
-
 	mtk_ddp_comp_clk_prepare(comp);
-
-	/* Bypass shadow register and read shadow register */
-	if (dsc->data->need_bypass_shadow) {
-		mtk_ddp_write_mask_cpu(comp, DSC_BYPASS_SHADOW,
-			DISP_REG_SHADOW_CTRL(dsc), DSC_BYPASS_SHADOW);
-		mtk_ddp_write_mask_cpu(comp, DSC_BYPASS_SHADOW,
-			DISP_REG_SHADOW_CTRL(dsc) + DISP_REG_DSC1_OFFSET, DSC_BYPASS_SHADOW);
-	}
 }
 
 static void mtk_dsc_unprepare(struct mtk_ddp_comp *comp)
@@ -1599,6 +1596,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 void mtk_dsc_dump(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
+	struct mtk_disp_dsc *dsc = comp_to_dsc(comp);
 	int i, id = 0, offset = 0;
 
 	if (!baddr) {
@@ -1619,8 +1617,8 @@ DUMP:
 		readl(baddr + DISP_REG_DSC_PIC_W));
 	DDPDUMP("(0x%03x)DSC_HEIGHT=0x%x\n", offset + DISP_REG_DSC_PIC_H,
 		readl(baddr + DISP_REG_DSC_PIC_H));
-	DDPDUMP("(0x%03x)DSC_SHADOW=0x%x\n", offset + DISP_REG_DSC_SHADOW,
-		readl(baddr + DISP_REG_DSC_SHADOW));
+	DDPDUMP("(0x%03x)DSC_SHADOW=0x%x\n", offset + DISP_REG_SHADOW_CTRL(dsc),
+		readl(baddr + DISP_REG_SHADOW_CTRL(dsc)));
 	DDPDUMP("-- Start dump dsc registers --\n");
 	for (i = 0; i < 0x200; i += 16) {
 		DDPDUMP("DSC+0x%03x: 0x%x 0x%x 0x%x 0x%x\n", offset + i, readl(baddr + i),

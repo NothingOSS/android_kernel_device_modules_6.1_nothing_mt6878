@@ -636,6 +636,9 @@ static void mtk_dither_prepare(struct mtk_ddp_comp *comp)
 	if (priv->data->need_bypass_shadow)
 		mtk_ddp_write_mask_cpu(comp, DITHER_BYPASS_SHADOW,
 			DITHER_REG(0), DITHER_BYPASS_SHADOW);
+	else
+		mtk_ddp_write_mask_cpu(comp, 0,
+			DITHER_REG(0), DITHER_BYPASS_SHADOW);
 	ddp_dither_restore(comp);
 }
 
@@ -1222,7 +1225,7 @@ static const struct mtk_disp_dither_data mt6886_dither_driver_data = {
 
 static const struct mtk_disp_dither_data mt6989_dither_driver_data = {
 	.support_shadow     = false,
-	.need_bypass_shadow = true,
+	.need_bypass_shadow = false,
 };
 
 static const struct of_device_id mtk_disp_dither_driver_dt_match[] = {

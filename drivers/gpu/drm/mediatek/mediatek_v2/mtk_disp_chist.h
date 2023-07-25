@@ -11,6 +11,7 @@
 
 struct mtk_disp_chist_data {
 	bool support_shadow;
+	bool need_bypass_shadow;
 	unsigned int module_count;
 	unsigned int color_format;
 	unsigned int max_channel;

@@ -42,6 +42,10 @@
 #define INTEN_FLD_RDMA_SMI_UNDERFLOW_INTEN REG_FLD_MSB_LSB(12, 12)
 #define DISP_POSTMASK_INTSTA 0xC
 #define DISP_POSTMASK_CFG 0x20
+#define DISP_POSTMASK_SHADOW_CTRL 0x24
+#define READ_WRK_REG REG_FLD_MSB_LSB(2, 2)
+#define BYPASS_SHADOW REG_FLD_MSB_LSB(1, 1)
+#define FORCE_COMMIT REG_FLD_MSB_LSB(0, 0)
 #define CFG_FLD_STALL_CG_ON REG_FLD_MSB_LSB(8, 8)
 #define CFG_FLD_GCLAST_EN REG_FLD_MSB_LSB(6, 6)
 #define CFG_FLD_BGCLR_IN_SEL REG_FLD_MSB_LSB(2, 2)
@@ -279,6 +283,11 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 	mtk_ddp_write_relaxed(comp, 0xff000000, DISP_POSTMASK_ROI_BGCLR,
 			      handle);
 	mtk_ddp_write_relaxed(comp, 0xff000000, DISP_POSTMASK_MASK_CLR, handle);
+
+	value = REG_FLD_VAL((FORCE_COMMIT), 1);
+	if (postmask->data->need_bypass_shadow)
+		value |= REG_FLD_VAL((BYPASS_SHADOW), 1);
+	mtk_ddp_write_relaxed(comp, value, DISP_POSTMASK_SHADOW_CTRL, handle);
 
 	value = (width << 16) + cfg->h;
 	mtk_ddp_write_relaxed(comp, value, DISP_POSTMASK_SIZE, handle);
@@ -670,54 +679,67 @@ static int mtk_disp_postmask_remove(struct platform_device *pdev)
 
 static const struct mtk_disp_postmask_data mt6779_postmask_driver_data = {
 	.is_support_34bits = false,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_postmask_data mt6885_postmask_driver_data = {
 	.is_support_34bits = false,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_postmask_data mt6983_postmask_driver_data = {
 	.is_support_34bits = true,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_postmask_data mt6985_postmask_driver_data = {
 	.is_support_34bits = true,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_postmask_data mt6989_postmask_driver_data = {
 	.is_support_34bits = true,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_postmask_data mt6897_postmask_driver_data = {
 	.is_support_34bits = true,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_postmask_data mt6895_postmask_driver_data = {
 	.is_support_34bits = true,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_postmask_data mt6886_postmask_driver_data = {
 	.is_support_34bits = true,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_postmask_data mt6873_postmask_driver_data = {
 	.is_support_34bits = false,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_postmask_data mt6853_postmask_driver_data = {
 	.is_support_34bits = false,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_postmask_data mt6833_postmask_driver_data = {
 	.is_support_34bits = false,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_postmask_data mt6879_postmask_driver_data = {
 	.is_support_34bits = true,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_postmask_data mt6855_postmask_driver_data = {
 	.is_support_34bits = false,
+	.need_bypass_shadow = true,
 };
 
 static const struct of_device_id mtk_disp_postmask_driver_dt_match[] = {
