@@ -75,7 +75,9 @@ static const char *SMMU_GMAPM_CONFIG = "mtk,gmpam-cfg";
 static const __maybe_unused char *PMU_SMMU_PROP_NAME = "mtk,smmu";
 
 enum hyp_smmu_cmd {
+	HYP_SMMU_STE_DUMP,
 	HYP_SMMU_TF_DUMP,
+	HYP_SMMU_REG_DUMP,
 	HYP_SMMU_CMD_NUM
 };
 
@@ -1794,53 +1796,167 @@ static void __maybe_unused smmu_dump_reg(void __iomem *base,
 	}
 }
 
-/*
- * a0/in0 = HYP_PMM_SMMU_CONTROL (HYP-PMM SMMU SMC ID)
- * a1/in1 = HYP-PMM SMMU SMC cmd id
- * a2/in2 = smmu type
- * a3/in3 ~ a7/in7: user defined
- */
-static int mtk_hyp_smmu_smc_call(u32 smmu_type, unsigned long cmd_id,
-				 unsigned long in3, unsigned long in4,
-				 unsigned long in5, unsigned long in6,
-				 unsigned long in7)
+/* for s2 translation fault and permission fault, hyp smmu return ipa's page table entry */
+static void dump_s2_pg_table_info(uint64_t pte)
 {
-	struct arm_smccc_res res;
+	uint8_t memattr, s2ap, sh, af, contig, xn;
 
-	if (smmu_type >= SMMU_TYPE_NUM) {
-		pr_info("%s, SMMU HW type is invalid, type:%u\n", __func__, smmu_type);
-		return SMC_SMMU_FAIL;
-	}
+	if (!pte)
+		pr_info("[%s] %s ipa doesn't map in the stage 2 page table\n",
+			HYP_SMMU_INFO_PREFIX, __func__);
 
-	arm_smccc_smc(HYP_PMM_SMMU_CONTROL, cmd_id, smmu_type, in3, in4, in5, in6, in7, &res);
+	memattr = (pte >> 2) & 0xf;
+	s2ap = (pte >> 6) & 0x3;
+	sh = (pte >> 8) & 0x3;
+	af = (pte >> 10) & 0x1;
+	contig = (pte >> 52) & 0x1;
+	xn = (pte >> 53) & 0x3;
 
-	return res.a0;
+	pr_info("[%s] %s memattr=0x%x, s2ap=0x%x, sh:0x%x, af=0x%x, contig=0x%x, xn:0x%x\n",
+		HYP_SMMU_INFO_PREFIX, __func__, memattr, s2ap, sh, af, contig,
+		xn);
 }
 
-static int mtk_hyp_smmu_tf_dump(struct arm_smmu_device *smmu,
-				u64 fault_iova, u64 fault_ipa,
-				u32 sid, u32 ssid, u32 trans_s2)
+bool hyp_smmu_debug_value_error(uint64_t hyp_smmu_ret_val)
+{
+	switch (hyp_smmu_ret_val) {
+	case HYP_SMMU_INVALID_SID_BIT:
+		pr_info("[%s] %s, HYP_SMMU_INVALID_SID_BIT\n",
+			HYP_SMMU_INFO_PREFIX, __func__);
+		break;
+	case HYP_SMMU_INVALID_VMID_BIT:
+		pr_info("[%s] %s, HYP_SMMU_INVALID_VMID_BIT\n",
+			HYP_SMMU_INFO_PREFIX, __func__);
+		break;
+	case HYP_SMMU_INVALID_IPA_BIT:
+		pr_info("[%s] %s, HYP_SMMU_INVALID_IPA_BIT\n",
+			HYP_SMMU_INFO_PREFIX, __func__);
+		break;
+	case HYP_SMMU_INVALID_STE_ROW_BIT:
+		pr_info("[%s] %s, HYP_SMMU_INVALID_STE_ROW_BIT\n",
+			HYP_SMMU_INFO_PREFIX, __func__);
+		break;
+	case HYP_SMMU_INVALID_ACTION_ID_BIT:
+		pr_info("[%s] %s, HYP_SMMU_INVALID_ACTION_ID_BIT\n",
+			HYP_SMMU_INFO_PREFIX, __func__);
+		break;
+	case HYP_SMMU_INVALID_SMMU_TYPE_BIT:
+		pr_info("[%s] %s, HYP_SMMU_INVALID_SMMU_TYPE_BIT\n",
+			HYP_SMMU_INFO_PREFIX, __func__);
+		break;
+	default:
+		return false;
+	}
+	return true;
+}
+
+static int hyp_smmu_debug_smc(u32 action_id, u32 ste_row, u64 reg,
+			      u32 smmu_type, u32 sid, u32 fault_ipa_32,
+			      uint64_t *ret_val)
+{
+	u32 debug_parameter;
+	struct arm_smccc_res res;
+
+	debug_parameter = HYP_PMM_SMMU_DEBUG_PARA(action_id, ste_row, reg,
+						  smmu_type, sid);
+	/* smc return value is res.a0, which size could be 64 bit */
+	arm_smccc_smc(HYP_PMM_SMMU_CONTROL, fault_ipa_32, debug_parameter, 0, 0,
+		      0, 0, 0, &res);
+	if (hyp_smmu_debug_value_error(res.a0))
+		return SMC_SMMU_FAIL;
+
+	*ret_val = res.a0;
+	return SMC_SMMU_SUCCESS;
+}
+
+static int mtk_hyp_smmu_debug_dump(struct arm_smmu_device *smmu, u64 fault_ipa,
+				   u64 reg, u32 sid, u32 event_id, u32 trans_s2)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	u32 smmu_type = data->plat_data->smmu_type;
-	u32 fault_iova_32, fault_ipa_32;
-	int ret;
+	u32 fault_ipa_32, ste_row;
+	uint64_t debug_info, sid_max = 1ULL << smmu->sid_bits;
 
 	if (!MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_HYP_EN))
 		return SMC_SMMU_SUCCESS;
 
-	fault_iova_32 = MTK_SMMU_ADDR(fault_iova);
-	fault_ipa_32 = MTK_SMMU_ADDR(fault_ipa);
-
-	ret = mtk_hyp_smmu_smc_call(smmu_type, HYP_SMMU_TF_DUMP,
-				    fault_iova_32, fault_ipa_32,
-				    sid, ssid, trans_s2);
-	if (ret) {
-		pr_info("%s, smc call fail:%d, type:%u\n", __func__, ret, smmu_type);
+	if (smmu_type >= SMMU_TYPE_NUM) {
+		pr_info("[%s] %s, SMMU HW type is invalid, type:%u\n",
+			HYP_SMMU_INFO_PREFIX, __func__, smmu_type);
 		return SMC_SMMU_FAIL;
 	}
 
+	if (sid >= sid_max) {
+		pr_info("[%s] %s, sid:%u is invalid, because max sid is %llu\n",
+			HYP_SMMU_INFO_PREFIX, __func__, sid, sid_max);
+		return SMC_SMMU_FAIL;
+	}
+
+	switch (event_id) {
+	case EVENT_ID_BAD_STE_FAULT:
+		/* dump global ste row 0 from hypvisor */
+		ste_row = 0;
+		if (hyp_smmu_debug_smc(HYP_SMMU_STE_DUMP, ste_row, 0, smmu_type,
+				       sid, 0, &debug_info))
+			return SMC_SMMU_FAIL;
+		pr_info("[%s] %s ste_config=0x%llx, ste_valid=0x%llx\n",
+			HYP_SMMU_INFO_PREFIX, __func__, (debug_info >> 1) & 0x7,
+			debug_info & 0x1);
+		break;
+	case EVENT_ID_TRANSLATION_FAULT:
+	case EVENT_ID_PERMISSION_FAULT:
+		/* dump page table info */
+		if (!trans_s2)
+			break;
+		fault_ipa_32 = MTK_SMMU_ADDR(fault_ipa);
+		if (hyp_smmu_debug_smc(HYP_SMMU_TF_DUMP, 0, 0, smmu_type, sid,
+				       fault_ipa_32, &debug_info))
+			return SMC_SMMU_FAIL;
+		dump_s2_pg_table_info(debug_info);
+		break;
+	case HYP_SMMU_REG_DUMP_EVT:
+		/* dump smmu hw reg */
+		if (hyp_smmu_debug_smc(HYP_SMMU_REG_DUMP, 0, reg, smmu_type,
+				       sid, 0, &debug_info))
+			return SMC_SMMU_FAIL;
+		pr_info("[%s] %s smmu%u reg[%#llx]:%#llx\n",
+			HYP_SMMU_INFO_PREFIX, __func__, smmu_type, reg,
+			debug_info);
+		break;
+	case HYP_SMMU_GLOBAL_STE_DUMP_EVT:
+		/* dump global ste row from hypvisor */
+		for (ste_row = 0; ste_row < 8; ste_row++) {
+			if (hyp_smmu_debug_smc(HYP_SMMU_STE_DUMP, ste_row, 0,
+					       smmu_type, sid, 0, &debug_info))
+				return SMC_SMMU_FAIL;
+			pr_info("[%s] %s sid %u's STE[%u]:%#llx\n",
+				HYP_SMMU_INFO_PREFIX, __func__, sid, ste_row,
+				debug_info);
+		}
+		break;
+	default:
+		break;
+	}
 	return SMC_SMMU_SUCCESS;
+}
+
+/* dump smmu regs, which are controlled by host */
+static void mtk_hyp_smmu_reg_dump(struct arm_smmu_device *smmu)
+{
+	mtk_hyp_smmu_debug_dump(smmu, 0, ARM_SMMU_CMDQ_PROD, 0,
+				HYP_SMMU_REG_DUMP_EVT, 0);
+	mtk_hyp_smmu_debug_dump(smmu, 0, ARM_SMMU_CMDQ_CONS, 0,
+				HYP_SMMU_REG_DUMP_EVT, 0);
+	mtk_hyp_smmu_debug_dump(smmu, 0, ARM_SMMU_CR0, 0,
+				HYP_SMMU_REG_DUMP_EVT, 0);
+	mtk_hyp_smmu_debug_dump(smmu, 0, ARM_SMMU_CR0ACK, 0,
+				HYP_SMMU_REG_DUMP_EVT, 0);
+	mtk_hyp_smmu_debug_dump(smmu, 0, ARM_SMMU_IDR1, 0,
+				HYP_SMMU_REG_DUMP_EVT, 0);
+	mtk_hyp_smmu_debug_dump(smmu, 0, ARM_SMMU_STRTAB_BASE, 0,
+				HYP_SMMU_REG_DUMP_EVT, 0);
+	mtk_hyp_smmu_debug_dump(smmu, 0, ARM_SMMU_CMDQ_BASE, 0,
+				HYP_SMMU_REG_DUMP_EVT, 0);
 }
 
 static u64 smmu_iova_to_iopte(struct arm_smmu_master *master, u64 iova)
@@ -2011,7 +2127,7 @@ static int mtk_report_device_fault(struct arm_smmu_device *smmu,
 
 	mtk_smmu_sid_dump(smmu, sid);
 
-	mtk_hyp_smmu_tf_dump(smmu, fault_iova, fault_ipa, sid, ssid, (s2_trans != 0));
+	mtk_hyp_smmu_debug_dump(smmu, fault_ipa, 0, sid, id, s2_trans);
 
 	/* Report fault event to device driver */
 	ret = iommu_report_device_fault(master->dev, &mtk_fault_evt.fault_evt);
@@ -2078,8 +2194,7 @@ static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm)
 
 	smmuwp_dump_outstanding_monitor(smmu);
 	smmuwp_dump_io_interface_signals(smmu);
-
-	/* TODO: hyp_smmu dump */
+	mtk_hyp_smmu_reg_dump(smmu);
 
 	if (check_pm)
 		mtk_smmu_power_put(smmu);

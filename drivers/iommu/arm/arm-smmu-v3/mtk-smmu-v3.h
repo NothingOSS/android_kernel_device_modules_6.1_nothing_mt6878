@@ -425,6 +425,33 @@
 #define MSMON_CSU_VALUE			GENMASK(30, 0)
 #define MSMON_NRDY			BIT(31)
 
+/*
+ * HYP SMMU action list
+ * 1. INVALID_BIT is used to distinguish smc ret val, which is valid or not.
+ * 2. HYP SMMU events may conflict with original SMMU event id, therefore,
+ * Adding HYP_SMMU_EVENT_BASE can avoid this issue.
+ * 3. Using HYP_PMM_SMMU_DEBUG_PARA to set up hyp smmu smc's parameters.
+ * The parameters lay is descibed in the blelow
+ * sid		[7:0]
+ * smmu type	[9:8]
+ * reg		[18:10]
+ * ste row	[26:19]
+ * action id	[31:27]
+ */
+#define HYP_SMMU_INFO_PREFIX "HYP_SMMU"
+#define HYP_SMMU_INVALID_SID_BIT	(1UL << 63)
+#define HYP_SMMU_INVALID_VMID_BIT	(1UL << 62)
+#define HYP_SMMU_INVALID_IPA_BIT	(1UL << 61)
+#define HYP_SMMU_INVALID_STE_ROW_BIT	(1UL << 60)
+#define HYP_SMMU_INVALID_ACTION_ID_BIT	(1UL << 59)
+#define HYP_SMMU_INVALID_SMMU_TYPE_BIT	(1UL << 58)
+#define HYP_SMMU_EVENT_BASE		BIT(8)
+#define HYP_SMMU_REG_DUMP_EVT		(HYP_SMMU_EVENT_BASE | 0x1)
+#define HYP_SMMU_GLOBAL_STE_DUMP_EVT	(HYP_SMMU_EVENT_BASE | 0x2)
+#define HYP_PMM_SMMU_DEBUG_PARA(action_id, ste_row, reg, smu_type, sid)        \
+	((action_id << 27) | (ste_row << 19) | (reg << 10) | (smu_type << 8) | \
+	 sid)
+
 enum mtk_smmu_type {
 	MM_SMMU,
 	APU_SMMU,
