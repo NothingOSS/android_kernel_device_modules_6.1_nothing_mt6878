@@ -37,12 +37,14 @@ int register_lpm_sys_res_ops(struct lpm_sys_res_ops *ops)
 		return -1;
 
 	_lpm_sys_res_ops.get = ops->get;
-	_lpm_sys_res_ops.get_last_suspend = ops->get_last_suspend;
 	_lpm_sys_res_ops.update = ops->update;
 	_lpm_sys_res_ops.get_detail = ops->get_detail;
 	_lpm_sys_res_ops.get_threshold = ops->get_threshold;
 	_lpm_sys_res_ops.set_threshold = ops->set_threshold;
-	spin_lock_init(&_lpm_sys_res_ops.lock);
+	_lpm_sys_res_ops.enable_common_log = ops->enable_common_log;
+	_lpm_sys_res_ops.get_log_enable = ops->get_log_enable;
+	_lpm_sys_res_ops.log = ops->log;
+	_lpm_sys_res_ops.lock = ops->lock;
 
 	return 0;
 }
@@ -51,10 +53,14 @@ EXPORT_SYMBOL(register_lpm_sys_res_ops);
 void unregister_lpm_sys_res_ops(void)
 {
 	_lpm_sys_res_ops.get = NULL;
-	_lpm_sys_res_ops.get_last_suspend = NULL;
 	_lpm_sys_res_ops.update = NULL;
 	_lpm_sys_res_ops.get_detail = NULL;
-	_lpm_sys_res_ops.set_threshold = NULL;
 	_lpm_sys_res_ops.get_threshold = NULL;
+	_lpm_sys_res_ops.set_threshold = NULL;
+	_lpm_sys_res_ops.enable_common_log = NULL;
+	_lpm_sys_res_ops.get_log_enable = NULL;
+	_lpm_sys_res_ops.log = NULL;
+	_lpm_sys_res_ops.lock = NULL;
 }
+
 EXPORT_SYMBOL(unregister_lpm_sys_res_ops);

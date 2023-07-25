@@ -11,6 +11,8 @@
 #include <linux/spinlock.h>
 #include <swpm_module_ext.h>
 
+#define SYS_RES_SYS_RESOURCE_NUM (8)
+
 enum _sys_res_scene{
 	SYS_RES_SCENE_COMMON = 0,
 	SYS_RES_SCENE_SUSPEND,
@@ -21,15 +23,12 @@ enum _sys_res_scene{
 	SYS_RES_SCENE_NUM,
 };
 
-enum _sys_res_system_resource {
-	SYS_RES_SYS_VCORE = 0,
-	SYS_RES_SYS_26M,
-	SYS_RES_SYS_PMIC,
-	SYS_RES_SYS_INFRA,
-	SYS_RES_SYS_BUSPLL,
-	SYS_RES_SYS_EMI,
-	SYS_RES_SYS_APSRC,
-	SYS_RES_SYS_RESOURCE_NUM,
+enum _sys_res_get_scene{
+	SYS_RES_COMMON = 0,
+	SYS_RES_SUSPEND,
+	SYS_RES_LAST_SUSPEND,
+	SYS_RES_LAST,
+	SYS_RES_GET_SCENE_NUM,
 };
 
 struct sys_res_record {
@@ -38,23 +37,22 @@ struct sys_res_record {
 
 #define SYS_RES_SYS_NAME_LEN (10)
 struct sys_res_group_info {
-	int group_id;
-	char name[SYS_RES_SYS_NAME_LEN];
 	unsigned int sys_index;
 	unsigned int sig_table_index;
 	unsigned int group_num;
 	unsigned int threshold;
 };
 
-
 struct lpm_sys_res_ops {
 	struct sys_res_record* (*get)(unsigned int scene);
 	int (*update)(void);
-	struct sys_res_record* (*get_last_suspend)(void);
 	uint64_t (*get_detail)(struct sys_res_record *record, int op, unsigned int val);
 	unsigned int (*get_threshold)(void);
 	void (*set_threshold)(unsigned int val);
-	spinlock_t lock;
+	void (*enable_common_log)(int en);
+	int (*get_log_enable)(void);
+	void (*log)(unsigned int scene);
+	spinlock_t *lock;
 };
 
 int lpm_sys_res_init(void);

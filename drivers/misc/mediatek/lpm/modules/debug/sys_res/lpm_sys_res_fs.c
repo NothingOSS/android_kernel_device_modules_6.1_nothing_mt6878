@@ -44,18 +44,15 @@ static ssize_t sys_res_common_stat_read(char *ToUserBuf, size_t sz, void *priv)
 	if (!sys_res_ops || !sys_res_ops->get)
 		return p - ToUserBuf;
 
-	if (sys_res_ops->update){
-		spin_lock_irqsave(&sys_res_ops->lock, flag);
+	if (sys_res_ops->update)
 		sys_res_ops->update();
-		spin_unlock_irqrestore(&sys_res_ops->lock, flag);
-	}
 
-	sys_res_record = sys_res_ops->get(SYS_RES_SCENE_COMMON);
+	sys_res_record = sys_res_ops->get(SYS_RES_COMMON);
 
 	if (!sys_res_record)
 		return p - ToUserBuf;
 
-	spin_lock_irqsave(&sys_res_ops->lock, flag);
+	spin_lock_irqsave(sys_res_ops->lock, flag);
 	mtk_dbg_sys_res_log("scene: %s\n", sys_res_scene_name[SYS_RES_SCENE_COMMON]);
 	mtk_dbg_sys_res_log("suspend : %llu, duration: %llu\n",
 		sys_res_record->spm_res_sig_stats_ptr->suspend_time,
@@ -66,12 +63,48 @@ static ssize_t sys_res_common_stat_read(char *ToUserBuf, size_t sz, void *priv)
 			sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[i].grp_id,
 			sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[i].sig_id,
 			sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[i].time);
-	spin_unlock_irqrestore(&sys_res_ops->lock, flag);
+	spin_unlock_irqrestore(sys_res_ops->lock, flag);
 
 	return p - ToUserBuf;
 }
 static const struct mtk_lp_sysfs_op lpm_sys_res_common_stat_fops = {
 	.fs_read = sys_res_common_stat_read,
+};
+
+static ssize_t sys_res_common_log_read(char *ToUserBuf, size_t sz, void *priv)
+{
+	char *p = ToUserBuf;
+	struct lpm_sys_res_ops *sys_res_ops;
+
+	sys_res_ops = get_lpm_sys_res_ops();
+	if (!sys_res_ops ||
+	    !sys_res_ops->get_log_enable)
+		return p - ToUserBuf;
+
+	mtk_dbg_sys_res_log("%d\n",sys_res_ops->get_log_enable());
+
+	return p - ToUserBuf;
+}
+
+static ssize_t sys_res_common_log_write(char *FromUserBuf, size_t sz, void *priv)
+{
+	unsigned int val;
+	struct lpm_sys_res_ops *sys_res_ops;
+
+	if (!kstrtouint(FromUserBuf, 10, &val)) {
+		sys_res_ops = get_lpm_sys_res_ops();
+		if (!sys_res_ops ||
+		    !sys_res_ops->enable_common_log)
+			return sz;
+
+		sys_res_ops->enable_common_log(val);
+	}
+
+	return sz;
+}
+static const struct mtk_lp_sysfs_op lpm_sys_res_common_log_fops = {
+	.fs_read = sys_res_common_log_read,
+	.fs_write = sys_res_common_log_write,
 };
 
 static ssize_t sys_res_suspend_stat_read(char *ToUserBuf, size_t sz, void *priv)
@@ -87,18 +120,15 @@ static ssize_t sys_res_suspend_stat_read(char *ToUserBuf, size_t sz, void *priv)
 	if (!sys_res_ops || !sys_res_ops->get)
 		return p - ToUserBuf;
 
-	if (sys_res_ops->update) {
-		spin_lock_irqsave(&sys_res_ops->lock, flag);
+	if (sys_res_ops->update)
 		sys_res_ops->update();
-		spin_unlock_irqrestore(&sys_res_ops->lock, flag);
-	}
 
-	sys_res_record = sys_res_ops->get(SYS_RES_SCENE_SUSPEND);
+	sys_res_record = sys_res_ops->get(SYS_RES_SUSPEND);
 
 	if (!sys_res_record)
 		return p - ToUserBuf;
 
-	spin_lock_irqsave(&sys_res_ops->lock, flag);
+	spin_lock_irqsave(sys_res_ops->lock, flag);
 	mtk_dbg_sys_res_log("scene: %s\n", sys_res_scene_name[SYS_RES_SCENE_SUSPEND]);
 	mtk_dbg_sys_res_log("suspend : %llu, duration: %llu\n",
 		sys_res_record->spm_res_sig_stats_ptr->suspend_time,
@@ -110,7 +140,7 @@ static ssize_t sys_res_suspend_stat_read(char *ToUserBuf, size_t sz, void *priv)
 			sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[i].grp_id,
 			sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[i].sig_id,
 			sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[i].time);
-	spin_unlock_irqrestore(&sys_res_ops->lock, flag);
+	spin_unlock_irqrestore(sys_res_ops->lock, flag);
 
 	return p - ToUserBuf;
 }
@@ -131,18 +161,15 @@ static ssize_t sys_res_last_suspend_stat_read(char *ToUserBuf, size_t sz, void *
 	if (!sys_res_ops || !sys_res_ops->get)
 		return p - ToUserBuf;
 
-	if (sys_res_ops->update) {
-		spin_lock_irqsave(&sys_res_ops->lock, flag);
+	if (sys_res_ops->update)
 		sys_res_ops->update();
-		spin_unlock_irqrestore(&sys_res_ops->lock, flag);
-	}
 
-	sys_res_record = sys_res_ops->get_last_suspend();
+	sys_res_record = sys_res_ops->get(SYS_RES_LAST_SUSPEND);
 
 	if (!sys_res_record)
 		return p - ToUserBuf;
 
-	spin_lock_irqsave(&sys_res_ops->lock, flag);
+	spin_lock_irqsave(sys_res_ops->lock, flag);
 	mtk_dbg_sys_res_log("scene: last suspend\n");
 	mtk_dbg_sys_res_log("suspend : %llu, duration: %llu\n",
 		sys_res_record->spm_res_sig_stats_ptr->suspend_time,
@@ -153,7 +180,7 @@ static ssize_t sys_res_last_suspend_stat_read(char *ToUserBuf, size_t sz, void *
 			sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[i].grp_id,
 			sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[i].sig_id,
 			sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[i].time);
-	spin_unlock_irqrestore(&sys_res_ops->lock, flag);
+	spin_unlock_irqrestore(sys_res_ops->lock, flag);
 
 	return p - ToUserBuf;
 }
@@ -218,6 +245,8 @@ int lpm_sys_res_fs_init(void)
 
 
 	mtk_lpm_sysfs_sub_entry_node_add("stat", 0444, &lpm_sys_res_common_stat_fops,
+						&lpm_entry_sys_res_common, NULL);
+	mtk_lpm_sysfs_sub_entry_node_add("log_enable", 0444, &lpm_sys_res_common_log_fops,
 						&lpm_entry_sys_res_common, NULL);
 
 	return 0;

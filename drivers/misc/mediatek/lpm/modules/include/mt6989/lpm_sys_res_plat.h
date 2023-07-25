@@ -8,14 +8,6 @@
 
 #include <swpm_v6989_ext.h>
 
-#define SPM_SYS_RES_VCORE_INDEX (294)
-#define SPM_SYS_RES_PMIC_INDEX  (293)
-#define SPM_SYS_RES_26M_INDEX   (292)
-#define SPM_SYS_RES_INFRA_INDEX (291)
-#define SPM_SYS_RES_BUSPLL_INDEX    (290)
-#define SPM_SYS_RES_EMI_INDEX   (289)
-#define SPM_SYS_RES_APSRC_INDEX (288)
-
 enum lpm_sys_res_record_plat_op_id {
 	SYS_RES_DURATION = 0,
 	SYS_RES_SUSPEND_TIME,

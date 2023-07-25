@@ -78,7 +78,7 @@ int lpm_mbrain_get_sys_res_data(void *address, uint32_t size)
 	sys_res_ops = get_lpm_sys_res_ops();
 	if (!sys_res_ops ||
 	    !sys_res_ops->update ||
-	    !sys_res_ops->get_last_suspend ||
+	    !sys_res_ops->get ||
 	    !sys_res_ops->get_detail) {
 		pr_info("[name:spm&][SPM] Get sys res operations fail\n");
 		ret = -1;
@@ -90,16 +90,14 @@ int lpm_mbrain_get_sys_res_data(void *address, uint32_t size)
 	/* Copy header */
 	address = sys_res_data_copy(address, &header, sizeof(struct sys_res_mbrain_header));
 
-	spin_lock_irqsave(&sys_res_ops->lock, flag);
 	sys_res_ops->update();
-	spin_unlock_irqrestore(&sys_res_ops->lock, flag);
 
 	/* Copy scenario data */
-	sys_res_record[SYS_RES_RELEASE_SCENE_COMMON] = sys_res_ops->get(SYS_RES_SCENE_COMMON);
-	sys_res_record[SYS_RES_RELEASE_SCENE_SUSPEND] = sys_res_ops->get(SYS_RES_SCENE_SUSPEND);
-	sys_res_record[SYS_RES_RELEASE_SCENE_LAST_SUSPEND] = sys_res_ops->get_last_suspend();
+	sys_res_record[SYS_RES_RELEASE_SCENE_COMMON] = sys_res_ops->get(SYS_RES_COMMON);
+	sys_res_record[SYS_RES_RELEASE_SCENE_SUSPEND] = sys_res_ops->get(SYS_RES_SUSPEND);
+	sys_res_record[SYS_RES_RELEASE_SCENE_LAST_SUSPEND] = sys_res_ops->get(SYS_RES_LAST_SUSPEND);
 
-	spin_lock_irqsave(&sys_res_ops->lock, flag);
+	spin_lock_irqsave(sys_res_ops->lock, flag);
 	scene_info.res_sig_num = sys_res_sig_num;
 	for (i=0; i<SCENE_RELEASE_NUM; i++) {
 		scene_info.duration_time = sys_res_ops->get_detail(sys_res_record[i],
@@ -112,7 +110,7 @@ int lpm_mbrain_get_sys_res_data(void *address, uint32_t size)
 
 	/* Copy signal data */
 	for (i=0; i<SCENE_RELEASE_NUM; i++) {
-		for (j = 0; j <= VCORE_REQ; j++){
+		for (j = 0; j < SYS_RES_SYS_RESOURCE_NUM; j++){
 			if (group_release[j]) {
 				sig_info = (void *)sys_res_ops->get_detail(sys_res_record[i],
 							SYS_RES_SIG_ADDR,
@@ -133,7 +131,7 @@ int lpm_mbrain_get_sys_res_data(void *address, uint32_t size)
 			}
 		}
 	}
-	spin_unlock_irqrestore(&sys_res_ops->lock, flag);
+	spin_unlock_irqrestore(sys_res_ops->lock, flag);
 
 	return ret;
 }

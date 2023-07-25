@@ -485,7 +485,6 @@ static int lpm_log_timer_func(unsigned long long dur, void *priv)
 			MT_LPM_SMC_ACT_GET, 0, 0);
 	unsigned long name_val = 0;
 #if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
-	unsigned long flag;
 	struct lpm_sys_res_ops *sys_res_ops;
 #endif
 	#define STATE_NAME_LEN         (16)
@@ -531,11 +530,8 @@ static int lpm_log_timer_func(unsigned long long dur, void *priv)
 
 #if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
 	sys_res_ops = get_lpm_sys_res_ops();
-	if (sys_res_ops && sys_res_ops->update) {
-		spin_lock_irqsave(&sys_res_ops->lock, flag);
-		sys_res_ops->update();
-		spin_unlock_irqrestore(&sys_res_ops->lock, flag);
-	}
+	if (sys_res_ops && sys_res_ops->log)
+		sys_res_ops->log(SYS_RES_LAST);
 #endif
 	timer->fired = smc_fired;
 	return 0;
