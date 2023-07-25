@@ -14601,7 +14601,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		system-ocp = <13000>;
 		system-uvlo = <2600>;
 
-		bat-ocv-table-num = <4>;
+		bat-ocv-table-num = <0>;
 
 		bat-ocv-table-t0-temperature = <25>;
 		bat-ocv-table-t0-qmax = <3025>;
