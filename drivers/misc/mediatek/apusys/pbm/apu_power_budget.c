@@ -229,7 +229,7 @@ int apu_power_budget(enum pbm_mode mode, int counter)
 				"APUSYS_POWER", "APU_PBM_COUNTER_UNBALANCE");
 		}
 	}
-
+#if LOCAL_DBG
 	pr_debug("%s m:%d b:%d c:%d f:%u d:%d max_b:%d ret:%d\n",
 			__func__,
 			apu_pbm_param_arr[mode].mode,
@@ -239,7 +239,7 @@ int apu_power_budget(enum pbm_mode mode, int counter)
 			apu_pbm_param_arr[mode].delay_off_ms,
 			max_budget,
 			ret);
-
+#endif
 	spin_unlock_irqrestore(&apu_pbm_lock, flags);
 
 	return ret;
