@@ -92,6 +92,8 @@ static int freq_qos_max_notifier_call(struct notifier_block *nb,
 	struct timespec64 tv = { 0 };
 	char *caller_info = find_and_get_symobls(
 		(unsigned long)__builtin_return_address(2));
+	char *caller_info2 = find_and_get_symobls(
+		(unsigned long)__builtin_return_address(3));
 
 	if (caller_info) {
 		spin_lock_irqsave(&cpufreq_lock, flags);
@@ -105,10 +107,19 @@ static int freq_qos_max_notifier_call(struct notifier_block *nb,
 		cpufreq_notify_data[cid_idx].drv_data[drv_idx].qos_type = FREQ_QOS_MAX;
 		cpufreq_notify_data[cid_idx].drv_data[drv_idx].freq_limit =
 							(unsigned int) (freq_limit_max);
-		start_idx = search_string_index(caller_info, '[', ']', &len);
 		memset(cpufreq_notify_data[cid_idx].drv_data[drv_idx].caller, 0, MAX_FREQ_SZ);
-		memcpy(cpufreq_notify_data[cid_idx].drv_data[drv_idx].caller,
-			&caller_info[start_idx], len);
+		start_idx = search_string_index(caller_info, '[', ']', &len);
+		if (start_idx != 0) {
+			memcpy(cpufreq_notify_data[cid_idx].drv_data[drv_idx].caller,
+				&caller_info[start_idx], len);
+		} else if (caller_info2) {
+			start_idx = search_string_index(caller_info2, '[', ']', &len);
+			memcpy(cpufreq_notify_data[cid_idx].drv_data[drv_idx].caller,
+				&caller_info2[start_idx], len);
+		} else {
+			memcpy(cpufreq_notify_data[cid_idx].drv_data[drv_idx].caller,
+				&caller_info[start_idx], len);
+		}
 
 		cpufreq_notify_data[cid_idx].drv_data[drv_idx].dirty = true;
 		/**********************************************************************
@@ -140,6 +151,8 @@ static int freq_qos_min_notifier_call(struct notifier_block *nb,
 	struct timespec64 tv = { 0 };
 	char *caller_info = find_and_get_symobls(
 		(unsigned long)__builtin_return_address(2));
+	char *caller_info2 = find_and_get_symobls(
+		(unsigned long)__builtin_return_address(3));
 
 	if (caller_info) {
 		spin_lock_irqsave(&cpufreq_lock, flags);
@@ -153,10 +166,19 @@ static int freq_qos_min_notifier_call(struct notifier_block *nb,
 		cpufreq_notify_data[cid_idx].drv_data[drv_idx].qos_type = FREQ_QOS_MIN;
 		cpufreq_notify_data[cid_idx].drv_data[drv_idx].freq_limit =
 							(unsigned int) (freq_limit_min);
-		start_idx = search_string_index(caller_info, '[', ']', &len);
 		memset(cpufreq_notify_data[cid_idx].drv_data[drv_idx].caller, 0, MAX_FREQ_SZ);
-		memcpy(cpufreq_notify_data[cid_idx].drv_data[drv_idx].caller,
-			&caller_info[start_idx], len);
+		start_idx = search_string_index(caller_info, '[', ']', &len);
+		if (start_idx != 0) {
+			memcpy(cpufreq_notify_data[cid_idx].drv_data[drv_idx].caller,
+				&caller_info[start_idx], len);
+		} else if (caller_info2) {
+			start_idx = search_string_index(caller_info2, '[', ']', &len);
+			memcpy(cpufreq_notify_data[cid_idx].drv_data[drv_idx].caller,
+				&caller_info2[start_idx], len);
+		} else {
+			memcpy(cpufreq_notify_data[cid_idx].drv_data[drv_idx].caller,
+				&caller_info[start_idx], len);
+		}
 		cpufreq_notify_data[cid_idx].drv_data[drv_idx].dirty = true;
 		/**************************************************************************
 		 * pr_info("count = %lu, timestamp= %lld, cid = %d,	\
