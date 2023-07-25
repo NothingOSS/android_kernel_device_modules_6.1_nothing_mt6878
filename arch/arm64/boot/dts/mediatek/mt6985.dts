@@ -8481,7 +8481,6 @@
 			clock-names = "hdr0";
 			comp-ids = <MML_HDR0>;
 			comp-names = "hdr0";
-			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA0)>;
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS1_MDP_HDR0_FRAME_DONE>;
 		};
@@ -8494,7 +8493,6 @@
 			clock-names = "hdr1";
 			comp-ids = <MML_HDR1>;
 			comp-names = "hdr1";
-			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA0)>;
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS1_MDP_HDR1_FRAME_DONE>;
 		};
@@ -8508,7 +8506,6 @@
 			clock-names = "aal0";
 			comp-ids = <MML_AAL0>;
 			comp-names = "aal0";
-			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA0)>;
 			sram-curve-base = /bits/ 32 <4608>;
 			sram-his-base = /bits/ 32 <1536>;
 			event-frame-done = /bits/ 16
@@ -8524,7 +8521,6 @@
 			clock-names = "aal1";
 			comp-ids = <MML_AAL1>;
 			comp-names = "aal1";
-			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA1)>;
 			sram-curve-base = /bits/ 32 <4608>;
 			sram-his-base = /bits/ 32 <1536>;
 			event-frame-done = /bits/ 16
@@ -8557,7 +8553,6 @@
 			clock-names = "tdshp0";
 			comp-ids = <MML_TDSHP0>;
 			comp-names = "tdshp0";
-			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA0)>;
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS1_MDP_TDSHP0_FRAME_DONE>;
 		};
@@ -8570,7 +8565,6 @@
 			clock-names = "tdshp1";
 			comp-ids = <MML_TDSHP1>;
 			comp-names = "tdshp1";
-			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_PORT_L3_MDP_RDMA0)>;
 			event-frame-done = /bits/ 16
 				<CMDQ_EVENT_MMLSYS1_MDP_TDSHP1_FRAME_DONE>;
 		};
