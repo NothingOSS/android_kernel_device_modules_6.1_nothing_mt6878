@@ -1260,6 +1260,17 @@ static ssize_t fallback_frequency_adjust_store(struct kobject *kobj,
 			if (kstrtouint(acBuffer, 0, &u32Value) == 0) {
 				if (u32Value <= 1)
 					g_fallback_frequency_adjust = u32Value;
+
+				/* Temporary solution: if fallback_frequency_adjust enabled,
+				 * use previous dvfs_loading_mode policy(LOADING_MAX_ITERMCU)
+				 */
+				if (g_fallback_frequency_adjust == 0) {
+					mtk_dvfs_loading_mode(LOADING_MAX_ITERMCU);
+					mtk_dvfs_workload_mode(WORKLOAD_MAX_ITERMCU);
+				} else {
+					mtk_dvfs_loading_mode(LOADING_ACTIVE);
+					mtk_dvfs_workload_mode(WORKLOAD_ACTIVE);
+				}
 			}
 		}
 	}
