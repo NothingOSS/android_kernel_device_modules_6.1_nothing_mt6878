@@ -1264,6 +1264,18 @@ char *vcp_pickup_log_for_aee(void)
 		return last_log;
 	}
 
+	if (halt_user) {
+		halt_len = strlen(halt_message) + strlen(halt_user);
+		if (halt_len < CMP_SAFT_RANGE) {
+			for (i = 0; i < strlen(halt_message); i++)
+				last_log[i] = halt_message[i];
+			j = i;
+			for (i = 0; i < strlen(halt_user); i++)
+				last_log[j + i] = halt_user[i];
+			last_log[j + i] = '\n';
+		}
+	}
+
 	return last_log;
 }
 
