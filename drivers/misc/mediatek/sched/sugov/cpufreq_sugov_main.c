@@ -315,6 +315,20 @@ unsigned long mtk_cpu_util(int cpu, unsigned long util_cfs,
 			p = NULL;
 			if (cu_ctrl && curr_clamp(rq, &util) == 0)
 				goto skip_rq_uclamp;
+			else if (gu_ctrl) {
+				unsigned long umin;
+				unsigned long umax, umax_with_gear;
+
+				umin = READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
+				umax = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
+				umax_with_gear = min_t(unsigned long,
+					umax, get_cpu_gear_uclamp_max(cpu));
+				util = clamp_val(util, umin, umax_with_gear);
+				if (trace_sugov_ext_gear_uclamp_enabled())
+					trace_sugov_ext_gear_uclamp(cpu, util_ori,
+						umin, umax, util, get_cpu_gear_uclamp_max(cpu));
+				goto skip_rq_uclamp;
+			}
 		}
 		util = mtk_uclamp_rq_util_with(rq, util, p, min_cap, max_cap);
 skip_rq_uclamp:
@@ -620,6 +634,9 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 
 		umin = rq->uclamp[UCLAMP_MIN].value;
 		umax = rq->uclamp[UCLAMP_MAX].value;
+		if (gu_ctrl)
+			umax = min_t(unsigned long,
+				umax, get_cpu_gear_uclamp_max(sg_cpu->cpu));
 		trace_sugov_ext_util(sg_cpu->cpu, sg_cpu->util, umin, umax);
 	}
 
@@ -671,6 +688,9 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 
 			umin = rq->uclamp[UCLAMP_MIN].value;
 			umax = rq->uclamp[UCLAMP_MAX].value;
+			if (gu_ctrl)
+				umax = min_t(unsigned long,
+					umax, get_cpu_gear_uclamp_max(j));
 			trace_sugov_ext_util(j, idle ? 0 : j_util, umin, umax);
 		}
 		if (idle)
@@ -1174,12 +1194,6 @@ static int __init cpufreq_mtk_init(void)
 		pr_info("register android_vh_arch_set_freq_scale failed\n");
 	else
 		topology_clear_scale_freq_source(SCALE_FREQ_SOURCE_ARCH, cpu_possible_mask);
-#if IS_ENABLED(CONFIG_UCLAMP_TASK_GROUP)
-	ret = register_trace_android_rvh_uclamp_eff_get(
-		mtk_uclamp_eff_get, NULL);
-	if (ret)
-		pr_info("register android_rvh_uclamp_eff_get failed\n");
-#endif
 #endif
 
 	return cpufreq_register_governor(&mtk_gov);

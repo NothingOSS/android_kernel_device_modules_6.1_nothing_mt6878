@@ -198,10 +198,12 @@ extern bool get_curr_uclamp_ctrl(void);
 extern void set_curr_uclamp_ctrl(int val);
 extern int set_curr_uclamp_hint(int pid, int set);
 extern int get_curr_uclamp_hint(int pid);
+extern bool gu_ctrl;
 extern bool get_gear_uclamp_ctrl(void);
 extern void set_gear_uclamp_ctrl(int val);
 extern int get_gear_uclamp_max(int gearid);
 extern int get_cpu_gear_uclamp_max(int cpu);
+extern int get_cpu_gear_uclamp_max_capacity(int cpu);
 extern void set_gear_uclamp_max(int gearid, int val);
 #endif
 #endif

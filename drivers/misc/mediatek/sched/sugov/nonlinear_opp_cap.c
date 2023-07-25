@@ -1463,22 +1463,10 @@ int get_curr_uclamp_hint(int pid)
 EXPORT_SYMBOL_GPL(get_curr_uclamp_hint);
 
 #if IS_ENABLED(CONFIG_UCLAMP_TASK_GROUP)
-#define UCLAMP_BUCKET_DELTA DIV_ROUND_CLOSEST(SCHED_CAPACITY_SCALE, UCLAMP_BUCKETS)
 static int gear_uclamp_max[MAX_NR_CPUS] = {
 			[0 ... MAX_NR_CPUS - 1] = SCHED_CAPACITY_SCALE
 };
-static inline unsigned int uclamp_bucket_id(unsigned int clamp_value)
-{
-	return min_t(unsigned int, clamp_value / UCLAMP_BUCKET_DELTA, UCLAMP_BUCKETS - 1);
-}
-static inline void uclamp_se_set(struct uclamp_se *uc_se,
-				 unsigned int value, bool user_defined)
-{
-	uc_se->value = value;
-	uc_se->bucket_id = uclamp_bucket_id(value);
-	uc_se->user_defined = user_defined;
-}
-static bool gu_ctrl;
+bool gu_ctrl;
 bool get_gear_uclamp_ctrl(void)
 {
 	return gu_ctrl;
@@ -1501,6 +1489,7 @@ int get_gear_uclamp_max(int gearid)
 	return gear_uclamp_max[gearid];
 }
 EXPORT_SYMBOL_GPL(get_gear_uclamp_max);
+
 int get_cpu_gear_uclamp_max(int cpu)
 {
 	if (gu_ctrl == false)
@@ -1508,42 +1497,26 @@ int get_cpu_gear_uclamp_max(int cpu)
 	return gear_uclamp_max[per_cpu(gear_id, cpu)];
 }
 EXPORT_SYMBOL_GPL(get_cpu_gear_uclamp_max);
+
+int get_cpu_gear_uclamp_max_capacity(int cpu)
+{
+	unsigned long capacity, freq;
+
+	if (gu_ctrl == false)
+		return SCHED_CAPACITY_SCALE;
+
+	capacity = (gear_uclamp_max[per_cpu(gear_id, cpu)] *
+		get_adaptive_margin(cpu)) >> SCHED_CAPACITY_SHIFT;
+	freq = pd_get_util_freq(cpu, capacity);
+	return pd_get_freq_util(cpu, freq);
+}
+EXPORT_SYMBOL_GPL(get_cpu_gear_uclamp_max_capacity);
+
 void set_gear_uclamp_max(int gearid, int val)
 {
 	gear_uclamp_max[gearid] = val;
 }
 EXPORT_SYMBOL_GPL(set_gear_uclamp_max);
-
-void mtk_uclamp_eff_get(void *data, struct task_struct *p, enum uclamp_id clamp_id,
-		struct uclamp_se *uc_max, struct uclamp_se *uc_eff, int *ret)
-{
-	unsigned int tg_min, tg_max, value = SCHED_CAPACITY_SCALE;
-	unsigned int gearid;
-
-	if (gu_ctrl == false)
-		return;
-
-	*uc_eff =  p->uclamp_req[clamp_id];
-
-	if (task_group_is_autogroup(task_group(p)))
-		goto sys_restriction;
-	if (task_group(p) == &root_task_group)
-		goto sys_restriction;
-
-	tg_min = task_group(p)->uclamp[UCLAMP_MIN].value;
-	tg_max = task_group(p)->uclamp[UCLAMP_MAX].value;
-	value = uc_eff->value;
-	value = clamp(value, tg_min, tg_max);
-
-sys_restriction:
-	gearid = per_cpu(gear_id, task_cpu(p));
-	value = min_t(unsigned int, value, gear_uclamp_max[gearid]);
-	uclamp_se_set(uc_eff, value, false);
-	if (uc_eff->value > uc_max->value)
-		*uc_eff = *uc_max;
-
-	*ret = 1;
-}
 #endif
 
 int init_opp_cap_info(struct proc_dir_entry *dir)
@@ -1890,6 +1863,8 @@ int group_aware_dvfs_util(struct cpumask *cpumask)
 		cpu_util = flt_get_cpu_util_hook(cpu);
 		rq = cpu_rq(cpu);
 		umax = rq->uclamp[UCLAMP_MAX].value;
+		if (gu_ctrl)
+			umax = min_t(unsigned long, umax, get_cpu_gear_uclamp_max(cpu));
 		ret_util = min_t(unsigned long,
 			cpu_util, umax * am >> SCHED_CAPACITY_SHIFT);
 

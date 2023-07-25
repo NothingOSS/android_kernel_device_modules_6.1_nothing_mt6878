@@ -42,6 +42,37 @@ TRACE_EVENT(sugov_ext_curr_uclamp,
 		__entry->u_max)
 );
 
+TRACE_EVENT(sugov_ext_gear_uclamp,
+	TP_PROTO(int cpu, int util_ori,
+		int umin, int umax, int util,
+		int umax_gear),
+	TP_ARGS(cpu, util_ori, umin, umax, util, umax_gear),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(unsigned int, util_ori)
+		__field(unsigned int, umin)
+		__field(unsigned int, umax)
+		__field(unsigned int, util)
+		__field(unsigned int, umax_gear)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->util_ori = util_ori;
+		__entry->umin = umin;
+		__entry->umax = umax;
+		__entry->util = util;
+		__entry->umax_gear = umax_gear;
+	),
+	TP_printk(
+		"cpu=%d util_ori=%d umin=%d umax=%d util_ret=%d, umax_gear=%d",
+		__entry->cpu,
+		__entry->util_ori,
+		__entry->umin,
+		__entry->umax,
+		__entry->util,
+		__entry->umax_gear)
+);
+
 TRACE_EVENT(sugov_ext_util,
 	TP_PROTO(int cpu, unsigned long util,
 		unsigned int min, unsigned int max),
