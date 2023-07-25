@@ -244,7 +244,9 @@ static bool is_extended_base_layer_valid(struct drm_crtc *crtc,
 {
 	if ((layer_idx == 0) ||
 		(configs->src_fmt == MTK_DRM_FORMAT_DIM) ||
-		mtk_has_layer_cap(configs, MTK_DISP_RSZ_LAYER))
+		mtk_has_layer_cap(configs, MTK_DISP_RSZ_LAYER |
+			MTK_MML_DISP_DIRECT_DECOUPLE_LAYER |
+			MTK_MML_DISP_DIRECT_LINK_LAYER))
 		return false;
 
 	/*
