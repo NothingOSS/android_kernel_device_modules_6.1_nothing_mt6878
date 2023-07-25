@@ -1007,7 +1007,7 @@ static s32 cmdq_mdp_find_free_thread(struct cmdqRecStruct *handle)
 
 static s32 cmdq_mdp_consume_handle(void)
 {
-	s32 err;
+	s32 err = 0;
 	struct cmdqRecStruct *handle, *temp;
 	u32 index;
 	bool acquired = false;
@@ -1080,7 +1080,7 @@ static s32 cmdq_mdp_consume_handle(void)
 		if (err != 0) {
 			mutex_unlock(&mdp_thread_mutex);
 			CMDQ_ERR("fail to lock handle or power on: 0x%p\n", handle);
-			continue;
+			break;
 		}
 		mutex_unlock(&mdp_thread_mutex);
 
@@ -1137,7 +1137,7 @@ static s32 cmdq_mdp_consume_handle(void)
 		wake_up_all(&mdp_thread_dispatch);
 	}
 
-	return 0;
+	return err;
 }
 
 static void cmdq_mdp_consume_wait_item(struct work_struct *ignore)
