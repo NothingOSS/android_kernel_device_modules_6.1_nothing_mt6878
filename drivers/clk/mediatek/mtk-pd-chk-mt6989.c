@@ -906,7 +906,7 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
 
-	mdelay(300);
+	mdelay(3000);
 	BUG_ON(1);
 }
 

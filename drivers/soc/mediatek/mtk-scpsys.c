@@ -19,6 +19,7 @@
 
 #include "scpsys.h"
 #include "mtk-scpsys.h"
+#include "vcp_status.h"
 
 #include <dt-bindings/power/mt2701-power.h>
 #include <dt-bindings/power/mt2712-power.h>
@@ -130,6 +131,10 @@ static const char *bus_list[BUS_TYPE_NUM] = {
 
 static bool scpsys_init_flag;
 static BLOCKING_NOTIFIER_HEAD(scpsys_notifier_list);
+
+static void __iomem *hwvdbg_infra_base;
+static void __iomem *hwvdbg_mminfra_base;
+static void __iomem *hwvdbg_hfrp_base;
 
 int register_scpsys_notifier(struct notifier_block *nb)
 {
@@ -1123,6 +1128,12 @@ static int scpsys_hwv_power_on(struct generic_pm_domain *genpd)
 	int tmp;
 	int i = 0;
 
+	if (scpd->data->hwv_comp && (!strcmp(scpd->data->hwv_comp, "mm-hw-ccf-regmap"))) {
+		val = readl(hwvdbg_infra_base + 0x870);
+		val = readl(hwvdbg_mminfra_base + 0x100);
+		val = readl(hwvdbg_hfrp_base + 0xea8);
+	}
+
 	if (scpd->hwv_regmap)
 		hwv_regmap = scpd->hwv_regmap;
 	else
@@ -1183,6 +1194,8 @@ err_clk:
 	dev_err(scp->dev, "Failed to enable clk %s(%d)\n", genpd->name, ret);
 err_regulator:
 	dev_err(scp->dev, "Failed to power on domain %s(%d)\n", genpd->name, ret);
+
+	vcp_cmd_ex(VCP_SET_HALT, "scpsys_hwv_on");
 
 	return ret;
 }
@@ -1256,6 +1269,8 @@ err_hwv_prepare:
 	scpsys_clk_disable(scpd->lp_clk, MAX_CLKS);
 err_lp_clk:
 	dev_err(scp->dev, "Failed to power off domain %s(%d)\n", genpd->name, ret);
+
+	vcp_cmd_ex(VCP_SET_HALT, "scpsys_hwv_off");
 
 	return ret;
 }
@@ -1348,6 +1363,11 @@ err_hwv_done:
 	dev_err(dev, "Failed to hwv done timeout %s(%d)\n", name, val2);
 err_hwv_vote:
 	dev_err(dev, "Failed to hwv vote timeout %s(%d %x)\n", name, ret, val);
+
+	if (onoff)
+		vcp_cmd_ex(VCP_SET_HALT, "scpsys_mminfra_hwv_on");
+	else
+		vcp_cmd_ex(VCP_SET_HALT, "scpsys_mminfra_hwv_off");
 
 	return ret;
 }
@@ -1642,6 +1662,13 @@ struct scp *init_scp(struct platform_device *pdev,
 				mtk_pd_get_performance;
 		}
 	}
+
+	if (hwvdbg_infra_base == NULL)
+		hwvdbg_infra_base = ioremap(0x10000000, 0x1000);
+	if (hwvdbg_mminfra_base == NULL)
+		hwvdbg_mminfra_base = ioremap(0x1e800000, 0x1000);
+	if (hwvdbg_hfrp_base == NULL)
+		hwvdbg_hfrp_base = ioremap(0x1ec3e000, 0x1000);
 
 	return scp;
 }
