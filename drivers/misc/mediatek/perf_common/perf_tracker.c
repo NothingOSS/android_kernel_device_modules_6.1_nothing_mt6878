@@ -51,6 +51,7 @@ static DECLARE_DELAYED_WORK(charger, charger_handler);
 
 static int perf_tracker_on;
 static DEFINE_MUTEX(perf_ctl_mutex);
+static unsigned int check_dram_bw = 0xFFFF;
 
 static struct mtk_btag_mictx_iostat_struct iostat;
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
@@ -71,7 +72,7 @@ static DEFINE_PER_CPU(u64, cpu_last_inst_spec);
 static DEFINE_PER_CPU(u64, cpu_last_cycle);
 static DEFINE_PER_CPU(u64, cpu_last_l3dc);
 static int pmu_init;
-static int last_bw_idx = 0xFFFF;
+static int emi_last_bw_idx = 0xFFFF;
 
 static void set_pmu_enable(unsigned int enable)
 {
@@ -232,35 +233,39 @@ static inline void format_sbin_data(char *buf, u32 size, u32 *sbin_data, u32 len
 
 	ptr += snprintf(ptr, buffer_end - ptr, "ARRAY[");
 	for (i = 0; i < lens; i++) {
-		ptr += snprintf(ptr, buffer_end - ptr, "%02x, %02x, %02x, %02x, ",
+		ptr += snprintf(ptr, buffer_end - ptr, "%02x,%02x,%02x,%02x,",
 				(*(sbin_data+i)) & 0xff, (*(sbin_data+i) >> 8) & 0xff,
 				(*(sbin_data+i) >> 16) & 0xff, (*(sbin_data+i) >> 24) & 0xff);
 	}
-	ptr -= 2;
+	ptr -= 1;
 	ptr += snprintf(ptr, buffer_end - ptr, "]");
 }
 
 enum {
-	SBIN_BW_RECORD			= 1U << 0,
+	SBIN_EMI_BW_RECORD		= 1U << 0,
 	SBIN_U_RECORD			= 1U << 1,
 	SBIN_MCUPM_RECORD		= 1U << 2,
 	SBIN_PMU_RECORD			= 1U << 3,
 	SBIN_U_VOTING_RECORD		= 1U << 4,
 	SBIN_U_A_E_RECORD		= 1U << 5,
+	SBIN_DRAM_BW_RECORD		= 1U << 6,
 };
 
 #define K(x) ((x) << (PAGE_SHIFT - 10))
 #define max_cpus 8
-#define bw_hist_nums 8
-#define bw_record_nums 32
+#define emi_bw_hist_nums 8
+#define dram_bw_hist_nums 4
+#define emi_bw_record_nums 32
+#define dram_bw_record_nums 16
 #define u_record_nums 2
 #define mcupm_record_nums 9
 #define u_voting_record_nums 3
 #define u_a_e_record_nums 5
 /* inst-spec, l3dc, cpu-cycles */
 #define CPU_PMU_NUMS  (3 * max_cpus)
-#define PRINT_BUFFER_SIZE ((bw_record_nums+u_record_nums+mcupm_record_nums \
-		+CPU_PMU_NUMS+u_voting_record_nums+u_a_e_record_nums) * 16 + 8)
+#define PRINT_BUFFER_SIZE ((emi_bw_record_nums+u_record_nums+mcupm_record_nums \
+		+CPU_PMU_NUMS+u_voting_record_nums+u_a_e_record_nums+dram_bw_record_nums) \
+		 * 12 + 8)
 
 #define for_each_cpu_get_pmu(cpu, _pmu)						\
 	do {									\
@@ -276,10 +281,13 @@ void perf_tracker(u64 wallclock,
 	long mm_available = 0, mm_free = 0;
 	int dram_rate = 0;
 	struct mtk_btag_mictx_iostat_struct *iostat_ptr = &iostat;
-	int bw_c = 0, bw_g = 0, bw_mm = 0, bw_total = 0, bw_idx = 0xFFFF;
+	int bw_c = 0, bw_g = 0, bw_mm = 0, bw_total = 0;
+	int emi_bw_idx = 0xFFFF, dram_bw_idx = 0xFFFF;
+	bool bw_idx_checked = 0;
 	u32 bw_record = 0;
-	u32 sbin_data[bw_record_nums+u_record_nums+mcupm_record_nums
-		+CPU_PMU_NUMS+u_voting_record_nums+u_a_e_record_nums] = {0};
+	u32 sbin_data[emi_bw_record_nums+u_record_nums+mcupm_record_nums
+		+CPU_PMU_NUMS+u_voting_record_nums+u_a_e_record_nums
+		+dram_bw_record_nums] = {0};
 	int sbin_lens = 0;
 	char sbin_data_print[PRINT_BUFFER_SIZE] = {0};
 	u32 sbin_data_ctl = 0;
@@ -314,29 +322,31 @@ void perf_tracker(u64 wallclock,
 	bw_total = qos_sram_read(QOS_DEBUG_0);
 
 	/* emi history */
-	bw_idx = qos_rec_get_hist_idx();
-	if (bw_idx != 0xFFFF && bw_idx != last_bw_idx) {
-		last_bw_idx = bw_idx;
-		for (bw_record = 0; bw_record < bw_record_nums; bw_record += 8) {
+	emi_bw_idx = qos_rec_get_hist_idx();
+	dram_bw_idx = emi_bw_idx;
+	if (emi_bw_idx != 0xFFFF && emi_bw_idx != emi_last_bw_idx) {
+		emi_last_bw_idx = emi_bw_idx;
+		bw_idx_checked = 1;
+		for (bw_record = 0; bw_record < emi_bw_record_nums; bw_record += 8) {
 			/* occupied bw history */
-			sbin_data[bw_record]   = qos_rec_get_hist_bw(bw_idx, 0);
-			sbin_data[bw_record+1] = qos_rec_get_hist_bw(bw_idx, 1);
-			sbin_data[bw_record+2] = qos_rec_get_hist_bw(bw_idx, 2);
-			sbin_data[bw_record+3] = qos_rec_get_hist_bw(bw_idx, 3);
+			sbin_data[bw_record]   = qos_rec_get_hist_bw(emi_bw_idx, 0);
+			sbin_data[bw_record+1] = qos_rec_get_hist_bw(emi_bw_idx, 1);
+			sbin_data[bw_record+2] = qos_rec_get_hist_bw(emi_bw_idx, 2);
+			sbin_data[bw_record+3] = qos_rec_get_hist_bw(emi_bw_idx, 3);
 			/* data bw history */
-			sbin_data[bw_record+4] = qos_rec_get_hist_data_bw(bw_idx, 0);
-			sbin_data[bw_record+5] = qos_rec_get_hist_data_bw(bw_idx, 1);
-			sbin_data[bw_record+6] = qos_rec_get_hist_data_bw(bw_idx, 2);
-			sbin_data[bw_record+7] = qos_rec_get_hist_data_bw(bw_idx, 3);
+			sbin_data[bw_record+4] = qos_rec_get_hist_data_bw(emi_bw_idx, 0);
+			sbin_data[bw_record+5] = qos_rec_get_hist_data_bw(emi_bw_idx, 1);
+			sbin_data[bw_record+6] = qos_rec_get_hist_data_bw(emi_bw_idx, 2);
+			sbin_data[bw_record+7] = qos_rec_get_hist_data_bw(emi_bw_idx, 3);
 
-			bw_idx -= 1;
-			if (bw_idx < 0)
-				bw_idx = bw_idx + bw_hist_nums;
+			emi_bw_idx -= 1;
+			if (emi_bw_idx < 0)
+				emi_bw_idx = emi_bw_idx + emi_bw_hist_nums;
 		}
 	}
 #endif
-	sbin_lens += bw_record_nums;
-	sbin_data_ctl |= SBIN_BW_RECORD;
+	sbin_lens += emi_bw_record_nums;
+	sbin_data_ctl |= SBIN_EMI_BW_RECORD;
 	/* u */
 	if (cluster_nr == 2) {
 		u_v = csram_read(U_VOLT_2_CLUSTER);
@@ -393,6 +403,25 @@ void perf_tracker(u64 wallclock,
 		sbin_data[sbin_lens+4] = u_ecf;
 		sbin_lens += u_a_e_record_nums;
 		sbin_data_ctl |= SBIN_U_A_E_RECORD;
+	}
+
+	if (check_dram_bw == 0) {
+		if (dram_bw_idx != 0xFFFF && bw_idx_checked) {
+			/* dram bw history */
+			for (bw_record = 0; bw_record < dram_bw_record_nums; bw_record += 4) {
+				/* occupied bw history */
+				sbin_data[sbin_lens+bw_record]   = qos_rec_get_dramc_hist_bw(dram_bw_idx, 0);
+				sbin_data[sbin_lens+bw_record+1] = qos_rec_get_dramc_hist_bw(dram_bw_idx, 1);
+				sbin_data[sbin_lens+bw_record+2] = qos_rec_get_dramc_hist_bw(dram_bw_idx, 2);
+				sbin_data[sbin_lens+bw_record+3] = qos_rec_get_dramc_hist_bw(dram_bw_idx, 3);
+
+				dram_bw_idx -= 1;
+				if (dram_bw_idx < 0)
+					dram_bw_idx = dram_bw_idx + dram_bw_hist_nums;
+			}
+		}
+		sbin_lens += dram_bw_record_nums;
+		sbin_data_ctl |= SBIN_DRAM_BW_RECORD;
 	}
 
 	format_sbin_data(sbin_data_print, sizeof(sbin_data_print), sbin_data, sbin_lens);
@@ -486,6 +515,7 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 		if (perf_tracker_on) {
 			insert_freq_qos_hook();
 			init_pmu_data();
+			check_dram_bw = qos_rec_check_sram_ext();
 		} else {
 			remove_freq_qos_hook();
 			exit_pmu_data();
