@@ -119,7 +119,6 @@ unsigned int qos_rec_get_dramc_hist_bw(unsigned int idx, unsigned int type)
 
 	if (qos_share_use_sram_ext)
 		val = qos_share_sram_read_ext((BW_TYPE * idx + type)*4);
-	pr_info("sram_dram: %d\n", val);
 
 	return val;
 }
