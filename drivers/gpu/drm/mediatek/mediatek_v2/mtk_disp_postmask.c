@@ -47,6 +47,8 @@
 #define CFG_FLD_BGCLR_IN_SEL REG_FLD_MSB_LSB(2, 2)
 #define CFG_FLD_DRAM_MODE REG_FLD_MSB_LSB(1, 1)
 #define CFG_FLD_RELAY_MODE REG_FLD_MSB_LSB(0, 0)
+#define DISP_POSTMASK_SHADOW_CTRL 0x24
+#define SHADOW_CTRL_BYPASS_SHADOW REG_FLD_MSB_LSB(1, 1)
 #define DISP_POSTMASK_SIZE 0x30
 #define DISP_POSTMASK_SRAM_CFG 0x40
 #define SRAM_CFG_FLD_MASK_NUM_SW_SET REG_FLD_MSB_LSB(11, 4)
@@ -265,6 +267,9 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 
 	} else
 		width = cfg->w;
+
+	mtk_ddp_write_mask(comp, SHADOW_CTRL_BYPASS_SHADOW,
+		DISP_POSTMASK_SHADOW_CTRL, SHADOW_CTRL_BYPASS_SHADOW, handle);
 
 	value = (REG_FLD_VAL((BLEND_CFG_FLD_A_EN), 1) |
 		 REG_FLD_VAL((BLEND_CFG_FLD_PARGB_BLD), 0) |
