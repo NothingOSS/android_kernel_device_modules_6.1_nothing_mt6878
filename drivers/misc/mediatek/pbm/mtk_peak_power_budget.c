@@ -19,7 +19,7 @@
 
 #define STR_SIZE 512
 #define MAX_VALUE 0x7FFF
-#define MAX_POWER_DRAM 4100
+#define MAX_POWER_DRAM 4000
 #define MAX_POWER_DISPLAY 2000
 #define SOC_ERROR 3000
 
@@ -830,12 +830,31 @@ static int mt_ppb_debug_proc_show(struct seq_file *m, void *v)
 		ppb_read_sram(PPB_APU_PWR),
 		ppb_read_sram(PPB_DRAM_PWR));
 
-	seq_printf(m, "(MD/WIFI/CG_POWOR/APU_ACK)=%u,%u,%u,%u,%u\n",
+	seq_printf(m, "(MD/WIFI/APU_ACK/BOOT_MODE)=%u,%u,%u,%u\n",
 		ppb_read_sram(PPB_MD_PWR),
 		ppb_read_sram(PPB_WIFI_PWR),
-		ppb_read_sram(PPB_RESERVE4),
 		ppb_read_sram(PPB_APU_PWR_ACK),
 		ppb_read_sram(PPB_BOOT_MODE));
+
+	return 0;
+}
+
+static int mt_ppb_dump_proc_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u\n",
+		ppb_read_sram(PPB_MODE),
+		ppb_read_sram(PPB_CG_PWR),
+		ppb_read_sram(PPB_VSYS_PWR),
+		ppb_read_sram(PPB_VSYS_ACK),
+		ppb_read_sram(PPB_FLASH_PWR),
+		ppb_read_sram(PPB_AUDIO_PWR),
+		ppb_read_sram(PPB_CAMERA_PWR),
+		ppb_read_sram(PPB_DISPLAY_PWR),
+		ppb_read_sram(PPB_APU_PWR),
+		ppb_read_sram(PPB_DRAM_PWR),
+		ppb_read_sram(PPB_MD_PWR),
+		ppb_read_sram(PPB_WIFI_PWR),
+		ppb_read_sram(PPB_APU_PWR_ACK));
 
 	return 0;
 }
@@ -1117,6 +1136,7 @@ static const struct proc_ops mt_ ## name ## _proc_fops = {	\
 
 #define PROC_ENTRY(name)	{__stringify(name), &mt_ ## name ## _proc_fops}
 PROC_FOPS_RO(ppb_debug);
+PROC_FOPS_RO(ppb_dump);
 PROC_FOPS_RW(ppb_debug_log);
 PROC_FOPS_RW(ppb_manual_mode);
 PROC_FOPS_RW(ppb_stop);
@@ -1137,6 +1157,7 @@ static int mt_ppb_create_procfs(void)
 
 	const struct pentry entries[] = {
 		PROC_ENTRY(ppb_debug),
+		PROC_ENTRY(ppb_dump),
 		PROC_ENTRY(ppb_debug_log),
 		PROC_ENTRY(ppb_manual_mode),
 		PROC_ENTRY(ppb_stop),
