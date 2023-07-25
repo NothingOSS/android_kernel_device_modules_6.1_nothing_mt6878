@@ -36,6 +36,7 @@
 #include "ufs-mediatek-rpmb.h"
 #include "ufs-mediatek-sysfs.h"
 #include "ufs-mediatek-priv.h"
+#include "ufs-mediatek-mimic.h"
 
 /* Power Throttling */
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
@@ -2357,6 +2358,13 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	int i;
 
+	/*
+	 * Skip debug dump since critical information has already
+	 * been printed previously before the eh work was scheduled.
+	 */
+	if (ufsm_eh_in_progress(hba))
+		goto out;
+
 	mt_irq_dump_status(hba->irq);
 
 	/* Dump ufshci register 0x 0~ 0xA0 */
@@ -2402,6 +2410,7 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 	if (ufs_mtk_is_mphy_dump(hba))
 		queue_work(host->phy_dmp_workq, &host->phy_dmp_work);
 
+out:
 	ufs_mtk_eh_err_cnt();
 }
 

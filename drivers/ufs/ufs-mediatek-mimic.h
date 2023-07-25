@@ -8,6 +8,14 @@
 #include <linux/types.h>
 #include <ufs/ufshcd.h>
 
+/* Error handling flags */
+enum {
+	UFSM_EH_IN_PROGRESS = (1 << 0),
+};
+
+#define ufsm_eh_in_progress(h) \
+	((h)->eh_flags & UFSM_EH_IN_PROGRESS)
+
 int ufsm_wait_for_doorbell_clr(struct ufs_hba *hba,
 				 u64 wait_timeout_us);
 
