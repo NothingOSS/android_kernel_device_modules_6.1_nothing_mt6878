@@ -177,6 +177,7 @@ static void mtk_power_budget_manager(enum ppb_kicker kicker, struct ppb *req_ppb
 {
 	bool ppb_enable = false;
 	bool ppb_update = false;
+	unsigned long flags;
 
 	ppb_enable = ppb_func_enable_check();
 	if (!ppb_enable)
@@ -190,9 +191,9 @@ static void mtk_power_budget_manager(enum ppb_kicker kicker, struct ppb *req_ppb
 	if (!ppb_update)
 		return;
 
-	spin_lock(&ppb_lock);
+	spin_lock_irqsave(&ppb_lock, flags);
 	ppb_allocate_budget_manager();
-	spin_unlock(&ppb_lock);
+	spin_unlock_irqrestore(&ppb_lock, flags);
 }
 
 void kicker_ppb_request_power(enum ppb_kicker kicker, unsigned int power)
