@@ -6718,6 +6718,7 @@
 			mediatek,uds = <&usb_dp_selector 19>;
 			usb-role-switch;
 			cdp-block;
+			usb3-lpm-disable;
 			port {
 				mtu3_drd_switch: endpoint {
 					remote-endpoint = <&usb_role>;
