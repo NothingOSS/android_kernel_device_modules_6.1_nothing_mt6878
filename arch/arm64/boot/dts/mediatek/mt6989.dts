@@ -14350,6 +14350,12 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"MSDCPLL_PCW,MMPLL_PCW,MAINPLL_PCW,EMIPLL_PCW,IMGPLL_PCW,",
 				"MMPLL2_PCW,UNIVPLL2_PCW,MAINPLL2_PCW,",
 				"ADSPPLL_PCW,freq,dvdd_sys_voltage";
+			node-123 = "SSPM_SWPM_VENC__INFO",
+				"venc0_hevc_active,venc0_h264_active,venc0_off,",
+				"venc1_hevc_active,venc1_h264_active,venc1_off,",
+				"venc2_hevc_active,venc2_h264_active,venc2_off,",
+				"spec,resolution,fps,frequency,",
+				"vcore_voltage,venc_frequency";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
