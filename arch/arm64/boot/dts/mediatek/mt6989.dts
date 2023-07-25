@@ -838,7 +838,7 @@
 	};
 
 	scpsys: power-controller@1c001000 {
-		compatible = "mediatek,mt6989-scpsys-hwv", "syscon";
+		compatible = "mediatek,mt6989-scpsys", "syscon";
 		reg = <0 0x1c001000 0 0x1000>;
 		#power-domain-cells = <1>;
 		clocks =
