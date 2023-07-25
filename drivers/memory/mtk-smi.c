@@ -2700,12 +2700,12 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 	if (of_property_read_bool(dev->of_node, "init-power-on")) {
 		dev_notice(dev, "%s: init power on\n", __func__);
 		ret = pm_runtime_get_sync(dev);
-		init_power_on_dev[init_power_on_num++] = &larb->smi;
 		if (ret < 0) {
 			dev_notice(dev, "Unable to enable SMI LARB%d. ret:%d\n",
 				larb->larbid, ret);
 			pm_runtime_put_sync(dev);
-		}
+		} else
+			init_power_on_dev[init_power_on_num++] = &larb->smi;
 	}
 	if (of_property_read_bool(dev->of_node, "skip-busy-check")) {
 		larb->skip_busy_check = true;
@@ -3958,12 +3958,12 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 	if (of_property_read_bool(dev->of_node, "init-power-on")) {
 		dev_notice(dev, "%s: init power on\n", __func__);
 		ret = pm_runtime_get_sync(dev);
-		init_power_on_dev[init_power_on_num++] = common;
 		if (ret < 0) {
 			dev_notice(dev, "Unable to enable SMI COMM%d. ret:%d\n",
 				common->commid, ret);
 			pm_runtime_put_sync(dev);
-		}
+		} else
+			init_power_on_dev[init_power_on_num++] = common;
 	}
 	if (of_property_read_bool(dev->of_node, "skip-busy-check")) {
 		common->skip_busy_check = true;
