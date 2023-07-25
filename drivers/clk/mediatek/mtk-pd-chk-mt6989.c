@@ -860,6 +860,7 @@ static enum chk_sys_id debug_dump_id[] = {
 	hfrp_2_bus,
 	hfrp,
 	hfrp_1_bus,
+	hfrp_hwv,
 	hwv,
 	hwv_ext,
 	mm_hwv,

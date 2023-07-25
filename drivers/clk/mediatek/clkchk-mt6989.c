@@ -1932,9 +1932,16 @@ static struct regname rn[] = {
 	REGNAME(mm_hwv, 0x598, HW_CCF_MD_MTCMOS_SET),
 	REGNAME(mm_hwv, 0x798, HW_CCF_GPU_MTCMOS_SET),
 	/* HWV register */
-	REGNAME(mm_hwv_ext, 0xf64, HWV_DATA_HISTORY_8),
-	REGNAME(mm_hwv_ext, 0xf68, HWV_DATA_HISTORY_9),
-	REGNAME(mm_hwv_ext, 0x464, HW_CCF_PLL_SET_STATUS),
+	REGNAME(mm_hwv_ext, 0x500, HW_CCF_INT_STATUS),
+	REGNAME(mm_hwv_ext, 0x198, HW_CCF_GCE_MTCMOS_SET),
+	REGNAME(mm_hwv_ext, 0x398, HW_CCF_SCP_MTCMOS_SET),
+	REGNAME(mm_hwv_ext, 0x414, HW_CCF_MTCMOS_STATUS),
+	REGNAME(mm_hwv_ext, 0x410, HW_CCF_MTCMOS_ENABLE),
+	REGNAME(mm_hwv_ext, 0x41c, HW_CCF_MTCMOS_DONE),
+	REGNAME(mm_hwv_ext, 0x46c, HW_CCF_MTCMOS_SET_STATUS),
+	REGNAME(mm_hwv_ext, 0x470, HW_CCF_MTCMOS_CLR_STATUS),
+	REGNAME(mm_hwv_ext, 0x454, HW_CCF_MTCMOS_STATUS_CLR),
+	REGNAME(mm_hwv_ext, 0xf84, HWV_IDX_POINTER),
 	REGNAME(mm_hwv_ext, 0xf44, HWV_DATA_HISTORY_0),
 	REGNAME(mm_hwv_ext, 0xf48, HWV_DATA_HISTORY_1),
 	REGNAME(mm_hwv_ext, 0xf4c, HWV_DATA_HISTORY_2),
@@ -1943,47 +1950,31 @@ static struct regname rn[] = {
 	REGNAME(mm_hwv_ext, 0xf58, HWV_DATA_HISTORY_5),
 	REGNAME(mm_hwv_ext, 0xf5c, HWV_DATA_HISTORY_6),
 	REGNAME(mm_hwv_ext, 0xf60, HWV_DATA_HISTORY_7),
-	REGNAME(mm_hwv_ext, 0x190, HW_CCF_GCE_PLL_SET),
-	REGNAME(mm_hwv_ext, 0xf84, HWV_IDX_POINTER),
-	REGNAME(mm_hwv_ext, 0x500, HW_CCF_INT_STATUS),
-	REGNAME(mm_hwv_ext, 0x454, HW_CCF_MTCMOS_STATUS_CLR),
-	REGNAME(mm_hwv_ext, 0x400, HW_CCF_PLL_ENABLE),
-	REGNAME(mm_hwv_ext, 0x414, HW_CCF_MTCMOS_STATUS),
-	REGNAME(mm_hwv_ext, 0x46c, HW_CCF_MTCMOS_SET_STATUS),
-	REGNAME(mm_hwv_ext, 0xf24, HWV_ADDR_HISTORY_8),
-	REGNAME(mm_hwv_ext, 0xf74, HWV_DATA_HISTORY_12),
-	REGNAME(mm_hwv_ext, 0xf78, HWV_DATA_HISTORY_13),
+	REGNAME(mm_hwv_ext, 0xf64, HWV_DATA_HISTORY_8),
+	REGNAME(mm_hwv_ext, 0xf68, HWV_DATA_HISTORY_9),
 	REGNAME(mm_hwv_ext, 0xf6c, HWV_DATA_HISTORY_10),
 	REGNAME(mm_hwv_ext, 0xf70, HWV_DATA_HISTORY_11),
+	REGNAME(mm_hwv_ext, 0xf74, HWV_DATA_HISTORY_12),
+	REGNAME(mm_hwv_ext, 0xf78, HWV_DATA_HISTORY_13),
 	REGNAME(mm_hwv_ext, 0xf7c, HWV_DATA_HISTORY_14),
 	REGNAME(mm_hwv_ext, 0xf80, HWV_DATA_HISTORY_15),
-	REGNAME(mm_hwv_ext, 0x41c, HW_CCF_MTCMOS_DONE),
-	REGNAME(mm_hwv_ext, 0x4ac, HW_CCF_MTCMOS_FLOW_FLAG_CLR),
-	REGNAME(mm_hwv_ext, 0x410, HW_CCF_MTCMOS_ENABLE),
-	REGNAME(mm_hwv_ext, 0x404, HW_CCF_PLL_STATUS),
-	REGNAME(mm_hwv_ext, 0xf18, HWV_ADDR_HISTORY_5),
-	REGNAME(mm_hwv_ext, 0xf14, HWV_ADDR_HISTORY_4),
-	REGNAME(mm_hwv_ext, 0x198, HW_CCF_GCE_MTCMOS_SET),
-	REGNAME(mm_hwv_ext, 0xf1c, HWV_ADDR_HISTORY_6),
-	REGNAME(mm_hwv_ext, 0xf08, HWV_ADDR_HISTORY_1),
 	REGNAME(mm_hwv_ext, 0xf04, HWV_ADDR_HISTORY_0),
-	REGNAME(mm_hwv_ext, 0xf10, HWV_ADDR_HISTORY_3),
+	REGNAME(mm_hwv_ext, 0xf08, HWV_ADDR_HISTORY_1),
 	REGNAME(mm_hwv_ext, 0xf0c, HWV_ADDR_HISTORY_2),
-	REGNAME(mm_hwv_ext, 0xf28, HWV_ADDR_HISTORY_9),
-	REGNAME(mm_hwv_ext, 0x398, HW_CCF_SCP_MTCMOS_SET),
-	REGNAME(mm_hwv_ext, 0x468, HW_CCF_PLL_CLR_STATUS),
-	REGNAME(mm_hwv_ext, 0x4a8, HW_CCF_MTCMOS_FLOW_FLAG_SET),
+	REGNAME(mm_hwv_ext, 0xf10, HWV_ADDR_HISTORY_3),
+	REGNAME(mm_hwv_ext, 0xf14, HWV_ADDR_HISTORY_4),
+	REGNAME(mm_hwv_ext, 0xf18, HWV_ADDR_HISTORY_5),
+	REGNAME(mm_hwv_ext, 0xf1c, HWV_ADDR_HISTORY_6),
 	REGNAME(mm_hwv_ext, 0xf20, HWV_ADDR_HISTORY_7),
-	REGNAME(mm_hwv_ext, 0x390, HW_CCF_SCP_PLL_SET),
-	REGNAME(mm_hwv_ext, 0xf30, HWV_ADDR_HISTORY_11),
+	REGNAME(mm_hwv_ext, 0xf24, HWV_ADDR_HISTORY_8),
+	REGNAME(mm_hwv_ext, 0xf28, HWV_ADDR_HISTORY_9),
 	REGNAME(mm_hwv_ext, 0xf2c, HWV_ADDR_HISTORY_10),
-	REGNAME(mm_hwv_ext, 0xf38, HWV_ADDR_HISTORY_13),
+	REGNAME(mm_hwv_ext, 0xf30, HWV_ADDR_HISTORY_11),
 	REGNAME(mm_hwv_ext, 0xf34, HWV_ADDR_HISTORY_12),
-	REGNAME(mm_hwv_ext, 0xf40, HWV_ADDR_HISTORY_15),
+	REGNAME(mm_hwv_ext, 0xf38, HWV_ADDR_HISTORY_13),
 	REGNAME(mm_hwv_ext, 0xf3c, HWV_ADDR_HISTORY_14),
-	REGNAME(mm_hwv_ext, 0x450, HW_CCF_PLL_STATUS_CLR),
-	REGNAME(mm_hwv_ext, 0x470, HW_CCF_MTCMOS_CLR_STATUS),
-	REGNAME(mm_hwv_ext, 0x40c, HW_CCF_PLL_DONE),
+	REGNAME(mm_hwv_ext, 0xf40, HWV_ADDR_HISTORY_15),
+	REGNAME(mm_hwv_ext, 0xf98, HWV_SW_RECORD),
 	/* hfrp hw voter */
 	REGNAME(hfrp_hwv, 0x100, HFRP_HWV_SW_VOTE),
 	REGNAME(hfrp_hwv, 0x110, HFRP_HWV_INTEN),
@@ -2028,22 +2019,6 @@ u32 get_mt6989_reg_value(u32 id, u32 ofs)
 	return clk_readl(rb[id].virt + ofs);
 }
 EXPORT_SYMBOL_GPL(get_mt6989_reg_value);
-
-static void write_mt6989_reg_value(u32 id, u32 ofs, u32 val)
-{
-	if (id >= chk_sys_num)
-		return;
-
-	clk_writel(rb[id].virt + ofs, val);
-}
-
-static void set_mt6989_reg_value(u32 id, u32 ofs, u32 mask, u32 val)
-{
-	if (id >= chk_sys_num)
-		return;
-
-	clk_writel(rb[id].virt + ofs, (clk_readl(rb[id].virt + ofs) & ~mask) | val);
-}
 
 /*
  * clkchk pwr_data
@@ -2580,8 +2555,16 @@ static void get_bus_reg(void)
 
 static void dump_bus_reg(struct regmap *regmap, u32 ofs)
 {
+	const struct fmeter_clk *fclks;
+
+	fclks = mt_get_fmeter_clks();
 	set_subsys_reg_dump_mt6989(bus_dump_id);
 	get_subsys_reg_dump_mt6989();
+	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
+		if (fclks->type != VLPCK && fclks->type != SUBSYS)
+			pr_notice("[%s] %d khz\n", fclks->name,
+				mt_get_fmeter_freq(fclks->id, fclks->type));
+	}
 	/* sspm need some time to run isr */
 	mdelay(1000);
 
@@ -2601,53 +2584,7 @@ static enum chk_sys_id vlp_dump_id[] = {
 static void dump_vlp_reg(struct regmap *regmap, u32 shift)
 {
 	const struct fmeter_clk *fclks;
-	u32 freq = 0;
-	int i = 0;
 
-	freq = mt_get_fmeter_freq(FM_MMINFRA_CK, CKGEN_CK2);
-	pr_notice("dump_vlp_reg(%d)\n", freq);
-	if (shift) {
-		set_mt6989_reg_value(spm, 0xEA8,0xffff, 0x1112);
-		write_mt6989_reg_value(vlp_ao, 0x420, 0x5);
-		udelay(100);
-		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) | 0x4);
-		while ((get_mt6989_reg_value(spm, 0xEA8)  & (1 << 30)) !=  (1 << 30)) {
-			udelay(10);
-			i++;
-			if (i > 1000) {
-				pr_notice("mtcmos timeout\n");
-				break;
-			}
-		}
-		/* wait ack*/
-		udelay(50);
-		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) | 0x8);
-		i = 0;
-		while ((get_mt6989_reg_value(spm, 0xEA8)  & (1 << 31)) !=  (1 << 31)) {
-			udelay(10);
-			i++;
-			if (i > 1000) {
-				pr_notice("mtcmos2 timeout\n");
-				break;
-			}
-		}
-		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) & ~(0x10));
-		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) & ~(0x2));
-		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8)  | (0x1));
-		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) & ~(0x100));
-		i = 0;
-		while ((get_mt6989_reg_value(spm, 0xEA8)  & (1 << 12)) ==  (1 << 12)) {
-			udelay(10);
-			i++;
-			if (i > 1000) {
-				pr_notice("sram timeout\n");
-				break;
-			}
-		}
-		write_mt6989_reg_value(vlp_ao, 0x420, 0x1);
-		udelay(100);
-		write_mt6989_reg_value(mminfra_config, 0x108, 0x4);
-	}
 	fclks = mt_get_fmeter_clks();
 	set_subsys_reg_dump_mt6989(vlp_dump_id);
 	get_subsys_reg_dump_mt6989();

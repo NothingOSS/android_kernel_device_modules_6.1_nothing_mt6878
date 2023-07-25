@@ -26,6 +26,7 @@
 #define MTK_POLL_HWV_VOTE_US		2
 #define MTK_POLL_DELAY_US		10
 #define MTK_POLL_300MS_TIMEOUT		(300 * USEC_PER_MSEC)
+#define MTK_POLL_1S_TIMEOUT		(1000 * USEC_PER_MSEC)
 
 #define MMINFRA_DONE_STA		BIT(0)
 #define VCP_READY_STA			BIT(1)
@@ -119,7 +120,7 @@ int __mminfra_hwv_power_ctrl(struct mtk_hwv_domain *hwvd,
 
 	/* wait until VCP_READY_ACK = 1 */
 	ret = readx_poll_timeout_atomic(mtk_vcp_is_ready, hwvd, tmp, tmp > 0,
-			MTK_POLL_DELAY_US, MTK_POLL_300MS_TIMEOUT);
+			MTK_POLL_DELAY_US, MTK_POLL_1S_TIMEOUT);
 	if (ret < 0)
 		goto err_hwv_prepare;
 

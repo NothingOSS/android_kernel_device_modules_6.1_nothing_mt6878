@@ -32,6 +32,7 @@
 #define MTK_POLL_TIMEOUT		USEC_PER_SEC
 #define MTK_POLL_DELAY_US		10
 #define MTK_POLL_300MS_TIMEOUT		(300 * USEC_PER_MSEC)
+#define MTK_POLL_1S_TIMEOUT		USEC_PER_SEC
 #define MTK_POLL_IRQ_DELAY_US		3
 #define MTK_POLL_IRQ_TIMEOUT		USEC_PER_SEC
 #define MTK_POLL_HWV_PREPARE_CNT	2500
@@ -1297,7 +1298,7 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 
 	/* wait until vcp is ready, check 0x1c00091c[1] = 1 */
 	ret = readx_poll_timeout_atomic(mtk_check_vcp_is_ready, scpd, tmp, tmp > 0,
-			MTK_POLL_DELAY_US, MTK_POLL_300MS_TIMEOUT);
+			MTK_POLL_DELAY_US, MTK_POLL_1S_TIMEOUT);
 	if (ret < 0)
 		goto err_vcp_ready;
 
