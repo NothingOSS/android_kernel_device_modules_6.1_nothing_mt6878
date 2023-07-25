@@ -21,6 +21,8 @@
 #include "tinysys-scmi.h"
 #include "vcp_status.h"
 #include "clk-mtk.h"
+#include "mtk-pd-chk.h"
+
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
 #endif
@@ -693,6 +695,7 @@ static irqreturn_t mminfra_irq_handler(int irq, void *data)
 static bool mminfra_devapc_power_cb(void)
 {
 	if (dbg->irq_safe) {
+		pdchk_debug_dump();
 		pr_info("mminfra mtcmos = 0x%x\n", readl(dbg->spm_base+0xea8));
 		pr_info("cg_con0 = 0x%x, ao_cg_con0 = 0x%x, ao_cg_con1 = 0x%x\n",
 			readl(dbg->mminfra_base + MMINFRA_CG_CON0),
