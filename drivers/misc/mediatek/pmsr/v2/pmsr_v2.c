@@ -374,8 +374,13 @@ static int pmsr_procfs_init(void)
 
 		for (i = 0 ; i < cfg.dpmsr_count; i++) {
 			char name[10];
+			int len = 0;
 
-			snprintf(name, sizeof(name), "dpmsr%d", i);
+			len = snprintf(name, sizeof(name), "dpmsr%d", i);
+			/* len should be less than the size of name[] */
+			if (len >= sizeof(name))
+				pr_notice("dpmsr name fail\n");
+
 			dpmsr_dir_entry = proc_mkdir(name, pmsr_droot);
 			if (dpmsr_dir_entry) {
 				proc_create_data("seltype",
