@@ -269,7 +269,7 @@ ipi_err_wait_and_unlock:
 	timeout = 0;
 	vcodec_trace_end();
 	if (inst->vcu.daemon_pid == get_vcp_generation()) {
-		trigger_vcp_halt(VCP_A_ID, "vdec_srv");
+		trigger_vcp_halt(VCP_A_ID, "vdec_srv", true);
 		while (inst->vcu.daemon_pid == get_vcp_generation() ||
 			!inst->ctx->dev->codec_stop_done) {
 			if (timeout > VCP_SYNC_TIMEOUT_MS) {

@@ -250,7 +250,7 @@ extern int vcp_turn_mminfra_off(void);
 
 extern int vcp_check_resource(void);
 void set_vcp_mpu(void);
-void trigger_vcp_halt(enum vcp_core_id id, char *user);
+void trigger_vcp_halt(enum vcp_core_id id, char *user, bool vote_mminfra);
 extern phys_addr_t vcp_mem_base_phys;
 extern phys_addr_t vcp_mem_base_virt;
 extern phys_addr_t vcp_mem_size;

@@ -803,7 +803,7 @@ static void vcp_err_info_handler(int id, void *prdata, void *data,
 /*
  * @return: 1 if vcp is ready for running tasks
  */
-void trigger_vcp_halt(enum vcp_core_id id, char *user)
+void trigger_vcp_halt(enum vcp_core_id id, char *user, bool vote_mminfra)
 {
 	int i, j;
 	int ret = 0;
@@ -824,11 +824,14 @@ void trigger_vcp_halt(enum vcp_core_id id, char *user)
 			pr_notice("[VCP] vcp's first halt is from %s\n", halt_user);
 		}
 
-		ret = vcp_turn_mminfra_on();
-		if (ret < 0) {
-			mutex_unlock(&vcp_pw_clk_mutex);
-			return;
+		if (vote_mminfra) {
+			ret = vcp_turn_mminfra_on();
+			if (ret < 0) {
+				mutex_unlock(&vcp_pw_clk_mutex);
+				return;
+			}
 		}
+
 		vcp_dump_last_regs(mmup_enable_count());
 
 		/* trigger halt isr, force vcp enter wfi */
@@ -839,7 +842,9 @@ void trigger_vcp_halt(enum vcp_core_id id, char *user)
 				pr_info("[VCP] Active feature id %d cnt %d\n",
 					j, feature_table[j].enable);
 		mtk_smi_dbg_hang_detect("VCP EE");
-		vcp_turn_mminfra_off();
+
+		if (vote_mminfra)
+			vcp_turn_mminfra_off();
 	} else
 		pr_notice("[VCP] %s %s tigger but VCP not ready\n", __func__, user);
 	mutex_unlock(&vcp_pw_clk_mutex);
@@ -894,13 +899,16 @@ unsigned int vcp_cmd(enum vcp_cmd_id id, char *user)
 {
 	switch (id) {
 	case VCP_SET_HALT:
-		trigger_vcp_halt(VCP_A_ID, user);
+		trigger_vcp_halt(VCP_A_ID, user, true);
 		break;
 	case VCP_SET_DISP_SYNC:
 		//trigger_vcp_disp_sync(VCP_A_ID);
 		break;
 	case VCP_GET_GEN:
 		return get_vcp_generation();
+	case VCP_SET_HALT_MMINFRA:
+		trigger_vcp_halt(VCP_A_ID, user, false);
+		break;
 	default:
 		pr_notice("[VCP] %s wrong cmd id %d", __func__, id);
 		break;

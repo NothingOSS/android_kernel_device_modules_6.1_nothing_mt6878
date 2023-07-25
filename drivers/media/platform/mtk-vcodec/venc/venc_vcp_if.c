@@ -240,7 +240,7 @@ wait_ack:
 ipi_err_wait_and_unlock:
 	timeout = 0;
 	if (inst->vcu_inst.daemon_pid == get_vcp_generation()) {
-		trigger_vcp_halt(VCP_A_ID, "venc_srv");
+		trigger_vcp_halt(VCP_A_ID, "venc_srv", true);
 		while (inst->vcu_inst.daemon_pid == get_vcp_generation()) {
 			if (timeout > VCP_SYNC_TIMEOUT_MS) {
 				mtk_v4l2_debug(0, "halt restart timeout %x\n",

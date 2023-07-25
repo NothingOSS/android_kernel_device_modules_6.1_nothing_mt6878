@@ -188,6 +188,7 @@ enum vcp_cmd_id {
 	VCP_SET_HALT = 0,
 	VCP_SET_DISP_SYNC = 1,
 	VCP_GET_GEN = 2,
+	VCP_SET_HALT_MMINFRA = 3,
 };
 
 extern struct mtk_mbox_device vcp_mboxdev;
