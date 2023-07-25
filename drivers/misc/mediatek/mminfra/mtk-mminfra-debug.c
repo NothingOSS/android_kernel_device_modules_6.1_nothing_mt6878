@@ -375,7 +375,7 @@ static int mminfra_voter_mon(void *data)
 				voter_cnt[bit] = 0;
 			cnt = 0;
 		}
-		msleep(20);
+		mdelay(1);
 	}
 	return 0 ;
 }
@@ -403,7 +403,7 @@ static int mminfra_power_mon(void *data)
 			mm_pwr_cnt = 0;
 			cnt = 0;
 		}
-		msleep(20);
+		mdelay(1);
 	}
 	return 0 ;
 }
