@@ -394,6 +394,7 @@ static int freq_min_notifier_call(struct notifier_block *this,
 
 static int fbt_cpu_topo_info(void)
 {
+	int ret = 0;
 	int cpu, i;
 	int num = 0;
 	struct cpufreq_policy *policy;
@@ -445,10 +446,14 @@ static int fbt_cpu_topo_info(void)
 
 		fbt_freq_min_notifier[num].notifier_call = freq_min_notifier_call;
 
-		freq_qos_add_request(&policy->constraints,
+		ret = freq_qos_add_request(&policy->constraints,
 			&(fbt_cpu_rq[num]), FREQ_QOS_MAX, fbt_opp_tbl[num][0]);
-		freq_qos_add_notifier(&policy->constraints,
+		if (ret < 0)
+			pr_info("%s freq_qos_add_request return %d\n", __func__, ret);
+		ret = freq_qos_add_notifier(&policy->constraints,
 			FREQ_QOS_MIN, fbt_freq_min_notifier+num);
+		if (ret < 0)
+			pr_info("%s freq_qos_add_notifier return %d\n", __func__, ret);
 
 		num++;
 		cpu = cpumask_last(policy->related_cpus);
