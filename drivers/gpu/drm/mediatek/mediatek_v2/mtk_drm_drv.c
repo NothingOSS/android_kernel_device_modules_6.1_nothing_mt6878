@@ -5602,7 +5602,8 @@ err_ovlsys:
 	if (priv->side_mmsys_dev)
 		pm_runtime_put_sync(priv->side_mmsys_dev);
 err_side_mmsys:
-	pm_runtime_put_sync(priv->mmsys_dev);
+	if (priv->mmsys_dev)
+		pm_runtime_put_sync(priv->mmsys_dev);
 err_mmsys:
 	if (priv->dpc_dev)
 		pm_runtime_put(priv->dpc_dev);
@@ -5755,6 +5756,7 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
 bool mtk_drm_top_clk_isr_get(char *master)
 {
 	unsigned long flags = 0;
+	int ret = 0;
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		spin_lock_irqsave(&top_clk_lock, flags);
@@ -5765,8 +5767,14 @@ bool mtk_drm_top_clk_isr_get(char *master)
 			return false;
 		}
 		atomic_inc(&top_isr_ref);
-		if (g_dpc_dev)
-			pm_runtime_resume_and_get(g_dpc_dev);
+		if (g_dpc_dev) {
+			ret = pm_runtime_resume_and_get(g_dpc_dev);
+			if (unlikely(ret)) {
+				DDPMSG("%s pm_runtime_resume_and_get fail\n", __func__);
+				spin_unlock_irqrestore(&top_clk_lock, flags);
+				return ret;
+			}
+		}
 		spin_unlock_irqrestore(&top_clk_lock, flags);
 	}
 	return true;

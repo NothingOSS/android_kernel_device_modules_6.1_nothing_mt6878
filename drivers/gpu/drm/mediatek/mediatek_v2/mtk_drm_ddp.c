@@ -21608,6 +21608,10 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 
 	if (mtk_crtc)
 		mmsys_id = mtk_get_mmsys_id(&mtk_crtc->base);
+	else {
+		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
+		return;
+	}
 
 	if (mutex_id >= DDP_PATH_NR) {
 		DDPPR_ERR("mutex id is out of bound:%d\n", mutex_id);
