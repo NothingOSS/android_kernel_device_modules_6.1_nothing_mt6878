@@ -26,9 +26,11 @@ struct clkdbg_ops {
 	const char * const *(*get_all_clk_names)(void);
 	const char * const *(*get_pwr_names)(void);
 	u32 (*get_spm_pwr_status)(void);
+	int (*start_task)(void);
 };
 
 void set_clkdbg_ops(const struct clkdbg_ops *ops);
+void unset_clkdbg_ops(void);
 void clkdbg_set_cfg(void);
 int clk_dbg_driver_register(struct platform_driver *drv, const char *name);
 

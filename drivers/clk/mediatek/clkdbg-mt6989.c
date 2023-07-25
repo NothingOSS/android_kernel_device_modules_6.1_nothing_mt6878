@@ -6,6 +6,7 @@
 
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
+#include <linux/kthread.h>
 #include <linux/io.h>
 #include <linux/seq_file.h>
 #include <linux/delay.h>
@@ -902,6 +903,42 @@ const char * const *get_mt6989_all_clk_names(void)
 	return clks;
 }
 
+/*
+ * clkdbg test tasks
+ */
+static struct task_struct *clkdbg_test_thread;
+
+static int clkdbg_thread_fn(void *data)
+{
+	while (!kthread_should_stop()) {
+		pr_info("clkdbg_thread is running...\n");
+		ssleep(10); /* 10s */
+	}
+	return 0;
+}
+
+static int start_clkdbg_test_task(void)
+{
+	if (clkdbg_test_thread) {
+		pr_info("clkdbg_thread is already running\n");
+		return -EBUSY;
+	}
+
+	clkdbg_test_thread = kthread_run(clkdbg_thread_fn, NULL, "clkdbg_thread");
+	if (IS_ERR(clkdbg_test_thread)) {
+		pr_info("Failed to start clkdbg_thread\n");
+		return PTR_ERR(clkdbg_test_thread);
+	}
+	return 0;
+}
+
+static void stop_clkdbg_test_task(void)
+{
+	if (clkdbg_test_thread) {
+		kthread_stop(clkdbg_test_thread);
+		clkdbg_test_thread = NULL;
+	}
+}
 
 /*
  * clkdbg dump all fmeter clks
@@ -926,6 +963,7 @@ static struct clkdbg_ops clkdbg_mt6989_ops = {
 	.unprepare_fmeter = NULL,
 	.fmeter_freq = fmeter_freq_op,
 	.get_all_clk_names = get_mt6989_all_clk_names,
+	.start_task = start_clkdbg_test_task,
 };
 
 static int clk_dbg_mt6989_probe(struct platform_device *pdev)
@@ -954,6 +992,8 @@ static int __init clkdbg_mt6989_init(void)
 
 static void __exit clkdbg_mt6989_exit(void)
 {
+	unset_clkdbg_ops();
+	stop_clkdbg_test_task();
 	platform_driver_unregister(&clk_dbg_mt6989_drv);
 }
 

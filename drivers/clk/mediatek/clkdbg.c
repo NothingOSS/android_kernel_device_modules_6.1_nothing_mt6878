@@ -51,6 +51,12 @@ void set_clkdbg_ops(const struct clkdbg_ops *ops)
 }
 EXPORT_SYMBOL(set_clkdbg_ops);
 
+void unset_clkdbg_ops(void)
+{
+	clkdbg_ops = NULL;
+}
+EXPORT_SYMBOL(unset_clkdbg_ops);
+
 static const struct fmeter_clk *get_all_fmeter_clks(void)
 {
 	if (clkdbg_ops == NULL || clkdbg_ops->get_all_fmeter_clks  == NULL)
@@ -797,6 +803,21 @@ static int clkdbg_set_rate(struct seq_file *s, void *v)
 	seq_printf(s, "%d\n", r);
 
 	return r;
+}
+
+static int clkdbg_test_task(struct seq_file *s, void *v)
+{
+	if (clkdbg_ops == NULL || clkdbg_ops->start_task == NULL) {
+		seq_puts(s, "Task not support\n");
+		return 0;
+	}
+
+	if (!clkdbg_ops->start_task())
+		seq_puts(s, "Task Createted\n");
+	else
+		seq_puts(s, "Create task failed\n");
+
+	return 0;
 }
 
 #if IS_ENABLED(CONFIG_MTK_CLKMGR_DEBUG)
@@ -2215,6 +2236,7 @@ static const struct cmd_fn common_cmds[] = {
 	CMDFN("dump_suspend_clks_1", clkdbg_dump_suspend_clks_1),
 	CMDFN("dump_suspend_clks_2", clkdbg_dump_suspend_clks_2),
 	CMDFN("dump_suspend_clks_3", clkdbg_dump_suspend_clks_3),
+	CMDFN("test_task", clkdbg_test_task),
 	CMDFN("cmds", clkdbg_cmds),
 	{}
 };
