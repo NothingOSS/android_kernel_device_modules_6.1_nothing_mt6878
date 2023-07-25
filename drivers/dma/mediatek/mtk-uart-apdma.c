@@ -747,9 +747,11 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 
 	if (c->dir == DMA_MEM_TO_DEV) {
 		idx = c->cur_rec_idx;
+		rpt =  mtk_uart_apdma_read(c, VFF_RPT);
 	} else {
 		idx = (unsigned int)((c->rec_idx - 1 + UART_RECORD_COUNT) % UART_RECORD_COUNT);
 		start_sec = sched_clock();
+		wpt =  mtk_uart_apdma_read(c, VFF_WPT);
 	}
 
 	spin_lock_irq(&vc->lock);
@@ -780,7 +782,6 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 		start_ns = do_div(start_sec, 1000000000);
 		end_sec = c->rec_info[idx].complete_time;
 		end_ns = do_div(end_sec, 1000000000);
-		wpt =  mtk_uart_apdma_read(c, VFF_WPT);
 		pr_info("rx h_t:[%5lu.%06llu], cb_s:[%5lu.%06llu], cb_e:[%5lu.%06llu], wpt:0x%x, len:%d\n",
 			(unsigned long)recv_sec, recv_ns / 1000, (unsigned long)start_sec, start_ns / 1000,
 			(unsigned long)end_sec, end_ns / 1000, wpt, c->rec_info[idx].trans_len);
@@ -792,7 +793,6 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 		recv_sec = c->rec_info[idx].trans_duration_time;
 		recv_ns = do_div(recv_sec, 1000000000);
 		end_ns = do_div(end_sec, 1000000000);
-		rpt =  mtk_uart_apdma_read(c, VFF_RPT);
 		if (cost_time > 10000000)
 			pr_info("tx s_t:[%5lu.%06llu], h_t:[%5lu.%06llu], cb_e:[%5lu.%06llu], rpt:0x%x, len:%d\n",
 				(unsigned long)start_sec, start_ns / 1000, (unsigned long)recv_sec, recv_ns / 1000,
