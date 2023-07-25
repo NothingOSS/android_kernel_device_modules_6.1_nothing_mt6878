@@ -760,8 +760,7 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 				3 : 7);
 			reg_val |= ((bit_per_channel == DSC_BPC_8_BIT) ?
 				12 : 16) << 8;
-			reg_val |= ((rc_model_size == 0) ?
-				0x2000 : rc_model_size) << 16;
+			reg_val |= (rc_model_size << 16);
 		} else {
 			reg_val = ((dsc_params->flatness_minqp == 0) ?
 				0x3 : dsc_params->flatness_minqp);
@@ -1372,8 +1371,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 				3 : 7);
 			reg_val |= ((bit_per_channel == DSC_BPC_8_BIT) ?
 				12 : 16) << 8;
-			reg_val |= ((rc_model_size == 0) ?
-				0x2000 : rc_model_size) << 16;
+			reg_val |= (rc_model_size << 16);
 		} else {
 			reg_val = ((dsc_params->flatness_minqp == 0) ?
 				0x3 : dsc_params->flatness_minqp);
