@@ -575,24 +575,24 @@ static int init_public_table(void)
 			continue;
 		}
 
+		pd_public = &mtk_em_pd_ptr_public[cluster];
 		policy = cpufreq_cpu_get(cpu);
 		if (!policy) {
 			/* no policy? should check topology or dvfs status first */
 			pr_info("%s: %d: cannot get policy for CPU: %d, no available static power\n",
 					__func__, __LINE__, cpu);
-			free_public_table(cluster, 0);
-
-			return -ENOMEM;
+			pd_public->max_freq = pd->table[pd->nr_perf_states - 1].frequency;
+			pd_public->min_freq = pd->table[0].frequency;
+		} else {
+			pd_public->max_freq = policy->cpuinfo.max_freq;
+			pd_public->min_freq = policy->cpuinfo.min_freq;
+			cpufreq_cpu_put(policy);
 		}
 
-		pd_public = &mtk_em_pd_ptr_public[cluster];
-		pd_public->cpumask = topology_cluster_cpumask(cpu);
+		pd_public->cpumask = to_cpumask(pd->cpus);
 		pd_public->cluster_num = cluster;
 		pd_public->nr_perf_states = pd->nr_perf_states;
-		pd_public->max_freq = policy->cpuinfo.max_freq;
-		pd_public->min_freq = policy->cpuinfo.min_freq;
 		pd_public->nr_wl_tables = mtk_mapping.nr_cpu_type;
-		cpufreq_cpu_put(policy);
 
 		pd_public->wl_table =
 			kcalloc(pd_public->nr_wl_tables, sizeof(struct mtk_em_perf_state *),
