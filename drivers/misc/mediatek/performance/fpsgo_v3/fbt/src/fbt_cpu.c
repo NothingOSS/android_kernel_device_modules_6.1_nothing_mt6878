@@ -5949,7 +5949,7 @@ int fpsgo_ctrl2fbt_buffer_quota(unsigned long long ts, int pid, int quota,
 
 	if (no_buffer_rescue) {
 		jerk = &(thr->boost_info.proc.jerks[thr->boost_info.proc.active_jerk_id]);
-		if (jerk->last_check == FPSGO_JERK_ENOUGH_BUFFER) {
+		if (jerk->last_check == FPSGO_JERK_ENOUGH_BUFFER && jerk->jerking == 0) {
 			jerk->jerking = 1;
 			schedule_work(&jerk->work);
 		}
