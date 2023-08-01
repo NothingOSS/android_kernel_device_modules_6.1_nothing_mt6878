@@ -908,8 +908,10 @@ static bool disp_aal_read_single_hist(struct mtk_ddp_comp *comp)
 	struct mtk_ddp_comp *disp_tdshp = aal_data->comp_tdshp;
 	void __iomem *dre3_va = mtk_aal_dre3_va(comp);
 
-	if (atomic_read(&aal_data->eof_irq) == 0)
+	if (atomic_read(&aal_data->eof_irq) == 0) {
+		AALIRQ_LOG("no eof, skip\n");
 		return false;
+	}
 	if (!aal_data->is_right_pipe) {
 		for (i = 0; i < AAL_HIST_BIN; i++) {
 			aal_data->primary_data->hist.aal0_maxHist[i] = readl(comp->regs +
@@ -991,7 +993,6 @@ static bool disp_aal_read_single_hist(struct mtk_ddp_comp *comp)
 			disp_aal_dump_clarity_regs(aal_data, 1);
 		}
 	}
-	atomic_set(&aal_data->eof_irq, 0);
 	return read_success;
 }
 
@@ -1915,7 +1916,11 @@ static bool disp_aal_read_dre3(struct mtk_ddp_comp *comp,
 	/* Read Global histogram for ESS */
 	//if (disp_aal_read_single_hist(comp) != true)
 		//return false;
-
+	if (atomic_read(&aal_data->eof_irq) == 0) {
+		AALIRQ_LOG("no eof, skip\n");
+		return false;
+	}
+	atomic_set(&aal_data->eof_irq, 0);
 	AALIRQ_LOG("start\n");
 	if (dump_blk_x >= 0 && dump_blk_x < 16
 		&& dump_blk_y >= 0 && dump_blk_y < 8)
@@ -2374,7 +2379,8 @@ static void disp_aal_single_pipe_hist_update(struct mtk_ddp_comp *comp, unsigned
 	CRTC_MMP_MARK(0, aal_dre20_rh, comp->id, 2);
 	if (spin_trylock_irqsave(&aal_data->primary_data->hist_lock, flags)) {
 		read_success = disp_aal_read_single_hist(comp);
-
+		if (read_success)
+			atomic_set(&aal_data->eof_irq, 0);
 		spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 
 		if (read_success == true) {
@@ -4256,7 +4262,8 @@ void disp_aal_on_end_of_frame(struct mtk_ddp_comp *comp, unsigned int status)
 	} else
 		disp_aal_single_pipe_hist_update(comp, status);
 
-	AALIRQ_LOG("[SRAM] clean dre_config in (EOF)  comp->id = %d\n", comp->id);
+	AALIRQ_LOG("[SRAM] clean dre_config in (EOF)  comp->id = %d dre_en %d\n", comp->id,
+		aal_data->primary_data->dre30_enabled);
 
 	atomic_set(&aal_data->dre_config, 0);
 }
