@@ -14567,6 +14567,30 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_enable = false;
 	}
 
+	if (!_is_equal_full_lcm(crtc, &partial_roi)) {
+		memset(&tile_overhead_v, 0, sizeof(tile_overhead_v));
+		/* calculate total overhead vertical */
+		for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
+			mtk_ddp_comp_config_overhead_v(comp, &tile_overhead_v);
+			DDPDBG("%s:comp %s overhead_v:%d\n",
+				__func__, mtk_dump_comp_str(comp),
+				tile_overhead_v.overhead_v);
+		}
+
+		/*store total overhead vertical data*/
+		mtk_crtc_store_total_overhead_v(mtk_crtc, tile_overhead_v);
+	}
+
+	/* disable partial update if total overhead_v exceed the bounds */
+	if (partial_roi.y < mtk_crtc->tile_overhead_v.overhead_v ||
+		partial_roi.y + partial_roi.height >=
+		full_roi.height - mtk_crtc->tile_overhead_v.overhead_v) {
+		mtk_crtc->tile_overhead_v.overhead_v = 0;
+		mtk_crtc->tile_overhead_v.overhead_v_scaling = 0;
+		_assign_full_lcm_roi(crtc, &partial_roi);
+		partial_enable = false;
+	}
+
 	state->ovl_partial_roi = partial_roi;
 
 	/* set ovl_partial_dirty if roi is full lcm */
@@ -14589,43 +14613,19 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		return ret;
 	}
 
-	if (!_is_equal_full_lcm(crtc, &partial_roi) ||
-		mtkfb_is_partial_roi_highlight()) {
-		/* bypass PQ module if enable partial update */
-		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-			if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_AAL ||
-				mtk_ddp_comp_get_type(comp->id) == MTK_DMDP_AAL ||
-				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CHIST ||
-				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_POSTMASK)) {
-				if (comp->funcs && comp->funcs->bypass)
-					mtk_ddp_comp_bypass(comp, partial_enable, cmdq_handle);
-			}
+	/* bypass PQ module if enable partial update */
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_AAL ||
+			mtk_ddp_comp_get_type(comp->id) == MTK_DMDP_AAL ||
+			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CHIST ||
+			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_POSTMASK)) {
+			if (comp->funcs && comp->funcs->bypass)
+				mtk_ddp_comp_bypass(comp, partial_enable, cmdq_handle);
 		}
-
-		/* disable oddmr if enable partial update */
-		mtk_crtc->panel_ext->params->is_support_dmr = !partial_enable;
-		mtk_crtc->panel_ext->params->is_support_od = !partial_enable;
-
-		memset(&tile_overhead_v, 0, sizeof(tile_overhead_v));
-		/* calculate total overhead vertical */
-		for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
-			mtk_ddp_comp_config_overhead_v(comp, &tile_overhead_v);
-			DDPDBG("%s:comp %s overhead_v:%d\n",
-				__func__, mtk_dump_comp_str(comp),
-				tile_overhead_v.overhead_v);
-		}
-
-		/*store total overhead vertical data*/
-		mtk_crtc_store_total_overhead_v(mtk_crtc, tile_overhead_v);
 	}
 
-	/* check total overhead vertical */
-	if (partial_roi.y < mtk_crtc->tile_overhead_v.overhead_v ||
-		partial_roi.y + partial_roi.height >=
-		full_roi.height - mtk_crtc->tile_overhead_v.overhead_v) {
-		mtk_crtc->tile_overhead_v.overhead_v = 0;
-		mtk_crtc->tile_overhead_v.overhead_v_scaling = 0;
-	}
+	/* disable oddmr if enable partial update */
+	//mtk_crtc->panel_ext->params->is_support_dmr = !partial_enable;
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		mtk_ddp_comp_partial_update(comp, cmdq_handle, partial_roi, partial_enable);
