@@ -7652,8 +7652,6 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 				  DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(MTK_PQ_PROXY_IOCTL, mtk_drm_ioctl_pq_proxy,
 				  DRM_UNLOCKED),
-	DRM_IOCTL_DEF_DRV(MTK_DISP_PQ_GET_IRQ, mtk_drm_ioctl_pq_get_irq,
-				  DRM_UNLOCKED),
 };
 
 static const struct file_operations mtk_drm_fops = {

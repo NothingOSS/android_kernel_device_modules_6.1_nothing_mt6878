@@ -82,7 +82,6 @@ static const char *const mtk_tuning_mdp_comps_name[TUNING_COMPS_MAX_COUNT] = {
 	"mediatek,disp1_oddmr0",
 };
 
-static int mtk_drm_ioctl_pq_get_irq_impl(struct drm_crtc *crtc, void *data);
 static int mtk_drm_ioctl_pq_get_persist_property_impl(struct drm_crtc *crtc, void *data);
 static int mtk_drm_ioctl_pq_check_trigger(struct drm_crtc *crtc, void *data);
 static int mtk_drm_ioctl_pq_relay_engines(struct drm_crtc *crtc, void *data);
@@ -378,6 +377,7 @@ static int wait_crtc_ready(struct drm_crtc *crtc, void *data)
 int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
 		unsigned int cmd, char *kdata, struct drm_file *file_priv)
 {
+	struct mtk_ddp_comp *comp;
 	int ret = -1;
 
 	switch (cmd) {
@@ -388,7 +388,9 @@ int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
 		ret = mtk_drm_get_master_info_ioctl(dev, kdata, file_priv);
 		break;
 	case PQ_VIRTUAL_GET_IRQ:
-		ret = mtk_drm_ioctl_pq_get_irq_impl(crtc, kdata);
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+				to_mtk_crtc(crtc), MTK_DISP_CCORR, 0);
+		ret = mtk_drm_ioctl_ccorr_get_irq_impl(comp, kdata);
 		break;
 	case PQ_COLOR_WRITE_REG:
 		ret = mtk_drm_ioctl_hw_write_impl(crtc, kdata);
@@ -790,109 +792,6 @@ int mtk_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_order
 					comp->regs_pa, companion_regs_pa);
 	}
 	return ret;
-}
-
-void mtk_disp_pq_on_start_of_frame(struct mtk_drm_crtc *mtk_crtc)
-{
-	struct pq_common_data *pq_data = mtk_crtc->pq_data;
-	struct mtk_ddp_comp *ccorr_comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			mtk_crtc, MTK_DISP_CCORR, 0);
-	struct mtk_ddp_comp *c3d_comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			mtk_crtc, MTK_DISP_C3D, 0);
-	struct mtk_disp_ccorr *ccorr_data;
-	struct mtk_disp_ccorr_primary *ccorr_primary;
-	struct mtk_disp_c3d *c3d_data;
-	struct mtk_disp_c3d_primary *c3d_primary;
-
-	if (!ccorr_comp || !c3d_comp) {
-		DDPINFO("%s, no ccorr or c3d in crtc %d\n",
-				__func__, drm_crtc_index(&mtk_crtc->base));
-		return;
-	}
-	ccorr_data = comp_to_ccorr(ccorr_comp);
-	ccorr_primary = ccorr_data->primary_data;
-	c3d_data = comp_to_c3d(c3d_comp);
-	c3d_primary = c3d_data->primary_data;
-
-	if ((atomic_read(&ccorr_primary->ccorr_irq_en) == 1) ||
-			(atomic_read(&c3d_primary->c3d_eventctl) == 1)) {
-		if (atomic_read(&ccorr_primary->ccorr_irq_en) == 1)
-			atomic_set(&pq_data->pq_get_irq, 1);
-		if (atomic_read(&c3d_primary->c3d_eventctl) == 1)
-			atomic_set(&pq_data->pq_get_irq, 2);
-
-		wake_up_interruptible(&pq_data->pq_get_irq_wq);
-	}
-}
-
-static int mtk_disp_pq_wait_irq(struct mtk_drm_crtc *mtk_crtc)
-{
-	int ret = 0;
-	struct pq_common_data *pq_data = mtk_crtc->pq_data;
-
-	if (atomic_read(&pq_data->pq_get_irq) == 0) {
-		DDPDBG("%s: wait_event_interruptible ++\n", __func__);
-		ret = wait_event_interruptible(pq_data->pq_get_irq_wq,
-			(atomic_read(&pq_data->pq_get_irq) == 1)
-			|| (atomic_read(&pq_data->pq_get_irq) == 2));
-		if (ret >= 0)
-			DDPDBG("%s: wait_event_interruptible --\n", __func__);
-		else
-			DDPDBG("%s: interrupted unexpected\n", __func__);
-	} else {
-		DDPDBG("%s: irq_status = %d\n", __func__, atomic_read(&pq_data->pq_get_irq));
-	}
-
-	atomic_set(&pq_data->pq_irq_trig_src, atomic_read(&pq_data->pq_get_irq));
-	atomic_set(&pq_data->pq_get_irq, 0);
-
-	return ret;
-}
-
-static int mtk_disp_pq_copy_data_to_user(struct mtk_drm_crtc *mtk_crtc,
-		struct mtk_disp_pq_irq_data *data)
-{
-	int ret = 0;
-	struct mtk_ddp_comp *ccorr_comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			mtk_crtc, MTK_DISP_CCORR, 0);
-	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(ccorr_comp);
-	struct mtk_disp_ccorr_primary *ccorr_primary = ccorr_data->primary_data;
-	struct pq_common_data *pq_data = mtk_crtc->pq_data;
-
-	ccorr_primary->old_pq_backlight = ccorr_primary->pq_backlight;
-	data->backlight = ccorr_primary->pq_backlight;
-
-	if (atomic_read(&pq_data->pq_irq_trig_src) == 1)
-		data->irq_src = TRIG_BY_CCORR;
-	else if (atomic_read(&pq_data->pq_irq_trig_src) == 2)
-		data->irq_src = TRIG_BY_C3D;
-	else
-		DDPMSG("%s: trig flag error!\n", __func__);
-
-	return ret;
-}
-
-static int mtk_drm_ioctl_pq_get_irq_impl(struct drm_crtc *crtc, void *data)
-{
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	int ret = 0;
-
-	mtk_disp_pq_wait_irq(mtk_crtc);
-	if (mtk_disp_pq_copy_data_to_user(mtk_crtc, (struct mtk_disp_pq_irq_data *)data) < 0) {
-		DDPMSG("%s: failed!\n", __func__);
-		ret = -EFAULT;
-	}
-
-	return ret;
-}
-
-int mtk_drm_ioctl_pq_get_irq(struct drm_device *dev, void *data,
-				struct drm_file *file_priv)
-{
-	struct mtk_drm_private *private = dev->dev_private;
-	struct drm_crtc *crtc = private->crtc[0];
-
-	return mtk_drm_ioctl_pq_get_irq_impl(crtc, data);
 }
 
 static int mtk_drm_ioctl_pq_get_persist_property_impl(struct drm_crtc *crtc, void *data)

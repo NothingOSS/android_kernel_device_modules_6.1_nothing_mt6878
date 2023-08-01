@@ -22411,13 +22411,6 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 			}
 
 			if (mtk_crtc) {
-				mtk_disp_pq_on_start_of_frame(mtk_crtc);
-				if (irq_time_index < IRQ_DEBUG_MAX) {
-					irq_time[irq_time_index].comp = NULL;
-					irq_time[irq_time_index].time = sched_clock();
-					irq_time_index++;
-				}
-
 				/* oddmr should be first */
 				for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
 					mtk_ddp_comp_mutex_sof_irq(comp, irq_time, &irq_time_index);

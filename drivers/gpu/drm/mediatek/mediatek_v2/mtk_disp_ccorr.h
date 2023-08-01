@@ -43,9 +43,8 @@ struct mtk_disp_ccorr_primary {
 	bool disp_aosp_ccorr;
 	bool prim_ccorr_force_linear;
 	bool prim_ccorr_pq_nonlinear;
-	bool is_aibld_cv_mode;
+	bool sbd_on;
 	atomic_t ccorr_irq_en;
-	atomic_t irq_backlight_change;
 	struct DRM_DISP_CCORR_COEF_T *disp_ccorr_coef;
 	int ccorr_color_matrix[3][3];
 	int ccorr_prev_matrix[3][3];
@@ -107,6 +106,7 @@ int mtk_drm_ioctl_set_pq_caps(struct drm_device *dev, void *data,
 int mtk_get_ccorr_caps(struct mtk_ddp_comp *comp, struct drm_mtk_ccorr_caps *ccorr_caps);
 void disp_ccorr_set_bypass(struct drm_crtc *crtc, int bypass);
 void mtk_ccorr_regdump(struct mtk_ddp_comp *comp);
+int mtk_drm_ioctl_ccorr_get_irq_impl(struct mtk_ddp_comp *comp, void *data);
 
 #endif
 

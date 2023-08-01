@@ -354,17 +354,11 @@ static void disp_ccorr_on_start_of_frame(struct mtk_ddp_comp *comp)
 
 	if (ccorr_data->path_order != 0)
 		return;
-	if (atomic_read(&primary_data->ccorr_irq_en) == 1) {
+	if (atomic_read(&primary_data->ccorr_irq_en) == 1 ||
+			primary_data->sbd_on) {
 		atomic_set(&primary_data->ccorr_get_irq, 1);
 		wake_up_interruptible(&primary_data->ccorr_get_irq_wq);
 	}
-}
-
-static void disp_ccorr_set_interrupt(struct mtk_ddp_comp *comp,
-					int enabled)
-{
-	mtk_crtc_user_cmd(&(comp->mtk_crtc->base), comp,
-		SET_INTERRUPT, &enabled);
 }
 
 static irqreturn_t mtk_disp_ccorr_irq_handler(int irq, void *dev_id)
@@ -392,17 +386,13 @@ static irqreturn_t mtk_disp_ccorr_irq_handler(int irq, void *dev_id)
 
 	intsta = readl(comp->regs + DISP_REG_CCORR_INTSTA);
 	writel(intsta & ~0x3, comp->regs + DISP_REG_CCORR_INTSTA);
-	//if (intsta & 0x2){
-		//atomic_set(&primary_data->ccorr_get_irq, 1);
-		//wake_up_interruptible(&primary_data->ccorr_get_irq_wq);
-	//}
 	ret = IRQ_HANDLED;
 out:
 	mtk_drm_top_clk_isr_put("ccorr_irq");
 	return ret;
 }
 
-static int disp_ccorr_wait_irq(struct mtk_ddp_comp *comp, unsigned long timeout)
+static int disp_ccorr_wait_irq(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -420,9 +410,6 @@ static int disp_ccorr_wait_irq(struct mtk_ddp_comp *comp, unsigned long timeout)
 		/* means PQService was delayed */
 		DDPINFO("%s: get_irq = 0", __func__);
 	}
-
-	if (atomic_read(&primary_data->irq_backlight_change))
-		atomic_set(&primary_data->irq_backlight_change, 0);
 
 	atomic_set(&primary_data->ccorr_get_irq, 0);
 
@@ -472,16 +459,12 @@ void disp_pq_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024)
 
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
 		if (primary_data->ccorr_relay_value != 1) {
-			atomic_set(&primary_data->irq_backlight_change, 1);
-			disp_ccorr_set_interrupt(comp, 1);
 
 			mtk_crtc_check_trigger(mtk_crtc, true, true);
 			DDPINFO("%s: trigger refresh when backlight changed", __func__);
 		}
 	} else {
 		if (primary_data->old_pq_backlight == 0 || bl_1024 == 0) {
-			atomic_set(&primary_data->irq_backlight_change, 1);
-			disp_ccorr_set_interrupt(comp, 1);
 
 			mtk_crtc_check_trigger(mtk_crtc, true, true);
 			DDPINFO("%s: trigger refresh when backlight ON/Off", __func__);
@@ -540,7 +523,7 @@ static int mtk_disp_ccorr_set_interrupt(struct mtk_ddp_comp *comp, void *data)
 	int enabled = *((int *)data);
 	int ret = 0;
 
-	if (enabled || primary_data->old_pq_backlight != primary_data->pq_backlight) {
+	if (enabled) {
 		if (ccorr_data->path_order == 0)
 			atomic_set(&primary_data->ccorr_irq_en, 1);
 		DDPINFO("%s: Interrupt enabled\n", __func__);
@@ -949,33 +932,27 @@ static struct notifier_block leds_init_notifier = {
 int mtk_ccorr_cfg_eventctl(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
-	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
-	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 	int ret = 0;
 	/* TODO: dual pipe */
 	int *enabled = data;
 
-	if (primary_data->old_pq_backlight != primary_data->pq_backlight)
+	if (*enabled)
 		mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
 
-	DDPINFO("ccorr_eventctl, enabled = %d, pq_backlight = %d, old_pq_backlight = %d\n",
-		   *enabled, primary_data->pq_backlight, primary_data->old_pq_backlight);
+	DDPINFO("ccorr_eventctl, enabled = %d\n", *enabled);
 
-	if ((!atomic_read(&primary_data->irq_backlight_change)) || (*enabled == 1))
-		mtk_disp_ccorr_set_interrupt(comp, data);
+	mtk_disp_ccorr_set_interrupt(comp, data);
 
 	return ret;
 }
 
 int mtk_drm_ioctl_ccorr_eventctl_impl(struct mtk_ddp_comp *comp, void *data)
 {
-	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
-	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 	int ret = 0;
 	/* TODO: dual pipe */
 	int *enabled = data;
 
-	if (enabled || primary_data->old_pq_backlight != primary_data->pq_backlight)
+	if (enabled)
 		mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
 
 	if (enabled == NULL) {
@@ -984,9 +961,8 @@ int mtk_drm_ioctl_ccorr_eventctl_impl(struct mtk_ddp_comp *comp, void *data)
 	}
 	//mtk_crtc_user_cmd(crtc, comp, EVENTCTL, data);
 	DDPINFO("ccorr_eventctl, enabled = %d\n", *enabled);
-
-	if ((!atomic_read(&primary_data->irq_backlight_change)) || (*enabled == 1))
-		disp_ccorr_set_interrupt(comp, *enabled);
+	mtk_crtc_user_cmd(&(comp->mtk_crtc->base), comp,
+		SET_INTERRUPT, enabled);
 
 	return ret;
 }
@@ -1010,7 +986,7 @@ int mtk_drm_ioctl_ccorr_get_irq_impl(struct mtk_ddp_comp *comp, void *data)
 
 	atomic_set(&primary_data->ccorr_is_init_valid, 1);
 
-	disp_ccorr_wait_irq(comp, 60);
+	disp_ccorr_wait_irq(comp);
 
 	if (disp_pq_copy_backlight_to_user(comp, (int *) data) < 0) {
 		DDPPR_ERR("%s: failed", __func__);
@@ -1036,7 +1012,7 @@ int mtk_drm_ioctl_aibld_cv_mode_impl(struct mtk_ddp_comp *comp, void *data)
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 
-	primary_data->is_aibld_cv_mode = *(bool *)data;
+	primary_data->sbd_on = *(bool *)data;
 	return 0;
 }
 
@@ -1456,20 +1432,7 @@ static void mtk_ccorr_primary_data_init(struct mtk_ddp_comp *comp)
 static int mtk_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 							enum mtk_ddp_io_cmd cmd, void *params)
 {
-	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
-	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
-	int enable = 1;
-
 	switch (cmd) {
-	case FRAME_DIRTY:
-	{
-		if (ccorr_data->path_order != 0 || ccorr_data->is_right_pipe ||
-				!primary_data->is_aibld_cv_mode)
-			break;
-		DDPDBG("%s FRAME_DIRTY comp id:%d\n", __func__, comp->id);
-		mtk_disp_ccorr_set_interrupt(comp, &enable);
-	}
-		break;
 	case PQ_FILL_COMP_PIPE_INFO:
 	{
 		struct mtk_disp_ccorr *data = comp_to_ccorr(comp);

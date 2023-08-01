@@ -856,9 +856,6 @@ struct mtk_drm_sram {
 };
 
 struct pq_common_data {
-	atomic_t pq_get_irq;
-	atomic_t pq_irq_trig_src;
-	wait_queue_head_t pq_get_irq_wq;
 	unsigned int old_persist_property[32];
 	unsigned int new_persist_property[32];
 	struct pq_tuning_pa_base tuning_pa_table[TUNING_REG_MAX];

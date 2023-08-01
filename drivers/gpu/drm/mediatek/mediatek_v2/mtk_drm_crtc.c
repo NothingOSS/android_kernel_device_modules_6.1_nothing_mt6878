@@ -16411,7 +16411,6 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		DDPPR_ERR("Failed to alloc pq_data\n");
 		return -ENOMEM;
 	}
-	init_waitqueue_head(&mtk_crtc->pq_data->pq_get_irq_wq);
 	init_waitqueue_head(&mtk_crtc->pq_data->pq_hw_relay_cb_wq);
 
 	if (priv->data->mmsys_id == MMSYS_MT6985 ||
