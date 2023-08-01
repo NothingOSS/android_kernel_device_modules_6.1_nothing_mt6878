@@ -4673,7 +4673,7 @@
 			<&mmdvfs_clk CLK_MMDVFS_VCORE PWR_MMDVFS_VCORE 12
 				IPI_MMDVFS_VCP SPEC_MMDVFS_NORMAL &opp_table_vote>,
 			<&mmdvfs_clk CLK_MMDVFS_VMM PWR_MMDVFS_VMM 13
-				IPI_MMDVFS_VCP SPEC_MMDVFS_NORMAL &opp_table_vote>;
+				IPI_MMDVFS_VCP SPEC_MMDVFS_ALONE &opp_table_vote>;
 		mediatek,mmdvfs-clock-names =
 			"disp", "mdp", "mml", "smi_common0", "smi_common1",
 			"venc", "jpegenc", "vdec", "vfmt", "jpegdec",
