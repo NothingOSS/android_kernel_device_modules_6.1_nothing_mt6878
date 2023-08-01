@@ -1438,6 +1438,14 @@ static const struct irq_chip rcs_irq_chip = {
 	.irq_disable		= rcs_irq_disable,
 };
 
+static const struct irq_chip rcs_irq_chip_p = {
+	.name			= "rcs_irq_p",
+	.irq_bus_lock		= rcs_irq_lock,
+	.irq_bus_sync_unlock	= rcs_irq_sync_unlock,
+	.irq_enable		= rcs_irq_enable,
+	.irq_disable		= rcs_irq_disable,
+};
+
 static int rcs_irq_map(struct irq_domain *d, unsigned int virq,
 			irq_hw_number_t hw)
 {
@@ -1512,7 +1520,13 @@ static int rcs_irq_register(struct platform_device *pdev,
 	if (!arb->rcs_enable_hwirq)
 		return -ENOMEM;
 
-	arb->irq_chip = rcs_irq_chip;
+	if (arb->rcs_irq == irq)
+		arb->irq_chip = rcs_irq_chip;
+	else if (arb->rcs_irq_p == irq)
+		arb->irq_chip_p = rcs_irq_chip_p;
+	else
+		dev_notice(&pdev->dev, "no rcs irq %d registered\n", irq);
+
 	arb->domain = irq_domain_add_linear(pdev->dev.of_node,
 					    SPMI_MAX_SLAVE_ID,
 					    &rcs_irq_domain_ops, arb);
@@ -1716,6 +1730,16 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 			if (err)
 				dev_notice(&pdev->dev,
 				   "Failed to register rcs_irq, ret = %d\n", arb->rcs_irq);
+		}
+		arb->rcs_irq_p = platform_get_irq_byname(pdev, "rcs_irq_p");
+		if (arb->rcs_irq_p < 0) {
+			dev_notice(&pdev->dev,
+				   "Failed to get rcs_irq_p, ret = %d\n", arb->rcs_irq_p);
+		} else {
+			err = rcs_irq_register(pdev, arb, arb->rcs_irq_p);
+			if (err)
+				dev_notice(&pdev->dev,
+				   "Failed to register rcs_irq_p, ret = %d\n", arb->rcs_irq_p);
 		}
 		arb->spmi_nack_irq = platform_get_irq_byname(pdev, "spmi_nack_irq");
 		if (arb->spmi_nack_irq < 0) {

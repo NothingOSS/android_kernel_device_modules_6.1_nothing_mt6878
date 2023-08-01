@@ -50,7 +50,9 @@ struct pmif {
 	struct clk *vlp_spmimst_p_clk_mux;
 	struct irq_domain	*domain;
 	struct irq_chip		irq_chip;
+	struct irq_chip		irq_chip_p;
 	int			rcs_irq;
+	int			rcs_irq_p;
 	struct mutex		rcs_m_irqlock;
 	struct mutex		rcs_p_irqlock;
 	bool	   *rcs_enable_hwirq;
