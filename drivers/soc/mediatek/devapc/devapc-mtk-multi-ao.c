@@ -1151,7 +1151,9 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 		devapc_extra_handler(slave_type, vio_master, vio_idx,
 				vio_info->vio_addr);
 
-		mask_module_irq(slave_type, vio_idx, false);
+		// In case of a subsys will not KE,
+		// do not unmask irq to let subsys able to dump information.
+		// mask_module_irq(slave_type, vio_idx, false);
 	}
 
 	if (normal) {
