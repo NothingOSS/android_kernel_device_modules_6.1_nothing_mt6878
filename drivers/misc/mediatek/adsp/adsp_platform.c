@@ -15,11 +15,14 @@
 #endif
 
 #define ADSP_BASE                  mt_base
+#define INFRA_RSV_BASE             mt_infra_rsv
 
 #define SET_BITS(addr, mask) writel(readl(addr) | (mask), addr)
 #define CLR_BITS(addr, mask) writel(readl(addr) & ~(mask), addr)
+#define READ_BITS(addr, mask) (readl(addr) & (mask))
 
 static void __iomem *mt_base;
+static void __iomem *mt_infra_rsv;
 static u32 axibus_idle_val;
 
 /* below access adsp register necessary */
@@ -122,39 +125,41 @@ u32 adsp_mt_get_semaphore(u32 bit)
 	return (readl(ADSP_SEMAPHORE) >> bit) & 0x1;
 }
 
-int adsp_mt_inc_lock_cnt(u32 cid)
+bool check_core_active(u32 cid)
 {
-	void __iomem *lock_reg;
-
-	if (unlikely(cid >= get_adsp_core_total()))
-		return -1;
-
 	if (cid == ADSP_A_ID)
-		lock_reg = ADSP_A_PRELOCK_REG;
+		return READ_BITS(ADSP_A_CORE_AWAKE_REG, ADSP_A_PRELOCK_MASK) != 0;
 	else
-		lock_reg = ADSP_B_PRELOCK_REG;
-
-	writel(readl(lock_reg) + 1, lock_reg);
-
-	return (int)readl(lock_reg);
+		return READ_BITS(ADSP_B_CORE_AWAKE_REG, ADSP_B_PRELOCK_MASK) != 0;
 }
 
-int adsp_mt_dec_lock_cnt(u32 cid)
+bool adsp_is_pre_lock_support(void)
 {
-	void __iomem *lock_reg;
+	return (mt_infra_rsv != NULL);
+}
+
+int _adsp_mt_pre_lock(u32 cid, bool is_lock)
+{
+	void __iomem *reg;
+	u32 mask;
 
 	if (unlikely(cid >= get_adsp_core_total()))
 		return -1;
 
-	if (cid == ADSP_A_ID)
-		lock_reg = ADSP_A_PRELOCK_REG;
-	else
-		lock_reg = ADSP_B_PRELOCK_REG;
+	if (cid == ADSP_A_ID) {
+		reg = ADSP_A_PRELOCK_REG;
+		mask = ADSP_A_PRELOCK_MASK;
+	} else {
+		reg = ADSP_B_PRELOCK_REG;
+		mask = ADSP_B_PRELOCK_MASK;
+	}
 
-	if (readl(lock_reg) != 0)
-		writel(readl(lock_reg) - 1, lock_reg);
+	if (is_lock)
+		SET_BITS(reg, mask);
+	else if (READ_BITS(reg, mask)) /* unlock */
+		CLR_BITS(reg, mask);
 
-	return (int)readl(lock_reg);
+	return (int)!!READ_BITS(reg, mask);
 }
 
 void adsp_hardware_init(struct adspsys_priv *adspsys)
@@ -163,6 +168,11 @@ void adsp_hardware_init(struct adspsys_priv *adspsys)
 		return;
 
 	mt_base = adspsys->cfg;
+	mt_infra_rsv = adspsys->infracfg_rsv;
 	axibus_idle_val = adspsys->desc->axibus_idle_val;
-}
 
+	if (mt_infra_rsv != NULL) {
+		writel(0x0, ADSP_A_PRELOCK_REG);
+		writel(0x0, ADSP_B_PRELOCK_REG);
+	}
+}

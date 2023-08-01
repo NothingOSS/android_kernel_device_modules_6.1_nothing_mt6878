@@ -24,30 +24,31 @@ int adsp_pre_wake_lock(u32 cid)
 {
 	unsigned long flags;
 	int ret = 0, retry = 1000;
-	u32 mask;
 	struct adsp_priv *pdata = get_adsp_core_by_id(cid);
 
+	if (!adsp_is_pre_lock_support())
+		return -1;
+
 	spin_lock_irqsave(&pdata->wakelock, flags);
-	ret = adsp_mt_inc_lock_cnt(cid);
+	if (pdata->prelock_cnt == 0) {
+		ret = adsp_mt_pre_lock(cid);
+		if (ret <= 0)
+			pr_warn("%s(%d) fail to set lock\n", __func__, cid);
+	}
+	pdata->prelock_cnt ++;
 	spin_unlock_irqrestore(&pdata->wakelock, flags);
 
 	/* wakeup */
 	adsp_mt_set_swirq(cid);
 
 	/* polling adsp status */
-	if (cid == ADSP_A_ID)
-		mask = ADSP_A_IS_WFI;
-	else
-		mask = ADSP_B_IS_WFI;
-
-	while (check_hifi_status(mask) && --retry)
+	while (!check_core_active(cid) && --retry)
 		usleep_range(20, 50);
 
 	if (retry == 0) {
-		pr_info("%s cannot wakeup adsp, hifi_status: %x, retry: %d\n",
-			__func__, check_hifi_status(mask), retry);
+		pr_warn("%s cannot wakeup adsp, hifi_status: %x, retry: %d\n",
+			__func__, check_core_active(cid), retry);
 		return -ETIME;
-
 	}
 
 	return 0;
@@ -59,8 +60,17 @@ int adsp_pre_wake_unlock(u32 cid)
 	int ret = 0;
 	struct adsp_priv *pdata = get_adsp_core_by_id(cid);
 
+	if (!adsp_is_pre_lock_support())
+		return -1;
+
 	spin_lock_irqsave(&pdata->wakelock, flags);
-	ret = adsp_mt_dec_lock_cnt(cid);
+	if (pdata->prelock_cnt > 0)
+		pdata->prelock_cnt --;
+
+	ret = adsp_mt_pre_unlock(cid);
+	if (ret != 0)
+		pr_warn("%s(%d) fail to clear lock\n", __func__, cid);
+
 	spin_unlock_irqrestore(&pdata->wakelock, flags);
 
 	return 0;

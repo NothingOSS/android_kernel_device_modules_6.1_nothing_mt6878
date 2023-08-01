@@ -86,6 +86,7 @@ struct adsp_priv {
 	const struct adsp_core_operations *ops;
 
 	spinlock_t wakelock;
+	u32 prelock_cnt;
 };
 
 struct adspsys_priv {
@@ -99,6 +100,7 @@ struct adspsys_priv {
 	size_t cfg_size;
 	size_t cfg_secure_size;
 	size_t cfg2_size;
+	void __iomem *infracfg_rsv;
 
 	struct device *dev;
 	struct miscdevice mdev;

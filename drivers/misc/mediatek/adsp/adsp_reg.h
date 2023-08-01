@@ -63,8 +63,6 @@
 
 #define ADSP_CFGREG_RSV_RW_REG0     (ADSP_BASE + 0x008C)
 #define ADSP_CFGREG_RSV_RW_REG1     (ADSP_BASE + 0x0090)
-#define ADSP_A_PRELOCK_REG          (ADSP_CFGREG_RSV_RW_REG0)
-#define ADSP_B_PRELOCK_REG          (ADSP_CFGREG_RSV_RW_REG1)
 
 /* Latch Debug info after WDT */
 #define ADSP_A_WDT_DEBUG_PC_REG     (ADSP_BASE + 0x0170)
@@ -117,5 +115,15 @@
 #define ADSP_UART_RST_N             (1 << 3)
 #define ADSP_UART_CLK_SEL           (1 << 1)
 #define ADSP_UART_BCLK_CG           (1 << 0)
+
+/* infra reg */
+#define ADSP_INFRA_RESV_0           (INFRA_RSV_BASE)
+#define ADSP_INFRA_RESV_1           (INFRA_RSV_BASE + 0x4)
+#define ADSP_A_PRELOCK_REG          ADSP_INFRA_RESV_0
+#define ADSP_B_PRELOCK_REG          ADSP_INFRA_RESV_0
+#define ADSP_A_CORE_AWAKE_REG       ADSP_INFRA_RESV_1
+#define ADSP_B_CORE_AWAKE_REG       ADSP_INFRA_RESV_1
+#define ADSP_A_PRELOCK_MASK         (0x00000001)
+#define ADSP_B_PRELOCK_MASK         (0x00000002)
 
 #endif

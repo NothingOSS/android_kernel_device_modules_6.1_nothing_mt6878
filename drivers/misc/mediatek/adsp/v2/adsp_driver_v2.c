@@ -166,6 +166,15 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 	adspsys->cfg2 = devm_ioremap_resource(dev, res);
 	adspsys->cfg2_size = resource_size(res);
 
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "infracfg_rsv");
+	if (!res)
+		pr_info("%s(), \"infracfg_rsv\" not support\n", __func__);
+	else {
+		adspsys->infracfg_rsv = devm_ioremap(dev, res->start, resource_size(res));
+		if (unlikely(!adspsys->infracfg_rsv))
+			pr_warn("%s(), fail to ioremp 0x%llx\n", __func__, res->start);
+	}
+
 	/* adsp bus probe */
 	ret = adsp_qos_probe(pdev);
 	if (ret) {

@@ -414,7 +414,9 @@ int adsp_core_common_init(struct adsp_priv *pdata)
 	pdata->mdev.groups = adsp_core_attr_groups;
 #endif
 
+	/* pre-wakelock */
 	spin_lock_init(&pdata->wakelock);
+	pdata->prelock_cnt = 0;
 
 	ret = misc_register(&pdata->mdev);
 	if (unlikely(ret != 0))
