@@ -41,16 +41,6 @@ static inline bool pd_evaluate_reject_pr_swap(struct pd_port *pd_port)
 }
 #endif	/* CONFIG_USB_PD_PR_SWAP */
 
-#if CONFIG_USB_PD_VCONN_SWAP
-static inline bool pd_evaluate_accept_vconn_swap(struct pd_port *pd_port)
-{
-	if (pd_port->dpm_caps & DPM_CAP_LOCAL_VCONN_SUPPLY)
-		return true;
-
-	return false;
-}
-#endif	/* CONFIG_USB_PD_VCONN_SWAP */
-
 static inline bool pd_process_ctrl_msg_dr_swap(
 		struct pd_port *pd_port, struct pd_event *pd_event)
 {
@@ -101,19 +91,17 @@ static inline bool pd_process_ctrl_msg_vconn_swap(
 	if (!pd_check_pe_state_ready(pd_port))
 		return false;
 
-	if (pd_evaluate_accept_vconn_swap(pd_port)) {
-		pd_port->state_machine = PE_STATE_MACHINE_VCONN_SWAP;
-		PE_TRANSIT_STATE(pd_port, PE_VCS_EVALUATE_SWAP);
-		return true;
-	}
-#endif	/* CONFIG_USB_PD_VCONN_SWAP */
-
+	pd_port->state_machine = PE_STATE_MACHINE_VCONN_SWAP;
+	PE_TRANSIT_STATE(pd_port, PE_VCS_EVALUATE_SWAP);
+	return true;
+#else
 	if (!pd_check_rev30(pd_port)) {
 		PE_TRANSIT_STATE(pd_port, PE_REJECT);
 		return true;
 	}
 
 	return false;
+#endif	/* CONFIG_USB_PD_VCONN_SWAP */
 }
 
 /*

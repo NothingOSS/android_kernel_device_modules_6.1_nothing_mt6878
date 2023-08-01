@@ -60,14 +60,24 @@ static inline int pd_handle_tcp_event_dr_swap(
 static inline int pd_handle_tcp_event_vconn_swap(
 	struct pd_port *pd_port, uint8_t new_role)
 {
-	uint8_t old_role = pd_port->vconn_role ? 1 : 0;
+	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
+	uint8_t old_role = tcpm_inquire_pd_vconn_role(tcpc) ? 1 : 0;
 
 	if (old_role == new_role)
 		return TCP_DPM_RET_DENIED_SAME_ROLE;
 
-	if ((!pd_port->vconn_role) &&
-		(!(pd_port->dpm_caps & DPM_CAP_LOCAL_VCONN_SUPPLY)))
-		return TCP_DPM_RET_DENIED_LOCAL_CAP;
+	if (!old_role) {
+#if CONFIG_TCPC_VCONN_SUPPLY_MODE
+		if (tcpc->tcpc_vconn_supply == TCPC_VCONN_SUPPLY_NEVER)
+			return TCP_DPM_RET_DENIED_LOCAL_CAP;
+#endif	/* CONFIG_TCPC_VCONN_SUPPLY_MODE */
+#if CONFIG_USB_PD_VCONN_SAFE5V_ONLY
+		if (pd_port->pe_data.vconn_highv_prot) {
+			PE_DBG("VC_OVER5V\n");
+			return TCP_DPM_RET_DENIED_IN_VCONN_HIGHV_PROT;
+		}
+#endif	/* CONFIG_USB_PD_VCONN_SAFE5V_ONLY */
+	}
 
 	if (!pd_check_pe_state_ready(pd_port))
 		return TCP_DPM_RET_DENIED_NOT_READY;

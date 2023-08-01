@@ -971,6 +971,11 @@ static int rt1711_set_vconn(struct tcpc_device *tcpc, int enable)
 	int data;
 	struct rt1711_chip *chip = tcpc_get_dev_data(tcpc);
 
+	chip->vconn_en = !!enable;
+	rv = rt1711h_idle_ctrl(tcpc);
+	if (rv < 0)
+		return rv;
+
 	data = rt1711_i2c_read8(tcpc, TCPC_V10_REG_POWER_CTRL);
 	if (data < 0)
 		return data;
@@ -978,12 +983,7 @@ static int rt1711_set_vconn(struct tcpc_device *tcpc, int enable)
 	data &= ~TCPC_V10_REG_POWER_CTRL_VCONN;
 	data |= enable ? TCPC_V10_REG_POWER_CTRL_VCONN : 0;
 
-	rv = rt1711_i2c_write8(tcpc, TCPC_V10_REG_POWER_CTRL, data);
-	if (rv < 0)
-		return rv;
-	chip->vconn_en = !!enable;
-
-	return rt1711h_idle_ctrl(tcpc);
+	return rt1711_i2c_write8(tcpc, TCPC_V10_REG_POWER_CTRL, data);
 }
 
 static int rt1711_is_vsafe0v(struct tcpc_device *tcpc)

@@ -271,6 +271,9 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			typec_set_vconn_role(rpmd->typec_port[idx], TYPEC_SINK);
 		}
 		break;
+	case TCP_NOTIFY_PD_MODE:
+		typec_set_pwr_opmode(rpmd->typec_port[idx], TYPEC_PWR_MODE_PD);
+		break;
 	case TCP_NOTIFY_PD_STATE:
 		dev_info(rpmd->dev, "%s pd state = %d\n",
 				    __func__, noti->pd_state.connected);
@@ -284,8 +287,6 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		case PD_CONNECT_PE_READY_SNK_APDO:
 		case PD_CONNECT_PE_READY_SRC:
 		case PD_CONNECT_PE_READY_SRC_PD30:
-			typec_set_pwr_opmode(rpmd->typec_port[idx],
-					     TYPEC_PWR_MODE_PD);
 			if (!rpmd->partner[idx])
 				break;
 			if (noti->pd_state.connected <= PD_CONNECT_PE_READY_SRC)
@@ -479,7 +480,7 @@ static int tcpc_typec_vconn_set(struct typec_port *port, enum typec_role role)
 			vconn_role = PD_ROLE_VCONN_ON;
 		}
 	} else if (role == TYPEC_SINK) {
-		if (vconn_role == PD_ROLE_VCONN_ON) {
+		if (vconn_role != PD_ROLE_VCONN_OFF) {
 			do_swap = true;
 			vconn_role = PD_ROLE_VCONN_OFF;
 		}

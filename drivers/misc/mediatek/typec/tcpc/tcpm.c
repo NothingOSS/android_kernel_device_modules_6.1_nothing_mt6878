@@ -339,8 +339,15 @@ EXPORT_SYMBOL(tcpm_inquire_pd_power_role);
 uint8_t tcpm_inquire_pd_vconn_role(struct tcpc_device *tcpc)
 {
 	struct pd_port *pd_port = &tcpc->pd_port;
+	uint8_t vconn_role = pd_port->vconn_role;
+#if CONFIG_USB_PD_VCONN_SAFE5V_ONLY
+	struct pe_data *pe_data = &pd_port->pe_data;
 
-	return pd_port->vconn_role;
+	if (pe_data->vconn_highv_prot)
+		vconn_role = pe_data->vconn_highv_prot_role;
+#endif	/* CONFIG_USB_PD_VCONN_SAFE5V_ONLY */
+
+	return vconn_role;
 }
 EXPORT_SYMBOL(tcpm_inquire_pd_vconn_role);
 
@@ -355,11 +362,11 @@ EXPORT_SYMBOL(tcpm_inquire_pd_pe_ready);
 uint32_t tcpm_inquire_cable_current(struct tcpc_device *tcpc)
 {
 	struct pd_port *pd_port = &tcpc->pd_port;
-	uint32_t ret = PD_CABLE_CURR_UNKNOWN;
+	uint32_t ret = 0;
 
 	mutex_lock(&pd_port->pd_lock);
 	if (pd_port->pe_data.power_cable_present)
-		ret = pd_get_cable_curr_lvl(pd_port) + 1;
+		ret = pd_get_cable_current_limit(pd_port);
 	mutex_unlock(&pd_port->pd_lock);
 
 	return ret;
@@ -1978,6 +1985,9 @@ static const char * const bk_event_ret_name[] = {
 	"WrongDR",
 	"PDRev",
 	"ModalOperation",
+#if CONFIG_USB_PD_VCONN_SAFE5V_ONLY
+	"VconnHighVProt",
+#endif	/* CONFIG_USB_PD_VCONN_SAFE5V_ONLY */
 
 	"Detach",
 	"SReset0",

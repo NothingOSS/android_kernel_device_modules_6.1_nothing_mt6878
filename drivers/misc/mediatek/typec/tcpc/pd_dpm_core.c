@@ -1165,11 +1165,13 @@ void pd_dpm_dfp_inform_id(struct pd_port *pd_port, bool ack)
 		 * then don't send discoverSVID
 		 */
 		if (!ack)
-			dpm_reaction_clear(pd_port, DPM_REACTION_DISCOVER_SVID);
+			dpm_reaction_clear(pd_port,
+					   DPM_REACTION_DISCOVER_SVIDS);
 		else if (!(payload[0] & PD_IDH_MODAL_SUPPORT))
-			dpm_reaction_clear(pd_port, DPM_REACTION_DISCOVER_SVID);
+			dpm_reaction_clear(pd_port,
+					   DPM_REACTION_DISCOVER_SVIDS);
 		else
-			dpm_reaction_set(pd_port, DPM_REACTION_DISCOVER_SVID);
+			dpm_reaction_set(pd_port, DPM_REACTION_DISCOVER_SVIDS);
 
 		svdm_dfp_inform_id(pd_port, ack);
 		dpm_reaction_clear(pd_port, DPM_REACTION_DISCOVER_ID);
@@ -1227,7 +1229,7 @@ void pd_dpm_dfp_inform_svids(struct pd_port *pd_port, bool ack)
 
 	if (!pd_port->pe_data.vdm_discard_retry_flag) {
 		svdm_dfp_inform_svids(pd_port, ack);
-		dpm_reaction_clear(pd_port, DPM_REACTION_DISCOVER_SVID);
+		dpm_reaction_clear(pd_port, DPM_REACTION_DISCOVER_SVIDS);
 	}
 }
 
@@ -1477,11 +1479,11 @@ void pd_dpm_drs_change_role(struct pd_port *pd_port, uint8_t role)
 		svdm_reset_state(pd_port);
 		if (role == PD_ROLE_DFP) {
 			dpm_reaction_set(pd_port, DPM_REACTION_DISCOVER_ID |
-						  DPM_REACTION_DISCOVER_SVID);
+						  DPM_REACTION_DISCOVER_SVIDS);
 			svdm_notify_pe_startup(pd_port);
 		} else
 			dpm_reaction_clear(pd_port, DPM_REACTION_DISCOVER_ID |
-						    DPM_REACTION_DISCOVER_SVID);
+					   DPM_REACTION_DISCOVER_SVIDS);
 	}
 
 	PE_STATE_DPM_INFORMED(pd_port);
@@ -1611,15 +1613,20 @@ void pd_dpm_prs_change_role(struct pd_port *pd_port, uint8_t role)
 void pd_dpm_vcs_evaluate_swap(struct pd_port *pd_port)
 {
 	bool accept = true;
+	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
+	if (!tcpm_inquire_pd_vconn_role(tcpc)) {
 #if CONFIG_TCPC_VCONN_SUPPLY_MODE
-	struct tcpc_device *tcpc = pd_port->tcpc;
-
-	/* Reject it if we don't want supply vconn */
-	if ((!pd_port->vconn_role) &&
-		(tcpc->tcpc_vconn_supply == TCPC_VCONN_SUPPLY_NEVER))
-		accept = false;
+		if (tcpc->tcpc_vconn_supply == TCPC_VCONN_SUPPLY_NEVER)
+			accept = false;
 #endif	/* CONFIG_TCPC_VCONN_SUPPLY_MODE */
+#if CONFIG_USB_PD_VCONN_SAFE5V_ONLY
+		if (pd_port->pe_data.vconn_highv_prot) {
+			DPM_DBG("VC_OVER5V\n");
+			accept = false;
+		}
+#endif	/* CONFIG_USB_PD_VCONN_SAFE5V_ONLY */
+	}
 
 	dpm_response_request(pd_port, accept);
 }
@@ -2081,18 +2088,18 @@ void pd_dpm_dynamic_disable_vconn(struct pd_port *pd_port)
 	bool keep_vconn;
 	struct tcpc_device *tcpc = pd_port->tcpc;
 
-	if (!pd_port->vconn_role)
+	if (!tcpm_inquire_pd_vconn_role(tcpc))
 		return;
 
 	switch (tcpc->tcpc_vconn_supply) {
+	case TCPC_VCONN_SUPPLY_ALWAYS:
+		keep_vconn = true;
+		break;
 	case TCPC_VCONN_SUPPLY_EMARK_ONLY:
 		keep_vconn = pd_port->pe_data.power_cable_present;
 		break;
-	case TCPC_VCONN_SUPPLY_STARTUP:
-		keep_vconn = false;
-		break;
 	default:
-		keep_vconn = true;
+		keep_vconn = false;
 		break;
 	}
 
@@ -2115,7 +2122,8 @@ void pd_dpm_dynamic_disable_vconn(struct pd_port *pd_port)
 
 int pd_dpm_notify_pe_startup(struct pd_port *pd_port)
 {
-	uint32_t reactions = DPM_REACTION_CAP_ALWAYS;
+	uint32_t reactions = DPM_REACTION_CAP_ALWAYS |
+			     DPM_REACTION_CAP_DISCOVER_CABLE;
 
 #if CONFIG_USB_PD_DFP_FLOW_DELAY_STARTUP
 	reactions |= DPM_REACTION_DFP_FLOW_DELAY;
@@ -2148,20 +2156,17 @@ int pd_dpm_notify_pe_startup(struct pd_port *pd_port)
 	}
 
 	if (pd_port->dpm_caps & DPM_CAP_ATTEMPT_DISCOVER_CABLE)
-		reactions |= DPM_REACTION_CAP_DISCOVER_CABLE;
-
-	if (pd_port->dpm_caps & DPM_CAP_ATTEMPT_DISCOVER_CABLE_DFP)
 		reactions |= DPM_REACTION_DISCOVER_CABLE_FLOW;
 
 	if (pd_is_support_modal_operation(pd_port) &&
 	    pd_port->data_role == PD_ROLE_DFP)
 		reactions |= DPM_REACTION_DISCOVER_ID |
-			DPM_REACTION_DISCOVER_SVID;
+			DPM_REACTION_DISCOVER_SVIDS;
 
 	if (pd_port->dpm_caps & DPM_CAP_ATTEMPT_DISCOVER_ID)
 		reactions |= DPM_REACTION_DISCOVER_ID;
 	if (pd_port->dpm_caps & DPM_CAP_ATTEMPT_DISCOVER_SVID)
-		reactions |= DPM_REACTION_DISCOVER_SVID;
+		reactions |= DPM_REACTION_DISCOVER_SVIDS;
 
 	dpm_reaction_set(pd_port, reactions);
 
@@ -2191,10 +2196,10 @@ int pd_dpm_notify_pe_hardreset(struct pd_port *pd_port)
 	if (pd_is_support_modal_operation(pd_port)) {
 		if (pd_port->data_role == PD_ROLE_DFP)
 			dpm_reaction_set(pd_port, DPM_REACTION_DISCOVER_ID |
-						  DPM_REACTION_DISCOVER_SVID);
+						  DPM_REACTION_DISCOVER_SVIDS);
 		else
 			dpm_reaction_clear(pd_port, DPM_REACTION_DISCOVER_ID |
-						    DPM_REACTION_DISCOVER_SVID);
+					   DPM_REACTION_DISCOVER_SVIDS);
 	}
 
 	svdm_notify_pe_startup(pd_port);

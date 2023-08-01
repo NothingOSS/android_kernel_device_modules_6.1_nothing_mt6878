@@ -71,10 +71,7 @@ static uint8_t dpm_reaction_vconn_stable_delay(struct pd_port *pd_port)
 #if CONFIG_USB_PD_REV30
 static uint8_t dpm_reaction_get_source_cap_ext(struct pd_port *pd_port)
 {
-	if (pd_port->power_role == PD_ROLE_SINK)
-		return TCP_DPM_EVT_GET_SOURCE_CAP_EXT;
-
-	return 0;
+	return TCP_DPM_EVT_GET_SOURCE_CAP_EXT;
 }
 #endif	/* CONFIG_USB_PD_REV30 */
 
@@ -161,16 +158,24 @@ static uint8_t dpm_reaction_dynamic_vconn(struct pd_port *pd_port)
 static uint8_t dpm_reaction_request_vconn_source(struct pd_port *pd_port)
 {
 	bool return_vconn = true;
+	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
-	if (!(pd_port->dpm_caps & DPM_CAP_LOCAL_VCONN_SUPPLY))
+	if (!dpm_reaction_check(pd_port, DPM_REACTION_DISCOVER_CABLE))
 		return 0;
 
-	if (pd_port->vconn_role)
+	if (tcpm_inquire_pd_vconn_role(tcpc))
 		return 0;
 
 #if CONFIG_TCPC_VCONN_SUPPLY_MODE
-	if (pd_port->tcpc->tcpc_vconn_supply == TCPC_VCONN_SUPPLY_STARTUP)
+	switch (tcpc->tcpc_vconn_supply) {
+	case TCPC_VCONN_SUPPLY_NEVER:
+		return 0;
+	case TCPC_VCONN_SUPPLY_STARTUP:
 		return_vconn = false;
+		fallthrough;
+	default:
+		break;
+	}
 #endif	/* CONFIG_TCPC_VCONN_SUPPLY_MODE */
 
 	if (pd_check_rev30(pd_port))
@@ -205,7 +210,7 @@ static uint8_t dpm_reaction_return_vconn_source(struct pd_port *pd_port)
 {
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
-	if (pd_port->vconn_role) {
+	if (tcpm_inquire_pd_vconn_role(tcpc)) {
 		DPM_DBG("VconnReturn\n");
 		return TCP_DPM_EVT_VCONN_SWAP_OFF;
 	}
@@ -593,7 +598,7 @@ static const struct dpm_ready_reaction dpm_reactions[] = {
 
 #if CONFIG_USB_PD_ATTEMPT_DISCOVER_SVID
 	DECL_DPM_REACTION_DFP_PD30_LIMITED_RETRIES(
-		DPM_REACTION_DISCOVER_SVID,
+		DPM_REACTION_DISCOVER_SVIDS,
 		dpm_reaction_discover_svid),
 #endif	/* CONFIG_USB_PD_ATTEMPT_DISCOVER_SVID */
 

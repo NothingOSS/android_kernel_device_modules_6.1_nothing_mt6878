@@ -480,10 +480,7 @@ static const struct {
 	{"local-high-cap", "local_high_cap", DPM_CAP_LOCAL_HIGH_CAP},
 	{"local-give-back", "local_give_back", DPM_CAP_LOCAL_GIVE_BACK},
 	{"local-no-suspend", "local_no_suspend", DPM_CAP_LOCAL_NO_SUSPEND},
-	{"local-vconn-supply", "local_vconn_supply", DPM_CAP_LOCAL_VCONN_SUPPLY},
 
-	{"attempt-discover-cable-dfp", "attempt_discover_cable_dfp",
-	 DPM_CAP_ATTEMPT_DISCOVER_CABLE_DFP},
 	{"attempt-enter-dp-mode", "attempt_enter_dp_mode", DPM_CAP_ATTEMPT_ENTER_DP_MODE},
 	{"attempt-discover-cable", "attempt_discover_cable", DPM_CAP_ATTEMPT_DISCOVER_CABLE},
 	{"attempt-discover-id", "attempt_discover_id", DPM_CAP_ATTEMPT_DISCOVER_ID},
@@ -682,7 +679,7 @@ uint32_t pd_reset_pdo_power(struct tcpc_device *tcpc,
 	return pdo;
 }
 
-uint32_t pd_get_cable_curr_lvl(struct pd_port *pd_port)
+static inline uint32_t pd_get_cable_curr_lvl(struct pd_port *pd_port)
 {
 	return PD_VDO_CABLE_CURR(
 		pd_port->pe_data.cable_vdos[VDO_DISCOVER_ID_CABLE]);
@@ -691,28 +688,16 @@ uint32_t pd_get_cable_curr_lvl(struct pd_port *pd_port)
 uint32_t pd_get_cable_current_limit(struct pd_port *pd_port)
 {
 	switch (pd_get_cable_curr_lvl(pd_port)) {
-	case CABLE_CURR_1A5:
-		return 1500;
 	case CABLE_CURR_5A:
 		return 5000;
 	default:
-	case CABLE_CURR_3A:
 		return 3000;
 	}
 }
 
 bool pd_is_cable_communication_available(struct pd_port *pd_port)
 {
-#if CONFIG_USB_PD_REV30
 	return !!pd_port->vconn_role;
-#else
-	struct pe_data *pe_data = &pd_port->pe_data;
-
-	if (pe_data->explicit_contract)
-		return pd_port->data_role == PD_ROLE_DFP;
-	else
-		return pd_port->power_role == PD_ROLE_SOURCE;
-#endif	/* CONFIG_USB_PD_REV30 */
 }
 
 bool pd_is_reset_cable(struct pd_port *pd_port)
@@ -1050,6 +1035,8 @@ void pd_handle_first_pd_command(struct pd_port *pd_port)
 
 	pd_port->pe_data.pd_connected = true;
 	pd_port->pe_data.pd_prev_connected = true;
+
+	tcpci_notify_pd_mode(pd_port->tcpc);
 }
 
 void pd_handle_hard_reset_recovery(struct pd_port *pd_port)
@@ -1373,9 +1360,6 @@ void pd_reset_pe_timer(struct pd_port *pd_port)
 int pd_update_connect_state(struct pd_port *pd_port, uint8_t state)
 {
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
-
-	if (pd_port->pd_connect_state == state)
-		return 0;
 
 	pd_port->pd_connect_state = state;
 	PE_INFO("pd_state=%d\n", state);

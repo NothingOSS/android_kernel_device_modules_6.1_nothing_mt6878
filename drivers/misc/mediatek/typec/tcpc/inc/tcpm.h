@@ -63,7 +63,7 @@ enum tcpc_vconn_supply_mode {
 	/* Always provide vconn only if we detect Ra, otherwise startup only */
 	TCPC_VCONN_SUPPLY_EMARK_ONLY,
 
-	/* Only provide vconn during DPM initial (aginst spec) */
+	/* Only provide vconn during DPM initial (against spec) */
 	TCPC_VCONN_SUPPLY_STARTUP,
 
 	TCPC_VCONN_SUPPLY_NR,
@@ -128,6 +128,7 @@ enum {
 	/* TCP_NOTIFY_TYPE_USB */
 	TCP_NOTIFY_TYPEC_STATE,
 	TCP_NOTIFY_USB_START = TCP_NOTIFY_TYPEC_STATE,
+	TCP_NOTIFY_PD_MODE,
 	TCP_NOTIFY_PD_STATE,
 	TCP_NOTIFY_USB_END = TCP_NOTIFY_PD_STATE,
 
@@ -419,13 +420,6 @@ enum typec_role_defination {
 	TYPEC_ROLE_NR,
 };
 
-enum pd_cable_current_limit {
-	PD_CABLE_CURR_UNKNOWN = 0,
-	PD_CABLE_CURR_1A5 = 1,
-	PD_CABLE_CURR_3A = 2,
-	PD_CABLE_CURR_5A = 3,
-};
-
 /* DPM Flags */
 
 #define DPM_FLAGS_PARTNER_DR_POWER		(1<<0)
@@ -454,9 +448,7 @@ enum pd_cable_current_limit {
 #define DPM_CAP_LOCAL_HIGH_CAP			(1<<5)
 #define DPM_CAP_LOCAL_GIVE_BACK			(1<<6)
 #define DPM_CAP_LOCAL_NO_SUSPEND		(1<<7)
-#define DPM_CAP_LOCAL_VCONN_SUPPLY		(1<<8)
 
-#define DPM_CAP_ATTEMPT_DISCOVER_CABLE_DFP	(1<<12)
 #define DPM_CAP_ATTEMPT_ENTER_DP_MODE		(1<<13)
 #define DPM_CAP_ATTEMPT_DISCOVER_CABLE		(1<<14)
 #define DPM_CAP_ATTEMPT_DISCOVER_ID		(1<<15)
@@ -559,6 +551,9 @@ enum tcp_dpm_return_code {
 	TCP_DPM_RET_DENIED_WRONG_DATA_ROLE,
 	TCP_DPM_RET_DENIED_PD_REV,
 	TCP_DPM_RET_DENIED_IN_MODAL_OPERATION,
+#if CONFIG_USB_PD_VCONN_SAFE5V_ONLY
+	TCP_DPM_RET_DENIED_IN_VCONN_HIGHV_PROT,
+#endif	/* CONFIG_USB_PD_VCONN_SAFE5V_ONLY */
 
 	TCP_DPM_RET_DROP_CC_DETACH,
 	TCP_DPM_RET_DROP_SENT_SRESET,

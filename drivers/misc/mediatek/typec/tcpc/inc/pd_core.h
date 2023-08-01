@@ -455,7 +455,6 @@
 #define CABLE_CTYPE 2
 #define CABLE_PLUG       0
 #define CABLE_RECEPTACLE 1
-#define CABLE_CURR_1A5   0
 #define CABLE_CURR_3A    1
 #define CABLE_CURR_5A    2
 #define CABLE_USBSS_U2_ONLY  0
@@ -1178,7 +1177,6 @@ uint32_t pd_reset_pdo_power(struct tcpc_device *tcpc,
 void pd_extract_rdo_power(
 	uint32_t rdo, uint32_t pdo, uint32_t *op_curr, uint32_t *max_curr);
 
-uint32_t pd_get_cable_curr_lvl(struct pd_port *pd_port);
 uint32_t pd_get_cable_current_limit(struct pd_port *pd_port);
 
 

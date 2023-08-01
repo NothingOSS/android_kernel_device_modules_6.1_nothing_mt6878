@@ -81,7 +81,7 @@ static int tcpc_check_notify_time(struct tcpc_device *tcpc,
 #endif
 	return ret;
 }
-#endif /* CONFIG_TCPC_NOTIFICATION_BLOCKING */
+#endif /* CONFIG_TCPC_NOTIFICATION_NON_BLOCKING */
 
 int tcpci_check_vbus_valid_from_ic(struct tcpc_device *tcpc)
 {
@@ -746,6 +746,15 @@ int tcpci_notify_role_swap(
 		TCP_NOTIFY_IDX_MISC, event);
 }
 EXPORT_SYMBOL(tcpci_notify_role_swap);
+
+int tcpci_notify_pd_mode(struct tcpc_device *tcpc)
+{
+	struct tcp_notify tcp_noti;
+
+	return tcpc_check_notify_time(tcpc, &tcp_noti,
+		TCP_NOTIFY_IDX_USB, TCP_NOTIFY_PD_MODE);
+}
+EXPORT_SYMBOL(tcpci_notify_pd_mode);
 
 int tcpci_notify_pd_state(struct tcpc_device *tcpc, uint8_t connect)
 {

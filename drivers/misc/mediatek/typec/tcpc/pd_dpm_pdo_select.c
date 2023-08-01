@@ -124,13 +124,21 @@ static bool dpm_select_pdo_from_custom(
  */
 
 static inline bool dpm_is_valid_pdo_pair(struct dpm_pdo_info_t *sink,
-	struct dpm_pdo_info_t *source, uint32_t policy)
+	struct dpm_pdo_info_t *source, uint32_t policy, bool fixed_or_apdo)
 {
-	if (sink->vmin > source->vmin)
-		return false;
+	if (fixed_or_apdo) {
+		if (sink->vmin < source->vmin)
+			return false;
 
-	if (sink->vmax < source->vmax)
-		return false;
+		if (sink->vmax > source->vmax)
+			return false;
+	} else {
+		if (sink->vmin > source->vmin)
+			return false;
+
+		if (sink->vmax < source->vmax)
+			return false;
+	}
 
 	if (policy & DPM_CHARGING_POLICY_IGNORE_MISMATCH_CURR)
 		return true;
@@ -149,7 +157,8 @@ static bool dpm_select_pdo_from_max_power(
 	    source->type == DPM_PDO_TYPE_APDO)
 		return false;
 
-	if (!dpm_is_valid_pdo_pair(sink, source, select_info->policy))
+	if (!dpm_is_valid_pdo_pair(sink, source, select_info->policy,
+				   sink->type == DPM_PDO_TYPE_FIXED))
 		return false;
 
 	uw = dpm_calc_src_cap_power_uw(source, sink);
@@ -193,14 +202,7 @@ static bool dpm_select_pdo_from_pps(
 	if (!(source->apdo_type & DPM_APDO_TYPE_PPS))
 		return false;
 
-	if (sink->vmin < source->vmin)
-		return false;
-
-	if (sink->vmax > source->vmax)
-		return false;
-
-	if (!(select_info->policy & DPM_CHARGING_POLICY_IGNORE_MISMATCH_CURR) &&
-	     (source->ma < sink->ma))
+	if (!dpm_is_valid_pdo_pair(sink, source, select_info->policy, true))
 		return false;
 
 	uw = sink->vmax * source->ma;
