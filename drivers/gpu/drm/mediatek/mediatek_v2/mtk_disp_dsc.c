@@ -1696,6 +1696,7 @@ static int mtk_dsc_set_partial_update(struct mtk_ddp_comp *comp,
 {
 	unsigned int slice_width, slice_height;
 	struct mtk_panel_dsc_params *dsc_params;
+	struct mtk_panel_spr_params *spr_params;
 	unsigned int pic_height_ext_num;
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
@@ -1705,7 +1706,11 @@ static int mtk_dsc_set_partial_update(struct mtk_ddp_comp *comp,
 
 	set_partial_update = enable;
 	roi_height = partial_roi.height;
-	dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params;
+	spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
+	if (spr_params->enable == 1 && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1)
+		dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params_spr_in;
+	else
+		dsc_params = &comp->mtk_crtc->panel_ext->params->dsc_params;
 	slice_width = dsc_params->slice_width;
 	slice_height = dsc_params->slice_height;
 

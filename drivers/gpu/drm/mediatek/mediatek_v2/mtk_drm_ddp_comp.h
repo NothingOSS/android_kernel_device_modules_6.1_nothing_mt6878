@@ -700,6 +700,7 @@ enum mtk_ddp_io_cmd {
 	DSI_SET_CSC_BL,
 	DSI_GET_PANEL_STATE,
 	NOTIFY_MODE_SWITCH,
+	GET_SPR_VALID_PARTIAL_ROI,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {
