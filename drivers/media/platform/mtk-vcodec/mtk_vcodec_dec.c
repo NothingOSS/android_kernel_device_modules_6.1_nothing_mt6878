@@ -3666,7 +3666,8 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 
 #ifdef VDEC_CHECK_ALIVE
 	/* ctx resume, queue work for check alive timer */
-	if (mtk_vdec_dvfs_params_change(ctx)) {
+	if (mtk_vdec_dvfs_params_change(ctx) ||
+		mtk_vdec_dvfs_monitor_op_rate(ctx, vb->vb2_queue->type)) {
 		retrigger_ctx_work = kzalloc(sizeof(*retrigger_ctx_work), GFP_KERNEL);
 		INIT_WORK(&retrigger_ctx_work->work, mtk_vdec_check_alive_work);
 		retrigger_ctx_work->ctx = ctx;

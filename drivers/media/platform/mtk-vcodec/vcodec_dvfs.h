@@ -18,6 +18,7 @@
 #define BW_FACTOR_NONAFBC 114
 
 
+
 struct mtk_vcodec_dev;
 struct mtk_vcodec_ctx;
 
@@ -61,11 +62,15 @@ struct vcodec_inst {
 	u32 b_frame;
 	u32 wp;
 	s32 op_rate;
+	s32 op_rate_adaptive;
+	s32 op_rate_user;
+	s32 fps;
 	s32 priority;
 	u32 width;
 	u32 height;
 	u64 last_access;
 	u8 is_active;
+	u8 is_transcode;
 	struct list_head list;
 };
 
@@ -86,7 +91,12 @@ struct dvfs_params {
 	u32 os_bw[2];		/* additional bw for overspec, (> 0 => support overspec) */
 	struct timer_list vdec_active_checker;
 	u8 has_timer;
+	u8 trans_inst; /* transcode scenario: vdec/venc */
 	u8 mmdvfs_in_vcp; /* need send dvfs/mmqos request to vcp*/
+	u8 mmdvfs_in_adaptive; /* need send dvfs/mmqos request to vcp*/
+	u8 init_boost;
+	u32 last_boost_time;
+
 };
 
 struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx);
@@ -95,6 +105,7 @@ bool need_update(struct mtk_vcodec_ctx *ctx);
 bool remove_update(struct mtk_vcodec_ctx *ctx);
 u32 match_avail_freq(struct mtk_vcodec_dev *dev, int codec_type, u64 freq);
 void update_freq(struct mtk_vcodec_dev *dev, int codec_type);
+bool mtk_dvfs_check_op_diff(int op1, int op2, int threshold, int compare);
 void mtk_vcodec_alive_checker_suspend(struct mtk_vcodec_dev *dev);
 void mtk_vcodec_alive_checker_resume(struct mtk_vcodec_dev *dev);
 #endif

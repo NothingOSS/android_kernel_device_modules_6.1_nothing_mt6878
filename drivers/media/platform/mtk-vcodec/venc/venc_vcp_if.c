@@ -1608,8 +1608,9 @@ int vcp_enc_set_param(struct venc_inst *inst,
 		out.data[0] = enc_param->prependheader;
 		break;
 	case VENC_SET_PARAM_OPERATION_RATE:
-		out.data_item = 1;
+		out.data_item = 2;
 		out.data[0] = enc_param->operationrate;
+		out.data[1] = enc_param->operationrate_adaptive;
 		break;
 	case VENC_SET_PARAM_BITRATE_MODE:
 		out.data_item = 1;

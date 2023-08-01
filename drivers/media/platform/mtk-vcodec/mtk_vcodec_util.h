@@ -20,7 +20,7 @@
 #include "mtk_vcu.h"
 #endif
 #include <linux/trace_events.h>
-
+#include <linux/jiffies.h>
 /* #define FPGA_PWRCLK_API_DISABLE */
 /* #define FPGA_INTERRUPT_API_DISABLE */
 
@@ -33,6 +33,7 @@
 #define ROUND_N(X, N)   (((X) + ((N)-1)) & (~((N)-1)))    //only for N is exponential of 2
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+#define ABS(x) (((x) >= 0) ? (x) : -(x))
 #define NS_TO_MS(X) ((X) / 1000000)
 #define NS_MOD_MS(X) ((X) % 1000000)
 #define MS_TO_NS(X) ((X) * 1000000)

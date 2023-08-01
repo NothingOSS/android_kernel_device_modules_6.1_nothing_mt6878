@@ -470,6 +470,7 @@ struct vdec_vsi {
 	/* mmdvfs param from up */
 	__u32 ctx_id;
 	__s32 op_rate;
+	__s32 op_rate_adaptive;
 	__s32 priority;
 	__u32 codec_fmt;
 	__s32 target_freq;

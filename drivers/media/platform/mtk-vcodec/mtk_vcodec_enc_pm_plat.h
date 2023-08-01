@@ -22,9 +22,8 @@ void mtk_venc_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx);
 void mtk_venc_dvfs_end_inst(struct mtk_vcodec_ctx *ctx);
 void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx);
 void mtk_venc_pmqos_end_inst(struct mtk_vcodec_ctx *ctx);
-
-/* only for SWRGO, remove it in mp branch */
-void set_venc_opp(struct mtk_vcodec_dev *dev, u32 freq);
+void mtk_venc_prepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, struct venc_enc_param *param);
+void mtk_venc_unprepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, struct venc_enc_param *param);
 void mtk_venc_pmqos_lock_unlock(struct mtk_vcodec_dev *dev, bool is_lock);
 
 void mtk_venc_pmqos_monitor(struct mtk_vcodec_dev *dev, u32 state);
@@ -32,4 +31,6 @@ void mtk_venc_pmqos_monitor_init(struct mtk_vcodec_dev *dev);
 void mtk_venc_pmqos_monitor_deinit(struct mtk_vcodec_dev *dev);
 void mtk_venc_pmqos_monitor_reset(struct mtk_vcodec_dev *dev);
 void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx);
+bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type);
+void mtk_venc_dvfs_check_boost(struct mtk_vcodec_dev *dev);
 #endif /* _MTK_VCODEC_ENC_PM_H_ */

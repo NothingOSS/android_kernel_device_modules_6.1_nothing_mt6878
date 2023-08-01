@@ -156,6 +156,7 @@ void venc_encode_prepare(void *ctx_prepare,
 	if (!mtk_vcodec_is_vcp(MTK_INST_ENCODER))
 		enable_irq(ctx->dev->enc_irq[core_id]);
 	if (core_id == MTK_VENC_CORE_0) {
+		mtk_venc_dvfs_check_boost(ctx->dev); // enable only when mmdvfs_in_adaptive == 1
 		/*
 		 *	In SWRGO, BW needs to request in both VCP and kernel
 		 *	In mp, BW only request in vcp, modify the following pmqos code segment

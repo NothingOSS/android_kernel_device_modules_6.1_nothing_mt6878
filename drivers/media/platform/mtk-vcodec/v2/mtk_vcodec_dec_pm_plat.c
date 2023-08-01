@@ -10,6 +10,7 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <linux/list.h>
+
 //#include "smi_public.h"
 #include "mtk_vcodec_dec_pm.h"
 #include "mtk_vcodec_dec_pm_plat.h"
@@ -20,7 +21,7 @@
 #include "vcodec_dvfs.h"
 #include "vdec_drv_if.h"
 #define STD_VDEC_FREQ 218000000
-
+#define VDEC_ADAPTIVE_OPRATE_INTERVAL 500
 //#include <linux/interconnect-provider.h>
 #include "mtk-interconnect.h"
 #include "vcodec_bw.h"
@@ -304,6 +305,11 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 	if (ret)
 		mtk_v4l2_debug(0, "[VDEC] Faile get vdec-mmdvfs-in-vcp, default %d", vdec_req);
 	dev->vdec_dvfs_params.mmdvfs_in_vcp = vdec_req;
+
+	ret = of_property_read_s32(pdev->dev.of_node, "vdec-mmdvfs-in-adaptive", &vdec_req);
+	if (ret)
+		mtk_v4l2_debug(0, "[VDEC] no need vdec-mmdvfs-in-adaptive");
+	dev->vdec_dvfs_params.mmdvfs_in_adaptive = vdec_req;
 
 	ret = dev_pm_opp_of_add_table(&dev->plat_dev->dev);
 	if (ret < 0) {
@@ -658,6 +664,8 @@ void mtk_vdec_prepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, unsigned long *i
 	vsi_data->codec_fmt = ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
 	vsi_data->is_active = ctx->is_active;
 
+	ctx->last_monitor_op = 0; // for monitor op rate
+	ctx->op_rate_adaptive = ctx->dec_params.operating_rate; // for monitor op rate
 	return;
 }
 
@@ -691,6 +699,7 @@ void mtk_vdec_dvfs_set_vsi_dvfs_params(struct mtk_vcodec_ctx *ctx)
 	vsi_data = inst->vsi;
 	vsi_data->is_active = ctx->is_active;
 	vsi_data->op_rate = ctx->dec_params.operating_rate;
+	vsi_data->op_rate_adaptive = ctx->op_rate_adaptive;
 }
 
 /* update target freq and opp in ap*/
@@ -720,4 +729,60 @@ void mtk_vdec_dvfs_update_dvfs_params(struct mtk_vcodec_ctx *ctx)
 	}
 }
 
+/*
+ *	Function name: mtk_vdec_dvfs_monitor_op_rate
+ *	Description: This function updates the op rate of ctx by monitoring input buffer queued.
+ *			1. Montior period: 500 ms
+ *			2. Bypass the first interval
+ *			3. The monitored rate needs to be stable (<20% compares to prev interval)
+ *			4. Diff > 20% than current used op rate
+ *	Returns: Boolean, the op rate needs to be updated
+ */
+bool mtk_vdec_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
+{
+	unsigned int cur_in_timestamp, time_diff, threshold = 20;
+	unsigned int prev_op, cur_op, tmp_op;/* monitored op in the prev interval */
+	bool need_update = false;
 
+	if (buf_type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE ||
+		!ctx->dev->vdec_dvfs_params.mmdvfs_in_adaptive)
+		return false;
+
+	prev_op = ctx->last_monitor_op;
+	cur_in_timestamp = jiffies_to_msecs(jiffies);
+	if (ctx->prev_inbuf_time == 0) {
+		ctx->prev_inbuf_time = cur_in_timestamp;
+		return false;
+	}
+
+	time_diff = cur_in_timestamp - ctx->prev_inbuf_time;
+	ctx->input_buf_cnt++;
+
+	if (time_diff > VDEC_ADAPTIVE_OPRATE_INTERVAL) {
+		ctx->last_monitor_op =
+			ctx->input_buf_cnt * 1000 / time_diff;
+		ctx->prev_inbuf_time = cur_in_timestamp;
+		ctx->input_buf_cnt = 0;
+		cur_op = ctx->op_rate_adaptive;
+
+		mtk_v4l2_debug(4, "[VDVFS][VDEC][ADAPTIVE][%d] prev_op: %d, moni_op: %d, cur_adp_op: %d",
+			ctx->id, prev_op, ctx->last_monitor_op, cur_op);
+
+		if (prev_op <= 0)
+			return false;
+
+		tmp_op = MAX(ctx->last_monitor_op, prev_op);
+
+		need_update = mtk_dvfs_check_op_diff(prev_op, ctx->last_monitor_op, threshold, 1) &&
+			mtk_dvfs_check_op_diff(cur_op, tmp_op, threshold, -1);
+
+		if (need_update) {
+			ctx->op_rate_adaptive = tmp_op;
+			mtk_v4l2_debug(0, "[VDVFS][VDEC][ADAPTIVE][%d] update adaptive op %d -> %d",
+				ctx->id, cur_op, ctx->op_rate_adaptive);
+			return true;
+		}
+
+	}
+	return false;
+}

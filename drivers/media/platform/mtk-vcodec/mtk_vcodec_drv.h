@@ -322,6 +322,7 @@ struct mtk_enc_params {
 	unsigned int    rfs;
 	unsigned int    prependheader;
 	unsigned int    operationrate;
+	unsigned int    operationrate_adaptive;
 	unsigned int    bitratemode;
 	unsigned int    roion;
 	unsigned int    heif_grid_size;
@@ -406,6 +407,7 @@ struct venc_enc_param {
 	unsigned int rfs;
 	unsigned int prependheader;
 	unsigned int operationrate;
+	unsigned int operationrate_adaptive;
 	unsigned int bitratemode;
 	unsigned int roion;
 	unsigned int heif_grid_size;
@@ -669,6 +671,10 @@ struct mtk_vcodec_ctx {
 	int init_cnt;
 	int decoded_frame_cnt;
 	int last_decoded_frame_cnt; // used for timer to check active state of decoded ctx
+	int op_rate_adaptive; // current using adaptive op rate
+	int last_monitor_op; // current monitored op rate
+	unsigned int input_buf_cnt;
+	unsigned int prev_inbuf_time;
 	struct mutex buf_lock;
 	struct mutex worker_lock;
 	struct slbc_data sram_data;

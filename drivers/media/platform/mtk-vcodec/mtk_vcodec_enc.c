@@ -2542,6 +2542,10 @@ static void vb2ops_venc_buf_queue(struct vb2_buffer *vb)
 	struct mtk_video_enc_buf *mtk_buf =
 		container_of(vb2_v4l2, struct mtk_video_enc_buf, vb);
 
+	if(mtk_venc_dvfs_monitor_op_rate(ctx, vb->vb2_queue->type))
+		ctx->param_change |= MTK_ENCODE_PARAM_OPERATION_RATE;
+
+
 	if ((vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) &&
 	    (ctx->param_change != MTK_ENCODE_PARAM_NONE)) {
 		mtk_v4l2_debug(1, "[%d] Before id=%d encode parameter change %x",
@@ -2658,16 +2662,10 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 
 	mutex_lock(&ctx->dev->enc_dvfs_mutex);
 	if (ctx->dev->venc_dvfs_params.mmdvfs_in_vcp) {
-		mtk_vcodec_enc_pw_on(&ctx->dev->pm);
-		param.venc_dvfs_state = MTK_INST_START;
+		mtk_venc_prepare_vcp_dvfs_data(ctx, &param);
 		if (venc_if_set_param(ctx, VENC_SET_PARAM_MMDVFS, &param) != 0)
 			mtk_v4l2_err("[VDVFS][%d] stream on ipi fail", ctx->id);
 		mtk_venc_dvfs_sync_vsi_data(ctx);
-
-		// venc still use regulator in AP, only for SWRGO for issue workaround
-		set_venc_opp(ctx->dev, ctx->dev->venc_dvfs_params.target_freq);
-
-		mtk_vcodec_enc_pw_off(&ctx->dev->pm);
 		mtk_v4l2_debug(0, "[VDVFS][%d(%d)] start DVFS(UP):freq:%d, bw_factor:%d",
 			ctx->id, mtk_vcodec_get_state(ctx),
 			ctx->dev->venc_dvfs_params.target_freq,
@@ -2777,16 +2775,10 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 		ctx->enc_flush_buf->lastframe = NON_EOS;
 		mutex_lock(&ctx->dev->enc_dvfs_mutex);
 		if (ctx->dev->venc_dvfs_params.mmdvfs_in_vcp) {
-			mtk_vcodec_enc_pw_on(&ctx->dev->pm);
-			param.venc_dvfs_state = MTK_INST_END;
+			mtk_venc_unprepare_vcp_dvfs_data(ctx, &param);
 			if (venc_if_set_param(ctx, VENC_SET_PARAM_MMDVFS, &param) != 0)
 				mtk_v4l2_err("[VDVFS][%d] stream off ipi fail", ctx->id);
 			mtk_venc_dvfs_sync_vsi_data(ctx);
-
-			// venc uses regulator in AP, only for SWRGO for issue workaround
-			set_venc_opp(ctx->dev, ctx->dev->venc_dvfs_params.target_freq);
-
-			mtk_vcodec_enc_pw_off(&ctx->dev->pm);
 			mtk_v4l2_debug(0, "[VDVFS][%d(%d)] stop DVFS(UP):freq:%d, bw_factor%d",
 				ctx->id, mtk_vcodec_get_state(ctx),
 				ctx->dev->venc_dvfs_params.target_freq,
@@ -2996,8 +2988,10 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 
 	if (!ret && mtk_buf->param_change & MTK_ENCODE_PARAM_OPERATION_RATE) {
 		enc_prm.operationrate = mtk_buf->enc_params.operationrate;
-		mtk_v4l2_debug(1, "[%d] idx=%d, operationrate=%d",
-			ctx->id, mtk_buf->vb.vb2_buf.index, mtk_buf->enc_params.operationrate);
+		enc_prm.operationrate_adaptive = mtk_buf->enc_params.operationrate_adaptive;
+		mtk_v4l2_debug(1, "[%d] idx=%d, operationrate=%d, adaptive=%d",
+			ctx->id, mtk_buf->vb.vb2_buf.index, mtk_buf->enc_params.operationrate,
+			mtk_buf->enc_params.operationrate_adaptive);
 		ret |= venc_if_set_param(ctx, VENC_SET_PARAM_OPERATION_RATE, &enc_prm);
 	}
 

@@ -537,3 +537,27 @@ void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
 {
 
 }
+
+bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
+{
+	return false;
+}
+
+void mtk_venc_dvfs_check_boost(struct mtk_vcodec_dev *dev)
+{
+
+}
+
+/*prepare mmdvfs data to vcp to begin*/
+void mtk_venc_prepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, struct venc_enc_param *param)
+{
+
+
+}
+
+/*prepare mmdvfs data to vcp to begin*/
+void mtk_venc_unprepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, struct venc_enc_param *param)
+{
+
+}
+
