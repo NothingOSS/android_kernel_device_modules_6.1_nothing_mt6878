@@ -926,7 +926,6 @@ static void mtk_atomic_doze_update_dsi_state(struct drm_device *dev,
 		mtk_crtc_change_output_mode(crtc,
 			mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]);
 }
-	/* TODO: need PQ team's help to fix the following flow that will lead to doze issue.*/
 #ifdef IF_ZERO
 static void pq_bypass_cmdq_cb(struct cmdq_cb_data data)
 {
@@ -938,7 +937,6 @@ static void pq_bypass_cmdq_cb(struct cmdq_cb_data data)
 #endif
 static void mtk_atomit_doze_update_pq(struct drm_crtc *crtc, unsigned int stage, bool old_state)
 {
-	/* TODO: need PQ team's help to fix the following flow that will lead to doze issue.*/
 #ifdef IF_ZERO
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_crtc_state *mtk_state;
@@ -950,12 +948,7 @@ static void mtk_atomit_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 #ifndef DRM_CMDQ_DISABLE
 	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 #endif
-#endif
-	/* skip this stage avoid cmdq_mbox control abnormal */
-	return;
 
-	/* TODO: need PQ team's help to fix the following flow that will lead to doze issue.*/
-#ifdef IF_ZERO
 	DDPINFO("%s+: new crtc state = %d, old crtc state = %d, stage = %d\n", __func__,
 		crtc->state->active, old_state, stage);
 	mtk_state = to_mtk_crtc_state(crtc->state);
@@ -1014,7 +1007,9 @@ static void mtk_atomit_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_AAL ||
-				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR)) {
+				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR ||
+				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_COLOR||
+				mtk_ddp_comp_get_type(comp->id) == MTK_DMDP_AAL)) {
 			if (comp->funcs && comp->funcs->bypass)
 				mtk_ddp_comp_bypass(comp, bypass, cmdq_handle);
 		}
@@ -1023,7 +1018,9 @@ static void mtk_atomit_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 	if (mtk_crtc->is_dual_pipe) {
 		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
 			if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_AAL ||
-				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR)) {
+				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR ||
+				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_COLOR||
+				mtk_ddp_comp_get_type(comp->id) == MTK_DMDP_AAL)) {
 				if (comp->funcs && comp->funcs->bypass)
 					mtk_ddp_comp_bypass(comp, bypass, cmdq_handle);
 			}

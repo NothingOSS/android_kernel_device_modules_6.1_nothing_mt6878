@@ -3877,7 +3877,16 @@ static void mtk_aal_primary_data_init(struct mtk_ddp_comp *comp)
 void mtk_aal_first_cfg(struct mtk_ddp_comp *comp,
 	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
+	struct drm_display_mode *mode;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+
 	AALFLOW_LOG("\n");
+	mode = mtk_crtc_get_display_mode_by_comp(__func__, &mtk_crtc->base, comp, false);
+	if ((mode != NULL) && (aal_data != NULL)) {
+		aal_data->primary_data->fps = drm_mode_vrefresh(mode);
+		DDPMSG("%s: first config set fps: %d\n", __func__, aal_data->primary_data->fps);
+	}
 	mtk_aal_config(comp, cfg, handle);
 }
 
