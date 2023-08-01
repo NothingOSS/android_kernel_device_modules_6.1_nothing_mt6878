@@ -186,27 +186,6 @@ void __gpufreq_dump_infra_status(void)
 	GPUFREQ_LOGI("SPM_SOC_BUCK_ISO_CON=0x%08x", DRV_Reg32(SPM_SOC_BUCK_ISO_CON));
 }
 
-/* API: get working OPP index of STACK limited by BATTERY_OC via given level */
-int __gpufreq_get_batt_oc_idx(int batt_oc_level)
-{
-	GPUFREQ_UNREFERENCED(batt_oc_level);
-	return -1;
-}
-
-/* API: get working OPP index of STACK limited by BATTERY_PERCENT via given level */
-int __gpufreq_get_batt_percent_idx(int batt_percent_level)
-{
-	GPUFREQ_UNREFERENCED(batt_percent_level);
-	return -1;
-}
-
-/* API: get working OPP index of STACK limited by LOW_BATTERY via given level */
-int __gpufreq_get_low_batt_idx(int low_batt_level)
-{
-	GPUFREQ_UNREFERENCED(low_batt_level);
-	return -1;
-}
-
 int __gpufreq_generic_commit_gpu(int target_oppidx, enum gpufreq_dvfs_state key)
 {
 	GPUFREQ_UNREFERENCED(target_oppidx);

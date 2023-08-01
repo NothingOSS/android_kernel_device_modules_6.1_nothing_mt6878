@@ -39,16 +39,6 @@
 #include <gpufreq_history_mt6989.h>
 #include <gpu_smmu_common.h>
 
-#if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
-#include <mtk_battery_oc_throttling.h>
-#endif
-#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
-#include <mtk_bp_thl.h>
-#endif
-#if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
-#include <mtk_low_battery_throttling.h>
-#endif
-
 /**
  * ===============================================
  * Local Function Declaration
@@ -1597,61 +1587,6 @@ void __gpufreq_dump_power_tracker_status(void)
 			DRV_Reg32(MFG_POWER_TRACKER_PDC_STATUS4),
 			DRV_Reg32(MFG_POWER_TRACKER_PDC_STATUS5));
 	}
-}
-
-/* API: get working OPP index of GPU limited by BATTERY_OC via given level */
-int __gpufreq_get_batt_oc_idx(int batt_oc_level)
-{
-#if (GPUFREQ_BATT_OC_ENABLE && IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING))
-	if (batt_oc_level == 1)
-		return __gpufreq_get_idx_by_fstack(GPUFREQ_BATT_OC_FREQ);
-	else
-		return GPUPPM_RESET_IDX;
-#else
-	GPUFREQ_UNREFERENCED(batt_oc_level);
-
-	return GPUPPM_KEEP_IDX;
-#endif /* GPUFREQ_BATT_OC_ENABLE && CONFIG_MTK_BATTERY_OC_POWER_THROTTLING */
-}
-
-/* API: get working OPP index of GPU limited by BATTERY_PERCENT via given level */
-int __gpufreq_get_batt_percent_idx(int batt_percent_level)
-{
-#if (GPUFREQ_BATT_PERCENT_ENABLE && IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING))
-	if (batt_percent_level == 2)
-		return __gpufreq_get_idx_by_fstack(GPUFREQ_BATT_PERCENT_LV2_FREQ);
-	else if (batt_percent_level == 3)
-		return __gpufreq_get_idx_by_fstack(GPUFREQ_BATT_PERCENT_LV3_FREQ);
-	else if (batt_percent_level == 4)
-		return __gpufreq_get_idx_by_fstack(GPUFREQ_BATT_PERCENT_LV4_FREQ);
-	else if (batt_percent_level == 5)
-		return __gpufreq_get_idx_by_fstack(GPUFREQ_BATT_PERCENT_LV5_FREQ);
-	else
-		return GPUPPM_RESET_IDX;
-#else
-	GPUFREQ_UNREFERENCED(batt_percent_level);
-
-	return GPUPPM_KEEP_IDX;
-#endif /* GPUFREQ_BATT_PERCENT_ENABLE && CONFIG_MTK_BATTERY_PERCENT_THROTTLING */
-}
-
-/* API: get working OPP index of GPU limited by LOW_BATTERY via given level */
-int __gpufreq_get_low_batt_idx(int low_batt_level)
-{
-#if (GPUFREQ_LOW_BATT_ENABLE && IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING))
-	if (low_batt_level == 1)
-		return __gpufreq_get_idx_by_fstack(GPUFREQ_LOW_BATT_LV1_FREQ);
-	else if (low_batt_level == 2)
-		return __gpufreq_get_idx_by_fstack(GPUFREQ_LOW_BATT_LV2_FREQ);
-	else if (low_batt_level == 3)
-		return __gpufreq_get_idx_by_fstack(GPUFREQ_LOW_BATT_LV3_FREQ);
-	else
-		return GPUPPM_RESET_IDX;
-#else
-	GPUFREQ_UNREFERENCED(low_batt_level);
-
-	return GPUPPM_KEEP_IDX;
-#endif /* GPUFREQ_LOW_BATT_ENABLE && CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING */
 }
 
 /* API: update debug info to shared memory */
