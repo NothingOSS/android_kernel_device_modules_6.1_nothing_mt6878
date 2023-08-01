@@ -357,9 +357,6 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 			comp->regs_pa + DISP_COLOR_CM2_EN(color), 0x01, 0x01);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_CFG_MAIN,
-			(0x1 << 29), 0x20000000);
-		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_START(color), 0x1, 0x1);
 	}
 
@@ -767,24 +764,14 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 
 	if (primary_data->color_bypass == 0) {
 		if (color->data->support_color21 == true) {
-			if (primary_data->legacy_color_cust)
-				cmdq_pkt_write(handle, comp->cmdq_base,
-					comp->regs_pa + DISP_COLOR_CFG_MAIN,
-					(1 << 21)
-					| (primary_data->color_index.LSP_EN << 20)
-					| (primary_data->color_index.S_GAIN_BY_Y_EN << 15)
-					| (wide_gamut_en << 8)
-					| (0 << 7),
-					0x003001FF | s_gain_by_y << 15);
-			else
-				cmdq_pkt_write(handle, comp->cmdq_base,
-					comp->regs_pa + DISP_COLOR_CFG_MAIN,
-					(1 << 21)
-					| (color_reg->LSP_EN << 20)
-					| (color_reg->S_GAIN_BY_Y_EN << 15)
-					| (wide_gamut_en << 8)
-					| (0 << 7),
-					0x003001FF | s_gain_by_y << 15);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_COLOR_CFG_MAIN,
+				(1 << 21)
+				| (color_reg->LSP_EN << 20)
+				| (color_reg->S_GAIN_BY_Y_EN << 15)
+				| (wide_gamut_en << 8)
+				| (0 << 7),
+				0x003001FF | s_gain_by_y << 15);
 		} else {
 			/* disable wide_gamut */
 			cmdq_pkt_write(handle, comp->cmdq_base,
@@ -814,9 +801,6 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_CM2_EN(color), 0x01, 0x01);
 	} else {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_CFG_MAIN,
-			(0x1 << 29), 0x20000000);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_START(color), 0x1, 0x1);
 	}
@@ -1071,22 +1055,13 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 		reg_index = 0;
 		for (i = 0; i < S_GAIN_BY_Y_CONTROL_CNT && s_gain_by_y; i++) {
 			for (j = 0; j < S_GAIN_BY_Y_HUE_PHASE_CNT; j += 4) {
-				if (primary_data->legacy_color_cust)
-					u4Temp = (primary_data->color_index.S_GAIN_BY_Y[i][j]) +
-						(primary_data->color_index.S_GAIN_BY_Y[i][j + 1]
-						<< 8) +
-						(primary_data->color_index.S_GAIN_BY_Y[i][j + 2]
-						<< 16) +
-						(primary_data->color_index.S_GAIN_BY_Y[i][j + 3]
-						<< 24);
-				else
-					u4Temp = (color_reg->S_GAIN_BY_Y[i][j]) +
-						(color_reg->S_GAIN_BY_Y[i][j + 1]
-						<< 8) +
-						(color_reg->S_GAIN_BY_Y[i][j + 2]
-						<< 16) +
-						(color_reg->S_GAIN_BY_Y[i][j + 3]
-						<< 24);
+				u4Temp = (color_reg->S_GAIN_BY_Y[i][j]) +
+					(color_reg->S_GAIN_BY_Y[i][j + 1]
+					<< 8) +
+					(color_reg->S_GAIN_BY_Y[i][j + 2]
+					<< 16) +
+					(color_reg->S_GAIN_BY_Y[i][j + 3]
+					<< 24);
 
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa +
