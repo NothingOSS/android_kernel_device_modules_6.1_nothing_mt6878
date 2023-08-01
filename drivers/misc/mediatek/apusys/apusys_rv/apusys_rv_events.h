@@ -10,9 +10,9 @@
 #include <linux/tracepoint.h>
 
 #define APUSYS_RV_TAG_IPI_SEND_PRINT \
-	"ipi_send:id=%d,len=%d,serial_no=%d,csum=0x%x,elapse=%llu"
+	"ipi_send:id=%d,len=%d,serial_no=%d,csum=0x%x,usage_cnt=%d,elapse=%llu"
 #define APUSYS_RV_TAG_IPI_HANDLE_PRINT \
-	"ipi_handle:id=%d,len=%d,serial_no=%d,csum=0x%x," \
+	"ipi_handle:id=%d,len=%d,serial_no=%d,csum=0x%x,usage_cnt=%d," \
 	"top_start_time=%llu,bottom_start_time=%llu,latency=%llu,elapse=%llu"
 #define APUSYS_RV_TAG_PWR_CTRL_PRINT \
 	"pwr_ctrl:id=%d,on=%d,off=%d,latency=%llu," \
@@ -25,15 +25,17 @@ TRACE_EVENT(apusys_rv_ipi_send,
 			unsigned int len,
 			unsigned int serial_no,
 			unsigned int csum,
+			int usage_cnt,
 			uint64_t elapse
 		),
-	TP_ARGS(id, len, serial_no, csum, elapse
+	TP_ARGS(id, len, serial_no, csum, usage_cnt, elapse
 		),
 	TP_STRUCT__entry(
 		__field(unsigned int, id)
 		__field(unsigned int, len)
 		__field(unsigned int, serial_no)
 		__field(unsigned int, csum)
+		__field(int, usage_cnt)
 		__field(uint64_t, elapse)
 	),
 	TP_fast_assign(
@@ -41,6 +43,7 @@ TRACE_EVENT(apusys_rv_ipi_send,
 		__entry->len = len;
 		__entry->serial_no = serial_no;
 		__entry->csum = csum;
+		__entry->usage_cnt = usage_cnt;
 		__entry->elapse = elapse;
 	),
 	TP_printk(
@@ -49,6 +52,7 @@ TRACE_EVENT(apusys_rv_ipi_send,
 		__entry->len,
 		__entry->serial_no,
 		__entry->csum,
+		__entry->usage_cnt,
 		__entry->elapse
 	)
 );
@@ -58,12 +62,13 @@ TRACE_EVENT(apusys_rv_ipi_handle,
 			unsigned int len,
 			unsigned int serial_no,
 			unsigned int csum,
+			int usage_cnt,
 			uint64_t top_start_time,
 			uint64_t bottom_start_time,
 			uint64_t latency,
 			uint64_t elapse
 		),
-	TP_ARGS(id, len, serial_no, csum, top_start_time,
+	TP_ARGS(id, len, serial_no, csum, usage_cnt, top_start_time,
 		bottom_start_time, latency, elapse
 		),
 	TP_STRUCT__entry(
@@ -71,6 +76,7 @@ TRACE_EVENT(apusys_rv_ipi_handle,
 		__field(unsigned int, len)
 		__field(unsigned int, serial_no)
 		__field(unsigned int, csum)
+		__field(int, usage_cnt)
 		__field(uint64_t, top_start_time)
 		__field(uint64_t, bottom_start_time)
 		__field(uint64_t, latency)
@@ -81,6 +87,7 @@ TRACE_EVENT(apusys_rv_ipi_handle,
 		__entry->len = len;
 		__entry->serial_no = serial_no;
 		__entry->csum = csum;
+		__entry->usage_cnt = usage_cnt;
 		__entry->top_start_time = top_start_time;
 		__entry->bottom_start_time = bottom_start_time;
 		__entry->latency = latency;
@@ -92,6 +99,7 @@ TRACE_EVENT(apusys_rv_ipi_handle,
 		__entry->len,
 		__entry->serial_no,
 		__entry->csum,
+		__entry->usage_cnt,
 		__entry->top_start_time,
 		__entry->bottom_start_time,
 		__entry->latency,

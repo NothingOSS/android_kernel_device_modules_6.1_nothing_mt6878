@@ -33,7 +33,7 @@ enum apusys_rv_tag_type {
 
 /* The parameters must aligned with trace_apusys_rv_ipi_send() */
 static void probe_apusys_rv_ipi_send(void *data, unsigned int id, unsigned int len,
-	unsigned int serial_no, unsigned int csum, uint64_t elapse)
+	unsigned int serial_no, unsigned int csum, int usage_cnt, uint64_t elapse)
 {
 	struct apusys_rv_tag t;
 
@@ -46,6 +46,7 @@ static void probe_apusys_rv_ipi_send(void *data, unsigned int id, unsigned int l
 	t.d.ipi_send.len = len;
 	t.d.ipi_send.serial_no = serial_no;
 	t.d.ipi_send.csum = csum;
+	t.d.ipi_send.usage_cnt = usage_cnt;
 	t.d.ipi_send.elapse = elapse;
 
 	apu_tag_add(apusys_rv_drv_tags, &t);
@@ -53,7 +54,7 @@ static void probe_apusys_rv_ipi_send(void *data, unsigned int id, unsigned int l
 
 /* The parameters must aligned with trace_apusys_rv_ipi_handle() */
 static void probe_apusys_rv_ipi_handle(void *data, unsigned int id, unsigned int len,
-	unsigned int serial_no, unsigned int csum, uint64_t top_start_time,
+	unsigned int serial_no, unsigned int csum, int usage_cnt, uint64_t top_start_time,
 	uint64_t bottom_start_time, uint64_t latency, uint64_t elapse)
 {
 	struct apusys_rv_tag t;
@@ -67,6 +68,7 @@ static void probe_apusys_rv_ipi_handle(void *data, unsigned int id, unsigned int
 	t.d.ipi_handle.len = len;
 	t.d.ipi_handle.serial_no = serial_no;
 	t.d.ipi_handle.csum = csum;
+	t.d.ipi_handle.usage_cnt = usage_cnt;
 	t.d.ipi_handle.top_start_time = top_start_time;
 	t.d.ipi_handle.bottom_start_time = bottom_start_time;
 	t.d.ipi_handle.latency = latency;
@@ -107,16 +109,16 @@ static void probe_apusys_rv_pwr_ctrl(void *data, unsigned int id,
 
 static void apusys_rv_tag_seq_ipi_send(struct seq_file *s, struct apusys_rv_tag *t)
 {
-	seq_printf(s, "ipi_send:id=%d,len=%d,serial_no=%d,csum=0x%x,elapse=%llu\n",
+	seq_printf(s, "ipi_send:id=%d,len=%d,serial_no=%d,csum=0x%x,usage_cnt=%d,elapse=%llu\n",
 		t->d.ipi_send.id, t->d.ipi_send.len, t->d.ipi_send.serial_no,
-		t->d.ipi_send.csum, t->d.ipi_send.elapse);
+		t->d.ipi_send.csum, t->d.ipi_send.usage_cnt, t->d.ipi_send.elapse);
 }
 
 static void apusys_rv_tag_seq_ipi_handle(struct seq_file *s, struct apusys_rv_tag *t)
 {
-	seq_printf(s, "ipi_handle:id=%d,len=%d,serial_no=%d,csum=0x%x,",
+	seq_printf(s, "ipi_handle:id=%d,len=%d,serial_no=%d,csum=0x%x,usage_cnt=%d,",
 		t->d.ipi_handle.id, t->d.ipi_handle.len, t->d.ipi_handle.serial_no,
-		t->d.ipi_handle.csum);
+		t->d.ipi_handle.csum, t->d.ipi_handle.usage_cnt);
 	seq_printf(s, "top_start_time=%llu,bottom_start_time=%llu,latency=%llu,elapse=%llu\n",
 		t->d.ipi_handle.top_start_time, t->d.ipi_handle.bottom_start_time,
 		t->d.ipi_handle.latency, t->d.ipi_handle.elapse);

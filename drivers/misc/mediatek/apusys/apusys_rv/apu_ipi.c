@@ -281,13 +281,14 @@ unlock_mutex:
 	ktime_get_ts64(&te);
 	ts = timespec64_sub(te, ts);
 
+	if (apu->platdata->flags & F_APUSYS_RV_TAG_SUPPORT)
+		trace_apusys_rv_ipi_send(id, len, hdr.serial_no, hdr.csum, ipi->usage_cnt,
+			timespec64_to_ns(&ts));
+
 	apu_info_ratelimited(dev,
 		 "%s: ipi_id=%d, len=%d, csum=%x, serial_no=%d, elapse=%lld\n",
 		 __func__, id, len, hdr.csum, hdr.serial_no,
 		 timespec64_to_ns(&ts));
-
-	if (apu->platdata->flags & F_APUSYS_RV_TAG_SUPPORT)
-		trace_apusys_rv_ipi_send(id, len, hdr.serial_no, hdr.csum, timespec64_to_ns(&ts));
 
 	return ret;
 }
@@ -426,9 +427,11 @@ static irqreturn_t apu_ipi_handler(int irq, void *priv)
 	ipi_handler_t handler;
 	u32 id, len;
 	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
+	struct apu_ipi_desc *ipi;
 
 	id = apu->hdr.id;
 	len = apu->hdr.len;
+	ipi = &apu->ipi_desc[id];
 
 	/* get the latency of threaded irq */
 	ktime_get_ts64(&ts);
@@ -443,15 +446,17 @@ static irqreturn_t apu_ipi_handler(int irq, void *priv)
 		goto out;
 	}
 
+	current_ipi_handler_id = id;
+
 	if (apu->apusys_rv_trace_on)
 		apusys_rv_trace_begin("apu_ipi_handle(%d)", id);
-	current_ipi_handler_id = id;
 	handler(temp_buf, len, apu->ipi_desc[id].priv);
-	current_ipi_handler_id = -1;
 	if (apu->apusys_rv_trace_on)
 		apusys_rv_trace_end();
 
 	ipi_usage_cnt_update(apu, id, -1);
+
+	current_ipi_handler_id = -1;
 
 	mutex_unlock(&apu->ipi_desc[id].lock);
 
@@ -462,16 +467,17 @@ out:
 	ktime_get_ts64(&te);
 	t_elapse = timespec64_sub(te, ts);
 
+	if (apu->platdata->flags & F_APUSYS_RV_TAG_SUPPORT)
+		trace_apusys_rv_ipi_handle(id, len, apu->hdr.serial_no,
+			apu->hdr.csum, ipi->usage_cnt,
+			timespec64_to_ns(&apu->intr_ts_begin), timespec64_to_ns(&ts),
+			timespec64_to_ns(&tl), timespec64_to_ns(&t_elapse));
+
 	apu_info_ratelimited(dev,
 		 "%s: ipi_id=%d, len=%d, csum=%x, serial_no=%d, latency=%lld, elapse=%lld\n",
 		 __func__, id, len, apu->hdr.csum, apu->hdr.serial_no,
 		 timespec64_to_ns(&tl),
 		 timespec64_to_ns(&t_elapse));
-
-	if (apu->platdata->flags & F_APUSYS_RV_TAG_SUPPORT)
-		trace_apusys_rv_ipi_handle(id, len, apu->hdr.serial_no, apu->hdr.csum,
-			timespec64_to_ns(&apu->intr_ts_begin), timespec64_to_ns(&ts),
-			timespec64_to_ns(&tl), timespec64_to_ns(&t_elapse));
 
 	if (hw_ops->wake_unlock && ipi_attrs[id].direction == IPI_APU_INITIATE
 		&& ipi_attrs[id].ack == IPI_WITH_ACK)
