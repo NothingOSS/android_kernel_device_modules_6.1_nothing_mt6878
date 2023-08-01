@@ -4548,6 +4548,7 @@
 			mr4-version = <0>;
 			mr4-rg = <0x0090 0x0000ffff 0>;
 			fmeter-version = <3>;
+			use-real-freq = <1>;
 			crystal-freq = <26>;
 			pll-id = <0x0e98 0x02000000 25>;
 			shu-lv = <0x0e98 0x0000c000 14>;
