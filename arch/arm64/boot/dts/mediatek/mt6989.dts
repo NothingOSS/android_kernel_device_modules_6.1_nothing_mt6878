@@ -15091,6 +15091,19 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
 	};
 
+	gpu_power_throttling: gpu-power-throttling {
+		compatible = "mediatek,gpu-power-throttling";
+
+		lbat-max-level = <3>;
+		lbat-limit-freq = <981000 550000 224000>;
+
+		oc-max-level = <2>;
+		oc-limit-freq = <981000 550000>;
+
+		soc-max-level = <1>;
+		soc-limit-freq = <2147483647>;
+	};
+
 	md_power_throttling: md-power-throttling {
 		compatible = "mediatek,md-power-throttling";
 
