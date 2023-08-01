@@ -475,6 +475,29 @@ static void xgf_render_reset_wspid_list(int rpid, unsigned long long bufID)
 	}
 }
 
+static int xgf_render_check_wspid_exist(int tgid, int rpid, int tid,
+	unsigned long long bufID)
+{
+	int ret = 0;
+	struct xgf_spid *xgf_spid_iter = NULL;
+	struct hlist_node *h = NULL;
+
+	hlist_for_each_entry_safe(xgf_spid_iter, h, &xgf_wspid_list, hlist) {
+		if (xgf_spid_iter->pid == tgid &&
+			xgf_spid_iter->rpid == rpid &&
+			xgf_spid_iter->bufID == bufID &&
+			xgf_spid_iter->tid == tid) {
+			ret = 1;
+			break;
+		}
+	}
+
+	if (xgf_wspid_list_length >= MAX_DEP_NUM)
+		ret = 1;
+
+	return ret;
+}
+
 static int xgf_render_setup_wspid_list(int tgid, int rpid, unsigned long long bufID)
 {
 	int tlen = 0;
@@ -497,6 +520,9 @@ static int xgf_render_setup_wspid_list(int tgid, int rpid, unsigned long long bu
 				tlen = strlen(xgf_spid_iter->thread_name);
 
 				if (!strncmp(sib->comm, xgf_spid_iter->thread_name, tlen)) {
+					if (xgf_render_check_wspid_exist(tgid, rpid, sib->pid, bufID))
+						goto tsk_out;
+
 					new_xgf_spid = xgf_alloc(sizeof(struct xgf_spid));
 					if (!new_xgf_spid) {
 						ret = -ENOMEM;
@@ -531,6 +557,7 @@ static int xgf_render_setup_wspid_list(int tgid, int rpid, unsigned long long bu
 					xgf_wspid_list_length++;
 				}
 			}
+tsk_out:
 			put_task_struct(sib);
 		}
 out:
@@ -1677,9 +1704,7 @@ int fpsgo_other2xgf_set_dep_list(int tgid, int *rtid_arr, unsigned long long *bu
 	int ret = 0;
 	int *tid_arr = NULL;
 	int index = 0;
-	int exist_flag = 0;
-	struct xgf_spid *spid_iter = NULL, *new_spid_iter = NULL;
-	struct hlist_node *h = NULL;
+	struct xgf_spid *new_spid_iter = NULL;
 
 	if (!rtid_arr || !bufID_arr || rtid_num <= 0 ||
 		!specific_name || specific_num <= 0)
@@ -1696,19 +1721,10 @@ int fpsgo_other2xgf_set_dep_list(int tgid, int *rtid_arr, unsigned long long *bu
 
 	for (i = 0; i < rtid_num; i++) {
 		for (j = 0; j < index; j++) {
-			hlist_for_each_entry_safe(spid_iter, h, &xgf_wspid_list, hlist) {
-				if (spid_iter->pid == tgid && spid_iter->rpid == rtid_arr[i] &&
-					spid_iter->bufID == bufID_arr[i] &&
-					spid_iter->tid == tid_arr[j] &&
-					spid_iter->action == action) {
-					exist_flag = 1;
-					break;
-				}
-			}
-			if (exist_flag) {
-				exist_flag = 0;
+			if (xgf_render_check_wspid_exist(tgid, rtid_arr[i], tid_arr[j],
+						bufID_arr[i]))
 				continue;
-			}
+
 			new_spid_iter = xgf_alloc(sizeof(struct xgf_spid));
 			if (new_spid_iter) {
 				new_spid_iter->pid = tgid;
