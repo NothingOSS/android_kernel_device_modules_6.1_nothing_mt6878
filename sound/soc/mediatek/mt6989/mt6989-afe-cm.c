@@ -22,9 +22,6 @@ static unsigned int cm1_rate;
 
 void mt6989_set_cm_rate(int id, unsigned int rate)
 {
-
-	pr_info("%s, CM%d, en %d\n", __func__, id, rate);
-
 	if (id == CM0)
 		cm0_rate = rate;
 	else
