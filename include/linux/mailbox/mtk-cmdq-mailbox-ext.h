@@ -391,6 +391,7 @@ void cmdq_check_thread_complete(struct mbox_chan *chan);
 u8 cmdq_get_irq_long_times(void *chan);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 u32 cmdq_get_tf_high_addr(void *chan);
+u32 cmdq_get_tf_high_addr_by_dev(struct device *dev);
 #endif
 void cmdq_event_dump_and_clr(void *chan);
 #endif /* __MTK_CMDQ_MAILBOX_H__ */

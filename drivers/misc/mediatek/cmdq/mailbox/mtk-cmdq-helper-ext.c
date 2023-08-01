@@ -748,11 +748,13 @@ void *cmdq_mbox_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out)
 
 	*pa_out = pa + gce_mminfra;
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
-	hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
-	thread = (struct cmdq_thread *)cl->chan->con_priv;
-	tf_high_addr = cmdq_get_tf_high_addr(cl->chan);
-	if(tf_high_addr &&CMDQ_GET_ADDR_HIGH(pa) == tf_high_addr)
-		cmdq_err("hwid:%d thrd_id:%d iova:%llx", hwid, thread->idx, pa);
+	if(!cmdq_util_is_secure_client(cl)) {
+		hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
+		thread = (struct cmdq_thread *)cl->chan->con_priv;
+		tf_high_addr = cmdq_get_tf_high_addr(cl->chan);
+		if(tf_high_addr &&CMDQ_GET_ADDR_HIGH(pa) == tf_high_addr)
+			cmdq_err("hwid:%d thrd_id:%d iova:%llx", hwid, thread->idx, pa);
+	}
 #endif
 	return va;
 }
@@ -779,12 +781,14 @@ void cmdq_mbox_buf_free(struct cmdq_client *cl, void *va, dma_addr_t pa)
 	cmdq_mbox_buf_free_dev(cl->share_dev, va, pa - gce_mminfra);
 	cmdq_set_buffer_size(cl, false);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
-	thread = (struct cmdq_thread *)cl->chan->con_priv;
-	hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
-	tf_high_addr = cmdq_get_tf_high_addr(cl->chan);
-	if(tf_high_addr &&
-		CMDQ_GET_ADDR_HIGH((pa - gce_mminfra)) == tf_high_addr)
-		cmdq_err("hwid:%d thrd_id:%d iova:%llx", hwid, thread->idx, pa - gce_mminfra);
+	if(!cmdq_util_is_secure_client(cl)) {
+		thread = (struct cmdq_thread *)cl->chan->con_priv;
+		hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
+		tf_high_addr = cmdq_get_tf_high_addr(cl->chan);
+		if(tf_high_addr &&
+			CMDQ_GET_ADDR_HIGH((pa - gce_mminfra)) == tf_high_addr)
+			cmdq_err("hwid:%d thrd_id:%d iova:%llx", hwid, thread->idx, pa - gce_mminfra);
+	}
 #endif
 }
 EXPORT_SYMBOL(cmdq_mbox_buf_free);
@@ -843,6 +847,7 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	struct cmdq_thread *thread;
 	s32 hwid;
+	u32 tf_high_addr;
 #endif
 #ifdef CMDQ_DCACHE_INVAL
 	void *va;
@@ -898,19 +903,23 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 			use_iommu ? &buf->iova_base : &buf->pa_base);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	if(cl) {
-		u32 tf_high_addr;
-
-		tf_high_addr = cmdq_get_tf_high_addr(cl->chan);
-		thread = (struct cmdq_thread *)cl->chan->con_priv;
-		hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
+		if(!cmdq_util_is_secure_client(cl)) {
+			tf_high_addr = cmdq_get_tf_high_addr(cl->chan);
+			thread = (struct cmdq_thread *)cl->chan->con_priv;
+			hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
+			if(tf_high_addr &&
+				CMDQ_GET_ADDR_HIGH(CMDQ_BUF_ADDR(buf)) == tf_high_addr) {
+				cmdq_err("hwid:%d thrd_id:%d iova:%llx",
+					hwid, thread->idx, CMDQ_BUF_ADDR(buf));
+			}
+		}
+	} else {
+		tf_high_addr = cmdq_get_tf_high_addr_by_dev(pkt->dev);
 		if(tf_high_addr &&
 			CMDQ_GET_ADDR_HIGH(CMDQ_BUF_ADDR(buf)) == tf_high_addr) {
-			cmdq_err("hwid:%d thrd_id:%d iova:%llx",
-				hwid, thread->idx, CMDQ_BUF_ADDR(buf));
+			cmdq_err("no client iova:%llx", CMDQ_BUF_ADDR(buf));
+			dump_stack();
 		}
-
-	} else {
-		cmdq_err("no client iova:%llx", CMDQ_BUF_ADDR(buf));
 	}
 #endif
 

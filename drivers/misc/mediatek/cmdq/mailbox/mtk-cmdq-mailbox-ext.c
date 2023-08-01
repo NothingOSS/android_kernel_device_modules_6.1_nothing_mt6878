@@ -342,6 +342,19 @@ u32 cmdq_get_tf_high_addr(void *chan)
 	return cmdq->tf_high_addr;
 }
 EXPORT_SYMBOL(cmdq_get_tf_high_addr);
+
+u32 cmdq_get_tf_high_addr_by_dev(struct device *dev)
+{
+	struct cmdq *cmdq = dev_get_drvdata(dev);
+	u32 i;
+
+	for (i = 0; i < 2; i++) {
+		if(g_cmdq[i] == cmdq)
+			return g_cmdq[i]->tf_high_addr;
+	}
+	return 0;
+}
+EXPORT_SYMBOL(cmdq_get_tf_high_addr_by_dev);
 #endif
 
 void cmdq_event_dump_and_clr(void *chan)
