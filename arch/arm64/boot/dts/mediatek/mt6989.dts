@@ -18680,6 +18680,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 			reg-vaud18-supply = <&mt6681_vaud18>;
 		};
 		regulators {
+			compatible = "mediatek,mt6681-regulator";
 			mt6681_vaud18: vaud18 {
 				regulator-compatible = "VAUD18";
 				regulator-name = "mt6681_vaud18";
@@ -18693,7 +18694,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 		mt6681_auxadc: mt6681-auxadc {
 			compatible = "mediatek,mt6681-auxadc";
 			#io-channel-cells = <1>;
-
+			reg-vaud18-supply = <&mt6681_vaud18>;
 			chip-temp {
 				channel = <AUXADC_CHIP_TEMP>;
 			};
