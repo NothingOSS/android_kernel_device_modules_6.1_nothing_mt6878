@@ -4185,7 +4185,7 @@ const char *cmdq_mdp_get_rsz_state(const u32 state)
 
 void cmdq_mdp_dump_rot(const unsigned long base, const char *label)
 {
-	u32 value[50] = { 0 };
+	u32 value[66] = { 0 };
 
 	value[0] = CMDQ_REG_GET32(base + 0x000);
 	value[1] = CMDQ_REG_GET32(base + 0x008);
@@ -4271,6 +4271,22 @@ void cmdq_mdp_dump_rot(const unsigned long base, const char *label)
 	value[47] = CMDQ_REG_GET32(base + 0x0D8);
 	value[48] = CMDQ_REG_GET32(base + 0x0E0);
 	value[49] = CMDQ_REG_GET32(base + 0x028);
+	value[50] = CMDQ_REG_GET32(base + 0x078); /* VIDO_INT_SIZE */
+	value[51] = CMDQ_REG_GET32(base + 0x020); /* VIDO_CROP_OFST */
+	value[52] = CMDQ_REG_GET32(base + 0xf40); /* VIDO_OFST_ADDR_HIGH */
+	value[53] = CMDQ_REG_GET32(base + 0xf44); /* VIDO_OFST_ADDR_HIGH_C */
+	value[54] = CMDQ_REG_GET32(base + 0xf48); /* VIDO_OFST_ADDR_HIGH_V*/
+	value[55] = CMDQ_REG_GET32(base + 0x038); /* VIDO_OFST_ADDR_C */
+	value[56] = CMDQ_REG_GET32(base + 0x068); /* VIDO_OFST_ADDR_V */
+	value[57] = CMDQ_REG_GET32(base + 0x03c); /* VIDO_STRIDE_C */
+	value[58] = CMDQ_REG_GET32(base + 0x06c); /* VIDO_STRIDE_V */
+	value[59] = CMDQ_REG_GET32(base + 0x048); /* VIDO_CTRL_2 */
+	value[60] = CMDQ_REG_GET32(base + 0x0dc); /* VIDO_SCAN_10BIT */
+	value[61] = CMDQ_REG_GET32(base + 0x0e8); /* VIDO_CRC_CTRL */
+	value[62] = CMDQ_REG_GET32(base + 0x0ec); /* VIDO_CRC_VALUE */
+	value[63] = CMDQ_REG_GET32(base + 0x084); /* VIDO_MAT_CTRL */
+	value[64] = CMDQ_REG_GET32(base + 0x054); /* VIDO_DITHER */
+	value[65] = CMDQ_REG_GET32(base + 0x058); /* VIDO_DITHER_CON */
 
 	CMDQ_ERR(
 		"=============== [CMDQ] %s Status ====================================\n",
@@ -4320,11 +4336,21 @@ void cmdq_mdp_dump_rot(const unsigned long base, const char *label)
 	CMDQ_ERR(
 		"ROT_DEBUG_21: 0x%08x, VIDO_INT: 0x%08x, VIDO_ROT_EN: 0x%08x\n",
 		value[42], value[43], value[44]);
-	CMDQ_ERR("VIDO_SOFT_RST: 0x%08x, VIDO_SOFT_RST_STAT: 0x%08x\n",
-		value[45], value[46]);
+	CMDQ_ERR("VIDO_INT_SIZE: 0x%08x, VIDO_SOFT_RST: 0x%08x, VIDO_SOFT_RST_STAT: 0x%08x\n",
+		value[50], value[45], value[46]);
 	CMDQ_ERR(
 		"VIDO_PVRIC: 0x%08x, VIDO_PENDING_ZERO: 0x%08x, VIDO_FRAME_SIZE: 0x%08x\n",
 		value[47], value[48], value[49]);
+	CMDQ_ERR("VIDO_CROP_OFST: 0x%08x, VIDO_CTRL_2: 0x%08x, VIDO_SCAN_10BIT: 0x%08x\n",
+		value[51], value[59], value[60]);
+	CMDQ_ERR("VIDO_OFST_ADDR_HIGH: 0x%08x, VIDO_OFST_ADDR_HIGH_C: 0x%08x, VIDO_OFST_ADDR_HIGH_V: 0x%08x\n",
+		value[52], value[53], value[54]);
+	CMDQ_ERR("VIDO_OFST_ADDR_C: 0x%08x, VIDO_OFST_ADDR_V: 0x%08x, VIDO_STRIDE_C: 0x%08x\n",
+		value[55], value[56], value[57]);
+	CMDQ_ERR("VIDO_STRIDE_V: 0x%08x, VIDO_CRC_CTRL: 0x%08x, VIDO_CRC_VALUE: 0x%08x\n",
+		value[58], value[61], value[62]);
+	CMDQ_ERR("VIDO_MAT_CTRL: 0x%08x, VIDO_DITHER: 0x%08x, VIDO_DITHER_CON: 0x%08x\n",
+		value[63], value[64], value[65]);
 }
 
 void cmdq_mdp_dump_color(const unsigned long base, const char *label)

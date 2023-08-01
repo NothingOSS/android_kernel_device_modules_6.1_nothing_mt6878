@@ -313,6 +313,7 @@ void cmdq_mdp_loop_off(u32 engine,
 	const u32 resetValue, const bool pollInitResult);
 
 const char *cmdq_mdp_get_rsz_state(const u32 state);
+const char *cmdq_mdp_get_special_rsz_state(const u32 state);
 
 void cmdq_mdp_dump_venc(const unsigned long base, const char *label);
 void cmdq_mdp_dump_rdma(const unsigned long base, const char *label);

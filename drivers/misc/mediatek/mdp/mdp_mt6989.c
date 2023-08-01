@@ -757,13 +757,29 @@ void cmdq_mdp_dump_rsz(const unsigned long base, const char *label)
 	/* .valid=1/request=1: upstream module sends data */
 	/* .ready=1: downstream module receives data */
 	state = value[8] & 0xF;
-	request[0] = state & (0x1);	/* out valid */
-	request[1] = (state & (0x1 << 1)) >> 1;	/* out ready */
-	request[2] = (state & (0x1 << 2)) >> 2;	/* in valid */
-	request[3] = (state & (0x1 << 3)) >> 3;	/* in ready */
-	CMDQ_ERR("RSZ inRdy,inRsq,outRdy,outRsq: %d,%d,%d,%d (%s)\n",
+	request[0] = state & (0x1);
+	request[1] = (state & (0x1 << 1)) >> 1;
+	request[2] = (state & (0x1 << 2)) >> 2;
+	request[3] = (state & (0x1 << 3)) >> 3;
+	CMDQ_ERR("RSZ inRsq, inRdy, outRsq, out_Rdy %d,%d,%d,%d (%s)\n",
 		request[3], request[2], request[1], request[0],
-		cmdq_mdp_get_rsz_state(state));
+		cmdq_mdp_get_special_rsz_state(state));
+}
+
+const char *cmdq_mdp_get_special_rsz_state(const u32 state)
+{
+	switch (state) {
+	case 0xa:
+		return "downstream hang"; /* 1,0,1,0 */
+	case 0x5:
+		return "upstream hang";	/* 0,1,0,1 */
+	case 0x9:
+		return "rsz hang"; /* 1,0,0,1 */
+	case 0x2:
+		return "downstream hang"; /* 0,0,1,0 */
+	default:
+		return "";
+	}
 }
 
 void cmdq_mdp_dump_tdshp(const unsigned long base, const char *label)
