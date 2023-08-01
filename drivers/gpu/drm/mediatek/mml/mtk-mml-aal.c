@@ -258,6 +258,7 @@ struct aal_data {
 	bool crop;
 	u8 rb_mode;
 	bool is_linear;
+	u8 curve_ready_bit;
 };
 
 static const struct aal_data mt6893_aal_data = {
@@ -271,6 +272,7 @@ static const struct aal_data mt6893_aal_data = {
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
 	.is_linear = false,
+	.curve_ready_bit = 16,
 };
 
 static const struct aal_data mt6983_aal_data = {
@@ -284,6 +286,7 @@ static const struct aal_data mt6983_aal_data = {
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
 	.is_linear = false,
+	.curve_ready_bit = 16,
 };
 
 static const struct aal_data mt6879_aal_data = {
@@ -297,6 +300,7 @@ static const struct aal_data mt6879_aal_data = {
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
 	.is_linear = false,
+	.curve_ready_bit = 16,
 };
 
 static const struct aal_data mt6895_aal0_data = {
@@ -310,6 +314,7 @@ static const struct aal_data mt6895_aal0_data = {
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
 	.is_linear = false,
+	.curve_ready_bit = 16,
 };
 
 static const struct aal_data mt6895_aal1_data = {
@@ -323,6 +328,7 @@ static const struct aal_data mt6895_aal1_data = {
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
 	.is_linear = false,
+	.curve_ready_bit = 16,
 };
 
 static const struct aal_data mt6985_aal_data = {
@@ -336,6 +342,7 @@ static const struct aal_data mt6985_aal_data = {
 	.crop = false,
 	.rb_mode = RB_EOF_MODE,
 	.is_linear = true,
+	.curve_ready_bit = 16,
 };
 
 static const struct aal_data mt6886_aal_data = {
@@ -349,6 +356,7 @@ static const struct aal_data mt6886_aal_data = {
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
 	.is_linear = false,
+	.curve_ready_bit = 16,
 };
 
 static const struct aal_data mt6897_aal_data = {
@@ -362,6 +370,7 @@ static const struct aal_data mt6897_aal_data = {
 	.crop = true,
 	.rb_mode = RB_EOF_MODE,
 	.is_linear = false,
+	.curve_ready_bit = 18,
 };
 
 static const struct aal_data mt6989_aal_data = {
@@ -375,6 +384,7 @@ static const struct aal_data mt6989_aal_data = {
 	.crop = false,
 	.rb_mode = RB_EOF_MODE,
 	.is_linear = false,
+	.curve_ready_bit = 18,
 };
 
 struct mml_comp_aal {
@@ -882,7 +892,8 @@ static void aal_write_curve(struct mml_comp *comp, struct mml_task *task,
 
 		writel(addr, base + aal->data->reg_table[AAL_SRAM_RW_IF_0]);
 		if (!sram_staus && aal_reg_poll(comp, sram_status_reg,
-			(0x1 << 16), (0x1 << 16)) != true) {
+			(0x1 << aal->data->curve_ready_bit),
+			(0x1 << aal->data->curve_ready_bit)) != true) {
 			mml_pq_log("%s idx[%d]", __func__, i);
 			break;
 		}
@@ -1014,8 +1025,9 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 			base_pa + aal->data->reg_table[AAL_INTEN], 0x0, U32_MAX);
 		cmdq_pkt_write(pkt, NULL,
 			base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_0], addr, U32_MAX);
-		cmdq_pkt_poll(pkt, NULL, (0x1 << 16),
-			base_pa + aal->data->reg_table[AAL_SRAM_STATUS], (0x1 << 16), gpr);
+		cmdq_pkt_poll(pkt, NULL, (0x1 << aal->data->curve_ready_bit),
+			base_pa + aal->data->reg_table[AAL_SRAM_STATUS],
+			(0x1 << aal->data->curve_ready_bit), gpr);
 		for (i = 0; i < AAL_CURVE_NUM; i++, addr += 4)
 			mml_write_array(pkt, base_pa + aal->data->reg_table[AAL_SRAM_RW_IF_1],
 				curve[i], U32_MAX, reuse, cache, &aal_frm->reuse_curve);
