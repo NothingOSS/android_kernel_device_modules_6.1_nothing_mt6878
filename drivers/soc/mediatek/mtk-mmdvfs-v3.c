@@ -1291,26 +1291,17 @@ static inline void mmdvfs_reset_clk(bool enable_vcp)
 
 static inline void mmdvfs_reset_vcp(void)
 {
-	int i, ret;
+	int i;
 
 	if (mmdvfs_swrgo)
 		return;
 
-	mmdvfs_reset_clk(true);
+	mmdvfs_reset_clk(false);
 
-	mutex_lock(&mmdvfs_vcp_pwr_mutex);
 	for (i = 0; i < VCP_PWR_USR_NUM; i++) {
 		if (vcp_pwr_usage[i])
 			MMDVFS_ERR("i:%d usage:%d not disable", i, vcp_pwr_usage[i]);
-		vcp_pwr_usage[i] = 0;
 	}
-	if (vcp_power) {
-		ret = vcp_deregister_feature_ex(MMDVFS_FEATURE_ID);
-		if (ret)
-			MMDVFS_ERR("failed:%d vcp_power:%d", ret, vcp_power);
-		vcp_power = 0;
-	}
-	mutex_unlock(&mmdvfs_vcp_pwr_mutex);
 }
 
 static void mmdvfs_v3_release_step(void)
@@ -1333,7 +1324,6 @@ static int mmdvfs_pm_notifier(struct notifier_block *notifier, unsigned long pm_
 		mmdvfs_v3_release_step();
 		mmdvfs_reset_ccu();
 		cb_timestamp[0] = sched_clock();
-		mmdvfs_reset_vcp();
 		break;
 	}
 	return NOTIFY_DONE;
@@ -1411,7 +1401,7 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 			mtk_mmdvfs_enable_vmm(false);
 		}
 		cb_timestamp[1] = sched_clock();
-		mmdvfs_reset_clk(false);
+		mmdvfs_reset_vcp();
 		mutex_lock(&mmdvfs_vcp_cb_mutex);
 		mmdvfs_vcp_cb_ready = false;
 		mutex_unlock(&mmdvfs_vcp_cb_mutex);
