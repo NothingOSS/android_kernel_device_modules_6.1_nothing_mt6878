@@ -2222,6 +2222,7 @@ static int dma_heap_oom_notify(struct notifier_block *nb,
 			       unsigned long nb_val, void *nb_freed)
 {
 	unsigned long long oom_time = get_current_time_ms();
+	long dmabuf_total_size = 0;
 
 	if (oom_time - last_oom_time < OOM_DUMP_INTERVAL) {
 		last_oom_time = oom_time;
@@ -2230,7 +2231,11 @@ static int dma_heap_oom_notify(struct notifier_block *nb,
 		return 0;
 	}
 
-	mtk_dmabuf_dump_all(NULL, HEAP_DUMP_OOM | HEAP_DUMP_STATISTIC | HEAP_DUMP_STATS);
+	dmabuf_total_size = get_dma_heap_buffer_total(NULL);
+	if ((dmabuf_total_size / PAGE_SIZE) < (totalram_pages() / 2))
+		pr_info("%s: dmabuf buffer total:%ld KB\n", __func__, dmabuf_total_size / 1024);
+	else
+		mtk_dmabuf_dump_all(NULL, HEAP_DUMP_OOM | HEAP_DUMP_STATISTIC | HEAP_DUMP_STATS);
 
 	last_oom_time = oom_time;
 
