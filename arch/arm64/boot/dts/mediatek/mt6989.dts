@@ -11271,6 +11271,7 @@
 			clock-names = "clk_top_adsp_sel",
 				      "clk_top_clk26m",
 				      "clk_top_adsppll";
+			slp-prot-ctrl = <1>; /* ADSP AO off slp prot */
 			interconnects = <&dvfsrc MT6873_MASTER_HRT_ADSP
 					 &dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
 			interconnect-names = "icc-hrt-bw";
