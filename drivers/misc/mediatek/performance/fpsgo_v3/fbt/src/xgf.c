@@ -36,6 +36,7 @@
 static DEFINE_MUTEX(xgf_main_lock);
 static DEFINE_MUTEX(xgff_frames_lock);
 static DEFINE_MUTEX(xgf_policy_cmd_lock);
+static DEFINE_MUTEX(xgf_global_var_lock);
 static atomic_t xgf_event_buffer_idx;
 static atomic_t fstb_event_buffer_idx;
 static int xgf_enable;
@@ -845,15 +846,21 @@ static int xgf_filter_dep_task(int tid, struct xgf_render_if *render_iter)
 {
 	int ret = 0;
 	int local_tgid = 0;
+	int local_cam_hal_pid = 0;
+	int local_cam_server_pid = 0;
 
 	ret = xgf_non_normal_dep_task(tid, render_iter);
 	if (ret)
 		goto out;
 
+	mutex_lock(&xgf_global_var_lock);
+	local_cam_hal_pid = cam_hal_pid;
+	local_cam_server_pid = cam_server_pid;
+	mutex_unlock(&xgf_global_var_lock);
 	local_tgid = xgf_get_process_id(tid);
-	if (cam_hal_pid > 0 || cam_server_pid > 0) {
-		if (local_tgid == cam_hal_pid ||
-			local_tgid == cam_server_pid) {
+	if (local_cam_hal_pid > 0 || local_cam_server_pid > 0) {
+		if (local_tgid == local_cam_hal_pid ||
+			local_tgid == local_cam_server_pid) {
 			ret = local_tgid;
 			goto out;
 		}
@@ -2594,7 +2601,7 @@ static void __nocfi xgf_tracing_unregister(void)
 
 void fpsgo_comp2xgf_notify_boost(int boost_flag)
 {
-	if (xgf_ko_is_ready() < 0)
+	if (xgf_ko_is_ready() <= 0)
 		return;
 
 	mutex_lock(&xgf_main_lock);
@@ -2806,11 +2813,11 @@ XGF_SYSFS_WRITE_VALUE(xgff_mips_exp_enable, xgff_frames_lock, is_xgff_mips_exp_e
 static KOBJ_ATTR_RW(xgff_mips_exp_enable);
 
 XGF_SYSFS_READ(set_cam_hal_pid, 1, cam_hal_pid);
-XGF_SYSFS_WRITE_VALUE(set_cam_hal_pid, xgf_main_lock, cam_hal_pid, 0, 65536);
+XGF_SYSFS_WRITE_VALUE(set_cam_hal_pid, xgf_global_var_lock, cam_hal_pid, 0, 65536);
 static KOBJ_ATTR_RW(set_cam_hal_pid);
 
 XGF_SYSFS_READ(set_cam_server_pid, 1, cam_server_pid);
-XGF_SYSFS_WRITE_VALUE(set_cam_server_pid, xgf_main_lock, cam_server_pid, 0, 65536);
+XGF_SYSFS_WRITE_VALUE(set_cam_server_pid, xgf_global_var_lock, cam_server_pid, 0, 65536);
 static KOBJ_ATTR_RW(set_cam_server_pid);
 
 XGF_SYSFS_READ(xgf_filter_dep_task_enable, 1, xgf_filter_dep_task_enable);
