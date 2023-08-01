@@ -52,7 +52,7 @@
 #define CFG_FLD_DRAM_MODE REG_FLD_MSB_LSB(1, 1)
 #define CFG_FLD_RELAY_MODE REG_FLD_MSB_LSB(0, 0)
 #define DISP_POSTMASK_SHADOW_CTRL 0x24
-#define SHADOW_CTRL_BYPASS_SHADOW REG_FLD_MSB_LSB(1, 1)
+#define CFG_FLD_SHADOW_CTRL_BYPASS_SHADOW REG_FLD_MSB_LSB(1, 1)
 #define DISP_POSTMASK_SIZE 0x30
 #define DISP_POSTMASK_SRAM_CFG 0x40
 #define SRAM_CFG_FLD_MASK_NUM_SW_SET REG_FLD_MSB_LSB(11, 4)
@@ -272,8 +272,9 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 	} else
 		width = cfg->w;
 
-	mtk_ddp_write_mask(comp, SHADOW_CTRL_BYPASS_SHADOW,
-		DISP_POSTMASK_SHADOW_CTRL, SHADOW_CTRL_BYPASS_SHADOW, handle);
+	mtk_ddp_write_mask(comp, REG_FLD_VAL((CFG_FLD_SHADOW_CTRL_BYPASS_SHADOW), 1),
+		DISP_POSTMASK_SHADOW_CTRL,
+		REG_FLD_MASK(CFG_FLD_SHADOW_CTRL_BYPASS_SHADOW), handle);
 
 	value = (REG_FLD_VAL((BLEND_CFG_FLD_A_EN), 1) |
 		 REG_FLD_VAL((BLEND_CFG_FLD_PARGB_BLD), 0) |
@@ -447,7 +448,7 @@ int mtk_postmask_dump(struct mtk_ddp_comp *comp)
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 
 	mtk_serial_dump_reg(baddr, 0x0, 4);
-	mtk_serial_dump_reg(baddr, 0x20, 1);
+	mtk_serial_dump_reg(baddr, 0x20, 2);
 	mtk_serial_dump_reg(baddr, 0x30, 1);
 	mtk_serial_dump_reg(baddr, 0x40, 3);
 	mtk_serial_dump_reg(baddr, 0x50, 3);
@@ -473,11 +474,12 @@ int mtk_postmask_analysis(struct mtk_ddp_comp *comp)
 	}
 
 	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	DDPDUMP("en=%d,cfg=0x%x,size=(%dx%d)\n",
+	DDPDUMP("en=%d,cfg=0x%x,size=(%dx%d),shadowbypass=%d\n",
 		readl(DISP_POSTMASK_EN + baddr) & 0x1,
 		readl(DISP_POSTMASK_CFG + baddr),
 		(readl(DISP_POSTMASK_SIZE + baddr) >> 16) & 0x1fff,
-		readl(DISP_POSTMASK_SIZE + baddr) & 0x1fff);
+		readl(DISP_POSTMASK_SIZE + baddr) & 0x1fff,
+		(readl(DISP_POSTMASK_SHADOW_CTRL + baddr) & 0x2) >> 1);
 	DDPDUMP("blend_cfg=0x%x,bg=0x%x,mask=0x%x\n",
 		readl(DISP_POSTMASK_BLEND_CFG + baddr),
 		readl(DISP_POSTMASK_ROI_BGCLR + baddr),
