@@ -16609,11 +16609,11 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 				      <&mt6375_adc MT6375_ADC_SBU2>;
 			charger = <&mt6375_chg>;
 			tcpc,en-wd;
-			//tcpc,en-wd-dual-port;
+			// tcpc,en-wd-dual-port;
 			tcpc,en-ctd;
 			tcpc,en-fod;
 			tcpc,en-typec-otp;
-			//tcpc,en-floatgnd;
+			// tcpc,en-floatgnd;
 			wd,sbu-calib-init = <1200>;	/* mV */
 			wd,sbu-pl-bound = <200>;	/* mV */
 			wd,sbu-pl-lbound-c2c = <1100>;	/* mV */
@@ -16691,11 +16691,9 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 				// local-high-cap;
 				// local-give-back;
 				local-no-suspend;
-				local-vconn-supply;
 
-				// attempt-discover-cable-dfp;
 				attempt-enter-dp-mode;
-				attempt-discover-cable;
+				// attempt-discover-cable;
 				// attempt-discover-id;
 				// attempt-discover-svid;
 
@@ -16716,13 +16714,13 @@ FLL0_out,FLL1_out,FLL2_out,FLL4_out,FLL5_out,FLL6_out";
 				1st-connection = "dfp-d";
 				2nd-connection = "dfp-d";
 				signal,dp-v13;
-				//signal,dp-gen2;
-				//usbr20-not-used;
+				// signal,dp-gen2;
+				// usbr20-not-used;
 				typec,receptacle;
 				ufp-d {
-					//pin-assignment,mode-c;
-					//pin-assignment,mode-d;
-					//pin-assignment,mode-e;
+					// pin-assignment,mode-c;
+					// pin-assignment,mode-d;
+					// pin-assignment,mode-e;
 				};
 				dfp-d {
 					pin-assignment,mode-c;
