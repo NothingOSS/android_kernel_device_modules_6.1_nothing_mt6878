@@ -889,6 +889,10 @@ void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
 			m4u_aee_print(mmu_translation_log_format, "SMMU", port_name,
 				      port_name, fault_iova, fault_pa);
 		return;
+	} else if (smmu_id == GPU_SMMU) {
+		m4u_aee_print(mmu_translation_log_format, "SMMU", "GPUSYS",
+			      "GPUSYS", fault_iova, fault_pa);
+		return;
 	}
 
 	report_custom_fault(fault_iova, fault_pa, fault_id, smmu_id, id);
