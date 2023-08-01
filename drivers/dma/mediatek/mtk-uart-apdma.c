@@ -169,7 +169,7 @@ static unsigned long long num;
 static unsigned int flag_state;
 static unsigned int g_vff_sz;
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
-static unsigned int res_status;
+atomic_t res_status;
 static unsigned int peri_0_axi_dbg;
 static struct clk *g_dma_clk;
 atomic_t dma_clk_count;
@@ -491,15 +491,15 @@ void mtk_uart_apdma_enable_vff(bool enable)
 }
 EXPORT_SYMBOL(mtk_uart_apdma_enable_vff);
 
-void mtk_uart_set_res_status(unsigned int status)
+void mtk_uart_set_res_status(int status)
 {
-	res_status = status;
+	atomic_set(&res_status, status);
 }
 EXPORT_SYMBOL(mtk_uart_set_res_status);
 
-unsigned int mtk_uart_get_res_status(void)
+int mtk_uart_get_res_status(void)
 {
-	return res_status;
+	return atomic_read(&res_status);
 }
 EXPORT_SYMBOL(mtk_uart_get_res_status);
 
@@ -567,7 +567,7 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 	int poll_cnt = MAX_POLLING_CNT;
 
 	if (c->is_hub_port) {
-		if (!res_status) {
+		if (!atomic_read(&res_status)) {
 			pr_info("[WARN]%s, txrx_request is not set\n", __func__);
 			return;
 		}
@@ -751,7 +751,7 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 
 	if (c->dir == DMA_MEM_TO_DEV) {
 		idx = c->cur_rec_idx;
-		rpt =  mtk_uart_apdma_read(c, VFF_RPT);
+		rpt = c->cur_rpt;
 	} else {
 		idx = (unsigned int)((c->rec_idx - 1 + UART_RECORD_COUNT) % UART_RECORD_COUNT);
 		start_sec = sched_clock();
@@ -819,6 +819,7 @@ static int mtk_uart_apdma_tx_handler(struct mtk_chan *c)
 		return -EINVAL;
 	mtk_uart_apdma_write(c, VFF_INT_EN, VFF_INT_EN_CLR_B);
 	mtk_uart_apdma_write(c, VFF_EN, VFF_EN_CLR_B);
+	c->cur_rpt =  mtk_uart_apdma_read(c, VFF_RPT);
 
 	list_del(&d->vd.node);
 	vchan_cookie_complete_thread_irq(&d->vd);
@@ -1417,6 +1418,7 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 			g_dma_clk = mtkd->clk;
 			atomic_set(&dma_clk_count, 0);
 		}
+		atomic_set(&res_status, 0);
 		mtk_uart_apdma_parse_peri(pdev);
 	}
 #else
