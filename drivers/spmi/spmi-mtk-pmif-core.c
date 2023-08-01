@@ -1308,7 +1308,7 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	if ((spmi_debug_nack & 0xF0000) || (spmi_p_debug_nack & 0xF0000)) {
 		pr_notice("%s spmi_debug_nack transaction fail irq triggered SPMI_DEC_DBG m/p: 0x%x/0x%x\n",
 			__func__, spmi_debug_nack, spmi_p_debug_nack);
-		flag = 1;
+		flag = 0;
 	}
 	if ((spmi_mst_nack & 0xC0000) || (spmi_p_mst_nack & 0xC0000)) {
 		pr_notice("%s spmi_mst_nack transaction fail irq triggered SPMI_MST_DBG m/p: 0x%x/0x%x\n",
