@@ -68,12 +68,52 @@ int bypass_info(unsigned int offset, int vio_type)
 
 }
 
+bool aid_is_gpu_w(int vio_type, struct smpu_reg_info_t *dump)
+{
+	int i;
+	ssize_t msg_len = 0;
+	struct smpu *mpu = NULL;
+
+	switch (vio_type) {
+	case VIO_TYPE_NSMPU:
+			mpu = global_nsmpu;
+			break;
+	case VIO_TYPE_SSMPU:
+			mpu = global_ssmpu;
+			break;
+	default:
+			break;
+	}
+	if (!mpu) {
+		pr_info("%s mpu is NULL\n", __func__);
+		return -1;
+	}
+
+	if (!mpu->gpu_bypass_list)
+		return false;
+
+	if (dump[mpu->gpu_bypass_list[0]].value == mpu->gpu_bypass_list[1]) {
+		pr_info("[SMPU] gpu write violation occurs\n");
+		for (i = 0; i < mpu->dump_cnt; i++) {
+			if (msg_len < MAX_GPU_VIO_LEN)
+				msg_len += scnprintf(mpu->vio_msg_gpu + msg_len, MAX_GPU_VIO_LEN - msg_len,
+					"[%x]%x", dump[i].offset,
+					dump[i].value);
+		}
+		pr_info("%s: %s", __func__, mpu->vio_msg_gpu);
+		return true;
+	}
+	return false;
+
+
+}
+
 static irqreturn_t smpu_isr_vio_hook(struct smpu_reg_info_t *dump, unsigned int leng, int vio_type)
 {
 	int i;
 	unsigned int srinfo_r = 0, axi_id_r = 0;
 	unsigned int srinfo_w = 0, axi_id_w = 0;
-	bool bypass;
+	bool bypass, result;
 	static DEFINE_RATELIMIT_STATE(ratelimit, 1*HZ, 3);
 
 	for (i = 0; i < leng; i++) {
@@ -120,6 +160,10 @@ static irqreturn_t smpu_isr_vio_hook(struct smpu_reg_info_t *dump, unsigned int 
 		bypass = true;
 	else
 		bypass = false;
+
+	//mt6897 bypass gpu w vio
+	 result = aid_is_gpu_w(vio_type, dump);
+	 bypass = bypass ||  result;
 
 	if (bypass == true) {
 		if (__ratelimit(&ratelimit)) {

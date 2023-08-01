@@ -14,6 +14,7 @@
 #define VIO_TYPE_SKP 3
 
 #define MTK_SMPU_MAX_CMD_LEN 256
+#define MAX_GPU_VIO_LEN 256
 
 #ifndef CHECK_BIT
 #define CHECK_BIT(var, pos) ((var) & (1 << (pos)))
@@ -59,6 +60,7 @@ void smpu_clear_md_violation(void);
 struct smpu {
 	const char *name;
 	char *vio_msg;
+	char *vio_msg_gpu;
 	bool is_vio;
 
 	struct smpu_reg_info_t *dump_reg;
@@ -82,6 +84,7 @@ struct smpu {
 	unsigned int *bypass_miu_reg;
 	unsigned int bypass_miu_reg_num;
 	struct bypass_axi_info_t *bypass_axi;
+	unsigned int *gpu_bypass_list;
 	unsigned int bypass_axi_num;
 };
 extern struct smpu *global_nsmpu, *global_ssmpu;
