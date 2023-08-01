@@ -3080,11 +3080,6 @@ static int mtk_disp_clarity_set_reg(struct mtk_ddp_comp *comp,
 	clarity_regs->mdp_aal_clarity_regs.dre_bilateral_region_protection_activate_A << 1 |
 	clarity_regs->mdp_aal_clarity_regs.dre_bilateral_blending_region_protection_en << 0), ~0);
 
-	// tdshp clarity set registers
-	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + MDP_TDSHP_00,
-		(clarity_regs->disp_tdshp_clarity_regs.tdshp_gain_high << 8 |
-		clarity_regs->disp_tdshp_clarity_regs.tdshp_gain_mid << 16), 0xFFFF << 8);
-
 	cmdq_pkt_write(handle, comp->cmdq_base, comp_tdshp->regs_pa + MIDBAND_COEF_V_CUST_FLT1_00,
 		(clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_0_0 << 0 |
 		clarity_regs->disp_tdshp_clarity_regs.mid_coef_v_custom_range_flt_0_1 << 8 |

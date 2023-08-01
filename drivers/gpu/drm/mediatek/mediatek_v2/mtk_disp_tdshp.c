@@ -79,32 +79,23 @@ static int mtk_disp_tdshp_write_reg(struct mtk_ddp_comp *comp,
 		goto thshp_write_reg_unlock;
 	}
 
-	DDPINFO("tdshp_en: %x, tdshp_limit: %x, tdshp_ylev_256: %x\n",
+	DDPINFO("tdshp_en: %x, tdshp_limit: %x, tdshp_ylev_256: %x, tdshp_gain_high:%d, tdshp_gain_mid:%d\n",
 			disp_tdshp_regs->tdshp_en, disp_tdshp_regs->tdshp_limit,
-			disp_tdshp_regs->tdshp_ylev_256);
+			disp_tdshp_regs->tdshp_ylev_256, disp_tdshp_regs->tdshp_gain_high,
+			disp_tdshp_regs->tdshp_gain_mid);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_TDSHP_CFG, 0x2 | primary_data->relay_value, 0x11);
 
-	if (primary_data->aal_clarity_support && *primary_data->aal_clarity_support) {
-		DDPINFO("%s, aal_clarity_support is true\n", __func__);
-		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_00,
-			(disp_tdshp_regs->tdshp_softcoring_gain << 0 |
-					disp_tdshp_regs->tdshp_ink_sel << 24 |
-					disp_tdshp_regs->tdshp_bypass_high << 29 |
-					disp_tdshp_regs->tdshp_bypass_mid << 30 |
-					disp_tdshp_regs->tdshp_en << 31), 0xFF0000FF);
-	} else {
-		DDPINFO("%s, aal_clarity_support is false\n", __func__);
-		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_00,
-			(disp_tdshp_regs->tdshp_softcoring_gain << 0 |
-					disp_tdshp_regs->tdshp_gain_high << 8 |
-					disp_tdshp_regs->tdshp_gain_mid << 16 |
-					disp_tdshp_regs->tdshp_ink_sel << 24 |
-					disp_tdshp_regs->tdshp_bypass_high << 29 |
-					disp_tdshp_regs->tdshp_bypass_mid << 30 |
-					disp_tdshp_regs->tdshp_en << 31), ~0);
-	}
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_00,
+		(disp_tdshp_regs->tdshp_softcoring_gain << 0 |
+				disp_tdshp_regs->tdshp_gain_high << 8 |
+				disp_tdshp_regs->tdshp_gain_mid << 16 |
+				disp_tdshp_regs->tdshp_ink_sel << 24 |
+				disp_tdshp_regs->tdshp_bypass_high << 29 |
+				disp_tdshp_regs->tdshp_bypass_mid << 30 |
+				disp_tdshp_regs->tdshp_en << 31), ~0);
+
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_01,
 		(disp_tdshp_regs->tdshp_limit_ratio << 0 |
