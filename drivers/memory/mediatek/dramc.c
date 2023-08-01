@@ -78,6 +78,8 @@ static int fmeter_v1_init(struct platform_device *pdev,
 			"ckdiv4-ca", (unsigned int *)(fmeter_dev_ptr->ckdiv4_ca), 6);
 	} else if (fmeter_version == 3) {
 		fmeter_dev_ptr->version = 3;
+		ret |= of_property_read_u32(dramc_node,
+			"use-real-freq", &(fmeter_dev_ptr->use_real_freq));
 		ret |= of_property_read_u32_array(dramc_node,
 			"async-ca", (unsigned int *)(fmeter_dev_ptr->async_ca), 6);
 		ret |= of_property_read_u32_array(dramc_node,
@@ -733,7 +735,10 @@ static unsigned int fmeter_v3(struct dramc_dev_t *dramc_dev_ptr)
 	if ((dqsopen == 1) && (async_ca == 1))
 		vco_freq >>= 1;
 
-	return decode_freq(vco_freq);
+	if (fmeter_dev_ptr->use_real_freq == 1)
+		return vco_freq;
+	else
+		return decode_freq(vco_freq);
 }
 
 /*
