@@ -249,6 +249,8 @@ struct mtk_disp_oddmr {
 	/* workqueue */
 	struct workqueue_struct *oddmr_wq;
 	struct work_struct update_table_work;
+	/*user pq od bypass lock*/
+	uint32_t pq_od_bypass;
 };
 
 int mtk_drm_ioctl_oddmr_load_param(struct drm_device *dev, void *data,

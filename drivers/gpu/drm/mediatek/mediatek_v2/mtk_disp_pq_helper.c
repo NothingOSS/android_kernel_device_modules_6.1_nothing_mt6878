@@ -1021,7 +1021,8 @@ static bool mtk_drm_pq_is_relay_engines(struct mtk_ddp_comp *comp, uint32_t engi
 		|| ((engine & 0x80) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DITHER))
 		|| ((engine & 0x100) && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CHIST)))
 		ret = true;
-
+	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR)
+		ret = true;
 	return ret;
 }
 

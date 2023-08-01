@@ -3028,16 +3028,14 @@ int mtk_oddmr_hrt_cal_notify(int *oddmr_hrt)
 			atomic_set(&g_oddmr_od_hrt_done, 1);
 		if (atomic_read(&g_oddmr_dmr_hrt_done) == 2)
 			atomic_set(&g_oddmr_dmr_hrt_done, 1);
-		if (g_oddmr_priv->od_enable_req)
-			sum += mtk_oddmr_od_bpp(g_od_param.od_basic_info.basic_param.od_mode);
 		if (g_oddmr_priv->dmr_enable_req)
 			sum += mtk_oddmr_dmr_bpp(
 					g_dmr_param.dmr_basic_info.basic_param.dmr_table_mode);
 		wake_up_all(&g_oddmr_hrt_wq);
-		g_oddmr_priv->od_enable = g_oddmr_priv->od_enable_req;
+		g_oddmr_priv->od_enable = g_oddmr_priv->od_enable_req && !g_oddmr_priv->pq_od_bypass;
 		g_oddmr_priv->dmr_enable = g_oddmr_priv->dmr_enable_req;
 		if (default_comp->mtk_crtc->is_dual_pipe) {
-			g_oddmr1_priv->od_enable = g_oddmr1_priv->od_enable_req;
+			g_oddmr1_priv->od_enable = g_oddmr1_priv->od_enable_req && !g_oddmr_priv->pq_od_bypass;
 			g_oddmr1_priv->dmr_enable = g_oddmr1_priv->dmr_enable_req;
 		}
 		mtk_crtc = default_comp->mtk_crtc;
@@ -3048,6 +3046,8 @@ int mtk_oddmr_hrt_cal_notify(int *oddmr_hrt)
 				((unsigned long long)mtk_crtc->base.state->adjusted_mode.vdisplay *
 				mtk_crtc->base.state->adjusted_mode.hdisplay);
 		}
+		if (g_oddmr_priv->od_enable)
+			sum += mtk_oddmr_od_bpp(g_od_param.od_basic_info.basic_param.od_mode);
 		ODDMRLOW_LOG("od %d dmr %d sum %d res_ratio %llu\n",
 				g_oddmr_priv->od_enable, g_oddmr_priv->dmr_enable, sum, res_ratio);
 		sum = sum * res_ratio / 1000;
@@ -3340,6 +3340,33 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		mtk_oddmr_od_bypass(comp, handle);
 	}
 	oddmr_priv->od_enable_last = en;
+}
+
+static void mtk_oddmr_bypass(struct mtk_ddp_comp *comp, int bypass,
+		struct cmdq_pkt *handle)
+{
+	ODDMRAPI_LOG();
+	if (comp->id == DDP_COMPONENT_ODDMR1)
+		return;
+	if (is_oddmr_od_support && (g_oddmr_priv->pq_od_bypass != bypass)) {
+		g_oddmr_priv->pq_od_bypass = bypass;
+		g_oddmr_priv->od_enable =
+			g_oddmr_priv->od_enable_req && !g_oddmr_priv->pq_od_bypass;
+
+		if (default_comp->mtk_crtc->is_dual_pipe) {
+			g_oddmr1_priv->pq_od_bypass = bypass;
+			g_oddmr1_priv->od_enable =
+				g_oddmr1_priv->od_enable_req && !g_oddmr1_priv->pq_od_bypass;
+		}
+		ODDMRLOW_LOG("pq_od_bypass %d,od_enable %d",
+			g_oddmr_priv->pq_od_bypass, g_oddmr_priv->od_enable);
+		if (bypass == 0) {
+			mtk_oddmr_set_od_enable_dual(comp,
+				g_oddmr_priv->od_enable_req, handle);
+		} else if (bypass == 1) {
+			mtk_oddmr_set_od_enable_dual(comp, 0, handle);
+		}
+	}
 }
 
 static void mtk_oddmr_set_od_enable_dual(struct mtk_ddp_comp *comp, uint32_t enable,
@@ -4906,6 +4933,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_oddmr_funcs = {
 	.config_overhead = mtk_disp_oddmr_config_overhead,
 	.mutex_sof_irq = disp_oddmr_on_start_of_frame,
 	.pq_ioctl_transact = mtk_oddmr_pq_ioctl_transact,
+	.bypass = mtk_oddmr_bypass,
 };
 
 static int mtk_disp_oddmr_bind(struct device *dev, struct device *master,
