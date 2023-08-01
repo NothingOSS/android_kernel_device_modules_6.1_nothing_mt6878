@@ -12948,6 +12948,7 @@
 		reg = <0 0x1ea00000 0 0x60000>, /* tcm */
 		      <0 0x1ec24000 0 0x1000>, /* cfg */
 		      <0 0x1ec30000 0 0x1000>, /* cfg core0 */
+		      <0 0x1ec32000 0 0x1000>, /* intc core0 */
 		      <0 0x1ec37000 0 0x1000>, /* pwr ctrl */
 		      <0 0x1ec40000 0 0x1000>, /* cfg core1 */
 		      <0 0x1ec52000 0 0x1000>, /* bus tracker dbg */
@@ -12978,6 +12979,7 @@
 		reg-names = "vcp_sram_base",
 			    "vcp_cfgreg",
 			    "vcp_cfgreg_core0",
+			    "vcp_intc_core0",
 			    "vcp_pwr_ctl",
 			    "vcp_cfgreg_core1",
 			    "vcp_bus_tracker",
