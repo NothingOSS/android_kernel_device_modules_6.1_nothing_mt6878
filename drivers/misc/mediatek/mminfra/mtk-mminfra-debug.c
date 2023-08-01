@@ -193,6 +193,13 @@ static void mminfra_clk_set(bool is_enable)
 
 static bool is_mminfra_power_on(void)
 {
+	if (dbg->spm_base && dbg->mm_mtcmos_mask && dbg->vlp_base) {
+		if ((readl(dbg->spm_base+0xea8) & dbg->mm_mtcmos_mask) != dbg->mm_mtcmos_mask) {
+			pr_notice("mminfra mtcmos = 0x%x, done bits=0x%x\n",
+				readl(dbg->spm_base+0xea8), readl(dbg->vlp_base+0x91c));
+		}
+	}
+
 	return (atomic_read(&clk_ref_cnt) > 0);
 }
 
@@ -309,6 +316,13 @@ static int mtk_mminfra_pd_callback(struct notifier_block *nb,
 					readl(dbg->gce_base + GCE_GCTL_VALUE));
 			}
 			mtk_mminfra_gce_sram_en();
+		}
+		if (dbg->spm_base && dbg->mm_mtcmos_mask && dbg->vlp_base) {
+			if ((readl(dbg->spm_base+0xea8) & dbg->mm_mtcmos_mask)
+				!= dbg->mm_mtcmos_mask) {
+				pr_notice("mminfra mtcmos = 0x%x, done bits=0x%x\n",
+					readl(dbg->spm_base+0xea8), readl(dbg->vlp_base+0x91c));
+			}
 		}
 		pr_notice("%s: enable clk ref_cnt=%d\n", __func__, count);
 	} else if (flags == GENPD_NOTIFY_PRE_OFF) {
