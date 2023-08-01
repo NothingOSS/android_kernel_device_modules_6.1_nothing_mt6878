@@ -128,8 +128,33 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 #endif
 
 	if (type == enqueue) {
+		struct uclamp_se *uc_min_req, *uc_max_req;
+
 		sugov_data_ptr = &((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
 		sugov_data_ptr->enq_ing = true;
+
+		uc_min_req = &p->uclamp_req[UCLAMP_MIN];
+		uc_max_req = &p->uclamp_req[UCLAMP_MAX];
+
+		if (uc_min_req->user_defined || uc_max_req->user_defined) {
+			bool uclamp_diff = false;
+
+			uclamp_diff = (sugov_data_ptr->uclamp[UCLAMP_MIN]
+				!= READ_ONCE(rq->uclamp[UCLAMP_MIN].value));
+
+			uclamp_diff = (uclamp_diff
+				|| (sugov_data_ptr->uclamp[UCLAMP_MAX]
+				!= READ_ONCE(rq->uclamp[UCLAMP_MIN].value)));
+
+			if (uclamp_diff) {
+				int this_cpu = smp_processor_id();
+				struct rq *this_rq = cpu_rq(this_cpu);
+
+				sugov_data_ptr =
+					&((struct mtk_rq *) this_rq->android_vendor_data1)->sugov_data;
+				sugov_data_ptr->enq_dvfs = true;
+			}
+		}
 	}
 
 	if (trace_sched_queue_task_enabled()) {
@@ -185,6 +210,14 @@ static void mtk_check_d_tasks(void *data, struct task_struct *p,
 }
 #endif
 #endif
+
+void mtk_setscheduler_uclamp(void *data, struct task_struct *tsk,
+	int clamp_id, unsigned int value)
+{
+	if (trace_sched_set_uclamp_enabled())
+		trace_sched_set_uclamp(tsk->pid,
+		task_cpu(tsk), task_on_rq_queued(tsk), clamp_id, value);
+}
 
 static void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
 				      unsigned int new_pelt, int *ret)
@@ -778,6 +811,9 @@ static int __init mtk_scheduler_init(void)
 	//if (ret)
 	//	pr_info("register mtk_check_d_tasks hooks failed, returned %d\n", ret);
 #endif
+	ret = register_trace_android_vh_setscheduler_uclamp(mtk_setscheduler_uclamp, NULL);
+	if (ret)
+		pr_info("register mtk_setscheduler_uclamp hooks failed, returned %d\n", ret);
 
 out_wq:
 	return ret;

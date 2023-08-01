@@ -1812,6 +1812,34 @@ TRACE_EVENT(sched_adpf_get_value,
 		  __entry->targetDurationNanos)
 );
 
+/* clamp_id: 0 = UCLAMP_MIN, 1 = UCLAMP_MAX */
+TRACE_EVENT(sched_set_uclamp,
+	TP_PROTO(int pid, int task_cpu, int task_on_rq_queued, unsigned int clamp_id, int value),
+	TP_ARGS(pid, task_cpu, task_on_rq_queued, clamp_id, value),
+	TP_STRUCT__entry(
+		__field(int, pid)
+		__field(int, task_cpu)
+		__field(int, task_on_rq_queued)
+		__field(unsigned int, clamp_id)
+		__field(int, value)
+	),
+
+	TP_fast_assign(
+		__entry->pid = pid;
+		__entry->task_cpu = task_cpu;
+		__entry->task_on_rq_queued = task_on_rq_queued;
+		__entry->clamp_id = clamp_id;
+		__entry->value = value;
+	),
+
+	TP_printk("pid=%d task_cpu=%d task_on_rq_queued=%d clamp_id=%d value=%d",
+		__entry->pid,
+		__entry->task_cpu,
+		__entry->task_on_rq_queued,
+		__entry->clamp_id,
+		__entry->value)
+);
+
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

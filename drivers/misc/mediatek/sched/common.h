@@ -124,6 +124,8 @@ struct mtk_tg {
 };
 
 struct sugov_rq_data {
+	short int uclamp[UCLAMP_CNT];
+	bool enq_dvfs;
 	bool enq_ing;
 	bool enq_update_dsu_freq;
 };

@@ -313,15 +313,20 @@ unsigned long mtk_cpu_util(int cpu, unsigned long util_cfs,
 		}
 
 		if (p == (struct task_struct *)UINTPTR_MAX) {
+			unsigned long umin, umax;
+			struct sugov_rq_data *sugov_data_ptr;
+
+			umin = READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
+			umax = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
+			sugov_data_ptr = &((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
+			sugov_data_ptr->uclamp[UCLAMP_MIN] = umin;
+			sugov_data_ptr->uclamp[UCLAMP_MAX] = umax;
 			p = NULL;
 			if (cu_ctrl && curr_clamp(rq, &util) == 0)
 				goto skip_rq_uclamp;
 			else if (gu_ctrl) {
-				unsigned long umin;
-				unsigned long umax, umax_with_gear;
+				unsigned long umax_with_gear;
 
-				umin = READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
-				umax = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
 				umax_with_gear = min_t(unsigned long,
 					umax, get_cpu_gear_uclamp_max(cpu));
 				util = clamp_val(util, umin, umax_with_gear);
@@ -613,8 +618,14 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	struct rq *rq;
 	unsigned long umin, umax;
 	unsigned int next_f;
+	int this_cpu = smp_processor_id();
+	struct rq *this_rq = cpu_rq(this_cpu);
+	struct sugov_rq_data *sugov_data_ptr;
 
 	raw_spin_lock(&sg_policy->update_lock);
+
+	sugov_data_ptr = &((struct mtk_rq *) this_rq->android_vendor_data1)->sugov_data;
+	sugov_data_ptr->enq_dvfs = false;
 
 	sugov_iowait_boost(sg_cpu, time, flags);
 	sg_cpu->last_update = time;
@@ -715,8 +726,14 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 	struct sugov_cpu *sg_cpu = container_of(hook, struct sugov_cpu, update_util);
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
 	unsigned int next_f;
+	int this_cpu = smp_processor_id();
+	struct rq *this_rq = cpu_rq(this_cpu);
+	struct sugov_rq_data *sugov_data_ptr;
 
 	raw_spin_lock(&sg_policy->update_lock);
+
+	sugov_data_ptr = &((struct mtk_rq *) this_rq->android_vendor_data1)->sugov_data;
+	sugov_data_ptr->enq_dvfs = false;
 
 	sugov_iowait_boost(sg_cpu, time, flags);
 	sg_cpu->last_update = time;
@@ -768,14 +785,6 @@ static void sugov_work(struct kthread_work *work)
 	__cpufreq_driver_target(sg_policy->policy, freq, CPUFREQ_RELATION_L);
 	mutex_unlock(&sg_policy->work_lock);
 }
-
-bool check_freq_update_for_time(struct update_util_data *hook, u64 time)
-{
-	struct sugov_cpu *sg_cpu = container_of(hook, struct sugov_cpu, update_util);
-
-	return sg_cpu->last_update == time;
-}
-EXPORT_SYMBOL(check_freq_update_for_time);
 
 static void sugov_irq_work(struct irq_work *irq_work)
 {

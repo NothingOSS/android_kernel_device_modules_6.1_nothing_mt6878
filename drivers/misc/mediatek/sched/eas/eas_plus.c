@@ -30,7 +30,6 @@ MODULE_LICENSE("GPL");
 #define IB_SAME_CLUSTER		(0x01)
 #define IB_OVERUTILIZATION	(0x04)
 
-DEFINE_PER_CPU(struct update_util_data __rcu *, cpufreq_update_util_data);
 DEFINE_PER_CPU(__u32, active_softirqs);
 
 struct cpumask __cpu_pause_mask;
@@ -732,7 +731,10 @@ void hook_scheduler_tick(void *data, struct rq *rq)
 void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 				struct task_struct *p, int flags)
 {
+	int this_cpu = smp_processor_id();
+	struct rq *this_rq = cpu_rq(this_cpu);
 	struct sugov_rq_data *sugov_data_ptr;
+	struct sugov_rq_data *sugov_data_ptr2;
 
 	irq_log_store();
 
@@ -749,8 +751,11 @@ void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 	irq_log_store();
 	sugov_data_ptr = &((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
-	if (sugov_data_ptr->enq_update_dsu_freq == true)
+	sugov_data_ptr2 = &((struct mtk_rq *) this_rq->android_vendor_data1)->sugov_data;
+	if (sugov_data_ptr->enq_update_dsu_freq == true || sugov_data_ptr2->enq_dvfs == true) {
 		cpufreq_update_util(rq, 0);
+		sugov_data_ptr2->enq_dvfs = false;
+	}
 	sugov_data_ptr->enq_ing = false;
 #endif
 	irq_log_store();
