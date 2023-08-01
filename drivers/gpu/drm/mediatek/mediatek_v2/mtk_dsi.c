@@ -4834,6 +4834,8 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 			       comp->regs_pa + DSI_START, 0, ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DSI_START, 1, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			       comp->regs_pa + DSI_START, 0, ~0);
 		break;
 	case MTK_TRIG_FLAG_EOF:
 		mtk_dsi_poll_for_idle(dsi, handle);
@@ -5835,6 +5837,8 @@ void mipi_dsi_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
 			dsi->ddp_comp.regs_pa + DSI_START, 0x1, ~0);
+		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 
 		mtk_dsi_poll_for_idle(dsi, handle);
 
