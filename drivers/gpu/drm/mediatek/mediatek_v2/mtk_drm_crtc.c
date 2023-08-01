@@ -2863,7 +2863,7 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 	c->config_type.module = addon_module->module;
 	c->ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
 	c->dual = mtk_crtc->is_dual_pipe;
-	c->mutex.sof_src = (int)output_comp->id;
+	c->mutex.sof_src = c->submit.info.mode == MML_MODE_DIRECT_LINK ? 0 : (int)output_comp->id;
 	c->mutex.eof_src = (int)output_comp->id;
 	c->mutex.is_cmd_mode = mtk_crtc_is_frame_trigger_mode(crtc);
 
