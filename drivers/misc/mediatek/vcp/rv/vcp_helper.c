@@ -2469,7 +2469,6 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 	unsigned long spin_flags;
 	unsigned long c0_rstn = 0, c1_rstn = 0;
 	struct arm_smccc_res res;
-	int ret;
 
 	pr_notice("[VCP] %s(): vcp_reset_type %d remain %x times, en_cnt %d\n",
 		__func__, vcp_reset_type, vcp_reset_counts, mmup_enable_count());
@@ -2483,10 +2482,6 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 	 *   VCP_PLATFORM_READY = 1,
 	 */
 	vcp_ready[VCP_A_ID] = 0;
-
-	ret = vcp_turn_mminfra_on();
-	if (ret < 0)
-		return;
 
 	/* wake lock AP*/
 	__pm_stay_awake(vcp_reset_lock);
@@ -2530,8 +2525,6 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 			c0_rstn, c1_rstn, res.a0);
 	}
 
-	vcp_turn_mminfra_off();
-
 	/*notify vcp functions stop*/
 	pr_debug("[VCP] %s(): vcp_extern_notify\n", __func__);
 
@@ -2553,10 +2546,6 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 
 	vcp_set_clk();
 
-	ret = vcp_turn_mminfra_on();
-	if (ret < 0)
-		return;
-
 	/* Setup dram reserved address and size for vcp*/
 	writel((unsigned int)VCP_PACK_IOVA(vcp_mem_base_phys), DRAM_RESV_ADDR_REG);
 	writel((unsigned int)vcp_mem_size, DRAM_RESV_SIZE_REG);
@@ -2574,7 +2563,6 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 #endif
 
 	dsb(SY); /* may take lot of time */
-	vcp_turn_mminfra_off();
 
 #if VCP_BOOT_TIME_OUT_MONITOR
 	mod_timer(&vcp_ready_timer[VCP_A_ID].tl, jiffies + VCP_READY_TIMEOUT);
