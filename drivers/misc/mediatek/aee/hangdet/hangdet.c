@@ -726,6 +726,7 @@ static void kwdt_process_kick(int local_bit, int cpu,
 	int i = 0;
 	bool rgu_fiq = false;
 	unsigned long s_s2idle = get_s2idle_state();
+	char smp_histroy[60] = {'\0'};
 #if IS_ENABLED(CONFIG_SMP)
 	static int j;
 #endif
@@ -783,20 +784,26 @@ static void kwdt_process_kick(int local_bit, int cpu,
 #if IS_ENABLED(CONFIG_SMP)
 	if ((((~(local_bit - 1)) & local_bit) == local_bit) && j++ > 3) {
 		int cpu = 0;
+		int smp_ret[8] = {255};
+
 
 		for (cpu = 0; get_check_bit() & (1 << cpu); cpu++)
-			smp_call_function_single_async(cpu, &wdt_csd[cpu]);
+			smp_ret[cpu] = smp_call_function_single_async(cpu, &wdt_csd[cpu]);
+
+		snprintf(smp_histroy, 60, "s_cpu %d - %d %d %d %d %d %d %d %d\n",
+			smp_processor_id(), smp_ret[0], smp_ret[1], smp_ret[2], smp_ret[3],
+			 smp_ret[4], smp_ret[5], smp_ret[6], smp_ret[7]);
 	}
 #endif
 
 	wk_tsk_kick_time[cpu] = sched_clock();
 	snprintf(msg_buf, WK_MAX_MSG_SIZE,
-	 "[wdk-c] cpu=%d o_k=%d lbit=0x%x cbit=0x%x,%x,%d,%d,%lld,%x,%llu,%llu,%llu,%llu,[%lld,%ld] %d %lx\n",
+	 "[wdk-c] cpu=%d o_k=%d lbit=0x%x cbit=0x%x,%x,%d,%d,%lld,%x,%llu,%llu,%llu,%llu,[%lld,%ld] %d %lx %s\n",
 	 cpu, original_kicker, local_bit, get_check_bit(),
 	 (local_bit ^ get_check_bit()) & get_check_bit(), lasthpg_cpu,
 	 lasthpg_act, lasthpg_t, atomic_read(&plug_mask), lastsuspend_t / 1000000,
 	 lastsuspend_syst / 1000000, lastresume_t / 1000000, lastresume_syst / 1000000,
-	 wk_tsk_kick_time[cpu], curInterval, r_counter, s_s2idle);
+	 wk_tsk_kick_time[cpu], curInterval, r_counter, s_s2idle, smp_histroy);
 
 	if ((local_bit & (get_check_bit() & s_s2idle)) == (get_check_bit() & s_s2idle)) {
 		all_k_timer_t = sched_clock();
