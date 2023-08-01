@@ -7878,7 +7878,8 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 {
 	struct mtk_panel_ext *ext = dsi->ext;
 	unsigned int compress_rate;
-	unsigned int bubble_rate = 110;
+	unsigned int bubble_rate = dsi->driver_data->bubble_rate ?
+				(dsi->driver_data->bubble_rate) : 110;
 	unsigned int data_rate;
 	unsigned int pixclk = 0;
 	u32 bpp = mipi_dsi_pixel_format_to_bpp(dsi->format);
@@ -10375,6 +10376,7 @@ static const struct mtk_dsi_driver_data mt6989_dsi_driver_data = {
 	.urgent_hi_fifo_us = 15,
 	.max_vfp = 0xffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
+	.bubble_rate = 115,
 	.n_verion = VER_N4,
 };
 

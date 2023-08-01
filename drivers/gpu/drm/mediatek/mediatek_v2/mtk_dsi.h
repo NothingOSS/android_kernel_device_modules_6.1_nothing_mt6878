@@ -62,6 +62,7 @@ struct mtk_dsi_driver_data {
 	u32 max_vfp;
 	void (*mmclk_by_datarate)(struct mtk_dsi *dsi,
 		struct mtk_drm_crtc *mtk_crtc, unsigned int en);
+	const unsigned int bubble_rate;
 	const enum DSI_N_Version n_verion;
 };
 
