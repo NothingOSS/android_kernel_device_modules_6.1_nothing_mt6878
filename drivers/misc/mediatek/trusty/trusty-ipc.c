@@ -849,6 +849,9 @@ static int tipc_open(struct inode *inode, struct file *filp)
 	struct tipc_dn_chan *dn;
 	struct tipc_cdev_node *cdn = cdev_to_cdn(inode->i_cdev);
 
+	/* kick ise rx for multiple client applications running */
+	ise_notifier_call();
+
 	vds = _dn_lookup_vds(cdn);
 	if (!vds) {
 		ret = -ENOENT;

@@ -32,6 +32,7 @@ struct trusty_work {
 struct trusty_state {
 	struct mutex smc_lock;
 	struct atomic_notifier_head notifier;
+	struct atomic_notifier_head ise_notifier;
 	struct completion cpu_idle_completion;
 	char *version_str;
 	u32 api_version;
@@ -45,6 +46,8 @@ struct trusty_state {
 struct trusty_state *tstate;
 static struct workqueue_struct *notif_call_wq;
 static struct work_struct notif_call_work;
+static struct workqueue_struct *ise_notif_call_wq;
+static struct work_struct ise_notif_call_work;
 static u32 real_drv;
 static phys_addr_t mcia_paddr;
 static size_t mcia_size;
@@ -268,6 +271,23 @@ int ise_call_notifier_unregister(struct device *dev,
 }
 EXPORT_SYMBOL(ise_call_notifier_unregister);
 
+int ise_notifier_register(struct device *dev, struct notifier_block *n)
+{
+	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
+
+	return atomic_notifier_chain_register(&s->ise_notifier, n);
+}
+EXPORT_SYMBOL(ise_notifier_register);
+
+int ise_notifier_unregister(struct device *dev,
+				    struct notifier_block *n)
+{
+	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
+
+	return atomic_notifier_chain_unregister(&s->ise_notifier, n);
+}
+EXPORT_SYMBOL(ise_notifier_unregister);
+
 static int trusty_remove_child(struct device *dev, void *data)
 {
 	platform_device_unregister(to_platform_device(dev));
@@ -490,6 +510,17 @@ void trusty_notifier_call(void)
 }
 EXPORT_SYMBOL(trusty_notifier_call);
 
+static void ise_notif_call_work_func(struct work_struct *work)
+{
+	atomic_notifier_call_chain(&tstate->ise_notifier, TRUSTY_CALL_RETURNED, NULL);
+}
+
+void ise_notifier_call(void)
+{
+	queue_work(ise_notif_call_wq, &ise_notif_call_work);
+}
+EXPORT_SYMBOL(ise_notifier_call);
+
 u32 is_trusty_real_driver(void)
 {
 	return real_drv;
@@ -562,6 +593,7 @@ static int trusty_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&s->nop_queue);
 	mutex_init(&s->smc_lock);
 	ATOMIC_INIT_NOTIFIER_HEAD(&s->notifier);
+	ATOMIC_INIT_NOTIFIER_HEAD(&s->ise_notifier);
 	init_completion(&s->cpu_idle_completion);
 	platform_set_drvdata(pdev, s);
 
@@ -620,12 +652,22 @@ static int trusty_probe(struct platform_device *pdev)
 	notif_call_wq = alloc_workqueue("trusty-notif-call-wq", WQ_UNBOUND, 0);
 	if (!notif_call_wq) {
 		dev_err(&pdev->dev, "Failed to create trusty-notif-call-wq\n");
-		goto err_add_children;
+		goto err_create_trusty_wq;
 	}
 	INIT_WORK(&notif_call_work, notif_call_work_func);
 
+	ise_notif_call_wq = alloc_workqueue("ise-notif-call-wq", WQ_UNBOUND, 0);
+	if (!ise_notif_call_wq) {
+		dev_err(&pdev->dev, "Failed to create ise-notif-call-wq\n");
+		goto err_create_ise_wq;
+	}
+	INIT_WORK(&ise_notif_call_work, ise_notif_call_work_func);
+
 	return 0;
 
+err_create_ise_wq:
+	destroy_workqueue(notif_call_wq);
+err_create_trusty_wq:
 err_add_children:
 	for_each_possible_cpu(cpu) {
 		struct trusty_work *tw = per_cpu_ptr(s->nop_works, cpu);
@@ -661,6 +703,7 @@ static int trusty_remove(struct platform_device *pdev)
 
 	device_for_each_child(&pdev->dev, NULL, trusty_remove_child);
 
+	destroy_workqueue(ise_notif_call_wq);
 	destroy_workqueue(notif_call_wq);
 
 	for_each_possible_cpu(cpu) {

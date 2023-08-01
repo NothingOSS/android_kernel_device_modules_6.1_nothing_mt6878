@@ -64,10 +64,9 @@ static uint32_t mailbox_print_reply(const mailbox_reply_t *reply)
 
 static uint32_t mailbox_poll(uint32_t addr, uint32_t mask, uint32_t expected_value)
 {
-	int retry = MAILBOX_RETRY;
+	uint32_t retry = MAILBOX_RETRY;
 
 	while ((mlb_read(addr) & mask) != expected_value && retry) {
-		udelay(1);
 		retry--;
 	}
 

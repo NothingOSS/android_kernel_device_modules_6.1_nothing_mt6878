@@ -29,6 +29,8 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 
+#include <linux/debugfs.h>
+
 #define  RSC_DESCR_VER  1
 
 struct trusty_vdev;
@@ -40,10 +42,15 @@ struct trusty_ctx {
 	struct work_struct	check_vqs;
 	struct work_struct	kick_vqs;
 	struct notifier_block	call_notifier;
+	struct notifier_block	ise_call_notifier;
 	struct list_head	vdev_list;
 	struct mutex		mlock; /* protects vdev_list */
+	spinlock_t		slock; /* protects register */
 	struct workqueue_struct	*kick_wq;
 	struct workqueue_struct	*check_wq;
+	struct work_struct	kick_vqs_dbg;
+	struct workqueue_struct	*kick_wq_dbg;
+	unsigned long vring_dbg;
 };
 
 struct trusty_vring {
@@ -79,12 +86,14 @@ struct trusty_vdev {
 
 static void __iomem *infracfg_base;
 
+#if !IS_ENABLED(CONFIG_TRUSTY)
 static uint32_t trusty_read(uint32_t offset)
 {
 	void __iomem *reg = infracfg_base + offset;
 
 	return readl(reg);
 }
+#endif
 
 #if !IS_ENABLED(CONFIG_TRUSTY)
 static void trusty_write(uint32_t offset, uint32_t value)
@@ -140,6 +149,26 @@ static int trusty_call_notify(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
+static int ise_call_notify(struct notifier_block *nb,
+			      unsigned long action, void *data)
+{
+	struct trusty_ctx *tctx;
+	unsigned long vring = 1; /* ise rx */
+	unsigned long cpu = 0;
+
+	if (action != TRUSTY_CALL_RETURNED)
+		return NOTIFY_DONE;
+
+	tctx = container_of(nb, struct trusty_ctx, ise_call_notifier);
+
+	dev_info(tctx->dev, "%s: queue_work_on cpu %lu vring %lu\n",
+		__func__, cpu, vring);
+	tctx->vring_dbg = vring;
+	queue_work_on(cpu, tctx->kick_wq_dbg, &tctx->kick_vqs_dbg);
+
+	return NOTIFY_OK;
+}
+
 static void kick_vq(struct trusty_ctx *tctx,
 		    struct trusty_vdev *tvdev,
 		    struct trusty_vring *tvr)
@@ -171,6 +200,31 @@ static void kick_vqs(struct work_struct *work)
 				kick_vq(tctx, tvdev, tvr);
 		}
 	}
+	mutex_unlock(&tctx->mlock);
+}
+
+static void kick_vqs_dbg(struct work_struct *work)
+{
+	struct trusty_ctx *tctx = container_of(work, struct trusty_ctx, kick_vqs_dbg);
+	struct trusty_vdev *tvdev;
+	unsigned long vring_id = tctx->vring_dbg;
+	unsigned long i;
+
+	mutex_lock(&tctx->mlock);
+	list_for_each_entry(tvdev, &tctx->vdev_list, node) {
+		for (i = 0; i < tvdev->vring_num; i++) {
+			struct trusty_vring *tvr = &tvdev->vrings[i];
+
+			if (i != vring_id)
+				continue;
+
+			ise_enqueue_nop(tctx->dev->parent, &tvr->kick_nop);
+			dev_info(tctx->dev, "enqueue_nop on cpu %u vring[%lu] done\n",
+				smp_processor_id(), vring_id);
+			goto enqueued;
+		}
+	}
+enqueued:
 	mutex_unlock(&tctx->mlock);
 }
 
@@ -637,6 +691,15 @@ static int trusty_virtio_add_devices(struct trusty_ctx *tctx)
 		goto err_register_notifier;
 	}
 
+	/* register ise notifier */
+	ret = ise_notifier_register(tctx->dev->parent,
+					    &tctx->ise_call_notifier);
+	if (ret) {
+		dev_err(tctx->dev, "%s: failed (%d) to register ise notifier\n",
+			__func__, ret);
+		goto err_register_ise_notifier;
+	}
+
 	/* start virtio */
 	ret = trusty_virtio_start(tctx, descr_va, descr_sz);
 	if (ret) {
@@ -653,6 +716,10 @@ static int trusty_virtio_add_devices(struct trusty_ctx *tctx)
 	return 0;
 
 err_start_virtio:
+	ise_notifier_unregister(tctx->dev->parent,
+					&tctx->ise_call_notifier);
+	cancel_work_sync(&tctx->kick_vqs_dbg);
+err_register_ise_notifier:
 	ise_call_notifier_unregister(tctx->dev->parent,
 					&tctx->call_notifier);
 	cancel_work_sync(&tctx->check_vqs);
@@ -669,13 +736,56 @@ err_load_descr:
 
 static irqreturn_t trusty_virtio_irq_handler(int irq, void *data)
 {
-	if (!(trusty_read(RSVD_OFFSET) & APMCU_ACK))
-		trusty_setbits(RSVD_OFFSET, APMCU_ACK);
+	struct trusty_ctx *tctx = data;
+	unsigned long flags;
 
+	spin_lock_irqsave(&tctx->slock, flags);
+	trusty_setbits(RSVD_OFFSET, APMCU_ACK);
 	trusty_notifier_call();
+	spin_unlock_irqrestore(&tctx->slock, flags);
 
 	return IRQ_HANDLED;
 }
+
+static ssize_t trusty_virtio_dbg_write(struct file *filp,
+	const char __user *user_buf, size_t count, loff_t *off)
+{
+	struct trusty_ctx *tctx = filp->private_data;
+	unsigned long cpu, vring;
+	size_t buf_size;
+	char buf[32];
+	char *start = buf;
+	char *cpu_str, *vring_str;
+
+	buf_size = min(count, (sizeof(buf) - 1));
+	if (copy_from_user(buf, user_buf, buf_size))
+		return -EFAULT;
+	buf[buf_size] = 0;
+
+	cpu_str = strsep(&start, " ");
+	if (!cpu_str)
+		return -EINVAL;
+	if (kstrtoul(cpu_str, 10, &cpu))
+		return -EINVAL;
+
+	vring_str = strsep(&start, " ");
+	if (!vring_str)
+		return -EINVAL;
+	if (kstrtoul(vring_str, 10, &vring))
+		return -EINVAL;
+
+	dev_info(tctx->dev, "%s: queue_work_on cpu %lu vring %lu\n",
+		__func__, cpu, vring);
+	tctx->vring_dbg = vring;
+	queue_work_on(cpu, tctx->kick_wq_dbg, &tctx->kick_vqs_dbg);
+
+	return count;
+}
+
+static const struct file_operations trusty_virtio_dbg_fops = {
+	.open = simple_open,
+	.write = trusty_virtio_dbg_write,
+};
 
 static int trusty_virtio_probe(struct platform_device *pdev)
 {
@@ -683,6 +793,7 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 	struct trusty_ctx *tctx;
 	struct device_node *node = pdev->dev.of_node;
 	unsigned int irq;
+	struct dentry *debugfs_root;
 
 	if (!is_trusty_real_driver()) {
 		dev_info(&pdev->dev, "%s: ise trusty virtio dummy driver\n", __func__);
@@ -699,7 +810,9 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 
 	tctx->dev = &pdev->dev;
 	tctx->call_notifier.notifier_call = trusty_call_notify;
+	tctx->ise_call_notifier.notifier_call = ise_call_notify;
 	mutex_init(&tctx->mlock);
+	spin_lock_init(&tctx->slock);
 	INIT_LIST_HEAD(&tctx->vdev_list);
 	INIT_WORK(&tctx->check_vqs, check_all_vqs);
 	INIT_WORK(&tctx->kick_vqs, kick_vqs);
@@ -751,9 +864,34 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 		goto err_add_devices;
 	}
 
+	tctx->kick_wq_dbg = alloc_workqueue("trusty-kick-wq-dbg",
+					WQ_CPU_INTENSIVE, 0);
+	if (!tctx->kick_wq_dbg) {
+		ret = -ENODEV;
+		dev_err(&pdev->dev, "Failed create trusty-kick-wq-dbg\n");
+		goto err_create_kick_wq_dbg;
+	}
+
+	INIT_WORK(&tctx->kick_vqs_dbg, kick_vqs_dbg);
+
+	debugfs_root = debugfs_create_dir("trusty-virtio", NULL);
+	if (!IS_ERR_OR_NULL(debugfs_root)) {
+		debugfs_create_file("kick", 0600, debugfs_root, tctx,
+			&trusty_virtio_dbg_fops);
+	} else {
+		dev_err(&pdev->dev, "debugfs_create_dir '%s' failed ret %ld\n",
+			"trusty-virtio", PTR_ERR(debugfs_root));
+		ret = PTR_ERR(debugfs_root);
+		goto err_create_debugfs;
+	}
+
 	dev_info(&pdev->dev, "initializing done\n");
 	return 0;
 
+err_create_debugfs:
+	destroy_workqueue(tctx->kick_wq_dbg);
+err_create_kick_wq_dbg:
+	trusty_virtio_remove_devices(tctx);
 err_add_devices:
 	destroy_workqueue(tctx->kick_wq);
 err_create_kick_wq:
@@ -770,6 +908,9 @@ static int trusty_virtio_remove(struct platform_device *pdev)
 	dev_err(&pdev->dev, "removing\n");
 
 	/* unregister call notifier and wait until workqueue is done */
+	ise_notifier_unregister(tctx->dev->parent,
+					&tctx->ise_call_notifier);
+	cancel_work_sync(&tctx->kick_vqs_dbg);
 	ise_call_notifier_unregister(tctx->dev->parent,
 					&tctx->call_notifier);
 	cancel_work_sync(&tctx->check_vqs);

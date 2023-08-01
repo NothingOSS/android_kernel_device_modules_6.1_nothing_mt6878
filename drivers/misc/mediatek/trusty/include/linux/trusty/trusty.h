@@ -48,6 +48,10 @@ int ise_call_notifier_register(struct device *dev,
 				  struct notifier_block *n);
 int ise_call_notifier_unregister(struct device *dev,
 				    struct notifier_block *n);
+int ise_notifier_register(struct device *dev,
+				  struct notifier_block *n);
+int ise_notifier_unregister(struct device *dev,
+				    struct notifier_block *n);
 const char *ise_version_str_get(struct device *dev);
 u32 ise_get_api_version(struct device *dev);
 
@@ -79,6 +83,7 @@ void ise_enqueue_nop(struct device *dev, struct trusty_nop *nop);
 void ise_dequeue_nop(struct device *dev, struct trusty_nop *nop);
 
 void trusty_notifier_call(void);
+void ise_notifier_call(void);
 
 u32 is_trusty_real_driver(void);
 
