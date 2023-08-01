@@ -14339,7 +14339,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"pcie_ck_freq";
 			node-119 = "SSPM_SWPM_VDEC__STATE_RATIO",
 				"vdec_core_active,vdec_core_idle,vdec_core_off,",
-				"vdec_soc_active,vdec_soc_idle,vdec_soc_off";
+				"vdec_soc_active,vdec_soc_idle,vdec_soc_off,vdec_frequency";
 			node-120 = "SSPM_SWPM_MMINFRA__INDEX",
 				"vcore,freq,emi_read_bw,emi_write_bw,slb_read_bw,slb_write_bw,active";
 			node-121 = "SSPM_SWPM_UFS__STATE_RATIO",
