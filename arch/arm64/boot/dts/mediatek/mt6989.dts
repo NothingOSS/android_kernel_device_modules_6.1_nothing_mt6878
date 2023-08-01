@@ -11834,6 +11834,7 @@
 			mtk,iommu-dma-axid = <SMMU_L48_GCE_MM>;
 			mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;
 			prebuilt-enable;
+			tf-high-addr = <0x3d533>;
 		};
 
 		gce_m_sec: gce-mbox-m-sec@1e990000 {
