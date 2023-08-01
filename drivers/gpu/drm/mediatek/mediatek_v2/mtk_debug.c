@@ -4622,6 +4622,8 @@ static ssize_t cwb_debug_read(struct file *file, char __user *ubuf, size_t count
 	height = cwb_info->src_roi.height;
 	Bpp = mtk_get_format_bpp(cwb_info->buffer[0].fb->format->format);
 	cwb_buffer_size = sizeof(u8) * width * height * Bpp;
+	if (cwb_buffer_idx < 0 || cwb_buffer_idx >= CWB_BUFFER_NUM)
+		return -EFAULT;
 	addr_va = cwb_info->buffer[cwb_buffer_idx].addr_va;
 	if (*ppos != 0)
 		goto out;
