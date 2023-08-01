@@ -483,6 +483,7 @@ static int pmic_lowbatpt_parse_dt(struct pmic_lvsys_notify *lvsys_notify,
 static int pmic_lvsys_notify_probe(struct platform_device *pdev)
 {
 	int ret, irq;
+	int lvsys_thd_enable = 0;
 	struct device_node *np = pdev->dev.of_node;
 	struct device_node *gauge_np, *lowbatpt_np;
 	struct pmic_lvsys_notify *lvsys_notify;
@@ -518,7 +519,19 @@ static int pmic_lvsys_notify_probe(struct platform_device *pdev)
 		pmic_lvsys_parse_dt(lvsys_notify, np);
 		dev_notice(&pdev->dev, "get low-battery-throttling node fail\n");
 	} else {
-		pmic_lowbatpt_parse_dt(lvsys_notify, np, lowbatpt_np);
+		ret = of_property_read_u32(lowbatpt_np, "lvsys-thd-enable", &lvsys_thd_enable);
+		if (ret) {
+			dev_notice(&pdev->dev, "[%s] failed to get lvsys-thd-enable ret=%d\n"
+				   , __func__, ret);
+			lvsys_thd_enable = 0;
+		}
+		if (lvsys_thd_enable) {
+			ret = pmic_lowbatpt_parse_dt(lvsys_notify, np, lowbatpt_np);
+			if (ret)
+				pmic_lvsys_parse_dt(lvsys_notify, np);
+		} else {
+			pmic_lvsys_parse_dt(lvsys_notify, np);
+		}
 	}
 	mutex_init(&lvsys_notify->lock);
 
