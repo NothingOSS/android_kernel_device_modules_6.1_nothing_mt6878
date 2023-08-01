@@ -453,6 +453,7 @@ EXPORT_SYMBOL(mtk_uart_set_apdma_clk);
 void mtk_uart_apdma_enable_vff(bool enable)
 {
 	int ret = 0;
+	unsigned int vff_state = 0;
 	unsigned int status;
 
 	if (enable == false) {
@@ -474,15 +475,18 @@ void mtk_uart_apdma_enable_vff(bool enable)
 		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_STOP, VFF_STOP_CLR_B);
 	} else {
 		/* enable RX VFF */
-		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_RPT, 0x0);
-		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_THRE, VFF_RX_THRE(g_vff_sz));
-		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_EN, VFF_EN_B);
-		pr_info("[%s] :tx_chan addr1[0x%x], tx_chan addr2[0x%x], "
-			"rx_chan addr1[0x%x],rx_chan addr2[0x%x]\n",
+		vff_state = mtk_uart_apdma_read(hub_dma_rx_chan, VFF_EN);
+		if (vff_state) {
+			pr_info("[%s] :tx_chan addr1[0x%x], tx_chan addr2[0x%x], "
+				"rx_chan addr1[0x%x],rx_chan addr2[0x%x]\n",
 				__func__, mtk_uart_apdma_read(hub_dma_tx_chan, VFF_ADDR),
 				mtk_uart_apdma_read(hub_dma_tx_chan, VFF_4G_SUPPORT),
 				mtk_uart_apdma_read(hub_dma_rx_chan, VFF_ADDR),
 				mtk_uart_apdma_read(hub_dma_rx_chan, VFF_4G_SUPPORT));
+		}
+		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_RPT, 0x0);
+		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_THRE, VFF_RX_THRE(g_vff_sz));
+		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_EN, VFF_EN_B);
 	}
 }
 EXPORT_SYMBOL(mtk_uart_apdma_enable_vff);

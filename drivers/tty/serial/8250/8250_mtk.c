@@ -947,12 +947,12 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 				#if defined(KERNEL_mtk_uart_set_apdma_clk)
 					KERNEL_mtk_uart_set_apdma_clk(true);
 				#endif
+				/* make sure clock ready */
+				mb();
+				udelay(2000);
 				#if defined(KERNEL_mtk_uart_apdma_enable_vff)
 					KERNEL_mtk_uart_apdma_enable_vff(true);
 				#endif
-				/* make sure clock ready */
-				mb();
-				udelay(100);
 				/*unmask dma irq*/
 				#if defined(KERNEL_mtk_uart_set_apdma_rx_irq)
 					KERNEL_mtk_uart_set_apdma_rx_irq(true);
@@ -1920,12 +1920,12 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 		#if defined(KERNEL_mtk_uart_set_apdma_clk)
 		KERNEL_mtk_uart_set_apdma_clk(true);
 		#endif
+		/* make sure clock ready */
+		mb();
+		udelay(2000);
 		#if defined(KERNEL_mtk_uart_apdma_enable_vff)
 		KERNEL_mtk_uart_apdma_enable_vff(true);
 		#endif
-		/* make sure clock ready */
-		mb();
-		udelay(100);
 		/*unmask dma irq*/
 		#if defined(KERNEL_mtk_uart_set_apdma_rx_irq)
 			KERNEL_mtk_uart_set_apdma_rx_irq(true);
