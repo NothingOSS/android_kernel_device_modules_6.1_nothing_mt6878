@@ -177,6 +177,15 @@ void vcp_dump_last_regs(int mmup_enable)
 		readl(vcpreg.sram + 0x2000), readl(vcpreg.sram + 0x2004),
 		readl(vcpreg.sram + 0x2008), readl(vcpreg.sram + 0x200c));
 
+	pr_notice("[VCP] irq sta: %08x,%08x,%08x\n", readl(VCP_IRQ_STA0),
+		readl(VCP_IRQ_STA1), readl(VCP_IRQ_STA2));
+
+	pr_notice("[VCP] irq en: %08x,%08x,%08x\n", readl(VCP_IRQ_EN0),
+		readl(VCP_IRQ_EN1), readl(VCP_IRQ_EN2));
+
+	pr_notice("[VCP] irq wakeup en: %08x,%08x,%08x\n", readl(VCP_IRQ_SLP0),
+		readl(VCP_IRQ_SLP1), readl(VCP_IRQ_SLP2));
+
 	if (vcpreg.twohart) {
 		pr_notice("[VCP] c0_t1_pc = %08x\n", c0_t1_m->pc);
 		pr_notice("[VCP] c0_t1_pc2 = %08x\n", readl(R_CORE0_T1_MON_PC));

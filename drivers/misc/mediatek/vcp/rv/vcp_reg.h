@@ -143,6 +143,17 @@
 #define VCP_GPR_C1_H1_REBOOT		(vcpreg.cfg_core1 + 0x0058)
 #define VCP_A_GENERAL_REG7		(vcpreg.cfg_core0 + 0x005C)
 
+/* intc reg*/
+#define VCP_IRQ_STA0			(vcpreg.cfg_intc + 0x0000)
+#define VCP_IRQ_STA1			(vcpreg.cfg_intc + 0x0004)
+#define VCP_IRQ_STA2			(vcpreg.cfg_intc + 0x0008)
+#define VCP_IRQ_EN0				(vcpreg.cfg_intc + 0x0018)
+#define VCP_IRQ_EN1				(vcpreg.cfg_intc + 0x001C)
+#define VCP_IRQ_EN2				(vcpreg.cfg_intc + 0x0020)
+#define VCP_IRQ_SLP0			(vcpreg.cfg_intc + 0x0030)
+#define VCP_IRQ_SLP1			(vcpreg.cfg_intc + 0x0034)
+#define VCP_IRQ_SLP2			(vcpreg.cfg_intc + 0x0038)
+
 /* pwr ctl */
 #define VCP_R_SLP_EN			(vcpreg.cfg_pwr)
 #define VCP_POWER_STATUS		(vcpreg.cfg_pwr + 0x068)

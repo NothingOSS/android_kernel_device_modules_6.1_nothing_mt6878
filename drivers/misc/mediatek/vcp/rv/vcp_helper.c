@@ -2959,6 +2959,14 @@ static int vcp_device_probe(struct platform_device *pdev)
 	}
 	pr_debug("[VCP] cfg_core0 base = 0x%p\n", vcpreg.cfg_core0);
 
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_intc_core0");
+	vcpreg.cfg_intc = devm_ioremap_resource(dev, res);
+	if (IS_ERR((void const *) vcpreg.cfg_intc)) {
+		pr_debug("[VCP] vcpreg.cfg_intc error\n");
+		return -1;
+	}
+	pr_debug("[VCP] cfg_intc base = 0x%p\n", vcpreg.cfg_intc);
+
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_pwr_ctl");
 	vcpreg.cfg_pwr = devm_ioremap_resource(dev, res);
 	if (IS_ERR((void const *) vcpreg.cfg_pwr))
