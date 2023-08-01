@@ -1691,12 +1691,12 @@
 
 #define MT6989_PQ_PATH_SEL          0x34
 	#define MT6989_PQ_FAST_PATH_DISABLE        0
-	#define MT6989_PQ_FAST_PATH1               0x101
-	#define MT6989_PQ_FAST_PATH5               0x505
-	#define MT6989_PQ_FAST_PATH7               0x707
-	#define MT6989_PQ_FAST_PATH10              0xa0a
-	#define MT6989_PQ_FAST_PATH15              0xf0f
-	#define MT6989_PQ_FAST_PATH19              0x1313
+	#define MT6989_PQ_FAST_PATH1               1
+	#define MT6989_PQ_FAST_PATH5               5
+	#define MT6989_PQ_FAST_PATH7               7
+	#define MT6989_PQ_FAST_PATH10              10
+	#define MT6989_PQ_FAST_PATH15              15
+	#define MT6989_PQ_FAST_PATH19              19
 
 #define MT6989_DISPSYS_BYPASS_MUX_SHADOW	0xC30
 
@@ -15701,10 +15701,8 @@ static int mtk_ddp_mout_en_MT6989(const struct mtk_mmsys_reg_data *data,
 		/* PQ_OUT_CROSSBAR */
 		*addr = MT6989_PQ_OUT_CROSSBAR4_MOUT_EN;
 		value = MT6989_DISP_PQ_IN_CROSSBAR2_TO_CHIST1;
-	} else if ((cur == DDP_COMPONENT_GAMMA0 &&
-		next == DDP_COMPONENT_POSTMASK0) ||
-		(cur == DDP_COMPONENT_GAMMA1 &&
-		next == DDP_COMPONENT_POSTMASK1)) {
+	} else if (cur == DDP_COMPONENT_GAMMA0 &&
+		next == DDP_COMPONENT_POSTMASK0) {
 		/* PQ_IN_CROSSBAR */
 		*addr = MT6989_PQ_PATH_SEL;
 #if defined(MT6989_FULL_PQ_PATH1)
@@ -15719,6 +15717,23 @@ static int mtk_ddp_mout_en_MT6989(const struct mtk_mmsys_reg_data *data,
 		value = MT6989_PQ_FAST_PATH15;
 #elif defined(MT6989_FULL_PQ_PATH19)
 		value = MT6989_PQ_FAST_PATH19;
+#endif
+	} else if (cur == DDP_COMPONENT_GAMMA1 &&
+		next == DDP_COMPONENT_POSTMASK1) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6989_PQ_PATH_SEL;
+#if defined(MT6989_FULL_PQ_PATH1)
+		value = MT6989_PQ_FAST_PATH1 << 8;
+#elif defined(MT6989_FULL_PQ_PATH5)
+		value = MT6989_PQ_FAST_PATH5 << 8;
+#elif defined(MT6989_FULL_PQ_PATH7)
+		value = MT6989_PQ_FAST_PATH7 << 8;
+#elif defined(MT6989_FULL_PQ_PATH10)
+		value = MT6989_PQ_FAST_PATH10 << 8;
+#elif defined(MT6989_FULL_PQ_PATH15)
+		value = MT6989_PQ_FAST_PATH15 << 8;
+#elif defined(MT6989_FULL_PQ_PATH19)
+		value = MT6989_PQ_FAST_PATH19 << 8;
 #endif
 	} else {
 		value = -1;
