@@ -187,7 +187,7 @@ static void smpu_violation_callback(struct work_struct *work)
 		return;
 
 	/* check vio region addr */
-	if (nsmpu->is_vio || ssmpu->is_vio) {
+	if ((nsmpu && nsmpu->is_vio) || (ssmpu && ssmpu->is_vio)) {
 		if (mpu->dump_reg[7].value != 0) {
 			/*type(0sa 1ea) region aid_shift*/
 			arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIMPU_READ,
