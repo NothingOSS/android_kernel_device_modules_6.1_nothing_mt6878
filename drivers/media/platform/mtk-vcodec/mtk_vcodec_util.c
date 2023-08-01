@@ -63,21 +63,16 @@ void mtk_vcodec_check_alive(struct timer_list *t)
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_check_alive);
 
-void mtk_vcodec_alive_checker_init(struct mtk_vcodec_dev *dev)
+void mtk_vcodec_alive_checker_init(struct mtk_vcodec_ctx *ctx, bool is_first)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #ifdef VDEC_CHECK_ALIVE
-	int vdec_inst_count = 0;
-	struct mtk_vcodec_ctx *ctx;
+	struct mtk_vcodec_dev *dev = ctx->dev;
 
 	/* Only support vdec check alive now */
-	if (mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
-		list_for_each_entry(ctx, &dev->ctx_list, list) {
-			if (ctx->type == MTK_INST_DECODER)
-				vdec_inst_count++;
-		}
-		if (vdec_inst_count == 1 && !dev->vdec_dvfs_params.has_timer) {
-			mtk_v4l2_debug(0, "[VDVFS][VDEC] init vdec alive checker...");
+	if (mtk_vcodec_is_vcp(MTK_INST_DECODER) && is_first && ctx->type == MTK_INST_DECODER) {
+		if (!dev->vdec_dvfs_params.has_timer) {
+			mtk_v4l2_debug(0, "[%d][VDVFS][VDEC] init vdec alive checker...", ctx->id);
 			timer_setup(&dev->vdec_dvfs_params.vdec_active_checker,
 				mtk_vcodec_check_alive, 0);
 			dev->vdec_dvfs_params.vdec_active_checker.expires =
@@ -90,25 +85,20 @@ void mtk_vcodec_alive_checker_init(struct mtk_vcodec_dev *dev)
 #endif
 }
 
-void mtk_vcodec_alive_checker_deinit(struct mtk_vcodec_dev *dev)
+void mtk_vcodec_alive_checker_deinit(struct mtk_vcodec_ctx *ctx, bool is_last)
 {
-
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #ifdef VDEC_CHECK_ALIVE
-	int vdec_inst_count = 0;
-	struct mtk_vcodec_ctx *ctx;
+	struct mtk_vcodec_dev *dev = ctx->dev;
 
 	/* Only support vdec check alive now */
-	if (mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
-		list_for_each_entry(ctx, &dev->ctx_list, list) {
-			if (ctx->type == MTK_INST_DECODER)
-				vdec_inst_count++;
-		}
-		if (vdec_inst_count == 0 && dev->vdec_dvfs_params.has_timer) {
+	if (mtk_vcodec_is_vcp(MTK_INST_DECODER) && is_last && ctx->type == MTK_INST_DECODER) {
+		if (dev->vdec_dvfs_params.has_timer) {
 			del_timer_sync(&dev->vdec_dvfs_params.vdec_active_checker);
 			flush_workqueue(dev->check_alive_workqueue);
 			dev->vdec_dvfs_params.has_timer = 0;
-			mtk_v4l2_debug(0, "[VDVFS][VDEC] deinit vdec alive checker...");
+			mtk_v4l2_debug(0, "[%d][VDVFS][VDEC] deinit vdec alive checker...",
+				ctx->id);
 		}
 	}
 #endif
@@ -443,10 +433,14 @@ EXPORT_SYMBOL_GPL(mtk_vcodec_get_curr_ctx);
 
 void mtk_vcodec_add_ctx_list(struct mtk_vcodec_ctx *ctx)
 {
+	bool is_first_ctx = false;
+
 	if (ctx != NULL) {
 		mutex_lock(&ctx->dev->ctx_mutex);
+		is_first_ctx = list_empty(&ctx->dev->ctx_list);
 		list_add(&ctx->list, &ctx->dev->ctx_list);
-		mtk_vcodec_alive_checker_init(ctx->dev);
+		mtk_vcodec_dump_ctx_list(ctx->dev, 4);
+		mtk_vcodec_alive_checker_init(ctx, is_first_ctx);
 		mutex_unlock(&ctx->dev->ctx_mutex);
 	}
 }
@@ -456,12 +450,35 @@ void mtk_vcodec_del_ctx_list(struct mtk_vcodec_ctx *ctx)
 {
 	if (ctx != NULL) {
 		mutex_lock(&ctx->dev->ctx_mutex);
+		mtk_vcodec_dump_ctx_list(ctx->dev, 4);
 		list_del_init(&ctx->list);
-		mtk_vcodec_alive_checker_deinit(ctx->dev);
+		mtk_vcodec_alive_checker_deinit(ctx, list_empty(&ctx->dev->ctx_list));
 		mutex_unlock(&ctx->dev->ctx_mutex);
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_del_ctx_list);
+
+void mtk_vcodec_dump_ctx_list(struct mtk_vcodec_dev *dev, unsigned int debug_level)
+{
+	struct list_head *p, *q;
+	struct mtk_vcodec_ctx *ctx;
+
+	if (dev == NULL)
+		return;
+
+	list_for_each_safe(p, q, &dev->ctx_list) {
+		ctx = list_entry(p, struct mtk_vcodec_ctx, list);
+		if (ctx == NULL)
+			mtk_v4l2_err("ctx null in ctx list");
+		else
+			mtk_v4l2_debug(debug_level, "[%d] %s ctx 0x%08lx, drv_handle 0x%08lx %p, state %d",
+				ctx->id, (ctx->type == MTK_INST_DECODER) ? "dec" : "enc",
+				(unsigned long)ctx,
+				ctx->drv_handle, (void *)ctx->drv_handle,
+				mtk_vcodec_get_state(ctx));
+	}
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_dump_ctx_list);
 
 void mtk_vcodec_init_slice_info(struct mtk_vcodec_ctx *ctx, struct mtk_video_dec_buf *dst_buf_info)
 {

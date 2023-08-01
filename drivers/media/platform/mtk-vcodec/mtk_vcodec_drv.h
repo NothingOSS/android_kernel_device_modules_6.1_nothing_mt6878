@@ -809,6 +809,7 @@ struct mtk_vcodec_dev {
 
 	struct mtk_vcodec_pm pm;
 	struct notifier_block pm_notifier;
+	int backup_ctx_id;
 	bool is_codec_suspending;
 	bool codec_stop_done;
 

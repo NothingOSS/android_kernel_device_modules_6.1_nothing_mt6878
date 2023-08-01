@@ -1015,8 +1015,10 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 			atomic_read(&dev->dec_hw_active[MTK_VDEC_LAT]),
 			atomic_read(&dev->dec_hw_active[MTK_VDEC_CORE]));
 
-		if (ctx)
+		if (ctx) {
 			vdec_vcp_backup((struct vdec_inst *)ctx->drv_handle);
+			dev->backup_ctx_id = ctx->id;
+		}
 
 		// check all hw lock is released
 		for (i = 0; i < MTK_VDEC_HW_NUM; i++) {
@@ -1056,7 +1058,12 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 				atomic_read(&dev->dec_hw_active[MTK_VDEC_LAT]),
 				atomic_read(&dev->dec_hw_active[MTK_VDEC_CORE]));
 			vdec_vcp_resume((struct vdec_inst *)ctx->drv_handle);
+		} else if (dev->backup_ctx_id >= 0) {
+			mtk_v4l2_err("has backup by ctx %d but no ctx to resume",
+				dev->backup_ctx_id);
+			mtk_vcodec_dump_ctx_list(dev, 0);
 		}
+		dev->backup_ctx_id = -1;
 
 		dev->is_codec_suspending = 0;
 	break;

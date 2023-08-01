@@ -636,6 +636,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	dev->pm_notifier.notifier_call = mtk_vcodec_dec_suspend_notifier;
 	register_pm_notifier(&dev->pm_notifier);
 	dev->is_codec_suspending = 0;
+	dev->backup_ctx_id = -1;
 	dev->dec_cnt = 0;
 
 	ret = of_property_read_u32(pdev->dev.of_node, "mediatek,slc", &dev->dec_slc_ver);
