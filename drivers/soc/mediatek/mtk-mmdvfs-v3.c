@@ -308,10 +308,10 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 		ret = -ETIMEDOUT;
 		goto ipi_lock_end;
 	}
+	mutex_unlock(&mmdvfs_vcp_cb_mutex);
 
 	ret = mtk_ipi_send(vcp_get_ipidev(), IPI_OUT_MMDVFS, IPI_SEND_WAIT,
 		&slot, PIN_OUT_SIZE_MMDVFS, IPI_TIMEOUT_MS);
-	mutex_unlock(&mmdvfs_vcp_cb_mutex);
 	if (ret != IPI_ACTION_DONE)
 		goto ipi_lock_end;
 
