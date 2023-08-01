@@ -396,7 +396,9 @@ bool mdw_rv_dev_poll_cmd(struct mdw_rv_dev *mrdev, struct mdw_cmd *c)
 	}
 
 	/* poll cmd done */
+	mdw_trace_begin("apumdw:poll_cmd");
 	poll_ret = mrdev->cmd_funcs->poll(rc);
+	mdw_trace_end();
 
 	if (poll_ret) {
 		mdw_flw_debug("c(0x%llx) poll cmd done\n",

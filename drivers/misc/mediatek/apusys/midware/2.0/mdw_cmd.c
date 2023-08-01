@@ -238,14 +238,20 @@ out:
 static unsigned int mdw_cmd_get_apummutable(struct mdw_fpriv *mpriv,
 	struct mdw_cmd *c)
 {
-	unsigned int tbl_size = 0, ret = 0;
+	unsigned int tbl_size = 0;
+	int ret = -ENOMEM;
 
 	mdw_cmd_debug("mdw call apummu_table_get priv(0x%llx) tbl_kva(0x%llx)\n",
 	 (uint64_t)c->mpriv, (uint64_t)c->tbl_kva);
+
 	/* get apummu table */
-	if (apummu_table_get((uint64_t)c->mpriv, &c->tbl_kva, &tbl_size)) {
+	mdw_trace_begin("apummu:table_get|s:0x%llx", (uint64_t)c->mpriv);
+	ret = apummu_table_get((uint64_t)c->mpriv, &c->tbl_kva, &tbl_size);
+	mdw_trace_end();
+
+	if (ret) {
 		mdw_drv_err("get apummu table fail\n");
-		return -ENOMEM;
+		return ret;
 	}
 
 	c->size_cmdbufs += tbl_size;
@@ -458,9 +464,11 @@ static void mdw_cmd_history_reset(struct mdw_fpriv *mpriv)
 	int i = 0;
 
 	/* reset min heap */
+	mutex_lock(&mdev->h_mtx);
 	mdev->heap.nr = 0;
 	for (i = 0; i < MDW_NUM_PREDICT_CMD; i++)
 		mdev->predict_cmd_ts[i] = 0;
+	mutex_unlock(&mdev->h_mtx);
 }
 
 static void mdw_cmd_history_tbl_delete(struct mdw_fpriv *mpriv)
@@ -493,7 +501,9 @@ void mdw_cmd_mpriv_release(struct mdw_fpriv *mpriv)
 		mdw_mem_mpriv_release(mpriv);
 		mutex_unlock(&mpriv->mdev->mctl_mtx);
 		mdw_flw_debug("s(0x%llx) release apummu table\n", (uint64_t)mpriv);
+		mdw_trace_begin("apummu:table_free|s:0x%llx", (uint64_t)mpriv);
 		apummu_table_free((uint64_t)mpriv);
+		mdw_trace_end();
 		mdw_flw_debug("s(0x%llx) release history tbl\n", (uint64_t)mpriv);
 		mdw_cmd_history_tbl_delete(mpriv);
 	}
@@ -791,6 +801,17 @@ static int mdw_cmd_sc_sanity_check(struct mdw_cmd *c)
 	return 0;
 }
 
+static bool mdw_cmd_exec_time_check(uint64_t h_exec_time, uint64_t exec_time)
+{
+	uint64_t exec_time_th = 0;
+
+	exec_time_th = MDW_EXECTIME_TOLERANCE_TH(h_exec_time);
+	if (abs(exec_time - h_exec_time) < exec_time_th)
+		return true;
+
+	return false;
+}
+
 static void mdw_cmd_poll_cmd(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 {
 	struct mdw_device *mdev = mpriv->mdev;
@@ -812,7 +833,9 @@ static int mdw_cmd_run(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 {
 	struct mdw_device *mdev = mpriv->mdev;
 	struct dma_fence *f = &c->fence->base_fence;
+	struct mdw_cmd_history_tbl *ch_tbl = NULL;
 	int ret = 0;
+	uint64_t poll_timeout = MDW_POLL_TIMEOUT;
 
 	mdw_cmd_show(c, mdw_cmd_debug);
 
@@ -837,10 +860,24 @@ static int mdw_cmd_run(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 	} else {
 		mdw_flw_debug("s(0x%llx) cmd(0x%llx) run\n",
 			(uint64_t)c->mpriv, c->kid);
-		if (c->power_plcy == MDW_POWERPOLICY_PERFORMANCE)
-			mdw_cmd_poll_cmd(mpriv, c);
-	}
+		if (c->power_plcy == MDW_POWERPOLICY_PERFORMANCE) {
+			ch_tbl = mdw_cmd_ch_tbl_find(c);
+			if (!ch_tbl)
+				goto out;
 
+			if (g_mdw_poll_timeout)
+				poll_timeout = g_mdw_poll_timeout;
+
+			if (ch_tbl->h_exec_time > poll_timeout)
+				goto out;
+
+			if (ch_tbl->h_exec_time)
+				usleep_range(MDW_POLLTIME_SLEEP_TH(ch_tbl->h_exec_time),
+					MDW_POLLTIME_SLEEP_TH(ch_tbl->h_exec_time)+10);
+			mdw_cmd_poll_cmd(mpriv, c);
+		}
+	}
+out:
 	return ret;
 }
 
@@ -1173,6 +1210,7 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	struct dma_fence *f = &c->fence->base_fence;
 	struct mdw_fpriv *mpriv = c->mpriv;
 	struct mdw_device *mdev = c->mpriv->mdev;
+	struct mdw_cmd_history_tbl *ch_tbl = NULL;
 	bool need_dtime_check = false;
 
 	mdw_trace_begin("apumdw:cmd_complete|cmd:0x%llx/0x%llx", c->uid, c->kid);
@@ -1234,16 +1272,30 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	}
 	dma_fence_put(f);
 
+	/* get cmd history table */
+	ch_tbl = mdw_cmd_ch_tbl_find(c);
+	if (!ch_tbl)
+		goto out;
+
+	/* initial or update h_exec_time */
+	if (!ch_tbl->h_exec_time ||
+		 mdw_cmd_exec_time_check(ch_tbl->h_exec_time, c->einfos->c.total_us)) {
+		ch_tbl->h_exec_time = c->einfos->c.total_us;
+		mdw_cmd_debug("h_exec_time(%llu)\n", ch_tbl->h_exec_time);
+	}
+
 	/* check cmd mode */
 	if (!mdw_cmd_is_perf_mode(c)) {
 		/* cmd record */
 		ret = mdw_cmd_record(c);
-		if (ret)
+		if (ret) {
 			mdw_drv_err("record cmd fail(%d)\n", ret);
-		else
+		} else {
+			mutex_lock(&mdev->h_mtx);
 			need_dtime_check = mdw_cmd_predict(c);
+			mutex_unlock(&mdev->h_mtx);
+		}
 	}
-
 	/* check support power fast power on off */
 	if (mdev->support_power_fast_on_off == false) {
 		mdw_flw_debug("no support power fast on off\n");
@@ -1300,7 +1352,7 @@ static int mdw_cmd_wait_cmd_done(struct mdw_cmd *c)
 	if (!wait_for_completion_timeout(&c->cmplt, timeout)) {
 		mdw_drv_err("s(0x%llx) c(0x%llx) cmd timeout\n",
 			(uint64_t)c->mpriv, c->kid);
-		ret = -ETXTBSY;
+		ret = -ETIME;
 	} else {
 		mdw_flw_debug("c(0x%llx) cmd done", c->kid);
 	}
@@ -1544,9 +1596,14 @@ int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 		if (is_running) {
 			mdw_cmd_debug("s(0x%llx) c(0x%llx) is running(%d), wait cmd done\n",
 				(uint64_t)mpriv, (uint64_t)c, is_running);
+			mdw_cmd_get(c);
+			mutex_unlock(&mpriv->mtx);
 			ret = mdw_cmd_wait_cmd_done(c);
-			if (ret)
+			mutex_lock(&mpriv->mtx);
+			if (ret) {
+				mdw_cmd_put(c);
 				goto out;
+			}
 		}
 		/* run stale cmd */
 		mdw_cmd_debug("s(0x%llx) run stale(0x%llx)\n",
@@ -1633,6 +1690,10 @@ exec:
 	/* get cmd execution ref */
 	atomic_inc(&c->is_running);
 	mdw_cmd_get(c);
+
+	/* put cmd execution ref when stale cmd wait */
+	if (is_running)
+		mdw_cmd_put(c);
 
 	/* check wait fence from other module */
 	mdw_flw_debug("s(0x%llx)c(0x%llx) wait fence(%d)...\n",

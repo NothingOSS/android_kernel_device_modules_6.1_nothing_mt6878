@@ -15,6 +15,7 @@
 #include "mdw_mem.h"
 #include "mdw_mem_pool.h"
 #include "mdw_ext_export.h"
+#include "mdw_trace.h"
 
 struct mdw_device *mdw_dev;
 static struct apusys_core_info *g_info;
@@ -49,6 +50,7 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 	struct mdw_fpriv *mpriv = NULL;
 	int ret = 0;
 
+	mdw_trace_begin("apumdw:drv_open");
 	if (!mdw_dev) {
 		pr_info("apusys/mdw: apu mdw no dev\n");
 		return -ENODEV;
@@ -100,6 +102,7 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 
 	mdw_dev_session_create(mpriv);
 	mdw_flw_debug("mpriv(0x%lx)\n", (unsigned long)mpriv);
+	mdw_trace_end();
 	goto out;
 
 put_mpriv:

@@ -11,7 +11,6 @@
 #include "apu_ipi.h"
 
 #define MDW_IS_HIGHADDR(addr) ((addr & 0xffffffff00000000) ? true : false)
-#define MDW_POLL_TOTAL_TIME (4000) //us
 #define MDW_POLL_TIME (1) //us
 
 struct mdw_rv_msg_cmd {
@@ -115,20 +114,6 @@ static void mdw_rv_cmd_print(struct mdw_rv_msg_cmd *rc)
 	mdw_cmd_debug("-------------------------\n");
 }
 
-static void mdw_rv_cmd_set_affinity(struct mdw_cmd *c, bool enable)
-{
-	if (c->power_plcy != MDW_POWERPOLICY_PERFORMANCE)
-		return;
-
-	if (enable) {
-		mdw_flw_debug("enable affinity\n");
-		apu_ipi_affin_enable();
-	} else {
-		mdw_flw_debug("disable affinity\n");
-		apu_ipi_affin_disable();
-	}
-}
-
 static void mdw_rv_sc_print(struct mdw_rv_msg_sc *rsc,
 	uint64_t cmd_id, uint32_t idx)
 {
@@ -163,7 +148,6 @@ static int mdw_rv_cmd_delete(struct mdw_cmd *c)
 		return -EINVAL;
 
 	mdw_trace_begin("apumdw:rv_cmd_delete");
-	mdw_rv_cmd_set_affinity(c, false);
 	mdw_mem_pool_free(rc->cb);
 	kfree(rc);
 	c->internal_cmd = NULL;
@@ -370,7 +354,6 @@ reuse:
 		mdw_drv_warn("s(0x%llx) c(0x%llx/0x%llx) flush rv cbs(%u) fail\n",
 			(uint64_t)c->mpriv, c->kid, c->rvid, rc->cb->size);
 
-	mdw_rv_cmd_set_affinity(c, true);
 
 	goto out;
 
@@ -421,18 +404,26 @@ static void mdw_rv_cmd_done(struct mdw_rv_cmd *rc, int ret)
 static bool mdw_rv_cmd_poll(struct mdw_rv_cmd *rc)
 {
 	struct mdw_rv_msg_cmd *rmc = NULL;
-	int i = 0;
+	uint32_t i = 0;
+	uint32_t poll_interval = MDW_POLL_TIME, poll_timeout = MDW_POLL_TIMEOUT;
 	bool poll_ret = false;
 
 	rmc = (struct mdw_rv_msg_cmd *)rc->cb->vaddr;
 
+	if (g_mdw_poll_interval)
+		poll_interval = g_mdw_poll_interval;
+	if (g_mdw_poll_timeout)
+		poll_timeout = g_mdw_poll_timeout;
+
+	mdw_cmd_debug("poll_interval(%u), poll_timeout(%u)\n", poll_interval, poll_timeout);
+
 	/* poll cmd done result */
-	for(i = 0; i< MDW_POLL_TOTAL_TIME; i++) {
+	for(i = 0; i< poll_timeout; i++) {
 		if(rmc->cmd_done) {
 			poll_ret = true;
 			break;
 		}
-		udelay(MDW_POLL_TIME);
+		udelay(poll_interval);
 	}
 	return poll_ret;
 }

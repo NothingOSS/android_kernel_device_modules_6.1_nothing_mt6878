@@ -20,6 +20,8 @@ struct dentry *mdw_dbg_device;
 u32 g_mdw_klog;
 u8 cfg_apusys_trace;
 u32 g_mdw_pwroff_cnt;
+u32 g_mdw_poll_interval;
+u32 g_mdw_poll_timeout;
 
 /* default value need to align with rv or add sync flow */
 u64 dbg_min_dtime;
@@ -81,6 +83,8 @@ int mdw_dbg_init(struct apusys_core_info *info)
 {
 	g_mdw_klog = 0x0;
 	g_mdw_pwroff_cnt = 0x0;
+	g_mdw_poll_interval = 0x0;
+	g_mdw_poll_timeout = 0x0;
 
 	/* create debug root */
 	mdw_dbg_root = debugfs_create_dir("midware", info->dbg_root);
@@ -97,6 +101,13 @@ int mdw_dbg_init(struct apusys_core_info *info)
 	/* create pwroff_cnt */
 	debugfs_create_u32("pwroff_cnt", 0644,
 		mdw_dbg_root, &g_mdw_pwroff_cnt);
+
+	/* create poll_time */
+	debugfs_create_u32("poll_interval", 0644,
+		mdw_dbg_root, &g_mdw_poll_interval);
+	/* create poll_timeout */
+	debugfs_create_u32("poll_timeout", 0644,
+		mdw_dbg_root, &g_mdw_poll_timeout);
 
 	dbg_min_dtime = 0;
 	dbg_max_dtime = 10000;

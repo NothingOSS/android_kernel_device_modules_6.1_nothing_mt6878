@@ -407,13 +407,18 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 	}
 
 	/* handle iova to eva */
-	if (!apummu_iova2eva(m->buf_type, (uint64_t)m->mpriv, m->device_iova, m->dva_size, &eva)) {
-		m->device_va = eva;
-	} else {
+	mdw_trace_begin("apummu:iova2eva|iova:0x%llx,size:%u btype(%d)",
+		m->device_iova, m->dva_size, m->buf_type);
+	ret = apummu_iova2eva(m->buf_type, (uint64_t)m->mpriv, m->device_iova, m->dva_size, &eva);
+	mdw_trace_end();
+
+	if (ret) {
 		mdw_drv_err("apummu iova2eva fail s(0x%llx)\n", (uint64_t)m->mpriv);
 		ret = -EINVAL;
 		goto unmap_dbuf;
 	}
+
+	m->device_va = eva;
 
 	/* check eva */
 	if (!m->device_va) {
@@ -577,8 +582,12 @@ int mdw_mem_map(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 		goto out;
 	} else {
 		/* handle iova2eva */
-		if (apummu_iova2eva(m->buf_type, (uint64_t)mpriv, m->device_iova,
-				 m->dva_size, &eva)) {
+		mdw_trace_begin("apummu:iova2eva|iova:0x%llx,size:%u btype(%d)",
+			m->device_iova, m->dva_size, m->buf_type);
+		ret = apummu_iova2eva(m->buf_type, (uint64_t)mpriv, m->device_iova,
+				m->dva_size, &eva);
+		mdw_trace_end();
+		if (ret) {
 			mdw_drv_err("apummu iova2eva fail s(0x%llx)\n", (uint64_t)mpriv);
 			ret = -EINVAL;
 			goto out;

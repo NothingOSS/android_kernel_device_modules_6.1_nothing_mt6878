@@ -39,6 +39,7 @@ int mdw_dev_init(struct mdw_device *mdev)
 	mutex_init(&mdev->f_mtx);
 	mutex_init(&mdev->dtime_mtx);
 	mutex_init(&mdev->power_mtx);
+	mutex_init(&mdev->h_mtx);
 
 	switch (mdev->driver_type) {
 	case MDW_DRIVER_TYPE_PLATFORM:

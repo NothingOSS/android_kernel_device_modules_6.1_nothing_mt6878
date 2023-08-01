@@ -17,6 +17,8 @@ extern u8 cfg_apusys_trace;
 extern u64 dbg_min_dtime;
 extern u64 dbg_max_dtime;
 extern u32 g_mdw_pwroff_cnt;
+extern u32 g_mdw_poll_interval;
+extern u32 g_mdw_poll_timeout;
 
 enum {
 	MDW_DBG_DRV = 0x01,

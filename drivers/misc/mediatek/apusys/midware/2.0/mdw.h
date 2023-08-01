@@ -49,6 +49,7 @@
 #define MDW_POWER_GAIN_TH 7680 //us
 #define MDW_PERIOD_TOLERANCE_TH(x) (x*10/100) //ms
 #define MDW_IPTIME_TOLERANCE_TH(x) (x*10/100) //ms
+#define MDW_EXECTIME_TOLERANCE_TH(x) (x*50/100) //us
 
 /* power budget debounce time */
 #define MDW_PB_DEBOUNCE_MS (50*1000)
@@ -58,6 +59,10 @@
 
 /* stale cmd timeout */
 #define MDW_STALE_CMD_TIMEOUT (5*1000) //ms
+
+/* poll cmd */
+#define MDW_POLL_TIMEOUT (4*1000) //us
+#define MDW_POLLTIME_SLEEP_TH(x) (x*65/100) //us
 
 struct mdw_fpriv;
 struct mdw_device;
@@ -277,6 +282,7 @@ struct mdw_device {
 	uint64_t predict_cmd_ts[MDW_NUM_PREDICT_CMD];
 	struct min_heap heap;
 	atomic_t cmd_running;
+	struct mutex h_mtx;
 
 	/* power fast on/off */
 	bool support_power_fast_on_off;
@@ -349,6 +355,7 @@ struct mdw_cmd_history_tbl {
 	uint64_t h_end_ts;
 	uint64_t h_start_ts;
 	uint64_t h_period;
+	uint64_t h_exec_time;
 
 	/* history subcmd einfo */
 	struct mdw_subcmd_exec_info *h_sc_einfo;
