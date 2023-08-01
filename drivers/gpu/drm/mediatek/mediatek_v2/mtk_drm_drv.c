@@ -1760,6 +1760,8 @@ static void mtk_atomic_check_res_scaling(struct mtk_drm_crtc *mtk_crtc,
 
 	if ((mtk_crtc == NULL) || (mode == NULL))
 		return;
+	if (mtk_crtc->scaling_ctx.scaling_mode == NULL)
+		return;
 
 	if ((mode->hdisplay != mtk_crtc->scaling_ctx.lcm_width) ||
 			(mode->vdisplay != mtk_crtc->scaling_ctx.lcm_height)) {

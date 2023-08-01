@@ -12649,7 +12649,7 @@ rte_target:
 		struct msync_multi_te_table *mte_tb =
 			&params->msync_cmd_table.multi_te_tb;
 		int level_min_fps = 0;
-		if(!mte_tb || (void *)mte_tb->multi_te_level == NULL) {
+		if(!mte_tb) {
 			DDPPR_ERR("[Msync2.0] Some pointer is NULL\n");
 			return;
 		}
@@ -17029,10 +17029,6 @@ int mtk_drm_get_msync_params_ioctl(struct drm_device *dev, void *data,
 		if (params->msync_cmd_table.te_type == REQUEST_TE) {
 			/* TODO: Add Request Te */
 		} else if (params->msync_cmd_table.te_type == MULTI_TE) {
-			if ((void *)params->msync_cmd_table.multi_te_tb.multi_te_level == NULL) {
-				DDPPR_ERR("[Msync2.0] lcm params pointer is NULL\n");
-				return -EINVAL;
-			}
 			config->msync_max_fps = params->msync_cmd_table.msync_max_fps;
 			config->msync_min_fps = params->msync_cmd_table.msync_min_fps;
 			config->msync_level_num = MSYNC_MAX_LEVEL;

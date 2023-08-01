@@ -17817,7 +17817,7 @@ void mtk_ddp_rst_module(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int value;
 
 
-	if (m < 0 || m >= DDP_COMPONENT_ID_MAX) {
+	if (m >= DDP_COMPONENT_ID_MAX) {
 		DDPPR_ERR("%s: invalid comp id:%d\n", __func__, m);
 		return;
 	}
