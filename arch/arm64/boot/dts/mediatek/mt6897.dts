@@ -14917,8 +14917,9 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"c_down,v_up,v_down,v2f_0,v2f_1,v2f_2";
 
 			node-6 = "SSPM_CM_MGR_OPP",
-				"v_dram_opp,v_dram_opp_cur,c_opp_cur_0,c_opp_cur_1,c_opp_cur_2,d_times_up,",
-				"d_times_down,c_map_dram_enable,perf_mode_enable,perf_mode_ceiling_opp,",
+				"v_dram_opp,v_dram_opp_cur,c_eas_opp_cur_0,c_eas_opp_cur_1,c_eas_opp_cur_2,",
+				"c_opp_cur_0,c_opp_cur_1,c_opp_cur_2,d_times_up,d_times_down,",
+				"c_map_dram_enable,perf_mode_enable,perf_mode_ceiling_opp,",
 				"perf_mode_thd,mode";
 
 			node-7 = "SSPM_CM_MGR_RATIO",
