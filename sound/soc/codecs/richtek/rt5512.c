@@ -365,13 +365,17 @@ static int rt5512_codec_dac_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *component =
 		snd_soc_dapm_to_component(w->dapm);
 	int ret = 0;
+	struct rt5512_chip *chip = snd_soc_component_get_drvdata(component);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		cpu_latency_qos_update_request(&chip->rt5512_qos_request, 150);
 		/* un-mute */
 		ret = snd_soc_component_update_bits(component, 0x03, 0x0002, 0);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
+		cpu_latency_qos_update_request(&chip->rt5512_qos_request,
+						     PM_QOS_DEFAULT_VALUE);
 		break;
 	}
 	return ret;
@@ -387,6 +391,7 @@ static int rt5512_codec_classd_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		cpu_latency_qos_update_request(&chip->rt5512_qos_request, 150);
 		/*  charge pump disable & disable UVP */
 		ret |= snd_soc_component_update_bits(component, 0xb5, 0xf9fc,
 						     0xf9fc);
@@ -414,14 +419,13 @@ static int rt5512_codec_classd_event(struct snd_soc_dapm_widget *w,
 		ret |= snd_soc_component_update_bits(component, 0xb5, 0x0600,
 						     0x0600);
 		*/
-		dev_info(component->dev, "Amp on\n");
 		cpu_latency_qos_update_request(&chip->rt5512_qos_request,
-					       PM_QOS_DEFAULT_VALUE);
+						     PM_QOS_DEFAULT_VALUE);
+		dev_info(component->dev, "Amp on\n");
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		dev_info(component->dev, "Amp off\n");
 		cpu_latency_qos_update_request(&chip->rt5512_qos_request, 150);
-
 		/* enable mute */
 		ret = snd_soc_component_update_bits(component, 0x03, 0x0002,
 						    0x0002);
@@ -448,6 +452,8 @@ static int rt5512_codec_classd_event(struct snd_soc_dapm_widget *w,
 		/* D_VBG, Bias current disable */
 		ret |= snd_soc_component_update_bits(component, 0xb5, 0xfffe,
 						     0x0000);
+		cpu_latency_qos_update_request(&chip->rt5512_qos_request,
+						     PM_QOS_DEFAULT_VALUE);
 		break;
 	default:
 		break;
@@ -464,7 +470,7 @@ static const struct snd_kcontrol_new rt5512_i2smux_ctrl =
 static const struct snd_soc_dapm_widget rt5512_component_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("I2S Mux", SND_SOC_NOPM, 0, 0, &rt5512_i2smux_ctrl),
 	SND_SOC_DAPM_DAC_E("DAC", NULL, RT5512_REG_PLL_CFG1,
-		0, 1, rt5512_codec_dac_event, SND_SOC_DAPM_POST_PMU),
+		0, 1, rt5512_codec_dac_event, SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU),
 	SND_SOC_DAPM_ADC("VI ADC", NULL, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_PGA("PGA", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_OUT_DRV_E("ClassD", RT5512_REG_SYSTEM_CTRL, 2, 0,
@@ -1177,6 +1183,7 @@ static int __maybe_unused rt5512_i2c_runtime_suspend(struct device *dev)
 	struct rt5512_chip *chip = dev_get_drvdata(dev);
 	int ret = 0;
 
+	cpu_latency_qos_update_request(&chip->rt5512_qos_request, 150);
 	dev_info(dev, "enter low power mode\n");
 	ret = regmap_write_bits(chip->regmap, RT5512_REG_SYSTEM_CTRL,
 				0xffff, 0x0001);
@@ -1197,6 +1204,8 @@ static int __maybe_unused rt5512_i2c_runtime_resume(struct device *dev)
 	dev_info(dev, "exit low power mode\n");
 	ret = regmap_write_bits(chip->regmap,
 		RT5512_REG_SYSTEM_CTRL, 0xffff, 0x0000);
+	cpu_latency_qos_update_request(&chip->rt5512_qos_request,
+				       PM_QOS_DEFAULT_VALUE);
 	if (ret < 0)
 		dev_err(dev, "%s ret = %d\n", __func__, ret);
 	usleep_range(2000, 2100);
