@@ -184,6 +184,15 @@ int __weak set_memory_valid(unsigned long addr, int numpages, int enable)
 
 struct mutex buffer_size_mutex;
 
+void cmdq_hw_trace_dump(void *chan)
+{
+	u32 hwid = cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(chan));
+
+	cmdq_util_hw_trace_dump(
+		hwid, cmdq_util_get_bit_feature() & CMDQ_LOG_FEAT_PERF);
+}
+EXPORT_SYMBOL(cmdq_hw_trace_dump);
+
 void cmdq_dump_buffer_size(void)
 {
 	int i, j;

@@ -320,6 +320,7 @@ struct cmdq_base *cmdq_register_device(struct device *dev);
 struct cmdq_client *cmdq_mbox_create(struct device *dev, int index);
 void cmdq_mbox_stop(struct cmdq_client *cl);
 
+void cmdq_hw_trace_dump(void *chan);
 void cmdq_dump_buffer_size(void);
 
 void cmdq_vcp_enable(bool en);
