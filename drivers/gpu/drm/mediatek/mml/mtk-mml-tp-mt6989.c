@@ -64,7 +64,7 @@ module_param(mml_rrot_single, int, 0644);
 int mml_racing_rsz = 1;
 module_param(mml_racing_rsz, int, 0644);
 
-int mml_dpc;
+int mml_dpc = 1;
 module_param(mml_dpc, int, 0644);
 
 /* 0: off
