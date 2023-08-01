@@ -353,10 +353,10 @@ void cmdq_event_dump_and_clr(void *chan)
 	if (!cmdq->event_debug)
 		return;
 
-	for (i = cmdq->event_dump_range[0]; i < cmdq->event_dump_range[1]; i++) {
+	for (i = cmdq->event_dump_range[0]; i <= cmdq->event_dump_range[1]; i++) {
 		if (cmdq_get_event(chan, i)) {
 			cmdq_msg("%s event %u is set", __func__, i);
-			if (i > cmdq->event_clr_range[0] && i < cmdq->event_clr_range[1]) {
+			if (i >= cmdq->event_clr_range[0] && i <= cmdq->event_clr_range[1]) {
 				cmdq_msg("%s clr event:%d", __func__, i);
 				cmdq_clear_event(chan, i);
 			}
