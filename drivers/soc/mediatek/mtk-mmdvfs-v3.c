@@ -285,6 +285,8 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 		if (!mmdvfs_vcp_cb_ready &&
 			(func == FUNC_MMDVFS_INIT || func == FUNC_MMDVFSRC_INIT))
 			break;
+		if (mmdvfs_rst_clk_done && func == FUNC_CLKMUX_ENABLE)
+			break;
 		if (func == FUNC_VMM_GENPD_NOTIFY || func == FUNC_VMM_CEIL_ENABLE ||
 			func == FUNC_MMDVFS_LP_MODE)
 			goto ipi_send_end;
@@ -1327,6 +1329,7 @@ static int mmdvfs_pm_notifier(struct notifier_block *notifier, unsigned long pm_
 		mmdvfs_v3_release_step();
 		mmdvfs_reset_ccu();
 		cb_timestamp[0] = sched_clock();
+		mmdvfs_reset_clk(true);
 		break;
 	}
 	return NOTIFY_DONE;
