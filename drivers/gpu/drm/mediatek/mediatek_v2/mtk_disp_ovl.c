@@ -1185,6 +1185,12 @@ static void mtk_ovl_config(struct mtk_ddp_comp *comp,
 				width = cfg->tile_overhead.left_in_width;
 		} else
 			width = cfg->w / 2;
+		if (drm_crtc_index(crtc) == 2 && (width % 2)) {
+			if (ovl->data->is_right_ovl_comp && ovl->data->is_right_ovl_comp(comp))
+				width += 1;
+			else
+				width -= 1;
+		}
 	} else
 		width = cfg->w;
 

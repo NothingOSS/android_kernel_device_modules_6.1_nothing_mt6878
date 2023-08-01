@@ -13249,6 +13249,12 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 		}
 	}
 
+	if (drm_crtc_index(&mtk_crtc->base) == 2 &&
+		mtk_crtc->is_dual_pipe && crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE]
+		&& (left_bg % 2)) {
+		left_bg -= 1;
+		right_bg += 1;
+	}
 	/*left path*/
 	plane_state_l->pending.width  = left_bg - plane_state_l->pending.dst_x;
 

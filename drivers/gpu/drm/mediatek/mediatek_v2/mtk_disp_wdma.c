@@ -1204,14 +1204,22 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 	clip_w = cfg->w;
 	clip_h = cfg->h;
 	if (is_yuv(comp->fb->format->format)) {
-		if ((cfg->x + cfg->w) % 2)
-			clip_w -= 1;
+		if ((cfg->x + cfg->w) % 2) {
+			if (crtc_idx == 2 && comp->mtk_crtc->is_dual_pipe &&
+					wdma->data && wdma->data->is_right_wdma_comp(comp))
+				clip_w += 1;
+			else
+				clip_w -= 1;
+		}
 
 		if ((cfg->y + cfg->h) % 2)
 			clip_h -= 1;
 	}
 
-	size = (cfg->w & 0x3FFFU) + ((cfg->h << 16U) & 0x3FFF0000U);
+	if (crtc_idx == 2 && comp->mtk_crtc->is_dual_pipe && ((cfg->x + cfg->w) % 2))
+		size = (clip_w & 0x3FFFU) + ((cfg->h << 16U) & 0x3FFF0000U);
+	else
+		size = (cfg->w & 0x3FFFU) + ((cfg->h << 16U) & 0x3FFF0000U);
 	mtk_ddp_write(comp, size, DISP_REG_WDMA_SRC_SIZE, handle);
 	mtk_ddp_write(comp, (cfg->y << 16) | cfg->x,
 		DISP_REG_WDMA_CLIP_COORD, handle);
@@ -1282,17 +1290,33 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 	}
 	write_dst_addr(comp, handle, 0, addr);
 
-	if (comp->mtk_crtc->is_dual_pipe &&
+	if (crtc_idx == 2 && comp->mtk_crtc->is_dual_pipe &&
 		wdma->data && wdma->data->is_right_wdma_comp(comp)) {
 		if (comp->fb->format->format == DRM_FORMAT_YUV420 ||
 			comp->fb->format->format == DRM_FORMAT_YVU420) {
-			mtk_ddp_write(comp, cfg->w, DISP_REG_WDMA_DST_ADDR_OFFSETX(0),  handle);
-			mtk_ddp_write(comp, cfg->w / 2, DISP_REG_WDMA_DST_ADDR_OFFSETX(1),  handle);
-			mtk_ddp_write(comp, cfg->w / 2, DISP_REG_WDMA_DST_ADDR_OFFSETX(2),  handle);
+			if ((cfg->x + cfg->w) % 2)
+				mtk_ddp_write(comp, cfg->w - 1,
+					DISP_REG_WDMA_DST_ADDR_OFFSETX(0),  handle);
+			else
+				mtk_ddp_write(comp, cfg->w,
+					DISP_REG_WDMA_DST_ADDR_OFFSETX(0),  handle);
+			mtk_ddp_write(comp, cfg->w / 2,
+				DISP_REG_WDMA_DST_ADDR_OFFSETX(1),  handle);
+			mtk_ddp_write(comp, cfg->w / 2,
+				DISP_REG_WDMA_DST_ADDR_OFFSETX(2),  handle);
 		} else if (comp->fb->format->format == DRM_FORMAT_NV12 ||
 					comp->fb->format->format == DRM_FORMAT_NV21) {
-			mtk_ddp_write(comp, cfg->w, DISP_REG_WDMA_DST_ADDR_OFFSETX(0),  handle);
-			mtk_ddp_write(comp, cfg->w, DISP_REG_WDMA_DST_ADDR_OFFSETX(1),  handle);
+			if ((cfg->x + cfg->w) % 2) {
+				mtk_ddp_write(comp, cfg->w - 1,
+					DISP_REG_WDMA_DST_ADDR_OFFSETX(0),  handle);
+				mtk_ddp_write(comp, cfg->w - 1,
+					DISP_REG_WDMA_DST_ADDR_OFFSETX(1),  handle);
+			} else {
+				mtk_ddp_write(comp, cfg->w,
+					DISP_REG_WDMA_DST_ADDR_OFFSETX(0),  handle);
+				mtk_ddp_write(comp, cfg->w,
+					DISP_REG_WDMA_DST_ADDR_OFFSETX(1),  handle);
+			}
 		}
 	}
 
