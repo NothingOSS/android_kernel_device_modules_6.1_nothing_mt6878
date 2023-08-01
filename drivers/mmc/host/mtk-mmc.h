@@ -446,6 +446,13 @@ struct stop_clock_type {
 	u8 stop_cnt;
 	u8 pop_cnt;
 };
+
+struct msdc_infra_check {
+	bool enable;
+	u32 infra_ack_bit;
+	u32 infra_ack_paddr;
+};
+
 struct mtk_mmc_compatible {
 	u8 clk_div_bits;
 	bool recheck_sdio_irq;
@@ -455,6 +462,7 @@ struct mtk_mmc_compatible {
 	bool data_tune;
 	bool busy_check;
 	struct stop_clock_type stop_clk_set;
+	struct msdc_infra_check infra_check;
 	bool enhance_rx;
 	bool support_64g;
 	bool use_internal_cd;
@@ -505,6 +513,7 @@ struct msdc_host {
 
 	void __iomem *base;		/* host base address */
 	void __iomem *top_base;		/* host top register base address */
+	void __iomem *infra_ack_vaddr;
 
 	struct msdc_dma dma;	/* dma channel */
 	u64 dma_mask;

@@ -59,6 +59,9 @@ static const struct mtk_mmc_compatible mt8135_compat = {
 	.need_gate_cg = true,
 	.new_tx_ver = 0,
 	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible mt8173_compat = {
@@ -77,6 +80,9 @@ static const struct mtk_mmc_compatible mt8173_compat = {
 	.need_gate_cg = true,
 	.new_tx_ver = 0,
 	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible mt8183_compat = {
@@ -97,6 +103,9 @@ static const struct mtk_mmc_compatible mt8183_compat = {
 	.need_gate_cg = true,
 	.new_tx_ver = 0,
 	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible mt8195_compat = {
@@ -116,6 +125,9 @@ static const struct mtk_mmc_compatible mt8195_compat = {
 	.support_64g = true,
 	.new_tx_ver = 0,
 	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible mt2701_compat = {
@@ -134,6 +146,9 @@ static const struct mtk_mmc_compatible mt2701_compat = {
 	.need_gate_cg = true,
 	.new_tx_ver = 0,
 	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible mt2712_compat = {
@@ -154,6 +169,9 @@ static const struct mtk_mmc_compatible mt2712_compat = {
 	.need_gate_cg = true,
 	.new_tx_ver = 0,
 	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible mt7622_compat = {
@@ -174,6 +192,9 @@ static const struct mtk_mmc_compatible mt7622_compat = {
 	.need_gate_cg = true,
 	.new_tx_ver = 0,
 	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible mt8516_compat = {
@@ -192,6 +213,9 @@ static const struct mtk_mmc_compatible mt8516_compat = {
 	.need_gate_cg = true,
 	.new_tx_ver = 0,
 	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible mt7620_compat = {
@@ -210,6 +234,9 @@ static const struct mtk_mmc_compatible mt7620_compat = {
 	.need_gate_cg = true,
 	.new_tx_ver = 0,
 	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible mt6779_compat = {
@@ -230,6 +257,9 @@ static const struct mtk_mmc_compatible mt6779_compat = {
 	.need_gate_cg = true,
 	.new_tx_ver = 0,
 	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible common_v2_compat = {
@@ -250,6 +280,9 @@ static const struct mtk_mmc_compatible common_v2_compat = {
 	.need_gate_cg = false,
 	.new_tx_ver = 0,
 	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible mt6985_compat = {
@@ -270,6 +303,9 @@ static const struct mtk_mmc_compatible mt6985_compat = {
 	.need_gate_cg = false,
 	.new_tx_ver = MSDC_NEW_TX_V1,
 	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible mt6886_compat = {
@@ -290,6 +326,9 @@ static const struct mtk_mmc_compatible mt6886_compat = {
 	.need_gate_cg = false,
 	.new_tx_ver = MSDC_NEW_TX_V1,
 	.new_rx_ver = 0,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible mt6897_compat = {
@@ -310,6 +349,9 @@ static const struct mtk_mmc_compatible mt6897_compat = {
 	.need_gate_cg = false,
 	.new_tx_ver = MSDC_NEW_TX_V1,
 	.new_rx_ver = MSDC_NEW_RX_V1,
+	.infra_check = {
+		.enable = false,
+	},
 };
 
 static const struct mtk_mmc_compatible mt6989_compat = {
@@ -330,6 +372,11 @@ static const struct mtk_mmc_compatible mt6989_compat = {
 	.need_gate_cg = false,
 	.new_tx_ver = MSDC_NEW_TX_V1,
 	.new_rx_ver = MSDC_NEW_RX_V1,
+	.infra_check = {
+		.enable = true,
+		.infra_ack_bit = BIT(14),
+		.infra_ack_paddr = 0x1c001104,
+	},
 };
 
 static const struct of_device_id msdc_of_ids[] = {
@@ -2752,11 +2799,21 @@ static void msdc_hs400_enhanced_strobe(struct mmc_host *mmc,
 /* SiP commands */
 #define MTK_SIP_MMC_CONTROL	MTK_SIP_SMC_CMD(0x273)
 #define MMC_MTK_SIP_CRYPTO_CTRL	BIT(1)
+#define MMC_MTK_SIP_INFRA_REQ	BIT(2)
+#define MMC_MTK_SIP_INFRA_REQ_RELEASE	BIT(3)
 
 /* SMC call wapper function */
 #define mmc_mtk_crypto_ctrl(smcc_res) \
 	arm_smccc_smc(MTK_SIP_MMC_CONTROL, \
 		MMC_MTK_SIP_CRYPTO_CTRL, 0, 0, 0, 0, 0, 0, &smcc_res)
+
+#define mmc_mtk_infra_req(smcc_res, id) \
+	arm_smccc_smc(MTK_SIP_MMC_CONTROL, \
+		MMC_MTK_SIP_INFRA_REQ, id, 0, 0, 0, 0, 0, &smcc_res)
+
+#define mmc_mtk_infra_req_release(smcc_res, id) \
+	arm_smccc_smc(MTK_SIP_MMC_CONTROL, \
+		MMC_MTK_SIP_INFRA_REQ_RELEASE, id, 0, 0, 0, 0, 0, &smcc_res)
 
 static void mmc_mtk_crypto_enable(struct mmc_host *mmc)
 {
@@ -3165,6 +3222,13 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	else
 		mmc->f_min = DIV_ROUND_UP(host->src_clk_freq, 4 * 4095);
 
+	if (host->dev_comp->infra_check.enable) {
+		host->infra_ack_vaddr =
+			ioremap(host->dev_comp->infra_check.infra_ack_paddr, 0x4);
+		if (host->infra_ack_vaddr == NULL)
+			pr_info("mmc%d infra_ack_paddr ioremap fail\n", host->id);
+	}
+
 	if (!(mmc->caps & MMC_CAP_NONREMOVABLE) &&
 	    !mmc_can_gpio_cd(mmc) &&
 	    host->dev_comp->use_internal_cd) {
@@ -3290,6 +3354,9 @@ release_mem:
 			MAX_BD_NUM * sizeof(struct mt_bdma_desc),
 			host->dma.bd, host->dma.bd_addr);
 host_free:
+	if (host->dev_comp->infra_check.enable &&
+		host->infra_ack_vaddr != NULL)
+		iounmap(host->infra_ack_vaddr);
 	mmc_free_host(mmc);
 
 	return ret;
@@ -3318,6 +3385,9 @@ static int msdc_drv_remove(struct platform_device *pdev)
 			host->dma.gpd, host->dma.gpd_addr);
 	dma_free_coherent(&pdev->dev, MAX_BD_NUM * sizeof(struct mt_bdma_desc),
 			host->dma.bd, host->dma.bd_addr);
+	if (host->dev_comp->infra_check.enable &&
+		host->infra_ack_vaddr != NULL)
+		iounmap(host->infra_ack_vaddr);
 
 	mmc_free_host(mmc);
 
@@ -3401,6 +3471,50 @@ static void msdc_restore_reg(struct msdc_host *host)
 		__msdc_enable_sdio_irq(host, 1);
 }
 
+static int infra_req_ack_check(struct msdc_host *host)
+{
+	struct arm_smccc_res res;
+
+	int cnt = 200;
+	u32 val = 0;
+
+	mmc_mtk_infra_req(res, host->id);
+	if (res.a0) {
+		pr_info("%s: infra request fail, err: %lu\n",
+			 __func__, res.a0);
+		return 1;
+	}
+
+	if (host->infra_ack_vaddr == NULL) {
+		pr_info("mmc%d infra_ack_vaddr NULL pointer err\n",
+			 host->id);
+		return 1;
+	}
+
+	while(!val && cnt-- > 0) {
+		/* It takes close to 1ms for infra ack ready */
+		udelay(10);
+		sdr_get_field(host->infra_ack_vaddr,
+			host->dev_comp->infra_check.infra_ack_bit, &val);
+	}
+
+	return val ? 0 : 1;
+}
+
+static int infra_req_release(struct msdc_host *host)
+{
+	struct arm_smccc_res res;
+
+	mmc_mtk_infra_req_release(res, host->id);
+	if (res.a0) {
+		pr_info("%s: infra request release fail, err: %lu\n",
+			 __func__, res.a0);
+		return 1;
+	}
+
+	return 0;
+}
+
 static int __maybe_unused msdc_runtime_suspend(struct device *dev)
 {
 	struct mmc_host *mmc = dev_get_drvdata(dev);
@@ -3415,6 +3529,11 @@ static int __maybe_unused msdc_runtime_suspend(struct device *dev)
 
 	msdc_save_reg(host);
 	msdc_gate_clock(host);
+
+	/* release spm request to avoid infra can not keep off */
+	if (host->dev_comp->infra_check.enable)
+		if (infra_req_release(host))
+			WARN_ON_ONCE(1);
 
 	if (host->dvfsrc_vcore_power && host->req_vcore) {
 		if (regulator_set_voltage(host->dvfsrc_vcore_power, 0, INT_MAX))
@@ -3438,6 +3557,19 @@ static int __maybe_unused msdc_runtime_resume(struct device *dev)
 			host->req_vcore, INT_MAX))
 			pr_info("%s: failed to set vcore to %d\n",
 				__func__, host->req_vcore);
+	}
+
+	/*
+	 * ensure infra keep on during msdc ip work.
+	 * sw flow: send spm request -> ungating cg -> polling infra ack -> ip work
+	 */
+	if (host->dev_comp->infra_check.enable) {
+		ret = infra_req_ack_check(host);
+		if (ret) {
+			pr_info("mmc%d infra ack polling fail\n", host->id);
+			WARN_ON_ONCE(1);
+			return ret;
+		}
 	}
 
 	ret = msdc_ungate_clock(host);
