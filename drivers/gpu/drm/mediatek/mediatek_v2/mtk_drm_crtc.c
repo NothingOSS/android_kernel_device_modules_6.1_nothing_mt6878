@@ -11022,6 +11022,7 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 	if (unlikely(vdisp_func.genpd_put)) {
 		vdisp_func.genpd_put();
 		vdisp_func.genpd_put = NULL;
+		mtk_dump_mminfra_ck(priv);
 	}
 
 	CRTC_MMP_EVENT_START((int) index, resume,

@@ -7396,7 +7396,15 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	 * Trigger mminfra gipc to hfrp.
 	 */
 	mtk_smi_init_power_off();
-	mtk_mminfra_off_gipc();
+	if (private->data->mmsys_id == MMSYS_MT6989) {
+		/* sleep is for debug */
+		mtk_dump_mminfra_ck(private);
+		msleep(100);
+		mtk_mminfra_off_gipc();
+		msleep(100);
+		mtk_dump_mminfra_ck(private);
+	} else
+		mtk_mminfra_off_gipc();
 
 	return 0;
 

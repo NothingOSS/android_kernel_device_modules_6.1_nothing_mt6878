@@ -48,6 +48,7 @@
 #include "mtk_drm_graphics_base.h"
 #include "mtk_dsi.h"
 #include "mtk_disp_vidle.h"
+#include <clk-fmeter.h>
 
 #define DISP_REG_CONFIG_MMSYS_CG_SET(idx) (0x104 + 0x10 * (idx))
 #define DISP_REG_CONFIG_MMSYS_CG_CLR(idx) (0x108 + 0x10 * (idx))
@@ -457,6 +458,27 @@ void mtk_dprec_snapshot(void)
 	}
 
 	spin_unlock_irqrestore(dprec_logger_lock(DPREC_LOGGER_DEBUG), flag);
+}
+
+void mtk_dump_mminfra_ck(void *_priv)
+{
+	struct mtk_drm_private *priv = _priv;
+
+	if (!priv)
+		return;
+
+	if (priv->data->mmsys_id == MMSYS_MT6989) {
+		static void __iomem *vlp_vote_done;
+
+		/* check VLP_VOTE_DONE */
+		vlp_vote_done = ioremap(0x1c00091c, 0x4);
+		if (!vlp_vote_done)
+			return;
+
+		/* defined in clk-mt6989-fmeter.c */
+		DDPMSG("FM_MMINFRA_CK:%u VLP_VOTE_DONE:%u\n",
+			mt_get_fmeter_freq(28, CKGEN_CK2), readl(vlp_vote_done));
+	}
 }
 
 int mtkfb_set_backlight_level_AOD(unsigned int level)
