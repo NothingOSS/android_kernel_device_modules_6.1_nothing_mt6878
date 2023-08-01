@@ -81,7 +81,7 @@ int uarthub_dbg_setup(void)
 
 	int i_ret = 0;
 
-	gUarthubDbgEntry = proc_create(UARTHUB_DBG_PROCNAME, 0664, NULL, &uarthub_dbg_fops);
+	gUarthubDbgEntry = proc_create(UARTHUB_DBG_PROCNAME, 0660, NULL, &uarthub_dbg_fops);
 	if (gUarthubDbgEntry == NULL) {
 		pr_notice("[%s] Unable to create / uarthub_dbg proc entry\n\r", __func__);
 		i_ret = -1;
