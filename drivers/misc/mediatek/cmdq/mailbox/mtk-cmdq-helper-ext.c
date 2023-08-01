@@ -714,6 +714,11 @@ void *cmdq_mbox_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out)
 	void *va;
 	dma_addr_t pa = 0;
 	struct device *mbox_dev;
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	struct cmdq_thread *thread;
+	s32 hwid;
+	u32 tf_high_addr;
+#endif
 
 	if (!cl) {
 		cmdq_err("cl is NULL");
@@ -731,6 +736,13 @@ void *cmdq_mbox_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out)
 	cmdq_set_buffer_size(cl, true);
 
 	*pa_out = pa + gce_mminfra;
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
+	thread = (struct cmdq_thread *)cl->chan->con_priv;
+	tf_high_addr = cmdq_get_tf_high_addr(cl->chan);
+	if(tf_high_addr &&CMDQ_GET_ADDR_HIGH(pa) == tf_high_addr)
+		cmdq_err("hwid:%d thrd_id:%d iova:%llx", hwid, thread->idx, pa);
+#endif
 	return va;
 }
 EXPORT_SYMBOL(cmdq_mbox_buf_alloc);
@@ -742,6 +754,11 @@ static void cmdq_mbox_buf_free_dev(struct device *dev, void *va, dma_addr_t pa)
 
 void cmdq_mbox_buf_free(struct cmdq_client *cl, void *va, dma_addr_t pa)
 {
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	struct cmdq_thread *thread;
+	s32 hwid;
+	u32 tf_high_addr;
+#endif
 	if (!cl) {
 		cmdq_err("cl is NULL");
 		dump_stack();
@@ -750,6 +767,14 @@ void cmdq_mbox_buf_free(struct cmdq_client *cl, void *va, dma_addr_t pa)
 
 	cmdq_mbox_buf_free_dev(cl->share_dev, va, pa - gce_mminfra);
 	cmdq_set_buffer_size(cl, false);
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	thread = (struct cmdq_thread *)cl->chan->con_priv;
+	hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
+	tf_high_addr = cmdq_get_tf_high_addr(cl->chan);
+	if(tf_high_addr &&
+		CMDQ_GET_ADDR_HIGH((pa - gce_mminfra)) == tf_high_addr)
+		cmdq_err("hwid:%d thrd_id:%d iova:%llx", hwid, thread->idx, pa - gce_mminfra);
+#endif
 }
 EXPORT_SYMBOL(cmdq_mbox_buf_free);
 
@@ -804,6 +829,10 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 	struct cmdq_client *cl = (struct cmdq_client *)pkt->cl;
 	struct cmdq_pkt_buffer *buf;
 	bool use_iommu = false;
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	struct cmdq_thread *thread;
+	s32 hwid;
+#endif
 #ifdef CMDQ_DCACHE_INVAL
 	void *va;
 #endif
@@ -856,6 +885,23 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 	else	/* allocate directly */
 		buf->va_base = cmdq_mbox_buf_alloc_dev(device,
 			use_iommu ? &buf->iova_base : &buf->pa_base);
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	if(cl) {
+		u32 tf_high_addr;
+
+		tf_high_addr = cmdq_get_tf_high_addr(cl->chan);
+		thread = (struct cmdq_thread *)cl->chan->con_priv;
+		hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
+		if(tf_high_addr &&
+			CMDQ_GET_ADDR_HIGH(CMDQ_BUF_ADDR(buf)) == tf_high_addr) {
+			cmdq_err("hwid:%d thrd_id:%d iova:%llx",
+				hwid, thread->idx, CMDQ_BUF_ADDR(buf));
+		}
+
+	} else {
+		cmdq_err("no client iova:%llx", CMDQ_BUF_ADDR(buf));
+	}
+#endif
 
 
 	if (!buf->va_base) {

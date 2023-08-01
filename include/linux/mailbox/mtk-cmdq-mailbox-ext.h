@@ -389,4 +389,7 @@ void cmdq_get_mminfra_gce_cg_cb(cmdq_mminfra_gce_cg cb);
 void cmdq_dump_usage(void);
 void cmdq_check_thread_complete(struct mbox_chan *chan);
 u8 cmdq_get_irq_long_times(void *chan);
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+u32 cmdq_get_tf_high_addr(void *chan);
+#endif
 #endif /* __MTK_CMDQ_MAILBOX_H__ */

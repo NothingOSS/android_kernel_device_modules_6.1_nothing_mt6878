@@ -258,6 +258,9 @@ struct cmdq {
 	atomic_t	fast_mtcmos_usage;
 	u64			fast_en;
 	u64			fast_dis;
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	u32			tf_high_addr;
+#endif
 };
 
 struct gce_plat {
@@ -327,6 +330,16 @@ u8 cmdq_get_irq_long_times(void *chan)
 	return cmdq->irq_long_times;
 }
 EXPORT_SYMBOL(cmdq_get_irq_long_times);
+
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+u32 cmdq_get_tf_high_addr(void *chan)
+{
+	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
+		typeof(*cmdq), mbox);
+	return cmdq->tf_high_addr;
+}
+EXPORT_SYMBOL(cmdq_get_tf_high_addr);
+#endif
 
 void cmdq_get_usage_cb(struct mbox_chan *chan, cmdq_usage_cb usage_cb)
 {
@@ -2750,6 +2763,8 @@ static int cmdq_probe(struct platform_device *pdev)
 	cmdq->hw_trace_clt = cmdq_mbox_create(&pdev->dev, 1);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	of_property_read_u32(dev->of_node, "cmdq-dump-hw-trace", &cmdq_hw_trace);
+	of_property_read_u32(dev->of_node, "tf-high-addr", &cmdq->tf_high_addr);
+	cmdq_msg("%s tf_high_addr:%x", __func__, cmdq->tf_high_addr);
 #endif
 
 	if (!of_parse_phandle_with_args(
