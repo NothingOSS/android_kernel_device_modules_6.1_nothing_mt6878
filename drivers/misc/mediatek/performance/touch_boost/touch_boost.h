@@ -15,6 +15,8 @@ extern void (*touch_boost_get_cmd_fp)(int *cmd, int *enable,
 	int *idleprefer_ta, int *idleprefer_fg, int *util_ta, int *util_fg,
 	int *cpufreq_c0, int *cpufreq_c1, int *cpufreq_c2, int *boost_up, int *boost_down);
 extern int (*fpsgo_wait_fstb_active_fp)(void);
+typedef void (*fpsgo_notify_is_boost_cb)(int fpsgo_is_boosting);
+extern int (*register_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
 
 struct _cpufreq {
 	int min;
@@ -28,6 +30,11 @@ struct boost {
 	struct task_struct *thread_interrupt;
 	int touch_event;
 	atomic_t event;
+};
+
+enum {
+	DEBOOST_WEHN_RENDERING = 1,
+	DEBOOST_WEHN_FPSGO_BOOST = 2,
 };
 
 enum {

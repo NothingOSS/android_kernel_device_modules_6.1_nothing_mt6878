@@ -83,6 +83,9 @@ static struct hrtimer hrt1;
 static int my_tid = -1;
 static int touch_boost_on;
 static struct kmem_cache *touch_boost_cache;
+static int isFpsgoBoosting;
+static int fpsgo_callback_registered;
+static DEFINE_MUTEX(fpsgo_boost_lock);
 
 static void _cpu_ctrl_systrace(int val, const char *fmt, ...)
 {
@@ -258,15 +261,63 @@ void _force_stop_touch_boost(void)
 	force_stop_boost = 0;
 }
 
+void notify_fpsgo_is_boost(int is_boosting)
+{
+	mutex_lock(&fpsgo_boost_lock);
+	isFpsgoBoosting = is_boosting;
+	_cpu_ctrl_systrace(isFpsgoBoosting, "fpsgo_boosting");
+	mutex_unlock(&fpsgo_boost_lock);
+
+	if (deboost_when_render == DEBOOST_WEHN_FPSGO_BOOST && isFpsgoBoosting)
+		_force_stop_touch_boost();
+}
+
+int get_fpsgo_status(void)
+{
+	int is_boosting = 0;
+
+	if (fpsgo_callback_registered == 0)
+		if (register_get_fpsgo_is_boosting_fp) {
+			register_get_fpsgo_is_boosting_fp(&notify_fpsgo_is_boost);
+			fpsgo_callback_registered = 1;
+		}
+
+	mutex_lock(&fpsgo_boost_lock);
+	is_boosting = isFpsgoBoosting;
+	mutex_unlock(&fpsgo_boost_lock);
+
+	return is_boosting;
+}
+
+
 void touch_boost(void)
 {
 	int i = 0, ret = -1, isact = 0;
+	int fpsgo_boosting = 0;
 
-	if (fpsgo_get_fstb_active_fp)
-		isact = fpsgo_get_fstb_active_fp(active_time * 1000);
-	_cpu_ctrl_systrace(isact, "is_fstb_active");
-	if (isact || !enable)
-		return;
+	switch (deboost_when_render) {
+	case DEBOOST_WEHN_RENDERING:
+		if (fpsgo_get_fstb_active_fp)
+			isact = fpsgo_get_fstb_active_fp(active_time * 1000);
+
+		_cpu_ctrl_systrace(isact, "is_fstb_active");
+
+		if (isact || !enable)
+			return;
+
+		break;
+
+	case DEBOOST_WEHN_FPSGO_BOOST:
+		fpsgo_boosting = get_fpsgo_status();
+
+		if (fpsgo_boosting || !enable)
+			return;
+
+		break;
+
+	default:
+		break;
+	}
 
 	disable_touch_boost_timer();
 	enable_touch_boost_timer();
@@ -304,7 +355,7 @@ static int ktchboost_thread(void *ptr)
 static int ktchboost_interrupt_thread(void *ptr)
 {
 	while (!kthread_should_stop()) {
-		if(fpsgo_wait_fstb_active_fp && deboost_when_render)
+		if(fpsgo_wait_fstb_active_fp && deboost_when_render == DEBOOST_WEHN_RENDERING)
 			fpsgo_wait_fstb_active_fp();
 		else
 			msleep(60000);
@@ -1205,6 +1256,7 @@ static int __init touch_boost_init(void)
 		return -EINVAL;
 
 	touch_boost_get_cmd_fp = touch_boost_get_cmd;
+	fpsgo_callback_registered = 0;
 
 	return 0;
 }
