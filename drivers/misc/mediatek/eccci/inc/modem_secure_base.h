@@ -22,6 +22,8 @@ enum CCCI_SECURE_REQ_ID {
 	MD_DEBUG_DUMP,
 	SCP_INFO_TO_SAVE = 12, /* save scp smem addr in tfa*/
 	SCP_CLK_SET_DONE,
+	CCIF_CLK_REQUEST,
+	CCIF_CLK_RELEASE,
 };
 
 

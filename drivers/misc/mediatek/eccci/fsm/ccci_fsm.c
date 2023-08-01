@@ -24,6 +24,7 @@
 #include "md_sys1_platform.h"
 #include "modem_sys.h"
 #include "ccci_auxadc.h"
+#include "modem_secure_base.h"
 
 struct ccci_fsm_ctl *ccci_fsm_entries;
 
@@ -1308,6 +1309,7 @@ static void fsm_routine_start(struct ccci_fsm_ctl *ctl,
 	struct ccci_fsm_event *event = NULL;
 	struct ccci_fsm_event  *next = NULL;
 	unsigned long flags;
+	struct arm_smccc_res res;
 
 	/* 1. state sanity check */
 	if (ctl->curr_state == CCCI_FSM_READY)
@@ -1321,6 +1323,11 @@ static void fsm_routine_start(struct ccci_fsm_ctl *ctl,
 	ctl->curr_state = CCCI_FSM_STARTING;
 	atomic_set(&md_ee_occurred, 0);
 	__pm_stay_awake(ctl->wakelock);
+	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, CCIF_CLK_REQUEST,
+		0, 0, 0, 0, 0, 0, &res);
+	CCCI_NORMAL_LOG(MD_SYS1, FSM, "%s [CCIF_CLK_REQUEST] res = 0x%lX\n",
+		__func__, res.a0);
+
 
 	/* 2. poll for critical users exit */
 	while (count < BOOT_TIMEOUT/EVENT_POLL_INTEVAL && !needforcestop) {
@@ -1423,6 +1430,10 @@ static void fsm_routine_start(struct ccci_fsm_ctl *ctl,
 	}
 	if (needforcestop) {
 		fsm_finish_command(ctl, cmd, -1);
+		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, CCIF_CLK_RELEASE,
+			0, 0, 0, 0, 0, 0, &res);
+		CCCI_NORMAL_LOG(MD_SYS1, FSM, "%s [CCIF_CLK_RELEASE] res = 0x%lX\n",
+			__func__, res.a0);
 		return;
 	}
 	/* 4. check result, finish command */
@@ -1433,6 +1444,10 @@ fail:
 		fsm_routine_exception(ctl, NULL, EXCEPTION_HS1_TIMEOUT);
 	fsm_finish_command(ctl, cmd, -1);
 	__pm_relax(ctl->wakelock);
+	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, CCIF_CLK_RELEASE,
+		0, 0, 0, 0, 0, 0, &res);
+	CCCI_NORMAL_LOG(MD_SYS1, FSM, "%s [CCIF_CLK_RELEASE] res = 0x%lX\n",
+		__func__, res.a0);
 	return;
 
 fail_ee:
@@ -1441,6 +1456,10 @@ fail_ee:
 	 */
 	fsm_finish_command(ctl, cmd, -1);
 	__pm_relax(ctl->wakelock);
+	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, CCIF_CLK_RELEASE,
+		0, 0, 0, 0, 0, 0, &res);
+	CCCI_NORMAL_LOG(MD_SYS1, FSM, "%s [CCIF_CLK_RELEASE] res = 0x%lX\n",
+		__func__, res.a0);
 	return;
 
 success:
@@ -1449,6 +1468,10 @@ success:
 	ccci_md_post_start();
 	fsm_finish_command(ctl, cmd, 1);
 	__pm_relax(ctl->wakelock);
+	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, CCIF_CLK_RELEASE,
+		0, 0, 0, 0, 0, 0, &res);
+	CCCI_NORMAL_LOG(MD_SYS1, FSM, "%s [CCIF_CLK_RELEASE] res = 0x%lX\n",
+		__func__, res.a0);
 	__pm_wakeup_event(ctl->wakelock, jiffies_to_msecs(10 * HZ));
 }
 
