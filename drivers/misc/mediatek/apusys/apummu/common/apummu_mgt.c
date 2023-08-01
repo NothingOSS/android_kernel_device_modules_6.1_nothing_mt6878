@@ -11,6 +11,7 @@
 #include <linux/slab.h>
 #include <linux/highmem.h>
 #include <linux/kref.h>
+#include <linux/workqueue.h>
 
 #include "apummu_drv.h"
 #include "apummu_mgt.h"
@@ -24,12 +25,19 @@ struct apummu_tbl {
 	struct list_head g_stable_head;
 	struct kref session_tbl_cnt;
 	struct mutex table_lock;
+	struct mutex DRAM_FB_lock;
 	bool is_stable_exist;
 	bool is_SLB_set;
+	bool is_work_canceled;
+	bool is_free_job_set;
 };
 
 struct apummu_tbl g_ammu_table_set;
 struct apummu_session_tbl *g_ammu_stable_ptr; // stable stand for session table
+
+#define AMMU_FREE_DRAM_DELAY_MS	(5 * 1000)
+static struct workqueue_struct *ammu_workq;
+static struct delayed_work DRAM_free_work;
 
 #define IOVA2EVA_ENCODE_EN	(1)
 #define PAGE_ARRAY_CNT_EN	(1)
@@ -132,11 +140,27 @@ static bool is_session_table_exist(uint64_t session)
 	return isExist;
 }
 
+static void ammu_DRAM_free_work(struct work_struct *work)
+{
+	mutex_lock(&g_ammu_table_set.DRAM_FB_lock);
+
+	if (g_ammu_table_set.is_work_canceled) {
+		apummu_dram_remap_runtime_free(g_adv);
+		AMMU_LOG_INFO("Delay DRAM Free done\n");
+	} else
+		g_ammu_table_set.is_work_canceled = true;
+
+	g_ammu_table_set.is_free_job_set = false;
+	mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
+}
+
 static void free_memory(struct kref *kref)
 {
 	AMMU_LOG_DBG("kref destroy\n");
 #if DRAM_FALL_BACK_IN_RUNTIME
-	apummu_dram_remap_runtime_free(g_adv);
+	queue_delayed_work(ammu_workq, &DRAM_free_work,
+		msecs_to_jiffies(AMMU_FREE_DRAM_DELAY_MS));
+	g_ammu_table_set.is_free_job_set = true;
 #endif
 	if (g_adv->remote.is_general_SLB_alloc) {
 		apummu_remote_mem_free_pool(g_adv);
@@ -171,13 +195,22 @@ static int session_table_alloc(void)
 	g_ammu_stable_ptr = sTable_ptr;
 
 #if DRAM_FALL_BACK_IN_RUNTIME
+	mutex_lock(&g_ammu_table_set.DRAM_FB_lock);
 	if (!(g_adv->remote.is_dram_IOVA_alloc)) {
 		ret = apummu_dram_remap_runtime_alloc(g_adv);
 		if (ret) {
 			ammu_exception("alloc DRAM FB fail\n");
+			mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
 			goto out;
 		}
+	} else { // DRAM not free, cancel delay job
+		if (!cancel_delayed_work(&DRAM_free_work) && g_ammu_table_set.is_free_job_set)
+			g_ammu_table_set.is_work_canceled = false;
+		else
+			g_ammu_table_set.is_free_job_set = false;
 	}
+
+	mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
 #endif
 
 	if (!(g_adv->remote.is_general_SLB_alloc)) { // SLB retry
@@ -700,10 +733,17 @@ void ammu_session_table_check_SLB(uint32_t type)
 /* Init lust head, lock */
 void apummu_mgt_init(void)
 {
+	char wq_name[] = "ammu_dram_free";
+
 	g_ammu_table_set.is_stable_exist = false;
 	g_ammu_table_set.is_SLB_set = false;
+	g_ammu_table_set.is_work_canceled = true;
 	INIT_LIST_HEAD(&g_ammu_table_set.g_stable_head);
 	mutex_init(&g_ammu_table_set.table_lock);
+	mutex_init(&g_ammu_table_set.DRAM_FB_lock);
+
+	INIT_DELAYED_WORK(&DRAM_free_work, ammu_DRAM_free_work);
+	ammu_workq = alloc_ordered_workqueue(wq_name, WQ_MEM_RECLAIM);
 }
 
 /* apummu_mgt_destroy session table set */
@@ -722,4 +762,7 @@ void apummu_mgt_destroy(void)
 	}
 
 	mutex_unlock(&g_ammu_table_set.table_lock);
+
+	/* Flush free DRAM job */
+	flush_delayed_work(&DRAM_free_work);
 }
