@@ -111,6 +111,8 @@ struct cmdq_sec_helper_fp *cmdq_sec_helper;
 
 #define	VCP_OFF_DELAY 1000 /* 1000ms */
 
+#define EVENT_DEBUG_TIMES	5
+
 u32 BUF_SIZE[CMDQ_HW_MAX];
 u32 BUF_SIZE_THRD[CMDQ_HW_MAX][CMDQ_THR_MAX_COUNT];
 
@@ -2798,6 +2800,7 @@ void cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
 	s32 thread_id = cmdq_mbox_chan_id(client->chan);
 	enum cmdq_aee_type aee;
 	u32 hwid = cmdq_util_get_hw_id(gce_pa);
+	u32 i;
 
 	/* assign error during dump cb */
 	item->err = data.err;
@@ -2891,6 +2894,12 @@ void cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
 			"DISPATCH:%s(%s) inst:%#018llx OP:WAIT EVENT:%hu thread:%d",
 			mod, cmdq_util_helper->hw_name(client->chan),
 			*(u64 *)inst, inst->arg_a, thread_id);
+#ifdef CMDQ_SECURE_SUPPORT
+		if (!pkt->sec_data) {
+			for (i = 0; i < EVENT_DEBUG_TIMES; i++)
+				cmdq_event_dump_and_clr(client->chan);
+		}
+#endif
 	} else if (inst) {
 		if (!mod)
 			mod = cmdq_util_helper->thread_module_dispatch(gce_pa, thread_id);

@@ -261,6 +261,9 @@ struct cmdq {
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	u32			tf_high_addr;
 #endif
+	bool		event_debug;
+	u32			event_dump_range[2];
+	u32			event_clr_range[2];
 };
 
 struct gce_plat {
@@ -340,6 +343,27 @@ u32 cmdq_get_tf_high_addr(void *chan)
 }
 EXPORT_SYMBOL(cmdq_get_tf_high_addr);
 #endif
+
+void cmdq_event_dump_and_clr(void *chan)
+{
+	u32 i;
+	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
+		typeof(*cmdq), mbox);
+
+	if (!cmdq->event_debug)
+		return;
+
+	for (i = cmdq->event_dump_range[0]; i < cmdq->event_dump_range[1]; i++) {
+		if (cmdq_get_event(chan, i)) {
+			cmdq_msg("%s event %u is set", __func__, i);
+			if (i > cmdq->event_clr_range[0] && i < cmdq->event_clr_range[1]) {
+				cmdq_msg("%s clr event:%d", __func__, i);
+				cmdq_clear_event(chan, i);
+			}
+		}
+	}
+}
+EXPORT_SYMBOL(cmdq_event_dump_and_clr);
 
 void cmdq_get_usage_cb(struct mbox_chan *chan, cmdq_usage_cb usage_cb)
 {
@@ -2636,6 +2660,18 @@ static int cmdq_probe(struct platform_device *pdev)
 
 	if(of_property_read_bool(dev->of_node, "hw-trace-built-in"))
 		hw_trace_built_in[hwid] = true;
+
+	if (of_property_read_bool(dev->of_node, "event-debug")) {
+		cmdq->event_debug = true;
+		of_property_read_u32_array(dev->of_node, "event-dump-range",
+			cmdq->event_dump_range, 2);
+		of_property_read_u32_array(dev->of_node, "event-clr-range",
+			cmdq->event_clr_range, 2);
+		cmdq_msg("%s dump range: %d ~ %d", __func__,
+			cmdq->event_dump_range[0], cmdq->event_dump_range[1]);
+		cmdq_msg("%s clr range: %d ~ %d", __func__,
+			cmdq->event_clr_range[0], cmdq->event_clr_range[1]);
+	}
 
 	of_property_read_u32(dev->of_node, "cmdq-dump-buf-size", &cmdq_dump_buf_size);
 	of_property_read_u32(dev->of_node, "error-irq-bug-on", &error_irq_bug_on);

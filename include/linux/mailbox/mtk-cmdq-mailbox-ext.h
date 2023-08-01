@@ -392,4 +392,5 @@ u8 cmdq_get_irq_long_times(void *chan);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 u32 cmdq_get_tf_high_addr(void *chan);
 #endif
+void cmdq_event_dump_and_clr(void *chan);
 #endif /* __MTK_CMDQ_MAILBOX_H__ */
