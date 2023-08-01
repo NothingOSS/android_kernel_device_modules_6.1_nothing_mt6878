@@ -92,7 +92,7 @@ static const struct dvfs_ref s_dl_dvfs_tbl_v5[] = { /* 4:3:1 for mt6895 */
 	{1000000000LL, {-1, -1, -1, -1}, -1, 0x40, 0x10, 0x20, 0x70, 0xFF,
 		{0x70, 0x70, 0x70, 0x70}},
 	/* normal */
-	{0LL,          {-1, -1, -1, -1}, -1, 0x02, 0xFF, 0x7F, 0xFF, 0xFF, {-1, -1, -1, -1}},
+	{0LL,          {-1, -1, -1, -1}, -1, 0x02, 0xFF, 0x0F, 0xFF, 0xFF, {-1, -1, -1, -1}},
 };
 
 static const struct dvfs_ref s_dl_dvfs_tbl_v6[] = { /* 6:2 for mt6879 */
@@ -102,7 +102,7 @@ static const struct dvfs_ref s_dl_dvfs_tbl_v6[] = { /* 6:2 for mt6879 */
 	/* normal */
 	{100000000LL,  {-1, -1, -1, -1}, -1, 0xC0, 0xC0, 0xC0, 0xC0, 0xFF,
 		{0xC0, 0xC0, 0xC0, 0xC0}},
-	{0LL,          {-1, -1, -1, -1}, -1, 0x02, 0xFF, 0xFF, 0xFF, 0xFF, {-1, -1, -1, -1}},
+	{0LL,          {-1, -1, -1, -1}, -1, 0x02, 0xFF, 0x3F, 0xFF, 0xFF, {-1, -1, -1, -1}},
 };
 
 static const struct dvfs_ref s_dl_dvfs_tbl_v7[] = { /* 6:2 for mt6855 */
@@ -180,7 +180,7 @@ static const struct dvfs_ref s_ul_dvfs_tbl_v6[] = { /* 6:2 */
 	{450000000LL, {900000, 900000, -1, -1}, 1, 0x02, 0xBD, 0x40, 0xBD, 0xFF,
 		{-1, -1, -1, -1}},
 	/* normal */
-	{0LL,          {-1, -1, -1, -1}, -1, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, {-1, -1, -1, -1}},
+	{0LL,          {-1, -1, -1, -1}, -1, 0xFF, 0xFF, 0x3F, 0xFF, 0xFF, {-1, -1, -1, -1}},
 };
 
 static const struct dvfs_ref s_ul_dvfs_tbl_v7[] = { /* 6:2 for mt6855 */
