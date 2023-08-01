@@ -84,67 +84,46 @@
 				bat,mfrs = "bat1";
 				bat,design-cap = <3000>;
 			};
-
-			//bat-info1 {
-			//	bat,vid = <0x8abc>;
-			//	bat,pid = <0x5234>;
-			//	bat,mfrs = "bat2";
-			//	bat,design-cap = <4000>;
-			//};
-
-			//country0 {
-			//	pd,country-code = <0x5457>;
-			//	pd,country-len = <2>; /* max len = 26 */
-			//	pd,country-data = <0xff 0xff>;
-			//};
-
-			//country1 {
-			//	pd,country-code = <0x5553>;
-			//	pd,country-len = <3>; /* max len = 26 */
-			//	pd,country-data = <0xf1 0xf2 0xf3>;
-			//};
 		};
 		dpm-caps {
 			local-dr-power;
 			local-dr-data;
-			//local-ext-power;
+			// local-ext-power;
 			local-usb-comm;
-			//local-usb-suspend;
-			//local-high-cap;
-			//local-give-back;
+			// local-usb-suspend;
+			// local-high-cap;
+			// local-give-back;
 			local-no-suspend;
-			local-vconn-supply;
 
-			// attempt-discover-cable-dfp;
 			attempt-enter-dp-mode;
-			attempt-discover-cable;
+			// attempt-discover-cable;
 			// attempt-discover-id;
 			// attempt-discover-svid;
 
 			/* 0: disable, 1: prefer-snk, 2: prefer-src */
 			pr-check = <0>;
-			//pr-reject-as-source;
-			//pr-reject-as-sink;
-			//pr-check-gp-source;
-			//pr-check-gp-sink;
+			// pr-reject-as-source;
+			// pr-reject-as-sink;
+			// pr-check-gp-source;
+			// pr-check-gp-sink;
 
 			/* 0: disable, 1: prefer-ufp, 2: prefer-dfp */
 			dr-check = <0>;
-			//dr-reject-as-dfp;
-			//dr-reject-as-ufp;
+			// dr-reject-as-dfp;
+			// dr-reject-as-ufp;
 		};
 		displayport {
 			/* connection type = "both", "ufp-d", "dfp-d" */
 			1st-connection = "dfp-d";
 			2nd-connection = "dfp-d";
 			signal,dp-v13;
-			//signal,dp-gen2;
-			//usbr20-not-used;
+			// signal,dp-gen2;
+			// usbr20-not-used;
 			typec,receptacle;
 			ufp-d {
-				//pin-assignment,mode-c;
-				//pin-assignment,mode-d;
-				//pin-assignment,mode-e;
+				// pin-assignment,mode-c;
+				// pin-assignment,mode-d;
+				// pin-assignment,mode-e;
 			};
 			dfp-d {
 				pin-assignment,mode-c;
