@@ -1364,13 +1364,14 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		return mml_path_mode;
 
 	/* for alpha rotate */
-	if (info->alpha && (
-		!MML_FMT_ALPHA(info->src.format) ||
-		!MML_FMT_ALPHA(info->dest[0].data.format) ||
-		info->src.width < 9 ||
-		tp_need_resize(info))) {
+	if (info->alpha) {
 		*reason = mml_query_alpha;
-		goto not_support;
+		if (!MML_FMT_ALPHA(info->src.format) ||
+			!MML_FMT_ALPHA(info->dest[0].data.format) ||
+			info->src.width < 9 ||
+			tp_need_resize(info))
+			goto not_support;
+		return MML_MODE_MML_DECOUPLE;
 	}
 
 	/* skip all racing mode check if use prefer dc */
