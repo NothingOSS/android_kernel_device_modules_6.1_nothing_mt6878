@@ -11,6 +11,9 @@
 #include "adsp_reserved_mem.h"
 #include "adsp_feature_define.h"
 
+#define RELEASE_BUS_PROTECT 0
+#define SET_BUS_PROTECT 1
+
 enum ADSP_CORE_STATE {
 	ADSP_RESET       = 0,
 	ADSP_SUSPEND     = 1,
@@ -30,6 +33,7 @@ enum adsp_smc_ops {
 	MTK_ADSP_KERNEL_OP_RELOAD,
 	MTK_ADSP_KERNEL_OP_QUERY_STATE,
 	MTK_ADSP_KERNEL_OP_DUMP_PWR_CLK,
+	MTK_ADSP_KERNEL_OP_SET_SLP_PROT,
 	MTK_ADSP_KERNEL_OP_NUM
 };
 

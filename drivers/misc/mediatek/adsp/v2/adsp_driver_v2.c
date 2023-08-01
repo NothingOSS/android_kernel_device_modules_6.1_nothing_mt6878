@@ -173,6 +173,13 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 		goto ERROR;
 	}
 
+	ret = of_property_read_u32(dev->of_node, "slp-prot-ctrl",
+				   &adspsys->slp_prot_ctrl);
+	if (ret) {
+		pr_info("%s(), get slp-prot-ctrl fail\n", __func__);
+		adspsys->slp_prot_ctrl = 0;
+	}
+
 	of_property_read_u32(dev->of_node, "core-num", &adspsys->num_cores);
 
 	ret = adsp_clk_probe(pdev, &adspsys->clk_ops);

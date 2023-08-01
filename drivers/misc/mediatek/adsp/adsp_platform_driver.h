@@ -90,6 +90,7 @@ struct adsp_priv {
 
 struct adspsys_priv {
 	u32 num_cores;
+	u32 slp_prot_ctrl;
 
 	/* address & size */
 	void __iomem *cfg;

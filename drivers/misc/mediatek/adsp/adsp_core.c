@@ -433,12 +433,18 @@ static int adsp_pd_event(struct notifier_block *nb,
 {
 	switch (flags) {
 	case GENPD_NOTIFY_ON:
+		if (adspsys && adspsys->slp_prot_ctrl)
+			adsp_smc_send(MTK_ADSP_KERNEL_OP_SET_SLP_PROT, RELEASE_BUS_PROTECT, 0);
+
 		pr_info("%s() pwr on\n", __func__);
 		adsp_smc_send(MTK_ADSP_KERNEL_OP_DUMP_PWR_CLK, flags, 0);
 		break;
 	case GENPD_NOTIFY_PRE_OFF:
 		pr_info("%s() pwr pre off\n", __func__);
 		adsp_smc_send(MTK_ADSP_KERNEL_OP_DUMP_PWR_CLK, flags, 0);
+
+		if (adspsys && adspsys->slp_prot_ctrl)
+			adsp_smc_send(MTK_ADSP_KERNEL_OP_SET_SLP_PROT, SET_BUS_PROTECT, 0);
 		break;
 	default:
 		break;
