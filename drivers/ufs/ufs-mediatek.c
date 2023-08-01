@@ -767,6 +767,8 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct device_node *np = hba->dev->of_node;
 	struct tag_bootmode *tag = NULL;
+	struct arm_smccc_res res;
+	bool mcq_en = false;
 
 	if (of_property_read_bool(np, "mediatek,ufs-boost-crypt"))
 		ufs_mtk_init_boost_crypt(hba);
@@ -800,6 +802,12 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 
 	if (of_property_read_bool(np, "mediatek,ufs-broken-rtc"))
 		host->caps |= UFS_MTK_CAP_MCQ_BROKEN_RTC;
+
+	/* Check if MCQ is allowed */
+	ufs_mtk_get_mcq_en(res);
+	mcq_en = !!res.a1;
+	if (!mcq_en)
+		host->caps |= UFS_MTK_CAP_DISABLE_MCQ;
 
 	dev_info(hba->dev, "caps=0x%x", host->caps);
 
