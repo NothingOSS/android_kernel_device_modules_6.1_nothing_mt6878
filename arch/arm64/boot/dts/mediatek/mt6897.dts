@@ -8389,7 +8389,7 @@
 				<1>, /*MTK_DRM_OPT_HRT_BY_LARB*/
 				<1>, /*MTK_DRM_OPT_RES_SWITCH_ON_AP*/
 				<1>, /*MTK_DRM_OPT_TILE_OVERHEAD*/
-				<1>; /*MTK_DRM_OPT_VBLANK_CONFIG_REC*/
+				<0>; /*MTK_DRM_OPT_VBLANK_CONFIG_REC*/
 		};
 
 		dp_intf: disp-dp-intf0@1400b000 {
