@@ -1172,7 +1172,7 @@ static void dump_spmim_pmic_dbg_rg(struct pmif *arb)
 			mt6685INTSTA_1, &rdata, 1);
 	pr_notice("%s 6685 0x1a7 0x%x\n", __func__, rdata);
 
-	for (i = 0x33; i < 0x38; i++) {
+	for (i = 33; i < 38; i++) {
 		val = i;
 		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, 0x4,
 			PMIC_SPMI_DBG_SEL, &val, 1);
@@ -1182,7 +1182,7 @@ static void dump_spmim_pmic_dbg_rg(struct pmif *arb)
 			PMIC_SPMI_DBG_H, &rdata1, 1);
 		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x4,
 			PMIC_SPMI_DBG_L, &rdata2, 1);
-		pr_notice("%s 6363 DBG_SEL 0x%x DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
+		pr_notice("%s 6363 DBG_SEL %d DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
 			__func__, rdata, rdata1, rdata2);
 		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, 0x9,
 			PMIC_SPMI_DBG_SEL, &val, 1);
@@ -1192,7 +1192,7 @@ static void dump_spmim_pmic_dbg_rg(struct pmif *arb)
 			PMIC_SPMI_DBG_H, &rdata1, 1);
 		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x9,
 			PMIC_SPMI_DBG_L, &rdata2, 1);
-		pr_notice("%s 6685 DBG_SEL 0x%x DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
+		pr_notice("%s 6685 DBG_SEL %d DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
 			__func__, rdata, rdata1, rdata2);
 	}
 	val = 0;
@@ -1209,7 +1209,7 @@ static void dump_spmip_pmic_dbg_rg(struct pmif *arb)
 	unsigned short PMIC_SPMI_DBG_SEL = 0x42d, PMIC_SPMI_DBG_L = 0x42b;
 	unsigned short PMIC_SPMI_DBG_H = 0x42c;
 
-	for (i = 0x33; i < 0x38; i++) {
+	for (i = 33; i < 38; i++) {
 		val = i;
 		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, 0x6,
 			PMIC_SPMI_DBG_SEL, &val, 1);
@@ -1219,7 +1219,7 @@ static void dump_spmip_pmic_dbg_rg(struct pmif *arb)
 			PMIC_SPMI_DBG_H, &rdata1, 1);
 		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
 			PMIC_SPMI_DBG_L, &rdata2, 1);
-		pr_notice("%s S6 DBG_SEL 0x%x DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
+		pr_notice("%s S6 DBG_SEL %d DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
 			__func__, rdata, rdata1, rdata2);
 		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, 0x7,
 			PMIC_SPMI_DBG_SEL, &val, 1);
@@ -1229,7 +1229,7 @@ static void dump_spmip_pmic_dbg_rg(struct pmif *arb)
 			PMIC_SPMI_DBG_H, &rdata1, 1);
 		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
 			PMIC_SPMI_DBG_L, &rdata2, 1);
-		pr_notice("%s S7 DBG_SEL 0x%x DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
+		pr_notice("%s S7 DBG_SEL %d DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
 			__func__, rdata, rdata1, rdata2);
 		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, 0x8,
 			PMIC_SPMI_DBG_SEL, &val, 1);
@@ -1239,7 +1239,7 @@ static void dump_spmip_pmic_dbg_rg(struct pmif *arb)
 			PMIC_SPMI_DBG_H, &rdata1, 1);
 		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
 			PMIC_SPMI_DBG_L, &rdata2, 1);
-		pr_notice("%s S8 DBG_SEL 0x%x DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
+		pr_notice("%s S8 DBG_SEL %d DBG_OUT_H 0x%x DBG_OUT_L 0x%x\n",
 			__func__, rdata, rdata1, rdata2);
 	}
 	val = 0;
