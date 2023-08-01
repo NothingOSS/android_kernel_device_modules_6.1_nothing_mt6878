@@ -687,6 +687,9 @@ static irqreturn_t mminfra_irq_handler(int irq, void *data)
 	if (!dev || !dbg || !dbg->comm_dev[0])
 		return IRQ_NONE;
 
+	if (dbg->irq_safe)
+		pm_runtime_get_sync(dev);
+
 	cmdq_util_mminfra_cmd(1);
 
 	if (!aee_dump) {
@@ -701,6 +704,9 @@ static irqreturn_t mminfra_irq_handler(int irq, void *data)
 	}
 
 	cmdq_util_mminfra_cmd(0);
+
+	if (dbg->irq_safe)
+		pm_runtime_put_sync(dev);
 
 	return IRQ_HANDLED;
 }
