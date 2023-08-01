@@ -1186,6 +1186,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 	priv = comp->mtk_crtc->base.dev->dev_private;
 	if (priv == NULL)
 		return;
+	postalign_comp = priv->ddp_comp[DDP_COMPONENT_POSTALIGN0];
 
 	if (comp->id == DDP_COMPONENT_SPR0) {
 		if (priv->data->mmsys_id == MMSYS_MT6989) {
@@ -1644,7 +1645,7 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 {
 	resource_size_t config_regs_pa;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-	struct mtk_ddp_comp *postalign_comp;
+	struct mtk_ddp_comp *postalign_comp = priv->ddp_comp[DDP_COMPONENT_POSTALIGN0];
 	struct mtk_disp_spr *spr = comp_to_spr(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 				&comp->mtk_crtc->base, comp, true);
