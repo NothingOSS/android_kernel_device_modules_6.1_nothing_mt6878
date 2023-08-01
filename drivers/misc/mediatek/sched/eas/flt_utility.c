@@ -309,6 +309,9 @@ static int flt_get_o_util_mode2(int cpu)
 			grp_r[grp_idx] = grp_cal_tra(flt_util, util_ratio[grp_idx]);
 #endif
 		total += grp_r[grp_idx];
+		if (trace_sched_flt_get_o_util_enabled())
+			trace_sched_flt_get_o_util(cpu, cpu_r, grp_idx, util_ratio[grp_idx],
+										flt_util, grp_r[grp_idx], total);
 	}
 	res = cpu_r - total;
 	res = clamp_t(int, res, 0, cpu_cap_ceiling(cpu));

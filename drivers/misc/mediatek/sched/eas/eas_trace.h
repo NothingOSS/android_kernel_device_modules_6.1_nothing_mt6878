@@ -1747,6 +1747,39 @@ TRACE_EVENT(sugov_ext_pgrp_hint,
 		__entry->ht2,
 		__entry->ht3)
 );
+
+TRACE_EVENT(sched_flt_get_o_util,
+
+	TP_PROTO(int cpu, int cpu_r, int grp_idx, u32 util_ratio, int flt_util, u32 grp_r, u32 total),
+
+	TP_ARGS(cpu, cpu_r, grp_idx, util_ratio, flt_util, grp_r, total),
+
+	TP_STRUCT__entry(
+		__field(int,		cpu)
+		__field(int,		cpu_r)
+		__field(int,		grp_idx)
+		__field(u32,		util_ratio)
+		__field(int,		flt_util)
+		__field(u32,		grp_r)
+		__field(u32,		total)
+	),
+
+	TP_fast_assign(
+		__entry->cpu		= cpu;
+		__entry->cpu_r		= cpu_r;
+		__entry->grp_idx		= grp_idx;
+		__entry->util_ratio	= util_ratio;
+		__entry->flt_util		= flt_util;
+		__entry->grp_r		= grp_r;
+		__entry->total		= total;
+	),
+
+	TP_printk("cpu=%d util=%d grp=%d ratio=%u gputil=%d gp_r=%u total=%u",
+		__entry->cpu, __entry->cpu_r,
+		__entry->grp_idx, __entry->util_ratio,
+		__entry->flt_util, __entry->grp_r,
+		__entry->total)
+);
 #endif
 
 TRACE_EVENT(sched_adpf_get_value,
