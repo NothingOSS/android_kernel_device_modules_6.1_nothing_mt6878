@@ -29,6 +29,8 @@ struct cg_ppt_status_info {
 	int combo_idx;
 	// DlptCsramCtrlBlock
 	int peak_power_budget_mode;
+	// DlptSramLayout->mo_info
+	unsigned int mo_status;
 };
 
 struct cg_ppt_freq_info {
@@ -63,6 +65,23 @@ struct cg_ppt_power_info {
 	int apu_peak_power_ack;
 };
 
+struct cg_ppt_combo_info {
+	// DlptSramLayout->gswruninfo
+	int cgppb_mw;
+
+	int gpu_combo0;
+	int gpu_combo1;
+	int gpu_combo2;
+	int gpu_combo3;
+	int gpu_combo4;
+
+	int cpu_combo0;
+	int cpu_combo1;
+	int cpu_combo2;
+	int cpu_combo3;
+	int cpu_combo4;
+};
+
 #endif /*__TRACE_CG_PPT_STRUCT__*/
 
 TRACE_EVENT(
@@ -77,7 +96,8 @@ TRACE_EVENT(
 		__field(int, cgsync_action)
 		__field(int, is_gpu_favor)
 		__field(int, combo_idx)
-		__field(int, peak_power_budget_mode)),
+		__field(int, peak_power_budget_mode)
+		__field(unsigned int, mo_status)),
 	TP_fast_assign(
 	__entry->cpu_low_key = data->cpu_low_key;
 	__entry->g2c_pp_lmt_freq_ack_timeout =
@@ -88,13 +108,15 @@ TRACE_EVENT(
 	__entry->cgsync_action = data->cgsync_action;
 	__entry->is_gpu_favor = data->is_gpu_favor;
 	__entry->combo_idx = data->combo_idx;
-	__entry->peak_power_budget_mode = data->peak_power_budget_mode;),
-	TP_printk("cpu_low_key=%d g2c_pp_lmt_freq_ack_timeout=%d cg_sync_enable=%d is_fastdvfs_enabled=%d gpu_preboost_time_us=%d cgsync_action=%d is_gpu_favor=%d combo_idx=%d peak_power_budget_mode=%d",
+	__entry->peak_power_budget_mode = data->peak_power_budget_mode;
+	__entry->mo_status = data->mo_status;),
+	TP_printk("cpu_low_key=%d g2c_pp_lmt_freq_ack_timeout=%d cg_sync_enable=%d is_fastdvfs_enabled=%d gpu_preboost_time_us=%d cgsync_action=%d is_gpu_favor=%d combo_idx=%d peak_power_budget_mode=%d mo_status=%u",
 		  __entry->cpu_low_key, __entry->g2c_pp_lmt_freq_ack_timeout,
 		  __entry->cg_sync_enable, __entry->is_fastdvfs_enabled,
 		  __entry->gpu_preboost_time_us, __entry->cgsync_action,
 		  __entry->is_gpu_favor, __entry->combo_idx,
-		  __entry->peak_power_budget_mode));
+		  __entry->peak_power_budget_mode,
+		  __entry->mo_status));
 
 TRACE_EVENT(
 	cg_ppt_freq_info, TP_PROTO(const struct cg_ppt_freq_info *data),
@@ -164,6 +186,51 @@ TRACE_EVENT(
 		  __entry->modem_peak_power_mw_shadow,
 		  __entry->wifi_peak_power_mw_shadow,
 		  __entry->apu_peak_power_ack));
+
+
+TRACE_EVENT(cg_ppt_combo_info,
+	TP_PROTO(const struct cg_ppt_combo_info *data),
+	TP_ARGS(data),
+	TP_STRUCT__entry(
+		__field(int, cgppb_mw)
+		__field(int, gpu_combo0)
+		__field(int, gpu_combo1)
+		__field(int, gpu_combo2)
+		__field(int, gpu_combo3)
+		__field(int, gpu_combo4)
+		__field(int, cpu_combo0)
+		__field(int, cpu_combo1)
+		__field(int, cpu_combo2)
+		__field(int, cpu_combo3)
+		__field(int, cpu_combo4)
+	),
+	TP_fast_assign(
+		__entry->cgppb_mw = data->cgppb_mw;
+		__entry->gpu_combo0 = data->gpu_combo0;
+		__entry->gpu_combo1 = data->gpu_combo1;
+		__entry->gpu_combo2 = data->gpu_combo2;
+		__entry->gpu_combo3 = data->gpu_combo3;
+		__entry->gpu_combo4 = data->gpu_combo4;
+		__entry->cpu_combo0 = data->cpu_combo0;
+		__entry->cpu_combo1 = data->cpu_combo1;
+		__entry->cpu_combo2 = data->cpu_combo2;
+		__entry->cpu_combo3 = data->cpu_combo3;
+		__entry->cpu_combo4 = data->cpu_combo4;
+	),
+	TP_printk("cgppb_mw=%d gpu_combo0=%d gpu_combo1=%d gpu_combo2=%d gpu_combo3=%d gpu_combo4=%d cpu_combo0=%d cpu_combo1=%d cpu_combo2=%d cpu_combo3=%d cpu_combo4=%d",
+	__entry->cgppb_mw,
+	__entry->gpu_combo0,
+	__entry->gpu_combo1,
+	__entry->gpu_combo2,
+	__entry->gpu_combo3,
+	__entry->gpu_combo4,
+	__entry->cpu_combo0,
+	__entry->cpu_combo1,
+	__entry->cpu_combo2,
+	__entry->cpu_combo3,
+	__entry->cpu_combo4)
+);
+
 
 #endif /* _TRACE_CG_PPT__H */
 

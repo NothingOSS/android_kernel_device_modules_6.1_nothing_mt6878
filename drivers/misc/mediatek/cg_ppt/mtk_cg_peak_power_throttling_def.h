@@ -33,6 +33,31 @@
 #define DLPT_MD_DRAM_BASE (0x8C01FE08)
 #define DLPT_WIFI_DRAM_BASE (0x9D5A07F0)
 
+
+/*
+ * ========================================================
+ * CGPPT Model Option
+ * ========================================================
+ */
+#define MO_FAVOR_CPU                 ( 1 << 0 )
+#define MO_FAVOR_GPU                 ( 1 << 1 )
+#define MO_FAVOR_MULTISCENE          ( 1 << 2 )
+#define MO_CPU_AVS                   ( 1 << 3 )
+#define MO_GPU_AVS                   ( 1 << 4 )
+#define MO_GPU_CURR_FREQ_POWER_CALC  ( 1 << 5 )
+
+#define CGPPT_CHECKBIT(value, bit_mask) (((value) & (bit_mask)) == (bit_mask))
+#define CGPPT_SETBIT(value, bit_mask) ((value) |= (bit_mask))
+#define CGPPT_CLEARBIT(value, bit_mask) ((value) &= ~(bit_mask))
+
+
+
+
+
+
+
+
+
 /*
  * ========================================================
  * [Kernel]

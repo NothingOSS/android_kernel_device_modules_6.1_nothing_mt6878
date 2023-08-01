@@ -7,4 +7,6 @@
 #ifndef _MTK_CG_PEAK_POWER_THROTTLING__CORE_H_
 #define _MTK_CG_PEAK_POWER_THROTTLING__CORE_H_
 
+extern void cgppt_set_mo_multiscene(int value);
+
 #endif

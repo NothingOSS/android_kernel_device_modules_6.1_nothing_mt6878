@@ -36,7 +36,10 @@ struct DlptSramLayout *dlpt_sram_layout_ptr;
  * default setting
  * -----------------------------------------------
  */
-#define DEFAULT_CG_PPT_MODE 0
+#define DEFAULT_CG_PPT_MODE	(0)	/*default*/
+// #define DEFAULT_CG_PPT_MODE	(3)	/*exp: use predefined table*/
+
+#define DEFAULT_MO_GPU_CURR_FREQ_POWER_CALC	(1)
 
 /*
  * -----------------------------------------------
@@ -161,14 +164,19 @@ static int data_init(void)
 
     /*
      * ...................................
-     * Set default cg ppt mode to 0
+     * Default Setting
      * ...................................
      */
 	{
-		struct DlptCsramCtrlBlock *dlpt_csram_ctrl_block =
-			dlpt_csram_ctrl_block_get();
-		dlpt_csram_ctrl_block->peak_power_budget_mode =
-			DEFAULT_CG_PPT_MODE;
+	struct DlptCsramCtrlBlock *dlpt_csram_ctrl_block =
+		dlpt_csram_ctrl_block_get();
+	dlpt_csram_ctrl_block->peak_power_budget_mode =
+		DEFAULT_CG_PPT_MODE;
+
+
+	dlpt_sram_layout_ptr->mo_info.mo_gpu_curr_freq_power_calc =
+		DEFAULT_MO_GPU_CURR_FREQ_POWER_CALC;
+
 	}
 
     /*
@@ -222,6 +230,9 @@ static struct cg_ppt_status_info *get_cg_ppt_status_info(void)
 	// DlptCsramCtrlBlock
 	ret_struct.peak_power_budget_mode =
 		DlptCsramCtrlBlock_ptr->peak_power_budget_mode;
+	// DlptSramLayout->mo_info
+	ret_struct.mo_status =
+		dlpt_sram_layout_ptr->mo_info.mo_status;
 
 	return &ret_struct;
 }
@@ -286,6 +297,39 @@ static struct cg_ppt_power_info *get_cg_ppt_power_info(void)
 	/*misc*/
 	ret_struct.apu_peak_power_ack =
 		DlptCsramCtrlBlock_ptr->apu_peak_power_ack;
+
+	return &ret_struct;
+}
+
+static struct cg_ppt_combo_info *get_cg_ppt_combo_info(void)
+{
+	static struct cg_ppt_combo_info ret_struct;
+
+	//DlptSramLayout->gswrun_info
+	ret_struct.cgppb_mw = dlpt_sram_layout_ptr->gswrun_info.cgppb_mw;
+
+	ret_struct.gpu_combo0 =
+	dlpt_sram_layout_ptr->peak_power_combo_table_gpu[0].combopeakpowerin_mw;
+	ret_struct.gpu_combo1 =
+	dlpt_sram_layout_ptr->peak_power_combo_table_gpu[1].combopeakpowerin_mw;
+	ret_struct.gpu_combo2 =
+	dlpt_sram_layout_ptr->peak_power_combo_table_gpu[2].combopeakpowerin_mw;
+	ret_struct.gpu_combo3 =
+	dlpt_sram_layout_ptr->peak_power_combo_table_gpu[3].combopeakpowerin_mw;
+	ret_struct.gpu_combo4 =
+	dlpt_sram_layout_ptr->peak_power_combo_table_gpu[4].combopeakpowerin_mw;
+
+
+	ret_struct.cpu_combo0 =
+	dlpt_sram_layout_ptr->peak_power_combo_table_cpu[0].combopeakpowerin_mw;
+	ret_struct.cpu_combo1 =
+	dlpt_sram_layout_ptr->peak_power_combo_table_cpu[1].combopeakpowerin_mw;
+	ret_struct.cpu_combo2 =
+	dlpt_sram_layout_ptr->peak_power_combo_table_cpu[2].combopeakpowerin_mw;
+	ret_struct.cpu_combo3 =
+	dlpt_sram_layout_ptr->peak_power_combo_table_cpu[3].combopeakpowerin_mw;
+	ret_struct.cpu_combo4 =
+	dlpt_sram_layout_ptr->peak_power_combo_table_cpu[4].combopeakpowerin_mw;
 
 	return &ret_struct;
 }
@@ -420,7 +464,7 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 		    min(count, strlen("show table gpu"))) == 0) {
 		print_peak_power_combo_table(
 			dlpt_sram_layout_ptr->peak_power_combo_table_gpu,
-			PEAK_POWER_COMBO_TABLE_GPU_IDX_ROW_COUNT);
+			GPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT);
 		return count;
 	}
 
@@ -428,7 +472,7 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 		    min(count, strlen("show table cpu"))) == 0) {
 		print_peak_power_combo_table(
 			dlpt_sram_layout_ptr->peak_power_combo_table_cpu,
-			PEAK_POWER_COMBO_TABLE_CPU_IDX_ROW_COUNT);
+			CPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT);
 		return count;
 	}
 
@@ -460,17 +504,67 @@ static ssize_t command_store(struct device *dev, struct device_attribute *attr,
 
 /*
  * -----------------------------------------------
+ * device node: model_option
+ * -----------------------------------------------
+ */
+static ssize_t model_option_show(struct device *dev, struct device_attribute *attr,
+			    char *buf)
+{
+	return snprintf(buf, PAGE_SIZE,
+	"favor_cpu: %d\nfavor_gpu: %d\nfavor_multiscene: %d\ncpu_avs: %d\ngpu_avs: %d\ngpu_curr_freq_power_calc: %d\nmo_status: %u\n",
+	dlpt_sram_layout_ptr->mo_info.mo_favor_cpu,
+	dlpt_sram_layout_ptr->mo_info.mo_favor_gpu,
+	dlpt_sram_layout_ptr->mo_info.mo_favor_multiscene,
+	dlpt_sram_layout_ptr->mo_info.mo_cpu_avs,
+	dlpt_sram_layout_ptr->mo_info.mo_gpu_avs,
+	dlpt_sram_layout_ptr->mo_info.mo_gpu_curr_freq_power_calc,
+	dlpt_sram_layout_ptr->mo_info.mo_status );
+
+}
+
+static ssize_t model_option_store(struct device *dev, struct device_attribute *attr,
+			     const char *buf, size_t count)
+{
+	char cmd[128];
+	int val;
+
+	if (sscanf(buf, "%32s %d", cmd, &val) != 2)
+		return -EINVAL;
+
+
+	#define _ASSIGN_MO_(_var_name_, _val_) \
+	do { \
+		if (strncmp(cmd, #_var_name_, sizeof(cmd)) == 0) \
+			dlpt_sram_layout_ptr->mo_info.mo_##_var_name_ = _val_; \
+	} while(0)
+
+	_ASSIGN_MO_(favor_cpu, val);
+	_ASSIGN_MO_(favor_gpu, val);
+	_ASSIGN_MO_(favor_multiscene, val);
+	_ASSIGN_MO_(cpu_avs, val);
+	_ASSIGN_MO_(gpu_avs, val);
+	_ASSIGN_MO_(gpu_curr_freq_power_calc, val);
+	_ASSIGN_MO_(status, val);
+
+	return count;
+
+}
+
+/*
+ * -----------------------------------------------
  * sysfs init
  * -----------------------------------------------
  */
 static DEVICE_ATTR_RW(mode);
 static DEVICE_ATTR_RW(hr_enable);
 static DEVICE_ATTR_RW(command);
+static DEVICE_ATTR_RW(model_option);
 
 static struct attribute *sysfs_attrs[] = {
 	&dev_attr_mode.attr,
 	&dev_attr_hr_enable.attr,
 	&dev_attr_command.attr,
+	&dev_attr_model_option.attr,
 	NULL,
 };
 
@@ -511,6 +605,19 @@ static void sysfs_device_deinit(void)
 	class_destroy(sysfs_class);
 	pr_info("[CG PPT] %s driver unloaded\n", DRIVER_NAME);
 }
+
+/*
+ * ========================================================
+ * Export API
+ * ========================================================
+ */
+void cgppt_set_mo_multiscene(int value)
+{
+	if(dlpt_sram_layout_ptr)
+		dlpt_sram_layout_ptr->mo_info.mo_favor_multiscene = value;
+}
+EXPORT_SYMBOL(cgppt_set_mo_multiscene);
+
 
 /*
  * ========================================================
@@ -558,6 +665,7 @@ static enum hrtimer_restart hr_timer_callback(struct hrtimer *timer)
 		trace_cg_ppt_status_info(get_cg_ppt_status_info());
 		trace_cg_ppt_freq_info(get_cg_ppt_freq_info());
 		trace_cg_ppt_power_info(get_cg_ppt_power_info());
+		trace_cg_ppt_combo_info(get_cg_ppt_combo_info());
 
 		hrtimer_forward_now(&hr_timer, hr_timer_interval_ns);
 		return HRTIMER_RESTART;
