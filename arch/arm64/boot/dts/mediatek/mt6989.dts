@@ -13794,8 +13794,8 @@
 			dramc-ver = <2>;
 			slc-ver = <3>;
 			/* 0: dram ebg, 1:emi_freq, 2: DRAMC_DCM_CTRL 3:chn_emi_low_effi */
-			/* 4: SLC, 5: DRAMC BUS MON trigger */
-			met-emi-support-list = <0x32>;
+			/* 4: SLC, 5: DRAMC BUS MON trigger, 6: SSPM register write */
+			met-emi-support-list = <0x72>;
 			cen-emi-reg-base = <0x10219000 0x1021d000>;
 			cen-emi-reg-size = <0x1000>;
 			chn-emi-reg-base = <0x10235000 0x10245000 0x10255000 0x10265000>;
