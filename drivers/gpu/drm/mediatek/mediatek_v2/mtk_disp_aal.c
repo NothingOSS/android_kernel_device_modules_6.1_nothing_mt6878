@@ -504,20 +504,24 @@ static int mtk_drm_ioctl_aal_eventctl_impl(struct mtk_ddp_comp *comp, void *data
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	int ret = 0;
-	int *enabled = (int *)data;
-	int bypass = !(*enabled);
+	unsigned int events = *(unsigned int *)data;
+	int bypass = !!(events & AAL_EVENT_STOP);
+	int enable = !!(events & AAL_EVENT_EN);
 	int delay_trigger;
 
-	AALFLOW_LOG("%d\n", *enabled);
+	AALFLOW_LOG("0x%x\n", events);
 	DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
 	delay_trigger = atomic_read(&aal_data->primary_data->force_delay_check_trig);
-	if (*enabled) {
+	if (enable) {
 		mtk_drm_idlemgr_kick(__func__,
 				&comp->mtk_crtc->base, 0);
 		mtk_crtc_check_trigger(comp->mtk_crtc, delay_trigger, false);
 	}
-	if (atomic_read(&aal_data->primary_data->force_enable_irq))
+	if (atomic_read(&aal_data->primary_data->force_enable_irq)) {
+		enable = 1;
 		bypass = 0;
+	}
+	atomic_set(&aal_data->primary_data->interrupt_enabled, enable);
 	ret = mtk_aal_eventctl_bypass(comp, bypass);
 	DDP_MUTEX_UNLOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
 
@@ -915,7 +919,8 @@ static bool disp_aal_read_single_hist(struct mtk_ddp_comp *comp)
 			aal_data->primary_data->hist.aal0_yHist[i] = readl(comp->regs +
 					DISP_Y_HISTOGRAM_00 + (i << 2));
 		}
-		if (aal_data->data->mdp_aal_ghist_support) {
+		if (aal_data->data->mdp_aal_ghist_support &&
+			aal_data->primary_data->aal_fo->mtk_dre30_support) {
 			aal_data->primary_data->hist.mdp_aal_ghist_valid = 1;
 			for (i = 0; i < AAL_HIST_BIN; i++) {
 				aal_data->primary_data->hist.mdp_aal0_maxHist[i] = readl(dre3_va +
@@ -954,7 +959,8 @@ static bool disp_aal_read_single_hist(struct mtk_ddp_comp *comp)
 			aal_data->primary_data->hist.aal1_yHist[i] = readl(comp->regs +
 					DISP_Y_HISTOGRAM_00 + (i << 2));
 		}
-		if (aal_data->data->mdp_aal_ghist_support) {
+		if (aal_data->data->mdp_aal_ghist_support &&
+			aal_data->primary_data->aal_fo->mtk_dre30_support) {
 			aal_data->primary_data->hist.mdp_aal_ghist_valid = 1;
 			for (i = 0; i < AAL_HIST_BIN; i++) {
 				aal_data->primary_data->hist.mdp_aal1_maxHist[i] = readl(dre3_va +

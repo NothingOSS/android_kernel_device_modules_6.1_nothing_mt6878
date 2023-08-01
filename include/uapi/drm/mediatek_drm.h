@@ -1634,6 +1634,11 @@ struct mtk_pq_relay_enable {
 	uint32_t relay_engines;
 };
 
+enum mtk_pq_aal_eventctl {
+	AAL_EVENT_EN = 0x1,
+	AAL_EVENT_STOP = 0x2,
+};
+
 #define GET_PANELS_STR_LEN 64
 #define MAX_CRTC_CNT 10
 struct mtk_drm_panels_info {
