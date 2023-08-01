@@ -50,6 +50,9 @@
 static struct drm_device *g_drm_dev;
 static int mtk_aal_sof_irq_trigger(void *data);
 
+static bool set_partial_update;
+static unsigned int roi_height;
+
 enum AAL_UPDATE_HIST {
 	UPDATE_NONE = 0,
 	UPDATE_SINGLE,
@@ -743,8 +746,14 @@ static void mtk_aal_config(struct mtk_ddp_comp *comp,
 		wake_up_interruptible(&aal_data->primary_data->size_wq);
 		AALFLOW_LOG("size available: (w,h)=(%d,%d)+\n", width, height);
 	}
-	val = (width << 16) | (height);
-	out_val = (out_width << 16) | height;
+
+	if (!set_partial_update) {
+		val = (width << 16) | (height);
+		out_val = (out_width << 16) | height;
+	} else {
+		val = (width << 16) | roi_height;
+		out_val = (out_width << 16) | roi_height;
+	}
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_AAL_SIZE, val, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1292,6 +1301,8 @@ static void disp_aal_dre3_config(struct mtk_ddp_comp *comp,
 		dre3_pa + MDP_AAL_TILE_02,
 		(init_regs->blk_cnt_y_end << (aal_data->data->bitShift)) |
 		init_regs->blk_cnt_y_start, ~0);
+
+	mtk_dmdp_aal_primary_data_update(aal_data->comp_dmdp_aal, init_regs);
 #endif
 	/* Change to Local DRE version */
 	if (debug_bypass_alg_mode)
@@ -4149,6 +4160,33 @@ static int mtk_aal_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 	return ret;
 }
 
+static int mtk_disp_aal_set_partial_update(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+{
+	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, true);
+
+	DDPDBG("%s set partial update, height:%d, enable:%d\n",
+			mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+	set_partial_update = enable;
+	roi_height = partial_roi.height;
+
+	if (set_partial_update) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_AAL_SIZE, roi_height, 0x0FFF);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_AAL_OUTPUT_SIZE, roi_height, 0x0FFF);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_AAL_SIZE, full_height, 0x0FFF);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_AAL_OUTPUT_SIZE, full_height, 0x0FFF);
+	}
+
+	return 0;
+}
+
 static const struct mtk_ddp_comp_funcs mtk_disp_aal_funcs = {
 	.config = mtk_aal_config,
 	.first_cfg = mtk_aal_first_cfg,
@@ -4164,6 +4202,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_aal_funcs = {
 	.pq_frame_config = mtk_aal_pq_frame_config,
 	.pq_ioctl_transact = mtk_aal_pq_ioctl_transact,
 	.mutex_sof_irq = disp_aal_on_start_of_frame,
+	.partial_update = mtk_disp_aal_set_partial_update,
 };
 
 static int mtk_disp_aal_bind(struct device *dev, struct device *master,

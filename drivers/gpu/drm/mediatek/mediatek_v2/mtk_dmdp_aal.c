@@ -66,6 +66,9 @@ struct mtk_dmdp_aal_data {
 	u32 block_info_00_mask;
 };
 
+static bool set_partial_update;
+static unsigned int roi_height;
+
 struct aal_backup { /* structure for backup AAL register value */
 	unsigned int DRE_MAPPING;
 	unsigned int DRE_BLOCK_INFO_00;
@@ -102,6 +105,11 @@ struct mtk_disp_mdp_primary {
 	atomic_t initialed;//g_aal_initialed
 	int dre30_support;//g_dre30_support
 	struct aal_backup backup;//g_aal_backup
+	int blk_num_y_start;
+	int blk_num_y_end;
+	int blk_cnt_y_start;
+	int blk_cnt_y_end;
+	int dre_blk_height;
 };
 
 struct mtk_disp_mdp_aal_tile_overhead {
@@ -269,8 +277,13 @@ static void mtk_dmdp_aal_config(struct mtk_ddp_comp *comp,
 		out_width = width;
 	}
 
-	val = (width << 16) | height;
-	out_val = (out_width << 16) | height;
+	if (!set_partial_update) {
+		val = (width << 16) | height;
+		out_val = (out_width << 16) | height;
+	} else {
+		val = (width << 16) | roi_height;
+		out_val = (out_width << 16) | roi_height;
+	}
 
 	DDPINFO("%s: 0x%08x\n", __func__, val);
 
@@ -628,6 +641,85 @@ static void mtk_dmdp_aal_unprepare(struct mtk_ddp_comp *comp)
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 
+static void mtk_dmdp_aal_update_pu_region_setting(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi)
+{
+	int roi_height_y_start;
+	int roi_height_y_end;
+	int blk_height;
+	int blk_num_y_start;
+	int blk_num_y_end;
+	int blk_cnt_y_start;
+	int blk_cnt_y_end;
+	unsigned int blk_y_start_idx;
+	unsigned int blk_y_end_idx;
+
+	struct mtk_dmdp_aal *dmdp_aal = comp_to_dmdp_aal(comp);
+
+	roi_height_y_start = partial_roi.y;
+	roi_height_y_end = partial_roi.y + partial_roi.height -1;
+	blk_height = dmdp_aal->primary_data->dre_blk_height;
+
+	blk_y_start_idx = roi_height_y_start / blk_height;
+	blk_y_end_idx = roi_height_y_end / blk_height;
+
+	if (set_partial_update) {
+		// blk_num_y
+		blk_num_y_start = blk_y_start_idx;
+		blk_num_y_end = blk_y_end_idx;
+
+		// blk_cnt_y
+		blk_cnt_y_start = roi_height_y_start - (blk_height * blk_y_start_idx);
+		blk_cnt_y_end = roi_height_y_end - (blk_height * blk_y_end_idx);
+	} else {
+		// blk_num_y
+		blk_num_y_start = dmdp_aal->primary_data->blk_num_y_start;
+		blk_num_y_end = dmdp_aal->primary_data->blk_num_y_end;
+
+		// blk_cnt_y
+		blk_cnt_y_start = dmdp_aal->primary_data->blk_cnt_y_start;
+		blk_cnt_y_end = dmdp_aal->primary_data->blk_cnt_y_end;
+	}
+
+	DDPDBG("blk_num_y_start: %d, blk_num_y_end: %d, blk_cnt_y_start: %d, blk_cnt_y_end: %d\n",
+			blk_num_y_start, blk_num_y_end, blk_cnt_y_start, blk_cnt_y_end);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_TILE_00,
+		(blk_num_y_end << 5) | blk_num_y_start, 0x3FF);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_TILE_02,
+		(blk_cnt_y_end << 16) | blk_cnt_y_start, ~0);
+}
+
+static int mtk_dmdp_aal_set_partial_update(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+{
+	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, true);
+
+	DDPDBG("%s set partial update(enable: %d), roi: (x: %d, y: %d, width: %d, height: %d)\n",
+			mtk_dump_comp_str(comp), enable,
+			partial_roi.x, partial_roi.y, partial_roi.width, partial_roi.height);
+
+	set_partial_update = enable;
+	roi_height = partial_roi.height;
+
+	if (set_partial_update) {
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_SIZE,
+				roi_height, 0x0FFFF);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DMDP_AAL_OUTPUT_SIZE, roi_height, 0x0FFFF);
+	} else {
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_SIZE,
+				full_height, 0x0FFFF);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DMDP_AAL_OUTPUT_SIZE, full_height, 0x0FFFF);
+	}
+
+	mtk_dmdp_aal_update_pu_region_setting(comp, handle, partial_roi);
+
+	return 0;
+}
+
 static const struct mtk_ddp_comp_funcs mtk_dmdp_aal_funcs = {
 	.config = mtk_dmdp_aal_config,
 	.first_cfg = mtk_dmdp_aal_first_cfg,
@@ -639,6 +731,7 @@ static const struct mtk_ddp_comp_funcs mtk_dmdp_aal_funcs = {
 	.config_overhead = mtk_disp_mdp_aal_config_overhead,
 	.config_overhead_v = mtk_disp_mdp_aal_config_overhead_v,
 	.io_cmd = mtk_dmdp_aal_io_cmd,
+	.partial_update = mtk_dmdp_aal_set_partial_update,
 };
 
 static int mtk_dmdp_aal_bind(struct device *dev, struct device *master,
@@ -720,6 +813,18 @@ void mtk_dmdp_aal_regdump(struct mtk_ddp_comp *comp)
 		}
 		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(dmdp_aal->companion));
 	}
+}
+
+void mtk_dmdp_aal_primary_data_update(struct mtk_ddp_comp *comp,
+		const struct DISP_AAL_INITREG *init_regs)
+{
+	struct mtk_dmdp_aal *dmdp_aal = comp_to_dmdp_aal(comp);
+
+	dmdp_aal->primary_data->dre_blk_height = init_regs->dre_blk_height;
+	dmdp_aal->primary_data->blk_num_y_start = init_regs->blk_num_y_start;
+	dmdp_aal->primary_data->blk_num_y_end = init_regs->blk_num_y_end;
+	dmdp_aal->primary_data->blk_cnt_y_start = init_regs->blk_cnt_y_start;
+	dmdp_aal->primary_data->blk_cnt_y_end = init_regs->blk_cnt_y_end;
 }
 
 static int mtk_dmdp_aal_probe(struct platform_device *pdev)
