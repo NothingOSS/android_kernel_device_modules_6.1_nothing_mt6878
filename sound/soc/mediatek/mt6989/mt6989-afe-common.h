@@ -592,6 +592,7 @@ struct mt6989_afe_private {
 	int mtkaif_dmic;
 	int mtkaif_dmic_ch34;
 	int mtkaif_adda6_only;
+	unsigned int audio_r_miso1_enable;
 	/* add for vs1 voter */
 	/* adda dl/ul is on */
 	bool is_adda_dl_on;

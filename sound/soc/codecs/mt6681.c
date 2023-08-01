@@ -1329,6 +1329,7 @@ static void mt6681_mtkaif_tx_enable(struct mt6681_priv *priv)
 					0x1 << MT6681_MTKAIFV4_TXIF_FOUR_CHANNEL_SFT |
 					rate << MT6681_MTKAIFV4_TXIF_INPUT_MODE_SFT;
 			regmap_write(priv->regmap, MT6681_AFE_ADDA6_MTKAIFV4_TX_CFG0, value);
+			regmap_write(priv->regmap, MT6681_AFE_MTKAIF_MUX_CFG_H, 0x8);
 		} else {
 			// regmap_update_bits(priv->regmap, MT6681_AFE_MTKAIFV4_TX_CFG,
 			//	MT6681_MTKAIFV4_TXIF_SEL_MASK_SFT,
@@ -8439,6 +8440,10 @@ static int mt_adc_3_event(struct snd_soc_dapm_widget *w,
 						   MT6681_AUDENC_PMU_CON47,
 						   RG_AUDADC3RINOHM_MASK_SFT,
 						   0x2 << RG_AUDADC3RINOHM_SFT);
+				regmap_update_bits(priv->regmap,
+						   MT6681_AUDENC_2_2_PMU_CON16,
+						   RG_AUD3DAC_IDAC_SEL_MASK_SFT,
+						   0x1 << RG_AUD3DAC_IDAC_SEL_SFT);
 			} else {
 				/*
 				 * Input resistor selection.
@@ -8450,11 +8455,11 @@ static int mt_adc_3_event(struct snd_soc_dapm_widget *w,
 						   MT6681_AUDENC_PMU_CON47,
 						   RG_AUDADC3RINOHM_MASK_SFT,
 						   0x4 << RG_AUDADC3RINOHM_SFT);
+				regmap_update_bits(priv->regmap,
+						   MT6681_AUDENC_2_2_PMU_CON16,
+						   RG_AUD3DAC_IDAC_SEL_MASK_SFT,
+						   0x0 << RG_AUD3DAC_IDAC_SEL_SFT);
 			}
-			regmap_update_bits(priv->regmap,
-					   MT6681_AUDENC_2_2_PMU_CON16,
-					   RG_AUD3DAC_IDAC_SEL_MASK_SFT,
-					   0x1 << RG_AUD3DAC_IDAC_SEL_SFT);
 			/* VICM loop control SW mode enable. */
 			value = 0x1 << RG_AUDADCHIGHDR_EN_SFT
 				| 0x1 << RG_AUDADCHIGHDRSW_SEL_SFT

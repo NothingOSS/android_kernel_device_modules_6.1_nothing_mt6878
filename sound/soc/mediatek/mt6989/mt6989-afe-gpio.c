@@ -117,12 +117,23 @@ static int mt6989_afe_gpio_adda_dl(struct mtk_base_afe *afe, bool enable)
 
 static int mt6989_afe_gpio_adda_ul(struct mtk_base_afe *afe, bool enable)
 {
-	if (enable)
-		return mt6989_afe_gpio_select(afe,
-					      MT6989_AFE_GPIO_DAT_MISO0_ON);
-	else
-		return mt6989_afe_gpio_select(afe,
-					      MT6989_AFE_GPIO_DAT_MISO0_OFF);
+	struct mt6989_afe_private *afe_priv = afe->platform_priv;
+
+	if (enable) {
+		if (afe_priv->audio_r_miso1_enable == 1) {
+			return mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_DAT_MISO1_ON);
+		} else {
+			return mt6989_afe_gpio_select(afe,
+						      MT6989_AFE_GPIO_DAT_MISO0_ON);
+		}
+	} else {
+		if (afe_priv->audio_r_miso1_enable == 1) {
+			return mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_DAT_MISO1_OFF);
+		} else {
+			return mt6989_afe_gpio_select(afe,
+						      MT6989_AFE_GPIO_DAT_MISO0_OFF);
+		}
+	}
 }
 
 static int mt6989_afe_gpio_adda_ch34_dl(struct mtk_base_afe *afe, bool enable)

@@ -390,6 +390,7 @@ static int mt6989_mt6681_init(struct snd_soc_pcm_runtime *rtd)
 		snd_soc_rtdcom_lookup(rtd, CODEC_MT6681_NAME);
 	struct snd_soc_dapm_context *dapm = &rtd->card->dapm;
 	struct mt6681_codec_ops ops;
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(codec_component);
 
 	if (!mt6681_probe_done) {
 		dev_info(afe->dev, "%s(), mt6681_probe_done == false, gonna return 0\n", __func__);
@@ -407,7 +408,7 @@ static int mt6989_mt6681_init(struct snd_soc_pcm_runtime *rtd)
 	mt6681_set_mtkaif_protocol(codec_component,
 				   MTKAIF_PROTOCOL_2_CLK_P2);
 	afe_priv->mtkaif_protocol = MTKAIF_PROTOCOL_2_CLK_P2;
-
+	afe_priv->audio_r_miso1_enable = priv->audio_r_miso1_enable;
 	/* mtkaif calibration */
 	mt6989_mt6681_mtkaif_calibration(rtd);
 
