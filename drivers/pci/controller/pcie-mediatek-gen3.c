@@ -1667,7 +1667,7 @@ u32 mtk_pcie_dump_link_info(int port)
 	      PCIE_CFG_HEADER(0, 0);
 	writel_relaxed(val, pcie_port->base + PCIE_CFGNUM_REG);
 	val = readl_relaxed(pcie_port->base + PCIE_AER_CO_STATUS);
-	if (val & (AER_CO_RE | AER_CO_BTLP)) {
+	if (val & AER_CO_RE) {
 		mtk_pcie_monitor_phy();
 		ret_val |= BIT(7);
 	}
@@ -2206,7 +2206,6 @@ static const struct mtk_pcie_data mt6985_data = {
 
 static int mtk_pcie_pre_init_6989(struct mtk_pcie_port *port)
 {
-	void __iomem *pextp_pwrctl;
 	u32 val;
 
 	/* Make PCIe RC wait apsrc_ack signal before access EMI */
@@ -2222,48 +2221,11 @@ static int mtk_pcie_pre_init_6989(struct mtk_pcie_port *port)
 	/* Set write completion timeout to 4ms */
 	writel_relaxed(WCPL_TIMEOUT_4MS, port->base + PCIE_WCPL_TIMEOUT);
 
-	/* Adjust pextp timer to match 32K sample clock */
-	if (port->port_num == 0)
-		pextp_pwrctl = port->pextpcfg + PEXTP_PWRCTL_0;
-	else
-		pextp_pwrctl = port->pextpcfg + PEXTP_PWRCTL_1;
-
-	val = readl_relaxed(pextp_pwrctl);
-	val &= ~PEXTP_TIMER_SET;
-	val |= CK_DIS_TIMER_32K;
-	writel_relaxed(val, pextp_pwrctl);
-
-	return 0;
-}
-
-static int mtk_pcie_suspend_l12_6989(struct mtk_pcie_port *port)
-{
-	u32 val;
-
-	/* Set CLKREQ sample clock rate to 32K */
-	val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
-	val |= CLKREQ_SAMPLE_CON;
-	writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
-
-	return 0;
-}
-
-static int mtk_pcie_resume_l12_6989(struct mtk_pcie_port *port)
-{
-	u32 val;
-
-	/* Set CLKREQ sample clock rate to 26M */
-	val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
-	val &= ~CLKREQ_SAMPLE_CON;
-	writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
-
 	return 0;
 }
 
 static const struct mtk_pcie_data mt6989_data = {
 	.pre_init = mtk_pcie_pre_init_6989,
-	.suspend_l12 = mtk_pcie_suspend_l12_6989,
-	.resume_l12 = mtk_pcie_resume_l12_6989,
 };
 
 static const struct of_device_id mtk_pcie_of_match[] = {
