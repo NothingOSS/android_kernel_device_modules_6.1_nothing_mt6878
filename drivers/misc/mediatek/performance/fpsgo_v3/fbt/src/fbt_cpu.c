@@ -4349,9 +4349,9 @@ int Test_fbt_get_separatecap(int separate_enable, long *cl_loading,
 	unsigned int blc_wt_n = 0;
 
 	//change max_cap_capacity here
-	t_cpu = nsec_to_100usec(t_cpu);
-	target_time = nsec_to_100usec(target_time);
-	t_q2q = nsec_to_100usec(t_q2q);
+	t_cpu = nsec_to_100usec_ull(t_cpu);
+	target_time = nsec_to_100usec_ull(target_time);
+	t_q2q = nsec_to_100usec_ull(t_q2q);
 
 	max_cluster = clusnum - 1;
 	sec_cluster = clusnum - 2;
