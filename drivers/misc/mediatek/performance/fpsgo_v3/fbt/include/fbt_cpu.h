@@ -17,6 +17,12 @@ void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit);
 
 #if FPSGO_DYNAMIC_WL
 void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap);
+void fbt_cpufreq_cb_cap(int cid, int cap, unsigned long long *freq_lastest_ts,
+	unsigned long long *freq_prev_cb_ts, unsigned int *freq_lastest_obv,
+	unsigned int **freq_lastest_obv_cl, unsigned int **freq_lastest_is_cl_iso,
+	unsigned int *freq_lastest_idx, unsigned long long *freq_last_cb_ts,
+	unsigned int *freq_clus_obv, unsigned int *freq_clus_iso, unsigned int *freq_last_obv,
+	unsigned long long fake_time_ns);
 #else  // FPSGO_DYNAMIC_WL
 void fpsgo_ctrl2fbt_cpufreq_cb_exp(int cid, unsigned long freq);
 #endif  // FPSGO_DYNAMIC_WL
@@ -135,6 +141,12 @@ static inline void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit) { }
 static inline void fpsgo_ctrl2fbt_cpufreq_cb_exp(int cid,
 		unsigned long freq) { }
 static inline void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap) { }
+static inline void fbt_cpufreq_cb_cap(int cid, int cap, unsigned long long *freq_lastest_ts,
+	unsigned long long *freq_prev_cb_ts, unsigned int *freq_lastest_obv,
+	unsigned int **freq_lastest_obv_cl, unsigned int **freq_lastest_is_cl_iso,
+	unsigned int *freq_lastest_idx, unsigned long long *freq_last_cb_ts,
+	unsigned int *freq_clus_obv, unsigned int *freq_clus_iso, unsigned int *freq_last_obv,
+	unsigned long long fake_time_ns) { }
 static inline void fpsgo_ctrl2fbt_vsync(unsigned long long ts) { }
 int fpsgo_ctrl2fbt_switch_uclamp(int enable) { return 0; }
 static inline void fpsgo_comp2fbt_frame_start(struct render_info *thr,

@@ -476,6 +476,14 @@ void (*fpsgo_set_last_quota_fps_ori_fp)(int pid, unsigned long long bufId,
 	unsigned int target_fps_ori);
 EXPORT_SYMBOL(fpsgo_set_last_quota_fps_ori_fp);
 
+void (*fbt_cpufreq_cb_cap_fp)(int cid, int cap, unsigned long long *freq_lastest_ts,
+	unsigned long long *freq_prev_cb_ts, unsigned int *freq_lastest_obv,
+	unsigned int **freq_lastest_obv_cl, unsigned int **freq_lastest_is_cl_iso,
+	unsigned int *freq_lastest_idx, unsigned long long *freq_last_cb_ts,
+	unsigned int *freq_clus_obv, unsigned int *freq_clus_iso, unsigned int *freq_last_obv,
+	unsigned long long fake_time_ns);
+EXPORT_SYMBOL(fbt_cpufreq_cb_cap_fp);
+
 static unsigned long long nsec_to_100usec_ull(unsigned long long nsec)
 {
 	unsigned long long husec;
@@ -5008,7 +5016,6 @@ void set_fpsgo_testing_mode(int _test_mode)
 {
 	test_mode = _test_mode;
 }
-EXPORT_SYMBOL(set_fpsgo_testing_mode);
 
 
 int Test_fbt_get_loading_exp(int pid, unsigned long long buffer_id,
@@ -5485,7 +5492,12 @@ static void fbt_setting_reset(int reset)
 }
 
 #if FPSGO_DYNAMIC_WL
-void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap)
+void fbt_cpufreq_cb_cap(int cid, int cap, unsigned long long *freq_lastest_ts,
+	unsigned long long *freq_prev_cb_ts, unsigned int *freq_lastest_obv,
+	unsigned int **freq_lastest_obv_cl, unsigned int **freq_lastest_is_cl_iso,
+	unsigned int *freq_lastest_idx, unsigned long long *freq_last_cb_ts,
+	unsigned int *freq_clus_obv, unsigned int *freq_clus_iso, unsigned int *freq_last_obv,
+	unsigned long long fake_time_ns)
 {
 	unsigned long spinlock_flag_freq, spinlock_flag_loading;
 	unsigned int curr_obv = 0U, last_freq_cap = 0;
@@ -5499,59 +5511,68 @@ void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap)
 	if (cid >= cluster_num)
 		return;
 
-	curr_cb_ts = fpsgo_get_time();
+	if (!freq_lastest_ts || !freq_prev_cb_ts || !freq_lastest_obv || !freq_lastest_obv_cl ||
+		!freq_lastest_is_cl_iso || !freq_lastest_idx || !freq_last_cb_ts ||
+		!freq_clus_obv || !freq_clus_iso || !freq_last_obv)
+		return;
+
+	if (fake_time_ns)
+		curr_cb_ts = fake_time_ns;
+	else
+		curr_cb_ts = fpsgo_get_time();
+
 	new_ts = nsec_to_100usec_ull(curr_cb_ts);
 
 	curr_obv = cap * 100 >> 10;
 
 	spin_lock_irqsave(&freq_slock, spinlock_flag_freq);
 
-	if (clus_obv[cid] == curr_obv) {
+	if (freq_clus_obv[cid] == curr_obv) {
 		spin_unlock_irqrestore(&freq_slock, spinlock_flag_freq);
 		return;
 	}
 
 	spin_lock_irqsave(&loading_slock, spinlock_flag_loading);
-	if (last_cb_ts != 0) {
-		idx = lastest_idx;
+	if (*freq_last_cb_ts != 0) {
+		idx = *freq_lastest_idx;
 		idx = (idx + 1) >= LOADING_CNT ? 0 : (idx + 1);
 		if (idx < 0)
 			goto SKIP;
 		// unit: 100us
-		lastest_ts[idx] = new_ts;
-		prev_cb_ts[idx] = last_cb_ts;
-		lastest_obv[idx] = last_obv;
-		lastest_idx = idx;
+		freq_lastest_ts[idx] = new_ts;
+		freq_prev_cb_ts[idx] = *freq_last_cb_ts;
+		freq_lastest_obv[idx] = *freq_last_obv;
+		*freq_lastest_idx = idx;
 
-		if (lastest_obv_cl[idx] == NULL || lastest_is_cl_isolated[idx] == NULL)
+		if (freq_lastest_obv_cl[idx] == NULL || freq_lastest_is_cl_iso[idx] == NULL)
 			goto SKIP;
 
 		for (i = 0; i < cluster_num; i++) {
-			lastest_obv_cl[idx][i] = clus_obv[i];
-			lastest_is_cl_isolated[idx][i] = clus_status[i];
+			freq_lastest_obv_cl[idx][i] = freq_clus_obv[i];
+			freq_lastest_is_cl_iso[idx][i] = freq_clus_iso[i];
 		}
 	}
 
 SKIP:
-	last_freq_cb_ts_100us = last_cb_ts;
-	last_freq_cap = last_obv;
-	last_cb_ts = new_ts;
+	last_freq_cb_ts_100us = *freq_last_cb_ts;
+	last_freq_cap = *freq_last_cb_ts;
+	*freq_last_cb_ts = new_ts;
 	spin_unlock_irqrestore(&loading_slock, spinlock_flag_loading);
 
-	clus_obv[cid] = curr_obv;
+	freq_clus_obv[cid] = curr_obv;
 	for (i = 0; i < cluster_num; i++) {
-		clus_status[i] = fbt_is_cl_isolated(i);
+		freq_clus_iso[i] = fbt_is_cl_isolated(i);
 
-		if (clus_status[i]) {
+		if (freq_clus_iso[i]) {
 			// fpsgo_systrace_c_fbt_debug(-100, 0, i, "clus_iso");
 			continue;
 		}
 
 		// Get the maximum capacity within diff. clusters.
-		if (curr_obv < clus_obv[i])
-			curr_obv = clus_obv[i];
+		if (curr_obv < freq_clus_obv[i])
+			curr_obv = freq_clus_obv[i];
 	}
-	last_obv = curr_obv;
+	*freq_last_obv = curr_obv;
 	spin_unlock_irqrestore(&freq_slock, spinlock_flag_freq);
 
 	xgf_trace("[%s] idx=%d, prev_cb_ts=%llu, lastest_ts=%llu, last_obv=%u",
@@ -5560,6 +5581,14 @@ SKIP:
 	fpsgo_systrace_c_fbt_debug(-100, 0, curr_obv, "last_obv");
 }
 
+void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap)
+{
+	fbt_cpufreq_cb_cap(cid, cap,
+		lastest_ts, prev_cb_ts, lastest_obv, lastest_obv_cl,
+		lastest_is_cl_isolated, &lastest_idx,
+		&last_cb_ts, clus_obv, clus_status,
+		&last_obv, 0ULL);
+}
 #else  // FPSGO_DYNAMIC_WL
 void fpsgo_ctrl2fbt_cpufreq_cb_exp(int cid, unsigned long freq)
 {
@@ -9002,6 +9031,11 @@ int __init fbt_cpu_init(void)
 	fbt_init_sjerk();
 
 	fbt_update_pwr_tbl();
+
+#if FPSGO_DYNAMIC_WL
+	fbt_cpufreq_cb_cap_fp = fbt_cpufreq_cb_cap;
+#else  // FPSGO_DYNAMIC_WL
+#endif  // FPSGO_DYNAMIC_WL
 
 
 	if (!fpsgo_sysfs_create_dir(NULL, "fbt", &fbt_kobj)) {
