@@ -182,6 +182,9 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_AXI_IF_CTRL		0x1a8
 #define PCIE_AXI0_SLV_RESP_MASK		BIT(12)
 
+#define PCIE_WCPL_TIMEOUT		0x340
+#define WCPL_TIMEOUT_4MS		0x4
+
 #define PCIE_MISC_CTRL_REG		0x348
 #define PCIE_DVFS_REQ_FORCE_ON		BIT(1)
 #define PCIE_MAC_SLP_DIS		BIT(7)
@@ -1506,13 +1509,18 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4a, 0x4b, 0x4c, 0x4d));
 	}
 
-	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, IP basic sta:%#x, int sta:%#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x\n",
+	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x\n",
 		port->port_num,
 		readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 		readl_relaxed(port->base + PCIE_LINK_STATUS_REG),
 		readl_relaxed(port->base + PCIE_ISTATUS_PM),
 		readl_relaxed(port->base + PCIE_BASIC_STATUS),
 		readl_relaxed(port->base + PCIE_INT_STATUS_REG),
+		readl_relaxed(port->base + PCIE_MSI_SET_BASE_REG +
+			      PCIE_MSI_SET_STATUS_OFFSET),
+		readl_relaxed(port->base + PCIE_MSI_SET_BASE_REG +
+			      PCIE_MSI_SET_OFFSET +
+			      PCIE_MSI_SET_STATUS_OFFSET),
 		readl_relaxed(port->base + PCIE_AXI0_ERR_ADDR_L),
 		readl_relaxed(port->base + PCIE_AXI0_ERR_INFO),
 		readl_relaxed(port->base + PCIE_RES_STATUS));
@@ -2211,12 +2219,15 @@ static int mtk_pcie_pre_init_6989(struct mtk_pcie_port *port)
 	val |= PCIE_AXI0_SLV_RESP_MASK;
 	writel_relaxed(val, port->base + PCIE_AXI_IF_CTRL);
 
+	/* Set write completion timeout to 4ms */
+	writel_relaxed(WCPL_TIMEOUT_4MS, port->base + PCIE_WCPL_TIMEOUT);
+
+	/* Adjust pextp timer to match 32K sample clock */
 	if (port->port_num == 0)
 		pextp_pwrctl = port->pextpcfg + PEXTP_PWRCTL_0;
 	else
 		pextp_pwrctl = port->pextpcfg + PEXTP_PWRCTL_1;
 
-	/* Adjust pextp timer to match 32K sample clock */
 	val = readl_relaxed(pextp_pwrctl);
 	val &= ~PEXTP_TIMER_SET;
 	val |= CK_DIS_TIMER_32K;
