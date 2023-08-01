@@ -100,6 +100,43 @@ static spinlock_t conn_dbg_log_lock;
 static struct conn_dbg_record *g_conn_dbg_record_p;
 static int conn_dbg_record_num;
 
+static void conn_dbg_dump_log(char *buf)
+{
+	struct conn_dbg_record *rec;
+	char temp[64];
+	unsigned long flag;
+
+	buf[0] = '\0';
+	buf[CONN_DBG_LOG_BUF_SIZE - 1] = '\0';
+	spin_lock_irqsave(&conn_dbg_log_lock, flag);
+	rec = g_conn_dbg_record_p;
+	while(rec != NULL) {
+		if (snprintf(temp, sizeof(temp), "[%llu.%06lu~%llu.%06lu][%llu]",
+			rec->first_sec, rec->first_nsec,
+			rec->last_sec, rec->last_nsec, rec->num) > 0) {
+			strncat(buf, temp, CONN_DBG_LOG_BUF_SIZE - strlen(buf) - 1);
+			strncat(buf, rec->log, CONN_DBG_LOG_BUF_SIZE - strlen(buf) - 1);
+			strncat(buf, "\n", CONN_DBG_LOG_BUF_SIZE - strlen(buf) - 1);
+		}
+		rec = rec->next;
+	}
+	spin_unlock_irqrestore(&conn_dbg_log_lock, flag);
+	buf[CONN_DBG_LOG_BUF_SIZE - 1] = '\0';
+}
+
+static ssize_t hw_monitor_show(
+	struct kobject *kobj,
+	struct kobj_attribute *attr,
+	char *buf)
+{
+	conn_dbg_dump_log(buf);
+	return strlen(buf);
+}
+
+static struct kobject *conn_kobj;
+static struct kobj_attribute hw_monitor_attr
+	= __ATTR(hw_monitor, 0664, hw_monitor_show, NULL);
+
 static void conn_dbg_get_local_time(u64 *sec, unsigned long *nsec)
 {
 	if (sec != NULL && nsec != NULL) {
@@ -117,6 +154,8 @@ int conn_dbg_add_log(enum conn_dbg_log_type type, const char *buf)
 	struct conn_dbg_record *rec, *last = NULL;
 	int ret = 0;
 	unsigned int len;
+	char *envp[] = { "ATTR=hw_monitor", NULL };
+	int notify = 0;
 
 	if (type >= CONN_DBG_LOG_TYPE_NUM || buf == NULL ||
 		strnlen(buf, CONN_DBG_MAX_LOG_LEN) == 0) {
@@ -174,57 +213,17 @@ int conn_dbg_add_log(enum conn_dbg_log_type type, const char *buf)
 	rec->num++;
 	rec->last_sec = sec;
 	rec->last_nsec = nsec;
+	notify = 1;
+
 exit:
 	spin_unlock_irqrestore(&conn_dbg_log_lock, flag);
+	if (notify && pConnDbgDev) {
+		ret = kobject_uevent_env(&(pConnDbgDev->kobj), KOBJ_CHANGE, envp);
+		pr_info("%s kobject_uevent_env ret = %d\n", __func__, ret);
+	}
 	return ret;
 }
 EXPORT_SYMBOL(conn_dbg_add_log);
-
-static void conn_dbg_dump_log(char *buf)
-{
-	struct conn_dbg_record *rec;
-	char temp[64];
-	unsigned long flag;
-
-	buf[0] = '\0';
-	buf[CONN_DBG_LOG_BUF_SIZE - 1] = '\0';
-	spin_lock_irqsave(&conn_dbg_log_lock, flag);
-	rec = g_conn_dbg_record_p;
-	while (rec != NULL) {
-		if (snprintf(temp, sizeof(temp), "[%llu.%06lu~%llu.%06lu][%llu]",
-			rec->first_sec, rec->first_nsec,
-			rec->last_sec, rec->last_nsec, rec->num) > 0) {
-			strncat(buf, temp, CONN_DBG_LOG_BUF_SIZE - strlen(buf) - 1);
-			strncat(buf, rec->log, CONN_DBG_LOG_BUF_SIZE - strlen(buf) - 1);
-			strncat(buf, "\n", CONN_DBG_LOG_BUF_SIZE - strlen(buf) - 1);
-		}
-		rec = rec->next;
-	}
-	spin_unlock_irqrestore(&conn_dbg_log_lock, flag);
-	buf[CONN_DBG_LOG_BUF_SIZE - 1] = '\0';
-}
-
-static ssize_t hw_monitor_show(
-	struct kobject *kobj,
-	struct kobj_attribute *attr,
-	char *buf)
-{
-	conn_dbg_dump_log(buf);
-	return strlen(buf);
-}
-
-static ssize_t hw_monitor_store(
-	struct kobject *kobj,
-	struct kobj_attribute *attr,
-	const char *buf,
-	size_t count)
-{
-	return 0;
-}
-
-static struct kobject *conn_kobj;
-static struct kobj_attribute hw_monitor_attr
-	= __ATTR(hw_monitor, 0664, hw_monitor_show, hw_monitor_store);
 
 static int conn_dbg_log_init(void)
 {
