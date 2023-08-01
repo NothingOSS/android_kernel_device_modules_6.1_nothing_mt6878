@@ -1895,7 +1895,7 @@ static const struct mtk_disp_ccorr_data mt6886_ccorr_driver_data = {
 
 static const struct mtk_disp_ccorr_data mt6989_ccorr_driver_data = {
 	.support_shadow     = false,
-	.need_bypass_shadow = false,
+	.need_bypass_shadow = true,
 };
 
 

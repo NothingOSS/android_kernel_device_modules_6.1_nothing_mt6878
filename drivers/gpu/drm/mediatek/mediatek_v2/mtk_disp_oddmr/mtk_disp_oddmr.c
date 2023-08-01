@@ -5343,7 +5343,7 @@ static const struct mtk_disp_oddmr_data mt6897_oddmr_driver_data = {
 };
 
 static const struct mtk_disp_oddmr_data mt6989_oddmr_driver_data = {
-	.need_bypass_shadow = false,
+	.need_bypass_shadow = true,
 	.is_od_support_table_update = false,
 	.is_support_rtff = false,
 	.is_od_support_hw_skip_first_frame = false,

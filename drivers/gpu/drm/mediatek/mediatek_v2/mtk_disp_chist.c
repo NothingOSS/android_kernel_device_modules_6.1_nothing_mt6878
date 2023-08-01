@@ -1309,7 +1309,7 @@ static const struct mtk_disp_chist_data mt6886_chist_driver_data = {
 
 static const struct mtk_disp_chist_data mt6989_chist_driver_data = {
 	.support_shadow = true,
-	.need_bypass_shadow = false,
+	.need_bypass_shadow = true,
 	.module_count = 2,
 	.color_format = DISP_CHIST_COLOR_FORMAT,
 	.max_channel = 3,

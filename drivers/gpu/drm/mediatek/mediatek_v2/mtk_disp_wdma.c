@@ -2116,7 +2116,7 @@ static const struct mtk_disp_wdma_data mt6989_wdma_driver_data = {
 	.aid_sel = &mtk_wdma_aid_sel_MT6989,
 	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6989,
 	.support_shadow = false,
-	.need_bypass_shadow = false,
+	.need_bypass_shadow = true,
 	.is_support_34bits = true,
 	.use_larb_control_sec = false,
 };

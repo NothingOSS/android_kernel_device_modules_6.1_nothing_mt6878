@@ -969,7 +969,7 @@ static const struct mtk_disp_rsz_data mt6985_rsz_driver_data = {
 static const struct mtk_disp_rsz_data mt6989_rsz_driver_data = {
 	.tile_length = 1660, .in_max_height = 4096,
 	.support_shadow = false,
-	.need_bypass_shadow = false,
+	.need_bypass_shadow = true,
 };
 
 static const struct mtk_disp_rsz_data mt6897_rsz_driver_data = {

@@ -1740,7 +1740,7 @@ static const struct mtk_disp_spr_data mt6985_spr_driver_data = {
 
 static const struct mtk_disp_spr_data mt6989_spr_driver_data = {
 	.support_shadow = false,
-	.need_bypass_shadow = false,
+	.need_bypass_shadow = true,
 	.version = MTK_SPR_V2,
 	.shrink_cfg = false,
 };

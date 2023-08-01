@@ -3298,7 +3298,7 @@ static const struct mtk_disp_color_data mt6989_color_driver_data = {
 			0x14013000, 0x14015000, 0x14016000},
 	.color_window = 0x40185E57,
 	.support_shadow = false,
-	.need_bypass_shadow = false,
+	.need_bypass_shadow = true,
 };
 
 static const struct of_device_id mtk_disp_color_driver_dt_match[] = {

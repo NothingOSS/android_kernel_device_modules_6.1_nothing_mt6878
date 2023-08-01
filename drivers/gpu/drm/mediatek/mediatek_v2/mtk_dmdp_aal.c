@@ -835,7 +835,7 @@ static const struct mtk_dmdp_aal_data mt6897_dmdp_aal_driver_data = {
 
 static const struct mtk_dmdp_aal_data mt6989_dmdp_aal_driver_data = {
 	.support_shadow = false,
-	.need_bypass_shadow = false,
+	.need_bypass_shadow = true,
 	.block_info_00_mask = 0xFFFFFFFF,
 };
 

@@ -4776,7 +4776,7 @@ static const struct mtk_disp_aal_data mt6886_aal_driver_data = {
 
 static const struct mtk_disp_aal_data mt6989_aal_driver_data = {
 	.support_shadow     = false,
-	.need_bypass_shadow = false,
+	.need_bypass_shadow = true,
 	.aal_dre_hist_start = 1536,
 	.aal_dre_hist_end   = 4604,
 	.aal_dre_gain_start = 4608,

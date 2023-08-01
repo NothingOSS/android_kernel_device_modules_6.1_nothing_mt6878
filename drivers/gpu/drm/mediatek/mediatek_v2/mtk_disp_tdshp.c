@@ -1088,7 +1088,7 @@ static const struct mtk_disp_tdshp_data mt6897_tdshp_driver_data = {
 
 static const struct mtk_disp_tdshp_data mt6989_tdshp_driver_data = {
 	.support_shadow = false,
-	.need_bypass_shadow = false,
+	.need_bypass_shadow = true,
 };
 
 static const struct of_device_id mtk_disp_tdshp_driver_dt_match[] = {
