@@ -6930,7 +6930,7 @@
 					0x0e080400 0x000c0600 0x00000006>;
 		};
 
-		dsi0: dsi@1420a000 {
+		dsi0: dsi0@1420a000 {
 			compatible = "mediatek,disp1_dsi0",
 					"mediatek,mt6989-dsi";
 			reg = <0 0x1420a000 0 0x1000>;
@@ -6943,7 +6943,7 @@
 			phy-names = "dphy";
 		};
 
-		dsi1: dsi@1420b000 {
+		dsi1: dsi1@1420b000 {
 			status = "disabled";
 			compatible = "mediatek,disp1_dsi1",
 					"mediatek,mt6989-dsi";
@@ -6957,7 +6957,7 @@
 			phy-names = "dphy";
 		};
 
-		dsi2: dsi@1420c000 {
+		dsi2: dsi2@1420c000 {
 			status = "disabled";
 			compatible = "mediatek,disp1_dsi2",
 					"mediatek,mt6989-dsi";
