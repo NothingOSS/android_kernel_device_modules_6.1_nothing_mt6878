@@ -1776,9 +1776,16 @@ static s32 rrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 		cache->line_bubble = tput_w - mf_src_w;
 		cache->max_size.width = tput_w >> cfg->bin_x;
 		cache->max_size.height = tput_h >> cfg->bin_y;
+		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
+			swap(cache->max_size.width, cache->max_size.height);
 	} else {
 		cache->line_bubble = max(cache->line_bubble, tput_w - mf_src_w);
-		cache_max_sz(cache, tput_w >> cfg->bin_x, tput_h >> cfg->bin_y);
+
+		tput_w = tput_w >> cfg->bin_x;
+		tput_h = tput_h >> cfg->bin_y;
+		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
+			swap(tput_w, tput_h);
+		cache_max_sz(cache, tput_w, tput_h);
 	}
 
 	/* calculate qos for later use */
