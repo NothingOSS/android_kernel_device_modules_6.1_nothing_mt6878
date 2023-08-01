@@ -258,10 +258,20 @@ int trusted_mem_page_based_alloc(enum TRUSTED_MEM_REQ_TYPE req_mem_type,
 }
 EXPORT_SYMBOL(trusted_mem_page_based_alloc);
 
-int trusted_mem_page_based_free(u64 handle)
+int trusted_mem_page_based_free(enum TRUSTED_MEM_REQ_TYPE req_mem_type, u64 handle)
 {
-	if (is_ffa_enabled() && (handle != 0))
-		return tmem_ffa_page_free(handle);
+	enum TRUSTED_MEM_TYPE mem_type = get_mem_type(req_mem_type);
+
+	if (!is_ffa_enabled() || (handle == 0))
+		return 0;
+
+	if (is_tee_mmap_by_page_enabled() &&
+		((mem_type == TRUSTED_MEM_SVP_PAGE) || (mem_type == TRUSTED_MEM_WFD_PAGE)))
+		return tmem_ffa_page_free(MTEE_MCHUNKS_SVP, handle);
+
+	if ((mem_type == TRUSTED_MEM_PROT_PAGE) || (mem_type == TRUSTED_MEM_SAPU_PAGE))
+		return tmem_ffa_page_free(MTEE_MCHUNKS_PROT, handle);
+
 	return 0;
 }
 EXPORT_SYMBOL(trusted_mem_page_based_free);

@@ -184,7 +184,8 @@ int tmem_ffa_page_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 		(mchunk_id == MTEE_MCHUNKS_SAPU_DATA_SHM)) {
 		/* set bit[31]=1 then ffa_lend will do retrieve_req */
 		ffa_args.flags = PAGED_BASED_FFA_FLAGS;
-	}
+	} else
+		ffa_args.flags = 0;
 	ffa_args.tag = 0;
 	ffa_args.g_handle = 0;
 	ffa_args.sg = sg_tbl->sgl;
@@ -207,8 +208,9 @@ int tmem_ffa_page_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 	return TMEM_OK;
 }
 
-int tmem_ffa_page_free(u64 handle)
+int tmem_ffa_page_free(enum MTEE_MCHUNKS_ID mchunk_id, u64 handle)
 {
+	struct ffa_mem_ops_args ffa_args;
 	int ret;
 
 	if (tmem_ffa_dev == NULL) {
@@ -218,13 +220,20 @@ int tmem_ffa_page_free(u64 handle)
 
 	mutex_lock(&tmem_block_mutex);
 
+	if ((mchunk_id == MTEE_MCHUNKS_PROT) ||
+		(mchunk_id == MTEE_MCHUNKS_SAPU_DATA_SHM)) {
+		/* set bit[31]=1 then ffa_lend will do retrieve_req */
+		ffa_args.flags = PAGED_BASED_FFA_FLAGS;
+	} else
+		ffa_args.flags = 0;
+
 	tmem_do_gettimeofday(&ffa_start_time);
-	ret = tmem_ffa_ops->mem_ops->memory_reclaim(handle, PAGED_BASED_FFA_FLAGS);
+	ret = tmem_ffa_ops->mem_ops->memory_reclaim(handle, ffa_args.flags);
 	if (ret) {
 		pr_info("page-based, handle=0x%llx failed to FF-A reclaim, ret=%d\n",
 			handle, ret);
-		mutex_unlock(&tmem_block_mutex);
-		return TMEM_KPOOL_FFA_PAGE_FAILED;
+//		mutex_unlock(&tmem_block_mutex);
+//		return TMEM_KPOOL_FFA_PAGE_FAILED;
 	}
 	tmem_do_gettimeofday(&ffa_end_time);
 	pr_debug("%s FF-A flow spend time: %d ns\n", __func__, ffa_get_spend_nsec());

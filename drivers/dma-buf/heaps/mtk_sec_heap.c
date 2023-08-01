@@ -531,6 +531,8 @@ static void tmem_page_free(struct dma_buf *dmabuf)
 		kfree(cache_data);
 	}
 
+	trusted_mem_page_based_free(sec_heap->tmem_type, buffer->sec_handle);
+
 	if (tmem_api_ver == 2)
 		ret = page_base_free_v2(sec_heap, buffer);
 	else
@@ -540,6 +542,7 @@ static void tmem_page_free(struct dma_buf *dmabuf)
 		pr_err("%s fail, heap:%u\n", __func__, sec_heap->heap_type);
 		return;
 	}
+
 	sg_free_table(&buffer->sg_table);
 	kfree(buffer);
 }
