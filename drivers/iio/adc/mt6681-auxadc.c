@@ -11,6 +11,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
+#include <linux/regulator/consumer.h>
 
 #include <dt-bindings/iio/mt635x-auxadc.h>
 
@@ -32,6 +33,8 @@ struct mt6681_auxadc_device {
 	struct iio_chan_spec *iio_chans;
 	struct mutex lock;
 	const struct auxadc_info *info;
+	/* regulator */
+	struct regulator *reg_vaud18;
 };
 
 /*
@@ -124,9 +127,9 @@ static const struct auxadc_regs mt6681_auxadc_regs_tbl[] = {
 #define MT6681_HK_TOP_WKEY_H                                  0xf95
 static const unsigned int mt6681_rst_setting[][3] = {
 	{
-		MT6681_HK_TOP_WKEY_L, 0xFF, 0x38,
+		MT6681_HK_TOP_WKEY_L, 0xFF, 0x81,
 	}, {
-		MT6681_HK_TOP_WKEY_H, 0xFF, 0x63,
+		MT6681_HK_TOP_WKEY_H, 0xFF, 0x66,
 	}, {
 		MT6681_HK_TOP_RST_CON0, 0x9, 0x9,
 	}, {
@@ -211,7 +214,22 @@ static int mt6681_auxadc_read_raw(struct iio_dev *indio_dev,
 	int auxadc_out = 0;
 	int ret;
 	static DEFINE_RATELIMIT_STATE(ratelimit, 1 * HZ, 5);
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
+	int status = 0;
+#endif
 
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
+	if (!IS_ERR(adc_dev->reg_vaud18)) {
+		status = regulator_enable(adc_dev->reg_vaud18);
+		if (status)
+			dev_info(adc_dev->dev, "%s() failed to enable vaud18(%d)\n",
+				__func__, status);
+	}
+#else
+	regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
+		   RG_LDO_VAUD18_EN_0_MASK_SFT,
+		   0x1 << RG_LDO_VAUD18_EN_0_SFT);
+#endif
 	if (chan->channel == AUXADC_CHIP_TEMP)
 		regmap_update_bits(adc_dev->regmap, MT6681_RG_TSENS_EN_ADDR,
 				   0x1 << MT6681_RG_TSENS_EN_SHIFT,
@@ -252,8 +270,19 @@ static int mt6681_auxadc_read_raw(struct iio_dev *indio_dev,
 			auxadc_chan->ch_name, auxadc_chan->ch_num,
 			auxadc_out, *val);
 	}
-
 err:
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
+	if (!IS_ERR(adc_dev->reg_vaud18)) {
+		status = regulator_disable(adc_dev->reg_vaud18);
+		if (status)
+			dev_info(adc_dev->dev, "%s() failed to enable vaud18(%d)\n",
+				__func__, status);
+	}
+#else
+	regmap_update_bits(priv->regmap, MT6681_LDO_VAUD18_CON0,
+		   RG_LDO_VAUD18_EN_0_MASK_SFT,
+		   0x0 << RG_LDO_VAUD18_EN_0_SFT);
+#endif
 	return ret;
 }
 
@@ -359,6 +388,16 @@ static int auxadc_parse_dt(struct mt6681_auxadc_device *adc_dev,
 
 		iio_chan++;
 	}
+	/* get pmic regulator handler */
+#if IS_ENABLED(CONFIG_REGULATOR_MT6681)
+	adc_dev->reg_vaud18 = devm_regulator_get_optional(adc_dev->dev, "reg-vaud18");
+	ret = IS_ERR(adc_dev->reg_vaud18);
+	if (ret) {
+		dev_info(adc_dev->dev, "%s() Get regulator failed (%d)\n",
+			 __func__, ret);
+		return ret;
+	}
+#endif
 
 	return 0;
 }
