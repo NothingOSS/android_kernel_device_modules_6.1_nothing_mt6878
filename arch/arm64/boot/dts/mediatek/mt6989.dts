@@ -7614,7 +7614,8 @@
 					<0 0x15130000 0 0x00100>,	/* 18 IMGSYS_DIP_TOP_NR */
 					<0 0x15170000 0 0x00100>,	/* 19 IMGSYS_DIP_TOP_NR2 */
 					<0 0x15710000 0 0x00100>,	/* 20 IMGSYS_TRAW_DIP1 */
-					<0 0x15330000 0 0x10000>;	/* 21 IMGSYS_ME_MMG */
+					<0 0x15330000 0 0x10000>,	/* 21 IMGSYS_ME_MMG */
+					<0 0x15780000 0 0x00100>;	/* 22 IMGSYS_VCORE */
 			mediatek,hcp = <&hcp>;
 			mediatek,larbs = <&smi_larb9>,
 					<&smi_larb18>,
@@ -7622,6 +7623,7 @@
 					<&smi_img_sub_comm0>,
 					<&smi_img_sub_comm3>;
 			mediatek,imgsys-cmdq = <&imgsys_cmdq>;
+			mediatek,imgsys-ddr-en = <4>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			imgsys-supply = <&gce_m_sec>;
 			mboxes =
