@@ -378,8 +378,7 @@ static void calc_binning_rot(struct mml_frame_config *cfg, struct mml_comp_confi
 	u32 w = dest->crop.r.width, h = dest->crop.r.height, i;
 	u32 outw = dest->data.width, outh = dest->data.height;
 	struct mml_crop *crop;
-	bool binning = rrot_binning &&
-		!MML_FMT_IS_RGB(src->format) && !MML_FMT_IS_ARGB(src->format);
+	bool binning = rrot_binning && MML_FMT_YUV420(src->format);
 
 	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
 		swap(outw, outh);
@@ -1327,6 +1326,7 @@ static void rrot_config_left(struct mml_tile_engine *tile)
 
 static void rrot_config_right(struct mml_tile_engine *tile)
 {
+	u32 out_left = tile->in.xs & 0x1;
 	u32 in_xs = tile->in.xs + (tile->in.xe - tile->in.xs + 1) / 2;
 	u32 out_w = round_up(tile->out.xe - tile->out.xs + 1, 2);
 
@@ -1334,6 +1334,7 @@ static void rrot_config_right(struct mml_tile_engine *tile)
 	tile->luma.x = 0;
 	tile->in.xs = round_up(in_xs, 32);
 	tile->out.xs += tile->in.xs - in_xs;
+	tile->out.xe += out_left;
 }
 
 static void rrot_config_top(struct mml_tile_engine *tile)
@@ -1353,6 +1354,7 @@ static void rrot_config_top(struct mml_tile_engine *tile)
 
 static void rrot_config_bottom(struct mml_tile_engine *tile)
 {
+	u32 out_top = tile->in.ys & 0x1;
 	u32 in_ys = tile->in.ys + (tile->in.ye - tile->in.ys + 1) / 2;
 	u32 out_h = round_up(tile->out.ye - tile->out.ys + 1, 2);
 
@@ -1360,6 +1362,7 @@ static void rrot_config_bottom(struct mml_tile_engine *tile)
 	tile->luma.y = 0;
 	tile->in.ys = round_up(in_ys, 16);
 	tile->out.ys += tile->in.ys - in_ys;
+	tile->out.ye += out_top;
 }
 
 static void rrot_calc_unbin(struct mml_frame_config *cfg, struct mml_tile_engine *tile)

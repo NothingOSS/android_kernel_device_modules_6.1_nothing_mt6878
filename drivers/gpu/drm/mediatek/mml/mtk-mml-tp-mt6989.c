@@ -802,10 +802,12 @@ static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache
 	}
 
 	/* binning case */
-	if ((cropw >> 1) > destw)
-		srcw = srcw >> 1;
-	if ((croph >> 1) > desth)
-		srch = srch >> 1;
+	if (MML_FMT_YUV420(info->src.format)) {
+		if ((cropw >> 1) > destw)
+			srcw = srcw >> 1;
+		if ((croph >> 1) > desth)
+			srch = srch >> 1;
+	}
 
 	/* not support if exceeding max throughput
 	 * pixel per-pipe is:
