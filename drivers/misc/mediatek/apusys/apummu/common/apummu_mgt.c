@@ -163,7 +163,8 @@ static void free_memory(struct kref *kref)
 	g_ammu_table_set.is_free_job_set = true;
 #endif
 	if (g_adv->remote.is_general_SLB_alloc) {
-		apummu_remote_mem_free_pool(g_adv);
+		/* MDW will close session in IPI handler in some case */
+		// apummu_remote_mem_free_pool(g_adv);
 		apummu_free_general_SLB(g_adv);
 	}
 
