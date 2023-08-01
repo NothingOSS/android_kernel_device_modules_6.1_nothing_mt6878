@@ -10601,10 +10601,10 @@
 			os-allow-bw = <1>;
 			vdec-max-w = <4096>;
 			bandwidth-table = // avg occupy measure from (4K60,416MHz) scale to 218MHz
-				<4 0 2750>,
-				<5 0 1390>,
-				<46 1 1381>,
-				<47 1 225>;
+				<4 0 1900>,
+				<5 0 0>,
+				<46 1 0>,
+				<47 1 0>;
 		};
 
 		venc@17020000 {
