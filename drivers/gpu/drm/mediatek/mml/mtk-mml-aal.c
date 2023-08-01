@@ -1173,6 +1173,7 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 	blk_cnt_y_start = tile_pxl_y_start - (blk_num_y_start * dre_blk_height);
 	blk_cnt_y_end = tile_pxl_y_end - (blk_num_y_end * dre_blk_height);
 
+	/* for n+1 tile*/
 	if (!idx) {
 		if (task->config->dual && ccfg->pipe)
 			aal_frm->out_hist_xs = tile->in.xs + act_win_x_end + 1;

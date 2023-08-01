@@ -363,8 +363,8 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			else
 				hdr->cut_pos_x = task->config->frame_tile_sz.width;
 
-			hdr->crop_height = task->config->frame_tile_sz.width;
-			hdr->crop_width = task->config->frame_tile_sz.height;
+			hdr->crop_height = task->config->frame_tile_sz.height;
+			hdr->crop_width = task->config->frame_tile_sz.width;
 			hdr->pipe = ccfg->pipe;
 			hdr->out_idx = ccfg->node->out_idx;
 
@@ -615,11 +615,9 @@ static s32 hdr_config_tile(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL,
 		base_pa + hdr->data->reg_table[HDR_HIST_CTRL_1], hdr_hist_end_x, 0x0000ffff);
 
+	/* for n+1 tile*/
 	if (tile_cnt == 1) {
-		if (task->config->dual && ccfg->pipe)
-			hdr_frm->out_hist_xs = tile->in.xs + hdr_hist_end_x + 1;
-		else
-			hdr_frm->out_hist_xs = tile->out.xe + 1;
+		hdr_frm->out_hist_xs = 0;
 		hdr_first_tile = 1;
 		hdr_last_tile = 1;
 	} else if (!idx) {
@@ -747,6 +745,8 @@ static void hdr_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 		reuse, cache, &hdr_frm->labels[HDR_POLLGPR_0]);
 	mml_assign(pkt, idx_out + 1, (u32)(pa >> 32),
 		reuse, cache, &hdr_frm->labels[HDR_POLLGPR_1]);
+
+	cmdq_pkt_wfe(pkt, hdr->event_eof);
 
 	/* counter init to 0 */
 	cmdq_pkt_assign_command(pkt, idx_counter, 0);
@@ -1481,6 +1481,9 @@ static void hdr_histdone_cb(struct cmdq_cb_data data)
 		kref_read(&hdr->pq_task->ref),
 		hdr->pipe);
 
+	if ((mml_pq_debug_mode & MML_PQ_HIST_CHECK))
+		hdr_ir_histogram_check(hdr);
+
 	mml_pq_ir_hdr_readback(hdr->pq_task, hdr->frame_data, hdr->pipe,
 			&(hdr->hdr_hist[pipe]->va[offset/4]), hdr->jobid,
 			hdr->dual);
@@ -1501,9 +1504,6 @@ static void hdr_histdone_cb(struct cmdq_cb_data data)
 				__func__, hdr->hdr_hist[pipe]->va[56],
 				hdr->hdr_hist[pipe]->va[57]);
 	}
-
-	if ((mml_pq_debug_mode & MML_PQ_HIST_CHECK))
-		hdr_ir_histogram_check(hdr);
 
 	if (hdr->data->rb_mode == RB_EOF_MODE) {
 		mml_clock_lock(hdr->mml);
