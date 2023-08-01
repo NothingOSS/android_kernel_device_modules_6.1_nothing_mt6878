@@ -11838,6 +11838,9 @@
 			mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;
 			prebuilt-enable;
 			tf-high-addr = <0x3d533>;
+			event-debug;
+			event-dump-range = <0 383>;
+			event-clr-range = <0 268>;
 		};
 
 		gce_m_sec: gce-mbox-m-sec@1e990000 {
