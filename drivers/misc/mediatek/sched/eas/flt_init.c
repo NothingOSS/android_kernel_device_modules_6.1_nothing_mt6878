@@ -144,7 +144,7 @@ void flt_kh(unsigned int XHR[], int SS, int LA, unsigned int KK[], int ctp)
 static void flt_fei(int wl, int ctp)
 {
 	struct mtk_em_perf_state *ps = NULL;
-	int opp = -1, cpu, i = 0, GG = 0, KY = 0, GK = 0;
+	int opp = -1, cpu, i = 0, GG = 0, KY = 0, GK = 0, j = 0, pol = 0, HA = 0;
 	struct cpumask *gear_cpus;
 	unsigned int nr_gear, gear_idx, MF, MU, LF, LU, TT;
 	unsigned int XHR[TLO] = {0};
@@ -362,6 +362,26 @@ static void flt_fei(int wl, int ctp)
 			XHR[i] = (GG + (X_RR[i] >> 1)) / X_RR[i];
 		XHR[i] = clamp_t(unsigned int, XHR[i], 0, AMI);
 	}
+
+	for (i = 0; i < (XLO - 1); ++i) {
+		if (XU[i] >= AMI)
+			HA = i;
+		else
+			break;
+	}
+
+	if (HA > 0) {
+		for (i = (HA + 1); i > 0; --i) {
+			j = i - 1;
+			if (likely(XHR[i] > XHR[j]))
+				pol = XHR[i] - XHR[j];
+			else
+				pol = XHR[j] - XHR[i];
+			pol = (pol >> 2) + (pol >> 3) + 1;
+			XHR[j] = XHR[j] - pol;
+		}
+	}
+
 	flt_kh(XHR, XLO, XLA, EKV[ctp], ctp);
 	flt_kh(XHR, XLO + YLO, YLA, EKV[ctp], ctp);
 	flt_kh(XHR, TLO, ZLA, EKV[ctp], ctp);

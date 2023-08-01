@@ -725,7 +725,7 @@ static void update_history(struct rq *rq, struct task_struct *p,
 		util_avg_sum += util_avg_hist[widx];
 	}
 	avg = div64_u64(util_avg_sum, sched_ravg_hist_size);
-
+	fts->util_sum = 0;
 done:
 	trace_sched_update_history(rq, p, runtime, samples,
 				event, fsrq, fts, update_history_event);
