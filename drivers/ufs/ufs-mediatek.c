@@ -986,7 +986,10 @@ void ufs_mtk_trace_vh_ufs_prepare_command(void *data, struct ufs_hba *hba,
 void ufs_mtk_trace_vh_check_int_errors(void *data, struct ufs_hba *hba, bool queue_eh_work)
 {
 	/* Disable UIC Error intr since eh work is scheduled */
-	if (queue_eh_work && hba->uic_error)
+	if (queue_eh_work && hba->uic_error &&
+	   (hba->uic_error != UFSM_UIC_PA_GENERIC_ERROR) &&
+	   !((hba->dev_quirks & UFS_DEVICE_QUIRK_RECOVERY_FROM_DL_NAC_ERRORS) &&
+	    (hba->uic_error & UFSM_UIC_DL_NAC_RECEIVED_ERROR)))
 		ufsm_disable_intr(hba, UIC_ERROR);
 }
 

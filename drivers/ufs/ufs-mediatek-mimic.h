@@ -8,6 +8,17 @@
 #include <linux/types.h>
 #include <ufs/ufshcd.h>
 
+/* UIC layer error flags */
+enum {
+	UFSM_UIC_DL_PA_INIT_ERROR = (1 << 0), /* Data link layer error */
+	UFSM_UIC_DL_NAC_RECEIVED_ERROR = (1 << 1), /* Data link layer error */
+	UFSM_UIC_DL_TCx_REPLAY_ERROR = (1 << 2), /* Data link layer error */
+	UFSM_UIC_NL_ERROR = (1 << 3), /* Network layer error */
+	UFSM_UIC_TL_ERROR = (1 << 4), /* Transport Layer error */
+	UFSM_UIC_DME_ERROR = (1 << 5), /* DME error */
+	UFSM_UIC_PA_GENERIC_ERROR = (1 << 6), /* Generic PA error */
+};
+
 /* Error handling flags */
 enum {
 	UFSM_EH_IN_PROGRESS = (1 << 0),
