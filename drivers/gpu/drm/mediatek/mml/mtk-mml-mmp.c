@@ -56,6 +56,8 @@ void mml_mmp_init(void)
 	command = mml_mmp_events.command;
 	mml_mmp_events.command0 = mmprofile_register_event(command, "command0");
 	mml_mmp_events.command1 = mmprofile_register_event(command, "command1");
+	mml_mmp_events.mutex_mod = mmprofile_register_event(command, "mutex_mod");
+	mml_mmp_events.mutex_en = mmprofile_register_event(command, "mutex_en");
 
 	addon = mmprofile_register_event(mml, "addon");
 	mml_mmp_events.addon = addon;

@@ -14,6 +14,7 @@
 #include "mtk-mml-driver.h"
 #include "mtk-mml-dle-adaptor.h"
 #include "mtk-mml-drm-adaptor.h"
+#include "mtk-mml-mmp.h"
 
 #define MUTEX_MAX_MOD_REGS	((MML_MAX_COMPONENTS + 31) >> 5)
 
@@ -103,11 +104,15 @@ static s32 mutex_enable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 	 * since mml flow has correct topology.
 	 */
 	if (mode != MML_MODE_DIRECT_LINK || !mutex_sof) {
+		mml_mmp(mutex_mod, MMPROFILE_FLAG_PULSE, mode, mutex->data->mod_cnt);
+
 		for (i = 0; i < mutex->data->mod_cnt; i++) {
 			u32 offset = mutex->data->mod_offsets[i];
 
 			cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_MOD(mutex_id, offset),
 				       mutex_mod[i], U32_MAX);
+
+			mml_mmp(mutex_mod, MMPROFILE_FLAG_PULSE, mutex_id, mutex_mod[i]);
 		}
 	}
 
@@ -119,6 +124,8 @@ static s32 mutex_enable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 		cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_SOF(mutex_id), mutex_sof, U32_MAX);
 		cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_EN(mutex_id), 0x1, U32_MAX);
 	}
+
+	mml_mmp(mutex_en, MMPROFILE_FLAG_PULSE, mode, mutex_sof);
 
 	return 0;
 }

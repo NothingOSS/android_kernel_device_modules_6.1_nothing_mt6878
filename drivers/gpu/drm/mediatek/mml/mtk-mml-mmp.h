@@ -61,6 +61,8 @@ struct mml_mmp_events_t {
 	/* events for command (dle and pipes) */
 	mmp_event command0;
 	mmp_event command1;
+	mmp_event mutex_mod;
+	mmp_event mutex_en;
 
 	/* events for clock */
 	mmp_event clock;
