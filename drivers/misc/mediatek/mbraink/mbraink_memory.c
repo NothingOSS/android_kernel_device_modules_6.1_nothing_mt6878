@@ -125,6 +125,7 @@ int mbraink_memory_getDdrInfo(struct mbraink_memory_ddrInfo *pMemoryDdrInfo)
 int mbraink_memory_getMdvInfo(struct mbraink_memory_mdvInfo  *pMemoryMdv)
 {
 	int ret = 0;
+	int i = 0;
 	struct mtk_dvfsrc_header srcHeader;
 
 	if (pMemoryMdv == NULL) {
@@ -144,6 +145,8 @@ int mbraink_memory_getMdvInfo(struct mbraink_memory_mdvInfo  *pMemoryMdv)
 	pMemoryMdv->ver = srcHeader.version;
 	pMemoryMdv->pos = srcHeader.data_offset;
 	pMemoryMdv->size = srcHeader.data_length;
+	for (i = 0; i<MAX_MDV_SZ; i++)
+		pMemoryMdv->raw[i] = srcHeader.data[i];
 
 End:
 	return ret;
