@@ -1962,6 +1962,7 @@ struct DISP_AAL_DISPLAY_SIZE {
 struct DISP_AAL_HIST {
 	unsigned int serviceFlags;
 	int backlight;
+	int panel_nits;
 	int aal0_colorHist;
 	int aal1_colorHist;
 	unsigned int mdp_aal_ghist_valid;
