@@ -281,13 +281,30 @@ static void disp_aal_notify_backlight_log(int bl_1024)
 void disp_aal_refresh_by_kernel(struct mtk_disp_aal *aal_data, int need_lock)
 {
 	struct mtk_ddp_comp *comp = &aal_data->ddp_comp;
+	bool delay_trig = atomic_read(&aal_data->primary_data->force_delay_check_trig);
 
 	if (atomic_read(&aal_data->primary_data->is_init_regs_valid) == 1) {
-		/* Backlight or Kernel API latency should be smallest */
-		if (atomic_read(&aal_data->primary_data->force_delay_check_trig) == 1)
-			mtk_crtc_check_trigger(comp->mtk_crtc, true, need_lock);
-		else
-			mtk_crtc_check_trigger(comp->mtk_crtc, false, need_lock);
+		if (need_lock)
+			DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
+		atomic_set(&aal_data->primary_data->force_enable_irq, 1);
+		if (g_aal_bypass_mode == AAL_BYPASS_HW) {
+			if (atomic_read(&aal_data->is_clock_on) != 1)
+				AALFLOW_LOG("aal clock is off\n");
+			else if (aal_data->primary_data->isDualPQ &&
+				atomic_read(&comp_to_aal(aal_data->companion)->is_clock_on) != 1)
+				AALFLOW_LOG("aal1 clock is off\n");
+			else
+				disp_aal_set_interrupt(comp, 1, 0, NULL);
+		} else
+			atomic_set(&aal_data->primary_data->should_stop, 0);
+
+		/*
+		 * Backlight or Kernel API latency should be smallest
+		 * only need to trigger when calling not from atomic
+		 */
+		mtk_crtc_check_trigger(comp->mtk_crtc, delay_trig, false);
+		if (need_lock)
+			DDP_MUTEX_UNLOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
 	}
 }
 
@@ -470,9 +487,9 @@ int mtk_aal_eventctl_bypass(struct mtk_ddp_comp *comp, int bypass)
 	if (g_aal_bypass_mode == AAL_BYPASS_HW) {
 		atomic_set(&aal_data->primary_data->should_stop, 0);
 		if (!bypass && atomic_read(&aal_data->primary_data->force_relay))
-			ret = mtk_crtc_user_cmd(&comp->mtk_crtc->base, comp, BYPASS_AAL, &bypass);
+			ret = mtk_crtc_user_cmd_impl(&comp->mtk_crtc->base, comp, BYPASS_AAL, &bypass, false);
 		if (bypass && !atomic_read(&aal_data->primary_data->force_relay))
-			ret = mtk_crtc_user_cmd(&comp->mtk_crtc->base, comp, BYPASS_AAL, &bypass);
+			ret = mtk_crtc_user_cmd_impl(&comp->mtk_crtc->base, comp, BYPASS_AAL, &bypass, false);
 		if (ret != 0) {
 			AALFLOW_LOG("fail to unrelay, set flag first\n");
 			atomic_set(&aal_data->primary_data->force_relay, bypass);
@@ -488,24 +505,21 @@ static int mtk_drm_ioctl_aal_eventctl_impl(struct mtk_ddp_comp *comp, void *data
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	int ret = 0;
 	int *enabled = (int *)data;
-	int retry = 5;
 	int bypass = !(*enabled);
+	int delay_trigger;
 
 	AALFLOW_LOG("%d\n", *enabled);
+	DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
+	delay_trigger = atomic_read(&aal_data->primary_data->force_delay_check_trig);
 	if (*enabled) {
 		mtk_drm_idlemgr_kick(__func__,
-				&comp->mtk_crtc->base, 1);
-		if (atomic_read(&aal_data->primary_data->force_delay_check_trig) == 1)
-			mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
-		else
-			mtk_crtc_check_trigger(comp->mtk_crtc, false, true);
-
-		while ((atomic_read(&aal_data->is_clock_on) != 1) && (retry != 0)) {
-			usleep_range(500, 1000);
-			retry--;
-		}
+				&comp->mtk_crtc->base, 0);
+		mtk_crtc_check_trigger(comp->mtk_crtc, delay_trigger, false);
 	}
+	if (atomic_read(&aal_data->primary_data->force_enable_irq))
+		bypass = 0;
 	ret = mtk_aal_eventctl_bypass(comp, bypass);
+	DDP_MUTEX_UNLOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
 
 	return ret;
 }
@@ -1040,6 +1054,7 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 		atomic_set(&aal1_data->hist_available, 0);
 		atomic_set(&aal1_data->dre20_hist_is_ready, 0);
 	}
+	atomic_set(&aal_data->primary_data->force_enable_irq, 0);
 
 	return ret;
 }
@@ -3756,6 +3771,7 @@ static void mtk_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	atomic_set(&(aal_data->primary_data->backlight_notified), 0);
 	atomic_set(&(aal_data->primary_data->initialed), 0);
 	atomic_set(&(aal_data->primary_data->allowPartial), 0);
+	atomic_set(&(aal_data->primary_data->force_enable_irq), 0);
 	atomic_set(&(aal_data->primary_data->force_relay), 0);
 	atomic_set(&(aal_data->primary_data->should_stop), 0);
 	atomic_set(&(aal_data->primary_data->dre30_write), 0);

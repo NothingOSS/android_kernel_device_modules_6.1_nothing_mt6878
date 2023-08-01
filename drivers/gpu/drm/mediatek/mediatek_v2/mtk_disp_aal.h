@@ -326,6 +326,7 @@ struct mtk_disp_aal_primary {
 	atomic_t backlight_notified;
 	atomic_t initialed;
 	atomic_t allowPartial;
+	atomic_t force_enable_irq;
 	atomic_t force_relay;
 	atomic_t should_stop;
 	atomic_t dre30_write;

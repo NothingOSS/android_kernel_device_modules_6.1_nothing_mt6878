@@ -2417,7 +2417,10 @@ void mtk_crtc_prepare_dual_pipe(struct mtk_drm_crtc *mtk_crtc)
 static void user_cmd_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
+	int index = 0;
 
+	index = drm_crtc_index(cb_data->crtc);
+	CRTC_MMP_MARK(index, user_cmd, cb_data->misc, (unsigned long)cb_data->cmdq_handle);
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);
 }
@@ -2434,8 +2437,8 @@ bool mtk_crtc_in_dual_pipe(struct mtk_drm_crtc *mtk_crtc, struct mtk_ddp_comp *c
 	return false;
 }
 
-int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
-		unsigned int cmd, void *params)
+int mtk_crtc_user_cmd_impl(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
+		unsigned int cmd, void *params, bool need_lock)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct pq_common_data *pq_data = NULL;
@@ -2455,26 +2458,26 @@ int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 	}
 
 	pq_data = mtk_crtc->pq_data;
-
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
-
-	CRTC_MMP_EVENT_START(index, user_cmd, (unsigned long)crtc,
-			(unsigned long)comp);
+	if (need_lock)
+		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	if ((!crtc) || (!comp)) {
 		DDPPR_ERR("%s:%d, invalid arg:(0x%p,0x%p)\n",
 				__func__, __LINE__,
 				crtc, comp);
-		CRTC_MMP_MARK(index, user_cmd, 0, 0);
 		goto err;
 	}
+
+	CRTC_MMP_EVENT_START(index, user_cmd, comp->id, cmd);
 
 	index = drm_crtc_index(crtc);
 
 	if (!(mtk_crtc->enabled)) {
 		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
 		CRTC_MMP_EVENT_END(index, user_cmd, 0, 2);
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		if (need_lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		CRTC_MMP_MARK(index, user_cmd, 0, 0);
 		return 1;
 	}
 
@@ -2483,16 +2486,16 @@ int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 	if (!cb_data) {
 		DDPPR_ERR("cb data creation failed\n");
-		CRTC_MMP_MARK(index, user_cmd, 0, 3);
+		CRTC_MMP_MARK(index, user_cmd, 0, 1);
 		goto err;
 	}
 
-	CRTC_MMP_MARK(index, user_cmd, comp->id, cmd);
 	cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		if (need_lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -2508,10 +2511,9 @@ int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 				mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
 								DDP_FIRST_PATH, 0);
 		} else {
-			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,	DDP_FIRST_PATH, 0);
+			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
 		}
 	}
-	CRTC_MMP_MARK(index, user_cmd, user_cmd_cnt, 2);
 
 	/* Record Vblank start timestamp */
 	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, USER_COMMAND);
@@ -2522,13 +2524,9 @@ int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 	else {
 		DDPPR_ERR("%s:%d, invalid comp:(0x%p,0x%p)\n",
 				__func__, __LINE__, comp, comp->funcs);
-		CRTC_MMP_MARK(index, user_cmd, 0, 4);
+		CRTC_MMP_MARK(index, user_cmd, 0, 2);
 		goto err2;
 	}
-	CRTC_MMP_MARK(index, user_cmd, user_cmd_cnt, 3);
-
-	/* add counter to check update frequency */
-	CRTC_MMP_MARK(index, user_cmd, user_cmd_cnt, 4);
 	user_cmd_cnt++;
 
 	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR) {
@@ -2567,28 +2565,37 @@ int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 	} else {
 		cb_data->crtc = crtc;
 		cb_data->cmdq_handle = cmdq_handle;
+		cb_data->misc = user_cmd_cnt - 1;
 		if (cmdq_pkt_flush_threaded(cmdq_handle, user_cmd_cmdq_cb, cb_data) < 0)
 			DDPPR_ERR("failed to flush user_cmd\n");
 	}
 
-	CRTC_MMP_EVENT_END(index, user_cmd, (unsigned long)cmd,
-			(unsigned long)params);
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	CRTC_MMP_EVENT_END(index, user_cmd, 0, (unsigned long)params);
+	if (need_lock)
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	return 0;
 
 err:
 	CRTC_MMP_EVENT_END(index, user_cmd, 0, 0);
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	if (need_lock)
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	return -1;
 
 err2:
 	kfree(cb_data);
 	CRTC_MMP_EVENT_END(index, user_cmd, 0, 0);
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	if (need_lock)
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	return -1;
+}
+
+int mtk_crtc_user_cmd(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
+		unsigned int cmd, void *params)
+{
+	return mtk_crtc_user_cmd_impl(crtc, comp, cmd, params, true);
 }
 
 /* power on all modules on this CRTC */
