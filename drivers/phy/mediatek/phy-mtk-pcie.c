@@ -133,16 +133,20 @@ static int mtk_pcie_phy_init(struct phy *phy)
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
 	int i, ret;
 
+	ret = pm_runtime_get_sync(&phy->dev);
+	if (ret < 0)
+		goto err_pm_get_sync;
+
 	ret = clk_bulk_prepare_enable(pcie_phy->num_clks, pcie_phy->clks);
 	if (ret) {
 		dev_info(pcie_phy->dev, "failed to enable clocks\n");
-		return ret;
+		goto err_pm_get_sync;
 	}
 
 	if (pcie_phy->data->phy_init) {
 		ret = pcie_phy->data->phy_init(phy);
 		if (ret)
-			return ret;
+			goto err_phy_init;
 	}
 
 	if (!pcie_phy->sw_efuse_en)
@@ -156,6 +160,13 @@ static int mtk_pcie_phy_init(struct phy *phy)
 		mtk_pcie_efuse_set_lane(pcie_phy, i);
 
 	return 0;
+
+err_phy_init:
+	clk_bulk_disable_unprepare(pcie_phy->num_clks, pcie_phy->clks);
+err_pm_get_sync:
+	pm_runtime_put_sync(&phy->dev);
+
+	return ret;
 }
 
 static int mtk_pcie_phy_exit(struct phy *phy)
@@ -163,6 +174,7 @@ static int mtk_pcie_phy_exit(struct phy *phy)
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
 
 	clk_bulk_disable_unprepare(pcie_phy->num_clks, pcie_phy->clks);
+	pm_runtime_get_sync(&phy->dev);
 
 	return 0;
 }
