@@ -18,6 +18,7 @@
 #include <linux/sched/clock.h>
 #include <linux/component.h>
 #include <linux/irq.h>
+#include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
@@ -397,6 +398,9 @@ static struct mtk_drm_property mtk_connector_property[CONNECTOR_PROP_MAX] = {
 	{DRM_MODE_PROP_ATOMIC, "CSC_BL", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "PANEL_NITS", 0, ULONG_MAX, 0},
 };
+
+static u32 underrun_cnt;
+module_param(underrun_cnt, uint, 0644);
 
 static bool set_partial_update;
 static unsigned int roi_y_offset, roi_height;
@@ -2417,7 +2421,6 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	static DEFINE_RATELIMIT_STATE(mmp_rate, 2, 2); /* 8 ms */
 	bool doze_enabled = 0;
 	unsigned int doze_wait = 0;
-	static unsigned int underrun_cnt;
 	struct mtk_drm_private *priv = NULL;
 	struct drm_crtc *crtc = NULL;
 
@@ -10365,6 +10368,7 @@ static const struct mtk_dsi_driver_data mt6989_dsi_driver_data = {
 	.need_bypass_shadow = false,
 	.need_wait_fifo = false,
 	.dsi_buffer = true,
+	.smi_dbg_disable = true,
 	.buffer_unit = 32,
 	.sram_unit = 32,
 	.urgent_lo_fifo_us = 14,
