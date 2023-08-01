@@ -15,6 +15,7 @@
 #include <linux/cpufreq.h>
 #include "usb_boost.h"
 #include "dvfsrc-exp.h"
+#include <linux/regulator/consumer.h>
 
 static struct pm_qos_request pm_qos_req;
 static LIST_HEAD(usb_policy_list);
@@ -27,6 +28,7 @@ struct usb_policy {
 static struct icc_path *usb_icc_path;
 unsigned int peak_bw;
 struct device *gdev;
+struct regulator *reg;
 
 static int freq_hold(struct act_arg_obj *arg)
 {
@@ -129,6 +131,43 @@ static int vcorefs_release(struct act_arg_obj *arg)
 	return 0;
 }
 
+static int vcore_hold(struct act_arg_obj *arg)
+{
+	int ret;
+	struct device_node *np = gdev->of_node;
+	u32 val;
+
+	USB_BOOST_DBG("\n");
+	val = 0;
+	device_property_read_u32(gdev, "vcore", &val);
+
+	if (of_device_is_compatible(np, "mediatek,mt6897-usb-boost") && reg && (val > 0)) {
+		ret = regulator_set_voltage(reg, val, INT_MAX);
+		if (!ret)
+			USB_BOOST_NOTICE("%s: set usb vcore (%d)\n", __func__, val);
+	} else
+		USB_BOOST_NOTICE("%s: bypass usb vcore\n", __func__);
+
+	return 0;
+}
+
+static int vcore_release(struct act_arg_obj *arg)
+{
+	struct device_node *np = gdev->of_node;
+	u32 val;
+
+	USB_BOOST_DBG("\n");
+	val = 0;
+	device_property_read_u32(gdev, "vcore", &val);
+
+	if (of_device_is_compatible(np, "mediatek,mt6897-usb-boost") && reg && (val > 0)) {
+		regulator_set_voltage(reg, 0, INT_MAX);
+		USB_BOOST_NOTICE("%s: release usb vcore\n", __func__);
+	}
+
+	return 0;
+}
+
 static int usb_boost_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
@@ -146,6 +185,8 @@ static int usb_boost_probe(struct platform_device *pdev)
 	register_usb_boost_act(TYPE_CPU_CORE, ACT_RELEASE, core_release);
 	register_usb_boost_act(TYPE_DRAM_VCORE, ACT_HOLD, vcorefs_hold);
 	register_usb_boost_act(TYPE_DRAM_VCORE, ACT_RELEASE, vcorefs_release);
+	register_usb_boost_act(TYPE_VCORE, ACT_HOLD, vcore_hold);
+	register_usb_boost_act(TYPE_VCORE, ACT_RELEASE, vcore_release);
 
 	cpu_latency_qos_add_request(&pm_qos_req, PM_QOS_DEFAULT_VALUE);
 
@@ -157,6 +198,8 @@ static int usb_boost_probe(struct platform_device *pdev)
 
 	peak_bw = dvfsrc_get_required_opp_peak_bw(node, 0);
 	USB_BOOST_NOTICE("%s: peak_bw(%x)\n", __func__, peak_bw);
+
+	reg = devm_regulator_get_optional(&pdev->dev, "dvfsrc-vcore");
 
 	audio_boost = of_property_read_bool(node, "usb-audio");
 	gdev = &pdev->dev;

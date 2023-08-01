@@ -82,6 +82,7 @@ static char *type_name[_TYPE_MAXID] = {
 	"cpu_freq",
 	"cpu_core",
 	"dram_vcore",
+	"vcore",
 };
 
 enum {
@@ -107,6 +108,7 @@ static struct wakeup_source *usb_boost_ws;
 static int cpu_freq_dft_para[_ATTR_PARA_RW_MAXID] = {1, 3, 300, 0};
 static int cpu_core_dft_para[_ATTR_PARA_RW_MAXID] = {1, 3, 300, 0};
 static int dram_vcore_dft_para[_ATTR_PARA_RW_MAXID] = {1, 3, 300, 0};
+static int vcore_dft_para[_ATTR_PARA_RW_MAXID] = {1, 60, 300, 0};
 static void __usb_boost_empty(void) { return; }
 static void __usb_boost_cnt(void) { trigger_cnt_disabled++; return; }
 static void __usb_boost_id_empty(int id) { return; }
@@ -121,6 +123,7 @@ struct boost_ops {
 struct boost_ops __the_boost_ops = {
 	__usb_boost_empty,
 	{__usb_boost_id_empty,
+	 __usb_boost_id_empty,
 	 __usb_boost_id_empty,
 	 __usb_boost_id_empty} };
 
@@ -416,6 +419,9 @@ static void default_setting(void)
 
 	usb_boost_set_para_and_arg(TYPE_DRAM_VCORE, dram_vcore_dft_para,
 			ARRAY_SIZE(dram_vcore_dft_para), &dram_vcore_dft_arg);
+
+	usb_boost_set_para_and_arg(TYPE_VCORE, vcore_dft_para,
+			ARRAY_SIZE(vcore_dft_para), &dram_vcore_dft_arg);
 }
 
 static int which_attr(struct mtk_usb_boost *inst, struct device_attribute
@@ -751,6 +757,9 @@ static void boost_ep_enable(void *unused, struct mtu3_ep *mep)
 	int addr;
 	int type;
 
+	usb_boost_set_para_and_arg(TYPE_VCORE, vcore_dft_para,
+		ARRAY_SIZE(vcore_dft_para), &dram_vcore_dft_arg);
+
 	cdev = get_gadget_data(&mep->mtu->g);
 	if (!cdev || !cdev->config)
 		return;
@@ -776,6 +785,11 @@ find_f:
 
 static void boost_ep_disable(void *unused, struct mtu3_ep *mep)
 {
+	int vcore_para[_ATTR_PARA_RW_MAXID] = {1, 3, 300, 0};
+
+	usb_boost_set_para_and_arg(TYPE_VCORE, vcore_para,
+		ARRAY_SIZE(vcore_para), &dram_vcore_dft_arg);
+
 	if (!mep->epnum)
 		return;
 
@@ -800,6 +814,8 @@ static void boost_gadget_queue(void *unused, struct mtu3_request *mreq)
 	default:
 		break;
 	}
+
+	usb_boost_by_id(TYPE_VCORE);
 }
 
 static int mtu3_trace_init(void)
