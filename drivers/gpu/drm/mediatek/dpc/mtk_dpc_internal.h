@@ -15,6 +15,7 @@
 #define DPCDUMP(fmt, args...) \
 	pr_info("[dpc] " fmt "\n", ##args)
 
+#define VLP_DISP_SW_VOTE_CON 0x410
 #define VLP_DISP_SW_VOTE_SET 0x414
 #define VLP_DISP_SW_VOTE_CLR 0x418
 #define SPM_DIS0_PWR_CON 0xE98

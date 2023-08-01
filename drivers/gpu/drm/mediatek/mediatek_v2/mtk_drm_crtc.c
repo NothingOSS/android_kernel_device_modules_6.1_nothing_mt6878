@@ -1479,6 +1479,8 @@ static void bl_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
 
+	CRTC_MMP_MARK(0, backlight, 0xffffffff, 0);
+
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);
 }

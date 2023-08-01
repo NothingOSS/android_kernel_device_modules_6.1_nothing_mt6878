@@ -1127,16 +1127,28 @@ static void dpc_debug_event(void)
 
 static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 {
-	if (vote_set) {
-		/* any bit, need write twice */
-		writel(1 << thread, g_priv->vlp_base + VLP_DISP_SW_VOTE_SET);
-		writel(1 << thread, g_priv->vlp_base + VLP_DISP_SW_VOTE_SET);
-	} else {
-		/* any bit, need write twice */
-		writel(1 << thread, g_priv->vlp_base + VLP_DISP_SW_VOTE_CLR);
-		writel(1 << thread, g_priv->vlp_base + VLP_DISP_SW_VOTE_CLR);
-	}
-	dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, thread, vote_set);
+	u32 addr = vote_set ? VLP_DISP_SW_VOTE_SET : VLP_DISP_SW_VOTE_CLR;
+	u32 ack = vote_set ? BIT(thread) : 0;
+	u16 i = 0;
+
+	writel_relaxed(BIT(thread), g_priv->vlp_base + addr);
+	do {
+		writel_relaxed(BIT(thread), g_priv->vlp_base + addr);
+		if ((readl(g_priv->vlp_base + VLP_DISP_SW_VOTE_CON) & BIT(thread)) == ack)
+			break;
+
+		if (i > 2500) {
+			DPCERR("vlp vote bit(%u) timeout", thread);
+			return;
+		}
+
+		udelay(2);
+		i++;
+	} while (1);
+
+	/* check voter only, later will use another API to power on mminfra */
+
+	dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, BIT(thread), vote_set);
 }
 
 int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
@@ -1148,6 +1160,7 @@ int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 		return -1;
 
 	mtk_disp_vlp_vote(VOTE_SET, user);
+	udelay(50);
 
 	return 0;
 }
