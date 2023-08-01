@@ -521,8 +521,6 @@ struct DISP_AAL_TRIG_STATE {
 
 #define DRM_MTK_PQ_FRAME_CONFIG 0x5c
 
-#define DRM_MTK_DISP_PQ_GET_IRQ 0x5d
-
 /* DISP_CLARITY */
 #define DRM_MTK_DISP_CLARITY_SET_REG 0x5E
 
@@ -1650,15 +1648,6 @@ struct mtk_drm_panels_info {
 	unsigned int *panel_id;
 };
 
-enum mtk_disp_pq_irq_trig {
-	TRIG_BY_CCORR = 1,
-	TRIG_BY_C3D   = 2,
-};
-
-struct mtk_disp_pq_irq_data {
-	__u32 backlight;
-	enum mtk_disp_pq_irq_trig irq_src;
-};
 struct DISP_PANEL_BASE_VOLTAGE {
 	unsigned char AnodeBase[MAX_FPS_PN];
 	unsigned char AnodeOffset[MAX_DBV_PN];
@@ -1854,8 +1843,6 @@ struct DISP_PANEL_BASE_VOLTAGE {
 #define DRM_IOCTL_MTK_PQ_PROXY_IOCTL    DRM_IOWR(DRM_COMMAND_BASE + \
 				DRM_MTK_PQ_PROXY_IOCTL, struct mtk_drm_pq_proxy_ctl)
 
-#define DRM_IOCTL_MTK_DISP_PQ_GET_IRQ    DRM_IOWR(DRM_COMMAND_BASE + \
-			DRM_MTK_DISP_PQ_GET_IRQ, struct mtk_disp_pq_irq_data)
 #define DRM_IOCTL_MTK_GET_MODE_EXT_INFO DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_GET_MODE_EXT_INFO, struct mtk_drm_mode_ext_info)
 
