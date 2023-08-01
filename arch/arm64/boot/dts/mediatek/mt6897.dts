@@ -13680,7 +13680,7 @@
 			fmeter-ck = <82>;	/* clk table fmeter f_fmmup_ck */
 			fmeter-type = <2>;	/* fmeter type */
 			mbox-count = <5>;
-			vcp-ee-enable = <1>;
+			vcp-ee-enable = <4>;
 			/* id, mbox, send_size*/
 			send-table =
 				< 0 0 18>,/* IPI_OUT_VDEC_1 */
