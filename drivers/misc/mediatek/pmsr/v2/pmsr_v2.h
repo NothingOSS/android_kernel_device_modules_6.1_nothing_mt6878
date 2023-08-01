@@ -39,7 +39,7 @@
 #define PMSR_TOOL_ACT_TEST			(1u << 7)
 #define PMSR_TOOL_ACT_SELTYPE			(1u << 8)
 
-#define SET_CH_MAX 4
+#define SET_CH_MAX 8
 #define MTK_PMSR_BUF_WRITESZ 512
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)

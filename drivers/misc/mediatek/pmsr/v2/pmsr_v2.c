@@ -45,6 +45,10 @@ static char *ch_name[] = {
 	"ch1",
 	"ch2",
 	"ch3",
+	"ch4",
+	"ch5",
+	"ch6",
+	"ch7",
 };
 
 static void pmsr_cfg_init(void)
@@ -336,7 +340,7 @@ static struct proc_dir_entry *pmsr_droot;
 static int pmsr_procfs_init(void)
 {
 	int i;
-	struct proc_dir_entry *ch[4];
+	struct proc_dir_entry *ch;
 	struct proc_dir_entry *dpmsr_dir_entry;
 
 	pmsr_cfg_init();
@@ -354,14 +358,14 @@ static int pmsr_procfs_init(void)
 				 (void *) &(cfg.test));
 
 		for (i = 0 ; i < SET_CH_MAX; i++) {
-			ch[i] = proc_mkdir(ch_name[i], pmsr_droot);
+			ch = proc_mkdir(ch_name[i], pmsr_droot);
 
-			if (ch[i]) {
+			if (ch) {
 				proc_create_data("dpmsr_id",
-						 0644, ch[i], &local_ipi_fops,
+						 0644, ch, &local_ipi_fops,
 						 (void *)&(cfg.ch[i].dpmsr_id));
 				proc_create_data("signal_id",
-						 0644, ch[i], &local_ipi_fops,
+						 0644, ch, &local_ipi_fops,
 						 (void *)&(cfg.ch[i].signal_id));
 			}
 		}
