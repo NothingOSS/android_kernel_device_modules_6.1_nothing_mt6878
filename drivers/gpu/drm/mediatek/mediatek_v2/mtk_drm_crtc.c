@@ -1524,7 +1524,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct pq_common_data *pq_data = NULL;
 	struct cmdq_pkt *cmdq_handle;
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output(mtk_crtc);
+	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_ddp_comp *oddmr_comp;
 	struct mtk_cmdq_cb_data *cb_data;
 	struct mtk_bl_ext_config bl_ext_config;
@@ -1549,6 +1549,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		return -EINVAL;
 	}
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
 	pq_data = mtk_crtc->pq_data;
 	if (pq_data && pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])
 		sb_backlight = level;
@@ -15107,10 +15108,10 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 
 		if (mtk_crtc_state->prop_val[CRTC_PROP_OVL_DSI_SEQ]) {
 			if (index == 0)
-				mtk_drm_trace_async_begin("OVL0-DSI|%d",
+				mtk_drm_trace_async_begin("OVL0-DSI|%llu",
 					mtk_crtc_state->prop_val[CRTC_PROP_OVL_DSI_SEQ]);
 			else if (index == 2)
-				mtk_drm_trace_async_begin("OVL2-WDMA|%d",
+				mtk_drm_trace_async_begin("OVL2-WDMA|%llu",
 			mtk_crtc_state->prop_val[CRTC_PROP_OVL_DSI_SEQ]);
 		}
 	}
