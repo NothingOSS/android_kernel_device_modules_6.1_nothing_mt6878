@@ -14,3 +14,4 @@ obj-$(CONFIG_PMIC_LBAT_SERVICE) += pmic_lbat_service.o
 obj-$(CONFIG_PMIC_LBAT_SERVICE) += pmic_lvsys_notify.o
 obj-$(CONFIG_MTK_MD_POWER_THROTTLING) += mtk_md_power_throttling.o
 obj-$(CONFIG_MTK_CPU_POWER_THROTTLING) += mtk_cpu_power_throttling.o
+obj-$(CONFIG_MTK_GPU_POWER_THROTTLING) += mtk_gpu_power_throttling.o
