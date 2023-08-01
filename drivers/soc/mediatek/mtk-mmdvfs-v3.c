@@ -941,6 +941,9 @@ struct mmdvfs_mux {
 	struct mtk_mux_user *user[MMDVFS_USER_NUM];
 };
 
+#define LEVEL2OPP(mux, level)	(level >= mmdvfs_mux[mux].freq_num ? 0 : \
+					mmdvfs_mux[mux].freq_num - 1 - (level))
+
 static struct mmdvfs_mux mmdvfs_mux[MMDVFS_MUX_NUM];
 static struct mtk_mux_user mmdvfs_user[MMDVFS_USER_NUM];
 static struct clk *mmdvfs_user_clk[MMDVFS_USER_NUM];
@@ -1888,10 +1891,11 @@ static int mmdvfs_mux_get_opp(const char *name)
 	}
 
 	if (log_level & (1 << log_clk_ops))
-		MMDVFS_DBG("name:%s opp:%d mux:%d name:%s rate:%llu opp:%hhd", name, opp, id,
-			mmdvfs_mux[id].name, mmdvfs_mux[id].rate, mmdvfs_mux[id].opp);
+		MMDVFS_DBG("name:%s opp:%d mux:%d name:%s rate:%llu opp:%hhd level:%u",
+			name, opp, id, mmdvfs_mux[id].name, mmdvfs_mux[id].rate, mmdvfs_mux[id].opp,
+			LEVEL2OPP(id, opp));
 
-	return opp;
+	return LEVEL2OPP(id, opp);
 }
 
 static unsigned long mmdvfs_mux_get_rate(const char *name)
