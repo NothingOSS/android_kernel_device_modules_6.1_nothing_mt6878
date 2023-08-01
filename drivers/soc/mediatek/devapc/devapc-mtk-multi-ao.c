@@ -555,6 +555,14 @@ static const char * const perm_to_str[] = {
 	"NO_PERM_CTRL"
 };
 
+static const char * const vio_type_to_str[] = {
+	"Permission Denied",
+	"Power/clock might not enabled",
+	"SERROR",
+	"Decode error or way_en",
+	"ABNORMAL",
+};
+
 static const char *perm_to_string(uint8_t perm)
 {
 	if (perm < 4)
@@ -563,14 +571,32 @@ static const char *perm_to_string(uint8_t perm)
 		return perm_to_str[4];
 }
 
-static void devapc_vio_reason(uint8_t perm)
+static const char *vio_type_to_string(enum devapc_vio_type vio_type)
 {
+	if (vio_type < DEVAPC_VIO_MAX)
+		return vio_type_to_str[vio_type];
+	else
+		return vio_type_to_str[DEVAPC_VIO_ABNORMAL];
+}
+
+static enum devapc_vio_type devapc_vio_reason(uint8_t perm)
+{
+	enum devapc_vio_type vio_type = DEVAPC_VIO_MAX;
+
 	pr_info(PFX "Permission setting: %s\n", perm_to_string(perm));
 
-	if (perm == 0 || perm > 3)
+	if (perm == 0) {
 		pr_info(PFX "Reason: power/clock is not enabled\n");
-	else if (perm == 1 || perm == 2 || perm == 3)
+		vio_type = DEVAPC_VIO_PWRCLK_NOT_ENABLED;
+	} else if (perm == 1 || perm == 2 || perm == 3) {
 		pr_info(PFX "Reason: might be permission denied\n");
+		vio_type = DEVAPC_VIO_PERM_DENIED;
+	} else {
+		pr_info(PFX "Reason: might be decode error or way_en\n");
+		vio_type = DEVAPC_VIO_OTHER;
+	}
+
+	return vio_type;
 }
 
 /*
@@ -861,7 +887,8 @@ static void start_devapc(void)
  * 2. call subsys handler to get more debug information
  */
 static void devapc_extra_handler(int slave_type, const char *vio_master,
-				 uint32_t vio_index, uint32_t vio_addr)
+				 uint32_t vio_index, uint32_t vio_addr,
+				 enum devapc_vio_type vio_type)
 {
 	const struct mtk_device_info **device_info;
 	struct mtk_devapc_dbg_status *dbg_stat;
@@ -875,6 +902,10 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 	dbg_stat = mtk_devapc_ctx->soc->dbg_stat;
 	vio_info = mtk_devapc_ctx->soc->vio_info;
 
+	if (mtk_devapc_ctx->serror)
+		vio_type = DEVAPC_VIO_SERROR;
+
+	pr_info(PFX "Violation Type: \"%s\"\n", vio_type_to_string(vio_type));
 	pr_info(PFX "%s:%d\n", "vio_trigger_times",
 			mtk_devapc_ctx->soc->vio_info->vio_trigger_times++);
 
@@ -939,6 +970,7 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 		/* always call clkmgr cb if it's registered */
 		if (viocb->id == DEVAPC_SUBSYS_CLKMGR &&
 				viocb->debug_dump &&
+				vio_type != DEVAPC_VIO_PERM_DENIED &&
 				ret_cb != DEVAPC_NOT_KE)
 			viocb->debug_dump();
 	}
@@ -973,6 +1005,7 @@ static void devapc_dump_info(bool booting)
 	int slave_type, vio_idx, index;
 	const char *vio_master;
 	uint8_t perm;
+	enum devapc_vio_type vio_type = DEVAPC_VIO_ABNORMAL;
 
 	device_info = mtk_devapc_ctx->soc->device_info;
 	vio_info = mtk_devapc_ctx->soc->vio_info;
@@ -1034,10 +1067,10 @@ static void devapc_dump_info(bool booting)
 				"access violation slave:",
 				device_info[slave_type][index].device);
 
-		devapc_vio_reason(perm);
+		vio_type = devapc_vio_reason(perm);
 
 		devapc_extra_handler(slave_type, vio_master, vio_idx,
-				vio_info->vio_addr);
+				vio_info->vio_addr, vio_type);
 
 		mask_module_irq(slave_type, vio_idx, false);
 	}
@@ -1060,6 +1093,7 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 	unsigned long flags;
 	uint8_t perm;
 	bool normal;
+	enum devapc_vio_type vio_type = DEVAPC_VIO_ABNORMAL;
 
 	spin_lock_irqsave(&devapc_lock, flags);
 
@@ -1146,14 +1180,15 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 				"access violation slave:",
 				device_info[slave_type][index].device);
 
-		devapc_vio_reason(perm);
+		vio_type = devapc_vio_reason(perm);
 
 		devapc_extra_handler(slave_type, vio_master, vio_idx,
-				vio_info->vio_addr);
+				vio_info->vio_addr, vio_type);
 
 		// In case of a subsys will not KE,
 		// do not unmask irq to let subsys able to dump information.
 		// mask_module_irq(slave_type, vio_idx, false);
+		break;
 	}
 
 	if (normal) {
