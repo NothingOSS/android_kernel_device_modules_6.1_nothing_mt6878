@@ -9,7 +9,7 @@
 #define MAX_APHY_OTHERS_PWR			(16)
 #define NR_DRAM_PWR_SAMPLE			(3)
 /* sync emi in sspm */
-#define MAX_EMI_NUM				(1)
+#define MAX_EMI_NUM				(2)
 
 enum ddr_freq {
 	DDR_579,
