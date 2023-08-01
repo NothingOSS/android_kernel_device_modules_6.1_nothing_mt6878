@@ -85,7 +85,9 @@
 #define UART_RECORD_COUNT	10
 #define MAX_POLLING_CNT		5000
 #define UART_RECORD_MAXLEN	4096
-#define UART_DUMP_MAXLEN	4000
+#define UART_RX_DUMP_MAXLEN	4000
+#define UART_TX_DUMP_MAXLEN	1000
+#define UART_TX_DUMP_MINLEN	1
 #define CONFIG_UART_DMA_DATA_RECORD
 #define DBG_STAT_WD_ACT		BIT(5)
 #define MAX_POLL_CNT_RX		200
@@ -780,7 +782,7 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 	}
 	c->rec_info[idx].complete_time = sched_clock();
 
-	if ((c->dir == DMA_DEV_TO_MEM) && (c->rec_info[idx].trans_len >= UART_DUMP_MAXLEN)) {
+	if ((c->dir == DMA_DEV_TO_MEM) && (c->rec_info[idx].trans_len >= UART_RX_DUMP_MAXLEN)) {
 		recv_sec = c->rec_info[idx].trans_duration_time;
 		recv_ns = do_div(recv_sec, 1000000000);
 		start_ns = do_div(start_sec, 1000000000);
@@ -789,7 +791,9 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 		pr_info("rx h_t:[%5lu.%06llu], cb_s:[%5lu.%06llu], cb_e:[%5lu.%06llu], wpt:0x%x, len:%d\n",
 			(unsigned long)recv_sec, recv_ns / 1000, (unsigned long)start_sec, start_ns / 1000,
 			(unsigned long)end_sec, end_ns / 1000, wpt, c->rec_info[idx].trans_len);
-	} else if ((c->dir == DMA_MEM_TO_DEV) && (c->rec_info[idx].trans_len >= UART_DUMP_MAXLEN)) {
+	} else if ((c->dir == DMA_MEM_TO_DEV)
+		&& ((c->rec_info[idx].trans_len == UART_TX_DUMP_MINLEN)
+			|| (c->rec_info[idx].trans_len >= UART_TX_DUMP_MAXLEN))) {
 		start_sec = c->rec_info[idx].trans_time;
 		end_sec = c->rec_info[idx].complete_time;
 		cost_time = end_sec - start_sec;
@@ -798,9 +802,12 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 		recv_ns = do_div(recv_sec, 1000000000);
 		end_ns = do_div(end_sec, 1000000000);
 		if (cost_time > 10000000)
-			pr_info("tx s_t:[%5lu.%06llu], h_t:[%5lu.%06llu], cb_e:[%5lu.%06llu], rpt:0x%x, len:%d\n",
-				(unsigned long)start_sec, start_ns / 1000, (unsigned long)recv_sec, recv_ns / 1000,
-				(unsigned long)end_sec, end_ns / 1000, rpt, c->rec_info[idx].trans_len);
+			pr_info("tx s_t:[%5lu.%06llu], h_t:[%5lu.%06llu], cb_e:[%5lu.%06llu],"
+				"rpt:0x%x, len:%d, cost_time: %llu\n",
+				(unsigned long)start_sec, start_ns / 1000,
+				(unsigned long)recv_sec, recv_ns / 1000,
+				(unsigned long)end_sec, end_ns / 1000,
+				rpt, c->rec_info[idx].trans_len, cost_time);
 	} else
 		return IRQ_HANDLED;
 
