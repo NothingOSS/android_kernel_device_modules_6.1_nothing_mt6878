@@ -890,6 +890,22 @@ static ssize_t gpu_info_show(struct kobject *kobj,
 	return len;
 }
 
+static ssize_t gpu_freq_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%d,%d,%d,%d,%d,%d\n",
+		therm_intf_read_csram_s32(GPU_ST0_FREQ_OFFSET),
+		therm_intf_read_csram_s32(GPU_ST0_FREQ_OFFSET + 4),
+		therm_intf_read_csram_s32(GPU_ST0_FREQ_OFFSET + 8),
+		therm_intf_read_csram_s32(GPU_ST0_FREQ_OFFSET + 12),
+		therm_intf_read_csram_s32(GPU_ST0_FREQ_OFFSET + 16),
+		therm_intf_read_csram_s32(GPU_ST0_FREQ_OFFSET + 20));
+
+	return len;
+}
+
 static ssize_t apu_info_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
@@ -1654,6 +1670,7 @@ static struct kobj_attribute power_budget_attr = __ATTR_RW(power_budget);
 static struct kobj_attribute cpu_info_attr = __ATTR_RO(cpu_info);
 static struct kobj_attribute gpu_info_attr = __ATTR_RO(gpu_info);
 static struct kobj_attribute apu_info_attr = __ATTR_RO(apu_info);
+static struct kobj_attribute gpu_freq_attr = __ATTR_RO(gpu_freq);
 static struct kobj_attribute is_cpu_limit_attr = __ATTR_RO(is_cpu_limit);
 static struct kobj_attribute is_gpu_limit_attr = __ATTR_RO(is_gpu_limit);
 static struct kobj_attribute is_apu_limit_attr = __ATTR_RO(is_apu_limit);
@@ -1688,6 +1705,7 @@ static struct attribute *thermal_attrs[] = {
 	&power_budget_attr.attr,
 	&cpu_info_attr.attr,
 	&gpu_info_attr.attr,
+	&gpu_freq_attr.attr,
 	&apu_info_attr.attr,
 	&is_cpu_limit_attr.attr,
 	&is_gpu_limit_attr.attr,

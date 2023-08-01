@@ -26,6 +26,10 @@
 #define CPU_JATM_SUSPEND_OFFSET     (0x140)
 #define GPU_JATM_SUSPEND_OFFSET     (0x144)
 #define MIN_THROTTLE_FREQ_OFFSET    (0x14C)
+
+/*GPU ST0/ST2/ST3/ST4/ST5/ST6 = 0x15C/0x160/0x164/0x168/0x16C/0x170*/
+#define GPU_ST0_FREQ_OFFSET         (0x15C)
+
 #define GPU_TEMP_OFFSET             (0x180)
 #define APU_TEMP_OFFSET             (0x190)
 #define EMUL_TEMP_OFFSET            (0x1B0)
@@ -100,11 +104,11 @@
 
 
 /*monitor Tj*/
-/*LVTS1~LVTS16,0x134~0x170; 0x174~0x180 reserved*/
-#define CPU_LVTS_TEMP_MA_TCM_ADDR                 (0x134)
+/*LVTS1~LVTS16,0x138~0x174; 0x178~0x184 reserved*/
+#define CPU_LVTS_TEMP_MA_TCM_ADDR                 (0x138)
 
-/*CORE0~CORE7,0x184~0x200, 0x204,0x208 reserved*/
-#define CPU_CORE_TEMP_MA_TCM_ADDR                 (0x184)
+/*CORE0~CORE7,0x188~0x1A4, 0x1A8,0x1AC reserved*/
+#define CPU_CORE_TEMP_MA_TCM_ADDR                 (0x188)
 
 struct headroom_info {
 	int temp;
