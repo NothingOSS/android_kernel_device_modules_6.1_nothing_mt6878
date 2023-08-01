@@ -292,15 +292,15 @@ static int dbg_error_flag_probe(struct platform_device *pdev)
 			return -EINVAL;
 		}
 
+		/* init WQ for bottom half ISR */
+		INIT_WORK(&dbg_error_flag.err_flag_str[i].wk, dbg_error_flag_irq_work);
+
 		ret = devm_request_irq(dev, dbg_error_flag.err_flag_str[i].irq, dbg_error_flag_isr,
 			IRQF_ONESHOT | IRQF_TRIGGER_NONE, "dbg_error_flag", NULL);
 		if (ret) {
 			dev_info(dev, "can't request error flag irq(%d)\n", ret);
 			return ret;
 		}
-
-		/* init WQ for bottom half ISR */
-		INIT_WORK(&dbg_error_flag.err_flag_str[i].wk, dbg_error_flag_irq_work);
 	}
 
 	return 0;
