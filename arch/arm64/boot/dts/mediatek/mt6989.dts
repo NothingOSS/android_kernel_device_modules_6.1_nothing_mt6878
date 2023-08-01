@@ -1247,10 +1247,10 @@
 
 		use-cpu-to-dram-map = "enable";
 		use-cpu-to-dram-map-new = "enable";
-		cm-mgr-cpu-opp-to-dram = <1 1 8 8 8 8 8 8
-					8 8 8 8 8 8 8 8
-					8 8 8 8 8 8 8 8
-					8 8 8 8 8 8 8 8>;
+		cm-mgr-cpu-opp-to-dram = <3 3 10 10 10 10 10 10
+					10 10 10 10 10 10 10 10
+					10 10 10 10 10 10 10 10
+					10 10 10 10 10 10 10 10>;
 
 		cm-perf-mode-enable = <1>;
 		cm-perf-mode-ceiling-opp = <0>;
