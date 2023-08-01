@@ -232,8 +232,6 @@ static void delay_work_func(struct work_struct *work)
 		return;
 	}
 
-	pr_info("%s data = %d\n", __func__, g_low_battery_level_cb);
-
 	conn_pwr_set_battery_level(g_low_battery_level_cb);
 
 	kvfree(work);
@@ -247,7 +245,6 @@ static void conn_pwr_delay_work(unsigned int val)
 	if (!work)
 		return;
 
-	pr_info("%s val = %d\n", __func__, val);
 	g_low_battery_level_cb = val;
 
 	INIT_WORK(work, delay_work_func);
@@ -279,7 +276,6 @@ int conn_pwr_get_plat_level(enum conn_pwr_plat_type type, int *data)
 		pr_info("type %d is out of range.\n", type);
 		return -2;
 	}
-	pr_info("%s ,type = %d, ret = %d\n", __func__, type, *data);
 
 	return 0;
 }
