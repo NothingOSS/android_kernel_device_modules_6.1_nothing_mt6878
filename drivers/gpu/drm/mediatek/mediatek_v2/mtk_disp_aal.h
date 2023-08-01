@@ -412,7 +412,7 @@ void disp_aal_debug(struct drm_crtc *crtc, const char *opt);
 
 /* Provide for LED */
 void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp, int trans_backlight,
-	int max_backlight, int need_lock);
+	int panel_nits, int max_backlight, int need_lock);
 
 /* AAL Control API in Kernel */
 void disp_aal_set_lcm_type(unsigned int panel_type);

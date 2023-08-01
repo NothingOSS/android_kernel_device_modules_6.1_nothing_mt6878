@@ -2364,6 +2364,7 @@ void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
 	struct mtk_connector_state *mtk_conn_state = NULL;
 	unsigned int index;
 	static unsigned long long csc_bl[MAX_CONNECTOR] = {0};
+	static unsigned long long csc_nits[MAX_CONNECTOR] = {0};
 
 	if (dsi == NULL) {
 		DDPINFO("%s, dsi is null\n", __func__);
@@ -2394,12 +2395,13 @@ void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
 		}
 
 		csc_bl[index] = mtk_conn_state->prop_val[index][CONNECTOR_PROP_CSC_BL];
-		DDPINFO("%s, csc_bl[%d] = %llu\n", __func__, index, csc_bl[index]);
+		csc_nits[index] = mtk_conn_state->prop_val[index][CONNECTOR_PROP_PANEL_NITS];
+		DDPINFO("%s, csc_bl[%d] = %llu nits %llu\n", __func__, index, csc_bl[index], csc_nits[index]);
 		mtk_drm_setbacklight(&mtk_crtc->base, csc_bl[index], 0, (0X1<<SET_BACKLIGHT_LEVEL), 0);
 
 		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_AAL, 0);
 		if (comp)
-			disp_aal_notify_backlight_changed(comp, csc_bl[index], -1, 0);
+			disp_aal_notify_backlight_changed(comp, csc_bl[index], csc_nits[index], -1, 0);
 
 		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_GAMMA, 0);
 		if (comp)

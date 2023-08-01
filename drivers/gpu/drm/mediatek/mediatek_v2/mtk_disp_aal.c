@@ -312,7 +312,7 @@ void disp_aal_refresh_by_kernel(struct mtk_disp_aal *aal_data, int need_lock)
 }
 
 void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
-		int trans_backlight, int max_backlight, int need_lock)
+		int trans_backlight, int panel_nits, int max_backlight, int need_lock)
 {
 	unsigned long flags;
 	unsigned int service_flags;
@@ -323,7 +323,7 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_comp *output_comp = NULL;
 	unsigned int connector_id = 0;
 
-	AALAPI_LOG("%d/%d\n", trans_backlight, max_backlight);
+	AALAPI_LOG("bl %d/%d nits %d\n", trans_backlight, max_backlight, panel_nits);
 	disp_aal_notify_backlight_log(trans_backlight);
 	//disp_aal_exit_idle(__func__, 1);
 
@@ -369,6 +369,7 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 
 	spin_lock_irqsave(&aal_data->primary_data->hist_lock, flags);
 	aal_data->primary_data->hist.backlight = trans_backlight;
+	aal_data->primary_data->hist.panel_nits = panel_nits;
 	aal_data->primary_data->hist.serviceFlags |= service_flags;
 	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 	// always notify aal service for LED changed
@@ -427,7 +428,7 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 		aal_data = comp_to_aal(comp);
 		if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS] &&
 			(atomic_read(&aal_data->primary_data->force_relay) != 1)) {
-			disp_aal_notify_backlight_changed(comp, trans_level,
+			disp_aal_notify_backlight_changed(comp, trans_level, -1,
 				led_conf->cdev.max_brightness, 1);
 		} else {
 			trans_level = (
@@ -439,7 +440,7 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 				trans_level == 0)
 				trans_level = 1;
 
-			disp_aal_notify_backlight_changed(comp, trans_level,
+			disp_aal_notify_backlight_changed(comp, trans_level, -1,
 				led_conf->max_hw_brightness, 1);
 		}
 
@@ -452,10 +453,10 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 			break;
 
 		if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS])
-			disp_aal_notify_backlight_changed(comp, 0,
+			disp_aal_notify_backlight_changed(comp, 0, -1,
 				led_conf->cdev.max_brightness, 1);
 		else
-			disp_aal_notify_backlight_changed(comp, 0,
+			disp_aal_notify_backlight_changed(comp, 0, -1,
 				led_conf->max_hw_brightness, 1);
 		break;
 	case LED_TYPE_CHANGED:
