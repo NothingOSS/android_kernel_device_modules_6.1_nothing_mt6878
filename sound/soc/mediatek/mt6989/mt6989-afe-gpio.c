@@ -192,30 +192,24 @@ int mt6989_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 	case MT6989_DAI_I2S_OUT0:
 		break;
 	case MT6989_DAI_I2S_IN4:
-		if (enable)
-			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SIN4_ON);
-		else
-			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SIN4_OFF);
-		break;
 	case MT6989_DAI_I2S_OUT4:
 		if (enable) {
 			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SIN4_ON);
 			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SOUT4_ON);
-		} else
+		} else {
+			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SIN4_OFF);
 			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SOUT4_OFF);
+		}
 		break;
 	case MT6989_DAI_I2S_IN6:
-		if (enable)
-			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SIN6_ON);
-		else
-			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SIN6_OFF);
-		break;
 	case MT6989_DAI_I2S_OUT6:
 		if (enable) {
 			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SIN6_ON);
 			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SOUT6_ON);
-		} else
+		} else {
+			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SIN6_OFF);
 			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_I2SOUT6_OFF);
+		}
 		break;
 	case MT6989_DAI_VOW:
 		break;
