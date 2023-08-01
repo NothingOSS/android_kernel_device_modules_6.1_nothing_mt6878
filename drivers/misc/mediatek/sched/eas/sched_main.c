@@ -117,6 +117,7 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 {
 	int cpu = rq->cpu;
 	int type = *(int *)data;
+	struct sugov_rq_data *sugov_data_ptr;
 	irq_log_store();
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
@@ -125,6 +126,12 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 	else if (type == dequeue)
 		flt_rvh_dequeue_task(data, rq, p, flags);
 #endif
+
+	if (type == enqueue) {
+		sugov_data_ptr = &((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
+		sugov_data_ptr->enq_ing = true;
+	}
+
 	if (trace_sched_queue_task_enabled()) {
 		unsigned long util = READ_ONCE(rq->cfs.avg.util_avg);
 
@@ -598,6 +605,7 @@ static int __init mtk_scheduler_init(void)
 	/* compile time checks for vendor data size */
 	MTK_VENDOR_DATA_SIZE_TEST(struct mtk_task, struct task_struct);
 	MTK_VENDOR_DATA_SIZE_TEST(struct mtk_tg, struct task_group);
+	MTK_VENDOR_DATA_SIZE_TEST(struct mtk_rq, struct rq);
 
 	/* build cpu_array for hints-based gear search*/
 	init_cpu_array();

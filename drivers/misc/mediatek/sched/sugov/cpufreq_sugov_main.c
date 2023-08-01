@@ -138,9 +138,10 @@ static bool sugov_update_next_freq(struct sugov_policy *sg_policy, u64 time,
 	if (sugov_up_down_rate_limit(sg_policy, time, next_freq))
 		return false;
 
-	if (sg_policy->need_freq_update)
+	if (sg_policy->need_freq_update || wl_cnt_cached != wl_type_delay_ch_cnt
+			|| enq_force_update_freq(sg_policy)) {
 		sg_policy->need_freq_update = false;
-	else if (sg_policy->next_freq == next_freq && wl_cnt_cached == wl_type_delay_ch_cnt)
+	} else if (sg_policy->next_freq == next_freq)
 		return false;
 
 	wl_cnt_cached = wl_type_delay_ch_cnt;
@@ -667,6 +668,7 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
 	struct cpufreq_policy *policy = sg_policy->policy;
 	struct rq *rq;
+	struct sugov_rq_data *sugov_data_ptr;
 	unsigned long umin, umax;
 	unsigned long util = 0, max = 1;
 	unsigned int j, max_cpu = 0;
@@ -680,9 +682,12 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 		sugov_iowait_apply(j_sg_cpu, time);
 		j_util = j_sg_cpu->util;
 		j_max = j_sg_cpu->max;
-		if (ignore_idle_ctrl)
-			idle = available_idle_cpu(j);
-
+		if (ignore_idle_ctrl) {
+			rq = cpu_rq(j);
+			sugov_data_ptr =
+				&((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
+			idle = (available_idle_cpu(j) && ((sugov_data_ptr->enq_ing == 0) ? 1 : 0));
+		}
 		if (trace_sugov_ext_util_enabled()) {
 			rq = cpu_rq(j);
 

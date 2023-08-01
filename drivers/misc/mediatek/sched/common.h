@@ -123,6 +123,15 @@ struct mtk_tg {
 	struct vip_task_group vtg;
 };
 
+struct sugov_rq_data {
+	bool enq_ing;
+	bool enq_update_dsu_freq;
+};
+
+struct mtk_rq {
+	struct sugov_rq_data sugov_data;
+};
+
 extern int num_sched_clusters;
 extern cpumask_t __read_mostly ***cpu_array;
 extern void init_cpu_array(void);

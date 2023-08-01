@@ -732,8 +732,7 @@ void hook_scheduler_tick(void *data, struct rq *rq)
 void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 				struct task_struct *p, int flags)
 {
-	struct update_util_data *fdata;
-	bool should_update = false;
+	struct sugov_rq_data *sugov_data_ptr;
 
 	irq_log_store();
 
@@ -748,22 +747,12 @@ void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-	if (rq->nr_running != 1) {
-		irq_log_store();
-		return;
-	}
-
 	irq_log_store();
-	fdata = rcu_dereference_sched(*per_cpu_ptr(&cpufreq_update_util_data,
-							  cpu_of(rq)));
-	irq_log_store();
-	if (fdata) {
-		should_update = !check_freq_update_for_time(fdata, rq_clock(rq));
-		if (should_update)
-			fdata->func(fdata, rq_clock(rq), 0);
-	}
+	sugov_data_ptr = &((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
+	if (sugov_data_ptr->enq_update_dsu_freq == true)
+		cpufreq_update_util(rq, 0);
+	sugov_data_ptr->enq_ing = false;
 #endif
-
 	irq_log_store();
 }
 

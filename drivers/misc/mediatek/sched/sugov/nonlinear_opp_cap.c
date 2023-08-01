@@ -132,6 +132,23 @@ void init_eas_dsu_ctrl(void)
 	pr_info("eas_dsu_sup.=%d\n", freq_state.is_eas_dsu_support);
 }
 
+bool enq_force_update_freq(struct sugov_policy *sg_policy)
+{
+	struct cpufreq_policy *policy = sg_policy->policy;
+	struct sugov_rq_data *sugov_data_ptr;
+	struct rq *rq;
+
+	if (!freq_state.is_eas_dsu_support || !freq_state.is_eas_dsu_ctrl)
+		return false;
+	rq = cpu_rq(policy->cpu);
+	sugov_data_ptr =
+		&((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
+	if (!sugov_data_ptr->enq_update_dsu_freq)
+		return false;
+	sugov_data_ptr->enq_update_dsu_freq = false;
+	return true;
+}
+
 bool get_eas_dsu_ctrl(void)
 {
 	return freq_state.is_eas_dsu_ctrl;
@@ -173,23 +190,34 @@ EXPORT_SYMBOL_GPL(get_dsu_freq_state);
 
 void set_dsu_target_freq(struct cpufreq_policy *policy)
 {
-	int i, cpu = policy->cpu, opp, dsu_target_freq = 0;
+	int i, cpu, gov_cpu = policy->cpu, opp, dsu_target_freq = 0;
+	int gearid = per_cpu(gear_id, gov_cpu);
 	unsigned int wl_type = get_em_wl();
 	struct pd_capacity_info *pd_info;
+	struct pd_capacity_info *gov_pd_info;
 	struct mtk_em_perf_state *ps;
 	struct cpufreq_mtk *c = policy->driver_data;
 
-	freq_state.cpu_freq[per_cpu(gear_id, cpu)] = policy->cached_target_freq;
+	freq_state.cpu_freq[gearid] = policy->cached_target_freq;
+	gov_pd_info = &pd_capacity_tbl[gearid];
 
 	for (i = 0; i < pd_count; i++) {
 		pd_info = &pd_capacity_tbl[i];
 		cpu = cpumask_first(&pd_info->cpus);
-		if (pd_info->nr_cpus == 1)
+		if (pd_info->nr_cpus == 1 && gov_pd_info->nr_caps != 1) {
 			if (available_idle_cpu(cpu)) {
-				freq_state.dsu_freq_vote[i] = 0;
-				goto skip_single_idle_cpu;
-			}
+				struct rq *rq = cpu_rq(cpu);
+				struct sugov_rq_data *sugov_data_ptr;
 
+				sugov_data_ptr =
+					&((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
+				if (sugov_data_ptr->enq_ing == 0) {
+					freq_state.dsu_freq_vote[i] = 0;
+					sugov_data_ptr->enq_update_dsu_freq = true;
+					goto skip_single_idle_cpu;
+				}
+			}
+		}
 		ps = pd_get_freq_ps(wl_type, cpu, freq_state.cpu_freq[i], &opp);
 		freq_state.dsu_freq_vote[i] = ps->dsu_freq;
 
@@ -1853,15 +1881,19 @@ int group_aware_dvfs_util(struct cpumask *cpumask)
 	int cpu;
 	struct rq *rq;
 	int am = 0;
+	struct sugov_rq_data *sugov_data_ptr;
 
 	for_each_cpu(cpu, cpumask) {
-		if (available_idle_cpu(cpu))
+		rq = cpu_rq(cpu);
+		sugov_data_ptr =
+			&((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
+		if ((sugov_data_ptr->enq_ing == 0) && available_idle_cpu(cpu))
 			goto skip_idle;
 
 		am = get_adaptive_margin(cpu);
 
 		cpu_util = flt_get_cpu_util_hook(cpu);
-		rq = cpu_rq(cpu);
+
 		umax = rq->uclamp[UCLAMP_MAX].value;
 		if (gu_ctrl)
 			umax = min_t(unsigned long, umax, get_cpu_gear_uclamp_max(cpu));
