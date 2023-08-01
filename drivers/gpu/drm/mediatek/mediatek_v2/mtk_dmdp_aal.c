@@ -109,12 +109,18 @@ struct mtk_disp_mdp_aal_tile_overhead {
 	unsigned int comp_overhead;
 };
 
+struct mtk_disp_mdp_aal_tile_overhead_v {
+	unsigned int overhead_v;
+	unsigned int comp_overhead_v;
+};
+
 struct mtk_dmdp_aal {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_crtc *crtc;
 	const struct mtk_dmdp_aal_data *data;
 
 	struct mtk_disp_mdp_aal_tile_overhead tile_overhead; //disp_mdp_aal_tile_overhead
+	struct mtk_disp_mdp_aal_tile_overhead_v tile_overhead_v;
 	bool is_right_pipe;
 	int path_order;
 	struct mtk_ddp_comp *companion;
@@ -225,6 +231,22 @@ static void mtk_disp_mdp_aal_config_overhead(struct mtk_ddp_comp *comp,
 				cfg->tile_overhead.right_in_width;
 		}
 	}
+}
+
+static void mtk_disp_mdp_aal_config_overhead_v(struct mtk_ddp_comp *comp,
+	struct total_tile_overhead_v  *tile_overhead_v)
+{
+	struct mtk_dmdp_aal *data = comp_to_dmdp_aal(comp);
+
+	DDPDBG("line: %d\n", __LINE__);
+
+	/*set component overhead*/
+	data->tile_overhead_v.comp_overhead_v = 0;
+	/*add component overhead on total overhead*/
+	tile_overhead_v->overhead_v +=
+		data->tile_overhead_v.comp_overhead_v;
+	/*copy from total overhead info*/
+	data->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
 }
 
 static void mtk_dmdp_aal_config(struct mtk_ddp_comp *comp,
@@ -615,6 +637,7 @@ static const struct mtk_ddp_comp_funcs mtk_dmdp_aal_funcs = {
 	.prepare = mtk_dmdp_aal_prepare,
 	.unprepare = mtk_dmdp_aal_unprepare,
 	.config_overhead = mtk_disp_mdp_aal_config_overhead,
+	.config_overhead_v = mtk_disp_mdp_aal_config_overhead_v,
 	.io_cmd = mtk_dmdp_aal_io_cmd,
 };
 

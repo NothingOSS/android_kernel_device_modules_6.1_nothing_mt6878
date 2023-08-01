@@ -101,6 +101,11 @@ struct mtk_disp_c3d_tile_overhead {
 	unsigned int comp_overhead;
 };
 
+struct mtk_disp_c3d_tile_overhead_v {
+	unsigned int overhead_v;
+	unsigned int comp_overhead_v;
+};
+
 struct mtk_disp_c3d_primary {
 	struct DISP_C3D_REG_17BIN c3d_reg_17bin;
 	struct DISP_C3D_REG_9BIN c3d_reg_9bin;
@@ -132,6 +137,7 @@ struct mtk_disp_c3d {
 	struct mtk_ddp_comp *companion;
 	struct mtk_disp_c3d_primary *primary_data;
 	struct mtk_disp_c3d_tile_overhead tile_overhead;
+	struct mtk_disp_c3d_tile_overhead_v tile_overhead_v;
 	bool pkt_reused;
 	struct cmdq_reuse reuse_c3d[4913 * 2];
 	atomic_t c3d_is_clock_on;

@@ -535,6 +535,17 @@ static void mtk_postmask_stop(struct mtk_ddp_comp *comp,
 		       comp->regs_pa + DISP_POSTMASK_INTSTA, 0, ~0);
 }
 
+static void mtk_postmask_bypass(struct mtk_ddp_comp *comp, int bypass,
+	struct cmdq_pkt *handle)
+{
+	DDPINFO("%s, comp_id: %d, bypass: %d\n",
+			__func__, comp->id, bypass);
+
+	/* config relay mode*/
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		       comp->regs_pa + DISP_POSTMASK_CFG, bypass, 0x1);
+}
+
 static int mtk_disp_postmask_bind(struct device *dev, struct device *master,
 				  void *data)
 {
@@ -615,6 +626,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_postmask_funcs = {
 	.config = mtk_postmask_config,
 	.start = mtk_postmask_start,
 	.stop = mtk_postmask_stop,
+	.bypass = mtk_postmask_bypass,
 	.prepare = mtk_postmask_prepare,
 	.unprepare = mtk_postmask_unprepare,
 	.io_cmd = mtk_postmask_io_cmd,

@@ -71,6 +71,7 @@ static void mtk_gamma_init(struct mtk_ddp_comp *comp,
 {
 	unsigned int width;
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
+	unsigned int overhead_v;
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support)
 		width = gamma->tile_overhead.width;
@@ -85,10 +86,13 @@ static void mtk_gamma_init(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_SIZE,
 			(width << 16) | cfg->h, ~0);
-	else
+	else {
+		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
+					? 0 : gamma->tile_overhead_v.overhead_v;
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_SIZE,
-			(width << 16) | roi_height, ~0);
+			(width << 16) | (roi_height + overhead_v * 2), ~0);
+	}
 	if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_8BIT ||
 		gamma->primary_data->data_mode == HW_12BIT_MODE_IN_10BIT) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -135,6 +139,22 @@ static void mtk_disp_gamma_config_overhead(struct mtk_ddp_comp *comp,
 		}
 	}
 
+}
+
+static void mtk_disp_gamma_config_overhead_v(struct mtk_ddp_comp *comp,
+	struct total_tile_overhead_v  *tile_overhead_v)
+{
+	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
+
+	DDPDBG("line: %d\n", __LINE__);
+
+	/*set component overhead*/
+	gamma->tile_overhead_v.comp_overhead_v = 0;
+	/*add component overhead on total overhead*/
+	tile_overhead_v->overhead_v +=
+		gamma->tile_overhead_v.comp_overhead_v;
+	/*copy from total overhead info*/
+	gamma->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
 }
 
 static void mtk_gamma_config(struct mtk_ddp_comp *comp,
@@ -1145,19 +1165,26 @@ static int mtk_gamma_ioctl_transact(struct mtk_ddp_comp *comp,
 static int mtk_gamma_set_partial_update(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
 {
+	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
+	unsigned int overhead_v;
 
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
 	set_partial_update = enable;
 	roi_height = partial_roi.height;
+	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
+				? 0 : gamma->tile_overhead_v.overhead_v;
+
+	DDPINFO/*DDPDBG*/("%s, %s overhead_v:%d\n",
+			__func__, mtk_dump_comp_str(comp), overhead_v);
 
 	if (set_partial_update) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_GAMMA_SIZE,
-				   roi_height, 0xffff);
+				   roi_height + overhead_v * 2, 0xffff);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_GAMMA_SIZE,
@@ -1179,6 +1206,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_gamma_funcs = {
 	.prepare = mtk_gamma_prepare,
 	.unprepare = mtk_gamma_unprepare,
 	.config_overhead = mtk_disp_gamma_config_overhead,
+	.config_overhead_v = mtk_disp_gamma_config_overhead_v,
 	.pq_frame_config = mtk_gamma_pq_frame_config,
 	.pq_ioctl_transact = mtk_gamma_ioctl_transact,
 	.mutex_sof_irq = disp_gamma_on_start_of_frame,

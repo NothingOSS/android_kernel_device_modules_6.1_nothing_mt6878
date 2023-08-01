@@ -24,6 +24,11 @@ struct mtk_disp_ccorr_tile_overhead {
 	unsigned int comp_overhead;
 };
 
+struct mtk_disp_ccorr_tile_overhead_v {
+	unsigned int overhead_v;
+	unsigned int comp_overhead_v;
+};
+
 struct mtk_disp_ccorr_primary {
 	unsigned int ccorr_8bit_switch;
 	unsigned int ccorr_relay_value;
@@ -71,6 +76,7 @@ struct mtk_disp_ccorr {
 	struct mtk_disp_ccorr_primary *primary_data;
 	atomic_t is_clock_on;
 	struct mtk_disp_ccorr_tile_overhead tile_overhead;
+	struct mtk_disp_ccorr_tile_overhead_v tile_overhead_v;
 	bool bypass_color;
 	struct mtk_ddp_comp *color_comp;
 };

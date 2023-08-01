@@ -48,6 +48,11 @@ struct mtk_disp_gamma_tile_overhead {
 	unsigned int comp_overhead;
 };
 
+struct mtk_disp_gamma_tile_overhead_v {
+	unsigned int overhead_v;
+	unsigned int comp_overhead_v;
+};
+
 struct mtk_disp_gamma_sb_param {
 	unsigned int gain[3];
 	unsigned int bl;
@@ -88,6 +93,7 @@ struct mtk_disp_gamma {
 	bool is_right_pipe;
 	int path_order;
 	struct mtk_disp_gamma_tile_overhead tile_overhead;
+	struct mtk_disp_gamma_tile_overhead_v tile_overhead_v;
 	struct mtk_ddp_comp *companion;
 	struct mtk_disp_gamma_primary *primary_data;
 };

@@ -109,6 +109,11 @@ struct mtk_disp_dither_tile_overhead {
 	unsigned int comp_overhead;
 };
 
+struct mtk_disp_dither_tile_overhead_v {
+	unsigned int overhead_v;
+	unsigned int comp_overhead_v;
+};
+
 struct mtk_disp_dither {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_crtc *crtc;
@@ -121,6 +126,7 @@ struct mtk_disp_dither {
 	struct mtk_disp_dither_primary *primary_data;
 	atomic_t is_clock_on;
 	struct mtk_disp_dither_tile_overhead tile_overhead;
+	struct mtk_disp_dither_tile_overhead_v tile_overhead_v;
 	bool reg_backup;
 };
 
@@ -338,6 +344,22 @@ static void mtk_disp_dither_config_overhead(struct mtk_ddp_comp *comp,
 	}
 }
 
+static void mtk_disp_dither_config_overhead_v(struct mtk_ddp_comp *comp,
+	struct total_tile_overhead_v  *tile_overhead_v)
+{
+	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
+
+	DDPDBG("line: %d\n", __LINE__);
+
+	/*set component overhead*/
+	dither_data->tile_overhead_v.comp_overhead_v = 0;
+	/*add component overhead on total overhead*/
+	tile_overhead_v->overhead_v +=
+		dither_data->tile_overhead_v.comp_overhead_v;
+	/*copy from total overhead info*/
+	dither_data->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+}
+
 static void mtk_dither_config(struct mtk_ddp_comp *comp,
 			      struct mtk_ddp_config *cfg,
 			      struct cmdq_pkt *handle)
@@ -347,6 +369,7 @@ static void mtk_dither_config(struct mtk_ddp_comp *comp,
 	struct mtk_disp_dither *priv = dev_get_drvdata(comp->dev);
 	unsigned int enable = 1;
 	unsigned int width;
+	unsigned int overhead_v;
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support) {
 		width = dither_data->tile_overhead.in_width;
@@ -475,10 +498,13 @@ static void mtk_dither_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_DITHER_SIZE,
 			width << 16 | cfg->h, ~0);
-	else
+	else {
+		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
+					? 0 : dither_data->tile_overhead_v.overhead_v;
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_DITHER_SIZE,
-			width << 16 | roi_height, ~0);
+			width << 16 | (roi_height + overhead_v * 2), ~0);
+	}
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_DITHER_PURECOLOR0,
 		primary_data->pure_clr_param->pure_clr_det, 0x1);
@@ -925,19 +951,26 @@ static int mtk_dither_ioctl_transact(struct mtk_ddp_comp *comp,
 static int mtk_dither_set_partial_update(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
 {
+	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
+	unsigned int overhead_v;
 
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
 	set_partial_update = enable;
 	roi_height = partial_roi.height;
+	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
+				? 0 : dither_data->tile_overhead_v.overhead_v;
+
+	DDPINFO/*DDPDBG*/("%s, %s overhead_v:%d\n",
+			__func__, mtk_dump_comp_str(comp), overhead_v);
 
 	if (set_partial_update) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_DITHER_SIZE,
-			roi_height, 0x1fff);
+			roi_height + overhead_v * 2, 0x1fff);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_DITHER_SIZE,
@@ -957,6 +990,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_dither_funcs = {
 	.prepare = mtk_dither_prepare,
 	.unprepare = mtk_dither_unprepare,
 	.config_overhead = mtk_disp_dither_config_overhead,
+	.config_overhead_v = mtk_disp_dither_config_overhead_v,
 	/* partial update
 	 * .io_cmd = mtk_dither_io_cmd,
 	 */

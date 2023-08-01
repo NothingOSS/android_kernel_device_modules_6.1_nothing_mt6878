@@ -566,14 +566,14 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		struct mtk_rect layer_roi = {0, 0, 0, 0};
 		struct mtk_rect ovl_partial_roi = {0, 0, 0, 0};
 		struct mtk_rect layer_partial_roi = {0, 0, 0, 0};
-		unsigned int y_overhead;
+		unsigned int overhead_v;
 
 		ovl_partial_roi = crtc_state->ovl_partial_roi;
 
-		y_overhead = to_v_info.overhead_v;
+		overhead_v = to_v_info.overhead_v;
 
-		ovl_partial_roi.y -= y_overhead;
-		ovl_partial_roi.height += (y_overhead * 2);
+		ovl_partial_roi.y -= overhead_v;
+		ovl_partial_roi.height += (overhead_v * 2);
 		layer_roi.x = dst_x;
 		layer_roi.y = dst_y;
 		layer_roi.width = dst_w;

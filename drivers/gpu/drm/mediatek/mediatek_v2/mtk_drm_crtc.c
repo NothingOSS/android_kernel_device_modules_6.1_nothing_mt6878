@@ -14612,6 +14612,18 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_roi.x, partial_roi.y,
 		partial_roi.width, partial_roi.height);
 
+	_assign_full_lcm_roi(crtc, &full_roi);
+
+	/* disable partial update if partial roi overlap with round corner */
+	if (mtk_crtc->panel_ext->params->round_corner_en &&
+		((partial_roi.y < mtk_crtc->panel_ext->params->corner_pattern_height) ||
+		(partial_roi.y + partial_roi.height >= full_roi.height -
+		mtk_crtc->panel_ext->params->corner_pattern_height_bot))) {
+		DDPDBG("skip because partial roi overlap with corner pattern\n");
+		_assign_full_lcm_roi(crtc, &partial_roi);
+		partial_enable = false;
+	}
+
 	state->ovl_partial_roi = partial_roi;
 
 	/* set ovl_partial_dirty if roi is full lcm */
@@ -14640,7 +14652,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 			if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_AAL ||
 				mtk_ddp_comp_get_type(comp->id) == MTK_DMDP_AAL ||
-				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CHIST)) {
+				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CHIST ||
+				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_POSTMASK)) {
 				if (comp->funcs && comp->funcs->bypass)
 					mtk_ddp_comp_bypass(comp, partial_enable, cmdq_handle);
 			}
@@ -14664,9 +14677,9 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	}
 
 	/* check total overhead vertical */
-	_assign_full_lcm_roi(crtc, &full_roi);
 	if (partial_roi.y < mtk_crtc->tile_overhead_v.overhead_v ||
-		partial_roi.y > full_roi.height - mtk_crtc->tile_overhead_v.overhead_v) {
+		partial_roi.y + partial_roi.height >=
+		full_roi.height - mtk_crtc->tile_overhead_v.overhead_v) {
 		mtk_crtc->tile_overhead_v.overhead_v = 0;
 		mtk_crtc->tile_overhead_v.overhead_v_scaling = 0;
 	}

@@ -1094,12 +1094,28 @@ static void mtk_disp_c3d_config_overhead(struct mtk_ddp_comp *comp,
 
 }
 
+static void mtk_disp_c3d_config_overhead_v(struct mtk_ddp_comp *comp,
+	struct total_tile_overhead_v  *tile_overhead_v)
+{
+	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
+
+	DDPDBG("line: %d\n", __LINE__);
+
+	/*set component overhead*/
+	c3d_data->tile_overhead_v.comp_overhead_v = 0;
+	/*add component overhead on total overhead*/
+	tile_overhead_v->overhead_v +=
+		c3d_data->tile_overhead_v.comp_overhead_v;
+	/*copy from total overhead info*/
+	c3d_data->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+}
 
 static void mtk_disp_c3d_config(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
 	unsigned int width;
+	unsigned int overhead_v;
 
 	C3DFLOW_LOG("line: %d\n", __LINE__);
 
@@ -1115,9 +1131,12 @@ static void mtk_disp_c3d_config(struct mtk_ddp_comp *comp,
 	if (!set_partial_update)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + C3D_SIZE, (width << 16) | cfg->h, ~0);
-	else
+	else {
+		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
+					? 0 : c3d_data->tile_overhead_v.overhead_v;
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + C3D_SIZE, (width << 16) | roi_height, ~0);
+		   comp->regs_pa + C3D_SIZE, (width << 16) | (roi_height + overhead_v * 2), ~0);
+	}
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_R2Y_09, 0, 0x1);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + C3D_Y2R_09, 0, 0x1);
@@ -1401,17 +1420,25 @@ static int mtk_c3d_ioctl_transact(struct mtk_ddp_comp *comp,
 static int mtk_c3d_set_partial_update(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
 {
+	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
+	unsigned int overhead_v;
+
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
 	set_partial_update = enable;
 	roi_height = partial_roi.height;
+	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
+				? 0 : c3d_data->tile_overhead_v.overhead_v;
+
+	DDPINFO/*DDPDBG*/("%s, %s overhead_v:%d\n",
+			__func__, mtk_dump_comp_str(comp), overhead_v);
 
 	if (set_partial_update) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				   comp->regs_pa + C3D_SIZE, roi_height, 0xffff);
+				   comp->regs_pa + C3D_SIZE, roi_height + overhead_v * 2, 0xffff);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + C3D_SIZE, full_height, 0xffff);
@@ -1430,6 +1457,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_c3d_funcs = {
 	.prepare = mtk_disp_c3d_prepare,
 	.unprepare = mtk_disp_c3d_unprepare,
 	.config_overhead = mtk_disp_c3d_config_overhead,
+	.config_overhead_v = mtk_disp_c3d_config_overhead_v,
 	.io_cmd = mtk_c3d_io_cmd,
 	.pq_frame_config = mtk_c3d_pq_frame_config,
 	.mutex_eof_irq = disp_c3d_on_end_of_frame,

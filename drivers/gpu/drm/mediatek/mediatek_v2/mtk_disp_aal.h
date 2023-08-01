@@ -267,6 +267,11 @@ struct _mtk_disp_aal_tile_overhead {
 	unsigned int total_overhead;
 };
 
+struct _mtk_disp_aal_tile_overhead_v {
+	unsigned int overhead_v;
+	unsigned int comp_overhead_v;
+};
+
 struct mtk_aal_feature_option {
 	unsigned int mtk_aal_support;
 	unsigned int mtk_dre30_support;
@@ -381,6 +386,7 @@ struct mtk_disp_aal {
 	struct mtk_ddp_comp *companion;
 	struct mtk_disp_aal_primary *primary_data;
 	struct _mtk_disp_aal_tile_overhead overhead;
+	struct _mtk_disp_aal_tile_overhead_v tile_overhead_v;
 	atomic_t hist_available;
 	atomic_t dre20_hist_is_ready;
 	atomic_t eof_irq;

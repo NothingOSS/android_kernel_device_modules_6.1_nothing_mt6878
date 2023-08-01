@@ -669,6 +669,22 @@ static void mtk_disp_aal_config_overhead(struct mtk_ddp_comp *comp,
 	}
 }
 
+static void mtk_disp_aal_config_overhead_v(struct mtk_ddp_comp *comp,
+	struct total_tile_overhead_v  *tile_overhead_v)
+{
+	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+
+	DDPDBG("line: %d\n", __LINE__);
+
+	/*set component overhead*/
+	aal_data->tile_overhead_v.comp_overhead_v = 0;
+	/*add component overhead on total overhead*/
+	tile_overhead_v->overhead_v +=
+		aal_data->tile_overhead_v.comp_overhead_v;
+	/*copy from total overhead info*/
+	aal_data->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+}
+
 static bool debug_bypass_alg_mode;
 static void mtk_aal_config(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
@@ -4116,6 +4132,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_aal_funcs = {
 	.prepare = mtk_aal_prepare,
 	.unprepare = mtk_aal_unprepare,
 	.config_overhead = mtk_disp_aal_config_overhead,
+	.config_overhead_v = mtk_disp_aal_config_overhead_v,
 	.pq_frame_config = mtk_aal_pq_frame_config,
 	.pq_ioctl_transact = mtk_aal_pq_ioctl_transact,
 	.mutex_sof_irq = disp_aal_on_start_of_frame,
