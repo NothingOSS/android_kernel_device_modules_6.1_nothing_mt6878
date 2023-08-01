@@ -2271,10 +2271,13 @@ static void mt_scp_stop_res_prof(void)
 	res = addr[SCP_CORE_0]->res;
 	suspend_time = addr[SCP_CORE_0]->suspend_time;
 
-	pr_notice("[SCP] [%s:%d] [%d] susepnd time: %llums\n",
-				__func__, __LINE__, SCP_CORE_0, suspend_time);
+	if (suspend_time) {
+		pr_notice("[SCP] [%s:%d] [%d] susepnd time: %llums\n",
+					__func__, __LINE__, SCP_CORE_0, suspend_time);
+	}
 
 	if (wlock.total_duration) {
+		wlock.pcLockName[configMAX_LOCK_NAME_LEN - 1] = '\0';
 		pr_notice("[SCP] [%s:%d] [%d] [wakelock] total: %llums, lock %s: %llums\n",
 				__func__, __LINE__, SCP_CORE_0, wlock.total_duration,
 				wlock.pcLockName, wlock.duration);
@@ -2302,10 +2305,13 @@ static void mt_scp_stop_res_prof(void)
 	res = addr[SCP_CORE_1]->res;
 	suspend_time = addr[SCP_CORE_1]->suspend_time;
 
-	pr_notice("[SCP] [%s:%d] [%d] susepnd time: %llums\n",
-				__func__, __LINE__, SCP_CORE_1, suspend_time);
+	if (suspend_time) {
+		pr_notice("[SCP] [%s:%d] [%d] susepnd time: %llums\n",
+					__func__, __LINE__, SCP_CORE_1, suspend_time);
+	}
 
 	if (wlock.total_duration) {
+		wlock.pcLockName[configMAX_LOCK_NAME_LEN - 1] = '\0';
 		pr_notice("[SCP] [%s:%d] [%d] [wakelock] total: %llums, lock %s: %llums\n",
 			    __func__, __LINE__, SCP_CORE_1, wlock.total_duration,
 				wlock.pcLockName, wlock.duration);
