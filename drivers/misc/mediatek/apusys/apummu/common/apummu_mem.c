@@ -251,8 +251,10 @@ static int apummu_mem_alloc_sgt(struct device *dev, struct apummu_mem *mem)
 
 	/* alloc ammu dma-buf container */
 	mdbuf = kzalloc(sizeof(*mdbuf), GFP_KERNEL);
-	if (!mdbuf)
+	if (!mdbuf) {
+		AMMU_LOG_ERR("alloc mdbuf fail\n");
 		return -ENOMEM;
+	}
 
 	mutex_init(&mdbuf->mtx);
 	INIT_LIST_HEAD(&mdbuf->attachments);
@@ -263,6 +265,7 @@ static int apummu_mem_alloc_sgt(struct device *dev, struct apummu_mem *mem)
 
 	kva = vzalloc(mdbuf->dma_size);
 	if (!kva) {
+		AMMU_LOG_ERR("alloc DRAM fail\n");
 		ret = -ENOMEM;
 		goto free_ammu_dbuf;
 	}
