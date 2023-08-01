@@ -13455,7 +13455,7 @@ void mtk_drm_crtc_discrete_update(struct drm_crtc *crtc,
 	struct cmdq_pkt *pending_handle = handle;
 	struct mtk_ddp_comp *comp = NULL;
 	int i, j;
-	bool is_frame_mode;
+	bool is_frame_mode = false;
 
 	is_frame_mode = mtk_crtc_is_frame_trigger_mode(crtc);
 
