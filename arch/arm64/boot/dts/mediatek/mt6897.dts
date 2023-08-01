@@ -10539,6 +10539,7 @@
 			mediatek,clock-parents = <4 3>;
 			operating-points-v2 = <&opp_table_vdec>;
 			vdec-mmdvfs-in-vcp = <1>;
+			vdec-mmdvfs-in-adaptive = <1>;
 			m4u-ports =
 				<M4U_L4_P0_HW_VDEC_MC_EXT>,
 				<M4U_L4_P1_HW_VDEC_UFO_EXT>,
@@ -10649,6 +10650,7 @@
 				"mmdvfs_clk";
 			operating-points-v2 = <&opp_table_venc>;
 			venc-mmdvfs-in-vcp = <0>;
+			venc-mmdvfs-in-adaptive = <1>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			port-arg-num = <3>;
 			port-def = <0 M4U_L7_P0_VENC_RCPU_U0 0>,

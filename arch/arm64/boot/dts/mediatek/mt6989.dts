@@ -8730,6 +8730,7 @@
 				"M4U_PORT_VDEC_LAT0_MC",
 				"M4U_PORT_VDEC_VIDEO_UP_NOR";
 			vdec-mmdvfs-in-vcp = <1>;
+			vdec-mmdvfs-in-adaptive = <1>;
 		};
 
 		smi-larb7@17010000 {
@@ -8764,6 +8765,7 @@
 				"MT_CG_VENC1",
 				"MT_CG_VENC2";
 			venc-mmdvfs-in-vcp = <1>;
+			venc-mmdvfs-in-adaptive = <1>;
 			port-arg-num = <3>;
 			port-def = <0 SMMU_L7_P0_VENC_RCPU 0>,
 				<0 SMMU_L7_P1_VENC_REC 0>,
