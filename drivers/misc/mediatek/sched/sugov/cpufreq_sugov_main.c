@@ -684,6 +684,7 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 	unsigned long util = 0, max = 1;
 	unsigned int j, max_cpu = 0;
 	int idle = 0;
+	bool _ignore_idle_ctrl = ignore_idle_ctrl;
 
 	for_each_cpu(j, policy->cpus) {
 		struct sugov_cpu *j_sg_cpu = &per_cpu(sugov_cpu, j);
@@ -693,7 +694,7 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 		sugov_iowait_apply(j_sg_cpu, time);
 		j_util = j_sg_cpu->util;
 		j_max = j_sg_cpu->max;
-		if (ignore_idle_ctrl) {
+		if (_ignore_idle_ctrl) {
 			rq = cpu_rq(j);
 			sugov_data_ptr =
 				&((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;

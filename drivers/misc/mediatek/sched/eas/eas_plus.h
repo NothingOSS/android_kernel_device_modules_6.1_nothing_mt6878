@@ -213,8 +213,7 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_SET_TASK_LS			_IOW('g', 30,  int)
 #define EAS_UNSET_TASK_LS		_IOW('g', 31,  int)
 #define EAS_SET_TASK_LS_PREFER_CPUS		_IOW('g', 32,  struct SA_task)
-
-
+#define EAS_IGNORE_IDLE_UTIL_CTRL	_IOW('g', 33,  unsigned int)
 
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)
 extern void mtk_sched_newidle_balance(void *data, struct rq *this_rq,

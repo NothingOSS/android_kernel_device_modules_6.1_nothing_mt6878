@@ -387,6 +387,11 @@ static long eas_ioctl_impl(struct file *filp,
 	SA_task_args.mask = mask.bits[0];
 
 	switch (cmd) {
+	case EAS_IGNORE_IDLE_UTIL_CTRL:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		set_ignore_idle_ctrl(val);
+		break;
 	case EAS_SYNC_SET:
 		if (easctl_copy_from_user(&sync, (void *)arg, sizeof(unsigned int)))
 			return -1;
