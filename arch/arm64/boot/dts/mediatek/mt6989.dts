@@ -8596,7 +8596,8 @@
 
 		aie: aie@15310000 {
 			compatible = "mediatek,aie-isp7sp-1";
-			reg = <0 0x15310000 0 0x1000>;
+			reg = <0 0x15310000 0 0x1000>,
+				  <0 0x15780000 0 0x1000>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			cmdqsec-supply = <&gce_m_sec>;
 			mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>,
