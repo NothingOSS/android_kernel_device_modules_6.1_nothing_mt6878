@@ -15363,6 +15363,19 @@
 		soc-limit-freq-lv3 = < 900000  900000 1300000>;
 	};
 
+	gpu_power_throttling: gpu-power-throttling {
+		compatible = "mediatek,gpu-power-throttling";
+
+		lbat-max-level = <3>;
+		lbat-limit-freq = <981000 550000 224000>;
+
+		oc-max-level = <2>;
+		oc-limit-freq = <981000 550000>;
+
+		soc-max-level = <1>;
+		soc-limit-freq = <2147483647>;
+	};
+
 	md_power_throttling: md-power-throttling {
 		compatible = "mediatek,md-power-throttling";
 
