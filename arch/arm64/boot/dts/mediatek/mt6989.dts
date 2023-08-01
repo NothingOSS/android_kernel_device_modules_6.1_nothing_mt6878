@@ -12525,7 +12525,7 @@
 		secure-dump-size = <0x608000>;
 		scp-pm-notify = "enable";
 		scp-thermal-wq = "disable";
-		scp-low-pwr-dbg = "disable";
+		scp-low-pwr-dbg = "enable";
 		scp-cfgreg-ap-en = "enable";
 		scp-ipc-wa = "enable";
 		//scp_aovmem_key = "mediatek,scp_aov_reserved";
