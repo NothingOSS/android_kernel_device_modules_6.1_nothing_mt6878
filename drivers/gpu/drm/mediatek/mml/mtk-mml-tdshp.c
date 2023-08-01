@@ -439,6 +439,8 @@ static s32 tdshp_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 				mml_clock_lock(task->config->mml);
 				/* ccf power on */
 				call_hw_op(task->config->path[0]->mmlsys,
+					mminfra_pw_enable);
+				call_hw_op(task->config->path[0]->mmlsys,
 					pw_enable);
 				/* dpc exception flow on */
 				mml_msg_dpc("%s dpc exception flow on", __func__);
@@ -1148,6 +1150,7 @@ static void tdshp_histdone_cb(struct cmdq_cb_data data)
 		mml_dpc_exc_release(tdshp->mml);
 		/* ccf power off */
 		call_hw_op(tdshp->mmlsys_comp, pw_disable);
+		call_hw_op(tdshp->mmlsys_comp, mminfra_pw_enable);
 		mml_clock_unlock(tdshp->mml);
 		mml_lock_wake_lock(tdshp->mml, false);
 	}

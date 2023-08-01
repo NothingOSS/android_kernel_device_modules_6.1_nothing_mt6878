@@ -851,11 +851,10 @@ void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
 
 	if (cur_task_cnt == 1) {
 		const struct mml_topology_path *path = task->config->path[0];
-		struct mml_comp *comp;
 
 		mml_msg_dpc("%s scenario in, dpc start", __func__);
-		comp = path->mmlsys;
-		call_hw_op(comp, pw_enable);
+		call_hw_op(path->mmlsys, mminfra_pw_enable);
+		call_hw_op(path->mmlsys, pw_enable);
 		if (mml->dpc.mmlsys_26m_clk) {
 			ret = clk_prepare_enable(mml->dpc.mmlsys_26m_clk);
 			if (ret)
@@ -867,6 +866,7 @@ void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
 		mml_mmp(dpc_cfg, MMPROFILE_FLAG_START, 1, 0);
 		mml_dpc_config(DPC_SUBSYS_MML1, true);
 		mml_dpc_exc_release(task->config->mml);
+		call_hw_op(path->mmlsys, mminfra_pw_disable);
 	}
 }
 
@@ -894,18 +894,18 @@ void mml_dpc_task_cnt_dec(struct mml_task *task, bool addon_task)
 
 	if (cur_task_cnt == 0) {
 		const struct mml_topology_path *path = task->config->path[0];
-		struct mml_comp *comp;
 
 		mml_msg_dpc("%s scenario out, dpc end", __func__);
+		call_hw_op(path->mmlsys, mminfra_pw_enable);
 		mml_dpc_exc_keep(task->config->mml);
 		mml_mmp(dpc_cfg, MMPROFILE_FLAG_END, 0, 0);
 		mml_dpc_config(DPC_SUBSYS_MML1, false);
 		mml_dpc_enable(false);
 		if (mml->dpc.mmlsys_26m_clk)
 			clk_disable_unprepare(mml->dpc.mmlsys_26m_clk);
-		comp = path->mmlsys;
-		call_hw_op(comp, pw_disable);
+		call_hw_op(path->mmlsys, pw_disable);
 		mml_dpc_exc_release(task->config->mml);
+		call_hw_op(path->mmlsys, mminfra_pw_disable);
 	}
 }
 

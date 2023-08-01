@@ -582,8 +582,8 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 			cmdq_thread_dump(cfg->path[0]->clt->chan, task->pkts[0], NULL, NULL);
 	}
 
-	comp = path->mmlsys;
-	call_hw_op(comp, pw_enable);
+	call_hw_op(path->mmlsys, mminfra_pw_enable);
+	call_hw_op(path->mmlsys, pw_enable);
 	mml_dpc_exc_keep(cfg->mml);
 
 	for (i = 0; i < path->node_cnt; i++) {
@@ -591,8 +591,8 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 		call_dbg_op(comp, dump);
 	}
 
-	comp = path->mmlsys;
-	call_hw_op(comp, pw_disable);
+	call_hw_op(path->mmlsys, pw_disable);
+	call_hw_op(path->mmlsys, mminfra_pw_disable);
 	mml_dpc_exc_release(cfg->mml);
 }
 
@@ -610,14 +610,14 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 	cmdq_mbox_enable(((struct cmdq_client *)task->pkts[pipe]->cl)->chan);
 	mml_trace_ex_end();
 
-	comp = path->mmlsys;
-
 	mml_trace_ex_begin("%s_%s_%u", __func__, "mminfra_pw", pipe);
-	call_hw_op(comp, mminfra_pw_enable);
+	if (path->mmlsys)
+		call_hw_op(path->mmlsys, mminfra_pw_enable);
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
-	call_hw_op(comp, pw_enable);
+	if (path->mmlsys)
+		call_hw_op(path->mmlsys, pw_enable);
 	mml_trace_ex_end();
 
 	if (task->config->info.mode == MML_MODE_RACING && task->config->dpc) {
@@ -650,9 +650,9 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 	}
 	mml_trace_ex_end();
 
-	comp = path->mmlsys;
 	mml_trace_ex_begin("%s_%s_%u", __func__, "mminfra_pw", pipe);
-	call_hw_op(comp, mminfra_pw_disable);
+	if (path->mmlsys)
+		call_hw_op(path->mmlsys, mminfra_pw_disable);
 	mml_trace_ex_end();
 
 #ifndef MML_FPGA
@@ -680,9 +680,9 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 
 	mml_clock_lock(task->config->mml);
 
-	comp = path->mmlsys;
 	mml_trace_ex_begin("%s_%s_%u", __func__, "mminfra_pw", pipe);
-	call_hw_op(comp, mminfra_pw_enable);
+	if (path->mmlsys)
+		call_hw_op(path->mmlsys, mminfra_pw_enable);
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
@@ -729,8 +729,8 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	if (pw_disable_exc)
 		mml_dpc_exc_keep(task->config->mml);
 
-	comp = path->mmlsys;
-	call_hw_op(comp, pw_disable);
+	if (path->mmlsys)
+		call_hw_op(path->mmlsys, pw_disable);
 
 	if (pw_disable_exc)
 		mml_dpc_exc_release(task->config->mml);
@@ -743,9 +743,9 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 
 	mml_trace_ex_end();
 
-	comp = path->mmlsys;
 	mml_trace_ex_begin("%s_%s_%u", __func__, "mminfra_pw", pipe);
-	call_hw_op(comp, mminfra_pw_disable);
+	if (path->mmlsys)
+		call_hw_op(path->mmlsys, mminfra_pw_disable);
 	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "cmdq", pipe);
