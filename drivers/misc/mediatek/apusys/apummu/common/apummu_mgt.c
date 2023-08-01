@@ -18,6 +18,7 @@
 #include "apummu_mem.h"
 #include "apummu_remote_cmd.h"
 #include "apummu_cmn.h"
+#include "apummu_trace.h"
 
 extern struct apummu_dev_info *g_adv;
 
@@ -145,7 +146,9 @@ static void ammu_DRAM_free_work(struct work_struct *work)
 	mutex_lock(&g_ammu_table_set.DRAM_FB_lock);
 
 	if (g_ammu_table_set.is_work_canceled) {
+		ammu_trace_begin("APUMMU: free DRAM");
 		apummu_dram_remap_runtime_free(g_adv);
+		ammu_trace_end();
 		AMMU_LOG_INFO("Delay DRAM Free done\n");
 	} else
 		g_ammu_table_set.is_work_canceled = true;
@@ -156,20 +159,27 @@ static void ammu_DRAM_free_work(struct work_struct *work)
 
 static void free_memory(struct kref *kref)
 {
+	ammu_trace_begin("APUMMU: free memory");
+
 	AMMU_LOG_DBG("kref destroy\n");
 #if DRAM_FALL_BACK_IN_RUNTIME
 	queue_delayed_work(ammu_workq, &DRAM_free_work,
 		msecs_to_jiffies(AMMU_FREE_DRAM_DELAY_MS));
 	g_ammu_table_set.is_free_job_set = true;
 #endif
+
 	if (g_adv->remote.is_general_SLB_alloc) {
+		ammu_trace_begin("APUMMU: Free SLB without IPI");
 		/* MDW will close session in IPI handler in some case */
 		// apummu_remote_mem_free_pool(g_adv);
 		apummu_free_general_SLB(g_adv);
+		ammu_trace_end();
 	}
 
 	g_ammu_table_set.is_stable_exist = false;
 	g_ammu_table_set.is_SLB_set = false;
+
+	ammu_trace_end();
 }
 
 /**
@@ -184,6 +194,7 @@ static int session_table_alloc(void)
 {
 	int ret = 0;
 	struct apummu_session_tbl *sTable_ptr = NULL;
+	ammu_trace_begin("APUMMU: session table allocate");
 
 	sTable_ptr = kvmalloc(sizeof(struct apummu_session_tbl), GFP_KERNEL);
 	if (!sTable_ptr) {
@@ -198,12 +209,15 @@ static int session_table_alloc(void)
 #if DRAM_FALL_BACK_IN_RUNTIME
 	mutex_lock(&g_ammu_table_set.DRAM_FB_lock);
 	if (!(g_adv->remote.is_dram_IOVA_alloc)) {
+		ammu_trace_begin("APUMMU: Alloc DRAM");
 		ret = apummu_dram_remap_runtime_alloc(g_adv);
 		if (ret) {
+			ammu_trace_end();
 			ammu_exception("alloc DRAM FB fail\n");
 			mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
 			goto out;
 		}
+		ammu_trace_end();
 	} else { // DRAM not free, cancel delay job
 		if (!cancel_delayed_work(&DRAM_free_work) && g_ammu_table_set.is_free_job_set)
 			g_ammu_table_set.is_work_canceled = false;
@@ -215,19 +229,26 @@ static int session_table_alloc(void)
 #endif
 
 	if (!(g_adv->remote.is_general_SLB_alloc)) { // SLB retry
+		ammu_trace_begin("APUMMU: SLB alloc");
 		/* Do not assign return value, since alloc SLB may fail */
-		if (apummu_alloc_general_SLB(g_adv))
+		if (apummu_alloc_general_SLB(g_adv)) {
+			ammu_trace_end();
 			AMMU_LOG_VERBO("general SLB alloc fail...\n");
+		}
+		ammu_trace_end();
 	}
 
 	if (!g_ammu_table_set.is_stable_exist) {
 	#if DRAM_FALL_BACK_IN_RUNTIME
+		ammu_trace_begin("APUMMU: SLB + DRAM IPI");
 		ret = apummu_remote_set_hw_default_iova_one_shot(g_adv);
 		if (ret) {
+			ammu_trace_end();
 			AMMU_LOG_ERR("Remote set hw IOVA one shot fail!!\n");
 			ammu_exception("Set DRAM FB + SLB fail\n");
 			goto free_DRAM;
 		}
+		ammu_trace_end();
 	#else
 		if (g_adv->remote.is_general_SLB_alloc) {
 			if (apummu_remote_mem_add_pool(g_adv))
@@ -245,16 +266,20 @@ static int session_table_alloc(void)
 
 		/* SLB retry IPI */
 		if (!g_ammu_table_set.is_SLB_set && g_adv->remote.is_general_SLB_alloc) {
+			ammu_trace_begin("APUMMU: SLB ONLY IPI");
 			ret = apummu_remote_mem_add_pool(g_adv);
 			if (ret) {
+				ammu_trace_end();
 				ammu_exception("Set SLB fail\n");
 				goto free_general_SLB;
 			}
+			ammu_trace_end();
 		}
 
 		g_ammu_table_set.is_SLB_set = true;
 	}
 
+	ammu_trace_end();
 	return ret;
 
 #if DRAM_FALL_BACK_IN_RUNTIME
@@ -264,6 +289,7 @@ free_DRAM:
 free_general_SLB:
 	apummu_free_general_SLB(g_adv);
 out:
+	ammu_trace_end();
 	return ret;
 }
 
@@ -275,6 +301,8 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 	uint64_t ret_eva;
 	uint32_t SLB_type, cross_page_array_num = 0;
 	uint8_t mask_idx;
+
+	ammu_trace_begin("APUMMU: add table");
 
 	if (g_adv == NULL) {
 		AMMU_LOG_ERR("Invalid apummu_device\n");
@@ -385,6 +413,7 @@ out:
 out_after_lock:
 	mutex_unlock(&g_ammu_table_set.table_lock);
 out_before_lock:
+	ammu_trace_end();
 	return ret;
 }
 
@@ -417,6 +446,7 @@ static void count_page_array_en_num(void)
 int get_session_table(uint64_t session, void **tbl_kva, uint32_t *size)
 {
 	int ret = 0;
+	ammu_trace_begin("APUMMU: Get session table");
 
 	mutex_lock(&g_ammu_table_set.table_lock);
 
@@ -447,6 +477,7 @@ int get_session_table(uint64_t session, void **tbl_kva, uint32_t *size)
 
 out:
 	mutex_unlock(&g_ammu_table_set.table_lock);
+	ammu_trace_end();
 	return ret;
 }
 
@@ -454,6 +485,8 @@ out:
 int session_table_free(uint64_t session)
 {
 	int ret = 0;
+
+	ammu_trace_begin("APUMMU: free session table");
 
 	if (g_adv == NULL) {
 		AMMU_LOG_ERR("Invalid apummu_device\n");
@@ -476,6 +509,7 @@ int session_table_free(uint64_t session)
 
 out:
 	mutex_unlock(&g_ammu_table_set.table_lock);
+	ammu_trace_end();
 	return ret;
 }
 

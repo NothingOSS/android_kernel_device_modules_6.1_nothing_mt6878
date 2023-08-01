@@ -26,6 +26,7 @@
 
 /* All level default on */
 uint32_t g_ammu_klog = 0xF;	/* apummu kernel log level */
+u8 apummu_apusys_trace;
 
 #define APUMMU_DBG_DIR "apummu"
 
@@ -288,6 +289,10 @@ void apummu_dbg_init(struct apummu_dev_info *adv, struct dentry *apu_dbg_root)
 	/* create log level */
 	debugfs_create_u32("klog", 0644,
 			apummu_dbg_root, &g_ammu_klog);
+
+	/* Enable sys trace */
+	debugfs_create_u8("trace_en", 0644,
+			apummu_dbg_root, &apummu_apusys_trace);
 
 	/* create remote op node */
 	apummu_dbg_remote_op = debugfs_create_file("op", 0644,
