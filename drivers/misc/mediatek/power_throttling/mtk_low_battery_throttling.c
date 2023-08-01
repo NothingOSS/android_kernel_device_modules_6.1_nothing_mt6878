@@ -207,6 +207,12 @@ void exec_low_battery_callback(unsigned int thd)
 		return;
 	}
 
+	if (low_bat_thl_data->low_bat_thl_stop == 1) {
+		pr_info("[%s] low_bat_thl_stop=%d\n",
+			__func__, low_bat_thl_data->low_bat_thl_stop);
+		return;
+	}
+
 	thd_info = &low_bat_thl_data->lbat_thd_info[low_bat_thl_data->temp_cur_stage];
 
 	level = thd_to_level(thd, low_bat_thl_data->temp_cur_stage);
@@ -249,9 +255,11 @@ static ssize_t low_battery_protect_ut_store(
 		return size;
 	}
 
+	low_bat_thl_data->low_bat_thl_stop = 0;
 	low_bat_thl_data->low_bat_thl_level = val;
 	dev_info(dev, "your input is %d\n", val);
 	exec_throttle(val);
+	low_bat_thl_data->low_bat_thl_stop = 1;
 	return size;
 }
 static DEVICE_ATTR_RW(low_battery_protect_ut);
@@ -428,7 +436,8 @@ static void temp_handler(struct work_struct *work)
 		low_bat_thl_data->temp_cur_stage = temp_stage;
 
 		pr_info("[%s] after modify thd: temp=%d (stage,lv)=(%d,%d)\n",
-				__func__, temp, low_bat_thl_data->temp_cur_stage, low_bat_thl_data->low_bat_thl_level);
+				__func__, temp, low_bat_thl_data->temp_cur_stage,
+				low_bat_thl_data->low_bat_thl_level);
 
 		dump_thd_volts_ext(thd_info->thd_volts, thd_info->thd_volts_size);
 	}
@@ -518,8 +527,8 @@ static int low_battery_thd_setting(struct platform_device *pdev, struct low_bat_
 	if (!volt_thd)
 		return -ENOMEM;
 
-	of_property_read_u32_array(np, "thd-volts-l", &volt_thd[0], num);
-	of_property_read_u32_array(np, "thd-volts-h", &volt_thd[num], num);
+	of_property_read_u32_array(np, thd_volts_l, &volt_thd[0], num);
+	of_property_read_u32_array(np, thd_volts_h, &volt_thd[num], num);
 
 	for (i = 0; i <= priv->temp_max_stage; i++) {
 		max_thr_lv = LOW_BATTERY_LEVEL_NUM - 1;
