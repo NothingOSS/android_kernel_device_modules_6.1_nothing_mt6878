@@ -655,23 +655,6 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		}
 	}
 
-	//addon for IR
-	if (!crtc->state)
-		DDPDUMP("%s dump nothing for null state\n", __func__);
-	else {
-		state = to_mtk_crtc_state(crtc->state);
-		if (state->lye_state.mml_ir_lye && priv->data->mmsys_id == MMSYS_MT6897) {
-			addon_data = mtk_addon_get_scenario_data(__func__, crtc,
-					MML_RSZ);
-			mtk_drm_crtc_addon_dump(crtc, addon_data);
-			if (mtk_crtc->is_dual_pipe) {
-				addon_data = mtk_addon_get_scenario_data_dual
-					(__func__, crtc, MML_RSZ);
-				mtk_drm_crtc_addon_dump(crtc, addon_data);
-			}
-		}
-	}
-
 	//addon for DL
 	if (!crtc->state)
 		DDPDUMP("%s dump nothing for null state\n", __func__);
