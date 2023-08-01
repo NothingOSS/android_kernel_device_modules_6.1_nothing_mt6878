@@ -645,10 +645,9 @@ int mtk_eint_set_debounce(struct mtk_eint *eint, unsigned long eint_num,
 	writel(rst | bit, reg + set_offset);
 
 	/*
-	 * Delay should be (8T @ 32k) + de-bounce count-down time
-	 * from dbc rst to work correctly.
+	 * Delay should be (8T @ 32k) from dbc rst to work correctly.
 	 */
-	udelay(debounce_time[dbnc] + 250);
+	udelay(250);
 	if (unmask == 1)
 		mtk_eint_unmask(d);
 
