@@ -760,6 +760,8 @@ static int clkdbg_set_parent(struct seq_file *s, void *v)
 		return r;
 	}
 
+	pr_info("%s set_parent %s by cmd\n", clk_name, parent_name);
+
 	r = clk_set_parent(clk, parent);
 	seq_printf(s, "%d\n", r);
 
