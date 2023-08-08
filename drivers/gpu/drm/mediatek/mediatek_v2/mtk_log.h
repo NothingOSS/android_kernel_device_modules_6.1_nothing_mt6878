@@ -146,8 +146,8 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		mutex_unlock(lock);		   \
 		DRM_MMP_EVENT_END(mutex_lock, (unsigned long)lock,	   \
 			line);	   \
-		mtk_drm_trace_tag_end("CM_LOCK_%s", name);	\
-		DDPINFO("M_ULOCK:%s[%d] -\n", name, line);		   \
+		mtk_drm_trace_tag_end("CM_ULOCK%s", name);	\
+		DDPINFO("CM_ULOCK:%s[%d] -\n", name, line);		   \
 	} while (0)
 
 #define DDP_MUTEX_LOCK(lock, name, line)                                       \

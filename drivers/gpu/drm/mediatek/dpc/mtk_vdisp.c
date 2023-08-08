@@ -13,6 +13,7 @@
 #include <linux/regulator/consumer.h>
 
 #include "mtk_disp_vidle.h"
+#include "mtk-smi-dbg.h"
 
 #define VDISPDBG(fmt, args...) \
 	pr_info("[vdisp] %s:%d " fmt "\n", __func__, __LINE__, ##args)
@@ -131,8 +132,10 @@ static void mtk_vdisp_vlp_disp_vote(u32 user, bool set)
 	u32 ack = set ? BIT(user) : 0;
 	u16 i = 0;
 
-	if (unlikely(!g_vlp_base))
+	if (unlikely(!g_vlp_base)) {
 		VDISPERR("uninitialized g_vlp_base");
+		return;
+	}
 
 	writel_relaxed(BIT(user), g_vlp_base + addr);
 	do {
@@ -225,6 +228,28 @@ static const struct mtk_vdisp_funcs funcs = {
 	.vlp_disp_vote = mtk_vdisp_vlp_disp_vote,
 };
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
+static int mtk_smi_disp_get(void)
+{
+	mtk_vdisp_vlp_disp_vote(DISP_VIDLE_USER_SMI_DUMP, true);
+
+	/* wait for disp mtcmos on */
+	udelay(50);
+
+	return 0;
+}
+static int mtk_smi_disp_put(void)
+{
+	mtk_vdisp_vlp_disp_vote(DISP_VIDLE_USER_SMI_DUMP, false);
+
+	return 0;
+}
+static const struct smi_disp_ops smi_funcs = {
+	.disp_get = mtk_smi_disp_get,
+	.disp_put = mtk_smi_disp_put,
+};
+#endif
+
 static int mtk_vdisp_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -286,6 +311,10 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 
 	pm_runtime_get(dev);
 	mtk_vdisp_register(&funcs);
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
+	mtk_smi_set_disp_ops(&smi_funcs);
+#endif
 
 	return ret;
 }
