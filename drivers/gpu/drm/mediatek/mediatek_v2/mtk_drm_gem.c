@@ -811,9 +811,9 @@ void print_mml_frame_info(struct mml_frame_info info)
 		info.src.width, info.src.height,
 		info.src.y_stride, info.src.uv_stride,
 		info.src.vert_stride, info.src.format, info.src.profile);
-	DDPMSG("plane_offset[0]:%d, plane_offset[1]:%d, plane_offset[2]:%d, p_c:%d, sec:%d\n",
+	DDPMSG("plane_offset[0]:%d, plane_offset[1]:%d, plane_offset[2]:%d, p_c:%d, sec:%d, a:%d\n",
 		info.src.plane_offset[0], info.src.plane_offset[1], info.src.plane_offset[2],
-		info.src.plane_cnt, info.src.secure);
+		info.src.plane_cnt, info.src.secure, info.alpha);
 	DDPMSG("dest_cnt:%d\n", info.dest_cnt);
 	for (; i < MML_MAX_OUTPUTS; ++i) {
 		DDPMSG("dest cfg[%d]:\n", i);

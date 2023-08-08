@@ -30,6 +30,13 @@
 #define MT6989_DISP_REG_DISP_Y2R0_SIZE 0x01C
 #define MT6989_DISP_REG_DISP_Y2R0_1TNP 0x020
 	#define MT6989_DISP_1T2P BIT(0)
+#define MT6989_DISP_Y2R0_MATRIX_SEL_FULL_RANGE_BT601_RGB 0x4
+#define MT6989_DISP_Y2R0_MATRIX_SEL_FULL_RANGE_BT709_RGB 0x5
+#define MT6989_DISP_Y2R0_MATRIX_SEL_LIMIT_RANGE_BT601_RGB 0x6
+#define MT6989_DISP_Y2R0_MATRIX_SEL_LIMIT_RANGE_BT709_RGB 0x7
+#define MT6989_DISP_Y2R0_MATRIX_SEL_FULL_RANGE_BT2020_RGB 0x8
+#define MT6989_DISP_Y2R0_MATRIX_SEL_LIMIT_RANGE_BT2020_RGB 0x9
+
 
 #define DISP_REG_DISP_Y2R0_EN 0x250
 #define DISP_REG_DISP_Y2R0_RST 0x254
@@ -79,12 +86,13 @@ static void mtk_y2r_mt6989_config(struct mtk_drm_crtc *mtk_crtc,
 				 struct cmdq_pkt *handle)
 {
 	unsigned int disp_y2r_cfg = 0;
-
-	DDPINFO("%s + yuv:%d\n", __func__, addon_config->addon_mml_config.is_yuv);
+	unsigned int mml_profile = 0;
+	bool y2r_en = addon_config->addon_mml_config.y2r_en | g_y2r_en;
 
 	if (mtk_crtc->mml_cfg) {
 		int hsize = 0, vsize = 0;
 		int profile = 5;
+		mml_profile = mtk_crtc->mml_cfg->info.dest[0].data.profile;
 
 		hsize = mtk_crtc->mml_cfg->dl_out[0].width & 0x1FFF;
 		vsize = mtk_crtc->mml_cfg->dl_out[0].height & 0x1FFF;
@@ -92,19 +100,31 @@ static void mtk_y2r_mt6989_config(struct mtk_drm_crtc *mtk_crtc,
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_SIZE,
 				((hsize << 16) | vsize), ~0);
+		DDPINFO("%s: p:%d,e:%d,h:%d,v:%d\n", __func__, mml_profile, y2r_en, hsize, vsize);
 
 		/*follow mml output mml_ycbcr_profile*/
-		switch (mtk_crtc->mml_cfg->info.dest[0].data.profile) {
+		switch (mml_profile) {
+		case MML_YCBCR_PROFILE_FULL_BT601:
+			profile = MT6989_DISP_Y2R0_MATRIX_SEL_FULL_RANGE_BT601_RGB;
+			break;
+		case MML_YCBCR_PROFILE_FULL_BT709:
+			profile = MT6989_DISP_Y2R0_MATRIX_SEL_FULL_RANGE_BT709_RGB;
+			break;
 		case MML_YCBCR_PROFILE_BT601:
-			profile = DISP_REG_DISP_Y2R0_MATRIX_SEL_LIMIT_RANGE_BT601_RGB;
+			profile = MT6989_DISP_Y2R0_MATRIX_SEL_LIMIT_RANGE_BT601_RGB;
 			break;
 		case MML_YCBCR_PROFILE_BT709:
-			profile = DISP_REG_DISP_Y2R0_MATRIX_SEL_LIMIT_RANGE_BT709_RGB;
+			profile = MT6989_DISP_Y2R0_MATRIX_SEL_LIMIT_RANGE_BT709_RGB;
 			break;
-		case MML_YCBCR_PROFILE_JPEG:
-			profile = DISP_REG_DISP_Y2R0_MATRIX_SEL_JPEG_RGB;
+		case MML_YCBCR_PROFILE_FULL_BT2020:
+			profile = MT6989_DISP_Y2R0_MATRIX_SEL_FULL_RANGE_BT2020_RGB;
+			break;
+		case MML_YCBCR_PROFILE_BT2020:
+			profile = MT6989_DISP_Y2R0_MATRIX_SEL_LIMIT_RANGE_BT2020_RGB;
 			break;
 		default:
+			profile = MT6989_DISP_Y2R0_MATRIX_SEL_FULL_RANGE_BT709_RGB;
+			DDPMSG("unknown p:%d\n", mml_profile);
 			break;
 		}
 		profile |= MT6989_DISP_REG_DISP_Y2R0_CLAMP;
@@ -112,11 +132,10 @@ static void mtk_y2r_mt6989_config(struct mtk_drm_crtc *mtk_crtc,
 		disp_y2r_cfg = profile;
 
 	} else {
-		disp_y2r_cfg = DISP_REG_DISP_Y2R0_MATRIX_SEL_FULL_RANGE_BT709_RGB & 0xF;
+		disp_y2r_cfg = MT6989_DISP_Y2R0_MATRIX_SEL_FULL_RANGE_BT709_RGB & 0xF;
 	}
 
-	if (!(addon_config->addon_mml_config.is_yuv)) {
-		DDPINFO("relay\n");
+	if (!y2r_en) {	// relay
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 			comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_CFG,
 			MT6989_DISP_REG_DISP_Y2R0_RELAY_MODE, ~0);

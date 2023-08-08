@@ -154,6 +154,7 @@ struct mtk_addon_mml_config {
 	struct mtk_rect mml_src_roi[DISP_PIPE_NUM]; /* [OUT] src roi for OVL */
 	struct mtk_rect mml_dst_roi[DISP_PIPE_NUM]; /* [OUT] dst roi for OVL */
 	bool is_yuv;				    /* [OUT] src format */
+	bool y2r_en;				    /* [OUT] enable y2r */
 	bool is_entering;			    /* [OUT] state of entering or leaving */
 	u8 pipe;				    /* [OUT] pipe indicator 0:left 1:right*/
 };

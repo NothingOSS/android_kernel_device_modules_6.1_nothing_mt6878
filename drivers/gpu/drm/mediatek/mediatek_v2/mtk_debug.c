@@ -101,6 +101,7 @@ unsigned int lfr_params;
 unsigned int disp_spr_bypass;
 unsigned int disp_cm_bypass;
 unsigned int g_mml_mode;
+bool g_y2r_en;
 #if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
 struct wr_online_dbg g_wr_reg;
 #endif
@@ -4308,6 +4309,12 @@ static void process_dbg_opt(const char *opt)
 
 		if (mtk_crtc)
 			mtk_crtc->is_force_mml_scen = force_mml_scen;
+	} else if (strncmp(opt, "g_y2r_en:", 9) == 0) {
+		if (strncmp(opt + 9, "0", 1) == 0)
+			g_y2r_en = 0;
+		else if (strncmp(opt + 9, "1", 1) == 0)
+			g_y2r_en = 1;
+		DDPMSG("g_y2r_en:%d", g_y2r_en);
 	} else if (strncmp(opt, "disp_plat_dbg:", 14) == 0) {
 		int err = 0;
 		struct disp_plat_dbg_scmi_data scmi_data;
