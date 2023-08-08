@@ -1225,12 +1225,8 @@ static void sys_ddp_disable_locked(const struct mml_topology_path *path,
 	struct mml_comp *comp;
 	u32 i;
 
-	if (!path->mmlsys) {
-		mml_err("%s fail to get path->mmlsys", __func__);
-		return;
-	}
-
-	call_hw_op(path->mmlsys, mminfra_pw_enable);
+	if (path->mmlsys)
+		call_hw_op(path->mmlsys, mminfra_pw_enable);
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
 	for (i = 0; i < path->node_cnt; i++) {
@@ -1256,9 +1252,10 @@ static void sys_ddp_disable_locked(const struct mml_topology_path *path,
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
 
-	call_hw_op(path->mmlsys, pw_disable);
-	call_hw_op(path->mmlsys, mminfra_pw_disable);
-
+	if (path->mmlsys) {
+		call_hw_op(path->mmlsys, pw_disable);
+		call_hw_op(path->mmlsys, mminfra_pw_disable);
+	}
 	mml_trace_ex_end();
 }
 
@@ -1310,8 +1307,10 @@ static void sys_ddp_enable(struct mml_sys *sys, struct mml_task *task, u32 pipe)
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
 
-	call_hw_op(path->mmlsys, mminfra_pw_enable);
-	call_hw_op(path->mmlsys, pw_enable);
+	if (path->mmlsys) {
+		call_hw_op(path->mmlsys, mminfra_pw_enable);
+		call_hw_op(path->mmlsys, pw_enable);
+	}
 
 	mml_trace_ex_end();
 
@@ -1329,7 +1328,8 @@ static void sys_ddp_enable(struct mml_sys *sys, struct mml_task *task, u32 pipe)
 	}
 	mml_trace_ex_end();
 
-	call_hw_op(path->mmlsys, mminfra_pw_disable);
+	if (path->mmlsys)
+		call_hw_op(path->mmlsys, mminfra_pw_disable);
 
 #ifndef MML_FPGA
 	cmdq_util_prebuilt_init(CMDQ_PREBUILT_MML);
