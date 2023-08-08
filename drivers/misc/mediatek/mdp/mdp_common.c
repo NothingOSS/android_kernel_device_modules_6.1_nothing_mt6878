@@ -1080,6 +1080,9 @@ static s32 cmdq_mdp_consume_handle(void)
 		if (err != 0) {
 			mutex_unlock(&mdp_thread_mutex);
 			CMDQ_ERR("fail to lock handle or power on: 0x%p\n", handle);
+
+			/* remove from list */
+			list_del_init(&handle->list_entry);
 			break;
 		}
 		mutex_unlock(&mdp_thread_mutex);
