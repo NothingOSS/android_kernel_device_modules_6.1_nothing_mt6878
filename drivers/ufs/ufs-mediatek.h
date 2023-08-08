@@ -327,6 +327,7 @@ enum {
 
 /* UFS MTK ip version value */
 enum {
+	IP_VER_NONE   = 0x0,
 	IP_VER_MT6897 = 0x01440000,
 	IP_VER_MT6989 = 0x01450000
 };

@@ -130,7 +130,7 @@ static void __iomem *reg_topckgen;
 
 void ufs_mtk_check_bus_init(u32 ip_ver)
 {
-	if (ip_ver == IP_VER_MT6897) {
+	if (ip_ver == IP_VER_NONE) {
 		if (reg_ufscfg_ao == NULL)
 			reg_ufscfg_ao = ioremap(0x112B8000, 0xCC);
 
@@ -163,7 +163,7 @@ void ufs_mtk_check_bus_status(struct ufs_hba *hba)
 	void __iomem *reg;
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	if (host->ip_ver == IP_VER_MT6897) {
+	if (host->ip_ver == IP_VER_NONE) {
 		/* Check ufs clock: ufs_axi_ck and ufs_ck */
 		if (mt_get_fmeter_freq(FM_U_CK, CKGEN) == 0) {
 			pr_err("%s: hf_fufs_ck off\n", __func__);
