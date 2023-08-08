@@ -194,12 +194,12 @@ struct audio_swpm_data mt6989_aud_get_power_scenario(void)
 {
 	struct audio_swpm_data test;
 
-	test.adda_mode = 1;
+	test.adda_mode = 0;
 	test.afe_on = 1;
-	test.channel_num = 2;
-	test.input_device = 8;
-	test.output_device = 16;
-	test.sample_rate = 4;
+	test.channel_num = 4;
+	test.input_device = 0;
+	test.output_device = 2;
+	test.sample_rate = 2;
 	test.user_case = 1;
 	return test;
 }
