@@ -2578,9 +2578,9 @@ static void devapc_dump(void)
 
 	/* kick vcp wdt */
 	if ((get_mt6989_reg_value(spm, 0xea8) & PWR_EN_ACK) == PWR_EN_ACK)
-		vcp_cmd_ex(VCP_SET_HALT_MMINFRA, "clk_devapc");
+		vcp_cmd_ex(VCP_DUMP_MMINFRA, "clk_devapc");
 	else
-		vcp_cmd_ex(VCP_SET_HALT, "clk_devapc");
+		vcp_cmd_ex(VCP_DUMP, "clk_devapc");
 
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
 		if (fclks->type != VLPCK && fclks->type != SUBSYS)
@@ -2605,9 +2605,9 @@ static void serror_dump(void)
 
 	/* kick vcp wdt */
 	if ((get_mt6989_reg_value(spm, 0xea8) & PWR_EN_ACK) == PWR_EN_ACK)
-		vcp_cmd_ex(VCP_SET_HALT_MMINFRA, "clk_serror");
+		vcp_cmd_ex(VCP_DUMP_MMINFRA, "clk_serror");
 	else
-		vcp_cmd_ex(VCP_SET_HALT, "clk_serror");
+		vcp_cmd_ex(VCP_DUMP, "clk_serror");
 
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
 		if (fclks->type != VLPCK && fclks->type != SUBSYS)
@@ -2759,9 +2759,9 @@ static void dump_bus_reg(struct regmap *regmap, u32 ofs)
 	set_subsys_reg_dump_mt6989(bus_dump_id);
 	get_subsys_reg_dump_mt6989();
 	if ((get_mt6989_reg_value(spm, 0xea8) & PWR_EN_ACK) == PWR_EN_ACK)
-		vcp_cmd_ex(VCP_SET_HALT_MMINFRA, "hwv_cg_timeout");
+		vcp_cmd_ex(VCP_DUMP_MMINFRA, "hwv_cg_timeout");
 	else
-		vcp_cmd_ex(VCP_SET_HALT, "hwv_cg_timeout");
+		vcp_cmd_ex(VCP_DUMP, "hwv_cg_timeout");
 
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
 		if (fclks->type != VLPCK && fclks->type != SUBSYS)

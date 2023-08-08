@@ -800,6 +800,52 @@ static void vcp_err_info_handler(int id, void *prdata, void *data,
 }
 #endif
 
+void trigger_vcp_dump(enum vcp_core_id id, char *user, bool vote_mminfra)
+{
+	int i, j;
+	int ret = 0;
+
+	i = 0;
+	while (!mutex_trylock(&vcp_pw_clk_mutex)) {
+		i += 5;
+		mdelay(5);
+		if (i > VCP_SYNC_TIMEOUT_MS) {
+			pr_notice("[VCP] %s lock fail\n", __func__);
+			return;
+		}
+	}
+
+	if (mmup_enable_count() && vcp_ready[id]) {
+
+		pr_notice("[VCP] %s call vcp dump clk %d\n",
+			user, mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type));
+
+		if (vote_mminfra) {
+			ret = vcp_turn_mminfra_on();
+			if (ret < 0) {
+				mutex_unlock(&vcp_pw_clk_mutex);
+				return;
+			}
+		}
+
+		vcp_dump_last_regs(mmup_enable_count());
+
+		/* trigger vcp dump */
+		pr_notice("[VCP] %s %s trigger VCP dump...\n", __func__, user);
+		writel(B_GIPC3_SETCLR_3, R_GIPC_IN_SET);
+		for (j = 0; j < NUM_FEATURE_ID; j++)
+			if (feature_table[j].enable)
+				pr_info("[VCP] Active feature id %d cnt %d\n",
+					j, feature_table[j].enable);
+
+		mtk_smi_dbg_hang_detect("VCP dump");
+
+		if (vote_mminfra)
+			vcp_turn_mminfra_off();
+	}
+	mutex_unlock(&vcp_pw_clk_mutex);
+}
+
 /*
  * @return: 1 if vcp is ready for running tasks
  */
@@ -821,7 +867,8 @@ void trigger_vcp_halt(enum vcp_core_id id, char *user, bool vote_mminfra)
 	if (mmup_enable_count() && vcp_ready[id]) {
 		if (halt_user == NULL) {
 			halt_user = user;
-			pr_notice("[VCP] vcp's first halt is from %s\n", halt_user);
+			pr_notice("[VCP] vcp's first halt is from %s clk %d\n",
+				halt_user, mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type));
 		}
 
 		if (vote_mminfra) {
@@ -908,6 +955,12 @@ unsigned int vcp_cmd(enum vcp_cmd_id id, char *user)
 		return get_vcp_generation();
 	case VCP_SET_HALT_MMINFRA:
 		trigger_vcp_halt(VCP_A_ID, user, false);
+		break;
+	case VCP_DUMP:
+		trigger_vcp_dump(VCP_A_ID, user, true);
+		break;
+	case VCP_DUMP_MMINFRA:
+		trigger_vcp_dump(VCP_A_ID, user, false);
 		break;
 	default:
 		pr_notice("[VCP] %s wrong cmd id %d", __func__, id);
