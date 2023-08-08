@@ -17,7 +17,8 @@
 
 #include "pmic_lvsys_notify.h"
 
-#define LVSYS_DBG	0
+#define LVSYS_DBG		0
+#define LVSYS_VIO18_SWITCH	0
 
 #define EVENT_LVSYS_F	0
 #define EVENT_LVSYS_R	BIT(15)
@@ -107,6 +108,7 @@ struct vio18_ctrl_t {
 	unsigned int second_switch;
 };
 
+#if LVSYS_VIO18_SWITCH
 static int vio18_switch_handler(struct notifier_block *nb, unsigned long event, void *v)
 {
 	int ret;
@@ -173,7 +175,7 @@ static int vio18_switch_init(struct device *dev, struct regmap *main_regmap)
 
 	return lvsys_register_notifier(&vio18_ctrl->nb);
 }
-
+#endif
 
 static void enable_lvsys_int(struct pmic_lvsys_notify *lvsys_notify, bool en)
 {
@@ -405,17 +407,9 @@ static int pmic_lowbatpt_parse_dt(struct pmic_lvsys_notify *lvsys_notify,
 	int ret;
 	unsigned int deb_sel = 0;
 	const struct pmic_lvsys_info *info = lvsys_notify->info;
-	char thd_volts_l[MTK_LBAT_PT_THD_VOLTS_LENGTH] = "thd-volts-l";
-	char thd_volts_h[MTK_LBAT_PT_THD_VOLTS_LENGTH] = "thd-volts-h";
-
-	if (lvsys_notify->bat_type == 1) {
-		/* big battery */
-		strncpy(thd_volts_l, "thd-volts-l-2s", MTK_LBAT_PT_THD_VOLTS_LENGTH);
-		strncpy(thd_volts_h, "thd-volts-h-2s", MTK_LBAT_PT_THD_VOLTS_LENGTH);
-	}
 
 	lvsys_notify->thd_volts_l_size =
-		of_property_count_elems_of_size(lowbatpt_np, thd_volts_l, sizeof(u32));
+		of_property_count_elems_of_size(lowbatpt_np, "lvsys-thd-volt-l", sizeof(u32));
 	if (lvsys_notify->thd_volts_l_size <= 0)
 		return -EINVAL;
 	lvsys_notify->thd_volts_l = devm_kmalloc_array(lvsys_notify->dev,
@@ -423,11 +417,11 @@ static int pmic_lowbatpt_parse_dt(struct pmic_lvsys_notify *lvsys_notify,
 						       sizeof(u32), GFP_KERNEL);
 	if (!lvsys_notify->thd_volts_l)
 		return -ENOMEM;
-	ret = of_property_read_u32_array(lowbatpt_np, thd_volts_l, lvsys_notify->thd_volts_l,
+	ret = of_property_read_u32_array(lowbatpt_np, "lvsys-thd-volt-l", lvsys_notify->thd_volts_l,
 					 lvsys_notify->thd_volts_l_size);
 
 	lvsys_notify->thd_volts_h_size =
-		of_property_count_elems_of_size(lowbatpt_np, thd_volts_h, sizeof(u32));
+		of_property_count_elems_of_size(lowbatpt_np, "lvsys-thd-volt-h", sizeof(u32));
 	if (lvsys_notify->thd_volts_h_size <= 0)
 		return -EINVAL;
 	lvsys_notify->thd_volts_h = devm_kmalloc_array(lvsys_notify->dev,
@@ -435,25 +429,16 @@ static int pmic_lowbatpt_parse_dt(struct pmic_lvsys_notify *lvsys_notify,
 						       sizeof(u32), GFP_KERNEL);
 	if (!lvsys_notify->thd_volts_h)
 		return -ENOMEM;
-	ret |= of_property_read_u32_array(lowbatpt_np, thd_volts_h, lvsys_notify->thd_volts_h,
+	ret |= of_property_read_u32_array(lowbatpt_np, "lvsys-thd-volt-h", lvsys_notify->thd_volts_h,
 					 lvsys_notify->thd_volts_h_size);
 	if (ret)
 		return ret;
 #if LVSYS_DBG
-	pr_info("%s thd_volts_l_sizei=%d thd_volts_h_size=%d bat_type=%d\n", __func__,
-	       lvsys_notify->thd_volts_l_size, lvsys_notify->thd_volts_h_size,
-	       lvsys_notify->bat_type);
-	for (ret = 0; ret < lvsys_notify->thd_volts_l_size; ret++)
-		pr_info("%s idx=%d thd_l=%d\n", __func__, ret, lvsys_notify->thd_volts_l[ret]);
-	for (ret = 0; ret < lvsys_notify->thd_volts_h_size; ret++)
-		pr_info("%s idx=%d thd_h=%d\n", __func__, ret, lvsys_notify->thd_volts_h[ret]);
+	pr_info("%s thd_volts_l_size=%d, thd_volts_h_size=%d\n", __func__,
+		lvsys_notify->thd_volts_l_size, lvsys_notify->thd_volts_h_size);
+	pr_info("%s lvsys-thd-volt-l=%d, lvsys-thd-volt-h=%d\n", __func__,
+		lvsys_notify->thd_volts_l[0], lvsys_notify->thd_volts_h[0]);
 #endif
-	/* we only get last element of array as thd */
-	lvsys_notify->thd_volts_l = lvsys_notify->thd_volts_l + lvsys_notify->thd_volts_l_size-1;
-	lvsys_notify->thd_volts_h = lvsys_notify->thd_volts_h + lvsys_notify->thd_volts_h_size-1;
-	lvsys_notify->thd_volts_l_size = 1;
-	lvsys_notify->thd_volts_h_size = 1;
-
 	lvsys_notify->cur_lv_ptr = lvsys_notify->thd_volts_l;
 	lvsys_notify->cur_hv_ptr = get_next_hv_ptr(lvsys_notify);
 	update_lvsys_vth(lvsys_notify);
@@ -561,10 +546,11 @@ static int pmic_lvsys_notify_probe(struct platform_device *pdev)
 	/* RG_LVSYS_INT_EN = 0x1 */
 	enable_lvsys_int(lvsys_notify, true);
 
+#if LVSYS_VIO18_SWITCH
 	ret = vio18_switch_init(&pdev->dev, lvsys_notify->regmap);
 	if (ret)
 		dev_notice(&pdev->dev, "vio18_switch_init failed, ret=%d\n", ret);
-
+#endif
 	return 0;
 }
 
