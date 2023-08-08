@@ -6059,6 +6059,8 @@
 			debug-version = <2>; /* OR operation of (1 << MMDVFS_DBG_VERx) */
 			fmeter-id =	/bits/ 8 <15 16 17 19 20 23 26 27 28>;
 			fmeter-type =	/bits/ 8 < 5  5  5  5  5  5  5  5  5>;
+			clk-base = <0x10000000>;
+			clk-offsets = <0x840>, <0x850>, <0x860>, <0x870>;
 		};
 
 		mmdebug-vcp {
