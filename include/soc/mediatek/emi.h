@@ -102,6 +102,9 @@ int mtk_emicen_addr2dram(unsigned long addr, struct emi_addr_map *map);
 /* mtk emidbg api */
 void mtk_emidbg_dump(void);
 
+/* mtk emiisu api */
+void mtk_emiisu_record_off(void);
+
 /* mtk emimpu api */
 int mtk_emimpu_md_handling_register(emimpu_md_handler md_handling_func);
 void mtk_clear_md_violation(void);
