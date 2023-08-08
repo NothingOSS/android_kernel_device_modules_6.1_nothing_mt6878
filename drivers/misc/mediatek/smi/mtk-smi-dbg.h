@@ -19,8 +19,14 @@ enum smi_isp_id {
 	ISP_DIP = BIT(1),
 };
 
+struct smi_disp_ops {
+	int (*disp_get)(void);
+	int (*disp_put)(void);
+};
+
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 
+int mtk_smi_set_disp_ops(const struct smi_disp_ops *ops);
 int mtk_smi_dbg_register_notifier(struct notifier_block *nb);
 int mtk_smi_dbg_unregister_notifier(struct notifier_block *nb);
 int mtk_smi_dbg_register_force_on_notifier(struct notifier_block *nb);
@@ -30,6 +36,11 @@ s32 smi_monitor_start(struct device *dev, u32 common_id, u32 commonlarb_id[MAX_M
 s32 smi_monitor_stop(struct device *dev, u32 common_id,
 			u32 *bw, enum smi_mon_id mon_id);
 #else
+
+static inline int mtk_smi_set_disp_ops(const struct smi_disp_ops *ops)
+{
+	return 0;
+}
 
 static inline int mtk_smi_dbg_register_notifier(struct notifier_block *nb)
 {

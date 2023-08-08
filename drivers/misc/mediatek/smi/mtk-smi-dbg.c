@@ -416,11 +416,32 @@ struct mtk_smi_dbg {
 	u64			exec;
 	u8			frame;
 	struct notifier_block suspend_nb;
+	const struct smi_disp_ops	*disp_ops;
 };
 static struct mtk_smi_dbg	*gsmi;
 static bool smi_enter_met;
 
 #define LINE_MAX_LEN		(800)
+
+static int smi_vote_disp_on(void)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+
+	if (smi->disp_ops && smi->disp_ops->disp_get)
+		return smi->disp_ops->disp_get();
+
+	return 0;
+}
+
+static int smi_vote_disp_off(void)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+
+	if (smi->disp_ops && smi->disp_ops->disp_put)
+		return smi->disp_ops->disp_put();
+
+	return 0;
+}
 
 static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 				const bool rsi, const u32 id, bool skip_pm_runtime)
@@ -502,6 +523,50 @@ static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 	}
 }
 
+static int mtk_smi_mminfra_get_if_in_use(void)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	int i, ret, is_on = 0;
+
+	for (i = 0; i < ARRAY_SIZE(smi->comm); i++) {
+		if (!smi->comm[i].dev || !(smi->comm[i].smi_type == SMI_COMMON))
+			continue;
+		ret = pm_runtime_get_if_in_use(smi->comm[i].dev);
+		if (ret == 0)
+			continue;
+		else if (ret < 0) {
+			dev_notice(smi->comm[i].dev, "%s:rpm fail, ret=%d\n", __func__, ret);
+			continue;
+		} else {
+			atomic_inc(&smi->comm[i].is_on);
+			is_on = 1;
+		}
+	}
+	return is_on;
+}
+
+static int mtk_smi_mminfra_put(void)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	int i, ref_cnt, ret = 0;
+
+	for (i = 0; i < ARRAY_SIZE(smi->comm); i++) {
+		if (!smi->comm[i].dev || !(smi->comm[i].smi_type == SMI_COMMON))
+			continue;
+		ref_cnt = atomic_read(&smi->comm[i].is_on);
+		if (ref_cnt > 0) {
+			atomic_dec(&smi->comm[i].is_on);
+			ret = pm_runtime_put(smi->comm[i].dev);
+			if (ret < 0) {
+				dev_notice(smi->comm[i].dev, "%s:rpm put fail, ret=%d\n",
+										__func__, ret);
+				return ret;
+			}
+		}
+	}
+	return ret;
+}
+
 static void mtk_smi_dbg_print_debugfs(struct seq_file *seq, u8 bus_type, const u32 id)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
@@ -574,12 +639,23 @@ static void mtk_smi_dbg_print_debugfs(struct seq_file *seq, u8 bus_type, const u
 
 static int smi_bus_status_print(struct seq_file *seq, void *data)
 {
-	int i, j, PRINT_NR = 5;
+	int i, j, ret, PRINT_NR = 5;
 	struct mtk_smi_dbg	*smi = gsmi;
 
 	seq_puts(seq, "dump SMI bus status\n");
 
+	if(!mtk_smi_mminfra_get_if_in_use()) {
+		pr_info("%s: ===== MMinfra may off =====\n", __func__);
+		return 0;
+	}
+
 	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
+
+	/* vote disp on for disp_fast_on_off */
+	ret = smi_vote_disp_on();
+	if (ret < 0)
+		pr_info("%s: vote disp on fail, ret=%d\n", __func__, ret);
+
 	for (j = 0; j < PRINT_NR; j++) {
 		for (i = 0; i < ARRAY_SIZE(smi->larb); i++)
 			mtk_smi_dbg_print_debugfs(seq, SMI_LARB, i);
@@ -590,7 +666,15 @@ static int smi_bus_status_print(struct seq_file *seq, void *data)
 		for (i = 0; i < ARRAY_SIZE(smi->rsi); i++)
 			mtk_smi_dbg_print_debugfs(seq, SMI_RSI, i);
 	}
+
+	/* vote disp off for disp_fast_on_off */
+	ret = smi_vote_disp_off();
+	if (ret < 0)
+		pr_info("%s: vote disp off fail, ret=%d\n", __func__, ret);
+
 	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
+
+	mtk_smi_mminfra_put();
 
 	return 0;
 }
@@ -851,49 +935,6 @@ static int smi_dbg_suspend_cb(struct notifier_block *nb,
 	return 0;
 }
 
-static int mtk_smi_mminfra_get_if_in_use(void)
-{
-	struct mtk_smi_dbg	*smi = gsmi;
-	int i, ret, is_on = 0;
-
-	for (i = 0; i < ARRAY_SIZE(smi->comm); i++) {
-		if (!smi->comm[i].dev || !(smi->comm[i].smi_type == SMI_COMMON))
-			continue;
-		ret = pm_runtime_get_if_in_use(smi->comm[i].dev);
-		if (ret == 0)
-			continue;
-		else if (ret < 0) {
-			dev_notice(smi->comm[i].dev, "%s:rpm fail, ret=%d\n", __func__, ret);
-			continue;
-		} else {
-			atomic_inc(&smi->comm[i].is_on);
-			is_on = 1;
-		}
-	}
-	return is_on;
-}
-
-static int mtk_smi_mminfra_put(void)
-{
-	struct mtk_smi_dbg	*smi = gsmi;
-	int i, ref_cnt, ret = 0;
-
-	for (i = 0; i < ARRAY_SIZE(smi->comm); i++) {
-		if (!smi->comm[i].dev || !(smi->comm[i].smi_type == SMI_COMMON))
-			continue;
-		ref_cnt = atomic_read(&smi->comm[i].is_on);
-		if (ref_cnt > 0) {
-			atomic_dec(&smi->comm[i].is_on);
-			ret = pm_runtime_put(smi->comm[i].dev);
-			if (ret < 0) {
-				dev_notice(smi->comm[i].dev, "%s:rpm put fail, ret=%d\n",
-										__func__, ret);
-				return ret;
-			}
-		}
-	}
-	return ret;
-}
 
 #define SC_OSTD_BITS (7)
 #define SSC_OSTD_BITS (6)
@@ -1217,6 +1258,21 @@ s32 mtk_smi_dbg_cg_status(void)
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_cg_status);
 
+int mtk_smi_set_disp_ops(const struct smi_disp_ops *ops)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+
+	if (ops == NULL) {
+		dev_notice(smi->dev, "%s Null ops\n", __func__);
+		return -1;
+	}
+
+	smi->disp_ops = ops;
+	dev_notice(smi->dev, "%s register smi cb\n", __func__);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_set_disp_ops);
 
 static int mtk_smi_dbg_get(void *data, u64 *val)
 {
@@ -1582,7 +1638,7 @@ EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_isp_fast);
 s32 mtk_smi_dbg_hang_detect(char *user)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
-	s32			i, j, PRINT_NR = 1, is_busy = 0, is_hang = 0;
+	s32			i, j, ret, PRINT_NR = 1, is_busy = 0, is_hang = 0;
 
 	pr_info("%s: check caller:%s, is_in_met:%d\n", __func__, user, smi_enter_met);
 
@@ -1596,8 +1652,18 @@ s32 mtk_smi_dbg_hang_detect(char *user)
 
 	raw_notifier_call_chain(&smi_notifier_list, 0, user);
 
+	if(!mtk_smi_mminfra_get_if_in_use()) {
+		pr_info("%s: ===== MMinfra may off =====:%s\n", __func__, user);
+		return 0;
+	}
+
 	/*start to monitor bw and check ostd*/
 	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
+
+	/* vote disp on for disp_fast_on_off */
+	ret = smi_vote_disp_on();
+	if (ret < 0)
+		pr_info("%s: vote disp on fail, ret=%d\n", __func__, ret);
 
 	if (!smi_enter_met)
 		smi_hang_detect_bw_monitor(true);
@@ -1635,7 +1701,14 @@ s32 mtk_smi_dbg_hang_detect(char *user)
 		BUG_ON(1);
 	}
 
+	/* vote disp off for disp_fast_on_off */
+	ret = smi_vote_disp_off();
+	if (ret < 0)
+		pr_info("%s: vote disp off fail, ret=%d\n", __func__, ret);
+
 	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
+
+	mtk_smi_mminfra_put();
 
 	return 0;
 }
