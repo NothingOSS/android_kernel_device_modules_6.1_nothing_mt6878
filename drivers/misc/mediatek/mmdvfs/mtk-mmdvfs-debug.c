@@ -63,6 +63,10 @@ struct mmdvfs_debug {
 	u8 fmeter_count;
 	u8 *fmeter_id;
 	u8 *fmeter_type;
+	u32 clk_count;
+	u32 *clk_ofs;
+	u32 clk_base_pa;
+	void __iomem *clk_base;
 	struct notifier_block nb;
 
 	/* user & power id mapping*/
@@ -543,6 +547,9 @@ static int mmdvfs_debug_smi_cb(struct notifier_block *nb, unsigned long action, 
 			i, g_mmdvfs->fmeter_id[i], g_mmdvfs->fmeter_type[i],
 			mt_get_fmeter_freq(g_mmdvfs->fmeter_id[i], g_mmdvfs->fmeter_type[i]));
 
+	for (i = 0; i < g_mmdvfs->clk_count; i++)
+		MMDVFS_DBG("[%#010x] = %#010x", g_mmdvfs->clk_base_pa + g_mmdvfs->clk_ofs[i],
+			readl(g_mmdvfs->clk_base + g_mmdvfs->clk_ofs[i]));
 	return 0;
 }
 
@@ -661,6 +668,47 @@ static int mmdvfs_debug_parse_fmeter(void)
 	return ret;
 }
 
+static int mmdvfs_debug_parse_clk(void)
+{
+	u32 pa, ofs;
+	int i, ret;
+
+	ret = of_property_count_u32_elems(g_mmdvfs->dev->of_node, "clk-offsets");
+	if (ret < 0) {
+		MMDVFS_DBG("count_u32 clk-offsets failed:%d", ret);
+		return 0;
+	}
+	g_mmdvfs->clk_count = ret;
+	MMDVFS_DBG("count_u32 clk-offsets clk_count:%d", g_mmdvfs->clk_count);
+
+	if (!g_mmdvfs->clk_count)
+		return 0;
+
+	ret = of_property_read_u32(g_mmdvfs->dev->of_node, "clk-base", &pa);
+	if (ret) {
+		MMDVFS_DBG("failed:%d base:%#x", ret, pa);
+		return ret;
+	}
+	g_mmdvfs->clk_base_pa = pa;
+	g_mmdvfs->clk_base = ioremap(pa, 0x1000);
+
+	g_mmdvfs->clk_ofs = kcalloc(
+		g_mmdvfs->clk_count, sizeof(*g_mmdvfs->clk_ofs), GFP_KERNEL);
+	if (!g_mmdvfs->clk_ofs)
+		return -ENOMEM;
+
+	for (i = 0; i < g_mmdvfs->clk_count; i++) {
+		ret = of_property_read_u32_index(g_mmdvfs->dev->of_node, "clk-offsets", i, &ofs);
+		if (ret) {
+			MMDVFS_DBG("failed:%d i:%d ofs:%#x", ret, i, ofs);
+			return ret;
+		}
+		g_mmdvfs->clk_ofs[i] = ofs;
+	}
+
+	return ret;
+}
+
 static int mmdvfs_debug_probe(struct platform_device *pdev)
 {
 	struct proc_dir_entry *dir, *proc;
@@ -719,6 +767,7 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	of_property_read_u32(g_mmdvfs->dev->of_node, "release-step0", &g_mmdvfs->release_step0);
 
 	ret = mmdvfs_debug_parse_fmeter();
+	ret = mmdvfs_debug_parse_clk();
 
 	ret = of_property_read_u32(g_mmdvfs->dev->of_node, "use-v3-pwr", &g_mmdvfs->use_v3_pwr);
 	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
