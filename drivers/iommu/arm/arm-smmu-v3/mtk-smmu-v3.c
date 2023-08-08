@@ -1870,7 +1870,7 @@ static int hyp_smmu_debug_smc(u32 action_id, u32 ste_row, u64 reg,
 }
 
 static int mtk_hyp_smmu_debug_dump(struct arm_smmu_device *smmu, u64 fault_ipa,
-				   u64 reg, u32 sid, u32 event_id, u32 trans_s2)
+				   u64 reg, u32 sid, u32 event_id, bool trans_s2)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	u32 smmu_type = data->plat_data->smmu_type;
