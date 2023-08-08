@@ -60,6 +60,8 @@
 #define APMCU_ON_BW_OFFSET(i)	(gmmqos->apmcu_on_bw_offset + 4 * i)
 #define APMCU_OFF_BW_OFFSET(i)	(gmmqos->apmcu_off_bw_offset + 4 * i)
 
+#define MMINFRA_DUMMY		(0x400)
+
 #define IS_ON_TABLE		(true)
 
 enum mmqos_rw_type {
@@ -117,6 +119,7 @@ struct mtk_mmqos {
 	u32 apmcu_mask_bit;
 	u32 apmcu_on_bw_offset;
 	u32 apmcu_off_bw_offset;
+	void __iomem *mminfra_base;
 };
 
 u32 mmqos_state;
@@ -477,6 +480,9 @@ u32 read_register(u32 offset)
 static void start_write_bw(void)
 {
 	u32 orig = 0;
+
+	// for hfrp timeout debug
+	readl_relaxed(gmmqos->mminfra_base + MMINFRA_DUMMY);
 
 	orig = read_register(APMCU_MASK_OFFSET);
 	write_register(APMCU_MASK_OFFSET, orig | BIT(gmmqos->apmcu_mask_bit));
@@ -1758,7 +1764,7 @@ EXPORT_SYMBOL_GPL(mtk_mmqos_probe);
 int mtk_mmqos_v2_probe(struct platform_device *pdev)
 {
 	struct task_struct *kthr_vcp;
-	u32 base_tmp;
+	u32 base_tmp, mminfra_base_tmp;
 	int ret, probe_ret;
 
 	probe_ret = mtk_mmqos_probe(pdev);
@@ -1772,10 +1778,13 @@ int mtk_mmqos_v2_probe(struct platform_device *pdev)
 			"vmmrc-on-table", &gmmqos->apmcu_on_bw_offset);
 		of_property_read_u32(pdev->dev.of_node,
 			"vmmrc-off-table", &gmmqos->apmcu_off_bw_offset);
+		of_property_read_u32(pdev->dev.of_node, "mminfra-base", &mminfra_base_tmp);
+		gmmqos->mminfra_base = ioremap(mminfra_base_tmp, 0x1000);
 
-		MMQOS_DBG("vmmrc base=%#x, mask=%#x, bit=%#x, on table=%#x, off table=%#x",
+		MMQOS_DBG("vmmrc base=%#x, mask=%#x, bit=%#x, on table=%#x, off table=%#x, mminfra_base=%#x",
 			base_tmp, gmmqos->apmcu_mask_offset, gmmqos->apmcu_mask_bit,
-			gmmqos->apmcu_on_bw_offset, gmmqos->apmcu_off_bw_offset);
+			gmmqos->apmcu_on_bw_offset, gmmqos->apmcu_off_bw_offset,
+			mminfra_base_tmp);
 	} else {
 		MMQOS_DBG("no vmmrc related property");
 		gmmqos->vmmrc_base = NULL;
