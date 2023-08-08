@@ -181,6 +181,16 @@ extern inline void compute_effective_softmask(struct task_struct *p,
 extern void mtk_can_migrate_task(void *data, struct task_struct *p,
 	int dst_cpu, int *can_migrate);
 extern void set_task_ls_prefer_cpus(int pid, unsigned int cpumask_val);
+extern void set_task_basic_vip(int pid);
+extern void unset_task_basic_vip(int pid);
+extern void set_top_app_vip(unsigned int prio);
+extern void unset_top_app_vip(void);
+extern void set_foreground_vip(unsigned int prio);
+extern void unset_foreground_vip(void);
+extern void set_background_vip(unsigned int prio);
+extern void unset_background_vip(void);
+extern void set_ls_task_vip(unsigned int prio);
+extern void unset_ls_task_vip(void);
 
 extern void get_most_powerful_pd_and_util_Th(void);
 
@@ -210,10 +220,22 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_SET_CPUMASK_TA		_IOW('g', 27,  unsigned int)
 #define EAS_SET_CPUMASK_BACKGROUND	_IOW('g', 28,  unsigned int)
 #define EAS_SET_CPUMASK_FOREGROUND	_IOW('g', 29,  unsigned int)
-#define EAS_SET_TASK_LS			_IOW('g', 30,  int)
-#define EAS_UNSET_TASK_LS		_IOW('g', 31,  int)
+#define EAS_SET_TASK_LS			_IOW('g', 30,  unsigned int)
+#define EAS_UNSET_TASK_LS		_IOW('g', 31,  unsigned int)
 #define EAS_SET_TASK_LS_PREFER_CPUS		_IOW('g', 32,  struct SA_task)
 #define EAS_IGNORE_IDLE_UTIL_CTRL	_IOW('g', 33,  unsigned int)
+#define EAS_SET_TASK_VIP			_IOW('g', 34,  unsigned int)
+#define EAS_UNSET_TASK_VIP			_IOW('g', 35,  unsigned int)
+#define EAS_SET_TA_VIP				_IOW('g', 36,  unsigned int)
+#define EAS_UNSET_TA_VIP			_IOW('g', 37,  unsigned int)
+#define EAS_SET_FG_VIP				_IOW('g', 38,  unsigned int)
+#define EAS_UNSET_FG_VIP			_IOW('g', 39,  unsigned int)
+#define EAS_SET_BG_VIP				_IOW('g', 40,  unsigned int)
+#define EAS_UNSET_BG_VIP			_IOW('g', 41,  unsigned int)
+#define EAS_SET_LS_VIP				_IOW('g', 42,  unsigned int)
+#define EAS_UNSET_LS_VIP			_IOW('g', 43,  unsigned int)
+
+
 
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)
 extern void mtk_sched_newidle_balance(void *data, struct rq *this_rq,

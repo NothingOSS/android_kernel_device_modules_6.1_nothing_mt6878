@@ -375,7 +375,6 @@ static long eas_ioctl_impl(struct file *filp,
 
 	unsigned int sync;
 	unsigned int val;
-	int pid;
 	struct cpumask mask;
 	struct SA_task SA_task_args = {
 		.pid = -1,
@@ -453,19 +452,69 @@ static long eas_ioctl_impl(struct file *filp,
 		set_background_cpumask(val);
 		break;
 	case EAS_SET_TASK_LS:
-		if (easctl_copy_from_user(&pid, (void *)arg, sizeof(int)))
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
-		set_task_ls(pid);
+		set_task_ls(val);
 		break;
 	case EAS_UNSET_TASK_LS:
-		if (easctl_copy_from_user(&pid, (void *)arg, sizeof(int)))
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
-		unset_task_ls(pid);
+		unset_task_ls(val);
 		break;
 	case EAS_SET_TASK_LS_PREFER_CPUS:
 		if (easctl_copy_from_user(&SA_task_args, (void *)arg, sizeof(struct SA_task)))
 			return -1;
 		set_task_ls_prefer_cpus(SA_task_args.pid, SA_task_args.mask);
+		break;
+	case EAS_SET_TASK_VIP:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		set_task_basic_vip(val);
+		break;
+	case EAS_UNSET_TASK_VIP:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		unset_task_basic_vip(val);
+		break;
+	case EAS_SET_TA_VIP:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		set_top_app_vip(val);
+		break;
+	case EAS_UNSET_TA_VIP:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		unset_top_app_vip();
+		break;
+	case EAS_SET_FG_VIP:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		set_foreground_vip(val);
+		break;
+	case EAS_UNSET_FG_VIP:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		unset_foreground_vip();
+		break;
+	case EAS_SET_BG_VIP:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		set_background_vip(val);
+		break;
+	case EAS_UNSET_BG_VIP:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		unset_background_vip();
+		break;
+	case EAS_SET_LS_VIP:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		set_ls_task_vip(val);
+		break;
+	case EAS_UNSET_LS_VIP:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		unset_ls_task_vip();
 		break;
 	case EAS_SBB_ALL_SET:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
