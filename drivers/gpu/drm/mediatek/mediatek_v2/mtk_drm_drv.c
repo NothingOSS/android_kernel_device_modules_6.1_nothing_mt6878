@@ -7020,9 +7020,10 @@ void mtk_drm_wait_mml_submit_done(struct mtk_mml_cb_para *cb_para)
 	ret = wait_event_interruptible_timeout(cb_para->mml_job_submit_wq,
 		atomic_read(&cb_para->mml_job_submit_done), msecs_to_jiffies(500));
 
-	if (ret == 0)
+	if (ret == 0) {
 		DDPMSG("%s timeout\n", __func__);
-
+		mml_drm_submit_timeout();
+	}
 
 	atomic_set(&(cb_para->mml_job_submit_done), 0);
 	DDPINFO("%s- ret:%d\n", __func__, ret);

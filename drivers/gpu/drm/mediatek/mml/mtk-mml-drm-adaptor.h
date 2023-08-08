@@ -222,4 +222,10 @@ void mml_drm_dump(struct mml_drm_ctx *ctx, struct mml_submit *submit);
 const struct mml_topology_path *mml_drm_query_dl_path(struct mml_drm_ctx *ctx,
 	struct mml_submit *submit, u32 pipe);
 
+/*
+ * mml_drm_submit_timeout - trigger aee for mml
+ *
+ */
+void mml_drm_submit_timeout(void);
+
 #endif	/* __MTK_MML_DRM_ADAPTOR_H__ */

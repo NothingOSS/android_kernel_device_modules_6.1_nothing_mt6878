@@ -1746,7 +1746,7 @@ static void core_config_pipe(struct mml_task *task, u32 pipe)
 	struct cmdq_client *rb_clt = mml_get_cmdq_clt(cfg->mml,
 		pipe + GCE_THREAD_START);
 
-	mml_trace_ex_begin("%s_%u", __func__, pipe);
+	mml_trace_ex_begin("%s_%u_%u", __func__, pipe, task->job.jobid);
 	task->config_pipe_time[pipe] = sched_clock();
 
 	if (cfg->info.mode != MML_MODE_DDP_ADDON && cfg->dpc)
@@ -1842,7 +1842,7 @@ static void core_config_task(struct mml_task *task)
 	s32 err;
 	bool addon_dual = cfg->dual && cfg->info.mode == MML_MODE_DDP_ADDON;
 
-	mml_trace_begin("%s", __func__);
+	mml_trace_begin("%s_%u", __func__, jobid);
 	if (cfg->info.mode == MML_MODE_DDP_ADDON)
 		mml_mmp2(config_dle, MMPROFILE_FLAG_START,
 			cfg->info.src.width, cfg->info.src.height,
