@@ -361,6 +361,7 @@ mgk_64_kasan_k61_device_modules = [
     "drivers/misc/mediatek/power_throttling/mtk_battery_oc_throttling.ko",
     "drivers/misc/mediatek/power_throttling/mtk_bp_thl.ko",
     "drivers/misc/mediatek/power_throttling/mtk_cpu_power_throttling.ko",
+    "drivers/misc/mediatek/power_throttling/mtk_gpu_power_throttling.ko",
     "drivers/misc/mediatek/power_throttling/mtk_dynamic_loading_throttling.ko",
     "drivers/misc/mediatek/power_throttling/mtk_low_battery_throttling.ko",
     "drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko",
