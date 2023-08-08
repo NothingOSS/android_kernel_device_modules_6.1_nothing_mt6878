@@ -8951,7 +8951,9 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 
 	if (drm) {
 		DDPMSG("%s\n", __func__);
+		mtk_drm_pm_ctrl(private, DISP_PM_GET);
 		drm_atomic_helper_shutdown(drm);
+		mtk_drm_pm_ctrl(private, DISP_PM_PUT);
 	}
 }
 
