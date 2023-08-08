@@ -276,9 +276,6 @@ static irqreturn_t mtk_wdma_irq_handler(int irq, void *dev_id)
 	if (IS_ERR_OR_NULL(wdma))
 		return IRQ_NONE;
 
-	if (wdma->mtk_crtc == NULL || wdma->mtk_crtc->base.dev == NULL)
-		return IRQ_NONE;
-
 	if (mtk_drm_top_clk_isr_get("wdma_irq") == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
 		return IRQ_NONE;
@@ -310,17 +307,20 @@ static irqreturn_t mtk_wdma_irq_handler(int irq, void *dev_id)
 
 		DDPIRQ("[IRQ] %s: frame complete!\n",
 			mtk_dump_comp_str(wdma));
-		drm_priv = mtk_crtc->base.dev->dev_private;
-		cwb_info = mtk_crtc->cwb_info;
-		if (cwb_info && cwb_info->enable &&
-			cwb_info->comp->id == wdma->id &&
-			drm_priv && !drm_priv->cwb_is_preempted) {
-			buf_idx = cwb_info->buf_idx;
-			cwb_info->buffer[buf_idx].timestamp = 100;
-			atomic_set(&mtk_crtc->cwb_task_active, 1);
-			wake_up_interruptible(&mtk_crtc->cwb_wq);
+
+		if (mtk_crtc) {
+			drm_priv = mtk_crtc->base.dev->dev_private;
+			cwb_info = mtk_crtc->cwb_info;
+			if (cwb_info && cwb_info->enable &&
+				cwb_info->comp->id == wdma->id &&
+				drm_priv && !drm_priv->cwb_is_preempted) {
+				buf_idx = cwb_info->buf_idx;
+				cwb_info->buffer[buf_idx].timestamp = 100;
+				atomic_set(&mtk_crtc->cwb_task_active, 1);
+				wake_up_interruptible(&mtk_crtc->cwb_wq);
+			}
 		}
-		if (mtk_crtc->dc_main_path_commit_task) {
+		if (mtk_crtc && mtk_crtc->dc_main_path_commit_task) {
 			atomic_set(
 				&mtk_crtc->dc_main_path_commit_event, 1);
 			wake_up_interruptible(
@@ -332,7 +332,7 @@ static irqreturn_t mtk_wdma_irq_handler(int irq, void *dev_id)
 		DDPPR_ERR("[IRQ] %s: frame underrun!\n",
 			  mtk_dump_comp_str(wdma));
 		underrun_new_ts = sched_clock();
-		if (&(wdma->mtk_crtc->base)
+		if (wdma->mtk_crtc && &(wdma->mtk_crtc->base)
 			&& (underrun_new_ts - underrun_old_ts > 1000*1000*1000)) { //1s
 			mtk_drm_crtc_analysis(&(wdma->mtk_crtc->base));
 			mtk_drm_crtc_dump(&(wdma->mtk_crtc->base));
