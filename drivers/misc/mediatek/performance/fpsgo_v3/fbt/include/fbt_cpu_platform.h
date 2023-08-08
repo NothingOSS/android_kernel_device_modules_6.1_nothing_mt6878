@@ -31,6 +31,11 @@ extern void unset_task_ls_prefer_cpus(int pid);
 extern void set_task_ls(int pid);
 extern void unset_task_ls(int pid);
 extern bool is_task_latency_sensitive(struct task_struct *p);
+extern void set_task_basic_vip(int pid);
+extern void unset_task_basic_vip(int pid);
+extern void set_task_vvip(int pid);
+extern void unset_task_vvip(int pid);
+
 
 
 void fbt_set_boost_value(unsigned int base_blc);
@@ -46,6 +51,8 @@ int fbt_get_default_adj_count(void);
 int fbt_get_default_adj_tdiff(void);
 int fbt_set_affinity(pid_t pid, unsigned int prefer_type);
 int fbt_check_ls(int pid);
+int fbt_check_vip(int pid);
+int fbt_check_vvip(int pid);
 int fbt_set_soft_affinity(int pid, int set, unsigned int prefer_type);
 struct cpumask fbt_generate_user_cpu_mask(int mask_int);
 int fbt_get_cluster_limit(int *cluster, int *freq, int *r_freq, int *cpu);

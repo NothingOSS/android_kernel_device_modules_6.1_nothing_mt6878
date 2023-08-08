@@ -79,6 +79,7 @@ struct fpsgo_loading {
 	int ori_rtprio;	/* original rt priority */
 	int policy;
 	int ori_nice;	/* original nice */
+	int ori_vip;    /* original vip flag */
 	int action;
 	int rmidx;
 	int heavyidx;
@@ -224,6 +225,8 @@ struct fpsgo_boost_attr {
 	int rt_prio1_by_pid;
 	int rt_prio2_by_pid;
 	int rt_prio3_by_pid;
+	int vip_mask_by_pid;
+	int set_vvip_by_pid;
 
 	/* QUOTA */
 	int qr_enable_by_pid;

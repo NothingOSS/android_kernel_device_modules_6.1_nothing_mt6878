@@ -15,6 +15,7 @@
 #include "dvfsrc-exp.h"
 #include "fpsgo_base.h"
 #include "fbt_cpu_platform.h"
+#include <common.h>
 
 static int mask_int[FPSGO_PREFER_TOTAL];
 static struct cpumask mask[FPSGO_PREFER_TOTAL];
@@ -259,7 +260,7 @@ static int generate_sbe_rescue_enable(void)
 int fbt_check_ls(int pid)
 {
 	struct task_struct *tsk;
-	int ls = -1;
+	int ls = 0;
 
 	rcu_read_lock();
 	tsk = find_task_by_vpid(pid);
@@ -272,6 +273,46 @@ int fbt_check_ls(int pid)
 EXIT:
 	rcu_read_unlock();
 	return ls;
+}
+
+int fbt_check_vip(int pid)
+{
+	struct task_struct *tsk;
+	struct vip_task_struct *vts;
+	int is_vip = 0;
+
+	rcu_read_lock();
+	tsk = find_task_by_vpid(pid);
+	if (!tsk)
+		goto EXIT;
+	get_task_struct(tsk);
+	vts = &((struct mtk_task *) tsk->android_vendor_data1)->vip_task;
+	is_vip = vts->basic_vip;
+	put_task_struct(tsk);
+
+EXIT:
+	rcu_read_unlock();
+	return is_vip;
+}
+
+int fbt_check_vvip(int pid)
+{
+	struct task_struct *tsk;
+	struct vip_task_struct *vts;
+	int is_vvip = 0;
+
+	rcu_read_lock();
+	tsk = find_task_by_vpid(pid);
+	if (!tsk)
+		goto EXIT;
+	get_task_struct(tsk);
+	vts = &((struct mtk_task *) tsk->android_vendor_data1)->vip_task;
+	is_vvip = vts->vvip;
+	put_task_struct(tsk);
+
+EXIT:
+	rcu_read_unlock();
+	return is_vvip;
 }
 
 int fbt_set_affinity(pid_t pid, unsigned int prefer_type)
