@@ -2727,6 +2727,51 @@ write:
 	return first_fault_param;
 }
 
+static int __maybe_unused smmuwp_tf_detect(struct arm_smmu_device *smmu,
+					   u32 sid, u32 tbu,
+					   u32 *axids, u32 num_axids,
+					   struct mtk_smmu_fault_param *param)
+{
+	struct mtk_iommu_fault_event fault_evt = { };
+	struct mtk_smmu_fault_param *fault_param;
+	enum mtk_smmu_tfm_type tfm_type;
+	u32 axid, i;
+
+	fault_param = smmuwp_process_tf(smmu, NULL, &fault_evt);
+	if (fault_param == NULL)
+		return 0;
+
+	if (tbu >= SMMU_TBU_CNT_MAX)
+		return 0;
+
+	for (tfm_type = SMMU_TFM_READ; tfm_type < SMMU_TFM_TYPE_NUM; tfm_type++) {
+		fault_param = &fault_evt.mtk_fault_param[tfm_type][tbu];
+		if (fault_param &&
+		    fault_param->fault_det &&
+		    fault_param->fault_sid == sid) {
+			axid = fault_param->fault_id & ~SMMUWP_TF_TBU_MSK;
+			for (i = 0; i < num_axids; i++) {
+				if (axid == axids[i]) {
+					/* param return match data */
+					param->tfm_type = fault_param->tfm_type;
+					param->fault_det = fault_param->fault_det;
+					param->fault_iova = fault_param->fault_iova;
+					param->fault_pa = fault_param->fault_pa;
+					param->fault_id = fault_param->fault_id;
+					param->fault_sid = fault_param->fault_sid;
+					param->fault_ssid = fault_param->fault_ssid;
+					param->fault_ssidv = fault_param->fault_ssidv;
+					param->fault_secsid = fault_param->fault_secsid;
+					param->tbu_id = fault_param->tbu_id;
+					return 1;
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
 static void smmuwp_check_transaction_counter(struct arm_smmu_device *smmu,
 					     unsigned long *tcu_tot,
 					     unsigned long *tbu_tot)
@@ -3207,6 +3252,55 @@ void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 	mtk_smmu_power_put(smmu);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_reg_dump);
+
+int mtk_smmu_tf_detect(enum mtk_smmu_type type,
+		       struct device *master_dev,
+		       u32 sid, u32 tbu,
+		       u32 *axids, u32 num_axids,
+		       struct mtk_smmu_fault_param *param)
+{
+	struct arm_smmu_device *smmu;
+	struct mtk_smmu_data *data;
+	unsigned int irq_sta = 0;
+	bool sid_valid;
+	u64 sid_max;
+	int ret = 0;
+
+	if (!master_dev || type >= SMMU_TYPE_NUM || !param)
+		return -EINVAL;
+
+	data = mkt_get_smmu_data(type);
+	if (!data)
+		return -EINVAL;
+
+	if (data->hw_init_flag != 1)
+		return -1;
+
+	if (tbu >= SMMU_TBU_CNT(type))
+		return -EINVAL;
+
+	if (num_axids == 0)
+		return -EINVAL;
+
+	smmu = &data->smmu;
+	sid_max = 1ULL << smmu->sid_bits;
+	sid_valid = sid > 0 && sid < sid_max;
+	if (!sid_valid)
+		return -EINVAL;
+
+	irq_sta = smmu_read_reg(smmu->wp_base, SMMUWP_IRQ_NS_STA);
+	if (irq_sta > 0) {
+		ret = smmuwp_tf_detect(smmu, sid, tbu, axids, num_axids, param);
+		dev_info(smmu->dev,
+			 "[%s] smmu:%s dev:[%s, %s] sid:0x%x tbu:%d irq_sta:0x%x ret:%d\n",
+			 __func__, get_smmu_name(type), dev_name(master_dev),
+			 dev_name(mtk_smmu_get_shared_device(master_dev)),
+			 sid, tbu, irq_sta, ret);
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_tf_detect);
 
 int mtk_smmu_start_transaction_counter(struct device *dev)
 {

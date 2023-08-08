@@ -756,6 +756,11 @@ static inline int mtk_smmu_set_pm_ops(u32 smmu_type, const struct mtk_pm_ops *op
 void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 		       struct device *master_dev,
 		       int sid);
+int mtk_smmu_tf_detect(enum mtk_smmu_type type,
+		       struct device *master_dev,
+		       u32 sid, u32 tbu,
+		       u32 *axids, u32 num_axids,
+		       struct mtk_smmu_fault_param *param);
 
 int mtk_smmu_start_transaction_counter(struct device *dev);
 void mtk_smmu_end_transaction_counter(struct device *dev,
@@ -779,6 +784,15 @@ static inline void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 				     struct device *master_dev,
 				     int sid)
 {
+}
+
+static inline int mtk_smmu_tf_detect(enum mtk_smmu_type type,
+				     struct device *master_dev,
+				     u32 sid, u32 tbu,
+				     u32 *axids, u32 num_axids,
+				     struct mtk_smmu_fault_param *param)
+{
+	return 0;
 }
 
 static inline int mtk_smmu_start_transaction_counter(struct device *dev)
