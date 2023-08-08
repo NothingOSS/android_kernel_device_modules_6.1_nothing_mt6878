@@ -113,7 +113,6 @@
 #define I2C_FIFO_DATA_LEN_MASK	0x001f
 #define MAX_POLLING_CNT		10
 #define SCP_WAKE_TIMEOUT	40
-#define I2C_CONFERR_MASK	0x200
 
 #define I2C_DRV_NAME		"i2c-mt65xx"
 
@@ -642,6 +641,11 @@ static void mtk_i2c_writew_shadow(struct mtk_i2c *i2c, u16 val,
 	writew(val, i2c->base + i2c->dev_comp->regs[reg]);
 }
 
+static u16 mtk_i2c_readw_shadow(struct mtk_i2c *i2c, enum I2C_REGS_OFFSET reg)
+{
+	return readw(i2c->base + i2c->dev_comp->regs[reg]);
+}
+
 static u16 mtk_i2c_readw_scp(struct mtk_i2c *i2c, enum I2C_REGS_OFFSET reg)
 {
 	return readw(i2c->base + i2c->ch_offset_scp + i2c->dev_comp->regs[reg]);
@@ -782,7 +786,7 @@ static void mtk_i2c_init_hw(struct mtk_i2c *i2c)
 			mtk_i2c_writew(i2c, i2c->ac_timing.htiming, OFFSET_TIMING);
 		}
 		intr_stat_reg_scp = mtk_i2c_readw_scp(i2c, OFFSET_INTR_STAT);
-		if ((intr_stat_reg_scp & I2C_CONFERR_MASK) == I2C_CONFERR)
+		if (intr_stat_reg_scp & I2C_CONFERR)
 			mtk_i2c_writew_scp(i2c, I2C_CONFERR, OFFSET_INTR_STAT);
 		spin_unlock_irqrestore(&i2c->multi_host_lock, flags);
 	}
@@ -812,9 +816,6 @@ static void mtk_i2c_init_hw(struct mtk_i2c *i2c)
 	/* config scp i2c ch2 intr to ap */
 	if (i2c->ch_offset_i2c == I2C_OFFSET_SCP)
 		mtk_i2c_writew(i2c, I2C_CCU_INTR_EN, OFFSET_MCU_INTR);
-
-	if (i2c->ch_offset_i2c == I2C_OFFSET_AP)
-		mtk_i2c_writew(i2c, I2C_MCU_INTR_EN, OFFSET_MCU_INTR);
 
 	/* Set ioconfig */
 	if (i2c->use_push_pull)
@@ -1263,7 +1264,7 @@ static int mtk_i2c_set_speed_v2(struct mtk_i2c *i2c, unsigned int parent_clk)
 			if (l_ext_time > MAX_LS_EXT_TIME)
 				continue;
 			target_speed = (target_speed / 100) *
-				(100 + target_speed / I2C_MAX_STANDARD_MODE_FREQ);
+				(100 - 3 + target_speed / I2C_MAX_STANDARD_MODE_FREQ);
 			l_cal_para.max_step = MAX_STEP_CNT_DIV;
 			l_cal_para.best_mul = (parent_clk + clk_div * target_speed - 1) /
 				(clk_div * target_speed) + 1;
@@ -1561,6 +1562,7 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 	u16 intr_stata;
 	u16 intr_mask;
 	u16 intr_statb;
+	u16 intr_stat_reg_chn;
 
 	i2c->irq_stat = 0;
 
@@ -1908,8 +1910,13 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 		intr_stata = mtk_i2c_readw(i2c, OFFSET_INTR_STAT);
 		intr_mask = mtk_i2c_readw(i2c, OFFSET_INTR_MASK);
 		mtk_i2c_writew(i2c, 0, OFFSET_INTR_MASK);
-		if (i2c->ch_offset_i2c != 0)
+		if (i2c->ch_offset_i2c != 0) {
 			mtk_i2c_writew_shadow(i2c, I2C_FSM_RST | I2C_SOFT_RST, OFFSET_SOFTRESET);
+			udelay(50);
+			intr_stat_reg_chn = mtk_i2c_readw_shadow(i2c, OFFSET_INTR_STAT);
+			if (intr_stat_reg_chn & I2C_CONFERR)
+				mtk_i2c_writew_shadow(i2c, I2C_CONFERR, OFFSET_INTR_STAT);
+		}
 		dev_dbg(i2c->dev, "addr: %x, transfer timeout\n", msgs->addr);
 		mtk_i2c_dump_reg(i2c);
 		mtk_i2c_gpio_dump(i2c);
