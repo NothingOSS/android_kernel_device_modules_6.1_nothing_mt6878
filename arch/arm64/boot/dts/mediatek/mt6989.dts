@@ -3175,7 +3175,7 @@
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 		interrupts = <GIC_SPI 538 IRQ_TYPE_LEVEL_HIGH 0>;
 		mminfra-bkrs = <0>;
-		mminfra-gals-sel = <14 15 16 17 18 19>;
+		mminfra-gals-sel = <5 14 15 16 17 18 19>;
 		bkrs-reg = <0x1e800250>;
 		vlp-base = <0x1c000000>;
 		spm-base = <0x1c001000>;
@@ -12968,8 +12968,10 @@
 		      <0 0x1ec37000 0 0x1000>, /* pwr ctrl */
 		      <0 0x1ec40000 0 0x1000>, /* cfg core1 */
 		      <0 0x1ec51000 0 0x1000>, /* bus dbg */
+		      <0 0x1ec52000 0 0x1000>, /* bus tracker */
 		      <0 0x1ec60000 0 0x40000>, /* llc dbg */
 		      <0 0x1eca5000 0 0x4>, /* cfg_sec dbg */
+		      <0 0x1eca5450 0 0x40>, /* bus prot */
 		      <0 0x1e820000 0 0x4>, /* mmu dbg */
 		      <0 0x1ecfb000 0 0x100>, /* mbox0 base */
 		      <0 0x1ecfb100 0 0x4>, /* mbox0 set */
@@ -12999,8 +13001,10 @@
 			    "vcp_pwr_ctl",
 			    "vcp_cfgreg_core1",
 			    "vcp_bus_debug",
+			    "vcp_bus_tracker",
 			    "vcp_l1creg",
 			    "vcp_cfgreg_sec",
+			    "vcp_bus_prot",
 			    "vcp_cfgreg_mmu",
 			    "mbox0_base",
 			    "mbox0_set",
@@ -13052,6 +13056,7 @@
 		mbox-count = <5>;
 		vcp-ee-enable = <1>;
 		bus-debug-num-ports = <18>;
+		res-req-status = <0x1c00186c>;
 		/* id, mbox, send_size*/
 		send-table =
 		< 0 0 18>,/* IPI_OUT_VDEC_1 */
