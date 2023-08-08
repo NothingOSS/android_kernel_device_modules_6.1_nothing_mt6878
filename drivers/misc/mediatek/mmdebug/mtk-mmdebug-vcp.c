@@ -78,12 +78,18 @@ static int mmdebug_vcp_ipi_cb(unsigned int ipi_id, void *prdata, void *data,
 		mtk_smi_dbg_hang_detect("SMI VCP DRIVER");
 		break;
 	case MMDEBUG_FUNC_KERNEL_WARN:
+		if (slot.idx >= ARRAY_SIZE(kernel_warn_type_str)) {
+			MMDEBUG_ERR("MMDEBUG kernel warning invalid idx:%hhu ack:%hhu base:%hhu",
+				slot.idx, slot.ack, slot.base);
+			break;
+		}
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-		aee_kernel_warning("MMDEBUG", "kernel warning idx:%hhu ack:%hhu base:%hhu",
+		aee_kernel_warning(kernel_warn_type_str[slot.idx],
+			"kernel warning idx:%hhu ack:%hhu base:%hhu",
 			slot.idx, slot.ack, slot.base);
 #endif
-		MMDEBUG_ERR("MMDEBUG kernel warning idx:%hhu ack:%hhu base:%hhu",
-			slot.idx, slot.ack, slot.base);
+		MMDEBUG_ERR("MMDEBUG kernel warning str:%s idx:%hhu ack:%hhu base:%hhu",
+			kernel_warn_type_str[slot.idx], slot.idx, slot.ack, slot.base);
 		break;
 	default:
 		MMDEBUG_ERR("ipi_id:%u func:%hhu idx:%hhu ack:%hhu base:%hhu",

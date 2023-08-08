@@ -19,6 +19,16 @@ enum MMDEBUG_FUNC {
 	MMDEBUG_FUNC_NUM
 };
 
+/* vcp/.../mmdebug_public.h */
+const char *kernel_warn_type_str[] = {
+	"MMDEBUG-DPSW_CHECK_VMM_OFF",
+	"MMDEBUG-DPSW_CHECK_VLOGIC",
+	"MMDEBUG-DPSW_TIMEOUT",
+	"MMDEBUG-DPSW_HFLV_CHECK_CLOCK",
+	"MMDEBUG-DPSW_HFLV_CHECK_VOLTAGE",
+	"MMDEBUG-DPSW_HFLV_CHECK_VOLTAGE_BIN",
+};
+
 /* vcp/.../mmdebug_private.h */
 struct mmdebug_ipi_data {
 	uint8_t func;
