@@ -5515,7 +5515,8 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 	if (!targetfps)
 		targetfps = TARGET_UNLIMITED_FPS;
 
-	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, targetfps, "expected_fps");
+	if (!test_bit(ADPF_TYPE, &thr->master_type))
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, targetfps, "expected_fps");
 	fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id, targettime, "expected_time");
 
 	fbt_set_render_boost_attr(thr);
