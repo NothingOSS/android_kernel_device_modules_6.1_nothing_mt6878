@@ -949,7 +949,7 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 				#endif
 				/* make sure clock ready */
 				mb();
-				udelay(2000);
+				udelay(300);
 				#if defined(KERNEL_mtk_uart_apdma_enable_vff)
 					KERNEL_mtk_uart_apdma_enable_vff(true);
 				#endif
@@ -1922,7 +1922,7 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 		#endif
 		/* make sure clock ready */
 		mb();
-		udelay(2000);
+		udelay(300);
 		#if defined(KERNEL_mtk_uart_apdma_enable_vff)
 		KERNEL_mtk_uart_apdma_enable_vff(true);
 		#endif
