@@ -14622,7 +14622,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	/* bypass PQ module if enable partial update */
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CHIST ||
-			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_POSTMASK)) {
+			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_POSTMASK ||
+			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR)) {
 			if (comp->funcs && comp->funcs->bypass)
 				mtk_ddp_comp_bypass(comp, partial_enable, cmdq_handle);
 		}
