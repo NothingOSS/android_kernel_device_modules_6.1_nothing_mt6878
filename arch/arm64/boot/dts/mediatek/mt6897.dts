@@ -14374,6 +14374,8 @@
 
 	low-battery-throttling {
 		compatible = "mediatek,low_battery_throttling";
+		lvsys-thd-enable = <1>;
+		vbat-thd-enable = <1>;
 		thd-volts-l = <
 			3550 3100 2900
 			4400 3400 3100
@@ -14390,6 +14392,8 @@
 			3600 3550 3100
 			5000 4400 3400
 			5100 5000 4900>;
+		lvsys-thd-volt-l = <2900>;
+		lvsys-thd-volt-h = <3100>;
 		temperature-max-stage = <2>;
 		temperature-stage-threshold = <11 0>;
 	};
@@ -14435,7 +14439,7 @@
 		compatible = "mediatek,md-power-throttling";
 
 		lbat-max-level = <3>;
-		lbat-reduce-tx-lv1 = <6>;
+		lbat-reduce-tx-lv1 = <0>;
 		lbat-reduce-tx-lv2 = <6>;
 		lbat-reduce-tx-lv3 = <6>;
 
