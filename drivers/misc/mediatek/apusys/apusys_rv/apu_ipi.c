@@ -37,10 +37,12 @@
 
 #define APUSYS_RV_IPI_HANDLE_PRINT \
 	"%s: ipi_id=%d, len=%d, csum=0x%x, serial_no=%d, user_id=0x%x, " \
-	"latency=%lld, elapse=%lld, t_hndlr=%llu\n"
+	"latency=%lld, elapse=%lld, t_hndlr=%llu," \
+	"t_mtx_lock=%llu, t_usage_cnt_update=%lld, t_wakup=%lld\n"
 #define APUSYS_RV_IPI_HANDLE_PRINT_HANDLER_EXEC_LONG \
-	"%s: ipi_id=%d, len=%d, csum=0x%x, serial_no=%d, user_id=0x%x, " \
-	"latency=%lld, elapse=%lld, t_hndlr=%llu > 1s\n"
+	"%s long: ipi_id=%d, len=%d, csum=0x%x, serial_no=%d, user_id=0x%x, " \
+	"latency=%lld, elapse=%lld, t_hndlr=%llu" \
+	"t_mtx_lock=%llu, t_usage_cnt_update=%lld, t_wakup=%lld\n"
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 static void apu_power_on_off_profile(u32 on, u32 off,
@@ -433,8 +435,9 @@ static void apu_init_ipi_bottom_handler(void *data, unsigned int len, void *priv
 static irqreturn_t apu_ipi_handler(int irq, void *priv)
 {
 	struct timespec64 ts, te, t_elapse, tl;
-	struct timespec64 handler_ts, handler_te, t_handler;
-	uint64_t t_handler_ns;
+	struct timespec64 t1, t2, t_diff;
+	uint64_t t_elapse_ns = 0, t_mtx_lock_ns = 0, t_handler_ns = 0;
+	uint64_t t_usage_cnt_update_ns = 0, t_wakup_ns = 0;
 	struct mtk_apu *apu = priv;
 	struct device *dev = apu->dev;
 	ipi_handler_t handler;
@@ -454,13 +457,16 @@ static irqreturn_t apu_ipi_handler(int irq, void *priv)
 	ktime_get_ts64(&ts);
 	tl = timespec64_sub(ts, apu->intr_ts_end);
 
+	ktime_get_ts64(&t1);
 	mutex_lock(&apu->ipi_desc[id].lock);
+	ktime_get_ts64(&t2);
+	t_diff = timespec64_sub(t2, t1);
+	t_mtx_lock_ns = timespec64_to_ns(&t_diff);
 
 	handler = apu->ipi_desc[id].handler;
 	if (!handler) {
 		dev_info(dev, "IPI id=%d is not registered", id);
 		mutex_unlock(&apu->ipi_desc[id].lock);
-		t_handler_ns = 0;
 		goto out;
 	}
 
@@ -468,42 +474,54 @@ static irqreturn_t apu_ipi_handler(int irq, void *priv)
 
 	if (apu->apusys_rv_trace_on)
 		apusys_rv_trace_begin("apu_ipi_handle(%d)", id);
-	ktime_get_ts64(&handler_ts);
+	ktime_get_ts64(&t1);
 	handler(temp_buf, len, apu->ipi_desc[id].priv);
-	ktime_get_ts64(&handler_te);
+	ktime_get_ts64(&t2);
 	if (apu->apusys_rv_trace_on)
 		apusys_rv_trace_end();
-	t_handler = timespec64_sub(handler_te, handler_ts);
-	t_handler_ns = timespec64_to_ns(&t_handler);
+	t_diff = timespec64_sub(t2, t1);
+	t_handler_ns = timespec64_to_ns(&t_diff);
 
+	ktime_get_ts64(&t1);
 	ipi_usage_cnt_update(apu, id, -1);
+	ktime_get_ts64(&t2);
+	t_diff = timespec64_sub(t2, t1);
+	t_usage_cnt_update_ns = timespec64_to_ns(&t_diff);
 
 	current_ipi_handler_id = -1;
 
 	mutex_unlock(&apu->ipi_desc[id].lock);
 
 	apu->ipi_id_ack[id] = true;
+
+	ktime_get_ts64(&t1);
 	wake_up(&apu->ack_wq);
+	ktime_get_ts64(&t2);
+	t_diff = timespec64_sub(t2, t1);
+	t_wakup_ns = timespec64_to_ns(&t_diff);
 
 out:
 	ktime_get_ts64(&te);
 	t_elapse = timespec64_sub(te, ts);
+	t_elapse_ns = timespec64_to_ns(&t_elapse);
 
 	if (apu->platdata->flags & F_APUSYS_RV_TAG_SUPPORT)
 		trace_apusys_rv_ipi_handle(id, len, apu->hdr.serial_no,
 			apu->hdr.csum, user_id, ipi->usage_cnt,
 			timespec64_to_ns(&apu->intr_ts_begin), timespec64_to_ns(&ts),
-			timespec64_to_ns(&tl), timespec64_to_ns(&t_elapse), t_handler_ns);
+			timespec64_to_ns(&tl), t_elapse_ns, t_handler_ns);
 
-	/* t_handler_ns > 1s */
-	if (t_handler_ns > 1000000000)
+	/* t_elapse_ns > 1s */
+	if (t_elapse_ns > 1000000000)
 		dev_info(dev, APUSYS_RV_IPI_HANDLE_PRINT_HANDLER_EXEC_LONG,
 		 __func__, id, len, apu->hdr.csum, apu->hdr.serial_no, user_id,
-		 timespec64_to_ns(&tl), timespec64_to_ns(&t_elapse), t_handler_ns);
+		 timespec64_to_ns(&tl), t_elapse_ns, t_handler_ns,
+		 t_mtx_lock_ns, t_usage_cnt_update_ns, t_wakup_ns);
 	else
 		apu_info_ratelimited(dev, APUSYS_RV_IPI_HANDLE_PRINT,
 		 __func__, id, len, apu->hdr.csum, apu->hdr.serial_no, user_id,
-		 timespec64_to_ns(&tl), timespec64_to_ns(&t_elapse), t_handler_ns);
+		 timespec64_to_ns(&tl), t_elapse_ns, t_handler_ns,
+		 t_mtx_lock_ns, t_usage_cnt_update_ns, t_wakup_ns);
 
 	if (hw_ops->wake_unlock && ipi_attrs[id].direction == IPI_APU_INITIATE
 		&& ipi_attrs[id].ack == IPI_WITH_ACK)
