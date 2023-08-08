@@ -1186,23 +1186,24 @@ static int mt_ppb_create_procfs(void)
 
 static void get_md_dbm_info(void)
 {
-	struct device_node *node = NULL;
-	unsigned int tmp;
-	char tmp_buf[30];
+	int ret;
+	u64 of_find;
+	struct device_node *mddriver = NULL;
 
-	node = of_find_compatible_node(NULL, NULL, "mediatek,md_dbm_node");
-	if (node == NULL) {
-		pr_info("%s can't find md_dbm_node.\n", __func__);
+	mddriver = of_find_compatible_node(NULL, NULL, "mediatek,mddriver");
+	if (!mddriver) {
+		pr_info("mddriver not found in DTS\n");
 		return;
 	}
 
-	scnprintf(tmp_buf, 30, "mediatek,md_dbm_addr");
-	if (!of_property_read_u32(node, tmp_buf, &tmp)) {
-		pr_info("%s DT[%s]:%08X\n", __func__, tmp_buf, tmp);
-		ppb_write_sram((int)tmp, PPB_MD_SMEM_ADDR);
-	} else
-		pr_info("%s can't read md_dbm_addr\n",__func__);
+	ret =  of_property_read_u64(mddriver, "md_dbm_addr", &of_find);
 
+	if (ret) {
+		pr_info("address not found in DTS");
+		return;
+	}
+	pr_info("%s md_dbm_addr: 0x%llx\n", __func__, of_find);
+	ppb_write_sram((unsigned int)of_find, PPB_MD_SMEM_ADDR);
 
 }
 
