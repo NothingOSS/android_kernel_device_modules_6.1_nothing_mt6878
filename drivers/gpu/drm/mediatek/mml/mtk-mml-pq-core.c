@@ -517,7 +517,7 @@ void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe,
 	if (temp_buffer) {
 		*lut_buf = temp_buffer;
 		list_del(&temp_buffer->buffer_list);
-		mml_pq_msg("%s aal get buffer from list jobid[%d] va[%p] pa[%llx]",
+		mml_pq_msg("%s get buffer from list jobid[%d] va[%p] pa[%llx]",
 			__func__, task->job.jobid, temp_buffer->va, temp_buffer->pa);
 	} else {
 		temp_buffer = kzalloc(sizeof(struct mml_pq_dma_buffer), GFP_KERNEL);
@@ -533,17 +533,16 @@ void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe,
 			mml_pq_msg("%s buffer num[%d] exceeds limit[%d]",
 				__func__, fg_buffer_num, FG_BUF_NUM_LIMIT);
 		}
-
-		mutex_lock(&task->pq_task->fg_buffer_mutex);
 		*lut_buf = temp_buffer;
+	}
+	mutex_unlock(&fg_buf_list_mutex);
+
+	if (!temp_buffer->va && !temp_buffer->pa) {
+		mutex_lock(&task->pq_task->fg_buffer_mutex);
 		temp_buffer->va = dma_alloc_noncoherent(
 			dev, FG_BUF_SIZE, &temp_buffer->pa, DMA_TO_DEVICE, GFP_KERNEL);
 		mutex_unlock(&task->pq_task->fg_buffer_mutex);
-
-		mml_pq_msg("%s aal reallocate jobid[%d] va[%p] pa[%llx]", __func__,
-			task->job.jobid, temp_buffer->va, temp_buffer->pa);
 	}
-	mutex_unlock(&fg_buf_list_mutex);
 
 	mml_pq_msg("%s job_id[%d] va[%p] pa[%llx] fg_buffer_num[%d]", __func__,
 		task->job.jobid, temp_buffer->va, temp_buffer->pa, fg_buffer_num);

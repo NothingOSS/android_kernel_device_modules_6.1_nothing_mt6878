@@ -171,6 +171,8 @@ enum fg_label_index {
 	FG_PPS_1_LABEL,
 	FG_PPS_2_LABEL,
 	FG_PPS_3_LABEL,
+	FG_CTRL_0_LABEL,
+	FG_CK_EN_LABEL,
 	FG_LABEL_TOTAL
 };
 
@@ -286,6 +288,7 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	bool smi_sw_reset = 1;
 	bool crc_cg_enable = 1;
 	bool is_yuv_444 = true;
+	bool buf_ready = true;
 	dma_addr_t fg_table_pa;
 
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
@@ -299,25 +302,36 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	mml_pq_get_fg_buffer(task, ccfg->pipe, dev_buf, &(task->pq_task->fg_table));
-	if (unlikely(!task->pq_task->fg_table)) {
+	if (unlikely(!task->pq_task->fg_table) ||
+		unlikely(!task->pq_task->fg_table->va)) {
 		mml_pq_err("%s job_id[%d] fg_table is null", __func__,
 			task->job.jobid);
-		goto exit;
+		buf_ready = false;
 	}
 
 	fg_table_pa = task->pq_task->fg_table->pa;
 	if ((fg_table_pa >> 34) > 0) {
 		mml_pq_err("%s job_id[%d] fg pa addr exceed 34 bits [%llx]", __func__,
 			task->job.jobid, fg_table_pa);
-		goto exit;
+		buf_ready = false;
 	}
 
-	mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth);
-	dma_sync_single_range_for_device(dev_buf, fg_table_pa, 0, FG_BUF_SIZE, DMA_TO_DEVICE);
-
 	// enable filmGrain
-	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CTRL_0], relay_mode << 0, 1 << 0);
-	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CK_EN], 0xF, 0xF);
+	if (buf_ready) {
+		mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth);
+		dma_sync_single_range_for_device(
+			dev_buf,fg_table_pa, 0, FG_BUF_SIZE, DMA_TO_DEVICE);
+
+		mml_write(pkt, base_pa + fg->data->reg_table[FG_CTRL_0], relay_mode << 0, 1 << 0,
+			reuse, cache, &fg_frm->labels[FG_CTRL_0_LABEL]);
+		mml_write(pkt, base_pa + fg->data->reg_table[FG_CK_EN], 0xF, 0xF,
+			reuse, cache, &fg_frm->labels[FG_CK_EN_LABEL]);
+	} else {
+		mml_write(pkt, base_pa + fg->data->reg_table[FG_CTRL_0], 1, 1 << 0,
+			reuse, cache, &fg_frm->labels[FG_CTRL_0_LABEL]);
+		mml_write(pkt, base_pa + fg->data->reg_table[FG_CK_EN], 0x7, 0xF,
+			reuse, cache, &fg_frm->labels[FG_CK_EN_LABEL]);
+	}
 
 	// smi sw reset
 	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_BACK_DOOR_0],
@@ -424,6 +438,7 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 		&task->pq_param[ccfg->node->out_idx].video_param.fg_meta;
 	struct device *dev_buf = smmu_v3_enabled()?
 		fg->mmu_dev : task->config->path[ccfg->pipe]->clt->chan->mbox->dev;
+	bool relay_mode = !dest->pq_config.en_fg;
 	s32 ret = 0;
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	u8 bit_depth = MML_FMT_10BIT(src->format) ? 10 : 8;
@@ -439,7 +454,8 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 		goto exit;
 
 	mml_pq_get_fg_buffer(task, ccfg->pipe, dev_buf, &(task->pq_task->fg_table));
-	if (unlikely(!task->pq_task->fg_table)) {
+	if (unlikely(!task->pq_task->fg_table) ||
+		unlikely(!task->pq_task->fg_table->va)) {
 		mml_pq_err("%s job_id[%d] fg_table is null", __func__,
 			task->job.jobid);
 		goto exit;
@@ -451,6 +467,9 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			task->job.jobid, fg_table_pa);
 		goto exit;
 	}
+
+	mml_update(reuse, fg_frm->labels[FG_CTRL_0_LABEL], relay_mode << 0);
+	mml_update(reuse, fg_frm->labels[FG_CK_EN_LABEL], 0xF);
 
 	mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth);
 	dma_sync_single_range_for_device(dev_buf, fg_table_pa, 0, FG_BUF_SIZE, DMA_TO_DEVICE);
