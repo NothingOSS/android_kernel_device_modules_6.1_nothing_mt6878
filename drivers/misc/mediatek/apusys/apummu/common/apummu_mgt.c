@@ -163,9 +163,11 @@ static void free_memory(struct kref *kref)
 
 	AMMU_LOG_DBG("kref destroy\n");
 #if DRAM_FALL_BACK_IN_RUNTIME
-	queue_delayed_work(ammu_workq, &DRAM_free_work,
-		msecs_to_jiffies(AMMU_FREE_DRAM_DELAY_MS));
-	g_ammu_table_set.is_free_job_set = true;
+	if (g_adv->rsc.vlm_dram.iova != 0) {
+		queue_delayed_work(ammu_workq, &DRAM_free_work,
+			msecs_to_jiffies(AMMU_FREE_DRAM_DELAY_MS));
+		g_ammu_table_set.is_free_job_set = true;
+	}
 #endif
 
 	if (g_adv->rsc.genernal_SLB.iova != 0) {
@@ -209,7 +211,7 @@ static int session_table_alloc(void)
 
 #if DRAM_FALL_BACK_IN_RUNTIME
 	mutex_lock(&g_ammu_table_set.DRAM_FB_lock);
-	if (!(g_adv->remote.is_dram_IOVA_alloc)) {
+	if (g_adv->rsc.vlm_dram.iova == 0) {
 		ammu_trace_begin("APUMMU: Alloc DRAM");
 		ret = apummu_dram_remap_runtime_alloc(g_adv);
 		if (ret) {

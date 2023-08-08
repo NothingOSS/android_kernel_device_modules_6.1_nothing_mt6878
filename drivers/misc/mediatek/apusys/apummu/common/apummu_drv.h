@@ -32,8 +32,6 @@ struct apummu_remote_data {
 
 	uint32_t TCM_base_addr;
 	uint32_t general_SRAM_size; // TCM + general SLB
-
-	bool is_dram_IOVA_alloc;
 };
 
 /* for plat data */

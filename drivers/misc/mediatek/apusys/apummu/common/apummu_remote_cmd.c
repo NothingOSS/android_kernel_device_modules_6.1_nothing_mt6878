@@ -243,7 +243,7 @@ int apummu_remote_set_hw_default_iova_one_shot(void *drvinfo)
 	req.option = APUMMU_OPTION_SET;
 
 	type = APUMMU_MEM_TYPE_GENERAL_S;
-	if (adv->remote.is_general_SLB_alloc) { // if SLB allocated
+	if (adv->rsc.genernal_SLB.iova != 0) { // if SLB allocated
 		in_addr = (uint32_t) adv->rsc.genernal_SLB.iova;
 		size = adv->rsc.genernal_SLB.size;
 	}

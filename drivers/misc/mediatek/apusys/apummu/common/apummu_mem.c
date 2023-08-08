@@ -523,7 +523,7 @@ int apummu_dram_remap_runtime_alloc(void *drvinfo)
 	}
 	adv = (struct apummu_dev_info *)drvinfo;
 
-	if (adv->remote.is_dram_IOVA_alloc) {
+	if (adv->rsc.vlm_dram.iova != 0) {
 		AMMU_LOG_ERR("Error DRAM FB already alloc\n");
 		ret = -EINVAL;
 		goto out;
@@ -547,7 +547,6 @@ int apummu_dram_remap_runtime_alloc(void *drvinfo)
 	adv->rsc.vlm_dram.base = (void *) g_mem_sys->kva;
 	adv->rsc.vlm_dram.size = g_mem_sys->size;
 	adv->rsc.vlm_dram.iova = g_mem_sys->iova;
-	adv->remote.is_dram_IOVA_alloc = true;
 
 free_lock:
 	mutex_unlock(&g_mem_sys->mtx);
@@ -571,7 +570,9 @@ int apummu_dram_remap_runtime_free(void *drvinfo)
 	mutex_lock(&g_mem_sys->mtx);
 	apummu_mem_free(adv->dev, g_mem_sys);
 	mutex_unlock(&g_mem_sys->mtx);
-	adv->remote.is_dram_IOVA_alloc = false;
+	adv->rsc.vlm_dram.base = 0;
+	adv->rsc.vlm_dram.size = 0;
+	adv->rsc.vlm_dram.iova = 0;
 	g_mem_sys = NULL;
 
 out:
