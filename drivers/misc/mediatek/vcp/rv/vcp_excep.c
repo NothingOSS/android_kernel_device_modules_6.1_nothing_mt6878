@@ -70,6 +70,8 @@ struct vcp_status_reg *c1_m;
 struct vcp_status_reg *c1_t1_m;
 void (*vcp_do_tbufdump)(uint32_t*, uint32_t*) = NULL;
 
+unsigned int vcp_res_req_status_reg;
+
 static struct mutex vcp_excep_mutex;
 int vcp_ee_enable;
 unsigned int vcp_reset_counts = 0xFFFFFFFF;
@@ -112,6 +114,7 @@ void vcp_dump_last_regs(int mmup_enable)
 {
 	uint32_t *out, *out_end;
 	uint32_t i;
+	void __iomem *test_base;
 
 	if (mmup_enable == 0) {
 		pr_notice("[VCP] power off, do not vcp_dump_last_regs\n");
@@ -187,6 +190,35 @@ void vcp_dump_last_regs(int mmup_enable)
 	pr_notice("[VCP] irq wakeup en: %08x,%08x,%08x\n", readl(VCP_IRQ_SLP0),
 		readl(VCP_IRQ_SLP1), readl(VCP_IRQ_SLP2));
 
+	if (vcp_res_req_status_reg) {
+		test_base = ioremap(vcp_res_req_status_reg, 4);
+		pr_notice("[VCP] resource request status: %08x\n", readl(test_base));
+		iounmap(test_base);
+	}
+
+	pr_notice("[VCP] CLK_SYS/BUS/APSRC/DDREN REQ: %08x,%08x,%08x,%08x\n",
+		readl(R_CORE0_CLK_SYS_REQ), readl(R_CORE0_BUS_REQ),
+		readl(R_CORE0_APSRC_REQ), readl(R_CORE0_DDREN_REQ));
+	pr_notice("[VCP] SYS_CTRL/SLP_PROT_EN: %08x,%08x\n",
+		readl(VCP_SYS_CTRL), readl(VCP_SLP_PROT_EN));
+	pr_notice("[VCP] DDREN_NEW_CTRL/DDREN_NEW_CTRL2/APSRC_CTRL2: %08x,%08x,%08x\n",
+		readl(VCP_DDREN_NEW_CTRL), readl(VCP_DDREN_NEW_CTRL2),
+		readl(VCP_APSRC_CTRL2));
+	if (vcpreg.bus_prot) {
+		pr_notice("[VCP] bus prot_en/ack\n");
+		for (i = 0; i < 2; i++) {
+			pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+				readl(VCP_BUS_PROT + i * 0x20),
+				readl(VCP_BUS_PROT + i * 0x20 + 0x4),
+				readl(VCP_BUS_PROT + i * 0x20 + 0x8),
+				readl(VCP_BUS_PROT + i * 0x20 + 0xC),
+				readl(VCP_BUS_PROT + i * 0x20 + 0x10),
+				readl(VCP_BUS_PROT + i * 0x20 + 0x14),
+				readl(VCP_BUS_PROT + i * 0x20 + 0x18),
+				readl(VCP_BUS_PROT + i * 0x20 + 0x1C));
+		}
+	}
+
 	if (vcpreg.twohart) {
 		pr_notice("[VCP] c0_t1_pc = %08x\n", c0_t1_m->pc);
 		pr_notice("[VCP] c0_t1_pc2 = %08x\n", readl(R_CORE0_T1_MON_PC));
@@ -224,6 +256,44 @@ void vcp_dump_last_regs(int mmup_enable)
 			i, readl(VCP_BUS_DBG_RESULT0 + i * 4));
 	}
 
+	/* bus tracker reg dump */
+	pr_notice("[VCP] BUS TRACKER CON\n");
+	for (i = 0; i < 3; i++) {
+		pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+			readl(VCP_BUS_TRACKER_CON + i * 0x20),
+			readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x4),
+			readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x8),
+			readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0xC),
+			readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x10),
+			readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x14),
+			readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x18),
+			readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x1C));
+	}
+	pr_notice("[VCP] BUS TRACKER AR\n");
+	for (i = 0; i < 8; i++) {
+		pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20),
+			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x4),
+			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x8),
+			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0xC),
+			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x10),
+			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x14),
+			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x18),
+			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x1C));
+	}
+	pr_notice("[VCP] BUS TRACKER AW\n");
+	for (i = 0; i < 8; i++) {
+		pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20),
+			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x4),
+			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x8),
+			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0xC),
+			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x10),
+			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x14),
+			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x18),
+			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x1C));
+	}
+
 	out = kmalloc(0x400 * sizeof(uint32_t), GFP_DMA|GFP_ATOMIC);
 	if (!out)
 		return;
@@ -236,6 +306,8 @@ void vcp_dump_last_regs(int mmup_enable)
 
 	/* mmup2infra RX and TX reg dump */
 	pr_notice("[VCP] mmup2infra tx: %08x\n", readl(VCP_TO_INFRA_TX));
+	if (mminfra_debug_dump && vcp_ao)
+		mminfra_debug_dump();
 }
 
 void vcp_do_regdump(uint32_t *out, uint32_t *out_end)

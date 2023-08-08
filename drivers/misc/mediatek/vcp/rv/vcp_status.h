@@ -37,9 +37,12 @@ struct vcp_mminfra_on_off_st {
 	int mminfra_ref;
 };
 
+typedef void (*mminfra_dump_ptr)(void);
+
 extern int pwclkcnt;
 extern bool is_suspending;
 extern bool vcp_ao;
+extern mminfra_dump_ptr mminfra_debug_dump;
 int mmup_enable_count(void);
 void vcp_set_fp(struct vcp_status_fp *fp);
 void vcp_set_ipidev(struct mtk_ipi_device *ipidev);
@@ -54,6 +57,7 @@ void vcp_A_unregister_notify_ex(struct notifier_block *nb);
 unsigned int vcp_cmd_ex(enum vcp_cmd_id id, char *user);
 unsigned int is_vcp_suspending_ex(void);
 void vcp_set_mminfra_cb(struct vcp_mminfra_on_off_st *str_ptr);
-int vcp_register_mminfra_cb_ex(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off);
+int vcp_register_mminfra_cb_ex(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off,
+	mminfra_dump_ptr mminfra_dump_func);
 
 #endif

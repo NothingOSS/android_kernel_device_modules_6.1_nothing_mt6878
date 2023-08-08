@@ -37,7 +37,7 @@
 #define MMINFRA_MAX_CLK_NUM	(4)
 #define MAX_SMI_COMM_NUM	(3)
 
-#define MMINFRA_GALS_NR		(6)
+#define MMINFRA_GALS_NR		(7)
 
 struct mminfra_dbg {
 	void __iomem *ctrl_base;
@@ -599,6 +599,8 @@ static void mminfra_gals_dump(void)
 	u32 *mux_setting = dbg->gals_sel;
 
 	for (i = 0; i < MMINFRA_GALS_NR; i++) {
+		if (mux_setting[i] == 0)
+			continue;
 		writel(mux_setting[i], dbg->mminfra_base + MMINFRA_DBG_SEL);
 		pr_notice("%s: %#x=%#x, %#x=%#x\n", __func__,
 			MMINFRA_BASE + MMINFRA_DBG_SEL,
@@ -607,6 +609,12 @@ static void mminfra_gals_dump(void)
 			readl(dbg->mminfra_base + MMINFRA_MODULE_DBG));
 	}
 
+}
+
+static void vcp_debug_dump(void)
+{
+	pr_info("cg_con0 = 0x%x\n", readl(dbg->mminfra_base + MMINFRA_CG_CON0));
+	mminfra_gals_dump();
 }
 
 int mtk_mminfra_dbg_hang_detect(const char *user)
@@ -815,6 +823,8 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	for (i = 0; i < MMINFRA_GALS_NR; i++) {
 		if (!of_property_read_u32_index(dev->of_node, "mminfra-gals-sel", i, &tmp))
 			dbg->gals_sel[i] = tmp;
+		else
+			dbg->gals_sel[i] = 0;
 		pr_notice("[mminfra] gals_sel[%d]=%d\n", i, dbg->gals_sel[i]);
 	}
 
@@ -847,7 +857,7 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	if (vcp_gipc) {
 		pm_runtime_irq_safe(dev);
 		dbg->irq_safe = true;
-		vcp_register_mminfra_cb_ex(vcp_mminfra_on, vcp_mminfra_off);
+		vcp_register_mminfra_cb_ex(vcp_mminfra_on, vcp_mminfra_off, vcp_debug_dump);
 	}
 
 	mtk_pd_notifier.notifier_call = mtk_mminfra_pd_callback;

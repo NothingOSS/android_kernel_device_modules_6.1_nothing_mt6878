@@ -46,6 +46,7 @@ extern uint32_t vcp_dump_size_probe(struct platform_device *pdev);
 enum { r0, r1, r2, r3, r12, lr, pc, psr};
 extern int vcp_ee_enable;
 extern unsigned int vcp_reset_counts;
+extern unsigned int vcp_res_req_status_reg;
 
 extern struct vcp_status_reg *c0_m;
 extern struct vcp_status_reg *c0_t1_m;

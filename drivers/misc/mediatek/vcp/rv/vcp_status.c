@@ -10,6 +10,8 @@
 struct vcp_status_fp *vcp_fp;
 struct mtk_ipi_device *vcp_ipidev_ex;
 struct vcp_mminfra_on_off_st *vcp_mminfra_cb_ptr;
+mminfra_dump_ptr mminfra_debug_dump;
+EXPORT_SYMBOL_GPL(mminfra_debug_dump);
 
 int pwclkcnt;
 EXPORT_SYMBOL_GPL(pwclkcnt);
@@ -135,12 +137,14 @@ void vcp_set_mminfra_cb(struct vcp_mminfra_on_off_st *str_ptr)
 }
 EXPORT_SYMBOL_GPL(vcp_set_mminfra_cb);
 
-int vcp_register_mminfra_cb_ex(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off)
+int vcp_register_mminfra_cb_ex(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off,
+	mminfra_dump_ptr mminfra_dump_func)
 {
 	if(!vcp_mminfra_cb_ptr)
 		return -1;
 	vcp_mminfra_cb_ptr->mminfra_on = fpt_on;
 	vcp_mminfra_cb_ptr->mminfra_off = fpt_off;
+	mminfra_debug_dump = mminfra_dump_func;
 	return 0;
 }
 EXPORT_SYMBOL_GPL(vcp_register_mminfra_cb_ex);

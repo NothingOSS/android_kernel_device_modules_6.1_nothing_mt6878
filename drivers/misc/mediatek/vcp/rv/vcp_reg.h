@@ -6,6 +6,9 @@
 #ifndef __VCP_REG_H
 #define __VCP_REG_H
 
+#define VCP_SYS_CTRL			(vcpreg.cfg)
+#define VCP_SLP_PROT_EN			(vcpreg.cfg + 0x0008)
+
 #define VCP_SEMAPHORE			(vcpreg.cfg  + 0x0018)
 #define VCP_VCP2SPM_VOL_LV		(vcpreg.cfg + 0x0020)
 
@@ -41,6 +44,10 @@
 	#define B_SERR	(1 << 0)
 #define VCP_BUS_DEBUG_OUT		(vcpreg.cfg + 0x0150)
 
+#define VCP_DDREN_NEW_CTRL		(vcpreg.cfg + 0x01B0)
+#define VCP_DDREN_NEW_CTRL2		(vcpreg.cfg + 0x01B8)
+#define VCP_APSRC_CTRL2			(vcpreg.cfg + 0x01BC)
+
 #define R_CORE0_SW_RSTN_CLR	(vcpreg.cfg_core0 + 0x0000)
 #define R_CORE1_SW_RSTN_CLR	(vcpreg.cfg_core1 + 0x0000)
 
@@ -48,6 +55,12 @@
 #define R_CORE1_SW_RSTN_SET	(vcpreg.cfg_core1 + 0x0004)
 
 #define R_CORE0_DBG_CTRL	(vcpreg.cfg_core0 + 0x0010)
+
+#define R_CORE0_CLK_SYS_REQ	(vcpreg.cfg_core0 + 0x0020)
+#define R_CORE0_BUS_REQ		(vcpreg.cfg_core0 + 0x0024)
+#define R_CORE0_APSRC_REQ	(vcpreg.cfg_core0 + 0x0028)
+#define R_CORE0_DDREN_REQ	(vcpreg.cfg_core0 + 0x002C)
+
 #define R_CORE1_DBG_CTRL	(vcpreg.cfg_core1 + 0x0010)
 	#define M_CORE_TBUF_DBG_SEL	(7 << 4)
 	#define S_CORE_TBUF_DBG_SEL	(4)
@@ -164,9 +177,16 @@
 #define VCP_BUS_DBG_CON			(vcpreg.bus_debug)
 #define VCP_BUS_DBG_RESULT0		(vcpreg.bus_debug + 0x408)
 
+/* bus tracker */
+#define VCP_BUS_TRACKER_CON		(vcpreg.bus_tracker)
+#define VCP_BUS_TRACKER_AR_TRACK0	(vcpreg.bus_tracker + 0x0100)
+#define VCP_BUS_TRACKER_AW_TRACK0	(vcpreg.bus_tracker + 0x0300)
+
 #define R_SEC_CTRL			(vcpreg.cfg_sec + 0x0000)
 	#define B_CORE0_CACHE_DBG_EN	(1 << 28)
 	#define B_CORE1_CACHE_DBG_EN	(1 << 29)
+
+#define VCP_BUS_PROT			(vcpreg.bus_prot)
 
 #define R_CORE0_CACHE_RAM		(vcpreg.l1cctrl + 0x00000)
 #define R_CORE1_CACHE_RAM		(vcpreg.l1cctrl + 0x20000)
