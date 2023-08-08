@@ -961,6 +961,8 @@ void mtk_drm_idlemgr_async_complete(struct drm_crtc *crtc, unsigned int user_id,
 		spin_lock_irqsave(&idlemgr->async_lock, flags);
 		list_add_tail(&cb->link, &idlemgr->async_cb_list);
 		atomic_inc(&idlemgr->async_cb_count);
+		if (cb_data->free_handle == false)
+			atomic_inc(&idlemgr->async_cb_pending);
 		CRTC_MMP_MARK((int)drm_crtc_index(crtc), idle_async_cb,
 			(unsigned long)cb_data->handle,
 			atomic_read(&idlemgr->async_cb_count) | (user_id << 16));
@@ -1267,6 +1269,8 @@ static void mtk_drm_destroy_async_cb(struct mtk_drm_async_cb *cb,
 
 		if (cb_data->free_handle)
 			cmdq_pkt_destroy(cb_data->handle);
+		else
+			atomic_dec(&idlemgr->async_cb_pending);
 		cb_data->handle = NULL;
 		kfree(cb_data);
 	}
@@ -1277,26 +1281,26 @@ static void mtk_drm_destroy_async_cb(struct mtk_drm_async_cb *cb,
 
 static void mtk_drm_clear_async_cb_list(struct drm_crtc *crtc)
 {
-	struct mtk_drm_async_cb *cb = NULL, *tmp = NULL;
+	struct sched_param hi_param = {.sched_priority = 87 };
+	struct sched_param lo_param = {.sched_priority = 0 };
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
-	unsigned long flags = 0;
+	bool adjusted = false;
 
-	spin_lock_irqsave(&idlemgr->async_lock, flags);
-	if (atomic_read(&idlemgr->async_cb_count) == 0 &&
-		list_empty(&idlemgr->async_cb_list)) {
-		spin_unlock_irqrestore(&idlemgr->async_lock, flags);
-		return;
+	while (atomic_read(&idlemgr->async_cb_pending) > 0) {
+		if (adjusted == false) {
+			sched_setscheduler(idlemgr->async_handler_task,
+					SCHED_RR, &hi_param);
+			adjusted = true;
+		}
+		DDPINFO("%s: async count:%d, pending:%d\n",
+			__func__, atomic_read(&idlemgr->async_cb_count),
+			atomic_read(&idlemgr->async_cb_pending));
+		usleep_range(50, 100);
 	}
-	spin_unlock_irqrestore(&idlemgr->async_lock, flags);
-
-	DDPINFO("%s: async count:%d\n",
-		__func__, atomic_read(&idlemgr->async_cb_count));
-	list_for_each_entry_safe(cb, tmp, &idlemgr->async_cb_list, link) {
-		mtk_drm_destroy_async_cb(cb, crtc, false);
-		cb = NULL;
-	}
-	atomic_set(&idlemgr->async_cb_count, 0);
+	if (adjusted == true)
+		sched_setscheduler(idlemgr->async_handler_task,
+				SCHED_NORMAL, &lo_param);
 }
 
 static int mtk_drm_async_handler_thread(void *data)

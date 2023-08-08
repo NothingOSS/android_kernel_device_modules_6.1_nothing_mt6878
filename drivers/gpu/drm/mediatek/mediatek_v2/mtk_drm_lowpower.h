@@ -70,6 +70,7 @@ struct mtk_drm_idlemgr {
 	struct list_head async_cb_list;
 	//async_cb_list length
 	atomic_t async_cb_count;
+	atomic_t async_cb_pending;
 	struct pm_qos_request cpu_qos_req;
 	struct mtk_drm_idlemgr_context *idlemgr_ctx;
 	struct mtk_drm_idlemgr_perf *perf;
