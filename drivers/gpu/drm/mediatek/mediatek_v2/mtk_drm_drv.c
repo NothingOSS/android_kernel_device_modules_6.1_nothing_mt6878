@@ -7396,15 +7396,8 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	 * Trigger mminfra gipc to hfrp.
 	 */
 	mtk_smi_init_power_off();
-	if (private->data->mmsys_id == MMSYS_MT6989) {
-		/* sleep is for debug */
-		mtk_dump_mminfra_ck(private);
-		msleep(100);
-		mtk_mminfra_off_gipc();
-		msleep(100);
-		mtk_dump_mminfra_ck(private);
-	} else
-		mtk_mminfra_off_gipc();
+	mtk_mminfra_off_gipc();
+	mtk_dump_mminfra_ck(private);
 
 	return 0;
 
@@ -8953,7 +8946,9 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 		DDPMSG("%s\n", __func__);
 		mtk_drm_pm_ctrl(private, DISP_PM_GET);
 		drm_atomic_helper_shutdown(drm);
+		drm_dev_unregister(drm);
 		mtk_drm_pm_ctrl(private, DISP_PM_PUT);
+		mtk_drm_pm_ctrl(private, DISP_PM_DISABLE);
 	}
 }
 

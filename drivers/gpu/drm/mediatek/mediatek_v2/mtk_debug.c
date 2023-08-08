@@ -471,10 +471,8 @@ void mtk_dump_mminfra_ck(void *_priv)
 	if (priv->data->mmsys_id == MMSYS_MT6989) {
 		static void __iomem *vlp_vote_done;
 
-		/* check VLP_VOTE_DONE */
-		vlp_vote_done = ioremap(0x1c00091c, 0x4);
 		if (!vlp_vote_done)
-			return;
+			vlp_vote_done = ioremap(0x1c00091c, 0x4);
 
 		/* defined in clk-mt6989-fmeter.c */
 		DDPMSG("FM_MMINFRA_CK:%u VLP_VOTE_DONE:%u\n",

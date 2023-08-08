@@ -10777,6 +10777,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	if (mtk_drm_lcm_is_connect(mtk_crtc))
 		mtk_disp_esd_check_switch(crtc, true);
 
+	mtk_drm_set_idlemgr(crtc, 1, false);
+
 	/* 14. enable fake vsync if need*/
 	mtk_drm_fake_vsync_switch(crtc, true);
 
@@ -11678,7 +11680,7 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 	CRTC_MMP_MARK((int) crtc_id, disable, 1, 0);
 
 	/* 1. kick idle */
-	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+	mtk_drm_set_idlemgr(crtc, 0, false);
 
 	/* 2. disable fake vsync if need */
 	mtk_drm_fake_vsync_switch(crtc, false);
