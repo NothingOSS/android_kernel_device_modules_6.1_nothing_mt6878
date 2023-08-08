@@ -6497,18 +6497,6 @@ static int mt_vow_digital_cfg_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
-		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON14,
-				   RG_AUDADCL_VOW_MASK_SFT,
-				   0x1 << RG_AUDADCL_VOW_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON14,
-				   RG_AUDADCR_VOW_MASK_SFT,
-				   0x1 << RG_AUDADCR_VOW_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON15,
-				   RG_AUDADC3_VOW_MASK_SFT,
-				   0x1 << RG_AUDADC3_VOW_SFT);
-		regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON15,
-				   RG_AUDADC4_VOW_MASK_SFT,
-				   0x1 << RG_AUDADC4_VOW_SFT);
 		regmap_write(priv->regmap, MT6681_TOP_CKPDN_CON1_CLR,
 			     0x1 << RG_AUD_13M_CK_PDN_SFT);
 		regmap_write(priv->regmap, MT6681_AUD_TOP_CKPDN_CON0_H_CLR,
