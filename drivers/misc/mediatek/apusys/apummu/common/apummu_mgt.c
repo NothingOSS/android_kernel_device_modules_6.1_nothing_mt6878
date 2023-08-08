@@ -196,9 +196,9 @@ static int session_table_alloc(void)
 	struct apummu_session_tbl *sTable_ptr = NULL;
 	ammu_trace_begin("APUMMU: session table allocate");
 
-	sTable_ptr = kvmalloc(sizeof(struct apummu_session_tbl), GFP_KERNEL);
+	sTable_ptr = kvzalloc(sizeof(struct apummu_session_tbl), GFP_KERNEL);
 	if (!sTable_ptr) {
-		AMMU_LOG_ERR("Session table alloc failed, kvmalloc failed\n");
+		AMMU_LOG_ERR("Session table alloc failed, kvzalloc failed\n");
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -373,8 +373,8 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 							- ((device_va) / (0x20000000)));
 		do {
 			/* >> 29 = 512M / 0x20000000 */
-			mask_idx = ((device_va >> 29) + cross_page_array_num) &
-						(0x1f);
+			mask_idx = (((device_va - 0x100000000) >> 29)
+						+ cross_page_array_num) & (0x1f);
 
 			g_ammu_stable_ptr->stable_info.DRAM_page_array_mask[1] |=
 				(1 << mask_idx);
