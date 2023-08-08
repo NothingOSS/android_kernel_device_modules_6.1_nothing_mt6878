@@ -109,7 +109,7 @@ int mtk_session_set_mode(struct drm_device *dev, unsigned int session_mode)
 	const struct mtk_session_mode_tb *mode_tb = private->data->mode_tb;
 	unsigned int session_id;
 
-	DDP_MUTEX_LOCK(&private->commit.lock, __func__, __LINE__);
+	DDP_COMMIT_LOCK(&private->commit.lock, __func__, __LINE__);
 	if (session_mode >= MTK_DRM_SESSION_NUM) {
 		DDPPR_ERR("%s Invalid session mode:%d\n",
 			  __func__, session_mode);
@@ -201,11 +201,11 @@ int mtk_session_set_mode(struct drm_device *dev, unsigned int session_mode)
 			session_mode);
 
 success:
-	DDP_MUTEX_UNLOCK(&private->commit.lock, __func__, __LINE__);
+	DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
 	return 0;
 
 error:
-	DDP_MUTEX_UNLOCK(&private->commit.lock, __func__, __LINE__);
+	DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
 	return -EINVAL;
 }
 

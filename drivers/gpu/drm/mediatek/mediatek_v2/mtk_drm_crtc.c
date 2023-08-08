@@ -7505,7 +7505,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		wake_up_interruptible(&(mtk_crtc->signal_mml_last_job_is_flushed_wq));
 	}
 
-	DDP_MUTEX_LOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
+	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 	mutex_lock(&mtk_crtc->lock);
 	if ((id == 0) && (priv && priv->power_state)) {
 		ovl_status = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
@@ -7655,7 +7655,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	}
 
 	mutex_unlock(&mtk_crtc->lock);
-	DDP_MUTEX_UNLOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
+	DDP_COMMIT_UNLOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 #ifdef MTK_DRM_ASYNC_HANDLE
 	cmdq_pkt_wait_complete(cb_data->cmdq_handle);
 	mtk_drm_del_cb_data(data, id);
@@ -11017,6 +11017,10 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 	/* hold wakelock */
 	mtk_drm_crtc_wk_lock(crtc, 1, __func__, __LINE__);
 
+	if (index != 0)
+		if (vdisp_func.vlp_disp_vote)
+			vdisp_func.vlp_disp_vote(DISP_VIDLE_FORCE_KEEP, true);
+
 	if (mtk_crtc->path_data->is_discrete_path)
 		mtk_crtc->skip_frame = true;
 
@@ -11836,6 +11840,10 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 
 	if (index >= 0 && index < MAX_CRTC)
 		priv->usage[index] = DISP_DISABLE;
+
+	if (index != 0)
+		if (vdisp_func.vlp_disp_vote)
+			vdisp_func.vlp_disp_vote(DISP_VIDLE_FORCE_KEEP, false);
 
 	/* release wakelock */
 	mtk_drm_crtc_wk_lock(crtc, 0, __func__, __LINE__);
@@ -18981,7 +18989,7 @@ int mtk_drm_switch_te(struct drm_crtc *crtc, int te_num, bool need_lock)
 		return -EINVAL;
 
 	if (need_lock) {
-		DDP_MUTEX_LOCK(&private->commit.lock, __func__, __LINE__);
+		DDP_COMMIT_LOCK(&private->commit.lock, __func__, __LINE__);
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	}
 
@@ -18996,7 +19004,7 @@ int mtk_drm_switch_te(struct drm_crtc *crtc, int te_num, bool need_lock)
 		DDPPR_ERR("%s:%d NULL handle\n", __func__, __LINE__);
 		if (need_lock) {
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-			DDP_MUTEX_UNLOCK(&private->commit.lock, __func__, __LINE__);
+			DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
 		}
 		return -EINVAL;
 	}
@@ -19030,7 +19038,7 @@ int mtk_drm_switch_te(struct drm_crtc *crtc, int te_num, bool need_lock)
 
 	if (need_lock) {
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		DDP_MUTEX_UNLOCK(&private->commit.lock, __func__, __LINE__);
+		DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
 	}
 	return 0;
 }

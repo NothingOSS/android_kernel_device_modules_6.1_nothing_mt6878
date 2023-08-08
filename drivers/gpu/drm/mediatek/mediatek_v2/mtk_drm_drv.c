@@ -1989,7 +1989,7 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		break;
 	}
 
-	DDP_MUTEX_LOCK(&private->commit.lock, __func__, pf);
+	DDP_COMMIT_LOCK(&private->commit.lock, __func__, pf);
 	flush_work(&private->commit.work);
 	DRM_MMP_EVENT_START(mutex_lock, 0, 0);
 
@@ -2050,7 +2050,7 @@ mutex_unlock:
 	}
 
 	DRM_MMP_EVENT_END(mutex_lock, 0, 0);
-	DDP_MUTEX_UNLOCK(&private->commit.lock, __func__, pf);
+	DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, pf);
 	DDP_PROFILE("[PROFILE] %s-\n", __func__);
 
 	return 0;

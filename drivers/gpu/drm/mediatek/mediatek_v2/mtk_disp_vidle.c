@@ -103,26 +103,6 @@ static void mtk_vidle_dt_enable(unsigned int en)
 		(en && mtk_vidle_enable_check(DISP_VIDLE_QOS_DT_EN)));
 }
 
-void mtk_vidle_power_keep(void)
-{
-	if (disp_dpc_driver.dpc_vidle_power_keep == NULL)
-		return;
-
-	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
-		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
-		disp_dpc_driver.dpc_vidle_power_keep(DISP_VIDLE_USER_DISP);
-}
-
-void mtk_vidle_power_release(void)
-{
-	if (disp_dpc_driver.dpc_vidle_power_release == NULL)
-		return;
-
-	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
-		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
-		disp_dpc_driver.dpc_vidle_power_release(DISP_VIDLE_USER_DISP);
-}
-
 void mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
 {
 	if (disp_dpc_driver.dpc_vidle_power_keep == NULL)
@@ -196,7 +176,7 @@ void mtk_vidle_get_all_flag(unsigned int *en, unsigned int *stop)
 
 static void mtk_vidle_stop(void)
 {
-	mtk_vidle_power_keep();
+	// mtk_vidle_power_keep();
 	mtk_vidle_dt_enable(0);
 	/* TODO: stop timestamp */
 }

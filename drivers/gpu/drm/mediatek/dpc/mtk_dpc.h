@@ -19,11 +19,12 @@ enum mtk_dpc_subsys {
 
 /* NOTE: user 0 to 7 is reserved for genpd notifier enum disp_pd_id { ... } */
 enum mtk_vidle_voter_user {
-	DISP_VIDLE_USER_DISP = 16,
+	DISP_VIDLE_USER_CRTC = 16,
 	DISP_VIDLE_USER_PQ,
 	DISP_VIDLE_USER_MML,
 	DISP_VIDLE_USER_MDP,
 	DISP_VIDLE_USER_OTHER,
+	DISP_VIDLE_FORCE_KEEP = 31,
 };
 
 enum mtk_dpc_disp_vidle {

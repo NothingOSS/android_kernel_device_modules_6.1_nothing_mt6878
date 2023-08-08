@@ -46,6 +46,7 @@ struct mtk_disp_dpc_data {
 
 struct mtk_vdisp_funcs {
 	void (*genpd_put)(void);
+	void (*vlp_disp_vote)(u32 user, bool set);
 };
 
 bool mtk_vidle_is_ff_enabled(void);
@@ -53,8 +54,6 @@ void mtk_vidle_sync_mmdvfsrc_status_rc(unsigned int rc_en);
 void mtk_vidle_sync_mmdvfsrc_status_wdt(unsigned int wdt_en);
 void mtk_vidle_flag_init(void *crtc);
 void mtk_vidle_enable(bool en, void *drm_priv);
-void mtk_vidle_power_keep(void);
-void mtk_vidle_power_release(void);
 void mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user);
 void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user);
 void mtk_vidle_pq_power_get(const char *caller);

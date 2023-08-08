@@ -120,6 +120,36 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 			mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);   \
 	} while (0)
 
+#define DDP_COMMIT_LOCK(lock, name, line)                                       \
+	do {                                                                   \
+		DDPINFO("CM_LOCK:%s[%d] +\n", name, line);		   \
+		DRM_MMP_EVENT_START(mutex_lock, (unsigned long)lock,	   \
+				line);	   \
+		mtk_drm_trace_tag_begin("CM_LOCK_%s", name);	\
+		mutex_lock(lock);		   \
+		mutex_time_start = sched_clock();		   \
+		mutex_locker = name;		   \
+	} while (0)
+
+#define DDP_COMMIT_UNLOCK(lock, name, line)                                     \
+	do {                                                                   \
+		mutex_locker = NULL;		   \
+		mutex_time_end = sched_clock();		   \
+		mutex_time_period = mutex_time_end - mutex_time_start;   \
+		if (mutex_time_period > 1000000000) {		   \
+			DDPPR_ERR("CM_ULOCK:%s[%d] timeout:<%lld ns>!\n",   \
+				name, line, mutex_time_period);		   \
+			DRM_MMP_MARK(mutex_lock,		   \
+				(unsigned long)mutex_time_period, 0);   \
+			dump_stack();		   \
+		}		   \
+		mutex_unlock(lock);		   \
+		DRM_MMP_EVENT_END(mutex_lock, (unsigned long)lock,	   \
+			line);	   \
+		mtk_drm_trace_tag_end("CM_LOCK_%s", name);	\
+		DDPINFO("M_ULOCK:%s[%d] -\n", name, line);		   \
+	} while (0)
+
 #define DDP_MUTEX_LOCK(lock, name, line)                                       \
 	do {                                                                   \
 		DDPINFO("M_LOCK:%s[%d] +\n", name, line);		   \
@@ -127,7 +157,7 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 				line);	   \
 		mtk_drm_trace_tag_begin("M_LOCK_%s", name);	\
 		mutex_lock(lock);		   \
-		mtk_vidle_power_keep();		\
+		mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);		\
 		mutex_time_start = sched_clock();		   \
 		mutex_locker = name;		   \
 	} while (0)
@@ -144,7 +174,7 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 				(unsigned long)mutex_time_period, 0);   \
 			dump_stack();		   \
 		}		   \
-		mtk_vidle_power_release();			\
+		mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);			\
 		mutex_unlock(lock);		   \
 		DRM_MMP_EVENT_END(mutex_lock, (unsigned long)lock,	   \
 			line);	   \
@@ -157,10 +187,14 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		DDPINFO("M_LOCK_NST[%d]:%s[%d] +\n", i, name, line);   \
 		mtk_drm_trace_tag_begin("M_LOCK_NST_%s", name);	\
 		mutex_lock_nested(lock, i);		   \
+		if (i == 0) \
+			mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC); \
 	} while (0)
 
 #define DDP_MUTEX_UNLOCK_NESTED(lock, i, name, line)                           \
 	do {                                                                   \
+		if (i == 0) \
+			mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC); \
 		mutex_unlock(lock);		   \
 		mtk_drm_trace_tag_end("M_LOCK_NST_%s", name);	\
 		DDPINFO("M_ULOCK_NST[%d]:%s[%d] -\n", i, name, line);	\

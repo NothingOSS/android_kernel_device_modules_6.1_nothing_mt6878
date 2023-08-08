@@ -271,7 +271,7 @@ static int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
 	/* delay_us, timeout_us */
 	ret = readl_poll_timeout_atomic(dpc_base + addr, value, 0xB, 1, 200);
 	if (ret < 0)
-		DPCERR("wait subsys(%d) power on timeout\n", subsys);
+		DPCERR("wait subsys(%d) power on timeout", subsys);
 
 	return ret;
 }
@@ -1187,22 +1187,22 @@ static void dpc_analysis(void)
 	if (dpc_pm_ctrl(true))
 		return;
 
-	DPCDUMP("ddremi mminfra: (%#010x %#08x)(%#010x %#08x)\n",
+	DPCDUMP("ddremi mminfra: (%#010x %#08x)(%#010x %#08x)",
 		readl(dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG),
 		readl(dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG));
-	DPCDUMP("hrt cfg val: (%#010x %#06x)(%#010x %#06x)\n",
+	DPCDUMP("hrt cfg val: (%#010x %#06x)(%#010x %#06x)",
 		readl(dpc_base + DISP_REG_DPC_DISP_HRTBW_SRTBW_CFG),
 		readl(dpc_base + DISP_REG_DPC_DISP_HIGH_HRT_BW),
 		readl(dpc_base + DISP_REG_DPC_MML_HRTBW_SRTBW_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_SW_HRT_BW));
-	DPCDUMP("vdisp cfg val: (%#04x %#04x)(%#04x %#04x)\n",
+	DPCDUMP("vdisp cfg val: (%#04x %#04x)(%#04x %#04x)",
 		readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG),
 		readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL),
 		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_VAL));
-	DPCDUMP("mtcmos: (%#04x %#04x %#04x %#04x %#04x)\n",
+	DPCDUMP("mtcmos: (%#04x %#04x %#04x %#04x %#04x)",
 		readl(dpc_base + DISP_REG_DPC_DISP0_MTCMOS_CFG),
 		readl(dpc_base + DISP_REG_DPC_DISP1_MTCMOS_CFG),
 		readl(dpc_base + DISP_REG_DPC_OVL0_MTCMOS_CFG),

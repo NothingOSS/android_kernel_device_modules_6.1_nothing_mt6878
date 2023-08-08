@@ -65,6 +65,7 @@ struct mtk_vdisp {
 	enum disp_pd_id pd_id;
 };
 static struct device *g_dev[DISP_PD_NUM];
+static void __iomem *g_vlp_base;
 
 static int regulator_event_notifier(struct notifier_block *nb,
 				    unsigned long event, void *data)
@@ -124,11 +125,33 @@ static int regulator_event_notifier(struct notifier_block *nb,
 	return 0;
 }
 
+static void mtk_vdisp_vlp_disp_vote(u32 user, bool set)
+{
+	u32 addr = set ? VLP_DISP_SW_VOTE_SET : VLP_DISP_SW_VOTE_CLR;
+	u32 ack = set ? BIT(user) : 0;
+	u16 i = 0;
+
+	if (unlikely(!g_vlp_base))
+		VDISPERR("uninitialized g_vlp_base");
+
+	writel_relaxed(BIT(user), g_vlp_base + addr);
+	do {
+		writel_relaxed(BIT(user), g_vlp_base + addr);
+		if ((readl(g_vlp_base + VLP_DISP_SW_VOTE_CON) & BIT(user)) == ack)
+			break;
+
+		if (i > VOTE_RETRY_CNT) {
+			VDISPERR("vlp vote bit(%u) timeout", user);
+			return;
+		}
+
+		udelay(VOTE_DELAY_US);
+		i++;
+	} while (1);
+}
+
 static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 {
-	u32 addr = on ? VLP_DISP_SW_VOTE_SET : VLP_DISP_SW_VOTE_CLR;
-	u32 ack = on ? BIT(priv->pd_id) : 0;
-	u16 i = 0;
 	u32 value = 0;
 	int ret = 0;
 
@@ -153,20 +176,7 @@ static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 		return;
 	}
 
-	writel_relaxed(BIT(priv->pd_id), priv->vlp_base + addr);
-	do {
-		writel_relaxed(BIT(priv->pd_id), priv->vlp_base + addr);
-		if ((readl(priv->vlp_base + VLP_DISP_SW_VOTE_CON) & BIT(priv->pd_id)) == ack)
-			break;
-
-		if (i > VOTE_RETRY_CNT) {
-			VDISPERR("vlp vote bit(%u) timeout", priv->pd_id);
-			return;
-		}
-
-		udelay(VOTE_DELAY_US);
-		i++;
-	} while (1);
+	mtk_vdisp_vlp_disp_vote(priv->pd_id, on);
 
 	if (on) {
 		ret = readl_poll_timeout_atomic(priv->vlp_base + VLP_MMINFRA_DONE_OFS, value,
@@ -212,6 +222,7 @@ static void mtk_vdisp_genpd_put(void)
 
 static const struct mtk_vdisp_funcs funcs = {
 	.genpd_put = mtk_vdisp_genpd_put,
+	.vlp_disp_vote = mtk_vdisp_vlp_disp_vote,
 };
 
 static int mtk_vdisp_probe(struct platform_device *pdev)
@@ -244,6 +255,7 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 			VDISPERR("fail to ioremap VLP_BASE: 0x%llx", res->start);
 			return -EINVAL;
 		}
+		g_vlp_base = priv->vlp_base;
 	}
 
 	if (of_find_property(dev->of_node, "dis1-shutdown-supply", NULL)) {
