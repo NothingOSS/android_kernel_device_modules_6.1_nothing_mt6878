@@ -40,7 +40,9 @@ struct lbat_thd_tbl {
 
 struct low_bat_thl_priv {
 	int low_bat_thl_level;
+	int low_bat_thl_intr_level;
 	int low_bat_thl_stop;
+	unsigned int ppb_mode;
 	struct lbat_user *lbat_pt;
 	struct work_struct temp_work;
 	struct power_supply *psy;
@@ -58,6 +60,7 @@ struct low_battery_callback_table {
 static struct notifier_block lbat_nb;
 static struct low_bat_thl_priv *low_bat_thl_data;
 static struct low_battery_callback_table lbcb_tb[LBCB_MAX_NUM] = { {0}, {0} };
+static DEFINE_MUTEX(exe_thr_lock);
 
 static int rearrange_volt(struct lbat_intr_tbl *intr_info, unsigned int *volt_l,
 	unsigned int *volt_h, unsigned int num)
@@ -145,6 +148,10 @@ void exec_throttle(unsigned int level)
 		return;
 	}
 
+	if (low_bat_thl_data->low_bat_thl_level == level)
+		return;
+
+	low_bat_thl_data->low_bat_thl_level = level;
 	for (i = 0; i < ARRAY_SIZE(lbcb_tb); i++) {
 		if (i == LOW_BATTERY_PRIO_UFS && lbcb_tb[i].data == 0) {
 			pr_info("[%s] lbcb_tb[i].data not ready", __func__);
@@ -156,6 +163,41 @@ void exec_throttle(unsigned int level)
 	}
 
 	pr_info("[%s] low_battery_level = %d\n", __func__, level);
+}
+
+static unsigned int decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned int input)
+{
+	pr_info("%s: user=%d, input=%d\n", __func__, user, input);
+	if (!low_bat_thl_data) {
+		pr_info("[%s] Failed to create low_bat_thl_data\n", __func__);
+		return 0;
+	}
+
+	mutex_lock(&exe_thr_lock);
+	if (user == LBAT_INTR) {
+		low_bat_thl_data->low_bat_thl_intr_level = input;
+		if (low_bat_thl_data->low_bat_thl_stop > 0 || low_bat_thl_data->ppb_mode > 0) {
+			pr_info("[%s] throttle not apply, low_bat_thl_stop=%d, ppb_mode=%d\n",
+			__func__, low_bat_thl_data->low_bat_thl_stop,
+			low_bat_thl_data->ppb_mode);
+		} else
+			exec_throttle(input);
+	} else if (user == PPB) {
+		low_bat_thl_data->ppb_mode = input;
+		if (low_bat_thl_data->low_bat_thl_stop > 0) {
+			pr_info("[%s] ppb not apply, low_bat_thl_stop=%d\n", __func__,
+				low_bat_thl_data->low_bat_thl_stop);
+		} else if (low_bat_thl_data->ppb_mode > 0)
+			exec_throttle(0);
+		else
+			exec_throttle(low_bat_thl_data->low_bat_thl_intr_level);
+	} else if (user == UT) {
+		low_bat_thl_data->low_bat_thl_stop = 1;
+		exec_throttle(input);
+	}
+	mutex_unlock(&exe_thr_lock);
+
+	return 0;
 }
 
 static unsigned int thd_to_level(unsigned int thd, enum LOW_BATTERY_TEMP_TAG temp_id)
@@ -207,21 +249,21 @@ void exec_low_battery_callback(unsigned int thd)
 		return;
 	}
 
-	if (low_bat_thl_data->low_bat_thl_stop == 1) {
-		pr_info("[%s] low_bat_thl_stop=%d\n",
-			__func__, low_bat_thl_data->low_bat_thl_stop);
-		return;
-	}
-
 	thd_info = &low_bat_thl_data->lbat_thd_info[low_bat_thl_data->temp_cur_stage];
 
 	level = thd_to_level(thd, low_bat_thl_data->temp_cur_stage);
 	if (level == -1)
 		return;
 
-	low_bat_thl_data->low_bat_thl_level = level;
-	exec_throttle(low_bat_thl_data->low_bat_thl_level);
+	decide_and_throttle(LBAT_INTR, level);
 }
+
+int lbat_set_ppb_mode(unsigned int mode)
+{
+	decide_and_throttle(PPB, mode);
+	return 0;
+}
+EXPORT_SYMBOL(lbat_set_ppb_mode);
 
 /*****************************************************************************
  * low battery protect UT
@@ -255,11 +297,9 @@ static ssize_t low_battery_protect_ut_store(
 		return size;
 	}
 
-	low_bat_thl_data->low_bat_thl_stop = 0;
-	low_bat_thl_data->low_bat_thl_level = val;
 	dev_info(dev, "your input is %d\n", val);
-	exec_throttle(val);
-	low_bat_thl_data->low_bat_thl_stop = 1;
+	decide_and_throttle(UT, val);
+
 	return size;
 }
 static DEVICE_ATTR_RW(low_battery_protect_ut);

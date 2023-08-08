@@ -13,6 +13,7 @@
 #include <linux/seq_file.h>
 #include <linux/proc_fs.h>
 #include <linux/spinlock.h>
+#include "mtk_low_battery_throttling.h"
 
 #define CREATE_TRACE_POINTS
 #include "mtk_peak_power_budget_trace.h"
@@ -1033,6 +1034,7 @@ static ssize_t mt_peak_power_mode_proc_write
 	if (mode == 0 || mode == 1 || mode == 2) {
 		ppb_ctrl.ppb_mode = mode;
 		ppb_write_sram(mode, PPB_MODE);
+		lbat_set_ppb_mode(mode);
 	} else
 		pr_notice("ppb mode should be 0 or 1 or 2\n");
 
