@@ -1197,7 +1197,7 @@ static struct snd_soc_dai_link mt6989_mt6681_dai_links[] = {
 	},
 	{
 		.name = "Capture_Mono_1",
-		.stream_name = "Capture_8",
+		.stream_name = "Capture_Mono_1",
 		.trigger = {SND_SOC_DPCM_TRIGGER_PRE,
 			    SND_SOC_DPCM_TRIGGER_PRE},
 		.dynamic = 1,
