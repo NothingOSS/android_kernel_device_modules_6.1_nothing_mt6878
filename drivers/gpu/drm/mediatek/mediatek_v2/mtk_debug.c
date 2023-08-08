@@ -4602,7 +4602,7 @@ static ssize_t cwb_debug_read(struct file *file, char __user *ubuf, size_t count
 	struct drm_crtc *crtc;
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_cwb_info *cwb_info;
-	int width, height, ret, cwb_buffer_size;
+	unsigned int width, height, ret, cwb_buffer_size;
 	unsigned long addr_va;
 	int Bpp;
 
