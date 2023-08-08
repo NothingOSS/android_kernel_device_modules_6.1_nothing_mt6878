@@ -41,7 +41,7 @@
 	"t_mtx_lock=%llu, t_usage_cnt_update=%lld, t_wakup=%lld\n"
 #define APUSYS_RV_IPI_HANDLE_PRINT_HANDLER_EXEC_LONG \
 	"%s long: ipi_id=%d, len=%d, csum=0x%x, serial_no=%d, user_id=0x%x, " \
-	"latency=%lld, elapse=%lld, t_hndlr=%llu" \
+	"latency=%lld, elapse=%lld, t_hndlr=%llu," \
 	"t_mtx_lock=%llu, t_usage_cnt_update=%lld, t_wakup=%lld\n"
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
@@ -1285,6 +1285,12 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 	bool change_pwr_on_polling_dbg_mode = false;
 	bool ce_dbg_polling_dump_mode = false;
 	bool change_apusys_rv_trace_on = false;
+
+	/* to prevent integer overflow leading to undefined behavior */
+	if (count == UINT_MAX) {
+		pr_info("%s: invalid count = %lu\n", __func__, count);
+		return -EINVAL;
+	}
 
 	tmp = kzalloc(count + 1, GFP_KERNEL);
 	if (!tmp)
