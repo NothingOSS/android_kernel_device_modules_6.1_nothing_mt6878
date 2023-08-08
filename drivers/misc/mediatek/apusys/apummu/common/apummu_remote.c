@@ -135,14 +135,16 @@ int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint3
 				g_ammu_msg->count,
 				msecs_to_jiffies(APUMMU_REMOTE_TIMEOUT));
 		if (!ret) {
-			AMMU_LOG_ERR("wait command timeout!!\n");
+			AMMU_LOG_ERR("wait ACK timeout!!\n");
 			ret = -ETIME;
 			goto out;
 		} else if (ret != -ERESTARTSYS) {
 			break;
 		}
 
-		AMMU_LOG_WRN("Wake up by signal!, retry again %d\n", retry++);
+		retry += 1;
+		if (retry % 100 == 0)
+			AMMU_LOG_WRN("Wake up by signal!, stil waiting for ACK %d\n", retry);
 		msleep(20);
 	} while (ret == -ERESTARTSYS);
 
