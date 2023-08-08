@@ -17027,7 +17027,7 @@ int mtk_drm_get_msync_params_ioctl(struct drm_device *dev, void *data,
 		} else if (params->msync_cmd_table.te_type == MULTI_TE) {
 			config->msync_max_fps = params->msync_cmd_table.msync_max_fps;
 			config->msync_min_fps = params->msync_cmd_table.msync_min_fps;
-			config->msync_level_num = MSYNC_MAX_LEVEL;
+			config->msync_level_num = params->msync_cmd_table.msync_level_num;
 			level_tb = params->msync_cmd_table.multi_te_tb.multi_te_level;
 		} else if (params->msync_cmd_table.te_type == TRIGGER_LEVEL_TE) {
 			/* TODO: Add Trigger Level Te */
