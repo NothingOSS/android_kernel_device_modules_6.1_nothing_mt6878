@@ -173,7 +173,7 @@ struct mtk_btag_earaio_control {
 
 	int earaio_boost_state;
 #ifdef EARAIO_EARLY_NOTIFY
-	int req_cnt;
+	int rand_req_cnt;
 	int rand_rw_threshold;
 	int seq_r_threshold; /* in # of pages */
 	int seq_w_threshold; /* in # of pages */
@@ -292,6 +292,7 @@ int mtk_btag_mictx_full_logging(struct mtk_btag_mictx_id mictx_id);
 void mtk_btag_mictx_free_all(struct mtk_blocktag *btag);
 void mtk_btag_mictx_init(struct mtk_blocktag *btag);
 
+void mtk_btag_earaio_clear_data(void);
 void mtk_btag_earaio_init_mictx(
 	struct mtk_btag_vops *vops,
 	enum mtk_btag_storage_type storage_type,

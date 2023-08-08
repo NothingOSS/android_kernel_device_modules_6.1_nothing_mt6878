@@ -92,8 +92,12 @@ void mtk_btag_mictx_check_window(struct mtk_btag_mictx_id mictx_id, bool force)
 		return;
 	}
 
-	if (force || (sched_clock() - READ_ONCE(mictx->wl.window_begin) > MICTX_RESET_NS))
+	if (force) {
 		mictx_reset(mictx);
+	} else if  (sched_clock() - READ_ONCE(mictx->wl.window_begin) > MICTX_RESET_NS) {
+		mictx_reset(mictx);
+		mtk_btag_earaio_clear_data();
+	}
 
 	rcu_read_unlock();
 }

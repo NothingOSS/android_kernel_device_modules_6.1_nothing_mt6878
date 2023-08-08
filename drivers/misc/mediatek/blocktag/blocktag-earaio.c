@@ -49,8 +49,9 @@ struct eara_iostat {
 	int io_reqc_r;
 	int io_reqc_w;
 	int io_q_dept;
-	int io_reqsz_r;
-	int io_reqsz_w;
+	int io_reqsz_top_r;
+	int io_reqsz_top_w;
+	int io_reqc_rand;
 };
 
 /* mini context for major embedded storage only */
@@ -148,14 +149,23 @@ static void mtk_btag_earaio_boost_fill(int boost)
 		wake_up(&earaio_ctrl.msg_readable);
 }
 
-static void mtk_btag_earaio_clear_data(void)
+static void mtk_btag_earaio_clear_data_internal(void)
 {
 #ifdef EARAIO_EARLY_NOTIFY
-	earaio_ctrl.req_cnt = 0;
+	earaio_ctrl.rand_req_cnt = 0;
 #endif
 	earaio_ctrl.pwd_begin = sched_clock();
 	earaio_ctrl.pwd_top_pages[BTAG_IO_READ] = 0;
 	earaio_ctrl.pwd_top_pages[BTAG_IO_WRITE] = 0;
+}
+
+void mtk_btag_earaio_clear_data(void)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&earaio_ctrl.lock, flags);
+	mtk_btag_earaio_clear_data_internal();
+	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 }
 
 #if IS_ENABLED(CONFIG_CGROUP_SCHED)
@@ -163,13 +173,21 @@ static void mtk_btag_eara_get_data(struct eara_iostat *data)
 {
 	struct mtk_btag_mictx_iostat_struct iostat = {0};
 	unsigned long flags;
+	__u32 *top;
 
 	WARN_ON(!mutex_is_locked(&eara_ioctl_lock));
 
 	if (mtk_btag_mictx_get_data(earaio_ctrl.mictx_id, &iostat))
 		mtk_btag_mictx_enable(&earaio_ctrl.mictx_id, 1);
+
+	top = earaio_ctrl.pwd_top_pages;
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
-	mtk_btag_earaio_clear_data();
+#ifdef EARAIO_EARLY_NOTIFY
+	data->io_reqc_rand = earaio_ctrl.rand_req_cnt;
+#endif
+	data->io_reqsz_top_r = (top[BTAG_IO_READ]) << PAGE_SHIFT;
+	data->io_reqsz_top_w = (top[BTAG_IO_WRITE]) << PAGE_SHIFT;
+	mtk_btag_earaio_clear_data_internal();
 	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 
 	data->io_wl = iostat.wl;
@@ -177,8 +195,6 @@ static void mtk_btag_eara_get_data(struct eara_iostat *data)
 	data->io_reqc_r = iostat.reqcnt_r;
 	data->io_reqc_w = iostat.reqcnt_w;
 	data->io_q_dept = iostat.q_depth;
-	data->io_reqsz_r = iostat.reqsize_r;
-	data->io_reqsz_w = iostat.reqsize_w;
 }
 
 #define EARAIO_BOOST_EVAL_THRESHOLD_PAGES ((32 * 1024 * 1024) >> 12)
@@ -236,12 +252,11 @@ static void mtk_btag_eara_start_collect(void)
 
 	/*
 	 * Check original start_collect to prevent from calling
-	 * mtk_btag_earaio_clear_data() when original start_collect is true
+	 * mtk_btag_earaio_clear_data_internal()
+	 * when original start_collect is true
 	 */
-	if (!earaio_ctrl.start_collect) {
+	if (!earaio_ctrl.start_collect)
 		earaio_ctrl.start_collect = true;
-		mtk_btag_earaio_clear_data();
-	}
 	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 	mtk_btag_mictx_check_window(earaio_ctrl.mictx_id, true);
 }
@@ -530,34 +545,39 @@ void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size)
 	top[type] += (__u32)(size >> 12);
 
 #ifdef EARAIO_EARLY_NOTIFY
-	if (earaio_ctrl.start_collect) {
-		earaio_ctrl.req_cnt++;
-		if (earaio_ctrl.earaio_boost_state != ACCEL_RAND) {
-			if (earaio_ctrl.req_cnt >
-				earaio_ctrl.rand_rw_threshold) {
-				early_notification = ACCEL_RAND;
-				mtk_btag_earaio_boost_fill(ACCEL_RAND);
-			}
-		}
+	if (size == (1 << PAGE_SHIFT))
+		earaio_ctrl.rand_req_cnt++;
 
-		if (earaio_ctrl.earaio_boost_state != ACCEL_SEQ) {
-			top = earaio_ctrl.pwd_top_pages;
-			if (type == BTAG_IO_READ &&
-			    top[BTAG_IO_READ] > earaio_ctrl.seq_r_threshold) {
-				early_notification = ACCEL_SEQ;
-				mtk_btag_earaio_boost_fill(ACCEL_SEQ);
-			} else if (type == BTAG_IO_WRITE  &&
-			    top[BTAG_IO_WRITE] > earaio_ctrl.seq_w_threshold &&
-			    top[BTAG_IO_READ] == 0) {
-				early_notification = ACCEL_SEQ;
-				mtk_btag_earaio_boost_fill(ACCEL_SEQ);
-			}
+	if (earaio_ctrl.earaio_boost_state != ACCEL_RAND) {
+		if (earaio_ctrl.rand_req_cnt >
+			earaio_ctrl.rand_rw_threshold) {
+			early_notification = ACCEL_RAND;
+			mtk_btag_earaio_boost_fill(ACCEL_RAND);
+			if (!earaio_ctrl.start_collect)
+				earaio_ctrl.boosted = true;
 		}
-
 	}
+
+	if (earaio_ctrl.earaio_boost_state != ACCEL_SEQ
+	 && earaio_ctrl.earaio_boost_state != ACCEL_RAND) {
+		top = earaio_ctrl.pwd_top_pages;
+		if (type == BTAG_IO_READ &&
+		    top[BTAG_IO_READ] > earaio_ctrl.seq_r_threshold) {
+			early_notification = ACCEL_SEQ;
+			mtk_btag_earaio_boost_fill(ACCEL_SEQ);
+		} else if (type == BTAG_IO_WRITE  &&
+		    top[BTAG_IO_WRITE] > earaio_ctrl.seq_w_threshold &&
+		    top[BTAG_IO_READ] == 0) {
+			early_notification = ACCEL_SEQ;
+			mtk_btag_earaio_boost_fill(ACCEL_SEQ);
+			if (!earaio_ctrl.start_collect)
+				earaio_ctrl.boosted = true;
+		}
+	}
+
 #endif
 
-		spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
+	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 
 	if (!early_notification) {
 		if ((sched_clock() - earaio_ctrl.pwd_begin) >= PWD_WIDTH_NS)
@@ -578,7 +598,7 @@ void mtk_btag_earaio_init_mictx(
 	if (!earaio_ctrl.enabled) {
 		spin_lock_init(&earaio_ctrl.lock);
 		earaio_ctrl.enabled = true;
-		mtk_btag_earaio_clear_data();
+		mtk_btag_earaio_clear_data_internal();
 #ifdef EARAIO_EARLY_NOTIFY
 		earaio_ctrl.rand_rw_threshold = THRESHOLD_MAX;
 		earaio_ctrl.seq_r_threshold = THRESHOLD_MAX;
