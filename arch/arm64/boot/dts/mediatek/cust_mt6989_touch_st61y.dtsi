@@ -9,9 +9,13 @@
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
+	pinctrl-names = "default", "synaptics_spi_mode";
+	pinctrl-0 = <&ctp_synaptics_pins_default>;
+	pinctrl-1 = <&ctp_synaptics_spi_mode>;
+
 	fts@0 {
 		status = "ok";
-		compatible = "st,spi";
+		compatible = "st,spi", "synaptics,tcm-spi";
 		reg = <0x0>;
 		interrupt-parent = <&pio>;
 		interrupts = <4 0x2008>;
@@ -19,6 +23,19 @@
 		pinctrl-0 = <&ts_reset_active &ts_int_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
 		pinctrl-2 = <&ts_spi_mode>;
+
+		synaptics,pwr-reg-name = "vtouch";
+		vtouch-supply = <&mt6373_vtp>;
+		synaptics,irq-gpio = <&pio 4 0x2008>;
+		synaptics,reset-gpio = <&pio 3 0x0>;
+		synaptics,irq-flags = <2>; /* 1:rising, 2:falling;*/
+		synaptics,irq-on-state = <0>;
+		synaptics,reset-on-state = <0>;
+		synaptics,power-on-state = <1>;
+		synaptics,reset-active-ms = <20>;
+		synaptics,reset-delay-ms = <30>;
+		synaptics,power-delay-ms = <60>;
+
 		avdd-supply = <&mt6373_vtp>;
 		fts,config-array-size = <1>;
 		fts,pwr-reg-name = "avdd";
@@ -102,11 +119,13 @@
 
 &mt6373_vtp {
 	regulator-boot-on;
-	regulator-min-microvolt = <3300000>;
+	regulator-min-microvolt = <2800000>;
 	regulator-max-microvolt = <3300000>;
 };
 
 &pio {
+	ctp_synaptics_pins_default: pins-default {
+	};
 	ts_reset_active: ts-reset-active {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO3__FUNC_GPIO3>;
@@ -135,6 +154,15 @@
 		};
 	};
 	ts_spi_mode: ts-spimode {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO231__FUNC_SPI6_B_CLK>,
+				<PINMUX_GPIO232__FUNC_SPI6_B_CSB>,
+				<PINMUX_GPIO233__FUNC_SPI6_B_MO>,
+				<PINMUX_GPIO234__FUNC_SPI6_B_MI>;
+			drive-strength = <2>;
+		};
+	};
+	ctp_synaptics_spi_mode: syna-spimode {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO231__FUNC_SPI6_B_CLK>,
 				<PINMUX_GPIO232__FUNC_SPI6_B_CSB>,
