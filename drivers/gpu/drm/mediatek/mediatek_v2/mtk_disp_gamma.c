@@ -1100,16 +1100,13 @@ int mtk_cfg_trans_gain_to_gamma(struct mtk_drm_crtc *mtk_crtc,
 		DDPINFO("%s: gain:%d, backlight:%d\n",
 			__func__, gamma_priv->primary_data->sb_param.gain[gain_r], bl);
 	} else {
-		if ((gamma_priv->primary_data->sb_param.bl != bl)
-				|| (ess20_spect_param->flag & (1 << SET_ELVSS_PN))) {
-			gamma_priv->primary_data->sb_param.bl = bl;
-			CRTC_MMP_MARK(0, gamma_backlight, ess20_spect_param->flag, bl);
-			mtk_leds_brightness_set(connector_id, bl, ess20_spect_param->ELVSSPN,
-						ess20_spect_param->flag);
-			DDPINFO("%s: connector_id:%d, backlight:%d, flag:%d, elvss:%d\n",
-				__func__, connector_id, bl, ess20_spect_param->flag,
-				ess20_spect_param->ELVSSPN);
-		}
+		gamma_priv->primary_data->sb_param.bl = bl;
+		CRTC_MMP_MARK(0, gamma_backlight, ess20_spect_param->flag, bl);
+		mtk_leds_brightness_set(connector_id, bl, ess20_spect_param->ELVSSPN,
+					ess20_spect_param->flag);
+		DDPINFO("%s: connector_id:%d, backlight:%d, flag:%d, elvss:%d\n",
+			__func__, connector_id, bl, ess20_spect_param->flag,
+			ess20_spect_param->ELVSSPN);
 	}
 	return 0;
 }
