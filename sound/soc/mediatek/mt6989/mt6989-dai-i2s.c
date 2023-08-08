@@ -1085,36 +1085,36 @@ static int mtk_i2s_en_event(struct snd_soc_dapm_widget *w,
 	case MT6989_DAI_I2S_IN4:
 		/* set etdm ch */
 		regmap_update_bits(afe->regmap, ETDM_IN4_CON0,
-				REG_CH_NUM_MASK_SFT, (i2s_priv->ch_num - 1) << REG_CH_NUM_SFT);
+				   REG_CH_NUM_MASK_SFT, (i2s_priv->ch_num - 1) << REG_CH_NUM_SFT);
 		/* set etdm ch */
 		regmap_update_bits(afe->regmap, ETDM_OUT4_CON0,
-					REG_CH_NUM_MASK_SFT, (i2s_priv->ch_num - 1) << REG_CH_NUM_SFT);
+				   REG_CH_NUM_MASK_SFT, (i2s_priv->ch_num - 1) << REG_CH_NUM_SFT);
 		/* set etdm ip mode */
 		regmap_update_bits(afe->regmap, ETDM_IN4_CON2,
 				   REG_MULTI_IP_MODE_MASK_SFT, i2s_priv->ip_mode << REG_MULTI_IP_MODE_SFT);
 		/* set etdm sync */
 		regmap_update_bits(afe->regmap, ETDM_IN4_CON0,
-				REG_SYNC_MODE_MASK_SFT, i2s_priv->sync << REG_SYNC_MODE_SFT);
+				   REG_SYNC_MODE_MASK_SFT, i2s_priv->sync << REG_SYNC_MODE_SFT);
 		break;
 	case MT6989_DAI_I2S_IN0:
 		/* set etdm sync */
 		regmap_update_bits(afe->regmap, ETDM_IN0_CON0,
-				REG_SYNC_MODE_MASK_SFT, 0x1 << REG_SYNC_MODE_SFT);
+				   REG_SYNC_MODE_MASK_SFT, 0x1 << REG_SYNC_MODE_SFT);
 		break;
 	case MT6989_DAI_I2S_IN1:
 		/* set etdm sync */
 		regmap_update_bits(afe->regmap, ETDM_IN1_CON0,
-				REG_SYNC_MODE_MASK_SFT, 0x1 << REG_SYNC_MODE_SFT);
+				   REG_SYNC_MODE_MASK_SFT, 0x1 << REG_SYNC_MODE_SFT);
 		break;
 	case MT6989_DAI_I2S_IN2:
 		/* set etdm sync */
 		regmap_update_bits(afe->regmap, ETDM_IN2_CON0,
-				REG_SYNC_MODE_MASK_SFT, 0x1 << REG_SYNC_MODE_SFT);
+				   REG_SYNC_MODE_MASK_SFT, 0x1 << REG_SYNC_MODE_SFT);
 		break;
 	case MT6989_DAI_I2S_IN6:
 		/* set etdm sync */
 		regmap_update_bits(afe->regmap, ETDM_IN6_CON0,
-				REG_SYNC_MODE_MASK_SFT, 0x1 << REG_SYNC_MODE_SFT);
+				   REG_SYNC_MODE_MASK_SFT, 0x1 << REG_SYNC_MODE_SFT);
 		break;
 
 	default:
@@ -1454,12 +1454,13 @@ static int mtk_afe_i2s_share_connect(struct snd_soc_dapm_widget *source,
 		return 0;
 	}
 
-	dev_dbg(afe->dev, "%s(), sink %s (id %d), share %d, source %s (id %d), ret = %d\n",
+	/*dev_dbg(afe->dev, "%s(), sink %s (id %d), share %d, source %s (id %d), ret = %d\n",
 		 __func__,
 		 sink->name,  get_i2s_id_by_name(afe, sink->name),
 		 i2s_priv->share_i2s_id,
 		 source->name, get_i2s_id_by_name(afe, source->name),
 		 (i2s_priv->share_i2s_id == get_i2s_id_by_name(afe, source->name))? 1 : 0);
+	*/
 
 	if (i2s_priv->share_i2s_id < 0)
 		return 0;
