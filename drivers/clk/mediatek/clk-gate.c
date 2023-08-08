@@ -157,7 +157,7 @@ static int mtk_cg_is_done_hwv(struct clk_hw *hw)
 static int __cg_enable_hwv(struct clk_hw *hw, bool inv)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
-	u32 val = 0, val2 = 0;
+	u32 val = 0, val2 = 0, val3 = 0;
 	bool is_done = false;
 	int i = 0;
 
@@ -211,7 +211,15 @@ static int __cg_enable_hwv(struct clk_hw *hw, bool inv)
 hwv_done_fail:
 	regmap_read(cg->regmap, cg->sta_ofs, &val);
 	regmap_read(cg->hwv_regmap, cg->hwv_sta_ofs, &val2);
+
+	if (inv)
+		regmap_write(cg->regmap, cg->set_ofs, BIT(cg->bit));
+	else
+		regmap_write(cg->regmap, cg->clr_ofs, BIT(cg->bit));
+	regmap_read(cg->regmap, cg->sta_ofs, &val3);
+
 	pr_err("%s cg enable timeout(%x %x)\n", clk_hw_get_name(hw), val, val2);
+	pr_err("%s cg rewrite(%x)\n", clk_hw_get_name(hw), val3);
 hwv_prepare_fail:
 	regmap_read(cg->regmap, cg->hwv_sta_ofs, &val);
 	pr_err("%s cg prepare timeout(%x)\n", clk_hw_get_name(hw), val);
