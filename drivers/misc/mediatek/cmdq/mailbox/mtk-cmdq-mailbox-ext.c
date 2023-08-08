@@ -1493,7 +1493,6 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 #endif
 
 	if (atomic_read(&cmdq->usage) <= 0 ||
-		(mminfra_power_cb && !mminfra_power_cb()) ||
 		(mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid))) {
 		for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++)
 			if (!list_empty(&cmdq->thread[i].task_busy_list))
