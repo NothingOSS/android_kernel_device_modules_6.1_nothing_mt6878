@@ -159,6 +159,7 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_MSI_SET_STATUS_OFFSET	0x04
 #define PCIE_MSI_SET_ENABLE_OFFSET	0x08
 #define PCIE_MSI_SET_ENABLE_GRP1_OFFSET	0x0c
+#define DRIVER_OWN_IRQ_STATUS		BIT(27)
 
 #define PCIE_MSI_SET_ADDR_HI_BASE	0xc80
 #define PCIE_MSI_SET_ADDR_HI_OFFSET	0x04
@@ -1623,6 +1624,7 @@ static void pcie_android_rvh_do_serror(void *data, struct pt_regs *regs,
  *                   AXI fetch error (PCIe MAC offset 0x184 bit[17])
  *           bit[7]: RxErr
  *           bit[8]: MalfTLP
+ *           bit[9]: Driver own irq status (MSI set 1 bit[27])
  */
 u32 mtk_pcie_dump_link_info(int port)
 {
@@ -1675,6 +1677,11 @@ u32 mtk_pcie_dump_link_info(int port)
 	val = readl_relaxed(pcie_port->base + PCIE_AER_UNC_STATUS);
 	if (val & PCIE_AER_UNC_MTLP)
 		ret_val |= BIT(8);
+
+	val = readl_relaxed(pcie_port->base + PCIE_MSI_SET_BASE_REG +
+			    PCIE_MSI_SET_OFFSET + PCIE_MSI_SET_STATUS_OFFSET);
+	if (val & DRIVER_OWN_IRQ_STATUS)
+		ret_val |= BIT(9);
 
 	return ret_val;
 }
