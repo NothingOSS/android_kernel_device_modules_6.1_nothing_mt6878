@@ -28,6 +28,7 @@ void mml_mmp_init(void)
 	mml_mmp_events.submit = mmprofile_register_event(mml, "submit");
 	mml_mmp_events.config = mmprofile_register_event(mml, "config");
 	mml_mmp_events.config_dle = mmprofile_register_event(mml, "config_dle");
+	mml_mmp_events.dumpinfo = mmprofile_register_event(mml, "dumpinfo");
 	mml_mmp_events.task_create = mmprofile_register_event(mml, "task_create");
 	mml_mmp_events.buf_map = mmprofile_register_event(mml, "buf_map");
 	mml_mmp_events.comp_prepare = mmprofile_register_event(mml, "comp_prepare");

@@ -39,12 +39,20 @@
 #define APU_HANDLE_H		0x204
 #define APU_DCEN		0x208
 
+#define VLP_VOTE_SET		0x414
+#define VLP_VOTE_CLR		0x418
 
 int mml_ir_loop = 1;
 module_param(mml_ir_loop, int, 0644);
 
 int mml_racing_sleep = 16000;
 module_param(mml_racing_sleep, int, 0644);
+
+enum mml_dl_dpc_config {
+	MML_DLDPC_VOTE = 0x1,	/* vote dpc before write and after done */
+};
+int mml_dl_dpc = MML_DLDPC_VOTE;
+module_param(mml_dl_dpc, int, 0644);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 int mml_ddp_dump = 1;
@@ -177,6 +185,8 @@ struct mml_sys {
 	u16 event_racing_pipe1_next;
 	u16 event_apu_start;
 
+	u32 dpc_base;
+
 #ifndef MML_FPGA
 	/* for config sspm aid */
 	void *mml_scmi;
@@ -234,6 +244,23 @@ static s32 sys_config_prepare(struct mml_comp *comp, struct mml_task *task,
 	ccfg->data = sys_frm;
 	if (!sys_frm)
 		return -ENOMEM;
+	return 0;
+}
+
+s32 sys_init(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+	struct mml_sys *sys = comp_to_sys(comp);
+	struct mml_frame_config *cfg = task->config;
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK && cfg->dpc && sys->dpc_base) {
+		if (mml_dl_dpc & MML_DLDPC_VOTE) {
+			cmdq_pkt_write(pkt, NULL, sys->dpc_base + VLP_VOTE_SET, BIT(24), U32_MAX);
+			cmdq_pkt_write(pkt, NULL, sys->dpc_base + VLP_VOTE_SET, BIT(24), U32_MAX);
+		}
+	}
+
 	return 0;
 }
 
@@ -824,6 +851,7 @@ static s32 sys_repost(struct mml_comp *comp, struct mml_task *task,
 
 static const struct mml_comp_config_ops sys_config_ops = {
 	.prepare = sys_config_prepare,
+	.init = sys_init,
 	.frame = sys_config_frame,
 	.tile = sys_config_tile,
 	.wait = sys_wait,
@@ -1781,6 +1809,14 @@ static s32 dl_post(struct mml_comp *comp, struct mml_task *task,
 		mml_msg("%s task %p pipe %u bubble %u pixel %ux%u %u",
 			__func__, task, ccfg->pipe, cache->line_bubble,
 			cache->max_size.width, cache->max_size.height, cache->max_pixel);
+
+		if (task->config->dpc && sys->dpc_base &&
+			(mml_dl_dpc & MML_DLDPC_VOTE)) {
+			struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+
+			cmdq_pkt_write(pkt, NULL, sys->dpc_base + VLP_VOTE_CLR, BIT(24), U32_MAX);
+			cmdq_pkt_write(pkt, NULL, sys->dpc_base + VLP_VOTE_CLR, BIT(24), U32_MAX);
+		}
 	}
 
 	return 0;
@@ -1962,7 +1998,7 @@ static int mml_sys_init(struct platform_device *pdev, struct mml_sys *sys,
 	if (sys->ddp_comp_en)
 		ret = component_add(dev, comp_ops);
 
-	/* events for racing mode */
+	/* events for racing/dl mode */
 	of_property_read_u16(dev->of_node, "event-racing-pipe0",
 			     &sys->event_racing_pipe0);
 	of_property_read_u16(dev->of_node, "event-racing-pipe1",
@@ -1974,6 +2010,10 @@ static int mml_sys_init(struct platform_device *pdev, struct mml_sys *sys,
 	of_property_read_u16(dev->of_node, "event-apu-start",
 			     &sys->event_apu_start);
 	sys->apu_base = mml_get_node_base_pa(pdev, "apu", 0, &sys->apu_base_va);
+
+	of_property_read_u32(dev->of_node, "dpc-base", &sys->dpc_base);
+	if (sys->dpc_base)
+		mml_log("support dpc base %#010x", sys->dpc_base);
 
 	return 0;
 

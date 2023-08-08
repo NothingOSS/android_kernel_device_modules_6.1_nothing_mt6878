@@ -11937,9 +11937,9 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 	case MML_DIRECT_LINKING:
 		if (mtk_vidle_is_ff_enabled()) {
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000414,
-				1 << DISP_VIDLE_USER_OTHER, 1 << DISP_VIDLE_USER_OTHER);
+				1 << DISP_VIDLE_USER_OTHER, U32_MAX);
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000414,
-				1 << DISP_VIDLE_USER_OTHER, 1 << DISP_VIDLE_USER_OTHER);
+				1 << DISP_VIDLE_USER_OTHER, U32_MAX);
 			cmdq_pkt_clear_event(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 			cmdq_pkt_wfe(cmdq_handle,
@@ -15168,9 +15168,9 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 
 	if (priv->dpc_dev) {
 		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000418,
-			1 << DISP_VIDLE_USER_OTHER, 1 << DISP_VIDLE_USER_OTHER);
+			1 << DISP_VIDLE_USER_OTHER, U32_MAX);
 		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000418,
-			1 << DISP_VIDLE_USER_OTHER, 1 << DISP_VIDLE_USER_OTHER);
+			1 << DISP_VIDLE_USER_OTHER, U32_MAX);
 	}
 #ifndef DRM_CMDQ_DISABLE
 #ifdef MTK_DRM_CMDQ_ASYNC

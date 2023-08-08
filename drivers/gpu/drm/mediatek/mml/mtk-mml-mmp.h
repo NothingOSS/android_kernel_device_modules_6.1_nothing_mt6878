@@ -33,6 +33,7 @@ struct mml_mmp_events_t {
 	mmp_event submit;
 	mmp_event config;
 	mmp_event config_dle;
+	mmp_event dumpinfo;
 	mmp_event task_create;
 	mmp_event buf_map;
 	mmp_event comp_prepare;

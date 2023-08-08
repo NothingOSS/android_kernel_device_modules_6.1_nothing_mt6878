@@ -491,6 +491,8 @@ static void dump_inout(struct mml_task *task)
 	u32 i, sz = 0;
 	s32 ret;
 
+	mml_mmp(dumpinfo, MMPROFILE_FLAG_START, task->job.jobid, 0);
+
 	get_frame_str(frame, sizeof(frame), &cfg->info.src);
 	mml_log("in:%s plane:%hhu%s%s%s job:%u mode:%hhu %s acttime %u",
 		frame,
@@ -560,6 +562,8 @@ static void dump_inout(struct mml_task *task)
 	}
 	if (sz)
 		mml_log("dl%s", frame);
+
+	mml_mmp(dumpinfo, MMPROFILE_FLAG_END, task->job.jobid, 0);
 }
 
 static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
