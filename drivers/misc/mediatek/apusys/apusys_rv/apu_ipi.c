@@ -35,6 +35,13 @@
 #include "apusys_rv_events.h"
 #include "apu_regdump.h"
 
+#define APUSYS_RV_IPI_HANDLE_PRINT \
+	"%s: ipi_id=%d, len=%d, csum=0x%x, serial_no=%d, user_id=0x%x, " \
+	"latency=%lld, elapse=%lld, t_hndlr=%llu\n"
+#define APUSYS_RV_IPI_HANDLE_PRINT_HANDLER_EXEC_LONG \
+	"%s: ipi_id=%d, len=%d, csum=0x%x, serial_no=%d, user_id=0x%x, " \
+	"latency=%lld, elapse=%lld, t_hndlr=%llu > 1s\n"
+
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 static void apu_power_on_off_profile(u32 on, u32 off,
 	uint64_t time_diff_ns, uint64_t time_diff_ns2);
@@ -177,6 +184,7 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 	struct apu_mbox_hdr hdr;
 	unsigned long timeout;
 	int ret = 0;
+	uint32_t user_id = 0;
 
 	ktime_get_ts64(&ts);
 
@@ -244,6 +252,9 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 	hdr.csum = calculate_csum(data, len);
 	hdr.serial_no = tx_serial_no++;
 
+	if (len >= 4)
+		user_id = ((uint32_t *) data)[len/4 - 1];
+
 	if (hw_ops->ipi_send_pre)
 		hw_ops->ipi_send_pre(apu, id,
 			ipi_attrs[id].direction == IPI_HOST_INITIATE);
@@ -282,12 +293,12 @@ unlock_mutex:
 	ts = timespec64_sub(te, ts);
 
 	if (apu->platdata->flags & F_APUSYS_RV_TAG_SUPPORT)
-		trace_apusys_rv_ipi_send(id, len, hdr.serial_no, hdr.csum, ipi->usage_cnt,
-			timespec64_to_ns(&ts));
+		trace_apusys_rv_ipi_send(id, len, hdr.serial_no, hdr.csum, user_id,
+			ipi->usage_cnt, timespec64_to_ns(&ts));
 
 	apu_info_ratelimited(dev,
-		 "%s: ipi_id=%d, len=%d, csum=%x, serial_no=%d, elapse=%lld\n",
-		 __func__, id, len, hdr.csum, hdr.serial_no,
+		 "%s: ipi_id=%d, len=%d, csum=%x, serial_no=%d, user_id=0x%x, elapse=%lld\n",
+		 __func__, id, len, hdr.csum, hdr.serial_no, user_id,
 		 timespec64_to_ns(&ts));
 
 	return ret;
@@ -422,16 +433,22 @@ static void apu_init_ipi_bottom_handler(void *data, unsigned int len, void *priv
 static irqreturn_t apu_ipi_handler(int irq, void *priv)
 {
 	struct timespec64 ts, te, t_elapse, tl;
+	struct timespec64 handler_ts, handler_te, t_handler;
+	uint64_t t_handler_ns;
 	struct mtk_apu *apu = priv;
 	struct device *dev = apu->dev;
 	ipi_handler_t handler;
 	u32 id, len;
 	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
 	struct apu_ipi_desc *ipi;
+	uint32_t user_id = 0;
 
 	id = apu->hdr.id;
 	len = apu->hdr.len;
 	ipi = &apu->ipi_desc[id];
+
+	if (len >= 4)
+		user_id = ((uint32_t *) temp_buf)[len/4 - 1];
 
 	/* get the latency of threaded irq */
 	ktime_get_ts64(&ts);
@@ -443,6 +460,7 @@ static irqreturn_t apu_ipi_handler(int irq, void *priv)
 	if (!handler) {
 		dev_info(dev, "IPI id=%d is not registered", id);
 		mutex_unlock(&apu->ipi_desc[id].lock);
+		t_handler_ns = 0;
 		goto out;
 	}
 
@@ -450,9 +468,13 @@ static irqreturn_t apu_ipi_handler(int irq, void *priv)
 
 	if (apu->apusys_rv_trace_on)
 		apusys_rv_trace_begin("apu_ipi_handle(%d)", id);
+	ktime_get_ts64(&handler_ts);
 	handler(temp_buf, len, apu->ipi_desc[id].priv);
+	ktime_get_ts64(&handler_te);
 	if (apu->apusys_rv_trace_on)
 		apusys_rv_trace_end();
+	t_handler = timespec64_sub(handler_te, handler_ts);
+	t_handler_ns = timespec64_to_ns(&t_handler);
 
 	ipi_usage_cnt_update(apu, id, -1);
 
@@ -469,15 +491,19 @@ out:
 
 	if (apu->platdata->flags & F_APUSYS_RV_TAG_SUPPORT)
 		trace_apusys_rv_ipi_handle(id, len, apu->hdr.serial_no,
-			apu->hdr.csum, ipi->usage_cnt,
+			apu->hdr.csum, user_id, ipi->usage_cnt,
 			timespec64_to_ns(&apu->intr_ts_begin), timespec64_to_ns(&ts),
-			timespec64_to_ns(&tl), timespec64_to_ns(&t_elapse));
+			timespec64_to_ns(&tl), timespec64_to_ns(&t_elapse), t_handler_ns);
 
-	apu_info_ratelimited(dev,
-		 "%s: ipi_id=%d, len=%d, csum=%x, serial_no=%d, latency=%lld, elapse=%lld\n",
-		 __func__, id, len, apu->hdr.csum, apu->hdr.serial_no,
-		 timespec64_to_ns(&tl),
-		 timespec64_to_ns(&t_elapse));
+	/* t_handler_ns > 1s */
+	if (t_handler_ns > 1000000000)
+		dev_info(dev, APUSYS_RV_IPI_HANDLE_PRINT_HANDLER_EXEC_LONG,
+		 __func__, id, len, apu->hdr.csum, apu->hdr.serial_no, user_id,
+		 timespec64_to_ns(&tl), timespec64_to_ns(&t_elapse), t_handler_ns);
+	else
+		apu_info_ratelimited(dev, APUSYS_RV_IPI_HANDLE_PRINT,
+		 __func__, id, len, apu->hdr.csum, apu->hdr.serial_no, user_id,
+		 timespec64_to_ns(&tl), timespec64_to_ns(&t_elapse), t_handler_ns);
 
 	if (hw_ops->wake_unlock && ipi_attrs[id].direction == IPI_APU_INITIATE
 		&& ipi_attrs[id].ack == IPI_WITH_ACK)
