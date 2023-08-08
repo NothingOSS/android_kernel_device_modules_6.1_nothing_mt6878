@@ -177,7 +177,7 @@ void sap_dump_last_regs(void)
 	struct sap_status_reg *reg = &sap_dev.status_reg;
 	void __iomem *cfg_base = sap_dev.reg_cfg;
 
-	if (!sap_dev.enable)
+	if (!READ_ONCE(sap_dev.enable))
 		return;
 
 	reg->status = readl(cfg_base + CFG_STATUS_OFFSET);
@@ -193,7 +193,7 @@ void sap_show_last_regs(void)
 {
 	struct sap_status_reg *reg = &sap_dev.status_reg;
 
-	if (!sap_dev.enable)
+	if (!READ_ONCE(sap_dev.enable))
 		return;
 
 	pr_notice("reg status = %08x\n", reg->status);
@@ -210,7 +210,7 @@ uint32_t sap_print_last_regs(char *buf, uint32_t size)
 	struct sap_status_reg *reg = &sap_dev.status_reg;
 	uint32_t len = 0;
 
-	if (!sap_dev.enable)
+	if (!READ_ONCE(sap_dev.enable))
 		return 0;
 
 	len += scnprintf(buf + len, size - len,
@@ -243,7 +243,7 @@ uint32_t sap_dump_detail_buff(uint8_t *buff, uint32_t size)
 	struct sap_device *dev = &sap_dev;
 	struct sap_status_reg *reg = &sap_dev.status_reg;
 
-	if (!dev->enable)
+	if (!READ_ONCE(dev->enable))
 		return 0;
 
 	return snprintf(buff, size, "sap pc=0x%08x, lr=0x%08x, sp=0x%08x\n",
@@ -283,7 +283,7 @@ uint8_t sap_get_core_id(void)
 
 bool sap_enabled(void)
 {
-	return sap_dev.enable;
+	return READ_ONCE(sap_dev.enable);
 }
 EXPORT_SYMBOL_GPL(sap_enabled);
 
@@ -305,7 +305,7 @@ void sap_wdt_reset(void)
 {
 	struct sap_device *dev = &sap_dev;
 
-	if (!dev->enable)
+	if (!READ_ONCE(dev->enable))
 		return;
 
 	sap_cfg_reg_write(CFG_WDT_CFG_OFFSET, V_INSTANT_WDT);
@@ -570,7 +570,7 @@ static int sap_device_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	dev->enable = true;
+	WRITE_ONCE(dev->enable, true);
 	dev->core_id = core_id;
 	dev->l2tcm_offset = l2tcm_offset;
 	dev->sram_start_virt = SCP_TCM + l2tcm_offset;
@@ -658,7 +658,7 @@ void sap_restore_l2tcm(void)
 {
 	struct sap_device *dev = &sap_dev;
 
-	if (!dev->enable)
+	if (!READ_ONCE(dev->enable))
 		return;
 
 	memcpy_to_scp(dev->sram_start_virt, (const void *)dev->loader_virt,
@@ -679,4 +679,3 @@ void sap_init(void)
 	if (platform_driver_register(&mtk_sap_device))
 		pr_err("[SCP] scp probe fail\n");
 }
-

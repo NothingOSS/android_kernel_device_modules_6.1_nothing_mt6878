@@ -14,6 +14,7 @@
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
 #include "sap_custom_cmd.h"
 #include "tiny_crc8.h"
+#include "ready.h"
 #include "sap.h"
 
 #define ipi_len(x) (((x) + MBOX_SLOT_SIZE - 1) / MBOX_SLOT_SIZE)
@@ -26,6 +27,7 @@ struct custom_cmd_notify {
 	struct custom_cmd cmd;
 };
 
+static bool scp_status;
 static DEFINE_MUTEX(bus_user_lock);
 static atomic_t cust_cmd_sequence;
 static DECLARE_COMPLETION(cust_cmd_done);
@@ -118,6 +120,12 @@ int sap_custom_cmd_comm(int sensor_type, struct custom_cmd *cust_cmd)
 	int retry = 0, ret = 0;
 	const int max_retry = 3;
 
+	if (!READ_ONCE(scp_status)) {
+		pr_err_ratelimited("dropped comm %u %u\n",
+			sensor_type, cust_cmd->command);
+		return 0;
+	}
+
 	mutex_lock(&bus_user_lock);
 	do {
 		ret = sap_custom_cmd_seq(sensor_type, cust_cmd);
@@ -131,6 +139,18 @@ int sap_custom_cmd_comm(int sensor_type, struct custom_cmd *cust_cmd)
 	return ret;
 }
 
+static int sap_custom_cmd_ready_notifier_call(struct notifier_block *this,
+		unsigned long event, void *ptr)
+{
+	WRITE_ONCE(scp_status, !!event);
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block sap_custom_cmd_ready_notifier = {
+	.notifier_call = sap_custom_cmd_ready_notifier_call,
+	.priority = READY_HIGHESTPRI,
+};
+
 int sap_custom_cmd_init(void)
 {
 	unsigned long flags = 0;
@@ -143,12 +163,17 @@ int sap_custom_cmd_init(void)
 	memset(&rx_notify, 0, sizeof(rx_notify));
 	spin_unlock_irqrestore(&rx_notify_lock, flags);
 
+	sensor_ready_notifier_chain_register(&sap_custom_cmd_ready_notifier);
 	return mtk_ipi_register(&sap_ipidev, IPI_IN_SENSOR_SAP_NOTIFY,
 		sap_custom_cmd_notify_handler, NULL, notify_payload);
 }
 
 void sap_custom_cmd_exit(void)
 {
+	if (!sap_enabled())
+		return;
+
+	sensor_ready_notifier_chain_unregister(&sap_custom_cmd_ready_notifier);
 	mtk_ipi_unregister(&sap_ipidev, IPI_IN_SENSOR_SAP_NOTIFY);
 }
 
