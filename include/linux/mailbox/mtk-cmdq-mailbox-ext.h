@@ -197,6 +197,7 @@ struct cmdq_pkt {
 	u16			write_addr_high;
 	struct device	*share_dev;
 	size_t			create_instr_cnt;
+	bool			timeout_dump_hw_trace;
 };
 
 struct cmdq_thread {

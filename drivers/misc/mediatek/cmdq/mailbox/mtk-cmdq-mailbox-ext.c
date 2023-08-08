@@ -1753,6 +1753,10 @@ static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 
 		cmdq_task_err_callback(timeout_task->pkt, -ETIMEDOUT);
 
+		if(timeout_task->pkt->timeout_dump_hw_trace)
+			cmdq_util_hw_trace_dump(
+				cmdq->hwid, cmdq_util_get_bit_feature() & CMDQ_LOG_FEAT_PERF);
+
 		spin_lock_irqsave(&thread->chan->lock, flags);
 		thread->dirty = false;
 
