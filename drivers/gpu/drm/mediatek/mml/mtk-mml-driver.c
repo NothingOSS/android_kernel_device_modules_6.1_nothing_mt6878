@@ -861,7 +861,6 @@ void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
 				mml_err("%s clk_prepare_enable fail %d",
 					__func__, ret);
 		}
-		mml_dpc_enable(true);
 		mml_dpc_exc_keep(task->config->mml);
 		mml_mmp(dpc_cfg, MMPROFILE_FLAG_START, 1, 0);
 		mml_dpc_config(DPC_SUBSYS_MML1, true);
@@ -900,7 +899,6 @@ void mml_dpc_task_cnt_dec(struct mml_task *task, bool addon_task)
 		mml_dpc_exc_keep(task->config->mml);
 		mml_mmp(dpc_cfg, MMPROFILE_FLAG_END, 0, 0);
 		mml_dpc_config(DPC_SUBSYS_MML1, false);
-		mml_dpc_enable(false);
 		if (mml->dpc.mmlsys_26m_clk)
 			clk_disable_unprepare(mml->dpc.mmlsys_26m_clk);
 		call_hw_op(path->mmlsys, pw_disable);
