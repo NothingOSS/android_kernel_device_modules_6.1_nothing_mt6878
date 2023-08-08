@@ -1290,7 +1290,9 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 	u32 end_cnt = 0;
 #endif
 
-	if (atomic_read(&cmdq->usage) <= 0) {
+	if (atomic_read(&cmdq->usage) <= 0 ||
+		(mminfra_power_cb && !mminfra_power_cb()) ||
+		(mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid))) {
 		cmdq_log("irq handling during gce off gce:%lx thread:%u",
 			(unsigned long)cmdq->base_pa, thread->idx);
 		return;
@@ -1468,12 +1470,9 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 	u32 end_cnt = 0;
 #endif
 
-	if (atomic_read(&cmdq->usage) == -1)
-		/*cmdq_util_aee("CMDQ", "%s irq:%d cmdq:%pa suspend:%d usage:%d",
-			__func__, irq, &cmdq->base_pa, cmdq->suspended,
-			atomic_read(&cmdq->usage));*/
-
-	if (atomic_read(&cmdq->usage) <= 0) {
+	if (atomic_read(&cmdq->usage) <= 0 ||
+		(mminfra_power_cb && !mminfra_power_cb()) ||
+		(mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid))) {
 		for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++)
 			if (!list_empty(&cmdq->thread[i].task_busy_list))
 				cmdq_err(
@@ -1816,9 +1815,19 @@ static void cmdq_thread_handle_timeout(struct timer_list *t)
 void cmdq_dump_core(struct mbox_chan *chan)
 {
 	struct cmdq *cmdq = dev_get_drvdata(chan->mbox->dev);
+	struct cmdq_thread *thread = (struct cmdq_thread *)chan->con_priv;
 	u32 irq, loaded, cycle, thd_timer, tpr_mask, tpr_en, bus_gctl;
 
 	cmdq_mtcmos_by_fast(cmdq, true);
+
+	if (atomic_read(&cmdq->usage) <= 0 ||
+		(mminfra_power_cb && !mminfra_power_cb()) ||
+		(mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid))) {
+		cmdq_err("gce off cmdq:%p thread:%u", cmdq, thread->idx);
+		dump_stack();
+		cmdq_mtcmos_by_fast(cmdq, false);
+		return;
+	}
 
 	irq = readl(cmdq->base + CMDQ_CURR_IRQ_STATUS);
 	loaded = readl(cmdq->base + CMDQ_CURR_LOADED_THR);
@@ -1888,7 +1897,9 @@ void cmdq_thread_dump(struct mbox_chan *chan, struct cmdq_pkt *cl_pkt,
 	/* lock channel and get info */
 	spin_lock_irqsave(&chan->lock, flags);
 
-	if (atomic_read(&cmdq->usage) <= 0) {
+	if (atomic_read(&cmdq->usage) <= 0 ||
+		(mminfra_power_cb && !mminfra_power_cb()) ||
+		(mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid))) {
 		cmdq_err("%s gce off cmdq:%p thread:%u",
 			__func__, cmdq, thread->idx);
 		dump_stack();
@@ -1998,7 +2009,9 @@ void cmdq_mbox_dump_dbg(void *mbox_cmdq, void *chan, const bool lock)
 
 	if (lock)
 		spin_lock_irqsave(&cmdq->lock, flags);
-	if (atomic_read(&cmdq->usage) <= 0) {
+	if (atomic_read(&cmdq->usage) <= 0 ||
+		(mminfra_power_cb && !mminfra_power_cb()) ||
+		(mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid))) {
 		cmdq_util_msg("no cmdq dbg since mbox disable");
 		if (lock)
 			spin_unlock_irqrestore(&cmdq->lock, flags);
