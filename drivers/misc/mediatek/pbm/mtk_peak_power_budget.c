@@ -1182,6 +1182,28 @@ static int mt_ppb_create_procfs(void)
 	return 0;
 }
 
+static void get_md_dbm_info(void)
+{
+	struct device_node *node = NULL;
+	unsigned int tmp;
+	char tmp_buf[30];
+
+	node = of_find_compatible_node(NULL, NULL, "mediatek,md_dbm_node");
+	if (node == NULL) {
+		pr_info("%s can't find md_dbm_node.\n", __func__);
+		return;
+	}
+
+	scnprintf(tmp_buf, 30, "mediatek,md_dbm_addr");
+	if (!of_property_read_u32(node, tmp_buf, &tmp)) {
+		pr_info("%s DT[%s]:%08X\n", __func__, tmp_buf, tmp);
+		ppb_write_sram((int)tmp, PPB_MD_SMEM_ADDR);
+	} else
+		pr_info("%s can't read md_dbm_addr\n",__func__);
+
+
+}
+
 static int peak_power_budget_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -1228,6 +1250,7 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 			ppb_write_sram((int)tag->bootmode, PPB_BOOT_MODE);
 		}
 	}
+	get_md_dbm_info();
 
 	ppb_ctrl.ppb_drv_done = 1;
 
