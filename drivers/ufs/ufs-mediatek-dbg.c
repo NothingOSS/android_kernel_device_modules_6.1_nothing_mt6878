@@ -1433,13 +1433,13 @@ void ufs_mtk_dbg_phy_dump(struct ufs_hba *hba)
 		if (mphy_record[i].time == 0)
 			continue;
 
-		dur = ns_to_timespec64(mphy_record[i].time);
+		pr_info("%s: MPHY stage = %d\n", __func__, i);
 
+		dur = ns_to_timespec64(mphy_record[i].time);
 		pr_info("%s: MPHY record start at %6llu.%lu\n", __func__,
 			dur.tv_sec, dur.tv_nsec);
 
 		dur = ns_to_timespec64(mphy_record[i].time_done);
-
 		pr_info("%s: MPHY record end at %6llu.%lu\n", __func__,
 			dur.tv_sec, dur.tv_nsec);
 

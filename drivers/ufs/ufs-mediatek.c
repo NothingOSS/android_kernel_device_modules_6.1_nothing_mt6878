@@ -2399,7 +2399,7 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 
 	mt_irq_dump_status(hba->irq);
 
-	/* Dump ufshci register 0x 0~ 0xA0 */
+	/* Dump ufshci register 0x0 ~ 0xA0 */
 	ufshcd_dump_regs(hba, 0, UFSHCI_REG_SPACE_SIZE, "UFSHCI (0x0):");
 
 	/* Dump ufshci register 0x140 ~ 0x14C */
@@ -2413,9 +2413,11 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 				 REG_UFS_MMIO_OPT_CTRL_0 - REG_UFS_CCAP + 4,
 				 "UFSHCI (0x100): ");
 
+		/* Dump ufshci register 0x300 */
 		ufshcd_dump_regs(hba, REG_UFS_MEM_CFG, 4,
 				 "UFSHCI (0x300): ");
 
+		/* Dump ufshci register 0x380 */
 		ufshcd_dump_regs(hba, REG_UFS_MCQ_CFG, 4,
 				 "UFSHCI (0x380): ");
 	}
@@ -2433,7 +2435,19 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 
 	/* Direct debugging information to REG_MTK_PROBE */
 	ufs_mtk_dbg_sel(hba);
+	/* Dump ufshci register 0x22C8 */
 	ufshcd_dump_regs(hba, REG_UFS_PROBE, 0x4, "Debug Probe ");
+
+	if (hba->mcq_enabled) {
+		/* Dump ufshci register 0x22FC ~ 0x2304 */
+		ufshcd_dump_regs(hba, REG_UFS_SQ_DBR_DBG,
+				 REG_UFS_ACT_STS - REG_UFS_SQ_DBR_DBG + 4,
+				 "UFSHCI (0x22F0): ");
+		/* Dump ufshci register 0x2800 ~ 0x297C */
+		ufshcd_dump_regs(hba, REG_UFS_MTK_SQD,
+				 REF_UFS_MTK_CQ7_IACR - REG_UFS_MTK_SQD + 4,
+				 "UFSHCI (0x2800): ");
+	}
 
 	ufs_mtk_dbg_dump(100);
 

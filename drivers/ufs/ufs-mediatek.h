@@ -52,11 +52,14 @@
 #define REG_UFS_DEBUG_SEL_B1        0x22D4
 #define REG_UFS_DEBUG_SEL_B2        0x22D8
 #define REG_UFS_DEBUG_SEL_B3        0x22DC
+#define REG_UFS_SQ_DBR_DBG          0x22FC
+#define REG_UFS_ACT_STS             0x2304
 
 #define REG_UFS_MTK_SQD             0x2800
 #define REG_UFS_MTK_SQIS            0x2814
 #define REG_UFS_MTK_CQD             0x281C
 #define REG_UFS_MTK_CQIS            0x2824
+#define REF_UFS_MTK_CQ7_IACR        0x297C
 
 #define REG_UFS_MCQ_STRIDE          0x30
 
