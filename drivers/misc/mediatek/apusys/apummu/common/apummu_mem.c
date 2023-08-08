@@ -593,7 +593,7 @@ int apummu_alloc_general_SLB(void *drvinfo)
 	}
 	adv = (struct apummu_dev_info *)drvinfo;
 
-	if (adv->remote.is_general_SLB_alloc) {
+	if (adv->rsc.genernal_SLB.iova != 0) {
 		AMMU_LOG_ERR("general SLB already added\n");
 		ret = -EINVAL;
 		goto out;
@@ -613,7 +613,6 @@ int apummu_alloc_general_SLB(void *drvinfo)
 		goto out;
 	}
 
-	adv->remote.is_general_SLB_alloc = true;
 	adv->rsc.genernal_SLB.iova = ret_addr;
 	adv->rsc.genernal_SLB.size = (uint32_t) ret_size;
 
@@ -637,7 +636,7 @@ int apummu_free_general_SLB(void *drvinfo)
 	}
 	adv = (struct apummu_dev_info *)drvinfo;
 
-	if (!adv->remote.is_general_SLB_alloc) {
+	if (adv->rsc.genernal_SLB.iova == 0) {
 		AMMU_LOG_ERR("No general SLB is alloced\n");
 		ret = -EINVAL;
 		goto out;
@@ -649,7 +648,6 @@ int apummu_free_general_SLB(void *drvinfo)
 		goto out;
 	}
 
-	adv->remote.is_general_SLB_alloc = false;
 	adv->rsc.genernal_SLB.iova = 0;
 	adv->rsc.genernal_SLB.size = 0;
 
