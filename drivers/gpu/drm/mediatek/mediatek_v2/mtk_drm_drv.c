@@ -1757,8 +1757,6 @@ static void mtk_atomic_check_res_scaling(struct mtk_drm_crtc *mtk_crtc,
 
 	if ((mtk_crtc == NULL) || (mode == NULL))
 		return;
-	if (mtk_crtc->scaling_ctx.scaling_mode == NULL)
-		return;
 
 	if ((mode->hdisplay != mtk_crtc->scaling_ctx.lcm_width) ||
 			(mode->vdisplay != mtk_crtc->scaling_ctx.lcm_height)) {
@@ -1782,10 +1780,12 @@ static void mtk_atomic_check_res_scaling(struct mtk_drm_crtc *mtk_crtc,
 			}
 		}
 
-		DDPINFO("%s++ scaling-up enable, resolution:(%ux%u)=>(%ux%u)\n",
-			__func__, mode->hdisplay, mode->vdisplay,
-			mtk_crtc->scaling_ctx.scaling_mode->hdisplay,
-			mtk_crtc->scaling_ctx.scaling_mode->vdisplay);
+		if (mtk_crtc->scaling_ctx.scaling_mode) {
+			DDPINFO("%s++ scaling-up enable, resolution:(%ux%u)=>(%ux%u)\n",
+				__func__, mode->hdisplay, mode->vdisplay,
+				mtk_crtc->scaling_ctx.scaling_mode->hdisplay,
+				mtk_crtc->scaling_ctx.scaling_mode->vdisplay);
+		}
 	} else {
 		mtk_crtc->scaling_ctx.scaling_en = false;
 		mtk_crtc->scaling_ctx.scaling_mode = mode;
