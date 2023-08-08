@@ -272,6 +272,7 @@ struct render_info {
 	int frame_hint; /*frame start/end provided by user*/
 	int sbe_control_flag;
 	int control_pid_flag;
+	int eas_control_flag;
 	unsigned long long render_last_cb_ts;
 	unsigned long master_type;
 

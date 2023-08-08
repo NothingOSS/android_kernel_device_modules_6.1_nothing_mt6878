@@ -227,7 +227,9 @@ static void fpsgo_com_delete_policy_cmd(struct fpsgo_com_policy_cmd *iter)
 	if (iter) {
 		if (iter->bypass_non_SF_by_pid == BY_PID_DEFAULT_VAL &&
 			iter->control_api_mask_by_pid == BY_PID_DEFAULT_VAL &&
-			iter->control_hwui_by_pid == BY_PID_DEFAULT_VAL) {
+			iter->control_hwui_by_pid == BY_PID_DEFAULT_VAL &&
+			iter->app_cam_fps_align_margin == BY_PID_DEFAULT_VAL &&
+			iter->app_cam_time_align_ratio == BY_PID_DEFAULT_VAL) {
 			min_iter = iter;
 			goto delete;
 		} else
@@ -286,6 +288,8 @@ static struct fpsgo_com_policy_cmd *fpsgo_com_get_policy_cmd(int tgid,
 	iter->bypass_non_SF_by_pid = BY_PID_DEFAULT_VAL;
 	iter->control_api_mask_by_pid = BY_PID_DEFAULT_VAL;
 	iter->control_hwui_by_pid = BY_PID_DEFAULT_VAL;
+	iter->app_cam_fps_align_margin = BY_PID_DEFAULT_VAL;
+	iter->app_cam_time_align_ratio = BY_PID_DEFAULT_VAL;
 	iter->ts = ts;
 
 	rb_link_node(&iter->rb_node, parent, p);
@@ -311,6 +315,10 @@ static void fpsgo_com_set_policy_cmd(int cmd, int value, int tgid,
 			iter->control_api_mask_by_pid = value;
 		else if (cmd == 2)
 			iter->control_hwui_by_pid = value;
+		else if (cmd == 3)
+			iter->app_cam_fps_align_margin = value;
+		else if (cmd == 4)
+			iter->app_cam_time_align_ratio = value;
 
 		if (!op)
 			fpsgo_com_delete_policy_cmd(iter);
@@ -439,11 +447,77 @@ static int fpsgo_com_check_fps_align(int pid, unsigned long long buffer_id)
 	if (local_qfps_arr[0] > local_tfps_arr[0] + fps_align_margin ||
 		local_qfps_arr[0] < fps_align_margin) {
 		ret = BY_PASS_TYPE;
-		fpsgo_systrace_c_fbt(pid, buffer_id, 1, "fps_no_align");
-	}
+		fpsgo_systrace_c_fbt_debug(pid, buffer_id, 1, "fps_no_align");
+	} else
+		fpsgo_systrace_c_fbt_debug(pid, buffer_id, 0, "fps_no_align");
 
 	xgf_trace("[comp][%d][0x%llx] | %s local_qfps:%d local_tfps:%d",
 		pid, buffer_id, __func__, local_qfps_arr[0], local_tfps_arr[0]);
+
+out:
+	kfree(local_qfps_arr);
+	kfree(local_tfps_arr);
+	return ret;
+}
+
+static int fpsgo_com_check_app_cam_fps_align(struct render_info *iter)
+{
+	int ret = 1;
+	int local_app_cam_fps_align_margin = BY_PID_DEFAULT_VAL;
+	int local_app_cam_time_align_ratio = BY_PID_DEFAULT_VAL;
+	int check1 = 0;
+	int check2 = 0;
+	int local_qfps_arr_num = 0;
+	int local_tfps_arr_num = 0;
+	int *local_qfps_arr = NULL;
+	int *local_tfps_arr = NULL;
+	struct fpsgo_com_policy_cmd *policy = NULL;
+
+	if (!iter)
+		goto out;
+
+	mutex_lock(&fpsgo_com_policy_cmd_lock);
+	policy = fpsgo_com_get_policy_cmd(iter->tgid, 0, 0);
+	if (policy) {
+		if (policy->app_cam_fps_align_margin != BY_PID_DEFAULT_VAL)
+			local_app_cam_fps_align_margin = policy->app_cam_fps_align_margin;
+		if (policy->app_cam_time_align_ratio != BY_PID_DEFAULT_VAL)
+			local_app_cam_time_align_ratio = policy->app_cam_time_align_ratio;
+	}
+	mutex_unlock(&fpsgo_com_policy_cmd_lock);
+
+	if (local_app_cam_fps_align_margin < 0 || local_app_cam_time_align_ratio < 0)
+		goto out;
+
+	local_qfps_arr = kcalloc(1, sizeof(int), GFP_KERNEL);
+	if (!local_qfps_arr)
+		goto out;
+
+	local_tfps_arr = kcalloc(1, sizeof(int), GFP_KERNEL);
+	if (!local_tfps_arr)
+		goto out;
+
+	fpsgo_other2fstb_get_fps(iter->pid, iter->buffer_id,
+		local_qfps_arr, &local_qfps_arr_num, 1,
+		local_tfps_arr, &local_tfps_arr_num, 1);
+
+	check1 = local_tfps_arr[0] > local_qfps_arr[0] + local_app_cam_fps_align_margin;
+	check2 = iter->running_time * 100 <= iter->Q2Q_time * local_app_cam_time_align_ratio;
+
+	if ((check1 && check2) ||
+		(iter->eas_control_flag && (check1 || check2))) {
+		iter->eas_control_flag = 1;
+		ret = 0;
+	} else
+		iter->eas_control_flag = 0;
+
+	xgf_trace(
+		"[base][%d][0x%llx] | %s qfps:%d tfps:%d t_cpu:%llu q2q:%llu margin:%d ratio:%d check:%d %d eas_ctrl:%d",
+		iter->pid, iter->buffer_id, __func__,
+		local_qfps_arr[0], local_tfps_arr[0],
+		iter->running_time, iter->Q2Q_time,
+		local_app_cam_fps_align_margin, local_app_cam_time_align_ratio,
+		check1, check2, iter->eas_control_flag);
 
 out:
 	kfree(local_qfps_arr);
@@ -734,6 +808,22 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 						pid, f_render->buffer_id);
 		if (f_render->frame_type == NON_VSYNC_ALIGNED_TYPE)
 			f_render->frame_type = fpsgo_check_exist_queue_SF(f_render->tgid);
+		if (f_render->frame_type == NON_VSYNC_ALIGNED_TYPE) {
+			if (!fpsgo_com_check_app_cam_fps_align(f_render)) {
+				fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
+					&raw_runtime, &running_time, &enq_running_time,
+					0, enqueue_end_time,
+					f_render->t_dequeue_start, f_render->t_dequeue_end,
+					f_render->t_enqueue_start, enqueue_end_time, 0);
+				f_render->raw_runtime = raw_runtime;
+				f_render->running_time = running_time;
+				f_render->frame_type = BY_PASS_TYPE;
+				fpsgo_systrace_c_fbt_debug(f_render->pid, f_render->buffer_id,
+					1, "app_cam_no_align");
+			} else
+				fpsgo_systrace_c_fbt_debug(f_render->pid, f_render->buffer_id,
+					0, "app_cam_no_align");
+		}
 	}
 
 	switch (f_render->frame_type) {
@@ -2053,6 +2143,14 @@ FPSGO_COM_SYSFS_READ(control_hwui_by_pid, 0, 0);
 FPSGO_COM_SYSFS_WRITE_POLICY_CMD(control_hwui_by_pid, 2, 0, 1);
 static KOBJ_ATTR_RW(control_hwui_by_pid);
 
+FPSGO_COM_SYSFS_READ(app_cam_fps_align_margin_by_pid, 0, 0);
+FPSGO_COM_SYSFS_WRITE_POLICY_CMD(app_cam_fps_align_margin_by_pid, 3, 0, 100);
+static KOBJ_ATTR_RW(app_cam_fps_align_margin_by_pid);
+
+FPSGO_COM_SYSFS_READ(app_cam_time_align_ratio_by_pid, 0, 0);
+FPSGO_COM_SYSFS_WRITE_POLICY_CMD(app_cam_time_align_ratio_by_pid, 4, 0, 100);
+static KOBJ_ATTR_RW(app_cam_time_align_ratio_by_pid);
+
 static ssize_t fpsgo_com_policy_cmd_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -2076,12 +2174,14 @@ static ssize_t fpsgo_com_policy_cmd_show(struct kobject *kobj,
 		iter = rb_entry(rbn, struct fpsgo_com_policy_cmd, rb_node);
 		length = scnprintf(temp + pos,
 			FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-			"%dth\ttgid:%d\tbypass_non_SF:%d\tcontrol_api_mask:%d\tcontrol_hwui:%d\tts:%llu\n",
+			"%dth\ttgid:%d\tbypass_non_SF:%d\tcontrol_api_mask:%d\tcontrol_hwui:%d\tapp_cam_align:(%d,%d)\tts:%llu\n",
 			i,
 			iter->tgid,
 			iter->bypass_non_SF_by_pid,
 			iter->control_api_mask_by_pid,
 			iter->control_hwui_by_pid,
+			iter->app_cam_fps_align_margin,
+			iter->app_cam_time_align_ratio,
 			iter->ts);
 		pos += length;
 		i++;
@@ -2278,6 +2378,8 @@ void __exit fpsgo_composer_exit(void)
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_control_hwui_by_pid);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_fpsgo_com_policy_cmd);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_is_fpsgo_boosting);
+	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_app_cam_fps_align_margin_by_pid);
+	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_app_cam_time_align_ratio_by_pid);
 
 	fpsgo_sysfs_remove_dir(&comp_kobj);
 }
@@ -2310,6 +2412,8 @@ int __init fpsgo_composer_init(void)
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_control_hwui_by_pid);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_fpsgo_com_policy_cmd);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_is_fpsgo_boosting);
+		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_app_cam_fps_align_margin_by_pid);
+		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_app_cam_time_align_ratio_by_pid);
 	}
 
 	return 0;

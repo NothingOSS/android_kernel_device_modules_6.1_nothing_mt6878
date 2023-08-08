@@ -37,6 +37,8 @@ struct fpsgo_com_policy_cmd {
 	int bypass_non_SF_by_pid;
 	int control_api_mask_by_pid;
 	int control_hwui_by_pid;
+	int app_cam_fps_align_margin;
+	int app_cam_time_align_ratio;
 	unsigned long long ts;
 	struct rb_node rb_node;
 };
