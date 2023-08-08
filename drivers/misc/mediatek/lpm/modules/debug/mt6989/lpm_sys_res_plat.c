@@ -54,8 +54,8 @@ struct sys_res_group_info sys_res_group_info[NR_SPM_GRP] = {
 	{292, 167,  36, 30},
 	{293, 203,  33, 30},
 	{294, 236,  11, 30},
-	{0, 247,  37, 30},
-	{0, 284,  11, 30},
+	{0, 247,  39, 30},
+	{0, 286,  11, 30},
 };
 
 
@@ -75,15 +75,14 @@ static int lpm_sys_res_alloc(struct sys_res_record *record)
 	if (!record)
 		return -1;
 
-
 	spm_res_sig_stats_ptr =
-	kmalloc_array(1, sizeof(struct res_sig_stats), GFP_KERNEL);
+	kcalloc(1, sizeof(struct res_sig_stats), GFP_KERNEL);
 	if (!spm_res_sig_stats_ptr)
 		goto RES_SIG_ALLOC_ERROR;
 
 	get_res_sig_stats(spm_res_sig_stats_ptr);
 	spm_res_sig_stats_ptr->res_sig_tbl =
-	kmalloc_array(spm_res_sig_stats_ptr->res_sig_num,
+	kcalloc(spm_res_sig_stats_ptr->res_sig_num,
 			sizeof(struct res_sig), GFP_KERNEL);
 	if (!spm_res_sig_stats_ptr->res_sig_tbl)
 		goto RES_SIG_ALLOC_TABLE_ERROR;
@@ -115,12 +114,12 @@ static int __sync_lastest_lpm_sys_res_record(struct sys_res_record *record)
 {
 	int ret = 0;
 #if IS_ENABLED(CONFIG_MTK_SWPM_MODULE)
-	if (!record)
+	if (!record ||
+	    !record->spm_res_sig_stats_ptr)
 		return ret;
 
 	ret = sync_latest_data();
-	if(!ret)
-		get_res_sig_stats(record->spm_res_sig_stats_ptr);
+	get_res_sig_stats(record->spm_res_sig_stats_ptr);
 #endif
 	return ret;
 }
@@ -177,10 +176,6 @@ static int update_lpm_sys_res_record(void)
 
 	spin_lock_irqsave(&sys_res_lock, flag);
 	ret = __sync_lastest_lpm_sys_res_record(&sys_res_record[sys_res_temp_buffer_index]);
-	if(ret) {
-		spin_unlock_irqrestore(&sys_res_lock, flag);
-		return ret;
-	}
 
 	__lpm_sys_res_record_diff(&sys_res_record[sys_res_last_diff_buffer_index],
 			&sys_res_record[sys_res_temp_buffer_index],
@@ -335,7 +330,7 @@ static void lpm_sys_res_log(unsigned int scene)
 	spin_lock_irqsave(&sys_res_lock, flag);
 
 	sys_res_record = get_lpm_sys_res_record(scene);
-	if (scene == SYS_RES_SUSPEND) {
+	if (scene == SYS_RES_LAST_SUSPEND) {
 		time_type = SYS_RES_SUSPEND_TIME;
 		strncpy(scene_name, "suspend", 10);
 		ratio_type = SYS_RES_SIG_SUSPEND_RATIO;
@@ -451,7 +446,7 @@ static int lpm_sys_res_pm_event(struct notifier_block *notifier,
 
 		return NOTIFY_DONE;
 	case PM_POST_SUSPEND:
-		sys_res_ops.log(SYS_RES_SUSPEND);
+		sys_res_ops.log(SYS_RES_LAST_SUSPEND);
 		return NOTIFY_DONE;
 	default:
 		return NOTIFY_DONE;
@@ -473,7 +468,7 @@ int lpm_sys_res_plat_init(void)
 		if(ret) {
 			for (j = i - 1; j >= 0; j--)
 				lpm_sys_res_free(&sys_res_record[i]);
-			pr_info("[LPM] sys_res alloc fail\n");
+			pr_info("[name:spm&][SPM] sys_res alloc fail\n");
 			return ret;
 		}
 	}

@@ -63,7 +63,7 @@ int lpm_mbrain_get_sys_res_data(void *address, uint32_t size)
 {
 	int i = 0;
 	int j = 0;
-	int ret = 0;
+	int ret = 0, sys_res_update = 0;
 	unsigned long flag;
 	struct lpm_sys_res_ops *sys_res_ops;
 	struct sys_res_record *sys_res_record[SCENE_RELEASE_NUM];
@@ -72,15 +72,17 @@ int lpm_mbrain_get_sys_res_data(void *address, uint32_t size)
 
 	if (!address ||
 	    header.index_data_length == 0 ||
-	    size < header.index_data_length + header.data_offset)
+	    size < header.index_data_length + header.data_offset) {
+		pr_info("[name:spm&][SPM][Mbrain] mbrain address/buffer size error\n");
 		ret = -1;
+	}
 
 	sys_res_ops = get_lpm_sys_res_ops();
 	if (!sys_res_ops ||
 	    !sys_res_ops->update ||
 	    !sys_res_ops->get ||
 	    !sys_res_ops->get_detail) {
-		pr_info("[name:spm&][SPM] Get sys res operations fail\n");
+		pr_info("[name:spm&][SPM][Mbrain] Get sys res operations fail\n");
 		ret = -1;
 	}
 
@@ -90,7 +92,9 @@ int lpm_mbrain_get_sys_res_data(void *address, uint32_t size)
 	/* Copy header */
 	address = sys_res_data_copy(address, &header, sizeof(struct sys_res_mbrain_header));
 
-	sys_res_ops->update();
+	sys_res_update = sys_res_ops->update();
+	if(sys_res_update)
+		pr_info("[name:spm&][SPM][Mbrain] SWPM data is invalid, Error Code [%d]\n", sys_res_update);
 
 	/* Copy scenario data */
 	sys_res_record[SYS_RES_RELEASE_SCENE_COMMON] = sys_res_ops->get(SYS_RES_COMMON);
