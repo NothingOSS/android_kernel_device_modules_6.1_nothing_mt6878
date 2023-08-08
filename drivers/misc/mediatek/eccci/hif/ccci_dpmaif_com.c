@@ -2781,6 +2781,14 @@ static void dpmaif_dump_rx_data(void)
 		if (rxq->index == 1)
 			continue;
 
+		/* invalid cache to ensure try to dump DRAM data */
+		dma_sync_single_for_cpu(dpmaif_ctl->dev, rxq->pit_phy_addr,
+			drv.normal_pit_size * rxq->pit_cnt, DMA_FROM_DEVICE);
+		dma_sync_single_for_cpu(dpmaif_ctl->dev, rxq->pit_phy_addr,
+			drv.normal_pit_size * rxq->pit_cnt, DMA_FROM_DEVICE);
+		dma_sync_single_for_cpu(dpmaif_ctl->dev, rxq->pit_phy_addr,
+			drv.normal_pit_size * rxq->pit_cnt, DMA_FROM_DEVICE);
+
 		CCCI_BUF_LOG_TAG(0, CCCI_DUMP_DPMAIF, TAG,
 			"dpmaif: rxq%d, pit request base: 0x%p(%u*%u); pos: w/r = %u,%u\n",
 			rxq->index, rxq->pit_base, rxq->pit_cnt, drv.normal_pit_size,
