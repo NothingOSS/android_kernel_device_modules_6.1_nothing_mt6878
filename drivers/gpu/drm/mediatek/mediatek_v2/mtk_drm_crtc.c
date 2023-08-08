@@ -12490,7 +12490,7 @@ static void mtk_crtc_msync2_send_cmds_bef_cfg(struct drm_crtc *crtc, unsigned in
 		struct msync_request_te_table *rte_tb =
 			&params->msync_cmd_table.request_te_tb;
 		int level_min_fps = 0;
-		if(!rte_tb || (void *)rte_tb->rte_te_level == NULL) {
+		if(!rte_tb) {
 			DDPPR_ERR("[Msync2.0] Some pointer is NULL\n");
 			return;
 		}
@@ -13248,7 +13248,8 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 	}
 
 	if (drm_crtc_index(&mtk_crtc->base) == 2 &&
-		mtk_crtc->is_dual_pipe && crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE]
+		mtk_crtc->is_dual_pipe &&
+		crtc_state && crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE]
 		&& (left_bg % 2)) {
 		left_bg -= 1;
 		right_bg += 1;
