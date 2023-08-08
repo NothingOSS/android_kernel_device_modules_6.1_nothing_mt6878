@@ -27,25 +27,6 @@ struct emi_isu {
 /* global pointer for sysfs operations*/
 static struct emi_isu *global_emi_isu;
 
-void mtk_emiisu_record_off(void)
-{
-	struct emi_isu *isu;
-
-	if (!global_emi_isu)
-		return;
-
-	isu = global_emi_isu;
-
-	if (!(isu->con_addr))
-		return;
-
-	writel(0xDEC0DEC0U, isu->con_addr);
-	pr_info("%s: Turn off EMIISU dump\n", __func__);
-
-	dsb(sy);
-}
-EXPORT_SYMBOL(mtk_emiisu_record_off);
-
 static ssize_t emiisu_ctrl_show(struct device_driver *driver, char *buf)
 {
 	struct emi_isu *isu;
@@ -110,9 +91,6 @@ static ssize_t emiisu_ctrl_store
 	if (kstrtoul(token[0], 16, &state) == 0)
 		writel((unsigned int)state, isu->con_addr);
 
-	// check emiisu_ctrl status
-	if (readl(isu->con_addr) == 0xDECDDECD)
-		pr_info("%s: Turn on EMIISU dump\n", __func__);
 emiisu_ctrl_store_end:
 	kfree(backup_command);
 
@@ -153,6 +131,7 @@ static ssize_t read_emi_isu_buf(struct file *filp, struct kobject *kobj,
 		count -= 4;
 		pos += 4;
 	}
+
 	pos -= 4;
 	ret = memory_read_from_buffer(buff, count, &pos,
 				isu->buf_addr, isu->buf_size);
