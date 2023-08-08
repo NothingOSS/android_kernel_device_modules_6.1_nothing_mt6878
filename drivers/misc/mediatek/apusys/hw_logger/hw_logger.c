@@ -1475,6 +1475,9 @@ static void clear_local_log_buf(void)
 
 	HWLOGR_INFO("in\n");
 
+	/* Before reset local buffer, copy (flush) latest log from raw buffer */
+	hw_logger_copy_buf();
+
 	mutex_lock(&hw_logger_mutex);
 
 	memset(local_log_buf, 0, LOCAL_LOG_SIZE);
@@ -1482,6 +1485,7 @@ static void clear_local_log_buf(void)
 	spin_lock_irqsave(&hw_logger_spinlock, flags);
 	__loc_log_w_ofs = 0;
 	__loc_log_ov_flg = 0;
+	__loc_log_sz = 0;
 
 	g_log.w_ptr = 0;
 	g_log.r_ptr = U32_MAX;
