@@ -3022,13 +3022,13 @@ static int vcp_device_probe(struct platform_device *pdev)
 	}
 	pr_debug("[VCP] cfg_core1 base = 0x%p\n", vcpreg.cfg_core1);
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_bus_tracker");
-	vcpreg.bus_tracker = devm_ioremap_resource(dev, res);
-	if (IS_ERR((void const *) vcpreg.bus_tracker)) {
-		pr_debug("[VCP] vcpreg.bus_tracker error\n");
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_bus_debug");
+	vcpreg.bus_debug = devm_ioremap_resource(dev, res);
+	if (IS_ERR((void const *) vcpreg.bus_debug)) {
+		pr_debug("[VCP] vcpreg.bus_debug error\n");
 		return -1;
 	}
-	pr_debug("[VCP] bus_tracker base = 0x%p\n", vcpreg.bus_tracker);
+	pr_debug("[VCP] bus_debug base = 0x%p\n", vcpreg.bus_debug);
 
 #ifdef VCP_DEBUG_REMOVED
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_l1creg");
@@ -3121,6 +3121,12 @@ static int vcp_device_probe(struct platform_device *pdev)
 	pr_notice("[VCP] vcpreg.secure_dump = %d, vcp_ee_enable = %d\n",
 			vcpreg.secure_dump, vcp_ee_enable);
 
+	vcpreg.bus_debug_num_ports = 0;
+	of_property_read_u32(pdev->dev.of_node, "bus-debug-num-ports"
+						, &vcpreg.bus_debug_num_ports);
+	if (!vcpreg.bus_debug_num_ports)
+		pr_notice("[VCP] bus debug num ports not found\n");
+	pr_debug("[VCP] vcpreg.bus_debug_num_ports = %d\n", vcpreg.bus_debug_num_ports);
 
 	vcpreg.irq0 = platform_get_irq_byname(pdev, "wdt");
 	if (vcpreg.irq0 < 0)

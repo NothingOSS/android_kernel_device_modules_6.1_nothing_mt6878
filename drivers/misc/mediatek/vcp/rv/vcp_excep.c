@@ -111,6 +111,7 @@ uint32_t vcp_dump_size_probe(struct platform_device *pdev)
 void vcp_dump_last_regs(int mmup_enable)
 {
 	uint32_t *out, *out_end;
+	uint32_t i;
 
 	if (mmup_enable == 0) {
 		pr_notice("[VCP] power off, do not vcp_dump_last_regs\n");
@@ -215,28 +216,13 @@ void vcp_dump_last_regs(int mmup_enable)
 		pr_debug("[VCP] c1_t1_sp_latch = %08x\n", c1_t1_m->sp_latch);
 	}
 
-	/* bus tracker reg dump */
-	pr_debug("BUS DBG CON: %x\n", readl(VCP_BUS_DBG_CON));
-	pr_debug("R %08x %08x %08x %08x %08x %08x %08x %08x\n",
-			readl(VCP_BUS_DBG_AR_TRACK0_L),
-			readl(VCP_BUS_DBG_AR_TRACK1_L),
-			readl(VCP_BUS_DBG_AR_TRACK2_L),
-			readl(VCP_BUS_DBG_AR_TRACK3_L),
-			readl(VCP_BUS_DBG_AR_TRACK4_L),
-			readl(VCP_BUS_DBG_AR_TRACK5_L),
-			readl(VCP_BUS_DBG_AR_TRACK6_L),
-			readl(VCP_BUS_DBG_AR_TRACK7_L)
-		   );
-	pr_debug("W %08x %08x %08x %08x %08x %08x %08x %08x\n",
-			readl(VCP_BUS_DBG_AW_TRACK0_L),
-			readl(VCP_BUS_DBG_AW_TRACK1_L),
-			readl(VCP_BUS_DBG_AW_TRACK2_L),
-			readl(VCP_BUS_DBG_AW_TRACK3_L),
-			readl(VCP_BUS_DBG_AW_TRACK4_L),
-			readl(VCP_BUS_DBG_AW_TRACK5_L),
-			readl(VCP_BUS_DBG_AW_TRACK6_L),
-			readl(VCP_BUS_DBG_AW_TRACK7_L)
-		   );
+	/* bus debug reg dump */
+	pr_notice("[VCP] BUS DBG CON %08x, port num = %d\n",
+		readl(VCP_BUS_DBG_CON), vcpreg.bus_debug_num_ports);
+	for (i = 0; i < vcpreg.bus_debug_num_ports; i++) {
+		pr_notice("[VCP] bus debug result%d = %08x\n",
+			i, readl(VCP_BUS_DBG_RESULT0 + i * 4));
+	}
 
 	out = kmalloc(0x400 * sizeof(uint32_t), GFP_DMA|GFP_ATOMIC);
 	if (!out)
@@ -247,6 +233,9 @@ void vcp_dump_last_regs(int mmup_enable)
 			(unsigned long)out, (unsigned long)out_end);
 	vcp_do_tbufdump(out, out_end);
 	kfree(out);
+
+	/* mmup2infra RX and TX reg dump */
+	pr_notice("[VCP] mmup2infra tx: %08x\n", readl(VCP_TO_INFRA_TX));
 }
 
 void vcp_do_regdump(uint32_t *out, uint32_t *out_end)

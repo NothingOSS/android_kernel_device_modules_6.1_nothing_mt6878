@@ -133,7 +133,7 @@ struct vcp_regs {
 	void __iomem *cfg_core1;
 	void __iomem *cfg_sec;
 	void __iomem *cfg_mmu;
-	void __iomem *bus_tracker;
+	void __iomem *bus_debug;
 	int irq0;
 	int irq1;
 	unsigned int total_tcmsize;
@@ -144,6 +144,7 @@ struct vcp_regs {
 	unsigned int fmeter_ck;
 	unsigned int fmeter_type;
 	unsigned int secure_dump;
+	unsigned int bus_debug_num_ports;
 };
 
 struct vcp_ipi_profile {

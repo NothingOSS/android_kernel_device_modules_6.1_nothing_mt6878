@@ -35,6 +35,8 @@
 	#define B_GIPC4_SETCLR_2	(1 << 18)
 	#define B_GIPC4_SETCLR_3	(1 << 19)
 
+#define VCP_TO_INFRA_TX			(vcpreg.cfg + 0x0108)
+
 #define VCP_GPR_DEBUG_HINT		(vcpreg.cfg + 0x0140)
 	#define B_SERR	(1 << 0)
 #define VCP_BUS_DEBUG_OUT		(vcpreg.cfg + 0x0150)
@@ -158,25 +160,9 @@
 #define VCP_R_SLP_EN			(vcpreg.cfg_pwr)
 #define VCP_POWER_STATUS		(vcpreg.cfg_pwr + 0x068)
 
-/* bus tracker reg */
-#define VCP_BUS_DBG_CON			(vcpreg.bus_tracker)
-#define VCP_BUS_DBG_AR_TRACK0_L		(vcpreg.bus_tracker + 0x100)
-#define VCP_BUS_DBG_AR_TRACK1_L		(vcpreg.bus_tracker + 0x108)
-#define VCP_BUS_DBG_AR_TRACK2_L		(vcpreg.bus_tracker + 0x110)
-#define VCP_BUS_DBG_AR_TRACK3_L		(vcpreg.bus_tracker + 0x118)
-#define VCP_BUS_DBG_AR_TRACK4_L		(vcpreg.bus_tracker + 0x120)
-#define VCP_BUS_DBG_AR_TRACK5_L		(vcpreg.bus_tracker + 0x128)
-#define VCP_BUS_DBG_AR_TRACK6_L		(vcpreg.bus_tracker + 0x130)
-#define VCP_BUS_DBG_AR_TRACK7_L		(vcpreg.bus_tracker + 0x138)
-
-#define VCP_BUS_DBG_AW_TRACK0_L		(vcpreg.bus_tracker + 0x300)
-#define VCP_BUS_DBG_AW_TRACK1_L		(vcpreg.bus_tracker + 0x308)
-#define VCP_BUS_DBG_AW_TRACK2_L		(vcpreg.bus_tracker + 0x310)
-#define VCP_BUS_DBG_AW_TRACK3_L		(vcpreg.bus_tracker + 0x318)
-#define VCP_BUS_DBG_AW_TRACK4_L		(vcpreg.bus_tracker + 0x320)
-#define VCP_BUS_DBG_AW_TRACK5_L		(vcpreg.bus_tracker + 0x328)
-#define VCP_BUS_DBG_AW_TRACK6_L		(vcpreg.bus_tracker + 0x330)
-#define VCP_BUS_DBG_AW_TRACK7_L		(vcpreg.bus_tracker + 0x338)
+/* bus debug reg */
+#define VCP_BUS_DBG_CON			(vcpreg.bus_debug)
+#define VCP_BUS_DBG_RESULT0		(vcpreg.bus_debug + 0x408)
 
 #define R_SEC_CTRL			(vcpreg.cfg_sec + 0x0000)
 	#define B_CORE0_CACHE_DBG_EN	(1 << 28)
