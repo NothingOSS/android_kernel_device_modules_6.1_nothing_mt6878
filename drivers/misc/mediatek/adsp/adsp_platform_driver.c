@@ -279,7 +279,7 @@ int adsp_logger_init_message(uint32_t id, void *info, uint32_t size)
 		retry_count--;
 		if (ret != ADSP_IPI_DONE)
 			usleep_range(1000, 1500);
-	} while ((retry_count > 0) && (ret != ADSP_IPI_BUSY));
+	} while ((retry_count > 0) && (ret == ADSP_IPI_BUSY));
 
 	_adsp_deregister_feature(id, ADSP_LOGGER_FEATURE_ID, 0);
 
