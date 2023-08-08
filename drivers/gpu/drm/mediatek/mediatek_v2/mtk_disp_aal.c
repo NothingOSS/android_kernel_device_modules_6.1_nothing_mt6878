@@ -491,9 +491,9 @@ int mtk_aal_eventctl_bypass(struct mtk_ddp_comp *comp, int bypass)
 	if (g_aal_bypass_mode == AAL_BYPASS_HW) {
 		atomic_set(&aal_data->primary_data->should_stop, 0);
 		if (!bypass && atomic_read(&aal_data->primary_data->force_relay))
-			ret = mtk_crtc_user_cmd_impl(&comp->mtk_crtc->base, comp, BYPASS_AAL, &bypass, false);
+			ret = mtk_crtc_user_cmd_impl(&comp->mtk_crtc->base, comp, BYPASS_AAL, &bypass, true);
 		if (bypass && !atomic_read(&aal_data->primary_data->force_relay))
-			ret = mtk_crtc_user_cmd_impl(&comp->mtk_crtc->base, comp, BYPASS_AAL, &bypass, false);
+			ret = mtk_crtc_user_cmd_impl(&comp->mtk_crtc->base, comp, BYPASS_AAL, &bypass, true);
 		if (ret != 0) {
 			AALFLOW_LOG("fail to unrelay, set flag first\n");
 			atomic_set(&aal_data->primary_data->force_relay, bypass);
@@ -514,12 +514,13 @@ static int mtk_drm_ioctl_aal_eventctl_impl(struct mtk_ddp_comp *comp, void *data
 	int delay_trigger;
 
 	AALFLOW_LOG("0x%x\n", events);
-	DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
 	delay_trigger = atomic_read(&aal_data->primary_data->force_delay_check_trig);
 	if (enable) {
+		DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
 		mtk_drm_idlemgr_kick(__func__,
 				&comp->mtk_crtc->base, 0);
 		mtk_crtc_check_trigger(comp->mtk_crtc, delay_trigger, false);
+		DDP_MUTEX_UNLOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
 	}
 	if (atomic_read(&aal_data->primary_data->force_enable_irq)) {
 		enable = 1;
@@ -527,7 +528,6 @@ static int mtk_drm_ioctl_aal_eventctl_impl(struct mtk_ddp_comp *comp, void *data
 	}
 	atomic_set(&aal_data->primary_data->interrupt_enabled, enable);
 	ret = mtk_aal_eventctl_bypass(comp, bypass);
-	DDP_MUTEX_UNLOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
 
 	return ret;
 }
