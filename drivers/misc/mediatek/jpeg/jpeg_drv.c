@@ -56,6 +56,25 @@ module_param(jpg_dbg_level, int, 0644);
 int jpg_core_binding = -1;
 module_param(jpg_core_binding, int, 0644);
 
+static void jpeg_drv_hybrid_dec_dump_register_setting(int id)
+{
+	unsigned int regs[8];
+
+	JPEG_LOG(0, "start dump id: %d", id);
+	for (int i = 0x90; i < 0x370; i += 32) {
+		for (int j = 0; j < 8; j++)
+			regs[j] = IMG_REG_READ(JPEG_HYBRID_DEC_BASE(id) + i + j * 4);
+
+		JPEG_LOG(0, "0x%03x: 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x",
+			 i, regs[0], regs[1], regs[2], regs[3],
+			 regs[4], regs[5], regs[6], regs[7]);
+	}
+	for (int i = 0; i < 6; i++)
+		regs[i] = IMG_REG_READ(JPEG_HYBRID_DEC_BASE(id) + 0x370 + i * 4);
+	JPEG_LOG(0, "0x370: 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x",
+		 regs[0], regs[1], regs[2], regs[3], regs[4], regs[5]);
+}
+
 static int jpeg_isr_hybrid_dec_lisr(int id)
 {
 	unsigned int tmp = 0;
@@ -640,9 +659,13 @@ static int jpeg_hybrid_dec_ioctl(unsigned int cmd, unsigned long arg,
 					hybrid_dec_wait_queue[hwid],
 					_jpeg_hybrid_dec_int_status[hwid],
 					timeout_jiff);
-				if (ret == 0)
-					JPEG_LOG(0,
-					"JPEG Hybrid Dec Wait timeout!");
+				if (ret == 0) {
+					JPEG_LOG(0, "JPEG Hybrid Dec Wait timeout!");
+					jpeg_drv_hybrid_dec_dump_register_setting(hwid);
+
+					/*trigger smi dump to get more info.*/
+					mtk_smi_dbg_hang_detect("JPEG DEC");
+				}
 				if (ret < 0) {
 					waitfailcnt++;
 					JPEG_LOG(0,
