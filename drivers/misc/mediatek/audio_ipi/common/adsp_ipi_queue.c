@@ -11,6 +11,7 @@
 #include <linux/errno.h>
 
 #include <linux/kthread.h>
+#include <uapi/linux/sched/types.h>
 #include <linux/wait.h>
 #include <linux/spinlock.h>
 
@@ -966,13 +967,15 @@ static int dsp_process_msg_thread(void *data)
 
 	unsigned long flags = 0;
 	int retval = 0;
+	/* prio = 96 */
+	struct sched_param param = {.sched_priority = 3};
 
 	if (msg_queue == NULL) {
 		pr_info("msg_queue == NULL!! return");
 		return -EFAULT;
 	}
 
-	set_user_nice(current, -20); /* normal thread highest priority */
+	sched_setscheduler(current, SCHED_RR, &param);
 
 	while (msg_queue->thread_enable && !kthread_should_stop()) {
 		/* wait until element pushed */
