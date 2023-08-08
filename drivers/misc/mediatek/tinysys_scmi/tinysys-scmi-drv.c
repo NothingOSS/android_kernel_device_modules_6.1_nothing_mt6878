@@ -25,14 +25,30 @@ EXPORT_SYMBOL(get_scmi_tinysys_info);
 int scmi_tinysys_common_set(const struct scmi_protocol_handle *ph, u32 feature_id,
 	u32 p1, u32 p2, u32 p3, u32 p4, u32 p5)
 {
-	return tinysys_ops->common_set(ph, feature_id, p1, p2, p3, p4, p5);
+	int ret;
+
+	ret = tinysys_ops->common_set(ph, feature_id, p1, p2, p3, p4, p5);
+
+	if (ret)
+		pr_notice("[scmi][tinysys_set] fid:%u ret:%d p1:%u p2:%u p3:%u p4:%u p5:%u\n",
+			feature_id, ret, p1, p2, p3, p4, p5);
+
+	return ret;
 }
 EXPORT_SYMBOL(scmi_tinysys_common_set);
 
 int scmi_tinysys_common_get(const struct scmi_protocol_handle *ph, u32 feature_id,
 	u32 p1, struct scmi_tinysys_status *rvalue)
 {
-	return tinysys_ops->common_get(ph, feature_id, p1, rvalue);
+	int ret;
+
+	ret = tinysys_ops->common_get(ph, feature_id, p1, rvalue);
+
+	if (ret)
+		pr_notice("[scmi][tinysys_get] fid:%u ret:%d p1:%u r1:%u r2:%u r3:%u\n",
+			feature_id, ret, p1, rvalue->r1, rvalue->r2, rvalue->r3);
+
+	return ret;
 }
 EXPORT_SYMBOL(scmi_tinysys_common_get);
 
