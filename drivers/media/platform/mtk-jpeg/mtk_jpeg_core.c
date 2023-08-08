@@ -318,14 +318,14 @@ static int mtk_jpeg_try_fmt_mplane(struct v4l2_pix_format_mplane *pix_mp,
 			unsigned int block_w = 16;
 			unsigned int block_h = 16;
 			unsigned int bitsPP = 12;
-			unsigned int width = round_up(pix_mp->width, 32);
-			unsigned int height = round_up(pix_mp->height, 32);
+			unsigned int width = round_up(pix_mp->width, 16);
+			unsigned int height = round_up(pix_mp->height, 16);
 			unsigned int block_count =
 					((width + (block_w - 1))/block_w)
 					*((height + (block_h - 1))/block_h);
 			pfmt->bytesperline = stride;
-			pfmt->sizeimage = (block_count << 4) +
-					(block_count * block_w * block_h  * bitsPP / 8);
+			pfmt->sizeimage = round_up((block_count << 4), 1024) +
+					(block_count * round_up((block_w * block_h  * bitsPP / 8), 128));
 		} else {
 			pfmt->bytesperline = stride;
 			pfmt->sizeimage = stride * h;
