@@ -11791,6 +11791,8 @@
 			error-irq-bug-on = <1>;
 			mtk,smmu-shared = <&mm_smmu_srt_normal>;
 			mtk,iommu-dma-axid = <SMMU_L48_GCE_DM>;
+			smmu-tbu = <0>;
+			axid = <0x801>;
 			mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;
 			prebuilt-enable;
 			gce-fast-mtcmos;
@@ -11839,6 +11841,8 @@
 			error-irq-bug-on = <1>;
 			mtk,smmu-shared = <&mm_smmu_srt_normal>;
 			mtk,iommu-dma-axid = <SMMU_L48_GCE_MM>;
+			smmu-tbu = <0>;
+			axid = <0x802>;
 			mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;
 			prebuilt-enable;
 			tf-high-addr = <0x3d533>;
