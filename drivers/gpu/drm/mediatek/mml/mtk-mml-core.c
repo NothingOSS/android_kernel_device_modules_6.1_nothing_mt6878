@@ -11,6 +11,7 @@
 #include <soc/mediatek/smi.h>
 #include <cmdq-util.h>
 #include <linux/sched/clock.h>
+#include <linux/delay.h>
 
 #include "mtk-mml-core.h"
 #include "mtk-mml-buf.h"
@@ -44,7 +45,7 @@ module_param(mml_pkt_dump_p, int, 0644);
 int mml_comp_dump;
 module_param(mml_comp_dump, int, 0644);
 
-int mml_trace;
+int mml_trace = 1;
 module_param(mml_trace, int, 0644);
 
 /* MML DVFS/QoS debug option, set following value:
@@ -2243,7 +2244,7 @@ noinline int tracing_mark_write(char *fmt, ...)
 		return -1;
 	}
 
-	trace_tracing_mark_write(buf);
+	trace_puts(buf);
 #endif
 	return 0;
 }

@@ -112,16 +112,16 @@ extern int mml_trace;
 #define MML_TID_IRQ		0	/* trace on <idle>-0 process */
 
 #define mml_trace_begin_tid(tid, fmt, args...) \
-	tracing_mark_write("B|%d|" fmt, tid, ##args)
+	tracing_mark_write("B|%d|" fmt "\n", tid, ##args)
 
 #define mml_trace_begin(fmt, args...) \
 	mml_trace_begin_tid(current->tgid, fmt, ##args)
 
 #define mml_trace_end() \
-	tracing_mark_write("E")
+	tracing_mark_write("E\n")
 
 #define mml_trace_c(tag, c) \
-	tracing_mark_write("C|%d|%s|%d", current->tgid, tag, c)
+	tracing_mark_write("C|%d|%s|%d\n", current->tgid, tag, c)
 
 #define mml_trace_tag_start(tag) mml_trace_c(tag, 1)
 
