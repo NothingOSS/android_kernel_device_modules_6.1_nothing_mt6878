@@ -975,14 +975,14 @@ static void mtk_iommu_tlb_flush_check(struct mtk_iommu_data *data, bool range)
 }
 
 /* Notice!!: Before use it, must be ensure mtcmos is on */
-static void mtk_iommu_tlb_flush(struct mtk_iommu_data *data)
+static void mtk_iommu_tlb_flush(struct mtk_iommu_data *data, bool check_pm)
 {
 	bool has_pm = !!data->dev->pm_domain;
 	unsigned long flags;
 	int iommu_ids;
 
 	spin_lock_irqsave(&data->tlb_lock, flags);
-	if (has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN)) {
+	if (check_pm && has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN)) {
 		if ((data->plat_data->iommu_type == MM_IOMMU &&
 			pd_sta[data->plat_data->iommu_id] == POWER_OFF_STA) ||
 			(data->plat_data->iommu_type != MM_IOMMU &&
@@ -1023,7 +1023,7 @@ static void mtk_iommu_tlb_flush(struct mtk_iommu_data *data)
 	}
 
 skip_polling:
-	if (has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN) &&
+	if (check_pm && has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN) &&
 		data->plat_data->iommu_type != MM_IOMMU)
 		pm_runtime_put(data->dev);
 	spin_unlock_irqrestore(&data->tlb_lock, flags);
@@ -1038,7 +1038,7 @@ static void mtk_iommu_tlb_flush_all(struct mtk_iommu_data *data)
 	struct list_head *head = data->hw_list;
 
 	for_each_m4u(data, head) {
-		mtk_iommu_tlb_flush(data);
+		mtk_iommu_tlb_flush(data, true);
 	}
 }
 
@@ -3004,7 +3004,7 @@ static int __maybe_unused mtk_iommu_runtime_resume(struct device *dev)
 
 	if (MTK_IOMMU_HAS_FLAG(data->plat_data, PM_OPS_SKIP)) {
 		if (data->plat_data->iommu_type == APU_IOMMU)
-			mtk_iommu_tlb_flush(data);
+			mtk_iommu_tlb_flush(data, false);
 		return 0;
 	}
 
@@ -3050,7 +3050,7 @@ static int __maybe_unused mtk_iommu_runtime_resume(struct device *dev)
 	 * in which case it will lack the necessary tlb flush.
 	 * Thus, make sure to update the tlb after each PM resume.
 	 */
-	mtk_iommu_tlb_flush(data);
+	mtk_iommu_tlb_flush(data, false);
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
 	mtk_iommu_pm_trace(IOMMU_RESUME, data->plat_data->iommu_id,
