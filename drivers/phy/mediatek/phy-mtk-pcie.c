@@ -174,7 +174,7 @@ static int mtk_pcie_phy_exit(struct phy *phy)
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
 
 	clk_bulk_disable_unprepare(pcie_phy->num_clks, pcie_phy->clks);
-	pm_runtime_get_sync(&phy->dev);
+	pm_runtime_put_sync(&phy->dev);
 
 	return 0;
 }
