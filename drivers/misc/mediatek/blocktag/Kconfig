@@ -37,3 +37,12 @@ config MTK_BLOCK_IO_DEBUG_BUILD
 	  depth statistics.
 
 	  If unsure, say N.
+
+config MTK_FUSE_DEBUG
+	bool "Enable Blocktag FUSE Debug Tracer"
+	depends on MTK_BLOCK_IO_TRACER
+	help
+	  If it is enabled, there are some fuse-related trace
+	  events will be created in fuse fs.
+	  Our blocktag module will registered these event and
+	  records the fuse information.

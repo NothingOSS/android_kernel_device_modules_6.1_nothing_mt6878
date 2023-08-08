@@ -43,6 +43,9 @@
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_PM_DEBUG)
 #include "blocktag-pm-trace.h"
 #endif
+#if IS_ENABLED(CONFIG_MTK_FUSE_DEBUG)
+#include "blocktag-fuse-trace.h"
+#endif
 
 #define mtk_btag_pidlog_index(p) \
 	((unsigned long)(__page_to_pfn(p)) - \
@@ -607,10 +610,16 @@ static void mtk_btag_seq_main_info(char **buff, unsigned long *size,
 		}
 	rcu_read_unlock();
 
+#if IS_ENABLED(CONFIG_MTK_FUSE_DEBUG)
+	BTAG_PRINTF(buff, size, seq, "[FUSE]\n");
+	mtk_btag_fuse_show(buff, size, seq);
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_PM_DEBUG)
 	BTAG_PRINTF(buff, size, seq, "[BLK_PM]\n");
 	mtk_btag_blk_pm_show(buff, size, seq);
 #endif
+
 #if IS_ENABLED(CONFIG_MTK_FSCMD_TRACER)
 	if (!buff) {
 		BTAG_PRINTF(buff, size, seq, "[FS_CMD]\n");
@@ -627,6 +636,12 @@ static void mtk_btag_seq_main_info(char **buff, unsigned long *size,
 
 	BTAG_PRINTF(buff, size, seq, "<blocktag core>\n");
 	used_mem += mtk_btag_seq_pidlog_usedmem(buff, size, seq);
+
+#if IS_ENABLED(CONFIG_MTK_FUSE_DEBUG)
+	BTAG_PRINTF(buff, size, seq, "fuse log: %zu bytes\n",
+			sizeof(struct fuse_logs_s));
+	used_mem += sizeof(struct fuse_logs_s);
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_PM_DEBUG)
 	BTAG_PRINTF(buff, size, seq, "blk pm log: %d bytes\n",
@@ -917,6 +932,20 @@ static struct tracepoints_table interests[] = {
 		.name = "writeback_dirty_folio",
 		.func = btag_trace_writeback_dirty_folio
 	},
+#if IS_ENABLED(CONFIG_MTK_FUSE_DEBUG)
+	{
+		.name = "mtk_fuse_nlookup",
+		.func = btag_fuse_nlookup
+	},
+	{
+		.name = "mtk_fuse_queue_forget",
+		.func = btag_fuse_queue_forget
+	},
+	{
+		.name = "mtk_fuse_force_forget",
+		.func = btag_fuse_force_forget
+	},
+#endif
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_PM_DEBUG)
 	{
 		.name = "blk_pre_runtime_suspend_start",
@@ -1134,6 +1163,10 @@ static int __init mtk_btag_init(void)
 	mtk_btag_init_procfs();
 #if IS_ENABLED(CONFIG_MTK_FSCMD_TRACER)
 	mtk_fscmd_init();
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_FUSE_DEBUG)
+	mtk_btag_fuse_init();
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_PM_DEBUG)
