@@ -12967,7 +12967,7 @@
 		      <0 0x1ec32000 0 0x1000>, /* intc core0 */
 		      <0 0x1ec37000 0 0x1000>, /* pwr ctrl */
 		      <0 0x1ec40000 0 0x1000>, /* cfg core1 */
-		      <0 0x1ec52000 0 0x1000>, /* bus tracker dbg */
+		      <0 0x1ec51000 0 0x1000>, /* bus dbg */
 		      <0 0x1ec60000 0 0x40000>, /* llc dbg */
 		      <0 0x1eca5000 0 0x4>, /* cfg_sec dbg */
 		      <0 0x1e820000 0 0x4>, /* mmu dbg */
@@ -12998,7 +12998,7 @@
 			    "vcp_intc_core0",
 			    "vcp_pwr_ctl",
 			    "vcp_cfgreg_core1",
-			    "vcp_bus_tracker",
+			    "vcp_bus_debug",
 			    "vcp_l1creg",
 			    "vcp_cfgreg_sec",
 			    "vcp_cfgreg_mmu",
@@ -13051,6 +13051,7 @@
 		fmeter-type = <5>;	/* fmeter type */
 		mbox-count = <5>;
 		vcp-ee-enable = <1>;
+		bus-debug-num-ports = <18>;
 		/* id, mbox, send_size*/
 		send-table =
 		< 0 0 18>,/* IPI_OUT_VDEC_1 */
