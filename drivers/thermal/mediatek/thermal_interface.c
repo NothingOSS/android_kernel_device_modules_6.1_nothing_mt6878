@@ -45,8 +45,8 @@
 #define is_opp_limited(opp)	(opp > 0 && opp != CSRAM_INIT_VAL)
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
+#define NLA_DATA(na) ((void *)((char *)(na) + NLA_HDRLEN))
 #define SCRN_PROC_NAME_LEN 16
-static int scrn_nl_id = 24;		// netlink id for notifying while screen on/off
 static char scrn_netlink_check[SCRN_PROC_NAME_LEN] = "screen_status";
 
 struct _SCRN_THRM_PACKAGE {
@@ -55,17 +55,42 @@ struct _SCRN_THRM_PACKAGE {
 	char proc_name[SCRN_PROC_NAME_LEN];	// check to avoid hacking
 };
 
-struct _SCRN_THRM_ENABLE {
-	__s32 enable;
-	__s32 pid;
-};
-
 static DEFINE_MUTEX(scrn_nl_enable_lock);
 static DEFINE_MUTEX(scrn_changed_lock);
-static struct sock *scrn_nl_sk;
 static struct _SCRN_THRM_PACKAGE SCRN_Status;
-static struct _SCRN_THRM_ENABLE SCRN_nl_enable;
 static int scrn_status_changed;
+static pid_t scrn_nl_pid;
+
+/* attribute type */
+enum {
+	SCRN_A_UNSPEC,		/* reserved */
+	SCRN_A_VAL,
+	SCRN_A_MSG,
+	__SCRN_A_MAX,
+};
+#define SCRN_A_MAX (__SCRN_A_MAX - 1)
+
+/* commands */
+enum {
+	SCRN_C_UNSPEC,		/* reserved */
+	SCRN_C_ECHO,
+	__SCRN_C_MAX,
+};
+#define SCRN_C_MAX (__SCRN_C_MAX - 1)
+
+/* attribute policy */
+static struct nla_policy scrn_genl_policy[SCRN_A_MAX + 1] = {
+	[SCRN_A_VAL] = { .type = NLA_NUL_STRING },
+	[SCRN_A_MSG] = { .type = NLA_NUL_STRING },
+};
+
+static struct genl_family scrn_gnl_family = {
+	.id			= 0,
+	.hdrsize	= 0,
+	.name		= "thermfamily",
+	.version	= 1,
+	.maxattr	= SCRN_A_MAX,
+};
 #endif
 
 #define CPU_SENSOR_NUM 10
@@ -98,109 +123,138 @@ static struct pid_info pid_info_data;
 static u32 bat_type;
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
-int scrn_nl_send_to_user(void *buf, int size)
+static inline int genl_msg_prepare_usr_msg(u8 cmd, size_t size, pid_t pid, struct sk_buff **skbp)
 {
 	struct sk_buff *skb;
-	struct nlmsghdr *nlh;
+	void *reply;
 
-	int len = NLMSG_SPACE(size);
-	void *data;
+	/* create a new netlink msg */
+	skb = genlmsg_new(size, GFP_KERNEL);
+	if (skb == NULL)
+		return -ENOMEM;
+
+	/* Add a new netlink message to an skb */
+	reply = genlmsg_put(skb, pid, 0, &scrn_gnl_family, 0, cmd);
+	if (!reply) {
+		nlmsg_free(skb);
+		return -ENOMEM;
+	}
+	*skbp = skb;
+
+	return 0;
+}
+
+int scrn_genl_send_to_user(void *data, int len)
+{
+	struct sk_buff *skb;
+	size_t size;
 	int ret;
 
 	mutex_lock(&scrn_nl_enable_lock);
-	if (!SCRN_nl_enable.enable) {
+	if (scrn_nl_pid <= 0) {
 		mutex_unlock(&scrn_nl_enable_lock);
 		return -1;
 	}
 	mutex_unlock(&scrn_nl_enable_lock);
 
-	if (scrn_nl_sk == NULL)
-		return -1;
+	size = nla_total_size(len); /* total length of attribute including padding */
+	pr_info("SCRN Netlink_unicast size = %zu\n", size);
 
-	skb = alloc_skb(len, GFP_ATOMIC);
-	if (!skb)
-		return -1;
-
-	nlh = nlmsg_put(skb, 0, 0, NLMSG_DONE, size+1, 0);
-	if (!nlh) {
-		kfree_skb(skb);
-		return -EMSGSIZE;
+	ret = genl_msg_prepare_usr_msg(SCRN_C_ECHO, size, scrn_nl_pid, &skb);
+	if (ret) {
+		pr_info("SCRN prepare Generic Netlink message failed\n");
+		return ret;
 	}
-	data = NLMSG_DATA(nlh);
-	memcpy(data, buf, size);
-	NETLINK_CB(skb).portid = 0; /* from kernel */
-	NETLINK_CB(skb).dst_group = 0; /* unicast */
 
-	pr_info("SCRN Netlink_unicast size=%d\n", size);
+	nla_put_s32(skb, SCRN_A_VAL, ((struct _SCRN_THRM_PACKAGE *)data)->main_scrn_status);
+	nla_put_s32(skb, SCRN_A_VAL, ((struct _SCRN_THRM_PACKAGE *)data)->sub_scrn_status);
+	nla_put_string(skb, SCRN_A_MSG, ((struct _SCRN_THRM_PACKAGE *)data)->proc_name);
 
-	ret = netlink_unicast(scrn_nl_sk, skb, SCRN_nl_enable.pid, MSG_DONTWAIT);
+	ret = genlmsg_unicast(&init_net, skb, scrn_nl_pid);
 	if (ret < 0) {
-		pr_info("SCRN Send to pid %d failed %d\n", SCRN_nl_enable.pid, ret);
-		return -1;
+		pr_info("SCRN Send to pid %d failed %d\n", scrn_nl_pid, ret);
+		return ret;
 	}
 
-	pr_info("SCRN Netlink_unicast ret=%d\n", ret);
+	pr_info("SCRN Netlink_unicast ret = %d\n", ret);
 
 	return 0;
 }
 
-static void scrn_nl_data_handler(struct sk_buff *skb)
+int scrn_genl_data_handler(struct sk_buff *skb, struct genl_info *info)
 {
-	u32 pid;
-	kuid_t uid;
-	int seq;
-	struct nlmsghdr *nlh;
-	void *data;
-	struct _SCRN_THRM_ENABLE *enable_msg;
+	struct nlmsghdr *nlhdr;
+	struct genlmsghdr *genlhdr;
+	struct nlattr *nla;
+	char *str;
 	int ret = 0;
 
-	nlh = (struct nlmsghdr *)skb->data;
-	pid = NETLINK_CREDS(skb)->pid;
-	uid = NETLINK_CREDS(skb)->uid;
-	seq = nlh->nlmsg_seq;
+	/* receive data from userspace */
+	nlhdr = nlmsg_hdr(skb);
+	genlhdr = nlmsg_data(nlhdr);
+	nla = genlmsg_data(genlhdr);
 
-	data = NLMSG_DATA(nlh);
-	enable_msg = (struct _SCRN_THRM_ENABLE *) NLMSG_DATA(nlh);
+	str = (char *)NLA_DATA(nla);
+	if (strncmp(str, scrn_netlink_check, 13))
+		return 0;
 
+	/* get tid of thermal_core for the userspace to kernelspace */
 	mutex_lock(&scrn_nl_enable_lock);
-	SCRN_nl_enable.enable = enable_msg->enable;
-	SCRN_nl_enable.pid = enable_msg->pid;
+	scrn_nl_pid = nlhdr->nlmsg_pid;
 	mutex_unlock(&scrn_nl_enable_lock);
 
 	mutex_lock(&scrn_changed_lock);
 	if (!scrn_status_changed) {
 		mutex_unlock(&scrn_changed_lock);
-		return;
+		return 0;
 	}
 
-	ret = scrn_nl_send_to_user((void *)&SCRN_Status, sizeof(struct _SCRN_THRM_PACKAGE));
+	/* send data to userspace */
+	ret = scrn_genl_send_to_user((void *)&SCRN_Status, sizeof(struct _SCRN_THRM_PACKAGE));
+	if (ret) {
+		pr_info("genl_msg_send_to_user error!");
+		mutex_unlock(&scrn_changed_lock);
+		return 1;
+	}
 
-	if (ret)
-		pr_info("Failed to send screen status\n");
-	else
-		scrn_status_changed = 0;
+	scrn_status_changed = 0;
 	mutex_unlock(&scrn_changed_lock);
+	return 0;
 }
 
-int scrn_netlink_init(void)
+/* operation definition */
+static struct genl_ops scrn_gnl_ops_echo[] = {
+	{
+		.cmd	= SCRN_C_ECHO,
+		.flags	= 0,
+		.policy	= scrn_genl_policy,
+		.doit	= scrn_genl_data_handler,
+		.dumpit	= NULL,
+	},
+};
+
+int scrn_generic_netlink_init(void)
 {
-	/*get tid of thermal_core for the userspace to kernelspace*/
-	struct netlink_kernel_cfg cfg = {
-		.input  = scrn_nl_data_handler,
-	};
+	int state = 0;
 
-	scrn_nl_sk = NULL;
-	scrn_nl_sk = netlink_kernel_create(&init_net, scrn_nl_id, &cfg);
+	scrn_gnl_family.ops = scrn_gnl_ops_echo;
+	scrn_gnl_family.n_ops = ARRAY_SIZE(scrn_gnl_ops_echo);
 
-	pr_info("SCRN netlink_kernel_create protol= %d\n", scrn_nl_id);
-
-	if (scrn_nl_sk == NULL) {
-		pr_info("SCRN netlink_kernel_create fail\n");
+	state = genl_register_family(&scrn_gnl_family);
+	if (state) {
+		pr_info("genl_register_family error!!!\n");
 		return -1;
 	}
 
+	pr_info("generic netlink register success!!!\n");
 	memcpy(SCRN_Status.proc_name, scrn_netlink_check, strlen(scrn_netlink_check)+1);
 	return 0;
+}
+
+void genetlink_exit(void)
+{
+	genl_unregister_family(&scrn_gnl_family);
+	pr_info("generic netlink unregister.....\n");
 }
 
 int _backlight_changed_event(struct notifier_block *nb, unsigned long event,
@@ -254,9 +308,9 @@ int _backlight_changed_event(struct notifier_block *nb, unsigned long event,
 		return NOTIFY_DONE;
 	}
 
-	ret = scrn_nl_send_to_user((void *)&SCRN_Status, sizeof(struct _SCRN_THRM_PACKAGE));
+	ret = scrn_genl_send_to_user((void *)&SCRN_Status, sizeof(struct _SCRN_THRM_PACKAGE));
 	if (ret)
-		pr_info("Failed to send screen status\n");
+		pr_info("Failed to send screen status");
 	else
 		scrn_status_changed = 0;
 	mutex_unlock(&scrn_changed_lock);
@@ -2189,12 +2243,10 @@ static int therm_intf_probe(struct platform_device *pdev)
 	tm_data.tj_info.min_ttj = 63000;
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
-		ret = scrn_netlink_init();
-		if (ret) {
-			dev_info(&pdev->dev, "Failed to initialize netlink\n");
-			return -ENODEV;
-		}
-
+	ret = scrn_generic_netlink_init();
+	if (ret)
+		dev_info(&pdev->dev, "Failed to initialize generic netlink\n");
+	else
 		mtk_leds_register_notifier(&leds_init_notifier);
 #endif
 
