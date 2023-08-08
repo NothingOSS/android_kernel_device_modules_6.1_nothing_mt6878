@@ -938,10 +938,15 @@ static irqreturn_t mtk_disp_ovl_irq_handler(int irq, void *dev_id)
 	}
 	if ((ovl->id == DDP_COMPONENT_OVL0_2L) && (val & (1 << 15))) {
 		DDPIRQ("[IRQ] %s: OVL target line\n", mtk_dump_comp_str(ovl));
-		DRM_MMP_MARK(ovl0, val, 3);
 		if (mtk_crtc && mtk_crtc->esd_ctx) {
-			atomic_set(&mtk_crtc->esd_ctx->target_time, 1);
-			wake_up_interruptible(&mtk_crtc->esd_ctx->check_task_wq);
+			if (drv_priv && (drv_priv->data->mmsys_id == MMSYS_MT6985 ||
+				drv_priv->data->mmsys_id == MMSYS_MT6897)) {
+				unsigned int index = drm_crtc_index(&mtk_crtc->base);
+
+				CRTC_MMP_MARK(index, target_time, ovl->id, 0xffff0001);
+				atomic_set(&mtk_crtc->esd_ctx->target_time, 1);
+				wake_up_interruptible(&mtk_crtc->esd_ctx->check_task_wq);
+			}
 		}
 	}
 	if (val & (1 << 2)) {
@@ -3795,11 +3800,13 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
-			priv->data->mmsys_id == MMSYS_MT6989 ||
 			priv->data->mmsys_id == MMSYS_MT6897)
 			inten = REG_FLD_VAL(INTEN_FLD_FME_UND_INTEN, 1) |
 					REG_FLD_VAL(INTEN_FLD_FME_CPL_INTEN, 1) |
 					REG_FLD_VAL(INIEN_ROI_TIMING_0, 1);
+		else if (priv->data->mmsys_id == MMSYS_MT6989)
+			inten = REG_FLD_VAL(INTEN_FLD_FME_UND_INTEN, 1) |
+					REG_FLD_VAL(INTEN_FLD_FME_CPL_INTEN, 1);
 		else
 			inten = REG_FLD_VAL(INTEN_FLD_FME_UND_INTEN, 1);
 		cmdq_pkt_write(handle, comp->cmdq_base,

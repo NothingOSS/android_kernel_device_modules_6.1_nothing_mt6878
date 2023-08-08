@@ -93,6 +93,7 @@ struct CRTC_MMP_Events {
 	mmp_event disable_vblank;
 	mmp_event esd_check;
 	mmp_event esd_recovery;
+	mmp_event target_time;
 	mmp_event leave_idle;
 	mmp_event enter_idle;
 	mmp_event idle_async;

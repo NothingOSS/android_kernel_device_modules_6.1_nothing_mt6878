@@ -77,6 +77,7 @@
 #define BUFFER_UNDERRUN_INT_FLAG BIT(12)
 #define INP_UNFINISH_INT_EN BIT(14)
 #define SLEEPIN_ULPS_DONE_INT_FLAG BIT(15)
+#define TARGET_LINE_INT_FLAG BIT(18)
 #define DSI_BUSY BIT(31)
 #define INTSTA_FLD_REG_RD_RDY REG_FLD_MSB_LSB(0, 0)
 #define INTSTA_FLD_REG_CMD_DONE REG_FLD_MSB_LSB(1, 1)
@@ -407,7 +408,7 @@ static unsigned int roi_y_offset, roi_height;
 
 struct mtk_panel_ext *mtk_dsi_get_panel_ext(struct mtk_ddp_comp *comp);
 static void mtk_dsi_set_targetline(struct mtk_ddp_comp *comp,
-				struct cmdq_pkt *handle, unsigned int hacive);
+				struct cmdq_pkt *handle, unsigned int hactive);
 static void DSI_MIPI_deskew(struct mtk_dsi *dsi);
 
 static inline struct mtk_dsi *encoder_to_dsi(struct drm_encoder *e)
@@ -2138,6 +2139,7 @@ static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
 	u32 inten;
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
 	int index = 0;
 
 	if (!mtk_crtc) {
@@ -2154,9 +2156,12 @@ static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
 		inten = BUFFER_UNDERRUN_INT_FLAG | INP_UNFINISH_INT_EN;
 	}
 
-	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
+	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 		inten |= FRAME_DONE_INT_FLAG;
-	else
+		priv = mtk_crtc->base.dev->dev_private;
+		if (priv && priv->data->mmsys_id == MMSYS_MT6989)
+			inten |= TARGET_LINE_INT_FLAG;
+	} else
 		inten |= TE_RDY_INT_FLAG;
 
 	writel(0, dsi->regs + DSI_INTSTA);
@@ -2422,7 +2427,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	static DEFINE_RATELIMIT_STATE(print_rate, HZ, 5); /* HZ = 250 */
 	static DEFINE_RATELIMIT_STATE(mmp_rate, 2, 2); /* 8 ms */
 	bool doze_enabled = 0;
-	unsigned int doze_wait = 0;
+	unsigned int doze_wait = 0, index = 0;
 	struct mtk_drm_private *priv = NULL;
 	struct drm_crtc *crtc = NULL;
 
@@ -2446,6 +2451,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		ret = IRQ_NONE;
 		goto out;
 	}
+	index = drm_crtc_index(&mtk_crtc->base);
 
 	priv = mtk_crtc->base.dev->dev_private;
 	if (!priv) {
@@ -2476,7 +2482,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	 * Read LCM will clear the bit.
 	 */
 	/* do not clear vm command done */
-	status &= 0xffde;
+	status &= 0x4ffde;
 	if (status) {
 		writel(~status, dsi->regs + DSI_INTSTA);
 		if ((status & BUFFER_UNDERRUN_INT_FLAG)
@@ -2635,7 +2641,27 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			}
 		}
 
+		if (status & TARGET_LINE_INT_FLAG) {
+			if (mtk_crtc && mtk_crtc->esd_ctx) {
+				if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
+					dsi->ddp_comp.id == DDP_COMPONENT_DSI0 &&
+					priv->data->mmsys_id == MMSYS_MT6989) {
+					CRTC_MMP_MARK(index, target_time, dsi->ddp_comp.id, 0xffff0001);
+					atomic_set(&mtk_crtc->esd_ctx->target_time, 1);
+					wake_up_interruptible(&mtk_crtc->esd_ctx->check_task_wq);
+				}
+			}
+		}
+
 		if (status & FRAME_DONE_INT_FLAG) {
+			if (mtk_crtc && mtk_crtc->esd_ctx) {
+				if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) &&
+					dsi->ddp_comp.id == DDP_COMPONENT_DSI0) {
+					CRTC_MMP_MARK(index, target_time, dsi->ddp_comp.id, 0xffff0000);
+					atomic_set(&mtk_crtc->esd_ctx->target_time, 0);
+				}
+			}
+
 			drm_trace_tag_mark("dsi_frame_done");
 
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
@@ -8894,20 +8920,20 @@ static void dual_te_init(struct drm_crtc *crtc)
 }
 
 static void mtk_dsi_set_targetline(struct mtk_ddp_comp *comp,
-				struct cmdq_pkt *handle, unsigned int hacive)
+				struct cmdq_pkt *handle, unsigned int hactive)
 {
 	u32 val = 0;
 
-	val = (hacive * 9) / 10;
+	val = (hactive * 9) / 10;
 	val |= TARGET_NL_EN;
 
-	DDPINFO("%s -> %u\n", __func__, val);
-
+	DDPINFO("%s -> h:%u, val:0x%x\n", __func__, hactive, val);
 	if (handle) {
 		mtk_ddp_write(comp, val, DSI_TARGET_NL, handle);
 	} else {
 		writel(val, comp->regs + DSI_TARGET_NL);
 	}
+
 }
 
 static u32 mtk_dsi_get_line_time_ns(struct mtk_dsi *dsi, struct mtk_drm_crtc *mtk_crtc)
@@ -9249,24 +9275,11 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		break;
 
 	case IRQ_LEVEL_IDLE:
-	{
-		unsigned int inten = 0;
-
-		if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && handle) {
-			inten = FRAME_DONE_INT_FLAG;
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DSI_INTEN, 0, inten);
-
-			if (dsi->slave_dsi) {
-				inten = FRAME_DONE_INT_FLAG;
-				cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
-					dsi->slave_dsi->ddp_comp.regs_pa + DSI_INTEN, 0, inten);
-			}
-		}
-	}
 		break;
 	case IRQ_LEVEL_ALL:
 	{
+		struct mtk_drm_crtc *crtc = comp->mtk_crtc;
+		struct mtk_drm_private *priv = (crtc->base).dev->dev_private;
 		unsigned int inten = 0;
 		int index = 0;
 
@@ -9288,13 +9301,13 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			comp->regs_pa + DSI_INTSTA, 0x0, ~0);
 		if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 			inten |= FRAME_DONE_INT_FLAG;
+			if (priv && priv->data->mmsys_id == MMSYS_MT6989)
+				inten |= TARGET_LINE_INT_FLAG;
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_INTEN, inten, inten);
-			if (dsi->slave_dsi) {
-				inten |= FRAME_DONE_INT_FLAG;
+			if (dsi->slave_dsi)
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + DSI_INTEN, inten, inten);
-			}
 
 		} else {
 			inten |= TE_RDY_INT_FLAG;
@@ -9310,6 +9323,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		break;
 	case IRQ_LEVEL_NORMAL:
 	{
+		struct mtk_drm_crtc *crtc = comp->mtk_crtc;
+		struct mtk_drm_private *priv = (crtc->base).dev->dev_private;
 		unsigned int inten = 0;
 		int index = 0;
 
@@ -9331,13 +9346,13 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 			inten |= FRAME_DONE_INT_FLAG;
+			if (priv && priv->data->mmsys_id == MMSYS_MT6989)
+				inten |= TARGET_LINE_INT_FLAG;
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_INTEN, inten, inten);
-			if (dsi->slave_dsi) {
-				inten |= FRAME_DONE_INT_FLAG;
+			if (dsi->slave_dsi)
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + DSI_INTEN, inten, inten);
-			}
 
 		} else {
 			inten |= TE_RDY_INT_FLAG;
