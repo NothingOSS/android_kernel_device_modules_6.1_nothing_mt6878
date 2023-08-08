@@ -904,7 +904,7 @@ void mtk_drm_idlemgr_async_get(struct drm_crtc *crtc, unsigned int user_id)
 	CRTC_MMP_MARK((int)drm_crtc_index(crtc), idle_async,
 		user_id, atomic_read(&idlemgr->async_ref));
 
-	DDPINFO("%s, active:%d count:%d from:%u\n", __func__,
+	DDPINFO("%s, active:%d count:%d user:0x%x\n", __func__,
 		atomic_read(&idlemgr->async_enabled),
 		atomic_read(&idlemgr->async_ref), user_id);
 }
@@ -931,7 +931,7 @@ void mtk_drm_idlemgr_async_put(struct drm_crtc *crtc, unsigned int user_id)
 	CRTC_MMP_MARK((int)drm_crtc_index(crtc), idle_async,
 		user_id, atomic_read(&idlemgr->async_ref));
 
-	DDPINFO("%s, active:%d count:%d from:%u\n", __func__,
+	DDPINFO("%s, active:%d count:%d user:0x%x\n", __func__,
 		atomic_read(&idlemgr->async_enabled),
 		atomic_read(&idlemgr->async_ref), user_id);
 }
@@ -960,10 +960,10 @@ void mtk_drm_idlemgr_async_complete(struct drm_crtc *crtc, unsigned int user_id,
 		cb->data = cb_data;
 		spin_lock_irqsave(&idlemgr->async_lock, flags);
 		list_add_tail(&cb->link, &idlemgr->async_cb_list);
-		idlemgr->async_cb_count++;
+		atomic_inc(&idlemgr->async_cb_count);
 		CRTC_MMP_MARK((int)drm_crtc_index(crtc), idle_async_cb,
 			(unsigned long)cb_data->handle,
-			idlemgr->async_cb_count | (user_id << 16));
+			atomic_read(&idlemgr->async_cb_count) | (user_id << 16));
 		spin_unlock_irqrestore(&idlemgr->async_lock, flags);
 		wake_up_interruptible(&idlemgr->async_handler_wq);
 	}
@@ -1237,19 +1237,80 @@ static bool mtk_planes_is_yuv_fmt(struct drm_crtc *crtc)
 	return false;
 }
 
+static void mtk_drm_destroy_async_cb(struct mtk_drm_async_cb *cb,
+		struct drm_crtc *crtc, bool wait)
+{
+	struct mtk_drm_async_cb_data *cb_data;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
+	unsigned long flags = 0;
+
+	if (cb == NULL) {
+		DDPMSG("%s, invalid async callback data\n", __func__);
+		return;
+	}
+	cb_data = cb->data;
+
+	if (cb_data != NULL) {
+		DDPINFO("%s,async complete user:0x%x, cb_count:%d, wait:%d\n", __func__,
+			cb_data->user_id, atomic_read(&idlemgr->async_cb_count), wait);
+		if (wait)
+			cmdq_pkt_wait_complete(cb_data->handle);
+
+		spin_lock_irqsave(&idlemgr->async_lock, flags);
+		list_del(&cb->link);
+		atomic_dec(&idlemgr->async_cb_count);
+		CRTC_MMP_MARK((int)drm_crtc_index(crtc), idle_async_cb,
+			(unsigned long)cb_data->handle,
+			atomic_read(&idlemgr->async_cb_count) | (cb_data->user_id << 16));
+		spin_unlock_irqrestore(&idlemgr->async_lock, flags);
+
+		if (cb_data->free_handle)
+			cmdq_pkt_destroy(cb_data->handle);
+		cb_data->handle = NULL;
+		kfree(cb_data);
+	}
+
+	cb->data = NULL;
+	kfree(cb);
+}
+
+static void mtk_drm_clear_async_cb_list(struct drm_crtc *crtc)
+{
+	struct mtk_drm_async_cb *cb = NULL, *tmp = NULL;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
+	unsigned long flags = 0;
+
+	spin_lock_irqsave(&idlemgr->async_lock, flags);
+	if (atomic_read(&idlemgr->async_cb_count) == 0 &&
+		list_empty(&idlemgr->async_cb_list)) {
+		spin_unlock_irqrestore(&idlemgr->async_lock, flags);
+		return;
+	}
+	spin_unlock_irqrestore(&idlemgr->async_lock, flags);
+
+	DDPINFO("%s: async count:%d\n",
+		__func__, atomic_read(&idlemgr->async_cb_count));
+	list_for_each_entry_safe(cb, tmp, &idlemgr->async_cb_list, link) {
+		mtk_drm_destroy_async_cb(cb, crtc, false);
+		cb = NULL;
+	}
+	atomic_set(&idlemgr->async_cb_count, 0);
+}
+
 static int mtk_drm_async_handler_thread(void *data)
 {
 	struct drm_crtc *crtc = (struct drm_crtc *)data;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
-	struct mtk_drm_async_cb_data *cb_data = NULL;
 	struct mtk_drm_async_cb *cb = NULL;
 	unsigned long flags = 0;
 	int ret = 0;
 
 	while (!kthread_should_stop()) {
 		ret = wait_event_interruptible(idlemgr->async_handler_wq,
-			idlemgr->async_cb_count > 0 || kthread_should_stop());
+			atomic_read(&idlemgr->async_cb_count) > 0 || kthread_should_stop());
 
 		spin_lock_irqsave(&idlemgr->async_lock, flags);
 		if (list_empty(&idlemgr->async_cb_list)) {
@@ -1260,31 +1321,8 @@ static int mtk_drm_async_handler_thread(void *data)
 		cb = list_first_entry(&idlemgr->async_cb_list, struct mtk_drm_async_cb, link);
 		spin_unlock_irqrestore(&idlemgr->async_lock, flags);
 
-		if (cb->data != NULL) {
-			cb_data = cb->data;
-			DDPINFO("%s,async handling of master:%u\n", __func__,
-				cb_data->user_id);
-			cmdq_pkt_wait_complete(cb_data->handle);
-
-			spin_lock_irqsave(&idlemgr->async_lock, flags);
-			list_del(&cb->link);
-			idlemgr->async_cb_count--;
-			CRTC_MMP_MARK((int)drm_crtc_index(crtc), idle_async_cb,
-				(unsigned long)cb_data->handle,
-				idlemgr->async_cb_count | (cb_data->user_id << 16));
-			spin_unlock_irqrestore(&idlemgr->async_lock, flags);
-
-			if (cb_data->free_handle)
-				cmdq_pkt_destroy(cb_data->handle);
-			cb_data->handle = NULL;
-			kfree(cb_data);
-			cb_data = NULL;
-
-			kfree(cb);
-			cb = NULL;
-		} else {
-			DDPMSG("%s, invalid async callback data\n", __func__);
-		}
+		mtk_drm_destroy_async_cb(cb, crtc, true);
+		cb = NULL;
 	}
 
 	return 0;
@@ -1504,7 +1542,7 @@ int mtk_drm_idlemgr_init(struct drm_crtc *crtc, int index)
 		idlemgr->async_handler_task =
 			kthread_create(mtk_drm_async_handler_thread, crtc, name);
 		init_waitqueue_head(&idlemgr->async_handler_wq);
-		idlemgr->async_cb_count = 0;
+		atomic_set(&idlemgr->async_cb_count, 0);
 		INIT_LIST_HEAD(&idlemgr->async_cb_list);
 		spin_lock_init(&idlemgr->async_lock);
 		wake_up_process(idlemgr->async_handler_task);
@@ -1855,6 +1893,10 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 					"async_wait0", 41, perf_string, true);
 	mtk_drm_idle_async_wait(crtc, 0, "reset_async");
+
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"clear_cb", 42, perf_string, true);
+	mtk_drm_clear_async_cb_list(crtc);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"enable_conn", 5, perf_string, true);
