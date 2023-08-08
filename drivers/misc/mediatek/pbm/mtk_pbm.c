@@ -982,6 +982,7 @@ static int pbm_probe(struct platform_device *pdev)
 			if (!i) {
 				pr_info("%s: CPUFreq table not found or has no valid entries\n",
 					 __func__);
+				kfree(pbm_policy);
 				return -ENODEV;
 			}
 
