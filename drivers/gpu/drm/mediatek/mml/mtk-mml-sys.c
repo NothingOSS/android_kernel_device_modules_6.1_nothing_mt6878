@@ -1225,6 +1225,11 @@ static void sys_ddp_disable_locked(const struct mml_topology_path *path,
 	struct mml_comp *comp;
 	u32 i;
 
+	if (!path->mmlsys) {
+		mml_err("%s fail to get path->mmlsys", __func__);
+		return;
+	}
+
 	call_hw_op(path->mmlsys, mminfra_pw_enable);
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
