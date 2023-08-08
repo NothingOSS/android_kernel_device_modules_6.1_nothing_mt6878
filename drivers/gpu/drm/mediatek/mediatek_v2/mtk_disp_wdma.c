@@ -276,6 +276,9 @@ static irqreturn_t mtk_wdma_irq_handler(int irq, void *dev_id)
 	if (IS_ERR_OR_NULL(wdma))
 		return IRQ_NONE;
 
+	if (wdma->mtk_crtc == NULL || wdma->mtk_crtc->base.dev == NULL)
+		return IRQ_NONE;
+
 	if (mtk_drm_top_clk_isr_get("wdma_irq") == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
 		return IRQ_NONE;
