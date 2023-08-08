@@ -17,6 +17,7 @@ struct mdw_rv_msg_cmd {
 	/* ids */
 	uint64_t session_id;
 	uint64_t cmd_id;
+	uint64_t cmd_exec_id;
 	uint32_t pid;
 	uint32_t tgid;
 	/* params */
@@ -26,6 +27,7 @@ struct mdw_rv_msg_cmd {
 	uint32_t fastmem_ms;
 	uint32_t power_plcy;
 	uint32_t power_dtime;
+	uint32_t power_etime;
 	uint32_t app_type;
 	uint32_t num_subcmds;
 	uint32_t subcmds_offset;
@@ -92,6 +94,7 @@ static void mdw_rv_cmd_print(struct mdw_rv_msg_cmd *rc)
 {
 	mdw_cmd_debug("-------------------------\n");
 	mdw_cmd_debug("rc kid(0x%llx)\n", rc->cmd_id);
+	mdw_cmd_debug(" cmd_exec_id = 0x%llx\n", rc->cmd_exec_id);
 	mdw_cmd_debug(" session = 0x%llx\n", rc->session_id);
 	mdw_cmd_debug(" priority = %u\n", rc->priority);
 	mdw_cmd_debug(" hardlimit = %u\n", rc->hardlimit);
@@ -99,6 +102,7 @@ static void mdw_rv_cmd_print(struct mdw_rv_msg_cmd *rc)
 	mdw_cmd_debug(" fastmem_ms = %u\n", rc->fastmem_ms);
 	mdw_cmd_debug(" power_plcy = %u\n", rc->power_plcy);
 	mdw_cmd_debug(" power_dtime = %u\n", rc->power_dtime);
+	mdw_cmd_debug(" power_etime = %u\n", rc->power_etime);
 	mdw_cmd_debug(" app_type = %u\n", rc->app_type);
 	mdw_cmd_debug(" num_subcmds = %u\n", rc->num_subcmds);
 	mdw_cmd_debug(" subcmds_offset = 0x%x\n", rc->subcmds_offset);
@@ -254,6 +258,7 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 	rmc->fastmem_ms = c->fastmem_ms;
 	rmc->power_plcy = c->power_plcy;
 	rmc->power_dtime = c->power_dtime;
+	rmc->power_etime = c->power_etime;
 	rmc->app_type = c->app_type;
 	rmc->num_subcmds = c->num_subcmds;
 	rmc->num_cmdbufs = c->num_cmdbufs;
@@ -266,6 +271,7 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 	rmc->link_offset = link_ofs;
 	rmc->inference_ms = c->inference_ms;
 	rmc->tolerance_ms = c->tolerance_ms;
+	rmc->cmd_exec_id = c->cmd_exec_id;
 	mdw_rv_cmd_print(rmc);
 
 	/* copy links */

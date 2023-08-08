@@ -27,6 +27,11 @@
 	c->num_subcmds, c->cmdbufs, c->num_cmdbufs, c->size_cmdbufs, \
 	c->pid, c->tgid, task_pid_nr(current))
 
+/* 64-bit execid : [world(4bit) | session_id(28bit) | counter(32bit)] */
+#define mdw_world (1ULL)
+#define MDW_CMD_GEN_EXECID(session, cnt) ((mdw_world << 60) | ((session & 0xfffffff) << 32) \
+	 | (cnt & 0xffffffff))
+
 static void mdw_cmd_cmdbuf_out(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 {
 	struct mdw_subcmd_kinfo *ksubcmd = NULL;
@@ -1420,6 +1425,7 @@ static struct mdw_cmd *mdw_cmd_create(struct mdw_fpriv *mpriv,
 	c->power_save = in->exec.power_save;
 	c->power_plcy = in->exec.power_plcy;
 	c->power_dtime = in->exec.power_dtime;
+	c->power_etime = in->exec.power_etime;
 	c->fastmem_ms = in->exec.fastmem_ms;
 	c->app_type = in->exec.app_type;
 	c->num_subcmds = in->exec.num_subcmds;
@@ -1695,6 +1701,9 @@ exec:
 	if (is_running)
 		mdw_cmd_put(c);
 
+	/* generate cmd exec id */
+	c->cmd_exec_id = MDW_CMD_GEN_EXECID((uint64_t) mpriv, mpriv->counter++);
+
 	/* check wait fence from other module */
 	mdw_flw_debug("s(0x%llx)c(0x%llx) wait fence(%d)...\n",
 			(uint64_t)c->mpriv, c->kid, wait_fd);
@@ -1726,7 +1735,9 @@ exec:
 	args->out.exec.id = c->id;
 	args->out.exec.cmd_done_usr = c->cmd_state;
 	args->out.exec.ext_id = c->ext_id;
-	mdw_flw_debug("async fd(%d) id(%d) extid(0x%llx)\n", fd, c->id, c->ext_id);
+	args->out.exec.cmd_exec_id = c->cmd_exec_id;
+	mdw_flw_debug("async fd(%d) id(%d) extid(0x%llx) cmd_exec_id(0x%llx)\n",
+			 fd, c->id, c->ext_id, c->cmd_exec_id);
 	mutex_unlock(&c->mtx);
 	goto out;
 

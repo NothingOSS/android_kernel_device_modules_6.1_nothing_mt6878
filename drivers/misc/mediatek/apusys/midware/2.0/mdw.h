@@ -315,6 +315,9 @@ struct mdw_fpriv {
 	/* cmd history */
 	struct list_head ch_list;
 	uint32_t cmd_cnt;
+
+	/* cmd execute id counter */
+	uint32_t counter;
 };
 
 struct mdw_exec_info {
@@ -375,6 +378,7 @@ struct mdw_cmd {
 	uint32_t power_save;
 	uint32_t power_plcy;
 	uint32_t power_dtime;
+	uint32_t power_etime;
 	uint32_t fastmem_ms;
 	uint32_t app_type;
 	uint32_t num_subcmds;
@@ -424,6 +428,9 @@ struct mdw_cmd {
 	/* cmd poll */
 	uint32_t cmd_state;
 	struct completion cmplt;
+
+	/* cmd exec id */
+	uint64_t cmd_exec_id;
 };
 
 struct mdw_dev_func {

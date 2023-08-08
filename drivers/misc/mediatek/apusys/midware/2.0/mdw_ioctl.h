@@ -246,6 +246,7 @@ struct mdw_cmd_in {
 			uint32_t power_save;
 			uint32_t power_plcy;
 			uint32_t power_dtime;
+			uint32_t power_etime;
 			uint32_t app_type;
 			uint32_t flags;
 			uint32_t num_subcmds;
@@ -270,6 +271,7 @@ struct mdw_cmd_out {
 			uint64_t fence;
 			uint64_t cmd_done_usr;
 			uint64_t ext_id;
+			uint64_t cmd_exec_id;
 		} exec;
 	};
 };
