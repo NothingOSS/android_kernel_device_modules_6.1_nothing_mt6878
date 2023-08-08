@@ -10955,6 +10955,9 @@
 			dlo0-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY0_SIZE>;
 			dlo2-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY2_SIZE>;
 			operating-points-v2 = <&opp_table_disp>;
+
+			event-dpc-prete = /bits/ 16 <CMDQ_EVENT_DPC_DT34_DONE>;
+			dpc-base = <0x1c000000>;
 		};
 
 		mml_mutex0: mml-mutex0@1f801000 {
