@@ -256,6 +256,15 @@ void cmdq_error_irq_debug(void *chan)
 	cmdq_mbox_dump_gce_req(chan);
 }
 
+bool cmdq_check_tf(struct device *dev,
+	u32 sid, u32 tbu, u32 *axids)
+{
+	struct mtk_smmu_fault_param out_param;
+
+	return mtk_smmu_tf_detect(MM_SMMU, dev,
+		sid, tbu, axids, 1, &out_param);
+}
+
 struct cmdq_util_platform_fp platform_fp = {
 	.thread_module_dispatch = cmdq_thread_module_dispatch,
 	.event_module_dispatch = cmdq_event_module_dispatch,
@@ -266,6 +275,7 @@ struct cmdq_util_platform_fp platform_fp = {
 	.thread_ddr_module = cmdq_thread_ddr_module,
 	.hw_trace_thread = cmdq_mbox_hw_trace_thread,
 	.dump_error_irq_debug = cmdq_error_irq_debug,
+	.check_tf = cmdq_check_tf,
 };
 
 static int __init cmdq_platform_init(void)

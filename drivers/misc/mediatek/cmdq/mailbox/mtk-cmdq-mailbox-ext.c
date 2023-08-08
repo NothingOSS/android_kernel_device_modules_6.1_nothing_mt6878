@@ -264,6 +264,10 @@ struct cmdq {
 	bool		event_debug;
 	u32			event_dump_range[2];
 	u32			event_clr_range[2];
+	u32			sid;
+	u32			axid;
+	u32			tbu;
+	bool		smmu_v3_enabled;
 };
 
 struct gce_plat {
@@ -1285,6 +1289,10 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 	s32 err = 0;
 	unsigned long flags;
 	bool task_done = false;
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+	bool ret = false;
+	u32 axid[1];
+#endif
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	u64 start = sched_clock(), end[4];
 	u32 end_cnt = 0;
@@ -1344,6 +1352,20 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 
 		cmdq_thread_dump_pkt_by_pc(thread, curr_pa, true);
 	}
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+	if (cmdq->smmu_v3_enabled) {
+		axid[0] = cmdq->axid;
+		ret = cmdq_util_controller->check_tf(cmdq->mbox.dev,
+			cmdq->sid, cmdq->tbu, axid);
+		if (ret) {
+			cmdq_err("mtk_smmu_tf_detect hwid:%d sid:0x%x axid:0x%x tbu:%x ret:%d",
+				cmdq->hwid, cmdq->sid, cmdq->axid, cmdq->tbu, ret);
+			cmdq_set_alldump(true);
+			cmdq_thread_dump_pkt_by_pc(thread, curr_pa, true);
+			cmdq_set_alldump(false);
+		}
+	}
+#endif
 
 	cmdq_log("task status %pa~%pa err:%d",
 		&curr_pa, &task_end_pa, err);
@@ -2832,6 +2854,19 @@ static int cmdq_probe(struct platform_device *pdev)
 	of_property_read_u32(dev->of_node, "tf-high-addr", &cmdq->tf_high_addr);
 	cmdq_msg("%s tf_high_addr:%x", __func__, cmdq->tf_high_addr);
 #endif
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+	cmdq->smmu_v3_enabled = smmu_v3_enabled();
+	cmdq_msg("%s smmu_v3_enable:%d", __func__, cmdq->smmu_v3_enabled);
+#endif
+	if (!of_parse_phandle_with_args(
+		cmdq->share_dev->of_node, "iommus", "#iommu-cells", 0, &args))
+		cmdq->sid = args.args[0];
+	if (of_property_read_u32(dev->of_node, "axid", &cmdq->axid))
+		cmdq->axid = 0;
+	if (of_property_read_u32(dev->of_node, "smmu-tbu", &cmdq->tbu))
+		cmdq->tbu = 0;
+	cmdq_msg("%s sid:%x axid:%x tbu:%x", __func__, cmdq->sid, cmdq->axid, cmdq->tbu);
 
 	if (!of_parse_phandle_with_args(
 		dev->of_node, "iommus", "#iommu-cells", 0, &args)) {

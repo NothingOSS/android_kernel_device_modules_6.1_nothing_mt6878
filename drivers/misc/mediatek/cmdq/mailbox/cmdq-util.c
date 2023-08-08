@@ -159,6 +159,7 @@ void cmdq_util_set_fp(struct cmdq_util_platform_fp *cust_cmdq_platform)
 	helper_fp.thread_module_dispatch = cmdq_platform->thread_module_dispatch;
 	helper_fp.hw_trace_thread = cmdq_platform->hw_trace_thread;
 	helper_fp.dump_error_irq_debug = cmdq_platform->dump_error_irq_debug;
+	controller_fp.check_tf = cmdq_platform->check_tf;
 	for (i = 0; i < util.mbox_cnt; i++)
 		cmdq_mbox_set_hw_id(util.cmdq_mbox[i]);
 }

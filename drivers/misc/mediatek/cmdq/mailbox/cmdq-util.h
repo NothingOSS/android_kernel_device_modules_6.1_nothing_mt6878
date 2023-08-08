@@ -164,6 +164,8 @@ typedef const char *(*platform_util_hw_name)(void *chan);
 typedef bool (*platform_thread_ddr_module)(const s32 thread);
 typedef bool (*platform_hw_trace_thread)(void *chan);
 typedef void (*platform_error_irq_debug)(void *chan);
+typedef bool (*platform_check_tf)(struct device	*dev,
+	u32 sid, u32 tbu, u32 *axids);
 
 struct cmdq_util_platform_fp {
 	platform_thread_module_dispatch thread_module_dispatch;
@@ -175,6 +177,7 @@ struct cmdq_util_platform_fp {
 	platform_thread_ddr_module thread_ddr_module;
 	platform_hw_trace_thread hw_trace_thread;
 	platform_error_irq_debug dump_error_irq_debug;
+	platform_check_tf check_tf;
 };
 
 void cmdq_util_set_fp(struct cmdq_util_platform_fp *cust_cmdq_platform);

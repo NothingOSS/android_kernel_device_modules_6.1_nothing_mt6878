@@ -15,9 +15,12 @@
 typedef void (*util_dump_dbg_reg)(void *chan);
 typedef u8 (*util_track_ctrl)(void *cmdq, phys_addr_t base, bool sec);
 typedef bool (*util_thread_ddr_module)(const s32 thread);
+typedef bool (*util_check_tf)(struct device	*dev,
+	u32 sid, u32 tbu, u32 *axids);
 struct cmdq_util_controller_fp {
 	util_track_ctrl track_ctrl;
 	util_thread_ddr_module thread_ddr_module;
+	util_check_tf check_tf;
 };
 
 typedef bool (*cmdq_mminfra_power)(void);
