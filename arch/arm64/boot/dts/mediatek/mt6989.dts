@@ -3232,6 +3232,7 @@
 		vmmrc-mask-bit = <8>;
 		vmmrc-on-table = <0x2e788>;
 		vmmrc-off-table = <0x2e7a8>;
+		mminfra-base = <0x1e800000>;
 	};
 
 	mtk_apu_mem_code: mtk-apu-mem-code {
