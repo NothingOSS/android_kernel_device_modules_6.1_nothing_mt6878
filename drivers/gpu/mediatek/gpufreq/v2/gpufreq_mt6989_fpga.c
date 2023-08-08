@@ -172,7 +172,7 @@ int __gpufreq_get_idx_by_pstack(unsigned int power)
 	return -1;
 }
 
-void __gpufreq_dump_infra_status(void)
+void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 {
 	GPUFREQ_LOGI("== [GPUFREQ INFRA STATUS] ==");
 	GPUFREQ_LOGI("MFG0=0x%08x, MFG1=0x%08x, MFG37=0x%08x, MFG2=0x%08x, MFG3=0x%08x",

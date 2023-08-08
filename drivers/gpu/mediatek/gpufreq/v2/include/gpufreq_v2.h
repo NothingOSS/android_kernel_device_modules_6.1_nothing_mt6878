@@ -24,6 +24,7 @@
 #define GPUFREQ_MAX_ADJ_NUM             (10)
 #define GPUFREQ_MAX_REG_NUM             (70)
 #define GPUFREQ_MAX_GPM3_NUM            (20)
+#define GPUFREQ_DUMP_INFRA_SIZE         (8192)
 
 /**************************************************
  * GPUFREQ Log Setting
@@ -34,6 +35,12 @@
 	pr_debug(GPUFERQ_TAG"[WARN]@%s: "fmt"\n", __func__, ##args)
 #define GPUFREQ_LOGI(fmt, args...) \
 	pr_info(GPUFERQ_TAG"[INFO]@%s: "fmt"\n", __func__, ##args)
+#define GPUFREQ_LOGB(buf, len, size, fmt, args...) \
+	{ \
+		pr_info(GPUFERQ_TAG"[INFO]@%s: "fmt"\n", __func__, ##args); \
+		if (buf && len) \
+			*len += snprintf(buf + *len, size - *len, fmt"\n", ##args); \
+	}
 
 #if GPUFREQ_DEBUG_ENABLE
 	#define GPUFREQ_LOGD(fmt, args...) \
@@ -431,7 +438,7 @@ struct gpufreq_platform_fp {
 	unsigned int (*get_shader_present)(void);
 	int (*power_control)(enum gpufreq_power_state power);
 	int (*active_sleep_control)(enum gpufreq_power_state power);
-	void (*dump_infra_status)(void);
+	void (*dump_infra_status)(char *log_buf, int *log_len, int log_size);
 	void (*dump_power_tracker_status)(void);
 	void (*set_mfgsys_config)(enum gpufreq_config_target target, enum gpufreq_config_value val);
 	struct gpufreq_core_mask_info *(*get_core_mask_table)(void);
@@ -523,6 +530,7 @@ unsigned int gpufreq_get_dvfs_state(void);
 unsigned int gpufreq_get_shader_present(void);
 unsigned int gpufreq_get_segment_id(void);
 void gpufreq_dump_infra_status(void);
+void gpufreq_dump_infra_status_logbuffer(char *log_buf, int *log_len, int log_size);
 unsigned int gpufreq_get_cur_freq(enum gpufreq_target target);
 unsigned int gpufreq_get_cur_volt(enum gpufreq_target target);
 unsigned int gpufreq_get_cur_vsram(enum gpufreq_target target);

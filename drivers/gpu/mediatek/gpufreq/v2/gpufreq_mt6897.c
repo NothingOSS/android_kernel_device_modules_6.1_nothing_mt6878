@@ -1052,13 +1052,15 @@ int __gpufreq_fix_custom_freq_volt_stack(unsigned int freq, unsigned int volt)
 	return GPUFREQ_EINVAL;
 }
 
-void __gpufreq_dump_infra_status(void)
+void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 {
 	if (!g_gpufreq_ready)
 		return;
 
-	GPUFREQ_LOGI("== [GPUFREQ INFRA STATUS] ==");
-	GPUFREQ_LOGI("[Clk] MFG_PLL: %d, MFG_SEL: 0x%lx, MFGSC_PLL: %d, MFGSC_SEL: 0x%lx",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"== [GPUFREQ INFRA STATUS] ==");
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"[Clk] MFG_PLL: %d, MFG_SEL: 0x%lx, MFGSC_PLL: %d, MFGSC_SEL: 0x%lx",
 		__gpufreq_get_real_fgpu(), DRV_Reg32(TOPCK_CLK_CFG_30) & MFG_SEL_MFGPLL_MASK,
 		__gpufreq_get_real_fstack(), DRV_Reg32(TOPCK_CLK_CFG_30) & MFGSC_SEL_MFGPSCLL_MASK);
 
@@ -1069,7 +1071,8 @@ void __gpufreq_dump_infra_status(void)
 
 	/* MFG_DEBUG_SEL */
 	/* MFG_DEBUG_TOP */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[MFG]",
 		0x13FBF170, DRV_Reg32(MFG_DEBUG_SEL),
 		0x13FBF178, DRV_Reg32(MFG_DEBUG_TOP));
@@ -1077,7 +1080,8 @@ void __gpufreq_dump_infra_status(void)
 	/* MFG_RPC_SLP_PROT_EN_SET */
 	/* MFG_RPC_SLP_PROT_EN_CLR */
 	/* MFG_RPC_SLP_PROT_EN_STA */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[MFG]",
 		0x13F91040, DRV_Reg32(MFG_RPC_SLP_PROT_EN_SET),
 		0x13F91044, DRV_Reg32(MFG_RPC_SLP_PROT_EN_CLR),
@@ -1085,7 +1089,8 @@ void __gpufreq_dump_infra_status(void)
 
 	/* MFG_RPC_AO_CLK_CFG */
 	/* MFG_RPC_IPS_SES_PWR_CON */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[MFG]",
 		0x13F91034, DRV_Reg32(MFG_RPC_AO_CLK_CFG),
 		0x13F910FC, DRV_Reg32(MFG_RPC_IPS_SES_PWR_CON));
@@ -1094,7 +1099,8 @@ void __gpufreq_dump_infra_status(void)
 	/* NTH_MFG_EMI0_GALS_SLV_DBG */
 	/* STH_MFG_EMI1_GALS_SLV_DBG */
 	/* STH_MFG_EMI0_GALS_SLV_DBG */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[EMI]",
 		0x1021C82C, DRV_Reg32(NTH_MFG_EMI1_GALS_SLV_DBG),
 		0x1021C830, DRV_Reg32(NTH_MFG_EMI0_GALS_SLV_DBG),
@@ -1105,7 +1111,8 @@ void __gpufreq_dump_infra_status(void)
 	/* NTH_APU_EMI0_GALS_SLV_DBG */
 	/* STH_APU_EMI1_GALS_SLV_DBG */
 	/* STH_APU_EMI0_GALS_SLV_DBG */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[EMI]",
 		0x1021C824, DRV_Reg32(NTH_APU_EMI1_GALS_SLV_DBG),
 		0x1021C828, DRV_Reg32(NTH_APU_EMI0_GALS_SLV_DBG),
@@ -1116,7 +1123,8 @@ void __gpufreq_dump_infra_status(void)
 	/* NTH_M6M7_IDLE_BIT_EN_0 */
 	/* STH_M6M7_IDLE_BIT_EN_1 */
 	/* STH_M6M7_IDLE_BIT_EN_0 */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[EMI]",
 		0x10270228, DRV_Reg32(NTH_M6M7_IDLE_BIT_EN_1),
 		0x1027022C, DRV_Reg32(NTH_M6M7_IDLE_BIT_EN_0),
@@ -1127,7 +1135,8 @@ void __gpufreq_dump_infra_status(void)
 	/* NTH_GLITCH_PROT_RDY */
 	/* STH_SLEEP_PROT_MASK */
 	/* STH_GLITCH_PROT_RDY */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[EMI]",
 		0x10270000, DRV_Reg32(NTH_SLEEP_PROT_MASK),
 		0x1027008C, DRV_Reg32(NTH_GLITCH_PROT_RDY),
@@ -1138,7 +1147,8 @@ void __gpufreq_dump_infra_status(void)
 	/* EMI_MD_HRT_UGT_CNT */
 	/* EMI_DISP_HRT_UGT_CNT */
 	/* EMI_CAM_HRT_UGT_CNT */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[EMI]",
 		0x10219860, DRV_Reg32(EMI_MD_LAT_HRT_UGT_CNT),
 		0x10219864, DRV_Reg32(EMI_MD_HRT_UGT_CNT),
@@ -1148,7 +1158,8 @@ void __gpufreq_dump_infra_status(void)
 	/* EMI_MD_WR_LAT_HRT_UGT_CNT */
 	/* EMI_MDMCU_HIGH_LAT_UGT_CNT */
 	/* EMI_MDMCU_HIGH_WR_LAT_UGT_CNT */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[EMI]",
 		0x102199A4, DRV_Reg32(EMI_MD_WR_LAT_HRT_UGT_CNT),
 		0x10219CC4, DRV_Reg32(EMI_MDMCU_HIGH_LAT_UGT_CNT),
@@ -1158,7 +1169,8 @@ void __gpufreq_dump_infra_status(void)
 	/* SEMI_MD_HRT_UGT_CNT */
 	/* SEMI_DISP_HRT_UGT_CNT */
 	/* SEMI_CAM_HRT_UGT_CNT */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[EMI]",
 		0x1021D860, DRV_Reg32(SEMI_MD_LAT_HRT_UGT_CNT),
 		0x1021D864, DRV_Reg32(SEMI_MD_HRT_UGT_CNT),
@@ -1168,7 +1180,8 @@ void __gpufreq_dump_infra_status(void)
 	/* SEMI_MD_WR_LAT_HRT_UGT_CNT */
 	/* SEMI_MDMCU_HIGH_LAT_UGT_CNT */
 	/* SEMI_MDMCU_HIGH_WR_LAT_UGT_CNT */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[EMI]",
 		0x1021D9A4, DRV_Reg32(SEMI_MD_WR_LAT_HRT_UGT_CNT),
 		0x1021DCC4, DRV_Reg32(SEMI_MDMCU_HIGH_LAT_UGT_CNT),
@@ -1178,7 +1191,8 @@ void __gpufreq_dump_infra_status(void)
 	/* NEMI_MI32_SMI_SUB_DEBUG_S1 */
 	/* NEMI_MI32_SMI_SUB_DEBUG_S2 */
 	/* NEMI_MI32_SMI_SUB_DEBUG_M0 */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[EMI_SMI]",
 		0x1025E400, DRV_Reg32(NEMI_MI32_SMI_SUB_DEBUG_S0),
 		0x1025E404, DRV_Reg32(NEMI_MI32_SMI_SUB_DEBUG_S1),
@@ -1189,7 +1203,8 @@ void __gpufreq_dump_infra_status(void)
 	/* NEMI_MI33_SMI_SUB_DEBUG_S1 */
 	/* NEMI_MI33_SMI_SUB_DEBUG_S2 */
 	/* NEMI_MI33_SMI_SUB_DEBUG_M0 */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[EMI_SMI]",
 		0x1025F400, DRV_Reg32(NEMI_MI33_SMI_SUB_DEBUG_S0),
 		0x1025F404, DRV_Reg32(NEMI_MI33_SMI_SUB_DEBUG_S1),
@@ -1199,7 +1214,8 @@ void __gpufreq_dump_infra_status(void)
 	/* SEMI_MI32_SMI_SUB_DEBUG_S0 */
 	/* SEMI_MI32_SMI_SUB_DEBUG_S1 */
 	/* SEMI_MI32_SMI_SUB_DEBUG_M0 */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[EMI_SMI]",
 		0x10309400, DRV_Reg32(SEMI_MI32_SMI_SUB_DEBUG_S0),
 		0x10309404, DRV_Reg32(SEMI_MI32_SMI_SUB_DEBUG_S1),
@@ -1210,7 +1226,8 @@ void __gpufreq_dump_infra_status(void)
 	/* SEMI_MI33_SMI_SUB_DEBUG_S1 */
 	/* SEMI_MI33_SMI_SUB_DEBUG_S2 */
 	/* SEMI_MI33_SMI_SUB_DEBUG_M0 */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[EMI_SMI]",
 		0x1030A400, DRV_Reg32(SEMI_MI33_SMI_SUB_DEBUG_S0),
 		0x1030A404, DRV_Reg32(SEMI_MI33_SMI_SUB_DEBUG_S1),
@@ -1221,7 +1238,8 @@ void __gpufreq_dump_infra_status(void)
 	/* NEMI_MI33_SMI_SUB_DEBUG_MISC */
 	/* SEMI_MI32_SMI_SUB_DEBUG_MISC */
 	/* SEMI_MI33_SMI_SUB_DEBUG_MISC */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[EMI_SMI]",
 		0x1025E440, DRV_Reg32(NEMI_MI32_SMI_SUB_DEBUG_MISC),
 		0x1025F440, DRV_Reg32(NEMI_MI33_SMI_SUB_DEBUG_MISC),
@@ -1232,7 +1250,8 @@ void __gpufreq_dump_infra_status(void)
 	/* IFR_MFGSYS_PROT_EN_W1S_0 */
 	/* IFR_MFGSYS_PROT_EN_W1C_0 */
 	/* IFR_MFGSYS_PROT_RDY_STA_0 */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[INFRA]",
 		0x1002C1A0, DRV_Reg32(IFR_MFGSYS_PROT_EN_STA_0),
 		0x1002C1A4, DRV_Reg32(IFR_MFGSYS_PROT_EN_W1S_0),
@@ -1243,7 +1262,8 @@ void __gpufreq_dump_infra_status(void)
 	/* IFR_EMISYS_PROTECT_EN_W1S_0 */
 	/* IFR_EMISYS_PROTECT_EN_W1C_0 */
 	/* IFR_EMISYS_PROTECT_RDY_STA_0 */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[INFRA]",
 		0x1002C100, DRV_Reg32(IFR_EMISYS_PROTECT_EN_STA_0),
 		0x1002C104, DRV_Reg32(IFR_EMISYS_PROTECT_EN_W1S_0),
@@ -1254,7 +1274,8 @@ void __gpufreq_dump_infra_status(void)
 	/* IFR_EMISYS_PROTECT_EN_W1S_1 */
 	/* IFR_EMISYS_PROTECT_EN_W1C_1 */
 	/* IFR_EMISYS_PROTECT_RDY_STA_1 */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[INFRA]",
 		0x1002C120, DRV_Reg32(IFR_EMISYS_PROTECT_EN_STA_1),
 		0x1002C124, DRV_Reg32(IFR_EMISYS_PROTECT_EN_W1S_1),
@@ -1265,7 +1286,8 @@ void __gpufreq_dump_infra_status(void)
 	/* STH_EMI_AO_DEBUG_CTRL0 */
 	/* INFRA_AO_BUS0_U_DEBUG_CTRL0 */
 	/* INFRA_AO1_BUS1_U_DEBUG_CTRL0 */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x, (0x%x): 0x%08x",
 		"[EMI_INFRA]",
 		0x10042000, DRV_Reg32(NTH_EMI_AO_DEBUG_CTRL0),
 		0x10028000, DRV_Reg32(STH_EMI_AO_DEBUG_CTRL0),
@@ -1273,23 +1295,28 @@ void __gpufreq_dump_infra_status(void)
 		0x1002B000, DRV_Reg32(INFRA_AO1_BUS1_U_DEBUG_CTRL0));
 
 	/* SPM_SRC_REQ */
-	GPUFREQ_LOGI("%-11s (0x%x): 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s (0x%x): 0x%08x",
 		"[SPM]",
 		0x1C001818, DRV_Reg32(SPM_SRC_REQ));
 
-	GPUFREQ_LOGI("%-11s 0x%08x, 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s 0x%08x, 0x%08x",
 		"[PWR_STATUS]",
 		DRV_Reg32(SPM_XPU_PWR_STATUS), DRV_Reg32(SPM_XPU_PWR_STATUS_2ND));
 
-	GPUFREQ_LOGI("%-11s 0x%08x, 0x%08x, 0x%08x, 0x%08x, 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s 0x%08x, 0x%08x, 0x%08x, 0x%08x, 0x%08x",
 		"[MFG0-4]", DRV_Reg32(SPM_MFG0_PWR_CON),
 		DRV_Reg32(MFG_RPC_MFG1_PWR_CON), DRV_Reg32(MFG_RPC_MFG2_PWR_CON),
 		DRV_Reg32(MFG_RPC_MFG3_PWR_CON), DRV_Reg32(MFG_RPC_MFG4_PWR_CON));
-	GPUFREQ_LOGI("%-11s 0x%08x, 0x%08x, 0x%08x, 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s 0x%08x, 0x%08x, 0x%08x, 0x%08x",
 		"[MFG6-10]",
 		DRV_Reg32(MFG_RPC_MFG6_PWR_CON), DRV_Reg32(MFG_RPC_MFG7_PWR_CON),
 		DRV_Reg32(MFG_RPC_MFG9_PWR_CON), DRV_Reg32(MFG_RPC_MFG10_PWR_CON));
-	GPUFREQ_LOGI("%-11s 0x%08x, 0x%08x, 0x%08x, 0x%08x",
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s 0x%08x, 0x%08x, 0x%08x, 0x%08x",
 		"[MFG11-14]",
 		DRV_Reg32(MFG_RPC_MFG11_PWR_CON), DRV_Reg32(MFG_RPC_MFG12_PWR_CON),
 		DRV_Reg32(MFG_RPC_MFG13_PWR_CON), DRV_Reg32(MFG_RPC_MFG14_PWR_CON));

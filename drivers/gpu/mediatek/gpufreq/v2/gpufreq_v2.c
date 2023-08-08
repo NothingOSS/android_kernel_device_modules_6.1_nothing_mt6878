@@ -51,8 +51,8 @@ static int gpufreq_gpueb_init(void);
 static void gpufreq_init_external_callback(void);
 static int gpufreq_ipi_to_gpueb(struct gpufreq_ipi_data data);
 static int gpufreq_validate_target(unsigned int *target);
-static void gpufreq_dump_infra_status_no_lock(void);
-static void gpufreq_dump_dvfs_status(void);
+static void gpufreq_dump_infra_status_no_lock(char *log_buf, int *log_len, int log_size);
+static void gpufreq_dump_dvfs_status(char *log_buf, int *log_len, int log_size);
 static void gpufreq_dump_power_tracker_status(void);
 static void gpufreq_abort(void);
 
@@ -269,11 +269,28 @@ void gpufreq_dump_infra_status(void)
 {
 	raw_spin_lock_irqsave(&gpufreq_power_lock, g_pwr_irq_flags);
 
-	gpufreq_dump_infra_status_no_lock();
+	gpufreq_dump_infra_status_no_lock(NULL, NULL, 0);
 
 	raw_spin_unlock_irqrestore(&gpufreq_power_lock, g_pwr_irq_flags);
 }
 EXPORT_SYMBOL(gpufreq_dump_infra_status);
+
+/***********************************************************************************
+ * Function Name      : gpufreq_dump_infra_status_logbuffer
+ * Inputs             : -
+ * Outputs            : -
+ * Returns            : -
+ * Description        : Dump GPU related infra status and write to log buffer
+ ***********************************************************************************/
+void gpufreq_dump_infra_status_logbuffer(char *log_buf, int *log_len, int log_size)
+{
+	raw_spin_lock_irqsave(&gpufreq_power_lock, g_pwr_irq_flags);
+
+	gpufreq_dump_infra_status_no_lock(log_buf, log_len, log_size);
+
+	raw_spin_unlock_irqrestore(&gpufreq_power_lock, g_pwr_irq_flags);
+}
+EXPORT_SYMBOL(gpufreq_dump_infra_status_logbuffer);
 
 /***********************************************************************************
  * Function Name      : gpufreq_get_cur_freq
@@ -1553,15 +1570,15 @@ static int gpufreq_validate_target(unsigned int *target)
  * Function Name      : gpufreq_dump_infra_status_no_lock
  * Description        : Only for GPUFREQ internal use
  ***********************************************************************************/
-static void gpufreq_dump_infra_status_no_lock(void)
+static void gpufreq_dump_infra_status_no_lock(char *log_buf, int *log_len, int log_size)
 {
-	gpueb_dump_status();
-	gpufreq_dump_dvfs_status();
+	gpueb_dump_status(log_buf, log_len, log_size);
+	gpufreq_dump_dvfs_status(log_buf, log_len, log_size);
 	gpufreq_dump_power_tracker_status();
 
 	/* implement on AP */
 	if (gpufreq_fp && gpufreq_fp->dump_infra_status)
-		gpufreq_fp->dump_infra_status();
+		gpufreq_fp->dump_infra_status(log_buf, log_len, log_size);
 	else
 		GPUFREQ_LOGE("null gpufreq platform function pointer (ENOENT)");
 }
@@ -1570,7 +1587,7 @@ static void gpufreq_dump_infra_status_no_lock(void)
  * Function Name      : gpufreq_dump_dvfs_status
  * Description        : Dump DVFS status from shared memory
  ***********************************************************************************/
-static void gpufreq_dump_dvfs_status(void)
+static void gpufreq_dump_dvfs_status(char *log_buf, int *log_len, int log_size)
 {
 	int cur_oppidx_gpu = 0, cur_oppidx_stack = 0;
 	int vgpu_diff = 0, vstack_diff = 0;
@@ -1594,31 +1611,38 @@ static void gpufreq_dump_dvfs_status(void)
 			GPUFREQ_LOGE("abnormal cur_oppidx_stack: %d", cur_oppidx_stack);
 
 		ptp3_status = g_shared_status->ptp3_status;
-		GPUFREQ_LOGI("== [GPUFREQ DVFS STATUS: %s] ==",
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"== [GPUFREQ DVFS STATUS: %s] ==",
 			(ptp3_status.dvfs_mode == HW_DUAL_LOOP_DVFS ? "HW_LOOP" :
 			(ptp3_status.dvfs_mode == SW_DUAL_LOOP_DVFS ? "SW_LOOP" : "LEGACY")));
-		GPUFREQ_LOGI("GPU[%d] Freq: %d, Volt: %d (%d), Vsram: %d",
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"GPU[%d] Freq: %d, Volt: %d (%d), Vsram: %d",
 			g_shared_status->cur_oppidx_gpu, g_shared_status->cur_fgpu,
 			g_shared_status->cur_vgpu, vgpu_diff,
 			g_shared_status->cur_vsram_gpu);
-		GPUFREQ_LOGI("STACK[%d] Freq: %d, Volt: %d (%d), Vsram: %d",
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"STACK[%d] Freq: %d, Volt: %d (%d), Vsram: %d",
 			g_shared_status->cur_oppidx_stack, g_shared_status->cur_fstack,
 			g_shared_status->cur_vstack, vstack_diff,
 			g_shared_status->cur_vsram_stack);
-		GPUFREQ_LOGI("Temperature: %d'C, GPUTemperComp: %d/%d, STACKTemperComp: %d/%d",
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"Temperature: %d'C, GPUTemperComp: %d/%d, STACKTemperComp: %d/%d",
 			g_shared_status->temperature,
 			g_shared_status->temper_comp_norm_gpu,
 			g_shared_status->temper_comp_high_gpu,
 			g_shared_status->temper_comp_norm_stack,
 			g_shared_status->temper_comp_high_stack);
-		GPUFREQ_LOGI("Ceiling/Floor: %d/%d, Limiter: %d/%d",
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"Ceiling/Floor: %d/%d, Limiter: %d/%d",
 			g_shared_status->cur_ceiling, g_shared_status->cur_floor,
 			g_shared_status->cur_c_limiter, g_shared_status->cur_f_limiter);
-		GPUFREQ_LOGI("PowerCount: %d, ActiveCount: %d, Buck: %d, MTCMOS: %d, CG: %d",
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"PowerCount: %d, ActiveCount: %d, Buck: %d, MTCMOS: %d, CG: %d",
 			g_shared_status->power_count, g_shared_status->active_count,
 			g_shared_status->buck_count, g_shared_status->mtcmos_count,
 			g_shared_status->cg_count);
-		GPUFREQ_LOGI("InFreq: %d/%d, OutFreq: %d/%d, CC:%d/%d, FC:%d/%d",
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"InFreq: %d/%d, OutFreq: %d/%d, CC:%d/%d, FC:%d/%d",
 			g_shared_status->ptp3_info.infreq0,
 			g_shared_status->ptp3_info.infreq1,
 			g_shared_status->ptp3_info.outfreq0,
@@ -1627,7 +1651,8 @@ static void gpufreq_dump_dvfs_status(void)
 			g_shared_status->ptp3_info.sw_cc,
 			g_shared_status->ptp3_info.hw_fc,
 			g_shared_status->ptp3_info.sw_fc);
-		GPUFREQ_LOGI("GPU_SB_Version: 0x%04x, GPU_PTP_Version: 0x%04x",
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"GPU_SB_Version: 0x%04x, GPU_PTP_Version: 0x%04x",
 			g_shared_status->sb_version, g_shared_status->ptp_version);
 	}
 }
@@ -1655,7 +1680,7 @@ static void gpufreq_dump_power_tracker_status(void)
  ***********************************************************************************/
 static void gpufreq_abort(void)
 {
-	gpufreq_dump_infra_status_no_lock();
+	gpufreq_dump_infra_status_no_lock(NULL, NULL, 0);
 
 #if GPUFREQ_FORCE_WDT_ENABLE
 	gpueb_trigger_wdt("GPUFREQ");

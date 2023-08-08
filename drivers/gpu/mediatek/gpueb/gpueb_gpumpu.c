@@ -60,8 +60,7 @@ int gpueb_gpumpu_init(struct platform_device *pdev)
 	gpumpu_send_data.u.mpu_table.phys_base =
 			(u64)gpueb_get_reserve_mem_phys_by_name("MEM_ID_MPU");
 	gpumpu_send_data.u.mpu_table.size = (u64)gpueb_get_reserve_mem_size_by_name("MEM_ID_MPU");
-	gpueb_pr_debug("%s: cmd=%u, phys_base=%#llx, size=%#llx, sizeof(struct gpumpu_ipi_send_data)=%lu\n",
-			__func__,
+	gpueb_pr_debug("cmd=%u, phys_base=%#llx, size=%#llx, sizeof(struct gpumpu_ipi_send_data)=%lu",
 			gpumpu_send_data.cmd,
 			gpumpu_send_data.u.mpu_table.phys_base,
 			gpumpu_send_data.u.mpu_table.size,
@@ -76,7 +75,7 @@ int gpueb_gpumpu_init(struct platform_device *pdev)
 		GPUMPU_IPI_SEND_DATA_LEN,
 		IPI_TIMEOUT_MS);
 	if (ret != IPI_ACTION_DONE) {
-		gpueb_pr_info("%s: IPI fail ret=%d\n", __func__, ret);
+		gpueb_pr_info("IPI fail ret=%d", ret);
 		return ret;
 	}
 

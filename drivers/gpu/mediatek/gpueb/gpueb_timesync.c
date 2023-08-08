@@ -133,7 +133,7 @@ static void timesync_sync_base_internal(unsigned int flag)
 
 	spin_unlock_irqrestore(&timesync_ctx.lock, irq_flags);
 
-	gpueb_pr_info("%s update base: ts=%llu, tick=0x%llx, fz=%d, ver=%d\n",
+	gpueb_pr_info("%s update base: ts=%llu, tick=0x%llx, fz=%d, ver=%d",
 		TIMESYNC_TAG, ts, tick, freeze, gpueb_base_ver);
 }
 
@@ -180,14 +180,13 @@ unsigned int gpueb_timesync_init(void)
 	u64 wrap;
 
 	g_gpueb_ts_mbox = gpueb_get_ts_mbox();
-	gpueb_pr_info("%s: g_gpueb_ts_mbox = %d\n", __func__, g_gpueb_ts_mbox);
+	gpueb_pr_info("g_gpueb_ts_mbox = %d", g_gpueb_ts_mbox);
 	g_gpueb_ts_mbox_offset_base = gpueb_get_send_PIN_offset_by_name("IPI_ID_TIMER");
-	gpueb_pr_info("%s: g_gpueb_ts_mbox_offset_base = %d\n",
-			__func__, g_gpueb_ts_mbox_offset_base);
+	gpueb_pr_info("g_gpueb_ts_mbox_offset_base = %d", g_gpueb_ts_mbox_offset_base);
 
 	timesync_workqueue = create_workqueue("gpueb_ts_wq");
 	if (!timesync_workqueue) {
-		gpueb_pr_info("%s workqueue create failed\n", __func__);
+		gpueb_pr_info("workqueue create failed");
 		timesync_ctx.enabled = 0;
 		return -1;
 	}
@@ -215,7 +214,7 @@ unsigned int gpueb_timesync_init(void)
 	timesync_refresh_timer.function = timesync_refresh;
 	hrtimer_start(&timesync_refresh_timer, wrap, HRTIMER_MODE_REL);
 
-	gpueb_pr_info("%s ts: cycle_last %lld, time_base:%lld, wrap:%lld\n",
+	gpueb_pr_info("%s ts: cycle_last %lld, time_base:%lld, wrap:%lld",
 		TIMESYNC_TAG, timesync_counter.cycle_last,
 		timesync_counter.nsec, wrap);
 

@@ -74,7 +74,6 @@ static char *gpueb_dram_user_name[] = {
  **************************************************/
 void gpueb_debug_init(struct platform_device *pdev);
 void gpueb_trigger_wdt(const char *name);
-void gpueb_dump_status(void);
-void gpueb_dump_footprint(void);
+void gpueb_dump_status(char *log_buf, int *log_len, int log_size);
 
 #endif /* __GPUEB_DEBUG_H__ */

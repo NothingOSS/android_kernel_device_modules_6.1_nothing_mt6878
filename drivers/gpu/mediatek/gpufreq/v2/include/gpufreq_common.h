@@ -97,7 +97,7 @@ unsigned int __gpufreq_get_dvfs_state(void);
 unsigned int __gpufreq_get_shader_present(void);
 int __gpufreq_power_control(enum gpufreq_power_state power);
 int __gpufreq_active_sleep_control(enum gpufreq_power_state power);
-void __gpufreq_dump_infra_status(void);
+void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size);
 void __gpufreq_dump_power_tracker_status(void);
 void __gpufreq_set_mfgsys_config(enum gpufreq_config_target target, enum gpufreq_config_value val);
 struct gpufreq_core_mask_info *__gpufreq_get_core_mask_table(void);
@@ -209,7 +209,7 @@ static inline void __gpufreq_abort(const char *exception_string, ...)
 	va_end(args);
 
 	GPUFREQ_LOGE("[ABORT]: %s", tmp_string);
-	__gpufreq_dump_infra_status();
+	__gpufreq_dump_infra_status(NULL, NULL, 0);
 
 	BUG_ON(1);
 }

@@ -112,7 +112,7 @@ static int gpueb_create_files(void)
 
 	ret = misc_register(&gpueb_device);
 	if (unlikely(ret != 0)) {
-		gpueb_pr_info("@%s: misc register failed\n", __func__);
+		gpueb_pr_info("misc register failed");
 		return ret;
 	}
 
@@ -133,31 +133,31 @@ static int __mt_gpueb_pdrv_probe(struct platform_device *pdev)
 	unsigned int gpueb_logger_support = 0;
 	struct device_node *node;
 
-	gpueb_pr_info("@%s: GPUEB driver probe start\n", __func__);
+	gpueb_pr_info("GPUEB driver probe start");
 
 	node = of_find_matching_node(NULL, g_gpueb_of_match);
 	if (!node)
-		gpueb_pr_info("@%s: find GPUEB node failed\n", __func__);
+		gpueb_pr_info("find GPUEB node failed");
 
 	of_property_read_u32(pdev->dev.of_node, "gpueb-support",
 			&gpueb_support);
 	if (gpueb_support == 0) {
-		gpueb_pr_info("Bypass the GPUEB driver probe\n");
+		gpueb_pr_info("Bypass the GPUEB driver probe");
 		return 0;
 	}
 
 	ret = gpueb_ipi_init(pdev);
 	if (ret != 0)
-		gpueb_pr_info("@%s: ipi init fail\n", __func__);
+		gpueb_pr_info("ipi init fail");
 
 	ret = gpueb_reserved_mem_init(pdev);
 	if (ret != 0)
-		gpueb_pr_info("@%s: reserved mem init fail\n", __func__);
+		gpueb_pr_info("reserved mem init fail");
 
 	/*
 	ret = gpueb_plat_service_init(pdev);
 	if (ret != 0)
-		gpueb_pr_info("@%s: plat service init fail\n", __func__);
+		gpueb_pr_info("plat service init fail");
 	*/
 
 	of_property_read_u32(pdev->dev.of_node, "gpueb-logger-support",
@@ -167,17 +167,17 @@ static int __mt_gpueb_pdrv_probe(struct platform_device *pdev)
 		if (gpueb_logger_init(pdev,
 				gpueb_get_reserve_mem_virt(0),
 				gpueb_get_reserve_mem_size(0)) == -1) {
-			gpueb_pr_info("@%s: logger init fail\n", __func__);
+			gpueb_pr_info("logger init fail");
 			goto err;
 		}
 
 		ret = gpueb_create_files();
 		if (unlikely(ret != 0)) {
-			gpueb_pr_info("@%s: create files fail\n", __func__);
+			gpueb_pr_info("create files fail");
 			goto err;
 		}
 	} else {
-		gpueb_pr_info("@%s: gpueb no logger support.\n", __func__);
+		gpueb_pr_info("gpueb no logger support.");
 	}
 
 	gpueb_hw_voter_dbg_init();
@@ -187,13 +187,13 @@ static int __mt_gpueb_pdrv_probe(struct platform_device *pdev)
 
 	ret = gpueb_timesync_init();
 	if (ret) {
-		gpueb_pr_info("GPUEB timesync init fail\n");
+		gpueb_pr_info("GPUEB timesync init fail");
 		return ret;
 	}
 
 	g_pdev = pdev;
 	g_probe_done = true;
-	gpueb_pr_info("@%s: GPUEB driver probe done\n", __func__);
+	gpueb_pr_info("GPUEB driver probe done");
 
 	return 0;
 
@@ -208,7 +208,7 @@ static int __init __mt_gpueb_init(void)
 {
 	int ret = 0;
 
-	gpueb_pr_debug("start to initialize gpueb driver\n");
+	gpueb_pr_debug("start to initialize gpueb driver");
 
 #ifdef CONFIG_PROC_FS
 	// Create PROC FS
@@ -217,7 +217,7 @@ static int __init __mt_gpueb_init(void)
 	// Register platform driver
 	ret = platform_driver_register(&g_gpueb_pdrv);
 	if (ret)
-		gpueb_pr_info("fail to register gpueb driver\n");
+		gpueb_pr_info("fail to register gpueb driver");
 
 	return ret;
 }

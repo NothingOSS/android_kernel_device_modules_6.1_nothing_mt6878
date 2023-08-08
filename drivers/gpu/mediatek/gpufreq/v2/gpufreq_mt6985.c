@@ -1123,7 +1123,7 @@ done:
 	return ret;
 }
 
-void __gpufreq_dump_infra_status(void)
+void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 {
 	if (!g_gpufreq_ready)
 		return;

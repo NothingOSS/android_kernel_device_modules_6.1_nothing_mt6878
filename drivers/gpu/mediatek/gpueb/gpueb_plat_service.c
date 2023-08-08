@@ -55,8 +55,8 @@ int gpueb_plat_service_init(struct platform_device *pdev)
 			(void *)&plat_service_init_ret);
 
 	if (ret != IPI_ACTION_DONE) {
-		gpueb_pr_debug("%s: ipi:#%d register fail! ret = %d\n",
-				__func__, channel_id, ret);
+		gpueb_pr_debug("ipi:#%d register fail! ret = %d",
+				channel_id, ret);
 		if (ret != IPI_DUPLEX)
 			return ret;
 	}
@@ -73,19 +73,19 @@ int gpueb_plat_service_init(struct platform_device *pdev)
 		1, // 1 slots message = 1 * 4 = 4 bytes
 		IPI_TIMEOUT_MS); // Timeout value in milisecond
 	if (ret != IPI_ACTION_DONE) {
-		gpueb_pr_info("%s: IPI fail ret=%d\n", __func__, ret);
+		gpueb_pr_info("IPI fail ret=%d", ret);
 		return ret;
 	}
 
 	ret = mtk_ipi_recv(&gpueb_ipidev, channel_id);
 	if (ret != IPI_ACTION_DONE) {
-		gpueb_pr_info("%s: IPI fail ret=%d\n", __func__, ret);
+		gpueb_pr_info("IPI fail ret=%d", ret);
 		return ret;
 	}
 
 	if (plat_service_init_ret == 1)
-		gpueb_pr_info("%s: plt IPI success, recv data=%d\n",
-			__func__, plat_service_init_ret);
+		gpueb_pr_info("plt IPI success, recv data=%d",
+			plat_service_init_ret);
 #endif // PLAT_IPI_TEST
 
 	return ret;
