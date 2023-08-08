@@ -5,6 +5,16 @@ LOCAL_PATH := $(call my-dir)
 
 ifeq ($(word 2,$(subst -, ,$(notdir $(LOCAL_PATH)))),$(word 2,$(subst -, ,$(strip $(LINUX_KERNEL_VERSION)))))
 
+ifdef KLEAF_BUILD_PROJECT
+my_kernel_target := $(KLEAF_BUILD_PROJECT)
+else
+ifdef KRN_TARGET_PROJECT
+my_kernel_target := $(KRN_TARGET_PROJECT)
+else ifdef MTK_TARGET_PROJECT
+my_kernel_target := $(MTK_TARGET_PROJECT)
+endif
+endif
+
 include $(LOCAL_PATH)/kenv.mk
 
 ifeq ($(wildcard $(TARGET_PREBUILT_KERNEL)),)
@@ -65,11 +75,11 @@ endif
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_OUT := $(KERNEL_BAZEL_BUILD_OUT)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_OUT := $(KERNEL_BAZEL_DIST_OUT)
 ifneq ($(wildcard vendor/mediatek/tests/kernel),)
-$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):mgk_internal_modules_install.$(strip $(KERNEL_BUILD_VARIANT))
-$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):mgk_internal_dist.$(strip $(KERNEL_BUILD_VARIANT))
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):$(my_kernel_target)_internal_modules_install.$(strip $(KERNEL_BUILD_VARIANT))
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):$(my_kernel_target)_internal_dist.$(strip $(KERNEL_BUILD_VARIANT))
 else
-$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):mgk_customer_modules_install.$(strip $(KERNEL_BUILD_VARIANT))
-$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):mgk_customer_dist.$(strip $(KERNEL_BUILD_VARIANT))
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):$(my_kernel_target)_customer_modules_install.$(strip $(KERNEL_BUILD_VARIANT))
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):$(my_kernel_target)_customer_dist.$(strip $(KERNEL_BUILD_VARIANT))
 endif
 $(KERNEL_ZIMAGE_OUT): $(KERNEL_MAKE_DEPENDENCIES)
 	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base build $(PRIVATE_BAZEL_BUILD_FLAG) $(PRIVATE_BAZEL_BUILD_GOAL)

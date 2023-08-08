@@ -51,4 +51,12 @@ else
   fi
 fi
 
+DEFCONFIG_OVERLAY_FLAGS=""
+if [[ -n ${DEFCONFIG_OVERLAYS} ]]
+then
+  for overlay in ${DEFCONFIG_OVERLAYS}; do
+    DEFCONFIG_OVERLAY_FLAGS="${DEFCONFIG_OVERLAY_FLAGS} --//build/bazel_mgk_rules:${overlay%.*}_config"
+  done
+fi
+
 export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1

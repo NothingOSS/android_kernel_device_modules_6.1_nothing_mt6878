@@ -51,10 +51,12 @@ endif
           KERNEL_ZIMAGE_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/dist/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
         endif
       endif
+      TARGET_KERNEL_CONFIG := $(KERNEL_OUT)/.config
      else
           KERNEL_BAZEL_BUILD_OUT ?= $(TARGET_OUT_INTERMEDIATES)/KLEAF_OBJ
           KERNEL_BAZEL_DIST_OUT := $(KERNEL_BAZEL_BUILD_OUT)/dist
-          KERNEL_ZIMAGE_OUT := $(KERNEL_BAZEL_DIST_OUT)/$(REL_ACK_DIR)/kernel_aarch64.$(KERNEL_BUILD_VARIANT)/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
+          KERNEL_ZIMAGE_OUT := $(KERNEL_BAZEL_DIST_OUT)/$(REL_KERNEL_DIR)/$(my_kernel_target)_kernel_aarch64.$(KERNEL_BUILD_VARIANT)/Image.$(MTK_KERNEL_COMPRESS_FORMAT)
+	  TARGET_KERNEL_CONFIG := $(KERNEL_BAZEL_DIST_OUT)/$(REL_KERNEL_DIR)/$(my_kernel_target).$(KERNEL_BUILD_VARIANT)/.config
      endif
     else
       ifeq ($(MTK_APPENDED_DTB_SUPPORT), yes)
@@ -63,7 +65,6 @@ endif
         KERNEL_ZIMAGE_OUT := $(KERNEL_OUT)/arch/$(KERNEL_TARGET_ARCH)/boot/zImage
       endif
     endif
-    TARGET_KERNEL_CONFIG := $(KERNEL_OUT)/.config
     endif#BUILD_KERNEL
 
     ifneq ($(KERNEL_USE_BAZEL),yes)

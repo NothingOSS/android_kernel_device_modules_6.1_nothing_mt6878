@@ -42,7 +42,7 @@ def main(**args):
     file_text = []
     project_line='PROJECT=%s' % project
     file_text.append(project_line)
-    defconfig_overlays_line='DEFCONFIG_OVERLAYS=%s' % kernel_defconfig_overlays
+    defconfig_overlays_line='DEFCONFIG_OVERLAYS="%s"' % kernel_defconfig_overlays
     file_text.append(defconfig_overlays_line)
     mode_line='MODE=%s' % build_mode
     file_text.append(mode_line)

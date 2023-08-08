@@ -11,11 +11,8 @@ result=$(echo ${KLEAF_SUPPORTED_PROJECTS} | grep -wo ${PROJECT}) || result=""
 if [[ ${result} != "" ]] && [[ ${DEFCONFIG_OVERLAYS} == "" ]]
 then # run kleaf commands
 
-#FIXME
-PROJECT=mgk
-
 KLEAF_OUT=("--output_user_root=${OUT_DIR} --output_base=${OUT_DIR}/bazel/output_user_root/output_base")
-KLEAF_ARGS=("${DEBUG_ARGS} ${SANDBOX_ARGS} --experimental_writable_outputs")
+KLEAF_ARGS=("${DEBUG_ARGS} ${SANDBOX_ARGS} ${DEFCONFIG_OVERLAY_FLAGS} --experimental_writable_outputs")
 
 set -x
 (
