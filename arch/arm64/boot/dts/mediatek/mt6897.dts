@@ -1942,10 +1942,6 @@
 		lvts_e_data4: data4@2fc {
 			reg = <0x2fc 0x10>;
 		};
-
-		mdla_e_data: data@20 {
-			reg = <0x20 0x4>;
-		};
 	};
 
 	tboard_thermistor1: thermal-ntc1@1cc03554 {
@@ -4793,8 +4789,6 @@
 		version = <0x68970500>;
 		dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
 		iommus = <&apu_iommu0 M4U_PORT_L44_APU_CODE>;
-		nvmem-cells = <&mdla_e_data>;
-		nvmem-cell-names = "mdla_efuse_data";
 	};
 
 	mvpu {
