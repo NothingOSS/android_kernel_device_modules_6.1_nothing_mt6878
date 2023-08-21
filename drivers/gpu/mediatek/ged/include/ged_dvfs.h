@@ -269,5 +269,6 @@ int ged_dvfs_get_top_oppidx(void);
 int ged_dvfs_get_stack_oppidx(void);
 int ged_dvfs_get_recude_mips_policy_state(void);
 unsigned int ged_dvfs_get_async_log_level(void);
+void ged_dvfs_set_slide_window_size(int size);
 
 #endif

@@ -232,18 +232,23 @@ static int gx_tb_dvfs_margin = GED_DVFS_TIMER_BASED_DVFS_MARGIN;
 static int gx_tb_dvfs_margin_cur = GED_DVFS_TIMER_BASED_DVFS_MARGIN;
 
 #define MAX_TB_DVFS_MARGIN               99
-#define MIN_TB_DVFS_MARGIN               10
+#define MIN_TB_DVFS_MARGIN               5
 #define CONFIGURE_TIMER_BASED_MODE       0x00000000
 #define DYNAMIC_TB_MASK                  0x00000100
 #define DYNAMIC_TB_PIPE_TIME_MASK        0x00000200   // phased out
 #define DYNAMIC_TB_PERF_MODE_MASK        0x00000400
 #define DYNAMIC_TB_FIX_TARGET_MASK       0x00000800   // phased out
 #define TIMER_BASED_MARGIN_MASK          0x000000ff
+#define MIN_TB_DVFS_MARGIN_HIGH_FPS      10
+#define DVFS_MARGIN_HIGH_FPS_THRESHOLD   16000
+#define SLIDING_WINDOW_SIZE_THRESHOLD    32000
 // default loading-based margin mode + value is 30
 static int g_tb_dvfs_margin_value = GED_DVFS_TIMER_BASED_DVFS_MARGIN;
 static int g_tb_dvfs_margin_value_min = MIN_TB_DVFS_MARGIN;
+static int g_tb_dvfs_margin_value_min_cmd;
 static int g_tb_dvfs_margin_step = GED_DVFS_TIMER_BASED_DVFS_MARGIN_STEP;
 static unsigned int g_tb_dvfs_margin_mode = DYNAMIC_TB_MASK | DYNAMIC_TB_PERF_MODE_MASK;
+static int g_loading_slide_window_size_cmd;
 
 static void _init_loading_ud_table(void)
 {
@@ -1956,6 +1961,29 @@ void set_api_sync_flag(int flag)
 {
 	api_sync_flag = flag;
 }
+static void ged_update_margin_by_fps(int gpu_target)
+{
+	if (g_tb_dvfs_margin_value_min_cmd)
+		return;
+
+	// replace min margin with MIN_TB_DVFS_MARGIN_HIGH_FPS when fps > 60
+	if (gpu_target < DVFS_MARGIN_HIGH_FPS_THRESHOLD)
+		g_tb_dvfs_margin_value_min = MIN_TB_DVFS_MARGIN_HIGH_FPS;
+	// fps <= 60
+	else
+		g_tb_dvfs_margin_value_min = MIN_TB_DVFS_MARGIN;
+}
+static void ged_update_window_size_by_fps(int gpu_target)
+{
+	if (g_loading_slide_window_size_cmd)
+		return;
+
+	// replace window_size with default*2 when fps <= 30
+	if (gpu_target > SLIDING_WINDOW_SIZE_THRESHOLD)
+		g_loading_slide_window_size = GED_DEFAULT_SLIDE_WINDOW_SIZE * 2;
+	else
+		g_loading_slide_window_size = GED_DEFAULT_SLIDE_WINDOW_SIZE;
+}
 static bool ged_dvfs_policy(
 		unsigned int ui32GPULoading, unsigned int *pui32NewFreqID,
 		unsigned long t, long phase, unsigned long ul3DFenceDoneTime,
@@ -1963,7 +1991,7 @@ static bool ged_dvfs_policy(
 {
 	int ui32GPUFreq = ged_get_cur_oppidx();
 	unsigned int sentinalLoading = 0;
-	unsigned int window_size_ms = g_loading_slide_window_size;
+	unsigned int window_size_ms;
 	int i32NewFreqID = (int)ui32GPUFreq;
 	int gpu_freq_pre, gpu_freq_overdue_max;	// unit: KHZ
 
@@ -2074,6 +2102,7 @@ static bool ged_dvfs_policy(
 			// pick the largest t_gpu/t_gpu_target & set uncomplete_flag
 			t_gpu = t_gpu_uncomplete;
 			t_gpu_target = info.uncompleted_bq.t_gpu_target;
+			ged_update_margin_by_fps(t_gpu_target);
 			if (g_tb_dvfs_margin_mode & DYNAMIC_TB_PERF_MODE_MASK)
 				t_gpu_target_hd = t_gpu_target
 					* (100 - g_tb_dvfs_margin_value_min) / 100;
@@ -2112,6 +2141,7 @@ static bool ged_dvfs_policy(
 				unsigned int gpu_completed_count =
 					info.total_gpu_completed_count;
 
+				ged_update_margin_by_fps(t_gpu_target);
 				// overwrite t_gpu_target_hd in perf mode
 				if (g_tb_dvfs_margin_mode & DYNAMIC_TB_PERF_MODE_MASK)
 					t_gpu_target_hd = t_gpu_target
@@ -2252,6 +2282,10 @@ static bool ged_dvfs_policy(
 				policy_state == POLICY_STATE_LB_FALLBACK ||
 				policy_state == POLICY_STATE_FORCE_LB_FALLBACK)
 			window_size_ms = g_fallback_window_size;
+		else {
+			ged_update_window_size_by_fps(t_gpu_target);
+			window_size_ms = g_loading_slide_window_size;
+		}
 		ui32GPULoading = gpu_util_history_query_loading(window_size_ms * 1000);
 		loading_mode = ged_get_dvfs_loading_mode();
 		trace_GPU_DVFS__Policy__Loading_based__Loading(ui32GPULoading,
@@ -2666,11 +2700,12 @@ static void ged_timer_base_dvfs_margin(int i32MarginValue)
 		g_tb_dvfs_margin_value = value;
 
 	if (value_min > MAX_TB_DVFS_MARGIN)
-		g_tb_dvfs_margin_value_min = MAX_TB_DVFS_MARGIN;
+		g_tb_dvfs_margin_value_min_cmd = MAX_TB_DVFS_MARGIN;
 	else if (value_min < MIN_TB_DVFS_MARGIN)
-		g_tb_dvfs_margin_value_min = MIN_TB_DVFS_MARGIN;
+		g_tb_dvfs_margin_value_min_cmd = MIN_TB_DVFS_MARGIN;
 	else
-		g_tb_dvfs_margin_value_min = value_min;
+		g_tb_dvfs_margin_value_min_cmd = value_min;
+	g_tb_dvfs_margin_value_min = g_tb_dvfs_margin_value_min_cmd;
 
 	if (margin_step == 0)
 		g_tb_dvfs_margin_step = margin_step;
@@ -3054,6 +3089,12 @@ int ged_dvfs_get_stack_oppidx(void)
 unsigned int ged_dvfs_get_async_log_level(void)
 {
 	return g_async_log_level;
+}
+
+void ged_dvfs_set_slide_window_size(int size)
+{
+	g_loading_slide_window_size_cmd = size;
+	g_loading_slide_window_size = size;
 }
 
 int ged_dvfs_get_recude_mips_policy_state(void)

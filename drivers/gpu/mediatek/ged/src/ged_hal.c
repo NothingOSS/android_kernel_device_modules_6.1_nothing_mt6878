@@ -1396,9 +1396,7 @@ static ssize_t loading_window_size_store(struct kobject *kobj,
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
 				if (i32Value > 0 && i32Value < 256)
-					g_loading_slide_window_size = i32Value;
-				else
-					g_loading_slide_window_size = GED_DEFAULT_SLIDE_WINDOW_SIZE;
+					ged_dvfs_set_slide_window_size(i32Value);
 			}
 		}
 	}

@@ -240,6 +240,9 @@ static struct GED_KPI_MEOW_DVFS_FREQ_PRED *g_psGIFT;
 
 int g_target_fps = GED_KPI_MAX_FPS;
 int g_target_fps_default = GED_KPI_MAX_FPS;
+static int g_latest_fps;
+static unsigned long g_latest_fps_bq;
+static int g_latest_fps_pid;
 
 #define GED_KPI_TOTAL_ITEMS 32
 #define GED_KPI_UID(pid, wnd) (pid | ((unsigned long)wnd))
@@ -834,6 +837,25 @@ static GED_BOOL ged_kpi_update_default_target_fps_fcn(unsigned long ulID,
 					-1,
 					GED_KPI_DEFAULT_FPS_MARGIN, 0, 0,
 					GED_KPI_FRC_DEFAULT_MODE, -1);
+	}
+
+	return GED_TRUE;
+}
+
+static GED_BOOL ged_kpi_update_same_pid_target_fps_fcn(unsigned long ulID,
+	void *pvoid, void *pvParam)
+{
+	struct GED_KPI_HEAD *psHead = (struct GED_KPI_HEAD *) pvoid;
+
+	if (psHead && g_latest_fps_pid) {
+		if (ulID != g_latest_fps_bq && psHead->pid == g_latest_fps_pid)
+			ged_kpi_update_TargetTimeAndTargetFps(
+				psHead,
+				g_latest_fps&0x000000ff,
+				(g_latest_fps&0x00000700) >> 8,
+				(g_latest_fps&0xfffff100) >> 11,
+				0,
+				GED_KPI_FRC_DEFAULT_MODE, -1);
 	}
 
 	return GED_TRUE;
@@ -1609,6 +1631,17 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 
 		trace_tracing_mark_write(5566, "target_fps_fpsgo",
 			(target_FPS&0x000000ff));
+
+		// update all other BQ with same pid
+		if (ulID != g_latest_fps_bq || target_FPS != g_latest_fps) {
+			g_latest_fps_bq = ulID;
+			g_latest_fps = target_FPS;
+			g_latest_fps_pid = psHead->pid;
+
+			ged_hashtable_iterator(gs_hashtable,
+				ged_kpi_update_same_pid_target_fps_fcn, NULL);
+		}
+
 		break;
 
 	case GED_SET_PANEL_REFRESH_RATE:
