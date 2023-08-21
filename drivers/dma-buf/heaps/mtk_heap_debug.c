@@ -1019,6 +1019,26 @@ static long get_dma_heap_buffer_total(struct dma_heap *heap)
 	return dump_info.ret;
 }
 
+static long get_dma_heap_pool_total(void)
+{
+	struct mtk_heap_priv_info *heap_priv;
+	struct dma_heap *heap;
+	long pool_sz = 0;
+	int i;
+
+	for (i = 0; i < _DEBUG_HEAP_CNT_; i++) {
+		heap = dma_heap_find(debug_heap_list[i].heap_name);
+		if (!heap)
+			continue;
+
+		heap_priv = dma_heap_get_drvdata(heap);
+		if (heap_priv && !heap_priv->uncached)
+			pool_sz += mtk_dmabuf_page_pool_size(heap);
+		dma_heap_put(heap);
+	}
+	return pool_sz;
+}
+
 /*
  * only return 0 for this function.
  * check error by fd_data->err
@@ -2223,6 +2243,7 @@ static int dma_heap_oom_notify(struct notifier_block *nb,
 {
 	unsigned long long oom_time = get_current_time_ms();
 	long dmabuf_total_size = 0;
+	long pool_total_size = 0;
 
 	if (oom_time - last_oom_time < OOM_DUMP_INTERVAL) {
 		last_oom_time = oom_time;
@@ -2232,9 +2253,12 @@ static int dma_heap_oom_notify(struct notifier_block *nb,
 	}
 
 	dmabuf_total_size = get_dma_heap_buffer_total(NULL);
-	if ((dmabuf_total_size / PAGE_SIZE) < (totalram_pages() / 2))
-		pr_info("%s: dmabuf buffer total:%ld KB\n", __func__, dmabuf_total_size / 1024);
-	else
+	pool_total_size = get_dma_heap_pool_total();
+
+	pr_info("%s: dmabuf buffer total: %ld KB, page pool total: %ld KB\n",
+		__func__, dmabuf_total_size / 1024,  pool_total_size / 1024);
+
+	if ((dmabuf_total_size + pool_total_size) / PAGE_SIZE > (totalram_pages() / 2))
 		mtk_dmabuf_dump_all(NULL, HEAP_DUMP_OOM | HEAP_DUMP_STATISTIC | HEAP_DUMP_STATS);
 
 	last_oom_time = oom_time;
