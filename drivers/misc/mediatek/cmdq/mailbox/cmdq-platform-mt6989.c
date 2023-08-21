@@ -42,7 +42,7 @@ const char *cmdq_thread_module_dispatch(phys_addr_t gce_pa, s32 thread)
 		case 20:
 			return "MM_IMG_FDVT";
 		case 21:
-			return "MM_IMG_DPE";
+			return "MM_CAM_DPE";
 		case 26 ... 27:
 		case 30 ... 31:
 			return "MM_IMG_QOF";
@@ -132,13 +132,25 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 		case CMDQ_EVENT_IMG_IMGSYS_IPE_ME_DONE:
 		case CMDQ_EVENT_IMG_IMGSYS_IPE_MMG_DONE:
 			return "MM_IMG_ME";
+		case CMDQ_SYNC_TOKEN_DIP_POWER_CTRL
+			... CMDQ_SYNC_TOKEN_TRAW_PWR_HAND_SHAKE:
+			return "MM_IMG_QOF";
 		case CMDQ_EVENT_IMG_IMG_EVENT_122
 			... CMDQ_EVENT_IMG_IMG_EVENT_127:
 			return "MM_IMGSYS";
+		case CMDQ_EVENT_CAM_DPE_DVP_CMQ_EVENT
+			... CMDQ_EVENT_CAM_DPE_DVS_CMQ_EVENT:
+		case CMDQ_EVENT_CAM_DVGF_CMQ_EVENT:
+			return "MM_CAM_DPE";
 		case CMDQ_EVENT_CAM_CAM_SUBA_SW_PASS1_DONE
+			... CMDQ_EVENT_CAM_PDA1_IRQO_EVENT_DONE_D1:
+		case CMDQ_EVENT_CAM_CAM_SUBA_TG_INT1
 			... CMDQ_EVENT_CAM_CAM_SUBC_RING_BUFFER_OVERFLOW_INT_IN:
 		case CMDQ_EVENT_CAM_ADL_WR_FRAME_DONE
+			... CMDQ_EVENT_CAM_ADL_RD_FRAME_DONE:
+		case CMDQ_EVENT_CAM_FUS_LA_CMQ_EVENT_0
 			... CMDQ_EVENT_CAM_SENINF_CAM17_FIFO_FULL:
+		case CMDQ_SYNC_TOKEN_APUSYS_APU: //APUSYS_EDMA
 			return "MM_CAM";
 		case CMDQ_SYNC_TOKEN_IMGSYS_POOL_1
 			... CMDQ_SYNC_TOKEN_IMGSYS_POOL_133:
@@ -153,8 +165,6 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 		case CMDQ_SYNC_TOKEN_IMGSYS_POOL_251
 			... CMDQ_SYNC_TOKEN_IMGSYS_POOL_300:
 			return "MM_IMGSYS";
-		case CMDQ_SYNC_TOKEN_APUSYS_APU:
-			return "MM_CAM"; //APUSYS_EDMA
 		default:
 			return "MM_GCEM";
 		}
