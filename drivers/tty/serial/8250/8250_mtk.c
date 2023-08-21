@@ -1710,15 +1710,18 @@ mtk8250_set_termios(struct uart_port *port, struct ktermios *termios,
 		}
 	}
 #endif
-	uart_fcr = serial_in(up, MTK_UART_FCR_RD);
-	serial_out(up, MTK_UART_RXTRI_AD, RXTRIG_THRESHOLD);
 
-	serial_out(up, MTK_UART_FEATURE_SEL, 1);
-	uart_efr = serial_in(up, MTK_UART_EFR);
-	serial_out(up, MTK_UART_EFR, uart_efr | UART_EFR_ECB);
-	serial_out(up, UART_FCR, uart_fcr | UART_FCR_R_TRIG_11 | UART_FCR_ENABLE_FIFO);
-	serial_out(up, MTK_UART_EFR, uart_efr);
-	serial_out(up, MTK_UART_FEATURE_SEL, 0);
+	if (data->support_hub) {
+		uart_fcr = serial_in(up, MTK_UART_FCR_RD);
+		serial_out(up, MTK_UART_RXTRI_AD, RXTRIG_THRESHOLD);
+
+		serial_out(up, MTK_UART_FEATURE_SEL, 1);
+		uart_efr = serial_in(up, MTK_UART_EFR);
+		serial_out(up, MTK_UART_EFR, uart_efr | UART_EFR_ECB);
+		serial_out(up, UART_FCR, uart_fcr | UART_FCR_R_TRIG_11 | UART_FCR_ENABLE_FIFO);
+		serial_out(up, MTK_UART_EFR, uart_efr);
+		serial_out(up, MTK_UART_FEATURE_SEL, 0);
+	}
 
 	tty_termios_encode_baud_rate(termios, baud, baud);
 
