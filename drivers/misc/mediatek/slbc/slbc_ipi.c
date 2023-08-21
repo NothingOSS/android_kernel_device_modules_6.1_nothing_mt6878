@@ -27,7 +27,7 @@ static struct scmi_tinysys_info_st *_tinfo;
 static unsigned int scmi_id;
 #endif /* CONFIG_MTK_TINYSYS_SCMI */
 static struct slbc_ipi_ops *ipi_ops;
-
+static DEFINE_MUTEX(slbc_scmi_lock);
 
 int slbc_sspm_slb_disable(int disable)
 {
@@ -704,9 +704,11 @@ int slbc_scmi_set(void *buffer)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	int ret;
+	unsigned int local_id;
 	struct slbc_ipi_data *slbc_ipi_d = buffer;
 
 	if (slbc_sspm_ready != 1) {
+		ret = -1;
 		pr_info("slbc scmi not ready, skip cmd=%d\n", slbc_ipi_d->cmd);
 		goto error;
 	}
@@ -715,14 +717,19 @@ int slbc_scmi_set(void *buffer)
 			/* __func__, __LINE__, */
 			/* scmi_slbc_id, slbc_ipi_d->cmd, slbc_ipi_d->arg); */
 
-	slbc_sram_write(SLBC_SCMI_AP, ++scmi_id);
+	mutex_lock(&slbc_scmi_lock);
+
+	local_id = ++scmi_id;
+	slbc_sram_write(SLBC_SCMI_AP, local_id);
+
+	mutex_unlock(&slbc_scmi_lock);
 
 	ret = scmi_tinysys_common_set(_tinfo->ph, scmi_slbc_id,
 			slbc_ipi_d->cmd, slbc_ipi_d->arg, slbc_ipi_d->arg2, slbc_ipi_d->arg3, 0);
 
 	if (ret == -ETIMEDOUT) {
 		mdelay(3);
-		if (scmi_id == slbc_sram_read(SLBC_SCMI_SSPM)) {
+		if (local_id == slbc_sram_read(SLBC_SCMI_SSPM)) {
 			ret = 0;
 			pr_info("slbc scmi timed out!\n");
 		}
@@ -735,20 +742,23 @@ int slbc_scmi_set(void *buffer)
 		goto error;
 	}
 
-	return ret;
 error:
-#endif /* CONFIG_MTK_TINYSYS_SCMI */
+	return ret;
+#else
 	return -1;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 
 int slbc_scmi_get(void *buffer, void *ptr)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	int ret;
+	unsigned int local_id;
 	struct slbc_ipi_data *slbc_ipi_d = buffer;
 	struct scmi_tinysys_status *rvalue = ptr;
 
 	if (slbc_sspm_ready != 1) {
+		ret = -1;
 		pr_info("slbc scmi not ready, skip cmd=%d\n", slbc_ipi_d->cmd);
 		goto error;
 	}
@@ -757,14 +767,19 @@ int slbc_scmi_get(void *buffer, void *ptr)
 			/* __func__, __LINE__, */
 			/* scmi_slbc_id, slbc_ipi_d->cmd, slbc_ipi_d->arg); */
 
-	slbc_sram_write(SLBC_SCMI_AP, ++scmi_id);
+	mutex_lock(&slbc_scmi_lock);
+
+	local_id = ++scmi_id;
+	slbc_sram_write(SLBC_SCMI_AP, local_id);
+
+	mutex_unlock(&slbc_scmi_lock);
 
 	ret = scmi_tinysys_common_get(_tinfo->ph, scmi_slbc_id,
 			slbc_ipi_d->cmd, rvalue);
 
 	if (ret == -ETIMEDOUT) {
 		mdelay(3);
-		if (scmi_id == slbc_sram_read(SLBC_SCMI_SSPM)) {
+		if (local_id == slbc_sram_read(SLBC_SCMI_SSPM)) {
 			ret = 0;
 			rvalue->r1 = slbc_sram_read(SLBC_SCMI_RET1);
 			rvalue->r2 = slbc_sram_read(SLBC_SCMI_RET2);
@@ -783,10 +798,11 @@ int slbc_scmi_get(void *buffer, void *ptr)
 		goto error;
 	}
 
-	return ret;
 error:
-#endif /* CONFIG_MTK_TINYSYS_SCMI */
+	return ret;
+#else
 	return -1;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 
 int slbc_scmi_init(void)
