@@ -198,6 +198,7 @@ static struct slbc_config p_config[] = {
 };
 
 #ifdef SLBC_CB
+static struct slbc_data ops_d[ARRAY_SIZE(p_config)];
 static struct slbc_ops ops_config[ARRAY_SIZE(p_config)];
 static struct task_struct *slbc_activate_task[ARRAY_SIZE(p_config)];
 static struct task_struct *slbc_deactivate_task[ARRAY_SIZE(p_config)];
@@ -475,6 +476,12 @@ int slbc_register_activate_ops(struct slbc_ops *ops)
 	if (!ops->data)
 		return -EFAULT;
 
+	if (ops->data->uid == UID_MM_VENC || ops->data->uid == UID_MM_VENC_SL) {
+		SLBC_TRACE_REC(LVL_QOS, TYPE_B, ops->data->uid, -EFAULT,
+				"register slbc ops fail: venc no need to register slb callback");
+		return -EFAULT;
+	}
+
 	sid = slbc_get_sid_by_uid((enum slbc_uid)ops->data->uid);
 	if (sid == SID_NOT_FOUND) {
 		SLBC_TRACE_REC(LVL_ERR, TYPE_B, ops->data->uid, -EFAULT,
@@ -495,7 +502,8 @@ int slbc_register_activate_ops(struct slbc_ops *ops)
 		return 0;
 	}
 
-	ops_config[sid].data = ops->data;
+	ops_d[sid] = *(ops->data);
+	ops_config[sid].data = &ops_d[sid];
 	ops_config[sid].activate = ops->activate;
 	ops_config[sid].deactivate = ops->deactivate;
 
