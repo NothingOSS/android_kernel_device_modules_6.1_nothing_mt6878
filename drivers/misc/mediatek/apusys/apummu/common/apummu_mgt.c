@@ -31,6 +31,7 @@ struct apummu_tbl {
 	bool is_SLB_set;
 	bool is_work_canceled;
 	bool is_free_job_set;
+	bool is_SLB_alloc; // Since SLB state might not sync with APU
 };
 
 struct apummu_tbl g_ammu_table_set;
@@ -170,12 +171,14 @@ static void free_memory(struct kref *kref)
 	}
 #endif
 
-	if (g_adv->rsc.genernal_SLB.iova != 0) {
+	if (g_ammu_table_set.is_SLB_alloc) {
 		ammu_trace_begin("APUMMU: Free SLB without IPI");
 		/* MDW will close session in IPI handler in some case */
 		// apummu_remote_mem_free_pool(g_adv);
 		if (apummu_free_general_SLB(g_adv))
-			ammu_exception("General APU SLB free fail\n");
+			AMMU_LOG_WRN("General APU SLB free fail\n");
+
+		g_ammu_table_set.is_SLB_alloc = false;
 		ammu_trace_end();
 	}
 
@@ -231,13 +234,14 @@ static int session_table_alloc(void)
 	mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
 #endif
 
-	if (g_adv->rsc.genernal_SLB.iova == 0) { // SLB retry
+	if (!g_ammu_table_set.is_SLB_alloc) { // SLB retry
 		ammu_trace_begin("APUMMU: SLB alloc");
 		/* Do not assign return value, since alloc SLB may fail */
-		if (apummu_alloc_general_SLB(g_adv)) {
-			ammu_trace_end();
+		if (apummu_alloc_general_SLB(g_adv))
 			AMMU_LOG_VERBO("general SLB alloc fail...\n");
-		}
+		else
+			g_ammu_table_set.is_SLB_alloc = true;
+
 		ammu_trace_end();
 	}
 
@@ -253,12 +257,12 @@ static int session_table_alloc(void)
 		}
 		ammu_trace_end();
 	#else
-		if (g_adv->rsc.genernal_SLB.iova != 0) {
+		if (g_ammu_table_set.is_SLB_alloc) {
 			if (apummu_remote_mem_add_pool(g_adv))
 				goto free_general_SLB;
 		}
 	#endif
-		g_ammu_table_set.is_SLB_set = (g_adv->rsc.genernal_SLB.iova != 0);
+		g_ammu_table_set.is_SLB_set = (g_ammu_table_set.is_SLB_alloc);
 
 		AMMU_LOG_VERBO("kref init\n");
 		kref_init(&g_ammu_table_set.session_tbl_cnt);
@@ -268,7 +272,7 @@ static int session_table_alloc(void)
 		kref_get(&g_ammu_table_set.session_tbl_cnt);
 
 		/* SLB retry IPI */
-		if (!g_ammu_table_set.is_SLB_set && g_adv->rsc.genernal_SLB.iova != 0) {
+		if (!g_ammu_table_set.is_SLB_set && g_ammu_table_set.is_SLB_alloc) {
 			ammu_trace_begin("APUMMU: SLB ONLY IPI");
 			ret = apummu_remote_mem_add_pool(g_adv);
 			if (ret) {
@@ -776,6 +780,7 @@ void apummu_mgt_init(void)
 	g_ammu_table_set.is_stable_exist = false;
 	g_ammu_table_set.is_SLB_set = false;
 	g_ammu_table_set.is_work_canceled = true;
+	g_ammu_table_set.is_SLB_alloc = false;
 	INIT_LIST_HEAD(&g_ammu_table_set.g_stable_head);
 	mutex_init(&g_ammu_table_set.table_lock);
 	mutex_init(&g_ammu_table_set.DRAM_FB_lock);

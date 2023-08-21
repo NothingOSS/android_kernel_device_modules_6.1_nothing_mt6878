@@ -80,3 +80,33 @@ int apummu_free_slb(uint32_t type)
 out:
 	return ret;
 }
+
+int apummu_check_slb_status(uint32_t type)
+{
+	int ret = 0;
+	struct slbc_data slb;
+
+	switch (type) {
+	case APUMMU_MEM_TYPE_EXT:
+		slb.uid = UID_SH_APU;
+		slb.type = TP_BUFFER;
+		break;
+	case APUMMU_MEM_TYPE_RSV_S:
+		slb.uid = UID_AINR;
+		slb.type = TP_BUFFER;
+		break;
+	case APUMMU_MEM_TYPE_GENERAL_S:
+		slb.uid = UID_APU;
+		slb.type = TP_BUFFER;
+		break;
+	default:
+		AMMU_LOG_ERR("Invalid type %u\n", type);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = slbc_status(&slb);
+
+out:
+	return ret;
+}

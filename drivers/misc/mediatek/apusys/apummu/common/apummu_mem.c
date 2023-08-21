@@ -595,9 +595,16 @@ int apummu_alloc_general_SLB(void *drvinfo)
 	adv = (struct apummu_dev_info *)drvinfo;
 
 	if (adv->rsc.genernal_SLB.iova != 0) {
-		AMMU_LOG_ERR("general SLB already added\n");
-		ret = -EINVAL;
-		goto out;
+		/* Call check SLB status API, since SLB might timeout */
+		if (apummu_check_slb_status(APUMMU_MEM_TYPE_GENERAL_S) != 0) {
+			AMMU_LOG_INFO("general SLB already added\n");
+			goto out;
+		} else {
+			adv->rsc.genernal_SLB.iova = 0;
+			adv->rsc.genernal_SLB.size = 0;
+			AMMU_LOG_INFO("Overwrite SLB status manually, (addr, size) = (%llx, %x)\n",
+				adv->rsc.genernal_SLB.iova, adv->rsc.genernal_SLB.size);
+		}
 	}
 
 	if (!(adv->plat.is_general_SLB_support)) {
