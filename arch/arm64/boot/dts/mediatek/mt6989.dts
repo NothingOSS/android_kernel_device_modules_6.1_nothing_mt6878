@@ -468,6 +468,7 @@
 	};
 
 	clocks {
+		compatible = "clk-ftrace";
 		clk_null: clk-null {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
