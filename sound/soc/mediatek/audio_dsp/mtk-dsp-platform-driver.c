@@ -759,7 +759,8 @@ static void mtk_dsp_dl_consume_handler(struct mtk_base_dsp *dsp,
 	ring_buf = &dsp_mem->ring_buf;
 
 	// handle for no restart pcm, copy audio_hw_buffer from msg payload, others from share mem
-	if ((substream->runtime->stop_threshold > substream->runtime->start_threshold) && ipi_msg) {
+	if ((substream->runtime->stop_threshold > substream->runtime->start_threshold) &&
+	    ipi_msg && (ipi_msg->data_type == AUDIO_IPI_PAYLOAD)) {
 		memcpy((void *)&dsp_mem->adsp_work_buf, ipi_msg->payload,
 		       sizeof(struct audio_hw_buffer));
 	} else {
