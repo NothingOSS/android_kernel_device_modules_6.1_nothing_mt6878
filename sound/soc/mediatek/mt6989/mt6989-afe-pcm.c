@@ -158,6 +158,10 @@ int mt6989_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
+		/* add delay for bt memif to avoid dl noise */
+		if (id == MT6989_MEMIF_DL23)
+			mtk_memif_set_pbuf_size(afe, id, MT6989_MEMIF_PBUF_SIZE_32_BYTES);
+
 		if (is_afe_need_triggered(memif)) {
 			ret = mtk_memif_set_enable(afe, id);
 			if (ret) {
