@@ -39,6 +39,7 @@ struct fpsgo_com_policy_cmd {
 	int control_hwui_by_pid;
 	int app_cam_fps_align_margin;
 	int app_cam_time_align_ratio;
+	int app_cam_meta_min_fps;
 	unsigned long long ts;
 	struct rb_node rb_node;
 };
@@ -85,6 +86,7 @@ void fpsgo_ctrl2comp_disconnect_api(int pid, int api,
 			unsigned long long identifier);
 void fpsgo_ctrl2comp_acquire(int p_pid, int c_pid, int c_tid,
 	int api, unsigned long long buffer_id, unsigned long long ts);
+void fpsgo_ctrl2comp_set_app_meta_fps(int tgid, int fps, unsigned long long ts);
 int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 	int start, char *specific_name, int num);
 void fpsgo_base2comp_check_connect_api(void);

@@ -825,7 +825,7 @@ int fpsgo_wait_fstb_active(void)
 	return fpsgo_ctrl2fstb_wait_fstb_active();
 }
 
-void fpsgo_get_pid(int cmd, int *pid, int op)
+void fpsgo_get_pid(int cmd, int *pid, int op, int value1, int value2)
 {
 	unsigned long long cur_ts;
 
@@ -845,6 +845,10 @@ void fpsgo_get_pid(int cmd, int *pid, int op)
 	case CAMERA_DO_FRAME:
 		cur_ts = fpsgo_get_time();
 		fpsgo_ctrl2fstb_cam_queue_time_update(cur_ts);
+		break;
+	case CAMERA_APP_MIN_FPS:
+		cur_ts = fpsgo_get_time();
+		fpsgo_ctrl2comp_set_app_meta_fps(value1, value2, cur_ts);
 		break;
 	default:
 		FPSGO_LOGE("[FPSGO_CTRL] wrong cmd:%d\n", cmd);
