@@ -12461,6 +12461,7 @@ static int mt_dl_gpio_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		mt6681_set_playback_gpio(priv);
+		mt6681_clh_lut_init(priv);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		mt6681_reset_playback_gpio(priv);
@@ -12480,6 +12481,7 @@ static int mt_ul_gpio_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		mt6681_set_capture_gpio(priv);
+		mt6681_adc_init(priv);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		mt6681_reset_capture_gpio(priv);
