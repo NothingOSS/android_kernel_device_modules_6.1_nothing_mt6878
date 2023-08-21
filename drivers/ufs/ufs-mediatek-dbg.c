@@ -1459,7 +1459,7 @@ void ufs_mtk_dbg_phy_dump_work(struct work_struct *work)
 	struct ufs_mtk_host *host;
 	struct ufs_hba *hba;
 
-	host = container_of(work, struct ufs_mtk_host, phy_dmp_work);
+	host = container_of(work, struct ufs_mtk_host, phy_dmp_work.work);
 	hba = host->hba;
 
 	ufs_mtk_dbg_phy_dump(hba);
@@ -1471,7 +1471,7 @@ void ufs_mtk_dbg_phy_enable(struct ufs_hba *hba)
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	host->mphy_base = ioremap(0x112a0000, 0x10000);
-	INIT_WORK(&host->phy_dmp_work, ufs_mtk_dbg_phy_dump_work);
+	INIT_DELAYED_WORK(&host->phy_dmp_work, ufs_mtk_dbg_phy_dump_work);
 	host->phy_dmp_workq = create_singlethread_workqueue("ufs_mtk_phy_dmp_wq");
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_enable);
@@ -1920,7 +1920,7 @@ static void ufs_mtk_dbg_print_tm_event(char **buff, unsigned long *size,
 }
 
 static void ufs_mtk_dbg_print_cmd_hist(char **buff, unsigned long *size,
-				  u32 latest_cnt, struct seq_file *m)
+				  u32 latest_cnt, struct seq_file *m, bool omit)
 {
 	int ptr;
 	int cnt;
@@ -1936,7 +1936,11 @@ static void ufs_mtk_dbg_print_cmd_hist(char **buff, unsigned long *size,
 		return;
 	}
 
-	cnt = min_t(u32, cmd_hist_cnt, MAX_CMD_HIST_ENTRY_CNT);
+	if (omit)
+		cnt = min_t(u32, cmd_hist_cnt, MAX_CMD_HIST_ENTRY_CNT);
+	else
+		cnt = MAX_CMD_HIST_ENTRY_CNT;
+
 	if (latest_cnt)
 		cnt = min_t(u32, latest_cnt, cnt);
 
@@ -1971,6 +1975,8 @@ static void ufs_mtk_dbg_print_cmd_hist(char **buff, unsigned long *size,
 		if (ptr < 0)
 			ptr = MAX_CMD_HIST_ENTRY_CNT - 1;
 	}
+	if (omit)
+		cmd_hist_cnt = 1;
 
 	spin_unlock_irqrestore(&cmd_hist_lock, flags);
 
@@ -1980,7 +1986,7 @@ void ufs_mtk_dbg_dump(u32 latest_cnt)
 {
 	ufs_mtk_dbg_print_info(NULL, NULL, NULL);
 
-	ufs_mtk_dbg_print_cmd_hist(NULL, NULL, latest_cnt, NULL);
+	ufs_mtk_dbg_print_cmd_hist(NULL, NULL, latest_cnt, NULL, true);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_dump);
 
@@ -2002,7 +2008,7 @@ void ufs_mtk_dbg_get_aee_buffer(unsigned long *vaddr, unsigned long *size)
 	buff = ufs_aee_buffer;
 	ufs_mtk_dbg_print_info(&buff, &free_size, NULL);
 	ufs_mtk_dbg_print_cmd_hist(&buff, &free_size,
-				   MAX_CMD_HIST_ENTRY_CNT, NULL);
+				   MAX_CMD_HIST_ENTRY_CNT, NULL, false);
 
 	/* retrun start location */
 	*vaddr = (unsigned long)ufs_aee_buffer;
@@ -2053,7 +2059,7 @@ static int ufs_debug_proc_show(struct seq_file *m, void *v)
 {
 	ufs_mtk_dbg_print_info(NULL, NULL, m);
 	ufs_mtk_dbg_print_cmd_hist(NULL, NULL, MAX_CMD_HIST_ENTRY_CNT,
-				   m);
+				   m, false);
 	return 0;
 }
 

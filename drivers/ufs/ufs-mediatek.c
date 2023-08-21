@@ -2449,8 +2449,11 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 
 	ufs_mtk_dbg_phy_trace(hba, UFS_MPHY_ERR);
 
-	if (ufs_mtk_is_mphy_dump(hba))
-		queue_work(host->phy_dmp_workq, &host->phy_dmp_work);
+	if (ufs_mtk_is_mphy_dump(hba)) {
+		queue_delayed_work(host->phy_dmp_workq,
+			&host->phy_dmp_work,
+			msecs_to_jiffies(500));
+	}
 
 out:
 	ufs_mtk_eh_err_cnt();

@@ -249,7 +249,7 @@ struct ufs_mtk_host {
 	struct workqueue_struct *delay_eh_workq;
 	struct wakeup_source *ufs_wake_lock;
 
-	struct work_struct phy_dmp_work;
+	struct delayed_work phy_dmp_work;
 	struct workqueue_struct *phy_dmp_workq;
 
 	struct semaphore rpmb_sem;
