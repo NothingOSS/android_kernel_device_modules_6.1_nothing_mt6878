@@ -7518,6 +7518,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 			mtk_drm_ovl_bw_monitor_ratio_save(frame_idx);
 
 		if (ovl_status & 1) {
+			CRTC_MMP_MARK(id, ovl_status_err, ovl_status, 0);
 			DDPPR_ERR("ovl status error:0x%x\n", ovl_status);
 			mtk_dprec_snapshot();
 			if (priv->data->mmsys_id == MMSYS_MT6985 ||
@@ -7532,11 +7533,18 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 				mtk_drm_crtc_dump(crtc);
 				cmdq_dump_pkt(cb_data->cmdq_handle, 0, true);
 			}
-		}
-		/*Msync 2.0 related function*/
-		if (ovl_status & 1)
-			CRTC_MMP_MARK(id, ovl_status_err, ovl_status, 0);
 
+			if (priv->data->mmsys_id == MMSYS_MT6989) {
+				static bool called;
+
+				if (unlikely(!called)) {
+					called = true;
+					mtk_smi_dbg_dump_for_disp();
+				}
+			}
+		}
+
+		/*Msync 2.0 related function*/
 		if (cb_data->msync2_enable) {
 			_dsi_state_dbg7 = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 						DISP_SLOT_DSI_STATE_DBG7);
