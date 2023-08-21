@@ -3120,6 +3120,7 @@
 		mediatek,suspend-check-port = <0x4 0x2>;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_SUBB>;
 		suspend-check;
+		dbg-dump = <0x1eca5450 0x1eca5458 0x1eca5470 0x1eca5478>;
 	};
 
 	smi_pd_cam_subc: smi-pd-cam-subc {
