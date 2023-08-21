@@ -42,7 +42,10 @@
  *               cr_grain_size(11984) +
  *               SCALING_LUT_SIZE(1024) * 3
  */
+#define FG_BUF_GRAIN_SIZE (11984)
+#define FG_BUF_SCALING_SIZE (3072)
 #define FG_BUF_SIZE (39024)
+#define FG_BUF_NUM (4)
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define DB_OPT_MML_PQ	(DB_OPT_DEFAULT | DB_OPT_PROC_CMDQ_INFO | \
@@ -229,7 +232,7 @@ struct mml_pq_task {
 	struct mml_pq_readback_buffer *aal_hist[MML_PIPE_CNT];
 	struct mml_pq_readback_buffer *hdr_hist[MML_PIPE_CNT];
 	struct mml_pq_readback_buffer *tdshp_hist[MML_PIPE_CNT];
-	struct mml_pq_dma_buffer *fg_table;
+	struct mml_pq_dma_buffer *fg_table[FG_BUF_NUM]; /* y, cb, cr, scaling*/
 	struct mml_pq_read_status read_status;
 	struct completion hdr_curve_ready[MML_PIPE_CNT];
 	struct mutex ref_lock;
@@ -316,11 +319,9 @@ void mml_pq_put_readback_buffer(struct mml_task *task, u8 pipe,
  * @task:	task data, include pq_task inside
  * @pipe:	pipe id, use in dual pipe
  * @dev:	device for getting buffer
- * @engine	engine id, fg engine
  */
 void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe,
-				struct device *dev,
-				struct mml_pq_dma_buffer **lut_buf);
+				struct device *dev);
 
 /*
  * mml_pq_put_fg_buffer - put fg buffer
@@ -328,11 +329,9 @@ void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe,
  * @task:	task data, include pq_task inside
  * @pipe:	pipe id, use in dual pipe
  * @dev:	device for putting buffer
- * @engine	engine id, fg engine
  */
 void mml_pq_put_fg_buffer(struct mml_task *task, u8 pipe,
-				struct device *dev,
-				struct mml_pq_dma_buffer **lut_buf);
+				struct device *dev);
 
 /*
  * mml_pq_set_tile_init - noify from MML core through MML PQ driver

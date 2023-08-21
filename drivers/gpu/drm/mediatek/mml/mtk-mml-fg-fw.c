@@ -241,7 +241,7 @@ static s32 clip3(s32 min, s32 max, s32 grain)
 static void set_y_grain_value(s32 y, s32 x, s16 value,
 	struct mml_pq_fg_alg_data *fg_data)
 {
-	s16 *va = (s16 *)(fg_data->allocated_va);
+	s16 *va = (s16 *)(fg_data->allocated_grain_y_va);
 
 	*(va + y * fg_data->luma_grain_width + x) = value;
 }
@@ -249,7 +249,7 @@ static void set_y_grain_value(s32 y, s32 x, s16 value,
 static s16 get_y_gain_value(s32 y, s32 x,
 	struct mml_pq_fg_alg_data *fg_data)
 {
-	s16 *va = (s16 *)(fg_data->allocated_va);
+	s16 *va = (s16 *)(fg_data->allocated_grain_y_va);
 
 	return *(va + y * fg_data->luma_grain_width + x);
 }
@@ -257,7 +257,7 @@ static s16 get_y_gain_value(s32 y, s32 x,
 static void set_cb_grain_value(s32 y, s32 x, s16 value,
 	struct mml_pq_fg_alg_data *fg_data)
 {
-	s16 *va = (s16 *)(fg_data->allocated_va + fg_data->luma_grain_size);
+	s16 *va = (s16 *)(fg_data->allocated_grain_cb_va);
 
 	*(va + y * fg_data->chroma_grain_width + x) = value;
 }
@@ -265,7 +265,7 @@ static void set_cb_grain_value(s32 y, s32 x, s16 value,
 static s16 get_cb_grain_value(s32 y, s32 x,
 	struct mml_pq_fg_alg_data *fg_data)
 {
-	s16 *va = (s16 *)(fg_data->allocated_va + fg_data->luma_grain_size);
+	s16 *va = (s16 *)(fg_data->allocated_grain_cb_va);
 
 	return *(va + y * fg_data->chroma_grain_width + x);
 }
@@ -274,7 +274,7 @@ static void set_cr_grain_value(s32 y, s32 x, s16 value,
 	struct mml_pq_fg_alg_data *fg_data)
 {
 	s16 *va =
-		(s16 *)(fg_data->allocated_va + fg_data->luma_grain_size + fg_data->cb_grain_size);
+		(s16 *)(fg_data->allocated_grain_cr_va);
 
 	*(va + y * fg_data->chroma_grain_width + x) = value;
 }
@@ -283,7 +283,7 @@ static s16 get_cr_grain_value(s32 y, s32 x,
 	struct mml_pq_fg_alg_data *fg_data)
 {
 	s16 *va =
-		(s16 *)(fg_data->allocated_va + fg_data->luma_grain_size + fg_data->cb_grain_size);
+		(s16 *)(fg_data->allocated_grain_cr_va);
 
 	return *(va + y * fg_data->chroma_grain_width + x);
 }
@@ -296,8 +296,8 @@ static s32 fill_luma_grain_table(struct mml_pq_fg_alg_data *fg_data)
 
 	s32 x, y, g;
 
-	if (fg_data->allocated_va == NULL) {
-		mml_pq_err("LUT buffer not allocated");
+	if (fg_data->allocated_grain_y_va == NULL) {
+		mml_pq_err("LUT(y) buffer not allocated");
 		return -1;
 	}
 
@@ -312,7 +312,7 @@ static s32 fill_luma_grain_table(struct mml_pq_fg_alg_data *fg_data)
 		}
 	} else {
 		//memset(LumaGrain, 0, LUMA_GRAIN_HEIGHT * LUMA_GRAIN_WIDTH * 2);
-		memset(fg_data->allocated_va, 0, LUMA_GRAIN_HEIGHT * LUMA_GRAIN_WIDTH * 2);
+		memset(fg_data->allocated_grain_y_va, 0, LUMA_GRAIN_HEIGHT * LUMA_GRAIN_WIDTH * 2);
 	}
 
 	/* apply auto-regressive filter to white noise */
@@ -348,16 +348,16 @@ static s32 fill_luma_grain_table(struct mml_pq_fg_alg_data *fg_data)
 
 static s32 fill_chroma_grain_table(struct mml_pq_fg_alg_data *fg_data)
 {
-	char *cb_start_addr = fg_data->allocated_va + fg_data->luma_grain_size;
-	char *cr_start_addr =
-		fg_data->allocated_va + fg_data->luma_grain_size + fg_data->cb_grain_size;
+	char *cb_start_addr = fg_data->allocated_grain_cb_va;
+	char *cr_start_addr = fg_data->allocated_grain_cr_va;
 
 	s32 shift = 12 - fg_data->bit_depth + fg_data->metadata->grain_scale_shift;
 
 	s32 x, y, g;
 
-	if (fg_data->allocated_va == NULL) {
-		mml_pq_err("LUT buffer not allocated");
+	if (fg_data->allocated_grain_cb_va == NULL ||
+		fg_data->allocated_grain_cr_va == NULL) {
+		mml_pq_err("LUT(cb/cr) buffer not allocated");
 		return -1;
 	}
 
@@ -474,24 +474,19 @@ static s32 calc_scaling_lut(s32 plane, struct mml_pq_fg_alg_data *fg_data)
 		scaling = fg_data->metadata->point_y_scaling;
 		value = fg_data->metadata->point_y_value;
 		num_points = fg_data->metadata->num_y_points;
-		scaling_lut = (u32 *)(fg_data->allocated_va +
-			fg_data->luma_grain_size + fg_data->cb_grain_size + fg_data->cr_grain_size);
+		scaling_lut = (u32 *)(fg_data->allocated_scaling_va);
 		break;
 	case 1:
 		scaling = fg_data->metadata->point_cb_scaling;
 		value = fg_data->metadata->point_cb_value;
 		num_points = fg_data->metadata->num_cb_points;
-		scaling_lut = (u32 *)(fg_data->allocated_va +
-			fg_data->luma_grain_size + fg_data->cb_grain_size + fg_data->cr_grain_size +
-			SCALING_LUT_SIZE);
+		scaling_lut = (u32 *)(fg_data->allocated_scaling_va + SCALING_LUT_SIZE);
 		break;
 	case 2:
 		scaling = fg_data->metadata->point_cr_scaling;
 		value = fg_data->metadata->point_cr_value;
 		num_points = fg_data->metadata->num_cr_points;
-		scaling_lut = (u32 *)(fg_data->allocated_va +
-			fg_data->luma_grain_size + fg_data->cb_grain_size + fg_data->cr_grain_size +
-			SCALING_LUT_SIZE * 2);
+		scaling_lut = (u32 *)(fg_data->allocated_scaling_va + SCALING_LUT_SIZE*2);
 		break;
 	default:
 		mml_pq_err("invalid plane number:%d", plane);
@@ -525,18 +520,14 @@ static s32 calc_scaling_lut(s32 plane, struct mml_pq_fg_alg_data *fg_data)
 
 static s32 fill_scaling_lut(struct mml_pq_fg_alg_data *fg_data)
 {
-	u32 *y_scaling_lut = (u32 *)
-		(fg_data->allocated_va + fg_data->luma_grain_size +
-		fg_data->cb_grain_size + fg_data->cr_grain_size);
+	u32 *y_scaling_lut = (u32 *)(fg_data->allocated_scaling_va);
 	u32 *cb_scaling_lut = (u32 *)
-		(fg_data->allocated_va + fg_data->luma_grain_size +
-		fg_data->cb_grain_size + fg_data->cr_grain_size + SCALING_LUT_SIZE);
+		(fg_data->allocated_scaling_va + SCALING_LUT_SIZE);
 	u32 *cr_scaling_lut = (u32 *)
-		(fg_data->allocated_va + fg_data->luma_grain_size +
-		fg_data->cb_grain_size + fg_data->cr_grain_size + SCALING_LUT_SIZE * 2);
+		(fg_data->allocated_scaling_va + SCALING_LUT_SIZE * 2);
 
-	if (fg_data->allocated_va == NULL) {
-		mml_pq_err("LUT buffer not allocated");
+	if (fg_data->allocated_scaling_va == NULL) {
+		mml_pq_err("LUT(scaling) buffer not allocated");
 		return -1;
 	}
 
@@ -555,7 +546,7 @@ static s32 fill_scaling_lut(struct mml_pq_fg_alg_data *fg_data)
 	return 0;
 }
 
-void mml_pq_fg_calc(struct mml_pq_dma_buffer *lut,
+void mml_pq_fg_calc(struct mml_pq_dma_buffer **lut,
 	struct mml_pq_film_grain_params *metadata, bool is_yuv_444, s32 bit_depth)
 {
 	struct mml_pq_fg_alg_data fg_data = {0};
@@ -574,7 +565,10 @@ void mml_pq_fg_calc(struct mml_pq_dma_buffer *lut,
 		(fg_data.chroma_grain_width * fg_data.chroma_grain_height * 2 + 15) >> 4 << 4;
 	fg_data.cr_grain_size =
 		(fg_data.chroma_grain_width * fg_data.chroma_grain_height * 2 + 15) >> 4 << 4;
-	fg_data.allocated_va = (char *)lut->va;
+	fg_data.allocated_grain_y_va = (char *)lut[0]->va;
+	fg_data.allocated_grain_cb_va = (char *)lut[1]->va;
+	fg_data.allocated_grain_cr_va = (char *)lut[2]->va;
+	fg_data.allocated_scaling_va = (char *)lut[3]->va;
 	fg_data.metadata = metadata;
 	fg_data.random_register = metadata->grain_seed;
 
@@ -624,34 +618,6 @@ u32 mml_pq_fg_get_pps3(struct mml_pq_film_grain_params *metadata)
 		metadata->num_cr_points << 20);
 
 	return pps3_setting;
-}
-
-u32 mml_pq_fg_get_luma_offset(void)
-{
-	return 0;
-}
-
-u32 mml_pq_fg_get_cb_offset(void)
-{
-	return (LUMA_GRAIN_WIDTH * LUMA_GRAIN_HEIGHT * 2 + 15) >> 4 << 4;
-}
-
-u32 mml_pq_fg_get_cr_offset(bool is_yuv_444)
-{
-	int chroma_grain_width = (is_yuv_444) ? 82 : 44;
-	int chroma_grain_height = (is_yuv_444) ? 73 : 38;
-	int cb_grain_size = (chroma_grain_width * chroma_grain_height * 2 + 15) >> 4 << 4;
-
-	return mml_pq_fg_get_cb_offset() + cb_grain_size;
-}
-
-u32 mml_pq_fg_get_scaling_offset(bool is_yuv_444)
-{
-	int chroma_grain_width = (is_yuv_444) ? 82 : 44;
-	int chroma_grain_height = (is_yuv_444) ? 73 : 38;
-	int cr_grain_size = (chroma_grain_width * chroma_grain_height * 2 + 15) >> 4 << 4;
-
-	return mml_pq_fg_get_cr_offset(is_yuv_444) + cr_grain_size;
 }
 
 MODULE_LICENSE("GPL");

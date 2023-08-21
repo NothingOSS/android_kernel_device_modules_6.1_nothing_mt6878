@@ -57,7 +57,7 @@ struct mml_pq_mbox {
 	struct mml_pq_chan dc_readback_chan;
 };
 
-#define FG_BUF_NUM_LIMIT (5)
+#define DMA_BUF_NUM_LIMIT (20)
 
 struct mml_pq_dev_data {
 	struct mutex aal_hist_mutex;
@@ -76,9 +76,11 @@ struct mml_pq_dev_data {
 	u32 tdshp_cnt;
 };
 
-static struct mutex fg_buf_list_mutex;
-static struct list_head fg_buf_list;
-static u32 fg_buffer_num;
+static struct mutex fg_buf_grain_mutex;
+static struct mutex fg_buf_scaling_mutex;
+static struct list_head fg_buf_grain_list;
+static struct list_head fg_buf_scaling_list;
+static u32 dma_buf_num;
 
 static struct mml_pq_mbox *pq_mbox;
 static struct mutex rb_buf_list_mutex;
@@ -504,18 +506,29 @@ void mml_pq_put_readback_buffer(struct mml_task *task, u8 pipe,
 	*hist = NULL;
 }
 
-void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe,
-	struct device *dev, struct mml_pq_dma_buffer **lut_buf)
+void get_dma_buffer(struct mml_task *task, u8 pipe,
+	struct device *dev, struct mml_pq_dma_buffer **buf, u32 size)
 {
 	struct mml_pq_dma_buffer *temp_buffer = NULL;
+	struct mutex *list_lock = NULL;
 
 	mml_pq_msg("%s job_id[%d]", __func__, task->job.jobid);
 
-	mutex_lock(&fg_buf_list_mutex);
-	temp_buffer = list_first_entry_or_null(&fg_buf_list,
-		typeof(*temp_buffer), buffer_list);
+	/* set mutex & buf_list */
+	if (size == FG_BUF_SCALING_SIZE) {
+		list_lock = &fg_buf_scaling_mutex;
+		mutex_lock(list_lock);
+		temp_buffer = list_first_entry_or_null(&fg_buf_scaling_list,
+			typeof(*temp_buffer), buffer_list);
+	} else if (size == FG_BUF_GRAIN_SIZE) {
+		list_lock = &fg_buf_grain_mutex;
+		mutex_lock(list_lock);
+		temp_buffer = list_first_entry_or_null(&fg_buf_grain_list,
+			typeof(*temp_buffer), buffer_list);
+	}
+
 	if (temp_buffer) {
-		*lut_buf = temp_buffer;
+		*buf = temp_buffer;
 		list_del(&temp_buffer->buffer_list);
 		mml_pq_msg("%s get buffer from list jobid[%d] va[%p] pa[%llx]",
 			__func__, task->job.jobid, temp_buffer->va, temp_buffer->pa);
@@ -524,52 +537,90 @@ void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe,
 
 		if (unlikely(!temp_buffer)) {
 			mml_pq_err("%s create buffer failed", __func__);
-			mutex_unlock(&fg_buf_list_mutex);
+			mutex_unlock(list_lock);
 			return;
 		}
 		INIT_LIST_HEAD(&temp_buffer->buffer_list);
-		fg_buffer_num++;
-		if (fg_buffer_num > FG_BUF_NUM_LIMIT) {
-			mml_pq_msg("%s buffer num[%d] exceeds limit[%d]",
-				__func__, fg_buffer_num, FG_BUF_NUM_LIMIT);
+		dma_buf_num++;
+		if (dma_buf_num > DMA_BUF_NUM_LIMIT) {
+			mml_pq_msg("%s dma_buf_num[%d] exceeds limit[%d]",
+				__func__, dma_buf_num, DMA_BUF_NUM_LIMIT);
 		}
-		*lut_buf = temp_buffer;
+		*buf = temp_buffer;
 	}
-	mutex_unlock(&fg_buf_list_mutex);
+
+	mutex_unlock(list_lock);
 
 	if (!temp_buffer->va && !temp_buffer->pa) {
-		mutex_lock(&task->pq_task->fg_buffer_mutex);
-		temp_buffer->va = dma_alloc_noncoherent(
-			dev, FG_BUF_SIZE, &temp_buffer->pa, DMA_TO_DEVICE, GFP_KERNEL);
-		mutex_unlock(&task->pq_task->fg_buffer_mutex);
+		if (size == FG_BUF_SCALING_SIZE || size == FG_BUF_GRAIN_SIZE) {
+			mutex_lock(&task->pq_task->fg_buffer_mutex);
+			temp_buffer->va = dma_alloc_noncoherent(
+				dev, size, &temp_buffer->pa, DMA_TO_DEVICE, GFP_KERNEL);
+			mutex_unlock(&task->pq_task->fg_buffer_mutex);
+		}
 	}
 
-	mml_pq_msg("%s job_id[%d] va[%p] pa[%llx] fg_buffer_num[%d]", __func__,
-		task->job.jobid, temp_buffer->va, temp_buffer->pa, fg_buffer_num);
+	mml_pq_msg("%s job_id[%d] va[%p] pa[%llx] dma_buf_num[%d] size[%u]",
+		__func__, task->job.jobid, temp_buffer->va, temp_buffer->pa,
+		dma_buf_num, size);
 }
 
-void mml_pq_put_fg_buffer(struct mml_task *task, u8 pipe,
-	struct device *dev, struct mml_pq_dma_buffer **lut_buf)
+void put_dma_buffer(struct mml_task *task, u8 pipe,
+	struct device *dev, struct mml_pq_dma_buffer **buf, u32 size)
 {
-	if (!(*lut_buf)) {
-		mml_pq_err("%s buffer lut_buf is null jobid[%d]", __func__, task->job.jobid);
+	struct mutex *list_lock = NULL;
+
+	if (!(*buf)) {
+		mml_pq_err("%s buffer buf is null jobid[%d]", __func__, task->job.jobid);
 		return;
 	}
 
-	mml_pq_msg("%s all end job_id[%d] lut_buf_va[%p] lut_buf_pa[%llx]",
-		__func__, task->job.jobid, (*lut_buf)->va, (*lut_buf)->pa);
+	mml_pq_msg("%s end job_id[%d] buf_va[%p] buf_pa[%llx] size[%u]",
+		__func__, task->job.jobid, (*buf)->va, (*buf)->pa, size);
 
-	mutex_lock(&fg_buf_list_mutex);
-	if (fg_buffer_num > FG_BUF_NUM_LIMIT) {
-		mml_pq_msg("%s buffer num[%d] exceeds limit[%d]",
-			__func__, fg_buffer_num, FG_BUF_NUM_LIMIT);
-		dma_free_noncoherent(
-			dev, FG_BUF_SIZE, (*lut_buf)->va, (*lut_buf)->pa, DMA_TO_DEVICE);
-		fg_buffer_num--;
-	} else
-		list_add_tail(&((*lut_buf)->buffer_list), &fg_buf_list);
-	mutex_unlock(&fg_buf_list_mutex);
-	*lut_buf = NULL;
+	if (size == FG_BUF_SCALING_SIZE)
+		list_lock = &fg_buf_scaling_mutex;
+	else if (size == FG_BUF_GRAIN_SIZE)
+		list_lock = &fg_buf_grain_mutex;
+
+	mutex_lock(list_lock);
+
+	if (dma_buf_num > DMA_BUF_NUM_LIMIT) {
+		mml_pq_msg("%s dma_buf_num[%d] exceeds limit[%d]",
+			__func__, dma_buf_num, DMA_BUF_NUM_LIMIT);
+		dma_free_noncoherent(dev, size, (*buf)->va, (*buf)->pa, DMA_TO_DEVICE);
+		dma_buf_num--;
+	} else {
+		if (size == FG_BUF_SCALING_SIZE)
+			list_add_tail(&((*buf)->buffer_list), &fg_buf_scaling_list);
+		else if (size == FG_BUF_GRAIN_SIZE)
+			list_add_tail(&((*buf)->buffer_list), &fg_buf_grain_list);
+	}
+
+	mutex_unlock(list_lock);
+	*buf = NULL;
+}
+
+void mml_pq_get_fg_buffer(struct mml_task *task, u8 pipe, struct device *dev)
+{
+	/* get 3 buffer: lumn, cb, cr */
+	for (int i = 0; i < FG_BUF_NUM - 1; i++)
+		get_dma_buffer(task, pipe, dev, &(task->pq_task->fg_table[i]),
+			FG_BUF_GRAIN_SIZE);
+	/* get buffer for scaling table */
+	get_dma_buffer(task, pipe, dev, &(task->pq_task->fg_table[FG_BUF_NUM-1]),
+		FG_BUF_SCALING_SIZE);
+}
+
+void mml_pq_put_fg_buffer(struct mml_task *task, u8 pipe, struct device *dev)
+{
+	/* put 3 buffer: lumn, cb, cr */
+	for (int i = 0; i < FG_BUF_NUM - 1; i++)
+		put_dma_buffer(task, pipe, dev, &(task->pq_task->fg_table[i]),
+			FG_BUF_GRAIN_SIZE);
+	/* put buffer for scaling table */
+	put_dma_buffer(task, pipe, dev, &(task->pq_task->fg_table[FG_BUF_NUM-1]),
+		FG_BUF_SCALING_SIZE);
 }
 
 void mml_pq_task_release(struct mml_task *task)
@@ -2831,9 +2882,11 @@ int mml_pq_core_init(void)
 
 
 	INIT_LIST_HEAD(&rb_buf_list);
-	INIT_LIST_HEAD(&fg_buf_list);
+	INIT_LIST_HEAD(&fg_buf_grain_list);
+	INIT_LIST_HEAD(&fg_buf_scaling_list);
 	mutex_init(&rb_buf_list_mutex);
-	mutex_init(&fg_buf_list_mutex);
+	mutex_init(&fg_buf_grain_mutex);
+	mutex_init(&fg_buf_scaling_mutex);
 	mutex_init(&rb_buf_pool_mutex);
 
 	pq_mbox = kzalloc(sizeof(*pq_mbox), GFP_KERNEL);
@@ -2847,7 +2900,7 @@ int mml_pq_core_init(void)
 	init_pq_chan(&pq_mbox->clarity_readback_chan);
 	init_pq_chan(&pq_mbox->dc_readback_chan);
 	buffer_num = 0;
-	fg_buffer_num = 0;
+	dma_buf_num = 0;
 
 	for (buf_idx = 0; buf_idx < TOTAL_RB_BUF_NUM; buf_idx++)
 		rb_buf_pool[buf_idx] = buf_idx*4096;

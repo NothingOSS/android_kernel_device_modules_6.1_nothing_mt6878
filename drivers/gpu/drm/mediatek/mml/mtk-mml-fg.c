@@ -283,13 +283,13 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 		fg->mmu_dev : task->config->path[ccfg->pipe]->clt->chan->mbox->dev;
 	bool relay_mode = !dest->pq_config.en_fg;
 	u32 gpr = fg->data->gpr[ccfg->pipe];
-	s32 ret = 0;
+	s32 i, ret = 0;
 	u8 bit_depth = MML_FMT_10BIT(src->format) ? 10 : 8;
 	bool smi_sw_reset = 1;
 	bool crc_cg_enable = 1;
 	bool is_yuv_444 = true;
 	bool buf_ready = true;
-	dma_addr_t fg_table_pa;
+	dma_addr_t fg_table_pa[FG_BUF_NUM];
 
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
 	mml_pq_msg("%s engine_id[%d] en_fg[%d] width[%d] height[%d]", __func__, comp->id,
@@ -301,32 +301,43 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 		goto exit;
 	}
 
-	mml_pq_get_fg_buffer(task, ccfg->pipe, dev_buf, &(task->pq_task->fg_table));
-	if (unlikely(!task->pq_task->fg_table) ||
-		unlikely(!task->pq_task->fg_table->va)) {
-		mml_pq_err("%s job_id[%d] fg_table is null", __func__,
-			task->job.jobid);
-		buf_ready = false;
+	mml_pq_get_fg_buffer(task, ccfg->pipe, dev_buf);
+
+	for (i = 0; i < FG_BUF_NUM; i++) {
+		if (unlikely(!task->pq_task->fg_table[i]) ||
+			unlikely(!task->pq_task->fg_table[i]->va)) {
+			mml_pq_err("%s job_id[%d] fg_table[%d] is null",
+				__func__, task->job.jobid, i);
+			buf_ready = false;
+			break;
+		}
+
+		fg_table_pa[i] = task->pq_task->fg_table[i]->pa;
+		if ((task->pq_task->fg_table[i]->pa >> 34) > 0) {
+			mml_pq_err("%s job_id[%d] fg[%d] pa addr exceed 34 bits [%llx]",
+				__func__, task->job.jobid, i, fg_table_pa[i]);
+			buf_ready = false;
+			break;
+		}
 	}
 
-	fg_table_pa = task->pq_task->fg_table->pa;
-	if ((fg_table_pa >> 34) > 0) {
-		mml_pq_err("%s job_id[%d] fg pa addr exceed 34 bits [%llx]", __func__,
-			task->job.jobid, fg_table_pa);
-		buf_ready = false;
-	}
-
-	// enable filmGrain
 	if (buf_ready) {
 		mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth);
+		/* sync dmabuf for lumn, cb, cr */
+		for (int i = 0; i < FG_BUF_NUM-1; i++)
+			dma_sync_single_range_for_device(
+				dev_buf, fg_table_pa[i], 0, FG_BUF_GRAIN_SIZE, DMA_TO_DEVICE);
+		/* sync dmabuf for scaling table */
 		dma_sync_single_range_for_device(
-			dev_buf,fg_table_pa, 0, FG_BUF_SIZE, DMA_TO_DEVICE);
+			dev_buf, fg_table_pa[FG_BUF_NUM-1], 0, FG_BUF_SCALING_SIZE, DMA_TO_DEVICE);
 
+		/* enable filmGrain */
 		mml_write(pkt, base_pa + fg->data->reg_table[FG_CTRL_0], relay_mode << 0, 1 << 0,
 			reuse, cache, &fg_frm->labels[FG_CTRL_0_LABEL]);
 		mml_write(pkt, base_pa + fg->data->reg_table[FG_CK_EN], 0xF, 0xF,
 			reuse, cache, &fg_frm->labels[FG_CK_EN_LABEL]);
 	} else {
+		/* relay filmGrain */
 		mml_write(pkt, base_pa + fg->data->reg_table[FG_CTRL_0], 1, 1 << 0,
 			reuse, cache, &fg_frm->labels[FG_CTRL_0_LABEL]);
 		mml_write(pkt, base_pa + fg->data->reg_table[FG_CK_EN], 0x7, 0xF,
@@ -338,39 +349,35 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 		smi_sw_reset << 0 | crc_cg_enable << 4, 1 << 0 | 1 << 4);
 
 	/* set FilmGrain Table Address */
-	mml_pq_msg("%s FG_CB_TBL_ADDR[%llx]", __func__,
-		fg_table_pa + mml_pq_fg_get_luma_offset());
-	mml_pq_msg("%s FG_CB_TBL_ADDR[%llx]", __func__,
-		fg_table_pa + mml_pq_fg_get_cb_offset());
-	mml_pq_msg("%s FG_CB_TBL_ADDR[%llx]", __func__,
-		fg_table_pa + mml_pq_fg_get_cr_offset(is_yuv_444));
-	mml_pq_msg("%s FG_CB_TBL_ADDR[%llx]", __func__,
-		fg_table_pa + mml_pq_fg_get_scaling_offset(is_yuv_444));
+	mml_pq_msg("%s FG_LUMA_TBL_ADDR[%llx]", __func__, fg_table_pa[0]);
+	mml_pq_msg("%s FG_CB_TBL_ADDR[%llx]", __func__, fg_table_pa[1]);
+	mml_pq_msg("%s FG_CR_TBL_ADDR[%llx]", __func__, fg_table_pa[2]);
+	mml_pq_msg("%s FG_LUT_TBL_ADDR[%llx]", __func__, fg_table_pa[3]);
 
 	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUMA_TBL_BASE],
-		(u32)(fg_table_pa + mml_pq_fg_get_luma_offset()),
+		(u32)(fg_table_pa[0]),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUMA_TBL_BASE_LABEL]);
 	mml_write(pkt, base_pa + fg->data->reg_table[FG_CB_TBL_BASE],
-		(u32)(fg_table_pa + mml_pq_fg_get_cb_offset()),
+		(u32)(fg_table_pa[1]),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_CB_TBL_BASE_LABEL]);
 	mml_write(pkt, base_pa + fg->data->reg_table[FG_CR_TBL_BASE],
-		(u32)(fg_table_pa + mml_pq_fg_get_cr_offset(is_yuv_444)),
+		(u32)(fg_table_pa[2]),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_CR_TBL_BASE_LABEL]);
 	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUT_BASE],
-		(u32)(fg_table_pa + mml_pq_fg_get_scaling_offset(is_yuv_444)),
+		(u32)(fg_table_pa[3]),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUT_BASE_LABEL]);
 
 	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUMA_TBL_BASE_MSB],
-		(fg_table_pa + mml_pq_fg_get_luma_offset()) >> 32,
+		(fg_table_pa[0]) >> 32,
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUMA_TBL_BASE_MSB_LABEL]);
 	mml_write(pkt, base_pa + fg->data->reg_table[FG_CB_TBL_BASE_MSB],
-		(fg_table_pa + mml_pq_fg_get_cb_offset()) >> 32,
+		(fg_table_pa[1]) >> 32,
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_CB_TBL_BASE_MSB_LABEL]);
 	mml_write(pkt, base_pa + fg->data->reg_table[FG_CR_TBL_BASE_MSB],
-		(fg_table_pa + mml_pq_fg_get_cr_offset(is_yuv_444)) >> 32,
+		(fg_table_pa[2]) >> 32,
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_CR_TBL_BASE_MSB_LABEL]);
 	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUT_BASE_MSB],
-		(fg_table_pa + mml_pq_fg_get_scaling_offset(is_yuv_444)) >> 32,
+		(fg_table_pa[3]) >> 32,
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUT_BASE_MSB_LABEL]);
 
 	/* bit_depth & is yuv420 or yuv444 */
@@ -439,11 +446,11 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	struct device *dev_buf = smmu_v3_enabled()?
 		fg->mmu_dev : task->config->path[ccfg->pipe]->clt->chan->mbox->dev;
 	bool relay_mode = !dest->pq_config.en_fg;
-	s32 ret = 0;
+	s32 i, ret = 0;
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	u8 bit_depth = MML_FMT_10BIT(src->format) ? 10 : 8;
 	bool is_yuv_444 = true;
-	dma_addr_t fg_table_pa;
+	dma_addr_t fg_table_pa[FG_BUF_NUM];
 
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
 
@@ -453,54 +460,61 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	if (!dest->pq_config.en_fg)
 		goto exit;
 
-	mml_pq_get_fg_buffer(task, ccfg->pipe, dev_buf, &(task->pq_task->fg_table));
-	if (unlikely(!task->pq_task->fg_table) ||
-		unlikely(!task->pq_task->fg_table->va)) {
-		mml_pq_err("%s job_id[%d] fg_table is null", __func__,
-			task->job.jobid);
-		goto exit;
+	mml_pq_get_fg_buffer(task, ccfg->pipe, dev_buf);
+
+	for (i = 0; i < FG_BUF_NUM; i++) {
+		if (unlikely(!task->pq_task->fg_table[i]) ||
+			unlikely(!task->pq_task->fg_table[i]->va)) {
+			mml_pq_err("%s job_id[%d] fg_table[%d] is null",
+				__func__, task->job.jobid, i);
+			goto exit;
+		}
+
+		fg_table_pa[i] = task->pq_task->fg_table[i]->pa;
+		if ((task->pq_task->fg_table[i]->pa >> 34) > 0) {
+			mml_pq_err("%s job_id[%d] fg[%d] pa addr exceed 34 bits [%llx]",
+				__func__, task->job.jobid, i, fg_table_pa[i]);
+			goto exit;
+		}
 	}
 
-	fg_table_pa = task->pq_task->fg_table->pa;
-	if ((fg_table_pa >> 34) > 0) {
-		mml_pq_err("%s job_id[%d] fg pa addr exceed 34 bits [%llx]", __func__,
-			task->job.jobid, fg_table_pa);
-		goto exit;
-	}
-
+	/* enable filmGrain */
 	mml_update(reuse, fg_frm->labels[FG_CTRL_0_LABEL], relay_mode << 0);
 	mml_update(reuse, fg_frm->labels[FG_CK_EN_LABEL], 0xF);
 
 	mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth);
-	dma_sync_single_range_for_device(dev_buf, fg_table_pa, 0, FG_BUF_SIZE, DMA_TO_DEVICE);
+
+	/* sync dmabuf for lumn, cb, cr */
+	for (int i = 0; i < FG_BUF_NUM-1; i++)
+		dma_sync_single_range_for_device(
+			dev_buf, fg_table_pa[i], 0, FG_BUF_GRAIN_SIZE, DMA_TO_DEVICE);
+	/* sync dmabuf for scaling table */
+	dma_sync_single_range_for_device(
+		dev_buf, fg_table_pa[FG_BUF_NUM-1], 0, FG_BUF_SCALING_SIZE, DMA_TO_DEVICE);
 
 	/* set FilmGrain Table Address */
-	mml_pq_msg("%s FG_CB_TBL_ADDR[%llx]", __func__,
-		fg_table_pa + mml_pq_fg_get_luma_offset());
-	mml_pq_msg("%s FG_CB_TBL_ADDR[%llx]", __func__,
-		fg_table_pa + mml_pq_fg_get_cb_offset());
-	mml_pq_msg("%s FG_CB_TBL_ADDR[%llx]", __func__,
-		fg_table_pa + mml_pq_fg_get_cr_offset(is_yuv_444));
-	mml_pq_msg("%s FG_CB_TBL_ADDR[%llx]", __func__,
-		fg_table_pa + mml_pq_fg_get_scaling_offset(is_yuv_444));
+	mml_pq_msg("%s FG_LUMA_TBL_ADDR[%llx]", __func__, fg_table_pa[0]);
+	mml_pq_msg("%s FG_CB_TBL_ADDR[%llx]", __func__, fg_table_pa[1]);
+	mml_pq_msg("%s FG_CR_TBL_ADDR[%llx]", __func__, fg_table_pa[2]);
+	mml_pq_msg("%s FG_LUT_TBL_ADDR[%llx]", __func__, fg_table_pa[3]);
 
 	mml_update(reuse, fg_frm->labels[FG_LUMA_TBL_BASE_LABEL],
-		(u32)(fg_table_pa + mml_pq_fg_get_luma_offset()));
+		(u32)(fg_table_pa[0]));
 	mml_update(reuse, fg_frm->labels[FG_CB_TBL_BASE_LABEL],
-		(u32)(fg_table_pa + mml_pq_fg_get_cb_offset()));
+		(u32)(fg_table_pa[1]));
 	mml_update(reuse, fg_frm->labels[FG_CR_TBL_BASE_LABEL],
-		(u32)(fg_table_pa + mml_pq_fg_get_cr_offset(is_yuv_444)));
+		(u32)(fg_table_pa[2]));
 	mml_update(reuse, fg_frm->labels[FG_LUT_BASE_LABEL],
-		(u32)(fg_table_pa + mml_pq_fg_get_scaling_offset(is_yuv_444)));
+		(u32)(fg_table_pa[3]));
 
 	mml_update(reuse, fg_frm->labels[FG_LUMA_TBL_BASE_MSB_LABEL],
-		(fg_table_pa + mml_pq_fg_get_luma_offset()) >> 32);
+		(fg_table_pa[0]) >> 32);
 	mml_update(reuse, fg_frm->labels[FG_CB_TBL_BASE_MSB_LABEL],
-		(fg_table_pa + mml_pq_fg_get_cb_offset()) >> 32);
+		(fg_table_pa[1]) >> 32);
 	mml_update(reuse, fg_frm->labels[FG_CR_TBL_BASE_MSB_LABEL],
-		(fg_table_pa + mml_pq_fg_get_cr_offset(is_yuv_444)) >> 32);
+		(fg_table_pa[2]) >> 32);
 	mml_update(reuse, fg_frm->labels[FG_LUT_BASE_MSB_LABEL],
-		(fg_table_pa + mml_pq_fg_get_scaling_offset(is_yuv_444)) >> 32);
+		(fg_table_pa[3]) >> 32);
 
 	/* config pps */
 	mml_update(reuse, fg_frm->labels[FG_PPS_0_LABEL], mml_pq_fg_get_pps0(fg_meta));
@@ -537,7 +551,7 @@ static void fg_task_done(struct mml_comp *comp, struct mml_task *task,
 	if (!dest->pq_config.en_fg)
 		goto exit;
 
-	mml_pq_put_fg_buffer(task, ccfg->pipe, dev_buf, &(task->pq_task->fg_table));
+	mml_pq_put_fg_buffer(task, ccfg->pipe, dev_buf);
 
 exit:
 	mml_pq_trace_ex_end();
