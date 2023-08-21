@@ -7193,13 +7193,19 @@
 					<&smi_larb1 SMMU_L1_P0_OVL_RDMA0_1>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L0_P1_OVL_RDMA0_0)
 					 &mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L1_P0_OVL_RDMA0_1)
+					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L0_P1_OVL_RDMA0_0)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L0_P1_OVL_RDMA0_0)
+					 &mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L1_P0_OVL_RDMA0_1)
 					 &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "DDP_COMPONENT_OVL0_2L_qos",
+					     "DDP_COMPONENT_OVL0_2L_qos_other",
 					     "DDP_COMPONENT_OVL0_2L_fbdc_qos",
-					     "DDP_COMPONENT_OVL0_2L_hrt_qos";
+					     "DDP_COMPONENT_OVL0_2L_hrt_qos",
+					     "DDP_COMPONENT_OVL0_2L_hrt_qos_other";
 		};
 
 		disp_ovl1_2l: disp-ovl1-2l@14403000 {
@@ -7213,13 +7219,19 @@
 					<&smi_larb21 SMMU_L21_P0_OVL_RDMA1_1>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L20_P1_OVL_RDMA1_0)
 					 &mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L21_P0_OVL_RDMA1_1)
+					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L20_P1_OVL_RDMA1_0)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L20_P1_OVL_RDMA1_0)
+					 &mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L21_P0_OVL_RDMA1_1)
 					 &mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "DDP_COMPONENT_OVL1_2L_qos",
+					     "DDP_COMPONENT_OVL1_2L_qos_other",
 					     "DDP_COMPONENT_OVL1_2L_fbdc_qos",
-					     "DDP_COMPONENT_OVL1_2L_hrt_qos";
+					     "DDP_COMPONENT_OVL1_2L_hrt_qos",
+					     "DDP_COMPONENT_OVL1_2L_hrt_qos_other";
 		};
 
 		disp_ovl2_2l: disp-ovl2-2l@14404000 {
@@ -7233,13 +7245,19 @@
 					<&smi_larb1 SMMU_L1_P1_OVL_RDMA2_1>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L0_P3_OVL_RDMA2_0)
 					 &mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L1_P1_OVL_RDMA2_1)
+					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L0_P3_OVL_RDMA2_0)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L0_P3_OVL_RDMA2_0)
+					 &mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L1_P1_OVL_RDMA2_1)
 					 &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "DDP_COMPONENT_OVL2_2L_qos",
+					     "DDP_COMPONENT_OVL2_2L_qos_other",
 					     "DDP_COMPONENT_OVL2_2L_fbdc_qos",
-					     "DDP_COMPONENT_OVL2_2L_hrt_qos";
+					     "DDP_COMPONENT_OVL2_2L_hrt_qos",
+					     "DDP_COMPONENT_OVL2_2L_hrt_qos_other";
 		};
 
 		disp-ovl3-2l@14405000 {
@@ -7453,13 +7471,19 @@
 					<&smi_larb35 SMMU_L35_P0_OVL_RDMA0_1>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L34_P1_OVL_RDMA0_0)
 					 &mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L35_P0_OVL_RDMA0_1)
+					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P1_OVL_RDMA0_0)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P1_OVL_RDMA0_0)
+					 &mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L35_P0_OVL_RDMA0_1)
 					 &mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "DDP_COMPONENT_OVL3_2L_qos",
+					     "DDP_COMPONENT_OVL3_2L_qos_other",
 					     "DDP_COMPONENT_OVL3_2L_fbdc_qos",
-					     "DDP_COMPONENT_OVL3_2L_hrt_qos";
+					     "DDP_COMPONENT_OVL3_2L_hrt_qos",
+					     "DDP_COMPONENT_OVL3_2L_hrt_qos_other";
 		};
 
 		disp1_ovl1_2l: disp1-ovl1-2l@14603000 {
@@ -7473,13 +7497,19 @@
 					<&smi_larb37 SMMU_L37_P0_OVL_RDMA1_1>;
 			interconnects =	<&mmqos MASTER_LARB_PORT(SMMU_L36_P1_OVL_RDMA1_0)
 					 &mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L37_P0_OVL_RDMA1_1)
+					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L36_P1_OVL_RDMA1_0)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L36_P1_OVL_RDMA1_0)
+					 &mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L37_P0_OVL_RDMA1_1)
 					 &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "DDP_COMPONENT_OVL4_2L_qos",
+					     "DDP_COMPONENT_OVL4_2L_qos_other",
 					     "DDP_COMPONENT_OVL4_2L_fbdc_qos",
-					     "DDP_COMPONENT_OVL4_2L_hrt_qos";
+					     "DDP_COMPONENT_OVL4_2L_hrt_qos",
+					     "DDP_COMPONENT_OVL4_2L_hrt_qos_other";
 		};
 
 		disp1_ovl2_2l: disp1-ovl2-2l@14604000 {
@@ -7493,13 +7523,19 @@
 					<&smi_larb35 SMMU_L35_P1_OVL_RDMA2_1>;
 			interconnects =	<&mmqos MASTER_LARB_PORT(SMMU_L34_P3_OVL_RDMA2_0)
 					 &mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L35_P1_OVL_RDMA2_1)
+					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P3_OVL_RDMA2_0)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P3_OVL_RDMA2_0)
+					 &mmqos SLAVE_COMMON(1)>,
+					<&mmqos MASTER_LARB_PORT(SMMU_L35_P1_OVL_RDMA2_1)
 					 &mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "DDP_COMPONENT_OVL5_2L_qos",
+					     "DDP_COMPONENT_OVL5_2L_qos_other",
 					     "DDP_COMPONENT_OVL5_2L_fbdc_qos",
-					     "DDP_COMPONENT_OVL5_2L_hrt_qos";
+					     "DDP_COMPONENT_OVL5_2L_hrt_qos",
+					     "DDP_COMPONENT_OVL5_2L_hrt_qos_other";
 		};
 
 		disp-ovl3-2l@14605000 {
