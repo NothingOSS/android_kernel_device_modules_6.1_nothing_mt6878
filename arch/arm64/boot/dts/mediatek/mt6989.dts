@@ -11841,7 +11841,6 @@
 			cmdq-dump-hw-trace = <1>;
 			dma-mask-bit = <35>;
 			cmdq-log-perf-off;
-			error-irq-bug-on = <1>;
 			mtk,smmu-shared = <&mm_smmu_srt_normal>;
 			mtk,iommu-dma-axid = <SMMU_L48_GCE_DM>;
 			smmu-tbu = <0>;
@@ -11849,6 +11848,8 @@
 			mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;
 			prebuilt-enable;
 			gce-fast-mtcmos;
+			dram-pwr-base = <0x1c001000>;
+			error-irq-sw-req;
 		};
 
 		gce_sec: gce-mbox-sec@1e980000 {
@@ -11891,7 +11892,6 @@
 			cmdq-dump-hw-trace = <1>;
 			dma-mask-bit = <35>;
 			cmdq-log-perf-off;
-			error-irq-bug-on = <1>;
 			mtk,smmu-shared = <&mm_smmu_srt_normal>;
 			mtk,iommu-dma-axid = <SMMU_L48_GCE_MM>;
 			smmu-tbu = <0>;
@@ -11902,6 +11902,8 @@
 			event-debug;
 			event-dump-range = <0 383>;
 			event-clr-range = <0 268>;
+			dram-pwr-base = <0x1c001000>;
+			error-irq-sw-req;
 		};
 
 		gce_m_sec: gce-mbox-m-sec@1e990000 {
