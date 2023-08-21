@@ -1446,6 +1446,7 @@ int mtk_drm_crtc_enable_vblank(struct drm_crtc *crtc)
 		panel_params = mtk_drm_get_lcm_ext_params(crtc);
 		if (panel_params && panel_params->vblank_off) {
 			mtk_crtc->vblank_en = 0;
+			drm_trace_tag_end("vblank_en");
 			return -EPERM;
 		}
 		/* The enable vblank is called in spinlock, so we create another
@@ -1454,7 +1455,7 @@ int mtk_drm_crtc_enable_vblank(struct drm_crtc *crtc)
 		atomic_set(&mtk_crtc->vblank_enable_task_active, 1);
 		wake_up_interruptible(&mtk_crtc->vblank_enable_wq);
 	}
-
+	drm_trace_tag_start("vblank_en");
 	CRTC_MMP_MARK((int) pipe, enable_vblank, (unsigned long)comp,
 			(unsigned long)&mtk_crtc->base);
 
@@ -2120,6 +2121,7 @@ void mtk_drm_crtc_disable_vblank(struct drm_crtc *crtc)
 	DDPINFO("%s\n", __func__);
 
 	mtk_crtc->vblank_en = 0;
+	drm_trace_tag_end("vblank_en");
 
 	CRTC_MMP_MARK((int) pipe, disable_vblank, (unsigned long)comp,
 			(unsigned long)&mtk_crtc->base);
@@ -16245,10 +16247,9 @@ static int mtk_drm_pf_release_thread(void *data)
 			pf_time = 0;
 		fence_idx = atomic_read(&private->crtc_rel_present[crtc_idx]);
 
-		mtk_release_present_fence(private->session_id[crtc_idx],
-					  fence_idx, pf_time);
-
-		private->crtc_last_present_ts[crtc_idx] = pf_time;
+		if (mtk_release_present_fence(private->session_id[crtc_idx],
+					  fence_idx, pf_time) == 1)
+			private->crtc_last_present_ts[crtc_idx] = pf_time;
 
 		if (crtc_idx == 0)
 			ktime_get_real_ts64(&rdma_sof_tval);
@@ -16687,6 +16688,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	mtk_crtc_init_gce_obj(drm_dev, mtk_crtc);
 
 	mtk_crtc->vblank_en = 1;
+	drm_trace_tag_start("vblank_en");
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLE_MGR) &&
 	    !IS_ERR_OR_NULL(output_comp) &&
 	    mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI) {

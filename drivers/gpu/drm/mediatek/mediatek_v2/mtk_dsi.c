@@ -2420,7 +2420,7 @@ void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
 int mtk_dsi_check_vblank_cnt(struct mtk_dsi *dsi, struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_panel_ext *panel_ext)
 {
-	unsigned int last_pf = 0;
+	unsigned int last_pf = 0, time_between_te_pf_us = 0;
 	unsigned int crtc_idx;
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
@@ -2439,7 +2439,7 @@ int mtk_dsi_check_vblank_cnt(struct mtk_dsi *dsi, struct mtk_drm_crtc *mtk_crtc,
 	if (last_present_ts == 0)
 		return -1;
 	//pf_time was updated at dsi irq
-	if(mtk_crtc->pf_time < last_present_ts) {
+	if(mtk_crtc->pf_time < last_present_ts && priv->force_resync_after_idle == 0) {
 		DDPPR_ERR("%s pf_time should not be earlier than present_ts\n", __func__);
 		return -1;
 	}
@@ -2448,13 +2448,19 @@ int mtk_dsi_check_vblank_cnt(struct mtk_dsi *dsi, struct mtk_drm_crtc *mtk_crtc,
 	//mtk_crtc->pf_time: last dsi irq time (nano s) TE
 	//last_present_ts: last release present fence time (nano s)
 	//panel_ext->params->real_te_duration: (micro s)
-	last_pf =
-		((((mtk_crtc->pf_time - last_present_ts) / 1000) +
-		(panel_ext->params->real_te_duration)/2)/
-		(panel_ext->params->real_te_duration))%dsi->skip_vblank;
+	if (mtk_crtc->pf_time > last_present_ts)
+		time_between_te_pf_us = ((mtk_crtc->pf_time - last_present_ts) / 1000);
+	else
+		time_between_te_pf_us = ((last_present_ts - mtk_crtc->pf_time) / 1000);
+
+	last_pf = DIV_ROUND_CLOSEST_ULL(time_between_te_pf_us,
+		panel_ext->params->real_te_duration)%dsi->skip_vblank;
+
+	if (priv->force_resync_after_idle == 1)
+		drm_trace_tag_value("force_resync_after_idle", last_pf);
 
 	//change counter
-	if (last_pf != 0) {
+	if (last_pf != dsi->cnt % dsi->skip_vblank) {
 		DDPPR_ERR("%s re-sync skip_vblank_cnt: %d -> %d, skip_vlnk %d\n", __func__,
 			dsi->cnt%dsi->skip_vblank, last_pf, dsi->skip_vblank);
 		DDPPR_ERR("[%s] dsi %d, %d, %lld, %lld, %d\n", __func__,
@@ -2688,6 +2694,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 						(mtk_dsi_check_vblank_cnt(dsi, mtk_crtc, panel_ext)
 						!= 0) ? 0 : dsi->cnt;
 						dsi->skip_vblank = panel_ext->params->skip_vblank;
+					} else if (priv->force_resync_after_idle == 1) {
+						mtk_dsi_check_vblank_cnt(dsi, mtk_crtc, panel_ext);
+						priv->force_resync_after_idle = 0;
 					}
 					dsi->cnt++;
 				} else if (mtk_crtc->vblank_en)

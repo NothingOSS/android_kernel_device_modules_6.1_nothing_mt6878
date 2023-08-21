@@ -1858,7 +1858,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		DDPINFO("crtc%d do %s-\n", crtc_id, __func__);
 		return;
 	}
-
+	priv->force_resync_after_idle = 1;
 	if (idlemgr->perf != NULL) {
 		start = sched_clock();
 		perf_detail = atomic_read(&idlemgr->perf->detail);

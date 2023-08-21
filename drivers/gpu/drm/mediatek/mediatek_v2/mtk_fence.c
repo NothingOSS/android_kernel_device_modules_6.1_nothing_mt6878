@@ -535,7 +535,7 @@ int mtk_release_present_fence(unsigned int session_id, unsigned int fence_idx, k
 	unsigned int timeline_id = 0;
 	int fence_increment = 0;
 	unsigned int idx;
-
+	int pf_signal = 0;
 	timeline_id = mtk_fence_get_present_timeline_id(session_id);
 	layer_info = _disp_sync_get_sync_info(session_id, timeline_id);
 	if (layer_info == NULL) {
@@ -560,6 +560,7 @@ int mtk_release_present_fence(unsigned int session_id, unsigned int fence_idx, k
 		mtk_fence_session_mode_spy(session_id), fence_idx);
 
 	mtk_sync_timeline_inc(layer_info->timeline, fence_increment, time);
+	pf_signal = 1;
 	DDPFENCE("RL+/%s%d/T%d/id%d\n",
 		 mtk_fence_session_mode_spy(session_id),
 		 MTK_SESSION_DEV(session_id), timeline_id, fence_idx);
@@ -581,7 +582,7 @@ int mtk_release_present_fence(unsigned int session_id, unsigned int fence_idx, k
 
 done:
 	mutex_unlock(&layer_info->sync_lock);
-	return 0;
+	return pf_signal;
 }
 
 int mtk_release_sf_present_fence(unsigned int session_id,

@@ -239,6 +239,7 @@ struct mtk_drm_private {
 	atomic_t need_recover;
 
 	unsigned int seg_id;
+	unsigned int force_resync_after_idle;
 };
 
 struct mtk_drm_property {
