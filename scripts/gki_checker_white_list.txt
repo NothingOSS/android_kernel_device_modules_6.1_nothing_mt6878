@@ -99,11 +99,13 @@ f kernel/workqueue.c
 f lib/dynamic_debug.c
 f lib/maple_tree.c
 f mm/backing-dev.c
+f mm/huge_memory.c
 f mm/kasan/common.c
 f mm/page-writeback.c
 f mm/page_alloc.c
 f mm/memory.c
 f mm/mempool.c
+f mm/zsmalloc.c
 f net/core/rtnetlink.c
 f security/selinux/avc.c
 f security/selinux/include/avc.h
