@@ -132,6 +132,8 @@ enum {
 	MT6989_DAI_HOSTLESS_UL4,
 	MT6989_DAI_HOSTLESS_DSP_DL,
 	MT6989_DAI_NUM,
+	/* use for mtkaif calibration specail setting */
+	MT6989_DAI_MTKAIF = MT6989_DAI_NUM,
 };
 
 #define MT6989_DAI_I2S_MAX_NUM 11 //depends each platform's max i2s num
@@ -619,6 +621,7 @@ struct mt6989_afe_private {
 	int mtkaif_dmic_ch34;
 	int mtkaif_adda6_only;
 	unsigned int audio_r_miso1_enable;
+	unsigned int miso_only;
 	/* add for vs1 voter */
 	/* adda dl/ul is on */
 	bool is_adda_dl_on;

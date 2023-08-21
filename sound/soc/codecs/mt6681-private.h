@@ -505,6 +505,7 @@ struct mt6681_priv {
 	int mic_ulcf_en;
 	unsigned int vd105;
 	unsigned int audio_r_miso1_enable;
+	unsigned int miso_only;
 	unsigned int hwgain_enable;
 	unsigned int dl_hwgain;
 

@@ -561,18 +561,10 @@ static int mtk_adda_pad_top_event(struct snd_soc_dapm_widget *w,
 				0x1 << ADDA6_MTKAIFV4_TXIF_AFE_ON_SFT);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
-				MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
-				0x0 << MTKAIFV4_RXIF_AFE_ON_SFT);
-		regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
-				ADDA6_MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
-				0x0 << ADDA6_MTKAIFV4_RXIF_AFE_ON_SFT);
-		regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_TX_CFG0,
-				MTKAIFV4_TXIF_AFE_ON_MASK_SFT,
-				0x0 << MTKAIFV4_TXIF_AFE_ON_SFT);
-		regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_TX_CFG0,
-				ADDA6_MTKAIFV4_TXIF_AFE_ON_MASK_SFT,
-				0x0 << ADDA6_MTKAIFV4_TXIF_AFE_ON_SFT);
+		regmap_write(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0, 0x0);
+		regmap_write(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0, 0x0);
+		regmap_write(afe->regmap, AFE_ADDA_MTKAIFV4_TX_CFG0, 0x0);
+		regmap_write(afe->regmap, AFE_ADDA_MTKAIFV4_TX_CFG0, 0x0);
 		break;
 	default:
 		break;
@@ -612,15 +604,14 @@ static int mtk_adda_mtkaif_cfg_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 #ifdef MTKAIF4
 		if (((strcmp(w->name, "ADDA_MTKAIF_CFG") == 0) ||
-		    (strcmp(w->name, "ADDA6_MTKAIF_CFG") == 0)) &&
-		    (afe_priv->audio_r_miso1_enable == 0))
+		    (strcmp(w->name, "ADDA6_MTKAIF_CFG") == 0))) {
 			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
 					MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
 					0x1 << MTKAIFV4_RXIF_AFE_ON_SFT);
-		else
 			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
 					ADDA6_MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
 					0x1 << ADDA6_MTKAIFV4_RXIF_AFE_ON_SFT);
+		}
 		/* mtkaif_rxif_clkinv_adc inverse for calibration */
 		regmap_update_bits(afe->regmap, AFE_MTKAIF0_CFG0,
 				   RG_MTKAIF0_RXIF_CLKINV_MASK_SFT,
@@ -1632,9 +1623,6 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 				regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
 						MTKAIFV4_RXIF_EN_SEL_MASK_SFT,
 						0x1 << MTKAIFV4_RXIF_EN_SEL_SFT);
-				regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
-						MTKAIFV4_UL_CH1CH2_IN_EN_SEL_MASK_SFT,
-						0x1 << MTKAIFV4_UL_CH1CH2_IN_EN_SEL_SFT);
 
 				/* AFE_ADDA6_MTKAIFV4_RX_CFG0 */
 				regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
@@ -1655,12 +1643,6 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 						MTKAIFV4_RXIF_FOUR_CHANNEL_MASK_SFT,
 						0x1 << MTKAIFV4_RXIF_FOUR_CHANNEL_SFT);
 				regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
-						MTKAIFV4_UL_CH1CH2_IN_EN_SEL_MASK_SFT,
-						0x1 << MTKAIFV4_UL_CH1CH2_IN_EN_SEL_SFT);
-				regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
-						MTKAIFV4_UL_CH3CH4_IN_EN_SEL_MASK_SFT,
-						0x1 << MTKAIFV4_UL_CH3CH4_IN_EN_SEL_SFT);
-				regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
 						MTKAIFV4_RXIF_EN_SEL_MASK_SFT,
 						0x0 << MTKAIFV4_RXIF_EN_SEL_SFT);
 				/* [28] loopback mode
@@ -1671,69 +1653,76 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 						MTKAIFV4_TXIF_EN_SEL_MASK_SFT,
 						0x0 << MTKAIFV4_TXIF_EN_SEL_SFT);
 			}
-#endif
-			if (afe_priv->audio_r_miso1_enable == 1) {
 
-				/* 35Hz @ 48k */
-				regmap_write(afe->regmap,
-					     AFE_ADDA_UL1_IIR_COEF_02_01, 0x00000000);
-				regmap_write(afe->regmap,
-					     AFE_ADDA_UL1_IIR_COEF_04_03, 0x00003FB8);
-				regmap_write(afe->regmap,
-					     AFE_ADDA_UL1_IIR_COEF_06_05, 0x3FB80000);
-				regmap_write(afe->regmap,
-					     AFE_ADDA_UL1_IIR_COEF_08_07, 0x3FB80000);
-				regmap_write(afe->regmap,
-					     AFE_ADDA_UL1_IIR_COEF_10_09, 0x0000C048);
-
-				regmap_write(afe->regmap,
-					     AFE_ADDA_UL1_SRC_CON0, ul_src_con0);
-
-				/* mtkaif_rxif_data_mode = 0, amic */
-				regmap_update_bits(afe->regmap,
-						   AFE_MTKAIF1_RX_CFG0,
-						   0x1 << 0,
-						   0x0 << 0);
-			} else {
-
-				/* 35Hz @ 48k */
-				regmap_write(afe->regmap,
-					     AFE_ADDA_UL0_IIR_COEF_02_01, 0x00000000);
-				regmap_write(afe->regmap,
-					     AFE_ADDA_UL0_IIR_COEF_04_03, 0x00003FB8);
-				regmap_write(afe->regmap,
-					     AFE_ADDA_UL0_IIR_COEF_06_05, 0x3FB80000);
-				regmap_write(afe->regmap,
-					     AFE_ADDA_UL0_IIR_COEF_08_07, 0x3FB80000);
-				regmap_write(afe->regmap,
-					     AFE_ADDA_UL0_IIR_COEF_10_09, 0x0000C048);
-
-				regmap_write(afe->regmap,
-					     AFE_ADDA_UL0_SRC_CON0, ul_src_con0);
-
-				/* mtkaif_rxif_data_mode = 0, amic */
-				regmap_update_bits(afe->regmap,
-						AFE_MTKAIF0_RX_CFG0,
-						0x1 << 0,
-						0x0 << 0);
-			}
-			break;
-		case MT6989_DAI_ADDA_CH34:
-		case MT6989_DAI_AP_DMIC_CH34:
-#ifdef MTKAIF4
-			/* AFE_ADDA_MTKAIFV4_RX_CFG0 */
-			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
-					MTKAIFV4_RXIF_FOUR_CHANNEL_MASK_SFT,
-					0x1 << MTKAIFV4_RXIF_FOUR_CHANNEL_SFT);
 			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
 					MTKAIFV4_UL_CH1CH2_IN_EN_SEL_MASK_SFT,
 					0x1 << MTKAIFV4_UL_CH1CH2_IN_EN_SEL_SFT);
 			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
 					MTKAIFV4_UL_CH3CH4_IN_EN_SEL_MASK_SFT,
 					0x1 << MTKAIFV4_UL_CH3CH4_IN_EN_SEL_SFT);
+#endif
+			/* 35Hz @ 48k */
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_IIR_COEF_02_01, 0x00000000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_IIR_COEF_04_03, 0x00003FB8);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_IIR_COEF_06_05, 0x3FB80000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_IIR_COEF_08_07, 0x3FB80000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_IIR_COEF_10_09, 0x0000C048);
+
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL1_SRC_CON0, ul_src_con0);
+
+			/* mtkaif_rxif_data_mode = 0, amic */
+			regmap_update_bits(afe->regmap,
+					   AFE_MTKAIF1_RX_CFG0,
+					   0x1 << 0,
+					   0x0 << 0);
+
+			/* 35Hz @ 48k */
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL0_IIR_COEF_02_01, 0x00000000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL0_IIR_COEF_04_03, 0x00003FB8);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL0_IIR_COEF_06_05, 0x3FB80000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL0_IIR_COEF_08_07, 0x3FB80000);
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL0_IIR_COEF_10_09, 0x0000C048);
+
+			regmap_write(afe->regmap,
+				     AFE_ADDA_UL0_SRC_CON0, ul_src_con0);
+
+			/* mtkaif_rxif_data_mode = 0, amic */
+			regmap_update_bits(afe->regmap,
+					AFE_MTKAIF0_RX_CFG0,
+					0x1 << 0,
+					0x0 << 0);
+			break;
+		case MT6989_DAI_ADDA_CH34:
+		case MT6989_DAI_AP_DMIC_CH34:
+#ifdef MTKAIF4
+
+			if (afe_priv->audio_r_miso1_enable == 0) {
+				/* AFE_ADDA_MTKAIFV4_RX_CFG0 */
+				regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+						MTKAIFV4_RXIF_FOUR_CHANNEL_MASK_SFT,
+						0x1 << MTKAIFV4_RXIF_FOUR_CHANNEL_SFT);
+				regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+						MTKAIFV4_RXIF_EN_SEL_MASK_SFT,
+						0x0 << MTKAIFV4_RXIF_EN_SEL_SFT);
+			}
 			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
-					MTKAIFV4_RXIF_EN_SEL_MASK_SFT,
-					0x0 << MTKAIFV4_RXIF_EN_SEL_SFT);
+					MTKAIFV4_UL_CH1CH2_IN_EN_SEL_MASK_SFT,
+					0x1 << MTKAIFV4_UL_CH1CH2_IN_EN_SEL_SFT);
+			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+					MTKAIFV4_UL_CH3CH4_IN_EN_SEL_MASK_SFT,
+					0x1 << MTKAIFV4_UL_CH3CH4_IN_EN_SEL_SFT);
+
 #endif
 			/* 35Hz @ 48k */
 			regmap_write(afe->regmap,
@@ -1758,6 +1747,22 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 
 			break;
 		case MT6989_DAI_ADDA_CH56:
+			if (afe_priv->audio_r_miso1_enable == 1) {
+				/* AFE_ADDA_MTKAIFV4_RX_CFG0 */
+				regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+						MTKAIFV4_RXIF_FOUR_CHANNEL_MASK_SFT,
+						0x1 << MTKAIFV4_RXIF_FOUR_CHANNEL_SFT);
+				regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+						MTKAIFV4_RXIF_EN_SEL_MASK_SFT,
+						0x0 << MTKAIFV4_RXIF_EN_SEL_SFT);
+				/* [28] loopback mode
+				 * 0: loopback adda tx to adda rx
+				 * 1: loopback adda6 tx to adda rx
+				 */
+				regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
+						MTKAIFV4_TXIF_EN_SEL_MASK_SFT,
+						0x0 << MTKAIFV4_TXIF_EN_SEL_SFT);
+			}
 			regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
 					ADDA6_MTKAIFV4_RXIF_INPUT_MODE_MASK_SFT,
 					mtkaif_rate << ADDA6_MTKAIFV4_RXIF_INPUT_MODE_SFT);

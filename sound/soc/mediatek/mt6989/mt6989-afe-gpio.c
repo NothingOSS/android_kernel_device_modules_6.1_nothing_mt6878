@@ -148,22 +148,44 @@ static int mt6989_afe_gpio_adda_ch34_dl(struct mtk_base_afe *afe, bool enable)
 
 static int mt6989_afe_gpio_adda_ch34_ul(struct mtk_base_afe *afe, bool enable)
 {
-	if (enable)
-		return mt6989_afe_gpio_select(afe,
-					      MT6989_AFE_GPIO_DAT_MISO0_ON);
-	else
-		return mt6989_afe_gpio_select(afe,
-					      MT6989_AFE_GPIO_DAT_MISO0_OFF);
+	struct mt6989_afe_private *afe_priv = afe->platform_priv;
+
+	if (enable) {
+		if (afe_priv->audio_r_miso1_enable == 1) {
+			return mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_DAT_MISO1_ON);
+		} else {
+			return mt6989_afe_gpio_select(afe,
+						      MT6989_AFE_GPIO_DAT_MISO0_ON);
+		}
+	} else {
+		if (afe_priv->audio_r_miso1_enable == 1) {
+			return mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_DAT_MISO1_OFF);
+		} else {
+			return mt6989_afe_gpio_select(afe,
+						      MT6989_AFE_GPIO_DAT_MISO0_OFF);
+		}
+	}
 }
 
 static int mt6989_afe_gpio_adda_ch56_ul(struct mtk_base_afe *afe, bool enable)
 {
-	if (enable)
-		return mt6989_afe_gpio_select(afe,
-					      MT6989_AFE_GPIO_DAT_MISO1_ON);
-	else
-		return mt6989_afe_gpio_select(afe,
-					      MT6989_AFE_GPIO_DAT_MISO1_OFF);
+	struct mt6989_afe_private *afe_priv = afe->platform_priv;
+
+	if (enable) {
+		if (afe_priv->audio_r_miso1_enable == 1) {
+			return mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_DAT_MISO0_ON);
+		} else {
+			return mt6989_afe_gpio_select(afe,
+						      MT6989_AFE_GPIO_DAT_MISO1_ON);
+		}
+	} else {
+		if (afe_priv->audio_r_miso1_enable == 1) {
+			return mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_DAT_MISO0_ON);
+		} else {
+			return mt6989_afe_gpio_select(afe,
+						      MT6989_AFE_GPIO_DAT_MISO1_OFF);
+		}
+	}
 }
 
 int mt6989_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
@@ -224,6 +246,15 @@ int mt6989_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 					       MT6989_AFE_GPIO_VOW_SCP_DMIC_CLK_OFF);
 			mt6989_afe_gpio_select(afe,
 					       MT6989_AFE_GPIO_VOW_SCP_DMIC_DAT_OFF);
+		}
+		break;
+	case MT6989_DAI_MTKAIF:
+		if (enable) {
+			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_DAT_MISO1_ON);
+			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_DAT_MISO0_ON);
+		} else {
+			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_DAT_MISO1_OFF);
+			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_DAT_MISO0_OFF);
 		}
 		break;
 	default:
