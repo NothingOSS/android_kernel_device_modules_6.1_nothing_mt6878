@@ -2513,6 +2513,8 @@ static int mtk_oddmr_od_gain_lookup(struct mtk_ddp_comp *comp,
 	result_dbv = mtk_oddmr_common_gain_lookup(tmp_item, bl_gain_table, cnt);
 	result = ((uint32_t)result_dbv * (uint32_t)result_fps + 32) / 64;
 	result = (result * user_gain + 32) / 64;
+	if (result > 255)
+		result = 255;
 	*weight = result;
 	ODDMRAPI_LOG("dbv_gain %d, fps_gain %d, user_gain %d weight %d\n",
 		result_dbv, result_fps, user_gain, result);
@@ -3964,9 +3966,8 @@ static int mtk_oddmr_od_enable(struct drm_device *dev, int en)
 	ret = wait_event_interruptible_timeout(g_oddmr_hrt_wq,
 			atomic_read(&g_oddmr_od_hrt_done) == 1, msecs_to_jiffies(200));
 	if (ret <= 0) {
-		atomic_set(&g_oddmr_od_hrt_done, 0);
 		ODDMRFLOW_LOG("enable %d repaint timeout %d\n", enable, ret);
-		ret = -EAGAIN;
+		ret = 0;
 	}
 	return ret;
 }

@@ -808,22 +808,16 @@ int mtk_drm_ioctl_set_ccorr_impl(struct mtk_ddp_comp *comp, void *data)
 	}
 	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
 
-	if (ccorr_config->hw_id != DRM_DISP_CCORR_TOTAL) {
-		DDPINFO("hw_id = %d", ccorr_config->hw_id);
-		if (ccorr_config->hw_id == DRM_DISP_CCORR1) {
-			comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-					mtk_crtc, MTK_DISP_CCORR, 1);
-			primary_data->disp_ccorr_without_gamma = CCORR_INVERSE_GAMMA;
-		} else if (primary_data->disp_ccorr_linear & 0x01) {
-			primary_data->disp_ccorr_without_gamma = CCORR_INVERSE_GAMMA;
-		} else {
-			primary_data->disp_ccorr_without_gamma = CCORR_BYASS_GAMMA;
-			primary_data->prim_ccorr_pq_nonlinear = true;
-		}
-	} else {
-		DDPMSG("ccorr hw_id uncorrect, please check!\n");
-		return -1;
-	}
+	DDPINFO("%s pqhal_linear = %d, comp_linear =%d, comp:%s\n", __func__,
+			ccorr_config->linear, ccorr_data->is_linear, mtk_dump_comp_str(comp));
+
+	if (ccorr_config->linear != ccorr_data->is_linear)
+		return 0;
+
+	if (ccorr_config->linear == true)
+		primary_data->disp_ccorr_without_gamma = CCORR_INVERSE_GAMMA;
+	else
+		primary_data->disp_ccorr_without_gamma = CCORR_BYASS_GAMMA;
 
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
 
@@ -855,10 +849,19 @@ int mtk_drm_ioctl_set_ccorr(struct drm_device *dev, void *data,
 {
 	struct mtk_drm_private *private = dev->dev_private;
 	struct drm_crtc *crtc = private->crtc[0];
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
-			to_mtk_crtc(crtc), MTK_DISP_CCORR, 0);
+	struct mtk_ddp_comp *comp;
+	int i, j, ret = -1;
 
-	return mtk_drm_ioctl_set_ccorr_impl(comp, data);
+	for_each_comp_in_cur_crtc_path(comp, to_mtk_crtc(crtc), i, j) {
+		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_CCORR)
+			ret = mtk_drm_ioctl_set_ccorr_impl(comp, data);
+		if (ret < 0) {
+			DDPPR_ERR("%s:%d, failed, comp:%d\n", __func__, __LINE__, comp->id);
+			break;
+		}
+	}
+
+	return ret;
 }
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
@@ -1470,7 +1473,6 @@ void mtk_ccorr_first_cfg(struct mtk_ddp_comp *comp,
 	mtk_ccorr_config(comp, cfg, handle);
 }
 
-
 static int mtk_ccorr_pq_frame_config(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, unsigned int cmd, void *data, unsigned int data_size)
 {
@@ -1498,7 +1500,9 @@ static int mtk_ccorr_ioctl_transact(struct mtk_ddp_comp *comp,
 	struct mtk_drm_pq_caps_info *pq_info = NULL;
 	int ret = -1;
 
-	if (ccorr_data->path_order != 0 && cmd != PQ_CCORR_SET_PQ_CAPS)
+	if (ccorr_data->path_order != 0 &&
+		cmd != PQ_CCORR_SET_PQ_CAPS &&
+		cmd != PQ_CCORR_SET_CCORR)
 		return 0;
 
 	switch (cmd) {
