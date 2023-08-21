@@ -6033,7 +6033,7 @@
 		mmdvfs_mux: mmdvfs-mux {
 			compatible = "mediatek,mtk-mmdvfs-mux";
 			clocks = <&topckgen_clk CLK_TOP_DISP_SEL>, <&topckgen_clk CLK_TOP_MDP_SEL>,
-			<&topckgen_clk CLK_TOP_DISP_SEL>, <&topckgen_clk CLK_TOP_MMINFRA_SEL>,
+			<&topckgen_clk CLK_TOP_MDP_SEL>, <&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 			<&topckgen_clk CLK_TOP_VENC_SEL>, <&topckgen_clk CLK_TOP_VDEC_SEL>,
 			<&topckgen_clk CLK_TOP_IMG1_SEL>, <&topckgen_clk CLK_TOP_CAM_SEL>;
 			clock-names = "mux-dis", "mux-mdp", "mux-mml", "mux-smi", "mux-ven",
@@ -6049,7 +6049,7 @@
 				<MMDVFS_MUX_SMI>,
 				<MMDVFS_MUX_VEN>, <MMDVFS_MUX_VEN>, <MMDVFS_MUX_VEN>,
 				<MMDVFS_MUX_VDE>, <MMDVFS_MUX_IMG>, <MMDVFS_MUX_CAM>,
-				<MMDVFS_MUX_SMI>, <MMDVFS_MUX_CAM>, <MMDVFS_MUX_DIS>,
+				<MMDVFS_MUX_VEN>, <MMDVFS_MUX_CAM>, <MMDVFS_MUX_MDP>,
 				<MMDVFS_MUX_VDE>,
 				<MMDVFS_MUX_DIS>, <MMDVFS_MUX_MDP>, <MMDVFS_MUX_MML>, <MMDVFS_MUX_SMI>,
 				<MMDVFS_MUX_VEN>, <MMDVFS_MUX_VDE>, <MMDVFS_MUX_IMG>, <MMDVFS_MUX_CAM>,
