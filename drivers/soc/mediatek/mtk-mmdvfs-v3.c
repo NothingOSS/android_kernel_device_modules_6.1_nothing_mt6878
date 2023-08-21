@@ -74,6 +74,7 @@ static int vmm_power;
 static DEFINE_MUTEX(mmdvfs_vmm_pwr_mutex);
 static int last_vote_step[PWR_MMDVFS_NUM];
 static int last_force_step[PWR_MMDVFS_NUM];
+static int last_force_volt[PWR_MMDVFS_NUM];
 static int dpsw_thr;
 static int vmm_ceil_step;
 static bool mmdvfs_mux_version;
@@ -1023,7 +1024,7 @@ int mmdvfs_force_voltage_by_vcp(const u8 pwr_idx, const s8 opp)
 {
 	struct mmdvfs_mux *mux;
 	u8 idx = pwr_idx + MMDVFS_USER_VCORE;
-	int ret;
+	int ret, *last;
 
 	if (!mmdvfs_mux_version || idx >= ARRAY_SIZE(mmdvfs_user)) {
 		MMDVFS_ERR("invalid:%d pwr_idx:%hhu idx:%hhu", mmdvfs_mux_version, pwr_idx, idx);
@@ -1037,15 +1038,17 @@ int mmdvfs_force_voltage_by_vcp(const u8 pwr_idx, const s8 opp)
 		return -EINVAL;
 	}
 
+	last = &last_force_volt[pwr_idx];
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-		mux->opp < dpsw_thr && mux->last >= dpsw_thr)
+		opp >= 0 && opp < dpsw_thr && (*last < 0 || *last >= dpsw_thr))
 		mtk_mmdvfs_enable_vmm(true);
 	ret = mmdvfs_vcp_ipi_send(FUNC_FORCE_VOL, pwr_idx, opp, NULL);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
-		mux->opp >= dpsw_thr && mux->last < dpsw_thr)
+		(opp < 0 || opp >= dpsw_thr) && *last >= 0 && *last < dpsw_thr)
 		mtk_mmdvfs_enable_vmm(false);
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
+	*last = opp;
 
 	if (ret || log_level & (1 << log_adb))
 		MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd", pwr_idx, idx, mux->id, opp);
@@ -2086,6 +2089,7 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
 		last_vote_step[i] = -1;
 		last_force_step[i] = -1;
+		last_force_volt[i] = -1;
 	}
 	of_property_read_s32(node, "kernel-log-level", &log_level);
 	of_property_read_s32(node, "vcp-log-level", &vcp_log_level);
