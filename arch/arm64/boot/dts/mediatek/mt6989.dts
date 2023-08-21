@@ -6029,15 +6029,16 @@
 				<MMDVFS_MUX_VEN>, <MMDVFS_MUX_VEN>, <MMDVFS_MUX_VEN>,
 				<MMDVFS_MUX_VDE>, <MMDVFS_MUX_IMG>, <MMDVFS_MUX_CAM>,
 				<MMDVFS_MUX_SMI>, <MMDVFS_MUX_CAM>, <MMDVFS_MUX_DIS>,
-				<MMDVFS_MUX_VDE>, <MMDVFS_MUX_SMI>,
+				<MMDVFS_MUX_VDE>,
 				<MMDVFS_MUX_DIS>, <MMDVFS_MUX_MDP>, <MMDVFS_MUX_MML>, <MMDVFS_MUX_SMI>,
-				<MMDVFS_MUX_VEN>, <MMDVFS_MUX_VDE>, <MMDVFS_MUX_IMG>, <MMDVFS_MUX_CAM>;
+				<MMDVFS_MUX_VEN>, <MMDVFS_MUX_VDE>, <MMDVFS_MUX_IMG>, <MMDVFS_MUX_CAM>,
+				<MMDVFS_MUX_SMI>;
 			mediatek,mmdvfs-user-names = "user-disp", "user-mdp", "user-mml",
 				"user-smi", "user-jpegdec", "user-jpegenc", "user-venc",
 				"user-vfmt", "user-img", "user-cam",
-				"user-vcore", "user-vmm", "user-vdisp", "user-vdec", "user-img-smi",
+				"user-vcore", "user-vmm", "user-vdisp", "user-vdec",
 				"dummy-dis", "dummy-mdp", "dummy-mml", "dummy-smi",
-				"dummy-ven", "dummy-vde", "dummy-img", "dummy-cam";
+				"dummy-ven", "dummy-vde", "dummy-img", "dummy-cam", "user-img-smi";
 			mediatek,free-run;
 			mediatek,dpsw-thres = <1>;
 			mediatek,vdec-larb = <&smi_larb5>;
