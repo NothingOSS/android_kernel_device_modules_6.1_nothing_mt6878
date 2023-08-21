@@ -25,6 +25,9 @@
 #include "mtk_vcodec_dec_slc.h"
 /* SMMU related header file */
 #include "mtk-smmu-v3.h"
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+#include "vcp_status.h"
+#endif
 
 
 #define MTK_VDEC_MIN_W  64U
@@ -57,6 +60,15 @@ static bool mtk_vdec_is_vcu(void)
 			return true;
 	}
 	return false;
+}
+
+static bool vdec_init_no_delay(void)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	return vcp_ao;
+#else
+	return true;
+#endif
 }
 
 static inline long long timeval_to_ns(const struct __kernel_v4l2_timeval *tv)
@@ -2297,6 +2309,34 @@ void mtk_vcodec_dec_empty_queues(struct file *file, struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_set_state(ctx, MTK_STATE_FREE);
 }
 
+static int mtk_vcodec_dec_init(struct mtk_vcodec_ctx *ctx, struct mtk_q_data *q_data)
+{
+	int ret = 0;
+
+	if (!mtk_vcodec_is_state(ctx, MTK_STATE_FREE))
+		return 0;
+
+	mtk_vcodec_config_group_list();
+
+	ret = vdec_if_init(ctx, q_data->fmt->fourcc);
+	mtk_vdec_init_set_frame_wq(ctx);
+	v4l2_m2m_set_dst_buffered(ctx->m2m_ctx, ctx->input_driven != NON_INPUT_DRIVEN);
+	if (ctx->input_driven == INPUT_DRIVEN_CB_FRM)
+		init_waitqueue_head(&ctx->fm_wq);
+	if (ret) {
+		mtk_v4l2_err("[%d]: vdec_if_init() fail ret=%d", ctx->id, ret);
+		if (ret == -EIO)
+			mtk_vdec_error_handle(ctx, "init");
+		else
+			mtk_vdec_set_unsupport(ctx);
+
+		return ret;
+	}
+	mtk_vcodec_set_state_from(ctx, MTK_STATE_INIT, MTK_STATE_FREE);
+
+	return ret;
+}
+
 void mtk_vcodec_dec_release(struct mtk_vcodec_ctx *ctx)
 {
 #if ENABLE_META_BUF
@@ -3169,6 +3209,12 @@ static int vidioc_vdec_s_fmt(struct file *file, void *priv,
 		ctx->ycbcr_enc = f->fmt.pix_mp.ycbcr_enc;
 		ctx->quantization = f->fmt.pix_mp.quantization;
 		ctx->xfer_func = f->fmt.pix_mp.xfer_func;
+
+		if (vdec_init_no_delay()) {
+			ret = mtk_vcodec_dec_init(ctx, q_data);
+			if (ret)
+				return -EINVAL;
+		}
 	}
 
 	if (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
@@ -3639,29 +3685,10 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 				   ctx->id, vb->vb2_queue->type,
 				   vb->index, vb);
 
-	if (mtk_vcodec_is_state(ctx, MTK_STATE_FREE)) {
-		struct mtk_q_data *q_data;
-		mtk_vcodec_config_group_list();
-		q_data = mtk_vdec_get_q_data(ctx, vb->vb2_queue->type);
-
-		ret = vdec_if_init(ctx, q_data->fmt->fourcc);
-		mtk_vdec_init_set_frame_wq(ctx);
-		v4l2_m2m_set_dst_buffered(ctx->m2m_ctx,
-			ctx->input_driven != NON_INPUT_DRIVEN);
-		if (ctx->input_driven == INPUT_DRIVEN_CB_FRM)
-			init_waitqueue_head(&ctx->fm_wq);
-		if (ret) {
-			mtk_v4l2_err("[%d]: vdec_if_init() fail ret=%d",
-						 ctx->id, ret);
-			if (ret == -EIO)
-				mtk_vdec_error_handle(ctx, "init");
-			else
-				mtk_vdec_set_unsupport(ctx);
-
-			vcodec_trace_end();
-			return;
-		}
-		mtk_vcodec_set_state_from(ctx, MTK_STATE_INIT, MTK_STATE_FREE);
+	ret = mtk_vcodec_dec_init(ctx, mtk_vdec_get_q_data(ctx, vb->vb2_queue->type));
+	if (ret) {
+		vcodec_trace_end();
+		return;
 	}
 
 #ifdef VDEC_CHECK_ALIVE
