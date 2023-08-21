@@ -7,6 +7,8 @@
 
 #include <linux/platform_device.h>
 
+#define MDLA_MASK(i) (1 << (i))
+
 enum PLAT_SW_CONFIG {
 	CFG_DUMMY_PWR,
 	CFG_DUMMY_MMU,

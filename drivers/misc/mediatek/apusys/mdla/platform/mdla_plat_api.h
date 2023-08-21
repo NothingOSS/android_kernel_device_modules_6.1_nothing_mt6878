@@ -9,6 +9,8 @@
 #include <linux/of_device.h>
 
 u32 mdla_plat_get_core_num(void);
+u32 mdla_plat_get_core_mask(void);
+u32 mdla_plat_get_efuse_en(void);
 
 /**
  * [0:7]   : minor version number

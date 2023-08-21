@@ -21,6 +21,8 @@
 #include <platform/mdla_plat_api.h>
 
 #include "mdla_rv.h"
+#include "mdw_cmn.h"
+#include "mdw_rv.h"
 
 /* remove after lk/atf bootup flow ready */
 #define LK_BOOT_RDY 0
@@ -138,6 +140,9 @@ struct mdla_rv_mem {
 static struct mdla_rv_mem dbg_mem;
 static struct mdla_rv_mem backup_mem;
 static struct mdla_rv_mem rv_dbg_mem;
+static u32 core_mask;
+static bool mdla_efuse_en;
+
 
 static char *mdla_plat_get_ipi_str(int idx)
 {
@@ -373,6 +378,8 @@ static int mdla_plat_send_addr_info(void *arg)
 		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_RV_DATA, (u64)rv_dbg_mem.da);
 		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_RV_DATA_SZ, (u64)rv_dbg_mem.size);
 	}
+	if (mdla_efuse_en)
+		mdla_ipi_send(MDLA_IPI_PLAT, 0, (u64)core_mask);
 
 	return 0;
 }
@@ -502,6 +509,9 @@ int mdla_rv_init(struct platform_device *pdev)
 	mdla_plat_alloc_mem(&backup_mem, 1024 * nr_core_ids * 4);
 	mdla_plat_alloc_mem(&dbg_mem, DEFAULT_DBG_SZ + 0x1000 * nr_core_ids);
 	mdla_plat_alloc_mem(&rv_dbg_mem, DEFAULT_RV_DBG_SZ);
+	mdla_efuse_en = mdla_plat_get_efuse_en();
+	if (mdla_efuse_en)
+		core_mask = mdla_plat_get_core_mask();
 
 	return 0;
 }

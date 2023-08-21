@@ -11,6 +11,9 @@
 
 #include "mdla_plat_internal.h"
 
+#include <linux/slab.h>
+#include <linux/nvmem-consumer.h>
+
 static u32 nr_core_ids = 1;
 static u32 default_polling_cmd_done;
 static u32 mdla_ver;
@@ -23,11 +26,25 @@ static bool sw_preemption_en;
 static bool hw_preemption_en;
 static bool micro_p_en;
 static int prof_ver;
+static u32 core_mask;
+static bool mdla_efuse_en;
+
 
 u32 mdla_plat_get_core_num(void)
 {
 	return nr_core_ids;
 }
+
+u32 mdla_plat_get_core_mask(void)
+{
+	return core_mask;
+}
+
+u32 mdla_plat_get_efuse_en(void)
+{
+	return mdla_efuse_en;
+}
+
 
 u32 mdla_plat_get_polling_cmd_time(void)
 {
@@ -79,6 +96,11 @@ int mdla_plat_init(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mdla_plat_drv *drv;
 	u32 major_ver = 0;
+	struct nvmem_cell *cell;
+	uint32_t *buf;
+	uint32_t efuse_segment;
+	uint32_t rcx_mdla_disable;
+	uint32_t acx0_mdla_disable;
 
 	of_property_read_u32(dev->of_node, "core-num", &nr_core_ids);
 	if (nr_core_ids > MAX_CORE_NUM) {
@@ -89,6 +111,31 @@ int mdla_plat_init(struct platform_device *pdev)
 	if (of_property_read_u32(pdev->dev.of_node, "version", &mdla_ver) == 0) {
 		dev_info(&pdev->dev, "ver = %x\n", mdla_ver);
 		mdla_dbg_set_version(mdla_ver);
+	}
+
+	cell = nvmem_cell_get(dev, "mdla_efuse_data");
+	if ((cell == NULL) || IS_ERR(cell)) {
+		dev_info(dev, "%s nvmem_cell_get fail\n", __func__);
+	} else {
+		mdla_efuse_en = true;
+		buf = (uint32_t *)nvmem_cell_read(cell, NULL);
+		nvmem_cell_put(cell);
+
+		if (IS_ERR(buf)) {
+			dev_info(dev, "%s nvmem_cell_read fail\n", __func__);
+			return false;
+		}
+
+		efuse_segment = *buf;
+		dev_info(dev, "efuse_segment 0x%x\n", efuse_segment);
+		kfree(buf);
+
+		rcx_mdla_disable = efuse_segment & (1 << 21);
+		acx0_mdla_disable = efuse_segment & (1 << 20);
+		if (!rcx_mdla_disable)
+			core_mask |= MDLA_MASK(0);
+		if (!acx0_mdla_disable)
+			core_mask |= MDLA_MASK(1);
 	}
 
 	drv = (struct mdla_plat_drv *)of_device_get_match_data(dev);
