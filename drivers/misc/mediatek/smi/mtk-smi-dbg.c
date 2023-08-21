@@ -1480,6 +1480,10 @@ int smi_put_larb(const char *val, const struct kernel_param *kp)
 		pr_notice("SMI put larb failed: %d\n", result);
 		return result;
 	}
+	if (!smi->larb[larb_id].dev) {
+		pr_notice("%s: can not find larb%d\n", __func__, larb_id);
+		return -EINVAL;
+	}
 	pm_runtime_put_sync(smi->larb[larb_id].dev);
 
 	return 0;
