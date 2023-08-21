@@ -3498,6 +3498,9 @@ static int infra_req_ack_check(struct msdc_host *host)
 			host->dev_comp->infra_check.infra_ack_bit, &val);
 	}
 
+	if (val == 0)
+		pr_info("mmc%d infra ack polling timeout\n", host->id);
+
 	return val ? 0 : 1;
 }
 
@@ -3565,11 +3568,8 @@ static int __maybe_unused msdc_runtime_resume(struct device *dev)
 	 */
 	if (host->dev_comp->infra_check.enable) {
 		ret = infra_req_ack_check(host);
-		if (ret) {
+		if (ret)
 			pr_info("mmc%d infra ack polling fail\n", host->id);
-			WARN_ON_ONCE(1);
-			return ret;
-		}
 	}
 
 	ret = msdc_ungate_clock(host);
