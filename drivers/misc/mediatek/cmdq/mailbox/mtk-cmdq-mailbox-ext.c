@@ -588,14 +588,10 @@ void cmdq_thread_set_spr(struct mbox_chan *chan, u8 id, u32 val)
 {
 	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 
+	if(id < CMDQ_GPR_CNT_ID)
+		return;
 	cmdq_mtcmos_by_fast(cmdq, true);
-	if (id >= CMDQ_GPR_CNT_ID)
-		writel(val, cmdq->base + GCE_GPR_R0_START + (id - CMDQ_GPR_CNT_ID) * 4);
-	else {
-		struct cmdq_thread *thread = (struct cmdq_thread *)chan->con_priv;
-
-		writel(val, thread->base + CMDQ_THR_SPR + id * 4);
-	}
+	writel(val, cmdq->base + GCE_GPR_R0_START + (id - CMDQ_GPR_CNT_ID) * 4);
 	cmdq_mtcmos_by_fast(cmdq, false);
 }
 EXPORT_SYMBOL(cmdq_thread_set_spr);

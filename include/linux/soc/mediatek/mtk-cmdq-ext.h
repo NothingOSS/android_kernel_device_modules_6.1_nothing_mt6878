@@ -62,6 +62,7 @@ void cmdq_helper_set_fp(struct cmdq_util_helper_fp *cust_cmdq_util);
 #define CMDQ_CPR_TPR_MASK		0x8000
 #define CMDQ_CPR_DISP_CNT		0x8001
 #define CMDQ_CPR_DDR_USR_CNT		0x8002
+#define CMDQ_CPR_SLP_GPR_MAX		0x8003
 /* 0x8128 to 0x812f use by MML */
 #define CMDQ_CPR_MML_PQ0_ADDR		0x8128
 #define CMDQ_CPR_MML_PQ0_ADDRH		0x8129
@@ -290,6 +291,7 @@ struct cmdq_reuse {
 struct cmdq_poll_reuse {
 	struct cmdq_reuse jump_to_begin;
 	struct cmdq_reuse jump_to_end;
+	struct cmdq_reuse sleep_jump_to_end;
 };
 
 u32 cmdq_subsys_id_to_base(struct cmdq_base *cmdq_base, int id);
@@ -515,6 +517,8 @@ int cmdq_pkt_timer_en(struct cmdq_pkt *pkt);
  * Return 0 for success; else the error code is returned
  */
 s32 cmdq_pkt_sleep(struct cmdq_pkt *pkt, u32 tick, u16 reg_gpr);
+s32 cmdq_pkt_sleep_reuse(struct cmdq_pkt *pkt, u32 tick, u16 reg_gpr,
+	struct cmdq_reuse *sleep_jump_to_end);
 s32 cmdq_pkt_poll_timeout_reuse(struct cmdq_pkt *pkt, u32 value, u8 subsys,
 	phys_addr_t addr, u32 mask, u16 count, u16 reg_gpr, struct cmdq_poll_reuse *poll_reuse);
 s32 cmdq_pkt_poll_timeout(struct cmdq_pkt *pkt, u32 value, u8 subsys,
