@@ -116,5 +116,6 @@ extern void mtk_emidbg_dump(void);
 
 extern unsigned int ccci_get_hs2_done_status(void);
 extern void reset_modem_hs2_status(void);
+unsigned int ccci_get_ap_plat(void);
 
 #endif				/* __MD_SYS1_PLATFORM_H__ */

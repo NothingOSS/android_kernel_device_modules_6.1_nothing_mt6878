@@ -55,6 +55,10 @@ static struct ccci_md_regulator md_reg_table[] = {
 	{ NULL, "md-vdigrf", 700000, 700000},
 };
 
+static struct regulator *vsram_ref;
+static struct regulator *vcore_ref;
+static void __iomem *dpsw_reg;
+
 static unsigned int ap_plat_info;
 
 static struct ccci_plat_val md_cd_plat_val_ptr;
@@ -233,6 +237,25 @@ u32 get_expected_boot_status_val(void)
 	return boot_status_val;
 }
 
+static void md_pmic_info_dump(void)
+{
+	if (in_interrupt())
+		CCCI_MEM_LOG_TAG(0, TAG, "In interrupt, skip dump vsram/vcore info\n");
+	else {
+		if (vsram_ref != NULL)
+			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP]vsram get_voltage %d uV\n",
+				regulator_get_voltage(vsram_ref));
+		else
+			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP]vsram_ref = NULL !\n");
+
+		if (vcore_ref != NULL)
+			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP]vcore_ref get_voltage %d uV\n",
+				regulator_get_voltage(vcore_ref));
+		else
+			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP]vcore_ref = NULL !\n");
+	}
+}
+
 static atomic_t reg_dump_ongoing;
 static void md_cd_dump_debug_register(struct ccci_modem *md, bool isr_skip_dump)
 {
@@ -274,6 +297,11 @@ static void md_cd_dump_debug_register(struct ccci_modem *md, bool isr_skip_dump)
 		return;
 	}
 
+	if (dpsw_reg != NULL)
+		CCCI_NORMAL_LOG(0, TAG, "[DPSW DUMP] reg 0x1c0013b8 = 0x%x\n",
+			ccci_read32(dpsw_reg, 0));
+
+	md_pmic_info_dump();
 	md_cd_lock_modem_clock_src(1);
 	md_dump_reg(md);
 	md_cd_lock_modem_clock_src(0);
@@ -324,6 +352,49 @@ static void md1_pmic_setting_init(struct platform_device *plat_dev)
 				md_reg_table[idx].reg_vol0, md_reg_table[idx].reg_vol1);
 		}
 	}
+	/* get regulator vsram*/
+	vsram_ref = devm_regulator_get_optional(&plat_dev->dev, "mt6363_vbuck4");
+	if (IS_ERR(vsram_ref)) {
+		ret = PTR_ERR(vsram_ref);
+		if (ret != -ENODEV)
+			CCCI_ERROR_LOG(-1, TAG,
+				"%s:get regulator vsram_ref fail, ret = %d\n", __func__, ret);
+		vsram_ref = NULL;
+	} else
+		CCCI_NORMAL_LOG(0, TAG,
+			"%s:get regulator vsram_ref mt6363_vbuck4 suc\n", __func__);
+
+	/* get regulator vcore*/
+	vcore_ref = devm_regulator_get_optional(&plat_dev->dev, "8_vbuck1");
+	if (IS_ERR(vcore_ref)) {
+		ret = PTR_ERR(vcore_ref);
+		if (ret != -ENODEV)
+			CCCI_ERROR_LOG(-1, TAG,
+				"%s:get regulator vcore_ref fail, ret = %d\n", __func__, ret);
+		vcore_ref = NULL;
+	} else
+		CCCI_NORMAL_LOG(0, TAG,
+			"%s:get regulator vcore_ref 8_vbuck1 suc\n", __func__);
+
+	if (vsram_ref != NULL)
+		CCCI_NORMAL_LOG(0, TAG, "[PMIC DUMP first]vsram get_voltage %d uV\n",
+			regulator_get_voltage(vsram_ref));
+	else
+		CCCI_ERROR_LOG(-1, TAG, "[PMIC DUMP first]vsram_ref is null\n");
+
+	if (vcore_ref != NULL)
+		CCCI_NORMAL_LOG(-1, TAG,
+			"[PMIC DUMP first]vcore_ref get_voltage %d uV\n",
+			regulator_get_voltage(vcore_ref));
+	else
+		CCCI_ERROR_LOG(-1, TAG, "[PMIC DUMP first]vcore_ref is null\n");
+}
+static void dpsw_io_remap(void)
+{
+	dpsw_reg = ioremap_wc(0x1c0013B8, 0x4);
+
+	if (!dpsw_reg)
+		CCCI_ERROR_LOG(0, TAG, "%s, ioremap_wc dpsw_reg fail\n", __func__);
 }
 
 static void md1_pmic_setting_on(void)
@@ -729,6 +800,7 @@ static int md_start_platform(struct ccci_modem *md)
 		return 0;
 	md_cd_io_remap_md_side_register(md);
 	md1_pmic_setting_init(md->plat_dev);
+	dpsw_io_remap();
 
 	if (md_cd_plat_val_ptr.md_gen < 6295)
 		return 0;
@@ -1366,6 +1438,11 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 #endif
 
 	return 0;
+}
+
+unsigned int ccci_get_ap_plat(void)
+{
+	return ap_plat_info;
 }
 
 static int ccci_modem_remove(struct platform_device *dev)

@@ -1142,6 +1142,12 @@ void ccci_reset_ccif_hw(int ccif_id, void __iomem *baseA,
 	ccif_write32(baseA,
 		PCCIF_CHDATA + PCCIF_SRAM_SIZE - sizeof(u32),
 		region->size);
+
+	CCCI_NORMAL_LOG(-1, TAG,
+		"sram info: parttern: 0x%08X, addr: 0x%08X, size: 0x%08X\n",
+		ccif_read32(baseA, PCCIF_CHDATA + PCCIF_SRAM_SIZE - 3 * sizeof(u32)),
+		ccif_read32(baseA, PCCIF_CHDATA + PCCIF_SRAM_SIZE - 2 * sizeof(u32)),
+		ccif_read32(baseA, PCCIF_CHDATA + PCCIF_SRAM_SIZE - 1 * sizeof(u32)));
 }
 //EXPORT_SYMBOL(ccci_reset_ccif_hw);
 

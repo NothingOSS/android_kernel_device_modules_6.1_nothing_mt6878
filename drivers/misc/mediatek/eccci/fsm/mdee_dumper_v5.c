@@ -927,8 +927,13 @@ static void mdee_dumper_v5_smpu_callback(const char *vio_msg)
 		md_state = ccci_fsm_get_md_state();
 		if (md_state != INVALID && md_state != GATED &&
 			md_state != WAITING_TO_STOP) {
-			if (md->ops->dump_info)
-				md->ops->dump_info(md, DUMP_FLAG_REG, NULL, 0);
+			if (ccci_get_ap_plat() == 6989) {
+				if(md->hw_info->plat_ptr->debug_reg)
+					md->hw_info->plat_ptr->debug_reg(md, false);
+			} else {
+				if (md->ops->dump_info)
+					md->ops->dump_info(md, DUMP_FLAG_REG, NULL, 0);
+			}
 		}
 	}
 
