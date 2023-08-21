@@ -5570,9 +5570,12 @@ static int __gpufreq_init_pmic(struct platform_device *pdev)
 
 	g_pmic->reg_vsram = devm_regulator_get_optional(&pdev->dev, "vsram");
 	if (IS_ERR(g_pmic->reg_vsram)) {
-		ret = PTR_ERR(g_pmic->reg_vsram);
-		__gpufreq_abort("fail to get VSRAM (%ld)", ret);
-		goto done;
+		g_pmic->reg_vsram = devm_regulator_get_optional(&pdev->dev, "vsram-plus");
+		if (IS_ERR(g_pmic->reg_vsram)) {
+			ret = PTR_ERR(g_pmic->reg_vsram);
+			__gpufreq_abort("fail to get VSRAM_PLUS (%ld)", ret);
+			goto done;
+		}
 	}
 
 done:
