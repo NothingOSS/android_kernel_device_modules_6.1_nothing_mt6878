@@ -813,6 +813,7 @@ struct arm_smmu_impl {
 			  int power_status);
 	void (*fault_dump)(struct arm_smmu_device *smmu);
 	bool (*skip_shutdown)(struct arm_smmu_device *smmu);
+	bool (*skip_sync_timeout)(struct arm_smmu_device *smmu);
 };
 
 struct arm_smmu_device *arm_smmu_v3_impl_init(struct arm_smmu_device *smmu);

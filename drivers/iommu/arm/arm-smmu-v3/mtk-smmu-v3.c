@@ -65,8 +65,21 @@
 	((lower_32_bits(_addr) & GENMASK(31, 12)) | upper_32_bits(_addr));\
 })
 
-#define POWER_STA_ON		(0)
-#define POWER_STA_OFF		(1)
+#define POWER_STA_ON			(0)
+#define POWER_STA_OFF			(1)
+
+#define STRSEC(sec)			((sec) ? "SECURE" : "NORMAL")
+
+/* SMI debug related constants */
+#define SMI_COM_REGS_SZ			(0x1000)
+#define SMI_COM_REGS_NUM		(6)
+#define SMI_COM_OFFSET1_START		(0x400)
+#define SMI_COM_OFFSET1_END		(0x41c)
+#define SMI_COM_OFFSET1_LEN		(8)
+#define SMI_COM_OFFSET2_START		(0x430)
+#define SMI_COM_OFFSET2_LEN		(2)
+#define SMI_COM_OFFSET3_START		(0x440)
+#define SMI_COM_OFFSET3_LEN		(2)
 
 static const char *IOMMU_GROUP_PROP_NAME = "mtk,iommu-group";
 static const char *SMMU_MPAM_CONFIG = "mtk,mpam-cfg";
@@ -131,8 +144,7 @@ static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm,
 			    bool ratelimit);
 static __le64 *arm_smmu_get_step_for_sid(struct arm_smmu_device *smmu,
 					 u32 sid);
-
-#define STRSEC(sec)	((sec) ? "SECURE" : "NORMAL")
+static void mtk_hyp_smmu_reg_dump(struct arm_smmu_device *smmu);
 
 static inline unsigned int smmu_read_reg(void __iomem *base,
 					 unsigned int offset)
@@ -1534,8 +1546,6 @@ static int mtk_smmu_irq_pause(struct mtk_smmu_data *data, int delay)
 
 static void mtk_smmu_irq_record(struct mtk_smmu_data *data)
 {
-	pr_info("[%s] smmu:%s\n", __func__, get_smmu_name(data->plat_data->smmu_type));
-
 	/* we allow one irq in 1s, or we will disable them after irq_cnt s. */
 	if (!data->irq_cnt ||
 	    time_after(jiffies, data->irq_first_jiffies + data->irq_cnt * HZ)) {
@@ -1600,10 +1610,6 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 
 	active = gerror ^ gerrorn;
 	if (!(active & GERROR_ERR_MASK)) {
-		/* No errors pending */
-		pr_debug("[%s] no error pending irq:0x%x, gerror:0x%x, gerrorn:0x%x, active:0x%x\n",
-			 __func__, irq, gerror, gerrorn, active);
-
 		/* try to secure interrupt process which maybe trigger by secure */
 		if (mtk_smmu_sec_irq_process(irq, dev) == IRQ_HANDLED) {
 			mtk_smmu_irq_record(data);
@@ -1708,16 +1714,20 @@ static int mtk_smmu_evt_handler(int irq, void *dev, u64 *evt)
 		ssid = FIELD_GET(EVTQ_0_SSID, evt[0]);
 
 	dev_info(smmu->dev,
-		 "smmu:%s EVTQ_INFO: irq:0x%x, id:0x%x, reason:%s, evt{[0]:0x%llx, [1]:0x%llx, [2]:0x%llx}, ssid_valid:%d, sid:0x%x, ssid:0x%x\n",
+		 "smmu:%s EVTQ_INFO: evt{[0]:0x%llx, [1]:0x%llx, [2]:0x%llx, [3]:0x%llx\n",
+		 get_smmu_name(smmu_type), evt[0], evt[1], evt[2], evt[3]);
+
+	dev_info(smmu->dev,
+		 "smmu:%s EVTQ_INFO: irq:0x%x, id:0x%x, reason:%s, ssid_valid:%d, sid:0x%x, ssid:0x%x\n",
 		 get_smmu_name(smmu_type),
 		 irq, id, get_fault_reason_str(id),
-		 evt[0], evt[1], evt[2],
 		 ssid_valid, sid, ssid);
 
 	mtk_smmu_evt_dump(smmu, evt);
 
 	mtk_smmu_glbreg_dump(smmu);
 	mtk_smmu_wpreg_dump(NULL, smmu_type);
+	mtk_hyp_smmu_reg_dump(smmu);
 
 	return IRQ_HANDLED;
 }
@@ -1755,13 +1765,14 @@ static void mtk_smmu_glbreg_dump(struct arm_smmu_device *smmu)
 }
 
 static void __maybe_unused smmu_dump_reg(void __iomem *base,
+					 phys_addr_t ioaddr,
 					 unsigned int start,
 					 unsigned int len)
 {
 	unsigned int i = 0;
 
-	pr_info("---- dump register 0x%x ~ 0x%x ----\n",
-		start, (start + 4 * (len - 1)));
+	pr_info("---- dump register base:0x%llx offset:0x%x ~ 0x%x ----\n",
+		ioaddr, start, (start + 4 * (len - 1)));
 
 	for (i = 0; i < len; i += 4) {
 		if (len - i == 1)
@@ -2115,6 +2126,7 @@ static int mtk_report_device_fault(struct arm_smmu_device *smmu,
 	}
 
 	mtk_smmu_ste_cd_info_dump(NULL, smmu_type, sid);
+	mtk_hyp_smmu_debug_dump(smmu, 0, 0, sid, HYP_SMMU_GLOBAL_STE_DUMP_EVT, 0);
 
 	dev_info(smmu->dev,
 		 "[%s] smmu:%s, master:%s, fault_iova=0x%llx, fault_ipa=0x%llx, sid=0x%x, ssid=0x%x, ssid_valid:0x%x, id:0x%x, reason:%s, s2_trans:0x%llx\n",
@@ -2207,14 +2219,52 @@ static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm,
 #endif
 }
 
+static void smi_debug_dump(struct arm_smmu_device *smmu)
+{
+#ifdef MTK_SMMU_DEBUG
+	struct mtk_smmu_data *data;
+	void __iomem *base;
+	phys_addr_t ioaddr;
+	int i;
+
+	if (!smmu)
+		return;
+
+	data = to_mtk_smmu_data(smmu);
+	if (data->smi_com_base_cnt == 0 || data->smi_com_base == NULL)
+		return;
+
+	for (i = 0; i < data->smi_com_base_cnt; i++) {
+		ioaddr = data->smi_com_base[i];
+		if (ioaddr == 0)
+			continue;
+
+		base = ioremap(ioaddr, SMI_COM_REGS_SZ);
+		if (IS_ERR_OR_NULL(base)) {
+			dev_info(smmu->dev, "%s, failed to map smi_com_base:0x%llx\n",
+				 __func__, ioaddr);
+			continue;
+		}
+
+		smmu_dump_reg(base, ioaddr, SMI_COM_OFFSET1_START, SMI_COM_OFFSET1_LEN);
+		smmu_dump_reg(base, ioaddr, SMI_COM_OFFSET2_START, SMI_COM_OFFSET2_LEN);
+		smmu_dump_reg(base, ioaddr, SMI_COM_OFFSET3_START, SMI_COM_OFFSET3_LEN);
+
+		iounmap(base);
+	}
+#endif
+}
+
 static void mtk_smmu_fault_dump(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 
 	smmu_debug_dump(smmu, false, false);
 
-	if (data->plat_data->smmu_type == MM_SMMU)
+	if (data->plat_data->smmu_type == MM_SMMU) {
 		mtk_smi_dbg_hang_detect("iommu");
+		smi_debug_dump(smmu);
+	}
 }
 
 static bool mtk_smmu_skip_shutdown(struct arm_smmu_device *smmu)
@@ -2225,6 +2275,16 @@ static bool mtk_smmu_skip_shutdown(struct arm_smmu_device *smmu)
 	skip_shutdown = MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_SKIP_SHUTDOWN);
 
 	return skip_shutdown;
+}
+
+static bool mtk_smmu_skip_sync_timeout(struct arm_smmu_device *smmu)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	bool ret;
+
+	ret = data->plat_data->smmu_type == MM_SMMU;
+
+	return ret;
 }
 
 static const struct arm_smmu_impl mtk_smmu_impl = {
@@ -2252,6 +2312,7 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.dev_disable_feature = mtk_smmu_dev_disable_feature,
 	.fault_dump = mtk_smmu_fault_dump,
 	.skip_shutdown = mtk_smmu_skip_shutdown,
+	.skip_sync_timeout = mtk_smmu_skip_sync_timeout,
 };
 
 static void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
@@ -2305,6 +2366,12 @@ static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 
 	if (of_property_read_bool(smmu->dev->of_node, "mediatek,axslc"))
 		data->axslc = true;
+
+	data->smi_com_base = kcalloc(SMI_COM_REGS_NUM, sizeof(u32), GFP_KERNEL);
+	ret = of_property_read_u32_array(smmu->dev->of_node, "smi-common-base",
+					 data->smi_com_base, SMI_COM_REGS_NUM);
+	if (!ret)
+		data->smi_com_base_cnt = SMI_COM_REGS_NUM;
 }
 
 static int mtk_smmu_config_translation(struct mtk_smmu_data *data)
@@ -2559,11 +2626,6 @@ static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu)
 		pr_info("%s smmu:%s irq_sta(0x%x)=0x%x\n",
 			__func__, get_smmu_name(data->plat_data->smmu_type),
 			SMMUWP_IRQ_NS_STA, irq_sta);
-	} else {
-		pr_info("%s smmu:%s return 0, irq_sta(0x%x)=0x%x\n",
-			__func__, get_smmu_name(data->plat_data->smmu_type),
-			SMMUWP_IRQ_NS_STA, irq_sta);
-		return 0;
 	}
 
 	if (irq_sta & STA_NS_TCU_GLB_INTR) {
@@ -2668,7 +2730,7 @@ static struct mtk_smmu_fault_param *smmuwp_process_tf(
 		ssid = FIELD_GET(RTFM2_FAULT_SSID, regval);
 		ssidv = FIELD_GET(RTFM2_FAULT_SSIDV, regval);
 		secsidv = FIELD_GET(RTFM2_FAULT_SECSID, regval);
-		pr_info("TBU%d %s TRANSLATION FAULT detected, read, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
+		pr_info("TBU%d %s TF read, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
 			i, STRSEC(secsidv), fault_iova, axiid, sid, ssid, ssidv, secsidv);
 
 		fault_evt->mtk_fault_param[SMMU_TFM_READ][i] = (struct mtk_smmu_fault_param) {
@@ -2707,7 +2769,7 @@ write:
 		ssid = FIELD_GET(WTFM2_FAULT_SSID, regval);
 		ssidv = FIELD_GET(WTFM2_FAULT_SSIDV, regval);
 		secsidv = FIELD_GET(WTFM2_FAULT_SECSID, regval);
-		pr_info("TBU%d %s TRANSLATION FAULT detected, write, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
+		pr_info("TBU%d %s TF write, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
 			i, STRSEC(secsidv), fault_iova, axiid, sid, ssid, ssidv, secsidv);
 
 		fault_evt->mtk_fault_param[SMMU_TFM_WRITE][i] = (struct mtk_smmu_fault_param) {
@@ -3249,9 +3311,11 @@ void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 
 	mtk_smmu_glbreg_dump(smmu);
 	mtk_smmu_wpreg_dump(NULL, type);
+	mtk_hyp_smmu_reg_dump(smmu);
 
 	if (sid_valid) {
 		mtk_smmu_ste_cd_info_dump(NULL, type, sid);
+		mtk_hyp_smmu_debug_dump(smmu, 0, 0, sid, HYP_SMMU_GLOBAL_STE_DUMP_EVT, 0);
 		mtk_smmu_sid_dump(smmu, sid);
 	}
 

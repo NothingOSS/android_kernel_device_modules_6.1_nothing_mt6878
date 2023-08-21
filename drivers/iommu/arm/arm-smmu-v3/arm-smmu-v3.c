@@ -2918,8 +2918,7 @@ static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 
 			/* Reset the device */
 			ret = arm_smmu_device_reset(smmu, false);
-			if (ret)
-				goto out_runtime_put;
+			dev_info(smmu->dev, "[%s] device_reset:%d\n", __func__, ret);
 
 			if (smmu->impl->smmu_hw_sec_init) {
 				ret = smmu->impl->smmu_hw_sec_init(smmu);
@@ -3450,6 +3449,13 @@ static int arm_smmu_write_reg_sync(struct arm_smmu_device *smmu, u32 val,
 
 	if (ret && smmu->impl && smmu->impl->fault_dump)
 		smmu->impl->fault_dump(smmu);
+
+	if (ret && smmu->impl && smmu->impl->skip_sync_timeout &&
+	    smmu->impl->skip_sync_timeout(smmu)) {
+		dev_info(smmu->dev, "[%s] reg_off:0x%x ack_off:0x%x val:0x%x ret:%d\n",
+			 __func__, reg_off, ack_off, val, ret);
+		return 0;
+	}
 
 	return ret;
 }
@@ -4229,8 +4235,7 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 
 		/* Reset the device */
 		ret = arm_smmu_device_reset(smmu, bypass);
-		if (ret)
-			goto out_runtime_put;
+		dev_info(smmu->dev, "[%s] device_reset:%d\n", __func__, ret);
 
 		if (smmu->impl && smmu->impl->smmu_hw_sec_init) {
 			ret = smmu->impl->smmu_hw_sec_init(smmu);

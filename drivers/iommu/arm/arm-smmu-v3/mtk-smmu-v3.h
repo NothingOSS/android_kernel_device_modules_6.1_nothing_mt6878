@@ -543,6 +543,8 @@ struct mtk_smmu_data {
 	u32				pmg_max;
 	u32				tcu_prefetch;
 	bool				axslc;
+	u32				*smi_com_base;
+	u32				smi_com_base_cnt;
 	u32				irq_cnt;
 	unsigned long			irq_first_jiffies;
 	struct timer_list		irq_pause_timer;
