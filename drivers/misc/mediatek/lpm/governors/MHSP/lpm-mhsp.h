@@ -112,9 +112,9 @@ struct history_ipi {
 
 struct gov_info {
 	bool htmr_wkup;
-	bool ipi_pending;
-	bool is_cpuidle;
-	bool ipi_wkup;
+	atomic_t ipi_pending;
+	atomic_t is_cpuidle;
+	atomic_t ipi_wkup;
 
 	int cpu;
 	int enable;

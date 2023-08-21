@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2023 MediaTek Inc.
  */
+#include <linux/atomic.h>
 #include <linux/cpu.h>
 #include <linux/cpuidle.h>
 #include <linux/hrtimer.h>
@@ -492,7 +493,7 @@ static int gov_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 	ktime_t delta, delta_tick;
 	int i, idx = 0, disable_state_count = 0;
 
-	gov->is_cpuidle = true;
+	atomic_set(&gov->is_cpuidle, 1);
 
 	update_cpu_history(gov, drv, dev);
 
@@ -585,12 +586,14 @@ static void ipi_raise(void *ignore, const struct cpumask *mask, const char *unus
 {
 	int cpu;
 	struct gov_info *gov;
+	bool is_cpuidle;
 
 	for_each_cpu(cpu, mask) {
 		gov = per_cpu_ptr(&gov_infos, cpu);
-		gov->ipi_pending = true;
-		if (gov->is_cpuidle)
-			gov->ipi_wkup = true;
+		atomic_set(&gov->ipi_pending, 1);
+		is_cpuidle = atomic_read(&gov->is_cpuidle);
+		if (is_cpuidle)
+			atomic_set(&gov->ipi_wkup, 1);
 #if IS_ENABLED(CONFIG_MTK_CPU_IDLE_IPI_SUPPORT)
 		update_ipi_history(gov, cpu);
 #endif
@@ -601,24 +604,26 @@ static void ipi_entry(void *ignore, const char *unused)
 {
 	struct gov_info *gov = this_cpu_ptr(&gov_infos);
 
-	gov->ipi_wkup = gov->ipi_pending = false;
+	atomic_set(&gov->ipi_wkup, 0);
+	atomic_set(&gov->ipi_pending, 0);
 }
 
 static void cpuidle_enter_prepare(void *unused, int *state, struct cpuidle_device *dev)
 {
 	struct gov_info *gov = this_cpu_ptr(&gov_infos);
+	bool ipi_pending = atomic_read(&gov->ipi_pending);
 
 	/* Restrict to WFI state if there is an IPI pending on current CPU */
-	if (gov->ipi_pending)
+	if (ipi_pending)
 		*state = 0;
 
 #if IS_ENABLED(CONFIG_MTK_CPU_IDLE_IPI_SUPPORT)
-	trace_lpm_gov(*state, smp_processor_id(), gov->ipi_pending,
+	trace_lpm_gov(*state, smp_processor_id(), ipi_pending,
 		      gov->predict_info, gov->predicted, gov->next_timer_ns,
 		      gov->htmr_wkup, gov->slp_hist.stddev, gov->ipi_hist.stddev,
 		      gov->latency_req);
 #else
-	trace_lpm_gov(*state, smp_processor_id(), gov->ipi_pending,
+	trace_lpm_gov(*state, smp_processor_id(), ipi_pending,
 		      gov->predict_info, gov->predicted, gov->next_timer_ns,
 		      gov->htmr_wkup, gov->slp_hist.stddev, 0,
 		      gov->latency_req);
@@ -628,12 +633,14 @@ static void cpuidle_enter_prepare(void *unused, int *state, struct cpuidle_devic
 static void cpuidle_exit_post(void *unused, int state, struct cpuidle_device *dev)
 {
 	struct gov_info *gov = per_cpu_ptr(&gov_infos, dev->cpu);
+	bool ipi_wkup = atomic_read(&gov->ipi_wkup);
 
 	gov->slp_hist.wake_reason =
-		gov->ipi_wkup ? CPUIDLE_WAKE_IPI : CPUIDLE_WAKE_EVENT;
+		ipi_wkup ? CPUIDLE_WAKE_IPI : CPUIDLE_WAKE_EVENT;
 
-	gov->is_cpuidle = false;
-	histtimer_check();
+	atomic_set(&gov->is_cpuidle, 0);
+	if (gov->enable)
+		histtimer_check();
 
 	trace_lpm_gov(-1, smp_processor_id(), 0, 0, 0, 0, 0, 0, 0, 0);
 }
@@ -742,9 +749,16 @@ static void gov_disable_device(struct cpuidle_driver *drv,
 				struct cpuidle_device *dev)
 {
 	struct gov_info *gov = &per_cpu(gov_infos, dev->cpu);
+	int cpu;
 	int ret;
 
 	gov->enable = false;
+	for_each_possible_cpu(cpu) {
+		struct gov_info *gov = &per_cpu(gov_infos, cpu);
+
+		if (gov->enable)
+			return;
+	}
 
 	if (traces_registered) {
 		ret = unregister_trace_ipi_raise(ipi_raise, NULL);
