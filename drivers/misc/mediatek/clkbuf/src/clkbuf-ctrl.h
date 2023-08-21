@@ -19,6 +19,8 @@ struct clkbuf_operation {
 	int (*get_xo_cmd_hdlr)(void *data, int xo_id, char *buf, int len);
 	int (*set_xo_cmd_hdlr)(void *data, int cmd, int xo_id, u32 input,
 			       int perms);
+	int (*set_pmic_common_hdlr)(void *data, int cmd, int arg, int perms);
+	int (*get_pmic_common_hdlr)(void *data, char *buf, int len);
 
 	/*src call back functions*/
 	ssize_t (*dump_srclken_status)(void *data, char *buf);

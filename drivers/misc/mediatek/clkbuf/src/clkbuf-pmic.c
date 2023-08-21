@@ -365,6 +365,168 @@ FAIL2:
 
 }
 
+static int set_capid_pre1(void *data)
+{
+	struct plat_xodata *pd;
+	struct common_regs *com_regs;
+	struct clkbuf_hw hw;
+	struct reg_t reg;
+	int ret = 0;
+
+	pd = (struct plat_xodata *)data;
+	if (!pd)
+		return -EREG_NOT_SUPPORT;
+
+	com_regs = pd->common_regs;
+	if (!com_regs)
+		return -EREG_NOT_SUPPORT;
+
+	hw = pd->hw;
+	reg = com_regs->_aac_fpm_swen;
+
+	ret |= pmic_write(&hw, &reg, 0);
+	mdelay(1);
+	ret |= pmic_write(&hw, &reg, 1);
+	if (ret) {
+		CLKBUF_DBG("set aac fpm swen failed\n");
+		return ret;
+	}
+	mdelay(5);
+
+	return ret;
+}
+
+static int set_capid_pre2(void *data, int capid)
+{
+	struct plat_xodata *pd;
+	struct common_regs *com_regs;
+	struct clkbuf_hw hw;
+	struct reg_t reg;
+	int ret = 0;
+	int old_capid = 0, new_capid = 0;
+
+	pd = (struct plat_xodata *)data;
+	if (!pd)
+		return -EREG_NOT_SUPPORT;
+
+	com_regs = pd->common_regs;
+	if (!com_regs)
+		return -EREG_NOT_SUPPORT;
+
+	hw = pd->hw;
+	reg = com_regs->_cdac_fpm;
+
+	ret |= pmic_read(&hw, &reg, &old_capid);
+	ret |= pmic_write(&hw, &reg, capid);
+	ret |= pmic_read(&hw, &reg, &new_capid);
+	if (!ret)
+		CLKBUF_DBG("set capid: 0x%x, old_capid: 0x%x, new_capid: 0x%x\n",
+			   capid, old_capid, new_capid);
+	else
+		CLKBUF_ERR("set capid_pre2 failed\n");
+
+	return ret;
+}
+
+static int get_capid(void *data, u32 *capid)
+{
+	int ret = 0;
+	struct plat_xodata *pd;
+	struct common_regs *com_regs;
+	struct clkbuf_hw hw;
+	struct reg_t reg;
+
+	pd = (struct plat_xodata *)data;
+	if (!pd)
+		return -EREG_NOT_SUPPORT;
+
+	com_regs = pd->common_regs;
+	if (!com_regs)
+		return -EREG_NOT_SUPPORT;
+
+	hw = pd->hw;
+	reg = com_regs->_cdac_fpm;
+
+	ret = pmic_read(&hw, &reg, capid);
+	if (!ret)
+		CLKBUF_DBG("get capid 0x%x\n", *capid);
+	else
+		CLKBUF_ERR("get capid failed\n");
+
+	return ret;
+}
+
+static int set_heater(void *data, int on)
+{
+	int ret = 0;
+	struct plat_xodata *pd;
+	struct common_regs *com_regs;
+	struct clkbuf_hw hw;
+	struct reg_t reg;
+
+	pd = (struct plat_xodata *)data;
+	if (!pd)
+		return -EREG_NOT_SUPPORT;
+
+	com_regs = pd->common_regs;
+	if (!com_regs)
+		return -EREG_NOT_SUPPORT;
+
+	hw = pd->hw;
+	reg = com_regs->_heater_sel;
+
+
+	if (on) {
+		ret = pmic_write(&hw, &reg, 2);
+		if (ret) {
+			CLKBUF_DBG("switch on heater failed\n");
+			return ret;
+		}
+	} else {
+		ret = pmic_write(&hw, &reg, 0);
+		if (ret) {
+			CLKBUF_DBG("switch off heater failed\n");
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+static int get_heater(void *data, u32 *on)
+{
+	u32 heat_sel;
+	int ret = 0;
+	struct plat_xodata *pd;
+	struct common_regs *com_regs;
+	struct clkbuf_hw hw;
+	struct reg_t reg;
+
+	pd = (struct plat_xodata *)data;
+	if (!pd)
+		return -EREG_NOT_SUPPORT;
+
+	com_regs = pd->common_regs;
+	if (!com_regs)
+		return -EREG_NOT_SUPPORT;
+
+	hw = pd->hw;
+	reg = com_regs->_heater_sel;
+
+	ret = pmic_read(&hw, &reg, &heat_sel);
+	if (ret) {
+		CLKBUF_DBG("get heat sel failed\n");
+		return ret;
+	}
+	CLKBUF_DBG("get heat sel 0x%x\n", heat_sel);
+	if (!heat_sel)
+		*on = false;
+	else
+		*on = true;
+
+	return ret;
+}
+
 int __get_pmrcen(void *data, u32 *out)
 {
 	int ret = 0, tmp = 0;
@@ -585,6 +747,63 @@ WRITE_FAIL:
 	return ret;
 }
 
+static int __get_pmic_common_hdlr(void *data, char *buf, int len)
+{
+	u32 out;
+	int ret = 0;
+
+	/****CAPID****/
+	ret = get_capid(data, &out);
+	if (ret)
+		return len;
+	len += snprintf(buf + len, PAGE_SIZE - len, "capid: <%d>\n", out);
+
+	/****HEATER****/
+	ret = get_heater(data, &out);
+	if (ret)
+		return len;
+	len += snprintf(buf + len, PAGE_SIZE - len, "heater: <%d>\n", out);
+
+	return len;
+}
+
+static int __set_pmic_common_hdlr(void *data, int cmd, int arg, int perms)
+{
+	int ret = 0;
+
+	/*cancel premission handler*/
+
+	CLKBUF_DBG("cmd: %x, arg: %x\n", cmd, arg);
+	switch (cmd) {
+	case SET_CAPID_PRE_1: // = 0x1000,
+		ret = set_capid_pre1(data);
+		if (ret)
+			goto WRITE_FAIL;
+		break;
+	case SET_CAPID_PRE_2: // = 0x2000,
+		ret = set_capid_pre2(data, arg);
+		if (ret)
+			goto WRITE_FAIL;
+		break;
+	case SET_CAPID: // = 0x4000,
+		ret |= set_capid_pre1(data);
+		ret |= set_capid_pre2(data, arg);
+		if (ret)
+			goto WRITE_FAIL;
+		break;
+	case SET_HEATER: // = 0x8000,
+		ret = set_heater(data, arg);
+		if (ret)
+			goto WRITE_FAIL;
+		break;
+	default:
+		goto WRITE_FAIL;
+	}
+	return ret;
+WRITE_FAIL:
+	return cmd;
+}
+
 int __dump_pmic_debug_regs(void *data, char *buf, int len)
 {
 	struct plat_xodata *pd = (struct plat_xodata *)data;
@@ -640,9 +859,25 @@ static struct clkbuf_operation clkbuf_ops_v1 = {
 	.set_xo_cmd_hdlr = __set_xo_cmd_hdlr_v1,
 };
 
+/* tablet ops */
+static struct clkbuf_operation clkbuf_ops_v2 = {
+	.get_pmrcen = __get_pmrcen,
+	.dump_pmic_debug_regs = __dump_pmic_debug_regs,
+	.get_xo_cmd_hdlr = __get_xo_cmd_hdlr_v1,
+	.set_xo_cmd_hdlr = __set_xo_cmd_hdlr_v1,
+	.set_pmic_common_hdlr = __set_pmic_common_hdlr,
+	.get_pmic_common_hdlr = __get_pmic_common_hdlr,
+};
+
 static struct clkbuf_hdlr pmic_hdlr_v1 = {
 	.ops = &clkbuf_ops_v1,
 	.data = &mt6685_data,
+};
+
+/* tablet hdlr */
+static struct clkbuf_hdlr pmic_hdlr_v2 = {
+	.ops = &clkbuf_ops_v2,
+	.data = &mt6685_tb_data,
 };
 
 static struct match_pmic mt6685_match_pmic = {
@@ -651,8 +886,15 @@ static struct match_pmic mt6685_match_pmic = {
 	.init = &pmic_init_v1,
 };
 
+static struct match_pmic mt6685_tb_match_pmic = {
+	.name = "mediatek,mt6685-tb-clkbuf",
+	.hdlr = &pmic_hdlr_v2,
+	.init = &pmic_init_v1,
+};
+
 static struct match_pmic *matches_pmic[] = {
 	&mt6685_match_pmic,
+	&mt6685_tb_match_pmic,
 	NULL,
 };
 

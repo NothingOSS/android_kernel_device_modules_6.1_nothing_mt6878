@@ -14,12 +14,25 @@
 #include "clkbuf-util.h"
 #include "clkbuf-ctrl.h"
 #include "platform-hdlr.h"
+#include "clkbuf-debug.h"
 
 struct match_platform {
 	char *name;
 	struct platform_hdlr *hdlr;
 	int (*init)(struct clkbuf_dts *array, struct match_platform *match);
 };
+
+static struct clkbuf_dts *_array;
+
+static void set_dts_array(struct clkbuf_dts *array)
+{
+	_array = array;
+}
+
+static struct clkbuf_dts *get_dts_array(void)
+{
+	return _array;
+}
 
 int read_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 *val, u32 ofs)
 {
@@ -173,6 +186,134 @@ static int mtxxxx_init(struct clkbuf_dts *array, struct match_platform *match)
 	return 0;
 }
 
+static ssize_t pmic_common_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	struct clkbuf_dts *array = get_dts_array();
+	struct clkbuf_hdlr *hdlr;
+	struct plat_xodata *pd;
+	struct clkbuf_hw hw;
+	int len = 0, nums = 0, i;
+
+	if (!array)
+		return -ENODEV;
+
+	nums = array->nums;
+	for (i = 0; i < nums; i++, array++) {
+		hdlr = array->hdlr;
+
+		hw = array->hw;
+		if (!IS_PMIC_HW(hw.hw_type))
+			continue;
+
+		if (!hdlr->ops->get_pmic_common_hdlr)
+			return sprintf(buf, "Error: call back is null\n");
+
+		pd = (struct plat_xodata *)hdlr->data; //could be NULL if rc node
+
+		len = hdlr->ops->get_pmic_common_hdlr(pd, buf, len);
+		break;
+	}
+
+	return len;
+}
+
+static ssize_t pmic_common_store(struct kobject *kobj,
+				 struct kobj_attribute *attr, const char *buf,
+				 size_t count)
+{
+	struct clkbuf_dts *array = get_dts_array();
+	struct clkbuf_hdlr *
+		hdlr; //should get right hdlr , if pasing srclken would get wrong
+	struct plat_xodata *pd;
+	struct clkbuf_hw hw;
+	int cmd = 0, arg = 0, ret = 0, nums = 0, i;
+
+	if (!array)
+		return -ENODEV;
+
+	nums = array->nums;
+
+	if (sscanf(buf, "0x%x 0x%x", &cmd, &arg) == 2) {
+		CLKBUF_DBG("user input cmd: 0x%x , arg: 0x%x\n",
+			   cmd, arg);
+		for (i = 0; i < nums; i++, array++) {
+			hdlr = array->hdlr;
+
+			hw = array->hw;
+			if (!IS_PMIC_HW(hw.hw_type))
+				continue;
+
+			if (!hdlr->ops->get_pmic_common_hdlr)
+				return -EINVAL;
+
+			pd = (struct plat_xodata *)hdlr->data; //could be NULL if rc node
+
+			ret = hdlr->ops->set_pmic_common_hdlr(pd, cmd, arg, array->perms);
+			if (ret)
+				CLKBUF_DBG("Error code: %x\n", ret);
+			break;
+		}
+		return count;
+	} else
+		return -EINVAL;
+
+	return count;
+}
+
+DEFINE_ATTR_RW(pmic_common);
+
+static struct attribute *clkbuf_tb_attrs[] = {
+	__ATTR_OF(pmic_common),
+	NULL,
+};
+
+static struct attribute_group clkbuf_tb_attr_group = {
+	.name = "clkbuf_tb",
+	.attrs = clkbuf_tb_attrs,
+};
+
+static int mt8xxx_init(struct clkbuf_dts *array, struct match_platform *match)
+{
+	struct clkbuf_hdlr *hdlr;
+	static int pmic_job;
+	int ret;
+
+	if (!array)
+		return -EINVAL;
+
+	hdlr = array->hdlr;
+
+	CLKBUF_DBG("array<%lx> type: %d\n", (unsigned long)array, array->hw.hw_type);
+
+	switch (array->hw.hw_type) {
+	case PMIC:
+		if (!pmic_job) {
+			/* create /sys/kernel/clkbuf_tb/xxx */
+			ret = sysfs_create_group(kernel_kobj, &clkbuf_tb_attr_group);
+			if (ret) {
+				CLKBUF_DBG("FAILED TO CREATE /sys/kernel/clkbuf_tb (%d)\n", ret);
+				return ret;
+			}
+			pmic_job = 1;
+		}
+		break;
+	case SRCLKEN_CFG:
+		break;
+	case SRCLKEN_STA:
+		break;
+	case PMIF_M:
+		break;
+	case PMIF_P:
+		break;
+	default:
+		CLKBUF_DBG("not handle array[%lx]: hw_type %d\n",
+			   (unsigned long)array, array->hw.hw_type);
+		break;
+	}
+
+	return 0;
+}
+
 /*use call back if we need to create debug node*/
 static struct platform_operation mtxxxx_ops = {
 	/* example: */
@@ -194,8 +335,14 @@ static struct match_platform mtxxxx_match = {
 	.init = &mtxxxx_init,
 };
 
+static struct match_platform mt8792_match = {
+	.name = "mediatek,mt8792-clkbuf",
+	.init = &mt8xxx_init,
+};
+
 static struct match_platform *matches_platform[] = {
 	&mtxxxx_match,
+	&mt8792_match,
 	NULL,
 };
 
@@ -225,8 +372,10 @@ int clkbuf_platform_init(struct clkbuf_dts *array, struct device *dev)
 	for (; (*match_platform) != NULL; match_platform++) {
 		char *comp = (*match_platform)->name;
 
-		if (strcmp(comp, target) == 0)
+		if (strcmp(comp, target) == 0) {
+			set_dts_array(array);
 			break;
+		}
 	}
 
 	if (*match_platform == NULL) {

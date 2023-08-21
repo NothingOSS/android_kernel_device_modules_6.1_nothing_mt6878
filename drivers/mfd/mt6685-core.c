@@ -17,6 +17,9 @@ static const struct mfd_cell mt6685_devs[] = {
 		.name = "mt6685-clkbuf",
 		.of_compatible = "mediatek,mt6685-clkbuf",
 	}, {
+		.name = "mt6685-tb-clkbuf",
+		.of_compatible = "mediatek,mt6685-tb-clkbuf",
+	}, {
 		.name = "mt6685-rtc",
 		.of_compatible = "mediatek,mt6685-rtc",
 	}, {
