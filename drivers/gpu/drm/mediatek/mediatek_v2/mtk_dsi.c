@@ -2680,10 +2680,12 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				dsi->skip_vblank = (dsi->skip_vblank == 0) ?
 					1 : dsi->skip_vblank;
 
-				if (panel_ext->params->skip_vblank == 0)
-					drm_trace_tag_mark("TE_RDY");
-				else
-					drm_trace_tag_value("TE_RDY", dsi->cnt);
+				if (panel_ext) {
+					if (panel_ext->params->skip_vblank == 0)
+						drm_trace_tag_mark("TE_RDY");
+					else
+						drm_trace_tag_value("TE_RDY", dsi->cnt);
+				}
 
 				if (dsi->encoder.crtc)
 					doze_enabled = mtk_dsi_doze_state(dsi);
