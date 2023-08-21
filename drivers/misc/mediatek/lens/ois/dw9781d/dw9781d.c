@@ -140,6 +140,30 @@ enum DW9781D_mode {
 
 static struct i2c_client *m_client;
 
+enum {
+	OIS_MODEINIT,
+	OIS_LOCKMODE,
+	OIS_OISMODE,
+	OIS_USERMODE,
+};
+
+enum {
+	OIS_UNLOCK = 0,
+	OIS_LOCK = 5,
+	OIS_MANUAL_CTL = 13,
+};
+
+enum {
+	OIS_GAIN_AND_DELAY,
+	OIS_MODE_CONFIG,
+	OIS_AF_FB_CONFIG,
+	OIS_POSTURE_CONFIG,
+	OIS_NEED_HALL_CONFIG,
+	OIS_SAVING_GAIN,
+	OIS_FREEZE_MODE,
+	OIS_REG_DEBUG,
+	OIS_EE2PPROM_DEBUG,
+};
 
 static u16 ois_ctrl_data;
 static int32_t ois_echo_en;
@@ -151,6 +175,7 @@ static int32_t ois_hall_cnt;
 static int32_t ois_hall_warn;
 static int32_t ois_debug_en;
 static int32_t ois_hfmgr_test;
+static u16 dw_ois_mode;
 
 static struct hf_manager_event hf_mgr_event;
 
@@ -459,6 +484,7 @@ static int dw9781d_init(struct dw9781d_device *dw9781d)
 	u16 i2cret_ver = 0, i2cret_date = 0;
 
 	m_client = client;
+	dw_ois_mode = OIS_MODEINIT;
 
 	client->addr = DW9781OIS_I2C_SLAVE_ADDR >> 1;
 	// set chip enable
@@ -982,12 +1008,53 @@ static int dw9781d_custom_cmd(struct hf_device *hfdev, int sensor_type,
 #ifdef FOR_DEBUG
 	LOG_INF("command%d, data%d\n", cust_cmd->command, cust_cmd->data[0]);
 #endif
-	// OIS_MODE_CONFIG
-	if (cust_cmd->command == 1 || cust_cmd->command == 6) {
+
+	switch (cust_cmd->command) {
+	case OIS_MODE_CONFIG:
+		if (cust_cmd->data[0] == OIS_UNLOCK) {
+#ifdef FOR_DEBUG
+			LOG_INF("unlock\n");
+#endif
+			dw_ois_mode = OIS_OISMODE;
+			ret = ois_i2c_wr_u16(m_client, DW9781D_REG_OIS_CTRL, OIS_ON); // OIS ON/SERVO ON
+			ois_ctrl_data = OIS_ON;
+			I2C_OPERATION_CHECK(ret);
+
+		} else if (cust_cmd->data[0] == OIS_LOCK) {
+			if (dw_ois_mode == OIS_USERMODE)
+				break;
+#ifdef FOR_DEBUG
+			LOG_INF("lock!\n");
+#endif
+			dw_ois_mode = OIS_LOCKMODE;
+			fixmode(0, 0);
+
+		} else if (cust_cmd->data[0] == OIS_MANUAL_CTL) {
+			dw_ois_mode = OIS_USERMODE;
+		}
+		break;
+
+	case OIS_POSTURE_CONFIG:
+		if (dw_ois_mode != OIS_USERMODE)
+			break;
+
+		// manual control
+		LOG_INF("manual control, targetX (%d), targetY (%d)",
+			cust_cmd->data[0] >> 16,
+			cust_cmd->data[0] & 0xFFFF);
+
+		fixmode((cust_cmd->data[0] >> 16), (cust_cmd->data[0] & 0xFFFF));
+		break;
+
+	case OIS_FREEZE_MODE:
+		if (dw_ois_mode == OIS_USERMODE)
+			break;
+
 		if (cust_cmd->data[0] == 0) {
 #ifdef FOR_DEBUG
 			LOG_INF("unlock\n");
 #endif
+			dw_ois_mode = OIS_OISMODE;
 			ret = ois_i2c_wr_u16(m_client, DW9781D_REG_OIS_CTRL, OIS_ON); // OIS ON/SERVO ON
 			ois_ctrl_data = OIS_ON;
 			I2C_OPERATION_CHECK(ret);
@@ -995,31 +1062,28 @@ static int dw9781d_custom_cmd(struct hf_device *hfdev, int sensor_type,
 #ifdef FOR_DEBUG
 			LOG_INF("lock!\n");
 #endif
+			dw_ois_mode = OIS_LOCKMODE;
 			fixmode(0, 0);
 		}
-
-	// OIS_POSTURE_CONFIG
-	} else if (cust_cmd->command == 3) {
-		// manual control
-		LOG_INF("manual control, targetX (%d), targetY (%d)",
-			cust_cmd->data[0] >> 16,
-			cust_cmd->data[0] & 0xFFFF);
-
-		// set ic servo on / ois off
-		ret = ois_i2c_wr_u16(m_client, DW9781D_REG_OIS_CTRL, SERVO_ON);
-		ois_ctrl_data = OIS_ON;
-		I2C_OPERATION_CHECK(ret);
-
-		// set targetX
-		ret = ois_i2c_wr_u16(m_client, DW9781D_REG_OIS_CL_TARGETX,
-			(cust_cmd->data[0] >> 16));
-		I2C_OPERATION_CHECK(ret);
-
-		// set targetY
-		ret = ois_i2c_wr_u16(m_client, DW9781D_REG_OIS_CL_TARGETY,
-			(cust_cmd->data[0] & 0xFFFF));
-		I2C_OPERATION_CHECK(ret);
+		break;
 	}
+
+#ifdef FOR_DEBUG
+	switch (dw_ois_mode) {
+	case OIS_MODEINIT:
+		LOG_INF("dw_ois_mode is OIS_MODEINIT\n");
+		break;
+	case OIS_LOCKMODE:
+		LOG_INF("dw_ois_mode is OIS_LOCKMODE\n");
+		break;
+	case OIS_OISMODE:
+		LOG_INF("dw_ois_mode is OIS_OISMODE\n");
+		break;
+	case OIS_USERMODE:
+		LOG_INF("dw_ois_mode is OIS_USERMODE\n");
+		break;
+	}
+#endif
 
 	return 0;
 }
