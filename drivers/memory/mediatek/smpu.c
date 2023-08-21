@@ -169,6 +169,7 @@ static void smpu_violation_callback(struct work_struct *work)
 {
 	struct smpu *ssmpu, *nsmpu, *skp, *nkp, *mpu;
 	struct arm_smccc_res smc_res;
+	struct device_node *smpu_node = of_find_node_by_name(NULL, "smpu");
 
 	ssmpu = global_ssmpu;
 	nsmpu = global_nsmpu;
@@ -207,7 +208,19 @@ static void smpu_violation_callback(struct work_struct *work)
 		}
 	}
 	printk_deferred("%s: %s", __func__, mpu->vio_msg);
-	aee_kernel_exception("SMPU", mpu->vio_msg);
+
+	if ((nsmpu && nsmpu->is_vio) || (ssmpu && ssmpu->is_vio)) {
+		if (mpu->dump_reg[5].value == 243 &&
+		    mpu->dump_reg[7].value == 22 &&
+		    of_property_count_elems_of_size(smpu_node, "bypass-wce",
+						    sizeof(char))) {
+			pr_info("%s:AID == 0x%x && region = 0x%x without KERNEL_API!!\n",
+				__func__, mpu->dump_reg[5].value,
+				mpu->dump_reg[7].value);
+		} else
+			aee_kernel_exception("SMPU", mpu->vio_msg);
+	} else
+		aee_kernel_exception("SMPU", mpu->vio_msg);
 	mpu->is_vio = false;
 }
 static DECLARE_WORK(smpu_work, smpu_violation_callback);
@@ -471,7 +484,8 @@ static int smpu_probe(struct platform_device *pdev)
 
 		//bypass_axi end
 		//bypass miumpu start
-		size = of_property_count_elems_of_size(smpu_node, "bypass", sizeof(char));
+		size = of_property_count_elems_of_size(smpu_node, "bypass",
+						       sizeof(char));
 
 		miumpu_bypass_list = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
 		if (!miumpu_bypass_list)
@@ -493,20 +507,26 @@ static int smpu_probe(struct platform_device *pdev)
 		for (i = 0; i < mpu->bypass_miu_reg_num; i++)
 			mpu->bypass_miu_reg[i] = miumpu_bypass_list[i];
 
-		size = of_property_count_elems_of_size(smpu_node, "bypass-gpu", sizeof(char));
+		size = of_property_count_elems_of_size(smpu_node, "bypass-gpu",
+						       sizeof(char));
 		if (size > 0) {
-			gpu_bypass_list = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
+			gpu_bypass_list =
+				devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
 			if (!gpu_bypass_list)
 				return -ENOMEM;
 
 			size >>= 2;
-			ret = of_property_read_u32_array(smpu_node, "bypass-gpu", gpu_bypass_list, size);
+			ret = of_property_read_u32_array(
+				smpu_node, "bypass-gpu", gpu_bypass_list, size);
 			if (!gpu_bypass_list) {
 				pr_info("no gpu-bypass\n");
 				return -ENXIO;
 			}
 
-			mpu->gpu_bypass_list = devm_kmalloc(&pdev->dev, size * sizeof(unsigned int), GFP_KERNEL);
+			mpu->gpu_bypass_list =
+				devm_kmalloc(&pdev->dev,
+					     size * sizeof(unsigned int),
+					     GFP_KERNEL);
 
 			if (!mpu->gpu_bypass_list)
 				return -ENOMEM;
@@ -531,7 +551,8 @@ static int smpu_probe(struct platform_device *pdev)
 	if (!(mpu->vio_msg))
 		return -ENOMEM;
 
-	mpu->vio_msg_gpu = devm_kmalloc(&pdev->dev, MAX_GPU_VIO_LEN, GFP_KERNEL);
+	mpu->vio_msg_gpu =
+		devm_kmalloc(&pdev->dev, MAX_GPU_VIO_LEN, GFP_KERNEL);
 	if (!mpu->vio_msg_gpu)
 		return -ENOMEM;
 
