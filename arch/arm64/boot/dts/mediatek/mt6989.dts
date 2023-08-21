@@ -2088,6 +2088,7 @@
 		init-power-on;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
+		mediatek,vcp-supply = <&vcp>;
 	};
 
 	disp_ssc1_smi_2x1_sub_comm: disp-ssc1-smi-2x1-sub-comm@1e805000 {
@@ -2098,6 +2099,7 @@
 		init-power-on;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
+		mediatek,vcp-supply = <&vcp>;
 	};
 
 	mdp_ssc4_smi_2x1_sub_comm: mdp-ssc4-smi-2x1-sub-comm@1e80c000 {
@@ -2108,6 +2110,7 @@
 		init-power-on;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
+		mediatek,vcp-supply = <&vcp>;
 	};
 
 	mdp_ssc5_smi_2x1_sub_comm: mdp-ssc5-smi-2x1-sub-comm@1e80d000 {
@@ -2118,6 +2121,7 @@
 		init-power-on;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
+		mediatek,vcp-supply = <&vcp>;
 	};
 
 	mmsram_smi_2x1_sub_comm3: mmsram-smi-2x1-sub-comm3@1e807000 {
@@ -2128,6 +2132,7 @@
 		init-power-on;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
+		mediatek,vcp-supply = <&vcp>;
 	};
 
 	mmsram_smi_2x1_sub_comm4: mmsram-smi-2x1-sub-comm4@1e808000 {
@@ -2138,6 +2143,7 @@
 		init-power-on;
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 		skip-rpm-cb;
+		mediatek,vcp-supply = <&vcp>;
 	};
 
 	smi_disp_common: smi-disp-comm@1e801000 {
