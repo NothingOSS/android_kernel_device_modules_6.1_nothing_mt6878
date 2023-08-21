@@ -29,6 +29,10 @@ struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 
 	if (codec_type == MTK_INST_DECODER) {
 		list_for_each(item, &dev->vdec_dvfs_inst) {
+			if(item == (void *) 0) {
+				mtk_v4l2_debug(0, "%s [VDVFS][VDEC] find null in item in list!\n", __func__);
+				return 0;
+			}
 			inst = list_entry(item, struct vcodec_inst, list);
 			if (inst->id == ctx->id)
 				return inst;
@@ -36,6 +40,10 @@ struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 
 	} else if (codec_type == MTK_INST_ENCODER) {
 		list_for_each(item, &dev->venc_dvfs_inst) {
+			if(item == (void *) 0) {
+				mtk_v4l2_debug(0, "%s [VDVFS][VENC] find null in item in list!\n", __func__);
+				return 0;
+			}
 			inst = list_entry(item, struct vcodec_inst, list);
 			if (inst->id == ctx->id)
 				return inst;
@@ -513,6 +521,10 @@ u32 mtk_vcodec_get_bw_factor(struct mtk_vcodec_dev *dev, int codec_type)
 	} else if (codec_type == MTK_INST_ENCODER) {
 		/*get encoder bw factor*/
 		list_for_each(item, &dev->venc_dvfs_inst) {
+			if(item == (void *) 0) {
+				mtk_v4l2_debug(0, "%s [VDVFS][VENC] find null in item in list!\n", __func__);
+				return 0;
+			}
 			inst = list_entry(item, struct vcodec_inst, list);
 			bw_factor_bit = mtk_vcodec_is_10Bit(inst->yuv_fmt, MTK_INST_ENCODER) ?
 				BW_FACTOR_10BIT : 100;
@@ -563,6 +575,10 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 		}
 
 		list_for_each(item, &dev->vdec_dvfs_inst) {
+			if(item == (void *) 0) {
+				mtk_v4l2_debug(0, "%s [VDVFS][VDEC] find null in item in list!\n", __func__);
+				return;
+			}
 			inst = list_entry(item, struct vcodec_inst, list);
 			if (inst && inst->is_active) {
 				freq = calc_freq(inst, dev);
@@ -610,6 +626,10 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 		}
 
 		list_for_each(item, &dev->venc_dvfs_inst) {
+			if(item == (void *) 0) {
+				mtk_v4l2_debug(0, "%s [VDVFS][VENC] find null in item in list!\n", __func__);
+				return;
+			}
 			inst = list_entry(item, struct vcodec_inst, list);
 			freq = calc_freq(inst, dev);
 
