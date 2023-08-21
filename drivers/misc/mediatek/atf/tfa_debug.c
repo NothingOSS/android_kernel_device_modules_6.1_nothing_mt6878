@@ -196,7 +196,8 @@ static ssize_t raw_read(struct file *file,
 	if (count > remain_len)
 		copy_len = remain_len;
 	else
-		copy_len = count;
+		copy_len = round_down(count, 4);
+
 	if (copy_to_user(buf,
 		(void *)(inst_p->vaddr + inst_p->read_offset), copy_len))
 		return -EFAULT;
