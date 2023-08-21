@@ -48,6 +48,7 @@ static void *mmdvfs_memory_va;
 
 static bool mmdvfs_free_run;
 static bool mmdvfs_init_done;
+static bool mmdvfs_restore_step;
 
 static int vcp_power;
 static int vcp_pwr_usage[VCP_PWR_USR_NUM];
@@ -1312,14 +1313,36 @@ static inline void mmdvfs_reset_vcp(void)
 
 static void mmdvfs_v3_release_step(void)
 {
-	int i;
+	int i, val;
 
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
-		if (last_vote_step[i] != -1)
+		if (last_vote_step[i] >= 0) {
+			val = last_vote_step[i];
 			mtk_mmdvfs_v3_set_vote_step(i, -1);
+			last_vote_step[i] = -val;
+		}
 
-		if (last_force_step[i] != -1)
+		if (last_force_step[i] >= 0) {
+			val = last_force_step[i];
 			mtk_mmdvfs_v3_set_force_step(i, -1);
+			last_force_step[i] = -val;
+		}
+	}
+}
+
+static void mmdvfs_v3_restore_step(void)
+{
+	int i;
+
+	if (!mmdvfs_restore_step)
+		return;
+
+	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
+		if (last_vote_step[i] < 0 && last_vote_step[i] != -MAX_OPP)
+			mtk_mmdvfs_v3_set_vote_step(i, -last_vote_step[i]);
+
+		if (last_force_step[i] >= 0 && last_force_step[i] != -MAX_OPP)
+			mtk_mmdvfs_v3_set_force_step(i, -last_force_step[i]);
 	}
 }
 
@@ -1368,6 +1391,7 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 		mutex_unlock(&mmdvfs_vcp_cb_mutex);
 		if (hqa_enable)
 			mtk_mmdvfs_enable_vmm(true);
+		mmdvfs_v3_restore_step();
 		break;
 	case VCP_EVENT_STOP:
 		if (dpc_fp)
@@ -1771,8 +1795,8 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 	of_property_read_s32(node, "mediatek,dpsw-thr", &dpsw_thr);
 
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
-		last_vote_step[i] = -1;
-		last_force_step[i] = -1;
+		last_vote_step[i] = -MAX_OPP;
+		last_force_step[i] = -MAX_OPP;
 	}
 
 	of_property_read_s32(node, "kernel-log-level", &log_level);
@@ -1946,8 +1970,9 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 	}
 	mmdvfs_free_run = of_property_read_bool(node, "mediatek,free-run");
 	of_property_read_s32(node, "mediatek,dpsw-thres", &dpsw_thr);
-	MMDVFS_DBG("version:%d swrgo:%d free_run:%d dpsw_thr:%d",
-		mmdvfs_mux_version, mmdvfs_swrgo, mmdvfs_free_run, dpsw_thr);
+	mmdvfs_restore_step = of_property_read_bool(node, "mediatek,restore-step");
+	MMDVFS_DBG("version:%d swrgo:%d free_run:%d dpsw_thr:%d restore_step:%d",
+		mmdvfs_mux_version, mmdvfs_swrgo, mmdvfs_free_run, dpsw_thr, mmdvfs_restore_step);
 
 	mmdvfs_v3_dev = &pdev->dev;
 	larb = of_parse_phandle(pdev->dev.of_node, "mediatek,vdec-larb", 0);
@@ -2085,9 +2110,9 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 		vmm_notify_wq = create_singlethread_workqueue("vmm_notify_wq");
 
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
-		last_vote_step[i] = -1;
-		last_force_step[i] = -1;
-		last_force_volt[i] = -1;
+		last_vote_step[i] = -MAX_OPP;
+		last_force_step[i] = -MAX_OPP;
+		last_force_volt[i] = -MAX_OPP;
 	}
 	of_property_read_s32(node, "kernel-log-level", &log_level);
 	of_property_read_s32(node, "vcp-log-level", &vcp_log_level);
