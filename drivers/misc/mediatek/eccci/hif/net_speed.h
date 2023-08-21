@@ -16,5 +16,5 @@ void mtk_ccci_register_speed_callback(spd_fun func_1s, spd_fun func_500ms);
 void mtk_ccci_register_speed_1s_callback(total_spd_fun func);
 int mtk_ccci_net_spd_cfg(int toggle);
 int mtk_ccci_net_speed_init(void);
-
+extern void ccmni_set_init_rps(unsigned long rps_value);
 #endif

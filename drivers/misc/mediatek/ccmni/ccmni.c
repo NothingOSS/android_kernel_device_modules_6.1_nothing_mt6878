@@ -55,7 +55,7 @@ long gro_flush_timer __read_mostly = 2000000L;
 #else
 long gro_flush_timer;
 #endif
-
+static unsigned long g_init_rps_value;
 /*VIP_MARK is defined as highest priority */
 #define APP_VIP_MARK		0x80000000
 #define APP_VIP_MARK2		0x40000000
@@ -104,6 +104,12 @@ static void unregister_tcp_pacing_sysctl(void)
 {
 	unregister_sysctl_table(sysctl_header);
 }
+
+void ccmni_set_init_rps(unsigned long rps_value)
+{
+	g_init_rps_value = rps_value;
+}
+EXPORT_SYMBOL(ccmni_set_init_rps);
 
 void set_ccmni_rps(unsigned long value)
 {
@@ -424,16 +430,20 @@ static int ccmni_open(struct net_device *dev)
 		usage_cnt = atomic_read(&ccmni->usage);
 		atomic_set(&ccmni_tmp->usage, usage_cnt);
 	}
+	if (g_init_rps_value)
+		set_rps_map(dev->_rx, g_init_rps_value);
+	else
+		set_rps_map(dev->_rx, 0x0F);
 	queue_delayed_work(ccmni->worker,
 				&ccmni->pkt_queue_work,
 				msecs_to_jiffies(500));
 
-	netdev_info(dev,
-		"%s_Open:cnt=(%d,%d), md_ab=0x%X, gro=(%llx, %ld), flt_cnt=%d\n",
+	pr_info(
+		"%s_Open:cnt=(%d,%d), md_ab=0x%X, gro=(%llx, %ld), flt_cnt=%d, rps:%lx\n",
 		dev->name, atomic_read(&ccmni->usage),
 		atomic_read(&ccmni_tmp->usage),
 		ccmni_ctl_blk->ccci_ops->md_ability,
-		dev->features, gro_flush_timer, ccmni->flt_cnt);
+		dev->features, gro_flush_timer, ccmni->flt_cnt, g_init_rps_value? g_init_rps_value: 0x0F);
 
 	return 0;
 }
