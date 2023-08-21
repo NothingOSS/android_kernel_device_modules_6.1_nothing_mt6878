@@ -1279,28 +1279,43 @@ static void mtk_drm_destroy_async_cb(struct mtk_drm_async_cb *cb,
 	kfree(cb);
 }
 
-static void mtk_drm_clear_async_cb_list(struct drm_crtc *crtc)
+void mtk_drm_clear_async_cb_list(struct drm_crtc *crtc)
 {
 	struct sched_param hi_param = {.sched_priority = 87 };
 	struct sched_param lo_param = {.sched_priority = 0 };
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
+	struct mtk_drm_private *priv = NULL;
 	bool adjusted = false;
+
+	priv = crtc->dev->dev_private;
+	if (priv == NULL ||
+		!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_IDLEMGR_ASYNC))
+		return;
 
 	while (atomic_read(&idlemgr->async_cb_pending) > 0) {
 		if (adjusted == false) {
 			sched_setscheduler(idlemgr->async_handler_task,
 					SCHED_RR, &hi_param);
 			adjusted = true;
+			CRTC_MMP_MARK((int)drm_crtc_index(crtc), idle_async_cb,
+				0xffffffff, atomic_read(&idlemgr->async_cb_pending));
+			DDPINFO("%s: polling async count:%d, pending:%d\n",
+				__func__, atomic_read(&idlemgr->async_cb_count),
+				atomic_read(&idlemgr->async_cb_pending));
 		}
+		usleep_range(50, 100);
+	}
+	if (adjusted == true) {
+		sched_setscheduler(idlemgr->async_handler_task,
+				SCHED_NORMAL, &lo_param);
+		CRTC_MMP_MARK((int)drm_crtc_index(crtc), idle_async_cb,
+			0xffffffff, atomic_read(&idlemgr->async_cb_pending));
 		DDPINFO("%s: async count:%d, pending:%d\n",
 			__func__, atomic_read(&idlemgr->async_cb_count),
 			atomic_read(&idlemgr->async_cb_pending));
-		usleep_range(50, 100);
 	}
-	if (adjusted == true)
-		sched_setscheduler(idlemgr->async_handler_task,
-				SCHED_NORMAL, &lo_param);
 }
 
 static int mtk_drm_async_handler_thread(void *data)

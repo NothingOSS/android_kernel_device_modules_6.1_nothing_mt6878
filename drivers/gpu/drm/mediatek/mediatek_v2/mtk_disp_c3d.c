@@ -201,8 +201,10 @@ static bool disp_c3d_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 
 	disp_c3d_lock_wake_lock(comp, true);
 	async = mtk_drm_idlemgr_get_async_status(crtc);
-	if (async == false)
+	if (async == false) {
 		cmdq_mbox_enable(client->chan);
+		mtk_drm_clear_async_cb_list(crtc);
+	}
 
 	switch (cmd_type) {
 	case C3D_USERSPACE:

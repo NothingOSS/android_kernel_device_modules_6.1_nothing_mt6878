@@ -169,4 +169,5 @@ void mtk_drm_idlemgr_async_control(struct drm_crtc *crtc, bool enable);
 void mtk_drm_idlemgr_sram_control(struct drm_crtc *crtc, bool sleep);
 /* enable cmd panel perf aee dump */
 void mtk_drm_idlegmr_perf_aee_control(unsigned int timeout);
+void mtk_drm_clear_async_cb_list(struct drm_crtc *crtc);
 #endif
