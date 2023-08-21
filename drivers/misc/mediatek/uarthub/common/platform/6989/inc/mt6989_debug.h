@@ -177,6 +177,10 @@
 	UARTHUB_DEBUG_PRINT(UARTHUB_DEBUG_READ_1_REG, UARTHUB_DEBUG_GET_WHOLE_VALUE,\
 	ESCAPE_DAT_ADDR, null, "ESC_DAT(0x40)", _print_ap, _def_tag, _tag, "0x%x", _last)
 
+#define UARTHUB_DEBUG_PRINT_RXTRI_AD(_def_tag, _tag, _print_ap, _last) \
+	UARTHUB_DEBUG_PRINT(UARTHUB_DEBUG_READ_1_REG, UARTHUB_DEBUG_GET_WHOLE_VALUE,\
+	RXTRI_AD_ADDR, null, "RXTRI_AD(0x50)", _print_ap, _def_tag, _tag, "0x%x", _last)
+
 #define UARTHUB_DEBUG_PRINT_FCR_RD(_def_tag, _tag, _print_ap, _last) \
 	UARTHUB_DEBUG_PRINT(UARTHUB_DEBUG_READ_1_REG, UARTHUB_DEBUG_GET_WHOLE_VALUE,\
 	FCR_RD_ADDR, null, "FCR_RD(0x5c)", _print_ap, _def_tag, _tag, "0x%x", _last)

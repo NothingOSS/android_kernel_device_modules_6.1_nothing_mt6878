@@ -321,6 +321,7 @@ int uarthub_dump_uartip_debug_info_mt6989(
 	UARTHUB_DEBUG_PRINT_XOFF2(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_ESCAPE_EN(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_ESCAPE_DAT(def_tag, tag, print_ap, 0);
+	UARTHUB_DEBUG_PRINT_RXTRI_AD(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_FCR_RD(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_MCR(def_tag, tag, print_ap, 0);
 	UARTHUB_DEBUG_PRINT_TX_OFFSET_DMA(def_tag, tag, print_ap, 0);

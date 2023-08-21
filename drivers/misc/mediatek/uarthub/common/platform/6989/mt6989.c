@@ -514,27 +514,27 @@ int uarthub_reset_to_ap_enable_only_mt6989(int ap_only)
 	UARTHUB_REG_WRITE(DEV0_STA_SET_ADDR, trx_mask);
 
 	/* disable and clear uarthub FIFO for UART0/1/2/CMM */
-	UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_cmm]), 0x80);
-	UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_ap]), 0x80);
+	UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_cmm]), 0xC0);
+	UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_ap]), 0xC0);
 #if MD_CHANNEL_EN
-	UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_md]), 0x80);
+	UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_md]), 0xC0);
 #endif
-	UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_adsp]), 0x80);
+	UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_adsp]), 0xC0);
 
 	/* sw_rst4 */
 	CON4_SET_sw4_rst(CON4_ADDR, 1);
 
 	/* enable uarthub FIFO for UART0/1/2/CMM */
-	UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_cmm]), 0x81);
-	UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_ap]), 0x81);
+	UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_cmm]), 0xC1);
+	UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_ap]), 0xC1);
 
 #if MD_CHANNEL_EN
 	if (dev1_fifoe == 1 && ap_only == 0)
-		UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_md]), 0x81);
+		UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_md]), 0xC1);
 #endif
 
 	if (dev2_fifoe == 1 && ap_only == 0)
-		UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_adsp]), 0x81);
+		UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[uartip_id_adsp]), 0xC1);
 
 	/* restore trx request state */
 	UARTHUB_REG_WRITE(DEV0_STA_SET_ADDR, trx_state);
@@ -604,7 +604,7 @@ int uarthub_reset_flow_control_mt6989(void)
 
 		UARTHUB_REG_WRITE(MCR_ADDR(uarthub_dev_base), 0x10);
 		UARTHUB_REG_WRITE(DMA_EN_ADDR(uarthub_dev_base), 0x0);
-		UARTHUB_REG_WRITE(IIR_ADDR(uarthub_dev_base), 0x80);
+		UARTHUB_REG_WRITE(FCR_ADDR(uarthub_dev_base), 0xC0);
 		UARTHUB_REG_WRITE(SLEEP_REQ_ADDR(uarthub_dev_base), 0x1);
 		UARTHUB_REG_WRITE(SLEEP_EN_ADDR(uarthub_dev_base), 0x1);
 
@@ -663,7 +663,7 @@ int uarthub_reset_flow_control_mt6989(void)
 			pr_info("[%s][slp_req_dis] txstate[0x%x] is not idle state[0x0]\n",
 				__func__, (val & 0x1f));
 
-		UARTHUB_REG_WRITE(IIR_ADDR(uarthub_dev_base), 0x81);
+		UARTHUB_REG_WRITE(FCR_ADDR(uarthub_dev_base), 0xC1);
 		UARTHUB_REG_WRITE(DMA_EN_ADDR(uarthub_dev_base), 0x3);
 		UARTHUB_REG_WRITE(MCR_ADDR(uarthub_dev_base), 0x0);
 
@@ -1106,9 +1106,11 @@ int uarthub_init_default_config_mt6989(void)
 	for (i = 0; i <= UARTHUB_MAX_NUM_DEV_HOST; i++)
 		UARTHUB_REG_WRITE(DMA_EN_ADDR(uartip_base_map[i]), 0x3);
 
-	/* 0x08 = 0x87, fifo control register */
-	for (i = 0; i <= UARTHUB_MAX_NUM_DEV_HOST; i++)
-		UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[i]), 0x87);
+	/* 0x08 = 0xC7, fifo control register */
+	for (i = 0; i <= UARTHUB_MAX_NUM_DEV_HOST; i++) {
+		UARTHUB_REG_WRITE(RXTRI_AD_ADDR(uartip_base_map[i]), 0x19);
+		UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[i]), 0xC7);
+	}
 
 	return 0;
 }
@@ -1556,7 +1558,7 @@ int uarthub_config_host_fifoe_ctrl_mt6989(int dev_index, int enable)
 	}
 #endif
 
-	UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[dev_index]), (0x80 | enable));
+	UARTHUB_REG_WRITE(FCR_ADDR(uartip_base_map[dev_index]), (0xC0 | enable));
 	return 0;
 }
 
