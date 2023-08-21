@@ -268,6 +268,9 @@ struct cmdq {
 	u32			axid;
 	u32			tbu;
 	bool		smmu_v3_enabled;
+	bool		err_irq;
+	void __iomem	*dram_pwr_base;
+	bool		error_irq_sw_req;
 };
 
 struct gce_plat {
@@ -1307,6 +1310,28 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 	}
 
 	irq_flag = readl(thread->base + CMDQ_THR_IRQ_STATUS);
+	if (cmdq->error_irq_sw_req && (irq_flag & CMDQ_THR_IRQ_ERROR)) {
+		//dump smmu rg
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+		if (cmdq->smmu_v3_enabled) {
+			axid[0] = cmdq->axid;
+			ret = cmdq_util_controller->check_tf(cmdq->mbox.dev,
+				cmdq->sid, cmdq->tbu, axid);
+		}
+#endif
+		//gce sw mode ddr_en/apsrc/emi
+		writel(readl(cmdq->base + GCE_GCTL_VALUE) | ((0x7 << 16) + 0x7),
+			cmdq->base + GCE_GCTL_VALUE);
+		cmdq->err_irq = true;
+		//check dram pwr on(spm)
+		if (cmdq->dram_pwr_base) {
+			while ((readl(cmdq->dram_pwr_base + 0x104) & 0x4000) != 0x4000)
+				cmdq_err("apsrc ack:%#x", readl(cmdq->dram_pwr_base + 0x104));
+			while ((readl(cmdq->dram_pwr_base + 0x190) & 0x40000000) == 0x40000000)
+				cmdq_err("ddren ack:%#x", readl(cmdq->dram_pwr_base + 0x190));
+		}
+	}
+
 	writel(~irq_flag, thread->base + CMDQ_THR_IRQ_STATUS);
 
 	cmdq_log("irq flag:%#x gce:%lx idx:%u",
@@ -1318,8 +1343,12 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 	 * reset / disable this GCE thread, so we need to check the enable
 	 * bit of this GCE thread.
 	 */
-	if (!(readl(thread->base + CMDQ_THR_ENABLE_TASK) & CMDQ_THR_ENABLED))
+	if (!(readl(thread->base + CMDQ_THR_ENABLE_TASK) & CMDQ_THR_ENABLED)) {
+		if (cmdq->err_irq && cmdq->error_irq_sw_req)
+			writel(readl(cmdq->base + GCE_GCTL_VALUE) & ~(0x7),
+				cmdq->base + GCE_GCTL_VALUE);
 		return;
+	}
 
 	if (irq_flag & CMDQ_THR_IRQ_ERROR)
 		err = -EINVAL;
@@ -1339,6 +1368,10 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 		cmdq_err("pc:%pa end:%pa err:%d gce base:%lx thread:%u",
 			&curr_pa, &task_end_pa, err,
 			(unsigned long)cmdq->base_pa, thread->idx);
+		if (cmdq->dram_pwr_base && cmdq->error_irq_sw_req)
+			cmdq_err("GCE_GCTL_VALUE:%#x apsrc ack:%#x ddren ack:%#x",
+				readl(cmdq->base + GCE_GCTL_VALUE), readl(cmdq->dram_pwr_base + 0x104),
+				readl(cmdq->dram_pwr_base + 0x190));
 
 		cmdq_util_prebuilt_dump(
 			cmdq->hwid, CMDQ_TOKEN_PREBUILT_DISP_WAIT); // set iova
@@ -1398,6 +1431,9 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 	if (thread->dirty) {
 		cmdq_log("task in error dump thread:%u pkt:0x%p",
 			thread->idx, task ? task->pkt : NULL);
+		if (cmdq->err_irq && cmdq->error_irq_sw_req)
+			writel(readl(cmdq->base + GCE_GCTL_VALUE) & ~(0x7),
+				cmdq->base + GCE_GCTL_VALUE);
 		return;
 	}
 
@@ -1470,6 +1506,10 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 				task->pkt, thread->timeout_ms, thread->idx, thread->cookie);
 		}
 	}
+	//gce hw mode ddr_en/apsrc/emi
+	if (cmdq->err_irq && cmdq->error_irq_sw_req)
+		writel(readl(cmdq->base + GCE_GCTL_VALUE) & ~(0x7),
+			cmdq->base + GCE_GCTL_VALUE);
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt] = sched_clock();
 	if (end[end_cnt] - start >= 1000000 && !cmdq->irq_long_times) /* 1ms */
@@ -2630,6 +2670,12 @@ int cmdq_iommu_fault_callback(int port, dma_addr_t mva, void *cb_data)
 	cmdq_set_alldump(true);
 	cmdq_thread_dump_all(cmdq, true, true, true);
 	cmdq_set_alldump(false);
+
+	if (cmdq->err_irq) {
+		cmdq_msg("%s error irq flag:%d", __func__, cmdq->err_irq);
+		BUG_ON(1);
+	}
+
 	return 0;
 }
 
@@ -2647,6 +2693,7 @@ static int cmdq_probe(struct platform_device *pdev)
 	struct gce_plat *plat_data;
 	static u8 hwid;
 	int port;
+	u32 dram_pwr_pa;
 
 	plat_data = (struct gce_plat *)of_device_get_match_data(dev);
 	if (!plat_data) {
@@ -2876,6 +2923,15 @@ static int cmdq_probe(struct platform_device *pdev)
 		mtk_iommu_register_fault_callback(
 			port, cmdq_iommu_fault_callback, cmdq, false);
 	}
+
+	if (of_property_read_bool(dev->of_node, "error-irq-sw-req")) {
+		cmdq->error_irq_sw_req = true;
+		if (!of_property_read_u32(dev->of_node, "dram-pwr-base", &dram_pwr_pa)) {
+			cmdq_msg("dram_pwr_base:%#x", dram_pwr_pa);
+			cmdq->dram_pwr_base = ioremap(dram_pwr_pa, 0x1000);
+		}
+	}
+
 	return 0;
 }
 
