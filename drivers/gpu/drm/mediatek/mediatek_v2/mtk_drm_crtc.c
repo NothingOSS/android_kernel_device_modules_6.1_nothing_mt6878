@@ -4313,11 +4313,18 @@ unsigned int dual_pipe_comp_mapping(unsigned int mmsys_id, unsigned int comp_id)
 }
 
 static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
+				      struct mtk_crtc_state *old_mtk_state,
+				      struct mtk_crtc_state *crtc_state,
 					  struct cmdq_pkt *cmdq_handle)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_plane_comp_state *comp_state;
 	int i, j, k;
+	unsigned int prop_fence_idx;
+	unsigned int old_prop_fence_idx;
+
+	prop_fence_idx = crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
+	old_prop_fence_idx = old_mtk_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
 
 	for (i = mtk_crtc->layer_nr - 1; i >= 0; i--) {
 		struct drm_plane *plane = &mtk_crtc->planes[i].base;
@@ -4327,7 +4334,7 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 		plane_state = to_mtk_plane_state(plane->state);
 		comp_state = &(plane_state->comp_state);
 		/* TODO: check plane_state by pending.enable */
-		if (plane_state->base.visible) {
+		if (plane_state->base.visible && (prop_fence_idx != old_prop_fence_idx)) {
 			for_each_comp_in_cur_crtc_path(
 				comp, mtk_crtc, j,
 				k) {
@@ -5840,7 +5847,7 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 			} else {
 				old_mtk_state->pending_usage_update = false;
 			}
-			mtk_crtc_get_plane_comp_state(crtc, cmdq_handle);
+			mtk_crtc_get_plane_comp_state(crtc,old_mtk_state,crtc_state, cmdq_handle);
 
 			if (lyeblob_ids->ddp_blob_id)
 				mtk_crtc_atomic_ddp_config(crtc, old_mtk_state, cmdq_handle);
