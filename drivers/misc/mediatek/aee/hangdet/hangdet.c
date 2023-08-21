@@ -89,6 +89,7 @@ extern void mt_irq_dump_status(unsigned int irq);
 #define RGU_GET_S2IDLE	0x12
 
 static int start_kicker(void);
+static int kwdt_thread(void *arg);
 static int g_kicker_init;
 static DEFINE_SPINLOCK(lock);
 struct task_struct *wk_tsk[16] = { 0 };	/* max cpu 16 */
@@ -304,6 +305,19 @@ void kicker_cpu_bind(int cpu)
 		pr_debug("[wdk]wk_task[%d] is NULL\n", cpu);
 	else {
 		/* kthread_bind(wk_tsk[cpu], cpu); */
+		if (!wk_tsk[cpu]) {
+			cpuid_t[cpu] = cpu;
+			wk_tsk[cpu] = kthread_create(kwdt_thread,
+				(void *) &cpuid_t[cpu], "wdtk-%d", cpu);
+			if (IS_ERR(wk_tsk[cpu])) {
+				// int ret = PTR_ERR(wk_tsk[cpu]);
+				wk_tsk[cpu] = NULL;
+				pr_info("[wdk]kthread_create failed, wdtk-%d\n", cpu);
+				return;
+			}
+
+			wk_start_kick_cpu(cpu);
+		}
 		WARN_ON_ONCE(set_cpus_allowed_ptr(wk_tsk[cpu],
 			cpumask_of(cpu)) < 0);
 		wake_up_process(wk_tsk[cpu]);
