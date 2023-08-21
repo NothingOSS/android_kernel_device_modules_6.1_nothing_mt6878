@@ -1209,8 +1209,7 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 		break;
 	}
 
-	if (ret || log_level & (1 << log_adb))
-		MMDVFS_DBG("ret:%d func:%hhu idx:%hhu opp:%hhd", ret, func, idx, opp);
+	MMDVFS_DBG("ret:%d func:%hhu idx:%hhu opp:%hhd", ret, func, idx, opp);
 	return ret;
 }
 
