@@ -12,6 +12,7 @@
 #define CREATE_TRACE_POINTS
 #include "mdw_rv_events.h"
 #include "mdw_mem_rsc.h"
+#include <linux/sched/clock.h>
 
 #define MDW_CMD_IPI_TIMEOUT (10*1000) //ms
 
@@ -331,6 +332,8 @@ static void mdw_rv_ipi_cmplt_cmd(struct mdw_ipi_msg_sync *s_msg)
 		mdw_drv_err("cmd(%p/0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
 			c->mpriv, c->kid, ret, c->einfos->c.sc_rets,
 			c->einfos->c.total_us, c->pid, c->tgid);
+	c->enter_rv_cb_time = mrdev->enter_rv_cb_time;
+	c->rv_cb_time = mrdev->rv_cb_time;
 	mdw_cmd_trace(rc->c, MDW_CMD_DONE);
 	mrdev->cmd_funcs->done(rc, ret);
 }
@@ -348,10 +351,10 @@ static int mdw_rv_dev_send_cmd(struct mdw_rv_dev *mrdev, struct mdw_rv_cmd *rc)
 	rc->s_msg.msg.c.size = rc->cb->size;
 	rc->s_msg.msg.c.start_ts_ns = rc->start_ts_ns;
 	rc->s_msg.complete = mdw_rv_ipi_cmplt_cmd;
-	mdw_cmd_trace(rc->c, MDW_CMD_START);
 
 	/* send */
 	ret = mdw_rv_dev_send_msg(mrdev, &rc->s_msg);
+	mdw_cmd_trace(rc->c, MDW_CMD_START);
 	if (ret) {
 		mdw_cmd_trace(rc->c, MDW_CMD_DONE);
 		mdw_drv_err("pid(%d) send msg fail\n", task_pid_nr(current));
@@ -429,10 +432,14 @@ static int mdw_rv_callback(struct rpmsg_device *rpdev, void *data,
 	struct mdw_ipi_msg *msg = (struct mdw_ipi_msg *)data;
 	struct mdw_ipi_msg_sync *s_msg = NULL;
 	struct mdw_rv_dev *mrdev = (struct mdw_rv_dev *)priv;
+	uint64_t ts1 = 0, ts2 = 0;
 
 	mdw_drv_debug("callback msg(%d/0x%llx)\n", msg->id, msg->sync_id);
 
+	ts1 = sched_clock();
 	mutex_lock(&mrdev->msg_mtx);
+	ts2 = sched_clock();
+	mrdev->enter_rv_cb_time = ts2 - ts1;
 	s_msg = mdw_rv_dev_msg_find(mrdev, msg->sync_id);
 	if (!s_msg) {
 		mdw_exception("get ipi msg fail(0x%llx)", msg->sync_id);
@@ -441,7 +448,8 @@ static int mdw_rv_callback(struct rpmsg_device *rpdev, void *data,
 		list_del(&s_msg->ud_item);
 	}
 	mutex_unlock(&mrdev->msg_mtx);
-
+	ts1 = sched_clock();
+	mrdev->rv_cb_time = ts1 - ts2;
 	/* complete callback */
 	if (s_msg)
 		s_msg->complete(s_msg);

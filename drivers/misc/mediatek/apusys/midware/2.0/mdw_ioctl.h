@@ -271,7 +271,7 @@ struct mdw_cmd_out {
 			uint64_t fence;
 			uint64_t cmd_done_usr;
 			uint64_t ext_id;
-			uint64_t cmd_exec_id;
+			uint64_t inference_id;
 		} exec;
 	};
 };

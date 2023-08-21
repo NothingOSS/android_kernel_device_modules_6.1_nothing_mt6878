@@ -17,7 +17,7 @@ struct mdw_rv_msg_cmd {
 	/* ids */
 	uint64_t session_id;
 	uint64_t cmd_id;
-	uint64_t cmd_exec_id;
+	uint64_t inference_id;
 	uint32_t pid;
 	uint32_t tgid;
 	/* params */
@@ -94,7 +94,7 @@ static void mdw_rv_cmd_print(struct mdw_rv_msg_cmd *rc)
 {
 	mdw_cmd_debug("-------------------------\n");
 	mdw_cmd_debug("rc kid(0x%llx)\n", rc->cmd_id);
-	mdw_cmd_debug(" cmd_exec_id = 0x%llx\n", rc->cmd_exec_id);
+	mdw_cmd_debug(" inference_id = 0x%llx\n", rc->inference_id);
 	mdw_cmd_debug(" session = 0x%llx\n", rc->session_id);
 	mdw_cmd_debug(" priority = %u\n", rc->priority);
 	mdw_cmd_debug(" hardlimit = %u\n", rc->hardlimit);
@@ -271,7 +271,7 @@ static struct mdw_rv_cmd *mdw_rv_cmd_create(struct mdw_fpriv *mpriv,
 	rmc->link_offset = link_ofs;
 	rmc->inference_ms = c->inference_ms;
 	rmc->tolerance_ms = c->tolerance_ms;
-	rmc->cmd_exec_id = c->cmd_exec_id;
+	rmc->inference_id = c->inference_id;
 	mdw_rv_cmd_print(rmc);
 
 	/* copy links */

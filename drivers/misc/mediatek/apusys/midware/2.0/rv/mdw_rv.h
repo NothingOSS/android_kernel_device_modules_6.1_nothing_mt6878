@@ -56,6 +56,9 @@ struct mdw_rv_dev {
 	/* dtime handle */
 	struct work_struct power_off_wk;
 	struct timer_list power_off_timer;
+
+	uint64_t enter_rv_cb_time;
+	uint64_t rv_cb_time;
 };
 
 int mdw_rv_dev_init(struct mdw_device *mdev);

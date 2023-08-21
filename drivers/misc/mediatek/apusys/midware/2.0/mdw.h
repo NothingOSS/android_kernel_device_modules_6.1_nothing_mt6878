@@ -430,7 +430,19 @@ struct mdw_cmd {
 	struct completion cmplt;
 
 	/* cmd exec id */
-	uint64_t cmd_exec_id;
+	uint64_t inference_id;
+
+	/* cmd tag time */
+	uint64_t enter_complt_time;
+	uint64_t pb_put_time;
+	uint64_t cmdbuf_out_time;
+	uint64_t handle_cmd_result_time;
+	uint64_t load_aware_pwroff_time;
+	uint64_t enter_mpriv_release_time;
+	uint64_t mpriv_release_time;
+	uint64_t enter_rv_cb_time;
+	uint64_t rv_cb_time;
+
 };
 
 struct mdw_dev_func {

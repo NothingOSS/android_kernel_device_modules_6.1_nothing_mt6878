@@ -29,7 +29,7 @@
 
 /* 64-bit execid : [world(4bit) | session_id(28bit) | counter(32bit)] */
 #define mdw_world (1ULL)
-#define MDW_CMD_GEN_EXECID(session, cnt) ((mdw_world << 60) | ((session & 0xfffffff) << 32) \
+#define MDW_CMD_GEN_INFID(session, cnt) ((mdw_world << 60) | ((session & 0xfffffff) << 32) \
 	 | (cnt & 0xffffffff))
 
 static void mdw_cmd_cmdbuf_out(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
@@ -1217,12 +1217,18 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	struct mdw_device *mdev = c->mpriv->mdev;
 	struct mdw_cmd_history_tbl *ch_tbl = NULL;
 	bool need_dtime_check = false;
+	uint64_t ts1 = 0, ts2 = 0;
 
+	ts1 = sched_clock();
 	mdw_trace_begin("apumdw:cmd_complete|cmd:0x%llx/0x%llx", c->uid, c->kid);
 	mutex_lock(&c->mtx);
+	ts2 = sched_clock();
+	c->enter_complt_time = ts2 - ts1;
 
 	/*  put power budget */
 	mdev->dev_funcs->pb_put(c->power_plcy);
+	ts1 = sched_clock();
+	c->pb_put_time = ts1 - ts2;
 
 	/* copy exec info and cmdbuf out */
 	if (c->cmd_state == MDW_PERF_CMD_INIT) {
@@ -1231,6 +1237,8 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	} else {
 		c->cmd_state = MDW_PERF_CMD_INIT;
 	}
+	ts2 = sched_clock();
+	c->cmdbuf_out_time = ts2 - ts1;
 
 	c->end_ts = sched_clock();
 	atomic_dec(&mdev->cmd_running);
@@ -1276,6 +1284,8 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 		}
 	}
 	dma_fence_put(f);
+	ts1 = sched_clock();
+	c->handle_cmd_result_time = ts1 - ts2;
 
 	/* get cmd history table */
 	ch_tbl = mdw_cmd_ch_tbl_find(c);
@@ -1329,6 +1339,8 @@ power_out:
 	if (ret && ret != -EOPNOTSUPP)
 		mdw_drv_err("rpmsg_sendto(power) fail(%d)\n", ret);
 
+	ts2 = sched_clock();
+	c->load_aware_pwroff_time = ts2 - ts1;
 out:
 	mdw_flw_debug("c(0x%llx) complete done\n", c->kid);
 	atomic_dec(&c->is_running);
@@ -1337,9 +1349,14 @@ out:
 
 	/* check mpriv to clean cmd */
 	mutex_lock(&mpriv->mtx);
+	ts1 = sched_clock();
+	c->enter_mpriv_release_time = ts1 - ts2;
 	atomic_dec(&mpriv->active_cmds);
 	mdw_cmd_mpriv_release(mpriv);
+	ts2 = sched_clock();
+	c->mpriv_release_time = ts2 - ts1;
 	mutex_unlock(&mpriv->mtx);
+	mdw_cmd_deque_trace(c, MDW_CMD_DEQUE);
 
 	/* put cmd execution ref */
 	mdw_cmd_put(c);
@@ -1671,7 +1688,6 @@ exec:
 	/* ch_tbl sanity check */
 	mdw_cmd_ch_tbl_sanity_check(mpriv);
 
-	mdw_cmd_trace(c, MDW_CMD_ENQUE);
 	/* get sync_file fd */
 	fd = get_unused_fd_flags(O_CLOEXEC);
 	if (fd < 0) {
@@ -1701,8 +1717,11 @@ exec:
 	if (is_running)
 		mdw_cmd_put(c);
 
-	/* generate cmd exec id */
-	c->cmd_exec_id = MDW_CMD_GEN_EXECID((uint64_t) mpriv, mpriv->counter++);
+	/* generate cmd inference id */
+	c->inference_id = MDW_CMD_GEN_INFID((uint64_t) mpriv, mpriv->counter++);
+
+	/* mdw cmd tag : enque */
+	mdw_cmd_trace(c, MDW_CMD_ENQUE);
 
 	/* check wait fence from other module */
 	mdw_flw_debug("s(0x%llx)c(0x%llx) wait fence(%d)...\n",
@@ -1735,9 +1754,9 @@ exec:
 	args->out.exec.id = c->id;
 	args->out.exec.cmd_done_usr = c->cmd_state;
 	args->out.exec.ext_id = c->ext_id;
-	args->out.exec.cmd_exec_id = c->cmd_exec_id;
-	mdw_flw_debug("async fd(%d) id(%d) extid(0x%llx) cmd_exec_id(0x%llx)\n",
-			 fd, c->id, c->ext_id, c->cmd_exec_id);
+	args->out.exec.inference_id = c->inference_id;
+	mdw_flw_debug("async fd(%d) id(%d) extid(0x%llx) inference_id(0x%llx)\n",
+			 fd, c->id, c->ext_id, c->inference_id);
 	mutex_unlock(&c->mtx);
 	goto out;
 
