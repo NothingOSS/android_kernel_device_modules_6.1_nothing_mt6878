@@ -1347,8 +1347,8 @@ decouple:
 static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *info,
 	u32 *reason)
 {
-	mml_msg("[topology]%s info->mode %d, mml_path_mode %d, mml_racing %d, mml_dl %d, rot %d",
-		__func__, info->mode, mml_path_mode, mml_racing, mml_dl, info->dest[0].rotate);
+	mml_msg("[topology]%s info mode %d alpha %d, mml_path_mode %d, mml_racing %d, mml_dl %d, rot %d",
+		__func__, info->mode, info->alpha, mml_path_mode, mml_racing, mml_dl, info->dest[0].rotate);
 
 	mml_msg("[topology]%s pq (dc/color/hdr/ccorr/dre/region_pq/sharp): %d/%d/%d/%d/%d/%d/%d",
 		__func__,
@@ -1371,6 +1371,9 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 			info->src.width < 9 ||
 			tp_need_resize(info))
 			goto not_support;
+		return MML_MODE_MML_DECOUPLE;
+	} else if (MML_FMT_ALPHA(info->dest[0].data.format)) {
+		*reason = mml_query_alpha;
 		return MML_MODE_MML_DECOUPLE;
 	}
 
