@@ -6821,7 +6821,7 @@
 				mediatek,eye-vrt = <0x5>;
 				mediatek,eye-vrt-host = <0x2>;
 				mediatek,rx-sqth = <0x2>;
-				mediatek,discth = <0xb>;
+				mediatek,discth = <0x9>;
 				mediatek,pll-fbksel = <0x0>;
 				mediatek,pll-posdiv = <0x0>;
 				mediatek,lpm-parameter = <0x19 0x1e 0x1e>;
