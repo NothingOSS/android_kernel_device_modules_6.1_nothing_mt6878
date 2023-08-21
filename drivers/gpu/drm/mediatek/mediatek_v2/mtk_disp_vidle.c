@@ -41,8 +41,12 @@ static atomic_t g_vidle_pq_ref = ATOMIC_INIT(0);
 static DEFINE_MUTEX(g_vidle_pq_ref_lock);
 
 struct mtk_disp_vidle {
-	const struct mtk_disp_vidle_data *data;
+	u8 level;
+	u32 hrt_bw;
+	u32 srt_bw;
 };
+
+static struct mtk_disp_vidle vidle_data = {0xff, 0xffffffff, 0xffffffff};
 
 void mtk_vidle_flag_init(void *_crtc)
 {
@@ -233,21 +237,31 @@ void mtk_vidle_enable(bool en, void *_drm_priv)
 
 void mtk_vidle_hrt_bw_set(const u32 bw_in_mb)
 {
+	vidle_data.hrt_bw = bw_in_mb;
 	if (disp_dpc_driver.dpc_hrt_bw_set)
 		disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb,
 					       !atomic_read(&g_ff_enabled));
+	else
+		DDPINFO("%s NOT SET:%d\n", __func__, bw_in_mb);
+
 }
 void mtk_vidle_srt_bw_set(const u32 bw_in_mb)
 {
+	vidle_data.srt_bw = bw_in_mb;
 	if (disp_dpc_driver.dpc_srt_bw_set)
 		disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb,
 					       !atomic_read(&g_ff_enabled));
+	else
+		DDPINFO("%s NOT SET:%d\n", __func__, bw_in_mb);
 }
 void mtk_vidle_dvfs_set(const u8 level)
 {
+	vidle_data.level = level;
 	if (disp_dpc_driver.dpc_dvfs_set)
 		disp_dpc_driver.dpc_dvfs_set(DPC_SUBSYS_DISP, level,
 					     !atomic_read(&g_ff_enabled));
+	else
+		DDPINFO("%s NOT SET:%d\n", __func__, level);
 }
 void mtk_vidle_dvfs_bw_set(const u32 bw_in_mb)
 {
@@ -282,6 +296,21 @@ void mtk_vidle_register(const struct dpc_funcs *funcs)
 	disp_dpc_driver.dpc_dvfs_set = funcs->dpc_dvfs_set;
 	disp_dpc_driver.dpc_dvfs_bw_set = funcs->dpc_dvfs_bw_set;
 	disp_dpc_driver.dpc_analysis = funcs->dpc_analysis;
+
+	if(vidle_data.level != 0xff) {
+		DDPINFO("%s need set level:%d\n", __func__, vidle_data.level);
+		mtk_vidle_dvfs_set(vidle_data.level);
+	}
+
+	if(vidle_data.hrt_bw != 0xffffffff) {
+		DDPINFO("%s need set hrt bw:%d\n", __func__, vidle_data.hrt_bw);
+		mtk_vidle_dvfs_set(vidle_data.hrt_bw);
+	}
+
+	if(vidle_data.srt_bw != 0xffffffff) {
+		DDPINFO("%s need set srt bw:%d\n", __func__, vidle_data.srt_bw);
+		mtk_vidle_dvfs_set(vidle_data.srt_bw);
+	}
 }
 EXPORT_SYMBOL(mtk_vidle_register);
 
