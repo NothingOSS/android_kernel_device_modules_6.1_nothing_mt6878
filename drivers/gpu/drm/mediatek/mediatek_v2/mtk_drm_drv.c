@@ -5550,6 +5550,8 @@ int mtk_drm_wait_repaint_ioctl(struct drm_device *dev, void *data,
 int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 {
 	int ret = 0;
+	int pm_mask = 0;
+	int mmsys_ret = 0,side_mmsys_ret = 0, ovlsys_ret = 0, size_ovlsys_ret = 0;
 
 	if (!priv)
 		return -1;
@@ -5583,6 +5585,8 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		break;
 	case DISP_PM_GET:
 		/* mminfra power request */
+		if (!mtk_crtc_is_frame_trigger_mode(priv->crtc[0]))
+			DDPMSG("%s:DISP_PM_GET+\n", __func__);
 		if (priv->dpc_dev) {
 			ret = pm_runtime_resume_and_get(priv->dpc_dev);
 			if (unlikely(ret)) {
@@ -5591,27 +5595,49 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 			}
 		}
 
-		pm_runtime_get_sync(priv->mmsys_dev);
+		mmsys_ret = pm_runtime_get_sync(priv->mmsys_dev);
+		pm_mask |= 0x1;
 
-		if (priv->side_mmsys_dev)
-			pm_runtime_get_sync(priv->side_mmsys_dev);
-		if (priv->ovlsys_dev)
-			pm_runtime_get_sync(priv->ovlsys_dev);
-		if (priv->side_ovlsys_dev)
-			pm_runtime_get_sync(priv->side_ovlsys_dev);
+		if (priv->side_mmsys_dev) {
+			side_mmsys_ret = pm_runtime_get_sync(priv->side_mmsys_dev);
+			pm_mask |= 0x2;
+		}
+		if (priv->ovlsys_dev) {
+			ovlsys_ret = pm_runtime_get_sync(priv->ovlsys_dev);
+			pm_mask |= 0x4;
+		}
+		if (priv->side_ovlsys_dev) {
+			size_ovlsys_ret = pm_runtime_get_sync(priv->side_ovlsys_dev);
+			pm_mask |= 0x8;
+		}
+		if (!mtk_crtc_is_frame_trigger_mode(priv->crtc[0]))
+			DDPMSG("%s:DISP_PM_GET- mask%d ret:%d %d %d %d\n", __func__, pm_mask,
+				mmsys_ret, side_mmsys_ret, ovlsys_ret, size_ovlsys_ret);
 		break;
 	case DISP_PM_PUT:
-		if (priv->side_ovlsys_dev)
-			pm_runtime_put_sync(priv->side_ovlsys_dev);
-		if (priv->ovlsys_dev)
-			pm_runtime_put_sync(priv->ovlsys_dev);
-		if (priv->side_mmsys_dev)
-			pm_runtime_put_sync(priv->side_mmsys_dev);
+		if (!mtk_crtc_is_frame_trigger_mode(priv->crtc[0]))
+			DDPMSG("%s:DISP_PM_PUT+\n", __func__);
+		if (priv->side_ovlsys_dev) {
+			size_ovlsys_ret = pm_runtime_put_sync(priv->side_ovlsys_dev);
+			pm_mask |= 0x8;
+		}
+		if (priv->ovlsys_dev) {
+			ovlsys_ret = pm_runtime_put_sync(priv->ovlsys_dev);
+			pm_mask |= 0x4;
+		}
+		if (priv->side_mmsys_dev) {
+			side_mmsys_ret = pm_runtime_put_sync(priv->side_mmsys_dev);
+			pm_mask |= 0x2;
+		}
 
-		pm_runtime_put_sync(priv->mmsys_dev);
+		mmsys_ret = pm_runtime_put_sync(priv->mmsys_dev);
+		pm_mask |= 0x1;
 
 		if (priv->dpc_dev)
 			pm_runtime_put_sync(priv->dpc_dev);
+		if (!mtk_crtc_is_frame_trigger_mode(priv->crtc[0]))
+			DDPMSG("%s:DISP_PM_PUT- mask%d ret:%d %d %d %d\n", __func__, pm_mask,
+			mmsys_ret, side_mmsys_ret, ovlsys_ret, size_ovlsys_ret);
 		break;
 	case DISP_PM_CHECK:
 		if (priv->dpc_dev && pm_runtime_get_if_in_use(priv->dpc_dev) <= 0)
