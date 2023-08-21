@@ -153,6 +153,9 @@ enum dvfsrc_spm_regs {
 	SPM_SW_FLAG,
 	SPM_DVFS_LEVEL,
 	SPM_DVFS_STA,
+	SPM_MD32PCM_SCU_CTRL0,
+	SPM_MD32PCM_SCU_CTRL1,
+	SPM_PCM_WDT_LATCH_SPARE_6,
 	SPM_DVS_DFS_LEVEL,
 	SPM_DVFS_HISTORY_STA0,
 	SPM_DVFS_HISTORY_STA1,
@@ -211,6 +214,9 @@ static const int mt6897_spm_regs[] = {
 	[SPM_SW_FLAG] = 0x600,
 	[SPM_DVFS_LEVEL] = 0x03A0,
 	[SPM_DVFS_STA] = 0x0398,
+	[SPM_MD32PCM_SCU_CTRL0] = 0x0100,
+	[SPM_MD32PCM_SCU_CTRL1] = 0x0104,
+	[SPM_PCM_WDT_LATCH_SPARE_6] = 0x0990,
 	[SPM_DVS_DFS_LEVEL] = 0x039C,
 	[SPM_DVFS_CMD0] = 0x0310,
 	[SPM_DVFS_CMD1] = 0x0314,
@@ -689,6 +695,15 @@ static char *dvfsrc_dump_mt6873_spm_info(struct mtk_dvfsrc *dvfsrc,
 			spm_read(dvfsrc, SPM_DVFS_CMD4));
 	break;
 	case 4:
+		p += snprintf(p, buff_end - p, "%-24s: 0x%08x\n",
+			"SPM_MD32PCM_SCU_CTRL0",
+			spm_read(dvfsrc, SPM_MD32PCM_SCU_CTRL0));
+		p += snprintf(p, buff_end - p, "%-24s: 0x%08x\n",
+			"SPM_MD32PCM_SCU_CTRL1",
+			spm_read(dvfsrc, SPM_MD32PCM_SCU_CTRL1));
+		p += snprintf(p, buff_end - p, "%-24s: 0x%08x\n",
+			"SPM_PCM_WDT_LATCH_SPARE_6",
+			spm_read(dvfsrc, SPM_PCM_WDT_LATCH_SPARE_6));
 		p += snprintf(p, buff_end - p,
 			"%-24s: 0x%08x, 0x%08x, 0x%08x, 0x%08x\n",
 			"SPM_DVFS_CMD0~3",
@@ -697,12 +712,13 @@ static char *dvfsrc_dump_mt6873_spm_info(struct mtk_dvfsrc *dvfsrc,
 			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 8),
 			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 12));
 		p += snprintf(p, buff_end - p,
-			"%-24s: 0x%08x, 0x%08x, 0x%08x, 0x%08x\n",
-			"SPM_DVFS_CMD4~7",
+			"%-24s: 0x%08x, 0x%08x, 0x%08x, 0x%08x, 0x%08x\n",
+			"SPM_DVFS_CMD4~8",
 			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 16),
 			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 20),
 			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 24),
-			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 28));
+			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 28),
+			spm_read_offset(dvfsrc, SPM_DVFS_CMD0, 32));
 	break;
 	default:
 	break;

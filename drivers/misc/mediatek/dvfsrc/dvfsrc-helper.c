@@ -484,12 +484,6 @@ static void dvfsrc_dump(struct mtk_dvfsrc *dvfsrc)
 
 	config = dvfsrc->dvd->config;
 	mutex_lock(&dvfsrc->dump_lock);
-	p = dvfsrc->dump_buf;
-	config->dump_reg(dvfsrc, p, dump_size);
-	pr_info("%s", dvfsrc->dump_buf);
-	p = dvfsrc->dump_buf;
-	config->dump_record(dvfsrc, p, dump_size);
-	pr_info("%s", dvfsrc->dump_buf);
 
 	if (config->dump_spm_info && dvfsrc->spm_regs) {
 		p = dvfsrc->dump_buf;
@@ -502,6 +496,13 @@ static void dvfsrc_dump(struct mtk_dvfsrc *dvfsrc)
 		config->dump_spm_timer_latch(dvfsrc, p, dump_size);
 		pr_info("%s", dvfsrc->dump_buf);
 	}
+
+	p = dvfsrc->dump_buf;
+	config->dump_reg(dvfsrc, p, dump_size);
+	pr_info("%s", dvfsrc->dump_buf);
+	p = dvfsrc->dump_buf;
+	config->dump_record(dvfsrc, p, dump_size);
+	pr_info("%s", dvfsrc->dump_buf);
 
 	mutex_unlock(&dvfsrc->dump_lock);
 }
