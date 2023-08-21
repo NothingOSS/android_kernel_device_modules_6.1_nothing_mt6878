@@ -36,9 +36,6 @@
 #define MMDVFS_USER_VDISP	12
 #define MMDVFS_USER_VDEC	13
 
-#define MMDVFS_USER_IMG_SMI	14
-/* next MMDVFS_USER */
-
 #define DUMMY_USER_DIS		14
 #define DUMMY_USER_MDP		15
 #define DUMMY_USER_MML		16
@@ -48,7 +45,10 @@
 #define DUMMY_USER_IMG		20
 #define DUMMY_USER_CAM		21
 
-#define MMDVFS_USER_NUM		22
+#define MMDVFS_USER_IMG_SMI	22
+/* next MMDVFS_USER */
+
+#define MMDVFS_USER_NUM		23
 
 #define MMDVFS_VCP_USER_VDEC	0
 #define MMDVFS_VCP_USER_VENC	1
