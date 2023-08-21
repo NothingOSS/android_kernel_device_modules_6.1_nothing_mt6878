@@ -202,6 +202,7 @@ struct mtk_smi_larb { /* larb: local arbiter */
 #define RESET_CELL_NUM			(2)
 #define MAX_PD_CHECK_DEV_NUM		(4)
 #define SMI_OSTD_CNT_MASK		(0x7FFE000)
+#define SMI_PD_DBG_RG_NR_MAX		(4)
 
 struct mtk_smi_pd_log {
 	u8 power_status;
@@ -219,12 +220,14 @@ struct mtk_smi_pd {
 	u32				power_reset_pa[MAX_LARB_FOR_CLAMP];
 	void __iomem			*power_reset_reg[MAX_LARB_FOR_CLAMP];
 	u32				power_reset_value[MAX_LARB_FOR_CLAMP];
+	u32				dbg_dump_pa[SMI_PD_DBG_RG_NR_MAX];
+	void __iomem			*dbg_dump_va[SMI_PD_DBG_RG_NR_MAX];
 	struct notifier_block nb;
 	bool	is_main;
 	bool	suspend_check;
 	bool	bus_prot;
-	u32	pre_off_check_result;
-	u32	pre_on_check_result;
+	u32	pre_off_check_result[MAX_PD_CHECK_DEV_NUM];
+	u32	pre_on_check_result[MAX_PD_CHECK_DEV_NUM];
 	struct mtk_smi_pd_log	last_pd_log;
 	struct mtk_smi			smi;
 };
@@ -2792,13 +2795,13 @@ static u32 mtk_smi_common_ostd_check(struct mtk_smi *common,
 
 static int mtk_smi_power_suspend_check(struct mtk_smi_pd *smi_pd, unsigned long flags)
 {
-	u32 i, ret;
+	u32 i, j, ret;
 	struct mtk_smi *common;
 
 	if (flags == GENPD_NOTIFY_PRE_OFF)
-		smi_pd->pre_off_check_result = 0;
+		memset(smi_pd->pre_off_check_result, 0, sizeof(u32) * MAX_PD_CHECK_DEV_NUM);
 	else if (flags == GENPD_NOTIFY_PRE_ON)
-		smi_pd->pre_on_check_result = 0;
+		memset(smi_pd->pre_on_check_result, 0, sizeof(u32) * MAX_PD_CHECK_DEV_NUM);
 
 	for (i = 0; i < MAX_PD_CHECK_DEV_NUM; i++) {
 		if (!smi_pd->suspend_check_dev[i])
@@ -2819,23 +2822,35 @@ static int mtk_smi_power_suspend_check(struct mtk_smi_pd *smi_pd, unsigned long 
 
 		switch (flags) {
 		case GENPD_NOTIFY_PRE_OFF:
-			smi_pd->pre_off_check_result = ret;
+			smi_pd->pre_off_check_result[i] = ret;
 			break;
 
 		case GENPD_NOTIFY_OFF:
-			dev_notice(smi_pd->dev, "[SMI] pre-off check result:%d\n",
-				smi_pd->pre_off_check_result);
+			dev_notice(smi_pd->dev, "[SMI] comm%d pre-off check result:%d\n",
+				common->commid, smi_pd->pre_off_check_result[i]);
+			for (j = 0; j < SMI_PD_DBG_RG_NR_MAX; j++) {
+				if (!smi_pd->dbg_dump_va[j])
+					break;
+				dev_notice(smi_pd->dev, "[SMI] %#x=%#x\n",
+					smi_pd->dbg_dump_pa[j], readl(smi_pd->dbg_dump_va[j]));
+			}
 			raw_notifier_call_chain(&smi_driver_notifier_list,
 					TRIGGER_SMI_HANG_DETECT, NULL);
 			break;
 
 		case GENPD_NOTIFY_PRE_ON:
-			smi_pd->pre_on_check_result = ret;
+			smi_pd->pre_on_check_result[i] = ret;
 			break;
 
 		case GENPD_NOTIFY_ON:
-			dev_notice(smi_pd->dev, "[SMI] pre-on check result:%d\n",
-				smi_pd->pre_on_check_result);
+			dev_notice(smi_pd->dev, "[SMI] comm%d pre-on check result:%d\n",
+				common->commid, smi_pd->pre_on_check_result[i]);
+			for (j = 0; j < SMI_PD_DBG_RG_NR_MAX; j++) {
+				if (!smi_pd->dbg_dump_va[j])
+					break;
+				dev_notice(smi_pd->dev, "[SMI] %#x=%#x\n",
+					smi_pd->dbg_dump_pa[j], readl(smi_pd->dbg_dump_va[j]));
+			}
 			raw_notifier_call_chain(&smi_driver_notifier_list,
 					TRIGGER_SMI_HANG_DETECT, NULL);
 			break;
@@ -4097,7 +4112,7 @@ static int mtk_smi_pd_probe(struct platform_device *pdev)
 	struct device_node *smi_node;
 	struct platform_device *smi_pdev;
 	int ret, i;
-	u32 reset_tmp, reset_num, offset;
+	u32 reset_tmp, reset_num, offset, tmp;
 
 	is_mpu_violation(dev, true);
 	smi_pd = devm_kzalloc(&pdev->dev, sizeof(*smi_pd), GFP_KERNEL);
@@ -4178,6 +4193,16 @@ static int mtk_smi_pd_probe(struct platform_device *pdev)
 			smi_pd->power_reset_value[i] = 1 << reset_tmp;
 		}
 	}
+
+	for (i = 0; i < SMI_PD_DBG_RG_NR_MAX; i++) {
+		if (!of_property_read_u32_index(dev->of_node, "dbg-dump", i, &tmp)) {
+			smi_pd->dbg_dump_pa[i] = tmp;
+			dev_notice(dev, "%s dbg_dump:%#x\n", __func__, smi_pd->dbg_dump_pa[i]);
+			smi_pd->dbg_dump_va[i] = ioremap(tmp, 0x4);
+		} else
+			smi_pd->dbg_dump_va[i] = NULL;
+	}
+
 
 	smi_pd->nb.notifier_call = mtk_smi_pd_callback;
 	ret = dev_pm_genpd_add_notifier(dev, &smi_pd->nb);
