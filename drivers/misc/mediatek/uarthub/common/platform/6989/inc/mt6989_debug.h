@@ -14,6 +14,7 @@
 		int _ap = 0;\
 		unsigned char _buf[256];\
 		int _len;\
+		int _len_tag;\
 		_op1(_d0, _p1, _p2, uartip, 0, _op2);\
 		_op1(_d1, _p1, _p2, uartip, 1, _op2);\
 		_op1(_d2, _p1, _p2, uartip, 2, _op2);\
@@ -24,7 +25,7 @@
 			_str"=["_t"-"_t"-"_t"-"_t"-"_t"],",\
 			_d0, _d1, _d2, _cmm, _ap);\
 		if (dmp_info_buf[0] == '\0') {\
-			_len = snprintf(dmp_info_buf, DBG_LOG_LEN,\
+			_len_tag = snprintf(dmp_info_buf, DBG_LOG_LEN,\
 			"[%s][%s],",\
 			_def_tag, ((_tag == NULL) ? "null" : _tag));\
 			dmp_info_buf[DBG_LOG_LEN - 1] = '\0';\
@@ -198,26 +199,39 @@
 	debug7._dev = UARTHUB_REG_READ(DEBUG_7(UARTHUB_DEBUG_REMAP_ADDR(_addr, _dev_idx)));\
 	debug8._dev = UARTHUB_REG_READ(DEBUG_8(UARTHUB_DEBUG_REMAP_ADDR(_addr, _dev_idx)))
 
-#define UARTHUB_DEBUG_PRINT_DEBUG_1_REG(_v1, _m1, _s1, _str) \
+#define UARTHUB_DEBUG_PRINT_DEBUG_1_REG(_v1, _m1, _s1, _print_ap, _str) \
 	do {\
-		int _d0, _d1, _d2, _cmm, _ap;\
+		int _d0, _d1, _d2, _cmm;\
+		char _ap[8];\
+		int _len_tmp = 0;\
 		_d0 = ((_v1.dev0 & _m1) >> _s1);\
 		_d1 = ((_v1.dev1 & _m1) >> _s1);\
 		_d2 = ((_v1.dev2 & _m1) >> _s1);\
 		_cmm = ((_v1.cmm & _m1) >> _s1);\
-		_ap = ((_v1.ap & _m1) >> _s1);\
+		if (_print_ap == 1) {\
+			_len_tmp = snprintf(_ap, 8, "%d", ((_v1.ap & _m1) >> _s1));\
+		} else {\
+			_len_tmp = snprintf(_ap, 8, "%s", "NA");\
+		} \
 		len += snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,\
 			_str, _d0, _d1, _d2, _cmm, _ap);\
 	} while (0)
 
-#define UARTHUB_DEBUG_PRINT_DEBUG_2_REG(_v1, _m1, _s1, _v2, _m2, _s2, _str) \
+#define UARTHUB_DEBUG_PRINT_DEBUG_2_REG(_v1, _m1, _s1, _v2, _m2, _s2, _print_ap, _str) \
 	do {\
-		int _d0, _d1, _d2, _cmm, _ap;\
+		int _d0, _d1, _d2, _cmm;\
+		char _ap[8];\
+		int _len_tmp = 0;\
 		_d0 = (((_v1.dev0 & _m1) >> _s1) + ((_v2.dev0 & _m2) << _s2));\
 		_d1 = (((_v1.dev1 & _m1) >> _s1) + ((_v2.dev1 & _m2) << _s2));\
 		_d2 = (((_v1.dev2 & _m1) >> _s1) + ((_v2.dev2 & _m2) << _s2));\
 		_cmm = (((_v1.cmm & _m1) >> _s1) + ((_v2.cmm & _m2) << _s2));\
-		_ap = (((_v1.ap & _m1) >> _s1) + ((_v2.ap & _m2) << _s2));\
+		if (_print_ap == 1) {\
+			_len_tmp = snprintf(_ap, 8, "%d",\
+			(((_v1.ap & _m1) >> _s1) + ((_v2.ap & _m2) << _s2)));\
+		} else {\
+			_len_tmp = snprintf(_ap, 8, "%s", "NA");\
+		} \
 		len += snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,\
 			_str, _d0, _d1, _d2, _cmm, _ap);\
 	} while (0)

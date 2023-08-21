@@ -14,8 +14,6 @@
 #include "ut/mt6989_ut_test.h"
 #endif
 
-static int g_enable_apuart_debug_info;
-
 static int uarthub_read_dbg_monitor(int *sel, int *tx_monitor, int *rx_monitor);
 #if !(UARTHUB_SUPPORT_FPGA)
 static int uarthub_get_peri_uart_pad_mode_mt6989(void);
@@ -37,8 +35,6 @@ static int uarthub_record_intfhub_fsm_sta_to_buffer(
 	unsigned char *dmp_info_buf, int len, int fsm_dbg_sta);
 
 struct uarthub_debug_ops_struct mt6989_plat_debug_data = {
-	.uarthub_plat_dump_apuart_debug_ctrl = uarthub_dump_apuart_debug_ctrl_mt6989,
-	.uarthub_plat_get_apuart_debug_ctrl_sta = uarthub_get_apuart_debug_ctrl_sta_mt6989,
 	.uarthub_plat_get_intfhub_base_addr = uarthub_get_intfhub_base_addr_mt6989,
 	.uarthub_plat_get_uartip_base_addr = uarthub_get_uartip_base_addr_mt6989,
 	.uarthub_plat_dump_uartip_debug_info = uarthub_dump_uartip_debug_info_mt6989,
@@ -257,17 +253,6 @@ int uarthub_get_gpio_trx_info_mt6989(struct uarthub_gpio_trx_info *info)
 	return 0;
 }
 #endif
-
-int uarthub_dump_apuart_debug_ctrl_mt6989(int enable)
-{
-	g_enable_apuart_debug_info = enable;
-	return 0;
-}
-
-int uarthub_get_apuart_debug_ctrl_sta_mt6989(void)
-{
-	return g_enable_apuart_debug_info;
-}
 
 int uarthub_get_intfhub_base_addr_mt6989(void)
 {
@@ -1271,6 +1256,7 @@ int uarthub_dump_debug_byte_cnt_info_mt6989(const char *tag)
 	int tx_monitor_pointer = 0, rx_monitor_pointer = 0;
 	int check_data_mode_sel = 0;
 	int fsm_dbg_sta = 0;
+	int print_ap = 0;
 #if !(UARTHUB_SUPPORT_FPGA)
 	uint32_t timer_h = 0, timer_l = 0;
 #endif
@@ -1293,29 +1279,21 @@ int uarthub_dump_debug_byte_cnt_info_mt6989(const char *tag)
 	UARTHUB_DEBUG_READ_DEBUG_REG(dev2, uartip, uartip_id_adsp);
 	UARTHUB_DEBUG_READ_DEBUG_REG(cmm, uartip, uartip_id_cmm);
 
-	if (apuart_base_map[3] != NULL && g_enable_apuart_debug_info == 1) {
+	if (apuart_base_map[3] != NULL) {
+		print_ap = 1;
 		UARTHUB_DEBUG_READ_DEBUG_REG(ap, apuart, 3);
-	} else {
-		debug1.ap = 0;
-		debug2.ap = 0;
-		debug3.ap = 0;
-		debug4.ap = 0;
-		debug5.ap = 0;
-		debug6.ap = 0;
-		debug7.ap = 0;
-		debug8.ap = 0;
 	}
 
-	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug5, 0xF0, 4, debug6, 0x3, 4, ",bcnt=[R:%d-%d-%d-%d-%d");
-	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug2, 0xF0, 4, debug3, 0x3, 4, ",T:%d-%d-%d-%d-%d]");
-	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug7, 0x3F, 0, ",fifo_woffset=[R:%d-%d-%d-%d-%d");
-	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug4, 0x3F, 0, ",T:%d-%d-%d-%d-%d]");
-	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug4, 0xC0, 6, debug5, 0xF, 2,
-		",fifo_tx_roffset=[%d-%d-%d-%d-%d]");
-	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug6, 0xFC, 2, ",offset_dma=[R:%d-%d-%d-%d-%d");
-	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug3, 0xFC, 2, ",T:%d-%d-%d-%d-%d]");
-	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug1, 0xE0, 5, ",wsend_xoff=[%d-%d-%d-%d-%d]");
-	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug8, 0x8, 3, ",det_xoff=[%d-%d-%d-%d-%d]");
+	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug5, 0xF0, 4, debug6, 0x3, 4, print_ap, ",bcnt=[R:%d-%d-%d-%d-%s");
+	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug2, 0xF0, 4, debug3, 0x3, 4, print_ap, ",T:%d-%d-%d-%d-%s]");
+	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug7, 0x3F, 0, print_ap, ",fifo_woffset=[R:%d-%d-%d-%d-%s");
+	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug4, 0x3F, 0, print_ap, ",T:%d-%d-%d-%d-%s]");
+	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug4, 0xC0, 6, debug5, 0xF, 2, print_ap,
+		",fifo_tx_roffset=[%d-%d-%d-%d-%s]");
+	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug6, 0xFC, 2, print_ap, ",offset_dma=[R:%d-%d-%d-%d-%s");
+	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug3, 0xFC, 2, print_ap, ",T:%d-%d-%d-%d-%s]");
+	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug1, 0xE0, 5, print_ap, ",wsend_xoff=[%d-%d-%d-%d-%s]");
+	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug8, 0x8, 3, print_ap, ",det_xoff=[%d-%d-%d-%d-%s]");
 
 #if !(UARTHUB_SUPPORT_FPGA)
 	val = uarthub_get_hwccf_univpll_on_info_mt6989();

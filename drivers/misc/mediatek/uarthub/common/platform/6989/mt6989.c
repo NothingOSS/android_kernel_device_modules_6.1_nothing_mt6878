@@ -762,9 +762,6 @@ int uarthub_uarthub_init_mt6989(struct platform_device *pdev)
 	/* init UNIVPLL clk from dts node */
 	uarthub_univpll_clk_init(pdev);
 
-	/* enable dump ap_uart debug info */
-	uarthub_dump_apuart_debug_ctrl_mt6989(1);
-
 	/* init uarthub config */
 	uarthub_init_default_config_mt6989();
 

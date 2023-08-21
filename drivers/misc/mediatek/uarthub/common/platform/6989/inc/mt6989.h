@@ -100,8 +100,6 @@ int uarthub_get_uart_mux_info_mt6989(void);
 int uarthub_get_uarthub_mux_info_mt6989(void);
 
 /* debug API */
-int uarthub_dump_apuart_debug_ctrl_mt6989(int enable);
-int uarthub_get_apuart_debug_ctrl_sta_mt6989(void);
 int uarthub_get_intfhub_base_addr_mt6989(void);
 int uarthub_get_uartip_base_addr_mt6989(int dev_index);
 int uarthub_dump_uartip_debug_info_mt6989(
