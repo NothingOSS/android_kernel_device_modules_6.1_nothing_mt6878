@@ -8975,14 +8975,16 @@ void fbt_init_cpu_loading_info(void)
 {
 	int i = 0, err_exit = 0;
 	unsigned long lock_flag;
+	unsigned int **cpu_obv_cl_ptr;
+	unsigned int **cpu_cl_iso_ptr;
 
-	spin_lock_irqsave(&loading_slock, lock_flag);
-	lastest_idx = 0;
-	last_cb_ts = 0;
+	cpu_obv_cl_ptr = kcalloc(LOADING_CNT, sizeof(unsigned int *), GFP_ATOMIC);
+	cpu_cl_iso_ptr = kcalloc(LOADING_CNT, sizeof(unsigned int *), GFP_ATOMIC);
+
 	for (i = 0; i < LOADING_CNT; i++) {
-		lastest_obv_cl[i] = kcalloc(cluster_num, sizeof(unsigned int), GFP_ATOMIC);
-		lastest_is_cl_isolated[i] = kcalloc(cluster_num, sizeof(unsigned int), GFP_ATOMIC);
-		if (!lastest_obv_cl[i] || !lastest_is_cl_isolated[i]) {
+		cpu_obv_cl_ptr[i] = kcalloc(cluster_num, sizeof(unsigned int), GFP_ATOMIC);
+		cpu_cl_iso_ptr[i] = kcalloc(cluster_num, sizeof(unsigned int), GFP_ATOMIC);
+		if (!cpu_obv_cl_ptr[i] || !cpu_cl_iso_ptr[i]) {
 			err_exit = 1;
 			FPSGO_LOGE("ERROR OOM\n");
 			break;
@@ -8990,11 +8992,23 @@ void fbt_init_cpu_loading_info(void)
 	}
 	if (err_exit) {
 		for (i = 0; i < LOADING_CNT; i++) {
-			kfree(lastest_obv_cl[i]);
-			kfree(lastest_is_cl_isolated[i]);
+			kfree(cpu_obv_cl_ptr[i]);
+			kfree(cpu_cl_iso_ptr[i]);
+		}
+	}
+	spin_lock_irqsave(&loading_slock, lock_flag);
+	lastest_idx = 0;
+	last_cb_ts = 0;
+	if (!err_exit) {
+		for (i = 0; i < LOADING_CNT; i++) {
+			lastest_obv_cl[i] = cpu_obv_cl_ptr[i];
+			lastest_is_cl_isolated[i] = cpu_cl_iso_ptr[i];
 		}
 	}
 	spin_unlock_irqrestore(&loading_slock, lock_flag);
+
+	kfree(cpu_obv_cl_ptr);
+	kfree(cpu_cl_iso_ptr);
 }
 
 void fbt_delete_cpu_loading_info(void)
