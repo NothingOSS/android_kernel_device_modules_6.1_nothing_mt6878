@@ -1226,6 +1226,11 @@ static void process_dbg_opt(const char *opt)
 	int ret = 0;
 	u32 val = 0, v1 = 0, v2 = 0;
 
+	if (0 == (readl(g_priv->spm_base + SPM_PWR_STATUS_MSB) & BIT(3))) {
+		DPCFUNC("disp vcore is not power on");
+		return;
+	}
+
 	if (dpc_pm_ctrl(true))
 		return;
 
