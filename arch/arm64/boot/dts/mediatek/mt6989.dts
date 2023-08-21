@@ -5147,6 +5147,8 @@
 			#iommu-cells = <1>;
 			tcu-prefetch = <2>;
 			mediatek,axslc;
+			smi-common-base = <0x1e801000 0x1e804000 0x1e805000
+					   0x1e809000 0x1e80c000 0x1e80d000>;
 
 			/* global mpam: partid, pmg */
 			mtk,gmpam-cfg = <1 0>;
