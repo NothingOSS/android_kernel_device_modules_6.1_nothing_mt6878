@@ -742,10 +742,15 @@ static const struct file_operations mbraink_fops = {
 static int mbraink_prepare(struct device *dev)
 {
 	struct timespec64 tv = { 0 };
+	ktime_t suspend_ktime;
 
 	ktime_get_real_ts64(&tv);
+	suspend_ktime = ktime_get();
+
 	mbraink_priv.last_suspend_timestamp =
 		(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+	mbraink_priv.last_suspend_ktime =
+		ktime_to_ms(suspend_ktime);
 
 	mbraink_get_battery_info(&mbraink_priv.suspend_battery_buffer,
 				 mbraink_priv.last_suspend_timestamp);
@@ -811,24 +816,31 @@ static int mbraink_resume(struct device *dev)
 static void mbraink_complete(struct device *dev)
 {
 	struct timespec64 tv = { 0 };
+	ktime_t resume_ktime;
 	char netlink_buf[MAX_BUF_SZ] = {'\0'};
 	int n = 0;
 	long long last_resume_timestamp = 0;
+	long long last_resume_ktime = 0;
 	struct mbraink_battery_data resume_battery_buffer;
 
 	memset(&resume_battery_buffer, 0,
 		sizeof(struct mbraink_battery_data));
 
 	ktime_get_real_ts64(&tv);
+	resume_ktime = ktime_get();
 	last_resume_timestamp =
 		(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+	last_resume_ktime =
+		ktime_to_ms(resume_ktime);
 
 	mbraink_get_battery_info(&resume_battery_buffer, last_resume_timestamp);
 
-	n += snprintf(netlink_buf, MAX_BUF_SZ, "%s %lld:%lld %d:%d:%d:%d %d:%d:%d:%d",
+	n += snprintf(netlink_buf, MAX_BUF_SZ, "%s %lld:%lld:%lld:%lld %d:%d:%d:%d %d:%d:%d:%d",
 			NETLINK_EVENT_SYSRESUME,
 			mbraink_priv.last_suspend_timestamp,
 			last_resume_timestamp,
+			mbraink_priv.last_suspend_ktime,
+			last_resume_ktime,
 			mbraink_priv.suspend_battery_buffer.quse,
 			mbraink_priv.suspend_battery_buffer.qmaxt,
 			mbraink_priv.suspend_battery_buffer.precise_soc,
@@ -841,6 +853,7 @@ static void mbraink_complete(struct device *dev)
 	mbraink_netlink_send_msg(netlink_buf);
 
 	mbraink_priv.last_suspend_timestamp = 0;
+	mbraink_priv.last_suspend_ktime = 0;
 	memset(&mbraink_priv.suspend_battery_buffer, 0,
 		sizeof(struct mbraink_battery_data));
 }
@@ -952,6 +965,7 @@ static int mbraink_dev_init(void)
 	mbraink_priv.resume_power_data_size = 0;
 	mbraink_priv.suspend_power_info_en[0] = '0';
 	mbraink_priv.last_suspend_timestamp = 0;
+	mbraink_priv.last_suspend_ktime = 0;
 	mbraink_priv.feature_en = 0;
 	mbraink_priv.pmu_en = 0;
 	memset(&mbraink_priv.suspend_battery_buffer, 0,
