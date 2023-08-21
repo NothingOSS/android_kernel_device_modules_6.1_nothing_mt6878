@@ -679,6 +679,11 @@ static int mtk_drm_esd_check_worker_kthread(void *data)
 			mtk_drm_esd_testing_process(esd_ctx, true);
 		} while (esd_ctx->chk_retry > 0);
 
+		if (atomic_read(&esd_ctx->target_time)) {
+			CRTC_MMP_MARK(index, target_time, 0x10000, 0);
+			atomic_set(&esd_ctx->target_time, 0);
+		}
+
 		/* 2. other check & recovery */
 		if (kthread_should_stop())
 			break;

@@ -9274,6 +9274,19 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		break;
 
 	case IRQ_LEVEL_IDLE:
+	{
+		unsigned int inten = 0;
+
+		if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && handle) {
+			inten = FRAME_DONE_INT_FLAG | TARGET_LINE_INT_FLAG;
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_INTEN, 0, inten);
+
+			if (dsi->slave_dsi)
+				cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+					dsi->slave_dsi->ddp_comp.regs_pa + DSI_INTEN, 0, inten);
+		}
+	}
 		break;
 	case IRQ_LEVEL_ALL:
 	{
