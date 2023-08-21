@@ -1143,9 +1143,8 @@ int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp)
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
 	*last = opp;
 
-	if (ret || log_level & (1 << log_adb))
-		MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd level:%hhd",
-			pwr_idx, idx, mux->id, opp, level);
+	MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd level:%hhd",
+		pwr_idx, idx, mux->id, opp, level);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_vote_step_by_vcp);
