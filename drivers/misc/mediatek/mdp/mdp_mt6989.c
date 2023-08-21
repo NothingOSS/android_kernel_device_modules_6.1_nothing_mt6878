@@ -1599,6 +1599,14 @@ void mdp_vcp_pq_readback_impl(struct cmdqRecStruct *handle,
 
 }
 
+bool mdp_eng_support_readback(u16 engine)
+{
+	if(!(engine & CMDQ_ENG_SUPPORT_READBACK_GROUP_BITS))
+		return false;
+	else
+		return true;
+}
+
 void cmdq_mdp_platform_function_setting(void)
 {
 	struct cmdqMDPFuncStruct *pFunc = cmdq_mdp_get_func();
@@ -1619,6 +1627,7 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->mdpClockOff = cmdqMdpClockOff;
 	pFunc->mdpIsModuleSuspend = mdp_is_mod_suspend;
 	pFunc->mdpDumpEngineUsage = mdp_dump_engine_usage;
+	pFunc->mdpIsEngineSupportReadback = mdp_eng_support_readback;
 
 	pFunc->mdpIsMtee = mdp_is_mtee;
 	pFunc->mdpInitialSet = cmdqMdpInitialSetting;

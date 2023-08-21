@@ -3697,6 +3697,12 @@ static bool mdp_vcp_pq_readback_support_virtual(void)
 	return false;
 }
 
+static bool mdp_is_eng_support_readback_virtual(u16 engine)
+{
+	CMDQ_ERR("%s no support\n", __func__);
+	return false;
+}
+
 void mdp_vcp_pq_readback_virtual(struct cmdqRecStruct *handle,
 	u16 engine, u32 vcp_offset, u32 count)
 {
@@ -3791,6 +3797,7 @@ void cmdq_mdp_virtual_function_setting(void)
 	pFunc->mdpGetReadbackEventLock = mdp_get_rb_event_lock;
 	pFunc->mdpGetReadbackEventUnlock = mdp_get_rb_event_unlock;
 	pFunc->mdpGetPollGpr = mdp_get_poll_gpr_dummy;
+	pFunc->mdpIsEngineSupportReadback = mdp_is_eng_support_readback_virtual;
 
 }
 
@@ -4757,6 +4764,11 @@ s32 cmdq_mdp_get_rdma_idx(u32 base)
 u32 cmdq_mdp_vcp_pq_readback_support(void)
 {
 	return cmdq_mdp_get_func()->mdpVcpPQReadbackSupport();
+}
+
+bool cmdq_mdp_eng_readback_support(u16 engine)
+{
+	return cmdq_mdp_get_func()->mdpIsEngineSupportReadback(engine);
 }
 
 void cmdq_mdp_vcp_pq_readback(struct cmdqRecStruct *handle, u16 engine,
