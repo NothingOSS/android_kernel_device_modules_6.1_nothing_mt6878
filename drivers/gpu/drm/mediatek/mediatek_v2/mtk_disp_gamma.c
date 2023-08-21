@@ -1659,3 +1659,32 @@ int mtk_gamma_set_silky_brightness_gain(struct mtk_ddp_comp *comp, struct cmdq_p
 
 	return ret;
 }
+
+void mtk_disp_gamma_debug(struct drm_crtc *crtc, const char *opt)
+{
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			to_mtk_crtc(crtc), MTK_DISP_GAMMA, 0);
+	struct mtk_disp_gamma *gamma;
+	struct DISP_GAMMA_12BIT_LUT_T *gamma_12b_lut;
+	int i;
+
+	DDPINFO("[GAMMA debug]: %s\n", opt);
+	if (strncmp(opt, "dumpsram", 8) == 0) {
+		if (!comp) {
+			DDPPR_ERR("[GAMMA debug] null pointer!\n");
+			return;
+		}
+		gamma = comp_to_gamma(comp);
+		gamma_12b_lut = &gamma->primary_data->gamma_12b_lut;
+		for (i = 0; i < 50; i += 4) {
+			DDPMSG("[debug] gamma_lut0 0x%x: 0x%x, 0x%x, 0x%x, 0x%x\n",
+					i, gamma_12b_lut->lut_0[i], gamma_12b_lut->lut_0[i + 1],
+					gamma_12b_lut->lut_0[i + 2], gamma_12b_lut->lut_0[i + 3]);
+		}
+		for (i = 0; i < 50; i += 4) {
+			DDPMSG("[debug] gamma_lut1 0x%x: 0x%x, 0x%x, 0x%x, 0x%x\n",
+					i, gamma_12b_lut->lut_1[i], gamma_12b_lut->lut_1[i + 1],
+					gamma_12b_lut->lut_1[i + 2], gamma_12b_lut->lut_1[i + 3]);
+		}
+	}
+}

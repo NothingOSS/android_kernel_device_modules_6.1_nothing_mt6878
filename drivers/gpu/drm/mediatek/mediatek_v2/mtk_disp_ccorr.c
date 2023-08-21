@@ -964,8 +964,7 @@ int mtk_drm_ioctl_ccorr_eventctl_impl(struct mtk_ddp_comp *comp, void *data)
 	}
 	//mtk_crtc_user_cmd(crtc, comp, EVENTCTL, data);
 	DDPINFO("ccorr_eventctl, enabled = %d\n", *enabled);
-	mtk_crtc_user_cmd(&(comp->mtk_crtc->base), comp,
-		SET_INTERRUPT, enabled);
+	mtk_disp_ccorr_set_interrupt(comp, enabled);
 
 	return ret;
 }
