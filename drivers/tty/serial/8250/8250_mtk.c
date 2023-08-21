@@ -167,6 +167,7 @@ struct mtk8250_data {
 	unsigned int   support_wakeup;
 	struct workqueue_struct  *uart_workqueue;
 	int wakeup_irq;
+	atomic_t uart_state;
 	struct mutex clk_mutex;
 	atomic_t wakeup_state;
 	struct mtk8250_reg_data peri_wakeup_info;
@@ -192,6 +193,12 @@ enum {
 	MTK_UART_FC_NONE,
 	MTK_UART_FC_SW,
 	MTK_UART_FC_HW,
+};
+/* uart state mode */
+enum {
+	MTK_UART_DEFAULT,
+	MTK_UART_SUSPENDING,
+	MTK_UART_RESUMED,
 };
 
 unsigned int uart_reg_buf[LOG_BUF_SIZE];
@@ -949,7 +956,7 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 				#endif
 				/* make sure clock ready */
 				mb();
-				udelay(300);
+				udelay(150);
 				#if defined(KERNEL_mtk_uart_apdma_enable_vff)
 					KERNEL_mtk_uart_apdma_enable_vff(true);
 				#endif
@@ -1000,21 +1007,43 @@ int mtk8250_uart_hub_dev0_clear_tx_request(void)
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_dev0_clear_tx_request);
 
+static int mtk8250_polling_rx_handle_complete(unsigned int count)
+{
+	int dma_state = 0;
+	int dma_flag_state = 0;
+
+	while (count) {
+		#if defined(KERNEL_mtk_uart_get_apdma_rx_flag)
+		dma_flag_state = KERNEL_mtk_uart_get_apdma_rx_flag();
+		#endif
+		#if defined(KERNEL_mtk_uart_get_apdma_rx_state)
+		dma_state = KERNEL_mtk_uart_get_apdma_rx_state();
+		#endif
+		if (dma_state != 0 || dma_flag_state != 0) {
+			usleep_range(1000, 1500);
+			count--;
+		} else {
+			break;
+		}
+	}
+	if (count == 0)
+		pr_info("%s: dma_flag[%d], dma_state[%d] polling fail!!\n",
+			 __func__, dma_flag_state, dma_state);
+	return count;
+}
+
 int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 {
 #if defined(KERNEL_UARTHUB_dev0_clear_rx_request)
 	int ret = 0;
 	int count = DMA_RX_POLLING_CNT;
-	int dma_state  = 0;
-	int dma_flag_state  = 0;
+	int dma_state = 0;
 
 	if (hub_uart_data != NULL && hub_uart_data->support_wakeup == 0)
 		/*clear ap uart*/
 		mtk8250_clear_wakeup();
-
 	/*polling tx fifo empty*/
 	mtk8250_polling_tx_fifo_empty(tty);
-
 	/*clear fifo*/
 	//mtk8250_clear_fifo(tty);
 
@@ -1039,28 +1068,14 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 			KERNEL_mtk_uart_apdma_polling_rx_finish();
 		#endif
 		/*polling check dma rx complete*/
-		while (count) {
-			#if defined(KERNEL_mtk_uart_get_apdma_rx_flag)
-			dma_flag_state = KERNEL_mtk_uart_get_apdma_rx_flag();
-			#endif
-			#if defined(KERNEL_mtk_uart_get_apdma_rx_state)
-			dma_state = KERNEL_mtk_uart_get_apdma_rx_state();
-			#endif
-			if (dma_state != 0 || dma_flag_state != 0) {
-				usleep_range(1000, 1500);
-				count--;
-			} else {
-				break;
-			}
-		}
-		if (count == 0)
-			pr_info("%s: polling check dma rx complete fail!!\n", __func__);
-
+		dma_state = mtk8250_polling_rx_handle_complete(count);
 		/*stop VFF*/
 		#if defined(KERNEL_mtk_uart_apdma_enable_vff)
 			KERNEL_mtk_uart_apdma_enable_vff(false);
 		#endif
-
+		/*polling check dma rx complete*/
+		if(!dma_state)
+			mtk8250_polling_rx_handle_complete(count);
 		/*close apdma clk*/
 		#if defined(KERNEL_mtk_uart_set_apdma_clk)
 			KERNEL_mtk_uart_set_apdma_clk(false);
@@ -1510,6 +1525,8 @@ static void mtk8250_shutdown(struct uart_port *port)
 	if (up->dma)
 		data->rx_status = DMA_RX_SHUTDOWN;
 #endif
+
+	mutex_lock(&data->clk_mutex);
 	mutex_lock(&data->uart_mutex);
 #if defined(KERNEL_UARTHUB_close)
 	if (data->support_hub == 1) {
@@ -1523,6 +1540,7 @@ static void mtk8250_shutdown(struct uart_port *port)
 
 	serial8250_do_shutdown(port);
 	mutex_unlock(&data->uart_mutex);
+	mutex_unlock(&data->clk_mutex);
 	return;
 }
 
@@ -1916,13 +1934,20 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 
 	mutex_lock(&data->clk_mutex);
 	if (atomic_read(&data->wakeup_state) == 0) {
+		if (atomic_read(&data->uart_state) == MTK_UART_SUSPENDING) {
+			/*clear uart wakeup status and enable wakeup*/
+			mtk8250_set_wakeup_irq(hub_uart_data, true);
+			pr_info("[%s] uart suspending\n", __func__);
+			mutex_unlock(&data->clk_mutex);
+			return IRQ_HANDLED;
+		}
 		/*open apdma clk*/
 		#if defined(KERNEL_mtk_uart_set_apdma_clk)
 		KERNEL_mtk_uart_set_apdma_clk(true);
 		#endif
 		/* make sure clock ready */
 		mb();
-		udelay(300);
+		udelay(150);
 		#if defined(KERNEL_mtk_uart_apdma_enable_vff)
 		KERNEL_mtk_uart_apdma_enable_vff(true);
 		#endif
@@ -1935,7 +1960,6 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 		pr_info("[%s]: atomic_set wakeup_state 1\n", __func__);
 	}
 	mutex_unlock(&data->clk_mutex);
-
 	return IRQ_HANDLED;
 }
 
@@ -2115,6 +2139,7 @@ static int mtk8250_probe_of(struct platform_device *pdev, struct uart_port *p,
 		return PTR_ERR(data->bus_clk);
 
 	data->dma = NULL;
+	atomic_set(&data->uart_state, MTK_UART_DEFAULT);
 #ifdef CONFIG_SERIAL_8250_DMA
 	dmacnt = of_property_count_strings(pdev->dev.of_node, "dma-names");
 	if (dmacnt == 2) {
@@ -2449,6 +2474,7 @@ static int __maybe_unused mtk8250_suspend(struct device *dev)
 	int irq = data->rx_wakeup_irq;
 	int err;
 
+	atomic_set(&data->uart_state, MTK_UART_SUSPENDING);
 	serial8250_suspend_port(data->line);
 
 	pinctrl_pm_select_sleep_state(dev);
@@ -2477,6 +2503,7 @@ static int __maybe_unused mtk8250_resume(struct device *dev)
 	pinctrl_pm_select_default_state(dev);
 
 	serial8250_resume_port(data->line);
+	atomic_set(&data->uart_state, MTK_UART_RESUMED);
 
 	return 0;
 }
