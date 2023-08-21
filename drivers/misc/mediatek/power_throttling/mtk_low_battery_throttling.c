@@ -647,7 +647,7 @@ static int low_battery_thd_setting(struct platform_device *pdev, struct low_bat_
 			return -ENODATA;
 		}
 
-		thd_info->thd_volts_size = LOW_BATTERY_LEVEL_NUM;
+		thd_info->thd_volts_size = volt_t_size;
 		thd_info->thd_volts = devm_kmalloc_array(&pdev->dev, thd_info->thd_volts_size,
 			sizeof(u32), GFP_KERNEL);
 
