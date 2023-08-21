@@ -965,10 +965,6 @@ static void ufs_mtk_trace_vh_update_sdev(void *data, struct scsi_device *sdev)
 		dev_info(hba->dev, "%s: LUNs ready", __func__);
 		complete(&host->luns_added);
 
-		/* set affinity */
-		if (is_mcq_enabled(hba))
-			ufs_mtk_mcq_set_irq_affinity(hba);
-
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
 		register_low_battery_notify(&ufs_mtk_low_battery_callback,
 					    LOW_BATTERY_PRIO_UFS, (void *) hba);
@@ -2474,6 +2470,10 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 			hba->host->tag_set.flags |=
 				BLK_MQ_F_NO_SCHED_BY_DEFAULT;
 		}
+
+		/* set affinity */
+		ufs_mtk_mcq_set_irq_affinity(hba);
+
 		ufs_mtk_mcq_config_cqid(hba);
 	}
 
