@@ -170,10 +170,10 @@ struct kobj_attribute *attr, char *buf)
 }
 
 struct kobj_attribute sched_turn_point_freq_attr =
-__ATTR(sched_turn_point_freq, 0644, show_sched_turn_point_freq, store_sched_turn_point_freq);
+__ATTR(sched_turn_point_freq, 0640, show_sched_turn_point_freq, store_sched_turn_point_freq);
 struct kobj_attribute sched_target_margin_attr =
-__ATTR(sched_target_margin, 0644, show_sched_target_margin, store_sched_target_margin);
+__ATTR(sched_target_margin, 0640, show_sched_target_margin, store_sched_target_margin);
 struct kobj_attribute sched_target_margin_low_attr =
-__ATTR(sched_target_margin_low, 0644, show_sched_target_margin, store_sched_target_margin_low);
+__ATTR(sched_target_margin_low, 0640, show_sched_target_margin, store_sched_target_margin_low);
 struct kobj_attribute sched_util_est_ctrl =
-__ATTR(sched_util_est_ctrl, 0644, show_sched_util_est_ctrl, store_sched_util_est_ctrl);
+__ATTR(sched_util_est_ctrl, 0640, show_sched_util_est_ctrl, store_sched_util_est_ctrl);
