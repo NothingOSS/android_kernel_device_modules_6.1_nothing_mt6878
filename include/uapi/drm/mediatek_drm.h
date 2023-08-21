@@ -453,6 +453,7 @@ struct DISP_AAL_TRIG_STATE {
 #define DRM_MTK_DRM_GET_LEASE_INFO    0x13
 #define DRM_MTK_CRTC_FENCE_REL           0x14
 #define DRM_MTK_GET_MODE_EXT_INFO 0x15
+#define DRM_MTK_HWVSYNC_ON 0x16
 
 /* PQ */
 #define DRM_MTK_SET_12BIT_GAMMALUT	0x1D
@@ -1846,6 +1847,8 @@ struct DISP_PANEL_BASE_VOLTAGE {
 #define DRM_IOCTL_MTK_GET_MODE_EXT_INFO DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_GET_MODE_EXT_INFO, struct mtk_drm_mode_ext_info)
 
+#define DRM_IOCTL_MTK_HWVSYNC_ON DRM_IOWR(DRM_COMMAND_BASE + \
+			DRM_MTK_HWVSYNC_ON, unsigned int)
 
 /* AAL IOCTL */
 #define AAL_HIST_BIN            33	/* [0..32] */

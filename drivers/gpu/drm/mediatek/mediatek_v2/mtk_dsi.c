@@ -2473,6 +2473,8 @@ int mtk_dsi_check_vblank_cnt(struct mtk_dsi *dsi, struct mtk_drm_crtc *mtk_crtc,
 
 	if (dsi->force_resync_after_idle == 1)
 		drm_trace_tag_value("force_resync_after_idle", last_pf);
+	if (mtk_crtc->hwvsync_en == 1)
+		drm_trace_tag_value("hwvsync_en", last_pf);
 
 	//change counter
 	if (last_pf != dsi->cnt % dsi->skip_vblank) {
@@ -2702,6 +2704,15 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 					}
 					dsi->cnt++;
 				} else if (panel_ext && panel_ext->params->skip_vblank) {
+					//force TE counter resync after leave idle
+					//force TE counter resync when enable vblank
+					if (dsi->force_resync_after_idle == 1
+						|| mtk_crtc->hwvsync_en == 1) {
+						mtk_dsi_check_vblank_cnt(dsi, mtk_crtc, panel_ext);
+						dsi->force_resync_after_idle = 0;
+						mtk_crtc->hwvsync_en = 0;
+					}
+
 					if (dsi->cnt % dsi->skip_vblank == 0 && mtk_crtc->vblank_en) {
 						dsi->skip_vblank = panel_ext->params->skip_vblank;
 						mtk_crtc_vblank_irq(&mtk_crtc->base);
@@ -2711,9 +2722,6 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 						(mtk_dsi_check_vblank_cnt(dsi, mtk_crtc, panel_ext)
 						!= 0) ? 0 : dsi->cnt;
 						dsi->skip_vblank = panel_ext->params->skip_vblank;
-					} else if (dsi->force_resync_after_idle == 1) {
-						mtk_dsi_check_vblank_cnt(dsi, mtk_crtc, panel_ext);
-						dsi->force_resync_after_idle = 0;
 					}
 					dsi->cnt++;
 				} else if (mtk_crtc->vblank_en)

@@ -978,6 +978,7 @@ struct mtk_drm_crtc {
 	bool mipi_hopping_sta;
 	bool panel_osc_hopping_sta;
 	bool vblank_en;
+	unsigned int hwvsync_en;
 
 	atomic_t already_config;
 

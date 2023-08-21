@@ -6697,6 +6697,34 @@ int mtk_drm_ioctl_kick_idle(struct drm_device *dev, void *data,
 	return ret;
 }
 
+int mtk_drm_hwvsync_on_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *file_priv)
+{
+	int ret = 0;
+	unsigned int *crtc_id = data;
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+
+	crtc = drm_crtc_find(dev, file_priv, *crtc_id);
+	if (!crtc) {
+		DDPPR_ERR("Unknown CRTC ID %d\n", *crtc_id);
+		ret = -ENOENT;
+		return ret;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s mtk_crtc is null\n", __func__);
+		return  -EFAULT;
+	}
+	DDPINFO("[%s CRTC:%d:%s]\n", __func__, crtc->base.id, crtc->name);
+
+	/* hwvsync_en*/
+	mtk_crtc->hwvsync_en = 1;
+
+	return ret;
+}
+
 int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
 {
@@ -7712,6 +7740,8 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(MTK_GET_MODE_EXT_INFO, mtk_drm_get_mode_ext_info_ioctl,
 				  DRM_UNLOCKED),
 	DRM_IOCTL_DEF_DRV(MTK_PQ_PROXY_IOCTL, mtk_drm_ioctl_pq_proxy,
+				  DRM_UNLOCKED),
+	DRM_IOCTL_DEF_DRV(MTK_HWVSYNC_ON, mtk_drm_hwvsync_on_ioctl,
 				  DRM_UNLOCKED),
 };
 
