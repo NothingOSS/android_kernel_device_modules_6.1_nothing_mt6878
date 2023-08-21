@@ -10,7 +10,6 @@
 #include <linux/module.h>
 #include <linux/regmap.h>
 #include <linux/types.h>
-#include "slbc_ops.h"
 #include "mtk_drm_drv.h"
 #include "scp.h"
 #include "mtk_log.h"
@@ -31,7 +30,6 @@ static unsigned int aod_mmsys_id;
 
 #define DRAM_ADDR_DIGITS_OFFSET		0x3080000
 #define LK_DGT_SZ_OFFSET		0x1fa40
-#define KN_DGT_SZ_OFFSET		0x20000
 
 #define AOD_BR_DSI0_OFFSET     0xF000
 #define AOD_BR_MIPITX0_OFFSET  0xE000
@@ -260,13 +258,8 @@ void mtk_prepare_config_map(void)
 	scp_sh_mem += sizeof(struct disp_input_config);
 	input[4] = (void *)scp_sh_mem;
 
-	if (aod_scp_pic) {
-		dst_w = 180;
-		dst_h = 180;
-	} else {
-		dst_w = 120;
-		dst_h = 200;
-	}
+	dst_w = 180;
+	dst_h = 180;
 
 	memset(input[0], 0, sizeof(struct disp_input_config));
 	input[0]->layer	= 0;
@@ -328,36 +321,9 @@ void mtk_prepare_config_map(void)
 
 	if (aod_scp_pic)
 		aod_scp_pic_sz = LK_DGT_SZ_OFFSET;
-	else
-		aod_scp_pic_sz = KN_DGT_SZ_OFFSET;
 
 	for (i = 0; i < 10; i++)
 		frame0->digits_addr[i] = dram_addr_digits + aod_scp_pic_sz * i;
-}
-
-void mtk_request_slb_buffer(void)
-{
-	struct slbc_data slb_buffer;
-	int ret;
-
-	slb_buffer.type = TP_BUFFER;
-	slb_buffer.uid = UID_AOD;
-	ret = slbc_request(&slb_buffer);
-
-	if (ret < 0) {
-		aod_scp_send_data = 0;
-		DDPMSG("%s slbc_request fail %d", __func__, ret);
-	} else {
-		aod_scp_send_data = 1;
-		DDPMSG("%s success - ret:%d address:0x%lx size:0x%lx\n", __func__, ret,
-			(unsigned long)slb_buffer.paddr, slb_buffer.size);
-
-		ret = slbc_power_on(&slb_buffer);
-		if (ret < 0) {
-			DDPMSG("%s slbc_power_on fail %d", __func__, ret);
-			slbc_release(&slb_buffer);
-		}
-	}
 }
 
 static DEFINE_MUTEX(spm_sema_lock);
@@ -540,9 +506,6 @@ static int mtk_aod_scp_probe(struct platform_device *pdev)
 	struct platform_device *spm_pdev = NULL;
 	struct resource *res = NULL;
 	struct reserved_mem *rmem = NULL;
-	void __iomem *va = 0;
-	unsigned char *digit_color, level;
-	unsigned int i;
 	unsigned int ret = 0;
 
 	DDPMSG("%s+\n", __func__);
@@ -606,27 +569,8 @@ static int mtk_aod_scp_probe(struct platform_device *pdev)
 			dram_preloader_res_mem = rmem->base;
 			dram_addr_digits = rmem->base + DRAM_ADDR_DIGITS_OFFSET;
 			DDPMSG("rmem base pa : %llx\n", dram_addr_digits);
-
-			va = ioremap(dram_addr_digits, 0x20000 * 10);
-			digit_color = (char *)va;
-
-			if (!aod_scp_pic) {
-				for (i = 0; i < 10 * 0x20000; i++) {
-					level = 28 * (i / 0x20000);
-
-					if (i % 4 == 3)
-						digit_color[i] = 0xff;
-					else
-						digit_color[i] = level;
-				}
-			} else
-				DDPMSG("%s uses aod_scp_pic in LK\n", __func__);
-
-			iounmap(va);
 		} else
 			DDPMSG("%s can't find me_aod-scp_buf reserved memory", __func__);
-
-		mtk_request_slb_buffer();
 
 		DDPMSG("%s: w/ mtk_aod_scp_ipi_register\n", __func__);
 	}	else
