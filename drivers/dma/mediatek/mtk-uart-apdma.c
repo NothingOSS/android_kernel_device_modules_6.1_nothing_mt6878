@@ -409,11 +409,16 @@ int mtk_uart_get_apdma_rx_state(void)
 }
 EXPORT_SYMBOL(mtk_uart_get_apdma_rx_state);
 
-int mtk_uart_get_apdma_rx_flag(void)
+bool mtk_uart_get_apdma_handler_state(void)
 {
-	return  mtk_uart_apdma_read(hub_dma_rx_chan, VFF_INT_FLAG);
+	bool state1 = true;
+	bool state2 = true;
+
+	irq_get_irqchip_state(hub_dma_rx_chan->irq, IRQCHIP_STATE_PENDING, &state1);
+	irq_get_irqchip_state(hub_dma_rx_chan->irq, IRQCHIP_STATE_ACTIVE, &state2);
+	return (state1 || state2);
 }
-EXPORT_SYMBOL(mtk_uart_get_apdma_rx_flag);
+EXPORT_SYMBOL(mtk_uart_get_apdma_handler_state);
 
 void mtk_uart_set_apdma_rx_state(int value)
 {
