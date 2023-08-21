@@ -1740,13 +1740,13 @@ static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 		return;
 	}
 
+	cmdq_mtcmos_by_fast(cmdq, true);
 	/* Check before suspend thread to prevent hurt performance. */
 	if (!cmdq_thread_timeout_excceed(thread)) {
 		spin_unlock_irqrestore(&thread->chan->lock, flags);
+		cmdq_mtcmos_by_fast(cmdq, false);
 		return;
 	}
-
-	cmdq_mtcmos_by_fast(cmdq, true);
 
 	/* After IRQ, first task may change. */
 	if (cmdq_thread_skip_timeout_by_cookie(thread)) {
@@ -1765,7 +1765,7 @@ static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 	cmdq_thread_irq_handler(cmdq, thread, &removes);
 
 	if (list_empty(&thread->task_busy_list)) {
-		cmdq_err("thread:%u empty after irq handle in timeout",
+		cmdq_msg("thread:%u empty after irq handle in timeout",
 			thread->idx);
 		goto unlock_free_done;
 	}
