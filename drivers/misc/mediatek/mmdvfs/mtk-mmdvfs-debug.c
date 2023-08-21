@@ -31,6 +31,15 @@
 #define MMDVFS_DBG(fmt, args...) \
 	pr_notice("[mmdvfs_dbg][dbg]%s: "fmt"\n", __func__, ##args)
 
+
+#define mmdvfs_debug_dump_line(file, fmt, args...)	\
+({							\
+	if (file)					\
+		seq_printf(file, fmt, ##args);		\
+	else						\
+		MMDVFS_DBG(fmt, ##args);		\
+})
+
 struct mmdvfs_record {
 	u64 sec;
 	u64 nsec;
@@ -170,24 +179,24 @@ static void mmdvfs_debug_record_opp(const u8 opp)
 	spin_unlock_irqrestore(&g_mmdvfs->lock, flags);
 }
 
-static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
+void mmdvfs_debug_status_dump(struct seq_file *file)
 {
 	unsigned long flags;
 	u32 i, j, val;
 
 	/* MMDVFS_DBG_VER1 */
-	seq_puts(file, "VER1: mux controlled by vcore regulator:\n");
+	mmdvfs_debug_dump_line(file, "VER1: mux controlled by vcore regulator:\n");
 
 	spin_lock_irqsave(&g_mmdvfs->lock, flags);
 
 	if (g_mmdvfs->rec[g_mmdvfs->rec_cnt].sec)
 		for (i = g_mmdvfs->rec_cnt; i < ARRAY_SIZE(g_mmdvfs->rec); i++)
-			seq_printf(file, "[%5llu.%06llu] opp:%u\n",
+			mmdvfs_debug_dump_line(file, "[%5llu.%06llu] opp:%u\n",
 				g_mmdvfs->rec[i].sec, g_mmdvfs->rec[i].nsec,
 				g_mmdvfs->rec[i].opp);
 
 	for (i = 0; i < g_mmdvfs->rec_cnt; i++)
-		seq_printf(file, "[%5llu.%06llu] opp:%u\n",
+		mmdvfs_debug_dump_line(file, "[%5llu.%06llu] opp:%u\n",
 			g_mmdvfs->rec[i].sec, g_mmdvfs->rec[i].nsec,
 			g_mmdvfs->rec[i].opp);
 
@@ -195,20 +204,20 @@ static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 
 	/* MMDVFS_DBG_VER3 */
 	if (!MEM_BASE)
-		return 0;
+		return;
 
-	seq_puts(file, "VER3: mux controlled by vcp:\n");
+	mmdvfs_debug_dump_line(file, "VER3: mux controlled by vcp:\n");
 
 	// power opp
 	i = readl(MEM_REC_PWR_CNT) % MEM_REC_CNT_MAX;
 	if (readl(MEM_REC_PWR_SEC(i)))
 		for (j = i; j < MEM_REC_CNT_MAX; j++)
-			seq_printf(file, "[%5u.%3u] pwr:%u opp:%u\n",
+			mmdvfs_debug_dump_line(file, "[%5u.%3u] pwr:%u opp:%u\n",
 				readl(MEM_REC_PWR_SEC(j)), readl(MEM_REC_PWR_NSEC(j)),
 				readl(MEM_REC_PWR_ID(j)), readl(MEM_REC_PWR_OPP(j)));
 
 	for (j = 0; j < i; j++)
-		seq_printf(file, "[%5u.%3u] pwr:%u opp:%u\n",
+		mmdvfs_debug_dump_line(file, "[%5u.%3u] pwr:%u opp:%u\n",
 			readl(MEM_REC_PWR_SEC(j)), readl(MEM_REC_PWR_NSEC(j)),
 			readl(MEM_REC_PWR_ID(j)), readl(MEM_REC_PWR_OPP(j)));
 
@@ -216,43 +225,43 @@ static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 	i = readl(MEM_REC_USR_CNT) % MEM_REC_CNT_MAX;
 	if (readl(MEM_REC_USR_SEC(i)))
 		for (j = i; j < MEM_REC_CNT_MAX; j++)
-			seq_printf(file, "[%5u.%3u] pwr:%u usr:%u opp:%u\n",
+			mmdvfs_debug_dump_line(file, "[%5u.%3u] pwr:%u usr:%u opp:%u\n",
 				readl(MEM_REC_USR_SEC(j)), readl(MEM_REC_USR_NSEC(j)),
 				readl(MEM_REC_USR_PWR(j)),
 				readl(MEM_REC_USR_ID(j)), readl(MEM_REC_USR_OPP(j)));
 
 	for (j = 0; j < i; j++)
-		seq_printf(file, "[%5u.%3u] pwr:%u usr:%u opp:%u\n",
+		mmdvfs_debug_dump_line(file, "[%5u.%3u] pwr:%u usr:%u opp:%u\n",
 			readl(MEM_REC_USR_SEC(j)), readl(MEM_REC_USR_NSEC(j)),
 			readl(MEM_REC_USR_PWR(j)),
 			readl(MEM_REC_USR_ID(j)), readl(MEM_REC_USR_OPP(j)));
 
 	//user latest request opp
-	seq_puts(file, "user latest request opp\n");
+	mmdvfs_debug_dump_line(file, "user latest request opp\n");
 	for (i = 0; i < USER_NUM; i++)
-		seq_printf(file, "user: %u opp: %u\n", i, readl(MEM_VOTE_OPP_USR(i)));
+		mmdvfs_debug_dump_line(file, "user: %u opp: %u\n", i, readl(MEM_VOTE_OPP_USR(i)));
 
 	/* MMDVFS_DBG_VER3.5 */
-	seq_puts(file, "VER3.5: mux controlled by vcp:\n");
+	mmdvfs_debug_dump_line(file, "VER3.5: mux controlled by vcp:\n");
 
 	//power opp/gear
-	seq_puts(file, "power latest opp/gear\n");
+	mmdvfs_debug_dump_line(file, "power latest opp/gear\n");
 	for (i = 0; i < PWR_MMDVFS_NUM; i++)
-		seq_printf(file, "[%5u.%6u] power: %u opp: %u gear: %u\n",
+		mmdvfs_debug_dump_line(file, "[%5u.%6u] power: %u opp: %u gear: %u\n",
 			readl(MEM_PWR_OPP_SEC(i)), readl(MEM_PWR_OPP_USEC(i)), i,
 			readl(MEM_PWR_OPP(i)), readl(MEM_PWR_CUR_GEAR(i)));
 
 	//mux opp/min
-	seq_puts(file, "mux latest opp/min\n");
+	mmdvfs_debug_dump_line(file, "mux latest opp/min\n");
 	for (i = 0; i < USER_NUM; i++)
-		seq_printf(file, "[%5u.%6u] mux: %2u opp: %u min: %u\n",
+		mmdvfs_debug_dump_line(file, "[%5u.%6u] mux: %2u opp: %u min: %u\n",
 			readl(MEM_MUX_OPP_SEC(i)), readl(MEM_MUX_OPP_USEC(i)), i,
 			readl(MEM_MUX_OPP(i)), readl(MEM_MUX_MIN(i)));
 
 	//user latest request freq/opp
-	seq_puts(file, "user latest request opp/freq\n");
+	mmdvfs_debug_dump_line(file, "user latest request opp/freq\n");
 	for (i = 0; i < MMDVFS_USER_NUM; i++)
-		seq_printf(file, "[%5u.%6u] user: %2u opp: %u freq: %u\n",
+		mmdvfs_debug_dump_line(file, "[%5u.%6u] user: %2u opp: %u freq: %u\n",
 			readl(MEM_USR_OPP_SEC(i)), readl(MEM_USR_OPP_USEC(i)), i,
 			readl(MEM_USR_OPP(i)), readl(MEM_USR_FREQ(i)));
 
@@ -261,7 +270,8 @@ static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 	if (readl(MEM_REC_MUX_SEC(i)))
 		for (j = i; j < MEM_REC_CNT_MAX; j++) {
 			val = readl(MEM_REC_MUX_VAL(j));
-			seq_printf(file, "[%5u.%6u] mux:%lu opp:%lu min:%lu level:%lu\n",
+			mmdvfs_debug_dump_line(file,
+				"[%5u.%6u] mux:%lu opp:%lu min:%lu level:%lu\n",
 				readl(MEM_REC_MUX_SEC(j)), readl(MEM_REC_MUX_USEC(j)),
 				(val >> 24) & GENMASK(7, 0), (val >> 16) & GENMASK(7, 0),
 				(val >> 8) & GENMASK(7, 0), val & GENMASK(7, 0));
@@ -269,33 +279,45 @@ static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 
 	for (j = 0; j < i; j++) {
 		val = readl(MEM_REC_MUX_VAL(j));
-		seq_printf(file, "[%5u.%6u] mux:%lu opp:%lu min:%lu level:%lu\n",
+		mmdvfs_debug_dump_line(file, "[%5u.%6u] mux:%lu opp:%lu min:%lu level:%lu\n",
 			readl(MEM_REC_MUX_SEC(j)), readl(MEM_REC_MUX_USEC(j)),
 			(val >> 24) & GENMASK(7, 0), (val >> 16) & GENMASK(7, 0),
 			(val >> 8) & GENMASK(7, 0), val & GENMASK(7, 0));
 	}
 
 	// vmm debug
-	seq_printf(file, "VMM Efuse_low:%#x, Efuse_high:%#x\n",
+	mmdvfs_debug_dump_line(file, "VMM Efuse_low:%#x, Efuse_high:%#x\n",
 		readl(MEM_VMM_EFUSE_LOW), readl(MEM_VMM_EFUSE_HIGH));
 	for (j = 0; j < 8; j++)
-		seq_printf(file, "VMM voltage level%d:%u\n", j, readl(MEM_VMM_OPP_VOLT(j)));
+		mmdvfs_debug_dump_line(file, "VMM voltage level%d:%u\n",
+			j, readl(MEM_VMM_OPP_VOLT(j)));
 
 	i = readl(MEM_REC_VMM_DBG_CNT) % MEM_REC_CNT_MAX;
 	if (readl(MEM_REC_VMM_SEC(i)))
 		for (j = i; j < MEM_REC_CNT_MAX; j++) {
-			seq_printf(file, "[%5u.%3u] volt:%u temp:%#x avs:%#x\n",
+			mmdvfs_debug_dump_line(file, "[%5u.%3u] volt:%u temp:%#x avs:%#x\n",
 				readl(MEM_REC_VMM_SEC(j)), readl(MEM_REC_VMM_NSEC(j)),
 				readl(MEM_REC_VMM_VOLT(j)),
 				readl(MEM_REC_VMM_TEMP(j)), readl(MEM_REC_VMM_AVS(j)));
 		}
 
 	for (j = 0; j < i; j++)
-		seq_printf(file, "[%5u.%3u] volt:%u temp:%#x avs:%#x\n",
+		mmdvfs_debug_dump_line(file, "[%5u.%3u] volt:%u temp:%#x avs:%#x\n",
 			readl(MEM_REC_VMM_SEC(j)), readl(MEM_REC_VMM_NSEC(j)),
 			readl(MEM_REC_VMM_VOLT(j)),
 			readl(MEM_REC_VMM_TEMP(j)), readl(MEM_REC_VMM_AVS(j)));
+	if (!file) {
+		for (i = 0; i < g_mmdvfs->clk_count; i++)
+			MMDVFS_DBG("[%#010x] = %#010x",
+				g_mmdvfs->clk_base_pa + g_mmdvfs->clk_ofs[i],
+				readl(g_mmdvfs->clk_base + g_mmdvfs->clk_ofs[i]));
+	}
+}
+EXPORT_SYMBOL_GPL(mmdvfs_debug_status_dump);
 
+static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
+{
+	mmdvfs_debug_status_dump(file);
 	return 0;
 }
 
