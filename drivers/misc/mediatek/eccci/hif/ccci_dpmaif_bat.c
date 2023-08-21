@@ -256,11 +256,16 @@ static inline int get_page_from_tbl(struct temp_page_info *page_info)
 		(!get_ringbuf_used_cnt(g_frg_tbl_cnt, page_tbl_rdx, atomic_read(&g_page_tbl_wdx))))
 		return -1;
 
+	/* The rmb() flushes writes to dram before read g_page_tbl data. */
+	rmb();
 	(*page_info) = g_page_tbl[page_tbl_rdx];
 
 	page_tbl_rdx = get_ringbuf_next_idx(g_frg_tbl_cnt, page_tbl_rdx, 1);
 
+	/* The smp_wmb() flushes writes to dram before set page_tbl_rdx data. */
+	smp_wmb();
 	atomic_set(&g_page_tbl_rdx, page_tbl_rdx);
+
 	return 0;
 }
 
@@ -290,10 +295,9 @@ static inline void alloc_page_to_tbl(int page_cnt)
 		if (page_alloc(&page_info->page, &page_info->base_addr,
 				&page_info->offset, pkt_buf_sz))
 			break;
-		/*
-		 * The wmb() flushes writes to dram before read g_skb_tbl data.
-		 */
-		wmb();
+
+		/* ensure update page tbl wdx after page_alloc done */
+		smp_wmb();
 
 		page_tbl_wdx = get_ringbuf_next_idx(g_frg_tbl_cnt, page_tbl_wdx, 1);
 		atomic_set(&g_page_tbl_wdx, page_tbl_wdx);

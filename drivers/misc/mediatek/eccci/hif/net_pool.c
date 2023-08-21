@@ -69,10 +69,13 @@ static inline void fifo_write(struct fifo_t *fifo, void *skb)
 			"[%s] error\n", __func__);
 		return;
 	}
+
+	/* make sure read correct w_idx */
+	rmb();
 	fifo->buf[w_idx] = skb;
 
-	/* wait: fifo->buf[fifo->w] = skb done*/
-	mb();
+	/* wait: fifo->buf[fifo->w] = skb done */
+	wmb();
 
 	if (w_idx < (DL_POOL_LEN - 1))
 		atomic_inc(&fifo->w);
@@ -91,6 +94,8 @@ static inline void *fifo_read(struct fifo_t *fifo)
 			"[%s] error\n", __func__);
 		return NULL;
 	}
+	/* make sure read correct r_idx */
+	rmb();
 	data = fifo->buf[r_idx];
 
 	/* wait: data = fifo->buf[r] done*/
@@ -159,6 +164,9 @@ inline void ccci_dl_enqueue(u32 qno, void *skb)
 
 _free_sk:
 	dev_kfree_skb_any(skb);
+
+	/* ensure free skb is completed before proceeding to the next flow */
+	wmb();
 
 	if (!fifo)
 		return;

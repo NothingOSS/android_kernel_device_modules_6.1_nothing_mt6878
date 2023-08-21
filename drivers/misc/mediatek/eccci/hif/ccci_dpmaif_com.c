@@ -918,6 +918,8 @@ static inline void dpmaif_rxq_add_skb_to_rx_push_thread(struct dpmaif_rx_queue *
 #endif
 
 send_end:
+	/* make sure to set skb NULL after enqueue finished */
+	wmb();
 	cur_skb_info->skb = NULL;
 }
 
@@ -960,6 +962,8 @@ static inline int dpmaif_rxq_handle_normal_pit(struct dpmaif_rx_queue *rxq,
 		else
 			dpmaif_rxq_add_skb_to_rx_push_thread(rxq);
 
+		/* increase rxq enqueue_skb_cnt after the previous flow done */
+		wmb();
 		rxq->enqueue_skb_cnt++;
 	}
 
@@ -1737,6 +1741,9 @@ static inline unsigned int dpmaif_txq_release_buffer(struct dpmaif_tx_queue *txq
 		}
 
 		cur_idx = get_ringbuf_next_idx(txq->drb_cnt, cur_idx, 1);
+
+		/* update txq rel_rd_idx after release action done */
+		rmb();
 		atomic_set(&txq->drb_rel_rd_idx, cur_idx);
 		atomic_inc(&txq->txq_budget);
 
@@ -2156,6 +2163,9 @@ static inline int dpmaif_txq_set_skb_data_to_drb(struct dpmaif_tx_queue *txq,
 
 		total_size += data_len;
 	}
+
+	/* ensure all earlier writes are compleate before update drb_wr_idx and txq_budget */
+	smp_wmb();
 
 	atomic_set(&txq->drb_wr_idx, cur_idx);
 	atomic_sub(send_cnt, &txq->txq_budget);
