@@ -8503,7 +8503,8 @@
 				<&imgsys_main_clk CLK_IMG_IPE>,
 				<&imgsys_main_clk CLK_IMG_ME>,
 				<&imgsys_main_clk CLK_IMG_MMG>,
-				<&mmdvfs_mux MMDVFS_USER_IMG>;
+				<&mmdvfs_mux MMDVFS_USER_IMG>,
+				<&mmdvfs_mux MMDVFS_USER_IMG_SMI>;
 			clock-names = "IMGSYS_CG_IMG_TRAW0",
 				"IMGSYS_CG_IMG_TRAW1",
 				"IMGSYS_CG_IMG_DIP0",
@@ -8531,7 +8532,8 @@
 				"IMGSYS_CG_IMG_IPE",
 				"ME_CG",
 				"MMG_CG",
-				"mmdvfs_mux";
+				"mmdvfs_mux",
+				"mmdvfs_mux_smi";
 			operating-points-v2 = <&opp_table_img>;
 			mediatek,imgsys-dvfs-pix-mode = <4>;
 			mediatek,imgsys-qos-sc-motr = <2>;
