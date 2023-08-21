@@ -463,10 +463,11 @@ void hook_rvh_get_nohz_timer_target(void __always_unused *data,
 	struct perf_domain *pd;
 	int i, default_cpu = -1;
 	const struct cpumask *hk_mask;
-	cpumask_t unpaused;
+	int no_pau_idle = -1, no_pau = -1, on_hk_cpu = -1, on_cpu = -1;
 
 	*done = true;
 
+	/* 1. Choose this cpu & non-pause & hk_mask & non-idle */
 	if (housekeeping_cpu(*cpu, HK_TYPE_TIMER) && !cpu_paused(*cpu)) {
 		/*
 		 * Use available_idle_cpu() instead of idle_cpu().
@@ -476,6 +477,7 @@ void hook_rvh_get_nohz_timer_target(void __always_unused *data,
 		if (!available_idle_cpu(*cpu))
 			return;
 
+		/* Keep default_cpu = this cpu & non-pause & hk_mask */
 		default_cpu = *cpu;
 	}
 
@@ -486,6 +488,7 @@ void hook_rvh_get_nohz_timer_target(void __always_unused *data,
 	if (!pd)
 		goto unlock;
 
+	/* 2. Choose same gear of this cpu & non-pause & hk_mask & non-idle */
 	for (; pd; pd = pd->next) {
 		if (!cpumask_test_cpu(*cpu, perf_domain_span(pd)))
 			continue;
@@ -501,35 +504,46 @@ void hook_rvh_get_nohz_timer_target(void __always_unused *data,
 		}
 	}
 
-	for_each_cpu_and(i, cpu_possible_mask, hk_mask) {
-		if (*cpu == i)
-			continue;
-
-		if (!available_idle_cpu(i) && !cpu_paused(i)) {
-			*cpu = i;
-			goto unlock;
-		}
-	}
-
+	/* this cpu is paused, choose other cpu */
 	if (default_cpu == -1) {
-		cpumask_complement(&unpaused, cpu_pause_mask);
-		for_each_cpu_and(i, &unpaused, hk_mask) {
-			if (*cpu == i)
-				continue;
+		for_each_cpu_and(i, cpu_online_mask, hk_mask) {
+			if (!cpu_paused(i)) {
+				if (no_pau == -1)
+					no_pau = i;
 
-			if (!available_idle_cpu(i)) {
-				*cpu = i;
-				goto unlock;
+				if (!available_idle_cpu(i) && (no_pau_idle == -1))
+					no_pau_idle = i;
 			}
 		}
 
-		/* no active, not-idle, housekpeeing CPU found. */
-		default_cpu = cpumask_any(&unpaused);
-
-		if (unlikely(default_cpu >= nr_cpu_ids))
+		/* 4. Choose online & hk_mask & non-pause & non-idle first CPU */
+		if (no_pau_idle >= 0) {
+			*cpu = no_pau_idle;
 			goto unlock;
+		}
+
+		/* 5. Choose online & hk_mask & non-pause first CPU */
+		if (no_pau >= 0) {
+			*cpu = no_pau;
+			goto unlock;
+		}
+
+		/* 6. Choose online & hk_mask */
+		on_hk_cpu = cpumask_any_and(cpu_online_mask, hk_mask);
+		if (on_hk_cpu < nr_cpu_ids) {
+			*cpu = on_hk_cpu;
+			goto unlock;
+		}
+
+		/* 7. Choose online */
+		on_cpu = cpumask_any(cpu_online_mask);
+		if (on_cpu < nr_cpu_ids) {
+			*cpu = on_cpu;
+			goto unlock;
+		}
 	}
 
+	/* 3. Choose this_cpu & non-pause & hk_mask */
 	*cpu = default_cpu;
 unlock:
 	rcu_read_unlock();
