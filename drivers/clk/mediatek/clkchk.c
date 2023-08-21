@@ -609,7 +609,7 @@ static int clk_chk_dev_pm_suspend(struct device *dev)
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 		aee_kernel_warning_api(__FILE__, __LINE__,
-				DB_OPT_DEFAULT, "clk-chk",
+				DB_OPT_DEFAULT | DB_OPT_FTRACE, "clk-chk",
 				"fail to disable clk/pd in suspend\n");
 #endif
 	} else {

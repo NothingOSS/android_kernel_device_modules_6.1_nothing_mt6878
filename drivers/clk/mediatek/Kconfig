@@ -11,6 +11,15 @@ config DEVICE_MODULES_COMMON_CLK_MEDIATEK
 	help
 	  MediaTek SoCs' clock support.
 
+config MTK_CLKMGR_FTRACE
+	bool "Clock Manager ftrace Support for Mediatek SoCs"
+	help
+	  Choose this option if you have a Mediatek SoCs.
+	  This config provide record MediaTek clk/pwr ftrace
+	  to achieve better clk debug ability.
+	  Set Yes to enable clk ftrace
+	  Set No if not using MediaTek SoCs
+
 config MTK_CLKMGR_DEBUG
 	bool "Clock Manager Debug Support for Mediatek SoCs"
 	help
