@@ -70,7 +70,7 @@ struct vcp_status_reg *c1_m;
 struct vcp_status_reg *c1_t1_m;
 void (*vcp_do_tbufdump)(uint32_t*, uint32_t*) = NULL;
 
-unsigned int vcp_res_req_status_reg;
+void __iomem *vcp_res_req_status_reg;
 
 static struct mutex vcp_excep_mutex;
 int vcp_ee_enable;
@@ -114,7 +114,6 @@ void vcp_dump_last_regs(int mmup_enable)
 {
 	uint32_t *out, *out_end;
 	uint32_t i;
-	void __iomem *test_base;
 
 	if (mmup_enable == 0) {
 		pr_notice("[VCP] power off, do not vcp_dump_last_regs\n");
@@ -190,11 +189,9 @@ void vcp_dump_last_regs(int mmup_enable)
 	pr_notice("[VCP] irq wakeup en: %08x,%08x,%08x\n", readl(VCP_IRQ_SLP0),
 		readl(VCP_IRQ_SLP1), readl(VCP_IRQ_SLP2));
 
-	if (vcp_res_req_status_reg) {
-		test_base = ioremap(vcp_res_req_status_reg, 4);
-		pr_notice("[VCP] resource request status: %08x\n", readl(test_base));
-		iounmap(test_base);
-	}
+	if (vcp_res_req_status_reg)
+		pr_notice("[VCP] resource request status: %08x\n",
+			readl(vcp_res_req_status_reg));
 
 	pr_notice("[VCP] CLK_SYS/BUS/APSRC/DDREN REQ: %08x,%08x,%08x,%08x\n",
 		readl(R_CORE0_CLK_SYS_REQ), readl(R_CORE0_BUS_REQ),

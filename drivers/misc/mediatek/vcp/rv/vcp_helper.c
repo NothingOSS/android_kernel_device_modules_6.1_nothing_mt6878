@@ -2927,6 +2927,7 @@ void mbox_setup_pin_table(unsigned int mbox)
 static int vcp_device_probe(struct platform_device *pdev)
 {
 	int ret = 0, i = 0;
+	unsigned int temp_value;
 	struct resource *res;
 	const char *core_status = NULL;
 	const char *vcp_hwvoter = NULL;
@@ -3141,13 +3142,13 @@ static int vcp_device_probe(struct platform_device *pdev)
 		pr_notice("[VCP] bus debug num ports not found\n");
 	pr_debug("[VCP] vcpreg.bus_debug_num_ports = %d\n", vcpreg.bus_debug_num_ports);
 
-	vcp_res_req_status_reg = 0;
-	of_property_read_u32(pdev->dev.of_node, "res-req-status",
-		&vcp_res_req_status_reg);
-	if (!vcp_res_req_status_reg)
+	temp_value = 0;
+	of_property_read_u32(pdev->dev.of_node, "res-req-status", &temp_value);
+	if (!temp_value)
 		pr_notice("[VCP] resource request status register not found\n");
-	pr_debug("[VCP] vcpreg.resource request status register = %x\n",
-		vcp_res_req_status_reg);
+	else
+		vcp_res_req_status_reg = ioremap(temp_value, 4);
+	pr_debug("[VCP] vcpreg.resource request status register = %x\n", temp_value);
 
 	vcpreg.irq0 = platform_get_irq_byname(pdev, "wdt");
 	if (vcpreg.irq0 < 0)
