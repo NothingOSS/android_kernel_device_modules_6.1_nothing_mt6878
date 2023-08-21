@@ -1412,11 +1412,15 @@ static int mtk_rtc_probe(struct platform_device *pdev)
 
 static void mtk_rtc_shutdown(struct platform_device *pdev)
 {
+	int ret = 0;
 	struct mt6685_rtc *rtc = dev_get_drvdata(&pdev->dev);
 
-	if (rtc->data->chip_version == MT6685_SERIES)
+	if (rtc->data->chip_version == MT6685_SERIES) {
 		/*Normal sequence power off when PON falling*/
-		rtc_write(rtc, TOP2_ELR1, 1);
+		ret = rtc_update_bits(rtc, TOP2_ELR1, TOP2_ELR1_MASK, 1);
+		if (ret < 0)
+			dev_info(&pdev->dev, "check mt6685 TOP2_ELR1\n");
+	}
 
 	if (rtc->cali_is_supported)
 		mtk_rtc_enable_k_eosc(&pdev->dev);

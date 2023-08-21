@@ -171,6 +171,7 @@
 #define SCK_TOP_INT_STATUS0             MT6685_SCK_TOP_INT_STATUS0
 
 #define TOP2_ELR1                       MT6685_TOP2_ELR1
+#define TOP2_ELR1_MASK                  BIT(0)
 
 #define MTK_RTC_POLL_DELAY_US            10
 #define MTK_RTC_POLL_TIMEOUT             (jiffies_to_usecs(HZ))
