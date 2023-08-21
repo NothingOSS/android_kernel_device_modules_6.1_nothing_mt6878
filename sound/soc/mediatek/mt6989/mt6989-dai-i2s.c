@@ -1174,9 +1174,6 @@ static int mtk_mclk_en_event(struct snd_soc_dapm_widget *w,
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	struct mtk_afe_i2s_priv *i2s_priv;
 
-	dev_dbg(cmpnt->dev, "%s(), name %s, event 0x%x\n",
-		 __func__, w->name, event);
-
 	i2s_priv = get_i2s_priv_by_name(afe, w->name);
 
 	if (!i2s_priv) {

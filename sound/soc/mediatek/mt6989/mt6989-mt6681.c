@@ -423,8 +423,6 @@ static int mt6989_mt6681_init(struct snd_soc_pcm_runtime *rtd)
 static int mt6989_i2s_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				      struct snd_pcm_hw_params *params)
 {
-	dev_info(rtd->dev, "%s(), fix format to 32bit\n", __func__);
-
 	/* fix BE i2s format to 32bit, clean param mask first */
 	snd_mask_reset_range(hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT),
 			     0, SNDRV_PCM_FORMAT_LAST);
