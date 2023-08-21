@@ -78,7 +78,7 @@
 
 #define MT6985_SODI_REQ_VAL 0x13F6C0
 
-#define MT6989_DISP0_SODI_REQ_VAL 0x10f500
+#define MT6989_DISP0_SODI_REQ_VAL 0x00000FC0
 #define MT6989_DISP1_SODI_REQ_VAL 0xf00f00f
 #define MT6989_DISP0_DDREN_ACK_CON 0x100
 #define MT6989_DISP1_DDREN_ACK_CON 0x3f
@@ -119,7 +119,9 @@
 	#define MT6855_HRT_URGENT_CTL_VAL_WDMA0       REG_FLD_MSB_LSB(10, 10)
 	#define MT6855_HRT_URGENT_CTL_VAL_DSI0        REG_FLD_MSB_LSB(13, 13)
 
-#define MT6989_OVLSYS_MISC_SODI_WDMA_SEL BIT(4)
+#define MT6989_OVLSYS_MISC_SODI_WDMA_SEL 0xF0//REG_FLD_MSB_LSB(7, 4)
+#define MT6989_DISPSYS0_MISC_SODI_WDMA_SEL BIT(20)
+#define MT6989_DISPSYS1_MISC_SODI_WDMA_SEL REG_FLD_MSB_LSB(27, 24)
 
 #define MT6833_INFRA_DISP_DDR_CTL  0x2C
 #define MT6833_INFRA_FLD_DDR_MASK  REG_FLD_MSB_LSB(7, 4)
@@ -2324,27 +2326,103 @@ void mt6989_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 		SET_VAL_MASK(emi_req_val, emi_req_mask, en,
 					DVFS_HALT_MASK_SEL_RDMA5);
 	} else if (id == DDP_COMPONENT_WDMA0) {
-		SET_VAL_MASK(emi_req_val, emi_req_mask, (!(unsigned int)en),
-					HRT_URGENT_CTL_SEL_WDMA0);
-		SET_VAL_MASK(emi_req_val, emi_req_mask, en,
-					DVFS_HALT_MASK_SEL_WDMA0);
-	} else if (id == DDP_COMPONENT_WDMA1) {
-		SET_VAL_MASK(emi_req_val, emi_req_mask, (!(unsigned int)en),
-					HRT_URGENT_CTL_SEL_WDMA1);
-		SET_VAL_MASK(emi_req_val, emi_req_mask, en,
-					DVFS_HALT_MASK_SEL_WDMA1);
-	} else if (id == DDP_COMPONENT_OVLSYS_WDMA2) {
-		/* 0xF0: wdma ddren setting */
+		unsigned int va;
+
+		if (handle == NULL) {
+			if (en) {
+				va = (readl(priv->config_regs + MMSYS_SODI_REQ_MASK));
+				va |= MT6989_DISPSYS0_MISC_SODI_WDMA_SEL;
+				writel_relaxed(va, priv->config_regs + MMSYS_SODI_REQ_MASK);
+			} else {
+				va = (readl(priv->config_regs + MMSYS_SODI_REQ_MASK));
+				va = (va & ~(MT6989_DISPSYS0_MISC_SODI_WDMA_SEL));
+				writel_relaxed(va, priv->config_regs + MMSYS_SODI_REQ_MASK);
+			}
+		} else {
+			if (en) {
+				cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+						MMSYS_SODI_REQ_MASK,
+						MT6989_DISPSYS0_MISC_SODI_WDMA_SEL,
+						MT6989_DISPSYS0_MISC_SODI_WDMA_SEL);
+			} else {
+				cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+						MMSYS_SODI_REQ_MASK,
+						0,
+						MT6989_DISPSYS0_MISC_SODI_WDMA_SEL);
+			}
+		}
+		return;
+
+	} else if ((id == DDP_COMPONENT_WDMA1) ||
+				(id == DDP_COMPONENT_WDMA2) ||
+				(id == DDP_COMPONENT_WDMA3)) {
+		unsigned int va;
+
+		if (handle == NULL) {
+			if (en) {
+				va = (readl(priv->side_config_regs + MMSYS_SODI_REQ_MASK));
+				va |= MT6989_DISPSYS1_MISC_SODI_WDMA_SEL;
+				writel_relaxed(va, priv->side_config_regs + MMSYS_SODI_REQ_MASK);
+			} else {
+				va = (readl(priv->side_config_regs + MMSYS_SODI_REQ_MASK));
+				va = (va & ~(MT6989_DISPSYS1_MISC_SODI_WDMA_SEL));
+				writel_relaxed(va, priv->side_config_regs + MMSYS_SODI_REQ_MASK);
+			}
+		} else {
+			if (en) {
+				cmdq_pkt_write(handle, NULL, priv->side_config_regs_pa +
+						MMSYS_SODI_REQ_MASK,
+						MT6989_DISPSYS1_MISC_SODI_WDMA_SEL,
+						MT6989_DISPSYS1_MISC_SODI_WDMA_SEL);
+			} else {
+				cmdq_pkt_write(handle, NULL, priv->side_config_regs_pa +
+						MMSYS_SODI_REQ_MASK,
+						0,
+						MT6989_DISPSYS1_MISC_SODI_WDMA_SEL);
+			}
+		}
+		return;
+
+	} else if ((id == DDP_COMPONENT_OVLSYS_WDMA0) ||
+				(id == DDP_COMPONENT_OVLSYS_WDMA1)) {
+		unsigned int va;
+
+		if (handle == NULL) {
+			if (en) {
+				va = (readl(priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK));
+				va |= MT6989_OVLSYS_MISC_SODI_WDMA_SEL;
+				writel_relaxed(va, priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
+			} else {
+				va = (readl(priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK));
+				va = (va & ~(MT6989_OVLSYS_MISC_SODI_WDMA_SEL));
+				writel_relaxed(va, priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
+			}
+		} else {
+			if (en) {
+				cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
+						MMSYS_SODI_REQ_MASK,
+						MT6989_OVLSYS_MISC_SODI_WDMA_SEL,
+						MT6989_OVLSYS_MISC_SODI_WDMA_SEL);
+			} else {
+				cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
+						MMSYS_SODI_REQ_MASK,
+						0,
+						MT6989_OVLSYS_MISC_SODI_WDMA_SEL);
+			}
+		}
+		return;
+	} else if ((id == DDP_COMPONENT_OVLSYS_WDMA2) ||
+				(id == DDP_COMPONENT_OVLSYS_WDMA3)) {
 		unsigned int va;
 
 		if (handle == NULL) {
 			if (en) {
 				va = (readl(priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK));
-				va |= (en << 4); //SODI_WDMA_SEL
+				va |= MT6989_OVLSYS_MISC_SODI_WDMA_SEL;
 				writel_relaxed(va, priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
 			} else {
 				va = (readl(priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK));
-				va &= ~(!en << 4); //SODI_WDMA_SEL
+				va = (va & ~(MT6989_OVLSYS_MISC_SODI_WDMA_SEL));
 				writel_relaxed(va, priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
 			}
 		} else {
@@ -2399,7 +2477,6 @@ void mt6989_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			writel_relaxed(v, priv->ovlsys0_regs + MMSYS_MISC);
 
 			v = readl(priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
-			v = (v | MT6989_OVL_SODI_REQ_SEL);
 			v = (v & ~(MT6989_OVL_SODI_REQ_VAL));
 			writel_relaxed(v, priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
 		}
@@ -2409,7 +2486,6 @@ void mt6989_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			writel_relaxed(v, priv->ovlsys1_regs + MMSYS_MISC);
 
 			v = readl(priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
-			v = (v | MT6989_OVL_SODI_REQ_SEL);
 			v = (v & ~(MT6989_OVL_SODI_REQ_VAL));
 			writel_relaxed(v, priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
 		}
@@ -2433,20 +2509,12 @@ void mt6989_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 		if (priv->ovlsys0_regs_pa) {
 			cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
 				MMSYS_MISC, 0x28000, 0x3FFFC);
-
-			cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
-				MMSYS_SODI_REQ_MASK, MT6989_OVL_SODI_REQ_SEL,
-				MT6989_OVL_SODI_REQ_SEL);
 			cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
 				MMSYS_SODI_REQ_MASK, 0, MT6989_OVL_SODI_REQ_VAL);
 		}
 		if (priv->ovlsys1_regs_pa) {
 			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
 				MMSYS_MISC, 0x0, 0x3FFFC);
-
-			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
-				MMSYS_SODI_REQ_MASK, MT6989_OVL_SODI_REQ_SEL,
-				MT6989_OVL_SODI_REQ_SEL);
 			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
 				MMSYS_SODI_REQ_MASK, 0, MT6989_OVL_SODI_REQ_VAL);
 		}

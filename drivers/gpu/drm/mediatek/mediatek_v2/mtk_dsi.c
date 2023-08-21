@@ -1799,6 +1799,8 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 			(&dsi->master_dsi->ddp_comp) : (&dsi->ddp_comp);
 	u32 in_width = 0;
 	struct mtk_drm_private *priv = NULL;
+	int dli_relay_1tnp = 1;
+	int buf_con = 0;
 
 	if (mtk_crtc && mtk_crtc->base.dev)
 		priv = mtk_crtc->base.dev->dev_private;
@@ -1849,9 +1851,17 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 				dsi->driver_data->urgent_hi_fifo_us : 12;
 
 	if (!IS_ERR_OR_NULL(priv) && !IS_ERR_OR_NULL(priv->data)
-		&& priv->data->mmsys_id == MMSYS_MT6989)
+		&& priv->data->mmsys_id == MMSYS_MT6989) {
 		in_width = DSI_IPM_1_8_0_0_IN_WIDTH;
-	else
+		dli_relay_1tnp = 2;
+
+		if (comp->id == DDP_COMPONENT_DSI2)
+			buf_con = 1036;
+		else if ((comp->id == DDP_COMPONENT_DSI0) || (comp->id == DDP_COMPONENT_DSI1))
+			buf_con = 1544;
+		else
+			DDPMSG("%s, %d, unknown id:%d\n", __func__, __LINE__, comp->id);
+	} else
 		in_width = DSI_IPM_1_6_0_1_IN_WIDTH;
 
 	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
@@ -1885,9 +1895,9 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	}
 
 	DDPINFO(
-		"%s,mode=0x%lx,valid_theshold=0x%x,width=%d,height=%d,ps_wc:%d,rw_times=%d,lp_perline_en=%d\n",
+		"%s,mode=0x%lx,valid_theshold=0x%x,width=%d,height=%d,ps_wc:%d,rw_times=%d,lp_perline_en=%d,1t%dp,buf_con:%d\n",
 		__func__, dsi->mode_flags & MIPI_DSI_MODE_VIDEO, tmp,
-		width, height, ps_wc, rw_times, ext->params->lp_perline_en);
+		width, height, ps_wc, rw_times, ext->params->lp_perline_en, dli_relay_1tnp, buf_con);
 
 	mtk_dsi_mask(dsi, DSI_BUF_CON1, 0x7fff, tmp);
 	if (dsi->driver_data->new_rst_dsi)
@@ -1897,8 +1907,13 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 
 	/* enable ultra signal between SOF to VACT */
 	mtk_dsi_mask(dsi, DSI_RESERVED, DSI_VDE_BLOCK_ULTRA, 0);
-	fill_rate = mmsys_clk * dsi_buf_bpp / buffer_unit;
-	tmp = (readl(dsi->regs + DSI_BUF_CON1) >> 16) * sram_unit / buffer_unit;
+	/* 1TNP */
+	fill_rate = mmsys_clk * dli_relay_1tnp * dsi_buf_bpp / buffer_unit;
+
+	if (buf_con)
+		tmp = buf_con * sram_unit / buffer_unit;
+	else
+		tmp = (readl(dsi->regs + DSI_BUF_CON1) >> 16) * sram_unit / buffer_unit;
 
 	if (dsi->ext->params->is_cphy) {
 		sodi_hi = tmp - (12 * (fill_rate - dsi->data_rate * 2 * dsi->lanes / 7
