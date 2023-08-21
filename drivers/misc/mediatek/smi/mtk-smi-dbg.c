@@ -1611,6 +1611,23 @@ static void smi_hang_detect_bw_monitor(bool is_start)
 	}
 }
 
+void mtk_smi_dbg_dump_for_mminfra(void)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	s32			i, j, mminfra_comm_idx = 8, PRINT_NR = 5;
+
+	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
+	for (i = 0; i < PRINT_NR; i++) {
+		for (j = 0; j <= mminfra_comm_idx; j++)
+			mtk_smi_dbg_print(smi, false, false, j, true);
+		for (j = 0; j < ARRAY_SIZE(smi->rsi); j++)
+			mtk_smi_dbg_print(smi, true, true, j, true);
+	}
+	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
+
+}
+EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_mminfra);
+
 void mtk_smi_dbg_dump_for_isp_fast(u32 isp_id)
 {
 	struct mtk_smi_dbg	*smi = gsmi;

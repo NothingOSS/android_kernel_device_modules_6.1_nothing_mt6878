@@ -708,6 +708,8 @@ static irqreturn_t mminfra_irq_handler(int irq, void *data)
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 		mtk_smi_dbg_hang_detect("mminfra irq");
+		if (dbg->irq_safe)
+			mtk_smi_dbg_dump_for_mminfra();
 #endif
 		aee_dump = true;
 	}

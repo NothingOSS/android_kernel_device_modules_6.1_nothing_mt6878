@@ -27,6 +27,7 @@ struct smi_disp_ops {
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 
 int mtk_smi_set_disp_ops(const struct smi_disp_ops *ops);
+void mtk_smi_dbg_dump_for_mminfra(void);
 int mtk_smi_dbg_register_notifier(struct notifier_block *nb);
 int mtk_smi_dbg_unregister_notifier(struct notifier_block *nb);
 int mtk_smi_dbg_register_force_on_notifier(struct notifier_block *nb);
@@ -40,6 +41,10 @@ s32 smi_monitor_stop(struct device *dev, u32 common_id,
 static inline int mtk_smi_set_disp_ops(const struct smi_disp_ops *ops)
 {
 	return 0;
+}
+
+static inline void mtk_smi_dbg_dump_for_mminfra(void);
+{
 }
 
 static inline int mtk_smi_dbg_register_notifier(struct notifier_block *nb)
