@@ -16,7 +16,7 @@
 #include <trace/events/sched.h>
 #include <trace/events/task.h>
 #include <trace/hooks/sched.h>
-//#include <trace/hooks/hung_task.h>
+#include <trace/hooks/hung_task.h>
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include "common.h"
@@ -172,43 +172,45 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 	irq_log_store();
 }
 
-#if 0
+
 #if IS_ENABLED(CONFIG_DETECT_HUNG_TASK)
 static void mtk_check_d_tasks(void *data, struct task_struct *p,
 				unsigned long t, bool *need_check)
 {
 	unsigned long pending_stime = 0;
 	unsigned long switch_count = p->nvcsw + p->nivcsw;
+	struct mig_task_struct *migts = &((struct mtk_task *)p->android_vendor_data1)->mig_task;
 
 	*need_check = true;
 	/*
 	 * Reset the migration_pending start time
 	 */
 	if (!p->migration_pending || switch_count != p->last_switch_count) {
-		p->android_vendor_data1[4] = 0;
+		migts->pending_rec= 0;
 		return;
 	}
 	/*
 	 * Record the migration_pending start time
 	 */
-	if (p->migration_pending && p->android_vendor_data1[4] == 0) {
-		p->android_vendor_data1[4] = jiffies;
+	if (p->migration_pending && migts->pending_rec == 0) {
+		migts->pending_rec = jiffies;
 		*need_check = false;
 		return;
 	}
 	/*
 	 * Check the whether migration time is time out or not
 	 */
-	pending_stime = p->android_vendor_data1[4];
+	pending_stime = migts->pending_rec;
 	if (time_is_after_jiffies(pending_stime + t * HZ)) {
 		*need_check = false;
 	} else {
 		*need_check = true;
-		pr_info("task flags:0x%08lx migration_flags:0x%08lx mig_dis %d\n",
-			p->flags, p->migration_flags, is_migration_disabled(p));
+		pr_info("flags:0x%x mig_flags:%d mig_dis %d %d 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx\n",
+			p->flags, p->migration_flags, is_migration_disabled(p),
+			p->nr_cpus_allowed, p->cpus_mask.bits[0], p->cpus_ptr->bits[0],
+			cpu_active_mask->bits[0],cpu_online_mask->bits[0],cpu_possible_mask->bits[0]);
 	}
 }
-#endif
 #endif
 
 void mtk_setscheduler_uclamp(void *data, struct task_struct *tsk,
@@ -861,9 +863,9 @@ static int __init mtk_scheduler_init(void)
 		pr_info("register mtk_post_init_entity_util_avg hooks failed, returned %d\n", ret);
 
 #if IS_ENABLED(CONFIG_DETECT_HUNG_TASK)
-	//ret = register_trace_android_vh_check_uninterruptible_tasks(mtk_check_d_tasks, NULL);
-	//if (ret)
-	//	pr_info("register mtk_check_d_tasks hooks failed, returned %d\n", ret);
+	ret = register_trace_android_vh_check_uninterrupt_tasks(mtk_check_d_tasks, NULL);
+	if (ret)
+		pr_info("register mtk_check_d_tasks hooks failed, returned %d\n", ret);
 #endif
 	ret = register_trace_android_vh_setscheduler_uclamp(mtk_setscheduler_uclamp, NULL);
 	if (ret)
