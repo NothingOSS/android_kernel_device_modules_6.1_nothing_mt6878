@@ -1740,6 +1740,69 @@ s32 mtk_smi_dbg_hang_detect(char *user)
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_hang_detect);
 
+s32 mtk_smi_golden_set(bool enable, bool is_larb, u32 id, u32 port)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	struct mtk_smi_dbg_node	node;
+	u32 val;
+
+	if (is_larb)
+		node = smi->larb[id];
+	else
+		node = smi->comm[id];
+	if (pm_runtime_get_if_in_use(node.dev) <= 0) {
+		pr_notice("[smi] is_larb%d id:%d not enable\n", is_larb, id);
+		return 0;
+	}
+	pr_notice("[smi] is_larb%d id:%d enable:%d port:%d smi golden\n",
+			is_larb, id, enable, port);
+	if (enable) {
+		if (is_larb) {
+			//force ultra
+			val = (1 << port) | readl_relaxed(node.va + SMI_LARB_FORCE_ULTRA);
+			writel_relaxed(val, node.va + SMI_LARB_FORCE_ULTRA);
+			//ostd = 64
+			writel_relaxed(0x40, node.va + SMI_LARB_OSTDL_PORT(port));
+			pr_notice("[smi] larb%d enable%d 0x78:%#x, ostdl:%#x\n",
+				id, enable,
+				readl_relaxed(node.va + SMI_LARB_FORCE_ULTRA),
+				readl_relaxed(node.va + SMI_LARB_OSTDL_PORT(port)));
+		} else {
+			//comm cmd thr
+			writel_relaxed(0x34343434, node.va + SMI_M4U_TH);
+			writel_relaxed(0x20201414, node.va + SMI_FIFO_TH1);
+			pr_notice("[smi] comm%d enable%d 0x234:%#x, 0x238:%#x\n",
+					id, enable,
+					readl_relaxed(node.va + SMI_M4U_TH),
+					readl_relaxed(node.va + SMI_FIFO_TH1));
+		}
+	} else {
+		if (is_larb) {
+			//disable force ultra
+			val = ~(1 << port) & readl_relaxed(node.va + SMI_LARB_FORCE_ULTRA);
+			writel_relaxed(val, node.va + SMI_LARB_FORCE_ULTRA);
+			//ostd = 0x12
+			writel_relaxed(0x12, node.va + SMI_LARB_OSTDL_PORT(port));
+			pr_notice("[smi] larb%d enable%d 0x78:%#x, ostdl:%#x\n",
+				id, enable,
+				readl_relaxed(node.va + SMI_LARB_FORCE_ULTRA),
+				readl_relaxed(node.va + SMI_LARB_OSTDL_PORT(port)));
+		} else {
+			//comm cmd thr
+			writel_relaxed(0x1e201e20, node.va + SMI_M4U_TH);
+			writel_relaxed(0xb0c1314, node.va + SMI_FIFO_TH1);
+			pr_notice("[smi] comm%d enable%d 0x234:%#x, 0x238:%#x\n",
+					id, enable,
+					readl_relaxed(node.va + SMI_M4U_TH),
+					readl_relaxed(node.va + SMI_FIFO_TH1));
+		}
+	}
+
+	pm_runtime_put(node.dev);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_golden_set);
+
 int smi_larb_force_all_on(char *buf, const struct kernel_param *kp)
 {
 	struct mtk_smi_dbg	*smi = gsmi;

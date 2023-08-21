@@ -45,6 +45,7 @@ s32 mtk_smi_dbg_cg_status(void);
 void mtk_smi_check_comm_ref_cnt(struct device *dev);
 void mtk_smi_check_larb_ref_cnt(struct device *dev);
 int mtk_smi_larb_ultra_dis(struct device *larbdev, bool is_dis);
+s32 mtk_smi_golden_set(bool enable, bool is_larb, u32 id, u32 port);
 #else
 
 
@@ -102,6 +103,11 @@ s32 mtk_smi_sysram_set(struct device *larbdev, const u32 master_id,
 
 static inline
 int mtk_smi_larb_ultra_dis(struct device *larbdev, bool is_dis)
+{
+	return 0;
+}
+
+s32 mtk_smi_golden_set(bool enable, bool is_larb, u32 id, u32 port)
 {
 	return 0;
 }
