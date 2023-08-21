@@ -4972,6 +4972,10 @@ void disp_aal_debug(struct drm_crtc *crtc, const char *opt)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_ddp_comp *comp;
 	struct mtk_disp_aal *aal_data;
+	int gain_offset;
+	int arry_offset;
+	unsigned int gain_arry[4];
+	unsigned int *gain_pr;
 
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_AAL, 0);
 	if (!comp) {
@@ -5004,6 +5008,24 @@ void disp_aal_debug(struct drm_crtc *crtc, const char *opt)
 				dump_blk_x, dump_blk_y);
 		else
 			pr_notice("[debug] dump_blk parse fail\n");
+	} else if (strncmp(opt, "dumpdre3gain", 12) == 0) {
+		arry_offset = 0;
+		gain_pr = aal_data->primary_data->dre30_gain.dre30_gain;
+		for (gain_offset = aal_data->data->aal_dre_gain_start;
+			gain_offset <= aal_data->data->aal_dre_gain_end;
+				gain_offset += 16, arry_offset += 4) {
+			if (arry_offset >= AAL_DRE30_GAIN_REGISTER_NUM)
+				break;
+			if (arry_offset + 4 <= AAL_DRE30_GAIN_REGISTER_NUM) {
+				memcpy(gain_arry, gain_pr + arry_offset, sizeof(unsigned int) * 4);
+			} else {
+				memset(gain_arry, 0, sizeof(gain_arry));
+				memcpy(gain_arry, gain_pr + arry_offset,
+					sizeof(unsigned int) * (arry_offset + 5 - AAL_DRE30_GAIN_REGISTER_NUM));
+			}
+			DDPMSG("[debug] dre30_gain 0x%x: 0x%x, 0x%x, 0x%x, 0x%x\n",
+					arry_offset, gain_arry[0], gain_arry[1], gain_arry[2], gain_arry[3]);
+		}
 	} else if (strncmp(opt, "first_br:", 9) == 0) {
 		debug_skip_first_br = strncmp(opt + 9, "skip", 4) == 0;
 		pr_notice("[debug] skip_first_br=%d\n",

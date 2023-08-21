@@ -166,7 +166,7 @@ int mtk_drm_ioctl_c3d_set_lut(struct drm_device *dev, void *data,
 int mtk_drm_ioctl_bypass_c3d(struct drm_device *dev, void *data,
 			struct drm_file *file_priv);
 
-void mtk_disp_c3d_debug(const char *opt);
+void mtk_disp_c3d_debug(struct drm_crtc *crtc, const char *opt);
 void disp_c3d_set_bypass(struct drm_crtc *crtc, int bypass);
 inline struct mtk_disp_c3d *comp_to_c3d(struct mtk_ddp_comp *comp);
 void mtk_c3d_regdump(struct mtk_ddp_comp *comp);

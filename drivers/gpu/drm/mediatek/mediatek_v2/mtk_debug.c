@@ -3417,7 +3417,15 @@ static void process_dbg_opt(const char *opt)
 
 		disp_aal_debug(crtc, opt + 4);
 	} else if (strncmp(opt, "c3d:", 4) == 0) {
-		mtk_disp_c3d_debug(opt + 4);
+		struct drm_crtc *crtc;
+
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list, typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPPR_ERR("find crtc fail\n");
+			return;
+		}
+
+		mtk_disp_c3d_debug(crtc, opt + 4);
 	} else if (strncmp(opt, "oddmr:", 4) == 0) {
 		mtk_disp_oddmr_debug(opt + 6);
 	} else if (strncmp(opt, "aee:", 4) == 0) {

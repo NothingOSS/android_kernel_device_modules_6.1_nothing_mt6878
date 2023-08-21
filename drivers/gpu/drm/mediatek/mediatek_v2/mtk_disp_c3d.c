@@ -1715,8 +1715,14 @@ struct platform_driver mtk_disp_c3d_driver = {
 		},
 };
 
-void mtk_disp_c3d_debug(const char *opt)
+void mtk_disp_c3d_debug(struct drm_crtc *crtc, const char *opt)
 {
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
+			to_mtk_crtc(crtc), MTK_DISP_C3D, 0);
+	struct mtk_disp_c3d *c3d_data;
+	struct cmdq_reuse *reuse;
+	u32 sram_offset;
+
 	pr_notice("[C3D debug]: %s\n", opt);
 	if (strncmp(opt, "flow_log:", 9) == 0) {
 		debug_flow_log = strncmp(opt + 9, "1", 1) == 0;
@@ -1727,6 +1733,20 @@ void mtk_disp_c3d_debug(const char *opt)
 	} else if (strncmp(opt, "debugdump:", 10) == 0) {
 		pr_notice("[C3D debug] debug_flow_log = %d\n", debug_flow_log);
 		pr_notice("[C3D debug] debug_api_log = %d\n", debug_api_log);
+	} else if (strncmp(opt, "dumpsram", 8) == 0) {
+		if (!comp) {
+			pr_notice("[C3D debug] null pointer!\n");
+			return;
+		}
+		c3d_data = comp_to_c3d(comp);
+		reuse = c3d_data->reuse_c3d;
+		for (sram_offset = c3d_data->data->c3d_sram_start_addr;
+			sram_offset + 4 <= c3d_data->data->c3d_sram_end_addr && sram_offset <= 100;
+			sram_offset += 4) {
+			DDPMSG("[debug] c3d_sram 0x%x: 0x%x, 0x%x, 0x%x, 0x%x\n",
+					sram_offset, reuse[sram_offset + 1].val, reuse[sram_offset + 2].val,
+					reuse[sram_offset + 3].val, reuse[sram_offset + 4].val);
+		}
 	}
 }
 
