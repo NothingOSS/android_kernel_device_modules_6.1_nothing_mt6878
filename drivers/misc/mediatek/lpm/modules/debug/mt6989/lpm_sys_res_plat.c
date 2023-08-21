@@ -46,14 +46,14 @@ static unsigned int sys_res_last_suspend_diff_buffer_index;
 static unsigned int sys_res_last_diff_buffer_index;
 
 struct sys_res_group_info sys_res_group_info[NR_SPM_GRP] = {
-	{286,   0,  32, 30},
-	{288,  32,  33, 30},
-	{289,  65,  33, 30},
-	{290,  98,  34, 30},
-	{291, 132,  35, 30},
-	{292, 167,  36, 30},
-	{293, 203,  33, 30},
-	{294, 236,  11, 30},
+	{289,   0,  32, 30},
+	{290,  32,  33, 30},
+	{291,  65,  33, 30},
+	{292,  98,  34, 30},
+	{293, 132,  35, 30},
+	{294, 167,  36, 30},
+	{295, 203,  33, 30},
+	{296, 236,  11, 30},
 	{0, 247,  39, 30},
 	{0, 286,  11, 30},
 };
@@ -344,10 +344,11 @@ static void lpm_sys_res_log(unsigned int scene)
 	}
 
 	time = lpm_sys_res_get_detail(sys_res_record, time_type, 0);
-	pr_info("[name:spm&][SPM] ms %s %llu, %s",
-				scene_name, time, sys_res_log_buf);
+	sys_res_log_size += scnprintf(
+				sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"[name:spm&][SPM] %s %llu ms; ", scene_name, time);
 
-	sys_res_log_size = 0;
 	for (i = 0; i < SYS_RES_SYS_RESOURCE_NUM; i++){
 		sys_index = sys_res_group_info[i].sys_index;
 		sig_tbl_index = sys_res_group_info[i].sig_table_index;
@@ -359,19 +360,20 @@ static void lpm_sys_res_log(unsigned int scene)
 		sys_res_log_size += scnprintf(
 				sys_res_log_buf + sys_res_log_size,
 				LOG_BUF_OUT_SZ - sys_res_log_size,
-				"group %d ratio %llu (threshold %llu)",
-				i, ratio, threshold);
+				"group %d ratio %llu", i, ratio);
 
 		if (ratio < threshold) {
-			pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
-			sys_res_log_size = 0;
+			sys_res_log_size += scnprintf(
+					sys_res_log_buf + sys_res_log_size,
+					LOG_BUF_OUT_SZ - sys_res_log_size,
+					"; ");
 			continue;
 		}
 
 		sys_res_log_size += scnprintf(
 				sys_res_log_buf + sys_res_log_size,
 				LOG_BUF_OUT_SZ - sys_res_log_size,
-				" high ratio signal:");
+				" (> %llu) [", threshold);
 
 		for (j = 0; j < sys_res_group_info[i].group_num; j++) {
 			ratio = lpm_sys_res_get_detail(sys_res_record,
@@ -381,27 +383,26 @@ static void lpm_sys_res_log(unsigned int scene)
 			if (ratio < threshold)
 				continue;
 
-			if (sys_res_log_size > LOG_BUF_OUT_SZ - 20) {
+			if (sys_res_log_size > LOG_BUF_OUT_SZ - 45) {
 				pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
 				sys_res_log_size = 0;
-				sys_res_log_size += scnprintf(
-					sys_res_log_buf + sys_res_log_size,
-					LOG_BUF_OUT_SZ - sys_res_log_size,
-					" group %d high ratio signal:", i);
 			}
 
 			sys_res_log_size += scnprintf(
 				sys_res_log_buf + sys_res_log_size,
 				LOG_BUF_OUT_SZ - sys_res_log_size,
-				" 0x%llx(%llu%%)",
+				"0x%llx(%llu%%),",
 				lpm_sys_res_get_detail(sys_res_record,
 					SYS_RES_SIG_ID, j + sig_tbl_index),
 				ratio);
 		}
 
-		pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
-		sys_res_log_size = 0;
+		sys_res_log_size += scnprintf(
+				sys_res_log_buf + sys_res_log_size,
+				LOG_BUF_OUT_SZ - sys_res_log_size,
+				"]; ");
 	}
+	pr_info("[name:spm&][SPM] %s", sys_res_log_buf);
 	spin_unlock_irqrestore(&sys_res_lock, flag);
 }
 
