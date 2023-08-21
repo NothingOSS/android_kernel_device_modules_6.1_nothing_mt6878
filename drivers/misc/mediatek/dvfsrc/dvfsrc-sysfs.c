@@ -214,6 +214,9 @@ static ssize_t dvfsrc_ddr_opp_table_show(struct device *dev,
 	char *buff_end = p + PAGE_SIZE;
 	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
 
+	if (dvfsrc->opp_desc->num_opp > 0)
+		level = dvfsrc->opp_desc->opps[0].dram_opp;
+
 	for (i = 0; i < dvfsrc->opp_desc->num_opp; i++) {
 		if (dvfsrc->opp_desc->opps[i].dram_opp == level) {
 			p += snprintf(p, buff_end - p,

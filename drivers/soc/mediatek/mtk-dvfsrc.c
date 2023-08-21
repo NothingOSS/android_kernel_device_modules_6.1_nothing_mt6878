@@ -85,6 +85,7 @@ struct dvfsrc_soc_data {
 	int (*wait_for_opp_level)(struct mtk_dvfsrc *dvfsrc, u32 level);
 	int (*wait_for_vcore_level)(struct mtk_dvfsrc *dvfsrc, u32 level);
 	int (*wait_for_dram_level)(struct mtk_dvfsrc *dvfsrc, u32 level);
+	u32 (*query_opp_count)(struct mtk_dvfsrc *dvfsrc);
 #ifdef DVFSRC_FORCE_OPP_SUPPORT
 	void (*set_force_opp_level)(struct mtk_dvfsrc *dvfsrc, u32 level);
 #endif
@@ -110,6 +111,7 @@ struct mtk_dvfsrc {
 	spinlock_t force_lock;
 #endif
 	bool disable_wait_level;
+	u32 num_opp;
 };
 
 #ifdef DVFSRC_OPP_BW_QUERY
@@ -738,10 +740,10 @@ static int mt6989_get_current_level(struct mtk_dvfsrc *dvfsrc)
 	u32 curr_level;
 
 	curr_level = (dvfsrc_read(dvfsrc, DVFSRC_LEVEL) & 0xFF) + 1;
-	if (curr_level > dvfsrc->curr_opps->num_opp)
+	if (curr_level > dvfsrc->num_opp)
 		curr_level = 0;
 	else
-		curr_level = dvfsrc->curr_opps->num_opp - curr_level;
+		curr_level = dvfsrc->num_opp - curr_level;
 
 	return curr_level;
 }
@@ -764,6 +766,15 @@ static int mt6989_wait_for_dram_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 			val, (val & 0xF) >= level, STARTUP_TIME, POLL_TIMEOUT);
 }
 
+static u32 mt6989_get_opp_count(struct mtk_dvfsrc *dvfsrc)
+{
+	u32 val = 0;
+
+	val = ((dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL) >> 20) & 0x7F) + 1;
+
+	return val;
+}
+
 #ifdef DVFSRC_FORCE_OPP_SUPPORT
 static void mt6989_set_force_opp_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 {
@@ -771,8 +782,11 @@ static void mt6989_set_force_opp_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 	int val;
 	int ret = 0;
 
+	if (dvfsrc->num_opp == 0)
+		return;
+
 	spin_lock_irqsave(&dvfsrc->force_lock, flags);
-	if (level > dvfsrc->curr_opps->num_opp - 1) {
+	if (level > dvfsrc->num_opp - 1) {
 		if (dvfsrc->opp_forced) {
 			dvfsrc_rmw(dvfsrc, DVFSRC_HALT_CONTROL, 1, 0x1, 1);
 			udelay(STARTUP_TIME);
@@ -1101,6 +1115,9 @@ static int mtk_dvfsrc_probe(struct platform_device *pdev)
 #ifdef DVFSRC_OPP_BW_QUERY
 	dram_type = dvfsrc->dram_type;
 #endif
+	if (dvfsrc->dvd->query_opp_count)
+		dvfsrc->num_opp = dvfsrc->dvd->query_opp_count(dvfsrc);
+
 	dvfsrc->curr_opps = &dvfsrc->dvd->opps_desc[dvfsrc->dram_type];
 	platform_set_drvdata(pdev, dvfsrc);
 	if (dvfsrc->dvd->num_domains)
@@ -1531,11 +1548,11 @@ static const struct dvfsrc_soc_data mt6897_data = {
 static const struct dvfsrc_opp_desc dvfsrc_opp_mt6989_desc[] = {
 	{
 		.opps = NULL,
-		.num_opp = 34,
+		.num_opp = 29,
 	},
 	{
 		.opps = NULL,
-		.num_opp = 34,
+		.num_opp = 29,
 	},
 };
 
@@ -1547,6 +1564,7 @@ static const struct dvfsrc_soc_data mt6989_data = {
 #ifdef DVFSRC_FORCE_OPP_SUPPORT
 	.set_force_opp_level = mt6989_set_force_opp_level,
 #endif
+	.query_opp_count = mt6989_get_opp_count,
 };
 
 static int mtk_dvfsrc_remove(struct platform_device *pdev)
