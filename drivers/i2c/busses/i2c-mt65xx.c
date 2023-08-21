@@ -2434,7 +2434,8 @@ static int mtk_i2c_suspend_noirq(struct device *dev)
 {
 	struct mtk_i2c *i2c = dev_get_drvdata(dev);
 
-	i2c_mark_adapter_suspended(&i2c->adap);
+	if (i2c->ch_offset_i2c != I2C_OFFSET_SCP)
+		i2c_mark_adapter_suspended(&i2c->adap);
 
 	return 0;
 }
@@ -2444,17 +2445,19 @@ static int mtk_i2c_resume_noirq(struct device *dev)
 	int ret;
 	struct mtk_i2c *i2c = dev_get_drvdata(dev);
 
-	ret = mtk_i2c_clock_enable(i2c);
-	if (ret) {
-		dev_err(dev, "clock enable failed!\n");
-		return ret;
+	if (i2c->ch_offset_i2c != I2C_OFFSET_SCP) {
+		ret = mtk_i2c_clock_enable(i2c);
+		if (ret) {
+			dev_info(dev, "clock enable failed!\n");
+			return ret;
+		}
+
+		mtk_i2c_init_hw(i2c);
+
+		mtk_i2c_clock_disable(i2c);
+
+		i2c_mark_adapter_resumed(&i2c->adap);
 	}
-
-	mtk_i2c_init_hw(i2c);
-
-	mtk_i2c_clock_disable(i2c);
-
-	i2c_mark_adapter_resumed(&i2c->adap);
 
 	return 0;
 }
