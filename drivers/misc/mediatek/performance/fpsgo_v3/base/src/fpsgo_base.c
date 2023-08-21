@@ -506,6 +506,7 @@ void fpsgo_ctrl2base_get_cam_perf(int tgid, int *rtid, int *blc)
 
 	*rtid = 0;
 	*blc = 0;
+	fpsgo_render_tree_lock(__func__);
 	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
 		r_iter = rb_entry(rbn, struct render_info, render_key_node);
 		fpsgo_thread_lock(&r_iter->thr_mlock);
@@ -519,6 +520,7 @@ void fpsgo_ctrl2base_get_cam_perf(int tgid, int *rtid, int *blc)
 		}
 		fpsgo_thread_unlock(&r_iter->thr_mlock);
 	}
+	fpsgo_render_tree_unlock(__func__);
 }
 
 void fpsgo_ctrl2base_wait_cam(int cmd, int *pid)
