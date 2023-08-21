@@ -3174,6 +3174,15 @@
 					&smi_cam_sub_comm2 &smi_cam_vcore_sub_comm
 					&smi_ccu_sub_comm0>;
 		hwccf-support;
+		smi-mminfra-common-id = <0 1 2 3 4 5 6 7 8>;
+		smi-venc-larb-id = <7 8 24 41 42 47>;
+		smi-venc-common-id = <15 16 17 18>;
+		smi-vdec-larb-id = <4 5>;
+		smi-disp-larb-id = <0 1 20 21 32 33 34 35 36 37>;
+		smi-disp-common-id = <9 10 11 12 13 14>;
+		smi-isp-dip1-larb-id = <10 11 15 22 23 38 39>;
+		smi-isp-traw-larb-id = <28 40>;
+
 	};
 
 	mminfra_debug: mminfra-debug@1e827000 {
@@ -3182,7 +3191,7 @@
 		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
 		interrupts = <GIC_SPI 538 IRQ_TYPE_LEVEL_HIGH 0>;
 		mminfra-bkrs = <0>;
-		mminfra-gals-sel = <5 14 15 16 17 18 19>;
+		mminfra-gals-sel = <5 9 10 14 15 16 17 18 19 28>;
 		bkrs-reg = <0x1e800250>;
 		vlp-base = <0x1c000000>;
 		spm-base = <0x1c001000>;
