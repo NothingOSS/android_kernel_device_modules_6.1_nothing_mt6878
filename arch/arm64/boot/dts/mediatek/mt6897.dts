@@ -4879,7 +4879,7 @@
 					"CAM_CG",
 					"CAM_VCORE_CG";
 			mediatek,ccu_rproc1 = <&ccu_rproc1>;
-			mediatek,cammainpwr = <&camisp>;
+			mediatek,cammainpwr = <&ccucammain>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&mdp_iommu M4U_L30_P1_CCUO_0>,
 				 <&mdp_iommu M4U_L30_P0_CCUI_0>;
@@ -4899,6 +4899,11 @@
 			ccu_dramAddr = <0x80000000>;
 			ccu_emiRegion = <20>;
 			ccu-cores = <2>;
+		};
+
+		ccucammain: ccucammain {
+			compatible = "mediatek,ccucammain";
+			power-domains = <&scpsys MT6897_POWER_DOMAIN_CAM_MAIN>;
 		};
 
 		ccu_rproc1: ccu_rproc1@0x1b180000 {
