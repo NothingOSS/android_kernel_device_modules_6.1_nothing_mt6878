@@ -27,6 +27,9 @@ static const char *event_name(int event)
 	case MTK_FUSE_FORCE_FORGET:
 		ret = "mtk_fuse_force_forget";
 		break;
+	case MTK_FUSE_IGET_BACKING:
+		ret = "mtk_fuse_iget_backing";
+		break;
 	default:
 		ret = "";
 	}
@@ -36,7 +39,8 @@ static const char *event_name(int event)
 
 static void fuse_add_log(int event, const char *func, int line,
 				struct inode *inode, u64 nodeid,
-				u64 nlookup, u64 nlookup_after)
+				u64 nlookup, u64 nlookup_after,
+				struct inode *backing)
 {
 	uint64_t ns_time = sched_clock();
 	unsigned long flags;
@@ -49,6 +53,7 @@ static void fuse_add_log(int event, const char *func, int line,
 		fuse_traces.head++;
 
 	fuse_traces.trace[fuse_traces.tail].ns_time = ns_time;
+	fuse_traces.trace[fuse_traces.tail].pid = current->pid;
 	fuse_traces.trace[fuse_traces.tail].event_type = event;
 	fuse_traces.trace[fuse_traces.tail].func = func;
 	fuse_traces.trace[fuse_traces.tail].line = line;
@@ -56,6 +61,7 @@ static void fuse_add_log(int event, const char *func, int line,
 	fuse_traces.trace[fuse_traces.tail].nodeid = nodeid;
 	fuse_traces.trace[fuse_traces.tail].nlookup = nlookup;
 	fuse_traces.trace[fuse_traces.tail].nlookup_after = nlookup_after;
+	fuse_traces.trace[fuse_traces.tail].backing = backing;
 	spin_unlock_irqrestore(&fuse_traces.lock, flags);
 }
 
@@ -64,21 +70,27 @@ void btag_fuse_nlookup(void *data, const char *func, int line,
 			   u64 nlookup, u64 nlookup_after)
 {
 	fuse_add_log(MTK_FUSE_NLOOKUP, func, line, inode, nodeid,
-			nlookup, nlookup_after);
+			nlookup, nlookup_after, NULL);
 }
 
 void btag_fuse_queue_forget(void *data, const char *func, int line,
 				u64 nodeid, u64 nlookup)
 {
 	fuse_add_log(MTK_FUSE_QUEUE_FORGET, func, line, NULL, nodeid,
-			nlookup, 0);
+			nlookup, 0, NULL);
 }
 
 void btag_fuse_force_forget(void *data, const char *func, int line,
 				struct inode *inode, u64 nodeid, u64 nlookup)
 {
 	fuse_add_log(MTK_FUSE_FORCE_FORGET, func, line, inode, nodeid,
-			nlookup, 0);
+			nlookup, 0, NULL);
+}
+
+void btag_fuse_iget_backing(void *data, const char *func, int line,
+			    struct inode *inode, u64 nodeid, struct inode *b)
+{
+	fuse_add_log(MTK_FUSE_IGET_BACKING, func, line, inode, nodeid, 0, 0, b);
 }
 
 void mtk_btag_fuse_show(char **buff, unsigned long *size,
@@ -96,8 +108,9 @@ void mtk_btag_fuse_show(char **buff, unsigned long *size,
 		switch (tr->event_type) {
 		case MTK_FUSE_NLOOKUP:
 			BTAG_PRINTF(buff, size, seq,
-				    "[%lld]%s,%s:%d,inode=0x%p,nodeid=%llu,nlookup=%llu,nlookup_after=%llu\n",
+				    "[%lld]%d:%s,%s:%d,inode=0x%p,nodeid=%llu,nlookup=%llu,nlookup_after=%llu\n",
 				    tr->ns_time,
+				    tr->pid,
 				    event_name(tr->event_type),
 				    tr->func,
 				    tr->line,
@@ -108,8 +121,9 @@ void mtk_btag_fuse_show(char **buff, unsigned long *size,
 			break;
 		case MTK_FUSE_QUEUE_FORGET:
 			BTAG_PRINTF(buff, size, seq,
-				    "[%lld]%s,%s:%d,nodeid=%llu,nlookup=%llu\n",
+				    "[%lld]%d,%s,%s:%d,nodeid=%llu,nlookup=%llu\n",
 				    tr->ns_time,
+				    tr->pid,
 				    event_name(tr->event_type),
 				    tr->func,
 				    tr->line,
@@ -118,14 +132,27 @@ void mtk_btag_fuse_show(char **buff, unsigned long *size,
 			break;
 		case MTK_FUSE_FORCE_FORGET:
 			BTAG_PRINTF(buff, size, seq,
-				    "[%lld]%s,%s:%d,inode=0x%p,nodeid=%llu,nlookup=%llu\n",
+				    "[%lld]%d,%s,%s:%d,inode=0x%p,nodeid=%llu,nlookup=%llu\n",
 				    tr->ns_time,
+				    tr->pid,
 				    event_name(tr->event_type),
 				    tr->func,
 				    tr->line,
 				    tr->inode,
 				    tr->nodeid,
 				    tr->nlookup);
+			break;
+		case MTK_FUSE_IGET_BACKING:
+			BTAG_PRINTF(buff, size, seq,
+				    "[%lld]%d,%s,%s:%d,inode=0x%p,nodeid=%llu,backing=0x%p\n",
+				    tr->ns_time,
+				    tr->pid,
+				    event_name(tr->event_type),
+				    tr->func,
+				    tr->line,
+				    tr->inode,
+				    tr->nodeid,
+				    tr->backing);
 			break;
 		default:
 			break;

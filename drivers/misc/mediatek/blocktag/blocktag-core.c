@@ -945,6 +945,10 @@ static struct tracepoints_table interests[] = {
 		.name = "mtk_fuse_force_forget",
 		.func = btag_fuse_force_forget
 	},
+	{
+		.name = "mtk_fuse_iget_backing",
+		.func = btag_fuse_iget_backing
+	},
 #endif
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_PM_DEBUG)
 	{
