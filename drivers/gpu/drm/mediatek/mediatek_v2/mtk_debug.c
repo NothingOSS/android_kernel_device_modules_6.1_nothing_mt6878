@@ -1900,7 +1900,7 @@ static void mtk_drm_cwb_info_init(struct drm_crtc *crtc)
 	cwb_info->count = 0;
 
 	if (cwb_info->scn == NONE)
-		cwb_info->scn = WDMA_WRITE_BACK;
+		cwb_info->scn = WDMA_WRITE_BACK_OVL;
 
 	/* Check if wdith height size will be affect by resolution switch */
 	mtk_crtc_set_width_height(&(cwb_info->src_roi.width), &(cwb_info->src_roi.height),
@@ -1915,6 +1915,8 @@ static void mtk_drm_cwb_info_init(struct drm_crtc *crtc)
 		else if ((priv->data->mmsys_id == MMSYS_MT6985 ||
 					priv->data->mmsys_id == MMSYS_MT6897)
 			&& cwb_info->scn == WDMA_WRITE_BACK_OVL)
+			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_OVLSYS_WDMA1];
+		else if (priv->data->mmsys_id == MMSYS_MT6989)
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_OVLSYS_WDMA1];
 	}
 

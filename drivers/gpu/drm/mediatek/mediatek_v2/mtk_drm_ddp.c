@@ -15467,6 +15467,10 @@ static int mtk_ddp_mout_en_MT6989(const struct mtk_mmsys_reg_data *data,
 		value = MT6989_DISP_DLI_RELAY0_TO_RSZ0;
 		if (MT6989_CHIST_PATH_CONNECT & DISP_CHIST_BEFORE_PQ)
 			value |= MT6989_DISP_DLI_RELAY0_TO_PQ_OUT_CROSSBAR4;
+	} else if ((cur == DDP_COMPONENT_OVL2_2L &&
+		next == DDP_COMPONENT_MDP_RSZ0)) {
+		*addr = MT6989_OVL_BLEND_CROSSBAR2_MOUT_EN;
+		value = MT6989_DISP_OVL2_2L_TO_WDMA2;
 	} else if ((cur == DDP_COMPONENT_Y2R0 &&
 		next == DDP_COMPONENT_PQ0_OUT_CB7)){
 		/* discrete PQ_IN_CROSSBAR */

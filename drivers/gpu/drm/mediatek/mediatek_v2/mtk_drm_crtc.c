@@ -2968,7 +2968,12 @@ int get_addon_path_wait_event(struct drm_crtc *crtc,
 		DDPPR_ERR("%s, Cannot find output component\n", __func__);
 		return -EINVAL;
 	}
-
+	if (priv->data->mmsys_id == MMSYS_MT6989) {
+		if (comp->id == DDP_COMPONENT_WDMA1)
+			return mtk_crtc->gce_obj.event[EVENT_WDMA0_EOF];
+		else if (comp->id == DDP_COMPONENT_OVLSYS_WDMA1)
+			return mtk_crtc->gce_obj.event[EVENT_OVLSYS_WDMA0_EOF];
+	}
 	if (comp->id == DDP_COMPONENT_WDMA0)
 		return mtk_crtc->gce_obj.event[EVENT_WDMA0_EOF];
 	else if (comp->id == DDP_COMPONENT_OVLSYS_WDMA0)
@@ -3064,7 +3069,9 @@ void _mtk_crtc_wb_addon_module_disconnect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v5) ||
 			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0)) {
+			addon_module->module == DISP_OVLSYS_WDMA0) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_OVLSYS_WDMA0_v2)) {
 			if (mtk_crtc->is_dual_pipe) {
 				/* disconnect left pipe */
 				mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
@@ -3132,7 +3139,9 @@ static void _mtk_crtc_cwb_addon_module_disconnect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v5) ||
 			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0)) {
+			addon_module->module == DISP_OVLSYS_WDMA0) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_OVLSYS_WDMA0_v2)) {
 			if (mtk_crtc->is_dual_pipe) {
 				/* disconnect left pipe */
 				mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
@@ -3315,11 +3324,12 @@ _mtk_crtc_wb_addon_module_connect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v5) ||
 			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0)) {
+			addon_module->module == DISP_OVLSYS_WDMA0) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_OVLSYS_WDMA0_v2)) {
 			struct mtk_rect src_roi = {0};
 			struct mtk_rect dst_roi = {0};
 			struct drm_framebuffer *fb;
-
 			mtk_crtc_set_width_height(&(src_roi.width), &(src_roi.height),
 				crtc, (scn == WDMA_WRITE_BACK));
 			dst_roi.x = state->prop_val[CRTC_PROP_OUTPUT_X];
@@ -3487,11 +3497,12 @@ _mtk_crtc_cwb_addon_module_connect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v5) ||
 			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0)) {
+			addon_module->module == DISP_OVLSYS_WDMA0) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_OVLSYS_WDMA0_v2)) {
 			buf_idx = cwb_info->buf_idx;
 			fb = cwb_info->buffer[buf_idx].fb;
 			Bpp = mtk_get_format_bpp(fb->format->format);
-
 			addon_config.addon_wdma_config.wdma_src_roi =
 				cwb_info->src_roi;
 			addon_config.addon_wdma_config.wdma_dst_roi =

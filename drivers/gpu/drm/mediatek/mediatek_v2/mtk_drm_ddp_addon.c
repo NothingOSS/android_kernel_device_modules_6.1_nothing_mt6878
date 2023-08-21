@@ -117,6 +117,12 @@ static const int disp_ovlsys_wdma2_path[] = {
 	DDP_COMPONENT_OVLSYS_WDMA3,
 };
 
+/* Leroy CWB */
+static const int disp_ovlsys_wdma0_path_v2[] = {
+	DDP_COMPONENT_MDP_RSZ0,
+	DDP_COMPONENT_OVLSYS_WDMA1,
+};
+
 static const int disp_wdma2_path_v2[] = {
 	DDP_COMPONENT_MAIN_OVL_DISP1_WDMA_VIRTUAL,
 	DDP_COMPONENT_WDMA2,
@@ -301,6 +307,10 @@ static const struct mtk_addon_path_data addon_module_path[ADDON_MODULE_NUM] = {
 		[DISP_OVLSYS_WDMA2] = {
 				.path = disp_ovlsys_wdma2_path,
 				.path_len = ARRAY_SIZE(disp_ovlsys_wdma2_path),
+			},
+		[DISP_OVLSYS_WDMA0_v2] = {
+				.path = disp_ovlsys_wdma0_path_v2,
+				.path_len = ARRAY_SIZE(disp_ovlsys_wdma0_path_v2),
 			},
 		[DISP_WDMA2_v2] = {
 				.path = disp_wdma2_path_v2,
