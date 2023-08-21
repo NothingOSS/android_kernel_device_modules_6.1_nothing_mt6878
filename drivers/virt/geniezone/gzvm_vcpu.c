@@ -36,8 +36,7 @@ static long gzvm_vcpu_update_one_reg(struct gzvm_vcpu *vcpu,
 		return -EINVAL;
 
 	if (is_write) {
-		if (vcpu->vcpuid > 0)
-			return -EPERM;
+		/* GZ hypervisor would filter out invalid vcpu register access */
 		if (copy_from_user(&data, reg_addr, reg_size))
 			return -EFAULT;
 	} else {
