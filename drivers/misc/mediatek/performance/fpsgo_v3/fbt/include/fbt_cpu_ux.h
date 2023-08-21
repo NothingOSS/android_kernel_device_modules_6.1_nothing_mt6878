@@ -27,5 +27,8 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 void fpsgo_sbe_rescue_legacy(struct render_info *thr, int start, int enhance,
 		unsigned long long frame_id);
 
+int fpsgo_ctrl2ux_get_perf(void);
+void fbt_ux_set_perf(int cur_blc);
+
 void __exit fbt_cpu_ux_exit(void);
 int __init fbt_cpu_ux_init(void);

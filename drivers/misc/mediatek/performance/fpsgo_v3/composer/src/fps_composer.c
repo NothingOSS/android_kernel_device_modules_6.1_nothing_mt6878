@@ -423,6 +423,9 @@ int fpsgo_com_check_frame_type(int pid, int tgid, int queue_SF, int api,
 	if (!fpsgo_control && !fpsgo_control_pid)
 		return BY_PASS_TYPE;
 
+	if (pid == tgid)
+		return BY_PASS_TYPE;
+
 	return NON_VSYNC_ALIGNED_TYPE;
 }
 

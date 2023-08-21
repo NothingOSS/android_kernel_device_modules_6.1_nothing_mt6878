@@ -49,6 +49,7 @@ static int sbe_rescue_enable;
 static int sbe_rescuing_frame_id;
 static int sbe_rescuing_frame_id_legacy;
 static int sbe_enhance_f;
+static int global_ux_blc;
 static struct fpsgo_loading temp_blc_dep[MAX_DEP_NUM];
 static struct fbt_setting_info sinfo;
 
@@ -63,6 +64,16 @@ static int nsec_to_100usec(unsigned long long nsec)
 	husec = div64_u64(nsec, (unsigned long long)NSEC_PER_HUSEC);
 
 	return (int)husec;
+}
+
+int fpsgo_ctrl2ux_get_perf(void)
+{
+	return global_ux_blc;
+}
+
+void fbt_ux_set_perf(int cur_blc)
+{
+	global_ux_blc = cur_blc;
 }
 
 static int fbt_ux_cal_perf(
@@ -311,6 +322,8 @@ void fbt_ux_frame_end(struct render_info *thr,
 	thr->ux_blc_next = fbt_ux_cal_perf(runtime,
 			targettime, targetfps, targetfps_ori, fps_margin,
 			thr, end_ts, loading, targetfpks, cooler_on);
+	if (thr->ux_blc_next > global_ux_blc)
+		fbt_ux_set_perf(thr->ux_blc_next);
 
 EXIT:
 	thr->ux_blc_cur = 0;
@@ -456,7 +469,6 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 			sbe_rescuing_frame_id = frame_id;
 		thr->sbe_enhance = enhance < 0 ?  sbe_enhance_f : (enhance + sbe_enhance_f);
 		thr->sbe_enhance = clamp(thr->sbe_enhance, 0, 100);
-		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "[ux]sbe_enhance");
 		if (thr->boost_info.sbe_rescue != 0)
 			goto leave;
 		thr->boost_info.sbe_rescue = 1;
@@ -471,7 +483,6 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		thr->boost_info.sbe_rescue = 0;
 		thr->sbe_enhance = 0;
 		fbt_ux_set_cap_with_sbe(thr);
-		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "[ux]sbe_enhance");
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "[ux]sbe_rescue");
 	}
 leave:

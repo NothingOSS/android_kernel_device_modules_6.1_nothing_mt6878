@@ -1878,6 +1878,7 @@ int fpsgo_check_thread_status(void)
 	unsigned long long temp_max_bufid = 0;
 	int rb_tree_empty = 0;
 	int is_boosting = BY_PASS_TYPE;
+	int local_ux_max_perf = 0;
 
 	if (ts < TIME_1S)
 		return 0;
@@ -1933,6 +1934,10 @@ int fpsgo_check_thread_status(void)
 				iter->t_enqueue_end < expire_ts)
 				fpsgo_stop_boost_by_render(iter);
 
+			if (iter->frame_type == FRAME_HINT_TYPE &&
+				iter->ux_blc_next > local_ux_max_perf)
+				local_ux_max_perf = iter->ux_blc_next;
+
 			n = rb_next(n);
 
 			fpsgo_thread_unlock(&iter->thr_mlock);
@@ -1961,6 +1966,8 @@ int fpsgo_check_thread_status(void)
 
 	if (is_boosting == BY_PASS_TYPE)
 		fpsgo_com_notify_fpsgo_is_boost(0);
+
+	fbt_ux_set_perf(local_ux_max_perf);
 
 	return rb_tree_empty;
 }

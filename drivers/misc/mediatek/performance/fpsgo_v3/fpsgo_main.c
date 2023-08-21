@@ -33,6 +33,7 @@
 #include "mtk_drm_arr.h"
 #include "powerhal_cpu_ctrl.h"
 #include "gbe_common.h"
+#include "fbt_cpu_ux.h"
 
 #define CREATE_TRACE_POINTS
 #define MAX_MAGT_TARGET_FPS_NUM 10
@@ -899,7 +900,6 @@ int fpsgo_notify_frame_hint(int qudeq,
 	int ret;
 	unsigned long long cur_ts;
 	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
-	struct render_info *r_iter = NULL;
 
 	FPSGO_LOGI("[FPSGO_CTRL] ux_qudeq %d, id %llu pid %d\n",
 		qudeq, id, pid);
@@ -939,14 +939,7 @@ int fpsgo_notify_frame_hint(int qudeq,
 
 	fpsgo_queue_work(vpPush);
 
-	fpsgo_render_tree_lock(__func__);
-	r_iter = fpsgo_search_and_add_render_info(pid, 5566, 0);
-	if (!r_iter) {
-		fpsgo_render_tree_unlock(__func__);
-		return -ENOMEM;
-	}
-	ret = r_iter->boost_info.last_blc;
-	fpsgo_render_tree_unlock(__func__);
+	ret = fpsgo_ctrl2ux_get_perf();
 
 	return ret;
 }
