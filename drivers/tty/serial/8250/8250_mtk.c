@@ -100,6 +100,7 @@
 
 #define FIFO_TX_STATUS_MASK  0xF
 #define FIFO_TX_CNT_MASK 0x1F
+#define RXTRIG_THRESHOLD	0x19
 
 #define MTK_UART_HUB_BAUD 12000000
 #define UART_DUMP_RECORE_NUM 10
@@ -1637,6 +1638,8 @@ mtk8250_set_termios(struct uart_port *port, struct ktermios *termios,
 	struct uart_8250_port *up = up_to_u8250p(port);
 	unsigned int baud, quot;
 	unsigned int fraction = 0;
+	unsigned int uart_fcr = 0;
+	unsigned int uart_efr = 0;
 	unsigned long flags;
 	int mode;
 	struct mtk8250_data *data = port->private_data;
@@ -1707,6 +1710,15 @@ mtk8250_set_termios(struct uart_port *port, struct ktermios *termios,
 		}
 	}
 #endif
+	uart_fcr = serial_in(up, MTK_UART_FCR_RD);
+	serial_out(up, MTK_UART_RXTRI_AD, RXTRIG_THRESHOLD);
+
+	serial_out(up, MTK_UART_FEATURE_SEL, 1);
+	uart_efr = serial_in(up, MTK_UART_EFR);
+	serial_out(up, MTK_UART_EFR, uart_efr | UART_EFR_ECB);
+	serial_out(up, UART_FCR, uart_fcr | UART_FCR_R_TRIG_11 | UART_FCR_ENABLE_FIFO);
+	serial_out(up, MTK_UART_EFR, uart_efr);
+	serial_out(up, MTK_UART_FEATURE_SEL, 0);
 
 	tty_termios_encode_baud_rate(termios, baud, baud);
 
