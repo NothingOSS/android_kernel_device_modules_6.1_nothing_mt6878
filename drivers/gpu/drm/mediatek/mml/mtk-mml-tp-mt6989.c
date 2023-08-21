@@ -47,6 +47,12 @@ module_param(mml_path_mode, int, 0644);
 int mml_racing;
 module_param(mml_racing, int, 0644);
 
+/* debug param
+ * 0: (default)don't care, check dts property to enable racing
+ * 1: force auto query (skip dts option check)
+ * 2: force disable
+ * 3: force enable
+ */
 int mml_dl;
 module_param(mml_dl, int, 0644);
 
@@ -994,7 +1000,7 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 	if (unlikely(mml_dl)) {
 		if (mml_dl == 2)
 			goto decouple;
-		else if (mml_dl == 1)
+		else if (mml_dl == 3)
 			goto dl_force;
 	} else if (!mml_dl_enable(mml))
 		goto decouple;

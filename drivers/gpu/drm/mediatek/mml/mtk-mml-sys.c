@@ -256,8 +256,10 @@ s32 sys_init(struct mml_comp *comp, struct mml_task *task,
 
 	if (cfg->info.mode == MML_MODE_DIRECT_LINK && cfg->dpc && sys->dpc_base) {
 		if (mml_dl_dpc & MML_DLDPC_VOTE) {
-			cmdq_pkt_write(pkt, NULL, sys->dpc_base + VLP_VOTE_SET, BIT(24), U32_MAX);
-			cmdq_pkt_write(pkt, NULL, sys->dpc_base + VLP_VOTE_SET, BIT(24), U32_MAX);
+			cmdq_pkt_write(pkt, NULL, sys->dpc_base + VLP_VOTE_SET,
+				BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
+			cmdq_pkt_write(pkt, NULL, sys->dpc_base + VLP_VOTE_SET,
+				BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
 		}
 	}
 
@@ -1814,8 +1816,10 @@ static s32 dl_post(struct mml_comp *comp, struct mml_task *task,
 			(mml_dl_dpc & MML_DLDPC_VOTE)) {
 			struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 
-			cmdq_pkt_write(pkt, NULL, sys->dpc_base + VLP_VOTE_CLR, BIT(24), U32_MAX);
-			cmdq_pkt_write(pkt, NULL, sys->dpc_base + VLP_VOTE_CLR, BIT(24), U32_MAX);
+			cmdq_pkt_write(pkt, NULL, sys->dpc_base + VLP_VOTE_CLR,
+				BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
+			cmdq_pkt_write(pkt, NULL, sys->dpc_base + VLP_VOTE_CLR,
+				BIT(DISP_VIDLE_USER_MML_CMDQ), U32_MAX);
 		}
 	}
 
