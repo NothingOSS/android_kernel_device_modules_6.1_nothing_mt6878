@@ -94,6 +94,7 @@
 #define DEFAULT_BLC_BOOST 0
 #define DEFAULT_HEAVY_GROUP_NUM 0
 #define DEFAULT_SECOND_GROUP_NUM 0
+#define DEFAULT_QUOTA_V2_DIFF_CLAMP_MIN -50
 
 #define FPSGO_TPOLICY_NONE 0
 #define FPSGO_TPOLICY_AFFINITY 1
@@ -284,6 +285,8 @@ static int filter_frame_window_size;
 static int filter_frame_kmin;
 static int test_mode;
 static int quota_v2_clamp_max;
+static int quota_v2_diff_clamp_min;
+static int quota_v2_diff_clamp_max;
 static int rl_learning_rate_p;
 static int rl_learning_rate_n;
 static int rl_expect_fps_margin;
@@ -360,6 +363,8 @@ module_param(aa_retarget, int, 0644);
 module_param(loading_ignore_enable, int, 0644);
 module_param(loading_enable, int, 0644);
 module_param(quota_v2_clamp_max, int, 0644);
+module_param(quota_v2_diff_clamp_min, int, 0644);
+module_param(quota_v2_diff_clamp_max, int, 0644);
 module_param(rl_learning_rate_p, int, 0644);
 module_param(rl_learning_rate_n, int, 0644);
 module_param(rl_expect_fps_margin, int, 0644);
@@ -469,7 +474,8 @@ void fpsgo_put_blc_mlock(const char *tag)
 
 int (*fbt_cal_target_time_fp)(int pid, unsigned long long bufID, int target_fpks,
 		unsigned int target_fps_ori, unsigned long long t_queue_end,
-		unsigned long long t_Q2Q, int quota_v2_clamp_max, int learning_rate_p,
+		unsigned long long t_Q2Q, int quota_v2_clamp_max,
+		int quota_v2_diff_clamp_min, int quota_v2_diff_clamp_max, int learning_rate_p,
 		int learning_rate_n, unsigned long long next_vsync,
 		unsigned long long *target_t_ns);
 EXPORT_SYMBOL(fbt_cal_target_time_fp);
@@ -2460,6 +2466,8 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->reset_taskmask = 0;
 	render_attr->check_buffer_quota_by_pid = check_buffer_quota;
 	render_attr->expected_fps_margin_by_pid = rl_expect_fps_margin;
+	render_attr->quota_v2_diff_clamp_min_by_pid = quota_v2_diff_clamp_min;
+	render_attr->quota_v2_diff_clamp_max_by_pid = quota_v2_diff_clamp_max;
 
 	render_attr->aa_b_minus_idle_t_by_pid = aa_b_minus_idle_time;
 
@@ -2627,7 +2635,10 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 		render_attr->vip_mask_by_pid = pid_attr.vip_mask_by_pid;
 	if (pid_attr.set_vvip_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->set_vvip_by_pid = pid_attr.set_vvip_by_pid;
-
+	if(pid_attr.quota_v2_diff_clamp_min_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->quota_v2_diff_clamp_min_by_pid = pid_attr.quota_v2_diff_clamp_min_by_pid;
+	if(pid_attr.quota_v2_diff_clamp_max_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->quota_v2_diff_clamp_max_by_pid = pid_attr.quota_v2_diff_clamp_max_by_pid;
 by_tid:
 	fpsgo_attr_tid = fpsgo_find_attr_by_tid(thr->pid, 0);
 	if (!fpsgo_attr_tid)
@@ -4477,6 +4488,7 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 	int target_fps_margin, unsigned long long last_target_t_ns, unsigned long long t_q2q_ns,
 	unsigned long long t_queue_end, unsigned long long next_vsync,
 	int expected_fps_margin, int learning_rate_p, int learning_rate_n, int quota_clamp_max,
+	int quota_diff_clamp_min, int quota_diff_clamp_max,
 	int separate_aa_active, long aa_n, long aa_b,
 	long aa_m, int limit_cap, int limit_cap_b, int limit_cap_m,
 	unsigned long long *out_target_t_ns)
@@ -4494,7 +4506,8 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 	if (rl_is_ready && rl_active == 2) {
 		if (fbt_cal_target_time_fp) {
 			ret = fbt_cal_target_time_fp(pid, buffer_id, rl_target_fpks, target_fps_ori,
-				t_queue_end, t_q2q_ns, quota_clamp_max, learning_rate_p,
+				t_queue_end, t_q2q_ns, quota_clamp_max, quota_diff_clamp_min,
+				quota_diff_clamp_max, learning_rate_p,
 				learning_rate_n, next_vsync, &rl_target_t);
 		}
 
@@ -4586,6 +4599,8 @@ static int fbt_boost_policy(
 	int expected_fps_margin_final;
 	int s32_target_time;
 	long filtered_aa_n, filtered_aa_b, filtered_aa_m;
+	int quota_v2_diff_clamp_min_final;
+	int quota_v2_diff_clamp_max_final;
 	int limit_cap_b = 100, limit_cap_m = 100;
 
 	if (!thread_info) {
@@ -4605,6 +4620,9 @@ static int fbt_boost_policy(
 	qr_t2wnt_y_p_final = thread_info->attr.qr_t2wnt_y_p_by_pid;
 	blc_boost_final = thread_info->attr.blc_boost_by_pid;
 	expected_fps_margin_final = thread_info->attr.expected_fps_margin_by_pid;
+	quota_v2_diff_clamp_min_final = thread_info->attr.quota_v2_diff_clamp_min_by_pid;
+	quota_v2_diff_clamp_max_final = thread_info->attr.quota_v2_diff_clamp_max_by_pid;
+
 
 	cur_ts = fpsgo_get_time();
 
@@ -4653,7 +4671,8 @@ static int fbt_boost_policy(
 	fbt_cal_target_time_ns(pid, buffer_id, rl_ko_is_ready, gcc_enable_active, target_fps_ori,
 		target_fpks, target_time, fps_margin, boost_info->last_target_time_ns,
 		thread_info->Q2Q_time, ts, next_vsync, expected_fps_margin_final,
-		rl_learning_rate_p, rl_learning_rate_n, quota_v2_clamp_max, separate_aa_final,
+		rl_learning_rate_p, rl_learning_rate_n, quota_v2_clamp_max,
+		quota_v2_diff_clamp_min_final, quota_v2_diff_clamp_max_final, separate_aa_final,
 		filtered_aa_n, filtered_aa_b, filtered_aa_m,
 		limit_max_cap, limit_cap_b, limit_cap_m, &t2);
 
@@ -7406,6 +7425,16 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->expected_fps_margin_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->expected_fps_margin_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "quota_v2_diff_clamp_min")) {
+		if ((val <= 100 && val >= -100) && action == 's')
+			boost_attr->quota_v2_diff_clamp_min_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->quota_v2_diff_clamp_min_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "quota_v2_diff_clamp_max")) {
+		if ((val <= 100 && val >= -100) && action == 's')
+			boost_attr->quota_v2_diff_clamp_max_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->quota_v2_diff_clamp_max_by_pid = BY_PID_DEFAULT_VAL;
 	} else if (!strcmp(cmd, "aa_b_minus_idle_t")) {
 		if ((val == 0 || val == 1) && action == 's')
 			boost_attr->aa_b_minus_idle_t_by_pid = val;
@@ -9167,6 +9196,8 @@ int __init fbt_cpu_init(void)
 	rl_learning_rate_p = 10;
 	rl_learning_rate_n = 10;
 	quota_v2_clamp_max = 0;
+	quota_v2_diff_clamp_min = DEFAULT_QUOTA_V2_DIFF_CLAMP_MIN;
+	quota_v2_diff_clamp_max = 0;
 	check_buffer_quota = 0;
 	no_buffer_rescue = 1;
 	rl_expect_fps_margin = -1;

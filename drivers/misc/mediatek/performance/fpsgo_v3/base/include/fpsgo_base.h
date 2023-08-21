@@ -254,6 +254,8 @@ struct fpsgo_boost_attr {
 	/* Closed Loop */
 	int check_buffer_quota_by_pid;
 	int expected_fps_margin_by_pid;
+	int quota_v2_diff_clamp_min_by_pid;
+	int quota_v2_diff_clamp_max_by_pid;
 
 	/* Minus idle time*/
 	int aa_b_minus_idle_t_by_pid;

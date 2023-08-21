@@ -108,6 +108,7 @@ int fbt_cal_target_time_ns(int pid, unsigned long long buffer_id,
 	unsigned long long last_target_t_ns, unsigned long long t_q2q_ns,
 	unsigned long long t_queue_end, unsigned long long next_vsync,
 	int expected_fps_margin, int learning_rate_p, int learning_rate_n, int quota_clamp_max,
+	int quota_diff_clamp_min, int quota_diff_clamp_max,
 	int separate_aa_active, long aa_n, long aa_b,
 	long aa_m, int limit_cap, int limit_cap_b, int limit_cap_m,
 	unsigned long long *out_target_t_ns);
