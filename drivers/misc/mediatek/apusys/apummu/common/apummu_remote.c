@@ -8,6 +8,7 @@
 #include <linux/vmalloc.h>
 #include <linux/rpmsg.h>
 #include <linux/delay.h>
+#include <linux/time64.h>
 
 #include "apummu_cmn.h"
 #include "apummu_drv.h"
@@ -70,6 +71,7 @@ int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint3
 	struct apummu_msg_item *item;
 	struct list_head *tmp = NULL, *pos = NULL;
 	struct apummu_msg *rmesg, *snd_rmesg;
+	struct timespec64 begin, end, delta;
 	int retry = 0;
 	bool find = false;
 	uint32_t *ptr;
@@ -131,6 +133,7 @@ int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint3
 	}
 
 	// AMMU_LOG_INFO("Wait for Getting cmd\n");
+	ktime_get_ts64(&begin);
 	do {
 		ret = wait_event_interruptible_timeout(
 				g_ammu_msg->lock.wait_rx,
@@ -144,9 +147,17 @@ int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint3
 			break;
 		}
 
+		ktime_get_ts64(&end);
+		delta = timespec64_sub(end, begin);
+		if (delta.tv_sec > (APUMMU_REMOTE_TIMEOUT/1000)) {
+			AMMU_LOG_ERR("wait ACK timeout manually!!\n");
+			ret = -ETIME;
+			goto out;
+		}
+
 		retry += 1;
 		if (retry % 100 == 0)
-			AMMU_LOG_WRN("Wake up by signal!, stil waiting for ACK %d\n", retry);
+			AMMU_LOG_WRN("Wake up by signal!, still waiting for ACK %d\n", retry);
 		msleep(20);
 	} while (ret == -ERESTARTSYS);
 

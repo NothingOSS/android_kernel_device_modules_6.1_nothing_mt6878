@@ -7,7 +7,7 @@
 #ifndef __APUSYS_APUMMU_REMOTE_H__
 #define __APUSYS_APUMMU_REMOTE_H__
 
-#define APUMMU_REMOTE_TIMEOUT	(10000)
+#define APUMMU_REMOTE_TIMEOUT	(11000)
 
 struct apummu_remote_info {
 	bool init;
