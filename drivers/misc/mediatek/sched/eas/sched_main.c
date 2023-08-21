@@ -174,21 +174,57 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 
 
 #if IS_ENABLED(CONFIG_DETECT_HUNG_TASK)
+
+struct migration_arg {
+	struct task_struct		*task;
+	int				dest_cpu;
+	struct set_affinity_pending	*pending;
+};
+
+/*
+ * @refs: number of wait_for_completion()
+ * @stop_pending: is @stop_work in use
+ */
+struct set_affinity_pending {
+	refcount_t		refs;
+	unsigned int		stop_pending;
+	struct completion	done;
+	struct cpu_stop_work	stop_work;
+	struct migration_arg	arg;
+};
+
 static void mtk_check_d_tasks(void *data, struct task_struct *p,
 				unsigned long t, bool *need_check)
 {
 	unsigned long pending_stime = 0;
 	unsigned long switch_count = p->nvcsw + p->nivcsw;
 	struct mig_task_struct *migts = &((struct mtk_task *)p->android_vendor_data1)->mig_task;
+	struct cpumask cpus;
+	struct set_affinity_pending *my_pending = NULL;
+	struct task_struct *dest_task;
+	struct migration_arg *arg;
+	int dest_cpu;
 
 	*need_check = true;
+
 	/*
 	 * Reset the migration_pending start time
 	 */
 	if (!p->migration_pending || switch_count != p->last_switch_count) {
-		migts->pending_rec= 0;
+		migts->pending_rec = 0;
 		return;
 	}
+
+	/*check the cpu online mask */
+	if (p->migration_pending) {
+		if (!cpumask_and(&cpus, &p->cpus_mask, cpu_online_mask) ||
+			is_migration_disabled(p)) {
+			migts->pending_rec = 0;
+			*need_check = false;
+			return;
+		}
+	}
+
 	/*
 	 * Record the migration_pending start time
 	 */
@@ -205,10 +241,20 @@ static void mtk_check_d_tasks(void *data, struct task_struct *p,
 		*need_check = false;
 	} else {
 		*need_check = true;
-		pr_info("flags:0x%x mig_flags:%d mig_dis %d %d 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx\n",
-			p->flags, p->migration_flags, is_migration_disabled(p),
+		my_pending = p->migration_pending;
+		if (my_pending) {
+			arg = &my_pending->arg;
+			dest_cpu = arg->dest_cpu;
+			dest_task = cpu_curr(dest_cpu);
+			pr_info(" pending %-15.15s %d %d %d %d\n",
+				dest_task->comm, dest_task->pid, dest_cpu,
+				my_pending->stop_pending, my_pending->done.done);
+		}
+		pr_info("flags:0x%x m_flags:%d %d %d %d %d 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx\n",
+			p->flags, p->migration_flags, is_migration_disabled(p), p->on_rq, p->on_cpu,
 			p->nr_cpus_allowed, p->cpus_mask.bits[0], p->cpus_ptr->bits[0],
-			cpu_active_mask->bits[0],cpu_online_mask->bits[0],cpu_possible_mask->bits[0]);
+			cpu_active_mask->bits[0], cpu_online_mask->bits[0],
+			cpu_possible_mask->bits[0], cpu_pause_mask->bits[0]);
 	}
 }
 #endif
