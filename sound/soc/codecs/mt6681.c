@@ -1742,6 +1742,7 @@ static int mt6681_snd_soc_put_volsw(struct snd_kcontrol *kcontrol,
 			type_2r = true;
 		}
 	}
+
 	err = snd_soc_component_update_bits(component, reg, val_mask, val);
 	if (err < 0)
 		return err;
@@ -1814,10 +1815,6 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 	int ret;
 	unsigned int pga_cara = 0;
 
-	dev_dbg(priv->dev,
-		"%s(), name %s, reg(0x%x) = 0x%x, set index = %x indeR = %x\n",
-		__func__, kcontrol->id.name, mc->reg, reg, index, indexR);
-
 	switch (mc->reg) {
 	case MT6681_ZCD_CON2:
 	case MT6681_ZCD_CON2_H:
@@ -1833,7 +1830,6 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 	case MT6681_AUDENC_2_2_PMU_CON1:
 	case MT6681_AUDENC_2_2_PMU_CON2:
 	case MT6681_AUDENC_2_2_PMU_CON3:
-		index *= 2;
 		if (priv->mic_hifi_mode)
 			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
 		else
@@ -1841,7 +1837,6 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 		break;
 	case MT6681_AUDENC_2_2_PMU_CON4:
 	case MT6681_AUDENC_2_2_PMU_CON5:
-		index *= 2;
 		if (priv->mic_hifi_mode)
 			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
 		else
@@ -1947,8 +1942,8 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 		break;
 	}
 
-	dev_dbg(priv->dev, "%s(), name %s, reg(0x%x) = 0x%x, set index = %x\n",
-		__func__, kcontrol->id.name, mc->reg, reg, index);
+	dev_dbg(priv->dev, "%s(), [1.5dB] name %s, reg(0x%x) = 0x%x, set index = %x, indeR = %x\n",
+		__func__, kcontrol->id.name, mc->reg, reg, index, indexR);
 
 	return ret;
 }
