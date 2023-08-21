@@ -41,6 +41,12 @@
 #include "../mml/mtk-mml-drm-adaptor.h"
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
 
+#include <linux/module.h>
+
+int skip_mdp;
+module_param(skip_mdp, int, 0644);
+
+
 extern unsigned int g_mml_mode;
 
 static struct drm_mtk_layering_info layering_info;
@@ -4199,10 +4205,12 @@ static void check_is_mml_layer(const int disp_idx,
 			DRM_MMP_MARK(layering, 0x331, __LINE__);
 		}
 
-		if (mtk_crtc->dli_relay_1tnp && (MTK_MML_DISP_MDP_LAYER & c->layer_caps)) {
-			c->layer_caps &= ~MTK_MML_DISP_MDP_LAYER;
-			c->layer_caps |= MTK_MML_DISP_NOT_SUPPORT;
-			DDPINFO("WA: replace MDP by GPU\n");
+		if (skip_mdp) {
+			if (mtk_crtc->dli_relay_1tnp && (MTK_MML_DISP_MDP_LAYER & c->layer_caps)) {
+				c->layer_caps &= ~MTK_MML_DISP_MDP_LAYER;
+				c->layer_caps |= MTK_MML_DISP_NOT_SUPPORT;
+				DDPINFO("WA: replace MDP by GPU\n");
+			}
 		}
 
 		if (MTK_MML_DISP_NOT_SUPPORT & c->layer_caps)
