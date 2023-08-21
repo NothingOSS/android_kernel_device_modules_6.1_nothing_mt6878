@@ -304,6 +304,7 @@ static struct cg_ppt_power_info *get_cg_ppt_power_info(void)
 static struct cg_ppt_combo_info *get_cg_ppt_combo_info(void)
 {
 	static struct cg_ppt_combo_info ret_struct;
+	int last_i;
 
 	//DlptSramLayout->gswrun_info
 	ret_struct.cgppb_mw = dlpt_sram_layout_ptr->gswrun_info.cgppb_mw;
@@ -316,8 +317,9 @@ static struct cg_ppt_combo_info *get_cg_ppt_combo_info(void)
 	dlpt_sram_layout_ptr->peak_power_combo_table_gpu[2].combopeakpowerin_mw;
 	ret_struct.gpu_combo3 =
 	dlpt_sram_layout_ptr->peak_power_combo_table_gpu[3].combopeakpowerin_mw;
+	last_i=GPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT-1;
 	ret_struct.gpu_combo4 =
-	dlpt_sram_layout_ptr->peak_power_combo_table_gpu[4].combopeakpowerin_mw;
+	dlpt_sram_layout_ptr->peak_power_combo_table_gpu[last_i].combopeakpowerin_mw;
 
 
 	ret_struct.cpu_combo0 =
@@ -328,8 +330,9 @@ static struct cg_ppt_combo_info *get_cg_ppt_combo_info(void)
 	dlpt_sram_layout_ptr->peak_power_combo_table_cpu[2].combopeakpowerin_mw;
 	ret_struct.cpu_combo3 =
 	dlpt_sram_layout_ptr->peak_power_combo_table_cpu[3].combopeakpowerin_mw;
+	last_i=CPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT-1;
 	ret_struct.cpu_combo4 =
-	dlpt_sram_layout_ptr->peak_power_combo_table_cpu[4].combopeakpowerin_mw;
+	dlpt_sram_layout_ptr->peak_power_combo_table_cpu[last_i].combopeakpowerin_mw;
 
 	return &ret_struct;
 }
@@ -552,6 +555,54 @@ static ssize_t model_option_store(struct device *dev, struct device_attribute *a
 
 /*
  * -----------------------------------------------
+ * device node: cgppt_dump
+ * -----------------------------------------------
+ */
+static ssize_t cgppt_dump_show(struct device *dev, struct device_attribute *attr,
+			    char *buf)
+{
+	struct ThermalCsramCtrlBlock *ThermalCsramCtrlBlock_ptr =
+		thermal_csram_ctrl_block_get();
+	struct DlptCsramCtrlBlock *DlptCsramCtrlBlock_ptr =
+		dlpt_csram_ctrl_block_get();
+	int lastgi = GPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT-1;
+	int lastci = CPU_PEAK_POWER_COMBO_TABLE_IDX_ROW_COUNT-1;
+
+
+	return snprintf(buf, PAGE_SIZE,
+	"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+	// Status
+	DlptCsramCtrlBlock_ptr->peak_power_budget_mode,		//cgppt_mode
+	dlpt_sram_layout_ptr->mo_info.mo_status,		//cgppt_mo
+	ThermalCsramCtrlBlock_ptr->cpu_low_key,			//cgppt_clowkey
+	dlpt_sram_layout_ptr->gswrun_info.gpu_preboost_time_us,	//cgppt_prebsttime
+	dlpt_sram_layout_ptr->gswrun_info.is_gpu_favor,		//cgppt_gpufavor
+	dlpt_sram_layout_ptr->gswrun_info.combo_idx,		//cgppt_comboidx
+	// Freq
+	ThermalCsramCtrlBlock_ptr->g2c_b_pp_lmt_freq*1000,	//cgppt_blimtfreq
+	ThermalCsramCtrlBlock_ptr->g2c_m_pp_lmt_freq*1000,	//cgppt_mlimtfreq
+	ThermalCsramCtrlBlock_ptr->g2c_l_pp_lmt_freq*1000,	//cgppt_llimtfreq
+	dlpt_sram_layout_ptr->gswrun_info.gpu_limit_freq_m*1000,//cgppt_glimtfreq
+	// ppb
+	dlpt_sram_layout_ptr->gswrun_info.cgppb_mw,		//cgppt_cgppb
+	//cgppt_gcombo0-n
+	dlpt_sram_layout_ptr->peak_power_combo_table_gpu[0].combopeakpowerin_mw,
+	dlpt_sram_layout_ptr->peak_power_combo_table_gpu[1].combopeakpowerin_mw,
+	dlpt_sram_layout_ptr->peak_power_combo_table_gpu[2].combopeakpowerin_mw,
+	dlpt_sram_layout_ptr->peak_power_combo_table_gpu[3].combopeakpowerin_mw,
+	dlpt_sram_layout_ptr->peak_power_combo_table_gpu[lastgi].combopeakpowerin_mw,
+	//cgppt_ccombo0-n
+	dlpt_sram_layout_ptr->peak_power_combo_table_cpu[0].combopeakpowerin_mw,
+	dlpt_sram_layout_ptr->peak_power_combo_table_cpu[1].combopeakpowerin_mw,
+	dlpt_sram_layout_ptr->peak_power_combo_table_cpu[2].combopeakpowerin_mw,
+	dlpt_sram_layout_ptr->peak_power_combo_table_cpu[3].combopeakpowerin_mw,
+	dlpt_sram_layout_ptr->peak_power_combo_table_cpu[lastci].combopeakpowerin_mw
+	);
+
+}
+
+/*
+ * -----------------------------------------------
  * sysfs init
  * -----------------------------------------------
  */
@@ -559,12 +610,14 @@ static DEVICE_ATTR_RW(mode);
 static DEVICE_ATTR_RW(hr_enable);
 static DEVICE_ATTR_RW(command);
 static DEVICE_ATTR_RW(model_option);
+static DEVICE_ATTR_RO(cgppt_dump);
 
 static struct attribute *sysfs_attrs[] = {
 	&dev_attr_mode.attr,
 	&dev_attr_hr_enable.attr,
 	&dev_attr_command.attr,
 	&dev_attr_model_option.attr,
+	&dev_attr_cgppt_dump.attr,
 	NULL,
 };
 
