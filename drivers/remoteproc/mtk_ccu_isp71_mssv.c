@@ -1179,12 +1179,10 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 		node_cammainpwr = of_find_node_by_phandle(phandle_cammainpwr);
 		if (node_cammainpwr)
 			ccu->pdev_cammainpwr = of_find_device_by_node(node_cammainpwr);
-		if (WARN_ON(!ccu->pdev_cammainpwr)) {
+		if (WARN_ON(!ccu->pdev_cammainpwr))
 			dev_err(ccu->dev, "failed to get ccu cammainpwr pdev\n");
-		} else {
+		else
 			ccu->dev_cammainpwr = &ccu->pdev_cammainpwr->dev;
-			pm_runtime_enable(ccu->dev_cammainpwr);
-		}
 		of_node_put(node_cammainpwr);
 	}
 	/* get Clock control from device tree.  */
@@ -1390,6 +1388,22 @@ static int mtk_ccu_read_platform_info_from_dt(struct device_node
 	return 0;
 }
 
+static int mtk_ccu_cam_main_probe(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+
+	pm_runtime_enable(dev);
+	return 0;
+}
+
+static int mtk_ccu_cam_main_remove(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+
+	pm_runtime_disable(dev);
+	return 0;
+}
+
 static int mtk_ccu1_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1430,7 +1444,7 @@ static int mtk_ccu_get_power(struct mtk_ccu *ccu, struct device *dev)
 	uint8_t *sram_con;
 	int rc, ret = pm_runtime_get_sync(dev);
 
-	if (ret != 0) {
+	if (ret < 0) {
 		dev_err(dev, "pm_runtime_get_sync failed %d", ret);
 		return ret;
 	}
@@ -1438,7 +1452,7 @@ static int mtk_ccu_get_power(struct mtk_ccu *ccu, struct device *dev)
 	if (ccu->ccu_version == CCU_VER_ISP7SP) {
 		rc = pm_runtime_get_sync(ccu->dev_cammainpwr);
 		LOG_DBG("CCU power-on cammainpwr %d\n", rc);
-		ccu->cammainpwr_powered = (rc == 0);
+		ccu->cammainpwr_powered = (rc >= 0);
 
 		sram_con = ((uint8_t *)ccu->spm_base)+ccu->ccu_sram_con_offset;
 		writel(readl(sram_con) & ~CCU_SLEEP_SRAM_PDN, sram_con);
@@ -1458,14 +1472,14 @@ static void mtk_ccu_put_power(struct mtk_ccu *ccu, struct device *dev)
 
 		if (ccu->cammainpwr_powered) {
 			ret = pm_runtime_put_sync(ccu->dev_cammainpwr);
-			if (ret != 0)
+			if (ret < 0)
 				dev_err(dev, "pm_runtime_put_sync cammainpwr failed %d", ret);
 			ccu->cammainpwr_powered = false;
 		}
 	}
 
 	ret = pm_runtime_put_sync(dev);
-	if (ret != 0)
+	if (ret < 0)
 		dev_err(dev, "pm_runtime_put_sync failed %d", ret);
 }
 
@@ -1482,6 +1496,22 @@ static struct platform_driver ccu_rproc_driver = {
 		.name = MTK_CCU_DEV_NAME,
 		.owner = THIS_MODULE,
 		.of_match_table = of_match_ptr(mtk_ccu_of_ids),
+	},
+};
+
+static const struct of_device_id mtk_ccu_cam_main_of_ids[] = {
+	{.compatible = "mediatek,ccucammain", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, mtk_ccu_cam_main_of_ids);
+
+static struct platform_driver ccu_cam_main_driver = {
+	.probe = mtk_ccu_cam_main_probe,
+	.remove = mtk_ccu_cam_main_remove,
+	.driver = {
+		.name = MTK_CCU_CAM_MAIN_NAME,
+		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(mtk_ccu_cam_main_of_ids),
 	},
 };
 
@@ -1503,6 +1533,7 @@ static struct platform_driver ccu_rproc1_driver = {
 
 static int __init ccu_init(void)
 {
+	platform_driver_register(&ccu_cam_main_driver);
 	platform_driver_register(&ccu_rproc_driver);
 	platform_driver_register(&ccu_rproc1_driver);
 	return 0;
@@ -1510,6 +1541,7 @@ static int __init ccu_init(void)
 
 static void __exit ccu_exit(void)
 {
+	platform_driver_unregister(&ccu_cam_main_driver);
 	platform_driver_unregister(&ccu_rproc_driver);
 	platform_driver_unregister(&ccu_rproc1_driver);
 }
