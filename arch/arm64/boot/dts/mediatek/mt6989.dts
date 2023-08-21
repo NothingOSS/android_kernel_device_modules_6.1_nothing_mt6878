@@ -5814,6 +5814,7 @@
 			vgpu-supply = <&mt6373_vbuck3>;
 			vstack-supply = <&mt6316_7_vbuck1>;
 			vsram-supply = <&mt6373_vbuck4>;
+			vsram-plus-supply = <&mt6316_15_vbuck3>;
 			gpufreq-wrapper-supply = <&gpufreq_wrapper>;
 		};
 
