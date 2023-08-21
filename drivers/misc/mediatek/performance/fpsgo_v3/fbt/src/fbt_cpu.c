@@ -293,6 +293,7 @@ static int cpumask_second;
 static int cpumask_others;
 static int set_ls;
 static int ls_groupmask;
+static int aa_b_minus_idle_time;
 static int vip_mask;
 static int set_vvip;
 static int limit_perf_b;
@@ -362,6 +363,7 @@ module_param(quota_v2_clamp_max, int, 0644);
 module_param(rl_learning_rate_p, int, 0644);
 module_param(rl_learning_rate_n, int, 0644);
 module_param(rl_expect_fps_margin, int, 0644);
+module_param(aa_b_minus_idle_time, int, 0644);
 
 static DEFINE_SPINLOCK(freq_slock);
 static DEFINE_MUTEX(fbt_mlock);
@@ -395,6 +397,7 @@ static unsigned int cpu_max_freq;
 static struct fbt_cpu_dvfs_info *cpu_dvfs;
 static int max_cap_cluster, min_cap_cluster, sec_cap_cluster;
 static int max_cl_core_num;
+static int max_cl_min_perf;
 
 static int limit_policy;
 static struct fbt_syslimit *limit_clus_ceil;
@@ -2458,6 +2461,8 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->check_buffer_quota_by_pid = check_buffer_quota;
 	render_attr->expected_fps_margin_by_pid = rl_expect_fps_margin;
 
+	render_attr->aa_b_minus_idle_t_by_pid = aa_b_minus_idle_time;
+
 
 #if FPSGO_MW
 	fpsgo_attr = fpsgo_find_attr_by_pid(thr->tgid, 0);
@@ -2616,6 +2621,8 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 		render_attr->set_ls_by_pid = pid_attr.set_ls_by_pid;
 	if (pid_attr.ls_groupmask_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->ls_groupmask_by_pid = pid_attr.ls_groupmask_by_pid;
+	if(pid_attr.aa_b_minus_idle_t_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->aa_b_minus_idle_t_by_pid = pid_attr.aa_b_minus_idle_t_by_pid;
 	if (pid_attr.vip_mask_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->vip_mask_by_pid = pid_attr.vip_mask_by_pid;
 	if (pid_attr.set_vvip_by_pid != BY_PID_DEFAULT_VAL)
@@ -5226,6 +5233,11 @@ static unsigned long long fbt_adjust_loading_exp(struct render_info *thr,
 	unsigned long long loading_result = 0U;
 	int first_cluster, sec_cluster;
 	int separate_aa_final = thr->attr.separate_aa_by_pid;
+	unsigned long long cur_idle_time = 0ULL, cur_wall_time = 0ULL;
+	unsigned long long frame_cpu_b_idle_time = 0ULL, frame_cpu_b_idle_aa = 0ULL;
+	unsigned long long frame_cpu_b_walltime = 0ULL, cur_cpu_b_loading = 100ULL;
+	int aa_b_minus_idle_time_final = thr->attr.aa_b_minus_idle_t_by_pid;
+
 
 	loading_cl = kcalloc(cluster_num, sizeof(unsigned long long), GFP_KERNEL);
 	if (!loading_cl) {
@@ -5262,6 +5274,40 @@ static unsigned long long fbt_adjust_loading_exp(struct render_info *thr,
 		loading_cl[i] = loading_result;
 		thr->boost_info.cl_loading[i] = loading_cl[i];
 	}
+
+	if (aa_b_minus_idle_time_final == 1) {
+		/*idle time include iowait time*/
+		cur_idle_time = get_cpu_idle_time(cpu_dvfs[max_cap_cluster].first_cpu,
+				&cur_wall_time, 1);
+		if (thr->idle_time_b_us) {
+			frame_cpu_b_idle_time = cur_idle_time - thr->idle_time_b_us;
+			frame_cpu_b_walltime = cur_wall_time - thr->wall_b_runtime_us;
+
+			if (frame_cpu_b_walltime > 0 && frame_cpu_b_walltime >
+				frame_cpu_b_idle_time) {
+				cur_cpu_b_loading = div_u64((100ULL *
+					(frame_cpu_b_walltime - frame_cpu_b_idle_time)),
+						frame_cpu_b_walltime);
+				frame_cpu_b_idle_aa = 100ULL - cur_cpu_b_loading;
+			}
+			loading_cl[max_cap_cluster] = div_u64(loading_cl[max_cap_cluster] *
+				cur_cpu_b_loading, 100ULL);
+			loading_cl[max_cap_cluster] += div_u64(max_cl_min_perf *
+				frame_cpu_b_idle_aa, 100ULL);
+			thr->boost_info.cl_loading[max_cap_cluster] = loading_cl[max_cap_cluster];
+			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, cur_cpu_b_loading,
+				"cpu_loading[%d]", max_cap_cluster);
+			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, loading_cl[max_cap_cluster],
+				"q2q_loading_cl_idle[%d]", max_cap_cluster);
+			fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id, frame_cpu_b_idle_time,
+				"idle_time[%d]", cpu_dvfs[max_cap_cluster].first_cpu);
+			fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id, max_cl_min_perf,
+				"min_perf[%d]", max_cap_cluster);
+		}
+		thr->idle_time_b_us = cur_idle_time;
+		thr->wall_b_runtime_us = cur_wall_time;
+	}
+
 
 SKIP:
 	if (start_ts == -1) {
@@ -5631,7 +5677,7 @@ void fbt_cpufreq_cb_cap(int cid, int cap, unsigned long long *freq_lastest_ts,
 
 SKIP:
 	last_freq_cb_ts_100us = *freq_last_cb_ts;
-	last_freq_cap = *freq_last_cb_ts;
+	last_freq_cap = *freq_last_obv;
 	*freq_last_cb_ts = new_ts;
 	spin_unlock_irqrestore(&loading_slock, spinlock_flag_loading);
 
@@ -6289,6 +6335,12 @@ static void fbt_update_pwr_tbl(void)
 		FPSGO_LOGE("NULL power table\n");
 		cpu_max_freq = 1;
 	}
+#if FPSGO_DYNAMIC_WL
+	max_cl_min_perf = fbt_cluster_X2Y(max_cap_cluster, cpu_dvfs[max_cap_cluster].num_opp,
+		OPP, CAP, 1, __func__);
+#else  // FPSGO_DYNAMIC_WL
+	max_cl_min_perf = cpu_dvfs[max_cap_cluster].capacity_ratio[nr_freq_cpu];
+#endif  // FPSGO_DYNAMIC_WL
 }
 
 static void fbt_setting_exit(void)
@@ -7354,6 +7406,11 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->expected_fps_margin_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->expected_fps_margin_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "aa_b_minus_idle_t")) {
+		if ((val == 0 || val == 1) && action == 's')
+			boost_attr->aa_b_minus_idle_t_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->aa_b_minus_idle_t_by_pid = BY_PID_DEFAULT_VAL;
 	}
 
 delete_pid:
@@ -9113,6 +9170,8 @@ int __init fbt_cpu_init(void)
 	check_buffer_quota = 0;
 	no_buffer_rescue = 1;
 	rl_expect_fps_margin = -1;
+
+	aa_b_minus_idle_time = 0;
 
 	if (cluster_num <= 0)
 		FPSGO_LOGE("cpufreq policy not found");

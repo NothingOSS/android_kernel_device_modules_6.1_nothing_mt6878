@@ -254,6 +254,9 @@ struct fpsgo_boost_attr {
 	/* Closed Loop */
 	int check_buffer_quota_by_pid;
 	int expected_fps_margin_by_pid;
+
+	/* Minus idle time*/
+	int aa_b_minus_idle_t_by_pid;
 };
 
 struct render_info {
@@ -290,6 +293,8 @@ struct render_info {
 	unsigned long long Q2Q_time;
 	unsigned long long running_time;
 	unsigned long long raw_runtime;
+	unsigned long long idle_time_b_us;
+	unsigned long long wall_b_runtime_us;
 
 	/*ux*/
 	unsigned long long t_last_start;
