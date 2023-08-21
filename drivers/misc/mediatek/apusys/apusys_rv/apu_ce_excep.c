@@ -92,6 +92,13 @@ const char *CE_JOB_NAME[CE_JOB_ID_MAX] = {
 	"APUSYS_CE_DVFS"
 };
 
+const enum CE_JOB_ID CE_HW_TIMER[] = {
+	CE_JOB_ID_TPPA_PLUS_PSC,
+	CE_JOB_ID_MAX,
+	CE_JOB_ID_MAX,
+	CE_JOB_ID_MAX
+};
+
 struct apu_coredump_work_struct {
 	struct mtk_apu *apu;
 	struct work_struct work;
@@ -180,7 +187,7 @@ static int get_exception_job_id(struct device *dev)
 {
 	uint32_t op;
 	uint32_t ce_task[4];
-	int32_t job_id, exception_ce_id;
+	int32_t job_id, exception_ce_id, exception_timer_id;
 	uint32_t ce_flag = 0, ace_flag = 0, user_flag = 0;
 	uint32_t apb_out_status = 0, apb_in_status = 0, apb_status = 0;
 
@@ -226,6 +233,7 @@ static int get_exception_job_id(struct device *dev)
 	}
 
 	exception_ce_id = -1;
+	exception_timer_id = -1;
 
 	if (ce_flag) {
 		if (ce_flag & CE_0_IRQ_MASK)
@@ -238,13 +246,13 @@ static int get_exception_job_id(struct device *dev)
 			exception_ce_id = 3;
 	} else if (ace_flag) {
 		if (ace_flag & CE_MISS_TYPE2_REQ_FLAG_0_MSK)
-			exception_ce_id = 0;
+			exception_timer_id = 0;
 		else if (ace_flag & CE_MISS_TYPE2_REQ_FLAG_1_MSK)
-			exception_ce_id = 1;
+			exception_timer_id = 1;
 		else if (ace_flag & CE_MISS_TYPE2_REQ_FLAG_2_MSK)
-			exception_ce_id = 2;
+			exception_timer_id = 2;
 		else if (ace_flag & CE_MISS_TYPE2_REQ_FLAG_3_MSK)
-			exception_ce_id = 3;
+			exception_timer_id = 3;
 
 		else if (ace_flag & CE_NON_ALIGNED_APB_FLAG_MSK) {
 			if (ace_flag & CE_NON_ALIGNED_APB_OUT_FLAG_MSK)
@@ -263,15 +271,23 @@ static int get_exception_job_id(struct device *dev)
 		}
 	}
 
-	if (exception_ce_id < 0)
+	if (exception_ce_id < 0 && exception_timer_id < 0)
 		return -1;
 
-	dev_info(dev, "CE_%d cause exception\n", exception_ce_id);
+	if (exception_ce_id >= 0) {
+		dev_info(dev, "CE_%d cause exception\n", exception_ce_id);
+		job_id = (ce_task[exception_ce_id] >> CE_TASK_JOB_SFT) & CE_TASK_JOB_MSK;
 
-	job_id = (ce_task[exception_ce_id] >> CE_TASK_JOB_SFT) & CE_TASK_JOB_MSK;
+		dev_info(dev, "CE_%d is running job %d (%s)\n",
+			exception_ce_id, job_id, get_ce_job_name_by_id(job_id));
+	}
+	if (exception_timer_id >= 0) {
+		dev_info(dev, "HW_Timer_%d cause exception\n", exception_timer_id);
+		job_id = CE_HW_TIMER[exception_timer_id];
 
-	dev_info(dev, "CE_%d is running job %d (%s)\n",
-		exception_ce_id, job_id, get_ce_job_name_by_id(job_id));
+		dev_info(dev, "HW_Timer_%d mapping to job id %d (%s)\n",
+			exception_timer_id, job_id, get_ce_job_name_by_id(job_id));
+	}
 
 	return job_id;
 }
