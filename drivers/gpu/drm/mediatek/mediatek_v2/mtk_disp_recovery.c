@@ -451,7 +451,7 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_ddp_comp *output_comp;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
-	int ret = 0;
+	int ret = 0, i;
 	struct cmdq_pkt *cmdq_handle = NULL;
 	int index = drm_crtc_index(crtc);
 
@@ -471,7 +471,8 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 	mtk_drm_trace_begin("esd recover");
 	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
 
-	if (mtk_crtc->is_mml) {
+	/* stop MML IR & DL before display disable */
+	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
 		mtk_crtc_pkt_create(&cmdq_handle, crtc, mtk_crtc->gce_obj.client[CLIENT_CFG]);
 		mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle,
 					      mtk_crtc_is_frame_trigger_mode(crtc) ? true : false);
@@ -490,9 +491,25 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 	//			mtk_crtc->qos_ctx->last_hrt_req);
 	}
 
+	/* unset and disable MML DL layer */
+	for (i = 0; i < mtk_crtc->layer_nr; i++) {
+		struct drm_plane *plane = &mtk_crtc->planes[i].base;
+		struct mtk_plane_state *plane_state;
+
+		plane_state = to_mtk_plane_state(plane->state);
+		if (plane_state->comp_state.layer_caps & MTK_MML_DISP_DIRECT_LINK_LAYER) {
+			plane_state->comp_state.layer_caps &= ~MTK_MML_DISP_DIRECT_LINK_LAYER;
+			plane_state->pending.mml_mode = 0;
+			plane_state->pending.enable = 0;
+			DDPINFO("%s unset & disable mml DL layer %d\n", __func__, i);
+		}
+	}
+
+
 	mtk_drm_crtc_enable(crtc);
 	CRTC_MMP_MARK(index, esd_recovery, 0, 3);
 
+	/* resubmit MML IR && since MML DL layer disable already, no need to resubmit */
 	if (mtk_crtc->is_mml) {
 		if (!kref_read(&mtk_crtc->mml_ir_sram.ref))
 			mtk_crtc_alloc_sram(mtk_crtc, mtk_crtc->mml_ir_sram.expiry_hrt_idx);
