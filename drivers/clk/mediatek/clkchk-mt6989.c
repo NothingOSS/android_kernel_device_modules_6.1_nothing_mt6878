@@ -2197,6 +2197,22 @@ u32 get_mt6989_reg_value(u32 id, u32 ofs)
 }
 EXPORT_SYMBOL_GPL(get_mt6989_reg_value);
 
+static void write_mt6989_reg_value(u32 id, u32 ofs, u32 val)
+{
+	if (id >= chk_sys_num)
+		return;
+
+	clk_writel(rb[id].virt + ofs, val);
+}
+
+static void set_mt6989_reg_value(u32 id, u32 ofs, u32 mask, u32 val)
+{
+	if (id >= chk_sys_num)
+		return;
+
+	clk_writel(rb[id].virt + ofs, (clk_readl(rb[id].virt + ofs) & ~mask) | val);
+}
+
 /*
  * clkchk pwr_data
  */
@@ -2788,6 +2804,54 @@ static enum chk_sys_id vlp_dump_id[] = {
 static void dump_vlp_reg(struct regmap *regmap, u32 shift)
 {
 	const struct fmeter_clk *fclks;
+	int i = 0;
+
+	if (shift && ((get_mt6989_reg_value(spm, 0xEA8) & ((1 << 30) | (1<< 31))) ==  0)) {
+		//spm mtcmos power off
+		set_mt6989_reg_value(spm, 0xEA8,0xffff, 0x1112);
+		//switch spm control(mminfra)
+		write_mt6989_reg_value(vlp_ao, 0x420, 0x5);
+		udelay(100);
+		//spm mminfra power on
+		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) | 0x4);
+		while ((get_mt6989_reg_value(spm, 0xEA8)  & (1 << 30)) !=  (1 << 30)) {
+			udelay(10);
+			i++;
+			if (i > 1000) {
+				pr_notice("mtcmos timeout\n");
+				break;
+			}
+		}
+		/* wait ack*/
+		udelay(50);
+		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) | 0x8);
+		i = 0;
+		while ((get_mt6989_reg_value(spm, 0xEA8)  & (1 << 31)) !=  (1 << 31)) {
+			udelay(10);
+			i++;
+			if (i > 1000) {
+				pr_notice("mtcmos2 timeout\n");
+				break;
+			}
+		}
+		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) & ~(0x10));
+		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) & ~(0x2));
+		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8)  | (0x1));
+		write_mt6989_reg_value(spm, 0xEA8, get_mt6989_reg_value(spm, 0xEA8) & ~(0x100));
+		i = 0;
+		while ((get_mt6989_reg_value(spm, 0xEA8)  & (1 << 12)) ==  (1 << 12)) {
+			udelay(10);
+			i++;
+			if (i > 1000) {
+				pr_notice("sram timeout\n");
+				break;
+			}
+		}
+		// switch bus protect to spm control
+		write_mt6989_reg_value(vlp_ao, 0x420, 0x1);
+		//mminfra smi cg turn on
+		write_mt6989_reg_value(mminfra_config, 0x108, 0x4);
+	}
 
 	fclks = mt_get_fmeter_clks();
 	set_subsys_reg_dump_mt6989(vlp_dump_id);
