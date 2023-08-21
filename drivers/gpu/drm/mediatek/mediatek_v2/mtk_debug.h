@@ -142,6 +142,7 @@ enum GCE_COND_REVERSE_COND {
 #define GCE_FI do { \
 	_inst = cmdq_pkt_get_va_by_offset(_cond_pkt, _inst_jump_end); \
 	_jump_pa = cmdq_pkt_get_pa_by_offset(_cond_pkt, _cond_pkt->cmd_buf_size); \
+	*_inst = *_inst & ((u64)0xFFFFFFFF << 32); \
 	*_inst = *_inst | CMDQ_REG_SHIFT_ADDR(_jump_pa); \
 } while (0)
 
