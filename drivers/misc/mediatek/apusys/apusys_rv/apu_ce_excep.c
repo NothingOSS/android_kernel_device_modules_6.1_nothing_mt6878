@@ -314,18 +314,30 @@ static void log_ce_register(struct device *dev)
 	if (apusys_rv_smc_call(
 			dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, &res2) == 0) {
 		dev_info(dev, "APU_CE3_RUN_INSTR: 0x%08x\n", res0);
-		dev_info(dev, "SMC_OP_APU_CE0_RUN_PC: 0x%08x\n", res1);
-		dev_info(dev, "SMC_OP_APU_CE1_RUN_PC: 0x%08x\n", res2);
+		dev_info(dev, "APU_CE0_RUN_PC: 0x%08x\n", res1);
+		dev_info(dev, "APU_CE1_RUN_PC: 0x%08x\n", res2);
 	}
 
 	op = GET_SMC_OP(SMC_OP_APU_CE2_RUN_PC,
 					SMC_OP_APU_CE3_RUN_PC,
-					0x0);
+					SMC_OP_APU_APU_ACE_CMD_Q_STATUS_0);
 
 	if (apusys_rv_smc_call(
-			dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, NULL) == 0) {
-		dev_info(dev, "SMC_OP_APU_CE2_RUN_PC: 0x%08x\n", res0);
-		dev_info(dev, "SMC_OP_APU_CE3_RUN_PC: 0x%08x\n", res1);
+			dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, &res2) == 0) {
+		dev_info(dev, "APU_CE2_RUN_PC: 0x%08x\n", res0);
+		dev_info(dev, "APU_CE3_RUN_PC: 0x%08x\n", res1);
+		dev_info(dev, "APU_APU_ACE_CMD_Q_STATUS_0: 0x%08x\n", res2);
+	}
+
+	op = GET_SMC_OP(SMC_OP_APU_APU_ACE_CMD_Q_STATUS_3,
+					SMC_OP_APU_APU_ACE_CMD_Q_STATUS_6,
+					SMC_OP_APU_APU_ACE_CMD_Q_STATUS_7);
+
+	if (apusys_rv_smc_call(
+			dev, MTK_APUSYS_KERNEL_OP_APUSYS_CE_REGDUMP, op, &res0, &res1, &res2) == 0) {
+		dev_info(dev, "APU_APU_ACE_CMD_Q_STATUS_3: 0x%08x\n", res0);
+		dev_info(dev, "APU_APU_ACE_CMD_Q_STATUS_6: 0x%08x\n", res1);
+		dev_info(dev, "APU_APU_ACE_CMD_Q_STATUS_7: 0x%08x\n", res2);
 	}
 }
 
