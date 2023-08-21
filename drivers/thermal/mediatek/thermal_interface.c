@@ -166,9 +166,24 @@ int scrn_genl_send_to_user(void *data, int len)
 		return ret;
 	}
 
-	nla_put_s32(skb, SCRN_A_VAL, ((struct _SCRN_THRM_PACKAGE *)data)->main_scrn_status);
-	nla_put_s32(skb, SCRN_A_VAL, ((struct _SCRN_THRM_PACKAGE *)data)->sub_scrn_status);
-	nla_put_string(skb, SCRN_A_MSG, ((struct _SCRN_THRM_PACKAGE *)data)->proc_name);
+	ret = nla_put_s32(skb, SCRN_A_VAL, ((struct _SCRN_THRM_PACKAGE *)data)->main_scrn_status);
+	if (ret) {
+		pr_info("SCRN Add 32bit signed integer attribute failed; err code: %d\n", ret);
+		nlmsg_free(skb);
+		return ret;
+	}
+	ret = nla_put_s32(skb, SCRN_A_VAL, ((struct _SCRN_THRM_PACKAGE *)data)->sub_scrn_status);
+	if (ret) {
+		pr_info("SCRN Add 32bit signed integer attribute failed; err code: %d\n", ret);
+		nlmsg_free(skb);
+		return ret;
+	}
+	ret = nla_put_string(skb, SCRN_A_MSG, ((struct _SCRN_THRM_PACKAGE *)data)->proc_name);
+	if (ret) {
+		pr_info("SCRN Add string  attribute failed; err code: %d\n", ret);
+		nlmsg_free(skb);
+		return ret;
+	}
 
 	ret = genlmsg_unicast(&init_net, skb, scrn_nl_pid);
 	if (ret < 0) {
