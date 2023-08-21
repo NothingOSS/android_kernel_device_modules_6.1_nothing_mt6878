@@ -61,6 +61,11 @@ enum CMDQ_ENG_ENUM {
 				 (1LL << CMDQ_ENG_MDP_WROT0)	| \
 				 (1LL << CMDQ_ENG_MDP_WROT1))
 
+#define CMDQ_ENG_SUPPORT_READBACK_GROUP_BITS ((1LL << CMDQ_ENG_MDP_HDR0) | \
+				 (1LL << CMDQ_ENG_MDP_HDR1) | \
+				 (1LL << CMDQ_ENG_MDP_AAL0) | \
+				 (1LL << CMDQ_ENG_MDP_AAL1))
+
 #define CMDQ_ENG_MDP_GROUP_FLAG(flag)   ((flag) & (CMDQ_ENG_MDP_GROUP_BITS))
 
 #define CMDQ_FOREACH_GROUP(ACTION_struct)\

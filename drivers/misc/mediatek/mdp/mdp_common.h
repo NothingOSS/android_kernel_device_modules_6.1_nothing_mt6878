@@ -144,6 +144,8 @@ typedef void (*MdpVcpPQReadback) (struct cmdqRecStruct *handle,
 
 typedef bool (*MdpSvpSupportMetaData) (void);
 
+typedef bool (*MdpIsEngineSupportReadback) (u16);
+
 typedef u16 (*MdpGetReadbackEventLock) (void);
 typedef u16 (*MdpGetReadbackEventUnlock) (void);
 typedef u32 (*MdpGetPollGpr) (u16 engine, u32 reg_addr);
@@ -219,6 +221,7 @@ struct cmdqMDPFuncStruct {
 	MdpGetReadbackEventLock mdpGetReadbackEventLock;
 	MdpGetReadbackEventUnlock mdpGetReadbackEventUnlock;
 	MdpGetPollGpr mdpGetPollGpr;
+	MdpIsEngineSupportReadback mdpIsEngineSupportReadback;
 
 };
 
@@ -355,6 +358,7 @@ void cmdq_mdp_vcp_pq_readback(struct cmdqRecStruct *handle, u16 engine,
 u32 cmdq_mdp_get_poll_gpr(u16 engine, u32 reg_addr);
 u16 mdp_get_rb_event_lock(void);
 u16 mdp_get_rb_event_unlock(void);
+bool cmdq_mdp_eng_readback_support(u16);
 
 struct device *mdp_larb_dev_get(void);
 

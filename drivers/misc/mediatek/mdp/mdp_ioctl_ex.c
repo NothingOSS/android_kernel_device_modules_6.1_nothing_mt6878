@@ -510,6 +510,12 @@ static s32 translate_meta(struct op_meta *meta,
 		u32 offset;
 		u32 vcp_offset = 0;
 
+		if (!cmdq_mdp_eng_readback_support(meta->engine)) {
+			CMDQ_ERR("Asking readback from ENG those not support readback %d\n",
+				meta->engine);
+			return -EINVAL;
+		}
+
 		if (!cmdq_mdp_vcp_pq_readback_support()) {
 			dram_addr = translate_read_id_ex(meta->readback_id, &offset);
 			if (!dram_addr)
