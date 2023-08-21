@@ -1660,19 +1660,19 @@ u32 mtk_pcie_dump_link_info(int port)
 	if (val & PCIE_AXI_READ_ERR)
 		ret_val |= BIT(6);
 
-	if (val & PCIE_AER_EVT)
+	if (val & PCIE_AER_EVT) {
+		mtk_pcie_monitor_phy();
 		writel_relaxed(PCIE_AER_EVT,
 			       pcie_port->base + PCIE_INT_STATUS_REG);
+	}
 
 	/* PCIe RxErr */
 	val = PCIE_CFG_FORCE_BYTE_EN | PCIE_CFG_BYTE_EN(0xf) |
 	      PCIE_CFG_HEADER(0, 0);
 	writel_relaxed(val, pcie_port->base + PCIE_CFGNUM_REG);
 	val = readl_relaxed(pcie_port->base + PCIE_AER_CO_STATUS);
-	if (val & AER_CO_RE) {
-		mtk_pcie_monitor_phy();
+	if (val & AER_CO_RE)
 		ret_val |= BIT(7);
-	}
 
 	val = readl_relaxed(pcie_port->base + PCIE_AER_UNC_STATUS);
 	if (val & PCIE_AER_UNC_MTLP)
