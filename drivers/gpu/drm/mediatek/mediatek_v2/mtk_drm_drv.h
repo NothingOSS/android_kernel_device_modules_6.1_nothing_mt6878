@@ -130,6 +130,8 @@ struct mtk_drm_kernel_pm {
 	bool shutdown;
 	struct notifier_block nb;	/* Kernel suspend and resume event */
 	struct mutex lock;		/* To block any request after kernel suspend */
+	atomic_t resumed;
+	wait_queue_head_t wq;
 };
 
 struct mtk_drm_private {

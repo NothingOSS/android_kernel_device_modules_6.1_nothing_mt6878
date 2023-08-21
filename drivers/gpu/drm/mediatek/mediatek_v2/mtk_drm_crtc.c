@@ -10831,12 +10831,15 @@ static void mtk_drm_crtc_wk_lock(struct drm_crtc *crtc, bool get,
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	int ret = 0;
 
 	if (get) {
 		DDPMSG("Enabling CRTC wakelock\n");
-		mutex_lock(&priv->kernel_pm.lock);
+		ret = wait_event_interruptible(priv->kernel_pm.wq,
+					       atomic_read(&priv->kernel_pm.resumed));
+		if (unlikely(ret != 0))
+			DDPMSG("%s kernel_pm wait queue woke up accidently\n", __func__);
 		__pm_stay_awake(mtk_crtc->wk_lock);
-		mutex_unlock(&priv->kernel_pm.lock);
 	} else
 		__pm_relax(mtk_crtc->wk_lock);
 

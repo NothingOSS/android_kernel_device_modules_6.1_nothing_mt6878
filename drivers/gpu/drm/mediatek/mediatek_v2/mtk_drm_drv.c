@@ -1666,11 +1666,6 @@ static int mtk_atomic_check(struct drm_device *dev,
 	struct mtk_drm_private *priv = dev->dev_private;
 	int i, ret = 0;
 
-	if (unlikely(priv->kernel_pm.shutdown)) {
-		DDPMSG("mtk_drm_shutdown has been called, skip the next atomic commit\n");
-		return -881;
-	}
-
 	ret = drm_atomic_helper_check(dev, state);
 	if (ret)
 		return ret;
@@ -1974,6 +1969,11 @@ static int mtk_atomic_commit(struct drm_device *drm,
 	struct mtk_crtc_state *mtk_crtc_state = NULL;
 
 	DDP_PROFILE("[PROFILE] %s+\n", __func__);
+
+	ret = wait_event_interruptible(private->kernel_pm.wq,
+				       atomic_read(&private->kernel_pm.resumed));
+	DDP_PROFILE("[PROFILE] kernel resumed\n");
+
 	ret = drm_atomic_helper_prepare_planes(drm, state);
 	if (ret)
 		return ret;
@@ -7246,10 +7246,12 @@ static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		DDPMSG("Disabling CRTC wakelock\n");
-		mutex_lock(&kernel_pm->lock);
+		atomic_set(&kernel_pm->resumed, 0);
+		wake_up_interruptible(&kernel_pm->wq);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
-		mutex_unlock(&kernel_pm->lock);
+		atomic_set(&kernel_pm->resumed, 1);
+		wake_up_interruptible(&kernel_pm->wq);
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
@@ -8777,7 +8779,8 @@ SKIP_OVLSYS_CONFIG:
 		of_node_put(infra_node);
 	}
 
-	mutex_init(&private->kernel_pm.lock);
+	atomic_set(&private->kernel_pm.resumed, 1);
+	init_waitqueue_head(&private->kernel_pm.wq);
 	private->kernel_pm.nb.notifier_call = mtk_drm_pm_notifier;
 	ret = register_pm_notifier(&private->kernel_pm.nb);
 	if (ret)
@@ -9020,8 +9023,8 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 		mtk_drm_pm_ctrl(private, DISP_PM_PUT);
 		mtk_drm_pm_ctrl(private, DISP_PM_DISABLE);
 
-		/* skip all next atomic commit by atomic_check */
-		private->kernel_pm.shutdown = true;
+		/* skip all next atomic commit */
+		atomic_set(&private->kernel_pm.resumed, 0);
 	}
 }
 
