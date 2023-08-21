@@ -209,6 +209,7 @@ struct mtk_drm_private {
 	unsigned int top_clk_num;
 	struct clk **top_clk;
 	bool power_state;
+	bool kernel_shutdown;
 
 	/* for rpo caps info */
 	unsigned int rsz_in_max[2];

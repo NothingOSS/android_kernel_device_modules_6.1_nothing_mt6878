@@ -1654,7 +1654,13 @@ static int mtk_atomic_check(struct drm_device *dev,
 	struct drm_crtc *crtc;
 	struct drm_crtc_state *crtc_state;
 	struct mtk_crtc_state *old_state, *new_state;
+	struct mtk_drm_private *priv = dev->dev_private;
 	int i, ret = 0;
+
+	if (unlikely(priv->kernel_shutdown)) {
+		DDPMSG("mtk_drm_shutdown has been called, skip the next atomic commit\n");
+		return -881;
+	}
 
 	ret = drm_atomic_helper_check(dev, state);
 	if (ret)
@@ -1668,7 +1674,6 @@ static int mtk_atomic_check(struct drm_device *dev,
 			mtk_drm_crtc_mode_check(crtc, crtc->state, crtc_state);
 
 		if (new_state->prop_val[CRTC_PROP_LYE_IDX]) {
-			struct mtk_drm_private *priv = crtc->dev->dev_private;
 			struct mtk_drm_lyeblob_ids *ids, *next;
 			struct list_head *lyeblob_head = NULL;
 			struct drm_property_blob *blob = NULL;
@@ -8946,9 +8951,11 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 		DDPMSG("%s\n", __func__);
 		mtk_drm_pm_ctrl(private, DISP_PM_GET);
 		drm_atomic_helper_shutdown(drm);
-		drm_dev_unregister(drm);
 		mtk_drm_pm_ctrl(private, DISP_PM_PUT);
 		mtk_drm_pm_ctrl(private, DISP_PM_DISABLE);
+
+		/* skip all next atomic commit by atomic_check */
+		private->kernel_shutdown = true;
 	}
 }
 
