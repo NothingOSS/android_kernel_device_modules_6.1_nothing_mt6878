@@ -7331,12 +7331,13 @@ static ktime_t mtk_check_preset_fence_timestamp(struct drm_crtc *crtc)
 {
 	int id = drm_crtc_index(crtc);
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	unsigned int vrefresh = 0;
+	unsigned int vrefresh = 0, te_freq = 0;
 	bool is_frame_mode;
 	ktime_t cur_time, diff_time;
 	ktime_t start_time, wait_time;
 	bool pass = false;
 	unsigned long flags;
+	struct mtk_panel_params *params = mtk_crtc->panel_ext->params;
 
 	is_frame_mode = mtk_crtc_is_frame_trigger_mode(crtc);
 	cur_time = mtk_crtc->pf_time;
@@ -7348,19 +7349,24 @@ static ktime_t mtk_check_preset_fence_timestamp(struct drm_crtc *crtc)
 			vrefresh = 60;
 		}
 
+		if (params && params->real_te_frequency != 0)
+			te_freq = params->real_te_frequency;
+		else
+			te_freq = vrefresh;
+
 		start_time = mtk_crtc->sof_time;
 		do {
 			wait_event_interruptible_timeout(
 				mtk_crtc->signal_irq_for_pre_fence_wq
 				, atomic_read(&mtk_crtc->signal_irq_for_pre_fence)
-				, msecs_to_jiffies(1000 / vrefresh));
+				, msecs_to_jiffies(1000 / te_freq));
 
 			spin_lock_irqsave(&mtk_crtc->pf_time_lock, flags);
 			cur_time = mtk_crtc->pf_time;
 
 			if (start_time > cur_time) {
 				diff_time = (start_time - cur_time) / 1000000;
-				if (diff_time < (1000 / vrefresh / 2))
+				if (diff_time < (1000 / te_freq / 2))
 					pass = true;
 			} else
 				pass = true;
@@ -7373,9 +7379,9 @@ static ktime_t mtk_check_preset_fence_timestamp(struct drm_crtc *crtc)
 
 		wait_time = ktime_get();
 
-		if (((wait_time - start_time) / 1000000) > (1000 / vrefresh / 2)) {
+		if (((wait_time - start_time) / 1000000) > (1000 / te_freq / 2)) {
 			DDPINFO("Wait time over %d ms, start %lld, wait %lld, cur %lld\n",
-				(1000 / vrefresh / 2), start_time, wait_time, cur_time);
+				(1000 / te_freq / 2), start_time, wait_time, cur_time);
 			CRTC_MMP_MARK(id, present_fence_timestamp, start_time, wait_time);
 		}
 	}

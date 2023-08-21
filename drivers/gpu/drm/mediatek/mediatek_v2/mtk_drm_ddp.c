@@ -22352,10 +22352,8 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 				vcp_cmd_ex(VCP_SET_DISP_SYNC, "disp");
 			}
 #endif
-			if ((m_id == 0 || m_id == 3) && ddp->data->wakeup_pf_wq && mtk_crtc0) {
-				mtk_crtc0->sof_time = ktime_get();
+			if ((m_id == 0 || m_id == 3) && ddp->data->wakeup_pf_wq)
 				mtk_wakeup_pf_wq(m_id);
-			}
 
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 			if (m_id == 0) {

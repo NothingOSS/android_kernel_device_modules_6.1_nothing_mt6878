@@ -2098,6 +2098,7 @@ void mtk_wakeup_pf_wq(unsigned int m_id)
 		return;
 	}
 
+	mtk_crtc->sof_time = ktime_get();
 	drm_priv = mtk_crtc->base.dev->dev_private;
 
 	if (drm_priv &&
