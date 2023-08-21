@@ -71,6 +71,7 @@ static bool mminfra_ao_base;
 static bool vcp_gipc;
 static bool no_sleep_pd_cb;
 static bool skip_apsrc;
+static bool is_mminfra_shutdown;
 
 #define MMINFRA_BASE		0x1e800000
 #define MMINFRA_AO_BASE		0x1e8ff000
@@ -730,7 +731,8 @@ static bool mminfra_devapc_power_cb(void)
 			readl(dbg->mminfra_ao_base + MMINFRA_CG_CON0),
 			readl(dbg->mminfra_ao_base + MMINFRA_CG_CON1));
 		pr_info("%s set mminfra pwr on\n", __func__);
-		vcp_mminfra_on();
+		if (!is_mminfra_shutdown)
+			vcp_mminfra_on();
 		return true;
 	}
 	return is_mminfra_power_on();
@@ -858,6 +860,7 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 		pm_runtime_irq_safe(dev);
 		dbg->irq_safe = true;
 		vcp_register_mminfra_cb_ex(vcp_mminfra_on, vcp_mminfra_off, vcp_debug_dump);
+		is_mminfra_shutdown = false;
 	}
 
 	mtk_pd_notifier.notifier_call = mtk_mminfra_pd_callback;
@@ -891,6 +894,14 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 #endif
 
 	return ret;
+}
+
+static void mminfra_debug_shutdown(struct platform_device *pdev)
+{
+	if (dbg->irq_safe) {
+		is_mminfra_shutdown = true;
+		pr_notice("[mminfra] shutdown = %d\n", is_mminfra_shutdown);
+	}
 }
 
 static int mminfra_pm_prepare(struct device *dev)
@@ -948,6 +959,7 @@ static const struct of_device_id of_mminfra_debug_match_tbl[] = {
 
 static struct platform_driver mminfra_debug_drv = {
 	.probe = mminfra_debug_probe,
+	.shutdown = mminfra_debug_shutdown,
 	.driver = {
 		.name = "mtk-mminfra-debug",
 		.of_match_table = of_mminfra_debug_match_tbl,
