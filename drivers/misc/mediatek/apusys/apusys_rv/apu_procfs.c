@@ -19,6 +19,7 @@
 #include "apu_ce_excep.h"
 
 #define PT_MAGIC (0x58901690)
+#define PROC_WRITE_TEMP_BUFF_SIZE (16)
 
 static struct platform_device *g_apu_pdev;
 static struct proc_dir_entry *procfs_root;
@@ -86,12 +87,12 @@ static int regdump_seq_show(struct seq_file *s, void *v)
 static ssize_t dump_ce_fw_sram_write(struct file *file,
 		const char __user *buffer, size_t count, loff_t *pos)
 {
-	char tmp[16] = {0};
+	char tmp[PROC_WRITE_TEMP_BUFF_SIZE] = {0};
 	int ret;
 	unsigned int input = 0;
 	struct mtk_apu *apu = (struct mtk_apu *)platform_get_drvdata(g_apu_pdev);
 
-	if (count + 1 >= 16)
+	if (count >= PROC_WRITE_TEMP_BUFF_SIZE - 1)
 		return -ENOMEM;
 
 	ret = copy_from_user(tmp, buffer, count);
@@ -101,7 +102,7 @@ static ssize_t dump_ce_fw_sram_write(struct file *file,
 	}
 
 	tmp[count] = '\0';
-	ret = kstrtouint(tmp, 16, &input);
+	ret = kstrtouint(tmp, PROC_WRITE_TEMP_BUFF_SIZE, &input);
 	if (ret) {
 		dev_info(&g_apu_pdev->dev, "%s: kstrtouint failed (%d)\n", __func__, ret);
 		goto out;
