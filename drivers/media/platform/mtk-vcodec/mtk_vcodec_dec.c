@@ -760,7 +760,8 @@ static void mtk_vdec_init_set_frame_wq(struct mtk_vcodec_ctx *ctx)
 
 static void mtk_vdec_flush_set_frame_wq(struct mtk_vcodec_ctx *ctx)
 {
-	flush_workqueue(ctx->vdec_set_frame_wq);
+	if (ctx->vdec_set_frame_wq != NULL)
+		flush_workqueue(ctx->vdec_set_frame_wq);
 }
 
 static void mtk_vdec_deinit_set_frame_wq(struct mtk_vcodec_ctx *ctx)
@@ -2325,7 +2326,6 @@ static int mtk_vcodec_dec_init(struct mtk_vcodec_ctx *ctx, struct mtk_q_data *q_
 	mtk_vcodec_config_group_list();
 
 	ret = vdec_if_init(ctx, q_data->fmt->fourcc);
-	mtk_vdec_init_set_frame_wq(ctx);
 	v4l2_m2m_set_dst_buffered(ctx->m2m_ctx, ctx->input_driven != NON_INPUT_DRIVEN);
 	if (ctx->input_driven == INPUT_DRIVEN_CB_FRM)
 		init_waitqueue_head(&ctx->fm_wq);
@@ -2551,6 +2551,7 @@ void mtk_vcodec_dec_set_default_params(struct mtk_vcodec_ctx *ctx)
 		q_data->bytesperline[1] = q_data->coded_width;
 	}
 
+	mtk_vdec_init_set_frame_wq(ctx);
 	mtk_vdec_lpw_init_timer(ctx);
 }
 
