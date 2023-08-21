@@ -1635,6 +1635,32 @@ void mtk_smi_dbg_dump_for_isp_fast(u32 isp_id)
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_isp_fast);
 
+void mtk_smi_dbg_dump_for_disp(void)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	s32			i, j, disp_comm_idx = 14, PRINT_NR = 5;
+
+	raw_notifier_call_chain(&smi_notifier_list, 0, "SMI driver");
+	for (i = 0; i < PRINT_NR; i++) {
+		mtk_smi_dbg_print(smi, true, false, 0, true);
+		mtk_smi_dbg_print(smi, true, false, 1, true);
+		mtk_smi_dbg_print(smi, true, false, 20, true);
+		mtk_smi_dbg_print(smi, true, false, 21, true);
+		mtk_smi_dbg_print(smi, true, false, 32, true);
+		mtk_smi_dbg_print(smi, true, false, 33, true);
+		mtk_smi_dbg_print(smi, true, false, 34, true);
+		mtk_smi_dbg_print(smi, true, false, 35, true);
+		mtk_smi_dbg_print(smi, true, false, 36, true);
+		mtk_smi_dbg_print(smi, true, false, 37, true);
+
+		for (j = 0; j <= disp_comm_idx; j++)
+			mtk_smi_dbg_print(smi, false, false, j, true);
+		for (j = 0; j < ARRAY_SIZE(smi->rsi); j++)
+			mtk_smi_dbg_print(smi, true, true, j, true);
+	}
+}
+EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_disp);
+
 s32 mtk_smi_dbg_hang_detect(char *user)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
