@@ -139,6 +139,7 @@ struct mtk_dsi {
 	struct mtk_drm_esd_ctx *esd_ctx;
 	unsigned int cnt;
 	unsigned int skip_vblank;
+	unsigned int force_resync_after_idle;
 };
 
 s32 mtk_dsi_poll_for_idle(struct mtk_dsi *dsi, struct cmdq_pkt *handle);

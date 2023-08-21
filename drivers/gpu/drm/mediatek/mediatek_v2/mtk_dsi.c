@@ -2454,7 +2454,7 @@ int mtk_dsi_check_vblank_cnt(struct mtk_dsi *dsi, struct mtk_drm_crtc *mtk_crtc,
 	if (last_present_ts == 0)
 		return -1;
 	//pf_time was updated at dsi irq
-	if(mtk_crtc->pf_time < last_present_ts && priv->force_resync_after_idle == 0) {
+	if(mtk_crtc->pf_time < last_present_ts && dsi->force_resync_after_idle == 0) {
 		DDPPR_ERR("%s pf_time should not be earlier than present_ts\n", __func__);
 		return -1;
 	}
@@ -2471,14 +2471,14 @@ int mtk_dsi_check_vblank_cnt(struct mtk_dsi *dsi, struct mtk_drm_crtc *mtk_crtc,
 	last_pf = DIV_ROUND_CLOSEST_ULL(time_between_te_pf_us,
 		panel_ext->params->real_te_duration)%dsi->skip_vblank;
 
-	if (priv->force_resync_after_idle == 1)
+	if (dsi->force_resync_after_idle == 1)
 		drm_trace_tag_value("force_resync_after_idle", last_pf);
 
 	//change counter
 	if (last_pf != dsi->cnt % dsi->skip_vblank) {
-		DDPPR_ERR("%s re-sync skip_vblank_cnt: %d -> %d, skip_vlnk %d\n", __func__,
+		DDPINFO("%s re-sync skip_vblank_cnt: %d -> %d, skip_vlnk %d\n", __func__,
 			dsi->cnt%dsi->skip_vblank, last_pf, dsi->skip_vblank);
-		DDPPR_ERR("[%s] dsi %d, %d, %lld, %lld, %d\n", __func__,
+		DDPINFO("[%s] dsi %d, %d, %lld, %lld, %d\n", __func__,
 			dsi->cnt, last_pf, mtk_crtc->pf_time,
 			last_present_ts, panel_ext->params->real_te_duration);
 		drm_trace_tag_value("re-sync_skip_vblank_cnt", last_pf);
@@ -2711,9 +2711,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 						(mtk_dsi_check_vblank_cnt(dsi, mtk_crtc, panel_ext)
 						!= 0) ? 0 : dsi->cnt;
 						dsi->skip_vblank = panel_ext->params->skip_vblank;
-					} else if (priv->force_resync_after_idle == 1) {
+					} else if (dsi->force_resync_after_idle == 1) {
 						mtk_dsi_check_vblank_cnt(dsi, mtk_crtc, panel_ext);
-						priv->force_resync_after_idle = 0;
+						dsi->force_resync_after_idle = 0;
 					}
 					dsi->cnt++;
 				} else if (mtk_crtc->vblank_en)

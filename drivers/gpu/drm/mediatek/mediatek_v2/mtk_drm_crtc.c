@@ -7369,8 +7369,8 @@ static ktime_t mtk_check_preset_fence_timestamp(struct drm_crtc *crtc)
 			vrefresh = 60;
 		}
 
-		if (params && params->real_te_frequency != 0)
-			te_freq = params->real_te_frequency;
+		if (params && params->real_te_duration != 0)
+			te_freq = 1000000/params->real_te_duration;
 		else
 			te_freq = vrefresh;
 

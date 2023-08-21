@@ -21,6 +21,7 @@
 #include "mtk_drm_mmp.h"
 #include "mtk_drm_trace.h"
 #include "mtk_disp_vidle.h"
+#include "mtk_dsi.h"
 
 #define MAX_ENTER_IDLE_RSZ_RATIO 300
 #define MTK_DRM_CPU_MAX_COUNT 8
@@ -1858,7 +1859,15 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		DDPINFO("crtc%d do %s-\n", crtc_id, __func__);
 		return;
 	}
-	priv->force_resync_after_idle = 1;
+
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI) {
+		struct mtk_dsi *dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
+
+		if (dsi)
+			dsi->force_resync_after_idle = 1;
+	}
+
 	if (idlemgr->perf != NULL) {
 		start = sched_clock();
 		perf_detail = atomic_read(&idlemgr->perf->detail);
@@ -1904,7 +1913,6 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 				"update_mmclk", 4, perf_string, true);
 	/* 2. Request MMClock before enabling connector*/
 	mtk_crtc_attach_ddp_comp(crtc, mtk_crtc->ddp_mode, true);
-	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp)
 		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE,
 				&en);
