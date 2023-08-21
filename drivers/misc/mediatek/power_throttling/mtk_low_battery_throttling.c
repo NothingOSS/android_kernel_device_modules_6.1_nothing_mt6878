@@ -502,7 +502,7 @@ static void temp_handler(struct work_struct *work)
 				__func__, last_temp, low_bat_thl_data->temp_cur_stage,
 				low_bat_thl_data->low_bat_thl_level);
 
-		lbat_user_modify_thd_ext(low_bat_thl_data->lbat_pt, thd_info->thd_volts,
+		lbat_user_modify_thd_ext_locked(low_bat_thl_data->lbat_pt, thd_info->thd_volts,
 								thd_info->thd_volts_size);
 		low_bat_thl_data->temp_cur_stage = temp_stage;
 
