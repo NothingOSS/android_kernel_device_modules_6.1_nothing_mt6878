@@ -50,6 +50,7 @@ static int sbe_rescuing_frame_id;
 static int sbe_rescuing_frame_id_legacy;
 static int sbe_enhance_f;
 static int global_ux_blc;
+static int global_ux_max_pid;
 static struct fpsgo_loading temp_blc_dep[MAX_DEP_NUM];
 static struct fbt_setting_info sinfo;
 
@@ -71,9 +72,10 @@ int fpsgo_ctrl2ux_get_perf(void)
 	return global_ux_blc;
 }
 
-void fbt_ux_set_perf(int cur_blc)
+void fbt_ux_set_perf(int cur_pid, int cur_blc)
 {
 	global_ux_blc = cur_blc;
+	global_ux_max_pid = cur_pid;
 }
 
 static int fbt_ux_cal_perf(
@@ -322,8 +324,10 @@ void fbt_ux_frame_end(struct render_info *thr,
 	thr->ux_blc_next = fbt_ux_cal_perf(runtime,
 			targettime, targetfps, targetfps_ori, fps_margin,
 			thr, end_ts, loading, targetfpks, cooler_on);
-	if (thr->ux_blc_next > global_ux_blc)
-		fbt_ux_set_perf(thr->ux_blc_next);
+
+	if ((thr->pid != global_ux_max_pid && thr->ux_blc_next > global_ux_blc) ||
+		thr->pid == global_ux_max_pid)
+		fbt_ux_set_perf(thr->pid, thr->ux_blc_next);
 
 EXIT:
 	thr->ux_blc_cur = 0;
