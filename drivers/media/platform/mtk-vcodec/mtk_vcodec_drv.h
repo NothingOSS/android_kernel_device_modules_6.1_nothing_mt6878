@@ -332,7 +332,6 @@ struct mtk_enc_params {
 	unsigned int    max_h;
 	unsigned int    slbc_ready;
 	unsigned int    slbc_encode_performance;
-	unsigned int    ddr_encode_peak_bw;
 	unsigned int    i_qp;
 	unsigned int    p_qp;
 	unsigned int    b_qp;
@@ -834,8 +833,6 @@ struct mtk_vcodec_dev {
 	struct plist_head venc_rlist[MTK_VENC_HW_NUM];
 	struct icc_path *vdec_qos_req[MTK_VDEC_PORT_NUM];
 	struct icc_path *venc_qos_req[MTK_VENC_PORT_NUM];
-	struct icc_path *venc_peak_bw_req;
-	unsigned int venc_peak_bw;
 
 	int vdec_freq_cnt;
 	int venc_freq_cnt;
