@@ -4,6 +4,7 @@
  */
 
 #include <linux/cdev.h>
+#include <linux/cpumask.h>
 #include <linux/debug_locks.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
@@ -20,6 +21,7 @@
 #include <linux/poll.h>
 #include <linux/ptrace.h>
 #include <linux/sched.h>
+#include <linux/sched/cputime.h>
 #include <linux/sched/clock.h>
 #include <linux/sched/debug.h>
 #include <linux/sched/mm.h>
@@ -31,9 +33,11 @@
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/sysrq.h>
+#include <linux/stop_machine.h>
 #include <linux/vmalloc.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
+#include <sched/sched.h>
 #include <uapi/linux/sched/types.h>
 #include <asm/stacktrace.h>
 #include <asm/traps.h>
@@ -874,9 +878,31 @@ void store_task_info(struct task_struct *p)
 	log_hang_info("\n");
 }
 
+struct migration_arg {
+	struct task_struct		*task;
+	int				dest_cpu;
+	struct set_affinity_pending	*pending;
+};
+
+/*
+ * @refs: number of wait_for_completion()
+ * @stop_pending: is @stop_work in use
+ */
+struct set_affinity_pending {
+	refcount_t		refs;
+	unsigned int		stop_pending;
+	struct completion	done;
+	struct cpu_stop_work	stop_work;
+	struct migration_arg	arg;
+};
+
 void show_thread_info(struct task_struct *p, bool dump_bt)
 {
 	unsigned int p_state;
+	int dest_cpu;
+	struct set_affinity_pending *my_pending = NULL;
+	struct task_struct *dest_task;
+	struct migration_arg	*arg;
 
 	log_hang_info("%-15.15s %c ", p->comm, task_state_to_char(p));
 	hang_log("%-15.15s %c ", p->comm, task_state_to_char(p));
@@ -904,6 +930,24 @@ void show_thread_info(struct task_struct *p, bool dump_bt)
 	hang_log("%llu", p->sched_info.last_arrival);
 #endif
 	log_hang_info("\n");
+
+	/*
+	 *sched add debug log for finding the reson of wait_for_completion
+	 */
+	my_pending = p->migration_pending;
+	if (my_pending){
+		arg = &my_pending->arg;
+		dest_cpu = arg->dest_cpu;
+		dest_task = cpu_curr(dest_cpu);
+		log_hang_info(" pending %-15.15s %d %d %u %d %d %d 0x%lx 0x%lx 0x%lx 0x%lx\n",
+		dest_task->comm,dest_task->pid,dest_cpu,p->migration_disabled,my_pending->stop_pending,
+		my_pending->done.done,p->nr_cpus_allowed,p->cpus_mask.bits[0],cpu_active_mask->bits[0],
+		cpu_online_mask->bits[0],cpu_possible_mask->bits[0]);
+		hang_log(" pending %-15.15s %d %d %u %d %d %d 0x%lx 0x%lx 0x%lx 0x%lx\n",
+		dest_task->comm,dest_task->pid,dest_cpu,p->migration_disabled,my_pending->stop_pending,
+		my_pending->done.done,p->nr_cpus_allowed,p->cpus_mask.bits[0],cpu_active_mask->bits[0],
+		cpu_online_mask->bits[0],cpu_possible_mask->bits[0]);
+	}
 
 	/* nvscw: voluntary context switch.  */
 	/* requires a resource that is unavailable. */

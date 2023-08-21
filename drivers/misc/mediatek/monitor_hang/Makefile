@@ -19,6 +19,7 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/staging/android/mtk_ion/
 endif
 
 subdir-ccflags-y += -I$(srctree)/arch/arm64/include/
+subdir-ccflags-y += -I$(srctree)/kernel/
 subdir-ccflags-y += -I$(srctree)/include/
 
 obj-$(CONFIG_MTK_HANG_DETECT) += monitor_hang.o
