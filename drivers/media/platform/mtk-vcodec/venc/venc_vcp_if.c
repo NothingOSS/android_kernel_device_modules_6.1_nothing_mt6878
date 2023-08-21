@@ -662,6 +662,13 @@ int vcp_enc_ipi_handler(void *arg)
 			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 		}
 			break;
+		case VCU_IPIMSG_ENC_SMI_BUS_DUMP:
+		{
+			mtk_smi_dbg_dump_for_venc();
+			msg->msg_id = AP_IPIMSG_ENC_SMI_BUS_DUMP_DONE;
+			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
+		}
+			break;
 		default:
 			mtk_vcodec_err(vcu, "unknown msg id %x", msg->msg_id);
 			break;
