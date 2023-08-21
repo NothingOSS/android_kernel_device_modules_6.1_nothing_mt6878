@@ -595,13 +595,20 @@ EXPORT_SYMBOL_GPL(vcp_A_unregister_notify);
 void vcp_schedule_work(struct vcp_work_struct *vcp_ws)
 {
 	/* for pm disable wait ready, no power check*/
-	queue_work(vcp_workqueue, &vcp_ws->work);
+	if (!vcp_workqueue)
+		pr_notice("[VCP] vcp_workqueue is NULL\n");
+	else
+		queue_work(vcp_workqueue, &vcp_ws->work);
 }
 
 void vcp_schedule_reset_work(struct vcp_work_struct *vcp_ws)
 {
-	if (mmup_enable_count() > 0)
-		queue_work(vcp_reset_workqueue, &vcp_ws->work);
+	if (mmup_enable_count() > 0) {
+		if (!vcp_reset_workqueue)
+			pr_notice("[VCP] vcp_reset_workqueue is NULL\n");
+		else
+			queue_work(vcp_reset_workqueue, &vcp_ws->work);
+	}
 #if VCP_RECOVERY_SUPPORT
 	else
 		__pm_relax(vcp_reset_lock);
@@ -611,8 +618,12 @@ void vcp_schedule_reset_work(struct vcp_work_struct *vcp_ws)
 #if VCP_LOGGER_ENABLE
 void vcp_schedule_logger_work(struct vcp_work_struct *vcp_ws)
 {
-	if (mmup_enable_count() > 0)
-		queue_work(vcp_logger_workqueue, &vcp_ws->work);
+	if (mmup_enable_count() > 0) {
+		if (!vcp_logger_workqueue)
+			pr_notice("[VCP] vcp_logger_workqueue is NULL\n");
+		else
+			queue_work(vcp_logger_workqueue, &vcp_ws->work);
+	}
 }
 #endif
 
@@ -2669,6 +2680,9 @@ void vcp_recovery_init(void)
 #if VCP_RECOVERY_SUPPORT
 	/*create wq for vcp reset*/
 	vcp_reset_workqueue = create_singlethread_workqueue("VCP_RESET_WQ");
+	if (!vcp_reset_workqueue)
+		pr_notice("[VCP] vcp_reset_workqueue create fail\n");
+
 	/*init reset work*/
 	INIT_WORK(&vcp_sys_reset_work.work, vcp_sys_reset_ws);
 
@@ -3563,6 +3577,9 @@ static int __init vcp_init(void)
 	pr_debug("[VCP] platform init\n");
 	vcp_awake_init();
 	vcp_workqueue = create_singlethread_workqueue("VCP_WQ");
+	if (!vcp_workqueue)
+		pr_notice("[VCP] vcp_workqueue create fail\n");
+
 	ret = vcp_excep_init();
 	if (ret) {
 		pr_notice("[VCP]Excep Init Fail\n");
@@ -3607,6 +3624,9 @@ static int __init vcp_init(void)
 	pr_debug("[VCP] logger init\n");
 	/*create wq for vcp logger*/
 	vcp_logger_workqueue = create_singlethread_workqueue("VCP_LOG_WQ");
+	if (!vcp_logger_workqueue)
+		pr_notice("[VCP] vcp_logger_workqueue create fail\n");
+
 	if (vcp_logger_init(vcp_get_reserve_mem_virt(VCP_A_LOGGER_MEM_ID),
 			vcp_get_reserve_mem_size(VCP_A_LOGGER_MEM_ID)) == -1) {
 		pr_notice("[VCP] vcp_logger_init_fail\n");
