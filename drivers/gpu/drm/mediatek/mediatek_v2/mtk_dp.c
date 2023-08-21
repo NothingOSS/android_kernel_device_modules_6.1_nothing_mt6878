@@ -45,6 +45,8 @@
 #include "ca/tlcDpHdcp.h"
 #endif
 
+#define DPTX_IRQ_SUPPORT (0)
+
 static struct mtk_dp *g_mtk_dp;
 static bool fakecablein;
 static int fakeres = FAKE_DEFAULT_RES;
@@ -3365,6 +3367,7 @@ struct edid *mtk_dp_handle_edid(struct mtk_dp *mtk_dp)
 	return drm_get_edid(connector, &mtk_dp->aux.ddc);
 }
 
+#if DPTX_IRQ_SUPPORT
 irqreturn_t mtk_dp_hpd_event(int hpd, void *dev)
 {
 	struct mtk_dp *mtk_dp = dev;
@@ -3373,6 +3376,7 @@ irqreturn_t mtk_dp_hpd_event(int hpd, void *dev)
 
 	return IRQ_HANDLED;
 }
+#endif
 
 void mtk_dp_phy_param_init(struct mtk_dp *mtk_dp, uint32_t *buffer, int size)
 {
@@ -4195,9 +4199,12 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 {
 	struct mtk_dp *mtk_dp;
 	struct device *dev = &pdev->dev;
-	int ret, irq_num = 0;
+	int ret;
 	int comp_id;
 	struct mtk_drm_private *mtk_priv = dev_get_drvdata(dev);
+	#if DPTX_IRQ_SUPPORT
+	int irq_num = 0;
+	#endif
 
 	DPTXFUNC();
 	mtk_dp = devm_kmalloc(dev, sizeof(*mtk_dp), GFP_KERNEL | __GFP_ZERO);
@@ -4210,11 +4217,13 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 	mtk_dp->priv = mtk_priv;
 	mtk_dp->bUeventToHwc = false;
 	mtk_dp->disp_status = DPTX_DISP_NONE;
+	#if DPTX_IRQ_SUPPORT
 	irq_num = platform_get_irq(pdev, 0);
 	if (irq_num < 0) {
 		dev_err(&pdev->dev, "failed to request dp irq resource\n");
 		return -EPROBE_DEFER;
 	}
+	#endif
 	ret = mtk_dp_dt_parse_pdata(mtk_dp, pdev);
 	if (ret)
 		return ret;
@@ -4231,6 +4240,7 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 		goto error;
 	}
 	mtk_dp_aux_init(mtk_dp);
+	#if DPTX_IRQ_SUPPORT
 	DPTXMSG("%s, comp_id %d, type %d, irq %d\n", __func__, comp_id,
 		MTK_DISP_DPTX, irq_num);
 	irq_set_status_flags(irq_num, IRQ_TYPE_LEVEL_HIGH);
@@ -4240,6 +4250,7 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to request mediatek dptx irq\n");
 		return -EPROBE_DEFER;
 	}
+	#endif
 	dptx_notify_data.name = "hdmi";  // now hwc not support DP
 	dptx_notify_data.index = 0;
 	dptx_notify_data.state = DPTX_STATE_NO_DEVICE;
