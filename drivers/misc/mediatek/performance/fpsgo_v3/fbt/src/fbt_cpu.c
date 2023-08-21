@@ -6504,9 +6504,10 @@ static void fbt_xgff_set_min_cap(unsigned int min_cap)
 {
 	int tgt_freq;
 
+	if (cluster_num <= 0)
+		return;
 	if (min_cap > 1024)
 		min_cap = 1024;
-
 	tgt_freq = fbt_cluster_X2Y(0, min_cap, CAP, FREQ, 1, __func__);
 	fbt_cpu_L_ceiling_min(tgt_freq);
 }
