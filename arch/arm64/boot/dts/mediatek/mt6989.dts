@@ -6063,6 +6063,7 @@
 			mediatek,free-run;
 			mediatek,dpsw-thres = <1>;
 			mediatek,vdec-larb = <&smi_larb5>;
+			mediatek,restore-step;
 		};
 
 		mmdvfs-user {
