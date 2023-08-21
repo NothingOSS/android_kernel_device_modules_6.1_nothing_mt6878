@@ -289,7 +289,7 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 		if (mmdvfs_rst_clk_done && func == FUNC_CLKMUX_ENABLE)
 			break;
 		if (func == FUNC_VMM_GENPD_NOTIFY || func == FUNC_VMM_CEIL_ENABLE ||
-			func == FUNC_MMDVFS_LP_MODE)
+			func == FUNC_MMDVFS_LP_MODE || (func == FUNC_CLKMUX_ENABLE && !opp))
 			goto ipi_send_end;
 		if (++retry > VCP_SYNC_TIMEOUT_MS) {
 			ret = -ETIMEDOUT;
