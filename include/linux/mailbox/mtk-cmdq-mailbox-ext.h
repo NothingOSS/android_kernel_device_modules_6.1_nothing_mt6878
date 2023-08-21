@@ -115,6 +115,7 @@ enum cmdq_aee_type {
 	CMDQ_AEE_WARN = 0x0,
 	CMDQ_NO_AEE = 0x1,
 	CMDQ_AEE_EXCEPTION = 0x2,
+	CMDQ_NO_AEE_DUMP = 0x3,
 };
 
 enum cmdq_log_type {

@@ -2947,7 +2947,7 @@ void cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
 #endif
 	}
 
-	if (inst && inst->op == CMDQ_CODE_WFE) {
+	if (inst && inst->op == CMDQ_CODE_WFE && aee != CMDQ_NO_AEE_DUMP) {
 		mod = cmdq_util_helper->event_module_dispatch(gce_pa, inst->arg_a,
 			thread_id);
 		cmdq_util_aee_ex(aee, mod,
