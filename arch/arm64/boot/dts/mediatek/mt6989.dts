@@ -11971,7 +11971,7 @@
 			gce-event-names = "token_user_0";
 			gce-events = <&gce CMDQ_SYNC_TOKEN_USER_0>;
 			token-user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
-			token-gpr-set4 = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>;
+			token-for-ut = /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MDP_LOCK>;
 		};
 
 		mminfra-imax {
