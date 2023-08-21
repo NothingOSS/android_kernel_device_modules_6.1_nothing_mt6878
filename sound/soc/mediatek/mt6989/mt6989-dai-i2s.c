@@ -3687,8 +3687,6 @@ static int mtk_dai_i2s_set_sysclk(struct snd_soc_dai *dai,
 		return -EINVAL;
 	}
 
-	dev_info(afe->dev, "%s(), freq %d\n", __func__, freq);
-
 	apll = mt6989_get_apll_by_rate(afe, freq);
 	apll_rate = mt6989_get_apll_rate(afe, apll);
 

@@ -140,8 +140,6 @@ int mt6989_enable_cm(struct mtk_base_afe *afe, int id, bool en)
 	int cm_on_mask = 0;
 	int cm_on_shift = 0;
 
-	pr_info("%s, CM%d, en %d\n", __func__, id, en);
-
 	switch (id) {
 	case CM0:
 		cm_reg = AFE_CM1_CON0;

@@ -6100,8 +6100,6 @@ static int mt_scp_req_event(struct snd_soc_dapm_widget *w,
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 	struct i2c_adapter *adap = priv->i2c_client->adapter;
 
-	dev_info(priv->dev, "%s(), event = 0x%x\n", __func__, event);
-
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		scp_wake_request(adap);
@@ -6169,8 +6167,6 @@ static int mt_vaud18_event(struct snd_soc_dapm_widget *w,
 #if IS_ENABLED(CONFIG_REGULATOR_MT6681)
 	int status = 0;
 #endif
-
-	dev_info(priv->dev, "%s(), event = 0x%x\n", __func__, event);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -6299,7 +6295,7 @@ static int mt_vowpll_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 
-	dev_info(priv->dev, "%s(), event = 0x%x\n", __func__, event);
+	dev_dbg(priv->dev, "%s(), event = 0x%x\n", __func__, event);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -6821,7 +6817,7 @@ static int mt_audtop_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 
-	dev_info(priv->dev, "%s(), event = 0x%x\n", __func__, event);
+	dev_dbg(priv->dev, "%s(), event = 0x%x\n", __func__, event);
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
@@ -10062,11 +10058,11 @@ static int mt_pga_l_event(struct snd_soc_dapm_widget *w,
 	/* if vow is enabled, always set volume as 12 (18dB) */
 	mic_gain_l = priv->vow_setup ? 12 :
 		     priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP1];
-	dev_info(
-		priv->dev,
-		"%s(), event = 0x%x, mic_type %d, mic_gain_l %d, mux_pga %d, vow_setup %d\n",
-		__func__, event, mic_type, mic_gain_l, mux_pga,
-		priv->vow_setup);
+
+	if (event == SND_SOC_DAPM_POST_PMU || event == SND_SOC_DAPM_POST_PMD)
+		dev_info(priv->dev,
+			 "%s(), event = 0x%x, mic_type %d, mic_gain_l %d, mux_pga %d, vow_setup %d\n",
+			 __func__, event, mic_type, mic_gain_l, mux_pga, priv->vow_setup);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -13654,11 +13650,9 @@ static void mt6681_codec_dai_vow_shutdown(struct snd_pcm_substream *substream,
 	struct snd_soc_component *cmpnt = dai->component;
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 
-	dev_info(priv->dev, "%s stream %d\n", __func__, substream->stream);
+	dev_info(priv->dev, "%s stream %d / dai->id %d\n", __func__, substream->stream, dai->id);
 
 	if (dai->id == MT6681_AIF_VOW) {
-		dev_info(priv->dev, "%s, MT6681_AIF_VOW\n",
-		 __func__);
 		/* end of power down vow */
 		priv->vow_setup = 0;
 		priv->vow_enable = 0;

@@ -4888,8 +4888,6 @@ static int mt6989_afe_runtime_resume(struct device *dev)
 	struct mtk_base_afe *afe = dev_get_drvdata(dev);
 	int ret;
 
-	dev_info(afe->dev, "%s() successfully start\n", __func__);
-
 	ret = mt6989_afe_enable_clock(afe);
 	if (ret)
 		return ret;
