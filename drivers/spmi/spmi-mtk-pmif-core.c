@@ -1309,7 +1309,8 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	unsigned int spmi_rcs_nack = 0, spmi_debug_nack = 0, spmi_mst_nack = 0,
 		spmi_p_rcs_nack = 0, spmi_p_debug_nack = 0, spmi_p_mst_nack = 0;
 	u8 rdata = 0, rdata1 = 0;
-	unsigned short mt6316INTSTA = 0x240, hwcidaddr_mt6316 = 0x209;
+	unsigned short mt6316INTSTA = 0x240, hwcidaddr_mt6316 = 0x209, VIO18_SWITCH_6363 = 0x53,
+		hwcidaddr_mt6363 = 0x9;
 
 	__pm_stay_awake(arb->pmif_m_Thread_lock);
 	mutex_lock(&arb->pmif_m_mutex);
@@ -1421,6 +1422,11 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 		mtk_spmi_writel(arb->spmimst_base[0], arb, 0x3, SPMI_REC_CTRL);
 	} else if ((spmi_p_nack & 0xF8) || (spmi_p_rcs_nack & 0xC0000) ||
 		(spmi_p_debug_nack & 0xF0000) || (spmi_p_mst_nack & 0xC0000)) {
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x4,
+				hwcidaddr_mt6363, &rdata, 1);
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x4,
+				VIO18_SWITCH_6363, &rdata1, 1);
+		pr_notice("%s 6363 CID/VIO18_SWITCH 0x%x/0x%x\n", __func__, rdata, rdata1);
 		dump_spmip_pmic_dbg_rg(arb);
 		mtk_spmi_writel(arb->spmimst_base[1], arb, 0x3, SPMI_REC_CTRL);
 	} else
