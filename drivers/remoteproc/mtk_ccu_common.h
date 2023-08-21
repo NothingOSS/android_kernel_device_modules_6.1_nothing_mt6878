@@ -22,6 +22,7 @@
 
 #define MTK_CCU_DEV_NAME            "ccu_rproc"
 #define MTK_CCU1_DEV_NAME           "ccu_rproc1"
+#define MTK_CCU_CAM_MAIN_NAME       "ccucammain"
 
 #if defined(SECURE_CCU)
 #define CCU_FW_NAME					"lib3a.ccu_dummy"
