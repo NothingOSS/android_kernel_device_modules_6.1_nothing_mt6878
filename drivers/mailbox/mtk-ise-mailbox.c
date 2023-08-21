@@ -29,15 +29,15 @@ static uint32_t mailbox_print_request(const mailbox_request_t *request)
 	if (request == NULL)
 		return MAILBOX_INVALID_PARAMETER;
 
-	pr_info(PFX "%s: Service ID     : %u\n", __func__, request->service_id);
-	pr_info(PFX "%s: Service version: %u\n", __func__, request->service_version);
-	pr_info(PFX "%s: Payload size   : %u\n", __func__, request->payload.size);
-	pr_info(PFX "%s: Payload content:", __func__);
+	pr_debug(PFX "%s: Service ID     : %u\n", __func__, request->service_id);
+	pr_debug(PFX "%s: Service version: %u\n", __func__, request->service_version);
+	pr_debug(PFX "%s: Payload size   : %u\n", __func__, request->payload.size);
+	pr_debug(PFX "%s: Payload content:", __func__);
 
 	for (i = 0; i < request->payload.size; i++)
-		pr_info(" [0x%x]", request->payload.fields[i]);
+		pr_debug(" [0x%x]", request->payload.fields[i]);
 
-	pr_info("\n");
+	pr_debug("\n");
 
 	return MAILBOX_SUCCESS;
 }
@@ -49,15 +49,15 @@ static uint32_t mailbox_print_reply(const mailbox_reply_t *reply)
 	if (reply == NULL)
 		return MAILBOX_INVALID_PARAMETER;
 
-	pr_info(PFX "%s: Service ID     : %u\n", __func__, reply->service_id);
-	pr_info(PFX "%s: Error status   : 0x%x\n", __func__, reply->status.error);
-	pr_info(PFX "%s: Payload size   : %u\n", __func__, reply->payload.size);
-	pr_info(PFX "%s: Payload content:", __func__);
+	pr_debug(PFX "%s: Service ID     : %u\n", __func__, reply->service_id);
+	pr_debug(PFX "%s: Error status   : 0x%x\n", __func__, reply->status.error);
+	pr_debug(PFX "%s: Payload size   : %u\n", __func__, reply->payload.size);
+	pr_debug(PFX "%s: Payload content:", __func__);
 
 	for (i = 0; i < reply->payload.size; i++)
-		pr_info(" [0x%x]", reply->payload.fields[i]);
+		pr_debug(" [0x%x]", reply->payload.fields[i]);
 
-	pr_info("\n");
+	pr_debug("\n");
 
 	return MAILBOX_SUCCESS;
 }
