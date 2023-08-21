@@ -63,8 +63,10 @@ static int sensor_comm_ctrl_seq_send(struct sensor_comm_ctrl *ctrl,
 	ctrl->crc8 = tiny_crc8((uint8_t *)ctrl, offsetof(typeof(*ctrl), crc8));
 	ret = ipi_comm_sync(get_ctrl_id(), (unsigned char *)ctrl, size,
 		(unsigned char *)&ack, sizeof(ack));
-	if (ret < 0)
+	if (ret < 0) {
+		pr_err("ipi_comm_sync error %d\n", ret);
 		return ret;
+	}
 	sensor_comm_sequence++;
 	crc = tiny_crc8((uint8_t *)&ack, offsetof(typeof(ack), crc8));
 	if (ack.crc8 != crc) {
