@@ -58,6 +58,8 @@ static struct lock_class_key ipi_lock_key[APU_IPI_MAX];
 static unsigned int tx_serial_no;
 static unsigned int rx_serial_no;
 unsigned int temp_buf[APU_SHARE_BUFFER_SIZE / 4];
+static uint32_t wait_inbox_timeout_cnt;
+bool wait_inbox_timeout_aee_triggered;
 
 /* for IRQ affinity tuning */
 static struct mutex affin_lock;
@@ -241,8 +243,15 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 	ret = apu_mbox_wait_inbox(apu);
 	if (ret) {
 		dev_info(dev, "wait inbox fail, ret=%d\n", ret);
+		wait_inbox_timeout_cnt++;
+		if (!wait_inbox_timeout_aee_triggered &&
+			wait_inbox_timeout_cnt > 3 && !apu->bypass_pwr_off_chk) {
+			apusys_rv_aee_warn("APUSYS_RV", "Wait_inbox_timeout");
+			wait_inbox_timeout_aee_triggered = true;
+		}
 		goto unlock_mutex;
 	}
+	wait_inbox_timeout_cnt = 0;
 
 	/* copy message payload to share buffer, need to do cache flush if
 	 * the buffer is cacheable. currently not
