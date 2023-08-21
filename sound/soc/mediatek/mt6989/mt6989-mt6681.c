@@ -1029,6 +1029,7 @@ static struct snd_soc_dai_link mt6989_mt6681_dai_links[] = {
 			    SND_SOC_DPCM_TRIGGER_PRE},
 		.dynamic = 1,
 		.dpcm_playback = 1,
+		.stop_dma_first = 1,
 		SND_SOC_DAILINK_REG(playback7),
 	},
 	{
@@ -1119,6 +1120,7 @@ static struct snd_soc_dai_link mt6989_mt6681_dai_links[] = {
 			    SND_SOC_DPCM_TRIGGER_PRE},
 		.dynamic = 1,
 		.dpcm_capture = 1,
+		.stop_dma_first = 1,
 		SND_SOC_DAILINK_REG(capture7),
 	},
 	{
