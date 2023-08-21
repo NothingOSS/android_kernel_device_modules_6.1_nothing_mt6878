@@ -806,15 +806,15 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 				&mtk_crtc->side_config_regs_pa);
 			mmsys_config_dump_analysis_mt6989(mtk_crtc->side_config_regs, 1);
 		}
-
-		if (mtk_crtc->is_dual_pipe) {
-			for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
-				if (comp && ((mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL) ||
-					(mtk_ddp_comp_get_type(comp->id) == MTK_DSI)))
-					mtk_dump_analysis(comp);
-			}
+		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+			if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL)
+				mtk_dump_analysis(comp);
 		}
-		break;
+
+		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+
+		/* MT6989 only dump OVL module and topsys in mini analysis */
+		goto done_return;
 	case MMSYS_MT6897:
 		DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
 			&mtk_crtc->ovlsys0_regs_pa);
