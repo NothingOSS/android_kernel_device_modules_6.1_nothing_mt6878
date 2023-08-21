@@ -136,11 +136,18 @@ EXPORT_SYMBOL_GPL(vcp_awake_unlock);
 
 int vcp_clr_spm_reg(void *unused)
 {
+	int ret;
+
 	/* AP side write 0x1 to VCP2SPM_IPC_CLR to clear
 	 * vcp side write 0x1 to VCP2SPM_IPC_SET to set SPM reg
 	 * vcp set        bit[0]
 	 */
+	ret = vcp_turn_mminfra_on();
+	if (ret < 0)
+		return -1;
+
 	writel(0x1, VCP_TO_SPM_REG);
+	vcp_turn_mminfra_off();
 	return 0;
 }
 EXPORT_SYMBOL_GPL(vcp_clr_spm_reg);

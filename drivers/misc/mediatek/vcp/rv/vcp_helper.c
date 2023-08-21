@@ -2576,11 +2576,13 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 	}
 
 	/*notify vcp functions stop*/
-	pr_debug("[VCP] %s(): vcp_extern_notify\n", __func__);
+	pr_debug("[VCP] %s(): vcp_extern_notify VCP_EVENT_STOP +\n", __func__);
 
 	mutex_lock(&vcp_A_notify_mutex);
 	vcp_extern_notify(VCP_EVENT_STOP);
 	mutex_unlock(&vcp_A_notify_mutex);
+
+	pr_debug("[VCP] %s(): vcp_extern_notify VCP_EVENT_STOP -\n", __func__);
 
 #ifdef VCP_PARAMS_TO_VCP_SUPPORT
 	/* The function, sending parameters to vcp must be anchored before
