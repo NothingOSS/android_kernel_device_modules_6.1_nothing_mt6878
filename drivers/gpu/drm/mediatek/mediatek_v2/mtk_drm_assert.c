@@ -235,6 +235,7 @@ static struct mtk_plane_state *drm_set_dal_plane_state(struct drm_crtc *crtc,
 	plane = &mtk_crtc->planes[mtk_crtc->layer_nr - 1].base;
 	plane_state = to_mtk_plane_state(plane->state);
 	pending = &plane_state->pending;
+	memset(pending, 0, sizeof(struct mtk_plane_pending_state));
 
 	plane_state->pending.addr = dal_pa;
 	plane_state->pending.pitch = ctxt->fb_width * DAL_BPP;
