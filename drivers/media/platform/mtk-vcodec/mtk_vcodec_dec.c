@@ -631,11 +631,14 @@ check_lpw_start_done:
 static bool mtk_vdec_lpw_check_low_latency(struct mtk_vcodec_ctx *ctx,
 	int src_cnt, int dst_cnt, int pair_cnt)
 {
+	if (ctx->dynamic_low_latency)
+		return true;
+
 	if (src_cnt < dst_cnt) {
 		ctx->dynamic_low_latency = true;
 		mtk_vdec_lpw_stop_timer(ctx, false);
 		ctx->lpw_state = VDEC_LPW_DEC;
-		mtk_lpw_debug(1, "[%d] detect dynamic low latency, switch lpw_state to DEC(%d)(pair cnt %d(%d,%d))",
+		mtk_lpw_debug(0, "[%d] detect dynamic low latency, switch lpw_state to DEC(%d)(pair cnt %d(%d,%d))",
 			ctx->id, ctx->lpw_state, pair_cnt, src_cnt, dst_cnt);
 		return true;
 	}
@@ -672,13 +675,10 @@ static bool mtk_vdec_lpw_check_dec_stop(struct mtk_vcodec_ctx *ctx,
 		if (ctx->lpw_dec_start_cnt == 0) {
 			ctx->lpw_state = VDEC_LPW_WAIT;
 			if (mtk_vdec_lpw_check_dec_start(ctx, false, false, debug_str) == false) {
-				if (mtk_vdec_lpw_check_low_latency(ctx, src_cnt, dst_cnt, pair_cnt)
-					== false) {
-					mtk_lpw_debug(1, "[%d] %s lpw_dec_start_cnt done, switch lpw_state to WAIT(%d)(pair cnt %d(%d,%d))",
-						ctx->id, debug_str, ctx->lpw_state,
-						pair_cnt, src_cnt, dst_cnt);
-					has_switch = true;
-				}
+				mtk_lpw_debug(1, "[%d] %s lpw_dec_start_cnt done, switch lpw_state to WAIT(%d)(pair cnt %d(%d,%d))",
+					ctx->id, debug_str, ctx->lpw_state,
+					pair_cnt, src_cnt, dst_cnt);
+				has_switch = true;
 			}
 		}
 	} else if (ctx->lpw_dec_start_cnt == 0 && pair_cnt <= limit_cnt) {
