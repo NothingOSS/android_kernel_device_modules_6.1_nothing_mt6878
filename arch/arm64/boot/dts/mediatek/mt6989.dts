@@ -17839,11 +17839,21 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 		};
 		mt6316_7_regulator: mt6316-7-regulator {
 			compatible = "mediatek,mt6316-7-regulator";
-			buck-size = <1>;
+			buck-size = <3>;
 
 			mt6316_7_vbuck1: 7-vbuck1 {
 				regulator-compatible = "vbuck1";
 				regulator-name = "7_vbuck1";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1275000>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
+			};
+
+			mt6316_7_vbuck3: 7-vbuck3 {
+				regulator-compatible = "vbuck3";
+				regulator-name = "7_vbuck3";
 				regulator-min-microvolt = <400000>;
 				regulator-max-microvolt = <1275000>;
 				regulator-enable-ramp-delay = <256>;
@@ -17876,6 +17886,38 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 			mt6316_8_vbuck3: 8-vbuck3 {
 				regulator-compatible = "vbuck3";
 				regulator-name = "8_vbuck3";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1275000>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
+			};
+		};
+	};
+
+	mt6316_15: mt6316@15 {
+		compatible = "mediatek,mt6316";
+		reg = <0xf SPMI_USID>;
+
+		extbuck-debug {
+			compatible = "mediatek,spmi-pmic-debug";
+		};
+		mt6316_15_regulator: mt6316-15-regulator {
+			compatible = "mediatek,mt6316-15-regulator";
+			buck-size = <3>;
+
+			mt6316_15_vbuck1: 15-vbuck1 {
+				regulator-compatible = "vbuck1";
+				regulator-name = "15_vbuck1";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1275000>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
+			};
+			mt6316_15_vbuck3: 15-vbuck3 {
+				regulator-compatible = "vbuck3";
+				regulator-name = "15_vbuck3";
 				regulator-min-microvolt = <400000>;
 				regulator-max-microvolt = <1275000>;
 				regulator-enable-ramp-delay = <256>;
