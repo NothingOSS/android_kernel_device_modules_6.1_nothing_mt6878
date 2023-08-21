@@ -37,7 +37,7 @@
 #define MMINFRA_MAX_CLK_NUM	(4)
 #define MAX_SMI_COMM_NUM	(3)
 
-#define MMINFRA_GALS_NR		(7)
+#define MMINFRA_GALS_NR		(10)
 
 struct mminfra_dbg {
 	void __iomem *ctrl_base;

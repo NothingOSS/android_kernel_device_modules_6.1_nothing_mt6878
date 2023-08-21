@@ -400,6 +400,12 @@ struct mtk_smi_dbg_init_setting {
 	u32 mask_w;
 };
 
+#define SMI_DEV_MAX_NR		(10)
+struct mm_smi_subsys {
+	s32 larb_id[SMI_DEV_MAX_NR];
+	s32 comm_id[SMI_DEV_MAX_NR];
+};
+
 #define MTK_SMI_TYPE_NR (3)
 #define MTK_SMI_NR_MAX (64)
 struct mtk_smi_dbg {
@@ -418,6 +424,7 @@ struct mtk_smi_dbg {
 	u8			frame;
 	struct notifier_block suspend_nb;
 	const struct smi_disp_ops	*disp_ops;
+	struct mm_smi_subsys subsys[SMI_USER_NR];
 };
 static struct mtk_smi_dbg	*gsmi;
 static bool smi_enter_met;
@@ -986,7 +993,7 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 	struct platform_device	*pdev;
 	struct resource		*res;
 	void __iomem		*va;
-	s32			larb_nr = 0, comm_nr = 0, rsi_nr = 0, id, ret, i;
+	s32			larb_nr = 0, comm_nr = 0, rsi_nr = 0, id, ret, i, tmp;
 
 	smi->dev = dev;
 	for_each_compatible_node(node, NULL, mtk_smi_dbg_comp[0]) {
@@ -1074,6 +1081,59 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 	else
 		dev_notice(dev, "smmu not support or hwccf support\n");
 #endif
+
+	for (i = 0; i < SMI_DEV_MAX_NR; i++) {
+		smi->subsys[SMI_MMINFRA].comm_id[i] = -1;
+		smi->subsys[SMI_MMINFRA].larb_id[i] = -1;
+		if (!of_property_read_u32_index(dev->of_node, "smi-mminfra-common-id", i, &tmp))
+			smi->subsys[SMI_MMINFRA].comm_id[i] = tmp;
+		if (!of_property_read_u32_index(dev->of_node, "smi-mminfra-larb-id", i, &tmp))
+			smi->subsys[SMI_MMINFRA].larb_id[i] = tmp;
+	}
+	for (i = 0; i < SMI_DEV_MAX_NR; i++) {
+		smi->subsys[SMI_VENC].comm_id[i] = -1;
+		smi->subsys[SMI_VENC].larb_id[i] = -1;
+		if (!of_property_read_u32_index(dev->of_node, "smi-venc-common-id", i, &tmp))
+			smi->subsys[SMI_VENC].comm_id[i] = tmp;
+		if (!of_property_read_u32_index(dev->of_node, "smi-venc-larb-id", i, &tmp))
+			smi->subsys[SMI_VENC].larb_id[i] = tmp;
+	}
+
+	for (i = 0; i < SMI_DEV_MAX_NR; i++) {
+		smi->subsys[SMI_VDEC].comm_id[i] = -1;
+		smi->subsys[SMI_VDEC].larb_id[i] = -1;
+		if (!of_property_read_u32_index(dev->of_node, "smi-vdec-common-id", i, &tmp))
+			smi->subsys[SMI_VDEC].comm_id[i] = tmp;
+		if (!of_property_read_u32_index(dev->of_node, "smi-vdec-larb-id", i, &tmp))
+			smi->subsys[SMI_VDEC].larb_id[i] = tmp;
+	}
+
+	for (i = 0; i < SMI_DEV_MAX_NR; i++) {
+		smi->subsys[SMI_DISP].comm_id[i] = -1;
+		smi->subsys[SMI_DISP].larb_id[i] = -1;
+		if (!of_property_read_u32_index(dev->of_node, "smi-disp-common-id", i, &tmp))
+			smi->subsys[SMI_DISP].comm_id[i] = tmp;
+		if (!of_property_read_u32_index(dev->of_node, "smi-disp-larb-id", i, &tmp))
+			smi->subsys[SMI_DISP].larb_id[i] = tmp;
+	}
+
+	for (i = 0; i < SMI_DEV_MAX_NR; i++) {
+		smi->subsys[SMI_DIP1].comm_id[i] = -1;
+		smi->subsys[SMI_DIP1].larb_id[i] = -1;
+		if (!of_property_read_u32_index(dev->of_node, "smi-isp-dip1-common-id", i, &tmp))
+			smi->subsys[SMI_DIP1].comm_id[i] = tmp;
+		if (!of_property_read_u32_index(dev->of_node, "smi-isp-dip1-larb-id", i, &tmp))
+			smi->subsys[SMI_DIP1].larb_id[i] = tmp;
+	}
+
+	for (i = 0; i < SMI_DEV_MAX_NR; i++) {
+		smi->subsys[SMI_TRAW].comm_id[i] = -1;
+		smi->subsys[SMI_TRAW].larb_id[i] = -1;
+		if (!of_property_read_u32_index(dev->of_node, "smi-isp-traw-common-id", i, &tmp))
+			smi->subsys[SMI_TRAW].comm_id[i] = tmp;
+		if (!of_property_read_u32_index(dev->of_node, "smi-isp-traw-larb-id", i, &tmp))
+			smi->subsys[SMI_TRAW].larb_id[i] = tmp;
+	}
 
 	smi->probe = true;
 	return 0;
@@ -1633,70 +1693,74 @@ static void smi_hang_detect_bw_monitor(bool is_start)
 	}
 }
 
-void mtk_smi_dbg_dump_for_mminfra(void)
+static void mtk_smi_dbg_dump_for_subsys(u32 subsys_id)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
-	s32			i, j, mminfra_comm_idx = 8, PRINT_NR = 5;
+	s32			i, j, id, PRINT_NR = 5;
 
 	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
 	for (i = 0; i < PRINT_NR; i++) {
-		for (j = 0; j <= mminfra_comm_idx; j++)
-			mtk_smi_dbg_print(smi, false, false, j, true);
+		for (j = 0; j < SMI_DEV_MAX_NR; j++) {
+			id = smi->subsys[subsys_id].larb_id[j];
+			if (id < 0)
+				break;
+			mtk_smi_dbg_print(smi, true, false, id, true);
+		}
+		for (j = 0; j < SMI_DEV_MAX_NR; j++) {
+			id = smi->subsys[subsys_id].comm_id[j];
+			if (id < 0)
+				break;
+			mtk_smi_dbg_print(smi, false, false, id, true);
+		}
+	}
+	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
+}
+
+void mtk_smi_dbg_dump_for_mminfra(void)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	s32			i, j, PRINT_NR = 5;
+
+	mtk_smi_dbg_dump_for_subsys(SMI_MMINFRA);
+	for (i = 0; i < PRINT_NR; i++) {
 		for (j = 0; j < ARRAY_SIZE(smi->rsi); j++)
 			mtk_smi_dbg_print(smi, true, true, j, true);
 	}
-	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
-
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_mminfra);
 
+void mtk_smi_dbg_dump_for_venc(void)
+{
+	raw_notifier_call_chain(&smi_notifier_list, 0, "SMI driver");
+	mtk_smi_dbg_dump_for_subsys(SMI_VENC);
+	mtk_smi_dbg_dump_for_mminfra();
+}
+EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_venc);
+
+void mtk_smi_dbg_dump_for_vdec(void)
+{
+	raw_notifier_call_chain(&smi_notifier_list, 0, "SMI driver");
+	mtk_smi_dbg_dump_for_subsys(SMI_VDEC);
+	mtk_smi_dbg_dump_for_mminfra();
+}
+EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_vdec);
+
 void mtk_smi_dbg_dump_for_isp_fast(u32 isp_id)
 {
-	struct mtk_smi_dbg	*smi = gsmi;
-	s32			i, PRINT_NR = 5;
-
 	pr_notice("%s: isp_id=%#x\n", __func__, isp_id);
-	for (i = 0; i < PRINT_NR; i++) {
-		if (isp_id & ISP_TRAW) {
-			mtk_smi_dbg_print(smi, true, false, 28, true);
-			mtk_smi_dbg_print(smi, true, false, 40, true);
-		}
-		if (isp_id & ISP_DIP) {
-			mtk_smi_dbg_print(smi, true, false, 10, true);
-			mtk_smi_dbg_print(smi, true, false, 11, true);
-			mtk_smi_dbg_print(smi, true, false, 15, true);
-			mtk_smi_dbg_print(smi, true, false, 22, true);
-			mtk_smi_dbg_print(smi, true, false, 23, true);
-			mtk_smi_dbg_print(smi, true, false, 38, true);
-			mtk_smi_dbg_print(smi, true, false, 39, true);
-		}
-	}
+	if (isp_id & ISP_TRAW)
+		mtk_smi_dbg_dump_for_subsys(SMI_TRAW);
+	if (isp_id & ISP_DIP)
+		mtk_smi_dbg_dump_for_subsys(SMI_DIP1);
+
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_isp_fast);
 
 void mtk_smi_dbg_dump_for_disp(void)
 {
-	struct mtk_smi_dbg	*smi = gsmi;
-	s32			i, j, disp_comm_idx = 14, PRINT_NR = 5;
-
 	raw_notifier_call_chain(&smi_notifier_list, 0, "SMI driver");
-	for (i = 0; i < PRINT_NR; i++) {
-		mtk_smi_dbg_print(smi, true, false, 0, true);
-		mtk_smi_dbg_print(smi, true, false, 1, true);
-		mtk_smi_dbg_print(smi, true, false, 20, true);
-		mtk_smi_dbg_print(smi, true, false, 21, true);
-		mtk_smi_dbg_print(smi, true, false, 32, true);
-		mtk_smi_dbg_print(smi, true, false, 33, true);
-		mtk_smi_dbg_print(smi, true, false, 34, true);
-		mtk_smi_dbg_print(smi, true, false, 35, true);
-		mtk_smi_dbg_print(smi, true, false, 36, true);
-		mtk_smi_dbg_print(smi, true, false, 37, true);
-
-		for (j = 0; j <= disp_comm_idx; j++)
-			mtk_smi_dbg_print(smi, false, false, j, true);
-		for (j = 0; j < ARRAY_SIZE(smi->rsi); j++)
-			mtk_smi_dbg_print(smi, true, true, j, true);
-	}
+	mtk_smi_dbg_dump_for_subsys(SMI_DISP);
+	mtk_smi_dbg_dump_for_mminfra();
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_disp);
 
