@@ -23,6 +23,9 @@
 #define MT6316_BUCK_MODE_NORMAL		0
 #define MT6316_BUCK_MODE_LP		2
 
+#define BUCK_PHASE_3			3
+#define BUCK_PHASE_4			4
+
 struct mt6316_regulator_info {
 	struct regulator_desc desc;
 	u32 da_reg;
@@ -44,6 +47,9 @@ struct mt6316_chip {
 	struct regmap *regmap;
 	u32 slave_id;
 };
+
+static unsigned int s6_buck_phase;
+static unsigned int s7_buck_phase;
 
 #define MT_BUCK(match, _name, volt_ranges, _bid, _vsel)	\
 [MT6316_ID_##_name] = {					\
@@ -218,6 +224,24 @@ static int mt6316_get_status(struct regulator_dev *rdev)
 	return (regval & info->qi) ? REGULATOR_STATUS_ON : REGULATOR_STATUS_OFF;
 }
 
+static void mt6316_buck_phase_init(struct mt6316_chip *chip)
+{
+	int ret = 0;
+	u32 val = 0;
+
+	ret = regmap_read(chip->regmap, MT6316_BUCK_TOP_4PHASE_TOP_ELR_0, &val);
+	if (ret != 0) {
+		dev_err(chip->dev, "Failed to get mt6316 buck phase: %d\n", ret);
+	} else {
+		dev_info(chip->dev, "S%d RG_4PH_CONFIG:%d\n", chip->slave_id, val);
+
+		if (chip->slave_id == MT6316_SLAVE_ID_6)
+			s6_buck_phase = val;
+		else if (chip->slave_id == MT6316_SLAVE_ID_7)
+			s7_buck_phase = val;
+	}
+}
+
 static const struct regulator_ops mt6316_volt_range_ops = {
 	.list_voltage = regulator_list_voltage_linear_range,
 	.map_voltage = regulator_map_voltage_linear_range,
@@ -259,6 +283,11 @@ static struct mt6316_init_data mt6316_8_init_data = {
 	.size = MT6316_ID_8_MAX,
 };
 
+static struct mt6316_init_data mt6316_15_init_data = {
+	.id = MT6316_SLAVE_ID_15,
+	.size = MT6316_ID_15_MAX,
+};
+
 static const struct of_device_id mt6316_of_match[] = {
 	{
 		.compatible = "mediatek,mt6316-3-regulator",
@@ -272,6 +301,9 @@ static const struct of_device_id mt6316_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6316-8-regulator",
 		.data = &mt6316_8_init_data,
+	}, {
+		.compatible = "mediatek,mt6316-15-regulator",
+		.data = &mt6316_15_init_data,
 	}, {
 		/* sentinel */
 	},
@@ -318,7 +350,16 @@ static int mt6316_regulator_probe(struct platform_device *pdev)
 	config.dev = dev;
 	config.driver_data = pdata;
 	config.regmap = regmap;
+
+	mt6316_buck_phase_init(chip);
 	for (i = 0; i < pdata->size; i++) {
+		if (pdata->id == MT6316_SLAVE_ID_6 &&
+		    s6_buck_phase == BUCK_PHASE_4 &&
+		    (mt6316_regulators + i)->desc.id == MT6316_ID_VBUCK3) {
+			dev_info(dev, "skip registering %s.\n", (mt6316_regulators + i)->desc.name);
+			continue;
+		}
+
 		rdev = devm_regulator_register(dev, &(mt6316_regulators + i)->desc, &config);
 		if (IS_ERR(rdev)) {
 			dev_err(dev, "failed to register %s\n", (mt6316_regulators + i)->desc.name);

@@ -23,6 +23,7 @@
 
 #define DEFAULT_DELAY_MS		10
 
+#define MT6373_TOP_VRCTL_VR0_EN		0x240
 #define MT6373_PLG_CFG_ELR1		0x3ab
 #define MT6373_ELR_MASK			0xc
 
@@ -736,8 +737,8 @@ static int mt6373_regulator_probe(struct platform_device *pdev)
 	struct regulator_dev *rdev;
 	struct mt6373_regulator_info *info;
 	int i, ret;
-	bool is_mt6373_cw = false;
 	unsigned int val = 0;
+	bool is_mt6373_cw = false;
 
 	config.dev = pdev->dev.parent;
 	config.regmap = dev_get_regmap(pdev->dev.parent, NULL);
@@ -748,12 +749,19 @@ static int mt6373_regulator_probe(struct platform_device *pdev)
 	else if ((val & MT6373_ELR_MASK) == 0x4)
 		is_mt6373_cw = true;
 
+	/* to check vbuck4 enable status */
+	ret = regmap_read(config.regmap, MT6373_TOP_VRCTL_VR0_EN, &val);
+
 	for (i = 0; i < MT6373_MAX_REGULATOR; i++) {
 		info = &mt6373_regulators[i];
 		info->irq = platform_get_irq_byname_optional(pdev, info->desc.name);
 		config.driver_data = info;
 		if (is_mt6373_cw && mt6373_bypass_register(info))
 			continue;
+		if (info->desc.id == MT6373_ID_VBUCK4 && (val & 0x10) == 0) {
+			dev_info(&pdev->dev, "skip registering %s\n", info->desc.name);
+			continue;
+		}
 
 		rdev = devm_regulator_register(&pdev->dev, &info->desc, &config);
 		if (IS_ERR(rdev)) {
