@@ -24,6 +24,12 @@ void init_rt_aggre_preempt(void)
 	rt_aggre_preempt_enable = sched_rt_aggre_preempt_enable_get();
 }
 
+void set_rt_aggre_preempt(int val)
+{
+	rt_aggre_preempt_enable = (bool) val;
+}
+EXPORT_SYMBOL_GPL(set_rt_aggre_preempt);
+
 static inline void rt_energy_aware_output_init(struct rt_energy_aware_output *rt_ea_output,
 			struct task_struct *p)
 {
@@ -37,6 +43,7 @@ static inline void rt_energy_aware_output_init(struct rt_energy_aware_output *rt
 	rt_ea_output->rt_lowest_prio = p->prio;
 	rt_ea_output->rt_lowest_pid = -1;
 	rt_ea_output->select_reason = 0;
+	rt_ea_output->rt_aggre_preempt_enable = -1;
 }
 
 #if IS_ENABLED(CONFIG_RT_SOFTINT_OPTIMIZATION)
@@ -416,6 +423,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	bool best_cpu_has_lt, cpu_has_lt;
 	unsigned long pwr_eff, this_pwr_eff;
 	struct perf_domain *target_pd, *pd;
+	bool _rt_aggre_preempt_enable = rt_aggre_preempt_enable;
 
 	irq_log_store();
 	mtk_get_gear_indicies(p, &order_index, &end_index, &reverse);
@@ -437,6 +445,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	if (!pd)
 		goto unlock;
 
+	rt_ea_output->rt_aggre_preempt_enable = _rt_aggre_preempt_enable;
 	for (cluster = 0; cluster < num_sched_clusters; cluster++) {
 		best_idle_exit_latency = UINT_MAX;
 		best_idle_cpu_cluster = -1;
@@ -485,7 +494,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			irq_log_store();
 
 			util_cum[cpu] = cpu_util_cum;
-			if (rt_aggre_preempt_enable &&
+			if (_rt_aggre_preempt_enable &&
 				!cpu_has_lt && ((cpu_rq(cpu)->curr->policy) == SCHED_NORMAL)) {
 				if (((cpu_rq(cpu)->curr->prio) > non_idle_cpu_prio) ||
 					(((cpu_rq(cpu)->curr->prio) == non_idle_cpu_prio)

@@ -497,6 +497,7 @@ TRACE_EVENT(sched_select_task_rq_rt,
 		__field(int, policy)
 		__field(int, target_cpu)
 		__field(long, lowest_mask)
+		__field(int,  rt_aggre_preempt_enable)
 		__field(unsigned int,  idle_cpus)
 		__field(unsigned int,  cfs_cpus)
 		__field(unsigned int,  rt_cpus)
@@ -522,6 +523,7 @@ TRACE_EVENT(sched_select_task_rq_rt,
 		__entry->policy = policy;
 		__entry->target_cpu = target_cpu;
 		__entry->lowest_mask = lowest_mask->bits[0];
+		__entry->rt_aggre_preempt_enable = rt_ea_output->rt_aggre_preempt_enable;
 		__entry->idle_cpus  = rt_ea_output->idle_cpus;
 		__entry->cfs_cpus   = rt_ea_output->cfs_cpus;
 		__entry->rt_cpus   = rt_ea_output->rt_cpus;
@@ -543,11 +545,12 @@ TRACE_EVENT(sched_select_task_rq_rt,
 		__entry->act_mask = cpu_active_mask->bits[0];
 	),
 	TP_printk(
-		"pid=%4d policy=0x%08x target=%d lowest_mask=0x%lx idle_cpus=0x%x cfs_cpus=0x%x rt_cpus=0x%x cfs_lowest_cpu=%d cfs_lowest_prio=%d cfs_lowest_pid=%d rt_lowest_cpu=%d rt_lowest_prio=%d rt_lowest_pid=%d util_est=%lu uclamp_min=%lu uclamp_max=%lu uclamp=%lu sd_flag=%d sync=%d mask=0x%lx cpuctl=%d cpuset=%d act_mask=0x%lx",
+		"pid=%4d policy=0x%08x target=%d lowest_mask=0x%lx rt_preempt_ctrl=%d idle_cpus=0x%x cfs_cpus=0x%x rt_cpus=0x%x cfs_lowest_cpu=%d cfs_lowest_prio=%d cfs_lowest_pid=%d rt_lowest_cpu=%d rt_lowest_prio=%d rt_lowest_pid=%d util_est=%lu uclamp_min=%lu uclamp_max=%lu uclamp=%lu sd_flag=%d sync=%d mask=0x%lx cpuctl=%d cpuset=%d act_mask=0x%lx",
 		__entry->pid,
 		__entry->policy,
 		__entry->target_cpu,
 		__entry->lowest_mask,
+		__entry->rt_aggre_preempt_enable,
 		__entry->idle_cpus,
 		__entry->cfs_cpus,
 		__entry->rt_cpus,
