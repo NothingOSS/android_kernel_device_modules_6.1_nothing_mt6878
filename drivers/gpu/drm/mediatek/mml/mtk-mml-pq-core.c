@@ -537,7 +537,8 @@ void get_dma_buffer(struct mml_task *task, u8 pipe,
 
 		if (unlikely(!temp_buffer)) {
 			mml_pq_err("%s create buffer failed", __func__);
-			mutex_unlock(list_lock);
+			if (list_lock)
+				mutex_unlock(list_lock);
 			return;
 		}
 		INIT_LIST_HEAD(&temp_buffer->buffer_list);
@@ -549,7 +550,8 @@ void get_dma_buffer(struct mml_task *task, u8 pipe,
 		*buf = temp_buffer;
 	}
 
-	mutex_unlock(list_lock);
+	if (list_lock)
+		mutex_unlock(list_lock);
 
 	if (!temp_buffer->va && !temp_buffer->pa) {
 		if (size == FG_BUF_SCALING_SIZE || size == FG_BUF_GRAIN_SIZE) {
@@ -583,7 +585,8 @@ void put_dma_buffer(struct mml_task *task, u8 pipe,
 	else if (size == FG_BUF_GRAIN_SIZE)
 		list_lock = &fg_buf_grain_mutex;
 
-	mutex_lock(list_lock);
+	if (list_lock)
+		mutex_lock(list_lock);
 
 	if (dma_buf_num > DMA_BUF_NUM_LIMIT) {
 		mml_pq_msg("%s dma_buf_num[%d] exceeds limit[%d]",
@@ -597,7 +600,8 @@ void put_dma_buffer(struct mml_task *task, u8 pipe,
 			list_add_tail(&((*buf)->buffer_list), &fg_buf_grain_list);
 	}
 
-	mutex_unlock(list_lock);
+	if (list_lock)
+		mutex_unlock(list_lock);
 	*buf = NULL;
 }
 

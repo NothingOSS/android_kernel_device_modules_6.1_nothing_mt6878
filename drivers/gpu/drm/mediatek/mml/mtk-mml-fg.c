@@ -291,7 +291,7 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	bool crc_cg_enable = 1;
 	bool is_yuv_444 = true;
 	bool buf_ready = true;
-	dma_addr_t fg_table_pa[FG_BUF_NUM];
+	dma_addr_t fg_table_pa[FG_BUF_NUM] = {0};
 
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
 	mml_pq_msg("%s engine_id[%d] en_fg[%d] width[%d] height[%d]", __func__, comp->id,
