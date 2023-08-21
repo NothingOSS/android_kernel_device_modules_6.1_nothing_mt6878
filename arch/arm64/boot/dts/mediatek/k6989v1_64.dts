@@ -149,9 +149,9 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	#address-cells = <1>;
 	#size-cells = <0>;
 	init-panel-off;
-	panel21@0 {
+	panel1@0 {
 		compatible = "truly,td4330,cmd";
-		reg = <1>;
+		reg = <0>;
 		pm-enable-gpios = <&pio 215 0>;
 		reset-gpios = <&pio 9 0>;
 		swap-from-dts;
@@ -160,15 +160,50 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
-			panel21_in: endpoint {
+			panel1_in: endpoint {
 				remote-endpoint = <&dsi1_out>;
+			};
+		};
+	};
+	panel2@1 {
+		compatible = "jdi,nt36672e,vdo,120hz";
+		reg = <1>;
+		pm-enable-gpios = <&pio 215 0>;
+		reset-gpios = <&pio 9 0>;
+		swap-from-dts;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel2_in: endpoint {
+				remote-endpoint = <&dsi1_out2>;
+			};
+		};
+	};
+	panel3@2 {
+		compatible = "jdi,nt36672e,vdo,60hz";
+		reg = <2>;
+		pm-enable-gpios = <&pio 215 0>;
+		reset-gpios = <&pio 9 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel3_in: endpoint {
+				remote-endpoint = <&dsi1_out3>;
 			};
 		};
 	};
 	ports {
 		port {
-			dsi1_out: endpoint {
-				remote-endpoint = <&panel21_in>;
+			dsi1_out: endpoint@0 {
+				remote-endpoint = <&panel1_in>;
+			};
+
+			dsi1_out2: endpoint@1 {
+				remote-endpoint = <&panel2_in>;
+			};
+
+			dsi1_out3: endpoint@2 {
+				remote-endpoint = <&panel3_in>;
 			};
 		};
 	};
