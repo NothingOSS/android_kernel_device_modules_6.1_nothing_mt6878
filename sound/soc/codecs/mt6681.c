@@ -2705,7 +2705,9 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   DL34_DEBUG_SOURCE_SEL_MASK_SFT,
 				   0x1 << DL34_DEBUG_SOURCE_SEL_SFT);
 	}
-
+	if (priv->hwgain_enable) {
+		regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x0);
+	}
 	if (priv->mux_select[MUX_HP_L] == HP_MUX_HPSPK) {
 		/* Disable handset short-circuit protection */
 		// todo
@@ -12352,13 +12354,13 @@ static int mt_hwgain_event(struct snd_soc_dapm_widget *w,
 		/* LCH target gain -3dB (0x5a9e0) */
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN1_CON1_3,
-			     (priv->dl_hwgain >> 6 & 0xff));
+			     (priv->dl_hwgain >> 24 & 0xff));
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN1_CON1_2,
-			     (priv->dl_hwgain >> 4 & 0xff));
+			     (priv->dl_hwgain >> 16 & 0xff));
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN1_CON1_1,
-			     (priv->dl_hwgain >> 2 & 0xff));
+			     (priv->dl_hwgain >> 8 & 0xff));
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN1_CON1_0,
 			     (priv->dl_hwgain & 0xff));
@@ -12376,13 +12378,13 @@ static int mt_hwgain_event(struct snd_soc_dapm_widget *w,
 		/* LCH target gain -3dB  (0x5a9e0) */
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN6_CON1_3,
-			     (priv->dl_hwgain >> 6 & 0xff));
+			     (priv->dl_hwgain >> 24 & 0xff));
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN6_CON1_2,
-			     (priv->dl_hwgain >> 4 & 0xff));
+			     (priv->dl_hwgain >> 16 & 0xff));
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN6_CON1_1,
-			     (priv->dl_hwgain >> 2 & 0xff));
+			     (priv->dl_hwgain >> 8 & 0xff));
 		regmap_write(priv->regmap,
 			     MT6681_AFE_GAIN6_CON1_0,
 			     (priv->dl_hwgain & 0xff));
@@ -12435,11 +12437,11 @@ static int mt_hwgain_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap,
 				   MT6681_AFE_GAIN1_CON0_0,
 				   GAIN1_ON_MASK_SFT,
-				   0x0 << GAIN1_ON_SFT);
+				   0x1 << GAIN1_ON_SFT);
 		regmap_update_bits(priv->regmap,
 				   MT6681_AFE_GAIN6_CON0_0,
 				   GAIN6_ON_MASK_SFT,
-				   0x0 << GAIN6_ON_SFT);
+				   0x1 << GAIN6_ON_SFT);
 		break;
 	default:
 		break;
@@ -17029,6 +17031,19 @@ static int mt6681_clh_lut0_1_set(struct snd_kcontrol *kcontrol,
 	mt6681_codec_init_reg(priv);
 	return 0;
 }
+static int mt6681_hwgain_get(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	ucontrol->value.integer.value[0] = priv->dl_hwgain;
+	dev_info(priv->dev, "%s(), %s = 0x%x\n", __func__, kcontrol->id.name,
+		 0);
+
+	return 0;
+}
+
 static int mt6681_hwgain_set(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
@@ -17081,7 +17096,7 @@ static const struct snd_kcontrol_new mt6681_snd_misc_controls[] = {
 		     hwgain_enable_get,
 		     hwgain_enable_set),
 	SOC_SINGLE_EXT("Codec_DL_HwGain", SND_SOC_NOPM, 0, 0x10000, 0,
-		       NULL, mt6681_hwgain_set),
+		       mt6681_hwgain_get, mt6681_hwgain_set),
 	SOC_SINGLE_EXT("HPDET_DEBUG", SND_SOC_NOPM, 0, 0x80000, 0,
 		       audio_hpdet_get, audio_hpdet_set),
 };
