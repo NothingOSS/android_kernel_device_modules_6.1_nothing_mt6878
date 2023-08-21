@@ -3355,6 +3355,9 @@ static void vcp_device_shutdown(struct platform_device *pdev)
 			pr_notice("[VCP] %s failed to turn mminfra on\n", __func__);
 			return;
 		}
+		mutex_lock(&vcp_A_notify_mutex);
+		vcp_extern_notify(VCP_EVENT_STOP);
+		mutex_unlock(&vcp_A_notify_mutex);
 
 		// trigger halt isr to change spm control power
 		writel(B_GIPC3_SETCLR_2, R_GIPC_IN_SET);
