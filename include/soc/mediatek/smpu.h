@@ -62,15 +62,18 @@ struct smpu {
 	char *vio_msg;
 	char *vio_msg_gpu;
 	bool is_vio;
+	bool is_bypass;
 
 	struct smpu_reg_info_t *dump_reg;
 	struct smpu_reg_info_t *clear_reg;
+	struct smpu_reg_info_t *mask_reg;
 	struct smpu_reg_info_t *clear_md_reg;
 
 	struct smpu_vio_dump_info_t *vio_reg_info;
 
 	unsigned int dump_cnt;
 	unsigned int clear_cnt;
+	unsigned int mask_cnt;
 	unsigned int clear_md_cnt;
 	unsigned int vio_dump_cnt;
 	void __iomem **mpu_base;

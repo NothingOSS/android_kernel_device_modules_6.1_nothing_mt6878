@@ -21,6 +21,7 @@
 #include <mt-plat/aee.h>
 #include <linux/ratelimit.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
+#include <linux/delay.h>
 
 extern int mtk_clear_smpu_log(unsigned int emi_id);
 //static struct kthread_worker *smpu_kworker;
@@ -59,6 +60,15 @@ static void clear_violation(struct smpu *mpu)
 	set_regs(mpu->clear_reg, mpu->clear_cnt, mpu_base);
 	//	pr_info("smpu clear vio done\n");
 }
+
+static void mask_irq(struct smpu *mpu)
+{
+	void __iomem *mpu_base;
+
+	mpu_base = mpu->mpu_base;
+	set_regs(mpu->mask_reg, mpu->mask_cnt, mpu_base);
+}
+
 static void clear_kp_violation(unsigned int emi_id)
 {
 	struct arm_smccc_res smc_res;
@@ -170,6 +180,9 @@ static void smpu_violation_callback(struct work_struct *work)
 	struct smpu *ssmpu, *nsmpu, *skp, *nkp, *mpu;
 	struct arm_smccc_res smc_res;
 	struct device_node *smpu_node = of_find_node_by_name(NULL, "smpu");
+	int by_pass_aid[3] = { 240, 241, 243 };
+	int by_pass_region[10] = { 22, 28, 39, 41, 44, 45, 57, 59, 61, 62 };
+	int i, j, by_pass_flag = 0;
 
 	ssmpu = global_ssmpu;
 	nsmpu = global_nsmpu;
@@ -186,6 +199,8 @@ static void smpu_violation_callback(struct work_struct *work)
 		mpu = skp;
 	else
 		return;
+
+	pr_info("%s: %s", __func__, mpu->vio_msg);
 
 	/* check vio region addr */
 	if ((nsmpu && nsmpu->is_vio) || (ssmpu && ssmpu->is_vio)) {
@@ -207,20 +222,46 @@ static void smpu_violation_callback(struct work_struct *work)
 				      &smc_res);
 		}
 	}
-	printk_deferred("%s: %s", __func__, mpu->vio_msg);
+
+	msleep(30);
 
 	if ((nsmpu && nsmpu->is_vio) || (ssmpu && ssmpu->is_vio)) {
-		if (mpu->dump_reg[5].value == 243 &&
-		    mpu->dump_reg[7].value == 22 &&
+		for (i = 0; i < 3; i++) {
+			for (j = 0; j < 10; j++) {
+				if (mpu->dump_reg[5].value == by_pass_aid[i] &&
+				    mpu->dump_reg[7].value ==
+					    by_pass_region[j]) {
+					by_pass_flag++;
+					break;
+				}
+			}
+			if (by_pass_flag > 0)
+				break;
+		}
+
+		if (by_pass_flag > 0 && // by pass WCE, this will be temp patch
 		    of_property_count_elems_of_size(smpu_node, "bypass-wce",
 						    sizeof(char))) {
 			pr_info("%s:AID == 0x%x && region = 0x%x without KERNEL_API!!\n",
 				__func__, mpu->dump_reg[5].value,
 				mpu->dump_reg[7].value);
-		} else
-			aee_kernel_exception("SMPU", mpu->vio_msg);
-	} else
-		aee_kernel_exception("SMPU", mpu->vio_msg);
+		} else if (!mpu->is_bypass) // by pass GPU write vio
+			aee_kernel_exception("SMPU", mpu->vio_msg); // for smpu_vio case
+	}else
+		aee_kernel_exception("SMPU", mpu->vio_msg); // for KP case
+
+	if (nsmpu)
+		clear_violation(nsmpu);
+	if (ssmpu)
+		clear_violation(ssmpu);
+	if (nkp)
+		clear_violation(nkp);
+	if (skp)
+		clear_violation(skp);
+
+	smpu_clear_md_violation();
+
+	mpu->is_bypass = false;
 	mpu->is_vio = false;
 }
 static DECLARE_WORK(smpu_work, smpu_violation_callback);
@@ -272,7 +313,8 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 	if (!violation) {
 		if (__ratelimit(&ratelimit))
 			pr_info("smpu no violation");
-		goto clear_violation;
+		clear_violation(mpu);
+		return IRQ_HANDLED;
 	}
 
 	if (violation) {
@@ -283,8 +325,9 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 					dump_reg, mpu->dump_cnt, vio_type);
 
 				if (irqret == IRQ_HANDLED) {
-					violation = false;
-					mpu->is_vio = false;
+					violation = true;
+					mpu->is_vio = true;
+					mpu->is_bypass = true;
 					goto clear_violation;
 				}
 			}
@@ -318,7 +361,7 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 	}
 
 clear_violation:
-	clear_violation(mpu);
+	mask_irq(mpu);
 	if (violation)
 		schedule_work(&smpu_work);
 
@@ -360,6 +403,7 @@ static int smpu_probe(struct platform_device *pdev)
 		mpu->name = name;
 	//is_vio default value
 	mpu->is_vio = false;
+	mpu->is_bypass = false;
 
 	// dump_reg
 	size = of_property_count_elems_of_size(smpu_node, "dump", sizeof(char));
@@ -447,6 +491,24 @@ static int smpu_probe(struct platform_device *pdev)
 	if (ret)
 		return -ENXIO;
 	//dump vio-info end
+	size = of_property_count_elems_of_size(smpu_node, "mask", sizeof(char));
+	if (size <= 0) {
+		pr_info("No clear smpu\n");
+		return -ENXIO;
+	}
+	mpu->mask_reg = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
+	if (!(mpu->clear_reg))
+		return -ENOMEM;
+
+	mpu->mask_cnt = size / sizeof(struct smpu_reg_info_t);
+	size >>= 2;
+	ret = of_property_read_u32_array(smpu_node, "mask",
+			(unsigned int *)(mpu->mask_reg), size);
+	if (ret) {
+		pr_info("No mask reg\n");
+		return -ENXIO;
+	}
+
 	//only for smpu node
 	if ((!(strcmp(mpu->name, "ssmpu"))) ||
 	    (!(strcmp(mpu->name, "nsmpu")))) {

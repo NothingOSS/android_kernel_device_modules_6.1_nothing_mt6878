@@ -97,7 +97,7 @@ bool aid_is_gpu_w(int vio_type, struct smpu_reg_info_t *dump)
 		for (i = 0; i < mpu->dump_cnt; i++) {
 			if (msg_len < MAX_GPU_VIO_LEN)
 				msg_len += scnprintf(mpu->vio_msg_gpu + msg_len, MAX_GPU_VIO_LEN - msg_len,
-					"[%x]%x", dump[i].offset,
+					"[%x]%x;", dump[i].offset,
 					dump[i].value);
 		}
 		pr_info("%s: %s", __func__, mpu->vio_msg_gpu);
