@@ -173,6 +173,8 @@ enum fg_label_index {
 	FG_PPS_3_LABEL,
 	FG_CTRL_0_LABEL,
 	FG_CK_EN_LABEL,
+	FG_TRIGGER_LABEL_0,
+	FG_TRIGGER_LABEL_1,
 	FG_LABEL_TOTAL
 };
 
@@ -399,8 +401,17 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 		0x00FFFFFF, reuse, cache, &fg_frm->labels[FG_PPS_3_LABEL]);
 
 	/* trigger FG load table */
-	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_TRIGGER], 1 << 0, 1 << 0);
-	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0);
+	if (buf_ready) {
+		mml_write(pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 1 << 0, 1 << 0,
+			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_0]);
+		mml_write(pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
+			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_1]);
+	} else {
+		mml_write(pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
+			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_0]);
+		mml_write(pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
+			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_1]);
+	}
 
 	if (fg->data->reg_table[FG_SRAM_CTRL] != REG_NOT_SUPPORT) {
 		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_SRAM_CTRL], 0x0, 0x3);
@@ -467,14 +478,14 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			unlikely(!task->pq_task->fg_table[i]->va)) {
 			mml_pq_err("%s job_id[%d] fg_table[%d] is null",
 				__func__, task->job.jobid, i);
-			goto exit;
+			goto buf_err_exit;
 		}
 
 		fg_table_pa[i] = task->pq_task->fg_table[i]->pa;
 		if ((task->pq_task->fg_table[i]->pa >> 34) > 0) {
 			mml_pq_err("%s job_id[%d] fg[%d] pa addr exceed 34 bits [%llx]",
 				__func__, task->job.jobid, i, fg_table_pa[i]);
-			goto exit;
+			goto buf_err_exit;
 		}
 	}
 
@@ -516,6 +527,10 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_update(reuse, fg_frm->labels[FG_LUT_BASE_MSB_LABEL],
 		(fg_table_pa[3]) >> 32);
 
+	/* trigger FG load table */
+	mml_update(reuse, fg_frm->labels[FG_TRIGGER_LABEL_0], 0x1);
+	mml_update(reuse, fg_frm->labels[FG_TRIGGER_LABEL_1], 0x0);
+
 	/* config pps */
 	mml_update(reuse, fg_frm->labels[FG_PPS_0_LABEL], mml_pq_fg_get_pps0(fg_meta));
 	mml_update(reuse, fg_frm->labels[FG_PPS_1_LABEL], mml_pq_fg_get_pps1(fg_meta));
@@ -523,6 +538,16 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_update(reuse, fg_frm->labels[FG_PPS_3_LABEL], mml_pq_fg_get_pps3(fg_meta));
 
 exit:
+	mml_pq_trace_ex_end();
+	return ret;
+
+buf_err_exit:
+	/* relay filmGrain */
+	mml_update(reuse, fg_frm->labels[FG_CTRL_0_LABEL], 0x1);
+	mml_update(reuse, fg_frm->labels[FG_CK_EN_LABEL], 0x7);
+	/* don't trigger FG load table */
+	mml_update(reuse, fg_frm->labels[FG_TRIGGER_LABEL_0], 0x0);
+	mml_update(reuse, fg_frm->labels[FG_TRIGGER_LABEL_1], 0x0);
 	mml_pq_trace_ex_end();
 	return ret;
 }
