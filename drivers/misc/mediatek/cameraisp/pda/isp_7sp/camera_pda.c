@@ -2324,14 +2324,6 @@ EXIT_WITHOUT_FREE_IOVA:
 
 		mutex_unlock(&pda_mutex);
 
-#ifndef FPGA_UT
-		// reset flow
-		for (i = 0; i < g_PDA_quantity; i++) {
-			pda_reset(i);
-			pda_nontransaction_reset(i);
-		}
-#endif
-
 #ifdef GET_PDA_TIME
 		// for compute pda process time
 		ktime_get_real_ts64(&total_time_end);
@@ -2631,6 +2623,14 @@ static int PDA_resume(struct platform_device *pdev)
 	return 0;
 }
 
+static void PDA_shutdown(struct platform_device *pdev)
+{
+	//Disable clock
+	EnableClock(MFALSE);
+	LOG_INF("PDA shutdown g_u4EnableClockCount: %d", g_u4EnableClockCount);
+	pm_runtime_disable(&pdev->dev);
+}
+
 static int PDA2_probe(struct platform_device *pdev)
 {
 	int nRet = 0;
@@ -2728,6 +2728,7 @@ static struct platform_driver PDADriver = {
 	.remove = PDA_remove,
 	.suspend = PDA_suspend,
 	.resume = PDA_resume,
+	.shutdown = PDA_shutdown,
 	.driver = {
 		   .name = PDA_DEV_NAME,
 		   .owner = THIS_MODULE,
