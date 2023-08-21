@@ -72,7 +72,7 @@ struct cmdq_test {
 	struct timer_list	timer;
 
 	u16			token_user0;
-	u16			token_gpr_set4;
+	u16			token_for_ut;
 };
 
 static struct cmdq_test		*gtest;
@@ -218,7 +218,7 @@ static void cmdq_test_mbox_gpr_sleep(struct cmdq_test *test, const bool sleep)
 			1 << CMDQ_GPR_DEBUG_TIMER, 1 << CMDQ_GPR_DEBUG_TIMER);
 		cmdq_pkt_clear_event(pkt, event);
 	} else
-		cmdq_pkt_wfe(pkt, test->token_gpr_set4);
+		cmdq_pkt_wfe(pkt, test->token_for_ut);
 
 	buf = list_last_entry(&pkt->buf, typeof(*buf), list_entry);
 	out_pa = CMDQ_BUF_ADDR(buf) + 3096;
@@ -237,7 +237,7 @@ static void cmdq_test_mbox_gpr_sleep(struct cmdq_test *test, const bool sleep)
 		cmdq_pkt_write_indriect(pkt, NULL, out_pa, CMDQ_TPR_ID, ~0);
 		cmdq_pkt_sleep(pkt, 100, CMDQ_GPR_DEBUG_TIMER);
 		cmdq_pkt_write_indriect(pkt, NULL, out_pa + 4, CMDQ_TPR_ID, ~0);
-		cmdq_pkt_set_event(pkt, test->token_gpr_set4);
+		cmdq_pkt_set_event(pkt, test->token_for_ut);
 		cmdq_pkt_write_indriect(pkt, NULL, out_pa + 8,
 			CMDQ_GPR_CNT_ID + CMDQ_GPR_DEBUG_TIMER, ~0);
 	}
@@ -386,7 +386,7 @@ void cmdq_test_mbox_polling(
 				CMDQ_METAEX_NONE);
 #endif
 
-		cmdq_pkt_wfe(pkt[i], test->token_gpr_set4);
+		cmdq_pkt_wfe(pkt[i], test->token_for_ut);
 		if (timeout)
 			out_va = cmdq_test_mbox_polling_timeout_unit(
 				pkt[i], pa, pttn[i], mask[i], aee);
@@ -394,7 +394,7 @@ void cmdq_test_mbox_polling(
 			cmdq_pkt_poll(pkt[i], NULL, pttn[i] & mask[i], pa,
 				mask[i], CMDQ_GPR_DEBUG_TIMER);
 
-		cmdq_pkt_set_event(pkt[i], test->token_gpr_set4);
+		cmdq_pkt_set_event(pkt[i], test->token_for_ut);
 
 		cpu_time = sched_clock();
 		cmdq_pkt_flush_async(pkt[i], NULL, NULL);
@@ -1833,11 +1833,11 @@ static int cmdq_test_probe(struct platform_device *pdev)
 		test->token_user0 = CMDQ_EVENT_MAX;
 	}
 
-	ret = of_property_read_u16(pdev->dev.of_node, "token-gpr-set4",
-		&test->token_gpr_set4);
+	ret = of_property_read_u16(pdev->dev.of_node, "token-for-ut",
+		&test->token_for_ut);
 	if (ret < 0) {
-		cmdq_err("no token-gpr-set4 err:%d", ret);
-		test->token_gpr_set4 = CMDQ_EVENT_MAX;
+		cmdq_err("no token-for-ut err:%d", ret);
+		test->token_for_ut = CMDQ_EVENT_MAX;
 	}
 
 	// fs
