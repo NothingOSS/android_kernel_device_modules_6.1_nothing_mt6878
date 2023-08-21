@@ -752,11 +752,12 @@ void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 	irq_log_store();
 	sugov_data_ptr = &((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
 	sugov_data_ptr2 = &((struct mtk_rq *) this_rq->android_vendor_data1)->sugov_data;
-	if (sugov_data_ptr->enq_update_dsu_freq == true || sugov_data_ptr2->enq_dvfs == true) {
+	if (READ_ONCE(sugov_data_ptr->enq_update_dsu_freq) == true
+			|| READ_ONCE(sugov_data_ptr2->enq_dvfs) == true) {
 		cpufreq_update_util(rq, 0);
-		sugov_data_ptr2->enq_dvfs = false;
+		WRITE_ONCE(sugov_data_ptr2->enq_dvfs, false);
 	}
-	sugov_data_ptr->enq_ing = false;
+	WRITE_ONCE(sugov_data_ptr->enq_ing, false);
 #endif
 	irq_log_store();
 }

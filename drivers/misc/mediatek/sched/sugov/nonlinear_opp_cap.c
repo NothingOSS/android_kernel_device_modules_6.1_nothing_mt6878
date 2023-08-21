@@ -143,9 +143,9 @@ bool enq_force_update_freq(struct sugov_policy *sg_policy)
 	rq = cpu_rq(policy->cpu);
 	sugov_data_ptr =
 		&((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
-	if (!sugov_data_ptr->enq_update_dsu_freq)
+	if (!READ_ONCE(sugov_data_ptr->enq_update_dsu_freq))
 		return false;
-	sugov_data_ptr->enq_update_dsu_freq = false;
+	WRITE_ONCE(sugov_data_ptr->enq_update_dsu_freq, false);
 	return true;
 }
 
@@ -211,9 +211,9 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 
 				sugov_data_ptr =
 					&((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
-				if (sugov_data_ptr->enq_ing == 0) {
+				if (READ_ONCE(sugov_data_ptr->enq_ing) == 0) {
 					freq_state.dsu_freq_vote[i] = 0;
-					sugov_data_ptr->enq_update_dsu_freq = true;
+					WRITE_ONCE(sugov_data_ptr->enq_update_dsu_freq, true);
 					goto skip_single_idle_cpu;
 				}
 			}
@@ -307,7 +307,8 @@ void update_wl_tbl(int cpu)
 					mtk_update_wl_table(i, wl_type_curr);
 					pd_info = &pd_capacity_tbl[i];
 					for_each_cpu(j, &pd_info->cpus)
-						per_cpu(cpu_scale, j) = pd_info->table[0].capacity;
+						WRITE_ONCE(per_cpu(cpu_scale, j),
+							pd_info->table[0].capacity);
 				}
 			}
 			last_wl_type = wl_type_curr;
@@ -1887,7 +1888,7 @@ int group_aware_dvfs_util(struct cpumask *cpumask)
 		rq = cpu_rq(cpu);
 		sugov_data_ptr =
 			&((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
-		if ((sugov_data_ptr->enq_ing == 0) && available_idle_cpu(cpu))
+		if ((READ_ONCE(sugov_data_ptr->enq_ing) == 0) && available_idle_cpu(cpu))
 			goto skip_idle;
 
 		am = get_adaptive_margin(cpu);
@@ -1940,9 +1941,10 @@ void update_active_ratio_gear(struct cpumask *cpumask)
 		}
 	}
 	if (last_idle_duratio[cpu_id] > am_wind_dura)
-		ramp_up[gear_idx] = 2;
-	gear_max_active_ratio_cap[gear_idx] = gear_max_active_ratio_tmp;
-	gear_update_active_ratio_cnt[gear_idx]++;
+		WRITE_ONCE(ramp_up[gear_idx], 2);
+	WRITE_ONCE(gear_max_active_ratio_cap[gear_idx], gear_max_active_ratio_tmp);
+	WRITE_ONCE(gear_update_active_ratio_cnt[gear_idx],
+		gear_update_active_ratio_cnt[gear_idx] + 1);
 }
 static bool grp_trigger;
 void update_active_ratio_all(void)
@@ -1965,12 +1967,16 @@ inline void update_adaptive_margin(struct cpufreq_policy *policy)
 	unsigned int gearid = per_cpu(gear_id, cpu);
 	unsigned int adaptive_margin_tmp;
 
-	if (gear_update_active_ratio_cnt_last[gearid] != gear_update_active_ratio_cnt[gearid]) {
-		gear_update_active_ratio_cnt_last[gearid] = gear_update_active_ratio_cnt[gearid];
+	if (gear_update_active_ratio_cnt_last[gearid]
+			!= READ_ONCE(gear_update_active_ratio_cnt[gearid])) {
+		gear_update_active_ratio_cnt_last[gearid] =
+			READ_ONCE(gear_update_active_ratio_cnt[gearid]);
 
-		if (ramp_up[gearid] == 0) {
-			unsigned int adaptive_ratio = ((gear_max_active_ratio_cap[gearid] <<
-				SCHED_CAPACITY_SHIFT) / am_target_active_ratio_cap[gearid]);
+		if (READ_ONCE(ramp_up[gearid]) == 0) {
+			unsigned int adaptive_ratio =
+					((READ_ONCE(gear_max_active_ratio_cap[gearid])
+					<< SCHED_CAPACITY_SHIFT)
+					/ am_target_active_ratio_cap[gearid]);
 
 			adaptive_margin_tmp = READ_ONCE(adaptive_margin[gearid]);
 			adaptive_margin_tmp =
@@ -1986,13 +1992,14 @@ inline void update_adaptive_margin(struct cpufreq_policy *policy)
 					adaptive_margin_tmp = margin_his[gearid][i];
 		} else {
 			adaptive_margin_tmp = util_scale;
-			ramp_up[gearid]--;
+			WRITE_ONCE(ramp_up[gearid], ramp_up[gearid] - 1);
 		}
 		WRITE_ONCE(adaptive_margin[gearid], adaptive_margin_tmp);
 
 		if (trace_sugov_ext_adaptive_margin_enabled())
 			trace_sugov_ext_adaptive_margin(gearid,
-			READ_ONCE(adaptive_margin[gearid]), gear_max_active_ratio_cap[gearid]);
+				READ_ONCE(adaptive_margin[gearid]),
+				READ_ONCE(gear_max_active_ratio_cap[gearid]));
 	}
 }
 

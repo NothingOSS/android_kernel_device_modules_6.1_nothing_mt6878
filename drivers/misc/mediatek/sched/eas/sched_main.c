@@ -131,7 +131,7 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 		struct uclamp_se *uc_min_req, *uc_max_req;
 
 		sugov_data_ptr = &((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
-		sugov_data_ptr->enq_ing = true;
+		WRITE_ONCE(sugov_data_ptr->enq_ing, true);
 
 		uc_min_req = &p->uclamp_req[UCLAMP_MIN];
 		uc_max_req = &p->uclamp_req[UCLAMP_MAX];
@@ -139,11 +139,11 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 		if (uc_min_req->user_defined || uc_max_req->user_defined) {
 			bool uclamp_diff = false;
 
-			uclamp_diff = (sugov_data_ptr->uclamp[UCLAMP_MIN]
+			uclamp_diff = (READ_ONCE(sugov_data_ptr->uclamp[UCLAMP_MIN])
 				!= READ_ONCE(rq->uclamp[UCLAMP_MIN].value));
 
 			uclamp_diff = (uclamp_diff
-				|| (sugov_data_ptr->uclamp[UCLAMP_MAX]
+				|| (READ_ONCE(sugov_data_ptr->uclamp[UCLAMP_MAX])
 				!= READ_ONCE(rq->uclamp[UCLAMP_MIN].value)));
 
 			if (uclamp_diff) {
@@ -152,7 +152,7 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 
 				sugov_data_ptr =
 					&((struct mtk_rq *) this_rq->android_vendor_data1)->sugov_data;
-				sugov_data_ptr->enq_dvfs = true;
+				WRITE_ONCE(sugov_data_ptr->enq_dvfs, true);
 			}
 		}
 	}

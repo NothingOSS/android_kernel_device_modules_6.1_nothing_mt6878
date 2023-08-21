@@ -319,8 +319,8 @@ unsigned long mtk_cpu_util(int cpu, unsigned long util_cfs,
 			umin = READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
 			umax = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
 			sugov_data_ptr = &((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
-			sugov_data_ptr->uclamp[UCLAMP_MIN] = umin;
-			sugov_data_ptr->uclamp[UCLAMP_MAX] = umax;
+			WRITE_ONCE(sugov_data_ptr->uclamp[UCLAMP_MIN], umin);
+			WRITE_ONCE(sugov_data_ptr->uclamp[UCLAMP_MAX], umax);
 			p = NULL;
 			if (cu_ctrl && curr_clamp(rq, &util) == 0)
 				goto skip_rq_uclamp;
@@ -625,7 +625,7 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	raw_spin_lock(&sg_policy->update_lock);
 
 	sugov_data_ptr = &((struct mtk_rq *) this_rq->android_vendor_data1)->sugov_data;
-	sugov_data_ptr->enq_dvfs = false;
+	WRITE_ONCE(sugov_data_ptr->enq_dvfs, false);
 
 	sugov_iowait_boost(sg_cpu, time, flags);
 	sg_cpu->last_update = time;
@@ -698,7 +698,8 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 			rq = cpu_rq(j);
 			sugov_data_ptr =
 				&((struct mtk_rq *) rq->android_vendor_data1)->sugov_data;
-			idle = (available_idle_cpu(j) && ((sugov_data_ptr->enq_ing == 0) ? 1 : 0));
+			idle = (available_idle_cpu(j)
+				&& ((READ_ONCE(sugov_data_ptr->enq_ing) == 0) ? 1 : 0));
 		}
 		if (trace_sugov_ext_util_enabled()) {
 			rq = cpu_rq(j);
@@ -734,7 +735,7 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 	raw_spin_lock(&sg_policy->update_lock);
 
 	sugov_data_ptr = &((struct mtk_rq *) this_rq->android_vendor_data1)->sugov_data;
-	sugov_data_ptr->enq_dvfs = false;
+	WRITE_ONCE(sugov_data_ptr->enq_dvfs, false);
 
 	sugov_iowait_boost(sg_cpu, time, flags);
 	sg_cpu->last_update = time;
