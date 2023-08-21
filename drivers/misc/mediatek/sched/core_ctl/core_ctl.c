@@ -726,6 +726,36 @@ int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
 
 unlock:
 	spin_unlock_irqrestore(&core_ctl_force_lock, flags);
+
+	if (is_pause){
+		if (ret < 0){
+			pr_info("[Core Pause] Pause request ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0]);
+		} else if (ret){
+			pr_info("[Core Pause] Already Pause: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0]);
+		} else {
+			pr_info("[Core Pause] Pause success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0]);
+		}
+	} else {
+		if (ret < 0){
+			pr_info("[Core Pause] Resume request ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0]);
+		} else if (ret){
+			pr_info("[Core Pause] Already Resume: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0]);
+		} else {
+			pr_info("[Core Pause] Resume success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0]);
+		}
+	}
 	cpu_hotplug_enable();
 	return ret;
 }
@@ -1336,7 +1366,6 @@ void core_ctl_tick(void *data, struct rq *rq)
 	}
 }
 
-
 inline void core_ctl_update_active_cpu(unsigned int cpu)
 {
 	unsigned long flags;
@@ -1354,7 +1383,7 @@ inline void core_ctl_update_active_cpu(unsigned int cpu)
 }
 EXPORT_SYMBOL(core_ctl_update_active_cpu);
 
-static void try_to_pause(struct cluster_data *cluster, int need)
+static struct cpumask try_to_pause(struct cluster_data *cluster, int need)
 {
 	unsigned long flags;
 	unsigned int num_cpus = cluster->num_cpus;
@@ -1363,6 +1392,10 @@ static void try_to_pause(struct cluster_data *cluster, int need)
 	bool success;
 	bool check_not_prefer = cluster->nr_not_preferred_cpus;
 	bool check_busy = true;
+	int ret = 0;
+	struct cpumask cpu_pause_res;
+
+	cpumask_clear(&cpu_pause_res);
 
 again:
 	nr_paused = 0;
@@ -1403,11 +1436,16 @@ again:
 
 		spin_unlock_irqrestore(&state_lock, flags);
 		core_ctl_debug("%s: Trying to pause CPU%u\n", TAG, c->cpu);
-		if (!sched_pause_cpu(c->cpu)) {
+		ret = sched_pause_cpu(c->cpu);
+		if (ret < 0){
+			core_ctl_debug("%s Unable to pause CPU%u err=%d\n", TAG, c->cpu, ret);
+		} else if (!ret) {
 			success = true;
+			cpumask_set_cpu(c->cpu, &cpu_pause_res);
 			nr_paused++;
 		} else {
-			core_ctl_debug("%s Unable to pause CPU%u\n", TAG, c->cpu);
+			cpumask_set_cpu(c->cpu, &cpu_pause_res);
+			core_ctl_debug("%s Unable to pause CPU%u already paused\n", TAG, c->cpu);
 		}
 		spin_lock_irqsave(&state_lock, flags);
 		if (success) {
@@ -1435,15 +1473,20 @@ again:
 		check_busy = false;
 		goto again;
 	}
+	return cpu_pause_res;
 }
 
-static void try_to_resume(struct cluster_data *cluster, int need)
+static struct cpumask try_to_resume(struct cluster_data *cluster, int need)
 {
 	unsigned long flags;
 	unsigned int num_cpus = cluster->num_cpus, cpu;
 	unsigned int nr_resumed = 0;
 	bool check_not_prefer = cluster->nr_not_preferred_cpus;
 	bool success;
+	int ret = 0;
+	struct cpumask cpu_resume_res;
+
+	cpumask_clear(&cpu_resume_res);
 
 again:
 	nr_resumed = 0;
@@ -1479,11 +1522,16 @@ again:
 		spin_unlock_irqrestore(&state_lock, flags);
 
 		core_ctl_debug("%s: Trying to resume CPU%u\n", TAG, c->cpu);
-		if (!sched_resume_cpu(c->cpu)) {
+		ret = sched_resume_cpu(c->cpu);
+		if (ret < 0){
+			core_ctl_debug("%s Unable to resume CPU%u err=%d\n", TAG, c->cpu, ret);
+		} else if (!ret) {
 			success = true;
+			cpumask_set_cpu(c->cpu, &cpu_resume_res);
 			nr_resumed++;
 		} else {
-			core_ctl_debug("%s: Unable to resume CPU%u\n", TAG, c->cpu);
+			cpumask_set_cpu(c->cpu, &cpu_resume_res);
+			core_ctl_debug("%s: Unable to resume CPU%u already resumed\n", TAG, c->cpu);
 		}
 		spin_lock_irqsave(&state_lock, flags);
 		if (success)
@@ -1503,13 +1551,19 @@ again:
 		check_not_prefer = false;
 		goto again;
 	}
+	return cpu_resume_res;
 }
 
 static void __ref do_core_ctl(struct cluster_data *cluster)
 {
 	unsigned int need;
 	unsigned long flags;
+	struct cpumask cpu_pause_res;
+	struct cpumask cpu_resume_res;
+	bool pause_resume = 0;
 
+	cpumask_clear(&cpu_pause_res);
+	cpumask_clear(&cpu_resume_res);
 	need = apply_limits(cluster, cluster->need_cpus);
 
 	if (adjustment_possible(cluster, need)) {
@@ -1519,11 +1573,28 @@ static void __ref do_core_ctl(struct cluster_data *cluster)
 		/* Avoid hotplug change online mask */
 		cpu_hotplug_disable();
 		spin_lock_irqsave(&core_ctl_force_lock, flags);
-		if (cluster->active_cpus > need)
-			try_to_pause(cluster, need);
-		else if (cluster->active_cpus < need)
-			try_to_resume(cluster, need);
+		if (cluster->active_cpus > need){
+			cpu_pause_res = try_to_pause(cluster, need);
+			pause_resume = 0;
+		} else if (cluster->active_cpus < need){
+			cpu_resume_res = try_to_resume(cluster, need);
+			pause_resume = 1;
+		}
 		spin_unlock_irqrestore(&core_ctl_force_lock, flags);
+
+		if (!pause_resume){
+			if (!cpumask_empty(&cpu_pause_res)){
+				pr_info("[Core Pause] pause_res=0x%lx, online=0x%lx, act=0x%lx, paused=0x%lx\n",
+					cpu_pause_res.bits[0], cpu_online_mask->bits[0],
+					cpu_active_mask->bits[0], cpu_pause_mask->bits[0]);
+			}
+		} else {
+			if (!cpumask_empty(&cpu_resume_res)){
+				pr_info("[Core Pause] resume_res=0x%lx, online=0x%lx, act=0x%lx, paused=0x%lx\n",
+					cpu_resume_res.bits[0], cpu_online_mask->bits[0],
+					cpu_active_mask->bits[0], cpu_pause_mask->bits[0]);
+			}
+		}
 		cpu_hotplug_enable();
 	} else
 		core_ctl_debug("%s: failed to adjust cluster %u from %u to %u. (min = %u, max = %u)\n",

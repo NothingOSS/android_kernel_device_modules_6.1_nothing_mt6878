@@ -354,15 +354,6 @@ int sched_pause_cpu(int cpu)
 	cpumask_set_cpu(cpu, &cpu_pause_req);
 
 	err = pause_cpus(&cpu_pause_req);
-	if (err) {
-		printk_deferred("[Core Pause]Already Pause: cpu=%d, req=0x%lx, pause=0x%lx, online=0x%lx, act=0x%lx\n",
-			cpu, cpu_pause_req.bits[0], cpu_pause_mask->bits[0],
-			cpu_online_mask->bits[0], cpu_active_mask->bits[0]);
-	} else {
-		printk_deferred("[Core Pause]Pause success: cpu=%d, req=0x%lx, pause=0x%lx, online=0x%lx, act=0x%lx\n",
-			cpu, cpu_pause_req.bits[0], cpu_pause_mask->bits[0],
-			cpu_online_mask->bits[0], cpu_active_mask->bits[0]);
-	}
 
 	return err;
 }
@@ -387,15 +378,6 @@ int sched_resume_cpu(int cpu)
 	cpumask_set_cpu(cpu, &cpu_resume_req);
 
 	err = resume_cpus(&cpu_resume_req);
-	if (err) {
-		printk_deferred("[Core Pause]Already Resume: cpu=%d, req=0x%lx, pause=0x%lx, online=0x%lx, act=0x%lx\n",
-			cpu, cpu_resume_req.bits[0], cpu_pause_mask->bits[0],
-			cpu_online_mask->bits[0], cpu_active_mask->bits[0]);
-	} else {
-		printk_deferred("[Core Pause]Resume success: cpu=%d, req=0x%lx, pause=0x%lx, online=0x%lx, act=0x%lx\n",
-			cpu, cpu_resume_req.bits[0], cpu_pause_mask->bits[0],
-			cpu_online_mask->bits[0], cpu_active_mask->bits[0]);
-	}
 
 	return err;
 }
