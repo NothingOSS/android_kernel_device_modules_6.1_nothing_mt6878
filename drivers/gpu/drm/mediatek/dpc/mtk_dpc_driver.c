@@ -4,16 +4,18 @@
  */
 
 #include <linux/clk.h>
-#include <linux/iopoll.h>
 #include <linux/component.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
+#include <linux/iopoll.h>
 #include <linux/module.h>
+#include <linux/notifier.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/suspend.h>
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 #include <linux/debugfs.h>
 #endif
@@ -32,8 +34,6 @@
 
 int debug_mmp = 1;
 module_param(debug_mmp, int, 0644);
-int debug_force_power = 1;
-module_param(debug_force_power, int, 0644);
 int debug_dvfs;
 module_param(debug_dvfs, int, 0644);
 int debug_check_reg;
@@ -79,6 +79,7 @@ struct mtk_dpc {
 	struct platform_device *pdev;
 	struct device *dev;
 	struct device *pd_dev;
+	struct notifier_block pm_nb;
 	int disp_irq;
 	int mml_irq;
 	resource_size_t dpc_pa;
@@ -91,6 +92,7 @@ struct mtk_dpc {
 	void __iomem *dvfsrc_en;
 	struct cmdq_client *cmdq_client;
 	atomic_t dpc_en_cnt;
+	bool skip_force_power;
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	struct dentry *fs;
 #endif
@@ -192,7 +194,7 @@ static struct mtk_dpc_dt_usage mt6989_mml_dt_usage[DPC_MML_DT_CNT] = {
 	/* VDISP DVFS, follow MML1 by default, or HRT BW */
 	{36, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_VDISP_DVFS},
 	{37, DPC_SP_TE,		40329,	DPC_MML_VIDLE_VDISP_DVFS},
-	{38, DPC_SP_TE,		700,	DPC_MML_VIDLE_VDISP_DVFS},
+	{38, DPC_SP_TE,		40329,	DPC_MML_VIDLE_VDISP_DVFS},
 
 	/* HRT BW */
 	{39, DPC_SP_RROT_DONE,	40329,	DPC_MML_VIDLE_HRT_BW},		/* OFF Time 0 */
@@ -517,6 +519,10 @@ void dpc_enable(bool en)
 		writel(DISP_DPC_EN | DISP_DPC_DT_EN, dpc_base + DISP_REG_DPC_EN);
 		dpc_mmp(config, MMPROFILE_FLAG_PULSE, U32_MAX, 1);
 	} else {
+		/* disable inten to avoid burst irq */
+		writel(0, dpc_base + DISP_REG_DPC_DISP_INTEN);
+		writel(0, dpc_base + DISP_REG_DPC_MML_INTEN);
+
 		writel(0, dpc_base + DISP_REG_DPC_EN);
 
 		/* reset dpc to clean counter start and value */
@@ -1161,8 +1167,10 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 
 int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 {
-	if (unlikely(!debug_force_power))
+	if (unlikely(g_priv->skip_force_power)) {
+		DPCFUNC("user %u skip force power", user);
 		return 0;
+	}
 
 	if (dpc_pm_ctrl(true))
 		return -1;
@@ -1176,8 +1184,10 @@ EXPORT_SYMBOL(dpc_vidle_power_keep);
 
 void dpc_vidle_power_release(const enum mtk_vidle_voter_user user)
 {
-	if (unlikely(!debug_force_power))
+	if (unlikely(g_priv->skip_force_power)) {
+		DPCFUNC("user %u skip force power", user);
 		return;
+	}
 
 	mtk_disp_vlp_vote(VOTE_CLR, user);
 
@@ -1218,6 +1228,19 @@ static void dpc_analysis(void)
 		readl(dpc_base + DISP_REG_DPC_MML1_MTCMOS_CFG));
 
 	dpc_pm_ctrl(false);
+}
+
+static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
+{
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		g_priv->skip_force_power = true;
+		return NOTIFY_OK;
+	case PM_POST_SUSPEND:
+		g_priv->skip_force_power = false;
+		return NOTIFY_OK;
+	}
+	return NOTIFY_DONE;
 }
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
@@ -1435,6 +1458,13 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	priv->pm_nb.notifier_call = dpc_pm_notifier;
+	ret = register_pm_notifier(&priv->pm_nb);
+	if (ret) {
+		DPCERR("register_pm_notifier failed %d", ret);
+		return ret;
+	}
+
 	/* enable external signal from DSI and TE */
 	writel(0x1F, dpc_base + DISP_REG_DPC_DISP_EXT_INPUT_EN);
 	writel(0x3, dpc_base + DISP_REG_DPC_MML_EXT_INPUT_EN);
@@ -1477,6 +1507,13 @@ static int mtk_dpc_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void mtk_dpc_shutdown(struct platform_device *pdev)
+{
+	struct mtk_dpc *priv = platform_get_drvdata(pdev);
+
+	priv->skip_force_power = true;
+}
+
 static const struct of_device_id mtk_dpc_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6989-disp-dpc"},
 	{.compatible = "mediatek,mt6985-disp-dpc"},
@@ -1487,6 +1524,7 @@ MODULE_DEVICE_TABLE(of, mtk_dpc_driver_dt_match);
 struct platform_driver mtk_dpc_driver = {
 	.probe = mtk_dpc_probe,
 	.remove = mtk_dpc_remove,
+	.shutdown = mtk_dpc_shutdown,
 	.driver = {
 		.name = "mediatek-disp-dpc",
 		.owner = THIS_MODULE,
