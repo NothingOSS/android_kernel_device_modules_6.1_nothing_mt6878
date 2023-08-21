@@ -34,6 +34,11 @@ static ssize_t scpctl_store(struct device *kobj
 	cmd.type = type;
 	cmd.op = op;
 
+	/* scp reset cmd */
+	if (cmd.type == 1 && cmd.op == 1) {
+		scp_need_aed_dump = true;
+		scp_reset_stress = true;
+	}
 	ret = mtk_ipi_send(&scp_ipidev, IPI_OUT_SCPCTL_1, 0, &cmd,
 			   PIN_OUT_SIZE_SCPCTL_1, 0);
 	if (ret != IPI_ACTION_DONE)

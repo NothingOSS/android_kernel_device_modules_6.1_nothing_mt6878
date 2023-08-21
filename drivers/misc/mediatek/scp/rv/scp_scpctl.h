@@ -24,7 +24,8 @@ struct scpctl_cmd_s {
 };
 
 extern struct device_attribute dev_attr_scpctl;
-
+extern bool scp_need_aed_dump;
+extern bool scp_reset_stress;
 #endif /* __SCP_SCPCTL_H__ */
 
 

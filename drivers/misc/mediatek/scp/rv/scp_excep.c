@@ -85,6 +85,8 @@ void (*scp_do_tbufdump)(uint32_t*, uint32_t*) = NULL;
 
 int scp_ee_enable;
 int scp_reset_counts = 100000;
+bool scp_need_aed_dump = true;
+bool scp_reset_stress = true;
 static atomic_t coredumping = ATOMIC_INIT(0);
 static DECLARE_COMPLETION(scp_coredump_comp);
 static uint32_t get_MDUMP_size(MDUMP_t type)
@@ -687,23 +689,25 @@ void scp_aed(enum SCP_RESET_TYPE type, enum scp_core_id id)
 	}
 
 	/* wait for previous coredump complete */
-	while (1) {
-		if (aee_get_mode() == AEE_MODE_CUSTOMER_USER)
-			break;
-		ret = wait_for_completion_interruptible_timeout(
-			&scp_coredump_comp, timeout);
-		if (ret == 0) {
-			pr_notice("[SCP] %s:TIMEOUT, skip\n",
-				__func__);
-			break;
-		}
-		if (ret > 0)
-			break;
-		if ((ret == -ERESTARTSYS) && time_before(jiffies, expire)) {
-			pr_debug("[SCP] %s: continue waiting for completion\n",
-				__func__);
-			timeout = expire - jiffies;
-			continue;
+	if(scp_need_aed_dump) {
+		while (1) {
+			if (aee_get_mode() == AEE_MODE_CUSTOMER_USER)
+				break;
+			ret = wait_for_completion_interruptible_timeout(
+				&scp_coredump_comp, timeout);
+			if (ret == 0) {
+				pr_notice("[SCP] %s:TIMEOUT, skip\n",
+					__func__);
+				break;
+			}
+			if (ret > 0)
+				break;
+			if ((ret == -ERESTARTSYS) && time_before(jiffies, expire)) {
+				pr_debug("[SCP] %s: continue waiting for completion\n",
+					__func__);
+				timeout = expire - jiffies;
+				continue;
+			}
 		}
 	}
 	if (atomic_read(&coredumping) == true)
@@ -744,9 +748,13 @@ void scp_aed(enum SCP_RESET_TYPE type, enum scp_core_id id)
 	scp_prepare_aed_dump(scp_aed_title, id);
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-	/* scp aed api, only detail information available*/
-	aed_common_exception_api("scp", NULL, 0, NULL, 0,
+	if(scp_need_aed_dump) {
+		if (!scp_reset_stress)
+			scp_need_aed_dump = false;
+		/* scp aed api, only detail information available*/
+		aed_common_exception_api("scp", NULL, 0, NULL, 0,
 			scp_dump.detail_buff, DB_OPT_DEFAULT);
+	}
 #endif
 
 	pr_debug("[SCP] scp exception dump is done\n");
@@ -873,6 +881,8 @@ int scp_excep_init(void)
 	scp_dump.ramdump_length = 0;
 	/* 1: ee on, 0: ee disable */
 	scp_ee_enable = 1;
+	/* scp reset stress */
+	scp_reset_stress = false;
 	/* all coredump need element is prepare done */
 	complete(&scp_coredump_comp);
 
