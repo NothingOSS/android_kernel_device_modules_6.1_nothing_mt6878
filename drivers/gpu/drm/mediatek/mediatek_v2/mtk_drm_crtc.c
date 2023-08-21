@@ -10823,15 +10823,19 @@ static void mtk_drm_crtc_wk_lock(struct drm_crtc *crtc, bool get,
 	const char *func, int line)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+
+	if (get) {
+		DDPMSG("Enabling CRTC wakelock\n");
+		mutex_lock(&priv->kernel_pm.lock);
+		__pm_stay_awake(mtk_crtc->wk_lock);
+		mutex_unlock(&priv->kernel_pm.lock);
+	} else
+		__pm_relax(mtk_crtc->wk_lock);
 
 	DDPMSG("CRTC%d %s wakelock %s %d\n",
 		drm_crtc_index(crtc), (get ? "hold" : "release"),
 		func, line);
-
-	if (get)
-		__pm_stay_awake(mtk_crtc->wk_lock);
-	else
-		__pm_relax(mtk_crtc->wk_lock);
 }
 
 unsigned int mtk_drm_dump_wk_lock(

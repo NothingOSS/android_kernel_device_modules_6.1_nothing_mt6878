@@ -126,6 +126,11 @@ struct mtk_connector_state {
 
 #define to_mtk_connector_state(x) container_of(x, struct mtk_connector_state, base)
 
+struct mtk_drm_kernel_pm {
+	bool shutdown;
+	struct notifier_block nb;	/* Kernel suspend and resume event */
+	struct mutex lock;		/* To block any request after kernel suspend */
+};
 
 struct mtk_drm_private {
 	struct drm_device *drm;
@@ -210,7 +215,7 @@ struct mtk_drm_private {
 	unsigned int top_clk_num;
 	struct clk **top_clk;
 	bool power_state;
-	bool kernel_shutdown;
+	struct mtk_drm_kernel_pm kernel_pm;
 
 	/* for rpo caps info */
 	unsigned int rsz_in_max[2];

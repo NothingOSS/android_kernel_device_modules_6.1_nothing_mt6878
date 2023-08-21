@@ -1568,8 +1568,10 @@ static void mtk_atomic_mml(struct drm_device *dev,
 static void mtk_set_first_config(struct drm_device *dev,
 					struct drm_atomic_state *old_state)
 {
-	struct drm_connector *connector;
 	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc;
+	struct drm_crtc_state *new_crtc_state;
+	struct drm_connector *connector;
 	struct drm_connector_state *new_conn_state;
 	int i;
 
@@ -1579,6 +1581,13 @@ static void mtk_set_first_config(struct drm_device *dev,
 			private->already_first_config = true;
 			DDPMSG("%s, set first config true\n", __func__);
 		}
+	}
+
+	for_each_new_crtc_in_state(old_state, crtc, new_crtc_state, i) {
+		struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+
+		if (mtk_crtc->enabled && !new_crtc_state->active)
+			mtk_crtc->enabled = false;
 	}
 }
 
@@ -1657,7 +1666,7 @@ static int mtk_atomic_check(struct drm_device *dev,
 	struct mtk_drm_private *priv = dev->dev_private;
 	int i, ret = 0;
 
-	if (unlikely(priv->kernel_shutdown)) {
+	if (unlikely(priv->kernel_pm.shutdown)) {
 		DDPMSG("mtk_drm_shutdown has been called, skip the next atomic commit\n");
 		return -881;
 	}
@@ -7230,6 +7239,22 @@ static int mtk_drm_init_emi_eff_table(struct drm_device *drm_dev)
 	}
 }
 
+static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
+{
+	struct mtk_drm_kernel_pm *kernel_pm = container_of(notifier, typeof(*kernel_pm), nb);
+
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		DDPMSG("Disabling CRTC wakelock\n");
+		mutex_lock(&kernel_pm->lock);
+		return NOTIFY_OK;
+	case PM_POST_SUSPEND:
+		mutex_unlock(&kernel_pm->lock);
+		return NOTIFY_OK;
+	}
+	return NOTIFY_DONE;
+}
+
 static int mtk_drm_kms_init(struct drm_device *drm)
 {
 	struct mtk_drm_private *private = drm->dev_private;
@@ -8752,6 +8777,11 @@ SKIP_OVLSYS_CONFIG:
 		of_node_put(infra_node);
 	}
 
+	private->kernel_pm.nb.notifier_call = mtk_drm_pm_notifier;
+	ret = register_pm_notifier(&private->kernel_pm.nb);
+	if (ret)
+		DDPMSG("register_pm_notifier failed %d", ret);
+
 	private->dpc_dev = mtk_drm_get_pd_device(dev, "mminfra_in_dpc");
 	if (private->dpc_dev) {
 		pm_runtime_irq_safe(private->dpc_dev);
@@ -8990,7 +9020,7 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 		mtk_drm_pm_ctrl(private, DISP_PM_DISABLE);
 
 		/* skip all next atomic commit by atomic_check */
-		private->kernel_shutdown = true;
+		private->kernel_pm.shutdown = true;
 	}
 }
 
