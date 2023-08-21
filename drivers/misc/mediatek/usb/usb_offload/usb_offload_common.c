@@ -99,6 +99,57 @@ static int xhci_mtk_ring_expansion(struct xhci_hcd *xhci,
 static int xhci_mtk_update_erst(struct usb_offload_dev *udev,
 	struct xhci_segment *first,	struct xhci_segment *last, unsigned int num_segs);
 
+static int set_interface(struct usb_device *udev,
+			     struct usb_host_interface *alts,
+			     int iface, int alt)
+{
+	return 0;
+}
+static int set_pcm_intf(struct usb_interface *intf, int iface, int alt,
+			    int direction, struct snd_usb_substream *subs)
+{
+	struct snd_usb_audio *chip = subs->stream->chip;
+	struct snd_usb_endpoint *ep = subs->data_endpoint;
+	int altset = ep->altsetting;
+	int err, vid, pid;
+
+	vid = chip->dev->descriptor.idVendor;
+	pid = chip->dev->descriptor.idProduct;
+	USB_OFFLOAD_INFO("vid:0x%x pid:0x%x\n", vid, pid);
+
+	if (vid == 0x20b1 && pid == 0x302e) {
+		/* Shanling UA1 Pro adaptor */
+		USB_OFFLOAD_INFO("Shanling UA1 Pro: turn on/off interface again\n");
+		err = usb_set_interface(chip->dev, ep->iface, 0);
+		if (err < 0) {
+			USB_OFFLOAD_ERR("fail to set interface 0\n");
+			return err;
+		}
+
+		mdelay(10);
+
+		err = usb_set_interface(chip->dev, ep->iface, altset);
+		if (err < 0) {
+			USB_OFFLOAD_ERR("fail to set interface %d\n", altset);
+			return err;
+		}
+	}
+
+	return 0;
+}
+static int set_pcm_connection(struct usb_device *udev,
+				  enum snd_vendor_pcm_open_close onoff,
+				  int direction)
+{
+	return 0;
+}
+
+static struct snd_usb_audio_vendor_ops alsa_ops = {
+	.set_interface = set_interface,
+	.set_pcm_intf = set_pcm_intf,
+	.set_pcm_connection = set_pcm_connection,
+};
+
 static void memory_cleanup(void)
 {
 	USB_OFFLOAD_MEM_DBG("++\n");
@@ -2469,6 +2520,9 @@ static int usb_offload_probe(struct platform_device *pdev)
 		USB_OFFLOAD_ERR("Fail to allocate usb_offload_dev\n");
 		return -ENOMEM;
 	}
+
+	if (snd_vendor_set_ops(&alsa_ops))
+		USB_OFFLOAD_ERR("fail registering ALSA OPS\n");
 
 	uodev->dev = &pdev->dev;
 	uodev->enable_adv_lowpwr =
