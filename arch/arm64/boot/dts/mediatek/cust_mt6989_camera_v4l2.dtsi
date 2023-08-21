@@ -862,7 +862,6 @@
 		reindex-to = <0>;
 
 		cust-aov-csi-clk = <312>;
-		phy-ctrl-ver = "mt6989";
 
 		#thermal-sensor-cells = <0>;
 
