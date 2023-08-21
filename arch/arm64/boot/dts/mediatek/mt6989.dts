@@ -7597,7 +7597,7 @@
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 		};
 
-		mipi_tx_config0: mipi-tx-config@11e90000 {
+		mipi_tx_config0: mipi-tx-config0@11e90000 {
 			compatible = "mediatek,mipi_tx_config0",
 						"mediatek,mt6989-mipi-tx";
 			reg = <0 0x11e90000 0 0x1000>;
@@ -7608,7 +7608,7 @@
 			dispsys-sel-offset = <0x170 0x174>;
 		};
 
-		mipi_tx_config1: mipi-tx-config@11ea0000 {
+		mipi_tx_config1: mipi-tx-config1@11ea0000 {
 			status = "disabled";
 			compatible = "mediatek,mipi_tx_config1",
 						"mediatek,mt6989-mipi-tx";
