@@ -2417,6 +2417,56 @@ void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
 	}
 }
 
+int mtk_dsi_check_vblank_cnt(struct mtk_dsi *dsi, struct mtk_drm_crtc *mtk_crtc,
+	struct mtk_panel_ext *panel_ext)
+{
+	unsigned int last_pf = 0;
+	unsigned int crtc_idx;
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+	ktime_t last_present_ts = 0;
+
+	priv = mtk_crtc->base.dev->dev_private;
+	crtc = &mtk_crtc->base;
+	if (!priv || !crtc) {
+		DDPPR_ERR("%s priv or crtc is NULL\n", __func__);
+		return -1;
+	}
+	crtc_idx = drm_crtc_index(crtc);
+
+	last_present_ts = priv->crtc_last_present_ts[crtc_idx];
+	priv->crtc_last_present_ts[crtc_idx] = 0;
+	if (last_present_ts == 0)
+		return -1;
+	//pf_time was updated at dsi irq
+	if(mtk_crtc->pf_time < last_present_ts) {
+		DDPPR_ERR("%s pf_time should not be earlier than present_ts\n", __func__);
+		return -1;
+	}
+
+	//last_pf: distance from current TE to last pf. unit is number of little TE
+	//mtk_crtc->pf_time: last dsi irq time (nano s) TE
+	//last_present_ts: last release present fence time (nano s)
+	//panel_ext->params->real_te_duration: (micro s)
+	last_pf =
+		((((mtk_crtc->pf_time - last_present_ts) / 1000) +
+		(panel_ext->params->real_te_duration)/2)/
+		(panel_ext->params->real_te_duration))%dsi->skip_vblank;
+
+	//change counter
+	if (last_pf != 0) {
+		DDPPR_ERR("%s re-sync skip_vblank_cnt: %d -> %d, skip_vlnk %d\n", __func__,
+			dsi->cnt%dsi->skip_vblank, last_pf, dsi->skip_vblank);
+		DDPPR_ERR("[%s] dsi %d, %d, %lld, %lld, %d\n", __func__,
+			dsi->cnt, last_pf, mtk_crtc->pf_time,
+			last_present_ts, panel_ext->params->real_te_duration);
+		drm_trace_tag_value("re-sync_skip_vblank_cnt", last_pf);
+		dsi->cnt = last_pf;
+		return 0;
+	}
+	return 1;
+}
+
 irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 {
 	struct mtk_dsi *dsi = dev_id;
@@ -2582,8 +2632,6 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 		if ((status & TE_RDY_INT_FLAG) &&
 				(atomic_read(&mtk_crtc->d_te.te_switched) != 1)) {
-
-			drm_trace_tag_mark("TE_RDY");
 			if (dsi->ddp_comp.id == DDP_COMPONENT_DSI0 ||
 				dsi->ddp_comp.id == DDP_COMPONENT_DSI1) {
 				unsigned long long ext_te_time = sched_clock();
@@ -2611,6 +2659,11 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				dsi->skip_vblank = (dsi->skip_vblank == 0) ?
 					1 : dsi->skip_vblank;
 
+				if (panel_ext->params->skip_vblank == 0)
+					drm_trace_tag_mark("TE_RDY");
+				else
+					drm_trace_tag_value("TE_RDY", dsi->cnt);
+
 				if (dsi->encoder.crtc)
 					doze_enabled = mtk_dsi_doze_state(dsi);
 
@@ -2631,8 +2684,10 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 						mtk_crtc_vblank_irq(&mtk_crtc->base);
 						dsi->cnt = 0;
 					} else if (dsi->cnt % dsi->skip_vblank == 0) {
+						dsi->cnt =
+						(mtk_dsi_check_vblank_cnt(dsi, mtk_crtc, panel_ext)
+						!= 0) ? 0 : dsi->cnt;
 						dsi->skip_vblank = panel_ext->params->skip_vblank;
-						dsi->cnt = 0;
 					}
 					dsi->cnt++;
 				} else if (mtk_crtc->vblank_en)

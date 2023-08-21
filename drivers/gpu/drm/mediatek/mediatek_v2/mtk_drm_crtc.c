@@ -16241,6 +16241,9 @@ static int mtk_drm_pf_release_thread(void *data)
 
 		mtk_release_present_fence(private->session_id[crtc_idx],
 					  fence_idx, pf_time);
+
+		private->crtc_last_present_ts[crtc_idx] = pf_time;
+
 		if (crtc_idx == 0)
 			ktime_get_real_ts64(&rdma_sof_tval);
 #endif
