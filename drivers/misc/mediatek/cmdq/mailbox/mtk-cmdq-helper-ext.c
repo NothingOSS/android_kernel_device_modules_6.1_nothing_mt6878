@@ -2955,7 +2955,7 @@ void cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
 			mod, cmdq_util_helper->hw_name(client->chan),
 			*(u64 *)inst, inst->arg_a, thread_id);
 #ifdef CMDQ_SECURE_SUPPORT
-		if (!pkt->sec_data) {
+		if (!pkt->sec_data && aee != CMDQ_NO_AEE) {
 			for (i = 0; i < EVENT_DEBUG_TIMES; i++)
 				cmdq_event_dump_and_clr(client->chan);
 		}
