@@ -404,6 +404,7 @@ struct mtk_smi_dbg_init_setting {
 #define MTK_SMI_NR_MAX (64)
 struct mtk_smi_dbg {
 	bool			probe;
+	bool			is_shutdown;
 	struct device		*dev;
 	struct dentry		*fs;
 	struct dentry		*sta_fs;
@@ -971,6 +972,12 @@ static const struct mtk_pm_ops mtk_smi_pm_ops = {
 };
 #endif
 
+static void mtk_smi_dbg_shutdown(struct platform_device *dbg_pdev)
+{
+	pr_notice("%s shutdown enter\n", __func__);
+	gsmi->is_shutdown = true;
+}
+
 static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 {
 	struct device *dev = &dbg_pdev->dev;
@@ -1347,6 +1354,7 @@ static const struct of_device_id mtk_smi_dbg_of_ids[] = {
 
 static struct platform_driver mtk_smi_dbg_driver = {
 	.probe	= mtk_smi_dbg_probe,
+	.shutdown = mtk_smi_dbg_shutdown,
 	.driver	= {
 		.name = DRV_NAME,
 		.of_match_table = mtk_smi_dbg_of_ids,
@@ -1505,6 +1513,11 @@ s32 smi_monitor_start(struct device *dev, u32 common_id, u32 commonlarb_id[MAX_M
 	struct mtk_smi_dbg	*smi = gsmi;
 	void __iomem *comm_base;
 
+	if (smi->is_shutdown) {
+		pr_notice("%s already shutdown, no start monitor\n", __func__);
+		return -EAGAIN;
+	}
+
 	comm_base = smi->comm[common_id].va;
 	if (!comm_base) {
 		pr_notice("[smi]%s: failed to monitor comm%d\n", __func__, common_id);
@@ -1558,6 +1571,11 @@ s32 smi_monitor_stop(struct device *dev, u32 common_id, u32 *bw, enum smi_mon_id
 	u32 byte_cnt[MAX_MON_REQ] = { 0 };
 	struct mtk_smi_dbg	*smi = gsmi;
 	void __iomem *comm_base;
+
+	if (smi->is_shutdown) {
+		pr_notice("%s already shutdown, no stop monitor\n", __func__);
+		return -EAGAIN;
+	}
 
 	comm_base = smi->comm[common_id].va;
 	if (!comm_base) {
@@ -1687,6 +1705,11 @@ s32 mtk_smi_dbg_hang_detect(char *user)
 
 	if (!smi->probe) {
 		pr_notice("[smi] smi dbg not ready\n");
+		return -EAGAIN;
+	}
+
+	if (smi->is_shutdown) {
+		pr_notice("%s already shutdown, ignore dump\n", __func__);
 		return -EAGAIN;
 	}
 #if IS_ENABLED(CONFIG_MTK_EMI)
