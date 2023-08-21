@@ -8777,6 +8777,7 @@ SKIP_OVLSYS_CONFIG:
 		of_node_put(infra_node);
 	}
 
+	mutex_init(&private->kernel_pm.lock);
 	private->kernel_pm.nb.notifier_call = mtk_drm_pm_notifier;
 	ret = register_pm_notifier(&private->kernel_pm.nb);
 	if (ret)
