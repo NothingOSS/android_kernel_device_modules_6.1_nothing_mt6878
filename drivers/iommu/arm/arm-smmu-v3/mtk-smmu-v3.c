@@ -126,8 +126,9 @@ static void smmuwp_clear_tf(struct arm_smmu_device *smmu);
 static void smmuwp_dump_outstanding_monitor(struct arm_smmu_device *smmu);
 static void smmuwp_dump_io_interface_signals(struct arm_smmu_device *smmu);
 static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu);
-static void dump_global_register(struct arm_smmu_device *smmu);
-static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm);
+static void mtk_smmu_glbreg_dump(struct arm_smmu_device *smmu);
+static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm,
+			    bool ratelimit);
 static __le64 *arm_smmu_get_step_for_sid(struct arm_smmu_device *smmu,
 					 u32 sid);
 
@@ -1715,15 +1716,13 @@ static int mtk_smmu_evt_handler(int irq, void *dev, u64 *evt)
 
 	mtk_smmu_evt_dump(smmu, evt);
 
-	dump_global_register(smmu);
+	mtk_smmu_glbreg_dump(smmu);
 	mtk_smmu_wpreg_dump(NULL, smmu_type);
-
-	mtk_smmu_ste_cd_info_dump(NULL, smmu_type, sid);
 
 	return IRQ_HANDLED;
 }
 
-static void dump_global_register(struct arm_smmu_device *smmu)
+static void mtk_smmu_glbreg_dump(struct arm_smmu_device *smmu)
 {
 	/* SMMU ID and control registers */
 	dev_info(smmu->dev,
@@ -2109,13 +2108,13 @@ static int mtk_report_device_fault(struct arm_smmu_device *smmu,
 
 		/* can't get: fault_ipa, id, s2_trans */
 
-		mtk_smmu_ste_cd_info_dump(NULL, smmu_type, sid);
-
 		mutex_lock(&smmu->streams_mutex);
 		master = arm_smmu_find_master(smmu, sid);
 		if (master != NULL)
 			fault_param->fault_pa = smmu_iova_to_phys(master, fault_iova);
 	}
+
+	mtk_smmu_ste_cd_info_dump(NULL, smmu_type, sid);
 
 	dev_info(smmu->dev,
 		 "[%s] smmu:%s, master:%s, fault_iova=0x%llx, fault_ipa=0x%llx, sid=0x%x, ssid=0x%x, ssid_valid:0x%x, id:0x%x, reason:%s, s2_trans:0x%llx\n",
@@ -2162,7 +2161,8 @@ static int mtk_report_device_fault(struct arm_smmu_device *smmu,
 	return 0;
 }
 
-static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm)
+static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm,
+			    bool ratelimit)
 {
 #ifdef MTK_SMMU_DEBUG
 	static DEFINE_RATELIMIT_STATE(debug_rs, SMMU_FAULT_RS_INTERVAL,
@@ -2174,7 +2174,7 @@ static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm)
 	if (!smmu)
 		return;
 
-	if (!__ratelimit(&debug_rs))
+	if (ratelimit && !__ratelimit(&debug_rs))
 		return;
 
 	data = to_mtk_smmu_data(smmu);
@@ -2184,7 +2184,8 @@ static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm)
 		return;
 	}
 
-	pr_info("[%s] smmu:%s, check_pm:%d\n", __func__, get_smmu_name(type), check_pm);
+	dev_info(smmu->dev, "[%s] smmu:%s, check_pm:%d\n",
+		 __func__, get_smmu_name(type), check_pm);
 
 	if (check_pm) {
 		ret = mtk_smmu_power_get(smmu);
@@ -2194,7 +2195,7 @@ static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm)
 		}
 	}
 
-	dump_global_register(smmu);
+	mtk_smmu_glbreg_dump(smmu);
 	mtk_smmu_wpreg_dump(NULL, type);
 
 	smmuwp_dump_outstanding_monitor(smmu);
@@ -2208,7 +2209,12 @@ static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm)
 
 static void mtk_smmu_fault_dump(struct arm_smmu_device *smmu)
 {
-	smmu_debug_dump(smmu, false);
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+
+	smmu_debug_dump(smmu, false, false);
+
+	if (data->plat_data->smmu_type == MM_SMMU)
+		mtk_smi_dbg_hang_detect("iommu");
 }
 
 static bool mtk_smmu_skip_shutdown(struct arm_smmu_device *smmu)
@@ -2255,7 +2261,7 @@ static void mtk_smmu_dbg_hang_detect(enum mtk_smmu_type type)
 	if (!data)
 		return;
 
-	smmu_debug_dump(&data->smmu, true);
+	smmu_debug_dump(&data->smmu, true, true);
 }
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
@@ -3241,7 +3247,7 @@ void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 		 __func__, get_smmu_name(type), dev_name(master_dev),
 		 dev_name(shared_dev), sid, sid_valid, s1_bypass);
 
-	dump_global_register(smmu);
+	mtk_smmu_glbreg_dump(smmu);
 	mtk_smmu_wpreg_dump(NULL, type);
 
 	if (sid_valid) {

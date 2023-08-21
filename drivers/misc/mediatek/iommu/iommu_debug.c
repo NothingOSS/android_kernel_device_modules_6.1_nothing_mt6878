@@ -86,6 +86,9 @@
 
 #define IOVA_DUMP_LOG_MAX		(100)
 
+#define IOVA_DUMP_RS_INTERVAL		DEFAULT_RATELIMIT_INTERVAL
+#define IOVA_DUMP_RS_BURST		(1)
+
 struct mtk_iommu_cb {
 	int port;
 	mtk_iommu_fault_callback_t fault_fn;
@@ -988,6 +991,9 @@ EXPORT_SYMBOL_GPL(mtk_smmu_wpreg_dump);
 	(((u64)(a) >> ARM_LPAE_LVL_SHIFT(l, d)) &			\
 	 ((1 << ((d)->bits_per_level + ARM_LPAE_PGD_IDX(l, d))) - 1))
 
+/* Calculate the block/page mapping size at level l for pagetable in d. */
+#define ARM_LPAE_BLOCK_SIZE(l,d)	(1ULL << ARM_LPAE_LVL_SHIFT(l,d))
+
 /* Page table bits */
 #define ARM_LPAE_PTE_TYPE_SHIFT		0
 #define ARM_LPAE_PTE_TYPE_MASK		0x3
@@ -1145,8 +1151,8 @@ static void cd_dump(struct seq_file *s, u32 ssid, __le64 *cd)
 	}
 
 	iommu_dump(s, "SMMU CD values:\n");
-	for (i = 0; i < STRTAB_STE_DWORDS; i++) {
-		if (i + 3 < STRTAB_STE_DWORDS) {
+	for (i = 0; i < CTXDESC_CD_DWORDS; i++) {
+		if (i + 3 < CTXDESC_CD_DWORDS) {
 			iommu_dump(s, "u64[%d~%d]:0x%016llx|0x%016llx|0x%016llx|0x%016llx\n",
 				   i, i + 3, cd[i + 0], cd[i + 1], cd[i + 2], cd[i + 3]);
 			i = i + 3;
@@ -1197,27 +1203,106 @@ static void dump_ste_cd_info(struct seq_file *s,
 	cd_dump(s, ssid, cdptr);
 }
 
+static inline void pt_info_dump(struct seq_file *s,
+				struct arm_lpae_io_pgtable *data,
+				arm_lpae_iopte *ptep,
+				arm_lpae_iopte pte_s,
+				arm_lpae_iopte pte_e,
+				u64 iova_s,
+				u64 iova_e,
+				u64 pgsize,
+				u64 pgcount)
+{
+	iommu_dump(s,
+		   "ptep:%pa pte:0x%llx ~ 0x%llx iova:0x%llx ~ 0x%llx -> pa:0x%llx ~ 0x%llx count:%llu\n",
+		   &ptep, pte_s, pte_e, iova_s, (iova_e + pgsize -1),
+		   iopte_to_paddr(pte_s, data),
+		   (iopte_to_paddr(pte_e, data) + pgsize -1),
+		   pgcount);
+}
+
 static void __ptdump(struct seq_file *s, arm_lpae_iopte *ptep, int lvl, u64 va,
 		     struct arm_lpae_io_pgtable *data)
 {
 	arm_lpae_iopte pte, *ptep_next;
-	u64 i, entry_num, tmp_va = 0;
+	u64 i, entry_num, pgsize, pgcount = 0, tmp_va = 0;
+	arm_lpae_iopte pte_pre = 0;
+	arm_lpae_iopte pte_s = 0;
+	arm_lpae_iopte pte_e = 0;
+	bool need_ptdump = false;
+	bool need_continue = false;
+	u64 iova_s = 0;
+	u64 iova_e = 0;
 
 	entry_num = 1 << (data->bits_per_level + ARM_LPAE_PGD_IDX(lvl, data));
+	pgsize = ARM_LPAE_BLOCK_SIZE(lvl, data);
 
-	iommu_dump(s, "ptdump, lvl:%d, va:%llx, entry_num:%llx\n",
-		   lvl, va, entry_num);
+	iommu_dump(s, "ptep:%pa lvl:%d va:0x%llx pgsize:0x%llx entry_num:%llu\n",
+		   &ptep, lvl, va, pgsize, entry_num);
 
 	for (i = 0; i < entry_num; i++) {
 		pte = READ_ONCE(*(ptep + i));
 		if (!pte)
-			continue;
+			goto ptdump_reset_continue;
 
 		tmp_va = va | (i << ARM_LPAE_LVL_SHIFT(lvl, data));
 
 		if (iopte_leaf(pte, lvl, data->iop.fmt)) {
-			iommu_dump(s, "pte: 0x%llx, iova: 0x%llx -> pa: 0x%llx\n",
-				   pte, tmp_va, iopte_to_paddr(pte, data));
+#ifdef SMMU_PTDUMP_RAW
+			iommu_dump(s, "ptep:%pa pte_raw:0x%llx iova:0x%llx -> pa:0x%llx\n",
+				   &ptep, pte, tmp_va, iopte_to_paddr(pte, data));
+#endif
+			if (pte_s == 0) {
+				pte_s = pte;
+				pte_e = pte;
+				iova_s = tmp_va;
+				iova_e = tmp_va;
+			}
+
+			if (pte_pre == 0 || pte - pte_pre == pgsize) {
+				need_ptdump = true;
+				pte_pre = pte;
+				pte_e = pte;
+				iova_e = tmp_va;
+				pgcount++;
+			} else {
+				pt_info_dump(s, data, ptep, pte_s, pte_e, iova_s, iova_e,
+					     pgsize, pgcount);
+				need_ptdump = true;
+				pte_pre = pte;
+				pte_s = pte;
+				pte_e = pte;
+				iova_s = tmp_va;
+				iova_e = tmp_va;
+				pgcount = 1;
+			}
+
+			if ((i + 1) == entry_num)
+				goto ptdump_reset_continue;
+
+			continue;
+		}
+
+		goto ptdump_reset;
+
+ptdump_reset_continue:
+		need_continue = true;
+
+ptdump_reset:
+		if (need_ptdump) {
+			pt_info_dump(s, data, ptep, pte_s, pte_e, iova_s, iova_e,
+				     pgsize, pgcount);
+			need_ptdump = false;
+			pte_pre = 0;
+			pte_s = 0;
+			pte_e = 0;
+			iova_s = 0;
+			iova_e = 0;
+			pgcount = 0;
+		}
+
+		if(need_continue) {
+			need_continue = false;
 			continue;
 		}
 
@@ -2240,7 +2325,7 @@ static void mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 					   plist->time_low,
 					   dev_name(plist->dev));
 
-			if (s == NULL && dev != NULL && ++dump_count > 10)
+			if (s == NULL && dev != NULL && ++dump_count > IOVA_DUMP_LOG_MAX)
 				break;
 		}
 	spin_unlock(&iova_list.lock);
@@ -2303,6 +2388,8 @@ static void mtk_iommu_iova_dump(struct seq_file *s, u64 iova, u64 tab_id)
 static void mtk_iova_dbg_alloc(struct device *dev,
 	struct iova_domain *iovad, dma_addr_t iova, size_t size)
 {
+	static DEFINE_RATELIMIT_STATE(dump_rs, IOVA_DUMP_RS_INTERVAL,
+				      IOVA_DUMP_RS_BURST);
 	struct iova_info *iova_buf;
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
 	u64 tab_id = 0;
@@ -2326,7 +2413,10 @@ static void mtk_iova_dbg_alloc(struct device *dev,
 		pr_info("%s fail! dev:%s, size:0x%zx\n",
 			__func__, dev_name(dev), size);
 
-		if (dom_id > 0)
+		if (!__ratelimit(&dump_rs))
+			return;
+
+		if (dom_id > 0 || smmu_v3_enable)
 			mtk_iommu_iova_alloc_dump(NULL, dev);
 
 		return mtk_iommu_iova_alloc_dump_top(NULL, dev);
