@@ -2465,6 +2465,9 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 	struct ufs_dev_info *dev_info = &hba->dev_info;
 	u16 mid = dev_info->wmanufacturerid;
 
+	/* Replace default rpm_autosuspend_delay */
+	hba->host->hostt->rpm_autosuspend_delay = MTK_RPM_AUTOSUSPEND_DELAY_MS;
+
 	if (is_mcq_enabled(hba)) {
 		/* Use none scheduler for mcq */
 		if (hba->host->nr_hw_queues > 1) {

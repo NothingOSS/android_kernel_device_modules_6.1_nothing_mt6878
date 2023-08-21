@@ -274,6 +274,9 @@ struct ufs_mtk_host {
  */
 #define UFS_IOCTL_QUERY			0x5388
 
+/* MTK delay of autosuspend: 500 ms */
+#define MTK_RPM_AUTOSUSPEND_DELAY_MS 500
+
 /**
  * struct ufs_ioctl_query_data - used to transfer data to and from user via
  * ioctl

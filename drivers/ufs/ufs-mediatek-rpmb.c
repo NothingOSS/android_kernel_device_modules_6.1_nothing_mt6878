@@ -262,6 +262,12 @@ find_exit:
 	 */
 	rawdev_ufs_rpmb = rdev;
 
+	/*
+	 *  Replace default rpm_autosuspend_delay
+	 */
+	if (host->sdev_rpmb->rpm_autosuspend)
+		pm_runtime_set_autosuspend_delay(&host->sdev_rpmb->sdev_gendev,
+						 MTK_RPM_AUTOSUSPEND_DELAY_MS);
 out_put_dev:
 	scsi_device_put(host->sdev_rpmb);
 
