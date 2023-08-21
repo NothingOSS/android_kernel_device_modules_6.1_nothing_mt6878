@@ -1056,9 +1056,11 @@ static int xgf_get_magt_dep_list(int *arr, int count, struct xgf_render_if *rend
 
 	for (rbn = rb_first(&render_iter->magt_dep_list); rbn; rbn = rb_next(rbn)) {
 		xd_iter = rb_entry(rbn, struct xgf_dep, rb_node);
-		if (index < count)
-			arr[index] = xd_iter->tid;
-		index++;
+		if (xd_iter->action == XGF_ADD_DEP_FORCE_CPU_TIME) {
+			if (index < count)
+				arr[index] = xd_iter->tid;
+			index++;
+		}
 	}
 
 	return index;
@@ -1578,8 +1580,6 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 
 		local_magt_dep_list_num = xgf_get_magt_dep_list(local_magt_dep_list,
 			iter->magt_dep_list_size, iter);
-		if (local_magt_dep_list_num != iter->magt_dep_list_size)
-			goto by_pass_skip;
 	}
 
 	if (trace_xgf_trace_enabled()) {

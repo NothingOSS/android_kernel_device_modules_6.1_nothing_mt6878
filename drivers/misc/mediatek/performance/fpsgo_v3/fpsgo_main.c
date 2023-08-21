@@ -828,6 +828,9 @@ int fpsgo_wait_fstb_active(void)
 
 void fpsgo_get_pid(int cmd, int *pid, int op, int value1, int value2)
 {
+	int local_tgid = 0;
+	int local_rtid = 0;
+	int local_blc = 0;
 	unsigned long long cur_ts;
 
 	if (!pid)
@@ -850,6 +853,11 @@ void fpsgo_get_pid(int cmd, int *pid, int op, int value1, int value2)
 	case CAMERA_APP_MIN_FPS:
 		cur_ts = fpsgo_get_time();
 		fpsgo_ctrl2comp_set_app_meta_fps(value1, value2, cur_ts);
+		break;
+	case CAMERA_PERF_IDX:
+		local_tgid = value1;
+		fpsgo_ctrl2base_get_cam_perf(local_tgid, &local_rtid, &local_blc);
+		*pid = local_blc;
 		break;
 	default:
 		FPSGO_LOGE("[FPSGO_CTRL] wrong cmd:%d\n", cmd);

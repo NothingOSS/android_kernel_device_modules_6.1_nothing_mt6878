@@ -448,6 +448,7 @@ struct acquire_info *fpsgo_search_acquire_info(int tid, unsigned long long buffe
 int fpsgo_delete_acquire_info(int mode, int tid, unsigned long long buffer_id);
 int fpsgo_check_is_cam_apk(int tgid);
 void fpsgo_ctrl2base_get_cam_pid(int cmd, int *pid);
+void fpsgo_ctrl2base_get_cam_perf(int tgid, int *rtid, int *blc);
 void fpsgo_ctrl2base_notify_cam_close(void);
 void fpsgo_main_trace(const char *fmt, ...);
 void fpsgo_clear_uclamp_boost(void);
@@ -513,7 +514,8 @@ enum FPSGO_CAMERA_CMD {
 	CAMERA_SERVER,
 	CAMERA_HWUI,
 	CAMERA_DO_FRAME,
-	CAMERA_APP_MIN_FPS
+	CAMERA_APP_MIN_FPS,
+	CAMERA_PERF_IDX
 };
 
 enum FPSGO_MASTER_TYPE {

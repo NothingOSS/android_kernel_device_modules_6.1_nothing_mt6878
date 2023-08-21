@@ -496,6 +496,31 @@ void fpsgo_ctrl2base_get_cam_pid(int cmd, int *pid)
 	fpsgo_render_tree_unlock(__func__);
 }
 
+void fpsgo_ctrl2base_get_cam_perf(int tgid, int *rtid, int *blc)
+{
+	struct render_info *r_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	if (!rtid || !blc)
+		return;
+
+	*rtid = 0;
+	*blc = 0;
+	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
+		r_iter = rb_entry(rbn, struct render_info, render_key_node);
+		fpsgo_thread_lock(&r_iter->thr_mlock);
+		if (r_iter->tgid == tgid &&
+			r_iter->bq_type == ACQUIRE_CAMERA_TYPE &&
+			r_iter->frame_type == NON_VSYNC_ALIGNED_TYPE) {
+			*rtid = r_iter->pid;
+			*blc = r_iter->p_blc ? r_iter->p_blc->blc : 0;
+			fpsgo_thread_unlock(&r_iter->thr_mlock);
+			break;
+		}
+		fpsgo_thread_unlock(&r_iter->thr_mlock);
+	}
+}
+
 void fpsgo_ctrl2base_wait_cam(int cmd, int *pid)
 {
 	struct cam_cmd_node *node = NULL;
@@ -1951,6 +1976,8 @@ int fpsgo_check_thread_status(void)
 	fpsgo_check_acquire_info_status();
 	fpsgo_check_adpf_render_status();
 
+	fbt_ux_set_perf(local_ux_max_pid, local_ux_max_perf);
+
 	fpsgo_render_tree_unlock(__func__);
 
 	fpsgo_base2comp_check_connect_api();
@@ -1969,8 +1996,6 @@ int fpsgo_check_thread_status(void)
 
 	if (is_boosting == BY_PASS_TYPE)
 		fpsgo_com_notify_fpsgo_is_boost(0);
-
-	fbt_ux_set_perf(local_ux_max_pid, local_ux_max_perf);
 
 	return rb_tree_empty;
 }
