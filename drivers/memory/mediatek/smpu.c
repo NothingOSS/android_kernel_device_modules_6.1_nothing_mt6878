@@ -235,6 +235,8 @@ static void smpu_violation_callback(struct work_struct *work)
 					break;
 				}
 			}
+			if (mpu->dump_reg[5].value == 242)
+				by_pass_flag++;
 			if (by_pass_flag > 0)
 				break;
 		}
