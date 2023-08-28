@@ -124,6 +124,11 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *ctx,
 		goto not_support;
 	}
 
+	if (info->src.modifier && info->src.modifier != MML_AFBC) {
+		mml_err("[drm]invalid src mml color format modifier %#010llx", info->src.modifier);
+		goto not_support;
+	}
+
 	info->src.format = format_drm_to_mml(info->src.format, info->src.modifier);
 
 	if (MML_FMT_BLOCK(info->src.format)) {
