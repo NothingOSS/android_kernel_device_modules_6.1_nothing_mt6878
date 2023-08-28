@@ -76,6 +76,13 @@ struct lpm_logger_fired_info {
 static struct lpm_logger_timer lpm_log_timer;
 static struct lpm_logger_fired_info lpm_logger_fired;
 
+struct lpm_logger_work_struct {
+	struct work_struct work;
+	unsigned int fired;
+};
+static struct workqueue_struct *lpm_logger_workqueue;
+static struct lpm_logger_work_struct lpm_logger_work;
+
 static struct rtc_time suspend_tm;
 static struct spm_req_sta_list req_sta_list = {
 	.spm_req = NULL,
@@ -473,10 +480,10 @@ static struct syscore_ops lpm_suspend_save_sleep_info_syscore_ops = {
 	.resume = lpm_suspend_save_sleep_info_func,
 };
 
-static int lpm_log_timer_func(unsigned long long dur, void *priv)
+static void lpm_logger_work_func(struct work_struct *work)
 {
-	struct lpm_logger_timer *timer =
-			(struct lpm_logger_timer *)priv;
+	struct lpm_logger_work_struct *lpm_logger_work =
+			container_of(work, struct lpm_logger_work_struct, work);
 	struct lpm_logger_fired_info *info = &lpm_logger_fired;
 	static unsigned int mcusys_cnt_prev, mcusys_cnt_cur;
 	char wakeup_sources[MAX_SUSPEND_ABORT_LEN];
@@ -491,7 +498,7 @@ static int lpm_log_timer_func(unsigned long long dur, void *priv)
 	char state_name[STATE_NAME_LEN] = {0};
 
 	issuer.log_type = LOG_SUCCEESS;
-	if (timer->fired != smc_fired) {
+	if (lpm_logger_work->fired != smc_fired) {
 		if (info->mcusys_cnt_chk == 1) {
 			mcusys_cnt_cur =
 			mtk_cpupm_syssram_read(SYSRAM_MCUPM_MCUSYS_COUNTER);
@@ -533,7 +540,14 @@ static int lpm_log_timer_func(unsigned long long dur, void *priv)
 	if (sys_res_ops && sys_res_ops->log)
 		sys_res_ops->log(SYS_RES_LAST);
 #endif
-	timer->fired = smc_fired;
+
+	lpm_logger_work->fired = smc_fired;
+}
+
+static int lpm_log_timer_func(unsigned long long dur, void *priv)
+{
+	if (lpm_logger_workqueue)
+		queue_work(lpm_logger_workqueue, &lpm_logger_work.work);
 	return 0;
 }
 
@@ -896,6 +910,13 @@ int lpm_logger_init(void)
 					LPM_LOG_DEFAULT_MS);
 	lpm_timer_start(&lpm_log_timer.tm);
 
+	lpm_logger_workqueue = create_singlethread_workqueue("LPM_LOG_WQ");
+	if (!lpm_logger_workqueue)
+		pr_info("[%s:%d] - lpm_logger_workqueue create failed\n",
+			__func__, __LINE__);
+	else
+		INIT_WORK(&lpm_logger_work.work, lpm_logger_work_func);
+
 	ret = spm_cond_init();
 	if (ret)
 		pr_info("[%s:%d] - spm_cond_init failed\n",
@@ -915,6 +936,9 @@ void lpm_logger_deinit(void)
 	int state_cnt = 0;
 	int idx = 0;
 	struct lpm_logger_fired_info *info = &lpm_logger_fired;
+
+	flush_workqueue(lpm_logger_workqueue);
+	destroy_workqueue(lpm_logger_workqueue);
 
 	spm_cond_deinit();
 
