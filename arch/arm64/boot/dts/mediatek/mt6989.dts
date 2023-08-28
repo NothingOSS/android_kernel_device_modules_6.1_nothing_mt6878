@@ -547,6 +547,9 @@
 		/* csram sysram base */
 		csram-sys-base = <&csram_sys>;
 
+		/* curve adjustment */
+		curve-adj-base = <&curve_adj>;
+
 		/* wl support */
 		// wl-support = <1>;
 
@@ -3483,6 +3486,10 @@
 
 		csram_sys: csram-sysram@11bc00 {
 			reg = <0 0x0011bc00 0 0x1400>; /* 5KB */
+		};
+
+		curve_adj: curve-adjust@c0dfd80 {
+			reg = <0 0x0c0dfd80 0 0x280>;
 		};
 
 		topckgen@10000000 {
