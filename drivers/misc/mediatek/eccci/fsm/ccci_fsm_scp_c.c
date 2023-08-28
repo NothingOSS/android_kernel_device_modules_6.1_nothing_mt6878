@@ -537,6 +537,11 @@ int ccci_scp_probe(struct platform_device *pdev)
 {
 	int ret;
 
+	if (!get_modem_is_enabled()) {
+		CCCI_ERROR_LOG(-1, FSM, "%s:MD not exist,exit\n", __func__);
+		return -1;
+	}
+
 	ret = fsm_scp_init(&ccci_scp_ctl, &pdev->dev);
 	if (ret < 0) {
 		CCCI_ERROR_LOG(-1, FSM, "ccci get scp info fail");

@@ -66,6 +66,11 @@ int ccci_register_md_state_receiver(unsigned char ch_id,
 	unsigned int i;
 	unsigned long flags;
 
+	if (!get_modem_is_enabled()) {
+		CCCI_ERROR_LOG(0, FSM, "%s:MD not exist,exit\n", __func__);
+		return -2;
+	}
+
 	if (callback == NULL) {
 		CCCI_ERROR_LOG(0, FSM, "[%s] callback is NULL\n", __func__);
 		return -1;
@@ -152,7 +157,11 @@ int mtk_ccci_register_md_state_cb(
 			enum MD_STATE old_state,
 			enum MD_STATE new_state))
 {
-	ccci_register_md_state_receiver(KERN_MD_STAT_RCV_MDDP, md_state_cb);
+	if (ccci_register_md_state_receiver(KERN_MD_STAT_RCV_MDDP, md_state_cb) < 0) {
+		CCCI_ERROR_LOG(0, FSM,
+			"%s KERN_MD_STAT_RCV_MDDP fail\n", __func__);
+		return -1;
+	}
 	return 0;
 }
 EXPORT_SYMBOL(mtk_ccci_register_md_state_cb);
