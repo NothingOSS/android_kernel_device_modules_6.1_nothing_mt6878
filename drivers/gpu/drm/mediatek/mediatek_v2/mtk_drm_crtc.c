@@ -3307,7 +3307,6 @@ _mtk_crtc_wb_addon_module_connect(
 		if (!addon_data_dual)
 			return;
 	}
-
 	for (i = 0; i < addon_data->module_num; i++) {
 		addon_module = &addon_data->module_data[i];
 		addon_config.config_type.module = addon_module->module;
@@ -3338,6 +3337,7 @@ _mtk_crtc_wb_addon_module_connect(
 			dst_roi.height = state->prop_val[CRTC_PROP_OUTPUT_HEIGHT];
 			fb = mtk_drm_framebuffer_lookup(crtc->dev,
 				state->prop_val[CRTC_PROP_OUTPUT_FB_ID]);
+			mtk_crtc->capturing = true;
 			/* get fb reference conut, put at wb_cmdq_cb */
 //			drm_framebuffer_get(fb);
 			if (!fb) {
@@ -3351,7 +3351,6 @@ _mtk_crtc_wb_addon_module_connect(
 			addon_config.addon_wdma_config.fb = fb;
 			addon_config.addon_wdma_config.p_golden_setting_context
 				= __get_golden_setting_context(mtk_crtc);
-
 			DDPFENCE("S+/PL12/e1/id%d/mva0x%08llx/size0x%08lx/sec%d\n",
 				(unsigned int)state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX],
 				mtk_fb_get_dma(fb), mtk_fb_get_size(fb), mtk_drm_fb_is_secure(fb));
@@ -14161,7 +14160,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		cmdq_pkt_clear_event(handle, event);
 		cmdq_pkt_wfe(handle, event);
 		_mtk_crtc_wb_addon_module_disconnect(crtc, mtk_crtc->ddp_mode, handle);
-
+		mtk_crtc->capturing = false;
 		wb_cb_data->cmdq_handle = handle;
 		wb_cb_data->crtc = crtc;
 		wb_cb_data->wb_fb =
@@ -14591,7 +14590,12 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 
 	/* disable partial update if res switch is enable*/
 	if (mtk_crtc->scaling_ctx.scaling_en) {
-		DDPDBG("skip because res switch is enable\n");
+		DDPDBG("\n");
+		partial_enable = false;
+	}
+
+	if (mtk_crtc->capturing == true) {
+		DDPDBG("skip because cwb is enable\n");
 		partial_enable = false;
 	}
 
@@ -16457,6 +16461,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	mtk_crtc->slbc_state = SLBC_UNREGISTER;
 	mtk_crtc->mml_ir_sram.data.type = TP_BUFFER;
 	mtk_crtc->mml_ir_sram.data.uid = UID_DISP;
+	mtk_crtc->capturing = false;
 	mtk_crtc->pq_data = kzalloc(sizeof(*mtk_crtc->pq_data), GFP_KERNEL);
 	if (mtk_crtc->pq_data == NULL) {
 		DDPPR_ERR("Failed to alloc pq_data\n");
