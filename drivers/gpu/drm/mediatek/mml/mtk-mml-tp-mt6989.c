@@ -841,9 +841,9 @@ static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache
 	return false;
 }
 
-static enum topology_scenario scene_to_ovl1(u32 layer_id, enum topology_scenario scene)
+static enum topology_scenario scene_to_ovl1(u32 ovlsys_id, enum topology_scenario scene)
 {
-	if (layer_id == MML_DLO_OVLSYS0)
+	if (ovlsys_id == MML_DLO_OVLSYS0)
 		return scene;
 
 	switch (scene) {
@@ -942,7 +942,7 @@ check_rr:
 	}
 
 	/* check if connect to ovlsys1 */
-	scene = scene_to_ovl1(cfg->info.layer_id, scene);
+	scene = scene_to_ovl1(cfg->info.ovlsys_id, scene);
 
 	cfg->rrot_dual = dual;
 	*path = &cache->paths[scene];
@@ -1249,7 +1249,7 @@ use_rrot:
 		scene = dual ? PATH_MML_RR_DL : PATH_MML_RRS_DL;
 
 	/* check if connect to ovlsys1 */
-	scene = scene_to_ovl1(info->layer_id, scene);
+	scene = scene_to_ovl1(info->ovlsys_id, scene);
 
 	return &cache->paths[scene];
 }

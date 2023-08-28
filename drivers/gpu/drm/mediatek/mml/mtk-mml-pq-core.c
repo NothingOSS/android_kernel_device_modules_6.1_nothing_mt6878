@@ -686,11 +686,11 @@ static void dump_sub_task(struct mml_pq_sub_task *sub_task, int new_job_id,
 
 	mml_pq_set_msg("%s new_job_id[%d]", __func__, new_job_id);
 
-	mml_pq_set_msg("%s src.width[%d] src.secure[%d] layer_id[%d]",
+	mml_pq_set_msg("%s src.width[%d] src.secure[%d] ovlsys_id[%d]",
 		__func__,
 		sub_task->frame_data.info.src.width,
 		sub_task->frame_data.info.src.secure,
-		sub_task->frame_data.info.layer_id);
+		sub_task->frame_data.info.ovlsys_id);
 
 	mml_pq_set_msg("%s out0 width[%d] height[%d], out1 width[%d] height[%d]",
 		__func__,

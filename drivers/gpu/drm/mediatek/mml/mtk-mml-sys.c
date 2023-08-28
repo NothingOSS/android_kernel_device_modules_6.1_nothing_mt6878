@@ -1790,7 +1790,18 @@ static s32 dl_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u32 dl_h = tile->in.ye - tile->in.ys + 1;
 	u32 size = (dl_h << 16) + dl_w;
 
+	if (task->config->info.mode == MML_MODE_DIRECT_LINK)
+		cmdq_pkt_clear_event(pkt, task->config->info.disp_done_event);
 	cmdq_pkt_write(pkt, NULL, base_pa + offset, size, U32_MAX);
+	return 0;
+}
+
+static s32 dl_wait(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg, u32 idx)
+{
+	if (task->config->info.mode == MML_MODE_DIRECT_LINK)
+		cmdq_pkt_wfe(task->pkts[ccfg->pipe], task->config->info.disp_done_event);
+
 	return 0;
 }
 
@@ -1828,6 +1839,7 @@ static s32 dl_post(struct mml_comp *comp, struct mml_task *task,
 
 static const struct mml_comp_config_ops dl_config_ops = {
 	.tile = dl_config_tile,
+	.wait = dl_wait,
 	.post = dl_post,
 };
 

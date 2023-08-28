@@ -844,7 +844,7 @@ void print_mml_frame_info(struct mml_frame_info info)
 			info.dest[i].rotate, info.dest[i].flip,
 			info.dest[i].pq_config.en);
 	}
-	DDPMSG("mode:%d, layer_id:%d\n", info.mode, info.layer_id);
+	DDPMSG("mode:%d, ovlsys_id:%d\n", info.mode, info.ovlsys_id);
 	DDPMSG("====  frame_info e ====\n");
 }
 

@@ -375,7 +375,7 @@ static void case_general_submit(struct mml_test *test,
 
 	task.info.dest_cnt = 1;
 	task.info.mode = MML_MODE_MML_DECOUPLE;
-	task.info.layer_id = 0;
+	task.info.ovlsys_id = 0;
 	task.buffer.dest_cnt = 1;
 
 	/* trigger all invalid/flush */
