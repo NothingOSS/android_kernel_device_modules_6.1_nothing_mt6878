@@ -77,25 +77,23 @@ enum ise_type {
 
 static inline ulong smc(ulong r0, ulong r1, ulong r2, ulong r3)
 {
-	mailbox_request_t request;
+	mailbox_request_t request = {0};
+	mailbox_payload_t payload = {0};
 	mailbox_reply_t reply = {0};
-	uint8_t status;
 
 	if (mtk_ise_awake_lock(ISE_REE)) {
 		pr_info("%s: ise power on failed\n", __func__);
 		goto out;
 	}
 
-	status = mailbox_init_securyzr();
-	pr_info("%s: init securyzr mailbox status %u\n", __func__, status);
+	payload.size = 4;
+	payload.fields[0] = r0;
+	payload.fields[1] = r1;
+	payload.fields[2] = r2;
+	payload.fields[3] = r3;
 
-	mailbox_init_request(&request, REQUEST_TRUSTY, TRUSTY_SR_ID_SMC, TRUSTY_SR_VER_SMC);
-	mailbox_request_add_field(&request, r0);
-	mailbox_request_add_field(&request, r1);
-	mailbox_request_add_field(&request, r2);
-	mailbox_request_add_field(&request, r3);
-
-	reply = mailbox_request(&request);
+	reply = ise_mailbox_request(&request, &payload, REQUEST_TRUSTY,
+		TRUSTY_SR_ID_SMC, TRUSTY_SR_VER_SMC);
 	if (reply.status.error != MAILBOX_SUCCESS)
 		pr_info("%s: request mailbox failed 0x%x\n", __func__, reply.status.error);
 
@@ -216,10 +214,7 @@ s32 ise_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 	BUG_ON(SMC_IS_SMC64(smcnr));
 
 #if IS_ENABLED(CONFIG_TRUSTY)
-	mutex_lock(&s->smc_lock);
 	ret = smc(smcnr, a0, a1, a2);
-	mutex_unlock(&s->smc_lock);
-
 	atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_RETURNED, NULL);
 	return ret;
 #else

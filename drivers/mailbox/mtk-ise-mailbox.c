@@ -7,6 +7,7 @@
 
 static void __iomem *mbox_base;
 static uint32_t real_drv;
+static struct mutex mbox_lock;
 
 static uint32_t mlb_read(uint32_t offset)
 {
@@ -145,7 +146,7 @@ static void mailbox_flush_out_fifos(void)
 		mlb_write(MB_HOST_SAFETY_CONTROL_OFFSET, 1);
 }
 
-uint8_t mailbox_init_securyzr(void)
+static uint8_t mailbox_init_securyzr(void)
 {
 	uint32_t error = MAILBOX_SUCCESS;
 
@@ -161,7 +162,6 @@ uint8_t mailbox_init_securyzr(void)
 
 	return mlb_read(MB_HOST_BOOT_IP_INTEGRITY_STATUS_OFFSET) & 0xFF;
 }
-EXPORT_SYMBOL(mailbox_init_securyzr);
 
 static uint32_t mailbox_get_boot_status(void)
 {
@@ -193,7 +193,7 @@ static uint32_t mailbox_get_reply(mailbox_reply_t *reply)
 	return MAILBOX_SUCCESS;
 }
 
-mailbox_reply_t mailbox_request(const mailbox_request_t *request)
+static mailbox_reply_t mailbox_request(const mailbox_request_t *request)
 {
 	mailbox_reply_t reply;
 	uint32_t error = 0;
@@ -232,9 +232,8 @@ mailbox_reply_t mailbox_request(const mailbox_request_t *request)
 
 	return reply;
 }
-EXPORT_SYMBOL(mailbox_request);
 
-void mailbox_init_request(mailbox_request_t *request,
+static void mailbox_init_request(mailbox_request_t *request,
 	request_type_enum request_type, uint8_t service_id, uint8_t service_version)
 {
 	if (request == NULL)
@@ -245,9 +244,8 @@ void mailbox_init_request(mailbox_request_t *request,
 	request->service_version = service_version;
 	request->payload.size = 0;
 }
-EXPORT_SYMBOL(mailbox_init_request);
 
-uint32_t mailbox_request_add_field(mailbox_request_t *request,
+static uint32_t mailbox_request_add_field(mailbox_request_t *request,
 	uint32_t payload_field)
 {
 	if (request == NULL)
@@ -261,22 +259,57 @@ uint32_t mailbox_request_add_field(mailbox_request_t *request,
 
 	return MAILBOX_SUCCESS;
 }
-EXPORT_SYMBOL(mailbox_request_add_field);
+
+mailbox_reply_t ise_mailbox_request(mailbox_request_t *request,
+	mailbox_payload_t *payload, request_type_enum request_type,
+	uint8_t service_id, uint8_t service_version)
+{
+	mailbox_reply_t reply = {0};
+	uint32_t i;
+	uint8_t status;
+
+	mutex_lock(&mbox_lock);
+	if (request == NULL || payload == NULL) {
+		reply.status.service_error = MAILBOX_INVALID_PARAMETER;
+		goto out;
+	}
+
+	if (payload->size == 0 || payload->size >= MAILBOX_PAYLOAD_FIELDS_COUNT) {
+		reply.status.service_error = MAILBOX_INVALID_PARAMETER;
+		goto out;
+	}
+
+	status = mailbox_init_securyzr();
+	if (status != MAILBOX_SUCCESS) {
+		pr_err(PFX "%s: init securyzr failed, status %u\n", __func__, status);
+		reply.status.service_error = MAILBOX_TIMEOUT;
+		goto out;
+	}
+
+	mailbox_init_request(request, request_type, service_id, service_version);
+	for (i = 0; i < payload->size; i++)
+		mailbox_request_add_field(request, payload->fields[i]);
+
+	reply = mailbox_request(request);
+
+out:
+	mutex_unlock(&mbox_lock);
+	return reply;
+}
+EXPORT_SYMBOL(ise_mailbox_request);
 
 static void ise_ut(uint8_t service_id)
 {
-	mailbox_request_t request;
-	mailbox_reply_t reply;
-	uint8_t status;
+	mailbox_request_t request = {0};
+	mailbox_payload_t payload = {0};
+	mailbox_reply_t reply = {0};
 
-	status = mailbox_init_securyzr();
-	pr_info(PFX "%s: init securyzr mailbox status %u\n", __func__, status);
+	payload.size = 2;
+	payload.fields[0] = 1;
+	payload.fields[1] = 2;
 
-	mailbox_init_request(&request, REQUEST_TRUSTY, service_id, TRUSTY_SR_VER_UT);
-	mailbox_request_add_field(&request, 1);
-	mailbox_request_add_field(&request, 2);
-
-	reply = mailbox_request(&request);
+	reply = ise_mailbox_request(&request, &payload, REQUEST_TRUSTY,
+		service_id, TRUSTY_SR_VER_UT);
 	if (reply.status.error != MAILBOX_SUCCESS)
 		pr_info(PFX "%s: request mailbox failed 0x%x\n", __func__, reply.status.error);
 	else if (reply.payload.fields[0] != 3)
@@ -364,11 +397,14 @@ static int ise_mbox_probe(struct platform_device *pdev)
 
 	proc_create("ise_dbg", 0664, NULL, &ise_dbg_fops);
 
+	mutex_init(&mbox_lock);
+
 	return 0;
 }
 
 static int ise_mbox_remove(struct platform_device *pdev)
 {
+	mutex_destroy(&mbox_lock);
 	return 0;
 }
 

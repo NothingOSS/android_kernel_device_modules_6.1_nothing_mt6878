@@ -61,14 +61,8 @@ typedef struct {
 	mailbox_payload_t payload;
 } mailbox_reply_t;
 
-uint8_t mailbox_init_securyzr(void);
-
-void mailbox_init_request(mailbox_request_t *request,
-	request_type_enum request_type, uint8_t service_id, uint8_t service_version);
-
-uint32_t mailbox_request_add_field(mailbox_request_t *request,
-	uint32_t payload_field);
-
-mailbox_reply_t mailbox_request(const mailbox_request_t *request);
+mailbox_reply_t ise_mailbox_request(mailbox_request_t *request,
+	mailbox_payload_t *payload, request_type_enum request_type,
+	uint8_t service_id, uint8_t service_version);
 
 #endif /* __MTK_ISE_MBOX_H__ */

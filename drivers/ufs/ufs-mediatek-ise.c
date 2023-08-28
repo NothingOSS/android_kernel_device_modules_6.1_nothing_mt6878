@@ -144,8 +144,8 @@ static int ise_rpmb_program_key(struct ufs_hba *hba)
 {
 #if IS_ENABLED(CONFIG_MTK_ISE_MBOX) && IS_ENABLED(CONFIG_MTK_ISE_LPM_SUPPORT)
 	mailbox_request_t request = {0};
+	mailbox_payload_t payload = {0};
 	mailbox_reply_t reply = {0};
-	uint8_t status;
 	uint32_t result = ISE_RPMB_MB_STA_FAILED;
 
 	if (mtk_ise_awake_lock(ISE_REE)) {
@@ -153,25 +153,18 @@ static int ise_rpmb_program_key(struct ufs_hba *hba)
 		goto out;
 	}
 
-	status = mailbox_init_securyzr();
-	if (status) {
-		dev_err(hba->dev, "%s: init securyzr mailbox status %u\n", __func__, status);
-		goto out;
-	}
+	payload.size = 1;
+	payload.fields[0] = ISE_RPMB_KEY_CMD_PROGRAM_KEY;
 
-	mailbox_init_request(&request, REQUEST_RPMB, RPMB_SR_ID_KEY, ISE_RPMB_SRV_VER);
-	mailbox_request_add_field(&request, ISE_RPMB_KEY_CMD_PROGRAM_KEY);
-
-	reply = mailbox_request(&request);
+	reply = ise_mailbox_request(&request, &payload, REQUEST_RPMB,
+		RPMB_SR_ID_KEY, ISE_RPMB_SRV_VER);
 	if (reply.status.error != MAILBOX_SUCCESS)
 		dev_err(hba->dev, "%s: request mailbox failed 0x%x\n", __func__, reply.status.error);
 	else
 		result = reply.payload.fields[0];
 
-
 	if (mtk_ise_awake_unlock(ISE_REE))
 		dev_err(hba->dev, "%s: ise power off failed\n", __func__);
-
 
 out:
 	if (result == ISE_RPMB_MB_STA_SUCCESS) {
