@@ -218,6 +218,24 @@ static void get_free_buffers(struct mtk_vcodec_ctx *ctx,
 		pResult);
 }
 
+void mtk_venc_trigger_vcp_halt(struct venc_inst *inst)
+{
+	unsigned long timeout = 0;
+
+	if (inst->vcu_inst.daemon_pid == get_vcp_generation()) {
+		trigger_vcp_halt(VCP_A_ID, "venc_vcp_ee", true);
+
+		while (inst->vcu_inst.daemon_pid == get_vcp_generation()) {
+			if (timeout > VCP_SYNC_TIMEOUT_MS) {
+				mtk_v4l2_debug(0, "halt restart timeout %x\n", inst->vcu_inst.daemon_pid);
+				break;
+			}
+			usleep_range(10000, 20000);
+			timeout += 10;
+		}
+	}
+}
+
 void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 {
 	struct venc_done_result rResult;
@@ -276,6 +294,9 @@ void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 						pdebug_fb = debug_fb;
 					}
 				}
+
+				if (rResult.flags & VENC_FLAG_ENCODE_HWBREAK_TIMEOUT)
+					mtk_venc_trigger_vcp_halt(inst);
 			}
 		}
 
