@@ -430,6 +430,12 @@ static int ufs_mtk_setup_ref_clk(struct ufs_hba *hba, bool on)
 		ufshcd_writel(hba, REFCLK_RELEASE, REG_UFS_REFCLK_CTRL);
 	}
 
+	/*
+	 * Make sure that ref-clk on/off control register
+	 * is writed done before read it.
+	 */
+	mb();
+
 	/* Wait for ack */
 	timeout = ktime_add_us(ktime_get(), REFCLK_REQ_TIMEOUT_US);
 	do {
