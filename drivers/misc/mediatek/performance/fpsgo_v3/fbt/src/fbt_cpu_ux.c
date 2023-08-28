@@ -40,22 +40,41 @@ enum FPSGO_JERK_STAGE {
 	FPSGO_JERK_SECOND,
 };
 
+enum FPSGO_TASK_POLICY {
+	FPSGO_TASK_NONE = 0,
+	FPSGO_TASK_VIP = 1,
+};
+
+enum UX_SCROLL_POLICY_TYPE {
+	SCROLL_POLICY_FPSGO_CTL = 1,
+	SCROLL_POLICY_EAS_CTL = 2,
+};
+
 static DEFINE_MUTEX(fbt_mlock);
 
 static struct kmem_cache *frame_info_cachep __ro_after_init;
 
 static int fpsgo_ux_gcc_enable;
 static int sbe_rescue_enable;
+static int ux_scroll_policy_type;
 static int sbe_rescuing_frame_id;
 static int sbe_rescuing_frame_id_legacy;
 static int sbe_enhance_f;
 static int global_ux_blc;
 static int global_ux_max_pid;
+static int set_ux_uclampmin;
+static int set_ux_uclampmax;
+static int set_deplist_vip;
+static int rescue_cpu_mask;
 static struct fpsgo_loading temp_blc_dep[MAX_DEP_NUM];
 static struct fbt_setting_info sinfo;
 
 module_param(fpsgo_ux_gcc_enable, int, 0644);
 module_param(sbe_enhance_f, int, 0644);
+module_param(set_ux_uclampmin, int, 0644);
+module_param(set_ux_uclampmax, int, 0644);
+module_param(set_deplist_vip, int, 0644);
+module_param(rescue_cpu_mask, int, 0644);
 
 /* main function*/
 static int nsec_to_100usec(unsigned long long nsec)
@@ -76,6 +95,32 @@ void fbt_ux_set_perf(int cur_pid, int cur_blc)
 {
 	global_ux_blc = cur_blc;
 	global_ux_max_pid = cur_pid;
+}
+
+static void fpsgo_set_deplist_policy(struct render_info *thr, int policy)
+{
+	int i;
+	int local_dep_size = 0;
+	struct fpsgo_loading *local_dep_arr = NULL;
+
+	if (!set_deplist_vip)
+		return;
+
+	local_dep_arr = kcalloc(MAX_DEP_NUM, sizeof(struct fpsgo_loading), GFP_KERNEL);
+	if (!local_dep_arr)
+		return;
+
+	local_dep_size = fbt_determine_final_dep_list(thr, local_dep_arr);
+
+	for (i = 0; i < local_dep_size; i++) {
+		if (local_dep_arr[i].pid <= 0)
+			continue;
+		if (policy == 0)
+			unset_task_basic_vip(local_dep_arr[i].pid);
+		else if (policy == 1)
+			set_task_basic_vip(local_dep_arr[i].pid);
+	}
+	kfree(local_dep_arr);
 }
 
 static int fbt_ux_cal_perf(
@@ -220,13 +265,31 @@ static void fbt_ux_set_cap_with_sbe(struct render_info *thr)
 	fpsgo_put_blc_mlock(__func__);
 
 	fpsgo_get_fbt_mlock(__func__);
-	local_min_cap = set_blc_wt;
-	if (local_min_cap != 0) {
-		if (thr->sbe_enhance > 0)
+
+	switch (ux_scroll_policy_type) {
+	case SCROLL_POLICY_EAS_CTL:
+		if (!set_ux_uclampmin)
+			local_min_cap = thr->sbe_enhance;
+		else
+			local_min_cap = set_blc_wt;
+
+		if (thr->sbe_enhance > 0 || !set_ux_uclampmax || thr->ux_blc_cur <= 0)
 			local_max_cap = 100;
 		else
 			local_max_cap = fbt_ux_get_max_cap(thr->pid,
 				thr->buffer_id, set_blc_wt);
+		break;
+	default:
+	case SCROLL_POLICY_FPSGO_CTL:
+		local_min_cap = set_blc_wt;
+		if (local_min_cap != 0) {
+			if (thr->sbe_enhance > 0)
+				local_max_cap = 100;
+			else
+				local_max_cap = fbt_ux_get_max_cap(thr->pid,
+					thr->buffer_id, set_blc_wt);
+		}
+		break;
 	}
 
 	if (local_min_cap == 0 && local_max_cap == 100)
@@ -237,7 +300,8 @@ static void fbt_ux_set_cap_with_sbe(struct render_info *thr)
 	fpsgo_put_fbt_mlock(__func__);
 
 	fbt_ux_set_cap(thr, local_min_cap, local_max_cap);
-	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, set_blc_wt, "[ux]perf_idx");
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, local_min_cap, "[ux]perf_idx");
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, local_max_cap, "[ux]perf_idx_max");
 }
 
 void fbt_ux_frame_start(struct render_info *thr, unsigned long long ts)
@@ -246,6 +310,10 @@ void fbt_ux_frame_start(struct render_info *thr, unsigned long long ts)
 		return;
 
 	thr->ux_blc_cur = thr->ux_blc_next;
+
+	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL)
+		fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
+
 	fbt_ux_set_cap_with_sbe(thr);
 }
 
@@ -288,6 +356,9 @@ void fbt_ux_frame_end(struct render_info *thr,
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, targetfps, "[ux]target_fps");
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
 		targettime, "[ux]target_time");
+
+	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL)
+		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
 
 	fpsgo_get_fbt_mlock(__func__);
 	ret = fbt_get_dep_list(thr);
@@ -343,6 +414,9 @@ unsigned long long ts)
 {
 	if (!thr)
 		return;
+
+	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL)
+		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
 
 	thr->ux_blc_cur = 0;
 	fbt_ux_set_cap_with_sbe(thr);
@@ -461,9 +535,18 @@ void fpsgo_ux_reset(struct render_info *thr)
 
 }
 
+void fpsgo_set_affnity_on_rescue(int pid, int r_cpu_mask)
+{
+	if (fbt_set_affinity(pid, r_cpu_mask))
+		FPSGO_LOGE("[comp] %s %d setaffinity fail\n",
+				__func__, r_cpu_mask);
+}
+
 void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		unsigned long long frame_id)
 {
+	int cpu_mask;
+
 	if (!thr || !sbe_rescue_enable)	//thr must find the 5566 one.
 		return;
 
@@ -476,6 +559,12 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		if (thr->boost_info.sbe_rescue != 0)
 			goto leave;
 		thr->boost_info.sbe_rescue = 1;
+
+		if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL && rescue_cpu_mask == 1){
+			cpu_mask = FPSGO_PREFER_M;
+			fpsgo_set_affnity_on_rescue(thr->tgid, cpu_mask);
+			fpsgo_set_affnity_on_rescue(thr->pid, cpu_mask);
+		}
 		fbt_ux_set_cap_with_sbe(thr);
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "[ux]sbe_rescue");
 	} else {
@@ -486,6 +575,11 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		sbe_rescuing_frame_id = -1;
 		thr->boost_info.sbe_rescue = 0;
 		thr->sbe_enhance = 0;
+		if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL && rescue_cpu_mask == 1){
+			cpu_mask = FPSGO_PREFER_NONE;
+			fpsgo_set_affnity_on_rescue(thr->tgid,cpu_mask);
+			fpsgo_set_affnity_on_rescue(thr->pid, cpu_mask);
+		}
 		fbt_ux_set_cap_with_sbe(thr);
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "[ux]sbe_rescue");
 	}
@@ -642,6 +736,11 @@ int __init fbt_cpu_ux_init(void)
 	sbe_rescuing_frame_id = -1;
 	sbe_rescuing_frame_id_legacy = -1;
 	sbe_enhance_f = 50;
+	ux_scroll_policy_type = fbt_get_ux_scroll_policy_type();
+	set_ux_uclampmin = 0;
+	set_ux_uclampmax = 0;
+	set_deplist_vip = 1;
+	rescue_cpu_mask = 1;
 	frame_info_cachep = kmem_cache_create("ux_frame_info",
 		sizeof(struct ux_frame_info), 0, SLAB_HWCACHE_ALIGN, NULL);
 	if (!frame_info_cachep)
