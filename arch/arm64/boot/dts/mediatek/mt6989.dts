@@ -12110,6 +12110,7 @@
 
 			mediatek,ufs-qos;
 			mediatek,ufs-pmc-via-fastauto;
+			mediatek,ufs-mphy-debug;
 			mediatek,ufs-tx-skew-fix;
 
 			/*
