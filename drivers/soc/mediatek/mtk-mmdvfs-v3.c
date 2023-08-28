@@ -250,7 +250,11 @@ static int mmdvfs_vcp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *d
 	mutex_lock(&mmdvfs_vcp_ipi_mutex);
 	switch (func) {
 	case FUNC_VMM_CEIL_ENABLE:
-		writel(opp, MEM_VMM_CEIL_ENABLE);
+		val = readl(MEM_VMM_CEIL_ENABLE);
+		if (opp)
+			writel(val | 1 << idx, MEM_VMM_CEIL_ENABLE);
+		else
+			writel(val & ~(1 << idx), MEM_VMM_CEIL_ENABLE);
 		break;
 	case FUNC_VMM_GENPD_NOTIFY:
 		if (idx >= VMM_USR_NUM) {
@@ -459,7 +463,7 @@ static const struct clk_ops mtk_mmdvfs_req_ops = {
 
 int mtk_mmdvfs_camera_notify(const bool enable)
 {
-	mmdvfs_vcp_ipi_send(FUNC_VMM_CEIL_ENABLE, MAX_OPP, enable ? 1 : 0, NULL);
+	mmdvfs_vcp_ipi_send(FUNC_VMM_CEIL_ENABLE, VMM_CEIL_USR_CAM, enable ? 1 : 0, NULL);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_camera_notify);
@@ -597,7 +601,7 @@ static int mtk_mmdvfs_v3_set_vmm_ceil_step(const bool enable)
 {
 	MMDVFS_DBG("enable:%u start", enable);
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
-	mtk_mmdvfs_camera_notify(enable);
+	mmdvfs_vcp_ipi_send(FUNC_VMM_CEIL_ENABLE, VMM_CEIL_USR_ADB, enable ? 1 : 0, NULL);
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
 	MMDVFS_DBG("enable:%u end", enable);
 	return 0;

@@ -285,6 +285,29 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 			(val >> 8) & GENMASK(7, 0), val & GENMASK(7, 0));
 	}
 
+	// vmm ceil records
+	i = readl(MEM_REC_VMM_CEIL_CNT) % MEM_REC_CNT_MAX;
+	if (readl(MEM_REC_VMM_CEIL_SEC(i)))
+		for (j = i; j < MEM_REC_CNT_MAX; j++)
+			mmdvfs_debug_dump_line(file, "[%5u.%6u] vmm_ceil_enable:%#x\n",
+				readl(MEM_REC_VMM_CEIL_SEC(j)), readl(MEM_REC_VMM_CEIL_USEC(j)),
+				readl(MEM_REC_VMM_CEIL_VAL(j)));
+
+	for (j = 0; j < i; j++)
+		mmdvfs_debug_dump_line(file, "[%5u.%6u] vmm_ceil_enable:%#x\n",
+			readl(MEM_REC_VMM_CEIL_SEC(j)), readl(MEM_REC_VMM_CEIL_USEC(j)),
+			readl(MEM_REC_VMM_CEIL_VAL(j)));
+
+	// vcp exception
+	if (readl(MEM_VCP_EXC_SEC)) {
+		val = readl(MEM_VCP_EXC_VAL);
+		mmdvfs_debug_dump_line(file, "[%5u.%6u] exception_handler",
+			readl(MEM_VCP_EXC_SEC), readl(MEM_VCP_EXC_USEC));
+		mmdvfs_debug_dump_line(file, " vcore:%lu, vmm:%lu, vdisp:%lu\n",
+			val & GENMASK(7, 0), (val >> 8) & GENMASK(7, 0),
+			(val >> 16) & GENMASK(7, 0));
+	}
+
 	// vmm debug
 	mmdvfs_debug_dump_line(file, "VMM Efuse_low:%#x, Efuse_high:%#x\n",
 		readl(MEM_VMM_EFUSE_LOW), readl(MEM_VMM_EFUSE_HIGH));

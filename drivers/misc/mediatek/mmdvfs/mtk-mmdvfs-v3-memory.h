@@ -46,7 +46,10 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_VMM_OPP_VOLT(x)	(MEM_BASE + 0xA0 + 0x4 * (x)) // VMM_OPP_NUM(8)
 #define MEM_VDISP_AVS_STEP(x)	(MEM_BASE + 0xC0 + 0x4 * (x)) // OPP_LEVEL(8)
 #define MEM_PROFILE_TIMES	(MEM_BASE + 0xE0)
-/* reserved: 0xE4/0xE8/0xEC */
+
+#define MEM_VCP_EXC_SEC		(MEM_BASE + 0xE4)
+#define MEM_VCP_EXC_USEC	(MEM_BASE + 0xE8)
+#define MEM_VCP_EXC_VAL		(MEM_BASE + 0xEC)
 
 #define MEM_USR_OPP_SEC(x)	(MEM_BASE + 0xF0 + 0x4 * (x))  // USER_NUM(32)
 #define MEM_USR_OPP_USEC(x)	(MEM_BASE + 0x170 + 0x4 * (x)) // USER_NUM(32)
@@ -66,18 +69,22 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_FORCE_VOL(x)	(MEM_BASE + 0x470 + 0x4 * (x)) // POWER_NUM(4)
 /* next start: 0x480 */
 
-#define MEM_REC_PWR_OBJ		4
-#define MEM_REC_USR_OBJ		5
-#define MEM_REC_MUX_OBJ		3
-#define MEM_REC_VMM_DBG_OBJ	5
 #define MEM_REC_CNT_MAX		16
 
+#define MEM_REC_VMM_CEIL_OBJ		3
+#define MEM_REC_VMM_CEIL_CNT		(MEM_BASE + 0xAEC)
+#define MEM_REC_VMM_CEIL_SEC(x)		(MEM_BASE + 0xAF0 + MEM_REC_VMM_CEIL_OBJ * 0x4 * (x))
+#define MEM_REC_VMM_CEIL_USEC(x)	(MEM_BASE + 0xAF4 + MEM_REC_VMM_CEIL_OBJ * 0x4 * (x))
+#define MEM_REC_VMM_CEIL_VAL(x)		(MEM_BASE + 0xAF8 + MEM_REC_VMM_CEIL_OBJ * 0x4 * (x))
+
+#define MEM_REC_MUX_OBJ		3
 #define MEM_REC_MUX_CNT		(MEM_BASE + 0xBB0)
 #define MEM_REC_MUX_SEC(x)	(MEM_BASE + 0xBB4 + MEM_REC_MUX_OBJ * 0x4 * (x))
 #define MEM_REC_MUX_USEC(x)	(MEM_BASE + 0xBB8 + MEM_REC_MUX_OBJ * 0x4 * (x))
 /* mux_id/opp/min/level */
 #define MEM_REC_MUX_VAL(x)	(MEM_BASE + 0xBBC + MEM_REC_MUX_OBJ * 0x4 * (x))
 
+#define MEM_REC_VMM_DBG_OBJ	5
 #define MEM_REC_VMM_DBG_CNT	(MEM_BASE + 0xC74)
 #define MEM_REC_VMM_SEC(x)	(MEM_BASE + 0xC78 + MEM_REC_VMM_DBG_OBJ * 0x4 * (x))
 #define MEM_REC_VMM_NSEC(x)	(MEM_BASE + 0xC7C + MEM_REC_VMM_DBG_OBJ * 0x4 * (x))
@@ -85,12 +92,14 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_REC_VMM_TEMP(x)	(MEM_BASE + 0xC84 + MEM_REC_VMM_DBG_OBJ * 0x4 * (x))
 #define MEM_REC_VMM_AVS(x)	(MEM_BASE + 0xC88 + MEM_REC_VMM_DBG_OBJ * 0x4 * (x))
 
+#define MEM_REC_PWR_OBJ		4
 #define MEM_REC_PWR_CNT		(MEM_BASE + 0xDB8)
 #define MEM_REC_PWR_SEC(x)	(MEM_BASE + 0xDBC + MEM_REC_PWR_OBJ * 0x4 * (x))
 #define MEM_REC_PWR_NSEC(x)	(MEM_BASE + 0xDC0 + MEM_REC_PWR_OBJ * 0x4 * (x))
 #define MEM_REC_PWR_ID(x)	(MEM_BASE + 0xDC4 + MEM_REC_PWR_OBJ * 0x4 * (x))
 #define MEM_REC_PWR_OPP(x)	(MEM_BASE + 0xDC8 + MEM_REC_PWR_OBJ * 0x4 * (x))
 
+#define MEM_REC_USR_OBJ		5
 #define MEM_REC_USR_CNT		(MEM_BASE + 0xEBC)
 #define MEM_REC_USR_SEC(x)	(MEM_BASE + 0xEC0 + MEM_REC_USR_OBJ * 0x4 * (x))
 #define MEM_REC_USR_NSEC(x)	(MEM_BASE + 0xEC4 + MEM_REC_USR_OBJ * 0x4 * (x))

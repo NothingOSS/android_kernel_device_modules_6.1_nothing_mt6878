@@ -64,6 +64,12 @@ enum {
 	VMM_USR_NUM
 };
 
+enum {
+	VMM_CEIL_USR_CAM,
+	VMM_CEIL_USR_ADB,
+	VMM_CEIL_USR_NUM
+};
+
 /* vcp/.../mmdvfs_public.h */
 enum {
 	USER_DISP,
