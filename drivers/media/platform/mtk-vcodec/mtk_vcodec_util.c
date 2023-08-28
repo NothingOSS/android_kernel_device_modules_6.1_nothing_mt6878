@@ -520,22 +520,21 @@ struct vdec_fb *mtk_vcodec_get_fb(struct mtk_vcodec_ctx *ctx)
 	}
 
 	mtk_v4l2_debug_enter();
-	dst_vb2_v4l2 = v4l2_m2m_next_dst_buf(ctx->m2m_ctx);
+
+	mutex_lock(&ctx->buf_lock);
+	dst_vb2_v4l2 = v4l2_m2m_dst_buf_remove(ctx->m2m_ctx);
 	if (dst_vb2_v4l2 != NULL)
 		dst_buf = &dst_vb2_v4l2->vb2_buf;
 	if (dst_buf != NULL) {
-		dst_buf_info = container_of(
-			dst_vb2_v4l2, struct mtk_video_dec_buf, vb);
+		dst_buf_info = container_of(dst_vb2_v4l2, struct mtk_video_dec_buf, vb);
 		pfb = &dst_buf_info->frame_buffer;
 		pfb->num_planes = dst_vb2_v4l2->vb2_buf.num_planes;
 		pfb->index = dst_buf->index;
 
-		mutex_lock(&ctx->buf_lock);
 		for (i = 0; i < dst_vb2_v4l2->vb2_buf.num_planes; i++) {
 			if (mtk_v4l2_dbg_level > 0)
 				pfb->fb_base[i].va = vb2_plane_vaddr(dst_buf, i);
-			pfb->fb_base[i].dma_addr =
-				vb2_dma_contig_plane_dma_addr(dst_buf, i);
+			pfb->fb_base[i].dma_addr = vb2_dma_contig_plane_dma_addr(dst_buf, i);
 			pfb->fb_base[i].size = ctx->picinfo.fb_sz[i];
 			pfb->fb_base[i].length = dst_buf->planes[i].length;
 			pfb->fb_base[i].dmabuf = dst_buf->planes[i].dbuf;
@@ -550,28 +549,19 @@ struct vdec_fb *mtk_vcodec_get_fb(struct mtk_vcodec_ctx *ctx)
 		mtk_vcodec_init_slice_info(ctx, dst_buf_info);
 		ctx->fb_list[pfb->index + 1] = (uintptr_t)pfb;
 
-		mtk_v4l2_debug(1, "[%d] id=%d pfb=0x%p %llx VA=%p dma_addr[0]=%lx dma_addr[1]=%lx Size=%zx fd:%x, dma_general_buf = %p, general_buf_fd = %d",
-				ctx->id, dst_buf->index, pfb, (unsigned long long)pfb,
-				pfb->fb_base[0].va,
-				(unsigned long)pfb->fb_base[0].dma_addr,
-				(unsigned long)pfb->fb_base[1].dma_addr,
-				pfb->fb_base[0].size,
-				dst_buf->planes[0].m.fd,
-				pfb->dma_general_buf,
-				pfb->general_buf_fd);
-
-		dst_vb2_v4l2 = v4l2_m2m_dst_buf_remove(ctx->m2m_ctx);
-		if (dst_vb2_v4l2 != NULL)
-			dst_buf = &dst_vb2_v4l2->vb2_buf;
-			mtk_v4l2_debug(8, "[%d] index=%d, num_rdy_bufs=%d\n",
-				ctx->id, dst_buf->index,
-				v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx));
-
-		mutex_unlock(&ctx->buf_lock);
+		mtk_v4l2_debug(1, "[%d] id=%d pfb=0x%p %llx VA=%p dma_addr[0]=%lx dma_addr[1]=%lx Size=%zx fd:%x, dma_general_buf = %p, general_buf_fd = %d, num_rdy_bufs=%d",
+			ctx->id, dst_buf->index, pfb, (unsigned long long)pfb, pfb->fb_base[0].va,
+			(unsigned long)pfb->fb_base[0].dma_addr,
+			(unsigned long)pfb->fb_base[1].dma_addr,
+			pfb->fb_base[0].size, dst_buf->planes[0].m.fd,
+			pfb->dma_general_buf, pfb->general_buf_fd,
+			v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx));
 	} else {
 		mtk_v4l2_debug(8, "[%d] No free framebuffer in v4l2!!\n", ctx->id);
 		pfb = NULL;
 	}
+	mutex_unlock(&ctx->buf_lock);
+
 	mtk_v4l2_debug_leave();
 
 	return pfb;
