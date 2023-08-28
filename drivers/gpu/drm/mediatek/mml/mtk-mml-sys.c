@@ -62,6 +62,12 @@ int mml_dle_delay;
 module_param(mml_dle_delay, int, 0644);
 #endif
 
+#define sys_msg(fmt, args...) \
+do { \
+	if (mtk_mml_msg || mml_rrot_msg) \
+		pr_notice("[mml]" fmt "\n", ##args); \
+} while (0)
+
 enum mml_comp_type {
 	MML_CT_COMPONENT = 0,
 	MML_CT_SYS,
@@ -1790,8 +1796,6 @@ static s32 dl_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u32 dl_h = tile->in.ye - tile->in.ys + 1;
 	u32 size = (dl_h << 16) + dl_w;
 
-	if (task->config->info.mode == MML_MODE_DIRECT_LINK)
-		cmdq_pkt_clear_event(pkt, task->config->info.disp_done_event);
 	cmdq_pkt_write(pkt, NULL, base_pa + offset, size, U32_MAX);
 	return 0;
 }
@@ -1819,7 +1823,7 @@ static s32 dl_post(struct mml_comp *comp, struct mml_task *task,
 			pixel = pixel / sys->data->px_per_tick;
 		cache->max_pixel = max(cache->max_pixel, pixel);
 
-		mml_msg("%s task %p pipe %u bubble %u pixel %ux%u %u",
+		sys_msg("%s task %p pipe %u bubble %u pixel %ux%u %u",
 			__func__, task, ccfg->pipe, cache->line_bubble,
 			cache->max_size.width, cache->max_size.height, cache->max_pixel);
 
