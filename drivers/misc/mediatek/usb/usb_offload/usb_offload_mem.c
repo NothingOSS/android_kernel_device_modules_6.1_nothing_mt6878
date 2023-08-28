@@ -364,7 +364,7 @@ static int dump_mtk_usb_offload_gen_pool(void)
 		if (!usb_offload_mem_buffer[i].is_valid)
 			continue;
 		pool = usb_offload_mem_buffer[i].pool;
-		USB_OFFLOAD_INFO("gen_pool[%d]: avail: %zu, size: %zu\n",
+		USB_OFFLOAD_MEM_DBG("gen_pool[%d]: avail: %zu, size: %zu\n",
 				i, gen_pool_avail(pool), gen_pool_size(pool));
 	}
 	return 0;

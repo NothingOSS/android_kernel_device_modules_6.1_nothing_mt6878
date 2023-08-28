@@ -115,7 +115,7 @@ static int set_pcm_intf(struct usb_interface *intf, int iface, int alt,
 
 	vid = chip->dev->descriptor.idVendor;
 	pid = chip->dev->descriptor.idProduct;
-	USB_OFFLOAD_INFO("vid:0x%x pid:0x%x\n", vid, pid);
+	USB_OFFLOAD_MEM_DBG("vid:0x%x pid:0x%x\n", vid, pid);
 
 	if (vid == 0x20b1 && pid == 0x302e) {
 		/* Shanling UA1 Pro adaptor */
@@ -488,38 +488,15 @@ static bool is_uainfo_valid(struct usb_audio_stream_info *uainfo)
 
 static void dump_uainfo(struct usb_audio_stream_info *uainfo)
 {
-	USB_OFFLOAD_INFO("uainfo->enable: %d\n"
-						"uainfo->bit_rate: %d\n"
-						"uainfo->number_of_ch: %d\n"
-						"uainfo->bit_depth: %d\n"
-						"uainfo->direction: %d\n"
-						"uainfo->pcm_card_num: %d\n"
-						"uainfo->pcm_dev_num: %d\n"
-						"uainfo->xhc_irq_period_ms: %d\n"
-						"uainfo->xhc_urb_num: %d\n"
-						"uainfo->dram_size: %d\n"
-						"uainfo->dram_cnt: %d\n"
-						"uainfo->start_thld: %d\n"
-						"uainfo->stop_thld: %d\n"
-						"uainfo->pcm_size: %d\n"
-						"uainfo->service_interval: %d\n"
-						"uainfo->service_interval_valid: %d\n",
-						uainfo->enable,
-						uainfo->bit_rate,
-						uainfo->number_of_ch,
-						uainfo->bit_depth,
-						uainfo->direction,
-						uainfo->pcm_card_num,
-						uainfo->pcm_dev_num,
-						uainfo->xhc_irq_period_ms,
-						uainfo->xhc_urb_num,
-						uainfo->dram_size,
-						uainfo->dram_cnt,
-						uainfo->start_thld,
-						uainfo->stop_thld,
-						uainfo->pcm_size,
-						uainfo->service_interval,
-						uainfo->service_interval_valid);
+	USB_OFFLOAD_INFO("enable:%d rate:%d ch:%d depth:%d dir:%d period:%dms card:%d pcm:%d\n",
+		uainfo->enable,
+		uainfo->bit_rate,
+		uainfo->number_of_ch,
+		uainfo->bit_depth,
+		uainfo->direction,
+		uainfo->xhc_irq_period_ms,
+		uainfo->pcm_card_num,
+		uainfo->pcm_dev_num);
 }
 
 static void usb_audio_dev_intf_cleanup(struct usb_device *udev,
@@ -658,7 +635,7 @@ static int info_idx_from_ifnum(unsigned int card_num, int intf_num, bool enable)
 {
 	int i;
 
-	USB_OFFLOAD_INFO("enable:%d, card_num:%d, intf_num:%d\n",
+	USB_OFFLOAD_MEM_DBG("enable:%d, card_num:%d, intf_num:%d\n",
 			enable, card_num, intf_num);
 
 	/*
@@ -666,15 +643,15 @@ static int info_idx_from_ifnum(unsigned int card_num, int intf_num, bool enable)
 	 * first enable audio stream req for a pcm device
 	 */
 	if (enable && !uadev[card_num].info) {
-		USB_OFFLOAD_INFO("enable:%d, uadev[%d].info:%p\n",
+		USB_OFFLOAD_MEM_DBG("enable:%d, uadev[%d].info:%p\n",
 				enable, card_num, uadev[card_num].info);
 		return 0;
 	}
 
-	USB_OFFLOAD_INFO("num_intf:%d\n", uadev[card_num].num_intf);
+	USB_OFFLOAD_MEM_DBG("num_intf:%d\n", uadev[card_num].num_intf);
 
 	for (i = 0; i < uadev[card_num].num_intf; i++) {
-		USB_OFFLOAD_INFO("info_idx:%d, in_use:%d, intf_num:%d\n",
+		USB_OFFLOAD_MEM_DBG("info_idx:%d, in_use:%d, intf_num:%d\n",
 			i,
 			uadev[card_num].info[i].in_use,
 			uadev[card_num].info[i].intf_num);
@@ -1226,9 +1203,6 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 	pcm_dev_num = uainfo->pcm_dev_num;
 	pcm_card_num = uainfo->pcm_card_num;
 
-	USB_OFFLOAD_INFO("direction: %d, pcm_dev_num: %d, pcm_card_num: %d\n",
-			direction, pcm_dev_num, pcm_card_num);
-
 	if (pcm_card_num >= SNDRV_CARDS) {
 		USB_OFFLOAD_ERR("invalid card # %u", pcm_card_num);
 		ret = -EINVAL;
@@ -1252,7 +1226,7 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 	}
 
 	mutex_lock(&uodev->dev_lock);
-	USB_OFFLOAD_INFO("inside mutex\n");
+	USB_OFFLOAD_MEM_DBG("inside mutex\n");
 
 	if (subs->cur_audiofmt)
 		interface = subs->cur_audiofmt->iface;
@@ -1309,7 +1283,6 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 
 	uadev[pcm_card_num].ctrl_intf = chip->ctrl_intf;
 
-	USB_OFFLOAD_INFO("uainfo->enable:%d\n", uainfo->enable);
 	if (!uainfo->enable) {
 		info = &uadev[pcm_card_num].info[info_idx];
 		if (info->data_ep_pipe) {
@@ -1318,7 +1291,7 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 			if (!ep)
 				USB_OFFLOAD_ERR("no data ep\n");
 			else
-				USB_OFFLOAD_INFO("stop data ep\n");
+				USB_OFFLOAD_MEM_DBG("stop data ep\n");
 			info->data_ep_pipe = 0;
 		}
 
@@ -1328,13 +1301,13 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 			if (!ep)
 				USB_OFFLOAD_ERR("no sync ep\n");
 			else
-				USB_OFFLOAD_INFO("stop sync ep\n");
+				USB_OFFLOAD_MEM_DBG("stop sync ep\n");
 			info->sync_ep_pipe = 0;
 		}
 	}
 
 	substream = subs->pcm_substream;
-	USB_OFFLOAD_INFO("pcm_substream->wait_time: %lu\n",
+	USB_OFFLOAD_MEM_DBG("pcm_substream->wait_time: %lu\n",
 			substream->wait_time);
 
 	if (!substream->ops->hw_params || !substream->ops->hw_free
@@ -2104,7 +2077,7 @@ static int check_is_multiple_ep(struct usb_host_config *config)
 	if (!config)
 		return -1;
 
-	USB_OFFLOAD_INFO("num of intf: %d\n", config->desc.bNumInterfaces);
+	USB_OFFLOAD_MEM_DBG("num of intf: %d\n", config->desc.bNumInterfaces);
 
 	for (i = 0; i < config->desc.bNumInterfaces; i++) {
 
@@ -2127,7 +2100,7 @@ static int check_is_multiple_ep(struct usb_host_config *config)
 						uodev->connected);
 				return -1;
 			}
-			USB_OFFLOAD_INFO("intf:%d, alt:%d, numEP: %d, class:0x%x, sub:0x%x\n",
+			USB_OFFLOAD_MEM_DBG("intf:%d, alt:%d, numEP: %d, class:0x%x, sub:0x%x\n",
 					i, j,
 					intfd->bNumEndpoints,
 					intfd->bInterfaceClass,
@@ -2183,7 +2156,6 @@ static int usb_offload_open(struct inode *ip, struct file *fp)
 	int err = 0;
 	int i, class, vid, pid;
 
-	USB_OFFLOAD_INFO("++\n");
 	mutex_lock(&uodev->dev_lock);
 	if (!buf_dcbaa || !buf_ctx || !buf_seg) {
 		USB_OFFLOAD_ERR("USB_OFFLOAD_NOT_READY yet!!!\n");
@@ -2449,10 +2421,10 @@ static long usb_offload_ioctl(struct file *fp,
 
 		if (uodev->is_streaming) {
 			mtk_clk_notify(NULL, NULL, NULL, 1, 1, 0, CLK_EVT_BYPASS_PLL);
-			USB_OFFLOAD_INFO("CLK_EVT_BYPASS_PLL 1 suspend\n");
+			USB_OFFLOAD_MEM_DBG("CLK_EVT_BYPASS_PLL 1 suspend\n");
 		} else {
 			mtk_clk_notify(NULL, NULL, NULL, 0, 1, 0, CLK_EVT_BYPASS_PLL);
-			USB_OFFLOAD_INFO("CLK_EVT_BYPASS_PLL 0 suspend\n");
+			USB_OFFLOAD_MEM_DBG("CLK_EVT_BYPASS_PLL 0 suspend\n");
 		}
 		break;
 	}
