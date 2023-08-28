@@ -1698,11 +1698,13 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 
 	if (!(mtk_crtc->enabled)) {
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		//mtk_crtc->spr_is_on = en;
 		return -EINVAL;
 	}
 
 	if (params && (params->spr_params.enable == 0 || params->spr_params.relay == 1)) {
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		mtk_crtc->spr_is_on = params->spr_params.enable;
 		return -EINVAL;
 	}
 
@@ -1715,8 +1717,40 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 
 	if (params && params->spr_params.enable == 1 &&
 		params->spr_params.relay == 0) {
-		cmdq_handle =
-			cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+		mtk_crtc->spr_switch_type = params->spr_params.spr_switch_type;
+		if (mtk_crtc->spr_switch_type == SPR_SWITCH_TYPE2){
+			cmdq_handle =
+				cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+
+			if (!cmdq_handle) {
+				DDPMSG("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+				return -EINVAL;
+			}
+
+			mtk_crtc->spr_is_on = en;
+			if (mtk_crtc->spr_is_on)
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_PANEL_SPR_EN), 1, ~0);
+			else
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_PANEL_SPR_EN), 2, ~0);
+
+			cmdq_pkt_set_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+
+			cmdq_pkt_flush(cmdq_handle);
+			cmdq_pkt_destroy(cmdq_handle);
+			atomic_set(&mtk_crtc->spr_switching, 1);
+
+		}
+
+
+		if (mtk_crtc->spr_switch_type == SPR_SWITCH_TYPE1) {
+			cmdq_handle =
+				cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 
 			if (!cmdq_handle) {
 				DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
@@ -1743,35 +1777,50 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 					DISP_SLOT_PANEL_SPR_EN), 2, ~0);
 			cmdq_pkt_set_event(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
-
-
-		cmdq_pkt_flush(cmdq_handle);
-		cmdq_pkt_destroy(cmdq_handle);
-
-		atomic_set(&mtk_crtc->spr_switching, 1);
-		if (!readl(mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_PANEL_SPR_EN))) {
-			atomic_set(&mtk_crtc->spr_switching, 0);
-			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-			return ret;
+			cmdq_pkt_flush(cmdq_handle);
+			cmdq_pkt_destroy(cmdq_handle);
+			atomic_set(&mtk_crtc->spr_switching, 1);
+			if (!readl(mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_PANEL_SPR_EN))) {
+				atomic_set(&mtk_crtc->spr_switching, 0);
+				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+				return ret;
+			}
 		}
-
 	}
 
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	//wait switch done
-	if (!wait_event_timeout(mtk_crtc->spr_switch_wait_queue,
-		!atomic_read(&mtk_crtc->spr_switching), msecs_to_jiffies(50))) {
-		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
-		if (!readl(mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_PANEL_SPR_EN))) {
-			atomic_set(&mtk_crtc->spr_switching, 0);
+	if (mtk_crtc->spr_switch_type == SPR_SWITCH_TYPE1){
+		if (!wait_event_timeout(mtk_crtc->spr_switch_wait_queue,
+			!atomic_read(&mtk_crtc->spr_switching), msecs_to_jiffies(50))) {
+			DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+			if (!readl(mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_PANEL_SPR_EN))) {
+				atomic_set(&mtk_crtc->spr_switching, 0);
+				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+				return ret;
+			}
+			DDPMSG("%s:%d switch time\n", __func__, __LINE__);
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-			return ret;
+			return -EINVAL;
 		}
-		DDPPR_ERR("%s:%d switch time\n", __func__, __LINE__);
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		return -EINVAL;
 	}
+
+	if (mtk_crtc->spr_switch_type == SPR_SWITCH_TYPE2){
+		if (!wait_event_timeout(mtk_crtc->spr_switch_wait_queue,
+			!atomic_read(&mtk_crtc->spr_switching), msecs_to_jiffies(50))) {
+			DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+			if (!readl(mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_PANEL_SPR_EN))) {
+				atomic_set(&mtk_crtc->spr_switching, 0);
+				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+				return ret;
+			}
+			DDPMSG("%s:%d switch time\n", __func__, __LINE__);
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			return -EINVAL;
+		}
+	}
+
 	return ret;
 }
 
@@ -8259,8 +8308,9 @@ static void cmdq_pkt_switch_panel_spr_enable(struct cmdq_pkt *cmdq_handle,
 
 	unsigned int panel_spr_enable = 1;
 	struct mtk_ddp_comp *comp = NULL;
-
-
+	struct mtk_panel_params *params_lcm =
+		mtk_drm_get_lcm_ext_params(&mtk_crtc->base);
+	unsigned int spr_is_on = mtk_crtc->spr_is_on;
 
 	cmdq_pkt_read(cmdq_handle, NULL,
 		mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_PANEL_SPR_EN), panel_spr_en);
@@ -8294,11 +8344,27 @@ static void cmdq_pkt_switch_panel_spr_enable(struct cmdq_pkt *cmdq_handle,
 
 	/* condition match, here is nop jump */
 
+	if(params_lcm != NULL &&
+		params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2){
+		mtk_crtc->spr_is_on = 0;
+		mtk_crtc_spr_switch_cfg(mtk_crtc, cmdq_handle);
+		mtk_crtc->spr_is_on = spr_is_on;
+	}
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
 	mtk_ddp_comp_io_cmd(comp, cmdq_handle, DSI_SET_PANEL_SPR, &panel_spr_enable);
 	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 				 mtk_get_gce_backup_slot_pa(mtk_crtc,
 				DISP_SLOT_PANEL_SPR_EN), 0, ~0);
+	if(params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2){
+		cmdq_pkt_clear_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_TE]);
+		cmdq_pkt_wfe(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_TE]);
+		cmdq_pkt_wfe(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_TE]);
+		cmdq_pkt_set_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+	}
 
 	/* this is end of whole condition, thus condition
 	 * FALSE part should jump here
@@ -8325,8 +8391,9 @@ static void cmdq_pkt_switch_panel_spr_disable(struct cmdq_pkt *cmdq_handle,
 
 	unsigned int panel_spr_enable = 0;
 	struct mtk_ddp_comp *comp = NULL;
-
-
+	struct mtk_panel_params *params_lcm =
+		mtk_drm_get_lcm_ext_params(&mtk_crtc->base);
+	unsigned int spr_is_on = mtk_crtc->spr_is_on;
 
 	cmdq_pkt_read(cmdq_handle, NULL,
 		mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_PANEL_SPR_EN), panel_spr_en);
@@ -8360,11 +8427,27 @@ static void cmdq_pkt_switch_panel_spr_disable(struct cmdq_pkt *cmdq_handle,
 
 	/* condition match, here is nop jump */
 
+	if(params_lcm != NULL &&
+		params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2){
+		mtk_crtc->spr_is_on = 1;
+		mtk_crtc_spr_switch_cfg(mtk_crtc, cmdq_handle);
+		mtk_crtc->spr_is_on = spr_is_on;
+	}
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
 	mtk_ddp_comp_io_cmd(comp, cmdq_handle, DSI_SET_PANEL_SPR, &panel_spr_enable);
 	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 				 mtk_get_gce_backup_slot_pa(mtk_crtc,
 				DISP_SLOT_PANEL_SPR_EN), 0, ~0);
+	if(params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2){
+		cmdq_pkt_clear_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_TE]);
+		cmdq_pkt_wfe(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_TE]);
+		cmdq_pkt_wfe(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_TE]);
+		cmdq_pkt_set_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+	}
 
 	/* this is end of whole condition, thus condition
 	 * FALSE part should jump here
@@ -8814,10 +8897,12 @@ skip_prete:
 			if (priv->data->mmsys_id == MMSYS_MT6985)
 				mtk_oddmr_ddren(cmdq_handle, crtc, 1);
 
-			if (params_lcm && params_lcm->spr_params.enable == 1
+			if (crtc_id == 0 && params_lcm && params_lcm->spr_params.enable == 1
 				&& params_lcm->spr_params.relay == 0) {
-				cmdq_pkt_switch_panel_spr_enable(cmdq_handle, mtk_crtc);
-				cmdq_pkt_switch_panel_spr_disable(cmdq_handle, mtk_crtc);
+				if (params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE1){
+					cmdq_pkt_switch_panel_spr_enable(cmdq_handle, mtk_crtc);
+					cmdq_pkt_switch_panel_spr_disable(cmdq_handle, mtk_crtc);
+				}
 			}
 
 
@@ -8857,6 +8942,14 @@ skip_prete:
 
 			cmdq_pkt_mem_move(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr,
 				slot_dts_addr, CMDQ_THR_SPR_IDX3);
+		}
+
+		if (crtc_id == 0 && params_lcm && params_lcm->spr_params.enable == 1 &&
+				params_lcm->spr_params.relay == 0) {
+			if (params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2){
+				cmdq_pkt_switch_panel_spr_enable(cmdq_handle, mtk_crtc);
+				cmdq_pkt_switch_panel_spr_disable(cmdq_handle, mtk_crtc);
+			}
 		}
 
 		GCE_DO(set_event, EVENT_CABC_EOF);

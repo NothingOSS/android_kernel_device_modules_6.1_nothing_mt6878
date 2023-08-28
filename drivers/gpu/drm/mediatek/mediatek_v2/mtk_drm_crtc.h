@@ -1085,6 +1085,8 @@ struct mtk_drm_crtc {
 	unsigned int spr_is_on;
 	wait_queue_head_t spr_switch_wait_queue;
 	atomic_t spr_switching;
+	atomic_t spr_switch_cb_done;
+	unsigned int spr_switch_type;
 
 	struct mtk_vblank_config_rec *vblank_rec;
 

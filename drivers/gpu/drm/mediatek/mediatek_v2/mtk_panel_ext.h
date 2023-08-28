@@ -239,6 +239,11 @@ enum SPR_COLOR_PARAMS_TYPE {
 	SPR_COLOR_PARAMS_TYPE_NUM,
 };
 
+enum SPR_SWITCH_TYPE {
+	SPR_SWITCH_TYPE1 = 0,
+	SPR_SWITCH_TYPE2,
+};
+
 enum REQUEST_TE_OPERATE {
 	DISABLE_REQUEST_TE = 0,
 	ENABLE_REQUSET_TE,
@@ -289,6 +294,7 @@ struct mtk_panel_spr_params {
 	unsigned int *spr_ip_params;
 	unsigned int *spr_ip_shrink_params;
 	unsigned int spr_ip_params_len;
+	unsigned int spr_switch_type;
 };
 
 struct mtk_panel_dsc_ext_pps_cfg {
