@@ -54,6 +54,8 @@
 
 #define PRIMARY_OVL_EXT_LAYER_NR 6L
 
+#define SPR_TYPE_FENCE_MAX 5
+
 #define pgc	_get_context()
 
 #ifndef IF_ONE
@@ -855,10 +857,16 @@ struct mtk_drm_sram {
 	unsigned int expiry_hrt_idx;
 };
 
+struct spr_type_map {
+	struct mtk_spr_type_fence map[SPR_TYPE_FENCE_MAX];
+	unsigned int head;
+};
+
 struct pq_common_data {
 	unsigned int old_persist_property[32];
 	unsigned int new_persist_property[32];
 	struct pq_tuning_pa_base tuning_pa_table[TUNING_REG_MAX];
+	struct spr_type_map spr_types;
 	int tdshp_flag; /* 0: normal, 1: tuning mode */
 	atomic_t pq_hw_relay_cfg_done;
 	wait_queue_head_t pq_hw_relay_cb_wq;
@@ -1411,6 +1419,8 @@ void mtk_addon_get_module(const enum addon_scenario scn,
 			 const struct mtk_addon_module_data **addon_module_dual);
 void mtk_crtc_exec_atf_prebuilt_instr(struct mtk_drm_crtc *mtk_crtc,
 			struct cmdq_pkt *handle);
+
+unsigned int mtk_get_cur_spr_type(struct drm_crtc *crtc);
 
 int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en);
 

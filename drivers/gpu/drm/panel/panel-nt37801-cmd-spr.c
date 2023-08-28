@@ -834,6 +834,7 @@ static struct mtk_panel_params ext_params = {
 	},
 	.is_support_od = true,
 	.is_support_dmr = true,
+	.is_support_dbi = true,
 	.lp_perline_en = 1,
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 	.cm_params = {
@@ -996,6 +997,7 @@ static struct mtk_panel_params ext_params_90hz = {
 	},
 	.is_support_od = true,
 	.is_support_dmr = true,
+	.is_support_dbi = true,
 	.lp_perline_en = 1,
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 	.cm_params = {
@@ -1157,6 +1159,7 @@ static struct mtk_panel_params ext_params_60hz = {
 	},
 	.is_support_od = true,
 	.is_support_dmr = true,
+	.is_support_dbi = true,
 	.lp_perline_en = 1,
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 	.cm_params = {

@@ -637,6 +637,27 @@ int mtkfb_set_spr_status(unsigned int en)
 }
 EXPORT_SYMBOL(mtkfb_set_spr_status);
 
+unsigned int mtkfb_get_spr_type(void)
+{
+	unsigned int ret;
+	struct drm_crtc *crtc;
+
+
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPMSG("%s failed to find crtc\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = mtk_get_cur_spr_type(crtc);
+
+	return ret;
+}
+EXPORT_SYMBOL(mtkfb_get_spr_type);
+
+
 int mtkfb_set_aod_backlight_level(unsigned int level)
 {
 	struct drm_crtc *crtc;
@@ -3553,7 +3574,11 @@ static void process_dbg_opt(const char *opt)
 			ret = mtkfb_set_spr_status(1);
 		else
 			ret = mtkfb_set_spr_status(0);
+	} else if (strncmp(opt, "get_spr_type:", 13) == 0) {
+		unsigned int value;
 
+		value = mtkfb_get_spr_type();
+		DDPMSG("spr_type:%x\n", value);
 	} else if (strncmp(opt, "ap_spr_cm_bypass:", 17) == 0) {
 		unsigned int spr_bypass, cm_bypass, ret;
 

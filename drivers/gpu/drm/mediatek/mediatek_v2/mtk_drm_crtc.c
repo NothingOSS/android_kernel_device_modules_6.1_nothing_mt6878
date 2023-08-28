@@ -176,6 +176,7 @@ unsigned int ovl_win_size;
 #define DISP_REG_OVL_ELX_BURST_ACC(n) (0x950UL + 0x4 * (n))
 #define DISP_REG_OVL_LX_BURST_ACC_WIN_MAX(n) (0x960UL + 0x4 * (n))
 #define DISP_REG_OVL_ELX_BURST_ACC_WIN_MAX(n) (0x970UL + 0x4 * (n))
+
 static void mtk_crtc_spr_switch_cfg(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
 
 #define DISP_REG_OVL_GREQ_LAYER_CNT (0x234UL)
@@ -13949,16 +13950,56 @@ static void mtk_drm_discrete_cb(struct cmdq_cb_data data)
 	kfree(cb_data);
 }
 
+unsigned int mtk_get_cur_spr_type(struct drm_crtc *crtc)
+{
+	unsigned int type;
+	struct mtk_panel_params *panel_params;
+	struct mtk_panel_spr_params *spr_params;
+	unsigned int slot_spr_en = 0;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+
+	panel_params = mtk_drm_get_lcm_ext_params(crtc);
+	if (!panel_params)
+		return MTK_PANEL_INVALID_TYPE;
+	spr_params = &panel_params->spr_params;
+	if (spr_params->enable != 1 || spr_params->relay)
+		return MTK_PANEL_SPR_OFF_TYPE;
+	slot_spr_en = readl(mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_PANEL_SPR_EN));
+	if (slot_spr_en == 1)
+		type = MTK_PANEL_SPR_OFF_TYPE;
+	else if (slot_spr_en == 2)
+		type = spr_params->spr_format_type;
+	else {
+		if (mtk_crtc->spr_is_on)
+			type = spr_params->spr_format_type;
+		else
+			type = MTK_PANEL_SPR_OFF_TYPE;
+	}
+	return type;
+}
+
 static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
 	struct drm_crtc *crtc = cb_data->crtc;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int session_id;
 	unsigned int fence_idx = cb_data->wb_fence_idx;
+	struct spr_type_map *spr_types;
+	unsigned int spr_mode_type;
 
+	if (mtk_crtc->pq_data) {
+		spr_mode_type = mtk_get_cur_spr_type(crtc);
+		spr_types = &mtk_crtc->pq_data->spr_types;
+		spr_types->map[spr_types->head].fence_idx = fence_idx;
+		spr_types->map[spr_types->head].type = spr_mode_type;
+		DDPDBG("%s: idx %d fence %u type %u", __func__,
+			spr_types->head, fence_idx, spr_mode_type);
+		spr_types->head += 1;
+		spr_types->head %= SPR_TYPE_FENCE_MAX;
+	}
 	/* fb reference conut will also have 1 after put */
-//	drm_framebuffer_put(cb_data->wb_fb);
-
+	//	drm_framebuffer_put(cb_data->wb_fb);
 	session_id = mtk_get_session_id(crtc);
 	mtk_crtc_release_output_buffer_fence_by_idx(crtc, session_id, fence_idx);
 
@@ -14506,8 +14547,9 @@ static void mtk_crtc_validate_roi(struct drm_crtc *crtc,
 	_assign_full_lcm_roi(crtc, &full_roi);
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
-		if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_SPR))
-			mtk_ddp_comp_io_cmd(comp, NULL, GET_SPR_VALID_PARTIAL_ROI, partial_roi);
+		if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_SPR ||
+			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR))
+			mtk_ddp_comp_io_cmd(comp, NULL, GET_VALID_PARTIAL_ROI, partial_roi);
 
 	spr_params = &mtk_crtc->panel_ext->params->spr_params;
 	if (spr_params->enable == 1 && spr_params->relay == 0 && mtk_crtc->spr_is_on == 1)

@@ -22,6 +22,8 @@
 #include "../mtk_drm_mmp.h"
 #include "../mtk_drm_gem.h"
 #include "../mtk_drm_fb.h"
+#include "../mtk_dsi.h"
+
 
 #define OD_TABLE_MAX 4
 #define DMR_TABLE_MAX 2
@@ -84,6 +86,15 @@ enum MTK_ODDMR_DMR_MODE_TYPE {
 	DMR_MODE_TYPE_RGB7X8Q = 8,
 };
 
+struct bitstream_buffer {
+	uint8_t *_buffer;
+	uint32_t used_entry;
+	uint32_t used_bit;
+	uint32_t size;
+	uint32_t read_bit;
+};
+
+
 struct mtk_drm_dmr_basic_info {
 	unsigned int panel_id_len;
 	unsigned char panel_id[16];
@@ -92,8 +103,14 @@ struct mtk_drm_dmr_basic_info {
 	unsigned int h_num;
 	unsigned int v_num;
 	unsigned int catch_bit;
+	unsigned int partial_update_scale_factor_h;
+	unsigned int partial_update_scale_factor_v;
+	unsigned int partial_update_real_frame_width;
+	unsigned int partial_update_real_frame_height;
 	unsigned int blank_bit;
 	unsigned int zero_bit;
+//	unsigned int scale_factor_v; //block size
+//	unsigned int real_frame_height;
 };
 
 struct mtk_drm_dmr_static_cfg {
@@ -107,7 +124,7 @@ struct mtk_drm_dmr_table_index {
 	unsigned int DBV_table_num;
 	unsigned int FPS_table_num;
 	unsigned int table_byte_num;
-	bool DC_table_flag;
+	unsigned int DC_table_flag;
 	unsigned int *DBV_table_idx; // 0, 2048
 	unsigned int *FPS_table_idx; // 0, 60
 
@@ -126,9 +143,18 @@ struct mtk_drm_dmr_table_content {
 struct mtk_drm_dmr_fps_dbv_node {
 	unsigned int DBV_num;
 	unsigned int FPS_num;
-	bool DC_flag;
+	unsigned int DC_flag;
+	unsigned int remap_gain_address;
+	unsigned int remap_gain_mask;
+	unsigned int remap_gain_target_code;
+	unsigned int remap_reduce_offset_num;
+	unsigned int remap_dbv_gain_num;
 	unsigned int *DBV_node; // 0, 1024, 2048, 4095
 	unsigned int *FPS_node; // 0, 30, 60, 120
+	unsigned int *remap_reduce_offset_node;
+	unsigned int *remap_reduce_offset_value;
+	unsigned int *remap_dbv_gain_node;
+	unsigned int *remap_dbv_gain_value;
 
 };
 
@@ -150,6 +176,14 @@ struct mtk_drm_dmr_cfg_info {
 	struct mtk_drm_dmr_table_index table_index;
 	struct mtk_drm_dmr_table_content table_content;
 };
+
+struct mtk_drm_dbi_cfg_info {
+	struct mtk_drm_dmr_basic_info basic_info;
+	struct mtk_drm_dmr_static_cfg static_cfg;
+	struct mtk_drm_dmr_fps_dbv_node fps_dbv_node;
+	struct mtk_drm_dmr_fps_dbv_change_cfg fps_dbv_change_cfg;
+};
+
 
 struct mtk_disp_oddmr_data {
 	bool need_bypass_shadow;
@@ -188,6 +222,18 @@ struct mtk_disp_oddmr_od_data {
 	struct mtk_drm_gem_obj *b_channel;
 };
 
+struct mtk_disp_oddmr_dbi_data {
+	atomic_t cur_dbv_node;
+	atomic_t cur_fps_node;
+	atomic_t cur_table_idx;
+	atomic_t update_table_idx;
+	atomic_t update_table_done;
+	struct mtk_drm_gem_obj *dbi_table[2];
+	unsigned int table_size;
+	unsigned int cur_max_time;
+};
+
+
 struct mtk_disp_oddmr_dmr_data {
 	atomic_t cur_dbv_node;
 	atomic_t cur_fps_node;
@@ -203,6 +249,16 @@ struct mtk_disp_oddmr_cfg {
 	uint32_t comp_overhead;
 	uint32_t total_overhead;
 };
+struct mtk_disp_oddmr_tile_overhead_v {
+	unsigned int overhead_v;
+	unsigned int comp_overhead_v;
+};
+struct mtk_disp_oddmr_parital_data_v {
+	unsigned int dbi_y_ini;
+	unsigned int dbi_udma_y_ini;
+	unsigned int y_idx2_ini;
+	unsigned int y_remain2_ini;
+};
 /**
  * struct mtk_disp_oddmr - DISP_oddmr driver structure
  * @ddp_comp - structure containing type enum and hardware resources
@@ -213,6 +269,7 @@ struct mtk_disp_oddmr {
 	bool is_right_pipe;
 	struct mtk_disp_oddmr_od_data od_data;
 	struct mtk_disp_oddmr_dmr_data dmr_data;
+	struct mtk_disp_oddmr_dbi_data dbi_data;
 	struct mtk_disp_oddmr_cfg cfg;
 	atomic_t oddmr_clock_ref;
 	int od_enable_req;
@@ -221,6 +278,8 @@ struct mtk_disp_oddmr {
 	int od_force_off;
 	int dmr_enable_req;
 	int dmr_enable;
+	int dbi_enable_req;
+	int dbi_enable;
 	unsigned int spr_enable;
 	unsigned int spr_relay;
 	unsigned int spr_format;
@@ -244,13 +303,16 @@ struct mtk_disp_oddmr {
 	/* only use in pipe0 */
 	enum ODDMR_STATE od_state;
 	enum ODDMR_STATE dmr_state;
+	enum ODDMR_STATE dbi_state;
 	struct mtk_drm_dmr_cfg_info dmr_cfg_info;
+	struct mtk_drm_dbi_cfg_info dbi_cfg_info;
 	uint32_t od_user_gain;
 	/* workqueue */
 	struct workqueue_struct *oddmr_wq;
 	struct work_struct update_table_work;
 	/*user pq od bypass lock*/
 	uint32_t pq_od_bypass;
+	struct mtk_disp_oddmr_tile_overhead_v tile_overhead_v;
 };
 
 int mtk_drm_ioctl_oddmr_load_param(struct drm_device *dev, void *data,

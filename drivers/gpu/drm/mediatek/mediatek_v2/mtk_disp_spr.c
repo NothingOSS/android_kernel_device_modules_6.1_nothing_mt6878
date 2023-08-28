@@ -1627,7 +1627,7 @@ static int mtk_spr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	struct mtk_rect *partial_roi = NULL;
 
 	switch (cmd) {
-	case GET_SPR_VALID_PARTIAL_ROI:
+	case GET_VALID_PARTIAL_ROI:
 	{
 		partial_roi = (struct mtk_rect *)params;
 		mtk_cal_spr_valid_partial_roi(mtk_crtc, partial_roi);

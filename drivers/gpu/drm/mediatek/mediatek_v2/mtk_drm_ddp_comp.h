@@ -703,6 +703,7 @@ enum mtk_ddp_io_cmd {
 	GET_SPR_VALID_PARTIAL_ROI,
 	OVL_FRAME_DONE_EVENT,
 	GET_OVL_SYS_NUM,
+	GET_VALID_PARTIAL_ROI,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {

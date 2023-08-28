@@ -64,6 +64,7 @@ static struct pq_module_match pq_module_matches[MTK_DISP_PQ_TYPE_MAX] = {
 	{MTK_DISP_PQ_C3D, MTK_DISP_C3D},
 	{MTK_DISP_PQ_TDSHP, MTK_DISP_TDSHP},
 	{MTK_DISP_PQ_DMR, MTK_DISP_ODDMR},
+	{MTK_DISP_PQ_DBI, MTK_DISP_ODDMR},
 };
 
 static const char *const mtk_tuning_mdp_comps_name[TUNING_COMPS_MAX_COUNT] = {
@@ -374,6 +375,29 @@ static int wait_crtc_ready(struct drm_crtc *crtc, void *data)
 	return 0;
 }
 
+static int mtk_drm_ioctl_get_spr_type_by_fence(struct drm_crtc *crtc, void *data)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+	struct spr_type_map *spr_types = &mtk_crtc->pq_data->spr_types;
+	struct mtk_spr_type_fence *param = data;
+	unsigned int fence_idx = param->fence_idx;
+	int i, ret= -1;
+
+	if (!pq_data)
+		return -1;
+
+	for (i = 0; i < SPR_TYPE_FENCE_MAX; i++)
+		if (fence_idx == spr_types->map[i].fence_idx) {
+			param->type = spr_types->map[i].type;
+			break;
+		}
+	if (i != SPR_TYPE_FENCE_MAX)
+		ret = 0;
+	DDPDBG("%s: fence %u type %u", __func__, param->fence_idx, param->type);
+	return ret;
+}
+
 int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
 		unsigned int cmd, char *kdata, struct drm_file *file_priv)
 {
@@ -412,6 +436,9 @@ int mtk_drm_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
 		break;
 	case PQ_VIRTUAL_WAIT_CRTC_READY:
 		ret = wait_crtc_ready(crtc, kdata);
+		break;
+	case PQ_VIRTUAL_GET_SPR_TYPE_BY_FENCE:
+		ret = mtk_drm_ioctl_get_spr_type_by_fence(crtc, kdata);
 		break;
 	default:
 		DDPPR_ERR("%s, unknown cmd:%d\n", __func__, cmd);

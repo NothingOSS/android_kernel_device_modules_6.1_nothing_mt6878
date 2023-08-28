@@ -184,17 +184,6 @@ enum MTK_PANEL_SPR_OUTPUT_MODE {
 	MTK_PANEL_PACKED_SPR_12_BITS,
 };
 
-enum MTK_PANEL_SPR_MODE {
-	MTK_PANEL_RGBG_BGRG_TYPE = 0,
-	MTK_PANEL_BGRG_RGBG_TYPE,
-	MTK_PANEL_RGBRGB_BGRBGR_TYPE,
-	MTK_PANEL_BGRBGR_RGBRGB_TYPE,
-	MTK_PANEL_RGBRGB_BRGBRG_TYPE,
-	MTK_PANEL_BRGBRG_RGBRGB_TYPE,
-	MTK_PANEL_EXT_TYPE,
-};
-
-
 struct esd_check_item {
 	unsigned char cmd;
 	unsigned char count;
@@ -556,6 +545,7 @@ struct mtk_panel_params {
 	struct mtk_panel_spr_params spr_params;
 	bool is_support_od;
 	bool is_support_dmr;
+	bool is_support_dbi;
 
 	/*Msync 3.0*/
 	unsigned int skip_vblank;
