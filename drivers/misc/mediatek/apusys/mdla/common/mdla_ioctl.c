@@ -72,12 +72,8 @@ static long mdla_ioctl(struct file *filp, unsigned int command,
 				sizeof(cmd_data_sync))) {
 			return -EFAULT;
 		}
-		mdla_cmd_debug("%s: RUN_CMD_SYNC: core_id=%d, kva=%p, mva=0x%08x, phys_to_virt=%p\n",
-			__func__,
-			cmd_data_sync.mdla_id,
-			(void *)cmd_data_sync.req.buf.kva,
-			cmd_data_sync.req.buf.mva,
-			phys_to_virt(cmd_data_sync.req.buf.mva));
+
+		/* Don't Print any kernel pointer address in logs for security issue */
 
 		if (core_id_is_invalid(cmd_data_sync.mdla_id))
 			return -EFAULT;
