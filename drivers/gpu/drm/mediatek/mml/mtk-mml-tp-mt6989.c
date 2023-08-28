@@ -821,11 +821,10 @@ static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache
 	 * and necessary throughput:
 	 *	pipe_pixel / active_time(ns) * 1000
 	 * so merge all constant:
-	 *	tput = pixel / 2 * 1.1 * 1000 / act_time
-	 *	     = pixel * 550 / act_time
+	 *	tput = pixel / 2 * 11 / 10 / (act_time / 1000)
 	 */
 	pixel = max(srcw, destw) * max(srch, desth);
-	tput = pixel * 550 / info->act_time;
+	tput = pixel * 11 / 20 / (info->act_time / 1000);
 	if (mml_rrot_single != 2 && srcw * srch <= MML_DL_RROT_S_PX &&
 		tput < tp->opp_speeds[tp->opp_cnt / 2]) {
 		*dual = false;
