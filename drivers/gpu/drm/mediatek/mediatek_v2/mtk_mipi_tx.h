@@ -130,17 +130,41 @@ struct mtk_mipitx_data {
 	const u32 d2_sw_ctl_en;
 	const u32 d3_sw_ctl_en;
 	const u32 d0_sw_lptx_pre_oe;
+	const u32 d0_sw_lptx_oe;
+	const u32 d0_sw_lptx_dp;
+	const u32 d0_sw_lptx_dn;
 	const u32 d0c_sw_lptx_pre_oe;
+	const u32 d0c_sw_lptx_oe;
 	const u32 d1_sw_lptx_pre_oe;
+	const u32 d1_sw_lptx_oe;
+	const u32 d1_sw_lptx_dp;
+	const u32 d1_sw_lptx_dn;
 	const u32 d1c_sw_lptx_pre_oe;
+	const u32 d1c_sw_lptx_oe;
 	const u32 d2_sw_lptx_pre_oe;
+	const u32 d2_sw_lptx_oe;
+	const u32 d2_sw_lptx_dp;
+	const u32 d2_sw_lptx_dn;
 	const u32 d2c_sw_lptx_pre_oe;
+	const u32 d2c_sw_lptx_oe;
 	const u32 d3_sw_lptx_pre_oe;
+	const u32 d3_sw_lptx_oe;
+	const u32 d3_sw_lptx_dp;
+	const u32 d3_sw_lptx_dn;
 	const u32 d3c_sw_lptx_pre_oe;
+	const u32 d3c_sw_lptx_oe;
 	const u32 ck_sw_lptx_pre_oe;
+	const u32 ck_sw_lptx_oe;
+	const u32 ck_sw_lptx_dp;
+	const u32 ck_sw_lptx_dn;
 	const u32 ckc_sw_lptx_pre_oe;
+	const u32 ckc_sw_lptx_oe;
 	const u32 ck1_sw_lptx_pre_oe;
+	const u32 ck1_sw_lptx_oe;
+	const u32 ck1_sw_lptx_dp;
+	const u32 ck1_sw_lptx_dn;
 	const u32 ck1c_sw_lptx_pre_oe;
+	const u32 ck1c_sw_lptx_oe;
 	int (*pll_prepare)(struct clk_hw *hw);
 	int (*power_on_signal)(struct phy *phy);
 	void (*pll_unprepare)(struct clk_hw *hw);
@@ -185,6 +209,11 @@ int mtk_mipi_tx_ssc_en_N6(struct phy *phy,
 void mtk_mipi_tx_pll_rate_set_adpt(struct phy *phy, unsigned long rate);
 void mtk_mipi_tx_pll_rate_switch_gce(struct phy *phy,
 	void *handle, unsigned long rate);
+
+void mtk_mipi_tx_pre_oe_config_gce(struct phy *phy, void *handle, bool en);
+void mtk_mipi_tx_oe_config_gce(struct phy *phy, void *handle, bool en);
+void mtk_mipi_tx_dpn_config_gce(struct phy *phy, void *handle, bool en);
+void mtk_mipi_tx_sw_control_en_gce(struct phy *phy, void *handle, bool en);
 
 void mtk_mipi_tx_sw_control_en(struct phy *phy, bool en);
 void mtk_mipi_tx_pre_oe_config(struct phy *phy, bool en);

@@ -4949,6 +4949,34 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 		priv = mtk_crtc->base.dev->dev_private;
 
 	switch (flag) {
+	case MTK_TRIG_FLAG_PRE_TRIGGER:
+
+	/* only MT6989 require PHY reset so far */
+		if (priv->data->mmsys_id != MMSYS_MT6989)
+			break;
+
+		/* config & enable MIPITX sw ctrl */
+		mtk_mipi_tx_pre_oe_config_gce(dsi->phy, handle, 1);
+		mtk_mipi_tx_oe_config_gce(dsi->phy, handle, 1);
+		mtk_mipi_tx_dpn_config_gce(dsi->phy, handle, 1);
+		mtk_mipi_tx_sw_control_en_gce(dsi->phy, handle, 1);
+
+		/* reset PHY */
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_CON_CTRL, 0, DSI_PHY_RESET);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_CON_CTRL, DSI_PHY_RESET, DSI_PHY_RESET);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_CON_CTRL, 0, DSI_PHY_RESET);
+
+		/* disable & reset MIPITX sw ctrl */
+		mtk_mipi_tx_sw_control_en_gce(dsi->phy, handle, 0);
+		mtk_mipi_tx_pre_oe_config_gce(dsi->phy, handle, 0);
+		mtk_mipi_tx_oe_config_gce(dsi->phy, handle, 0);
+		mtk_mipi_tx_dpn_config_gce(dsi->phy, handle, 0);
+		mtk_mipi_tx_sw_control_en_gce(dsi->phy, handle, 0);
+
+		break;
 	case MTK_TRIG_FLAG_TRIGGER:
 		mtk_dsi_poll_for_idle(dsi, handle);
 		/* TODO: avoid hardcode: 0xF0 register offset  */

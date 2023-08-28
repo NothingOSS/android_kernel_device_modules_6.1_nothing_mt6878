@@ -8700,6 +8700,8 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 
 		GCE_DO(clear_event, EVENT_CMD_EOF);
 
+		mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle, MTK_TRIG_FLAG_PRE_TRIGGER);
+
 		if (disp_helper_get_stage() == DISP_HELPER_STAGE_BRING_UP)
 			goto skip_prete;
 
@@ -8817,8 +8819,6 @@ skip_prete:
 				cmdq_pkt_switch_panel_spr_enable(cmdq_handle, mtk_crtc);
 				cmdq_pkt_switch_panel_spr_disable(cmdq_handle, mtk_crtc);
 			}
-
-			mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle, MTK_TRIG_FLAG_PRE_TRIGGER);
 
 
 			if (mtk_crtc->pre_te_cfg.merge_trigger_en == true)

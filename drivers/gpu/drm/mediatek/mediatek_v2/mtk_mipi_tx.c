@@ -203,17 +203,51 @@
 #define MIPITX_D3_ANA_PN_SWAP_EN_MT6989 (0x0524UL)
 
 #define MIPITX_D0_SW_LPTX_PRE_OE_MT6983	(0x0260UL)
+#define MIPITX_D0_SW_LPTX_OE_MT6983	(0x0264UL)
+#define MIPITX_D0_SW_LPTX_DP_MT6983	(0x0268UL)
+#define MIPITX_D0_SW_LPTX_DN_MT6983	(0x026CUL)
 #define MIPITX_D0C_SW_LPTX_PRE_OE_MT6983	(0x0280UL)
+#define MIPITX_D0C_SW_LPTX_OE_MT6983	(0x0284UL)
+
 #define MIPITX_D1_SW_LPTX_PRE_OE_MT6983	(0x0460UL)
+#define MIPITX_D1_SW_LPTX_OE_MT6983	(0x0464UL)
+#define MIPITX_D1_SW_LPTX_DP_MT6983	(0x0468UL)
+#define MIPITX_D1_SW_LPTX_DN_MT6983	(0x046CUL)
+
 #define MIPITX_D1C_SW_LPTX_PRE_OE_MT6983	(0x0480UL)
+#define MIPITX_D1C_SW_LPTX_OE_MT6983	(0x0484UL)
+
 #define MIPITX_D2_SW_LPTX_PRE_OE_MT6983	(0x0160UL)
+#define MIPITX_D2_SW_LPTX_OE_MT6983	(0x0164UL)
+#define MIPITX_D2_SW_LPTX_DP_MT6983	(0x0168UL)
+#define MIPITX_D2_SW_LPTX_DN_MT6983	(0x016CUL)
+
 #define MIPITX_D2C_SW_LPTX_PRE_OE_MT6983	(0x0180UL)
+#define MIPITX_D2C_SW_LPTX_OE_MT6983	(0x0184UL)
+
 #define MIPITX_D3_SW_LPTX_PRE_OE_MT6983	(0x0560UL)
+#define MIPITX_D3_SW_LPTX_OE_MT6983	(0x0564UL)
+#define MIPITX_D3_SW_LPTX_DP_MT6983	(0x0568UL)
+#define MIPITX_D3_SW_LPTX_DN_MT6983	(0x056CUL)
+
 #define MIPITX_D3C_SW_LPTX_PRE_OE_MT6983	(0x0580UL)
+#define MIPITX_D3C_SW_LPTX_OE_MT6983	(0x0584UL)
+
 #define MIPITX_CK_SW_LPTX_PRE_OE_MT6983	(0x0360UL)
+#define MIPITX_CK_SW_LPTX_OE_MT6983	(0x0364UL)
+#define MIPITX_CK_SW_LPTX_DP_MT6983	(0x0368UL)
+#define MIPITX_CK_SW_LPTX_DN_MT6983	(0x036CUL)
+
 #define MIPITX_CKC_SW_LPTX_PRE_OE_MT6983	(0x0380UL)
+#define MIPITX_CKC_SW_LPTX_OE_MT6983	(0x0384UL)
+
 #define MIPITX_CK1_SW_LPTX_PRE_OE_MT6989	(0x0760UL)
+#define MIPITX_CK1_SW_LPTX_OE_MT6989	(0x0764UL)
+#define MIPITX_CK1_SW_LPTX_DP_MT6989	(0x0768UL)
+#define MIPITX_CK1_SW_LPTX_DN_MT6989	(0x076CUL)
+
 #define MIPITX_CK1C_SW_LPTX_PRE_OE_MT6989	(0x0780UL)
+#define MIPITX_CK1C_SW_LPTX_OE_MT6989	(0x0784UL)
 
 //common reg
 #define MIPITX_LANE_CON (0x000CUL)
@@ -4566,6 +4600,359 @@ void mtk_mipi_tx_pll_rate_set_adpt(struct phy *phy, unsigned long rate)
 	mipi_tx->data_rate_adpt = rate;
 }
 
+void mtk_mipi_tx_pre_oe_config_gce(struct phy *phy, void *handle, bool en)
+{
+#ifndef CONFIG_FPGA_EARLY_PORTING
+	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
+
+	if ((mipi_tx->driver_data->d2_sw_lptx_pre_oe == 0) ||
+		(mipi_tx->driver_data->d2c_sw_lptx_pre_oe == 0) ||
+		(mipi_tx->driver_data->d0_sw_lptx_pre_oe == 0) ||
+		(mipi_tx->driver_data->d0c_sw_lptx_pre_oe == 0) ||
+		(mipi_tx->driver_data->ck_sw_lptx_pre_oe == 0) ||
+		(mipi_tx->driver_data->ckc_sw_lptx_pre_oe == 0) ||
+		(mipi_tx->driver_data->d1_sw_lptx_pre_oe == 0) ||
+		(mipi_tx->driver_data->d1c_sw_lptx_pre_oe == 0) ||
+		(mipi_tx->driver_data->d3_sw_lptx_pre_oe == 0) ||
+		(mipi_tx->driver_data->d3c_sw_lptx_pre_oe == 0))
+		return;
+
+	if (en) {
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d2_sw_lptx_pre_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d2c_sw_lptx_pre_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d0_sw_lptx_pre_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d0c_sw_lptx_pre_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->ck_sw_lptx_pre_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->ckc_sw_lptx_pre_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d1_sw_lptx_pre_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d1c_sw_lptx_pre_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d3_sw_lptx_pre_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d3c_sw_lptx_pre_oe,
+			0x1, 0x1);
+		if (mipi_tx->driver_data->ck1_sw_lptx_pre_oe)
+			cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+				mipi_tx->regs_pa + mipi_tx->driver_data->ck1_sw_lptx_pre_oe,
+				0x1, 0x1);
+		if (mipi_tx->driver_data->ck1c_sw_lptx_pre_oe)
+			cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+				mipi_tx->regs_pa + mipi_tx->driver_data->ck1c_sw_lptx_pre_oe,
+				0x1, 0x1);
+	} else {
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d2_sw_lptx_pre_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d2c_sw_lptx_pre_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d0_sw_lptx_pre_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d0c_sw_lptx_pre_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->ck_sw_lptx_pre_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->ckc_sw_lptx_pre_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d1_sw_lptx_pre_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d1c_sw_lptx_pre_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d3_sw_lptx_pre_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d3c_sw_lptx_pre_oe,
+			0x0, 0x1);
+		if (mipi_tx->driver_data->ck1_sw_lptx_pre_oe)
+			cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+				mipi_tx->regs_pa + mipi_tx->driver_data->ck1_sw_lptx_pre_oe,
+				0x0, 0x1);
+		if (mipi_tx->driver_data->ck1c_sw_lptx_pre_oe)
+			cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+				mipi_tx->regs_pa + mipi_tx->driver_data->ck1c_sw_lptx_pre_oe,
+				0x0, 0x1);
+	}
+#endif
+}
+
+void mtk_mipi_tx_oe_config_gce(struct phy *phy, void *handle, bool en)
+{
+#ifndef CONFIG_FPGA_EARLY_PORTING
+	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
+
+	if ((mipi_tx->driver_data->d2_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->d2c_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->d0_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->d0c_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->ck_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->ckc_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->d1_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->d1c_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->d3_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->d3c_sw_lptx_oe == 0))
+		return;
+
+	if (en) {
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d2_sw_lptx_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d2c_sw_lptx_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d0_sw_lptx_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d0c_sw_lptx_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->ck_sw_lptx_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->ckc_sw_lptx_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d1_sw_lptx_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d1c_sw_lptx_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d3_sw_lptx_oe,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d3c_sw_lptx_oe,
+			0x1, 0x1);
+		if (mipi_tx->driver_data->ck1_sw_lptx_oe)
+			cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+				mipi_tx->regs_pa + mipi_tx->driver_data->ck1_sw_lptx_oe,
+				0x1, 0x1);
+		if (mipi_tx->driver_data->ck1c_sw_lptx_oe)
+			cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+				mipi_tx->regs_pa + mipi_tx->driver_data->ck1c_sw_lptx_oe,
+				0x1, 0x1);
+	} else {
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d2_sw_lptx_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d2c_sw_lptx_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d0_sw_lptx_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d0c_sw_lptx_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->ck_sw_lptx_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->ckc_sw_lptx_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d1_sw_lptx_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d1c_sw_lptx_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d3_sw_lptx_oe,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d3c_sw_lptx_oe,
+			0x0, 0x1);
+		if (mipi_tx->driver_data->ck1_sw_lptx_oe)
+			cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+				mipi_tx->regs_pa + mipi_tx->driver_data->ck1_sw_lptx_oe,
+				0x0, 0x1);
+		if (mipi_tx->driver_data->ck1c_sw_lptx_oe)
+			cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+				mipi_tx->regs_pa + mipi_tx->driver_data->ck1c_sw_lptx_oe,
+				0x0, 0x1);
+	}
+#endif
+}
+
+void mtk_mipi_tx_dpn_config_gce(struct phy *phy, void *handle, bool en)
+{
+#ifndef CONFIG_FPGA_EARLY_PORTING
+	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
+
+	if ((mipi_tx->driver_data->d2_sw_lptx_dp == 0) ||
+		(mipi_tx->driver_data->d0_sw_lptx_dp == 0) ||
+		(mipi_tx->driver_data->ck_sw_lptx_dp == 0) ||
+		(mipi_tx->driver_data->d1_sw_lptx_dp == 0) ||
+		(mipi_tx->driver_data->d3_sw_lptx_dp == 0) ||
+		(mipi_tx->driver_data->d2_sw_lptx_dn == 0) ||
+		(mipi_tx->driver_data->d0_sw_lptx_dn == 0) ||
+		(mipi_tx->driver_data->ck_sw_lptx_dn == 0) ||
+		(mipi_tx->driver_data->d1_sw_lptx_dn == 0) ||
+		(mipi_tx->driver_data->d3_sw_lptx_dn == 0))
+		return;
+
+	if (en) {
+		/* set DP */
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d2_sw_lptx_dp,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d0_sw_lptx_dp,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->ck_sw_lptx_dp,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d1_sw_lptx_dp,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d3_sw_lptx_dp,
+			0x1, 0x1);
+		if (mipi_tx->driver_data->ck1_sw_lptx_dp)
+			cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+				mipi_tx->regs_pa + mipi_tx->driver_data->ck1_sw_lptx_dp,
+				0x1, 0x1);
+		/* set DN */
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d2_sw_lptx_dn,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d0_sw_lptx_dn,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->ck_sw_lptx_dn,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d1_sw_lptx_dn,
+			0x1, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d3_sw_lptx_dn,
+			0x1, 0x1);
+		if (mipi_tx->driver_data->ck1_sw_lptx_dn)
+			cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+				mipi_tx->regs_pa + mipi_tx->driver_data->ck1_sw_lptx_dn,
+				0x1, 0x1);
+
+	} else {
+		/* set DP */
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d2_sw_lptx_dp,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d0_sw_lptx_dp,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->ck_sw_lptx_dp,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d1_sw_lptx_dp,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d3_sw_lptx_dp,
+			0x0, 0x1);
+		if (mipi_tx->driver_data->ck1_sw_lptx_dp)
+			cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+				mipi_tx->regs_pa + mipi_tx->driver_data->ck1_sw_lptx_dp,
+				0x0, 0x1);
+		/* set DN */
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d2_sw_lptx_dn,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d0_sw_lptx_dn,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->ck_sw_lptx_dn,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d1_sw_lptx_dn,
+			0x0, 0x1);
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d3_sw_lptx_dn,
+			0x0, 0x1);
+		if (mipi_tx->driver_data->ck1_sw_lptx_dn)
+			cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+				mipi_tx->regs_pa + mipi_tx->driver_data->ck1_sw_lptx_dn,
+				0x0, 0x1);
+
+	}
+#endif
+}
+
+void mtk_mipi_tx_sw_control_en_gce(struct phy *phy, void *handle, bool en)
+{
+#ifndef CONFIG_FPGA_EARLY_PORTING
+	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
+
+	DDPINFO("%s, en=%d\n", __func__, en);
+	if (en) {
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d0_sw_ctl_en,
+			DSI_D0_SW_CTL_EN | BIT(8), DSI_D0_SW_CTL_EN | BIT(8));
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d1_sw_ctl_en,
+			DSI_D1_SW_CTL_EN | BIT(8), DSI_D1_SW_CTL_EN | BIT(8));
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d2_sw_ctl_en,
+			DSI_D2_SW_CTL_EN | BIT(8), DSI_D2_SW_CTL_EN | BIT(8));
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d3_sw_ctl_en,
+			DSI_D3_SW_CTL_EN | BIT(8), DSI_D3_SW_CTL_EN | BIT(8));
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->ck_sw_ctl_en,
+			DSI_CK_SW_CTL_EN | BIT(8), DSI_CK_SW_CTL_EN | BIT(8));
+		if (mipi_tx->driver_data->ck1_sw_ctl_en)
+			cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+				mipi_tx->regs_pa + mipi_tx->driver_data->ck1_sw_ctl_en,
+				BIT(0) | BIT(8), BIT(0) | BIT(8));
+	} else {
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d0_sw_ctl_en,
+			0, DSI_D0_SW_CTL_EN | BIT(8));
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d1_sw_ctl_en,
+			0, DSI_D1_SW_CTL_EN | BIT(8));
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d2_sw_ctl_en,
+			0, DSI_D2_SW_CTL_EN | BIT(8));
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->d3_sw_ctl_en,
+			0, DSI_D3_SW_CTL_EN | BIT(8));
+		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + mipi_tx->driver_data->ck_sw_ctl_en,
+			0, DSI_CK_SW_CTL_EN | BIT(8));
+		if (mipi_tx->driver_data->ck1_sw_ctl_en)
+			cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+				mipi_tx->regs_pa + mipi_tx->driver_data->ck1_sw_ctl_en,
+				0, BIT(0) | BIT(8));
+	}
+#endif
+}
+
 void mtk_mipi_tx_pll_rate_switch_gce(struct phy *phy,
 		void *handle, unsigned long rate)
 {
@@ -5707,15 +6094,35 @@ static const struct mtk_mipitx_data mt6983_mipitx_data = {
 	.d2_sw_ctl_en = MIPITX_D2_SW_CTL_EN_MT6983,
 	.d3_sw_ctl_en = MIPITX_D3_SW_CTL_EN_MT6983,
 	.d0_sw_lptx_pre_oe = MIPITX_D0_SW_LPTX_PRE_OE_MT6983,
+	.d0_sw_lptx_oe = MIPITX_D0_SW_LPTX_OE_MT6983,
+	.d0_sw_lptx_dp = MIPITX_D0_SW_LPTX_DP_MT6983,
+	.d0_sw_lptx_dn = MIPITX_D0_SW_LPTX_DN_MT6983,
 	.d0c_sw_lptx_pre_oe = MIPITX_D0C_SW_LPTX_PRE_OE_MT6983,
+	.d0c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d1_sw_lptx_pre_oe = MIPITX_D1_SW_LPTX_PRE_OE_MT6983,
+	.d1_sw_lptx_oe = MIPITX_D1_SW_LPTX_OE_MT6983,
+	.d1_sw_lptx_dp = MIPITX_D1_SW_LPTX_DP_MT6983,
+	.d1_sw_lptx_dn = MIPITX_D1_SW_LPTX_DN_MT6983,
 	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE_MT6983,
+	.d1c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE_MT6983,
+	.d2_sw_lptx_oe = MIPITX_D2_SW_LPTX_OE_MT6983,
+	.d2_sw_lptx_dp = MIPITX_D2_SW_LPTX_DP_MT6983,
+	.d2_sw_lptx_dn = MIPITX_D2_SW_LPTX_DN_MT6983,
 	.d2c_sw_lptx_pre_oe = MIPITX_D2C_SW_LPTX_PRE_OE_MT6983,
+	.d2c_sw_lptx_oe = MIPITX_D2C_SW_LPTX_OE_MT6983,
 	.d3_sw_lptx_pre_oe = MIPITX_D3_SW_LPTX_PRE_OE_MT6983,
+	.d3_sw_lptx_oe = MIPITX_D3_SW_LPTX_OE_MT6983,
+	.d3_sw_lptx_dp = MIPITX_D3_SW_LPTX_DP_MT6983,
+	.d3_sw_lptx_dn = MIPITX_D3_SW_LPTX_DN_MT6983,
 	.d3c_sw_lptx_pre_oe = MIPITX_D3C_SW_LPTX_PRE_OE_MT6983,
+	.d3c_sw_lptx_oe = MIPITX_D3C_SW_LPTX_OE_MT6983,
 	.ck_sw_lptx_pre_oe = MIPITX_CK_SW_LPTX_PRE_OE_MT6983,
+	.ck_sw_lptx_oe = MIPITX_CK_SW_LPTX_OE_MT6983,
+	.ck_sw_lptx_dp = MIPITX_CK_SW_LPTX_DP_MT6983,
+	.ck_sw_lptx_dn = MIPITX_CK_SW_LPTX_DN_MT6983,
 	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE_MT6983,
+	.ckc_sw_lptx_oe = MIPITX_CKC_SW_LPTX_OE_MT6983,
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6983,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6983,
 	.dsi_get_pcw = _dsi_get_pcw_mt6983,
@@ -5736,15 +6143,35 @@ static const struct mtk_mipitx_data mt6985_mipitx_data = {
 	.d2_sw_ctl_en = MIPITX_D2_SW_CTL_EN_MT6983,
 	.d3_sw_ctl_en = MIPITX_D3_SW_CTL_EN_MT6983,
 	.d0_sw_lptx_pre_oe = MIPITX_D0_SW_LPTX_PRE_OE_MT6983,
+	.d0_sw_lptx_oe = MIPITX_D0_SW_LPTX_OE_MT6983,
+	.d0_sw_lptx_dp = MIPITX_D0_SW_LPTX_DP_MT6983,
+	.d0_sw_lptx_dn = MIPITX_D0_SW_LPTX_DN_MT6983,
 	.d0c_sw_lptx_pre_oe = MIPITX_D0C_SW_LPTX_PRE_OE_MT6983,
+	.d0c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d1_sw_lptx_pre_oe = MIPITX_D1_SW_LPTX_PRE_OE_MT6983,
+	.d1_sw_lptx_oe = MIPITX_D1_SW_LPTX_OE_MT6983,
+	.d1_sw_lptx_dp = MIPITX_D1_SW_LPTX_DP_MT6983,
+	.d1_sw_lptx_dn = MIPITX_D1_SW_LPTX_DN_MT6983,
 	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE_MT6983,
+	.d1c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE_MT6983,
+	.d2_sw_lptx_oe = MIPITX_D2_SW_LPTX_OE_MT6983,
+	.d2_sw_lptx_dp = MIPITX_D2_SW_LPTX_DP_MT6983,
+	.d2_sw_lptx_dn = MIPITX_D2_SW_LPTX_DN_MT6983,
 	.d2c_sw_lptx_pre_oe = MIPITX_D2C_SW_LPTX_PRE_OE_MT6983,
+	.d2c_sw_lptx_oe = MIPITX_D2C_SW_LPTX_OE_MT6983,
 	.d3_sw_lptx_pre_oe = MIPITX_D3_SW_LPTX_PRE_OE_MT6983,
+	.d3_sw_lptx_oe = MIPITX_D3_SW_LPTX_OE_MT6983,
+	.d3_sw_lptx_dp = MIPITX_D3_SW_LPTX_DP_MT6983,
+	.d3_sw_lptx_dn = MIPITX_D3_SW_LPTX_DN_MT6983,
 	.d3c_sw_lptx_pre_oe = MIPITX_D3C_SW_LPTX_PRE_OE_MT6983,
+	.d3c_sw_lptx_oe = MIPITX_D3C_SW_LPTX_OE_MT6983,
 	.ck_sw_lptx_pre_oe = MIPITX_CK_SW_LPTX_PRE_OE_MT6983,
+	.ck_sw_lptx_oe = MIPITX_CK_SW_LPTX_OE_MT6983,
+	.ck_sw_lptx_dp = MIPITX_CK_SW_LPTX_DP_MT6983,
+	.ck_sw_lptx_dn = MIPITX_CK_SW_LPTX_DN_MT6983,
 	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE_MT6983,
+	.ckc_sw_lptx_oe = MIPITX_CKC_SW_LPTX_OE_MT6983,
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6985,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6985,
 	.dsi_get_pcw = _dsi_get_pcw_mt6983,
@@ -5767,17 +6194,41 @@ static const struct mtk_mipitx_data mt6989_mipitx_data = {
 	.d2_sw_ctl_en = MIPITX_D2_SW_CTL_EN_MT6983,
 	.d3_sw_ctl_en = MIPITX_D3_SW_CTL_EN_MT6983,
 	.d0_sw_lptx_pre_oe = MIPITX_D0_SW_LPTX_PRE_OE_MT6983,
+	.d0_sw_lptx_oe = MIPITX_D0_SW_LPTX_OE_MT6983,
+	.d0_sw_lptx_dp = MIPITX_D0_SW_LPTX_DP_MT6983,
+	.d0_sw_lptx_dn = MIPITX_D0_SW_LPTX_DN_MT6983,
 	.d0c_sw_lptx_pre_oe = MIPITX_D0C_SW_LPTX_PRE_OE_MT6983,
+	.d0c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d1_sw_lptx_pre_oe = MIPITX_D1_SW_LPTX_PRE_OE_MT6983,
+	.d1_sw_lptx_oe = MIPITX_D1_SW_LPTX_OE_MT6983,
+	.d1_sw_lptx_dp = MIPITX_D1_SW_LPTX_DP_MT6983,
+	.d1_sw_lptx_dn = MIPITX_D1_SW_LPTX_DN_MT6983,
 	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE_MT6983,
+	.d1c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE_MT6983,
+	.d2_sw_lptx_oe = MIPITX_D2_SW_LPTX_OE_MT6983,
+	.d2_sw_lptx_dp = MIPITX_D2_SW_LPTX_DP_MT6983,
+	.d2_sw_lptx_dn = MIPITX_D2_SW_LPTX_DN_MT6983,
 	.d2c_sw_lptx_pre_oe = MIPITX_D2C_SW_LPTX_PRE_OE_MT6983,
+	.d2c_sw_lptx_oe = MIPITX_D2C_SW_LPTX_OE_MT6983,
 	.d3_sw_lptx_pre_oe = MIPITX_D3_SW_LPTX_PRE_OE_MT6983,
+	.d3_sw_lptx_oe = MIPITX_D3_SW_LPTX_OE_MT6983,
+	.d3_sw_lptx_dp = MIPITX_D3_SW_LPTX_DP_MT6983,
+	.d3_sw_lptx_dn = MIPITX_D3_SW_LPTX_DN_MT6983,
 	.d3c_sw_lptx_pre_oe = MIPITX_D3C_SW_LPTX_PRE_OE_MT6983,
+	.d3c_sw_lptx_oe = MIPITX_D3C_SW_LPTX_OE_MT6983,
 	.ck_sw_lptx_pre_oe = MIPITX_CK_SW_LPTX_PRE_OE_MT6983,
+	.ck_sw_lptx_oe = MIPITX_CK_SW_LPTX_OE_MT6983,
+	.ck_sw_lptx_dp = MIPITX_CK_SW_LPTX_DP_MT6983,
+	.ck_sw_lptx_dn = MIPITX_CK_SW_LPTX_DN_MT6983,
 	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE_MT6983,
+	.ckc_sw_lptx_oe = MIPITX_CKC_SW_LPTX_OE_MT6983,
 	.ck1_sw_lptx_pre_oe = MIPITX_CK1_SW_LPTX_PRE_OE_MT6989,
+	.ck1_sw_lptx_oe = MIPITX_CK1_SW_LPTX_OE_MT6989,
+	.ck1_sw_lptx_dp = MIPITX_CK1_SW_LPTX_DP_MT6989,
+	.ck1_sw_lptx_dn = MIPITX_CK1_SW_LPTX_DN_MT6989,
 	.ck1c_sw_lptx_pre_oe = MIPITX_CK1C_SW_LPTX_PRE_OE_MT6989,
+	.ck1c_sw_lptx_oe = MIPITX_CK1C_SW_LPTX_OE_MT6989,
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6989,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6989,
 	.dsi_get_pcw = _dsi_get_pcw_mt6989,
@@ -5800,15 +6251,35 @@ static const struct mtk_mipitx_data mt6897_mipitx_data = {
 	.d2_sw_ctl_en = MIPITX_D2_SW_CTL_EN_MT6983,
 	.d3_sw_ctl_en = MIPITX_D3_SW_CTL_EN_MT6983,
 	.d0_sw_lptx_pre_oe = MIPITX_D0_SW_LPTX_PRE_OE_MT6983,
+	.d0_sw_lptx_oe = MIPITX_D0_SW_LPTX_OE_MT6983,
+	.d0_sw_lptx_dp = MIPITX_D0_SW_LPTX_DP_MT6983,
+	.d0_sw_lptx_dn = MIPITX_D0_SW_LPTX_DN_MT6983,
 	.d0c_sw_lptx_pre_oe = MIPITX_D0C_SW_LPTX_PRE_OE_MT6983,
+	.d0c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d1_sw_lptx_pre_oe = MIPITX_D1_SW_LPTX_PRE_OE_MT6983,
+	.d1_sw_lptx_oe = MIPITX_D1_SW_LPTX_OE_MT6983,
+	.d1_sw_lptx_dp = MIPITX_D1_SW_LPTX_DP_MT6983,
+	.d1_sw_lptx_dn = MIPITX_D1_SW_LPTX_DN_MT6983,
 	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE_MT6983,
+	.d1c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE_MT6983,
+	.d2_sw_lptx_oe = MIPITX_D2_SW_LPTX_OE_MT6983,
+	.d2_sw_lptx_dp = MIPITX_D2_SW_LPTX_DP_MT6983,
+	.d2_sw_lptx_dn = MIPITX_D2_SW_LPTX_DN_MT6983,
 	.d2c_sw_lptx_pre_oe = MIPITX_D2C_SW_LPTX_PRE_OE_MT6983,
+	.d2c_sw_lptx_oe = MIPITX_D2C_SW_LPTX_OE_MT6983,
 	.d3_sw_lptx_pre_oe = MIPITX_D3_SW_LPTX_PRE_OE_MT6983,
+	.d3_sw_lptx_oe = MIPITX_D3_SW_LPTX_OE_MT6983,
+	.d3_sw_lptx_dp = MIPITX_D3_SW_LPTX_DP_MT6983,
+	.d3_sw_lptx_dn = MIPITX_D3_SW_LPTX_DN_MT6983,
 	.d3c_sw_lptx_pre_oe = MIPITX_D3C_SW_LPTX_PRE_OE_MT6983,
+	.d3c_sw_lptx_oe = MIPITX_D3C_SW_LPTX_OE_MT6983,
 	.ck_sw_lptx_pre_oe = MIPITX_CK_SW_LPTX_PRE_OE_MT6983,
+	.ck_sw_lptx_oe = MIPITX_CK_SW_LPTX_OE_MT6983,
+	.ck_sw_lptx_dp = MIPITX_CK_SW_LPTX_DP_MT6983,
+	.ck_sw_lptx_dn = MIPITX_CK_SW_LPTX_DN_MT6983,
 	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE_MT6983,
+	.ckc_sw_lptx_oe = MIPITX_CKC_SW_LPTX_OE_MT6983,
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6897,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6983,
 	.dsi_get_pcw = _dsi_get_pcw_mt6897,
@@ -5830,15 +6301,35 @@ static const struct mtk_mipitx_data mt6895_mipitx_data = {
 	.d2_sw_ctl_en = MIPITX_D2_SW_CTL_EN_MT6983,
 	.d3_sw_ctl_en = MIPITX_D3_SW_CTL_EN_MT6983,
 	.d0_sw_lptx_pre_oe = MIPITX_D0_SW_LPTX_PRE_OE_MT6983,
+	.d0_sw_lptx_oe = MIPITX_D0_SW_LPTX_OE_MT6983,
+	.d0_sw_lptx_dp = MIPITX_D0_SW_LPTX_DP_MT6983,
+	.d0_sw_lptx_dn = MIPITX_D0_SW_LPTX_DN_MT6983,
 	.d0c_sw_lptx_pre_oe = MIPITX_D0C_SW_LPTX_PRE_OE_MT6983,
+	.d0c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d1_sw_lptx_pre_oe = MIPITX_D1_SW_LPTX_PRE_OE_MT6983,
+	.d1_sw_lptx_oe = MIPITX_D1_SW_LPTX_OE_MT6983,
+	.d1_sw_lptx_dp = MIPITX_D1_SW_LPTX_DP_MT6983,
+	.d1_sw_lptx_dn = MIPITX_D1_SW_LPTX_DN_MT6983,
 	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE_MT6983,
+	.d1c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE_MT6983,
+	.d2_sw_lptx_oe = MIPITX_D2_SW_LPTX_OE_MT6983,
+	.d2_sw_lptx_dp = MIPITX_D2_SW_LPTX_DP_MT6983,
+	.d2_sw_lptx_dn = MIPITX_D2_SW_LPTX_DN_MT6983,
 	.d2c_sw_lptx_pre_oe = MIPITX_D2C_SW_LPTX_PRE_OE_MT6983,
+	.d2c_sw_lptx_oe = MIPITX_D2C_SW_LPTX_OE_MT6983,
 	.d3_sw_lptx_pre_oe = MIPITX_D3_SW_LPTX_PRE_OE_MT6983,
+	.d3_sw_lptx_oe = MIPITX_D3_SW_LPTX_OE_MT6983,
+	.d3_sw_lptx_dp = MIPITX_D3_SW_LPTX_DP_MT6983,
+	.d3_sw_lptx_dn = MIPITX_D3_SW_LPTX_DN_MT6983,
 	.d3c_sw_lptx_pre_oe = MIPITX_D3C_SW_LPTX_PRE_OE_MT6983,
+	.d3c_sw_lptx_oe = MIPITX_D3C_SW_LPTX_OE_MT6983,
 	.ck_sw_lptx_pre_oe = MIPITX_CK_SW_LPTX_PRE_OE_MT6983,
+	.ck_sw_lptx_oe = MIPITX_CK_SW_LPTX_OE_MT6983,
+	.ck_sw_lptx_dp = MIPITX_CK_SW_LPTX_DP_MT6983,
+	.ck_sw_lptx_dn = MIPITX_CK_SW_LPTX_DN_MT6983,
 	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE_MT6983,
+	.ckc_sw_lptx_oe = MIPITX_CKC_SW_LPTX_OE_MT6983,
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6983,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6983,
 	.dsi_get_pcw = _dsi_get_pcw_mt6983,
@@ -5859,15 +6350,35 @@ static const struct mtk_mipitx_data mt6886_mipitx_data = {
 	.d2_sw_ctl_en = MIPITX_D2_SW_CTL_EN_MT6983,
 	.d3_sw_ctl_en = MIPITX_D3_SW_CTL_EN_MT6983,
 	.d0_sw_lptx_pre_oe = MIPITX_D0_SW_LPTX_PRE_OE_MT6983,
+	.d0_sw_lptx_oe = MIPITX_D0_SW_LPTX_OE_MT6983,
+	.d0_sw_lptx_dp = MIPITX_D0_SW_LPTX_DP_MT6983,
+	.d0_sw_lptx_dn = MIPITX_D0_SW_LPTX_DN_MT6983,
 	.d0c_sw_lptx_pre_oe = MIPITX_D0C_SW_LPTX_PRE_OE_MT6983,
+	.d0c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d1_sw_lptx_pre_oe = MIPITX_D1_SW_LPTX_PRE_OE_MT6983,
+	.d1_sw_lptx_oe = MIPITX_D1_SW_LPTX_OE_MT6983,
+	.d1_sw_lptx_dp = MIPITX_D1_SW_LPTX_DP_MT6983,
+	.d1_sw_lptx_dn = MIPITX_D1_SW_LPTX_DN_MT6983,
 	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE_MT6983,
+	.d1c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE_MT6983,
+	.d2_sw_lptx_oe = MIPITX_D2_SW_LPTX_OE_MT6983,
+	.d2_sw_lptx_dp = MIPITX_D2_SW_LPTX_DP_MT6983,
+	.d2_sw_lptx_dn = MIPITX_D2_SW_LPTX_DN_MT6983,
 	.d2c_sw_lptx_pre_oe = MIPITX_D2C_SW_LPTX_PRE_OE_MT6983,
+	.d2c_sw_lptx_oe = MIPITX_D2C_SW_LPTX_OE_MT6983,
 	.d3_sw_lptx_pre_oe = MIPITX_D3_SW_LPTX_PRE_OE_MT6983,
+	.d3_sw_lptx_oe = MIPITX_D3_SW_LPTX_OE_MT6983,
+	.d3_sw_lptx_dp = MIPITX_D3_SW_LPTX_DP_MT6983,
+	.d3_sw_lptx_dn = MIPITX_D3_SW_LPTX_DN_MT6983,
 	.d3c_sw_lptx_pre_oe = MIPITX_D3C_SW_LPTX_PRE_OE_MT6983,
+	.d3c_sw_lptx_oe = MIPITX_D3C_SW_LPTX_OE_MT6983,
 	.ck_sw_lptx_pre_oe = MIPITX_CK_SW_LPTX_PRE_OE_MT6983,
+	.ck_sw_lptx_oe = MIPITX_CK_SW_LPTX_OE_MT6983,
+	.ck_sw_lptx_dp = MIPITX_CK_SW_LPTX_DP_MT6983,
+	.ck_sw_lptx_dn = MIPITX_CK_SW_LPTX_DN_MT6983,
 	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE_MT6983,
+	.ckc_sw_lptx_oe = MIPITX_CKC_SW_LPTX_OE_MT6983,
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6886,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6983,
 	.dsi_get_pcw = _dsi_get_pcw_mt6886,
@@ -5889,15 +6400,35 @@ static const struct mtk_mipitx_data mt6983_mipitx_cphy_data = {
 	.d2_sw_ctl_en = MIPITX_D2_SW_CTL_EN_MT6983,
 	.d3_sw_ctl_en = MIPITX_D3_SW_CTL_EN_MT6983,
 	.d0_sw_lptx_pre_oe = MIPITX_D0_SW_LPTX_PRE_OE_MT6983,
+	.d0_sw_lptx_oe = MIPITX_D0_SW_LPTX_OE_MT6983,
+	.d0_sw_lptx_dp = MIPITX_D0_SW_LPTX_DP_MT6983,
+	.d0_sw_lptx_dn = MIPITX_D0_SW_LPTX_DN_MT6983,
 	.d0c_sw_lptx_pre_oe = MIPITX_D0C_SW_LPTX_PRE_OE_MT6983,
+	.d0c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d1_sw_lptx_pre_oe = MIPITX_D1_SW_LPTX_PRE_OE_MT6983,
+	.d1_sw_lptx_oe = MIPITX_D1_SW_LPTX_OE_MT6983,
+	.d1_sw_lptx_dp = MIPITX_D1_SW_LPTX_DP_MT6983,
+	.d1_sw_lptx_dn = MIPITX_D1_SW_LPTX_DN_MT6983,
 	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE_MT6983,
+	.d1c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE_MT6983,
+	.d2_sw_lptx_oe = MIPITX_D2_SW_LPTX_OE_MT6983,
+	.d2_sw_lptx_dp = MIPITX_D2_SW_LPTX_DP_MT6983,
+	.d2_sw_lptx_dn = MIPITX_D2_SW_LPTX_DN_MT6983,
 	.d2c_sw_lptx_pre_oe = MIPITX_D2C_SW_LPTX_PRE_OE_MT6983,
+	.d2c_sw_lptx_oe = MIPITX_D2C_SW_LPTX_OE_MT6983,
 	.d3_sw_lptx_pre_oe = MIPITX_D3_SW_LPTX_PRE_OE_MT6983,
+	.d3_sw_lptx_oe = MIPITX_D3_SW_LPTX_OE_MT6983,
+	.d3_sw_lptx_dp = MIPITX_D3_SW_LPTX_DP_MT6983,
+	.d3_sw_lptx_dn = MIPITX_D3_SW_LPTX_DN_MT6983,
 	.d3c_sw_lptx_pre_oe = MIPITX_D3C_SW_LPTX_PRE_OE_MT6983,
+	.d3c_sw_lptx_oe = MIPITX_D3C_SW_LPTX_OE_MT6983,
 	.ck_sw_lptx_pre_oe = MIPITX_CK_SW_LPTX_PRE_OE_MT6983,
+	.ck_sw_lptx_oe = MIPITX_CK_SW_LPTX_OE_MT6983,
+	.ck_sw_lptx_dp = MIPITX_CK_SW_LPTX_DP_MT6983,
+	.ck_sw_lptx_dn = MIPITX_CK_SW_LPTX_DN_MT6983,
 	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE_MT6983,
+	.ckc_sw_lptx_oe = MIPITX_CKC_SW_LPTX_OE_MT6983,
 	.pll_prepare = mtk_mipi_tx_pll_cphy_prepare_mt6983,
 	.pll_unprepare = mtk_mipi_tx_pll_cphy_unprepare_mt6983,
 	.dsi_get_pcw = _dsi_get_pcw_mt6983,
@@ -5918,15 +6449,35 @@ static const struct mtk_mipitx_data mt6985_mipitx_cphy_data = {
 	.d2_sw_ctl_en = MIPITX_D2_SW_CTL_EN_MT6983,
 	.d3_sw_ctl_en = MIPITX_D3_SW_CTL_EN_MT6983,
 	.d0_sw_lptx_pre_oe = MIPITX_D0_SW_LPTX_PRE_OE_MT6983,
+	.d0_sw_lptx_oe = MIPITX_D0_SW_LPTX_OE_MT6983,
+	.d0_sw_lptx_dp = MIPITX_D0_SW_LPTX_DP_MT6983,
+	.d0_sw_lptx_dn = MIPITX_D0_SW_LPTX_DN_MT6983,
 	.d0c_sw_lptx_pre_oe = MIPITX_D0C_SW_LPTX_PRE_OE_MT6983,
+	.d0c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d1_sw_lptx_pre_oe = MIPITX_D1_SW_LPTX_PRE_OE_MT6983,
+	.d1_sw_lptx_oe = MIPITX_D1_SW_LPTX_OE_MT6983,
+	.d1_sw_lptx_dp = MIPITX_D1_SW_LPTX_DP_MT6983,
+	.d1_sw_lptx_dn = MIPITX_D1_SW_LPTX_DN_MT6983,
 	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE_MT6983,
+	.d1c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE_MT6983,
+	.d2_sw_lptx_oe = MIPITX_D2_SW_LPTX_OE_MT6983,
+	.d2_sw_lptx_dp = MIPITX_D2_SW_LPTX_DP_MT6983,
+	.d2_sw_lptx_dn = MIPITX_D2_SW_LPTX_DN_MT6983,
 	.d2c_sw_lptx_pre_oe = MIPITX_D2C_SW_LPTX_PRE_OE_MT6983,
+	.d2c_sw_lptx_oe = MIPITX_D2C_SW_LPTX_OE_MT6983,
 	.d3_sw_lptx_pre_oe = MIPITX_D3_SW_LPTX_PRE_OE_MT6983,
+	.d3_sw_lptx_oe = MIPITX_D3_SW_LPTX_OE_MT6983,
+	.d3_sw_lptx_dp = MIPITX_D3_SW_LPTX_DP_MT6983,
+	.d3_sw_lptx_dn = MIPITX_D3_SW_LPTX_DN_MT6983,
 	.d3c_sw_lptx_pre_oe = MIPITX_D3C_SW_LPTX_PRE_OE_MT6983,
+	.d3c_sw_lptx_oe = MIPITX_D3C_SW_LPTX_OE_MT6983,
 	.ck_sw_lptx_pre_oe = MIPITX_CK_SW_LPTX_PRE_OE_MT6983,
+	.ck_sw_lptx_oe = MIPITX_CK_SW_LPTX_OE_MT6983,
+	.ck_sw_lptx_dp = MIPITX_CK_SW_LPTX_DP_MT6983,
+	.ck_sw_lptx_dn = MIPITX_CK_SW_LPTX_DN_MT6983,
 	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE_MT6983,
+	.ckc_sw_lptx_oe = MIPITX_CKC_SW_LPTX_OE_MT6983,
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6985,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6985,
 	.dsi_get_pcw = _dsi_get_pcw_mt6983,
@@ -5943,20 +6494,47 @@ static const struct mtk_mipitx_data mt6989_mipitx_cphy_data = {
 	.dsi_pll_en = RG_DSI_PLL_EN_MT6983,
 	.dsi_ssc_en = RG_DSI_PLL_SDM_SSC_EN_MT6983,
 	.ck_sw_ctl_en = MIPITX_CK_SW_CTL_EN_MT6983,
+	.ck1_sw_ctl_en = MIPITX_CK1_SW_CTL_EN_MT6989,
 	.d0_sw_ctl_en = MIPITX_D0_SW_CTL_EN_MT6983,
 	.d1_sw_ctl_en = MIPITX_D1_SW_CTL_EN_MT6983,
 	.d2_sw_ctl_en = MIPITX_D2_SW_CTL_EN_MT6983,
 	.d3_sw_ctl_en = MIPITX_D3_SW_CTL_EN_MT6983,
 	.d0_sw_lptx_pre_oe = MIPITX_D0_SW_LPTX_PRE_OE_MT6983,
+	.d0_sw_lptx_oe = MIPITX_D0_SW_LPTX_OE_MT6983,
+	.d0_sw_lptx_dp = MIPITX_D0_SW_LPTX_DP_MT6983,
+	.d0_sw_lptx_dn = MIPITX_D0_SW_LPTX_DN_MT6983,
 	.d0c_sw_lptx_pre_oe = MIPITX_D0C_SW_LPTX_PRE_OE_MT6983,
+	.d0c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d1_sw_lptx_pre_oe = MIPITX_D1_SW_LPTX_PRE_OE_MT6983,
+	.d1_sw_lptx_oe = MIPITX_D1_SW_LPTX_OE_MT6983,
+	.d1_sw_lptx_dp = MIPITX_D1_SW_LPTX_DP_MT6983,
+	.d1_sw_lptx_dn = MIPITX_D1_SW_LPTX_DN_MT6983,
 	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE_MT6983,
+	.d1c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE_MT6983,
+	.d2_sw_lptx_oe = MIPITX_D2_SW_LPTX_OE_MT6983,
+	.d2_sw_lptx_dp = MIPITX_D2_SW_LPTX_DP_MT6983,
+	.d2_sw_lptx_dn = MIPITX_D2_SW_LPTX_DN_MT6983,
 	.d2c_sw_lptx_pre_oe = MIPITX_D2C_SW_LPTX_PRE_OE_MT6983,
+	.d2c_sw_lptx_oe = MIPITX_D2C_SW_LPTX_OE_MT6983,
 	.d3_sw_lptx_pre_oe = MIPITX_D3_SW_LPTX_PRE_OE_MT6983,
+	.d3_sw_lptx_oe = MIPITX_D3_SW_LPTX_OE_MT6983,
+	.d3_sw_lptx_dp = MIPITX_D3_SW_LPTX_DP_MT6983,
+	.d3_sw_lptx_dn = MIPITX_D3_SW_LPTX_DN_MT6983,
 	.d3c_sw_lptx_pre_oe = MIPITX_D3C_SW_LPTX_PRE_OE_MT6983,
+	.d3c_sw_lptx_oe = MIPITX_D3C_SW_LPTX_OE_MT6983,
 	.ck_sw_lptx_pre_oe = MIPITX_CK_SW_LPTX_PRE_OE_MT6983,
+	.ck_sw_lptx_oe = MIPITX_CK_SW_LPTX_OE_MT6983,
+	.ck_sw_lptx_dp = MIPITX_CK_SW_LPTX_DP_MT6983,
+	.ck_sw_lptx_dn = MIPITX_CK_SW_LPTX_DN_MT6983,
 	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE_MT6983,
+	.ckc_sw_lptx_oe = MIPITX_CKC_SW_LPTX_OE_MT6983,
+	.ck1_sw_lptx_pre_oe = MIPITX_CK1_SW_LPTX_PRE_OE_MT6989,
+	.ck1_sw_lptx_oe = MIPITX_CK1_SW_LPTX_OE_MT6989,
+	.ck1_sw_lptx_dp = MIPITX_CK1_SW_LPTX_DP_MT6989,
+	.ck1_sw_lptx_dn = MIPITX_CK1_SW_LPTX_DN_MT6989,
+	.ck1c_sw_lptx_pre_oe = MIPITX_CK1C_SW_LPTX_PRE_OE_MT6989,
+	.ck1c_sw_lptx_oe = MIPITX_CK1C_SW_LPTX_OE_MT6989,
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6989,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6989,
 	.dsi_get_pcw = _dsi_get_pcw_mt6989,
@@ -5978,15 +6556,35 @@ static const struct mtk_mipitx_data mt6897_mipitx_cphy_data = {
 	.d2_sw_ctl_en = MIPITX_D2_SW_CTL_EN_MT6983,
 	.d3_sw_ctl_en = MIPITX_D3_SW_CTL_EN_MT6983,
 	.d0_sw_lptx_pre_oe = MIPITX_D0_SW_LPTX_PRE_OE_MT6983,
+	.d0_sw_lptx_oe = MIPITX_D0_SW_LPTX_OE_MT6983,
+	.d0_sw_lptx_dp = MIPITX_D0_SW_LPTX_DP_MT6983,
+	.d0_sw_lptx_dn = MIPITX_D0_SW_LPTX_DN_MT6983,
 	.d0c_sw_lptx_pre_oe = MIPITX_D0C_SW_LPTX_PRE_OE_MT6983,
+	.d0c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d1_sw_lptx_pre_oe = MIPITX_D1_SW_LPTX_PRE_OE_MT6983,
+	.d1_sw_lptx_oe = MIPITX_D1_SW_LPTX_OE_MT6983,
+	.d1_sw_lptx_dp = MIPITX_D1_SW_LPTX_DP_MT6983,
+	.d1_sw_lptx_dn = MIPITX_D1_SW_LPTX_DN_MT6983,
 	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE_MT6983,
+	.d1c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE_MT6983,
+	.d2_sw_lptx_oe = MIPITX_D2_SW_LPTX_OE_MT6983,
+	.d2_sw_lptx_dp = MIPITX_D2_SW_LPTX_DP_MT6983,
+	.d2_sw_lptx_dn = MIPITX_D2_SW_LPTX_DN_MT6983,
 	.d2c_sw_lptx_pre_oe = MIPITX_D2C_SW_LPTX_PRE_OE_MT6983,
+	.d2c_sw_lptx_oe = MIPITX_D2C_SW_LPTX_OE_MT6983,
 	.d3_sw_lptx_pre_oe = MIPITX_D3_SW_LPTX_PRE_OE_MT6983,
+	.d3_sw_lptx_oe = MIPITX_D3_SW_LPTX_OE_MT6983,
+	.d3_sw_lptx_dp = MIPITX_D3_SW_LPTX_DP_MT6983,
+	.d3_sw_lptx_dn = MIPITX_D3_SW_LPTX_DN_MT6983,
 	.d3c_sw_lptx_pre_oe = MIPITX_D3C_SW_LPTX_PRE_OE_MT6983,
+	.d3c_sw_lptx_oe = MIPITX_D3C_SW_LPTX_OE_MT6983,
 	.ck_sw_lptx_pre_oe = MIPITX_CK_SW_LPTX_PRE_OE_MT6983,
+	.ck_sw_lptx_oe = MIPITX_CK_SW_LPTX_OE_MT6983,
+	.ck_sw_lptx_dp = MIPITX_CK_SW_LPTX_DP_MT6983,
+	.ck_sw_lptx_dn = MIPITX_CK_SW_LPTX_DN_MT6983,
 	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE_MT6983,
+	.ckc_sw_lptx_oe = MIPITX_CKC_SW_LPTX_OE_MT6983,
 	.pll_prepare = mtk_mipi_tx_pll_cphy_prepare_mt6897,
 	.pll_unprepare = mtk_mipi_tx_pll_cphy_unprepare_mt6983,
 	.dsi_get_pcw = _dsi_get_pcw_mt6897,
@@ -6006,15 +6604,35 @@ static const struct mtk_mipitx_data mt6895_mipitx_cphy_data = {
 	.d2_sw_ctl_en = MIPITX_D2_SW_CTL_EN_MT6983,
 	.d3_sw_ctl_en = MIPITX_D3_SW_CTL_EN_MT6983,
 	.d0_sw_lptx_pre_oe = MIPITX_D0_SW_LPTX_PRE_OE_MT6983,
+	.d0_sw_lptx_oe = MIPITX_D0_SW_LPTX_OE_MT6983,
+	.d0_sw_lptx_dp = MIPITX_D0_SW_LPTX_DP_MT6983,
+	.d0_sw_lptx_dn = MIPITX_D0_SW_LPTX_DN_MT6983,
 	.d0c_sw_lptx_pre_oe = MIPITX_D0C_SW_LPTX_PRE_OE_MT6983,
+	.d0c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d1_sw_lptx_pre_oe = MIPITX_D1_SW_LPTX_PRE_OE_MT6983,
+	.d1_sw_lptx_oe = MIPITX_D1_SW_LPTX_OE_MT6983,
+	.d1_sw_lptx_dp = MIPITX_D1_SW_LPTX_DP_MT6983,
+	.d1_sw_lptx_dn = MIPITX_D1_SW_LPTX_DN_MT6983,
 	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE_MT6983,
+	.d1c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE_MT6983,
+	.d2_sw_lptx_oe = MIPITX_D2_SW_LPTX_OE_MT6983,
+	.d2_sw_lptx_dp = MIPITX_D2_SW_LPTX_DP_MT6983,
+	.d2_sw_lptx_dn = MIPITX_D2_SW_LPTX_DN_MT6983,
 	.d2c_sw_lptx_pre_oe = MIPITX_D2C_SW_LPTX_PRE_OE_MT6983,
+	.d2c_sw_lptx_oe = MIPITX_D2C_SW_LPTX_OE_MT6983,
 	.d3_sw_lptx_pre_oe = MIPITX_D3_SW_LPTX_PRE_OE_MT6983,
+	.d3_sw_lptx_oe = MIPITX_D3_SW_LPTX_OE_MT6983,
+	.d3_sw_lptx_dp = MIPITX_D3_SW_LPTX_DP_MT6983,
+	.d3_sw_lptx_dn = MIPITX_D3_SW_LPTX_DN_MT6983,
 	.d3c_sw_lptx_pre_oe = MIPITX_D3C_SW_LPTX_PRE_OE_MT6983,
+	.d3c_sw_lptx_oe = MIPITX_D3C_SW_LPTX_OE_MT6983,
 	.ck_sw_lptx_pre_oe = MIPITX_CK_SW_LPTX_PRE_OE_MT6983,
+	.ck_sw_lptx_oe = MIPITX_CK_SW_LPTX_OE_MT6983,
+	.ck_sw_lptx_dp = MIPITX_CK_SW_LPTX_DP_MT6983,
+	.ck_sw_lptx_dn = MIPITX_CK_SW_LPTX_DN_MT6983,
 	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE_MT6983,
+	.ckc_sw_lptx_oe = MIPITX_CKC_SW_LPTX_OE_MT6983,
 	.pll_prepare = mtk_mipi_tx_pll_cphy_prepare_mt6983,
 	.pll_unprepare = mtk_mipi_tx_pll_cphy_unprepare_mt6983,
 	.dsi_get_pcw = _dsi_get_pcw_mt6983,
@@ -6035,15 +6653,35 @@ static const struct mtk_mipitx_data mt6886_mipitx_cphy_data = {
 	.d2_sw_ctl_en = MIPITX_D2_SW_CTL_EN_MT6983,
 	.d3_sw_ctl_en = MIPITX_D3_SW_CTL_EN_MT6983,
 	.d0_sw_lptx_pre_oe = MIPITX_D0_SW_LPTX_PRE_OE_MT6983,
+	.d0_sw_lptx_oe = MIPITX_D0_SW_LPTX_OE_MT6983,
+	.d0_sw_lptx_dp = MIPITX_D0_SW_LPTX_DP_MT6983,
+	.d0_sw_lptx_dn = MIPITX_D0_SW_LPTX_DN_MT6983,
 	.d0c_sw_lptx_pre_oe = MIPITX_D0C_SW_LPTX_PRE_OE_MT6983,
+	.d0c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d1_sw_lptx_pre_oe = MIPITX_D1_SW_LPTX_PRE_OE_MT6983,
+	.d1_sw_lptx_oe = MIPITX_D1_SW_LPTX_OE_MT6983,
+	.d1_sw_lptx_dp = MIPITX_D1_SW_LPTX_DP_MT6983,
+	.d1_sw_lptx_dn = MIPITX_D1_SW_LPTX_DN_MT6983,
 	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE_MT6983,
+	.d1c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE_MT6983,
+	.d2_sw_lptx_oe = MIPITX_D2_SW_LPTX_OE_MT6983,
+	.d2_sw_lptx_dp = MIPITX_D2_SW_LPTX_DP_MT6983,
+	.d2_sw_lptx_dn = MIPITX_D2_SW_LPTX_DN_MT6983,
 	.d2c_sw_lptx_pre_oe = MIPITX_D2C_SW_LPTX_PRE_OE_MT6983,
+	.d2c_sw_lptx_oe = MIPITX_D2C_SW_LPTX_OE_MT6983,
 	.d3_sw_lptx_pre_oe = MIPITX_D3_SW_LPTX_PRE_OE_MT6983,
+	.d3_sw_lptx_oe = MIPITX_D3_SW_LPTX_OE_MT6983,
+	.d3_sw_lptx_dp = MIPITX_D3_SW_LPTX_DP_MT6983,
+	.d3_sw_lptx_dn = MIPITX_D3_SW_LPTX_DN_MT6983,
 	.d3c_sw_lptx_pre_oe = MIPITX_D3C_SW_LPTX_PRE_OE_MT6983,
+	.d3c_sw_lptx_oe = MIPITX_D3C_SW_LPTX_OE_MT6983,
 	.ck_sw_lptx_pre_oe = MIPITX_CK_SW_LPTX_PRE_OE_MT6983,
+	.ck_sw_lptx_oe = MIPITX_CK_SW_LPTX_OE_MT6983,
+	.ck_sw_lptx_dp = MIPITX_CK_SW_LPTX_DP_MT6983,
+	.ck_sw_lptx_dn = MIPITX_CK_SW_LPTX_DN_MT6983,
 	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE_MT6983,
+	.ckc_sw_lptx_oe = MIPITX_CKC_SW_LPTX_OE_MT6983,
 	.pll_prepare = mtk_mipi_tx_pll_cphy_prepare_mt6886,
 	.pll_unprepare = mtk_mipi_tx_pll_cphy_unprepare_mt6983,
 	.dsi_get_pcw = _dsi_get_pcw_mt6983,
