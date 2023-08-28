@@ -168,6 +168,8 @@ static int vcore_release(struct act_arg_obj *arg)
 	return 0;
 }
 
+static const struct attribute_group audio_core_group;
+
 static int usb_boost_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
@@ -203,6 +205,10 @@ static int usb_boost_probe(struct platform_device *pdev)
 
 	audio_boost = of_property_read_bool(node, "usb-audio");
 	gdev = &pdev->dev;
+	if (audio_boost) {
+		if (sysfs_create_group(&gdev->kobj, &audio_core_group))
+			USB_BOOST_NOTICE("error creating plat sysfs attr\n");
+	}
 	usb_audio_boost(audio_boost);
 
 	return 0;
@@ -252,6 +258,65 @@ static void __exit clean(void)
 module_exit(clean);
 MODULE_LICENSE("GPL v2");
 
+/* quirk for cpu freq */
+static unsigned long audio_small_core;
+static unsigned long audio_medium_core;
+static unsigned long audio_big_core;
+
+#define DECLARE_AUDIO_CORE_OP(name)	\
+static ssize_t audio_##name##_core_store(struct device *dev,	\
+	struct device_attribute *attr, const char *buf, size_t count)	\
+{ if (kstrtoul(buf, 10, &audio_##name##_core)) return -EINVAL; return count; }	\
+static ssize_t audio_##name##_core_show(struct device *dev,	\
+	struct device_attribute *attr, char *buf)	\
+{ return snprintf(buf, 7, "%lu\n", audio_##name##_core); }
+
+DECLARE_AUDIO_CORE_OP(small);
+DECLARE_AUDIO_CORE_OP(medium);
+DECLARE_AUDIO_CORE_OP(big);
+
+static DEVICE_ATTR_RW(audio_small_core);
+static DEVICE_ATTR_RW(audio_medium_core);
+static DEVICE_ATTR_RW(audio_big_core);
+
+static struct attribute *audio_core_attrs[] = {
+	&dev_attr_audio_small_core.attr,
+	&dev_attr_audio_medium_core.attr,
+	&dev_attr_audio_big_core.attr,
+	NULL
+};
+
+static const struct attribute_group audio_core_group = {
+	.attrs = audio_core_attrs,
+};
+
+void audio_boost_quirk_setting(int vid, int pid)
+{
+	struct device_node *np = gdev->of_node;
+
+	/* ignore quirk if parameters were set from user space */
+	if (audio_small_core ||
+		audio_medium_core ||
+		audio_big_core)
+		return;
+
+	if (vid == 0x0bda && pid == 0x4bd1) {
+		USB_BOOST_NOTICE("JOWOYE MH339\n");
+		if (of_device_is_compatible(np, "mediatek,mt6897-usb-boost")) {
+			audio_small_core = 2200000;
+			audio_medium_core = 0;
+			audio_big_core = 0;
+		}
+	}
+}
+
+void audio_boost_default_setting(void)
+{
+	audio_small_core = 0;
+	audio_medium_core = 0;
+	audio_big_core = 0;
+}
+
 int audio_freq_hold(void)
 {
 	struct device_node *np = gdev->of_node;
@@ -294,9 +359,20 @@ int audio_freq_hold(void)
 		of_device_is_compatible(np, "mediatek,mt6989-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6897-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6886-usb-boost")) {
-		device_property_read_u32(gdev, "small-core", &(cpu_freq_audio[0]));
-		device_property_read_u32(gdev, "medium-core", &(cpu_freq_audio[1]));
-		device_property_read_u32(gdev, "big-core", &(cpu_freq_audio[2]));
+		if (!audio_small_core)
+			device_property_read_u32(gdev, "small-core", &(cpu_freq_audio[0]));
+		else
+			cpu_freq_audio[0] = audio_small_core;
+
+		if (!audio_medium_core)
+			device_property_read_u32(gdev, "medium-core", &(cpu_freq_audio[1]));
+		else
+			cpu_freq_audio[1] = audio_medium_core;
+
+		if (!audio_big_core)
+			device_property_read_u32(gdev, "big-core", &(cpu_freq_audio[2]));
+		else
+			cpu_freq_audio[2] = audio_big_core;
 
 		USB_BOOST_NOTICE("%s: request cpu freq(%d) (%d) (%d)\n", __func__,
 			cpu_freq_audio[0], cpu_freq_audio[1], cpu_freq_audio[2]);
@@ -363,6 +439,7 @@ int audio_freq_release(void)
 	list_for_each_entry(req_policy, &usb_policy_list, list) {
 		freq_qos_update_request(&req_policy->qos_req, 0);
 	}
+
 	return 0;
 }
 

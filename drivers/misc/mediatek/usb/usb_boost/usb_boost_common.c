@@ -158,6 +158,8 @@ static struct mtk_usb_audio_boost {
 	struct workqueue_struct	*wq;
 	struct timespec64 tv_ref_time;
 	void (*request_func)(int id);
+	int headset_vid;
+	int headset_pid;
 } audio_boost_inst;
 
 static int update_time(int id);
@@ -385,8 +387,13 @@ static bool check_timeout_audio(void)
 
 static void audio_boost_work(struct work_struct *work_struct)
 {
+	int vid = audio_boost_inst.headset_vid;
+	int pid = audio_boost_inst.headset_pid;
+
 	audio_boost_inst.request_func = __request_empty;
-	USB_BOOST_NOTICE("audio_boost, begin of work\n");
+	USB_BOOST_NOTICE("audio_boost, begin of work (vid:0x%x pid:0x%x)\n",
+					vid, pid);
+	audio_boost_quirk_setting(vid, pid);
 	audio_core_hold();
 	audio_freq_hold();
 
@@ -405,6 +412,7 @@ static void audio_boost_work(struct work_struct *work_struct)
 
 	audio_core_release();
 	audio_freq_release();
+	audio_boost_default_setting();
 	audio_boost_inst.request_func = __request_audio;
 	USB_BOOST_NOTICE("audio_boost, end of work\n");
 }
@@ -841,6 +849,8 @@ void xhci_urb_giveback_dbg(void *unused, struct urb *urb)
 		break;
 	case USB_ENDPOINT_XFER_ISOC:
 		update_time_audio();
+		audio_boost_inst.headset_vid = urb->dev->descriptor.idVendor;
+		audio_boost_inst.headset_pid = urb->dev->descriptor.idProduct;
 		audio_boost_inst.request_func(0);
 		break;
 	}
@@ -903,6 +913,7 @@ void usb_audio_boost(bool enable)
 
 	if (enable) {
 		/* hook workable interface */
+		audio_boost_default_setting();
 		audio_boost_inst.request_func = __request_audio;
 	}
 }
