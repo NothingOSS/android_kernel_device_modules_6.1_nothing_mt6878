@@ -1144,6 +1144,10 @@ static dma_addr_t create_meta_buffer_info(struct mtk_vcodec_ctx *ctx, int fd)
 
 	dmabuf = dma_buf_get(fd);
 	mtk_v4l2_debug(8, "dmabuf:%p", dmabuf);
+	if (IS_ERR_OR_NULL(dmabuf)) {
+		mtk_v4l2_err("dma_buf_get fail ret %ld", PTR_ERR(dmabuf));
+		return 0;
+	}
 
 	buf_att = dma_buf_attach(
 		dmabuf,
@@ -1160,8 +1164,7 @@ static dma_addr_t create_meta_buffer_info(struct mtk_vcodec_ctx *ctx, int fd)
 	}
 	dma_meta_addr  = sg_dma_address(sgt->sgl);
 
-	mtk_v4l2_debug(4, "map new, dmabuf:%p, dma_addr:%pad",
-		dmabuf, &dma_meta_addr);
+	mtk_v4l2_debug(4, "map new, dmabuf:%p, dma_addr:%pad", dmabuf, &dma_meta_addr);
 	//save va and dmabuf
 	if (dma_meta_addr) {
 		for (i = 0; i < MAX_META_BUF_CNT; i++) {
@@ -1190,6 +1193,10 @@ static dma_addr_t get_meta_buffer_dma_addr(struct mtk_vcodec_ctx *ctx, int fd)
 
 	dmabuf = dma_buf_get(fd);
 	mtk_v4l2_debug(8, "%s, dmabuf:%p", __func__, dmabuf);
+	if (IS_ERR_OR_NULL(dmabuf)) {
+		mtk_v4l2_err("dma_buf_get fail ret %ld", PTR_ERR(dmabuf));
+		return 0;
+	}
 
 	if (dmabuf) {
 		for (i = 0; i < MAX_META_BUF_CNT; i++) {
@@ -1233,6 +1240,11 @@ static struct dma_gen_buf *create_general_buffer_info(struct mtk_vcodec_ctx *ctx
 	memset(&map, 0, sizeof(struct iosys_map));
 
 	dmabuf = dma_buf_get(fd);
+	if (IS_ERR_OR_NULL(dmabuf)) {
+		mtk_v4l2_err("dma_buf_get fail ret %ld", PTR_ERR(dmabuf));
+		return NULL;
+	}
+
 	dma_buf_begin_cpu_access(dmabuf, DMA_BIDIRECTIONAL);
 	ret = dma_buf_vmap(dmabuf, &map);
 	va = ret ? NULL : map.vaddr;
@@ -3565,15 +3577,18 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 		if (mtkbuf->meta_user_fd > 0) {
 			mtkbuf->frame_buffer.dma_meta_buf =
 				dma_buf_get(mtkbuf->meta_user_fd);
-			mtkbuf->frame_buffer.dma_meta_addr =
-				get_meta_buffer_dma_addr(ctx, mtkbuf->meta_user_fd);
+			if (IS_ERR_OR_NULL(mtkbuf->frame_buffer.dma_meta_buf))
+				mtkbuf->frame_buffer.dma_meta_buf = NULL;
+			else
+				mtkbuf->frame_buffer.dma_meta_addr =
+					get_meta_buffer_dma_addr(ctx, mtkbuf->meta_user_fd);
 		} else
 			mtkbuf->frame_buffer.dma_meta_buf = 0;
 
 #if ENABLE_META_BUF
 		mutex_lock(&ctx->meta_buf_lock);
 		mtkbuf->general_dma_va = NULL;
-		if (mtkbuf->general_user_fd != -1) {
+		if (mtkbuf->frame_buffer.dma_general_buf != 0) {
 			// NOTE: all codec should use a common struct
 			//to save dma_va, fencefd should be
 			//the 1st member in struct of general buffer
@@ -3588,15 +3603,14 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 				*pFenceFd = -1;
 		}
 		mtkbuf->meta_user_fd = -1; //default value is -1
-		if (mtkbuf->general_user_fd != -1 && general_buf_va != NULL) {
+		if (general_buf_va != NULL) {
 			// metaBufferfd should be
 			//the 2st member in struct of general buffer
 			metaBufferfd = *((int *)general_buf_va + 1);
 			if (metaBufferfd > 0)
 				mtkbuf->meta_user_fd = metaBufferfd;
-			mtk_v4l2_debug(1, "[%d] id=%d FB (%d) general_buf_va=%p, metaBufferfd=%d, meta_user_fd = %d",
-				ctx->id, buf->index,
-				buf->length, general_buf_va,
+			mtk_v4l2_debug(1, "[%d] id=%d FB general_buf_va=%p, metaBufferfd=%d, meta_user_fd = %d",
+				ctx->id, vb->index, general_buf_va,
 				metaBufferfd, mtkbuf->meta_user_fd);
 		}
 		mutex_unlock(&ctx->meta_buf_lock);

@@ -2349,6 +2349,11 @@ static struct dma_gen_buf *create_general_buffer_info(struct mtk_vcodec_ctx *ctx
 	memset(&map, 0, sizeof(struct iosys_map));
 
 	dmabuf = dma_buf_get(fd);
+	if (IS_ERR_OR_NULL(dmabuf)) {
+		mtk_v4l2_err("dma_buf_get fail ret %ld", PTR_ERR(dmabuf));
+		return NULL;
+	}
+
 	dma_buf_begin_cpu_access(dmabuf, DMA_BIDIRECTIONAL);
 	ret = dma_buf_vmap(dmabuf, &map);
 	va = ret ? NULL : map.vaddr;
