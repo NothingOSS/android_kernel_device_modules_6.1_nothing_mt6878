@@ -105,6 +105,10 @@ void get_md_sleep_time(struct md_sleep_status *md_data);
 
 #endif
 
+int vcorefs_get_src_req_num(void);
+unsigned int *vcorefs_get_src_req(void);
+void
+mbraink_power_get_voting_info(struct mbraink_voting_struct_data *mbraink_vcorefs_src);
 
 int mbraink_get_power_info(char *buffer, unsigned int size, int datatype);
 int mbraink_power_getVcoreInfo(struct mbraink_power_vcoreInfo *pmbrainkPowerVcoreInfo);

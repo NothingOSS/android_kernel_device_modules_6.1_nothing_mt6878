@@ -712,6 +712,20 @@ static long mbraink_ioctl(struct file *filp,
 		}
 		break;
 	}
+	case RO_VCORE_VOTE:
+	{
+		struct mbraink_voting_struct_data mbraink_vcorefs_src;
+
+		mbraink_power_get_voting_info(&mbraink_vcorefs_src);
+
+		if (copy_to_user((struct mbraink_voting_struct_data *) arg,
+				&mbraink_vcorefs_src, sizeof(mbraink_vcorefs_src))) {
+			pr_notice("%s: Copy mbraink_vcorefs_src to UserSpace error!\n",
+				__func__);
+			return -EPERM;
+		}
+		break;
+	}
 	default:
 		pr_notice("illegal ioctl number %u.\n", cmd);
 		return -EINVAL;

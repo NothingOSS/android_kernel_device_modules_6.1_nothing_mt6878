@@ -504,3 +504,29 @@ int mbraink_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
 
 #endif
 
+void
+mbraink_power_get_voting_info(struct mbraink_voting_struct_data *mbraink_vcorefs_src)
+{
+	unsigned int *mbraink_voting_ret = NULL;
+	int idx = 0;
+	int voting_num = 0;
+
+	mbraink_voting_ret = vcorefs_get_src_req();
+	voting_num = vcorefs_get_src_req_num();
+
+	if (voting_num > MAX_STRUCT_SZ)
+		voting_num = MAX_STRUCT_SZ;
+
+	memset(mbraink_vcorefs_src, 0, sizeof(struct mbraink_voting_struct_data));
+
+	if (mbraink_voting_ret) {
+		mbraink_vcorefs_src->voting_num = voting_num;
+		for (idx = 0; idx < voting_num; idx++) {
+			mbraink_vcorefs_src->mbraink_voting_data[idx] =
+				mbraink_voting_ret[idx];
+		}
+	} else {
+		mbraink_vcorefs_src->voting_num = -1;
+		pr_info("vcore voting system is not support on kernel space !\n");
+	}
+}

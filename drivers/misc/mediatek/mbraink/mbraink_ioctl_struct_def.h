@@ -45,7 +45,6 @@
 #define MD_SECBLK_NUM 6
 #define MD_SEC_SZ (MD_SECBLK_NUM*MD_BLK_SZ)
 
-
 struct mbraink_process_stat_struct {
 	unsigned short pid;
 	unsigned short uid;
@@ -251,5 +250,10 @@ struct mbraink_binder_trace_data {
 	unsigned short tracing_idx;
 	unsigned short tracing_count;
 	struct mbraink_binder_trace drv_data[MAX_TRACE_PID_NUM];
+};
+
+struct mbraink_voting_struct_data {
+	int voting_num;
+	unsigned int mbraink_voting_data[MAX_STRUCT_SZ];
 };
 #endif

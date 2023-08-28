@@ -41,6 +41,7 @@
 #define MEMORY_MDV_INFO			'l'
 #define MONITOR_BINDER_PROCESS         'm'
 #define TRACE_BINDER_INFO              'o'
+#define VCORE_VOTE_INFO			'p'
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -87,6 +88,9 @@
 
 #define RO_MEMORY_MDV_INFO			_IOR(IOC_MAGIC, MEMORY_MDV_INFO, \
 							struct mbraink_memory_mdvInfo*)
+
+#define RO_VCORE_VOTE			_IOR(IOC_MAGIC, VCORE_VOTE_INFO, \
+						struct mbraink_voting_struct_data*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1
