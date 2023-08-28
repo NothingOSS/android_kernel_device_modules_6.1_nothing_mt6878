@@ -1267,6 +1267,7 @@
 		gcc-enable = <1>;
 		fbt-cpu-mask = <255 128 15 127 240 112>;
 		sbe-resceue-enable = <1>;
+		ux-scrol-policy-type = <1>;
 	};
 
 	ptppll_pll_ctrl_clk: syscon@c034000 {
