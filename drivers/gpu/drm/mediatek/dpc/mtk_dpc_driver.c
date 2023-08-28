@@ -596,7 +596,7 @@ static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level)
 {
 	int ret = 0;
 	u32 addr = 0;
-	u32 mmdvfs_user = U32_MAX;
+	u8 mmdvfs_user = U8_MAX;
 
 	if (subsys == DPC_SUBSYS_DISP) {
 		mmdvfs_user = VCP_PWR_USR_DISP;
