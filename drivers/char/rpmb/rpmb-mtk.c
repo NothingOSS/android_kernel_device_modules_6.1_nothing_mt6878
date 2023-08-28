@@ -2781,6 +2781,11 @@ static int rpmb_mtk_snd_msg(void *pbuf, u16 len)
 	static int nlseq;
 	int ret;
 
+	if (rpmb_mtk_sock == NULL) {
+		MSG(ERR, "%s netlink not ready\n", __func__);
+		return -EIO;
+	}
+
 	skb = nlmsg_new(len, GFP_ATOMIC);
 	if (!skb) {
 		MSG(ERR, "%s netlink alloc failure\n", __func__);
@@ -2835,7 +2840,6 @@ static void rpmb_mtk_rcv_msg(struct sk_buff *skb)
 		wake_up(&wait_rpmb);
 	}
 }
-
 static int rpmb_create_netlink(void)
 {
 	struct netlink_kernel_cfg cfg = {
@@ -2922,13 +2926,15 @@ int mmc_rpmb_register(struct mmc_host *mmc)
 EXPORT_SYMBOL_GPL(mmc_rpmb_register);
 #endif
 
+#define RPMB_DEV  MKDEV(MAJOR(dev), 0U)
 static int __init rpmb_init(void)
 {
 	int alloc_ret;
 	int cdev_ret = -1;
-	unsigned int major;
 	dev_t dev = 0;
-	struct device *device = NULL;
+#ifdef __RPMB_IOCTL_SUPPORT
+	struct device *rpmb_device = NULL;
+#endif
 #if IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT)
 	struct device_node *mobicore_node;
 	int ret = 0;
@@ -2944,8 +2950,6 @@ static int __init rpmb_init(void)
 		goto error;
 	}
 
-	major = MAJOR(dev);
-
 #if IS_ENABLED(CONFIG_MMC_MTK_PRO)
 	if (dt_get_boot_type() == BOOTDEV_SDMMC)
 		cdev_init(&rpmb_cdev, &rpmb_fops_emmc);
@@ -2958,7 +2962,7 @@ static int __init rpmb_init(void)
 #endif
 	rpmb_cdev.owner = THIS_MODULE;
 
-	cdev_ret = cdev_add(&rpmb_cdev, MKDEV(major, 0U), 1);
+	cdev_ret = cdev_add(&rpmb_cdev, RPMB_DEV, 1);
 	if (cdev_ret) {
 		MSG(ERR, "%s, init cdev_add failed!\n", __func__);
 		goto error;
@@ -2972,13 +2976,13 @@ static int __init rpmb_init(void)
 		goto error;
 	}
 
-	device = device_create(mtk_rpmb_class, NULL, MKDEV(major, 0), NULL,
+	rpmb_device = device_create(mtk_rpmb_class, NULL, RPMB_DEV, NULL,
 		RPMB_NAME "%d", 0);
-#endif
-	if (IS_ERR(device)) {
+	if (IS_ERR(rpmb_device)) {
 		MSG(ERR, "%s, init device_create failed!\n", __func__);
 		goto error;
 	}
+#endif
 
 #if IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT)
 	mobicore_node = of_find_compatible_node(NULL, NULL,
@@ -3001,13 +3005,12 @@ static int __init rpmb_init(void)
 		MSG(ERR, "%s, init kthread_run failed!\n", __func__);
 
 #ifdef __RPMB_KERNEL_NL_SUPPORT
-	if (rpmb_create_netlink()) {
-		MSG(ERR, "%s, init netlink failed!\n", __func__);
-		goto error;
-	}
-
 	init_waitqueue_head(&wait_rpmb);
 	mutex_init(&rpmb_lock);
+
+	if (rpmb_create_netlink()) {
+		MSG(ERR, "%s, init netlink failed!\n", __func__);
+	}
 #endif
 
 fake_out:
@@ -3016,10 +3019,13 @@ fake_out:
 	MSG(INFO, "%s end!!!!\n", __func__);
 
 	return 0;
-
 error:
+
 #ifdef __RPMB_IOCTL_SUPPORT
-	if (mtk_rpmb_class)
+	if (!IS_ERR_OR_NULL(rpmb_device))
+		device_destroy(mtk_rpmb_class, RPMB_DEV);
+
+	if (!IS_ERR_OR_NULL(mtk_rpmb_class))
 		class_destroy(mtk_rpmb_class);
 #endif
 	if (cdev_ret == 0)
