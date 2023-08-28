@@ -580,11 +580,19 @@ EXPORT_SYMBOL_GPL(scp_A_unregister_notify);
 
 void scp_schedule_work(struct scp_work_struct *scp_ws)
 {
+	if (!scp_workqueue) {
+		pr_debug("%s scp_workqueue not exist\n", __func__);
+		return;
+	}
 	queue_work(scp_workqueue, &scp_ws->work);
 }
 
 void scp_schedule_reset_work(struct scp_work_struct *scp_ws)
 {
+	if (!scp_reset_workqueue) {
+		pr_debug("%s scp_reset_workqueue not exist\n", __func__);
+		return;
+	}
 	queue_work(scp_reset_workqueue, &scp_ws->work);
 }
 
@@ -592,6 +600,10 @@ void scp_schedule_reset_work(struct scp_work_struct *scp_ws)
 #if SCP_LOGGER_ENABLE
 void scp_schedule_logger_work(struct scp_work_struct *scp_ws)
 {
+	if (!scp_logger_workqueue) {
+		pr_debug("%s scp_logger_workqueue not exist\n", __func__);
+		return;
+	}
 	queue_work(scp_logger_workqueue, &scp_ws->work);
 }
 #endif
