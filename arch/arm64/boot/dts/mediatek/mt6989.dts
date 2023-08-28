@@ -6208,7 +6208,7 @@
 					"disp_hrt_by_larb",
 					"disp_dp_hrt_by_larb";
 			pre-define-bw = <0xffffffff>, <4200>, <0>, <2700>;
-			crtc-ovl-usage = <7>, <8>, <0x10>, <0x20>;
+			crtc-ovl-usage = <0xe0>, <0x2>, <0x2>, <0x4>;
 
 			default-emi-eff = <8500>;
 			emi-eff-lp5-table =
@@ -6421,7 +6421,8 @@
 				"MTK_DRM_OPT_DPC_PRE_TE_EN",
 				"MTK_DRM_OPT_PARTIAL_UPDATE",
 				"MTK_DRM_OPT_SLC_ALL_CACHE",
-				"MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE";
+				"MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE",
+				"MTK_DRM_OPT_OVLSYS_CASCADE";
 
 			helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
 				<1>, /*MTK_DRM_OPT_USE_CMDQ*/
@@ -6497,7 +6498,8 @@
 				<0>, /*MTK_DRM_OPT_DPC_PRE_TE_EN*/
 				<1>, /*MTK_DRM_OPT_PARTIAL_UPDATE*/
 				<1>, /*MTK_DRM_OPT_SLC_ALL_CACHE*/
-				<0>; /*MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE*/
+				<0>, /*MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE*/
+				<0>; /*"MTK_DRM_OPT_OVLSYS_CASCADE"*/
 		};
 
 		disp-sec {
@@ -7514,7 +7516,10 @@
 			interrupts = <GIC_SPI 517 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&ovlsys1_config_clk CLK_OVL1_DISP_OVL0_2L>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_OVL1_SHUTDOWN>;
-			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			//mtk,smmu-shared = <&mm_smmu_hrt_normal>;
+			iommus = <&mm_smmu 23>;
+			mtk,iommu-group = <&mm_iommu_group_0>;
+			mtk,smmu-dma-mode = "bypass";
 			mediatek,larb = <&smi_larb34 SMMU_L34_P1_OVL_RDMA0_0>,
 					<&smi_larb35 SMMU_L35_P0_OVL_RDMA0_1>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L34_P1_OVL_RDMA0_0)
