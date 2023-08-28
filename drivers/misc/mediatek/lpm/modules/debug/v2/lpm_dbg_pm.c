@@ -17,7 +17,7 @@
 #include <lpm_dbg_common_v2.h>
 #include <lpm_timer.h>
 
-struct lpm_timer common_sodi_enable_timer;
+static struct hrtimer common_sodi_enable_timer;
 
 static int lpm_dbg_probe(struct platform_device *pdev)
 {
@@ -64,7 +64,7 @@ static struct platform_driver lpm_dbg_driver = {
 	}
 };
 
-int common_sodi_enable_func(unsigned long long dur, void *priv)
+static enum hrtimer_restart common_sodi_enable_func(struct hrtimer *timer)
 {
 	lpm_smc_spm_dbg(MT_SPM_DBG_SMC_COMMON_SODI5_CTRL,
 		MT_LPM_SMC_ACT_SET,
@@ -72,8 +72,9 @@ int common_sodi_enable_func(unsigned long long dur, void *priv)
 	pr_info("[name:mtk_lpm][P] - common sodi5 = %d (%s:%d)\n",
 					1, __func__, __LINE__);
 
-	return 0;
+	return HRTIMER_NORESTART;
 };
+
 
 int lpm_dbg_pm_init(void)
 {
@@ -103,11 +104,11 @@ int lpm_dbg_pm_init(void)
 
 		if (ret == 0) {
 			if (common_sodi_enable) {
-				common_sodi_enable_timer.timeout = common_sodi_enable_func;
-				lpm_timer_init(&common_sodi_enable_timer, LPM_TIMER_ONECE);
-				lpm_timer_interval_update(&common_sodi_enable_timer,
-							COMMON_SODI_ENABLE_MS);
-				lpm_timer_start(&common_sodi_enable_timer);
+				hrtimer_init(&common_sodi_enable_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+				common_sodi_enable_timer.function = common_sodi_enable_func;
+				hrtimer_start(&common_sodi_enable_timer,
+					ms_to_ktime(COMMON_SODI_ENABLE_MS),
+					HRTIMER_MODE_REL);
 			}
 		} else
 			common_sodi_enable = 0;
