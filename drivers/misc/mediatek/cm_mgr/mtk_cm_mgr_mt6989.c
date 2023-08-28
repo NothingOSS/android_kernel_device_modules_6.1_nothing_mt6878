@@ -36,6 +36,7 @@
 #include <linux/topology.h>
 #include <linux/types.h>
 #include <linux/uaccess.h>
+#include <linux/soc/mediatek/mtk_sip_svc.h>
 #if IS_ENABLED(CONFIG_MTK_DVFSRC)
 #include "dvfsrc-exp.h"
 #endif /* CONFIG_MTK_DVFSRC */
@@ -52,7 +53,7 @@ spinlock_t cm_mgr_lock;
 static int cm_mgr_idx;
 static int cm_mgr_dram_opp = -1;
 static int pm_qos_update_request_status;
-
+static int sw_ver;
 static unsigned int prev_freq_idx[CM_MGR_CPU_CLUSTER];
 static unsigned int prev_freq[CM_MGR_CPU_CLUSTER];
 
@@ -69,6 +70,20 @@ void __iomem *csram_base;
 /*****************************************************************************
  *  Platform functions
  *****************************************************************************/
+static int cm_get_chipid(void)
+{
+	struct device_node *dn = of_find_node_by_path("/chosen");
+	struct tag_chipid *chipid;
+
+	if (!dn)
+		dn = of_find_node_by_path("/chosen@0");
+	if (dn) {
+		chipid = (struct tag_chipid *) of_get_property(dn,"atag,chipid", NULL);
+		sw_ver = (int)chipid->sw_ver;
+	}
+	return 0;
+}
+
 static int cm_get_base_addr(void)
 {
 	int ret = 0;
@@ -154,10 +169,8 @@ static int cm_mgr_check_dram_type(void)
 	pr_info("%s(%d): NO CONFIG_MTK_DRAMC !!! set cm_mgr_idx to %d\n",
 		__func__, __LINE__, cm_mgr_idx);
 #endif /* CONFIG_MTK_DRAMC */
-
 	if (cm_mgr_idx >= 0)
-		cm_mgr_to_sspm_command(IPI_CM_MGR_DRAM_TYPE, cm_mgr_idx);
-
+		cm_mgr_to_sspm_command(IPI_CM_MGR_DRAM_TYPE, (cm_mgr_idx | (sw_ver << 4)));
 	return ret;
 }
 
@@ -388,6 +401,8 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 			__func__, __LINE__, ret);
 		goto ERROR;
 	}
+
+	ret = cm_get_chipid();
 
 	ret = cm_mgr_common_init();
 	if (ret) {

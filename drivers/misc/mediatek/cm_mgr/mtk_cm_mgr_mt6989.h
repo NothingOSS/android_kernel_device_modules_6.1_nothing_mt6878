@@ -28,4 +28,12 @@ enum cm_mgr_cpu_cluster {
 	CM_MGR_CPU_CLUSTER,
 };
 
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
 #endif /* __MTK_CM_MGR_PLATFORM_H__ */
