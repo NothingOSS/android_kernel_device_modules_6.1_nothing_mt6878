@@ -1142,6 +1142,35 @@ int slbc_get_cache_hit_rate(enum slc_ach_uid uid)
 	return rvalue.r2;
 }
 
+int slbc_get_cache_hit_bw(enum slc_ach_uid uid)
+{
+	int ret = 0;
+	struct scmi_tinysys_status rvalue = {0};
+
+	ret = slbc_get_scmi_info(uid, IPI_SLBC_CACHE_USER_INFO, &rvalue);
+	if (ret)
+		return -1;
+
+	return rvalue.r3;
+}
+
+int slbc_get_cache_usage(int *cpu, int *gpu, int *other)
+{
+	int ret = 0;
+
+	struct scmi_tinysys_status rvalue = {0};
+
+	ret = slbc_get_scmi_info(0, IPI_SLBC_CACHE_USAGE, &rvalue);
+	if (ret)
+		return ret;
+
+	*cpu = (int) rvalue.r1;
+	*gpu = (int) rvalue.r2;
+	*other = (int) rvalue.r3;
+
+	return 0;
+}
+
 #ifdef SLBC_DUMP_DATA
 static void slbc_dump_data(struct seq_file *m, struct slbc_data *d)
 {
@@ -1667,6 +1696,8 @@ static struct slbc_common_ops common_ops = {
 	.slbc_window = slbc_window,
 	.slbc_get_cache_size = slbc_get_cache_size,
 	.slbc_get_cache_hit_rate = slbc_get_cache_hit_rate,
+	.slbc_get_cache_hit_bw = slbc_get_cache_hit_bw,
+	.slbc_get_cache_usage = slbc_get_cache_usage,
 };
 
 static struct slbc_ipi_ops ipi_ops = {

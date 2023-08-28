@@ -323,6 +323,24 @@ int slbc_get_cache_hit_rate(enum slc_ach_uid uid)
 }
 EXPORT_SYMBOL_GPL(slbc_get_cache_hit_rate);
 
+int slbc_get_cache_hit_bw(enum slc_ach_uid uid)
+{
+	if (common_ops && common_ops->slbc_get_cache_hit_bw)
+		return common_ops->slbc_get_cache_hit_bw(uid);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_get_cache_hit_bw);
+
+int slbc_get_cache_usage(int *cpu, int *gpu, int *other)
+{
+	if (common_ops && common_ops->slbc_get_cache_usage)
+		return common_ops->slbc_get_cache_usage(cpu, gpu, other);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_get_cache_usage);
+
 void slbc_register_common_ops(struct slbc_common_ops *ops)
 {
 	common_ops = ops;

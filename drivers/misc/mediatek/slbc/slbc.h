@@ -106,6 +106,8 @@ struct slbc_common_ops {
 	int (*slbc_window)(unsigned int window);
 	int (*slbc_get_cache_size)(enum slc_ach_uid uid);
 	int (*slbc_get_cache_hit_rate)(enum slc_ach_uid uid);
+	int (*slbc_get_cache_hit_bw)(enum slc_ach_uid uid);
+	int (*slbc_get_cache_usage)(int *cpu, int *gpu, int *other);
 };
 
 extern u32 slbc_sram_read(u32 offset);
