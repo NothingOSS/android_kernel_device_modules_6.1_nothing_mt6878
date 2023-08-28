@@ -8865,6 +8865,7 @@
 				"MT_CG_VENC2";
 			venc-mmdvfs-in-vcp = <1>;
 			venc-mmdvfs-in-adaptive = <1>;
+			venc-slb-cpu-used-perf = <62208000>;
 			port-arg-num = <3>;
 			port-def = <0 SMMU_L7_P0_VENC_RCPU 0>,
 				<0 SMMU_L7_P1_VENC_REC 0>,
