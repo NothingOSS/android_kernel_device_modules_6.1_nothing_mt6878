@@ -6354,6 +6354,8 @@ static void fbt_update_pwr_tbl(void)
 		FPSGO_LOGE("NULL power table\n");
 		cpu_max_freq = 1;
 	}
+	if (cluster_num <= 0)
+		return;
 #if FPSGO_DYNAMIC_WL
 	max_cl_min_perf = fbt_cluster_X2Y(max_cap_cluster, cpu_dvfs[max_cap_cluster].num_opp,
 		OPP, CAP, 1, __func__);
