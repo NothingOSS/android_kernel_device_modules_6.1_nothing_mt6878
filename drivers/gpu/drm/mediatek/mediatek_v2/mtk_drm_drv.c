@@ -1986,7 +1986,8 @@ static int mtk_atomic_commit(struct drm_device *drm,
 
 	ret = wait_event_interruptible(private->kernel_pm.wq,
 				       atomic_read(&private->kernel_pm.resumed));
-	DDP_PROFILE("[PROFILE] kernel resumed\n");
+	if (unlikely(ret != 0))
+		DDPMSG("%s kernel_pm wait queue woke up accidently\n", __func__);
 
 	ret = drm_atomic_helper_prepare_planes(drm, state);
 	if (ret)
@@ -7347,6 +7348,7 @@ static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm
 	case PM_POST_SUSPEND:
 		atomic_set(&kernel_pm->resumed, 1);
 		wake_up_interruptible(&kernel_pm->wq);
+		DDPINFO("%s resumed(%d)\n", __func__, atomic_read(&kernel_pm->resumed));
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
@@ -9123,10 +9125,10 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 		mtk_drm_pm_ctrl(private, DISP_PM_GET);
 		drm_atomic_helper_shutdown(drm);
 		mtk_drm_pm_ctrl(private, DISP_PM_PUT);
-		mtk_drm_pm_ctrl(private, DISP_PM_DISABLE);
 
 		/* skip all next atomic commit */
 		atomic_set(&private->kernel_pm.resumed, 0);
+		DDPMSG("%s resumed(%d)\n", __func__, atomic_read(&private->kernel_pm.resumed));
 	}
 }
 

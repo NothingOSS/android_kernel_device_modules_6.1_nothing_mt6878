@@ -1183,12 +1183,14 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 {
 	u32 addr = vote_set ? VLP_DISP_SW_VOTE_SET : VLP_DISP_SW_VOTE_CLR;
 	u32 ack = vote_set ? BIT(thread) : 0;
+	u32 val = 0;
 	u16 i = 0;
 
 	writel_relaxed(BIT(thread), g_priv->vlp_base + addr);
 	do {
 		writel_relaxed(BIT(thread), g_priv->vlp_base + addr);
-		if ((readl(g_priv->vlp_base + VLP_DISP_SW_VOTE_CON) & BIT(thread)) == ack)
+		val = readl(g_priv->vlp_base + VLP_DISP_SW_VOTE_CON);
+		if ((val & BIT(thread)) == ack)
 			break;
 
 		if (i > 2500) {
@@ -1202,7 +1204,7 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 
 	/* check voter only, later will use another API to power on mminfra */
 
-	dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, BIT(thread), vote_set);
+	dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, BIT(thread) | vote_set, val);
 }
 
 int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
@@ -1275,9 +1277,11 @@ static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_eve
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		g_priv->skip_force_power = true;
+		dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
 		g_priv->skip_force_power = false;
+		dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 1);
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
