@@ -2675,6 +2675,23 @@ int cmdq_iommu_fault_callback(int port, dma_addr_t mva, void *cb_data)
 	return 0;
 }
 
+static void cmdq_shutdown(struct platform_device *pdev)
+{
+	struct cmdq *cmdq = platform_get_drvdata(pdev);
+	s32 usage, i;
+
+	cmdq_msg("%s hwid:%d enter", __func__, cmdq->hwid);
+
+	usage = atomic_read(&cmdq->usage);
+	for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++)
+		if (!list_empty(&cmdq->thread[i].task_busy_list)) {
+			cmdq_msg(
+				"%s hwid:%hu usage:%d idx:%d still has tasks",
+				__func__, cmdq->hwid, usage, i);
+			cmdq_mbox_thread_stop(cmdq->thread);
+		}
+}
+
 static int cmdq_probe(struct platform_device *pdev)
 {
 	struct device_node *node;
@@ -2975,6 +2992,7 @@ static const struct of_device_id cmdq_of_ids[] = {
 static struct platform_driver cmdq_drv = {
 	.probe = cmdq_probe,
 	.remove = cmdq_remove,
+	.shutdown = cmdq_shutdown,
 	.driver = {
 		.name = CMDQ_DRIVER_NAME,
 		.pm = &cmdq_pm_ops,
