@@ -120,6 +120,8 @@ static void mddp_handshake_done(void *buf, uint32_t buf_len)
 			app->mddp_feat.major_version = rsp->major_version;
 			app->mddp_feat.minor_version = rsp->minor_version;
 			for (i = 0; i < rsp->num; i++) {
+				MDDP_S_LOG(MDDP_LL_WARN,"%s:[%d] type = %d feature = %d bm = %d\n",
+					__func__,i,rsp->fs[i].type,app->feature,rsp->fs[i].bm);
 				switch (rsp->fs[i].type) {
 				case MF_ID_COMMON:
 					app->mddp_feat.common = rsp->fs[i].bm;
