@@ -174,6 +174,7 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_AXI0_ERR_INFO		0xe08
 #define PCIE_ERR_STS_CLEAR		BIT(0)
 
+#define PCIE_LOW_POWER_CTRL		0x194
 #define PCIE_ICMD_PM_REG		0x198
 #define PCIE_TURN_OFF_LINK		BIT(4)
 
@@ -1432,11 +1433,12 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4a, 0x4b, 0x4c, 0x4d));
 	}
 
-	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x\n",
+	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x\n",
 		port->port_num,
 		readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 		readl_relaxed(port->base + PCIE_LINK_STATUS_REG),
 		readl_relaxed(port->base + PCIE_ISTATUS_PM),
+		readl_relaxed(port->base + PCIE_LOW_POWER_CTRL),
 		readl_relaxed(port->base + PCIE_BASIC_STATUS),
 		readl_relaxed(port->base + PCIE_INT_STATUS_REG),
 		readl_relaxed(port->base + PCIE_MSI_SET_BASE_REG +
