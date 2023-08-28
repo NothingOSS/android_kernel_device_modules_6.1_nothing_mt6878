@@ -976,11 +976,10 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 				mtk_uart_apdma_read(c, VFF_4G_SUPPORT));
 		}
 	} else {
-		ret = pm_runtime_get_sync(mtkd->ddev.dev);
-		if (ret < 0) {
-			pr_info("ERROR: %s\n", __func__);
-			pm_runtime_put_sync(mtkd->ddev.dev);
-			return ret;
+		ret = clk_prepare_enable(mtkd->clk);
+		if (ret) {
+			pr_info("[%s]:clk_prepare_enable fail\n", __func__);
+			goto err_out;
 		}
 	}
 
@@ -1005,7 +1004,7 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 		mtk_uart_apdma_write(c, VFF_THRE, 0);
 	//
 	if (ret)
-		goto err_pm;
+		goto err_out;
 
 	ret = request_threaded_irq(c->irq, mtk_uart_apdma_irq_handler,
 			vchan_complete_thread_irq,
@@ -1013,14 +1012,14 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 	if (ret < 0) {
 		dev_err(chan->device->dev, "Can't request dma IRQ\n");
 		ret = -EINVAL;
-		goto err_pm;
+		goto err_out;
 	}
 
 	ret = enable_irq_wake(c->irq);
 	if (ret) {
 		dev_info(chan->device->dev, "Can't enable dma IRQ wake\n");
 		ret = -EINVAL;
-		goto err_pm;
+		goto err_out;
 	}
 
 	if (c->dir == DMA_DEV_TO_MEM) {
@@ -1041,7 +1040,7 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 	if (mtkd->support_bits > VFF_ORI_ADDR_BITS_NUM)
 		mtk_uart_apdma_write(c, VFF_4G_SUPPORT, VFF_4G_SUPPORT_CLR_B);
 
-err_pm:
+err_out:
 	if (mtkd->support_hub && (mtkd->support_wakeup) && c->is_hub_port)
 		mtk_uart_set_apdma_clk(false);
 	return ret;
@@ -1061,7 +1060,7 @@ static void mtk_uart_apdma_free_chan_resources(struct dma_chan *chan)
 	vchan_free_chan_resources(&c->vc);
 
 	if (!c->is_hub_port)
-		pm_runtime_put_sync(mtkd->ddev.dev);
+		clk_disable_unprepare(mtkd->clk);
 }
 
 static enum dma_status mtk_uart_apdma_tx_status(struct dma_chan *chan,
@@ -1476,12 +1475,9 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 	}
 #endif
 
-	pm_runtime_enable(&pdev->dev);
-	pm_runtime_set_active(&pdev->dev);
-
 	rc = dma_async_device_register(&mtkd->ddev);
 	if (rc)
-		goto rpm_disable;
+		goto err_no_dma;
 
 	platform_set_drvdata(pdev, mtkd);
 
@@ -1494,8 +1490,6 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 
 dma_remove:
 	dma_async_device_unregister(&mtkd->ddev);
-rpm_disable:
-	pm_runtime_disable(&pdev->dev);
 err_no_dma:
 	mtk_uart_apdma_free(mtkd);
 	return rc;
@@ -1519,15 +1513,13 @@ static int mtk_uart_apdma_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM_SLEEP
 static int mtk_uart_apdma_suspend(struct device *dev)
 {
-	struct mtk_uart_apdmadev *mtkd = dev_get_drvdata(dev);
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
+	struct mtk_uart_apdmadev *mtkd = dev_get_drvdata(dev);
 	if (mtkd->support_hub) {
 		pr_info("[%s]: support_hub:%d, skip suspend\n", __func__, mtkd->support_hub);
 		return 0;
 	}
 #endif
-	if (!pm_runtime_suspended(dev))
-		clk_disable_unprepare(mtkd->clk);
 
 	return 0;
 }
@@ -1535,8 +1527,8 @@ static int mtk_uart_apdma_suspend(struct device *dev)
 static int mtk_uart_apdma_resume(struct device *dev)
 {
 	int ret = 0;
-	struct mtk_uart_apdmadev *mtkd = dev_get_drvdata(dev);
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
+	struct mtk_uart_apdmadev *mtkd = dev_get_drvdata(dev);
 	if (mtkd->support_hub && (mtkd->support_wakeup)) {
 		pr_info("[%s]: support_hub:%d,\n", __func__, mtkd->support_hub);
 		return 0;
@@ -1547,42 +1539,13 @@ static int mtk_uart_apdma_resume(struct device *dev)
 			clk_count++;
 	}
 #endif
-	if (!pm_runtime_suspended(dev)) {
-		ret = clk_prepare_enable(mtkd->clk);
-		if (ret)
-			pr_info("[%s]: clk_prepare_enable fail\n", __func__);
-	}
+
 	return ret;
 }
 #endif /* CONFIG_PM_SLEEP */
 
-#ifdef CONFIG_PM
-static int mtk_uart_apdma_runtime_suspend(struct device *dev)
-{
-	struct mtk_uart_apdmadev *mtkd = dev_get_drvdata(dev);
-
-	pr_info("[%s]: disable clk\n", __func__);
-	clk_disable_unprepare(mtkd->clk);
-	return 0;
-}
-
-static int mtk_uart_apdma_runtime_resume(struct device *dev)
-{
-	struct mtk_uart_apdmadev *mtkd = dev_get_drvdata(dev);
-	int ret = 0;
-
-	pr_info("[%s]: enable clk\n", __func__);
-	ret = clk_prepare_enable(mtkd->clk);
-	if (ret)
-		pr_info("[%s]: clk_prepare_enable fail\n", __func__);
-	return ret;
-}
-#endif /* CONFIG_PM */
-
 static const struct dev_pm_ops mtk_uart_apdma_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(mtk_uart_apdma_suspend, mtk_uart_apdma_resume)
-	SET_RUNTIME_PM_OPS(mtk_uart_apdma_runtime_suspend,
-			   mtk_uart_apdma_runtime_resume, NULL)
 };
 
 static struct platform_driver mtk_uart_apdma_driver = {
