@@ -1279,6 +1279,10 @@ int vdec_vcp_reset(struct vdec_inst *inst, enum vdec_reset_type drain_type)
 	vcodec_trace_end();
 	mtk_vcodec_debug(inst, "- ret=%d", err);
 
+	inst->ctx->input_driven = inst->vsi->input_driven;
+	inst->ctx->output_async = inst->vsi->output_async;
+	inst->ctx->low_pw_mode  = inst->vsi->low_pw_mode > 0;
+
 	return err;
 }
 

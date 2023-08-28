@@ -1585,6 +1585,7 @@ static void mtk_vdec_reset_decoder(struct mtk_vcodec_ctx *ctx, bool is_drain,
 		ret = vdec_if_flush(ctx, NULL, NULL,
 			V4L2_TYPE_IS_OUTPUT(type) ? FLUSH_BITSTREAM : FLUSH_FRAME);
 	}
+	v4l2_m2m_set_dst_buffered(ctx->m2m_ctx, ctx->input_driven != NON_INPUT_DRIVEN);
 
 	dstq = &ctx->m2m_ctx->cap_q_ctx.q;
 	srcq = &ctx->m2m_ctx->out_q_ctx.q;

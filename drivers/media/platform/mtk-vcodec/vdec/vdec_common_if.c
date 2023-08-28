@@ -153,6 +153,31 @@ static void vdec_deinit(unsigned long h_vdec)
 	kfree(inst);
 }
 
+static int vdec_flush(unsigned long h_vdec, struct vdec_fb *fb,
+	enum vdec_flush_type type)
+{
+	struct vdec_inst *inst = (struct vdec_inst *)h_vdec;
+	struct vdec_vcu_inst *vcu = &inst->vcu;
+	int ret;
+
+	mtk_vcodec_debug(inst, "+ flush with type %d", type);
+
+	inst->vsi->flush_type = type;
+	if (fb == NULL)
+		ret = vcu_dec_reset(vcu, VDEC_FLUSH); // flush (0)
+	else if (fb->status == 0)
+		ret = vcu_dec_reset(vcu, VDEC_DRAIN); // drain (1)
+	else
+		ret = vcu_dec_reset(vcu, VDEC_DRAIN_EOS); // drain & return EOS frame (2)
+
+	inst->ctx->input_driven = inst->vsi->input_driven;
+	inst->ctx->output_async = inst->vsi->output_async;
+	inst->ctx->low_pw_mode  = inst->vsi->low_pw_mode > 0;
+
+	mtk_vcodec_debug(inst, "+ flush ret %d", ret);
+	return ret;
+}
+
 static int vdec_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 	struct vdec_fb *fb, unsigned int *src_chg)
 {
@@ -176,14 +201,8 @@ static int vdec_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 		inst->num_nalu, fb_dma[0], fb_dma[1], fb, num_planes);
 
 	/* bs == NULL means reset decoder */
-	if (bs == NULL) {
-		if (fb == NULL)
-			return vcu_dec_reset(vcu, VDEC_FLUSH); // flush (0)
-		else if (fb->status == 0)
-			return vcu_dec_reset(vcu, VDEC_DRAIN); // drain (1)
-		else
-			return vcu_dec_reset(vcu, VDEC_DRAIN_EOS); // drain & return EOS frame (2)
-	}
+	if (bs == NULL)
+		return vdec_flush(h_vdec, fb, FLUSH_BITSTREAM | FLUSH_FRAME);
 
 	mtk_vcodec_debug(inst, "+ BS dma=0x%llx dmabuf=%p format=%c%c%c%c",
 		(uint64_t)bs->dma_addr, bs->dmabuf, bs_fourcc & 0xFF,
@@ -742,28 +761,6 @@ static int vdec_set_param(unsigned long h_vdec,
 		break;
 	}
 
-	return ret;
-}
-
-static int vdec_flush(unsigned long h_vdec, struct vdec_fb *fb,
-	enum vdec_flush_type type)
-{
-	struct vdec_inst *inst = (struct vdec_inst *)h_vdec;
-	struct vdec_vcu_inst *vcu = &inst->vcu;
-	int ret;
-
-	mtk_vcodec_debug(inst, "+ flush with type %d", type);
-
-	inst->vsi->flush_type = type;
-	if (fb == NULL)
-		ret = vcu_dec_reset(vcu, VDEC_FLUSH); // flush (0)
-	else if (fb->status == 0)
-		ret = vcu_dec_reset(vcu, VDEC_DRAIN); // drain (1)
-	else
-		ret = vcu_dec_reset(vcu, VDEC_DRAIN_EOS); // drain & return EOS frame (2)
-
-
-	mtk_vcodec_debug(inst, "+ flush ret %d", ret);
 	return ret;
 }
 
