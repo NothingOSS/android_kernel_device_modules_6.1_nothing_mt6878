@@ -16,14 +16,22 @@
 #include "phy-mtk-io.h"
 
 /* PHY sif registers */
+#define PEXTP_DIG_GLB_00		0x0
+#define PEXTP_DIG_GLB_04		0x4
+#define PEXTP_DIG_GLB_10		0x10
 #define PEXTP_DIG_GLB_20		0x20
 #define RG_XTP_BYPASS_PIPE_RST		BIT(4)
 #define PEXTP_DIG_GLB_28		0x28
 #define RG_XTP_PHY_CLKREQ_N_IN		GENMASK(13, 12)
 #define PEXTP_DIG_GLB_50		0x50
 #define RG_XTP_CKM_EN_L1S0		BIT(13)
+#define PEXTP_DIG_PROBE_OUT		0xd0
 
+/* PHY ANA GLB registers */
 #define PEXTP_ANA_GLB_00_REG		0x9000
+#define PEXTP_ANA_GLB_6			(PEXTP_ANA_GLB_00_REG + 0x18)
+#define PEXTP_ANA_GLB_9			(PEXTP_ANA_GLB_00_REG + 0x24)
+
 /* Internal Resistor Selection of TX Bias Current */
 #define EFUSE_GLB_INTR_SEL		GENMASK(28, 24)
 
@@ -179,10 +187,64 @@ static int mtk_pcie_phy_exit(struct phy *phy)
 	return 0;
 }
 
+/* Set partition when use PCIe PHY debug probe table */
+static void mtk_pcie_phy_dbg_set_partition(void __iomem *phy_base, u32 partition)
+{
+	writel_relaxed(partition, phy_base + PEXTP_DIG_GLB_00);
+}
+
+/* Read the PCIe PHY internal signal corresponding to the debug probe table bus */
+static u32 mtk_pcie_phy_dbg_read_bus(void __iomem *phy_base, u32 sel, u32 bus)
+{
+	writel_relaxed(bus, phy_base + sel);
+	return readl_relaxed(phy_base + PEXTP_DIG_PROBE_OUT);
+}
+
+static int mtk_pcie_monitor_phy(struct phy *phy)
+{
+	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
+	u32 phy_table[8] = {0};
+
+	mtk_pcie_phy_dbg_set_partition(pcie_phy->sif_base, 0x404);
+	phy_table[0] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
+						 0x910090);
+	phy_table[1] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
+						 0x1180092);
+	phy_table[2] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
+						 0x11a011b);
+	phy_table[3] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
+						 0x11c011d);
+	phy_table[4] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
+						 0x11e011f);
+	dev_info(pcie_phy->dev,
+		 "phy ln0 probe: 0x0x910090=%#x, 0x1180092=%#x, 0x11a011b=%#x, 0x11c011d=%#x, 0x11e011f=%#x\n",
+		 phy_table[0], phy_table[1], phy_table[2], phy_table[3], phy_table[4]);
+
+	mtk_pcie_phy_dbg_set_partition(pcie_phy->sif_base, 0x0);
+	writel_relaxed(0x5600038e, pcie_phy->sif_base + PEXTP_ANA_GLB_6);
+	phy_table[5] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
+						 0x1a);
+
+	mtk_pcie_phy_dbg_set_partition(pcie_phy->sif_base, 0x70002);
+	writel_relaxed(0x98045600, pcie_phy->sif_base + PEXTP_ANA_GLB_9);
+	phy_table[6] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_04,
+						 0x1b1a);
+	dev_info(pcie_phy->dev, "phy misc probe: 0x1a=%#x, 0x1b1a=%#x\n",
+		 phy_table[5], phy_table[6]);
+
+	mtk_pcie_phy_dbg_set_partition(pcie_phy->sif_base, 0x4);
+	phy_table[7] = mtk_pcie_phy_dbg_read_bus(pcie_phy->sif_base, PEXTP_DIG_GLB_10,
+						 0xe2);
+	dev_info(pcie_phy->dev, "phy ln0 probe: 0xe2=%#x\n", phy_table[7]);
+
+	return 0;
+}
+
 static const struct phy_ops mtk_pcie_phy_ops = {
-	.init	= mtk_pcie_phy_init,
-	.exit	= mtk_pcie_phy_exit,
-	.owner	= THIS_MODULE,
+	.init		= mtk_pcie_phy_init,
+	.exit		= mtk_pcie_phy_exit,
+	.calibrate	= mtk_pcie_monitor_phy,
+	.owner		= THIS_MODULE,
 };
 
 static int mtk_pcie_efuse_read_for_lane(struct mtk_pcie_phy *pcie_phy,
