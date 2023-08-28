@@ -2063,6 +2063,14 @@ rpm:
 		_ufs_mtk_clk_scale(hba, false);
 	}
 
+	/*
+	 * clk_scaling framework may not work because remove
+	 * UFSHCD_CAP_CLK_SCALING and active_reqs is wrong.
+	 * Clear clk_scaling active_reqs before unblock request.
+	 */
+	if (scale_allow)
+		hba->clk_scaling.active_reqs = 0;
+
 out:
 	ufshcd_release(hba);
 	ufs_mtk_scsi_unblock_requests(hba);
@@ -2077,6 +2085,8 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 	static bool is_forced;
 	unsigned long flags;
 	bool scale_allow = true;
+	bool scale_suspend = false;
+	bool scale_resume = false;
 
 	/* Already in desire mode */
 	if (scale_mode == mode)
@@ -2107,20 +2117,33 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 				scale_allow);
 
 		if (scale_allow) {
+			spin_lock_irqsave(hba->host->host_lock, flags);
+			if (hba->clk_scaling.is_suspended) {
+				scale_resume = true;
+				hba->clk_scaling.is_suspended = false;
+			}
+			spin_unlock_irqrestore(hba->host->host_lock, flags);
+
+			if (scale_resume)
+				devfreq_resume_device(hba->devfreq);
 			hba->caps |= UFSHCD_CAP_CLK_SCALING;
-			devfreq_resume_device(hba->devfreq);
 		}
 
 		is_forced = false;
 	} else {
 		if (!is_forced) {
 			if (scale_allow) {
-				/* TODO: Export __ufshcd_suspend_clkscaling() */
-				devfreq_suspend_device(hba->devfreq);
-				spin_lock_irqsave(hba->host->host_lock, flags);
-				hba->clk_scaling.window_start_t = 0;
-				spin_unlock_irqrestore(hba->host->host_lock, flags);
 				hba->caps &= ~UFSHCD_CAP_CLK_SCALING;
+				spin_lock_irqsave(hba->host->host_lock, flags);
+				if (!hba->clk_scaling.is_suspended) {
+					scale_suspend = true;
+					hba->clk_scaling.is_suspended = true;
+					hba->clk_scaling.window_start_t = 0;
+				}
+				spin_unlock_irqrestore(hba->host->host_lock, flags);
+
+				if (scale_suspend)
+					devfreq_suspend_device(hba->devfreq);
 			}
 
 			saved_gear = hba->pwr_info.gear_rx;
