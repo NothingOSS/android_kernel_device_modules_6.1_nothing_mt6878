@@ -51,7 +51,7 @@ int mminfra_ao;
 module_param(mminfra_ao, int, 0644);
 int mtcmos_ao;
 module_param(mtcmos_ao, int, 0644);
-int vdisp_ao;
+int vdisp_ao = 1;
 module_param(vdisp_ao, int, 0644);
 
 /* TODO: move to mtk_dpc_test.c */
