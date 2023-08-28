@@ -183,6 +183,7 @@ static void smpu_violation_callback(struct work_struct *work)
 	int by_pass_aid[3] = { 240, 241, 243 };
 	int by_pass_region[10] = { 22, 28, 39, 41, 44, 45, 57, 59, 61, 62 };
 	int i, j, by_pass_flag = 0;
+	char md_str[MTK_SMPU_MAX_CMD_LEN + 5] = { '\0' };
 
 	ssmpu = global_ssmpu;
 	nsmpu = global_nsmpu;
@@ -202,6 +203,12 @@ static void smpu_violation_callback(struct work_struct *work)
 
 	pr_info("%s: %s", __func__, mpu->vio_msg);
 
+	if (mpu->md_handler) {
+		strncpy(md_str, "smpu", 5);
+		strncat(md_str, mpu->vio_msg,
+			sizeof(md_str) - strlen(md_str) - 1);
+		mpu->md_handler(md_str);
+	}
 	/* check vio region addr */
 	if ((nsmpu && nsmpu->is_vio) || (ssmpu && ssmpu->is_vio)) {
 		if (mpu->dump_reg[7].value != 0) {
@@ -275,7 +282,6 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 	int vio_type = 6;
 	bool violation;
 	ssize_t msg_len = 0;
-	char md_str[MTK_SMPU_MAX_CMD_LEN + 5] = { '\0' };
 	//	struct task_struct *tsk;
 
 	irqreturn_t irqret;
@@ -350,12 +356,6 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 					MTK_SMPU_MAX_CMD_LEN - msg_len,
 					"[%x]%x;", dump_reg[i].offset,
 					dump_reg[i].value);
-		}
-		if (mpu->md_handler) {
-			strncpy(md_str, "smpu", 5);
-			strncat(md_str, mpu->vio_msg,
-				sizeof(md_str) - strlen(md_str) - 1);
-			mpu->md_handler(md_str);
 		}
 		printk_deferred("%s: %s", __func__, mpu->vio_msg);
 	}
