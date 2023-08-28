@@ -399,4 +399,10 @@ struct mtk_venc_init_qp {
 	__s32	qpb;
 };
 
+struct mtk_venc_frame_qp_range {
+	__s32	enable;
+	__s32	max;
+	__s32	min;
+};
+
 #endif

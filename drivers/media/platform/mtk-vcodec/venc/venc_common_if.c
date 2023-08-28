@@ -514,6 +514,12 @@ static int venc_set_param(unsigned long handle,
 				sizeof(struct mtk_venc_init_qp));
 		}
 
+		if (enc_prm->frame_qp_range) {
+			memcpy(&inst->vsi->config.frame_qp_range,
+				enc_prm->frame_qp_range,
+				sizeof(struct mtk_venc_frame_qp_range));
+		}
+
 		if (enc_prm->color_desc) {
 			memcpy(&inst->vsi->config.color_desc,
 				enc_prm->color_desc,
@@ -597,6 +603,13 @@ static int venc_set_param(unsigned long handle,
 			return -EINVAL;
 		memcpy(&inst->vsi->config.init_qp, enc_prm->init_qp,
 			sizeof(struct mtk_venc_init_qp));
+		ret = vcu_enc_set_param(&inst->vcu_inst, type, enc_prm);
+		break;
+	case VENC_SET_PARAM_FRAME_QP_RANGE:
+		if (inst->vsi == NULL)
+			return -EINVAL;
+		memcpy(&inst->vsi->config.frame_qp_range, enc_prm->frame_qp_range,
+			sizeof(struct mtk_venc_frame_qp_range));
 		ret = vcu_enc_set_param(&inst->vcu_inst, type, enc_prm);
 		break;
 	default:

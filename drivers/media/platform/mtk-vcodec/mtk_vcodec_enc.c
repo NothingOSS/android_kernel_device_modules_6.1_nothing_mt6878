@@ -858,6 +858,14 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		sizeof(struct mtk_venc_init_qp));
 		ctx->param_change |= MTK_ENCODE_PARAM_VISUAL_QUALITY;
 		break;
+	case V4L2_CID_MPEG_MTK_ENCODE_FRAME_QP_RANGE:
+		mtk_v4l2_debug(2,
+			"V4L2_CID_MPEG_MTK_ENCODE_FRAME_QP_RANGE: Enable(%d), MAX(%d), MIN(%d)",
+			ctrl->p_new.p_s32[0], ctrl->p_new.p_s32[1], ctrl->p_new.p_s32[2]);
+		memcpy(&p->frame_qp_range, ctrl->p_new.p_s32,
+		sizeof(struct mtk_venc_frame_qp_range));
+		ctx->param_change |= MTK_ENCODE_PARAM_FRAMEQP_RANGE;
+		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
 		ret = -EINVAL;
@@ -1486,6 +1494,7 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->bfrm_q_ltr = enc_params->bfrm_q_ltr;
 	param->visual_quality = &enc_params->visual_quality;
 	param->init_qp = &enc_params->init_qp;
+	param->frame_qp_range = &enc_params->frame_qp_range;
 }
 
 static int vidioc_venc_subscribe_evt(struct v4l2_fh *fh,
@@ -3232,6 +3241,20 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 					&enc_prm);
 	}
 
+	if (!ret &&
+	mtk_buf->param_change & MTK_ENCODE_PARAM_FRAMEQP_RANGE) {
+		enc_prm.frame_qp_range = &mtk_buf->enc_params.frame_qp_range;
+		mtk_v4l2_err("[%d] idx=%d, frame qp range enable=%d, max(%d), min(%d)",
+				ctx->id,
+				mtk_buf->vb.vb2_buf.index,
+				enc_prm.frame_qp_range->enable,
+				enc_prm.frame_qp_range->max,
+				enc_prm.frame_qp_range->min);
+		ret |= venc_if_set_param(ctx,
+					VENC_SET_PARAM_FRAME_QP_RANGE,
+					&enc_prm);
+	}
+
 	mtk_buf->param_change = MTK_ENCODE_PARAM_NONE;
 
 	if (ret) {
@@ -4195,11 +4218,11 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_QPVBR;
-	cfg.type = V4L2_CTRL_TYPE_U32;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode QPVBR";
 	cfg.min = -1;
-	cfg.max = 200;
+	cfg.max = 255;
 	cfg.step = 1;
 	cfg.def = -1;
 	cfg.dims[0] = 3;
@@ -4211,7 +4234,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_CHROMA_QP;
-	cfg.type = V4L2_CTRL_TYPE_U32;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Chroma QP";
 	cfg.min = -12;
@@ -4241,7 +4264,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_FRM_QP_LTR;
-	cfg.type = V4L2_CTRL_TYPE_U32;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Frame QP limiter";
 	cfg.min = -1;
@@ -4257,7 +4280,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_VISUAL_QUALITY;
-	cfg.type = V4L2_CTRL_TYPE_U32;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Visual Quality";
 	cfg.min = -1;
@@ -4275,7 +4298,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_INIT_QP;
-	cfg.type = V4L2_CTRL_TYPE_U32;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Initial QP";
 	cfg.min = -1;
@@ -4283,6 +4306,23 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.step = 1;
 	cfg.def = -1;
 	cfg.dims[0] = (sizeof(struct mtk_venc_init_qp)/sizeof(s32));
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
+	ctx->enc_params.frame_qp_range.enable = -1;
+	ctx->enc_params.frame_qp_range.max = -1;
+	ctx->enc_params.frame_qp_range.min = -1;
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_FRAME_QP_RANGE;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video encode Frame QP Range";
+	cfg.min = -1;
+	cfg.max = 51;
+	cfg.step = 1;
+	cfg.def = -1;
+	cfg.dims[0] = (sizeof(struct mtk_venc_frame_qp_range)/sizeof(s32));
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 

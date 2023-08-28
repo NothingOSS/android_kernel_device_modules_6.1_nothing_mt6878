@@ -161,7 +161,8 @@ enum mtk_encode_param {
 	MTK_ENCODE_PARAM_LOW_LATENCY_WFD = (1 << 26),
 	MTK_ENCODE_PARAM_SLICE_CNT = (1 << 27),
 	MTK_ENCODE_PARAM_VISUAL_QUALITY = (1 << 28),
-	MTK_ENCODE_PARAM_INIT_QP = (1 << 29)
+	MTK_ENCODE_PARAM_INIT_QP = (1 << 29),
+	MTK_ENCODE_PARAM_FRAMEQP_RANGE = (1 << 30)
 };
 
 /*
@@ -370,6 +371,7 @@ struct mtk_enc_params {
 	int             bfrm_q_ltr;
 	struct mtk_venc_visual_quality visual_quality;
 	struct mtk_venc_init_qp init_qp;
+	struct mtk_venc_frame_qp_range frame_qp_range;
 };
 
 /*
@@ -461,6 +463,7 @@ struct venc_enc_param {
 	int bfrm_q_ltr;
 	struct mtk_venc_visual_quality *visual_quality;
 	struct mtk_venc_init_qp *init_qp;
+	struct mtk_venc_frame_qp_range *frame_qp_range;
 };
 
 /*

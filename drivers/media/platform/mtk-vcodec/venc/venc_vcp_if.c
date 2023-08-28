@@ -1699,6 +1699,9 @@ int vcp_enc_set_param(struct venc_inst *inst,
 	case VENC_SET_PARAM_INIT_QP:
 		out.data_item = 0; // passed via vsi
 		break;
+	case VENC_SET_PARAM_FRAME_QP_RANGE:
+		out.data_item = 0; // passed via vsi
+		break;
 	default:
 		mtk_vcodec_err(inst, "id %d not supported", id);
 		return -EINVAL;
@@ -1801,6 +1804,12 @@ static int venc_vcp_set_param(unsigned long handle,
 				sizeof(struct mtk_venc_init_qp));
 		}
 
+		if (enc_prm->frame_qp_range) {
+			memcpy(&inst->vsi->config.frame_qp_range,
+				enc_prm->frame_qp_range,
+				sizeof(struct mtk_venc_frame_qp_range));
+		}
+
 		if (enc_prm->color_desc) {
 			memcpy(&inst->vsi->config.color_desc,
 				enc_prm->color_desc,
@@ -1892,6 +1901,13 @@ static int venc_vcp_set_param(unsigned long handle,
 			return -EINVAL;
 		memcpy(&inst->vsi->config.init_qp, enc_prm->init_qp,
 			sizeof(struct mtk_venc_init_qp));
+		ret = vcp_enc_set_param(inst, type, enc_prm);
+		break;
+	case VENC_SET_PARAM_FRAME_QP_RANGE:
+		if (inst->vsi == NULL)
+			return -EINVAL;
+		memcpy(&inst->vsi->config.frame_qp_range, enc_prm->frame_qp_range,
+			sizeof(struct mtk_venc_frame_qp_range));
 		ret = vcp_enc_set_param(inst, type, enc_prm);
 		break;
 	default:

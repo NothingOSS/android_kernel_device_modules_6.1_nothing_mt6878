@@ -130,6 +130,7 @@ enum venc_set_param_type {
 	VENC_SET_PARAM_SLICE_CNT,
 	VENC_SET_PARAM_VISUAL_QUALITY,
 	VENC_SET_PARAM_INIT_QP,
+	VENC_SET_PARAM_FRAME_QP_RANGE,
 };
 
 #define VENC_MSG_AP_SEND_PREFIX	\
@@ -498,6 +499,7 @@ struct venc_vcu_config {
 	__s32 bfrm_q_ltr;
 	struct mtk_venc_visual_quality visual_quality;
 	struct mtk_venc_init_qp init_qp;
+	struct mtk_venc_frame_qp_range frame_qp_range;
 };
 
 /**
