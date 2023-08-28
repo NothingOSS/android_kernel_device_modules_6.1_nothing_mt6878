@@ -64,7 +64,9 @@ static int sensor_comm_ctrl_seq_send(struct sensor_comm_ctrl *ctrl,
 	ret = ipi_comm_sync(get_ctrl_id(), (unsigned char *)ctrl, size,
 		(unsigned char *)&ack, sizeof(ack));
 	if (ret < 0) {
-		pr_err("ipi_comm_sync error %d\n", ret);
+		if (ret != -EIO)
+			sensor_comm_sequence++;
+		pr_err_ratelimited("ipi_comm_sync error %d\n", ret);
 		return ret;
 	}
 	sensor_comm_sequence++;

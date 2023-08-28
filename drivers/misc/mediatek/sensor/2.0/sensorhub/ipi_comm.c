@@ -26,6 +26,7 @@ struct ipi_controller {
 struct ipi_hw_transfer {
 	struct completion done;
 	int count;
+	int64_t wakeup_time;
 	/* data buffers */
 	int id;
 	const unsigned char *tx;
@@ -68,6 +69,8 @@ static int ipi_transfer_buffer(struct ipi_transfer *t)
 	int timeout;
 	unsigned long flags;
 	struct ipi_hw_transfer *hw = &hw_transfer;
+	int64_t wakeup_time = 0, now_time = 0;
+	const uint64_t timeout_ns = 20000000;
 
 	spin_lock_irqsave(&hw_transfer_lock, flags);
 	hw->id = t->id;
@@ -77,6 +80,7 @@ static int ipi_transfer_buffer(struct ipi_transfer *t)
 	hw->rx_len = t->rx_len;
 
 	reinit_completion(&hw->done);
+	hw->wakeup_time = 0;
 	hw->context = &hw->done;
 	spin_unlock_irqrestore(&hw_transfer_lock, flags);
 
@@ -90,7 +94,13 @@ static int ipi_transfer_buffer(struct ipi_transfer *t)
 	if (!timeout)
 		hw->count = -ETIMEDOUT;
 	hw->context = NULL;
+	wakeup_time = hw->wakeup_time;
+	now_time = ktime_get_boottime_ns();
 	spin_unlock_irqrestore(&hw_transfer_lock, flags);
+
+	if (now_time - wakeup_time > timeout_ns)
+		pr_err_ratelimited("wakeup too long, now %lld, wakeup %lld\n",
+			now_time, wakeup_time);
 	return hw->count;
 }
 
@@ -236,6 +246,7 @@ static void ipi_comm_complete(unsigned char *buffer, unsigned int len)
 	memcpy(hw->rx, buffer, hw->rx_len);
 	/* hw->count give real len */
 	hw->count = len;
+	hw->wakeup_time = ktime_get_boottime_ns();
 	complete(hw->context);
 out:
 	spin_unlock(&hw_transfer_lock);
