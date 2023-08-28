@@ -2091,6 +2091,13 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 	if (!ufs_mtk_is_clk_scale_ready(hba))
 		scale_allow = false;
 
+	/*
+	 * Make sure call devfreq_resume_device/devfreq_suspend_device not in
+	 * UFS runtime suspend state. Or we may have abnormal scale up in
+	 * runtime suspend which mtcmos is not on.
+	 */
+	ufshcd_rpm_get_sync(hba);
+
 	if (mode == CLK_SCALE_FREE_RUN) {
 		if (saved_gear >= UFS_HS_G5)
 			ufs_mtk_config_pwr_mode(hba, CLK_FORCE_SCALE_UP,
@@ -2122,6 +2129,8 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 
 		ufs_mtk_config_pwr_mode(hba, mode, scale_allow);
 	}
+
+	ufshcd_rpm_put(hba);
 }
 
 static int ufs_mtk_mcq_config_cqid(struct ufs_hba *hba)
