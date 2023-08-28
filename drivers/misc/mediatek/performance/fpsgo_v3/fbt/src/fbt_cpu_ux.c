@@ -8,6 +8,7 @@
 
 #include <mt-plat/fpsgo_common.h>
 
+#include "eas/grp_awr.h"
 #include "fpsgo_usedext.h"
 #include "fpsgo_base.h"
 #include "fpsgo_sysfs.h"
@@ -311,9 +312,10 @@ void fbt_ux_frame_start(struct render_info *thr, unsigned long long ts)
 
 	thr->ux_blc_cur = thr->ux_blc_next;
 
-	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL)
+	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL){
+		set_top_grp_aware(1,0);
 		fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
-
+	}
 	fbt_ux_set_cap_with_sbe(thr);
 }
 
@@ -357,9 +359,10 @@ void fbt_ux_frame_end(struct render_info *thr,
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
 		targettime, "[ux]target_time");
 
-	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL)
+	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL){
+		set_top_grp_aware(0,0);
 		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
-
+	}
 	fpsgo_get_fbt_mlock(__func__);
 	ret = fbt_get_dep_list(thr);
 	if (ret) {
@@ -415,9 +418,10 @@ unsigned long long ts)
 	if (!thr)
 		return;
 
-	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL)
+	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL){
+		set_top_grp_aware(0,0);
 		fpsgo_set_deplist_policy(thr, FPSGO_TASK_NONE);
-
+	}
 	thr->ux_blc_cur = 0;
 	fbt_ux_set_cap_with_sbe(thr);
 }
@@ -522,6 +526,9 @@ void fpsgo_ux_reset(struct render_info *thr)
 	struct ux_frame_info *tmp = NULL;
 
 	fpsgo_lockprove(__func__);
+
+	if (ux_scroll_policy_type == SCROLL_POLICY_EAS_CTL)
+		set_top_grp_aware(0,0);
 
 	cur = rb_first(&(thr->ux_frame_info_tree));
 
