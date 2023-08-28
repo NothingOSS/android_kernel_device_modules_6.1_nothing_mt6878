@@ -411,7 +411,7 @@ int mtk_get_phy_layer_limit(uint16_t layer_map_tb)
 }
 
 static int get_ovl_by_phy(struct drm_device *dev, int disp_idx, int disp_list,
-			  uint16_t layer_map_tb, int phy_layer_idx)
+			  uint16_t layer_map_tb, int phy_layer_idx, const char *caller)
 {
 	uint16_t ovl_mapping_tb, layer_map_tb_bak = layer_map_tb;
 	int i, ovl_idx = 0, layer_idx = 0, phy_layer_idx_bak = phy_layer_idx;
@@ -427,9 +427,9 @@ static int get_ovl_by_phy(struct drm_device *dev, int disp_idx, int disp_list,
 		layer_map_tb >>= 1;
 	}
 
-	if (layer_idx == MAX_PHY_OVL_CNT) {
-		DDPPR_ERR("%s fail, %u %u (layer_map_tb %x phy_lay_idx %u) phy_layer_idx:%d\n",
-			__func__, disp_idx, disp_list,
+	if (layer_idx > MAX_PHY_OVL_CNT) {
+		DDPPR_ERR("%s %s fail, %u %u (layer_map_tb %x phy_lay_idx %u) phy_layer_idx:%d\n",
+			__func__, caller, disp_idx, disp_list,
 			layer_map_tb_bak, phy_layer_idx_bak, phy_layer_idx);
 		return -1;
 	}
@@ -1142,9 +1142,9 @@ static int ext_id_tuning(struct drm_device *dev,
 				int cur_ovl, pre_ovl;
 
 				cur_ovl = get_ovl_by_phy(dev, disp_idx, info->disp_list, l_tb,
-							 cur_phy_cnt);
+							 cur_phy_cnt, __func__);
 				pre_ovl = get_ovl_by_phy(dev, disp_idx, info->disp_list, l_tb,
-							 cur_phy_cnt - 1);
+							 cur_phy_cnt - 1, __func__);
 				if (cur_ovl != pre_ovl)
 					ext_cnt = 0;
 			}
@@ -2048,7 +2048,7 @@ static bool _calc_gpu_cache_layerset_hrt_num(struct drm_device *dev,
 				phy_layer_idx =
 					get_phy_ovl_index(dev, disp, disp_list, layer_idx);
 				ovl_idx = get_ovl_by_phy(dev, disp, disp_list, layer_map,
-							 layer_idx);
+							 layer_idx, __func__);
 				if (get_larb_by_ovl(dev, ovl_idx, disp) !=
 				    hrt_type)
 					continue;
@@ -2112,7 +2112,7 @@ static bool _calc_gpu_cache_layerset_hrt_num(struct drm_device *dev,
 				phy_layer_idx =
 					get_phy_ovl_index(dev, disp, disp_list, layer_idx);
 				ovl_idx = get_ovl_by_phy(dev, disp, disp_list, layer_map,
-							 layer_idx);
+							 layer_idx, __func__);
 
 				if (get_larb_by_ovl(dev, ovl_idx, disp) !=
 				    hrt_type)
@@ -2315,7 +2315,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 				phy_layer_idx =
 					get_phy_ovl_index(dev, disp, disp_list, layer_idx);
 				ovl_idx = get_ovl_by_phy(dev, disp, disp_list, layer_map,
-							 layer_idx);
+							 layer_idx, __func__);
 				if (get_larb_by_ovl(dev, ovl_idx, disp) !=
 				    hrt_type)
 					continue;
@@ -2363,7 +2363,7 @@ static int _calc_hrt_num(struct drm_device *dev,
 				phy_layer_idx =
 					get_phy_ovl_index(dev, disp, disp_list, layer_idx);
 				ovl_idx = get_ovl_by_phy(dev, disp, disp_list, layer_map,
-							 layer_idx);
+							 layer_idx, __func__);
 
 				if (get_larb_by_ovl(dev, ovl_idx, disp) !=
 				    hrt_type)
@@ -2757,7 +2757,7 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 		temp = ovl_mapping_tb & ~BIT(0);
 		for (i = 0 ; i < comp_id_nr ; ++i) {
 			temp1 = HRT_GET_FIRST_SET_BIT(temp);
-			DDPINFO("%s %d map_tb %x %x map_idx %x\n", __func__, disp_idx, temp, temp1, layer_map_idx);
+			DDPDBG("%s %d map_tb %x %x map_idx %x\n", __func__, disp_idx, temp, temp1, layer_map_idx);
 			if (temp1 >= layer_map_idx) {
 				idx = i;
 				break;
@@ -2785,12 +2785,12 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 		temp1 = valid_ovl_map;
 		for (i = 0 ; i <= idx ; ++i) {
 			temp = HRT_GET_FIRST_SET_BIT(temp1);
-			DDPINFO("tmp %x valid_ovl_map %x\n", temp, temp1);
+			DDPDBG("tmp %x valid_ovl_map %x\n", temp, temp1);
 			temp1 &= ~temp;
 		}
 		temp = __builtin_ffs(temp);
 		temp = (temp == 0) ? 0 : temp - 1;
-		DDPINFO("%s %d idx %x to temp %x tmp1 %x\n", __func__, disp_idx, idx, temp, valid_ovl_map);
+		DDPDBG("%s %d idx %x to temp %x tmp1 %x\n", __func__, disp_idx, idx, temp, valid_ovl_map);
 
 		if (unlikely(temp >= comp_id_nr)) {
 			DDPPR_ERR("%s comp_list ovl_map %x & layer_map %x valid %x idx %x\n",

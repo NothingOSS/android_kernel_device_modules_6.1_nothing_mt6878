@@ -2865,18 +2865,26 @@ static const enum mtk_ddp_comp_id mt6985_mtk_ddp_dual_discrete_chip[] = {
 	DDP_COMPONENT_MERGE2,
 };
 
-static const enum mtk_ddp_comp_id mt6989_mtk_ovlsys_main_bringup[] = {
-	DDP_COMPONENT_OVL0_2L,
-	//DDP_COMPONENT_OVL1_2L,
-	//DDP_COMPONENT_OVL2_2L,
-	DDP_COMPONENT_OVLSYS_DLO_ASYNC3,
-};
-
-static const enum mtk_ddp_comp_id mt6989_mtk_ddp_main_bringup[] = {
+static const enum mtk_ddp_comp_id mt6989_mtk_ovlsys_main_full_set[] = {
+	DDP_COMPONENT_OVL3_2L,
+	DDP_COMPONENT_OVL4_2L,
+	DDP_COMPONENT_OVL5_2L,
+	DDP_COMPONENT_OVLSYS_DLO_ASYNC8,
+	DDP_COMPONENT_OVLSYS_DLI_ASYNC2,
 	DDP_COMPONENT_OVL0_2L,
 	DDP_COMPONENT_OVL1_2L,
 	DDP_COMPONENT_OVL2_2L,
 	DDP_COMPONENT_OVLSYS_DLO_ASYNC3,
+};
+
+static const enum mtk_ddp_comp_id mt6989_mtk_ovlsys_main_bringup[] = {
+	DDP_COMPONENT_OVL0_2L,
+	DDP_COMPONENT_OVL1_2L,
+	DDP_COMPONENT_OVL2_2L,
+	DDP_COMPONENT_OVLSYS_DLO_ASYNC3,
+};
+
+static const enum mtk_ddp_comp_id mt6989_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_DLI_ASYNC0,
 #ifdef DRM_BYPASS_PQ
 	DDP_COMPONENT_PQ0_OUT_CB4,
@@ -3210,6 +3218,11 @@ static const struct mtk_addon_module_data addon_ovl_rsz_data[] = {
 
 static const struct mtk_addon_module_data addon_ovl_rsz_data_1[] = {
 	{OVL_RSZ_1, ADDON_EMBED, DDP_COMPONENT_OVL4_2L},
+};
+
+/* it's aim for mt6989 OVLSYS1 RSZ */
+static const struct mtk_addon_module_data addon_ovl_rsz_data_2[] = {
+	{OVL_RSZ_1, ADDON_EMBED, DDP_COMPONENT_OVL3_2L},
 };
 
 static const struct mtk_addon_module_data mt6983_addon_wdma0_data[] = {
@@ -3666,6 +3679,22 @@ static const struct mtk_addon_scenario_data mt6989_addon_ext[ADDON_SCN_NR] = {
 	},
 };
 
+static const struct mtk_addon_scenario_data mt6989_addon_main_dual[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[TRIPLE_DISP] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[ONE_SCALING] = {
+		.module_num = ARRAY_SIZE(addon_ovl_rsz_data_2),
+		.module_data = addon_ovl_rsz_data_2,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+};
+
 static const struct mtk_addon_scenario_data mt6989_addon_secondary_path[ADDON_SCN_NR] = {
 	[NONE] = {
 		.module_num = 0,
@@ -3811,6 +3840,17 @@ static const struct mtk_addon_scenario_data mt6983_addon_dp_wo_tdshp[ADDON_SCN_N
 	[TRIPLE_DISP] = {
 		.module_num = 0,
 		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+};
+
+static const struct mtk_addon_scenario_data mt6989_addon_dp_wo_tdshp[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[TRIPLE_DISP] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 };
 
@@ -4534,8 +4574,8 @@ static const struct mtk_crtc_path_data mt6985_mtk_discrete_path_data = {
 };
 
 static const struct mtk_crtc_path_data mt6989_mtk_main_path_data = {
-	//.ovl_path[DDP_MAJOR][0] = mt6989_mtk_ovlsys_main_bringup,
-	//.ovl_path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6989_mtk_ovlsys_main_bringup),
+	.ovl_path[DDP_MAJOR][0] = mt6989_mtk_ovlsys_main_bringup,
+	.ovl_path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6989_mtk_ovlsys_main_bringup),
 	.path[DDP_MAJOR][0] = mt6989_mtk_ddp_main_bringup,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6989_mtk_ddp_main_bringup),
 	.path_req_hrt[DDP_MAJOR][0] = true,
@@ -4552,6 +4592,18 @@ static const struct mtk_crtc_path_data mt6989_mtk_main_path_data = {
 //	.wb_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6983_mtk_ddp_main_wb_path),
 	.addon_data = mt6989_addon_main,
 //	.addon_data_dual = mt6989_addon_main_dual,
+	.scaling_data = mt6989_scaling_main,
+//	.scaling_data_dual = mt6989_scaling_main_dual,
+};
+
+static const struct mtk_crtc_path_data mt6989_mtk_main_full_set_data = {
+	.ovl_path[DDP_MAJOR][0] = mt6989_mtk_ovlsys_main_full_set,
+	.ovl_path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6989_mtk_ovlsys_main_full_set),
+	.path[DDP_MAJOR][0] = mt6989_mtk_ddp_main_bringup,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6989_mtk_ddp_main_bringup),
+	.path_req_hrt[DDP_MAJOR][0] = true,
+	.addon_data = mt6989_addon_main,
+	.addon_data_dual = mt6989_addon_main_dual,
 	.scaling_data = mt6989_scaling_main,
 //	.scaling_data_dual = mt6989_scaling_main_dual,
 };
@@ -4574,7 +4626,7 @@ static const struct mtk_crtc_path_data mt6989_mtk_dp_w_tdshp_path_data = {
 static const struct mtk_crtc_path_data mt6989_mtk_dp_wo_tdshp_path_data = {
 	.path[DDP_MAJOR][0] = mt6989_mtk_ddp_mem_dp_wo_tdshp,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6989_mtk_ddp_mem_dp_wo_tdshp),
-	.addon_data = mt6983_addon_dp_wo_tdshp,
+	.addon_data = mt6989_addon_dp_wo_tdshp,
 };
 
 static const struct mtk_crtc_path_data mt6989_mtk_secondary_path_data = {
@@ -5309,6 +5361,7 @@ static const struct mtk_mmsys_driver_data mt6985_mmsys_driver_data = {
 
 static const struct mtk_mmsys_driver_data mt6989_mmsys_driver_data = {
 	.main_path_data = &mt6989_mtk_main_path_data,
+	.ext_alter_path_data = &mt6989_mtk_main_full_set_data,//temporary solution for OVL full set
 	.ext_path_data = &mt6989_mtk_ext_path_data,
 	.third_path_data = &mt6989_mtk_dp_w_tdshp_path_data,
 	.third_path_data_wo_tdshp = &mt6989_mtk_dp_wo_tdshp_path_data,
@@ -7340,7 +7393,12 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	 * and each statically assigned to a crtc:
 	 * OVL0 -> COLOR0 -> AAL -> OD -> RDMA0 -> UFOE -> DSI0 ...
 	 */
-	ret = mtk_drm_crtc_create(drm, private->data->main_path_data);
+	/* TODO: temprorary solution for MT6989 enable full OVL path,*/
+	/* remove it after MT6989 MML DLO switch ready */
+	if (of_property_read_bool(private->mmsys_dev->of_node, "enable-main-full-ovl-path"))
+		ret = mtk_drm_crtc_create(drm, private->data->ext_alter_path_data);
+	else
+		ret = mtk_drm_crtc_create(drm, private->data->main_path_data);
 	if (ret < 0)
 		goto err_component_unbind;
 

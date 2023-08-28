@@ -15445,6 +15445,10 @@ static int mtk_ddp_mout_en_MT6989(const struct mtk_mmsys_reg_data *data,
 		/* CRTC2 - CON2 */
 		*addr = MT6989_OVL_BLEND_CROSSBAR1_MOUT_EN;
 		value = MT6989_DISP_OVL1_2L_TO_WDMA0;
+	} else if ((cur == DDP_COMPONENT_OVL5_2L &&
+		next == DDP_COMPONENT_OVL5_2L_VIRTUAL0)) {
+		*addr = MT6989_OVL_BLEND_CROSSBAR2_MOUT_EN;
+		value = MT6989_DISP_OVL2_2L_TO_WDMA0;
 	} else if ((cur == DDP_COMPONENT_DLI_ASYNC0 &&
 		next == DDP_COMPONENT_PQ0_OUT_CB4)){
 		/* PQ_IN_CROSSBAR */
@@ -20409,24 +20413,26 @@ unsigned int mtk_ddp_ovlsys_path(struct mtk_drm_private *priv, unsigned int **ov
 
 		return OVLSYS_PATH_MT6985;
 	case MMSYS_MT6989:
-#define OVLSYS_PATH_MT6989 6
+#define OVLSYS_PATH_MT6989 8
 		if (_ovlsys_path) {
 			*ovl_list = _ovlsys_path;
 			return OVLSYS_PATH_MT6989;
 		}
-		/* MT6989 has 6 OVLSYS PATH */
+		/* MT6989 has 8 OVLSYS PATH */
 
 		_ovlsys_path = vmalloc(OVLSYS_PATH_MT6989 * sizeof(unsigned int));
 		if (!_ovlsys_path) {
 			DDPPR_ERR("%s errors with NULL _ovl_list\n", __func__);
 			return -ENOMEM;
 		}
-		_ovlsys_path[0] = DDP_COMPONENT_OVL0_2L;
-		_ovlsys_path[1] = DDP_COMPONENT_OVL1_2L;
-		_ovlsys_path[2] = DDP_COMPONENT_OVL2_2L;
-		_ovlsys_path[3] = DDP_COMPONENT_OVL3_2L;
-		_ovlsys_path[4] = DDP_COMPONENT_OVL4_2L;
-		_ovlsys_path[5] = DDP_COMPONENT_OVL5_2L;
+		_ovlsys_path[0] = DDP_COMPONENT_OVL3_2L;
+		_ovlsys_path[1] = DDP_COMPONENT_OVL4_2L;
+		_ovlsys_path[2] = DDP_COMPONENT_OVL5_2L;
+		_ovlsys_path[3] = DDP_COMPONENT_OVLSYS_DLO_ASYNC8;
+		_ovlsys_path[4] = DDP_COMPONENT_OVLSYS_DLI_ASYNC2;
+		_ovlsys_path[5] = DDP_COMPONENT_OVL0_2L;
+		_ovlsys_path[6] = DDP_COMPONENT_OVL1_2L;
+		_ovlsys_path[7] = DDP_COMPONENT_OVL2_2L;
 
 		*ovl_list = _ovlsys_path;
 

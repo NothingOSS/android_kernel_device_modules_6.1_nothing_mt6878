@@ -34,7 +34,7 @@
 #include "mtk_disp_pq_helper.h"
 
 #define MAX_CRTC 4
-#define OVL_LAYER_NR 12L
+#define OVL_LAYER_NR 15L
 #define OVL_PHY_LAYER_NR 4L
 #define RDMA_LAYER_NR 1UL
 #define EXTERNAL_INPUT_LAYER_NR 2UL
