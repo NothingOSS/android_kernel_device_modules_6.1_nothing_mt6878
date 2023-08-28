@@ -14582,6 +14582,12 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_enable = false;
 	}
 
+	/* disable partial update if dal lye is exist */
+	if (mtk_drm_dal_enable() && partial_enable) {
+		DDPDBG("skip because dal lye is exist\n");
+		partial_enable = false;
+	}
+
 	/* disable partial update if res switch is enable*/
 	if (mtk_crtc->scaling_ctx.scaling_en) {
 		DDPDBG("skip because res switch is enable\n");
