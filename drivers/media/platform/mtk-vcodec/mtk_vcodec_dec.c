@@ -2312,8 +2312,6 @@ void mtk_vcodec_dec_empty_queues(struct file *file, struct mtk_vcodec_ctx *ctx)
 		if (dst_vb2_v4l2->vb2_buf.state == VB2_BUF_STATE_ACTIVE)
 			v4l2_m2m_buf_done(dst_vb2_v4l2, VB2_BUF_STATE_ERROR);
 	}
-
-	mtk_vcodec_set_state(ctx, MTK_STATE_FREE);
 }
 
 static int mtk_vcodec_dec_init(struct mtk_vcodec_ctx *ctx, struct mtk_q_data *q_data)
@@ -2335,10 +2333,8 @@ static int mtk_vcodec_dec_init(struct mtk_vcodec_ctx *ctx, struct mtk_q_data *q_
 			mtk_vdec_error_handle(ctx, "init");
 		else
 			mtk_vdec_set_unsupport(ctx);
-
-		return ret;
-	}
-	mtk_vcodec_set_state_from(ctx, MTK_STATE_INIT, MTK_STATE_FREE);
+	} else
+		mtk_vcodec_set_state_from(ctx, MTK_STATE_INIT, MTK_STATE_FREE);
 
 	return ret;
 }
@@ -2352,6 +2348,7 @@ void mtk_vcodec_dec_release(struct mtk_vcodec_ctx *ctx)
 	mtk_vdec_deinit_set_frame_wq(ctx);
 	mtk_vdec_lpw_deinit_timer(ctx);
 	vdec_if_deinit(ctx);
+	mtk_vcodec_set_state(ctx, MTK_STATE_FREE);
 	vdec_check_release_lock(ctx);
 
 	release_all_general_buffer_info(ctx);

@@ -696,18 +696,19 @@ int vcp_dec_ipi_handler(void *arg)
 			case VCU_IPIMSG_DEC_INIT_DONE:
 				handle_init_ack_msg(dev, (void *)obj->share_buf);
 				mtk_vcodec_set_state_from(vcu->ctx, MTK_STATE_INIT, MTK_STATE_FREE);
-				fallthrough;
-			case VCU_IPIMSG_DEC_START_DONE:
+				goto return_vdec_ipi_ack;
 			case VCU_IPIMSG_DEC_DEINIT_DONE:
+				mtk_vcodec_set_state(vcu->ctx, MTK_STATE_FREE);
+				goto return_vdec_ipi_ack;
+			case VCU_IPIMSG_DEC_QUERY_CAP_DONE:
+				handle_query_cap_ack_msg((void *)obj->share_buf);
+				goto return_vdec_ipi_ack;
+			case VCU_IPIMSG_DEC_START_DONE:
 			case VCU_IPIMSG_DEC_RESET_DONE:
 			case VCU_IPIMSG_DEC_SET_PARAM_DONE:
 			case VCU_IPIMSG_DEC_BACKUP_DONE:
 			case VCU_IPIMSG_DEC_RESUME_DONE:
-				vcu->signaled = true;
-				wake_up(&vcu->wq);
-				break;
-			case VCU_IPIMSG_DEC_QUERY_CAP_DONE:
-				handle_query_cap_ack_msg((void *)obj->share_buf);
+return_vdec_ipi_ack:
 				vcu->signaled = true;
 				wake_up(&vcu->wq);
 				break;

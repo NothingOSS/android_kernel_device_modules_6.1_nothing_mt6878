@@ -251,13 +251,16 @@ int vcu_dec_ipi_handler(void *data, unsigned int len, void *priv)
 		switch (msg->msg_id) {
 		case VCU_IPIMSG_DEC_INIT_DONE:
 			handle_init_ack_msg(vcu, data);
+			mtk_vcodec_set_state_from(vcu->ctx, MTK_STATE_INIT, MTK_STATE_FREE);
+			break;
+		case VCU_IPIMSG_DEC_DEINIT_DONE:
+			mtk_vcodec_set_state(vcu->ctx, MTK_STATE_FREE);
 			break;
 		case VCU_IPIMSG_DEC_QUERY_CAP_DONE:
 			handle_query_cap_ack_msg(vcu, data);
 			break;
 		case VCU_IPIMSG_DEC_START_DONE:
 		case VCU_IPIMSG_DEC_DONE:
-		case VCU_IPIMSG_DEC_DEINIT_DONE:
 		case VCU_IPIMSG_DEC_RESET_DONE:
 		case VCU_IPIMSG_DEC_SET_PARAM_DONE:
 			break;
