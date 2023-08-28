@@ -2702,7 +2702,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	ctx->enc_params.slbc_cpu_used_performance =
 		(isSLB_CPU_USED_PERFORMANCE_USAGE(q_data_src->visible_width, q_data_src->visible_height,
 		ctx->enc_params.framerate_num/ctx->enc_params.framerate_denom, ctx->dev->enc_slb_cpu_used_perf) &&
-		(ctx->dev->enc_slb_cpu_used_perf > 0));
+		(ctx->dev->enc_slb_cpu_used_perf > 0) && (ctx->enc_params.operationrate < 120));
 	if ((ctx->use_slbc == 1) && (ctx->enc_params.slbc_cpu_used_performance == 1)) {
 		mtk_v4l2_debug(0, "slbc_cpu_used_perf_release, %p\n", &ctx->sram_data);
 		slbc_release(&ctx->sram_data);
