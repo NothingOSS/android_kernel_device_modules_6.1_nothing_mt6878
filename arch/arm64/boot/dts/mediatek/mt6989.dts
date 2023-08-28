@@ -6148,6 +6148,7 @@
 				  <0 0x14600000 0 0x1000>;
 			#address-cells = <2>;
 			#size-cells = <2>;
+			mmqos-supply = <&mmqos>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 	//		mediatek,larb = <&smi_larb0>;
