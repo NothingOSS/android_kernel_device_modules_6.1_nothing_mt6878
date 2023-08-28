@@ -1900,7 +1900,7 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		width, height, ps_wc, rw_times, ext->params->lp_perline_en, dli_relay_1tnp, buf_con);
 
 	mtk_dsi_mask(dsi, DSI_BUF_CON1, 0x7fff, tmp);
-	if (dsi->driver_data->new_rst_dsi)
+	if (dsi->driver_data->new_rst_dsi && !(dsi->ext->params->is_cphy))
 		mtk_dsi_mask(dsi, DSI_DEBUG_SEL, MM_RST_SEL, 0);
 	else
 		mtk_dsi_mask(dsi, DSI_DEBUG_SEL, MM_RST_SEL, MM_RST_SEL);
