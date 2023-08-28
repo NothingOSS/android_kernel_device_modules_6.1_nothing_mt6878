@@ -21,7 +21,10 @@
 #define CAPACITY_ENTRY_SIZE 0x2
 
 /* Frequency Scaling Step Settings */
-#define FREQ_STEP	26000
+#define FREQ_STEP		26000
+#define CLUSTER_SIZE		0x120
+#define CSRAM_TBL_OFFSET	0x10
+#define CSRAM_PWR_OFFSET (CSRAM_TBL_OFFSET + 0x90)
 
 /* WL Setting(TCM) */
 #define DEFAULT_TYPE	0

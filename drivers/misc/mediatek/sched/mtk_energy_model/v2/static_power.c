@@ -37,6 +37,7 @@
 #define LUT_NR_TOTAL_TYPE	GENMASK(7, 0)
 #define LUT_DSU_WEIGHT		GENMASK(15, 0)
 #define LUT_EMI_WEIGHT		GENMASK(31, 16)
+#define LUT_ROW_SIZE		0x4
 
 static struct eemsn_log *eemsn_log;
 static void __iomem *usram_base, *csram_base, *wl_base;
@@ -542,18 +543,27 @@ void check_dyn_pwr_is_valid(int type, int opp, int next_dyn_pwr,
 			pd_public->wl_table[type][opp].dyn_pwr, next_dyn_pwr);
 }
 
-/**
- * This function initializes frequency, capacity, dynamic power, and leakage
- * parameters of public table.
- */
-static int init_public_table(void)
+void arch_get_cluster_cpus(struct cpumask *cpus, int cluster_id)
 {
-	unsigned int cpu, opp, cluster = 0, type = 0;
-	void __iomem *base = csram_base;
-	unsigned long offset = CAPACITY_TBL_OFFSET, wl_offset;
-	unsigned long cap, next_cap, end_cap;
+	unsigned int cpu;
+
+	cpumask_clear(cpus);
+	for_each_possible_cpu(cpu) {
+		int cpu_cluster_id = topology_cluster_id(cpu);
+
+		if (cpu_cluster_id == cluster_id)
+			cpumask_set_cpu(cpu, cpus);
+	}
+}
+
+int mtk_create_freq_table(void)
+{
 	struct mtk_em_perf_domain *pd_public;
-	struct cpufreq_policy *policy;
+	void __iomem *freq_base = csram_base + CSRAM_TBL_OFFSET;
+	void __iomem *pwr_base = csram_base + CSRAM_PWR_OFFSET;
+	int i, cpu, cur_cluster = 0, freq, prev_freq;
+	struct cpumask cpu_mask;
+	u32 data;
 
 	mtk_em_pd_ptr_public = kcalloc(MAX_PD_COUNT, sizeof(struct mtk_em_perf_domain),
 			GFP_KERNEL);
@@ -561,99 +571,97 @@ static int init_public_table(void)
 		return -ENOMEM;
 
 	for_each_possible_cpu(cpu) {
-		struct em_perf_domain *pd;
-
-		pd = em_cpu_get(cpu);
-		if (!pd) {
-			pr_info("%s: %d: em_cpu_get return NULL for cpu#%d", __func__,
-					__LINE__, cpu);
-			continue;
-		}
-
-		if (cpu != cpumask_first(to_cpumask(pd->cpus))) {
-			cpu_mapping[cpu] = cluster - 1;
-			continue;
-		}
-
-		pd_public = &mtk_em_pd_ptr_public[cluster];
-		policy = cpufreq_cpu_get(cpu);
-		if (!policy) {
-			/* no policy? should check topology or dvfs status first */
-			pr_info("%s: %d: cannot get policy for CPU: %d, no available static power\n",
-					__func__, __LINE__, cpu);
-			pd_public->max_freq = pd->table[pd->nr_perf_states - 1].frequency;
-			pd_public->min_freq = pd->table[0].frequency;
-		} else {
-			pd_public->max_freq = policy->cpuinfo.max_freq;
-			pd_public->min_freq = policy->cpuinfo.min_freq;
-			cpufreq_cpu_put(policy);
-		}
-
-		pd_public->cpumask = to_cpumask(pd->cpus);
-		pd_public->cluster_num = cluster;
-		pd_public->nr_perf_states = pd->nr_perf_states;
+		cur_cluster = topology_cluster_id(cpu);
+		pd_public = &mtk_em_pd_ptr_public[cur_cluster];
+		pd_public->cluster_num = cur_cluster;
 		pd_public->nr_wl_tables = mtk_mapping.nr_cpu_type;
-
 		pd_public->wl_table =
 			kcalloc(pd_public->nr_wl_tables, sizeof(struct mtk_em_perf_state *),
 				GFP_KERNEL);
 		if (!pd_public->wl_table)
-			goto nomem;
+			return -ENOMEM;
 
 		pd_public->wl_table[0] =
-			kcalloc(pd_public->nr_perf_states, sizeof(struct mtk_em_perf_state),
+			kcalloc(MAX_NR_FREQ, sizeof(struct mtk_em_perf_state),
 					GFP_KERNEL);
 		if (!pd_public->wl_table[0])
-			goto nomem;
+			return -ENOMEM;
 
-		for (opp = 0; opp < pd->nr_perf_states; opp++) {
+		pd_public->cpumask = topology_cluster_cpumask(cpu);
+		arch_get_cluster_cpus(&cpu_mask, cur_cluster);
+		cpumask_copy(pd_public->cpumask, &cpu_mask);
+		pr_info("%s: cpu: %d, %*pbl, last: %d\n", __func__, cpu,
+			cpumask_pr_args(pd_public->cpumask), cpumask_last(pd_public->cpumask));
+		prev_freq = 0;
+		for (i = 0; i < MAX_NR_FREQ; i++) {
+			/* Frequency */
+			data = readl_relaxed((freq_base + i * LUT_ROW_SIZE));
+			freq = FIELD_GET(LUT_FREQ, data) * 1000;
+			pd_public->wl_table[0][i].freq = freq;
+			/* Dynamic Power */
+			data = readl_relaxed((pwr_base + i * LUT_ROW_SIZE));
+			pd_public->wl_table[0][i].dyn_pwr = data;
+			if (freq == prev_freq)
+				break;
+
+			prev_freq = freq;
+		}
+
+		pd_public->nr_perf_states = i;
+		pd_public->max_freq = pd_public->wl_table[0][0].freq;
+		pd_public->min_freq = pd_public->wl_table[0][i - 1].freq;
+		cpu = cpumask_last(pd_public->cpumask);
+		freq_base += CLUSTER_SIZE;
+		pwr_base += CLUSTER_SIZE;
+	}
+
+	return 0;
+}
+
+/**
+ * This function initializes frequency, capacity, dynamic power, and leakage
+ * parameters of public table.
+ */
+static int init_public_table(void)
+{
+	unsigned int ret = 0, cpu, opp, cluster = 0, type = 0;
+	unsigned long wl_offset;
+	struct mtk_em_perf_domain *pd_public;
+
+	ret = mtk_create_freq_table();
+	if (ret)
+		goto nomem;
+
+	for_each_possible_cpu(cpu) {
+		cluster = topology_cluster_id(cpu);
+		pd_public = &mtk_em_pd_ptr_public[cluster];
+		for (opp = 0; opp < pd_public->nr_perf_states; opp++) {
 			u32 data;
-
-			cap = ioread16(base + offset);
-			next_cap = ioread16(base + offset + CAPACITY_ENTRY_SIZE);
-			if (cap == 0 || next_cap == 0)
-				goto err;
-
-			pd_public->wl_table[0][opp].capacity = cap;
-			if (opp == pd->nr_perf_states - 1)
-				next_cap = -1;
-
-			pd_public->wl_table[0][opp].freq =
-				pd->table[pd->nr_perf_states - opp - 1].frequency;
 			pd_public->wl_table[0][opp].volt =
 				(unsigned int) eemsn_log->det_log[cluster].volt_tbl_init2[opp]
 								* VOLT_STEP;
-			pd_public->wl_table[0][opp].dyn_pwr =
-				pd->table[pd->nr_perf_states - opp - 1].power * 1000;
-
-			data = readl_relaxed((usram_base + 0x240 + cluster * 0x120 + opp * 8));
-
+			data = readl_relaxed((usram_base + 0x240 +
+								cluster * CLUSTER_SIZE
+								+ opp * 8));
 			pd_public->wl_table[0][opp].leakage_para.c =
 					readl_relaxed((usram_base + 0x240 +
-								   cluster * 0x120 +
+								   cluster * CLUSTER_SIZE +
 								   opp * 8 + 4));
 			pd_public->wl_table[0][opp].leakage_para.a_b_para.b =
 							((data >> 12) & 0xFFFFF);
 			pd_public->wl_table[0][opp].leakage_para.a_b_para.a = data & 0xFFF;
 			pd_public->wl_table[0][opp].pwr_eff = pd_public->wl_table[0][opp].dyn_pwr
 					/ pd_public->wl_table[0][opp].capacity;
-
-			offset += CAPACITY_ENTRY_SIZE;
 		}
 
 		pd_public->cur_wl_table = 0;
 		pd_public->table = pd_public->wl_table[0];
-		/* repeated last cap 0 between each cluster */
-		end_cap = ioread16(base + offset);
-		if (end_cap != cap)
-			goto err;
-		offset += CAPACITY_ENTRY_SIZE;
 		cpu_mapping[cpu] = cluster;
 		cluster++;
 	}
+
 	total_cluster = cluster;
 	total_cpu = cpu + 1;
-
 	for (type = 0; type < mtk_mapping.nr_cpu_type; type++) {
 		wl_offset = WL_TBL_START_OFFSET + WL_OFFSET * type;
 		for (cluster = 0; cluster < total_cluster; cluster++) {
@@ -715,9 +723,6 @@ static int init_public_table(void)
 nomem:
 	pr_info("%s: allocate public table for cluster %d and type%d failed\n",
 			__func__, cluster, type);
-err:
-	pr_info("%s: capacity count or value does not match on cluster %d\n",
-			__func__, cluster);
 	free_public_table(cluster, type);
 
 	return -ENOENT;
@@ -726,7 +731,7 @@ err:
 inline unsigned int mtk_get_leakage(unsigned int cpu, unsigned int idx, unsigned int degree)
 {
 	int a, b, c, power, cluster;
-	struct mtk_em_perf_domain *pd;
+	struct mtk_em_perf_domain *pd_public;
 
 	if (info.init != 0x5A5A) {
 		pr_info("[leakage] not yet init!\n");
@@ -735,18 +740,17 @@ inline unsigned int mtk_get_leakage(unsigned int cpu, unsigned int idx, unsigned
 
 	if (cpu > total_cpu)
 		return 0;
-	cluster = cpu_mapping[cpu];
-
-	pd = &mtk_em_pd_ptr_private[cluster];
-	if (idx >= pd->nr_perf_states) {
+	cluster = topology_cluster_id(cpu);
+	pd_public = &mtk_em_pd_ptr_private[cluster];
+	if (idx >= pd_public->nr_perf_states) {
 		pr_debug("%s: %d: input index is out of nr_perf_states\n", __func__,
 				__LINE__);
 		return 0;
 	}
 
-	a = pd->table[idx].leakage_para.a_b_para.a;
-	b = pd->table[idx].leakage_para.a_b_para.b;
-	c = pd->table[idx].leakage_para.c;
+	a = pd_public->table[idx].leakage_para.a_b_para.a;
+	b = pd_public->table[idx].leakage_para.a_b_para.b;
+	c = pd_public->table[idx].leakage_para.c;
 
 	power = degree * (degree * a - b) + c;
 
@@ -830,7 +834,7 @@ EXPORT_SYMBOL_GPL(mtk_get_dsu_freq);
 #define PROC_FOPS_RW(name)                                              \
 	static int name ## _proc_open(struct inode *inode, struct file *file)\
 	{                                                                       \
-		return single_open(file, name ## _proc_show, PDE_DATA(inode));  \
+		return single_open(file, name ## _proc_show, pde_data(inode));  \
 	}                                                                       \
 static const struct proc_ops name ## _proc_fops = {             \
 		.proc_open           = name ## _proc_open,                              \
@@ -843,7 +847,7 @@ static const struct proc_ops name ## _proc_fops = {             \
 #define PROC_FOPS_RO(name)                                                     \
 	static int name##_proc_open(struct inode *inode, struct file *file)    \
 	{                                                                      \
-		return single_open(file, name##_proc_show, PDE_DATA(inode));   \
+		return single_open(file, name##_proc_show, pde_data(inode));   \
 	}                                                                      \
 	static const struct proc_ops name##_proc_fops = {               \
 		.proc_open = name##_proc_open,                                      \
@@ -1031,7 +1035,7 @@ static int mtk_static_power_probe(struct platform_device *pdev)
 	}
 
 	for_each_possible_cpu(cpu) {
-		cluster = cpu_mapping[cpu];
+		cluster = topology_cluster_id(cpu);
 		if (cpu != 0 && cluster == pre_cluster)
 			continue;
 
