@@ -1100,13 +1100,15 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 				atomic_set(&mtk_venc_slb_cb.release_slbc, 0);
 		}
 
-		mtk_v4l2_debug(0, "slb_cb %d/%d perf %d cnt %d/%d",
+		mtk_v4l2_debug(0, "slb_cb %d/%d perf %d cnt %d/%d/%d",
 			atomic_read(&mtk_venc_slb_cb.release_slbc),
 			atomic_read(&mtk_venc_slb_cb.request_slbc),
 			inst->ctx->enc_params.slbc_encode_performance,
 			atomic_read(&mtk_venc_slb_cb.perf_used_cnt),
-			atomic_read(&mtk_venc_slb_cb.later_cnt));
-	} else if (!inst->ctx->use_slbc && atomic_read(&mtk_venc_slb_cb.request_slbc)) {
+			atomic_read(&mtk_venc_slb_cb.later_cnt),
+			inst->ctx->later_cnt_once);
+	} else if (!inst->ctx->use_slbc && atomic_read(&mtk_venc_slb_cb.request_slbc) &&
+		!inst->ctx->enc_params.slbc_cpu_used_performance) {
 		if (slbc_request(&inst->ctx->sram_data) >= 0) {
 			inst->ctx->use_slbc = 1;
 			inst->ctx->slbc_addr = (unsigned int)(unsigned long)
@@ -1148,12 +1150,13 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 		mtk_v4l2_debug(0, "slbc_request %d, 0x%x, 0x%lx\n",
 			inst->ctx->use_slbc, inst->ctx->slbc_addr,
 			(unsigned long)inst->ctx->sram_data.paddr);
-		mtk_v4l2_debug(0, "slb_cb %d/%d perf %d cnt %d/%d",
+		mtk_v4l2_debug(0, "slb_cb %d/%d perf %d cnt %d/%d/%d",
 			atomic_read(&mtk_venc_slb_cb.release_slbc),
 			atomic_read(&mtk_venc_slb_cb.request_slbc),
 			inst->ctx->enc_params.slbc_encode_performance,
 			atomic_read(&mtk_venc_slb_cb.perf_used_cnt),
-			atomic_read(&mtk_venc_slb_cb.later_cnt));
+			atomic_read(&mtk_venc_slb_cb.later_cnt),
+			inst->ctx->later_cnt_once);
 	}
 
 	ret = venc_vcp_ipi_send(inst, &out, sizeof(out), false, true, false);

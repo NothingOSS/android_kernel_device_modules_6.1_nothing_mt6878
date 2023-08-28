@@ -2666,6 +2666,8 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 {
 	struct mtk_vcodec_ctx *ctx = vb2_get_drv_priv(q);
 	struct venc_enc_param param;
+	struct mtk_q_data *q_data_src = &ctx->q_data[MTK_Q_DATA_SRC];
+
 	int ret;
 	int i;
 
@@ -2685,6 +2687,21 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	} else {
 		if (!vb2_start_streaming_called(&ctx->m2m_ctx->out_q_ctx.q))
 			return 0;
+	}
+
+	//release slb for cpu used more perf than venc
+	ctx->enc_params.slbc_cpu_used_performance =
+		(isSLB_CPU_USED_PERFORMANCE_USAGE(q_data_src->visible_width, q_data_src->visible_height,
+		ctx->enc_params.framerate_num/ctx->enc_params.framerate_denom, ctx->dev->enc_slb_cpu_used_perf) &&
+		(ctx->dev->enc_slb_cpu_used_perf > 0));
+	if ((ctx->use_slbc == 1) && (ctx->enc_params.slbc_cpu_used_performance == 1)) {
+		mtk_v4l2_debug(0, "slbc_cpu_used_perf_release, %p\n", &ctx->sram_data);
+		slbc_release(&ctx->sram_data);
+		ctx->use_slbc = 0;
+		ctx->slbc_addr = 0;
+		mtk_v4l2_debug(0, "slbc_cpu_used_perf_release ref %d\n", ctx->sram_data.ref);
+		if (ctx->sram_data.ref <= 0)
+			atomic_set(&mtk_venc_slb_cb.release_slbc, 0);
 	}
 
 	memset(&param, 0, sizeof(param));
@@ -2709,15 +2726,19 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		if (ctx->enc_params.slbc_encode_performance)
 			atomic_inc(&mtk_venc_slb_cb.perf_used_cnt);
 	} else {
-		atomic_inc(&mtk_venc_slb_cb.later_cnt);
-		ctx->later_cnt_once = true;
+		if (!ctx->enc_params.slbc_cpu_used_performance) {
+			atomic_inc(&mtk_venc_slb_cb.later_cnt);
+			ctx->later_cnt_once = true;
+		}
 	}
-	mtk_v4l2_debug(0, "slb_cb %d/%d perf %d cnt %d/%d",
+	mtk_v4l2_debug(0, "slb_cb %d/%d perf %d cnt %d/%d/%d slb_cpu_used_perf %d",
 		atomic_read(&mtk_venc_slb_cb.release_slbc),
 		atomic_read(&mtk_venc_slb_cb.request_slbc),
 		ctx->enc_params.slbc_encode_performance,
 		atomic_read(&mtk_venc_slb_cb.perf_used_cnt),
-		atomic_read(&mtk_venc_slb_cb.later_cnt));
+		atomic_read(&mtk_venc_slb_cb.later_cnt),
+		ctx->later_cnt_once,
+		ctx->enc_params.slbc_cpu_used_performance);
 
 	if (ret) {
 		mtk_v4l2_err("venc_if_set_param failed=%d", ret);

@@ -332,6 +332,7 @@ struct mtk_enc_params {
 	unsigned int    max_h;
 	unsigned int    slbc_ready;
 	unsigned int    slbc_encode_performance;
+	unsigned int    slbc_cpu_used_performance;
 	unsigned int    i_qp;
 	unsigned int    p_qp;
 	unsigned int    b_qp;
@@ -880,6 +881,9 @@ struct mtk_vcodec_dev {
 	bool queued_frame;
 	struct slc_param dec_slc_frame;
 	struct slc_param dec_slc_ube;
+
+	//slb cpu used more performance than venc when throughput is lower than value
+	int enc_slb_cpu_used_perf;
 
 	bool smmu_enabled;
 	unsigned int vp_mode_used_cnt;

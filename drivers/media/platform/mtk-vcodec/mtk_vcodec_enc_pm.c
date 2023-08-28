@@ -221,12 +221,15 @@ void mtk_venc_deinit_ctx_pm(struct mtk_vcodec_ctx *ctx)
 			atomic_dec(&mtk_venc_slb_cb.later_cnt);
 	}
 
-	mtk_v4l2_debug(0, "slb_cb %d/%d perf %d cnt %d/%d",
+	mtk_v4l2_debug(0, "slb_cb %d/%d perf %d cnt %d/%d/%d slb_cpu_used_perf %d",
 		atomic_read(&mtk_venc_slb_cb.release_slbc),
 		atomic_read(&mtk_venc_slb_cb.request_slbc),
 		ctx->enc_params.slbc_encode_performance,
 		atomic_read(&mtk_venc_slb_cb.perf_used_cnt),
-		atomic_read(&mtk_venc_slb_cb.later_cnt));
+		atomic_read(&mtk_venc_slb_cb.later_cnt),
+		ctx->later_cnt_once,
+		ctx->enc_params.slbc_cpu_used_performance);
+
 }
 
 void mtk_vcodec_enc_pw_on(struct mtk_vcodec_pm *pm)

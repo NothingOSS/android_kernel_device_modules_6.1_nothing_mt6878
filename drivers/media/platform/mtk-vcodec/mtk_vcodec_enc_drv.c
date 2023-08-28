@@ -329,7 +329,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	struct mtk_vcodec_dev *dev;
 	struct video_device *vfd_enc;
 	struct resource *res;
-	int i = 0, reg_index = 0, ret;
+	int i = 0, reg_index = 0, ret, slb_cpu_used_pref;
 	int port_num[MTK_VENC_HW_NUM] = {0};
 	const char *name = NULL;
 	int port_args_num = 0, port_data_len = 0, total_port_num = 0;
@@ -468,6 +468,13 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		spin_lock_init(&dev->enc_power_lock[i]);
 		dev->enc_is_power_on[i] = false;
 	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "venc-slb-cpu-used-perf", &slb_cpu_used_pref);
+	if (ret != 0)
+		dev_info(&pdev->dev, "Failed to get venc-slb-cpu-used-perf!");
+
+	dev->enc_slb_cpu_used_perf = slb_cpu_used_pref;
+	pr_info("after get venc-slb-cpu-used-perf %d\n", slb_cpu_used_pref);
 
 	mutex_init(&dev->ctx_mutex);
 	mutex_init(&dev->dev_mutex);

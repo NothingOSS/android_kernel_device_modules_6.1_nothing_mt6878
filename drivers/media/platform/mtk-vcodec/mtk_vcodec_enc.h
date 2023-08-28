@@ -12,6 +12,8 @@
 #include <media/videobuf2-v4l2.h>
 #include "mtk_vcodec_util.h"
 
+#define isSLB_CPU_USED_PERFORMANCE_USAGE(w, h, fr, throughput) \
+		((((w)*(h)*(fr)) <= (throughput)) ? (1) : (0))
 /**
  * struct mtk_video_enc_buf - Private data related to each VB2 buffer.
  * @vb: Pointer to related VB2 buffer.
