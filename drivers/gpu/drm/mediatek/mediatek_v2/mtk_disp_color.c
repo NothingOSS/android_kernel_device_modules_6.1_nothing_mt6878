@@ -79,7 +79,7 @@ struct mtk_disp_color_primary {
 	struct DISP_PQ_DS_PARAM pq_ds_param;
 	struct DISPLAY_PQ_T color_index;
 	struct color_backup color_backup;
-	struct DISP_AAL_DRECOLOR_PARAM drecolor_sgy;
+	struct DISP_AAL_DRECOLOR_PARAM drecolor_param;
 	struct mutex reg_lock;
 };
 
@@ -294,12 +294,12 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 	struct mtk_disp_color *color = comp_to_color(comp);
 	struct DISP_PQ_PARAM *pq_param_p = &primary_data->color_param;
-	struct pq_common_data *pq_data = comp->mtk_crtc->pq_data;
 	int i, j, reg_index;
 	unsigned int pq_index;
 	int wide_gamut_en = 0;
-	/* mask s_gain_by_y when drecolor enable */
-	int s_gain_by_y = !(pq_data->new_persist_property[DISP_DRE_CAPABILITY] & 0x1);
+	/* unmask s_gain_by_y lsp when drecolor enable */
+	int drecolor_sel = primary_data->drecolor_param.drecolor_sel;
+	unsigned int drecolor_unmask = ~((drecolor_sel << 15) | (drecolor_sel << 20));
 
 	if (pq_param_p->u4Brightness >= BRIGHTNESS_SIZE ||
 		pq_param_p->u4Contrast >= CONTRAST_SIZE ||
@@ -326,7 +326,7 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 				| (primary_data->color_index.S_GAIN_BY_Y_EN << 15)
 				| (wide_gamut_en << 8)
 				| (0 << 7),
-				0x003001FF | s_gain_by_y << 15);
+				0x003081FF & drecolor_unmask);
 		} else {
 			/* disable wide_gamut */
 			cmdq_pkt_write(handle, comp->cmdq_base,
@@ -618,7 +618,7 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		u4Temp = 0;
 
 		reg_index = 0;
-		for (i = 0; i < S_GAIN_BY_Y_CONTROL_CNT && s_gain_by_y; i++) {
+		for (i = 0; i < S_GAIN_BY_Y_CONTROL_CNT && !drecolor_sel; i++) {
 			for (j = 0; j < S_GAIN_BY_Y_HUE_PHASE_CNT; j += 4) {
 				u4Temp = (primary_data->color_index.S_GAIN_BY_Y[i][j]) +
 					(primary_data->color_index.S_GAIN_BY_Y[i][j + 1]
@@ -635,19 +635,21 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 				reg_index += 4;
 			}
 		}
-		/* LSP */
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_LSP_1,
-			(primary_data->color_index.LSP[3] << 0) |
-			(primary_data->color_index.LSP[2] << 7) |
-			(primary_data->color_index.LSP[1] << 14) |
-			(primary_data->color_index.LSP[0] << 22), 0x1FFFFFFF);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_LSP_2,
-			(primary_data->color_index.LSP[7] << 0) |
-			(primary_data->color_index.LSP[6] << 8) |
-			(primary_data->color_index.LSP[5] << 16) |
-			(primary_data->color_index.LSP[4] << 23), 0x3FFF7F7F);
+		if (!drecolor_sel) {
+			/* LSP */
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_COLOR_LSP_1,
+				(primary_data->color_index.LSP[3] << 0) |
+				(primary_data->color_index.LSP[2] << 7) |
+				(primary_data->color_index.LSP[1] << 14) |
+				(primary_data->color_index.LSP[0] << 22), 0x1FFFFFFF);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_COLOR_LSP_2,
+				(primary_data->color_index.LSP[7] << 0) |
+				(primary_data->color_index.LSP[6] << 8) |
+				(primary_data->color_index.LSP[5] << 16) |
+				(primary_data->color_index.LSP[4] << 23), 0x3FFF7F7F);
+		}
 	}
 
 	/* color window */
@@ -726,23 +728,41 @@ void DpEngine_COLORonConfig(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	}
 }
 
-static void disp_color_set_sgy(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
-				void *sgy_gain)
+static void disp_color_write_drecolor_hw_reg(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, struct DISP_AAL_DRECOLOR_REG *param)
 {
 	int i, cnt = DRECOLOR_SGY_Y_ENTRY * DRECOLOR_SGY_HUE_NUM / 4;
-	unsigned int *param = sgy_gain;
-	uint32_t value;
+	uint32_t value = 0, mask = 0;
+	unsigned int *sgy_data = (unsigned int *)param->sgy_out_gain;
 
+	SET_VAL_MASK(value, mask, param->sgy_en, FLD_S_GAIN_BY_Y_EN);
+	SET_VAL_MASK(value, mask, param->lsp_en, FLD_LSP_EN);
 	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_COLOR_CFG_MAIN, 1 << 15, 1 << 15);
+		comp->regs_pa + DISP_COLOR_CFG_MAIN, value, mask);
+
+	/* SGY */
 	for (i = 0; i < cnt; i++) {
-		value = param[4 * i] |
-			(param[4 * i + 1]  << 8) |
-			(param[4 * i + 2] << 16) |
-			(param[4 * i + 3] << 24);
+		value = sgy_data[4 * i] |
+			(sgy_data[4 * i + 1]  << 8) |
+			(sgy_data[4 * i + 2] << 16) |
+			(sgy_data[4 * i + 3] << 24);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_S_GAIN_BY_Y0_0 + i * 4, value, ~0);
 	}
+
+	/* LSP */
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_COLOR_LSP_1,
+		(param->lsp_out_setting[3] << 0) |
+		(param->lsp_out_setting[2] << 7) |
+		(param->lsp_out_setting[1] << 14) |
+		(param->lsp_out_setting[0] << 22), 0x1FFFFFFF);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_COLOR_LSP_2,
+		(param->lsp_out_setting[7] << 0) |
+		(param->lsp_out_setting[6] << 8) |
+		(param->lsp_out_setting[5] << 16) |
+		(param->lsp_out_setting[4] << 23), 0x3FFF7F7F);
 }
 
 static void color_write_hw_reg(struct mtk_ddp_comp *comp,
@@ -756,11 +776,11 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 	struct mtk_disp_color_primary *primary_data = color->primary_data;
 	int i, j, reg_index;
 	int wide_gamut_en = 0;
-	/* mask s_gain_by_y when drecolor enable */
-	struct pq_common_data *pq_data = comp->mtk_crtc->pq_data;
-	int s_gain_by_y = !(pq_data->new_persist_property[DISP_DRE_CAPABILITY] & 0x1);
+	/* unmask s_gain_by_y lsp when drecolor enable */
+	int drecolor_sel = primary_data->drecolor_param.drecolor_sel;
+	unsigned int drecolor_unmask = ~((drecolor_sel << 15) | (drecolor_sel << 20));
 
-	DDPINFO("%s,SET COLOR REG id(%d) sgy %d\n", __func__, comp->id, s_gain_by_y);
+	DDPINFO("%s,SET COLOR REG id(%d) drecolor_sel %d\n", __func__, comp->id, drecolor_sel);
 
 	if (primary_data->color_bypass == 0) {
 		if (color->data->support_color21 == true) {
@@ -771,7 +791,7 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 				| (color_reg->S_GAIN_BY_Y_EN << 15)
 				| (wide_gamut_en << 8)
 				| (0 << 7),
-				0x003001FF | s_gain_by_y << 15);
+				0x003081FF | drecolor_unmask);
 		} else {
 			/* disable wide_gamut */
 			cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1053,7 +1073,7 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 		u4Temp = 0;
 
 		reg_index = 0;
-		for (i = 0; i < S_GAIN_BY_Y_CONTROL_CNT && s_gain_by_y; i++) {
+		for (i = 0; i < S_GAIN_BY_Y_CONTROL_CNT && !drecolor_sel; i++) {
 			for (j = 0; j < S_GAIN_BY_Y_HUE_PHASE_CNT; j += 4) {
 				u4Temp = (color_reg->S_GAIN_BY_Y[i][j]) +
 					(color_reg->S_GAIN_BY_Y[i][j + 1]
@@ -1071,19 +1091,21 @@ static void color_write_hw_reg(struct mtk_ddp_comp *comp,
 				reg_index += 4;
 			}
 		}
-		/* LSP */
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_LSP_1,
-			(primary_data->color_index.LSP[3] << 0) |
-			(primary_data->color_index.LSP[2] << 7) |
-			(primary_data->color_index.LSP[1] << 14) |
-			(primary_data->color_index.LSP[0] << 22), 0x1FFFFFFF);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_LSP_2,
-			(primary_data->color_index.LSP[7] << 0) |
-			(primary_data->color_index.LSP[6] << 8) |
-			(primary_data->color_index.LSP[5] << 16) |
-			(primary_data->color_index.LSP[4] << 23), 0x3FFF7F7F);
+		if (!drecolor_sel) {
+			/* LSP */
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_COLOR_LSP_1,
+				(primary_data->color_index.LSP[3] << 0) |
+				(primary_data->color_index.LSP[2] << 7) |
+				(primary_data->color_index.LSP[1] << 14) |
+				(primary_data->color_index.LSP[0] << 22), 0x1FFFFFFF);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_COLOR_LSP_2,
+				(primary_data->color_index.LSP[7] << 0) |
+				(primary_data->color_index.LSP[6] << 8) |
+				(primary_data->color_index.LSP[5] << 16) |
+				(primary_data->color_index.LSP[4] << 23), 0x3FFF7F7F);
+		}
 	}
 
 	/* color window */
@@ -1219,8 +1241,6 @@ static void mtk_color_config(struct mtk_ddp_comp *comp,
 	struct mtk_disp_color *color = comp_to_color(comp);
 	struct mtk_disp_color_primary *primary_data = color->primary_data;
 	unsigned int width;
-	struct DISP_AAL_DRECOLOR_PARAM *drecolor_sgy = &color->primary_data->drecolor_sgy;
-	struct pq_common_data *pq_data = comp->mtk_crtc->pq_data;
 	unsigned int overhead_v;
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support)
@@ -1253,15 +1273,6 @@ static void mtk_color_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_HEIGHT(color), roi_height + overhead_v * 2, ~0);
 	}
-
-	mutex_lock(&primary_data->reg_lock);
-	if ((pq_data->new_persist_property[DISP_DRE_CAPABILITY] & 0x1) &&
-		drecolor_sgy->sgy_trans_trigger) {
-		DDPINFO("%s set sgy\n", __func__);
-		disp_color_set_sgy(comp, handle, drecolor_sgy->sgy_out_gain);
-	}
-	mutex_unlock(&primary_data->reg_lock);
-
 	// set color_8bit_switch register
 	if (cfg->source_bpc == 8)
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -2601,12 +2612,15 @@ static void mtk_color_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	//struct mtk_disp_color *color = comp_to_color(comp);
 	struct mtk_disp_color_primary *primary_data =
 		comp_to_color(comp)->primary_data;
+	struct DISP_AAL_DRECOLOR_PARAM *drecolor = &primary_data->drecolor_param;
 
 	DpEngine_COLORonInit(comp, handle);
 
 	mutex_lock(&primary_data->reg_lock);
 	if (primary_data->color_reg_valid) {
 		color_write_hw_reg(comp, &primary_data->color_reg, handle);
+		if (drecolor->drecolor_sel)
+			disp_color_write_drecolor_hw_reg(comp, handle, &drecolor->drecolor_reg);
 		mutex_unlock(&primary_data->reg_lock);
 	} else {
 		mutex_unlock(&primary_data->reg_lock);
@@ -2689,30 +2703,30 @@ void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
 	}
 }
 
-static int mtk_color_cfg_drecolor_set_sgy(struct mtk_ddp_comp *comp,
+static int mtk_color_cfg_drecolor_set_param(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
 	struct mtk_disp_color *priv_data = comp_to_color(comp);
-	struct mtk_disp_color_primary *primary_data =
-			comp_to_color(comp)->primary_data;
+	struct mtk_disp_color_primary *primary_data = comp_to_color(comp)->primary_data;
 	struct DISP_AAL_DRECOLOR_PARAM *param = data;
-	struct DISP_AAL_DRECOLOR_PARAM *drecolor_sgy = &priv_data->primary_data->drecolor_sgy;
+	struct DISP_AAL_DRECOLOR_PARAM *prev_param = &priv_data->primary_data->drecolor_param;
 
 	if (sizeof(struct DISP_AAL_DRECOLOR_PARAM) < data_size) {
 		DDPPR_ERR("%s param size error %lu, %u\n", __func__, sizeof(*param), data_size);
 		return -EFAULT;
 	}
+	DDPINFO("%s sel %d,prev_sel %d\n", __func__, param->drecolor_sel, prev_param->drecolor_sel);
 	mutex_lock(&primary_data->reg_lock);
-	memcpy(drecolor_sgy, param, sizeof(struct DISP_AAL_DRECOLOR_PARAM));
-	if (!drecolor_sgy->sgy_trans_trigger) {
+	if (!param->drecolor_sel) {
 		DDPINFO("%s set skip\n", __func__);
+		prev_param->drecolor_sel = param->drecolor_sel;
 		mutex_unlock(&primary_data->reg_lock);
 		return 0;
 	}
-	DDPINFO("%s set now\n", __func__);
-	disp_color_set_sgy(comp, handle, drecolor_sgy->sgy_out_gain);
+	memcpy(prev_param, param, sizeof(struct DISP_AAL_DRECOLOR_PARAM));
+	disp_color_write_drecolor_hw_reg(comp, handle, &param->drecolor_reg);
 	if (comp->mtk_crtc->is_dual_pipe)
-		disp_color_set_sgy(priv_data->companion, handle, drecolor_sgy->sgy_out_gain);
+		disp_color_write_drecolor_hw_reg(priv_data->companion, handle, &param->drecolor_reg);
 	mutex_unlock(&primary_data->reg_lock);
 	return 0;
 }
@@ -2746,8 +2760,8 @@ static int mtk_color_pq_frame_config(struct mtk_ddp_comp *comp,
 	case PQ_COLOR_SET_WINDOW:
 		ret = mtk_drm_color_cfg_pq_set_window(comp, handle, data, data_size);
 		break;
-	case PQ_COLOR_DRECOLOR_SET_SGY:
-		ret = mtk_color_cfg_drecolor_set_sgy(comp, handle, data, data_size);
+	case PQ_COLOR_DRECOLOR_SET_PARAM:
+		ret = mtk_color_cfg_drecolor_set_param(comp, handle, data, data_size);
 		break;
 	default:
 		break;

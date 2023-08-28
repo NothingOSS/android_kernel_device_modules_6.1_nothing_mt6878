@@ -72,6 +72,8 @@ struct mtk_disp_color_data {
 
 /* Register */
 #define DISP_COLOR_CFG_MAIN			0x0400
+#define FLD_S_GAIN_BY_Y_EN REG_FLD_MSB_LSB(15, 15)
+#define FLD_LSP_EN REG_FLD_MSB_LSB(20, 20)
 #define DISP_COLOR_WIN_X_MAIN		0x40c
 #define DISP_COLOR_WIN_Y_MAIN		0x410
 #define DISP_COLOR_DBG_CFG_MAIN		0x420

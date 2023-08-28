@@ -515,13 +515,8 @@ static int mtk_drm_ioctl_aal_eventctl_impl(struct mtk_ddp_comp *comp, void *data
 
 	AALFLOW_LOG("0x%x\n", events);
 	delay_trigger = atomic_read(&aal_data->primary_data->force_delay_check_trig);
-	if (enable) {
-		DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
-		mtk_drm_idlemgr_kick(__func__,
-				&comp->mtk_crtc->base, 0);
-		mtk_crtc_check_trigger(comp->mtk_crtc, delay_trigger, false);
-		DDP_MUTEX_UNLOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
-	}
+	if (enable)
+		mtk_crtc_check_trigger(comp->mtk_crtc, delay_trigger, true);
 	if (atomic_read(&aal_data->primary_data->force_enable_irq)) {
 		enable = 1;
 		bypass = 0;
