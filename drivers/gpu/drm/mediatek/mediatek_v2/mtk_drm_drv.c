@@ -3860,11 +3860,11 @@ static const struct mtk_addon_scenario_data mt6983_addon_dp_wo_tdshp[ADDON_SCN_N
 static const struct mtk_addon_scenario_data mt6989_addon_dp_wo_tdshp[ADDON_SCN_NR] = {
 	[NONE] = {
 		.module_num = 0,
-		.hrt_type = HRT_TB_TYPE_GENERAL1,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
 	},
 	[TRIPLE_DISP] = {
 		.module_num = 0,
-		.hrt_type = HRT_TB_TYPE_GENERAL1,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
 	},
 };
 
