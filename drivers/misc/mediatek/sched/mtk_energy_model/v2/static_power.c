@@ -29,6 +29,7 @@
 
 #define __LKG_PROCFS__ 0
 #define __LKG_DEBUG__ 0
+#define __DYN_CHECK__ 0
 
 #define LUT_FREQ			GENMASK(11, 0)
 #define LUT_NR_TOTAL_TYPE	GENMASK(7, 0)
@@ -40,7 +41,7 @@
 #define LUT_ROW_SIZE		0x4
 
 static struct eemsn_log *eemsn_log;
-static void __iomem *usram_base, *csram_base, *wl_base;
+static void __iomem *usram_base, *csram_base, *wl_base, *curve_adj_base;
 struct mtk_em_perf_domain *pds;
 
 struct mtk_em_perf_domain *mtk_em_pd_ptr_public;
@@ -50,7 +51,7 @@ struct mtk_dsu_em mtk_dsu_em;
 struct leakage_data info;
 static unsigned int total_cpu, total_cluster;
 static unsigned int cpu_mapping[16];
-static bool wl_support;
+static bool wl_support, curve_adj_support;
 
 bool is_wl_support(void)
 {
@@ -182,7 +183,7 @@ disable_wl:
 static int init_dsu_em(void)
 {
 	u32 data;
-	int type, opp, ret;
+	int type, opp, nr_opp = 0;
 	unsigned long dsu_freq_offset, dsu_em_offset;
 
 	if (!is_wl_support())
@@ -196,7 +197,7 @@ static int init_dsu_em(void)
 		goto nomem;
 
 	for (type = 0; type < mtk_dsu_em.nr_dsu_type; type++) {
-		unsigned int cur_dyn_pwr = 0, pre_dyn_pwr = 0;
+		unsigned int cur_freq = 0, pre_freq = 0;
 
 		dsu_em_offset = WL_DSU_EM_START + WL_DSU_EM_OFFSET * type;
 		dsu_freq_offset = DSU_FREQ_OFFSET;
@@ -206,16 +207,18 @@ static int init_dsu_em(void)
 		if (!mtk_dsu_em.dsu_wl_table[type])
 			goto err;
 
-		for (opp = 0; opp < MAX_NR_FREQ; opp++) {
-			cur_dyn_pwr = readl_relaxed(wl_base + dsu_em_offset + 0x4);
-			if (cur_dyn_pwr == pre_dyn_pwr)
-				break;
-
+		for (opp = 0, pre_freq = 0; opp < MAX_NR_FREQ; opp++) {
 			if (type == 0) {
 				data = readl_relaxed(csram_base + dsu_freq_offset +
 										opp * 0x4);
+				cur_freq = FIELD_GET(LUT_FREQ, data) * 1000;
+				if (cur_freq == pre_freq) {
+					nr_opp = opp;
+					break;
+				}
+
 				mtk_dsu_em.dsu_wl_table[type][opp].dsu_frequency
-					= FIELD_GET(LUT_FREQ, data) * 1000;
+					= cur_freq;
 				mtk_dsu_em.dsu_wl_table[type][opp].dsu_volt
 					= (unsigned int) eemsn_log->det_log[total_cluster]
 					.volt_tbl_init2[opp] * VOLT_STEP;
@@ -231,21 +234,15 @@ static int init_dsu_em(void)
 			mtk_dsu_em.dsu_wl_table[type][opp].emi_bandwidth
 				= ioread16(wl_base + dsu_em_offset + 0x2);
 			mtk_dsu_em.dsu_wl_table[type][opp].dynamic_power
-				= cur_dyn_pwr;
+				= readl_relaxed(wl_base + dsu_em_offset + 0x4);
 			dsu_em_offset += 0x8;
-			pre_dyn_pwr = cur_dyn_pwr;
+			pre_freq = cur_freq;
 		}
 
-		mtk_dsu_em.nr_perf_states = opp;
+		mtk_dsu_em.nr_perf_states = nr_opp;
 	}
 
 	mtk_dsu_em.dsu_table = mtk_dsu_em.dsu_wl_table[0];
-	ret = init_mtk_weighting();
-	if (ret < 0) {
-		pr_info("%s: initialize weighting failed, ret: %d\n",
-				__func__, ret);
-		goto err;
-	}
 
 out:
 	return 0;
@@ -534,6 +531,7 @@ static void free_public_table(int pd_count, int type)
 	kfree(mtk_em_pd_ptr_public);
 }
 
+#if __DYN_CHECK__
 void check_dyn_pwr_is_valid(int type, int opp, int next_dyn_pwr,
 			struct mtk_em_perf_domain *pd_public)
 {
@@ -541,6 +539,61 @@ void check_dyn_pwr_is_valid(int type, int opp, int next_dyn_pwr,
 		pr_info("dyn pwr err: type%d: pd%d:	opp%d: cur pwr: %d, next pwr: %d\n",
 			type, pd_public->cluster_num, opp,
 			pd_public->wl_table[type][opp].dyn_pwr, next_dyn_pwr);
+}
+#endif
+
+int check_curve_adj_support(struct device_node *dvfs_node)
+{
+	struct device_node *curve_adj_node;
+
+	curve_adj_node = of_parse_phandle(dvfs_node, "curve-adj-base", 0);
+	if (curve_adj_node) {
+		curve_adj_base = of_iomap(curve_adj_node, 0);
+		if (!curve_adj_base) {
+			curve_adj_support = false;
+			return -ENODEV;
+		}
+
+		curve_adj_support = true;
+		pr_info("%s: curve adjustment enable\n", __func__);
+	} else
+		curve_adj_support = false;
+
+	return 0;
+}
+
+int mtk_get_volt_table(void)
+{
+	void __iomem *volt_base = curve_adj_base;
+	unsigned int cur_cluster, cpu, opp, type;
+	struct mtk_em_perf_domain *pd_public;
+	u32 volt;
+
+	/* CPU */
+	for_each_possible_cpu(cpu) {
+		cur_cluster = topology_cluster_id(cpu);
+		pd_public = &mtk_em_pd_ptr_public[cur_cluster];
+		for (opp = 0; opp < pd_public->nr_perf_states; opp++) {
+			volt = readl_relaxed((volt_base + opp * LUT_ROW_SIZE));
+			pd_public->wl_table[0][opp].volt = volt;
+		}
+		cpu = cpumask_last(pd_public->cpumask);
+		volt_base += CLUSTER_VOLT_SIZE;
+	}
+
+	/* DSU */
+	for (opp = 0; opp < mtk_dsu_em.nr_perf_states; opp++) {
+		volt = readl_relaxed((volt_base + opp * LUT_ROW_SIZE));
+		mtk_dsu_em.dsu_wl_table[0][opp].dsu_volt = volt;
+	}
+
+	for (type = 0; type < mtk_dsu_em.nr_dsu_type; type++) {
+		for (opp = 0; opp < mtk_dsu_em.nr_perf_states; opp++)
+			mtk_dsu_em.dsu_wl_table[type][opp].dsu_volt =
+				mtk_dsu_em.dsu_wl_table[0][opp].dsu_volt;
+	}
+
+	return 0;
 }
 
 void arch_get_cluster_cpus(struct cpumask *cpus, int cluster_id)
@@ -561,7 +614,7 @@ int mtk_create_freq_table(void)
 	struct mtk_em_perf_domain *pd_public;
 	void __iomem *freq_base = csram_base + CSRAM_TBL_OFFSET;
 	void __iomem *pwr_base = csram_base + CSRAM_PWR_OFFSET;
-	int i, cpu, cur_cluster = 0, freq, prev_freq;
+	unsigned int i, cpu, cur_cluster = 0, freq, prev_freq;
 	struct cpumask cpu_mask;
 	u32 data;
 
@@ -624,7 +677,8 @@ int mtk_create_freq_table(void)
  */
 static int init_public_table(void)
 {
-	unsigned int ret = 0, cpu, opp, cluster = 0, type = 0;
+	unsigned int cpu, opp, cluster = 0, type = 0;
+	int ret = 0;
 	unsigned long wl_offset;
 	struct mtk_em_perf_domain *pd_public;
 
@@ -662,6 +716,16 @@ static int init_public_table(void)
 
 	total_cluster = cluster;
 	total_cpu = cpu + 1;
+	ret = init_dsu_em();
+	if (ret < 0) {
+		pr_info("%s: initialize DSU EM failed, ret: %d\n",
+				__func__, ret);
+		return ret;
+	}
+
+	if (curve_adj_support)
+		mtk_get_volt_table();
+
 	for (type = 0; type < mtk_mapping.nr_cpu_type; type++) {
 		wl_offset = WL_TBL_START_OFFSET + WL_OFFSET * type;
 		for (cluster = 0; cluster < total_cluster; cluster++) {
@@ -692,11 +756,12 @@ static int init_public_table(void)
 						readl_relaxed(wl_base + wl_offset + 0x4);
 					/* Check whether data is correct */
 					if (opp == pd_public->nr_perf_states - 1) {
+#if __DYN_CHECK__
 						int next_dyn_pwr = readl_relaxed(wl_base +
 							wl_offset + 0xC);
-
 						check_dyn_pwr_is_valid(type, opp,
 									next_dyn_pwr, pd_public);
+#endif
 						wl_offset += 0x8;
 					}
 				} else {
@@ -718,6 +783,12 @@ static int init_public_table(void)
 		}
 	}
 	pr_info("%s: total_cluster: %d\n", __func__, total_cluster);
+
+	ret = init_mtk_weighting();
+	if (ret < 0) {
+		pr_info("%s: initialize weighting failed, ret: %d\n",
+				__func__, ret);
+	}
 
 	return 0;
 nomem:
@@ -1002,6 +1073,10 @@ static int mtk_static_power_probe(struct platform_device *pdev)
 		goto error;
 	}
 
+	ret = check_curve_adj_support(dvfs_node);
+	if (ret)
+		pr_info("%s: Failed to check curve adj support: %d\n", __func__, ret);
+
 	ret = check_wl_support();
 	if (ret)
 		pr_info("%s: Failed to check wl support: %d\n", __func__, ret);
@@ -1016,13 +1091,6 @@ static int mtk_static_power_probe(struct platform_device *pdev)
 	ret = init_public_table();
 	if (ret < 0) {
 		pr_info("%s: initialize public table failed, ret: %d\n",
-				__func__, ret);
-		return ret;
-	}
-
-	ret = init_dsu_em();
-	if (ret < 0) {
-		pr_info("%s: initialize DSU EM failed, ret: %d\n",
 				__func__, ret);
 		return ret;
 	}
