@@ -3,42 +3,41 @@
  * Copyright (c) 2021 MediaTek Inc.
  */
 
-#include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/init.h>
-#include <linux/moduleparam.h>
-#include <linux/slab.h>
-#include <linux/unistd.h>
-#include <linux/sched.h>
-#include <linux/fs.h>
-#include <linux/uaccess.h>
-#include <linux/version.h>
-#include <linux/spinlock.h>
-#include <linux/semaphore.h>
-#include <linux/delay.h>
-#include <linux/kthread.h>
-#include <linux/errno.h>
-#include <linux/cdev.h>
-#include <linux/device.h>
-#include <linux/mutex.h>
-#include <linux/string.h>
-#include <linux/random.h>
-#include <linux/memory.h>
-#include <linux/io.h>
-#include <linux/proc_fs.h>
 #include <crypto/hash.h>
-
-#include <linux/rpmb.h>
-
-#include <linux/scatterlist.h>
+#include <linux/cdev.h>
+#include <linux/delay.h>
+#include <linux/device.h>
+#include <linux/errno.h>
+#include <linux/fs.h>
+#include <linux/init.h>
+#include <linux/io.h>
+#include <linux/kernel.h>
+#include <linux/kthread.h>
+#include <linux/memory.h>
 #include <linux/mmc/card.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
-#include <linux/of.h>
-#include <net/sock.h>
-#include <net/net_namespace.h>
+#include <linux/module.h>
+#include <linux/moduleparam.h>
+#include <linux/mutex.h>
 #include <linux/netlink.h>
+#include <linux/of.h>
+#include <linux/proc_fs.h>
+#include <linux/random.h>
+#include <linux/rpmb.h>
+#include <linux/scatterlist.h>
+#include <linux/sched.h>
+#include <linux/semaphore.h>
+#include <linux/slab.h>
+#include <linux/spinlock.h>
+#include <linux/string.h>
+#include <linux/uaccess.h>
+#include <linux/unistd.h>
+#include <linux/version.h>
+#include <net/genetlink.h>
+#include <net/net_namespace.h>
+#include <net/sock.h>
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 #include <linux/platform_device.h>
@@ -77,10 +76,11 @@ static struct dciMessage_t *rpmb_gp_dci;
 #ifdef __RPMB_KERNEL_NL_SUPPORT
 struct sock *rpmb_mtk_sock;
 static u32 nl_pid = 100;
-#define NETLINK_RPMB_MTK 27
 
 wait_queue_head_t wait_rpmb;
 static bool rpmb_done_flag;
+static bool rpmb_rsp_valid;
+/* protect nl_rpmb_req */
 struct mutex rpmb_lock;
 
 /**
@@ -102,8 +102,11 @@ struct nl_rpmb_send_req {
 	u8  region;
 	u8 __reserved1;
 	u16 __reserved2;
-	u8  payload[MAX_RPMB_REQUEST_SIZE + 512];
+	u8 payload[MAX_RPMB_REQUEST_SIZE + 512];
 };
+
+#define RPMB_REQ_HDR_SIZE \
+	(sizeof(struct nl_rpmb_send_req) - MAX_RPMB_REQUEST_SIZE - 512)
 
 static struct nl_rpmb_send_req nl_rpmb_req;
 #endif
@@ -204,18 +207,18 @@ enum {
 /* Debug message event */
 #define DBG_EVT_NONE (0) /* No event */
 #define DBG_EVT_CMD  (1U << 0)/* SEC CMD related event */
-#define DBG_EVT_FUNC (1U << 1U)/* SEC function event */
+#define DBG_EVT_DBG  (1U << 1U)/* SEC DBG event */
 #define DBG_EVT_INFO (1U << 2U)/* SEC information event */
 #define DBG_EVT_WRN  (1U << 30U) /* Warning event */
 #define DBG_EVT_ERR  (0x80000000U) /* Error event, 1 << 31 */
 #ifdef __RPMB_MTK_DEBUG_MSG
-#define DBG_EVT_DBG_INFO  (DBG_EVT_ERR) /* Error event */
+#define DBG_EVT_DBG_INFO  (DBG_EVT_INFO) /* Error event */
 #else
-#define DBG_EVT_DBG_INFO  (1U << 2U) /* Information event */
+#define DBG_EVT_DBG_INFO  (DBG_EVT_DBG) /* Information event */
 #endif
 #define DBG_EVT_ALL  (0xffffffffU)
 
-static u32 dbg_evt = DBG_EVT_ALL;
+static u32 dbg_evt = (DBG_EVT_INFO | DBG_EVT_WRN | DBG_EVT_ERR);
 #define DBG_EVT_MASK (dbg_evt)
 
 #define MSG(evt, fmt, args...) \
@@ -411,9 +414,9 @@ static int nl_rpmb_cmd_req(const struct rpmb_data *rpmbd, u8 region)
 	cnt_out = rpmbd->ocmd.nframes;
 	type = rpmbd->req_type;
 	write_buf = req->payload;
-	req->region = region;
 
 	mutex_lock(&rpmb_lock);
+	req->region = region;
 
 	switch (type) {
 	case RPMB_PROGRAM_KEY:
@@ -461,11 +464,13 @@ static int nl_rpmb_cmd_req(const struct rpmb_data *rpmbd, u8 region)
 		return -EINVAL;
 	}
 
+	/* clear flag */
+	rpmb_done_flag = false;
+	rpmb_rsp_valid = false;
 
-	rpmb_done_flag = false; /* clear flag */
-	msg_len = 16 + req->reliable_write_size + req->write_size;
+	msg_len = RPMB_REQ_HDR_SIZE + req->reliable_write_size + req->write_size;
 
-	ret = rpmb_mtk_snd_msg(&nl_rpmb_req, msg_len);
+	ret = rpmb_mtk_snd_msg(req, msg_len);
 	if (ret != 0) {
 		MSG(ERR, "%s, rpmb message IO error!!!(0x%x)\n",
 		    __func__, ret);
@@ -479,16 +484,25 @@ static int nl_rpmb_cmd_req(const struct rpmb_data *rpmbd, u8 region)
 	if (ret == 0) {
 		MSG(ERR, "[%s] rpmb operation timeout.", __func__);
 		ret = -ETIMEDOUT;
+		goto out;
 	}
 
-	/* copy frame to rpmb_data */
+	if (!rpmb_rsp_valid) {
+		MSG(ERR, "[%s] response invalid.", __func__);
+		ret = -EAGAIN;
+		goto out;
+	}
+
+	/* copy frame to rpmb_data only if valid */
 	read_buf = req->payload;
 	if (req->read_size)
 		memcpy(rpmbd->ocmd.frames, read_buf, req->read_size);
 
+	ret = 0;
+out:
 	mutex_unlock(&rpmb_lock);
 
-	return 0;
+	return ret;
 }
 #endif
 
@@ -691,8 +705,6 @@ static int rpmb_req_read_data_ufs(u8 *frame, u32 blk_cnt)
 
 	MSG(DBG_INFO, "%s: result 0x%x\n", __func__,
 		rpmbdata.ocmd.frames->result);
-
-	MSG(DBG_INFO, "%s: ret 0x%x\n", __func__, ret);
 
 	return ret;
 }
@@ -2774,88 +2786,166 @@ static int rpmb_close(struct inode *pinode, struct file *pfile)
 }
 
 #ifdef __RPMB_KERNEL_NL_SUPPORT
+
+static int rpmb_mtk_rcv_msg(struct sk_buff *skb, struct genl_info *info);
+
+#define RPMB_GENL_PORT 0
+enum rpmb_cmds {
+	RPMB_GENL_CMD_UNSPEC,
+	RPMB_GENL_CMD_REQ,  /* kernel to proxy*/
+	RPMB_GENL_CMD_RESP,      /* proxy to kernel */
+	__RPMB_GENL_CMD_MAX
+};
+
+/* attributes */
+enum {
+	RPMB_GENL_ATTR_UNSPEC,
+	RPMB_GENL_ATTR_REQ,
+	__RPMB_GENL_ATTR_MAX
+};
+
+#define RPMB_GENL_ATTR_MAX (__RPMB_GENL_ATTR_MAX + 1)
+
+/* attribute policy */
+static struct nla_policy rpmb_genl_pols[RPMB_GENL_ATTR_MAX + 1] = {
+	[RPMB_GENL_ATTR_REQ] = NLA_POLICY_RANGE(NLA_BINARY, 16, sizeof(struct nl_rpmb_send_req)),
+};
+
+
+/* Operations for our Generic Netlink family */
+static struct genl_ops genl_ops[] = {
+	{
+		.cmd	= RPMB_GENL_CMD_RESP,
+		.policy = rpmb_genl_pols,
+		.doit	= rpmb_mtk_rcv_msg,
+	 },
+};
+
+/* family definition */
+static struct genl_family rpmb_genlf = {
+	  .name = "rpmb_genl",
+	  .version = 1,
+	  .ops = genl_ops,
+	  .n_ops = ARRAY_SIZE(genl_ops),
+	  .maxattr = RPMB_GENL_ATTR_MAX,
+	  .policy = rpmb_genl_pols,
+};
+
+static bool rpmb_genl_inited;
+
 static int rpmb_mtk_snd_msg(void *pbuf, u16 len)
 {
 	struct sk_buff *skb = NULL;
-	struct nlmsghdr *nlh = NULL;
-	static int nlseq;
+	void *hdr;
 	int ret;
 
-	if (rpmb_mtk_sock == NULL) {
-		MSG(ERR, "%s netlink not ready\n", __func__);
+	if (!rpmb_genl_inited) {
+		MSG(ERR, "%s: rpmb genl not ready\n", __func__);
 		return -EIO;
 	}
 
-	skb = nlmsg_new(len, GFP_ATOMIC);
+	MSG(DBG_INFO, "%s:enter, len=%d, id=%d\n", __func__, len, rpmb_genlf.id);
+
+	skb = genlmsg_new(len, GFP_ATOMIC);
 	if (!skb) {
-		MSG(ERR, "%s netlink alloc failure\n", __func__);
-		ret = -ENOBUFS;
-		goto send_fail;
+		MSG(ERR, "%s: genl alloc failure\n", __func__);
+		return -ENOBUFS;
 	}
 
-	nlh = nlmsg_put(skb, nl_pid, nlseq, NETLINK_RPMB_MTK, len, 0);
-	if (!nlh) {
-		MSG(ERR, "%s nlmsg_put failure\n", __func__);
-		ret = -ENOBUFS;
-		nlmsg_free(skb);
-		goto send_fail;
+	hdr = genlmsg_put(skb, nl_pid, 0, &rpmb_genlf, 0, RPMB_GENL_CMD_REQ);
+	if (unlikely(!hdr)) {
+		MSG(ERR, "%s: genl msg put failure\n", __func__);
+		ret = -EIO;
+		goto failed;
 	}
 
-	memcpy(nlmsg_data(nlh), pbuf, len);
+	ret = nla_put(skb, RPMB_GENL_ATTR_REQ, len, pbuf);
+	if (ret) {
+		MSG(ERR, "%s: genl attr(%d) put failure\n", __func__, RPMB_GENL_ATTR_REQ);
+		goto failed;
+	}
 
-	ret = netlink_unicast(rpmb_mtk_sock, skb, nl_pid, MSG_DONTWAIT);
+	genlmsg_end(skb, hdr);
+
+	ret = genlmsg_unicast(&init_net, skb, nl_pid);
 	if (ret < 0) {
-		MSG(ERR, "%s send failed ret=%d, pid=%d\n",
-			__func__, ret, nl_pid);
+		MSG(ERR, "%s: genl send failed ret=%d\n",
+			__func__, ret);
 		goto send_fail;
 	}
 
 	return 0;
-
+failed:
+	nlmsg_free(skb);
 send_fail:
 	return ret;
 }
 
-static void rpmb_mtk_rcv_msg(struct sk_buff *skb)
+static int rpmb_mtk_rcv_msg(struct sk_buff *skb, struct genl_info *info)
 {
-	struct nlmsghdr *nlh = NULL;
-	void *data;
+	int ret = 0;
+	struct nlattr *attr;
 	struct nl_rpmb_send_req *req = &nl_rpmb_req;
 
-	if (skb->len >= NLMSG_HDRLEN) {
-
-		nlh = nlmsg_hdr(skb);
-		data = NLMSG_DATA(nlh);
-
-		/* Copy data to rpmb frame */
-		memcpy(req, data, 16);
-		if (req->read_size % 512 == 0 &&
-			req->read_size <= MAX_RPMB_REQUEST_SIZE) {
-			memcpy(&req->payload[0], (void *)(data + 16),
-				req->read_size);
-		}
-
-		/* Wakeup rpmb thread */
-		rpmb_done_flag = true;
-		wake_up(&wait_rpmb);
+	if (!info) {
+		MSG(ERR, "%s: invalid info", __func__);
+		ret = -EINVAL;
+		goto out;
 	}
+
+	MSG(DBG_INFO, "%s:enter sender.portid=%d, seq=%d\n", __func__, info->snd_portid, info->snd_seq);
+
+	if (!info->attrs) {
+		MSG(ERR, "%s: invalid attrs", __func__);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	attr = info->attrs[RPMB_GENL_ATTR_REQ];
+	if (!attr) {
+		MSG(ERR, "%s: empty attr", __func__);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	MSG(DBG_INFO, "%s: attr.type=%d, attr.len=%d\n", __func__, attr->nla_type, attr->nla_len);
+
+	if (nla_len(attr) != req->read_size) {
+		MSG(ERR, "%s: read size (%d!=%d) mismatched.", __func__, req->read_size, nla_len(attr));
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (req->read_size % 512 == 0 && req->read_size <= MAX_RPMB_REQUEST_SIZE) {
+		/* Copy rpmb response frames to payload */
+		memcpy(req->payload, nla_data(attr), nla_len(attr));
+	} else {
+		MSG(ERR, "%s: invalid read size %d", __func__, req->read_size);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	rpmb_rsp_valid = true;
+out:
+	/* Wakeup rpmb thread */
+	rpmb_done_flag = true;
+	wake_up(&wait_rpmb);
+	return ret;
 }
+
 static int rpmb_create_netlink(void)
 {
-	struct netlink_kernel_cfg cfg = {
-		.input = rpmb_mtk_rcv_msg,
-	};
+	int ret = 0;
 
-	rpmb_mtk_sock = netlink_kernel_create(&init_net,
-		NETLINK_RPMB_MTK, &cfg);
-
-	if (rpmb_mtk_sock == NULL) {
-		MSG(ERR, "netlink_kernel_create error\n");
-		return -EIO;
+	ret = genl_register_family(&rpmb_genlf);
+	if (ret) {
+		MSG(ERR, "%s: genl_register_family error\n", __func__);
+		return ret;
 	}
+	rpmb_genl_inited = true;
 
-	MSG(INFO, "%s netlink_kernel_create protocol = %d\n",
-		__func__, NETLINK_RPMB_MTK);
+	MSG(INFO, "%s: Family ver.=%d, id=%d\n", __func__,
+		rpmb_genlf.version, rpmb_genlf.id);
 
 	return 0;
 }
