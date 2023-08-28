@@ -407,7 +407,7 @@ int uarthub_is_uarthub_clk_enable_mt6989(void)
 	state = uarthub_get_spm_res_info_mt6989(
 		&spm_res_uarthub, &spm_res_internal, &spm_res_26m_off);
 
-	if (state != 1) {
+	if (state < 1) {
 		pr_notice("[%s] UARTHUB SPM REQ(0x%x/0x%x/0x%x,exp:0x1D/0x17/0x0)\n",
 			__func__, spm_res_uarthub, spm_res_internal, spm_res_26m_off);
 		return 0;

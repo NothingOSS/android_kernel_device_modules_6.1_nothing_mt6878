@@ -156,23 +156,31 @@ int uarthub_get_spm_res_info_mt6989(
 		SPM_REQ_STA_11_UARTHUB_REQ_MASK) >>
 		SPM_REQ_STA_11_UARTHUB_REQ_SHIFT);
 
+	if (p_spm_res_uarthub)
+		*p_spm_res_uarthub = spm_res_uarthub;
+
+#if SPM_RES_CHK_EN
+	if (spm_res_uarthub != 0x1D)
+		return 0;
+#endif
+
+	spm_res_internal = UARTHUB_REG_READ(spm_remap_addr_mt6989 + MD32PCM_SCU_CTRL1);
+	spm_res_26m_off = UARTHUB_REG_READ(spm_remap_addr_mt6989 + MD32PCM_SCU_CTRL0);
+
+	// SPM res is not loaded.
+	if (spm_res_internal == 0 && spm_res_26m_off == 0)
+		return 2;
+
 	/* MD32PCM_SCU_CTRL1[21] = spm_pmic_internal_ack */
 	/* MD32PCM_SCU_CTRL1[19] = spm_vcore_internal_ack */
 	/* MD32PCM_SCU_CTRL1[18] = spm_vrf18_internal_ack */
 	/* MD32PCM_SCU_CTRL1[17] = spm_infra_internal_ack */
-	spm_res_internal = (UARTHUB_REG_READ_BIT(
-		spm_remap_addr_mt6989 + MD32PCM_SCU_CTRL1,
-		MD32PCM_SCU_CTRL1_SPM_HUB_INTL_ACK_MASK) >>
+	spm_res_internal = ((spm_res_internal & MD32PCM_SCU_CTRL1_SPM_HUB_INTL_ACK_MASK) >>
 		MD32PCM_SCU_CTRL1_SPM_HUB_INTL_ACK_SHIFT);
 
 	/* MD32PCM_SCU_CTRL0[5] = MD26M_CK_OFF */
-	spm_res_26m_off = (UARTHUB_REG_READ_BIT(
-		spm_remap_addr_mt6989 + MD32PCM_SCU_CTRL0,
-		MD32PCM_SCU_CTRL0_SC_MD26M_CK_OFF_MASK) >>
+	spm_res_26m_off = ((spm_res_26m_off & MD32PCM_SCU_CTRL0_SC_MD26M_CK_OFF_MASK) >>
 		MD32PCM_SCU_CTRL0_SC_MD26M_CK_OFF_SHIFT);
-
-	if (p_spm_res_uarthub)
-		*p_spm_res_uarthub = spm_res_uarthub;
 
 	if (p_spm_res_internal)
 		*p_spm_res_internal = spm_res_internal;
@@ -181,7 +189,7 @@ int uarthub_get_spm_res_info_mt6989(
 		*p_spm_res_26m_off = spm_res_26m_off;
 
 #if SPM_RES_CHK_EN
-	if (spm_res_uarthub != 0x1D || spm_res_internal != 0x17 || spm_res_26m_off != 0x0)
+	if (spm_res_internal != 0x17 || spm_res_26m_off != 0x0)
 		return 0;
 #endif
 
@@ -400,10 +408,10 @@ int uarthub_dump_intfhub_debug_info_mt6989(const char *tag)
 			",SPM=[1]");
 		if (ret > 0)
 			len += ret;
-	} else if (val == 0) {
+	} else if (val == 0 || val == 2) {
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",SPM=[0(0x%x/0x%x/0x%x,exp:0x1D/0x17/0x0)]",
-			spm_res_uarthub, spm_res_internal, spm_res_26m_off);
+			",SPM=[%d(0x%x/0x%x/0x%x,exp:0x1D/0x17/0x0)]",
+			val, spm_res_uarthub, spm_res_internal, spm_res_26m_off);
 		if (ret > 0)
 			len += ret;
 	}
@@ -1140,10 +1148,10 @@ int uarthub_dump_debug_clk_info_mt6989(const char *tag)
 			",SPM=[1]");
 		if (ret > 0)
 			len += ret;
-	} else if (val == 0) {
+	} else if (val == 0 || val == 2) {
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",SPM=[0(0x%x/0x%x/0x%x,exp:0x1D/0x17/0x0)]",
-			spm_res_uarthub, spm_res_internal, spm_res_26m_off);
+			",SPM=[%d(0x%x/0x%x/0x%x,exp:0x1D/0x17/0x0)]",
+			val, spm_res_uarthub, spm_res_internal, spm_res_26m_off);
 		if (ret > 0)
 			len += ret;
 	}
