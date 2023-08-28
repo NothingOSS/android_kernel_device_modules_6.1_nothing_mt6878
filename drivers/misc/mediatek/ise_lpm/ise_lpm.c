@@ -28,23 +28,24 @@
 
 #include <mtk_ise_lpm.h>
 
-/* scmi cmd */
-#define SCMI_MBOX_CMD_ISE_PWR_ON		(0x1)
-#define SCMI_MBOX_CMD_ISE_PWR_OFF		(0x2)
+#define ISE_LPM_FREERUN_TIMEOUT_MS		10000
+#define ISE_LPM_PWR_OFF_DEBOUNCE_MS		5000
+#define ISE_LPM_DEINIT_TIMEOUT_MS		10000
 
-/* scmi ack data*/
-#define SCMI_MBOX_ACK_ISE_PWR_ON_DONE		(0x1)
-#define SCMI_MBOX_ACK_ISE_PWR_OFF_DONE		(0x2)
-
-#define ISE_LPM_FREERUN_TIMEOUT_MS		60000
-#define ISE_LPM_PWR_OFF_DEBOUNCE_MS		1000
+enum ise_scmi_cmd {
+	SCMI_MBOX_CMD_NULL = 0x0,
+	SCMI_MBOX_CMD_ISE_PWR_ON = 0x1,
+	SCMI_MBOX_CMD_ISE_PWR_OFF = 0x2,
+	SCMI_MBOX_CMD_ISE_BOOT_DEINIT = 0x3,
+};
 
 enum ise_power_state {
 	ISE_NO_DEFINE = 0x0,
 	ISE_ACTIVE,
 	ISE_SLEEP,
 	ISE_STAND_BY,
-	ISE_POWER_OFF
+	ISE_POWER_OFF,
+	ISE_DEINIT
 };
 
 enum MTK_ISE_LPM_KERNEL_OP {
@@ -65,7 +66,8 @@ struct ise_lpm_work_struct {
 
 enum ise_lpm_wq_cmd {
 	ISE_LPM_FREERUN,
-	ISE_PWR_OFF
+	ISE_PWR_OFF,
+	ISE_LPM_DEINIT
 };
 
 enum ise_pwr_ut_id_enum {
@@ -83,6 +85,7 @@ static struct scmi_tinysys_info_st *_tinfo;
 struct mutex mutex_ise_lpm;
 static struct timer_list ise_lpm_timer;
 static struct timer_list ise_lpm_pd_timer;
+static struct timer_list ise_lpm_deinit_timer;
 static struct ise_lpm_work_struct ise_lpm_work;
 static struct workqueue_struct *ise_lpm_wq;
 
@@ -94,6 +97,7 @@ static uint64_t ise_boot_cnt;
 
 static void ise_power_on(void);
 static void ise_power_off(void);
+static void ise_deinit(void);
 static void ise_scmi_init(void);
 
 static unsigned long ise_req_dram(void)
@@ -256,16 +260,51 @@ static void ise_power_off(void)
 					ise_scmi_data.cmd, ret);
 		if (rvalue.r1 == (uint32_t)ISE_POWER_OFF) {
 			pr_info("[ise_lpm] power off done, retry=%d\n", retry);
+			ise_rel_dram();
 			break;
 		}
 		udelay(1000);
 	} while (--retry);
 
 	if(retry == 0) {
+		/*
+		 * If power control already abnormal,
+		 * do not call ise_rel_dram() release iSE resource.
+		 */
 		pr_notice("[ise_lpm] power off failed\n");
 		WARN_ON_ONCE(1);
 	}
-	ise_rel_dram();
+#endif
+}
+
+static void ise_deinit(void)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	struct scmi_tinysys_status rvalue;
+	struct ise_scmi_data_t ise_scmi_data;
+	uint32_t ret = 0, retry = 5;
+
+	ise_scmi_data.cmd = SCMI_MBOX_CMD_ISE_BOOT_DEINIT;
+	do {
+		ret = scmi_tinysys_common_get(_tinfo->ph, ise_scmi_id,
+				ise_scmi_data.cmd, &rvalue);
+		pr_debug("scmi ack r1,r2,r3 = 0x%08x, 0x%08x, 0x%08x\n",
+				rvalue.r1,
+				rvalue.r2,
+				rvalue.r3);
+		if (ret)
+			pr_notice("[ise_lpm] scmi cmd %d send fail, ret = %d\n",
+					ise_scmi_data.cmd, ret);
+		if (rvalue.r1 == (uint32_t)ISE_DEINIT) {
+			pr_info("[ise_lpm] deinit done, retry=%d\n", retry);
+			break;
+		}
+		udelay(1000);
+	} while (--retry);
+	if(retry == 0) {
+		pr_notice("[ise_lpm] deinit failed\n");
+		WARN_ON_ONCE(1);
+	}
 #endif
 }
 
@@ -289,6 +328,11 @@ static void ise_lpm_timeout(struct timer_list *t)
 static void ise_lpm_pwr_off_cb(struct timer_list *t)
 {
 	ise_lpm_send_wq(ISE_PWR_OFF);
+}
+
+static void ise_lpm_deinit_cb(struct timer_list *t)
+{
+	ise_lpm_send_wq(ISE_LPM_DEINIT);
 }
 
 void ise_lpm_work_handle(struct work_struct *ws)
@@ -316,6 +360,10 @@ void ise_lpm_work_handle(struct work_struct *ws)
 		} else
 			pr_notice("%s drop pwr off %d", __func__, ise_req_pending_cnt);
 		mutex_unlock(&mutex_ise_lpm);
+		break;
+	case ISE_LPM_DEINIT:
+		ise_scmi_init();
+		ise_deinit();
 		break;
 	}
 }
@@ -436,6 +484,12 @@ static int ise_lpm_probe(struct platform_device *pdev)
 	ise_lpm_wq = create_singlethread_workqueue("ISE_LPM_WQ");
 	INIT_WORK(&ise_lpm_work.work, ise_lpm_work_handle);
 
+	if (!ise_lpm_freerun_en & !ise_wakelock_en) {
+		pr_notice("ise not enable, start to deinit\n ");
+		timer_setup(&ise_lpm_deinit_timer, ise_lpm_deinit_cb, 0);
+		mod_timer(&ise_lpm_deinit_timer,
+			jiffies + msecs_to_jiffies(ISE_LPM_DEINIT_TIMEOUT_MS));
+	}
 	return 0;
 }
 
