@@ -2109,11 +2109,6 @@ static void accdet_irq_handle(void)
 	eintID = get_triggered_eint();
 	irq_status = pmic_read(MT6681_ACCDET_IRQ_ADDR);
 
-	pr_info("%s() dump register before handle accdet/eint irq\n", __func__);
-	dump_reg = true;
-	dump_register();
-	dump_reg = false;
-
 	if ((irq_status & ACCDET_IRQ_B0) && (eintID == 0)) {
 		pr_info("%s() IRQ_STS = 0x%x, IRQ triggered\n", __func__, irq_status);
 		clear_accdet_int();
@@ -2142,11 +2137,6 @@ static void accdet_irq_handle(void)
 		pmic_write_mset(MT6681_AUD_TOP_INT_MASK_CON0_CLR, 0x5, 0x7, 0x7);
 		pmic_write_mset(MT6681_AUD_TOP_INT_STATUS0, 0x5, 0x7, 0x7);
 	}
-
-	pr_info("%s() dump register after handle accdet/eint irq\n", __func__);
-	dump_reg = true;
-	dump_register();
-	dump_reg = false;
 }
 
 static irqreturn_t ext_eint_handler(int irq, void *data)
