@@ -307,15 +307,17 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 		      hba->auto_bkops_enabled,
 		      hba->host->host_self_blocked);
 	SPREAD_PRINTF(buff, size, m,
-		      "Clk scale sup./en.=%d/%d, min/max g.=G%d/G%d, polling_ms=%d, upthr=%d, downthr=%d\n",
+		      "Clk scale sup./en.=%d/%d, suspend sts/cnt=%d/%d, active_reqs=%d, min/max g.=G%d/G%d, polling_ms=%d, upthr=%d, downthr=%d\n",
 		    !!ufshcd_is_clkscaling_supported(hba),
 			hba->clk_scaling.is_enabled,
+			hba->clk_scaling.is_suspended,
+			(hba->devfreq ? atomic_read(&hba->devfreq->suspend_count) : 0xFF),
+			hba->clk_scaling.active_reqs,
 			hba->clk_scaling.min_gear,
 			hba->clk_scaling.saved_pwr_info.info.gear_rx,
 			hba->vps->devfreq_profile.polling_ms,
 			hba->vps->ondemand_data.upthreshold,
-			hba->vps->ondemand_data.downdifferential
-	);
+			hba->vps->ondemand_data.downdifferential);
 	if (ufshcd_is_clkgating_allowed(hba))
 		SPREAD_PRINTF(buff, size, m,
 			      "Clk gate=%d, suspended=%d, active_reqs=%d\n",
