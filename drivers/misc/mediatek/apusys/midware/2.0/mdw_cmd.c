@@ -66,6 +66,27 @@ static void mdw_cmd_cmdbuf_out(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 	}
 }
 
+static void mdw_cmd_update_einfos(struct mdw_cmd *c)
+{
+	c->end_ts = sched_clock();
+	c->einfos->c.total_us = (c->end_ts - c->start_ts) / 1000;
+	c->einfos->c.inference_id = c->inference_id;
+}
+
+static void mdw_cmd_execinfo_out(struct mdw_cmd *c)
+{
+	struct mdw_fpriv *mpriv = c->mpriv;
+	struct mdw_device *mdev = c->mpriv->mdev;
+
+	/* copy exec info */
+	mdev->dev_funcs->cp_execinfo(c);
+
+	/* copy cmdbuf to user */
+	mdw_cmd_cmdbuf_out(mpriv, c);
+
+	/* update einfos */
+	mdw_cmd_update_einfos(c);
+}
 static void mdw_cmd_put_cmdbufs(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 {
 	struct mdw_subcmd_kinfo *ksubcmd = NULL;
@@ -826,11 +847,7 @@ static void mdw_cmd_poll_cmd(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 
 	if (poll_ret) {
 		c->cmd_state = MDW_PERF_CMD_DONE;
-
-		/* copy exec info */
-		mdev->dev_funcs->cp_execinfo(c);
-		/* copy cmdbuf to user */
-		mdw_cmd_cmdbuf_out(mpriv, c);
+		mdw_cmd_execinfo_out(c);
 	}
 }
 
@@ -1230,21 +1247,18 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	ts1 = sched_clock();
 	c->pb_put_time = ts1 - ts2;
 
-	/* copy exec info and cmdbuf out */
-	if (c->cmd_state == MDW_PERF_CMD_INIT) {
-		mdev->dev_funcs->cp_execinfo(c);
-		mdw_cmd_cmdbuf_out(mpriv, c);
-	} else {
+	/* execinfo out */
+	if (c->cmd_state == MDW_PERF_CMD_INIT)
+		mdw_cmd_execinfo_out(c);
+	else
 		c->cmd_state = MDW_PERF_CMD_INIT;
-	}
+
 	ts2 = sched_clock();
 	c->cmdbuf_out_time = ts2 - ts1;
 
-	c->end_ts = sched_clock();
 	atomic_dec(&mdev->cmd_running);
-	c->einfos->c.total_us = (c->end_ts - c->start_ts) / 1000;
-	mdw_flw_debug("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx) ret(%d) sc_rets(0x%llx) complete, pid(%d/%d)(%d)\n",
-		(uint64_t)mpriv, c->comm, c->uid, c->kid, c->rvid,
+	mdw_flw_debug("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx/0x%llx) ret(%d) sc_rets(0x%llx) complete, pid(%d/%d)(%d)\n",
+		(uint64_t)mpriv, c->comm, c->uid, c->kid, c->rvid, c->inference_id,
 		ret, c->einfos->c.sc_rets,
 		c->pid, c->tgid, task_pid_nr(current));
 
@@ -1258,8 +1272,8 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	c->einfos->c.ret = ret;
 
 	if (ret) {
-		mdw_drv_err("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
-			(uint64_t)mpriv, c->comm, c->uid, c->kid, c->rvid,
+		mdw_drv_err("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx/0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
+			(uint64_t)mpriv, c->comm, c->uid, c->kid, c->rvid, c->inference_id,
 			ret, c->einfos->c.sc_rets,
 			c->einfos->c.total_us, c->pid, c->tgid);
 		dma_fence_set_error(f, ret);
@@ -1268,8 +1282,8 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 			mdw_exception("exec fail:%s:ret(%d/0x%llx)pid(%d/%d)\n",
 				c->comm, ret, c->einfos->c.sc_rets, c->pid, c->tgid);
 	} else {
-		mdw_flw_debug("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
-			(uint64_t)mpriv, c->comm, c->uid, c->kid, c->rvid,
+		mdw_flw_debug("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx/0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
+			(uint64_t)mpriv, c->comm, c->uid, c->kid, c->rvid, c->inference_id,
 			ret, c->einfos->c.sc_rets,
 			c->einfos->c.total_us, c->pid, c->tgid);
 	}
@@ -1754,7 +1768,6 @@ exec:
 	args->out.exec.id = c->id;
 	args->out.exec.cmd_done_usr = c->cmd_state;
 	args->out.exec.ext_id = c->ext_id;
-	args->out.exec.inference_id = c->inference_id;
 	mdw_flw_debug("async fd(%d) id(%d) extid(0x%llx) inference_id(0x%llx)\n",
 			 fd, c->id, c->ext_id, c->inference_id);
 	mutex_unlock(&c->mtx);

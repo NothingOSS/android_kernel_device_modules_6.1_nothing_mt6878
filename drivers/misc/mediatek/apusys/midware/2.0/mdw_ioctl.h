@@ -190,7 +190,7 @@ struct mdw_cmd_exec_info {
 	uint64_t sc_rets;
 	int64_t ret;
 	uint64_t total_us;
-	uint64_t reserved;
+	uint64_t inference_id;
 };
 
 struct mdw_subcmd_cmdbuf {
@@ -271,7 +271,7 @@ struct mdw_cmd_out {
 			uint64_t fence;
 			uint64_t cmd_done_usr;
 			uint64_t ext_id;
-			uint64_t inference_id;
+			uint64_t reserved;
 		} exec;
 	};
 };
