@@ -2336,7 +2336,13 @@ static int ufs_mtk_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 	if (status == PRE_CHANGE) {
 		if (!ufshcd_is_auto_hibern8_supported(hba))
 			return 0;
-		return ufs_mtk_auto_hibern8_disable(hba);
+		err = ufs_mtk_auto_hibern8_disable(hba);
+
+		/* May trigger eh work without exit h8 error */
+		if (ufsm_eh_in_progress(hba))
+			return -EAGAIN;
+		else
+			return err;
 	}
 
 	if (ufshcd_is_link_hibern8(hba)) {
