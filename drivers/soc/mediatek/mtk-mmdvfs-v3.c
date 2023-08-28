@@ -700,7 +700,8 @@ int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp)
 
 	if (mmdvfs_mux_version)
 		return mmdvfs_vote_step_by_vcp(pwr_idx, opp);
-	else if (pwr_idx == PWR_MMDVFS_NUM) {
+
+	if (pwr_idx == PWR_MMDVFS_NUM) {
 		MMDVFS_ERR("failed:%d pwr_idx:%hu opp:%hd", ret, pwr_idx, opp);
 		return -EINVAL;
 	}
@@ -1317,19 +1318,19 @@ static inline void mmdvfs_reset_vcp(void)
 
 static void mmdvfs_v3_release_step(void)
 {
-	int i, val;
+	int last, i;
 
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
-		if (last_vote_step[i] >= 0) {
-			val = last_vote_step[i];
+		if (last_vote_step[i] != -1) {
+			last = last_vote_step[i];
 			mtk_mmdvfs_v3_set_vote_step(i, -1);
-			last_vote_step[i] = -val;
+			last_vote_step[i] = last;
 		}
 
-		if (last_force_step[i] >= 0) {
-			val = last_force_step[i];
+		if (last_force_step[i] != -1) {
+			last = last_force_step[i];
 			mtk_mmdvfs_v3_set_force_step(i, -1);
-			last_force_step[i] = -val;
+			last_force_step[i] = last;
 		}
 	}
 }
@@ -1338,15 +1339,12 @@ static void mmdvfs_v3_restore_step(void)
 {
 	int i;
 
-	if (!mmdvfs_restore_step)
-		return;
-
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
-		if (last_vote_step[i] < 0 && last_vote_step[i] != -MAX_OPP)
-			mtk_mmdvfs_v3_set_vote_step(i, -last_vote_step[i]);
+		if (last_force_step[i] != -1)
+			mtk_mmdvfs_v3_set_force_step(i, last_force_step[i]);
 
-		if (last_force_step[i] >= 0 && last_force_step[i] != -MAX_OPP)
-			mtk_mmdvfs_v3_set_force_step(i, -last_force_step[i]);
+		if (last_vote_step[i] != -1)
+			mtk_mmdvfs_v3_set_vote_step(i, last_vote_step[i]);
 	}
 }
 
@@ -1395,7 +1393,8 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 		mutex_unlock(&mmdvfs_vcp_cb_mutex);
 		if (hqa_enable)
 			mtk_mmdvfs_enable_vmm(true);
-		mmdvfs_v3_restore_step();
+		if (mmdvfs_restore_step)
+			mmdvfs_v3_restore_step();
 		break;
 	case VCP_EVENT_STOP:
 		if (dpc_fp)
@@ -1799,8 +1798,8 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 	of_property_read_s32(node, "mediatek,dpsw-thr", &dpsw_thr);
 
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
-		last_vote_step[i] = -MAX_OPP;
-		last_force_step[i] = -MAX_OPP;
+		last_vote_step[i] = -1;
+		last_force_step[i] = -1;
 	}
 
 	of_property_read_s32(node, "kernel-log-level", &log_level);
@@ -2114,9 +2113,9 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 		vmm_notify_wq = create_singlethread_workqueue("vmm_notify_wq");
 
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
-		last_vote_step[i] = -MAX_OPP;
-		last_force_step[i] = -MAX_OPP;
-		last_force_volt[i] = -MAX_OPP;
+		last_vote_step[i] = -1;
+		last_force_step[i] = -1;
+		last_force_volt[i] = -1;
 	}
 	of_property_read_s32(node, "kernel-log-level", &log_level);
 	of_property_read_s32(node, "vcp-log-level", &vcp_log_level);
