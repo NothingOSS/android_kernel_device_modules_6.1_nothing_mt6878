@@ -38,12 +38,6 @@ enum GAMMA_MODE {
 	HW_12BIT_MODE_IN_10BIT,
 };
 
-enum GAMMA_CMDQ_TYPE {
-	GAMMA_USERSPACE = 0,
-	GAMMA_FIRST_ENABLE,
-	GAMMA_PREPARE,
-};
-
 struct mtk_disp_gamma_data {
 	bool support_gamma_gain;
 	unsigned int gamma_gain_range;
@@ -69,31 +63,28 @@ struct mtk_disp_gamma_primary {
 	struct mtk_disp_gamma_sb_param sb_param;
 	struct gamma_color_protect color_protect;
 	struct DISP_GAMMA_LUT_T gamma_lut_cur;
-	struct DISP_GAMMA_12BIT_LUT_T gamma_12b_lut;
+	struct DISP_GAMMA_12BIT_LUT_T gamma_12b_lut_cur;
+	struct DISP_GAMMA_12BIT_LUT_T gamma_12b_lut_update;
 
 	atomic_t irq_event;
+	struct wait_queue_head sof_irq_wq;
+	struct task_struct *sof_irq_event_task;
 
 	spinlock_t power_lock;
 	/* lock for hw reg & related data, inner lock of sram_lock/crtc_lock */
 	struct mutex global_lock;
 	/* lock for sram ops and data, outer lock of global_lock/crtc_lock */
 	struct mutex sram_lock;
-	struct cmdq_pkt *sram_pkt;
-	struct wakeup_source *gamma_wake_lock;
 
 	atomic_t clock_on;
 	atomic_t sof_filp;
+	atomic_t sof_irq_available;
 	atomic_t force_delay_check_trig;
 
-	atomic_t relay_value;
 	unsigned int back_up_cfg;
+	unsigned int relay_value;
 	unsigned int data_mode;
-	unsigned int table_config_sel;
-	unsigned int table_out_sel;
 	bool hwc_ctl_silky_brightness_support;
-	bool gamma_wake_locked;
-	bool need_refinalize;
-	atomic_t gamma_table_valid;
 };
 
 struct mtk_disp_gamma {
@@ -105,10 +96,6 @@ struct mtk_disp_gamma {
 	struct mtk_disp_gamma_tile_overhead_v tile_overhead_v;
 	struct mtk_ddp_comp *companion;
 	struct mtk_disp_gamma_primary *primary_data;
-	atomic_t gamma_sram_hw_init;
-	atomic_t gamma_is_clock_on;
-	bool pkt_reused;
-	struct cmdq_reuse reuse_gamma_lut[DISP_GAMMA_12BIT_LUT_SIZE * 2 + 6];
 };
 
 static inline struct mtk_disp_gamma *comp_to_gamma(struct mtk_ddp_comp *comp)
