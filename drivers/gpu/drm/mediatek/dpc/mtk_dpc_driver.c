@@ -21,6 +21,7 @@
 #endif
 
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
+#include <dt-bindings/clock/mmdvfs-clk.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include "mtk-mmdvfs-v3-memory.h"
 
@@ -50,6 +51,8 @@ int mminfra_ao;
 module_param(mminfra_ao, int, 0644);
 int mtcmos_ao;
 module_param(mtcmos_ao, int, 0644);
+int vdisp_ao;
+module_param(vdisp_ao, int, 0644);
 
 /* TODO: move to mtk_dpc_test.c */
 #define SPM_REQ_STA_4 0x85C	/* D1: BIT30 APSRC_REQ, DDRSRC_REQ */
@@ -97,7 +100,6 @@ struct mtk_dpc {
 	struct dentry *fs;
 #endif
 	struct mtk_dpc_dvfs_bw dvfs_bw;
-	struct mutex bw_dvfs_mutex;
 };
 static struct mtk_dpc *g_priv;
 
@@ -335,6 +337,8 @@ static void dpc_disp_group_enable(const enum mtk_dpc_disp_vidle group, bool en)
 	case DPC_DISP_VIDLE_VDISP_DVFS:
 		value = en ? 0 : 1;
 		writel(value, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
+		if (unlikely(vdisp_ao))
+			writel(1, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
 		break;
 	case DPC_DISP_VIDLE_HRT_BW:
 	case DPC_DISP_VIDLE_SRT_BW:
@@ -588,21 +592,40 @@ void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool f
 }
 EXPORT_SYMBOL(dpc_srt_bw_set);
 
+static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level)
+{
+	int ret = 0;
+	u32 addr = 0;
+	u32 mmdvfs_user = U32_MAX;
+
+	if (subsys == DPC_SUBSYS_DISP) {
+		mmdvfs_user = VCP_PWR_USR_DISP;
+		addr = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
+	} else if (subsys == DPC_SUBSYS_MML) {
+		mmdvfs_user = VCP_PWR_USR_DISP;
+		addr = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
+	}
+
+	mtk_mmdvfs_enable_vcp(true, mmdvfs_user);
+	writel(level, dpc_base + addr);
+	mtk_mmdvfs_enable_vcp(false, mmdvfs_user);
+
+	return ret;
+}
 
 static u8 dpc_max_dvfs_level(void)
 {
-	u8 max_level;
+	/* find max(disp level, mml level, bw level) */
+	u8 max_level = g_priv->dvfs_bw.disp_level > g_priv->dvfs_bw.bw_level?
+		       g_priv->dvfs_bw.disp_level : g_priv->dvfs_bw.bw_level;
 
-	max_level = max(g_priv->dvfs_bw.disp_dvfs_level,
-		g_priv->dvfs_bw.mml_dvfs_level);
-	max_level = max(max_level, g_priv->dvfs_bw.bw_level);
-
-	return max_level;
+	return max_level > g_priv->dvfs_bw.mml_level ? max_level : g_priv->dvfs_bw.mml_level;
 }
 
 void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force)
 {
 	u32 addr1 = 0, addr2 = 0;
+	u32 mmdvfs_user = U32_MAX;
 	u8 max_level;
 
 	/* support 575, 600, 650, 700, 750 mV */
@@ -614,32 +637,44 @@ void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force)
 	if (dpc_pm_ctrl(true))
 		return;
 
-	mutex_lock(&g_priv->bw_dvfs_mutex);
+	mutex_lock(&g_priv->dvfs_bw.lock);
 
 	if (subsys == DPC_SUBSYS_DISP) {
+		mmdvfs_user = MMDVFS_USER_DISP;
 		addr1 = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
 		addr2 = DISP_REG_DPC_DISP_VDISP_DVFS_CFG;
-		g_priv->dvfs_bw.disp_dvfs_level = level;
+		g_priv->dvfs_bw.disp_level = level;
 	} else if (subsys == DPC_SUBSYS_MML) {
+		mmdvfs_user = MMDVFS_USER_MML;
 		addr1 = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
 		addr2 = DISP_REG_DPC_MML_VDISP_DVFS_CFG;
-		g_priv->dvfs_bw.mml_dvfs_level = level;
+		g_priv->dvfs_bw.mml_level = level;
 	}
 
-	writel(level, dpc_base + addr1);
+	max_level = dpc_max_dvfs_level();
+	if (max_level < level)
+		max_level = level;
+	vdisp_level_set_vcp(subsys, max_level);
+
+	/* switch vdisp to SW or HW mode */
 	writel(force ? 1 : 0, dpc_base + addr2);
+	if (unlikely(vdisp_ao))
+		writel(1, dpc_base + addr2);
+
+	/* add vdisp info to met */
+	if (MEM_BASE)
+		writel(4 - max_level, MEM_USR_OPP(mmdvfs_user));
+
+	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
+		(g_priv->dvfs_bw.mml_bw << 24) | (g_priv->dvfs_bw.disp_bw << 16) |
+		(g_priv->dvfs_bw.mml_level << 8) | g_priv->dvfs_bw.disp_level,
+		(BIT(subsys) << 16) | max_level);
 
 	if (unlikely(debug_dvfs))
-		DPCFUNC("subsys(%u) vdisp level(%u) force(%u)", subsys, level, force);
+		DPCFUNC("subsys(%u) level(%u,%u,%u) force(%u)", subsys,
+			g_priv->dvfs_bw.disp_level, g_priv->dvfs_bw.mml_level, max_level, force);
 
-	max_level = dpc_max_dvfs_level();
-	if (max_level > level)
-		writel(max_level, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL);
-
-	if (unlikely(debug_dvfs) && max_level > level)
-		DPCFUNC("subsys(%u) vdisp level(%u) force(%u)", subsys, max_level, force);
-
-	mutex_unlock(&g_priv->bw_dvfs_mutex);
+	mutex_unlock(&g_priv->dvfs_bw.lock);
 
 	dpc_pm_ctrl(false);
 }
@@ -651,7 +686,7 @@ void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb)
 	u32 total_bw;
 	u8 max_level;
 
-	mutex_lock(&g_priv->bw_dvfs_mutex);
+	mutex_lock(&g_priv->dvfs_bw.lock);
 
 	if (subsys == DPC_SUBSYS_DISP)
 		g_priv->dvfs_bw.disp_bw = bw_in_mb * 10 / 7;
@@ -677,13 +712,18 @@ void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb)
 		return;
 
 	max_level = dpc_max_dvfs_level();
-	writel(max_level, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL);
+	vdisp_level_set_vcp(subsys, max_level);
 
 	if (unlikely(debug_dvfs))
 		DPCFUNC("subsys(%u) disp_bw(%u) mml_bw(%u) vdisp level(%u)",
 			subsys, g_priv->dvfs_bw.disp_bw, g_priv->dvfs_bw.mml_bw, max_level);
 
-	mutex_unlock(&g_priv->bw_dvfs_mutex);
+	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
+		(g_priv->dvfs_bw.mml_bw << 24) | (g_priv->dvfs_bw.disp_bw << 16) |
+		(g_priv->dvfs_bw.mml_level << 8) | g_priv->dvfs_bw.disp_level,
+		(BIT(subsys) << 16) | max_level);
+
+	mutex_unlock(&g_priv->dvfs_bw.lock);
 
 	dpc_pm_ctrl(false);
 }
@@ -1500,7 +1540,7 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 
 	dpc_mmp_init();
 
-	mutex_init(&g_priv->bw_dvfs_mutex);
+	mutex_init(&g_priv->dvfs_bw.lock);
 
 	mtk_vidle_register(&funcs);
 	mml_dpc_register(&funcs);

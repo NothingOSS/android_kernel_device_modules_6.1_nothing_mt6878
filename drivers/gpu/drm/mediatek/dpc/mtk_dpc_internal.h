@@ -201,11 +201,12 @@ struct mtk_dpc_dt_usage {
 };
 
 struct mtk_dpc_dvfs_bw {
-	u8 bw_level;
-	u32 disp_bw;
 	u32 mml_bw;
-	u8 disp_dvfs_level;
-	u8 mml_dvfs_level;
+	u32 disp_bw;
+	u8 bw_level;
+	u8 mml_level;
+	u8 disp_level;
+	struct mutex lock;
 };
 
 static void dpc_dt_enable(u16 dt, bool en);

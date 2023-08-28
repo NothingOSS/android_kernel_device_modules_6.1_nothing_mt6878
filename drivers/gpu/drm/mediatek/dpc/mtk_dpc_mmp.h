@@ -41,6 +41,7 @@ struct dpc_mmp_events_t {
 	// mmp_event mtcmos_disp0;
 	mmp_event mtcmos_disp1;
 	mmp_event mtcmos_mml1;
+	mmp_event vdisp_level;
 };
 
 

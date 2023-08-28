@@ -1569,8 +1569,8 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	if (priv && priv->dpc_dev) {
 		if ((mtk_crtc->mml_link_state == MML_DIRECT_LINKING) &&
 		    !mtk_vidle_is_ff_enabled()) {
-			mtk_vidle_config_ff(true);
 			mtk_vidle_enable(true, priv);
+			mtk_vidle_config_ff(true);
 		} else if ((mtk_crtc->mml_link_state == MML_STOP_LINKING) &&
 			   mtk_vidle_is_ff_enabled()) {
 			mtk_vidle_config_ff(false);
