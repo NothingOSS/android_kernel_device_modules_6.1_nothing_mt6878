@@ -326,7 +326,6 @@ static void mddpw_wfpm_send_smem_layout(void)
 {
 	struct mddp_app_t                *app;
 	struct mddp_md_msg_t             *md_msg;
-	struct mddpw_md_notify_info_t     md_info;
 	struct wfpm_enable_md_func_req_t *enable_req;
 	struct wfpm_smem_info_t          *smem_info;
 	uint32_t                          smem_num;
@@ -371,17 +370,6 @@ static void mddpw_wfpm_send_smem_layout(void)
 			smem_num * sizeof(struct wfpm_smem_info_t));
 
 	mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_NULL);
-
-	if (app->drv_hdlr.wifi_handle != NULL) {
-		struct mddpw_drv_handle_t *wifi_handle =
-			app->drv_hdlr.wifi_handle;
-		if (wifi_handle->notify_md_info != NULL) {
-			md_info.version = 0;
-			md_info.info_type = 1;
-			md_info.buf_len = 0;
-			wifi_handle->notify_md_info(&md_info);
-		}
-	}
 }
 
 static int32_t mddpw_wfpm_msg_hdlr(uint32_t msg_id, void *buf, uint32_t buf_len)
@@ -895,10 +883,13 @@ static void wfpm_reset_work_func(struct work_struct *work)
 
 	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
 	app->abnormal_flags &= ~MDDP_ABNORMAL_CCCI_SEND_FAILED;
+	/* MACOD will not init if shm not available.It should be set before notify wlan MD is ON.*/
+	mddpw_wfpm_send_smem_layout();
 	if (!app->reset_cnt)
 		mddp_check_feature();
+	else
+		mddpw_notify_wlan_mdinfo();
 	app->reset_cnt++;
-	mddpw_wfpm_send_smem_layout();
 	if (app->state != MDDP_STATE_DISABLED) {
 		mddp_f_dev_del_wan_dev(app->ap_cfg.ul_dev_name);
 		mddp_f_dev_del_lan_dev(app->ap_cfg.dl_dev_name);
@@ -919,6 +910,24 @@ static void mddp_unhook_work_func(struct work_struct *work)
 	mddp_netfilter_unhook();
 	mddp_f_dev_del_wan_dev(app->ap_cfg.ul_dev_name);
 	mddp_f_dev_del_lan_dev(app->ap_cfg.dl_dev_name);
+}
+
+void mddpw_notify_wlan_mdinfo(void)
+{
+	struct mddp_app_t       *app;
+	struct mddpw_md_notify_info_t     md_info;
+
+	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
+	if (app->drv_hdlr.wifi_handle != NULL) {
+		struct mddpw_drv_handle_t *wifi_handle =
+			app->drv_hdlr.wifi_handle;
+		if (wifi_handle->notify_md_info != NULL) {
+			md_info.version = 0;
+			md_info.info_type = 1;
+			md_info.buf_len = 0;
+			wifi_handle->notify_md_info(&md_info);
+		}
+	}
 }
 
 int32_t mddpwh_sm_init(struct mddp_app_t *app)

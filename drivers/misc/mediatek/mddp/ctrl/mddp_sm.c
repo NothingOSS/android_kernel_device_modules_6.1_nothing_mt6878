@@ -141,6 +141,8 @@ static void mddp_handshake_done(void *buf, uint32_t buf_len)
 			MDDP_S_LOG(MDDP_LL_ERR, "MD response size(%d) error, num(%d)",
 					buf_len, rsp->num);
 	}
+	/* wlan should be notified after setting the feature on MD Reset */
+	mddpw_notify_wlan_mdinfo();
 }
 
 bool mddp_check_subfeature(int type, int feat)

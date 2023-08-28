@@ -131,6 +131,7 @@ static const MDDP_MOD_TYPE mddp_sm_module_list_s[] = {
 // -----------------------------------------------------------------------------
 int32_t mddpu_sm_init(struct mddp_app_t *app);
 int32_t mddpwh_sm_init(struct mddp_app_t *app);
+void mddpw_notify_wlan_mdinfo(void);
 
 //------------------------------------------------------------------------------
 // Public functions.
