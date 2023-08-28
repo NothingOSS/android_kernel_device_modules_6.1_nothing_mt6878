@@ -1443,18 +1443,22 @@ static void mtk_oddmr_top_prepare(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 static void mtk_oddmr_prepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
+	unsigned int postalign_en = comp->mtk_crtc->panel_ext->params->spr_params.postalign_en;
 
 	ODDMRAPI_LOG("+\n");
 	mtk_ddp_comp_clk_prepare(comp);
 
-	if (is_oddmr_od_support || is_oddmr_dmr_support)
+	if (is_oddmr_od_support || is_oddmr_dmr_support ||
+		((comp->mtk_crtc->panel_ext->params->spr_params.enable == 1) &&
+		(comp->mtk_crtc->panel_ext->params->spr_params.relay == 0) &&
+		postalign_en == 0))
 		mtk_oddmr_top_prepare(comp, NULL);
 	if (is_oddmr_od_support)
 		mtk_oddmr_od_prepare(comp, NULL);
 
 	if ((comp->mtk_crtc->panel_ext->params->spr_params.enable == 1) &&
 			(comp->mtk_crtc->panel_ext->params->spr_params.relay == 0) &&
-			(is_oddmr_od_support || is_oddmr_dmr_support))
+			(is_oddmr_od_support || is_oddmr_dmr_support || postalign_en == 0))
 		mtk_oddmr_spr2rgb_prepare(comp);
 	atomic_set(&oddmr_priv->oddmr_clock_ref, 1);
 }
@@ -1540,10 +1544,12 @@ static void mtk_oddmr_first_cfg(struct mtk_ddp_comp *comp,
 	unsigned long flags;
 	int crtc_idx;
 	struct drm_display_mode *mode;
+	unsigned int postalign_en;
 
 	DDPMSG("%s+\n", __func__);
 	is_oddmr_dmr_support = comp->mtk_crtc->panel_ext->params->is_support_dmr;
 	is_oddmr_od_support = comp->mtk_crtc->panel_ext->params->is_support_od;
+	postalign_en = comp->mtk_crtc->panel_ext->params->spr_params.postalign_en;
 	is_oddmr_dbi_support = comp->mtk_crtc->panel_ext->params->is_support_dbi;
 	/* get spr status */
 	oddmr_priv->spr_enable = comp->mtk_crtc->panel_ext->params->spr_params.enable;
@@ -1561,7 +1567,10 @@ static void mtk_oddmr_first_cfg(struct mtk_ddp_comp *comp,
 	mtk_oddmr_drm_mode_to_oddmr_timg(mode, &g_oddmr_current_timing);
 	spin_unlock_irqrestore(&g_oddmr_timing_lock, flags);
 	mtk_oddmr_fill_cfg(comp, cfg);
-	if (is_oddmr_dmr_support || is_oddmr_od_support) {
+	if (is_oddmr_dmr_support || is_oddmr_od_support ||
+		((comp->mtk_crtc->panel_ext->params->spr_params.enable == 1) &&
+		(comp->mtk_crtc->panel_ext->params->spr_params.relay == 0) &&
+		postalign_en == 0)) {
 		mtk_oddmr_set_spr2rgb(comp, handle);
 		if (comp->mtk_crtc->is_dual_pipe)
 			mtk_oddmr_set_crop(comp, NULL);
@@ -1691,6 +1700,7 @@ static void mtk_oddmr_config(struct mtk_ddp_comp *comp,
 
 	dma_addr_t addr = 0;
 	struct mtk_drm_dmr_cfg_info *dmr_cfg_data = &g_oddmr_priv->dmr_cfg_info;
+	unsigned int postalign_en = comp->mtk_crtc->panel_ext->params->spr_params.postalign_en;
 
 	if (!comp->mtk_crtc || !comp->mtk_crtc->panel_ext || g_oddmr_priv == NULL) {
 		ODDMRFLOW_LOG("comp is invalid-\n");
@@ -1788,6 +1798,10 @@ static void mtk_oddmr_config(struct mtk_ddp_comp *comp,
 		mtk_oddmr_write(default_comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, handle);
 		mtk_oddmr_set_dmr_enable(comp, g_oddmr_priv->dmr_enable, handle);
 	}
+
+	if (g_oddmr_priv->spr_enable == 1 && g_oddmr_priv->spr_relay == 0 &&
+		postalign_en == 0)
+		mtk_oddmr_set_spr2rgb(comp, handle);
 
 	mtk_oddmr_dbi_config(comp,handle);
 }

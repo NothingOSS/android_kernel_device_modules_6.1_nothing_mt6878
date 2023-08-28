@@ -1336,19 +1336,24 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 							MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
 							MT6989_BYPASS_SHADOW, handle);
 			}
-			mtk_ddp_write_mask(postalign_comp,
-				spr_params->postalign_en << spr_params->spr_format_type,
-				MT6989_DISP_REG_POSTALIGN0_CFG,
-				REG_FLD_MASK(MT6989_POSTALIGN_SEL), handle);
-			mtk_ddp_write_mask(postalign_comp,
-				spr_params->postalign_6type_mode_en << 8,
-				MT6989_DISP_REG_POSTALIGN0_CFG,
-				MT6989_POSTALIGN_6TYPE_MODE, handle);
-			mtk_ddp_write_mask(postalign_comp, spr_params->padding_repeat_en << 12,
-				MT6989_DISP_REG_POSTALIGN0_CFG,
-				MT6989_DSC_PADDING_REPEAT_EN, handle);
-			mtk_ddp_write_mask(postalign_comp, 0,
-				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_RELAY_MODE, handle);
+			if (spr_params->postalign_en == 1) {
+				mtk_ddp_write_mask(postalign_comp,
+					spr_params->postalign_en << spr_params->spr_format_type,
+					MT6989_DISP_REG_POSTALIGN0_CFG,
+					REG_FLD_MASK(MT6989_POSTALIGN_SEL), handle);
+				mtk_ddp_write_mask(postalign_comp,
+					spr_params->postalign_6type_mode_en << 8,
+					MT6989_DISP_REG_POSTALIGN0_CFG,
+					MT6989_POSTALIGN_6TYPE_MODE, handle);
+				mtk_ddp_write_mask(postalign_comp, spr_params->padding_repeat_en << 12,
+					MT6989_DISP_REG_POSTALIGN0_CFG,
+					MT6989_DSC_PADDING_REPEAT_EN, handle);
+				mtk_ddp_write_mask(postalign_comp, 0,
+					MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_RELAY_MODE, handle);
+			} else {
+				mtk_ddp_write_mask(postalign_comp, MT6989_RELAY_MODE,
+					MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_RELAY_MODE, handle);
+			}
 			mtk_ddp_write_mask(postalign_comp, MT6989_POSTALIGN_LUT_EN,
 				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_POSTALIGN_LUT_EN, handle);
 

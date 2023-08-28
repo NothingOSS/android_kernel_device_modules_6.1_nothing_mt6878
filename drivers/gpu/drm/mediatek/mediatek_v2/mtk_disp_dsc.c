@@ -1065,7 +1065,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 		chunk_size = (slice_width*bit_per_pixel / 8 / 16);
 
 		if (spr_params->enable && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1
-			&& disp_spr_bypass == 0) {
+			&& disp_spr_bypass == 0 && spr_params->postalign_en == 1) {
 			reg_val = 0x1 << 26;
 			switch (spr_params->spr_format_type) {
 			case MTK_PANEL_RGBG_BGRG_TYPE:
@@ -1107,7 +1107,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 		}
 		enc_pic_width = enc_slice_width * (dsc_params->slice_mode + 1);
 		if (spr_params->enable && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1
-			&& disp_spr_bypass == 0) {
+			&& disp_spr_bypass == 0 && spr_params->postalign_en == 1) {
 			slice_group_width = (enc_slice_width + 2) / 3;
 			pic_group_width = slice_group_width * (dsc_params->slice_mode + 1);
 		}

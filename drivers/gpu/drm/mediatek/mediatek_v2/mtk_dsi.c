@@ -7786,7 +7786,8 @@ unsigned int mtk_dsi_get_dsc_compress_rate(struct mtk_dsi *dsi)
 		//compress_rate*100 for 3.75 or 2.5 case
 		if (spr_params->enable && spr_params->relay == 0
 			&& disp_spr_bypass == 0 && dsi->ddp_comp.mtk_crtc->spr_is_on
-			&& spr_params->spr_format_type < MTK_PANEL_RGBRGB_BGRBGR_TYPE)
+			&& spr_params->spr_format_type < MTK_PANEL_RGBRGB_BGRBGR_TYPE
+			&& spr_params->postalign_en == 1)
 			compress_rate = bpc * 4 * 100 / bpp;
 		else
 			compress_rate = bpc * 3 * 100 / bpp;
@@ -7796,7 +7797,8 @@ unsigned int mtk_dsi_get_dsc_compress_rate(struct mtk_dsi *dsi)
 	/* spr compress rate */
 	if (spr_params->enable && spr_params->relay == 0 && disp_spr_bypass == 0
 		&& dsi->ddp_comp.mtk_crtc->spr_is_on
-		&& spr_params->spr_format_type < MTK_PANEL_EXT_TYPE) {
+		&& spr_params->spr_format_type < MTK_PANEL_EXT_TYPE
+		&& spr_params->postalign_en == 1) {
 		if (dsc_params->enable)
 			compress_rate = compress_rate * 3 / 2;
 		else if (ext->params->spr_output_mode == MTK_PANEL_PACKED_SPR_8_BITS
