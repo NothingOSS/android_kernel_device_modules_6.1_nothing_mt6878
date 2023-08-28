@@ -297,10 +297,11 @@ static void md_cd_dump_debug_register(struct ccci_modem *md, bool isr_skip_dump)
 		return;
 	}
 
-	if (dpsw_reg != NULL)
-		CCCI_NORMAL_LOG(0, TAG, "[DPSW DUMP] reg 0x1c0013b8 = 0x%x\n",
-			ccci_read32(dpsw_reg, 0));
-
+	if (ap_plat_info == 6989) {
+		if (dpsw_reg != NULL)
+			CCCI_MEM_LOG_TAG(0, TAG, "[DPSW DUMP] reg 0x1c0013b8 = 0x%x\n",
+				ccci_read32(dpsw_reg, 0));
+	}
 	md_pmic_info_dump();
 	md_cd_lock_modem_clock_src(1);
 	md_dump_reg(md);
@@ -800,7 +801,9 @@ static int md_start_platform(struct ccci_modem *md)
 		return 0;
 	md_cd_io_remap_md_side_register(md);
 	md1_pmic_setting_init(md->plat_dev);
-	dpsw_io_remap();
+
+	if (ap_plat_info == 6989)
+		dpsw_io_remap();
 
 	if (md_cd_plat_val_ptr.md_gen < 6295)
 		return 0;
