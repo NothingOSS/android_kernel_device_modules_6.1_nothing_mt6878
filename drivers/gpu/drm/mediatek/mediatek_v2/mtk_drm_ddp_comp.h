@@ -701,6 +701,8 @@ enum mtk_ddp_io_cmd {
 	DSI_GET_PANEL_STATE,
 	NOTIFY_MODE_SWITCH,
 	GET_SPR_VALID_PARTIAL_ROI,
+	OVL_FRAME_DONE_EVENT,
+	GET_OVL_SYS_NUM,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {

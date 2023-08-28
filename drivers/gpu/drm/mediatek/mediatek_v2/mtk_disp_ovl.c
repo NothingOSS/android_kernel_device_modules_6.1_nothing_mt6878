@@ -581,6 +581,51 @@ resource_size_t mtk_ovl_mmsys_mapping_MT6989(struct mtk_ddp_comp *comp)
 	}
 }
 
+unsigned int mtk_ovl_sys_mapping_MT6989(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0_2L:
+	case DDP_COMPONENT_OVL1_2L:
+	case DDP_COMPONENT_OVL2_2L:
+		return 0;
+	case DDP_COMPONENT_OVL3_2L:
+	case DDP_COMPONENT_OVL4_2L:
+	case DDP_COMPONENT_OVL5_2L:
+		return 1;
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return -1;
+	}
+}
+
+unsigned int ovl_comp_frame_done_event_MT6989(struct mtk_ddp_comp *comp)
+{
+#define CMDQ_EVENT_OVL1_DISP_OVL2_2L_FRAME_DONE 153
+#define CMDQ_EVENT_OVL1_DISP_OVL1_2L_FRAME_DONE 154
+#define CMDQ_EVENT_OVL1_DISP_OVL0_2L_FRAME_DONE 155
+
+#define CMDQ_EVENT_OVL0_DISP_OVL2_2L_FRAME_DONE 217
+#define CMDQ_EVENT_OVL0_DISP_OVL1_2L_FRAME_DONE 218
+#define CMDQ_EVENT_OVL0_DISP_OVL0_2L_FRAME_DONE 219
+
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0_2L:
+		return CMDQ_EVENT_OVL0_DISP_OVL0_2L_FRAME_DONE;
+	case DDP_COMPONENT_OVL1_2L:
+		return CMDQ_EVENT_OVL0_DISP_OVL1_2L_FRAME_DONE;
+	case DDP_COMPONENT_OVL2_2L:
+		return CMDQ_EVENT_OVL0_DISP_OVL2_2L_FRAME_DONE;
+	case DDP_COMPONENT_OVL3_2L:
+		return CMDQ_EVENT_OVL1_DISP_OVL0_2L_FRAME_DONE;
+	case DDP_COMPONENT_OVL4_2L:
+		return CMDQ_EVENT_OVL1_DISP_OVL1_2L_FRAME_DONE;
+	case DDP_COMPONENT_OVL5_2L:
+		return CMDQ_EVENT_OVL1_DISP_OVL2_2L_FRAME_DONE;
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return 0;
+	}
+}
 
 resource_size_t mtk_ovl_mmsys_mapping_MT6886(struct mtk_ddp_comp *comp)
 {
@@ -3973,6 +4018,28 @@ other:
 			       DISP_OVL_PQ_OUT_SIZE_SEL, DISP_OVL_PQ_OUT_SIZE_SEL);
 		break;
 	}
+	case OVL_FRAME_DONE_EVENT: {
+		struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
+
+		if (ovl->data->frame_done_event) {
+			DDPINFO("%s, %d, comp id:%d, event:%d\n", __func__, __LINE__,
+				comp->id, ovl->data->frame_done_event(comp));
+			return ovl->data->frame_done_event(comp);
+		}
+
+		break;
+	}
+	case GET_OVL_SYS_NUM: {
+		struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
+
+		if (ovl->data->ovlsys_mapping) {
+			DDPINFO("%s, %d, comp id:%d, ovlsys:%d\n", __func__, __LINE__,
+				comp->id, ovl->data->ovlsys_mapping(comp));
+			return ovl->data->ovlsys_mapping(comp);
+		}
+
+		break;
+	}
 	default:
 		break;
 	}
@@ -5031,6 +5098,8 @@ static const struct mtk_disp_ovl_data mt6989_ovl_driver_data = {
 	.source_bpc = 10,
 	.support_pq_selfloop = true, /* pq in out self loop */
 	//.is_right_ovl_comp = &is_right_ovl_comp_MT6985,
+	.frame_done_event = &ovl_comp_frame_done_event_MT6989,
+	.ovlsys_mapping = &mtk_ovl_sys_mapping_MT6989,
 };
 
 static const struct compress_info compr_info_mt6897  = {
