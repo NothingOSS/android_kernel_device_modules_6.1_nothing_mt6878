@@ -60,6 +60,7 @@ struct grp {
 	int			ws;
 	int			wp;
 	int			wc;
+	bool			gear_hint;
 };
 
 #define GRP_DEFAULT_WS DEFAULT_SCHED_RAVG_WINDOW
@@ -84,4 +85,10 @@ inline bool check_and_get_grp_id(struct task_struct *p, int *grp_id);
 void group_update_ws(struct rq *rq);
 inline int cgrp_to_grpid(struct task_struct *p);
 int user_set_task_to_grp(int pid, int grp_id);
+void  group_update_threshold_util(int wl);
+int  group_get_threshold_util(int grp_id);
+int  group_set_threshold(int grp_id, int val);
+int  group_reset_threshold(int grp_id);
+int  group_get_threshold(int grp_id);
+inline bool group_get_gear_hint(struct task_struct *p);
 #endif /* _EAS_GROUP_H*/

@@ -30,7 +30,9 @@
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 #include "eas/vip.h"
 #endif
-
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#include "eas/group.h"
+#endif
 #define CREATE_TRACE_POINTS
 #include "sched_trace.h"
 
@@ -1612,6 +1614,21 @@ static inline bool util_fits_capacity(unsigned long cpu_util, unsigned long cpu_
 }
 #endif
 
+/*default value: gear_start = -1, num_gear = -1, reverse = 0 */
+static inline bool gear_hints_unset(struct task_gear_hints *ghts)
+{
+	if (ghts->gear_start >= 0)
+		return false;
+
+	if (ghts->num_gear > 0 && ghts->num_gear <= num_sched_clusters)
+		return false;
+
+	if (ghts->reverse)
+		return false;
+
+	return true;
+}
+
 void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_index,
 		int *reverse)
 {
@@ -1628,7 +1645,15 @@ void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_ind
 	/* gear_start's range -1~num_sched_clusters */
 	if (ghts->gear_start > num_sched_clusters || ghts->gear_start < -1)
 		goto out;
-
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+	/* group based prefer MCPU */
+	if (gear_hints_enable && gear_hints_unset(ghts) && group_get_gear_hint(p)) {
+		*order_index = 1;
+		*end_index = 0;
+		*reverse = 1;
+		goto out;
+	}
+#endif
 	/* task has customized gear prefer */
 	if (gear_hints_enable && ghts->gear_start >= 0) {
 		*order_index = ghts->gear_start;

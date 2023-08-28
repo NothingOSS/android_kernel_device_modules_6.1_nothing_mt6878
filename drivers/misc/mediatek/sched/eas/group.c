@@ -25,9 +25,22 @@
 #include "group.h"
 #include "flt_cal.h"
 #include "eas_trace.h"
-
+#include <sugov/cpufreq.h>
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+#include "mtk_energy_model/v2/energy_model.h"
+#else
+#include "mtk_energy_model/v1/energy_model.h"
+#endif
+#define DEFAULT_GRP_THRESHOLD	20
+#define DEFAULT_GRP_THRESHOLD_UTIL	460
 static struct grp *related_thread_groups[GROUP_ID_RECORD_MAX];
 static u32 GP_mode = GP_MODE_0;
+static int grp_threshold[GROUP_ID_RECORD_MAX] = {DEFAULT_GRP_THRESHOLD, DEFAULT_GRP_THRESHOLD,
+						DEFAULT_GRP_THRESHOLD, DEFAULT_GRP_THRESHOLD};
+static int grp_threshold_util[GROUP_ID_RECORD_MAX] = {DEFAULT_GRP_THRESHOLD_UTIL,
+						DEFAULT_GRP_THRESHOLD_UTIL,
+						DEFAULT_GRP_THRESHOLD_UTIL,
+						DEFAULT_GRP_THRESHOLD_UTIL};
 
 static DEFINE_RWLOCK(related_thread_group_lock);
 
@@ -412,10 +425,9 @@ int __set_task_to_group(int pid, int grp_id)
 	return ret;
 }
 
-/* Allow user set task to grp (0,1)->(2,3) */
+/* Allow user set task to grp (0,1,2,3) */
 int set_task_to_group(int pid, int grp_id)
 {
-	grp_id += GROUP_ID_3;
 	return __set_task_to_group(pid, grp_id);
 }
 EXPORT_SYMBOL(set_task_to_group);
@@ -517,3 +529,73 @@ u32 group_get_mode(void)
 }
 EXPORT_SYMBOL(group_get_mode);
 
+void  group_update_threshold_util(int wl)
+{
+	int weight, cpu, grp_idx;
+	struct cpumask *gear_cpus;
+	struct mtk_em_perf_state *ps = NULL;
+
+	gear_cpus = get_gear_cpumask(0);
+	cpu = cpumask_first(gear_cpus);
+	weight = cpumask_weight(gear_cpus);
+	ps = pd_get_opp_ps(wl, cpu, 0, false);
+
+	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx)
+		grp_threshold_util[grp_idx] =
+		((ps->capacity * weight) * grp_threshold[grp_idx]) / 100;
+}
+
+int  group_get_threshold_util(int grp_id)
+{
+	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0)
+		return -1;
+	return grp_threshold_util[grp_id];
+}
+EXPORT_SYMBOL(group_get_threshold_util);
+
+int  group_set_threshold(int grp_id, int val)
+{
+	if (grp_id >= GROUP_ID_RECORD_MAX || val > 100 || val < 0 || grp_id < 0)
+		return -1;
+	grp_threshold[grp_id] = val;
+	return 0;
+}
+EXPORT_SYMBOL(group_set_threshold);
+
+int  group_reset_threshold(int grp_id)
+{
+	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0)
+		return -1;
+	grp_threshold[grp_id] = DEFAULT_GRP_THRESHOLD;
+	return 0;
+}
+EXPORT_SYMBOL(group_reset_threshold);
+
+int  group_get_threshold(int grp_id)
+{
+	int ret = 0;
+
+	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0)
+		return ret;
+	return grp_threshold[grp_id];
+}
+EXPORT_SYMBOL(group_get_threshold);
+
+inline bool group_get_gear_hint(struct task_struct *p)
+{
+	struct grp *grp;
+	bool ret = false;
+
+	if (unlikely(flt_get_mode() == FLT_MODE_0))
+		return ret;
+
+	rcu_read_lock();
+
+	grp = task_grp(p);
+	if (grp)
+		ret = grp->gear_hint;
+
+	rcu_read_unlock();
+
+	return ret;
+}

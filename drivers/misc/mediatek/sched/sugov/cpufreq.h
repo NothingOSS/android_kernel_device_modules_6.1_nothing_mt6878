@@ -167,6 +167,8 @@ extern unsigned long pd_get_freq_opp(int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_pwr_eff(int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_opp_legacy(int cpu, unsigned long freq);
 extern struct mtk_em_perf_state *pd_get_util_ps(int wl_type, int cpu, unsigned long util, int *opp);
+extern struct mtk_em_perf_state *pd_get_util_ps_legacy(int wl_type, int cpu,
+							unsigned long util, int *opp);
 extern unsigned long pd_get_util_freq(int cpu, unsigned long util);
 extern unsigned long pd_get_util_pwr_eff(int cpu, unsigned long util);
 extern unsigned long pd_get_util_opp(int cpu, unsigned long util);
@@ -245,6 +247,9 @@ extern int grp_dvfs_support_mode;
 extern int grp_dvfs_ctrl_mode;
 extern int get_grp_dvfs_ctrl(void);
 extern void set_grp_dvfs_ctrl(int set);
+extern bool get_grp_high_freq(int cluster_id);
+extern void set_grp_high_freq(int cluster_id, bool set);
+
 
 extern unsigned long get_turn_point_freq(int gearid);
 DECLARE_PER_CPU(unsigned int, gear_id);

@@ -66,7 +66,6 @@ static struct irq_work flt_irq_work;
 static int flt_sync_all_cpu(void);
 static DEFINE_SPINLOCK(sched_ravg_window_lock);
 DEFINE_PER_CPU(struct flt_rq, flt_rq);
-
 #define NEW_TASK_ACTIVE_TIME ((u64)sched_ravg_window * sched_ravg_hist_size)
 #define scale_demand(d) ((d) / flt_scale_demand_divisor)
 
@@ -1088,6 +1087,50 @@ static int flt_sync_all_cpu(void)
 	}
 	return 0;
 }
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+static void flt_set_preferred_gear(void)
+{
+	int grp_id = 0, util = 0, threshold = 0, wl = 0;
+	struct grp *grp = NULL;
+
+	/* gear hint works on wl_type !=4 */
+	wl = get_curr_wl();
+
+	if (unlikely(group_get_mode() == GP_MODE_0))
+		return;
+
+	if (wl == 4 && !get_grp_high_freq(0)) {
+		for (grp_id = 0; grp_id < GROUP_ID_RECORD_MAX; grp_id++) {
+			grp = lookup_grp(grp_id);
+			if (!grp)
+				return;
+			grp->gear_hint = false;
+			if (trace_sched_set_preferred_cluster_enabled())
+				trace_sched_set_preferred_cluster(wl, grp_id,
+					util, threshold, grp->gear_hint);
+			}
+		return;
+	}
+
+	group_update_threshold_util(wl);
+
+	for (grp_id = 0; grp_id < GROUP_ID_RECORD_MAX; grp_id++) {
+		grp = lookup_grp(grp_id);
+		if (!grp)
+			return;
+		util = grp_awr_get_grp_tar_util(grp_id);
+		threshold = group_get_threshold_util(grp_id);
+
+		if (util > threshold)
+			grp->gear_hint = true;
+		else
+			grp->gear_hint = false;
+		if (trace_sched_set_preferred_cluster_enabled())
+			trace_sched_set_preferred_cluster(wl, grp_id,
+				util, threshold, grp->gear_hint);
+	}
+}
+#endif
 
 static void flt_irq_workfn(struct irq_work *irq_work)
 {
@@ -1102,8 +1145,8 @@ static void flt_irq_workfn(struct irq_work *irq_work)
 		update_active_ratio_all();
 		grp_awr_update_grp_awr_util();
 	}
+	flt_set_preferred_gear();
 #endif
-
 	wc = get_current_time();
 
 	spin_lock_irqsave(&sched_ravg_window_lock, flags);
@@ -1304,4 +1347,31 @@ void flt_cal_init(void)
 	atomic64_set(&flt_irq_work_lastq_ws, window_start_ns);
 
 	flt_register_kernel_hooks();
+}
+
+void flt_set_grp_ctrl(int set)
+{
+	struct grp *grp = NULL;
+	int grp_id = 0;
+
+
+	if (unlikely(group_get_mode() == GP_MODE_0))
+		return;
+
+	if (set) {
+		/* force on flt*/
+		flt_ctrl_force_set(1);
+		flt_set_mode(FLT_MODE2_EN);
+	} else {
+		/* reset gear hint for grp task */
+		for (grp_id = 0; grp_id < GROUP_ID_RECORD_MAX; grp_id++) {
+			grp = lookup_grp(grp_id);
+			/* santiy check */
+			if (!grp)
+				return;
+			grp->gear_hint = false;
+		}
+		/* reset to default setting*/
+		flt_ctrl_force_set(0);
+	}
 }

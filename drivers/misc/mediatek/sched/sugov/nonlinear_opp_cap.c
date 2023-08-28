@@ -634,6 +634,24 @@ struct mtk_em_perf_state *pd_get_util_ps(int wl_type, int cpu, unsigned long uti
 	return ps;
 }
 EXPORT_SYMBOL_GPL(pd_get_util_ps);
+struct mtk_em_perf_state *pd_get_util_ps_legacy(int wl_type, int cpu, unsigned long util, int *opp)
+{
+	int i, idx;
+	struct pd_capacity_info *pd_info;
+	struct mtk_em_perf_state *ps;
+
+	i = per_cpu(gear_id, cpu);
+	if (wl_type < 0 || wl_type >= nr_wl_type)
+		wl_type = wl_type_curr;
+	pd_info = &pd_wl_type[wl_type][i];
+
+	idx = map_util_idx_by_tbl(pd_info, util);
+	idx = pd_info->util_opp_map_legacy[idx];
+	ps = &pd_info->table_legacy[idx];
+	*opp = idx;
+	return ps;
+}
+EXPORT_SYMBOL_GPL(pd_get_util_ps_legacy);
 
 unsigned long pd_get_util_opp(int cpu, unsigned long util)
 {
@@ -2003,6 +2021,18 @@ inline void update_adaptive_margin(struct cpufreq_policy *policy)
 	}
 }
 
+static bool grp_high_freq[MAX_NR_CPUS];
+bool get_grp_high_freq(int cluster_id)
+{
+	return grp_high_freq[cluster_id];
+}
+EXPORT_SYMBOL(get_grp_high_freq);
+void set_grp_high_freq(int cluster_id, bool set)
+{
+	grp_high_freq[cluster_id] = set;
+}
+EXPORT_SYMBOL(set_grp_high_freq);
+
 inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 				int cpu, unsigned long *next_freq, struct cpumask *cpumask)
 {
@@ -2025,7 +2055,8 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 	}
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
-	if (flt_get_cpu_util_hook && grp_dvfs_ctrl_mode && wl_type_curr != 4)
+	if (flt_get_cpu_util_hook && grp_dvfs_ctrl_mode &&
+			(wl_type_curr != 4 || grp_high_freq[gearid]))
 		flt_util = group_aware_dvfs_util(cpumask);
 	if (grp_dvfs_ctrl_mode == 9)
 		flt_util = 0;

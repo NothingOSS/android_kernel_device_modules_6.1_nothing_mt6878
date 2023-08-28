@@ -29,6 +29,7 @@
 #include "eas_trace.h"
 #include "grp_awr.h"
 #include <sugov/cpufreq.h>
+#include "mtk_energy_model/v2/energy_model.h"
 
 /* src code */
 #include "flt_cal.c"

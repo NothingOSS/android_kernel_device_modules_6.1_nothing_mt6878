@@ -1636,9 +1636,12 @@ TRACE_EVENT(sugov_ext_tar_cal,
 
 TRACE_EVENT(sugov_ext_pcpu_pgrp_u_rto_marg,
 
-	TP_PROTO(int cpu, int *pcpu_pgrp_u, int *pcpu_pgrp_adpt_rto, int *pcpu_pgrp_marg, int pcpu_o_u),
+	TP_PROTO(int cpu, int *pcpu_pgrp_u, int *pcpu_pgrp_adpt_rto, int *pcpu_pgrp_marg,
+	int pcpu_o_u, int *pcpu_pgrp_wetin, int *pcpu_pgrp_tar_u,
+	int cpu_tar_util, int *grp_margin),
 
-	TP_ARGS(cpu, pcpu_pgrp_u, pcpu_pgrp_adpt_rto, pcpu_pgrp_marg, pcpu_o_u),
+	TP_ARGS(cpu, pcpu_pgrp_u, pcpu_pgrp_adpt_rto, pcpu_pgrp_marg, pcpu_o_u,
+	pcpu_pgrp_wetin, pcpu_pgrp_tar_u, cpu_tar_util, grp_margin),
 
 	TP_STRUCT__entry(
 		__field(int,		cpu)
@@ -1655,6 +1658,19 @@ TRACE_EVENT(sugov_ext_pcpu_pgrp_u_rto_marg,
 		__field(int,		marg2)
 		__field(int,		marg3)
 		__field(int,		ot)
+		__field(int,		pcpu_pgrp_wetin0)
+		__field(int,		pcpu_pgrp_wetin1)
+		__field(int,		pcpu_pgrp_wetin2)
+		__field(int,		pcpu_pgrp_wetin3)
+		__field(int,		pcpu_pgrp_tar_u0)
+		__field(int,		pcpu_pgrp_tar_u1)
+		__field(int,		pcpu_pgrp_tar_u2)
+		__field(int,		pcpu_pgrp_tar_u3)
+		__field(int,		cpu_tar_util)
+		__field(int,		grp_margin0)
+		__field(int,		grp_margin1)
+		__field(int,		grp_margin2)
+		__field(int,		grp_margin3)
 	),
 
 	TP_fast_assign(
@@ -1672,9 +1688,22 @@ TRACE_EVENT(sugov_ext_pcpu_pgrp_u_rto_marg,
 		__entry->marg2		= pcpu_pgrp_marg[2];
 		__entry->marg3		= pcpu_pgrp_marg[3];
 		__entry->ot			= pcpu_o_u;
+		__entry->pcpu_pgrp_wetin0		= pcpu_pgrp_wetin[0];
+		__entry->pcpu_pgrp_wetin1		= pcpu_pgrp_wetin[1];
+		__entry->pcpu_pgrp_wetin2		= pcpu_pgrp_wetin[2];
+		__entry->pcpu_pgrp_wetin3		= pcpu_pgrp_wetin[3];
+		__entry->pcpu_pgrp_tar_u0		= pcpu_pgrp_tar_u[0];
+		__entry->pcpu_pgrp_tar_u1		= pcpu_pgrp_tar_u[1];
+		__entry->pcpu_pgrp_tar_u2		= pcpu_pgrp_tar_u[2];
+		__entry->pcpu_pgrp_tar_u3		= pcpu_pgrp_tar_u[3];
+		__entry->cpu_tar_util		= cpu_tar_util;
+		__entry->grp_margin0		= grp_margin[0];
+		__entry->grp_margin1		= grp_margin[1];
+		__entry->grp_margin2		= grp_margin[2];
+		__entry->grp_margin3		= grp_margin[3];
 	),
 
-	TP_printk("cpu=%d gu[0]=%d gu[1]=%d gu[2]=%d gu[3]=%d rto[0]=%d rto[1]=%d rto[2]=%d rto[3]=%d marg[0]=%d marg[1]=%d marg[2]=%d marg[3]=%d ot=%d",
+	TP_printk("cpu=%d gu[0]=%d gu[1]=%d gu[2]=%d gu[3]=%d rto[0]=%d rto[1]=%d rto[2]=%d rto[3]=%d marg[0]=%d marg[1]=%d marg[2]=%d marg[3]=%d ot=%d wt[0]=%d wt[1]=%d wt[2]=%d wt[3]=%d tar_u[0]=%d tar_u[1]=%d tar_u[2]=%d tar_u[3]=%d cpu_tar_util=%d grp_m[0]=%d grp_m[1]=%d grp_m[2]=%d grp_m[3]=%d",
 		__entry->cpu,
 		__entry->gu0,
 		__entry->gu1,
@@ -1688,14 +1717,27 @@ TRACE_EVENT(sugov_ext_pcpu_pgrp_u_rto_marg,
 		__entry->marg1,
 		__entry->marg2,
 		__entry->marg3,
-		__entry->ot)
+		__entry->ot,
+		__entry->pcpu_pgrp_wetin0,
+		__entry->pcpu_pgrp_wetin1,
+		__entry->pcpu_pgrp_wetin2,
+		__entry->pcpu_pgrp_wetin3,
+		__entry->pcpu_pgrp_tar_u0,
+		__entry->pcpu_pgrp_tar_u1,
+		__entry->pcpu_pgrp_tar_u2,
+		__entry->pcpu_pgrp_tar_u3,
+		__entry->cpu_tar_util,
+		__entry->grp_margin0,
+		__entry->grp_margin1,
+		__entry->grp_margin2,
+		__entry->grp_margin3)
 );
 
 TRACE_EVENT(sugov_ext_pger_pgrp_u,
 
-	TP_PROTO(int gear_id, int cpu, int *pger_pgrp_u),
+	TP_PROTO(int gear_id, int cpu, int *pger_pgrp_u, int *converge_thr, int *margin_for_min_opp),
 
-	TP_ARGS(gear_id, cpu, pger_pgrp_u),
+	TP_ARGS(gear_id, cpu, pger_pgrp_u, converge_thr, margin_for_min_opp),
 
 	TP_STRUCT__entry(
 		__field(int,		gear_id)
@@ -1704,6 +1746,14 @@ TRACE_EVENT(sugov_ext_pger_pgrp_u,
 		__field(int,		gu1)
 		__field(int,		gu2)
 		__field(int,		gu3)
+		__field(int,		converge_thr0)
+		__field(int,		converge_thr1)
+		__field(int,		converge_thr2)
+		__field(int,		converge_thr3)
+		__field(int,		margin_for_min_opp0)
+		__field(int,		margin_for_min_opp1)
+		__field(int,		margin_for_min_opp2)
+		__field(int,		margin_for_min_opp3)
 	),
 
 	TP_fast_assign(
@@ -1713,15 +1763,31 @@ TRACE_EVENT(sugov_ext_pger_pgrp_u,
 		__entry->gu1		= pger_pgrp_u[1];
 		__entry->gu2		= pger_pgrp_u[2];
 		__entry->gu3		= pger_pgrp_u[3];
+		__entry->converge_thr0		= converge_thr[0];
+		__entry->converge_thr1		= converge_thr[1];
+		__entry->converge_thr2		= converge_thr[2];
+		__entry->converge_thr3		= converge_thr[3];
+		__entry->margin_for_min_opp0		= margin_for_min_opp[0];
+		__entry->margin_for_min_opp1		= margin_for_min_opp[1];
+		__entry->margin_for_min_opp2		= margin_for_min_opp[2];
+		__entry->margin_for_min_opp3		= margin_for_min_opp[3];
 	),
 
-	TP_printk("gear_id=%d cpu=%d gu[0]=%d gu[1]=%d gu[2]=%d gu[3]=%d",
+	TP_printk("gear_id=%d cpu=%d gu[0]=%d gu[1]=%d gu[2]=%d gu[3]=%d ct[0]=%d ct[1]=%d ct[2]=%d ct[3]=%d margin_min_opp[0]=%d margin_min_opp[1]=%d margin_min_opp[2]=%d margin_min_opp[3]=%d",
 		__entry->gear_id,
 		__entry->cpu,
 		__entry->gu0,
 		__entry->gu1,
 		__entry->gu2,
-		__entry->gu3)
+		__entry->gu3,
+		__entry->converge_thr0,
+		__entry->converge_thr1,
+		__entry->converge_thr2,
+		__entry->converge_thr3,
+		__entry->margin_for_min_opp0,
+		__entry->margin_for_min_opp1,
+		__entry->margin_for_min_opp2,
+		__entry->margin_for_min_opp3)
 );
 
 TRACE_EVENT(sugov_ext_pgrp_hint,
@@ -1749,6 +1815,52 @@ TRACE_EVENT(sugov_ext_pgrp_hint,
 		__entry->ht1,
 		__entry->ht2,
 		__entry->ht3)
+);
+
+TRACE_EVENT(sugov_ext_ta_ctrl,
+
+	TP_PROTO(int val, int force_ctrl, int refcnt, int top_grp_aware),
+
+	TP_ARGS(val, force_ctrl, refcnt, top_grp_aware),
+
+	TP_STRUCT__entry(
+		__field(int,		val)
+		__field(int,		force_ctrl)
+		__field(int,		refcnt)
+		__field(int,		top_grp_aware)
+	),
+
+	TP_fast_assign(
+		__entry->val		= val;
+		__entry->force_ctrl	= force_ctrl;
+		__entry->refcnt		= refcnt;
+		__entry->top_grp_aware	= top_grp_aware;
+	),
+
+	TP_printk("val=%d force_ctrl=%d refcnt=%d top_grp_aware=%d",
+		__entry->val,
+		__entry->force_ctrl,
+		__entry->refcnt,
+		__entry->top_grp_aware)
+);
+
+TRACE_EVENT(sugov_ext_ta_ctrl_caller,
+
+	TP_PROTO(const char *caller0),
+
+	TP_ARGS(caller0),
+
+	TP_STRUCT__entry(
+		__string(caller0, caller0)
+		),
+
+	TP_fast_assign(
+		__assign_str(caller0, caller0);
+		),
+
+	TP_printk("caller =%s",
+		__get_str(caller0)
+		)
 );
 
 TRACE_EVENT(sched_flt_get_o_util,
@@ -1782,6 +1894,34 @@ TRACE_EVENT(sched_flt_get_o_util,
 		__entry->grp_idx, __entry->util_ratio,
 		__entry->flt_util, __entry->grp_r,
 		__entry->total)
+);
+
+TRACE_EVENT(sched_set_preferred_cluster,
+
+	TP_PROTO(int wl_type, int grp_id, int util,
+			int threshold, bool gear_hint),
+
+	TP_ARGS(wl_type, grp_id, util, threshold, gear_hint),
+
+	TP_STRUCT__entry(
+		__field(int,		wl_type)
+		__field(int,		grp_id)
+		__field(int,		util)
+		__field(int,		threshold)
+		__field(bool,		gear_hint)
+	),
+
+	TP_fast_assign(
+		__entry->wl_type		= wl_type;
+		__entry->grp_id		= grp_id;
+		__entry->util		= util;
+		__entry->threshold	= threshold;
+		__entry->gear_hint	= gear_hint;
+	),
+
+	TP_printk("wl=%d grp_id=%d  util=%d threshold=%d gear_hint=%d",
+		__entry->wl_type, __entry->grp_id, __entry->util,
+		__entry->threshold, __entry->gear_hint)
 );
 #endif
 
