@@ -31,6 +31,7 @@
 #define LOG_PARAM_INFO_SIZE 64
 #define LOG_PROPERTY_SIZE 1024
 #define ROUND_N(X, N)   (((X) + ((N)-1)) & (~((N)-1)))    //only for N is exponential of 2
+#define CEIL_DIV(x, y) ((y) ? (((x) + (y) - 1) / (y)) : 0)
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 #define ABS(x) (((x) >= 0) ? (x) : -(x))

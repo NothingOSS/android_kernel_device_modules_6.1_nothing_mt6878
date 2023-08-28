@@ -236,6 +236,51 @@ void mtk_venc_trigger_vcp_halt(struct venc_inst *inst)
 	}
 }
 
+int isVencAfbcFormat(enum venc_yuv_fmt format)
+{
+	switch (format) {
+	case VENC_YUV_FORMAT_32bitRGBA8888_AFBC:
+	case VENC_YUV_FORMAT_32bitBGRA8888_AFBC:
+	case VENC_YUV_FORMAT_32bitRGBA1010102_AFBC:
+	case VENC_YUV_FORMAT_32bitBGRA1010102_AFBC:
+	case VENC_YUV_FORMAT_NV12_AFBC:
+	case VENC_YUV_FORMAT_NV12_10B_AFBC:
+	case VENC_YUV_FORMAT_NV21_AFBC:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+int isVencAfbcRgbFormat(enum venc_yuv_fmt format)
+{
+	switch (format) {
+	case VENC_YUV_FORMAT_32bitRGBA8888_AFBC:
+	case VENC_YUV_FORMAT_32bitBGRA8888_AFBC:
+	case VENC_YUV_FORMAT_32bitRGBA1010102_AFBC:
+	case VENC_YUV_FORMAT_32bitBGRA1010102_AFBC:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+void venc_dump_data_section(char *pbuf, unsigned int dump_size)
+{
+	char debug_fb[256] = {0};
+	char *pdebug_fb = debug_fb;
+	unsigned int i;
+
+	for (i = 0; i < dump_size; i++) {
+		pdebug_fb += sprintf(pdebug_fb, "%02x ", pbuf[i]);
+		if ((((i + 1) % 16) == 0) || (i == (dump_size - 1))) {
+			mtk_v4l2_debug(0, "%s", debug_fb);
+			memset(debug_fb, 0, sizeof(debug_fb));
+			pdebug_fb = debug_fb;
+		}
+	}
+}
+
 void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 {
 	struct venc_done_result rResult;
@@ -245,8 +290,9 @@ void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 	struct vb2_v4l2_buffer *dst_vb2_v4l2, *src_vb2_v4l2;
 	struct vb2_buffer *dst_buf;
 	struct venc_inst *inst = (struct venc_inst *)(ctx->drv_handle);
-	unsigned int i, dump_size;
-	char *pbuf, *pdebug_fb, debug_fb[200] = {0};
+	unsigned int dump_size, header_size, superblock_width, superblock_height;
+	struct venc_vcu_config *pconfig;
+	char *pbuf;
 
 	mutex_lock(&ctx->buf_lock);
 	do {
@@ -284,15 +330,25 @@ void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 				pfrm->fb_addr[0].size);
 
 				pbuf = (char *)pfrm->fb_addr[0].va;
-				dump_size = pfrm->fb_addr[0].size < 256 ? pfrm->fb_addr[i].size: 256;
-				pdebug_fb = debug_fb;
-				for (i = 0; i < dump_size; i++) {
-					pdebug_fb += sprintf(pdebug_fb, "%02x ", pbuf[i]);
-					if ((((i + 1) % 16) == 0) || (i == (dump_size - 1))) {
-						mtk_v4l2_debug(0,"%s", debug_fb);
-						memset(debug_fb, 0, sizeof(debug_fb));
-						pdebug_fb = debug_fb;
-					}
+				dump_size = pfrm->fb_addr[0].size < 256 ? pfrm->fb_addr[0].size: 256;
+				venc_dump_data_section(pbuf, dump_size);
+
+				//afbc data
+				pconfig = &inst->vsi->config;
+				if (isVencAfbcFormat(pconfig->input_fourcc)) {
+					superblock_width = isVencAfbcRgbFormat(pconfig->input_fourcc) ? 32: 16;
+					superblock_height = isVencAfbcRgbFormat(pconfig->input_fourcc) ? 8: 16;
+					header_size = ROUND_N(16 * CEIL_DIV(pconfig->pic_w, superblock_width)
+						* CEIL_DIV(pconfig->pic_h, superblock_height),
+						4096);
+
+					mtk_v4l2_debug(0,
+						"venc timeout dump format %d afbc data of frm_buf w/h=%d/%d offset=0x%x =>",
+						pconfig->input_fourcc, pconfig->pic_w, pconfig->pic_h, header_size);
+
+					dump_size = ((header_size + 256) < pfrm->fb_addr[0].size) ? 256 : 0;
+					pbuf = (char *)pfrm->fb_addr[0].va + (size_t)header_size;
+					venc_dump_data_section(pbuf, dump_size);
 				}
 
 				if (rResult.flags & VENC_FLAG_ENCODE_HWBREAK_TIMEOUT)
