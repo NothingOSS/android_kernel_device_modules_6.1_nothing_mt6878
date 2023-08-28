@@ -693,7 +693,8 @@ err_allocate_state:
 
 static int trusty_remove(struct platform_device *pdev)
 {
-	unsigned int cpu;
+	/* do not wake up ise during device shutdown */
+	//unsigned int cpu;
 	struct trusty_state *s = platform_get_drvdata(pdev);
 
 	device_for_each_child(&pdev->dev, NULL, trusty_remove_child);
@@ -701,11 +702,14 @@ static int trusty_remove(struct platform_device *pdev)
 	destroy_workqueue(ise_notif_call_wq);
 	destroy_workqueue(notif_call_wq);
 
+	/* do not wake up ise during device shutdown */
+#if 0
 	for_each_possible_cpu(cpu) {
 		struct trusty_work *tw = per_cpu_ptr(s->nop_works, cpu);
 
 		flush_work(&tw->work);
 	}
+#endif
 	free_percpu(s->nop_works);
 	destroy_workqueue(s->nop_wq);
 

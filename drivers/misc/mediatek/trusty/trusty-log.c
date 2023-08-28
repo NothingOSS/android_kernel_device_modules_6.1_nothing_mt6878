@@ -232,9 +232,11 @@ error_alloc_state:
 
 static int trusty_log_remove(struct platform_device *pdev)
 {
-	int result;
+	/* do not wake up ise during device shutdown */
+	//int result;
 	struct trusty_log_state *s = platform_get_drvdata(pdev);
-	phys_addr_t pa = page_to_phys(s->log_pages);
+	/* do not wake up ise during device shutdown */
+	//phys_addr_t pa = page_to_phys(s->log_pages);
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 
@@ -242,12 +244,15 @@ static int trusty_log_remove(struct platform_device *pdev)
 					 &s->panic_notifier);
 	ise_call_notifier_unregister(s->trusty_dev, &s->call_notifier);
 
+	/* do not wake up ise during device shutdown */
+#if 0
 	result = ise_std_call32(s->trusty_dev, SMC_SC_SHARED_LOG_RM,
 				   (u32)pa, (u32)(pa >> 32), 0);
 	if (result) {
 		pr_err("trusty std call (SMC_SC_SHARED_LOG_RM) failed: %d\n",
 		       result);
 	}
+#endif
 	trusty_shm_free(s->log, TRUSTY_LOG_SIZE);
 	kfree(s);
 

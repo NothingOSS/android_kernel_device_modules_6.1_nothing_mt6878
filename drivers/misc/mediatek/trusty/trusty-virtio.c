@@ -924,7 +924,8 @@ static int trusty_virtio_remove(struct platform_device *pdev)
 	destroy_workqueue(tctx->check_wq);
 
 	/* notify remote that shared area goes away */
-	trusty_virtio_stop(tctx, tctx->shared_va, tctx->shared_sz);
+	/* do not wake up ise during device shutdown */
+	//trusty_virtio_stop(tctx, tctx->shared_va, tctx->shared_sz);
 
 	/* free shared area */
 	trusty_shm_free(tctx->shared_va, tctx->shared_sz);
