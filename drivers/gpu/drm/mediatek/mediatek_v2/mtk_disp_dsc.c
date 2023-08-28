@@ -1129,7 +1129,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 		else
 			dsc_con = 0x0080;
 		dsc_con |= DSC_UFOE_SEL;
-		if (comp->mtk_crtc->is_dual_pipe) {
+		if (comp->mtk_crtc->is_dual_pipe && !dsc_params->dual_dsc_enable) {
 			if (comp->mtk_crtc->panel_ext->params->output_mode
 				== MTK_PANEL_DUAL_PORT)
 				dsc_con |= DSC_DUAL_INOUT;
