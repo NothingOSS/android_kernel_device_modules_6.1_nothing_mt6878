@@ -86,7 +86,7 @@ struct mtk_dpc {
 	void __iomem *spm_base;
 	void __iomem *vlp_base;
 	void __iomem *mminfra_voter_check;
-	void __iomem *mminfra_hfrp_pwr;
+	void __iomem *mminfra_hangfree;
 	void __iomem *vdisp_dvfsrc_check;
 	void __iomem *vcore_dvfsrc_check;
 	void __iomem *dvfsrc_en;
@@ -1044,7 +1044,7 @@ static int dpc_res_init(struct mtk_dpc *priv)
 	if (IS_ERR_OR_NULL(priv->dvfsrc_en))
 		priv->dvfsrc_en = ioremap(0x1c00f000, 0x4);
 
-	priv->mminfra_hfrp_pwr = ioremap(0x1ec3eea8, 0x4);
+	priv->mminfra_hangfree = ioremap(0x1e80090c, 0x4);
 
 	return ret;
 }
@@ -1248,14 +1248,20 @@ static void process_dbg_opt(const char *opt)
 {
 	int ret = 0;
 	u32 val = 0, v1 = 0, v2 = 0;
+	u32 mminfra_hangfree_val = 0;
 
-	if (0 == (readl(g_priv->spm_base + SPM_PWR_STATUS_MSB) & BIT(3))) {
+	val = BIT(3) | BIT(7);
+	if (val != (readl(g_priv->spm_base + SPM_PWR_STATUS_MSB) & val)) {
 		DPCFUNC("disp vcore is not power on");
 		return;
 	}
 
 	if (dpc_pm_ctrl(true))
 		return;
+
+	/* disable devapc power check temporarily, the value usually not changed after boot */
+	mminfra_hangfree_val = readl(g_priv->mminfra_hangfree);
+	writel(mminfra_hangfree_val & ~0x1, g_priv->mminfra_hangfree);
 
 	if (strncmp(opt, "en:", 3) == 0) {
 		ret = sscanf(opt, "en:%u\n", &val);
@@ -1372,6 +1378,9 @@ static void process_dbg_opt(const char *opt)
 	} else if (strncmp(opt, "vdo", 3) == 0) {
 		writel(DISP_DPC_EN|DISP_DPC_DT_EN|DISP_DPC_VDO_MODE, dpc_base + DISP_REG_DPC_EN);
 	}
+
+	/* enable devapc power check */
+	writel(mminfra_hangfree_val, g_priv->mminfra_hangfree);
 
 	dpc_pm_ctrl(false);
 
