@@ -38,4 +38,16 @@ void dcs_enable(int enable);
 int dcs_get_dcs_stress(void);
 void dcs_set_dcs_stress(int enable);
 
+// for dcs adjust
+void dcs_set_adjust_support(unsigned int val);
+void dcs_set_adjust_ratio_th(unsigned int val);
+void dcs_set_adjust_fr_cnt(unsigned int val);
+void dcs_set_adjust_non_dcs_th(unsigned int val);
+
+unsigned int dcs_get_adjust_support(void);
+unsigned int dcs_get_adjust_ratio_th(void);
+unsigned int dcs_get_adjust_fr_cnt(void);
+unsigned int dcs_get_adjust_non_dcs_th(void);
+
+
 #endif /* __GED_DCS_H__ */

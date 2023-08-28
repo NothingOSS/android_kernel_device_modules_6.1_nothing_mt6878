@@ -252,6 +252,9 @@ extern void ged_get_gpu_utli_ex(struct GpuUtilization_Ex *util_ex);
 #ifndef MAX
 #define MAX(x, y)	((x) < (y) ? (y) : (x))
 #endif
+#ifndef MIN
+#define MIN(x, y)      ((x) < (y) ? (x) : (y))
+#endif
 
 extern unsigned int g_gpufreq_v2;
 

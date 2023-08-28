@@ -83,6 +83,8 @@ extern unsigned int g_default_log_level;
 extern u64 fb_timeout;
 extern u64 lb_timeout;
 
+extern bool g_force_disable_dcs;
+
 extern struct mutex gsPolicyLock;
 extern unsigned int ged_is_fdvfs_support(void);
 extern void mtk_gpueb_dvfs_commit(unsigned long ui32NewFreqID,

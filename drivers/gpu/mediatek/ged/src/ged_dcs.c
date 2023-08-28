@@ -31,6 +31,13 @@ int g_avail_mask_num;
 int g_virtual_opp_num;
 static int g_dcs_stress;
 
+// adjust dcs_performance
+static unsigned int g_adjust_dcs_support;
+static unsigned int g_adjust_dcs_ratio_th;
+static unsigned int g_adjust_dcs_fr_cnt;
+static unsigned int g_adjust_dcs_non_dcs_th;
+
+
 struct gpufreq_core_mask_info *g_core_mask_table;
 struct gpufreq_core_mask_info *g_avail_mask_table;
 
@@ -103,6 +110,12 @@ GED_ERROR ged_dcs_init_platform_info(void)
 			g_dcs_enable, g_dcs_opp_setting);
 
 	_dcs_init_core_mask_table();
+
+	g_adjust_dcs_support = 1;
+	g_adjust_dcs_ratio_th = 20;
+	g_adjust_dcs_fr_cnt = 20;
+	g_adjust_dcs_non_dcs_th = 20;
+
 
 	return ret;
 }
@@ -260,3 +273,61 @@ void dcs_set_dcs_stress(int enable)
 	g_dcs_stress = enable;
 	mutex_unlock(&g_DCS_lock);
 }
+
+// dcs adjust reference
+void dcs_set_adjust_support(unsigned int val)
+{
+	mutex_lock(&g_DCS_lock);
+	g_adjust_dcs_support = val;
+	mutex_unlock(&g_DCS_lock);
+}
+EXPORT_SYMBOL(dcs_set_adjust_support);
+
+void dcs_set_adjust_ratio_th(unsigned int val)
+{
+	mutex_lock(&g_DCS_lock);
+	g_adjust_dcs_ratio_th = val;
+	mutex_unlock(&g_DCS_lock);
+}
+EXPORT_SYMBOL(dcs_set_adjust_ratio_th);
+
+void dcs_set_adjust_fr_cnt(unsigned int val)
+{
+	mutex_lock(&g_DCS_lock);
+	g_adjust_dcs_fr_cnt = val;
+	mutex_unlock(&g_DCS_lock);
+}
+EXPORT_SYMBOL(dcs_set_adjust_fr_cnt);
+
+void dcs_set_adjust_non_dcs_th(unsigned int val)
+{
+	mutex_lock(&g_DCS_lock);
+	g_adjust_dcs_non_dcs_th = val;
+	mutex_unlock(&g_DCS_lock);
+}
+EXPORT_SYMBOL( dcs_set_adjust_non_dcs_th);
+
+unsigned int dcs_get_adjust_support(void)
+{
+	return g_adjust_dcs_support;
+}
+EXPORT_SYMBOL(dcs_get_adjust_support);
+
+unsigned int dcs_get_adjust_ratio_th(void)
+{
+	return g_adjust_dcs_ratio_th;
+}
+EXPORT_SYMBOL(dcs_get_adjust_ratio_th);
+
+unsigned int dcs_get_adjust_fr_cnt(void)
+{
+	return g_adjust_dcs_fr_cnt;
+}
+EXPORT_SYMBOL(dcs_get_adjust_fr_cnt);
+
+unsigned int dcs_get_adjust_non_dcs_th(void)
+{
+	return g_adjust_dcs_non_dcs_th;
+}
+EXPORT_SYMBOL(dcs_get_adjust_non_dcs_th);
+

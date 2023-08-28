@@ -822,6 +822,11 @@ bool ged_gpu_predict_apo_notify(void)
 EXPORT_SYMBOL(ged_gpu_predict_apo_notify);
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 
+unsigned long long ged_get_power_on_timestamp(void)
+{
+	return g_ns_gpu_on_ts;
+}
+
 void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 {
 	enum gpu_dvfs_policy_state policy_state;

@@ -729,7 +729,7 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 {
 	int bCommited = false;
 
-	int ui32CurFreqID, ui32CeilingID, ui32FloorID;
+	int ui32CurFreqID, ui32CeilingID, ui32FloorID, ui32MinWorkingFreqID;
 	unsigned int cur_freq = 0;
 	enum gpu_dvfs_policy_state policy_state;
 
@@ -749,6 +749,12 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 
 		ui32CeilingID = ged_get_cur_limit_idx_ceil();
 		ui32FloorID = ged_get_cur_limit_idx_floor();
+
+		if (g_force_disable_dcs) {
+			ui32MinWorkingFreqID = ged_get_min_oppidx_real();
+			if (ui32NewFreqID > ui32MinWorkingFreqID)
+				ui32NewFreqID = ui32MinWorkingFreqID;
+		}
 
 		if (ui32NewFreqID < ui32CeilingID)
 			ui32NewFreqID = ui32CeilingID;
@@ -809,6 +815,8 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		trace_tracing_mark_write(5566, "limitter_floor",
 			ged_get_cur_limiter_floor());
 		trace_tracing_mark_write(5566, "commit_type", eCommitType);
+		if (dcs_get_adjust_support() % 2 != 0)
+			trace_tracing_mark_write(5566, "preserve", g_force_disable_dcs);
 
 		policy_state = ged_get_policy_state();
 
@@ -835,7 +843,7 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 {
 	int bCommited = false;
 
-	int ui32CurFreqID, ui32CeilingID, ui32FloorID, newTopFreq;
+	int ui32CurFreqID, ui32CeilingID, ui32FloorID, newTopFreq, ui32MinWorkingFreqID;
 	unsigned int cur_freq = 0;
 	enum gpu_dvfs_policy_state policy_state;
 	int ret = GED_OK;
@@ -855,6 +863,14 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 
 	ui32CeilingID = ged_get_cur_limit_idx_ceil();
 	ui32FloorID = ged_get_cur_limit_idx_floor();
+
+	if (g_force_disable_dcs) {
+		ui32MinWorkingFreqID = ged_get_min_oppidx_real();
+		if (stackNewFreqID > ui32MinWorkingFreqID) {
+			stackNewFreqID = ui32MinWorkingFreqID;
+			topNewFreqID = ui32MinWorkingFreqID;
+		}
+	}
 
 	if (stackNewFreqID < ui32CeilingID)
 		stackNewFreqID = ui32CeilingID;
@@ -938,6 +954,8 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	trace_tracing_mark_write(5566, "limitter_floor",
 		ged_get_cur_limiter_floor());
 	trace_tracing_mark_write(5566, "commit_type", eCommitType);
+	if (dcs_get_adjust_support() % 2 != 0)
+		trace_tracing_mark_write(5566, "preserve", g_force_disable_dcs);
 
 	policy_state = ged_get_policy_state();
 

@@ -838,6 +838,121 @@ static ssize_t dcs_stress_store(struct kobject *kobj,
 }
 
 static KOBJ_ATTR_RW(dcs_stress);
+
+static ssize_t dcs_adjust_support_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n", dcs_get_adjust_support());
+}
+
+static ssize_t dcs_adjust_support_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				if (i32Value <= 0)
+					dcs_set_adjust_support(0);
+				else
+					dcs_set_adjust_support(i32Value);
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(dcs_adjust_support);
+
+static ssize_t dcs_adjust_ratio_th_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n", dcs_get_adjust_ratio_th());
+}
+
+static ssize_t dcs_adjust_ratio_th_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				if (i32Value <= 0)
+					dcs_set_adjust_ratio_th(0);
+				else
+					dcs_set_adjust_ratio_th(i32Value);
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(dcs_adjust_ratio_th);
+
+static ssize_t dcs_adjust_fr_cnt_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n", dcs_get_adjust_fr_cnt());
+}
+
+static ssize_t dcs_adjust_fr_cnt_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				if (i32Value <= 0)
+					dcs_set_adjust_fr_cnt(0);
+				else
+					dcs_set_adjust_fr_cnt(i32Value);
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(dcs_adjust_fr_cnt);
+
+static ssize_t dcs_adjust_non_dcs_th_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n", dcs_get_adjust_non_dcs_th());
+}
+
+static ssize_t dcs_adjust_non_dcs_th_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				if (i32Value <= 0)
+					dcs_set_adjust_non_dcs_th(0);
+				else
+					dcs_set_adjust_non_dcs_th(i32Value);
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(dcs_adjust_non_dcs_th);
+
+
+
 #endif /* GED_DCS_POLICY */
 //-----------------------------------------------------------------------------
 
@@ -1585,6 +1700,22 @@ GED_ERROR ged_hal_init(void)
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_stress);
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create dcs_stress entry!\n");
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_adjust_support);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create dcs_adjust_support entry!\n");
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_adjust_ratio_th);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create dcs_adjust_ratio_th entry!\n");
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_adjust_fr_cnt);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create dcs_adjust_fr_cnt entry!\n");
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_adjust_non_dcs_th);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create dcs_adjust_non_dcs_th entry!\n");
+
 #endif /* GED_DCS_POLICY */
 
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
@@ -1745,6 +1876,10 @@ void ged_hal_exit(void)
 #ifdef GED_DCS_POLICY
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_mode);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_stress);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_adjust_support);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_adjust_ratio_th);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_adjust_fr_cnt);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_adjust_non_dcs_th);
 #endif
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fw_idle);

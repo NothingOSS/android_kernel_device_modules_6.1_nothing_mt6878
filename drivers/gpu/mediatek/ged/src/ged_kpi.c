@@ -85,6 +85,9 @@
 /* overdue parameter*/
 #define t_gpu_store_count 4
 
+/* for dcs reference frame count */
+#define t_gpu_w_store_count 100
+
 struct GED_KPI_HEAD {
 	int pid;
 	int i32Count;   // number of KPI object still in the KPI pool
@@ -100,6 +103,11 @@ struct GED_KPI_HEAD {
 	long long t_gpu_latest;   // recent completed GPU time
 	long long t_gpu_latest_store[t_gpu_store_count];   //store 4 completed GPU time
 	int t_gpu_latest_index;   //store array index
+	long long t_gpu_w_latest_store[t_gpu_w_store_count];   //store 100 weighted completed GPU time
+	unsigned int non_dcs_latest_store[t_gpu_w_store_count];   //store no dcs
+	unsigned int non_dcs_cnt;   //store no dcs
+	int t_gpu_w_latest_index;
+	unsigned int for_dcs_valid_cnt;
 	long long t_gpu_latest_uncompleted;   // largest uncomplete GPU time
 	struct list_head sList;
 	spinlock_t sListLock;
@@ -302,6 +310,8 @@ static int g_is_panel_hz_change;
 u64 fb_timeout = 100000000;/*100 ms*/
 u64 lb_timeout = 100000000;
 u64 t_gpu_target_now;
+
+bool g_force_disable_dcs;
 
 module_param(is_GED_KPI_enabled, uint, 0644);
 
@@ -1352,6 +1362,74 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		if (psHead->t_gpu_latest_index >= t_gpu_store_count)
 			psHead->t_gpu_latest_index = 0;
 
+		if (dcs_get_adjust_support()) {
+			unsigned int fr_cnt = (t_gpu_w_store_count > dcs_get_adjust_fr_cnt()) ?
+									dcs_get_adjust_fr_cnt() : t_gpu_w_store_count;
+			unsigned long long power_on_TimeStamp = ged_get_power_on_timestamp();
+			unsigned int min_stack_freq = ged_get_freq_by_idx(ged_get_min_oppidx());
+			unsigned int cur_stack_freq = ged_get_cur_stack_freq();
+			long long t_gpu_w_latest = 0;
+			unsigned int non_dcs = (ged_get_cur_oppidx() < ged_get_min_oppidx_real());
+
+			psHead->non_dcs_latest_store[psHead->t_gpu_w_latest_index] = non_dcs;
+			min_stack_freq = (min_stack_freq > 0) ? min_stack_freq : 1;
+			if (dcs_get_adjust_support() < 3) {
+				if (psKPI->ullTimeStamp2 > power_on_TimeStamp &&
+					psKPI->ullTimeStamp2 - power_on_TimeStamp < psHead->t_gpu_latest ) {
+					unsigned long long power_duration = psKPI->ullTimeStamp2 - power_on_TimeStamp;
+
+					t_gpu_w_latest = power_duration * cur_stack_freq / min_stack_freq;
+				} else
+					t_gpu_w_latest = psHead->t_gpu_latest * cur_stack_freq / min_stack_freq;
+			} else
+				t_gpu_w_latest = psHead->t_gpu_latest * cur_stack_freq / min_stack_freq;
+
+			psHead->t_gpu_w_latest_store[psHead->t_gpu_w_latest_index] = t_gpu_w_latest;
+			psHead->for_dcs_valid_cnt++;
+			// overflow
+			if (psHead->for_dcs_valid_cnt == 0)
+				psHead->for_dcs_valid_cnt = fr_cnt + 1;
+			// calculate risk dcs factor (t_gpu various is dramatic) for current BQ
+			t_gpu_target = psKPI->t_gpu_target;
+			if (main_head == psHead && (psHead->for_dcs_valid_cnt > fr_cnt)) {
+				if (t_gpu_target <= 8333333) {
+					unsigned int non_dcs_cnt = 0;
+					long long t_gpu_w_max = t_gpu_w_latest;
+					long long t_gpu_w_min = t_gpu_w_latest;
+					int cond_1 = 0;
+					int cond_2 = 0;
+					int cond_3 = 0;
+
+					for (int i = 0 ; i < fr_cnt ; i++) {
+						non_dcs_cnt += psHead->non_dcs_latest_store[i];
+						t_gpu_w_max =
+							MAX(psHead->t_gpu_w_latest_store[i], t_gpu_w_max);
+						t_gpu_w_min =
+							MIN(psHead->t_gpu_w_latest_store[i], t_gpu_w_min);
+					}
+
+					if (t_gpu_w_min == 0)
+						t_gpu_w_min = 1;
+					cond_1 = t_gpu_w_max > t_gpu_target;
+					cond_2 = t_gpu_w_max * 10 / t_gpu_w_min >= dcs_get_adjust_ratio_th();
+					cond_3 = (non_dcs_cnt * 100 / fr_cnt) > dcs_get_adjust_non_dcs_th();
+
+					if (cond_1 && cond_2 && cond_3)
+						g_force_disable_dcs = true;
+					else
+						g_force_disable_dcs = false;
+				} else
+					g_force_disable_dcs = false;
+			}
+
+			psHead->t_gpu_w_latest_index++;
+			if (psHead->t_gpu_w_latest_index >= fr_cnt)
+				psHead->t_gpu_w_latest_index = 0;
+		}else {
+			psHead->for_dcs_valid_cnt = 0;
+			psHead->non_dcs_cnt = 0;
+			g_force_disable_dcs = false;
+		}
 		if (is_fdvfs_enable())
 			mtk_gpueb_sysram_write(SYSRAM_GPU_ELAPSED_TIME, psKPI->ullTimeStamp2);
 
