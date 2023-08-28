@@ -76,6 +76,7 @@
 			postmask0 = &disp_postmask0;
 			postmask1 = &disp1_postmask0;
 			dsc0 = &disp_dsc_wrap0;
+			dsc1 = &disp_dsc_wrap1;
 			wdma0 = &disp_wdma1;
 			wdma1 = &disp1_wdma1;
 			wdma10 = &disp_wdma0;
@@ -8685,6 +8686,15 @@
 			reg = <0 0x1400c000 0 0x1000>;
 			interrupts = <GIC_SPI 366 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys0_config_clk CLK_DISPSYS0_DISP_DSC_WRAP0>;
+		};
+
+		disp_dsc_wrap1: disp-dsc-wrap0@1420c000 {
+			compatible = "mediatek,disp_dsc_wrap1",
+					"mediatek,mt6897-disp-dsc";
+			reg = <0 0x1420c000 0 0x1000>;
+			interrupts = <GIC_SPI 367 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk CLK_DISPSYS1_DISP_DSC_WRAP0>;
+			status = "disabled";
 		};
 
 		dsi_te:dsi-te {
