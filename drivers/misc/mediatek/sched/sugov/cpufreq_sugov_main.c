@@ -351,7 +351,7 @@ skip_rq_uclamp:
 			trace_sugov_ext_sbb(cpu, pid,
 				sbb_data->boost_factor, util_ori, util,
 				sbb_data->cpu_utilize,
-				get_sbb_active_ratio_gear(per_cpu(gear_id,cpu)));
+				get_sbb_active_ratio_gear(topology_cluster_id(cpu)));
 		}
 	}
 
@@ -564,7 +564,7 @@ void mtk_set_cpu_min_opp(int cpu, unsigned long min_util)
 {
 	int gear_id, min_opp;
 
-	gear_id = pd_get_cpu_gear_id(cpu);
+	gear_id = topology_cluster_id(cpu);
 	min_util = map_util_perf(min_util);
 	min_opp = pd_X2Y(cpu, min_util, CAP, OPP, true);
 	set_cpu_min_opp(gear_id, min_opp);

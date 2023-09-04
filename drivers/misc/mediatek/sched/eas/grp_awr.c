@@ -232,7 +232,7 @@ void grp_awr_update_grp_awr_util(void)
 
 	if (grp_awr_init_finished == false)
 		return;
-	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++) {
+	for_each_possible_cpu(cpu_idx) {
 		pcpu_pgrp_act_rto_cap[cpu_idx][0] =
 			get_gear_max_active_ratio_cap(map_cpu_ger[cpu_idx]);
 		if (map_cpu_ger[cpu_idx] == tmp)
@@ -242,7 +242,7 @@ void grp_awr_update_grp_awr_util(void)
 			pger_pgrp_u[map_cpu_ger[cpu_idx]][grp_idx] = 0;
 	}
 
-	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++) {
+	for_each_possible_cpu(cpu_idx) {
 		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++) {
 			pcpu_pgrp_u[cpu_idx][grp_idx] =
 				flt_sched_get_cpu_group(cpu_idx, grp_idx);
@@ -263,7 +263,7 @@ void grp_awr_update_grp_awr_util(void)
 	}
 
 	if (trace_sugov_ext_pger_pgrp_u_enabled()) {
-		for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++) {
+		for_each_possible_cpu(cpu_idx) {
 			if (map_cpu_ger[cpu_idx] == tmp)
 				continue;
 			tmp = map_cpu_ger[cpu_idx];
@@ -284,7 +284,7 @@ void grp_awr_update_grp_awr_util(void)
 	if (trace_sugov_ext_pgrp_hint_enabled())
 		trace_sugov_ext_pgrp_hint(pgrp_hint);
 
-	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++) {
+	for_each_possible_cpu(cpu_idx) {
 		pcpu_o_u[cpu_idx] = flt_get_cpu_o(cpu_idx);
 		set_grp_high_freq(cpu_idx, false);
 	}
@@ -302,7 +302,7 @@ void grp_awr_update_grp_awr_util(void)
 			set_grp_high_freq(map_cpu_ger[cpu_idx], true);
 
 	if (trace_sugov_ext_pcpu_pgrp_u_rto_marg_enabled()) {
-		for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
+		for_each_possible_cpu(cpu_idx)
 			trace_sugov_ext_pcpu_pgrp_u_rto_marg(cpu_idx, pcpu_pgrp_u[cpu_idx],
 				pcpu_pgrp_adpt_rto[cpu_idx],
 				pcpu_pgrp_marg[cpu_idx], pcpu_o_u[cpu_idx],
@@ -376,7 +376,7 @@ void set_group_active_ratio_pct(int grp_idx, int val)
 
 	if (grp_awr_init_finished == false)
 		return;
-	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
+	for_each_possible_cpu(cpu_idx)
 		pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] =
 			((clamp_val(val, 1, 100) << SCHED_CAPACITY_SHIFT) / 100);
 }
@@ -388,7 +388,7 @@ void set_group_active_ratio_cap(int grp_idx, int val)
 
 	if (grp_awr_init_finished == false)
 		return;
-	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
+	for_each_possible_cpu(cpu_idx)
 		pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] = clamp_val(val, 1, SCHED_CAPACITY_SCALE);
 }
 EXPORT_SYMBOL(set_group_active_ratio_cap);
@@ -427,7 +427,7 @@ int grp_awr_init(void)
 	pgrp_tar_u_m = kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
 
 	/* per cpu per group data*/
-	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++) {
+	for_each_possible_cpu(cpu_idx) {
 		pcpu_pgrp_u[cpu_idx] = kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
 		pger_pgrp_u[cpu_idx] = kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
 		pcpu_pgrp_adpt_rto[cpu_idx] =
@@ -436,7 +436,7 @@ int grp_awr_init(void)
 		pcpu_pgrp_marg[cpu_idx] = kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
 		pcpu_pgrp_act_rto_cap[cpu_idx] =
 			kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
-		map_cpu_ger[cpu_idx] = per_cpu(gear_id, cpu_idx);
+		map_cpu_ger[cpu_idx] = topology_cluster_id(cpu_idx);
 		grp_margin[cpu_idx] =
 			kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
 		margin_for_min_opp[cpu_idx] =
@@ -449,9 +449,7 @@ int grp_awr_init(void)
 			kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
 		pcpu_pgrp_tar_u_grp_m[cpu_idx] =
 			kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
-	}
 
-	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++) {
 		ps = pd_get_opp_ps(0, cpu_idx, 0, true);
 		cap_max[cpu_idx] = ps->capacity;
 		ps = pd_get_opp_ps(0, cpu_idx, INT_MAX, true);

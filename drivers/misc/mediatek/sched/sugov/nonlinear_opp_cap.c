@@ -26,9 +26,6 @@
 #include <mt-plat/mtk_irq_mon.h>
 #include "eas/group.h"
 
-DEFINE_PER_CPU(unsigned int, gear_id) = -1;
-EXPORT_SYMBOL(gear_id);
-
 DEFINE_PER_CPU(struct sbb_cpu_data *, sbb);
 EXPORT_SYMBOL(sbb);
 
@@ -191,7 +188,7 @@ EXPORT_SYMBOL_GPL(get_dsu_freq_state);
 void set_dsu_target_freq(struct cpufreq_policy *policy)
 {
 	int i, cpu, gov_cpu = policy->cpu, opp, dsu_target_freq = 0;
-	int gearid = per_cpu(gear_id, gov_cpu);
+	int gearid = topology_cluster_id(gov_cpu);
 	unsigned int wl_type = get_em_wl();
 	struct pd_capacity_info *pd_info;
 	struct pd_capacity_info *gov_pd_info;
@@ -313,7 +310,8 @@ void update_wl_tbl(int cpu)
 			}
 			last_wl_type = wl_type_curr;
 			if (trace_sugov_ext_wl_type_enabled())
-				trace_sugov_ext_wl_type(per_cpu(gear_id, cpu), cpu, wl_type_curr);
+				trace_sugov_ext_wl_type(topology_cluster_id(cpu),
+					cpu, wl_type_curr);
 			if (wl_type_delay != wl_type_curr) {
 				wl_type_delay_cnt++;
 				if (wl_type_delay_cnt > wl_type_delay_update_tick) {
@@ -551,7 +549,7 @@ unsigned int pd_get_dsu_weighting(int wl_type, int cpu)
 {
 	int i;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	if (wl_type < 0)
 		wl_type = wl_type_curr;
 	return cpu_wt[i][wl_type].dsu_weighting;
@@ -562,7 +560,7 @@ unsigned int pd_get_emi_weighting(int wl_type, int cpu)
 {
 	int i;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	if (wl_type < 0)
 		wl_type = wl_type_curr;
 	return cpu_wt[i][wl_type].emi_weighting;
@@ -622,7 +620,7 @@ struct mtk_em_perf_state *pd_get_util_ps(int wl_type, int cpu, unsigned long uti
 	struct pd_capacity_info *pd_info;
 	struct mtk_em_perf_state *ps;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	if (wl_type < 0 || wl_type >= nr_wl_type)
 		wl_type = wl_type_curr;
 	pd_info = &pd_wl_type[wl_type][i];
@@ -640,7 +638,7 @@ struct mtk_em_perf_state *pd_get_util_ps_legacy(int wl_type, int cpu, unsigned l
 	struct pd_capacity_info *pd_info;
 	struct mtk_em_perf_state *ps;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	if (wl_type < 0 || wl_type >= nr_wl_type)
 		wl_type = wl_type_curr;
 	pd_info = &pd_wl_type[wl_type][i];
@@ -658,7 +656,7 @@ unsigned long pd_get_util_opp(int cpu, unsigned long util)
 	int i, idx;
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_capacity_tbl[i];
 	idx = map_util_idx_by_tbl(pd_info, util);
 	return pd_info->util_opp_map[idx];
@@ -670,7 +668,7 @@ unsigned long pd_get_util_opp_legacy(int cpu, unsigned long util)
 	int i, idx, wl_type = get_em_wl();
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_wl_type[wl_type][i];
 	idx = map_util_idx_by_tbl(pd_info, util);
 	return pd_info->util_opp_map_legacy[idx];
@@ -682,7 +680,7 @@ unsigned long pd_get_util_freq(int cpu, unsigned long util)
 	int i, idx, wl_type = get_em_wl();
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_wl_type[wl_type][i];
 	idx = map_util_idx_by_tbl(pd_info, util);
 	idx = pd_info->util_opp_map[idx];
@@ -695,7 +693,7 @@ unsigned long pd_get_util_pwr_eff(int cpu, unsigned long util)
 	int i, idx;
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_capacity_tbl[i];
 	idx = map_util_idx_by_tbl(pd_info, util);
 	idx = pd_info->util_opp_map[idx];
@@ -710,7 +708,7 @@ struct mtk_em_perf_state *pd_get_freq_ps(int wl_type, int cpu, unsigned long fre
 	struct pd_capacity_info *pd_info;
 	struct mtk_em_perf_state *ps;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	if (wl_type < 0)
 		wl_type = wl_type_curr;
 	pd_info = &pd_wl_type[wl_type][i];
@@ -728,7 +726,7 @@ struct mtk_em_perf_state *pd_get_opp_ps(int wl_type, int cpu, int opp, bool quan
 	struct pd_capacity_info *pd_info;
 	struct mtk_em_perf_state *ps;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	if (wl_type < 0 || wl_type >= nr_wl_type)
 		wl_type = wl_type_curr;
 	pd_info = &pd_wl_type[wl_type][i];
@@ -748,7 +746,7 @@ unsigned long pd_get_freq_opp(int cpu, unsigned long freq)
 	int i, idx;
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_capacity_tbl[i];
 	idx = map_freq_idx_by_tbl(pd_info, freq);
 	return pd_info->freq_opp_map[idx];
@@ -760,7 +758,7 @@ unsigned long pd_get_freq_opp_legacy(int cpu, unsigned long freq)
 	int i, idx;
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_capacity_tbl[i];
 
 	if (freq <= pd_info->freq_min)
@@ -800,7 +798,7 @@ unsigned long pd_get_freq_util(int cpu, unsigned long freq)
 	int i, idx;
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_capacity_tbl[i];
 	idx = map_freq_idx_by_tbl(pd_info, freq);
 	idx = pd_info->freq_opp_map[idx];
@@ -813,7 +811,7 @@ unsigned long pd_get_freq_pwr_eff(int cpu, unsigned long freq)
 	int i, idx;
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_capacity_tbl[i];
 	idx = map_freq_idx_by_tbl(pd_info, freq);
 	idx = pd_info->freq_opp_map[idx];
@@ -826,7 +824,7 @@ unsigned long pd_get_opp_freq(int cpu, int opp)
 	int i;
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_capacity_tbl[i];
 	opp = clamp_val(opp, 0, pd_info->nr_caps - 1);
 	return max(pd_info->table[opp].freq, pd_info->freq_min);
@@ -838,7 +836,7 @@ unsigned long pd_get_opp_capacity(int cpu, int opp)
 	int i;
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_capacity_tbl[i];
 	opp = clamp_val(opp, 0, pd_info->nr_caps - 1);
 	return pd_info->table[opp].capacity;
@@ -851,7 +849,7 @@ unsigned long pd_get_opp_capacity_legacy(int cpu, int opp)
 	int i, wl_type = get_em_wl();
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_wl_type[wl_type][i];
 	opp = clamp_val(opp, 0,
 		mtk_em_pd_ptr_public[i].nr_perf_states - 1);
@@ -863,7 +861,7 @@ unsigned long pd_get_opp_capacity_legacy(int cpu, int opp)
 	int i;
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_capacity_tbl[i];
 	opp = clamp_val(opp, 0, pd_info->nr_caps - 1);
 	return pd_info->table[opp].capacity;
@@ -877,7 +875,7 @@ unsigned long pd_get_opp_freq_legacy(int cpu, int opp)
 {
 	int i;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	opp = clamp_val(opp, 0,
 		mtk_em_pd_ptr_public[i].nr_perf_states - 1);
 	return mtk_em_pd_ptr_public[i].table[opp].freq;
@@ -888,7 +886,7 @@ unsigned long pd_get_opp_freq_legacy(int cpu, int opp)
 	int i;
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_capacity_tbl[i];
 	opp = clamp_val(opp, 0, pd_info->nr_caps - 1);
 	return pd_info->table[opp].freq;
@@ -901,7 +899,7 @@ unsigned long pd_get_opp_pwr_eff(int cpu, int opp)
 	int i;
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_capacity_tbl[i];
 	opp = clamp_val(opp, 0, pd_info->nr_caps - 1);
 	return pd_info->table[opp].pwr_eff;
@@ -972,17 +970,11 @@ unsigned int pd_get_cpu_opp(int cpu)
 	int i;
 	struct pd_capacity_info *pd_info;
 
-	i = per_cpu(gear_id, cpu);
+	i = topology_cluster_id(cpu);
 	pd_info = &pd_capacity_tbl[i];
 	return pd_info->nr_caps;
 }
 EXPORT_SYMBOL_GPL(pd_get_cpu_opp);
-
-unsigned int pd_get_cpu_gear_id(int cpu)
-{
-	return per_cpu(gear_id, cpu);
-}
-EXPORT_SYMBOL_GPL(pd_get_cpu_gear_id);
 
 unsigned int pd_get_opp_leakage(unsigned int cpu, unsigned int opp, unsigned int temperature)
 {
@@ -1195,7 +1187,6 @@ static int init_capacity_table(void)
 				mtk_em_pd_ptr_public[i].cur_weighting.emi_weighting;
 
 			for_each_cpu(j, &pd_info->cpus) {
-				per_cpu(gear_id, j) = i;
 				if (per_cpu(cpu_scale, j) != pd_info->table[0].capacity) {
 					pr_info("capacity err: cpu=%d, cpu_scale=%lu, pd_info_cap=%u\n",
 						j, per_cpu(cpu_scale, j),
@@ -1282,7 +1273,6 @@ static int init_capacity_table(void)
 		offset += CAPACITY_ENTRY_SIZE;
 
 		for_each_cpu(j, &pd_info->cpus) {
-			per_cpu(gear_id, j) = i;
 			if (per_cpu(cpu_scale, j) != pd_info->table[0].capacity) {
 				pr_info("capacity err: cpu=%d, cpu_scale=%lu, pd_info_cap=%u\n",
 					j, per_cpu(cpu_scale, j),
@@ -1562,7 +1552,7 @@ int get_cpu_gear_uclamp_max(int cpu)
 {
 	if (gu_ctrl == false)
 		return SCHED_CAPACITY_SCALE;
-	return gear_uclamp_max[per_cpu(gear_id, cpu)];
+	return gear_uclamp_max[topology_cluster_id(cpu)];
 }
 EXPORT_SYMBOL_GPL(get_cpu_gear_uclamp_max);
 
@@ -1573,7 +1563,7 @@ int get_cpu_gear_uclamp_max_capacity(int cpu)
 	if (gu_ctrl == false)
 		return SCHED_CAPACITY_SCALE;
 
-	capacity = (gear_uclamp_max[per_cpu(gear_id, cpu)] *
+	capacity = (gear_uclamp_max[topology_cluster_id(cpu)] *
 		get_adaptive_margin(cpu)) >> SCHED_CAPACITY_SHIFT;
 	freq = pd_get_util_freq(cpu, capacity);
 	return pd_get_freq_util(cpu, freq);
@@ -1661,7 +1651,7 @@ static inline void mtk_arch_set_freq_scale_gearless(struct cpufreq_policy *polic
 static unsigned int curr_cap[MAX_NR_CPUS];
 unsigned int get_curr_cap(int cpu)
 {
-	return curr_cap[per_cpu(gear_id, cpu)];
+	return curr_cap[topology_cluster_id(cpu)];
 }
 EXPORT_SYMBOL_GPL(get_curr_cap);
 
@@ -1673,7 +1663,7 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 	irq_log_store();
 
 	if (trace_sugov_ext_gear_state_enabled())
-		trace_sugov_ext_gear_state(per_cpu(gear_id, cpu),
+		trace_sugov_ext_gear_state(topology_cluster_id(cpu),
 			pd_get_freq_opp(cpu, *target_freq));
 
 	if (policy->cached_target_freq != *target_freq) {
@@ -1681,7 +1671,7 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 		policy->cached_resolved_idx = pd_X2Y(cpu, *target_freq, FREQ, OPP, true);
 	}
 
-	curr_cap[per_cpu(gear_id, cpu)] = pd_get_opp_capacity_legacy(policy->cpu,
+	curr_cap[topology_cluster_id(cpu)] = pd_get_opp_capacity_legacy(policy->cpu,
 		policy->cached_resolved_idx);
 
 	if (is_gearless_support())
@@ -1696,7 +1686,7 @@ void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 			c->sb_ch = -1;
 			if (trace_sugov_ext_dsu_freq_vote_enabled())
 				trace_sugov_ext_dsu_freq_vote(UINT_MAX,
-					per_cpu(gear_id, cpu), *target_freq, UINT_MAX);
+					topology_cluster_id(cpu), *target_freq, UINT_MAX);
 		}
 	}
 
@@ -1848,8 +1838,8 @@ static unsigned int ramp_up[MAX_NR_CPUS] = {
 	[0 ... MAX_NR_CPUS - 1] = 0};
 unsigned int get_adaptive_margin(int cpu)
 {
-	if (!turn_point_util[per_cpu(gear_id, cpu)] && am_ctrl)
-		return READ_ONCE(adaptive_margin[per_cpu(gear_id, cpu)]);
+	if (!turn_point_util[topology_cluster_id(cpu)] && am_ctrl)
+		return READ_ONCE(adaptive_margin[topology_cluster_id(cpu)]);
 	else
 		return util_scale;
 }
@@ -1972,7 +1962,7 @@ void update_active_ratio_gear(struct cpumask *cpumask)
 	unsigned int gear_max_active_ratio_tmp = 0;
 
 	for_each_cpu(cpu_idx, cpumask) {
-		gear_idx = per_cpu(gear_id, cpu_idx);
+		gear_idx = topology_cluster_id(cpu_idx);
 		cpu_active_ratio_cap[cpu_idx] = update_cpu_active_ratio(cpu_idx);
 		if (cpu_active_ratio_cap[cpu_idx] > gear_max_active_ratio_tmp) {
 			gear_max_active_ratio_tmp = cpu_active_ratio_cap[cpu_idx];
@@ -2003,7 +1993,7 @@ inline void update_adaptive_margin(struct cpufreq_policy *policy)
 {
 	unsigned int i;
 	int cpu = cpumask_first(policy->cpus);
-	unsigned int gearid = per_cpu(gear_id, cpu);
+	unsigned int gearid = topology_cluster_id(cpu);
 	unsigned int adaptive_margin_tmp;
 
 	if (gear_update_active_ratio_cnt_last[gearid]
@@ -2057,7 +2047,7 @@ EXPORT_SYMBOL(set_grp_high_freq);
 inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 				int cpu, unsigned long *next_freq, struct cpumask *cpumask)
 {
-	int gearid = per_cpu(gear_id, cpu);
+	int gearid = topology_cluster_id(cpu);
 	struct sugov_policy *sg_policy;
 	struct cpufreq_policy *policy;
 	unsigned long flt_util = 0, pelt_util_with_margin;
@@ -2109,7 +2099,7 @@ void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struc
 	struct pd_capacity_info *pd_info;
 
 	cpu = cpumask_first(cpumask);
-	gearid = per_cpu(gear_id, cpu);
+	gearid = topology_cluster_id(cpu);
 
 	pd_info = &pd_capacity_tbl[gearid];
 	if (!turn_point_util[gearid] && (am_ctrl || grp_dvfs_ctrl_mode)) {
@@ -2139,7 +2129,7 @@ void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struc
 
 	if (trace_sugov_ext_turn_point_margin_enabled() && turn_point_util[gearid]) {
 		orig_util = (orig_util * util_scale) >> SCHED_CAPACITY_SHIFT;
-		trace_sugov_ext_turn_point_margin(per_cpu(gear_id, cpu), orig_util, util,
+		trace_sugov_ext_turn_point_margin(topology_cluster_id(cpu), orig_util, util,
 			turn_point_util[gearid], target_margin[gearid]);
 	}
 }

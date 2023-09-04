@@ -79,7 +79,7 @@ bool mtk_cpus_share_cache(int this_cpu, int that_cpu)
 	if (this_cpu == that_cpu)
 		return true;
 
-	return per_cpu(gear_id, this_cpu) == per_cpu(gear_id, that_cpu);
+	return topology_cluster_id(this_cpu) == topology_cluster_id(that_cpu);
 }
 
 static int sched_idle_cpu(int cpu)
@@ -295,7 +295,7 @@ static inline void eenv_init(struct energy_env *eenv,
 		/* copy arch_scale_thermal_pressure() code and add read_once to avoid data-racing */
 		cpu_thermal_cap -= READ_ONCE(per_cpu(thermal_pressure, cpu));
 
-		gear_idx = per_cpu(gear_id, cpu);
+		gear_idx = topology_cluster_id(cpu);
 		eenv->pds_cpu_cap[gear_idx] = cpu_thermal_cap;
 		eenv->pds_cap[gear_idx] = 0;
 		for_each_cpu(cpu, cpus) {
@@ -502,7 +502,7 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 			struct cpumask *pd_mask = perf_domain_span(pd_ptr);
 			int cpu = cpumask_first(pd_mask);
 
-			if (share_buck.gear_idx == per_cpu(gear_id, cpu)) {
+			if (share_buck.gear_idx == topology_cluster_id(cpu)) {
 				share_buck_pd = pd_ptr;
 				break;
 			}
@@ -1245,8 +1245,9 @@ void get_most_powerful_pd_and_util_Th(void)
 	unsigned int nr_gear = get_nr_gears();
 
 	/* no mutliple pd */
-	if (WARN_ON(nr_gear <= 1)) {
+	if (nr_gear <= 1) {
 		util_Th = 0;
+		cpumask_clear(&bcpus);
 		return;
 	}
 
@@ -2061,7 +2062,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			if (!target_pd)
 				continue;
 
-			gear_idx = eenv.gear_idx = per_cpu(gear_id, cpu);
+			gear_idx = eenv.gear_idx = topology_cluster_id(cpu);
 			cpus = get_gear_cpumask(gear_idx);
 
 			eenv_pd_busy_time(gear_idx, &eenv, cpus, p);

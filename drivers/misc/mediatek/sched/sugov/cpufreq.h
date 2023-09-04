@@ -177,7 +177,6 @@ extern unsigned long pd_get_util_opp_legacy(int cpu, unsigned long util);
 extern struct mtk_em_perf_state *pd_get_opp_ps(int wl_type, int cpu, int opp, bool quant);
 extern unsigned long pd_get_opp_pwr_eff(int cpu, int opp);
 extern unsigned int pd_get_cpu_opp(int cpu);
-extern unsigned int pd_get_cpu_gear_id(int cpu);
 extern unsigned int pd_get_opp_leakage(unsigned int cpu, unsigned int opp,
 	unsigned int temperature);
 extern unsigned int pd_get_dsu_weighting(int wl_type, int cpu);

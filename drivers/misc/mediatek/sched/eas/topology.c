@@ -40,7 +40,7 @@ static int freq_limit_max_notifier_call(struct notifier_block *nb,
 	}
 
 	for_each_possible_cpu(cpu) {
-		if (per_cpu(gear_id, cpu) == gear_idx)
+		if (topology_cluster_id(cpu) == gear_idx)
 			WRITE_ONCE(per_cpu(max_freq_scale, cpu),
 				pd_get_freq_util(cpu, freq_limit_max));
 	}
@@ -59,7 +59,7 @@ static int freq_limit_min_notifier_call(struct notifier_block *nb,
 	}
 
 	for_each_possible_cpu(cpu) {
-		if (per_cpu(gear_id, cpu) == gear_idx) {
+		if (topology_cluster_id(cpu) == gear_idx) {
 			per_cpu(min_freq, cpu) = freq_limit_min;
 			WRITE_ONCE(per_cpu(min_freq_scale, cpu),
 				pd_get_freq_util(cpu, freq_limit_min));

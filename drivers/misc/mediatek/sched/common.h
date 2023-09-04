@@ -13,7 +13,7 @@
 #define MTK_TASK_GROUP_FLAG 1
 #define MTK_TASK_FLAG 9
 #define RAVG_HIST_SIZE_MAX (5)
-#define FLT_NR_CPUS (8)
+#define FLT_NR_CPUS CONFIG_MAX_NR_CPUS
 
 struct task_gear_hints {
 	int gear_start;

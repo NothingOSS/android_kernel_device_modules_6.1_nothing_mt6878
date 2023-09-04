@@ -477,7 +477,7 @@ void mtk_tick_entry(void *data, struct rq *rq)
 			sbb_data->wall_time = wall_time;
 
 			if (cpu_utilize >=
-				get_sbb_active_ratio_gear(pd_get_cpu_gear_id(this_cpu))) {
+				get_sbb_active_ratio_gear(topology_cluster_id(this_cpu))) {
 				sbb_data->active = 1;
 
 				sbb_data->boost_factor =
@@ -511,7 +511,7 @@ void mtk_tick_entry(void *data, struct rq *rq)
 	if (this_cpu != cpumask_first(to_cpumask(pd->cpus)))
 		return;
 
-	gear_id = pd_get_cpu_gear_id(this_cpu);
+	gear_id = topology_cluster_id(this_cpu);
 	irq_log_store();
 	freq_thermal = get_cpu_ceiling_freq (gear_id);
 	arch_update_thermal_pressure(to_cpumask(pd->cpus), freq_thermal);
