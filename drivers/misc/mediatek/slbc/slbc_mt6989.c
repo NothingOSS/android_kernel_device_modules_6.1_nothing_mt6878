@@ -648,8 +648,9 @@ static int slbc_request_buffer(struct slbc_data *d)
 #ifdef SLBC_CB
 	slbc_set_sid_wait_q(d);
 #endif /* SLBC_CB */
-
+	mutex_lock(&slbc_req_lock);
 	ret = _slbc_request_buffer_scmi(d);
+	mutex_unlock(&slbc_req_lock);
 
 #ifdef SLBC_CB
 	if (ret == -ENOT_AVAILABLE) {
@@ -742,8 +743,9 @@ static int slbc_release_buffer(struct slbc_data *d)
 	int ret = 0;
 
 	/* slbc_debug_log("%s: TP_BUFFER\n", __func__); */
-
+	mutex_lock(&slbc_rel_lock);
 	ret = _slbc_release_buffer_scmi(d);
+	mutex_unlock(&slbc_rel_lock);
 
 	if (!ret) {
 		slbc_clr_sram_data(d);
