@@ -235,7 +235,6 @@ static void ise_power_on(void)
 	if(retry == 0) {
 		pr_notice("[ise_lpm]iSE power on failed\n");
 		WARN_ON_ONCE(1);
-		ise_rel_dram();
 	}
 #endif
 }
