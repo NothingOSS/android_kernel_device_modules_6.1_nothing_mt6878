@@ -197,7 +197,8 @@ static void ged_notify_sw_sync_work_handle(struct work_struct *psWork)
 		mutex_lock(&gsPolicyLock);
 		timeout_value = lb_timeout;
 		psNotify->bUsed = false;
-		if (hrtimer_expires_remaining(&g_HT_hwvsync_emu) < 0) {
+
+		if (hrtimer_get_remaining(&g_HT_hwvsync_emu) < 0) {
 			enum gpu_dvfs_policy_state policy_state;
 
 			policy_state = ged_get_policy_state();
@@ -861,10 +862,8 @@ void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 			ged_log_buf_print(ghLogBuf_DVFS,
 				"[GED_K] Timer Already Start");
 		} else {
-			mutex_lock(&gsPolicyLock);
 			hrtimer_start(&g_HT_hwvsync_emu,
 				ns_to_ktime(GED_DVFS_TIMER_TIMEOUT), HRTIMER_MODE_REL);
-			mutex_unlock(&gsPolicyLock);
 			ged_log_buf_print(ghLogBuf_DVFS,
 				"[GED_K] HW Start Timer");
 			timer_switch(true);
@@ -877,13 +876,11 @@ void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 			(policy_state == POLICY_STATE_FB ||
 			 policy_state == POLICY_STATE_FB_FALLBACK)) {
 			int timer_flag = 0;
-			mutex_lock(&gsPolicyLock);
 			if (hrtimer_try_to_cancel(&g_HT_hwvsync_emu)) {
 				/* frame base pass power off timer*/
 				hrtimer_cancel(&g_HT_hwvsync_emu);
 				timer_flag = 1;
 			}
-			mutex_unlock(&gsPolicyLock);
 			/* avoid multi lock*/
 			if (timer_flag)
 				timer_switch(false);
