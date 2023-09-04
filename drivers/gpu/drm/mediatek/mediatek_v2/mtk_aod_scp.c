@@ -10,6 +10,7 @@
 #include <linux/module.h>
 #include <linux/regmap.h>
 #include <linux/types.h>
+#include <linux/rtc.h>
 #include "mtk_drm_drv.h"
 #include "scp.h"
 #include "mtk_log.h"
@@ -76,7 +77,7 @@ struct disp_module_backup_info {
 	unsigned int offset;
 };
 
-unsigned int aod_scp_send_data;
+int aod_scp_tz_minuteswest;
 static struct aod_scp_ipi_receive_info aod_scp_msg;
 static int aod_state;
 static unsigned int aod_scp_pic;
@@ -241,8 +242,6 @@ void mtk_prepare_config_map(void)
 		scp_get_reserve_mem_virt(SCP_AOD_MEM_ID), scp_get_reserve_mem_phys(SCP_AOD_MEM_ID),
 		scp_get_reserve_mem_size(SCP_AOD_MEM_ID));
 
-	aod_scp_send_data = scp_get_reserve_mem_phys(SCP_AOD_MEM_ID);
-
 	scp_sh_mem = (char *)scp_get_reserve_mem_virt(SCP_AOD_MEM_ID);
 
 	/* prepare frame config map */
@@ -324,6 +323,25 @@ void mtk_prepare_config_map(void)
 
 	for (i = 0; i < 10; i++)
 		frame0->digits_addr[i] = dram_addr_digits + aod_scp_pic_sz * i;
+}
+
+void mtk_aod_scp_get_time(void)
+{
+	struct rtc_time tm;
+	struct rtc_time tm_android;
+	struct timespec64 tv = {0};
+	struct timespec64 tv_android = {0};
+
+	ktime_get_real_ts64(&tv);
+	tv_android = tv;
+	rtc_time64_to_tm(tv.tv_sec, &tm);
+	tv_android.tv_sec -= (uint64_t)sys_tz.tz_minuteswest * 60;
+	rtc_time64_to_tm(tv_android.tv_sec, &tm_android);
+	DDPMSG("%s UTC %02d:%02d:%02d\n", __func__, tm.tm_hour, tm.tm_min, tm.tm_sec);
+	DDPMSG("%s Android %02d:%02d:%02d\n",
+		__func__, tm_android.tm_hour, tm_android.tm_min, tm_android.tm_sec);
+	aod_scp_tz_minuteswest = sys_tz.tz_minuteswest;
+
 }
 
 static DEFINE_MUTEX(spm_sema_lock);
@@ -440,9 +458,13 @@ int mtk_aod_scp_ipi_send(int value)
 	unsigned int retry_cnt = 0;
 	int ret;
 
+	DDPMSG("%s+\n", __func__);
+
+	mtk_aod_scp_get_time();
+
 	for (retry_cnt = 0; retry_cnt <= 10; retry_cnt++) {
 		ret = mtk_ipi_send(&scp_ipidev, IPI_OUT_SCP_AOD,
-					0, &aod_scp_send_data, 1, 0);
+					0, &aod_scp_tz_minuteswest, 1, 0);
 
 		if (ret == IPI_ACTION_DONE) {
 			DDPMSG("%s ipi send msg done\n", __func__);
