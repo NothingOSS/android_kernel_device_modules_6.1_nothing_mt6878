@@ -1335,14 +1335,7 @@ static int vcp_pm_event(struct notifier_block *notifier
 		pr_debug("[VCP] PM_POST_SUSPEND ok, waitCnt=%u\n", waitCnt);
 		return NOTIFY_OK;
 	case PM_POST_HIBERNATION:
-		if (!vcp_ao) {
-			pr_debug("[VCP] %s: reboot\n", __func__);
-			retval = reset_vcp(VCP_ALL_REBOOT);
-			if (retval < 0) {
-				retval = -EINVAL;
-				pr_debug("[VCP] %s: reboot fail\n", __func__);
-			}
-		}
+		pr_notice("[VCP] %s: PM_POST_HIBERNATION\n", __func__);
 		return NOTIFY_DONE;
 	}
 	return NOTIFY_DONE;
