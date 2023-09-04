@@ -803,12 +803,13 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 	if (of_property_read_bool(np, "mediatek,ufs-rtff-mtcmos"))
 		host->caps |= UFS_MTK_CAP_RTFF_MTCMOS;
 
-	if (of_property_read_bool(np, "mediatek,ufs-mphy-debug"))
-		host->caps |= UFS_MTK_CAP_MPHY_DUMP;
-
 	if (of_property_read_bool(np, "mediatek,ufs-broken-rtc"))
 		host->caps |= UFS_MTK_CAP_MCQ_BROKEN_RTC;
 
+#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+	if (of_property_read_bool(np, "mediatek,ufs-mphy-debug"))
+		host->caps |= UFS_MTK_CAP_MPHY_DUMP;
+#endif
 	/* Check if MCQ is allowed */
 	ufs_mtk_get_mcq_en(res);
 	mcq_en = !!res.a1;
