@@ -11770,6 +11770,8 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 
 	/* 10. check v-idle enable */
 	mtk_vidle_flag_init(crtc);
+	if (drm_crtc_index(crtc) == 0)
+		mtk_vidle_update_dt_by_period(crtc);
 
 	/* move power off mtcmos to kms init flow for multiple display in LK */
 }
@@ -16288,6 +16290,10 @@ static int mtk_drm_mode_switch_thread(void *data)
 
 			mtk_crtc_start_event_loop(crtc);
 		}
+
+		/* TODO: set proper DT with corresponding CRTC */
+		if (drm_crtc_index(crtc) == 0)
+			mtk_vidle_update_dt_by_period(crtc);
 
 		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 1, 2);
 

@@ -50,6 +50,8 @@ struct mtk_vdisp_funcs {
 };
 
 bool mtk_vidle_is_ff_enabled(void);
+void mtk_set_dt_configure(u8 dt, unsigned int us);
+void mtk_vidle_update_dt_by_period(void *_crtc);
 void mtk_vidle_sync_mmdvfsrc_status_rc(unsigned int rc_en);
 void mtk_vidle_sync_mmdvfsrc_status_wdt(unsigned int wdt_en);
 void mtk_vidle_flag_init(void *crtc);

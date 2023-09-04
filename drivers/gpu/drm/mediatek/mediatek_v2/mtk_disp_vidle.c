@@ -198,6 +198,41 @@ void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop)
 		mtk_vidle_stop();
 }
 
+void mtk_set_dt_configure(u8 dt, unsigned int us)
+{
+	if (disp_dpc_driver.dpc_dt_set)
+		disp_dpc_driver.dpc_dt_set(dt, us);
+}
+
+void mtk_vidle_update_dt_by_period(void *_crtc)
+{
+	struct drm_crtc *crtc = NULL;
+	struct mtk_panel_params *panel_ext = NULL;
+	unsigned int duration;
+	unsigned int fps;
+
+	if (_crtc == NULL || !disp_dpc_driver.dpc_dt_set)
+		return;
+
+	crtc = (struct drm_crtc *)_crtc;
+	panel_ext = mtk_drm_get_lcm_ext_params(crtc);
+
+	if (panel_ext && panel_ext->real_te_duration) {
+		duration = panel_ext->real_te_duration;
+	} else {
+		fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+		duration = (fps == 0) ? 16666 : 1000000 / fps;
+	}
+
+	/* update DTs affected by TE duration */
+	disp_dpc_driver.dpc_dt_set(1, duration - DT_OVL_OFFSET);
+	disp_dpc_driver.dpc_dt_set(5, duration - DT_DISP1_OFFSET);
+	disp_dpc_driver.dpc_dt_set(6, duration - DT_DISP1TE_OFFSET);
+	disp_dpc_driver.dpc_dt_set(12, duration - DT_MMINFRA_OFFSET);
+	disp_dpc_driver.dpc_dt_set(33, duration - DT_OVL_OFFSET);
+	disp_dpc_driver.dpc_dt_set(40, duration - DT_MMINFRA_OFFSET);
+}
+
 bool mtk_vidle_is_ff_enabled(void)
 {
 	return (bool)atomic_read(&g_ff_enabled);
@@ -287,6 +322,7 @@ void mtk_vidle_register(const struct dpc_funcs *funcs)
 {
 	disp_dpc_driver.dpc_enable = funcs->dpc_enable;
 	disp_dpc_driver.dpc_config = funcs->dpc_config;
+	disp_dpc_driver.dpc_dt_set = funcs->dpc_dt_set;
 	disp_dpc_driver.dpc_group_enable = funcs->dpc_group_enable;
 	disp_dpc_driver.dpc_vidle_power_keep = funcs->dpc_vidle_power_keep;
 	disp_dpc_driver.dpc_vidle_power_release =

@@ -103,35 +103,6 @@ struct mtk_dpc {
 };
 static struct mtk_dpc *g_priv;
 
-/*
- * EOF                                                      TE
- *  | OFF0 |                                     | SAFEZONE | OFF1 |
- *  |      |         OVL OFF                     |          |      | OVL OFF |
- *  |      |<-100->| DISP1 OFF           |<-100->|          |      | <-100-> | DISP1 OFF
- *  |      |<-100->| MMINFRA OFF |<-800->|       |          |      | <-100-> | MMINFRA OFF
- *  |      |       |             |       |       |          |      |         |
- *  |      OFF     OFF           ON      ON      ON         |      OFF       OFF
- *         0       4,11          12      5       1                 3         7,13
- */
-
-#define DT_TE_60 16000
-#define DT_TE_120 8000
-#define DT_TE_SAFEZONE 350
-#define DT_OFF0 38000
-#define DT_OFF1 500
-#define DT_PRE_DISP1_OFF 100
-#define DT_POST_DISP1_OFF 100
-#define DT_PRE_MMINFRA_OFF 100
-#define DT_POST_MMINFRA_OFF 800 /* infra267 + mminfra300 + margin */
-
-#define DT_12 (DT_TE_120 - DT_TE_SAFEZONE - DT_POST_DISP1_OFF - DT_POST_MMINFRA_OFF)
-#define DT_5  (DT_TE_120 - DT_TE_SAFEZONE - DT_POST_DISP1_OFF)
-#define DT_1  (DT_TE_120 - DT_TE_SAFEZONE)
-#define DT_6  (DT_TE_120 - DT_TE_SAFEZONE + 50)
-#define DT_3  (DT_OFF1)
-#define DT_7  (DT_OFF1 + DT_PRE_DISP1_OFF)
-#define DT_13 (DT_OFF1 + DT_PRE_MMINFRA_OFF)
-
 static struct mtk_dpc_dt_usage mt6989_disp_dt_usage[DPC_DISP_DT_CNT] = {
 	/* OVL0/OVL1/DISP0 */
 	{0, DPC_SP_FRAME_DONE,	40329,	DPC_DISP_VIDLE_MTCMOS},		/* OFF Time 0 */
@@ -310,6 +281,21 @@ static void dpc_dt_sw_trig(u16 dt)
 {
 	DPCFUNC("dt(%u)", dt);
 	writel(1, dpc_base + DISP_REG_DPC_DTx_SW_TRIG(dt));
+}
+
+static void dpc_dt_update_table(u16 dt, u32 us)
+{
+	/* update DT table */
+	if (dt < DPC_DISP_DT_CNT)
+		mt6989_disp_dt_usage[dt].ep = us;
+	else if (dt < DPC_DISP_DT_CNT + DPC_MML_DT_CNT)
+		mt6989_mml_dt_usage[dt - DPC_DISP_DT_CNT].ep = us;
+}
+
+static void dpc_dt_set_dur(u16 dt, u32 us)
+{
+	dpc_dt_update_table(dt, us);
+	dpc_dt_set(dt, us);
 }
 
 static void dpc_disp_group_enable(const enum mtk_dpc_disp_vidle group, bool en)
@@ -1469,6 +1455,7 @@ static const struct dpc_funcs funcs = {
 	.dpc_dc_force_enable = dpc_dc_force_enable,
 	.dpc_group_enable = dpc_group_enable,
 	.dpc_config = dpc_config,
+	.dpc_dt_set = dpc_dt_set_dur,
 	.dpc_mtcmos_vote = dpc_mtcmos_vote,
 	.dpc_vidle_power_keep = dpc_vidle_power_keep,
 	.dpc_vidle_power_release = dpc_vidle_power_release,
