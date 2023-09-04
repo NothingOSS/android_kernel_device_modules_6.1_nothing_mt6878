@@ -111,14 +111,12 @@ static bool mtk_audio_sram_avail_from_offset(struct mtk_audio_sram *sram,
 		}
 
 		if (sram_blk->valid == 0) {
-			dev_warn(sram->dev, "%s(), sram_blk->valid == 0, i = %d\n",
-				 __func__, i);
 			break;
 		}
 	}
 
-	dev_info(sram->dev, "%s(), max_avail_size = %d, size = %d, blk_idx = %d, blk_num = %d\n",
-		 __func__, max_avail_size, size, *blk_idx, *blk_num);
+	dev_info(sram->dev, "%s(), (ram_blk->valid == 0, i = %d), max_avail_size = %d, size = %d, blk_idx = %d, blk_num = %d\n",
+		 __func__, i, max_avail_size, size, *blk_idx, *blk_num);
 
 	return max_avail_size >= size;
 }

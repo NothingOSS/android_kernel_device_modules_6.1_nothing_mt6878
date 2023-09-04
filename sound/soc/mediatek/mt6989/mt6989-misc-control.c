@@ -798,13 +798,9 @@ static int mt6989_dev_power_get(struct snd_kcontrol *kcontrol,
 static int mt6989_dev_power_set(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
-	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	int power = 0;
 
 	power = ucontrol->value.integer.value[0];
-
-	dev_dbg(afe->dev, "%s(), power = %d\n", __func__, power);
 	kicker_ppb_request_power(KR_AUDIO, power);
 
 	return 0;

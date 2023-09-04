@@ -799,8 +799,6 @@ static int mt_vs1_voter_dl_event(struct snd_soc_dapm_widget *w,
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	struct mt6989_afe_private *afe_priv = afe->platform_priv;
 
-	dev_dbg(afe->dev, "%s(), event = 0x%x\n", __func__, event);
-
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		afe_priv->is_adda_dl_on = true;

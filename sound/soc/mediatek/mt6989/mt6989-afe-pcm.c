@@ -1098,7 +1098,8 @@ static int mt6989_record_xrun_assert_set(struct snd_kcontrol *kcontrol,
 	struct mt6989_afe_private *afe_priv = afe->platform_priv;
 	int xrun_assert = ucontrol->value.integer.value[0];
 
-	dev_info(afe->dev, "%s(), xrun_assert %d\n", __func__, xrun_assert);
+	if (xrun_assert != 0)
+		dev_info(afe->dev, "%s(), xrun_assert %d\n", __func__, xrun_assert);
 	afe_priv->xrun_assert[MT6989_RECORD_MEMIF] = xrun_assert;
 	return 0;
 }
