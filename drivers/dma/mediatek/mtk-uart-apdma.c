@@ -176,7 +176,6 @@ atomic_t rx_res_status;
 static unsigned int peri_0_axi_dbg;
 static struct clk *g_dma_clk;
 struct mutex g_dma_clk_mutex;
-spinlock_t g_dma_rxstate_lock;
 atomic_t dma_clk_count;
 static unsigned int clk_count;
 struct mtk_chan *hub_dma_tx_chan;
@@ -408,12 +407,10 @@ EXPORT_SYMBOL(mtk_uart_apdma_data_dump);
 
 int mtk_uart_get_apdma_rx_state(void)
 {
-	int state = 0;
 
-	spin_lock(&g_dma_rxstate_lock);
-	state = atomic_read(&hub_dma_rx_chan->rxdma_state);
-	spin_unlock(&g_dma_rxstate_lock);
-	return state;
+
+	return atomic_read(&hub_dma_rx_chan->rxdma_state);
+
 }
 EXPORT_SYMBOL(mtk_uart_get_apdma_rx_state);
 
@@ -430,12 +427,10 @@ EXPORT_SYMBOL(mtk_uart_get_apdma_handler_state);
 
 void mtk_uart_set_apdma_rx_state(bool enable)
 {
-	spin_lock(&g_dma_rxstate_lock);
 	if (enable )
 		atomic_inc(&hub_dma_rx_chan->rxdma_state);
 	else
 		atomic_dec(&hub_dma_rx_chan->rxdma_state);
-	spin_unlock(&g_dma_rxstate_lock);
 }
 EXPORT_SYMBOL(mtk_uart_set_apdma_rx_state);
 
@@ -1473,7 +1468,6 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 			g_dma_clk = mtkd->clk;
 			atomic_set(&dma_clk_count, 0);
 			mutex_init(&g_dma_clk_mutex);
-			spin_lock_init(&g_dma_rxstate_lock);
 		}
 		atomic_set(&tx_res_status, 0);
 		atomic_set(&rx_res_status, 1);
