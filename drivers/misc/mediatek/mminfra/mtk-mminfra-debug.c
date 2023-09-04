@@ -325,7 +325,8 @@ static int mtk_mminfra_pd_callback(struct notifier_block *nb,
 					readl(dbg->spm_base+0xea8), readl(dbg->vlp_base+0x91c));
 			}
 		}
-		pr_notice("%s: enable clk ref_cnt=%d\n", __func__, count);
+		if (!no_sleep_pd_cb)
+			pr_notice("%s: enable clk ref_cnt=%d\n", __func__, count);
 	} else if (flags == GENPD_NOTIFY_PRE_OFF) {
 		if (!no_sleep_pd_cb) {
 			if (!skip_apsrc) {
@@ -349,7 +350,8 @@ static int mtk_mminfra_pd_callback(struct notifier_block *nb,
 			mminfra_cg_check(false);
 		}
 		count = atomic_dec_return(&clk_ref_cnt);
-		pr_notice("%s: disable clk ref_cnt=%d\n", __func__, count);
+		if (!no_sleep_pd_cb)
+			pr_notice("%s: disable clk ref_cnt=%d\n", __func__, count);
 	}
 
 	return NOTIFY_OK;
