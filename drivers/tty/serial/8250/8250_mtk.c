@@ -957,6 +957,10 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 			if (atomic_read(&hub_uart_data->wakeup_state) == 0) {
 				/* clear wakeup */
 				mtk8250_set_wakeup_irq(hub_uart_data, false);
+				/*set rx res*/
+				#if defined(KERNEL_mtk_uart_set_rx_res_status)
+					KERNEL_mtk_uart_set_rx_res_status(1);
+				#endif
 				/* polling fail error handler */
 				if (atomic_read(&hub_uart_data->errflag_state) == 1) {
 					pr_info("%s:no need enable apdma clk in set tx request flow\n",
@@ -990,9 +994,9 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 				__func__, ret);
 			goto exit;
 		}
-
-		#if defined(KERNEL_mtk_uart_set_res_status)
-			KERNEL_mtk_uart_set_res_status(1);
+		/*set tx res*/
+		#if defined(KERNEL_mtk_uart_set_tx_res_status)
+			KERNEL_mtk_uart_set_tx_res_status(1);
 		#endif
 exit:
 		return ret;
@@ -1030,12 +1034,12 @@ static int mtk8250_polling_rx_handle_complete(unsigned int count)
 
 	polling_start_time = sched_clock();
 	while (count) {
-		#if defined(KERNEL_mtk_uart_get_apdma_handler_state)
+	#if defined(KERNEL_mtk_uart_get_apdma_handler_state)
 		dma_flag_state = KERNEL_mtk_uart_get_apdma_handler_state();
-		#endif
-		#if defined(KERNEL_mtk_uart_get_apdma_rx_state)
+	#endif
+	#if defined(KERNEL_mtk_uart_get_apdma_rx_state)
 		dma_state = KERNEL_mtk_uart_get_apdma_rx_state();
-		#endif
+	#endif
 		if (dma_state != 0 || dma_flag_state) {
 			usleep_range(1000, 1500);
 			count--;
@@ -1071,9 +1075,13 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 		pr_info("%s failed\n", __func__);
 		goto exit;
 	}
-
-	#if defined(KERNEL_mtk_uart_set_res_status)
-		KERNEL_mtk_uart_set_res_status(0);
+	/*set tx res*/
+	#if defined(KERNEL_mtk_uart_set_tx_res_status)
+		KERNEL_mtk_uart_set_tx_res_status(0);
+	#endif
+	/*set rx res*/
+	#if defined(KERNEL_mtk_uart_set_rx_res_status)
+		KERNEL_mtk_uart_set_rx_res_status(0);
 	#endif
 
 	if (hub_uart_data != NULL && hub_uart_data->support_wakeup == 1) {
@@ -1090,6 +1098,10 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 		dma_state = mtk8250_polling_rx_handle_complete(count);
 		/*polling fail error handler*/
 		if (!dma_state) {
+		/*set tx res status*/
+		#if defined(KERNEL_mtk_uart_set_rx_res_status)
+			KERNEL_mtk_uart_set_rx_res_status(1);
+		#endif
 			atomic_set(&hub_uart_data->errflag_state, 1);
 		} else {
 			/*stop VFF*/
@@ -1274,9 +1286,13 @@ static void mtk8250_dma_rx_complete(void *param)
 	bool is_exceed_buf_size = false;
 #endif
 
-	if (data->rx_status == DMA_RX_SHUTDOWN)
+	if (data->rx_status == DMA_RX_SHUTDOWN) {
+		#if defined(KERNEL_mtk_uart_set_apdma_rx_state)
+		if (data->support_hub == 1 && data->support_wakeup == 1)
+			KERNEL_mtk_uart_set_apdma_rx_state(false);
+		#endif
 		return;
-
+	}
 	rx_start_time = sched_clock();
 	if ((data->support_hub == 1) && rx_record.rec_total) {
 		//first assign as last record idx
@@ -1415,7 +1431,7 @@ static void mtk8250_dma_rx_complete(void *param)
 
 #if defined(KERNEL_mtk_uart_set_apdma_rx_state)
 	if (data->support_hub == 1 && data->support_wakeup == 1)
-		KERNEL_mtk_uart_set_apdma_rx_state(0);
+		KERNEL_mtk_uart_set_apdma_rx_state(false);
 #endif
 
 	spin_unlock_irqrestore(&up->port.lock, flags);
@@ -1990,6 +2006,10 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 			mutex_unlock(&data->clk_mutex);
 			return IRQ_HANDLED;
 		}
+		/*set rx res state*/
+		#if defined(KERNEL_mtk_uart_set_rx_res_status)
+				KERNEL_mtk_uart_set_rx_res_status(1);
+		#endif
 		/*polling fail error handler*/
 		if (atomic_read(&hub_uart_data->errflag_state) == 1) {
 			pr_info("%s: no need enable apdma clk in wakeup flow\n",__func__);

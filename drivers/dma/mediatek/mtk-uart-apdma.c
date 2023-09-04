@@ -171,10 +171,12 @@ static unsigned long long num;
 static unsigned int flag_state;
 static unsigned int g_vff_sz;
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
-atomic_t res_status;
+atomic_t tx_res_status;
+atomic_t rx_res_status;
 static unsigned int peri_0_axi_dbg;
 static struct clk *g_dma_clk;
 struct mutex g_dma_clk_mutex;
+spinlock_t g_dma_rxstate_lock;
 atomic_t dma_clk_count;
 static unsigned int clk_count;
 struct mtk_chan *hub_dma_tx_chan;
@@ -406,7 +408,12 @@ EXPORT_SYMBOL(mtk_uart_apdma_data_dump);
 
 int mtk_uart_get_apdma_rx_state(void)
 {
-	return atomic_read(&hub_dma_rx_chan->rxdma_state);
+	int state = 0;
+
+	spin_lock(&g_dma_rxstate_lock);
+	state = atomic_read(&hub_dma_rx_chan->rxdma_state);
+	spin_unlock(&g_dma_rxstate_lock);
+	return state;
 }
 EXPORT_SYMBOL(mtk_uart_get_apdma_rx_state);
 
@@ -421,9 +428,14 @@ bool mtk_uart_get_apdma_handler_state(void)
 }
 EXPORT_SYMBOL(mtk_uart_get_apdma_handler_state);
 
-void mtk_uart_set_apdma_rx_state(int value)
+void mtk_uart_set_apdma_rx_state(bool enable)
 {
-	atomic_set(&hub_dma_rx_chan->rxdma_state, value);
+	spin_lock(&g_dma_rxstate_lock);
+	if (enable )
+		atomic_inc(&hub_dma_rx_chan->rxdma_state);
+	else
+		atomic_dec(&hub_dma_rx_chan->rxdma_state);
+	spin_unlock(&g_dma_rxstate_lock);
 }
 EXPORT_SYMBOL(mtk_uart_set_apdma_rx_state);
 
@@ -503,17 +515,29 @@ void mtk_uart_apdma_enable_vff(bool enable)
 }
 EXPORT_SYMBOL(mtk_uart_apdma_enable_vff);
 
-void mtk_uart_set_res_status(int status)
+void mtk_uart_set_tx_res_status(int status)
 {
-	atomic_set(&res_status, status);
+	atomic_set(&tx_res_status, status);
 }
-EXPORT_SYMBOL(mtk_uart_set_res_status);
+EXPORT_SYMBOL(mtk_uart_set_tx_res_status);
 
-int mtk_uart_get_res_status(void)
+int mtk_uart_get_tx_res_status(void)
 {
-	return atomic_read(&res_status);
+	return atomic_read(&tx_res_status);
 }
-EXPORT_SYMBOL(mtk_uart_get_res_status);
+EXPORT_SYMBOL(mtk_uart_get_tx_res_status);
+
+void mtk_uart_set_rx_res_status(int status)
+{
+	atomic_set(&rx_res_status, status);
+}
+EXPORT_SYMBOL(mtk_uart_set_rx_res_status);
+
+int mtk_uart_get_rx_res_status(void)
+{
+	return atomic_read(&rx_res_status);
+}
+EXPORT_SYMBOL(mtk_uart_get_rx_res_status);
 
 void mtk_uart_apdma_polling_rx_finish(void)
 {
@@ -579,8 +603,8 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 	int poll_cnt = MAX_POLLING_CNT;
 
 	if (c->is_hub_port) {
-		if (!atomic_read(&res_status)) {
-			pr_info("[WARN]%s, txrx_request is not set\n", __func__);
+		if (!mtk_uart_get_tx_res_status()) {
+			pr_info("[WARN]%s, tx_request is not set\n", __func__);
 			return;
 		}
 	}
@@ -720,7 +744,19 @@ static void mtk_uart_apdma_start_rx(struct mtk_chan *c)
 	}
 
 	mtk_uart_apdma_write(c, VFF_RX_FLOWCTL_THRE, VFF_RX_FLOWCTL_THRE_SIZE);
+
+#if IS_ENABLED(CONFIG_MTK_UARTHUB)
+	if ((mtkd->support_hub) && (mtkd->support_wakeup) && (c->is_hub_port)) {
+		if (mtk_uart_get_rx_res_status())
+			mtk_uart_apdma_write(c, VFF_INT_EN, VFF_RX_INT_EN_B);
+		else
+			pr_info("%s: Avoiding enable dma irq during bt clear rx request\n",__func__);
+	} else {
+		mtk_uart_apdma_write(c, VFF_INT_EN, VFF_RX_INT_EN_B);
+	}
+#else
 	mtk_uart_apdma_write(c, VFF_INT_EN, VFF_RX_INT_EN_B);
+#endif
 	mtk_uart_apdma_write(c, VFF_EN, VFF_EN_B);
 	if (mtk_uart_apdma_read(c, VFF_EN) != VFF_EN_B)
 		dev_err(c->vc.chan.device->dev, "Enable RX fail\n");
@@ -859,7 +895,7 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 			pr_info("[%s]: dma_clk_count == 0\n", __func__);
 			return -EINVAL;
 		}
-		mtk_uart_set_apdma_rx_state(1);
+		mtk_uart_set_apdma_rx_state(true);
 	}
 	left_data = mtk_uart_apdma_read(c, VFF_DEBUG_STATUS);
 	while (((left_data & DBG_STAT_WD_ACT) == DBG_STAT_WD_ACT) && (poll_cnt > 0)) {
@@ -875,7 +911,7 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 	if (!mtk_uart_apdma_read(c, VFF_VALID_SIZE)) {
 		num++;
 		if (mtkd->support_wakeup  && c->is_hub_port)
-			mtk_uart_set_apdma_rx_state(0);
+			mtk_uart_set_apdma_rx_state(false);
 		return -EINVAL;
 	}
 	num = 0;
@@ -1437,8 +1473,10 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 			g_dma_clk = mtkd->clk;
 			atomic_set(&dma_clk_count, 0);
 			mutex_init(&g_dma_clk_mutex);
+			spin_lock_init(&g_dma_rxstate_lock);
 		}
-		atomic_set(&res_status, 0);
+		atomic_set(&tx_res_status, 0);
+		atomic_set(&rx_res_status, 1);
 		mtk_uart_apdma_parse_peri(pdev);
 	}
 #else
@@ -1469,7 +1507,7 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 		c->irq = rc;
 		c->rec_idx = 0;
 		c->cur_rec_idx = 0;
-
+		atomic_set(&c->rxdma_state, 0);
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 		c->is_hub_port = mtkd->support_hub & (1 << i);
 		if (c->is_hub_port) {

@@ -12,8 +12,10 @@
 #define KERNEL_mtk_uart_apdma_start_record  mtk_uart_apdma_start_record
 #define KERNEL_mtk_uart_apdma_end_record	mtk_uart_apdma_end_record
 #define KERNEL_mtk_uart_get_apdma_rpt	mtk_uart_get_apdma_rpt
-#define KERNEL_mtk_uart_set_res_status	mtk_uart_set_res_status
-#define KERNEL_mtk_uart_get_res_status	mtk_uart_get_res_status
+#define KERNEL_mtk_uart_set_tx_res_status	mtk_uart_set_tx_res_status
+#define KERNEL_mtk_uart_get_tx_res_status	mtk_uart_get_tx_res_status
+#define KERNEL_mtk_uart_set_rx_res_status	mtk_uart_set_rx_res_status
+#define KERNEL_mtk_uart_get_rx_res_status	mtk_uart_get_rx_res_status
 #define KERNEL_mtk_uart_apdma_polling_rx_finish mtk_uart_apdma_polling_rx_finish
 #define KERNEL_mtk_uart_set_apdma_clk  mtk_uart_set_apdma_clk
 #define KERNEL_mtk_uart_set_apdma_rx_irq  mtk_uart_set_apdma_rx_irq
@@ -28,13 +30,15 @@ void mtk_uart_rx_setting(struct dma_chan *chan, int copied, int total);
 void mtk_uart_apdma_start_record(struct dma_chan *chan);
 void mtk_uart_apdma_end_record(struct dma_chan *chan);
 void mtk_uart_get_apdma_rpt(struct dma_chan *chan, unsigned int *rpt);
-void mtk_uart_set_res_status(int status);
-int mtk_uart_get_res_status(void);
+void mtk_uart_set_tx_res_status(int status);
+int mtk_uart_get_tx_res_status(void);
+void mtk_uart_set_rx_res_status(int status);
+int mtk_uart_get_rx_res_status(void);
 void mtk_uart_apdma_polling_rx_finish(void);
 void mtk_uart_set_apdma_clk (bool enable);
 void mtk_uart_set_apdma_rx_irq (bool enable);
 int mtk_uart_get_apdma_rx_state (void);
-void mtk_uart_set_apdma_rx_state (int value);
+void mtk_uart_set_apdma_rx_state (bool enable);
 void mtk_uart_apdma_enable_vff(bool enable);
 bool mtk_uart_get_apdma_handler_state(void);
 
