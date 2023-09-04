@@ -34,6 +34,12 @@
 #define DISP_REG_MDP_RDMA_CON 0x020
 #define OUTPUT_10B BIT(5)	/* output yuv 10bit */
 
+#define DISP_REG_MDP_RDMA_GMCIF_CON 0x028
+#define PRE_ULTRA_EN (0x2 << 16)
+#define URGENT_EN (0x2 << 14)
+#define ULTRA_EN (0x2 << 12)
+#define COMMAND_DIV BIT(0)
+
 #define DISP_REG_MDP_RDMA_SRC_CON 0x030
 #define MEM_MODE_INPUT_FORMAT_RGB888 (0x1U)
 #define MEM_MODE_INPUT_FORMAT_NV12 (0xcU)
@@ -180,7 +186,20 @@ int mtk_mdp_rdma_analysis(struct mtk_ddp_comp *comp)
 
 static void mtk_mdp_rdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
 	unsigned int val;
+
+	if (!mtk_crtc) {
+		DDPINFO("%s mtk_crtc is not assigned\n", __func__);
+		return;
+	}
+
+	priv = mtk_crtc->base.dev->dev_private;
+
+	if (priv->data->mmsys_id == MMSYS_MT6989)
+		mtk_ddp_write_mask(comp, COMMAND_DIV,
+			DISP_REG_MDP_RDMA_GMCIF_CON, COMMAND_DIV, handle);
 
 	mtk_ddp_write_mask(comp, OUTPUT_10B,
 		DISP_REG_MDP_RDMA_CON, OUTPUT_10B, handle);
