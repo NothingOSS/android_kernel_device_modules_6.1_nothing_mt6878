@@ -477,11 +477,12 @@ out:
 
 static int fpsgo_com_check_app_cam_fps_align(struct render_info *iter)
 {
-	int ret = 1;
+	int ret = -1;
 	int local_app_cam_fps_align_margin = BY_PID_DEFAULT_VAL;
 	int local_app_cam_time_align_ratio = BY_PID_DEFAULT_VAL;
 	int check1 = 0;
 	int check2 = 0;
+	int check3 = 0;
 	int local_qfps_arr_num = 0;
 	int local_tfps_arr_num = 0;
 	int *local_qfps_arr = NULL;
@@ -516,23 +517,23 @@ static int fpsgo_com_check_app_cam_fps_align(struct render_info *iter)
 		local_qfps_arr, &local_qfps_arr_num, 1,
 		local_tfps_arr, &local_tfps_arr_num, 1);
 
-	check1 = local_tfps_arr[0] > local_qfps_arr[0] + local_app_cam_fps_align_margin;
+	check1 = local_tfps_arr[0] - local_qfps_arr[0] > local_app_cam_fps_align_margin;
 	check2 = iter->running_time * 100 <= iter->Q2Q_time * local_app_cam_time_align_ratio;
+	check3 = local_tfps_arr[0] - local_qfps_arr[0] <= 1;
 
-	if ((check1 && check2) ||
-		(iter->eas_control_flag && (check1 || check2))) {
+	if (check1 && check2)
 		iter->eas_control_flag = 1;
-		ret = 0;
-	} else
+	else if (check3)
 		iter->eas_control_flag = 0;
+	ret = iter->eas_control_flag;
 
 	xgf_trace(
-		"[base][%d][0x%llx] | %s qfps:%d tfps:%d t_cpu:%llu q2q:%llu margin:%d ratio:%d check:%d %d eas_ctrl:%d",
+		"[base][%d][0x%llx] | %s qfps:%d tfps:%d t_cpu:%llu q2q:%llu margin:%d ratio:%d check:%d %d %d eas_ctrl:%d",
 		iter->pid, iter->buffer_id, __func__,
 		local_qfps_arr[0], local_tfps_arr[0],
 		iter->running_time, iter->Q2Q_time,
 		local_app_cam_fps_align_margin, local_app_cam_time_align_ratio,
-		check1, check2, iter->eas_control_flag);
+		check1, check2, check3, iter->eas_control_flag);
 
 out:
 	kfree(local_qfps_arr);
@@ -824,7 +825,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 		if (f_render->frame_type == NON_VSYNC_ALIGNED_TYPE)
 			f_render->frame_type = fpsgo_check_exist_queue_SF(f_render->tgid);
 		if (f_render->frame_type == NON_VSYNC_ALIGNED_TYPE) {
-			if (!fpsgo_com_check_app_cam_fps_align(f_render)) {
+			if (fpsgo_com_check_app_cam_fps_align(f_render)) {
 				fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
 					&raw_runtime, &running_time, &enq_running_time,
 					0, enqueue_end_time,
