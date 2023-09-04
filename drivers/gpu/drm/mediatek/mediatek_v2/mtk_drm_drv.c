@@ -1348,7 +1348,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	unsigned int fps = 0;
 	unsigned int vtotal = 0;
 	unsigned int line_time = 0;
-	int tgt_comp = mtk_plane_state->comp_state.comp_id;
+	unsigned int tgt_comp = mtk_plane_state->comp_state.comp_id;
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_ddp_comp *output_comp = NULL;
