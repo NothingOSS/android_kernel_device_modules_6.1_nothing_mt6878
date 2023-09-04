@@ -549,9 +549,9 @@ const char *dump_ovlid(enum mml_mode mode, enum mml_layer_id ovlsys_id)
 
 	switch (ovlsys_id) {
 	case MML_DLO_OVLSYS0:
-		return "OVL0";
+		return " OVL0";
 	case MML_DLO_OVLSYS1:
-		return "OVL1";
+		return " OVL1";
 	default:
 		break;
 	}
@@ -570,7 +570,7 @@ static void dump_inout(struct mml_task *task)
 	mml_mmp(dumpinfo, MMPROFILE_FLAG_START, task->job.jobid, 0);
 
 	get_frame_str(frame, sizeof(frame), &cfg->info.src);
-	mml_log("in:%s plane:%hhu%s%s%s job:%u mode:%hhu %s %s acttime %u",
+	mml_log("in:%s plane:%hhu%s%s%s job:%u mode:%hhu %s%s acttime %u",
 		frame,
 		task->buf.src.cnt,
 		(cfg->info.alpha || cfg->alpharot) ? " alpha" : "",

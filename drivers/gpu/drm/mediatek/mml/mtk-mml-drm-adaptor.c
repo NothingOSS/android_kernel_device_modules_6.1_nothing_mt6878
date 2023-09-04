@@ -797,6 +797,10 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 
 	mml_trace_begin("%s", __func__);
 
+	mml_mmp_raw(submit_info, MMPROFILE_FLAG_PULSE,
+		atomic_read(&ctx->job_serial) + 1, submit->info.mode,
+		&submit->info, sizeof(submit->info));
+
 	if (mtk_mml_msg || mml_pq_disable) {
 		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
 			dump_pq_en(i, submit->pq_param[i],

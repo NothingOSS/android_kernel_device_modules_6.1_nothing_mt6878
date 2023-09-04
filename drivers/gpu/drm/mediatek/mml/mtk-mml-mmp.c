@@ -26,6 +26,7 @@ void mml_mmp_init(void)
 	mml_mmp_events.mml = mml;
 	mml_mmp_events.query_mode = mmprofile_register_event(mml, "query_mode");
 	mml_mmp_events.submit = mmprofile_register_event(mml, "submit");
+	mml_mmp_events.submit_info = mmprofile_register_event(mml_mmp_events.submit, "info");
 	mml_mmp_events.config = mmprofile_register_event(mml, "config");
 	mml_mmp_events.config_dle = mmprofile_register_event(mml, "config_dle");
 	mml_mmp_events.dumpinfo = mmprofile_register_event(mml, "dumpinfo");

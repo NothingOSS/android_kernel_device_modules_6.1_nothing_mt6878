@@ -27,10 +27,23 @@
 #define mml_mmp2(event, flag, v1h, v1l, v2h, v2l) \
 	mmprofile_log_ex(mml_mmp_get_event()->event, flag, v1h << 16 | v1l, v2h << 16 | v2l)
 
+#define mml_mmp_raw(event, flag, v1, v2, data_ptr, sz) do { \
+	struct mmp_metadata_t meta = { \
+		.data1 = v1, \
+		.data2 = v2, \
+		.data_type = MMPROFILE_META_RAW, \
+		.size = sz, \
+		.p_data = data_ptr, \
+	}; \
+	\
+	mmprofile_log_meta(mml_mmp_get_event()->event, flag, &meta); \
+} while(0)
+
 struct mml_mmp_events_t {
 	mmp_event mml;
 	mmp_event query_mode;
 	mmp_event submit;
+	mmp_event submit_info;
 	mmp_event config;
 	mmp_event config_dle;
 	mmp_event dumpinfo;
@@ -99,6 +112,7 @@ struct mml_mmp_events_t *mml_mmp_get_event(void);
 
 #define mml_mmp(args...)
 #define mml_mmp2(args...)
+#define mml_mmp_raw(args...)
 
 static inline void mml_mmp_init(void)
 {
