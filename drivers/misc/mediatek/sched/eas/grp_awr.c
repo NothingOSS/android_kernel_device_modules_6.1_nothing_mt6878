@@ -56,6 +56,8 @@ EXPORT_SYMBOL(get_grp_awr_marg_ctrl);
 
 static int top_grp_aware;
 static int top_grp_ctrl_refcnt;
+static int top_app_force_ctrl;
+
 #include <linux/ftrace.h>
 #include <linux/kallsyms.h>
 void set_top_grp_aware(int val, int force_ctrl)
@@ -65,22 +67,37 @@ void set_top_grp_aware(int val, int force_ctrl)
 	char sym[KSYM_SYMBOL_LEN];
 
 	mutex_lock(&ta_ctrl_mutex);
-	/* force control, reset refcnt */
-	if (force_ctrl)
-		top_grp_ctrl_refcnt = 0;
+	/* force control enable/disable */
+	if (force_ctrl == 1) {
+		if (val == -1)
+			top_app_force_ctrl = 0;
+		else
+			top_app_force_ctrl = 1;
+	} else {
+		/* normal control enable/disable */
+		if (val)
+			++top_grp_ctrl_refcnt;
+		else
+			--top_grp_ctrl_refcnt;
+	}
 
-	if (val)
-		++top_grp_ctrl_refcnt;
-	else
-		--top_grp_ctrl_refcnt;
-
-	/* if refcnt >0 , force on flt, else follow of setting*/
-	if (top_grp_ctrl_refcnt > 0) {
-		flt_set_grp_ctrl(1);
-		top_grp_aware = 1;
-	} else if (top_grp_ctrl_refcnt <= 0) {
-		flt_set_grp_ctrl(0);
-		top_grp_aware = 0;
+	if (top_app_force_ctrl == 1) {
+		if (val == 1) {
+			flt_set_grp_ctrl(1);
+			top_grp_aware = 1;
+		} else if (val == 0) {
+			flt_set_grp_ctrl(0);
+			top_grp_aware = 0;
+		}
+	} else if (top_app_force_ctrl == 0) {
+		/* if refcnt >0 , force on flt, else follow of setting*/
+		if (top_grp_ctrl_refcnt > 0) {
+			flt_set_grp_ctrl(1);
+			top_grp_aware = 1;
+		} else {
+			flt_set_grp_ctrl(0);
+			top_grp_aware = 0;
+		}
 	}
 	if (trace_sugov_ext_ta_ctrl_enabled())
 		trace_sugov_ext_ta_ctrl(val, force_ctrl, top_grp_ctrl_refcnt, top_grp_aware);

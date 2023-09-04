@@ -321,10 +321,11 @@ static int flt_get_o_util_mode2(int cpu)
 
 static void flt_ctl_mode2(int set)
 {
+	/* control grp dvfs reference signal*/
 	if (set)
-		flt_set_mode(FLT_MODE2_EN);
+		set_grp_dvfs_ctrl(FLT_MODE2_EN);
 	else
-		flt_set_mode(0);
+		set_grp_dvfs_ctrl(0);
 }
 
 void flt_mode2_register_api_hooks(void)
