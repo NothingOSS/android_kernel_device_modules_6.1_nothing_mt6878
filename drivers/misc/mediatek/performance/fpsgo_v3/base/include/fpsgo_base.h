@@ -217,6 +217,13 @@ struct fpsgo_boost_attr {
 	int separate_pct_other_by_pid;
 	int separate_release_sec_by_pid;
 
+	/* limit freq2cap */
+	/* limit freq 2 cap */
+	int limit_cfreq2cap_by_pid;
+	int limit_rfreq2cap_by_pid;
+	int limit_cfreq2cap_m_by_pid;
+	int limit_rfreq2cap_m_by_pid;
+
 	/* blc boost*/
 	int blc_boost_by_pid;
 

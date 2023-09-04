@@ -233,7 +233,7 @@ static void fbt_ux_set_cap(struct render_info *thr, int min_cap, int max_cap)
 		if (local_dep_arr[i].pid <= 0)
 			continue;
 
-		fbt_set_per_task_cap(local_dep_arr[i].pid, min_cap, max_cap);
+		fbt_set_per_task_cap(local_dep_arr[i].pid, min_cap, max_cap, 1024);
 
 		if (strlen(local_dep_str) == 0)
 			ret = snprintf(temp, sizeof(temp), "%d", local_dep_arr[i].pid);
@@ -599,6 +599,7 @@ void fpsgo_sbe_rescue_legacy(struct render_info *thr, int start, int enhance,
 {
 	int floor, blc_wt = 0, blc_wt_b = 0, blc_wt_m = 0;
 	int max_cap = 100, max_cap_b = 100, max_cap_m = 100;
+	int max_util = 1024, max_util_b = 1024, max_util_m = 1024;
 	struct cpu_ctrl_data *pld;
 	int rescue_opp_c, rescue_opp_f;
 	int new_enhance;
@@ -670,9 +671,11 @@ void fpsgo_sbe_rescue_legacy(struct render_info *thr, int start, int enhance,
 		} else {
 			fbt_cal_min_max_cap(thr, blc_wt, blc_wt_b, blc_wt_m, FPSGO_JERK_FIRST,
 				thr->pid, thr->buffer_id, &blc_wt, &blc_wt_b, &blc_wt_m,
-				&max_cap, &max_cap_b, &max_cap_m);
+				&max_cap, &max_cap_b, &max_cap_m, &max_util,
+				&max_util_b, &max_util_m);
 			fbt_set_min_cap_locked(thr, blc_wt, blc_wt_b, blc_wt_m, max_cap,
-				max_cap_b, max_cap_m, FPSGO_JERK_FIRST);
+				max_cap_b, max_cap_m, max_util, max_util_b,
+				max_util_m, FPSGO_JERK_FIRST);
 		}
 
 		thr->boost_info.last_blc = blc_wt;
@@ -718,9 +721,11 @@ void fpsgo_sbe_rescue_legacy(struct render_info *thr, int start, int enhance,
 		} else {
 			fbt_cal_min_max_cap(thr, blc_wt, blc_wt_b, blc_wt_m, FPSGO_JERK_FIRST,
 				thr->pid, thr->buffer_id, &blc_wt, &blc_wt_b, &blc_wt_m,
-				&max_cap, &max_cap_b, &max_cap_m);
+				&max_cap, &max_cap_b, &max_cap_m, &max_util,
+				&max_util_b, &max_util_m);
 			fbt_set_min_cap_locked(thr, blc_wt, blc_wt_b, blc_wt_m, max_cap,
-				max_cap_b, max_cap_m, FPSGO_JERK_FIRST);
+				max_cap_b, max_cap_m, max_util, max_util_b,
+				max_util_m, FPSGO_JERK_FIRST);
 		}
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "sbe rescue legacy");
 	}

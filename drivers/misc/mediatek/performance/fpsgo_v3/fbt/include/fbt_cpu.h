@@ -75,7 +75,8 @@ void fbt_cal_min_max_cap(struct render_info *thr,
 	int min_cap, int min_cap_b,
 	int min_cap_m, int jerk, int pid, unsigned long long buffer_id,
 	int *final_min_cap, int *final_min_cap_b, int *final_min_cap_m,
-	int *final_max_cap, int *final_max_cap_b, int *final_max_cap_m);
+	int *final_max_cap, int *final_max_cap_b, int *final_max_cap_m,
+	int *final_max_util, int *final_max_util_b, int *final_max_util_m);
 unsigned int fbt_get_new_base_blc(struct cpu_ctrl_data *pld,
 	int floor, int enhance, int eenhance_opp, int headroom);
 int fbt_limit_capacity(int blc_wt, int is_rescue);
@@ -95,8 +96,8 @@ void fbt_set_render_last_cb(struct render_info *thr, unsigned long long ts);
 int fbt_get_dep_list(struct render_info *thr);
 int fbt_determine_final_dep_list(struct render_info *thr, struct fpsgo_loading *final_dep_arr);
 void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
-			int min_cap_b, int min_cap_m, int max_cap, int max_cap_b,
-			int max_cap_m, int jerk);
+		int min_cap_b, int min_cap_m, int max_cap, int max_cap_b,
+		int max_cap_m, int max_util, int max_util_b, int max_util_m, int jerk);
 unsigned int fbt_cal_blc(long aa, unsigned long long target_time,
 	unsigned int last_blc_wt, unsigned long long t_q2q, int is_retarget,
 	unsigned int *blc_wt);
