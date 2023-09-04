@@ -9,6 +9,7 @@
 #include <linux/platform_device.h>
 #include <linux/module.h>
 #include <linux/proc_fs.h>
+#include <linux/regulator/consumer.h>
 #include <linux/sched/clock.h>
 #include <linux/sched/cputime.h>
 #include <linux/sched/debug.h>
@@ -327,6 +328,11 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 	else
 		SPREAD_PRINTF(buff, size, m,
 			      "clk_gating is disabled\n");
+	if (host->mclk.reg_vcore) {
+		SPREAD_PRINTF(buff, size, m,
+			      "Vcore = %d uv\n",
+			      regulator_get_voltage(host->mclk.reg_vcore));
+	}
 #ifdef CONFIG_PM
 	SPREAD_PRINTF(buff, size, m,
 		      "Runtime PM: req=%d, status:%d, err:%d\n",
