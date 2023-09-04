@@ -4387,6 +4387,7 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 	struct mtk_plane_comp_state *comp_state;
 	struct mtk_lye_ddp_state *lye_state;
 	int i, j, k;
+	int crtc_idx = drm_crtc_index(crtc);
 	unsigned int prop_fence_idx;
 	unsigned int old_prop_fence_idx;
 
@@ -4402,7 +4403,8 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 		comp_state = &(plane_state->comp_state);
 		/* TODO: check plane_state by pending.enable */
 		if (plane_state->base.visible &&
-			((prop_fence_idx != old_prop_fence_idx) || (lye_state->rpo_lye == 1) )) {
+			((prop_fence_idx != old_prop_fence_idx) || (lye_state->rpo_lye == 1)
+			|| crtc_idx == 2)) {
 			for_each_comp_in_cur_crtc_path(
 				comp, mtk_crtc, j,
 				k) {
