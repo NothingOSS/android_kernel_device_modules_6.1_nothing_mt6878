@@ -246,7 +246,7 @@ struct mtk_drm_private {
 	bool dma_parms_allocated;
 
 	bool already_first_config;
-
+	bool is_tablet;
 	struct mml_drm_ctx *mml_ctx;
 	atomic_t need_recover;
 

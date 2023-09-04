@@ -8730,6 +8730,11 @@ static int mtk_drm_probe(struct platform_device *pdev)
 	else
 		disp_helper_set_stage(DISP_HELPER_STAGE_BRING_UP);
 
+	if (of_property_read_bool(dev->of_node, "is-tablet")) {
+		private->is_tablet = true;
+		DDPFUNC("is tablet!\n");
+	}
+
 	if (private->data->mmsys_id == MMSYS_MT6897) {
 		if (mtk_drm_get_segment_id(pdev, private))
 			DDPPR_ERR("%s, segment get fail\n", __func__);
