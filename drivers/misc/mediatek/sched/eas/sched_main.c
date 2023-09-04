@@ -442,6 +442,13 @@ static long eas_ioctl_impl(struct file *filp,
 		.val = -1
 	};
 
+	struct gas_margin_thr gas_margin_args = {
+		.gear_id = -1,
+		.group_id = -1,
+		.margin = -1,
+		.converge_thr = -1
+	};
+
 	cpumask_clear(&mask);
 	cpumask_copy(&mask, cpu_possible_mask);
 	SA_task_args.mask = mask.bits[0];
@@ -661,6 +668,15 @@ static long eas_ioctl_impl(struct file *filp,
 		if (easctl_copy_from_user(&grp_id, (void *)arg, sizeof(int)))
 			return -1;
 		group_reset_threshold(grp_id);
+		break;
+	case EAS_SET_GAS_MARG_THR:
+		if (easctl_copy_from_user(&gas_margin_args, (void *)arg,
+				sizeof(struct gas_margin_thr)))
+			return -1;
+		set_grp_awr_thr(gas_margin_args.gear_id, gas_margin_args.group_id,
+			gas_margin_args.converge_thr);
+		set_grp_awr_min_opp_margin(gas_margin_args.gear_id, gas_margin_args.group_id,
+			gas_margin_args.margin);
 		break;
 	default:
 		pr_debug(TAG "%s %d: unknown cmd %x\n",

@@ -3,6 +3,13 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+struct gas_margin_thr {
+	int gear_id;
+	int group_id;
+	int margin;
+	int converge_thr;
+};
+
 extern int flt_sched_get_cpu_group(int cpu, int grp_id);
 extern int flt_get_cpu_o(int cpu);
 extern int flt_get_gp_hint(int grp_id);
