@@ -235,6 +235,9 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_UNSET_BG_VIP			_IOW('g', 41,  unsigned int)
 #define EAS_SET_LS_VIP				_IOW('g', 42,  unsigned int)
 #define EAS_UNSET_LS_VIP			_IOW('g', 43,  unsigned int)
+#define EAS_SET_GAS_CTRL			_IOW('g', 44,  struct gas_ctrl)
+#define EAS_SET_GAS_THR				_IOW('g', 45,  struct gas_thr)
+#define EAS_RESET_GAS_THR			_IOW('g', 46,  int)
 
 
 

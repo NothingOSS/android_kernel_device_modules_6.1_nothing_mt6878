@@ -38,6 +38,7 @@
 #include "group.h"
 #include "flt_cal.h"
 #endif
+#include "grp_awr.h"
 
 #define CREATE_TRACE_POINTS
 #include "eas_trace.h"
@@ -423,10 +424,22 @@ static long eas_ioctl_impl(struct file *filp,
 
 	unsigned int sync;
 	unsigned int val;
+	int grp_id;
 	struct cpumask mask;
+
 	struct SA_task SA_task_args = {
 		.pid = -1,
 		.mask = 0
+	};
+
+	struct gas_ctrl gas_ctrl_args = {
+		.val = 0,
+		.force_ctrl = 0
+	};
+
+	struct gas_thr gas_thr_args = {
+		.grp_id = -1,
+		.val = -1
 	};
 
 	cpumask_clear(&mask);
@@ -633,6 +646,21 @@ static long eas_ioctl_impl(struct file *filp,
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
 		set_util_est_ctrl(val);
+		break;
+	case EAS_SET_GAS_CTRL:
+		if (easctl_copy_from_user(&gas_ctrl_args, (void *)arg, sizeof(struct gas_ctrl)))
+			return -1;
+		set_top_grp_aware(gas_ctrl_args.val, gas_ctrl_args.force_ctrl);
+		break;
+	case EAS_SET_GAS_THR:
+		if (easctl_copy_from_user(&gas_thr_args, (void *)arg, sizeof(struct gas_thr)))
+			return -1;
+		group_set_threshold(gas_thr_args.grp_id, gas_thr_args.val);
+		break;
+	case EAS_RESET_GAS_THR:
+		if (easctl_copy_from_user(&grp_id, (void *)arg, sizeof(int)))
+			return -1;
+		group_reset_threshold(grp_id);
 		break;
 	default:
 		pr_debug(TAG "%s %d: unknown cmd %x\n",

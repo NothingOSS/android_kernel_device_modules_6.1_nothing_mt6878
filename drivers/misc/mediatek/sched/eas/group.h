@@ -63,6 +63,16 @@ struct grp {
 	bool			gear_hint;
 };
 
+struct gas_ctrl {
+	int val;
+	int force_ctrl;
+};
+
+struct gas_thr {
+	int grp_id;
+	int val;
+};
+
 #define GRP_DEFAULT_WS DEFAULT_SCHED_RAVG_WINDOW
 #define GRP_DEFAULT_WC GROUP_RAVG_HIST_SIZE_MAX
 #define GRP_DEFAULT_WP WP_MODE_4
