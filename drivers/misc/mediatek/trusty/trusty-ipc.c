@@ -16,6 +16,7 @@
 #include <linux/compat.h>
 #include <linux/uio.h>
 #include <linux/timer.h>
+#include <linux/proc_fs.h>
 
 #include <linux/virtio.h>
 #include <linux/virtio_ids.h>
@@ -154,6 +155,8 @@ struct virtio_device *default_vdev;
 
 static DEFINE_IDR(tipc_devices);
 static DEFINE_MUTEX(tipc_devices_lock);
+
+static bool ise_disable;
 
 static int _match_any(int id, void *p, void *data)
 {
@@ -858,6 +861,11 @@ static int tipc_open(struct inode *inode, struct file *filp)
 	struct tipc_dn_chan *dn;
 	struct tipc_cdev_node *cdn = cdev_to_cdn(inode->i_cdev);
 
+	if (ise_disable) {
+		pr_info("%s: ise trusty ipc dummy function\n", __func__);
+		return 0;
+	}
+
 	/* kick ise rx for multiple client applications running */
 	ise_notifier_call();
 
@@ -934,6 +942,11 @@ static long tipc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	int ret;
 	struct tipc_dn_chan *dn = filp->private_data;
 
+	if (ise_disable) {
+		pr_info("%s: ise trusty ipc dummy function\n", __func__);
+		return 0;
+	}
+
 	if (_IOC_TYPE(cmd) != TIPC_IOC_MAGIC)
 		return -EINVAL;
 
@@ -991,6 +1004,11 @@ static ssize_t tipc_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 	struct tipc_msg_buf *mb;
 	struct file *filp = iocb->ki_filp;
 	struct tipc_dn_chan *dn = filp->private_data;
+
+	if (ise_disable) {
+		pr_info("%s: ise trusty ipc dummy function\n", __func__);
+		return 0;
+	}
 
 	mutex_lock(&dn->lock);
 
@@ -1053,6 +1071,11 @@ static ssize_t tipc_write_iter(struct kiocb *iocb, struct iov_iter *iter)
 	struct file *filp = iocb->ki_filp;
 	struct tipc_dn_chan *dn = filp->private_data;
 
+	if (ise_disable) {
+		pr_info("%s: ise trusty ipc dummy function\n", __func__);
+		return 0;
+	}
+
 	if (filp->f_flags & O_NONBLOCK)
 		timeout = 0;
 
@@ -1092,6 +1115,11 @@ static unsigned int tipc_poll(struct file *filp, poll_table *wait)
 	unsigned int mask = 0;
 	struct tipc_dn_chan *dn = filp->private_data;
 
+	if (ise_disable) {
+		pr_info("%s: ise trusty ipc dummy function\n", __func__);
+		return 0;
+	}
+
 	mutex_lock(&dn->lock);
 
 	poll_wait(filp, &dn->readq, wait);
@@ -1113,6 +1141,11 @@ static unsigned int tipc_poll(struct file *filp, poll_table *wait)
 static int tipc_release(struct inode *inode, struct file *filp)
 {
 	struct tipc_dn_chan *dn = filp->private_data;
+
+	if (ise_disable) {
+		pr_info("%s: ise trusty ipc dummy function\n", __func__);
+		return 0;
+	}
 
 	mutex_lock(&dn->timer_lock);
 	del_timer(&dn->tipc_timer);
@@ -1641,6 +1674,56 @@ static struct virtio_driver virtio_tipc_driver = {
 	.remove		= tipc_virtio_remove,
 };
 
+static ssize_t ise_write(struct file *file, const char __user *buffer,
+	size_t count, loff_t *data)
+{
+	char *parm_str, *cmd_str, *pinput;
+	char input[32] = {0};
+	long param;
+	uint32_t len;
+	int err;
+
+	len = (count < (sizeof(input) - 1)) ? count : (sizeof(input) - 1);
+	if (copy_from_user(input, buffer, len)) {
+		pr_err("%s: copy from user failed\n", __func__);
+		return -EFAULT;
+	}
+
+	input[len] = '\0';
+	pinput = input;
+
+	cmd_str = strsep(&pinput, " ");
+
+	if (!cmd_str)
+		return -EINVAL;
+
+	parm_str = strsep(&pinput, " ");
+
+	if (!parm_str)
+		return -EINVAL;
+
+	err = kstrtol(parm_str, 10, &param);
+
+	if (err)
+		return err;
+
+	if (!strncmp(cmd_str, "disable", sizeof("disable"))) {
+		if (param != 0)
+			ise_disable = true;
+		else
+			ise_disable = false;
+		return count;
+	} else {
+		return -EINVAL;
+	}
+
+	return count;
+}
+
+static const struct proc_ops ise_fops = {
+	.proc_write = ise_write,
+};
+
 static int __init tipc_init(void)
 {
 	int ret;
@@ -1670,6 +1753,8 @@ static int __init tipc_init(void)
 		pr_err("failed to register virtio driver: %d\n", ret);
 		goto err_register_virtio_drv;
 	}
+
+	proc_create("ise", 0664, NULL, &ise_fops);
 
 	return 0;
 
