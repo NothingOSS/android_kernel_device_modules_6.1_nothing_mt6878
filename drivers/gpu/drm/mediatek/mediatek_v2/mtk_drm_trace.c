@@ -24,6 +24,9 @@ static noinline int tracing_mark_write(const char *buf)
 #ifdef CONFIG_TRACING
 	trace_puts(buf);
 #endif
+#else
+	if(g_trace_log)
+		trace_puts(buf);
 #endif
 
 	return 0;
