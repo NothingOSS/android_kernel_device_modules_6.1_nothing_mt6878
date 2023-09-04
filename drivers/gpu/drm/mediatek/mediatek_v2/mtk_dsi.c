@@ -7817,19 +7817,27 @@ unsigned int mtk_dsi_get_ps_wc(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_dsi *dsi)
 {
 	u32 ps_wc;
-	u32 dsi_buf_bpp = mtk_get_dsi_buf_bpp(dsi);
+	u32 dsi_buf_bpp;
 	struct mtk_panel_dsc_params *dsc_params = &dsi->ext->params->dsc_params;
 	u32 width;
-	struct mtk_ddp_comp *comp = dsi->is_slave ?
+	struct mtk_ddp_comp *comp;
+
+	if (!dsi || !mtk_crtc) {
+		DDPPR_ERR("%s, NULL pointer\n", __func__);
+		return 0;
+	}
+
+	dsi_buf_bpp = mtk_get_dsi_buf_bpp(dsi);
+	comp = dsi->is_slave ?
 		(&dsi->master_dsi->ddp_comp) : (&dsi->ddp_comp);
 
 	/* scaling path */
 	if (mtk_crtc->scaling_ctx.scaling_en) {
 		width = mtk_crtc_get_width_by_comp(__func__, &mtk_crtc->base, comp, false);
 	} else {
-		if (!dsi->is_slave) {
+		if (!dsi->is_slave && dsi->encoder.crtc) {
 			width = mtk_dsi_get_virtual_width(dsi, dsi->encoder.crtc);
-		} else {
+		} else if (dsi->master_dsi && dsi->master_dsi->encoder.crtc){
 			width = mtk_dsi_get_virtual_width(dsi,
 					dsi->master_dsi->encoder.crtc);
 		}
