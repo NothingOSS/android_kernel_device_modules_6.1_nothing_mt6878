@@ -547,6 +547,34 @@ static struct kernel_param_ops vmm_avs_debug_dump_ops = {
 module_param_cb(avs_debug, &vmm_avs_debug_dump_ops, NULL, 0644);
 MODULE_PARM_DESC(avs_debug, "dump avs debug information");
 
+int mtk_mmdvfs_camsv_dc_enable(const u8 idx, const bool enable)
+{
+	int ret;
+
+	ret = mmdvfs_vcp_ipi_send(FUNC_CAMSV_DC_ENABLE, idx, enable ? 1 : 0, NULL);
+	MMDVFS_DBG("ret:%d idx:%hhu enable:%d", ret, idx, enable);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mtk_mmdvfs_camsv_dc_enable);
+
+static int set_camsv_dc_enable(const char *val, const struct kernel_param *kp)
+{
+	int ena, idx, ret;
+
+	ret = sscanf(val, "%d %d", &idx, &ena);
+	if (ret != 2) {
+		MMDVFS_ERR("input failed:%d idx:%d ena:%d", ret, idx, ena);
+		return -EINVAL;
+	}
+	return mtk_mmdvfs_camsv_dc_enable(idx, ena);
+}
+
+static const struct kernel_param_ops camsv_dc_ops = {
+	.set = set_camsv_dc_enable,
+};
+module_param_cb(camsv_dc, &camsv_dc_ops, NULL, 0644);
+MODULE_PARM_DESC(camsv_dc, "camsv dc enable");
+
 static int mtk_mmdvfs_enable_vmm(const bool enable)
 {
 	int ret = 0;
