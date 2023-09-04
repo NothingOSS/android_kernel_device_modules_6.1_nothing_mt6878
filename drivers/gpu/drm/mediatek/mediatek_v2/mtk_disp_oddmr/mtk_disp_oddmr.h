@@ -285,19 +285,24 @@ struct mtk_disp_oddmr {
 	unsigned int spr_format;
 	uint32_t qos_srt_dmrr;
 	uint32_t last_qos_srt_dmrr;
+	uint32_t qos_srt_dbir;
+	uint32_t last_qos_srt_dbir;
 	uint32_t qos_srt_odr;
 	uint32_t last_qos_srt_odr;
 	uint32_t qos_srt_odw;
 	uint32_t last_qos_srt_odw;
 	struct icc_path *qos_req_dmrr;
+	struct icc_path *qos_req_dbir;
 	struct icc_path *qos_req_odr;
 	struct icc_path *qos_req_odw;
 	struct icc_path *qos_req_dmrr_hrt;
+	struct icc_path *qos_req_dbir_hrt;
 	struct icc_path *qos_req_odr_hrt;
 	struct icc_path *qos_req_odw_hrt;
 	uint32_t irq_status;
 	/* larb_cons idx */
 	uint32_t larb_dmrr;
+	uint32_t larb_dbir;
 	uint32_t larb_odr;
 	uint32_t larb_odw;
 	/* only use in pipe0 */

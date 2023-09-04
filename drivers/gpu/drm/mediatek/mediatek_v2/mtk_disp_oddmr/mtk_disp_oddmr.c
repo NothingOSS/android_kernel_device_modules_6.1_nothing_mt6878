@@ -1229,12 +1229,11 @@ static void mtk_oddmr_dbi_srt_cal(struct mtk_ddp_comp *comp, int en)
 		do_div(srt, 100);
 		srt = srt * vrefresh;
 		do_div(srt, 1000);
-		oddmr_priv->qos_srt_dmrr = srt;
+		oddmr_priv->qos_srt_dbir = srt;
 	} else {
-		oddmr_priv->qos_srt_dmrr = 0;
+		oddmr_priv->qos_srt_dbir = 0;
 	}
-	ODDMRAPI_LOG("cal srt %d/%d\n", oddmr_priv->qos_srt_dmrr,oddmr_priv->last_qos_srt_dmrr);
-	ODDMRAPI_LOG("srt %u -\n", srt);
+	ODDMRAPI_LOG("cal srt %d/%d\n", oddmr_priv->qos_srt_dbir,oddmr_priv->last_qos_srt_dbir);
 }
 
 
@@ -1266,7 +1265,6 @@ static void mtk_oddmr_dmr_srt_cal(struct mtk_ddp_comp *comp, int en)
 		oddmr_priv->qos_srt_dmrr = 0;
 	}
 	ODDMRAPI_LOG("cal srt %d/%d\n", oddmr_priv->qos_srt_dmrr,oddmr_priv->last_qos_srt_dmrr);
-	ODDMRAPI_LOG("srt %u -\n", srt);
 }
 
 static void mtk_oddmr_set_spr2rgb(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
@@ -1383,6 +1381,7 @@ static void mtk_oddmr_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 	ODDMRFLOW_LOG("%s oddmr_stop\n", mtk_dump_comp_str(comp));
 	oddmr_priv->qos_srt_dmrr = 0;
+	oddmr_priv->qos_srt_dbir = 0;
 	oddmr_priv->qos_srt_odr = 0;
 	oddmr_priv->qos_srt_odw = 0;
 }
@@ -3660,7 +3659,6 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	}
 	case PMQOS_UPDATE_BW:
 	{
-		int od_enable, sec_on;
 		struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
 		struct mtk_drm_private *priv =
 			comp->mtk_crtc->base.dev->dev_private;
@@ -3668,12 +3666,11 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
-		sec_on = comp->mtk_crtc->sec_on;
-		od_enable = oddmr_priv->od_enable && (!sec_on);
-		ODDMRLOW_LOG("srt odr(%u,%u),odw(%u,%u),dmrr(%u,%u)\n",
+		ODDMRLOW_LOG("srt odr(%u,%u),odw(%u,%u),dmrr(%u,%u) dbi(%u,%u)\n",
 			oddmr_priv->last_qos_srt_odr, oddmr_priv->qos_srt_odr,
 			oddmr_priv->last_qos_srt_odw, oddmr_priv->qos_srt_odw,
-			oddmr_priv->last_qos_srt_dmrr, oddmr_priv->qos_srt_dmrr);
+			oddmr_priv->last_qos_srt_dmrr, oddmr_priv->qos_srt_dmrr,
+			oddmr_priv->last_qos_srt_dbir, oddmr_priv->qos_srt_dbir);
 		/* process normal */
 		if (oddmr_priv->last_qos_srt_odr != oddmr_priv->qos_srt_odr) {
 			__mtk_disp_set_module_srt(oddmr_priv->qos_req_odr, comp->id,
@@ -3693,11 +3690,17 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			oddmr_priv->last_qos_srt_dmrr = oddmr_priv->qos_srt_dmrr;
 			comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_dmrr;
 		}
+		if (oddmr_priv->last_qos_srt_dbir != oddmr_priv->qos_srt_dbir) {
+			__mtk_disp_set_module_srt(oddmr_priv->qos_req_dbir, comp->id,
+				oddmr_priv->qos_srt_dbir, DISP_BW_NORMAL_MODE);
+			oddmr_priv->last_qos_srt_dbir = oddmr_priv->qos_srt_dbir;
+			comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_dbir;
+		}
 	}
 		break;
 	case PMQOS_SET_HRT_BW:
 	{
-		int od_enable, dmr_enable, sec_on;
+		int od_enable, dmr_enable, dbi_enable, sec_on;
 		u32 bw_val = *(unsigned int *)params;
 		struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
 		struct mtk_drm_private *priv =
@@ -3709,10 +3712,13 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		sec_on = comp->mtk_crtc->sec_on;
 		od_enable = oddmr_priv->od_enable && (!sec_on);
 		dmr_enable = oddmr_priv->dmr_enable;
+		dbi_enable = oddmr_priv->dbi_enable;
 		od_enable = !!bw_val && od_enable;
 		dmr_enable = !!bw_val && dmr_enable;
+		dbi_enable = !!bw_val && dbi_enable;
 		/* set to max if need hrt */
 		__mtk_disp_set_module_hrt(oddmr_priv->qos_req_dmrr_hrt, dmr_enable);
+		__mtk_disp_set_module_hrt(oddmr_priv->qos_req_dbir_hrt, dbi_enable);
 		__mtk_disp_set_module_hrt(oddmr_priv->qos_req_odr_hrt, od_enable);
 		__mtk_disp_set_module_hrt(oddmr_priv->qos_req_odw_hrt, od_enable);
 		ODDMRLOW_LOG("hrt od %d dmr %d\n", od_enable, dmr_enable);
@@ -6226,6 +6232,10 @@ static int mtk_disp_oddmr_bind(struct device *dev, struct device *master,
 		oddmr_priv->qos_req_dmrr = of_mtk_icc_get(dev, buf);
 
 		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
+						&priv->ddp_comp, "DBIR");
+		oddmr_priv->qos_req_dbir = of_mtk_icc_get(dev, buf);
+
+		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
 						&priv->ddp_comp, "ODR");
 		oddmr_priv->qos_req_odr = of_mtk_icc_get(dev, buf);
 
@@ -6236,6 +6246,10 @@ static int mtk_disp_oddmr_bind(struct device *dev, struct device *master,
 		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
 						&priv->ddp_comp, "DMRR_HRT");
 		oddmr_priv->qos_req_dmrr_hrt = of_mtk_icc_get(dev, buf);
+
+		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
+						&priv->ddp_comp, "DBIR_HRT");
+		oddmr_priv->qos_req_dbir_hrt = of_mtk_icc_get(dev, buf);
 
 		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
 						&priv->ddp_comp, "ODR_HRT");
@@ -6475,17 +6489,22 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 	ret = of_property_read_u32(dev->of_node, "mediatek,larb-oddmr-dmrr", &priv->larb_dmrr);
 	if (ret) {
 		dev_err(dev, "Failed to initialize oddmr-dmrr: %d\n", ret);
-		goto err;
+		priv->larb_dmrr = 0;
+	}
+	ret = of_property_read_u32(dev->of_node, "mediatek,larb-oddmr-dbir", &priv->larb_dbir);
+	if (ret) {
+		dev_err(dev, "Failed to initialize oddmr-dbir: %d\n", ret);
+		priv->larb_dbir = 0;
 	}
 	ret = of_property_read_u32(dev->of_node, "mediatek,larb-oddmr-odr", &priv->larb_odr);
 	if (ret) {
 		dev_err(dev, "Failed to initialize oddmr-odr: %d\n", ret);
-		goto err;
+		priv->larb_odr = 0;
 	}
 	ret = of_property_read_u32(dev->of_node, "mediatek,larb-oddmr-odw", &priv->larb_odw);
 	if (ret) {
 		dev_err(dev, "Failed to initialize oddmr-odw: %d\n", ret);
-		goto err;
+		priv->larb_odw = 0;
 	}
 
 	priv->data = of_device_get_match_data(dev);
