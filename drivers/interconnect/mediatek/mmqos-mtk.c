@@ -120,6 +120,7 @@ struct mtk_mmqos {
 	u32 apmcu_on_bw_offset;
 	u32 apmcu_off_bw_offset;
 	void __iomem *mminfra_base;
+	struct mutex bw_lock;
 };
 
 u32 mmqos_state;
@@ -1747,6 +1748,8 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, mmqos);
 	devm_kfree(&pdev->dev, smi_imu);
 
+	mutex_init(&gmmqos->bw_lock);
+
 	/* create proc file */
 	dir = proc_mkdir("mmqos", NULL);
 	if (IS_ERR_OR_NULL(dir))
@@ -1997,6 +2000,7 @@ static int mmqos_debug_set_ftrace(const char *val,
 	u32 ena = 0;
 	int ret;
 
+	mutex_lock(&gmmqos->bw_lock);
 	ret = kstrtou32(val, 0, &ena);
 
 	ftrace_ena = ena;
@@ -2014,6 +2018,7 @@ static int mmqos_debug_set_ftrace(const char *val,
 			}
 		}
 	}
+	mutex_unlock(&gmmqos->bw_lock);
 	return 0;
 }
 
