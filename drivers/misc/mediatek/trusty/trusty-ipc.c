@@ -696,6 +696,7 @@ struct tipc_dn_chan {
 	struct list_head rx_msg_queue;
 	struct mutex timer_lock;
 	struct timer_list tipc_timer;
+	int event_status;
 };
 
 static int dn_wait_for_reply(struct tipc_dn_chan *dn, int timeout)
@@ -1031,10 +1032,12 @@ static ssize_t tipc_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 			return -EAGAIN;
 
 		mutex_lock(&dn->timer_lock);
-		mod_timer(&dn->tipc_timer, jiffies + msecs_to_jiffies(TIPC_TIMEOUT));
+		if (!dn->event_status)
+			mod_timer(&dn->tipc_timer, jiffies + msecs_to_jiffies(TIPC_TIMEOUT));
 		mutex_unlock(&dn->timer_lock);
 
-		if (wait_event_interruptible(dn->readq, _got_rx(dn)))
+		dn->event_status = wait_event_interruptible(dn->readq, _got_rx(dn));
+		if (dn->event_status)
 			return -ERESTARTSYS;
 
 		mutex_lock(&dn->lock);
