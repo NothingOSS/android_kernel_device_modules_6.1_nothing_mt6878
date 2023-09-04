@@ -656,144 +656,6 @@ static struct kernel_param_ops mmdvfs_vmm_ceil_ops = {
 module_param_cb(vmm_ceil, &mmdvfs_vmm_ceil_ops, NULL, 0644);
 MODULE_PARM_DESC(vmm_ceil, "enable vmm ceiling");
 
-int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp)
-{
-	int *last, ret;
-
-	if (pwr_idx >= PWR_MMDVFS_NUM || opp >= MAX_OPP) {
-		MMDVFS_ERR("wrong pwr_idx:%hu opp:%hd", pwr_idx, opp);
-		return -EINVAL;
-	}
-
-	if (mmdvfs_mux_version)
-		return mmdvfs_force_step_by_vcp(pwr_idx, opp);
-
-	last = &last_force_step[pwr_idx];
-
-	if (*last == opp)
-		return 0;
-
-	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
-	if (dpsw_thr > 0 && (*last < 0 || *last >= dpsw_thr) &&
-		opp >= 0 && opp < dpsw_thr && pwr_idx == PWR_MMDVFS_VMM)
-		mtk_mmdvfs_enable_vmm(true);
-
-	ret = mmdvfs_vcp_ipi_send(FUNC_FORCE_OPP, pwr_idx, opp == -1 ? MAX_OPP : opp, NULL);
-
-	if (dpsw_thr > 0 && *last >= 0 && *last < dpsw_thr &&
-		(opp < 0 || opp >= dpsw_thr) && pwr_idx == PWR_MMDVFS_VMM)
-		mtk_mmdvfs_enable_vmm(false);
-	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
-	*last = opp;
-
-	if (ret || log_level & (1 << log_adb))
-		MMDVFS_DBG("pwr_idx:%hu opp:%hd ret:%d", pwr_idx, opp, ret);
-	return ret;
-}
-EXPORT_SYMBOL_GPL(mtk_mmdvfs_v3_set_force_step);
-
-static int mmdvfs_set_force_step(const char *val, const struct kernel_param *kp)
-{
-	u16 idx = 0;
-	s16 opp = 0;
-	int ret;
-
-	ret = sscanf(val, "%hu %hd", &idx, &opp);
-	if (ret != 2 || idx >= PWR_MMDVFS_NUM || opp >= MAX_OPP) {
-		MMDVFS_ERR("input failed:%d idx:%hu opp:%hd", ret, idx, opp);
-		return -EINVAL;
-	}
-
-	ret = mtk_mmdvfs_v3_set_force_step(idx, opp);
-	if (ret)
-		MMDVFS_ERR("failed:%d idx:%hu opp:%hd", ret, idx, opp);
-	return ret;
-}
-
-static struct kernel_param_ops mmdvfs_force_step_ops = {
-	.set = mmdvfs_set_force_step,
-};
-module_param_cb(force_step, &mmdvfs_force_step_ops, NULL, 0644);
-MODULE_PARM_DESC(force_step, "force mmdvfs to specified step");
-
-int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp)
-{
-	u32 freq = 0;
-	int i, *last, ret = 0;
-
-	if (pwr_idx > PWR_MMDVFS_NUM || opp >= MAX_OPP) {
-		MMDVFS_ERR("failed:%d pwr_idx:%hu opp:%hd", ret, pwr_idx, opp);
-		return -EINVAL;
-	}
-
-	if (mmdvfs_mux_version)
-		return mmdvfs_vote_step_by_vcp(pwr_idx, opp);
-
-	if (pwr_idx == PWR_MMDVFS_NUM) {
-		MMDVFS_ERR("failed:%d pwr_idx:%hu opp:%hd", ret, pwr_idx, opp);
-		return -EINVAL;
-	}
-
-	last = &last_vote_step[pwr_idx];
-
-	if (*last == opp)
-		return 0;
-
-	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_VOTE);
-	if (dpsw_thr > 0 && (*last < 0 || *last >= dpsw_thr) &&
-		opp >= 0 && opp < dpsw_thr && pwr_idx == PWR_MMDVFS_VMM)
-		mtk_mmdvfs_enable_vmm(true);
-
-	for (i = mmdvfs_clk_num - 1; i >= 0; i--)
-		if (pwr_idx == mtk_mmdvfs_clks[i].pwr_id) {
-			if (opp >= mtk_mmdvfs_clks[i].freq_num) {
-				MMDVFS_ERR("i:%d invalid opp:%hd freq_num:%hhu",
-					i, opp, mtk_mmdvfs_clks[i].freq_num);
-				break;
-			}
-
-			freq = (opp == -1) ? 0 : mtk_mmdvfs_clks[i].freqs[
-				mtk_mmdvfs_clks[i].freq_num - 1 - opp];
-			ret = clk_set_rate(mmdvfs_pwr_clk[pwr_idx], freq);
-			break;
-		}
-
-	if (dpsw_thr > 0 && *last >= 0 && *last < dpsw_thr &&
-		(opp < 0 || opp >= dpsw_thr) && pwr_idx == PWR_MMDVFS_VMM)
-		mtk_mmdvfs_enable_vmm(false);
-	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
-	*last = opp;
-
-	if (ret || log_level & (1 << log_adb))
-		MMDVFS_DBG("pwr_idx:%hu opp:%hd i:%d freq:%u ret:%d", pwr_idx, opp, i, freq, ret);
-	return ret;
-}
-EXPORT_SYMBOL_GPL(mtk_mmdvfs_v3_set_vote_step);
-
-static int mmdvfs_set_vote_step(const char *val, const struct kernel_param *kp)
-{
-	int ret;
-	u16 idx = 0;
-	s16 opp = 0;
-
-	ret = sscanf(val, "%hu %hd", &idx, &opp);
-	if (ret != 2 || idx >= PWR_MMDVFS_NUM || opp >= MAX_OPP) {
-		MMDVFS_ERR("failed:%d idx:%hu opp:%hd", ret, idx, opp);
-		return -EINVAL;
-	}
-
-	ret = mtk_mmdvfs_v3_set_vote_step(idx, opp);
-	if (ret)
-		MMDVFS_ERR("failed:%d idx:%hu opp:%hd", ret, idx, opp);
-	return ret;
-}
-
-static struct kernel_param_ops mmdvfs_vote_step_ops = {
-	.set = mmdvfs_set_vote_step,
-};
-module_param_cb(vote_step, &mmdvfs_vote_step_ops, NULL, 0644);
-MODULE_PARM_DESC(vote_step, "vote mmdvfs to specified step");
-
 int mmdvfs_rst_clk_rate(const char *val, const struct kernel_param *kp)
 {
 	u8 idx;
@@ -1018,7 +880,7 @@ int mmdvfs_get_version(void)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_get_version);
 
-int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
+static int mmdvfs_force_step_by_vcp_ipi(const u8 pwr_idx, const s8 opp)
 {
 	struct mmdvfs_mux *mux;
 	u8 idx = pwr_idx + MMDVFS_USER_VCORE;
@@ -1037,7 +899,6 @@ int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
 	}
 
 	last = &last_force_step[pwr_idx];
-	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
 		opp >= 0 && opp < dpsw_thr && (*last < 0 || *last >= dpsw_thr))
 		mtk_mmdvfs_enable_vmm(true);
@@ -1045,14 +906,124 @@ int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
 		(opp < 0 || opp >= dpsw_thr) && *last >= 0 && *last < dpsw_thr)
 		mtk_mmdvfs_enable_vmm(false);
-	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
 	*last = opp;
 
 	MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd",
 		pwr_idx, idx, mux->id, opp);
 	return ret;
 }
+
+int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp)
+{
+	struct mmdvfs_mux *mux;
+	u8 idx = pwr_idx + MMDVFS_USER_VCORE;
+	int ret;
+
+	if (!mmdvfs_mux_version || idx >= ARRAY_SIZE(mmdvfs_user)) {
+		MMDVFS_ERR("invalid:%d pwr_idx:%hhu idx:%hhu", mmdvfs_mux_version, pwr_idx, idx);
+		return -EINVAL;
+	}
+	mux = &mmdvfs_mux[mmdvfs_user[idx].target_id];
+
+	if (opp >= MAX_OPP || opp >= mux->freq_num) {
+		MMDVFS_ERR("invalid opp:%hhd idx:%hhu mux:%hhu freq_num:%hhu",
+			opp, idx, mux->id, mux->freq_num);
+		return -EINVAL;
+	}
+
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
+	ret = mmdvfs_force_step_by_vcp_ipi(pwr_idx, opp);
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
+
+	MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd",
+		pwr_idx, idx, mux->id, opp);
+	return ret;
+}
 EXPORT_SYMBOL_GPL(mmdvfs_force_step_by_vcp);
+
+static int mtk_mmdvfs_v3_set_force_step_ipi(const u16 pwr_idx, const s16 opp)
+{
+	int *last, ret;
+
+	if (pwr_idx >= PWR_MMDVFS_NUM || opp >= MAX_OPP) {
+		MMDVFS_ERR("wrong pwr_idx:%hu opp:%hd", pwr_idx, opp);
+		return -EINVAL;
+	}
+
+	if (mmdvfs_mux_version)
+		return mmdvfs_force_step_by_vcp_ipi(pwr_idx, opp);
+
+	last = &last_force_step[pwr_idx];
+
+	if (*last == opp)
+		return 0;
+
+	if (dpsw_thr > 0 && (*last < 0 || *last >= dpsw_thr) &&
+		opp >= 0 && opp < dpsw_thr && pwr_idx == PWR_MMDVFS_VMM)
+		mtk_mmdvfs_enable_vmm(true);
+
+	ret = mmdvfs_vcp_ipi_send(FUNC_FORCE_OPP, pwr_idx, opp == -1 ? MAX_OPP : opp, NULL);
+
+	if (dpsw_thr > 0 && *last >= 0 && *last < dpsw_thr &&
+		(opp < 0 || opp >= dpsw_thr) && pwr_idx == PWR_MMDVFS_VMM)
+		mtk_mmdvfs_enable_vmm(false);
+	*last = opp;
+
+	if (ret || log_level & (1 << log_adb))
+		MMDVFS_DBG("pwr_idx:%hu opp:%hd ret:%d", pwr_idx, opp, ret);
+	return ret;
+}
+
+int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp)
+{
+	int *last, ret;
+
+	if (pwr_idx >= PWR_MMDVFS_NUM || opp >= MAX_OPP) {
+		MMDVFS_ERR("wrong pwr_idx:%hu opp:%hd", pwr_idx, opp);
+		return -EINVAL;
+	}
+
+	if (mmdvfs_mux_version)
+		return mmdvfs_force_step_by_vcp(pwr_idx, opp);
+
+	last = &last_force_step[pwr_idx];
+
+	if (*last == opp)
+		return 0;
+
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_FORCE);
+	ret = mtk_mmdvfs_v3_set_force_step_ipi(pwr_idx, opp);
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_FORCE);
+
+	if (ret || log_level & (1 << log_adb))
+		MMDVFS_DBG("pwr_idx:%hu opp:%hd ret:%d", pwr_idx, opp, ret);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mtk_mmdvfs_v3_set_force_step);
+
+static int mmdvfs_set_force_step(const char *val, const struct kernel_param *kp)
+{
+	u16 idx = 0;
+	s16 opp = 0;
+	int ret;
+
+	ret = sscanf(val, "%hu %hd", &idx, &opp);
+	if (ret != 2 || idx >= PWR_MMDVFS_NUM || opp >= MAX_OPP) {
+		MMDVFS_ERR("input failed:%d idx:%hu opp:%hd", ret, idx, opp);
+		return -EINVAL;
+	}
+
+	ret = mtk_mmdvfs_v3_set_force_step(idx, opp);
+	if (ret)
+		MMDVFS_ERR("failed:%d idx:%hu opp:%hd", ret, idx, opp);
+	return ret;
+}
+
+static const struct kernel_param_ops mmdvfs_force_step_ops = {
+	.set = mmdvfs_set_force_step,
+};
+module_param_cb(force_step, &mmdvfs_force_step_ops, NULL, 0644);
+MODULE_PARM_DESC(force_step, "force mmdvfs to specified step");
 
 int mmdvfs_force_voltage_by_vcp(const u8 pwr_idx, const s8 opp)
 {
@@ -1145,7 +1116,7 @@ int mmdvfs_force_single_clock_by_vcp(const u8 mux_idx, const s8 opp)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_force_single_clock_by_vcp);
 
-int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp)
+static int mmdvfs_vote_step_by_vcp_ipi(const u8 pwr_idx, const s8 opp)
 {
 	struct mmdvfs_mux *mux;
 	u8 idx = pwr_idx + MMDVFS_USER_VCORE;
@@ -1166,7 +1137,6 @@ int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp)
 	level = mux->freq_num - 1 - opp;
 
 	last = &last_vote_step[pwr_idx];
-	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_VOTE);
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
 		opp >= 0 && opp < dpsw_thr && (*last < 0 || *last >= dpsw_thr))
 		mtk_mmdvfs_enable_vmm(true);
@@ -1174,14 +1144,147 @@ int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp)
 	if (dpsw_thr && mux->id >= MMDVFS_MUX_VDE && mux->id <= MMDVFS_MUX_CAM &&
 		(opp < 0 || opp >= dpsw_thr) && *last >= 0 && *last < dpsw_thr)
 		mtk_mmdvfs_enable_vmm(false);
-	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
 	*last = opp;
 
 	MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd level:%hhd",
 		pwr_idx, idx, mux->id, opp, level);
 	return ret;
 }
+
+int mmdvfs_vote_step_by_vcp(const u8 pwr_idx, const s8 opp)
+{
+	struct mmdvfs_mux *mux;
+	u8 idx = pwr_idx + MMDVFS_USER_VCORE;
+	int ret;
+
+	if (!mmdvfs_mux_version || idx >= ARRAY_SIZE(mmdvfs_user)) {
+		MMDVFS_ERR("invalid:%d pwr_idx:%hhu idx:%hhu", mmdvfs_mux_version, pwr_idx, idx);
+		return -EINVAL;
+	}
+	mux = &mmdvfs_mux[mmdvfs_user[idx].target_id];
+
+	if (opp >= MAX_OPP || opp >= mux->freq_num) {
+		MMDVFS_ERR("invalid opp:%hhd idx:%hhu mux:%hhu freq_num:%hhu",
+			opp, idx, mux->id, mux->freq_num);
+		return -EINVAL;
+	}
+
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_VOTE);
+	ret = mmdvfs_vote_step_by_vcp_ipi(pwr_idx, opp);
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
+
+	MMDVFS_DBG("pwr_idx:%hhu idx:%hhu mux:%hhu opp:%hhd",
+		pwr_idx, idx, mux->id, opp);
+	return ret;
+}
 EXPORT_SYMBOL_GPL(mmdvfs_vote_step_by_vcp);
+
+static int mtk_mmdvfs_v3_set_vote_step_ipi(const u16 pwr_idx, const s16 opp)
+{
+	u32 freq = 0;
+	int i, *last, ret = 0;
+
+	if (pwr_idx > PWR_MMDVFS_NUM || opp >= MAX_OPP) {
+		MMDVFS_ERR("failed:%d pwr_idx:%hu opp:%hd", ret, pwr_idx, opp);
+		return -EINVAL;
+	}
+
+	if (mmdvfs_mux_version)
+		return mmdvfs_vote_step_by_vcp_ipi(pwr_idx, opp);
+
+	if (pwr_idx == PWR_MMDVFS_NUM) {
+		MMDVFS_ERR("failed:%d pwr_idx:%hu opp:%hd", ret, pwr_idx, opp);
+		return -EINVAL;
+	}
+
+	last = &last_vote_step[pwr_idx];
+
+	if (*last == opp)
+		return 0;
+
+	if (dpsw_thr > 0 && (*last < 0 || *last >= dpsw_thr) &&
+		opp >= 0 && opp < dpsw_thr && pwr_idx == PWR_MMDVFS_VMM)
+		mtk_mmdvfs_enable_vmm(true);
+
+	for (i = mmdvfs_clk_num - 1; i >= 0; i--)
+		if (pwr_idx == mtk_mmdvfs_clks[i].pwr_id) {
+			if (opp >= mtk_mmdvfs_clks[i].freq_num) {
+				MMDVFS_ERR("i:%d invalid opp:%hd freq_num:%hhu",
+					i, opp, mtk_mmdvfs_clks[i].freq_num);
+				break;
+			}
+
+			freq = (opp == -1) ? 0 : mtk_mmdvfs_clks[i].freqs[
+				mtk_mmdvfs_clks[i].freq_num - 1 - opp];
+			ret = clk_set_rate(mmdvfs_pwr_clk[pwr_idx], freq);
+			break;
+		}
+
+	if (dpsw_thr > 0 && *last >= 0 && *last < dpsw_thr &&
+		(opp < 0 || opp >= dpsw_thr) && pwr_idx == PWR_MMDVFS_VMM)
+		mtk_mmdvfs_enable_vmm(false);
+	*last = opp;
+
+	if (ret || log_level & (1 << log_adb))
+		MMDVFS_DBG("pwr_idx:%hu opp:%hd i:%d freq:%u ret:%d", pwr_idx, opp, i, freq, ret);
+	return ret;
+}
+
+int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp)
+{
+	int *last, ret = 0;
+
+	if (pwr_idx > PWR_MMDVFS_NUM || opp >= MAX_OPP) {
+		MMDVFS_ERR("failed:%d pwr_idx:%hu opp:%hd", ret, pwr_idx, opp);
+		return -EINVAL;
+	}
+
+	if (mmdvfs_mux_version)
+		return mmdvfs_vote_step_by_vcp(pwr_idx, opp);
+
+	if (pwr_idx == PWR_MMDVFS_NUM) {
+		MMDVFS_ERR("failed:%d pwr_idx:%hu opp:%hd", ret, pwr_idx, opp);
+		return -EINVAL;
+	}
+
+	last = &last_vote_step[pwr_idx];
+
+	if (*last == opp)
+		return 0;
+
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_VOTE);
+	ret = mtk_mmdvfs_v3_set_vote_step_ipi(pwr_idx, opp);
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
+
+	if (ret || log_level & (1 << log_adb))
+		MMDVFS_DBG("pwr_idx:%hu opp:%hd ret:%d", pwr_idx, opp, ret);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mtk_mmdvfs_v3_set_vote_step);
+
+static int mmdvfs_set_vote_step(const char *val, const struct kernel_param *kp)
+{
+	int ret;
+	u16 idx = 0;
+	s16 opp = 0;
+
+	ret = sscanf(val, "%hu %hd", &idx, &opp);
+	if (ret != 2 || idx >= PWR_MMDVFS_NUM || opp >= MAX_OPP) {
+		MMDVFS_ERR("failed:%d idx:%hu opp:%hd", ret, idx, opp);
+		return -EINVAL;
+	}
+
+	ret = mtk_mmdvfs_v3_set_vote_step(idx, opp);
+	if (ret)
+		MMDVFS_ERR("failed:%d idx:%hu opp:%hd", ret, idx, opp);
+	return ret;
+}
+
+static const struct kernel_param_ops mmdvfs_vote_step_ops = {
+	.set = mmdvfs_set_vote_step,
+};
+module_param_cb(vote_step, &mmdvfs_vote_step_ops, NULL, 0644);
+MODULE_PARM_DESC(vote_step, "vote mmdvfs to specified step");
 
 int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 {
@@ -1351,13 +1454,13 @@ static void mmdvfs_v3_release_step(void)
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
 		if (last_vote_step[i] != -1) {
 			last = last_vote_step[i];
-			mtk_mmdvfs_v3_set_vote_step(i, -1);
+			mtk_mmdvfs_v3_set_vote_step_ipi(i, -1);
 			last_vote_step[i] = last;
 		}
 
 		if (last_force_step[i] != -1) {
 			last = last_force_step[i];
-			mtk_mmdvfs_v3_set_force_step(i, -1);
+			mtk_mmdvfs_v3_set_force_step_ipi(i, -1);
 			last_force_step[i] = last;
 		}
 	}
