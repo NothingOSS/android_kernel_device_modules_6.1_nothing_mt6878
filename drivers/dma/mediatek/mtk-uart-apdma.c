@@ -744,8 +744,6 @@ static void mtk_uart_apdma_start_rx(struct mtk_chan *c)
 	if ((mtkd->support_hub) && (mtkd->support_wakeup) && (c->is_hub_port)) {
 		if (mtk_uart_get_rx_res_status())
 			mtk_uart_apdma_write(c, VFF_INT_EN, VFF_RX_INT_EN_B);
-		else
-			pr_info("%s: Avoiding enable dma irq during bt clear rx request\n",__func__);
 	} else {
 		mtk_uart_apdma_write(c, VFF_INT_EN, VFF_RX_INT_EN_B);
 	}
