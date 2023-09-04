@@ -2,7 +2,7 @@ DEVICE_MODULES_DIR=${KERNEL_DIR}
 # Compile these modules with the GKI kernel
 KERNEL_DIR="kernel-6.1"
 # Compute the path of this project relative to KERNEL_DIR
-DEVICE_MODULES_REL_DIR=$(rel_path ${DEVICE_MODULES_DIR} ${KERNEL_DIR})
+DEVICE_MODULES_REL_DIR=$(realpath ${DEVICE_MODULES_DIR} --relative-to ${KERNEL_DIR})
 # for builtin support
 GKI_DEVICE_MODULES_REL_DIR=${DEVICE_MODULES_REL_DIR}
 KCONFIG_EXT_PREFIX=${DEVICE_MODULES_DIR}
