@@ -9627,7 +9627,7 @@ void mtk_crtc_connect_default_path(struct mtk_drm_crtc *mtk_crtc)
 			mtk_disp_mutex_add_comp(mtk_crtc->mutex[0], DDP_COMPONENT_DSI1);
 	}
 	/* set mutex sof, eof */
-	mtk_disp_mutex_src_set(mtk_crtc, mtk_crtc_is_frame_trigger_mode(crtc));
+	mtk_disp_mutex_src_set(mtk_crtc, !!mtk_crtc_is_frame_trigger_mode(crtc));
 	/* if VDO mode, enable mutex by CPU here */
 	if (!mtk_crtc_is_frame_trigger_mode(crtc))
 		mtk_disp_mutex_enable(mtk_crtc->mutex[0]);
@@ -13085,6 +13085,11 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	struct cmdq_client *client;
 #endif
 
+	if (unlikely(crtc_idx >= MAX_CRTC)) {
+		DDPPR_ERR("%s invalid crtc_idx %u\n", __func__, crtc_idx);
+		return;
+	}
+
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
 	/* When open VDS path switch feature, we will resume VDS crtc
@@ -13107,7 +13112,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		DRM_ERROR("new event while there is still a pending event\n");
 
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT) && crtc_idx < MAX_CRTC) {
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT)) {
 		if (priv->usage[crtc_idx] == DISP_OPENING) {
 			if (!(comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_WDMA)) {
 				DDPINFO("%s %d skip due to still opening\n", __func__, crtc_idx);
@@ -14322,6 +14327,10 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	if (state->prop_val[CRTC_PROP_OUTPUT_ENABLE]
 		&& crtc_index == 0 && !is_from_dal) {
 		wb_cb_data = kmalloc(sizeof(*wb_cb_data), GFP_KERNEL);
+		if (unlikely(wb_cb_data == NULL)) {
+			DDPPR_ERR("%s:%d kmalloc fail\n", __func__, __LINE__);
+			return -EINVAL;
+		}
 
 		event = mtk_crtc_wb_addon_get_event(crtc);
 		mtk_crtc_pkt_create(&handle, crtc, client);
