@@ -5577,6 +5577,11 @@
 			#size-cells = <0>;
 		};
 
+		pmic_tia: pmic-tia@1cc030d0 {
+			compatible = "mediatek,pmic_tia";
+			reg = <0 0x1cc030d0 0 0>;
+		};
+
 		spmi_pmif_mpu: spmi-pmif-mpu@1cc04900 {
 			compatible = "mediatek,mt6897-spmi-pmif-mpu";
 			reg = <0 0x1cc04900 0 0x000500>;
