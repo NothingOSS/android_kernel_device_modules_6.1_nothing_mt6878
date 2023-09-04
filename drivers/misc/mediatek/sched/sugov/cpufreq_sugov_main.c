@@ -259,7 +259,7 @@ inline int curr_clamp(struct rq *rq, unsigned long *util)
  * based on the task model parameters and gives the minimal utilization
  * required to meet deadlines.
  */
-unsigned long mtk_cpu_util(int cpu, unsigned long util_cfs,
+unsigned long mtk_cpu_util(unsigned int cpu, unsigned long util_cfs,
 				 enum cpu_util_type type,
 				 struct task_struct *p,
 				 unsigned long min_cap, unsigned long max_cap)
@@ -560,7 +560,7 @@ static inline void ignore_dl_rate_limit(struct sugov_cpu *sg_cpu)
 }
 
 #if IS_ENABLED(CONFIG_MTK_OPP_MIN)
-void mtk_set_cpu_min_opp(int cpu, unsigned long min_util)
+void mtk_set_cpu_min_opp(unsigned int cpu, unsigned long min_util)
 {
 	int gear_id, min_opp;
 

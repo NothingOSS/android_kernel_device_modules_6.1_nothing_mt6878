@@ -127,7 +127,7 @@ EXPORT_SYMBOL(get_top_grp_aware_refcnt);
 
 void set_grp_awr_thr(int gear_id, int group_id, int freq)
 {
-	int cpu_idx;
+	unsigned int cpu_idx;
 	struct mtk_em_perf_state *ps;
 	int opp;
 
@@ -395,7 +395,7 @@ EXPORT_SYMBOL(set_group_active_ratio_cap);
 
 int grp_awr_init(void)
 {
-	int cpu_idx, grp_idx;
+	unsigned int cpu_idx, grp_idx;
 	struct mtk_em_perf_state *ps;
 
 	pr_info("group aware init\n");

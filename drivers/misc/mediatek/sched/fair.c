@@ -74,7 +74,7 @@ static int sched_idle_rq(struct rq *rq)
 }
 
 #ifdef CONFIG_SMP
-bool mtk_cpus_share_cache(int this_cpu, int that_cpu)
+bool mtk_cpus_share_cache(unsigned int this_cpu, unsigned int that_cpu)
 {
 	if (this_cpu == that_cpu)
 		return true;
@@ -500,7 +500,7 @@ mtk_compute_energy_cpu_dsu(struct energy_env *eenv, struct perf_domain *pd,
 
 		for (; pd_ptr; pd_ptr = pd_ptr->next) {
 			struct cpumask *pd_mask = perf_domain_span(pd_ptr);
-			int cpu = cpumask_first(pd_mask);
+			unsigned int cpu = cpumask_first(pd_mask);
 
 			if (share_buck.gear_idx == topology_cluster_id(cpu)) {
 				share_buck_pd = pd_ptr;
@@ -1948,7 +1948,8 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	int sys_max_spare_cap_cpu = -1;
 	int idle_max_spare_cap_cpu = -1;
 	bool latency_sensitive = false;
-	int cpu, best_energy_cpu = -1;
+	int best_energy_cpu = -1;
+	unsigned int cpu;
 	struct perf_domain *pd;
 	int select_reason = -1, backup_reason = 0;
 	unsigned long min_cap = uclamp_eff_value(p, UCLAMP_MIN);

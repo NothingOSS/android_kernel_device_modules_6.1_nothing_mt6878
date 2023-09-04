@@ -32,7 +32,8 @@ static unsigned int nr_gears;
 static int freq_limit_max_notifier_call(struct notifier_block *nb,
 					 unsigned long freq_limit_max, void *ptr)
 {
-	int cpu, gear_idx = nb - freq_limit_max_notifier;
+	int gear_idx = nb - freq_limit_max_notifier;
+	unsigned int cpu;
 
 	if (gear_idx < 0 || gear_idx >= nr_gears) {
 		pr_info("freq_limit_max_notifier_call: gear_idx over-index\n");
@@ -51,7 +52,8 @@ static int freq_limit_max_notifier_call(struct notifier_block *nb,
 static int freq_limit_min_notifier_call(struct notifier_block *nb,
 					 unsigned long freq_limit_min, void *ptr)
 {
-	int cpu, gear_idx = nb - freq_limit_min_notifier;
+	int gear_idx = nb - freq_limit_min_notifier;
+	unsigned int cpu;
 
 	if (gear_idx < 0 || gear_idx >= nr_gears) {
 		pr_info("freq_limit_min_notifier_call: gear_idx over-index\n");

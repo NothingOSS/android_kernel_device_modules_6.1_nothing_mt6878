@@ -187,7 +187,8 @@ EXPORT_SYMBOL_GPL(get_dsu_freq_state);
 
 void set_dsu_target_freq(struct cpufreq_policy *policy)
 {
-	int i, cpu, gov_cpu = policy->cpu, opp, dsu_target_freq = 0;
+	int i, cpu, opp, dsu_target_freq = 0;
+	unsigned int gov_cpu = policy->cpu;
 	int gearid = topology_cluster_id(gov_cpu);
 	unsigned int wl_type = get_em_wl();
 	struct pd_capacity_info *pd_info;
@@ -278,7 +279,7 @@ int get_wl_type_manual(void)
 }
 EXPORT_SYMBOL_GPL(get_wl_type_manual);
 
-void update_wl_tbl(int cpu)
+void update_wl_tbl(unsigned int cpu)
 {
 	int tmp = 0;
 
@@ -545,7 +546,7 @@ int get_sbb_active_ratio_gear(int gear_id)
 }
 EXPORT_SYMBOL_GPL(get_sbb_active_ratio_gear);
 
-unsigned int pd_get_dsu_weighting(int wl_type, int cpu)
+unsigned int pd_get_dsu_weighting(int wl_type, unsigned int cpu)
 {
 	int i;
 
@@ -556,7 +557,7 @@ unsigned int pd_get_dsu_weighting(int wl_type, int cpu)
 }
 EXPORT_SYMBOL_GPL(pd_get_dsu_weighting);
 
-unsigned int pd_get_emi_weighting(int wl_type, int cpu)
+unsigned int pd_get_emi_weighting(int wl_type, unsigned int cpu)
 {
 	int i;
 
@@ -614,7 +615,8 @@ static inline int map_util_idx_by_tbl(struct pd_capacity_info *pd_info, unsigned
 	return idx;
 }
 
-struct mtk_em_perf_state *pd_get_util_ps(int wl_type, int cpu, unsigned long util, int *opp)
+struct mtk_em_perf_state *pd_get_util_ps(int wl_type, unsigned int cpu,
+	unsigned long util, int *opp)
 {
 	int i, idx;
 	struct pd_capacity_info *pd_info;
@@ -632,7 +634,8 @@ struct mtk_em_perf_state *pd_get_util_ps(int wl_type, int cpu, unsigned long uti
 	return ps;
 }
 EXPORT_SYMBOL_GPL(pd_get_util_ps);
-struct mtk_em_perf_state *pd_get_util_ps_legacy(int wl_type, int cpu, unsigned long util, int *opp)
+struct mtk_em_perf_state *pd_get_util_ps_legacy(int wl_type, unsigned int cpu,
+	unsigned long util, int *opp)
 {
 	int i, idx;
 	struct pd_capacity_info *pd_info;
@@ -651,7 +654,7 @@ struct mtk_em_perf_state *pd_get_util_ps_legacy(int wl_type, int cpu, unsigned l
 }
 EXPORT_SYMBOL_GPL(pd_get_util_ps_legacy);
 
-unsigned long pd_get_util_opp(int cpu, unsigned long util)
+unsigned long pd_get_util_opp(unsigned int cpu, unsigned long util)
 {
 	int i, idx;
 	struct pd_capacity_info *pd_info;
@@ -663,7 +666,7 @@ unsigned long pd_get_util_opp(int cpu, unsigned long util)
 }
 EXPORT_SYMBOL_GPL(pd_get_util_opp);
 
-unsigned long pd_get_util_opp_legacy(int cpu, unsigned long util)
+unsigned long pd_get_util_opp_legacy(unsigned int cpu, unsigned long util)
 {
 	int i, idx, wl_type = get_em_wl();
 	struct pd_capacity_info *pd_info;
@@ -675,7 +678,7 @@ unsigned long pd_get_util_opp_legacy(int cpu, unsigned long util)
 }
 EXPORT_SYMBOL_GPL(pd_get_util_opp_legacy);
 
-unsigned long pd_get_util_freq(int cpu, unsigned long util)
+unsigned long pd_get_util_freq(unsigned int cpu, unsigned long util)
 {
 	int i, idx, wl_type = get_em_wl();
 	struct pd_capacity_info *pd_info;
@@ -688,7 +691,7 @@ unsigned long pd_get_util_freq(int cpu, unsigned long util)
 }
 EXPORT_SYMBOL_GPL(pd_get_util_freq);
 
-unsigned long pd_get_util_pwr_eff(int cpu, unsigned long util)
+unsigned long pd_get_util_pwr_eff(unsigned int cpu, unsigned long util)
 {
 	int i, idx;
 	struct pd_capacity_info *pd_info;
@@ -701,7 +704,7 @@ unsigned long pd_get_util_pwr_eff(int cpu, unsigned long util)
 }
 EXPORT_SYMBOL_GPL(pd_get_util_pwr_eff);
 
-struct mtk_em_perf_state *pd_get_freq_ps(int wl_type, int cpu, unsigned long freq,
+struct mtk_em_perf_state *pd_get_freq_ps(int wl_type, unsigned int cpu, unsigned long freq,
 		int *opp)
 {
 	int i, idx;
@@ -720,7 +723,7 @@ struct mtk_em_perf_state *pd_get_freq_ps(int wl_type, int cpu, unsigned long fre
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_ps);
 
-struct mtk_em_perf_state *pd_get_opp_ps(int wl_type, int cpu, int opp, bool quant)
+struct mtk_em_perf_state *pd_get_opp_ps(int wl_type, unsigned int cpu, int opp, bool quant)
 {
 	int i;
 	struct pd_capacity_info *pd_info;
@@ -741,7 +744,7 @@ struct mtk_em_perf_state *pd_get_opp_ps(int wl_type, int cpu, int opp, bool quan
 }
 EXPORT_SYMBOL_GPL(pd_get_opp_ps);
 
-unsigned long pd_get_freq_opp(int cpu, unsigned long freq)
+unsigned long pd_get_freq_opp(unsigned int cpu, unsigned long freq)
 {
 	int i, idx;
 	struct pd_capacity_info *pd_info;
@@ -753,7 +756,7 @@ unsigned long pd_get_freq_opp(int cpu, unsigned long freq)
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_opp);
 
-unsigned long pd_get_freq_opp_legacy(int cpu, unsigned long freq)
+unsigned long pd_get_freq_opp_legacy(unsigned int cpu, unsigned long freq)
 {
 	int i, idx;
 	struct pd_capacity_info *pd_info;
@@ -772,7 +775,7 @@ unsigned long pd_get_freq_opp_legacy(int cpu, unsigned long freq)
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_opp_legacy);
 
-unsigned long pd_get_freq_opp_legacy_type(int wl_type, int cpu, unsigned long freq)
+unsigned long pd_get_freq_opp_legacy_type(int wl_type, unsigned int cpu, unsigned long freq)
 {
 	int i, idx;
 	struct pd_capacity_info *pd_info;
@@ -793,7 +796,7 @@ unsigned long pd_get_freq_opp_legacy_type(int wl_type, int cpu, unsigned long fr
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_opp_legacy_type);
 
-unsigned long pd_get_freq_util(int cpu, unsigned long freq)
+unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq)
 {
 	int i, idx;
 	struct pd_capacity_info *pd_info;
@@ -806,7 +809,7 @@ unsigned long pd_get_freq_util(int cpu, unsigned long freq)
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_util);
 
-unsigned long pd_get_freq_pwr_eff(int cpu, unsigned long freq)
+unsigned long pd_get_freq_pwr_eff(unsigned int cpu, unsigned long freq)
 {
 	int i, idx;
 	struct pd_capacity_info *pd_info;
@@ -819,7 +822,7 @@ unsigned long pd_get_freq_pwr_eff(int cpu, unsigned long freq)
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_pwr_eff);
 
-unsigned long pd_get_opp_freq(int cpu, int opp)
+unsigned long pd_get_opp_freq(unsigned int cpu, int opp)
 {
 	int i;
 	struct pd_capacity_info *pd_info;
@@ -831,7 +834,7 @@ unsigned long pd_get_opp_freq(int cpu, int opp)
 }
 EXPORT_SYMBOL_GPL(pd_get_opp_freq);
 
-unsigned long pd_get_opp_capacity(int cpu, int opp)
+unsigned long pd_get_opp_capacity(unsigned int cpu, int opp)
 {
 	int i;
 	struct pd_capacity_info *pd_info;
@@ -844,7 +847,7 @@ unsigned long pd_get_opp_capacity(int cpu, int opp)
 EXPORT_SYMBOL_GPL(pd_get_opp_capacity);
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-unsigned long pd_get_opp_capacity_legacy(int cpu, int opp)
+unsigned long pd_get_opp_capacity_legacy(unsigned int cpu, int opp)
 {
 	int i, wl_type = get_em_wl();
 	struct pd_capacity_info *pd_info;
@@ -856,7 +859,7 @@ unsigned long pd_get_opp_capacity_legacy(int cpu, int opp)
 	return pd_info->table_legacy[opp].capacity;
 }
 #else
-unsigned long pd_get_opp_capacity_legacy(int cpu, int opp)
+unsigned long pd_get_opp_capacity_legacy(unsigned int cpu, int opp)
 {
 	int i;
 	struct pd_capacity_info *pd_info;
@@ -871,7 +874,7 @@ EXPORT_SYMBOL_GPL(pd_get_opp_capacity_legacy);
 
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-unsigned long pd_get_opp_freq_legacy(int cpu, int opp)
+unsigned long pd_get_opp_freq_legacy(unsigned int cpu, int opp)
 {
 	int i;
 
@@ -881,7 +884,7 @@ unsigned long pd_get_opp_freq_legacy(int cpu, int opp)
 	return mtk_em_pd_ptr_public[i].table[opp].freq;
 }
 #else
-unsigned long pd_get_opp_freq_legacy(int cpu, int opp)
+unsigned long pd_get_opp_freq_legacy(unsigned int cpu, int opp)
 {
 	int i;
 	struct pd_capacity_info *pd_info;
@@ -894,7 +897,7 @@ unsigned long pd_get_opp_freq_legacy(int cpu, int opp)
 #endif
 EXPORT_SYMBOL_GPL(pd_get_opp_freq_legacy);
 
-unsigned long pd_get_opp_pwr_eff(int cpu, int opp)
+unsigned long pd_get_opp_pwr_eff(unsigned int cpu, int opp)
 {
 	int i;
 	struct pd_capacity_info *pd_info;
@@ -965,7 +968,7 @@ unsigned long pd_X2Y(int cpu, unsigned long input, enum sugov_type in_type,
 }
 EXPORT_SYMBOL_GPL(pd_X2Y);
 
-unsigned int pd_get_cpu_opp(int cpu)
+unsigned int pd_get_cpu_opp(unsigned int cpu)
 {
 	int i;
 	struct pd_capacity_info *pd_info;
@@ -1301,7 +1304,7 @@ err:
 
 static int alloc_capacity_table(void)
 {
-	int cpu = 0;
+	unsigned int cpu = 0;
 	int cur_tbl = 0;
 	int nr_caps;
 	int i, k, need_alloc;
@@ -1528,7 +1531,7 @@ int get_gear_uclamp_max(int gearid)
 }
 EXPORT_SYMBOL_GPL(get_gear_uclamp_max);
 
-int get_cpu_gear_uclamp_max(int cpu)
+int get_cpu_gear_uclamp_max(unsigned int cpu)
 {
 	if (gu_ctrl == false)
 		return SCHED_CAPACITY_SCALE;
@@ -1536,7 +1539,7 @@ int get_cpu_gear_uclamp_max(int cpu)
 }
 EXPORT_SYMBOL_GPL(get_cpu_gear_uclamp_max);
 
-int get_cpu_gear_uclamp_max_capacity(int cpu)
+int get_cpu_gear_uclamp_max_capacity(unsigned int cpu)
 {
 	unsigned long capacity, freq;
 
@@ -1629,7 +1632,7 @@ static inline void mtk_arch_set_freq_scale_gearless(struct cpufreq_policy *polic
 }
 
 static unsigned int curr_cap[MAX_NR_CPUS];
-unsigned int get_curr_cap(int cpu)
+unsigned int get_curr_cap(unsigned int cpu)
 {
 	return curr_cap[topology_cluster_id(cpu)];
 }
@@ -1638,7 +1641,7 @@ EXPORT_SYMBOL_GPL(get_curr_cap);
 void mtk_cpufreq_fast_switch(void *data, struct cpufreq_policy *policy,
 		unsigned int *target_freq, unsigned int old_target_freq)
 {
-	int cpu = policy->cpu;
+	unsigned int cpu = policy->cpu;
 
 	irq_log_store();
 
@@ -1816,7 +1819,7 @@ static unsigned int duration_wind[MAX_NR_CPUS];
 static unsigned int duration_act[MAX_NR_CPUS];
 static unsigned int ramp_up[MAX_NR_CPUS] = {
 	[0 ... MAX_NR_CPUS - 1] = 0};
-unsigned int get_adaptive_margin(int cpu)
+unsigned int get_adaptive_margin(unsigned int cpu)
 {
 	if (!turn_point_util[topology_cluster_id(cpu)] && am_ctrl)
 		return READ_ONCE(adaptive_margin[topology_cluster_id(cpu)]);
@@ -1972,7 +1975,7 @@ EXPORT_SYMBOL(update_active_ratio_all);
 inline void update_adaptive_margin(struct cpufreq_policy *policy)
 {
 	unsigned int i;
-	int cpu = cpumask_first(policy->cpus);
+	unsigned int cpu = cpumask_first(policy->cpus);
 	unsigned int gearid = topology_cluster_id(cpu);
 	unsigned int adaptive_margin_tmp;
 
@@ -2025,7 +2028,7 @@ void set_grp_high_freq(int cluster_id, bool set)
 EXPORT_SYMBOL(set_grp_high_freq);
 
 inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
-				int cpu, unsigned long *next_freq, struct cpumask *cpumask)
+				unsigned int cpu, unsigned long *next_freq, struct cpumask *cpumask)
 {
 	int gearid = topology_cluster_id(cpu);
 	struct sugov_policy *sg_policy;
@@ -2075,7 +2078,8 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 void mtk_map_util_freq(void *data, unsigned long util, unsigned long freq, struct cpumask *cpumask,
 		unsigned long *next_freq, int wl_type)
 {
-	int cpu, orig_util = util, gearid;
+	int orig_util = util, gearid;
+	unsigned int cpu;
 	struct pd_capacity_info *pd_info;
 
 	cpu = cpumask_first(cpumask);

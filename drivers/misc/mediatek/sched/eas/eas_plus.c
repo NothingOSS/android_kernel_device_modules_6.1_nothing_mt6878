@@ -452,7 +452,7 @@ void mtk_tick_entry(void *data, struct rq *rq)
 {
 
 	struct em_perf_domain *pd;
-	int this_cpu = cpu_of(rq), gear_id;
+	unsigned int this_cpu = cpu_of(rq), gear_id;
 	unsigned int freq_thermal;
 	bool sbb_trigger;
 	u64 idle_time, wall_time, cpu_utilize;

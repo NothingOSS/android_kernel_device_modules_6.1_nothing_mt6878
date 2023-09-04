@@ -142,7 +142,7 @@ struct cpu_dsu_freq_state {
 extern struct dsu_state *dsu_get_opp_ps(int wl_type, int opp);
 extern unsigned int dsu_get_freq_opp(unsigned int freq);
 extern int init_dsu(void);
-extern void update_wl_tbl(int cpu);
+extern void update_wl_tbl(unsigned int cpu);
 extern int get_curr_wl(void);
 extern int get_classify_wl(void);
 extern int get_em_wl(void);
@@ -156,32 +156,33 @@ int init_opp_cap_info(struct proc_dir_entry *dir);
 void clear_opp_cap_info(void);
 extern unsigned long pd_X2Y(int cpu, unsigned long input, enum sugov_type in_type,
 		enum sugov_type out_type, bool quant);
-extern unsigned long pd_get_opp_capacity(int cpu, int opp);
-extern unsigned long pd_get_opp_capacity_legacy(int cpu, int opp);
-extern unsigned long pd_get_opp_freq(int cpu, int opp);
-extern unsigned long pd_get_opp_freq_legacy(int cpu, int opp);
-extern struct mtk_em_perf_state *pd_get_freq_ps(int wl_type, int cpu, unsigned long freq,
+extern unsigned long pd_get_opp_capacity(unsigned int cpu, int opp);
+extern unsigned long pd_get_opp_capacity_legacy(unsigned int cpu, int opp);
+extern unsigned long pd_get_opp_freq(unsigned int cpu, int opp);
+extern unsigned long pd_get_opp_freq_legacy(unsigned int cpu, int opp);
+extern struct mtk_em_perf_state *pd_get_freq_ps(int wl_type, unsigned int cpu, unsigned long freq,
 		int *opp);
-extern unsigned long pd_get_freq_util(int cpu, unsigned long freq);
-extern unsigned long pd_get_freq_opp(int cpu, unsigned long freq);
-extern unsigned long pd_get_freq_pwr_eff(int cpu, unsigned long freq);
-extern unsigned long pd_get_freq_opp_legacy(int cpu, unsigned long freq);
-extern unsigned long pd_get_freq_opp_legacy_type(int wl_type, int cpu, unsigned long freq);
-extern struct mtk_em_perf_state *pd_get_util_ps(int wl_type, int cpu, unsigned long util, int *opp);
-extern struct mtk_em_perf_state *pd_get_util_ps_legacy(int wl_type, int cpu,
+extern unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq);
+extern unsigned long pd_get_freq_opp(unsigned int cpu, unsigned long freq);
+extern unsigned long pd_get_freq_pwr_eff(unsigned int cpu, unsigned long freq);
+extern unsigned long pd_get_freq_opp_legacy(unsigned int cpu, unsigned long freq);
+extern unsigned long pd_get_freq_opp_legacy_type(int wl_type, unsigned int cpu, unsigned long freq);
+extern struct mtk_em_perf_state *pd_get_util_ps(int wl_type, unsigned int cpu,
 							unsigned long util, int *opp);
-extern unsigned long pd_get_util_freq(int cpu, unsigned long util);
-extern unsigned long pd_get_util_pwr_eff(int cpu, unsigned long util);
-extern unsigned long pd_get_util_opp(int cpu, unsigned long util);
-extern unsigned long pd_get_util_opp_legacy(int cpu, unsigned long util);
-extern struct mtk_em_perf_state *pd_get_opp_ps(int wl_type, int cpu, int opp, bool quant);
-extern unsigned long pd_get_opp_pwr_eff(int cpu, int opp);
-extern unsigned int pd_get_cpu_opp(int cpu);
+extern struct mtk_em_perf_state *pd_get_util_ps_legacy(int wl_type, unsigned int cpu,
+							unsigned long util, int *opp);
+extern unsigned long pd_get_util_freq(unsigned int cpu, unsigned long util);
+extern unsigned long pd_get_util_pwr_eff(unsigned int cpu, unsigned long util);
+extern unsigned long pd_get_util_opp(unsigned int cpu, unsigned long util);
+extern unsigned long pd_get_util_opp_legacy(unsigned int cpu, unsigned long util);
+extern struct mtk_em_perf_state *pd_get_opp_ps(int wl_type, unsigned int cpu, int opp, bool quant);
+extern unsigned long pd_get_opp_pwr_eff(unsigned int cpu, int opp);
+extern unsigned int pd_get_cpu_opp(unsigned int cpu);
 extern unsigned int pd_get_opp_leakage(unsigned int cpu, unsigned int opp,
 	unsigned int temperature);
-extern unsigned int pd_get_dsu_weighting(int wl_type, int cpu);
-extern unsigned int pd_get_emi_weighting(int wl_type, int cpu);
-extern unsigned int get_curr_cap(int cpu);
+extern unsigned int pd_get_dsu_weighting(int wl_type, unsigned int cpu);
+extern unsigned int pd_get_emi_weighting(int wl_type, unsigned int cpu);
+extern unsigned int get_curr_cap(unsigned int cpu);
 extern int get_fpsgo_bypass_flag(void);
 extern void (*fpsgo_notify_fbt_is_boost_fp)(int fpsgo_is_boost);
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
@@ -204,8 +205,8 @@ extern bool gu_ctrl;
 extern bool get_gear_uclamp_ctrl(void);
 extern void set_gear_uclamp_ctrl(int val);
 extern int get_gear_uclamp_max(int gearid);
-extern int get_cpu_gear_uclamp_max(int cpu);
-extern int get_cpu_gear_uclamp_max_capacity(int cpu);
+extern int get_cpu_gear_uclamp_max(unsigned int cpu);
+extern int get_cpu_gear_uclamp_max_capacity(unsigned int cpu);
 extern void set_gear_uclamp_max(int gearid, int val);
 #endif
 #endif
@@ -235,7 +236,7 @@ bool enq_force_update_freq(struct sugov_policy *sg_policy);
 extern int am_support;
 extern int get_am_ctrl(void);
 extern void set_am_ctrl(int set);
-extern unsigned int get_adaptive_margin(int cpu);
+extern unsigned int get_adaptive_margin(unsigned int cpu);
 extern int get_gear_max_active_ratio_cap(int gear);
 extern int get_cpu_active_ratio_cap(int cpu);
 extern void update_active_ratio_all(void);
