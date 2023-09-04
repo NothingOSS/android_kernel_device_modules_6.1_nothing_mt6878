@@ -930,19 +930,24 @@ void show_thread_info(struct task_struct *p, bool dump_bt)
 	/*
 	 *sched add debug log for finding the reson of wait_for_completion
 	 */
+
+	log_hang_info("ptr            %px %u %d 0x%08lx 0x%08lx 0x%08lx 0x%08lx",
+		p,p->migration_disabled,p->nr_cpus_allowed,p->cpus_mask.bits[0],
+		cpu_active_mask->bits[0],cpu_online_mask->bits[0],cpu_possible_mask->bits[0]);
+	hang_log("ptr            %px %u %d 0x%08lx 0x%08lx 0x%08lx 0x%08lx",
+		p,p->migration_disabled,p->nr_cpus_allowed,p->cpus_mask.bits[0],
+		cpu_active_mask->bits[0],cpu_online_mask->bits[0],cpu_possible_mask->bits[0]);
+	log_hang_info("\n");
 	my_pending = p->migration_pending;
 	if (my_pending){
 		arg = &my_pending->arg;
 		dest_cpu = arg->dest_cpu;
 		dest_task = cpu_curr(dest_cpu);
-		log_hang_info(" pending %-15.15s %d %d %u %d %d %d 0x%lx 0x%lx 0x%lx 0x%lx\n",
-		dest_task->comm,dest_task->pid,dest_cpu,p->migration_disabled,my_pending->stop_pending,
-		my_pending->done.done,p->nr_cpus_allowed,p->cpus_mask.bits[0],cpu_active_mask->bits[0],
-		cpu_online_mask->bits[0],cpu_possible_mask->bits[0]);
-		hang_log(" pending %-15.15s %d %d %u %d %d %d 0x%lx 0x%lx 0x%lx 0x%lx\n",
-		dest_task->comm,dest_task->pid,dest_cpu,p->migration_disabled,my_pending->stop_pending,
-		my_pending->done.done,p->nr_cpus_allowed,p->cpus_mask.bits[0],cpu_active_mask->bits[0],
-		cpu_online_mask->bits[0],cpu_possible_mask->bits[0]);
+		log_hang_info("pending%-15.15s %d %d %d %d",
+		dest_task->comm,dest_task->pid,dest_cpu,my_pending->stop_pending,my_pending->done.done);
+		hang_log("pending%-15.15s %d %d %d %d",
+		dest_task->comm,dest_task->pid,dest_cpu,my_pending->stop_pending,my_pending->done.done);
+		log_hang_info("\n");
 	}
 
 	/* nvscw: voluntary context switch.  */
