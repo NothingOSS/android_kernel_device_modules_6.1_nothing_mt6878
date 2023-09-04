@@ -3058,6 +3058,15 @@
 		mediatek,dump-with-comm = <1>;
 	};
 
+	mminfra_tcu_ssc_regs: smi-tcu-ssc-regs@1e80e000 {
+		compatible = "mediatek,smi-common", "mediatek,mt6989-smi-common";
+		reg = <0 0x1e80e000 0 0x1000>;
+		mediatek,smi-supply = <&smi_mdp_common 0>;
+		mediatek,common-id = <30>;
+		mediatek,dump-with-comm = <1>;
+		power-domains = <&scpsys MT6989_POWER_DOMAIN_MM_INFRA>;
+	};
+
 	smi_pd_img_vcore: smi-pd-img-vcore {
 		compatible = "mediatek,smi-pd";
 		mediatek,suspend-check-dev-supply = <&smi_disp_common
@@ -3177,7 +3186,7 @@
 					&smi_img_sub_comm0 &smi_img_sub_comm3 &smi_img_sub_comm1
 					&smi_img_sub_comm4 &smi_img_sub_comm2 &smi_cam_sub_comm0
 					&smi_cam_sub_comm2 &smi_cam_vcore_sub_comm
-					&smi_ccu_sub_comm0>;
+					&smi_ccu_sub_comm0 &mminfra_tcu_ssc_regs>;
 		hwccf-support;
 		smi-mminfra-common-id = <0 1 2 3 4 5 6 7 8>;
 		smi-venc-larb-id = <7 8 24 41 42 47>;
