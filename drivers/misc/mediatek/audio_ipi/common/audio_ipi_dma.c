@@ -674,7 +674,7 @@ int audio_ipi_dma_alloc_region(const uint8_t task,
 	}
 
 	if (ret == 0) {
-		pr_info("task %d, a2d sz 0x%x, offset 0x%x, d2a sz 0x%x, offset 0x%x, (%zu/%zu)",
+		AUD_LOG_V("task %d, a2d sz 0x%x, offset 0x%x, d2a sz 0x%x, offset 0x%x, (%zu/%zu)",
 			task,
 			g_dma[dsp_id]->region[task][0].size,
 			g_dma[dsp_id]->region[task][0].offset,
@@ -782,7 +782,7 @@ int audio_ipi_dma_free_region(const uint8_t task)
 	}
 
 	if (ret == 0) {
-		pr_info("task %d, a2d sz 0x%x, offset 0x%x, d2a sz 0x%x, offset 0x%x, (%zu/%zu)",
+		AUD_LOG_V("task %d, a2d sz 0x%x, offset 0x%x, d2a sz 0x%x, offset 0x%x, (%zu/%zu)",
 			task,
 			g_dma[dsp_id]->region[task][0].size,
 			g_dma[dsp_id]->region[task][0].offset,

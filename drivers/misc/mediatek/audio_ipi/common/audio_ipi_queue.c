@@ -610,7 +610,7 @@ static int process_message_in_queue(
 		}
 
 		if (check_print_msg_info(p_ack) == true)
-			DUMP_IPI_MSG("ack back", p_ipi_msg);
+			AUD_LOG_V("ack back");
 
 		/* should be in pair */
 		spin_lock_irqsave(&msg_queue->ack_lock, flags);

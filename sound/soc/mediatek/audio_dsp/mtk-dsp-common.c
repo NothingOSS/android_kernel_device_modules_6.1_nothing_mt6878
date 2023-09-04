@@ -348,7 +348,7 @@ static int set_aud_buf_attr(struct audio_hw_buffer *audio_hwbuf,
 		pr_info("set_audiobuffer_threshold fail\n");
 		return -1;
 	}
-
+#ifdef DEBUG_VERBOSE
 	pr_info("%s() memiftype: %d ch: %u fmt: %u rate: %u dir: %d, start_thres: %u stop_thres: %u period_size: %d period_cnt: %d\n",
 		__func__,
 		audio_hwbuf->audio_memiftype,
@@ -360,7 +360,7 @@ static int set_aud_buf_attr(struct audio_hw_buffer *audio_hwbuf,
 		audio_hwbuf->aud_buffer.stop_threshold,
 		audio_hwbuf->aud_buffer.period_size,
 		audio_hwbuf->aud_buffer.period_count);
-
+#endif
 	return 0;
 }
 
@@ -386,9 +386,9 @@ int afe_pcm_ipi_to_dsp(int command, struct snd_pcm_substream *substream,
 		return -1;
 
 	task_name = get_str_by_dsp_dai_id(task_id);
-
+#ifdef DEBUG_VERBOSE
 	pr_info("%s(), %s send cmd 0x%x\n", __func__, task_name, command);
-
+#endif
 	dsp_memif = (struct mtk_base_dsp_mem *)&dsp->dsp_mem[task_id];
 
 	/* send msg by task by unsing common function */
