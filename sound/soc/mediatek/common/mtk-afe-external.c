@@ -10,6 +10,7 @@ static RAW_NOTIFIER_HEAD(afe_mem_init_noitify_chain);
 static ATOMIC_NOTIFIER_HEAD(semaphore_noitify_chain);
 static RAW_NOTIFIER_HEAD(vp_audio_noitify_chain);
 static RAW_NOTIFIER_HEAD(vow_ipi_send_noitify_chain);
+static RAW_NOTIFIER_HEAD(ultra_afe_hw_free_noitify_chain);
 
 /* memory allocate */
 int register_afe_allocate_mem_notifier(struct notifier_block *nb)
@@ -104,6 +105,32 @@ int notify_vow_ipi_send(unsigned long module, void *v)
 	return raw_notifier_call_chain(&vow_ipi_send_noitify_chain, module, v);
 }
 EXPORT_SYMBOL_GPL(notify_vow_ipi_send);
+
+/* ultrasound register notify for AFE hw free */
+int register_ultra_afe_hw_free_notifier(struct notifier_block *nb)
+{
+	int status;
+
+	status = raw_notifier_chain_register(&ultra_afe_hw_free_noitify_chain, nb);
+	return status;
+}
+EXPORT_SYMBOL_GPL(register_ultra_afe_hw_free_notifier);
+
+int unregister_ultra_afe_hw_free_notifier(struct notifier_block *nb)
+{
+	int status;
+
+	status = raw_notifier_chain_unregister(&ultra_afe_hw_free_noitify_chain, nb);
+	return status;
+}
+EXPORT_SYMBOL_GPL(unregister_ultra_afe_hw_free_notifier);
+
+int notify_ultra_afe_hw_free(unsigned long module, void *v)
+{
+	return raw_notifier_call_chain(&ultra_afe_hw_free_noitify_chain, module, v);
+}
+EXPORT_SYMBOL_GPL(notify_ultra_afe_hw_free);
+
 
 MODULE_SOFTDEP("post: mediatek-drm");
 

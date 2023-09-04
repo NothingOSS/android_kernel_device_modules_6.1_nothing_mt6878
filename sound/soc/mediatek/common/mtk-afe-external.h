@@ -18,7 +18,8 @@ enum {
 	NOTIFIER_VP_AUDIO_STOP,
 	NOTIFIER_VP_AUDIO_TRIGGER,
 	NOTIFIER_VP_AUDIO_TIMER,
-	NOTIFIER_VOW_IPI_SEND
+	NOTIFIER_VOW_IPI_SEND,
+	NOTIFIER_ULTRA_AFE_HW_FREE
 };
 
 /* sound soc vow ipi related */
@@ -54,5 +55,10 @@ int notify_vb_audio_control(unsigned long module, void *v);
 int register_vow_ipi_send_notifier(struct notifier_block *nb);
 int unregister_vow_ipi_send_notifier(struct notifier_block *nb);
 int notify_vow_ipi_send(unsigned long module, void *v);
+
+// ultrasound register notify for AFE HW free condition
+int register_ultra_afe_hw_free_notifier(struct notifier_block *nb);
+int unregister_ultra_afe_hw_free_notifier(struct notifier_block *nb);
+int notify_ultra_afe_hw_free(unsigned long module, void *v);
 
 #endif /* MTK_MEM_ALLOCATION_CONTROL_H_ */
