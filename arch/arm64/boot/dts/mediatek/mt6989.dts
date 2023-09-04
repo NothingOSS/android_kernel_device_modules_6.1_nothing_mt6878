@@ -11844,7 +11844,7 @@
 					 <GIC_SPI 258 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
-		mddriver:mddriver@d124000 {
+		mddriver:mddriver {
 			compatible = "mediatek,mddriver";
 			/* bit0~3: CLDMA|CCIF|DPMAIF */
 			mediatek,mdhif-type = <6>;
