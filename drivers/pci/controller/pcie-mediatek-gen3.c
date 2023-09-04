@@ -151,6 +151,7 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_AXIERR_COMPL_TIMEOUT	BIT(18)
 #define PCIE_AXI_READ_ERR		GENMASK(18, 16)
 #define PCIE_AER_EVT			BIT(29)
+#define PCIE_ERR_RST_EVT		BIT(31)
 #define PCIE_MSI_SET_ENABLE_REG		0x190
 #define PCIE_MSI_SET_ENABLE		GENMASK(PCIE_MSI_SET_NUM - 1, 0)
 
@@ -1549,6 +1550,7 @@ static void pcie_android_rvh_do_serror(void *data, struct pt_regs *regs,
  *           bit[7]: RxErr
  *           bit[8]: MalfTLP
  *           bit[9]: Driver own irq status (MSI set 1 bit[27])
+ *           bit[10]: DL_UP exit (SDES) event
  */
 u32 mtk_pcie_dump_link_info(int port)
 {
@@ -1583,6 +1585,9 @@ u32 mtk_pcie_dump_link_info(int port)
 	val = readl_relaxed(pcie_port->base + PCIE_INT_STATUS_REG);
 	if (val & PCIE_AXI_READ_ERR)
 		ret_val |= BIT(6);
+
+	if (val & PCIE_ERR_RST_EVT)
+		ret_val |= BIT(10);
 
 	if (val & PCIE_AER_EVT) {
 		pcie_port->phy->ops->calibrate(pcie_port->phy);
