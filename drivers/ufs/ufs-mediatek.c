@@ -884,6 +884,20 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 		if (!ufshcd_is_clkscaling_supported(hba) ||
 		    !hba->clk_scaling.is_enabled)
 			ufs_mtk_pm_qos(hba, on);
+	} else if (!on && status == POST_CHANGE) {
+		/* Clock scaling disable and in high speed */
+		if (!ufshcd_is_clkscaling_supported(hba) ||
+		    !hba->clk_scaling.is_enabled) {
+			if (hba->pwr_info.gear_rx >= UFS_HS_G5)
+				_ufs_mtk_clk_scale(hba, on);
+		}
+	} else if (on && status == PRE_CHANGE) {
+		/* Clock scaling disable and in high speed */
+		if (!ufshcd_is_clkscaling_supported(hba) ||
+		    !hba->clk_scaling.is_enabled) {
+			if (hba->pwr_info.gear_rx >= UFS_HS_G5)
+				_ufs_mtk_clk_scale(hba, on);
+		}
 	}
 
 	return ret;
@@ -1174,30 +1188,32 @@ static int ufs_mtk_init_clocks(struct ufs_hba *hba)
 		return -1;
 	}
 
-	if (ufshcd_is_clkscaling_supported(hba)) {
-		reg = devm_regulator_get_optional(dev, "dvfsrc-vcore");
-		if (IS_ERR(reg)) {
-			dev_info(dev, "failed to get dvfsrc-vcore: %ld",
-				 PTR_ERR(reg));
+	/*
+	 * Default get vcore if dts have these settings.
+	 * No matter clock scaling support or not. (may disable by customer)
+	 */
+	reg = devm_regulator_get_optional(dev, "dvfsrc-vcore");
+	if (IS_ERR(reg)) {
+		dev_info(dev, "failed to get dvfsrc-vcore: %ld",
+			 PTR_ERR(reg));
+		goto out;
+	}
+
+	if (of_property_read_u32(dev->of_node, "clk-scale-up-vcore-min",
+				 &volt)) {
+		dev_info(dev, "failed to get clk-scale-up-vcore-min");
+		goto out;
+	}
+
+	host->mclk.reg_vcore = reg;
+	host->mclk.vcore_volt = volt;
+
+	/* If default boot is max gear, request vcore */
+	if (reg && volt && host->clk_scale_up) {
+		if (regulator_set_voltage(reg, volt, INT_MAX)) {
+			dev_info(hba->dev,
+				"Failed to set vcore to %d\n", volt);
 			goto out;
-		}
-
-		if (of_property_read_u32(dev->of_node, "clk-scale-up-vcore-min",
-					 &volt)) {
-			dev_info(dev, "failed to get clk-scale-up-vcore-min");
-			goto out;
-		}
-
-		host->mclk.reg_vcore = reg;
-		host->mclk.vcore_volt = volt;
-
-		/* If default boot is max gear, request vcore */
-		if (reg && volt && host->clk_scale_up) {
-			if (regulator_set_voltage(reg, volt, INT_MAX)) {
-				dev_info(hba->dev,
-					"Failed to set vcore to %d\n", volt);
-				goto out;
-			}
 		}
 	}
 
@@ -2110,8 +2126,8 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 	if (hba->dev_info.wspecversion < 0x0400)
 		scale_allow = false;
 
-	/* Host not support clock scaling */
-	if (!ufs_mtk_is_clk_scale_ready(hba))
+	/* Host not support clock scaling or disable by customer */
+	if (!hba->clk_scaling.is_initialized)
 		scale_allow = false;
 
 	/*

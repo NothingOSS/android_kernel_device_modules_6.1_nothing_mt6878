@@ -359,6 +359,10 @@ static ssize_t clkscale_control_store(struct device *dev,
 	if (kstrtou32(opcode, 0, &value) || value > 2)
 		return -EINVAL;
 
+	/* Only UFS 4.0 device need  */
+	if (hba->dev_info.wspecversion < 0x0400)
+		return count;
+
 	atomic_set(&host->clkscale_control, value);
 
 	switch (value) {
