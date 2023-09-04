@@ -126,11 +126,16 @@ struct mtk_connector_state {
 
 #define to_mtk_connector_state(x) container_of(x, struct mtk_connector_state, base)
 
+enum drm_kernel_pm_status {
+	KERNEL_PM_SUSPEND,
+	KERNEL_PM_RESUME,
+	KERNEL_SHUTDOWN,
+};
 struct mtk_drm_kernel_pm {
 	bool shutdown;
 	struct notifier_block nb;	/* Kernel suspend and resume event */
 	struct mutex lock;		/* To block any request after kernel suspend */
-	atomic_t resumed;
+	atomic_t status;
 	wait_queue_head_t wq;
 };
 

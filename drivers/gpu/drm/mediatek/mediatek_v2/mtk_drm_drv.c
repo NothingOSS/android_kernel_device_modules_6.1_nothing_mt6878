@@ -1984,11 +1984,6 @@ static int mtk_atomic_commit(struct drm_device *drm,
 
 	DDP_PROFILE("[PROFILE] %s+\n", __func__);
 
-	ret = wait_event_interruptible(private->kernel_pm.wq,
-				       atomic_read(&private->kernel_pm.resumed));
-	if (unlikely(ret != 0))
-		DDPMSG("%s kernel_pm wait queue woke up accidently\n", __func__);
-
 	ret = drm_atomic_helper_prepare_planes(drm, state);
 	if (ret)
 		return ret;
@@ -2019,8 +2014,25 @@ static int mtk_atomic_commit(struct drm_device *drm,
 	}
 
 	DDP_COMMIT_LOCK(&private->commit.lock, __func__, pf);
-	flush_work(&private->commit.work);
 	DRM_MMP_EVENT_START(mutex_lock, 0, 0);
+
+	/* block atomic commit till kernel resume */
+	ret = wait_event_interruptible(private->kernel_pm.wq,
+			atomic_read(&private->kernel_pm.status) != KERNEL_PM_SUSPEND);
+	if (unlikely(ret != 0))
+		DDPMSG("%s kernel_pm wait queue woke up accidently\n", __func__);
+
+	/* for shutdown case, crtc active state is not allowed */
+	if (unlikely(atomic_read(&private->kernel_pm.status) == KERNEL_SHUTDOWN)) {
+		for_each_new_crtc_in_state(state, crtc, new_crtc_state, j) {
+			if (new_crtc_state->active == true) {
+				DDPMSG("skip atomic commit after drm shutdown\n");
+				goto cm_unlock;
+			}
+		}
+	}
+
+	flush_work(&private->commit.work);
 
 	for (i = 0; i < MAX_CRTC; i++) {
 		if (!(crtc_mask >> i & 0x1))
@@ -2078,6 +2090,8 @@ mutex_unlock:
 		DRM_MMP_MARK(mutex_lock, (unsigned long)&mtk_crtc->lock, i + (1 << 8));
 	}
 
+
+cm_unlock:
 	DRM_MMP_EVENT_END(mutex_lock, 0, 0);
 	DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, pf);
 	DDP_PROFILE("[PROFILE] %s-\n", __func__);
@@ -7342,13 +7356,13 @@ static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		DDPMSG("Disabling CRTC wakelock\n");
-		atomic_set(&kernel_pm->resumed, 0);
+		atomic_set(&kernel_pm->status, KERNEL_PM_SUSPEND);
 		wake_up_interruptible(&kernel_pm->wq);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
-		atomic_set(&kernel_pm->resumed, 1);
+		atomic_set(&kernel_pm->status, KERNEL_PM_RESUME);
 		wake_up_interruptible(&kernel_pm->wq);
-		DDPINFO("%s resumed(%d)\n", __func__, atomic_read(&kernel_pm->resumed));
+		DDPINFO("%s status(%d)\n", __func__, atomic_read(&kernel_pm->status));
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
@@ -8883,7 +8897,7 @@ SKIP_OVLSYS_CONFIG:
 		of_node_put(infra_node);
 	}
 
-	atomic_set(&private->kernel_pm.resumed, 1);
+	atomic_set(&private->kernel_pm.status, KERNEL_PM_RESUME);
 	init_waitqueue_head(&private->kernel_pm.wq);
 	private->kernel_pm.nb.notifier_call = mtk_drm_pm_notifier;
 	ret = register_pm_notifier(&private->kernel_pm.nb);
@@ -9121,14 +9135,12 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 	struct drm_device *drm = private->drm;
 
 	if (drm) {
-		DDPMSG("%s\n", __func__);
+		/* skip all next atomic commit */
+		atomic_set(&private->kernel_pm.status, KERNEL_SHUTDOWN);
+		DDPMSG("%s status(%d)\n", __func__, atomic_read(&private->kernel_pm.status));
 		mtk_drm_pm_ctrl(private, DISP_PM_GET);
 		drm_atomic_helper_shutdown(drm);
 		mtk_drm_pm_ctrl(private, DISP_PM_PUT);
-
-		/* skip all next atomic commit */
-		atomic_set(&private->kernel_pm.resumed, 0);
-		DDPMSG("%s resumed(%d)\n", __func__, atomic_read(&private->kernel_pm.resumed));
 	}
 }
 

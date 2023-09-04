@@ -10931,7 +10931,7 @@ static void mtk_drm_crtc_wk_lock(struct drm_crtc *crtc, bool get,
 	if (get) {
 		DDPMSG("Enabling CRTC wakelock\n");
 		ret = wait_event_interruptible(priv->kernel_pm.wq,
-					       atomic_read(&priv->kernel_pm.resumed));
+				atomic_read(&priv->kernel_pm.status) == KERNEL_PM_RESUME);
 		if (unlikely(ret != 0))
 			DDPMSG("%s kernel_pm wait queue woke up accidently\n", __func__);
 		__pm_stay_awake(mtk_crtc->wk_lock);
