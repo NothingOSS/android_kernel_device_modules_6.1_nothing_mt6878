@@ -1446,6 +1446,21 @@ failed:
 	host->mcq_nr_intr = 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static void ufs_mtk_rq_dwork_fn(struct work_struct *dwork)
+{
+	struct scsi_device *sdev;
+	struct ufs_hba *hba;
+	struct ufs_mtk_host *host;
+
+	host = container_of(dwork, struct ufs_mtk_host, rq_dwork.work);
+	hba = host->hba;
+
+	__shost_for_each_device(sdev, hba->host)
+		wake_up_all(&sdev->request_queue->mq_freeze_wq);
+}
+#endif
+
 /**
  * ufs_mtk_init - find other essential mmio bases
  * @hba: host controller instance
@@ -1570,6 +1585,11 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	INIT_DELAYED_WORK(&host->delay_eh_work, ufs_mtk_delay_eh_work_fn);
 	host->delay_eh_workq = create_singlethread_workqueue("ufs_mtk_eh_wq");
 	host->ufs_wake_lock = wakeup_source_register(NULL, "ufs_wake_lock");
+
+#ifdef CONFIG_PM_SLEEP
+	INIT_DELAYED_WORK(&host->rq_dwork, ufs_mtk_rq_dwork_fn);
+	host->rq_workq = create_singlethread_workqueue("ufs_mtk_rq_wq");
+#endif
 
 	ufs_mtk_btag_init(hba);
 
@@ -3187,8 +3207,13 @@ out:
 	ret = ufshcd_system_resume(dev);
 
 	host = ufshcd_get_variant(hba);
-	if (!ret)
+	if (!ret) {
 		up(&host->rpmb_sem);
+#ifdef CONFIG_PM_SLEEP
+		queue_delayed_work(host->rq_workq, &host->rq_dwork,
+				   msecs_to_jiffies(500));
+#endif
+	}
 
 	return ret;
 }

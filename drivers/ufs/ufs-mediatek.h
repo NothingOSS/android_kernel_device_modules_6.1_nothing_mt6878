@@ -252,6 +252,11 @@ struct ufs_mtk_host {
 	struct delayed_work phy_dmp_work;
 	struct workqueue_struct *phy_dmp_workq;
 
+#ifdef CONFIG_PM_SLEEP
+	struct delayed_work rq_dwork;
+	struct workqueue_struct *rq_workq;
+#endif
+
 	struct semaphore rpmb_sem;
 	struct scsi_device *sdev_rpmb;
 	struct device *phy_dev;
