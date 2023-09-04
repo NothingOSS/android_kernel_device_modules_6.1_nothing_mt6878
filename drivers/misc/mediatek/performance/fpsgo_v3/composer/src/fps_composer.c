@@ -60,6 +60,7 @@ static int recycle_active = 1;
 static int fps_align_margin = 5;
 static int total_fpsgo_com_policy_cmd_num;
 static int fpsgo_is_boosting;
+static int total_connect_api_info_num;
 static unsigned long long last_update_sbe_dep_ts;
 
 static void fpsgo_com_notify_to_do_recycle(struct work_struct *work);
@@ -327,6 +328,43 @@ static void fpsgo_com_set_policy_cmd(int cmd, int value, int tgid,
 	}
 }
 
+void fpsgo_com_clear_connect_api_render_list(
+	struct connect_api_info *connect_api)
+{
+	struct render_info *pos, *next;
+
+	fpsgo_lockprove(__func__);
+
+	list_for_each_entry_safe(pos, next,
+		&connect_api->render_list, bufferid_list) {
+		fpsgo_delete_render_info(pos->pid,
+			pos->buffer_id, pos->identifier);
+	}
+
+}
+
+static void fpsgo_com_delete_oldest_connect_api_info(void)
+{
+	unsigned long long min_ts = ULLONG_MAX;
+	struct connect_api_info *iter = NULL, *min_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	for (rbn = rb_first(&connect_api_tree); rbn; rbn = rb_next(rbn)) {
+		iter = rb_entry(rbn, struct connect_api_info, rb_node);
+		if (iter->ts < min_ts) {
+			min_ts = iter->ts;
+			min_iter = iter;
+		}
+	}
+
+	if (min_iter) {
+		fpsgo_com_clear_connect_api_render_list(min_iter);
+		rb_erase(&min_iter->rb_node, &connect_api_tree);
+		kfree(min_iter);
+		total_connect_api_info_num--;
+	}
+}
+
 struct connect_api_info *fpsgo_com_search_and_add_connect_api_info(int pid,
 	unsigned long long buffer_id, int force)
 {
@@ -374,6 +412,7 @@ struct connect_api_info *fpsgo_com_search_and_add_connect_api_info(int pid,
 
 	rb_link_node(&tmp->rb_node, parent, p);
 	rb_insert_color(&tmp->rb_node, &connect_api_tree);
+	total_connect_api_info_num++;
 
 	return tmp;
 }
@@ -614,6 +653,7 @@ int fpsgo_com_update_render_api_info(struct render_info *f_render)
 	}
 
 	f_render->api = connect_api->api;
+	connect_api->ts = fpsgo_get_time();
 	list_add(&(f_render->bufferid_list), &(connect_api->render_list));
 	FPSGO_COM_TRACE("add connect api pid[%d] key[%llu] buffer_id[%llu]",
 		connect_api->pid, connect_api->buffer_key,
@@ -1347,8 +1387,12 @@ void fpsgo_ctrl2comp_connect_api(int pid, int api,
 	}
 
 	connect_api->api = api;
-	fpsgo_render_tree_unlock(__func__);
+	connect_api->ts = fpsgo_get_time();
 
+	if (total_connect_api_info_num > FPSGO_MAX_CONNECT_API_INFO_SIZE)
+		fpsgo_com_delete_oldest_connect_api_info();
+
+	fpsgo_render_tree_unlock(__func__);
 }
 
 void fpsgo_ctrl2comp_bqid(int pid, unsigned long long buffer_id,
@@ -1389,21 +1433,6 @@ void fpsgo_ctrl2comp_bqid(int pid, unsigned long long buffer_id,
 			identifier, ACTION_FIND_DEL);
 
 	fpsgo_render_tree_unlock(__func__);
-}
-
-void fpsgo_com_clear_connect_api_render_list(
-	struct connect_api_info *connect_api)
-{
-	struct render_info *pos, *next;
-
-	fpsgo_lockprove(__func__);
-
-	list_for_each_entry_safe(pos, next,
-		&connect_api->render_list, bufferid_list) {
-		fpsgo_delete_render_info(pos->pid,
-			pos->buffer_id, pos->identifier);
-	}
-
 }
 
 void fpsgo_ctrl2comp_disconnect_api(
@@ -1452,6 +1481,7 @@ void fpsgo_ctrl2comp_disconnect_api(
 	fpsgo_com_clear_connect_api_render_list(connect_api);
 	rb_erase(&connect_api->rb_node, &connect_api_tree);
 	kfree(connect_api);
+	total_connect_api_info_num--;
 
 	fpsgo_render_tree_unlock(__func__);
 }
@@ -1815,6 +1845,7 @@ void fpsgo_base2comp_check_connect_api(void)
 			rb_erase(&iter->rb_node, &connect_api_tree);
 			n = rb_first(&connect_api_tree);
 			kfree(iter);
+			total_connect_api_info_num--;
 			size = 0;
 		} else {
 			n = rb_next(n);

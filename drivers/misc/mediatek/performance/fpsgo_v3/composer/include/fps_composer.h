@@ -7,6 +7,8 @@
 
 #include <linux/rbtree.h>
 
+#define FPSGO_MAX_CONNECT_API_INFO_SIZE 20
+
 enum FPSGO_COM_ERROR {
 	FPSGO_COM_IS_RENDER,
 	FPSGO_COM_TASK_NOT_EXIST,
@@ -30,6 +32,7 @@ struct connect_api_info {
 	unsigned long long buffer_id;
 	unsigned long long buffer_key;
 	int api;
+	unsigned long long ts;
 };
 
 struct fpsgo_com_policy_cmd {
