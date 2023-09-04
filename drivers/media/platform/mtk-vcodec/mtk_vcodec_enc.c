@@ -2788,8 +2788,9 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	mutex_lock(&ctx->dev->enc_dvfs_mutex);
 	if (ctx->dev->venc_dvfs_params.mmdvfs_in_vcp) {
 		mtk_venc_prepare_vcp_dvfs_data(ctx, &param);
-		if (venc_if_set_param(ctx, VENC_SET_PARAM_MMDVFS, &param) != 0)
-			mtk_v4l2_err("[VDVFS][%d] stream on ipi fail", ctx->id);
+		ret = venc_if_set_param(ctx, VENC_SET_PARAM_MMDVFS, &param);
+		if (ret != 0)
+			mtk_v4l2_err("[VDVFS][%d] stream on ipi fail, ret %d", ctx->id, ret);
 		mtk_venc_dvfs_sync_vsi_data(ctx);
 		mtk_v4l2_debug(0, "[VDVFS][%d(%d)] start DVFS(UP):freq:%d, bw_factor:%d",
 			ctx->id, mtk_vcodec_get_state(ctx),
@@ -2902,8 +2903,9 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 		mutex_lock(&ctx->dev->enc_dvfs_mutex);
 		if (ctx->dev->venc_dvfs_params.mmdvfs_in_vcp) {
 			mtk_venc_unprepare_vcp_dvfs_data(ctx, &param);
-			if (venc_if_set_param(ctx, VENC_SET_PARAM_MMDVFS, &param) != 0)
-				mtk_v4l2_err("[VDVFS][%d] stream off ipi fail", ctx->id);
+			ret = venc_if_set_param(ctx, VENC_SET_PARAM_MMDVFS, &param);
+			if (ret != 0)
+				mtk_v4l2_err("[VDVFS][%d] stream off ipi fail, ret %d", ctx->id, ret);
 			mtk_venc_dvfs_sync_vsi_data(ctx);
 			mtk_v4l2_debug(0, "[VDVFS][%d(%d)] stop DVFS(UP):freq:%d, bw_factor%d",
 				ctx->id, mtk_vcodec_get_state(ctx),

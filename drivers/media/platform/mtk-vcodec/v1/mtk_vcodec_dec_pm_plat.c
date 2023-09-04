@@ -612,6 +612,10 @@ void mtk_vdec_prepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, unsigned long *i
 		return;
 
 	inst_handle = (struct vdec_inst *) ctx->drv_handle;
+	if (!inst_handle) {
+		mtk_v4l2_err("%s [VDVFS][%d] find null drv handler", __func__, ctx->id);
+		return;
+	}
 	vsi_data = inst_handle->vsi;
 
 	inst = get_inst(ctx);
@@ -674,10 +678,12 @@ void mtk_vdec_dvfs_update_dvfs_params(struct mtk_vcodec_ctx *ctx)
 	struct vcodec_inst *inst = 0;
 	bool mmdvfs_in_vcp = (ctx->dev->vdec_reg == 0 && ctx->dev->vdec_mmdvfs_clk == 0);
 	unsigned long vcp_dvfs_data[1] = {MTK_INST_UPDATE};
+	int ret;
 
 	if (mmdvfs_in_vcp) {
 		mtk_vdec_dvfs_set_vsi_dvfs_params(ctx);
-		if (vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data) != 0)
+		ret = vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data);
+		if (ret != 0)
 			mtk_v4l2_err("[VDVFS] %s [%d] alive ipi timeout", __func__, ctx->id);
 	} else {
 		inst = get_inst(ctx);

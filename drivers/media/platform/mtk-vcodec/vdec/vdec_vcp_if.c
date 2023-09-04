@@ -1714,9 +1714,9 @@ static int vdec_vcp_set_param(unsigned long h_vdec,
 		set_vdec_vcp_data(inst, VDEC_VCP_LOG_INFO_ID, in);
 		break;
 	case SET_PARAM_MMDVFS:
-		mtk_v4l2_debug(4, "[VDVFS][VDEC] start to set_param in vcp_if");
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		msg.data[0] = (__u32)(*param_ptr);
-		mtk_v4l2_debug(4, "[VDVFS][VDEC] msg data: %u", msg.data[0]);
 		ret = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, true);
 		break;
 	case SET_PARAM_VDEC_IN_GROUP:

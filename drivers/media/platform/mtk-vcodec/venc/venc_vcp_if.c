@@ -1886,6 +1886,8 @@ static int venc_vcp_set_param(unsigned long handle,
 		set_venc_vcp_data(inst, VENC_VCP_LOG_INFO_ID, enc_prm->set_vcp_buf);
 		break;
 	case VENC_SET_PARAM_MMDVFS:
+		if (inst->vsi == NULL)
+			return -EINVAL;
 		mtk_v4l2_debug(4, "[VDVFS][VENC] VENC_SET_PARAM_MMDVFS");
 		ret = vcp_enc_set_param(inst, type, enc_prm);
 		break;
