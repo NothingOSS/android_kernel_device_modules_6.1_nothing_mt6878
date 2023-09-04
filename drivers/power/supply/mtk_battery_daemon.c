@@ -5159,7 +5159,7 @@ static int mtk_battery_suspend(struct mtk_battery *gm, pm_message_t state)
 {
 	int version;
 
-	bm_err("******** %s!! iavg=%d ***GM3 disable:%d %d %d %d tmp_intr:%d***\n",
+	bm_debug("******** %s!! iavg=%d ***GM3 disable:%d %d %d %d tmp_intr:%d***\n",
 		__func__,
 		gm->gauge->hw_status.iavg_intr_flag,
 		gm->disableGM30,
@@ -5189,7 +5189,7 @@ static int mtk_battery_resume(struct mtk_battery *gm)
 {
 	int version;
 
-	bm_err("******** %s!! iavg=%d ***GM3 disable:%d %d %d %d***\n",
+	bm_debug("******** %s!! iavg=%d ***GM3 disable:%d %d %d %d***\n",
 		__func__,
 		gm->gauge->hw_status.iavg_intr_flag,
 		gm->disableGM30,
