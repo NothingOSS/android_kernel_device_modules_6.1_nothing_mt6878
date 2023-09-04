@@ -1305,7 +1305,6 @@ static int alloc_capacity_table(void)
 	int cur_tbl = 0;
 	int nr_caps;
 	int i, k, need_alloc;
-	struct em_perf_domain *pd;
 	unsigned int nr_cpus;
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
@@ -1329,17 +1328,10 @@ static int alloc_capacity_table(void)
 	else
 		mtk_em_pd_ptr = mtk_em_pd_ptr_public;
 #endif
-	for_each_possible_cpu(cpu) {
-		pd = em_cpu_get(cpu);
-		if (!pd) {
-			pr_info("em_cpu_get return NULL for cpu#%d", cpu);
-			continue;
-		}
-		if (cpu != cpumask_first(to_cpumask(pd->cpus)))
-			continue;
-		pd_count++;
-	}
-
+	pd_count = 0;
+	for_each_possible_cpu(cpu)
+		pd_count = max(pd_count, topology_cluster_id(cpu));
+	pd_count++;
 	if (is_wl_support())
 		nr_wl_type = mtk_mapping.total_type;
 	else
@@ -1371,23 +1363,14 @@ static int alloc_capacity_table(void)
 		}
 	}
 
-	for_each_possible_cpu(cpu) {
-		pd = em_cpu_get(cpu);
-		if (!pd) {
-			pr_info("em_cpu_get return NULL for cpu#%d", cpu);
-			continue;
-		}
-		nr_cpus = cpumask_last(to_cpumask(pd->cpus)) -
-			cpumask_first(to_cpumask(pd->cpus)) + 1;
-		if (cpu != cpumask_first(to_cpumask(pd->cpus)))
-			continue;
-
-		WARN_ON(cur_tbl >= pd_count);
-
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+	for (cur_tbl = 0; cur_tbl < pd_count; cur_tbl++) {
+		nr_cpus = 0;
+		for_each_possible_cpu(cpu)
+			if (cur_tbl == topology_cluster_id(cpu))
+				nr_cpus++;
 		nr_caps = mtk_em_pd_ptr[cur_tbl].nr_perf_states;
-#else
-		nr_caps = pd->nr_perf_states;
+
+#if !IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 		for (i = 0; i < nr_wl_type; i++) {
 			pd_capacity_tbl = pd_wl_type[i];
 			pd_capacity_tbl[cur_tbl].table = kcalloc(nr_caps,
@@ -1402,23 +1385,20 @@ static int alloc_capacity_table(void)
 			pd_capacity_tbl = pd_wl_type[i];
 			pd_capacity_tbl[cur_tbl].nr_cpus = nr_cpus;
 			pd_capacity_tbl[cur_tbl].nr_caps = nr_caps;
-			pd_capacity_tbl[cur_tbl].nr_caps_legacy = pd->nr_perf_states;
-			cpumask_copy(&pd_capacity_tbl[cur_tbl].cpus, to_cpumask(pd->cpus));
-
+			pd_capacity_tbl[cur_tbl].nr_caps_legacy =
+				mtk_em_pd_ptr_public[cur_tbl].nr_perf_states;
+			cpumask_copy(&pd_capacity_tbl[cur_tbl].cpus,
+				mtk_em_pd_ptr_public[cur_tbl].cpumask);
 			pd_capacity_tbl[cur_tbl].freq_max =
-				max(pd->table[pd->nr_perf_states - 1].frequency,
-					pd->table[0].frequency);
+				mtk_em_pd_ptr_public[cur_tbl].max_freq;
 			pd_capacity_tbl[cur_tbl].freq_min =
-				min(pd->table[pd->nr_perf_states - 1].frequency,
-					pd->table[0].frequency);
+				mtk_em_pd_ptr_public[cur_tbl].min_freq ;
 			pd_capacity_tbl[cur_tbl].util_opp_map = NULL;
 			pd_capacity_tbl[cur_tbl].util_opp_map_legacy = NULL;
 			pd_capacity_tbl[cur_tbl].freq_opp_map = NULL;
 			pd_capacity_tbl[cur_tbl].freq_opp_map_legacy = NULL;
 		}
 		entry_count += nr_caps;
-
-		cur_tbl++;
 	}
 
 	return 0;
