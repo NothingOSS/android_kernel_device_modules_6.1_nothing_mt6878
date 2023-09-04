@@ -388,6 +388,20 @@ CLK_PERAO_INTBUS_CK_PERI_ERR:
 	return ret;
 }
 
+int mt6989_afe_apll_init(struct mtk_base_afe *afe)
+{
+	struct mt6989_afe_private *afe_priv = afe->platform_priv;
+
+	/* APLL1_CON2 = 0x6f28bd4c
+	 * APLL2_CON2 = 0x78FD5264
+	 * APLL1_TUNER_CON0 = 0x6f28bd4d
+	 * APLL2_TUNER_CON0 = 0x78fd5264
+	 */
+	regmap_write(afe_priv->apmixed, APLL2_TUNER_CON0, 0x78fd5265);
+
+	return 0;
+}
+
 
 int mt6989_afe_enable_clock(struct mtk_base_afe *afe)
 {
@@ -919,6 +933,7 @@ int mt6989_init_clock(struct mtk_base_afe *afe)
 			__func__, PTR_ERR(afe_priv->infracfg));
 		return PTR_ERR(afe_priv->infracfg);
 	}
+	mt6989_afe_apll_init(afe);
 	mt6989_afe_disable_apll(afe);
 	mt6989_afe_enable_ao_clock(afe);
 	return 0;
