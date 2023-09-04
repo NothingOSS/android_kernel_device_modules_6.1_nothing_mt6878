@@ -181,6 +181,52 @@ static bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
 	return ret;
 }
 
+static unsigned int mtk_disp_getMaxBW(unsigned int arr[], int size,
+						unsigned int total_bw)
+{
+	unsigned int maxVal = arr[0];
+
+	for (int i = 1; i < size; i++) {
+		if (arr[i] > maxVal)
+			maxVal = arr[i];
+	}
+
+	DDPINFO("%s maxVal = %d, total_bw = %d\n",__func__, maxVal, total_bw);
+
+	if (maxVal > total_bw)
+		return total_bw;
+	else
+		return maxVal;
+}
+
+static unsigned int mtk_disp_larb_hrt_bw_MT6989(struct mtk_drm_crtc *mtk_crtc,
+						unsigned int total_bw, unsigned int bw_base)
+{
+	int i = 0;
+	int max_sub_comm = 4; // 6989 sub common num
+	int max_ovl_phy_layer = 12; // 6989 phy ovl layer num
+	unsigned int subcomm_bw_sum[4] = {0};
+	/* sub_comm0: layer0 + layer4 + layer9
+	 * sub_comm1: layer1 + layer5 + layer8
+	 * sub_comm2: layer2 + layer7 + layer11
+	 * sub_comm3: layer3 + layer6 + layer10
+	 */
+	for (i = 0; i < max_ovl_phy_layer; i++) {
+		if (mtk_crtc->usage_ovl_fmt[i]) {
+			if (i == 0 || i == 4 || i == 9)
+				subcomm_bw_sum[0] += bw_base * (mtk_crtc->usage_ovl_fmt[i] / 4);
+			else if (i == 1 || i == 5 || i == 8)
+				subcomm_bw_sum[1] += bw_base * (mtk_crtc->usage_ovl_fmt[i] / 4);
+			else if (i == 2 || i == 7 || i == 11)
+				subcomm_bw_sum[2] += bw_base * (mtk_crtc->usage_ovl_fmt[i] / 4);
+			else if (i == 3 || i == 6 || i == 10)
+				subcomm_bw_sum[3] += bw_base * (mtk_crtc->usage_ovl_fmt[i] / 4);
+		}
+	}
+
+	return mtk_disp_getMaxBW(subcomm_bw_sum, max_sub_comm, total_bw);
+}
+
 int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
@@ -242,9 +288,14 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 		} else if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DSI) {
 			if (total > 0) {
 				bw_base = mtk_drm_primary_frame_bw(crtc);
-				ovl_num = bw_base > 0 ? total / bw_base : 0;
-				tmp1 = ((bw_base / 2) > total) ? total : (ovl_num < 3) ?
-					(bw_base / 2) : (ovl_num < 5) ? bw_base : (bw_base * 3 / 2);
+				if (priv->data->mmsys_id == MMSYS_MT6989) {
+					tmp1 = mtk_disp_larb_hrt_bw_MT6989(mtk_crtc, total, bw_base);
+				} else {
+					ovl_num = bw_base > 0 ? total / bw_base : 0;
+					tmp1 = ((bw_base / 2) > total) ? total : (ovl_num < 3) ?
+						(bw_base / 2) : (ovl_num < 5) ?
+						bw_base : (bw_base * 3 / 2);
+				}
 			}
 
 			if ((priv->data->mmsys_id == MMSYS_MT6897) &&

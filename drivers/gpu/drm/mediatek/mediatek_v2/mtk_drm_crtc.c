@@ -13331,6 +13331,8 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	}
 #endif
 
+	memset(mtk_crtc->usage_ovl_fmt, 0, sizeof(mtk_crtc->usage_ovl_fmt));
+
 	if ((priv->usage[crtc_idx] == DISP_OPENING) &&
 		comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_WDMA)
 		goto end;
@@ -13350,7 +13352,6 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		comp->fbdc_bw = 0;
 		comp->hrt_bw = 0;
 	}
-
 
 end:
 	CRTC_MMP_EVENT_END(index, atomic_begin,

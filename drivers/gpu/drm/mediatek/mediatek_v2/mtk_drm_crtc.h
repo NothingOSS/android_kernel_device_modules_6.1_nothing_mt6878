@@ -936,6 +936,7 @@ struct mtk_drm_crtc {
 	unsigned int ddp_mode;
 	unsigned int cur_config_fence[OVL_LAYER_NR];
 
+
 	struct drm_writeback_connector wb_connector;
 	bool wb_enable;
 	bool wb_hw_enable;
@@ -1090,6 +1091,8 @@ struct mtk_drm_crtc {
 	unsigned int spr_switch_type;
 
 	struct mtk_vblank_config_rec *vblank_rec;
+
+	unsigned int usage_ovl_fmt[OVL_LAYER_NR]; // for mt6989 hrt by larb
 
 };
 

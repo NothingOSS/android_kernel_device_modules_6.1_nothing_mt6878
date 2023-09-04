@@ -810,6 +810,27 @@ bool is_right_ovl_comp_MT6985(struct mtk_ddp_comp *comp)
 	}
 }
 
+unsigned int mtk_ovl_phy_id_MT6989(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0_2L:
+		return 0;
+	case DDP_COMPONENT_OVL1_2L:
+		return 2;
+	case DDP_COMPONENT_OVL2_2L:
+		return 4;
+	case DDP_COMPONENT_OVL3_2L:
+		return 6;
+	case DDP_COMPONENT_OVL4_2L:
+		return 8;
+	case DDP_COMPONENT_OVL5_2L:
+		return 10;
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return 0;
+	}
+}
+
 int mtk_ovl_aid_bit(struct mtk_ddp_comp *comp, bool is_ext, int id)
 {
 	if (is_ext)
@@ -2553,6 +2574,16 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_SMI_2ND_CFG,
 			       (val << lye_idx), (1 << lye_idx));
+		}
+	}
+
+	if (priv->data->mmsys_id == MMSYS_MT6989) {
+		if (pending->enable) {//enable and not ext layer
+			if (ext_lye_idx == 0)
+				mtk_crtc->usage_ovl_fmt[(mtk_ovl_phy_id_MT6989(comp) + lye_idx)] =
+					mtk_get_format_bpp(fmt);
+		} else {
+			mtk_crtc->usage_ovl_fmt[(mtk_ovl_phy_id_MT6989(comp) + lye_idx)] = 0;
 		}
 	}
 
