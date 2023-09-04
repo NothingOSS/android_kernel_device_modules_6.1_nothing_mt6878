@@ -98,6 +98,7 @@ static long adpf_device_ioctl(struct file *filp,
 					t_msgKM->threadIds_size*sizeof(__s32))) {
 				pr_debug("ADPF_CREATE_HINT_SESSION copy from user error");
 				ret = -EFAULT;
+				kfree(threadIds);
 				goto ret_ioctl;
 			}
 
@@ -110,6 +111,8 @@ static long adpf_device_ioctl(struct file *filp,
 					t_msgKM->threadIds_size,
 					t_msgKM->durationNanos);
 			}
+
+			kfree(threadIds);
 		} else if (t_msgKM->cmd == ADPF_UPDATE_TARGET_WORK_DURATION) {
 			if (powerhal_adpf_update_work_duration_fp)
 				powerhal_adpf_update_work_duration_fp(t_msgKM->sid,
@@ -124,12 +127,15 @@ static long adpf_device_ioctl(struct file *filp,
 				*sizeof(struct _ADPF_WORK_DURATION))) {
 				pr_debug("ADPF_REPORT_ACTUAL_WORK_DURATION copy from user error");
 				ret = -EFAULT;
+				kfree(workDuration);
 				goto ret_ioctl;
 			}
 
 			if (powerhal_adpf_report_actual_work_duration_fp)
 				powerhal_adpf_report_actual_work_duration_fp(t_msgKM->sid,
 					workDuration, t_msgKM->work_duration_size);
+
+			kfree(workDuration);
 		} else if (t_msgKM->cmd == ADPF_PAUSE) {
 			if (powerhal_adpf_pause_fp)
 				powerhal_adpf_pause_fp(t_msgKM->sid);
@@ -150,12 +156,15 @@ static long adpf_device_ioctl(struct file *filp,
 							t_msgKM->threadIds_size*sizeof(__s32))) {
 				pr_debug("ADPF_SET_THREADS copy from user error");
 				ret = -EFAULT;
+				kfree(threadIds);
 				goto ret_ioctl;
 			}
 
 			if (powerhal_adpf_set_threads_fp)
 				powerhal_adpf_set_threads_fp(t_msgKM->sid, threadIds,
 							t_msgKM->threadIds_size);
+
+			kfree(threadIds);
 		} else {
 			ret = -1;
 		}
