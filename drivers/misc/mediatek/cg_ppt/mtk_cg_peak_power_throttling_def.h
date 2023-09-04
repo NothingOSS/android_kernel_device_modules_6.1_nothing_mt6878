@@ -178,6 +178,8 @@ struct DlptCsramCtrlBlock {
 	int boot_mode; /*16*/
 	int md_smem_addr; /*17*/
 	int wifi_smem_addr; /*18*/
+	int cg_power_threshold; /*19*/
+	int cg_power_threshold_count; /*20*/
 };
 
 

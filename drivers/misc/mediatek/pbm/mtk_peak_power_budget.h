@@ -37,6 +37,8 @@ enum ppb_sram_offset {
 	PPB_BOOT_MODE,
 	PPB_MD_SMEM_ADDR,
 	PPB_WIFI_SMEM_ADDR,
+	PPB_CG_PWR_THD,
+	PPB_CG_PWR_CNT,
 	PPB_OFFSET_NUM
 };
 
@@ -56,6 +58,8 @@ struct ppb {
 	unsigned int loading_dram;
 	unsigned int vsys_budget;
 	unsigned int remain_budget;
+	unsigned int cg_budget_thd;
+	unsigned int cg_budget_cnt;
 };
 
 struct power_budget_t {

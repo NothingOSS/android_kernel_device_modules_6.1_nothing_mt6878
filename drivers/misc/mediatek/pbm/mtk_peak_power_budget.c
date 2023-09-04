@@ -48,6 +48,8 @@ struct ppb ppb = {
 	.loading_apu = 0,
 	.loading_dram = MAX_POWER_DRAM,
 	.vsys_budget = 0,
+	.cg_budget_thd = 0,
+	.cg_budget_cnt = 0,
 };
 
 struct ppb ppb_manual = {
@@ -58,6 +60,8 @@ struct ppb ppb_manual = {
 	.loading_apu = 0,
 	.loading_dram = 0,
 	.vsys_budget = 0,
+	.cg_budget_thd = 0,
+	.cg_budget_cnt = 0,
 };
 
 struct tag_bootmode {
@@ -842,7 +846,7 @@ static int mt_ppb_debug_proc_show(struct seq_file *m, void *v)
 
 static int mt_ppb_dump_proc_show(struct seq_file *m, void *v)
 {
-	seq_printf(m, "%u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u\n",
+	seq_printf(m, "%u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u\n",
 		ppb_read_sram(PPB_MODE),
 		ppb_read_sram(PPB_CG_PWR),
 		ppb_read_sram(PPB_VSYS_PWR),
@@ -855,7 +859,9 @@ static int mt_ppb_dump_proc_show(struct seq_file *m, void *v)
 		ppb_read_sram(PPB_DRAM_PWR),
 		ppb_read_sram(PPB_MD_PWR),
 		ppb_read_sram(PPB_WIFI_PWR),
-		ppb_read_sram(PPB_APU_PWR_ACK));
+		ppb_read_sram(PPB_APU_PWR_ACK),
+		ppb_read_sram(PPB_CG_PWR_THD),
+		ppb_read_sram(PPB_CG_PWR_CNT));
 
 	return 0;
 }
@@ -1111,6 +1117,75 @@ static ssize_t mt_ppb_camera_power_proc_write
 	return count;
 }
 
+static int mt_ppb_cg_budget_thd_proc_show(struct seq_file *m, void *v)
+{
+	int thd = 0;
+
+	thd = ppb_read_sram(PPB_CG_PWR_THD);
+	seq_printf(m, "CG budget threshold: %d\n", thd);
+	return 0;
+}
+
+static ssize_t mt_ppb_cg_budget_thd_proc_write
+(struct file *file, const char __user *buffer, size_t count, loff_t *data)
+{
+	char desc[64];
+	unsigned int len = 0;
+	int thd = 0;
+
+	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
+	if (copy_from_user(desc, buffer, len))
+		return 0;
+	desc[len] = '\0';
+
+	if (kstrtoint(desc, 10, &thd) != 0) {
+		pr_notice("parameter number not correct\n");
+		return -EPERM;
+	}
+	if (thd < 0) {
+		pr_notice("ppb camera power should not be negative value\n");
+		return count;
+	}
+
+	ppb_write_sram(thd, PPB_CG_PWR_THD);
+	return count;
+}
+
+static int mt_ppb_cg_budget_cnt_proc_show(struct seq_file *m, void *v)
+{
+	int cnt = 0;
+
+	cnt = ppb_read_sram(PPB_CG_PWR_CNT);
+	seq_printf(m, "CG budget threshold count: %d\n", cnt);
+	return 0;
+}
+
+static ssize_t mt_ppb_cg_budget_cnt_proc_write
+(struct file *file, const char __user *buffer, size_t count, loff_t *data)
+{
+	char desc[64];
+	unsigned int len = 0;
+	int cnt = 0;
+
+	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
+	if (copy_from_user(desc, buffer, len))
+		return 0;
+	desc[len] = '\0';
+
+	if (kstrtoint(desc, 10, &cnt) != 0) {
+		pr_notice("parameter number not correct\n");
+		return -EPERM;
+	}
+
+	if (cnt < 0) {
+		pr_notice("ppb budget count should not be negative value\n");
+		return count;
+	}
+
+	ppb_write_sram(cnt, PPB_CG_PWR_CNT);
+	return count;
+}
+
 #define PROC_FOPS_RW(name)						\
 static int mt_ ## name ## _proc_open(struct inode *inode, struct file *file)\
 {									\
@@ -1145,6 +1220,8 @@ PROC_FOPS_RW(ppb_stop);
 PROC_FOPS_RW(peak_power_mode);
 PROC_FOPS_RW(ppb_cg_min_power);
 PROC_FOPS_RW(ppb_camera_power);
+PROC_FOPS_RW(ppb_cg_budget_thd);
+PROC_FOPS_RW(ppb_cg_budget_cnt);
 
 
 static int mt_ppb_create_procfs(void)
@@ -1166,6 +1243,8 @@ static int mt_ppb_create_procfs(void)
 		PROC_ENTRY(peak_power_mode),
 		PROC_ENTRY(ppb_cg_min_power),
 		PROC_ENTRY(ppb_camera_power),
+		PROC_ENTRY(ppb_cg_budget_thd),
+		PROC_ENTRY(ppb_cg_budget_cnt),
 	};
 
 	dir = proc_mkdir("ppb", NULL);
