@@ -250,7 +250,7 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 {
 	unsigned long freq, scale_cpu;
 	struct em_perf_state *ps;
-	int cpu, this_cpu, opp = -1;
+	int cpu, this_cpu, opp = -1, wl_type = 0;
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 	unsigned long pwr_eff, cap, freq_legacy, sum_cap = 0;
 	struct mtk_em_perf_state *mtk_ps;
@@ -377,6 +377,7 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 		dsu_opp = dsu_get_freq_opp(eenv->dsu_freq_new);
 		dsu_ps = dsu_get_opp_ps(eenv->wl_type, dsu_opp);
 		eenv->dsu_volt_new = dsu_ps->volt;
+		wl_type = eenv->wl_type;
 
 		if (trace_sched_dsu_freq_enabled())
 			trace_sched_dsu_freq(gear_idx, eenv->dsu_freq_new, eenv->dsu_volt_new, freq,
@@ -391,13 +392,13 @@ unsigned long mtk_em_cpu_energy(int gear_idx, struct em_perf_domain *pd,
 	if (trace_sched_em_cpu_energy_enabled()) {
 		freq_legacy = pd_get_opp_freq_legacy(this_cpu, pd_get_freq_opp_legacy(this_cpu,
 											freq));
-		trace_sched_em_cpu_energy(opp, freq_legacy, "pwr_eff", pwr_eff,
+		trace_sched_em_cpu_energy(wl_type, opp, freq_legacy, "pwr_eff", pwr_eff,
 			scale_cpu, dyn_pwr, static_pwr);
 	}
 #else
 	dyn_pwr = (ps->cost * sum_util / scale_cpu);
 	if (trace_sched_em_cpu_energy_enabled())
-		trace_sched_em_cpu_energy(opp, freq, "ps->cost", ps->cost,
+		trace_sched_em_cpu_energy(wl_type, opp, freq, "ps->cost", ps->cost,
 			scale_cpu, dyn_pwr, static_pwr);
 #endif
 

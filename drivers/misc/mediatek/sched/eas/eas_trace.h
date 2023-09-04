@@ -137,12 +137,13 @@ TRACE_EVENT(sched_dsu_freq,
 
 TRACE_EVENT(sched_em_cpu_energy,
 
-	TP_PROTO(int idx, unsigned long freq, const char *cost_type, unsigned long cost,
+	TP_PROTO(int wl_type, int idx, unsigned long freq, const char *cost_type, unsigned long cost,
 		unsigned long scale_cpu, unsigned long dyn_pwr, unsigned long static_pwr),
 
-	TP_ARGS(idx, freq, cost_type, cost, scale_cpu, dyn_pwr, static_pwr),
+	TP_ARGS(wl_type, idx, freq, cost_type, cost, scale_cpu, dyn_pwr, static_pwr),
 
 	TP_STRUCT__entry(
+		__field(int, wl_type)
 		__field(int, idx)
 		__field(unsigned long, freq)
 		__string(cost_type, cost_type)
@@ -153,6 +154,7 @@ TRACE_EVENT(sched_em_cpu_energy,
 		),
 
 	TP_fast_assign(
+		__entry->wl_type        = wl_type;
 		__entry->idx        = idx;
 		__entry->freq       = freq;
 		__assign_str(cost_type, cost_type);
@@ -162,7 +164,8 @@ TRACE_EVENT(sched_em_cpu_energy,
 		__entry->static_pwr = static_pwr;
 		),
 
-	TP_printk("idx=%d freq=%lu %s=%lu scale_cpu=%lu dyn_pwr=%lu static_pwr=%lu",
+	TP_printk("wl_type=%d, idx=%d freq=%lu %s=%lu scale_cpu=%lu dyn_pwr=%lu static_pwr=%lu",
+		__entry->wl_type,
 		__entry->idx,
 		__entry->freq,
 		__get_str(cost_type),
