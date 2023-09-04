@@ -299,7 +299,7 @@ static void soc_handler(struct work_struct *work)
 		if (temp < last_temp) {
 			if (temp_stage < bp_thl_data->temp_max_stage) {
 				temp_thd = bp_thl_data->temp_thd[temp_stage];
-				if (temp <= temp_thd) {
+				if (temp < temp_thd) {
 					temp_stage++;
 					loop = true;
 				}
@@ -307,7 +307,7 @@ static void soc_handler(struct work_struct *work)
 		} else if (temp > last_temp) {
 			if (temp_stage > 0) {
 				temp_thd = bp_thl_data->temp_thd[temp_stage-1];
-				if (temp > temp_thd) {
+				if (temp >= temp_thd) {
 					temp_stage--;
 					loop = true;
 				}

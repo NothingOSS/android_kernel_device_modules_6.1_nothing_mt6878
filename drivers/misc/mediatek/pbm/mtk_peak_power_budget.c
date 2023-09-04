@@ -13,6 +13,7 @@
 #include <linux/seq_file.h>
 #include <linux/proc_fs.h>
 #include <linux/spinlock.h>
+#include "mtk_battery_oc_throttling.h"
 #include "mtk_low_battery_throttling.h"
 
 #define CREATE_TRACE_POINTS
@@ -524,12 +525,12 @@ static void bat_handler(struct work_struct *work)
 		do {
 			loop = false;
 			if (temp < last_temp && temp_stage < pb.temp_max_stage) {
-				if (temp <= pb.temp_thd[temp_stage]) {
+				if (temp < pb.temp_thd[temp_stage]) {
 					temp_stage++;
 					loop = true;
 				}
 			} else if (temp > last_temp && temp_stage > 0) {
-				if (temp > pb.temp_thd[temp_stage-1]) {
+				if (temp >= pb.temp_thd[temp_stage-1]) {
 					temp_stage--;
 					loop = true;
 				}
@@ -767,7 +768,7 @@ static int read_power_budget_dts(struct platform_device *pdev)
 	}
 
 	read_dts_val(np, "max-temperature-stage", &num, 1);
-	if (num > 2 || num < 0)
+	if (num > 4 || num < 0)
 		num = 0;
 
 	if (num > 0)
@@ -1041,6 +1042,7 @@ static ssize_t mt_peak_power_mode_proc_write
 		ppb_ctrl.ppb_mode = mode;
 		ppb_write_sram(mode, PPB_MODE);
 		lbat_set_ppb_mode(mode);
+		bat_oc_set_ppb_mode(mode);
 	} else
 		pr_notice("ppb mode should be 0 or 1 or 2\n");
 

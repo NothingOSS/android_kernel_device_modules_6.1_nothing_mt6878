@@ -65,9 +65,9 @@ struct ppb {
 struct power_budget_t {
 	unsigned int temp_cur_stage;
 	unsigned int temp_max_stage;
-	int temp_thd[2];
-	unsigned int rdc[3];
-	unsigned int rac[3];
+	int temp_thd[4];
+	unsigned int rdc[5];
+	unsigned int rac[5];
 	unsigned int uvlo;
 	unsigned int ocp;
 	unsigned int cur_rdc;

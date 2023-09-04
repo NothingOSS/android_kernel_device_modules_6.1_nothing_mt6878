@@ -114,9 +114,8 @@ struct battery_oc_priv {
 	int unit_fg_cur;
 	int unit_multiple;
 	const struct battery_oc_data_t *ocdata;
+	int ppb_mode;
 };
-
-static int g_battery_oc_stop;
 
 struct battery_oc_callback_table {
 	void (*occb)(enum BATTERY_OC_LEVEL_TAG, void *data);
@@ -124,6 +123,8 @@ struct battery_oc_callback_table {
 };
 
 static struct battery_oc_callback_table occb_tb[OCCB_MAX_NUM] = { {0}, {0} };
+static int g_battery_oc_stop;
+static struct battery_oc_priv *bat_oc_data;
 
 static int __regmap_update_bits(struct regmap *regmap, const struct reg_t *reg,
 				unsigned int val)
@@ -400,8 +401,10 @@ static irqreturn_t fg_cur_h_int_handler(int irq, void *data)
 {
 	struct battery_oc_priv *priv = data;
 
-	if (priv->oc_level >= BATTERY_OC_LEVEL_NUM || priv->oc_level < BATTERY_OC_LEVEL_1) {
-		pr_info("%s: wrong current oc_level=%d\n", __func__, priv->oc_level);
+	if (priv->oc_level >= BATTERY_OC_LEVEL_NUM || priv->oc_level < BATTERY_OC_LEVEL_1
+		 || priv->ppb_mode != 0) {
+		pr_info("%s: wrong oc_level=%d, ppb_mode=%d\n", __func__, priv->oc_level,
+			priv->ppb_mode);
 		return IRQ_HANDLED;
 	}
 
@@ -415,8 +418,9 @@ static irqreturn_t fg_cur_l_int_handler(int irq, void *data)
 	struct battery_oc_priv *priv = data;
 
 	// filter wrong level
-	if (priv->oc_level > BATTERY_OC_LEVEL_NUM - 2) {
-		pr_info("%s: wrong current oc_level=%d\n", __func__, priv->oc_level);
+	if (priv->oc_level > BATTERY_OC_LEVEL_NUM - 2 || priv->ppb_mode != 0) {
+		pr_info("%s: wrong oc_level=%d, ppb=%d\n", __func__, priv->oc_level,
+			priv->ppb_mode);
 		return IRQ_HANDLED;
 	}
 
@@ -683,8 +687,52 @@ static int battery_oc_throttling_probe(struct platform_device *pdev)
 		 priv->oc_thd_h[priv->oc_level], to_fg_code(priv, priv->oc_thd_h[priv->oc_level]),
 		 priv->oc_thd_l[priv->oc_level], to_fg_code(priv, priv->oc_thd_l[priv->oc_level]));
 
+	bat_oc_data = priv;
+
 	return battery_oc_throttling_create_proc(priv);
 }
+
+static int battery_oc_throttle_enable(struct battery_oc_priv *priv, int en)
+{
+	if (!en) {
+		//disable all interrupt
+		if (priv->oc_enb_l[priv->oc_level])
+			disable_irq_nosync(priv->fg_cur_l_irq);
+		if (priv->oc_enb_h[priv->oc_level])
+			disable_irq_nosync(priv->fg_cur_h_irq);
+	} else {
+		//enable property interrupt
+		if (priv->oc_enb_l[priv->oc_level])
+			enable_irq(priv->fg_cur_l_irq);
+		if (priv->oc_enb_h[priv->oc_level])
+			enable_irq(priv->fg_cur_h_irq);
+	}
+	return 0;
+}
+
+int bat_oc_set_ppb_mode(unsigned int mode)
+{
+	struct battery_oc_priv *priv;
+
+	if (!bat_oc_data) {
+		pr_info("[%s] get battery oc data fail\n", __func__);
+		return 0;
+	}
+	priv = bat_oc_data;
+	priv->ppb_mode = mode;
+
+	if (mode != 0) {
+		battery_oc_throttle_enable(priv, 0);
+		if (priv->oc_level) {
+			priv->oc_level = 0;
+			exec_battery_oc_callback(priv->oc_level);
+		}
+	} else
+		switch_bat_oc_level(priv, 0);
+
+	return 0;
+}
+EXPORT_SYMBOL(bat_oc_set_ppb_mode);
 
 static int battery_oc_throtting_remove(struct platform_device *pdev)
 {
