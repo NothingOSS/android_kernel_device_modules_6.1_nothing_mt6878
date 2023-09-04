@@ -2720,15 +2720,15 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 			if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 				panel_ext = dsi->ext;
-				dsi->skip_vblank = (dsi->skip_vblank == 0) ?
-					1 : dsi->skip_vblank;
-
-				if (panel_ext) {
-					if (panel_ext->params->skip_vblank == 0)
-						drm_trace_tag_mark("TE_RDY");
-					else
-						drm_trace_tag_value("TE_RDY", dsi->cnt);
+				if (dsi->skip_vblank == 0
+					|| (panel_ext && panel_ext->params->skip_vblank == 0)) {
+					dsi->skip_vblank = 1;
 				}
+
+				if (dsi->skip_vblank == 1)
+					drm_trace_tag_mark("TE_RDY");
+				else
+					drm_trace_tag_value("TE_RDY", dsi->cnt);
 
 				if (dsi->encoder.crtc)
 					doze_enabled = mtk_dsi_doze_state(dsi);
