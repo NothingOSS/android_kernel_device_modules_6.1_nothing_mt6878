@@ -22,6 +22,7 @@
 #include "vcp_status.h"
 
 #include "mtk-mmdebug-vcp.h"
+#include "mtk-mmdvfs-debug.h"
 
 static int vcp_power;
 static DEFINE_MUTEX(mmdebug_vcp_pwr_mutex);
@@ -90,6 +91,7 @@ static int mmdebug_vcp_ipi_cb(unsigned int ipi_id, void *prdata, void *data,
 #endif
 		MMDEBUG_ERR("MMDEBUG kernel warning str:%s idx:%hhu ack:%hhu base:%hhu",
 			kernel_warn_type_str[slot.idx], slot.idx, slot.ack, slot.base);
+		mmdvfs_debug_status_dump(NULL);
 		break;
 	default:
 		MMDEBUG_ERR("ipi_id:%u func:%hhu idx:%hhu ack:%hhu base:%hhu",
