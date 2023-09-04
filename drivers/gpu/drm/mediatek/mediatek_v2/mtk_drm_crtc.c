@@ -10306,14 +10306,19 @@ static void mtk_crtc_all_layer_off(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp;
 
 	keep_first_layer = true;
-	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 			OVL_ALL_LAYER_OFF, &keep_first_layer);
+		keep_first_layer = false;
+	}
 
 	if (mtk_crtc->is_dual_pipe) {
-		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j)
+		keep_first_layer = true;
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
 			mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 				OVL_ALL_LAYER_OFF, &keep_first_layer);
+			keep_first_layer = false;
+		}
 	}
 }
 
