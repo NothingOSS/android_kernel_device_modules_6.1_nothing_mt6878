@@ -1855,7 +1855,7 @@ static void accdet_work_callback(struct work_struct *work)
 {
 	u32 pre_cable_type = accdet->cable_type;
 
-	__pm_stay_awake(accdet->wake_lock);
+	__pm_wakeup_event(accdet->wake_lock,1000);
 	check_cable_type();
 
 	mutex_lock(&accdet->res_lock);
@@ -1866,7 +1866,6 @@ static void accdet_work_callback(struct work_struct *work)
 		pr_info("%s() Headset has been plugout. Don't set state\n",
 			__func__);
 	mutex_unlock(&accdet->res_lock);
-	__pm_relax(accdet->wake_lock);
 
 	if (accdet_dts.accdet_irq_gpio_enable == 0x1)
 		enable_irq(accdet->gpioirq);
