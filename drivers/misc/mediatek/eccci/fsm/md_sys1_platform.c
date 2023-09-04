@@ -256,6 +256,40 @@ static void md_pmic_info_dump(void)
 	}
 }
 
+/* MD team need md_regulator pmic dump, so add it as general flow */
+static void ccci_md_regulator_dump(void)
+{
+	unsigned int idx;
+	int ret = 0;
+
+	if (in_interrupt()) {
+		CCCI_MEM_LOG_TAG(0, TAG,
+			"In interrupt, skip dump md pmic info.\n");
+		return;
+	}
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_SPMI_MTK_PMIF)
+	spmi_dump_pmif_record_reg();
+#endif
+
+	for (idx = 0; idx < ARRAY_SIZE(md_reg_table); idx++) {
+		if (IS_ERR(md_reg_table[idx].reg_ref)) {
+			ret = PTR_ERR(md_reg_table[idx].reg_ref);
+			if (ret != -ENODEV) {
+				CCCI_ERROR_LOG(-1, TAG,
+					"%s:get regulator(%s) fail, ret = %d\n",
+					__func__, md_reg_table[idx].reg_name, ret);
+				continue;
+			}
+		} else
+			CCCI_NORMAL_LOG(-1, TAG,
+				"[PMIC DUMP]pmic get_voltage %s=%d uV\n",
+				md_reg_table[idx].reg_name,
+				regulator_get_voltage(
+				md_reg_table[idx].reg_ref));
+	}
+}
+
 static atomic_t reg_dump_ongoing;
 static void md_cd_dump_debug_register(struct ccci_modem *md, bool isr_skip_dump)
 {
@@ -303,6 +337,8 @@ static void md_cd_dump_debug_register(struct ccci_modem *md, bool isr_skip_dump)
 				ccci_read32(dpsw_reg, 0));
 	}
 	md_pmic_info_dump();
+	ccci_md_regulator_dump();
+
 	md_cd_lock_modem_clock_src(1);
 	md_dump_reg(md);
 	md_cd_lock_modem_clock_src(0);
