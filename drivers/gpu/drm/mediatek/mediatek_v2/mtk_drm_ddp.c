@@ -21008,6 +21008,30 @@ void mtk_ddp_insert_dsc_prim_mt6897(struct mtk_drm_crtc *mtk_crtc,
 	if (!mtk_crtc->is_dual_pipe)
 		return;
 
+	/* dual dsc 4slice: PQ1 -> DSC1 -> DSI1 */
+	if (panel_ext && panel_ext->dsc_params.dual_dsc_enable) {
+		addr =  MT6897_PANEL_COMP_OUT_CROSSBAR0_MOUT_EN;
+		value = DISP_PQ_OUT_CROSSBAR1_TO_DSC_0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		addr =  MT6897_COMP_OUT_CROSSBAR3_MOUT_EN;
+		value = 0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+		addr =  MT6897_COMP_OUT_CROSSBAR1_MOUT_EN;
+		value = DISP_DSC_0_TO_MERGE_OUT_CROSSBAR0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		addr =  MT6897_MERGE_OUT_CROSSBAR0_MOUT_EN;
+		value = DISP_COMP_OUT_CROSSBAR0_TO_DSI0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+		return;
+	}
+
+
 	/* PANEL_COMP_OUT_CROSSBAR4_MOUT to DISP_DSC_WRAP0 */
 	addr = MT6897_PANEL_COMP_OUT_CROSSBAR4_MOUT_EN;
 	value = DISP_DLI_RELAY4_TO_DSC_1;
@@ -21018,7 +21042,7 @@ void mtk_ddp_insert_dsc_prim_mt6897(struct mtk_drm_crtc *mtk_crtc,
 	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 		       mtk_crtc->config_regs_pa + addr, value, ~0);
 
-	/*DSC_WARP0-> DSI1*/
+	/* DSC_WARP0-> DSI1 */
 	if (panel_ext && panel_ext->output_mode == MTK_PANEL_DUAL_PORT) {
 		addr = MT6897_COMP_OUT_CROSSBAR2_MOUT_EN;
 		value = DISP_DSC_1_TO_MERGE_OUT_CROSSBAR1;

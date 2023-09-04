@@ -675,6 +675,8 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 			comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
 
 		mtk_dump_reg(comp);
+		if (crtc_id == 0 && panel_ext->dsc_params.dual_dsc_enable)
+			mtk_dump_reg(priv->ddp_comp[DDP_COMPONENT_DSC1]);
 	}
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
@@ -2602,6 +2604,8 @@ void mtk_crtc_ddp_prepare(struct mtk_drm_crtc *mtk_crtc)
 			comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
 
 		mtk_ddp_comp_clk_prepare(comp);
+		if (drm_crtc_index(crtc) == 0 && panel_ext->dsc_params.dual_dsc_enable)
+			mtk_ddp_comp_prepare(priv->ddp_comp[DDP_COMPONENT_DSC1]);
 	}
 	if (mtk_crtc->is_dual_pipe) {
 		for_each_comp_id_in_dual_pipe(comp_id, mtk_crtc->path_data, i, j) {
@@ -2678,6 +2682,8 @@ void mtk_crtc_ddp_unprepare(struct mtk_drm_crtc *mtk_crtc)
 			comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
 
 		mtk_ddp_comp_clk_unprepare(comp);
+		if (drm_crtc_index(crtc) == 0 && panel_ext->dsc_params.dual_dsc_enable)
+			mtk_ddp_comp_unprepare(priv->ddp_comp[DDP_COMPONENT_DSC1]);
 	}
 
 	if (mtk_crtc->is_dual_pipe) {
@@ -9248,6 +9254,9 @@ int mtk_crtc_attach_ddp_comp(struct drm_crtc *crtc, int ddp_mode,
 		struct mtk_ddp_comp *dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
 
 		dsc_comp->mtk_crtc = is_attach ? mtk_crtc : NULL;
+
+		if (panel_ext->dsc_params.dual_dsc_enable)
+			priv->ddp_comp[DDP_COMPONENT_DSC1]->mtk_crtc = dsc_comp->mtk_crtc;
 	}
 
 	return 0;
@@ -9326,6 +9335,9 @@ static void mtk_crtc_addon_connector_disconnect(struct drm_crtc *crtc,
 		mtk_disp_mutex_remove_comp_with_cmdq(mtk_crtc, dsc_comp->id,
 			handle, 0);
 		mtk_ddp_comp_stop(dsc_comp, handle);
+
+		if (drm_crtc_index(crtc) == 0 && panel_ext->dsc_params.dual_dsc_enable)
+			mtk_ddp_comp_stop(priv->ddp_comp[DDP_COMPONENT_DSC1], handle);
 	}
 
 }
@@ -9482,6 +9494,16 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc,
 
 		mtk_ddp_comp_config(dsc_comp, &cfg, handle);
 		mtk_ddp_comp_start(dsc_comp, handle);
+
+		if (drm_crtc_index(crtc) == 0 && panel_ext && panel_ext->dsc_params.dual_dsc_enable) {
+			dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
+			dsc_comp->mtk_crtc = mtk_crtc;
+			mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, dsc_comp->id,
+				mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base),
+				handle, 0);
+			mtk_ddp_comp_config(dsc_comp, &cfg, handle);
+			mtk_ddp_comp_start(dsc_comp, handle);
+		}
 
 		if (flush) {
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
