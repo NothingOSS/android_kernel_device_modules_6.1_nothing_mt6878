@@ -673,6 +673,8 @@ static void scp_A_notify_ws(struct work_struct *ws)
 		scp_dvfs_cali_ready = 1;
 		pr_debug("[SCP] notify blocking call\n");
 		scp_extern_notify(SCP_EVENT_READY);
+		/* release dram */
+		scp_lpm_rel_dram();
 	}
 
 
@@ -1947,6 +1949,9 @@ void scp_sys_reset_ws(struct work_struct *ws)
 
 	if (scp_dvfs_feature_enable())
 		scp_resource_req(SCP_REQ_26M);
+
+	/* request dram */
+	scp_lpm_req_dram();
 
 	/* dump scp related resource information */
 	scp_reousrce_dump();
