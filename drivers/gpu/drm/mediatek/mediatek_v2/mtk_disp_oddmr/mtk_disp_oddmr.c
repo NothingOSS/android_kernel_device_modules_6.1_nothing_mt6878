@@ -3574,13 +3574,15 @@ static void mtk_cal_oddmr_valid_partial_roi(struct mtk_ddp_comp *comp,
 				struct mtk_rect *partial_roi)
 {
 	struct mtk_drm_dbi_cfg_info *dbi_cfg_data = &g_oddmr_priv->dbi_cfg_info;
-	unsigned int scale_factor_v = dbi_cfg_data->basic_info.partial_update_scale_factor_v;
+	unsigned int scale_factor_v = 4;
 	unsigned int dbi_y_diff = 0;
 
 	ODDMRLOW_LOG("%s line: %d before partial_y:%d partial_height:%d\n",
 		__func__, __LINE__, partial_roi->y, partial_roi->height);
 
-	if (comp->mtk_crtc->panel_ext->params->is_support_dbi == true) {
+	if (comp->mtk_crtc->panel_ext->params->is_support_dbi == true &&
+		g_oddmr_priv->dbi_state == ODDMR_INIT_DONE) {
+		scale_factor_v = dbi_cfg_data->basic_info.partial_update_scale_factor_v;
 		/* align to scale factor v*/
 		if (partial_roi->y % scale_factor_v != 0) {
 			dbi_y_diff =
@@ -5460,7 +5462,8 @@ static void mtk_oddmr_dbi_change_remap_gain(struct mtk_ddp_comp *comp,
 	remap_gain_target_code = (dbi_cfg_data->fps_dbv_node.remap_gain_target_code<<16);
 	remap_gain = MIN((((remap_gain_target_code - (cur_offset * cur_dbv_gain)) / 255) >> 4), 4096);
 
-	ODDMRLOW_LOG("remap gain:%x",remap_gain);
+	ODDMRLOW_LOG("remap gain:%x, remap offset:%x, remap DBV gain:%x\n",
+		remap_gain, cur_offset, cur_dbv_gain);
 	mtk_oddmr_write_mask(comp, remap_gain,
 		dbi_cfg_data->fps_dbv_node.remap_gain_address,
 		dbi_cfg_data->fps_dbv_node.remap_gain_mask, pkg);
