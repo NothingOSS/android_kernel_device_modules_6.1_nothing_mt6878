@@ -10031,7 +10031,8 @@ void mtk_crtc_check_trigger(struct mtk_drm_crtc *mtk_crtc, bool delay,
 	}
 
 	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-		DDPINFO("%s:%d, not in trigger mode\n", __func__, __LINE__);
+		/* vdo mode enable EOF/SOF irq and normal fps */
+		mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
 		CRTC_MMP_MARK(index, kick_trigger, 0, 3);
 		goto err;
 	}
