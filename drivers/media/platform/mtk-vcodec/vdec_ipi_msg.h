@@ -452,6 +452,7 @@ struct vdec_vsi {
 	__u8 output_async;
 	__u8 low_pw_mode;
 	__u8 in_group;
+	__u8 cpu_top_grp_aware;
 	__s8 crc_path[256];
 	__s8 golden_path[256];
 	__u64 general_buf_dma;

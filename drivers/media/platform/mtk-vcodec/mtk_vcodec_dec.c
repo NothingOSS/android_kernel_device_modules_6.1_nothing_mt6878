@@ -1538,6 +1538,11 @@ void mtk_vdec_error_handle(struct mtk_vcodec_ctx *ctx, char *debug_str)
 	mtk_vdec_lpw_stop_timer(ctx, true);
 
 	vdec_check_release_lock(ctx);
+
+	mutex_lock(&ctx->dev->dec_dvfs_mutex);
+	mtk_vcodec_cpu_grp_aware_hint(ctx, false);
+	mutex_unlock(&ctx->dev->dec_dvfs_mutex);
+
 	for (i = 0; i < MTK_VDEC_HW_NUM; i++)
 		atomic_set(&dev->dec_hw_active[i], 0);
 	mtk_vdec_queue_error_event(ctx);

@@ -589,3 +589,8 @@ void mtk_vcodec_alive_checker_resume(struct mtk_vcodec_dev *dev)
 #endif
 #endif
 }
+
+void mtk_vcodec_cpu_grp_aware_hint(struct mtk_vcodec_ctx *ctx, int enable)
+{
+
+}

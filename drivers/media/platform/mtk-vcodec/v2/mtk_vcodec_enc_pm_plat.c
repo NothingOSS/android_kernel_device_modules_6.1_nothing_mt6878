@@ -298,7 +298,7 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 	int ret;
 	struct dev_pm_opp *opp = 0;
 	unsigned long freq = 0;
-	int i = 0, venc_req = 0;
+	int i = 0, venc_req = 0, flag = 0;
 	bool tput_ret;
 	struct platform_device *pdev = 0;
 
@@ -314,6 +314,13 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 	if (ret)
 		mtk_v4l2_debug(0, "[VENC] no need venc-mmdvfs-in-adaptive");
 	dev->venc_dvfs_params.mmdvfs_in_adaptive = venc_req;
+
+	ret = of_property_read_s32(pdev->dev.of_node, "venc-cpu-grp-aware", &flag);
+	if (ret) {
+		mtk_v4l2_debug(0, "[VENC] no need venc-cpu-gpr-aware");
+		dev->venc_dvfs_params.cpu_top_grp_aware = -1;
+	}
+
 
 	ret = dev_pm_opp_of_add_table(&dev->plat_dev->dev);
 	if (ret < 0) {
@@ -471,7 +478,8 @@ void mtk_venc_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 		ctx->id, dev->venc_dvfs_params.target_freq, inst->vsi->config.target_freq);
 	dev->venc_dvfs_params.target_freq = inst->vsi->config.target_freq;
 	dev->venc_dvfs_params.target_bw_factor = inst->vsi->config.target_bw_factor;
-
+	mtk_vcodec_cpu_grp_aware_hint(ctx, inst->vsi->config.cpu_top_grp_aware);
+	inst->vsi->config.cpu_top_grp_aware = 0;
 }
 
 void mtk_venc_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)

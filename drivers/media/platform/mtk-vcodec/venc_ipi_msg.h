@@ -484,6 +484,7 @@ struct venc_vcu_config {
 	__u32 codec_fmt;
 	__s32 target_freq;
 	__u32 target_bw_factor;
+	__u8 cpu_top_grp_aware;
 	__u32 reserved;
 	struct mtk_color_desc color_desc;
 	struct mtk_venc_multi_ref multi_ref;

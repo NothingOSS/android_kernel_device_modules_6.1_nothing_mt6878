@@ -1535,6 +1535,9 @@ void mtk_venc_queue_error_event(struct mtk_vcodec_ctx *ctx)
 static void mtk_venc_error_handle(struct mtk_vcodec_ctx *ctx)
 {
 	mtk_vcodec_set_state(ctx, MTK_STATE_ABORT);
+	mutex_lock(&ctx->dev->enc_dvfs_mutex);
+	mtk_vcodec_cpu_grp_aware_hint(ctx, false);
+	mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 	mtk_venc_queue_error_event(ctx);
 }
 
@@ -3115,6 +3118,7 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 			ctx->id, mtk_buf->vb.vb2_buf.index, mtk_buf->enc_params.operationrate,
 			mtk_buf->enc_params.operationrate_adaptive);
 		ret |= venc_if_set_param(ctx, VENC_SET_PARAM_OPERATION_RATE, &enc_prm);
+		mtk_venc_dvfs_sync_vsi_data(ctx);
 	}
 
 	if (!ret && mtk_buf->param_change & MTK_ENCODE_PARAM_BITRATE_MODE) {

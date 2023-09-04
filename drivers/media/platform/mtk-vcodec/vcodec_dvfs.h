@@ -17,7 +17,7 @@
 #define BW_FACTOR_10BIT 125
 #define BW_FACTOR_NONAFBC 114
 
-
+extern void set_top_grp_aware(int val, int force_ctrl);
 
 struct mtk_vcodec_dev;
 struct mtk_vcodec_ctx;
@@ -96,6 +96,7 @@ struct dvfs_params {
 	u8 mmdvfs_in_adaptive; /* need send dvfs/mmqos request to vcp*/
 	u8 init_boost;
 	u32 last_boost_time;
+	s32 cpu_top_grp_aware; // ref_cnt of trigger cpu top grp aware
 
 };
 
@@ -106,6 +107,7 @@ bool remove_update(struct mtk_vcodec_ctx *ctx);
 u32 match_avail_freq(struct mtk_vcodec_dev *dev, int codec_type, u64 freq);
 void update_freq(struct mtk_vcodec_dev *dev, int codec_type);
 bool mtk_dvfs_check_op_diff(int op1, int op2, int threshold, int compare);
+void mtk_vcodec_cpu_grp_aware_hint(struct mtk_vcodec_ctx *ctx, int enable);
 void mtk_vcodec_alive_checker_suspend(struct mtk_vcodec_dev *dev);
 void mtk_vcodec_alive_checker_resume(struct mtk_vcodec_dev *dev);
 #endif

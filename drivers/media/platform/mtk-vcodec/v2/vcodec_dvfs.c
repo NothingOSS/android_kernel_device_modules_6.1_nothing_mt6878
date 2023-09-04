@@ -732,3 +732,42 @@ bool mtk_dvfs_check_op_diff(int op1, int op2, int threshold, int compare)
 	else
 		return false;
 }
+
+// This func should be around dvfs mutex
+void mtk_vcodec_cpu_grp_aware_hint(struct mtk_vcodec_ctx *ctx, int enable)
+{
+	struct mtk_vcodec_dev *dev = ctx->dev;
+	struct dvfs_params *cur_dvfs_param = NULL;
+	char type = ctx->type;
+
+	if (type == MTK_INST_DECODER)
+		cur_dvfs_param = &dev->vdec_dvfs_params;
+	else if (type == MTK_INST_ENCODER)
+		cur_dvfs_param = &dev->venc_dvfs_params;
+	else {
+		mtk_v4l2_debug(0, "[VDVFS] unknown ctx type!\n");
+		return;
+	}
+
+	if (cur_dvfs_param->cpu_top_grp_aware < 0)
+		return;
+
+	if (enable) {
+		if(cur_dvfs_param->cpu_top_grp_aware == 0) {
+			cur_dvfs_param->cpu_top_grp_aware = 1;
+			set_top_grp_aware(1, 0);
+			mtk_v4l2_debug(0, "%s [VDVFS][%s][%d] enable CPU top grp aware!\n",
+				__func__, (type == MTK_INST_DECODER) ? "VDEC" : "VENC", ctx->id);
+		}
+	} else {
+		if(cur_dvfs_param->cpu_top_grp_aware == 1) {
+			cur_dvfs_param->cpu_top_grp_aware = 0;
+			set_top_grp_aware(0, 0);
+			mtk_v4l2_debug(0, "%s [VDVFS][%s][%d] disable CPU top grp aware!\n",
+				__func__, (type == MTK_INST_DECODER) ? "VDEC" : "VENC", ctx->id);
+		}
+	}
+	mtk_v4l2_debug(4, "%s [VDVFS][%s][%d] cpu_grp_aware ref cnt %d (%s)!\n",
+		__func__, (type == MTK_INST_DECODER) ? "VDEC" : "VENC",  ctx->id,
+		cur_dvfs_param->cpu_top_grp_aware, enable ? "enable" : "disable");
+}
