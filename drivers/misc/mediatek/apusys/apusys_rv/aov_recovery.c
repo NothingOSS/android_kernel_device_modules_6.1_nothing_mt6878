@@ -172,14 +172,10 @@ int aov_recovery_ipi_init(struct platform_device *pdev, struct mtk_apu *apu)
 
 static void apusys_aov_recovery_remove(struct rpmsg_device *rpdev)
 {
-	unregister_rpmsg_driver(&aov_recovery_driver);
-	mutex_destroy(&aov_ipi_mtx);
 }
 
 void aov_recovery_exit(void)
 {
-	unregister_rpmsg_driver(&aov_recovery_driver);
-	mutex_destroy(&aov_ipi_mtx);
 }
 
 
