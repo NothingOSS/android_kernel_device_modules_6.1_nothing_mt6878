@@ -410,13 +410,11 @@ int conn_pwr_notify_event(enum conn_pwr_drv_type drv, enum conn_pwr_event_type e
 	}
 
 	ret = (*g_event_cb_tbl[drv])(event, data);
-	if (event == CONN_PWR_EVENT_LEVEL)
-		pr_info("%s, drv = %d, level = %d, ret = %d\n", __func__, drv, *((int *)data), ret);
-	else if (event == CONN_PWR_EVENT_MAX_TEMP && data != NULL) {
+	if (event == CONN_PWR_EVENT_MAX_TEMP && data != NULL) {
 		d = (struct conn_pwr_event_max_temp *)data;
 		pr_info("%s, drv = %d, max_t = %d, rcv_t = %d, ret = %d\n", __func__,
 			drv, d->max_temp, d->recovery_temp, ret);
-	} else {
+	} else if (event != CONN_PWR_EVENT_LEVEL) {
 		pr_info("invalid. event = %d, data = %lx\n", event,
 				(unsigned long)data);
 		return -3;
