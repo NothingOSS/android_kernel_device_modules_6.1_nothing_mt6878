@@ -127,6 +127,7 @@ struct mtk_disp_c3d_primary {
 	struct mutex c3d_power_lock;
 	struct mutex c3d_lut_lock;
 	struct cmdq_pkt *sram_pkt;
+	atomic_t c3d_sram_hw_init;
 };
 
 struct mtk_disp_c3d {
@@ -142,7 +143,6 @@ struct mtk_disp_c3d {
 	bool pkt_reused;
 	struct cmdq_reuse reuse_c3d[4913 * 2];
 	atomic_t c3d_is_clock_on;
-	atomic_t c3d_sram_hw_init;
 	atomic_t c3d_force_sram_apb;
 	bool has_set_1dlut;
 };

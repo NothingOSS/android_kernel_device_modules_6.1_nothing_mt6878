@@ -11085,7 +11085,7 @@ static void mtk_drm_crtc_fix_conn_mode(struct drm_crtc *crtc, struct drm_display
 static void mtk_drm_crtc_update_interface(struct drm_crtc *crtc,
 	struct drm_atomic_state *state)
 {
-	int i;
+	int i, j, k;
 	struct mtk_drm_crtc *mtk_crtc;
 	struct drm_connector *connector;
 	struct drm_connector_state *new_conn_state;
@@ -11095,6 +11095,7 @@ static void mtk_drm_crtc_update_interface(struct drm_crtc *crtc,
 	struct drm_crtc_state *crtc_state;
 	struct mtk_crtc_state *mtk_crtc_state;
 	unsigned int crtc_index;
+	struct mtk_ddp_comp *comp;
 
 	mtk_crtc = to_mtk_crtc(crtc);
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -11106,6 +11107,9 @@ static void mtk_drm_crtc_update_interface(struct drm_crtc *crtc,
 			if (connector->connector_type == DRM_MODE_CONNECTOR_DSI &&
 				output_comp &&
 				mtk_dsi_get_comp_id(connector) != output_comp->id) {
+				/* notify dsi switched */
+				for_each_comp_in_cur_crtc_path(comp, mtk_crtc, j, k)
+					mtk_ddp_comp_io_cmd(comp, NULL, NOTIFY_CONNECTOR_SWITCH, NULL);
 				/*output component is changed*/
 				comp_id = mtk_dsi_get_comp_id(connector);
 				mtk_crtc->ddp_mode =

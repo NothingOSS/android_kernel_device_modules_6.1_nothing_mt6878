@@ -704,6 +704,7 @@ enum mtk_ddp_io_cmd {
 	OVL_FRAME_DONE_EVENT,
 	GET_OVL_SYS_NUM,
 	GET_VALID_PARTIAL_ROI,
+	NOTIFY_CONNECTOR_SWITCH,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {

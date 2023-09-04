@@ -85,7 +85,7 @@ struct mtk_disp_gamma_primary {
 	atomic_t sof_filp;
 	atomic_t force_delay_check_trig;
 
-	atomic_t relay_value;
+	atomic_t force_relay;
 	unsigned int back_up_cfg;
 	unsigned int data_mode;
 	unsigned int table_config_sel;
@@ -93,7 +93,7 @@ struct mtk_disp_gamma_primary {
 	bool hwc_ctl_silky_brightness_support;
 	bool gamma_wake_locked;
 	bool need_refinalize;
-	atomic_t gamma_table_valid;
+	atomic_t gamma_sram_hw_init;
 };
 
 struct mtk_disp_gamma {
@@ -105,7 +105,6 @@ struct mtk_disp_gamma {
 	struct mtk_disp_gamma_tile_overhead_v tile_overhead_v;
 	struct mtk_ddp_comp *companion;
 	struct mtk_disp_gamma_primary *primary_data;
-	atomic_t gamma_sram_hw_init;
 	atomic_t gamma_is_clock_on;
 	bool pkt_reused;
 	struct cmdq_reuse reuse_gamma_lut[DISP_GAMMA_12BIT_LUT_SIZE * 2 + 6];
