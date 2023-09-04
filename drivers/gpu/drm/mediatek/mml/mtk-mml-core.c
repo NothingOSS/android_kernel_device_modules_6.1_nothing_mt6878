@@ -483,6 +483,23 @@ static void get_frame_str(char *frame, size_t sz, const struct mml_frame_data *d
 		frame[0] = 0;
 }
 
+const char *dump_ovlid(enum mml_mode mode, enum mml_layer_id ovlsys_id)
+{
+	if (mode != MML_MODE_DIRECT_LINK)
+		return "";
+
+	switch (ovlsys_id) {
+	case MML_DLO_OVLSYS0:
+		return "OVL0";
+	case MML_DLO_OVLSYS1:
+		return "OVL1";
+	default:
+		break;
+	}
+
+	return "";
+}
+
 static void dump_inout(struct mml_task *task)
 {
 	const struct mml_frame_config *cfg = task->config;
@@ -494,7 +511,7 @@ static void dump_inout(struct mml_task *task)
 	mml_mmp(dumpinfo, MMPROFILE_FLAG_START, task->job.jobid, 0);
 
 	get_frame_str(frame, sizeof(frame), &cfg->info.src);
-	mml_log("in:%s plane:%hhu%s%s%s job:%u mode:%hhu %s acttime %u",
+	mml_log("in:%s plane:%hhu%s%s%s job:%u mode:%hhu %s %s acttime %u",
 		frame,
 		task->buf.src.cnt,
 		(cfg->info.alpha || cfg->alpharot) ? " alpha" : "",
@@ -503,6 +520,7 @@ static void dump_inout(struct mml_task *task)
 		task->job.jobid,
 		cfg->info.mode,
 		cfg->disp_vdo ? "vdo" : "cmd",
+		dump_ovlid(cfg->info.mode, cfg->info.ovlsys_id),
 		cfg->info.act_time);
 	if (cfg->info.dest[0].pq_config.en_region_pq) {
 		get_frame_str(frame, sizeof(frame), &cfg->info.seg_map);
@@ -1509,15 +1527,31 @@ static s32 core_command(struct mml_task *task, u32 pipe)
 	return ret;
 }
 
-static void wait_dma_fence(const char *name, struct dma_fence *fence, u32 jobid)
+enum mml_fence_index {
+	mml_fence_src,
+	mml_fence_src1,
+	mml_fence_dest,
+	mml_fence_dest1,
+	mml_fence_name_total
+};
+
+const char *mml_fence_name[] = {
+	[mml_fence_src] = "src",
+	[mml_fence_src1] = "src1",
+	[mml_fence_dest] = "dest",
+	[mml_fence_dest1] = "dest1",
+};
+
+static void wait_dma_fence(enum mml_fence_index name_idx, struct dma_fence *fence, u32 jobid)
 {
 	long ret;
+	const char *name = mml_fence_name[name_idx];
 
 	if (!fence)
 		return;
 
 	mml_trace_ex_begin("%s_%s", __func__, name);
-	mml_mmp(fence, MMPROFILE_FLAG_PULSE, jobid,
+	mml_mmp(fence, MMPROFILE_FLAG_START, jobid,
 		mmp_data2_fence(fence->context, fence->seqno));
 	ret = dma_fence_wait_timeout(fence, false, msecs_to_jiffies(200));
 	if (ret <= 0) {
@@ -1528,6 +1562,7 @@ static void wait_dma_fence(const char *name, struct dma_fence *fence, u32 jobid)
 		mml_mmp(fence_timeout, MMPROFILE_FLAG_PULSE, jobid,
 			mmp_data2_fence(fence->context, fence->seqno));
 	}
+	mml_mmp(fence, MMPROFILE_FLAG_END, jobid, name_idx);
 
 	mml_trace_ex_end();
 }
@@ -1639,12 +1674,11 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 
 	/* before flush, wait buffer fence being signaled */
 	task->wait_fence_time[pipe] = sched_clock();
-	wait_dma_fence("src", task->buf.src.fence, task->job.jobid);
+	wait_dma_fence(mml_fence_src, task->buf.src.fence, task->job.jobid);
 	if (task->config->info.dest[0].pq_config.en_region_pq)
-		wait_dma_fence("src", task->buf.seg_map.fence,
-			       task->job.jobid);
+		wait_dma_fence(mml_fence_src1, task->buf.seg_map.fence, task->job.jobid);
 	for (i = 0; i < task->buf.dest_cnt; i++)
-		wait_dma_fence("dest", task->buf.dest[i].fence,
+		wait_dma_fence(i == 0 ? mml_fence_dest : mml_fence_dest1, task->buf.dest[i].fence,
 			       task->job.jobid);
 
 	/* flush only once for both pipe */

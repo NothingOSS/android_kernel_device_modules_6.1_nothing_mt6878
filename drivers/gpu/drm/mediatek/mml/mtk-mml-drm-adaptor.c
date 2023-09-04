@@ -810,6 +810,10 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 		}
 	}
 
+	/* TODO: remove after issue fix */
+	if (submit->info.ovlsys_id != MML_DLO_OVLSYS0)
+		mml_err("[drm]%s submit ovlsys id %u", __func__, submit->info.ovlsys_id);
+
 	/* always fixup dest_cnt > MML_MAX_OUTPUTS */
 	if (submit->info.dest_cnt > MML_MAX_OUTPUTS)
 		submit->info.dest_cnt = MML_MAX_OUTPUTS;
