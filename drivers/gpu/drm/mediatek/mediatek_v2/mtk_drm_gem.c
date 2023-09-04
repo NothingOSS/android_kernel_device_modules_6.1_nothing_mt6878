@@ -899,6 +899,10 @@ int mtk_drm_ioctl_mml_gem_submit(struct drm_device *dev, void *data,
 	struct mtk_drm_crtc *mtk_crtc;
 
 	DDPINFO("%s:%d +\n", __func__, __LINE__);
+	ret = wait_event_interruptible(priv->kernel_pm.wq,
+			atomic_read(&priv->kernel_pm.status) == KERNEL_PM_RESUME);
+	if (unlikely(ret != 0))
+		DDPMSG("%s kernel_pm wait queue woke up accidently\n", __func__);
 
 	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PRIMARY)) {
 		DDPINFO("%s:%d MTK_DRM_OPT_MML_PRIMARY is not support\n", __func__, __LINE__);
