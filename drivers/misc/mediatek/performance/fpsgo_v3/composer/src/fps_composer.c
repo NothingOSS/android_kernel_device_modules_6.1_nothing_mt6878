@@ -859,26 +859,27 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 		if (!f_render->sbe_control_flag &&
 			f_render->hwui == RENDER_INFO_HWUI_NONE &&
 			f_render->frame_type == NON_VSYNC_ALIGNED_TYPE &&
-			fpsgo_check_is_cam_apk(f_render->tgid))
+			fpsgo_check_is_cam_apk(f_render->tgid)) {
 			f_render->frame_type = fpsgo_com_check_BQ_type(&f_render->bq_type,
 						pid, f_render->buffer_id);
-		if (f_render->frame_type == NON_VSYNC_ALIGNED_TYPE)
-			f_render->frame_type = fpsgo_check_exist_queue_SF(f_render->tgid);
-		if (f_render->frame_type == NON_VSYNC_ALIGNED_TYPE) {
-			if (fpsgo_com_check_app_cam_fps_align(f_render)) {
-				fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
-					&raw_runtime, &running_time, &enq_running_time,
-					0, enqueue_end_time,
-					f_render->t_dequeue_start, f_render->t_dequeue_end,
-					f_render->t_enqueue_start, enqueue_end_time, 0);
-				f_render->raw_runtime = raw_runtime;
-				f_render->running_time = running_time;
-				f_render->frame_type = BY_PASS_TYPE;
-				fpsgo_systrace_c_fbt_debug(f_render->pid, f_render->buffer_id,
-					1, "app_cam_no_align");
-			} else
-				fpsgo_systrace_c_fbt_debug(f_render->pid, f_render->buffer_id,
-					0, "app_cam_no_align");
+			if (f_render->frame_type == NON_VSYNC_ALIGNED_TYPE)
+				f_render->frame_type = fpsgo_check_exist_queue_SF(f_render->tgid);
+			if (f_render->frame_type == NON_VSYNC_ALIGNED_TYPE) {
+				if (fpsgo_com_check_app_cam_fps_align(f_render)) {
+					fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
+						&raw_runtime, &running_time, &enq_running_time,
+						0, enqueue_end_time,
+						f_render->t_dequeue_start, f_render->t_dequeue_end,
+						f_render->t_enqueue_start, enqueue_end_time, 0);
+					f_render->raw_runtime = raw_runtime;
+					f_render->running_time = running_time;
+					f_render->frame_type = BY_PASS_TYPE;
+					fpsgo_systrace_c_fbt_debug(f_render->pid, f_render->buffer_id,
+						1, "app_cam_no_align");
+				} else
+					fpsgo_systrace_c_fbt_debug(f_render->pid, f_render->buffer_id,
+						0, "app_cam_no_align");
+			}
 		}
 	}
 
