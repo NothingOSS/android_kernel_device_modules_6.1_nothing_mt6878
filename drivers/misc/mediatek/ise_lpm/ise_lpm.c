@@ -498,6 +498,13 @@ static int ise_lpm_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void ise_lpm_shutdown(struct platform_device *pdev)
+{
+	/* stop service ise wakelock */
+	ise_wakelock_en = 0;
+	pr_notice("%s ise-wakelock %d\n", __func__, ise_wakelock_en);
+}
+
 static const struct of_device_id ise_lpm_of_match[] = {
 	{ .compatible = "mediatek,ise-lpm", },
 	{},
@@ -506,6 +513,7 @@ static const struct of_device_id ise_lpm_of_match[] = {
 static struct platform_driver ise_lpm_driver = {
 	.probe = ise_lpm_probe,
 	.remove = ise_lpm_remove,
+	.shutdown = ise_lpm_shutdown,
 	.driver	= {
 		.name = "ise-lpm",
 		.owner = THIS_MODULE,
