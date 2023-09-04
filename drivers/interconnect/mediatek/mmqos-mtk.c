@@ -1106,14 +1106,15 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 		} else {
 			src->v2_max_ostd = false;
 		}
-		if (value > mmqos->max_ratio) {
+		if (value > mmqos->max_ratio || (src->v2_max_ostd && !(mmqos_state & DPC_ENABLE))) {
+			if (value > mmqos->max_ratio)
+				dev_notice(larb_node->larb_dev,
+					"larb=%d port=%d avg_bw:%d peak_bw:%d ostd=%#x\n",
+					MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
+					icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
+					icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
+					value);
 			value = mmqos->max_ratio;
-			dev_notice(larb_node->larb_dev,
-				"larb=%d port=%d avg_bw:%d peak_bw:%d ostd=%#x\n",
-				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
-				icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
-				icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
-				value);
 		}
 #endif
 		if (mmqos_state & OSTD_ENABLE)
