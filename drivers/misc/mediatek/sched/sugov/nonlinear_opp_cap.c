@@ -774,6 +774,27 @@ unsigned long pd_get_freq_opp_legacy(int cpu, unsigned long freq)
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_opp_legacy);
 
+unsigned long pd_get_freq_opp_legacy_type(int wl_type, int cpu, unsigned long freq)
+{
+	int i, idx;
+	struct pd_capacity_info *pd_info;
+
+	i = topology_cluster_id(cpu);
+	if (wl_type < 0 || wl_type >= nr_wl_type)
+		wl_type = wl_type_curr;
+	pd_info = &pd_wl_type[wl_type][i];
+
+	if (freq <= pd_info->freq_min)
+		return pd_info->freq_opp_map_legacy[pd_info->nr_freq_opp_map - 1];
+
+	idx = map_freq_idx_by_tbl(pd_info, freq);
+	if (freq > pd_get_opp_freq_legacy(cpu, pd_info->freq_opp_map_legacy[idx] + 1))
+		return pd_info->freq_opp_map_legacy[idx];
+	else
+		return pd_info->freq_opp_map_legacy[idx] + 1;
+}
+EXPORT_SYMBOL_GPL(pd_get_freq_opp_legacy_type);
+
 unsigned long pd_get_freq_util(int cpu, unsigned long freq)
 {
 	int i, idx;

@@ -678,6 +678,12 @@ static long eas_ioctl_impl(struct file *filp,
 		set_grp_awr_min_opp_margin(gas_margin_args.gear_id, gas_margin_args.group_id,
 			gas_margin_args.margin);
 		break;
+	case EAS_RESET_GAS_MARG_THR:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(int)))
+			return -1;
+		if(reset_grp_awr_margin() == -1)
+			return -1;
+		break;
 	default:
 		pr_debug(TAG "%s %d: unknown cmd %x\n",
 			__FILE__, __LINE__, cmd);

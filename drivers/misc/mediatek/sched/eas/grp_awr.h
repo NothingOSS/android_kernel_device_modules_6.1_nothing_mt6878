@@ -30,6 +30,7 @@ extern int get_grp_awr_thr(int gear_id, int group_id);
 extern int get_grp_awr_thr_freq(int gear_id, int group_id);
 extern void set_grp_awr_min_opp_margin(int gear_id, int group_id, int val);
 extern int get_grp_awr_min_opp_margin(int gear_id, int group_id);
+extern int reset_grp_awr_margin(void);
 extern void set_top_grp_aware(int val, int force_ctrl);
 extern int get_top_grp_aware(void);
 extern int get_top_grp_aware_refcnt(void);
