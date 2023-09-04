@@ -68,6 +68,10 @@ static int cfp_up_loading;
 static int cfp_down_loading;
 static int L_ceiling_min;
 static int L_min_cap_enable;
+static int ceiling_min_B_EARA;
+static int ceiling_min_M_EARA;
+static int ceiling_min_enable_EARA;
+
 
 module_param(cfp_onoff, int, 0644);
 module_param(cfp_polling_ms, int, 0644);
@@ -77,6 +81,10 @@ module_param(cfp_up_loading, int, 0644);
 module_param(cfp_down_loading, int, 0644);
 module_param(L_ceiling_min, int, 0644);
 module_param(L_min_cap_enable, int, 0644);
+module_param(ceiling_min_B_EARA, int, 0644);
+module_param(ceiling_min_M_EARA, int, 0644);
+module_param(ceiling_min_enable_EARA, int, 0644);
+
 
 static int cfp_cur_up_time;
 static int cfp_cur_down_time;
@@ -103,11 +111,24 @@ static void __cpu_ctrl_freq_systrace(int policy, int freq)
 		__cpu_ctrl_systrace(freq, "cpu_ceil_cluster_0");
 		__cpu_ctrl_systrace(L_min_cap_enable ? L_ceiling_min : -1,
 			"L_ceiling_min");
-	}
-	else if (policy == 1)
+		if (policy_num == 2) {
+			__cpu_ctrl_systrace(ceiling_min_enable_EARA ? ceiling_min_M_EARA : -1,
+			"ceiling_min_M_EARA");
+		}
+	} else if (policy == 1) {
 		__cpu_ctrl_systrace(freq, "cpu_ceil_cluster_1");
-	else if (policy == 2)
+		if (policy_num == 2) {
+			__cpu_ctrl_systrace(ceiling_min_enable_EARA ? ceiling_min_B_EARA : -1,
+			"ceiling_min_B_EARA");
+		} else {
+			__cpu_ctrl_systrace(ceiling_min_enable_EARA ? ceiling_min_M_EARA : -1,
+			"ceiling_min_M_EARA");
+		}
+	} else if (policy == 2) {
 		__cpu_ctrl_systrace(freq, "cpu_ceil_cluster_2");
+		__cpu_ctrl_systrace(ceiling_min_enable_EARA ? ceiling_min_B_EARA : -1,
+			"ceiling_min_B_EARA");
+	}
 }
 
 static void __update_cpu_freq_locked(void)
@@ -477,11 +498,19 @@ int fbt_set_cpu_freq_ceiling(int num, int *freq)
 		freq[0] >= 0 && freq[0] < L_ceiling_min)
 		freq[0] = L_ceiling_min;
 
+	if (policy_num >= 2 && ceiling_min_enable_EARA) {
+		if (freq[policy_num-2] >=0 && freq[policy_num-2] < ceiling_min_M_EARA)
+			freq[policy_num-2] = ceiling_min_M_EARA;
+		if (freq[policy_num-1] >=0 && freq[policy_num-1] < ceiling_min_B_EARA)
+			freq[policy_num-1] = ceiling_min_B_EARA;
+	}
+
+
 	mutex_lock(&cpu_ctrl_lock);
 
 	for (i = 0; i < policy_num && i < num; i++) {
 #if DEBUG_LOG
-		pr_info("%s i:%d, freq:%d\n", __func__, i, freq[i]);
+		pr_info("%s Cluster i:%d, freq:%d, num:%d\n", __func__, i, freq[i], num);
 #endif
 		if (fbt_last_ceiling[i] != freq[i]) {
 			need_update = 1;
@@ -522,6 +551,9 @@ void update_userlimit_cpu_freq(int kicker, int cluster_num, struct cpu_ctrl_data
 
 	freq = kcalloc(policy_num,
 		sizeof(struct cpufreq_policy *), GFP_KERNEL);
+	if (!freq)
+		return;
+
 	for (i = 0; i < cluster_num; i++)
 		freq[i] = pld[i].max;
 
@@ -614,6 +646,10 @@ int fbt_cpu_ctrl_init(void)
 
 	L_ceiling_min = 0;
 	L_min_cap_enable = 1;
+	ceiling_min_B_EARA= 0;
+	ceiling_min_M_EARA = 0;
+	ceiling_min_enable_EARA = 0;
+
 
 	/* cfp request */
 	for (i = 0; i < CFP_KIR_MAX_NUM; i++) {
