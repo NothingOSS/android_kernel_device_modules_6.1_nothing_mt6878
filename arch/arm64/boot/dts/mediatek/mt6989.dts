@@ -18475,11 +18475,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 	};
 };
 
-&rt6160_bus5 {
-	regulator-min-microvolt = <3100000>;
-	regulator-max-microvolt = <3100000>;
-};
-
 &i2c1 {
 	rt6160@75 {
 		compatible = "richtek,rt6160";
