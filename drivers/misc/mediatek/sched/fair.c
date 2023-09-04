@@ -1926,7 +1926,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 		}
 	}
 
-	if (cluster > end_index)
+	if ((cluster > end_index) && !cpumask_empty(cpus))
 		fbc_params->fbc_reason = LB_FAIL;
 
 	if (trace_sched_find_best_candidates_enabled())

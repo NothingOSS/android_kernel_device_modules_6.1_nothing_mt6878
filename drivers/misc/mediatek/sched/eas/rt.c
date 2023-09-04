@@ -543,7 +543,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			break;
 	}
 
-	if (cluster > end_index)
+	if ((cluster > end_index) && target_pd)
 		rt_ea_output->select_reason = LB_FAIL;
 
 	weight = cpumask_weight(&candidates);
