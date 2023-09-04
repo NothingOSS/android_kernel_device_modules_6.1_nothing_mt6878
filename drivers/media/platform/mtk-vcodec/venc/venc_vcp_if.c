@@ -120,6 +120,16 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 	unsigned int suspend_block_cnt = 0;
 	int ipi_wait_type = IPI_SEND_WAIT;
 	struct venc_ap_ipi_msg_set_param *ap_out_msg;
+	struct venc_ap_ipi_msg_common *msg_ap = (struct venc_ap_ipi_msg_common *)msg;
+	struct venc_vcu_ipi_msg_common *msg_ack = (struct venc_vcu_ipi_msg_common *)msg;
+	bool use_msg_ack = (is_ack || msg_ap->msg_id == AP_IPIMSG_ENC_INIT ||
+		msg_ap->msg_id == AP_IPIMSG_ENC_QUERY_CAP); // msg use VENC_MSG_PREFIX
+
+	if ((!use_msg_ack && msg_ap->vcu_inst_addr == 0) ||
+	     (use_msg_ack && msg_ack->ap_inst_addr == 0 && !is_ack)) {
+		mtk_vcodec_err(inst, "msg 0x%x inst addr null", msg_ap->msg_id);
+		return -EINVAL;
+	}
 
 	if (preempt_count())
 		ipi_wait_type = IPI_SEND_POLLING;
@@ -177,10 +187,10 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 	ipi_size = ((sizeof(u32) * 2) + len + 3) / 4;
 	if (!is_ack)
 		inst->vcu_inst.failure = 0;
-	inst->ctx->err_msg = *(__u32 *)msg;
+	inst->ctx->err_msg = msg_ap->msg_id;
 
-	mtk_v4l2_debug(2, "id %d len %d msg 0x%x is_ack %d %d", obj.id, obj.len, *(u32 *)msg,
-		is_ack, inst->vcu_inst.signaled);
+	mtk_v4l2_debug(2, "[%d] id %d len %d msg 0x%x is_ack %d %d",
+		inst->ctx->id, obj.id, obj.len, msg_ap->msg_id, is_ack, inst->vcu_inst.signaled);
 	ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_VENC_0, ipi_wait_type, &obj,
 		ipi_size, IPI_TIMEOUT_MS);
 
@@ -188,14 +198,14 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 		return 0;
 
 	if (ret != IPI_ACTION_DONE) {
-		mtk_vcodec_err(inst, "mtk_ipi_send %X fail %d", *(u32 *)msg, ret);
+		mtk_vcodec_err(inst, "mtk_ipi_send %X fail %d", msg_ap->msg_id, ret);
 		goto ipi_err_wait_and_unlock;
 	}
 	if (!is_ack) {
 wait_ack:
 		/* wait for VCP's ACK */
 		timeout = msecs_to_jiffies(IPI_TIMEOUT_MS);
-		if (*(__u32 *)msg == AP_IPIMSG_ENC_SET_PARAM &&
+		if (msg_ap->msg_id == AP_IPIMSG_ENC_SET_PARAM &&
 			mtk_vcodec_is_state(inst->ctx, MTK_STATE_INIT)) {
 			ap_out_msg = (struct venc_ap_ipi_msg_set_param *) msg;
 			if (ap_out_msg->param_id == VENC_SET_PARAM_ENC)
@@ -219,15 +229,15 @@ wait_ack:
 
 		if (ret == 0) {
 			mtk_vcodec_err(inst, "wait vcp ipi %X ack time out! %d %d",
-				*(u32 *)msg, ret, inst->vcu_inst.failure);
+				msg_ap->msg_id, ret, inst->vcu_inst.failure);
 			goto ipi_err_wait_and_unlock;
 		} else if (-ERESTARTSYS == ret) {
 			mtk_vcodec_err(inst, "wait vcp ipi %X ack ret %d RESTARTSYS retry! (%d)",
-				*(u32 *)msg, ret, inst->vcu_inst.failure);
+				msg_ap->msg_id, ret, inst->vcu_inst.failure);
 			goto wait_ack;
 		} else if (ret < 0) {
 			mtk_vcodec_err(inst, "wait vcp ipi %X ack fail ret %d! (%d)",
-				*(u32 *)msg, ret, inst->vcu_inst.failure);
+				msg_ap->msg_id, ret, inst->vcu_inst.failure);
 		}
 	}
 	mutex_unlock(&inst->ctx->dev->ipi_mutex);
@@ -252,7 +262,7 @@ ipi_err_wait_and_unlock:
 		}
 	}
 	inst->vcu_inst.failure = VENC_IPI_MSG_STATUS_FAIL;
-	inst->ctx->err_msg = *(__u32 *)msg;
+	inst->ctx->err_msg = msg_ap->msg_id;
 
 ipi_err_unlock:
 	inst->vcu_inst.abort = 1;
@@ -502,7 +512,8 @@ int vcp_enc_ipi_handler(void *arg)
 
 		if (msg == NULL ||
 		   (struct venc_vcu_inst *)(unsigned long)msg->ap_inst_addr == NULL) {
-			mtk_v4l2_err(" msg invalid %lx\n", (unsigned long)msg);
+			mtk_v4l2_err(" msg invalid %lx (msg 0x%x)\n",
+				(unsigned long)msg, msg ? msg->msg_id : 0);
 			venc_vcp_free_mq_node(dev, mq_node);
 			continue;
 		}
@@ -547,15 +558,15 @@ int vcp_enc_ipi_handler(void *arg)
 		}
 
 		if (vcu->abort || vcu->daemon_pid != get_vcp_generation()) {
-			mtk_v4l2_err(" [%d] msg vcu abort %d %d\n",
-				vcu->ctx->id, vcu->daemon_pid, get_vcp_generation());
+			mtk_vcodec_err(vcu, " msg msg_id %X vcu abort %d %d\n",
+				msg->msg_id, vcu->daemon_pid, get_vcp_generation());
 			mutex_unlock(&dev->ctx_mutex);
 			venc_vcp_free_mq_node(dev, mq_node);
 			continue;
 		}
 		inst = container_of(vcu, struct venc_inst, vcu_inst);
 
-		mtk_v4l2_debug(2, "+ pop msg_id %X, ml_cnt %d, vcu %lx, status %d",
+		mtk_v4l2_debug(2, "[%d] pop msg_id %X, ml_cnt %d, vcu %lx, status %d", vcu->ctx->id,
 			msg->msg_id, atomic_read(&dev->mq.cnt), (unsigned long)vcu, msg->status);
 
 		ctx = vcu->ctx;
@@ -713,7 +724,7 @@ static int venc_vcp_ipi_isr(unsigned int id, void *prdata, void *data, unsigned 
 
 static int venc_vcp_backup(struct venc_inst *inst)
 {
-	struct venc_vcu_ipi_msg_common msg;
+	struct venc_ap_ipi_msg_common msg;
 	int err = 0;
 
 	if (!inst)
@@ -723,7 +734,7 @@ static int venc_vcp_backup(struct venc_inst *inst)
 
 	memset(&msg, 0, sizeof(msg));
 	msg.msg_id = AP_IPIMSG_ENC_BACKUP;
-	msg.ap_inst_addr = inst->vcu_inst.inst_addr;
+	msg.vcu_inst_addr = inst->vcu_inst.inst_addr;
 	msg.ctx_id = inst->ctx->id;
 	mtk_v4l2_debug(0, "[VDVFS] VENC suspend");
 	err = venc_vcp_ipi_send(inst, &msg, sizeof(msg), false, false, false);

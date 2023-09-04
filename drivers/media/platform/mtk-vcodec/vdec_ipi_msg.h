@@ -261,15 +261,7 @@ struct vdec_vcu_ipi_mem_op {
  * @ap_inst_addr        : AP video decoder instance address
  */
 struct vdec_ap_ipi_init {
-	VDEC_MSG_AP_SEND_PREFIX;
-#ifndef CONFIG_64BIT
-	union {
-		__u64 ap_inst_addr_64;
-		__u32 ap_inst_addr;
-	};
-#else
-	__u64 ap_inst_addr;
-#endif
+	VDEC_MSG_PREFIX;
 };
 
 /**

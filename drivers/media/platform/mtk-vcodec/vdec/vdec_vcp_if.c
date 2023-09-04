@@ -122,18 +122,28 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len,
 	wait_queue_head_t *msg_wq;
 	bool is_res = false;
 	int ipi_wait_type = IPI_SEND_WAIT;
+	struct vdec_ap_ipi_cmd *msg_cmd = (struct vdec_ap_ipi_cmd *)msg;
+	struct vdec_vcu_ipi_ack *msg_ack = (struct vdec_vcu_ipi_ack *)msg;
+	bool use_msg_ack = (is_ack || msg_cmd->msg_id == AP_IPIMSG_DEC_INIT ||
+		msg_cmd->msg_id == AP_IPIMSG_DEC_QUERY_CAP); // msg use VDEC_MSG_PREFIX
+
+	if ((!use_msg_ack && msg_cmd->vcu_inst_addr == 0) ||
+	     (use_msg_ack && msg_ack->ap_inst_addr == 0 && !is_ack)) {
+		mtk_vcodec_err(inst, "msg 0x%x inst addr null", msg_cmd->msg_id);
+		return -EINVAL;
+	}
 
 	if (preempt_count())
 		ipi_wait_type = IPI_SEND_POLLING;
 
-	if (*(__u32 *)msg == AP_IPIMSG_DEC_FRAME_BUFFER) {
+	if (msg_cmd->msg_id == AP_IPIMSG_DEC_FRAME_BUFFER) {
 		is_res = true;
 		msg_mutex = &inst->ctx->dev->ipi_mutex_res;
 	} else
 		msg_mutex = &inst->ctx->dev->ipi_mutex;
 
 	if (!is_ack) {
-		vcodec_trace_begin("msg_mutex(msg 0x%x)", *(u32 *)msg);
+		vcodec_trace_begin("msg_mutex(msg 0x%x)", msg_cmd->msg_id);
 		mutex_lock(msg_mutex);
 		vcodec_trace_end();
 
@@ -183,7 +193,7 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len,
 	memset(&obj, 0, sizeof(obj));
 	memcpy(obj.share_buf, msg, len);
 
-	if (*(__u32 *)msg == AP_IPIMSG_DEC_FRAME_BUFFER) {
+	if (is_res) {
 		obj.id = IPI_VDEC_RESOURCE;
 		msg_signaled = &inst->vcu.signaled_res;
 		msg_wq = &inst->vcu.wq_res;
@@ -203,9 +213,9 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len,
 	}
 	inst->ctx->err_msg = 0;
 
-	mtk_v4l2_debug(2, "id %d len %d msg 0x%x is_ack %d %d", obj.id, obj.len, *(u32 *)msg,
-		is_ack, *msg_signaled);
-	vcodec_trace_begin("mtk_ipi_send(msg 0x%x is_ack %d)", *(u32 *)msg, is_ack);
+	mtk_v4l2_debug(2, "[%d] id %d len %d msg 0x%x is_ack %d %d",
+		inst->ctx->id, obj.id, obj.len, msg_cmd->msg_id, is_ack, *msg_signaled);
+	vcodec_trace_begin("mtk_ipi_send(msg 0x%x is_ack %d)", msg_cmd->msg_id, is_ack);
 	ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_VDEC_1, ipi_wait_type, &obj,
 		ipi_size, IPI_TIMEOUT_MS);
 
@@ -215,14 +225,14 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len,
 	}
 
 	if (ret != IPI_ACTION_DONE) {
-		mtk_vcodec_err(inst, "mtk_ipi_send %X fail %d", *(u32 *)msg, ret);
+		mtk_vcodec_err(inst, "mtk_ipi_send %X fail %d", msg_cmd->msg_id, ret);
 		goto ipi_err_wait_and_unlock;
 	}
 
 	if (!is_ack) {
 wait_ack:
 		/* wait for VCP's ACK */
-		if (*(__u32 *)msg == AP_IPIMSG_DEC_START &&
+		if (msg_cmd->msg_id == AP_IPIMSG_DEC_START &&
 		    mtk_vcodec_is_state(inst->ctx, MTK_STATE_INIT)) {
 			timeout = msecs_to_jiffies(IPI_FIRST_DEC_START_TIMEOUT_MS);
 		} else {
@@ -245,15 +255,15 @@ wait_ack:
 
 		if (ret == 0) {
 			mtk_vcodec_err(inst, "wait vcp ipi %X ack time out! %d %d",
-				*(u32 *)msg, ret, inst->vcu.failure);
+				msg_cmd->msg_id, ret, inst->vcu.failure);
 			goto ipi_err_wait_and_unlock;
 		} else if (-ERESTARTSYS == ret) {
 			mtk_vcodec_err(inst, "wait vcp ipi %X ack ret %d RESTARTSYS retry! (%d)",
-				*(u32 *)msg, ret, inst->vcu.failure);
+				msg_cmd->msg_id, ret, inst->vcu.failure);
 			goto wait_ack;
 		} else if (ret < 0) {
 			mtk_vcodec_err(inst, "wait vcp ipi %X ack fail ret %d! (%d)",
-				*(u32 *)msg, ret, inst->vcu.failure);
+				msg_cmd->msg_id, ret, inst->vcu.failure);
 		}
 
 		vcodec_trace_end();
@@ -617,7 +627,8 @@ int vcp_dec_ipi_handler(void *arg)
 		msg = (struct vdec_vcu_ipi_ack *)obj->share_buf;
 
 		if (msg == NULL || (struct vdec_vcu_inst *)msg->ap_inst_addr == NULL) {
-			mtk_v4l2_err(" msg invalid %lx\n", (unsigned long)msg);
+			mtk_v4l2_err(" msg invalid %lx (msg 0x%x)\n",
+				(unsigned long)msg, msg ? msg->msg_id : 0);
 			vdec_vcp_free_mq_node(dev, mq_node);
 			continue;
 		}
@@ -662,13 +673,13 @@ int vcp_dec_ipi_handler(void *arg)
 		}
 
 		if (vcu->abort || vcu->daemon_pid != get_vcp_generation()) {
-			mtk_v4l2_err(" [%d] msg msg_id %X vcu abort %d %d\n",
-				msg->msg_id, vcu->ctx->id, vcu->daemon_pid, get_vcp_generation());
+			mtk_vcodec_err(vcu, " msg msg_id %X vcu abort %d %d\n",
+				msg->msg_id, vcu->daemon_pid, get_vcp_generation());
 			mutex_unlock(&dev->ctx_mutex);
 			vdec_vcp_free_mq_node(dev, mq_node);
 			continue;
 		}
-		mtk_v4l2_debug(2, "+ pop msg_id %X ml_cnt %d, vcu %lx, status %d",
+		mtk_v4l2_debug(2, "[%d] pop msg_id %X ml_cnt %d, vcu %lx, status %d", vcu->ctx->id,
 			msg->msg_id, atomic_read(&dev->mq.cnt), (unsigned long)vcu, msg->status);
 
 		vsi = (struct vdec_vsi *)vcu->vsi;

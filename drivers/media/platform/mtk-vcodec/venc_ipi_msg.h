@@ -167,15 +167,7 @@ enum venc_set_param_type {
  *              (struct venc_vp8_inst/venc_h264_inst *)
  */
 struct venc_ap_ipi_msg_init {
-	VENC_MSG_AP_SEND_PREFIX;
-#ifndef CONFIG_64BIT
-	union {
-		__u64 ap_inst_addr_64;
-		__u32 ap_inst_addr;
-	};
-#else
-	__u64 ap_inst_addr;
-#endif
+	VENC_MSG_PREFIX;
 };
 
 /**
@@ -276,6 +268,16 @@ struct venc_ap_ipi_msg_deinit {
 enum venc_ipi_msg_status {
 	VENC_IPI_MSG_STATUS_OK,
 	VENC_IPI_MSG_STATUS_FAIL,
+};
+
+/**
+ * struct venc_ap_ipi_msg_common - AP to VCU cmd common structure
+ * @msg_id:     message id (AP_IPIMSG_ENC_XXX)
+ * @vcu_inst_addr:      VCU encoder instance addr
+ *                      (struct venc_vp8_vsi/venc_h264_vsi *)
+ */
+struct venc_ap_ipi_msg_common {
+	VENC_MSG_AP_SEND_PREFIX;
 };
 
 /**
