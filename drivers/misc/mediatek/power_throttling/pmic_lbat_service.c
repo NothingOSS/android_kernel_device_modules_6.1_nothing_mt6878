@@ -28,7 +28,7 @@
 #define USER_NAME_MAXLEN	30
 #define USER_SIZE		16
 #define THD_VOLT_MAX		5400
-#define THD_VOLT_MIN		2650
+#define THD_VOLT_MIN		2000
 #define VOLT_FULL		1800
 #define LBAT_RES		12
 
@@ -577,7 +577,7 @@ struct lbat_user *lbat_user_register_ext(const char *name, unsigned int *thd_vol
 		goto out;
 	}
 	strncpy(user->name, name, USER_NAME_MAXLEN - 1);
-	if (thd_volt_arr[0] >= 5400 || thd_volt_arr[thd_volt_size - 1] <= 2000) {
+	if (thd_volt_arr[0] >= THD_VOLT_MAX || thd_volt_arr[thd_volt_size - 1] <= THD_VOLT_MIN) {
 		ret = -EINVAL;
 		goto out;
 	} else if (callback == NULL) {
