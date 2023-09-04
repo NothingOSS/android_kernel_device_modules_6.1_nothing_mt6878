@@ -513,6 +513,11 @@ void mtk_venc_pmqos_lock_unlock(struct mtk_vcodec_dev *dev, bool is_lock)
 	}
 }
 
+void mtk_venc_init_boost(struct mtk_vcodec_ctx *ctx)
+{
+
+}
+
 void mtk_venc_pmqos_monitor(struct mtk_vcodec_dev *dev, u32 state)
 {
 

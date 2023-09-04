@@ -2795,6 +2795,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 			ctx->id, mtk_vcodec_get_state(ctx),
 			ctx->dev->venc_dvfs_params.target_freq,
 			ctx->dev->venc_dvfs_params.target_bw_factor);
+		mtk_venc_init_boost(ctx);
 		mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 
 		mutex_lock(&ctx->dev->enc_qos_mutex);

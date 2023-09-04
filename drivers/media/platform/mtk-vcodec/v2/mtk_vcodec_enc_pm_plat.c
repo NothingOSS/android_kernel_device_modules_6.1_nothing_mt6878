@@ -512,12 +512,18 @@ void mtk_venc_dvfs_end_inst(struct mtk_vcodec_ctx *ctx)
 		set_venc_opp(dev, dev->venc_dvfs_params.target_freq);
 	}
 }
+void mtk_venc_init_boost(struct mtk_vcodec_ctx *ctx)
+{
+	ctx->dev->venc_dvfs_params.last_boost_time = jiffies_to_msecs(jiffies);
+	ctx->dev->venc_dvfs_params.init_boost = 1;
+	mtk_vcodec_cpu_grp_aware_hint(ctx, true);
+}
 
 void mtk_venc_dvfs_check_boost(struct mtk_vcodec_dev *dev)
 {
 	unsigned int cur_in_timestamp;
 
-	if (!dev->venc_dvfs_params.mmdvfs_in_adaptive)
+	if (!dev->venc_dvfs_params.mmdvfs_in_adaptive || !dev->venc_dvfs_params.init_boost)
 		return;
 
 	cur_in_timestamp = jiffies_to_msecs(jiffies);
@@ -526,8 +532,11 @@ void mtk_venc_dvfs_check_boost(struct mtk_vcodec_dev *dev)
 
 	if (cur_in_timestamp - dev->venc_dvfs_params.last_boost_time >=
 		VENC_INIT_BOOST_INTERVAL && dev->venc_dvfs_params.init_boost) {
-		mtk_v4l2_debug(0, "[VDVFS][VENC] stop boost, set freq %u", dev->venc_dvfs_params.target_freq);
+		mutex_lock(&dev->enc_dvfs_mutex);
+		dev->venc_dvfs_params.init_boost = 0;
 		set_venc_opp(dev, dev->venc_dvfs_params.target_freq);
+		mtk_v4l2_debug(0, "[VDVFS][VENC] stop boost, set freq %u", dev->venc_dvfs_params.target_freq);
+		mutex_unlock(&dev->enc_dvfs_mutex);
 	}
 }
 
@@ -842,7 +851,10 @@ bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 		need_update = mtk_dvfs_check_op_diff(prev_op, ctx->last_monitor_op, threshold, 1) &&
 			mtk_dvfs_check_op_diff(cur_op, tmp_op, threshold, -1);
 
+		need_update |= (dev->venc_dvfs_params.init_boost == 1) && (prev_op > 0) && (ctx->last_monitor_op > 0);
+
 		if (need_update) {
+			mutex_lock(&dev->enc_dvfs_mutex);
 			ctx->op_rate_adaptive = tmp_op;
 			mtk_v4l2_debug(0, "[VDVFS][VENC][ADAPTIVE][%d] op: user:%d, adaptive:%d->%d",
 				ctx->id, ctx->enc_params.operationrate, cur_op, tmp_op);
@@ -854,11 +866,13 @@ bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 					update_freq(dev, MTK_INST_ENCODER);
 					mtk_v4l2_debug(0, "[VDVFS][VENC][ADAPTIVE][%d] set freq %u",
 						ctx->id, dev->venc_dvfs_params.target_freq);
-					dev->venc_dvfs_params.init_boost = 0;
 					set_venc_opp(dev, dev->venc_dvfs_params.target_freq);
 				}
 			} else
 				ctx->enc_params.operationrate_adaptive = ctx->op_rate_adaptive;
+
+			dev->venc_dvfs_params.init_boost = 0;
+			mutex_unlock(&dev->enc_dvfs_mutex);
 			return true;
 		}
 	}

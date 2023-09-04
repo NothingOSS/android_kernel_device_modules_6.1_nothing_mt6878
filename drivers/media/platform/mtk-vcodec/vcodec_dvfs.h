@@ -18,6 +18,8 @@
 #define BW_FACTOR_NONAFBC 114
 
 extern void set_top_grp_aware(int val, int force_ctrl);
+extern void set_grp_awr_min_opp_margin(int gear_id, int group_id, int val);
+extern void set_grp_awr_thr(int gear_id, int group_id, int opp);
 
 struct mtk_vcodec_dev;
 struct mtk_vcodec_ctx;
