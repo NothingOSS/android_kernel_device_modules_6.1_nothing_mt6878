@@ -1434,6 +1434,7 @@ static unsigned int ovl_fmt_convert(struct mtk_disp_ovl *ovl, unsigned int fmt,
 	case DRM_FORMAT_YUYV:
 		return OVL_CON_CLRFMT_YUYV(ovl);
 	case DRM_FORMAT_ABGR2101010:
+	case DRM_FORMAT_XBGR2101010:
 		if (modifier & MTK_FMT_PREMULTIPLIED)
 			return OVL_CON_CLRFMT_ARGB8888 | OVL_CON_CLRFMT_MAN |
 			       OVL_CON_RGB_SWAP;
@@ -1977,31 +1978,30 @@ static int mtk_ovl_color_manage(struct mtk_ddp_comp *comp, unsigned int idx,
 			csc, &occ, csc_final);
 
 done:
-	if (csc_wcg_en || csc_bc_en) {
-		if (ext_lye_idx != LYE_NORMAL) {
-			SET_VAL_MASK(wcg_value, wcg_mask, igamma_en,
-				     FLD_ELn_IGAMMA_EN(ext_lye_idx - 1));
-			SET_VAL_MASK(wcg_value, wcg_mask, gamma_en,
-				     FLD_ELn_GAMMA_EN(ext_lye_idx - 1));
-			SET_VAL_MASK(wcg_value, wcg_mask, 1,
-				     FLD_ELn_CSC_EN(ext_lye_idx - 1));
-			SET_VAL_MASK(sel_value, sel_mask, igamma_sel,
-				     FLD_ELn_IGAMMA_SEL(ext_lye_idx - 1));
-			SET_VAL_MASK(sel_value, sel_mask, gamma_sel,
-				     FLD_ELn_GAMMA_SEL(ext_lye_idx - 1));
-		} else {
-			SET_VAL_MASK(wcg_value, wcg_mask, igamma_en,
-				     FLD_Ln_IGAMMA_EN(lye_idx));
-			SET_VAL_MASK(wcg_value, wcg_mask, gamma_en,
-				     FLD_Ln_GAMMA_EN(lye_idx));
-			SET_VAL_MASK(wcg_value, wcg_mask, 1,
-				     FLD_Ln_CSC_EN(lye_idx));
-			SET_VAL_MASK(sel_value, sel_mask, igamma_sel,
-				     FLD_Ln_IGAMMA_SEL(lye_idx));
-			SET_VAL_MASK(sel_value, sel_mask, gamma_sel,
-				     FLD_Ln_GAMMA_SEL(lye_idx));
-		}
+	if (ext_lye_idx != LYE_NORMAL) {
+		SET_VAL_MASK(wcg_value, wcg_mask, igamma_en,
+			     FLD_ELn_IGAMMA_EN(ext_lye_idx - 1));
+		SET_VAL_MASK(wcg_value, wcg_mask, gamma_en,
+			     FLD_ELn_GAMMA_EN(ext_lye_idx - 1));
+		SET_VAL_MASK(wcg_value, wcg_mask, (csc_wcg_en || csc_bc_en) ? 1 : 0,
+			     FLD_ELn_CSC_EN(ext_lye_idx - 1));
+		SET_VAL_MASK(sel_value, sel_mask, igamma_sel,
+			     FLD_ELn_IGAMMA_SEL(ext_lye_idx - 1));
+		SET_VAL_MASK(sel_value, sel_mask, gamma_sel,
+			     FLD_ELn_GAMMA_SEL(ext_lye_idx - 1));
+	} else {
+		SET_VAL_MASK(wcg_value, wcg_mask, igamma_en,
+			     FLD_Ln_IGAMMA_EN(lye_idx));
+		SET_VAL_MASK(wcg_value, wcg_mask, gamma_en,
+			     FLD_Ln_GAMMA_EN(lye_idx));
+		SET_VAL_MASK(wcg_value, wcg_mask, (csc_wcg_en || csc_bc_en) ? 1 : 0,
+			     FLD_Ln_CSC_EN(lye_idx));
+		SET_VAL_MASK(sel_value, sel_mask, igamma_sel,
+			     FLD_Ln_IGAMMA_SEL(lye_idx));
+		SET_VAL_MASK(sel_value, sel_mask, gamma_sel,
+			     FLD_Ln_GAMMA_SEL(lye_idx));
 	}
+
 	DDPDBG("%s, lye_idx%d,ext_lye_idx%d,csc_wcg_en%d,ovl_csc_en%d,wcg_value0x%x,sel_value0x%x\n",
 		__func__, lye_idx, ext_lye_idx, csc_wcg_en, csc_bc_en, wcg_value, sel_value);
 	DDPDBG("%s, WCG Dymanic off = %d, WCG by color mode[%d][%d]\n", __func__,
@@ -2483,7 +2483,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		offset = pending->offset;
 	}
 
-	if (fmt == DRM_FORMAT_ABGR2101010)
+	if (fmt == DRM_FORMAT_ABGR2101010 || fmt == DRM_FORMAT_XBGR2101010)
 		fmt_ex = 1;
 	else if (fmt == DRM_FORMAT_ABGR16161616F)
 		fmt_ex = 3;
