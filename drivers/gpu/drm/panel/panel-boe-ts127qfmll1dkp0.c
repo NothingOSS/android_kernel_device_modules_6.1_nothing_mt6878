@@ -919,6 +919,7 @@ static struct mtk_panel_params ext_params = {
 			.range_bpg_ofs = range_bpg_ofs,
 		},
 	},
+	.dual_swap = true,
 };
 
 static int panel_ext_reset(struct drm_panel *panel, int on)

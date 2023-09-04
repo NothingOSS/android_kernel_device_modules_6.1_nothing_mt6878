@@ -564,6 +564,8 @@ struct mtk_panel_params {
 	unsigned int prefetch_offset;
 	unsigned int real_te_duration;
 	unsigned int SilkyBrightnessDelay;
+
+	bool dual_swap;
 };
 
 struct mtk_panel_ext {

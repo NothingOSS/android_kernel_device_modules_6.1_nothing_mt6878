@@ -21024,10 +21024,46 @@ void mtk_ddp_insert_dsc_prim_mt6897(struct mtk_drm_crtc *mtk_crtc,
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
 
-		addr =  MT6897_MERGE_OUT_CROSSBAR0_MOUT_EN;
-		value = DISP_COMP_OUT_CROSSBAR0_TO_DSI0;
-		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+		if (panel_ext->dual_swap) {
+			/* DSC1 -> DSI0; DSC0 -> DSI1 */
+			addr = MT6897_MERGE_OUT_CROSSBAR0_MOUT_EN;
+			value = DISP_COMP_OUT_CROSSBAR0_TO_DLO_RELAY0;
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				       mtk_crtc->config_regs_pa + addr, value, ~0);
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+			addr = MT6897_PANEL_COMP_OUT_CROSSBAR4_MOUT_EN;
+			value = DISP_DLI_RELAY4_TO_COMP_OUT_CROSSBAR3;
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				       mtk_crtc->config_regs_pa + addr, value, ~0);
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+			addr =  MT6897_COMP_OUT_CROSSBAR3_MOUT_EN;
+			value = DISP_PANEL_COMP_OUT_CROSSBAR3_TO_MERGE_OUT_CROSSBAR2;
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				       mtk_crtc->config_regs_pa + addr, value, ~0);
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+			addr = MT6897_MERGE_OUT_CROSSBAR2_MOUT_EN;
+			value = DISP_COMP_OUT_CROSSBAR2_TO_DSI0;
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				       mtk_crtc->config_regs_pa + addr, value, ~0);
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+			mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, DDP_COMPONENT_DLO_ASYNC0,
+				mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base), handle, 0);
+			mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, DDP_COMPONENT_DLI_ASYNC10,
+				mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base), handle, 0);
+		} else {
+			addr = MT6897_MERGE_OUT_CROSSBAR0_MOUT_EN;
+			value = DISP_COMP_OUT_CROSSBAR0_TO_DSI0;
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+		}
 		return;
 	}
 
@@ -21759,8 +21795,9 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 					       regs_pa + DISP_REG_MUTEX_MOD(ddp->data, mutex->id),
 					       ddp->data->mutex_mod[id], ddp->data->mutex_mod[id]);
-				if (panel_ext && panel_ext->output_mode == MTK_PANEL_DUAL_PORT &&
-				    id == DDP_COMPONENT_DSC0) {
+				if (id == DDP_COMPONENT_DSC0 && panel_ext &&
+				    panel_ext->output_mode == MTK_PANEL_DUAL_PORT &&
+				    !panel_ext->dsc_params.dual_dsc_enable) {
 					cmdq_pkt_write(handle, mtk_crtc->gce_obj.base, regs_pa +
 						       DISP_REG_MUTEX_MOD(ddp->data, mutex->id),
 						       ddp->data->mutex_mod[id] << 1,
