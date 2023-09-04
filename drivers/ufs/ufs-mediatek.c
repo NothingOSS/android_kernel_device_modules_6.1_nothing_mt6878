@@ -2064,14 +2064,6 @@ rpm:
 		_ufs_mtk_clk_scale(hba, false);
 	}
 
-	/*
-	 * clk_scaling framework may not work because remove
-	 * UFSHCD_CAP_CLK_SCALING and active_reqs is wrong.
-	 * Clear clk_scaling active_reqs before unblock request.
-	 */
-	if (scale_allow)
-		hba->clk_scaling.active_reqs = 0;
-
 out:
 	ufshcd_release(hba);
 	ufs_mtk_scsi_unblock_requests(hba);
@@ -2110,6 +2102,7 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 	ufshcd_rpm_get_sync(hba);
 
 	if (mode == CLK_SCALE_FREE_RUN) {
+		ufs_mtk_scsi_block_requests(hba);
 		if (saved_gear >= UFS_HS_G5)
 			ufs_mtk_config_pwr_mode(hba, CLK_FORCE_SCALE_UP,
 				scale_allow);
@@ -2128,7 +2121,9 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 			if (scale_resume)
 				devfreq_resume_device(hba->devfreq);
 			hba->caps |= UFSHCD_CAP_CLK_SCALING;
+			hba->clk_scaling.active_reqs = 0;
 		}
+		ufs_mtk_scsi_unblock_requests(hba);
 
 		is_forced = false;
 	} else {
