@@ -349,6 +349,7 @@ mgk_64_k61_wifi_device_modules = [
     "drivers/misc/mediatek/pgboost/pgboost.ko",
     "drivers/misc/mediatek/pidmap/pidmap.ko",
     "drivers/misc/mediatek/pmic_protect/mtk-pmic-oc-debug.ko",
+    "drivers/misc/mediatek/pmic_tia/pmic_tia.ko",
     "drivers/misc/mediatek/pmsr/pmsr.ko",
     "drivers/misc/mediatek/pmsr/twam/spmtwam.ko",
     "drivers/misc/mediatek/pmsr/v2/pmsr_v2.ko",
