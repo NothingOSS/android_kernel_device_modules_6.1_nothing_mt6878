@@ -678,8 +678,10 @@ int mtk_create_freq_table(void)
 static int init_public_table(void)
 {
 	unsigned int cpu, opp, cluster = 0, type = 0;
-	int ret = 0;
-	unsigned long wl_offset;
+	int ret = 0, pre_cluster = -1;
+	void __iomem *base = csram_base;
+	unsigned long offset = CAPACITY_TBL_OFFSET, wl_offset;
+	unsigned long cap, next_cap, end_cap;
 	struct mtk_em_perf_domain *pd_public;
 
 	ret = mtk_create_freq_table();
@@ -688,9 +690,28 @@ static int init_public_table(void)
 
 	for_each_possible_cpu(cpu) {
 		cluster = topology_cluster_id(cpu);
+		if (cluster == -1) {
+			pr_info("%s: default topology cluster: %d\n",
+					__func__, cluster);
+			goto err;
+		}
+
+		if (pre_cluster == cluster)
+			continue;
+
 		pd_public = &mtk_em_pd_ptr_public[cluster];
 		for (opp = 0; opp < pd_public->nr_perf_states; opp++) {
 			u32 data;
+
+			cap = ioread16(base + offset);
+			next_cap = ioread16(base + offset + CAPACITY_ENTRY_SIZE);
+			if (cap == 0 || next_cap == 0)
+				goto err;
+
+			pd_public->wl_table[0][opp].capacity = cap;
+			if (opp == pd_public->nr_perf_states - 1)
+				next_cap = -1;
+
 			pd_public->wl_table[0][opp].volt =
 				(unsigned int) eemsn_log->det_log[cluster].volt_tbl_init2[opp]
 								* VOLT_STEP;
@@ -706,15 +727,22 @@ static int init_public_table(void)
 			pd_public->wl_table[0][opp].leakage_para.a_b_para.a = data & 0xFFF;
 			pd_public->wl_table[0][opp].pwr_eff = pd_public->wl_table[0][opp].dyn_pwr
 					/ pd_public->wl_table[0][opp].capacity;
+
+			offset += CAPACITY_ENTRY_SIZE;
 		}
 
 		pd_public->cur_wl_table = 0;
 		pd_public->table = pd_public->wl_table[0];
+		/* repeated last cap 0 between each cluster */
+		end_cap = ioread16(base + offset);
+		if (end_cap != cap)
+			goto err;
+		offset += CAPACITY_ENTRY_SIZE;
 		cpu_mapping[cpu] = cluster;
-		cluster++;
+		pre_cluster = cluster;
 	}
 
-	total_cluster = cluster;
+	total_cluster = cluster + 1;
 	total_cpu = cpu + 1;
 	ret = init_dsu_em();
 	if (ret < 0) {
@@ -794,6 +822,9 @@ static int init_public_table(void)
 nomem:
 	pr_info("%s: allocate public table for cluster %d and type%d failed\n",
 			__func__, cluster, type);
+err:
+	pr_info("%s: capacity count or value does not match on cluster %d\n",
+			__func__, cluster);
 	free_public_table(cluster, type);
 
 	return -ENOENT;
