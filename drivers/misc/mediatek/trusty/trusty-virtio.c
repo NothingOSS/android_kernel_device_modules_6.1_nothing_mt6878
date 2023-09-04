@@ -154,17 +154,15 @@ static int ise_call_notify(struct notifier_block *nb,
 {
 	struct trusty_ctx *tctx;
 	unsigned long vring = 1; /* ise rx */
-	unsigned long cpu = 0;
 
 	if (action != TRUSTY_CALL_RETURNED)
 		return NOTIFY_DONE;
 
 	tctx = container_of(nb, struct trusty_ctx, ise_call_notifier);
 
-	dev_info(tctx->dev, "%s: queue_work_on cpu %lu vring %lu\n",
-		__func__, cpu, vring);
+	dev_info(tctx->dev, "%s: queue_work vring %lu\n", __func__, vring);
 	tctx->vring_dbg = vring;
-	queue_work_on(cpu, tctx->kick_wq_dbg, &tctx->kick_vqs_dbg);
+	queue_work(tctx->kick_wq_dbg, &tctx->kick_vqs_dbg);
 
 	return NOTIFY_OK;
 }
