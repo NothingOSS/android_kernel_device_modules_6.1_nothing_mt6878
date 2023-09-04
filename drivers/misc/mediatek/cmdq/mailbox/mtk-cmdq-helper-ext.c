@@ -848,6 +848,8 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 	struct cmdq_thread *thread;
 	s32 hwid;
 	u32 tf_high_addr;
+	u64 start = sched_clock(), end[6];
+	u32 end_cnt = 0;
 #endif
 #ifdef CMDQ_DCACHE_INVAL
 	void *va;
@@ -861,7 +863,9 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
 	if (!buf)
 		return ERR_PTR(-ENOMEM);
-
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
 	if (cl)
 		use_iommu = cl->use_iommu;
 	else if (device && device->of_node) {
@@ -902,6 +906,7 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 		buf->va_base = cmdq_mbox_buf_alloc_dev(device,
 			use_iommu ? &buf->iova_base : &buf->pa_base);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt++] = sched_clock();
 	if(cl) {
 		if(!cmdq_util_is_secure_client(cl)) {
 			tf_high_addr = cmdq_get_tf_high_addr(cl->chan);
@@ -921,6 +926,7 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 			dump_stack();
 		}
 	}
+	end[end_cnt++] = sched_clock();
 #endif
 
 
@@ -941,6 +947,9 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 		else
 			cmdq_err("cannot get dev:%p domain", device);
 	}
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
 #ifdef CMDQ_DCACHE_INVAL
 	va = phys_to_virt((unsigned long)buf->pa_base);
 	dcache_inval_poc((unsigned long)va,
@@ -950,6 +959,7 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 		(unsigned long)(buf->va_base + CMDQ_BUF_ALLOC_SIZE));
 #endif
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt++] = sched_clock();
 	*((u64 *)buf->va_base) = CMDQ_BUF_INIT_VAL;
 	*((u64 *)buf->va_base + 1) = CMDQ_BUF_INIT_VAL;
 #endif
@@ -958,7 +968,13 @@ struct cmdq_pkt_buffer *cmdq_pkt_alloc_buf(struct cmdq_pkt *pkt)
 	pkt->buf_cnt += 1;
 	pkt->avail_buf_size += CMDQ_CMD_BUFFER_SIZE;
 	pkt->buf_size += CMDQ_CMD_BUFFER_SIZE;
-
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt] = sched_clock();
+	if (end[end_cnt] - start >= 10000000) /* 10ms */
+		cmdq_msg("%s cost time %llu alloc:%llu buf:%llu debug:%llu iommu:%llu dcache:%llu list:%llu",
+			__func__, end[end_cnt] - start, end[0] - start, end[1] - end[0],
+			end[2] - end[1], end[3] - end[2], end[4] - end[3], end[5] - end[4]);
+#endif
 	return buf;
 }
 EXPORT_SYMBOL(cmdq_pkt_alloc_buf);
@@ -1089,10 +1105,17 @@ EXPORT_SYMBOL(cmdq_mbox_destroy);
 struct cmdq_pkt *cmdq_pkt_create(struct cmdq_client *client)
 {
 	struct cmdq_pkt *pkt;
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	u64 start = sched_clock(), end[3];
+	u32 end_cnt = 0;
+#endif
 
 	pkt = kzalloc(sizeof(*pkt), GFP_KERNEL);
 	if (!pkt)
 		return ERR_PTR(-ENOMEM);
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
 	INIT_LIST_HEAD(&pkt->buf);
 	init_completion(&pkt->cmplt);
 	pkt->cl = (void *)client;
@@ -1101,7 +1124,9 @@ struct cmdq_pkt *cmdq_pkt_create(struct cmdq_client *client)
 		pkt->dev = client->chan->mbox->dev;
 		pkt->share_dev = client->share_dev;
 	}
-
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt++] = sched_clock();
+#endif
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 	if (client)
 		cmdq_pkt_perf_begin(pkt);
@@ -1111,6 +1136,14 @@ struct cmdq_pkt *cmdq_pkt_create(struct cmdq_client *client)
 #endif
 	pkt->task_alive = true;
 	pkt->create_instr_cnt = pkt->cmd_buf_size / CMDQ_INST_SIZE;
+#if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	end[end_cnt] = sched_clock();
+
+	if (end[end_cnt] - start >= 50000000) /* 50ms */
+		cmdq_msg("%s cost time %llu alloc:%llu init:%llu cmd:%llu",
+			__func__, end[end_cnt] - start, end[0] - start,
+			end[1] - end[0], end[2] - end[1]);
+#endif
 	return pkt;
 }
 EXPORT_SYMBOL(cmdq_pkt_create);
