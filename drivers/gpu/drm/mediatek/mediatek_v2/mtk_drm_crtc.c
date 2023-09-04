@@ -11637,6 +11637,7 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 	mtk_crtc_config_round_corner(crtc, cmdq_handle);
 
 	/*3. Enable M4U port and replace OVL address to mva */
+	/* And update LK buffer to SRT BW */
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_USE_M4U)) {
 		DDPINFO("%s crtc%u, enable iommu\n", __func__, drm_crtc_index(crtc));
@@ -11678,6 +11679,8 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL)
 			cfg.source_bpc = mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 				OVL_GET_SOURCE_BPC, NULL);
+		/* update SRT BW */
+		mtk_ddp_comp_io_cmd(comp, cmdq_handle, PMQOS_UPDATE_BW, NULL);
 	}
 	if (mtk_crtc->is_dual_pipe) {
 		DDPFUNC();
@@ -11699,6 +11702,7 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 				IRQ_LEVEL_NORMAL, NULL);
 			mtk_ddp_comp_io_cmd(comp, cmdq_handle,
 				MTK_IO_CMD_RDMA_GOLDEN_SETTING, &cfg);
+			mtk_ddp_comp_io_cmd(comp, cmdq_handle, PMQOS_UPDATE_BW, NULL);
 		}
 	}
 
@@ -11742,9 +11746,6 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp)
 		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE, &en);
-	/*need enable hrt_bw for pan display*/
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
-		mtk_drm_pan_disp_set_hrt_bw(crtc, __func__);
 
 	/* 2. start trigger loop first to keep gce alive */
 	if (mtk_crtc_with_trigger_loop(crtc)) {
@@ -11781,6 +11782,9 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 				priv->data->sodi_config(crtc->dev, comp->id, NULL, &en);
 		}
 	}
+	/*need enable hrt_bw for pan display, be aware should update BW after SRT BW */
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
+		mtk_drm_pan_disp_set_hrt_bw(crtc, __func__);
 
 	mtk_gce_backup_slot_init(mtk_crtc);
 

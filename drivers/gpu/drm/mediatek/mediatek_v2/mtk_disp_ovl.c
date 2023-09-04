@@ -2672,7 +2672,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			comp->id, temp_bw, vtotal, vact);
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-			(crtc_idx == 0)) {
+			(crtc_idx == 0) && (priv->data->mmsys_id != MMSYS_MT6989)) {
 			uint64_t key = 0;
 			int fbt_layer_id = -1;
 			unsigned long long temp_bw_old = temp_bw;
@@ -3731,9 +3731,25 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 	unsigned int src_on = readl(comp->regs + DISP_REG_OVL_SRC_CON);
 	dma_addr_t layer_addr, layer_mva;
 	struct iommu_domain *domain;
-	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+	struct mtk_drm_private *priv;
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct drm_display_mode *mode = NULL;
+	unsigned int bw;
 	int ret = 0;
 
+	if (unlikely(!(comp && comp->mtk_crtc))) {
+		DDPPR_ERR("%s invalid comp or mtk_crtc\n", __func__);
+		return -EINVAL;
+	}
+
+	mtk_crtc = comp->mtk_crtc;
+	crtc = &mtk_crtc->base;
+	priv = crtc->dev->dev_private;
+	if (crtc->state) {
+		mode = &crtc->state->adjusted_mode;
+		bw = _layering_get_frame_bw(crtc, mode);
+	}
 	if (src_on & 0x1) {
 		layer_addr = read_phy_layer_addr(comp, 0);
 		if (priv->data->mmsys_id == MMSYS_MT6989 &&
@@ -3751,6 +3767,8 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 			layer_mva = layer_addr - fb_info->fb_pa + fb_info->fb_gem->dma_addr;
 			write_phy_layer_addr_cmdq(comp, handle, 0, layer_mva);
 		}
+		if (mode)
+			comp->qos_bw = bw;
 	}
 
 	if (src_on & 0x2) {
@@ -3763,19 +3781,32 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 			layer_mva = layer_addr - fb_info->fb_pa + fb_info->fb_gem->dma_addr;
 			write_phy_layer_addr_cmdq(comp, handle, 1, layer_mva);
 		}
+		if (mode) {
+			if (!IS_ERR(comp->qos_req_other))
+				comp->qos_bw_other = bw;
+			else
+				comp->qos_bw = bw;
+		}
 	}
 
 	if (src_on & 0x4) {
 		layer_addr = read_phy_layer_addr(comp, 2);
 		layer_mva = layer_addr - fb_info->fb_pa + fb_info->fb_gem->dma_addr;
 		write_phy_layer_addr_cmdq(comp, handle, 2, layer_mva);
-
+		if (mode)
+			comp->qos_bw = bw;
 	}
 
 	if (src_on & 0x8) {
 		layer_addr = read_phy_layer_addr(comp, 3);
 		layer_mva = layer_addr - fb_info->fb_pa + fb_info->fb_gem->dma_addr;
 		write_phy_layer_addr_cmdq(comp, handle, 3, layer_mva);
+		if (mode) {
+			if (!IS_ERR(comp->qos_req_other))
+				comp->qos_bw_other = bw;
+			else
+				comp->qos_bw = bw;
+		}
 	}
 
 	return 0;
