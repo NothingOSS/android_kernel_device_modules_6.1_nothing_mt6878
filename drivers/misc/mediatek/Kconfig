@@ -161,6 +161,15 @@ config MTK_VM_DEBUG
 	  Say Y here if you need debug kernel memory management.
 	  If unsure, say N
 
+config MTK_WIFI_DEBUG
+	bool "Debug used code in Wi-Fi driver"
+	def_bool n
+	help
+	  This is used for debugging Wi-Fi driver, which equals to
+	  distinguishing user load and eng/userdebug load.
+	  Say Y if this is eng/userdebug load.
+	  If not, say N.
+
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/blocktag/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mtprof/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/locking/Kconfig"
