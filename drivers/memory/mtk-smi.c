@@ -2735,14 +2735,19 @@ static int __maybe_unused mtk_smi_larb_resume(struct device *dev)
 {
 	struct mtk_smi_larb *larb = dev_get_drvdata(dev);
 	const struct mtk_smi_larb_gen *larb_gen = larb->larb_gen;
-	int ret;
+	int ret, timeout = 1000;
+	ktime_t rs_start, rs_end;
+	ktime_t clk_start, clk_end;
 
+	rs_start = ktime_get();
 	atomic_inc(&larb->smi.ref_count);
 	if (log_level & 1 << log_config_bit)
 		pr_info("[SMI]larb:%d callback get ref_count:%d\n",
 			larb->larbid, atomic_read(&larb->smi.ref_count));
 
+	clk_start = ktime_get();
 	ret = mtk_smi_clk_enable(&larb->smi);
+	clk_end = ktime_get();
 	if (ret < 0) {
 		dev_err(dev, "Failed to enable clock(%d).\n", ret);
 		return ret;
@@ -2753,6 +2758,13 @@ static int __maybe_unused mtk_smi_larb_resume(struct device *dev)
 
 	/* Configure the basic setting for this larb */
 	larb_gen->config_port(dev);
+
+	/* check rpm resume spend time */
+	rs_end = ktime_get();
+	if (ktime_ms_delta(rs_end, rs_start) > timeout)
+		dev_notice(dev, "%s:timeout! total_spend_time=%lld ms, clk_spend_time=%lld ms\n",
+					__func__, ktime_ms_delta(rs_end, rs_start),
+					ktime_ms_delta(clk_end, clk_start));
 
 	return 0;
 }
@@ -4010,8 +4022,11 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev)
 {
 	struct mtk_smi *common = dev_get_drvdata(dev);
 	u32 bus_sel = common->plat->bus_sel;
-	int i, ret;
+	int i, ret, timeout = 1000;
+	ktime_t rs_start, rs_end;
+	ktime_t clk_start, clk_end;
 
+	rs_start = ktime_get();
 	if (common->skip_rpm_cb) {
 		if (log_level & 1 << log_config_bit)
 			dev_notice(dev, "[SMI]%s: common%d skip rpm callback\n",
@@ -4019,7 +4034,9 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev)
 		return 0;
 	}
 
+	clk_start = ktime_get();
 	ret = mtk_smi_clk_enable(common);
+	clk_end = ktime_get();
 	if (ret) {
 		dev_err(common->dev, "Failed to enable clock(%d).\n", ret);
 		return ret;
@@ -4053,6 +4070,13 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev)
 				common->base + common->plat->misc[i].offset);
 	}
 	wmb(); /* make sure settings are written */
+
+	/* check rpm resume spend time */
+	rs_end = ktime_get();
+	if (ktime_ms_delta(rs_end, rs_start) > timeout)
+		dev_notice(dev, "%s:timeout! total_spend_time=%lld ms, clk_spend_time=%lld ms\n",
+					__func__, ktime_ms_delta(rs_end, rs_start),
+					ktime_ms_delta(clk_end, clk_start));
 
 	return 0;
 }
