@@ -131,6 +131,65 @@ static DEFINE_MUTEX(tp_mutex);
 int mml_err_cnt;
 module_param(mml_err_cnt, int, 0644);
 
+int mml_log_rec;
+EXPORT_SYMBOL(mml_log_rec);
+module_param(mml_log_rec, int, 0644);
+
+static char mml_log_record[MML_LOG_SIZE];
+static u32 mml_log_idx;
+
+void mml_save_log_record(const char *fmt, ...)
+{
+	va_list args;
+	int ret;
+	struct timespec64 curr_time;
+
+	va_start(args, fmt);
+
+	ktime_get_boottime_ts64(&curr_time);
+	ret = snprintf(mml_log_record + mml_log_idx,
+		MML_LOG_SIZE - mml_log_idx, "[%5lld.%06llu]",
+		curr_time.tv_sec, div_u64(curr_time.tv_nsec, 1000));
+	if (ret >= MML_LOG_SIZE - mml_log_idx &&
+	    ret < MML_LOG_SIZE) {
+		ret = snprintf(mml_log_record,
+			sizeof(mml_log_record), "[%5lld.%06llu]",
+			curr_time.tv_sec, div_u64(curr_time.tv_nsec, 1000));
+		mml_log_idx = ret;
+	} else if (ret >= MML_LOG_SIZE) {
+		mml_log_idx = 0;
+	} else {
+		mml_log_idx += ret;
+	}
+
+	ret = vsnprintf(mml_log_record + mml_log_idx,
+		MML_LOG_SIZE - mml_log_idx, fmt, args);
+	if (ret >= MML_LOG_SIZE - mml_log_idx &&
+	    ret < MML_LOG_SIZE) {
+		ret = snprintf(mml_log_record,
+			MML_LOG_SIZE, "[%5lld.%06llu]",
+			curr_time.tv_sec, div_u64(curr_time.tv_nsec, 1000));
+		mml_log_idx = ret;
+		ret = vsnprintf(mml_log_record + mml_log_idx,
+			sizeof(mml_log_record) - mml_log_idx, fmt, args);
+		mml_log_idx += ret;
+	} else if (ret >= MML_LOG_SIZE) {
+		mml_log_idx = 0;
+	} else {
+		mml_log_idx += ret;
+	}
+
+	va_end(args);
+}
+EXPORT_SYMBOL_GPL(mml_save_log_record);
+
+void mml_print_log_record(struct seq_file *seq)
+{
+	if (mml_log_idx > 0 && mml_log_idx < MML_LOG_SIZE - 1)
+		seq_printf(seq, "%s\n", mml_log_record + mml_log_idx + 1);
+	seq_printf(seq, "%s\n", mml_log_record);
+}
+
 int mml_topology_register_ip(const char *ip, const struct mml_topology_ops *op)
 {
 	struct topology_ip_node *tp_node = NULL;

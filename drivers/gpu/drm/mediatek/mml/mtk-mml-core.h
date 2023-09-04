@@ -43,36 +43,60 @@ extern int mml_rrot_msg;
 extern int mml_wrot_bkgd_en;
 extern int mml_rrot_debug;
 
+#define MML_LOG_SIZE	(1 << 20)
+extern int mml_log_rec;
+
+void mml_save_log_record(const char *fmt, ...);
+void mml_print_log_record(struct seq_file *seq);
+
 #define mml_msg(fmt, args...) \
 do { \
-	if (mtk_mml_msg) \
-		pr_notice("[mml]" fmt "\n", ##args); \
+	if (mtk_mml_msg) { \
+		if (mml_log_rec) \
+			mml_save_log_record(fmt "\n", ##args); \
+		else \
+			pr_notice("[mml]" fmt "\n", ##args); \
+	} \
 } while (0)
 
 #define mml_log(fmt, args...) \
 do { \
-	pr_notice("[mml]" fmt "\n", ##args); \
+	if (mml_log_rec) \
+		mml_save_log_record(fmt "\n", ##args); \
+	else \
+		pr_notice("[mml]" fmt "\n", ##args); \
 	if (mml_cmdq_err) \
 		cmdq_util_error_save("[mml]"fmt"\n", ##args); \
 } while (0)
 
 #define mml_err(fmt, args...) \
 do { \
-	pr_notice("[mml][err]" fmt "\n", ##args); \
+	if (mml_log_rec) \
+		mml_save_log_record("[err]" fmt "\n", ##args); \
+	else \
+		pr_notice("[mml][err]" fmt "\n", ##args); \
 	if (mml_cmdq_err) \
 		cmdq_util_error_save("[mml]"fmt"\n", ##args); \
 } while (0)
 
 #define mml_msg_qos(fmt, args...) \
 do { \
-	if (mml_qos_log) \
-		pr_notice("[mml]" fmt "\n", ##args); \
+	if (mml_qos_log) { \
+		if (mml_log_rec) \
+			mml_save_log_record(fmt "\n", ##args); \
+		else \
+			pr_notice("[mml]" fmt "\n", ##args); \
+	} \
 } while (0)
 
 #define mml_msg_dpc(fmt, args...) \
 do { \
-	if (mml_dpc_log) \
-		pr_notice("[mml][dpc]" fmt "\n", ##args); \
+	if (mml_dpc_log) { \
+		if (mml_log_rec) \
+			mml_save_log_record("[dpc]" fmt "\n", ##args); \
+		else \
+			pr_notice("[mml][dpc]" fmt "\n", ##args); \
+	} \
 } while (0)
 
 #define DB_OPT_MML	(DB_OPT_DEFAULT | DB_OPT_PROC_CMDQ_INFO | \

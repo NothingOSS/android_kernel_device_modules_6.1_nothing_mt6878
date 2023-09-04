@@ -127,8 +127,12 @@ module_param(rrot_dbg_con, int, 0644);
 
 #define rrot_msg(fmt, args...) \
 do { \
-	if (mtk_mml_msg || mml_rrot_msg) \
-		pr_notice("[mml]" fmt "\n", ##args); \
+	if (mtk_mml_msg || mml_rrot_msg) { \
+		if (mml_log_rec) \
+			mml_save_log_record(fmt "\n", ##args); \
+		else \
+			pr_notice("[mml]" fmt "\n", ##args); \
+	} \
 } while (0)
 
 int rrot_binning = 1;

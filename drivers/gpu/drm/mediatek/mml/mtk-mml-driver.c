@@ -1385,6 +1385,8 @@ static int mml_record_print(struct seq_file *seq, void *data)
 		idx = (idx + 1) & MML_RECORD_NUM_MASK;
 	}
 
+	mml_print_log_record(seq);
+
 	return 0;
 }
 
