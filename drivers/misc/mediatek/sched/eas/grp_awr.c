@@ -24,8 +24,8 @@ static int *cpu_tar_util;
 static int *pcpu_grp_wetin_sum;
 static int *cap_min;
 static int *cap_max;
-static int **converge_thr;
-static int **converge_thr_opp;
+static int **converge_thr_cap;
+static int **converge_thr_freq;
 static int **margin_for_min_opp;
 static DEFINE_MUTEX(ta_ctrl_mutex);
 
@@ -35,7 +35,7 @@ void (*grp_awr_update_group_util_hook)(int nr_cpus,
 	int **pcpu_pgrp_tar_u, int *map_cpu_ger,
 	int top_grp_aware, int **pcpu_pgrp_wetin, int *pcpu_grp_wetin_sum,
 	int **pcpu_pgrp_tar_u_grp_m, int *pcpu_o_u, int **margin_for_min_opp,
-	int **converge_thr, int **grp_margin, int *cap_min, int *pgrp_tar_u_m,
+	int **converge_thr_cap, int **grp_margin, int *cap_min, int *pgrp_tar_u_m,
 	int *cpu_tar_util, int shift);
 EXPORT_SYMBOL(grp_awr_update_group_util_hook);
 void (*grp_awr_update_cpu_tar_util_hook)(int cpu, int nr_grps, int *pcpu_tar_u,
@@ -123,18 +123,19 @@ int get_top_grp_aware_refcnt(void)
 }
 EXPORT_SYMBOL(get_top_grp_aware_refcnt);
 
-void set_grp_awr_thr(int gear_id, int group_id, int opp)
+void set_grp_awr_thr(int gear_id, int group_id, int freq)
 {
 	int cpu_idx;
 	struct mtk_em_perf_state *ps;
+	int opp;
 
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false || gear_id == -1)
 		return;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id) {
-			ps = pd_get_opp_ps(0, cpu_idx, opp, true);
-			converge_thr[cpu_idx][group_id] = ps->capacity;
-			converge_thr_opp[cpu_idx][group_id] = opp;
+			ps = pd_get_freq_ps(0, cpu_idx, freq, &opp);
+			converge_thr_cap[cpu_idx][group_id] = ps->capacity;
+			converge_thr_freq[cpu_idx][group_id] = ps->freq;
 		}
 }
 EXPORT_SYMBOL(set_grp_awr_thr);
@@ -142,32 +143,32 @@ int get_grp_awr_thr(int gear_id, int group_id)
 {
 	int cpu_idx;
 
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false || gear_id == -1)
 		return -1;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id)
-			return converge_thr[cpu_idx][group_id];
+			return converge_thr_cap[cpu_idx][group_id];
 	return 0;
 }
 EXPORT_SYMBOL(get_grp_awr_thr);
-int get_grp_awr_thr_opp(int gear_id, int group_id)
+int get_grp_awr_thr_freq(int gear_id, int group_id)
 {
 	int cpu_idx;
 
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false || gear_id == -1)
 		return -1;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id)
-			return converge_thr_opp[cpu_idx][group_id];
+			return converge_thr_freq[cpu_idx][group_id];
 	return 0;
 }
-EXPORT_SYMBOL(get_grp_awr_thr_opp);
+EXPORT_SYMBOL(get_grp_awr_thr_freq);
 
 void set_grp_awr_min_opp_margin(int gear_id, int group_id, int val)
 {
 	int cpu_idx;
 
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false || gear_id == -1)
 		return;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id)
@@ -179,7 +180,7 @@ int get_grp_awr_min_opp_margin(int gear_id, int group_id)
 {
 	int cpu_idx;
 
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false || gear_id == -1)
 		return -1;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id)
@@ -230,7 +231,8 @@ void grp_awr_update_grp_awr_util(void)
 				continue;
 			tmp = map_cpu_ger[cpu_idx];
 			trace_sugov_ext_pger_pgrp_u(map_cpu_ger[cpu_idx],
-				cpu_idx, pger_pgrp_u[map_cpu_ger[cpu_idx]], converge_thr[cpu_idx],
+				cpu_idx, pger_pgrp_u[map_cpu_ger[cpu_idx]],
+				converge_thr_cap[cpu_idx],
 				margin_for_min_opp[cpu_idx]);
 		}
 	}
@@ -255,7 +257,7 @@ void grp_awr_update_grp_awr_util(void)
 			pcpu_pgrp_u, pger_pgrp_u, pgrp_hint,
 			pcpu_pgrp_marg, pcpu_pgrp_adpt_rto, pcpu_pgrp_tar_u, map_cpu_ger,
 			top_grp_aware, pcpu_pgrp_wetin, pcpu_grp_wetin_sum, pcpu_pgrp_tar_u_grp_m,
-			pcpu_o_u, margin_for_min_opp, converge_thr, grp_margin,
+			pcpu_o_u, margin_for_min_opp, converge_thr_cap, grp_margin,
 			cap_min, pgrp_tar_u_m, cpu_tar_util, 3);
 
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
@@ -374,8 +376,8 @@ int grp_awr_init(void)
 	pcpu_grp_wetin_sum = kcalloc(FLT_NR_CPUS, sizeof(int), GFP_KERNEL);
 	cap_min = kcalloc(FLT_NR_CPUS, sizeof(int), GFP_KERNEL);
 	cap_max = kcalloc(FLT_NR_CPUS, sizeof(int), GFP_KERNEL);
-	converge_thr = kcalloc(FLT_NR_CPUS, sizeof(int *), GFP_KERNEL);
-	converge_thr_opp = kcalloc(FLT_NR_CPUS, sizeof(int *), GFP_KERNEL);
+	converge_thr_cap = kcalloc(FLT_NR_CPUS, sizeof(int *), GFP_KERNEL);
+	converge_thr_freq = kcalloc(FLT_NR_CPUS, sizeof(int *), GFP_KERNEL);
 	margin_for_min_opp = kcalloc(FLT_NR_CPUS, sizeof(int *), GFP_KERNEL);
 
 	/* per cpu data*/
@@ -402,9 +404,9 @@ int grp_awr_init(void)
 			kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
 		margin_for_min_opp[cpu_idx] =
 			kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
-		converge_thr[cpu_idx] =
+		converge_thr_cap[cpu_idx] =
 			kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
-		converge_thr_opp[cpu_idx] =
+		converge_thr_freq[cpu_idx] =
 			kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
 		pcpu_pgrp_wetin[cpu_idx] =
 			kcalloc(GROUP_ID_RECORD_MAX, sizeof(int), GFP_KERNEL);
@@ -423,12 +425,12 @@ int grp_awr_init(void)
 			else
 				margin_for_min_opp[cpu_idx][grp_idx] =
 					SCHED_CAPACITY_SCALE + (SCHED_CAPACITY_SCALE >> 2);
-			converge_thr[cpu_idx][grp_idx] = (cap_max[cpu_idx] * 64) / 100;
+			converge_thr_cap[cpu_idx][grp_idx] = (cap_max[cpu_idx] * 64) / 100;
 			pd_get_util_ps_legacy(0, cpu_idx,
-						converge_thr[cpu_idx][grp_idx], &opp);
+						converge_thr_cap[cpu_idx][grp_idx], &opp);
 			ps = pd_get_opp_ps(0, cpu_idx, opp, true);
-			converge_thr_opp[cpu_idx][grp_idx] = opp;
-			converge_thr[cpu_idx][grp_idx] = ps->capacity;
+			converge_thr_freq[cpu_idx][grp_idx] = ps->freq;
+			converge_thr_cap[cpu_idx][grp_idx] = ps->capacity;
 		}
 	}
 
