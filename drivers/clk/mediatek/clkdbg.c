@@ -1124,11 +1124,9 @@ static struct generic_pm_domain **get_all_genpd(void)
 		node_cnt++;
 	} while (node);
 
+	platform_device_put(pdev);
 	if (!node_cnt)
 		return NULL;
-
-	platform_device_put(pdev);
-
 out:
 	return pds;
 }
