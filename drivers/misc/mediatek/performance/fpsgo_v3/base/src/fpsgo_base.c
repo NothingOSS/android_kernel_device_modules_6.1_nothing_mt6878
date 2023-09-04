@@ -1158,6 +1158,8 @@ void fpsgo_delete_render_info(int pid,
 	fpsgo_thread_unlock(&data->thr_mlock);
 
 	fpsgo_delete_hwui_info(data->pid);
+	fpsgo_delete_sbe_info(data->pid);
+	switch_thread_max_fps(data->pid, 0);
 
 	if (check_max_blc)
 		fpsgo_base2fbt_check_max_blc();
@@ -1948,6 +1950,8 @@ int fpsgo_check_thread_status(void)
 			fpsgo_thread_unlock(&iter->thr_mlock);
 
 			fpsgo_delete_hwui_info(iter->pid);
+			fpsgo_delete_sbe_info(iter->pid);
+			switch_thread_max_fps(iter->pid, 0);
 
 			if (delete == 1) {
 				fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
@@ -2034,6 +2038,8 @@ void fpsgo_clear(void)
 		fpsgo_thread_unlock(&iter->thr_mlock);
 
 		fpsgo_delete_hwui_info(iter->pid);
+		fpsgo_delete_sbe_info(iter->pid);
+		switch_thread_max_fps(iter->pid, 0);
 
 		if (delete == 1) {
 			fpsgo_fbt_delete_rl_render(iter->pid, iter->buffer_id);
