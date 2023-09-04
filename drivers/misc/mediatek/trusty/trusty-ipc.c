@@ -15,6 +15,7 @@
 #include <linux/sched.h>
 #include <linux/compat.h>
 #include <linux/uio.h>
+#include <linux/timer.h>
 
 #include <linux/virtio.h>
 #include <linux/virtio_ids.h>
@@ -28,6 +29,7 @@
 
 #define REPLY_TIMEOUT			5000
 #define TXBUF_TIMEOUT			15000
+#define TIPC_TIMEOUT			100
 
 #define MAX_SRV_NAME_LEN		256
 #define MAX_DEV_NAME_LEN		32
@@ -689,6 +691,8 @@ struct tipc_dn_chan {
 	wait_queue_head_t readq;
 	struct completion reply_comp;
 	struct list_head rx_msg_queue;
+	struct mutex timer_lock;
+	struct timer_list tipc_timer;
 };
 
 static int dn_wait_for_reply(struct tipc_dn_chan *dn, int timeout)
@@ -842,6 +846,11 @@ static struct tipc_virtio_dev *_dn_lookup_vds(struct tipc_cdev_node *cdn)
 	return vds;
 }
 
+static void tipc_timeout_callback(struct timer_list *timer)
+{
+	ise_notifier_call();
+}
+
 static int tipc_open(struct inode *inode, struct file *filp)
 {
 	int ret;
@@ -879,6 +888,13 @@ static int tipc_open(struct inode *inode, struct file *filp)
 
 	filp->private_data = dn;
 	kref_put(&vds->refcount, _free_vds);
+
+	mutex_init(&dn->timer_lock);
+
+	mutex_lock(&dn->timer_lock);
+	timer_setup(&dn->tipc_timer, tipc_timeout_callback, 0);
+	mutex_unlock(&dn->timer_lock);
+
 	return 0;
 
 err_create_chan:
@@ -996,6 +1012,10 @@ static ssize_t tipc_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 		if (filp->f_flags & O_NONBLOCK)
 			return -EAGAIN;
 
+		mutex_lock(&dn->timer_lock);
+		mod_timer(&dn->tipc_timer, jiffies + msecs_to_jiffies(TIPC_TIMEOUT));
+		mutex_unlock(&dn->timer_lock);
+
 		if (wait_event_interruptible(dn->readq, _got_rx(dn)))
 			return -ERESTARTSYS;
 
@@ -1093,6 +1113,10 @@ static unsigned int tipc_poll(struct file *filp, poll_table *wait)
 static int tipc_release(struct inode *inode, struct file *filp)
 {
 	struct tipc_dn_chan *dn = filp->private_data;
+
+	mutex_lock(&dn->timer_lock);
+	del_timer(&dn->tipc_timer);
+	mutex_unlock(&dn->timer_lock);
 
 	dn_shutdown(dn);
 
