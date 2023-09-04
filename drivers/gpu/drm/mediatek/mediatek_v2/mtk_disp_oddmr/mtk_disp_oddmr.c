@@ -1700,12 +1700,16 @@ static void mtk_oddmr_config(struct mtk_ddp_comp *comp,
 
 	dma_addr_t addr = 0;
 	struct mtk_drm_dmr_cfg_info *dmr_cfg_data = &g_oddmr_priv->dmr_cfg_info;
-	unsigned int postalign_en = comp->mtk_crtc->panel_ext->params->spr_params.postalign_en;
+	unsigned int postalign_en = 0;
 
 	if (!comp->mtk_crtc || !comp->mtk_crtc->panel_ext || g_oddmr_priv == NULL) {
 		ODDMRFLOW_LOG("comp is invalid-\n");
 		return;
 	}
+
+	if (comp->mtk_crtc->panel_ext->params)
+		postalign_en = comp->mtk_crtc->panel_ext->params->spr_params.postalign_en;
+
 	ODDMRFLOW_LOG("%s+\n", mtk_dump_comp_str(comp));
 	if (mtk_crtc->gce_obj.client[CLIENT_PQ])
 		client = mtk_crtc->gce_obj.client[CLIENT_PQ];

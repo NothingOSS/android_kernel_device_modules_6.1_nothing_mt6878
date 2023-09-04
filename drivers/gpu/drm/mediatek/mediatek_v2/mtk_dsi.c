@@ -4952,7 +4952,8 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 	case MTK_TRIG_FLAG_PRE_TRIGGER:
 
 	/* only MT6989 require PHY reset so far */
-		if (priv->data->mmsys_id != MMSYS_MT6989)
+		if (!priv || !(priv->data) ||
+			(priv->data->mmsys_id != MMSYS_MT6989))
 			break;
 
 		/* config & enable MIPITX sw ctrl */

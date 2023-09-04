@@ -8372,7 +8372,8 @@ static void cmdq_pkt_switch_panel_spr_enable(struct cmdq_pkt *cmdq_handle,
 	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 				 mtk_get_gce_backup_slot_pa(mtk_crtc,
 				DISP_SLOT_PANEL_SPR_EN), 0, ~0);
-	if(params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2){
+	if(params_lcm != NULL &&
+		params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2){
 		cmdq_pkt_clear_event(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_TE]);
 		cmdq_pkt_wfe(cmdq_handle,
@@ -8455,7 +8456,8 @@ static void cmdq_pkt_switch_panel_spr_disable(struct cmdq_pkt *cmdq_handle,
 	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 				 mtk_get_gce_backup_slot_pa(mtk_crtc,
 				DISP_SLOT_PANEL_SPR_EN), 0, ~0);
-	if(params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2){
+	if(params_lcm != NULL &&
+		params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2){
 		cmdq_pkt_clear_event(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_TE]);
 		cmdq_pkt_wfe(cmdq_handle,
