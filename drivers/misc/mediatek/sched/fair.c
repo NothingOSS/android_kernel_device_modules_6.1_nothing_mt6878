@@ -2137,7 +2137,7 @@ fail:
 
 	if (cpumask_test_cpu(target, &allowed_cpu_mask) &&
 	    (available_idle_cpu(target) || sched_idle_cpu(target)) &&
-	    task_fits_capacity(p, target, get_adaptive_margin(target))) {
+	    task_fits_capacity(p, capacity_of(target), get_adaptive_margin(target))) {
 		*new_cpu = target;
 		backup_reason = LB_BACKUP_AFFINE_IDLE_FIT;
 		goto backup_unlock;
@@ -2149,7 +2149,7 @@ fail:
 	if (prev_cpu != target && mtk_cpus_share_cache(prev_cpu, target) &&
 		cpumask_test_cpu(prev_cpu, &allowed_cpu_mask) &&
 	    (available_idle_cpu(prev_cpu) || sched_idle_cpu(prev_cpu)) &&
-	    task_fits_capacity(p, prev_cpu, get_adaptive_margin(prev_cpu))) {
+	    task_fits_capacity(p, capacity_of(prev_cpu), get_adaptive_margin(prev_cpu))) {
 		*new_cpu = prev_cpu;
 		backup_reason = LB_BACKUP_PREV;
 		goto backup_unlock;
@@ -2169,7 +2169,7 @@ fail:
 		is_per_cpu_kthread(current) && in_task() &&
 	    prev_cpu == this_cpu &&
 	    this_rq()->nr_running <= 1 &&
-	    task_fits_capacity(p, this_cpu, get_adaptive_margin(this_cpu))) {
+	    task_fits_capacity(p, capacity_of(this_cpu), get_adaptive_margin(this_cpu))) {
 		*new_cpu = this_cpu;
 		backup_reason = LB_BACKUP_CURR;
 		goto backup_unlock;
@@ -2184,7 +2184,7 @@ fail:
 		mtk_cpus_share_cache(recent_used_cpu, target) &&
 		cpumask_test_cpu(recent_used_cpu, &allowed_cpu_mask) &&
 	    (available_idle_cpu(recent_used_cpu) || sched_idle_cpu(recent_used_cpu)) &&
-	    task_fits_capacity(p, recent_used_cpu, get_adaptive_margin(recent_used_cpu))) {
+	    task_fits_capacity(p, capacity_of(recent_used_cpu), get_adaptive_margin(recent_used_cpu))) {
 		*new_cpu = recent_used_cpu;
 		/*
 		 * Replace recent_used_cpu
