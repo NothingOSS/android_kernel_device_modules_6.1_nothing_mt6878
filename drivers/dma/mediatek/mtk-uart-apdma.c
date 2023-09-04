@@ -174,6 +174,7 @@ static unsigned int g_vff_sz;
 atomic_t res_status;
 static unsigned int peri_0_axi_dbg;
 static struct clk *g_dma_clk;
+struct mutex g_dma_clk_mutex;
 atomic_t dma_clk_count;
 static unsigned int clk_count;
 struct mtk_chan *hub_dma_tx_chan;
@@ -439,7 +440,10 @@ void mtk_uart_set_apdma_clk(bool enable)
 {
 	int ret = 0;
 
+	mutex_lock(&g_dma_clk_mutex);
 	if (enable) {
+		if (atomic_read(&dma_clk_count) < 0)
+			pr_info("[%s] dma_clk_count < 0\n", __func__);
 		atomic_inc(&dma_clk_count);
 		if (atomic_read(&dma_clk_count) == 1) {
 			ret = clk_prepare_enable(g_dma_clk);
@@ -454,6 +458,7 @@ void mtk_uart_set_apdma_clk(bool enable)
 			clk_disable_unprepare(g_dma_clk);
 		}
 	}
+	mutex_unlock(&g_dma_clk_mutex);
 }
 EXPORT_SYMBOL(mtk_uart_set_apdma_clk);
 
@@ -981,6 +986,7 @@ static int mtk_uart_apdma_alloc_chan_resources(struct dma_chan *chan)
 			pr_info("[%s]:clk_prepare_enable fail\n", __func__);
 			goto err_out;
 		}
+		pr_info("%s, enable clk\n", __func__);
 	}
 
 	if (c->dir == DMA_MEM_TO_DEV) {
@@ -1059,8 +1065,10 @@ static void mtk_uart_apdma_free_chan_resources(struct dma_chan *chan)
 		pr_info("[WARN] %s, c->chan_desc_count[%d]\n", __func__, c->chan_desc_count);
 	vchan_free_chan_resources(&c->vc);
 
-	if (!c->is_hub_port)
+	if (!c->is_hub_port) {
 		clk_disable_unprepare(mtkd->clk);
+		pr_info("%s, disable clk\n", __func__);
+	}
 }
 
 static enum dma_status mtk_uart_apdma_tx_status(struct dma_chan *chan,
@@ -1428,6 +1436,7 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 		} else {
 			g_dma_clk = mtkd->clk;
 			atomic_set(&dma_clk_count, 0);
+			mutex_init(&g_dma_clk_mutex);
 		}
 		atomic_set(&res_status, 0);
 		mtk_uart_apdma_parse_peri(pdev);
