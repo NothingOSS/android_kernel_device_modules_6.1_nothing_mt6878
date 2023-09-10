@@ -428,6 +428,11 @@ static struct notifier_block adsp_pm_notifier_block = {
 };
 #endif
 
+void adsp_pow_clk_dump(void)
+{
+	adsp_smc_send(MTK_ADSP_KERNEL_OP_DUMP_PWR_CLK, 0, 0);
+}
+
 static int adsp_pd_event(struct notifier_block *nb,
 				  unsigned long flags , void *data)
 {

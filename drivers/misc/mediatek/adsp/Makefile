@@ -28,3 +28,4 @@ adsp-objs += adsp_platform_driver.o
 adsp-objs += adsp_excep.o
 adsp-objs += adsp_qos.o
 adsp-objs += adsp_bus_monitor.o
+adsp-objs += adsp_ipic.o

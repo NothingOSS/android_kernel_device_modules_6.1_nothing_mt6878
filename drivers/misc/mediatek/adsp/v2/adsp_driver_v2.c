@@ -15,6 +15,7 @@
 #include "adsp_clk_audio.h"
 #include "adsp_driver_v2.h"
 #include "adsp_qos.h"
+#include "adsp_ipic.h"
 #include "mtk-afe-external.h"
 
 const struct adspsys_description mt6983_adspsys_desc = {
@@ -181,6 +182,11 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 		pr_warn("%s(), qos probe fail, %d\n", __func__, ret);
 		goto ERROR;
 	}
+
+	/* adsp ipic probe */
+	ret = adsp_ipic_probe(pdev);
+	if (ret)
+		pr_warn("%s(), ipic probe fail, %d\n", __func__, ret);
 
 	ret = of_property_read_u32(dev->of_node, "slp-prot-ctrl",
 				   &adspsys->slp_prot_ctrl);

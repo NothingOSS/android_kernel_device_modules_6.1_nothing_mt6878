@@ -13,6 +13,7 @@
 #include "adsp_platform.h"
 #include "adsp_platform_driver.h"
 #include "adsp_reg.h"
+#include "adsp_ipic.h"
 
 #define WAIT_MS                     (1000)
 #define AP_AWAKE_LOCK_BIT           (0)
@@ -24,10 +25,15 @@ int adsp_pre_wake_lock(u32 cid)
 {
 	unsigned long flags;
 	int ret = 0, retry = 1000;
-	struct adsp_priv *pdata = get_adsp_core_by_id(cid);
+	struct adsp_priv *pdata;
 
 	if (!adsp_is_pre_lock_support())
 		return -1;
+
+	if (adsp_is_ipic_support())
+		cid = ADSP_A_ID;
+
+	pdata = get_adsp_core_by_id(cid);
 
 	spin_lock_irqsave(&pdata->wakelock, flags);
 	if (pdata->prelock_cnt == 0) {
@@ -39,7 +45,13 @@ int adsp_pre_wake_lock(u32 cid)
 	spin_unlock_irqrestore(&pdata->wakelock, flags);
 
 	/* wakeup */
-	adsp_mt_set_swirq(cid);
+	if (adsp_is_ipic_support()) {
+		ret = adsp_ipic_send(NULL, false);
+		if (ret)
+			pr_warn("%s(%d) send awake ipic, fail ret: %d\n",
+				__func__, cid, ret);
+	} else
+		adsp_mt_set_swirq(cid);
 
 	/* polling adsp status */
 	while (!check_core_active(cid) && --retry)
@@ -48,6 +60,7 @@ int adsp_pre_wake_lock(u32 cid)
 	if (retry == 0) {
 		pr_warn("%s cannot wakeup adsp, hifi_status: %x, retry: %d\n",
 			__func__, check_core_active(cid), retry);
+		adsp_pow_clk_dump();
 		return -ETIME;
 	}
 
@@ -58,20 +71,29 @@ int adsp_pre_wake_unlock(u32 cid)
 {
 	unsigned long flags;
 	int ret = 0;
-	struct adsp_priv *pdata = get_adsp_core_by_id(cid);
+	struct adsp_priv *pdata;
 
 	if (!adsp_is_pre_lock_support())
 		return -1;
+
+	if (adsp_is_ipic_support())
+		cid = ADSP_A_ID;
+
+	pdata = get_adsp_core_by_id(cid);
 
 	spin_lock_irqsave(&pdata->wakelock, flags);
 	if (pdata->prelock_cnt > 0)
 		pdata->prelock_cnt --;
 
-	ret = adsp_mt_pre_unlock(cid);
-	if (ret != 0)
-		pr_warn("%s(%d) fail to clear lock\n", __func__, cid);
+	if (pdata->prelock_cnt == 0) {
+		ret = adsp_mt_pre_unlock(cid);
+		if (ret != 0)
+			pr_warn("%s(%d) fail to clear lock\n", __func__, cid);
+	}
 
 	spin_unlock_irqrestore(&pdata->wakelock, flags);
+
+	ipic_clr_chn();
 
 	return 0;
 }
