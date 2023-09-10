@@ -1109,6 +1109,8 @@
 #define CMDQ_SYNC_TOKEN_ESD_EOF_1			696
 #define CMDQ_SYNC_TOKEN_STREAM_BLOCK_1			697
 #define CMDQ_SYNC_TOKEN_CABC_EOF_1			698
+/* SW sync token between display and mml */
+#define CMDQ_SYNC_TOKEN_MML_DISP_DONE_EVENT		699
 
 /* GPR access tokens (for HW register backup)
  * There are 15 32-bit GPR, 3 GPR form a set
