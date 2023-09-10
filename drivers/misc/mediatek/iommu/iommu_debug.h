@@ -78,6 +78,8 @@ char *mtk_iommu_get_port_name(enum mtk_iommu_type type, int id, int tf_id);
 const struct mau_config_info *mtk_iommu_get_mau_config(
 	enum mtk_iommu_type type, int id,
 	unsigned int slave, unsigned int mau);
+int mtk_iommu_set_ops(const struct mtk_iommu_ops *ops);
+int mtk_iommu_update_pm_status(u32 type, u32 id, bool pm_sta);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 int mtk_smmu_set_ops(const struct mtk_smmu_ops *ops);

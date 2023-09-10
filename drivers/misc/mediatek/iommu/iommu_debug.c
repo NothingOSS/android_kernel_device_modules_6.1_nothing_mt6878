@@ -127,6 +127,7 @@ struct peri_iommu_data {
 
 static struct mtk_m4u_data *m4u_data;
 static bool smmu_v3_enable;
+static const struct mtk_iommu_ops *iommu_ops;
 
 /**********iommu trace**********/
 #define IOMMU_EVENT_COUNT_MAX	(8000)
@@ -811,6 +812,24 @@ const struct mau_config_info *mtk_iommu_get_mau_config(
 	return NULL;
 }
 EXPORT_SYMBOL_GPL(mtk_iommu_get_mau_config);
+
+int mtk_iommu_set_ops(const struct mtk_iommu_ops *ops)
+{
+	if (iommu_ops == NULL)
+		iommu_ops = ops;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_iommu_set_ops);
+
+int mtk_iommu_update_pm_status(u32 type, u32 id, bool pm_sta)
+{
+	if (iommu_ops && iommu_ops->update_pm_status)
+		return iommu_ops->update_pm_status(type, id, pm_sta);
+
+	return -1;
+}
+EXPORT_SYMBOL_GPL(mtk_iommu_update_pm_status);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 static const struct mtk_smmu_ops *smmu_ops;
