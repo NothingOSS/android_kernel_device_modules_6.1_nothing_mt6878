@@ -66,7 +66,7 @@ int init_sched_ctrl(void)
 		gear_hints_enable = true;
 		updown_migration_enable = true;
 		skip_hiIRQ_enable = true;
-		rt_aggre_preempt_enable = true;
+		rt_aggre_preempt_enable = false;
 		vip_enable = true;
 		post_init_util_ctl = true;
 		break;
