@@ -84,16 +84,8 @@ enum addon_type {
 	ADDON_EMBED,
 };
 
-enum addon_lye_position {
-	ADDON_LYE_POS_UNKNOW,
-	ADDON_LYE_POS_DUAL,
-	ADDON_LYE_POS_LEFT,
-	ADDON_LYE_POS_RIGHT,
-};
-
 struct mtk_lye_ddp_state {
 	enum addon_scenario scn[HRT_DISP_TYPE_NUM];
-	enum addon_lye_position pos;
 	uint8_t lc_tgt_layer;
 	u32 rpo_lye;
 	u32 mml_ir_lye;

@@ -50,14 +50,6 @@ enum mml_pq_scenario {
 	MML_PQ_MEDIA_ISP_PREVIEW = 0x10001
 };
 
-/* only used for crtc dual pipe */
-enum mml_dl_pos {
-	MML_DL_POS_UNKNOWN,
-	MML_DL_POS_DUAL,
-	MML_DL_POS_LEFT,
-	MML_DL_POS_RIGHT,
-};
-
 struct mml_pq_film_grain_params {
 	unsigned char apply_grain;
 	unsigned int grain_seed;
@@ -222,7 +214,6 @@ struct mml_frame_info {
 	uint32_t act_time;	/* ns time for mml frame */
 	uint8_t dest_cnt;	/* should be < MML_MAX_OUTPUTS */
 	int8_t mode;	/* one of mml_mode */
-	int8_t dl_pos;
 	uint16_t disp_done_event;
 	uint8_t ovlsys_id;
 	bool alpha;	/* alpha channel preserve */
