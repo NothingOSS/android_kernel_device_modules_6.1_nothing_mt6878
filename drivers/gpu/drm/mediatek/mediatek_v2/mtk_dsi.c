@@ -8706,13 +8706,11 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 
 	if (need_mipi_change == 0) {
 		DDPINFO("skip mipi chg\n");
-		if ((drm_mode_vrefresh(old_mode) > drm_mode_vrefresh(adjust_mode)) &&
-			mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
-			mtk_crtc->dsi_null_pkt_postpone = true;
-		} else {
-			mtk_crtc->dsi_null_pkt_postpone = false;
-			mtk_dsi_config_null_packet(dsi, NULL, NULL);
-		}
+		mtk_dsi_config_null_packet(dsi, NULL, NULL);
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMDVFS_SUPPORT))
+			if (dsi->driver_data && dsi->driver_data->mmclk_by_datarate)
+				dsi->driver_data->mmclk_by_datarate(dsi, mtk_crtc, 1);
+
 		goto skip_change_mipi;
 	}
 

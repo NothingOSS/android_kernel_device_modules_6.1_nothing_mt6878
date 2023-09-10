@@ -1077,7 +1077,6 @@ struct mtk_drm_crtc {
 	bool skip_frame;
 	bool is_dsc_output_swap;
 
-	bool dsi_null_pkt_postpone;
 	bool capturing;
 
 	int dli_relay_1tnp;

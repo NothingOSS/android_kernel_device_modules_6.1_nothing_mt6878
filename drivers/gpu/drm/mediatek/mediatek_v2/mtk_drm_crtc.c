@@ -13203,15 +13203,6 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	/* set backlight value from HWC */
 	mtk_drm_set_backlight(mtk_crtc);
 
-	if (mtk_crtc->dsi_null_pkt_postpone == true) {
-		if (output_comp) {
-			DDPINFO("dsi_null_pkt_postpone\n");
-			mtk_ddp_comp_io_cmd(output_comp, mtk_crtc_state->cmdq_handle,
-					DSI_NULL_PKT_SET, NULL);
-		}
-		mtk_crtc->dsi_null_pkt_postpone = false;
-	}
-
 #ifndef DRM_CMDQ_DISABLE
 	if (atomic_read(&priv->need_recover)) {
 		enum mtk_ddp_comp_id id = DDP_COMPONENT_ID_MAX;
