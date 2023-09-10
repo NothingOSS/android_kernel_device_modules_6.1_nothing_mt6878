@@ -675,12 +675,14 @@ static int mt6897_apu_top_func(struct platform_device *pdev,
 	pr_info("%s func_id : %d\n", __func__, aputop->func_id);
 
 	switch (aputop->func_id) {
+#if APU_POWER_BRING_UP
 	case APUTOP_FUNC_PWR_OFF:
 		pm_runtime_put_sync(&pdev->dev);
 		break;
 	case APUTOP_FUNC_PWR_ON:
 		pm_runtime_get_sync(&pdev->dev);
 		break;
+#endif
 	case APUTOP_FUNC_OPP_LIMIT_HAL:
 		mt6897_aputop_opp_limit(aputop, OPP_LIMIT_HAL);
 		break;
@@ -693,9 +695,11 @@ static int mt6897_apu_top_func(struct platform_device *pdev,
 	case APUTOP_FUNC_DRV_CFG:
 		mt6897_drv_cfg_remote_sync(aputop);
 		break;
+#if APU_POWER_BRING_UP
 	case APUTOP_FUNC_IPI_TEST:
 		test_ipi_wakeup_apu();
 		break;
+#endif
 	case APUTOP_FUNC_ARE_DUMP1:
 	case APUTOP_FUNC_ARE_DUMP2:
 #if APUPW_DUMP_FROM_APMCU
