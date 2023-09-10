@@ -3664,6 +3664,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
 		struct mtk_drm_private *priv =
 			comp->mtk_crtc->base.dev->dev_private;
+		unsigned int force_update = 0; /* force_update repeat last qos BW */
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -3673,30 +3674,40 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			oddmr_priv->last_qos_srt_odw, oddmr_priv->qos_srt_odw,
 			oddmr_priv->last_qos_srt_dmrr, oddmr_priv->qos_srt_dmrr,
 			oddmr_priv->last_qos_srt_dbir, oddmr_priv->qos_srt_dbir);
+
+		if (params) {
+			force_update = *(unsigned int *)params;
+			force_update = (force_update == DISP_BW_FORCE_UPDATE) ? 1 : 0;
+		}
+
 		/* process normal */
-		if (oddmr_priv->last_qos_srt_odr != oddmr_priv->qos_srt_odr) {
+		if (force_update || oddmr_priv->last_qos_srt_odr != oddmr_priv->qos_srt_odr) {
 			__mtk_disp_set_module_srt(oddmr_priv->qos_req_odr, comp->id,
 				oddmr_priv->qos_srt_odr, DISP_BW_NORMAL_MODE);
 			oddmr_priv->last_qos_srt_odr = oddmr_priv->qos_srt_odr;
-			comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_odr;
+			if (!force_update)
+				comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_odr;
 		}
-		if (oddmr_priv->last_qos_srt_odw != oddmr_priv->qos_srt_odw) {
+		if (force_update || oddmr_priv->last_qos_srt_odw != oddmr_priv->qos_srt_odw) {
 			__mtk_disp_set_module_srt(oddmr_priv->qos_req_odw, comp->id,
 				oddmr_priv->qos_srt_odw, DISP_BW_NORMAL_MODE);
 			oddmr_priv->last_qos_srt_odw = oddmr_priv->qos_srt_odw;
-			comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_odw;
+			if (!force_update)
+				comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_odw;
 		}
-		if (oddmr_priv->last_qos_srt_dmrr != oddmr_priv->qos_srt_dmrr) {
+		if (force_update || oddmr_priv->last_qos_srt_dmrr != oddmr_priv->qos_srt_dmrr) {
 			__mtk_disp_set_module_srt(oddmr_priv->qos_req_dmrr, comp->id,
 				oddmr_priv->qos_srt_dmrr, DISP_BW_NORMAL_MODE);
 			oddmr_priv->last_qos_srt_dmrr = oddmr_priv->qos_srt_dmrr;
-			comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_dmrr;
+			if (!force_update)
+				comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_dmrr;
 		}
-		if (oddmr_priv->last_qos_srt_dbir != oddmr_priv->qos_srt_dbir) {
+		if (force_update || oddmr_priv->last_qos_srt_dbir != oddmr_priv->qos_srt_dbir) {
 			__mtk_disp_set_module_srt(oddmr_priv->qos_req_dbir, comp->id,
 				oddmr_priv->qos_srt_dbir, DISP_BW_NORMAL_MODE);
 			oddmr_priv->last_qos_srt_dbir = oddmr_priv->qos_srt_dbir;
-			comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_dbir;
+			if (!force_update)
+				comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_dbir;
 		}
 	}
 		break;

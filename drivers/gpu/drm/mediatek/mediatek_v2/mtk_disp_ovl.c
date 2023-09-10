@@ -3986,6 +3986,7 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	case PMQOS_UPDATE_BW: {
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;
+		unsigned int force_update = 0; /* force_update repeat last qos BW */
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -3999,8 +4000,13 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		//__mtk_disp_set_module_srt(comp->fbdc_qos_req, comp->id, comp->fbdc_bw,
 		//			    DISP_BW_FBDC_MODE);
 
+		if (params) {
+			force_update = *(unsigned int *)params;
+			force_update = (force_update == DISP_BW_FORCE_UPDATE) ? 1 : 0;
+		}
+
 		/* process normal */
-		if (comp->last_qos_bw == comp->qos_bw) {
+		if (!force_update && comp->last_qos_bw == comp->qos_bw) {
 			if (IS_ERR(comp->qos_req_other) ||
 			    (comp->last_qos_bw_other == comp->qos_bw_other))
 				break;
@@ -4009,13 +4015,15 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw,
 					    DISP_BW_NORMAL_MODE);
 		comp->last_qos_bw = comp->qos_bw;
-		mtk_crtc->total_srt += comp->qos_bw;
+		if (!force_update)
+			mtk_crtc->total_srt += comp->qos_bw;
 other:
 		if (!IS_ERR(comp->qos_req_other)) {
 			__mtk_disp_set_module_srt(comp->qos_req_other, comp->id, comp->qos_bw_other,
 					    DISP_BW_NORMAL_MODE);
 			comp->last_qos_bw_other = comp->qos_bw_other;
-			mtk_crtc->total_srt += comp->qos_bw_other;
+			if (!force_update)
+				mtk_crtc->total_srt += comp->qos_bw_other;
 		}
 		DDPINFO("update ovl fbdc_bw to %u, qos bw to %u, %u\n",
 			comp->fbdc_bw, comp->qos_bw, comp->qos_bw_other);

@@ -239,6 +239,8 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	tmp = bw;
 
 	for (i = 0; i < DDP_PATH_NR; i++) {
+		if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
+			continue;
 		if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
 			continue;
 		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
@@ -329,6 +331,52 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	DDPINFO("%s:pan_disp_set_hrt_bw: %u\n", caller, bw);
 }
 
+/* force report all display's mmqos BW include SRT & HRT */
+void mtk_disp_mmqos_bw_repaint(struct mtk_drm_private *priv)
+{
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_ddp_comp *comp;
+	unsigned int i, j, c, tmp = 1, flag = DISP_BW_FORCE_UPDATE;
+	int ret = 0;
+
+	for (c = 0 ; c < MAX_CRTC ; ++c) {
+		crtc = priv->crtc[c];
+		if (crtc == NULL)
+			continue;
+		mtk_crtc = to_mtk_crtc(crtc);
+
+		DDP_MUTEX_LOCK_NESTED(&mtk_crtc->lock, c, __func__, __LINE__);
+
+		for (i = 0; i < DDP_PATH_NR; i++) {
+			for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
+				//report SRT BW
+				ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW,
+						&flag);
+				//report HRT BW if path is HRT
+				if (mtk_crtc->ddp_mode < DDP_MODE_NR &&
+						(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
+					ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
+							&tmp);
+			}
+			if (!mtk_crtc->is_dual_pipe)
+				continue;
+			for_each_comp_in_dual_pipe(comp, mtk_crtc, j, i) {
+				//report SRT BW
+				ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW,
+						&flag);
+				//report HRT BW if path is HRT
+				if (mtk_crtc->ddp_mode < DDP_MODE_NR &&
+						(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
+					ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
+							&tmp);
+			}
+		}
+
+		DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->lock, c, __func__, __LINE__);
+	}
+}
+
 int mtk_disp_hrt_cond_change_cb(struct notifier_block *nb, unsigned long value,
 				void *v)
 {
@@ -366,11 +414,18 @@ int mtk_disp_hrt_cond_change_cb(struct notifier_block *nb, unsigned long value,
 			    hrt_idx)
 				break;
 		}
+		mtk_disp_mmqos_bw_repaint(dev_crtc->dev->dev_private);
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 		break;
 	case BW_THROTTLE_END: /* CAM off */
 		DDPMSG("DISP BW Throttle end\n");
 		/* TODO: switch DC */
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+		/* bw repaint might hold all crtc's mutex, need unlock current mutex first */
+		mtk_disp_mmqos_bw_repaint(dev_crtc->dev->dev_private);
+
+		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 		break;
 	default:
 		break;
