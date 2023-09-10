@@ -238,11 +238,18 @@ u32 mtk_pcie_dump_link_info(int port);
 #define SRCLKEN_SPM_REQ_STA             0x1114
 #define SRCLKEN_RC_REQ_STA		0x1130
 
+#define SRCLKEN_BASE			0x1c00d000
+#define M07_CFG				0x3c
+#define BBCK2_FORCE_ACK			GENMASK(4, 3)
+#define CENTRAL_CFG6			0x74
+#define PMRC7_VOTE_MASK			BIT(7)
+
 #define MTK_PCIE_MAX_PORT		2
 #define PCIE_CLKBUF_SUBSYS_ID		7
 #define PCIE_CLKBUF_XO_ID		1
-#define BBCK2_BIND			0x2c1
-#define BBCK2_UNBIND			0x2c0
+#define BBCK1_BBCK2_BIND		0x2c1
+#define PMRC7_BBCK2_BIND		0x2c0
+#define PMRC7_BBCK2_UNBIND		0x241
 
 enum mtk_pcie_suspend_link_state {
 	LINK_STATE_L12 = 0,
@@ -1866,12 +1873,6 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 			 readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 			 readl_relaxed(port->base + PCIE_ISTATUS_PM));
 
-		if (port->data->suspend_l12) {
-			err = port->data->suspend_l12(port);
-			if (err)
-				return err;
-		}
-
 		if (port->port_num == 0) {
 			err = mtk_pcie_hw_control_vote(0, true, 0);
 			if (err)
@@ -1883,6 +1884,12 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 		}
 
 		mtk_pcie_clkbuf_control(dev, false);
+
+		if (port->data->suspend_l12) {
+			err = port->data->suspend_l12(port);
+			if (err)
+				return err;
+		}
 
 		/* srclken rc request state */
 		dev_info(port->dev, "PCIe0 Modem HW MODE BIT=%#x, PEXTP_PWRCTL_3=%#x, srclken rc state=%#x\n",
@@ -1935,6 +1942,12 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 		return -ENODEV;
 
 	if (port->suspend_mode == LINK_STATE_L12) {
+		if (port->data->resume_l12) {
+			err = port->data->resume_l12(port);
+			if (err)
+				return err;
+		}
+
 		mtk_pcie_clkbuf_control(dev, true);
 
 		/* Wait 400us for BBCK2 switch SW Mode ready */
@@ -1952,12 +1965,6 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 			val = readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_1);
 			val &= ~PCIE_HW_MTCMOS_EN_P1;
 			writel_relaxed(val, port->pextpcfg + PEXTP_PWRCTL_1);
-		}
-
-		if (port->data->resume_l12) {
-			err = port->data->resume_l12(port);
-			if (err)
-				return err;
 		}
 	} else {
 		/* The user controls the exit from L2 by himself */
@@ -2107,9 +2114,9 @@ static int mtk_pcie_suspend_l12_6985(struct mtk_pcie_port *port)
 	u32 val;
 
 	/* Binding of BBCK1 and BBCK2 */
-	err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, BBCK2_BIND);
+	err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, BBCK1_BBCK2_BIND);
 	if (err)
-		dev_info(port->dev, "Fail to bind BBCK2 with BBCK1\n");
+		dev_info(port->dev, "Failed to bind BBCK2 with BBCK1\n");
 
 	/* Wait 400us for BBCK2 bind ready */
 	udelay(400);
@@ -2126,10 +2133,10 @@ static int mtk_pcie_resume_l12_6985(struct mtk_pcie_port *port)
 {
 	int err;
 
-	/* Unbinding of BBCK1 and BBCK2 */
-	err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, BBCK2_UNBIND);
+	/* Binding of PMRC7 and BBCK2 */
+	err = clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, PMRC7_BBCK2_BIND);
 	if (err)
-		dev_info(port->dev, "Fail to unbind BBCK2 with BBCK1\n");
+		dev_info(port->dev, "Failed to bind PMRC7 with BBCK2\n");
 
 	return 0;
 }
@@ -2160,8 +2167,59 @@ static int mtk_pcie_pre_init_6989(struct mtk_pcie_port *port)
 	return 0;
 }
 
+static int mtk_pcie_suspend_l12_6989(struct mtk_pcie_port *port)
+{
+	void __iomem *srclken_base = ioremap(SRCLKEN_BASE, 0x1000);
+	u32 val;
+
+	/* RC force req = 1 */
+	val = readl_relaxed(srclken_base + M07_CFG);
+	val |= BBCK2_FORCE_ACK;
+	writel_relaxed(val, srclken_base + M07_CFG);
+
+	/* Make PMRC7 out of vote */
+	val = readl_relaxed(srclken_base + CENTRAL_CFG6);
+	val |= PMRC7_VOTE_MASK;
+	writel_relaxed(val, srclken_base + CENTRAL_CFG6);
+
+	/* Unbind PMRC7 with BBCK2 and bind PMRC0 with BBCK2 */
+	if (clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID,
+			   PMRC7_BBCK2_UNBIND))
+		dev_info(port->dev, "Failed to unbind PMRC7 with BBCK2\n");
+
+	iounmap(srclken_base);
+
+	return 0;
+}
+
+static int mtk_pcie_resume_l12_6989(struct mtk_pcie_port *port)
+{
+	void __iomem *srclken_base = ioremap(SRCLKEN_BASE, 0x1000);
+	u32 val;
+
+	/* Unbind PMRC0 with BBCK2 and bind BBCK2 with PMRC7 */
+	if (clkbuf_xo_ctrl("SET_XO_VOTER", PCIE_CLKBUF_XO_ID, PMRC7_BBCK2_BIND))
+		dev_info(port->dev, "Failed to bind PMRC7 with BBCK2\n");
+
+	/* Make PMRC7 can vote for BBCK2 */
+	val = readl_relaxed(srclken_base + CENTRAL_CFG6);
+	val &= ~PMRC7_VOTE_MASK;
+	writel_relaxed(val, srclken_base + CENTRAL_CFG6);
+
+	/* RC HW mode and clear force req = 1 */
+	val = readl_relaxed(srclken_base + M07_CFG);
+	val &= ~BBCK2_FORCE_ACK;
+	writel_relaxed(val, srclken_base + M07_CFG);
+
+	iounmap(srclken_base);
+
+	return 0;
+}
+
 static const struct mtk_pcie_data mt6989_data = {
-	.pre_init = mtk_pcie_pre_init_6989,
+	.pre_init	= mtk_pcie_pre_init_6989,
+	.suspend_l12	= mtk_pcie_suspend_l12_6989,
+	.resume_l12	= mtk_pcie_resume_l12_6989,
 };
 
 static const struct of_device_id mtk_pcie_of_match[] = {
