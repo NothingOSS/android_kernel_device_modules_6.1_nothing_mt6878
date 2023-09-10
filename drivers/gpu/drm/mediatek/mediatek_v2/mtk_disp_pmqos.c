@@ -337,8 +337,9 @@ void mtk_disp_mmqos_bw_repaint(struct mtk_drm_private *priv)
 	struct drm_crtc *crtc;
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_ddp_comp *comp;
-	unsigned int i, j, c, tmp = 1, flag = DISP_BW_FORCE_UPDATE;
+	unsigned int i, j, k, c, tmp = 1, flag = DISP_BW_FORCE_UPDATE;
 	int ret = 0;
+	bool is_hrt;
 
 	for (c = 0 ; c < MAX_CRTC ; ++c) {
 		crtc = priv->crtc[c];
@@ -348,14 +349,20 @@ void mtk_disp_mmqos_bw_repaint(struct mtk_drm_private *priv)
 
 		DDP_MUTEX_LOCK_NESTED(&mtk_crtc->lock, c, __func__, __LINE__);
 
-		for (i = 0; i < DDP_PATH_NR; i++) {
+		if (!(mtk_crtc->enabled)) {
+			DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->lock, c, __func__, __LINE__);
+			continue;
+		}
+
+		for (k = 0; k < DDP_PATH_NR; k++) {
+			is_hrt = (mtk_crtc->ddp_mode < DDP_MODE_NR) ?
+				mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[k] : false;
 			for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
 				//report SRT BW
 				ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW,
 						&flag);
 				//report HRT BW if path is HRT
-				if (mtk_crtc->ddp_mode < DDP_MODE_NR &&
-						(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
+				if (is_hrt)
 					ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
 							&tmp);
 			}
@@ -366,8 +373,7 @@ void mtk_disp_mmqos_bw_repaint(struct mtk_drm_private *priv)
 				ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW,
 						&flag);
 				//report HRT BW if path is HRT
-				if (mtk_crtc->ddp_mode < DDP_MODE_NR &&
-						(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
+				if (is_hrt)
 					ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
 							&tmp);
 			}
