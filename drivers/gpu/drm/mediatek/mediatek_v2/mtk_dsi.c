@@ -2725,6 +2725,11 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 					dsi->skip_vblank = 1;
 				}
 
+				if (panel_ext && panel_ext->params->mode_switch_delay != 0) {
+					dsi->mode_switch_delay
+						= panel_ext->params->mode_switch_delay;
+				}
+
 				if (dsi->skip_vblank == 1)
 					drm_trace_tag_mark("TE_RDY");
 				else
@@ -2755,18 +2760,27 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 					}
 
 					if (dsi->cnt % dsi->skip_vblank == 0 && mtk_crtc->vblank_en) {
-						dsi->skip_vblank = panel_ext->params->skip_vblank;
+						dsi->skip_vblank = (dsi->mode_switch_delay == 0) ?
+						panel_ext->params->skip_vblank : dsi->skip_vblank;
+						//send hwvsync to sf
 						mtk_crtc_vblank_irq(&mtk_crtc->base);
 						dsi->cnt = 0;
 					} else if (dsi->cnt % dsi->skip_vblank == 0) {
+						//checking if current TE is not aligned with PF
 						dsi->cnt =
 						(mtk_dsi_check_vblank_cnt(dsi, mtk_crtc, panel_ext)
 						!= 0) ? 0 : dsi->cnt;
-						dsi->skip_vblank = panel_ext->params->skip_vblank;
+						dsi->skip_vblank = (dsi->mode_switch_delay == 0) ?
+						panel_ext->params->skip_vblank : dsi->skip_vblank;
 					}
 					dsi->cnt++;
-				} else if (mtk_crtc->vblank_en)
+				} else if (mtk_crtc->vblank_en) {
+					//send hwvsync to sf
 					mtk_crtc_vblank_irq(&mtk_crtc->base);
+				}
+
+				dsi->mode_switch_delay =
+					(dsi->mode_switch_delay > 0) ? --dsi->mode_switch_delay : 0;
 			}
 		}
 

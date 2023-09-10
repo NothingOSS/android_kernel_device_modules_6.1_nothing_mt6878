@@ -1031,6 +1031,7 @@ static struct mtk_panel_params ext_params_90hz = {
 	.corner_pattern_lt_addr_r = (void *)nt37801_cmd_120hz_top_pattern_r,
 	.mode_switch_cmdq = MODE_SWITCH_CMDQ_ENABLE,
 	.real_te_duration = 11111,
+	.mode_switch_delay = 2,
 };
 
 static struct mtk_panel_params ext_params_60hz = {

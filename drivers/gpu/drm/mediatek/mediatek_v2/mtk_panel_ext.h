@@ -567,6 +567,7 @@ struct mtk_panel_params {
 	unsigned int SilkyBrightnessDelay;
 
 	bool dual_swap;
+	unsigned int mode_switch_delay;
 };
 
 struct mtk_panel_ext {

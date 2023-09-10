@@ -836,6 +836,7 @@ static struct mtk_panel_params ext_params_90hz = {
 		.pll_clk = PLL_CLOCK + 1,
 	},
 	.real_te_duration = 11111,
+	.mode_switch_delay = 2,
 };
 
 static struct mtk_panel_params ext_params_60hz = {
