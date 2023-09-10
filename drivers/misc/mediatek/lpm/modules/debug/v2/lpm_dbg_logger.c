@@ -82,6 +82,7 @@ struct lpm_logger_work_struct {
 };
 static struct workqueue_struct *lpm_logger_workqueue;
 static struct lpm_logger_work_struct lpm_logger_work;
+static char lpm_wakeup_sources[MAX_SUSPEND_ABORT_LEN + 1] = {0};
 
 static struct rtc_time suspend_tm;
 static struct spm_req_sta_list req_sta_list = {
@@ -486,7 +487,6 @@ static void lpm_logger_work_func(struct work_struct *work)
 			container_of(work, struct lpm_logger_work_struct, work);
 	struct lpm_logger_fired_info *info = &lpm_logger_fired;
 	static unsigned int mcusys_cnt_prev, mcusys_cnt_cur;
-	char wakeup_sources[MAX_SUSPEND_ABORT_LEN];
 	unsigned int j = 0, k = 0, l = 0;
 	unsigned long smc_fired = lpm_smc_cpu_pm_lp(CPU_PM_RECORD_CTRL,
 			MT_LPM_SMC_ACT_GET, 0, 0);
@@ -532,8 +532,7 @@ static void lpm_logger_work_func(struct work_struct *work)
 	if (_lpm_dbg_plat_ops.lpm_log_common_status)
 		_lpm_dbg_plat_ops.lpm_log_common_status();
 
-	pm_get_active_wakeup_sources(wakeup_sources, MAX_SUSPEND_ABORT_LEN);
-	pr_info("[name:spm&] %s\n", wakeup_sources);
+	pr_info("[name:spm&] %s\n", lpm_wakeup_sources);
 
 #if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
 	sys_res_ops = get_lpm_sys_res_ops();
@@ -546,6 +545,9 @@ static void lpm_logger_work_func(struct work_struct *work)
 
 static int lpm_log_timer_func(unsigned long long dur, void *priv)
 {
+	/* Only get the active wakeup source in the timer func */
+	pm_get_active_wakeup_sources(lpm_wakeup_sources, MAX_SUSPEND_ABORT_LEN);
+
 	if (lpm_logger_workqueue)
 		queue_work(lpm_logger_workqueue, &lpm_logger_work.work);
 	return 0;
@@ -937,8 +939,10 @@ void lpm_logger_deinit(void)
 	int idx = 0;
 	struct lpm_logger_fired_info *info = &lpm_logger_fired;
 
-	flush_workqueue(lpm_logger_workqueue);
-	destroy_workqueue(lpm_logger_workqueue);
+	if (lpm_logger_workqueue) {
+		flush_workqueue(lpm_logger_workqueue);
+		destroy_workqueue(lpm_logger_workqueue);
+	}
 
 	spm_cond_deinit();
 
