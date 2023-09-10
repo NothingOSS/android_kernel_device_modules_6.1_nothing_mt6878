@@ -801,6 +801,8 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	struct dma_heap *dma_heap;
 	struct dma_buf *dbuf;
 	__u32 alloc_len;
+	int ret = 0;
+	void *ret_ptr = NULL;
 
 	if (mem == NULL || dev == NULL || attach == NULL || sgt == NULL) {
 		mtk_v4l2_err("Invalid arguments, mem=0x%lx, dev=0x%lx, attach=0x%lx, sgt=0x%lx",
@@ -854,7 +856,8 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 		O_RDWR | O_CLOEXEC, DMA_HEAP_VALID_HEAP_FLAGS);
 	if (IS_ERR_OR_NULL(dbuf)) {
 		mtk_v4l2_err("buffer alloc fail\n");
-		return PTR_ERR(dbuf);
+		ret_ptr = (void *)dbuf;
+		goto alloc_mem_err;
 	}
 
 	if (fmt == MTK_INST_DECODER)
@@ -865,15 +868,14 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	*attach = dma_buf_attach(dbuf, dev);
 	if (IS_ERR_OR_NULL(*attach)) {
 		mtk_v4l2_err("attach fail, return\n");
-		dma_heap_buffer_free(dbuf);
-		return PTR_ERR(*attach);
+		ret_ptr = (void *)*attach;
+		goto alloc_mem_err_attach_fail;
 	}
 	*sgt = dma_buf_map_attachment(*attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR_OR_NULL(*sgt)) {
 		mtk_v4l2_err("map failed, detach and return\n");
-		dma_buf_detach(dbuf, *attach);
-		dma_heap_buffer_free(dbuf);
-		return PTR_ERR(*sgt);
+		ret_ptr = (void *)*sgt;
+		goto alloc_mem_err_map_fail;
 	}
 	mem->va = (__u64)dbuf;
 	mem->pa = (__u64)sg_dma_address((*sgt)->sgl);
@@ -882,12 +884,26 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	if (mem->va == (__u64)NULL || mem->pa == (__u64)NULL) {
 		mtk_v4l2_err("alloc failed, va 0x%llx pa 0x%llx iova 0x%llx len %d type %u\n",
 		mem->va, mem->pa, mem->iova, mem->len, mem->type);
-		return -EPERM;
+		ret = -EPERM;
+		goto alloc_mem_err_after_map_done;
 	}
 
 	mtk_v4l2_debug(8, "va 0x%llx pa 0x%llx iova 0x%llx len %d type %u\n",
 		mem->va, mem->pa, mem->iova, mem->len, mem->type);
 	return 0;
+
+alloc_mem_err_after_map_done:
+	dma_buf_unmap_attachment(*attach, *sgt, DMA_BIDIRECTIONAL);
+alloc_mem_err_map_fail:
+	dma_buf_detach(dbuf, *attach);
+alloc_mem_err_attach_fail:
+	dma_heap_buffer_free(dbuf);
+alloc_mem_err:
+	if (ret_ptr && IS_ERR(ret_ptr))
+		ret = PTR_ERR(ret_ptr);
+	else if (ret == 0)
+		ret = -EPERM;
+	return ret;
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_alloc_mem);
 
