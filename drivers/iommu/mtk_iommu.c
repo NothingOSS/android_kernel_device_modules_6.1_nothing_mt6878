@@ -260,6 +260,7 @@ struct mtk_iommu_domain {
 static const struct iommu_ops mtk_iommu_ops;
 
 static bool pd_sta[MM_IOMMU_NUM];
+static bool apu_pm_sta[APU_IOMMU_NUM];
 static spinlock_t *tlb_locks[MM_IOMMU_NUM];
 static struct notifier_block mtk_pd_notifiers[MM_IOMMU_NUM];
 static bool hypmmu_type2_en;
@@ -802,12 +803,13 @@ static struct mtk_iommu_domain *to_mtk_domain(struct iommu_domain *dom)
  * mtk_iommu_power_get - Get iommu power status,
  * conditionally call pm_runtime_get_if_in_use.
  * @data: iommu data of target device
+ * @pm_sta: iommu pm runtime status
  * @see #mtk_iommu_power_put
  * @return true if power on
  *
  * Notice: This function must be called pairs with mtk_iommu_power_put.
  */
-static __maybe_unused bool mtk_iommu_power_get(struct mtk_iommu_data *data)
+static __maybe_unused bool mtk_iommu_power_get(struct mtk_iommu_data *data, int *pm_sta)
 {
 	bool has_pm = !!data->dev->pm_domain;
 
@@ -815,7 +817,8 @@ static __maybe_unused bool mtk_iommu_power_get(struct mtk_iommu_data *data)
 		if ((data->plat_data->iommu_type == MM_IOMMU &&
 			pd_sta[data->plat_data->iommu_id] == POWER_OFF_STA) ||
 			(data->plat_data->iommu_type != MM_IOMMU &&
-			pm_runtime_get_if_in_use(data->dev) <= 0)) {
+			(*pm_sta = pm_runtime_get_if_in_use(data->dev)) <= 0 &&
+			apu_pm_sta[data->plat_data->iommu_id] == POWER_OFF_STA)) {
 			return false;
 		}
 	}
@@ -827,16 +830,17 @@ static __maybe_unused bool mtk_iommu_power_get(struct mtk_iommu_data *data)
  * mtk_iommu_power_put - Put iommu power status,
  * conditionally call pm_runtime_put.
  * @data: iommu data of target device
+ * @pm_sta: iommu pm runtime status
  * @see #mtk_iommu_power_get
  *
  * Notice: This function must be called pairs with mtk_iommu_power_get.
  */
-static __maybe_unused void mtk_iommu_power_put(struct mtk_iommu_data *data)
+static __maybe_unused void mtk_iommu_power_put(struct mtk_iommu_data *data, int pm_sta)
 {
 	bool has_pm = !!data->dev->pm_domain;
 
 	if (has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN) &&
-		data->plat_data->iommu_type != MM_IOMMU)
+		data->plat_data->iommu_type != MM_IOMMU && pm_sta > 0)
 		pm_runtime_put(data->dev);
 }
 
@@ -868,6 +872,7 @@ static void mtk_iommu_bk0_intr_en(const struct mtk_iommu_data *data,
 static inline void mtk_iommu_isr_setup(struct mtk_iommu_data *data, unsigned long enable)
 {
 	bool has_pm = !!data->dev->pm_domain;
+	int pm_sta = 0;
 
 	pr_info("%s, iommu:(%d,%d), enable:%lu\n", __func__,
 		data->plat_data->iommu_type, data->plat_data->iommu_id, enable);
@@ -875,7 +880,8 @@ static inline void mtk_iommu_isr_setup(struct mtk_iommu_data *data, unsigned lon
 		if ((data->plat_data->iommu_type == MM_IOMMU &&
 			pd_sta[data->plat_data->iommu_id] == POWER_OFF_STA) ||
 			(data->plat_data->iommu_type != MM_IOMMU &&
-			pm_runtime_get_if_in_use(data->dev) <= 0)) {
+			(pm_sta = pm_runtime_get_if_in_use(data->dev)) <= 0 &&
+			apu_pm_sta[data->plat_data->iommu_id] == POWER_OFF_STA)) {
 			pr_info("%s, power off:%s\n", __func__, dev_name(data->dev));
 			return;
 		}
@@ -890,7 +896,7 @@ static inline void mtk_iommu_isr_setup(struct mtk_iommu_data *data, unsigned lon
 #endif
 
 	if (has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN) &&
-		data->plat_data->iommu_type != MM_IOMMU)
+		data->plat_data->iommu_type != MM_IOMMU && pm_sta > 0)
 		pm_runtime_put(data->dev);
 }
 
@@ -980,13 +986,15 @@ static void mtk_iommu_tlb_flush(struct mtk_iommu_data *data, bool check_pm)
 	bool has_pm = !!data->dev->pm_domain;
 	unsigned long flags;
 	int iommu_ids;
+	int pm_sta = 0;
 
 	spin_lock_irqsave(&data->tlb_lock, flags);
 	if (check_pm && has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN)) {
 		if ((data->plat_data->iommu_type == MM_IOMMU &&
 			pd_sta[data->plat_data->iommu_id] == POWER_OFF_STA) ||
 			(data->plat_data->iommu_type != MM_IOMMU &&
-			pm_runtime_get_if_in_use(data->dev) <= 0)) {
+			(pm_sta = pm_runtime_get_if_in_use(data->dev)) <= 0 &&
+			apu_pm_sta[data->plat_data->iommu_id] == POWER_OFF_STA)) {
 			spin_unlock_irqrestore(&data->tlb_lock, flags);
 			return;
 		}
@@ -1024,7 +1032,7 @@ static void mtk_iommu_tlb_flush(struct mtk_iommu_data *data, bool check_pm)
 
 skip_polling:
 	if (check_pm && has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN) &&
-		data->plat_data->iommu_type != MM_IOMMU)
+		data->plat_data->iommu_type != MM_IOMMU && pm_sta > 0)
 		pm_runtime_put(data->dev);
 	spin_unlock_irqrestore(&data->tlb_lock, flags);
 
@@ -1051,6 +1059,7 @@ static void mtk_iommu_tlb_flush_range_sync(unsigned long iova, size_t size,
 	bool need_sync_all = false;
 	unsigned long flags;
 	int iommu_ids = 0;
+	int pm_sta = 0;
 	int ret;
 	u32 tmp;
 
@@ -1062,7 +1071,8 @@ static void mtk_iommu_tlb_flush_range_sync(unsigned long iova, size_t size,
 			if ((data->plat_data->iommu_type == MM_IOMMU &&
 				pd_sta[data->plat_data->iommu_id] == POWER_OFF_STA) ||
 				(data->plat_data->iommu_type != MM_IOMMU &&
-				pm_runtime_get_if_in_use(data->dev) <= 0)) {
+				(pm_sta = pm_runtime_get_if_in_use(data->dev)) <= 0 &&
+				apu_pm_sta[data->plat_data->iommu_id] == POWER_OFF_STA)) {
 				spin_unlock_irqrestore(&data->tlb_lock, flags);
 				continue;
 			}
@@ -1096,7 +1106,7 @@ static void mtk_iommu_tlb_flush_range_sync(unsigned long iova, size_t size,
 		writel_relaxed(0, data->base + REG_MMU_CPE_DONE);
 		spin_unlock_irqrestore(&data->tlb_lock, flags);
 		if (has_pm && !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN) &&
-			data->plat_data->iommu_type != MM_IOMMU)
+			data->plat_data->iommu_type != MM_IOMMU && pm_sta > 0)
 			pm_runtime_put(data->dev);
 	}
 
@@ -2173,6 +2183,63 @@ static int mtk_iommu_pd_callback(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
+static struct mtk_iommu_data *mtk_iommu_get_data(u32 type, u32 id)
+{
+	struct list_head *hw_list;
+	struct mtk_iommu_data *data;
+
+	switch (type) {
+	case MM_IOMMU:
+		hw_list = &mm_iommu_list;
+		break;
+	case APU_IOMMU:
+		hw_list = &apu_iommu_list;
+		break;
+	default:
+		pr_info("%s failed, type is invalid, %d\n", __func__, type);
+		return NULL;
+	}
+
+	for_each_m4u(data, hw_list) {
+		if (data->plat_data->iommu_type == type && data->plat_data->iommu_id == id)
+			return data;
+	}
+
+	return NULL;
+}
+
+int mtk_iommu_update_pm_status(u32 type, u32 id, bool pm_sta)
+{
+	struct mtk_iommu_data *data;
+	unsigned long flags;
+	int iommu_ids;
+
+	/* Only support APU IOMMU */
+	if (type != APU_IOMMU)
+		return -1;
+
+	if(id >= APU_IOMMU_NUM)
+		return -1;
+
+	data = mtk_iommu_get_data(type, id);
+	if (!data)
+		return -1;
+
+	spin_lock_irqsave(&data->tlb_lock, flags);
+	apu_pm_sta[id] = (pm_sta ? POWER_ON_STA : POWER_OFF_STA);
+	spin_unlock_irqrestore(&data->tlb_lock, flags);
+
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
+	iommu_ids = MTK_IOMMU_ID_FLAG(data->plat_data->iommu_type,
+				      data->plat_data->iommu_id);
+	mtk_iommu_pm_trace((pm_sta ? IOMMU_POWER_ON : IOMMU_POWER_OFF),
+			   iommu_ids, apu_pm_sta[id], pm_sta, NULL);
+#endif
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_iommu_update_pm_status);
+
 static int mtk_iommu_dbg_hang_cb(struct notifier_block *nb,
 				 unsigned long action, void *data)
 {
@@ -2219,6 +2286,7 @@ static int mtk_iommu_mau_start_monitor(struct mtk_iommu_data *data,
 	int id = data->plat_data->iommu_id;
 	unsigned long flags;
 	void __iomem *base;
+	int pm_sta = 0;
 	int ret;
 
 	if (slave >= MTK_IOMMU_MMU_COUNT || mau >= mau_count) {
@@ -2228,7 +2296,7 @@ static int mtk_iommu_mau_start_monitor(struct mtk_iommu_data *data,
 	}
 
 	spin_lock_irqsave(&data->tlb_lock, flags);
-	if (!mtk_iommu_power_get(data)) {
+	if (!mtk_iommu_power_get(data, &pm_sta)) {
 		pr_notice("%s, iommu:(%d,%d) power off dev:%s\n",
 			  __func__, type, id, dev_name(data->dev));
 		spin_unlock_irqrestore(&data->tlb_lock, flags);
@@ -2238,7 +2306,7 @@ static int mtk_iommu_mau_start_monitor(struct mtk_iommu_data *data,
 	/* switch to secure debug */
 	ret = ao_secure_dbg_switch_by_atf(type, id, 1);
 	if (ret) {
-		mtk_iommu_power_put(data);
+		mtk_iommu_power_put(data, pm_sta);
 		spin_unlock_irqrestore(&data->tlb_lock, flags);
 		pr_notice("%s, iommu:(%d,%d) failed to enable secure debug:%d\n",
 			  __func__, type, id, ret);
@@ -2306,7 +2374,7 @@ static int mtk_iommu_mau_start_monitor(struct mtk_iommu_data *data,
 		pr_notice("%s, iommu:(%d,%d) failed to disable secure debug:%d\n",
 			  __func__, type, id, ret);
 
-	mtk_iommu_power_put(data);
+	mtk_iommu_power_put(data, pm_sta);
 	spin_unlock_irqrestore(&data->tlb_lock, flags);
 
 	return 0;
@@ -2365,6 +2433,7 @@ static int mtk_iommu_mau_dump_status(struct mtk_iommu_data *data,
 	unsigned int falut_id, assert_id, assert_address, assert_b32;
 	struct mau_config_info mau_cfg;
 	char *port_name = NULL;
+	int pm_sta = 0;
 	int ret;
 
 	if (slave >= MTK_IOMMU_MMU_COUNT || mau >= mau_count) {
@@ -2374,7 +2443,7 @@ static int mtk_iommu_mau_dump_status(struct mtk_iommu_data *data,
 	}
 
 	spin_lock_irqsave(&data->tlb_lock, flags);
-	if (!mtk_iommu_power_get(data)) {
+	if (!mtk_iommu_power_get(data, &pm_sta)) {
 		pr_notice("%s, iommu:(%d,%d), slave:%d, mau:%d, power off dev:%s\n",
 			  __func__, type, id, slave, mau, dev_name(data->dev));
 		spin_unlock_irqrestore(&data->tlb_lock, flags);
@@ -2425,7 +2494,7 @@ static int mtk_iommu_mau_dump_status(struct mtk_iommu_data *data,
 		pr_notice("%s: mau no assert in MAU set %d, status:0x%x\n",
 			  __func__, mau, status);
 
-	mtk_iommu_power_put(data);
+	mtk_iommu_power_put(data, pm_sta);
 	spin_unlock_irqrestore(&data->tlb_lock, flags);
 	return 0;
 }
@@ -2899,6 +2968,8 @@ skip_smi:
 			__func__, dev_name(dev), disp_power_on, iommu_id);
 		if (r)
 			pr_info("%s notifier err, dev:%s\n", __func__, dev_name(dev));
+	} else if (data->plat_data->iommu_type == APU_IOMMU) {
+		apu_pm_sta[data->plat_data->iommu_id] = POWER_OFF_STA;
 	}
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
@@ -3192,6 +3263,7 @@ void mtk_iommu_dbg_hang_detect(enum mtk_iommu_type type, int id)
 	struct list_head *hw_list;
 	struct mtk_iommu_data *data;
 	unsigned long flags;
+	int pm_sta = 0;
 
 	if (!share_pgtable) {
 		switch (type) {
@@ -3212,7 +3284,7 @@ void mtk_iommu_dbg_hang_detect(enum mtk_iommu_type type, int id)
 	for_each_m4u(data, hw_list) {
 		if (data->plat_data->iommu_type == type && data->plat_data->iommu_id == id) {
 			spin_lock_irqsave(&data->tlb_lock, flags);
-			if (!mtk_iommu_power_get(data)) {
+			if (!mtk_iommu_power_get(data, &pm_sta)) {
 				pr_notice("%s, iommu:(%d,%d) power off dev:%s\n",
 					  __func__, type, id, dev_name(data->dev));
 				spin_unlock_irqrestore(&data->tlb_lock, flags);
@@ -3221,7 +3293,7 @@ void mtk_iommu_dbg_hang_detect(enum mtk_iommu_type type, int id)
 
 			mtk_dump_reg_for_hang_issue(data);
 
-			mtk_iommu_power_put(data);
+			mtk_iommu_power_put(data, pm_sta);
 			spin_unlock_irqrestore(&data->tlb_lock, flags);
 			return;
 		}

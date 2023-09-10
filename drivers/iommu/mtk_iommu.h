@@ -222,6 +222,7 @@ static inline int dev_is_normal_region(struct device *dev)
 }
 
 void mtk_iommu_dbg_hang_detect(enum mtk_iommu_type type, int id);
+int mtk_iommu_update_pm_status(u32 type, u32 id, bool pm_sta);
 
 uint64_t mtee_iova_to_phys(unsigned long iova, u32 tab_id, u32 *sr_info,
 			   u64 *pa, u32 *type, u32 *lvl);
@@ -235,6 +236,11 @@ static inline int dev_is_normal_region(struct device *dev)
 
 static inline void mtk_iommu_dbg_hang_detect(enum mtk_iommu_type type, int id)
 {
+}
+
+static inline int mtk_iommu_update_pm_status(u32 type, u32 id, bool pm_sta)
+{
+	return 0;
 }
 
 static inline uint64_t mtee_iova_to_phys(unsigned long iova, u32 tab_id,
