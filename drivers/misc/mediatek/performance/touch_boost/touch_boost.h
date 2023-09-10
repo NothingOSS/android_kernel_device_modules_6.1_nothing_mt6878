@@ -9,6 +9,11 @@
 #define TOUCH_UP 0
 #define TOUCH_DOWN 1
 
+
+extern void set_top_grp_aware(int val, int force_ctrl);
+extern int  group_set_threshold(int grp_id, int val);
+extern int group_reset_threshold(int grp_id);
+
 extern int (*fpsgo_get_fstb_active_fp)(long long time_diff);
 extern void (*touch_boost_get_cmd_fp)(int *cmd, int *enable,
 	int *deboost_when_render, int *active_time, int *boost_duration,
