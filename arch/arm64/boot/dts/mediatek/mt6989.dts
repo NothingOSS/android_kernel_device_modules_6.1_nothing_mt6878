@@ -9862,7 +9862,8 @@
 						<GIC_SPI 595 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 611 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
-			clocks = <&camsys_main_clk CLK_CAM_MAIN_LARB14>,
+			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
+					<&camsys_main_clk CLK_CAM_MAIN_LARB14>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAMSV_TOP>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
@@ -9872,7 +9873,8 @@
 					<&topckgen_clk CLK_TOP_CAM_SEL>,
 					<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 					<&topckgen_clk CLK_TOP_CAMTM_SEL>;
-			clock-names = "cam_main_larb14_con",
+			clock-names = "cam_main_cam_cgpdn",
+						"cam_main_larb14_con",
 						"cam_main_camsv_top_con",
 						"cam_main_cam2mm0_gals_con",
 						"cam_main_cam2mm1_gals_con",
@@ -9922,7 +9924,8 @@
 						<GIC_SPI 598 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 612 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
-			clocks = <&camsys_main_clk CLK_CAM_MAIN_LARB13>,
+			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
+					<&camsys_main_clk CLK_CAM_MAIN_LARB13>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAMSV_TOP>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
@@ -9932,7 +9935,8 @@
 					<&topckgen_clk CLK_TOP_CAM_SEL>,
 					<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 					<&topckgen_clk CLK_TOP_CAMTM_SEL>;
-			clock-names = "cam_main_larb13_con",
+			clock-names = "cam_main_cam_cgpdn",
+						"cam_main_larb13_con",
 						"cam_main_camsv_top_con",
 						"cam_main_cam2mm0_gals_con",
 						"cam_main_cam2mm1_gals_con",
@@ -9982,7 +9986,8 @@
 						<GIC_SPI 601 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 613 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
-			clocks = <&camsys_main_clk CLK_CAM_MAIN_LARB29>,
+			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
+					<&camsys_main_clk CLK_CAM_MAIN_LARB29>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAMSV_TOP>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
@@ -9992,7 +9997,8 @@
 					<&topckgen_clk CLK_TOP_CAM_SEL>,
 					<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 					<&topckgen_clk CLK_TOP_CAMTM_SEL>;
-			clock-names = "cam_main_larb29_con",
+			clock-names = "cam_main_cam_cgpdn",
+						"cam_main_larb29_con",
 						"cam_main_camsv_top_con",
 						"cam_main_cam2mm0_gals_con",
 						"cam_main_cam2mm1_gals_con",
@@ -10032,7 +10038,8 @@
 						<GIC_SPI 604 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 614 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
-			clocks = <&camsys_main_clk CLK_CAM_MAIN_LARB29>,
+			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
+					<&camsys_main_clk CLK_CAM_MAIN_LARB29>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAMSV_TOP>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
@@ -10042,7 +10049,8 @@
 					<&topckgen_clk CLK_TOP_CAM_SEL>,
 					<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 					<&topckgen_clk CLK_TOP_CAMTM_SEL>;
-			clock-names = "cam_main_larb29_con",
+			clock-names = "cam_main_cam_cgpdn",
+						"cam_main_larb29_con",
 						"cam_main_camsv_top_con",
 						"cam_main_cam2mm0_gals_con",
 						"cam_main_cam2mm1_gals_con",
@@ -10082,7 +10090,8 @@
 						<GIC_SPI 607 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 615 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
-			clocks = <&camsys_main_clk CLK_CAM_MAIN_LARB29>,
+			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
+					<&camsys_main_clk CLK_CAM_MAIN_LARB29>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAMSV_TOP>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
@@ -10092,7 +10101,8 @@
 					<&topckgen_clk CLK_TOP_CAM_SEL>,
 					<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 					<&topckgen_clk CLK_TOP_CAMTM_SEL>;
-			clock-names = "cam_main_larb29_con",
+			clock-names = "cam_main_cam_cgpdn",
+						"cam_main_larb29_con",
 						"cam_main_camsv_top_con",
 						"cam_main_cam2mm0_gals_con",
 						"cam_main_cam2mm1_gals_con",
@@ -10133,7 +10143,8 @@
 						<GIC_SPI 610 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 616 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
-			clocks = <&camsys_main_clk CLK_CAM_MAIN_LARB29>,
+			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
+					<&camsys_main_clk CLK_CAM_MAIN_LARB29>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAMSV_TOP>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
@@ -10143,7 +10154,8 @@
 					<&topckgen_clk CLK_TOP_CAM_SEL>,
 					<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 					<&topckgen_clk CLK_TOP_CAMTM_SEL>;
-			clock-names = "cam_main_larb29_con",
+			clock-names = "cam_main_cam_cgpdn",
+						"cam_main_larb29_con",
 						"cam_main_camsv_top_con",
 						"cam_main_cam2mm0_gals_con",
 						"cam_main_cam2mm1_gals_con",
@@ -10176,7 +10188,8 @@
 			mediatek,larbs = <&smi_larb25>;
 			interrupts = <GIC_SPI 577 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
-			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
+			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
+					<&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2SYS_GALS>,
@@ -10188,7 +10201,8 @@
 					<&topckgen_clk CLK_TOP_CAM_SEL>,
 					<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 					<&topckgen_clk CLK_TOP_CAMTM_SEL>;
-			clock-names = "cam_main_mraw_cg_con",
+			clock-names = "cam_main_cam_cgpdn",
+						"cam_main_mraw_cg_con",
 						"cam_main_cam2mm0_gals_con",
 						"cam_main_cam2mm1_gals_con",
 						"cam_main_cam2sys_gals_con",
@@ -10226,7 +10240,8 @@
 			mediatek,larbs = <&smi_larb26>;
 			interrupts = <GIC_SPI 578 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
-			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
+			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
+					<&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2SYS_GALS>,
@@ -10238,7 +10253,8 @@
 					<&topckgen_clk CLK_TOP_CAM_SEL>,
 					<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 					<&topckgen_clk CLK_TOP_CAMTM_SEL>;
-			clock-names = "cam_main_mraw_cg_con",
+			clock-names = "cam_main_cam_cgpdn",
+						"cam_main_mraw_cg_con",
 						"cam_main_cam2mm0_gals_con",
 						"cam_main_cam2mm1_gals_con",
 						"cam_main_cam2sys_gals_con",
@@ -10276,7 +10292,8 @@
 			mediatek,larbs = <&smi_larb25>;
 			interrupts = <GIC_SPI 579 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
-			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
+			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
+					<&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2SYS_GALS>,
@@ -10288,7 +10305,8 @@
 					<&topckgen_clk CLK_TOP_CAM_SEL>,
 					<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 					<&topckgen_clk CLK_TOP_CAMTM_SEL>;
-			clock-names = "cam_main_mraw_cg_con",
+			clock-names = "cam_main_cam_cgpdn",
+						"cam_main_mraw_cg_con",
 						"cam_main_cam2mm0_gals_con",
 						"cam_main_cam2mm1_gals_con",
 						"cam_main_cam2sys_gals_con",
@@ -10326,7 +10344,8 @@
 			mediatek,larbs = <&smi_larb26>;
 			interrupts = <GIC_SPI 580 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MRAW>;
-			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
+			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
+					<&camsys_main_clk CLK_CAM_MAIN_CAM_MRAW>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
 					<&camsys_main_clk CLK_CAM_MAIN_CAM2SYS_GALS>,
@@ -10338,7 +10357,8 @@
 					<&topckgen_clk CLK_TOP_CAM_SEL>,
 					<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
 					<&topckgen_clk CLK_TOP_CAMTM_SEL>;
-			clock-names = "cam_main_mraw_cg_con",
+			clock-names = "cam_main_cam_cgpdn",
+						"cam_main_mraw_cg_con",
 						"cam_main_cam2mm0_gals_con",
 						"cam_main_cam2mm1_gals_con",
 						"cam_main_cam2sys_gals_con",
