@@ -2114,7 +2114,7 @@ static void disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 			AALIRQ_LOG("result fail\n");
 		}
 	} else {
-		AALERR("comp %d hist not retrieved\n", comp->id);
+		AALIRQ_LOG("comp %d hist not retrieved\n", comp->id);
 		CRTC_MMP_MARK(0, aal_dre30_rw, comp->id, 0xEE);
 	}
 
