@@ -514,9 +514,9 @@ static int apu_probe(struct platform_device *pdev)
 		goto remove_apu_excep;
 	}
 
-	/* to avoid running state being changed through rproc sysfs */
+	/* to avoid running state being changed through rproc sysfs/debugfs */
 	if ((data->flags & F_PRELOAD_FIRMWARE) && (data->flags & F_AUTO_BOOT))
-		rproc->state = RPROC_DETACHED;
+		rproc->state = RPROC_OFFLINE;
 
 	if ((data->flags & F_FAST_ON_OFF) == 0) {
 		pm_runtime_put_sync(&pdev->dev);
