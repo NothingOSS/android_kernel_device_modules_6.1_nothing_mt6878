@@ -838,6 +838,12 @@ void update_channel_bw(const u32 comm_id, const u32 chnn_id,
 EXPORT_SYMBOL_GPL(update_channel_bw);
 
 static u32 is_path_write = path_no_type;
+
+static inline bool is_max_bw_to_max_ostdl_policy(void)
+{
+	return !(mmqos_state & DPC_ENABLE) || (g_hrt->cam_occu_bw == 0);
+}
+
 static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 {
 	struct larb_node *larb_node;
@@ -1102,12 +1108,14 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			value = SHIFT_ROUND(
 				icc_to_MBps(src->v2_mix_bw),
 				larb_port_node->bw_ratio);
-			if (src->peak_bw || (src->v2_max_ostd && (mmqos_state & DPC_ENABLE)))
+			if (src->peak_bw ||
+				(src->v2_max_ostd && !is_max_bw_to_max_ostdl_policy()))
 				value = SHIFT_ROUND(value * 3, 1);
 		} else {
 			src->v2_max_ostd = false;
 		}
-		if (value > mmqos->max_ratio || (src->v2_max_ostd && !(mmqos_state & DPC_ENABLE))) {
+		if (value > mmqos->max_ratio
+			|| (src->v2_max_ostd && is_max_bw_to_max_ostdl_policy())) {
 			if (value > mmqos->max_ratio)
 				dev_notice(larb_node->larb_dev,
 					"larb=%d port=%d avg_bw:%d peak_bw:%d ostd=%#x\n",
