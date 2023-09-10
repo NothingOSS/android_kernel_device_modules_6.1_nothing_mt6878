@@ -322,9 +322,10 @@ static void dpc_disp_group_enable(const enum mtk_dpc_disp_vidle group, bool en)
 		break;
 	case DPC_DISP_VIDLE_VDISP_DVFS:
 		value = en ? 0 : 1;
-		writel(value, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
 		if (unlikely(vdisp_ao))
 			writel(1, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
+		else
+			writel(value, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
 		break;
 	case DPC_DISP_VIDLE_HRT_BW:
 	case DPC_DISP_VIDLE_SRT_BW:
@@ -643,9 +644,10 @@ void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force)
 	vdisp_level_set_vcp(subsys, max_level);
 
 	/* switch vdisp to SW or HW mode */
-	writel(force ? 1 : 0, dpc_base + addr2);
 	if (unlikely(vdisp_ao))
 		writel(1, dpc_base + addr2);
+	else
+		writel(force ? 1 : 0, dpc_base + addr2);
 
 	/* add vdisp info to met */
 	if (MEM_BASE)
