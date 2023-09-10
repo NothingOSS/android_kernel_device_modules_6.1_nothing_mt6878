@@ -46,6 +46,8 @@
 #define TAG "EAS_IOCTL"
 
 int mtk_sched_asym_cpucapacity  =  1;
+unsigned int dn_pct = -1;
+unsigned int up_pct = -1;
 
 static inline void sched_asym_cpucapacity_init(void)
 {
@@ -583,6 +585,29 @@ static long eas_ioctl_impl(struct file *filp,
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
 		unset_ls_task_vip();
+		break;
+	case EAS_GEAR_MIGR_DN_PCT:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		dn_pct = val;
+		break;
+	case EAS_GEAR_MIGR_UP_PCT:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		up_pct = val;
+		break;
+	case EAS_GEAR_MIGR_SET:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		if (!set_updown_migration_pct(val, dn_pct, up_pct))
+			return -1;
+		dn_pct = up_pct = 0; //set success, reset local value
+		break;
+	case EAS_GEAR_MIGR_UNSET:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		if (!unset_updown_migration_pct(val))
+			return -1;
 		break;
 	case EAS_SBB_ALL_SET:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
