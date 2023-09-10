@@ -515,9 +515,6 @@ static int mt6989_apu_top_func(struct platform_device *pdev,
 	case APUTOP_FUNC_DRV_CFG:
 		mt6989_drv_cfg_remote_sync(aputop);
 		break;
-	case APUTOP_FUNC_IPI_TEST:
-		test_ipi_wakeup_apu();
-		break;
 	case APUTOP_FUNC_ARE_DUMP1:
 	case APUTOP_FUNC_ARE_DUMP2:
 #if APUPW_DUMP_FROM_APMCU
