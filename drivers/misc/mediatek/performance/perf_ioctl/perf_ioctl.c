@@ -39,7 +39,7 @@ EXPORT_SYMBOL_GPL(fpsgo_get_pid_fp);
 
 void (*fpsgo_notify_sbe_rescue_fp)(int pid, int start, int enhance, unsigned long long frameID);
 EXPORT_SYMBOL_GPL(fpsgo_notify_sbe_rescue_fp);
-void (*fpsgo_notify_sbe_policy_fp)(int pid,  char *name,
+int (*fpsgo_notify_sbe_policy_fp)(int pid,  char *name,
 	unsigned long mask, int start, char *specific_name, int num);
 EXPORT_SYMBOL_GPL(fpsgo_notify_sbe_policy_fp);
 int (*fpsgo_notify_frame_hint_fp)(int qudeq,
@@ -423,7 +423,7 @@ static long device_ioctl(struct file *filp,
 		switch (cmd) {
 		case FPSGO_SBE_SET_POLICY:
 			if (fpsgo_notify_sbe_policy_fp)
-				fpsgo_notify_sbe_policy_fp(msgKM_SBE->pid, msgKM_SBE->name,
+				ret = fpsgo_notify_sbe_policy_fp(msgKM_SBE->pid, msgKM_SBE->name,
 					msgKM_SBE->mask, msgKM_SBE->start,
 					msgKM_SBE->specific_name, msgKM_SBE->num);
 			break;

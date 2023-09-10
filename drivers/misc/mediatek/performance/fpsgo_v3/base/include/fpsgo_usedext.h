@@ -32,7 +32,7 @@ extern void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota,
 		unsigned long long identifier);
 extern void (*fpsgo_get_pid_fp)(int cmd, int *pid, int op,
 	int value1, int value2);
-extern void (*fpsgo_notify_sbe_policy_fp)(int pid,  char *name,
+extern int (*fpsgo_notify_sbe_policy_fp)(int pid,  char *name,
 	unsigned long mask, int start, char *specific_name, int num);
 
 extern int (*magt2fpsgo_notify_target_fps_fp)(int *pid_arr, int *tid_arr,

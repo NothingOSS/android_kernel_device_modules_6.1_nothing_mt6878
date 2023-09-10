@@ -71,6 +71,7 @@ static int global_kfps_mask = 0xFFF;
 static int total_render_info_num;
 static int total_linger_num;
 static int total_BQ_id_num;
+static int total_sbe_spid_loading_num;
 
 static struct kobject *base_kobj;
 static struct rb_root render_pid_tree;
@@ -78,6 +79,7 @@ static struct rb_root BQ_id_list;
 static struct rb_root linger_tree;
 static struct rb_root hwui_info_tree;
 static struct rb_root sbe_info_tree;
+static struct rb_root sbe_spid_loading_tree;
 static struct rb_root fps_control_pid_info_tree;
 static struct rb_root acquire_info_tree;
 #if FPSGO_MW
@@ -1816,6 +1818,27 @@ static void fpsgo_check_adpf_render_status(void)
 	}
 }
 
+static void fpsgo_check_sbe_spid_loading_status(void)
+{
+	int local_tgid = 0;
+	struct sbe_spid_loading *iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	rbn = rb_first(&sbe_spid_loading_tree);
+	while (rbn) {
+		iter = rb_entry(rbn, struct sbe_spid_loading, rb_node);
+		local_tgid = fpsgo_get_tgid(iter->tgid);
+		if (local_tgid)
+			rbn = rb_next(rbn);
+		else {
+			rb_erase(rbn, &sbe_spid_loading_tree);
+			kfree(iter);
+			total_sbe_spid_loading_num--;
+			rbn = rb_first(&sbe_spid_loading_tree);
+		}
+	}
+}
+
 void fpsgo_clear_llf_cpu_policy(void)
 {
 	struct rb_node *n;
@@ -1995,6 +2018,7 @@ int fpsgo_check_thread_status(void)
 	fpsgo_check_BQid_status();
 	fpsgo_check_acquire_info_status();
 	fpsgo_check_adpf_render_status();
+	fpsgo_check_sbe_spid_loading_status();
 
 	fbt_ux_set_perf(local_ux_max_pid, local_ux_max_perf);
 
@@ -2599,6 +2623,175 @@ int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
 	*out_tid_num = local_index;
 
 	return 0;
+}
+
+static void fpsgo_delete_oldest_sbe_spid_loading(void)
+{
+	unsigned long long min_ts = ULLONG_MAX;
+	struct sbe_spid_loading *iter = NULL, *min_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	for (rbn = rb_first(&sbe_spid_loading_tree); rbn; rbn = rb_next(rbn)) {
+		iter = rb_entry(rbn, struct sbe_spid_loading, rb_node);
+		if (iter->ts < min_ts) {
+			min_ts = iter->ts;
+			min_iter = iter;
+		}
+	}
+
+	if (min_iter) {
+		rb_erase(&min_iter->rb_node, &sbe_spid_loading_tree);
+		kfree(min_iter);
+		total_sbe_spid_loading_num--;
+	}
+}
+
+struct sbe_spid_loading *fpsgo_get_sbe_spid_loading(int tgid, int create)
+{
+	struct rb_node **p = &sbe_spid_loading_tree.rb_node;
+	struct rb_node *parent = NULL;
+	struct sbe_spid_loading *iter = NULL;
+
+	while (*p) {
+		parent = *p;
+		iter = rb_entry(parent, struct sbe_spid_loading, rb_node);
+
+		if (tgid < iter->tgid)
+			p = &(*p)->rb_left;
+		else if (tgid > iter->tgid)
+			p = &(*p)->rb_right;
+		else
+			return iter;
+	}
+
+	if (!create)
+		return NULL;
+
+	iter = kzalloc(sizeof(struct sbe_spid_loading), GFP_KERNEL);
+	if (!iter)
+		return NULL;
+
+	iter->tgid = tgid;
+	iter->spid_num = 0;
+	iter->ts = fpsgo_get_time();
+
+	rb_link_node(&iter->rb_node, parent, p);
+	rb_insert_color(&iter->rb_node, &sbe_spid_loading_tree);
+	total_sbe_spid_loading_num++;
+
+	if (total_sbe_spid_loading_num > FPSGO_MAX_SBE_SPID_LOADING_SIZE)
+		fpsgo_delete_oldest_sbe_spid_loading();
+
+	return iter;
+}
+
+int fpsgo_delete_sbe_spid_loading(int tgid)
+{
+	int ret = 0;
+	struct sbe_spid_loading *iter = NULL;
+
+	iter = fpsgo_get_sbe_spid_loading(tgid, 0);
+	if (iter) {
+		rb_erase(&iter->rb_node, &sbe_spid_loading_tree);
+		kfree(iter);
+		total_sbe_spid_loading_num--;
+		ret = 1;
+	}
+
+	return ret;
+}
+
+int fpsgo_update_sbe_spid_loading(int *cur_pid_arr, int cur_pid_num, int tgid)
+{
+	int ret = 0;
+	int i;
+	unsigned long long local_runtime;
+	struct sbe_spid_loading *iter = NULL;
+	struct task_struct *tsk = NULL;
+
+	if (!cur_pid_arr || cur_pid_num <= 0) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	iter = fpsgo_get_sbe_spid_loading(tgid, 1);
+	if (!iter) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	iter->ts = fpsgo_get_time();
+
+	memset(iter->spid_arr, 0, MAX_DEP_NUM * sizeof(int));
+	memset(iter->spid_latest_runtime, 0,
+		MAX_DEP_NUM * sizeof(unsigned long long));
+
+	for (i = 0; i < cur_pid_num; i++) {
+		local_runtime = 0;
+		rcu_read_lock();
+		tsk = find_task_by_vpid(cur_pid_arr[i]);
+		if (tsk) {
+			get_task_struct(tsk);
+			local_runtime = (u64)fpsgo_task_sched_runtime(tsk);
+			put_task_struct(tsk);
+		}
+		rcu_read_unlock();
+
+		iter->spid_arr[i] = cur_pid_arr[i];
+		iter->spid_latest_runtime[i] = local_runtime;
+		fpsgo_main_trace("[base] sbe %dth tgid:%d update spid:%d runtime:%llu",
+			i+1, tgid, cur_pid_arr[i], local_runtime);
+
+		if (i == MAX_DEP_NUM - 1)
+			break;
+	}
+	iter->spid_num = cur_pid_num <= MAX_DEP_NUM ? cur_pid_num : MAX_DEP_NUM;
+
+out:
+	return ret;
+}
+
+int fpsgo_ctrl2base_query_sbe_spid_loading(void)
+{
+	int ret = 0;
+	int i;
+	unsigned long long local_runtime;
+	struct sbe_spid_loading *iter = NULL;
+	struct rb_node *rbn = NULL;
+	struct task_struct *tsk = NULL;
+
+	fpsgo_render_tree_lock(__func__);
+	for (rbn = rb_first(&sbe_spid_loading_tree); rbn; rbn = rb_next(rbn)) {
+		iter = rb_entry(rbn, struct sbe_spid_loading, rb_node);
+		if (!fpsgo_get_tgid(iter->tgid))
+			continue;
+
+		for (i = 0; i < iter->spid_num; i++) {
+			local_runtime = 0;
+			rcu_read_lock();
+			tsk = find_task_by_vpid(iter->spid_arr[i]);
+			if (tsk) {
+				get_task_struct(tsk);
+				local_runtime = (u64)fpsgo_task_sched_runtime(tsk);
+				put_task_struct(tsk);
+			}
+			rcu_read_unlock();
+
+			fpsgo_main_trace("[base] sbe %dth tgid:%d query spid:%d runtime:%llu->%llu",
+				i+1, iter->tgid, iter->spid_arr[i], iter->spid_latest_runtime[i], local_runtime);
+
+			if (local_runtime > 0 &&
+				local_runtime > iter->spid_latest_runtime[i]) {
+				ret = 1;
+				break;
+			}
+		}
+
+		if (ret)
+			break;
+	}
+	fpsgo_render_tree_unlock(__func__);
+
+	return ret;
 }
 
 static unsigned long long fpsgo_traverse_render_rb_tree(struct rb_root *rbr,
@@ -3603,6 +3796,7 @@ int init_fpsgo_common(void)
 	linger_tree = RB_ROOT;
 	hwui_info_tree = RB_ROOT;
 	sbe_info_tree = RB_ROOT;
+	sbe_spid_loading_tree = RB_ROOT;
 	fps_control_pid_info_tree = RB_ROOT;
 	fpsgo_attr_by_pid_tree = RB_ROOT;
 	fpsgo_attr_by_tid_tree = RB_ROOT;

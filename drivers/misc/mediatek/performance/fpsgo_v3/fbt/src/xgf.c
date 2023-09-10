@@ -1683,7 +1683,7 @@ by_pass_skip:
 	mutex_unlock(&xgf_main_lock);
 }
 
-static int xgf_split_dep_name(int tgid, char *dep_name, int dep_num, int *out_tid_arr)
+int xgf_split_dep_name(int tgid, char *dep_name, int dep_num, int *out_tid_arr)
 {
 	char *thread_name = NULL, *remain_str = NULL;
 	char local_thread_name[16];

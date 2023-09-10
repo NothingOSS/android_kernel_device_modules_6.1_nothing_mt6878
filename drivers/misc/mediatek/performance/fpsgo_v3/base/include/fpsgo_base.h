@@ -31,6 +31,7 @@
 #define FPSGO_MAX_TREE_SIZE 10
 #define FPSGO_MAX_RENDER_INFO_SIZE 20
 #define FPSGO_MAX_BQ_ID_SIZE 20
+#define FPSGO_MAX_SBE_SPID_LOADING_SIZE 10
 
 enum {
 	FPSGO_SET_UNKNOWN = -1,
@@ -374,6 +375,15 @@ struct sbe_info {
 	struct rb_node entry;
 };
 
+struct sbe_spid_loading {
+	int tgid;
+	int spid_arr[MAX_DEP_NUM];
+	unsigned long long spid_latest_runtime[MAX_DEP_NUM];
+	int spid_num;
+	unsigned long long ts;
+	struct rb_node rb_node;
+};
+
 struct fps_control_pid_info {
 	int pid;
 	struct rb_node entry;
@@ -474,6 +484,10 @@ void fpsgo_stop_boost_by_render(struct render_info *r);
 int fpsgo_get_render_tid_by_render_name(int tgid, char *name,
 	int *out_tid_arr, unsigned long long *out_bufID_arr,
 	int *out_tid_num, int out_tid_max_num);
+struct sbe_spid_loading *fpsgo_get_sbe_spid_loading(int tgid, int create);
+int fpsgo_delete_sbe_spid_loading(int tgid);
+int fpsgo_update_sbe_spid_loading(int *cur_pid_arr, int cur_pid_num, int tgid);
+int fpsgo_ctrl2base_query_sbe_spid_loading(void);
 int fpsgo_check_fbt_jerk_work_addr_invalid(struct work_struct *target_work);
 
 int init_fpsgo_common(void);

@@ -1531,11 +1531,13 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 	int start, char *specific_name, int num)
 {
 	char *thread_name = NULL;
-	int ret = 0;
+	int ret;
 	int i;
 	int *final_pid_arr =  NULL;
 	unsigned long long *final_bufID_arr = NULL;
 	int final_pid_arr_idx = 0;
+	int *local_specific_tid_arr = NULL;
+	int local_specific_tid_num = 0;
 	struct fpsgo_attr_by_pid *attr_iter = NULL;
 
 	if (tgid <= 0 || !name || !mask) {
@@ -1543,32 +1545,32 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 		goto out;
 	}
 
+	ret = -ENOMEM;
 	thread_name = kcalloc(16, sizeof(char), GFP_KERNEL);
-	if (!thread_name) {
-		ret = -ENOMEM;
+	if (!thread_name)
 		goto out;
-	}
 
-	if (!strncpy(thread_name, name, 16)) {
-		ret = -ENOMEM;
+	if (!strncpy(thread_name, name, 16))
 		goto out;
-	}
 	thread_name[15] = '\0';
 
 	final_pid_arr = kcalloc(10, sizeof(int), GFP_KERNEL);
-	if (!final_pid_arr) {
-		ret = -ENOMEM;
+	if (!final_pid_arr)
 		goto out;
-	}
 
 	final_bufID_arr = kcalloc(10, sizeof(unsigned long long), GFP_KERNEL);
-	if (!final_bufID_arr) {
-		ret = -ENOMEM;
+	if (!final_bufID_arr)
 		goto out;
-	}
+
+	local_specific_tid_arr = kcalloc(num, sizeof(int), GFP_KERNEL);
+	if (!local_specific_tid_arr)
+		goto out;
+	ret = 0;
 
 	fpsgo_get_render_tid_by_render_name(tgid, thread_name,
 		final_pid_arr, final_bufID_arr, &final_pid_arr_idx, 10);
+	fpsgo_main_trace("[comp] sbe tgid:%d name:%s mask:%lu start:%d final_pid_arr_idx:%d",
+		tgid, name, mask, start, final_pid_arr_idx);
 
 	for (i = 0; i < final_pid_arr_idx; i++) {
 		if (test_bit(FPSGO_CONTROL, &mask))
@@ -1592,13 +1594,23 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 		} else
 			delete_attr_by_pid(final_pid_arr[i]);
 		fpsgo_render_tree_unlock(__func__);
+
+		fpsgo_main_trace("[comp] sbe %dth rtid:%d buffer_id:0x%llx",
+			i+1, final_pid_arr[i], final_bufID_arr[i]);
 	}
 
-	if (final_pid_arr_idx > 0 && start) {
+	if (test_bit(FPSGO_RUNNING_CHECK, &mask)) {
+		if (start) {
+			local_specific_tid_num = xgf_split_dep_name(tgid,
+				specific_name, num, local_specific_tid_arr);
+			fpsgo_update_sbe_spid_loading(local_specific_tid_arr,
+				local_specific_tid_num, tgid);
+		} else
+			fpsgo_delete_sbe_spid_loading(tgid);
+	} else if (final_pid_arr_idx > 0 && start)
 		fpsgo_other2xgf_set_dep_list(tgid, final_pid_arr,
 			final_bufID_arr, final_pid_arr_idx,
 			specific_name, num, XGF_ADD_DEP);
-	}
 
 	ret = final_pid_arr_idx;
 
@@ -1606,6 +1618,7 @@ out:
 	kfree(thread_name);
 	kfree(final_pid_arr);
 	kfree(final_bufID_arr);
+	kfree(local_specific_tid_arr);
 	return ret;
 }
 

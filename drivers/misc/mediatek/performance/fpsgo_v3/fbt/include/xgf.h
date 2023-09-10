@@ -136,6 +136,7 @@ int __init init_xgf(void);
 int __exit exit_xgf(void);
 void fpsgo_ctrl2xgf_switch_xgf(int val);
 void xgf_trace(const char *fmt, ...);
+int xgf_split_dep_name(int tgid, char *dep_name, int dep_num, int *out_tid_arr);
 
 void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 	unsigned long long *raw_runtime, unsigned long long *run_time,

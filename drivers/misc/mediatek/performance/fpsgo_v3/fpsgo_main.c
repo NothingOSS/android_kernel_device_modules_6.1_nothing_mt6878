@@ -130,6 +130,7 @@ static struct task_struct *kfpsgo_tsk;
 static int fpsgo_enable;
 static int fpsgo_force_onoff;
 static int perfserv_ta;
+static int sbe2fpsgo_query_is_running;
 
 int powerhal_tid;
 
@@ -349,6 +350,8 @@ static void fpsgo_notifier_wq_cb_hint_frame(int qudeq,
 	if (dep_mode && dep_num > 0)
 		fpsgo_ctrl2comp_hint_frame_dep_task(cur_pid, id,
 			dep_mode, dep_name, dep_num);
+
+	sbe2fpsgo_query_is_running = fpsgo_ctrl2base_query_sbe_spid_loading();
 }
 
 static void fpsgo_notifier_wq_cb_adpf_hint(struct fpsgo_adpf_session *session)
@@ -952,26 +955,31 @@ int fpsgo_notify_frame_hint(int qudeq,
 	return ret;
 }
 
-void fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask,
+int fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask,
 	int start, char *specific_name, int num)
 {
 	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
 
 	if (!fpsgo_is_enable())
-		return;
+		return -EINVAL;
 
 	vpPush =
 		(struct FPSGO_NOTIFIER_PUSH_TAG *)
 		fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
 	if (!vpPush) {
 		FPSGO_LOGE("[FPSGO_CTRL] OOM\n");
-		return;
+		return -ENOMEM;
 	}
 
 	if (!kfpsgo_tsk) {
 		FPSGO_LOGE("[FPSGO_CTRL] NULL WorkQueue\n");
 		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
-		return;
+		return -ENOMEM;
+	}
+
+	if (test_bit(FPSGO_RUNNING_QUERY, &mask)) {
+		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
+		return sbe2fpsgo_query_is_running ? 10001 : 0;
 	}
 
 	vpPush->ePushType = FPSGO_NOTIFIER_SBE_POLICY;
@@ -982,6 +990,8 @@ void fpsgo_notify_sbe_policy(int pid, char *name, unsigned long mask,
 	memcpy(vpPush->specific_name, specific_name, 100);
 	vpPush->num = num;
 	fpsgo_queue_work(vpPush);
+
+	return 0;
 }
 
 int fpsgo_notify_adpf_hint(struct _SESSION *session)
