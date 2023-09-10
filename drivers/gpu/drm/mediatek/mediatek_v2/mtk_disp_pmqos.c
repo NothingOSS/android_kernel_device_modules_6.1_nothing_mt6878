@@ -238,6 +238,9 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 
 	tmp = bw;
 
+	if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
+		return 0;
+
 	for (i = 0; i < DDP_PATH_NR; i++) {
 		if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
 			continue;

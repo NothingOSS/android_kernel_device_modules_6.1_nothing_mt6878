@@ -9252,7 +9252,7 @@ int mtk_crtc_attach_ddp_comp(struct drm_crtc *crtc, int ddp_mode,
 	int i, j;
 	bool only_output;
 
-	if (ddp_mode < 0)
+	if (ddp_mode < 0 || ddp_mode >= DDP_MODE_NR)
 		return -EINVAL;
 
 	only_output = (priv && priv->usage[drm_crtc_index(crtc)] == DISP_OPENING);
@@ -17520,7 +17520,8 @@ static void mtk_crtc_connect_single_path_cmdq(struct drm_crtc *crtc,
 			prev_id = DDP_COMPONENT_ID_MAX;
 		} else {
 			comp = mtk_crtc_get_comp(crtc, ddp_mode, path_idx, i - 1);
-			prev_id = comp->id;
+			if (comp)
+				prev_id = comp->id;
 		}
 
 		comp = mtk_crtc_get_comp(crtc, ddp_mode, path_idx, i);
