@@ -47,6 +47,7 @@ struct mdw_rv_tag {
 			uint32_t executed_core_bmp;
 			uint32_t tcm_usage;
 			uint32_t history_iptime;
+			uint32_t hse_en;
 		} subcmd;
 		struct mdw_tag_deque_cmd {
 			uint32_t status;

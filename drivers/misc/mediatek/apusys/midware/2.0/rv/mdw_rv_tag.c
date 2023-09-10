@@ -30,7 +30,7 @@ void mdw_cmd_trace(struct mdw_cmd *c, uint32_t status)
 	uint64_t param1 = 0, param2 = 0, param3 = 0;
 
 	if (status == MDW_CMD_ENQUE) {
-		param1 = c->uid;
+		param1 = c->tgid;
 		param2 = c->power_etime;
 		param3 = c->inference_id;
 	} else if (status == MDW_CMD_START) {
@@ -109,7 +109,8 @@ void mdw_subcmd_trace(struct mdw_cmd *c, uint32_t sc_idx,
 		sc_einfo[sc_idx].was_preempted,
 		sc_einfo[sc_idx].executed_core_bitmap,
 		sc_einfo[sc_idx].tcm_usage,
-		history_iptime);
+		history_iptime,
+		c->subcmds[sc_idx].hse_en);
 }
 
 /* The parameters must aligned with trace_mdw_rv_subcmd() */
@@ -123,7 +124,8 @@ probe_rv_mdw_subcmd(void *data, uint32_t status,
 		uint32_t was_preempted,
 		uint32_t executed_core_bmp,
 		uint32_t tcm_usage,
-		uint32_t history_iptime)
+		uint32_t history_iptime,
+		uint32_t hse_en)
 {
 	struct mdw_rv_tag t;
 
@@ -142,6 +144,7 @@ probe_rv_mdw_subcmd(void *data, uint32_t status,
 	t.d.subcmd.executed_core_bmp = executed_core_bmp;
 	t.d.subcmd.tcm_usage = tcm_usage;
 	t.d.subcmd.history_iptime = history_iptime;
+	t.d.subcmd.hse_en = hse_en;
 
 	apu_tag_add(mdw_rv_tags, &t);
 }
@@ -199,7 +202,7 @@ static void mdw_rv_tag_enq_printf(struct seq_file *s, struct mdw_rv_tag *t)
 		return;
 
 	seq_printf(s, "%s,", status);
-	seq_printf(s, "pid=%d,inf_id=0x%llx,uid=0x%llx,rvid=0x%llx,",
+	seq_printf(s, "pid=%d,inf_id=0x%llx,tgid=%llu,rvid=0x%llx,",
 		t->d.cmd.pid, t->d.cmd.param3, t->d.cmd.param1, t->d.cmd.rvid);
 	seq_printf(s, "num_subcmds=%u,", t->d.cmd.num_subcmds);
 	seq_printf(s, "priority=%u,softlimit=%u,",
@@ -274,8 +277,8 @@ static void mdw_rv_tag_seq_subcmd(struct seq_file *s, struct mdw_rv_tag *t)
 	seq_printf(s, "was_preempted=0x%x,exc_core_bmp=0x%x,",
 		t->d.subcmd.was_preempted,
 		t->d.subcmd.executed_core_bmp);
-	seq_printf(s, "tcm_usage=0x%x,h_iptime=%u\n",
-		t->d.subcmd.tcm_usage, t->d.subcmd.history_iptime);
+	seq_printf(s, "tcm_usage=0x%x,h_iptime=%u,hse_en=%u\n",
+		t->d.subcmd.tcm_usage, t->d.subcmd.history_iptime, t->d.subcmd.hse_en);
 }
 
 static void mdw_rv_tag_seq_cmd_deque(struct seq_file *s, struct mdw_rv_tag *t)

@@ -19,7 +19,7 @@
 	"%u,rvid=0x%llx,inf_id=0x%llx,"\
 	"%u,type=%u,ipstart_ts=0x%x,ipend_ts=0x%x,"\
 	"was_preempted=0x%x,executed_core_bmp=0x%x,"\
-	"tcm_usage=0x%x,history_iptime=%u"\
+	"tcm_usage=0x%x,history_iptime=%u,hse_en=%u"\
 
 #define MDW_TAG_CMD_DONE_PRINT \
 	"%u,rvid=0x%llx,inf_id=0x%llx,enter_complt=%llu,pb_put_time=%llu"\
@@ -102,12 +102,13 @@ TRACE_EVENT(mdw_rv_subcmd,
 		uint32_t was_preempted,
 		uint32_t executed_core_bmp,
 		uint32_t tcm_usage,
-		uint32_t history_iptime
+		uint32_t history_iptime,
+		uint32_t hse_en
 		),
 	TP_ARGS(status, rvid, inf_id, sc_type, sc_idx,
 		ipstart_ts, ipend_ts,
 		was_preempted, executed_core_bmp,
-		tcm_usage, history_iptime
+		tcm_usage, history_iptime, hse_en
 		),
 	TP_STRUCT__entry(
 		__field(uint32_t, status)
@@ -121,6 +122,7 @@ TRACE_EVENT(mdw_rv_subcmd,
 		__field(uint32_t, executed_core_bmp)
 		__field(uint32_t, tcm_usage)
 		__field(uint32_t, history_iptime)
+		__field(uint32_t, hse_en)
 	),
 	TP_fast_assign(
 		__entry->status = status;
@@ -134,6 +136,7 @@ TRACE_EVENT(mdw_rv_subcmd,
 		__entry->executed_core_bmp = executed_core_bmp;
 		__entry->tcm_usage = tcm_usage;
 		__entry->history_iptime = history_iptime;
+		__entry->hse_en = hse_en;
 	),
 	TP_printk(
 		MDW_TAG_SUBCMD_PRINT,
@@ -147,7 +150,8 @@ TRACE_EVENT(mdw_rv_subcmd,
 		__entry->was_preempted,
 		__entry->executed_core_bmp,
 		__entry->tcm_usage,
-		__entry->history_iptime
+		__entry->history_iptime,
+		__entry->hse_en
 	)
 );
 
