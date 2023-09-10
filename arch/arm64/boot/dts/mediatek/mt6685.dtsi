@@ -15,7 +15,6 @@
 				xo-id = <0>;
 			};
 			XO-BBCK2 {
-				perms = <0x10ffff>;
 				xo-id = <1>;
 			};
 			XO-BBCK3 {
