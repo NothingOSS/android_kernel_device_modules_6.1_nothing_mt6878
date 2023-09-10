@@ -46,7 +46,7 @@
 #define VBP            (16)
 #define VTOTAL         (FRAME_HEIGHT + VFP + VSA + VBP)
 #define FRAME_TOTAL    (HTOTAL * VTOTAL)
-#define PLL_CLOCK      (390)
+#define PLL_CLOCK      (425)
 #define VREFRESH_DEF   (120)
 #define VREFRESH_60    (60)
 #define VREFRESH_90    (90)
