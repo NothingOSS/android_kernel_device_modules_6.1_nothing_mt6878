@@ -1468,14 +1468,20 @@ static void mmdvfs_v3_release_step(void)
 
 static void mmdvfs_v3_restore_step(void)
 {
-	int i;
+	int i, last;
 
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
-		if (last_force_step[i] != -1)
-			mtk_mmdvfs_v3_set_force_step_ipi(i, last_force_step[i]);
+		if (last_force_step[i] != -1) {
+			last = last_force_step[i];
+			last_force_step[i] = -1;
+			mtk_mmdvfs_v3_set_force_step_ipi(i, last);
+		}
 
-		if (last_vote_step[i] != -1)
-			mtk_mmdvfs_v3_set_vote_step_ipi(i, last_vote_step[i]);
+		if (last_vote_step[i] != -1) {
+			last = last_vote_step[i];
+			last_vote_step[i] = -1;
+			mtk_mmdvfs_v3_set_vote_step_ipi(i, last);
+		}
 	}
 }
 
@@ -1524,6 +1530,8 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 		mutex_unlock(&mmdvfs_vcp_cb_mutex);
 		if (hqa_enable)
 			mtk_mmdvfs_enable_vmm(true);
+		break;
+	case VCP_EVENT_RESUME:
 		if (mmdvfs_restore_step)
 			mmdvfs_v3_restore_step();
 		break;
