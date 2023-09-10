@@ -48,6 +48,9 @@
 int mtk_sched_asym_cpucapacity  =  1;
 unsigned int dn_pct = -1;
 unsigned int up_pct = -1;
+int gear_start = -1;
+int num_gear = -1;
+int reverse = -1;
 
 static inline void sched_asym_cpucapacity_init(void)
 {
@@ -607,6 +610,34 @@ static long eas_ioctl_impl(struct file *filp,
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
 		if (!unset_updown_migration_pct(val))
+			return -1;
+		break;
+	case EAS_TASK_GEAR_HINTS_START:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		gear_start = (int) val;
+		break;
+	case EAS_TASK_GEAR_HINTS_NUM:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		num_gear = (int) val;
+		break;
+	case EAS_TASK_GEAR_HINTS_REVERSE:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		reverse = (int) val;
+		break;
+	case EAS_TASK_GEAR_HINTS_SET:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		if (!set_gear_indices(val, gear_start, num_gear, reverse))
+			return -1;
+		gear_start = num_gear = reverse = -1; //set success, reset local value
+		break;
+	case EAS_TASK_GEAR_HINTS_UNSET:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		if (!unset_gear_indices(val))
 			return -1;
 		break;
 	case EAS_SBB_ALL_SET:
