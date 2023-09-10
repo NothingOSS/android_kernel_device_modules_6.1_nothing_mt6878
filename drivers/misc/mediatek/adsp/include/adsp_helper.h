@@ -178,6 +178,7 @@ extern bool is_adsp_feature_in_active(void);
 extern int adsp_feature_in_which_core(enum adsp_feature_id fid);
 extern int adsp_register_feature(enum adsp_feature_id fid);
 extern int adsp_deregister_feature(enum adsp_feature_id fid);
+extern int get_feature_register(u32 fid);
 
 /* adsp reserved memory API */
 extern phys_addr_t adsp_get_reserve_mem_phys(enum adsp_reserve_mem_id_t id);

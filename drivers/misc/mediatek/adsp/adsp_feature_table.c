@@ -194,6 +194,20 @@ bool is_feature_in_set(u32 cid, u32 fid)
 	return (feature_ctrl[cid].feature_set >> fid) & 0x1;
 }
 
+int get_feature_register(u32 fid)
+{
+	struct adsp_feature_tb *item;
+	int cid = adsp_feature_in_which_core(fid);
+
+	if (fid >= ADSP_NUM_FEATURE_ID ||
+	    cid >= get_adsp_core_total() || cid < 0)
+		return -EINVAL;
+
+	item = &feature_table[fid];
+	return item->counter[cid];
+}
+EXPORT_SYMBOL(get_feature_register);
+
 int adsp_feature_in_which_core(enum adsp_feature_id fid)
 {
 	u32 cid = 0;
