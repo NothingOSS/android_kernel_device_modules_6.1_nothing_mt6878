@@ -169,10 +169,10 @@ void mml_save_log_record(const char *fmt, ...)
 		ret = snprintf(mml_log_record,
 			MML_LOG_SIZE, "[%5lld.%06llu]",
 			curr_time.tv_sec, div_u64(curr_time.tv_nsec, 1000));
-		mml_log_idx = ret;
+		mml_log_idx = ret >= MML_LOG_SIZE ? 0 : ret;
 		ret = vsnprintf(mml_log_record + mml_log_idx,
 			sizeof(mml_log_record) - mml_log_idx, fmt, args);
-		mml_log_idx += ret;
+		mml_log_idx = ret >= MML_LOG_SIZE - mml_log_idx ? 0 : mml_log_idx + ret;
 	} else if (ret >= MML_LOG_SIZE) {
 		mml_log_idx = 0;
 	} else {
