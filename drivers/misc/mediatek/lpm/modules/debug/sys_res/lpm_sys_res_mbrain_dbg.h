@@ -42,6 +42,9 @@ struct sys_res_sig_info {
 struct lpm_sys_res_mbrain_dbg_ops {
 	unsigned int (*get_length)(void);
 	int (*get_data)(void *address, uint32_t size);
+	int (*get_last_suspend_res_data)(void *address, uint32_t size);
+	int (*get_over_threshold_num)(void *address, uint32_t size, uint32_t *threshold, uint32_t threshold_num);
+	int (*get_over_threshold_data)(void *address, uint32_t size);
 };
 
 struct lpm_sys_res_mbrain_dbg_ops *get_lpm_mbrain_dbg_ops(void);
