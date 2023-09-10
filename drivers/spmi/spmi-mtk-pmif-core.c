@@ -520,15 +520,12 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 
 	raw_spin_lock_irqsave(&arb->lock_m, flags_m);
 
-	if (pmif_is_fsm_vldclr(arb->pmif_base[spmidev[sid].path], arb))
-		pmif_writel(arb->pmif_base[spmidev[sid].path], arb, 1, inf_reg->ch_rdy);
-
 	/* Wait for Software Interface FSM state to be IDLE. */
 	ret = readl_poll_timeout_atomic(arb->pmif_base[spmidev[sid].path] + arb->regs[inf_reg->ch_sta],
 					data, GET_SWINF(data) == SWINF_IDLE,
 					PMIF_DELAY_US, PMIF_TIMEOUT);
 	if (ret < 0) {
-		dev_notice(&ctrl->dev, "[Begin]check IDLE timeout, read 0x%x, sta=0x%x, SPMI_DBG=0x%x\n",
+		dev_err(&ctrl->dev, "check IDLE timeout, read 0x%x, sta=0x%x, SPMI_DBG=0x%x\n",
 			addr, pmif_readl(arb->pmif_base[spmidev[sid].path], arb, inf_reg->ch_sta),
 			readl(arb->spmimst_base[spmidev[sid].path] + arb->spmimst_regs[SPMI_MST_DBG]));
 		/* set channel ready if the data has transferred */
@@ -565,19 +562,6 @@ static int pmif_spmi_read_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 	data = pmif_readl(arb->pmif_base[spmidev[sid].path], arb, inf_reg->rdata);
 	memcpy(buf, &data, (bc & 3) + 1);
 	pmif_writel(arb->pmif_base[spmidev[sid].path], arb, 1, inf_reg->ch_rdy);
-
-	/* Wait for Software Interface FSM state to be IDLE. */
-	ret = readl_poll_timeout_atomic(arb->pmif_base[spmidev[sid].path] + arb->regs[inf_reg->ch_sta],
-					data, GET_SWINF(data) == SWINF_IDLE,
-					PMIF_DELAY_US, PMIF_TIMEOUT);
-	if (ret < 0) {
-		dev_notice(&ctrl->dev, "[End]check IDLE timeout, read 0x%x, sta=0x%x, SPMI_DBG=0x%x\n",
-			addr, pmif_readl(arb->pmif_base[spmidev[sid].path], arb, inf_reg->ch_sta),
-			readl(arb->spmimst_base[spmidev[sid].path] + arb->spmimst_regs[SPMI_MST_DBG]));
-		/* set channel ready if the data has transferred */
-		if (pmif_is_fsm_vldclr(arb->pmif_base[spmidev[sid].path], arb))
-			pmif_writel(arb->pmif_base[spmidev[sid].path], arb, 1, inf_reg->ch_rdy);
-	}
 
 	raw_spin_unlock_irqrestore(&arb->lock_m, flags_m);
 
@@ -1196,7 +1180,7 @@ static void dump_spmip_pmic_dbg_rg(struct pmif *arb)
 	unsigned short PMIC_SPMI_DBG_SEL = 0x42d, PMIC_SPMI_DBG_L = 0x42b;
 	unsigned short PMIC_SPMI_DBG_H = 0x42c;
 
-	for (sid = 8; sid >= 6; sid--) {
+	for (sid = 6; sid < 9; sid++) {
 		/* Disable read command log */
 		val = 0;
 		arb->spmic->write_cmd(arb->spmic, SPMI_CMD_EXT_WRITEL, sid,
@@ -1320,7 +1304,7 @@ static void dump_spmip_pmic_dbg_rg(struct pmif *arb)
 static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 {
 	struct pmif *arb = data;
-	int flag = 0, sid = 0;
+	int flag = 0;
 	unsigned int spmi_nack = 0, spmi_p_nack = 0, spmi_nack_data = 0, spmi_p_nack_data = 0;
 	unsigned int spmi_rcs_nack = 0, spmi_debug_nack = 0, spmi_mst_nack = 0,
 		spmi_p_rcs_nack = 0, spmi_p_debug_nack = 0, spmi_p_mst_nack = 0;
@@ -1344,28 +1328,33 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 		spmi_p_debug_nack = mtk_spmi_readl(arb->spmimst_base[1], arb, SPMI_DEC_DBG);
 		spmi_p_mst_nack = mtk_spmi_readl(arb->spmimst_base[1], arb, SPMI_MST_DBG);
 	}
+	spmi_dump_pmif_record_reg();
 	if ((spmi_nack & 0xD8) || (spmi_p_nack & 0xD8)) {
-		spmi_dump_pmif_record_reg();
+		pr_notice("%s spmi transaction fail irq triggered SPMI_REC0 m/p:0x%x/0x%x SPMI_REC1 m/p 0x%x/0x%x\n",
+			__func__, spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
 		if (spmi_p_nack & 0xD8) {
-			dump_spmip_pmic_dbg_rg(arb);
-			for (sid = 0x8; sid >= 0x6; sid--) {
-				arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
-					mt6316INTSTA, &rdata, 1);
-				arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, sid,
-					hwcidaddr_mt6316, &rdata1, 1);
-				pr_notice("%s slvid 0x%x INT_RAW_STA 0x%x cid 0x%x\n",
-					__func__, sid, rdata, rdata1);
-			}
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x6 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x7 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x8 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
 		}
-		pr_notice("%s spmi transaction fail irq triggered", __func__);
-		pr_notice("SPMI_REC0 m/p:0x%x/0x%x SPMI_REC1 m/p 0x%x/0x%x\n",
-			spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
 		flag = 1;
 	}
 	if ((spmi_rcs_nack & 0xC0000) || (spmi_p_rcs_nack & 0xC0000)) {
 		pr_notice("%s spmi_rcs transaction fail irq triggered SPMI_REC_CMD_DEC m/p:0x%x/0x%x\n",
 			__func__, spmi_rcs_nack, spmi_p_rcs_nack);
-		flag = 0;
+		flag = 1;
 	}
 	if ((spmi_debug_nack & 0xF0000) || (spmi_p_debug_nack & 0xF0000)) {
 		pr_notice("%s spmi_debug_nack transaction fail irq triggered SPMI_DEC_DBG m/p: 0x%x/0x%x\n",
@@ -1375,42 +1364,74 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	if ((spmi_mst_nack & 0xC0000) || (spmi_p_mst_nack & 0xC0000)) {
 		pr_notice("%s spmi_mst_nack transaction fail irq triggered SPMI_MST_DBG m/p: 0x%x/0x%x\n",
 		__func__, spmi_mst_nack, spmi_p_mst_nack);
-		flag = 0;
+		if (spmi_p_mst_nack & 0xC0000) {
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x6 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x7 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x8 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+		}
+		flag = 1;
 	}
 	if ((spmi_nack & 0x20) || (spmi_p_nack & 0x20)) {
+		pr_notice("%s spmi transaction PARITY_ERR triggered SPMI_REC0 m/p:0x%x/0x%x, SPMI_REC1 m/p:0x%x/0x%x\n",
+			__func__, spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
+		if (spmi_p_nack & 0x20) {
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x6,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x6 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x7,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x7 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
+				mt6316INTSTA, &rdata, 1);
+			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x8,
+				hwcidaddr_mt6316, &rdata1, 1);
+			pr_notice("%s slvid 0x8 INT_RAW_STA 0x%x cid 0x%x\n", __func__, rdata, rdata1);
+		}
 		flag = 0;
 	}
-
-	/* clear irq*/
-	if ((spmi_nack & 0xF8) || (spmi_rcs_nack & 0xC0000) ||
-		(spmi_debug_nack & 0xF0000) || (spmi_mst_nack & 0xC0000)) {
-		mtk_spmi_writel(arb->spmimst_base[0], arb, 0x3, SPMI_REC_CTRL);
-	} else if ((spmi_p_nack & 0xF8) || (spmi_p_rcs_nack & 0xC0000) ||
-		(spmi_p_debug_nack & 0xF0000) || (spmi_p_mst_nack & 0xC0000)) {
-		if (spmi_p_nack & 0xD8) {
-			pr_notice("%s SPMI_REC0 m/p:0x%x/0x%x, SPMI_REC1 m/p:0x%x/0x%x\n",
-				__func__, spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
-			pr_notice("%s SPMI_REC_CMD_DEC m/p:0x%x/0x%x\n", __func__,
-				spmi_rcs_nack, spmi_p_rcs_nack);
-			pr_notice("%s SPMI_DEC_DBG m/p:0x%x/0x%x\n", __func__,
-				spmi_debug_nack, spmi_p_debug_nack);
-			pr_notice("%s SPMI_MST_DBG m/p:0x%x/0x%x\n", __func__,
-				spmi_mst_nack, spmi_p_mst_nack);
-			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x4,
-				hwcidaddr_mt6363, &rdata, 1);
-			arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x4,
-				VIO18_SWITCH_6363, &rdata1, 1);
-			pr_notice("%s 6363 CID/VIO18_SWITCH 0x%x/0x%x\n", __func__, rdata, rdata1);
-		}
-		mtk_spmi_writel(arb->spmimst_base[1], arb, 0x3, SPMI_REC_CTRL);
-	} else
-		pr_notice("%s IRQ not cleared\n", __func__);
+	pr_notice("%s SPMI_REC0 m/p:0x%x/0x%x, SPMI_REC1 m/p:0x%x/0x%x\n",
+		__func__, spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
+	pr_notice("%s SPMI_REC_CMD_DEC m/p:0x%x/0x%x\n", __func__, spmi_rcs_nack, spmi_p_rcs_nack);
+	pr_notice("%s SPMI_DEC_DBG m/p:0x%x/0x%x\n", __func__, spmi_debug_nack, spmi_p_debug_nack);
+	pr_notice("%s SPMI_MST_DBG m/p:0x%x/0x%x\n", __func__, spmi_mst_nack, spmi_p_mst_nack);
 
 	if (flag) {
 		/* trigger AEE event*/
 		if (IS_ENABLED(CONFIG_MTK_AEE_FEATURE))
 			aee_kernel_warning("SPMI", "SPMI:transaction_fail");
 	}
+	/* clear irq*/
+	if ((spmi_nack & 0xF8) || (spmi_rcs_nack & 0xC0000) ||
+		(spmi_debug_nack & 0xF0000) || (spmi_mst_nack & 0xC0000)) {
+		mtk_spmi_writel(arb->spmimst_base[0], arb, 0x3, SPMI_REC_CTRL);
+	} else if ((spmi_p_nack & 0xF8) || (spmi_p_rcs_nack & 0xC0000) ||
+		(spmi_p_debug_nack & 0xF0000) || (spmi_p_mst_nack & 0xC0000)) {
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x4,
+				hwcidaddr_mt6363, &rdata, 1);
+		arb->spmic->read_cmd(arb->spmic, SPMI_CMD_EXT_READL, 0x4,
+				VIO18_SWITCH_6363, &rdata1, 1);
+		pr_notice("%s 6363 CID/VIO18_SWITCH 0x%x/0x%x\n", __func__, rdata, rdata1);
+		dump_spmip_pmic_dbg_rg(arb);
+		mtk_spmi_writel(arb->spmimst_base[1], arb, 0x3, SPMI_REC_CTRL);
+	} else
+		pr_notice("%s IRQ not cleared\n", __func__);
+
 	mutex_unlock(&arb->pmif_m_mutex);
 	__pm_relax(arb->pmif_m_Thread_lock);
 
