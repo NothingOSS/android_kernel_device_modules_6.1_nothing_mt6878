@@ -50,6 +50,7 @@ enum ODDMR_USER_CMD {
 	ODDMR_CMD_EOF_CHECK_TRIGGER,
 	ODDMR_CMD_OD_TUNING_WRITE_SRAM,
 	ODDMR_CMD_ODDMR_DDREN_OFF,
+	ODDMR_CMD_ODDMR_REMAP_EN,
 };
 enum MTK_ODDMR_MODE_CHANGE_INDEX {
 	MODE_ODDMR_NOT_DEFINED = 0,
@@ -231,6 +232,7 @@ struct mtk_disp_oddmr_dbi_data {
 	struct mtk_drm_gem_obj *dbi_table[2];
 	unsigned int table_size;
 	unsigned int cur_max_time;
+	unsigned int remap_enable;
 };
 
 
