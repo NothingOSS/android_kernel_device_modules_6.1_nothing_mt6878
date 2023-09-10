@@ -389,7 +389,7 @@ struct vcodec_mem_obj {
 
 struct mtk_venc_visual_quality {
 	__s32	quant;
-	__s32	psyrd;
+	__s32	rd;
 };
 
 struct mtk_venc_init_qp {
