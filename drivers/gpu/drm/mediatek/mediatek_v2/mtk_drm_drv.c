@@ -95,6 +95,7 @@
 #define DRIVER_DATE "20150513"
 #define DRIVER_MAJOR 1
 #define DRIVER_MINOR 0
+#define IDLE_FPS 10 /*when fps is less than or euqal to 10, hwc not sending hw vsync*/
 
 void disp_dbg_deinit(void);
 void disp_dbg_probe(void);
@@ -6969,6 +6970,8 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 			return -EFAULT;
 		}
 	}
+
+	args->idle_fps = IDLE_FPS;
 
 	kfree(real_te_duration);
 	kfree(total_offset);

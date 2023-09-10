@@ -862,6 +862,7 @@ struct mtk_drm_mode_ext_info {
 	unsigned int *total_offset;
 	unsigned int *real_te_duration;
 	enum SWITCH_MODE_DELAY **switch_mode_delay;
+	unsigned int idle_fps;
 };
 
 struct mtk_drm_crtc_caps {
