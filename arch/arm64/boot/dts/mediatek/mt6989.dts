@@ -6316,7 +6316,8 @@
 				"disp_token_disp_check_trigger_merge0",
 				"dpc_disp1_prete",
 				"disp_mdp_rdma0_eof3",
-				"disp_y2r_eof3";
+				"disp_y2r_eof3",
+				"mml_disp_done_event";
 
 			gce-events =
 				<&gce CMDQ_EVENT_OVL0_STREAM_DONE_ENG_EVENT_0>,
@@ -6363,7 +6364,8 @@
 				<&gce CMDQ_SYNC_TOKEN_CHECK_TRIGGER_MERGE>,
 				<&gce CMDQ_EVENT_DPC_DT6_DONE>,
 				<&gce CMDQ_EVENT_DISP0EVENT0_DISP_MDP_RDMA0_FRAME_DONE>,
-				<&gce CMDQ_EVENT_DISP0EVENT1_DISP_Y2R0_FRAME_DONE>;
+				<&gce CMDQ_EVENT_DISP0EVENT1_DISP_Y2R0_FRAME_DONE>,
+				<&gce CMDQ_SYNC_TOKEN_MML_DISP_DONE_EVENT>;
 
 			helper-name = "MTK_DRM_OPT_STAGE",
 				"MTK_DRM_OPT_USE_CMDQ",
