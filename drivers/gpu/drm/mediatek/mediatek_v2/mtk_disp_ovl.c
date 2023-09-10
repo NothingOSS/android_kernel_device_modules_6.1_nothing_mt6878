@@ -4120,6 +4120,9 @@ other:
 			DDPINFO("%s, %d, comp id:%d, event:%d\n", __func__, __LINE__,
 				comp->id, ovl->data->frame_done_event(comp));
 			return ovl->data->frame_done_event(comp);
+		} else {
+			DDPMSG("%s, %d, invalid comp\n", __func__, __LINE__);
+			return U16_MAX;
 		}
 
 		break;
@@ -4131,6 +4134,9 @@ other:
 			DDPINFO("%s, %d, comp id:%d, ovlsys:%d\n", __func__, __LINE__,
 				comp->id, ovl->data->ovlsys_mapping(comp));
 			return ovl->data->ovlsys_mapping(comp);
+		} else {
+			DDPMSG("%s, %d, invalid comp\n", __func__, __LINE__);
+			return -1;
 		}
 
 		break;

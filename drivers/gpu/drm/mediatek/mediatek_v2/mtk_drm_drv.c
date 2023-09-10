@@ -1349,7 +1349,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	unsigned int fps = 0;
 	unsigned int vtotal = 0;
 	unsigned int line_time = 0;
-	unsigned int tgt_comp = mtk_plane_state->comp_state.comp_id;
+	unsigned int tgt_comp = 0;
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_ddp_comp *output_comp = NULL;
@@ -1363,7 +1363,6 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
 	vtotal = crtc->state->adjusted_mode.vtotal;
 	priv = dev->dev_private;
-	comp = priv->ddp_comp[tgt_comp];
 
 	mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
 	if (unlikely(!mml_ctx))
@@ -1398,15 +1397,21 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 		if (submit_kernel->buffer.src.dmabuf[i] == NULL)
 			goto err_fd_to_dma;
 	}
-	if (mtk_ddp_comp_io_cmd(comp, NULL, GET_OVL_SYS_NUM, NULL) != -1)
-		submit_kernel->info.ovlsys_id = mtk_ddp_comp_io_cmd(comp, NULL, GET_OVL_SYS_NUM, NULL);
-	else
-		DDPMSG("%s, %d GET_OVL_SYS_NUM fail\n", __func__, __LINE__);
+	if (submit_kernel->info.mode == MML_MODE_DIRECT_LINK) {
+		mtk_addon_get_comp(crtc_state->lye_state.mml_dl_lye, &tgt_comp, NULL);
+		comp = priv->ddp_comp[tgt_comp];
+		ret = mtk_ddp_comp_io_cmd(comp, NULL, GET_OVL_SYS_NUM, NULL);
+		DDPINFO("%s, %d tgt_comp:%d\n", __func__, __LINE__, tgt_comp);
 
-	if (mtk_ddp_comp_io_cmd(comp, NULL, OVL_FRAME_DONE_EVENT, NULL))
-		submit_kernel->info.disp_done_event = mtk_ddp_comp_io_cmd(comp, NULL, OVL_FRAME_DONE_EVENT, NULL);
-	else
-		DDPMSG("%s, %d OVL_FRAME_DONE_EVENT fail\n", __func__, __LINE__);
+		if (ret != -1)
+			submit_kernel->info.ovlsys_id = ret;
+		else
+			DDPMSG("%s, %d GET_OVL_SYS_NUM fail\n", __func__, __LINE__);
+
+		ret = mtk_crtc->gce_obj.event[EVENT_MML_DISP_DONE_EVENT];
+		if (ret)
+			submit_kernel->info.disp_done_event = ret;
+	}
 
 	mml_drm_split_info(submit_kernel, submit_pq);
 

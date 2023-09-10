@@ -9069,6 +9069,7 @@ skip_prete:
 			}
 		}
 	}
+	GCE_DO(set_event, EVENT_MML_DISP_DONE_EVENT);
 	cmdq_pkt_finalize_loop(cmdq_handle);
 	ret = cmdq_pkt_flush_async(cmdq_handle, trig_done_cb, (void *)crtc_id);
 
@@ -15828,6 +15829,9 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 	case EVENT_Y2R_EOF:
 		len = snprintf(buf, buf_len, "disp_y2r_eof%d",
 				   drm_crtc_index(&mtk_crtc->base));
+		break;
+	case EVENT_MML_DISP_DONE_EVENT:
+		len = snprintf(buf, buf_len, "mml_disp_done_event");
 		break;
 	default:
 		DDPPR_ERR("%s invalid event_id:%d\n", __func__, event_id);
