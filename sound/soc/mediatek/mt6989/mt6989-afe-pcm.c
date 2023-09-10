@@ -4695,6 +4695,8 @@ static bool mt6989_is_volatile_reg(struct device *dev, unsigned int reg)
 	case AFE_GASRC3_NEW_CON9:
 	case AFE_GASRC3_NEW_CON12:
 	case AFE_GASRC3_NEW_IP_VERSION:
+	/* for vow/ultrasound using */
+	case AFE_IRQ_MCU_SCP_EN:
 	/* these reg would change in adsp */
 	case AFE_IRQ_MCU_EN:
 	case AFE_IRQ_MCU_DSP_EN:
