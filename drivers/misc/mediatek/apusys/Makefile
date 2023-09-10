@@ -33,6 +33,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek/
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/include/
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/
+
 # core makefile
 apusys-objs += core/apusys_core.o
 
