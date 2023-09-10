@@ -101,6 +101,7 @@ f lib/maple_tree.c
 f mm/backing-dev.c
 f mm/huge_memory.c
 f mm/kasan/common.c
+f mm/kmemleak.c
 f mm/page-writeback.c
 f mm/page_alloc.c
 f mm/memory.c
