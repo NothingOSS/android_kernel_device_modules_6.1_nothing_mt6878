@@ -535,11 +535,13 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 		if (copy_to_user((void __user *)params->data, kdata,  params->size) != 0)
 			goto err;
 	}
-	if (cmd != PQ_AAL_EVENTCTL && cmd < PQ_GET_CMD_START)
-		DDPMSG("%s, crtc index:%d, pq_type:%d, cmd:%d, use %llu us\n", __func__,
+	if (cmd != PQ_AAL_GET_HIST && cmd != PQ_AAL_EVENTCTL && cmd !=  PQ_CCORR_GET_IRQ &&
+			cmd != PQ_VIRTUAL_WAIT_CRTC_READY && cmd != PQ_VIRTUAL_GET_MASTER_INFO &&
+			cmd != PQ_CHIST_GET && cmd != PQ_VIRTUAL_GET_IRQ)
+		DDPINFO("%s, crtc index:%d, pq_type:%d, cmd:%d, use %llu us\n", __func__,
 				drm_crtc_index(crtc), pq_type, cmd, (sched_clock() - time) / 1000);
 	else
-		DDPINFO("%s, crtc index:%d, pq_type:%d, cmd:%d, use %llu us\n", __func__,
+		DDPDBG("%s, crtc index:%d, pq_type:%d, cmd:%d, use %llu us\n", __func__,
 				drm_crtc_index(crtc), pq_type, cmd, (sched_clock() - time) / 1000);
 err:
 	if (kdata != stack_kdata)
@@ -588,7 +590,7 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 	int index = drm_crtc_index(crtc);
 	bool is_atomic_commit = cmdq_handle;
 
-	DDPINFO("%s:%d ++, crtc index:%d\n", __func__, __LINE__, index);
+	DDPDBG("%s:%d ++, crtc index:%d\n", __func__, __LINE__, index);
 	mtk_drm_trace_begin("mtk_pq_helper_frame_config");
 
 	if (!cmds_len || cmds_len > REQUEST_MAX_COUNT || params->data == NULL) {
@@ -640,7 +642,11 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 		if (pq_type >= MTK_DISP_PQ_TYPE_MAX || !requests[index].size)
 			continue;
 
-		DDPINFO("%s, pq_type:%d, cmd:%d\n", __func__, pq_type, cmd);
+		if (cmd != PQ_AAL_SET_PARAM && cmd != PQ_COLOR_DRECOLOR_SET_PARAM &&
+				cmd != PQ_CCORR_SET_CCORR && cmd != PQ_COLOR_SET_COLOR_REG)
+			DDPINFO("%s, pq_type:%d, cmd:%d\n", __func__, pq_type, cmd);
+		else
+			DDPDBG("%s, pq_type:%d, cmd:%d\n", __func__, pq_type, cmd);
 		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 			if (pq_module_matches[pq_type].type == mtk_ddp_comp_get_type(comp->id)) {
 				char stack_kdata[128];
@@ -712,14 +718,14 @@ int mtk_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_hand
 		} else if (check_trigger)
 			mtk_crtc_check_trigger(mtk_crtc, check_trigger == CHECK_TRIGGER_DELAY
 						|| mtk_crtc->msync2.msync_frame_status, !user_lock);
-		DDPINFO("%s msync_frame_status:%d\n", __func__, mtk_crtc->msync2.msync_frame_status);
+		DDPDBG("%s msync_frame_status:%d\n", __func__, mtk_crtc->msync2.msync_frame_status);
 		mtk_drm_trace_end();
 
 		if (user_lock)
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	}
-	DDPINFO("%s:%d --\n", __func__, __LINE__);
+	DDPDBG("%s:%d --\n", __func__, __LINE__);
 	mtk_drm_trace_end();
 
 	return 0;
