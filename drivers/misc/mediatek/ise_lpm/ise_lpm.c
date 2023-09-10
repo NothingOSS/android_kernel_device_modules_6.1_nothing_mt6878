@@ -28,8 +28,8 @@
 
 #include <mtk_ise_lpm.h>
 
-#define ISE_LPM_FREERUN_TIMEOUT_MS		10000
-#define ISE_LPM_PWR_OFF_DEBOUNCE_MS		5000
+#define ISE_LPM_FREERUN_TIMEOUT_MS		7000
+#define ISE_LPM_PWR_OFF_DEBOUNCE_MS		1000
 #define ISE_LPM_DEINIT_TIMEOUT_MS		10000
 
 enum ise_scmi_cmd {
