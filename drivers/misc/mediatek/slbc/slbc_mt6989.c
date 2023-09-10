@@ -743,9 +743,9 @@ static int slbc_release_buffer(struct slbc_data *d)
 	int ret = 0;
 
 	/* slbc_debug_log("%s: TP_BUFFER\n", __func__); */
-	mutex_lock(&slbc_rel_lock);
+	mutex_lock(&slbc_req_lock);
 	ret = _slbc_release_buffer_scmi(d);
-	mutex_unlock(&slbc_rel_lock);
+	mutex_unlock(&slbc_req_lock);
 
 	if (!ret) {
 		slbc_clr_sram_data(d);
@@ -955,11 +955,14 @@ int slbc_gid_val(enum slc_ach_uid uid)
 
 int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data)
 {
+	int local_cnt = 0;
+
 	if (*gid >= GID_MAX)
 		return -EINVAL;
 
 	if (data->sign != SLC_DATA_MAGIC) {
-		/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "invalid sign:%#x", data->sign); */
+		/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d ,invalid sign:%#x", */
+			/* uid, data->sign); */
 		return -EINVAL;
 	}
 
@@ -969,47 +972,66 @@ int slbc_gid_request(enum slc_ach_uid uid, int *gid, struct slbc_gid_data *data)
 	case ID_MD:
 		if (*gid == GID_REQ)
 			*gid = GID_MD;
-		else if (*gid != GID_MD)
+		else if (*gid != GID_MD) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, *gid); */
 			return -EINVAL;
+		}
 		break;
 	case ID_VDEC_FRAME:
-		if (*gid != GID_VDEC_FRAME)
+		if (*gid != GID_VDEC_FRAME) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, *gid); */
 			return -EINVAL;
+		}
 		break;
 	case ID_VDEC_UBE:
 		if (*gid == GID_REQ)
 			*gid = GID_VDEC_UBE;
-		else if (*gid != GID_VDEC_UBE)
+		else if (*gid != GID_VDEC_UBE) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, *gid); */
 			return -EINVAL;
+		}
 		break;
 	case ID_GPU:
 		if (*gid == GID_REQ)
 			*gid = GID_GPU;
-		else if (*gid != GID_GPU)
+		else if (*gid != GID_GPU) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, *gid); */
 			return -EINVAL;
+		}
 		break;
 	case ID_GPU_W:
 	case ID_OVL_R:
-		if (*gid != GID_GPU_OVL)
+		if (*gid != GID_GPU_OVL) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, *gid); */
 			return -EINVAL;
+		}
 		break;
 	default:
-		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "unrecognized uid");
+		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "unrecognized uid:%d", uid);
 		return -EINVAL;
 	}
 
-	if (gid_ref[*gid] == 0) {
-		/* Set M/G and G/P tables */
-		_slbc_ach_scmi(IPI_SLBC_GID_REQUEST_FROM_AP, uid, *gid, data);
-	}
+	local_cnt = atomic_inc_return((atomic_t *) &gid_ref[*gid]);
 
-	gid_ref[*gid]++;
+	if (local_cnt == 1) {
+		/* Set M/G and G/P tables */
+		mutex_lock(&slbc_req_lock);
+		_slbc_ach_scmi(IPI_SLBC_GID_REQUEST_FROM_AP, uid, *gid, data);
+		mutex_unlock(&slbc_req_lock);
+	}
 
 	return 0;
 }
 
 int slbc_gid_release(enum slc_ach_uid uid, int gid)
 {
+	int local_cnt = 0;
+
 	if (gid >= GID_MAX)
 		return -EINVAL;
 
@@ -1017,37 +1039,54 @@ int slbc_gid_release(enum slc_ach_uid uid, int gid)
 
 	switch (uid) {
 	case ID_MD:
-		if (gid != GID_MD)
+		if (gid != GID_MD) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
 			return -EINVAL;
+		}
 		break;
 	case ID_VDEC_FRAME:
-		if (gid != GID_VDEC_FRAME)
+		if (gid != GID_VDEC_FRAME) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
 			return -EINVAL;
+		}
 		break;
 	case ID_VDEC_UBE:
-		if (gid != GID_VDEC_UBE)
+		if (gid != GID_VDEC_UBE) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
 			return -EINVAL;
+		}
 		break;
 	case ID_GPU:
-		if (gid != GID_GPU)
+		if (gid != GID_GPU) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
 			return -EINVAL;
+		}
 		break;
 	case ID_GPU_W:
 	case ID_OVL_R:
-		if (gid != GID_GPU_OVL)
+		if (gid != GID_GPU_OVL) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
 			return -EINVAL;
+		}
 		break;
 	default:
-		SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "unrecognized uid");
+		SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "unrecognized uid:%d", uid);
 		return -EINVAL;
 	}
 
-	if (gid_ref[gid] == 0) {
-		/* Clear M/G and G/P tables */
-		_slbc_ach_scmi(IPI_SLBC_GID_RELEASE_FROM_AP, uid, gid, NULL);
-	}
+	local_cnt = atomic_dec_return((atomic_t *) &gid_ref[gid]);
 
-	gid_ref[gid]--;
+	if (local_cnt == 0) {
+		/* Clear M/G and G/P tables */
+		mutex_lock(&slbc_req_lock);
+		_slbc_ach_scmi(IPI_SLBC_GID_RELEASE_FROM_AP, uid, gid, NULL);
+		mutex_unlock(&slbc_req_lock);
+	}
 
 	return 0;
 }
@@ -1057,37 +1096,133 @@ int slbc_roi_update(enum slc_ach_uid uid, int gid, struct slbc_gid_data *data)
 	if (gid >= GID_MAX)
 		return -EINVAL;
 
+	mutex_lock(&slbc_req_lock);
 	_slbc_ach_scmi(IPI_SLBC_ROI_UPDATE_FROM_AP, uid, gid, data);
+	mutex_unlock(&slbc_req_lock);
 
 	return 0;
 }
 
 int slbc_validate(enum slc_ach_uid uid, int gid)
 {
+	int local_cnt = 0;
+
 	if (gid >= GID_MAX)
 		return -EINVAL;
 
 	SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "gid:%d", gid);
 
-	if (gid_vld_cnt[gid] == 0)
-		_slbc_ach_scmi(IPI_SLBC_GID_VALID_FROM_AP, uid, gid, NULL);
+	switch (uid) {
+	case ID_MD:
+		if (gid != GID_MD) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
+			return -EINVAL;
+		}
+		break;
+	case ID_VDEC_FRAME:
+		if (gid != GID_VDEC_FRAME) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
+			return -EINVAL;
+		}
+		break;
+	case ID_VDEC_UBE:
+		if (gid != GID_VDEC_UBE) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
+			return -EINVAL;
+		}
+		break;
+	case ID_GPU:
+		if (gid != GID_GPU) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
+			return -EINVAL;
+		}
+		break;
+	case ID_GPU_W:
+	case ID_OVL_R:
+		if (gid != GID_GPU_OVL) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
+			return -EINVAL;
+		}
+		break;
+	default:
+		SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "unrecognized uid:%d", uid);
+		return -EINVAL;
+	}
 
-	gid_vld_cnt[gid]++;
+	local_cnt = atomic_inc_return((atomic_t *) &gid_vld_cnt[gid]);
+
+	if (local_cnt == 1) {
+		mutex_lock(&slbc_req_lock);
+		_slbc_ach_scmi(IPI_SLBC_GID_VALID_FROM_AP, uid, gid, NULL);
+		mutex_unlock(&slbc_req_lock);
+	}
 
 	return 0;
 }
 
 int slbc_invalidate(enum slc_ach_uid uid, int gid)
 {
+	int local_cnt = 0;
+
 	if (gid >= GID_MAX)
 		return -EINVAL;
 
 	SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "gid:%d", gid);
 
-	if (gid_vld_cnt[gid] == 1)
-		_slbc_ach_scmi(IPI_SLBC_GID_INVALID_FROM_AP, uid, gid, NULL);
+	switch (uid) {
+	case ID_MD:
+		if (gid != GID_MD) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
+			return -EINVAL;
+		}
+		break;
+	case ID_VDEC_FRAME:
+		if (gid != GID_VDEC_FRAME) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
+			return -EINVAL;
+		}
+		break;
+	case ID_VDEC_UBE:
+		if (gid != GID_VDEC_UBE) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
+			return -EINVAL;
+		}
+		break;
+	case ID_GPU:
+		if (gid != GID_GPU) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
+			return -EINVAL;
+		}
+		break;
+	case ID_GPU_W:
+	case ID_OVL_R:
+		if (gid != GID_GPU_OVL) {
+			/* SLBC_TRACE_REC(LVL_ERR, TYPE_C, uid, 0, "uid:%d, unrecognized gid:%d", */
+				/* uid, gid); */
+			return -EINVAL;
+		}
+		break;
+	default:
+		SLBC_TRACE_REC(LVL_NORM, TYPE_C, uid, 0, "unrecognized uid:%d", uid);
+		return -EINVAL;
+	}
 
-	gid_vld_cnt[gid]--;
+	local_cnt = atomic_dec_return((atomic_t *) &gid_vld_cnt[gid]);
+
+	if (local_cnt == 0) {
+		mutex_lock(&slbc_req_lock);
+		_slbc_ach_scmi(IPI_SLBC_GID_INVALID_FROM_AP, uid, gid, NULL);
+		mutex_unlock(&slbc_req_lock);
+	}
 
 	return 0;
 }
@@ -1101,7 +1236,9 @@ int slbc_read_invalidate(enum slc_ach_uid uid, int gid, int enable)
 		return -EINVAL;
 
 	data.bw = enable;
+	mutex_lock(&slbc_req_lock);
 	_slbc_ach_scmi(IPI_SLBC_GID_READ_INVALID_FROM_AP, uid, gid, &data);
+	mutex_unlock(&slbc_req_lock);
 
 	return 0;
 }
@@ -1277,15 +1414,15 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	if (slbc_all_cache_mode) {
 		seq_puts(m, "gid         ");
 		for (i = 0; i < UID_MAX; i++)
-			seq_printf(m, "%2d", i);
+			seq_printf(m, "%3d", i);
 		seq_puts(m, "\n");
 		seq_puts(m, "gid_ref     ");
 		for (i = 0; i < UID_MAX; i++)
-			seq_printf(m, "%2x", gid_ref[i]);
+			seq_printf(m, "%3d", gid_ref[i]);
 		seq_puts(m, "\n");
 		seq_puts(m, "gid_vld_cnt ");
 		for (i = 0; i < UID_MAX; i++)
-			seq_printf(m, "%2x", gid_vld_cnt[i]);
+			seq_printf(m, "%3d", gid_vld_cnt[i]);
 		seq_puts(m, "\n");
 	}
 
