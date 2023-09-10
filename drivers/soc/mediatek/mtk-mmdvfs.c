@@ -44,6 +44,7 @@ struct mmdvfs_mux_data {
 	struct clk *clk_src[MAX_OPP_NUM];
 	struct clk *clk_src_lp;
 	struct clk *clk_src_normal;
+	bool ena_err;
 };
 
 struct mmdvfs_hopping_data {
@@ -66,6 +67,7 @@ struct mmdvfs_drv_data {
 	struct mutex lp_mutex;
 	bool lp_mode;
 	u32 last_opp_level;
+	bool disp_parallel;
 };
 
 static struct regulator *vcore_reg_id;
@@ -133,7 +135,40 @@ static void set_all_muxes(struct mmdvfs_drv_data *drv_data, u32 opp_level)
 	s32 err;
 
 	MMDVFS_SYSTRACE_BEGIN("%s opp:%d\n", __func__, opp_level);
+	if (drv_data->disp_parallel) {
+		for (i = 0; i < num_muxes; i++)
+			if (!strncmp("disp", drv_data->muxes[i].mux_name, 4)) {
+				drv_data->muxes[i].ena_err = false;
+				err = clk_prepare_enable(drv_data->muxes[i].mux);
+				if (err) {
+					drv_data->muxes[i].ena_err = true;
+					pr_notice("prepare mux(%s) fail:%d opp_level:%d\n",
+						  drv_data->muxes[i].mux_name, err, opp_level);
+				}
+			}
+
+		for (i = 0; i < num_muxes; i++)
+			if (!strncmp("disp", drv_data->muxes[i].mux_name, 4)
+				&& !drv_data->muxes[i].ena_err) {
+				mux = drv_data->muxes[i].mux;
+				clk_src = drv_data->muxes[i].clk_src[opp_level];
+
+				err = clk_set_parent(mux, clk_src);
+				if (err)
+					pr_notice("set parent(%s) fail:%d opp_level:%d\n",
+						  drv_data->muxes[i].mux_name, err, opp_level);
+			}
+
+		for (i = 0; i < num_muxes; i++)
+			if (!strncmp("disp", drv_data->muxes[i].mux_name, 4)
+				&& !drv_data->muxes[i].ena_err)
+				clk_disable_unprepare(drv_data->muxes[i].mux);
+	}
+
 	for (i = 0; i < num_muxes; i++) {
+		if (drv_data->disp_parallel && !strncmp("disp", drv_data->muxes[i].mux_name, 4))
+			continue;
+
 		mux = drv_data->muxes[i].mux;
 		clk_src = drv_data->muxes[i].clk_src[opp_level];
 		err = clk_prepare_enable(mux);
@@ -669,6 +704,7 @@ static int mmdvfs_probe(struct platform_device *pdev)
 	drv_data->num_hoppings = num_hopping;
 	of_property_read_u32(dev->of_node,
 			     "mediatek,action", &drv_data->action);
+	drv_data->disp_parallel = of_property_read_bool(dev->of_node, "mediatek,disp-parallel");
 	/* Get voltage info from opp table */
 	dev_pm_opp_of_add_table(dev);
 	freq = 0;
