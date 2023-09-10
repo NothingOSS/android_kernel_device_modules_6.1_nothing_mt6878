@@ -4768,6 +4768,7 @@
 				"TOP_MMPLL_D4_D2",	/* 14 */
 				"TOP_UNIVPLL_D5_D2",/* 15 */
 				"TOP_UNIVPLL_D4_D2";/* 16 */
+		mediatek,disp-parallel;
 	};
 
 	mmdvfs_debug: mmdvfs-debug {
