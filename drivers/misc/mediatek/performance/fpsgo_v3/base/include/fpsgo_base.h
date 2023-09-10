@@ -30,6 +30,7 @@
 #define FPSGO_MAX_RECYCLE_IDLE_CNT 10
 #define FPSGO_MAX_TREE_SIZE 10
 #define FPSGO_MAX_RENDER_INFO_SIZE 20
+#define FPSGO_MAX_BQ_ID_SIZE 20
 
 enum {
 	FPSGO_SET_UNKNOWN = -1,
@@ -349,6 +350,7 @@ struct BQ_id {
 	int pid;
 	int queue_pid;
 	struct rb_node entry;
+	unsigned long long ts;
 };
 
 struct acquire_info {

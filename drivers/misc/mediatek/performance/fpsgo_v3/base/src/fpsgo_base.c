@@ -70,6 +70,7 @@ static int global_cam_apk_pid;
 static int global_kfps_mask = 0xFFF;
 static int total_render_info_num;
 static int total_linger_num;
+static int total_BQ_id_num;
 
 static struct kobject *base_kobj;
 static struct rb_root render_pid_tree;
@@ -1758,6 +1759,7 @@ static void fpsgo_check_BQid_status(void)
 		} else {
 			rb_erase(rbn, &BQ_id_list);
 			kfree(pos);
+			total_BQ_id_num--;
 			rbn = rb_first(&BQ_id_list);
 		}
 	}
@@ -2122,9 +2124,31 @@ void fpsgo_stop_boost_by_pid(int pid)
 	}
 }
 
+static void fpsgo_delete_oldest_BQ_id(void)
+{
+	unsigned long long min_ts = ULLONG_MAX;
+	struct BQ_id *iter = NULL, *min_iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	for (rbn = rb_first(&BQ_id_list); rbn; rbn = rb_next(rbn)) {
+		iter = rb_entry(rbn, struct BQ_id, entry);
+		if (iter->ts < min_ts) {
+			min_ts = iter->ts;
+			min_iter = iter;
+		}
+	}
+
+	if (min_iter) {
+		rb_erase(&min_iter->entry, &BQ_id_list);
+		kfree(min_iter);
+		total_BQ_id_num--;
+	}
+}
+
 static struct BQ_id *fpsgo_get_BQid_by_key(struct fbt_render_key key,
 		int add, int pid, long long identifier)
 {
+	unsigned long long cur_ts = fpsgo_get_time();
 	struct rb_node **p = &BQ_id_list.rb_node;
 	struct rb_node *parent = NULL;
 	struct BQ_id *pos;
@@ -2139,8 +2163,10 @@ static struct BQ_id *fpsgo_get_BQid_by_key(struct fbt_render_key key,
 			p = &(*p)->rb_left;
 		else if (render_key_compare(key, pos->key) > 0)
 			p = &(*p)->rb_right;
-		else
+		else {
+			pos->ts = cur_ts;
 			return pos;
+		}
 	}
 
 	if (!add)
@@ -2154,11 +2180,17 @@ static struct BQ_id *fpsgo_get_BQid_by_key(struct fbt_render_key key,
 	pos->key.key2 = key.key2;
 	pos->pid = pid;
 	pos->identifier = identifier;
+	pos->ts = cur_ts;
 	rb_link_node(&pos->entry, parent, p);
 	rb_insert_color(&pos->entry, &BQ_id_list);
+	total_BQ_id_num++;
 
 	FPSGO_LOGI("add BQid key1 %d, key2 %llu, pid %d, id 0x%llx\n",
 		   key.key1, key.key2, pid, identifier);
+
+	if (total_BQ_id_num > FPSGO_MAX_BQ_ID_SIZE)
+		fpsgo_delete_oldest_BQ_id();
+
 	return pos;
 }
 
@@ -2206,6 +2238,7 @@ struct BQ_id *fpsgo_find_BQ_id(int pid, int tgid,
 				fpsgo_delete_acquire_info(1, 0, pos->buffer_id);
 				rb_erase(n, &BQ_id_list);
 				kfree(pos);
+				total_BQ_id_num--;
 				done = 1;
 				break;
 			}
