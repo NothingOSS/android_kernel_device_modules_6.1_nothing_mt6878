@@ -612,7 +612,7 @@ void mtk_vdec_prepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, unsigned long *i
 		return;
 
 	inst_handle = (struct vdec_inst *) ctx->drv_handle;
-	if (!inst_handle) {
+	if (IS_ERR_OR_NULL(inst_handle)) {
 		mtk_v4l2_err("%s [VDVFS][%d] find null drv handler", __func__, ctx->id);
 		return;
 	}
