@@ -563,6 +563,7 @@ struct mtk_panel_params {
 	unsigned int merge_trig_offset;
 	unsigned int prefetch_offset;
 	unsigned int real_te_duration;
+	bool skip_wait_real_te;	/* 0: wait real te by hwc, 1: skip */
 	unsigned int SilkyBrightnessDelay;
 
 	bool dual_swap;

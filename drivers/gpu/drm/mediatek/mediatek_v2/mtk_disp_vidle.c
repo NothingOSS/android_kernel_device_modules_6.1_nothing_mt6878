@@ -44,6 +44,7 @@ struct mtk_disp_vidle {
 	u8 level;
 	u32 hrt_bw;
 	u32 srt_bw;
+	u32 te_duration;
 };
 
 static struct mtk_disp_vidle vidle_data = {0xff, 0xffffffff, 0xffffffff};
@@ -60,6 +61,10 @@ void mtk_vidle_flag_init(void *_crtc)
 	if (_crtc == NULL)
 		return;
 	crtc = (struct drm_crtc *)_crtc;
+
+	if (drm_crtc_index(crtc) != 0)
+		return;
+
 	mtk_crtc = to_mtk_crtc(crtc);
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	priv = crtc->dev->dev_private;
@@ -70,12 +75,19 @@ void mtk_vidle_flag_init(void *_crtc)
 	if (mtk_dsi_is_cmd_mode(output_comp) == 0)
 		return;
 
+	if (!mtk_drm_lcm_is_connect(mtk_crtc))
+		return;
+
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_TOP_EN))
 		mtk_disp_vidle_flag.vidle_en |= DISP_VIDLE_TOP_EN;
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_MMINFRA_DT_EN))
 		mtk_disp_vidle_flag.vidle_en |= DISP_VIDLE_MMINFRA_DT_EN;
 
-	/* TODO: CHECK LCM_IS_CONNECTED, if not, auto mtcmos cannot be enabled */
+	if (mtk_vidle_update_dt_by_period(crtc) < 0) {
+		mtk_disp_vidle_flag.vidle_en = 0;
+		DDPMSG("%s te duration is not set, disable vidle\n", __func__);
+		return;
+	}
 }
 
 static unsigned int mtk_vidle_enable_check(unsigned int vidle_item)
@@ -204,25 +216,32 @@ void mtk_set_dt_configure(u8 dt, unsigned int us)
 		disp_dpc_driver.dpc_dt_set(dt, us);
 }
 
-void mtk_vidle_update_dt_by_period(void *_crtc)
+int mtk_vidle_update_dt_by_period(void *_crtc)
 {
 	struct drm_crtc *crtc = NULL;
 	struct mtk_panel_params *panel_ext = NULL;
-	unsigned int duration;
-	unsigned int fps;
+	unsigned int duration = 0;
+
+	if (!mtk_disp_vidle_flag.vidle_en)
+		return -1;
 
 	if (_crtc == NULL || !disp_dpc_driver.dpc_dt_set)
-		return;
+		return -1;
 
 	crtc = (struct drm_crtc *)_crtc;
+	if (drm_crtc_index(crtc) != 0)
+		return -1;
+
 	panel_ext = mtk_drm_get_lcm_ext_params(crtc);
 
 	if (panel_ext && panel_ext->real_te_duration) {
 		duration = panel_ext->real_te_duration;
-	} else {
-		fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
-		duration = (fps == 0) ? 16666 : 1000000 / fps;
-	}
+		if (duration == vidle_data.te_duration)
+			return duration;
+		DDPINFO("%s %d -> %d\n", __func__, vidle_data.te_duration, duration);
+		vidle_data.te_duration = duration;
+	} else
+		return -1;
 
 	/* update DTs affected by TE duration */
 	disp_dpc_driver.dpc_dt_set(1, duration - DT_OVL_OFFSET);
@@ -231,6 +250,8 @@ void mtk_vidle_update_dt_by_period(void *_crtc)
 	disp_dpc_driver.dpc_dt_set(12, duration - DT_MMINFRA_OFFSET);
 	disp_dpc_driver.dpc_dt_set(33, duration - DT_OVL_OFFSET);
 	disp_dpc_driver.dpc_dt_set(40, duration - DT_MMINFRA_OFFSET);
+
+	return duration;
 }
 
 bool mtk_vidle_is_ff_enabled(void)

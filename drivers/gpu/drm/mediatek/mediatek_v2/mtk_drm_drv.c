@@ -6900,11 +6900,11 @@ int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
 
 		total_offset[i] = merge_trigger_offset + prefetch_te_offset;
 
-		if (mtk_crtc->panel_params[i]->real_te_duration != 0) {
-			real_te_duration[i] =
-				mtk_crtc->panel_params[i]->real_te_duration;
+		if ((mtk_crtc->panel_params[i]->real_te_duration != 0) &&
+		    !mtk_crtc->panel_params[i]->skip_wait_real_te) {
+			real_te_duration[i] = mtk_crtc->panel_params[i]->real_te_duration;
 		} else
-			real_te_duration[i] = 0; //TE duration is same to SW vsync
+			real_te_duration[i] = 0; // TE duration is same to SW vsync
 	}
 
 	//fill the structure from panel driver
