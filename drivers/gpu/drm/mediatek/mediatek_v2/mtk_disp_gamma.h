@@ -21,29 +21,6 @@ struct gamma_color_protect_mode {
 	unsigned int white_support;
 };
 
-/* TODO */
-/* static ddp_module_notify g_gamma_ddp_notify; */
-
-enum GAMMA_USER_CMD {
-	SET_GAMMALUT = 0,
-	SET_12BIT_GAMMALUT,
-	BYPASS_GAMMA,
-	SET_GAMMA_GAIN,
-	DISABLE_MUL_EN
-};
-
-enum GAMMA_MODE {
-	HW_8BIT = 0,
-	HW_12BIT_MODE_IN_8BIT,
-	HW_12BIT_MODE_IN_10BIT,
-};
-
-enum GAMMA_CMDQ_TYPE {
-	GAMMA_USERSPACE = 0,
-	GAMMA_FIRST_ENABLE,
-	GAMMA_PREPARE,
-};
-
 struct mtk_disp_gamma_data {
 	bool support_gamma_gain;
 	unsigned int gamma_gain_range;

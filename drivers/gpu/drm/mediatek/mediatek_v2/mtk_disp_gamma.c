@@ -38,8 +38,16 @@
 #endif
 
 #define DISP_GAMMA_EN 0x0000
+#define    GAMMA_EN           BIT(0)
+
 #define DISP_GAMMA_SHADOW_SRAM 0x0014
+
 #define DISP_GAMMA_CFG 0x0020
+#define    GAMMA_MUT_EN       BIT(3)
+#define    GAMMA_LUT_TYPE     BIT(2)
+#define    GAMMA_LUT_EN       BIT(1)
+#define    GAMMA_RELAYMODE    BIT(0)
+
 #define DISP_GAMMA_SIZE 0x0030
 #define DISP_GAMMA_PURE_COLOR 0x0038
 #define DISP_GAMMA_BANK 0x0100
@@ -57,11 +65,27 @@
 
 #define LUT_10BIT_MASK 0x03ff
 
-#define GAMMA_EN BIT(0)
-#define GAMMA_LUT_EN BIT(1)
-#define GAMMA_RELAYMODE BIT(0)
 #define DISP_GAMMA_BLOCK_SIZE 256
 #define DISP_GAMMA_GAIN_SIZE 3
+
+enum GAMMA_USER_CMD {
+	SET_GAMMALUT = 0,
+	SET_12BIT_GAMMALUT,
+	BYPASS_GAMMA,
+	SET_GAMMA_GAIN,
+	DISABLE_MUL_EN
+};
+
+enum GAMMA_MODE {
+	HW_8BIT = 0,
+	HW_12BIT_MODE_IN_8BIT,
+	HW_12BIT_MODE_IN_10BIT,
+};
+
+enum GAMMA_CMDQ_TYPE {
+	GAMMA_USERSPACE = 0,
+	GAMMA_PREPARE,
+};
 
 static bool set_partial_update;
 static unsigned int roi_height;
@@ -153,7 +177,6 @@ static bool disp_gamma_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 
 	switch (cmd_type) {
 	case GAMMA_USERSPACE:
-	case GAMMA_FIRST_ENABLE:
 		primary_data->table_out_sel = primary_data->table_config_sel;
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_mbox_stop(client);
@@ -269,12 +292,6 @@ static void mtk_gamma_config(struct mtk_ddp_comp *comp,
 {
 	/* TODO: only call init function if frame dirty */
 	mtk_gamma_init(comp, cfg, handle);
-	//cmdq_pkt_write(handle, comp->cmdq_base,
-	//	comp->regs_pa + DISP_GAMMA_SIZE,
-	//	(cfg->w << 16) | cfg->h, ~0);
-	//cmdq_pkt_write(handle, comp->cmdq_base,
-	//	comp->regs_pa + DISP_GAMMA_CFG,
-	//	GAMMA_RELAYMODE, BIT(0));
 }
 
 static int mtk_gamma_write_lut_reg(struct mtk_ddp_comp *comp,
@@ -315,17 +332,18 @@ static int mtk_gamma_write_lut_reg(struct mtk_ddp_comp *comp,
 	if ((int)(gamma_lut->lut[0] & 0x3FF) -
 		(int)(gamma_lut->lut[510] & 0x3FF) > 0) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_GAMMA_CFG, 0x1 << 2, 0x4);
+			comp->regs_pa + DISP_GAMMA_CFG, GAMMA_LUT_TYPE, GAMMA_LUT_TYPE);
 		DDPINFO("decreasing LUT\n");
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_GAMMA_CFG, 0x0 << 2, 0x4);
+			comp->regs_pa + DISP_GAMMA_CFG, 0, GAMMA_LUT_TYPE);
 		DDPINFO("Incremental LUT\n");
 	}
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_CFG,
-			0x2 | atomic_read(&primary_data->force_relay), 0x3);
+			GAMMA_LUT_EN | atomic_read(&primary_data->force_relay),
+			GAMMA_LUT_EN | GAMMA_RELAYMODE);
 
 	if (!atomic_read(&primary_data->gamma_sram_hw_init))
 		atomic_set(&primary_data->gamma_sram_hw_init, 1);
@@ -344,7 +362,8 @@ static void disp_gamma_flip_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_CFG,
-			0x2 | atomic_read(&primary_data->force_relay), 0x3);
+			GAMMA_LUT_EN | atomic_read(&primary_data->force_relay),
+			GAMMA_LUT_EN | GAMMA_RELAYMODE);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_SHADOW_SRAM,
@@ -445,7 +464,7 @@ static int mtk_gamma_write_12bit_lut_reg(struct mtk_ddp_comp *comp,
 			}
 		}
 		cmdq_pkt_write_value_addr_reuse(handle, comp->regs_pa + DISP_GAMMA_CFG,
-				config_value, 0x4, &reuse_lut[offset++]);
+				config_value, GAMMA_LUT_TYPE, &reuse_lut[offset++]);
 		gamma->pkt_reused = true;
 	} else {
 		reuse_lut[offset].val = write_value;
@@ -519,7 +538,7 @@ static int mtk_gamma_write_gain_reg(struct mtk_ddp_comp *comp,
 	     (hw_gain[1] == 0) &&
 	     (hw_gain[2] == 0))) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_GAMMA_CFG, 0x0 << 3, 0x8);
+			comp->regs_pa + DISP_GAMMA_CFG, 0, GAMMA_MUT_EN);
 		DDPINFO("all gain == %d\n", hw_gain[0]);
 		goto unlock;
 	}
@@ -534,7 +553,7 @@ static int mtk_gamma_write_gain_reg(struct mtk_ddp_comp *comp,
 	}
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_GAMMA_CFG, 0x1 << 3, 0x8);
+		comp->regs_pa + DISP_GAMMA_CFG, GAMMA_MUT_EN, GAMMA_MUT_EN);
 
 unlock:
 	if (lock)
@@ -733,7 +752,7 @@ static void mtk_gamma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 	if (!atomic_read(&primary_data->gamma_sram_hw_init)) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_GAMMA_CFG, 0x1, 0x1);
+			comp->regs_pa + DISP_GAMMA_CFG, GAMMA_RELAYMODE, GAMMA_RELAYMODE);
 		return;
 	}
 
@@ -790,7 +809,7 @@ static void mtk_gamma_bypass(struct mtk_ddp_comp *comp, int bypass,
 	}
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_GAMMA_CFG, bypass, 0x1);
+		comp->regs_pa + DISP_GAMMA_CFG, bypass, GAMMA_RELAYMODE);
 	atomic_set(&primary_data->force_relay, bypass);
 }
 
@@ -807,8 +826,8 @@ static void mtk_gamma_set(struct mtk_ddp_comp *comp,
 
 	if (state->gamma_lut) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_GAMMA_CFG,
-			       1<<GAMMA_LUT_EN, 1<<GAMMA_LUT_EN);
+				comp->regs_pa + DISP_GAMMA_CFG,
+				GAMMA_LUT_EN, GAMMA_LUT_EN);
 		lut = (struct drm_color_lut *)state->gamma_lut->data;
 		for (i = 0; i < MTK_LUT_SIZE; i++) {
 			word = GAMMA_ENTRY(lut[i].red >> 6,
@@ -828,11 +847,13 @@ static void mtk_gamma_set(struct mtk_ddp_comp *comp,
 	}
 	if ((word_first - word_last) > 0) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_GAMMA_CFG, 0x1 << 2, 0x4);
+			comp->regs_pa + DISP_GAMMA_CFG,
+			GAMMA_LUT_TYPE, GAMMA_LUT_TYPE);
 		DDPINFO("decreasing LUT\n");
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_GAMMA_CFG, 0x0 << 2, 0x4);
+			comp->regs_pa + DISP_GAMMA_CFG,
+			0, GAMMA_LUT_TYPE);
 		DDPINFO("Incremental LUT\n");
 	}
 }
@@ -968,11 +989,11 @@ static int mtk_gamma_user_disable_mul_en(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_comp *companion = gamma_priv->companion;
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DISP_GAMMA_CFG, 0x0 << 3, 0x08);
+		comp->regs_pa + DISP_GAMMA_CFG, 0, GAMMA_MUT_EN);
 
 	if (comp->mtk_crtc->is_dual_pipe && companion)
 		cmdq_pkt_write(handle, companion->cmdq_base,
-			companion->regs_pa + DISP_GAMMA_CFG, 0x0 << 3, 0x08);
+			companion->regs_pa + DISP_GAMMA_CFG, 0, GAMMA_MUT_EN);
 	return 0;
 }
 
