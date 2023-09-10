@@ -4707,8 +4707,7 @@ __get_golden_setting_context(struct mtk_drm_crtc *mtk_crtc)
 			struct mtk_panel_params *params;
 
 			params = mtk_crtc->panel_ext->params;
-			if (params->dyn_fps.switch_en == 1 &&
-				params->dyn_fps.vact_timing_fps != 0)
+			if (params->dyn_fps.vact_timing_fps != 0)
 				gs_ctx[idx].vrefresh =
 					params->dyn_fps.vact_timing_fps;
 			else
@@ -4768,8 +4767,7 @@ __get_scaling_golden_setting_context(struct mtk_drm_crtc *mtk_crtc)
 			struct mtk_panel_params *params;
 
 			params = mtk_crtc->panel_ext->params;
-			if (params->dyn_fps.switch_en == 1 &&
-				params->dyn_fps.vact_timing_fps != 0)
+			if (params->dyn_fps.vact_timing_fps != 0)
 				scaling_gs_ctx[idx].vrefresh =
 					params->dyn_fps.vact_timing_fps;
 			else
@@ -4920,8 +4918,7 @@ void mtk_crtc_mode_switch_on_ap_config(struct mtk_drm_crtc *mtk_crtc,
 
 	cfg.w = crtc->state->adjusted_mode.hdisplay;
 	cfg.h = crtc->state->adjusted_mode.vdisplay;
-	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
-		mtk_crtc->panel_ext->params->dyn_fps.switch_en == 1
+	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
 		&& mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
 		cfg.vrefresh =
 			mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
@@ -5137,8 +5134,7 @@ void mtk_crtc_mode_switch_config(struct mtk_drm_crtc *mtk_crtc,
 
 	cfg.w = crtc->state->adjusted_mode.hdisplay;
 	cfg.h = crtc->state->adjusted_mode.vdisplay;
-	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
-		mtk_crtc->panel_ext->params->dyn_fps.switch_en == 1
+	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
 		&& mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
 		cfg.vrefresh =
 			mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
@@ -5605,8 +5601,7 @@ void mtk_crtc_ovl_connect_change(struct drm_crtc *crtc, unsigned int ovl_res,
 		cfg.h = mtk_ddp_comp_io_cmd(output_comp, NULL,
 					DSI_GET_VIRTUAL_HEIGH, NULL);
 	}
-	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
-		mtk_crtc->panel_ext->params->dyn_fps.switch_en == 1
+	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
 		&& mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
 		cfg.vrefresh =
 			mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
@@ -9438,8 +9433,7 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc,
 			struct mtk_panel_params *params;
 
 			params = mtk_crtc->panel_ext->params;
-			if (params->dyn_fps.switch_en == 1 &&
-				params->dyn_fps.vact_timing_fps != 0)
+			if (params->dyn_fps.vact_timing_fps != 0)
 				cfg.vrefresh =
 					params->dyn_fps.vact_timing_fps;
 			else
@@ -10109,8 +10103,7 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 					DSI_GET_VIRTUAL_HEIGH, NULL);
 	}
 	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
-		mtk_crtc->panel_ext->params->dyn_fps.switch_en == 1
-		&& mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
+		mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
 		cfg.vrefresh =
 			mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
 	else
@@ -13829,8 +13822,7 @@ static void mtk_crtc_wb_comp_config(struct drm_crtc *crtc,
 			struct mtk_panel_params *params;
 
 			params = mtk_crtc->panel_ext->params;
-			if (params->dyn_fps.switch_en == 1 &&
-				params->dyn_fps.vact_timing_fps != 0)
+			if (params->dyn_fps.vact_timing_fps != 0)
 				cfg.vrefresh =
 					params->dyn_fps.vact_timing_fps;
 			else
@@ -13858,8 +13850,7 @@ static void mtk_crtc_wb_comp_config(struct drm_crtc *crtc,
 			struct mtk_panel_params *params;
 
 			params = mtk_crtc->panel_ext->params;
-			if (params->dyn_fps.switch_en == 1 &&
-				params->dyn_fps.vact_timing_fps != 0)
+			if (params->dyn_fps.vact_timing_fps != 0)
 				cfg.vrefresh =
 					params->dyn_fps.vact_timing_fps;
 			else
@@ -18023,8 +18014,7 @@ void mtk_crtc_path_switch_prepare(struct drm_crtc *crtc, unsigned int ddp_mode,
 	cfg->w = crtc->state->adjusted_mode.hdisplay;
 	cfg->h = crtc->state->adjusted_mode.vdisplay;
 	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
-		mtk_crtc->panel_ext->params->dyn_fps.switch_en == 1
-		&& mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
+		mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
 		cfg->vrefresh =
 			mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
 	else

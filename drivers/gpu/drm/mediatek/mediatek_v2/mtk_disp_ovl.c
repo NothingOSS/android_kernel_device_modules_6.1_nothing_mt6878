@@ -1247,7 +1247,7 @@ static void mtk_ovl_config(struct mtk_ddp_comp *comp,
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	unsigned long crtc_idx = (unsigned long)drm_crtc_index(crtc);
-	int fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+	int fps;
 	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 
 	if (comp->mtk_crtc->is_dual_pipe) {
@@ -1308,6 +1308,14 @@ static void mtk_ovl_config(struct mtk_ddp_comp *comp,
 		/****************************************************************/
 		bw_monitor_config = REG_FLD_VAL(FLD_OVL_BURST_ACC_EN, 1);
 		bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_FBDC, 0);
+
+		if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
+			mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
+			fps =
+				mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
+		else
+			fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+
 		if (cfg->w <= 1080) {
 			if (fps <= 60) {
 				bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 8);
@@ -2626,7 +2634,12 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 
 		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
-		vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+		if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
+			mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
+			vrefresh =
+				mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
+		else
+			vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
 
 		if (output_comp && ((output_comp->id == DDP_COMPONENT_DSI0) ||
 				(output_comp->id == DDP_COMPONENT_DSI1))

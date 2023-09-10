@@ -1863,8 +1863,7 @@ static void mtk_atomic_check_res_switch(struct mtk_drm_private *private,
 			cfg.w = crtc->state->adjusted_mode.hdisplay;
 			cfg.h = crtc->state->adjusted_mode.vdisplay;
 			if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
-				mtk_crtc->panel_ext->params->dyn_fps.switch_en == 1
-				&& mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
+				mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
 				cfg.vrefresh =
 					mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
 			else
