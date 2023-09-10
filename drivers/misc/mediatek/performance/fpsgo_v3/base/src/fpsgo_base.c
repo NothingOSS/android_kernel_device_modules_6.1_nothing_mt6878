@@ -2865,7 +2865,7 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 				" check_buffer_quota, expected_fps_margin, quota_v2_diff_clamp_min, quota_v2_diff_clamp_max\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				" boost_VIP, RT_prio1, RT_prio2, RT_prio3, vip_mask, set_ls, ls_groupmask\n");
+				" boost_VIP, RT_prio1, RT_prio2, RT_prio3, vip_mask, set_ls, ls_groupmask, set_vvip\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" aa_b_minus_idle_time\n");
@@ -2996,14 +2996,15 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 			pos += length;
 
 			length = scnprintf(temp + pos,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d, %4d, %4d\n",
+				FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d, %4d, %4d, %4d\n",
 				attr_item.boost_vip_by_pid,
 				attr_item.rt_prio1_by_pid,
 				attr_item.rt_prio2_by_pid,
 				attr_item.rt_prio3_by_pid,
 				attr_item.vip_mask_by_pid,
 				attr_item.set_ls_by_pid,
-				attr_item.ls_groupmask_by_pid);
+				attr_item.ls_groupmask_by_pid,
+				attr_item.set_vvip_by_pid);
 			pos += length;
 
 			length = scnprintf(temp + pos,
@@ -3079,6 +3080,9 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" check_buffer_quota, expected_fps_margin, quota_v2_diff_clamp_min, quota_v2_diff_clamp_max\n");
+	pos += length;
+	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				" boost_VIP, RT_prio1, RT_prio2, RT_prio3, vip_mask, set_ls, ls_groupmask, set_vvip\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" aa_b_minus_idle_time\n");
@@ -3172,6 +3176,18 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 			attr_item.expected_fps_margin_by_pid,
 			attr_item.quota_v2_diff_clamp_min_by_pid,
 			attr_item.quota_v2_diff_clamp_max_by_pid);
+		pos += length;
+
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d, %4d, %4d, %4d\n",
+			attr_item.boost_vip_by_pid,
+			attr_item.rt_prio1_by_pid,
+			attr_item.rt_prio2_by_pid,
+			attr_item.rt_prio3_by_pid,
+			attr_item.vip_mask_by_pid,
+			attr_item.set_ls_by_pid,
+			attr_item.ls_groupmask_by_pid,
+			attr_item.set_vvip_by_pid);
 		pos += length;
 
 		length = scnprintf(temp + pos,
