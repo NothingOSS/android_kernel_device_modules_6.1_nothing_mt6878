@@ -257,9 +257,6 @@ int flush_ipi_queue_handler(struct ipi_queue_handler_t *handler)
 	struct msg_queue_t *msg_queue = NULL;
 	struct ipi_msg_t *p_ipi_msg = NULL;
 
-	const uint16_t k_max_wait_times = 100;
-	uint16_t i = 0;
-
 	unsigned long flags = 0;
 
 	/* error handling */
@@ -285,12 +282,6 @@ int flush_ipi_queue_handler(struct ipi_queue_handler_t *handler)
 		}
 	}
 	spin_unlock_irqrestore(&msg_queue->rw_lock, flags); /* TODO: check */
-
-	for (i = 0; i < k_max_wait_times; i++) {
-		if (check_queue_empty(msg_queue))
-			break;
-		usleep_range(500, 600);
-	}
 
 	return 0;
 }
