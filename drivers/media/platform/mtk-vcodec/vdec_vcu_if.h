@@ -34,6 +34,8 @@ struct vdec_vcu_inst {
 	uint64_t inst_addr;
 	unsigned int signaled;
 	unsigned int signaled_res;
+	bool in_ipi;
+	bool in_res_ipi;
 	struct mtk_vcodec_ctx *ctx;
 	struct platform_device *dev;
 	ipi_handler_t handler;

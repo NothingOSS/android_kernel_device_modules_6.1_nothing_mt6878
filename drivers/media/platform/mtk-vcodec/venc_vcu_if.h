@@ -28,6 +28,7 @@
  */
 struct venc_vcu_inst {
 	wait_queue_head_t wq_hd;
+	bool in_ipi;
 	int signaled;
 	int failure;
 	int bs_size;
