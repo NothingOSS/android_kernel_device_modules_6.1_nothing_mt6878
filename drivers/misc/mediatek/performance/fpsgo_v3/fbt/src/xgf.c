@@ -32,6 +32,7 @@
 #include "fstb.h"
 #include "fps_composer.h"
 #include "gbe2_usedext.h"
+#include "fbt_cpu_platform.h"
 
 static DEFINE_MUTEX(xgf_main_lock);
 static DEFINE_MUTEX(xgff_frames_lock);
@@ -64,6 +65,7 @@ static int xgf_max_dep_path_num = DEFAULT_MAX_DEP_PATH_NUM;
 static int xgf_max_dep_task_num = DEFAULT_MAX_DEP_TASK_NUM;
 static int cam_hal_pid;
 static int cam_server_pid;
+static int xgf_force_set_perf_min;
 
 struct fpsgo_trace_event *xgf_event_buffer;
 EXPORT_SYMBOL(xgf_event_buffer);
@@ -468,6 +470,10 @@ static void xgf_render_reset_wspid_list(int rpid, unsigned long long bufID)
 	hlist_for_each_entry_safe(xgf_spid_iter, t, &xgf_wspid_list, hlist) {
 		if (xgf_spid_iter->rpid == rpid &&
 			xgf_spid_iter->bufID == bufID) {
+			if (xgf_spid_iter->action == XGF_FORCE_BOOST) {
+				fbt_set_per_task_cap(xgf_spid_iter->tid, 0, 100, 1024);
+				fpsgo_main_trace("[xgf] force deboost tid:%d", xgf_spid_iter->tid);
+			}
 			hlist_del(&xgf_spid_iter->hlist);
 			xgf_free(xgf_spid_iter);
 			xgf_wspid_list_length--;
@@ -514,7 +520,8 @@ static int xgf_render_setup_wspid_list(int tgid, int rpid, unsigned long long bu
 			get_task_struct(sib);
 
 			hlist_for_each_entry(xgf_spid_iter, &xgf_spid_list, hlist) {
-				if (strncmp(gtsk->comm, xgf_spid_iter->process_name, 16))
+				if (strcmp(xgf_spid_iter->process_name, SP_PASS_PROC_NAME_CHECK) &&
+					strncmp(gtsk->comm, xgf_spid_iter->process_name, 16))
 					continue;
 
 				tlen = strlen(xgf_spid_iter->thread_name);
@@ -564,15 +571,21 @@ out:
 		put_task_struct(gtsk);
 	}
 	rcu_read_unlock();
+
 	return ret;
 }
 
 static void xgf_render_update_wspid_list(int tgid, int rpid, unsigned long long bufID)
 {
 	int exist_flag = 0;
+	int local_force_set_min = 0;
 	struct xgf_spid *xgf_spid_iter = NULL;
 	struct hlist_node *h = NULL;
 	struct task_struct *tsk = NULL;
+
+	mutex_lock(&xgf_global_var_lock);
+	local_force_set_min = xgf_force_set_perf_min;
+	mutex_unlock(&xgf_global_var_lock);
 
 	hlist_for_each_entry_safe(xgf_spid_iter, h, &xgf_wspid_list, hlist) {
 		if (xgf_spid_iter->rpid == rpid &&
@@ -585,8 +598,22 @@ static void xgf_render_update_wspid_list(int tgid, int rpid, unsigned long long 
 
 			if (exist_flag) {
 				exist_flag = 0;
+
+				if (xgf_spid_iter->action == XGF_FORCE_BOOST &&
+					local_force_set_min > 0) {
+					fbt_set_per_task_cap(xgf_spid_iter->tid,
+						local_force_set_min, 100, 1024);
+					fpsgo_main_trace("[xgf] force boost tid:%d min:%d",
+						xgf_spid_iter->tid, local_force_set_min);
+				}
+
 				continue;
 			} else {
+				if (xgf_spid_iter->action == XGF_FORCE_BOOST) {
+					fbt_set_per_task_cap(xgf_spid_iter->tid, 0, 100, 1024);
+					fpsgo_main_trace("[xgf] force deboost tid:%d", xgf_spid_iter->tid);
+				}
+
 				hlist_del(&xgf_spid_iter->hlist);
 				xgf_free(xgf_spid_iter);
 				xgf_wspid_list_length--;
@@ -812,7 +839,8 @@ static void xgf_wspid_list_add2prev(struct xgf_render_if *render)
 	hlist_for_each_entry_safe(xgf_spid_iter, t, &xgf_wspid_list, hlist) {
 		if (xgf_spid_iter->rpid == render->pid &&
 			xgf_spid_iter->bufID == render->bufid) {
-			if (xgf_spid_iter->action == XGF_DEL_DEP)
+			if (xgf_spid_iter->action == XGF_DEL_DEP ||
+				xgf_spid_iter->action == XGF_FORCE_BOOST)
 				xgf_del_pid2prev_dep(render, FPSGO_TYPE, xgf_spid_iter->tid);
 			else
 				xgf_add_pid2prev_dep(render, FPSGO_TYPE, xgf_spid_iter->tid,
@@ -1673,7 +1701,7 @@ static int xgf_split_dep_name(int tgid, char *dep_name, int dep_num, int *out_ti
 			!strncpy(local_thread_name, thread_name, 16))
 			break;
 		local_thread_name[15] = '\0';
-		xgf_trace("[xgf] user add dep task:%s", local_thread_name);
+		fpsgo_main_trace("[xgf] user add dep task:%s", local_thread_name);
 
 		rcu_read_lock();
 		tg = find_task_by_vpid(tgid);
@@ -2840,6 +2868,10 @@ XGF_SYSFS_READ(xgf_filter_dep_task_enable, 1, xgf_filter_dep_task_enable);
 XGF_SYSFS_WRITE_VALUE(xgf_filter_dep_task_enable, xgf_main_lock, xgf_filter_dep_task_enable, 0, 1);
 static KOBJ_ATTR_RW(xgf_filter_dep_task_enable);
 
+XGF_SYSFS_READ(xgf_force_set_perf_min, 1, xgf_force_set_perf_min);
+XGF_SYSFS_WRITE_VALUE(xgf_force_set_perf_min, xgf_global_var_lock, xgf_force_set_perf_min, 0, 100);
+static KOBJ_ATTR_RW(xgf_force_set_perf_min);
+
 XGF_SYSFS_READ(xgf_ema2_enable_by_pid, 0, 0);
 XGF_SYSFS_WRITE_POLICY_CMD(xgf_ema2_enable_by_pid, xgf_main_lock, 0, 0, 1);
 static KOBJ_ATTR_RW(xgf_ema2_enable_by_pid);
@@ -3093,6 +3125,7 @@ int __init init_xgf(void)
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_filter_dep_task_enable);
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_filter_dep_task_enable_by_pid);
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_policy_cmd);
+		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_force_set_perf_min);
 	}
 
 	xgf_policy_cmd_tree = RB_ROOT;
@@ -3129,6 +3162,7 @@ int __exit exit_xgf(void)
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_filter_dep_task_enable);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_filter_dep_task_enable_by_pid);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_policy_cmd);
+	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_force_set_perf_min);
 
 	unregister_get_fpsgo_is_boosting(fpsgo_comp2xgf_notify_boost);
 

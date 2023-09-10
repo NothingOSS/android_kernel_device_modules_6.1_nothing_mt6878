@@ -516,7 +516,7 @@ out:
 
 static int fpsgo_com_check_app_cam_fps_align(struct render_info *iter)
 {
-	int ret = -1;
+	int ret = 0;
 	int local_app_cam_fps_align_margin = BY_PID_DEFAULT_VAL;
 	int local_app_cam_time_align_ratio = BY_PID_DEFAULT_VAL;
 	int check1 = 0;
