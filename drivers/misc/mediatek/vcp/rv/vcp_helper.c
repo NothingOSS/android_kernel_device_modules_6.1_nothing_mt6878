@@ -170,6 +170,37 @@ static struct vcp_work_struct vcp_A_notify_work;
 static unsigned int vcp_timeout_times;
 #endif
 
+static const char vcp_task_list[][2][32] = {
+	{"VencCqRoutine0", "VENC"},
+	{"VencCqRoutine1", "VENC"},
+	{"VencCqRoutine2", "VENC"},
+	{"VencCqWaitEvent", "VENC"},
+	{"venc_srv", "VENC"},
+	{"vdec_core", "VDEC"},
+	{"vdec_res", "VDEC"},
+	{"vdec_res_srv", "VDEC"},
+	{"vdec_srv", "VDEC"},
+	{"IDLE", "VCP"},
+	{"clk_mminfra_hwv_off", "HWCCF"},
+	{"clk_mminfra_hwv_on", "HWCCF"},
+	{"clk_serror", "HWCCF"},
+	{"hwv_cg_timeout", "HWCCF"},
+	{"scpsys_hwv_off", "HWCCF"},
+	{"scpsys_hwv_on", "HWCCF"},
+	{"scpsys_mminfra_hwv_off", "HWCCF"},
+	{"scpsys_mminfra_hwv_on", "HWCCF"},
+	{"mmdvfs_dump_bottom_task", "MMDVFS"},
+	{"mmdvfs_ipi_task", "MMDVFS"},
+	{"mmdvfs_mux_cb_task", "MMDVFS"},
+	{"mmdvfs_pd_cb_task", "MMDVFS"},
+	{"mmdvfs_stress_task", "MMDVFS"},
+	{"mmdvfs_task", "MMDVFS"},
+	{"mmdvfsrc_dump_bottom_task", "MMDVFS"},
+	{"vmrc_bottom_task", "MMDVFS"},
+	{"mmqos_ipi_task", "MMQOS"},
+	{"vmm_thread", "VMM"},
+};
+
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define vcp_aee_print(string, args...) do {\
 	char vcp_name[100];\
@@ -811,6 +842,22 @@ static void vcp_err_info_handler(int id, void *prdata, void *data,
 }
 #endif
 
+static const char *get_module_by_taskname(const char *taskname)
+{
+	int i;
+	int array_size = ARRAY_SIZE(vcp_task_list);
+
+	if (!taskname)
+		return "VCP";
+
+	for (i = 0; i < array_size; i++) {
+		if (!strcmp(vcp_task_list[i][0], taskname))
+			return vcp_task_list[i][1];
+	}
+
+	return "VCP";
+}
+
 void trigger_vcp_dump(enum vcp_core_id id, char *user, bool vote_mminfra)
 {
 	int i, j;
@@ -843,6 +890,7 @@ void trigger_vcp_dump(enum vcp_core_id id, char *user, bool vote_mminfra)
 
 		/* trigger vcp dump */
 		pr_notice("[VCP] %s %s trigger VCP dump...\n", __func__, user);
+		pr_notice("[VCP] Module:%s\n", get_module_by_taskname(user));
 		writel(B_GIPC3_SETCLR_3, R_GIPC_IN_SET);
 		for (j = 0; j < NUM_FEATURE_ID; j++)
 			if (feature_table[j].enable)
@@ -880,6 +928,7 @@ void trigger_vcp_halt(enum vcp_core_id id, char *user, bool vote_mminfra)
 			halt_user = user;
 			pr_notice("[VCP] vcp's first halt is from %s clk %d\n",
 				halt_user, mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type));
+			pr_notice("[VCP] Module:%s\n", get_module_by_taskname(user));
 		}
 
 		if (vote_mminfra) {
