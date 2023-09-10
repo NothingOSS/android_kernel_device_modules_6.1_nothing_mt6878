@@ -608,6 +608,7 @@ int mt6681_set_codec_ops(struct snd_soc_component *cmpnt, struct mt6681_codec_op
 int mt6681_set_mtkaif_protocol(struct snd_soc_component *cmpnt, int mtkaif_protocol);
 void mt6681_mtkaif_calibration_enable(struct snd_soc_component *cmpnt);
 void mt6681_mtkaif_calibration_disable(struct snd_soc_component *cmpnt);
+void mt6681_mtkaif_loopback(struct snd_soc_component *cmpnt, bool enable);
 void mt6681_set_mtkaif_calibration_phase(struct snd_soc_component *cmpnt,
 					 int phase_1, int phase_2, int phase_3);
 extern int scp_wake_request(struct i2c_adapter *);

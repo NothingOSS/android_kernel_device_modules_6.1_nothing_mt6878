@@ -44,6 +44,12 @@ static struct audio_gpio_attr aud_gpios[MT6989_AFE_GPIO_GPIO_NUM] = {
 	[MT6989_AFE_GPIO_DAT_MOSI_CH34_ON] = {"aud-dat-mosi-ch34-on",
 		false, NULL
 	},
+	[MT6989_AFE_GPIO_DAT_MISO_ONLY_OFF] = {"aud-dat-miso-only-off",
+		false, NULL
+	},
+	[MT6989_AFE_GPIO_DAT_MISO_ONLY_ON] = {"aud-dat-miso-only-on",
+		false, NULL
+	},
 };
 
 static DEFINE_MUTEX(gpio_request_mutex);
@@ -256,6 +262,12 @@ int mt6989_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_DAT_MISO1_OFF);
 			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_DAT_MISO0_OFF);
 		}
+		break;
+	case MT6989_DAI_MISO_ONLY:
+		if (enable)
+			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_DAT_MISO_ONLY_ON);
+		else
+			mt6989_afe_gpio_select(afe, MT6989_AFE_GPIO_DAT_MISO_ONLY_OFF);
 		break;
 	default:
 		mutex_unlock(&gpio_request_mutex);

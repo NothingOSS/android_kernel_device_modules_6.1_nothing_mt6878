@@ -1473,7 +1473,39 @@ static int mt6989_ul_mmap_fd_set(struct snd_kcontrol *kcontrol,
 {
 	return 0;
 }
+static int record_miso1_en_get(struct snd_kcontrol *kcontrol,
+			   struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mt6989_afe_private *afe_priv = afe->platform_priv;
 
+	pr_info("%s(), audio_r_miso1_enable = %d\n", __func__, afe_priv->audio_r_miso1_enable);
+
+	ucontrol->value.integer.value[0] = afe_priv->audio_r_miso1_enable;
+	return 0;
+}
+
+static int record_miso1_en_set(struct snd_kcontrol *kcontrol,
+			   struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mt6989_afe_private *afe_priv = afe->platform_priv;
+
+	afe_priv->audio_r_miso1_enable = ucontrol->value.integer.value[0];
+	pr_info("%s(), audio_r_miso1_enable = %d\n", __func__, afe_priv->audio_r_miso1_enable);
+
+	return 0;
+}
+
+
+static const char *const off_on_function[] = {"Off", "On"};
+
+static const struct soc_enum mt6989_pcm_type_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(off_on_function),
+			    off_on_function),
+};
 
 static const struct snd_kcontrol_new mt6989_pcm_kcontrols[] = {
 	SOC_SINGLE_EXT("Audio IRQ1 CNT", SND_SOC_NOPM, 0, 0x3ffff, 0,
@@ -1600,6 +1632,8 @@ static const struct snd_kcontrol_new mt6989_pcm_kcontrols[] = {
 		       SND_SOC_NOPM, 0, 0xffffffff, 0,
 		       mt6989_ul_mmap_fd_get,
 		       mt6989_ul_mmap_fd_set),
+	SOC_ENUM_EXT("MTK_RECORD_MISO1", mt6989_pcm_type_enum[0],
+		     record_miso1_en_get, record_miso1_en_set),
 };
 
 enum {

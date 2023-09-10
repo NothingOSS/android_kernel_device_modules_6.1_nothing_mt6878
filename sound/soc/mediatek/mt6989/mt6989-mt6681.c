@@ -238,6 +238,8 @@ static int mt6989_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 	if (!afe_priv->miso_only) {
 		mt6989_afe_gpio_request(afe, true, MT6989_DAI_ADDA, 0);
 		mt6989_afe_gpio_request(afe, true, MT6989_DAI_ADDA_CH34, 0);
+	} else {
+		mt6989_afe_gpio_request(afe, true, MT6989_DAI_MISO_ONLY, 0);
 	}
 	mt6681_mtkaif_calibration_enable(codec_component);
 
@@ -260,17 +262,19 @@ static int mt6989_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 	     mtkaif_calib_ok;
 	     phase++) {
 		if (afe_priv->miso_only)
-			/* disable miso_clk */
+			/* disable mosi_clk */
 			regmap_update_bits(afe->regmap, AFE_AUD_PAD_TOP_CFG0,
 					   0x1 << 0x7, 0x0 << 0x7);
 
 		mt6681_set_mtkaif_calibration_phase(codec_component,
 						    phase, phase, phase);
+		if (afe_priv->miso_only)
+			mt6681_mtkaif_loopback(codec_component, true);
 
 		regmap_update_bits(afe_priv->topckgen,
 				   CKSYS_AUD_TOP_CFG, 0x1, 0x1);
 		if (afe_priv->miso_only)
-			/* disable miso_clk */
+			/* enable mosi_clk */
 			regmap_update_bits(afe->regmap, AFE_AUD_PAD_TOP_CFG0,
 					   0x1 << 0x7, 0x1 << 0x7);
 
@@ -342,6 +346,8 @@ static int mt6989_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 
 		regmap_update_bits(afe_priv->topckgen,
 				   CKSYS_AUD_TOP_CFG, 0x1, 0x0);
+		if (afe_priv->miso_only)
+			mt6681_mtkaif_loopback(codec_component, false);
 	}
 
 	mt6681_set_mtkaif_calibration_phase(codec_component,
@@ -358,10 +364,9 @@ static int mt6989_mt6681_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 	mt6681_mtkaif_calibration_disable(codec_component);
 
 	mt6989_afe_gpio_request(afe, false, MT6989_DAI_MTKAIF, 1);
-	if (!afe_priv->miso_only) {
-		mt6989_afe_gpio_request(afe, false, MT6989_DAI_ADDA, 0);
-		mt6989_afe_gpio_request(afe, false, MT6989_DAI_ADDA_CH34, 0);
-	}
+	if (afe_priv->miso_only)
+		mt6989_afe_gpio_request(afe, false, MT6989_DAI_MISO_ONLY, 0);
+
 	/* disable syncword if miso pin not prepared */
 	if (!miso0_need_calib)
 		regmap_update_bits(afe->regmap, AFE_MTKAIF0_RX_CFG2,

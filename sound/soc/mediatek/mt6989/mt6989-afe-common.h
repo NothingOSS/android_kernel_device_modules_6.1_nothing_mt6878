@@ -134,6 +134,7 @@ enum {
 	MT6989_DAI_NUM,
 	/* use for mtkaif calibration specail setting */
 	MT6989_DAI_MTKAIF = MT6989_DAI_NUM,
+	MT6989_DAI_MISO_ONLY,
 };
 
 #define MT6989_DAI_I2S_MAX_NUM 11 //depends each platform's max i2s num

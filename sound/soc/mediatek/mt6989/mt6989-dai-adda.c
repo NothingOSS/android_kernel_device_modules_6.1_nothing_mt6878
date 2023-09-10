@@ -564,7 +564,7 @@ static int mtk_adda_pad_top_event(struct snd_soc_dapm_widget *w,
 		regmap_write(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0, 0x0);
 		regmap_write(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0, 0x0);
 		regmap_write(afe->regmap, AFE_ADDA_MTKAIFV4_TX_CFG0, 0x0);
-		regmap_write(afe->regmap, AFE_ADDA_MTKAIFV4_TX_CFG0, 0x0);
+		regmap_write(afe->regmap, AFE_ADDA6_MTKAIFV4_TX_CFG0, 0x0);
 		break;
 	default:
 		break;

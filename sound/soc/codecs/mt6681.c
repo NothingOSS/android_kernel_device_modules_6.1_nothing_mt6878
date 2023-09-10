@@ -35,7 +35,7 @@
 #endif
 
 #define MTKAIFV4_SUPPORT
-
+//#define VIVO_CUS
 #define MAX_DEBUG_WRITE_INPUT 256
 #define CODEC_SYS_DEBUG_SIZE (1024 * 192) // 32K
 /* #define MT6681_TOP_DEBUG */
@@ -1425,7 +1425,7 @@ void mt6681_mtkaif_calibration_enable(struct snd_soc_component *cmpnt)
 		regmap_write(priv->regmap, MT6681_GPIO_DINV0, 0x10);
 
 	mt6681_set_playback_gpio(priv);
-	mt6681_set_capture_gpio(priv);
+	//mt6681_set_capture_gpio(priv);
 	mt6681_set_capture56_gpio(priv);
 	mt6681_mtkaif_tx_enable(priv, true);
 
@@ -1433,17 +1433,18 @@ void mt6681_mtkaif_calibration_enable(struct snd_soc_component *cmpnt)
 	mt6681_set_aud_global_bias(priv, true);
 	mt6681_set_clksq(priv, true);
 	mt6681_set_topck(priv, true);
-
-	/* set dat_miso_loopback on */
-	regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG,
-			   RG_AUD_PAD_TOP_DAT_MISO_LOOPBACK_MASK_SFT,
-			   0x1 << RG_AUD_PAD_TOP_DAT_MISO_LOOPBACK_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG_H,
-			   RG_AUD_PAD_TOP_DAT_MISO2_LOOPBACK_MASK_SFT,
-			   0x1 << RG_AUD_PAD_TOP_DAT_MISO2_LOOPBACK_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG1,
-			   RG_AUD_PAD_TOP_DAT_MISO3_LOOPBACK_MASK_SFT,
-			   0x1 << RG_AUD_PAD_TOP_DAT_MISO3_LOOPBACK_SFT);
+	if (!priv->miso_only) {
+		/* set dat_miso_loopback on */
+		regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG,
+				   RG_AUD_PAD_TOP_DAT_MISO_LOOPBACK_MASK_SFT,
+				   0x1 << RG_AUD_PAD_TOP_DAT_MISO_LOOPBACK_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG_H,
+				   RG_AUD_PAD_TOP_DAT_MISO2_LOOPBACK_MASK_SFT,
+				   0x1 << RG_AUD_PAD_TOP_DAT_MISO2_LOOPBACK_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG1,
+				   RG_AUD_PAD_TOP_DAT_MISO3_LOOPBACK_MASK_SFT,
+				   0x1 << RG_AUD_PAD_TOP_DAT_MISO3_LOOPBACK_SFT);
+	}
 #endif
 }
 EXPORT_SYMBOL_GPL(mt6681_mtkaif_calibration_enable);
@@ -1452,16 +1453,18 @@ void mt6681_mtkaif_calibration_disable(struct snd_soc_component *cmpnt)
 {
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 
-	/* set dat_miso_loopback off */
-	regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG,
-			   RG_AUD_PAD_TOP_DAT_MISO_LOOPBACK_MASK_SFT,
-			   0x0 << RG_AUD_PAD_TOP_DAT_MISO_LOOPBACK_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG_H,
-			   RG_AUD_PAD_TOP_DAT_MISO2_LOOPBACK_MASK_SFT,
-			   0x0 << RG_AUD_PAD_TOP_DAT_MISO2_LOOPBACK_SFT);
-	regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG1,
-			   RG_AUD_PAD_TOP_DAT_MISO3_LOOPBACK_MASK_SFT,
-			   0x0 << RG_AUD_PAD_TOP_DAT_MISO3_LOOPBACK_SFT);
+	if (!priv->miso_only) {
+		/* set dat_miso_loopback off */
+		regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG,
+				   RG_AUD_PAD_TOP_DAT_MISO_LOOPBACK_MASK_SFT,
+				   0x0 << RG_AUD_PAD_TOP_DAT_MISO_LOOPBACK_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG_H,
+				   RG_AUD_PAD_TOP_DAT_MISO2_LOOPBACK_MASK_SFT,
+				   0x0 << RG_AUD_PAD_TOP_DAT_MISO2_LOOPBACK_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG1,
+				   RG_AUD_PAD_TOP_DAT_MISO3_LOOPBACK_MASK_SFT,
+				   0x0 << RG_AUD_PAD_TOP_DAT_MISO3_LOOPBACK_SFT);
+	}
 
 	mt6681_set_topck(priv, false);
 	mt6681_set_clksq(priv, false);
@@ -1470,7 +1473,7 @@ void mt6681_mtkaif_calibration_disable(struct snd_soc_component *cmpnt)
 
 	mt6681_mtkaif_tx_disable(priv, true);
 	mt6681_reset_playback_gpio(priv);
-	mt6681_reset_capture_gpio(priv);
+	//mt6681_reset_capture_gpio(priv);
 	mt6681_reset_capture56_gpio(priv);
 	if (priv->miso_only)
 		regmap_write(priv->regmap, MT6681_GPIO_DINV0, 0x0);
@@ -1478,6 +1481,38 @@ void mt6681_mtkaif_calibration_disable(struct snd_soc_component *cmpnt)
 	keylock_set(priv);
 }
 EXPORT_SYMBOL_GPL(mt6681_mtkaif_calibration_disable);
+
+void mt6681_mtkaif_loopback(struct snd_soc_component *cmpnt, bool enable)
+{
+#if !defined(CONFIG_FPGA_EARLY_PORTING)
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	if (enable) {
+		/* set dat_miso_loopback on */
+		regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG,
+				   RG_AUD_PAD_TOP_DAT_MISO_LOOPBACK_MASK_SFT,
+				   0x1 << RG_AUD_PAD_TOP_DAT_MISO_LOOPBACK_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG_H,
+				   RG_AUD_PAD_TOP_DAT_MISO2_LOOPBACK_MASK_SFT,
+				   0x1 << RG_AUD_PAD_TOP_DAT_MISO2_LOOPBACK_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG1,
+				   RG_AUD_PAD_TOP_DAT_MISO3_LOOPBACK_MASK_SFT,
+				   0x1 << RG_AUD_PAD_TOP_DAT_MISO3_LOOPBACK_SFT);
+	} else {
+		/* set dat_miso_loopback off */
+		regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG,
+				   RG_AUD_PAD_TOP_DAT_MISO_LOOPBACK_MASK_SFT,
+				   0x0 << RG_AUD_PAD_TOP_DAT_MISO_LOOPBACK_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG_H,
+				   RG_AUD_PAD_TOP_DAT_MISO2_LOOPBACK_MASK_SFT,
+				   0x0 << RG_AUD_PAD_TOP_DAT_MISO2_LOOPBACK_SFT);
+		regmap_update_bits(priv->regmap, MT6681_AUDIO_DIG_CFG1,
+				   RG_AUD_PAD_TOP_DAT_MISO3_LOOPBACK_MASK_SFT,
+				   0x0 << RG_AUD_PAD_TOP_DAT_MISO3_LOOPBACK_SFT);
+	}
+#endif
+}
+EXPORT_SYMBOL_GPL(mt6681_mtkaif_loopback);
 
 void mt6681_set_mtkaif_calibration_phase(struct snd_soc_component *cmpnt,
 					 int phase_1, int phase_2, int phase_3)
@@ -1833,6 +1868,29 @@ static int mt6681_get_cara(unsigned int ana_gain, struct mt6681_priv *priv)
 
 	return pga_cara;
 }
+#ifdef VIVO_CUS
+static unsigned int calculate_pga_setting(struct mt6681_priv *priv, unsigned int index)
+{
+	/* 0x0: Non-Hifi index=0x6/Hifi index=0x2 */
+	unsigned int base_index = 0x6;
+	unsigned int post_index = 0x0;
+	unsigned int neg_index = 0x0;
+	unsigned int ret_val = 0x0;
+
+	if(priv->hp_hifi_mode != 0)
+		index += 0x4;
+	if (index >= base_index) {
+		/* positive gain */
+		post_index = index - base_index;
+	} else {
+		/* negative gain */
+		neg_index = base_index - index;
+	}
+	ret_val = (neg_index << RG_AUDPREAMPLNEGGAIN_1P5_SFT) + post_index;
+
+	return ret_val;
+}
+#else
 
 static unsigned int get_hifi_index(unsigned int non_hifi_index, struct mt6681_priv *priv)
 {
@@ -1853,6 +1911,7 @@ static unsigned int get_hifi_index(unsigned int non_hifi_index, struct mt6681_pr
 	return hifi_index;
 }
 
+#endif
 static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 			    struct snd_ctl_elem_value *ucontrol)
 {
@@ -1866,6 +1925,10 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 	int indexR = ucontrol->value.integer.value[1];
 	int ret;
 	unsigned int pga_cara = 0;
+
+	dev_info(priv->dev,
+		"%s(), name %s, reg(0x%x) = 0x%x, set index = %x indeR = %x\n",
+		__func__, kcontrol->id.name, mc->reg, reg, index, indexR);
 
 	switch (mc->reg) {
 	case MT6681_ZCD_CON2:
@@ -1882,17 +1945,25 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 	case MT6681_AUDENC_2_2_PMU_CON1:
 	case MT6681_AUDENC_2_2_PMU_CON2:
 	case MT6681_AUDENC_2_2_PMU_CON3:
+#ifdef VIVO_CUS
+		ucontrol->value.integer.value[0] = calculate_pga_setting(priv, index);
+#else
 		if (priv->mic_hifi_mode)
 			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
 		else
 			ucontrol->value.integer.value[0] = index;
+#endif
 		break;
 	case MT6681_AUDENC_2_2_PMU_CON4:
 	case MT6681_AUDENC_2_2_PMU_CON5:
+#ifdef VIVO_CUS
+		ucontrol->value.integer.value[0] = calculate_pga_setting(priv, index);
+#else
 		if (priv->mic_hifi_mode)
 			ucontrol->value.integer.value[0] = get_hifi_index(index, priv);
 		else
 			ucontrol->value.integer.value[0] = index;
+#endif
 		if (priv->vow_enable)
 			ucontrol->value.integer.value[0] = 12;
 		break;
@@ -2002,7 +2073,11 @@ static int mt6681_put_volsw(struct snd_kcontrol *kcontrol,
 
 static const DECLARE_TLV_DB_SCALE(hp_playback_tlv, 0, 300, 0);
 static const DECLARE_TLV_DB_SCALE(playback_tlv, -1000, 100, 0);
+#ifdef VIVO_CUS
+static const DECLARE_TLV_DB_SCALE(capture_tlv, -900, 150, 0);
+#else
 static const DECLARE_TLV_DB_SCALE(capture_tlv, 0, 360, 0);
+#endif
 static const DECLARE_TLV_DB_SCALE(capture_neg_tlv, -900, 300, 0);
 
 #define MT_SOC_ENUM_EXT_ID(xname, xenum, xhandler_get, xhandler_put, id)       \
@@ -2025,6 +2100,26 @@ static const struct snd_kcontrol_new mt6681_snd_controls[] = {
 			   snd_soc_get_volsw, mt6681_put_volsw, playback_tlv),
 
 	/* ul pga gain */
+#ifdef VIVO_CUS
+	SOC_SINGLE_EXT_TLV("PGA1 Volume", MT6681_AUDENC_2_2_PMU_CON0,
+			   RG_AUDPREAMPLGAIN_1P5_SFT, 0xff, 0, snd_soc_get_volsw,
+			   mt6681_put_volsw, capture_tlv),
+	SOC_SINGLE_EXT_TLV("PGA2 Volume", MT6681_AUDENC_2_2_PMU_CON1,
+			   RG_AUDPREAMPRGAIN_1P5_SFT, 0xff, 0, snd_soc_get_volsw,
+			   mt6681_put_volsw, capture_tlv),
+	SOC_SINGLE_EXT_TLV("PGA3 Volume", MT6681_AUDENC_2_2_PMU_CON2,
+			   RG_AUDPREAMP3GAIN_1P5_SFT, 0xff, 0, snd_soc_get_volsw,
+			   mt6681_put_volsw, capture_tlv),
+	SOC_SINGLE_EXT_TLV("PGA4 Volume", MT6681_AUDENC_2_2_PMU_CON3,
+			   RG_AUDPREAMP4GAIN_1P5_SFT, 0xff, 0, snd_soc_get_volsw,
+			   mt6681_put_volsw, capture_tlv),
+	SOC_SINGLE_EXT_TLV("PGA5 Volume", MT6681_AUDENC_2_2_PMU_CON4,
+			   RG_AUDPREAMP5GAIN_1P5_SFT, 0xff, 0, snd_soc_get_volsw,
+			   mt6681_put_volsw, capture_tlv),
+	SOC_SINGLE_EXT_TLV("PGA6 Volume", MT6681_AUDENC_2_2_PMU_CON5,
+			   RG_AUDPREAMP6GAIN_1P5_SFT, 0xff, 0, snd_soc_get_volsw,
+			   mt6681_put_volsw, capture_tlv),
+#else
 	SOC_SINGLE_EXT_TLV("PGA1 Volume", MT6681_AUDENC_2_2_PMU_CON0,
 			   RG_AUDPREAMPLGAIN_1P5_SFT, 0xc0, 0, snd_soc_get_volsw,
 			   mt6681_put_volsw, capture_tlv),
@@ -2043,7 +2138,7 @@ static const struct snd_kcontrol_new mt6681_snd_controls[] = {
 	SOC_SINGLE_EXT_TLV("PGA6 Volume", MT6681_AUDENC_2_2_PMU_CON5,
 			   RG_AUDPREAMP6GAIN_1P5_SFT, 0xc0, 0, snd_soc_get_volsw,
 			   mt6681_put_volsw, capture_tlv),
-
+#endif
 	/* ul pga neg gain */
 	SOC_SINGLE_EXT_TLV("NEG_PGA1 Volume", MT6681_AUDENC_PMU_CON10,
 			   RG_AUDPREAMPLNEGGAIN_SFT, 0x3, 1, snd_soc_get_volsw,
@@ -4618,11 +4713,6 @@ static int mtk_hp_impedance_enable(struct mt6681_priv *priv)
 	regmap_write(priv->regmap, MT6681_AFE_NLE_PRE_BUF_CFG_H, 0x04);
 	regmap_write(priv->regmap, MT6681_AFE_NLE_CFG_H, 0x81);
 	regmap_write(priv->regmap, MT6681_AFE_HSLO_NLE_CFG_H, 0x86);
-	regmap_write(priv->regmap, MT6681_AFE_SINEGEN_CON0, 0x00);
-	regmap_write(priv->regmap, MT6681_AFE_SINEGEN_CON1, 0xAA);
-	regmap_write(priv->regmap, MT6681_AFE_SINEGEN_CON2, 0x06);
-	regmap_write(priv->regmap, MT6681_AFE_SINEGEN_CON3, 0xE2);
-	regmap_write(priv->regmap, MT6681_AFE_SINEGEN_CON4, 0xE2);
 	regmap_write(priv->regmap, MT6681_CLH_COM_CON0, 0x00);
 	regmap_write(priv->regmap, MT6681_CLH_REFGEN_CON2, 0x00);
 	regmap_write(priv->regmap, MT6681_CLH_LUT_SEL, 0x00);
@@ -4750,12 +4840,13 @@ static int mtk_hp_impedance_disable(struct mt6681_priv *priv)
 	regmap_update_bits(priv->regmap, MT6681_AUDDEC_PMU_CON6,
 			   RG_HPLOUTPUTSTBENH_VAUDP18_MASK_SFT,
 			   0x3 << RG_HPLOUTPUTSTBENH_VAUDP18_SFT);
+#endif
 
 #if IS_ENABLED(CONFIG_SND_SOC_MT6681_ACCDET)
 	/* from accdet request */
 	mt6681_accdet_modify_vref_volt();
 #endif
-#endif
+
 	return 0;
 }
 
@@ -4801,11 +4892,12 @@ static int mt_hp_event(struct snd_soc_dapm_widget *w,
 		}
 
 		if (priv->mux_select[MUX_HP_L] == HP_MUX_HP
-		    || priv->mux_select[MUX_HP_L] == HP_MUX_HPSPK)
+		    || priv->mux_select[MUX_HP_L] == HP_MUX_HPSPK) {
 			mtk_hp_disable(priv);
-		else if (priv->mux_select[MUX_HP_L] == HP_MUX_HP_IMPEDANCE)
+		} else if (priv->mux_select[MUX_HP_L] == HP_MUX_HP_IMPEDANCE) {
+			mtk_hp_disable(priv);
 			mtk_hp_impedance_disable(priv);
-
+		}
 		priv->mux_select[MUX_HP_L] = mux;
 		break;
 	default:
@@ -10202,6 +10294,8 @@ static int mt_pga_l_event(struct snd_soc_dapm_widget *w,
 					   RG_AUDMICBIAS3LOWPEN_MASK_SFT,
 					   0x1 << RG_AUDMICBIAS3LOWPEN_SFT);
 		}
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON0, 0x0);
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON7, 0x0);
 		break;
 	default:
 		break;
@@ -10358,6 +10452,8 @@ static int mt_pga_r_event(struct snd_soc_dapm_widget *w,
 					   RG_AUDMICBIAS3LOWPEN_MASK_SFT,
 					   0x1 << RG_AUDMICBIAS3LOWPEN_SFT);
 		}
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON1, 0x0);
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON8, 0x0);
 		break;
 	default:
 		break;
@@ -10513,6 +10609,8 @@ static int mt_pga_3_event(struct snd_soc_dapm_widget *w,
 					   RG_AUDMICBIAS3LOWPEN_MASK_SFT,
 					   0x1 << RG_AUDMICBIAS3LOWPEN_SFT);
 		}
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON2, 0x0);
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON9, 0x0);
 		break;
 	default:
 		break;
@@ -10667,6 +10765,8 @@ static int mt_pga_4_event(struct snd_soc_dapm_widget *w,
 					   RG_AUDMICBIAS3LOWPEN_MASK_SFT,
 					   0x1 << RG_AUDMICBIAS3LOWPEN_SFT);
 		}
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON3, 0x0);
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON10, 0x0);
 		break;
 	default:
 		break;
@@ -10823,6 +10923,8 @@ static int mt_pga_5_event(struct snd_soc_dapm_widget *w,
 					   RG_AUDMICBIAS3LOWPEN_MASK_SFT,
 					   0x1 << RG_AUDMICBIAS3LOWPEN_SFT);
 		}
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON4, 0x0);
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON11, 0x0);
 		break;
 	default:
 		break;
@@ -10981,6 +11083,8 @@ static int mt_pga_6_event(struct snd_soc_dapm_widget *w,
 					   RG_AUDMICBIAS3LOWPEN_MASK_SFT,
 					   0x1 << RG_AUDMICBIAS3LOWPEN_SFT);
 		}
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON5, 0x0);
+		regmap_write(priv->regmap, MT6681_AUDENC_2_2_PMU_CON12, 0x0);
 		break;
 	default:
 		break;
@@ -12460,11 +12564,11 @@ static int mt_hwgain_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(priv->regmap,
 				   MT6681_AFE_GAIN1_CON0_0,
 				   GAIN1_ON_MASK_SFT,
-				   0x1 << GAIN1_ON_SFT);
+				   0x0 << GAIN1_ON_SFT);
 		regmap_update_bits(priv->regmap,
 				   MT6681_AFE_GAIN6_CON0_0,
 				   GAIN6_ON_MASK_SFT,
-				   0x1 << GAIN6_ON_SFT);
+				   0x0 << GAIN6_ON_SFT);
 		break;
 	default:
 		break;
