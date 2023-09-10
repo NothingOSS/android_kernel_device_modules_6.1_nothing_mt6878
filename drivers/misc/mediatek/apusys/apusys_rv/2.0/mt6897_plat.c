@@ -15,7 +15,7 @@
 #include <linux/workqueue.h>
 
 #include "mt-plat/aee.h"
-#include "mtk_iommu.h"
+
 #include "apusys_power.h"
 #include "apusys_secure.h"
 #include "../apu.h"
@@ -411,11 +411,6 @@ static int mt6897_apu_power_on(struct mtk_apu *apu)
 
 	/* to force apu top power on synchronously */
 	ret = pm_runtime_get_sync(apu->power_dev);
-
-	/* set_apu_pm_status - power on */
-	mtk_iommu_update_pm_status(1, 0, true);
-	mtk_iommu_update_pm_status(1, 1, true);
-
 	if (ret < 0) {
 		dev_info(dev,
 			 "%s: call to get_sync(power_dev) failed, ret=%d\n",
@@ -582,10 +577,6 @@ iommu_put_error:
 		ret = -ETIMEDOUT;
 		goto error_get_iommu_dev;
 	}
-
-	/* set_apu_pm_status - power off */
-	mtk_iommu_update_pm_status(1, 1, false);
-	mtk_iommu_update_pm_status(1, 0, false);
 
 	/* to force apu top power off synchronously */
 	ret = pm_runtime_put_sync(apu->power_dev);
