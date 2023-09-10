@@ -136,6 +136,15 @@ bool mml_dpc_disable(struct mml_dev *mml);
 bool mml_racing_enable(struct mml_dev *mml);
 
 /*
+ * mml_tablet_ext - current is tablet project or not
+ *
+ * @mml:	The mml driver instance
+ *
+ * Return:	True for tablet project, false for not tablet project.
+ */
+bool mml_tablet_ext(struct mml_dev *mml);
+
+/*
  * mml_ir_get_mml_ready_event - get inline rot sync event mml_ready
  *
  * @mml:	The mml driver instance

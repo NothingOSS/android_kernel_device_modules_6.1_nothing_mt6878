@@ -1448,17 +1448,38 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 		}
 
 		crtc_state->mml_dst_roi_dual[0] = crtc_state->mml_dst_roi;
-		if ((x + w) > (mid_line + to_left))
-			crtc_state->mml_dst_roi_dual[0].width = mid_line + to_left - x;
-		else
-			crtc_state->mml_dst_roi_dual[0].width += to_left;
+		if ((x + w) < mid_line) {
+			crtc_state->lye_state.pos = ADDON_LYE_POS_LEFT;
+			submit_kernel->info.dl_pos = MML_DL_POS_LEFT;
+		} else if (x >= mid_line) {
+			crtc_state->lye_state.pos = ADDON_LYE_POS_RIGHT;
+			submit_kernel->info.dl_pos = MML_DL_POS_RIGHT;
+		} else {
+			crtc_state->lye_state.pos = ADDON_LYE_POS_DUAL;
+			submit_kernel->info.dl_pos = MML_DL_POS_DUAL;
+		}
+		submit_pq->info.dl_pos = submit_kernel->info.dl_pos;
 
-		crtc_state->mml_dst_roi_dual[1].x = mid_line - to_right;
-		crtc_state->mml_dst_roi_dual[1].y = y;
-		crtc_state->mml_dst_roi_dual[1].height = h;
-		crtc_state->mml_dst_roi_dual[1].width = to_right;
-		if ((x + w) > mid_line)
-			crtc_state->mml_dst_roi_dual[1].width += x + w - mid_line;
+		if (crtc_state->lye_state.pos == ADDON_LYE_POS_DUAL) {
+			if ((x + w) > (mid_line + to_left))
+				crtc_state->mml_dst_roi_dual[0].width = mid_line + to_left - x;
+			if (x < mid_line - to_right) {
+				crtc_state->mml_dst_roi_dual[1].x = mid_line - to_right;
+				crtc_state->mml_dst_roi_dual[1].width = x + w - mid_line + to_left;
+			} else {
+				crtc_state->mml_dst_roi_dual[1].width = w;
+				crtc_state->mml_dst_roi_dual[1].x = x;
+			}
+			crtc_state->mml_dst_roi_dual[1].y = y;
+			crtc_state->mml_dst_roi_dual[1].height = h;
+		}
+
+		DDPINFO("%s after calc dual0 w h x y[%d,%d,%d,%d], dual1 w h x y [%d,%d,%d,%d]\n",
+			 __func__, crtc_state->mml_dst_roi_dual[0].width,
+			crtc_state->mml_dst_roi_dual[0].height, crtc_state->mml_dst_roi_dual[0].x,
+			crtc_state->mml_dst_roi_dual[0].y, crtc_state->mml_dst_roi_dual[1].width,
+			crtc_state->mml_dst_roi_dual[1].height, crtc_state->mml_dst_roi_dual[1].x,
+			crtc_state->mml_dst_roi_dual[1].y);
 
 		memcpy(&submit_kernel->dl_out[0], &crtc_state->mml_dst_roi_dual[0],
 		       sizeof(struct mml_rect));

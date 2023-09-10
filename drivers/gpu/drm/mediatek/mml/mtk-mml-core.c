@@ -926,6 +926,7 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	u32 max_pixel = cfg->cache[pipe].max_pixel;
 	u64 duration = 0;
 	u64 boost_time = 0;
+	u32 tmp_pipe = pipe;
 
 	if (unlikely(!path_clt)) {
 		mml_err("%s core_get_path_clt return null", __func__);
@@ -1027,7 +1028,10 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	/* clear so that qos set api report max bw */
 	task_pipe_tmp->bandwidth = 0;
 	task->bw_time[pipe] = sched_clock();
-	mml_core_qos_set(task_pipe_tmp->task, pipe, throughput, tput_up);
+	/* check running task use sw pipe0 for right sigle pipe */
+	if (task_pipe_tmp->task->config->info.dl_pos == MML_DL_POS_RIGHT)
+		tmp_pipe = 0;
+	mml_core_qos_set(task_pipe_tmp->task, tmp_pipe, throughput, tput_up);
 
 	mml_trace_end();
 
@@ -1058,6 +1062,7 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 	u32 throughput = 0, tput_up, max_pixel = 0, bandwidth = 0;
 	bool racing_mode = true;
 	bool overdue = false;
+	u32 tmp_pipe = pipe;
 
 	if (unlikely(!path_clt)) {
 		mml_err("%s core_get_path_clt return null", __func__);
@@ -1164,7 +1169,10 @@ done:
 	if (throughput) {
 		/* clear so that qos set api report max bw */
 		task_pipe_cur->bandwidth = 0;
-		mml_core_qos_set(task_pipe_cur->task, pipe, throughput, tput_up);
+		/* check running task use sw pipe0 for right sigle pipe */
+		if (task_pipe_tmp->task->config->info.dl_pos == MML_DL_POS_RIGHT)
+			tmp_pipe = 0;
+		mml_core_qos_set(task_pipe_cur->task, tmp_pipe, throughput, tput_up);
 		bandwidth = task_pipe_cur->bandwidth;
 	}
 keep:

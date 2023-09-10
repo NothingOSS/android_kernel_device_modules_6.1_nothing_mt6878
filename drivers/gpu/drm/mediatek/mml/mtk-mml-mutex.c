@@ -323,6 +323,7 @@ static void mutex_addon_config_dl(struct mtk_ddp_comp *ddp_comp,
 	struct mml_mutex *mutex = ddp_comp_to_mutex(ddp_comp);
 	struct mtk_addon_mml_config *cfg = &addon_config->addon_mml_config;
 	const struct mml_topology_path *path;
+	u8 pipe = cfg->pipe;
 
 	if (!cfg->ctx) {
 		mml_err("%s cannot configure %d without ctx", __func__, cfg->config_type.type);
@@ -330,7 +331,10 @@ static void mutex_addon_config_dl(struct mtk_ddp_comp *ddp_comp,
 	}
 
 	if (cfg->config_type.type == ADDON_CONNECT) {
-		path = mml_drm_query_dl_path(cfg->ctx, &cfg->submit, cfg->pipe);
+		if (!cfg->dual && cfg->submit.info.dl_pos == MML_DL_POS_RIGHT)
+			pipe = 1;
+
+		path = mml_drm_query_dl_path(cfg->ctx, &cfg->submit, pipe);
 		if (!path) {
 			mml_err("%s mml_drm_query_dl_path fail", __func__);
 			return;

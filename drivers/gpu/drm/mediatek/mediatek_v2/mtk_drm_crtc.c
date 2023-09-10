@@ -2914,9 +2914,13 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 	}
 
 	c->config_type.type = ADDON_CONNECT;
-	c->config_type.module = addon_module->module;
+	if (crtc_state->lye_state.pos == ADDON_LYE_POS_RIGHT &&
+	    crtc_state->lye_state.mml_dl_lye && addon_module_dual)
+		c->config_type.module = addon_module_dual->module;
+	else
+		c->config_type.module = addon_module->module;
 	c->ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
-	c->dual = mtk_crtc->is_dual_pipe;
+	c->dual = mtk_crtc->is_dual_pipe && crtc_state->lye_state.pos == ADDON_LYE_POS_DUAL;
 	c->mutex.sof_src = (int)output_comp->id;
 	c->mutex.eof_src = (int)output_comp->id;
 	c->mutex.is_cmd_mode = mtk_crtc_is_frame_trigger_mode(crtc);
@@ -2935,6 +2939,13 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 
 	for (i = 0; i <= (mtk_crtc->is_dual_pipe && addon_module_dual); ++i) {
 		c->pipe = i;
+		if (crtc_state->lye_state.pos == ADDON_LYE_POS_RIGHT &&
+		    crtc_state->lye_state.mml_dl_lye) {
+			if (i == 0)
+				continue;
+			c->pipe = 0;
+		}
+
 		c->config_type.tgt_comp = tgt_comp[i];
 		if (addon_module->type == ADDON_BETWEEN) {
 			c->is_yuv = MML_FMT_IS_YUV(c->submit.info.src.format);
@@ -2948,6 +2959,10 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 				((c->submit.info.dest[0].data.format == MML_FMT_RGBA8888) & !(c->submit.info.alpha));
 			mtk_addon_connect_before(crtc, ddp_mode, m[i], addon_config, cmdq_handle);
 		}
+
+		if (crtc_state->lye_state.pos == ADDON_LYE_POS_LEFT &&
+		    crtc_state->lye_state.mml_dl_lye)
+			return;
 	}
 }
 
@@ -2961,6 +2976,7 @@ static void mml_addon_module_disconnect(struct drm_crtc *crtc,
 	int w = crtc->state->adjusted_mode.hdisplay;
 	int h = crtc->state->adjusted_mode.vdisplay;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
 	struct mtk_ddp_comp *output_comp;
 	struct mtk_rect ovl_roi = {0, 0, w, h};
 	unsigned int i = 0;
@@ -2968,7 +2984,11 @@ static void mml_addon_module_disconnect(struct drm_crtc *crtc,
 	u32 tgt_comp[2];
 
 	addon_config->config_type.type = ADDON_DISCONNECT;
-	addon_config->config_type.module = addon_module->module;
+	if (crtc_state->lye_state.pos == ADDON_LYE_POS_RIGHT &&
+	    crtc_state->lye_state.mml_dl_lye && addon_module_dual)
+		addon_config->config_type.module = addon_module_dual->module;
+	else
+		addon_config->config_type.module = addon_module->module;
 	addon_config->addon_mml_config.ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -3001,6 +3021,13 @@ static void mml_addon_module_disconnect(struct drm_crtc *crtc,
 
 	for (i = 0; i <= (mtk_crtc->is_dual_pipe && addon_module_dual); ++i) {
 		addon_config->addon_mml_config.pipe = i;
+		if (crtc_state->lye_state.pos == ADDON_LYE_POS_RIGHT &&
+		    crtc_state->lye_state.mml_dl_lye) {
+			if (i == 0)
+				continue;
+			addon_config->addon_mml_config.pipe = 0;
+		}
+
 		addon_config->config_type.tgt_comp = tgt_comp[i];
 		if (addon_module->type == ADDON_BETWEEN)
 			mtk_addon_disconnect_between(crtc, ddp_mode, m[i],
@@ -3011,6 +3038,11 @@ static void mml_addon_module_disconnect(struct drm_crtc *crtc,
 		else if (addon_module->type == ADDON_BEFORE)
 			mtk_addon_disconnect_before(crtc, ddp_mode, m[i],
 						    addon_config, cmdq_handle);
+
+		if (crtc_state->lye_state.pos == ADDON_LYE_POS_LEFT &&
+		    crtc_state->lye_state.mml_dl_lye)
+			return;
+
 	}
 }
 
@@ -13366,6 +13398,7 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 	int right_bg = w/2;
 	int roi_w = w;
 	struct mtk_crtc_state *crtc_state = NULL;
+	struct mtk_plane_pending_state pending_tmp;
 
 	if (mtk_crtc->tile_overhead.is_support) {
 		left_bg += mtk_crtc->tile_overhead.left_overhead;
@@ -13402,6 +13435,14 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 						 crtc_state->mml_dst_roi_dual[1].height << 16;
 		plane_state_r->pending.offset = crtc_state->mml_dst_roi_dual[1].x |
 						crtc_state->mml_dst_roi_dual[1].y << 16;
+
+		if (crtc_state->lye_state.pos == ADDON_LYE_POS_RIGHT) {
+			memcpy(&pending_tmp, &plane_state_l->pending, sizeof(pending_tmp));
+			memcpy(&plane_state_l->pending, &plane_state_r->pending, sizeof(pending_tmp));
+			memcpy(&plane_state_r->pending, &pending_tmp, sizeof(pending_tmp));
+			plane_state_r->pending.offset = (crtc_state->mml_dst_roi_dual[0].x - w/2) |
+						crtc_state->mml_dst_roi_dual[0].y << 16;
+		}
 
 		DDPINFO("%s L(%u,%u,%ux%u)(%u,%u,%ux%u) R(%u,%u,%ux%u)(%u,%u,%ux%u)\n", __func__,
 			plane_state_l->pending.src_x, plane_state_l->pending.src_y,

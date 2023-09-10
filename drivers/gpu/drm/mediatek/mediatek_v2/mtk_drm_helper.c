@@ -81,6 +81,7 @@ static struct mtk_drm_helper help_info[] = {
 	{MTK_DRM_OPT_MML_SUPPORT_CMD_MODE, 0, "MTK_DRM_OPT_MML_SUPPORT_CMD_MODE"},
 	{MTK_DRM_OPT_MML_PQ, 0, "MTK_DRM_OPT_MML_PQ"},
 	{MTK_DRM_OPT_MML_IR, 0, "MTK_DRM_OPT_MML_IR"},
+	{MTK_DRM_OPT_MML_TABLET_EXT, 0, "MTK_DRM_OPT_MML_TABLET_EXT"},
 	{MTK_DRM_OPT_DUAL_TE, 0, "MTK_DRM_OPT_DUAL_TE"},
 	/* Resolution switch */
 	{MTK_DRM_OPT_RES_SWITCH, 1, "MTK_DRM_OPT_RES_SWITCH"},
@@ -237,6 +238,10 @@ void mtk_drm_helper_init(struct device *dev, struct mtk_drm_helper **helper_opt)
 	if (of_property_read_bool(dev->of_node, "support_mml_cmd_mode"))
 		mtk_drm_helper_set_opt_by_name(tmp_opt,
 				"MTK_DRM_OPT_MML_SUPPORT_CMD_MODE", 1);
+
+	if (of_property_read_bool(dev->of_node, "mml-tablet-ext"))
+		mtk_drm_helper_set_opt_by_name(tmp_opt,
+				"MTK_DRM_OPT_MML_TABLET_EXT", 1);
 
 	*helper_opt = tmp_opt;
 }

@@ -155,6 +155,7 @@ struct mml_dev {
 	dma_addr_t crc_pa[MML_PIPE_CNT];
 	u32 crc_idx[MML_PIPE_CNT];
 #endif
+	bool tablet_ext;
 };
 
 int mml_racing_bw;
@@ -1159,6 +1160,12 @@ bool mml_racing_enable(struct mml_dev *mml)
 }
 EXPORT_SYMBOL_GPL(mml_racing_enable);
 
+bool mml_tablet_ext(struct mml_dev *mml)
+{
+	return mml->tablet_ext;
+}
+EXPORT_SYMBOL_GPL(mml_tablet_ext);
+
 u8 mml_sram_get_racing_height(struct mml_dev *mml)
 {
 	return mml->racing_height;
@@ -1644,6 +1651,7 @@ static int mml_probe(struct platform_device *pdev)
 		mml_log("dpc disable by project");
 
 	mml->racing_en = of_property_read_bool(dev->of_node, "racing-enable");
+	mml->tablet_ext = of_property_read_bool(dev->of_node, "tablet-ext");
 
 	if (of_property_read_u8(dev->of_node, "racing-height", &mml->racing_height))
 		mml->racing_height = 64;	/* default height 64px */
