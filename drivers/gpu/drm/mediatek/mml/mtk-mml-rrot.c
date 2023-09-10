@@ -112,6 +112,8 @@
 
 /* RROT debug monitor register count */
 #define RROT_MON_COUNT 38
+#define RROT_HYFBC_MON_COUNT 4
+static u32 hyfbc_setting[RROT_HYFBC_MON_COUNT] = {0x6000, 0x18000, 0x3c000, 0x3e000};
 
 /* SMI offset */
 #define SMI_LARB_NON_SEC_CON		0x380
@@ -2067,6 +2069,7 @@ static void rrot_debug_dump(struct mml_comp *comp)
 {
 	void __iomem *base = comp->base;
 	u32 shadow_ctrl, value[RROT_MON_COUNT], state, greq, i;
+	u32 hyfbc_value[RROT_HYFBC_MON_COUNT];
 
 	mml_err("rrot component %u %s dump:", comp->id, comp->name ? comp->name : "");
 
@@ -2174,6 +2177,15 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	}
 	mml_err("RROT_MON_STA_36 %#010x RROT_MON_STA_37 %#010x",
 		value[36], value[37]);
+
+	for (i = 0; i < RROT_HYFBC_MON_COUNT; i++) {
+		writel(hyfbc_setting[i], base + RROT_DEBUG_CON);
+		hyfbc_value[i] = readl(base + RROT_MON_STA_0 + 16 * 8);
+	}
+
+	mml_err("RROT_DEBUG_CON: RROT_MON_STA_16 %#06x: %#010x, %#06x: %#010x, %#06x: %#010x, %#06x: %#010x",
+		hyfbc_setting[0], hyfbc_value[0], hyfbc_setting[1], hyfbc_value[1],
+		hyfbc_setting[2], hyfbc_value[2], hyfbc_setting[3], hyfbc_value[3]);
 
 	/* parse state */
 	mml_err("RROT ack:%u req:%d ufo:%u",
