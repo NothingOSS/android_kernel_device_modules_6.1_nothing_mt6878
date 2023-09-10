@@ -9350,8 +9350,8 @@
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			power-domains = <&scpsys MT6989_POWER_DOMAIN_CAM_MAIN>;
 			interrupts =
-				<GIC_SPI 510 IRQ_TYPE_LEVEL_HIGH 0>, // adlrd_ipui_rdone
-				<GIC_SPI 511 IRQ_TYPE_LEVEL_HIGH 0>; // adlrd
+				<GIC_SPI 584 IRQ_TYPE_LEVEL_HIGH 0>, // adlrd_ipui_rdone
+				<GIC_SPI 585 IRQ_TYPE_LEVEL_HIGH 0>; // adlrd
 			operating-points-v2 = <&opp_table_cam>;
 			clocks = <&mmdvfs_mux MMDVFS_USER_CAM>;
 			clock-names = "mmdvfs_mux";
