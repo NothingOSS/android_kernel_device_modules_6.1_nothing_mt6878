@@ -1142,7 +1142,7 @@ static struct mtk_panel_params ext_params_90hz = {
 		.pll_clk = 801,
 	},
 	.dyn_fps = {
-		.vact_timing_fps = 90,
+		.vact_timing_fps = 120,
 	},
 	.real_te_duration = 11111,
 	.mode_switch_delay = 2,
@@ -1306,7 +1306,7 @@ static struct mtk_panel_params ext_params_60hz = {
 		.pll_clk = 801,
 	},
 	.dyn_fps = {
-		.vact_timing_fps = 60,
+		.vact_timing_fps = 120,
 	},
 	.real_te_duration = 8333,
 };

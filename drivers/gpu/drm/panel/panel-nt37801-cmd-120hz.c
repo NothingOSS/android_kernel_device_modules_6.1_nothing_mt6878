@@ -1021,7 +1021,7 @@ static struct mtk_panel_params ext_params_90hz = {
 		.pll_clk = PLL_CLOCK + 1,
 	},
 	.dyn_fps = {
-		.vact_timing_fps = 90,
+		.vact_timing_fps = 120,
 	},
 	.round_corner_en = 0,
 	.corner_pattern_height = ROUND_CORNER_H_TOP,
@@ -1100,7 +1100,7 @@ static struct mtk_panel_params ext_params_60hz = {
 		.pll_clk = PLL_CLOCK + 1,
 	},
 	.dyn_fps = {
-		.vact_timing_fps = 60,
+		.vact_timing_fps = 120,
 	},
 	.round_corner_en = 0,
 	.corner_pattern_height = ROUND_CORNER_H_TOP,

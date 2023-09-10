@@ -2080,7 +2080,9 @@ static struct mtk_panel_params ext_params = {
 		.rc_tgt_offset_lo = 3,
 		},
 	.data_rate = DATA_RATE,
-
+	.dyn_fps = {
+		.vact_timing_fps = 120,
+	},
 	/*Msync 2.0*/
 	.msync2_enable = 1,
 	.msync_cmd_table = {
@@ -2166,7 +2168,9 @@ static struct mtk_panel_params ext_params_120hz = {
 		.rc_tgt_offset_lo = 3,
 		},
 	.data_rate = DATA_RATE,
-
+	.dyn_fps = {
+		.vact_timing_fps = 120,
+	},
 	/*Msync 2.0*/
 	.msync2_enable = 1,
 	.msync_cmd_table = {
