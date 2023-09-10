@@ -98,9 +98,10 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 
 	TP_PROTO(bool fit, int cpu, unsigned long cpu_util,
 		unsigned long cup_cap, unsigned long ceiling, unsigned int sugov_margin,
-		unsigned int capacity_up_margin, bool AM_enabled),
+		unsigned int capacity_dn_margin, unsigned int capacity_up_margin, bool AM_enabled),
 
-	TP_ARGS(fit, cpu, cpu_util, cup_cap, ceiling, sugov_margin, capacity_up_margin, AM_enabled),
+	TP_ARGS(fit, cpu, cpu_util, cup_cap, ceiling, sugov_margin,
+			capacity_dn_margin, capacity_up_margin, AM_enabled),
 
 	TP_STRUCT__entry(
 		__field(bool, fit)
@@ -108,6 +109,7 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 		__field(unsigned long,   cpu_util)
 		__field(unsigned long,   cup_cap)
 		__field(unsigned long,   ceiling)
+		__field(unsigned int,   capacity_dn_margin)
 		__field(unsigned int,   capacity_up_margin)
 		__field(unsigned int,   sugov_margin)
 		__field(unsigned long,   capacity_orig)
@@ -120,6 +122,7 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 		__entry->cpu_util			= cpu_util;
 		__entry->cup_cap			= cup_cap;
 		__entry->ceiling			= ceiling;
+		__entry->capacity_dn_margin	= capacity_dn_margin;
 		__entry->capacity_up_margin	= capacity_up_margin;
 		__entry->sugov_margin	= sugov_margin;
 		__entry->capacity_orig		= capacity_orig_of(cpu);
@@ -127,12 +130,13 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 		),
 
 	TP_printk(
-		"fit=%d cpu=%d cpu_util=%ld cup_cap=%ld ceiling=%ld capacity_up_margin=%d sugov_margin=%d capacity_orig=%ld adaptive_margin_ctrl=%d",
+		"fit=%d cpu=%d cpu_util=%ld cup_cap=%ld ceiling=%ld capacity_dn_margin=%d capacity_up_margin=%d sugov_margin=%d capacity_orig=%ld adaptive_margin_ctrl=%d",
 		__entry->fit,
 		__entry->cpu,
 		__entry->cpu_util,
 		__entry->cup_cap,
 		__entry->ceiling,
+		__entry->capacity_dn_margin,
 		__entry->capacity_up_margin,
 		__entry->sugov_margin,
 		__entry->capacity_orig,

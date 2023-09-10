@@ -1592,8 +1592,8 @@ static inline bool util_fits_capacity(unsigned long cpu_util, unsigned long cpu_
 	fit = (min(ceiling, cpu_cap) * SCHED_CAPACITY_SCALE >= cpu_util * sugov_margin);
 
 	if (trace_sched_fits_cap_ceiling_enabled())
-		trace_sched_fits_cap_ceiling(fit, cpu, cpu_util, cpu_cap, ceiling,
-			sugov_margin, sched_capacity_up_margin[cpu], AM_enabled);
+		trace_sched_fits_cap_ceiling(fit, cpu, cpu_util, cpu_cap, ceiling, sugov_margin,
+			sched_capacity_down_margin[cpu], sched_capacity_up_margin[cpu], AM_enabled);
 
 	return fit;
 }
