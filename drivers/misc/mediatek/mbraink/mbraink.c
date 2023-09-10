@@ -17,6 +17,8 @@
 #include <linux/skbuff.h>
 #include <linux/rtc.h>
 #include <linux/sched/clock.h>
+#include <linux/suspend.h>
+
 
 #include "mbraink_power.h"
 #include "mbraink_video.h"
@@ -32,6 +34,7 @@
 static DEFINE_MUTEX(power_lock);
 static DEFINE_MUTEX(pmu_lock);
 struct mbraink_data mbraink_priv;
+
 
 static int mbraink_open(struct inode *inode, struct file *filp)
 {
@@ -726,6 +729,25 @@ static long mbraink_ioctl(struct file *filp,
 		}
 		break;
 	}
+	case RO_POWER_SPM_L2_INFO:
+	{
+		struct mbraink_power_spm_l2_info power_spm_l2_buffer;
+
+		if (copy_from_user(&power_spm_l2_buffer,
+					(struct mbraink_power_spm_l2_info *) arg,
+					sizeof(power_spm_l2_buffer))) {
+			pr_notice("Data write power_spm_l2_buffer from UserSpace Err!\n");
+			return -EPERM;
+		}
+		mbraink_power_get_spm_l2_info(&power_spm_l2_buffer);
+		if (copy_to_user((struct mbraink_power_spm_l2_info *) arg,
+					&power_spm_l2_buffer,
+					sizeof(power_spm_l2_buffer))) {
+			pr_notice("Copy power_spm_l2_buffer to UserSpace error!\n");
+			return -EPERM;
+		}
+		break;
+	}
 	default:
 		pr_notice("illegal ioctl number %u.\n", cmd);
 		return -EINVAL;
@@ -833,7 +855,6 @@ static void mbraink_complete(struct device *dev)
 	ktime_t resume_ktime;
 	char netlink_buf[MAX_BUF_SZ] = {'\0'};
 	int n = 0;
-	long long last_resume_timestamp = 0;
 	long long last_resume_ktime = 0;
 	struct mbraink_battery_data resume_battery_buffer;
 
@@ -842,17 +863,18 @@ static void mbraink_complete(struct device *dev)
 
 	ktime_get_real_ts64(&tv);
 	resume_ktime = ktime_get();
-	last_resume_timestamp =
+	mbraink_priv.last_resume_timestamp =
 		(tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 	last_resume_ktime =
 		ktime_to_ms(resume_ktime);
 
-	mbraink_get_battery_info(&resume_battery_buffer, last_resume_timestamp);
+	mbraink_get_battery_info(&resume_battery_buffer, mbraink_priv.last_resume_timestamp);
 
-	n += snprintf(netlink_buf, MAX_BUF_SZ, "%s %lld:%lld:%lld:%lld %d:%d:%d:%d %d:%d:%d:%d",
+	n += snprintf(netlink_buf, MAX_BUF_SZ,
+			"%s %lld:%lld:%lld:%lld %d:%d:%d:%d %d:%d:%d:%d",
 			NETLINK_EVENT_SYSRESUME,
 			mbraink_priv.last_suspend_timestamp,
-			last_resume_timestamp,
+			mbraink_priv.last_resume_timestamp,
 			mbraink_priv.last_suspend_ktime,
 			last_resume_ktime,
 			mbraink_priv.suspend_battery_buffer.quse,
@@ -862,15 +884,83 @@ static void mbraink_complete(struct device *dev)
 			resume_battery_buffer.quse,
 			resume_battery_buffer.qmaxt,
 			resume_battery_buffer.precise_soc,
-			resume_battery_buffer.precise_uisoc);
+			resume_battery_buffer.precise_uisoc
+	);
 
 	mbraink_netlink_send_msg(netlink_buf);
 
+#if !IS_ENABLED(CONFIG_PM)
+	mbraink_priv.last_resume_timestamp = 0;
+#endif
 	mbraink_priv.last_suspend_timestamp = 0;
 	mbraink_priv.last_suspend_ktime = 0;
 	memset(&mbraink_priv.suspend_battery_buffer, 0,
 		sizeof(struct mbraink_battery_data));
 }
+
+#if IS_ENABLED(CONFIG_PM)
+static void mbraink_notifier_post_suspend(void)
+{
+	int ret;
+	char netlink_buf[MAX_BUF_SZ] = {'\0'};
+	long long spm_l1_info[SPM_L1_DATA_NUM];
+	int n = 0;
+
+	if (mbraink_priv.last_resume_timestamp == 0)
+		return;
+
+	memset(spm_l1_info, 0, sizeof(spm_l1_info));
+	ret = mbraink_power_get_spm_l1_info(spm_l1_info, SPM_L1_DATA_NUM);
+	if (ret) {
+		mbraink_priv.last_resume_timestamp = 0;
+		return;
+	}
+
+	n += snprintf(netlink_buf, MAX_BUF_SZ,
+			"%s %lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld",
+			NETLINK_EVENT_SYSNOTIFIER_PS,
+			mbraink_priv.last_resume_timestamp,
+			spm_l1_info[0],
+			spm_l1_info[1],
+			spm_l1_info[2],
+			spm_l1_info[3],
+			spm_l1_info[4],
+			spm_l1_info[5],
+			spm_l1_info[6],
+			spm_l1_info[7],
+			spm_l1_info[8],
+			spm_l1_info[9],
+			spm_l1_info[10],
+			spm_l1_info[11],
+			spm_l1_info[12],
+			spm_l1_info[13]
+	);
+
+	mbraink_priv.last_resume_timestamp = 0;
+	mbraink_netlink_send_msg(netlink_buf);
+}
+
+static int mbraink_sys_res_pm_event(struct notifier_block *notifier,
+			unsigned long pm_event, void *unused)
+{
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		return NOTIFY_DONE;
+	case PM_POST_SUSPEND:
+		mbraink_notifier_post_suspend();
+		return NOTIFY_DONE;
+	default:
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_OK;
+}
+
+static struct notifier_block mbraink_sys_res_pm_notifier_func = {
+	.notifier_call = mbraink_sys_res_pm_event,
+	.priority = 0,
+};
+
+#endif
 
 static const struct dev_pm_ops mbraink_class_dev_pm_ops = {
 	.prepare	= mbraink_prepare,
@@ -878,6 +968,7 @@ static const struct dev_pm_ops mbraink_class_dev_pm_ops = {
 	.resume		= mbraink_resume,
 	.complete	= mbraink_complete,
 };
+
 
 #define MBRAINK_CLASS_DEV_PM_OPS (&mbraink_class_dev_pm_ops)
 #else
@@ -1032,6 +1123,13 @@ static int mbraink_dev_init(void)
 	attr_ret = device_create_file(&mbraink_device, &dev_attr_mbraink_gpu);
 	pr_info("[MBK_INFO] %s: device create file mbraink gpu ret = %d\n", __func__, attr_ret);
 
+    #if IS_ENABLED(CONFIG_PM)
+	attr_ret = register_pm_notifier(&mbraink_sys_res_pm_notifier_func);
+	if (attr_ret)
+		pr_info("[MBK_INFO] %s: register_pm_notifier fail ret = %d\n", __func__, attr_ret);
+
+    #endif
+
 	return 0;
 
 r_device:
@@ -1139,6 +1237,9 @@ static int mbraink_init(void)
 
 static void mbraink_dev_exit(void)
 {
+#if IS_ENABLED(CONFIG_PM)
+	int ret = 0;
+#endif
 	device_remove_file(&mbraink_device, &dev_attr_mbraink_info);
 
 	device_unregister(&mbraink_device);
@@ -1147,6 +1248,15 @@ static void mbraink_dev_exit(void)
 	class_unregister(&mbraink_class);
 	cdev_del(&mbraink_priv.mbraink_cdev);
 	unregister_chrdev_region(mbraink_device.devt, 1);
+
+    #if IS_ENABLED(CONFIG_PM)
+    /* register pm notifier */
+	ret = unregister_pm_notifier(&mbraink_sys_res_pm_notifier_func);
+	if (ret != 0) {
+		/* Failed to unregister_pm_notifier */
+		pr_notice("Failed to unregister_pm_notifier(%d)\n", ret);
+	}
+    #endif
 
 	pr_info("[MBK_INFO] %s: MBraink device exit done, major:minor %u:%u\n",
 			__func__,

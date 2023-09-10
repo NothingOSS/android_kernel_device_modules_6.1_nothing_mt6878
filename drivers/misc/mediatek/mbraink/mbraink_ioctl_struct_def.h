@@ -27,6 +27,8 @@
 #define NETLINK_EVENT_UDMFETCH			"M&"
 #define NETLINK_EVENT_SYSRESUME		"NLEvent_SysResume"
 #define NETLINK_EVENT_SYSBINDER		"NLEvent_SysBinder"
+#define NETLINK_EVENT_SYSNOTIFIER_PS	"NLEvent_SysNotifierPS"
+
 #define NETLINK_EVENT_MESSAGE_SIZE		1024
 
 #define MBRAINK_LANDING_FEATURE_CHECK 1
@@ -38,6 +40,15 @@
 
 
 #define MAX_POWER_SPM_TBL_SEC_SZ (928)
+
+#define SPM_L2_MAX_RES_NUM (116)
+#define SPM_L2_SZ (1888)
+
+#define SPM_L1_DATA_NUM (14)
+#define SPM_L1_SZ (112)
+#define SPM_L2_RES_SIZE (16)
+#define SPM_L2_LS_SZ (32)
+
 
 #define MD_HD_SZ 8
 #define MD_MDHD_SZ 8
@@ -219,6 +230,11 @@ struct mbraink_power_spm_raw {
 	unsigned short pos;
 	unsigned short size;
 	unsigned char spm_data[MAX_POWER_SPM_TBL_SEC_SZ];
+};
+
+struct mbraink_power_spm_l2_info {
+	unsigned int value[4];
+	unsigned char spm_data[SPM_L2_SZ];
 };
 
 struct mbraink_modem_raw {

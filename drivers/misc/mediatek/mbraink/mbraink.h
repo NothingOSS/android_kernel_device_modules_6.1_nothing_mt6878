@@ -42,6 +42,7 @@
 #define MONITOR_BINDER_PROCESS         'm'
 #define TRACE_BINDER_INFO              'o'
 #define VCORE_VOTE_INFO			'p'
+#define POWER_SPM_L2_INFO		'q'
 
 /*Mbrain Delegate IOCTL List*/
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
@@ -92,6 +93,10 @@
 #define RO_VCORE_VOTE			_IOR(IOC_MAGIC, VCORE_VOTE_INFO, \
 						struct mbraink_voting_struct_data*)
 
+#define RO_POWER_SPM_L2_INFO	_IOR(IOC_MAGIC, POWER_SPM_L2_INFO, \
+						struct mbraink_power_spm_raw*)
+
+
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1
 #define CURRENT_DATA	2
@@ -106,6 +111,7 @@ struct mbraink_data {
 	int suspend_power_data_size;
 	int resume_power_data_size;
 	long long last_suspend_timestamp;
+	long long last_resume_timestamp;
 	long long last_suspend_ktime;
 	struct mbraink_battery_data suspend_battery_buffer;
 	struct sock *mbraink_sock;

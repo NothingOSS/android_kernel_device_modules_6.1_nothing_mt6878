@@ -321,6 +321,113 @@ void mbraink_get_power_wakeup_info(struct mbraink_power_wakeup_data *wakeup_info
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
 	IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
 
+int mbraink_power_get_spm_l1_info(long long *out_spm_l1_array, int spm_l1_size)
+{
+	int ret = -1;
+	int i = 0;
+	long long value = 0;
+	struct lpm_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
+	unsigned char *spm_l1_data = NULL;
+	unsigned int data_size = 0;
+	int size = 0;
+
+	if (out_spm_l1_array == NULL)
+		return -1;
+
+	if (spm_l1_size != SPM_L1_DATA_NUM)
+		return -1;
+
+	sys_res_mbrain_ops = get_lpm_mbrain_dbg_ops();
+	if (sys_res_mbrain_ops &&
+		sys_res_mbrain_ops->get_last_suspend_res_data) {
+
+		data_size = SPM_L1_SZ;
+		spm_l1_data = kmalloc(data_size, GFP_KERNEL);
+		if (spm_l1_data != NULL) {
+			memset(spm_l1_data, 0, data_size);
+			if (sys_res_mbrain_ops->get_last_suspend_res_data(spm_l1_data,
+					data_size) == 0) {
+				size = sizeof(value);
+				for (i = 0; i < SPM_L1_DATA_NUM; i++) {
+					if ((i*size + size) <= SPM_L1_SZ)
+						memcpy(&value, (const void *)(spm_l1_data
+							+ i*size), size);
+					out_spm_l1_array[i] = value;
+				}
+				ret = 0;
+			}
+		}
+	}
+
+	if (spm_l1_data != NULL) {
+		kfree(spm_l1_data);
+		spm_l1_data = NULL;
+	}
+
+	return ret;
+}
+
+int mbraink_power_get_spm_l2_info(struct mbraink_power_spm_l2_info *spm_l2_info)
+{
+	struct lpm_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
+	unsigned char *ptr = NULL, *sig_tbl_ptr = NULL;
+	unsigned int sig_num = 0;
+	uint32_t thr[4];
+
+	if (spm_l2_info == NULL)
+		return 0;
+
+	sys_res_mbrain_ops = get_lpm_mbrain_dbg_ops();
+
+	if (sys_res_mbrain_ops &&
+		sys_res_mbrain_ops->get_over_threshold_num &&
+		sys_res_mbrain_ops->get_over_threshold_data) {
+
+		thr[0] = spm_l2_info->value[0];
+		thr[1] = spm_l2_info->value[1];
+		thr[2] = spm_l2_info->value[2];
+		thr[3] = spm_l2_info->value[3];
+
+		ptr = kmalloc(SPM_L2_LS_SZ, GFP_KERNEL);
+		if (ptr == NULL)
+			goto End;
+
+		if (sys_res_mbrain_ops->get_over_threshold_num(ptr,
+			SPM_L2_LS_SZ, thr, 4) == 0) {
+			memcpy(&sig_num, ptr+24, sizeof(sig_num));
+
+			if (sig_num > SPM_L2_MAX_RES_NUM)
+				goto End;
+
+			sig_tbl_ptr = kmalloc(sig_num*SPM_L2_RES_SIZE, GFP_KERNEL);
+			if (sig_tbl_ptr == NULL)
+				goto End;
+
+			if (sys_res_mbrain_ops->get_over_threshold_data(sig_tbl_ptr
+				, sig_num*SPM_L2_RES_SIZE) == 0) {
+				memcpy(spm_l2_info->spm_data, ptr, SPM_L2_LS_SZ);
+				if ((SPM_L2_LS_SZ + sig_num*SPM_L2_RES_SIZE) <= SPM_L2_SZ)
+					memcpy(spm_l2_info->spm_data + SPM_L2_LS_SZ, sig_tbl_ptr,
+					sig_num*SPM_L2_RES_SIZE);
+			}
+		}
+	}
+End:
+
+	if (ptr != NULL) {
+		kfree(ptr);
+		ptr = NULL;
+	}
+
+	if (sig_tbl_ptr != NULL) {
+		kfree(sig_tbl_ptr);
+		sig_tbl_ptr = NULL;
+	}
+
+	return 0;
+}
+
+
 int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
 {
 	bool bfree = false;

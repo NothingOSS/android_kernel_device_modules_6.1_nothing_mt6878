@@ -116,6 +116,8 @@ int mbraink_power_getVcoreInfo(struct mbraink_power_vcoreInfo *pmbrainkPowerVcor
 void mbraink_get_power_wakeup_info(struct mbraink_power_wakeup_data *wakeup_info_buffer);
 
 int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *power_spm_buffer);
+int mbraink_power_get_spm_l1_info(long long *spm_l1_array, int spm_l1_size);
+int mbraink_power_get_spm_l2_info(struct mbraink_power_spm_l2_info *spm_l2_info);
 
 int mbraink_power_get_modem_info(struct mbraink_modem_raw *modem_buffer);
 
