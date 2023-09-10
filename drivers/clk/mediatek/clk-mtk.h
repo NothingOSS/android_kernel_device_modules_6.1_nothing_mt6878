@@ -13,6 +13,7 @@
 #include <linux/platform_device.h>
 
 #include <soc/mediatek/mmdvfs_v3.h>
+#include "clk-mux.h"
 
 /* hw voter timeout configures */
 #define MTK_WAIT_HWV_PREPARE_CNT	100000
@@ -226,6 +227,7 @@ void mtk_free_clk_data(struct clk_onecell_data *clk_data);
 #define CLK_ENABLE_QUICK_SWITCH		BIT(20)
 #define MUX_ROUND_CLOSEST		BIT(21)
 #define CLK_EN_MM_INFRA_PWR		BIT(22)
+#define CLK_ENABLE_MERGE_CONTROL	BIT(23)
 
 struct mtk_pll_div_table {
 	u32 div;
@@ -350,6 +352,10 @@ struct mtk_clk_desc {
 	size_t num_clks;
 };
 
+struct sp_clk_ops {
+	int (*sp_clk_control)(struct mtk_clk_mux *mux, u8 index, u32 mask);
+};
+
 int mtk_clk_simple_probe(struct platform_device *pdev);
 extern int register_mtk_clk_notifier(struct notifier_block *nb);
 extern int unregister_mtk_clk_notifier(struct notifier_block *nb);
@@ -365,5 +371,7 @@ extern int mtk_clk_mminfra_hwv_power_ctrl(bool onoff);
 extern int mtk_clk_mminfra_hwv_power_ctrl_optional(bool onoff, u8 bit);
 int mtk_clk_register_mminfra_hwv_data(const struct mtk_hwv_data *data,
 			struct regmap *regmap, struct device *dev);
+void set_sp_clk_ops(const struct sp_clk_ops *ops);
+extern int sp_merge_clk_control(struct mtk_clk_mux *hw, u8 index, u32 mask);
 
 #endif /* __DRV_CLK_MTK_H */

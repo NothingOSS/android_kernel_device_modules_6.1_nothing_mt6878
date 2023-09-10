@@ -11,6 +11,7 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
+#include <linux/regmap.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/trace_events.h>
@@ -2660,30 +2661,30 @@ static const struct mtk_mux top_muxes[] = {
 		CLK_CFG_0_CLR/* set parent */, 24/* lsb */, 3/* width */,
 		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_BUS_AXIMEM_SHIFT/* upd shift */),
 	/* CLK_CFG_1 */
-	MUX_HWV(CLK_TOP_DISP0_SEL/* dts */, "disp0_sel", disp0_parents/* parent */,
+	MUX_HWV_FLAGS(CLK_TOP_DISP0_SEL/* dts */, "disp0_sel", disp0_parents/* parent */,
 		CLK_CFG_1, CLK_CFG_1_SET, CLK_CFG_1_CLR/* set parent */,
 		HW_CCF_CG_18_DONE, HW_CCF_CG_18_SET, HW_CCF_CG_18_CLR, /* hwv */
 		0/* lsb */, 4/* width */,
 		7/* pdn */, CLK_CFG_UPDATE/* upd ofs */,
-		TOP_MUX_DISP0_SHIFT/* upd shift */),
-	MUX_HWV(CLK_TOP_DISP1_SEL/* dts */, "disp1_sel", disp1_parents/* parent */,
+		TOP_MUX_DISP0_SHIFT/* upd shift */, CLK_ENABLE_MERGE_CONTROL),
+	MUX_HWV_FLAGS(CLK_TOP_DISP1_SEL/* dts */, "disp1_sel", disp1_parents/* parent */,
 		CLK_CFG_1, CLK_CFG_1_SET, CLK_CFG_1_CLR/* set parent */,
 		HW_CCF_CG_18_DONE, HW_CCF_CG_18_SET, HW_CCF_CG_18_CLR, /* hwv */
 		8/* lsb */, 4/* width */,
 		15/* pdn */, CLK_CFG_UPDATE/* upd ofs */,
-		TOP_MUX_DISP1_SHIFT/* upd shift */),
-	MUX_HWV(CLK_TOP_OVL0_SEL/* dts */, "ovl0_sel", ovl0_parents/* parent */,
+		TOP_MUX_DISP1_SHIFT/* upd shift */, CLK_ENABLE_MERGE_CONTROL),
+	MUX_HWV_FLAGS(CLK_TOP_OVL0_SEL/* dts */, "ovl0_sel", ovl0_parents/* parent */,
 		CLK_CFG_1, CLK_CFG_1_SET, CLK_CFG_1_CLR/* set parent */,
 		HW_CCF_CG_18_DONE, HW_CCF_CG_18_SET, HW_CCF_CG_18_CLR, /* hwv */
 		16/* lsb */, 4/* width */,
 		23/* pdn */, CLK_CFG_UPDATE/* upd ofs */,
-		TOP_MUX_OVL0_SHIFT/* upd shift */),
-	MUX_HWV(CLK_TOP_OVL1_SEL/* dts */, "ovl1_sel", ovl1_parents/* parent */,
+		TOP_MUX_OVL0_SHIFT/* upd shift */, CLK_ENABLE_MERGE_CONTROL),
+	MUX_HWV_FLAGS(CLK_TOP_OVL1_SEL/* dts */, "ovl1_sel", ovl1_parents/* parent */,
 		CLK_CFG_1, CLK_CFG_1_SET, CLK_CFG_1_CLR/* set parent */,
 		HW_CCF_CG_18_DONE, HW_CCF_CG_18_SET, HW_CCF_CG_18_CLR, /* hwv */
 		24/* lsb */, 4/* width */,
 		31/* pdn */, CLK_CFG_UPDATE/* upd ofs */,
-		TOP_MUX_OVL1_SHIFT/* upd shift */),
+		TOP_MUX_OVL1_SHIFT/* upd shift */, CLK_ENABLE_MERGE_CONTROL),
 	/* CLK_CFG_2 */
 	MUX_GATE_CLR_SET_UPD(CLK_TOP_MDP0_SEL/* dts */, "mdp0_sel",
 		mdp0_parents/* parent */, CLK_CFG_2, CLK_CFG_2_SET,
@@ -3542,6 +3543,25 @@ static int clk_mt6897_ptppll_pll_ctrl_probe(struct platform_device *pdev)
 			pdev, ARRAY_SIZE(ptppll_pll_ctrl_plls));
 }
 
+static int sp_clk_control(struct mtk_clk_mux *mux, u8 index, u32 mask)
+{
+	u32 mask_new = 0, index_new = 0;
+
+	mask_new = (mask | (mask << 8) | (mask << 16) | (mask << 24));
+	index_new = (index | (index << 8) | (index << 16) | (index << 24));
+
+	regmap_write(mux->regmap, mux->data->clr_ofs, mask_new);
+	regmap_write(mux->regmap, mux->data->set_ofs, index_new);
+
+	regmap_write(mux->regmap, mux->data->upd_ofs, 0xf0);
+
+	return 0;
+}
+
+static struct sp_clk_ops sp_clk_mt6897_ops = {
+	.sp_clk_control = sp_clk_control,
+};
+
 static int clk_mt6897_top_probe(struct platform_device *pdev)
 {
 	struct clk_onecell_data *clk_data;
@@ -3572,10 +3592,11 @@ static int clk_mt6897_top_probe(struct platform_device *pdev)
 			base, &mt6897_clk_lock, clk_data);
 
 	r = of_clk_add_provider(node, of_clk_src_onecell_get, clk_data);
-
 	if (r)
 		pr_err("%s(): could not register clock provider: %d\n",
 			__func__, r);
+
+	set_sp_clk_ops(&sp_clk_mt6897_ops);
 
 #if MT_CCF_BRINGUP
 	pr_notice("%s init end\n", __func__);

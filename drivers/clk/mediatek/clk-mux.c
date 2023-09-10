@@ -345,15 +345,20 @@ static int __mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index, bool setcl
 				}
 			}
 
-			regmap_write(mux->regmap, mux->data->clr_ofs,
-					mask << mux->data->mux_shift);
-			regmap_write(mux->regmap, mux->data->set_ofs,
-					index << mux->data->mux_shift);
+			if ((mux->flags & CLK_ENABLE_MERGE_CONTROL) == CLK_ENABLE_MERGE_CONTROL) {
+				ret = sp_merge_clk_control(mux, index, mask);
+			} else {
+				regmap_write(mux->regmap, mux->data->clr_ofs,
+						mask << mux->data->mux_shift);
+				regmap_write(mux->regmap, mux->data->set_ofs,
+						index << mux->data->mux_shift);
+			}
 		}
 
 		if (upd)
-			regmap_write(mux->regmap, mux->data->upd_ofs,
-					BIT(mux->data->upd_shift));
+			if ((mux->flags & CLK_ENABLE_MERGE_CONTROL) != CLK_ENABLE_MERGE_CONTROL)
+				regmap_write(mux->regmap, mux->data->upd_ofs,
+						BIT(mux->data->upd_shift));
 
 		if (qs_pll_need_off && (mux->flags & CLK_ENABLE_QUICK_SWITCH)
 				== CLK_ENABLE_QUICK_SWITCH) {

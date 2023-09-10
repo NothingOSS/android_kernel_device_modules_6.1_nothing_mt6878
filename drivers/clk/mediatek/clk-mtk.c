@@ -37,6 +37,23 @@ static ATOMIC_NOTIFIER_HEAD(mtk_clk_notifier_list);
 static struct ipi_callbacks *g_clk_cb;
 static struct mtk_hwv_domain mminfra_hwv_domain;
 
+static const struct sp_clk_ops *sp_clk_ops;
+
+void set_sp_clk_ops(const struct sp_clk_ops *ops)
+{
+	sp_clk_ops = ops;
+}
+EXPORT_SYMBOL_GPL(set_sp_clk_ops);
+
+int sp_merge_clk_control(struct mtk_clk_mux *mux, u8 index, u32 mask)
+{
+	if (sp_clk_ops == NULL || sp_clk_ops->sp_clk_control == NULL)
+		return 1;
+
+	return sp_clk_ops->sp_clk_control(mux, index, mask);
+}
+EXPORT_SYMBOL_GPL(sp_merge_clk_control);
+
 int register_mtk_clk_notifier(struct notifier_block *nb)
 {
 	return atomic_notifier_chain_register(&mtk_clk_notifier_list, nb);
