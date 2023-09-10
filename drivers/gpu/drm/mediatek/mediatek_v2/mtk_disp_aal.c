@@ -512,16 +512,32 @@ static int mtk_drm_ioctl_aal_eventctl_impl(struct mtk_ddp_comp *comp, void *data
 	int bypass = !!(events & AAL_EVENT_STOP);
 	int enable = !!(events & AAL_EVENT_EN);
 	int delay_trigger;
+	unsigned long flags = 0;
+	int retry = 5;
 
 	AALFLOW_LOG("0x%x\n", events);
 	delay_trigger = atomic_read(&aal_data->primary_data->force_delay_check_trig);
 	if (enable)
 		mtk_crtc_check_trigger(comp->mtk_crtc, delay_trigger, true);
+	else
+		mtk_drm_idlemgr_kick(__func__, &comp->mtk_crtc->base, 1);
+	while ((atomic_read(&aal_data->is_clock_on) != 1) && (retry != 0)) {
+		usleep_range(500, 1000);
+		retry--;
+	}
 	if (atomic_read(&aal_data->primary_data->force_enable_irq)) {
 		enable = 1;
 		bypass = 0;
 	}
-	atomic_set(&aal_data->primary_data->interrupt_enabled, enable);
+	spin_lock_irqsave(&aal_data->primary_data->clock_lock, flags);
+	if (atomic_read(&aal_data->is_clock_on) != 1)
+		AALFLOW_LOG("aal clock is off\n");
+	else if (aal_data->primary_data->isDualPQ &&
+		atomic_read(&comp_to_aal(aal_data->companion)->is_clock_on) != 1)
+		AALFLOW_LOG("aal1 clock is off\n");
+	else
+		disp_aal_set_interrupt(comp, enable, -1, NULL);
+	spin_unlock_irqrestore(&aal_data->primary_data->clock_lock, flags);
 	ret = mtk_aal_eventctl_bypass(comp, bypass);
 
 	return ret;
@@ -3939,18 +3955,6 @@ int mtk_aal_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		aal_data->primary_data->fps = modeswitch_param->fps;
 		AALFLOW_LOG("AAL_FPS_CHG fps:%d\n", aal_data->primary_data->fps);
-	}
-		break;
-	case IRQ_LEVEL_ALL:
-	case IRQ_LEVEL_NORMAL:
-	{
-		if (atomic_read(&aal_data->primary_data->is_init_regs_valid) == 1)
-			disp_aal_set_interrupt(comp, 1, -1, handle);
-	}
-		break;
-	case IRQ_LEVEL_IDLE:
-	{
-		disp_aal_set_interrupt(comp, 0, -1, handle);
 	}
 		break;
 	default:
