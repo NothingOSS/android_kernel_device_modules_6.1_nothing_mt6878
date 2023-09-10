@@ -1472,10 +1472,10 @@ static void mmdvfs_v3_restore_step(void)
 
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
 		if (last_force_step[i] != -1)
-			mtk_mmdvfs_v3_set_force_step(i, last_force_step[i]);
+			mtk_mmdvfs_v3_set_force_step_ipi(i, last_force_step[i]);
 
 		if (last_vote_step[i] != -1)
-			mtk_mmdvfs_v3_set_vote_step(i, last_vote_step[i]);
+			mtk_mmdvfs_v3_set_vote_step_ipi(i, last_vote_step[i]);
 	}
 }
 
