@@ -14674,30 +14674,29 @@ static int mtk_crtc_partial_compute_ovl_roi(struct drm_crtc *crtc,
 		}
 
 		dirty_roi_num = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_NUM];
+		/* skip if roi num euals 0 */
+		if (dirty_roi_num == 0 && plane->state->visible) {
+			DDPDBG("layer %d dirty roi num is 0\n", i);
+			disable_layer++;
+			continue;
+		}
 
-		/* 1. compute picture dirty roi */
 		if (dirty_roi_num) {
+			/* 1. compute picture dirty roi*/
 			layer_roi.x = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_X];
 			layer_roi.y = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_Y];
 			layer_roi.width = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_W];
 			layer_roi.height = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_H];
-		} else {
-			/* assign src_roi if roi num euals to 0 */
-			layer_roi.x = src_roi.x;
-			layer_roi.y = src_roi.y;
-			layer_roi.width = src_roi.width;
-			layer_roi.height = src_roi.height;
-			DDPDBG("layer %d dirty roi num is 0\n", i);
+			mtk_rect_join(&layer_roi, &layer_total_roi,
+				&layer_total_roi);
+
+			/* 2. convert picture dirty to ovl dirty */
+			if (!mtk_rect_is_empty(&layer_total_roi))
+				_convert_picture_to_ovl_dirty(&src_roi,
+					&dst_roi, &layer_total_roi, &layer_total_roi);
 		}
-		mtk_rect_join(&layer_roi, &layer_total_roi,
-			&layer_total_roi);
 
-		/* 2. convert picture dirty to ovl dirty */
-		if (!mtk_rect_is_empty(&layer_total_roi))
-			_convert_picture_to_ovl_dirty(&src_roi,
-				&dst_roi, &layer_total_roi, &layer_total_roi);
-
-		/* 3. deal with other cases:layer disable, dim layer */
+		/* 3. deal with other cases:layer disable, dim layer*/
 		mtk_rect_join(&layer_total_roi, result, result);
 
 		/* 4. break if roi is full lcm */
