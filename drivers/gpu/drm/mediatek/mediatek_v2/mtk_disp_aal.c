@@ -3850,7 +3850,8 @@ static void mtk_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	aal_data->primary_data->led_type = TYPE_FILE;
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
-	mtk_leds_register_notifier(&leds_init_notifier);
+	if (comp->id == DDP_COMPONENT_AAL0)
+		mtk_leds_register_notifier(&leds_init_notifier);
 #endif
 
 	aal_data->primary_data->refresh_wq = create_singlethread_workqueue("aal_refresh_trigger");
