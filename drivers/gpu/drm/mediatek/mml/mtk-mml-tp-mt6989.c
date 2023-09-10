@@ -28,7 +28,7 @@
 #define MML_DL_MAX_W		3840
 #define MML_DL_MAX_H		2176
 #define MML_DL_RROT_S_PX	(1920 * 1088)
-#define MML_MIN_SIZE		64
+#define MML_MIN_SIZE		480
 
 /* use OPP index 0(229Mhz) 1(273Mhz) 2(458Mhz) */
 #define MML_IR_MAX_OPP		2
