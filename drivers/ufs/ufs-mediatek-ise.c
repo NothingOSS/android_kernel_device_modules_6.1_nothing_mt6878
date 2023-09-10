@@ -24,65 +24,6 @@ static inline bool ufshcd_is_host_ready(struct ufs_hba *hba)
 	return ufshcd_readl(hba, REG_CONTROLLER_CAPABILITIES) != 0;
 }
 
-#define WAIT_POLL_INTV_MS (100)
-static inline int ufshcd_mcq_wait_idle(struct ufs_hba *hba, u64 wait_timeout_us)
-{
-	int qid;
-	int ret = 0;
-	unsigned long flags;
-	struct ufs_hw_queue *hwq;
-	u32 sq_head_slot;
-	ktime_t start;
-	int sq_poll_cnt = 0;
-	int cq_poll_cnt = 0;
-
-	start = ktime_get();
-	dev_dbg(hba->dev, "Start ktime=%lld", start);
-
-	for (qid = 0; qid < hba->nr_hw_queues; qid++) {
-		hwq = &hba->uhq[qid];
-
-		/* wait sq empty */
-		sq_head_slot = ufshcd_mcq_get_sq_head_slot(hwq);
-
-		while (sq_head_slot != hwq->sq_tail_slot) {
-			dev_dbg(hba->dev, "qid=%d, sq_head_slot=%d, sq_tail_slot=%d, ready=%d",
-				qid, sq_head_slot, hwq->sq_tail_slot, ufshcd_is_host_ready(hba));
-			if (ktime_to_us(ktime_sub(ktime_get(), start)) > wait_timeout_us) {
-				ret = -EBUSY;
-				goto expired;
-			}
-			sq_poll_cnt++;
-			dev_dbg(hba->dev, "SQ poll");
-			mdelay(WAIT_POLL_INTV_MS);
-			sq_head_slot = ufshcd_mcq_get_sq_head_slot(hwq);
-		}
-
-		/* wait cq empty */
-		spin_lock_irqsave(&hwq->cq_lock, flags);
-		ufshcd_mcq_update_cq_tail_slot(hwq);
-		spin_unlock_irqrestore(&hwq->cq_lock, flags);
-
-		while (!ufshcd_mcq_is_cq_empty(hwq)) {
-			if (ktime_to_us(ktime_sub(ktime_get(), start)) > wait_timeout_us) {
-				ret = -EBUSY;
-				goto expired;
-			}
-			cq_poll_cnt++;
-			dev_dbg(hba->dev, "CQ poll");
-			mdelay(WAIT_POLL_INTV_MS);
-			spin_lock_irqsave(&hwq->cq_lock, flags);
-			ufshcd_mcq_update_cq_tail_slot(hwq);
-			spin_unlock_irqrestore(&hwq->cq_lock, flags);
-		}
-	}
-
-expired:
-	dev_info(hba->dev, "%s: SQ poll count=%d, CQ poll count=%d, elapsed=%lld ms, ret=%d",
-		__func__, sq_poll_cnt, cq_poll_cnt, ktime_to_ms(ktime_get() - start), ret);
-	return ret;
-}
-
 #define BLOCK_IO_TIMEOUT_US (1 * 1000 * 1000)
 
 static inline int ufshcd_unblock_io(struct ufs_hba *hba)
@@ -99,10 +40,7 @@ static inline int ufshcd_block_io(struct ufs_hba *hba)
 	/* block both dev command and IO request */
 	mutex_lock(&hba->dev_cmd.lock);
 	ufsm_scsi_block_requests(hba);
-	if (is_mcq_enabled(hba))
-		ret = ufshcd_mcq_wait_idle(hba, BLOCK_IO_TIMEOUT_US);
-	else
-		ret = ufsm_wait_for_doorbell_clr(hba, BLOCK_IO_TIMEOUT_US);
+	ret = ufsm_wait_for_doorbell_clr(hba, BLOCK_IO_TIMEOUT_US);
 
 	if (ret) {
 		dev_err(hba->dev, "%s: wait cmd clear failed (%d)", __func__, ret);
