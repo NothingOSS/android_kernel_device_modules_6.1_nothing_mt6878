@@ -236,6 +236,16 @@ void mtk_venc_trigger_vcp_halt(struct venc_inst *inst)
 	}
 }
 
+int isVencAfbc10BFormat(enum venc_yuv_fmt format)
+{
+	switch (format) {
+	case VENC_YUV_FORMAT_NV12_10B_AFBC:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
 int isVencAfbcFormat(enum venc_yuv_fmt format)
 {
 	switch (format) {
@@ -290,7 +300,8 @@ void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 	struct vb2_v4l2_buffer *dst_vb2_v4l2, *src_vb2_v4l2;
 	struct vb2_buffer *dst_buf;
 	struct venc_inst *inst = (struct venc_inst *)(ctx->drv_handle);
-	unsigned int dump_size, header_size, superblock_width, superblock_height;
+	unsigned int dump_size, header_size, superblock_width, superblock_height,
+			offset_size, payload_offset;
 	struct venc_vcu_config *pconfig;
 	char *pbuf;
 
@@ -330,7 +341,7 @@ void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 				pfrm->fb_addr[0].size);
 
 				pbuf = (char *)pfrm->fb_addr[0].va;
-				dump_size = pfrm->fb_addr[0].size < 256 ? pfrm->fb_addr[0].size: 256;
+				dump_size = pfrm->fb_addr[0].size < 1024 ? pfrm->fb_addr[0].size: 1024;
 				venc_dump_data_section(pbuf, dump_size);
 
 				//afbc data
@@ -338,16 +349,55 @@ void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 				if (isVencAfbcFormat(pconfig->input_fourcc)) {
 					superblock_width = isVencAfbcRgbFormat(pconfig->input_fourcc) ? 32: 16;
 					superblock_height = isVencAfbcRgbFormat(pconfig->input_fourcc) ? 8: 16;
-					header_size = ROUND_N(16 * CEIL_DIV(pconfig->pic_w, superblock_width)
-						* CEIL_DIV(pconfig->pic_h, superblock_height),
+					header_size = ROUND_N(16 * CEIL_DIV(pconfig->buf_w, superblock_width)
+						* CEIL_DIV(pconfig->buf_h, superblock_height),
+						4096);
+					offset_size = isVencAfbcRgbFormat(pconfig->input_fourcc) ? 1024 :
+						(isVencAfbc10BFormat(pconfig->input_fourcc) ? 512 : 384);
+
+					mtk_v4l2_debug(0,
+						"venc dump format %d afbc 1st mb of 1st block w/h=%d/%d offset=0x%x =>",
+						pconfig->input_fourcc, pconfig->buf_w, pconfig->buf_h, header_size);
+
+					dump_size = ((header_size + 1024) < pfrm->fb_addr[0].size) ? 1024 : 0;
+					pbuf = (char *)pfrm->fb_addr[0].va + (size_t)header_size;
+					venc_dump_data_section(pbuf, dump_size);
+
+					payload_offset = ROUND_N(header_size
+						+ (offset_size * CEIL_DIV(pconfig->buf_w, superblock_width)),
 						4096);
 
 					mtk_v4l2_debug(0,
-						"venc timeout dump format %d afbc data of frm_buf w/h=%d/%d offset=0x%x =>",
-						pconfig->input_fourcc, pconfig->pic_w, pconfig->pic_h, header_size);
+						"venc dump format %d afbc 2nd mb of 1st block w/h=%d/%d offset=0x%x =>",
+						pconfig->input_fourcc, pconfig->buf_w, pconfig->buf_h, payload_offset);
 
-					dump_size = ((header_size + 256) < pfrm->fb_addr[0].size) ? 256 : 0;
-					pbuf = (char *)pfrm->fb_addr[0].va + (size_t)header_size;
+					dump_size = ((payload_offset + 1024) < pfrm->fb_addr[0].size) ? 1024 : 0;
+					pbuf = (char *)pfrm->fb_addr[0].va + (size_t)payload_offset;
+					venc_dump_data_section(pbuf, dump_size);
+
+					payload_offset = ROUND_N(header_size
+						+ (offset_size * CEIL_DIV(pconfig->buf_w, superblock_width) * 2),
+						4096);
+
+					mtk_v4l2_debug(0,
+						"venc dump format %d afbc 3rd mb of 1st block w/h=%d/%d offset=0x%x =>",
+						pconfig->input_fourcc, pconfig->buf_w, pconfig->buf_h, payload_offset);
+
+					dump_size = ((payload_offset + 1024) < pfrm->fb_addr[0].size) ? 1024 : 0;
+					pbuf = (char *)pfrm->fb_addr[0].va + (size_t)payload_offset;
+					venc_dump_data_section(pbuf, dump_size);
+
+					payload_offset = ROUND_N(header_size
+						+ (offset_size * (CEIL_DIV(pconfig->buf_w, superblock_width)
+						* CEIL_DIV(pconfig->buf_h, superblock_height) - 1)),
+						4096);
+
+					mtk_v4l2_debug(0,
+						"venc dump format %d afbc last mb of 1st block w/h=%d/%d offset=0x%x =>",
+						pconfig->input_fourcc, pconfig->buf_w, pconfig->buf_h, payload_offset);
+
+					dump_size = ((payload_offset + 1024) < pfrm->fb_addr[0].size) ? 1024 : 0;
+					pbuf = (char *)pfrm->fb_addr[0].va + (size_t)payload_offset;
 					venc_dump_data_section(pbuf, dump_size);
 				}
 
