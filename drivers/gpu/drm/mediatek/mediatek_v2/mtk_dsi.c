@@ -4428,6 +4428,8 @@ int mtk_dsi_read_gce(struct mtk_ddp_comp *comp, void *handle,
 		0x0, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_START,
 		0x1, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_START,
+		0x0, ~0);
 	CRTC_MMP_MARK(index, esd_check, 4, 0);
 	mtk_dsi_cmdq_poll(comp, handle, comp->regs_pa + DSI_INTSTA, 0x1, 0x1);
 	CRTC_MMP_MARK(index, esd_check, 4, 1);
@@ -5886,6 +5888,7 @@ static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 
 	mtk_ddp_write_relaxed(comp, 0x0, DSI_START, handle);
 	mtk_ddp_write_relaxed(comp, 0x1, DSI_START, handle);
+	mtk_ddp_write_relaxed(comp, 0x0, DSI_START, handle);
 
 	mtk_dsi_poll_for_idle(dsi, handle);
 	if (para_table->is_hs == 1)
@@ -6013,6 +6016,7 @@ static void mtk_dsi_cmdq_grp_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 
 	mtk_ddp_write_relaxed(comp, 0x0, DSI_START, handle);
 	mtk_ddp_write_relaxed(comp, 0x1, DSI_START, handle);
+	mtk_ddp_write_relaxed(comp, 0x0, DSI_START, handle);
 	/*
 	 *ToDo: polling cmd done has something wrong
 	 *sometimes CMD_DONE can't change to 1,
@@ -6152,6 +6156,8 @@ void mipi_dsi_dcs_write_gce_dyn(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 		dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 	cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
 		dsi->ddp_comp.regs_pa + DSI_START, 0x1, ~0);
+	cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+		dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 
 	mtk_dsi_poll_for_idle(dsi, handle);
 }
@@ -6203,6 +6209,8 @@ void mipi_dsi_dcs_write_gce2(struct mtk_dsi *dsi, struct cmdq_pkt *dummy,
 			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
 			dsi->ddp_comp.regs_pa + DSI_START, 0x1, ~0);
+		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 
 		mtk_dsi_poll_for_idle(dsi, handle);
 	} else {
@@ -6406,6 +6414,8 @@ int mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi,
 				dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 			cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
 				dsi->ddp_comp.regs_pa + DSI_START, 0x1, ~0);
+			cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+				dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 
 			mtk_dsi_poll_for_idle(dsi, handle);
 			if (dsi->slave_dsi) {
@@ -6480,6 +6490,8 @@ int mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi,
 				dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 			cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
 				dsi->ddp_comp.regs_pa + DSI_START, 0x1, ~0);
+			cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+				dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 
 			mtk_dsi_poll_for_idle(dsi, handle);
 		}
@@ -6555,6 +6567,8 @@ int mtk_dsi_ddic_handler_write_by_gce(struct mtk_dsi *dsi,
 			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
 			dsi->ddp_comp.regs_pa + DSI_START, 0x1, ~0);
+		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 
 		mtk_dsi_poll_for_idle(dsi, handle);
 		if (dsi->slave_dsi) {
@@ -6608,6 +6622,8 @@ int mtk_dsi_ddic_handler_write_by_gce(struct mtk_dsi *dsi,
 			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
 			dsi->ddp_comp.regs_pa + DSI_START, 0x1, ~0);
+		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 
 		mtk_dsi_poll_for_idle(dsi, handle);
 		if (dsi->slave_dsi) {
@@ -6803,6 +6819,8 @@ static int mtk_dsi_ddic_handler_grp_write_by_gce(struct mtk_dsi *dsi,
 			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
 			dsi->ddp_comp.regs_pa + DSI_START, 0x1, ~0);
+		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
+			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 
 		mtk_dsi_poll_for_idle(dsi, handle);
 	}
@@ -6884,6 +6902,8 @@ static void _mtk_mipi_dsi_read_gce(struct mtk_dsi *dsi,
 		0x0, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_START,
 		0x1, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_START,
+		0x0, ~0);
 
 	mtk_dsi_cmdq_poll(comp, handle, comp->regs_pa + DSI_INTSTA, 0x1, 0x1);
 
@@ -7403,6 +7423,8 @@ static ssize_t mtk_dsi_host_send_cmd(struct mtk_dsi *dsi,
 		mtk_dsi_runtime_phy_reset(dsi);
 
 	mtk_dsi_start(dsi);
+	/* unset DSI_START after trigger */
+	writel(0, dsi->regs + DSI_START);
 
 	if (MTK_DSI_HOST_IS_READ(msg->type)) {
 		unsigned int loop_cnt = 0;
@@ -7446,6 +7468,8 @@ static ssize_t mtk_dsi_host_send_cmd_dual_sync(struct mtk_dsi *dsi,
 	if (dsi->driver_data->require_phy_reset)
 		mtk_dsi_runtime_phy_reset(dsi);
 	mtk_dsi_start(dsi);
+	/* unset DSI_START after trigger */
+	writel(0, dsi->regs + DSI_START);
 
 	if (!mtk_dsi_wait_idle(dsi, flag, 2000, NULL)) {
 		if (dsi->slave_dsi) {
