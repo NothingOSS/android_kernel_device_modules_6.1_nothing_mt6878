@@ -612,10 +612,16 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	 * The deassertion of PERST# should be delayed 100ms (TPVPERL)
 	 * for the power and clock to become stable.
 	 */
-	msleep(100);
+	msleep(50);
 
 	/* De-assert reset signals */
-	val &= ~(PCIE_MAC_RSTB | PCIE_PHY_RSTB | PCIE_BRG_RSTB | PCIE_PE_RSTB);
+	val &= ~(PCIE_MAC_RSTB | PCIE_PHY_RSTB | PCIE_BRG_RSTB);
+	writel_relaxed(val, port->base + PCIE_RST_CTRL_REG);
+
+	msleep(50);
+
+	/* De-assert PERST# */
+	val &= ~PCIE_PE_RSTB;
 	writel_relaxed(val, port->base + PCIE_RST_CTRL_REG);
 
 	/* Check if the link is up or not */
@@ -1159,6 +1165,7 @@ static int mtk_pcie_peri_reset(struct mtk_pcie_port *port, bool enable)
 static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 {
 	struct device *dev = port->dev;
+	struct pinctrl *p;
 	int err;
 
 	/* Clear PCIe pextp sw reset bit */
@@ -1204,6 +1211,16 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 		dev_err(dev, "failed to enable clocks\n");
 		goto err_clk_init;
 	}
+
+	/*
+	 * Leroy + Falcon SDES issue workaround, switch pinmux after
+	 * PCIe RC MTCMOS on completed
+	 */
+	p = pinctrl_get_select(dev, "work");
+	if (IS_ERR(p))
+		dev_info(dev, "failed to get and select work state\n");
+	else
+		pinctrl_put(p);
 
 	return 0;
 
