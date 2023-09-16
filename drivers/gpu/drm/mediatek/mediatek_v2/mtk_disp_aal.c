@@ -205,7 +205,7 @@ static void disp_aal_set_interrupt(struct mtk_ddp_comp *comp,
 		else
 			writel(AAL_IRQ_OF_END, comp->regs + DISP_AAL_INTEN);
 
-		atomic_set(&aal_data->primary_data->interrupt_enabled, 1);
+		atomic_set(&aal_data->primary_data->irq_en, 1);
 		AALIRQ_LOG("interrupt enabled\n");
 	} else if (!enable) {
 		if (handle) {
@@ -217,7 +217,7 @@ static void disp_aal_set_interrupt(struct mtk_ddp_comp *comp,
 			writel(0x0, comp->regs + DISP_AAL_INTEN);
 			writel(0x0, comp->regs + DISP_AAL_INTSTA);
 		}
-		atomic_set(&aal_data->primary_data->interrupt_enabled, 0);
+		atomic_set(&aal_data->primary_data->irq_en, 0);
 		AALIRQ_LOG("interrupt disabled\n");
 	}
 }
@@ -512,32 +512,16 @@ static int mtk_drm_ioctl_aal_eventctl_impl(struct mtk_ddp_comp *comp, void *data
 	int bypass = !!(events & AAL_EVENT_STOP);
 	int enable = !!(events & AAL_EVENT_EN);
 	int delay_trigger;
-	unsigned long flags = 0;
-	int retry = 5;
 
 	AALFLOW_LOG("0x%x\n", events);
 	delay_trigger = atomic_read(&aal_data->primary_data->force_delay_check_trig);
 	if (enable)
 		mtk_crtc_check_trigger(comp->mtk_crtc, delay_trigger, true);
-	else
-		mtk_drm_idlemgr_kick(__func__, &comp->mtk_crtc->base, 1);
-	while ((atomic_read(&aal_data->is_clock_on) != 1) && (retry != 0)) {
-		usleep_range(500, 1000);
-		retry--;
-	}
 	if (atomic_read(&aal_data->primary_data->force_enable_irq)) {
 		enable = 1;
 		bypass = 0;
 	}
-	spin_lock_irqsave(&aal_data->primary_data->clock_lock, flags);
-	if (atomic_read(&aal_data->is_clock_on) != 1)
-		AALFLOW_LOG("aal clock is off\n");
-	else if (aal_data->primary_data->isDualPQ &&
-		atomic_read(&comp_to_aal(aal_data->companion)->is_clock_on) != 1)
-		AALFLOW_LOG("aal1 clock is off\n");
-	else
-		disp_aal_set_interrupt(comp, enable, -1, NULL);
-	spin_unlock_irqrestore(&aal_data->primary_data->clock_lock, flags);
+	atomic_set(&aal_data->primary_data->irq_en, enable);
 	ret = mtk_aal_eventctl_bypass(comp, bypass);
 
 	return ret;
@@ -3808,7 +3792,7 @@ static void mtk_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	atomic_set(&(aal_data->primary_data->force_relay), 0);
 	atomic_set(&(aal_data->primary_data->should_stop), 0);
 	atomic_set(&(aal_data->primary_data->dre30_write), 0);
-	atomic_set(&(aal_data->primary_data->interrupt_enabled), 0);
+	atomic_set(&(aal_data->primary_data->irq_en), 0);
 	atomic_set(&(aal_data->primary_data->force_delay_check_trig), 0);
 	atomic_set(&(aal_data->primary_data->dre_halt), 0);
 	atomic_set(&(aal_data->primary_data->change_to_dre30), 0);
@@ -3955,6 +3939,18 @@ int mtk_aal_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		aal_data->primary_data->fps = modeswitch_param->fps;
 		AALFLOW_LOG("AAL_FPS_CHG fps:%d\n", aal_data->primary_data->fps);
+	}
+		break;
+	case IRQ_LEVEL_ALL:
+	case IRQ_LEVEL_NORMAL:
+	{
+		if (atomic_read(&aal_data->primary_data->is_init_regs_valid) == 1)
+			disp_aal_set_interrupt(comp, 1, -1, handle);
+	}
+		break;
+	case IRQ_LEVEL_IDLE:
+	{
+		disp_aal_set_interrupt(comp, 0, -1, handle);
 	}
 		break;
 	default:
@@ -4407,7 +4403,7 @@ static void disp_aal_wait_sof_irq(struct mtk_ddp_comp *comp)
 		}
 	}
 
-	if (atomic_read(&aal_data->primary_data->interrupt_enabled) == 1) {
+	if (atomic_read(&aal_data->primary_data->irq_en) == 1) {
 		if (!atomic_read(&aal_data->first_frame) && aal_data->primary_data->dre30_enabled)
 			mtk_crtc_user_cmd(aal_data->crtc, comp, FLIP_SRAM, NULL);
 	}
@@ -4507,6 +4503,12 @@ static irqreturn_t mtk_disp_aal_irq_handler(int irq, void *dev_id)
 		status1 = disp_aal_read_clear_irq(comp1);
 
 	AALIRQ_LOG("irq, val:0x%x,0x%x\n", status0, status1);
+
+	if (atomic_read(&aal->primary_data->irq_en) == 0) {
+		AALIRQ_LOG("%s, skip irq\n", __func__);
+		ret = IRQ_HANDLED;
+		goto out;
+	}
 
 	if (atomic_read(&aal->primary_data->force_relay) == 1) {
 		AALIRQ_LOG("aal is force_relay\n");
