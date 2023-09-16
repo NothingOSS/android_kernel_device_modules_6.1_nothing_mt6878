@@ -155,7 +155,7 @@ static struct logger_buffer dprec_logger_buffer[DPREC_LOGGER_PR_NUM] = {
 	{0, 0, 0, DUMP_BUFFER_COUNT, LOGGER_BUFFER_SIZE},
 	{0, 0, 0, STATUS_BUFFER_COUNT, LOGGER_BUFFER_SIZE},
 };
-static bool is_buffer_init;
+static atomic_t is_buffer_init = ATOMIC_INIT(0);
 static char *debug_buffer;
 #if IS_ENABLED(CONFIG_MTK_DISP_LOGGER)
 static bool logger_enable = 1;
@@ -260,7 +260,7 @@ static void init_log_buffer(void)
 	int i, buf_size, buf_idx;
 	char *temp_buf;
 
-	if (is_buffer_init)
+	if (atomic_read(&is_buffer_init) == 1)
 		return;
 
 	/*1. Allocate Error, Fence, Debug and Dump log buffer slot*/
@@ -318,7 +318,9 @@ static void init_log_buffer(void)
 	}
 	dprec_logger_buffer[4].buffer_ptr = status_buffer;
 
-	is_buffer_init = true;
+	/* gurantee logger buffer assign done before set is_buffer_init */
+	smp_wmb();
+	atomic_set(&is_buffer_init, 1);
 
 	va = (unsigned long)err_buffer[0];
 	pa = __pa_nodebug(va);
@@ -367,7 +369,7 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...)
 	if (type >= DPREC_LOGGER_PR_NUM)
 		return -1;
 
-	if (!is_buffer_init)
+	if (atomic_read(&is_buffer_init) != 1)
 		return -1;
 
 	spin_lock_irqsave(dprec_logger_lock(type), flags);
@@ -418,7 +420,7 @@ int mtk_dprec_logger_get_buf(enum DPREC_LOGGER_PR_TYPE type, char *stringbuf,
 	if (type >= DPREC_LOGGER_PR_NUM || type < 0 || len < 0)
 		return 0;
 
-	if (!is_buffer_init)
+	if (atomic_read(&is_buffer_init) != 1)
 		return 0;
 
 	buf_arr = dprec_logger_buffer[type].buffer_ptr;
@@ -4606,7 +4608,7 @@ static ssize_t debug_read(struct file *file, char __user *ubuf, size_t count,
 	int debug_bufmax;
 	static int n;
 
-	if (*ppos != 0 || !is_buffer_init)
+	if (*ppos != 0 || atomic_read(&is_buffer_init) != 1)
 		goto out;
 
 	if (!debug_buffer) {
@@ -5263,11 +5265,11 @@ void disp_dbg_probe(void)
 		d_file = debugfs_create_file("disp_lfr_params",
 			S_IFREG | 0644,	d_folder, NULL, &disp_lfr_params_fops);
 	}
+#endif
 	if (logger_enable)
 		init_log_buffer();
 
 	drm_mmp_init();
-#endif
 
 #if IS_ENABLED(CONFIG_PROC_FS)
 	mtkfb_procfs = proc_create("mtkfb", S_IFREG | 0440,
@@ -5393,7 +5395,7 @@ void get_disp_dbg_buffer(unsigned long *addr, unsigned long *size,
 {
 	if (logger_enable)
 		init_log_buffer();
-	if (is_buffer_init) {
+	if (atomic_read(&is_buffer_init) == 1) {
 		*addr = (unsigned long)err_buffer[0];
 		*size = (DEBUG_BUFFER_SIZE - 4096);
 		*start = 0;
