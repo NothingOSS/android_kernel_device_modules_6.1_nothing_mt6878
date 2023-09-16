@@ -1061,6 +1061,8 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 		mml_trace_end();
 	}
 
+	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, (comp->cur_bw << 16) | comp->cur_peak);
+
 	mml_msg_qos("%s comp %u %s qos bw %u(%u) by throughput %u pixel %u size %u%s",
 		__func__, comp->id, comp->name, bandwidth, hrt_bw / 1000,
 		throughput, cache->max_pixel, datasize,

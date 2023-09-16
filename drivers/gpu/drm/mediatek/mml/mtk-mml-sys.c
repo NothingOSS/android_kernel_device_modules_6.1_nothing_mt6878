@@ -11,6 +11,7 @@
 #include <linux/platform_device.h>
 #include <mtk_drm_ddp_comp.h>
 #include <cmdq-util.h>
+#include <soc/mediatek/smi.h>
 
 #include "mtk-mml-dpc.h"
 #include "mtk-mml-core.h"
@@ -1029,11 +1030,24 @@ static s32 mml_sys_comp_clk_disable(struct mml_comp *comp,
 	return 0;
 }
 
+void mml_sys_qos_set(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg, u32 throughput, u32 tput_up)
+{
+	const struct mml_frame_config *cfg = task->config;
+
+	/* disable ultra in srt mode to avoid occupy bw */
+	if (cfg->info.mode == MML_MODE_MML_DECOUPLE)
+		mtk_smi_larb_ultra_dis(comp->larb_dev, true);
+	else
+		mtk_smi_larb_ultra_dis(comp->larb_dev, false);
+}
+
 static const struct mml_comp_hw_ops sys_hw_ops = {
 	.pw_enable = mml_comp_pw_enable,
 	.pw_disable = mml_comp_pw_disable,
 	.clk_enable = &mml_sys_comp_clk_enable,
 	.clk_disable = &mml_sys_comp_clk_disable,
+	.qos_set = &mml_sys_qos_set,
 };
 
 static const struct mml_comp_hw_ops sys_hw_ops_mminfra = {
@@ -1043,6 +1057,7 @@ static const struct mml_comp_hw_ops sys_hw_ops_mminfra = {
 	.mminfra_pw_disable = mml_mminfra_pw_disable,
 	.clk_enable = &mml_sys_comp_clk_enable,
 	.clk_disable = &mml_sys_comp_clk_disable,
+	.qos_set = &mml_sys_qos_set,
 };
 
 #endif
