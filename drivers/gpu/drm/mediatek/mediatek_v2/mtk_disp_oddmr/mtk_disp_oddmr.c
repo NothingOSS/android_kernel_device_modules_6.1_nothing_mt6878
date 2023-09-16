@@ -4273,7 +4273,7 @@ static int mtk_oddmr_od_init(void)
 	int ret, table_idx;
 	struct cmdq_client *client = NULL;
 
-	ODDMRAPI_LOG("+\n");
+	DDPMSG("%s+\n",__func__);
 	if (default_comp == NULL || g_oddmr_priv == NULL || default_comp->mtk_crtc == NULL) {
 		ODDMRFLOW_LOG("oddmr comp is not available\n");
 		return -1;
@@ -4466,7 +4466,7 @@ static int mtk_oddmr_od_enable(struct drm_device *dev, int en)
 {
 	int ret = 0, enable = en;
 
-	ODDMRAPI_LOG("%d\n", enable);
+	DDPMSG("%s:%d+\n",__func__,enable);
 	if (default_comp == NULL || g_oddmr_priv == NULL) {
 		ODDMRFLOW_LOG("od comp is NULL\n");
 		return -1;
@@ -5922,6 +5922,7 @@ int mtk_drm_ioctl_oddmr_ctl(struct drm_device *dev, void *data,
 		ODDMRFLOW_LOG("param is null\n");
 		return -EFAULT;
 	}
+	mtk_vidle_pq_power_get(__func__);
 	ODDMRAPI_LOG("%s: cmd is %u\n", __func__, param->cmd);
 	switch (param->cmd) {
 	case MTK_DRM_ODDMR_OD_INIT:
@@ -5956,6 +5957,7 @@ int mtk_drm_ioctl_oddmr_ctl(struct drm_device *dev, void *data,
 		ret = -EINVAL;
 		break;
 	}
+	mtk_vidle_pq_power_put(__func__);
 	ODDMRFLOW_LOG("cmd %d ret %d\n", param->cmd, ret);
 	return ret;
 }
