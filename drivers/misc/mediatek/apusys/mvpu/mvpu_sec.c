@@ -1430,6 +1430,7 @@ int region_info_set(uint32_t buf_num,
 	uint32_t buf_io_total = 0;
 	uint32_t base_shift = 0;
 	uint32_t size_shift = 0;
+	uint32_t size = 0;
 
 	//get all IO buf addr
 	for (i = 0; i < buf_num; i++) {
@@ -1466,20 +1467,27 @@ int region_info_set(uint32_t buf_num,
 	//Sorting
 	region_sort(buf_io_total, buf_io_addr);
 
+	if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
+		pr_info("[MVPU][SEC] [MPU] mapping buf_io_addr with sec_chk_addr\n");
+
 	//mapping size info
 	for (i = 0; i < buf_io_total; i++) {
 		base_shift = buf_io_addr[i] & 0x00000FFF;
+		if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
+			pr_info("[MVPU][SEC] [MPU] start to mapping buf_io_addr[%d] 0x%08x\n", i, buf_io_addr[i]);
 
 		for (j = 0; j < buf_num; j++) {
 			if (buf_io_addr[i] == sec_chk_addr[j]) {
-				buf_io_size[i] =
-					(((sec_buf_size[j] + base_shift) + MVPU_MPU_SIZE - 1)
-						/MVPU_MPU_SIZE)
-						*MVPU_MPU_SIZE;
+				size = (((sec_buf_size[j] + base_shift) + MVPU_MPU_SIZE - 1)
+						/MVPU_MPU_SIZE) * MVPU_MPU_SIZE;
+				if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG)
+					pr_info("[MVPU][SEC] [MPU]     sec_chk_addr[%d] 0x%08x, sec_buf_size[%d] 0x%08x->0x%08x (aligned)\n",
+							j, sec_chk_addr[j], j, sec_buf_size[j], size);
 
-				size_shift = buf_io_size[i] - sec_buf_size[j];
-				if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG) {
-					if (base_shift > size_shift)
+				if (size > buf_io_size[i]) {
+					buf_io_size[i] = size;
+					size_shift = buf_io_size[i] - sec_buf_size[j];
+					if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG && base_shift > size_shift)
 						pr_info("[MVPU][SEC] [MPU] ERROR base_shift 0x%08x, size_shift 0x%08x\n",
 							base_shift, size_shift);
 				}
@@ -1487,6 +1495,10 @@ int region_info_set(uint32_t buf_num,
 		}
 
 		buf_io_addr[i] = buf_io_addr[i] & 0xFFFFF000;
+		if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_DBG) {
+			pr_info("[MVPU][SEC] [MPU] mapping result   buf_io_addr[%d] 0x%08x (aligned), buf_io_size[%d] 0x%08x (aligned)\n",
+							i, buf_io_addr[i], i, buf_io_size[i]);
+		}
 	}
 
 	if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_ALL) {
