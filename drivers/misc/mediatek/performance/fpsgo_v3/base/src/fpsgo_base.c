@@ -1299,69 +1299,6 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.limit_rfreq2cap_m_by_pid == BY_PID_DEFAULT_VAL) {
 		return 1;
 	}
-	if (boost_attr.rescue_enable_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.rescue_second_enable_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.rescue_second_time_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.rescue_second_group_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.group_by_lr_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.heavy_group_num_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.second_group_num_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.llf_task_policy_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.light_loading_policy_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.loading_th_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.filter_frame_enable_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.filter_frame_window_size_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.filter_frame_kmin_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.boost_affinity_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.cpumask_heavy_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.cpumask_second_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.cpumask_others_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.boost_lr_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.separate_aa_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.separate_release_sec_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.limit_uclamp_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.limit_ruclamp_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.limit_uclamp_m_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.limit_ruclamp_m_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.separate_pct_b_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.separate_pct_m_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.separate_pct_other_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.qr_enable_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.qr_t2wnt_x_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.qr_t2wnt_y_n_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.qr_t2wnt_y_p_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.blc_boost_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.boost_vip_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.rt_prio1_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.rt_prio2_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.rt_prio3_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.set_ls_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.ls_groupmask_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.vip_mask_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.set_vvip_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.gcc_deq_bound_quota_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.gcc_deq_bound_thrs_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.gcc_down_sec_pct_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.gcc_down_step_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.gcc_enable_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.gcc_enq_bound_quota_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.gcc_enq_bound_thrs_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.gcc_fps_margin_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.gcc_reserved_down_quota_pct_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.gcc_reserved_up_quota_pct_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.gcc_up_sec_pct_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.gcc_up_step_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.check_buffer_quota_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.expected_fps_margin_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.quota_v2_diff_clamp_min_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.quota_v2_diff_clamp_max_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.aa_b_minus_idle_t_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.limit_cfreq2cap_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.limit_rfreq2cap_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.limit_cfreq2cap_m_by_pid == BY_PID_DELETE_VAL ||
-			boost_attr.limit_rfreq2cap_m_by_pid == BY_PID_DELETE_VAL) {
-		return 1;
-	}
 	return 0;
 }
 
