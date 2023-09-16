@@ -77,6 +77,7 @@ struct gz_log_state {
 	struct device *dev;
 	struct device *trusty_dev;
 	struct proc_dir_entry *proc;
+	struct proc_dir_entry *proc_full;
 
 	/*
 	 * This lock is here to ensure only one consumer will read
@@ -347,10 +348,10 @@ static int is_buf_empty(struct gz_log_state *gls)
 }
 
 static int do_gz_log_read(struct gz_log_state *gls,
-			  char __user *buf, size_t size)
+			  char __user *buf, size_t size, uint32_t get)
 {
 	struct log_rb *log = gls->log;
-	uint32_t get, put, alloc, read_chars = 0, copy_chars = 0;
+	uint32_t put, alloc, read_chars = 0, copy_chars = 0;
 	int ret = 0;
 
 	if (!is_power_of_2(log->sz))
@@ -363,7 +364,6 @@ static int do_gz_log_read(struct gz_log_state *gls,
 	 * that the above condition is maintained. A read barrier is needed
 	 * to make sure the hardware and compiler keep the reads ordered.
 	 */
-	get = gls->get_proc;
 	put = log->put;
 	/* make sure the hardware and compiler reads the correct put & alloc*/
 	rmb();
@@ -376,9 +376,6 @@ static int do_gz_log_read(struct gz_log_state *gls,
 
 	if (get > put)
 		return -EFAULT;
-
-	if (is_buf_empty(gls))
-		return 0;
 
 	while (get != put) {
 		read_chars = log_read_line(gls, put, get);
@@ -413,10 +410,33 @@ static ssize_t gz_log_read(struct file *file, char __user *buf, size_t size,
 		return -EINVAL;
 
 	if (atomic_xchg(&gls->readable, 0)) {
-		ret = do_gz_log_read(gls, buf, size);
+		ret = is_buf_empty(gls) ? 0 :
+		      do_gz_log_read(gls, buf, size, gls->get_proc);
 		gls->poll_event = atomic_read(&gls->gz_log_event_count);
 		atomic_set(&gls->readable, 1);
 	}
+	return ret;
+}
+
+static ssize_t gz_log_full_read(struct file *file, char __user *buf, size_t size,
+				loff_t *ppos)
+{
+	struct gz_log_state *gls = pde_data(file_inode(file));
+	int ret = 0;
+
+	/* sanity check */
+	if (!buf)
+		return -EINVAL;
+
+	if (atomic_xchg(&gls->readable, 0)) {
+		ret = do_gz_log_read(gls, buf, size,
+				(gls->log->put <= gls->log->sz) ? (uint32_t)*ppos :
+					gls->log->put - gls->log->sz + *ppos);
+		gls->poll_event = atomic_read(&gls->gz_log_event_count);
+		atomic_set(&gls->readable, 1);
+	}
+	*ppos += ret;
+
 	return ret;
 }
 
@@ -735,6 +755,12 @@ static const struct proc_ops proc_gz_log_fops = {
 	.proc_poll = gz_log_poll,
 };
 
+static const struct proc_ops proc_gz_log_full_fops = {
+	.proc_open = gz_log_open,
+	.proc_read = gz_log_full_read,
+	.proc_release = gz_log_release,
+};
+
 static int trusty_gz_send_ktime(struct platform_device *pdev)
 {
 	uint64_t current_ktime;
@@ -901,6 +927,14 @@ static int trusty_gz_log_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	/* create /proc/gz_log_full */
+	gls->proc_full = proc_create_data("gz_log_full", 0440, NULL,
+					   &proc_gz_log_full_fops, gls);
+	if (!gls->proc_full) {
+		dev_info(&pdev->dev, "gz_log_full proc_create failed!\n");
+		return -ENOMEM;
+	}
+
 #if ENABLE_GZ_TRACE_DUMP
 	gls->gz_log_dbg_root = debugfs_create_dir("gz_log", NULL);
 	gls->sys_gz_trace_on =
@@ -948,6 +982,7 @@ static int trusty_gz_log_remove(struct platform_device *pdev)
 	dev_info(&pdev->dev, "%s\n", __func__);
 
 	proc_remove(gls->proc);
+	proc_remove(gls->proc_full);
 	atomic_notifier_chain_unregister(&panic_notifier_list,
 					 &gls->panic_notifier);
 	trusty_call_notifier_unregister(gls->trusty_dev, &gls->call_notifier);
