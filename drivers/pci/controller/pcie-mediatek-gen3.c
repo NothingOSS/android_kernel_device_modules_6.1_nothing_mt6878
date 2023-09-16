@@ -1239,10 +1239,13 @@ err_phy_init:
 
 static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 {
-	clk_bulk_disable_unprepare(port->num_clks, port->clks);
+	dev_info(port->dev, "Start PCIe RC power down\n");
 
 	pm_runtime_put_sync(port->dev);
 	pm_runtime_disable(port->dev);
+
+	clk_bulk_disable_unprepare(port->num_clks, port->clks);
+
 	reset_control_assert(port->mac_reset);
 
 	phy_power_off(port->phy);
