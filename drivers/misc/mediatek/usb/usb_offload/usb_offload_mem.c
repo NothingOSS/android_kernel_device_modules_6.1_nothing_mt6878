@@ -455,10 +455,12 @@ static int mtk_usb_offload_genpool_allocate_memory(unsigned char **vaddr,
 {
 	/* gen pool related */
 	struct gen_pool *gen_pool_usb_offload = mtk_get_gen_pool(mem_id);
+	int ret = 0;
 
 	if (gen_pool_usb_offload == NULL) {
 		USB_OFFLOAD_ERR("pool is NULL, mem_id:%d\n", mem_id);
-		return -1;
+		ret = -1;
+		goto error;
 	}
 
 	/* allocate VA with gen pool */
@@ -471,7 +473,9 @@ static int mtk_usb_offload_genpool_allocate_memory(unsigned char **vaddr,
 
 	USB_OFFLOAD_MEM_DBG("va:%p phy:0x%llx size:%u, mem_id:%d\n",
 		*vaddr, (unsigned long long)*paddr, size, mem_id);
-	return 0;
+
+error:
+	return ret;
 }
 
 static int mtk_usb_offload_genpool_free_memory(unsigned char **vaddr,
@@ -479,15 +483,18 @@ static int mtk_usb_offload_genpool_free_memory(unsigned char **vaddr,
 {
 	/* gen pool related */
 	struct gen_pool *gen_pool_usb_offload = mtk_get_gen_pool(mem_id);
+	int ret = 0;
 
 	if (gen_pool_usb_offload == NULL) {
 		USB_OFFLOAD_ERR("pool is NULL, mem_id:%d\n", mem_id);
-		return -1;
+		ret = -1;
+		goto error;
 	}
 
 	if (!gen_pool_has_addr(gen_pool_usb_offload, (unsigned long)*vaddr, *size)) {
 		USB_OFFLOAD_ERR("vaddr is not in pool[%d]:%p\n", mem_id, gen_pool_usb_offload);
-		return -1;
+		ret = -1;
+		goto error;
 	}
 
 	/* allocate VA with gen pool */
@@ -496,8 +503,8 @@ static int mtk_usb_offload_genpool_free_memory(unsigned char **vaddr,
 		*vaddr = NULL;
 		*size = 0;
 	}
-
-	return 0;
+error:
+	return ret;
 }
 
 static int mtk_usb_offload_alloc_rsv_mem(struct usb_offload_buffer *buf,

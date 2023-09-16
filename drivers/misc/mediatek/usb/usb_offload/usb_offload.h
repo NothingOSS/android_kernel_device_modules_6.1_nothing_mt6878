@@ -33,7 +33,7 @@
 #define BUF_CTX_SIZE					31
 #define TR_MAX_SEG						((15 * 2 + 1) * 2)
 #define EV_MAX_SEG						1
-#define BUF_SEG_SIZE					(TR_MAX_SEG + EV_MAX_SEG)
+#define BUF_SEG_SIZE					(TR_MAX_SEG)
 #define ERST_SIZE						16
 #define ERST_NUMBER						EV_MAX_SEG
 #define USB_OFFLOAD_TRBS_PER_SEGMENT	256

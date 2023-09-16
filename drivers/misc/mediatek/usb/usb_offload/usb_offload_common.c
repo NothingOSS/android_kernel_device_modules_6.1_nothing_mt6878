@@ -65,6 +65,7 @@ struct usb_offload_buffer *buf_dcbaa;
 struct usb_offload_buffer *buf_ctx;
 struct usb_offload_buffer *buf_seg;
 struct usb_offload_buffer *buf_ev_table;
+struct usb_offload_buffer *buf_ev_ring;
 struct usb_offload_buffer buf_allocated[2];
 
 unsigned int usb_offload_log;
@@ -77,6 +78,34 @@ static enum usb_offload_mem_id lowpwr_mem_type(void)
 		USB_OFFLOAD_MEM_SRAM_ID : USB_OFFLOAD_MEM_DRAM_ID;
 }
 
+static void print_all_memory(void)
+{
+	int i;
+
+	if (buf_dcbaa && buf_dcbaa->allocated)
+		USB_OFFLOAD_MEM_DBG("dcbaa:0x%llx\n", buf_dcbaa->dma_addr);
+
+	for (i = 0; i < BUF_CTX_SIZE; i ++) {
+		if (buf_ctx && buf_ctx[i].allocated)
+			USB_OFFLOAD_MEM_DBG("ctx%d:0x%llx\n", i, buf_ctx[i].dma_addr);
+	}
+
+	if (buf_ev_table && buf_ev_table->allocated)
+		USB_OFFLOAD_MEM_DBG("erst:0x%llx\n", buf_ev_table->dma_addr);
+
+	if (buf_ev_ring && buf_ev_ring->allocated)
+		USB_OFFLOAD_MEM_DBG("ev_ring:0x%llx\n", buf_ev_ring->dma_addr);
+
+	for (i = 0; i < BUF_SEG_SIZE; i ++) {
+		if (buf_seg && buf_seg[i].allocated)
+			USB_OFFLOAD_MEM_DBG("tr_ring%d:0x%llx\n", i, buf_seg[i].dma_addr);
+	}
+
+	for (i = 0; i < 2; i ++) {
+		if (buf_allocated[i].allocated)
+			USB_OFFLOAD_MEM_DBG("urb%d:0x%llx\n", i, buf_allocated[i].dma_addr);
+	}
+}
 
 static struct usb_audio_dev uadev[SNDRV_CARDS];
 struct usb_offload_dev *uodev;
@@ -1558,37 +1587,45 @@ static struct xhci_segment *xhci_mtk_usb_offload_segment_alloc(struct xhci_hcd *
 						   unsigned int max_packet,
 						   gfp_t flags,
 						   enum usb_offload_mem_id mem_id,
-						   bool is_rsv)
+						   bool is_rsv,
+						   enum xhci_ring_type type)
 {
 	struct xhci_segment *seg;
 	dma_addr_t	dma;
 	int		i;
-	int buf_seg_slot = get_first_avail_buf_seg_idx();
+	int buf_seg_slot = 0;
+	struct usb_offload_buffer *buf;
 
-	if (buf_seg_slot < 0)
-		return NULL;
+	if (type == TYPE_EVENT)
+		buf = buf_ev_ring;
+	else {
+		buf_seg_slot = get_first_avail_buf_seg_idx();
+		buf = &buf_seg[buf_seg_slot];
+		if (buf_seg_slot < 0)
+			return NULL;
+	}
 
 	seg = kzalloc(sizeof(*seg), flags);
 	if (!seg)
 		return NULL;
 
-	if (mtk_offload_alloc_mem(&buf_seg[buf_seg_slot],
-		USB_OFFLOAD_TRB_SEGMENT_SIZE, USB_OFFLOAD_TRB_SEGMENT_SIZE, mem_id, is_rsv)) {
-		USB_OFFLOAD_ERR("FAIL to allocate mem id: %d for USB Offload Seg %d, size: %d\n",
-				mem_id, buf_seg_slot, USB_OFFLOAD_TRB_SEGMENT_SIZE);
+	if (mtk_offload_alloc_mem(buf, USB_OFFLOAD_TRB_SEGMENT_SIZE,
+			USB_OFFLOAD_TRB_SEGMENT_SIZE, mem_id, is_rsv)) {
+		USB_OFFLOAD_ERR("fail allocating ring (type:%d size:%d mem_id:%d seg_slot:%d)\n",
+			type, USB_OFFLOAD_TRB_SEGMENT_SIZE, mem_id, buf_seg_slot);
 		kfree(seg);
 		return NULL;
 	}
 	USB_OFFLOAD_MEM_DBG("Success allocated mem id: %d for USB Offload Seg %d\n",
 			mem_id, buf_seg_slot);
 
-	seg->trbs = (void *) buf_seg[buf_seg_slot].dma_area;
+	seg->trbs = (void *) buf->dma_area;
 	seg->dma = 0;
-	dma = buf_seg[buf_seg_slot].dma_addr;
+	dma = buf->dma_addr;
 	USB_OFFLOAD_MEM_DBG("seg->trbs:%p, dma:0x%llx, size:%lu\n",
 			seg->trbs,
 			dma,
-			sizeof(buf_seg[buf_seg_slot]));
+			sizeof(*buf));
 
 	if (!seg->trbs) {
 		USB_OFFLOAD_ERR("No seg->trbs\n");
@@ -1659,7 +1696,7 @@ static int xhci_mtk_usb_offload_alloc_segments_for_ring(struct xhci_hcd *xhci,
 			  (xhci->quirks & XHCI_AMD_0x96_HOST)));
 
 	prev = xhci_mtk_usb_offload_segment_alloc(xhci, cycle_state, max_packet, flags,
-			mem_id, is_rsv);
+			mem_id, is_rsv, type);
 	if (!prev)
 		return -ENOMEM;
 	num_segs--;
@@ -1669,7 +1706,7 @@ static int xhci_mtk_usb_offload_alloc_segments_for_ring(struct xhci_hcd *xhci,
 		struct xhci_segment	*next;
 
 		next = xhci_mtk_usb_offload_segment_alloc(
-					xhci, cycle_state, max_packet, flags, mem_id, is_rsv);
+					xhci, cycle_state, max_packet, flags, mem_id, is_rsv, type);
 		if (!next) {
 			prev = *first;
 			while (prev) {
@@ -1875,13 +1912,30 @@ fail:
 	return NULL;
 }
 
+static void xhci_mtk_usb_offload_free_segments_for_ev_ring(struct xhci_hcd *xhci,
+				struct xhci_segment *first)
+{
+	if (first->trbs) {
+		if (mtk_offload_free_mem(buf_ev_ring))
+			USB_OFFLOAD_ERR("Fail to free ev_ring\n");
+		first->trbs = NULL;
+	}
+
+	kfree(first->bounce_buf);
+	kfree(first);
+}
+
 static void xhci_mtk_free_ring(struct xhci_hcd *xhci, struct xhci_ring *ring)
 {
 	if (!ring)
 		return;
 
-	if (ring->first_seg)
-		xhci_mtk_usb_offload_free_segments_for_ring(xhci, ring->first_seg);
+	if (ring->first_seg) {
+		if (ring->type == TYPE_EVENT)
+			xhci_mtk_usb_offload_free_segments_for_ev_ring(xhci, ring->first_seg);
+		else
+			xhci_mtk_usb_offload_free_segments_for_ring(xhci, ring->first_seg);
+	}
 
 	kfree(ring);
 }
@@ -2322,6 +2376,7 @@ static long usb_offload_ioctl(struct file *fp,
 				uodev->adsp_exception, uodev->adsp_ready);
 
 		ret = send_init_ipi_msg_to_adsp(xhci_mem);
+		print_all_memory();
 		if (ret || (value == 0)) {
 			uodev->is_streaming = false;
 			uodev->tx_streaming = false;
@@ -2395,7 +2450,7 @@ static long usb_offload_ioctl(struct file *fp,
 		}
 
 		ret = usb_offload_enable_stream(&uainfo);
-
+		print_all_memory();
 		if (cmd == USB_OFFLOAD_ENABLE_STREAM && ret == 0) {
 			switch (uainfo.direction) {
 			case 0:
@@ -2514,6 +2569,7 @@ static int usb_offload_probe(struct platform_device *pdev)
 
 	buf_seg = NULL;
 	buf_ev_table = NULL;
+	buf_ev_ring = NULL;
 	uodev->event_ring = NULL;
 	uodev->erst = NULL;
 	uodev->num_entries_in_use = 0;
@@ -2578,6 +2634,7 @@ static int usb_offload_probe(struct platform_device *pdev)
 
 	buf_seg = kzalloc(sizeof(struct usb_offload_buffer) * BUF_SEG_SIZE, GFP_KERNEL);
 	buf_ev_table = kzalloc(sizeof(struct usb_offload_buffer), GFP_KERNEL);
+	buf_ev_ring = kzalloc(sizeof(struct usb_offload_buffer), GFP_KERNEL);
 
 	USB_OFFLOAD_INFO("Probe Success!!!");
 	return ret;
@@ -2601,6 +2658,9 @@ static int usb_offload_remove(struct platform_device *pdev)
 
 	kfree(buf_ev_table);
 	buf_ev_table = NULL;
+
+	kfree(buf_ev_ring);
+	buf_ev_ring = NULL;
 
 	kfree(buf_seg);
 	buf_seg = NULL;
