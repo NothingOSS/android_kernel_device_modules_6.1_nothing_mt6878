@@ -1468,7 +1468,6 @@
 		methods = "smc";
 		method-fid = /bits/ 16 <0x26a>;
 		quality = /bits/ 16 <900>;
-		power-domains = <&scpsys MT6989_POWER_DOMAIN_SSR>;
 	};
 
 	security_ao: security-ao@1040d000 {
