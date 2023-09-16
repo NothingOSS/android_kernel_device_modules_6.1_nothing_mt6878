@@ -99,6 +99,11 @@ enum mtk_dec_dtsi_m4u_port_idx {
 	NUM_MAX_VDEC_M4U_PORT
 };
 
+enum mtk_venc_smi_dump_mode {
+	MTK_VENC_POWERCTL_IN_KERNEL = 0,
+	MTK_VENC_POWERCTL_IN_VCP = 1
+};
+
 /**
  * struct mtk_video_fmt - Structure used to store information about pixelformats
  */

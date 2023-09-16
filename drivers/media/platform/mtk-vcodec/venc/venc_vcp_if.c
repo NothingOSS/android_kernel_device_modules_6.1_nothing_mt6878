@@ -681,7 +681,11 @@ int vcp_enc_ipi_handler(void *arg)
 			break;
 		case VCU_IPIMSG_ENC_SMI_BUS_DUMP:
 		{
-			mtk_smi_dbg_dump_for_venc();
+			if (msg->status == MTK_VENC_POWERCTL_IN_VCP)
+				mtk_smi_dbg_dump_for_venc();
+			else
+				mtk_smi_dbg_hang_detect("venc timeout");
+
 			msg->msg_id = AP_IPIMSG_ENC_SMI_BUS_DUMP_DONE;
 			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 		}
