@@ -776,86 +776,88 @@ static void mt6681_set_2nd_dl_src(struct mt6681_priv *priv, bool enable)
 
 	/* 2ND DL */
 	if (enable) {
-		/* Step1: Choose DL FS and DL enable and DL gain enable
-		 */
-		regmap_update_bits(
-			priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0_H,
-			AFE_2ND_DL_INPUT_MODE_CTL_MASK_SFT,
-			rate << AFE_2ND_DL_INPUT_MODE_CTL_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0_H,
-			AFE_2ND_DL_CH1_SATURATION_EN_CTL_MASK_SFT
-				| AFE_2ND_DL_CH2_SATURATION_EN_CTL_MASK_SFT,
-			0x3 << AFE_2ND_DL_CH2_SATURATION_EN_CTL_SFT);
+		if (priv->hp_hifi_mode == 0) {
+			/* Step1: Choose DL FS and DL enable and DL gain enable
+			 */
+			regmap_update_bits(
+				priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0_H,
+				AFE_2ND_DL_INPUT_MODE_CTL_MASK_SFT,
+				rate << AFE_2ND_DL_INPUT_MODE_CTL_SFT);
+			regmap_update_bits(
+				priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0_H,
+				AFE_2ND_DL_CH1_SATURATION_EN_CTL_MASK_SFT
+					| AFE_2ND_DL_CH2_SATURATION_EN_CTL_MASK_SFT,
+				0x3 << AFE_2ND_DL_CH2_SATURATION_EN_CTL_SFT);
 
-		regmap_update_bits(
-			priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0_L,
-			AFE_2ND_DL_MUTE_CH1_OFF_CTL_PRE_MASK_SFT
-				| AFE_2ND_DL_MUTE_CH2_OFF_CTL_PRE_MASK_SFT,
-			0x3 << AFE_2ND_DL_MUTE_CH2_OFF_CTL_PRE_SFT);
+			regmap_update_bits(
+				priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0_L,
+				AFE_2ND_DL_MUTE_CH1_OFF_CTL_PRE_MASK_SFT
+					| AFE_2ND_DL_MUTE_CH2_OFF_CTL_PRE_MASK_SFT,
+				0x3 << AFE_2ND_DL_MUTE_CH2_OFF_CTL_PRE_SFT);
 
-		regmap_update_bits(
-			priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
-			AFE_2ND_DL_VOICE_MODE_CTL_PRE_MASK_SFT,
-			0x0 << AFE_2ND_DL_VOICE_MODE_CTL_PRE_SFT);
+			regmap_update_bits(
+				priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
+				AFE_2ND_DL_VOICE_MODE_CTL_PRE_MASK_SFT,
+				0x0 << AFE_2ND_DL_VOICE_MODE_CTL_PRE_SFT);
 #ifdef ALIGN_SWING
-		regmap_update_bits(
-			priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
-			AFE_2ND_DL_GAIN_ON_CTL_PRE_MASK_SFT,
-			0x1 << AFE_2ND_DL_GAIN_ON_CTL_PRE_SFT);
-		/* Step2: DL digital gain control, 0xb50e, (-3dB),
-		 * 20*log(46350/2^16)
-		 */
-		regmap_write(priv->regmap,
-			     MT6681_AFE_ADDA_2ND_DL_SRC_CON1_H, 0xb5);
-		regmap_write(priv->regmap,
-			     MT6681_AFE_ADDA_2ND_DL_SRC_CON1_M, 0x0e);
+			regmap_update_bits(
+				priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
+				AFE_2ND_DL_GAIN_ON_CTL_PRE_MASK_SFT,
+				0x1 << AFE_2ND_DL_GAIN_ON_CTL_PRE_SFT);
+			/* Step2: DL digital gain control, 0xb50e, (-3dB),
+			 * 20*log(46350/2^16)
+			 */
+			regmap_write(priv->regmap,
+				     MT6681_AFE_ADDA_2ND_DL_SRC_CON1_H, 0xb5);
+			regmap_write(priv->regmap,
+				     MT6681_AFE_ADDA_2ND_DL_SRC_CON1_M, 0x0e);
 #endif
 
-		regmap_update_bits(
-			priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
-			AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_MASK_SFT,
-			0x1 << AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_SFT);
+			regmap_update_bits(
+				priv->regmap, MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
+				AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_MASK_SFT,
+				0x1 << AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_SFT);
 
-		/* MTKAIFV4 */
-		if (priv->dl_rate[0] != 0)
-			rate = mt6681_rate_transform(priv->dl_rate[0]);
-		else
-			rate = MT6681_ADDA_48000HZ;
-		/* config mtkaif_rx2 (pmic), 2ch, */
-		regmap_update_bits(
-			priv->regmap, MT6681_AFE_ADDA6_MTKAIFV4_RX_CFG0,
-			MT6681_ADDA6_MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
-			0x1 << MT6681_ADDA6_MTKAIFV4_RXIF_AFE_ON_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AFE_ADDA6_MTKAIFV4_RX_CFG0,
-			MT6681_ADDA6_MTKAIFV4_RXIF_FOUR_CHANNEL_MASK_SFT,
-			0x0 << MT6681_ADDA6_MTKAIFV4_RXIF_FOUR_CHANNEL_SFT);
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_ADDA6_MTKAIFV4_RX_CFG0,
-				   MT6681_ADDA6_MTKAIFV4_LOOPBACK1_MASK_SFT,
-				   0x0 << MT6681_ADDA6_MTKAIFV4_LOOPBACK1_SFT);
-		regmap_update_bits(
-			priv->regmap, MT6681_AFE_ADDA6_MTKAIFV4_RX_CFG0,
-			MT6681_ADDA6_MTKAIFV4_RXIF_INPUT_MODE_MASK_SFT,
-			rate << MT6681_ADDA6_MTKAIFV4_RXIF_INPUT_MODE_SFT);
-
+			/* MTKAIFV4 */
+			if (priv->dl_rate[0] != 0)
+				rate = mt6681_rate_transform(priv->dl_rate[0]);
+			else
+				rate = MT6681_ADDA_48000HZ;
+			/* config mtkaif_rx2 (pmic), 2ch, */
+			regmap_update_bits(
+				priv->regmap, MT6681_AFE_ADDA6_MTKAIFV4_RX_CFG0,
+				MT6681_ADDA6_MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
+				0x1 << MT6681_ADDA6_MTKAIFV4_RXIF_AFE_ON_SFT);
+			regmap_update_bits(
+				priv->regmap, MT6681_AFE_ADDA6_MTKAIFV4_RX_CFG0,
+				MT6681_ADDA6_MTKAIFV4_RXIF_FOUR_CHANNEL_MASK_SFT,
+				0x0 << MT6681_ADDA6_MTKAIFV4_RXIF_FOUR_CHANNEL_SFT);
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFE_ADDA6_MTKAIFV4_RX_CFG0,
+					   MT6681_ADDA6_MTKAIFV4_LOOPBACK1_MASK_SFT,
+					   0x0 << MT6681_ADDA6_MTKAIFV4_LOOPBACK1_SFT);
+			regmap_update_bits(
+				priv->regmap, MT6681_AFE_ADDA6_MTKAIFV4_RX_CFG0,
+				MT6681_ADDA6_MTKAIFV4_RXIF_INPUT_MODE_MASK_SFT,
+				rate << MT6681_ADDA6_MTKAIFV4_RXIF_INPUT_MODE_SFT);
+		}
 	} else {
+		if (priv->hp_hifi_mode == 0) {
 #ifdef ALIGN_SWING
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
-				   AFE_2ND_DL_GAIN_ON_CTL_PRE_MASK_SFT,
-				   0x0 << AFE_2ND_DL_GAIN_ON_CTL_PRE_SFT);
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
+					   AFE_2ND_DL_GAIN_ON_CTL_PRE_MASK_SFT,
+					   0x0 << AFE_2ND_DL_GAIN_ON_CTL_PRE_SFT);
 #endif
-		regmap_update_bits(
-			priv->regmap, MT6681_AFE_ADDA6_MTKAIFV4_RX_CFG0,
-			MT6681_ADDA6_MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
-			0x0 << MT6681_ADDA6_MTKAIFV4_RXIF_AFE_ON_SFT);
-		regmap_update_bits(priv->regmap,
-				   MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
-				   AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_MASK_SFT,
-				   0x0 << AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_SFT);
-
+			regmap_update_bits(
+				priv->regmap, MT6681_AFE_ADDA6_MTKAIFV4_RX_CFG0,
+				MT6681_ADDA6_MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
+				0x0 << MT6681_ADDA6_MTKAIFV4_RXIF_AFE_ON_SFT);
+			regmap_update_bits(priv->regmap,
+					   MT6681_AFE_ADDA_2ND_DL_SRC_CON0,
+					   AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_MASK_SFT,
+					   0x0 << AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_SFT);
+		}
 	}
 }
 static void mt6681_set_ulcf(struct mt6681_priv *priv, bool enable)
