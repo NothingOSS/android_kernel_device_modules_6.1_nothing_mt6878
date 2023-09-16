@@ -7,7 +7,7 @@
 
 #include <linux/rbtree.h>
 
-#define FPSGO_MAX_CONNECT_API_INFO_SIZE 20
+#define FPSGO_MAX_CONNECT_API_INFO_SIZE 200
 
 enum FPSGO_COM_ERROR {
 	FPSGO_COM_IS_RENDER,

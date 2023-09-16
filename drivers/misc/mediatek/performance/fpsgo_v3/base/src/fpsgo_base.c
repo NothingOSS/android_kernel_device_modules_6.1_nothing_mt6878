@@ -3499,6 +3499,10 @@ static ssize_t BQid_show(struct kobject *kobj,
 
 	fpsgo_render_tree_lock(__func__);
 
+	length = scnprintf(temp + posi, FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+		"total_BQ_id_num: %d\n", total_BQ_id_num);
+	posi += length;
+
 	for (n = rb_first(&BQ_id_list); n; n = rb_next(n)) {
 		pos = rb_entry(n, struct BQ_id, entry);
 		length = scnprintf(temp + posi,

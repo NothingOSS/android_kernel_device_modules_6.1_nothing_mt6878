@@ -2057,6 +2057,10 @@ static ssize_t connect_api_info_show
 
 	fpsgo_render_tree_lock(__func__);
 
+	length = scnprintf(temp + posi, FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+		"total_connect_api_info_num: %d\n", total_connect_api_info_num);
+	posi += length;
+
 	for (n = rb_first(&connect_api_tree); n != NULL; n = rb_next(n)) {
 		iter = rb_entry(n, struct connect_api_info, rb_node);
 		rcu_read_lock();
