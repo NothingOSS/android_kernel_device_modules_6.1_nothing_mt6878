@@ -93,6 +93,7 @@ f kernel/signal.c
 f kernel/smp.c
 f kernel/time/alarmtimer.c
 f kernel/time/timer.c
+f kernel/trace/ring_buffer.c
 f kernel/trace/trace.c
 f kernel/trace/trace_events.c
 f kernel/workqueue.c
