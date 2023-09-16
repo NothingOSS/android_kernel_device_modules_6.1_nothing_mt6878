@@ -238,6 +238,9 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 
 	tmp = bw;
 
+	if (mtk_crtc == NULL)
+		return 0;
+
 	if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
 		return 0;
 
@@ -283,7 +286,7 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 		MTK_DRM_OPT_HRT_BY_LARB)) {
 
-		comp = (mtk_crtc) ? mtk_ddp_comp_request_output(mtk_crtc) : NULL;
+		comp = mtk_ddp_comp_request_output(mtk_crtc);
 
 		if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DPTX) {
 			tmp = tmp / (mtk_crtc->is_dual_pipe + 1);
@@ -360,7 +363,7 @@ void mtk_disp_mmqos_bw_repaint(struct mtk_drm_private *priv)
 		for (k = 0; k < DDP_PATH_NR; k++) {
 			is_hrt = (mtk_crtc->ddp_mode < DDP_MODE_NR) ?
 				mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[k] : false;
-			for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
+			for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, k) {
 				//report SRT BW
 				ret |= mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW,
 						&flag);

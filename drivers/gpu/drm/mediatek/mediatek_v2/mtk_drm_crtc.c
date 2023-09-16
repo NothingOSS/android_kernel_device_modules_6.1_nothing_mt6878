@@ -10428,8 +10428,14 @@ void mtk_crtc_stop(struct mtk_drm_crtc *mtk_crtc, bool need_wait)
 		goto skip;
 
 	if (crtc_id == 2) {
-		int gce_event =
-			get_path_wait_event(mtk_crtc, mtk_crtc->ddp_mode);
+		int gce_event;
+
+		if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
+			gce_event =
+			get_path_wait_event(mtk_crtc, DDP_SECOND_PATH);
+		else
+			gce_event =
+			get_path_wait_event(mtk_crtc, DDP_FIRST_PATH);
 
 		if (gce_event > 0)
 			cmdq_pkt_wait_no_clear(cmdq_handle, gce_event);
@@ -17506,11 +17512,9 @@ static void mtk_crtc_connect_single_path_cmdq(struct drm_crtc *crtc,
 
 	for (i = 0; i < __mtk_crtc_path_len(mtk_crtc, ddp_mode, path_idx) - 1; ++i) {
 		struct mtk_ddp_comp *temp_comp;
-		unsigned int prev_id;
+		unsigned int prev_id = DDP_COMPONENT_ID_MAX;
 
-		if (i == 0) {
-			prev_id = DDP_COMPONENT_ID_MAX;
-		} else {
+		if (i > 0) {
 			comp = mtk_crtc_get_comp(crtc, ddp_mode, path_idx, i - 1);
 			if (comp)
 				prev_id = comp->id;

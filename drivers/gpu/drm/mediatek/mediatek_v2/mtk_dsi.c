@@ -2822,8 +2822,11 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 					mtk_crtc_vblank_irq(&mtk_crtc->base);
 				}
 
-				dsi->mode_switch_delay =
-					(dsi->mode_switch_delay > 0) ? --dsi->mode_switch_delay : 0;
+				if (dsi->mode_switch_delay > 0)
+					dsi->mode_switch_delay--;
+				else
+					dsi->mode_switch_delay = 0;
+
 			}
 		}
 
