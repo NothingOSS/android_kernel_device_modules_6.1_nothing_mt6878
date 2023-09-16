@@ -394,6 +394,8 @@ static int ffa_memory_send_write(struct args *args, void * __user user_args)
 	number_of_vm = (args->arg[4] >> 32) & 0x0FFFFFFFF;
 	mem_size = args->arg[4] & 0x0FFFFFFFF;
 
+	if ((number_of_vm > VM_NUMBER_MAX) || !number_of_vm || !vmids)
+		return -EINVAL;
 	if (mem_size) {
 		mem_size = PAGE_ALIGN(mem_size);
 		nr_pages = mem_size / PAGE_SIZE;
@@ -512,18 +514,20 @@ static int gz_ffa_memory_share(struct args *args, void * __user user_args)
 	number_of_vm = (args->arg[4] >> 32) & 0x0FFFFFFFF;
 	mem_size = args->arg[4] & 0x0FFFFFFFF;
 
-	ret = copy_from_user(vm_arr, vmids, number_of_vm * sizeof(unsigned short));
-	if (ret) {
-		FFA_ERR("copy_from_user error with ret=%d\n", ret);
-		return ret;
-	}
-
+	if ((number_of_vm > VM_NUMBER_MAX) || !number_of_vm || !vmids)
+		return -EINVAL;
 	if (mem_size) {
 		mem_size = PAGE_ALIGN(mem_size);
 		nr_pages = mem_size / PAGE_SIZE;
 	} else {
 		FFA_ERR("memory size is invalid : %d\n", mem_size);
 		return -EINVAL;
+	}
+
+	ret = copy_from_user(vm_arr, vmids, number_of_vm * sizeof(unsigned short));
+	if (ret) {
+		FFA_ERR("copy_from_user error with ret=%d\n", ret);
+		return ret;
 	}
 
 	for (i = 0; i < number_of_vm; i++)
@@ -658,6 +662,8 @@ static int gz_ffa_message_send(struct args *args, void * __user user_args)
 		return -ENODEV;
 
 	number_of_vm = (args->arg[0] >> 32) & 0x0FFFFFFFF;
+	if (number_of_vm > VM_NUMBER_MAX || !number_of_vm)
+		return -EINVAL;
 	ret = copy_from_user(vmids, (void *)args->arg[4], number_of_vm * sizeof(unsigned short));
 	if (ret) {
 		FFA_ERR("copy_from_user error with ret=%d\n", ret);
