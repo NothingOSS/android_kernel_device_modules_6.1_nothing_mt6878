@@ -83,29 +83,6 @@ static void gbe_boost_cpu(void)
 
 }
 
-static void update_runtime(struct gbe_boost_unit *iter)
-{
-	int i;
-	struct task_struct *p;
-
-	iter->runtime_ts_ns = ktime_to_ns(ktime_get());
-
-	for (i = 0; i < iter->dep_num; i++) {
-		rcu_read_lock();
-		p = find_task_by_vpid(iter->dep[i].pid);
-		if (!p) {
-			iter->dep[i].runtime = 0;
-			rcu_read_unlock();
-		} else {
-			get_task_struct(p);
-			rcu_read_unlock();
-			iter->dep[i].runtime = fpsgo_task_sched_runtime(p);
-			put_task_struct(p);
-		}
-	}
-
-}
-
 static int check_dep_run_and_update(struct gbe_boost_unit *iter)
 {
 	int i;
@@ -287,76 +264,7 @@ static inline void gbe_init_timer1(struct gbe_boost_unit *iter)
 }
 
 void fpsgo_comp2gbe_frame_update(int pid, unsigned long long bufID)
-{
-	struct gbe_boost_unit *iter;
-
-	mutex_lock(&gbe_lock);
-
-	if (!gbe_enable) {
-		mutex_unlock(&gbe_lock);
-		return;
-	}
-
-	hlist_for_each_entry(iter, &gbe_boost_units, hlist) {
-		if (iter->pid == pid && iter->bufID == bufID)
-			break;
-	}
-
-	if (iter == NULL) {
-		iter =
-			kzalloc(sizeof(*iter), GFP_KERNEL);
-
-		if (iter == NULL)
-			goto out;
-
-		iter->pid = pid;
-		iter->bufID = bufID;
-		iter->state = NEW_RENDER;
-		iter->boost_cnt = 0;
-		hlist_add_head(&iter->hlist,
-			&gbe_boost_units);
-	}
-
-	switch (iter->state) {
-	case NEW_RENDER:
-		iter->dep_num = gbe2xgf_get_dep_list(pid, MAX_DEP_NUM, iter->dep, bufID);
-		update_runtime(iter);
-
-		gbe_trace_count(iter->pid, iter->bufID,
-			iter->state, "gbe_state");
-		iter->state = FPS_UPDATE;
-		gbe_trace_count(iter->pid, iter->bufID,
-			iter->boost_cnt, "gbe_boost_cnt");
-		gbe_trace_count(iter->pid, iter->bufID,
-			iter->state, "gbe_state");
-
-		gbe_init_timer1(iter);
-		gbe_init_timer2(iter);
-
-		hrtimer_start(&iter->timer1, ms_to_ktime(TIMER1_MS),
-			HRTIMER_MODE_REL);
-		break;
-	case FPS_UPDATE:
-		iter->dep_num = gbe2xgf_get_dep_list(pid, MAX_DEP_NUM, iter->dep, bufID);
-		update_runtime(iter);
-
-		hrtimer_cancel(&iter->timer1);
-		hrtimer_start(&iter->timer1, ms_to_ktime(TIMER1_MS),
-			HRTIMER_MODE_REL);
-		break;
-	case BOOSTING:
-		iter->q_ts_ms = ktime_to_ms(ktime_get());
-		break;
-	case FREE:
-		break;
-	default:
-		break;
-	}
-
-out:
-	mutex_unlock(&gbe_lock);
-
-}
+{ }
 
 static ssize_t gbe2_timer1_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
