@@ -297,7 +297,10 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 			if (total > 0) {
 				bw_base = mtk_drm_primary_frame_bw(crtc);
 				if (priv->data->mmsys_id == MMSYS_MT6989) {
-					tmp1 = mtk_disp_larb_hrt_bw_MT6989(mtk_crtc, total, bw_base);
+					if (bw != 7000)
+						tmp1 = mtk_disp_larb_hrt_bw_MT6989(mtk_crtc, total, bw_base);
+					else
+						tmp1 = bw;
 				} else {
 					ovl_num = bw_base > 0 ? total / bw_base : 0;
 					tmp1 = ((bw_base / 2) > total) ? total : (ovl_num < 3) ?

@@ -4550,18 +4550,35 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	unsigned int max_fps = 0;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	int en = 0;
+	bool opt_mmqos = 0;
+	bool opt_mmdvfs = 0;
+	bool is_force_high_step = atomic_read(&mtk_crtc->force_high_step);
 
 	if (unlikely(!mtk_crtc || !mtk_crtc->qos_ctx)) {
 		DDPPR_ERR("%s invalid qos_ctx\n", __func__);
 		return;
 	}
 
+	if (priv) {
+		opt_mmqos = mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT);
+		opt_mmdvfs = mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMDVFS_SUPPORT);
+	} else {
+		DDPPR_ERR("%s priv is null\n", __func__);
+		return;
+	}
+
+	/* can't access backup slot since top clk off */
+	if (priv->power_state == false)
+		return;
+
 	if (mtk_crtc->path_data->is_discrete_path) {
-		if (mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_MMQOS_SUPPORT))
+		if (opt_mmqos)
 			mtk_disp_set_hrt_bw(mtk_crtc, bw);
 		return;
 	}
+
+	if (is_force_high_step)
+		bw = 7000; //max mmclk
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 		(crtc_idx == 0) && lyeblob_ids &&
@@ -4572,45 +4589,6 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	else
 		DDPINFO("%s bw=%u, last_hrt_req=%d, overlap=%d\n",
 			__func__, bw, mtk_crtc->qos_ctx->last_hrt_req, frame_weight);
-
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMDVFS_SUPPORT) &&
-		atomic_read(&mtk_crtc->force_high_step) == 1) {
-		unsigned int step_size = mtk_drm_get_mmclk_step_size();
-
-		if (!mtk_crtc->force_high_enabled) {
-			DDPMSG("start SET MMCLK step 0\n");
-			/* set MMCLK highest step for next 2048 frame */
-			mtk_crtc->force_high_enabled = 2048;
-		}
-		mtk_crtc->force_high_enabled--;
-
-		if (mtk_crtc->force_high_enabled > 0) {
-			if (mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_MMDVFS_SUPPORT))
-				mtk_drm_set_mmclk(crtc, step_size - 1, false, __func__);
-		} else {
-			en = 1;
-			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-			if (output_comp) {
-				DDPMSG("set MMCLK back, and enable underrun irq\n");
-				mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE, &en);
-				/* enable dsi underrun irq*/
-				mtk_ddp_comp_io_cmd(output_comp, NULL, IRQ_UNDERRUN, &en);
-			}
-			atomic_set(&mtk_crtc->force_high_step, 0);
-		}
-	} else {
-		if (mtk_crtc->force_high_enabled != 0) {
-			en = 1;
-			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-			if (output_comp) {
-				/* enable dsi underrun irq*/
-				DDPMSG("enable underrun irq after force_high_step set to 0\n");
-				mtk_ddp_comp_io_cmd(output_comp, NULL, IRQ_UNDERRUN, &en);
-			}
-		}
-		mtk_crtc->force_high_enabled = 0;
-	}
 
 	if (priv->data->has_smi_limitation && lyeblob_ids) {
 		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -4645,14 +4623,9 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		}
 	}
 
-	/* can't access backup slot since top clk off */
-	if (priv->power_state == false)
-		return;
-
 	/* Only update HRT information on path with HRT comp */
 	if (bw > mtk_crtc->qos_ctx->last_hrt_req) {
-		if (mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_MMQOS_SUPPORT))
+		if (opt_mmqos)
 			mtk_disp_set_hrt_bw(mtk_crtc, bw);
 
 		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
@@ -4669,6 +4642,43 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 		       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_IDX),
 		       crtc_state->prop_val[CRTC_PROP_LYE_IDX], ~0);
+
+	if (opt_mmdvfs && is_force_high_step) {
+		unsigned int step_size = mtk_drm_get_mmclk_step_size();
+
+		if (!mtk_crtc->force_high_enabled) {
+			DDPMSG("start SET MMCLK step 0\n");
+			/* set MMCLK highest step for next 2048 frame */
+			mtk_crtc->force_high_enabled = 2048;
+		}
+		mtk_crtc->force_high_enabled--;
+
+		if (mtk_crtc->force_high_enabled > 0) {
+			mtk_drm_set_mmclk(crtc, step_size - 1, false, __func__);
+		} else {
+			en = 1;
+			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+			if (output_comp) {
+				DDPMSG("set MMCLK back, and enable underrun irq\n");
+				mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE, &en);
+				/* enable dsi underrun irq*/
+				mtk_ddp_comp_io_cmd(output_comp, NULL, IRQ_UNDERRUN, &en);
+			}
+			atomic_set(&mtk_crtc->force_high_step, 0);
+		}
+	} else {
+		if (mtk_crtc->force_high_enabled != 0) {
+			en = 1;
+			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+			if (output_comp) {
+				/* enable dsi underrun irq*/
+				DDPMSG("enable underrun irq after force_high_step set to 0\n");
+				mtk_ddp_comp_io_cmd(output_comp, NULL, IRQ_UNDERRUN, &en);
+			}
+		}
+		mtk_crtc->force_high_enabled = 0;
+	}
+
 }
 
 static void copy_drm_disp_mode(struct drm_display_mode *src,
