@@ -394,21 +394,23 @@ TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Opp,
 
 TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Loading,
 
-	TP_PROTO(unsigned int cur, unsigned int mode),
+	TP_PROTO(unsigned int cur, unsigned int mode, unsigned int fb_adj),
 
-	TP_ARGS(cur, mode),
+	TP_ARGS(cur, mode, fb_adj),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, cur)
 		__field(unsigned int, mode)
+		__field(unsigned int, fb_adj)
 	),
 
 	TP_fast_assign(
 		__entry->cur = cur;
 		__entry->mode = mode;
+		__entry->fb_adj = fb_adj;
 	),
 
-	TP_printk("cur=%u, mode=%u", __entry->cur, __entry->mode)
+	TP_printk("cur=%u, mode=%u, fb_adj=%u", __entry->cur, __entry->mode, __entry->fb_adj)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Bound,

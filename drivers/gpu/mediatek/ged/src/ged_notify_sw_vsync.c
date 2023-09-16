@@ -886,6 +886,7 @@ void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 				timer_switch(false);
 		}
 		ged_log_buf_print(ghLogBuf_DVFS, "[GED_K] Buck-off");
+		ged_dvfs_notify_power_off();
 	}
 	// Update power on/off state
 	trace_tracing_mark_write(5566, "gpu_state", power_state);

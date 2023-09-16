@@ -70,6 +70,7 @@ struct ged_risky_bq_info {
 		int t_gpu_target;
 		unsigned long long risk;
 		unsigned long long ullWnd;
+		bool useTimeStampD;
 	} completed_bq, uncompleted_bq;
 
 	unsigned int total_gpu_completed_count;

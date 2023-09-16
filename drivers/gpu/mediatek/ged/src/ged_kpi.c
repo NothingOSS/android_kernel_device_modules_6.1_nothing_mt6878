@@ -109,6 +109,7 @@ struct GED_KPI_HEAD {
 	int t_gpu_w_latest_index;
 	unsigned int for_dcs_valid_cnt;
 	long long t_gpu_latest_uncompleted;   // largest uncomplete GPU time
+	int uncomplete_source;
 	struct list_head sList;
 	spinlock_t sListLock;
 	int i32QedBuffer_length;
@@ -2467,6 +2468,10 @@ static GED_BOOL ged_kpi_find_riskyBQ_func(unsigned long ulID,
 			info->uncompleted_bq.t_gpu_target = t_gpu_target;
 			info->uncompleted_bq.risk = risk_uncompleted;
 			info->uncompleted_bq.ullWnd = psHead->ullWnd;
+			if (psHead->uncomplete_source == GED_TIMESTAMP_TYPE_D)
+				info->uncompleted_bq.useTimeStampD = true;
+			else
+				info->uncompleted_bq.useTimeStampD = false;
 		}
 	}
 	return GED_TRUE;
@@ -2495,6 +2500,14 @@ GED_ERROR ged_kpi_timer_based_pick_riskyBQ(struct ged_risky_bq_info *info)
 	info->completed_bq.t_gpu_target /= 1000;
 	info->uncompleted_bq.t_gpu /= 1000;
 	info->uncompleted_bq.t_gpu_target /= 1000;
+
+	// if uncompleted gpu time is calculated by TimeStampD
+	// allow gpu freq to decrease in fallback mode
+	if (info->uncompleted_bq.useTimeStampD)
+		ged_dvfs_set_uncomplete_ts_type(GED_TIMESTAMP_TYPE_D);
+	else
+		ged_dvfs_set_uncomplete_ts_type(GED_TIMESTAMP_TYPE_1);
+
 	ret = GED_OK;
 
 	/* if return OK, completed BQ's t_gpu & t_gpu_target must be non-zero, but
@@ -2522,10 +2535,13 @@ static GED_BOOL ged_kpi_update_t_gpu_latest_uncompleted_fcn(unsigned long ulID,
 			unsigned long long ullTimeStampTemp;
 
 			// default GPU completion start time is queue
-			if ((psKPI->ulMask & GED_TIMESTAMP_TYPE_1) == 0)
+			if ((psKPI->ulMask & GED_TIMESTAMP_TYPE_1) == 0) {
 				ullTimeStampTemp = psKPI->ullTimeStampD;   // no queue yet
-			else
+				psHead->uncomplete_source = GED_TIMESTAMP_TYPE_D;
+			} else {
 				ullTimeStampTemp = psKPI->ullTimeStamp1;
+				psHead->uncomplete_source = GED_TIMESTAMP_TYPE_1;
+			}
 			t_gpu_uncomplete = current_timestamp - ullTimeStampTemp;
 
 			// 4/3 buffer per BQ for 120FPS/<120FPS producer

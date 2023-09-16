@@ -273,5 +273,9 @@ int ged_dvfs_get_stack_oppidx(void);
 int ged_dvfs_get_recude_mips_policy_state(void);
 unsigned int ged_dvfs_get_async_log_level(void);
 void ged_dvfs_set_slide_window_size(int size);
+void ged_dvfs_set_uncomplete_ts_type(int type);
+void ged_dvfs_notify_power_off(void);
+void ged_dvfs_set_fallback_tuning(int tuning);
+int ged_dvfs_get_fallback_tuning(void);
 
 #endif
