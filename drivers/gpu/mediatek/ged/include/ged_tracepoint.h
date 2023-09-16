@@ -508,6 +508,34 @@ TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Margin__Detail,
 		__entry->min_margin)
 );
 
+TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Fallback_Tuning,
+
+	TP_PROTO(int fallback_tuning, int fallback_idle, int uncomplete_type,
+			int uncomplete_flag, int lb_last_opp),
+
+	TP_ARGS(fallback_tuning, fallback_idle, uncomplete_type, uncomplete_flag, lb_last_opp),
+
+	TP_STRUCT__entry(
+		__field(int, fallback_tuning)
+		__field(int, fallback_idle)
+		__field(int, uncomplete_type)
+		__field(int, uncomplete_flag)
+		__field(int, lb_last_opp)
+	),
+
+	TP_fast_assign(
+		__entry->fallback_tuning = fallback_tuning;
+		__entry->fallback_idle = fallback_idle;
+		__entry->uncomplete_type = uncomplete_type;
+		__entry->uncomplete_flag = uncomplete_flag;
+		__entry->lb_last_opp = lb_last_opp;
+	),
+
+	TP_printk("fallback_tuning=%d, fallback_idle=%d, uncomplete_type=%d, uncomplete_flag=%d, lb_last_opp=%d",
+		__entry->fallback_tuning, __entry->fallback_idle,
+		__entry->uncomplete_type, __entry->uncomplete_flag, __entry->lb_last_opp)
+);
+
 /* DCS tracepoints */
 TRACE_EVENT(GPU_DVFS__Policy__DCS,
 

@@ -191,6 +191,7 @@ static int g_async_ratio_support;
 static int g_async_virtual_table_support;
 unsigned int get_min_oppidx;
 static int g_fallback_tuning = 50;
+static int g_lb_last_opp;
 
 void ged_dvfs_last_and_target_cb(int t_gpu_target, int boost_accum_gpu)
 {
@@ -252,6 +253,8 @@ static int g_tb_dvfs_margin_value_min_cmd;
 static int g_tb_dvfs_margin_step = GED_DVFS_TIMER_BASED_DVFS_MARGIN_STEP;
 static unsigned int g_tb_dvfs_margin_mode = DYNAMIC_TB_MASK | DYNAMIC_TB_PERF_MODE_MASK;
 static int g_loading_slide_window_size_cmd;
+static int g_fallback_idle;
+static int g_last_commit_type;
 
 static void _init_loading_ud_table(void)
 {
@@ -857,6 +860,7 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	if (ui32CurFreqID == -1)
 		return bCommited;
 
+	g_last_commit_type = eCommitType;
 	if (eCommitType == GED_DVFS_FRAME_BASE_COMMIT ||
 		eCommitType == GED_DVFS_LOADING_BASE_COMMIT)
 		g_last_def_commit_freq_id = stackNewFreqID;
@@ -1286,7 +1290,6 @@ int gx_fb_dvfs_margin = DEFAULT_DVFS_MARGIN;/* 10-bias */
 static int dvfs_margin_value = DEFAULT_DVFS_MARGIN;
 unsigned int dvfs_margin_mode = DYNAMIC_MARGIN_MODE_PERF;
 static int g_uncomplete_type;
-static int g_fallback_idle;
 
 static int dvfs_min_margin_inc_step = MIN_MARGIN_INC_STEP;
 static int dvfs_margin_low_bound = MIN_DVFS_MARGIN;
@@ -1683,6 +1686,8 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 
 		return gpu_freq_pre;
 	}
+	// reset if not in fallback mode
+	g_fallback_idle = 0;
 
 	spin_lock_irqsave(&gsGpuUtilLock, ui32IRQFlags);
 	if (is_fallback_mode_triggered)
@@ -2329,13 +2334,15 @@ static bool ged_dvfs_policy(
 				policy_state == POLICY_STATE_FORCE_LB_FALLBACK) &&
 				i32NewFreqID > ui32GPUFreq) {
 			bool enable_frequency_adjust = false;
+			trace_GPU_DVFS__Policy__Loading_based__Fallback_Tuning(
+				g_fallback_tuning, g_fallback_idle, g_uncomplete_type, uncomplete_flag, g_lb_last_opp);
 			// if gpu idle during fallback mode and uncomplete time is calculated by timeStampD
 			// allow gpu freq to decrease
 			if (g_fallback_tuning &&
 				g_fallback_idle &&
 				g_uncomplete_type == GED_TIMESTAMP_TYPE_D &&
-				ui32GPULoading < g_fallback_tuning &&
 				uncomplete_flag &&
+				i32NewFreqID <= g_lb_last_opp &&
 				i32NewFreqID < ged_get_opp_num_real())
 				enable_frequency_adjust = true;
 
@@ -2394,6 +2401,8 @@ static bool ged_dvfs_policy(
 	trace_GPU_DVFS__Policy__Loading_based__Opp(i32NewFreqID);
 	*pui32NewFreqID = (unsigned int)i32NewFreqID;
 	g_policy_tar_freq = ged_get_freq_by_idx(i32NewFreqID);
+	if (ged_get_policy_state() == POLICY_STATE_LB)
+		g_lb_last_opp = i32NewFreqID;
 
 	g_mode = 2;
 
@@ -3152,15 +3161,8 @@ int ged_dvfs_get_fallback_tuning(void)
 
 void ged_dvfs_notify_power_off(void)
 {
-	enum gpu_dvfs_policy_state policy_state;
-
-	policy_state = ged_get_policy_state();
-	if (policy_state == POLICY_STATE_FB_FALLBACK ||
-		policy_state == POLICY_STATE_LB_FALLBACK ||
-		policy_state == POLICY_STATE_FORCE_LB_FALLBACK)
+	if (g_last_commit_type == GED_DVFS_FALLBACK_COMMIT)
 		g_fallback_idle++;
-	else
-		g_fallback_idle = 0;
 }
 
 int ged_dvfs_get_recude_mips_policy_state(void)
