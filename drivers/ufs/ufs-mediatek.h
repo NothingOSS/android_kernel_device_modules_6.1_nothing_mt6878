@@ -257,6 +257,11 @@ struct ufs_mtk_host {
 	struct workqueue_struct *rq_workq;
 #endif
 
+#ifdef CONFIG_MTK_UFS_DEBUG_BUILD
+	/* clk debug */
+	struct notifier_block clk_notifier;
+#endif
+
 	struct semaphore rpmb_sem;
 	struct scsi_device *sdev_rpmb;
 	struct device *phy_dev;

@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0
 # Mediatek UFS extended features makefile
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/vendor/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/vendor/
 
 # must after -I$(DEVICE_MODULES_PATH)/drivers/ufs/
 ccflags-y += -I$(srctree)/drivers/ufs/
