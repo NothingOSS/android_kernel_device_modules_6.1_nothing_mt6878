@@ -864,7 +864,7 @@ static int tipc_open(struct inode *inode, struct file *filp)
 
 	if (ise_disable) {
 		pr_info("%s: ise trusty ipc dummy function\n", __func__);
-		return 0;
+		return -EPERM;
 	}
 
 	/* kick ise rx for multiple client applications running */
@@ -945,7 +945,7 @@ static long tipc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	if (ise_disable) {
 		pr_info("%s: ise trusty ipc dummy function\n", __func__);
-		return 0;
+		return -EPERM;
 	}
 
 	if (_IOC_TYPE(cmd) != TIPC_IOC_MAGIC)
@@ -1008,7 +1008,7 @@ static ssize_t tipc_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 
 	if (ise_disable) {
 		pr_info("%s: ise trusty ipc dummy function\n", __func__);
-		return 0;
+		return -EPERM;
 	}
 
 	mutex_lock(&dn->lock);
@@ -1076,7 +1076,7 @@ static ssize_t tipc_write_iter(struct kiocb *iocb, struct iov_iter *iter)
 
 	if (ise_disable) {
 		pr_info("%s: ise trusty ipc dummy function\n", __func__);
-		return 0;
+		return -EPERM;
 	}
 
 	if (filp->f_flags & O_NONBLOCK)
@@ -1120,7 +1120,7 @@ static unsigned int tipc_poll(struct file *filp, poll_table *wait)
 
 	if (ise_disable) {
 		pr_info("%s: ise trusty ipc dummy function\n", __func__);
-		return 0;
+		return -EPERM;
 	}
 
 	mutex_lock(&dn->lock);
@@ -1147,7 +1147,7 @@ static int tipc_release(struct inode *inode, struct file *filp)
 
 	if (ise_disable) {
 		pr_info("%s: ise trusty ipc dummy function\n", __func__);
-		return 0;
+		return -EPERM;
 	}
 
 	mutex_lock(&dn->timer_lock);
