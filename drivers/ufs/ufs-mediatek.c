@@ -884,20 +884,6 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 		if (!ufshcd_is_clkscaling_supported(hba) ||
 		    !hba->clk_scaling.is_enabled)
 			ufs_mtk_pm_qos(hba, on);
-	} else if (!on && status == POST_CHANGE) {
-		/* Clock scaling disable and in high speed */
-		if (!ufshcd_is_clkscaling_supported(hba) ||
-		    !hba->clk_scaling.is_enabled) {
-			if (hba->pwr_info.gear_rx >= UFS_HS_G5)
-				_ufs_mtk_clk_scale(hba, on);
-		}
-	} else if (on && status == PRE_CHANGE) {
-		/* Clock scaling disable and in high speed */
-		if (!ufshcd_is_clkscaling_supported(hba) ||
-		    !hba->clk_scaling.is_enabled) {
-			if (hba->pwr_info.gear_rx >= UFS_HS_G5)
-				_ufs_mtk_clk_scale(hba, on);
-		}
 	}
 
 	return ret;
