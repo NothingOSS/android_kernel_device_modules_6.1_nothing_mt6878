@@ -3183,12 +3183,10 @@ static int vcp_device_probe(struct platform_device *pdev)
 
 	vcp_ee_enable = 0;
 	vcpreg.secure_dump = 0;
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
 	of_property_read_u32(pdev->dev.of_node, "vcp-secure-dump"
 						, &vcpreg.secure_dump);
 	of_property_read_u32(pdev->dev.of_node, "vcp-ee-enable"
 						, &vcp_ee_enable);
-#endif
 
 	pr_notice("[VCP] vcpreg.secure_dump = %d, vcp_ee_enable = %d\n",
 			vcpreg.secure_dump, vcp_ee_enable);
