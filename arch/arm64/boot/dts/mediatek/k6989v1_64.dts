@@ -429,9 +429,10 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 #endif
 
 &pcie0 {
-	pinctrl-names = "default", "sleep";
+	pinctrl-names = "default", "sleep", "work";
 	pinctrl-0 = <&pcie0_pins_default>;
 	pinctrl-1 = <&pcie0_pins_sleep>;
+	pinctrl-2 = <&pcie0_pins_work>;
 	max-link-speed = <3>;
 	status = "okay";
 };
@@ -454,6 +455,20 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 &pio {
 	pcie0_pins_default: pcie0-default {
 		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO143__FUNC_GPIO143>;
+			output-low;
+		};
+
+		pins-cmd-dat1 {
+			pinmux = <PINMUX_GPIO144__FUNC_GPIO144>,
+				 <PINMUX_GPIO145__FUNC_GPIO145>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+
+	pcie0_pins_work: pcie0-work {
+		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO143__FUNC_PCIE_PERSTN>,
 				 <PINMUX_GPIO145__FUNC_PCIE_CLKREQN>;
 			bias-pull-up;
@@ -469,8 +484,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	pcie0_pins_sleep: pcie0-sleep {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO143__FUNC_GPIO143>;
-			bias-pull-down;
-			input-enable;
+			output-low;
 		};
 
 		pins-cmd-dat1 {
