@@ -91,7 +91,12 @@
 #define CONFIG_UART_DMA_DATA_RECORD
 #define DBG_STAT_WD_ACT		BIT(5)
 #define MAX_POLL_CNT_RX		200
+#define MAX_POLL_CNT_TX		200
 #define MAX_GLOBAL_VD_COUNT	5
+#define VFF_POLL_INTERVAL	100
+#define VFF_POLL_TIMEOUT	4000
+#define IBUF_POLL_INTERVAL	10
+#define IBUF_POLL_TIMEOUT	100
 
 struct uart_info {
 	unsigned int wpt_reg;
@@ -407,10 +412,7 @@ EXPORT_SYMBOL(mtk_uart_apdma_data_dump);
 
 int mtk_uart_get_apdma_rx_state(void)
 {
-
-
 	return atomic_read(&hub_dma_rx_chan->rxdma_state);
-
 }
 EXPORT_SYMBOL(mtk_uart_get_apdma_rx_state);
 
@@ -550,6 +552,54 @@ void mtk_uart_apdma_polling_rx_finish(void)
 		pr_info("[WARN]poll cnt is exhausted, DEBUG_STATUS:0x%x\n", rx_status);
 }
 EXPORT_SYMBOL(mtk_uart_apdma_polling_rx_finish);
+
+int mtk_uart_apdma_polling_tx_finish(void)
+{
+	int ret = 0, result = 0;
+	unsigned int tx_data_cnt = 0, vff_valid_size = 0;
+	unsigned int poll_cnt = MAX_POLL_CNT_TX;
+	bool is_irq_pending = true;
+	bool is_irq_active = true;
+
+	// Check apdma VFF valid size
+	vff_valid_size = mtk_uart_apdma_read(hub_dma_tx_chan, VFF_VALID_SIZE);
+	if (vff_valid_size != 0) {
+		ret = readx_poll_timeout(readl, hub_dma_tx_chan->base + VFF_VALID_SIZE,
+			vff_valid_size, vff_valid_size == 0, VFF_POLL_INTERVAL, VFF_POLL_TIMEOUT);
+		pr_info("%s: polling vff done: valid_size: %d, ret: %d\n", __func__, vff_valid_size, ret);
+	}
+
+	// Check apdma internal buf size
+	tx_data_cnt = mtk_uart_apdma_read(hub_dma_tx_chan, VFF_INT_BUF_SIZE);
+	if (tx_data_cnt != 0) {
+		ret = readx_poll_timeout(readl, hub_dma_tx_chan->base + VFF_INT_BUF_SIZE,
+			tx_data_cnt, tx_data_cnt == 0, IBUF_POLL_INTERVAL, IBUF_POLL_TIMEOUT);
+		pr_info("%s: polling int buf done: data_cnt: %d, ret: %d\n", __func__, tx_data_cnt, ret);
+	}
+
+	irq_get_irqchip_state(hub_dma_tx_chan->irq, IRQCHIP_STATE_PENDING, &is_irq_pending);
+	while (is_irq_pending && (poll_cnt > 0)) {
+		udelay(2);
+		irq_get_irqchip_state(hub_dma_tx_chan->irq, IRQCHIP_STATE_PENDING, &is_irq_pending);
+		poll_cnt--;
+	}
+
+	poll_cnt = MAX_POLL_CNT_TX;
+	irq_get_irqchip_state(hub_dma_tx_chan->irq, IRQCHIP_STATE_ACTIVE, &is_irq_active);
+	while (is_irq_active && (poll_cnt > 0)) {
+		udelay(2);
+		irq_get_irqchip_state(hub_dma_tx_chan->irq, IRQCHIP_STATE_ACTIVE, &is_irq_active);
+		poll_cnt--;
+	}
+
+	if (is_irq_pending || is_irq_active) {
+		pr_info("%s: irq_pending: %d, irq_active: %d\n", __func__, is_irq_pending, is_irq_active);
+		result = -1;
+	}
+
+	return result;
+}
+EXPORT_SYMBOL(mtk_uart_apdma_polling_tx_finish);
 #endif
 
 void mtk_uart_rx_setting(struct dma_chan *chan, int copied, int total)
@@ -612,11 +662,10 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 		left_data = mtk_uart_apdma_read(c, VFF_INT_BUF_SIZE);
 		poll_cnt--;
 	}
-	if (poll_cnt == 0)
-		pr_info("%s: poll_cnt[%d] is not MAX_POLLING_CNT!\n", __func__, poll_cnt);
 
-	if (c->chan_desc_count <= 0) {
-		pr_info("[WARN] %s, c->chan_desc_count[%d]\n", __func__, c->chan_desc_count);
+	if ((poll_cnt == 0) || (c->chan_desc_count <= 0)) {
+		pr_info("[WARN] %s, c->chan_desc_count[%d], poll_cnt[%d]\n",
+			__func__, c->chan_desc_count, poll_cnt);
 		return;
 	}
 	wpt = mtk_uart_apdma_read(c, VFF_ADDR);

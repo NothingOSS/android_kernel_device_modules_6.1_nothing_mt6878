@@ -100,7 +100,7 @@
 
 #define DMA_RX_POLLING_CNT	100
 
-#define FIFO_TX_STATUS_MASK  0xF
+#define FIFO_TX_STATUS_MASK  0x1F
 #define FIFO_TX_CNT_MASK 0x1F
 #define RXTRIG_THRESHOLD	0x19
 
@@ -461,7 +461,7 @@ static int mtk8250_polling_tx_fifo_empty(struct tty_struct *tty)
 	}
 
 	if (count == 0)
-		pr_info("polling failed, need clear fifo.\n");
+		pr_info("polling failed, tx_status: 0x%x, tx_cnt: 0x%x\n", tx_status, tx_cnt);
 
 exit:
 	return ret;
@@ -1065,6 +1065,21 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 	if (hub_uart_data != NULL && hub_uart_data->support_wakeup == 0)
 		/*clear ap uart*/
 		mtk8250_clear_wakeup();
+
+	/*set tx res*/
+	#if defined(KERNEL_mtk_uart_set_tx_res_status)
+		KERNEL_mtk_uart_set_tx_res_status(0);
+	#endif
+
+	if (hub_uart_data != NULL && hub_uart_data->support_wakeup == 1) {
+		/*polling tx dma finish*/
+		#if defined(KERNEL_mtk_uart_apdma_polling_tx_finish)
+		ret = KERNEL_mtk_uart_apdma_polling_tx_finish();
+		if (ret)
+			pr_info("%s polling tx fail but still run the clear rx flow!\n", __func__);
+		#endif
+	}
+
 	/*polling tx fifo empty*/
 	mtk8250_polling_tx_fifo_empty(tty);
 	/*clear fifo*/
@@ -1075,10 +1090,6 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 		pr_info("%s failed\n", __func__);
 		goto exit;
 	}
-	/*set tx res*/
-	#if defined(KERNEL_mtk_uart_set_tx_res_status)
-		KERNEL_mtk_uart_set_tx_res_status(0);
-	#endif
 	/*set rx res*/
 	#if defined(KERNEL_mtk_uart_set_rx_res_status)
 		KERNEL_mtk_uart_set_rx_res_status(0);
