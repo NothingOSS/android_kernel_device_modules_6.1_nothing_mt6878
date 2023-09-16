@@ -519,6 +519,7 @@ mgk_64_khwasan_k61_device_modules = [
     "drivers/regulator/mt6360-regulator.ko",
     "drivers/regulator/mt6363-regulator.ko",
     "drivers/regulator/mt6368-regulator.ko",
+    "drivers/regulator/mt6369-regulator.ko",
     "drivers/regulator/mt6373-regulator.ko",
     "drivers/regulator/mt6681-regulator.ko",
     "drivers/regulator/mtk-dvfsrc-regulator.ko",
