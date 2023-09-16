@@ -176,7 +176,7 @@ int pe4_hal_enable_termination(struct chg_alg_device *alg,
 	enum chg_idx chgidx, bool enable)
 {
 	struct pe40_hal *hal;
-	int ret;
+	int ret = 0;
 
 	if (alg == NULL)
 		return -EINVAL;
@@ -193,9 +193,9 @@ int pe4_hal_enable_termination(struct chg_alg_device *alg,
 
 int pe4_hal_get_uisoc(struct chg_alg_device *alg)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
-	int ret;
+	int ret = 0;
 	struct mtk_pe40 *pe4;
 
 	if (alg == NULL)
@@ -252,9 +252,9 @@ int pe4_hal_is_pd_adapter_ready(struct chg_alg_device *alg)
 
 int pe4_hal_get_battery_temperature(struct chg_alg_device *alg)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
-	int ret;
+	int ret = 0;
 	struct mtk_pe40 *pe4;
 
 	if (alg == NULL)
@@ -275,7 +275,8 @@ int pe4_hal_get_battery_temperature(struct chg_alg_device *alg)
 	} else {
 		ret = power_supply_get_property(bat_psy,
 			POWER_SUPPLY_PROP_TEMP, &prop);
-		ret = prop.intval / 10;
+		if (ret != -EINVAL)
+			ret = prop.intval / 10;
 	}
 
 	chr_debug("%s:%d\n", __func__,
@@ -424,8 +425,8 @@ int pe4_hal_force_disable_powerpath(struct chg_alg_device *alg,
 	enum chg_idx chgidx, bool disable)
 {
 	struct power_supply *chg_psy = NULL;
-	union power_supply_propval prop;
-	int ret;
+	union power_supply_propval prop = {0};
+	int ret = 0;
 
 	if (alg == NULL)
 		return -EINVAL;
@@ -435,7 +436,7 @@ int pe4_hal_force_disable_powerpath(struct chg_alg_device *alg,
 	else if (chgidx == CHG2)
 		chg_psy = power_supply_get_by_name("mtk-slave-charger");
 
-	if (IS_ERR_OR_NULL(chg_psy)) {
+	if (chg_psy == NULL || IS_ERR(chg_psy)) {
 		pe4_err("%s Couldn't get chg_psy %d\n", __func__, chgidx);
 		return -EINVAL;
 	}
@@ -514,7 +515,7 @@ int pe40_hal_get_adapter_output(struct chg_alg_device *alg,
 	struct pe4_pps_status *pe4_status)
 {
 	struct pe40_hal *hal;
-	int ret;
+	int ret = 0;
 
 	if (alg == NULL)
 		return -EINVAL;
@@ -557,9 +558,9 @@ int pe40_hal_get_adapter_status(struct chg_alg_device *alg,
 
 static int get_pmic_vbus(int *vchr)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	static struct power_supply *chg_psy;
-	int ret;
+	int ret = 0;
 
 	if (chg_psy == NULL)
 		chg_psy = power_supply_get_by_name("mtk_charger_type");
@@ -600,9 +601,9 @@ int pe4_hal_get_vbus(struct chg_alg_device *alg)
 
 int pe4_hal_get_vbat(struct chg_alg_device *alg)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
-	int ret;
+	int ret = 0;
 	struct mtk_pe40 *pe4;
 
 	if (alg == NULL)
@@ -623,7 +624,8 @@ int pe4_hal_get_vbat(struct chg_alg_device *alg)
 	} else {
 		ret = power_supply_get_property(bat_psy,
 			POWER_SUPPLY_PROP_VOLTAGE_NOW, &prop);
-		ret = prop.intval / 1000;
+		if (ret != -EINVAL)
+			ret = prop.intval / 1000;
 	}
 
 	pr_debug("%s:%d\n", __func__,
@@ -661,9 +663,9 @@ int pe4_hal_dump_registers(struct chg_alg_device *alg)
 
 int pe4_hal_get_ibat(struct chg_alg_device *alg)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
-	int ret;
+	int ret = 0;
 	struct mtk_pe40 *pe4;
 
 
@@ -685,7 +687,9 @@ int pe4_hal_get_ibat(struct chg_alg_device *alg)
 	} else {
 		ret = power_supply_get_property(bat_psy,
 			POWER_SUPPLY_PROP_CURRENT_NOW, &prop);
-		ret = prop.intval;
+		if (ret != -EINVAL)
+			ret = prop.intval;
+
 	}
 
 	pr_debug("%s:%d\n", __func__,
@@ -718,7 +722,7 @@ int pe4_hal_get_charger_type(struct chg_alg_device *alg)
 int pe4_hal_reset_eoc_state(struct chg_alg_device *alg)
 {
 	struct pe40_hal *hal;
-	int ret;
+	int ret = 0;
 
 	if (alg == NULL)
 		return -EINVAL;
@@ -736,7 +740,7 @@ int pe4_hal_reset_eoc_state(struct chg_alg_device *alg)
 int pe4_hal_reset_ta(struct chg_alg_device *alg, enum chg_idx chgidx)
 {
 	struct pe40_hal *hal;
-	int ret;
+	int ret = 0;
 
 	if (alg == NULL)
 		return -EINVAL;
@@ -842,7 +846,7 @@ int pe4_hal_charger_enable_chip(struct chg_alg_device *alg,
 	enum chg_idx chgidx, bool enable)
 {
 	struct pe40_hal *hal;
-	int ret;
+	int ret = 0;
 
 	if (alg == NULL)
 		return -EINVAL;
@@ -861,7 +865,7 @@ int pe4_hal_is_charger_enable(struct chg_alg_device *alg,
 	enum chg_idx chgidx, bool *en)
 {
 	struct pe40_hal *hal;
-	int ret;
+	int ret = 0;
 
 	if (alg == NULL)
 		return -EINVAL;
@@ -898,7 +902,7 @@ int pe4_hal_get_min_charging_current(struct chg_alg_device *alg,
 	enum chg_idx chgidx, u32 *uA)
 {
 	struct pe40_hal *hal;
-	int ret;
+	int ret = 0;
 
 	if (alg == NULL)
 		return -EINVAL;
@@ -916,7 +920,7 @@ int pe4_hal_set_eoc_current(struct chg_alg_device *alg,
 	enum chg_idx chgidx, u32 uA)
 {
 	struct pe40_hal *hal;
-	int ret;
+	int ret = 0;
 
 	if (alg == NULL)
 		return -EINVAL;
@@ -934,7 +938,7 @@ int pe4_hal_get_min_input_current(struct chg_alg_device *alg,
 	enum chg_idx chgidx, u32 *uA)
 {
 	struct pe40_hal *hal;
-	int ret;
+	int ret = 0;
 
 	if (alg == NULL)
 		return -EINVAL;
