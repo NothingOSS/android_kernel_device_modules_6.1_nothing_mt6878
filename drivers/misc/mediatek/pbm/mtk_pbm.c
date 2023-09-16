@@ -632,6 +632,8 @@ static void pbm_cpu_frequency_tracer(void *ignore, unsigned int frequency, unsig
 
 	ts[0] = sched_clock();
 #endif
+	if (uisoc > BAT_PERCENT_LIMIT + 1 || uisoc < 0)
+		return;
 
 	policy = cpufreq_cpu_get(cpu_id);
 	if (!policy)
