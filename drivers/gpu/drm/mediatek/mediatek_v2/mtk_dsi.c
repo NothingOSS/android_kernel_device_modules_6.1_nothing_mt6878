@@ -1031,6 +1031,46 @@ static void mtk_dsi_phy_reset(struct mtk_dsi *dsi)
 	mtk_dsi_mask(dsi, DSI_CON_CTRL, DSI_PHY_RESET, 0);
 }
 
+static void mtk_dsi_runtime_phy_reset(struct mtk_dsi *dsi)
+{
+	if (dsi == NULL)
+		return;
+
+	/* assume MIPITX SW CTRL already configure to LP11 after exit ULPS */
+	/* config & enable MIPITX sw ctrl */
+	mtk_mipi_tx_sw_control_en(dsi->phy, 1);
+
+	/* reset PHY */
+	mtk_dsi_phy_reset(dsi);
+
+	/* disable & reset MIPITX sw ctrl */
+	mtk_mipi_tx_sw_control_en(dsi->phy, 0);
+}
+
+static void mtk_dsi_runtime_phy_reset_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle)
+{
+	struct mtk_ddp_comp *comp;
+
+	if (dsi == NULL)
+		return;
+
+	/* assume MIPITX SW CTRL already configure to LP11 after exit ULPS */
+	/* config & enable MIPITX sw ctrl */
+	mtk_mipi_tx_sw_control_en_gce(dsi->phy, handle, 1);
+
+	/* reset PHY */
+	comp = &dsi->ddp_comp;
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_CON_CTRL, 0, DSI_PHY_RESET);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_CON_CTRL, DSI_PHY_RESET, DSI_PHY_RESET);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_CON_CTRL, 0, DSI_PHY_RESET);
+
+	/* disable & reset MIPITX sw ctrl */
+	mtk_mipi_tx_sw_control_en_gce(dsi->phy, handle, 0);
+}
+
 static void mtk_dsi_clear_rxrd_irq(struct mtk_dsi *dsi)
 {
 	mtk_dsi_mask(dsi, DSI_INTSTA, LPRX_RD_RDY_INT_FLAG, 0);
@@ -2171,6 +2211,7 @@ static void mtk_dsi_self_pattern(struct mtk_dsi *dsi)
 }
 #endif
 
+/* both CMD and VDO would use it */
 static void mtk_dsi_start(struct mtk_dsi *dsi)
 {
 	writel(0, dsi->regs + DSI_START);
@@ -2389,6 +2430,8 @@ static void mtk_dsi_ulps_enter_end(struct mtk_dsi *dsi)
 	mtk_dsi_mask(dsi, DSI_INTEN, SLEEPIN_ULPS_DONE_INT_FLAG, 0);
 
 	mtk_mipi_tx_pre_oe_config(dsi->phy, 0);
+	mtk_mipi_tx_oe_config(dsi->phy, 0);
+	mtk_mipi_tx_dpn_config(dsi->phy, 0);
 	mtk_mipi_tx_sw_control_en(dsi->phy, 1);
 
 	/* set lane num = 0 */
@@ -2968,6 +3011,8 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 	dsi->ulps_wakeup_prd = wake_up_prd;
 
 	mtk_mipi_tx_pre_oe_config(dsi->phy, 0);
+	mtk_mipi_tx_oe_config(dsi->phy, 0);
+	mtk_mipi_tx_dpn_config(dsi->phy, 0);
 	mtk_mipi_tx_sw_control_en(dsi->phy, 1);
 
 	mtk_dsi_mask(dsi, DSI_TXRX_CTRL, LANE_NUM, _lanes_to_val(dsi->lanes) << 2);
@@ -2986,6 +3031,13 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 
 	/* free sw control */
 	mtk_mipi_tx_sw_control_en(dsi->phy, 0);
+
+	/* set MIPITX SW CTRL to LP11 if reset PHY is required */
+	if (dsi->driver_data && dsi->driver_data->require_phy_reset) {
+		/* pre oe config at phy reset already */
+		mtk_mipi_tx_oe_config(dsi->phy, 1);
+		mtk_mipi_tx_dpn_config(dsi->phy, 1);
+	}
 
 	if (async == true)
 		mtk_dsi_wait_ulps_event_async(dsi);
@@ -4323,6 +4375,7 @@ static int mtk_dsi_start_vdo_mode(struct mtk_ddp_comp *comp, void *handle)
 	return 0;
 }
 
+/* this function is for trigger VDO mode */
 static int mtk_dsi_trigger(struct mtk_ddp_comp *comp, void *handle)
 {
 	if (!handle) {
@@ -4369,6 +4422,8 @@ int mtk_dsi_read_gce(struct mtk_ddp_comp *comp, void *handle,
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_CMDQ_SIZE,
 		0x2, CMDQ_SIZE);
 
+	if (dsi->driver_data->require_phy_reset)
+		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_START,
 		0x0, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_START,
@@ -4966,30 +5021,10 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 	case MTK_TRIG_FLAG_PRE_TRIGGER:
 
 	/* only MT6989 require PHY reset so far */
-		if (!priv || !(priv->data) ||
-			(priv->data->mmsys_id != MMSYS_MT6989))
+		if (dsi->driver_data && dsi->driver_data->require_phy_reset != true)
 			break;
 
-		/* config & enable MIPITX sw ctrl */
-		mtk_mipi_tx_pre_oe_config_gce(dsi->phy, handle, 1);
-		mtk_mipi_tx_oe_config_gce(dsi->phy, handle, 1);
-		mtk_mipi_tx_dpn_config_gce(dsi->phy, handle, 1);
-		mtk_mipi_tx_sw_control_en_gce(dsi->phy, handle, 1);
-
-		/* reset PHY */
-		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DSI_CON_CTRL, 0, DSI_PHY_RESET);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DSI_CON_CTRL, DSI_PHY_RESET, DSI_PHY_RESET);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DSI_CON_CTRL, 0, DSI_PHY_RESET);
-
-		/* disable & reset MIPITX sw ctrl */
-		mtk_mipi_tx_sw_control_en_gce(dsi->phy, handle, 0);
-		mtk_mipi_tx_pre_oe_config_gce(dsi->phy, handle, 0);
-		mtk_mipi_tx_oe_config_gce(dsi->phy, handle, 0);
-		mtk_mipi_tx_dpn_config_gce(dsi->phy, handle, 0);
-		mtk_mipi_tx_sw_control_en_gce(dsi->phy, handle, 0);
+		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
 
 		break;
 	case MTK_TRIG_FLAG_TRIGGER:
@@ -5734,6 +5769,10 @@ static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 	DDPINFO("%s +,\n", __func__);
 
 	mtk_dsi_poll_for_idle(dsi, handle);
+
+	if (dsi->driver_data->require_phy_reset)
+		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
+
 	if (para_table->is_hs == 1)
 		mtk_ddp_write_mask(comp, DIS_EOT, DSI_TXRX_CTRL, DIS_EOT,
 				handle);
@@ -5873,6 +5912,9 @@ static void mtk_dsi_cmdq_grp_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 
 	mtk_dsi_poll_for_idle(dsi, handle);
 	mtk_ddp_write_mask(comp, DIS_EOT, DSI_TXRX_CTRL, DIS_EOT, handle);
+
+	if (dsi->driver_data->require_phy_reset)
+		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
 
 	for (j = 0; j < para_size; j++) {
 		msg.tx_buf = para_table[j].para_list,
@@ -6031,6 +6073,11 @@ void mipi_dsi_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 					dsi->slave_dsi->ddp_comp.regs_pa + DSI_CON_CTRL,
 					0x0, DSI_DUAL_EN);
 		}
+
+		if (dsi->driver_data->require_phy_reset) {
+			/* CMD mode require phy reset only */
+			mtk_dsi_runtime_phy_reset_gce(dsi, handle);
+		}
 		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
 			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
@@ -6097,6 +6144,10 @@ void mipi_dsi_dcs_write_gce_dyn(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 	mtk_dsi_poll_for_idle(dsi, handle);
 	mtk_dsi_cmdq_gce(dsi, handle, &msg);
 
+	if (dsi->driver_data->require_phy_reset) {
+		/* CMD mode require phy reset only */
+		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
+	}
 	cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
 		dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 	cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
@@ -6142,6 +6193,11 @@ void mipi_dsi_dcs_write_gce2(struct mtk_dsi *dsi, struct cmdq_pkt *dummy,
 		mtk_dsi_poll_for_idle(dsi, handle);
 
 		mtk_dsi_cmdq_gce(dsi, handle, &msg);
+
+		if (dsi->driver_data->require_phy_reset) {
+			/* CMD mode require phy reset only */
+			mtk_dsi_runtime_phy_reset_gce(dsi, handle);
+		}
 
 		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
 			dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
@@ -6334,6 +6390,10 @@ int mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi,
 
 			mtk_dsi_poll_for_idle(dsi, handle);
 
+			/* only 1st iteration need reset */
+			if (i == 0 && dsi->driver_data->require_phy_reset)
+				mtk_dsi_runtime_phy_reset_gce(dsi, handle);
+
 			if (dsi->slave_dsi) {
 				cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
 						dsi->slave_dsi->ddp_comp.regs_pa + DSI_CON_CTRL,
@@ -6479,6 +6539,10 @@ int mtk_dsi_ddic_handler_write_by_gce(struct mtk_dsi *dsi,
 
 	if (dsi_mode == 0) { /* CMD mode HS/LP */
 		mtk_dsi_poll_for_idle(dsi, handle);
+
+		if (dsi->driver_data->require_phy_reset)
+			mtk_dsi_runtime_phy_reset_gce(dsi, handle);
+
 		if (dsi->slave_dsi) {
 			cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
 					dsi->slave_dsi->ddp_comp.regs_pa + DSI_CON_CTRL,
@@ -6688,6 +6752,12 @@ static int mtk_dsi_ddic_handler_grp_write_by_gce(struct mtk_dsi *dsi,
 				0, DSI_DUAL_EN);
 	}
 	mtk_dsi_poll_for_idle(dsi, handle);
+
+	if (dsi->driver_data->require_phy_reset) {
+		/* CMD mode require phy reset only */
+		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
+	}
+
 	mtk_ddp_write_mask(comp, DIS_EOT, DSI_TXRX_CTRL, DIS_EOT,
 			handle);
 
@@ -6794,6 +6864,9 @@ static void _mtk_mipi_dsi_read_gce(struct mtk_dsi *dsi,
 		t1.Data1 = tx_buf[1];
 	else
 		t1.Data1 = 0;
+
+	if (dsi->driver_data->require_phy_reset)
+		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
 
 	if (dsi->slave_dsi) {
 		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
@@ -7326,6 +7399,9 @@ static ssize_t mtk_dsi_host_send_cmd(struct mtk_dsi *dsi,
 	mtk_dsi_wait_idle(dsi, flag, 2000, NULL);
 	mtk_dsi_irq_data_clear(dsi, flag);
 	mtk_dsi_cmdq(dsi, msg);
+	if (dsi->driver_data->require_phy_reset)
+		mtk_dsi_runtime_phy_reset(dsi);
+
 	mtk_dsi_start(dsi);
 
 	if (MTK_DSI_HOST_IS_READ(msg->type)) {
@@ -7367,6 +7443,8 @@ static ssize_t mtk_dsi_host_send_cmd_dual_sync(struct mtk_dsi *dsi,
 		mtk_dsi_dual_enable(dsi->slave_dsi, true);
 	}
 
+	if (dsi->driver_data->require_phy_reset)
+		mtk_dsi_runtime_phy_reset(dsi);
 	mtk_dsi_start(dsi);
 
 	if (!mtk_dsi_wait_idle(dsi, flag, 2000, NULL)) {
@@ -9267,6 +9345,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			*out_params = "mediatek, DSI1_TE-eint";
 		break;
 	case COMP_REG_START:
+		/* COMP REG START is for start VDO mode */
 		mtk_dsi_trigger(comp, handle);
 		break;
 	case CONNECTOR_PANEL_ENABLE:
@@ -10347,6 +10426,13 @@ void mtk_dsi_first_cfg(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_CMD_TYPE1_HS, 0,
 				CMD_HS_HFP_BLANKING_HS_EN);
 	}
+
+	/* set MIPITX SW CTRL state to LP11 for runtime reset PHY */
+	if (dsi->driver_data && dsi->driver_data->require_phy_reset) {
+		mtk_mipi_tx_pre_oe_config(dsi->phy, 1);
+		mtk_mipi_tx_oe_config(dsi->phy, 1);
+		mtk_mipi_tx_dpn_config(dsi->phy, 1);
+	}
 }
 
 static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
@@ -10594,6 +10680,7 @@ static const struct mtk_dsi_driver_data mt6989_dsi_driver_data = {
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
 	.bubble_rate = 115,
 	.n_verion = VER_N4,
+	.require_phy_reset = true,
 };
 
 static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {

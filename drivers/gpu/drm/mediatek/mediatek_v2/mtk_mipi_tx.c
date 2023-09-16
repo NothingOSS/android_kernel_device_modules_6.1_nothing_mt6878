@@ -1641,35 +1641,28 @@ void mtk_mipi_tx_sw_control_en(struct phy *phy, bool en)
 #ifndef CONFIG_FPGA_EARLY_PORTING
 	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
 
-	DDPINFO("%s, en=%d\n", __func__, en);
 	if (en) {
-		mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d0_sw_ctl_en,
-			DSI_D0_SW_CTL_EN | BIT(8));
-		mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d1_sw_ctl_en,
-			DSI_D1_SW_CTL_EN | BIT(8));
-		mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d2_sw_ctl_en,
-			DSI_D2_SW_CTL_EN | BIT(8));
-		mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d3_sw_ctl_en,
-			DSI_D3_SW_CTL_EN | BIT(8));
-		mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->ck_sw_ctl_en,
-			DSI_CK_SW_CTL_EN | BIT(8));
+		writel(DSI_D0_SW_CTL_EN | BIT(8),
+				mipi_tx->regs + mipi_tx->driver_data->d0_sw_ctl_en);
+		writel(DSI_D1_SW_CTL_EN | BIT(8),
+				mipi_tx->regs + mipi_tx->driver_data->d1_sw_ctl_en);
+		writel(DSI_D2_SW_CTL_EN | BIT(8),
+				mipi_tx->regs + mipi_tx->driver_data->d2_sw_ctl_en);
+		writel(DSI_D3_SW_CTL_EN | BIT(8),
+				mipi_tx->regs + mipi_tx->driver_data->d3_sw_ctl_en);
+		writel(DSI_CK_SW_CTL_EN | BIT(8),
+				mipi_tx->regs + mipi_tx->driver_data->ck_sw_ctl_en);
 		if (mipi_tx->driver_data->ck1_sw_ctl_en)
-			mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->ck1_sw_ctl_en,
-					     BIT(0) | BIT(8));
+			writel(BIT(0) | BIT(8),
+					mipi_tx->regs + mipi_tx->driver_data->ck1_sw_ctl_en);
 	} else {
-		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->d0_sw_ctl_en,
-			DSI_D0_SW_CTL_EN | BIT(8));
-		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->d1_sw_ctl_en,
-			DSI_D1_SW_CTL_EN | BIT(8));
-		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->d2_sw_ctl_en,
-			DSI_D2_SW_CTL_EN | BIT(8));
-		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->d3_sw_ctl_en,
-			DSI_D3_SW_CTL_EN | BIT(8));
-		mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->ck_sw_ctl_en,
-			DSI_CK_SW_CTL_EN | BIT(8));
+		writel(0x0, mipi_tx->regs + mipi_tx->driver_data->d0_sw_ctl_en);
+		writel(0x0, mipi_tx->regs + mipi_tx->driver_data->d1_sw_ctl_en);
+		writel(0x0, mipi_tx->regs + mipi_tx->driver_data->d2_sw_ctl_en);
+		writel(0x0, mipi_tx->regs + mipi_tx->driver_data->d3_sw_ctl_en);
+		writel(0x0, mipi_tx->regs + mipi_tx->driver_data->ck_sw_ctl_en);
 		if (mipi_tx->driver_data->ck1_sw_ctl_en)
-			mtk_mipi_tx_clear_bits(mipi_tx, mipi_tx->driver_data->ck1_sw_ctl_en,
-					       BIT(0) | BIT(8));
+			writel(0x0, mipi_tx->regs + mipi_tx->driver_data->ck1_sw_ctl_en);
 	}
 #endif
 }
@@ -1712,6 +1705,79 @@ void mtk_mipi_tx_pre_oe_config(struct phy *phy, bool en)
 			mtk_mipi_tx_clear_bits(mipi_tx,
 					       mipi_tx->driver_data->ck1c_sw_lptx_pre_oe, 1);
 	}
+#endif
+}
+
+void mtk_mipi_tx_oe_config(struct phy *phy, bool en)
+{
+#ifndef CONFIG_FPGA_EARLY_PORTING
+	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
+	unsigned int val = (en) ? 0x1 : 0x0;
+
+	if ((mipi_tx->driver_data->d2_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->d2c_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->d0_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->d0c_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->ck_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->ckc_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->d1_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->d1c_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->d3_sw_lptx_oe == 0) ||
+		(mipi_tx->driver_data->d3c_sw_lptx_oe == 0))
+		return;
+
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d2_sw_lptx_oe);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d2c_sw_lptx_oe);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d0_sw_lptx_oe);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d0c_sw_lptx_oe);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->ck_sw_lptx_oe);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->ckc_sw_lptx_oe);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d1_sw_lptx_oe);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d1c_sw_lptx_oe);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d3_sw_lptx_oe);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d3c_sw_lptx_oe);
+
+	if (mipi_tx->driver_data->ck1_sw_lptx_oe)
+		writel(val, mipi_tx->regs + mipi_tx->driver_data->ck1_sw_lptx_oe);
+	if (mipi_tx->driver_data->ck1c_sw_lptx_oe)
+		writel(val, mipi_tx->regs + mipi_tx->driver_data->ck1c_sw_lptx_oe);
+#endif
+}
+
+void mtk_mipi_tx_dpn_config(struct phy *phy, bool en)
+{
+#ifndef CONFIG_FPGA_EARLY_PORTING
+	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
+	unsigned int val = (en) ? 0x1 : 0x0;
+
+	if ((mipi_tx->driver_data->d2_sw_lptx_dp == 0) ||
+		(mipi_tx->driver_data->d0_sw_lptx_dp == 0) ||
+		(mipi_tx->driver_data->ck_sw_lptx_dp == 0) ||
+		(mipi_tx->driver_data->d1_sw_lptx_dp == 0) ||
+		(mipi_tx->driver_data->d3_sw_lptx_dp == 0) ||
+		(mipi_tx->driver_data->d2_sw_lptx_dn == 0) ||
+		(mipi_tx->driver_data->d0_sw_lptx_dn == 0) ||
+		(mipi_tx->driver_data->ck_sw_lptx_dn == 0) ||
+		(mipi_tx->driver_data->d1_sw_lptx_dn == 0) ||
+		(mipi_tx->driver_data->d3_sw_lptx_dn == 0))
+		return;
+
+	/* set DP */
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d2_sw_lptx_dp);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d0_sw_lptx_dp);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->ck_sw_lptx_dp);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d1_sw_lptx_dp);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d3_sw_lptx_dp);
+	if (mipi_tx->driver_data->ck1_sw_lptx_dp)
+		writel(val, mipi_tx->regs + mipi_tx->driver_data->ck1_sw_lptx_dp);
+	/* set DN */
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d2_sw_lptx_dn);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d0_sw_lptx_dn);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->ck_sw_lptx_dn);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d1_sw_lptx_dn);
+	writel(val, mipi_tx->regs + mipi_tx->driver_data->d3_sw_lptx_dn);
+	if (mipi_tx->driver_data->ck1_sw_lptx_dn)
+		writel(val, mipi_tx->regs + mipi_tx->driver_data->ck1_sw_lptx_dn);
 #endif
 }
 
@@ -4908,7 +4974,6 @@ void mtk_mipi_tx_sw_control_en_gce(struct phy *phy, void *handle, bool en)
 #ifndef CONFIG_FPGA_EARLY_PORTING
 	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
 
-	DDPINFO("%s, en=%d\n", __func__, en);
 	if (en) {
 		cmdq_pkt_write(handle, mipi_tx->cmdq_base,
 			mipi_tx->regs_pa + mipi_tx->driver_data->d0_sw_ctl_en,

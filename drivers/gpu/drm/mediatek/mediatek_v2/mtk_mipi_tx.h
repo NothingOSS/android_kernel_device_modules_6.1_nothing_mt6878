@@ -217,6 +217,8 @@ void mtk_mipi_tx_sw_control_en_gce(struct phy *phy, void *handle, bool en);
 
 void mtk_mipi_tx_sw_control_en(struct phy *phy, bool en);
 void mtk_mipi_tx_pre_oe_config(struct phy *phy, bool en);
+void mtk_mipi_tx_oe_config(struct phy *phy, bool en);
+void mtk_mipi_tx_dpn_config(struct phy *phy, bool en);
 inline struct mtk_mipi_tx *mtk_mipi_tx_from_clk_hw(struct clk_hw *hw);
 bool mtk_is_mipi_tx_enable(struct clk_hw *hw);
 void mtk_mipi_tx_clear_bits(struct mtk_mipi_tx *mipi_tx, u32 offset, u32 bits);
