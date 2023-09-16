@@ -651,6 +651,9 @@ static int create_sys_fs(void)
 			boost_inst[i].attr[n].show = attr_show;
 			boost_inst[i].attr[n].store = attr_store;
 
+			if (strcmp(type_name[i], "vcore") == 0)
+				boost_inst[i].attr[n].attr.mode = 0600;
+
 			ret = device_create_file(boost_inst[i].dev,
 				&boost_inst[i].attr[n]);
 			if (ret < 0) {
@@ -762,11 +765,12 @@ static void boost_ep_enable(void *unused, struct mtu3_ep *mep)
 	struct usb_composite_dev *cdev;
 	struct usb_function *f = NULL;
 	struct usb_descriptor_header **f_desc;
-	int addr;
-	int type;
+	int addr, type, i;
 
-	usb_boost_set_para_and_arg(TYPE_VCORE, vcore_dft_para,
-		ARRAY_SIZE(vcore_dft_para), &dram_vcore_dft_arg);
+	for (i = 0 ; i < _TYPE_MAXID ; i++) {
+		if (strcmp(type_name[i], "vcore") == 0)
+			boost_inst[i].para[1] = vcore_dft_para[1];
+	}
 
 	cdev = get_gadget_data(&mep->mtu->g);
 	if (!cdev || !cdev->config)
@@ -793,10 +797,12 @@ find_f:
 
 static void boost_ep_disable(void *unused, struct mtu3_ep *mep)
 {
-	int vcore_para[_ATTR_PARA_RW_MAXID] = {1, 3, 300, 0};
+	int i;
 
-	usb_boost_set_para_and_arg(TYPE_VCORE, vcore_para,
-		ARRAY_SIZE(vcore_para), &dram_vcore_dft_arg);
+	for (i = 0 ; i < _TYPE_MAXID ; i++) {
+		if (strcmp(type_name[i], "vcore") == 0)
+			boost_inst[i].para[1] = 3;
+	}
 
 	if (!mep->epnum)
 		return;

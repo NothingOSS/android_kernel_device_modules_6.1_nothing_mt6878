@@ -141,6 +141,11 @@ static int vcore_hold(struct act_arg_obj *arg)
 	val = 0;
 	device_property_read_u32(gdev, "vcore", &val);
 
+	if (arg->arg1 > 0) {
+		val = arg->arg1;
+		USB_BOOST_NOTICE("%s: input vcore (%d)\n", __func__, val);
+	}
+
 	if (of_device_is_compatible(np, "mediatek,mt6897-usb-boost") && reg && (val > 0)) {
 		ret = regulator_set_voltage(reg, val, INT_MAX);
 		if (!ret)
