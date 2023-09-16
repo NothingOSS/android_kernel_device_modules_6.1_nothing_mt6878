@@ -37,11 +37,6 @@ static bool __sec_get_rnd(struct sec_rng_priv *priv, uint32_t *val)
 {
 	bool ret = false;
 	struct arm_smccc_res res;
-	struct device *dev;
-
-	dev = priv->dev;
-
-	pm_runtime_get_sync(dev);
 
 	if (!strncmp("smc", priv->method, strlen("smc")))
 		arm_smccc_smc(HWRNG_SMC_FAST_CALL_VAL(priv->func_num),
@@ -63,7 +58,6 @@ static bool __sec_get_rnd(struct sec_rng_priv *priv, uint32_t *val)
 	ret = true;
 
 __end:
-	pm_runtime_put_sync(dev);
 
 	return ret;
 }
@@ -148,8 +142,6 @@ static int sec_rng_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to register rng device: %d\n", ret);
 		return ret;
 	}
-
-	pm_runtime_enable(priv->dev);
 
 	proc_create("sec_rng_dbg", 0660, NULL, &sec_rng_dbg_fops);
 
