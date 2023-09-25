@@ -23842,7 +23842,6 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 			if ((m_id == 0 || m_id == 3) && ddp->data->wakeup_pf_wq)
 				mtk_wakeup_pf_wq(m_id);
 
-#ifndef CONFIG_FPGA_EARLY_PORTING
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 			if (m_id == 0) {
 				if (irq_time_index < IRQ_DEBUG_MAX) {
@@ -23857,7 +23856,6 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 					irq_time_index++;
 				}
 			}
-#endif
 #endif
 
 			/* Wake up Vblank config record thread */
