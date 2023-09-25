@@ -34,6 +34,11 @@
 #include <soc/mediatek/emi.h>
 #endif /* CONFIG_MTK_EMI */
 
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+#include <linux/debugfs.h>
+#include <mt-plat/mrdump.h>
+#endif
+
 #define CREATE_TRACE_POINTS
 #include "mmqos_events.h"
 
@@ -72,6 +77,19 @@ enum mmqos_rw_type {
 };
 
 static u32 ftrace_ena;
+
+struct last_record {
+	u64 larb_port_update_time;
+	u32 larb_port_node_id;
+	u32 larb_port_avg_bw;
+	u32 larb_port_peak_bw;
+	u64 larb_update_time;
+	u32 larb_node_id;
+	u32 larb_avg_bw;
+	u32 larb_peak_bw;
+};
+
+struct last_record *last_rec;
 
 struct comm_port_bw_record {
 	u8 idx[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM];
@@ -126,6 +144,7 @@ struct mtk_mmqos {
 	bool qos_bound;
 	u32 disp_virt_larbs[MMQOS_MAX_DISP_VIRT_LARB_NUM];
 	struct proc_dir_entry *proc;
+	struct proc_dir_entry *last_proc;
 	void __iomem *vmmrc_base;
 	u32 apmcu_mask_offset;
 	u32 apmcu_mask_bit;
@@ -725,6 +744,22 @@ static void update_hrt_bw(struct mtk_mmqos *mmqos)
 
 }
 
+static void record_last_larb(u32 node_id, u32 avg_bw, u32 peak_bw)
+{
+	last_rec->larb_update_time = sched_clock();
+	last_rec->larb_node_id = node_id;
+	last_rec->larb_avg_bw = avg_bw;
+	last_rec->larb_peak_bw = peak_bw;
+}
+
+static void record_last_larb_port(u32 node_id, u32 avg_bw, u32 peak_bw)
+{
+	last_rec->larb_port_update_time = sched_clock();
+	last_rec->larb_port_node_id = node_id;
+	last_rec->larb_port_avg_bw = avg_bw;
+	last_rec->larb_port_peak_bw = peak_bw;
+}
+
 static void record_comm_port_bw(u32 comm_id, u32 port_id, u32 larb_id,
 	u32 avg_bw, u32 peak_bw, u32 l_avg, u32 l_peak)
 {
@@ -932,6 +967,8 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				pr_notice("ignore larb%d\n", src->id);
 			break;
 		}
+
+		record_last_larb(src->id, src->avg_bw, src->peak_bw);
 
 		if (chnn_id) {
 #ifdef ENABLE_INTERCONNECT_V1
@@ -1174,6 +1211,10 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
 				icc_to_MBps(src->v2_mix_bw),
 				value);
+
+		record_last_larb_port(src->id,
+			larb_port_node->base->icc_node->avg_bw,
+			larb_port_node->base->icc_node->peak_bw);
 
 		if (mmqos_met_enabled()) {
 			if (!larb_port_node->is_write) {
@@ -1473,6 +1514,42 @@ static void cam_hrt_bw_full_dump(struct seq_file *file)
 
 }
 
+static int mmqos_last_dump(struct seq_file *file, void *data)
+{
+	u64 ts;
+	u64 ns;
+
+	seq_puts(file, "last larb port:\n");
+	ts = last_rec->larb_port_update_time;
+	ns = do_div(ts, 1000000000);
+	seq_printf(file, "[%5llu.%06llu] %#x %u %u\n",
+		(u64)ts, ns / 1000,
+		last_rec->larb_port_node_id,
+		last_rec->larb_port_avg_bw,
+		last_rec->larb_port_peak_bw);
+	seq_puts(file, "last larb:\n");
+	ts = last_rec->larb_update_time;
+	ns = do_div(ts, 1000000000);
+	seq_printf(file, "[%5llu.%06llu] %#x %u %u",
+		(u64)ts, ns / 1000,
+		last_rec->larb_node_id,
+		last_rec->larb_avg_bw,
+		last_rec->larb_peak_bw);
+	return 0;
+}
+
+static int mmqos_last_debug_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mmqos_last_dump, inode->i_private);
+}
+
+static const struct proc_ops mmqos_last_debug_fops = {
+	.proc_open = mmqos_last_debug_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
 static int mmqos_bw_dump(struct seq_file *file, void *data)
 {
 	u32 comm_id = 0, chnn_id = 0, port_id = 0, larb_id = 0;
@@ -1537,7 +1614,9 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	struct mmqos_hrt *hrt;
 	struct device_node *np;
 	struct platform_device *comm_pdev, *larb_pdev;
-	struct proc_dir_entry *dir, *proc;
+	struct proc_dir_entry *dir, *proc, *last_proc;
+	phys_addr_t pa = 0ULL;
+	unsigned long va;
 
 	mmqos = devm_kzalloc(&pdev->dev, sizeof(*mmqos), GFP_KERNEL);
 	if (!mmqos)
@@ -1548,6 +1627,18 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	smi_imu = devm_kzalloc(&pdev->dev, sizeof(*smi_imu), GFP_KERNEL);
 	if (!smi_imu)
 		return -ENOMEM;
+
+	last_rec = kzalloc(sizeof(*last_rec), GFP_KERNEL);
+	if (!last_rec)
+		return -ENOMEM;
+
+	va = (unsigned long) last_rec;
+	pa = __pa_nodebug(va);
+	if (va && pa) {
+		ret = mrdump_mini_add_extra_file(va, pa, PAGE_SIZE, "LAST_MMQOS");
+		if (ret)
+			MMQOS_DBG("failed:%d va:%#lx pa:%pa", ret, va, &pa);
+	}
 
 	chn_bw_rec = devm_kzalloc(&pdev->dev,
 		sizeof(*chn_bw_rec), GFP_KERNEL);
@@ -1852,6 +1943,12 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 		pr_notice("proc_create failed:%ld\n", PTR_ERR(proc));
 	else
 		mmqos->proc = proc;
+
+	last_proc = proc_create("last_mmqos", 0444, dir, &mmqos_last_debug_fops);
+	if (IS_ERR_OR_NULL(last_proc))
+		pr_notice("last proc_create failed:%ld\n", PTR_ERR(last_proc));
+	else
+		mmqos->last_proc = last_proc;
 
 	return 0;
 err:
