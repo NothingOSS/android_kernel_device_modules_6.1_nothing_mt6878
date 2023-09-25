@@ -3357,6 +3357,32 @@ static void _mtk_crtc_atmoic_addon_module_disconnect(
 			crtc, ddp_mode, lye_state, cmdq_handle);
 }
 
+static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
+{
+	struct drm_plane *plane = NULL;
+	unsigned int plane_mask = 0;
+
+	if (crtc && crtc->state) {
+		plane_mask = crtc->state->plane_mask;
+	} else {
+		DDPPR_ERR("%s invalid crtc\n", __func__);
+		return;
+	}
+
+	drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
+		struct mtk_plane_state *plane_state =
+			to_mtk_plane_state(plane->state);
+		struct mtk_ddp_comp *comp = mtk_crtc_get_plane_comp(crtc, plane_state);
+
+		DDPINFO("%s ovl_id:%d lye_id:%d, ext_lye_id:%d\n", __func__,
+					plane_state->comp_state.comp_id,
+					plane_state->comp_state.lye_id,
+					plane_state->comp_state.ext_lye_id);
+
+		mtk_ddp_comp_io_cmd(comp, NULL, OVL_PHY_USAGE, plane_state);
+	}
+}
+
 void
 _mtk_crtc_wb_addon_module_connect(
 				      struct drm_crtc *crtc,
@@ -5908,15 +5934,6 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 				mtk_crtc_disp_mode_switch_begin(crtc,
 					old_crtc_state, crtc_state,
 					cmdq_handle);
-
-				hrt_valid = lyeblob_ids->hrt_valid;
-				if (hrt_valid == true) {
-					mtk_crtc_update_hrt_state(
-						crtc, lyeblob_ids->frame_weight,
-						lyeblob_ids, cmdq_handle);
-					DRM_MMP_MARK(layering_blob, lyeblob_ids->lye_idx,
-						lyeblob_ids->frame_weight | 0xffff0000);
-				}
 			}
 
 			if (mtk_drm_helper_get_opt(mtk_drm->helper_opt, MTK_DRM_OPT_SPHRT) &&
@@ -5946,6 +5963,25 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 
 			if (lyeblob_ids->ddp_blob_id)
 				mtk_crtc_atomic_ddp_config(crtc, old_mtk_state, cmdq_handle);
+
+			if (index == 0 || sphrt_enable) {
+
+				if (mtk_drm_helper_get_opt(mtk_drm->helper_opt,
+						MTK_DRM_OPT_MMQOS_SUPPORT)) {
+					memset(mtk_crtc->usage_ovl_fmt, 0,
+						sizeof(mtk_crtc->usage_ovl_fmt));
+					mtk_crtc_update_ovl_hrt_usage(crtc);
+				}
+
+				hrt_valid = lyeblob_ids->hrt_valid;
+				if (hrt_valid == true) {
+					mtk_crtc_update_hrt_state(
+						crtc, lyeblob_ids->frame_weight,
+						lyeblob_ids, cmdq_handle);
+					DRM_MMP_MARK(layering_blob, lyeblob_ids->lye_idx,
+						lyeblob_ids->frame_weight | 0xffff0000);
+				}
+			}
 			break;
 		} else if (lyeblob_ids->lye_idx < prop_lye_idx) {
 			if (lyeblob_ids->ref_cnt) {
@@ -9812,6 +9848,8 @@ void mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc)
 		else
 			mtk_ddp_comp_layer_config(comp, i, plane_state, cmdq_handle);
 
+		mtk_ddp_comp_io_cmd(comp, NULL, OVL_PHY_USAGE, plane_state);
+
 #ifdef IF_ZERO
 		if (comp->id == DDP_COMPONENT_OVL2_2L
 			&& mtk_crtc->is_dual_pipe) {
@@ -10973,6 +11011,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	mtk_crtc_connect_addon_module(crtc);
 
 	/* 9. restore OVL setting */
+	memset(mtk_crtc->usage_ovl_fmt, 0, sizeof(mtk_crtc->usage_ovl_fmt));
 	if (!only_output)
 		mtk_crtc_restore_plane_setting(mtk_crtc);
 
@@ -11714,6 +11753,7 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 	atomic_set(&mtk_crtc->pq_data->pipe_info_filled, 1);
 
 	/*5. Enable Frame done IRQ &  process first config */
+	mtk_crtc->total_srt = 0;
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		mtk_ddp_comp_first_cfg(comp, &cfg, cmdq_handle);
 		mtk_ddp_comp_io_cmd(comp, cmdq_handle, IRQ_LEVEL_NORMAL, NULL);
@@ -13346,6 +13386,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 #ifdef MTK_DRM_ADVANCE
 	if (mtk_crtc->fake_layer.fake_layer_mask)
 		update_frame_weight(crtc, mtk_crtc_state);
+
 	mtk_crtc_update_ddp_state(crtc, old_crtc_state, mtk_crtc_state,
 				  mtk_crtc_state->cmdq_handle);
 
@@ -13367,8 +13408,6 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		}
 	}
 #endif
-
-	memset(mtk_crtc->usage_ovl_fmt, 0, sizeof(mtk_crtc->usage_ovl_fmt));
 
 	if ((priv->usage[crtc_idx] == DISP_OPENING) &&
 		comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_WDMA)

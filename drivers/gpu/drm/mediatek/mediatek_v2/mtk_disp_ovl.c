@@ -850,7 +850,7 @@ bool is_right_ovl_comp_MT6985(struct mtk_ddp_comp *comp)
 	}
 }
 
-unsigned int mtk_ovl_phy_id_MT6989(struct mtk_ddp_comp *comp)
+static unsigned int mtk_ovl_phy_mapping_MT6989(struct mtk_ddp_comp *comp)
 {
 	switch (comp->id) {
 	case DDP_COMPONENT_OVL0_2L:
@@ -868,6 +868,22 @@ unsigned int mtk_ovl_phy_id_MT6989(struct mtk_ddp_comp *comp)
 	default:
 		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
 		return 0;
+	}
+}
+
+static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
+			struct mtk_ddp_comp *comp, struct mtk_plane_state *plane_state)
+{
+	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
+	unsigned int lye_id = plane_state->comp_state.lye_id;
+	unsigned int ext_lye_id = plane_state->comp_state.ext_lye_id;
+	unsigned int fmt = plane_state->pending.format;
+	unsigned int phy_id = 0;
+
+	if (ovl->data->ovl_phy_mapping) {
+		phy_id = ovl->data->ovl_phy_mapping(comp);
+		if (ext_lye_id == 0)
+			mtk_crtc->usage_ovl_fmt[(phy_id + lye_id)] = mtk_get_format_bpp(fmt);
 	}
 }
 
@@ -2625,16 +2641,6 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		}
 	}
 
-	if (priv->data->mmsys_id == MMSYS_MT6989) {
-		if (pending->enable) {//enable and not ext layer
-			if (ext_lye_idx == 0)
-				mtk_crtc->usage_ovl_fmt[(mtk_ovl_phy_id_MT6989(comp) + lye_idx)] =
-					mtk_get_format_bpp(fmt);
-		} else {
-			mtk_crtc->usage_ovl_fmt[(mtk_ovl_phy_id_MT6989(comp) + lye_idx)] = 0;
-		}
-	}
-
 #define _LAYER_CONFIG_FMT \
 	"%s %s idx:%d lye_idx:%d ext_idx:%d en:%d fmt:0x%x " \
 	"addr:0x%lx compr:%d con:0x%x offset:0x%x lye_cap:%x mml:%d\n"
@@ -4179,6 +4185,17 @@ other:
 
 		break;
 	}
+	case OVL_PHY_USAGE: {
+		struct mtk_plane_state *plane_state;
+		struct mtk_drm_crtc *mtk_crtc;
+
+		plane_state = (struct mtk_plane_state *)params;
+		mtk_crtc = comp->mtk_crtc;
+
+		mtk_ovl_update_hrt_usage(mtk_crtc, comp, plane_state);
+
+		break;
+	}
 	default:
 		break;
 	}
@@ -5246,6 +5263,7 @@ static const struct mtk_disp_ovl_data mt6989_ovl_driver_data = {
 	//.is_right_ovl_comp = &is_right_ovl_comp_MT6985,
 	.frame_done_event = &ovl_comp_frame_done_event_MT6989,
 	.ovlsys_mapping = &mtk_ovl_sys_mapping_MT6989,
+	.ovl_phy_mapping = &mtk_ovl_phy_mapping_MT6989,
 };
 
 static const struct compress_info compr_info_mt6897  = {

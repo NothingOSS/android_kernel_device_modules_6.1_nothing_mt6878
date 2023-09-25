@@ -212,13 +212,13 @@ static unsigned int mtk_disp_larb_hrt_bw_MT6989(struct mtk_drm_crtc *mtk_crtc,
 	for (i = 0; i < max_ovl_phy_layer; i++) {
 		if (mtk_crtc->usage_ovl_fmt[i]) {
 			if (i == 0 || i == 4 || i == 9)
-				subcomm_bw_sum[0] += bw_base * (mtk_crtc->usage_ovl_fmt[i] / 4);
+				subcomm_bw_sum[0] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
 			else if (i == 1 || i == 5 || i == 8)
-				subcomm_bw_sum[1] += bw_base * (mtk_crtc->usage_ovl_fmt[i] / 4);
+				subcomm_bw_sum[1] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
 			else if (i == 2 || i == 7 || i == 11)
-				subcomm_bw_sum[2] += bw_base * (mtk_crtc->usage_ovl_fmt[i] / 4);
+				subcomm_bw_sum[2] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
 			else if (i == 3 || i == 6 || i == 10)
-				subcomm_bw_sum[3] += bw_base * (mtk_crtc->usage_ovl_fmt[i] / 4);
+				subcomm_bw_sum[3] += bw_base * mtk_crtc->usage_ovl_fmt[i] / 4;
 		}
 	}
 
