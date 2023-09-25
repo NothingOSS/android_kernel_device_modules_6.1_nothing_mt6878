@@ -1496,7 +1496,7 @@ mtk_smi_larb_mt6989_bw_thrt_en[MTK_LARB_NR_MAX][2] = {
 	{0, 11}, {0, 12}, {0, 0}, {0, 0}, {0, 7},
 	{0, 0}, {0, 0}, {0, 3}, {0, 13}, {0, 0}, /*20*/
 	{0, 0}, {0, 11}, {0, 11}, {0, 31}, {4, 11},
-	{4, 11}, {0, 0}, {0, 9}, {0, 0}, {0, 0}, /*30*/
+	{4, 11}, {0, 3}, {0, 9}, {0, 0}, {0, 0}, /*30*/
 	{0, 0}, {2, 4}, {0, 3}, {4, 5}, {3, 4},
 	{0, 0}, {0, 0}, {0, 14}, {0, 18}, {0, 15}, /*40*/
 	{0, 31}, {0, 31}, {0, 0}, {0, 0}, {0, 0},
@@ -1634,7 +1634,7 @@ mtk_smi_larb_mt6989_misc[MTK_LARB_NR_MAX][SMI_LARB_MISC_NR] = {
 	{{SMI_LARB_CMD_THRT_CON, 0x370256}, {INT_SMI_LARB_CMD_THRT_CON, 0x370256},
 	 {SMI_LARB_SW_FLAG, 0x1}, {SMI_LARB_DISABLE_ULTRA, 0x7f0},}, /*LARB26*/
 	{{SMI_LARB_CMD_THRT_CON, 0x370256}, {INT_SMI_LARB_CMD_THRT_CON, 0x370256},
-	 {SMI_LARB_SW_FLAG, 0x1},}, /*LARB27*/
+	 {SMI_LARB_SW_FLAG, 0x1}, {SMI_LARB_DISABLE_ULTRA, 0x7},}, /*LARB27*/
 	{{SMI_LARB_CMD_THRT_CON, 0x370256}, {INT_SMI_LARB_CMD_THRT_CON, 0x370256},
 	 {SMI_LARB_SW_FLAG, 0x1}, {SMI_LARB_DISABLE_ULTRA, 0xffffffff},}, /*LARB28*/
 	{{SMI_LARB_CMD_THRT_CON, 0x370256}, {INT_SMI_LARB_CMD_THRT_CON, 0x370256},
