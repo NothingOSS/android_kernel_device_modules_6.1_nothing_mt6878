@@ -410,8 +410,10 @@ void mtk_vdec_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 	struct mtk_vcodec_dev *dev = ctx->dev;
 	struct vdec_inst *inst = (struct vdec_inst *) ctx->drv_handle;
 
-	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT))
+	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT) || IS_ERR_OR_NULL(inst->vsi)) {
+		mtk_v4l2_err("[VDVFS][%d] inst/vsi is err or null", ctx->id);
 		return;
+	}
 
 	dev->vdec_dvfs_params.target_freq = inst->vsi->target_freq;
 	ctx->dec_params.operating_rate = inst->vsi->op_rate;
@@ -617,6 +619,11 @@ void mtk_vdec_prepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, unsigned long *i
 		return;
 	}
 	vsi_data = inst_handle->vsi;
+
+	if (IS_ERR_OR_NULL(vsi_data)) {
+		mtk_v4l2_err("%s [VDVFS][%d] vsi is err or null", __func__, ctx->id);
+		return;
+	}
 
 	inst = get_inst(ctx);
 	if (!inst)

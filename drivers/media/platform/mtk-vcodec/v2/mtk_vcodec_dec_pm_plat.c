@@ -439,6 +439,11 @@ void mtk_vdec_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT) || inst == (void *) 0)
 		return;
 
+	if (IS_ERR_OR_NULL(inst) || IS_ERR_OR_NULL(inst->vsi)) {
+		mtk_v4l2_err("[VDVFS][%d] inst/vsi is err or null", ctx->id);
+		return;
+	}
+
 	dev->vdec_dvfs_params.target_freq = inst->vsi->target_freq;
 	ctx->dec_params.operating_rate = inst->vsi->op_rate;
 	mtk_vcodec_cpu_grp_aware_hint(ctx, inst->vsi->cpu_top_grp_aware);
@@ -660,11 +665,16 @@ void mtk_vdec_prepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, unsigned long *i
 
 	inst_handle = (struct vdec_inst *) ctx->drv_handle;
 	if (IS_ERR_OR_NULL(inst_handle)) {
-		mtk_v4l2_err("%s [VDVFS][%d] find null drv handler", __func__, ctx->id);
+		mtk_v4l2_err("[VDVFS][%d] find null drv handler", ctx->id);
 		return;
 	}
 
 	vsi_data = inst_handle->vsi;
+
+	if (IS_ERR_OR_NULL(vsi_data)) {
+		mtk_v4l2_err("[VDVFS][%d] vsi is err or null", ctx->id);
+		return;
+	}
 
 	inst = get_inst(ctx);
 	if (!inst)
