@@ -19,8 +19,10 @@
 #include <sound/soc.h>
 #include <sound/core.h>
 
+#define BYPASS_FOR_61_BRINGUP
+
 #include "mt6369.h"
-#if IS_ENABLED(CONFIG_SND_SOC_MT6369_ACCDET)
+#if IS_ENABLED(CONFIG_SND_SOC_MT6369_ACCDET) && !defined(BYPASS_FOR_61_BRINGUP)
 #include "mt6369-accdet.h"
 #endif
 #if IS_ENABLED(CONFIG_MT6685_AUDCLK)
@@ -1692,7 +1694,7 @@ static int mtk_hp_impedance_disable(struct mt6369_priv *priv)
 			   RG_HPLOUTPUTSTBENH_VAUDP15_MASK_SFT,
 			   0x3 << RG_HPLOUTPUTSTBENH_VAUDP15_SFT);
 
-#if IS_ENABLED(CONFIG_SND_SOC_MT6369_ACCDET)
+#if IS_ENABLED(CONFIG_SND_SOC_MT6369_ACCDET) && !defined(BYPASS_FOR_61_BRINGUP)
 	/* from accdet request */
 	mt6369_accdet_modify_vref_volt();
 #endif
@@ -5038,7 +5040,7 @@ static int dc_trim_thread(void *arg)
 
 	get_hp_trim_offset(priv, false);
 
-#if IS_ENABLED(CONFIG_SND_SOC_MT6369_ACCDET)
+#if IS_ENABLED(CONFIG_SND_SOC_MT6369_ACCDET) && !defined(BYPASS_FOR_61_BRINGUP)
 	mt6369_accdet_late_init(0);
 #endif
 	//do_exit(0);
