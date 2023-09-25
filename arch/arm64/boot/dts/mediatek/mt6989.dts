@@ -11093,6 +11093,7 @@
 			dlo0-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY0_SIZE>;
 			dlo2-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY2_SIZE>;
 			operating-points-v2 = <&opp_table_disp>;
+			mmqos-supply = <&mmqos>;
 
 			event-dpc-prete = /bits/ 16 <CMDQ_EVENT_DPC_DT34_DONE>;
 			dpc-base = <0x1c000000>;
@@ -11154,6 +11155,7 @@
 				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 0))
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
+			mmqos-supply = <&mmqos>;
 		};
 
 		mml_hdr0: mml-hdr0@1f805000 {
@@ -11237,6 +11239,7 @@
 				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 1))
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
+			mmqos-supply = <&mmqos>;
 		};
 
 		mml_rdma2: mml-rdma2@1f811000 {
@@ -11257,6 +11260,7 @@
 				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 4))
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
+			mmqos-supply = <&mmqos>;
 		};
 
 		mml_rsz2: mml-rsz2@1f813000 {
@@ -11286,6 +11290,7 @@
 				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 5))
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
+			mmqos-supply = <&mmqos>;
 		};
 
 		hre-top-mdpsys@1f817000 {
@@ -11316,11 +11321,12 @@
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(SMMU_L3_P10_MDP_RROT0_STASH)
+				<&mmqos MASTER_LARB_PORT(SMMU_L3_P2_MDP_RROT0)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 10))
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 2))
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
+			mmqos-supply = <&mmqos>;
 		};
 
 		mml_rrot0_2nd: mml-rrot0-2nd-bbse@1f81b000 {
@@ -11337,11 +11343,12 @@
 			mtk,smmu-shared = <&mm_smmu_hrt_normal>;
 			mtk,smmu-shared-sec = <&mm_smmu_hrt_protected>;
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(SMMU_L3_P11_MDP_RROT0_2ND_STASH)
+				<&mmqos MASTER_LARB_PORT(SMMU_L3_P3_MDP_RROT0_2ND)
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 11))
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(48, 3))
 					&mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "mml_dma", "mml_dma_dpc";
+			mmqos-supply = <&mmqos>;
 		};
 
 		mml_merge0: mml-merge0-bcse@1f81c000 {
