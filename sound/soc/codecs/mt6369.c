@@ -5041,7 +5041,7 @@ static int dc_trim_thread(void *arg)
 #if IS_ENABLED(CONFIG_SND_SOC_MT6369_ACCDET)
 	mt6369_accdet_late_init(0);
 #endif
-	do_exit(0);
+	//do_exit(0);
 
 	return 0;
 }
@@ -7390,7 +7390,7 @@ static int mt6369_parse_dt(struct mt6369_priv *priv)
 	}
 
 	/* get pmic regulator handler */
-	priv->reg_vant18 = devm_regulator_get_optional(dev, "reg_vant18");
+	priv->reg_vant18 = devm_regulator_get_optional(dev, "reg-vant18");
 	ret = IS_ERR(priv->reg_vant18);
 	if (ret) {
 		ret = PTR_ERR(priv->reg_vant18);
