@@ -664,7 +664,6 @@ static const struct rdma_data mt6878_rdma_data = {
 	},
 };
 
-
 struct mml_comp_rdma {
 	struct mml_comp comp;
 	const struct rdma_data *data;
@@ -1924,17 +1923,6 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 		cache->max_size.height = mf_src_h;
 		cache->line_bubble = 0;
 	}
-
-	/* calculate qos for later use */
-	plane = MML_FMT_PLANE(src->format);
-	rdma_frm->datasize += mml_color_get_min_y_size(src->format,
-		mf_src_w, mf_src_h);
-	if (plane > 1)
-		rdma_frm->datasize += mml_color_get_min_uv_size(src->format,
-			mf_src_w, mf_src_h);
-	if (plane > 2)
-		rdma_frm->datasize += mml_color_get_min_uv_size(src->format,
-			mf_src_w, mf_src_h);
 
 	/* calculate qos for later use */
 	plane = MML_FMT_PLANE(src->format);
