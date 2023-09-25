@@ -67,7 +67,9 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_PWR_OPP(x)		(MEM_BASE + 0x450 + 0x4 * (x)) // POWER_NUM(4)
 #define MEM_PWR_CUR_GEAR(x)	(MEM_BASE + 0x460 + 0x4 * (x)) // POWER_NUM(4)
 #define MEM_FORCE_VOL(x)	(MEM_BASE + 0x470 + 0x4 * (x)) // POWER_NUM(4)
-/* next start: 0x480 */
+
+#define MEM_VMM_BUCK_ON		(MEM_BASE + 0x480)
+/* next start: 0x484 */
 
 #define MEM_REC_CNT_MAX		16
 
