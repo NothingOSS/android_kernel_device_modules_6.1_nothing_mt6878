@@ -2151,6 +2151,7 @@ out:
 
 void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 {
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	static int scale_mode = CLK_SCALE_FREE_RUN;
 	static u32 saved_gear;
 	static bool is_forced;
@@ -2158,6 +2159,10 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 	bool scale_allow = true;
 	bool scale_suspend = false;
 	bool scale_resume = false;
+
+	/* Not allow change clock scaling */
+	if (host->clk_scale_forbid)
+		return;
 
 	/* Already in desire mode */
 	if (scale_mode == mode)

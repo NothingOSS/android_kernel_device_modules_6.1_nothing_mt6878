@@ -229,6 +229,7 @@ struct ufs_mtk_host {
 	bool unipro_lpm;
 	bool ref_clk_enabled;
 	bool clk_scale_up;
+	bool clk_scale_forbid;
 	atomic_t clkscale_control;
 	atomic_t skip_btag;
 	atomic_t dbg_tp_unregister;
