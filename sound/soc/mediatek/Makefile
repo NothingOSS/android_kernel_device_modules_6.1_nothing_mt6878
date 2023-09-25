@@ -6,6 +6,9 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/mt6873/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6873) += mt6873/
 endif
+ifneq ($(wildcard $(srctree)/$(src)/mt6878/Makefile),)
+obj-$(CONFIG_DEVICE_MODULES_SND_SOC_MT6878) += mt6878/
+endif
 ifneq ($(wildcard $(srctree)/$(src)/mt8188/Makefile),)
 obj-$(CONFIG_SND_SOC_MT8188) += mt8188/
 endif
