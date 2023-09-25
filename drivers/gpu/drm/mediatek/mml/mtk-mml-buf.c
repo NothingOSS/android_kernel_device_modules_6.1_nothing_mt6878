@@ -60,6 +60,13 @@ static inline int dmabuf_to_iova(struct device *dev, struct mml_dma_buf *dma)
 {
 	int err;
 
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	u64 cost = sched_clock();
+
+	mml_trace_begin("mml_buf %s", __func__);
+#endif
+
+
 	dma->attach = dma_buf_attach(dma->dmabuf, dev);
 	if (IS_ERR_OR_NULL(dma->attach)) {
 		err = PTR_ERR(dma->attach);
@@ -83,6 +90,16 @@ static inline int dmabuf_to_iova(struct device *dev, struct mml_dma_buf *dma)
 		err = -ENOMEM;
 		goto err_detach;
 	}
+
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	mml_trace_end();
+	cost = (u64)div_u64(sched_clock() - cost, 1000000);
+	if (cost > 100)
+		mml_err("%s cost %llums iova %#llx size %u",
+		__func__, cost, dma->iova,
+		dma->dmabuf ? (u32)dma->dmabuf->size : 0);
+#endif
+
 	return 0;
 
 err_detach:
