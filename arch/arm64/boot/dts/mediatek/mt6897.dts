@@ -6735,7 +6735,6 @@
 			maximum-speed = "high-speed";
 			mediatek,force-vbus;
 			mediatek,clk-mgr;
-			mediatek,usb3-drd;
 			mediatek,noise-still-tr;
 			mediatek,gen1-txdeemph;
 			mediatek,hwrscs-vers = <1>;
