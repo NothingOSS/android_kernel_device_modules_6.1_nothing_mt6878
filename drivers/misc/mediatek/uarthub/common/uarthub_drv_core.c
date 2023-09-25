@@ -584,6 +584,7 @@ int uarthub_core_dev0_is_uarthub_ready(const char *tag)
 	state = g_plat_ic_core_ops->uarthub_plat_is_ready_state();
 
 	if (state == 1) {
+		uarthub_core_crc_ctrl(1);
 #if UARTHUB_DEBUG_LOG
 		uarthub_core_debug_clk_info(tag);
 #endif
@@ -1468,6 +1469,8 @@ int uarthub_core_assert_state_ctrl(int assert_ctrl)
 
 int uarthub_core_reset_flow_control(void)
 {
+	int ret = 0;
+
 	if (g_uarthub_disable == 1)
 		return 0;
 
@@ -1480,7 +1483,9 @@ int uarthub_core_reset_flow_control(void)
 		return UARTHUB_ERR_HUB_CLK_DISABLE;
 	}
 
-	return g_plat_ic_core_ops->uarthub_plat_reset_flow_control();
+	ret = g_plat_ic_core_ops->uarthub_plat_reset_flow_control();
+	uarthub_core_crc_ctrl(1);
+	return ret;
 }
 
 int uarthub_core_reset(void)
