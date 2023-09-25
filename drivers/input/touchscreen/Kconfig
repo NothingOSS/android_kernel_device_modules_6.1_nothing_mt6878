@@ -19,4 +19,7 @@ config TOUCHSCREEN_MT6985_ALPHA_SUPPORT
          To compile this dirver for used touch IC.
          Set Y or M to select this feature for specific platform-mt6985,
          and set N to disable.
+
+source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/NT36532/Kconfig"
+
 endif
