@@ -774,7 +774,7 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 
 	if (task->config->dpc) {
 		/* set dpc total hrt/srt bw to 0 */
-		mml_msg("%s dpc total_bw total_peak to 0", __func__);
+		mml_msg("%s dpc total_bw peak_bw to 0", __func__);
 		mml_dpc_srt_bw_set(DPC_SUBSYS_MML1, 0, false);
 		mml_dpc_hrt_bw_set(DPC_SUBSYS_MML1, 0, false);
 	}
@@ -831,21 +831,21 @@ static void mml_core_qos_set(struct mml_task *task, u32 pipe, u32 throughput, u3
 	const struct mml_topology_path *path = task->config->path[pipe];
 	struct mml_pipe_cache *cache = &task->config->cache[pipe];
 	struct mml_comp *comp;
-	u32 i, total_bw = 0, total_peak = 0;
+	u32 i, total_bw = 0, peak_bw = 0;
 
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		call_hw_op(comp, qos_set, task, &cache->cfg[i], throughput, tput_up);
 
 		total_bw += comp->cur_bw;
-		total_peak += comp->cur_peak;
+		peak_bw += comp->cur_peak;
 	}
 
 	if (task->config->dpc) {
 		/* set dpc total hrt/srt bw */
-		mml_msg("%s dpc total_bw %d total_peak %d", __func__, total_bw, total_peak);
+		mml_msg("%s dpc total_bw %d peak_bw %d", __func__, total_bw, peak_bw);
 		mml_dpc_srt_bw_set(DPC_SUBSYS_MML1, total_bw, false);
-		mml_dpc_hrt_bw_set(DPC_SUBSYS_MML1, total_peak, false);
+		mml_dpc_hrt_bw_set(DPC_SUBSYS_MML1, peak_bw, false);
 	}
 }
 

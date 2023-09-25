@@ -1014,7 +1014,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_config *cfg = task->config;
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	u32 bandwidth, datasize, hrt_bw;
-	bool hrt;
+	bool hrt, updated = false;
 
 	datasize = comp->hw_ops->qos_datasize_get(task, ccfg);
 	if (!datasize) {
@@ -1024,7 +1024,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	} else if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		hrt = true;
 		bandwidth = mml_calc_bw_racing(datasize);
-		hrt_bw = cfg->disp_hrt;
+		hrt_bw = bandwidth;
 		if (unlikely(mml_racing_bw)) {
 			bandwidth = mml_racing_bw;
 			hrt_bw = mml_racing_bw * 1000;
@@ -1049,24 +1049,23 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 #ifndef MML_FPGA
 		if (task->config->dpc)
 			mtk_icc_set_bw(comp->icc_dpc_path,
-					MBps_to_icc(bandwidth),
-					hrt_bw);
+				MBps_to_icc(bandwidth), MBps_to_icc(hrt_bw));
 		else
 			mtk_icc_set_bw(comp->icc_path,
-				MBps_to_icc(bandwidth),
-				hrt_bw);
+				MBps_to_icc(bandwidth), MBps_to_icc(hrt_bw));
 #endif
 		comp->cur_bw = bandwidth;
 		comp->cur_peak = hrt_bw;
 		mml_trace_end();
+		updated = true;
 	}
 
 	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, (comp->cur_bw << 16) | comp->cur_peak);
 
-	mml_msg_qos("%s comp %u %s qos bw %u(%u) by throughput %u pixel %u size %u%s",
-		__func__, comp->id, comp->name, bandwidth, hrt_bw / 1000,
+	mml_msg_qos("%s comp %u %s qos bw %u(%u) by throughput %u pixel %u size %u%s%s",
+		__func__, comp->id, comp->name, bandwidth, hrt_bw,
 		throughput, cache->max_pixel, datasize,
-		hrt ? " hrt" : "");
+		hrt ? " hrt" : "", updated ? " update" : "");
 }
 
 void mml_comp_qos_clear(struct mml_comp *comp, bool dpc)

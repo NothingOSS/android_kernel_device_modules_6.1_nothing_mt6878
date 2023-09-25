@@ -39,6 +39,9 @@ module_param(mml_max_cache_cfg, int, 0644);
 int mml_dc = 1;
 module_param(mml_dc, int, 0644);
 
+int mml_hrt_overhead = 110;
+module_param(mml_hrt_overhead, int, 0644);
+
 struct mml_drm_ctx {
 	struct list_head configs;
 	u32 config_cnt;
@@ -55,7 +58,8 @@ struct mml_drm_ctx {
 	struct kthread_worker *kt_done;
 	struct task_struct *kt_done_task;
 	struct sync_timeline *timeline;
-	u32 panel_pixel;
+	u16 panel_width;
+	u16 panel_height;
 	bool kt_priority;
 	bool disp_dual;
 	bool disp_vdo;
@@ -464,41 +468,55 @@ static u32 frame_calc_layer_hrt(struct mml_drm_ctx *ctx, struct mml_frame_info *
 	u32 layer_w, u32 layer_h)
 {
 	/* MML HRT bandwidth calculate by
-	 *	bw = width * height * Bpp * fps * v-blanking
+	 *	hrt_MBps = crop_bytes * width_resize_ratio / active_duration * overhead
 	 *
-	 * for raw data format, data size is
-	 *	bpp * width / 8
-	 * and for block format (such as UFO), data size is
-	 *	bpp * width / 256
-	 *
-	 * And for resize case total source pixel must read during layer
-	 * region (which is compose width and height). So ratio should be:
-	 *	ratio = src / layer
-	 *
-	 * HRT pixel and bandwidth:
-	 *	hrt = panel * ratio
-	 *	hrt_bw = panel * src / layer * Bpp * fps * v-blanking
-	 *
-	 * This API returns bandwidth in KBps: panel * bw / layer
-	 *
-	 * Following api reorder factors to avoid overflow of uint32_t.
+	 * with following:
+	 *	width_resize_ratio:	panel width to layer width ratio
+	 *	overhead:		default 10%
+	 *	active_duration:	active time provide by display driver
 	 */
 	u32 plane = MML_FMT_PLANE(info->src.format);
+	u32 cropw = info->dest[0].crop.r.width;
+	u32 croph = info->dest[0].crop.r.height;
 	u64 hrt;
+	u32 inw;
 
-	/* calculate source data size as bandwidth */
-	hrt = mml_color_get_min_y_size(info->src.format, info->src.width, info->src.height);
-	if (!MML_FMT_COMPRESS(info->src.format) && plane > 1) {
-		if (plane == 2)
-			hrt += mml_color_get_min_uv_size(info->src.format,
-				info->src.width, info->src.height);
-		else if (plane == 3)
-			hrt += mml_color_get_min_uv_size(info->src.format,
-				info->src.width, info->src.height) * 2;
+	if (MML_FMT_COMPRESS(info->src.format)) {
+		cropw = round_up(cropw, 32);
+		croph = round_up(croph, 16);
 	}
 
-	/* calculate panel ratio, v-blanking overhead, fps */
-	hrt = hrt * ctx->panel_pixel / layer_w / layer_h * 122 / 100 * MML_HRT_FPS / 1000;
+	inw = info->dest[0].rotate == MML_ROT_0 || info->dest[0].rotate == MML_ROT_180 ?
+		cropw : croph;
+
+	/* calculate source data size as bandwidth */
+	hrt = mml_color_get_min_y_size(info->src.format, cropw, croph);
+	if (!MML_FMT_COMPRESS(info->src.format) && plane > 1)
+		hrt += (u64)mml_color_get_min_uv_size(info->src.format, cropw, croph) * (plane - 1);
+
+	hrt = hrt * 1000 * ctx->panel_width / layer_w / info->act_time * mml_hrt_overhead / 100;
+
+	/* region pq read map data */
+	if (info->dest[0].pq_config.en_region_pq) {
+		u64 size = mml_color_get_min_y_size(info->seg_map.format,
+			info->seg_map.width, info->seg_map.height);
+
+		/* read whole frame and also count resize ratio */
+		hrt += size * 1000 * ctx->panel_width / layer_w / info->act_time * mml_hrt_overhead / 100;
+	}
+
+	/* region pq wrot out small frame, count wrot hrt */
+	if (info->dest_cnt > 1) {
+		u64 size = mml_color_get_min_y_size(info->dest[1].data.format,
+			info->dest[1].data.width, info->dest[1].data.height);
+
+		/* also must write done in layer time to avoid blocking hw path */
+		hrt += size * 1000 * ctx->panel_width / layer_w / info->act_time * mml_hrt_overhead / 100;
+	}
+
+	mml_msg("%s hrt %llu size %ux%u panel %ux%u layer width %u acttime %u",
+		__func__, hrt, cropw, croph, ctx->panel_width, ctx->panel_height, layer_w,
+		info->act_time);
 
 	return (u32)hrt;
 }
@@ -918,7 +936,8 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 			goto err_unlock_exit;
 		}
 		task->config = cfg;
-		if (submit->info.mode == MML_MODE_RACING) {
+		if (submit->info.mode == MML_MODE_RACING ||
+			submit->info.mode == MML_MODE_DIRECT_LINK) {
 			cfg->layer_w = submit->layer.width;
 			if (unlikely(!cfg->layer_w))
 				cfg->layer_w = submit->info.dest[0].compose.width;
@@ -927,7 +946,9 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 				cfg->layer_h = submit->info.dest[0].compose.height;
 			cfg->disp_hrt = frame_calc_layer_hrt(ctx, &submit->info,
 				cfg->layer_w, cfg->layer_h);
-		} else if (submit->info.mode == MML_MODE_DIRECT_LINK) {
+		}
+
+		if (submit->info.mode == MML_MODE_DIRECT_LINK) {
 			/* TODO: remove it, workaround for direct link,
 			 * the dlo roi should fill by disp
 			 */
@@ -1333,7 +1354,8 @@ static struct mml_drm_ctx *drm_ctx_create(struct mml_dev *mml,
 	ctx->ddren_param = disp->ddren_param;
 	ctx->dispen_cb = disp->dispen_cb;
 	ctx->dispen_param = disp->dispen_param;
-	ctx->panel_pixel = MML_DEFAULT_PANEL_PX;
+	ctx->panel_width = MML_DEFAULT_PANEL_W;
+	ctx->panel_height = MML_DEFAULT_PANEL_H;
 	ctx->wq_config[0] = alloc_ordered_workqueue("mml_work0", WORK_CPU_UNBOUND | WQ_HIGHPRI);
 	ctx->wq_config[1] = alloc_ordered_workqueue("mml_work1", WORK_CPU_UNBOUND | WQ_HIGHPRI);
 
@@ -1438,11 +1460,12 @@ void mml_drm_put_context(struct mml_drm_ctx *ctx)
 }
 EXPORT_SYMBOL_GPL(mml_drm_put_context);
 
-void mml_drm_set_panel_pixel(struct mml_drm_ctx *ctx, u32 pixel)
+void mml_drm_set_panel_pixel(struct mml_drm_ctx *ctx, u32 panel_width, u32 panel_height)
 {
 	struct mml_frame_config *cfg;
 
-	ctx->panel_pixel = pixel;
+	ctx->panel_width = panel_width;
+	ctx->panel_height = panel_height;
 	mutex_lock(&ctx->config_mutex);
 	list_for_each_entry(cfg, &ctx->configs, entry) {
 		/* calculate hrt base on new pixel count */
@@ -1727,6 +1750,19 @@ static void mml_drm_split_info_dl(struct mml_submit *submit, struct mml_submit *
 		if (submit_pq->pq_param[i] && submit->pq_param[i])
 			*submit_pq->pq_param[i] = *submit->pq_param[i];
 	submit_pq->info.mode = MML_MODE_DIRECT_LINK;
+
+	/* display layer pixel */
+	if (!submit->layer.width || !submit->layer.height) {
+		const struct mml_frame_dest *dest = &submit->info.dest[0];
+
+		if (dest->compose.width && dest->compose.height) {
+			submit->layer.width = dest->compose.width;
+			submit->layer.height = dest->compose.height;
+		} else {
+			submit->layer.width = dest->data.width;
+			submit->layer.height = dest->data.height;
+		}
+	}
 }
 
 void mml_drm_split_info(struct mml_submit *submit, struct mml_submit *submit_pq)

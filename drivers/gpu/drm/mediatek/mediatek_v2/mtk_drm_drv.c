@@ -7326,11 +7326,10 @@ struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 	if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)) {
 		u32 panel_w = mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_VIRTUAL_WIDTH, NULL);
 		u32 panel_h = mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_VIRTUAL_HEIGH, NULL);
-		u32 pixels = panel_w * panel_h;
 
-		if (pixels > 0) {
-			mml_drm_set_panel_pixel(mml_ctx, pixels);
-			DDPMSG("%s set panel pixels %u\n", __func__, pixels);
+		if (panel_w) {
+			mml_drm_set_panel_pixel(mml_ctx, panel_w, panel_h);
+			DDPMSG("%s set panel pixels %ux%u\n", __func__, panel_w, panel_h);
 		}
 	}
 
