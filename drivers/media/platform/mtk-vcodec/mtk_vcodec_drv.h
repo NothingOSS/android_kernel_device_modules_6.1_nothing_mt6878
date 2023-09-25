@@ -602,6 +602,7 @@ struct mtk_vcodec_ctx {
 	const struct vdec_common_if *dec_if;
 	const struct venc_common_if *enc_if;
 	unsigned long drv_handle;
+	struct mutex ipi_use_lock; // lock for ipi_recv is using ctx
 	uintptr_t bs_list[VB2_MAX_FRAME+1];
 	uintptr_t fb_list[VB2_MAX_FRAME+1];
 

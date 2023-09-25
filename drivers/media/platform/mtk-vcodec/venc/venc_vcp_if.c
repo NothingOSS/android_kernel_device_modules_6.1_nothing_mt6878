@@ -556,9 +556,12 @@ int vcp_enc_ipi_handler(void *arg)
 			inst = (struct venc_inst *)temp_ctx->drv_handle;
 			if (inst != NULL && vcu == &inst->vcu_inst && vcu->ctx == temp_ctx) {
 				msg_valid = 1;
+				ctx = vcu->ctx;
+				mutex_lock(&ctx->ipi_use_lock);
 				break;
 			}
 		}
+		mutex_unlock(&dev->ctx_mutex);
 		if (!msg_valid) {
 			mtk_v4l2_err(" msg vcu not exist %p\n", vcu);
 			mutex_unlock(&dev->ctx_mutex);
@@ -569,7 +572,7 @@ int vcp_enc_ipi_handler(void *arg)
 		if (vcu->abort || vcu->daemon_pid != get_vcp_generation()) {
 			mtk_vcodec_err(vcu, " msg msg_id %X vcu abort %d %d\n",
 				msg->msg_id, vcu->daemon_pid, get_vcp_generation());
-			mutex_unlock(&dev->ctx_mutex);
+			mutex_unlock(&ctx->ipi_use_lock);
 			venc_vcp_free_mq_node(dev, mq_node);
 			continue;
 		}
@@ -578,7 +581,6 @@ int vcp_enc_ipi_handler(void *arg)
 		mtk_v4l2_debug(2, "[%d] pop msg_id %X, ml_cnt %d, vcu %lx, status %d", vcu->ctx->id,
 			msg->msg_id, atomic_read(&dev->mq.cnt), (unsigned long)vcu, msg->status);
 
-		ctx = vcu->ctx;
 		msg->ctx_id = ctx->id;
 		vsi = (struct venc_vsi *)vcu->vsi;
 		switch (msg->msg_id) {
@@ -698,7 +700,7 @@ int vcp_enc_ipi_handler(void *arg)
 			break;
 		}
 		mtk_vcodec_debug(vcu, "- id=%X", msg->msg_id);
-		mutex_unlock(&dev->ctx_mutex);
+		mutex_unlock(&ctx->ipi_use_lock);
 		venc_vcp_free_mq_node(dev, mq_node);
 	} while (!kthread_should_stop());
 	mtk_v4l2_debug_leave();

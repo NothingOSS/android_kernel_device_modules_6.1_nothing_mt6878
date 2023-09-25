@@ -603,7 +603,7 @@ int vcp_dec_ipi_handler(void *arg)
 	struct vdec_vcu_ipi_mem_op *shem_msg;
 	unsigned long flags;
 	struct list_head *p, *q;
-	struct mtk_vcodec_ctx *temp_ctx;
+	struct mtk_vcodec_ctx *temp_ctx, *ctx;
 	int msg_valid = 0;
 	struct sched_param sched_p = { .sched_priority = MTK_VCODEC_IPI_THREAD_PRIORITY };
 
@@ -673,12 +673,14 @@ int vcp_dec_ipi_handler(void *arg)
 			inst = (struct vdec_inst *)temp_ctx->drv_handle;
 			if (inst != NULL && vcu == &inst->vcu && vcu->ctx == temp_ctx) {
 				msg_valid = 1;
+				ctx = vcu->ctx;
+				mutex_lock(&ctx->ipi_use_lock);
 				break;
 			}
 		}
+		mutex_unlock(&dev->ctx_mutex);
 		if (!msg_valid) {
 			mtk_v4l2_err(" msg msg_id %X vcu not exist %p\n", msg->msg_id, vcu);
-			mutex_unlock(&dev->ctx_mutex);
 			vdec_vcp_free_mq_node(dev, mq_node);
 			continue;
 		}
@@ -686,7 +688,7 @@ int vcp_dec_ipi_handler(void *arg)
 		if (vcu->abort || vcu->daemon_pid != get_vcp_generation()) {
 			mtk_vcodec_err(vcu, " msg msg_id %X vcu abort %d %d\n",
 				msg->msg_id, vcu->daemon_pid, get_vcp_generation());
-			mutex_unlock(&dev->ctx_mutex);
+			mutex_unlock(&ctx->ipi_use_lock);
 			vdec_vcp_free_mq_node(dev, mq_node);
 			continue;
 		}
@@ -853,7 +855,7 @@ return_vdec_ipi_ack:
 			}
 		}
 		mtk_vcodec_debug(vcu, "- id=%X", msg->msg_id);
-		mutex_unlock(&dev->ctx_mutex);
+		mutex_unlock(&ctx->ipi_use_lock);
 		vdec_vcp_free_mq_node(dev, mq_node);
 	} while (!kthread_should_stop());
 	mtk_v4l2_debug_leave();

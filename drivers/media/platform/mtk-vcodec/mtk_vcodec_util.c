@@ -450,9 +450,11 @@ void mtk_vcodec_del_ctx_list(struct mtk_vcodec_ctx *ctx)
 {
 	if (ctx != NULL) {
 		mutex_lock(&ctx->dev->ctx_mutex);
+		mutex_lock(&ctx->ipi_use_lock);
 		mtk_vcodec_dump_ctx_list(ctx->dev, 4);
 		list_del_init(&ctx->list);
 		mtk_vcodec_alive_checker_deinit(ctx, list_empty(&ctx->dev->ctx_list));
+		mutex_unlock(&ctx->ipi_use_lock);
 		mutex_unlock(&ctx->dev->ctx_mutex);
 	}
 }
