@@ -50,6 +50,9 @@
 					     compat_uptr_t)
 #endif
 
+#define format_log(p, s, fmt, args...) \
+	(p += scnprintf(p, sizeof(s) - strlen(s), fmt, ##args))
+
 struct tipc_virtio_dev;
 
 struct tipc_dev_config {
@@ -1686,6 +1689,8 @@ static ssize_t ise_write(struct file *file, const char __user *buffer,
 	uint32_t len;
 	int err;
 
+	pr_info("%s: enter\n", __func__);
+
 	len = (count < (sizeof(input) - 1)) ? count : (sizeof(input) - 1);
 	if (copy_from_user(input, buffer, len)) {
 		pr_err("%s: copy from user failed\n", __func__);
@@ -1715,16 +1720,34 @@ static ssize_t ise_write(struct file *file, const char __user *buffer,
 			ise_disable = true;
 		else
 			ise_disable = false;
+
+		pr_info("%s: exit, ise_disable %d\n", __func__, ise_disable);
 		return count;
 	} else {
 		return -EINVAL;
 	}
 
+	pr_info("%s: exit\n", __func__);
 	return count;
+}
+
+static ssize_t ise_read(struct file *file, char __user *buffer,
+	size_t count, loff_t *ppos)
+{
+	char msg_buf[1024] = {0};
+	char *p = msg_buf;
+	int len;
+
+	format_log(p, msg_buf, "%d", !ise_disable);
+	len = p - msg_buf;
+	pr_info("%s: ise_disable %d\n", __func__, ise_disable);
+
+	return simple_read_from_buffer(buffer, count, ppos, msg_buf, len);
 }
 
 static const struct proc_ops ise_fops = {
 	.proc_write = ise_write,
+	.proc_read = ise_read,
 };
 
 static int __init tipc_init(void)
