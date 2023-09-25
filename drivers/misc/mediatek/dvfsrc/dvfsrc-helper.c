@@ -1246,21 +1246,17 @@ static struct dvfsrc_opp dvfsrc_opp_mt6878[] = {
 	{1, 2, 0, 0},
 	{2, 2, 0, 0},
 	{3, 2, 0, 0},
-	{0, 3, 0, 0},
 	{1, 3, 0, 0},
 	{2, 3, 0, 0},
 	{3, 3, 0, 0},
-	{1, 4, 0, 0},
 	{2, 4, 0, 0},
 	{3, 4, 0, 0},
-	{2, 5, 0, 0},
 	{3, 5, 0, 0},
 	{3, 6, 0, 0},
-	{3, 7, 0, 0},
 };
 
 static struct dvfsrc_opp_desc dvfsrc_opp_mt6878_desc[] = {
-	MT_DVFSRC_OPP(4, 8, dvfsrc_opp_mt6878),
+	MT_DVFSRC_OPP(4, 7, dvfsrc_opp_mt6878),
 };
 
 static const struct dvfsrc_debug_data mt6878_data = {
