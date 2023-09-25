@@ -3308,7 +3308,7 @@ static const struct mtk_addon_module_data mt6985_addon_wdma1_data[] = {
 
 static const struct mtk_addon_module_data mt6989_addon_wdma0_data[] = {
 	/* Leroy CWB */
-	{DISP_WDMA0_v5, ADDON_AFTER, DDP_COMPONENT_COMP0_IN_CB4},
+	{DISP_WDMA0_v5, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC8},
 };
 
 static const struct mtk_addon_module_data mt6897_addon_wdma0_data[] = {

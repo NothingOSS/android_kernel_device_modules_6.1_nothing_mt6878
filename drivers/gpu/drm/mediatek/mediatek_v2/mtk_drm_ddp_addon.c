@@ -90,6 +90,7 @@ static const int disp_wdma0_path_v4[] = {
 
 /* Leroy CWB */
 static const int disp_wdma0_path_v5[] = {
+	DDP_COMPONENT_COMP0_IN_CB7,
 	DDP_COMPONENT_COMP0_OUT_CB7,
 	DDP_COMPONENT_MERGE0_OUT_CB3,
 	DDP_COMPONENT_WDMA1,
