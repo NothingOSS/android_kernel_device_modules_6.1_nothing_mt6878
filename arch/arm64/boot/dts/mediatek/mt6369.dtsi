@@ -89,10 +89,13 @@
 
 		mt6369codec: mt6369codec {
 			compatible = "mediatek,mt6369-sound";
+			mediatek,dmic-mode = <0>;
+			mediatek,mic-type = <1 1 1>;
 			io-channels = <&mt6369_adc AUXADC_HPOFS_CAL>;
 			io-channel-names = "pmic_hpofs_cal";
 			nvmem = <&mt6369_efuse>;
 			nvmem-names = "pmic-hp-efuse";
+			reg-vant18-supply = <&mt6369_vant18>;
 		};
 
 		regulators {
