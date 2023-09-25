@@ -29,6 +29,7 @@
 #else
 #define IPI_TIMEOUT_MS          (5000U + ((mtk_vcodec_dbg | mtk_v4l2_dbg_level) ? 5000U : 0U))
 #endif
+#define IPI_SEND_TIMEOUT_MS	100U
 #define IPI_FIRST_DEC_START_TIMEOUT_MS     (60000U)
 #define IPI_POLLING_INTERVAL_US    10
 
@@ -220,16 +221,17 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len,
 		inst->ctx->id, obj.id, obj.len, msg_cmd->msg_id, is_ack, *msg_signaled);
 	vcodec_trace_begin("mtk_ipi_send(msg 0x%x is_ack %d)", msg_cmd->msg_id, is_ack);
 	ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_VDEC_1, ipi_wait_type, &obj,
-		ipi_size, IPI_TIMEOUT_MS);
+		ipi_size, IPI_SEND_TIMEOUT_MS);
+
+	if (ret != IPI_ACTION_DONE) {
+		mtk_vcodec_err(inst, "mtk_ipi_send %X fail %d", msg_cmd->msg_id, ret);
+		if (!is_ack)
+			goto ipi_err_wait_and_unlock;
+	}
 
 	if (is_ack) {
 		vcodec_trace_end();
 		return 0;
-	}
-
-	if (ret != IPI_ACTION_DONE) {
-		mtk_vcodec_err(inst, "mtk_ipi_send %X fail %d", msg_cmd->msg_id, ret);
-		goto ipi_err_wait_and_unlock;
 	}
 
 	if (!is_ack) {

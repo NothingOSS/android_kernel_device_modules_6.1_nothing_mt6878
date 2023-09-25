@@ -32,6 +32,7 @@
 #else
 #define IPI_TIMEOUT_MS          (5000U + ((mtk_vcodec_dbg | mtk_v4l2_dbg_level) ? 5000U : 0U))
 #endif
+#define IPI_SEND_TIMEOUT_MS	100U
 #define IPI_FIRST_VENC_SETPARAM_TIMEOUT_MS    (60000U)
 #define IPI_POLLING_INTERVAL_US    10
 
@@ -192,15 +193,17 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 	mtk_v4l2_debug(2, "[%d] id %d len %d msg 0x%x is_ack %d %d",
 		inst->ctx->id, obj.id, obj.len, msg_ap->msg_id, is_ack, inst->vcu_inst.signaled);
 	ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_VENC_0, ipi_wait_type, &obj,
-		ipi_size, IPI_TIMEOUT_MS);
-
-	if (is_ack)
-		return 0;
+		ipi_size, IPI_SEND_TIMEOUT_MS);
 
 	if (ret != IPI_ACTION_DONE) {
 		mtk_vcodec_err(inst, "mtk_ipi_send %X fail %d", msg_ap->msg_id, ret);
-		goto ipi_err_wait_and_unlock;
+		if (!is_ack)
+			goto ipi_err_wait_and_unlock;
 	}
+
+	if (is_ack)
+		return 0;
+
 	if (!is_ack) {
 		inst->vcu_inst.in_ipi = true;
 wait_ack:
