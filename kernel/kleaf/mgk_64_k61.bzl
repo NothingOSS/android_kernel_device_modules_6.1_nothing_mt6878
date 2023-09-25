@@ -125,7 +125,6 @@ mgk_64_k61_device_modules = [
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_panel_ext.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_sync.ko",
     "drivers/gpu/drm/mediatek/mml/mtk-mml.ko",
-    "drivers/gpu/drm/panel/rt4831a.ko",
     "drivers/gpu/drm/panel/k6985v1_64_alpha/panel-nt37705-alpha-cmd.ko",
     "drivers/gpu/drm/panel/k6989v1_64_alpha/panel-ili7838e-alpha-cmd.ko",
     "drivers/gpu/drm/panel/k6989v1_64_alpha/panel-ili7838e-dv2-alpha-cmd.ko",
