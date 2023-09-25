@@ -156,13 +156,11 @@ static bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
 	if (priv->data->mmsys_id == MMSYS_MT6897 && !priv->is_tablet) {
 		switch (priv->seg_id) {
 		case 1:
+		case 2:
 			if (hact >= 1440 && vrefresh > 120)
 				ret = false;
 			break;
-		case 2:
-			if (hact >= 1440 && vrefresh > 144)
-				ret = false;
-			break;
+
 		default:
 			ret = true;
 			break;
