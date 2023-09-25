@@ -29,10 +29,8 @@
 #include <adsp_helper.h>
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 #include <scp_helper.h>
 #include <scp_audio_ipi.h>
-#endif
 
 #include <audio_messenger_ipi.h>
 
@@ -57,12 +55,8 @@
  */
 
 #define MAX_DSP_MSG_NUM_IN_QUEUE (64)
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
-#define SCP_SHARE_BUF_SIZE 128
-#define DSP_MSG_BUFFER_SIZE ((SCP_SHARE_BUF_SIZE) - 16)
-#else
-#define DSP_MSG_BUFFER_SIZE ((SHARE_BUF_SIZE) - 16)
-#endif
+#define MAX_SHARE_BUF_SIZE 256
+#define DSP_MSG_BUFFER_SIZE ((MAX_SHARE_BUF_SIZE) - 16)
 
 /*
  * =============================================================================
@@ -351,7 +345,6 @@ int dsp_dispatch_ipi_hanlder_to_queue_wrap(
 }
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 int scp_dispatch_ipi_hanlder_to_queue_wrap(
 	uint32_t core_id, /* enum adsp_core_id */
 	uint32_t ipi_id,
@@ -366,7 +359,6 @@ int scp_dispatch_ipi_hanlder_to_queue_wrap(
 
 	return dsp_dispatch_ipi_hanlder_to_queue(dsp_id, ipi_id, buf, len, ipi_handler);
 }
-#endif
 
 void ipi_queue_init(void)
 {
@@ -382,10 +374,8 @@ void ipi_queue_init(void)
 	hook_ipi_queue_recv_msg_hanlder(dsp_dispatch_ipi_hanlder_to_queue_wrap);
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 	if (is_audio_scp_support())
 		hook_scp_ipi_queue_recv_msg_handler(scp_dispatch_ipi_hanlder_to_queue_wrap);
-#endif
 
 }
 
@@ -1071,10 +1061,6 @@ static int audio_ipi_send_msg_to_adsp(const struct dsp_msg_t *p_dsp_msg,
 static int audio_ipi_send_msg_to_scp(struct dsp_msg_t *p_dsp_msg,
 				     const uint32_t dsp_id)
 {
-#if !IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
-	DUMP_IPC_MSG("DSP not support!!", p_dsp_msg);
-	return -ENODEV;
-#else
 	uint32_t core_id = 0xFFFFFFFF;
 	int ret = -1;
 
@@ -1109,7 +1095,6 @@ static int audio_ipi_send_msg_to_scp(struct dsp_msg_t *p_dsp_msg,
 #endif
 
 	return ret;
-#endif
 }
 
 static int dsp_send_msg_to_dsp(

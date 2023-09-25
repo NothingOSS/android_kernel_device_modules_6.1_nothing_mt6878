@@ -128,16 +128,16 @@ static const char *const pe_state_name[] = {
 /******************* PR_SWAP *******************/
 #if CONFIG_USB_PD_PR_SWAP
 /* PR_SWAP_SRC */
-	"PE_PRS_SRC_SNK_EVALUATE_PR_SWAP",
-	"PE_PRS_SRC_SNK_ACCEPT_PR_SWAP",
+	"PE_PRS_SRC_SNK_EVALUATE_SWAP",
+	"PE_PRS_SRC_SNK_ACCEPT_SWAP",
 	"PE_PRS_SRC_SNK_TRANSITION_TO_OFF",
 	"PE_PRS_SRC_SNK_ASSERT_RD",
 	"PE_PRS_SRC_SNK_WAIT_SOURCE_ON",
 	"PE_PRS_SRC_SNK_SEND_SWAP",
-	"PE_PRS_SRC_SNK_REJECT_PR_SWAP",
+	"PE_PRS_SRC_SNK_REJECT_SWAP",
 /* PR_SWAP_SNK */
-	"PE_PRS_SNK_SRC_EVALUATE_PR_SWAP",
-	"PE_PRS_SNK_SRC_ACCEPT_PR_SWAP",
+	"PE_PRS_SNK_SRC_EVALUATE_SWAP",
+	"PE_PRS_SNK_SRC_ACCEPT_SWAP",
 	"PE_PRS_SNK_SRC_TRANSITION_TO_OFF",
 	"PE_PRS_SNK_SRC_ASSERT_RP",
 	"PE_PRS_SNK_SRC_SOURCE_ON",
@@ -685,17 +685,17 @@ static const struct pe_state_actions pe_state_actions[] = {
 /******************* PR_SWAP *******************/
 #if CONFIG_USB_PD_PR_SWAP
 /* PR_SWAP_SRC */
-	PE_STATE_ACTIONS(pe_prs_src_snk_evaluate_pr_swap),
-	PE_STATE_ACTIONS(pe_prs_src_snk_accept_pr_swap),
+	PE_STATE_ACTIONS(pe_prs_src_snk_evaluate_swap),
+	PE_STATE_ACTIONS(pe_prs_src_snk_accept_swap),
 	PE_STATE_ACTIONS(pe_prs_src_snk_transition_to_off),
 	PE_STATE_ACTIONS(pe_prs_src_snk_assert_rd),
 	PE_STATE_ACTIONS(pe_prs_src_snk_wait_source_on),
 	PE_STATE_ACTIONS(pe_prs_src_snk_send_swap),
-	PE_STATE_ACTIONS(pe_prs_src_snk_reject_pr_swap),
+	PE_STATE_ACTIONS(pe_prs_src_snk_reject_swap),
 
 /* PR_SWAP_SNK */
-	PE_STATE_ACTIONS(pe_prs_snk_src_evaluate_pr_swap),
-	PE_STATE_ACTIONS(pe_prs_snk_src_accept_pr_swap),
+	PE_STATE_ACTIONS(pe_prs_snk_src_evaluate_swap),
+	PE_STATE_ACTIONS(pe_prs_snk_src_accept_swap),
 	PE_STATE_ACTIONS(pe_prs_snk_src_transition_to_off),
 	PE_STATE_ACTIONS(pe_prs_snk_src_assert_rp),
 	PE_STATE_ACTIONS(pe_prs_snk_src_source_on),

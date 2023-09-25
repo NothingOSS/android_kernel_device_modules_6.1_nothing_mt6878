@@ -140,7 +140,6 @@ enum TYPEC_CONNECTION_STATE {
 #endif	/* CONFIG_TYPEC_CAP_ROLE_SWAP */
 
 #if CONFIG_WATER_DETECTION
-	typec_water_protection_wait,
 	typec_water_protection,
 #endif /* CONFIG_WATER_DETECTION */
 

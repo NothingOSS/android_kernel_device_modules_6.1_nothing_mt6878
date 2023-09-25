@@ -78,6 +78,7 @@ struct uarthub_ops_struct __weak mt6989_plat_data = {};
 
 const struct of_device_id apuarthub_of_ids[] = {
 	{ .compatible = "mediatek,mt6835-uarthub", .data = &undef_plat_data },
+	{ .compatible = "mediatek,mt6878-uarthub", .data = &undef_plat_data },
 	{ .compatible = "mediatek,mt6886-uarthub", .data = &undef_plat_data },
 	{ .compatible = "mediatek,mt6897-uarthub", .data = &undef_plat_data },
 	{ .compatible = "mediatek,mt6983-uarthub", .data = &undef_plat_data },

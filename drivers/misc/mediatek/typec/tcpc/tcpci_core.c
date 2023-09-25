@@ -25,7 +25,7 @@
 #endif /* CONFIG_USB_POWER_DELIVERY */
 #include "inc/rt-regmap.h"
 
-#define TCPC_CORE_VERSION		"2.0.22_MTK"
+#define TCPC_CORE_VERSION		"2.0.25_MTK"
 
 static ssize_t tcpc_show_property(struct device *dev,
 				  struct device_attribute *attr, char *buf);
@@ -55,6 +55,8 @@ static struct device_attribute tcpc_device_attributes[] = {
 	TCPC_DEVICE_ATTR(timer, 0664),
 	TCPC_DEVICE_ATTR(caps_info, 0444),
 	TCPC_DEVICE_ATTR(pe_ready, 0444),
+	TCPC_DEVICE_ATTR(vbus_level, 0444),
+	TCPC_DEVICE_ATTR(cc_high, 0444),
 };
 
 enum {
@@ -65,6 +67,8 @@ enum {
 	TCPC_DESC_TIMER,
 	TCPC_DESC_CAP_INFO,
 	TCPC_DESC_PE_READY,
+	TCPC_TCPM_VBUS_LEVEL,
+	TCPC_TCPM_CC_HIGH,
 };
 
 static struct attribute *__tcpc_attrs[ARRAY_SIZE(tcpc_device_attributes) + 1];
@@ -227,6 +231,16 @@ static ssize_t tcpc_show_property(struct device *dev,
 		}
 		break;
 #endif
+	case TCPC_TCPM_VBUS_LEVEL:
+		ret = snprintf(buf, 256, "%d\n", tcpm_inquire_vbus_level(tcpc, true));
+		if (ret < 0)
+			return ret;
+		break;
+	case TCPC_TCPM_CC_HIGH:
+		ret = snprintf(buf, 256, "%d\n", tcpm_inquire_cc_high(tcpc));
+		if (ret < 0)
+			return ret;
+		break;
 	default:
 		break;
 	}
@@ -862,6 +876,20 @@ MODULE_VERSION(TCPC_CORE_VERSION);
 MODULE_LICENSE("GPL");
 
 /* Release Version
+ * 2.0.25_MTK
+ * (1) Fix COMMON.CHECK.PD.9#1 of MQP
+ * (2) Revise PR_Swap flow
+ * (3) Revise WD for Titan's multi-port accessory
+ *
+ * 2.0.24_MTK
+ * (1) Revise PR_Swap flow
+ * (2) Add a dts option of attempt-discover-id-dfp;
+ *
+ * 2.0.23_MTK
+ * (1) Revise Request flow
+ * (2) Revise WD, FOD and OTP flows
+ * (3) Add a tcpm function for inquiring CC high status
+ *
  * 2.0.22_MTK
  * (1) Revise Vconn
  * (2) Notify in PD mode when receiving the first PD message

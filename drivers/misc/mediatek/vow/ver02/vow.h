@@ -139,7 +139,8 @@
 
 #define KERNEL_VOW_DRV_VER                "3.0.0"
 #define DEFAULT_GOOGLE_ENGINE_VER         (1235201314)  /* set meaningless default value */
-
+#define MAGIC_PROVIDER_NUMBER             (0xABCD)      /* set meaningless default value */
+#define MAGIC_IOCTL_NUMBER                (0xDEADBEEF)  /* set meaningless default value */
 
 enum { /* dump_data_t */
 	DUMP_AECOUT = 0,
@@ -395,6 +396,16 @@ struct vow_scp_recover_info_kernel_t {
 	compat_size_t return_event_addr;
 };
 
+struct vow_ioctl_arg_info_t {
+  long magic_number;
+  long return_data;
+};
+
+struct vow_ioctl_arg_info_kernel_t {
+  compat_size_t magic_number;
+  compat_size_t return_data;
+};
+
 #else  /* #if IS_ENABLED(CONFIG_COMPAT) */
 
 struct vow_speaker_model_t {
@@ -439,6 +450,11 @@ struct vow_payloaddump_info_t {
 
 struct vow_scp_recover_info_t {
 	long return_event_addr;
+};
+
+struct vow_ioctl_arg_info_t {
+  long magic_number;
+  long return_data;
 };
 
 #endif  /* #if IS_ENABLED(CONFIG_COMPAT) */

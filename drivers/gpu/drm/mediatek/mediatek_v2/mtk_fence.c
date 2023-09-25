@@ -803,6 +803,7 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 	unsigned int timeline_id = 0;
 	struct mtk_fence_buf_info *buf_info = NULL;
 	struct fence_data data;
+	struct dma_buf *dmabuf = NULL;
 	struct mtk_fence_info *layer_info = NULL;
 	struct mtk_fence_session_sync_info *session_info = NULL;
 	struct dma_fence *fence = NULL;
@@ -810,6 +811,16 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 
 	if (buf == NULL) {
 		DDPPR_ERR("Prepare Buffer, buf is NULL!!\n");
+		return NULL;
+	}
+	if (buf->ion_fd < 0) {
+		DDPPR_ERR("Prepare Buffer, ion_fd is invalid!\n");
+		return NULL;
+	}
+
+	dmabuf = mtk_drm_gem_ion_import_handle(buf->ion_fd);
+	if (dmabuf == NULL) {
+		DDPPR_ERR("import buf handle fail\n");
 		return NULL;
 	}
 
@@ -854,15 +865,9 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 				  __func__, timeline_id);
 		return NULL;
 	}
+	buf_info->buf_hnd = dmabuf;
 	buf_info->fence = data.fence;
 	buf_info->idx = data.value;
-
-	if (buf->ion_fd >= 0)
-		buf_info->buf_hnd = mtk_drm_gem_ion_import_handle(buf->ion_fd);
-	if (buf_info->buf_hnd == NULL) {
-		DDPPR_ERR("import buf handle fail\n");
-		return NULL;
-	}
 
 	/* validate SLC from dma_buff and set slc_cached flag */
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
@@ -879,13 +884,13 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 
 	fence = sync_file_get_fence(buf_info->fence);
 	if (buf_info->buf_hnd)
-		DDPFENCE("P+/%s%d/L%d/id%d/fd%d/hnd0x%8p/pt0x%lx\n",
+		DDPFENCE("11-P+/%s%d/L%d/id%d/fd%d/hnd0x%8p/pt0x%lx\n",
 			 mtk_fence_session_mode_spy(session_id),
 			 MTK_SESSION_DEV(session_id), timeline_id, buf_info->idx,
 			 buf_info->fence, buf_info->buf_hnd,
 			 IS_ERR_OR_NULL(fence) ? 0x0 : (unsigned long)fence);
 	else
-		DDPFENCE("P+/%s%d/L%d/id%d/fd%d/pt0x%lx\n",
+		DDPFENCE("22-P+/%s%d/L%d/id%d/fd%d/pt0x%lx\n",
 			 mtk_fence_session_mode_spy(session_id),
 			 MTK_SESSION_DEV(session_id), timeline_id, buf_info->idx,
 			 buf_info->fence,

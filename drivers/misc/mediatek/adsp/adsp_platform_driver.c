@@ -3,6 +3,7 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
+#include <linux/of.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/vmalloc.h>
@@ -33,6 +34,12 @@ int adsp_after_bootup(struct adsp_priv *pdata)
 	/* disable adsp suspend by registering feature */
 	_adsp_register_feature(pdata->id, SYSTEM_FEATURE_ID, 0);
 #endif
+
+	/* To enable the a2dp feature on mt6878, we utilitze adsp register to issue IRQ to connsys.
+	   Therefore, we register SYSTEM_ID since adsp bootup guarantees scp can access adsp reg. */
+	if (get_adsp_type() == ADSP_TYPE_RV55)
+		_adsp_register_feature(pdata->id, SYSTEM_FEATURE_ID, 0);
+
 	/* force release slb buffer */
 	while (slb_memory_control(false) > 0)
 		;
@@ -461,3 +468,34 @@ int adsp_core1_init(struct adsp_priv *pdata)
 }
 EXPORT_SYMBOL(adsp_core1_init);
 
+/* -1: unparsed; 0: parsed, no adsp; 1: HIFI3; 2: RV55 */
+int get_adsp_type(void)
+{
+	static int adsp_type = ADSP_TYPE_UNKNOWN;
+	struct device_node *dsp_node;
+	const char *type_str = NULL;
+	int ret = 0;
+
+	if (adsp_type != ADSP_TYPE_UNKNOWN)
+		return adsp_type;
+
+	adsp_type = ADSP_TYPE_NONE;
+	dsp_node = of_find_node_by_name(NULL, "snd-audio-dsp");
+	if (dsp_node) {
+		ret = of_property_read_string(dsp_node, "mtk-dsp-type", &type_str);
+		if (ret < 0) {
+			adsp_type = ADSP_TYPE_HIFI3;
+			goto EXIT;
+		}
+
+		if (strncmp(type_str, "RV55", sizeof("RV55")) == 0)
+			adsp_type = ADSP_TYPE_RV55;
+		else if (strncmp(type_str, "HIFI", sizeof("HIFI")) == 0)
+			adsp_type = ADSP_TYPE_HIFI3;
+	}
+
+EXIT:
+	pr_info("%s, adsp_type: %d\n", __func__, adsp_type);
+	return adsp_type;
+}
+EXPORT_SYMBOL(get_adsp_type);

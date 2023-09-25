@@ -266,8 +266,6 @@ static void smpu_violation_callback(struct work_struct *work)
 	if (skp)
 		clear_violation(skp);
 
-	smpu_clear_md_violation();
-
 	mpu->is_bypass = false;
 	mpu->is_vio = false;
 }

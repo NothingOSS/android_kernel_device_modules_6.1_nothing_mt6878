@@ -662,7 +662,9 @@ static void scp_A_notify_ws(struct work_struct *ws)
 		 */
 		if (atomic_read(&scp_reset_status) != RESET_STATUS_STOP) {
 			scp_expected_freq = scp_get_freq();
+			scp_awake_lock((void *)SCP_A_ID);
 			scp_current_freq = readl(CURRENT_FREQ_REG);
+			scp_awake_unlock((void *)SCP_A_ID);
 			if (scp_request_freq()) {
 				pr_notice("[SCP] %s: req_freq fail\n", __func__);
 				WARN_ON(1);
@@ -1694,8 +1696,9 @@ static void scp_control_feature(enum feature_id id, bool enable)
 	if (scp_dvfs_feature_enable())
 		scp_expected_freq = scp_get_freq();
 
-
+	scp_awake_lock((void *)SCP_A_ID);
 	scp_current_freq = readl(CURRENT_FREQ_REG);
+	scp_awake_unlock((void *)SCP_A_ID);
 #if SCP_RESERVED_MEM && IS_ENABLED(CONFIG_OF_RESERVED_MEM)
 	/* if secure_dump is enabled, expected_freq is sent in scp_request_freq() */
 	if (!scpreg.secure_dump) {

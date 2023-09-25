@@ -1219,8 +1219,12 @@ static int mt63xx_pmx_set_mux(struct pinctrl_dev *pctldev,
 		return -EINVAL;
 	}
 
+	if (hw->soc->reg_lock)
+		hw->soc->reg_lock(hw, 0);
 	(void)mt63xx_hw_set_value(hw, grp->pin, PINCTRL_PIN_REG_AD_SWITCH,
 					((function == 1) ? 1 : 0));
+	if (hw->soc->reg_lock)
+		hw->soc->reg_lock(hw, 1);
 
 	return mt63xx_hw_set_value(hw, grp->pin, PINCTRL_PIN_REG_MODE,
 					function);
@@ -1416,8 +1420,8 @@ ssize_t mt63xx_pctrl_show_one_pin(struct mtk_pinctrl *hw,
 	 * Normally, we shall check >= hw->soc->npins.
 	 * However, when pin number starting index is 1, instead of 0,
 	 *  we shall check > hw->soc->npins.
-         * To unify checking rule, hw->soc->npins is added by 1 in probe
-         *  function when starting index is 1.
+	 * To unify checking rule, hw->soc->npins is added by 1 in probe
+	 *  function when starting index is 1.
 	 */
 	if (gpio >= hw->soc->npins)
 		return -EINVAL;

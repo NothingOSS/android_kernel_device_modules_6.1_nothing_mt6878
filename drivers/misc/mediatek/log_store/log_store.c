@@ -20,6 +20,7 @@
 #include <linux/uaccess.h>
 #include <linux/syscalls.h>
 #include <linux/regmap.h>
+#include <linux/reboot.h>
 #include <asm/memory.h>
 #include <linux/of_fdt.h>
 #include <linux/kmsg_dump.h>
@@ -333,12 +334,25 @@ unsigned int get_boot_mode_from_dts(void)
 	return tag->bootmode;
 }
 
+static int logstore_reset(struct notifier_block *nb, unsigned long action, void *data)
+{
+	if (sram_header->reboot_count != 0 && !strcmp((char *)data, "shell"))
+		store_log_to_emmc_enable(false);
+
+	return 0;
+}
+
+static struct notifier_block logstore_reboot_notify = {
+	.notifier_call = logstore_reset,
+};
+
 static int __init log_store_late_init(void)
 {
 	static struct notifier_block logstore_pm_nb;
 
 	logstore_pm_nb.notifier_call = logstore_pm_notify;
 	register_pm_notifier(&logstore_pm_nb);
+	register_reboot_notifier(&logstore_reboot_notify);
 	set_boot_phase(BOOT_PHASE_KERNEL);
 	if (sram_dram_buff == NULL) {
 		pr_notice("log_store: sram header DRAM buff is null.\n");
@@ -544,6 +558,7 @@ static void __exit log_store_exit(void)
 
 	logstore_pm_nb.notifier_call = logstore_pm_notify;
 	unregister_pm_notifier(&logstore_pm_nb);
+	unregister_reboot_notifier(&logstore_reboot_notify);
 }
 
 module_init(log_store_early_init);

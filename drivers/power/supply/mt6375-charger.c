@@ -70,6 +70,8 @@ module_param(dbg_log_en, bool, 0644);
 #define MT6375_REG_DPDM_CTRL1	0x153
 #define MT6375_REG_DPDM_CTRL2	0x154
 #define MT6375_REG_DPDM_CTRL4	0x156
+#define MT6375_REG_USBID_CTRL1	0x15D
+#define MT6375_REG_USBID_CTRL2	0x15E
 #define MT6375_REG_VBAT_MON_RPT	0x19C
 #define MT6375_REG_BATEND_CODE	0x19E
 #define MT6375_REG_ADC_CONFG1	0x1A4
@@ -100,7 +102,7 @@ module_param(dbg_log_en, bool, 0644);
 
 enum mt6375_chg_reg_field {
 	/* MT6375_REG_CORE_CTRL2 */
-	F_SHIP_RST_DIS,
+	F_SHIP_RST_DIS, F_PD_MDEN,
 	/* MT6375_REG_CHG_BATPRO */
 	F_BATINT, F_BATPROTECT_EN,
 	/* MT6375_REG_CHG_TOP1 */
@@ -155,6 +157,10 @@ enum mt6375_chg_reg_field {
 	F_ST_PWR_RDY,
 	/* MT6375_REG_CHG_STAT1 */
 	F_ST_MIVR,
+	/* MT6375_REG_USBID_CTRL1 */
+	F_IS_TDET, F_ID_RUPSEL, F_USBID_EN,
+	/* MT6375_REG_USBID_CTRL2 */
+	F_USBID_FLOATING,
 	F_MAX,
 };
 
@@ -193,6 +199,7 @@ enum mt6375_adc_chan {
 	ADC_CHAN_TEMP_JC,
 	ADC_CHAN_USBDP,
 	ADC_CHAN_USBDM,
+	ADC_CHAN_SBU2,
 	ADC_CHAN_MAX,
 };
 
@@ -321,6 +328,14 @@ static const u32 mt6375_chg_otg_cc[] = {
 	500, 700, 1100, 1300, 1800, 2100, 2400,
 };
 
+static const u32 mt6375_usbid_rup[] = {
+	500000, 75000, 5000, 1000,
+};
+
+static const u32 mt6375_usbid_src_ton[] = {
+	400, 1000, 4000, 10000, 40000, 100000, 400000,
+};
+
 /* for regulator usage */
 static const u32 mt6375_chg_otg_cc_micro[] = {
 	500000, 700000, 1100000, 1300000, 1800000, 2100000, 2400000,
@@ -376,6 +391,7 @@ static const struct mt6375_chg_range mt6375_chg_ranges[F_MAX] = {
 
 static const struct mt6375_chg_field mt6375_chg_fields[F_MAX] = {
 	MT6375_CHG_FIELD(F_SHIP_RST_DIS, MT6375_REG_CORE_CTRL2, 0, 0),
+	MT6375_CHG_FIELD(F_PD_MDEN, MT6375_REG_CORE_CTRL2, 1, 1),
 	MT6375_CHG_FIELD(F_BATINT, MT6375_REG_CHG_BATPRO, 0, 6),
 	MT6375_CHG_FIELD(F_BATPROTECT_EN, MT6375_REG_CHG_BATPRO, 7, 7),
 	MT6375_CHG_FIELD(F_CHG_EN, MT6375_REG_CHG_TOP1, 0, 0),
@@ -429,6 +445,11 @@ static const struct mt6375_chg_field mt6375_chg_fields[F_MAX] = {
 	MT6375_CHG_FIELD(F_VBAT_MON_EN, MT6375_REG_ADC_CONFG1, 5, 5),
 	MT6375_CHG_FIELD(F_ST_PWR_RDY, MT6375_REG_CHG_STAT0, 0, 0),
 	MT6375_CHG_FIELD(F_ST_MIVR, MT6375_REG_CHG_STAT1, 7, 7),
+	MT6375_CHG_FIELD_RANGE(F_IS_TDET, MT6375_REG_USBID_CTRL1, 2, 4, false),
+	MT6375_CHG_FIELD_RANGE(F_ID_RUPSEL, MT6375_REG_USBID_CTRL1,
+			       5, 6, false),
+	MT6375_CHG_FIELD(F_USBID_EN, MT6375_REG_USBID_CTRL1, 7, 7),
+	MT6375_CHG_FIELD(F_USBID_FLOATING, MT6375_REG_USBID_CTRL2, 1, 1),
 };
 
 static inline int mt6375_chg_field_set(struct mt6375_chg_data *ddata,
@@ -1523,6 +1544,9 @@ static int mt6375_get_adc(struct charger_device *chgdev, enum adc_channel chan,
 	case ADC_CHANNEL_TEMP_JC:
 		adc_chan = ADC_CHAN_TEMP_JC;
 		break;
+	case ADC_CHANNEL_USBID:
+		adc_chan = ADC_CHAN_SBU2;
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -2214,6 +2238,94 @@ static int mt6375_set_boot_volt_times(struct charger_device *chgdev, u32 val)
 
 	return 0;
 }
+
+static int mt6375_enable_usbid(struct charger_device *chgdev, bool en)
+{
+	struct mt6375_chg_data *ddata = charger_get_data(chgdev);
+	int ret = 0;
+
+	ret = mt6375_chg_field_set(ddata, F_PD_MDEN, en ? 0 : 1);
+	if (ret < 0)
+		return ret;
+	return mt6375_chg_field_set(ddata, F_USBID_EN, en ? 1 : 0);
+}
+
+static inline u32 mt6375_trans_usbid_rup(u32 rup)
+{
+	int i = 0;
+	int maxidx = ARRAY_SIZE(mt6375_usbid_rup) - 1;
+
+	if (rup >= mt6375_usbid_rup[0])
+		return 0;
+	if (rup <= mt6375_usbid_rup[maxidx])
+		return maxidx;
+
+	for (i = 0; i < maxidx; i++) {
+		if (rup == mt6375_usbid_rup[i])
+			return i;
+		if (rup < mt6375_usbid_rup[i] &&
+		    rup > mt6375_usbid_rup[i + 1]) {
+			if ((mt6375_usbid_rup[i] - rup) <=
+			    (rup - mt6375_usbid_rup[i + 1]))
+				return i;
+			else
+				return i + 1;
+		}
+	}
+	return maxidx;
+}
+
+static int mt6375_set_usbid_rup(struct charger_device *chgdev, u32 rup)
+{
+	struct mt6375_chg_data *ddata = charger_get_data(chgdev);
+	u32 val = mt6375_trans_usbid_rup(rup);
+
+	return mt6375_chg_field_set(ddata, F_ID_RUPSEL, val);
+}
+
+static inline u32 mt6375_trans_usbid_src_ton(u32 src_ton)
+{
+	int i = 0;
+	int maxidx = ARRAY_SIZE(mt6375_usbid_src_ton) - 1;
+
+	/* There is actually an option, always on, after 400000 */
+	if (src_ton == 0)
+		return maxidx + 1;
+	if (src_ton <= mt6375_usbid_src_ton[0])
+		return 0;
+	if (src_ton >= mt6375_usbid_src_ton[maxidx])
+		return maxidx;
+
+	for (i = 0; i < maxidx; i++) {
+		if (src_ton == mt6375_usbid_src_ton[i])
+			return i;
+		if (src_ton > mt6375_usbid_src_ton[i] &&
+		    src_ton < mt6375_usbid_src_ton[i + 1]) {
+			if ((src_ton - mt6375_usbid_src_ton[i]) <=
+			    (mt6375_usbid_src_ton[i + 1] - src_ton))
+				return i;
+			else
+				return i + 1;
+		}
+	}
+	return maxidx;
+}
+
+static int mt6375_set_usbid_src_ton(struct charger_device *chgdev, u32 src_ton)
+{
+	struct mt6375_chg_data *ddata = charger_get_data(chgdev);
+	u32 val = mt6375_trans_usbid_src_ton(src_ton);
+
+	return mt6375_chg_field_set(ddata, F_IS_TDET, val);
+}
+
+static int mt6375_enable_usbid_floating(struct charger_device *chgdev, bool en)
+{
+	struct mt6375_chg_data *ddata = charger_get_data(chgdev);
+
+	return mt6375_chg_field_set(ddata, F_USBID_FLOATING, en ? 1 : 0);
+}
+
 static const struct charger_properties mt6375_chg_props = {
 	.alias_name = "mt6375_chg",
 };
@@ -2281,6 +2393,11 @@ static const struct charger_ops mt6375_chg_ops = {
 	.enable_6pin_battery_charging = mt6375_enable_6pin_battery_charging,
 	/* set boot volt times*/
 	.set_boot_volt_times = mt6375_set_boot_volt_times,
+	/* TypeC */
+	.enable_usbid = mt6375_enable_usbid,
+	.set_usbid_rup = mt6375_set_usbid_rup,
+	.set_usbid_src_ton = mt6375_set_usbid_src_ton,
+	.enable_usbid_floating = mt6375_enable_usbid_floating,
 };
 
 static irqreturn_t mt6375_fl_wdt_handler(int irq, void *data)
@@ -2394,6 +2511,11 @@ static irqreturn_t mt6375_adc_vbat_mon_ov_handler(int irq, void *data)
 	if (ret < 0)
 		return ret;
 	mt_dbg(ddata->dev, "cv = %dmV\n", U_TO_M(cv));
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t mt6375_usbid_evt_handler(int irq, void *data)
+{
 	return IRQ_HANDLED;
 }
 
@@ -2745,6 +2867,7 @@ static int mt6375_chg_init_irq(struct mt6375_chg_data *ddata)
 		MT6375_CHG_IRQ(fl_aicc_done),
 		MT6375_CHG_IRQ(fl_batpro_done),
 		MT6375_CHG_IRQ(adc_vbat_mon_ov),
+		MT6375_CHG_IRQ(usbid_evt),
 	};
 
 	mt_dbg(ddata->dev, "%s: entry. Init irq now.\n", __func__);
@@ -2892,7 +3015,7 @@ static int mt6375_chg_probe(struct platform_device *pdev)
 	ret = mt6375_chg_init_multi_ports(ddata);
 	if (ret < 0) {
 		dev_notice(dev, "failed to init multi ports\n");
-		goto out_chgdev;
+		goto out_attr;
 	}
 
 	ret = mt6375_chg_init_psy(ddata);

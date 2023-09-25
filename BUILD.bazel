@@ -9,7 +9,6 @@ load("//build/bazel_mgk_rules:mgk.bzl", "define_mgk")
 
 mgk_kmi_symbol_list = "//kernel-6.1:android/abi_gki_aarch64_mtk"
 
-
 filegroup(
         name = "mgk_configs",
         srcs = glob([
@@ -31,7 +30,6 @@ filegroup(
             "include/dtc/**",
         ]),
 )
-
 
 # mgk_64_k61
 load("//kernel_device_modules-6.1:kernel/kleaf/mgk_64_k61.bzl",

@@ -34,6 +34,8 @@ uint32_t audio_get_dsp_id(const uint8_t task)
 {
 	uint32_t dsp_id = AUDIO_OPENDSP_ID_INVALID;
 
+	int adsp_type = get_adsp_type();
+
 	switch (task) {
 	case TASK_SCENE_VOICE_ULTRASOUND:
 	case TASK_SCENE_SPEAKER_PROTECTION:
@@ -64,7 +66,10 @@ uint32_t audio_get_dsp_id(const uint8_t task)
 	case TASK_SCENE_USB_UL:
 	case TASK_SCENE_MD_DL:
 	case TASK_SCENE_MD_UL:
-		dsp_id = AUDIO_OPENDSP_USE_HIFI3_A;
+		if (adsp_type == ADSP_TYPE_RV55)
+			dsp_id = AUDIO_OPENDSP_USE_RV_A;
+		else
+			dsp_id = AUDIO_OPENDSP_USE_HIFI3_A;
 		break;
 	case TASK_SCENE_RECORD:
 	case TASK_SCENE_CAPTURE_UL1:
@@ -77,10 +82,14 @@ uint32_t audio_get_dsp_id(const uint8_t task)
 	case TASK_SCENE_BTUL:
 	case TASK_SCENE_UL_PROCESS:
 	case TASK_SCENE_ECHO_REF_UL:
-		if (get_adsp_core_total() > 1)
-			dsp_id = AUDIO_OPENDSP_USE_HIFI3_B;
-		else
-			dsp_id = AUDIO_OPENDSP_USE_HIFI3_A;
+		if (adsp_type == ADSP_TYPE_RV55) {
+			dsp_id = AUDIO_OPENDSP_USE_RV_A;
+		} else {
+			if (get_adsp_core_total() > 1)
+				dsp_id = AUDIO_OPENDSP_USE_HIFI3_B;
+			else
+				dsp_id = AUDIO_OPENDSP_USE_HIFI3_A;
+		}
 		break;
 	case TASK_SCENE_AUDIO_CONTROLLER_HIFI3_B:
 		if (get_adsp_core_total() > 1)
@@ -95,18 +104,26 @@ uint32_t audio_get_dsp_id(const uint8_t task)
 		dsp_id = AUDIO_OPENDSP_USE_RV_A;
 		break;
 	case TASK_SCENE_PHONE_CALL:
-		if (get_adsp_core_total() > 1)
-			dsp_id = AUDIO_OPENDSP_USE_HIFI3_B;
-		else if (get_adsp_core_total() > 0)
-			dsp_id = AUDIO_OPENDSP_USE_HIFI3_A;
-		else if (SCP_CORE_TOTAL > 0)
+		if (adsp_type == ADSP_TYPE_RV55) {
 			dsp_id = AUDIO_OPENDSP_USE_RV_A;
+		} else {
+			if (get_adsp_core_total() > 1)
+				dsp_id = AUDIO_OPENDSP_USE_HIFI3_B;
+			else if (get_adsp_core_total() > 0)
+				dsp_id = AUDIO_OPENDSP_USE_HIFI3_A;
+			else if (SCP_CORE_TOTAL > 0)
+				dsp_id = AUDIO_OPENDSP_USE_RV_A;
+		}
 		break;
 	case TASK_SCENE_PHONE_CALL_SUB:
-		if (get_adsp_core_total() > 0)
-			dsp_id = AUDIO_OPENDSP_USE_HIFI3_A;
-		else if (SCP_CORE_TOTAL > 0)
+		if (adsp_type == ADSP_TYPE_RV55) {
 			dsp_id = AUDIO_OPENDSP_USE_RV_A;
+		} else {
+			if (get_adsp_core_total() > 0)
+				dsp_id = AUDIO_OPENDSP_USE_HIFI3_A;
+			else if (SCP_CORE_TOTAL > 0)
+				dsp_id = AUDIO_OPENDSP_USE_RV_A;
+		}
 		break;
 	default:
 		pr_notice("task %d not support!!", task);

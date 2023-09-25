@@ -173,6 +173,21 @@ static const struct mtk_pin_reg_calc mt6363_reg_cals[PINCTRL_PIN_REG_MAX] = {
 	[PINCTRL_PIN_REG_AD_SWITCH] = MTK_RANGE(mt6363_pin_ad_switch_range),
 };
 
+#include <linux/regmap.h>
+static void mt6363_reg_lock(struct mtk_pinctrl *hw, int enable)
+{
+	struct regmap *pinctrl_regmap;
+
+	pinctrl_regmap = (struct regmap *)hw->base[0];
+	if (enable) {
+		(void)regmap_write(pinctrl_regmap, 0x39e, 0x0);
+		(void)regmap_write(pinctrl_regmap, 0x39f, 0x0);
+	} else {
+		(void)regmap_write(pinctrl_regmap, 0x39e, 0x9c);
+		(void)regmap_write(pinctrl_regmap, 0x39f, 0x9c);
+	}
+}
+
 static const struct mtk_pin_soc mt6363_data = {
 	.reg_cal = mt6363_reg_cals,
 	.pins = mtk_pins_mt6363,
@@ -181,6 +196,7 @@ static const struct mtk_pin_soc mt6363_data = {
 	.nfuncs = 2,
 	.gpio_m = 0,
 	.capability_flags = FLAG_GPIO_START_IDX_1,
+	.reg_lock = mt6363_reg_lock,
 };
 
 static int mt6363_pinctrl_probe(struct platform_device *pdev)

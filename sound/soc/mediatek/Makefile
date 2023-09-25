@@ -33,7 +33,7 @@ obj-$(CONFIG_SND_SOC_MTK_AUDIO_DSP) += audio_dsp/
 #scp ultra sound related code
 obj-$(CONFIG_MTK_ULTRASND_PROXIMITY) += ultrasound/
 
-obj-$(CONFIG_MTK_SCP_AUDIO) += audio_scp/
+obj-$(CONFIG_SND_SOC_MTK_AUDIO_DSP) += audio_scp/
 
 # include path
 subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat

@@ -481,7 +481,7 @@ static int __init bus_tracer_init(void)
 
 	if (!plt) {
 		pr_notice("%s%d: plt is NULL\n", __func__, __LINE__);
-		return -EINVAL;
+		return 0;
 	}
 
 	bus_tracer_drv.cur_plt = plt;
@@ -489,7 +489,7 @@ static int __init bus_tracer_init(void)
 	ret = bus_tracer_start();
 	if (ret) {
 		pr_notice("%s: bus_tracer_start failed\n", __func__);
-		return -ENODEV;
+		return 0;
 	}
 
 	/* our probe would be callback after this registration */

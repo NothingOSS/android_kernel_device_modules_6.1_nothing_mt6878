@@ -46,6 +46,7 @@ enum addon_module {
 	DISP_RSZ_v4,
 	DISP_RSZ_v5,
 	DISP_RSZ_v6,
+	DISP_RSZ_v7,
 	OVL_RSZ,         /* OVL_2L pq out, pq in OVL_2L */
 	OVL_RSZ_1,
 	DISP_WDMA0,
@@ -55,6 +56,7 @@ enum addon_module {
 	DISP_WDMA0_v5,
 	DISP_WDMA1,
 	DISP_WDMA1_v2,
+	DISP_WDMA1_v3,
 	DISP_WDMA2,
 	DISP_OVLSYS_WDMA0,
 	DISP_OVLSYS_WDMA2,

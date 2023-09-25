@@ -36,6 +36,8 @@
 #include <linux/mmc/sd.h>
 #include <linux/mmc/sdio.h>
 #include <linux/mmc/slot-gpio.h>
+#include "mtk-mmc-dbg.h"
+#include <linux/kfifo.h>
 
 #include "cqhci.h"
 
@@ -567,6 +569,10 @@ struct msdc_host {
 	u32 ocr_volt;
 	struct regulator *dvfsrc_vcore_power;
 	struct pm_qos_request pm_qos_req;
+	struct err_info_bag err_bag;
+	atomic_t err_dropped;
+	spinlock_t err_info_lock;
+	DECLARE_KFIFO(err_info_bag_ring, struct err_info_bag, ERR_INFO_BAG_RING_SIZE);
 };
 
 #endif  /* _MTK_MMC_H_ */

@@ -10,6 +10,13 @@
 #define SAPU_DATAMEM_PAGE_BASED_HEAP "mtk_sapu_page-uncached"
 #define SAPU_DATAMEM_REGION_BASED_HEAP "mtk_sapu_data_shm_region-aligned"
 
+enum SAPU_DATAMEM_TYPE {
+	SAPU_DATAMEM_TYPE_DEFAULT,
+	SAPU_DATAMEM_TYPE_REGION_BASED,
+	SAPU_DATAMEM_TYPE_PAGE_BASED,
+	SAPU_DATAMEM_TYPE_UNKNOWN
+};
+
 struct sapu_private *sapu;
 struct sapu_private *get_sapu_private(void)
 {
@@ -67,6 +74,7 @@ static int dram_fb_register(void)
 
 	u32 higher_32_iova;
 	u32 lower_32_iova;
+	u32 datamem_type = SAPU_DATAMEM_TYPE_DEFAULT;
 
 	if (!sapu) {
 		pr_info("%s %d\n", __func__, __LINE__);
@@ -92,11 +100,47 @@ static int dram_fb_register(void)
 		return -EAGAIN;
 	}
 
-	/* After power on, allocate dma_buf 2M from sapu data_mem */
-	if (smmu_v3_enabled()) {
-		dma_heap = dma_heap_find(SAPU_DATAMEM_PAGE_BASED_HEAP);
-	} else {
+	sapu_node = dmem_device->of_node;
+	if (!sapu_node) {
+		pr_info("%s sapu_node is NULL\n", __func__);
+		return -ENODEV;
+	}
+
+	ret = of_property_read_u32(sapu_node, "datamem-type", &datamem_type);
+
+	if (ret == -EINVAL)
+		pr_info("[%s] datamem-type prop not found. Determined by smmu support", __func__);
+	else
+		pr_info("[%s] read prop datamem-type=%d (ret=%d)\n", __func__, datamem_type, ret);
+
+	switch (datamem_type) {
+	case SAPU_DATAMEM_TYPE_DEFAULT: {
+		/* Legacy for mt6897 & mt6989 */
+		pr_info("[%s] smmu support = %d\n", __func__, smmu_v3_enabled());
+		if (smmu_v3_enabled()) {
+			pr_info("[%s] find dmaheap %s\n", __func__, SAPU_DATAMEM_PAGE_BASED_HEAP);
+			dma_heap = dma_heap_find(SAPU_DATAMEM_PAGE_BASED_HEAP);
+		} else {
+			pr_info("[%s] find dmaheap %s\n", __func__, SAPU_DATAMEM_REGION_BASED_HEAP);
+			dma_heap = dma_heap_find(SAPU_DATAMEM_REGION_BASED_HEAP);
+		}
+		break;
+	}
+	case SAPU_DATAMEM_TYPE_REGION_BASED: {
+		pr_info("[%s] find dmaheap %s\n", __func__, SAPU_DATAMEM_REGION_BASED_HEAP);
 		dma_heap = dma_heap_find(SAPU_DATAMEM_REGION_BASED_HEAP);
+		break;
+	}
+	case SAPU_DATAMEM_TYPE_PAGE_BASED: {
+		pr_info("[%s] find dmaheap %s\n", __func__, SAPU_DATAMEM_PAGE_BASED_HEAP);
+		dma_heap = dma_heap_find(SAPU_DATAMEM_PAGE_BASED_HEAP);
+		break;
+	}
+	default: {
+		pr_err("[%s] unknown datamem type = %u\n", __func__, datamem_type);
+		dma_heap = NULL;
+		break;
+	}
 	}
 	if (!dma_heap) {
 		pr_info("[%s]dma_heap_find fail\n", __func__);
@@ -116,14 +160,7 @@ static int dram_fb_register(void)
 		goto err_return;
 	}
 
-
 	if (smmu_v3_enabled()) {
-		sapu_node = dmem_device->of_node;
-		if (!sapu_node) {
-			pr_info("%s sapu_node is NULL\n", __func__);
-			return -ENODEV;
-		}
-
 		smmu_node = of_parse_phandle(sapu_node, "smmu-device", 0);
 		if (!smmu_node) {
 			pr_info("%s get smmu_node failed\n", __func__);

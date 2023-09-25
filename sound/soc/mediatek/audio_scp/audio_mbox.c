@@ -105,7 +105,7 @@ int audio_mbox_send(void *msg, unsigned int wait)
 	}
 EXIT:
 	if (ret && ret != MBOX_PIN_BUSY)
-		pr_err("%s() fail, mbox error = %d\n", __func__, pin_send->mbox, ret);
+		pr_err("%s() fail, mbox pin %d error = %d\n", __func__, pin_send->mbox, ret);
 
 	/* TODO : maybe move to audio_ipi_queue */
 	scp_awake_unlock((void *)SCP_A_ID);
@@ -144,14 +144,14 @@ EXIT:
 }
 
 static const struct of_device_id scp_audio_mbox_dt_match[] = {
-	{ .compatible = "mediatek,scp_audio_mbox", },
+	{ .compatible = "mediatek,scp-audio-mbox", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, scp_audio_mbox_dt_match);
 
 static struct platform_driver scp_audio_mbox_driver = {
 	.driver = {
-		   .name = "scp_audio_mbox",
+		   .name = "scp-audio-mbox",
 		   .owner = THIS_MODULE,
 		   .of_match_table = scp_audio_mbox_dt_match,
 	},

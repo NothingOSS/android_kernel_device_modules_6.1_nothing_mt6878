@@ -941,12 +941,12 @@ static int rt1711_set_polarity(struct tcpc_device *tcpc, int polarity)
 {
 	int data;
 
-	if (polarity < 0)
-		return -EINVAL;
-	data = rt1711h_init_cc_params(tcpc,
-		tcpc->typec_remote_cc[polarity]);
-	if (data)
-		return data;
+	if (polarity >= 0 && polarity < ARRAY_SIZE(tcpc->typec_remote_cc)) {
+		data = rt1711h_init_cc_params(tcpc,
+			tcpc->typec_remote_cc[polarity]);
+		if (data)
+			return data;
+	}
 
 	data = rt1711_i2c_read8(tcpc, TCPC_V10_REG_TCPC_CTRL);
 	if (data < 0)

@@ -47,6 +47,7 @@ enum pd_connect_result {
 	PD_CONNECT_PE_READY_SNK_APDO,
 	PD_CONNECT_HARD_RESET,
 	PD_CONNECT_SOFT_RESET,
+	PD_CONNECT_NEW_SRC_CAP,
 
 /* CONFIG_USB_PD_CUSTOM_DBGACC */
 	PD_CONNECT_PE_READY_DBGACC_UFP,
@@ -449,9 +450,10 @@ enum typec_role_defination {
 #define DPM_CAP_LOCAL_GIVE_BACK			(1<<6)
 #define DPM_CAP_LOCAL_NO_SUSPEND		(1<<7)
 
-#define DPM_CAP_ATTEMPT_ENTER_DP_MODE		(1<<13)
-#define DPM_CAP_ATTEMPT_DISCOVER_CABLE		(1<<14)
-#define DPM_CAP_ATTEMPT_DISCOVER_ID		(1<<15)
+#define DPM_CAP_ATTEMPT_ENTER_DP_MODE		(1<<12)
+#define DPM_CAP_ATTEMPT_DISCOVER_CABLE		(1<<13)
+#define DPM_CAP_ATTEMPT_DISCOVER_ID		(1<<14)
+#define DPM_CAP_ATTEMPT_DISCOVER_ID_DFP		(1<<15)
 #define DPM_CAP_ATTEMPT_DISCOVER_SVID		(1<<16)
 
 enum dpm_cap_pr_check_prefer {
@@ -872,6 +874,7 @@ extern int tcpm_shutdown(struct tcpc_device *tcpc);
 extern int tcpm_inquire_remote_cc(struct tcpc_device *tcpc,
 	uint8_t *cc1, uint8_t *cc2, bool from_ic);
 extern int tcpm_inquire_vbus_level(struct tcpc_device *tcpc, bool from_ic);
+extern int tcpm_inquire_cc_high(struct tcpc_device *tcpc);
 extern int tcpm_inquire_typec_remote_rp_curr(struct tcpc_device *tcpc);
 extern bool tcpm_inquire_cc_polarity(struct tcpc_device *tcpc);
 extern uint8_t tcpm_inquire_typec_attach_state(struct tcpc_device *tcpc);
@@ -1337,6 +1340,11 @@ static inline int tcpm_inquire_remote_cc(struct tcpc_device *tcpc,
 
 static inline int tcpm_inquire_vbus_level(
 	struct tcpc_device *tcpc, bool from_ic)
+{
+	return TCPM_ERROR_NO_IMPLEMENT;
+}
+
+static inline int tcpm_inquire_cc_high(struct tcpc_device *tcpc)
 {
 	return TCPM_ERROR_NO_IMPLEMENT;
 }

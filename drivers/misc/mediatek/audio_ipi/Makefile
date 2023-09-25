@@ -21,7 +21,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
 #ifeq ($(CONFIG_MTK_SCP_AUDIO),y)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/rv
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_scp
+ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/audio_scp
 #endif
 
 

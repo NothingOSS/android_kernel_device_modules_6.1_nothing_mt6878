@@ -193,6 +193,9 @@ struct vow_dump_info_t {
 uint32_t delay_info[NUM_DELAY_INFO];
 struct vow_dump_info_t vow_dump_info[NUM_DUMP_DATA];
 
+/* not used */
+//#define VOW_SMART_DEVICE_SUPPORT
+
 /*****************************************************************************
  * DSP IPI HANDELER
  *****************************************************************************/
@@ -2105,6 +2108,7 @@ int VowDrv_ChangeStatus(void)
 	return 0;
 }
 
+#ifdef VOW_SMART_DEVICE_SUPPORT
 void VowDrv_SetSmartDevice(bool enable)
 {
 	unsigned int eint_num;
@@ -2180,6 +2184,7 @@ void VowDrv_SetSmartDevice_GPIO(bool enable)
 		VOWDRV_DEBUG("there is no node\n");
 	}
 }
+#endif
 
 static bool VowDrv_SetFlag(int type, unsigned int set)
 {
@@ -2225,12 +2230,42 @@ static bool VowDrv_SetProviderType(unsigned int type)
 	return ret;
 }
 
-static bool VowDrv_CheckProviderType(unsigned int type)
+static bool VowDrv_CheckProviderType(unsigned int type, bool enable)
 {
 	unsigned int provider_id = type & 0x0F;
 	unsigned int ch_num = (type >> 4) & 0x0F;
 	unsigned int scp_dmic_ch_sel = (type >> 13) & 0x7;
+	unsigned int magic = (type >> 16) & 0xFFFF;
+	unsigned int ch = 0;
 
+	if (magic != MAGIC_PROVIDER_NUMBER) {
+		//check magic number from audio hal is correct
+		VOWDRV_DEBUG("wrong provider setting\n\r");
+		return false;
+	}
+	if (enable) {
+		if (provider_id == VOW_PROVIDER_NONE) {
+			//VOW_PROVIDER_NONE is used to disable vow
+			VOWDRV_DEBUG("wrong VOW_PROVIDER_ID %d\n\r", provider_id);
+			return false;
+		}
+		if ((vowserv.provider_type & 0x0F) != VOW_PROVIDER_NONE) {
+			//current vow driver in SCP is enabled
+			VOWDRV_DEBUG("VOW_PROVIDER_ID %d already construct\n\r", provider_id);
+			return false;
+		}
+	} else {
+		if (provider_id != VOW_PROVIDER_NONE) {
+			//VOW_PROVIDER_NONE is used to disable vow
+			VOWDRV_DEBUG("wrong VOW_PROVIDER_ID %d\n\r", provider_id);
+			return false;
+		}
+		if ((vowserv.provider_type & 0x0F) == VOW_PROVIDER_NONE) {
+			//current vow driver in SCP is disabled
+			VOWDRV_DEBUG("VOW_PROVIDER_ID %d already destruct\n\r", provider_id);
+			return false;
+		}
+	}
 	if (provider_id >= VOW_PROVIDER_MAX) {
 		VOWDRV_DEBUG("out of VOW_PROVIDER_ID %d\n\r", provider_id);
 		return false;
@@ -2239,16 +2274,15 @@ static bool VowDrv_CheckProviderType(unsigned int type)
 		VOWDRV_DEBUG("out of VOW_MIC_NUM %d\n\r", ch_num);
 		return false;
 	}
-	if ((scp_dmic_ch_sel >= (1 << VOW_MAX_SCP_DMIC_CH_NUM)) != 0) {
-		VOWDRV_DEBUG("out of VOW_SCP_DMIC_CH_Sel %d\n\r", scp_dmic_ch_sel);
+	while(scp_dmic_ch_sel){
+		ch += scp_dmic_ch_sel & 0x1;
+		scp_dmic_ch_sel = scp_dmic_ch_sel>>1;
+	}
+	if (ch >= VOW_MAX_SCP_DMIC_CH_NUM) {
+		VOWDRV_DEBUG("out of VOW_MAX_SCP_DMIC_CH_NUM %d\n\r", ch);
 		return false;
 	}
 	return true;
-}
-
-void VowDrv_SetPeriodicEnable(bool enable)
-{
-	VowDrv_SetFlag(VOW_FLAG_PERIODIC_ENABLE, enable);
 }
 
 static ssize_t VowDrv_GetPhase1Debug(struct device *kobj,
@@ -2718,11 +2752,13 @@ static int VowDrv_release(struct inode *inode, struct file *fp)
 	return 0;
 }
 
-static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
+static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg_data)
 {
 	int ret = 0;
 	int timeout = 0;
 	char ioctl_type[50] = {0};
+	unsigned long arg = 0;
+	struct vow_ioctl_arg_info_t arg_info;
 
 	timeout = 0;
 	while (vowserv.vow_recovering) {
@@ -2731,6 +2767,16 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		VOW_ASSERT(timeout != VOW_RECOVERY_WAIT);
 	}
 
+	if (copy_from_user((void *)(&arg_info), (const void __user *)(arg_data),
+			   sizeof(struct vow_ioctl_arg_info_t))) {
+		VOWDRV_DEBUG("vow check ioctl fail\n");
+		return -EFAULT;
+	}
+	if (arg_info.magic_number != MAGIC_IOCTL_NUMBER) {
+		VOWDRV_DEBUG("vow check ioctl magic fail\n");
+		return -EFAULT;
+	}
+	arg = arg_info.return_data;
 	//VOWDRV_DEBUG("%s(), cmd = %u, arg = %lu\n", __func__, cmd, arg);
 	switch ((unsigned int)cmd) {
 	case VOW_SET_CONTROL:
@@ -2899,7 +2945,7 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 	case VOW_RECOG_ENABLE:
 		pr_debug("+VOW_RECOG_ENABLE(0x%lx)+", arg);
 		pr_debug("KERNEL_VOW_DRV_VER %s", KERNEL_VOW_DRV_VER);
-		if (!VowDrv_CheckProviderType((unsigned int)arg)) {
+		if (!VowDrv_CheckProviderType((unsigned int)arg, true)) {
 			pr_debug("VOW_RECOG_ENABLE fail");
 			break;
 		}
@@ -2912,7 +2958,7 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		break;
 	case VOW_RECOG_DISABLE:
 		pr_debug("+VOW_RECOG_DISABLE(0x%lx)+", arg);
-		if (!VowDrv_CheckProviderType((unsigned int)arg)) {
+		if (!VowDrv_CheckProviderType((unsigned int)arg, false)) {
 			pr_debug("VOW_RECOG_DISABLE fail");
 			break;
 		}
@@ -3058,14 +3104,23 @@ static long VowDrv_compat_ioctl(struct file *fp,
 				unsigned int cmd,
 				unsigned long arg)
 {
-	long ret = 0;
-
+	long ret = 0, arg_err = 0;
+	struct vow_ioctl_arg_info_kernel_t arg_info32 = {};
+	struct vow_ioctl_arg_info_t arg_info = {};
 	/* VOWDRV_DEBUG("++VowDrv_compat_ioctl cmd = %u, arg = %lu\n" */
 	/*		, cmd, arg); */
 	if (!fp->f_op || !fp->f_op->unlocked_ioctl) {
 		(void)ret;
 		return -ENOTTY;
 	}
+
+	arg_err = (long)copy_from_user(&arg_info32, compat_ptr(arg),
+		(unsigned long)sizeof(struct vow_ioctl_arg_info_kernel_t));
+	if (arg_err != 0L)
+		VOWDRV_DEBUG("%s(), copy data from user fail", __func__);
+	arg_info.magic_number    = arg_info32.magic_number;
+	arg_info.return_data     = arg_info32.return_data;
+
 	switch (cmd) {
 	case VOW_CLR_SPEAKER_MODEL:
 	case VOW_SET_CONTROL:
@@ -3076,13 +3131,13 @@ static long VowDrv_compat_ioctl(struct file *fp,
 	case VOW_BARGEIN_OFF:
 	case VOW_GET_GOOGLE_ENGINE_VER:
 	case VOW_NOTIFY_CHRE_STATUS:
-		ret = fp->f_op->unlocked_ioctl(fp, cmd, arg);
+		ret = fp->f_op->unlocked_ioctl(fp, cmd, (unsigned long)&arg_info);
 		break;
 	case VOW_MODEL_START:
 	case VOW_MODEL_STOP: {
 		struct vow_model_start_kernel_t data32 = {};
 		struct vow_model_start_t data = {};
-		long err = (long)copy_from_user(&data32, compat_ptr(arg),
+		long err = (long)copy_from_user(&data32, compat_ptr(arg_info.return_data),
 			(unsigned long)sizeof(struct vow_model_start_kernel_t));
 
 		if (err != 0L)
@@ -3092,9 +3147,9 @@ static long VowDrv_compat_ioctl(struct file *fp,
 		data.confidence_level     = data32.confidence_level;
 		data.dsp_inform_addr      = data32.dsp_inform_addr;
 		data.dsp_inform_size_addr = data32.dsp_inform_size_addr;
+		arg_info.return_data = (unsigned long)&data;
 
-
-		ret = fp->f_op->unlocked_ioctl(fp, cmd, (unsigned long)&data);
+		ret = fp->f_op->unlocked_ioctl(fp, cmd, (unsigned long)&arg_info);
 	}
 		break;
 	case VOW_READ_VOICE_DATA:
@@ -3103,7 +3158,7 @@ static long VowDrv_compat_ioctl(struct file *fp,
 	case VOW_SET_APREG_INFO: {
 		struct vow_model_info_kernel_t data32 = {};
 		struct vow_model_info_t data = {};
-		long err = (long)copy_from_user(&data32, compat_ptr(arg),
+		long err = (long)copy_from_user(&data32, compat_ptr(arg_info.return_data),
 			(unsigned long)sizeof(struct vow_model_info_kernel_t));
 
 		if (err != 0L)
@@ -3116,8 +3171,9 @@ static long VowDrv_compat_ioctl(struct file *fp,
 		data.return_size_addr = data32.return_size_addr;
 		data.uuid             = data32.uuid;
 		data.data             = (uint32_t *)data32.data;
+		arg_info.return_data = (unsigned long)&data;
 
-		ret = fp->f_op->unlocked_ioctl(fp, cmd, (unsigned long)&data);
+		ret = fp->f_op->unlocked_ioctl(fp, cmd, (unsigned long)&arg_info);
 	}
 		break;
 	case VOW_SET_DSP_AEC_PARAMETER:
@@ -3125,7 +3181,7 @@ static long VowDrv_compat_ioctl(struct file *fp,
 	case VOW_GET_ALEXA_ENGINE_VER: {
 		struct vow_engine_info_kernel_t data32 = {};
 		struct vow_engine_info_t data = {};
-		long err = (long)copy_from_user(&data32, compat_ptr(arg),
+		long err = (long)copy_from_user(&data32, compat_ptr(arg_info.return_data),
 			(unsigned long)sizeof(struct vow_engine_info_kernel_t));
 
 		if (err != 0L)
@@ -3133,14 +3189,15 @@ static long VowDrv_compat_ioctl(struct file *fp,
 
 		data.return_size_addr = data32.return_size_addr;
 		data.data_addr        = data32.data_addr;
+		arg_info.return_data = (unsigned long)&data;
 
-		ret = fp->f_op->unlocked_ioctl(fp, cmd, (unsigned long)&data);
+		ret = fp->f_op->unlocked_ioctl(fp, cmd, (unsigned long)&arg_info);
 	}
 		break;
 	case VOW_SET_PAYLOADDUMP_INFO: {
 		struct vow_payloaddump_info_kernel_t data32 = {};
 		struct vow_payloaddump_info_t data = {};
-		long err = (long)copy_from_user(&data32, compat_ptr(arg),
+		long err = (long)copy_from_user(&data32, compat_ptr(arg_info.return_data),
 			(unsigned long)sizeof(struct vow_payloaddump_info_kernel_t));
 
 		if (err != 0L)
@@ -3149,21 +3206,23 @@ static long VowDrv_compat_ioctl(struct file *fp,
 		data.return_payloaddump_addr      = data32.return_payloaddump_addr;
 		data.return_payloaddump_size_addr = data32.return_payloaddump_size_addr;
 		data.max_payloaddump_size         = data32.max_payloaddump_size;
+		arg_info.return_data = (unsigned long)&data;
 
-		ret = fp->f_op->unlocked_ioctl(fp, cmd, (unsigned long)&data);
+		ret = fp->f_op->unlocked_ioctl(fp, cmd, (unsigned long)&arg_info);
 	}
 		break;
 	case VOW_GET_SCP_RECOVER_STATUS: {
 		struct vow_scp_recover_info_kernel_t data32 = {};
 		struct vow_scp_recover_info_t data = {};
-		long err = (long)copy_from_user(&data32, compat_ptr(arg),
+		long err = (long)copy_from_user(&data32, compat_ptr(arg_info.return_data),
 			(unsigned long)sizeof(struct vow_scp_recover_info_kernel_t));
 		if (err != 0L)
 			VOWDRV_DEBUG("%s(), copy data from user fail", __func__);
 
 		data.return_event_addr = data32.return_event_addr;
+		arg_info.return_data = (unsigned long)&data;
 
-		ret = fp->f_op->unlocked_ioctl(fp, cmd, (unsigned long)&data);
+		ret = fp->f_op->unlocked_ioctl(fp, cmd, (unsigned long)&arg_info);
 	}
 		break;
 	default:
@@ -3359,6 +3418,7 @@ static int VowDrv_remap_mmap(struct file *flip, struct vm_area_struct *vma)
 	return -1;
 }
 
+#ifdef VOW_SMART_DEVICE_SUPPORT
 int VowDrv_setup_smartdev_eint(struct platform_device *pdev)
 {
 	int ret;
@@ -3406,6 +3466,7 @@ int VowDrv_setup_smartdev_eint(struct platform_device *pdev)
 	}
 	return 0;
 }
+#endif
 
 bool vow_service_GetScpRecoverStatus(void)
 {
@@ -3544,7 +3605,11 @@ static struct notifier_block vow_scp_recover_notifier = {
 static int VowDrv_probe(struct platform_device *dev)
 {
 	VOWDRV_DEBUG("%s()\n", __func__);
+
+#ifdef VOW_SMART_DEVICE_SUPPORT
 	VowDrv_setup_smartdev_eint(dev);
+#endif
+
 	return 0;
 }
 

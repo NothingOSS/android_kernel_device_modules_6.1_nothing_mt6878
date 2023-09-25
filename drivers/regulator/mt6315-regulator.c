@@ -265,7 +265,9 @@ static const struct regulator_ops mt6315_volt_range_ops = {
 
 static struct mt6315_regulator_info mt6315_regulators[] = {
 	MT_BUCK("vbuck1", VBUCK1, mt_volt_range1, 1,
-		MT6315_BUCK_TOP_ELR0, 0),
+		MT6315_BUCK_TOP_ELR0, 0x1),
+	MT_BUCK("vbuck2", VBUCK2, mt_volt_range1, 2,
+		MT6315_BUCK_TOP_ELR2, 0x2),
 	MT_BUCK("vbuck3", VBUCK3, mt_volt_range1, 3,
 		MT6315_BUCK_TOP_ELR4, 0x4),
 	MT_BUCK("vbuck4", VBUCK4, mt_volt_range1, 4,

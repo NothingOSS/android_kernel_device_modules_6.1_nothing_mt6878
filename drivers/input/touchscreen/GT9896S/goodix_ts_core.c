@@ -50,6 +50,7 @@ struct mutex irq_info_mutex;
 #endif
 
 struct gt9896s_module gt9896s_modules;
+static unsigned int x_last[GOODIX_MAX_TOUCH], y_last[GOODIX_MAX_TOUCH];
 
 #if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
 struct gt9896s_ts_core *ts_core_for_tui;
@@ -1097,6 +1098,8 @@ void gt9896s_ts_report_finger(struct input_dev *dev,
 		if (!touch_data->coords[i].status)
 			continue;
 		if (touch_data->coords[i].status == TS_RELEASE) {
+			x_last[i] = 0;
+			y_last[i] = 0;
 			input_mt_slot(dev, i);
 			input_mt_report_slot_state(dev, MT_TOOL_FINGER, false);
 			continue;
@@ -1110,6 +1113,13 @@ void gt9896s_ts_report_finger(struct input_dev *dev,
 				 touch_data->coords[i].y);
 		input_report_abs(dev, ABS_MT_TOUCH_MAJOR,
 				 touch_data->coords[i].w);
+
+		if ((x_last[i] == 0) && (y_last[i] == 0))
+			ts_info("touch down, i=%d, x=%u, y=%u, x_last=%u, y_last=%u",
+				i, touch_data->coords[i].x, touch_data->coords[i].y,
+				x_last[i], y_last[i]);
+		x_last[i] = touch_data->coords[i].x;
+		y_last[i] = touch_data->coords[i].y;
 	}
 
 	/* report panel key */

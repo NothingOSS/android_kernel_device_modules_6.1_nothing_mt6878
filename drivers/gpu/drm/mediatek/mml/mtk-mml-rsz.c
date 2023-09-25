@@ -166,6 +166,11 @@ static const struct rsz_data mt6989_rsz2_data = {
 	.wrot_pending = true,
 };
 
+static const struct rsz_data mt6878_rsz_data = {
+	.tile_width = 544,
+	.aal_crop = true,
+};
+
 struct mml_comp_rsz {
 	struct mtk_ddp_comp ddp_comp;
 	struct mml_comp comp;
@@ -904,6 +909,10 @@ const struct of_device_id mml_rsz_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6989-mml_rsz2",
 		.data = &mt6989_rsz2_data,
+	},
+	{
+		.compatible = "mediatek,mt6878-mml_rsz",
+		.data = &mt6878_rsz_data,
 	},
 	{},
 };

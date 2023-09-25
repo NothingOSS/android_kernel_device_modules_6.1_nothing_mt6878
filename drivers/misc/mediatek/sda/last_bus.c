@@ -210,11 +210,9 @@ static int last_bus_dump_event(struct notifier_block *this,
 				get_dbg_error_flag_mask(PERI_LASTBUS_TIMEOUT);
 
 
-	if (!(err_flag_status & last_bus_err_status)) {
-		pr_err("err_flag_status %lx, last_bus_err_status %lx\n",
-			err_flag_status, last_bus_err_status);
+	if (!(err_flag_status & last_bus_err_status))
 		return 0;
-	}
+
 	lastbus_dump(TIMEOUT_DUMP);
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)

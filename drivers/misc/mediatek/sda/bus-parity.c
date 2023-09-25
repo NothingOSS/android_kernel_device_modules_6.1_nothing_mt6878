@@ -424,12 +424,8 @@ static int infra_bp_dump_event(struct notifier_block *this,
 				get_dbg_error_flag_mask(EMI_PARITY_CEN);
 
 
-	if (!(err_flag_status & infra_bp_err_status)) {
-		BPR_LOG("err_flag_status %lx, infra_bp_err_status %lx\n",
-			err_flag_status,
-			infra_bp_err_status);
+	if (!(err_flag_status & infra_bp_err_status))
 		return 0;
-	}
 
 	/* infra parity dump */
 	infra_bp_dump_flow();

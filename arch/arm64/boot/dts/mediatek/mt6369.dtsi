@@ -21,9 +21,9 @@
 		accdet: accdet {
 			compatible = "mediatek,mt6369-accdet";
 			accdet-name = "mt63xx-accdet";
-			accdet-mic-vol = <8>;
+			accdet-mic-vol = <7>;
 			accdet-plugout-debounce = <1>;
-			accdet-mic-mode = <2>;
+			accdet-mic-mode = <1>;
 			eint_use_ext_res = <0>;
 			headset-mode-setting = <0x500 0x500 1 0x1f0
 						0x800 0x800 0x20 0x44
@@ -47,30 +47,30 @@
 			compatible = "mediatek,mt6368-auxadc";
 			#io-channel-cells = <1>;
 
-			chip_temp {
+			chip-temp {
 				channel = <AUXADC_CHIP_TEMP>;
 			};
-			vcore_temp {
+			vcore-temp {
 				channel = <AUXADC_VCORE_TEMP>;
 			};
-			vproc_temp {
+			vproc-temp {
 				channel = <AUXADC_VPROC_TEMP>;
 			};
-			vgpu_temp {
+			vgpu-temp {
 				channel = <AUXADC_VGPU_TEMP>;
 			};
 			accdet {
 				channel = <AUXADC_ACCDET>;
 			};
-			hpofs_cal {
+			hpofs-cal {
 				channel = <AUXADC_HPOFS_CAL>;
 				avg-num = <256>;
 			};
-			vin1_open {
+			vin1-open {
 				channel = <AUXADC_VIN1>;
 				pures = <ADC_PURES_OPEN>;
 			};
-			vin2_open {
+			vin2-open {
 				channel = <AUXADC_VIN2>;
 				pures = <ADC_PURES_OPEN>;
 			};
@@ -82,6 +82,11 @@
 			#size-cells = <1>;
 		};
 
+
+		mt6369_consys: mt6369-consys {
+			compatible = "mediatek,mt6369-consys";
+		};
+
 		mt6369codec: mt6369codec {
 			compatible = "mediatek,mt6369-sound";
 			io-channels = <&mt6369_adc AUXADC_HPOFS_CAL>;
@@ -91,7 +96,7 @@
 		};
 
 		regulators {
-			mt6369_vbuck1: VBUCK1 {
+			mt6369_vbuck1: vbuck1 {
 				regulator-compatible = "VBUCK1";
 				regulator-name = "mt6369_vbuck1";
 				regulator-min-microvolt = <300000>;
@@ -99,7 +104,7 @@
 				regulator-enable-ramp-delay = <180>;
 				regulator-allowed-modes = <0 1 2>;
 			};
-			mt6369_vsram_core: VSRAM_CORE {
+			mt6369_vsram_core: vsram-core {
 				regulator-compatible = "VSRAM_CORE";
 				regulator-name = "mt6369_vsram_core";
 				regulator-min-microvolt = <400000>;
@@ -107,7 +112,7 @@
 				regulator-enable-ramp-delay = <180>;
 				regulator-allowed-modes = <0 2>;
 			};
-			mt6369_vdigrf: VDIGRF {
+			mt6369_vdigrf: vdigrf {
 				regulator-compatible = "VDIGRF";
 				regulator-name = "mt6369_vdigrf";
 				regulator-min-microvolt = <400000>;
@@ -115,15 +120,16 @@
 				regulator-enable-ramp-delay = <180>;
 				regulator-allowed-modes = <0 2>;
 			};
-			mt6369_vaux18: VAUX18 {
+			mt6369_vaux18: vaux18 {
 				regulator-compatible = "VAUX18";
 				regulator-name = "mt6369_vaux18";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <3300000>;
 				regulator-enable-ramp-delay = <240>;
 				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
 			};
-			mt6369_vusb: VUSB {
+			mt6369_vusb: vusb {
 				regulator-compatible = "VUSB";
 				regulator-name = "mt6369_vusb";
 				regulator-min-microvolt = <1200000>;
@@ -132,7 +138,7 @@
 				regulator-allowed-modes = <0 2>;
 				regulator-always-on;
 			};
-			mt6369_vibr: VIBR {
+			mt6369_vibr: vibr {
 				regulator-compatible = "VIBR";
 				regulator-name = "mt6369_vibr";
 				regulator-min-microvolt = <1200000>;
@@ -140,7 +146,7 @@
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
 			};
-			mt6369_vio28: VIO28 {
+			mt6369_vio28: vio28 {
 				regulator-compatible = "VIO28";
 				regulator-name = "mt6369_vio28";
 				regulator-min-microvolt = <1200000>;
@@ -149,7 +155,7 @@
 				regulator-allowed-modes = <0 2>;
 				regulator-always-on;
 			};
-			mt6369_vfp: VFP {
+			mt6369_vfp: vfp {
 				regulator-compatible = "VFP";
 				regulator-name = "mt6369_vfp";
 				regulator-min-microvolt = <1200000>;
@@ -157,7 +163,7 @@
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
 			};
-			mt6369_vtp: VTP {
+			mt6369_vtp: vtp {
 				regulator-compatible = "VTP";
 				regulator-name = "mt6369_vtp";
 				regulator-min-microvolt = <1200000>;
@@ -165,7 +171,7 @@
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
 			};
-			mt6369_vmch: VMCH {
+			mt6369_vmch: vmch {
 				regulator-compatible = "VMCH";
 				regulator-name = "mt6369_vmch";
 				regulator-min-microvolt = <1200000>;
@@ -173,7 +179,7 @@
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
 			};
-			mt6369_vmc: VMC {
+			mt6369_vmc: vmc {
 				regulator-compatible = "VMC";
 				regulator-name = "mt6369_vmc";
 				regulator-min-microvolt = <1200000>;
@@ -181,7 +187,7 @@
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
 			};
-			mt6369_vcn33_1: VCN33_1 {
+			mt6369_vcn33_1: vcn33-1 {
 				regulator-compatible = "VCN33_1";
 				regulator-name = "mt6369_vcn33_1";
 				regulator-min-microvolt = <1200000>;
@@ -189,7 +195,7 @@
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
 			};
-			mt6369_vcn33_2: VCN33_2 {
+			mt6369_vcn33_2: vcn33-2 {
 				regulator-compatible = "VCN33_2";
 				regulator-name = "mt6369_vcn33_2";
 				regulator-min-microvolt = <1200000>;
@@ -197,15 +203,16 @@
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
 			};
-			mt6369_vaud28: VAUD28 {
+			mt6369_vaud28: vaud28 {
 				regulator-compatible = "VAUD28";
 				regulator-name = "mt6369_vaud28";
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <3300000>;
 				regulator-enable-ramp-delay = <240>;
 				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
 			};
-			mt6369_vant18: VANT18 {
+			mt6369_vant18: vant18 {
 				regulator-compatible = "VANT18";
 				regulator-name = "mt6369_vant18";
 				regulator-min-microvolt = <600000>;
@@ -213,7 +220,7 @@
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
 			};
-			mt6369_vefuse: VEFUSE {
+			mt6369_vefuse: vefuse {
 				regulator-compatible = "VEFUSE";
 				regulator-name = "mt6369_vefuse";
 				regulator-min-microvolt = <1200000>;
@@ -221,7 +228,7 @@
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
 			};
-			mt6369_vmch_eint_high: VMCH_EINT_HIGH {
+			mt6369_vmch_eint_high: vmch-eint-high {
 				regulator-compatible = "VMCH_EINT_HIGH";
 				regulator-name = "mt6369_vmch_eint_high";
 				regulator-min-microvolt = <1200000>;
@@ -229,7 +236,7 @@
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
 			};
-			mt6369_vmch_eint_low: VMCH_EINT_LOW {
+			mt6369_vmch_eint_low: vmch-eint-low {
 				regulator-compatible = "VMCH_EINT_LOW";
 				regulator-name = "mt6369_vmch_eint_low";
 				regulator-min-microvolt = <1200000>;

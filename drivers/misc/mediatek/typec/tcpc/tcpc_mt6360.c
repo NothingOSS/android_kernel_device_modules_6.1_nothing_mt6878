@@ -751,8 +751,10 @@ static void mt6360_pmu_usbid_evt_dwork_handler(struct work_struct *work)
 	if (!chip->wd_polling)
 		goto out;
 	mt6360_enable_usbid_polling(chip, false);
+#if !CONFIG_WD_DURING_PLUGGED_IN
 	if (tcpci_is_plugged_in(chip->tcpc))
 		goto out;
+#endif	/* CONFIG_WD_DURING_PLUGGED_IN */
 	ret = mt6360_is_water_detected(chip->tcpc);
 	if (ret <= 0)
 		mt6360_enable_usbid_polling(chip, true);
@@ -771,7 +773,7 @@ static irqreturn_t mt6360_pmu_usbid_evt_handler(int irq, void *data)
 	mt6360_enable_usbid_irq(chip, false);
 	tcpci_unlock_typec(chip->tcpc);
 	queue_delayed_work(system_freezable_wq, &chip->usbid_evt_dwork,
-			   msecs_to_jiffies(100));
+			   msecs_to_jiffies(200));
 	return IRQ_HANDLED;
 }
 #endif /* CONFIG_WATER_DETECTION */
@@ -1277,7 +1279,12 @@ static int mt6360_set_low_power_mode(struct tcpc_device *tcpc, bool en,
 	struct mt6360_chip *chip = tcpc_get_dev_data(tcpc);
 
 	if (tcpc->tcpc_flags & TCPC_FLAGS_WATER_DETECTION) {
+#if CONFIG_WD_DURING_PLUGGED_IN
+		if (en)
+			ret = mt6360_enable_usbid_polling(chip, en);
+#else
 		ret = mt6360_enable_usbid_polling(chip, en);
+#endif	/* CONFIG_WD_DURING_PLUGGED_IN */
 		if (ret < 0)
 			return ret;
 	}
@@ -1690,7 +1697,12 @@ static int mt6360_is_water_detected(struct tcpc_device *tcpc)
 	MT6360_INFO("%s lb %d, ub %d, ph usbid %dmV\n", __func__, lb, ub,
 		    usbid);
 
-	if (usbid >= lb && usbid <= ub) {
+	if ((usbid >= lb && usbid <= ub)
+#if CONFIG_WD_DURING_PLUGGED_IN
+	    || (usbid > CONFIG_WD_SBU_PH_TITAN_LBOUND &&
+		usbid < CONFIG_WD_SBU_PH_TITAN_UBOUND)
+#endif	/* CONFIG_WD_DURING_PLUGGED_IN */
+	   ) {
 		ret = 0;
 		goto out;
 	}

@@ -267,6 +267,8 @@ static bool hypmmu_type2_en;
 static struct mutex init_mutexs[PGTBALE_NUM];
 static struct mutex group_mutexs[MTK_IOMMU_GROUP_MAX];
 static atomic_t init_once_flag = ATOMIC_INIT(0);
+static const char *IOMMU_BANKS_PROP_NAME = "mediatek,iommu_banks";
+static const char *IOMMU_BANKS_PROP_NAME_v2 = "mediatek,iommu-banks";
 
 static int mtk_iommu_hw_init(const struct mtk_iommu_data *data);
 
@@ -371,6 +373,43 @@ static const struct mtk_iommu_iova_region mt6873_multi_dom[] = {
 	{ .iova_base = 0x304000000ULL, .size = 0x4000000}, /* APU VLM */
 	{ .iova_base = 0x310000000ULL, .size = 0x10000000}, /* APU VPU */
 	{ .iova_base = 0x370000000ULL, .size = 0x12600000}, /* APU REG */
+};
+
+/*
+ * 0.NORMAL: total: 12GB + 96M
+ *	-NORMAL: 0x1000~0x3_FFFF_FFFF(16GB)
+ *	-NORMAL: 0x1_0000_0000~0x1_05FF_FFFF(96MB)
+ *	-LK + CCU + Video uP
+ *	-NORMAL: 0x2_0000_0000~0x3_FFFF_FFFF(8GB)
+ * 1.LK_RESV:        0x1_0600_0000~0x1_07FF_FFFF(32MB)
+ * 2.CCU0:           0x1_0800_0000~0x1_0BFF_FFFF(64MB)
+ * 3.CCU1:           0x1_0C00_0000~0x1_0FFF_FFFF(64MB)
+ * 4.VDO_UP:         0x1_1000_0000~0x1_6FFF_FFFF(1.5GB)
+ * 5.VDEC:           0x1_7000_0000~0x1_FFFF_FFFF(2.25GB)
+ */
+static const struct mtk_iommu_iova_region mt6878_multi_dom_mm[] = {
+	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL},	/* 0.NORMAL */
+	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL},		/* 1.LK_RESV:32MB */
+	{ .iova_base = 0x108000000ULL, .size = SZ_64M, .type = PROTECTED},	/* 2.CCU0:64MB */
+	{ .iova_base = 0x10C000000ULL, .size = SZ_64M, .type = PROTECTED},	/* 3.CCU1:64MB */
+	{ .iova_base = 0x110000000ULL, .size = 0x60000000, .type = PROTECTED},	/* 4.VDO_UP:1.5GB */
+	{ .iova_base = 0x170000000ULL, .size = 0x90000000, .type = NORMAL},	/* 5.VDEC:2.25GB */
+};
+
+/*
+ * 0.APU_DATA(NORMAL): 12.375GB
+ *	0x2000_0000~0x3FFF_FFFF(512MB)
+ *	0x1_0000_0000~0x1_05FF_FFFF(96MB)
+ *	0x1_0800_0000~0x3_FFFF_FFFF(11.875GB)
+ * 1.APU_SECURE:     0x1000~0x1FFF_FFFF(512MB)
+ * 2.APU_CODE:       0x4000_0000~0xFFFF_FFFF(3GB)
+ * 3.LK_RESV:        0x1_0600_0000~0x1_07FF_FFFF(32MB)
+ */
+static const struct mtk_iommu_iova_region mt6878_multi_dom_apu[] = {
+	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL},	/* 0.APU_DATA */
+	{ .iova_base = SZ_4K, .size = (SZ_512M - SZ_4K), .type = SECURE},	/* 1.APU_SECURE:512M */
+	{ .iova_base = SZ_1G, .size = (SZ_1G * 3ULL), .type = NORMAL},		/* 2.APU_CODE:3GB */
+	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL},		/* 3.LK_RESV:32MB */
 };
 
 /*
@@ -2733,7 +2772,16 @@ static int mtk_iommu_probe(struct platform_device *pdev)
 	 */
 	if (MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_SEC_EN)) {
 		int bk_nr = of_count_phandle_with_args(dev->of_node,
-					     "mediatek,iommu_banks", NULL);
+						       IOMMU_BANKS_PROP_NAME,
+						       NULL);
+		bool bk_prop_v2 = false;
+
+		if (bk_nr <= 0) {
+			bk_nr = of_count_phandle_with_args(dev->of_node,
+							   IOMMU_BANKS_PROP_NAME_v2,
+							   NULL);
+			bk_prop_v2 = true;
+		}
 
 		if (bk_nr >= IOMMU_BK_NUM || bk_nr < 0) {
 			pr_info("%s, get bank nr fail, %d\n", __func__, bk_nr);
@@ -2748,7 +2796,12 @@ static int mtk_iommu_probe(struct platform_device *pdev)
 			struct device_node *bk_node;
 			struct platform_device *bk_dev;
 
-			bk_node = of_parse_phandle(dev->of_node, "mediatek,iommu_banks", i);
+			if (bk_prop_v2)
+				bk_node = of_parse_phandle(dev->of_node,
+							   IOMMU_BANKS_PROP_NAME_v2, i);
+			else
+				bk_node = of_parse_phandle(dev->of_node,
+							   IOMMU_BANKS_PROP_NAME, i);
 			if (!bk_node) {
 				dev_warn(dev, "Find iommu_bank:%d node fail\n", i);
 				continue;
@@ -3396,6 +3449,40 @@ static const struct mtk_iommu_plat_data mt6873_data_apu = {
 	.iova_region_nr  = ARRAY_SIZE(mt6873_multi_dom),
 };
 
+static const struct mtk_iommu_plat_data mt6878_data_disp = {
+	.m4u_plat	= M4U_MT6878,
+	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
+			  NOT_STD_AXI_MODE | TLB_SYNC_EN | /*IOMMU_SEC_EN |*/
+			  SKIP_CFG_PORT | IOVA_34_EN |
+			  IOMMU_CLK_AO_EN | IOMMU_EN_PRE |/*HAS_BCLK |*/
+			  HAS_SMI_SUB_COMM | SAME_SUBSYS,
+	.hw_list        = &mm_iommu_list,
+	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
+	.iommu_id	= DISP_IOMMU,
+	.iommu_type     = MM_IOMMU,
+	.tab_id		= MM_TABLE,
+	.normal_dom	= 0,
+	.iova_region    = mt6878_multi_dom_mm,
+	.iova_region_nr = ARRAY_SIZE(mt6878_multi_dom_mm),
+	.mau_count	= 4,
+};
+
+static const struct mtk_iommu_plat_data mt6878_data_apu0 = {
+	.m4u_plat	= M4U_MT6878,
+	.flags          = TLB_SYNC_EN | /*IOMMU_SEC_EN |*/
+			  GET_DOM_ID_LEGACY | IOVA_34_EN | /*LINK_WITH_APU |*/
+			  PM_OPS_SKIP | IOMMU_CLK_AO_EN,
+	.hw_list        = &apu_iommu_list,
+	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
+	.iommu_id	= APU_IOMMU0,
+	.iommu_type     = APU_IOMMU,
+	.tab_id		= APU_TABLE,
+	.normal_dom	= 0,
+	.iova_region    = mt6878_multi_dom_apu,
+	.iova_region_nr = ARRAY_SIZE(mt6878_multi_dom_apu),
+	.mau_count	= 4,
+};
+
 static const struct mtk_iommu_plat_data mt6879_data_disp = {
 	.m4u_plat	= M4U_MT6879,
 	.flags          = HAS_SUB_COMM | OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
@@ -3837,6 +3924,8 @@ static const struct of_device_id mtk_iommu_of_ids[] = {
 	{ .compatible = "mediatek,mt6855-disp-iommu", .data = &mt6855_data_disp},
 	{ .compatible = "mediatek,mt6873-m4u", .data = &mt6873_data},
 	{ .compatible = "mediatek,mt6873-apu-iommu", .data = &mt6873_data_apu},
+	{ .compatible = "mediatek,mt6878-apu-iommu0", .data = &mt6878_data_apu0},
+	{ .compatible = "mediatek,mt6878-disp-iommu", .data = &mt6878_data_disp},
 	{ .compatible = "mediatek,mt6879-apu-iommu0", .data = &mt6879_data_apu0},
 	{ .compatible = "mediatek,mt6879-disp-iommu", .data = &mt6879_data_disp},
 	{ .compatible = "mediatek,mt6886-apu-iommu0", .data = &mt6886_data_apu0},

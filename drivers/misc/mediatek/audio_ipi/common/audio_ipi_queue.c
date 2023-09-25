@@ -12,9 +12,7 @@
 
 #include <linux/delay.h>
 
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 #include <scp_audio_ipi.h>
-#endif
 
 #include "audio_log.h"
 #include "audio_assert.h"

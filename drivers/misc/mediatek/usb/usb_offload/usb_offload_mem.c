@@ -13,6 +13,10 @@
 #include <adsp_helper.h>
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+#include <scp.h>
+#endif
+
 #include "usb_offload.h"
 #include "mtk-usb-offload-ops.h"
 
@@ -427,21 +431,50 @@ int mtk_offload_init_rsv_dram(int min_alloc_order)
 {
 	uint32_t mem_id;
 	int ret;
+	int dsp_type;
 
 	mem_id = USB_OFFLOAD_MEM_DRAM_ID;
-	if (!adsp_get_reserve_mem_phys(ADSP_XHCI_MEM_ID)) {
-		USB_OFFLOAD_ERR("fail to get reserved dram\n");
-		usb_offload_mem_buffer[mem_id].is_valid = false;
-		return -EPROBE_DEFER;
+	dsp_type = get_adsp_type();
+	if (dsp_type == ADSP_TYPE_HIFI3) {
+		if (!adsp_get_reserve_mem_phys(ADSP_XHCI_MEM_ID)) {
+			USB_OFFLOAD_ERR("fail to get reserved dram\n");
+			usb_offload_mem_buffer[mem_id].is_valid = false;
+			return -EPROBE_DEFER;
+		}
+		usb_offload_mem_buffer[mem_id].phy_addr = adsp_get_reserve_mem_phys(ADSP_XHCI_MEM_ID);
+		usb_offload_mem_buffer[mem_id].va_addr =
+				(unsigned long long) adsp_get_reserve_mem_virt(ADSP_XHCI_MEM_ID);
+		usb_offload_mem_buffer[mem_id].vir_addr = adsp_get_reserve_mem_virt(ADSP_XHCI_MEM_ID);
+		usb_offload_mem_buffer[mem_id].size = adsp_get_reserve_mem_size(ADSP_XHCI_MEM_ID);
+		usb_offload_mem_buffer[mem_id].is_valid = true;
+		USB_OFFLOAD_INFO("[reserved dram] phy:0x%llx vir:%p\n",
+				 usb_offload_mem_buffer[mem_id].phy_addr,
+				 usb_offload_mem_buffer[mem_id].vir_addr);
+	} else if (dsp_type == ADSP_TYPE_RV55) {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+		if (!scp_get_reserve_mem_phys(SCP_XHCI_MEM_ID)) {
+			USB_OFFLOAD_ERR("fail to get reserved dram\n");
+			usb_offload_mem_buffer[mem_id].is_valid = false;
+			return -EPROBE_DEFER;
+		}
+		usb_offload_mem_buffer[mem_id].phy_addr = scp_get_reserve_mem_phys(SCP_XHCI_MEM_ID);
+		usb_offload_mem_buffer[mem_id].va_addr =
+				(unsigned long long) scp_get_reserve_mem_virt(SCP_XHCI_MEM_ID);
+		usb_offload_mem_buffer[mem_id].vir_addr = (unsigned char *)scp_get_reserve_mem_virt(SCP_XHCI_MEM_ID);
+		usb_offload_mem_buffer[mem_id].size = scp_get_reserve_mem_size(SCP_XHCI_MEM_ID);
+		usb_offload_mem_buffer[mem_id].is_valid = true;
+		USB_OFFLOAD_INFO("[reserved dram] phy:0x%llx vir:%p\n",
+				 usb_offload_mem_buffer[mem_id].phy_addr,
+				 usb_offload_mem_buffer[mem_id].vir_addr);
+#else
+		USB_OFFLOAD_ERR("Failed to get reservied DRAM for SCP\n");
+		return -ENOMEM;
+#endif
+
+	} else {
+		USB_OFFLOAD_ERR("Failed to query dsp type for reserved dram\n");
+		return -ENOMEM;
 	}
-	usb_offload_mem_buffer[mem_id].phy_addr = adsp_get_reserve_mem_phys(ADSP_XHCI_MEM_ID);
-	usb_offload_mem_buffer[mem_id].va_addr =
-			(unsigned long long) adsp_get_reserve_mem_virt(ADSP_XHCI_MEM_ID);
-	usb_offload_mem_buffer[mem_id].vir_addr = adsp_get_reserve_mem_virt(ADSP_XHCI_MEM_ID);
-	usb_offload_mem_buffer[mem_id].size = adsp_get_reserve_mem_size(ADSP_XHCI_MEM_ID);
-	usb_offload_mem_buffer[mem_id].is_valid = true;
-	USB_OFFLOAD_INFO("[reserved dram] phy:0x%llx vir:%p\n",
-		usb_offload_mem_buffer[mem_id].phy_addr, usb_offload_mem_buffer[mem_id].vir_addr);
 
 	ret = mtk_usb_offload_init_pool(min_alloc_order, mem_id);
 	if (!ret)

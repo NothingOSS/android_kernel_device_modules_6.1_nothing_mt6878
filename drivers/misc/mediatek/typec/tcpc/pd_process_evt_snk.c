@@ -101,11 +101,6 @@ static inline bool pd_process_ctrl_msg(
 			PE_TRANSIT_STATE(pd_port, PE_SNK_READY);
 			return true;
 
-#if CONFIG_USB_PD_VBUS_DETECTION_DURING_PR_SWAP
-		case PE_PRS_SRC_SNK_WAIT_SOURCE_ON:
-		case PE_PRS_SNK_SRC_TRANSITION_TO_OFF:
-			return false;
-#endif /* CONFIG_USB_PD_VBUS_DETECTION_DURING_PR_SWAP */
 		default:
 			break;
 		}

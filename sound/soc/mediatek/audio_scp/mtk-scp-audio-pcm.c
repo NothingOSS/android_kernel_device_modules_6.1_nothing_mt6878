@@ -1152,7 +1152,7 @@ static int mtk_scp_audio_pcm_copy(struct snd_soc_component *component,
 
 	if (bytes <= 0) {
 		pr_info(
-			"error %s channel = %d pos = %lu count = %lu bytes = %d\n",
+			"error %s channel = %d pos = %lu count = %lu bytes = %lu\n",
 			__func__, channel, pos, bytes, bytes);
 		return -1;
 	}

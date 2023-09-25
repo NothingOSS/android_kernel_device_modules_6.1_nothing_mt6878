@@ -484,6 +484,7 @@ static const struct {
 	{"attempt-enter-dp-mode", "attempt_enter_dp_mode", DPM_CAP_ATTEMPT_ENTER_DP_MODE},
 	{"attempt-discover-cable", "attempt_discover_cable", DPM_CAP_ATTEMPT_DISCOVER_CABLE},
 	{"attempt-discover-id", "attempt_discover_id", DPM_CAP_ATTEMPT_DISCOVER_ID},
+	{"attempt-discover-id-dfp", "attempt_discover_id_dfp", DPM_CAP_ATTEMPT_DISCOVER_ID_DFP},
 	{"attempt-discover-svid", "attempt_discover_svid", DPM_CAP_ATTEMPT_DISCOVER_SVID},
 
 	{"pr-reject-as-source", "pr_reject_as_source", DPM_CAP_PR_SWAP_REJECT_AS_SRC},
@@ -768,7 +769,7 @@ int pd_reset_protocol_layer(struct pd_port *pd_port, bool sop_only)
 
 	pe_data->explicit_contract = false;
 	pe_data->selected_cap = 0;
-	pe_data->during_swap = 0;
+	pe_data->during_swap = false;
 
 #if CONFIG_USB_PD_REV30_ALERT_REMOTE
 	pe_data->remote_alert = 0;
@@ -1023,7 +1024,7 @@ int pd_handle_soft_reset(struct pd_port *pd_port)
 
 	pd_reset_protocol_layer(pd_port, true);
 	pd_notify_tcp_event_buf_reset(pd_port, TCP_DPM_RET_DROP_RECV_SRESET);
-	tcpci_notify_pd_state(pd_port->tcpc, PD_CONNECT_SOFT_RESET);
+	pd_update_connect_state(pd_port, PD_CONNECT_SOFT_RESET);
 	return pd_send_sop_ctrl_msg(pd_port, PD_CTRL_ACCEPT);
 }
 
@@ -1187,7 +1188,7 @@ int pd_send_soft_reset(struct pd_port *pd_port)
 
 	pd_reset_protocol_layer(pd_port, true);
 	pd_notify_tcp_event_buf_reset(pd_port, TCP_DPM_RET_DROP_SENT_SRESET);
-	tcpci_notify_pd_state(pd_port->tcpc, PD_CONNECT_SOFT_RESET);
+	pd_update_connect_state(pd_port, PD_CONNECT_SOFT_RESET);
 	return pd_send_sop_ctrl_msg(pd_port, PD_CTRL_SOFT_RESET);
 }
 

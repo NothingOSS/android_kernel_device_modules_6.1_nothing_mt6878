@@ -45,6 +45,8 @@
 	_IO(MTEE_IOC_MAGIC, 17)
 #define MTEE_CMD_ADJUST_WQ_ATTR                                                \
 	_IOW(MTEE_IOC_MAGIC, 21, char *)
+#define TRUSTY_NOP_SET_PRI                                                     \
+	_IOW(MTEE_IOC_MAGIC, 23, struct user_adjust_nop_pri)
 #define MTEE_CMD_GET_CHM_HANDLE                                               \
 	_IOWR(MTEE_IOC_MAGIC, 22, struct user_chm_fd_to_hd_param)
 
@@ -109,4 +111,7 @@ struct user_chm_fd_to_hd_param {
 	int buf_fd;
 };
 
+struct user_adjust_nop_pri {
+	uint32_t policy;
+};
 #endif /* end of DEVFINO_H */

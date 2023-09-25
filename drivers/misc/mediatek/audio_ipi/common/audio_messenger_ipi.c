@@ -9,9 +9,7 @@
 #include <linux/spinlock.h>
 #include <linux/errno.h>
 
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 #include <scp_audio_ipi.h>
-#endif
 
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 #include <adsp_helper.h>
@@ -243,15 +241,12 @@ static void audio_ipi_msg_dispatcher(int id, void *data, unsigned int len)
 
 void audio_messenger_ipi_init(void)
 {
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 	int ret_scp = 0;
-#endif
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 	int ret_adsp = 0;
 #endif
 	int i = 0;
 
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 	if (is_audio_scp_support()) {
 		ret_scp = scp_audio_ipi_registration(
 			   SCP_AUDIO_IPI_AUDIO,
@@ -260,7 +255,6 @@ void audio_messenger_ipi_init(void)
 		if (ret_scp != 0)
 			pr_notice("scp_audio_ipi_registration fail!!");
 	}
-#endif
 
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 	ret_adsp = adsp_ipi_registration(

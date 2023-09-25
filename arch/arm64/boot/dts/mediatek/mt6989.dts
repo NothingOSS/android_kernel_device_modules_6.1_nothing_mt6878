@@ -3994,6 +3994,7 @@
 			compatible = "mediatek,tracker";
 			reg = <0 0x10208000 0 0x1000>;
 			timer-sep = <0>;
+			no-w-valid-chk = <1>;
 			subsys {
 				tracker1 {
 					sys-name = "AP";
@@ -4173,9 +4174,7 @@
 				<0xe80 0x1 1>,
 				<0xe80 0x0 1>;
 			mask =  <0xe00 0x2 1>,
-				<0xe80 0x2 1>,
-				<0xe40 0x2 1>,
-				<0xec0 0x2 1>;
+				<0xe80 0x2 1>;
 			clear-md = <0xe40 0x1 1>,
 				   <0xe40 0x0 1>,
 				   <0xec0 0x1 1>,
@@ -4197,9 +4196,7 @@
 				<0xe80 0x1 1>,
 				<0xe80 0x0 1>;
 			mask =  <0xe00 0x2 1>,
-				<0xe80 0x2 1>,
-				<0xe40 0x2 1>,
-				<0xec0 0x2 1>;
+				<0xe80 0x2 1>;
 			clear-md = <0xe40 0x1 1>,
 				   <0xe40 0x0 1>,
 				   <0xec0 0x1 1>,
@@ -4217,9 +4214,7 @@
 			dump = <0xc00 0xc04 0xc10 0xc14>;
 			clear = <0x410 0x1 1>,
 				<0x410 0x0 1>;
-			mask =  <0x410 0x2 1>,
-				<0xe40 0x2 1>,
-				<0xec0 0x2 1>;
+			mask =  <0x410 0x2 1>;
 			clear-md = <0xe40 0x1 1>,
 				   <0xe40 0x0 1>,
 				   <0xec0 0x1 1>,
@@ -4234,9 +4229,7 @@
 			dump = <0xc00 0xc04 0xc10 0xc14>;
 			clear = <0x410 0x1 1>,
 				<0x410 0x0 1>;
-			mask =  <0x410 0x2 1>,
-				<0xe40 0x2 1>,
-				<0xec0 0x2 1>;
+			mask =  <0x410 0x2 1>;
 			clear-md = <0xe40 0x1 1>,
 				   <0xe40 0x0 1>,
 				   <0xec0 0x1 1>,
@@ -18103,12 +18096,14 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 				     <MT6375_FL_WDT>, <MT6375_FL_BC12_DN>,
 				     <MT6375_FL_AICC_DONE>, <MT6375_FL_PE_DONE>,
 				     <MT6375_FL_BATPRO_DONE>,
-				     <MT6375_ADC_VBAT_MON_OV>;
+				     <MT6375_ADC_VBAT_MON_OV>,
+				     <MT6375_USBID_EVT>;
 			interrupt-names = "fl_pwr_rdy", "fl_detach",
 					  "fl_vbus_ov", "fl_chg_tout",
 					  "fl_wdt", "fl_bc12_dn",
 					  "fl_aicc_done", "fl_pe_done",
-					  "fl_batpro_done", "adc_vbat_mon_ov";
+					  "fl_batpro_done", "adc_vbat_mon_ov",
+					  "usbid_evt";
 			io-channels = <&mt6375_adc MT6375_ADC_CHGVIN>,
 				      <&mt6375_adc MT6375_ADC_VSYS>,
 				      <&mt6375_adc MT6375_ADC_VBAT>,
@@ -18116,7 +18111,8 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 				      <&mt6375_adc MT6375_ADC_IBAT>,
 				      <&mt6375_adc MT6375_ADC_TEMPJC>,
 				      <&mt6375_adc MT6375_ADC_USBDP>,
-				      <&mt6375_adc MT6375_ADC_USBDM>;
+				      <&mt6375_adc MT6375_ADC_USBDM>,
+				      <&mt6375_adc MT6375_ADC_SBU2>;
 			chg-name = "primary_chg";
 			aicr = <500>;
 			mivr = <4400>;

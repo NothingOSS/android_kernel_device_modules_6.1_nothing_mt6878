@@ -212,11 +212,16 @@ static void md_cd_get_md_bootup_status(
  * GEN97 and GEN98 == 0x5443000CU;
  * GEN98+ == 0x5443000FU;
  * GEN99 == 0x54430012U;
+ * from mt6878 to the future == 0x544300F1U;
  */
 u32 get_expected_boot_status_val(void)
 {
 	u32 boot_status_val = 0;
 
+	if (md_cd_plat_val_ptr.boot_status_config) {
+		boot_status_val = 0x544300F1U;
+		return boot_status_val;
+	}
 	if ((md_cd_plat_val_ptr.md_gen <= 6295) && !md_cd_plat_val_ptr.md_sub_ver)
 		boot_status_val = 0x54430007U;
 	else if (((md_cd_plat_val_ptr.md_gen == 6295) && md_cd_plat_val_ptr.md_sub_ver) ||
@@ -1434,6 +1439,17 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 		//	hw_info->ap_ccif_irq1_id, hw_info->md_wdt_irq_id);
 		return -1;
 	}
+
+	ret = of_property_read_u32(dev_ptr->dev.of_node,
+		"mediatek,boot-status-config",
+		&md_cd_plat_val_ptr.boot_status_config);
+	if (ret < 0) {
+		md_cd_plat_val_ptr.boot_status_config = 0;
+		CCCI_ERROR_LOG(0, TAG, "%s:get DTS:boot-status-config fail\n",
+			__func__);
+	} else
+		CCCI_NORMAL_LOG(0, TAG, "%s: boot_status_config = 0x%x\n",
+			__func__, md_cd_plat_val_ptr.boot_status_config);
 
 	/* Get spm sleep base */
 	md_cd_plat_val_ptr.spm_sleep_base =

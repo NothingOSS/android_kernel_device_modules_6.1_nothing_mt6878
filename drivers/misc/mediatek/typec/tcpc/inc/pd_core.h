@@ -318,8 +318,8 @@
 		VDO_CMDT(cmd_type) | VDO_OPOS(obj) | cmd)
 
 #define VDO_REPLY(ver, cmd_type, request_vdo)	\
-	(VDO_SVDM_VERS(ver) | VDO_CMDT(cmd_type) \
-	| ((request_vdo) & (~0x60C0)))
+	(VDO_SVDM_VERS(ver) | VDO_SVDM_VERS_MIN(ver) | VDO_CMDT(cmd_type) \
+	| ((request_vdo) & (~0x78E0)))
 
 #define SVDM_REV10	0
 #define SVDM_REV20	1
@@ -834,6 +834,16 @@ struct pd_country_authority {
 };
 #endif /* CONFIG_USB_PD_REV30_COUNTRY_AUTHORITY */
 
+struct dpm_pdo_info_t {
+	uint8_t type;
+	uint8_t apdo_type;
+	uint8_t pwr_limit;
+	int vmin;
+	int vmax;
+	int uw;
+	int ma;
+};
+
 struct pd_port {
 	struct tcpc_device *tcpc;
 	struct mutex pd_lock;
@@ -867,6 +877,7 @@ struct pd_port {
 	uint8_t msg_id_pr_swap_last;
 #endif	/* CONFIG_USB_PD_IGNORE_PS_RDY_AFTER_PR_SWAP */
 
+	struct dpm_pdo_info_t last_sink_pdo_info;
 	uint32_t last_rdo;
 
 	uint8_t id_vdo_nr;
@@ -1203,10 +1214,9 @@ extern void pd_notify_pe_send_hard_reset(struct pd_port *pd_port);
 extern void pd_notify_pe_idle(struct pd_port *pd_port);
 extern void pd_notify_pe_wait_vbus_once(struct pd_port *pd_port, int wait_evt);
 extern void pd_notify_pe_error_recovery(struct pd_port *pd_port);
-extern void pd_notify_pe_execute_pr_swap(
-			struct pd_port *pd_port, bool start_swap);
-extern void pd_notify_pe_cancel_pr_swap(struct pd_port *pd_port);
+extern void pd_notify_pe_execute_pr_swap(struct pd_port *pd_port);
 extern void pd_notify_pe_reset_protocol(struct pd_port *pd_port);
+extern void pd_notify_pe_cancel_pr_swap(struct pd_port *pd_port);
 extern void pd_noitfy_pe_bist_mode(struct pd_port *pd_port, uint8_t mode);
 extern void pd_notify_pe_pr_changed(struct pd_port *pd_port);
 extern void pd_notify_pe_snk_explicit_contract(struct pd_port *pd_port);

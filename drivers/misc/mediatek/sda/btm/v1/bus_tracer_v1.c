@@ -311,11 +311,12 @@ static int dump_setting(struct bus_tracer_plt *plt, char *buf, int len)
 		(unsigned long) readl(plt->dbgao_base + 0x8c));
 
 	buf += sprintf(buf, "0x90 = 0x%lx\n0x94 = 0x%lx\n0x98 = 0x%lx\n"
-		"0x9c = 0x%lx\n",
+		"0x9c = 0x%lx\n0xa0 = 0x%lx\n",
 		(unsigned long) readl(plt->dbgao_base + 0x90),
 		(unsigned long) readl(plt->dbgao_base + 0x94),
 		(unsigned long) readl(plt->dbgao_base + 0x98),
-		(unsigned long) readl(plt->dbgao_base + 0x9c));
+		(unsigned long) readl(plt->dbgao_base + 0x9c),
+		(unsigned long) readl(plt->dbgao_base + 0xa0));
 
 	return 0;
 }
@@ -354,6 +355,11 @@ static ssize_t tracer_dbgfs_etb_read(struct file *file, char __user *buf, size_t
 
 	if (!plt)
 		return -ENOMEM;
+
+	if (!plt->tracer) {
+		pr_notice("%s:%d:[ETB] plt->tracer == NULL\n", __func__, __LINE__);
+		return 0;
+	}
 
 	for (i = 0; i <= plt->num_tracer - 1; ++i) {
 		if (plt->tracer[i].enabled) {

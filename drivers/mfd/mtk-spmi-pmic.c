@@ -306,8 +306,14 @@ static const struct mfd_cell mt6369_devs[] = {
 		.name = "mt6369-efuse",
 		.of_compatible = "mediatek,mt6373-efuse",
 	}, {
+		.name = "mt6369-consys",
+		.of_compatible = "mediatek,mt6369-consys",
+	}, {
 		.name = "mt6369-sound",
 		.of_compatible = "mediatek,mt6369-sound",
+	}, {
+		.name = "mt6363-pinctrl",
+		.of_compatible = "mediatek,mt6363-pinctrl",
 	},
 };
 
@@ -718,7 +724,7 @@ static int mtk_spmi_pmic_probe(struct spmi_device *sdev)
 		ret = regmap_read(core->regmap, chip_data->cid_addr, &id);
 	else
 		ret = regmap_read(core->regmap, PMIC_SWCID, &id);
-	if (ret) {
+	if (ret || id == 0) {
 		dev_err(&sdev->dev, "Failed to read chip id: %d\n", ret);
 		return ret;
 	}

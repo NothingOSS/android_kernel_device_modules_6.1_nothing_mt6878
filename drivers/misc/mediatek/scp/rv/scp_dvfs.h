@@ -69,11 +69,12 @@ enum scp_dvfs_err_enum {
 
 /* SMC Code Command Table */
 enum scp_cmd_type {
-	VCORE_ACQUIRE,
+	VCORE_ACQUIRE, /* vcore only */
 	RESOURCE_REQ,
 	ULPOSC2_TURN_ON,
 	ULPOSC2_TURN_OFF,
-	SCP2SPM_VOL_SET,
+	SCP2SPM_VOL_SET, /* vcore only */
+	ULPOSC2_CALI_DONE,
 };
 
 enum scp_req_r {

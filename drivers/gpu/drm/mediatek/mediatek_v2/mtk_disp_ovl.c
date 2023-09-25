@@ -392,6 +392,11 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 #define MT6886_OVL0_2L_NWCG_AID_SEL		(0xB0CUL)
 #define MT6886_OVL1_2L_NWCG_AID_SEL		(0xB10UL)
 
+#define MT6878_OVL0_2L_AID_SEL		(0xB04UL)
+#define MT6878_OVL1_2L_AID_SEL		(0xB08UL)
+#define MT6878_OVL2_2L_AID_SEL		(0xB0CUL)
+#define MT6878_OVL3_2L_AID_SEL		(0xB10UL)
+
 #define SMI_LARB_NON_SEC_CON        0x380
 #define DISP_REG_OVL_SMI_2ND_CFG	(0x8F0)
 
@@ -679,6 +684,22 @@ resource_size_t mtk_ovl_mmsys_mapping_MT6879(struct mtk_ddp_comp *comp)
 	}
 }
 
+resource_size_t mtk_ovl_mmsys_mapping_MT6878(struct mtk_ddp_comp *comp)
+{
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0_2L:
+	case DDP_COMPONENT_OVL1_2L:
+	case DDP_COMPONENT_OVL2_2L:
+	case DDP_COMPONENT_OVL3_2L:
+		return priv->config_regs_pa;
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return 0;
+	}
+}
+
 unsigned int mtk_ovl_aid_sel_MT6983(struct mtk_ddp_comp *comp)
 {
 	switch (comp->id) {
@@ -787,6 +808,23 @@ unsigned int mtk_ovl_aid_sel_MT6879(struct mtk_ddp_comp *comp)
 		return MT6879_OVL0_2L_AID_SEL;
 	case DDP_COMPONENT_OVL0_2L_NWCG:
 		return MT6879_OVL0_2L_NWCG_AID_SEL;
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return 0;
+	}
+}
+
+unsigned int mtk_ovl_aid_sel_MT6878(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0_2L:
+		return MT6878_OVL0_2L_AID_SEL;
+	case DDP_COMPONENT_OVL1_2L:
+		return MT6878_OVL1_2L_AID_SEL;
+	case DDP_COMPONENT_OVL2_2L:
+		return MT6878_OVL2_2L_AID_SEL;
+	case DDP_COMPONENT_OVL3_2L:
+		return MT6878_OVL3_2L_AID_SEL;
 	default:
 		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
 		return 0;
@@ -5440,6 +5478,36 @@ static const struct mtk_disp_ovl_data mt6855_ovl_driver_data = {
 	.source_bpc = 8,
 };
 
+static const struct compress_info compr_info_mt6878  = {
+	.name = "AFBC_V1_2_MTK_1",
+	.l_config = &compr_l_config_AFBC_V1_2,
+};
+
+static const struct mtk_disp_ovl_data mt6878_ovl_driver_data = {
+	.addr = DISP_REG_OVL_ADDR_BASE,
+	.el_addr_offset = 0x10,
+	.el_hdr_addr = 0xfb4,
+	.el_hdr_addr_offset = 0x10,
+	.fmt_rgb565_is_0 = true,
+	.fmt_uyvy = 4U << 12,
+	.fmt_yuyv = 5U << 12,
+	.compr_info = &compr_info_mt6878,
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.preultra_th_dc = 0xe0,
+	.fifo_size = 288,
+	.issue_req_th_dl = 191,
+	.issue_req_th_dc = 15,
+	.issue_req_th_urg_dl = 95,
+	.issue_req_th_urg_dc = 15,
+	.greq_num_dl = 0x5555,
+	.is_support_34bits = true,
+	.aid_sel_mapping = &mtk_ovl_aid_sel_MT6878,
+	.aid_per_layer_setting = false,
+	.mmsys_mapping = &mtk_ovl_mmsys_mapping_MT6878,
+	.source_bpc = 8,
+};
+
 static const struct mtk_disp_ovl_data mt8173_ovl_driver_data = {
 	.addr = DISP_REG_OVL_ADDR_MT8173,
 	.el_addr_offset = 0x04,
@@ -5487,6 +5555,8 @@ static const struct of_device_id mtk_disp_ovl_driver_dt_match[] = {
 	 .data = &mt6855_ovl_driver_data},
 	{.compatible = "mediatek,mt6835-disp-ovl",
 	 .data = &mt6835_ovl_driver_data},
+	{.compatible = "mediatek,mt6878-disp-ovl",
+	 .data = &mt6878_ovl_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_ovl_driver_dt_match);

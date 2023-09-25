@@ -6366,9 +6366,7 @@
 				<0xe80 0x1 1>,
 				<0xe80 0x0 1>;
 			mask =  <0xe00 0x2 1>,
-				<0xe80 0x2 1>,
-				<0xe40 0x2 1>,
-				<0xec0 0x2 1>;
+				<0xe80 0x2 1>;
 			clear-md = <0xe40 0x1 1>,
 				   <0xe40 0x0 1>,
 				   <0xec0 0x1 1>,
@@ -6390,9 +6388,7 @@
 				<0xe80 0x1 1>,
 				<0xe80 0x0 1>;
 			mask =  <0xe00 0x2 1>,
-				<0xe80 0x2 1>,
-				<0xe40 0x2 1>,
-				<0xec0 0x2 1>;
+				<0xe80 0x2 1>;
 			clear-md = <0xe40 0x1 1>,
 				   <0xe40 0x0 1>,
 				   <0xec0 0x1 1>,
@@ -6410,9 +6406,7 @@
 			dump = <0xc00 0xc04 0xc10 0xc14>;
 			clear = <0x410 0x1 1>,
 				<0x410 0x0 1>;
-			mask =  <0x410 0x2 1>,
-				<0xe40 0x2 1>,
-				<0xec0 0x2 1>;
+			mask =  <0x410 0x2 1>;
 			clear-md = <0xe40 0x1 1>,
 				   <0xe40 0x0 1>,
 				   <0xec0 0x1 1>,
@@ -6427,9 +6421,7 @@
 			dump = <0xc00 0xc04 0xc10 0xc14>;
 			clear = <0x410 0x1 1>,
 				<0x410 0x0 1>;
-			mask =  <0x410 0x2 1>,
-				<0xe40 0x2 1>,
-				<0xec0 0x2 1>;
+			mask =  <0x410 0x2 1>;
 			clear-md = <0xe40 0x1 1>,
 				   <0xe40 0x0 1>,
 				   <0xec0 0x1 1>,
@@ -7391,10 +7383,11 @@
 			mediatek,tickdly = <2>, <0>;
 			reg = <0 0x11010000 0 0x100>;
 			interrupts = <GIC_SPI 242 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>,
+			clocks = <&topckgen_clk CLK_TOP_MAINPLL_D6_D2>,
 				<&topckgen_clk CLK_TOP_SPI0_SEL>,
 				<&pericfg_ao_clk CLK_PERAOP_SPI0_BCLK>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "mainpll";
 		};
 
 		spi1: spi1@11011000 {
@@ -7403,10 +7396,11 @@
 			mediatek,tickdly = <3>, <0>;
 			reg = <0 0x11011000 0 0x100>;
 			interrupts = <GIC_SPI 243 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>,
+			clocks = <&topckgen_clk CLK_TOP_MAINPLL_D6_D2>,
 				<&topckgen_clk CLK_TOP_SPI1_SEL>,
 				<&pericfg_ao_clk CLK_PERAOP_SPI1_BCLK>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "mainpll";
 		};
 
 		spi2: spi2@11012000 {
@@ -7415,10 +7409,11 @@
 			mediatek,tickdly = <3>, <0>;
 			reg = <0 0x11012000 0 0x100>;
 			interrupts = <GIC_SPI 244 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&topckgen_clk CLK_TOP_UNIVPLL_D6_D2>,
+			clocks = <&topckgen_clk CLK_TOP_MAINPLL_D6_D2>,
 				<&topckgen_clk CLK_TOP_SPI2_SEL>,
 				<&pericfg_ao_clk CLK_PERAOP_SPI2_BCLK>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "mainpll";
 		};
 
 		spi3: spi3@11013000 {
@@ -7431,6 +7426,7 @@
 				<&topckgen_clk CLK_TOP_SPI3_SEL>,
 				<&pericfg_ao_clk CLK_PERAOP_SPI3_BCLK>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "univpll";
 		};
 
 		spi4: spi4@11014000 {
@@ -7443,6 +7439,7 @@
 				<&topckgen_clk CLK_TOP_SPI4_SEL>,
 				<&pericfg_ao_clk CLK_PERAOP_SPI4_BCLK>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "univpll";
 		};
 
 		spi5: spi5@11015000 {
@@ -7455,6 +7452,7 @@
 				<&topckgen_clk CLK_TOP_SPI5_SEL>,
 				<&pericfg_ao_clk CLK_PERAOP_SPI5_BCLK>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "univpll";
 		};
 
 		spi6: spi6@11016000 {
@@ -7467,6 +7465,7 @@
 				<&topckgen_clk CLK_TOP_SPI6_SEL>,
 				<&pericfg_ao_clk CLK_PERAOP_SPI6_BCLK>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "univpll";
 		};
 
 		spi7: spi7@11017000 {
@@ -7479,6 +7478,7 @@
 				<&topckgen_clk CLK_TOP_SPI7_SEL>,
 				<&pericfg_ao_clk CLK_PERAOP_SPI7_BCLK>;
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
+			clock-source-type = "univpll";
 		};
 
 		ufsphy: ufsphy@112a0000 {
@@ -15473,6 +15473,18 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 		enable-secure-write = <0>;
 	};
 
+	scp_audio_mbox: scp-audio-mbox@1cbff000 {
+		compatible = "mediatek,scp-audio-mbox";
+		status = "disabled";
+		reg = <0 0x1cbff000 0 0x100>, /* Re-use scp hw mbox4 */
+			<0 0x1cbff100 0 0x4>,
+			<0 0x1cbff10c 0 0x4>;
+
+		reg-names = "mbox0_base", "mbox0_set", "mbox0_clr";
+		interrupts = <GIC_SPI 719 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "mbox0";
+	};
+
 	sound: sound {
 		compatible = "mediatek,mt6897-mt6368-sound";
 		/* mediatek,snd_audio_dsp = <&snd_audio_dsp>; */
@@ -15792,12 +15804,14 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 				     <MT6375_FL_WDT>, <MT6375_FL_BC12_DN>,
 				     <MT6375_FL_AICC_DONE>, <MT6375_FL_PE_DONE>,
 				     <MT6375_FL_BATPRO_DONE>,
-				     <MT6375_ADC_VBAT_MON_OV>;
+				     <MT6375_ADC_VBAT_MON_OV>,
+				     <MT6375_USBID_EVT>;
 			interrupt-names = "fl_pwr_rdy", "fl_detach",
 					  "fl_vbus_ov", "fl_chg_tout",
 					  "fl_wdt", "fl_bc12_dn",
 					  "fl_aicc_done", "fl_pe_done",
-					  "fl_batpro_done", "adc_vbat_mon_ov";
+					  "fl_batpro_done", "adc_vbat_mon_ov",
+					  "usbid_evt";
 			io-channels = <&mt6375_adc MT6375_ADC_CHGVIN>,
 				      <&mt6375_adc MT6375_ADC_VSYS>,
 				      <&mt6375_adc MT6375_ADC_VBAT>,
@@ -15805,7 +15819,8 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 				      <&mt6375_adc MT6375_ADC_IBAT>,
 				      <&mt6375_adc MT6375_ADC_TEMPJC>,
 				      <&mt6375_adc MT6375_ADC_USBDP>,
-				      <&mt6375_adc MT6375_ADC_USBDM>;
+				      <&mt6375_adc MT6375_ADC_USBDM>,
+				      <&mt6375_adc MT6375_ADC_SBU2>;
 			chg-name = "primary_chg";
 			aicr = <500>;
 			mivr = <4400>;

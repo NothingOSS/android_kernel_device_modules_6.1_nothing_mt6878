@@ -21,10 +21,8 @@
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 #include <adsp_helper.h>
 #endif
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 #include <scp_helper.h>
 #include "audio_ipi_platform.h"
-#endif
 
 
 #define USIP_EMP_IOC_MAGIC 'D'
@@ -117,17 +115,13 @@ static long usip_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 		break;
 
 	case SCP_REGISTER_FEATURE_FOR_VOICE_CALL:
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 		if ((usip.adsp_phone_call_enh_config & 0x4) == 0x4)
 			scp_register_feature(RVVOICE_CALL_FEATURE_ID);
-#endif
 		break;
 
 	case SCP_DEREGISTER_FEATURE_FOR_VOICE_CALL:
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 		if ((usip.adsp_phone_call_enh_config & 0x4) == 0x4)
 			scp_deregister_feature(RVVOICE_CALL_FEATURE_ID);
-#endif
 		break;
 
 	default:
@@ -363,9 +357,7 @@ static void usip_send_emi_info_to_dsp(void)
 		adsp_register_feature(VOICE_CALL_FEATURE_ID);
 #endif
 	} else {
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 		scp_register_feature(RVVOICE_CALL_FEATURE_ID);
-#endif
 	}
 	send_result = audio_send_ipi_msg(
 					 &ipi_msg, TASK_SCENE_PHONE_CALL,
@@ -381,15 +373,13 @@ static void usip_send_emi_info_to_dsp(void)
 		adsp_deregister_feature(VOICE_CALL_FEATURE_ID);
 #endif
 	} else {
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 		scp_deregister_feature(RVVOICE_CALL_FEATURE_ID);
-#endif
 	}
 
 	if (send_result != 0)
 		pr_info("%s(), scp_ipi send fail\n", __func__);
 	else
-		pr_debug("%s(), scp_ipi send succeed\n", __func__);
+		pr_info("%s(), scp_ipi send succeed\n", __func__);
 
 	/* [Call_Sub] Send EMI Address to Hifi3 Via IPI*/
 	if ((usip.adsp_phone_call_enh_config & 0x2) == 0x2) {
@@ -416,7 +406,7 @@ static void usip_send_emi_info_to_dsp(void)
 		if (send_result != 0)
 			pr_info("%s(), scp_ipi send sub fail\n", __func__);
 		else
-			pr_debug("%s(), scp_ipi send sub succeed\n", __func__);
+			pr_info("%s(), scp_ipi send sub succeed\n", __func__);
 	}
 }
 
@@ -444,7 +434,6 @@ static struct notifier_block audio_call_notifier = {
 };
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 static int audio_call_event_receive_scp(struct notifier_block *this,
 				    unsigned long event,
 				    void *ptr)
@@ -454,6 +443,7 @@ static int audio_call_event_receive_scp(struct notifier_block *this,
 		break;
 	case SCP_EVENT_READY:
 		usip_send_emi_info_to_dsp();
+		usip_send_emi_info_to_dsp_ble();
 		break;
 	default:
 		pr_info("event %lu err", event);
@@ -464,8 +454,6 @@ static int audio_call_event_receive_scp(struct notifier_block *this,
 static struct notifier_block audio_call_notifier_scp = {
 	.notifier_call = audio_call_event_receive_scp,
 };
-#endif
-
 static int usip_open(struct inode *inode, struct file *file)
 {
 
@@ -569,10 +557,9 @@ static int __init usip_init(void)
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 	adsp_register_notify(&audio_call_notifier);
 #endif
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 	if (is_audio_scp_support())
 		scp_A_register_notify(&audio_call_notifier_scp);
-#endif
+
 	ret = platform_driver_register(&speech_usip_mem);
 
 	return ret;

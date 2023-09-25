@@ -14,6 +14,9 @@ obj-$(CONFIG_DEVICE_MODULES_MTK_PMIC_WRAP) += mtk-pmic-wrap.o
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys.o mtk-pm-domain-disable-unused.o
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += scpsys-dummy.o
 scpsys-dummy-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-dummy.o
+ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6878.c),)
+obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6878.o mtk-scpsys-bringup.o
+endif
 ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6886.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6886.o mtk-scpsys-bringup.o
 endif

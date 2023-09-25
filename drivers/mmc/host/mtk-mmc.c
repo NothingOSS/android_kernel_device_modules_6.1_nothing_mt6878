@@ -20,6 +20,7 @@
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
+#include <linux/sched/clock.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
@@ -41,7 +42,9 @@
 #include <linux/arm-smccc.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <mt-plat/mtk_blocktag.h>
-#include <mt-plat/mtk_irq_mon.h>
+
+
+
 
 static const struct mtk_mmc_compatible mt8135_compat = {
 	.clk_div_bits = 8,
@@ -379,6 +382,29 @@ static const struct mtk_mmc_compatible mt6989_compat = {
 	},
 };
 
+static const struct mtk_mmc_compatible mt6878_compat = {
+	.clk_div_bits = 12,
+	.recheck_sdio_irq = false,
+	.hs400_tune = false,
+	.pad_tune_reg = MSDC_PAD_TUNE0,
+	.async_fifo = true,
+	.data_tune = true,
+	.busy_check = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 3,
+		.pop_cnt = 8,
+	},
+	.enhance_rx = true,
+	.support_64g = true,
+	.need_gate_cg = false,
+	.new_tx_ver = MSDC_NEW_TX_V1,
+	.new_rx_ver = MSDC_NEW_RX_V1,
+	.infra_check = {
+		.enable = false,
+	},
+};
+
 static const struct of_device_id msdc_of_ids[] = {
 	{ .compatible = "mediatek,mt8135-mmc", .data = &mt8135_compat},
 	{ .compatible = "mediatek,mt8173-mmc", .data = &mt8173_compat},
@@ -395,6 +421,7 @@ static const struct of_device_id msdc_of_ids[] = {
 	{ .compatible = "mediatek,mt6886-mmc", .data = &mt6886_compat},
 	{ .compatible = "mediatek,mt6897-mmc", .data = &mt6897_compat},
 	{ .compatible = "mediatek,mt6989-mmc", .data = &mt6989_compat},
+	{ .compatible = "mediatek,mt6878-mmc", .data = &mt6878_compat},
 	{}
 };
 MODULE_DEVICE_TABLE(of, msdc_of_ids);
@@ -435,17 +462,15 @@ static void msdc_reset_hw(struct msdc_host *host)
 {
 	u32 val;
 
-	irq_log_store();
 	sdr_set_bits(host->base + MSDC_CFG, MSDC_CFG_RST);
 	readl_poll_timeout(host->base + MSDC_CFG, val, !(val & MSDC_CFG_RST), 0, 0);
-	irq_log_store();
+
 	sdr_set_bits(host->base + MSDC_FIFOCS, MSDC_FIFOCS_CLR);
 	readl_poll_timeout(host->base + MSDC_FIFOCS, val,
 			   !(val & MSDC_FIFOCS_CLR), 0, 0);
 
 	val = readl(host->base + MSDC_INT);
 	writel(val, host->base + MSDC_INT);
-	irq_log_store();
 }
 
 extern void gpio_dump_regs_range(int start, int end);
@@ -949,7 +974,6 @@ static void msdc_start_data(struct msdc_host *host, struct mmc_request *mrq,
 {
 	bool read;
 
-	irq_log_store();
 	WARN_ON(host->data);
 	host->data = data;
 	read = data->flags & MMC_DATA_READ;
@@ -961,7 +985,6 @@ static void msdc_start_data(struct msdc_host *host, struct mmc_request *mrq,
 	dev_dbg(host->dev, "DMA start\n");
 	dev_dbg(host->dev, "%s: cmd=%d DMA data: %d blocks; read=%d\n",
 			__func__, cmd->opcode, data->blocks, read);
-	irq_log_store();
 }
 
 static int msdc_auto_cmd_done(struct msdc_host *host, int events,
@@ -1031,8 +1054,6 @@ static void msdc_request_done(struct msdc_host *host, struct mmc_request *mrq)
 {
 	unsigned long flags;
 
-	irq_log_store();
-
 	/*
 	 * No need check the return value of cancel_delayed_work, as only ONE
 	 * path will go here!
@@ -1055,8 +1076,6 @@ static void msdc_request_done(struct msdc_host *host, struct mmc_request *mrq)
 	mmc_request_done(mmc_from_priv(host), mrq);
 	if (host->dev_comp->recheck_sdio_irq)
 		msdc_recheck_sdio_irq(host);
-
-	irq_log_store();
 }
 
 /* returns true if command is fully handled; returns false otherwise */
@@ -1115,26 +1134,25 @@ static bool msdc_cmd_done(struct msdc_host *host, int events,
 		if (events & MSDC_INT_RSPCRCERR) {
 			cmd->error = -EILSEQ;
 			host->error |= REQ_CMD_EIO;
+			bitmap_set(host->err_bag.err_bitmap,0,1);
+			host->err_bag.cmd_opcode = cmd->opcode;
+			host->err_bag.cmd_arg = cmd->arg;
+			host->err_bag.cmd_rsp = rsp[0];
 		} else if (events & MSDC_INT_CMDTMO) {
 			cmd->error = -ETIMEDOUT;
 			host->error |= REQ_CMD_TMO;
+			bitmap_set(host->err_bag.err_bitmap,1,1);
+			host->err_bag.cmd_opcode = cmd->opcode;
+			host->err_bag.cmd_arg = cmd->arg;
+			host->err_bag.cmd_rsp = rsp[0];
 		}
 	} else {
 		host->need_tune = false;
 		host->retune_times = 0;
 	}
 
-	if (cmd->error) {
+	if (cmd->error)
 		host->need_tune = true;
-		if (cmd->opcode != MMC_SEND_TUNING_BLOCK &&
-			cmd->opcode != MMC_SEND_TUNING_BLOCK_HS200) {
-			dev_info(host->dev,
-				"%s: cmd=%d arg=0x%X; rsp 0x%X; cmd_error=%d; "
-				"host_error=0x%X\n",
-				__func__, cmd->opcode, cmd->arg, rsp[0],
-				cmd->error, host->error);
-		}
-	}
 
 	msdc_cmd_next(host, mrq, cmd);
 	return true;
@@ -1150,7 +1168,6 @@ static inline bool msdc_cmd_is_ready(struct msdc_host *host,
 	u32 val;
 	int ret;
 
-	irq_log_store();
 	/* The max busy time we can endure is 20ms */
 	ret = readl_poll_timeout_atomic(host->base + SDC_STS, val,
 					!(val & SDC_STS_CMDBUSY), 1, 20000);
@@ -1159,7 +1176,6 @@ static inline bool msdc_cmd_is_ready(struct msdc_host *host,
 		msdc_cmd_done(host, MSDC_INT_CMDTMO, mrq, cmd);
 		return false;
 	}
-	irq_log_store();
 
 	if (mmc_resp_type(cmd) == MMC_RSP_R1B || cmd->data) {
 		/* R1B or with data, should check SDCBUSY */
@@ -1170,7 +1186,6 @@ static inline bool msdc_cmd_is_ready(struct msdc_host *host,
 			msdc_cmd_done(host, MSDC_INT_CMDTMO, mrq, cmd);
 			return false;
 		}
-		irq_log_store();
 	}
 	return true;
 }
@@ -1183,7 +1198,7 @@ static void msdc_start_command(struct msdc_host *host,
 
 	WARN_ON(host->cmd);
 	host->cmd = cmd;
-	irq_log_store();
+
 	mod_delayed_work(system_wq, &host->req_timeout, DAT_TIMEOUT);
 	if (!msdc_cmd_is_ready(host, mrq, cmd))
 		return;
@@ -1203,7 +1218,6 @@ static void msdc_start_command(struct msdc_host *host,
 
 	writel(cmd->arg, host->base + SDC_ARG);
 	writel(rawcmd, host->base + SDC_CMD);
-	irq_log_store();
 }
 
 static void msdc_cmd_next(struct msdc_host *host,
@@ -1282,13 +1296,11 @@ static void msdc_post_req(struct mmc_host *mmc, struct mmc_request *mrq,
 
 static void msdc_data_xfer_next(struct msdc_host *host, struct mmc_request *mrq)
 {
-	irq_log_store();
 	if (mmc_op_multi(mrq->cmd->opcode) && mrq->stop && !mrq->stop->error &&
 	    !mrq->sbc)
 		msdc_start_command(host, mrq, mrq->stop);
 	else
 		msdc_request_done(host, mrq);
-	irq_log_store();
 }
 
 static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
@@ -1320,14 +1332,12 @@ static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
 		sdr_set_field(host->base + MSDC_DMA_CTRL, MSDC_DMA_CTRL_STOP,
 				1);
 
-		irq_log_store();
 		ret = readl_poll_timeout_atomic(host->base + MSDC_DMA_CTRL, val,
 						!(val & MSDC_DMA_CTRL_STOP), 1, 20000);
 		if (ret) {
 			dev_info(host->dev, "DMA stop timed out\n");
 			return false;
 		}
-		irq_log_store();
 
 		sdr_clr_bits(host->base + MSDC_INTEN, data_ints_mask);
 		dev_dbg(host->dev, "DMA stop\n");
@@ -1343,16 +1353,20 @@ static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
 			host->error |= REQ_DAT_ERR;
 			data->bytes_xfered = 0;
 
-			if (events & MSDC_INT_DATTMO)
+			if (events & MSDC_INT_DATTMO) {
 				data->error = -ETIMEDOUT;
-			else if (events & MSDC_INT_DATCRCERR)
+				bitmap_set(host->err_bag.err_bitmap,3,1);
+				host->err_bag.cmd_opcode = mrq->cmd->opcode;
+				host->err_bag.blocks = data->blocks;
+				host->err_bag.bytes_xfered = data->bytes_xfered;
+			}
+
+			else if (events & MSDC_INT_DATCRCERR) {
 				data->error = -EILSEQ;
-			if (mrq->cmd->opcode != MMC_SEND_TUNING_BLOCK &&
-				mrq->cmd->opcode != MMC_SEND_TUNING_BLOCK_HS200) {
-				dev_info(host->dev, "%s: cmd=%d; blocks=%d; "
-					"data_error=%d; xfer_size=%d; host_error=0x%X\n",
-					__func__, mrq->cmd->opcode, data->blocks,
-					(int)data->error, data->bytes_xfered, host->error);
+				bitmap_set(host->err_bag.err_bitmap,2,1);
+				host->err_bag.cmd_opcode = mrq->cmd->opcode;
+				host->err_bag.blocks = data->blocks;
+				host->err_bag.bytes_xfered = data->bytes_xfered;
 			}
 		}
 
@@ -1506,10 +1520,56 @@ static irqreturn_t msdc_cmdq_irq(struct msdc_host *host, u32 intsts)
 	return cqhci_irq(mmc, 0, cmd_err, dat_err);
 }
 
+static irqreturn_t msdc_thread_irq(int irq, void *dev_id)
+{
+	struct msdc_host *host = (struct msdc_host *) dev_id;
+	unsigned int ret = 0, i = 0;
+	int len = 0;
+	unsigned long flags;
+	struct err_info_bag dump_bag;
+
+	if (atomic_read(&host->err_dropped) >= 128) {
+		dev_err(host->dev, "Err kfifo has been full for a time and too much log dropped\n");
+		atomic_set(&host->err_dropped, 0);
+	}
+
+	spin_lock_irqsave(&host->err_info_lock, flags);
+	if (!kfifo_is_empty(&host->err_info_bag_ring))
+		len = kfifo_len(&host->err_info_bag_ring);
+	spin_unlock_irqrestore(&host->err_info_lock, flags);
+
+	for (i = 0; i < len; i++) {
+		spin_lock_irqsave(&host->err_info_lock, flags);
+		if (len != 0)
+			ret = kfifo_out(&host->err_info_bag_ring, &dump_bag, 1);
+		spin_unlock_irqrestore(&host->err_info_lock, flags);
+		if (dump_bag.err_bitmap[0] & (ERR_CMD_CRC | ERR_CMD_TMO)) {
+			if (dump_bag.err_bitmap[0] & ERR_CMD_CRC)
+				dev_err(host->dev, "At time:%lld cmd_crc happen cmd=%d arg=0x%X; rsp 0x%X;\n",
+					dump_bag.irq_timestamp, dump_bag.cmd_opcode, dump_bag.cmd_arg, dump_bag.cmd_rsp);
+			if (dump_bag.err_bitmap[0] & ERR_CMD_TMO)
+				dev_err(host->dev, "At time:%lld cmd_tmo happen cmd=%d arg=0x%X; rsp 0x%X;\n",
+					dump_bag.irq_timestamp, dump_bag.cmd_opcode, dump_bag.cmd_arg, dump_bag.cmd_rsp);
+		}
+		if (dump_bag.err_bitmap[0] & (ERR_DAT_CRC | ERR_DAT_TMO)) {
+			if (dump_bag.err_bitmap[0] & ERR_DAT_CRC)
+				dev_err(host->dev, "At time:%lld dat_crc happen cmd=%d; blocks=%d; xfer_size=%d;\n",
+					dump_bag.irq_timestamp, dump_bag.cmd_opcode, dump_bag.blocks, dump_bag.bytes_xfered);
+			if (dump_bag.err_bitmap[0] & ERR_DAT_TMO)
+				dev_err(host->dev, "At time:%lld dat_tmo happen cmd=%d; blocks=%d; xfer_size=%d;\n",
+					dump_bag.irq_timestamp, dump_bag.cmd_opcode, dump_bag.blocks, dump_bag.bytes_xfered);
+		}
+	}
+
+	return IRQ_HANDLED;
+}
+
+
 static irqreturn_t msdc_irq(int irq, void *dev_id)
 {
 	struct msdc_host *host = (struct msdc_host *) dev_id;
 	struct mmc_host *mmc = mmc_from_priv(host);
+	unsigned long flags;
 
 	while (true) {
 		struct mmc_request *mrq;
@@ -1566,6 +1626,18 @@ static irqreturn_t msdc_irq(int irq, void *dev_id)
 			msdc_data_xfer_done(host, events, mrq, data);
 	}
 
+	if (!bitmap_empty(host->err_bag.err_bitmap, ERR_BIT_SIZE)) {
+		host->err_bag.irq_timestamp = sched_clock();
+
+		spin_lock_irqsave(&host->err_info_lock, flags);
+		if (kfifo_is_full(&host->err_info_bag_ring) && kfifo_out(&host->err_info_bag_ring, &host->err_bag, 1))
+			atomic_inc(&host->err_dropped);
+		kfifo_in(&host->err_info_bag_ring, &host->err_bag, 1);
+		spin_unlock_irqrestore(&host->err_info_lock, flags);
+
+		bitmap_zero(host->err_bag.err_bitmap, ERR_BIT_SIZE);
+		return IRQ_WAKE_THREAD;
+	}
 	return IRQ_HANDLED;
 }
 
@@ -3307,8 +3379,9 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	spin_lock_init(&host->log_lock);
 #endif
 
-	ret = devm_request_irq(&pdev->dev, host->irq, msdc_irq,
-			       IRQF_TRIGGER_NONE, pdev->name, host);
+	ret = devm_request_threaded_irq(&pdev->dev, host->irq, msdc_irq, msdc_thread_irq,
+					IRQF_TRIGGER_NONE, pdev->name, host);
+
 	if (ret)
 		goto release;
 
@@ -3327,6 +3400,8 @@ static int msdc_drv_probe(struct platform_device *pdev)
 
 	if (ret)
 		goto end;
+	bitmap_zero(host->err_bag.err_bitmap, ERR_BIT_SIZE);
+	INIT_KFIFO(host->err_info_bag_ring);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_DEBUG)
 	ret = mmc_dbg_register(mmc);

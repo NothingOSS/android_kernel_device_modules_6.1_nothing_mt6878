@@ -9,6 +9,11 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_ipi/include
 endif
 
+### for scp
+ifneq ($(CONFIG_MTK_TINYSYS_SCP_SUPPORT), )
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
+endif
+
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/
 
 ifneq ($(CONFIG_DEVICE_MODULES_USB_XHCI_MTK), )

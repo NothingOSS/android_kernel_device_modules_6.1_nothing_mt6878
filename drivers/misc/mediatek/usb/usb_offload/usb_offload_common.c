@@ -51,6 +51,9 @@
 #include "audio_task.h"
 #include "audio_controller_msg_id.h"
 #endif
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+#include <scp.h>
+#endif
 #include "usb_offload.h"
 #include "audio_task_usb_msg_id.h"
 
@@ -289,7 +292,34 @@ static struct notifier_block adsp_usb_offload_notifier = {
 	.priority = PRIMARY_FEATURE_PRI,
 };
 #endif
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+static int usb_offload_event_receive_scp(struct notifier_block *this,
+					 unsigned long event,
+					 void *ptr)
+{
 
+	switch (event) {
+	case SCP_EVENT_STOP:
+		pr_info("%s event[%lu]\n", __func__, event);
+		uodev->adsp_exception = true;
+		uodev->adsp_ready = false;
+		if (uodev->connected)
+			adsp_ee_recovery();
+		break;
+	case SCP_EVENT_READY:
+		pr_info("%s event[%lu]\n", __func__, event);
+		uodev->adsp_ready = true;
+		break;
+	default:
+		pr_info("%s event[%lu]\n", __func__, event);
+	}
+	return 0;
+}
+
+static struct notifier_block scp_usb_offload_notifier = {
+	.notifier_call = usb_offload_event_receive_scp,
+};
+#endif
 static struct snd_usb_substream *find_snd_usb_substream(unsigned int card_num,
 	unsigned int pcm_idx, unsigned int direction, struct snd_usb_audio
 	**uchip)
@@ -2540,6 +2570,7 @@ static int usb_offload_probe(struct platform_device *pdev)
 {
 	struct device_node *node_xhci_host;
 	int ret = 0;
+	int dsp_type;
 
 	uodev = devm_kzalloc(&pdev->dev, sizeof(struct usb_offload_dev),
 		GFP_KERNEL);
@@ -2616,10 +2647,24 @@ static int usb_offload_probe(struct platform_device *pdev)
 
 		USB_OFFLOAD_INFO("Set XHCI vendor hook ops\n");
 		platform_set_drvdata(pdev, &xhci_mtk_vendor_ops);
+		dsp_type = get_adsp_type();
+		if (dsp_type == ADSP_TYPE_HIFI3) {
 #ifdef CFG_RECOVERY_SUPPORT
-		adsp_register_notify(&adsp_usb_offload_notifier);
+			adsp_register_notify(&adsp_usb_offload_notifier);
+#else
+			USB_OFFLOAD_ERR("Do not register notifier. Recovery not enabled\n");
 #endif
-
+		} else if (dsp_type == ADSP_TYPE_RV55) {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+			scp_A_register_notify(&scp_usb_offload_notifier);
+#else
+			USB_OFFLOAD_ERR("Do not register notifier. SCP not enabled\n");
+#endif
+		} else {
+			USB_OFFLOAD_ERR("Unknown dsp type: %d\n", dsp_type);
+			ret = -EINVAL;
+			goto GET_DSP_TYPE_FAIL;
+		}
 		ret = sound_usb_trace_init();
 		if (ret != 0) {
 			USB_OFFLOAD_ERR("Fail to register offload_ops\n");
@@ -2638,6 +2683,7 @@ static int usb_offload_probe(struct platform_device *pdev)
 
 	USB_OFFLOAD_INFO("Probe Success!!!");
 	return ret;
+GET_DSP_TYPE_FAIL:
 REG_SSUSB_OFFLOAD_FAIL:
 	kfree(uodev->ssusb_offload_notify);
 INIT_OFFLOAD_NOTIFY_FAIL:

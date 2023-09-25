@@ -316,7 +316,7 @@ u32 cmdq_pkt_write_reg_addr_reuse(struct cmdq_pkt *pkt, dma_addr_t addr,
 	u16 src_reg_idx, u32 mask, u64 **curr_buf_va);
 
 u32 cmdq_pkt_write_value_addr_reuse(struct cmdq_pkt *pkt, dma_addr_t addr,
-	u32 value, u32 mask, u64 **curr_buf_va);
+	u32 value, u32 mask, struct cmdq_reuse *reuse);
 
 void cmdq_pkt_reuse_buf_va(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse,
 	const u32 count);
@@ -443,6 +443,8 @@ u32 cmdq_pkt_set_event(struct cmdq_pkt *pkt, u16 event);
 u32 cmdq_pkt_handshake_event(struct cmdq_pkt *pkt, u16 event);
 
 u32 cmdq_pkt_finalize(struct cmdq_pkt *pkt);
+
+s32 cmdq_pkt_refinalize(struct cmdq_pkt *pkt);
 
 u32 cmdq_pkt_finalize_loop(struct cmdq_pkt *pkt);
 

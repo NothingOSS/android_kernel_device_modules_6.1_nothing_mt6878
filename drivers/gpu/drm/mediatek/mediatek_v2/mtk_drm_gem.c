@@ -756,6 +756,7 @@ int mtk_gem_submit_ioctl(struct drm_device *dev, void *data,
 				  args->index, args->fence_fd);
 			args->fence_fd = MTK_INVALID_FENCE_FD; /* invalid fd */
 			args->index = 0;
+			ret = -1;
 		}
 		if (args->type == MTK_SUBMIT_OUT_FENCE)
 			prepare_output_buffer(dev, args, buf2);

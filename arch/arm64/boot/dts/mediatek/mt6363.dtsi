@@ -142,6 +142,13 @@
 			};
 		};
 
+		mt6363_pio: mt6363-pinctrl {
+			compatible = "mediatek,mt6363-pinctrl";
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&mt6363_pio 0 0 10>;
+		};
+
 		regulators {
 			mt6363_vs2: vs2 {
 				regulator-compatible = "VS2";

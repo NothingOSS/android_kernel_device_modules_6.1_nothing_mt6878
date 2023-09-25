@@ -75,6 +75,31 @@ do { \
 /* softirq type */
 #define MAGIC_CQHCI_DBG_TYPE_SIRQ 70
 
+#define ERR_INFO_BAG_RING_ORDER     8
+#define ERR_INFO_BAG_RING_SIZE      (1 << ERR_INFO_BAG_RING_ORDER)
+#define ERR_BIT_SIZE                64
+
+struct err_info_bag {
+	DECLARE_BITMAP(err_bitmap, ERR_BIT_SIZE);
+	int64_t		irq_timestamp;
+	u32			cmd_opcode;
+	u32			cmd_arg;
+	u32			cmd_rsp;
+	unsigned int		blocks;
+	unsigned int		bytes_xfered;
+};
+
+/*thread_irq err dump*/
+#define ERR_CMD_CRC         (0x1 << 0)
+#define ERR_CMD_TMO         (0x1 << 1)
+#define ERR_DAT_CRC         (0x1 << 2)
+#define ERR_DAT_TMO         (0x1 << 3)
+
+#define ERR_CQHCI_CMD_CRC   (0x1 << 16)
+#define ERR_CQHCI_CMD_TMO   (0x1 << 17)
+#define ERR_CQHCI_DAT_CRC   (0x1 << 18)
+#define ERR_CQHCI_DAT_TMO   (0x1 << 19)
+
 enum mmcdbg_cmd_type {
 	MMCDBG_CMD_LIST_DUMP	= 0,
 	MMCDBG_PWR_MODE_DUMP	= 1,

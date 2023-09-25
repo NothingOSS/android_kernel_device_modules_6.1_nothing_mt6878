@@ -164,6 +164,14 @@ static const struct tdshp_data mt6989_tdshp_data = {
 	.wrot_pending = true,
 };
 
+static const struct tdshp_data mt6878_tdshp_data = {
+	.tile_width = 528,
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
+	.reg_table = tdshp_reg_table_mt6983,
+	.rb_mode = RB_EOF_MODE,
+};
+
 struct mml_comp_tdshp {
 	struct mtk_ddp_comp ddp_comp;
 	struct mml_comp comp;
@@ -1378,6 +1386,10 @@ const struct of_device_id mml_tdshp_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6989-mml_tdshp",
 		.data = &mt6989_tdshp_data,
+	},
+	{
+		.compatible = "mediatek,mt6878-mml_tdshp",
+		.data = &mt6878_tdshp_data,
 	},
 	{},
 };

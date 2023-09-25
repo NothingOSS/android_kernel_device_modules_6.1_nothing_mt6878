@@ -46,7 +46,7 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 	int ret = 0, idx = pd_nb - rpmd->pd_nb;
 	uint8_t old_state = TYPEC_UNATTACHED, new_state = TYPEC_UNATTACHED;
 	enum typec_pwr_opmode opmode = TYPEC_PWR_MODE_USB;
-	uint16_t pd_revision = 0x0320;
+	uint16_t pd_revision = 0x0314;
 	uint32_t partner_vdos[VDO_MAX_NR];
 	struct typec_displayport_data dp_data = {.status = 0, .conf = 0};
 	struct typec_mux_state state = {.mode = 0, .data = &dp_data};
@@ -551,7 +551,7 @@ static int typec_port_init(struct rt_pd_manager_data *rpmd, int idx)
 	rpmd->typec_caps[idx].type = TYPEC_PORT_DRP;
 	rpmd->typec_caps[idx].data = TYPEC_PORT_DRD;
 	rpmd->typec_caps[idx].revision = 0x0120;
-	rpmd->typec_caps[idx].pd_revision = 0x0320;
+	rpmd->typec_caps[idx].pd_revision = 0x0314;
 	rpmd->typec_caps[idx].svdm_version = SVDM_VER_2_0;
 	switch (rpmd->role_def[idx]) {
 	case TYPEC_ROLE_SRC:

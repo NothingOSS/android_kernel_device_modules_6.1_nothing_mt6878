@@ -387,6 +387,20 @@ static const struct aal_data mt6989_aal_data = {
 	.curve_ready_bit = 18,
 };
 
+static const struct aal_data mt6878_aal_data = {
+	.min_tile_width = 50,
+	.tile_width = 560,
+	.min_hist_width = 128,
+	.vcp_readback = false,
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
+	.reg_table = aal_reg_table_mt6983,
+	.crop = true,
+	.rb_mode = RB_EOF_MODE,
+	.is_linear = false,
+	.curve_ready_bit = 16,
+};
+
 struct mml_comp_aal {
 	struct mtk_ddp_comp ddp_comp;
 	struct mml_comp comp;
@@ -2570,6 +2584,10 @@ const struct of_device_id mml_aal_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6989-mml_aal",
 		.data = &mt6989_aal_data
+	},
+	{
+		.compatible = "mediatek,mt6878-mml_aal",
+		.data = &mt6878_aal_data
 	},
 	{},
 };

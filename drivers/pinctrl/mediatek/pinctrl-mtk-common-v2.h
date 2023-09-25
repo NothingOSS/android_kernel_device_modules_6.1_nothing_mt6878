@@ -301,6 +301,8 @@ struct mtk_pin_soc {
 	int (*adv_drive_get)(struct mtk_pinctrl *hw,
 			     const struct mtk_pin_desc *desc, u32 *val);
 
+	void (*reg_lock)(struct mtk_pinctrl *hw, int enable);
+
 	/* Specific driver data */
 	void				*driver_data;
 };

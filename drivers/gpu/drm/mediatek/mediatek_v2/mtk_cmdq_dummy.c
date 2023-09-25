@@ -292,7 +292,7 @@ u32 cmdq_pkt_write(struct cmdq_pkt *pkt, struct cmdq_base *clt_base,
 	struct mtk_ddp_comp *comp;
 
 	if (DISP_REG_ADDR_BASE != (pa & (~DISP_REG_ADDR_MASK))) {
-		DDPDBG("%s error pa:%x, addr:%x\n",
+		DDPDBG("%s error pa:%lx, addr:%llx\n",
 			 __func__, pa, addr);
 		return -1;
 	}
@@ -306,8 +306,8 @@ u32 cmdq_pkt_write(struct cmdq_pkt *pkt, struct cmdq_base *clt_base,
 			if (mask != 0xffffffff)
 				value = ((readl(va) & ~mask) | (value & mask));
 			writel(value, va);
-			DDPDBG("%s:0x%x, va:0x%x, value:0x%x\n",
-				__func__, pa, va, value);
+			DDPDBG("%s:0x%lx, va:0x%lx, value:0x%x\n",
+				__func__, pa, (unsigned long)va, value);
 			return 0;
 		}
 	}
@@ -336,8 +336,8 @@ u32 cmdq_pkt_write(struct cmdq_pkt *pkt, struct cmdq_base *clt_base,
 	if (mask != 0xffffffff)
 		value = ((readl(va) & ~mask) | (value & mask));
 	writel(value, va);
-	DDPDBG("%s:0x%x, va:0x%x, value:0x%x\n",
-		__func__, pa, va, value);
+	DDPDBG("%s:0x%lx, va:0x%lx, value:0x%x\n",
+		__func__, pa, (unsigned long)va, value);
 
 	return 0;
 }
@@ -406,7 +406,7 @@ void cmdq_pkt_reuse_buf_va(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse,
 }
 
 u32 cmdq_pkt_write_value_addr_reuse(struct cmdq_pkt *pkt, dma_addr_t addr,
-	u32 value, u32 mask, u64 **curr_buf_va)
+	u32 value, u32 mask, struct cmdq_reuse *reuse)
 {
 	return 0;
 }

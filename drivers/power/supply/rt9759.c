@@ -735,7 +735,7 @@ static u8 rt9759_ibusocp_alm_toreg(u32 uA)
 }
 
 static const u32 rt9759_wdt[] = {
-	500000, 1000000, 5000000, 3000000,
+	500000, 1000000, 5000000, 30000000,
 };
 
 static u8 rt9759_wdt_toreg(u32 uS)

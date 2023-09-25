@@ -1088,7 +1088,9 @@ static int wdma_config_yuv420(struct mtk_ddp_comp *comp,
 				if (sec) {
 					disp_sec_cb.cb(DISP_SEC_ENABLE, handle,
 							larb_ctl_dummy, NULL);
+#ifndef DRM_CMDQ_DISABLE
 					mtk_crtc_exec_atf_prebuilt_instr(comp->mtk_crtc, handle);
+#endif
 				} else {
 					disp_sec_cb.cb(DISP_SEC_DISABLE, handle,
 							larb_ctl_dummy, NULL);
@@ -1268,7 +1270,9 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 				if (sec) {
 					disp_sec_cb.cb(DISP_SEC_ENABLE, handle,
 							larb_ctl_dummy, NULL);
+#ifndef DRM_CMDQ_DISABLE
 					mtk_crtc_exec_atf_prebuilt_instr(comp->mtk_crtc, handle);
+#endif
 				} else
 					disp_sec_cb.cb(DISP_SEC_DISABLE, handle,
 							larb_ctl_dummy, NULL);
@@ -2164,6 +2168,22 @@ static const struct mtk_disp_wdma_data mt6897_wdma_driver_data = {
 	.is_right_wdma_comp = &is_right_wdma_comp_MT6897,
 };
 
+static const struct mtk_disp_wdma_data mt6878_wdma_driver_data = {
+	.fifo_size_1plane = PARSE_FROM_DTS,
+	.fifo_size_uv_1plane = 29,
+	.fifo_size_2plane = PARSE_FROM_DTS,
+	.fifo_size_uv_2plane = PARSE_FROM_DTS,
+	.fifo_size_3plane = PARSE_FROM_DTS,
+	.fifo_size_uv_3plane = PARSE_FROM_DTS,
+	.sodi_config = mt6985_mtk_sodi_config,
+	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6897,
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.is_support_34bits = true,
+	.use_larb_control_sec = true,
+	.is_right_wdma_comp = &is_right_wdma_comp_MT6897,
+};
+
 static const struct of_device_id mtk_disp_wdma_driver_dt_match[] = {
 	{.compatible = "mediatek,mt2701-disp-wdma"},
 	{.compatible = "mediatek,mt6779-disp-wdma",
@@ -2195,6 +2215,8 @@ static const struct of_device_id mtk_disp_wdma_driver_dt_match[] = {
 	 .data = &mt6835_wdma_driver_data},
 	{.compatible = "mediatek,mt6989-disp-wdma",
 	 .data = &mt6989_wdma_driver_data},
+	{.compatible = "mediatek,mt6878-disp-wdma",
+	 .data = &mt6878_wdma_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_wdma_driver_dt_match);

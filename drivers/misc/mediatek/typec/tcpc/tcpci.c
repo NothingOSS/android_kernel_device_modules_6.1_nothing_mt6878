@@ -473,8 +473,11 @@ int tcpci_set_cc_hidet(struct tcpc_device *tcpc, bool en)
 {
 	int rv = 0;
 
-	if (tcpc->ops->set_cc_hidet)
+	if (tcpc->ops->set_cc_hidet) {
 		rv = tcpc->ops->set_cc_hidet(tcpc, en);
+		if (rv >= 0)
+			tcpc->cc_hidet_en = en;
+	}
 
 	return rv;
 }
@@ -535,17 +538,6 @@ int tcpci_set_floating_ground(struct tcpc_device *tcpc, bool en)
 	return rv;
 }
 EXPORT_SYMBOL(tcpci_set_floating_ground);
-
-int tcpci_set_otp_fwen(struct tcpc_device *tcpc, bool en)
-{
-	int rv = 0;
-
-	if (tcpc->ops->set_otp_fwen)
-		rv = tcpc->ops->set_otp_fwen(tcpc, en);
-
-	return rv;
-}
-EXPORT_SYMBOL(tcpci_set_otp_fwen);
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 

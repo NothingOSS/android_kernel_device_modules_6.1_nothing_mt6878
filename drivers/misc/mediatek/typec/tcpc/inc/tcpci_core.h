@@ -73,7 +73,7 @@
 #define PD_DYNAMIC_SENDER_RESPONSE	1
 #else
 #define PD_DYNAMIC_SENDER_RESPONSE	0
-#endif
+#endif /* CONFIG_USB_POWER_DELIVERY */
 
 #define PD_BUG_ON(x)	WARN_ON(x)
 
@@ -233,10 +233,10 @@ struct tcpc_ops {
 	int (*set_water_protection)(struct tcpc_device *tcpc, bool en);
 #endif /* CONFIG_WATER_DETECTION */
 	int (*set_cc_hidet)(struct tcpc_device *tcpc, bool en);
+	bool (*get_cc_hi)(struct tcpc_device *tcpc);
 
 	int (*set_floating_ground)(struct tcpc_device *tcpc, bool en);
 
-	int (*set_otp_fwen)(struct tcpc_device *tcpc, bool en);
 	int (*set_vbus_short_cc_en)(struct tcpc_device *tcpc, bool cc1, bool cc2);
 
 #if CONFIG_TCPC_LOW_POWER_MODE
@@ -468,6 +468,7 @@ struct tcpc_device {
 #endif /* CONFIG_CABLE_TYPE_DETECTION */
 	bool typec_otp;
 	bool typec_vbus_to_cc_en;
+	bool cc_hidet_en;
 };
 
 #define to_tcpc_device(obj) container_of(obj, struct tcpc_device, dev)

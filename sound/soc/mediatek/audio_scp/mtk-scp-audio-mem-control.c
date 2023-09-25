@@ -74,17 +74,17 @@ int mtk_scp_audio_init_mem(void)
 		scp_get_reserve_mem_size(SCP_SPK_MEM_ID);
 
 	if (!scp_audio_rsv_mem->phy_addr) {
-		pr_err("%s(), scp audio rsv mem phy_addr error\n");
+		pr_err("%s(), scp audio rsv mem phy_addr error\n", __func__);
 		return -1;
 	}
 
 	if (!scp_audio_rsv_mem->vir_addr) {
-		pr_err("%s(), scp audio rsv mem phy_addr vir_addr error\n");
+		pr_err("%s(), scp audio rsv mem phy_addr vir_addr error\n", __func__);
 		return -1;
 	}
 
 	if (!scp_audio_rsv_mem->size) {
-		pr_err("%s(), scp audio rsv mem phy_addr size error\n");
+		pr_err("%s(), scp audio rsv mem phy_addr size error\n", __func__);
 		return -1;
 	}
 
@@ -96,13 +96,13 @@ int mtk_scp_audio_init_mem(void)
 	task_base = get_taskbase_by_daiid(SCP_AUD_TASK_SPK_PROCESS_ID);
 	vaddr = gen_pool_alloc(scp_audio->genpool, A2D_SHAREMEM_SIZE);
 	if (!vaddr) {
-		pr_err("%s(), alloc ATOD mem vaddr Fail!!!\n");
+		pr_err("%s(), alloc ATOD mem vaddr Fail!!!\n", __func__);
 		return -1;
 	}
 
 	paddr = gen_pool_virt_to_phys(scp_audio->genpool, vaddr);
 	if (paddr < 0) {
-		pr_err("%s(), alloc ATOD mem paddr Fail!!!\n");
+		pr_err("%s(), alloc ATOD mem paddr Fail!!!\n", __func__);
 		return -1;
 	}
 	task_base->msg_atod_share_buf.phy_addr = paddr;
@@ -111,7 +111,7 @@ int mtk_scp_audio_init_mem(void)
 	task_base->msg_atod_share_buf.size = A2D_SHAREMEM_SIZE;
 
 	dev_info(scp_audio->dev,
-		 "%s(), a2d mem pa=0x%llx, va=0x%llx, size=0x%llx\n",
+		 "%s(), a2d mem pa=0x%llx, va=0x%lx, size=0x%llx\n",
 		 __func__,
 		 paddr,
 		 vaddr,
@@ -119,13 +119,13 @@ int mtk_scp_audio_init_mem(void)
 
 	vaddr = gen_pool_alloc(scp_audio->genpool, D2A_SHAREMEM_SIZE);
 	if (!vaddr) {
-		pr_err("%s(), alloc DTOA mem vaddr Fail!!!\n");
+		pr_err("%s(), alloc DTOA mem vaddr Fail!!!\n", __func__);
 		return -1;
 	}
 
 	paddr = gen_pool_virt_to_phys(scp_audio->genpool, vaddr);
 	if (paddr < 0) {
-		pr_err("%s(), alloc DTOA mem paddr Fail!!!\n");
+		pr_err("%s(), alloc DTOA mem paddr Fail!!!\n", __func__);
 		return -1;
 	}
 	task_base->msg_dtoa_share_buf.phy_addr = paddr;
@@ -134,16 +134,16 @@ int mtk_scp_audio_init_mem(void)
 	task_base->msg_dtoa_share_buf.size = D2A_SHAREMEM_SIZE;
 
 	dev_info(scp_audio->dev,
-		 "%s(), d2a mem pa=0x%llx, va=0x%llx, size=0x%llx\n",
+		 "%s(), d2a mem pa=0x%llx, va=0x%lx, size=0x%llx\n",
 		 __func__,
 		 paddr,
 		 vaddr,
 		 task_base->msg_dtoa_share_buf.size);
 	dev_info(scp_audio->dev,
-		 "%s(), scp reserve mem pa=0x%llx, va=0x%llx, size=0x%llx\n",
+		 "%s(), scp reserve mem pa=0x%llx, va=0x%lx, size=0x%llx\n",
 		 __func__,
 		 scp_audio_rsv_mem->phy_addr,
-		 scp_audio_rsv_mem->vir_addr,
+		 (unsigned long) scp_audio_rsv_mem->vir_addr,
 		 scp_audio_rsv_mem->size);
 	return 0;
 }
@@ -189,13 +189,13 @@ int scp_audio_allocate_sharemem_ring(struct scp_aud_task_base *taskbase,
 	/* allocate VA with gen pool */
 	vaddr = gen_pool_alloc(genpool, size);
 	if (!vaddr) {
-		pr_err("%s(), alloc pcm mem vaddr Fail!!!\n");
+		pr_err("%s(), alloc pcm mem vaddr Fail!!!\n", __func__);
 		return -1;
 	}
 
 	paddr = gen_pool_virt_to_phys(genpool, vaddr);
 	if (paddr < 0) {
-		pr_err("%s(), alloc pcm mem paddr Fail!!!\n");
+		pr_err("%s(), alloc pcm mem paddr Fail!!!\n", __func__);
 		return -1;
 	}
 
@@ -254,7 +254,7 @@ int mtk_scp_allocate_mem(struct snd_pcm_substream *substream, unsigned int size)
 	if (id != scp_audio->dl_memif &&
 	    id != scp_audio->ul_memif &&
 	    id != scp_audio->ref_memif) {
-		pr_err("%s(), not match scp audio memif\n");
+		pr_err("%s(), not match scp audio memif\n", __func__);
 		return -1;
 	}
 
@@ -267,13 +267,13 @@ int mtk_scp_allocate_mem(struct snd_pcm_substream *substream, unsigned int size)
 
 	vaddr = gen_pool_alloc(scp_audio->genpool, size);
 	if (!vaddr) {
-		pr_err("%s(), alloc afe mem vaddr Fail!!!\n");
+		pr_err("%s(), alloc afe mem vaddr Fail!!!\n", __func__);
 		return -1;
 	}
 
 	paddr = gen_pool_virt_to_phys(scp_audio->genpool, vaddr);
 	if (paddr < 0) {
-		pr_err("%s(), alloc afe mem paddr Fail!!!\n");
+		pr_err("%s(), alloc afe mem paddr Fail!!!\n", __func__);
 		return -1;
 	}
 
@@ -287,7 +287,7 @@ int mtk_scp_allocate_mem(struct snd_pcm_substream *substream, unsigned int size)
 	substream->runtime->dma_area = dma_buf->area;
 
 	dev_info(scp_audio->dev,
-		"%s(), scp audio VA:0x%p,PA:0x%lx,size:%d,using_sram=0\n",
+		"%s(), scp audio VA:0x%p,PA:0x%llx,size:%lu,using_sram=0\n",
 		__func__,
 		dma_buf->area,
 		dma_buf->addr,

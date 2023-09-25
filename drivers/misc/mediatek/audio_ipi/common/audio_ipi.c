@@ -26,11 +26,9 @@
 
 #include <audio_ipi_queue.h>
 
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 #include <scp_helper.h>
 #include <scp_audio_ipi.h>
 #include <scp_feature_define.h>
-#endif
 
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 #include <adsp_helper.h>
@@ -469,8 +467,7 @@ static int audio_ipi_init_dsp_hifi3(const uint32_t dsp_id)
 }
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
-/* CM4 reboot */
+/* SCP reboot */
 static int audio_ctrl_event_receive_scp(
 	struct notifier_block *this,
 	unsigned long event,
@@ -544,7 +541,6 @@ static int audio_ipi_init_dsp_rv(void)
 
 	return ret;
 }
-#endif /* end of CONFIG_MTK_SCP_AUDIO */
 
 static long audio_ipi_ioctl(
 	struct file *file, unsigned int cmd, unsigned long arg)
@@ -585,10 +581,9 @@ static long audio_ipi_ioctl(
 
 		}
 #endif
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 		if (is_audio_scp_support())
 			audio_ipi_init_dsp_rv();
-#endif
+
 		/* copy g_audio_task_info to HAL */
 		if (((void __user *)arg) == NULL)
 			retval = -EINVAL;
@@ -703,10 +698,8 @@ static int __init audio_ipi_init(void)
 	adsp_register_notify(&audio_ctrl_notifier);
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 	if (is_audio_scp_support())
 		scp_A_register_notify(&audio_ctrl_notifier_scp);
-#endif
 
 	for (task_id = 0; task_id < TASK_SCENE_SIZE; task_id++) {
 		task_info = &g_audio_task_info[task_id];

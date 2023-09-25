@@ -2628,6 +2628,26 @@ static int mt6855_tf_is_gce_videoup(u32 port_tf, u32 vld_tf)
 	       FIELD_GET(GENMASK(1, 0), vld_tf);
 }
 
+static int mt6878_tf_is_gce_videoup(u32 port_tf, u32 vld_tf)
+{
+	return F_MMU_INT_TF_LARB(port_tf) ==
+	       FIELD_GET(GENMASK(12, 8), vld_tf) &&
+	       F_MMU_INT_TF_PORT(port_tf) ==
+	       FIELD_GET(GENMASK(1, 0), vld_tf);
+}
+
+static u32 mt6878_get_valid_tf_id(int tf_id, u32 type, int id)
+{
+	u32 vld_id = 0;
+
+	if (type == APU_IOMMU)
+		vld_id = FIELD_GET(GENMASK(11, 8), tf_id);
+	else
+		vld_id = tf_id & F_MMU_INT_TF_MSK;
+
+	return vld_id;
+}
+
 static int mt6879_tf_is_gce_videoup(u32 port_tf, u32 vld_tf)
 {
 	return F_MMU_INT_TF_LARB(port_tf) ==
@@ -2787,6 +2807,17 @@ static const struct mtk_m4u_plat_data mt6983_data = {
 	.mau_config_nr = ARRAY_SIZE(mau_config_default),
 };
 
+static const struct mtk_m4u_plat_data mt6878_data = {
+	.port_list[MM_IOMMU] = mm_port_mt6878,
+	.port_nr[MM_IOMMU]   = ARRAY_SIZE(mm_port_mt6878),
+	.port_list[APU_IOMMU] = apu_port_mt6878,
+	.port_nr[APU_IOMMU]   = ARRAY_SIZE(apu_port_mt6878),
+	.mm_tf_is_gce_videoup = mt6878_tf_is_gce_videoup,
+	.get_valid_tf_id = mt6878_get_valid_tf_id,
+	.mau_config	= mau_config_default,
+	.mau_config_nr = ARRAY_SIZE(mau_config_default),
+};
+
 static const struct mtk_m4u_plat_data mt6879_data = {
 	.port_list[MM_IOMMU] = mm_port_mt6879,
 	.port_nr[MM_IOMMU]   = ARRAY_SIZE(mm_port_mt6879),
@@ -2858,6 +2889,7 @@ static const struct mtk_m4u_plat_data mt6989_smmu_data = {
 
 static const struct of_device_id mtk_m4u_dbg_of_ids[] = {
 	{ .compatible = "mediatek,mt6855-iommu-debug", .data = &mt6855_data},
+	{ .compatible = "mediatek,mt6878-iommu-debug", .data = &mt6878_data},
 	{ .compatible = "mediatek,mt6879-iommu-debug", .data = &mt6879_data},
 	{ .compatible = "mediatek,mt6886-iommu-debug", .data = &mt6886_data},
 	{ .compatible = "mediatek,mt6895-iommu-debug", .data = &mt6895_data},

@@ -77,7 +77,8 @@ int tcpm_shutdown(struct tcpc_device *tcpc)
 
 	if (tcpc->ops->deinit)
 		tcpc->ops->deinit(tcpc);
-	tcpci_unlock_typec(tcpc);
+	/* Not to unlock for preventing further actions */
+	/* tcpci_unlock_typec(tcpc); */
 
 	return 0;
 }
@@ -137,6 +138,22 @@ int tcpm_inquire_vbus_level(struct tcpc_device *tcpc, bool from_ic)
 	return rv;
 }
 EXPORT_SYMBOL(tcpm_inquire_vbus_level);
+
+int tcpm_inquire_cc_high(struct tcpc_device *tcpc)
+{
+	int rv = TCPM_ERROR_UNKNOWN;
+
+	tcpci_lock_typec(tcpc);
+	if (!tcpc->cc_hidet_en)
+		goto out;
+	if (tcpc->ops->get_cc_hi)
+		rv = tcpc->ops->get_cc_hi(tcpc);
+out:
+	tcpci_unlock_typec(tcpc);
+
+	return rv;
+}
+EXPORT_SYMBOL(tcpm_inquire_cc_high);
 
 bool tcpm_inquire_cc_polarity(struct tcpc_device *tcpc)
 {
@@ -1621,7 +1638,7 @@ int tcpm_set_apdo_charging_policy(struct tcpc_device *tcpc,
 		return TCPM_ERROR_PARAMETER;
 
 	mutex_lock(&pd_port->pd_lock);
-	if (pd_port->pd_connect_state != PD_CONNECT_PE_READY_SNK_APDO) {
+	if (!pd_is_source_support_apdo(pd_port)) {
 		mutex_unlock(&pd_port->pd_lock);
 		return TCPM_ERROR_INVALID_POLICY;
 	}

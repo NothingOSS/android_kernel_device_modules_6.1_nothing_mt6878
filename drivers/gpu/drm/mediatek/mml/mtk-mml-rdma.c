@@ -633,6 +633,38 @@ static const struct rdma_data mt6989_rdma_data = {
 	},
 };
 
+static const struct rdma_data mt6878_rdma_data = {
+	.tile_width = 640,
+	.rb_swap = 2,
+	.golden = {
+		[GOLDEN_FMT_ARGB] = {
+			.cnt = ARRAY_SIZE(th_argb_mt6985),
+			.settings = th_argb_mt6985,
+		},
+		[GOLDEN_FMT_RGB] = {
+			.cnt = ARRAY_SIZE(th_rgb_mt6985),
+			.settings = th_rgb_mt6985,
+		},
+		[GOLDEN_FMT_YUV420] = {
+			.cnt = ARRAY_SIZE(th_yuv420_mt6985),
+			.settings = th_yuv420_mt6985,
+		},
+		[GOLDEN_FMT_YV12] = {
+			.cnt = ARRAY_SIZE(th_yv12_mt6985),
+			.settings = th_yv12_mt6985,
+		},
+		[GOLDEN_FMT_HYFBC] = {
+			.cnt = ARRAY_SIZE(th_hyfbc_mt6985),
+			.settings = th_hyfbc_mt6985,
+		},
+		[GOLDEN_FMT_AFBC] = {
+			.cnt = ARRAY_SIZE(th_afbc_mt6985),
+			.settings = th_afbc_mt6985,
+		},
+	},
+};
+
+
 struct mml_comp_rdma {
 	struct mml_comp comp;
 	const struct rdma_data *data;
@@ -1904,6 +1936,17 @@ static s32 rdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 		rdma_frm->datasize += mml_color_get_min_uv_size(src->format,
 			mf_src_w, mf_src_h);
 
+	/* calculate qos for later use */
+	plane = MML_FMT_PLANE(src->format);
+	rdma_frm->datasize += mml_color_get_min_y_size(src->format,
+		mf_src_w, mf_src_h);
+	if (plane > 1)
+		rdma_frm->datasize += mml_color_get_min_uv_size(src->format,
+			mf_src_w, mf_src_h);
+	if (plane > 2)
+		rdma_frm->datasize += mml_color_get_min_uv_size(src->format,
+			mf_src_w, mf_src_h);
+
 	if (write_sec)
 		rdma_cpr_trigger(pkt, hw_pipe, src->secure);
 	return 0;
@@ -2511,6 +2554,10 @@ const struct of_device_id mml_rdma_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6989-mml_rdma",
 		.data = &mt6989_rdma_data,
+	},
+	{
+		.compatible = "mediatek,mt6878-mml_rdma",
+		.data = &mt6878_rdma_data,
 	},
 	{},
 };

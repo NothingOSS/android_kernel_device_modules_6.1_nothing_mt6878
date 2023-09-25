@@ -145,6 +145,14 @@ enum adsp_irq_id {
 	ADSP_IRQ_NUM,
 };
 
+enum adsp_type {
+	ADSP_TYPE_UNKNOWN = -1,
+	ADSP_TYPE_NONE = 0,
+	ADSP_TYPE_HIFI3 = 1,
+	ADSP_TYPE_RV55 = 2,
+	ADSP_TYPE_NUM,
+};
+
 enum adsp_core_id {
 	ADSP_A_ID = 0,
 	ADSP_B_ID = 1,
@@ -173,6 +181,7 @@ enum adsp_qos_scene {
 
 /* adsp system/feature status */
 extern int is_adsp_ready(u32 cid);
+extern int get_adsp_type(void);
 extern u32 get_adsp_core_total(void);
 extern bool is_adsp_feature_in_active(void);
 extern int adsp_feature_in_which_core(enum adsp_feature_id fid);
