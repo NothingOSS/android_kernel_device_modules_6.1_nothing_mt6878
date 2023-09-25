@@ -336,6 +336,9 @@ unsigned int get_boot_mode_from_dts(void)
 
 static int logstore_reset(struct notifier_block *nb, unsigned long action, void *data)
 {
+	if(data == NULL)
+		return 0;
+
 	if (sram_header->reboot_count != 0 && !strcmp((char *)data, "shell"))
 		store_log_to_emmc_enable(false);
 
