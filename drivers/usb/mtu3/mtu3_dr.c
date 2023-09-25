@@ -266,6 +266,8 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 		ssusb_host_register(ssusb, true);
 		ssusb_set_noise_still_tr(ssusb);
 		ssusb_set_vbus(otg_sx, 1);
+		mtu3_check_params(mtu);
+		mtu3_set_speed(mtu, mtu->speed);
 		ssusb->is_host = true;
 		break;
 	case USB_ROLE_DEVICE:

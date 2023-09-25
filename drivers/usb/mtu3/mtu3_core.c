@@ -245,7 +245,7 @@ static void mtu3_intr_enable(struct mtu3 *mtu)
 	mtu3_writel(mbase, U3D_DEV_LINK_INTR_ENABLE, SSUSB_DEV_SPEED_CHG_INTR);
 }
 
-static void mtu3_set_speed(struct mtu3 *mtu, enum usb_device_speed speed)
+void mtu3_set_speed(struct mtu3 *mtu, enum usb_device_speed speed)
 {
 	void __iomem *mbase = mtu->mac_base;
 
@@ -412,7 +412,7 @@ static void mtu3_regs_init(struct mtu3 *mtu)
 	ssusb_set_txdeemph(mtu->ssusb);
 }
 
-static void mtu3_check_params(struct mtu3 *mtu)
+void mtu3_check_params(struct mtu3 *mtu)
 {
 	/* device's u3 port (port0) is disabled */
 	if (mtu->u3_capable && (mtu->ssusb->u3p_dis_msk & BIT(0)))
