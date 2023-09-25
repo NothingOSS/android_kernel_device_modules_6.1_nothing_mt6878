@@ -51,6 +51,7 @@
 #define MAX_RECORD_COMM_NUM	(2)
 #define MAX_RECORD_PORT_NUM	(9)
 #define VIRT_COMM_PORT_ID	(8)
+#define MAX_RECORD_LARB_NUM	(50)
 
 #define MAX_BW_VALUE_NUM	(24)
 #define MAX_REG_VALUE_NUM	(8)
@@ -91,8 +92,19 @@ struct chn_bw_record {
 	u32 hrt_w_bw[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
 };
 
+struct larb_port_bw_record {
+	u8 idx[MAX_RECORD_LARB_NUM];
+	u64 time[MAX_RECORD_LARB_NUM][RECORD_NUM];
+	u32 port_id[MAX_RECORD_LARB_NUM][RECORD_NUM];
+	u32 avg_bw[MAX_RECORD_LARB_NUM][RECORD_NUM];
+	u32 peak_bw[MAX_RECORD_LARB_NUM][RECORD_NUM];
+	u32 mix_bw[MAX_RECORD_LARB_NUM][RECORD_NUM];
+	u8 ostdl[MAX_RECORD_LARB_NUM][RECORD_NUM];
+};
+
 struct comm_port_bw_record *comm_port_bw_rec;
 struct chn_bw_record *chn_bw_rec;
+struct larb_port_bw_record *larb_port_bw_rec;
 
 struct larb_port_node {
 	struct mmqos_base_node *base;
@@ -744,6 +756,20 @@ static void record_chn_bw(u32 comm_id, u32 chnn_id, u32 srt_r, u32 srt_w, u32 hr
 	chn_bw_rec->idx[comm_id][chnn_id] = (idx + 1) % RECORD_NUM;
 }
 
+static void record_larb_port_bw_ostdl(u32 larb_id, u32 port_id, u32 avg_bw, u32 peak_bw, u32 mix_bw, u8 ostdl)
+{
+	u32 idx;
+
+	idx = larb_port_bw_rec->idx[larb_id];
+	larb_port_bw_rec->time[larb_id][idx] = sched_clock();
+	larb_port_bw_rec->port_id[larb_id][idx] = port_id;
+	larb_port_bw_rec->avg_bw[larb_id][idx] = avg_bw;
+	larb_port_bw_rec->peak_bw[larb_id][idx] = peak_bw;
+	larb_port_bw_rec->mix_bw[larb_id][idx] = mix_bw;
+	larb_port_bw_rec->ostdl[larb_id][idx] = ostdl;
+	larb_port_bw_rec->idx[larb_id] = (idx + 1) % RECORD_NUM;
+}
+
 void update_channel_bw(const u32 comm_id, const u32 chnn_id,
 	struct icc_node *src)
 {
@@ -1104,7 +1130,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			value = mmqos->max_ratio;
 #endif
 #ifdef ENABLE_INTERCONNECT_V2
-		if (src->v2_mix_bw) {
+		if (icc_to_MBps(src->v2_mix_bw)) {
 			value = SHIFT_ROUND(
 				icc_to_MBps(src->v2_mix_bw),
 				larb_port_node->bw_ratio);
@@ -1118,25 +1144,33 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			|| (src->v2_max_ostd && is_max_bw_to_max_ostdl_policy())) {
 			if (value > mmqos->max_ratio)
 				dev_notice(larb_node->larb_dev,
-					"larb=%d port=%d avg_bw:%d peak_bw:%d ostd=%#x\n",
+					"larb=%d port=%d avg_bw:%d peak_bw:%d mix_bw:%d ostd=%#x\n",
 					MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
 					icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
 					icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
+					icc_to_MBps(src->v2_mix_bw),
 					value);
 			value = mmqos->max_ratio;
 		}
 #endif
-		if (mmqos_state & OSTD_ENABLE)
+		if (mmqos_state & OSTD_ENABLE) {
+			record_larb_port_bw_ostdl(MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
+				icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
+				icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
+				icc_to_MBps(src->v2_mix_bw),
+				value);
 			mtk_smi_larb_bw_set(
 				larb_node->larb_dev,
 				MTK_M4U_TO_PORT(src->id), value);
+		}
 
 		if (log_level & 1 << log_bw)
 			dev_notice(larb_node->larb_dev,
-				"larb=%d port=%d avg_bw:%d peak_bw:%d ostd=%#x\n",
+				"larb=%d port=%d avg_bw:%d peak_bw:%d mix_bw:%d ostd=%#x\n",
 				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
 				icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
 				icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
+				icc_to_MBps(src->v2_mix_bw),
 				value);
 
 		if (mmqos_met_enabled()) {
@@ -1280,6 +1314,30 @@ static struct icc_node *mtk_mmqos_xlate(
 	return ERR_PTR(-EINVAL);
 }
 
+static void larb_port_ostdl_dump(struct seq_file *file, u32 larb_id, u32 i)
+{
+	u64 ts;
+	u64 rem_nsec;
+
+	ts = larb_port_bw_rec->time[larb_id][i];
+	rem_nsec = do_div(ts, 1000000000);
+	if (ts == 0 &&
+		larb_port_bw_rec->port_id[larb_id][i] == 0 &&
+		larb_port_bw_rec->avg_bw[larb_id][i] == 0 &&
+		larb_port_bw_rec->peak_bw[larb_id][i] == 0 &&
+		larb_port_bw_rec->ostdl[larb_id][i] == 0)
+		return;
+
+	seq_printf(file, "[%5llu.%06llu] larb%2d port%2d %8d %8d %8d %8d\n",
+		(u64)ts, rem_nsec / 1000,
+		larb_id,
+		larb_port_bw_rec->port_id[larb_id][i],
+		larb_port_bw_rec->avg_bw[larb_id][i],
+		larb_port_bw_rec->peak_bw[larb_id][i],
+		larb_port_bw_rec->mix_bw[larb_id][i],
+		larb_port_bw_rec->ostdl[larb_id][i]);
+}
+
 static void comm_port_bw_dump(struct seq_file *file, u32 comm_id, u32 port_id, u32 i)
 {
 	u64 ts;
@@ -1346,6 +1404,19 @@ static void cam_hrt_bw_dump(struct seq_file *file, u32 i)
 		g_hrt->cam_hrt_rec.cam_max_hrt[i]);
 }
 
+static void larb_port_ostdl_full_dump(struct seq_file *file, u32 larb_id)
+{
+	u32 i, start;
+
+	start = larb_port_bw_rec->idx[larb_id];
+	for (i = start; i < RECORD_NUM; i++)
+		larb_port_ostdl_dump(file, larb_id, i);
+
+	for (i = 0; i < start; i++)
+		larb_port_ostdl_dump(file, larb_id, i);
+
+}
+
 static void comm_port_bw_full_dump(struct seq_file *file, u32 comm_id, u32 port_id)
 {
 	u32 i, start;
@@ -1402,7 +1473,7 @@ static void cam_hrt_bw_full_dump(struct seq_file *file)
 
 static int mmqos_bw_dump(struct seq_file *file, void *data)
 {
-	u32 comm_id = 0, chnn_id = 0, port_id = 0;
+	u32 comm_id = 0, chnn_id = 0, port_id = 0, larb_id = 0;
 
 	seq_printf(file, "MMQoS HRT BW Dump: %8s %8s %8s\n",
 		"avail", "cam_max", "cam_hrt");
@@ -1424,6 +1495,12 @@ static int mmqos_bw_dump(struct seq_file *file, void *data)
 		for (port_id = 0; port_id < MAX_RECORD_PORT_NUM; port_id++)
 			comm_port_bw_full_dump(file, comm_id, port_id);
 	}
+
+	seq_printf(file, "MMQoS OSTDL Dump:            %8s %8s %8s %8s\n",
+		"avg_bw", "peak_bw", "mix_bw", "ostdl");
+	for (larb_id = 0; larb_id < MAX_RECORD_LARB_NUM; larb_id++)
+		larb_port_ostdl_full_dump(file, larb_id);
+
 	return 0;
 }
 
@@ -1478,6 +1555,11 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	comm_port_bw_rec = devm_kzalloc(&pdev->dev,
 		sizeof(*comm_port_bw_rec), GFP_KERNEL);
 	if (!comm_port_bw_rec)
+		return -ENOMEM;
+
+	larb_port_bw_rec = devm_kzalloc(&pdev->dev,
+		sizeof(*larb_port_bw_rec), GFP_KERNEL);
+	if (!larb_port_bw_rec)
 		return -ENOMEM;
 
 	of_for_each_phandle(
