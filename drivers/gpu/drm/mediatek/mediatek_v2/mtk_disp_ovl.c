@@ -2068,7 +2068,7 @@ done:
 			     FLD_ELn_IGAMMA_EN(ext_lye_idx - 1));
 		SET_VAL_MASK(wcg_value, wcg_mask, gamma_en,
 			     FLD_ELn_GAMMA_EN(ext_lye_idx - 1));
-		SET_VAL_MASK(wcg_value, wcg_mask, (csc_wcg_en || csc_bc_en) ? 1 : 0,
+		SET_VAL_MASK(wcg_value, wcg_mask, (csc_wcg_en || csc_bc_en),
 			     FLD_ELn_CSC_EN(ext_lye_idx - 1));
 		SET_VAL_MASK(sel_value, sel_mask, igamma_sel,
 			     FLD_ELn_IGAMMA_SEL(ext_lye_idx - 1));
@@ -2079,7 +2079,7 @@ done:
 			     FLD_Ln_IGAMMA_EN(lye_idx));
 		SET_VAL_MASK(wcg_value, wcg_mask, gamma_en,
 			     FLD_Ln_GAMMA_EN(lye_idx));
-		SET_VAL_MASK(wcg_value, wcg_mask, (csc_wcg_en || csc_bc_en) ? 1 : 0,
+		SET_VAL_MASK(wcg_value, wcg_mask, (csc_wcg_en || csc_bc_en),
 			     FLD_Ln_CSC_EN(lye_idx));
 		SET_VAL_MASK(sel_value, sel_mask, igamma_sel,
 			     FLD_Ln_IGAMMA_SEL(lye_idx));
