@@ -28,11 +28,6 @@
 
 #include "../../../misc/mediatek/gate_ic/gate_i2c.h"
 
-#define RT4831A_SUPPORT 1
-#if RT4831A_SUPPORT
-#include "rt4831a.h"
-#endif
-
 static char bl_tb0[] = {0x51, 0xf, 0xff};
 
 struct panel_desc {
@@ -60,7 +55,8 @@ struct boe {
 	struct drm_panel panel;
 	struct backlight_device *backlight;
 	struct gpio_desc *reset_gpio;
-	//struct gpio_desc *hwen;
+	struct gpio_desc *bias_pos;
+	struct gpio_desc *bias_neg;
 	struct regulator *reg;
 	bool prepared;
 	bool enabled;
@@ -712,13 +708,6 @@ static int boe_disable(struct drm_panel *panel)
 		backlight_update_status(ctx->backlight);
 	}
 
-	if (ctx->gate_ic == 4831)
-		_gate_ic_backlight_set(0x0);
-
-#if RT4831A_SUPPORT
-	lcd_bl_set_led_brightness(0x0);
-#endif
-
 	ctx->enabled = false;
 
 	pr_info("%s---\n", __func__);
@@ -745,16 +734,20 @@ static int boe_unprepare(struct drm_panel *panel)
 	usleep_range(5 * 1000, 5 * 1000);
 	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
-	/*
-	 * lcd_set_bias(0);
-	 * ctx->hwen = devm_gpiod_get(ctx->dev, "pm-enable", GPIOD_OUT_HIGH);
-	 * gpiod_set_value(ctx->hwen, 0);
-	 * devm_gpiod_put(ctx->dev, ctx->hwen);
-	 */
+	if (ctx->gate_ic == 0) {
+		ctx->bias_neg =
+			devm_gpiod_get_index(ctx->dev, "bias", 1, GPIOD_OUT_HIGH);
+		gpiod_set_value(ctx->bias_neg, 0);
+		devm_gpiod_put(ctx->dev, ctx->bias_neg);
 
-	if (ctx->gate_ic == 4831) {
-		pr_info("%s, line=%d\n", __func__, __LINE__);
-		/*this is rt4831a*/
+		usleep_range(2000, 2001);
+
+		ctx->bias_pos =
+			devm_gpiod_get_index(ctx->dev, "bias", 0, GPIOD_OUT_HIGH);
+		gpiod_set_value(ctx->bias_pos, 0);
+		devm_gpiod_put(ctx->dev, ctx->bias_pos);
+	} else if (ctx->gate_ic == 4831) {
+		pr_info("%s, Using gate-ic 4831\n", __func__);
 		_gate_ic_i2c_panel_bias_enable(0);
 		_gate_ic_Power_off();
 	}
@@ -775,24 +768,24 @@ static int boe_prepare(struct drm_panel *panel)
 
 	if (ctx->prepared)
 		return 0;
-	pr_info("%s, line=%d\n", __func__, __LINE__);
 
-	if (ctx->gate_ic == 4831) {
-		pr_info("%s, line=%d\n", __func__, __LINE__);
+	if (ctx->gate_ic == 0) {
+		ctx->bias_pos =
+			devm_gpiod_get_index(ctx->dev, "bias", 0, GPIOD_OUT_HIGH);
+		gpiod_set_value(ctx->bias_pos, 1);
+		devm_gpiod_put(ctx->dev, ctx->bias_pos);
+
+		usleep_range(2000, 2001);
+		ctx->bias_neg =
+			devm_gpiod_get_index(ctx->dev, "bias", 1, GPIOD_OUT_HIGH);
+		gpiod_set_value(ctx->bias_neg, 1);
+		devm_gpiod_put(ctx->dev, ctx->bias_neg);
+	} else if (ctx->gate_ic == 4831) {
+		pr_info("%s, Using gate-ic 4831\n", __func__);
 		_gate_ic_Power_on();
 		/*rt4831a co-work with leds_i2c*/
 		_gate_ic_i2c_panel_bias_enable(1);
-		pr_info("%s, line=%d\n", __func__, __LINE__);
 	}
-
-	/*
-	 * ctx->hwen = devm_gpiod_get(ctx->dev, "pm-enable", GPIOD_OUT_HIGH);
-	 * gpiod_set_value(ctx->hwen, 1);
-	 * devm_gpiod_put(ctx->dev, ctx->hwen);
-	 * usleep_range(5 * 1000, 6 * 1000);
-	 * lcd_set_bias(1);
-	 * usleep_range(5 * 1000, 6 * 1000);
-	 */
 
 	boe_panel_init(ctx);
 	ret = ctx->error;
@@ -824,23 +817,12 @@ static int boe_enable(struct drm_panel *panel)
 
 	if (ctx->enabled)
 		return 0;
-	pr_info("%s, line=%d\n", __func__, __LINE__);
 
 	if (ctx->backlight) {
 		ctx->backlight->props.power = FB_BLANK_UNBLANK;
 		backlight_update_status(ctx->backlight);
 	}
-	pr_info("%s, line=%d\n", __func__, __LINE__);
 
-	if (ctx->gate_ic == 4831) {
-		pr_info("%s, line=%d\n", __func__, __LINE__);
-		_gate_ic_backlight_set(0xFFF);
-	}
-
-#if RT4831A_SUPPORT
-	lcd_bl_set_led_brightness(0xFF7);
-	pr_info("%s, line=%d\n", __func__, __LINE__);
-#endif
 	ctx->enabled = true;
 
 	pr_info("%s---\n", __func__);
@@ -933,21 +915,22 @@ static int panel_ext_reset(struct drm_panel *panel, int on)
 	return 0;
 }
 
-static int boe_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle,
-				   unsigned int level)
+static int boe_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
+	void *handle, unsigned int level)
 {
-	if (level > 255)
-		level = 255;
+	char bl_tb[] = {0x51, 0x07, 0xff};
 
-	level = level * 4095 / 255;
-	bl_tb0[1] = ((level >> 8) & 0xf);
-	bl_tb0[2] = (level & 0xff);
+	if (level) {
+		bl_tb0[1] = (level >> 8) & 0xFF;
+		bl_tb0[2] = level & 0xFF;
+	}
+	bl_tb[1] = (level >> 8) & 0xFF;
+	bl_tb[2] = level & 0xFF;
 
 	if (!cb)
 		return -1;
-
-	cb(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
-
+	pr_info("%s %d %d %d\n", __func__, level, bl_tb[1], bl_tb[2]);
+	cb(dsi, handle, bl_tb, ARRAY_SIZE(bl_tb));
 	return 0;
 }
 
@@ -962,8 +945,6 @@ static int boe_get_modes(struct drm_panel *panel,
 {
 	struct drm_display_mode *mode;
 
-	pr_info("%s+++\n", __func__);
-
 	mode = drm_mode_duplicate(connector->dev, &default_mode);
 	if (!mode) {
 		pr_info("failed to add mode %ux%ux@%u\n",
@@ -977,8 +958,6 @@ static int boe_get_modes(struct drm_panel *panel,
 	drm_mode_probed_add(connector, mode);
 	connector->display_info.width_mm = 273;
 	connector->display_info.height_mm = 171;
-
-	pr_info("%s---\n", __func__);
 
 	return 1;
 }
@@ -1024,8 +1003,26 @@ static int boe_probe(struct mipi_dsi_device *dsi)
 		pr_info("%s, Failed to find gate-ic\n", __func__);
 		value = 0;
 	} else {
-		pr_info("%s, line=%d, value=%d\n", __func__, __LINE__, value);
+		pr_info("%s, Find gate-ic, value=%d\n", __func__, value);
 		ctx->gate_ic = value;
+	}
+
+	if (ctx->gate_ic == 0) {
+		ctx->bias_pos = devm_gpiod_get_index(dev, "bias", 0, GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->bias_pos)) {
+			dev_info(dev, "cannot get bias-gpios 0 %ld\n",
+				 PTR_ERR(ctx->bias_pos));
+			return PTR_ERR(ctx->bias_pos);
+		}
+		devm_gpiod_put(dev, ctx->bias_pos);
+
+		ctx->bias_neg = devm_gpiod_get_index(dev, "bias", 1, GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->bias_neg)) {
+			dev_info(dev, "cannot get bias-gpios 1 %ld\n",
+				 PTR_ERR(ctx->bias_neg));
+			return PTR_ERR(ctx->bias_neg);
+		}
+		devm_gpiod_put(dev, ctx->bias_neg);
 	}
 
 	ctx->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
