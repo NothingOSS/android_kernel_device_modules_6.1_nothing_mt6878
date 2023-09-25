@@ -237,6 +237,7 @@ enum smi_log_level {
 	log_config_bit = 0,
 	log_set_bw,
 	log_pd_callback,
+	log_ultra_dis,
 };
 
 #define MAX_INIT_POWER_ON_DEV	(30)
@@ -478,7 +479,9 @@ int mtk_smi_larb_ultra_dis(struct device *larbdev, bool is_dis)
 				larb->base + SMI_LARB_NONSEC_CON(i));
 		}
 	}
-	pr_info("[SMI]larb:%d set dis_ultra:%d\n", larb->larbid, is_dis);
+
+	if (log_level & 1 << log_ultra_dis)
+		pr_info("[SMI]larb:%d set dis_ultra:%d\n", larb->larbid, is_dis);
 
 	return 0;
 }
