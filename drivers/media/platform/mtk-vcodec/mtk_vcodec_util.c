@@ -438,7 +438,9 @@ void mtk_vcodec_add_ctx_list(struct mtk_vcodec_ctx *ctx)
 	if (ctx != NULL) {
 		mutex_lock(&ctx->dev->ctx_mutex);
 		is_first_ctx = list_empty(&ctx->dev->ctx_list);
-		list_add(&ctx->list, &ctx->dev->ctx_list);
+		if (!ctx->add_list_cnt)
+			list_add(&ctx->list, &ctx->dev->ctx_list);
+		ctx->add_list_cnt++;
 		mtk_vcodec_dump_ctx_list(ctx->dev, 4);
 		mtk_vcodec_alive_checker_init(ctx, is_first_ctx);
 		mutex_unlock(&ctx->dev->ctx_mutex);
@@ -452,7 +454,9 @@ void mtk_vcodec_del_ctx_list(struct mtk_vcodec_ctx *ctx)
 		mutex_lock(&ctx->dev->ctx_mutex);
 		mutex_lock(&ctx->ipi_use_lock);
 		mtk_vcodec_dump_ctx_list(ctx->dev, 4);
-		list_del_init(&ctx->list);
+		ctx->add_list_cnt--;
+		if (!ctx->add_list_cnt)
+			list_del_init(&ctx->list);
 		mtk_vcodec_alive_checker_deinit(ctx, list_empty(&ctx->dev->ctx_list));
 		mutex_unlock(&ctx->ipi_use_lock);
 		mutex_unlock(&ctx->dev->ctx_mutex);
@@ -473,11 +477,11 @@ void mtk_vcodec_dump_ctx_list(struct mtk_vcodec_dev *dev, unsigned int debug_lev
 		if (ctx == NULL)
 			mtk_v4l2_err("ctx null in ctx list");
 		else
-			mtk_v4l2_debug(debug_level, "[%d] %s ctx 0x%08lx, drv_handle 0x%08lx %p, state %d",
+			mtk_v4l2_debug(debug_level, "[%d] %s ctx 0x%08lx, drv_handle 0x%08lx %p, state %d, add_list_cnt %d",
 				ctx->id, (ctx->type == MTK_INST_DECODER) ? "dec" : "enc",
 				(unsigned long)ctx,
 				ctx->drv_handle, (void *)ctx->drv_handle,
-				mtk_vcodec_get_state(ctx));
+				mtk_vcodec_get_state(ctx), ctx->add_list_cnt);
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_dump_ctx_list);
