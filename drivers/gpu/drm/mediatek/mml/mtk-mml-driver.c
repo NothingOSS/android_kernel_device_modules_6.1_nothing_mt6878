@@ -1431,7 +1431,8 @@ void mml_record_dump(struct mml_dev *mml)
 
 static int mml_record_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, mml_record_print, inode->i_private);
+	return single_open_size(file, mml_record_print, inode->i_private,
+		PAGE_SIZE + MML_LOG_SIZE);
 }
 
 static const struct file_operations mml_record_fops = {

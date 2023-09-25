@@ -43,60 +43,67 @@ extern int mml_rrot_msg;
 extern int mml_wrot_bkgd_en;
 extern int mml_rrot_debug;
 
-#define MML_LOG_SIZE	(1 << 20)
+enum mml_log_buf_setting {
+	mml_logbuf_krn = 0x1,	/* print mml_log to kernel log by pr_notice */
+	mml_logbuf_log = 0x2,	/* save log to buffer and output by mml-record */
+	mml_logbuf_msg = 0x4,	/* save mml_msg to buffer and output by mml-record */
+};
 extern int mml_log_rec;
+#define MML_LOG_SIZE	(1 << 20)
 
 void mml_save_log_record(const char *fmt, ...);
 void mml_print_log_record(struct seq_file *seq);
 
+#define _mml_save_log(fmt, args...) do { \
+	struct timespec64 curr_time; \
+	ktime_get_boottime_ts64(&curr_time); \
+	mml_save_log_record("[%5lld.%06llu]" fmt, \
+		curr_time.tv_sec, div_u64(curr_time.tv_nsec, 1000), ##args); \
+} while (0)
+
+#define _mml_log(fmt, args...) do { \
+	if (mml_log_rec & mml_logbuf_krn) \
+		pr_notice("[mml]" fmt "\n", ##args); \
+	if (mml_log_rec & mml_logbuf_log) \
+		_mml_save_log(fmt "\n", ##args); \
+} while (0)
+
 #define mml_msg(fmt, args...) \
 do { \
-	if (mtk_mml_msg) { \
-		if (mml_log_rec) \
-			mml_save_log_record(fmt "\n", ##args); \
-		else \
-			pr_notice("[mml]" fmt "\n", ##args); \
-	} \
+	if (mml_log_rec & mml_logbuf_msg) \
+		_mml_save_log(fmt "\n", ##args); \
+	if (mtk_mml_msg) \
+		_mml_log(fmt, ##args); \
 } while (0)
 
 #define mml_log(fmt, args...) \
 do { \
-	if (mml_log_rec) \
-		mml_save_log_record(fmt "\n", ##args); \
-	else \
-		pr_notice("[mml]" fmt "\n", ##args); \
+	_mml_log(fmt, ##args); \
 	if (mml_cmdq_err) \
 		cmdq_util_error_save("[mml]"fmt"\n", ##args); \
 } while (0)
 
 #define mml_err(fmt, args...) \
 do { \
-	if (mml_log_rec) \
-		mml_save_log_record("[err]" fmt "\n", ##args); \
-	else \
-		pr_notice("[mml][err]" fmt "\n", ##args); \
+	_mml_log("[err]" fmt, ##args); \
 	if (mml_cmdq_err) \
 		cmdq_util_error_save("[mml]"fmt"\n", ##args); \
 } while (0)
 
 #define mml_msg_qos(fmt, args...) \
 do { \
-	if (mml_qos_log) { \
-		if (mml_log_rec) \
-			mml_save_log_record(fmt "\n", ##args); \
-		else \
-			pr_notice("[mml]" fmt "\n", ##args); \
-	} \
+	if (mml_qos_log) \
+		_mml_log("[qos]" fmt, ##args); \
+	else \
+		mml_msg("[qos]" fmt, ##args); \
 } while (0)
 
 #define mml_msg_dpc(fmt, args...) \
 do { \
-	if (mml_dpc_log) { \
-		if (mml_log_rec) \
-			mml_save_log_record("[dpc]" fmt "\n", ##args); \
-		else \
-			pr_notice("[mml][dpc]" fmt "\n", ##args); \
-	} \
+	if (mml_dpc_log) \
+		_mml_log("[dpc]" fmt, ##args); \
+	else \
+		mml_msg("[dpc]" fmt, ##args); \
 } while (0)
 
 #define DB_OPT_MML	(DB_OPT_DEFAULT | DB_OPT_PROC_CMDQ_INFO | \

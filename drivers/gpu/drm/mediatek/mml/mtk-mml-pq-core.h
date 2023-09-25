@@ -52,13 +52,7 @@
 		DB_OPT_MMPROFILE_BUFFER | DB_OPT_FTRACE | DB_OPT_DUMP_DISPLAY)
 
 #define MML_PQ_LINK_MAX (127)
-#define mml_pq_aee(fmt, args...) \
-do { \
-	if (mml_log_rec) \
-		mml_save_log_record("[mml_pq][aee]" fmt "\n", ##args); \
-	else \
-		pr_notice("[mml_pq][aee]" fmt "\n", ##args); \
-} while (0)
+#define mml_pq_aee(fmt, args...) _mml_log("[mml_pq][aee]" fmt, ##args)
 
 #define mml_pq_util_aee(module, fmt, args...) \
 	do { \
@@ -77,76 +71,47 @@ extern int mml_pq_ir_log;
 
 #define mml_pq_ir_log(fmt, args...) \
 do { \
-	if (mml_pq_ir_log) { \
-		if (mml_log_rec) \
-			mml_save_log_record("[flow]" fmt "\n", ##args); \
-		else \
-			pr_notice("[flow]" fmt "\n", ##args); \
-	} \
+	if (mml_pq_ir_log) \
+		_mml_log("[pq]" fmt, ##args); \
 } while (0)
 
 extern int mml_pq_msg;
 
 #define mml_pq_msg(fmt, args...) \
 do { \
-	if (mml_pq_msg) { \
-		if (mml_log_rec) \
-			mml_save_log_record("[flow]" fmt "\n", ##args); \
-		else \
-			pr_notice("[flow]" fmt "\n", ##args); \
-	} \
+	if (mml_pq_msg) \
+		_mml_log("[pq]" fmt, ##args); \
 } while (0)
 
-#define mml_pq_log(fmt, args...) \
-do { \
-	if (mml_log_rec) \
-		mml_save_log_record("[flow]" fmt "\n", ##args); \
-	else \
-		pr_notice("[flow]" fmt "\n", ##args); \
-} while (0)
+#define mml_pq_log(fmt, args...) _mml_log("[pq]" fmt, ##args)
 
 #define mml_pq_err(fmt, args...) \
 do { \
-	if (mml_log_rec) \
-		mml_save_log_record("[flow][err]" fmt "\n", ##args); \
-	else \
-		pr_notice("[flow][err]" fmt "\n", ##args); \
+	_mml_log("[pq][err]" fmt, ##args); \
 } while (0)
 
 extern int mml_pq_dump;
 
 #define mml_pq_dump(fmt, args...) \
 do { \
-	if (mml_pq_dump) { \
-		if (mml_log_rec) \
-			mml_save_log_record("[param_dump]" fmt "\n", ##args); \
-		else \
-			pr_notice("[param_dump]" fmt "\n", ##args); \
-	} \
+	if (mml_pq_dump) \
+		_mml_log("[pq][param_dump]" fmt, ##args); \
 } while (0)
 
 extern int mml_pq_rb_msg;
 
 #define mml_pq_rb_msg(fmt, args...) \
 do { \
-	if (mml_pq_rb_msg) { \
-		if (mml_log_rec) \
-			mml_save_log_record("[rb_flow]" fmt "\n", ##args); \
-		else \
-			pr_notice("[rb_flow]" fmt "\n", ##args); \
-	} \
+	if (mml_pq_rb_msg) \
+		_mml_log("[pq][rb_flow]" fmt, ##args); \
 } while (0)
 
 extern int mml_pq_set_msg;
 
 #define mml_pq_set_msg(fmt, args...) \
 do { \
-	if (mml_pq_set_msg) { \
-		if (mml_log_rec) \
-			mml_save_log_record("[set_dump]" fmt "\n", ##args); \
-		else \
-			pr_notice("[set_dump]" fmt "\n", ##args); \
-	} \
+	if (mml_pq_set_msg) \
+		_mml_log("[pq][set_dump]" fmt, ##args); \
 } while (0)
 
 /* mml pq ftrace */

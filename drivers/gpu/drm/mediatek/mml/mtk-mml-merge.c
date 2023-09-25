@@ -25,10 +25,7 @@
 #define mrg_msg(fmt, args...) \
 do { \
 	if (mtk_mml_msg || mml_rrot_msg) { \
-		if (mml_log_rec) \
-			mml_save_log_record(fmt "\n", ##args); \
-		else \
-			pr_notice("[mml]" fmt "\n", ##args); \
+		_mml_log("[merge]" fmt, ##args); \
 	} \
 } while (0)
 
