@@ -882,6 +882,11 @@
 				scmi-ssc = <11>;
 			};
 		};
+
+		android: android {
+			compatible = "android,firmware";
+			hardware = "mt6897";
+		};
 	};
 
 	reserved_memory: reserved-memory {
