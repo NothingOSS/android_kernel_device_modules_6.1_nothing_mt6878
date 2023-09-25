@@ -278,6 +278,10 @@ static void ccci_md_regulator_dump(void)
 #endif
 
 	for (idx = 0; idx < ARRAY_SIZE(md_reg_table); idx++) {
+		if (md_reg_table[idx].reg_ref == NULL) {
+			CCCI_ERROR_LOG(-1, TAG,"%s:fail ref is NULL !\n",__func__);
+			continue;
+		}
 		if (IS_ERR(md_reg_table[idx].reg_ref)) {
 			ret = PTR_ERR(md_reg_table[idx].reg_ref);
 			if (ret != -ENODEV) {
@@ -287,11 +291,8 @@ static void ccci_md_regulator_dump(void)
 				continue;
 			}
 		} else
-			CCCI_NORMAL_LOG(-1, TAG,
-				"[PMIC DUMP]pmic get_voltage %s=%d uV\n",
-				md_reg_table[idx].reg_name,
-				regulator_get_voltage(
-				md_reg_table[idx].reg_ref));
+			CCCI_NORMAL_LOG(-1, TAG, "[PMIC DUMP]pmic get_voltage %s=%d uV\n",
+				md_reg_table[idx].reg_name, regulator_get_voltage(md_reg_table[idx].reg_ref));
 	}
 }
 
