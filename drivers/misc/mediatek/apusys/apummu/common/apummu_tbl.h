@@ -11,7 +11,7 @@
  * Note the fileds of vsid descirpt between iommu and smmu are different !
  */
 #define linux_ep
-#define SMMU_EN
+// #define SMMU_EN
 
 /* TCU RCX */
 #define APUMMU_CMU_TOP_REG_BASE       0x19067000
@@ -22,7 +22,7 @@
 #endif
 
 /* VSID SRAM */
-#define APUMMU_VSID_SRAM_SIZE 0x5C00 //15K:Ponsot, 23K: Leroy
+#define APUMMU_VSID_SRAM_SIZE 0x3C00 //15K:Ponsot, 23K: Leroy
 #define APUMMU_VSID_TBL_SIZE  0x118 //280
 
 #define APUMMU_PREFIX "[apummu]"

@@ -238,6 +238,7 @@ void apummu_enable(void)
  */
 int apummu_topology_init(void)
 {
+	/* Note: This is don't care since no invalidate is called */
 	DRV_WriteReg32(APUMMU_CMU_TOP_TOPOLOGY, ((0xf << 7) | 0x03));
 
 	return 0;
@@ -424,7 +425,9 @@ apummu_vsid_t gApummu_vsid;
 int apummu_add_map(uint32_t vsid_idx, uint8_t seg_idx, uint32_t input_adr, uint32_t output_adr,
 			uint8_t page_sel, uint8_t page_len, uint8_t domain, uint8_t ns)
 {
+#ifdef SMMU_EN
 	uint8_t sid, smmu_en;
+#endif
 
 #ifdef COMMENT_SHOW
 	if ((input_adr & 0x3fffff) != 0 || (output_adr & 0x3fffff) != 0) { // check 4k alignment
@@ -455,7 +458,11 @@ int apummu_add_map(uint32_t vsid_idx, uint8_t seg_idx, uint32_t input_adr, uint3
 
 	/* fill segment */
 	apummu_set_segment_offset0(vsid_idx, seg_idx, input_adr, 0, page_sel, page_len);
+#ifdef SMMU_EN
 	apummu_set_segment_offset1(vsid_idx, seg_idx, output_adr, sid, smmu_en, 0);
+#else
+	apummu_set_segment_offset1(vsid_idx, seg_idx, output_adr, 0, 1, 0);
+#endif
 	apummu_set_segment_offset2(vsid_idx, seg_idx, 0, domain,
 					0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ns);
 	apummu_set_segment_offset3(vsid_idx, seg_idx, 1, 0);
