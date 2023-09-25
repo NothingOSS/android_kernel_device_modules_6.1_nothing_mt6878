@@ -421,6 +421,22 @@ static void set_freq_by_mmdvfs(struct common_node *comm_node, unsigned long smi_
 }
 */
 
+static u32 change_to_unit(u32 bw)
+{
+	/* bw unit is 16MB/s */
+	u32 bw_unit;
+
+	bw_unit = (icc_to_MBps(bw)) >> 4;
+	if (bw_unit >= MAX_BW_UNIT) {
+		MMQOS_ERR("bw is over %d*16MB/s", MAX_BW_UNIT);
+		bw_unit = MAX_BW_UNIT;
+	}
+	if (log_level & 1 << log_comm_freq && bw > 0)
+		MMQOS_DBG("bw:%d, bw_unit:%d", bw, bw_unit);
+
+	return bw_unit;
+}
+
 static void store_bw_value(const u32 comm_id, const u32 chnn_id,
 	bool is_srt, bool is_write, bool is_on, u32 bw)
 {
@@ -431,6 +447,8 @@ static void store_bw_value(const u32 comm_id, const u32 chnn_id,
 
 	if (!is_srt)
 		bw = bw * 10 / 7;
+
+	bw = change_to_unit(bw);
 
 	if (is_on)
 		on_bw_value[bw_value_idx] = bw;
@@ -566,22 +584,6 @@ static void set_channel_bw_to_hw(void)
 	stop_write_bw();
 }
 
-static u32 change_to_unit(u32 bw)
-{
-	/* bw unit is 16MB/s */
-	u32 bw_unit;
-
-	bw_unit = (icc_to_MBps(bw)) >> 4;
-	if (bw_unit >= MAX_BW_UNIT) {
-		MMQOS_ERR("bw is over %d*16MB/s", MAX_BW_UNIT);
-		bw_unit = MAX_BW_UNIT;
-	}
-	if (log_level & 1 << log_comm_freq && bw > 0)
-		MMQOS_DBG("bw:%d, bw_unit:%d", bw, bw_unit);
-
-	return bw_unit;
-}
-
 static void set_freq_by_vmmrc(const u32 comm_id)
 {
 	int i, j;
@@ -606,26 +608,26 @@ static void set_freq_by_vmmrc(const u32 comm_id)
 		bool is_write = true;
 
 		store_bw_value(comm_id, i, is_srt, !is_write, IS_ON_TABLE,
-			change_to_unit(chn_srt_r_bw[comm_id][i]));
+			chn_srt_r_bw[comm_id][i]);
 		store_bw_value(comm_id, i, is_srt, is_write, IS_ON_TABLE,
-			change_to_unit(chn_srt_w_bw[comm_id][i]));
+			chn_srt_w_bw[comm_id][i]);
 		store_bw_value(comm_id, i, !is_srt, !is_write, IS_ON_TABLE,
-			change_to_unit(chn_hrt_r_bw[comm_id][i]));
+			chn_hrt_r_bw[comm_id][i]);
 		store_bw_value(comm_id, i, !is_srt, is_write, IS_ON_TABLE,
-			change_to_unit(chn_hrt_w_bw[comm_id][i]));
+			chn_hrt_w_bw[comm_id][i]);
 
 		off_s_r_bw = chn_srt_r_bw[comm_id][i] - disp_srt_r_bw[comm_id][i];
 		off_s_w_bw = chn_srt_w_bw[comm_id][i] - disp_srt_w_bw[comm_id][i];
 		off_h_r_bw = chn_hrt_r_bw[comm_id][i] - disp_hrt_r_bw[comm_id][i];
 		off_h_w_bw = chn_hrt_w_bw[comm_id][i] - disp_hrt_w_bw[comm_id][i];
 		store_bw_value(comm_id, i, is_srt, !is_write, !IS_ON_TABLE,
-			change_to_unit(off_s_r_bw));
+			off_s_r_bw);
 		store_bw_value(comm_id, i, is_srt, is_write, !IS_ON_TABLE,
-			change_to_unit(off_s_w_bw));
+			off_s_w_bw);
 		store_bw_value(comm_id, i, !is_srt, !is_write, !IS_ON_TABLE,
-			change_to_unit(off_h_r_bw));
+			off_h_r_bw);
 		store_bw_value(comm_id, i, !is_srt, is_write, !IS_ON_TABLE,
-			change_to_unit(off_h_w_bw));
+			off_h_w_bw);
 
 		if (mmqos_met_enabled())
 			trace_mmqos__chn_bw(comm_id, i,
