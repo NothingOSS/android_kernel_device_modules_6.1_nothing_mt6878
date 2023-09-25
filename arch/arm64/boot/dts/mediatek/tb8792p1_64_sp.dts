@@ -13,6 +13,10 @@
 bootargs_ext = "8250.nr_uarts=4";
 };
 
+&android {
+	hardware = "mt8792";
+};
+
 &mtk_leds {
 	compatible = "mediatek,i2c-leds";
 
