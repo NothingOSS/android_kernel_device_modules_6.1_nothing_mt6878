@@ -255,6 +255,9 @@ static const struct mfd_cell mt6363_devs[] = {
 		.num_resources = ARRAY_SIZE(mt6363_lvsys_notify_resources),
 		.resources = mt6363_lvsys_notify_resources,
 		.of_compatible = "mediatek,mt6363-lvsys-notify",
+	}, {
+		.name = "mt6363-pinctrl",
+		.of_compatible = "mediatek,mt6363-pinctrl",
 	},
 };
 
@@ -311,9 +314,6 @@ static const struct mfd_cell mt6369_devs[] = {
 	}, {
 		.name = "mt6369-sound",
 		.of_compatible = "mediatek,mt6369-sound",
-	}, {
-		.name = "mt6363-pinctrl",
-		.of_compatible = "mediatek,mt6363-pinctrl",
 	},
 };
 
