@@ -43,6 +43,21 @@
 #include <l3c_part.h>
 #endif /* CONFIG_MTK_L3C_PART */
 
+#include <linux/arm-smccc.h>    /* for Kernel Native SMC API */
+#include <linux/soc/mediatek/mtk_sip_svc.h> /* for SMC ID table */
+
+enum mtk_slbc_kernel_ops {
+	MTK_SLBC_KERNEL_OP_CPU_DCC = 0,
+};
+
+#define slbc_smc_send(_opid, _val1, _val2)                   \
+({                                                           \
+	struct arm_smccc_res res;                            \
+	arm_smccc_smc(MTK_SIP_KERNEL_SLBC_CONTROL,           \
+		      _opid, _val1, _val2, 0, 0, 0, 0, &res);\
+	res.a0;                                              \
+})
+
 #define ENABLE_SLBC
 #define SLBC_CB
 /* #define SLBC_CB_SLEEP */
@@ -83,6 +98,8 @@ enum slc_gid_list {
 
 
 static struct mtk_slbc *slbc;
+
+static int venc_count;
 
 static int slb_disable;
 static int slc_disable;
@@ -724,6 +741,11 @@ int slbc_request(struct slbc_data *d)
 #else
 		slbc_ref++;
 #endif /* CONFIG_MTK_SLBC_IPI */
+		if (d->uid == UID_MM_VENC) {
+			if (venc_count == 0)
+				slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 0, 0);
+			venc_count++;
+		}
 	}
 
 	val = (ktime_get_ns() - begin) / 1000000;
@@ -784,6 +806,11 @@ int slbc_release(struct slbc_data *d)
 #else
 		slbc_ref--;
 #endif /* CONFIG_MTK_SLBC_IPI */
+		if (d->uid == UID_MM_VENC) {
+			venc_count--;
+			if (venc_count == 0)
+				slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 1, 1);
+		}
 	}
 
 	val = (ktime_get_ns() - begin) / 1000000;
@@ -1394,6 +1421,7 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "slbc_force 0x%x\n", slbc_force);
 	seq_printf(m, "buffer_ref %x\n", buffer_ref);
 	seq_printf(m, "slbc_ref %x\n", slbc_ref);
+	seq_printf(m, "venc_count %x\n", venc_count);
 	seq_printf(m, "debug_level %x\n", debug_level);
 	seq_printf(m, "slbc_sta %x\n", slbc_sta);
 	seq_printf(m, "slbc_ack_c %x\n", slbc_ack_c);
