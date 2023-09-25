@@ -8,10 +8,8 @@ ifeq ($(word 2,$(subst -, ,$(notdir $(LOCAL_PATH)))),$(word 2,$(subst -, ,$(stri
 ifdef KLEAF_BUILD_PROJECT
 my_kernel_target := $(KLEAF_BUILD_PROJECT)
 else
-ifdef KRN_TARGET_PROJECT
-my_kernel_target := $(KRN_TARGET_PROJECT)
-else ifdef MTK_TARGET_PROJECT
-my_kernel_target := $(MTK_TARGET_PROJECT)
+ifdef KERNEL_DEFCONFIG
+my_kernel_target := $(subst _defconfig,,$(KERNEL_DEFCONFIG))
 endif
 endif
 
@@ -68,7 +66,8 @@ $(KERNEL_ZIMAGE_OUT): $(GEN_KERNEL_BUILD_CONFIG) $(KERNEL_MAKE_DEPENDENCIES) | k
 	$(hide) cd kernel && CC_WRAPPER=$(PRIVATE_CC_WRAPPER) SKIP_MRPROPER=1 BUILD_CONFIG=$(PRIVATE_KERNEL_BUILD_CONFIG) OUT_DIR=$(PRIVATE_KERNEL_OUT) DIST_DIR=$(PRIVATE_DIST_DIR) $(PRIVATE_KERNEL_BUILD_SCRIPT) && cd ..
 	$(hide) $(call fixup-kernel-cmd-file,$(KERNEL_OUT)/arch/$(KERNEL_TARGET_ARCH)/boot/compressed/.piggy.xzkern.cmd)
 else
-$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG := $(addprefix --//build/bazel_mgk_rules:,kernel_version=$(patsubst kernel-%,%,$(LINUX_KERNEL_VERSION)) $(patsubst %.config,%_config,$(KERNEL_DEFCONFIG_OVERLAYS))) --experimental_writable_outputs
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_EXPORT_ENV := BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 DEFCONFIG_OVERLAYS="$(KERNEL_DEFCONFIG_OVERLAYS)" KERNEL_VERSION=$(LINUX_KERNEL_VERSION)
+$(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG := --//build/bazel_mgk_rules:kernel_version=$(patsubst kernel-%,%,$(LINUX_KERNEL_VERSION)) --experimental_writable_outputs
 ifneq ($(filter yes no,$(COVERITY_LOCAL_SCAN)),)
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_FLAG += --config=local
 endif
@@ -82,10 +81,10 @@ $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_BUILD_GOAL := //$(patsubst kernel/%,%,$(KERN
 $(KERNEL_ZIMAGE_OUT): PRIVATE_BAZEL_DIST_GOAL := //$(patsubst kernel/%,%,$(KERNEL_DIR)):$(my_kernel_target)_customer_dist.$(strip $(KERNEL_BUILD_VARIANT))
 endif
 $(KERNEL_ZIMAGE_OUT): $(KERNEL_MAKE_DEPENDENCIES)
-	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base build $(PRIVATE_BAZEL_BUILD_FLAG) $(PRIVATE_BAZEL_BUILD_GOAL)
-	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base run $(PRIVATE_BAZEL_BUILD_FLAG) --nokmi_symbol_list_violations_check $(PRIVATE_BAZEL_DIST_GOAL) -- --dist_dir=$(abspath $(PRIVATE_BAZEL_DIST_OUT))
+	$(hide) cd kernel && export $(PRIVATE_BAZEL_EXPORT_ENV) && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base build $(PRIVATE_BAZEL_BUILD_FLAG) $(PRIVATE_BAZEL_BUILD_GOAL)
+	$(hide) cd kernel && export $(PRIVATE_BAZEL_EXPORT_ENV) && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base run $(PRIVATE_BAZEL_BUILD_FLAG) --nokmi_symbol_list_violations_check $(PRIVATE_BAZEL_DIST_GOAL) -- --dist_dir=$(abspath $(PRIVATE_BAZEL_DIST_OUT))
 ifeq (true,$(strip $(KERNEL_CHECK_ABI)))
-	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base run //$(REL_ACK_DIR):kernel_aarch64_abi_dist -- --dist_dir=$(abspath $(PRIVATE_BAZEL_DIST_OUT))/abi
+	$(hide) cd kernel && export $(PRIVATE_BAZEL_EXPORT_ENV) && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base run //$(REL_ACK_DIR):kernel_aarch64_abi_dist -- --dist_dir=$(abspath $(PRIVATE_BAZEL_DIST_OUT))/abi
 endif
 endif
 
@@ -124,10 +123,11 @@ ifneq ($(KERNEL_USE_BAZEL),yes)
 clean-kernel:
 	$(hide) rm -rf $(KERNEL_OUT) $(INSTALLED_KERNEL_TARGET)
 else
+clean-kernel: PRIVATE_BAZEL_EXPORT_ENV := BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
 clean-kernel: PRIVATE_BAZEL_BUILD_OUT := $(KERNEL_BAZEL_BUILD_OUT)
 clean-kernel: PRIVATE_BAZEL_DIST_OUT := $(KERNEL_BAZEL_DIST_OUT)
 clean-kernel:
-	$(hide) cd kernel && export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1 && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base clean
+	$(hide) cd kernel && export $(PRIVATE_BAZEL_EXPORT_ENV) && tools/bazel --output_root=$(abspath $(PRIVATE_BAZEL_BUILD_OUT)) --output_base=$(abspath $(PRIVATE_BAZEL_BUILD_OUT))/bazel/output_user_root/output_base clean
 	$(hide) rm -rf $(PRIVATE_BAZEL_BUILD_OUT) $(PRIVATE_BAZEL_DIST_OUT)
 endif
 

@@ -5,6 +5,10 @@ load("//kernel_device_modules-6.1:kernel/kleaf/mgk_modules.bzl",
      "mgk_module_user_outs"
 )
 
+load("@mgk_info//:dict.bzl",
+    "DEFCONFIG_OVERLAYS",
+)
+
 mgk_64_k61_defconfig = "mgk_64_k61_defconfig"
 
 mgk_64_k61_kleaf_modules = [
@@ -822,3 +826,48 @@ mgk_64_k61_device_user_modules = [
 
 mgk_64_k61_platform_device_user_modules = {
 }
+
+
+def get_overlay_modules_list():
+    if "fpga.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_k61_kleaf_modules.remove("//vendor/mediatek/kernel_modules/fpsgo_cus:fpsgo_cus")
+        mgk_64_k61_kleaf_modules.remove("//vendor/mediatek/kernel_modules/fpsgo_int:fpsgo_int")
+
+        mgk_64_k61_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_secure_v3:met_drv_secure_v3")
+        mgk_64_k61_kleaf_modules.append("//vendor/mediatek/kernel_modules/met_drv_secure_v3:met_drv_secure_v3_default")
+        mgk_64_k61_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api:met_api_v3_cus")
+        mgk_64_k61_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api:met_api_v3_int")
+        mgk_64_k61_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3:met_drv_v3")
+        mgk_64_k61_kleaf_modules.append("//vendor/mediatek/kernel_modules/met_drv_v3:met_drv_v3_default")
+
+        mgk_64_k61_kleaf_modules.remove("//vendor/mediatek/kernel_modules/msync2_frd_cus/build:msync2_frd_cus")
+        mgk_64_k61_kleaf_modules.remove("//vendor/mediatek/kernel_modules/msync2_frd_int:msync2_frd_int")
+
+        mgk_64_k61_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase")
+        mgk_64_k61_kleaf_eng_modules.append("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase_fpga")
+        mgk_64_k61_kleaf_userdebug_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase")
+        mgk_64_k61_kleaf_userdebug_modules.append("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase_fpga")
+
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/performance/fpsgo_v3/mtk_fpsgo.ko")
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/performance/frs/frs.ko")
+
+    if "wifionly.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/ccci_util/ccci_util_lib.ko")
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/ccmni/ccmni.ko")
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/eccci/ccci_auxadc.ko")
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/eccci/ccci_md_all.ko")
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.ko")
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_ccif.ko")
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_cldma.ko")
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_dpmaif.ko")
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/mddp/mddp.ko")
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko")
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb.ko")
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_atc.ko")
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_ets.ko")
+        mgk_64_k61_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_modem.ko")
+        mgk_64_k61_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
+
+        mgk_64_k61_device_modules.append("drivers/misc/mediatek/pmic_tia/pmic_tia.ko")
+
+get_overlay_modules_list()
