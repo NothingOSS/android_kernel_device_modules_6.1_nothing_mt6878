@@ -693,7 +693,7 @@ static ssize_t perfmgr_core_cpus_proc_write(
 	if (ret != 0)
 		return ret;
 
-	if (val < 10)
+	if (val < 10 || core_cpus != 0)
 		return -EINVAL;
 
 	cl_lock(__func__);
