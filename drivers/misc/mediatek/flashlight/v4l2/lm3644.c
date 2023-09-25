@@ -10,10 +10,8 @@
 #include <linux/videodev2.h>
 #include <linux/pinctrl/consumer.h>
 #include <media/v4l2-subdev.h>
-// #include <lm3644.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
-#include <linux/pm_runtime.h>
 #include <linux/thermal.h>
 
 #if IS_ENABLED(CONFIG_MTK_FLASHLIGHT)
@@ -72,10 +70,15 @@
 #define LM3644_TORCH_BRT_REG_TO_uA(a)		\
 	((a) * LM3644_TORCH_BRT_STEP + LM3644_TORCH_BRT_MIN)
 
+#define LM3644_VIN (3.6)
+
 #define LM3644_COOLER_MAX_STATE 5
 static const int flash_state_to_current_limit[LM3644_COOLER_MAX_STATE] = {
 	200000, 150000, 100000, 50000, 25000
 };
+
+/* define mutex and work queue */
+static DEFINE_MUTEX(lm3644_mutex);
 
 enum lm3644_led_id {
 	LM3644_LED0 = 0,
@@ -135,6 +138,7 @@ struct lm3644_flash {
 	unsigned long target_state;
 	unsigned long target_current[LM3644_LED_MAX];
 	unsigned long ori_current[LM3644_LED_MAX];
+	unsigned int cur_mA[LM3644_LED_MAX];
 };
 
 /* define usage count */
@@ -144,6 +148,8 @@ static struct lm3644_flash *lm3644_flash_data;
 
 #define to_lm3644_flash(_ctrl, _no)	\
 	container_of(_ctrl->handler, struct lm3644_flash, ctrls_led[_no])
+
+static int lm3644_set_driver(int set);
 
 /* define pinctrl */
 #define LM3644_PINCTRL_PIN_HWEN 0
@@ -252,7 +258,6 @@ static int lm3644_enable_ctrl(struct lm3644_flash *flash,
 	pr_info_ratelimited("%s led:%d enable:%d", __func__, led_no, on);
 
 #if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_PT)
-	flashlight_kicker_pbm(on);
 	if (flashlight_pt_is_low()) {
 		pr_info_ratelimited("pt is low\n");
 		return 0;
@@ -300,6 +305,7 @@ static int lm3644_torch_brt_ctrl(struct lm3644_flash *flash,
 		}
 	}
 
+	flash->cur_mA[led_no] = brt / 1000;
 	br_bits = LM3644_TORCH_BRT_uA_TO_REG(brt);
 	if (led_no == LM3644_LED0)
 		rval = regmap_update_bits(flash->regmap,
@@ -331,6 +337,7 @@ static int lm3644_flash_brt_ctrl(struct lm3644_flash *flash,
 		pr_info("thermal limit current:%d\n", brt);
 	}
 
+	flash->cur_mA[led_no] = brt / 1000;
 	br_bits = LM3644_FLASH_BRT_uA_TO_REG(brt);
 	if (led_no == LM3644_LED0)
 		rval = regmap_update_bits(flash->regmap,
@@ -349,14 +356,14 @@ static int lm3644_flash_tout_ctrl(struct lm3644_flash *flash,
 	int rval;
 	u8 tout_bits;
 
-	pr_info("%s timeout:%u", __func__, tout);
+	pr_info_ratelimited("%s timeout:%u", __func__, tout);
 	if (tout == 200)
 		tout_bits = 0x04;
 	else
 		tout_bits = 0x07 + (tout / LM3644_FLASH_TOUT_STEP);
 
 	rval = regmap_update_bits(flash->regmap,
-				  REG_FLASH_TOUT, 0x1f, tout_bits);
+				  REG_FLASH_TOUT, 0x0f, tout_bits);
 
 	return rval;
 }
@@ -397,7 +404,7 @@ static int lm3644_set_ctrl(struct v4l2_ctrl *ctrl, enum lm3644_led_id led_no)
 	struct lm3644_flash *flash = to_lm3644_flash(ctrl, led_no);
 	int rval = -EINVAL;
 
-	pr_info("%s led:%d ID:%d", __func__, led_no, ctrl->id);
+	pr_info_ratelimited("%s led:%d ID:%d", __func__, led_no, ctrl->id);
 	mutex_lock(&flash->lock);
 
 	switch (ctrl->id) {
@@ -597,20 +604,14 @@ static void lm3644_v4l2_i2c_subdev_init(struct v4l2_subdev *sd,
 
 static int lm3644_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	int ret;
-
-	ret = pm_runtime_get_sync(sd->dev);
-	if (ret < 0) {
-		pm_runtime_put_noidle(sd->dev);
-		return ret;
-	}
+	lm3644_set_driver(1);
 
 	return 0;
 }
 
 static int lm3644_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	pm_runtime_put(sd->dev);
+	lm3644_set_driver(0);
 
 	return 0;
 }
@@ -682,12 +683,19 @@ static int lm3644_init(struct lm3644_flash *flash)
 	int rval = 0;
 	unsigned int reg_val;
 
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_DLPT)
+	flashlight_kicker_pbm_by_device_id(
+				&flash->flash_dev_id[LM3644_LED0],
+				LM3644_TORCH_BRT_MAX / 1000 * LM3644_VIN * 2);
+	mdelay(1);
+#endif
 	lm3644_pinctrl_set(flash, LM3644_PINCTRL_PIN_HWEN, LM3644_PINCTRL_PINSTATE_HIGH);
 
 	/* set timeout */
 	rval = lm3644_flash_tout_ctrl(flash, 400);
 	if (rval < 0)
 		return rval;
+
 	/* output disable */
 	flash->led_mode = V4L2_FLASH_LED_MODE_NONE;
 	rval = lm3644_mode_ctrl(flash);
@@ -711,7 +719,11 @@ static int lm3644_uninit(struct lm3644_flash *flash)
 {
 	lm3644_pinctrl_set(flash,
 			LM3644_PINCTRL_PIN_HWEN, LM3644_PINCTRL_PINSTATE_LOW);
-
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_DLPT)
+	flashlight_kicker_pbm_by_device_id(
+				&flash->flash_dev_id[LM3644_LED0],
+				0);
+#endif
 	return 0;
 }
 
@@ -728,7 +740,7 @@ static int lm3644_flash_release(void)
 static int lm3644_ioctl(unsigned int cmd, unsigned long arg)
 {
 	struct flashlight_dev_arg *fl_arg;
-	int channel;
+	int channel, scenario;
 
 	fl_arg = (struct flashlight_dev_arg *)arg;
 	channel = fl_arg->channel;
@@ -750,6 +762,20 @@ static int lm3644_ioctl(unsigned int cmd, unsigned long arg)
 			}
 		}
 		break;
+	case FLASH_IOC_SET_SCENARIO:
+		scenario = (int)fl_arg->arg;
+#if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_DLPT)
+		if (scenario & FLASHLIGHT_SCENARIO_CAMERA_MASK) {
+			flashlight_kicker_pbm_by_device_id(
+				&lm3644_flash_data->flash_dev_id[LM3644_LED0],
+				LM3644_FLASH_BRT_MAX / 1000 * LM3644_VIN);
+		} else {
+			flashlight_kicker_pbm_by_device_id(
+				&lm3644_flash_data->flash_dev_id[LM3644_LED0],
+				LM3644_TORCH_BRT_MAX / 1000 * LM3644_VIN * 2);
+		}
+#endif
+		break;
 	default:
 		pr_info("No such command and arg(%d): (%d, %d)\n",
 				channel, _IOC_NR(cmd), (int)fl_arg->arg);
@@ -764,7 +790,7 @@ static int lm3644_set_driver(int set)
 	int ret = 0;
 
 	/* set chip and usage count */
-	//mutex_lock(&lm3644_mutex);
+	mutex_lock(&lm3644_mutex);
 	if (set) {
 		if (!use_count)
 			ret = lm3644_init(lm3644_flash_data);
@@ -778,7 +804,7 @@ static int lm3644_set_driver(int set)
 			use_count = 0;
 		pr_debug("Unset driver: %d\n", use_count);
 	}
-	//mutex_unlock(&lm3644_mutex);
+	mutex_unlock(&lm3644_mutex);
 
 	return 0;
 }
@@ -973,8 +999,6 @@ static int lm3644_probe(struct i2c_client *client,
 	if (rval < 0)
 		return rval;
 
-	pm_runtime_enable(flash->dev);
-
 	rval = lm3644_parse_dt(flash);
 
 	i2c_set_clientdata(client, flash);
@@ -1007,29 +1031,6 @@ static void lm3644_remove(struct i2c_client *client)
 		media_entity_cleanup(&flash->subdev_led[i].entity);
 	}
 
-	pm_runtime_disable(&client->dev);
-
-	pm_runtime_set_suspended(&client->dev);
-}
-
-static int __maybe_unused lm3644_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct lm3644_flash *flash = i2c_get_clientdata(client);
-
-	pr_info("%s %d", __func__, __LINE__);
-
-	return lm3644_uninit(flash);
-}
-
-static int __maybe_unused lm3644_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct lm3644_flash *flash = i2c_get_clientdata(client);
-
-	pr_info("%s %d", __func__, __LINE__);
-
-	return lm3644_init(flash);
 }
 
 static const struct i2c_device_id lm3644_id_table[] = {
@@ -1045,16 +1046,9 @@ static const struct of_device_id lm3644_of_table[] = {
 };
 MODULE_DEVICE_TABLE(of, lm3644_of_table);
 
-static const struct dev_pm_ops lm3644_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
-	SET_RUNTIME_PM_OPS(lm3644_suspend, lm3644_resume, NULL)
-};
-
 static struct i2c_driver lm3644_i2c_driver = {
 	.driver = {
 		   .name = LM3644_NAME,
-		   .pm = &lm3644_pm_ops,
 		   .of_match_table = lm3644_of_table,
 		   },
 	.probe = lm3644_probe,
