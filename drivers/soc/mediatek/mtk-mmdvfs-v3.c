@@ -1447,20 +1447,26 @@ static inline void mmdvfs_reset_vcp(void)
 	}
 }
 
-static void mmdvfs_v3_release_step(void)
+static void mmdvfs_v3_release_step(bool enable_vcp)
 {
 	int last, i;
 
 	for (i = 0; i < PWR_MMDVFS_NUM; i++) {
 		if (last_vote_step[i] != -1) {
 			last = last_vote_step[i];
-			mtk_mmdvfs_v3_set_vote_step_ipi(i, -1);
+			if (enable_vcp)
+				mtk_mmdvfs_v3_set_vote_step(i, -1);
+			else
+				mtk_mmdvfs_v3_set_vote_step_ipi(i, -1);
 			last_vote_step[i] = last;
 		}
 
 		if (last_force_step[i] != -1) {
 			last = last_force_step[i];
-			mtk_mmdvfs_v3_set_force_step_ipi(i, -1);
+			if (enable_vcp)
+				mtk_mmdvfs_v3_set_force_step(i, -1);
+			else
+				mtk_mmdvfs_v3_set_force_step_ipi(i, -1);
 			last_force_step[i] = last;
 		}
 	}
@@ -1489,7 +1495,7 @@ static int mmdvfs_pm_notifier(struct notifier_block *notifier, unsigned long pm_
 {
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
-		mmdvfs_v3_release_step();
+		mmdvfs_v3_release_step(true);
 		mmdvfs_reset_ccu();
 		cb_timestamp[0] = sched_clock();
 		mmdvfs_reset_clk(true);
@@ -1544,7 +1550,7 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 		mutex_unlock(&mmdvfs_vcp_cb_mutex);
 		break;
 	case VCP_EVENT_SUSPEND:
-		mmdvfs_v3_release_step();
+		mmdvfs_v3_release_step(false);
 		if (dpc_fp)
 			dpc_fp(false, false);
 		if (mmdvfs_swrgo) {
