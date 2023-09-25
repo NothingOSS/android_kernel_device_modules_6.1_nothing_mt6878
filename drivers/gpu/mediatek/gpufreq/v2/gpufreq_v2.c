@@ -1873,15 +1873,15 @@ static int gpufreq_wrapper_pdrv_probe(struct platform_device *pdev)
 	of_property_read_u32(of_wrapper, "gpueb-support", &g_gpueb_support);
 	of_property_read_u32(of_wrapper, "gpufreq-bringup", &g_gpufreq_bringup);
 
+	/* init spinlock */
+	raw_spin_lock_init(&gpufreq_ipi_lock);
+	raw_spin_lock_init(&gpufreq_power_lock);
+
 	/* keep probe successful but do nothing when bringup */
 	if (g_gpufreq_bringup) {
 		GPUFREQ_LOGI("skip gpufreq wrapper driver probe when bringup");
 		goto done;
 	}
-
-	/* init spinlock */
-	raw_spin_lock_init(&gpufreq_ipi_lock);
-	raw_spin_lock_init(&gpufreq_power_lock);
 
 	/* init shared memory */
 	ret = gpufreq_shared_memory_init();
