@@ -33,6 +33,10 @@
 #define MTK_EMIMPU_READ 2
 #define MTK_EMIMPU_CLEAR_MD 7
 #define MTK_EMIMPU_CLEAR_KP 9
+#define MTK_SMPU_KP_AID_REGF_OFFSET		(16)
+#define MTK_SMPU_KP_AID_MASK			((-1U) ^ ((1U << MTK_SMPU_KP_AID_REGF_OFFSET) - 1))
+#define MTK_SMPU_KP_AID(smpu_kp_reg)		((smpu_kp_reg & MTK_SMPU_KP_AID_MASK) >>  \
+						MTK_SMPU_KP_AID_REGF_OFFSET)
 
 struct smpu_reg_info_t {
 	unsigned int offset;
@@ -89,6 +93,8 @@ struct smpu {
 	struct bypass_axi_info_t *bypass_axi;
 	unsigned int *gpu_bypass_list;
 	unsigned int bypass_axi_num;
+	/* As SLC B mode enable */
+	bool slc_b_mode;
 };
 extern struct smpu *global_nsmpu, *global_ssmpu;
 //static struct smpu *global_ssmpu, *global_nsmpu, *global_skp, *global_nkp;

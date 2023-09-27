@@ -377,6 +377,61 @@ static const struct of_device_id smpu_of_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, smpu_of_ids);
 
+/* As SLC b mode enable CPU will write clean evict, which may trigger SMPU violation.
+ * and those data may cached in CPU L3 cache through CPU prefetch.
+ */
+static void smpu_clean_cpu_write_vio(struct smpu *mpu)
+{
+	int sec_cpu_aid = 240;
+	int ns_cpu_aid = 241;
+	int hyp_cpu_aid = 243;
+	bool slc_enable  = mpu->slc_b_mode;
+	int i;
+	void __iomem *mpu_base = mpu->mpu_base;
+	struct smpu_reg_info_t *dump_reg = mpu->dump_reg;
+	ssize_t msg_len = 0;
+
+	/* smpu check violation */
+	if (slc_enable) {
+		/* read SMPU/KP vio reg */
+		for (i = 0; i < mpu->dump_cnt; i++)
+			dump_reg[i].value = readl(mpu_base + dump_reg[i].offset);
+		if (msg_len < MTK_SMPU_MAX_CMD_LEN) {
+			msg_len += scnprintf(mpu->vio_msg + msg_len,
+					     MTK_SMPU_MAX_CMD_LEN - msg_len,
+					     "\n[SMPU]%s\n", mpu->name);
+		}
+		for (i = 0; i < mpu->dump_cnt; i++) {
+			if (msg_len < MTK_SMPU_MAX_CMD_LEN)
+				msg_len += scnprintf(
+					mpu->vio_msg + msg_len,
+					MTK_SMPU_MAX_CMD_LEN - msg_len,
+					"[%x]%x;", dump_reg[i].offset,
+					dump_reg[i].value);
+		}
+
+		/* check whether cpu type master lead this smpu violation */
+		if ((mpu == global_ssmpu) || (mpu == global_nsmpu)) {
+			/* check smpu write violation aid reg */
+			if ((mpu->dump_reg[5].value == sec_cpu_aid) ||
+			    (mpu->dump_reg[5].value == ns_cpu_aid) ||
+			    (mpu->dump_reg[5].value == hyp_cpu_aid)) {
+				pr_info("%s: %s", __func__, mpu->vio_msg);
+				clear_violation(mpu);
+			}
+		} else {
+			/* check kp write violation aid reg */
+			if ((MTK_SMPU_KP_AID(mpu->dump_reg[1].value) == sec_cpu_aid) ||
+			    (MTK_SMPU_KP_AID(mpu->dump_reg[1].value) == ns_cpu_aid) ||
+			    (MTK_SMPU_KP_AID(mpu->dump_reg[1].value) == hyp_cpu_aid)) {
+				pr_info("%s: %s", __func__, mpu->vio_msg);
+				clear_violation(mpu);
+			}
+		}
+		pr_info("%s: WCE dump finish!!\n",__func__);
+	}
+}
+
 static int smpu_probe(struct platform_device *pdev)
 {
 	struct device_node *smpu_node = pdev->dev.of_node;
@@ -627,11 +682,17 @@ static int smpu_probe(struct platform_device *pdev)
 	if (!strcmp(mpu->name, "nkp"))
 		global_nkp = mpu;
 
+	if (of_property_read_bool(smpu_node, "mediatek,slc-b-mode"))
+		mpu->slc_b_mode = true;
+
+	smpu_clean_cpu_write_vio(mpu);
+
 	mpu->irq = irq_of_parse_and_map(smpu_node, 0);
 	if (mpu->irq == 0) {
 		dev_err(&pdev->dev, "Failed to get irq resource\n");
 		return -ENXIO;
 	}
+
 	ret = request_irq(mpu->irq, (irq_handler_t)smpu_violation,
 			  IRQF_TRIGGER_NONE, "smpu", mpu);
 	if (ret) {
