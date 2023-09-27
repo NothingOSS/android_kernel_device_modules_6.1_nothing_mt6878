@@ -91,100 +91,100 @@
 			reg = <0x0000>;
 			enable-method = "psci";
 			// cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-			// 			&system_vcore &s2idle>;
+			//			&system_vcore &s2idle>;
 		};
 
-		// cpu1: cpu@1 {
-		// 	device_type = "cpu";
-		// 	reg = <0x0100>;
-		// 	enable-method = "psci";
-		// 	// cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-		// 	// 			&system_vcore &s2idle>;
-		// };
+		cpu1: cpu@1 {
+			device_type = "cpu";
+			reg = <0x0100>;
+			enable-method = "psci";
+			// cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+			//			&system_vcore &s2idle>;
+		};
 
-		// cpu2: cpu@2 {
-		// 	device_type = "cpu";
-		// 	reg = <0x0200>;
-		// 	enable-method = "psci";
-		// 	// cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-		// 	// 			&system_vcore &s2idle>;
-		// };
+		cpu2: cpu@2 {
+			device_type = "cpu";
+			reg = <0x0200>;
+			enable-method = "psci";
+			// cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+			//			&system_vcore &s2idle>;
+		};
 
-		// cpu3: cpu@3 {
-		// 	device_type = "cpu";
-		// 	reg = <0x0300>;
-		// 	enable-method = "psci";
-		// 	// cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-		// 	// 			&system_vcore &s2idle>;
-		// };
+		cpu3: cpu@3 {
+			device_type = "cpu";
+			reg = <0x0300>;
+			enable-method = "psci";
+			// cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+			//			&system_vcore &s2idle>;
+		};
 
-		// cpu4: cpu@100 {
-		// 	device_type = "cpu";
-		// 	reg = <0x0400>;
-		// 	enable-method = "psci";
-		// 	// cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
-		// 	// 			&system_vcore &s2idle>;
-		// };
+		cpu4: cpu@100 {
+			device_type = "cpu";
+			reg = <0x0400>;
+			enable-method = "psci";
+			// cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+			//			&system_vcore &s2idle>;
+		};
 
-		// cpu5: cpu@101 {
-		// 	device_type = "cpu";
-		// 	reg = <0x0500>;
-		// 	enable-method = "psci";
-		// 	// cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
-		// 	// 			&system_vcore &s2idle>;
-		// };
+		cpu5: cpu@101 {
+			device_type = "cpu";
+			reg = <0x0500>;
+			enable-method = "psci";
+			// cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+			//			&system_vcore &s2idle>;
+		};
 
-		// cpu6: cpu@102 {
-		// 	device_type = "cpu";
-		// 	reg = <0x0600>;
-		// 	enable-method = "psci";
-		// 	// cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
-		// 	// 			&system_vcore &s2idle>;
-		// };
+		cpu6: cpu@102 {
+			device_type = "cpu";
+			reg = <0x0600>;
+			enable-method = "psci";
+			// cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+			//			&system_vcore &s2idle>;
+		};
 
-		// cpu7: cpu@103 {
-		// 	device_type = "cpu";
-		// 	reg = <0x0700>;
-		// 	enable-method = "psci";
-		// 	// cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
-		// 	// 			&system_vcore &s2idle>;
-		// };
+		cpu7: cpu@103 {
+			device_type = "cpu";
+			reg = <0x0700>;
+			enable-method = "psci";
+			// cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+			//			&system_vcore &s2idle>;
+		};
 
-		// cpu-map {
-		// 	cluster0 {
-		// 		core0 {
-		// 			cpu = <&cpu0>;
-		// 		};
-		// 		core1 {
-		// 			cpu = <&cpu1>;
-		// 		};
-		// 		core2 {
-		// 			cpu = <&cpu2>;
-		// 		};
-		// 		core3 {
-		// 			cpu = <&cpu3>;
-		// 		};
-		// 		doe_dvfs_cl0: doe {
-		// 		};
-		// 	};
+		cpu-map {
+			cluster0 {
+				core0 {
+					cpu = <&cpu0>;
+				};
+				core1 {
+					cpu = <&cpu1>;
+				};
+				core2 {
+					cpu = <&cpu2>;
+				};
+				core3 {
+					cpu = <&cpu3>;
+				};
+				doe_dvfs_cl0: doe {
+				};
+			};
 
-		// 	cluster1 {
-		// 		core0 {
-		// 			cpu = <&cpu4>;
-		// 		};
-		// 		core1 {
-		// 			cpu = <&cpu5>;
-		// 		};
-		// 		core2 {
-		// 			cpu = <&cpu6>;
-		// 		};
-		// 		core3 {
-		// 			cpu = <&cpu7>;
-		// 		};
-		// 		doe_dvfs_cl1: doe {
-		// 		};
-		// 	};
-		// };
+			cluster1 {
+				core0 {
+					cpu = <&cpu4>;
+				};
+				core1 {
+					cpu = <&cpu5>;
+				};
+				core2 {
+					cpu = <&cpu6>;
+				};
+				core3 {
+					cpu = <&cpu7>;
+				};
+				doe_dvfs_cl1: doe {
+				};
+			};
+		};
 
 		idle-states {
 			entry-method = "arm,psci";
