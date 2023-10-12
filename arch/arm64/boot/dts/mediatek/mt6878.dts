@@ -6927,6 +6927,45 @@
 #endif
 		};
 
+		mtk_aie_debug_7sp_2: mtk-aie-debug-7sp-2@15311000 {
+			compatible = "mediatek,mtk-aie-debug-7sp-2";
+			reg = <0 0x15311000 0 0x1000>;
+		};
+
+		aie: aie@15310000 {
+			compatible = "mediatek,aie-isp7sp-2";
+			reg = <0 0x15310000 0 0x1000>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			//cmdqsec-supply = <&gce_m_sec>;
+			mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>;
+			//mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>,
+			//		<&gce_m_sec 11 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
+			//mediatek,larb = <&smi_larb12>;
+			//mediatek,aov = <&aov>;
+			fdvt-frame-done = <CMDQ_EVENT_IMG_IMGSYS_IPE_FDVT0_DONE>;
+			sw-sync-token-tzmp-aie-wait = <CMDQ_SYNC_TOKEN_TZMP_AIE_WAIT>;
+			sw-sync-token-tzmp-aie-set = <CMDQ_SYNC_TOKEN_TZMP_AIE_SET>;
+			iommus = <&disp_iommu M4U_L12_P0_FDVT_RDA_0>,
+				<&disp_iommu M4U_L12_P1_FDVT_WRA_0>;
+#if 0
+			power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_MAIN>;
+			clocks = <&img_vcore_d1a_clk CLK_IMGV_IMG_VCORE_SUB1_CON_0>,
+				<&img_vcore_d1a_clk CLK_IMGV_IMG_VCORE_SUB0_CON_0>,
+				<&img_vcore_d1a_clk CLK_IMGV_IMG_VCORE_MAIN_CON_0>,
+				<&img_vcore_d1a_clk CLK_IMGV_IMG_VCORE_GALS_DISP_CON_0>,
+				<&imgsys_main_clk CLK_IMG_FDVT>,
+				<&imgsys_main_clk CLK_IMG_LARB12>,
+				<&imgsys_main_clk CLK_IMG_IPE>;
+			clock-names = "VCORE_SUB1_CON_0",
+				"VCORE_SUB0_CON_0",
+				"VCORE_MAIN_CON_0",
+				"VCORE_GALS_DISP_CON_0",
+				"IPE_FDVT",
+				"IPE_SMI_LARB12",
+				"IMG_IPE";
+#endif
+		};
+
 		vdec-gcon@16000000 {
 			compatible = "mediatek,vdec_gcon";
 			reg = <0 0x16000000 0 0xd000>;
