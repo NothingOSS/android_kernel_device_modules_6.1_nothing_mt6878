@@ -3068,6 +3068,22 @@
 		iommus = <&apu_iommu0 M4U_L42_APU_CODE>;
 	};
 
+	mminfra-debug@1e827000 {
+		compatible = "mediatek,mminfra-debug";
+		reg = <0 0x1e827000 0 0x90>;
+		power-domains = <&scpsys MT6878_POWER_DOMAIN_MM_INFRA>;
+		interrupts = <GIC_SPI 292 IRQ_TYPE_LEVEL_HIGH 0>;
+		mminfra-gals-sel = <15 16 17 18 19 20>;
+		mminfra-bkrs = <1>;
+		bkrs-reg = <0x1e800860>;
+		init-clk-on;
+		clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_D>,
+				<&mminfra_config_clk CLK_MMINFRA_GCE_M>,
+				<&mminfra_config_clk CLK_MMINFRA_SMI>,
+				<&mminfra_config_clk CLK_MMINFRA_GCE_26M>;
+		clock-names = "clk0", "clk1", "clk2", "clk3";
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
