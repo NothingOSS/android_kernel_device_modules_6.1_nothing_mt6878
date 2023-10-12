@@ -12119,7 +12119,6 @@
 				"ufs_fde",
 				"ufs_fde_min_src",
 				"ufs_fde_max_src",
-				"ufs_mbist",
 				"unipro_tx_sym",
 				"unipro_rx_sym0",
 				"unipro_rx_sym1",
@@ -12133,7 +12132,6 @@
 
 			freq-table-hz =
 				<273000000 499200000>,
-				<0 0>,
 				<0 0>,
 				<0 0>,
 				<0 0>,
