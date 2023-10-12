@@ -404,17 +404,15 @@
 		avdd-supply = <&rt5133_ldo3>;
 		dovdd-supply = <&camera_common_dovdd>;
 
-#if 0
-		clocks = <&topckgen_clk CLK_TOP_UNIVPLL2_192M_D32>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D16>,
-			<&topckgen_clk CLK_TOP_F26M_CK_D2>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D10>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D8>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_D6_D16>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_D6_D8>,
+		clocks = <&topckgen_clk CLK_TOP_UVPLL192M_D32>,
+			<&topckgen_clk CLK_TOP_UVPLL192M_D16>,
+			<&topckgen_clk CLK_TOP_OSC_D20>,
+			<&topckgen_clk CLK_TOP_UVPLL192M_D10>,
+			<&topckgen_clk CLK_TOP_UVPLL192M_D8>,
+			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
+			<&topckgen_clk CLK_TOP_UNIVPLL_D6_D8>,
 			<&topckgen_clk CLK_TOP_CAMTG4_SEL>;
 		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
-#endif
 
 		status = "okay";
 		port {
@@ -481,17 +479,16 @@
 		dovdd-supply = <&camera_common_dovdd>;
 		oisvdd-supply = <&rt5133_ldo1>;
 
-#if 0
-		clocks = <&topckgen_clk CLK_TOP_UNIVPLL2_192M_D32>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D16>,
-			<&topckgen_clk CLK_TOP_F26M_CK_D2>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D10>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D8>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_D6_D16>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_D6_D8>,
-			<&topckgen_clk CLK_TOP_CAMTG1_SEL>;
+		clocks = <&topckgen_clk CLK_TOP_UVPLL192M_D32>,
+			<&topckgen_clk CLK_TOP_UVPLL192M_D16>,
+			<&topckgen_clk CLK_TOP_OSC_D20>,
+			<&topckgen_clk CLK_TOP_UVPLL192M_D10>,
+			<&topckgen_clk CLK_TOP_UVPLL192M_D8>,
+			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
+			<&topckgen_clk CLK_TOP_UNIVPLL_D6_D8>,
+			<&topckgen_clk CLK_TOP_CAMTG_SEL>;
 		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
-#endif
+
 		status = "okay";
 		port {
 			sensor4_out: endpoint {
@@ -567,17 +564,17 @@
 		dovdd-supply = <&camera_common_dovdd>;
 		dvdd-supply = <&rt5133_ldo8>;
 
-#if 0
-		clocks = <&topckgen_clk CLK_TOP_UNIVPLL2_192M_D32>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D16>,
-			<&topckgen_clk CLK_TOP_F26M_CK_D2>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D10>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D8>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_D6_D16>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_D6_D8>,
+
+		clocks = <&topckgen_clk CLK_TOP_UVPLL192M_D32>,
+			<&topckgen_clk CLK_TOP_UVPLL192M_D16>,
+			<&topckgen_clk CLK_TOP_OSC_D20>,
+			<&topckgen_clk CLK_TOP_UVPLL192M_D10>,
+			<&topckgen_clk CLK_TOP_UVPLL192M_D8>,
+			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
+			<&topckgen_clk CLK_TOP_UNIVPLL_D6_D8>,
 			<&topckgen_clk CLK_TOP_CAMTG2_SEL>;
 		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
-#endif
+
 
 		status = "okay";
 		port {
@@ -641,28 +638,17 @@
 		dovdd-supply = <&camera_common_dovdd>;
 		dvdd-supply = <&rt5133_ldo7>; // DVDD for imx598
 
-#if 0
-		clocks = <&topckgen_clk CLK_TOP_UNIVPLL2_192M_D32>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D16>,
-			<&topckgen_clk CLK_TOP_F26M_CK_D2>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D10>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_192M_D8>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_D6_D16>,
-			<&topckgen_clk CLK_TOP_UNIVPLL2_D6_D8>,
-			<&topckgen_clk CLK_TOP_CAMTG3_SEL>,
-			<&topckgen_clk CLK_TOP_UNIVPLL_192M_D32>,
-			<&topckgen_clk CLK_TOP_UNIVPLL_192M_D16>,
-			<&topckgen_clk CLK_TOP_F26M_CK_D2>,
-			<&topckgen_clk CLK_TOP_UNIVPLL_192M_D10>,
-			<&topckgen_clk CLK_TOP_UNIVPLL_192M_D8>,
-			<&topckgen_clk CLK_TOP_UNIVPLL_D6_D16>,
+
+		clocks = <&topckgen_clk CLK_TOP_UVPLL192M_D32>,
+			<&topckgen_clk CLK_TOP_UVPLL192M_D16>,
 			<&topckgen_clk CLK_TOP_OSC_D20>,
+			<&topckgen_clk CLK_TOP_UVPLL192M_D10>,
+			<&topckgen_clk CLK_TOP_UVPLL192M_D8>,
+			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
 			<&topckgen_clk CLK_TOP_UNIVPLL_D6_D8>,
-			<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk",
-			      "clk1_6", "clk1_12", "clk1_13", "clk1_19.2",
-			      "clk1_24", "clk1_26", "clk1_26_ulposc", "clk1_52", "clk1_mclk1";
-#endif
+			<&topckgen_clk CLK_TOP_CAMTG3_SEL>;
+		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
+
 
 		status = "okay";
 		port {

@@ -4074,7 +4074,7 @@
 				<0 0x11c80000 0 0x30000>;
 			reg-names = "base", "ana-rx";
 			interrupts = <GIC_SPI 152 IRQ_TYPE_LEVEL_HIGH 0>,
-				<GIC_SPI 499 IRQ_TYPE_LEVEL_HIGH 0>;
+				<GIC_SPI 149 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "seninf-irq",
 				"tsrec-irq";
 
@@ -4122,7 +4122,7 @@
 			cdphy-dvfs-step1 = <4500 4500>, <4500 4500>, <343>, <600000 600000>;
 			cdphy-dvfs-step2 = <4500 4500>, <4500 4500>, <416>, <650000 650000>;
 			cdphy-dvfs-step3 = <4500 4500>, <4500 4500>, <499>, <725000 725000>;
-#if 0
+
 			power-domains =
 						<&scpsys MT6878_POWER_DOMAIN_CAM_MAIN>,
 						<&scpsys MT6878_POWER_DOMAIN_CSI_RX>;
@@ -4130,9 +4130,9 @@
 			operating-points-v2 = <&opp_table_cam>;
 
 			clocks =
-				<&camsys_main_clk CLK_CAM_MAIN_SENINF_CON_0>,
-				<&camsys_main_clk CLK_CAM_MAIN_CAM_CON_0>,
-				<&camsys_main_clk CLK_CAM_MAIN_CAMTG_CON_0>,
+				<&camsys_main_clk CLK_CAM_MAIN_SENINF>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAM>,
+				<&camsys_main_clk CLK_CAM_MAIN_CAMTG>,
 				<&topckgen_clk CLK_TOP_SENINF_SEL>,
 				<&topckgen_clk CLK_TOP_SENINF1_SEL>,
 				<&topckgen_clk CLK_TOP_SENINF2_SEL>,
@@ -4141,8 +4141,8 @@
 				<&topckgen_clk CLK_TOP_UNIVPLL_D4_D2>,
 				<&topckgen_clk CLK_TOP_UNIVPLL_D7>,
 				<&topckgen_clk CLK_TOP_UNIVPLL_D6>,
-				<&topckgen_clk CLK_TOP_UNIVPLL_D5>,
-				<&mmdvfs_clk CLK_MMDVFS_CAM>;
+				<&topckgen_clk CLK_TOP_UNIVPLL_D5>;
+				//<&mmdvfs_clk CLK_MMDVFS_CAM>;
 
 			clock-names = "clk_cam_seninf",
 				"clk_cam_cam",
@@ -4155,9 +4155,9 @@
 				"clk_top_ap_step0",
 				"clk_top_ap_step1",
 				"clk_top_ap_step2",
-				"clk_top_ap_step3",
-				"mmdvfs_mux";
-
+				"clk_top_ap_step3";
+				//"mmdvfs_mux";
+#if 0
 			clk-fmeter-isp {
 				fmeter-type = "CKGEN";
 				fmeter-no = <85>;
