@@ -279,6 +279,15 @@
 		 reg = <0 0xc000000 0 0x40000>, /* distributor */
 			<0 0xc040000 0 0x200000>; /* redistributor */
 		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH 0>;
+		ppi-partitions {
+			ppi_cluster0: interrupt-partition-0 {
+				affinity = <&cpu0 &cpu1 &cpu2 &cpu3>;
+			};
+			ppi_cluster1: interrupt-partition-1 {
+				affinity = <&cpu4 &cpu5 &cpu6 &cpu7>;
+			};
+		};
+
 	};
 
 	dcm: dcm@c530010 {
@@ -1359,6 +1368,24 @@
 				<GIC_PPI 11 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_PPI 10 IRQ_TYPE_LEVEL_HIGH 0>;
 		clock-frequency = <13000000>;
+	};
+
+	pmu-A55 {
+		compatible = "arm,cortex-a55-pmu";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH &ppi_cluster0>;
+		};
+	pmu-A78 {
+		compatible = "arm,cortex-a77-pmu";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH &ppi_cluster1>;
+	};
+
+	dsu-pmu-0 {
+		compatible = "arm,dsu-pmu";
+		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH 0>;
+		cpus = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>,
+			<&cpu4>, <&cpu5>, <&cpu6>, <&cpu7>;
 	};
 
 	clk_ao: clk-ao {
