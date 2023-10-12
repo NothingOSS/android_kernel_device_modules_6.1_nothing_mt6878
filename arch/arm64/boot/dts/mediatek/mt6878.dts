@@ -52,6 +52,10 @@
 		ovl6 = &disp_ovl3_2l;
 		dsi0 = &dsi0;
 		mutex0 = &disp_mutex0;
+		mtksmmu0 = &disp_iommu;
+		//mtksmmu1 = &mdp_iommu;
+		mtksmmu2 = &apu_iommu0;
+		//mtksmmu3 = &apu_iommu1;
 #if 0
 		wdma1 = &disp_wdma1;
 		rsz0 = &disp_rsz0;
