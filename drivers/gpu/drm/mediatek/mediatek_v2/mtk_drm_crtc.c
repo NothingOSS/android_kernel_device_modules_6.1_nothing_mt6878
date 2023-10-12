@@ -6241,6 +6241,10 @@ int get_comp_wait_event(struct mtk_drm_crtc *mtk_crtc,
 		return mtk_crtc->gce_obj.event[EVENT_MDP_RDMA1_EOF];
 	} else if (comp->id == DDP_COMPONENT_Y2R0) {
 		return mtk_crtc->gce_obj.event[EVENT_Y2R_EOF];
+	} else if (comp->id == DDP_COMPONENT_UFBC_WDMA1) {
+		return mtk_crtc->gce_obj.event[EVENT_UFBC_WDMA1_EOF];
+	} else if (comp->id == DDP_COMPONENT_UFBC_WDMA3) {
+		return mtk_crtc->gce_obj.event[EVENT_UFBC_WDMA3_EOF];
 	}
 
 	DDPPR_ERR("The component has not frame done event\n");
@@ -15921,6 +15925,12 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 		break;
 	case EVENT_MML_DISP_DONE_EVENT:
 		len = snprintf(buf, buf_len, "mml_disp_done_event");
+		break;
+	case EVENT_UFBC_WDMA1_EOF:
+		len = snprintf(buf, buf_len, "disp_ufbc_wdma1_eof");
+		break;
+	case EVENT_UFBC_WDMA3_EOF:
+		len = snprintf(buf, buf_len, "disp_ufbc_wdma3_eof");
 		break;
 	default:
 		DDPPR_ERR("%s invalid event_id:%d\n", __func__, event_id);
