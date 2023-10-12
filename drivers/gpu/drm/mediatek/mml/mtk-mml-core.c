@@ -862,7 +862,8 @@ static u64 time_dur_us(const struct timespec64 *lhs, const struct timespec64 *rh
 
 static u32 mml_core_calc_tput_couple(struct mml_task *task, u32 pixel, u32 pipe)
 {
-	const struct mml_frame_info *info = &task->config->info;
+	const struct mml_frame_config *cfg = task->config;
+	const struct mml_frame_info *info = &cfg->info;
 	const struct mml_frame_data *src = &info->src;
 	const struct mml_frame_dest *dest = &info->dest[0];
 	u32 act_time_us = div_u64(info->act_time, 1000);
@@ -886,7 +887,11 @@ static u32 mml_core_calc_tput_couple(struct mml_task *task, u32 pixel, u32 pipe)
 		}
 	} else if (info->mode == MML_MODE_DIRECT_LINK) {
 		/* workaround, increase mml throughput to avoid underrun */
-		task->pipe[pipe].throughput = task->pipe[pipe].throughput * 27 / 25;
+		if (cfg->panel_w > dest->data.width)
+			task->pipe[pipe].throughput = (u32)((u64)task->pipe[pipe].throughput *
+				cfg->panel_w / dest->data.width);
+		else
+			task->pipe[pipe].throughput = task->pipe[pipe].throughput * 27 / 25;
 	}
 
 	return act_time_us;

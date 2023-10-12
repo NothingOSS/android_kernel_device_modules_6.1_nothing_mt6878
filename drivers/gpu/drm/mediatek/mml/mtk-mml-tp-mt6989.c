@@ -774,7 +774,8 @@ static inline bool tp_need_resize(struct mml_frame_info *info, bool *can_binning
 		info->dest[0].compose.height != info->dest[0].data.height;
 }
 
-static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache *tp, bool *dual)
+static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache *tp,
+	u32 panel_width, u32 panel_height, bool *dual)
 {
 	u32 srcw, srch;
 	u32 cropw = info->dest[0].crop.r.width;
@@ -782,7 +783,7 @@ static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache
 	const u32 destw = info->dest[0].data.width;
 	const u32 desth = info->dest[0].data.height;
 	const enum mml_orientation rotate = info->dest[0].rotate;
-	u32 tput, pixel;
+	u64 tput, pixel;
 
 	/* always assign dual as default */
 	*dual = true;
@@ -825,6 +826,8 @@ static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache
 	 */
 	pixel = max(srcw, destw) * max(srch, desth);
 	tput = pixel * 11 / 20 / (info->act_time / 1000);
+	if (panel_width > destw)
+		tput = tput * panel_width / destw;
 	if (mml_rrot_single != 2 && srcw * srch <= MML_DL_RROT_S_PX &&
 		tput < tp->opp_speeds[tp->opp_cnt / 2]) {
 		*dual = false;
@@ -920,7 +923,7 @@ static void tp_select_path(struct mml_topology_cache *cache,
 	}
 
 check_rr:
-	tp_check_tput(&cfg->info, cache, &dual);
+	tp_check_tput(&cfg->info, cache, cfg->panel_w, cfg->panel_h, &dual);
 
 	if (cfg->info.mode == MML_MODE_DIRECT_LINK && mml_rrot != 2) {
 		/* direct link mode and not force disalbe, change to RROT */
@@ -989,7 +992,7 @@ static s32 tp_select(struct mml_topology_cache *cache,
 }
 
 static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info *info,
-	u32 *reason)
+	u32 *reason, u32 panel_width, u32 panel_height)
 {
 	struct mml_topology_cache *tp;
 	const struct mml_frame_dest *dest = &info->dest[0];
@@ -1051,7 +1054,7 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 		goto decouple;
 	}
 
-	if (!tp_check_tput(info, tp, &dual)) {
+	if (!tp_check_tput(info, tp, panel_width, panel_height, &dual)) {
 		*reason = mml_query_opp_out;
 		goto decouple;
 	}
@@ -1180,7 +1183,7 @@ decouple:
 }
 
 static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *info,
-	u32 *reason)
+	u32 *reason, u32 panel_width, u32 panel_height)
 {
 	if (unlikely(mml_path_mode))
 		return mml_path_mode;
@@ -1207,7 +1210,7 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 		(info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270))
 		return tp_query_mode_racing(mml, info, reason);
 
-	return tp_query_mode_dl(mml, info, reason);
+	return tp_query_mode_dl(mml, info, reason, panel_width, panel_height);
 
 decouple_user:
 	return info->mode;
@@ -1220,7 +1223,7 @@ static struct cmdq_client *get_racing_clt(struct mml_topology_cache *cache, u32 
 }
 
 static const struct mml_topology_path *tp_get_dl_path(struct mml_topology_cache *cache,
-	struct mml_frame_info *info, u32 pipe)
+	struct mml_frame_info *info, u32 pipe, struct mml_frame_size *panel)
 {
 	u32 scene;
 	bool dual = true;
@@ -1240,7 +1243,7 @@ use_rrot:
 	if (!info)
 		return &cache->paths[PATH_MML_RR_DL];
 
-	tp_check_tput(info, cache, &dual);
+	tp_check_tput(info, cache, panel->width, panel->height, &dual);
 
 	if (info->dest_cnt == 2 && info->dest[0].pq_config.en_region_pq)
 		scene = dual ? PATH_MML_RR_DL_2IN_2OUT : PATH_MML_RRS_DL_2IN_2OUT;
@@ -1254,7 +1257,7 @@ use_rrot:
 }
 
 static const struct mml_topology_ops tp_ops_mt6989 = {
-	.query_mode = tp_query_mode,
+	.query_mode2 = tp_query_mode,
 	.init_cache = tp_init_cache,
 	.select = tp_select,
 	.get_racing_clt = get_racing_clt,

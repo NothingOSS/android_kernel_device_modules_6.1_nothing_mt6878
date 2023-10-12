@@ -72,7 +72,7 @@ void mml_print_log_record(struct seq_file *seq);
 do { \
 	if (mml_log_rec & mml_logbuf_msg) \
 		_mml_save_log(fmt "\n", ##args); \
-	if (mtk_mml_msg) \
+	if (mtk_mml_msg && (mml_log_rec & mml_logbuf_krn)) \
 		pr_notice("[mml]" fmt "\n", ##args); \
 } while (0)
 
@@ -301,6 +301,11 @@ struct mml_topology_ops {
 	enum mml_mode (*query_mode)(struct mml_dev *mml,
 				    struct mml_frame_info *info,
 				    u32 *reason);
+	enum mml_mode (*query_mode2)(struct mml_dev *mml,
+				     struct mml_frame_info *info,
+				     u32 *reason,
+				     u32 panel_width,
+				     u32 panel_height);
 	s32 (*init_cache)(struct mml_dev *mml,
 			  struct mml_topology_cache *cache,
 			  struct cmdq_client **clts,
@@ -311,7 +316,8 @@ struct mml_topology_ops {
 					      u32 pipe);
 	const struct mml_topology_path *(*get_dl_path)(struct mml_topology_cache *cache,
 						       struct mml_frame_info *info,
-						       u32 pipe);
+						       u32 pipe,
+						       struct mml_frame_size *panel);
 };
 
 struct mml_path_client {
@@ -399,6 +405,8 @@ struct mml_frame_config {
 	/* see more detail in frame_calc_layer_hrt */
 	u16 layer_w;
 	u16 layer_h;
+	u16 panel_w;
+	u16 panel_h;
 	u32 disp_hrt;
 
 	/* display parameter */

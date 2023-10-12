@@ -1357,7 +1357,7 @@ static struct cmdq_client *get_racing_clt(struct mml_topology_cache *cache, u32 
 }
 
 static const struct mml_topology_path *tp_get_dl_path(struct mml_topology_cache *cache,
-	struct mml_frame_info *info, u32 pipe)
+	struct mml_frame_info *info, u32 pipe, struct mml_frame_size *panel)
 {
 	if (!info)
 		return &cache->paths[PATH_MML_PQ_DL0 + pipe];

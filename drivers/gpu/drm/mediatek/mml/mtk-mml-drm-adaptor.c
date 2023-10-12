@@ -191,10 +191,14 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *ctx,
 		}
 	}
 
-	if (!tp || !tp->op->query_mode)
+	if (!tp || (!tp->op->query_mode && !tp->op->query_mode2))
 		goto not_support;
 
-	mode = tp->op->query_mode(ctx->mml, info, &reason);
+	if (tp->op->query_mode2)
+		mode = tp->op->query_mode2(ctx->mml, info, &reason,
+			ctx->panel_width, ctx->panel_height);
+	else
+		mode = tp->op->query_mode(ctx->mml, info, &reason);
 	if (mode == MML_MODE_MML_DECOUPLE &&
 		(atomic_read(&ctx->racing_cnt) || atomic_read(&ctx->dl_cnt))) {
 		/* if mml hw running racing mode and query info need dc,
@@ -939,6 +943,8 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 			cfg->layer_h = submit->layer.height;
 			if (unlikely(!cfg->layer_h))
 				cfg->layer_h = submit->info.dest[0].compose.height;
+			cfg->panel_w = ctx->panel_width;
+			cfg->panel_h = ctx->panel_height;
 			cfg->disp_hrt = frame_calc_layer_hrt(ctx, &submit->info,
 				cfg->layer_w, cfg->layer_h);
 		}
@@ -1464,6 +1470,8 @@ void mml_drm_set_panel_pixel(struct mml_drm_ctx *ctx, u32 panel_width, u32 panel
 	mutex_lock(&ctx->config_mutex);
 	list_for_each_entry(cfg, &ctx->configs, entry) {
 		/* calculate hrt base on new pixel count */
+		cfg->panel_w = panel_width;
+		cfg->panel_h = panel_height;
 		cfg->disp_hrt = frame_calc_layer_hrt(ctx, &cfg->info,
 			cfg->layer_w, cfg->layer_h);
 	}
@@ -1775,6 +1783,7 @@ const struct mml_topology_path *mml_drm_query_dl_path(struct mml_drm_ctx *ctx,
 	struct mml_frame_config *cfg;
 	const struct mml_topology_path *path = NULL;
 	struct mml_topology_cache *tp = mml_topology_get_cache(ctx->mml);
+	struct mml_frame_size panel = {.width = ctx->panel_width, .height = ctx->panel_height};
 
 	if (submit) {
 		/* from mml_mutex ddp addon, construct sof, assume use last dl config */
@@ -1789,7 +1798,7 @@ const struct mml_topology_path *mml_drm_query_dl_path(struct mml_drm_ctx *ctx,
 			 * Hence use same info do query.
 			 */
 			if (!path && tp)
-				path = tp->op->get_dl_path(tp, &cfg->info, pipe);
+				path = tp->op->get_dl_path(tp, &cfg->info, pipe, &panel);
 
 			break;
 		}
@@ -1802,7 +1811,7 @@ const struct mml_topology_path *mml_drm_query_dl_path(struct mml_drm_ctx *ctx,
 	if (!tp || !tp->op->get_dl_path)
 		return NULL;
 
-	return tp->op->get_dl_path(tp, submit ? &submit->info : NULL, pipe);
+	return tp->op->get_dl_path(tp, submit ? &submit->info : NULL, pipe, &panel);
 }
 
 void mml_drm_submit_timeout(void)
