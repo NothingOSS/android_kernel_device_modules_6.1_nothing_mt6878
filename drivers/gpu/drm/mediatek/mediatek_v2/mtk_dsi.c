@@ -622,6 +622,7 @@ static void mtk_dsi_dphy_timconfig_v2(struct mtk_dsi *dsi, void *handle)
 	clk_hs_post = CHK_SWITCH(phy_timcon->clk_hs_post, clk_hs_post);
 
 CONFIG_REG:
+	dsi->data_phy_cycle = (da_hs_exit + 1) + lpx + da_hs_prep + da_hs_zero + 1;
 
 	value = REG_FLD_VAL(FLD_LPX, lpx)
 		| REG_FLD_VAL(FLD_HS_PREP, da_hs_prep)
@@ -743,6 +744,8 @@ static void mtk_dsi_dphy_timconfig_v1(struct mtk_dsi *dsi, void *handle)
 	clk_hs_post = CHK_SWITCH(phy_timcon->clk_hs_post, clk_hs_post);
 
 CONFIG_REG:
+	dsi->data_phy_cycle = (da_hs_exit + 1) + lpx + hs_prpr + hs_zero + 1;
+
 	//N4/5 must add this constraint, N6 is option, so we use the same
 	lpx = (lpx % 2) ? lpx + 1 : lpx; //lpx must be even
 	hs_prpr = (hs_prpr % 2) ? hs_prpr + 1 : hs_prpr; //hs_prpr must be even
@@ -5183,8 +5186,8 @@ int mtk_dsi_porch_setting(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	case DSI_VFP:
 		if (dsi->driver_data->max_vfp &&
 			value > dsi->driver_data->max_vfp) {
-			DDPINFO("VFP overflow: %u, set to 4094\n", value);
-			value = 0xffe;
+			DDPINFO("VFP overflow: %u, set to max_vfp\n", value);
+			value = dsi->driver_data->max_vfp;
 		}
 		mtk_ddp_write_relaxed(comp, value, DSI_VFP_NL, handle);
 		break;
@@ -5198,7 +5201,7 @@ int mtk_dsi_porch_setting(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		mtk_ddp_write_relaxed(comp, value, DSI_VACT_NL, handle);
 		break;
 	case DSI_HFP:
-		mtk_ddp_write_relaxed(comp, value, DSI_HFP_WC, handle);
+		mtk_ddp_write_mask(comp, value, DSI_HFP_WC, HFP_WC_MASK, handle);
 		break;
 	case DSI_HSA:
 		mtk_ddp_write_relaxed(comp, value, DSI_HSA_WC, handle);
@@ -6187,6 +6190,17 @@ void mipi_dsi_dcs_write_gce_dyn(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 
 	mtk_dsi_poll_for_idle(dsi, handle);
 	mtk_dsi_cmdq_gce(dsi, handle, &msg);
+	if (dsi->slave_dsi) {
+		if (dsi->ext->params->lcm_cmd_if == MTK_PANEL_DUAL_PORT) {
+			mtk_dsi_cmdq_gce(dsi->slave_dsi, handle, &msg);
+			cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+					dsi->slave_dsi->ddp_comp.regs_pa + DSI_CON_CTRL,
+					DSI_DUAL_EN, DSI_DUAL_EN);
+		} else
+			cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+					dsi->slave_dsi->ddp_comp.regs_pa + DSI_CON_CTRL,
+					0x0, DSI_DUAL_EN);
+	}
 
 	if (dsi->driver_data->require_phy_reset) {
 		/* CMD mode require phy reset only */
@@ -6200,6 +6214,11 @@ void mipi_dsi_dcs_write_gce_dyn(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 		dsi->ddp_comp.regs_pa + DSI_START, 0x0, ~0);
 
 	mtk_dsi_poll_for_idle(dsi, handle);
+	if (dsi->slave_dsi) {
+		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+				dsi->slave_dsi->ddp_comp.regs_pa + DSI_CON_CTRL,
+				DSI_DUAL_EN, DSI_DUAL_EN);
+	}
 }
 
 void mipi_dsi_dcs_write_gce2(struct mtk_dsi *dsi, struct cmdq_pkt *dummy,
@@ -7907,10 +7926,12 @@ void mtk_dsi_send_switch_cmd(struct mtk_dsi *dsi,
 		params = mtk_crtc->panel_ext->params;
 	else /* can't find panel ext information,stop */
 		return;
-	if (dsi->slave_dsi)
-		mtk_dsi_enter_idle(dsi->slave_dsi, 0, false);
-	if (dsi->slave_dsi)
-		mtk_dsi_leave_idle(dsi->slave_dsi, 0, false);
+
+	/* why? it looks like don't need to enter idle */
+	//if (dsi->slave_dsi)
+	//	mtk_dsi_enter_idle(dsi->slave_dsi);
+	//if (dsi->slave_dsi)
+	//	mtk_dsi_leave_idle(dsi->slave_dsi);
 
 	for (i = 0; i < MAX_DYN_CMD_NUM; i++) {
 		dfps_cmd = &params->dyn_fps.dfps_cmd_table[i];
@@ -9001,6 +9022,7 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 {
 	unsigned int vfp = 0;
 	unsigned int hfp = 0;
+	unsigned int hbp = 0;
 	unsigned int fps_chg_index = 0;
 	struct cmdq_pkt *handle;
 	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_DSI_CFG];
@@ -9068,8 +9090,40 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 				adjusted_mode.hdisplay;
 		dsi->vm.hfront_porch = hfp;
 
+		if (dsi->mipi_hopping_sta) {
+			DDPINFO("%s,mipi_clk_change_sta\n", __func__);
+			hbp = dsi->ext->params->dyn.hbp;
+		} else
+			hbp = adjusted_mode.htotal -
+				adjusted_mode.hsync_end;
+		dsi->vm.hback_porch = hbp;
+
+		if (dsi->mipi_hopping_sta && dsi->ext) {
+			DDPINFO("%s,mipi_clk_change_sta\n", __func__);
+			vfp = dsi->ext->params->dyn.vfp;
+		} else
+			vfp = adjusted_mode.vsync_start -
+				adjusted_mode.vdisplay;
+		dsi->vm.vfront_porch = vfp;
+
 		mtk_dsi_calc_vdo_timing(dsi);
 		mtk_dsi_porch_setting(comp, handle, DSI_HFP, dsi->hfp_byte);
+		if (dsi->slave_dsi) {
+			mtk_dsi_porch_setting(&dsi->slave_dsi->ddp_comp,
+					handle, DSI_HFP, dsi->hfp_byte);
+		}
+
+		/* Some panel need change HBP at the same time to support dynamic fps */
+		mtk_dsi_porch_setting(comp, handle, DSI_HBP, dsi->hbp_byte);
+		if (dsi->slave_dsi)
+			mtk_dsi_porch_setting(&dsi->slave_dsi->ddp_comp,
+				handle, DSI_HBP, dsi->hbp_byte);
+
+		/* Some panel need change VFP at the same time to support dynamic fps */
+		mtk_dsi_porch_setting(comp, handle, DSI_VFP, dsi->vfp);
+		if (dsi->slave_dsi)
+			mtk_dsi_porch_setting(&dsi->slave_dsi->ddp_comp,
+					handle, DSI_VFP, dsi->vfp);
 
 		/*1.2 send cmd: send cmd*/
 		mtk_dsi_send_switch_cmd(dsi, handle, mtk_crtc, src_mode,
@@ -9132,6 +9186,9 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 		}
 
 		mtk_dsi_porch_setting(comp, handle, DSI_VFP, vfp);
+		if (dsi->slave_dsi)
+			mtk_dsi_porch_setting(&dsi->slave_dsi->ddp_comp,
+						handle, DSI_VFP, vfp);
 	}
 
 	if (mtk_crtc->qos_ctx)
@@ -10750,7 +10807,7 @@ static const struct mtk_dsi_driver_data mt6989_dsi_driver_data = {
 	.sram_unit = 32,
 	.urgent_lo_fifo_us = 14,
 	.urgent_hi_fifo_us = 15,
-	.max_vfp = 0xffe,
+	.max_vfp = 0x7ffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
 	.bubble_rate = 115,
 	.n_verion = VER_N4,
@@ -10776,7 +10833,7 @@ static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {
 	.sram_unit = 18,
 	.urgent_lo_fifo_us = 14,
 	.urgent_hi_fifo_us = 15,
-	.max_vfp = 0xffe,
+	.max_vfp = 0x7ffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
 	.n_verion = VER_N4,
 	.new_rst_dsi = true,
