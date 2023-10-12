@@ -1500,6 +1500,9 @@ static int mmdvfs_pm_notifier(struct notifier_block *notifier, unsigned long pm_
 		cb_timestamp[0] = sched_clock();
 		mmdvfs_reset_clk(true);
 		break;
+	case PM_POST_SUSPEND:
+		mmdvfs_rst_clk_done = false;
+		break;
 	}
 	return NOTIFY_DONE;
 }
