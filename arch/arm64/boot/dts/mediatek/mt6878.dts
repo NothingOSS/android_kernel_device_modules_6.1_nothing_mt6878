@@ -9145,12 +9145,14 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				     <MT6375_FL_WDT>, <MT6375_FL_BC12_DN>,
 				     <MT6375_FL_AICC_DONE>, <MT6375_FL_PE_DONE>,
 				     <MT6375_FL_BATPRO_DONE>,
-				     <MT6375_ADC_VBAT_MON_OV>;
+				     <MT6375_ADC_VBAT_MON_OV>,
+				     <MT6375_USBID_EVT>;
 			interrupt-names = "fl_pwr_rdy", "fl_detach",
 					  "fl_vbus_ov", "fl_chg_tout",
 					  "fl_wdt", "fl_bc12_dn",
 					  "fl_aicc_done", "fl_pe_done",
-					  "fl_batpro_done", "adc_vbat_mon_ov";
+					  "fl_batpro_done", "adc_vbat_mon_ov",
+					  "usbid_evt";
 			io-channels = <&mt6375_adc MT6375_ADC_CHGVIN>,
 				      <&mt6375_adc MT6375_ADC_VSYS>,
 				      <&mt6375_adc MT6375_ADC_VBAT>,
@@ -9158,7 +9160,8 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				      <&mt6375_adc MT6375_ADC_IBAT>,
 				      <&mt6375_adc MT6375_ADC_TEMPJC>,
 				      <&mt6375_adc MT6375_ADC_USBDP>,
-				      <&mt6375_adc MT6375_ADC_USBDM>;
+				      <&mt6375_adc MT6375_ADC_USBDM>,
+				      <&mt6375_adc MT6375_ADC_SBU2>;
 			chg-name = "primary_chg";
 			aicr = <500>;
 			mivr = <4400>;
