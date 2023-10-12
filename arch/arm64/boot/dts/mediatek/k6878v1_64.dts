@@ -111,6 +111,8 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 };
 /* GPS GPIO standardization end */
 
+#endif
+
 &i2c6 {
 	spk: speaker-amp@5c {
 		compatible = "richtek,rt5512";
@@ -130,7 +132,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	};
 };
 
-#endif
+
 
 &mtkfb {
 	pinctrl-names = "lcd_bias_enp1_gpio", "lcd_bias_enp0_gpio",
