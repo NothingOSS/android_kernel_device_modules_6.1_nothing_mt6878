@@ -20,7 +20,7 @@
 	mmc-ddr-1_8v;
 	mmc-hs200-1_8v;
 	mmc-hs400-1_8v;
-	hs400-ds-delay = <0x12814>;
+	hs400-ds-delay = <0x12818>;
 	read-dat-cnt-hs400 = <0x3>;
 	vmmc-supply = <&mt6363_vemc>;
 	vqmmc-supply = <&mt6363_vufs18>;
