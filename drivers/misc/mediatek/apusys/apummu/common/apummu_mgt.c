@@ -573,7 +573,7 @@ int ammu_session_table_add_SLB(uint64_t session, uint32_t type)
 	}
 
 	if (type == APUMMU_MEM_TYPE_EXT) {
-		if (!g_adv->plat.is_external_SLB_alloc) {
+		if (!g_adv->plat.external_SLB_cnt) {
 			ret = -ENOMEM;
 			AMMU_LOG_ERR("External SLB is not alloced\n");
 			goto out;
@@ -582,7 +582,7 @@ int ammu_session_table_add_SLB(uint64_t session, uint32_t type)
 		g_ammu_stable_ptr->stable_info.EXT_SLB_addr = g_adv->rsc.external_SLB.iova;
 		g_ammu_stable_ptr->stable_info.mem_mask |= (1 << SLB_EXT);
 	} else if (type == APUMMU_MEM_TYPE_RSV_S) {
-		if (!g_adv->plat.is_internal_SLB_alloc) {
+		if (!g_adv->plat.internal_SLB_cnt) {
 			ret = -ENOMEM;
 			AMMU_LOG_ERR("Internal SLB is not alloced\n");
 			goto out;

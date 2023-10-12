@@ -28,13 +28,17 @@ int apummu_alloc_mem(uint32_t type, uint32_t size, uint64_t *addr, uint32_t *sid
 		return ret;
 	}
 
+	mutex_lock(&g_adv->plat.slb_mtx);
+
 	switch (type) {
 	case APUMMU_MEM_TYPE_EXT:
-		if (g_adv->plat.is_external_SLB_alloc) {
-			AMMU_LOG_WRN("External SLB is already alloced\n");
+		if (g_adv->plat.external_SLB_cnt) {
+			AMMU_LOG_WRN("External SLB is already alloced(%u->%u)\n",
+				g_adv->plat.external_SLB_cnt, g_adv->plat.external_SLB_cnt+1);
 			/* Still return to prevent unexcept user behavior */
 			ret_addr = g_adv->rsc.external_SLB.iova;
 			ret_size = g_adv->rsc.external_SLB.size;
+			g_adv->plat.external_SLB_cnt++;
 			goto out;
 		}
 
@@ -46,14 +50,18 @@ int apummu_alloc_mem(uint32_t type, uint32_t size, uint64_t *addr, uint32_t *sid
 
 		g_adv->rsc.external_SLB.iova = ret_addr;
 		g_adv->rsc.external_SLB.size = (uint32_t) ret_size;
-		g_adv->plat.is_external_SLB_alloc = true;
+		AMMU_LOG_DBG("External SLB allocate(%u->%u)\n",
+			g_adv->plat.external_SLB_cnt, g_adv->plat.external_SLB_cnt+1);
+		g_adv->plat.external_SLB_cnt++;
 		break;
 	case APUMMU_MEM_TYPE_RSV_S:
-		if (g_adv->plat.is_internal_SLB_alloc) {
-			AMMU_LOG_WRN("Internal SLB is already alloced\n");
+		if (g_adv->plat.internal_SLB_cnt) {
+			AMMU_LOG_WRN("Internal SLB is already alloced(%u->%u)\n",
+				g_adv->plat.internal_SLB_cnt, g_adv->plat.internal_SLB_cnt+1);
 			/* Still return to prevent unexcept user behavior */
 			ret_addr = g_adv->rsc.internal_SLB.iova;
 			ret_size = g_adv->rsc.internal_SLB.size;
+			g_adv->plat.internal_SLB_cnt++;
 			goto out;
 		}
 
@@ -65,7 +73,9 @@ int apummu_alloc_mem(uint32_t type, uint32_t size, uint64_t *addr, uint32_t *sid
 
 		g_adv->rsc.internal_SLB.iova = ret_addr;
 		g_adv->rsc.internal_SLB.size = (uint32_t) ret_size;
-		g_adv->plat.is_internal_SLB_alloc = true;
+		AMMU_LOG_DBG("Internal SLB allocate(%u->%u)\n",
+			g_adv->plat.internal_SLB_cnt, g_adv->plat.internal_SLB_cnt+1);
+		g_adv->plat.internal_SLB_cnt++;
 		break;
 	case APUMMU_MEM_TYPE_RSV_T:
 		ret_addr = g_adv->remote.TCM_base_addr;
@@ -85,12 +95,14 @@ int apummu_alloc_mem(uint32_t type, uint32_t size, uint64_t *addr, uint32_t *sid
 				type, ret_addr, ret_size);
 
 out:
+	mutex_unlock(&g_adv->plat.slb_mtx);
 	*addr = ret_addr;
 	*sid = type;
 
 	return ret;
 
 err:
+	mutex_unlock(&g_adv->plat.slb_mtx);
 	AMMU_LOG_ERR("[Alloc][Fail] Mem type(%u), addr(0x%llx), size(0x%llx)\n",
 				type, ret_addr, ret_size);
 	ammu_exception("alloc SLB fail\n");
@@ -108,25 +120,43 @@ int apummu_free_mem(uint32_t sid)
 		return ret;
 	}
 
+	mutex_lock(&g_adv->plat.slb_mtx);
+
 	switch (type) {
 	case APUMMU_MEM_TYPE_EXT:
 	case APUMMU_MEM_TYPE_RSV_S:
 		if (type == APUMMU_MEM_TYPE_EXT) {
-			if (!g_adv->plat.is_external_SLB_alloc) {
+			if (!g_adv->plat.external_SLB_cnt) {
 				AMMU_LOG_WRN("External SLB is not alloced\n");
 				goto out;
 			}
 
-			g_adv->plat.is_external_SLB_alloc = false;
+			g_adv->plat.external_SLB_cnt--;
+			if (g_adv->plat.external_SLB_cnt) {
+				AMMU_LOG_DBG("External SLB cnt(%u->%u), dont release\n",
+					g_adv->plat.external_SLB_cnt+1, g_adv->plat.external_SLB_cnt);
+				goto out;
+			}
+
+			AMMU_LOG_DBG("release External SLB cnt(%u)\n", g_adv->plat.external_SLB_cnt);
+			//g_adv->plat.is_external_SLB_alloc = false;
 			g_adv->rsc.external_SLB.iova = 0;
 			g_adv->rsc.external_SLB.size = 0;
 		} else {
-			if (!g_adv->plat.is_internal_SLB_alloc) {
+			if (!g_adv->plat.internal_SLB_cnt) {
 				AMMU_LOG_WRN("Internal SLB is not alloced\n");
 				goto out;
 			}
 
-			g_adv->plat.is_internal_SLB_alloc = false;
+			g_adv->plat.internal_SLB_cnt--;
+			if (g_adv->plat.internal_SLB_cnt) {
+				AMMU_LOG_DBG("Internal SLB cnt(%u->%u), dont release\n",
+					g_adv->plat.internal_SLB_cnt+1, g_adv->plat.internal_SLB_cnt);
+				goto out;
+			}
+
+			AMMU_LOG_DBG("release Internal SLB cnt(%u)\n", g_adv->plat.internal_SLB_cnt);
+			//g_adv->plat.is_internal_SLB_alloc = false;
 			g_adv->rsc.internal_SLB.iova = 0;
 			g_adv->rsc.internal_SLB.size = 0;
 		}
@@ -149,9 +179,11 @@ int apummu_free_mem(uint32_t sid)
 	AMMU_LOG_DBG("[Free][Done] Mem type(%u)\n", type);
 
 out:
+	mutex_unlock(&g_adv->plat.slb_mtx);
 	return ret;
 
 err:
+	mutex_unlock(&g_adv->plat.slb_mtx);
 	AMMU_LOG_ERR("[Free][Fail] Mem type(%u)\n", type);
 	ammu_exception("free SLB fail\n");
 	return ret;

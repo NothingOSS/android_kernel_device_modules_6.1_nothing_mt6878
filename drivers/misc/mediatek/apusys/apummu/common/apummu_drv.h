@@ -9,6 +9,7 @@
 
 #include <linux/ioctl.h>
 #include <linux/types.h>
+#include <linux/mutex.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/wait.h>
@@ -39,8 +40,10 @@ struct apummu_platform {
 	uint32_t slb_wait_time;
 	uint32_t boundary;
 	bool is_general_SLB_support;
-	bool is_internal_SLB_alloc;
-	bool is_external_SLB_alloc;
+
+	uint32_t internal_SLB_cnt;
+	uint32_t external_SLB_cnt;
+	struct mutex slb_mtx;
 };
 
 struct apummu_resource {
