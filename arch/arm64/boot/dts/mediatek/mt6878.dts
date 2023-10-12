@@ -1601,6 +1601,10 @@
 		compatible = "mediatek,mtk_composite_v4l2_1";
 	};
 
+	mtk_composite_v4l2_2: mtk-composite-v4l2-2 {
+		compatible = "mediatek,mtk_composite_v4l2_2";
+	};
+
 	dbg-error-flag-disabled {
 		compatible = "mediatek,dbg-error-flag-disabled";
 		mediatek,error-flag = <&soc_dbg_error_flag>;

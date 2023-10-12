@@ -345,6 +345,35 @@
 };
 /* CAMERA GPIO end */
 
+&mtk_composite_v4l2_2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	port@0 {
+		reg = <0>;
+		main_af_endpoint: endpoint {
+			remote-endpoint = <&main_af>;
+		};
+	};
+	port@1 {
+		reg = <1>;
+		main_af_cam1_endpoint: endpoint {
+			remote-endpoint = <&main_af_cam1>;
+		};
+	};
+	port@2 {
+		reg = <2>;
+		main_af_cam2_endpoint: endpoint {
+			remote-endpoint = <&main_af_cam2>;
+		};
+	};
+	port@3 {
+		reg = <3>;
+		main_ois_cam1_endpoint: endpoint {
+			remote-endpoint = <&main_ois_cam1>;
+		};
+	};
+};
+
 &i2c4 {
 	status = "okay";
 	clock-frequency = <1000000>;
@@ -406,7 +435,6 @@
 	status = "okay";
 	clock-frequency = <1000000>;
 
-#if 0
 	camera-af-main-two@b {
 		compatible = "mediatek,main2_vcm";
 		reg = <0x0b>;
@@ -417,8 +445,6 @@
 			};
 		};
 	};
-
-#endif
 
 	sensor4: sensor4@10 {
 		compatible = "mediatek,imgsensor";
@@ -498,7 +524,6 @@
 	status = "okay";
 	clock-frequency = <1000000>;
 
-#if 0
 	camera-af-main@a {
 		compatible = "mediatek,main_vcm";
 		reg = <0x0a>;
@@ -509,7 +534,6 @@
 			};
 		};
 	};
-#endif
 
 	sensor0: sensor0@10 {
 		compatible = "mediatek,imgsensor";
@@ -574,18 +598,16 @@
 	status = "okay";
 	clock-frequency = <1000000>;
 
-#if 0
 	camera-af-main-four@d {
 		compatible = "mediatek,main4_vcm";
 		reg = <0x0d>;
 		vin-supply = <&rt5133_ldo2>;
 		port {
-			main_af_cam3: endpoint {
-				remote-endpoint = <&main_af_cam3_endpoint>;
+			main_af_cam2: endpoint {
+				remote-endpoint = <&main_af_cam2_endpoint>;
 			};
 		};
 	};
-#endif
 
 	sensor2: sensor2@10 {
 		compatible = "mediatek,imgsensor";
@@ -730,12 +752,6 @@
 		reg = <1>;
 		flashlight_1: endpoint {
 			remote-endpoint = <&fl_core_1>;
-		};
-	};
-	port@2 {
-		reg = <2>;
-		main_ois_cam1_endpoint: endpoint {
-			remote-endpoint = <&main_ois_cam1>;
 		};
 	};
 };
