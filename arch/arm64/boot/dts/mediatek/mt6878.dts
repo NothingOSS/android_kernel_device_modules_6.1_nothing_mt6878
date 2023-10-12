@@ -291,8 +291,9 @@
 
 	};
 
-	dcm: dcm@c530010 {
-		reg = <0 0xc530010 0 0xc8a0>,
+	dcm: dcm@c530000 {
+		compatible = "mediatek,mt6878-dcm";
+		reg = <0 0xc530000 0 0xc8a0>,
 			<0 0x10001000 0 0xa40>,
 			<0 0x10022000 0 0x40>,
 			<0 0x11035000 0 0x30>,
