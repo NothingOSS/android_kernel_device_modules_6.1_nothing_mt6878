@@ -68,10 +68,6 @@
 			<&topckgen_clk CLK_TOP_SR_DMA_SEL>,
 			<&topckgen_clk CLK_TOP_SR_KDF_SEL>,
 			<&topckgen_clk CLK_TOP_SR_RNG_SEL>,
-			<&topckgen_clk CLK_TOP_MFG_REF_SEL>,
-			<&topckgen_clk CLK_TOP_MFGSC_REF_SEL>,
-			<&topckgen_clk CLK_TOP_MFG_INT0_SEL>,
-			<&topckgen_clk CLK_TOP_MFG1_INT1_SEL>,
 			<&topckgen_clk CLK_TOP_APLL_SI0_MCK_SEL>,
 			<&topckgen_clk CLK_TOP_APLL_SI1_MCK_SEL>,
 			<&topckgen_clk CLK_TOP_APLL_SI2_MCK_SEL>,
@@ -184,9 +180,7 @@
 			<&imp_iic_wrap_w_s_clk CLK_IMP_W_S_I3C7_W1S>,
 			<&imp_iic_wrap_w_s_clk CLK_IMP_W_S_I3C8_W1S>,
 			<&imp_iic_wrap_w_s_clk CLK_IMP_W_S_SEC_EN_W1S>,
-			<&mfgpll_pll_ctrl_clk CLK_MFG_AO_MFGPLL>,
 			<&gpuebpll_pll_ctrl_clk CLK_GPUEB_AO_GPUEBPLL>,
-			<&mfgscpll_pll_ctrl_clk CLK_MFGSC_AO_MFGSCPLL>,
 			<&vlp_cksys_clk CLK_VLP_TIA_ULPOSC_SEL>,
 			<&afe_clk CLK_AFE_DL0_DAC_TML>,
 			<&afe_clk CLK_AFE_DL0_DAC_HIRES>,
@@ -498,12 +492,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x12>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_SSUSB>;
-	};
-
-	bring-up-pd-mfg0-shutdown@13 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x13>;
-		power-domains = <&scpsys MT6878_POWER_DOMAIN_MFG0_SHUTDOWN>;
 	};
 
 };
