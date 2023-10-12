@@ -245,6 +245,10 @@ apusys-objs += apusys_rv/apu_debug.o
 apusys-objs += apusys_rv/apusys_rv_tag.o
 apusys-objs += apusys_rv/aov_recovery.o
 
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apusys_rv/2.0/mt6878_plat.c),)
+subdir-ccflags-y += -DMT6878_APUSYS_RV_PLAT_DATA
+apusys-objs += apusys_rv/2.0/mt6878_plat.o
+endif
 ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apusys_rv/2.0/mt6879_plat.c),)
 subdir-ccflags-y += -DMT6879_APUSYS_RV_PLAT_DATA
 apusys-objs += apusys_rv/2.0/mt6879_plat.o

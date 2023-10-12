@@ -854,7 +854,12 @@ static irqreturn_t apu_logtop_irq_handler(int irq, void *priv)
 
 	apu_logtop_copy_buf();
 
-	w1c32_atf(APU_LOGTOP_CON_FLAG_ADDR, &ctrl_flag);
+	if (access_rcx_in_atf) {
+		w1c32_atf(APU_LOGTOP_CON_FLAG_ADDR, &ctrl_flag);
+	} else {
+		ctrl_flag = ioread32(APU_LOGTOP_CON_FLAG_ADDR);
+		iowrite32(ctrl_flag, APU_LOGTOP_CON_FLAG_ADDR);
+	}
 
 	HWLOGR_DBG("w1c apu_logtop_irq_handler = 0x%x\n",
 		(ctrl_flag & APU_LOGTOP_CON_FLAG_MASK) >> APU_LOGTOP_CON_FLAG_SHIFT);
