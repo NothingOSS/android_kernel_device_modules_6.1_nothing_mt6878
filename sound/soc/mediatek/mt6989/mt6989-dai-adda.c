@@ -552,19 +552,14 @@ static int mtk_adda_pad_top_event(struct snd_soc_dapm_widget *w,
 			regmap_write(afe->regmap, AFE_AUD_PAD_TOP_CFG0, 0xB0);
 		else
 			regmap_write(afe->regmap, AFE_AUD_PAD_TOP_CFG0, 0xB0);
-
+/*
 		regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_TX_CFG0,
 				MTKAIFV4_TXIF_AFE_ON_MASK_SFT,
 				0x1 << MTKAIFV4_TXIF_AFE_ON_SFT);
 		regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_TX_CFG0,
 				ADDA6_MTKAIFV4_TXIF_AFE_ON_MASK_SFT,
 				0x1 << ADDA6_MTKAIFV4_TXIF_AFE_ON_SFT);
-		break;
-	case SND_SOC_DAPM_POST_PMD:
-		regmap_write(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0, 0x0);
-		regmap_write(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0, 0x0);
-		regmap_write(afe->regmap, AFE_ADDA_MTKAIFV4_TX_CFG0, 0x0);
-		regmap_write(afe->regmap, AFE_ADDA6_MTKAIFV4_TX_CFG0, 0x0);
+*/
 		break;
 	default:
 		break;
@@ -603,7 +598,7 @@ static int mtk_adda_mtkaif_cfg_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 #ifdef MTKAIF4
-		if (((strcmp(w->name, "ADDA_MTKAIF_CFG") == 0) ||
+		/*if (((strcmp(w->name, "ADDA_MTKAIF_CFG") == 0) ||
 		    (strcmp(w->name, "ADDA6_MTKAIF_CFG") == 0))) {
 			regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
 					MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
@@ -612,6 +607,7 @@ static int mtk_adda_mtkaif_cfg_event(struct snd_soc_dapm_widget *w,
 					ADDA6_MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
 					0x1 << ADDA6_MTKAIFV4_RXIF_AFE_ON_SFT);
 		}
+		*/
 		/* mtkaif_rxif_clkinv_adc inverse for calibration */
 		regmap_update_bits(afe->regmap, AFE_MTKAIF0_CFG0,
 				   RG_MTKAIF0_RXIF_CLKINV_MASK_SFT,
@@ -1215,16 +1211,15 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 
 	SND_SOC_DAPM_SUPPLY_S("ADDA Playback Enable", SUPPLY_SEQ_ADDA_DL_ON,
 			      SND_SOC_NOPM,
-			      0, 0,
+			      /*AFE_ADDA_MTKAIFV4_TX_CFG0 control by PAD_CLK*/0, 0,
 			      mtk_adda_dl_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_SUPPLY_S("ADDA CH34 Playback Enable",
 			      SUPPLY_SEQ_ADDA_DL_ON,
-			      SND_SOC_NOPM,
-			      0, 0,
+			      AFE_ADDA6_MTKAIFV4_TX_CFG0,
+			      ADDA6_MTKAIFV4_TXIF_AFE_ON_SFT, 0,
 			      mtk_adda_ch34_dl_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-
 	SND_SOC_DAPM_SUPPLY_S("ADDA Capture Enable", SUPPLY_SEQ_ADDA_UL_ON,
 			      AFE_ADDA_UL0_SRC_CON0,
 			      UL_SRC_ON_TMP_CTL_SFT, 0,
@@ -1240,12 +1235,23 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 			      UL_SRC_ON_TMP_CTL_SFT, 0,
 			      mtk_adda_ch56_ul_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-
 	SND_SOC_DAPM_SUPPLY_S("AUD_PAD_TOP", SUPPLY_SEQ_ADDA_AUD_PAD_TOP,
 			      AFE_AUD_PAD_TOP_CFG0,
 			      RG_RX_FIFO_ON_SFT, 0,
 			      mtk_adda_pad_top_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_SUPPLY_S("AUD_PAD_CLK", SUPPLY_SEQ_ADDA_AUD_PAD_TOP,
+			      AFE_ADDA_MTKAIFV4_TX_CFG0,
+			      MTKAIFV4_TXIF_AFE_ON_SFT, 0,
+			      NULL, 0),
+	SND_SOC_DAPM_SUPPLY_S("ADDA_MTKAIFV4_RX", SUPPLY_SEQ_ADDA_MTKAIF_CFG,
+			      AFE_ADDA_MTKAIFV4_RX_CFG0,
+			      MTKAIFV4_RXIF_AFE_ON_SFT, 0,
+			      NULL, 0),
+	SND_SOC_DAPM_SUPPLY_S("ADDA6_MTKAIFV4_RX", SUPPLY_SEQ_ADDA6_MTKAIF_CFG,
+			      AFE_ADDA6_MTKAIFV4_RX_CFG0,
+			      ADDA6_MTKAIFV4_RXIF_AFE_ON_SFT, 0,
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S("ADDA_MTKAIF_CFG", SUPPLY_SEQ_ADDA_MTKAIF_CFG,
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_adda_mtkaif_cfg_event,
@@ -1329,7 +1335,6 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 
 #define HIRES_THRESHOLD 48000
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
-
 static int mtk_afe_adc_hires_connect(struct snd_soc_dapm_widget *source,
 				     struct snd_soc_dapm_widget *sink)
 {
@@ -1348,6 +1353,16 @@ static int mtk_afe_adc_hires_connect(struct snd_soc_dapm_widget *source,
 	return (adda_priv->ul_rate > HIRES_THRESHOLD) ? 1 : 0;
 }
 #endif
+static int mtk_afe_record_miso1(struct snd_soc_dapm_widget *source,
+				     struct snd_soc_dapm_widget *sink)
+{
+	struct snd_soc_dapm_widget *w = source;
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mt6989_afe_private *afe_priv = afe->platform_priv;
+
+	return (afe_priv->audio_r_miso1_enable) ? 1 : 0;
+}
 
 static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	/* playback */
@@ -1395,6 +1410,7 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 
 	{"ADDA Playback", NULL, "ADDA Enable"},
 	{"ADDA Playback", NULL, "ADDA Playback Enable"},
+	{"ADDA Playback", NULL, "AUD_PAD_CLK"},
 	{"ADDA Playback", NULL, "AUD_PAD_TOP"},
 	{"ADDA Playback", NULL, "VS1_VOTER_DL"},
 
@@ -1435,6 +1451,7 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 
 	{"ADDA CH34 Playback", NULL, "ADDA Enable"},
 	{"ADDA CH34 Playback", NULL, "ADDA CH34 Playback Enable"},
+	{"ADDA CH34 Playback", NULL, "AUD_PAD_CLK"},
 	{"ADDA CH34 Playback", NULL, "AUD_PAD_TOP"},
 	{"ADDA CH34 Playback", NULL, "VS1_VOTER_DL"},
 
@@ -1449,7 +1466,10 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 
 	{"ADDA Capture", NULL, "ADDA Enable"},
 	{"ADDA Capture", NULL, "ADDA Capture Enable"},
+	{"ADDA Capture", NULL, "AUD_PAD_CLK"},
 	{"ADDA Capture", NULL, "AUD_PAD_TOP"},
+	{"ADDA Capture", NULL, "ADDA_MTKAIFV4_RX"},
+	{"ADDA Capture", NULL, "ADDA6_MTKAIFV4_RX", mtk_afe_record_miso1},
 	{"ADDA Capture", NULL, "ADDA_MTKAIF_CFG"},
 	{"ADDA Capture", NULL, "VS1_VOTER_UL"},
 
@@ -1460,7 +1480,10 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 
 	{"ADDA CH34 Capture", NULL, "ADDA Enable"},
 	{"ADDA CH34 Capture", NULL, "ADDA CH34 Capture Enable"},
+	{"ADDA CH34 Capture", NULL, "AUD_PAD_CLK"},
 	{"ADDA CH34 Capture", NULL, "AUD_PAD_TOP"},
+	{"ADDA CH34 Capture", NULL, "ADDA_MTKAIFV4_RX"},
+	{"ADDA CH34 Capture", NULL, "ADDA6_MTKAIFV4_RX", mtk_afe_record_miso1},
 	{"ADDA CH34 Capture", NULL, "ADDA6_MTKAIF_CFG"},
 	{"ADDA CH34 Capture", NULL, "VS1_VOTER_UL"},
 
@@ -1471,7 +1494,9 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 
 	{"ADDA CH56 Capture", NULL, "ADDA Enable"},
 	{"ADDA CH56 Capture", NULL, "ADDA CH56 Capture Enable"},
+	{"ADDA CH56 Capture", NULL, "AUD_PAD_CLK"},
 	{"ADDA CH56 Capture", NULL, "AUD_PAD_TOP"},
+	{"ADDA CH56 Capture", NULL, "ADDA6_MTKAIFV4_RX"},
 	{"ADDA CH56 Capture", NULL, "ADDA7_MTKAIF_CFG"},
 	{"ADDA CH56 Capture", NULL, "VS1_VOTER_UL"},
 
@@ -1629,9 +1654,10 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 				regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
 						ADDA6_MTKAIFV4_RXIF_EN_SEL_MASK_SFT,
 						0x1 << ADDA6_MTKAIFV4_RXIF_EN_SEL_SFT);
-				regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
+				/*regmap_update_bits(afe->regmap, AFE_ADDA6_MTKAIFV4_RX_CFG0,
 						ADDA6_MTKAIFV4_RXIF_AFE_ON_MASK_SFT,
 						0x1 << ADDA6_MTKAIFV4_RXIF_AFE_ON_SFT);
+				*/
 			} else {
 				regmap_update_bits(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0,
 						MTKAIFV4_RXIF_INPUT_MODE_MASK_SFT,

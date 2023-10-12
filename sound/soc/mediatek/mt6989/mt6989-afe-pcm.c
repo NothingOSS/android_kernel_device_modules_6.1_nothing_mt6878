@@ -4871,7 +4871,7 @@ static int mt6989_afe_runtime_suspend(struct device *dev)
 {
 	struct mtk_base_afe *afe = dev_get_drvdata(dev);
 	unsigned int value = 0;
-	int ret;
+	int ret = 0;
 
 	if (!afe->regmap) {
 		dev_info(afe->dev, "%s() skip regmap\n", __func__);
@@ -4888,6 +4888,7 @@ static int mt6989_afe_runtime_suspend(struct device *dev)
 				       (value & AUDIO_ENGEN_MON_SFT) == 0,
 				       20,
 				       1 * 1000 * 1000);
+	dev_dbg(afe->dev, "%s() read_poll ret %d\n", __func__, ret);
 	if (ret)
 		dev_info(afe->dev, "%s(), ret %d\n", __func__, ret);
 
@@ -4927,9 +4928,11 @@ skip_regmap:
 static int mt6989_afe_runtime_resume(struct device *dev)
 {
 	struct mtk_base_afe *afe = dev_get_drvdata(dev);
-	int ret;
+	int ret = 0;
 
 	ret = mt6989_afe_enable_clock(afe);
+	dev_dbg(afe->dev, "%s(), enable_clock ret %d\n", __func__, ret);
+
 	if (ret)
 		return ret;
 	mt6989_afe_sram_request(afe);
