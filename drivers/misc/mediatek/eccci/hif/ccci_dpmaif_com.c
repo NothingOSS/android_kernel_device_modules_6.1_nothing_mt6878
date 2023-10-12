@@ -354,9 +354,22 @@ static inline void dpmaif_rxq_lro_handle_bid(
 	struct dpmaif_rx_lro_info *lro_info = &rxq->lro_info;
 
 	for (i = 0; i < lro_info->count; i++) {
-		if (free_skb)
-			dev_kfree_skb_any(lro_info->data[i].skb);
+		if (free_skb) {
+			if (g_debug_flags & DEBUG_DROP_SKB) {
+				struct debug_drop_skb_hdr hdr;
 
+				hdr.type = TYPE_DROP_SKB_ID;
+				hdr.qidx = rxq->index;
+				hdr.time = (unsigned int)(local_clock() >> 16);
+				hdr.from = DROP_SKB_FROM_RX_TASKLET_LRO;
+				hdr.bid  = lro_info->data[i].bid;
+				hdr.ipid = ((struct iphdr *)lro_info->data[i].skb->data)->id;
+				hdr.len  = lro_info->data[i].skb->len;
+				ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
+			}
+
+			dev_kfree_skb_any(lro_info->data[i].skb);
+		}
 		bat_skb = ((struct dpmaif_bat_skb *)
 				dpmaif_ctl->bat_skb->bat_pkt_addr +
 				lro_info->data[i].bid);
@@ -379,6 +392,7 @@ static inline void dpmaif_rxq_push_all_skb(struct dpmaif_rx_queue *rxq)
 		lhif_h = (struct lhif_header *)(skb_push(skb,
 				sizeof(struct lhif_header)));
 		lhif_h->netif = rxq->cur_chn_idx;
+		lhif_h->pdcp_count = lro_info->data[i].bid;
 
 		ccci_dl_enqueue(rxq->index, skb);
 	}
@@ -470,7 +484,7 @@ static inline void dpmaif_rxq_lro_end(struct dpmaif_rx_queue *rxq)
 	struct lhif_header *lhif_h = NULL;
 	struct sk_buff *skb0 = NULL, *skb1 = NULL;
 	int i, start_idx = 0, data_len = 0;
-	unsigned int total_len = 0, lro_num = 0;
+	unsigned int total_len = 0, lro_num = 0, bid = 0;
 	unsigned int hof, max_mss = 0, first_skb_len = 0, no_need_gro = 0;
 	struct dpmaif_rx_lro_info *lro_info = &rxq->lro_info;
 #ifdef RX_PAGE_POOL
@@ -493,6 +507,7 @@ lro_continue:
 		if (i == start_idx) {
 			/* this is the first skb */
 			skb0 = lro_info->data[i].skb;
+			bid = lro_info->data[i].bid;
 			lro_num = 1;
 
 			if ((lro_info->count - i) == 1)
@@ -566,21 +581,23 @@ gro_too_much_skb:
 		dpmaif_handle_wakeup_skb(1, skb0);
 	}
 
+	lhif_h = (struct lhif_header *)(skb_push(skb0,
+			sizeof(struct lhif_header)));
+	lhif_h->netif = rxq->cur_chn_idx;
+
 	if (g_debug_flags & DEBUG_RX_DONE_SKB) {
 		struct debug_rx_done_skb_hdr hdr;
 
 		hdr.type = TYPE_RX_DONE_SKB_ID;
 		hdr.qidx = rxq->index;
 		hdr.time = (unsigned int)(local_clock() >> 16);
-		hdr.bid  = rxq->skb_idx;
+		hdr.bid  = (u16)bid;
 		hdr.len  = skb0->len;
-		hdr.cidx = rxq->cur_chn_idx;
+		hdr.cidx = (u8)rxq->cur_chn_idx;
 		ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
-	}
 
-	lhif_h = (struct lhif_header *)(skb_push(skb0,
-			sizeof(struct lhif_header)));
-	lhif_h->netif = rxq->cur_chn_idx;
+		lhif_h->pdcp_count = (u16)bid;
+	}
 
 	ccci_dl_enqueue(rxq->index, skb0);
 
@@ -881,6 +898,19 @@ static inline void dpmaif_rxq_add_skb_to_rx_push_thread(struct dpmaif_rx_queue *
 	struct lhif_header *lhif_h = NULL;
 
 	if ((g_dpmf_ver > 1) && rxq->pit_dp) {
+		if (g_debug_flags & DEBUG_DROP_SKB) {
+			struct debug_drop_skb_hdr hdr;
+
+			hdr.type = TYPE_DROP_SKB_ID;
+			hdr.qidx = rxq->index;
+			hdr.time = (unsigned int)(local_clock() >> 16);
+			hdr.from = DROP_SKB_FROM_RX_TASKLET_NOLRO;
+			hdr.bid  = rxq->skb_idx;
+			hdr.ipid = ((struct iphdr *)cur_skb_info->skb->data)->id;
+			hdr.len  = cur_skb_info->skb->len;
+			ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
+		}
+
 		dev_kfree_skb_any(cur_skb_info->skb);
 		goto send_end;
 	}
@@ -893,6 +923,12 @@ static inline void dpmaif_rxq_add_skb_to_rx_push_thread(struct dpmaif_rx_queue *
 		dpmaif_handle_wakeup_skb(1, cur_skb_info->skb);
 	}
 
+	/* md put the ccmni_index to the msg pkt,
+	 * so we need push it by self. maybe no need
+	 */
+	lhif_h = (struct lhif_header *)(skb_push(cur_skb_info->skb, sizeof(struct lhif_header)));
+	lhif_h->netif = rxq->cur_chn_idx;
+
 	if (g_debug_flags & DEBUG_RX_DONE_SKB) {
 		struct debug_rx_done_skb_hdr hdr;
 
@@ -903,13 +939,9 @@ static inline void dpmaif_rxq_add_skb_to_rx_push_thread(struct dpmaif_rx_queue *
 		hdr.len  = cur_skb_info->skb->len;
 		hdr.cidx = rxq->cur_chn_idx;
 		ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
-	}
 
-	/* md put the ccmni_index to the msg pkt,
-	 * so we need push it by self. maybe no need
-	 */
-	lhif_h = (struct lhif_header *)(skb_push(cur_skb_info->skb, sizeof(struct lhif_header)));
-	lhif_h->netif = rxq->cur_chn_idx;
+		lhif_h->pdcp_count = (u16)rxq->skb_idx;
+	}
 
 	ccci_dl_enqueue(rxq->index, cur_skb_info->skb);
 
@@ -1232,6 +1264,41 @@ processing_done:
 	atomic_set(&rxq->rxq_processing, 0);
 }
 
+static inline void dpmaif_record_skb_other_debug_info(struct sk_buff *skb,
+	struct debug_rx_push_skb_hdr *hdr)
+{
+	struct iphdr *iph = (struct iphdr *)(skb->data + sizeof(struct lhif_header));
+
+	if (iph->version == 4) {
+		hdr->ver = RX_PUSH_IP_VER_4;
+		if (iph->protocol == IPPROTO_TCP)
+			hdr->proc = RX_PUSH_IP_PROC_TCP;
+		else if (iph->protocol == IPPROTO_UDP)
+			hdr->proc = RX_PUSH_IP_PROC_UDP;
+		else
+			hdr->proc = RX_PUSH_IP_PROC_OTH;
+		hdr->ipid = iph->id;
+		return;
+
+	} else if (iph->version == 6) {
+		hdr->ver = RX_PUSH_IP_VER_6;
+		if (((struct ipv6hdr *)iph)->nexthdr == IPPROTO_TCP) {
+			hdr->proc = RX_PUSH_IP_PROC_TCP;
+			hdr->ipid = (u16)(((struct tcphdr *)((void *)iph + 40))->seq >> 16);
+			return;
+		} else if (((struct ipv6hdr *)iph)->nexthdr == IPPROTO_UDP) {
+			hdr->proc = RX_PUSH_IP_PROC_UDP;
+			hdr->ipid = ((struct udphdr *)((void *)iph + 40))->check;
+			return;
+		}
+
+	} else
+		hdr->ver = RX_PUSH_IP_VER_OTH;
+
+	hdr->proc = RX_PUSH_IP_PROC_OTH;
+	hdr->ipid = 0;
+}
+
 static int dpmaif_rxq_push_thread(void *arg)
 {
 	struct dpmaif_rx_queue *rxq = (struct dpmaif_rx_queue *)arg;
@@ -1274,8 +1341,11 @@ static int dpmaif_rxq_push_thread(void *arg)
 			hdr.type = TYPE_RX_PUSH_SKB_ID;
 			hdr.qidx = qno;
 			hdr.time = (unsigned int)(local_clock() >> 16);
-			hdr.ipid = ((struct iphdr *)(skb->data + sizeof(struct lhif_header)))->id;
 			hdr.fcnt = pkg_count;
+			hdr.bid  = ((struct lhif_header *)skb->data)->pdcp_count;
+			((struct lhif_header *)skb->data)->pdcp_count = 0;
+			dpmaif_record_skb_other_debug_info(skb, &hdr);
+			smp_wmb();  /* for cpu exec. */
 			ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
 		}
 
@@ -2069,6 +2139,19 @@ static inline int dpmaif_txq_set_skb_data_to_drb(struct dpmaif_tx_queue *txq,
 		CCCI_NORMAL_LOG(0, TAG, "[%s] error: txq%d; skb->len=0; skb=0x%lX\n",
 			__func__, txq->index, (unsigned long)skb);
 		dev_kfree_skb_any(skb);
+
+		if (g_debug_flags & DEBUG_DROP_SKB) {
+			struct debug_drop_skb_hdr hdr;
+
+			hdr.type = TYPE_DROP_SKB_ID;
+			hdr.qidx = txq->index;
+			hdr.time = (unsigned int)(local_clock() >> 16);
+			hdr.from = DROP_SKB_FROM_TX_SKB_LEN_IS_0;
+			hdr.bid  = 0;
+			hdr.ipid = 0;
+			hdr.len  = 0;
+			ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
+		}
 		return 0;
 	}
 
@@ -2156,6 +2239,7 @@ static inline int dpmaif_txq_set_skb_data_to_drb(struct dpmaif_tx_queue *txq,
 			hdr.wr   = is_frag ? (cur_idx | 0x8000) : cur_idx;
 			hdr.ipid = ((struct iphdr *)skb->data)->id;
 			hdr.len  = data_len;
+			hdr.budget = atomic_read(&txq->txq_budget) - send_cnt;
 			ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
 		}
 

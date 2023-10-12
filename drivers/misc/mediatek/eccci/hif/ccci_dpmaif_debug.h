@@ -33,7 +33,7 @@
 #define TYPE_RX_START_ID     10
 #define TYPE_UL_DL_TPUT_ID   11
 #define TYPE_MAX_SKB_CNT_ID  12
-
+#define TYPE_DROP_SKB_ID     13
 
 #define DEBUG_RX_DONE_SKB    (1 << TYPE_RX_DONE_SKB_ID)
 #define DEBUG_RX_PUSH_SKB    (1 << TYPE_RX_PUSH_SKB_ID)
@@ -48,6 +48,22 @@
 #define DEBUG_RX_START       (1 << TYPE_RX_START_ID)
 #define DEBUG_UL_DL_TPUT     (1 << TYPE_UL_DL_TPUT_ID)
 #define DEBUG_MAX_SKB_CNT    (1 << TYPE_MAX_SKB_CNT_ID)
+#define DEBUG_DROP_SKB       (1 << TYPE_DROP_SKB_ID)
+
+
+#define DROP_SKB_FROM_RX_TASKLET_LRO     0
+#define DROP_SKB_FROM_RX_TASKLET_NOLRO   1
+#define DROP_SKB_FROM_RX_ENQUEUE         2
+#define DROP_SKB_FROM_TX_SKB_LEN_IS_0    3
+
+#define RX_PUSH_IP_VER_4      1
+#define RX_PUSH_IP_VER_6      2
+#define RX_PUSH_IP_VER_OTH    3
+
+#define RX_PUSH_IP_PROC_TCP   1
+#define RX_PUSH_IP_PROC_UDP   2
+#define RX_PUSH_IP_PROC_OTH   3
+
 
 
 struct debug_rx_done_skb_hdr {
@@ -66,6 +82,9 @@ struct debug_rx_push_skb_hdr {
 	u32 time;
 	u16 ipid;
 	u16 fcnt;
+	u16 bid;
+	u8  proc:4;
+	u8  ver:4;
 
 } __packed;
 
@@ -76,6 +95,7 @@ struct debug_tx_send_skb_hdr {
 	u16 wr;
 	u16 ipid;
 	u16 len;
+	u16 budget;
 
 } __packed;
 
@@ -155,6 +175,17 @@ struct debug_max_skb_cnt_hdr {
 	u8  qidx:3;
 	u32 time;
 	u16 value;
+
+} __packed;
+
+struct debug_drop_skb_hdr {
+	u8  type:5;
+	u8  qidx:3;
+	u32 time;
+	u8  from;
+	u16 bid;
+	u16 ipid;
+	u16 len;
 
 } __packed;
 

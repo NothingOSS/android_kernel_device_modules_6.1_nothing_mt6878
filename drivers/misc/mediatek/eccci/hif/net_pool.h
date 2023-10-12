@@ -19,7 +19,7 @@
 
 int ccci_dl_pool_init(u32 q_num);
 u32 ccci_dl_queue_len(u32 qno);
-void ccci_dl_enqueue(u32 qno, void *skb);
+void ccci_dl_enqueue(u32 qno, struct sk_buff *skb);
 void *ccci_dl_dequeue(u32 qno);
 u32 ccci_get_dl_queue_dp_cnt(u32 qno);
 

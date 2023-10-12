@@ -32,6 +32,7 @@
 #include "ccci_config.h"
 #include "ccci_debug.h"
 #include "net_pool.h"
+#include "ccci_dpmaif_debug.h"
 
 #define TAG "pool"
 
@@ -146,7 +147,7 @@ int ccci_dl_pool_init(u32 q_num)
 	return 0;
 }
 
-inline void ccci_dl_enqueue(u32 qno, void *skb)
+inline void ccci_dl_enqueue(u32 qno, struct sk_buff *skb)
 {
 	struct fifo_t *fifo = NULL;
 
@@ -163,6 +164,19 @@ inline void ccci_dl_enqueue(u32 qno, void *skb)
 	}
 
 _free_sk:
+	if (g_debug_flags & DEBUG_DROP_SKB) {
+		struct debug_drop_skb_hdr hdr;
+
+		hdr.type = TYPE_DROP_SKB_ID;
+		hdr.qidx = qno;
+		hdr.time = (unsigned int)(local_clock() >> 16);
+		hdr.from = DROP_SKB_FROM_RX_ENQUEUE;
+		hdr.bid  = ((struct lhif_header *)skb->data)->pdcp_count;
+		hdr.ipid = ((struct iphdr *)(skb->data + sizeof(struct lhif_header)))->id;
+		hdr.len  = skb->len;
+		ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
+	}
+
 	dev_kfree_skb_any(skb);
 
 	/* ensure free skb is completed before proceeding to the next flow */
