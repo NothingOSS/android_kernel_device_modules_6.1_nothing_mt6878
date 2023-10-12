@@ -607,11 +607,6 @@ int apummu_alloc_general_SLB(void *drvinfo)
 		}
 	}
 
-	if (!(adv->plat.is_general_SLB_support)) {
-		AMMU_LOG_INFO("No General SLB Support\n");
-		goto out;
-	}
-
 	ret = apummu_alloc_slb(APUMMU_MEM_TYPE_GENERAL_S, size, adv->plat.slb_wait_time,
 					&ret_addr, &ret_size);
 	if (ret) {

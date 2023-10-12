@@ -214,46 +214,51 @@ static int session_table_alloc(void)
 
 #if DRAM_FALL_BACK_IN_RUNTIME
 	mutex_lock(&g_ammu_table_set.DRAM_FB_lock);
-	if (g_adv->rsc.vlm_dram.iova == 0) {
-		ammu_trace_begin("APUMMU: Alloc DRAM");
-		ret = apummu_dram_remap_runtime_alloc(g_adv);
-		if (ret) {
+	if (g_adv->remote.vlm_size != 0) {
+		if (g_adv->rsc.vlm_dram.iova == 0) {
+			ammu_trace_begin("APUMMU: Alloc DRAM");
+			ret = apummu_dram_remap_runtime_alloc(g_adv);
+			if (ret) {
+				ammu_trace_end();
+				ammu_exception("alloc DRAM FB fail\n");
+				mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
+				goto out;
+			}
 			ammu_trace_end();
-			ammu_exception("alloc DRAM FB fail\n");
-			mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
-			goto out;
+		} else { // DRAM not free, cancel delay job
+			if (!cancel_delayed_work(&DRAM_free_work) && g_ammu_table_set.is_free_job_set)
+				g_ammu_table_set.is_work_canceled = false;
+			else
+				g_ammu_table_set.is_free_job_set = false;
 		}
-		ammu_trace_end();
-	} else { // DRAM not free, cancel delay job
-		if (!cancel_delayed_work(&DRAM_free_work) && g_ammu_table_set.is_free_job_set)
-			g_ammu_table_set.is_work_canceled = false;
-		else
-			g_ammu_table_set.is_free_job_set = false;
 	}
 
 	mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
 #endif
 
-	if (!g_ammu_table_set.is_SLB_alloc) { // SLB retry
-		ammu_trace_begin("APUMMU: SLB alloc");
-		/* Do not assign return value, since alloc SLB may fail */
-		if (apummu_alloc_general_SLB(g_adv))
-			AMMU_LOG_VERBO("general SLB alloc fail...\n");
-		else
-			g_ammu_table_set.is_SLB_alloc = true;
+	if (g_adv->plat.is_general_SLB_support)
+		if (!g_ammu_table_set.is_SLB_alloc) { // SLB retry
+			ammu_trace_begin("APUMMU: SLB alloc");
+			/* Do not assign return value, since alloc SLB may fail */
+			if (apummu_alloc_general_SLB(g_adv))
+				AMMU_LOG_VERBO("general SLB alloc fail...\n");
+			else
+				g_ammu_table_set.is_SLB_alloc = true;
 
-		ammu_trace_end();
-	}
+			ammu_trace_end();
+		}
 
 	if (!g_ammu_table_set.is_stable_exist) {
 	#if DRAM_FALL_BACK_IN_RUNTIME
 		ammu_trace_begin("APUMMU: SLB + DRAM IPI");
-		ret = apummu_remote_set_hw_default_iova_one_shot(g_adv);
-		if (ret) {
-			ammu_trace_end();
-			AMMU_LOG_ERR("Remote set hw IOVA one shot fail!!\n");
-			ammu_exception("Set DRAM FB + SLB fail\n");
-			goto free_DRAM;
+		if (g_adv->rsc.vlm_dram.iova != 0 || g_ammu_table_set.is_SLB_alloc) {
+			ret = apummu_remote_set_hw_default_iova_one_shot(g_adv);
+			if (ret) {
+				ammu_trace_end();
+				AMMU_LOG_ERR("Remote set hw IOVA one shot fail!!\n");
+				ammu_exception("Set DRAM FB + SLB fail\n");
+				goto free_DRAM;
+			}
 		}
 		ammu_trace_end();
 	#else
