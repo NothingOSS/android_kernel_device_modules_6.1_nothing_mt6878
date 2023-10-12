@@ -398,7 +398,7 @@ static const struct mtk_mmc_compatible mt6878_compat = {
 	.enhance_rx = true,
 	.support_64g = true,
 	.need_gate_cg = false,
-	.new_tx_ver = MSDC_NEW_TX_V1,
+	.new_tx_ver = MSDC_NEW_TX_V2,
 	.new_rx_ver = MSDC_NEW_RX_V1,
 	.infra_check = {
 		.enable = false,
@@ -671,6 +671,44 @@ static int msdc_ungate_clock(struct msdc_host *host)
 				  (val & MSDC_CFG_CKSTB), 1, 20000);
 }
 
+static void msdc_new_tx_rx_setting_v2(struct msdc_host *host,
+	unsigned char timing)
+{
+	switch (timing) {
+	case MMC_TIMING_LEGACY:
+	case MMC_TIMING_MMC_HS:
+	case MMC_TIMING_SD_HS:
+	case MMC_TIMING_UHS_SDR12:
+	case MMC_TIMING_UHS_SDR25:
+	case MMC_TIMING_UHS_DDR50:
+	case MMC_TIMING_MMC_DDR52:
+		sdr_set_bits(host->top_base + LOOP_TEST_CONTROL,
+			     TEST_LOOP_DSCLK_MUX_SEL);
+		sdr_set_bits(host->top_base + LOOP_TEST_CONTROL,
+			     TEST_LOOP_LATCH_MUX_SEL);
+		sdr_clr_bits(host->top_base + LOOP_TEST_CONTROL,
+			     LOOP_EN_SEL_CLK);
+		sdr_clr_bits(host->top_base + LOOP_TEST_CONTROL,
+			     TEST_HS400_CMD_LOOP_MUX_SEL);
+		break;
+	case MMC_TIMING_UHS_SDR50:
+	case MMC_TIMING_UHS_SDR104:
+	case MMC_TIMING_MMC_HS200:
+	case MMC_TIMING_MMC_HS400:
+		sdr_set_bits(host->top_base + LOOP_TEST_CONTROL,
+			     TEST_LOOP_DSCLK_MUX_SEL);
+		sdr_set_bits(host->top_base + LOOP_TEST_CONTROL,
+			     TEST_LOOP_LATCH_MUX_SEL);
+		sdr_set_bits(host->top_base + LOOP_TEST_CONTROL,
+			     LOOP_EN_SEL_CLK);
+		sdr_clr_bits(host->top_base + LOOP_TEST_CONTROL,
+			     TEST_HS400_CMD_LOOP_MUX_SEL);
+		break;
+	default:
+		break;
+	}
+}
+
 static void msdc_new_tx_rx_setting_v1(struct msdc_host *host,
 	unsigned char timing)
 {
@@ -723,6 +761,9 @@ static void msdc_new_tx_rx_setting(struct msdc_host *host, unsigned char timing)
 	switch (host->dev_comp->new_tx_ver) {
 	case MSDC_NEW_TX_V1:
 		msdc_new_tx_rx_setting_v1(host, timing);
+		break;
+	case MSDC_NEW_TX_V2:
+		msdc_new_tx_rx_setting_v2(host, timing);
 		break;
 	default:
 		break;
