@@ -34,25 +34,6 @@ unsigned long dcm_vlp_ao_bcrm_base;
 
 #endif /* #if defined(__KERNEL__) && IS_ENABLED(CONFIG_OF) */
 
-short is_dcm_bringup(void)
-{
-#ifdef DCM_BRINGUP
-	dcm_pr_info("%s: skipped for bring up\n", __func__);
-	return 1;
-#else
-	return 0;
-#endif
-}
-
-static int dcm_smc_call_control(int onoff, unsigned int mask)
-{
-	struct arm_smccc_res res;
-
-	arm_smccc_smc(MTK_SIP_KERNEL_DCM, onoff, mask, 0, 0, 0, 0, 0, &res);
-
-	return 0;
-}
-
 /*****************************************
  * following is implementation per DCM module.
  * 1. per-DCM function is 1-argu with ON/OFF/MODE option.
@@ -214,7 +195,6 @@ void dcm_dump_regs(void)
 	REG_DUMP(BUS_PLLDIV_CFG);
 	REG_DUMP(CPU_PLLDIV_CFG0);
 	REG_DUMP(CPU_PLLDIV_CFG1);
-	REG_DUMP(CPU_PLLDIV_CFG2);
 	REG_DUMP(EMI_WFIFO);
 	REG_DUMP(INFRA_AXIMEM_IDLE_BIT_EN_0);
 	REG_DUMP(INFRA_BUS_DCM_CTRL);
@@ -322,12 +302,6 @@ static struct DCM dcm_array[] = {
 	{0},
 };
 
-/**/
-void dcm_array_register(void)
-{
-	mt_dcm_array_register(dcm_array, &dcm_ops);
-}
-
 /*From DCM COMMON*/
 
 #if IS_ENABLED(CONFIG_OF)
@@ -343,7 +317,6 @@ int mt_dcm_dts_map(void)
 	}
 
 	for (i = 0; i < ARRAY_SIZE(dcm_base_array); i++) {
-		//*dcm_base_array[i].base= (unsigned long)of_iomap(node, i);
 		*(dcm_base_array[i].base) = (unsigned long)of_iomap(node, i);
 
 		if (!*(dcm_base_array[i].base)) {
@@ -352,7 +325,6 @@ int mt_dcm_dts_map(void)
 			return -1;
 		}
 	}
-	/* infracfg_ao */
 	return 0;
 }
 #else
@@ -372,18 +344,12 @@ static int __init mt6878_dcm_init(void)
 {
 	int ret = 0;
 
-	if (is_dcm_bringup())
-		return 0;
-
-	if (is_dcm_initialized())
-		return 0;
-
 	if (mt_dcm_dts_map()) {
 		dcm_pr_notice("%s: failed due to DTS failed\n", __func__);
 		return -1;
 	}
 
-	dcm_array_register();
+	mt_dcm_array_register(dcm_array, &dcm_ops);
 
 	ret = mt_dcm_common_init();
 

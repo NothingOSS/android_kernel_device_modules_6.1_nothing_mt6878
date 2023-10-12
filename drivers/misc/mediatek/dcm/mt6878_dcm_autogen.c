@@ -39,11 +39,8 @@ void dcm_mcusys_par_wrap_cpu_pll_div_0_dcm(int on)
 }
 
 #define MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG0_MASK ((0x3U << 24))
-#define MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG1_MASK ((0x3U << 24))
 #define MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG0_ON ((0x3U << 24))
-#define MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG1_ON ((0x3U << 24))
 #define MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG0_OFF ((0x0U << 0))
-#define MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG1_OFF ((0x0U << 0))
 
 bool dcm_mcusys_par_wrap_cpu_pll_div_1_dcm_is_on(void)
 {
@@ -52,9 +49,6 @@ bool dcm_mcusys_par_wrap_cpu_pll_div_1_dcm_is_on(void)
 	ret &= ((reg_read(CPU_PLLDIV_CFG1) &
 		MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG0_MASK) ==
 		MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG0_ON);
-	ret &= ((reg_read(CPU_PLLDIV_CFG2) &
-		MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG1_MASK) ==
-		MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG1_ON);
 
 	return ret;
 }
@@ -66,19 +60,11 @@ void dcm_mcusys_par_wrap_cpu_pll_div_1_dcm(int on)
 			(reg_read(CPU_PLLDIV_CFG1) &
 			~MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG0_MASK) |
 			MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG0_ON);
-		reg_write(CPU_PLLDIV_CFG2,
-			(reg_read(CPU_PLLDIV_CFG2) &
-			~MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG1_MASK) |
-			MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG1_ON);
 	} else {
 		reg_write(CPU_PLLDIV_CFG1,
 			(reg_read(CPU_PLLDIV_CFG1) &
 			~MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG0_MASK) |
 			MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG0_OFF);
-		reg_write(CPU_PLLDIV_CFG2,
-			(reg_read(CPU_PLLDIV_CFG2) &
-			~MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG1_MASK) |
-			MCUSYS_PAR_WRAP_CPU_PLL_DIV_1_DCM_REG1_OFF);
 	}
 }
 
@@ -423,8 +409,11 @@ void dcm_mcusys_par_wrap_fcm_stall_dcm(int on)
 }
 
 #define INFRACFG_AO_INFRA_BUS_DCM_REG0_MASK ((0x40d07ffbU << 0))
+#define INFRACFG_AO_INFRA_BUS_DCM_REG1_MASK ((0x1U << 0))
 #define INFRACFG_AO_INFRA_BUS_DCM_REG0_ON ((0x40d00603U << 0))
+#define INFRACFG_AO_INFRA_BUS_DCM_REG1_ON ((0x1U << 0))
 #define INFRACFG_AO_INFRA_BUS_DCM_REG0_OFF ((0x61U << 4))
+#define INFRACFG_AO_INFRA_BUS_DCM_REG1_OFF ((0x0U << 0))
 
 bool dcm_infracfg_ao_infra_bus_dcm_is_on(void)
 {
@@ -433,6 +422,9 @@ bool dcm_infracfg_ao_infra_bus_dcm_is_on(void)
 	ret &= ((reg_read(INFRA_BUS_DCM_CTRL) &
 		INFRACFG_AO_INFRA_BUS_DCM_REG0_MASK) ==
 		INFRACFG_AO_INFRA_BUS_DCM_REG0_ON);
+	ret &= ((reg_read(PERI_BUS_DCM_CTRL) &
+		INFRACFG_AO_INFRA_BUS_DCM_REG1_MASK) ==
+		INFRACFG_AO_INFRA_BUS_DCM_REG1_ON);
 
 	return ret;
 }
@@ -444,16 +436,25 @@ void dcm_infracfg_ao_infra_bus_dcm(int on)
 			(reg_read(INFRA_BUS_DCM_CTRL) &
 			~INFRACFG_AO_INFRA_BUS_DCM_REG0_MASK) |
 			INFRACFG_AO_INFRA_BUS_DCM_REG0_ON);
+		reg_write(PERI_BUS_DCM_CTRL,
+			(reg_read(PERI_BUS_DCM_CTRL) &
+			~INFRACFG_AO_INFRA_BUS_DCM_REG1_MASK) |
+			INFRACFG_AO_INFRA_BUS_DCM_REG1_ON);
+
 	} else {
 		reg_write(INFRA_BUS_DCM_CTRL,
 			(reg_read(INFRA_BUS_DCM_CTRL) &
 			~INFRACFG_AO_INFRA_BUS_DCM_REG0_MASK) |
 			INFRACFG_AO_INFRA_BUS_DCM_REG0_OFF);
+		reg_write(PERI_BUS_DCM_CTRL,
+			(reg_read(PERI_BUS_DCM_CTRL) &
+			~INFRACFG_AO_INFRA_BUS_DCM_REG1_MASK) |
+			INFRACFG_AO_INFRA_BUS_DCM_REG1_OFF);
 	}
 }
 
-#define INFRACFG_AO_PERI_BUS_DCM_REG0_MASK ((0x3ffffbU << 0))
-#define INFRACFG_AO_PERI_BUS_DCM_REG0_ON ((0x3f83e3U << 0))
+#define INFRACFG_AO_PERI_BUS_DCM_REG0_MASK ((0x1ffffdU << 1))
+#define INFRACFG_AO_PERI_BUS_DCM_REG0_ON ((0x1fc1f1U << 1))
 #define INFRACFG_AO_PERI_BUS_DCM_REG0_OFF ((0x7ffU << 4))
 
 bool dcm_infracfg_ao_peri_bus_dcm_is_on(void)

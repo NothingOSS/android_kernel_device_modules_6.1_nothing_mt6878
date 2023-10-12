@@ -17,7 +17,7 @@ extern unsigned long dcm_peri_ao_bcrm_base;
 extern unsigned long dcm_vlp_ao_bcrm_base;
 
 #if !defined(MCUSYS_PAR_WRAP_BASE)
-#define MCUSYS_PAR_WRAP_BASE (dcm_mcusys_par_wrap_base - 0x10)
+#define MCUSYS_PAR_WRAP_BASE (dcm_mcusys_par_wrap_base)
 #endif /* !defined(MCUSYS_PAR_WRAP_BASE) */
 #if !defined(INFRACFG_AO_BASE)
 #define INFRACFG_AO_BASE (dcm_infracfg_ao_base)
@@ -52,7 +52,6 @@ extern unsigned long dcm_vlp_ao_bcrm_base;
 /* Register Definition */
 #define CPU_PLLDIV_CFG0                                   (MCUSYS_PAR_WRAP_BASE + 0xa2a0)
 #define CPU_PLLDIV_CFG1                                   (MCUSYS_PAR_WRAP_BASE + 0xa2a4)
-#define CPU_PLLDIV_CFG2                                   (MCUSYS_PAR_WRAP_BASE + 0xa2a8)
 #define BUS_PLLDIV_CFG                                    (MCUSYS_PAR_WRAP_BASE + 0xa2e0)
 #define MCSI_DCM0                                         (MCUSYS_PAR_WRAP_BASE + 0xa440)
 #define MP_ADB_DCM_CFG0                                   (MCUSYS_PAR_WRAP_BASE + 0xa500)
