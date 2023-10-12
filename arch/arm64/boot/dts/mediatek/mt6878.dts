@@ -4121,7 +4121,7 @@
 			seninf-num = <12>;
 			mux-num = <13>;
 			cam-mux-num = <43>;
-			tsrec-num = <0>;
+			tsrec-num = <6>;
 
 			/* description physical cam interface id for each group */
 			mux-camsv-sat-range = <0 2>;
