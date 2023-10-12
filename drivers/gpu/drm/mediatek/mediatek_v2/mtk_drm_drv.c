@@ -106,6 +106,8 @@ static atomic_t top_clk_ref; /* top clk status protection*/
 static spinlock_t top_clk_lock; /* power status protection*/
 
 struct device *g_dpc_dev; /* mminfra power control */
+static void __iomem *g_mminfra_dummy; /* mminfra dummy register for access check */
+static void __iomem *g_dispsys1_inten; /* dispsys1 register for access check */
 
 unsigned long long mutex_time_start;
 unsigned long long mutex_time_end;
@@ -6032,6 +6034,10 @@ bool mtk_drm_top_clk_isr_get(char *master)
 				spin_unlock_irqrestore(&top_clk_lock, flags);
 				return ret;
 			}
+			if (likely(g_mminfra_dummy))
+				(void)readl(g_mminfra_dummy);
+			if (likely(g_dispsys1_inten))
+				(void)readl(g_dispsys1_inten);
 		}
 		spin_unlock_irqrestore(&top_clk_lock, flags);
 	}
@@ -9048,6 +9054,8 @@ SKIP_OVLSYS_CONFIG:
 	if (private->dpc_dev) {
 		pm_runtime_irq_safe(private->dpc_dev);
 		g_dpc_dev = private->dpc_dev;
+		g_mminfra_dummy = ioremap(0x1e8ff400, 0x4);
+		g_dispsys1_inten = ioremap(0x14200000, 0x4);
 		private->dispvcore_pwr_chk = ioremap(0x1c001e8c, 0x4);
 	}
 	mtk_drm_pm_ctrl(private, DISP_PM_ENABLE);

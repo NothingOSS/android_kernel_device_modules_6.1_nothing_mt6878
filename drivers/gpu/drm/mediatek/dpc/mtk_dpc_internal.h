@@ -15,6 +15,9 @@
 #define DPCDUMP(fmt, args...) \
 	pr_info("[dpc] " fmt "\n", ##args)
 
+
+extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
+
 #define VLP_DISP_SW_VOTE_CON 0x410
 #define VLP_DISP_SW_VOTE_SET 0x414
 #define VLP_DISP_SW_VOTE_CLR 0x418

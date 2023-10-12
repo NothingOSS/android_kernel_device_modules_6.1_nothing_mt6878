@@ -815,6 +815,9 @@ void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 			DISP_DPC_INT_DT6 | DISP_DPC_INT_DT3,
 			dpc_base + DISP_REG_DPC_DISP_INTEN);
 		writel(0x33000, dpc_base + DISP_REG_DPC_MML_INTEN);
+	} else {
+		writel(DISP_DPC_INT_DISP1_ON | DISP_DPC_INT_DISP1_OFF,
+			dpc_base + DISP_REG_DPC_DISP_INTEN);
 	}
 
 	if (mtcmos_ao) {
@@ -966,23 +969,11 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 		}
 	}
 
-	if (unlikely(debug_mtcmos_off && (status & 0xFF000000))) {
-		if (status & DISP_DPC_INT_OVL0_OFF)
-			DPCDUMP("OVL0 OFF");
-		if (status & DISP_DPC_INT_OVL1_OFF)
-			DPCDUMP("OVL1 OFF");
-		if (status & DISP_DPC_INT_DISP0_OFF)
-			DPCDUMP("DISP0 OFF");
+	if (debug_mtcmos_off && (status & 0xFF000000)) {
 		if (status & DISP_DPC_INT_DISP1_OFF)
-			DPCDUMP("DISP1 OFF");
-		if (status & DISP_DPC_INT_OVL0_ON)
-			DPCDUMP("OVL0 ON");
-		if (status & DISP_DPC_INT_OVL1_ON)
-			DPCDUMP("OVL1 ON");
-		if (status & DISP_DPC_INT_DISP0_ON)
-			DPCDUMP("DISP0 ON");
+			mtk_dprec_logger_pr(1, "DISP1 OFF\n");
 		if (status & DISP_DPC_INT_DISP1_ON)
-			DPCDUMP("DISP1 ON");
+			mtk_dprec_logger_pr(1, "DISP1 ON\n");
 	}
 
 	dpc_pm_ctrl(false);
@@ -1021,13 +1012,6 @@ irqreturn_t mtk_dpc_mml_irq_handler(int irq, void *dev_id)
 			dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_START, 0, 0);
 		if (status & BIT(12))
 			dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_END, 0, 0);
-	}
-
-	if (debug_mtcmos_off) {
-		if (status & BIT(13))
-			DPCDUMP("MML1 ON");
-		if (status & BIT(12))
-			DPCDUMP("MML1 OFF");
 	}
 
 	dpc_pm_ctrl(false);
