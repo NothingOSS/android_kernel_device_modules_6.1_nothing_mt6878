@@ -8081,7 +8081,7 @@
 	};
 
 	scp: scp@1c400000 {
-		compatible = "mediatek,scpp";
+		compatible = "mediatek,scp";
 		status = "okay";
 		reg = <0 0x1c400000 0 0x100000>, /* tcm */
 			  <0 0x1cb24000 0 0x1000>, /* cfg */
@@ -8165,7 +8165,7 @@
 				  "mbox3",
 				  "mbox4";
 
-		core-0 = "disable";
+		core-0 = "enable";
 		scp-hwvoter = "enable";
 		scp-sram-size = <0x00100000>;
 		core-nums = <2>;	/* core number */
@@ -8261,7 +8261,7 @@
 		scp-thermal-wq = "disable";
 		scp-low-pwr-dbg = "disable";
 		scp-cfgreg-ap-en = "enable";
-		scp-ipc-wa = "enable";
+		scp-ipc-wa = "disable";
 		scp-mem-key = "mediatek,reserve-memory-scp_share";
 
 		/* feature ID, size, alignment */
