@@ -328,24 +328,25 @@ void dump_ocv_table(unsigned int idx)
 	int i, j, offset, cnt = 5;
 	char str[256];
 
-	if (mt_ppb_debug)
+	if (mt_ppb_debug) {
 		pr_info("table[%d] temp=%d qmax=%d table_size=%d [idx, mah, vol, soc]\n", idx,
 			fg_data.fg_info[idx].temp, fg_data.fg_info[idx].qmax,
 			fg_data.fg_info[idx].ocv_table_size);
 
-	for (i = 0; i * cnt < fg_data.fg_info[idx].ocv_table_size; i++) {
-		offset = 0;
-		memset(str, 0, sizeof(str));
-		for (j = 0; j < cnt; j++) {
-			if (i*cnt+j >= fg_data.fg_info[idx].ocv_table_size)
-				break;
+		for (i = 0; i * cnt < fg_data.fg_info[idx].ocv_table_size; i++) {
+			offset = 0;
+			memset(str, 0, sizeof(str));
+			for (j = 0; j < cnt; j++) {
+				if (i*cnt+j >= fg_data.fg_info[idx].ocv_table_size)
+					break;
 
-			offset += snprintf(str + offset, 256 - offset, "(%3d %5d %5d %5d) ",
-				i*cnt+j, fg_data.fg_info[idx].ocv_table[i*cnt+j].mah,
-				fg_data.fg_info[idx].ocv_table[i*cnt+j].voltage,
-				fg_data.fg_info[idx].ocv_table[i*cnt+j].dod);
+				offset += snprintf(str + offset, 256 - offset, "(%3d %5d %5d %5d) ",
+					i*cnt+j, fg_data.fg_info[idx].ocv_table[i*cnt+j].mah,
+					fg_data.fg_info[idx].ocv_table[i*cnt+j].voltage,
+					fg_data.fg_info[idx].ocv_table[i*cnt+j].dod);
+			}
+			pr_info("%s\n", str);
 		}
-		pr_info("%s\n", str);
 	}
 }
 

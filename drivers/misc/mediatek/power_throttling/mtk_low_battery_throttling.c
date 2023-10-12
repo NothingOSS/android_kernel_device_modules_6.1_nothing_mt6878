@@ -626,7 +626,7 @@ static int low_battery_thd_setting(struct platform_device *pdev, struct low_bat_
 			volt_h[j] = volt_thd[num + i * max_thr_lv + j];
 		}
 
-		ret |= check_duplicate(volt_l);
+		ret = check_duplicate(volt_l);
 		ret |= check_duplicate(volt_h);
 
 		if (ret < 0) {

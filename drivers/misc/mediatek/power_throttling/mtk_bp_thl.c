@@ -16,6 +16,8 @@
 #define BAT_PERCENT_LIMIT_EXT 15
 #define BAT_PERCENT_LIMIT_RELEASE_EXT 15
 #define BPCB_MAX_NUM 16
+#define MAX_VALUE 0x7FFF
+
 
 static struct task_struct *bp_notify_thread;
 static bool bp_notify_flag;
@@ -239,7 +241,7 @@ static void soc_handler(struct work_struct *work)
 	struct power_supply *psy;
 	union power_supply_propval val;
 	int ret, soc, temp, new_lv, soc_thd, temp_thd, soc_stage, temp_stage;
-	static int last_soc, last_temp;
+	static int last_soc = MAX_VALUE, last_temp = MAX_VALUE;
 	bool loop;
 
 	if (!bp_thl_data) {
