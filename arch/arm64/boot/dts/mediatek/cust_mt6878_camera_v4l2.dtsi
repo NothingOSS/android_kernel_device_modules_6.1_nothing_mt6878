@@ -411,7 +411,7 @@
 			<&topckgen_clk CLK_TOP_UVPLL192M_D8>,
 			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
 			<&topckgen_clk CLK_TOP_UNIVPLL_D6_D8>,
-			<&topckgen_clk CLK_TOP_CAMTG4_SEL>;
+			<&topckgen_clk CLK_TOP_CAMTG5_SEL>;
 		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
 
 		status = "okay";
@@ -486,7 +486,7 @@
 			<&topckgen_clk CLK_TOP_UVPLL192M_D8>,
 			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
 			<&topckgen_clk CLK_TOP_UNIVPLL_D6_D8>,
-			<&topckgen_clk CLK_TOP_CAMTG_SEL>;
+			<&topckgen_clk CLK_TOP_CAMTG2_SEL>;
 		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
 
 		status = "okay";
@@ -572,7 +572,7 @@
 			<&topckgen_clk CLK_TOP_UVPLL192M_D8>,
 			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
 			<&topckgen_clk CLK_TOP_UNIVPLL_D6_D8>,
-			<&topckgen_clk CLK_TOP_CAMTG2_SEL>;
+			<&topckgen_clk CLK_TOP_CAMTG3_SEL>;
 		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
 
 
@@ -646,7 +646,7 @@
 			<&topckgen_clk CLK_TOP_UVPLL192M_D8>,
 			<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
 			<&topckgen_clk CLK_TOP_UNIVPLL_D6_D8>,
-			<&topckgen_clk CLK_TOP_CAMTG3_SEL>;
+			<&topckgen_clk CLK_TOP_CAMTG4_SEL>;
 		clock-names = "6", "12", "13", "19.2", "24", "26", "52", "mclk";
 
 
