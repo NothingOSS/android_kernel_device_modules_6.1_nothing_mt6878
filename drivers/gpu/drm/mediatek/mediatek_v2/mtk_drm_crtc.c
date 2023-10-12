@@ -17219,6 +17219,9 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 
 	mtk_crtc->mode_switch_task = kthread_create(
 		mtk_drm_mode_switch_thread, mtk_crtc, "mode_switch");
+	cpumask_xor(&cpumask, cpu_all_mask, cpumask_of(0));
+	kthread_bind_mask(mtk_crtc->mode_switch_task, &cpumask);
+
 	atomic_set(&mtk_crtc->singal_for_mode_switch, 0);
 	init_waitqueue_head(&mtk_crtc->mode_switch_wq);
 	init_waitqueue_head(&mtk_crtc->mode_switch_end_wq);
