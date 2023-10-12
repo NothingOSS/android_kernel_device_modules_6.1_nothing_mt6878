@@ -1682,6 +1682,18 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp,
 	}
 }
 
+static void mtk_oddmr_s2r_bypass(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, bool s2r_bypass)
+{
+	ODDMRFLOW_LOG("%s+\n", mtk_dump_comp_str(comp));
+
+	if (s2r_bypass) {
+		mtk_oddmr_write(comp, 0, DISP_ODDMR_REG_SPR_COMP_EN, handle);
+		mtk_oddmr_write(comp, 1, DISP_ODDMR_TOP_S2R_BYPASS, handle);
+	} else {
+		mtk_oddmr_set_spr2rgb(comp, handle);
+	}
+}
 
 static void mtk_oddmr_config(struct mtk_ddp_comp *comp,
 		struct mtk_ddp_config *cfg,
@@ -1805,7 +1817,7 @@ static void mtk_oddmr_config(struct mtk_ddp_comp *comp,
 	}
 
 	if (g_oddmr_priv->spr_enable == 1 && g_oddmr_priv->spr_relay == 0 &&
-		postalign_en == 0)
+		postalign_en == 0 && mtk_crtc->spr_is_on == 1)
 		mtk_oddmr_set_spr2rgb(comp, handle);
 
 	mtk_oddmr_dbi_config(comp,handle);
@@ -3750,6 +3762,13 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		partial_roi = (struct mtk_rect *)params;
 		mtk_cal_oddmr_valid_partial_roi(comp, partial_roi);
+	}
+		break;
+	case BYPASS_SPR2RGB:
+	{
+		bool s2r_bypass = *(bool *)params;
+
+		mtk_oddmr_s2r_bypass(comp, handle, s2r_bypass);
 	}
 		break;
 	default:

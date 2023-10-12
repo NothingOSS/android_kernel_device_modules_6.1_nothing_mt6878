@@ -711,6 +711,7 @@ enum mtk_ddp_io_cmd {
 	GET_VALID_PARTIAL_ROI,
 	NOTIFY_CONNECTOR_SWITCH,
 	OVL_PHY_USAGE,
+	BYPASS_SPR2RGB,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {

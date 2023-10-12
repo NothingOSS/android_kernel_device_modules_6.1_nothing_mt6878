@@ -1729,7 +1729,7 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 
 	if (!(mtk_crtc->enabled)) {
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		//mtk_crtc->spr_is_on = en;
+		mtk_crtc->spr_is_on = en;
 		return -EINVAL;
 	}
 
@@ -13102,15 +13102,15 @@ static void mtk_crtc_spr_switch_cfg(struct mtk_drm_crtc *mtk_crtc, struct cmdq_p
 
 	struct mtk_ddp_comp *spr0_comp;
 	struct mtk_ddp_comp *spr1_comp;
+	struct mtk_ddp_comp *comp;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	int i, j;
+	bool s2r_bypass = false;
 
 	struct mtk_panel_params *params =
 			mtk_drm_get_lcm_ext_params(crtc);
 
-
-
 	if (drm_crtc_index(crtc) == 0 && params && params->spr_params.enable) {
-
 		spr0_comp = priv->ddp_comp[DDP_COMPONENT_SPR0];
 
 		cfg.w = mtk_crtc_get_width_by_comp(__func__, crtc, spr0_comp, false);
@@ -13132,6 +13132,12 @@ static void mtk_crtc_spr_switch_cfg(struct mtk_drm_crtc *mtk_crtc, struct cmdq_p
 			spr1_comp = priv->ddp_comp[DDP_COMPONENT_SPR1];
 			mtk_ddp_comp_config(spr1_comp, &cfg, cmdq_handle);
 		}
+
+		if (mtk_crtc->spr_is_on == 0)
+			s2r_bypass = true;
+		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+			if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR))
+				mtk_ddp_comp_io_cmd(comp, cmdq_handle, BYPASS_SPR2RGB, &s2r_bypass);
 	}
 }
 
