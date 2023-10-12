@@ -90,7 +90,8 @@
 #define PWR_ACK_2ND			BIT(31)
 
 #define MMINFRA_DONE_STA		BIT(0)
-#define VCP_READY_STA		BIT(1)
+#define VCP_READY_STA			BIT(1)
+#define VCP_VOTE_READY_STA		BIT(3)
 
 #define PWR_STATUS_CONN			BIT(1)
 #define PWR_STATUS_DISP			BIT(3)
@@ -133,6 +134,8 @@ static void __iomem *hwvdbg_infra_base;
 static void __iomem *hwvdbg_mminfra_base;
 static void __iomem *hwvdbg_hfrp_base;
 static struct scp_domain *scpsys_mminfra_hwv;
+
+static bool mmproc_sspm_vote_sync_bits_support;
 
 int register_scpsys_notifier(struct notifier_block *nb)
 {
@@ -1063,11 +1066,16 @@ static int scpsys_apu_power_off(struct generic_pm_domain *genpd)
 
 static int mtk_check_vcp_is_ready(struct scp_domain *scpd)
 {
-	u32 val = 0;
+	u32 val = 0, mask = 0;
+
+	if (mmproc_sspm_vote_sync_bits_support)
+		mask = VCP_READY_STA | VCP_VOTE_READY_STA;
+	else
+		mask = VCP_READY_STA;
 
 	regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
 
-	if ((val & VCP_READY_STA) == VCP_READY_STA)
+	if ((val & mask) == mask)
 		return 1;
 
 	return 0;
@@ -1302,11 +1310,16 @@ err_lp_clk:
 
 static int mtk_mminfra_hwv_is_enable_done(struct scp_domain *scpd)
 {
-	u32 val = 0;
+	u32 val = 0, mask = 0;
+
+	if (mmproc_sspm_vote_sync_bits_support)
+		mask = VCP_READY_STA | MMINFRA_DONE_STA | VCP_VOTE_READY_STA;
+	else
+		mask = VCP_READY_STA | MMINFRA_DONE_STA;
 
 	regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
 
-	if (val == (VCP_READY_STA | MMINFRA_DONE_STA))
+	if (val == mask)
 		return 1;
 
 	return 0;
@@ -1526,6 +1539,22 @@ struct scp *init_scp(struct platform_device *pdev,
 	struct resource *res;
 	int i, ret;
 	struct scp *scp;
+	struct device_node *vcp_node;
+	int support = 0;
+
+	vcp_node = of_find_node_by_name(NULL, "vcp");
+	if (vcp_node == NULL)
+		pr_info("failed to find vcp_node @ %s\n", __func__);
+	else {
+		ret = of_property_read_u32(vcp_node, "warmboot-support", &support);
+
+		if (ret || support == 0) {
+			pr_info("%s mmproc_sspm_vote_sync_bits_support is disabled: %d\n",
+				__func__, ret);
+			mmproc_sspm_vote_sync_bits_support = false;
+		} else
+			mmproc_sspm_vote_sync_bits_support = true;
+	}
 
 	scp = devm_kzalloc(&pdev->dev, sizeof(*scp), GFP_KERNEL);
 	if (!scp)

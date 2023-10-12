@@ -31,6 +31,7 @@
 #define MMINFRA_DONE_STA		BIT(0)
 #define VCP_READY_STA			BIT(1)
 #define MMINFRA_DURING_OFF_STA		BIT(2)
+#define VCP_VOTE_READY_STA		BIT(3)
 
 static DEFINE_SPINLOCK(mminfra_vote_lock);
 static ATOMIC_NOTIFIER_HEAD(mtk_clk_notifier_list);
@@ -38,6 +39,8 @@ static struct ipi_callbacks *g_clk_cb;
 static struct mtk_hwv_domain mminfra_hwv_domain;
 
 static const struct sp_clk_ops *sp_clk_ops;
+
+static bool mmproc_sspm_vote_sync_bits_support;
 
 void set_sp_clk_ops(const struct sp_clk_ops *ops)
 {
@@ -99,11 +102,16 @@ EXPORT_SYMBOL_GPL(mtk_clk_get_ipi_cb);
 
 static int mtk_vcp_is_ready(struct mtk_hwv_domain *hwvd)
 {
-	u32 val = 0;
+	u32 val = 0, mask = 0;
+
+	if (mmproc_sspm_vote_sync_bits_support)
+		mask = VCP_READY_STA | VCP_VOTE_READY_STA;
+	else
+		mask = VCP_READY_STA;
 
 	regmap_read(hwvd->regmap, hwvd->data->done_ofs, &val);
 
-	if ((val & VCP_READY_STA) == VCP_READY_STA)
+	if ((val & mask) == mask)
 		return 1;
 
 	return 0;
@@ -111,11 +119,15 @@ static int mtk_vcp_is_ready(struct mtk_hwv_domain *hwvd)
 
 static int mtk_mminfra_hwv_is_enable_done(struct mtk_hwv_domain *hwvd)
 {
-	u32 val = 0;
+	u32 val = 0, mask = 0;
+
+	if (mmproc_sspm_vote_sync_bits_support)
+		mask = MMINFRA_DONE_STA | VCP_READY_STA | VCP_VOTE_READY_STA;
+	else
+		mask = MMINFRA_DONE_STA | VCP_READY_STA;
 
 	regmap_read(hwvd->regmap, hwvd->data->done_ofs, &val);
-
-	if (val == (MMINFRA_DONE_STA | VCP_READY_STA))
+	if (val == mask)
 		return 1;
 
 	return 0;
@@ -533,7 +545,23 @@ int mtk_clk_simple_probe(struct platform_device *pdev)
 	const struct mtk_clk_desc *mcd;
 	struct clk_onecell_data *clk_data;
 	struct device_node *node = pdev->dev.of_node;
+	struct device_node *vcp_node;
+	int support = 0;
 	int r;
+
+	vcp_node = of_find_node_by_name(NULL, "vcp");
+	if (vcp_node == NULL)
+		pr_info("failed to find vcp_node @ %s\n", __func__);
+	else {
+		r = of_property_read_u32(vcp_node, "warmboot-support", &support);
+
+		if (r || support == 0) {
+			pr_info("%s mmproc_sspm_vote_sync_bits_support is disabled: %d\n",
+				__func__, r);
+			mmproc_sspm_vote_sync_bits_support = false;
+		} else
+			mmproc_sspm_vote_sync_bits_support = true;
+	}
 
 	mcd = of_device_get_match_data(&pdev->dev);
 	if (!mcd)
