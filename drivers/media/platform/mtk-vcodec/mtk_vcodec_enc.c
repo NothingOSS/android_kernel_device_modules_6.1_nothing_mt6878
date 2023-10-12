@@ -1505,6 +1505,7 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->num_b_frame = enc_params->num_b_frame;
 	param->slbc_ready = ctx->use_slbc;
 	param->slbc_addr = ctx->slbc_addr;
+	param->slbc_cpu_used_performance = enc_params->slbc_cpu_used_performance;
 	param->i_qp = enc_params->i_qp;
 	param->p_qp = enc_params->p_qp;
 	param->b_qp = enc_params->b_qp;
@@ -2762,6 +2763,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		ctx->enc_params.framerate_num/ctx->enc_params.framerate_denom, ctx->dev->enc_slb_cpu_used_perf) &&
 		(ctx->dev->enc_slb_cpu_used_perf > 0) && (ctx->enc_params.operationrate < 120));
 	if ((ctx->use_slbc == 1) && (ctx->enc_params.slbc_cpu_used_performance == 1)) {
+		//release SLB of a normal size with UID_MM_VENC.
 		mtk_v4l2_debug(0, "slbc_cpu_used_perf_release, %p\n", &ctx->sram_data);
 		slbc_release(&ctx->sram_data);
 		ctx->use_slbc = 0;
@@ -2769,6 +2771,22 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		mtk_v4l2_debug(0, "slbc_cpu_used_perf_release ref %d\n", ctx->sram_data.ref);
 		if (ctx->sram_data.ref <= 0)
 			atomic_set(&mtk_venc_slb_cb.release_slbc, 0);
+
+		//request SLB with UID_MM_VENC_FHD for a small SLB size(1M)
+		ctx->sram_data.uid = UID_MM_VENC_FHD;
+		if (slbc_request(&ctx->sram_data) >= 0) {
+			ctx->use_slbc = 1;
+			ctx->slbc_addr = (unsigned int)(unsigned long)ctx->sram_data.paddr;
+		} else {
+			pr_info("slbc_cpu_used_perf_request fail\n");
+			ctx->use_slbc = 0;
+		}
+		if (ctx->slbc_addr % 256 != 0 || ctx->slbc_addr == 0) {
+			pr_info("slbc_addr error 0x%x\n", ctx->slbc_addr);
+			ctx->use_slbc = 0;
+		}
+		pr_info("slbc_cpu_used_perf_request %d, 0x%x, 0x%lx, ref %d\n",
+		ctx->use_slbc, ctx->slbc_addr, (unsigned long)ctx->sram_data.paddr, ctx->sram_data.ref);
 	}
 
 	memset(&param, 0, sizeof(param));

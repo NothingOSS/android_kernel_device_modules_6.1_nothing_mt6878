@@ -458,6 +458,7 @@ struct venc_vcu_config {
 	__u32 max_h;
 	__u32 num_b_frame;
 	__u32 slbc_ready;
+	__u32 slbc_cpu_used_performance;
 	__u32 i_qp;
 	__u32 p_qp;
 	__u32 b_qp;

@@ -420,6 +420,7 @@ struct venc_enc_param {
 	unsigned int max_h;
 	unsigned int num_b_frame;
 	unsigned int slbc_ready;
+	unsigned int slbc_cpu_used_performance;
 	unsigned int i_qp;
 	unsigned int p_qp;
 	unsigned int b_qp;

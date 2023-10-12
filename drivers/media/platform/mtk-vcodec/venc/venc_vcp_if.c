@@ -1788,6 +1788,7 @@ static int venc_vcp_set_param(unsigned long handle,
 		inst->vsi->config.num_b_frame = enc_prm->num_b_frame;
 		inst->vsi->config.slbc_ready = enc_prm->slbc_ready;
 		inst->vsi->config.slbc_addr = enc_prm->slbc_addr;
+		inst->vsi->config.slbc_cpu_used_performance = enc_prm->slbc_cpu_used_performance;
 		inst->vsi->config.i_qp = enc_prm->i_qp;
 		inst->vsi->config.p_qp = enc_prm->p_qp;
 		inst->vsi->config.b_qp = enc_prm->b_qp;
