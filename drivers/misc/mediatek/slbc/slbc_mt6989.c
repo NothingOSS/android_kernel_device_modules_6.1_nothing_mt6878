@@ -212,6 +212,7 @@ static struct slbc_config p_config[] = {
 	SLBC_ENTRY(UID_AOV_APU, 8, 0, 0, 0, 0x0, 0x003, 0),
 	SLBC_ENTRY(UID_AINR, 9, 0, 0, 0, 0x0, 0x040, 0),
 	SLBC_ENTRY(UID_APU, 10, 0, 0, 0, 0x0, 0x038, 0),
+	SLBC_ENTRY(UID_MM_VENC_FHD, 11, 0, 0, 0, 0x0, 0x200, 0),
 };
 
 #ifdef SLBC_CB
@@ -741,7 +742,7 @@ int slbc_request(struct slbc_data *d)
 #else
 		slbc_ref++;
 #endif /* CONFIG_MTK_SLBC_IPI */
-		if (d->uid == UID_MM_VENC) {
+		if (d->uid == UID_MM_VENC || d->uid == UID_MM_VENC_FHD) {
 			if (venc_count == 0)
 				slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 0, 0);
 			venc_count++;
@@ -806,7 +807,7 @@ int slbc_release(struct slbc_data *d)
 #else
 		slbc_ref--;
 #endif /* CONFIG_MTK_SLBC_IPI */
-		if (d->uid == UID_MM_VENC) {
+		if (d->uid == UID_MM_VENC || d->uid == UID_MM_VENC_FHD) {
 			venc_count--;
 			if (venc_count == 0)
 				slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 1, 1);
