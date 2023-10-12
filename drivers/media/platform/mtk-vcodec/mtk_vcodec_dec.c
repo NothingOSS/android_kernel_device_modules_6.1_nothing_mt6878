@@ -795,12 +795,6 @@ static struct vb2_buffer *get_display_buffer(struct mtk_vcodec_ctx *ctx,
 	mtk_v4l2_debug(4, "[%d]", ctx->id);
 
 	mutex_lock(&ctx->buf_lock);
-	if (ctx->is_unsupport) {
-		mtk_v4l2_debug(0, "[%d] skip get disp since inst not support", ctx->id);
-		mutex_unlock(&ctx->buf_lock);
-		return NULL;
-	}
-
 	if (vdec_if_get_param(ctx, GET_PARAM_DISP_FRAME_BUFFER, &disp_frame_buffer)) {
 		mtk_v4l2_err("[%d] Cannot get param : GET_PARAM_DISP_FRAME_BUFFER", ctx->id);
 		mutex_unlock(&ctx->buf_lock);
@@ -905,13 +899,9 @@ static struct vb2_v4l2_buffer *get_free_buffer(struct mtk_vcodec_ctx *ctx)
 	bool new_dma = false;
 
 	mutex_lock(&ctx->buf_lock);
-	if (ctx->is_unsupport) {
-		mtk_v4l2_debug(0, "[%d] skip get free since inst not support", ctx->id);
-		mutex_unlock(&ctx->buf_lock);
-		return NULL;
-	}
-
-	if (vdec_if_get_param(ctx, GET_PARAM_FREE_FRAME_BUFFER, &free_frame_buffer)) {
+	if (vdec_if_get_param(ctx,
+						  GET_PARAM_FREE_FRAME_BUFFER,
+						  &free_frame_buffer)) {
 		mtk_v4l2_err("[%d] Error!! Cannot get param", ctx->id);
 		mutex_unlock(&ctx->buf_lock);
 		return NULL;
@@ -1560,9 +1550,7 @@ void mtk_vdec_error_handle(struct mtk_vcodec_ctx *ctx, char *debug_str)
 
 static void mtk_vdec_set_unsupport(struct mtk_vcodec_ctx *ctx)
 {
-	mutex_lock(&ctx->buf_lock);
 	ctx->is_unsupport = true;
-	mutex_unlock(&ctx->buf_lock);
 	mtk_vcodec_set_state(ctx, MTK_STATE_STOP);
 	mtk_vdec_queue_error_event(ctx);
 }
