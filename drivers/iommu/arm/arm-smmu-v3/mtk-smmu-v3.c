@@ -3270,8 +3270,6 @@ void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 				      SMMU_FAULT_RS_BURST);
 	struct arm_smmu_device *smmu;
 	struct mtk_smmu_data *data;
-	struct device *shared_dev;
-	bool s1_bypass;
 	bool sid_valid;
 	u32 sid_max;
 	int ret;
@@ -3299,15 +3297,13 @@ void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 		return;
 	}
 
-	shared_dev = mtk_smmu_get_shared_device(master_dev);
-	s1_bypass = is_dev_bypass_smmu_s1_enabled(shared_dev);
 	sid_max = 1ULL << smmu->sid_bits;
 	sid_valid = sid >= 0 && sid < sid_max;
 
 	dev_info(smmu->dev,
-		 "[%s] smmu:%s dev:[%s, %s] sid:[0x%x, 0x%x] s1_bypass:%d\n",
+		 "[%s] smmu:%s dev:%s sid:[0x%x, 0x%x]\n",
 		 __func__, get_smmu_name(type), dev_name(master_dev),
-		 dev_name(shared_dev), sid, sid_valid, s1_bypass);
+		 sid, sid_valid);
 
 	mtk_smmu_glbreg_dump(smmu);
 	mtk_smmu_wpreg_dump(NULL, type);
@@ -3362,9 +3358,8 @@ int mtk_smmu_tf_detect(enum mtk_smmu_type type,
 	if (irq_sta > 0) {
 		ret = smmuwp_tf_detect(smmu, sid, tbu, axids, num_axids, param);
 		dev_info(smmu->dev,
-			 "[%s] smmu:%s dev:[%s, %s] sid:0x%x tbu:%d irq_sta:0x%x ret:%d\n",
+			 "[%s] smmu:%s dev:%s sid:0x%x tbu:%d irq_sta:0x%x ret:%d\n",
 			 __func__, get_smmu_name(type), dev_name(master_dev),
-			 dev_name(mtk_smmu_get_shared_device(master_dev)),
 			 sid, tbu, irq_sta, ret);
 	}
 
