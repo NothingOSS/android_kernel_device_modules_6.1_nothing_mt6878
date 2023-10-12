@@ -1564,6 +1564,8 @@ static void mtk_vdec_reset_decoder(struct mtk_vcodec_ctx *ctx, bool is_drain,
 	struct mtk_video_dec_buf *dstbuf, *srcbuf;
 	struct vb2_queue *dstq, *srcq;
 
+	mtk_v4l2_debug(2, "[%d] is_drain %d, ctx state %d, type %d, current_bs idx %d",
+		ctx->id, is_drain, mtk_vcodec_get_state(ctx), type, current_bs ? current_bs->index : -1);
 	mtk_vdec_lpw_switch_reset(ctx, true, "reset decoder");
 
 #if ENABLE_META_BUF
@@ -2716,8 +2718,19 @@ static int mtk_vdec_set_param(struct mtk_vcodec_ctx *ctx)
 	return 0;
 }
 
-static int vidioc_vdec_qbuf(struct file *file, void *priv,
-							struct v4l2_buffer *buf)
+static int vidioc_vdec_reqbufs(struct file *file, void *priv, struct v4l2_requestbuffers *rb)
+{
+	struct mtk_vcodec_ctx *ctx = fh_to_ctx(priv);
+
+	mtk_v4l2_debug(1, "[%d] reqbufs count %d, type %d, ctx state %d",
+		ctx->id, rb->count, rb->type, mtk_vcodec_get_state(ctx));
+	if (rb->count == 0 && (mtk_vcodec_is_state(ctx, MTK_STATE_HEADER) || mtk_vcodec_is_state(ctx, MTK_STATE_STOP)))
+		mtk_vdec_reset_decoder(ctx, false, NULL, rb->type);
+
+	return v4l2_m2m_reqbufs(file, ctx->m2m_ctx, rb);
+}
+
+static int vidioc_vdec_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 {
 	struct mtk_vcodec_ctx *ctx = fh_to_ctx(priv);
 	struct vb2_queue *vq;
@@ -5103,7 +5116,7 @@ static const struct vb2_ops mtk_vdec_vb2_ops = {
 const struct v4l2_ioctl_ops mtk_vdec_ioctl_ops = {
 	.vidioc_streamon        = v4l2_m2m_ioctl_streamon,
 	.vidioc_streamoff       = v4l2_m2m_ioctl_streamoff,
-	.vidioc_reqbufs         = v4l2_m2m_ioctl_reqbufs,
+	.vidioc_reqbufs         = vidioc_vdec_reqbufs,
 	.vidioc_querybuf        = v4l2_m2m_ioctl_querybuf,
 	.vidioc_expbuf          = v4l2_m2m_ioctl_expbuf,
 
