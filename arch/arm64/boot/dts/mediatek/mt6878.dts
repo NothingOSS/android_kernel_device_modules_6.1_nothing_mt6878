@@ -8663,12 +8663,28 @@
 
 	scp_dvfs: scp-dvfs {
 		compatible = "mediatek,scp-dvfs";
-		scp-dvfs-disable; // bringup
-		/*clocks = <&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
-		<&topckgen_clk CLK_TOP_TCK_26M_MX9>;
+
+		clocks = <&vlp_cksys_clk CLK_VLP_SCP_SEL>,
+		<&topckgen_clk CLK_TOP_TCK_26M_MX9>, /* 26M  */
+		<&topckgen_clk CLK_TOP_UNIVPLL_D4>,  /* 624M */
+		<&topckgen_clk CLK_TOP_UNIVPLL_D3>,  /* 832M */
+		<&topckgen_clk CLK_TOP_MAINPLL_D3>,  /* 728M */
+		<&topckgen_clk CLK_TOP_UNIVPLL_D6>,  /* 416M */
+		<&topckgen_clk CLK_TOP_APLL1>,       /* 180.634M */
+		<&topckgen_clk CLK_TOP_MAINPLL_D4>,  /* 546M */
+		<&topckgen_clk CLK_TOP_MAINPLL_D7>,  /* 312M */
+		<&topckgen_clk CLK_TOP_OSC_D10>;     /* 26M */
 
 		clock-names = "clk_mux",
-		"clk_pll_0";*/
+		"clk_pll_0",
+		"clk_pll_1",
+		"clk_pll_2",
+		"clk_pll_3",
+		"clk_pll_4",
+		"clk_pll_5",
+		"clk_pll_6",
+		"clk_pll_7",
+		"clk_pll_8";
 
 		scp-core-online-mask = <0x3>;
 		vlp-support;
@@ -8682,8 +8698,8 @@
 		< 750000	750000	0xff		0xfff		800  0	0x0>;
 
 		do-ulposc-cali;
-		//fmeter-clksys = <&vlp_cksys_clk>;
-		//ulposc-clksys = <&vlp_cksys_clk>;
+		fmeter-clksys = <&vlp_cksys_clk>;
+		ulposc-clksys = <&vlp_cksys_clk>;
 		scp-clk-ctrl = <&scp_clk_ctrl>;
 		scp-clk-hw-ver = "v1";
 		ulposc-cali-ver = "v2";
@@ -8691,10 +8707,10 @@
 		ulposc-cali-target = <800>;
 		ulposc-cali-config =
 			/* con0		con1	con2 */
-			<0x041692c0	0x2400	0xc>; //TODO
-		clk-dbg-ver = "v4"; //TODO
-		//ccf-fmeter-support; //bringup
-		scp-dvfs-flag = "disable"; /* enable/disable */
+			<0x041692c0	0x2400	0xc>;
+		clk-dbg-ver = "v4";
+		ccf-fmeter-support;
+		scp-dvfs-flag = "enable"; /* enable/disable */
 	};
 
 	u3fpgaphy: usb-phy {
