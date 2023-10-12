@@ -478,8 +478,8 @@
 		efuse_segment: segment@78 {
 			reg = <0x78 0x4>;
 		};
-		u2_phy_data: u2-phy-data@1cc {
-			reg = <0x1cc 0x4>;
+		u2_phy_data: u2-phy-data@334 {
+			reg = <0x334 0x4>;
 		};
 		cpu_version: cpu-data@234 {
 			reg = <0x234 0x4>;
@@ -8059,6 +8059,13 @@
 				#phy-cells = <1>;
 				usb2jtag = <&infra_ao_reg_clk 1>;
 				usb2uart;
+				nvmem-cells = <&u2_phy_data>, <&u2_phy_data>;
+				nvmem-cell-names = "intr_cal", "term_cal";
+				nvmem-cell-masks = <0x3f 0xf00>;
+				mediatek,efuse-intr = <0x23>;
+				mediatek,eye-vrt = <2>;
+				mediatek,eye-vrt-host = <2>;
+				mediatek,discth= <0x9>;
 			};
 		};
 
