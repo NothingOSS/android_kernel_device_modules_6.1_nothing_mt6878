@@ -575,6 +575,7 @@ static struct kernel_param_ops mmdvfs_debug_set_ftrace_ops = {
 module_param_cb(ftrace, &mmdvfs_debug_set_ftrace_ops, NULL, 0644);
 MODULE_PARM_DESC(ftrace, "mmdvfs ftrace log");
 
+/*
 static int mmdvfs_debug_volt_dump(void *data)
 {
 	if (!IS_ERR_OR_NULL(g_mmdvfs->reg_vcore))
@@ -586,14 +587,18 @@ static int mmdvfs_debug_volt_dump(void *data)
 			regulator_get_voltage(g_mmdvfs->reg_vmm));
 	return 0;
 }
+*/
 
 static int mmdvfs_debug_smi_cb(struct notifier_block *nb, unsigned long action, void *data)
 {
 	int i;
 	unsigned int val;
+
+	/* TODO: get voltage from pmic reg.
 	struct task_struct *kthr;
 
 	kthr = kthread_run(mmdvfs_debug_volt_dump, NULL, "mmdvfs-dbg-volt-dump");
+	*/
 	for (i = 0; i < g_mmdvfs->fmeter_count; i++) {
 		val = mt_get_fmeter_freq(g_mmdvfs->fmeter_id[i], g_mmdvfs->fmeter_type[i]);
 		MMDVFS_DBG("i:%d id:%hu type:%hu freq:%u",
