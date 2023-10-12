@@ -76,6 +76,8 @@
 #define FHD_CLK_10		(((FHD_CLK_10_X10 % 10) != 0) ?              \
 			(FHD_CLK_10_X10 / 10 + 1) : (FHD_CLK_10_X10 / 10))
 
+#define MODE_SWITCH_CMDQ_ENABLE 1
+
 static enum RES_SWITCH_TYPE res_switch_type = RES_SWITCH_NO_USE;
 static int current_fps = 120;
 static atomic_t current_backlight;
@@ -982,6 +984,7 @@ static struct mtk_panel_params ext_params = {
 	.dyn_fps = {
 		.vact_timing_fps = 120,
 	},
+	.mode_switch_cmdq = MODE_SWITCH_CMDQ_ENABLE,
 	.real_te_duration = 8333,
 };
 
@@ -1144,6 +1147,7 @@ static struct mtk_panel_params ext_params_90hz = {
 	.dyn_fps = {
 		.vact_timing_fps = 120,
 	},
+	.mode_switch_cmdq = MODE_SWITCH_CMDQ_ENABLE,
 	.real_te_duration = 11111,
 	.mode_switch_delay = 2,
 };
@@ -1308,6 +1312,7 @@ static struct mtk_panel_params ext_params_60hz = {
 	.dyn_fps = {
 		.vact_timing_fps = 120,
 	},
+	.mode_switch_cmdq = MODE_SWITCH_CMDQ_ENABLE,
 	.real_te_duration = 8333,
 };
 
@@ -1411,32 +1416,89 @@ enum RES_SWITCH_TYPE mtk_get_res_switch_type(void)
 
 static void mode_switch_to_120(struct drm_panel *panel)
 {
+#if MODE_SWITCH_CMDQ_ENABLE
+	struct mtk_mode_switch_cmd cmd_table = {2, {0x2F, 0x00}};
+
+	memset(&ext_params.mode_switch_cmd, 0, sizeof(struct mode_switch_params));
+	ext_params.mode_switch_cmd.num_cmd = 1;
+	memcpy(&ext_params.mode_switch_cmd.ms_table, &cmd_table,
+		sizeof(struct mtk_mode_switch_cmd));
+#else
 	struct lcm *ctx = panel_to_lcm(panel);
 
 	lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
+#endif
 }
 
 static void mode_switch_to_90(struct drm_panel *panel)
 {
+#if MODE_SWITCH_CMDQ_ENABLE
+	struct mtk_mode_switch_cmd cmd_table[4] = {
+		{2, {0x2F, 0x01}},
+		{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
+		{2, {0x6F, 0x07}},
+		{3, {0xBA, 0x00, 0x4f}}
+	};
+
+	memset(&ext_params_90hz.mode_switch_cmd, 0, sizeof(struct mode_switch_params));
+	ext_params_90hz.mode_switch_cmd.num_cmd = 4;
+	memcpy(&ext_params_90hz.mode_switch_cmd.ms_table, &cmd_table,
+		sizeof(struct mtk_mode_switch_cmd)*4);
+#else
 	struct lcm *ctx = panel_to_lcm(panel);
 
 	lcm_dcs_write_seq_static(ctx, 0x2F, 0x01);
+	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
+	lcm_dcs_write_seq_static(ctx, 0x6F, 0x07);
+	lcm_dcs_write_seq_static(ctx, 0xBA, 0x00, 0x4f);
+#endif
 }
 
 static void mode_switch_to_60(struct drm_panel *panel)
 {
+#if MODE_SWITCH_CMDQ_ENABLE
+	struct mtk_mode_switch_cmd cmd_table[6] = {
+		{2, {0x2F, 0x00}},
+		{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
+		{2, {0x6F, 0x1C}},
+		{9, {0xBA, 0x91, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x00}},
+		{2, {0x5A, 0x01}},
+		{2, {0x2F, 0x30}}
+	};
+
+	memset(&ext_params_60hz.mode_switch_cmd, 0, sizeof(struct mode_switch_params));
+	ext_params_60hz.mode_switch_cmd.num_cmd = 6;
+	memcpy(&ext_params_60hz.mode_switch_cmd.ms_table, &cmd_table,
+		sizeof(struct mtk_mode_switch_cmd)*6);
+#else
 	struct lcm *ctx = panel_to_lcm(panel);
 
 	lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0x6F, 0x1C);
 	lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x5A, 0x00);
+	lcm_dcs_write_seq_static(ctx, 0x5A, 0x01);
 	lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
+#endif
 }
 
 static void mode_switch_to_30(struct drm_panel *panel)
 {
+#if MODE_SWITCH_CMDQ_ENABLE
+	struct mtk_mode_switch_cmd cmd_table[6] = {
+		{2, {0x2F, 0x00}},
+		{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
+		{2, {0x6F, 0x1C}},
+		{9, {0xBA, 0x91, 0x03, 0x03, 0x00, 0x01, 0x03, 0x03, 0x00}},
+		{2, {0x5A, 0x00}},
+		{2, {0x2F, 0x30}}
+	};
+
+	memset(&ext_params.mode_switch_cmd, 0, sizeof(struct mode_switch_params));
+	ext_params.mode_switch_cmd.num_cmd = 6;
+	memcpy(&ext_params.mode_switch_cmd.ms_table, &cmd_table,
+		sizeof(struct mtk_mode_switch_cmd)*6);
+#else
 	struct lcm *ctx = panel_to_lcm(panel);
 
 	lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
@@ -1445,10 +1507,26 @@ static void mode_switch_to_30(struct drm_panel *panel)
 	lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x03, 0x03, 0x00, 0x01, 0x03, 0x03, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0x5A, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
+#endif
 }
 
 static void mode_switch_to_24(struct drm_panel *panel)
 {
+#if MODE_SWITCH_CMDQ_ENABLE
+	struct mtk_mode_switch_cmd cmd_table[6] = {
+		{2, {0x2F, 0x00}},
+		{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
+		{2, {0x6F, 0x1C}},
+		{9, {0xBA, 0x91, 0x04, 0x04, 0x00, 0x01, 0x04, 0x04, 0x00}},
+		{2, {0x5A, 0x00}},
+		{2, {0x2F, 0x30}}
+	};
+
+	memset(&ext_params.mode_switch_cmd, 0, sizeof(struct mode_switch_params));
+	ext_params.mode_switch_cmd.num_cmd = 6;
+	memcpy(&ext_params.mode_switch_cmd.ms_table, &cmd_table,
+		sizeof(struct mtk_mode_switch_cmd)*6);
+#else
 	struct lcm *ctx = panel_to_lcm(panel);
 
 	lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
@@ -1457,10 +1535,26 @@ static void mode_switch_to_24(struct drm_panel *panel)
 	lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x04, 0x04, 0x00, 0x01, 0x04, 0x04, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0x5A, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
+#endif
 }
 
 static void mode_switch_to_10(struct drm_panel *panel)
 {
+#if MODE_SWITCH_CMDQ_ENABLE
+	struct mtk_mode_switch_cmd cmd_table[6] = {
+		{2, {0x2F, 0x00}},
+		{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
+		{2, {0x6F, 0x1C}},
+		{9, {0xBA, 0x91, 0x0B, 0x0B, 0x00, 0x01, 0x0B, 0x0B, 0x00}},
+		{2, {0x5A, 0x00}},
+		{2, {0x2F, 0x30}}
+	};
+
+	memset(&ext_params.mode_switch_cmd, 0, sizeof(struct mode_switch_params));
+	ext_params.mode_switch_cmd.num_cmd = 6;
+	memcpy(&ext_params.mode_switch_cmd.ms_table, &cmd_table,
+		sizeof(struct mtk_mode_switch_cmd)*6);
+#else
 	struct lcm *ctx = panel_to_lcm(panel);
 
 	lcm_dcs_write_seq_static(ctx, 0x2F, 0x00);
@@ -1469,6 +1563,7 @@ static void mode_switch_to_10(struct drm_panel *panel)
 	lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x0B, 0x0B, 0x00, 0x01, 0x0B, 0x0B, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0x5A, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
+#endif
 }
 
 static int mode_switch(struct drm_panel *panel,
@@ -1478,8 +1573,10 @@ static int mode_switch(struct drm_panel *panel,
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id(connector, dst_mode);
 
-	if (stage == BEFORE_DSI_POWERDOWN)
+	if (stage == BEFORE_DSI_POWERDOWN) {
+		ret = 1;
 		return ret;
+	}
 
 	pr_info("%s cur_mode = %d dst_mode %d\n", __func__, cur_mode, dst_mode);
 
