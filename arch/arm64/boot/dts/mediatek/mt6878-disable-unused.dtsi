@@ -88,7 +88,9 @@
 		clocks =
 			<&camsys_rawb_clk CLK_CAM_RB_LARBX>,
 			<&camsys_rawb_clk CLK_CAM_RB_CAM>,
-			<&camsys_rawb_clk CLK_CAM_RB_CAMTG>;
+			<&camsys_rawb_clk CLK_CAM_RB_CAMTG>,
+			<&camsys_rawb_clk CLK_CAM_RB_RAW2MM_GALS>,
+			<&camsys_rawb_clk CLK_CAM_RB_YUV2RAW2MM_GALS>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_SUBB>;
 	};
 
@@ -108,7 +110,9 @@
 		clocks =
 			<&camsys_rawa_clk CLK_CAM_RA_LARBX>,
 			<&camsys_rawa_clk CLK_CAM_RA_CAM>,
-			<&camsys_rawa_clk CLK_CAM_RA_CAMTG>;
+			<&camsys_rawa_clk CLK_CAM_RA_CAMTG>,
+			<&camsys_rawa_clk CLK_CAM_RA_RAW2MM_GALS>,
+			<&camsys_rawa_clk CLK_CAM_RA_YUV2RAW2MM_GALS>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_SUBA>;
 	};
 
@@ -129,7 +133,13 @@
 			<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
 			<&camsys_main_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
 			<&camsys_main_clk CLK_CAM_MAIN_CCUSYS>,
-			<&camsys_main_clk CLK_CAM_MAIN_CAM_ASG>;
+			<&camsys_main_clk CLK_CAM_MAIN_CAM_ASG>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAMSV_A_CON_1>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAMSV_B_CON_1>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAMSV_C_CON_1>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAMSV_D_CON_1>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAMSV_E_CON_1>,
+			<&camsys_main_clk CLK_CAM_MAIN_CAMSV_CON_1>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_MAIN>;
 	};
 
