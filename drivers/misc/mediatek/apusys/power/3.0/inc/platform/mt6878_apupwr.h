@@ -89,6 +89,7 @@ enum apupw_reg {
 enum mode {
 	FPGA,
 	AO,
+	LK2,
 	MP,
 };
 
@@ -191,6 +192,9 @@ void mt6878_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump);
 #define APUSYS_VCORE_SW_RST     0x000C
 
 /* APU_ARE_REG */
+#define APU_ACE_HW_CONFIG_0     0x0050
+#define APU_ACE_HW_CONFIG_7     0x006C
+
 #define APU_ARE_GCONFIG         0x10000
 #define APU_ARE_STATUS          0x10004
 #define APU_CE_IF_PC            0x10620
