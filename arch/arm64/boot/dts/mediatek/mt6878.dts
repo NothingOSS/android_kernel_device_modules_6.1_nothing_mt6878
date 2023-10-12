@@ -7243,7 +7243,7 @@
 			power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_MAIN>;
 			operating-points-v2 = <&opp_table_cam>;
 #if 0
-			clocks = <&mmdvfs_clk CLK_MMDVFS_CAM>; // TODO: check clocks
+			clocks = <&mmdvfs_clk CLK_MMDVFS_CAM>;
 			clock-names = "mmdvfs_clk";
 #endif
 		};
@@ -7255,15 +7255,11 @@
 				  <0 0x1a038000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <0>;
-#if 0
-			// NOTE: review done
 			mediatek,larbs = <&smi_larb16>; // 16a
-#endif
 			interrupts = <GIC_SPI 136 IRQ_TYPE_LEVEL_HIGH 0>;
 			#size-cells = <2>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_SUBA>;
-			// TODO: check clocks
 			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
 				<&camsys_main_clk CLK_CAM_MAIN_CAMTG>,
 				<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
@@ -7356,10 +7352,7 @@
 				  <0 0x1a058000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <0>;
-#if 0
-			// NOTE: review done
 			mediatek,larbs = <&smi_larb17>; // larb17a
-#endif
 			interrupts = <GIC_SPI 137 IRQ_TYPE_LEVEL_HIGH 0>;
 			#size-cells = <2>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
@@ -7404,15 +7397,11 @@
 				  <0 0x1a078000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <1>;
-#if 0
-			// NOTE: review done
 			mediatek,larbs = <&smi_larb33>; // 16b
-#endif
 			interrupts = <GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH 0>;
 			#size-cells = <2>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_SUBB>;
-			// TODO: check clocks
 			clocks = <&camsys_main_clk CLK_CAM_MAIN_CAM>,
 				<&camsys_main_clk CLK_CAM_MAIN_CAMTG>,
 				<&camsys_main_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
@@ -7505,10 +7494,7 @@
 				  <0 0x1a098000 0 0x8000>;
 			reg-names = "base", "inner_base";
 			mediatek,cam-id = <1>;
-#if 0
-			// NOTE: review done
 			mediatek,larbs = <&smi_larb34>; // larb17b
-#endif
 			interrupts = <GIC_SPI 139 IRQ_TYPE_LEVEL_HIGH 0>;
 			#size-cells = <2>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
