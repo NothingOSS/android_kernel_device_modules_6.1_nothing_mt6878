@@ -110,26 +110,16 @@ void mml_dpc_srt_bw_set(const enum mtk_dpc_subsys subsys,
 	mml_dpc_funcs.dpc_srt_bw_set(subsys, bw_in_mb, force_keep);
 }
 
-void mml_dpc_dvfs_set(const enum mtk_dpc_subsys subsys,
-		      const u8 level,
-		      bool force_keep)
+void mml_dpc_dvfs_both_set(const enum mtk_dpc_subsys subsys,
+			   const u8 level,
+			   bool force_keep,
+			   const u32 bw_in_mb)
 {
-	if (mml_dpc_funcs.dpc_dvfs_set == NULL) {
-		mml_msg_dpc("%s dpc_dvfs_set not exist", __func__);
+	if (mml_dpc_funcs.dpc_dvfs_both_set == NULL) {
+		mml_msg_dpc("%s dpc_dvfs_both_set not exist", __func__);
 		return;
 	}
 
-	mml_dpc_funcs.dpc_dvfs_set(subsys, level, force_keep);
-}
-
-void mml_dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys,
-			 const u32 bw_in_mb)
-{
-	if (mml_dpc_funcs.dpc_dvfs_bw_set == NULL) {
-		mml_msg_dpc("%s dpc_dvfs_bw_set not exist", __func__);
-		return;
-	}
-
-	mml_dpc_funcs.dpc_dvfs_bw_set(subsys, bw_in_mb);
+	mml_dpc_funcs.dpc_dvfs_both_set(subsys, level, force_keep, bw_in_mb);
 }
 

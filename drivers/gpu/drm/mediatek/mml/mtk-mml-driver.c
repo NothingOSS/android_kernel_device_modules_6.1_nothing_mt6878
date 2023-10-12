@@ -249,7 +249,7 @@ static void mml_qos_init(struct mml_dev *mml)
 	}
 }
 
-u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc)
+u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, u32 peak_bw)
 {
 	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
 	u32 tput = 0, i;
@@ -283,7 +283,7 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc)
 		mml_msg("%s dpc set rate %uMHz volt %d (%u) tput %u",
 			__func__, tp->opp_speeds[i], volt, i, tput);
 
-		mml_dpc_dvfs_set(DPC_SUBSYS_MML, i, false);
+		mml_dpc_dvfs_both_set(DPC_SUBSYS_MML, i, false, peak_bw);
 	} else {
 		if (tp->reg) {
 			ret = regulator_set_voltage(tp->reg, volt, INT_MAX);

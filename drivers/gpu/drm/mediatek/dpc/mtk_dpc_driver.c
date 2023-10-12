@@ -717,6 +717,86 @@ void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb)
 }
 EXPORT_SYMBOL(dpc_dvfs_bw_set);
 
+void dpc_dvfs_both_set(const enum mtk_dpc_subsys subsys, const u8 level, bool force,
+	const u32 bw_in_mb)
+{
+	u32 addr1 = 0, addr2 = 0;
+	u32 mmdvfs_user = U32_MAX;
+	u32 total_bw;
+	u8 max_level;
+
+	/* support 575, 600, 650, 700, 750 mV */
+	if (level > 4) {
+		DPCERR("vdisp support only 5 levels");
+		return;
+	}
+
+	if (dpc_pm_ctrl(true))
+		return;
+
+	mutex_lock(&g_priv->dvfs_bw.lock);
+
+	if (subsys == DPC_SUBSYS_DISP) {
+		mmdvfs_user = MMDVFS_USER_DISP;
+		addr1 = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
+		addr2 = DISP_REG_DPC_DISP_VDISP_DVFS_CFG;
+		g_priv->dvfs_bw.disp_level = level;
+		g_priv->dvfs_bw.disp_bw = bw_in_mb * 10 / 7;
+	} else if (subsys == DPC_SUBSYS_MML) {
+		mmdvfs_user = MMDVFS_USER_MML;
+		addr1 = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
+		addr2 = DISP_REG_DPC_MML_VDISP_DVFS_CFG;
+		g_priv->dvfs_bw.mml_level = level;
+		g_priv->dvfs_bw.mml_bw = bw_in_mb * 10 / 7;
+	}
+
+	total_bw = g_priv->dvfs_bw.disp_bw + g_priv->dvfs_bw.mml_bw;
+
+	if (total_bw > 6988)
+		g_priv->dvfs_bw.bw_level = 4;
+	else if (total_bw > 5129)
+		g_priv->dvfs_bw.bw_level = 3;
+	else if (total_bw > 4076)
+		g_priv->dvfs_bw.bw_level = 2;
+	else if (total_bw > 3057)
+		g_priv->dvfs_bw.bw_level = 1;
+	else
+		g_priv->dvfs_bw.bw_level = 0;
+
+	max_level = dpc_max_dvfs_level();
+	if (max_level < level)
+		max_level = level;
+	vdisp_level_set_vcp(subsys, max_level);
+
+	/* switch vdisp to SW or HW mode */
+	if (unlikely(vdisp_ao))
+		writel(1, dpc_base + addr2);
+	else
+		writel(force ? 1 : 0, dpc_base + addr2);
+
+	/* add vdisp info to met */
+	if (MEM_BASE)
+		writel(4 - max_level, MEM_USR_OPP(mmdvfs_user));
+
+	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
+		(g_priv->dvfs_bw.mml_bw << 24) | (g_priv->dvfs_bw.disp_bw << 16) |
+		(g_priv->dvfs_bw.mml_level << 8) | g_priv->dvfs_bw.disp_level,
+		(BIT(subsys) << 16) | max_level);
+
+	if (unlikely(debug_dvfs))
+		DPCFUNC("subsys(%u) level(%u,%u,%u) force(%u)", subsys,
+			g_priv->dvfs_bw.disp_level, g_priv->dvfs_bw.mml_level, max_level, force);
+
+	if (unlikely(debug_dvfs))
+		DPCFUNC("subsys(%u) disp_bw(%u) mml_bw(%u) vdisp level(%u)",
+			subsys, g_priv->dvfs_bw.disp_bw, g_priv->dvfs_bw.mml_bw, max_level);
+
+	mutex_unlock(&g_priv->dvfs_bw.lock);
+
+	dpc_pm_ctrl(false);
+}
+EXPORT_SYMBOL(dpc_dvfs_both_set);
+
 void dpc_group_enable(const u16 group, bool en)
 {
 	if (dpc_pm_ctrl(true))
@@ -1449,6 +1529,7 @@ static const struct dpc_funcs funcs = {
 	.dpc_srt_bw_set = dpc_srt_bw_set,
 	.dpc_dvfs_set = dpc_dvfs_set,
 	.dpc_dvfs_bw_set = dpc_dvfs_bw_set,
+	.dpc_dvfs_both_set = dpc_dvfs_both_set,
 	.dpc_analysis = dpc_analysis,
 };
 

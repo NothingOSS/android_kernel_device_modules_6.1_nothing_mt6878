@@ -52,7 +52,7 @@ enum mml_sram_mode {
  *
  * Return: throughput upper bound from opp table
  */
-u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc);
+u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, u32 peak_bw);
 
 s32 mml_comp_init(struct platform_device *comp_pdev, struct mml_comp *comp);
 
