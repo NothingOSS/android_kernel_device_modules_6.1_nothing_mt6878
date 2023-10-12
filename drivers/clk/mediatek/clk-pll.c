@@ -805,6 +805,170 @@ static int mtk_hwv_pll_setclr_is_unprepare_done(struct mtk_clk_pll *pll,
 	return (val & msk) != 0;
 }
 
+static int mtk_hwv_pll_no_res_setclr_prepare(struct clk_hw *hw)
+{
+	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
+	u32 val = 0, val2 = 0;
+	int i = 0;
+
+	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(true);
+
+	regmap_write(pll->hwv_regmap, pll->data->hwv_set_ofs, pll->en_msk);
+
+	while (!mtk_hwv_pll_setclr_is_prepared(pll, pll->en_msk, PLL_EN_TYPE)) {
+		if (i < MTK_WAIT_HWV_PREPARE_CNT)
+			udelay(MTK_WAIT_HWV_PREPARE_US);
+		else
+			goto hwv_prepare_fail;
+		i++;
+	}
+
+	i = 0;
+
+	while (!mtk_hwv_pll_setclr_is_prepare_done(pll, pll->en_msk, PLL_EN_TYPE)) {
+		if (i < MTK_WAIT_HWV_DONE_CNT)
+			udelay(MTK_WAIT_HWV_DONE_US);
+		else
+			goto hwv_done_fail;
+		i++;
+	}
+
+	udelay(20);
+
+	if (pll->data->flags & HAVE_RST_BAR) {
+		regmap_write(pll->hwv_regmap, pll->data->hwv_set_ofs + (PLL_RSTB_TYPE * 0x8),
+				pll->rstb_msk);
+
+		i = 0;
+
+		while (!mtk_hwv_pll_setclr_is_prepared(pll, pll->rstb_msk, PLL_RSTB_TYPE)) {
+			if (i < MTK_WAIT_HWV_PREPARE_CNT)
+				udelay(MTK_WAIT_HWV_PREPARE_US);
+			else
+				goto hwv_rstb_prepare_fail;
+			i++;
+		}
+
+		i = 0;
+
+		while (!mtk_hwv_pll_setclr_is_prepare_done(pll, pll->rstb_msk, PLL_RSTB_TYPE)) {
+			if (i < MTK_WAIT_HWV_DONE_CNT)
+				udelay(MTK_WAIT_HWV_DONE_US);
+			else
+				goto hwv_rstb_done_fail;
+			i++;
+		}
+	}
+
+	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
+
+	return 0;
+hwv_rstb_done_fail:
+	val = readl(pll->rstb_addr);
+	regmap_read(pll->hwv_regmap, pll->data->hwv_sta_ofs + (PLL_RSTB_TYPE * 0x4), &val2);
+	pr_err("%s pll rstb enable timeout(%x %x)\n", clk_hw_get_name(hw), val, val2);
+hwv_rstb_prepare_fail:
+	regmap_read(pll->hwv_regmap, pll->data->hwv_set_ofs + (PLL_RSTB_TYPE * 0x8), &val);
+	pr_err("%s pll rstb vote timeout(%x)\n", clk_hw_get_name(hw), val);
+hwv_done_fail:
+	val = readl(pll->en_addr);
+	regmap_read(pll->hwv_regmap, pll->data->hwv_sta_ofs, &val2);
+	pr_err("%s pll enable timeout(%x %x)\n", clk_hw_get_name(hw), val, val2);
+hwv_prepare_fail:
+	regmap_read(pll->hwv_regmap, pll->data->hwv_set_ofs, &val);
+	pr_err("%s pll vote timeout(%x)\n", clk_hw_get_name(hw), val);
+
+	mtk_clk_notify(NULL, pll->hwv_regmap, NULL,
+			0, (pll->data->hwv_set_ofs / MTK_HWV_ID_OFS),
+			0, CLK_EVT_HWV_CG_TIMEOUT);
+	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
+
+	return -EBUSY;
+}
+
+static void mtk_hwv_pll_no_res_setclr_unprepare(struct clk_hw *hw)
+{
+	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
+	u32 val = 0, val2 = 0;
+	int i = 0;
+
+	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(true);
+
+	if (pll->data->flags & HAVE_RST_BAR) {
+		regmap_write(pll->hwv_regmap, pll->data->hwv_clr_ofs + (PLL_RSTB_TYPE * 0x8),
+				pll->rstb_msk);
+
+		while (mtk_hwv_pll_setclr_is_prepared(pll, pll->rstb_msk, PLL_RSTB_TYPE)) {
+			if (i < MTK_WAIT_HWV_PREPARE_CNT)
+				udelay(MTK_WAIT_HWV_PREPARE_US);
+			else
+				goto hwv_rstb_prepare_fail;
+			i++;
+		}
+
+		i = 0;
+
+		while (!mtk_hwv_pll_setclr_is_unprepare_done(pll, pll->rstb_msk , PLL_RSTB_TYPE)) {
+			if (i < MTK_WAIT_HWV_DONE_CNT)
+				udelay(MTK_WAIT_HWV_DONE_US);
+			else
+				goto hwv_rstb_done_fail;
+			i++;
+		}
+	}
+
+	regmap_write(pll->hwv_regmap, pll->data->hwv_clr_ofs, pll->en_msk);
+
+	i = 0;
+
+	while (mtk_hwv_pll_setclr_is_prepared(pll, pll->en_msk, PLL_EN_TYPE)) {
+		if (i < MTK_WAIT_HWV_PREPARE_CNT)
+			udelay(MTK_WAIT_HWV_PREPARE_US);
+		else
+			goto hwv_prepare_fail;
+		i++;
+	}
+
+	i = 0;
+
+	while (!mtk_hwv_pll_setclr_is_unprepare_done(pll, pll->en_msk, PLL_EN_TYPE)) {
+		if (i < MTK_WAIT_HWV_DONE_CNT)
+			udelay(MTK_WAIT_HWV_DONE_US);
+		else
+			goto hwv_done_fail;
+		i++;
+	}
+
+	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
+
+	return;
+
+hwv_rstb_done_fail:
+	val = readl(pll->rstb_addr);
+	regmap_read(pll->hwv_regmap, pll->data->hwv_sta_ofs + (PLL_RSTB_TYPE * 0x4), &val2);
+	pr_err("%s pll rstb disable timeout(%x %x)\n", clk_hw_get_name(hw), val, val2);
+hwv_rstb_prepare_fail:
+	regmap_read(pll->hwv_regmap, pll->data->hwv_clr_ofs + (PLL_RSTB_TYPE * 0x8), &val);
+	pr_err("%s pll rstb unvote timeout(%x)\n", clk_hw_get_name(hw), val);
+hwv_done_fail:
+	val = readl(pll->en_addr);
+	pr_err("%s pll disable timeout(%x)\n", clk_hw_get_name(hw), val);
+hwv_prepare_fail:
+	regmap_read(pll->hwv_regmap, pll->data->hwv_sta_ofs, &val);
+	pr_err("%s pll unvote timeout(%x)\n", clk_hw_get_name(hw), val);
+
+	mtk_clk_notify(NULL, pll->hwv_regmap, NULL,
+			0, (pll->data->hwv_clr_ofs / MTK_HWV_ID_OFS),
+			0, CLK_EVT_HWV_CG_TIMEOUT);
+	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
+		mtk_clk_mminfra_hwv_power_ctrl(false);
+}
+
 static int mtk_hwv_pll_setclr_prepare(struct clk_hw *hw)
 {
 	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
@@ -1034,6 +1198,15 @@ static const struct clk_ops mtk_hwv_pll_setclr_ops = {
 	.set_rate	= mtk_pll_set_rate,
 };
 
+static const struct clk_ops mtk_hwv_pll_no_res_setclr_ops = {
+	.is_prepared	= mtk_pll_setclr_is_prepared,
+	.prepare	= mtk_hwv_pll_no_res_setclr_prepare,
+	.unprepare	= mtk_hwv_pll_no_res_setclr_unprepare,
+	.recalc_rate	= mtk_pll_recalc_rate,
+	.round_rate	= mtk_pll_round_rate,
+	.set_rate	= mtk_pll_set_rate,
+};
+
 static struct clk *mtk_clk_register_pll(const struct mtk_pll_data *data,
 		void __iomem *base,
 		struct regmap *hw_voter_regmap)
@@ -1085,9 +1258,12 @@ static struct clk *mtk_clk_register_pll(const struct mtk_pll_data *data,
 	if (hw_voter_regmap)
 		pll->hwv_regmap = hw_voter_regmap;
 	if (hw_voter_regmap && (data->flags & CLK_USE_HW_VOTER)) {
-		if (data->pll_setclr)
-			init.ops = &mtk_hwv_pll_setclr_ops;
-		else
+		if (data->pll_setclr) {
+			if (data->flags & CLK_NO_RES)
+				init.ops = &mtk_hwv_pll_no_res_setclr_ops;
+			else
+				init.ops = &mtk_hwv_pll_setclr_ops;
+		} else
 			init.ops = &mtk_hwv_pll_ops;
 	} else {
 		if (data->pll_setclr)

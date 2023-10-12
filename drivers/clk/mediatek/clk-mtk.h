@@ -229,6 +229,7 @@ void mtk_free_clk_data(struct clk_onecell_data *clk_data);
 #define MUX_ROUND_CLOSEST		BIT(21)
 #define CLK_EN_MM_INFRA_PWR		BIT(22)
 #define CLK_ENABLE_MERGE_CONTROL	BIT(23)
+#define CLK_NO_RES			BIT(24)
 
 struct mtk_pll_div_table {
 	u32 div;
