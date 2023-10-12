@@ -366,15 +366,15 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 	list_for_each_entry_safe(pmm_page, tmp_page, pmm_msg_list, lru) {
 		uint32_t *pmm_msg = page_address(pmm_page);
 		uint32_t idx_2m, idx, offset;
+		uint32_t entry_num = page_size(pmm_page)/sizeof(uint32_t);
 
-		i = 0;
-		while (pmm_msg[i]) {
+		// pr_debug("list_for_each_entry: entry_num%#x\n", entry_num);
+		for (i = 0; i < entry_num && pmm_msg[i]; i++) {
 			idx_2m = (pmm_msg[i] & 0xffffff) >> 9; // 2MB -> 21bit = 12bit(page) + 9bit
 			idx = idx_2m / 32; // bitmap layout: 0 ~ 31bit, one bit -> one 2MB block
 			offset = idx_2m % 32; // offset is the 2MB block which this page included.
 			bitmap[idx] |= (1 << offset);
 			// pr_debug("bitmap[%#x]:%#x, offset:%#x\n", idx, bitmap[idx], offset);
-			++i;
 			++page_count;
 		}
 		memset(page_address(pmm_page), 0, page_size(pmm_page));
