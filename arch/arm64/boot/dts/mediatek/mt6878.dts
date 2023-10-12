@@ -9365,12 +9365,10 @@
 
 	pbm: pbm {
 		compatible = "mediatek,pbm";
-		status = "disabled";
 	};
 
 	mdpm: mdpm {
 		compatible = "mediatek,mt6878-mdpm";
-		status = "disabled";
 	};
 
 	wifi_cooler: wifi-cooler {
