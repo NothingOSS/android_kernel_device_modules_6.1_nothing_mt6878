@@ -23,7 +23,7 @@
 
 #include <dt-bindings/power/mt6878-power.h>
 
-#define SCPSYS_BRINGUP			(1)
+#define SCPSYS_BRINGUP			(0)
 #if SCPSYS_BRINGUP
 #define default_cap			(MTK_SCPD_BYPASS_OFF)
 #else
@@ -135,6 +135,7 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.ctl_offs = 0xE18,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"audio"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C84, 0x0C88, 0x0C80, 0x0C8C,
 				MT6878_TOP_AXI_PROT_EN_PERISYS_STA_0_AUDIO),
@@ -146,6 +147,8 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.ctl_offs = 0xE28,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"isp", "ipe"},
+		.subsys_lp_clk_prefix = "isp_lp",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6878_TOP_AXI_PROT_EN_MMSYS_STA_0_ISP_MAIN),
@@ -163,6 +166,7 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.ctl_offs = 0xE2C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.subsys_lp_clk_prefix = "dip1_lp",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6878_TOP_AXI_PROT_EN_MMSYS_STA_0_ISP_DIP1),
@@ -187,6 +191,8 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.ctl_offs = 0xE38,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"vde"},
+		.subsys_clk_prefix = "vde0",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6878_TOP_AXI_PROT_EN_MMSYS_STA_0_VDE0),
@@ -200,6 +206,7 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.ctl_offs = 0xE40,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"ven"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6878_TOP_AXI_PROT_EN_MMSYS_STA_0_VEN0),
@@ -213,6 +220,8 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.ctl_offs = 0xE48,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"cam"},
+		.subsys_lp_clk_prefix = "cam_main_lp",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6878_TOP_AXI_PROT_EN_MMSYS_STA_0_CAM_MAIN),
@@ -226,6 +235,7 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.ctl_offs = 0xE50,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.subsys_lp_clk_prefix = "cam_suba_lp",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6878_TOP_AXI_PROT_EN_MMSYS_STA_0_CAM_SUBA),
@@ -239,6 +249,7 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.ctl_offs = 0xE54,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.subsys_lp_clk_prefix = "cam_subb_lp",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6878_TOP_AXI_PROT_EN_MMSYS_STA_0_CAM_SUBB),
@@ -263,6 +274,8 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.ctl_offs = 0xE60,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"ccu", "ccu_ahb"},
+		.subsys_clk_prefix = "cam_ccu",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0CC4, 0x0CC8, 0x0CC0, 0x0CCC,
 				MT6878_TOP_AXI_PROT_EN_DRAMC_STA_0_CAM_CCU),
@@ -283,6 +296,9 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.ctl_offs = 0xE70,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"disp"},
+		.subsys_clk_prefix = "disp0",
+		.subsys_lp_clk_prefix = "mdp_lp",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6878_TOP_AXI_PROT_EN_MMSYS_STA_0_DISP),
@@ -296,6 +312,7 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.extb_iso_bits = 0x700000,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"mm_infra"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C24, 0x0C28, 0x0C20, 0x0C2C,
 				MT6878_TOP_AXI_PROT_EN_MMSYS_STA_1_MM_INFRA),
