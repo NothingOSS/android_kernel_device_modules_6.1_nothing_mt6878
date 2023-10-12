@@ -7087,8 +7087,8 @@
 			reg-names = "base";
 			mediatek,ccd = <&remoteproc_ccd>;
 			power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_MAIN>;
-#if 0
 			operating-points-v2 = <&opp_table_cam>;
+#if 0
 			clocks = <&mmdvfs_clk CLK_MMDVFS_CAM>; // TODO: check clocks
 			clock-names = "mmdvfs_clk";
 #endif
