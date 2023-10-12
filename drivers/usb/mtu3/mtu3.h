@@ -64,6 +64,7 @@ struct mtu3_request;
 #define MTU3_U3_IP_SLOT_DEFAULT 2
 #define MTU3_U3_IP_SLOT_MAX 4
 #define MTU3_U2_IP_SLOT_DEFAULT 1
+#define MTU3_U2_IP_SLOT_MAX 2
 
 #define DP_SWITCH_MSK 1
 
