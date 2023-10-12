@@ -3187,14 +3187,13 @@
 					&smi_cam_sub_comm2 &smi_cam_vcore_sub_comm
 					&smi_ccu_sub_comm0 &mminfra_tcu_ssc_regs>;
 		hwccf-support;
-		smi-mminfra-common-id = <0 1 2 3 4 5 6 7 8>;
-		smi-venc-larb-id = <7 8 24 41 42 47>;
-		smi-venc-common-id = <15 16 17 18>;
-		smi-vdec-larb-id = <4 5>;
-		smi-disp-larb-id = <0 1 20 21 32 33 34 35 36 37>;
-		smi-disp-common-id = <9 10 11 12 13 14>;
-		smi-isp-dip1-larb-id = <10 11 15 22 23 38 39>;
-		smi-isp-traw-larb-id = <28 40>;
+		smi-mminfra-skip-rpm = /bits/ 64 <0 0x1ff>;
+		smi-venc-skip-rpm = /bits/ 64 <0x860001000180 0x781ff>;
+		smi-vdec-skip-rpm = /bits/ 64 <0x30 0x1ff>;
+		smi-disp-skip-rpm = /bits/ 64 <0x3f00300003 0x7fff>;
+		smi-mml-skip-rpm = /bits/ 64 <0x8 0x7fff>;
+		smi-isp-dip1-skip-rpm = /bits/ 64 <0xc000c08c00 0>;
+		smi-isp-traw-skip-rpm = /bits/ 64 <0x10010000000 0>;
 
 	};
 
