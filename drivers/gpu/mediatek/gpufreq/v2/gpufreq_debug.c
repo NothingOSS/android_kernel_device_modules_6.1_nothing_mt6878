@@ -417,26 +417,17 @@ done:
 /* PROCFS: show current state of kept OPP index */
 static int fix_target_opp_index_proc_show(struct seq_file *m, void *v)
 {
-	unsigned int dvfs_state = DVFS_FREE;
-	int cur_oppidx_gpu = -1, cur_oppidx_stack = -1;
-
 	mutex_lock(&gpufreq_debug_lock);
 
-	dvfs_state = g_shared_status->dvfs_state;
 	if (g_dual_buck) {
-		cur_oppidx_gpu = g_shared_status->cur_oppidx_gpu;
-		cur_oppidx_stack = g_shared_status->cur_oppidx_stack;
-		if ((dvfs_state & DVFS_FIX_OPP) &&
-			(cur_oppidx_gpu == g_fixed_oppidx_gpu) &&
-			(cur_oppidx_stack == g_fixed_oppidx_stack))
+		if ((g_fixed_oppidx_gpu != -1) && (g_fixed_oppidx_stack != -1))
 			seq_printf(m, "[GPUFREQ-DEBUG] fix GPU/STACK OPP index: %d/%d\n",
-				cur_oppidx_gpu, cur_oppidx_stack);
+				g_fixed_oppidx_gpu, g_fixed_oppidx_stack);
 		else
 			seq_puts(m, "[GPUFREQ-DEBUG] fix GPU/STACK OPP index is disabled\n");
 	} else {
-		cur_oppidx_gpu = g_shared_status->cur_oppidx_gpu;
-		if ((dvfs_state & DVFS_FIX_OPP) && (cur_oppidx_gpu == g_fixed_oppidx_gpu))
-			seq_printf(m, "[GPUFREQ-DEBUG] fix GPU OPP index: %d\n", cur_oppidx_gpu);
+		if (g_fixed_oppidx_gpu != -1)
+			seq_printf(m, "[GPUFREQ-DEBUG] fix GPU OPP index: %d\n", g_fixed_oppidx_gpu);
 		else
 			seq_puts(m, "[GPUFREQ-DEBUG] fix GPU OPP index is disabled\n");
 	}
@@ -512,31 +503,18 @@ done:
 /* PROCFS: show current state of kept freq and volt */
 static int fix_custom_freq_volt_proc_show(struct seq_file *m, void *v)
 {
-	unsigned int dvfs_state = DVFS_FREE;
-	unsigned int cur_fgpu = 0, cur_vgpu = 0;
-	unsigned int cur_fstack = 0, cur_vstack = 0;
-
 	mutex_lock(&gpufreq_debug_lock);
 
-	dvfs_state = g_shared_status->dvfs_state;
 	if (g_dual_buck) {
-		cur_fgpu = g_shared_status->cur_fgpu;
-		cur_vgpu = g_shared_status->cur_vgpu;
-		cur_fstack = g_shared_status->cur_fstack;
-		cur_vstack = g_shared_status->cur_vstack;
-		if ((dvfs_state & DVFS_FIX_FREQ_VOLT) &&
-			(cur_fgpu == g_fixed_fgpu) && (cur_vgpu == g_fixed_vgpu) &&
-			(cur_fstack == g_fixed_fstack) && (cur_vstack == g_fixed_vstack))
+		if (g_fixed_fgpu && g_fixed_vgpu && g_fixed_fstack && g_fixed_vstack)
 			seq_printf(m, "[GPUFREQ-DEBUG] fix GPU F(%d)/V(%d), STACK F(%d)/V(%d)\n",
-				cur_fgpu, cur_vgpu, cur_fstack, cur_vstack);
+				g_fixed_fgpu, g_fixed_vgpu, g_fixed_fstack, g_fixed_vstack);
 		else
 			seq_puts(m, "[GPUFREQ-DEBUG] fix GPU F/V, STACK F/V is disabled\n");
 	} else {
-		cur_fgpu = g_shared_status->cur_fgpu;
-		cur_vgpu = g_shared_status->cur_vgpu;
-		if ((dvfs_state & DVFS_FIX_FREQ_VOLT) &&
-			(cur_fgpu == g_fixed_fgpu) && (cur_vgpu == g_fixed_vgpu))
-			seq_printf(m, "[GPUFREQ-DEBUG] fix GPU F(%d)/V(%d)\n", cur_fgpu, cur_vgpu);
+		if (g_fixed_fgpu && g_fixed_vgpu)
+			seq_printf(m, "[GPUFREQ-DEBUG] fix GPU F(%d)/V(%d)\n",
+				g_fixed_fgpu, g_fixed_vgpu);
 		else
 			seq_puts(m, "[GPUFREQ-DEBUG] fix GPU F/V is disabled\n");
 	}
@@ -1142,6 +1120,12 @@ void gpufreq_debug_init(unsigned int dual_buck, unsigned int gpueb_support,
 	g_gpueb_support = gpueb_support;
 	g_debug_power_state = GPU_PWR_OFF;
 	g_debug_margin_mode = FEAT_ENABLE;
+	g_fixed_oppidx_gpu = -1;
+	g_fixed_oppidx_stack = -1;
+	g_fixed_fgpu = 0;
+	g_fixed_vgpu = 0;
+	g_fixed_fstack = 0;
+	g_fixed_vstack = 0;
 	/* take every info of mfgsys from shared status */
 	if (shared_status)
 		g_shared_status = shared_status;
