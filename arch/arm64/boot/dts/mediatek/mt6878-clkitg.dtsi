@@ -187,7 +187,6 @@
 			<&mfgpll_pll_ctrl_clk CLK_MFG_AO_MFGPLL>,
 			<&gpuebpll_pll_ctrl_clk CLK_GPUEB_AO_GPUEBPLL>,
 			<&mfgscpll_pll_ctrl_clk CLK_MFGSC_AO_MFGSCPLL>,
-			<&vlp_cksys_clk CLK_VLP_SCP_SEL>,
 			<&vlp_cksys_clk CLK_VLP_TIA_ULPOSC_SEL>,
 			<&afe_clk CLK_AFE_DL0_DAC_TML>,
 			<&afe_clk CLK_AFE_DL0_DAC_HIRES>,
