@@ -716,7 +716,7 @@ void vcp_aed(enum VCP_RESET_TYPE type, enum vcp_core_id id)
 
 	/* vcp aed api, only detail information available*/
 	aed_common_exception_api("vcp", NULL, 0, NULL, 0,
-			vcp_dump.detail_buff, DB_OPT_DEFAULT);
+			vcp_dump.detail_buff, DB_OPT_DEFAULT | DB_OPT_FTRACE);
 #endif
 
 	pr_debug("[VCP] vcp exception dump is done\n");
