@@ -2183,6 +2183,8 @@ static void mtk_drm_idlemgr_wb_cmdq_cb(struct cmdq_cb_data data)
 
 bool mtk_drm_idlemgr_wb_is_entered(struct mtk_drm_crtc *mtk_crtc)
 {
+	if (!mtk_crtc->idlemgr)
+		return false;
 	return mtk_crtc->idlemgr->idlemgr_ctx->wb_entered;
 }
 
@@ -2561,6 +2563,9 @@ void mtk_drm_idlemgr_wb_leave(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cm
 void mtk_drm_idlemgr_wb_leave_post(struct mtk_drm_crtc *mtk_crtc)
 {
 	unsigned int *status, *trace;
+
+	if (!mtk_crtc->idlemgr)
+		return;
 
 	status = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_IDLEMGR_BY_WB_STATUS);
 	if (*status != MTK_DRM_IDLEMGR_BY_WB_LEAVE)
