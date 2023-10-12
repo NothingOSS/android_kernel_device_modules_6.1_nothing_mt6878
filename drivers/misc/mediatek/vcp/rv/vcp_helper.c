@@ -897,7 +897,7 @@ void trigger_vcp_dump(enum vcp_core_id id, char *user, bool vote_mminfra)
 				pr_info("[VCP] Active feature id %d cnt %d\n",
 					j, feature_table[j].enable);
 
-		mtk_smi_dbg_hang_detect("VCP dump");
+		mtk_smi_dbg_dump_for_mminfra();
 
 		if (vote_mminfra)
 			vcp_turn_mminfra_off();
@@ -948,7 +948,7 @@ void trigger_vcp_halt(enum vcp_core_id id, char *user, bool vote_mminfra)
 			if (feature_table[j].enable)
 				pr_info("[VCP] Active feature id %d cnt %d\n",
 					j, feature_table[j].enable);
-		mtk_smi_dbg_hang_detect("VCP EE");
+		mtk_smi_dbg_dump_for_mminfra();
 
 		if (vote_mminfra)
 			vcp_turn_mminfra_off();
