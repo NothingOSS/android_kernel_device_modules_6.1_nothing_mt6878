@@ -14788,12 +14788,24 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		bootmode = <&chosen>;
 		reg = <0 0x00117780 0 0x30>;
 		reg-names = "ppb_sram";
-		battery-path-rdc-t0 = <95>;
-		battery-path-rac-t0 = <65>;
-		battery-path-rdc-t1 = <110>;
-		battery-path-rac-t1 = <80>;
-		battery-path-rdc-t2 = <200>;
-		battery-path-rac-t2 = <120>;
+		battery0-path-rdc-t0 = <95>;
+		battery0-path-rac-t0 = <65>;
+		battery0-path-rdc-t1 = <110>;
+		battery0-path-rac-t1 = <80>;
+		battery0-path-rdc-t2 = <200>;
+		battery0-path-rac-t2 = <120>;
+		battery1-path-rdc-t0 = <95>;
+		battery1-path-rac-t0 = <65>;
+		battery1-path-rdc-t1 = <110>;
+		battery1-path-rac-t1 = <80>;
+		battery1-path-rdc-t2 = <200>;
+		battery1-path-rac-t2 = <120>;
+		battery2-path-rdc-t0 = <95>;
+		battery2-path-rac-t0 = <65>;
+		battery2-path-rdc-t1 = <110>;
+		battery2-path-rac-t1 = <80>;
+		battery2-path-rdc-t2 = <200>;
+		battery2-path-rac-t2 = <120>;
 		max-temperature-stage = <2>;
 		temperature-threshold = <10 0>;
 		system-ocp = <13000>;
@@ -14801,10 +14813,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 		bat-ocv-table-num = <0>;
 
-		bat-ocv-table-t0-temperature = <25>;
-		bat-ocv-table-t0-qmax = <3025>;
-		bat-ocv-table-t0-size = <100>;
-		bat-ocv-table-t0 = <
+		bat0-ocv-table-t0-temperature = <25>;
+		bat0-ocv-table-t0-qmax = <3025>;
+		bat0-ocv-table-t0-size = <100>;
+		bat0-ocv-table-t0 = <
 			0       43220    0
 			305     43058    0
 			611     42936    0
@@ -14906,10 +14918,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			29915   31672    0
 			30220   28030    0>;
 
-		bat-ocv-table-t1-temperature = <10>;
-		bat-ocv-table-t1-qmax = <3010>;
-		bat-ocv-table-t1-size = <100>;
-		bat-ocv-table-t1 = <
+		bat0-ocv-table-t1-temperature = <10>;
+		bat0-ocv-table-t1-qmax = <3010>;
+		bat0-ocv-table-t1-size = <100>;
+		bat0-ocv-table-t1 = <
 			0       43030    0
 			305     42868    0
 			611     42746    0
@@ -15011,10 +15023,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			29915   28210    0
 			30220   28210    0>;
 
-		bat-ocv-table-t2-temperature = <0>;
-		bat-ocv-table-t2-qmax = <3000>;
-		bat-ocv-table-t2-size = <100>;
-		bat-ocv-table-t2 = <
+		bat0-ocv-table-t2-temperature = <0>;
+		bat0-ocv-table-t2-qmax = <3000>;
+		bat0-ocv-table-t2-size = <100>;
+		bat0-ocv-table-t2 = <
 			0       42710    0
 			305     42507    0
 			611     42356    0
@@ -15116,10 +15128,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			29915   31040    0
 			30220   31040    0>;
 
-		bat-ocv-table-t3-temperature = <(-10)>;
-		bat-ocv-table-t3-qmax = <2990>;
-		bat-ocv-table-t3-size = <100>;
-		bat-ocv-table-t3 = <
+		bat0-ocv-table-t3-temperature = <(-10)>;
+		bat0-ocv-table-t3-qmax = <2990>;
+		bat0-ocv-table-t3-size = <100>;
+		bat0-ocv-table-t3 = <
 			0       42150    0
 			305     41905    0
 			611     41641    0
