@@ -1224,6 +1224,10 @@
 		memory-region = <&ssmr_cma_mem>;
 	};
 
+	ffa: memory-ffa-enabled {
+		compatible = "mediatek,memory-ffa-enabled";
+	};
+
 	page_based_v2: page-based-v2-enabled {
 		compatible = "mediatek,page-based-v2-enabled";
 	};
