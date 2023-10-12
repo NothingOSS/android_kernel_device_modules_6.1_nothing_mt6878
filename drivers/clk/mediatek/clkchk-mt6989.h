@@ -91,7 +91,8 @@ enum chk_sys_id {
 	hfrp_hwv = 80,
 	hfrp_irq = 81,
 	vlp_ao = 82,
-	chk_sys_num = 83,
+	apmixed_ext = 83,
+	chk_sys_num = 84,
 };
 
 enum chk_pd_id {

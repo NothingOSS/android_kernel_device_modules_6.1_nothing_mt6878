@@ -22,6 +22,10 @@
 #include <mt-plat/dvfsrc-exp.h>
 #endif
 
+#ifdef CONFIG_MTK_SERROR_HOOK
+#include <trace/hooks/traps.h>
+#endif
+
 #include "clkchk.h"
 #include "clkchk-mt6989.h"
 #include "clk-fmeter.h"
@@ -1424,6 +1428,7 @@ static struct regbase rb[] = {
 	[hfrp_hwv] = REGBASE_V(0x1EC45000, hfrp_hwv, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	[hfrp_irq] = REGBASE_V(0x1EC32000, hfrp_irq, MT6989_CHK_PD_MM_INFRA, CLK_NULL),
 	[vlp_ao] = REGBASE_V(0x1C000000, vlp_ao, CLK_NULL, CLK_NULL),
+	[apmixed_ext] = REGBASE_V(0x1000C000, apmixed_ext, PD_NULL, CLK_NULL),
 	{},
 };
 
@@ -1534,6 +1539,53 @@ static struct regname rn[] = {
 	REGNAME(apmixed, 0x37c, IMGPLL_CON3),
 	REGNAME(apmixed, 0x914, PLLEN_ALL),
 	REGNAME(apmixed, 0x920, PLL_DIV_RSTB_ALL),
+	/* APMIXEDSYS extend register */
+	REGNAME(apmixed_ext, 0x000, APMIXED0),
+	REGNAME(apmixed_ext, 0x004, APMIXED1),
+	REGNAME(apmixed_ext, 0x008, APMIXED2),
+	REGNAME(apmixed_ext, 0x00C, APMIXED3),
+	REGNAME(apmixed_ext, 0x010, APMIXED4),
+	REGNAME(apmixed_ext, 0x014, APMIXED5),
+	REGNAME(apmixed_ext, 0x018, APMIXED6),
+	REGNAME(apmixed_ext, 0x01c, APMIXED7),
+	REGNAME(apmixed_ext, 0x020, APMIXED8),
+	REGNAME(apmixed_ext, 0x024, APMIXED9),
+	REGNAME(apmixed_ext, 0x028, APMIXED10),
+	REGNAME(apmixed_ext, 0x02c, APMIXED11),
+	REGNAME(apmixed_ext, 0x030, APMIXED12),
+	REGNAME(apmixed_ext, 0x034, APMIXED13),
+	REGNAME(apmixed_ext, 0x038, APMIXED14),
+	REGNAME(apmixed_ext, 0x03c, APMIXED15),
+	REGNAME(apmixed_ext, 0x040, APMIXED16),
+	REGNAME(apmixed_ext, 0x044, APMIXED17),
+	REGNAME(apmixed_ext, 0x048, APMIXED18),
+	REGNAME(apmixed_ext, 0x04c, APMIXED19),
+	REGNAME(apmixed_ext, 0x050, APMIXED20),
+	REGNAME(apmixed_ext, 0x054, APMIXED21),
+	REGNAME(apmixed_ext, 0x800, APMIXED22),
+	REGNAME(apmixed_ext, 0x804, APMIXED23),
+	REGNAME(apmixed_ext, 0x808, APMIXED24),
+	REGNAME(apmixed_ext, 0x80c, APMIXED25),
+	REGNAME(apmixed_ext, 0x810, APMIXED26),
+	REGNAME(apmixed_ext, 0x814, APMIXED27),
+	REGNAME(apmixed_ext, 0x818, APMIXED28),
+	REGNAME(apmixed_ext, 0x81c, APMIXED29),
+	REGNAME(apmixed_ext, 0x820, APMIXED30),
+	REGNAME(apmixed_ext, 0x824, APMIXED31),
+	REGNAME(apmixed_ext, 0x828, APMIXED32),
+	REGNAME(apmixed_ext, 0x82c, APMIXED33),
+	REGNAME(apmixed_ext, 0x834, APMIXED34),
+	REGNAME(apmixed_ext, 0x838, APMIXED35),
+	REGNAME(apmixed_ext, 0x83c, APMIXED36),
+	REGNAME(apmixed_ext, 0x840, APMIXED37),
+	REGNAME(apmixed_ext, 0x844, APMIXED38),
+	REGNAME(apmixed_ext, 0x848, APMIXED39),
+	REGNAME(apmixed_ext, 0x84c, APMIXED40),
+	REGNAME(apmixed_ext, 0x850, APMIXED41),
+	REGNAME(apmixed_ext, 0x900, APMIXED42),
+	REGNAME(apmixed_ext, 0x904, APMIXED43),
+	REGNAME(apmixed_ext, 0x908, APMIXED44),
+	REGNAME(apmixed_ext, 0x90c, APMIXED45),
 	/* BCRM_INFRA1_BUS register */
 	REGNAME(bcrm_infra1_bus, 0x008, BCRM_INFRA_AO1_PROTECT_EN_0),
 	REGNAME(bcrm_infra1_bus, 0x00c, BCRM_INFRA_AO1_PROTECT_RDY_STA_0),
@@ -2607,9 +2659,34 @@ static void devapc_dump(void)
 	mdelay(5000);
 }
 
+static struct devapc_vio_callbacks devapc_vio_handle = {
+	.id = DEVAPC_SUBSYS_CLKMGR,
+	.debug_dump = devapc_dump,
+};
+#endif
+
+struct fm_chk {
+	u32 id;
+	u32 type;
+	u32 freq;
+	s8 en_bit;
+	s8 rst_b_bit;
+};
+
+static struct fm_chk freq_chk[] = {
+	{FM_MAINPLL2_CKDIV_CK, ABIST_CK2, 2184000, 13, 6},
+	{FM_UNIVPLL2_192M_CK, ABIST_CK2, 2496000, 12, 5},
+	{FM_MMPLL2_CKDIV_CK, ABIST_CK2, 2750000, 11, 4},
+	{FM_TVDPLL_CKDIV_CK, ABIST_CK2, 594000, 4, -1},
+	{0, 0, 0, -1, -1}
+};
+
+#ifdef CONFIG_MTK_SERROR_HOOK
 static void serror_dump(void)
 {
 	const struct fmeter_clk *fclks;
+	unsigned int freq = 0, pll_en = 0;
+	int i = 0;
 
 	fclks = mt_get_fmeter_clks();
 
@@ -2631,19 +2708,28 @@ static void serror_dump(void)
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
 
+	for (i = 0; freq_chk[i].freq != 0; i++) {
+		freq = mt_get_fmeter_freq(freq_chk[i].id, freq_chk[i].type);
+		pll_en = get_mt6989_reg_value(apmixed, 0x914);
+		if ((pll_en & BIT(freq_chk[i].en_bit)) && abs(freq - freq_chk[i].freq) >10000) {
+			write_mt6989_reg_value(apmixed, 0x928, BIT(freq_chk[i].rst_b_bit));
+			write_mt6989_reg_value(apmixed, 0x91c, BIT(freq_chk[i].en_bit));
+			write_mt6989_reg_value(apmixed, 0x918, BIT(freq_chk[i].en_bit));
+			udelay(20);
+			write_mt6989_reg_value(apmixed, 0x924, BIT(freq_chk[i].rst_b_bit));
+			pr_notice("freq retry[%d] %d khz\n", freq_chk[i].id,
+					mt_get_fmeter_freq(freq_chk[i].id, freq_chk[i].type));
+		}
+	}
+
 	mdelay(5000);
 }
 
-static struct devapc_vio_callbacks devapc_vio_handle = {
-	.id = DEVAPC_SUBSYS_CLKMGR,
-	.debug_dump = devapc_dump,
-};
-
-static struct devapc_vio_callbacks serror_handle = {
-	.id = DEVAPC_SUBSYS_CLKM,
-	.debug_dump = serror_dump,
-};
-
+static void clkchk_arm64_serror_panic_hook(void *data,
+		struct pt_regs *regs, unsigned long esr)
+{
+	serror_dump();
+}
 #endif
 
 static const char * const off_pll_names[] = {
@@ -2933,6 +3019,238 @@ static void check_mm_hwv_irq_sta(void)
 		dump_pll_reg(true);
 }
 
+static enum chk_sys_id apmixed_dump_id[] = {
+	top,
+	apmixed,
+	apmixed_ext,
+	chk_sys_num,
+};
+
+enum {
+	CLKCHK_UNIVPLL2_D3,
+	CLKCHK_UNIVPLL2_D4,
+	CLKCHK_UNIVPLL2_D4_D2,
+	CLKCHK_UNIVPLL2_D5,
+	CLKCHK_UNIVPLL2_D5_D2,
+	CLKCHK_UNIVPLL2_D6,
+	CLKCHK_UNIVPLL2_D6_D2,
+	CLKCHK_UNIVPLL2_D6_D8,
+	CLKCHK_UNIVPLL2_D7,
+	CLKCHK_TVDPLL_D2,
+	CLKCHK_TVDPLL_D4,
+	CLKCHK_MMPLL2_D4,
+	CLKCHK_MMPLL2_D5,
+	CLKCHK_MMPLL2_D5_D2,
+	CLKCHK_MMPLL2_D6,
+	CLKCHK_IMGPLL_D2,
+	CLKCHK_IMGPLL_D4_65V,
+	CLKCHK_IMGPLL_D4_725V,
+	CLKCHK_MAINPLL_D4_D2,
+	CLKCHK_MAINPLL_D5_D2,
+	CLKCHK_MAINPLL_D6,
+	CLKCHK_MAINPLL2_D3,
+	CLKCHK_MAINPLL2_D4,
+	CLKCHK_MAINPLL2_D4_D2,
+	CLKCHK_MAINPLL2_D5_D2,
+	CLKCHK_MAINPLL2_D6,
+};
+
+static unsigned int mux_clksrc_freq[] = {
+	[CLKCHK_UNIVPLL2_D3] = 832000,
+	[CLKCHK_UNIVPLL2_D4] = 624000,
+	[CLKCHK_UNIVPLL2_D4_D2] = 312000,
+	[CLKCHK_UNIVPLL2_D5] = 499200,
+	[CLKCHK_UNIVPLL2_D5_D2] = 2496000,
+	[CLKCHK_UNIVPLL2_D6] = 416000,
+	[CLKCHK_UNIVPLL2_D6_D2] = 208000,
+	[CLKCHK_UNIVPLL2_D6_D8] = 52000,
+	[CLKCHK_UNIVPLL2_D7] = 356571,
+	[CLKCHK_TVDPLL_D2] = 297000,
+	[CLKCHK_TVDPLL_D4] = 148500,
+	[CLKCHK_MMPLL2_D4] = 687500,
+	[CLKCHK_MMPLL2_D5] = 550000,
+	[CLKCHK_MMPLL2_D5_D2] = 275000,
+	[CLKCHK_MMPLL2_D6] = 458333,
+	[CLKCHK_IMGPLL_D2] = 1320000,
+	[CLKCHK_IMGPLL_D4_65V] = 564000,
+	[CLKCHK_IMGPLL_D4_725V] = 660000,
+	[CLKCHK_MAINPLL_D4_D2] = 273000,
+	[CLKCHK_MAINPLL_D5_D2] = 218400,
+	[CLKCHK_MAINPLL_D6] = 364000,
+	[CLKCHK_MAINPLL2_D3] = 728000,
+	[CLKCHK_MAINPLL2_D4] = 546000,
+	[CLKCHK_MAINPLL2_D4_D2] = 273000,
+	[CLKCHK_MAINPLL2_D5_D2] = 218400,
+	[CLKCHK_MAINPLL2_D6] = 364000,
+};
+
+const int mux_clksrc[] = {
+	/* CKSYS2_CLK_CFG_0 */
+	-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,CLKCHK_UNIVPLL2_D6_D8,-1,-1,-1,-1,
+	-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,CLKCHK_UNIVPLL2_D6_D8,-1,-1,-1,-1,
+	-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,CLKCHK_UNIVPLL2_D6_D8,-1,-1,-1,-1,
+	-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,CLKCHK_UNIVPLL2_D6_D8,-1,-1,-1,-1,
+	/* CKSYS2_CLK_CFG_1 */
+	-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,CLKCHK_UNIVPLL2_D6_D8,-1,-1,-1,-1,
+	-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,CLKCHK_UNIVPLL2_D6_D8,-1,-1,-1,-1,
+	-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,CLKCHK_UNIVPLL2_D6_D8,-1,-1,-1,-1,
+	-1,-1,-1,-1,-1,-1,-1,-1,
+	-1,CLKCHK_UNIVPLL2_D4_D2,-1,CLKCHK_UNIVPLL2_D7,-1,-1,CLKCHK_UNIVPLL2_D6,CLKCHK_UNIVPLL2_D5,
+	/* CKSYS2_CLK_CFG_2 */
+	-1,-1,-1,-1,-1,-1,-1,-1,
+	-1,CLKCHK_UNIVPLL2_D4_D2,-1,CLKCHK_UNIVPLL2_D7,-1,-1,CLKCHK_UNIVPLL2_D6,CLKCHK_UNIVPLL2_D5,
+	-1,-1,-1,-1,-1,-1,-1,-1,
+	-1,CLKCHK_UNIVPLL2_D4_D2,-1,CLKCHK_UNIVPLL2_D7,-1,-1,CLKCHK_UNIVPLL2_D6,CLKCHK_UNIVPLL2_D5,
+	-1,-1,-1,-1,-1,-1,-1,-1,
+	-1,CLKCHK_UNIVPLL2_D4_D2,-1,CLKCHK_UNIVPLL2_D7,-1,-1,CLKCHK_UNIVPLL2_D6,CLKCHK_UNIVPLL2_D5,
+	-1,-1,-1,-1,-1,-1,-1,-1,
+	-1,CLKCHK_UNIVPLL2_D4_D2,-1,CLKCHK_UNIVPLL2_D7,-1,-1,CLKCHK_UNIVPLL2_D6,CLKCHK_UNIVPLL2_D5,
+	/* CKSYS2_CLK_CFG_3 */
+	-1,-1,-1,-1,-1,-1,-1,-1,
+	-1,CLKCHK_UNIVPLL2_D4_D2,-1,CLKCHK_UNIVPLL2_D7,-1,-1,CLKCHK_UNIVPLL2_D6,CLKCHK_UNIVPLL2_D5,
+	-1,-1,CLKCHK_MAINPLL2_D5_D2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+	-1,-1,-1,-1,-1,-1,CLKCHK_UNIVPLL2_D4_D2,-1,
+	-1,CLKCHK_UNIVPLL2_D6,-1,-1,CLKCHK_MMPLL2_D5,-1,CLKCHK_IMGPLL_D4_725V,-1,
+	-1,-1,-1,-1,-1,CLKCHK_UNIVPLL2_D4_D2,-1,-1,
+	CLKCHK_UNIVPLL2_D6,-1,CLKCHK_MMPLL2_D5,CLKCHK_IMGPLL_D4_725V,-1,-1,-1,-1,
+	/* CKSYS2_CLK_CFG_4 */
+	-1,-1,-1,-1,-1,-1,CLKCHK_UNIVPLL2_D4_D2,-1,
+	-1,CLKCHK_UNIVPLL2_D6,-1,-1,-1,-1,CLKCHK_IMGPLL_D4_65V,CLKCHK_MMPLL2_D4,
+	-1,-1,-1,-1,CLKCHK_UNIVPLL2_D6_D2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+	-1,-1,CLKCHK_UNIVPLL2_D4_D2,-1,CLKCHK_UNIVPLL2_D6,-1,CLKCHK_UNIVPLL2_D5,CLKCHK_MMPLL2_D5,
+	-1,-1,-1,-1,-1,-1,-1,-1,
+	-1,-1,-1,-1,-1,CLKCHK_MAINPLL_D5_D2,-1,-1,
+	CLKCHK_MAINPLL2_D4_D2,-1,-1,CLKCHK_UNIVPLL2_D6,-1,CLKCHK_MAINPLL2_D4,CLKCHK_IMGPLL_D2,-1,
+	/* CKSYS2_CLK_CFG_5 */
+	-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,CLKCHK_UNIVPLL2_D3,-1,-1,-1,-1,
+	-1,-1,-1,-1,CLKCHK_UNIVPLL2_D6_D2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+	-1,-1,CLKCHK_UNIVPLL2_D5_D2,-1,-1,CLKCHK_UNIVPLL2_D4_D2,-1,-1,
+	-1,-1,CLKCHK_MAINPLL2_D6,-1,-1,CLKCHK_UNIVPLL2_D4,CLKCHK_MMPLL2_D4,-1,
+	-1,-1,-1,CLKCHK_TVDPLL_D4,CLKCHK_TVDPLL_D2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+	/* CKSYS2_CLK_CFG_6 */
+	-1,-1,-1,CLKCHK_TVDPLL_D4,CLKCHK_TVDPLL_D2,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+	-1,-1,-1,-1,CLKCHK_MAINPLL_D4_D2,-1,CLKCHK_MAINPLL2_D6,-1,
+	CLKCHK_MMPLL2_D6,-1,CLKCHK_UNIVPLL2_D4,CLKCHK_MAINPLL2_D3,-1,-1,-1,-1,
+	-1,-1,-1,-1,-1,CLKCHK_MAINPLL_D4_D2,-1,CLKCHK_MAINPLL2_D6,
+	-1,CLKCHK_MMPLL2_D6,-1,CLKCHK_UNIVPLL2_D4,CLKCHK_MAINPLL2_D3,-1,-1,-1,
+	-1,-1,-1,CLKCHK_MAINPLL_D5_D2,-1,-1,-1,CLKCHK_MAINPLL_D6,
+	-1,-1,CLKCHK_MMPLL2_D6,-1,-1,CLKCHK_UNIVPLL2_D4,-1,CLKCHK_MAINPLL2_D3,
+	/* CKSYS2_CLK_CFG_7 */
+	-1,-1,-1,-1,-1,-1,CLKCHK_MAINPLL2_D3,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+};
+
+
+
+static void check_apmixed_sta(bool bug_on)
+{
+	const struct fmeter_clk *fclks;
+	unsigned int ckgen2_result[FM_CKGEN_2_NUM] = {0};
+	unsigned int abist2_result[FM_ABIST_2_NUM] = {0};
+	unsigned int freq = 0, golden_freq = 0;
+	unsigned int pll_en = 0, mux_val = 0, mux_shift = 0, mux_sel = 0;
+	unsigned int mux_sel_mask = 0, mux_pdn_mask = 0;
+	int i = 0, j= 0;
+
+	fclks = mt_get_fmeter_clks();
+	set_subsys_reg_dump_mt6989(apmixed_dump_id);
+
+	/* dump fmeter */
+	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
+		if (fclks->type == CKGEN_CK2) {
+			ckgen2_result[i] = mt_get_fmeter_freq(fclks->id, fclks->type);
+			i++;
+		} else if (fclks->type == ABIST_CK2) {
+			abist2_result[j] = mt_get_fmeter_freq(fclks->id, fclks->type);
+			j++;
+		}
+	}
+
+	get_subsys_reg_dump_mt6989();
+
+	for (i = 0; i < FM_CKGEN_2_NUM; i++) {
+		if (ckgen2_result[i] != 0)
+			pr_notice("ckgen2[%d] %d khz\n", i, ckgen2_result[i]);
+	}
+
+	for (i = 0; i < FM_ABIST_2_NUM; i++) {
+		if (abist2_result[i] != 0)
+			pr_notice("abist2[%d] %d khz\n", i, abist2_result[i]);
+	}
+
+	pr_notice("Start dump hwccf voter:\n");
+	pr_notice("AP cg voter 30:%x\n", get_mt6989_reg_value(mm_hwv, 0x0F0));
+	pr_notice("AP cg voter 31:%x\n", get_mt6989_reg_value(mm_hwv, 0x0F8));
+	pr_notice("AP cg voter 32:%x\n", get_mt6989_reg_value(mm_hwv, 0x100));
+	pr_notice("AP cg voter 33:%x\n", get_mt6989_reg_value(mm_hwv, 0x108));
+	pr_notice("VCP cg voter 30:%x\n", get_mt6989_reg_value(mm_hwv, 0xEF0));
+	pr_notice("VCP cg voter 31:%x\n", get_mt6989_reg_value(mm_hwv, 0xEF8));
+	pr_notice("VCP cg voter 32:%x\n", get_mt6989_reg_value(mm_hwv, 0xF00));
+	pr_notice("VCP cg voter 33:%x\n", get_mt6989_reg_value(mm_hwv, 0xF08));
+	pr_notice("SCP cg voter 30:%x\n", get_mt6989_reg_value(mm_hwv_ext, 0x2F0));
+	pr_notice("SCP cg voter 31:%x\n", get_mt6989_reg_value(mm_hwv_ext, 0x2F8));
+	pr_notice("SCP cg voter 32:%x\n", get_mt6989_reg_value(mm_hwv_ext, 0x300));
+	pr_notice("SCP cg voter 33:%x\n", get_mt6989_reg_value(mm_hwv_ext, 0x308));
+
+	if (bug_on) {
+		for (i = 0; freq_chk[i].freq != 0; i++) {
+			freq = mt_get_fmeter_freq(freq_chk[i].id, freq_chk[i].type);
+			pll_en = get_mt6989_reg_value(apmixed, 0x914);
+			if ((pll_en & BIT(freq_chk[i].en_bit)) && abs(freq - freq_chk[i].freq) >10000) {
+				write_mt6989_reg_value(apmixed, 0x928, BIT(freq_chk[i].rst_b_bit));
+				write_mt6989_reg_value(apmixed, 0x91c, BIT(freq_chk[i].en_bit));
+				write_mt6989_reg_value(apmixed, 0x918, BIT(freq_chk[i].en_bit));
+				udelay(20);
+				write_mt6989_reg_value(apmixed, 0x924, BIT(freq_chk[i].rst_b_bit));
+				pr_notice("freq retry[%d] %d khz\n", freq_chk[i].id,
+						mt_get_fmeter_freq(freq_chk[i].id, freq_chk[i].type));
+			}
+		}
+		pr_notice("Start measure univpll2_192M 10 times:\n");
+		for (i = 0; i < 10; i++) {
+			freq = mt_get_fmeter_freq(FM_UNIVPLL2_192M_CK, ABIST_CK2);
+			pr_notice("%d. univpll2_192M = %d khz\n", i, freq);
+			udelay(20);
+		}
+		pr_notice("Start measure cksys2 mux freq:\n");
+		for (i = 0; i < FM_CKGEN_2_NUM-1; i++) {
+			// get mux reg val
+			mux_val = get_mt6989_reg_value(top, 0x810+(i/4)*0x10);
+			// get pdn_bit to check whether mux is on/off
+			mux_pdn_mask = BIT((i%4)*8) << 7;
+			// get mux freq
+			freq = mt_get_fmeter_freq(i+1, CKGEN_CK2);
+
+			// check whether mux is on/off
+			if (mux_val & mux_pdn_mask) {
+				pr_notice("ckgen_2[%d] is off, freq = %d khz\n", i+1, freq);
+				continue;
+			}
+			pr_notice("ckgen_2[%d] is on, freq = %d khz\n", i+1, freq);
+			// check mux golden
+			mux_shift = (i%4)*8;
+			mux_sel_mask = GENMASK(6 ,0) << mux_shift;
+			mux_sel = (mux_val & mux_sel_mask) >> mux_shift;
+
+			if (mux_clksrc[i*16+mux_sel] == -1){
+				pr_notice("ckgen_2[%d] selects wrong clksrc(%u)\n", i+1, mux_sel);
+				continue;
+			}
+
+			// re-measure 5 times if freq > golden+10Mhz or freq < golden-10Mhz
+			golden_freq = mux_clksrc_freq[mux_clksrc[i*16+mux_sel]];
+			if ((freq > golden_freq + 10000) || (freq < golden_freq - 10000)) {
+				for (j = 0; j < 5; j++) {
+					freq = mt_get_fmeter_freq(i+1, CKGEN_CK2);
+					pr_notice("%d. ckgen_2[%d] freq = %d khz\n",j, i+1, freq);
+					udelay(20);
+				}
+			}
+		}
+	}
+
+	BUG_ON(1);
+}
+
 /*
  * init functions
  */
@@ -2960,10 +3278,15 @@ static struct clkchk_ops clkchk_mt6989_ops = {
 	.check_hwv_irq_sta = check_hwv_irq_sta,
 	.check_mm_hwv_irq_sta = check_mm_hwv_irq_sta,
 	.is_suspend_retry_stop = is_suspend_retry_stop,
+	.check_apmixed_sta = check_apmixed_sta,
 };
 
 static int clk_chk_mt6989_probe(struct platform_device *pdev)
 {
+#ifdef CONFIG_MTK_SERROR_HOOK
+	int ret = 0;
+#endif
+
 	suspend_cnt = 0;
 
 	init_regbase();
@@ -2974,7 +3297,13 @@ static int clk_chk_mt6989_probe(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 	register_devapc_vio_callback(&devapc_vio_handle);
-	register_devapc_vio_callback(&serror_handle);
+#endif
+
+#ifdef CONFIG_MTK_SERROR_HOOK
+	ret = register_trace_android_rvh_arm64_serror_panic(
+			clkchk_arm64_serror_panic_hook, NULL);
+	if (ret)
+		pr_info("register android_rvh_arm64_serror_panic failed!\n");
 #endif
 
 #if CHECK_VCORE_FREQ

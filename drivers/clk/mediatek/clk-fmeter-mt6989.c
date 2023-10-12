@@ -107,6 +107,7 @@ static DEFINE_SPINLOCK(subsys_meter_lock);
 
 
 static void __iomem *fm_base[FM_SYS_NUM];
+static unsigned int fm_ckdiv_en;
 
 struct fmeter_data {
 	enum fm_sys_id type;
@@ -429,7 +430,6 @@ static unsigned int get_clk_div(unsigned int type, unsigned int ID)
 static void set_clk_div_en(unsigned int type, unsigned int ID, bool onoff)
 {
 	void __iomem *pll_con0 = NULL;
-	unsigned int ckdiv_en = 0;
 	int i;
 
 	if (type != ABIST && type != ABIST_CK2)
@@ -453,12 +453,12 @@ static void set_clk_div_en(unsigned int type, unsigned int ID, bool onoff)
 	if (onoff) {
 		// check ckdiv_en
 		if (clk_readl(pll_con0) & FM_CKDIV_EN)
-			ckdiv_en = 1;
+			fm_ckdiv_en = 1;
 		// pll con0[17] = 1
 		// select pll_ckdiv, enable pll_ckdiv, enable test clk
 		clk_writel(pll_con0, (clk_readl(pll_con0) | FM_CKDIV_EN));
 	} else {
-		if (!ckdiv_en)
+		if (!fm_ckdiv_en)
 			clk_writel(pll_con0, (clk_readl(pll_con0) & ~(FM_CKDIV_EN)));
 	}
 }
