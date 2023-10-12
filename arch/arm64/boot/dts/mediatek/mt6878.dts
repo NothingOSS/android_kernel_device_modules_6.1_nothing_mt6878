@@ -92,65 +92,81 @@
 		cpu0: cpu@0 {
 			device_type = "cpu";
 			reg = <0x0000>;
+			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
+			// capacity-dmips-mhz  = <283>;
 		};
 
 		cpu1: cpu@1 {
 			device_type = "cpu";
 			reg = <0x0100>;
+			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
+			// capacity-dmips-mhz  = <283>;
 		};
 
 		cpu2: cpu@2 {
 			device_type = "cpu";
 			reg = <0x0200>;
+			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
+			// capacity-dmips-mhz  = <283>;
 		};
 
 		cpu3: cpu@3 {
 			device_type = "cpu";
 			reg = <0x0300>;
+			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
+			// capacity-dmips-mhz  = <283>;
 		};
 
 		cpu4: cpu@100 {
 			device_type = "cpu";
 			reg = <0x0400>;
+			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 						&system_vcore &s2idle>;
+			// capacity-dmips-mhz  = <1024>;
 		};
 
 		cpu5: cpu@101 {
 			device_type = "cpu";
 			reg = <0x0500>;
+			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 						&system_vcore &s2idle>;
+			// capacity-dmips-mhz  = <1024>;
 		};
 
 		cpu6: cpu@102 {
 			device_type = "cpu";
 			reg = <0x0600>;
+			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 						&system_vcore &s2idle>;
+			// capacity-dmips-mhz  = <1024>;
 		};
 
 		cpu7: cpu@103 {
 			device_type = "cpu";
 			reg = <0x0700>;
+			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 						&system_vcore &s2idle>;
+			// capacity-dmips-mhz  = <1024>;
 		};
 
 		cpu-map {
@@ -1484,6 +1500,34 @@
 		reg = <0 0x10000000 0 0x1000>;
 		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
+	};
+
+	cpuhvfs: cpuhvfs@114400{
+		compatible = "mediatek,cpufreq-hybrid";
+		reg = <0 0x00114400 0 0xc00>,
+			<0 0x0011bc00 0 0x1400>,
+			<0 0x00118000 0 0x800>,
+			<0 0x00114f40 0 0xc0>;
+
+		reg-names = "USRAM", "CSRAM", "ESRAM";
+		cslog-range =  <0x03d0>, <0x0fa0>;
+		tbl-off = <4>, <76>, <148>;
+
+		/* pll mcucfg */
+		mcucfg-ver = <0>;
+		apmixedsys = <&cpu_pll>;
+		clk-div-base = <&cpu_mcucfg>;
+		pll-con = <0x208>, <0x218>, <0x228>;
+		clk-div = <0xa2a0>, <0xa2a4>, <0xa2e0>;
+
+		/* regulator */
+		proc1-supply = <&mt6363_vbuck5>; //L
+		proc2-supply = <&mt6363_vbuck6>; //B
+		proc3-supply = <&mt6363_vbuck5>; //DSU
+
+		/* leakage info */
+		// nvmem-cells = <&lkginfo>;
+		// nvmem-cell-names = "lkginfo";
 	};
 
 	infra_ao_reg_clk: syscon@10001000 {
@@ -3387,6 +3431,35 @@
 		mbist-ao@10013000 {
 			compatible = "mediatek,mbist_ao";
 			reg = <0 0x10013000 0 0x1000>;
+		};
+
+		lkg: lkg@114400{
+			compatible = "mediatek,mtk-lkg";
+			reg = <0 0x00114400 0 0xc00>;
+		};
+
+		performance: performance-controller@11bc00 {
+			compatible = "mediatek,cpufreq-hw";
+			reg = <0 0x0011bc10 0 0x120>,
+					<0 0x0011bd30 0 0x120>;
+			reg-names = "performance-domain0",
+					"performance-domain1";
+			#performance-domain-cells = <1>;
+		};
+
+		eas_info: eas-info {
+			compatible = "mediatek,eas-info";
+			csram-base = <0x0011bc00>;
+			/* EAS_5_5 : 550, EAS_5_5_1 : 551, EAS_6_1 : 600*/
+			version = <600>;
+		};
+
+		cpu_mcucfg: mcusys-ao-cfg@c530000 {
+			reg = <0 0x0c000000 0 0x10000>; /* 64KB */
+		};
+
+		cpu_pll: mcusys-pll1u-top@1000c000 {
+			reg = <0 0x0c030000 0 0x1000>; /* 4KB */
 		};
 
 		topckgen-ao@1001b000 {
