@@ -102,6 +102,14 @@
 #define MAX_BRIGHTNESS_CLONE 16383
 #define PHYSICAL_WIDTH              69540
 #define PHYSICAL_HEIGHT             154584
+static unsigned int nt37706_vdo_120hz_dphy_buf_thresh[14] ={896, 1792, 2688, 3584, 4480,
+	5376, 6272, 6720, 7168, 7616, 7744, 7872, 8000, 8064};
+static unsigned int nt37706_vdo_120hz_dphy_range_min_qp[15] ={0, 4, 5, 5, 7, 7, 7, 7, 7,
+	7, 9, 9, 9, 11, 17};
+static unsigned int nt37706_vdo_120hz_dphy_range_max_qp[15] ={8, 8, 9, 10, 11, 11, 11,
+	12, 13, 14, 15, 16, 17, 17, 19};
+static int nt37706_vdo_120hz_dphy_range_bpg_ofs[15] ={2, 0, 0, -2, -4, -6, -8, -8, -8,
+	-10, -10, -12, -12, -12, -12};
 
 
 #ifndef BYPASSI2C
@@ -787,6 +795,13 @@ static struct mtk_panel_params ext_params_60hz = {
 		.rc_quant_incr_limit1  =  DSC_RC_QUANT_INCR_LIMIT1,
 		.rc_tgt_offset_hi      =  DSC_RC_TGT_OFFSET_HI,
 		.rc_tgt_offset_lo      =  DSC_RC_TGT_OFFSET_LO,
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = nt37706_vdo_120hz_dphy_buf_thresh,
+			.range_min_qp = nt37706_vdo_120hz_dphy_range_min_qp,
+			.range_max_qp = nt37706_vdo_120hz_dphy_range_max_qp,
+			.range_bpg_ofs = nt37706_vdo_120hz_dphy_range_bpg_ofs,
+			},
 	},
 	.data_rate = DATA_RATE,
 #ifdef CONFIG_M_DISP_FOD_SYNC
@@ -850,6 +865,13 @@ static struct mtk_panel_params ext_params_90hz = {
 		.rc_quant_incr_limit1  =  DSC_RC_QUANT_INCR_LIMIT1,
 		.rc_tgt_offset_hi      =  DSC_RC_TGT_OFFSET_HI,
 		.rc_tgt_offset_lo      =  DSC_RC_TGT_OFFSET_LO,
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = nt37706_vdo_120hz_dphy_buf_thresh,
+			.range_min_qp = nt37706_vdo_120hz_dphy_range_min_qp,
+			.range_max_qp = nt37706_vdo_120hz_dphy_range_max_qp,
+			.range_bpg_ofs = nt37706_vdo_120hz_dphy_range_bpg_ofs,
+			},
 		},
 	.data_rate = DATA_RATE,
 	.lfr_enable = 0,
@@ -916,6 +938,13 @@ static struct mtk_panel_params ext_params_120hz = {
 		.rc_quant_incr_limit1  =  DSC_RC_QUANT_INCR_LIMIT1,
 		.rc_tgt_offset_hi      =  DSC_RC_TGT_OFFSET_HI,
 		.rc_tgt_offset_lo      =  DSC_RC_TGT_OFFSET_LO,
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = nt37706_vdo_120hz_dphy_buf_thresh,
+			.range_min_qp = nt37706_vdo_120hz_dphy_range_min_qp,
+			.range_max_qp = nt37706_vdo_120hz_dphy_range_max_qp,
+			.range_bpg_ofs = nt37706_vdo_120hz_dphy_range_bpg_ofs,
+			},
 		},
 	.data_rate = DATA_RATE,
 	.dyn_fps = {
