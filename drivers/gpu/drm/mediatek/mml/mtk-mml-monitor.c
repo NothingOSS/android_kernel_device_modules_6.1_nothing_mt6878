@@ -12,6 +12,7 @@
 
 #include "mtk-mml-driver.h"
 #include "mtk-mml-core.h"
+#include "mtk-mml.h"
 
 #define SWPM_NEEDED_MOUDLE_CNT	5 /* for 1 sys and maximum 4 wrot */
 #define VIDO_INT_EN		0x018
@@ -19,7 +20,7 @@
 #define SYS_CG_CON0		0x100
 #define SYS_CG_CON1		0x110
 #define WROT_DEBUG_19		0x00001900
-#define INIT_INTERVAL		100 /* us */
+#define INIT_INTERVAL		16000 /* us */
 #define INIT_INTERVAL_BIAS	50
 
 /* Monitor thread */
@@ -38,8 +39,7 @@ struct mml_comp_with_status {
 static struct mml_comp_with_status mml_swpm_comp[SWPM_NEEDED_MOUDLE_CNT];
 
 /* Store status that will update to swpm */
-static u32 wrot_status[SWPM_NEEDED_MOUDLE_CNT - 1];
-static u32 cg_con0, cg_con1, mml_freq;
+static u32 mml_freq, mml_freq_old, mml_pq, mml_pq_old;
 
 /* Function pointer assigned by swpm */
 static struct mml_swpm_func swpm_funcs;
@@ -82,41 +82,48 @@ void mml_update_freq_status(u32 freq)
 
 	mml_freq = freq;
 }
+/* Called when pq change */
+void mml_update_pq_status(const void *pq)
+{
+	u32 pq_cfg = 0;
+	const struct mml_pq_config *pq_config = pq;
+
+	if (!pq_config)
+		return;
+
+	if (!mml_monitor_enable || !mml_get_swpm_func()->set_func)
+		return;
+
+	pq_cfg |= pq_config->en << 0;
+	pq_cfg |= pq_config->en_sharp << 1;
+	pq_cfg |= pq_config->en_ur << 2;
+	pq_cfg |= pq_config->en_dc << 3;
+	pq_cfg |= pq_config->en_color << 4;
+	pq_cfg |= pq_config->en_hdr << 5;
+	pq_cfg |= pq_config->en_ccorr << 6;
+	pq_cfg |= pq_config->en_dre << 7;
+	pq_cfg |= pq_config->en_region_pq << 8;
+	pq_cfg |= pq_config->en_fg << 9;
+
+	mml_pq = pq_cfg;
+}
 
 /* Monitor */
 static int create_monitor(void *arg)
 {
-	void __iomem *base;
-	u32 i;
 
 	while (!kthread_should_stop()) {
 		/* Update status here */
 		/* freq*/
-		mml_get_swpm_func()->update_freq(mml_freq);
-
-		/* sys : CGs */
-		mutex_lock(&mml_swpm_comp[mml_mon_mmlsys].comp_mutex);
-		if (mml_swpm_comp[mml_mon_mmlsys].status) {
-			base = mml_swpm_comp[mml_mon_mmlsys].comp->base;
-			cg_con0 = readl(base + SYS_CG_CON0);
-			cg_con1 = readl(base + SYS_CG_CON1);
-			mml_get_swpm_func()->update_cg(cg_con0, cg_con1);
+		if (mml_freq_old != mml_freq) {
+			mml_get_swpm_func()->update_freq(mml_freq);
+			mml_freq_old = mml_freq;
 		}
-		mutex_unlock(&mml_swpm_comp[mml_mon_mmlsys].comp_mutex);
-
-		/* wrots */
-		for (i = mml_mon_wrot; i < SWPM_NEEDED_MOUDLE_CNT; i++) {
-			mutex_lock(&mml_swpm_comp[i].comp_mutex);
-			if (mml_swpm_comp[i].status) {
-				base = mml_swpm_comp[i].comp->base;
-				writel(WROT_DEBUG_19, base + VIDO_INT_EN);
-				/* get bit 3 for wrot status */
-				wrot_status[i - mml_mon_wrot] = (readl(base + VIDO_DEBUG) >> 3) & 1;
-			}
-			mutex_unlock(&mml_swpm_comp[i].comp_mutex);
+		/* pq*/
+		if (mml_pq_old != mml_pq) {
+			mml_get_swpm_func()->update_pq(mml_pq);
+			mml_pq_old = mml_pq;
 		}
-		mml_get_swpm_func()->update_wrot(wrot_status[0], wrot_status[1],
-			wrot_status[2], wrot_status[3]);
 
 		/* Sleep 100us then take status again */
 		usleep_range(monitor_interval, monitor_interval + INIT_INTERVAL_BIAS);

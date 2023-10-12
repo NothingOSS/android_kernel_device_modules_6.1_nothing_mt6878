@@ -285,6 +285,7 @@ phys_addr_t mml_get_node_base_pa(struct platform_device *pdev, const char *name,
 void mml_init_swpm_comp(u32 idx, struct mml_comp *comp);
 void mml_update_comp_status(u32 idx, u32 status);
 void mml_update_freq_status(u32 freq);
+void mml_update_pq_status(const void *pq);
 struct mml_swpm_func *mml_get_swpm_func(void);
 
 struct mml_swpm_func {
@@ -292,6 +293,7 @@ struct mml_swpm_func {
 	void (*update_wrot)(u32 wrot0_sts, u32 wrot1_sts, u32 wrot2_sts, u32 wrot3_sts);
 	void (*update_cg)(u32 cg_con0, u32 cg_con1);
 	void (*update_freq)(u32 freq);
+	void (*update_pq)(u32 pq);
 };
 
 enum mml_mon_mods {

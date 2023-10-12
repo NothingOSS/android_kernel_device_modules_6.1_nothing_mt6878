@@ -57,6 +57,11 @@ void update_mml_freq_status (u32 freq)
 	mml_swpm_data_ptr->MML_freq = freq;
 }
 
+void update_mml_pq_status (u32 pq)
+{
+	mml_swpm_data_ptr->MML_pq = pq;
+}
+
 int swpm_mml_v6989_init(void)
 {
 	unsigned int offset_mml;
@@ -82,6 +87,7 @@ int swpm_mml_v6989_init(void)
 	pMMLFunc->update_wrot = update_mml_wrot_status;
 	pMMLFunc->update_cg = update_mml_cg_status;
 	pMMLFunc->update_freq = update_mml_freq_status;
+	pMMLFunc->update_pq = update_mml_pq_status;
 
 	return 0;
 }
