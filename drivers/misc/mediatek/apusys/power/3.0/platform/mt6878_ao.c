@@ -669,6 +669,8 @@ static void __apu_rpc_init(void)
 	// BUCK_PROT_SEL
 	apu_setl((0x1 << 20), papw->regs[apu_rpc] + APU_RPC_TOP_SEL_1);
 
+	apu_writel(0x892b8000, papw->regs[apu_rpc] + APU_RPC_TOP_SEL);
+	apu_writel(0x004b0568, papw->regs[apu_rpc] + APU_RPC_TOP_SEL_1);
 	pr_info("%s APU_RPC_TOP_SEL  0x%08x = 0x%08x\n",
 			__func__,
 			(u32)(papw->phy_addr[apu_rpc] + APU_RPC_TOP_SEL),
