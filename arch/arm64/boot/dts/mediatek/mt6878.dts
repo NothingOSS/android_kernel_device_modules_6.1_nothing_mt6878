@@ -6465,6 +6465,14 @@
 #endif
 		};
 
+		cam-rms-a@1a040000 {
+			compatible = "mediatek,cam-rms";
+			reg = <0 0x1a040000 0 0x8000>,
+				<0 0x1a048000 0 0x6000>;
+			reg-names = "base", "inner_base";
+			mediatek,cam-id = <0>;
+		};
+
 		cam-yuv-a@1a050000 {
 			compatible = "mediatek,cam-yuv";
 			reg = <0 0x1a050000 0 0x8000>,
@@ -6604,6 +6612,14 @@
 				"afo_r1",
 				"aao_r1";
 #endif
+		};
+
+		cam-rms-b@1a080000 {
+			compatible = "mediatek,cam-rms";
+			reg = <0 0x1a080000 0 0x8000>,
+				<0 0x1a088000 0 0x6000>;
+			reg-names = "base", "inner_base";
+			mediatek,cam-id = <1>;
 		};
 
 		cam-yuv-b@1a090000 {
