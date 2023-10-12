@@ -52,6 +52,7 @@ static int mtk_dvfsrc_start_probe(struct platform_device *pdev)
 		0, 0, 0, &ares);
 	atomic_notifier_chain_register(&panic_notifier_list, &panic_blk);
 	register_die_notifier(&die_blk);
+	dev_info(&pdev->dev, "Vcore DVFS Enable.\n");
 
 	return 0;
 }
