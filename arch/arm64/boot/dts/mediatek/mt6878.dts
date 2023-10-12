@@ -3076,6 +3076,16 @@
 		iommus = <&apu_iommu0 M4U_L42_APU_CODE>;
 	};
 
+	mdla {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "mediatek, mdla-rv";
+		core-num = <1>;
+		version = <0x68780305>;
+		dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
+		iommus = <&apu_iommu0 M4U_L42_APU_CODE>;
+	};
+
 	mminfra-debug@1e827000 {
 		compatible = "mediatek,mminfra-debug";
 		reg = <0 0x1e827000 0 0x90>;
