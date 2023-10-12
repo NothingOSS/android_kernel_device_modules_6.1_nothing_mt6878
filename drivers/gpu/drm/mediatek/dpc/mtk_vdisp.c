@@ -68,6 +68,8 @@ struct mtk_vdisp {
 static struct device *g_dev[DISP_PD_NUM];
 static void __iomem *g_vlp_base;
 
+static bool vcp_warmboot_support;
+
 static int regulator_event_notifier(struct notifier_block *nb,
 				    unsigned long event, void *data)
 {
@@ -155,7 +157,7 @@ static void mtk_vdisp_vlp_disp_vote(u32 user, bool set)
 
 static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 {
-	u32 value = 0;
+	u32 value = 0, mask;
 	int ret = 0;
 
 	/* [0] MMINFRA_DONE_STA
@@ -172,6 +174,11 @@ static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 	 *   start unvote (keep write til vote rg == unvoting value)
 	 */
 
+	if (vcp_warmboot_support)
+		mask = 0xB;
+	else
+		mask = 0x3;
+
 	ret = readl_poll_timeout_atomic(priv->vlp_base + VLP_MMINFRA_DONE_OFS, value,
 					(value & 0x2) == 0x2, POLL_DELAY_US, TIMEOUT_300MS);
 	if (ret < 0) {
@@ -183,7 +190,7 @@ static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 
 	if (on) {
 		ret = readl_poll_timeout_atomic(priv->vlp_base + VLP_MMINFRA_DONE_OFS, value,
-						value == 0x3, POLL_DELAY_US, TIMEOUT_300MS);
+						value == mask, POLL_DELAY_US, TIMEOUT_300MS);
 		if (ret < 0)
 			VDISPERR("failed to power on mminfra");
 	}
@@ -253,11 +260,26 @@ static const struct smi_disp_ops smi_funcs = {
 static int mtk_vdisp_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	struct device_node *vcp_node;
 	struct mtk_vdisp *priv;
 	struct regulator *rgu;
 	struct resource *res;
 	int ret = 0;
+	int support = 0;
 	u32 pd_id = 0;
+
+	vcp_node = of_find_node_by_name(NULL, "vcp");
+	if (vcp_node == NULL)
+		pr_info("failed to find vcp_node @ %s\n", __func__);
+	else {
+		ret = of_property_read_u32(vcp_node, "warmboot-support", &support);
+
+		if (ret || support == 0) {
+			pr_info("%s vcp_warmboot_support is disabled: %d\n", __func__, ret);
+			vcp_warmboot_support = false;
+		} else
+			vcp_warmboot_support = true;
+	}
 
 	VDISPDBG("+");
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
