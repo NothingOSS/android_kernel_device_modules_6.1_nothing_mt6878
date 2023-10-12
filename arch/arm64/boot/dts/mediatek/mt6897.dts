@@ -79,6 +79,8 @@
 			dsc1 = &disp_dsc_wrap1;
 			wdma0 = &disp_wdma1;
 			wdma1 = &disp1_wdma1;
+			wdma7 = &disp_ufbc_wdma1;
+			wdma9 = &disp1_ufbc_wdma1;
 			wdma10 = &disp_wdma0;
 			wdma11 = &disp_wdma2;
 			wdma12 = &disp1_wdma0;
@@ -8244,7 +8246,9 @@
 				"disp_ovlsys_wdma0_eof2",
 				"disp_token_disp_v_idle_power_on0",
 				"disp_token_disp_check_trigger_merge0",
-				"disp_ovlsys_wdma1_eof0";
+				"disp_ovlsys_wdma1_eof0",
+				"disp_ufbc_wdma1_eof",
+				"disp_ufbc_wdma3_eof";
 
 			gce-events =
 				<&gce CMDQ_EVENT_OVLSYS_STREAM_DONE_ENG_EVENT_0>,
@@ -8292,7 +8296,9 @@
 				<&gce CMDQ_EVENT_OVLSYS_DISP_WDMA0_FRAME_DONE>,
 				<&gce CMDQ_SYNC_TOKEN_VIDLE_POWER_ON>,
 				<&gce CMDQ_SYNC_TOKEN_CHECK_TRIGGER_MERGE>,
-				<&gce CMDQ_EVENT_OVLSYS_DISP_WDMA2_FRAME_DONE>;
+				<&gce CMDQ_EVENT_OVLSYS_DISP_WDMA2_FRAME_DONE>,
+				<&gce CMDQ_EVENT_DISPSYS_DISP_UFBC_WDMA1_FRAME_DONE>,
+				<&gce CMDQ_EVENT_DISPSYS1_DISP_UFBC_WDMA1_FRAME_DONE>;
 
 			helper-name = "MTK_DRM_OPT_STAGE",
 				"MTK_DRM_OPT_USE_CMDQ",
@@ -8724,6 +8730,7 @@
 			interrupts = <GIC_SPI 393 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&ovlsys0_config_clk CLK_OVLSYS0_DISP_WDMA0>;
 			fifo-size-1plane = <679>;
+			fifo-size-uv-1plane = <29>;
 			fifo-size-2plane = <448>;
 			fifo-size-uv-2plane = <224>;
 			fifo-size-3plane = <445>;
@@ -8740,6 +8747,7 @@
 			interrupts = <GIC_SPI 382 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys0_config_clk CLK_DISPSYS0_DISP_WDMA1>;
 			fifo-size-1plane = <906>;
+			fifo-size-uv-1plane = <29>;
 			fifo-size-2plane = <599>;
 			fifo-size-uv-2plane = <229>;
 			fifo-size-3plane = <596>;
@@ -8756,6 +8764,7 @@
 			interrupts = <GIC_SPI 395 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&ovlsys0_config_clk CLK_OVLSYS0_DISP_WDMA2>;
 			fifo-size-1plane = <109>;
+			fifo-size-uv-1plane = <29>;
 			fifo-size-2plane = <0>;
 			fifo-size-uv-2plane = <0>;
 			fifo-size-3plane = <0>;
@@ -8765,6 +8774,23 @@
 			iommus = <&disp_iommu M4U_L1_P6_DISP_WDMA2>;
 		};
 
+		disp_ufbc_wdma1: disp-ufbc-wdma1@1401a000 {
+			compatible = "mediatek,disp_ufbc_wdma1",
+						"mediatek,mt6897-disp-wdma";
+			reg = <0 0x1401a000 0 0x1000>;
+			interrupts = <GIC_SPI 380 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys0_config_clk CLK_DISPSYS0_DISP_UFBC_WDMA1>;
+			fifo-size-1plane = <404>;
+			fifo-size-uv-1plane = <32>;
+			fifo-size-2plane = <0>;
+			fifo-size-uv-2plane = <0>;
+			fifo-size-3plane = <0>;
+			fifo-size-uv-3plane = <0>;
+			mediatek,larb = <&smi_larb32>;
+			mediatek,smi-id = <32>;
+			iommus = <&disp_iommu M4U_L32_P6_DISP_UFBC_WDMA1>;
+		};
+
 		disp1_wdma0: disp1-wdma0@14608000 {
 			compatible = "mediatek,disp1_wdma0",
 						"mediatek,mt6897-disp-wdma";
@@ -8772,6 +8798,7 @@
 			interrupts = <GIC_SPI 437 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&ovlsys1_config_clk CLK_OVLSYS1_DISP_WDMA0>;
 			fifo-size-1plane = <679>;
+			fifo-size-uv-1plane = <29>;
 			fifo-size-2plane = <448>;
 			fifo-size-uv-2plane = <224>;
 			fifo-size-3plane = <445>;
@@ -8788,6 +8815,7 @@
 			interrupts = <GIC_SPI 426 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys1_config_clk CLK_DISPSYS1_DISP_WDMA1>;
 			fifo-size-1plane = <906>;
+			fifo-size-uv-1plane = <29>;
 			fifo-size-2plane = <599>;
 			fifo-size-uv-2plane = <229>;
 			fifo-size-3plane = <596>;
@@ -8804,6 +8832,7 @@
 			interrupts = <GIC_SPI 439 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&ovlsys1_config_clk CLK_OVLSYS1_DISP_WDMA2>;
 			fifo-size-1plane = <109>;
+			fifo-size-uv-1plane = <29>;
 			fifo-size-2plane = <0>;
 			fifo-size-uv-2plane = <0>;
 			fifo-size-3plane = <0>;
@@ -8811,6 +8840,23 @@
 			mediatek,larb = <&smi_larb21>;
 			mediatek,smi-id = <21>;
 			iommus = <&disp_iommu M4U_L21_P6_DISP1_WDMA2>;
+		};
+
+		disp1_ufbc_wdma1: disp1-ufbc-wdma1@1421a000 {
+			compatible = "mediatek,disp1_ufbc_wdma1",
+						"mediatek,mt6897-disp-wdma";
+			reg = <0 0x1421a000 0 0x1000>;
+			interrupts = <GIC_SPI 424 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk CLK_DISPSYS1_DISP_UFBC_WDMA1>;
+			fifo-size-1plane = <404>;
+			fifo-size-uv-1plane = <32>;
+			fifo-size-2plane = <0>;
+			fifo-size-uv-2plane = <0>;
+			fifo-size-3plane = <0>;
+			fifo-size-uv-3plane = <0>;
+			mediatek,larb = <&smi_larb33>;
+			mediatek,smi-id = <33>;
+			iommus = <&disp_iommu M4U_L33_P6_DISP_UFBC_WDMA1>;
 		};
 
 		disp_rsz0: disp-rsz0@14016000 {
