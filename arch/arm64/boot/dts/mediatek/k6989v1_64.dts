@@ -595,6 +595,26 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	flavor-bin = "dx3";
 };
 
+&mt6363_vbuck5 {
+	regulator-always-on;
+};
+
+&mt6363_vbuck6 {
+	regulator-always-on;
+};
+
+&mt6363_vsram_digrf {
+	regulator-always-on;
+};
+
+&mt6363_vsram_modem {
+	regulator-always-on;
+};
+
+&mt6363_vcn15 {
+	regulator-always-on;
+};
+
 #include <k6989v1_64/cust.dtsi>
 #include "mediatek/cust_k6989_connfem.dtsi"
 #include "mediatek/cust_mt6989_touch_1080x2400_mult.dtsi"

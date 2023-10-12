@@ -18566,31 +18566,11 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 	regulator-always-on;
 };
 
-&mt6363_vbuck5 {
-	regulator-always-on;
-};
-
-&mt6363_vbuck6 {
-	regulator-always-on;
-};
-
-&mt6363_vsram_digrf {
-	regulator-always-on;
-};
-
-&mt6363_vsram_modem {
-	regulator-always-on;
-};
-
 &mt6363_vsram_cpul {
 	regulator-always-on;
 };
 
 &mt6363_vsram_apu {
-	regulator-always-on;
-};
-
-&mt6363_vcn15 {
 	regulator-always-on;
 };
 
