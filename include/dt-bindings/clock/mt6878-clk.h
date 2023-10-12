@@ -726,9 +726,8 @@
 /* MMINFRA_CONFIG */
 #define CLK_MMINFRA_GCE_D				0
 #define CLK_MMINFRA_GCE_M				1
-#define CLK_MMINFRA_SMI					2
-#define CLK_MMINFRA_GCE_26M				3
-#define CLK_MMINFRA_CONFIG_NR_CLK			4
+#define CLK_MMINFRA_GCE_26M				2
+#define CLK_MMINFRA_CONFIG_NR_CLK			3
 
 /* MDPSYS_CONFIG */
 #define CLK_MDP_MUTEX0					0
