@@ -24,6 +24,8 @@
 #define MAX_POWER_DRAM 4000
 #define MAX_POWER_DISPLAY 2000
 #define SOC_ERROR 3000
+#define BAT_PATH_DEFAULT_RDC 100
+#define BAT_PATH_DEFAULT_RAC 50
 
 #define NORMAL_BOOT_ID 0
 
@@ -582,7 +584,6 @@ static int read_mtk_gauge_dts(struct platform_device *pdev)
 	if (!np)
 		dev_notice(&pdev->dev, "get gauge node fail\n");
 
-	read_dts_val(np, "bat_type", &fg_data.bat_type, 1);
 	read_dts_val(np, "active-table", &fg_data.fg_info_size, 1);
 	if (fg_data.fg_info_size > 10)
 		fg_data.fg_info_size = 10;
@@ -686,21 +687,22 @@ static int read_mtk_ppb_bat_dts(struct platform_device *pdev, struct device_node
 	for (i = 0; i < fg_data.fg_info_size; i++) {
 		info_p = &fg_data.fg_info[i+1];
 
-		ret = snprintf(str, STR_SIZE, "bat-ocv-table-t%d-qmax", i);
+		ret = snprintf(str, STR_SIZE, "bat%d-ocv-table-t%d-qmax", fg_data.bat_type, i);
 		if (ret < 0) {
 			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 			break;
 		}
 		read_dts_val(np, str, &info_p->qmax, 1);
 
-		ret = snprintf(str, STR_SIZE, "bat-ocv-table-t%d-temperature", i);
+		ret = snprintf(str, STR_SIZE, "bat%d-ocv-table-t%d-temperature", fg_data.bat_type,
+				i);
 		if (ret < 0) {
 			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 			break;
 		}
 		read_dts_val(np, str, &info_p->temp, 1);
 
-		ret = snprintf(str, STR_SIZE, "bat-ocv-table-t%d-size", i);
+		ret = snprintf(str, STR_SIZE, "bat%d-ocv-table-t%d-size", fg_data.bat_type, i);
 		if (ret < 0) {
 			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 			break;
@@ -734,7 +736,7 @@ static int read_mtk_ppb_bat_dts(struct platform_device *pdev, struct device_node
 		if (!info_p->ocv_table)
 			return -ENOMEM;
 #endif
-		ret = snprintf(str, STR_SIZE, "bat-ocv-table-t%d", i);
+		ret = snprintf(str, STR_SIZE, "bat%d-ocv-table-t%d", fg_data.bat_type, i);
 		if (ret < 0) {
 			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 			break;
@@ -758,9 +760,17 @@ static int read_power_budget_dts(struct platform_device *pdev)
 {
 	int i, ret;
 	int num, offset = 0;
-
 	struct device_node *np;
 	char str[STR_SIZE];
+
+	np = of_find_node_by_name(NULL, "mtk-gauge");
+	if (!np)
+		dev_notice(&pdev->dev, "get gauge node fail\n");
+
+	if (read_dts_val(np, "bat_type", &fg_data.bat_type, 1)) {
+		fg_data.bat_type = 0;
+		pr_info("warning: can't get bat_type in dts, set to 0\n");
+	}
 
 	np = pdev->dev.of_node;
 	if (!np) {
@@ -778,19 +788,21 @@ static int read_power_budget_dts(struct platform_device *pdev)
 	pb.temp_max_stage = num;
 
 	for (i = 0; i <= pb.temp_max_stage; i++) {
-		ret = snprintf(str, STR_SIZE, "battery-path-rdc-t%d", i);
+		ret = snprintf(str, STR_SIZE, "battery%d-path-rdc-t%d", fg_data.bat_type, i);
 		if (ret < 0) {
 			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 			break;
 		}
-		read_dts_val(np, str, &pb.rdc[i], 1);
+		if (read_dts_val(np, str, &pb.rdc[i], 1))
+			pb.rdc[i] = BAT_PATH_DEFAULT_RDC;
 
-		ret = snprintf(str, STR_SIZE, "battery-path-rac-t%d", i);
+		ret = snprintf(str, STR_SIZE, "battery%d-path-rac-t%d", fg_data.bat_type, i);
 		if (ret < 0) {
 			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 			break;
 		}
-		read_dts_val(np, str, &pb.rac[i], 1);
+		if (read_dts_val(np, str, &pb.rac[i], 1))
+			pb.rac[i] = BAT_PATH_DEFAULT_RAC;
 	}
 
 	read_dts_val(np, "system-ocp", &pb.ocp, 1);
