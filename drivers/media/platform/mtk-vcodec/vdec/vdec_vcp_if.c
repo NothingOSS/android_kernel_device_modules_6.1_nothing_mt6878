@@ -936,11 +936,16 @@ static int vdec_vcp_resume(struct vdec_inst *inst)
 
 static struct mtk_vcodec_ctx *get_valid_ctx(struct mtk_vcodec_dev *dev)
 {
-	struct list_head *p, *q;
 	struct mtk_vcodec_ctx *ctx;
 
-	list_for_each_safe(p, q, &dev->ctx_list) {
-		ctx = list_entry(p, struct mtk_vcodec_ctx, list);
+	// find inst in HEADER or FLUSH state first
+	list_for_each_entry(ctx, &dev->ctx_list, list) {
+		if (ctx != NULL && ctx->drv_handle != 0 &&
+		    mtk_vcodec_state_in_range(ctx, MTK_STATE_HEADER, MTK_STATE_FLUSH))
+			return ctx;
+	}
+	// otherwise find inst in all valid state
+	list_for_each_entry(ctx, &dev->ctx_list, list) {
 		if (ctx != NULL && ctx->drv_handle != 0 &&
 		    mtk_vcodec_state_in_range(ctx, MTK_STATE_INIT, MTK_STATE_STOP))
 			return ctx;
