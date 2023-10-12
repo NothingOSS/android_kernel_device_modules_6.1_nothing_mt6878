@@ -806,6 +806,7 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 {
 	struct dma_heap *dma_heap;
 	struct dma_buf *dbuf;
+	dma_addr_t dma_addr;
 	__u32 alloc_len;
 	int ret = 0;
 	void *ret_ptr = NULL;
@@ -819,7 +820,7 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 
 	mem->iova = 0;
 	if (dev == NULL) {
-		mtk_v4l2_err("dev null when type %u\n", mem->type);
+		mtk_v4l2_err("dev null when type %u", mem->type);
 		return -EPERM;
 	}
 	if (mem->len > CODEC_ALLOCATE_MAX_BUFFER_SIZE || mem->len == 0U) {
@@ -844,12 +845,12 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 		else
 			dma_heap = dma_heap_find("mtk_wfd_page-uncached");
 	} else {
-		mtk_v4l2_err("wrong type %u\n", mem->type);
+		mtk_v4l2_err("wrong type %u", mem->type);
 		return -EPERM;
 	}
 
 	if (!dma_heap) {
-		mtk_v4l2_err("heap find fail\n");
+		mtk_v4l2_err("heap find fail");
 		return -EPERM;
 	}
 
@@ -861,7 +862,7 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	dbuf = dma_heap_buffer_alloc(dma_heap, alloc_len,
 		O_RDWR | O_CLOEXEC, DMA_HEAP_VALID_HEAP_FLAGS);
 	if (IS_ERR_OR_NULL(dbuf)) {
-		mtk_v4l2_err("buffer alloc fail\n");
+		mtk_v4l2_err("buffer alloc fail");
 		ret_ptr = (void *)dbuf;
 		goto alloc_mem_err;
 	}
@@ -873,29 +874,30 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 
 	*attach = dma_buf_attach(dbuf, dev);
 	if (IS_ERR_OR_NULL(*attach)) {
-		mtk_v4l2_err("attach fail, return\n");
+		mtk_v4l2_err("attach fail, return");
 		ret_ptr = (void *)*attach;
 		goto alloc_mem_err_attach_fail;
 	}
 	*sgt = dma_buf_map_attachment(*attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR_OR_NULL(*sgt)) {
-		mtk_v4l2_err("map failed, detach and return\n");
+		mtk_v4l2_err("map failed, detach and return");
 		ret_ptr = (void *)*sgt;
 		goto alloc_mem_err_map_fail;
 	}
-	mem->va = (__u64)dbuf;
-	mem->pa = (__u64)sg_dma_address((*sgt)->sgl);
-	mem->iova = (__u64)mem->pa;
 
-	if (mem->va == (__u64)NULL || mem->pa == (__u64)NULL) {
-		mtk_v4l2_err("alloc failed, va 0x%llx pa 0x%llx iova 0x%llx len %d type %u\n",
-		mem->va, mem->pa, mem->iova, mem->len, mem->type);
+	dma_addr = sg_dma_address((*sgt)->sgl);
+	if (dbuf == NULL || dma_addr == 0) {
+		mtk_v4l2_err("alloc failed, va 0x%llx pa 0x%llx iova 0x%llx len %d type %u",
+			(__u64)dbuf, (__u64)dma_addr, (__u64)dma_addr, mem->len, mem->type);
 		ret = -EPERM;
 		goto alloc_mem_err_after_map_done;
 	}
-
-	mtk_v4l2_debug(8, "va 0x%llx pa 0x%llx iova 0x%llx len %d type %u\n",
+	mem->va = (__u64)dbuf;
+	mem->pa = (__u64)dma_addr;
+	mem->iova = mem->pa;
+	mtk_v4l2_debug(8, "va 0x%llx pa 0x%llx iova 0x%llx len %d type %u",
 		mem->va, mem->pa, mem->iova, mem->len, mem->type);
+
 	return 0;
 
 alloc_mem_err_after_map_done:
@@ -1045,7 +1047,7 @@ void mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev)
 err_out:
 	for (i = 0; i < 2; i++) {
 		src_buf = &dev->vp_mode_buf[i];
-		if (!IS_ERR_OR_NULL(src_buf->attach))
+		if (!IS_ERR_OR_NULL(ERR_PTR((long)src_buf->mem.va)))
 			mtk_vcodec_free_mem(&src_buf->mem, io_dev, src_buf->attach, src_buf->sgt);
 		memset(src_buf, 0, sizeof(struct vdec_vp_mode_buf));
 	}
@@ -1077,7 +1079,7 @@ void mtk_vcodec_vp_mode_buf_unprepare(struct mtk_vcodec_dev *dev)
 	io_dev = dev->smmu_dev;
 	for (i = 0; i < 2; i++) {
 		src_buf = &dev->vp_mode_buf[i];
-		if (!IS_ERR_OR_NULL(src_buf->attach))
+		if (!IS_ERR_OR_NULL(ERR_PTR((long)src_buf->mem.va)))
 			mtk_vcodec_free_mem(&src_buf->mem, io_dev, src_buf->attach, src_buf->sgt);
 		memset(src_buf, 0, sizeof(struct vdec_vp_mode_buf));
 	}
