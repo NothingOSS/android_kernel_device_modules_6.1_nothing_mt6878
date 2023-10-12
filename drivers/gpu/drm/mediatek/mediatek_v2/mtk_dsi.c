@@ -9217,6 +9217,11 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 static void mtk_dsi_timing_change(struct mtk_dsi *dsi,
 	struct mtk_drm_crtc *mtk_crtc, struct drm_crtc_state *old_state)
 {
+	if (IS_ERR_OR_NULL(dsi)) {
+		DDPPR_ERR("%s, invalid mtk_dsi\n", __func__);
+		return;
+	}
+
 	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
 		mtk_dsi_cmd_timing_change(dsi, mtk_crtc, old_state);
 	else
@@ -10129,6 +10134,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		break;
 	case DSI_TIMING_CHANGE:
 	{
+		struct mtk_dsi *dsi =
+			container_of(comp, struct mtk_dsi, ddp_comp);
 		struct mtk_drm_crtc *crtc = comp->mtk_crtc;
 		struct drm_crtc_state *old_state =
 		    (struct drm_crtc_state *)params;
