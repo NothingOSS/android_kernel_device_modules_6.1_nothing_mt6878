@@ -180,6 +180,8 @@
 		reg = <0x72>;
 		clocks =
 			<&traw_dip1_clk CLK_TRAW_DIP1_LARB28>,
+			<&traw_dip1_clk CLK_TRAW_DIP1_LARB40>,
+			<&traw_dip1_clk CLK_TRAW_DIP1_TRAW>,
 			<&traw_dip1_clk CLK_TRAW_DIP1_GALS>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_DIP1>;
 	};

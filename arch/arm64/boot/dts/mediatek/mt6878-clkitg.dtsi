@@ -280,6 +280,8 @@
 			<&wpe2_dip1_clk CLK_WPE2_DIP1_WPE>,
 			<&wpe2_dip1_clk CLK_WPE2_DIP1_GALS0>,
 			<&traw_dip1_clk CLK_TRAW_DIP1_LARB28>,
+			<&traw_dip1_clk CLK_TRAW_DIP1_LARB40>,
+			<&traw_dip1_clk CLK_TRAW_DIP1_TRAW>,
 			<&traw_dip1_clk CLK_TRAW_DIP1_GALS>,
 			<&vdec_gcon_base_clk CLK_VDE2_LARB_CKEN>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN>,
