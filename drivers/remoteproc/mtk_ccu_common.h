@@ -130,8 +130,8 @@ struct mtk_ccu_mailbox {
 struct ap2ccu_ipc {
 	uint32_t write_cnt;
 	uint32_t read_cnt;
+	uint32_t ack;
 	struct mtk_ccu_msg msg;
-	bool ack;
 };
 
 struct mtk_ccu {
