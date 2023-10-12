@@ -124,6 +124,7 @@ static bool partial_roi_highlight;
 static bool partial_force_roi;
 static unsigned int partial_y_offset;
 static unsigned int partial_height;
+unsigned int seg_id_dbg;
 
 struct logger_buffer {
 	char **buffer_ptr;
@@ -4603,9 +4604,28 @@ static void process_dbg_opt(const char *opt)
 
 		ret = mtk_drm_get_conn_obj_id_from_idx(value, 0);
 		DDPINFO("disp_idx %u, conn_obj_id %d\n", value, ret);
+	} else if (strncmp(opt, "disp_segment:", 13) == 0) {
+		if (strncmp(opt + 13, "0", 1) == 0) {
+			seg_id_dbg = 0;
+		} else if (strncmp(opt + 13, "1", 1) == 0) {
+			DDPMSG("%s, seg 1\n", __func__);
+			seg_id_dbg = 1;
+		} else if (strncmp(opt + 13, "2", 1) == 0) {
+			DDPMSG("%s, seg 2\n", __func__);
+			seg_id_dbg = 2;
+		} else if (strncmp(opt + 13, "3", 1) == 0) {
+			DDPMSG("%s, seg 3\n", __func__);
+			seg_id_dbg = 3;
+		} else if (strncmp(opt + 13, "fail", 4) == 0) {
+			DDPMSG("%s, seg fail\n", __func__);
+			seg_id_dbg = 1;
+			dsi1_status = true;
+		}  else if (strncmp(opt + 13, "test", 4) == 0) {
+			DDPMSG("%s, seg test\n", __func__);
+			dsi1_status = true;
+		}
+		DDPMSG("%s, seg_id_dbg=%d\n", __func__, seg_id_dbg);
 	}
-
-
 }
 
 static void process_dbg_cmd(char *cmd)

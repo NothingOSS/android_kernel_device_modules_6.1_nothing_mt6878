@@ -131,13 +131,67 @@ void __mtk_disp_set_module_hrt(struct icc_path *request,
 		mtk_icc_set_bw(request, 0, MBps_to_icc(bandwidth));
 }
 
-static bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
+static bool mtk_disp_check_segment_mt6878(struct mtk_drm_crtc *mtk_crtc,
+				struct mtk_drm_private *priv)
+{
+	bool ret = true;
+
+	switch (priv->seg_id) {
+	case 1:
+		if (dsi1_status)
+			ret = false;
+		break;
+	default:
+		ret = true;
+		break;
+	}
+	//DDPMSG("%s, segment:%d, ret=%d\n", __func__, priv->seg_id, ret);
+
+	if (ret == false)
+		DDPPR_ERR("%s fail: segment:%d\n", __func__, priv->seg_id);
+
+	return ret;
+}
+
+static bool mtk_disp_check_segment_mt6897(struct mtk_drm_crtc *mtk_crtc,
 				struct mtk_drm_private *priv)
 {
 	bool ret = true;
 	int hact = 0;
 	int vact = 0;
 	int vrefresh = 0;
+
+	hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
+	vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
+	vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+
+	switch (priv->seg_id) {
+	case 1:
+	case 2:
+		if (hact >= 1440 && vrefresh > 120)
+			ret = false;
+		break;
+	default:
+		ret = true;
+		break;
+	}
+
+/*
+ *	DDPMSG("%s, segment:%d, mode(%d, %d, %d)\n",
+ *			__func__, priv->seg_id, hact, vact, vrefresh);
+ */
+
+	if (ret == false)
+		DDPPR_ERR("%s, check sement fail: segment:%d, mode(%d, %d, %d)\n",
+			__func__, priv->seg_id, hact, vact, vrefresh);
+
+	return ret;
+}
+
+bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
+				struct mtk_drm_private *priv)
+{
+	bool ret = true;
 
 	if (IS_ERR_OR_NULL(mtk_crtc)) {
 		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
@@ -149,32 +203,17 @@ static bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
 		return ret;
 	}
 
-	hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
-	vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
-	vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-
-	if (priv->data->mmsys_id == MMSYS_MT6897 && !priv->is_tablet) {
-		switch (priv->seg_id) {
-		case 1:
-		case 2:
-			if (hact >= 1440 && vrefresh > 120)
-				ret = false;
-			break;
-
-		default:
-			ret = true;
-			break;
-		}
+	if (seg_id_dbg) {
+		priv->seg_id = seg_id_dbg;
+		DDPMSG("%s, seg_id=%d\n", __func__, priv->seg_id);
 	}
 
-/*
- *	DDPMSG("%s, segment:%d, mode(%d, %d, %d)\n",
- *			__func__, priv->seg_id, hact, vact, vrefresh);
- */
-
-	if (ret == false)
-		DDPPR_ERR("%s, check sement fail: segment:%d, mode(%d, %d, %d)\n",
-			__func__, priv->seg_id, hact, vact, vrefresh);
+	if (priv->data->need_seg_id && !priv->is_tablet) {
+		if (priv->data->mmsys_id == MMSYS_MT6878)
+			ret = mtk_disp_check_segment_mt6878(mtk_crtc, priv);
+		else if (priv->data->mmsys_id == MMSYS_MT6897)
+			ret = mtk_disp_check_segment_mt6897(mtk_crtc, priv);
+	}
 
 	return ret;
 }

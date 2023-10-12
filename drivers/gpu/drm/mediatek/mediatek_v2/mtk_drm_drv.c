@@ -5538,6 +5538,7 @@ static const struct mtk_mmsys_driver_data mt6897_mmsys_driver_data = {
 	.doze_ctrl_pmic = true,
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
+	.need_seg_id = true,
 	.disable_merge_irq = mtk_ddp_disable_merge_irq,
 	.pf_ts_type = IRQ_CMDQ_CB,
 };
@@ -5656,6 +5657,7 @@ static const struct mtk_mmsys_driver_data mt6878_mmsys_driver_data = {
 	.doze_ctrl_pmic = true,
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
+	.need_seg_id = true,
 	.pf_ts_type = IRQ_CMDQ_CB,
 };
 
@@ -8848,13 +8850,13 @@ static int mtk_drm_get_segment_id(struct platform_device *pdev,
 		ret = PTR_ERR(efuse_buf);
 		goto done;
 	}
-
+	DDPMSG("%s, orig segment_id: %d", __func__, *efuse_buf);
 	segment_id = (*efuse_buf & 0xFF);
 	kfree(efuse_buf);
 #endif
 
 done:
-	DDPINFO("%s, segment_id: %d", __func__, segment_id);
+	DDPMSG("%s, segment_id: %d", __func__, segment_id);
 
 	private->seg_id = segment_id;
 	return ret;
@@ -8913,7 +8915,7 @@ static int mtk_drm_probe(struct platform_device *pdev)
 		DDPFUNC("is tablet!\n");
 	}
 
-	if (private->data->mmsys_id == MMSYS_MT6897) {
+	if (private->data->need_seg_id) {
 		if (mtk_drm_get_segment_id(pdev, private))
 			DDPPR_ERR("%s, segment get fail\n", __func__);
 	}

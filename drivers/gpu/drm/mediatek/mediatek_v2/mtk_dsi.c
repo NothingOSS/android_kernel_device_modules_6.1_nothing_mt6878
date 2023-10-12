@@ -9525,6 +9525,10 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		enable = (bool *)params;
 		*enable = dsi->output_en;
 		break;
+	case DSI_COMP_DISABLE:
+		mtk_dsi_disable(dsi);
+		mtk_dsi_stop(dsi);
+		break;
 	case DSI_VFP_IDLE_MODE:
 	{
 		panel_ext = mtk_dsi_get_panel_ext(comp);
@@ -11027,6 +11031,8 @@ static const struct mtk_dsi_driver_data mt6878_dsi_driver_data = {
 	.urgent_lo_fifo_us = 14,
 	.urgent_hi_fifo_us = 15,
 	.max_vfp = 0xffe,
+	.dsi0_pa = 0x1401a000,
+	.dsi1_pa = 0x1401b000,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
 	.n_verion = VER_N4,
 };
@@ -11068,6 +11074,8 @@ static const struct of_device_id mtk_dsi_of_match[] = {
 	{.compatible = "mediatek,mt6878-dsi", .data = &mt6878_dsi_driver_data},
 	{},
 };
+
+bool dsi1_status;
 
 static int mtk_dsi_probe(struct platform_device *pdev)
 {
@@ -11166,6 +11174,14 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to ioremap memory: %d\n", ret);
 		if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
 			goto error;
+	}
+	if (regs->start == dsi->driver_data->dsi0_pa) {
+		DDPMSG("%s is dsi0 pa:0x%llx (0x%x)\n", __func__,
+			   (u64)regs->start, dsi->driver_data->dsi1_pa);
+	} else if (regs->start == dsi->driver_data->dsi1_pa) {
+		dsi1_status = true;
+		DDPMSG("%s is dsi1 pa:0x%llx (0x%x)\n", __func__,
+			   (u64)regs->start, dsi->driver_data->dsi1_pa);
 	}
 
 	dsi->phy = devm_phy_get(dev, "dphy");

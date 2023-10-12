@@ -81,6 +81,7 @@ struct mtk_mmsys_driver_data {
 	bool has_smi_limitation;
 	bool doze_ctrl_pmic;
 	bool can_compress_rgb565;
+	bool need_seg_id;
 	void (*disable_merge_irq)(struct drm_device *drm);
 	enum PF_TS_TYPE pf_ts_type;
 };
@@ -501,4 +502,6 @@ int mtk_drm_get_master_info_ioctl(struct drm_device *dev,
 			void *data, struct drm_file *file_priv);
 void mtk_vidle_multi_crtc_stop(unsigned int crtc_id);
 int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action);
+bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc, struct mtk_drm_private *priv);
+
 #endif /* MTK_DRM_DRV_H */

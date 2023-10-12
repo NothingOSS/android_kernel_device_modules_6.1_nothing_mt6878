@@ -5919,6 +5919,18 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 	unsigned int pan_disp_frame_weight = 4;
 	bool hrt_valid = false;
 	int sphrt_enable;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+
+	if ((priv->data->need_seg_id == true) &&
+		(mtk_disp_check_segment(mtk_crtc, priv) == false) &&
+		(priv->data->mmsys_id == MMSYS_MT6878)) {
+		struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+		if (comp == NULL)
+			return;
+		DDPINFO("%s, DSI_COMP_DISABLE\n", __func__);
+		mtk_ddp_comp_io_cmd(comp, NULL, DSI_COMP_DISABLE, NULL);
+	}
 
 	mutex_lock(&mtk_drm->lyeblob_list_mutex);
 	prop_lye_idx = crtc_state->prop_val[CRTC_PROP_LYE_IDX];
