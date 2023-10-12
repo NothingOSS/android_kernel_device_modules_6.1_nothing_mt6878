@@ -866,8 +866,10 @@ static int mtk_compr_offload_pointer(struct snd_soc_component *component,
 	int ret = 0;
 	int data = 0;
 	u64 pcm_compensate = 0;
+	ktime_t cur_time = ktime_get();
 
-	mtk_compr_send_query_tstamp();
+	if (ktime_to_ms(ktime_sub(cur_time, afe_offload_block.time_pcm)) >= 2)
+		mtk_compr_send_query_tstamp();
 
 	if (afe_offload_block.state == OFFLOAD_STATE_INIT ||
 	    afe_offload_block.state == OFFLOAD_STATE_IDLE ||
