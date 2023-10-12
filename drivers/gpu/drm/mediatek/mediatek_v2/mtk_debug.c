@@ -2987,6 +2987,28 @@ static void process_dbg_opt(const char *opt)
 		}
 		DDPMSG("%s: idle_perf_aee:%ums\n", __func__, value);
 		mtk_drm_idlegmr_perf_aee_control(value);
+	} else if (strncmp(opt, "idle_by_wb:", 11) == 0) {
+		struct drm_crtc *crtc;
+		int value;
+
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPPR_ERR("find crtc fail\n");
+			return;
+		}
+		if (strncmp(opt + 11, "test:", 5) == 0) {
+			if (sscanf(opt + 16, "%d\n", &value) > 0) {
+				DDPMSG("%s: idle_by_wb test: %d\n", __func__, value);
+				mtk_drm_idlemgr_wb_test(value);
+			}
+		} else if (strncmp(opt + 11, "fill:", 5) == 0) {
+			if (sscanf(opt + 16, "%x\n", &value) > 0) {
+				DDPMSG("%s: idle_by_wb fill buffer w/ 0x%x\n", __func__, value);
+				mtk_drm_idlemgr_wb_fill_buf(crtc, value);
+			}
+		} else
+			DDPMSG("%s: idle_by_wb param invalid\n", __func__);
 	} else if (strncmp(opt, "hrt_bw", 6) == 0) {
 		struct mtk_drm_private *priv = drm_dev->dev_private;
 

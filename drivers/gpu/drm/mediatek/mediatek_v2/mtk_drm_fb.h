@@ -6,6 +6,8 @@
 #ifndef MTK_DRM_FB_H
 #define MTK_DRM_FB_H
 
+#include <drm/drm_framebuffer.h>
+
 size_t mtk_fb_get_size(struct drm_framebuffer *fb);
 struct drm_gem_object *mtk_fb_get_gem_obj(struct drm_framebuffer *fb);
 dma_addr_t mtk_fb_get_dma(struct drm_framebuffer *fb);

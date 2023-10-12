@@ -31,6 +31,7 @@ static struct mtk_drm_helper help_info[] = {
 	{MTK_DRM_OPT_IDLEMGR_SWTCH_DECOUPLE, 0,
 	 "MTK_DRM_OPT_IDLEMGR_SWTCH_DECOUPLE"},
 	{MTK_DRM_OPT_IDLEMGR_BY_REPAINT, 0, "MTK_DRM_OPT_IDLEMGR_BY_REPAINT"},
+	{MTK_DRM_OPT_IDLEMGR_BY_WB, 0, "MTK_DRM_OPT_IDLEMGR_BY_WB"},
 	{MTK_DRM_OPT_IDLEMGR_ENTER_ULPS, 0, "MTK_DRM_OPT_IDLEMGR_ENTER_ULPS"},
 	{MTK_DRM_OPT_IDLEMGR_KEEP_LP11, 0, "MTK_DRM_OPT_IDLEMGR_KEEP_LP11"},
 	{MTK_DRM_OPT_DYNAMIC_RDMA_GOLDEN_SETTING, 0,
@@ -227,7 +228,7 @@ void mtk_drm_helper_init(struct device *dev, struct mtk_drm_helper **helper_opt)
 				value = 0;
 		}
 		tmp_opt[i].val = value;
-		DDPINFO("%s %d\n", tmp_opt[i].desc, tmp_opt[i].val);
+		DDPMSG("%s %d\n", tmp_opt[i].desc, tmp_opt[i].val);
 	}
 
 	if (of_property_read_bool(dev->of_node, "force_no_prim_dual_pipe"))
@@ -237,6 +238,13 @@ void mtk_drm_helper_init(struct device *dev, struct mtk_drm_helper **helper_opt)
 	if (of_property_read_bool(dev->of_node, "support_mml_cmd_mode"))
 		mtk_drm_helper_set_opt_by_name(tmp_opt,
 				"MTK_DRM_OPT_MML_SUPPORT_CMD_MODE", 1);
+
+	if (of_property_read_bool(dev->of_node, "idlemgr-by-wb")) {
+		mtk_drm_helper_set_opt_by_name(tmp_opt,
+				"MTK_DRM_OPT_IDLEMGR_BY_WB", 1);
+		mtk_drm_helper_set_opt_by_name(tmp_opt,
+				"MTK_DRM_OPT_IDLEMGR_BY_REPAINT", 0);
+	}
 
 	*helper_opt = tmp_opt;
 }

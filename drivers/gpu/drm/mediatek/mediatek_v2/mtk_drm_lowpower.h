@@ -26,10 +26,12 @@ struct mtk_idle_private_data {
 struct mtk_drm_idlemgr_context {
 	unsigned long long idle_check_interval;
 	unsigned long long idlemgr_last_kick_time;
+	unsigned long long enter_idle_ts;
 	unsigned int enterulps;
 	int session_mode_before_enter_idle;
 	int is_idle;
 	int cur_lp_cust_mode;
+	bool wb_entered;
 	struct mtk_idle_private_data priv;
 };
 
@@ -72,6 +74,10 @@ struct mtk_drm_idlemgr {
 	atomic_t async_cb_count;
 	atomic_t async_cb_pending;
 	struct pm_qos_request cpu_qos_req;
+	struct drm_framebuffer *wb_fb;
+	struct drm_framebuffer *wb_fb_r;
+	dma_addr_t wb_buffer_iova;
+	dma_addr_t wb_buffer_r_iova;
 	struct mtk_drm_idlemgr_context *idlemgr_ctx;
 	struct mtk_drm_idlemgr_perf *perf;
 };
@@ -170,4 +176,12 @@ void mtk_drm_idlemgr_sram_control(struct drm_crtc *crtc, bool sleep);
 /* enable cmd panel perf aee dump */
 void mtk_drm_idlegmr_perf_aee_control(unsigned int timeout);
 void mtk_drm_clear_async_cb_list(struct drm_crtc *crtc);
+
+bool mtk_drm_idlemgr_wb_is_entered(struct mtk_drm_crtc *mtk_crtc);
+void mtk_drm_idlemgr_wb_enter(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
+void mtk_drm_idlemgr_wb_leave(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
+void mtk_drm_idlemgr_wb_leave_post(struct mtk_drm_crtc *mtk_crtc);
+void mtk_drm_idlemgr_wb_fill_buf(struct drm_crtc *crtc, int value);
+void mtk_drm_idlemgr_wb_test(int value);
+
 #endif
