@@ -380,6 +380,8 @@ const char * const *get_mt6878_all_clk_names(void)
 
 		/* traw_dip1 */
 		"traw_dip1_larb28",
+		"traw_dip1_larb40",
+		"traw_dip1_traw",
 		"traw_dip1_gals",
 
 		/* img_vcore_d1a */

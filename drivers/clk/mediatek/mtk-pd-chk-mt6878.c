@@ -233,6 +233,8 @@ struct pd_check_swcg wpe2_dip1_swcgs[] = {
 /* traw_dip1 */
 struct pd_check_swcg traw_dip1_swcgs[] = {
 	SWCG("traw_dip1_larb28"),
+	SWCG("traw_dip1_larb40"),
+	SWCG("traw_dip1_traw"),
 	SWCG("traw_dip1_gals"),
 	SWCG(NULL),
 };

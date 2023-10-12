@@ -252,6 +252,10 @@ static const struct mtk_gate_regs traw_dip1_cg_regs = {
 static const struct mtk_gate traw_dip1_clks[] = {
 	GATE_TRAW_DIP1(CLK_TRAW_DIP1_LARB28, "traw_dip1_larb28",
 			"top_img1_ck"/* parent */, 0),
+	GATE_TRAW_DIP1(CLK_TRAW_DIP1_LARB40, "traw_dip1_larb40",
+			"top_img1_ck"/* parent */, 1),
+	GATE_TRAW_DIP1(CLK_TRAW_DIP1_TRAW, "traw_dip1_traw",
+			"top_img1_ck"/* parent */, 2),
 	GATE_TRAW_DIP1(CLK_TRAW_DIP1_GALS, "traw_dip1_gals",
 			"top_img1_ck"/* parent */, 3),
 };
