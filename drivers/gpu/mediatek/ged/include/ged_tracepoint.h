@@ -539,21 +539,24 @@ TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Fallback_Tuning,
 /* DCS tracepoints */
 TRACE_EVENT(GPU_DVFS__Policy__DCS,
 
-	TP_PROTO(int max_core, int current_core),
+	TP_PROTO(int max_core, int current_core, unsigned int fix_core),
 
-	TP_ARGS(max_core, current_core),
+	TP_ARGS(max_core, current_core, fix_core),
 
 	TP_STRUCT__entry(
 		__field(int, max_core)
 		__field(int, current_core)
+		__field(int, fix_core)
 	),
 
 	TP_fast_assign(
 		__entry->max_core = max_core;
 		__entry->current_core = current_core;
+		__entry->fix_core = fix_core;
 	),
 
-	TP_printk("max_core=%d, current_core=%d", __entry->max_core, __entry->current_core)
+	TP_printk("max_core=%d, current_core=%d fix_core=%u",
+	__entry->max_core, __entry->current_core, __entry->fix_core)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__DCS__Detail,

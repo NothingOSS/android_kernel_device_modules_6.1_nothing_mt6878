@@ -216,6 +216,8 @@ extern int (*ged_kpi_check_if_fallback_mode_fp)(void);
 
 extern void mtk_gpu_ged_hint(int a, int b);
 int ged_dvfs_boost_value(void);
+void start_mewtwo_timer(void);
+void cancel_mewtwo_timer(void);
 
 extern void (*mtk_dvfs_margin_value_fp)(int i32MarginValue);
 extern int (*mtk_get_dvfs_margin_value_fp)(void);

@@ -397,6 +397,32 @@ unsigned int ged_get_freq_by_idx(int oppidx)
 
 	return g_working_table[oppidx].freq;
 }
+int ged_get_sc_freq_by_virt_opp(int oppidx)
+{
+	// check oppidx is valid
+	if (oppidx < 0)
+		return 0;
+
+	if (is_dcs_enable() && g_virtual_async_table)
+		return g_virtual_async_table[oppidx].scFreq;
+
+	return ged_get_freq_by_idx(oppidx);
+}
+
+int ged_get_top_freq_by_virt_opp(int oppidx)
+{
+	// check oppidx is valid
+	if (oppidx < 0)
+		return 0;
+
+	if (is_dcs_enable() && g_virtual_async_table)
+		return g_virtual_async_table[oppidx].topFreq;
+
+	if (is_dcs_enable() && g_virtual_top_table)
+		return g_virtual_top_table[oppidx].freq;
+
+	return gpufreq_get_freq_by_idx(TARGET_GPU, oppidx);
+}
 
 unsigned int ged_get_cur_top_freq(void)
 {
@@ -405,7 +431,7 @@ unsigned int ged_get_cur_top_freq(void)
 
 	//if GPU power off the freq is 26M ,the current oppidx is last oppidx. So get the freq
 	if (cur_top_freq < cur_minfreq)
-		return ged_get_freq_by_idx(gpufreq_get_cur_oppidx(TARGET_GPU));
+		return ged_get_top_freq_by_virt_opp(gpufreq_get_cur_oppidx(TARGET_GPU));
 	else
 		return cur_top_freq;
 }
@@ -464,31 +490,9 @@ unsigned int ged_get_cur_volt(void)
 	return gpufreq_get_cur_volt(TARGET_DEFAULT);
 }
 
-int ged_get_sc_freq_by_virt_opp(int oppidx)
+unsigned int ged_get_cur_top_volt(void)
 {
-	// check oppidx is valid
-	if (oppidx < 0)
-		return 0;
-
-	if (is_dcs_enable() && g_virtual_async_table)
-		return g_virtual_async_table[oppidx].scFreq;
-
-	return ged_get_freq_by_idx(oppidx);
-}
-
-int ged_get_top_freq_by_virt_opp(int oppidx)
-{
-	// check oppidx is valid
-	if (oppidx < 0)
-		return 0;
-
-	if (is_dcs_enable() && g_virtual_async_table)
-		return g_virtual_async_table[oppidx].topFreq;
-
-	if (is_dcs_enable() && g_virtual_top_table)
-		return g_virtual_top_table[oppidx].freq;
-
-	return gpufreq_get_freq_by_idx(TARGET_GPU, oppidx);
+	return gpufreq_get_cur_volt(TARGET_GPU);
 }
 
 static int ged_get_cur_virtual_oppidx(void)
@@ -828,7 +832,8 @@ int ged_gpufreq_commit(int oppidx, int commit_type, int *bCommited)
 		}
 
 		dcs_set_core_mask(core_mask_tar, core_num_tar);
-	}
+	} else
+		dcs_restore_max_core_mask();
 
 	if (freqScaleUpFlag) /* freq scale up: set core_mask --> commit freq. */
 		ged_dvfs_gpu_freq_commit_fp(oppidx_tar, commit_type, bCommited);
@@ -946,7 +951,8 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 		}
 
 		dcs_set_core_mask(core_mask_tar, core_num_tar);
-	}
+	} else
+		dcs_restore_max_core_mask();
 
 	if (freqScaleUpFlag) /* freq scale up: set core_mask --> commit freq. */
 		ged_dvfs_gpu_freq_dual_commit_fp(gpu_oppidx, oppidx_tar, bCommited);

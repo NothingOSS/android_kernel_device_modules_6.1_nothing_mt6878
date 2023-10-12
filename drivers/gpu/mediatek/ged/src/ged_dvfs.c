@@ -18,6 +18,7 @@
 #include <asm/siginfo.h>
 #include <linux/sched.h>
 #include <linux/sched/signal.h>
+#include <linux/hrtimer.h>
 
 #include "ged_dvfs.h"
 #include "ged_kpi.h"
@@ -45,6 +46,11 @@
 #define MAX_SLIDE_WINDOW_SIZE 64
 
 spinlock_t gsGpuUtilLock;
+
+#define GPU_MEWTWO_TIMEOUT  90000
+
+static struct hrtimer gpu_mewtwo_timer;
+static ktime_t  gpu_mewtwo_timer_expire;
 
 static struct mutex gsDVFSLock;
 static struct mutex gsVSyncOffsetLock;
@@ -846,7 +852,7 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		ged_commit_opp_freq = ged_get_freq_by_idx(ui32NewFreqID);
 
 		/* do change */
-		if (ui32NewFreqID != ui32CurFreqID) {
+		if (ui32NewFreqID != ui32CurFreqID || dcs_get_setting_dirty()) {
 			/* call to ged gpufreq wrapper module */
 			ged_gpufreq_commit(ui32NewFreqID, eCommitType, &bCommited);
 
@@ -970,7 +976,8 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 
 	/* do change, top change or stack change */
 	if (stackNewFreqID != ui32CurFreqID ||
-		newTopFreq != ged_get_cur_top_freq()) {
+		newTopFreq != ged_get_cur_top_freq() ||
+		dcs_get_setting_dirty()) {
 		if (FORCE_OPP >= 0)
 			stackNewFreqID = FORCE_OPP;
 		if (FORCE_TOP_OPP >= 0)
@@ -2054,14 +2061,39 @@ static int _loading_avg(int ui32loading)
 
 	return sum / ARRAY_SIZE(data);
 }
+
+void start_mewtwo_timer(void)
+{
+	if (hrtimer_try_to_cancel(&gpu_mewtwo_timer)) {
+		hrtimer_cancel(&gpu_mewtwo_timer);
+		hrtimer_start(&gpu_mewtwo_timer, gpu_mewtwo_timer_expire, HRTIMER_MODE_REL);
+	} else
+		hrtimer_start(&gpu_mewtwo_timer, gpu_mewtwo_timer_expire, HRTIMER_MODE_REL);
+
+}
+void cancel_mewtwo_timer(void)
+{
+	if (hrtimer_try_to_cancel(&gpu_mewtwo_timer))
+		hrtimer_cancel(&gpu_mewtwo_timer);
+}
+
 int get_api_sync_flag(void)
 {
 	return api_sync_flag;
 }
 void set_api_sync_flag(int flag)
 {
-	api_sync_flag = flag;
+	if (flag == 1 || flag == 0) {
+		api_sync_flag = flag;
+	} else if (flag == 3) {
+		dcs_set_fix_num(8);
+		start_mewtwo_timer();
+	} else if (flag == 2) {
+		dcs_set_fix_num(0);
+		cancel_mewtwo_timer();
+	}
 }
+
 static void ged_update_margin_by_fps(int gpu_target)
 {
 	if (g_tb_dvfs_margin_value_min_cmd)
@@ -2298,7 +2330,7 @@ static bool ged_dvfs_policy(
 		if (policy_state == POLICY_STATE_LB ||
 				policy_state == POLICY_STATE_LB_FALLBACK) {
 			// overwrite state & timeout value set prior to ged_dvfs_run
-			if (uncomplete_flag || api_sync_flag ||
+			if (uncomplete_flag || api_sync_flag == 1 ||
 				(gpu_freq_pre > gpu_freq_overdue_max &&
 				t_gpu > (t_gpu_target * OVERDUE_TH / 10))) {
 				ged_set_policy_state(POLICY_STATE_LB_FALLBACK);
@@ -2310,7 +2342,7 @@ static bool ged_dvfs_policy(
 		} else if (policy_state == POLICY_STATE_FORCE_LB ||
 				policy_state == POLICY_STATE_FORCE_LB_FALLBACK) {
 			// overwrite state & timeout value set prior to ged_dvfs_run
-			if (uncomplete_flag || api_sync_flag) {
+			if (uncomplete_flag || api_sync_flag == 1) {
 				ged_set_policy_state(POLICY_STATE_FORCE_LB_FALLBACK);
 				ged_set_backup_timer_timeout(ged_get_fallback_time());
 			} else {
@@ -3258,11 +3290,18 @@ int ged_dvfs_get_recude_mips_policy_state(void)
 	return g_fastdvfs_mode;
 }
 
+static enum hrtimer_restart gpu_mewtwo_timer_cb(struct hrtimer *timer)
+{
+	dcs_fix_reset();
+	return HRTIMER_NORESTART;
+}
+
 GED_ERROR ged_dvfs_system_init(void)
 {
 	struct device_node *async_dvfs_node = NULL;
 	struct device_node *reduce_mips_dvfs_node = NULL;
 	struct device_node *dvfs_loading_mode_node = NULL;
+	struct device_node *gpu_mewtwo_node = NULL;
 
 	mutex_init(&gsDVFSLock);
 	mutex_init(&gsPolicyLock);
@@ -3402,6 +3441,10 @@ GED_ERROR ged_dvfs_system_init(void)
 	if (g_async_id_threshold != ged_get_min_oppidx_real())
 		g_same_stack_in_opp = true;
 
+	hrtimer_init(&gpu_mewtwo_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	gpu_mewtwo_timer.function = gpu_mewtwo_timer_cb;
+	gpu_mewtwo_timer_expire = ms_to_ktime(GPU_MEWTWO_TIMEOUT);
+
 	return GED_OK;
 }
 
@@ -3410,6 +3453,7 @@ void ged_dvfs_system_exit(void)
 	mutex_destroy(&gsDVFSLock);
 	mutex_destroy(&gsPolicyLock);
 	mutex_destroy(&gsVSyncOffsetLock);
+	hrtimer_cancel(&gpu_mewtwo_timer);
 }
 
 #ifdef ENABLE_COMMON_DVFS

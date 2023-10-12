@@ -8,6 +8,8 @@
 #include "ged_type.h"
 
 #define DCS_DEFAULT_MIN_CORE 0
+#define DCS_DEBUG_MAX_CORE 12
+
 
 struct dcs_core_mask {
 	unsigned int core_mask;
@@ -33,6 +35,11 @@ int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num);
 int dcs_restore_max_core_mask(void);
 int is_dcs_enable(void);
 void dcs_enable(int enable);
+int dcs_set_fix_num(unsigned int core_num);
+void dcs_fix_reset(void);
+unsigned int dcs_get_fix_num(void);
+unsigned int dcs_get_fix_mask(void);
+bool dcs_get_setting_dirty(void);
 
 // for dcs_stress
 int dcs_get_dcs_stress(void);

@@ -30,6 +30,9 @@ int g_max_core_num;
 int g_avail_mask_num;
 int g_virtual_opp_num;
 static int g_dcs_stress;
+unsigned int g_fix_core_num;
+unsigned int g_fix_core_mask;
+bool g_setting_dirty;
 
 // adjust dcs_performance
 static unsigned int g_adjust_dcs_support;
@@ -81,6 +84,9 @@ GED_ERROR ged_dcs_init_platform_info(void)
 	struct device_node *dcs_node = NULL;
 	int opp_setting = 0;
 	int ret = GED_OK;
+	g_fix_core_num = 0;
+	g_fix_core_mask = 0;
+	g_setting_dirty = false;
 
 	mutex_init(&g_DCS_lock);
 
@@ -188,7 +194,7 @@ int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num)
 	mutex_lock(&g_DCS_lock);
 
 
-	if (!g_dcs_enable || g_cur_core_num == core_num)
+	if ((!g_dcs_enable || g_cur_core_num == core_num) && !g_setting_dirty)
 		goto done_unlock;
 
 	if (!g_core_mask_table) {
@@ -197,9 +203,14 @@ int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num)
 		goto done_unlock;
 	}
 
-	ged_dvfs_set_gpu_core_mask_fp(core_mask);
+	if (g_fix_core_num > 0)
+		ged_dvfs_set_gpu_core_mask_fp(g_fix_core_mask);
+	else
+		ged_dvfs_set_gpu_core_mask_fp(core_mask);
+
+	g_setting_dirty = g_dcs_stress;
 	g_cur_core_num = core_num;
-	trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num);
+	trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num);
 	trace_GPU_DVFS__Policy__DCS__Detail(core_mask);
 	/* TODO: set return error */
 	if (ret) {
@@ -212,13 +223,75 @@ done_unlock:
 	return ret;
 }
 
+int dcs_set_fix_num(unsigned int core_num)
+{
+	int ret = GED_OK;
+	int i = 0;
+
+	mutex_lock(&g_DCS_lock);
+	if (g_fix_core_num != core_num) {
+		g_setting_dirty = true;
+
+		if (!g_core_mask_table)
+			_dcs_init_core_mask_table();
+
+		if (!g_core_mask_table) {
+			ret = GED_ERROR_FAIL;
+			pr_info("init core mask table fail");
+			goto done_unlock;
+		}
+
+		if (core_num > 0 &&
+			core_num <= g_max_core_num &&
+			g_max_core_num == DCS_DEBUG_MAX_CORE) {
+			g_fix_core_num = core_num;
+			for (i = 0; i < g_max_core_num; i++) {
+				if (g_fix_core_num == g_core_mask_table[i].num) {
+					g_fix_core_mask = g_core_mask_table[i].mask;
+					pr_info("g_debug setting %X", g_fix_core_num);
+				}
+			}
+		} else {
+			g_fix_core_num =  0;
+			g_fix_core_mask = 0;
+			pr_info("g_debug reset %X", g_fix_core_num);
+		}
+	}
+
+done_unlock:
+	mutex_unlock(&g_DCS_lock);
+	return ret;
+}
+
+void dcs_fix_reset(void)
+{
+	g_setting_dirty = true;
+	g_fix_core_num =  0;
+	g_fix_core_mask = 0;
+	pr_info("g_debug timer reset  %X", g_fix_core_num);
+}
+
+unsigned int dcs_get_fix_num(void)
+{
+	return g_fix_core_num;
+}
+unsigned int dcs_get_fix_mask(void)
+{
+	return g_fix_core_mask;
+}
+
+bool dcs_get_setting_dirty(void)
+{
+	return g_setting_dirty;
+}
+
 int dcs_restore_max_core_mask(void)
 {
 	int ret = GED_OK;
 
 	mutex_lock(&g_DCS_lock);
 
-	if (!g_dcs_enable || g_cur_core_num == g_max_core_num)
+	if ((!g_dcs_enable || g_cur_core_num == g_max_core_num) && !g_setting_dirty)
 		goto done_unlock;
 
 	if (g_core_mask_table == NULL) {
@@ -227,9 +300,13 @@ int dcs_restore_max_core_mask(void)
 		goto done_unlock;
 	}
 
-	ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
+	if (g_fix_core_num > 0)
+		ged_dvfs_set_gpu_core_mask_fp(g_fix_core_mask);
+	else
+		ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
+
 	g_cur_core_num = g_max_core_num;
-	trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num);
+	trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num);
 	trace_GPU_DVFS__Policy__DCS__Detail(g_core_mask_table[0].mask);
 
 done_unlock:
@@ -249,15 +326,21 @@ void dcs_enable(int enable)
 
 	mutex_lock(&g_DCS_lock);
 
-	if (enable)
+	if (enable) {
 		g_dcs_enable = enable;
+		g_setting_dirty = true;
+	}
 	else {
-		ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
+		if (g_fix_core_num > 0)
+			ged_dvfs_set_gpu_core_mask_fp(g_fix_core_mask);
+		else
+			ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
 		g_cur_core_num = g_max_core_num;
 		g_dcs_enable = 0;
-		trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num);
+		trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_mask);
 		trace_GPU_DVFS__Policy__DCS__Detail(g_core_mask_table[0].mask);
 	}
+
 	mutex_unlock(&g_DCS_lock);
 }
 EXPORT_SYMBOL(dcs_enable);
@@ -271,6 +354,7 @@ void dcs_set_dcs_stress(int enable)
 {
 	mutex_lock(&g_DCS_lock);
 	g_dcs_stress = enable;
+	g_setting_dirty = true;
 	mutex_unlock(&g_DCS_lock);
 }
 
