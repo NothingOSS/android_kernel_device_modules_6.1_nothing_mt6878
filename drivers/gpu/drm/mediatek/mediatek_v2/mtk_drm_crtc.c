@@ -2230,12 +2230,6 @@ bool mtk_crtc_is_dual_pipe(struct drm_crtc *crtc)
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 
-	if ((drm_crtc_index(crtc) == 0) &&
-		panel_ext &&
-		panel_ext->output_mode == MTK_PANEL_DUAL_PORT) {
-		return true;
-	}
-
 	if (drm_crtc_index(crtc) == 1) {
 		if (priv->data->mmsys_id == MMSYS_MT6989)
 			return false;
@@ -2252,12 +2246,11 @@ bool mtk_crtc_is_dual_pipe(struct drm_crtc *crtc)
 		(mtk_crtc->crtc_caps.crtc_ability & ABILITY_DUAL_DISCRETE))
 		return true;
 
-	if (((drm_crtc_index(crtc) == 0) || (drm_crtc_index(crtc) == 3)) &&
-		mtk_drm_helper_get_opt(priv->helper_opt,
-			    MTK_DRM_OPT_PRIM_DUAL_PIPE) &&
-		panel_ext &&
-		panel_ext->output_mode == MTK_PANEL_DSC_SINGLE_PORT &&
-		panel_ext->dsc_params.slice_mode == 1) {
+	if ((drm_crtc_index(crtc) == 0 || drm_crtc_index(crtc) == 3) &&
+	    mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PRIM_DUAL_PIPE) &&
+	    panel_ext && (panel_ext->output_mode == MTK_PANEL_DUAL_PORT ||
+	    (panel_ext->output_mode == MTK_PANEL_DSC_SINGLE_PORT &&
+	    panel_ext->dsc_params.slice_mode == 1))) {
 		return true;
 	}
 	if (priv->data->mmsys_id == MMSYS_MT6897 && (drm_crtc_index(crtc) == 2))
@@ -2634,8 +2627,11 @@ void mtk_crtc_ddp_prepare(struct mtk_drm_crtc *mtk_crtc)
 			comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
 
 		mtk_ddp_comp_clk_prepare(comp);
-		if (drm_crtc_index(crtc) == 0 && panel_ext->dsc_params.dual_dsc_enable)
+		if (drm_crtc_index(crtc) == 0 && panel_ext->dsc_params.dual_dsc_enable) {
 			mtk_ddp_comp_prepare(priv->ddp_comp[DDP_COMPONENT_DSC1]);
+			if (!mtk_crtc->is_dual_pipe)
+				mtk_ddp_comp_prepare(priv->ddp_comp[DDP_COMPONENT_SPLITTER0]);
+		}
 	}
 	if (mtk_crtc->is_dual_pipe) {
 		for_each_comp_id_in_dual_pipe(comp_id, mtk_crtc->path_data, i, j) {
@@ -2712,8 +2708,11 @@ void mtk_crtc_ddp_unprepare(struct mtk_drm_crtc *mtk_crtc)
 			comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
 
 		mtk_ddp_comp_clk_unprepare(comp);
-		if (drm_crtc_index(crtc) == 0 && panel_ext->dsc_params.dual_dsc_enable)
+		if (drm_crtc_index(crtc) == 0 && panel_ext->dsc_params.dual_dsc_enable) {
 			mtk_ddp_comp_unprepare(priv->ddp_comp[DDP_COMPONENT_DSC1]);
+			if (!mtk_crtc->is_dual_pipe)
+				mtk_ddp_comp_unprepare(priv->ddp_comp[DDP_COMPONENT_SPLITTER0]);
+		}
 	}
 
 	if (mtk_crtc->is_dual_pipe) {
@@ -9475,7 +9474,7 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc,
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(crtc);
-	struct mtk_ddp_comp *dsc_comp;
+	struct mtk_ddp_comp *dsc_comp, *splitter_comp;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	struct mtk_ddp_comp *output_comp;
 
@@ -9587,6 +9586,17 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc,
 			DDPINFO("%s mtk drm not support mmsys id %d\n",
 				__func__, priv->data->mmsys_id);
 			break;
+		}
+
+		if (!mtk_crtc->is_dual_pipe &&
+		    drm_crtc_index(crtc) == 0 && panel_ext && panel_ext->dsc_params.dual_dsc_enable) {
+			splitter_comp = priv->ddp_comp[DDP_COMPONENT_SPLITTER0];
+			mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, splitter_comp->id,
+				mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base),
+				handle, 0);
+
+			mtk_ddp_comp_config(splitter_comp, &cfg, handle);
+			mtk_ddp_comp_start(splitter_comp, handle);
 		}
 
 		mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, dsc_comp->id,
@@ -9711,11 +9721,11 @@ void mtk_crtc_connect_default_path(struct mtk_drm_crtc *mtk_crtc)
 				continue;
 			mtk_disp_mutex_add_comp(mtk_crtc->mutex[0], comp->id);
 		}
-
-		if (drm_crtc_index(crtc) == 0 &&
-		    panel_ext && panel_ext->output_mode == MTK_PANEL_DUAL_PORT)
-			mtk_disp_mutex_add_comp(mtk_crtc->mutex[0], DDP_COMPONENT_DSI1);
 	}
+	if (drm_crtc_index(crtc) == 0 &&
+	    panel_ext && panel_ext->output_mode == MTK_PANEL_DUAL_PORT)
+		mtk_disp_mutex_add_comp(mtk_crtc->mutex[0], DDP_COMPONENT_DSI1);
+
 	/* set mutex sof, eof */
 	mtk_disp_mutex_src_set(mtk_crtc, !!mtk_crtc_is_frame_trigger_mode(crtc));
 	/* if VDO mode, enable mutex by CPU here */

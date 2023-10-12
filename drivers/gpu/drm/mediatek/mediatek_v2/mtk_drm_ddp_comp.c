@@ -301,6 +301,7 @@ static const char *const mtk_ddp_comp_stem[MTK_DDP_COMP_TYPE_MAX] = {
 	[MTK_DISP_DSC] = "dsc",
 	[MTK_DISP_VDCM] = "vdcm",
 	[MTK_DISP_MERGE] = "merge",
+	[MTK_DISP_SPLITTER] = "splitter",
 	[MTK_DISP_DPTX] = "dptx",
 	[MTK_DISP_RDMA_OUT_RELAY] = "rmda_out_relay",
 	[MTK_DISP_VIRTUAL] = "virtual",

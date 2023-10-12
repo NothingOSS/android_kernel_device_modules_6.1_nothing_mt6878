@@ -22604,7 +22604,57 @@ void mtk_ddp_remove_dsc_ext_MT6989(struct mtk_drm_crtc *mtk_crtc,
 void mtk_ddp_insert_dsc_prim_MT6989(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle)
 {
+	struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(&mtk_crtc->base);
 	unsigned int addr, value;
+
+	if (panel_ext && panel_ext->dsc_params.dual_dsc_enable) {
+		addr = MT6989_SPLITTER_IN_CROSSBAR0_MOUT_EN;
+		value = MT6989_DISP_DLI_RELAY0_TO_SPLITTER0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+		/* clear orig COMP_IN_CB4 */
+		addr = MT6989_COMP_IN_CROSSBAR4_MOUT_EN;
+		value = 0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		addr = MT6989_COMP_IN_CROSSBAR0_MOUT_EN;
+		if (panel_ext->dual_swap)
+			value = MT6989_DISP_SPLITTER0_0_TO_DSC1_0;
+		else
+			value = MT6989_DISP_SPLITTER0_0_TO_DSC0_0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		addr = MT6989_COMP_OUT_CROSSBAR1_MOUT_EN;
+		value = MT6989_DISP_DSC0_TO_MERGE_OUT_CROSSBAR0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+		/* clear COMP_OUT_CROSSBAR5 */
+		addr =  MT6989_COMP_OUT_CROSSBAR5_MOUT_EN;
+		value = 0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		addr = MT6989_COMP_IN_CROSSBAR1_MOUT_EN;
+		if (panel_ext->dual_swap)
+			value = MT6989_DISP_SPLITTER0_0_TO_DSC0_0;
+		else
+			value = MT6989_DISP_SPLITTER0_0_TO_DSC1_0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		addr = MT6989_COMP_OUT_CROSSBAR2_MOUT_EN;
+		value = MT6989_DISP_DSC0_TO_MERGE_OUT_CROSSBAR1;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+		addr = MT6989_MERGE_OUT_CROSSBAR1_MOUT_EN;
+		value = MT6989_DISP_COMP_OUT_CROSSBAR1_TO_DSI1_0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			       mtk_crtc->side_config_regs_pa + addr, value, ~0);
+		return;
+	}
 
 	/* COMP_IN_CROSSBAR4 to  DISP_DSC_WRAP0 */
 	addr = MT6989_COMP_IN_CROSSBAR4_MOUT_EN;
@@ -23412,8 +23462,9 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 
 	if (ddp->data->dispsys_map && ddp->side_regs) {
 		if (ddp->ovlsys1_regs) {
-			if (val == DDP_MUTEX_SOF_DSI0 &&
-			    panel_ext && panel_ext->output_mode == MTK_PANEL_DUAL_PORT)
+			if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PRIM_DUAL_PIPE) &&
+			    panel_ext && panel_ext->output_mode == MTK_PANEL_DUAL_PORT &&
+			    val == DDP_MUTEX_SOF_DSI0)
 				val = DDP_MUTEX_SOF_DSI1;
 			DDPINFO("%s, disp1 ovlsys1 id:%s, reg:0x%x, val:0x%x\n", __func__,
 				mtk_dump_comp_str_id(id), DISP_REG_MUTEX_SOF(ddp->data, mutex->id),
