@@ -24,7 +24,7 @@
  */
 #define EXT_SPK_AMP_W_NAME "Ext_Speaker_Amp"
 #define MT6369_PROBE_DONE 1
-#define BYPASS_FOR_61_BRINGUP
+//#define BYPASS_FOR_61_BRINGUP
 
 #if IS_ENABLED(CONFIG_SND_SOC_MT6369_ACCDET) && !defined(BYPASS_FOR_61_BRINGUP)
 #include "../../codecs/mt6369-accdet.h"
