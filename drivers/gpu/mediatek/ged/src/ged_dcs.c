@@ -248,13 +248,11 @@ int dcs_set_fix_num(unsigned int core_num)
 			for (i = 0; i < g_max_core_num; i++) {
 				if (g_fix_core_num == g_core_mask_table[i].num) {
 					g_fix_core_mask = g_core_mask_table[i].mask;
-					pr_info("g_debug setting %X", g_fix_core_num);
 				}
 			}
 		} else {
 			g_fix_core_num =  0;
 			g_fix_core_mask = 0;
-			pr_info("g_debug reset %X", g_fix_core_num);
 		}
 	}
 

@@ -284,6 +284,8 @@ static unsigned int is_GED_KPI_enabled = 1;
 #endif
 
 static unsigned int g_force_gpu_dvfs_fallback;
+static int g_memtwo_level;
+static int g_memtwo_timer_count;
 
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
 #define FW_IDLE_TIMER_0_MS    0
@@ -991,6 +993,35 @@ void ged_kpi_set_loading_mode(unsigned int mode, unsigned int stride_size)
 	set_lb_timeout(t_gpu_target_now);
 }
 
+void ged_kpi_set_memtwo_level(int level)
+{
+	g_memtwo_level = level;
+}
+
+int ged_kpi_get_memtwo_level(void)
+{
+	return g_memtwo_level;
+}
+
+void ged_kpi_set_memtwo_debug(int level)
+{
+	if (level >= 0) {
+		mtk_custom_upbound_gpu_freq(g_ged_mewtwo_debug[level].check);
+		dcs_set_fix_num(g_ged_mewtwo_debug[level].config);
+	}
+}
+void ged_kpi_set_memtwo_timer_count(int count)
+{
+	g_memtwo_timer_count = count;
+}
+
+int ged_kpi_get_memtwo_timer_count(void)
+{
+	return g_memtwo_timer_count;
+}
+
+
+
 /* ------------------------------------------------------------------- */
 /* while producer */
 /* ------------------------------------------------------------------- */
@@ -1083,6 +1114,36 @@ static int ged_kpi_get_fallback_mode(void)
 	else
 		return is_loading_based;
 }
+
+static void ged_kpi_mewtwo_count(void)
+{
+	int memtwo_level = ged_kpi_get_memtwo_level();
+
+	if (memtwo_level == GED_MEWTWO_LEVEL_2) {
+		g_memtwo_timer_count++;
+		if (g_memtwo_timer_count == (GED_MEWTWO_FRONT + GED_MEWTWO_COUNT)) {
+			ged_kpi_set_memtwo_debug(memtwo_level);
+			pr_info("g_debug: check memtwo %d", memtwo_level);
+			g_memtwo_level++;
+			g_memtwo_timer_count = 0;
+		}
+	} else if (memtwo_level == GED_MEWTWO_LEVEL_3) {
+		g_memtwo_timer_count++;
+		if (g_memtwo_timer_count == GED_MEWTWO_COUNT) {
+			ged_kpi_set_memtwo_debug(memtwo_level);
+			pr_info("g_debug: check memtwo %d", memtwo_level);
+			g_memtwo_level++;
+			g_memtwo_timer_count = 0;
+		}
+	} else if (memtwo_level == GED_MEWTWO_LEVEL_TIMEOUT) {
+		ged_kpi_set_memtwo_debug(memtwo_level);
+		pr_info("g_debug: check memtwo %d", memtwo_level);
+		g_memtwo_level = GED_MEWTWO_LEVEL_RESET;
+		g_memtwo_timer_count = 0;
+	}
+
+}
+
 
 /* ------------------------------------------------------------------- */
 static void ged_kpi_work_cb(struct work_struct *psWork)
@@ -1362,6 +1423,8 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		psHead->t_gpu_latest_index++;
 		if (psHead->t_gpu_latest_index >= t_gpu_store_count)
 			psHead->t_gpu_latest_index = 0;
+
+		ged_kpi_mewtwo_count();
 
 		if (dcs_get_adjust_support()) {
 			unsigned int fr_cnt = (t_gpu_w_store_count > dcs_get_adjust_fr_cnt()) ?
