@@ -27,16 +27,6 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	};
 };
 
-&lk_charger {
-	disable-charger;
-	status = "disabled";
-};
-
-&charger {
-	disable-charger;
-	status = "disabled";
-};
-
 &pdc {
 	pd-vbus-upper-bound = <9000000>;
 };
