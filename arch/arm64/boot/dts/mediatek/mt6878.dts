@@ -3102,6 +3102,28 @@
 		clock-names = "clk0", "clk1", "clk2", "clk3";
 	};
 
+	mtk_apu_mem_code: mtk-apu-mem-code {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "mediatek, apu_mem_code";
+		status = "okay";
+		type = <1>;
+		mask = /bits/ 64 <0x00000003ffffffff>;
+		dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
+		iommus = <&apu_iommu0 M4U_L42_APU_CODE>;
+	};
+
+	mtk_apu_mem_data: mtk-apu-mem-data {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "mediatek, apu_mem_data";
+		status = "okay";
+		type = <2>;
+		mask = /bits/ 64 <0x00000003ffffffff>;
+		dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+		iommus = <&apu_iommu0 M4U_L42_APU_DATA>;
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
