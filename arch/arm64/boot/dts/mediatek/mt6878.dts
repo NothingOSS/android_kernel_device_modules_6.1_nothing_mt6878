@@ -93,64 +93,64 @@
 			device_type = "cpu";
 			reg = <0x0000>;
 			enable-method = "psci";
-			// cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+						&system_vcore &s2idle>;
 		};
 
 		cpu1: cpu@1 {
 			device_type = "cpu";
 			reg = <0x0100>;
 			enable-method = "psci";
-			// cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+						&system_vcore &s2idle>;
 		};
 
 		cpu2: cpu@2 {
 			device_type = "cpu";
 			reg = <0x0200>;
 			enable-method = "psci";
-			// cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+						&system_vcore &s2idle>;
 		};
 
 		cpu3: cpu@3 {
 			device_type = "cpu";
 			reg = <0x0300>;
 			enable-method = "psci";
-			// cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+						&system_vcore &s2idle>;
 		};
 
 		cpu4: cpu@100 {
 			device_type = "cpu";
 			reg = <0x0400>;
 			enable-method = "psci";
-			// cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+						&system_vcore &s2idle>;
 		};
 
 		cpu5: cpu@101 {
 			device_type = "cpu";
 			reg = <0x0500>;
 			enable-method = "psci";
-			// cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+						&system_vcore &s2idle>;
 		};
 
 		cpu6: cpu@102 {
 			device_type = "cpu";
 			reg = <0x0600>;
 			enable-method = "psci";
-			// cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+						&system_vcore &s2idle>;
 		};
 
 		cpu7: cpu@103 {
 			device_type = "cpu";
 			reg = <0x0700>;
 			enable-method = "psci";
-			// cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+						&system_vcore &s2idle>;
 		};
 
 		cpu-map {
@@ -9107,7 +9107,7 @@
 			rc_syspll: rc-syspll {
 				rc-name = "syspll";
 				id = <0x00000002>;
-				value = <0>;
+				value = <1>;
 				cond-info = <1>;
 			};
 			rc_bus26m: rc-bus26m {
