@@ -28,6 +28,7 @@
 
 #define CLK_CFG_6 0x0070
 #define CLK_CFG_7 0x0080
+#define CLK_CFG_9 0x00a0
 #define CLK_CFG_10 0x00b0
 #define CLK_CFG_11 0x00c0
 #define CLK_CFG_12 0x00d0
