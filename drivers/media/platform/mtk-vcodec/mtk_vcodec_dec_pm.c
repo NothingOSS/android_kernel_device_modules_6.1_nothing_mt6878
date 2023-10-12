@@ -753,8 +753,10 @@ static void mtk_vdec_dump_addr_reg(
 		mtk_v4l2_err("hw_id %d not support !!", hw_id);
 		return;
 	}
-	if (vdec_hw_ipm == VCODEC_IPM_V1)
+	if (vdec_hw_ipm == VCODEC_IPM_V1) {
 		lat_vld_addr = vld_addr; // for ipm v1 input buffer
+		vdec_lat_vld_top_addr = vld_addr + 0x800;
+	}
 
 	ctx = dev->curr_dec_ctx[hw_id];
 	if (ctx)
