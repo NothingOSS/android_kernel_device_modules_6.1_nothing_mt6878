@@ -304,6 +304,7 @@ int mt6878_afe_apll_init(struct mtk_base_afe *afe)
 	 * APLL1_TUNER_CON0 = 0x6f28bd4d
 	 * APLL2_TUNER_CON0 = 0x78fd5264
 	 */
+	regmap_write(afe_priv->apmixed, APLL1_TUNER_CON0, 0x6f28bd4d);
 	regmap_write(afe_priv->apmixed, APLL2_TUNER_CON0, 0x78fd5265);
 
 	return 0;
