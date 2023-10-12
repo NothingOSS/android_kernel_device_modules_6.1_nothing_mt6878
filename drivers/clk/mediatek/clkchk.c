@@ -627,9 +627,20 @@ static int clk_chk_dev_pm_suspend(struct device *dev)
 	return 0;
 }
 
+static int clk_chk_dev_pm_resume(struct device *dev)
+{
+	if (clkchk_ops == NULL || clkchk_ops->dev_pm_resume == NULL)
+		return 0;
+
+	clkchk_ops->dev_pm_resume();
+
+	return 0;
+}
+
+
 const struct dev_pm_ops clk_chk_dev_pm_ops = {
 	.suspend_noirq = clk_chk_dev_pm_suspend,
-	.resume_noirq = NULL,
+	.resume_noirq = clk_chk_dev_pm_resume,
 };
 EXPORT_SYMBOL(clk_chk_dev_pm_ops);
 

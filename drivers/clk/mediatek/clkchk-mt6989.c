@@ -62,9 +62,17 @@
 
 #define PWR_EN_ACK			(0xc0000000)
 
+#define MTK_POLL_DELAY_US              10
+#define MTK_POLL_1S_TIMEOUT            (1000 * USEC_PER_MSEC)
+#define MMINFRA_DONE_STA               BIT(0)
+#define VCP_READY_STA                  BIT(1)
+#define VCP_VOTE_READY_STA             BIT(3)
+
+
 static DEFINE_SPINLOCK(clk_trace_lock);
 static unsigned int clk_event[EVT_LEN];
 static unsigned int evt_cnt, suspend_cnt;
+static bool mmproc_sspm_vote_sync_bits_support;
 
 /* xpu*/
 enum {
@@ -2798,6 +2806,41 @@ static bool is_suspend_retry_stop(bool reset_cnt)
 	return true;
 }
 
+static int mtk_vcp_is_ready(void)
+{
+	u32 val = 0;
+
+	val = get_mt6989_reg_value(vlp_ao, 0x91c);
+
+	if ((val & (VCP_READY_STA | VCP_VOTE_READY_STA)) == (VCP_READY_STA | VCP_VOTE_READY_STA))
+		return 1;
+
+	return 0;
+}
+
+static int mtk_wait_vcp_vote(void)
+{
+	int tmp = 0;
+
+	if (!mmproc_sspm_vote_sync_bits_support )
+		return 0;
+
+	return read_poll_timeout_atomic(mtk_vcp_is_ready, tmp, tmp > 0,
+				MTK_POLL_DELAY_US, MTK_POLL_1S_TIMEOUT, false);
+}
+
+static void dev_pm_resume(void)
+{
+	int ret = 0;
+
+	ret = mtk_wait_vcp_vote();
+
+	if (ret < 0) {
+		pr_info("%s wait vcp ready timeout, ret = %d\n", __func__, ret);
+		BUG_ON(1);
+	}
+}
+
 static enum chk_sys_id history_dump_id[] = {
 	top,
 	apmixed,
@@ -3279,13 +3322,27 @@ static struct clkchk_ops clkchk_mt6989_ops = {
 	.check_mm_hwv_irq_sta = check_mm_hwv_irq_sta,
 	.is_suspend_retry_stop = is_suspend_retry_stop,
 	.check_apmixed_sta = check_apmixed_sta,
+	.dev_pm_resume = dev_pm_resume,
 };
 
 static int clk_chk_mt6989_probe(struct platform_device *pdev)
 {
-#ifdef CONFIG_MTK_SERROR_HOOK
-	int ret = 0;
-#endif
+	struct device_node *vcp_node;
+	int ret = 0, support = 0;
+
+	vcp_node = of_find_node_by_name(NULL, "vcp");
+	if (vcp_node == NULL)
+		pr_info("failed to find vcp_node @ %s\n", __func__);
+	else {
+		ret = of_property_read_u32(vcp_node, "warmboot-support", &support);
+
+		if (ret || support == 0) {
+			pr_info("%s mmproc_sspm_vote_sync_bits_support  is disabled: %d\n",
+				__func__, ret);
+			mmproc_sspm_vote_sync_bits_support = false;
+		} else
+			mmproc_sspm_vote_sync_bits_support = true;
+	}
 
 	suspend_cnt = 0;
 
