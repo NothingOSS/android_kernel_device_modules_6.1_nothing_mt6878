@@ -1467,8 +1467,12 @@ int mtk_vblank_config_rec_end_cal(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *cmdq_handle, enum DISP_VBLANK_REC_JOB_TYPE job_type);
 unsigned int mtk_drm_dump_vblank_config_rec(
 	struct mtk_drm_private *priv, char *stringbuf, int buf_len);
-void mtk_crtc_default_path_rst(struct drm_crtc *crtc);
-
+void mtk_crtc_cwb_addon_rst(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle);
+void mtk_crtc_wb_addon_rst(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle);
+void mtk_crtc_lye_addon_module_rst(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle);
+void mtk_crtc_addon_connector_rst(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle);
+void mtk_crtc_default_path_rst(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle);
+void mtk_crtc_rst_module(struct drm_crtc *crtc);
 
 
 #endif /* MTK_DRM_CRTC_H */
