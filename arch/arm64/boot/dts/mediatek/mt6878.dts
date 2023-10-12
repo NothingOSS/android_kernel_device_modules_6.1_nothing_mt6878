@@ -67,7 +67,7 @@
 	};
 
 	clkbuf_ctrl: clkbuf-ctrl {
-		// compatible = "mediatek,mt6878-clkbuf";
+		compatible = "mediatek,mt6878-clkbuf";
 		pmic = <&mt6685_clkbuf>;
 		srclken-rc = <&srclken_rc>;
 		pmif = <&spmi>;
