@@ -331,6 +331,7 @@ struct mtk_disp_aal_primary {
 	atomic_t should_stop;
 	atomic_t dre30_write;
 	atomic_t irq_en;
+	atomic_t eof_irq_en;
 	atomic_t force_delay_check_trig;
 	struct workqueue_struct *flip_wq;
 	struct workqueue_struct *refresh_wq;

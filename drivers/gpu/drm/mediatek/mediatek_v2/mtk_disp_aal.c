@@ -4419,6 +4419,13 @@ static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp)
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
 
+	if (atomic_read(&aal_data->primary_data->irq_en) == 0) {
+		atomic_set(&aal_data->primary_data->eof_irq_en, 0);
+		AALIRQ_LOG("%s, skip irq\n", __func__);
+		return;
+	}
+	atomic_set(&aal_data->primary_data->eof_irq_en, 1);
+
 	if (!aal_data->primary_data->aal_fo->mtk_dre30_support
 		|| !aal_data->primary_data->dre30_enabled) {
 
@@ -4501,7 +4508,7 @@ static irqreturn_t mtk_disp_aal_irq_handler(int irq, void *dev_id)
 
 	AALIRQ_LOG("irq, val:0x%x,0x%x\n", status0, status1);
 
-	if (atomic_read(&aal->primary_data->irq_en) == 0) {
+	if (atomic_read(&aal->primary_data->eof_irq_en) == 0) {
 		AALIRQ_LOG("%s, skip irq\n", __func__);
 		ret = IRQ_HANDLED;
 		goto out;
