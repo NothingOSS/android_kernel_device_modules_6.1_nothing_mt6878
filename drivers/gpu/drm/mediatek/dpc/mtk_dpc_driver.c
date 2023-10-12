@@ -583,6 +583,7 @@ static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level)
 {
 	int ret = 0;
 	u32 addr = 0;
+	u32 value = 0;
 	u8 mmdvfs_user = 0;
 
 	if (subsys == DPC_SUBSYS_DISP) {
@@ -594,7 +595,14 @@ static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level)
 	}
 
 	mtk_mmdvfs_enable_vcp(true, mmdvfs_user);
+
+	/* polling vdisp dvfsrc idle */
+	ret = readl_poll_timeout(g_priv->vdisp_dvfsrc_check, value, (value & 0x3) == 0, 1, 500);
+	if (ret < 0)
+		DPCERR("subsys(%d) wait vdisp dvfsrc idle timeout", subsys);
+
 	writel(level, dpc_base + addr);
+
 	mtk_mmdvfs_enable_vcp(false, mmdvfs_user);
 
 	return ret;
