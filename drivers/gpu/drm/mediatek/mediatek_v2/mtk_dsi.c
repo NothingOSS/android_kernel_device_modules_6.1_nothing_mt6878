@@ -3669,7 +3669,8 @@ static int mtk_dsi_wait_cmd_frame_done(struct mtk_dsi *dsi,
 	 * commands are there in the waiting queue, so here we force
 	 * frame updating and wait for the latest frame done.
 	 */
-	if (new_doze_state && !force_lcm_update) {
+	/* TODO: MML DL scenario just can't set STREAM_DIRTY, require MML submit */
+	if (new_doze_state && !force_lcm_update && !mtk_crtc->is_mml_dl) {
 		cmdq_pkt_set_event(handle,
 			mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 		cmdq_pkt_wait_no_clear(handle,
