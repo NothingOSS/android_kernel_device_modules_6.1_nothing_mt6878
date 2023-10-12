@@ -404,6 +404,8 @@ struct mtk_smi_dbg_init_setting {
 struct mm_smi_subsys {
 	s32 larb_id[SMI_DEV_MAX_NR];
 	s32 comm_id[SMI_DEV_MAX_NR];
+	u64 larb_skip_rpm;
+	u64 comm_skip_rpm;
 };
 
 #define MTK_SMI_TYPE_NR (3)
@@ -425,6 +427,8 @@ struct mtk_smi_dbg {
 	struct notifier_block suspend_nb;
 	const struct smi_disp_ops	*disp_ops;
 	struct mm_smi_subsys subsys[SMI_USER_NR];
+	u64	larb_skip;
+	u64	comm_skip;
 };
 static struct mtk_smi_dbg	*gsmi;
 static bool smi_enter_met;
@@ -451,6 +455,22 @@ static int smi_vote_disp_off(void)
 	return 0;
 }
 
+static inline int mtk_smi_get_if_in_use(struct mtk_smi_dbg_node *node)
+{
+	if ((((node->smi_type == SMI_LARB) ? gsmi->larb_skip : gsmi->comm_skip) >> node->id) & 0x1)
+		return 1;
+
+	return pm_runtime_get_if_in_use(node->dev);
+}
+
+static inline int mtk_smi_put(struct mtk_smi_dbg_node *node)
+{
+	if ((((node->smi_type == SMI_LARB) ? gsmi->larb_skip : gsmi->comm_skip) >> node->id) & 0x1)
+		return 0;
+
+	return pm_runtime_put(node->dev);
+}
+
 static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 				const bool rsi, const u32 id, bool skip_pm_runtime)
 {
@@ -468,7 +488,7 @@ static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 
 	if (!skip_pm_runtime) {
 		if (!rsi) {
-			ret = pm_runtime_get_if_in_use(node.dev);
+			ret = mtk_smi_get_if_in_use(&node);
 			if (ret)
 				dev_info(node.dev, "===== %s%u rpm:%d =====\n"
 					, name, id, ret);
@@ -477,7 +497,7 @@ static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 			if (of_property_read_u32(node.dev->of_node,
 				"mediatek,dump-with-comm", &comm_id))
 				return;
-			if (pm_runtime_get_if_in_use(smi->comm[comm_id].dev) <= 0)
+			if (mtk_smi_get_if_in_use(&smi->comm[comm_id]) <= 0)
 				return;
 
 			dump_with = true;
@@ -524,10 +544,10 @@ static void mtk_smi_dbg_print(struct mtk_smi_dbg *smi, const bool larb,
 
 	if (!skip_pm_runtime) {
 		if (dump_with) {
-			pm_runtime_put(smi->comm[comm_id].dev);
+			mtk_smi_put(&smi->comm[comm_id]);
 			return;
 		}
-		pm_runtime_put(node.dev);
+		mtk_smi_put(&node);
 	}
 }
 
@@ -539,7 +559,7 @@ static int mtk_smi_mminfra_get_if_in_use(void)
 	for (i = 0; i < ARRAY_SIZE(smi->comm); i++) {
 		if (!smi->comm[i].dev || !(smi->comm[i].smi_type == SMI_COMMON))
 			continue;
-		ret = pm_runtime_get_if_in_use(smi->comm[i].dev);
+		ret = mtk_smi_get_if_in_use(&smi->comm[i]);
 		if (ret == 0)
 			continue;
 		else if (ret < 0) {
@@ -564,7 +584,7 @@ static int mtk_smi_mminfra_put(void)
 		ref_cnt = atomic_read(&smi->comm[i].is_on);
 		if (ref_cnt > 0) {
 			atomic_dec(&smi->comm[i].is_on);
-			ret = pm_runtime_put(smi->comm[i].dev);
+			ret = mtk_smi_put(&smi->comm[i]);
 			if (ret < 0) {
 				dev_notice(smi->comm[i].dev, "%s:rpm put fail, ret=%d\n",
 										__func__, ret);
@@ -652,12 +672,16 @@ static int smi_bus_status_print(struct seq_file *seq, void *data)
 
 	seq_puts(seq, "dump SMI bus status\n");
 
+	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
+
+	smi->larb_skip = 0;
+	smi->comm_skip = 0;
+
 	if(!mtk_smi_mminfra_get_if_in_use()) {
 		pr_info("%s: ===== MMinfra may off =====\n", __func__);
+		spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
 		return 0;
 	}
-
-	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
 
 	/* vote disp on for disp_fast_on_off */
 	ret = smi_vote_disp_on();
@@ -680,9 +704,9 @@ static int smi_bus_status_print(struct seq_file *seq, void *data)
 	if (ret < 0)
 		pr_info("%s: vote disp off fail, ret=%d\n", __func__, ret);
 
-	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
-
 	mtk_smi_mminfra_put();
+
+	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
 
 	return 0;
 }
@@ -993,7 +1017,7 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 	struct platform_device	*pdev;
 	struct resource		*res;
 	void __iomem		*va;
-	s32			larb_nr = 0, comm_nr = 0, rsi_nr = 0, id, ret, i, tmp;
+	s32			larb_nr = 0, comm_nr = 0, rsi_nr = 0, id, ret, i;
 
 	smi->dev = dev;
 	for_each_compatible_node(node, NULL, mtk_smi_dbg_comp[0]) {
@@ -1082,58 +1106,40 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 		dev_notice(dev, "smmu not support or hwccf support\n");
 #endif
 
-	for (i = 0; i < SMI_DEV_MAX_NR; i++) {
-		smi->subsys[SMI_MMINFRA].comm_id[i] = -1;
-		smi->subsys[SMI_MMINFRA].larb_id[i] = -1;
-		if (!of_property_read_u32_index(dev->of_node, "smi-mminfra-common-id", i, &tmp))
-			smi->subsys[SMI_MMINFRA].comm_id[i] = tmp;
-		if (!of_property_read_u32_index(dev->of_node, "smi-mminfra-larb-id", i, &tmp))
-			smi->subsys[SMI_MMINFRA].larb_id[i] = tmp;
-	}
-	for (i = 0; i < SMI_DEV_MAX_NR; i++) {
-		smi->subsys[SMI_VENC].comm_id[i] = -1;
-		smi->subsys[SMI_VENC].larb_id[i] = -1;
-		if (!of_property_read_u32_index(dev->of_node, "smi-venc-common-id", i, &tmp))
-			smi->subsys[SMI_VENC].comm_id[i] = tmp;
-		if (!of_property_read_u32_index(dev->of_node, "smi-venc-larb-id", i, &tmp))
-			smi->subsys[SMI_VENC].larb_id[i] = tmp;
-	}
+	of_property_read_u64_index(dev->of_node, "smi-mminfra-skip-rpm", 0,
+				&smi->subsys[SMI_MMINFRA].larb_skip_rpm);
+	of_property_read_u64_index(dev->of_node, "smi-mminfra-skip-rpm", 1,
+				&smi->subsys[SMI_MMINFRA].comm_skip_rpm);
 
-	for (i = 0; i < SMI_DEV_MAX_NR; i++) {
-		smi->subsys[SMI_VDEC].comm_id[i] = -1;
-		smi->subsys[SMI_VDEC].larb_id[i] = -1;
-		if (!of_property_read_u32_index(dev->of_node, "smi-vdec-common-id", i, &tmp))
-			smi->subsys[SMI_VDEC].comm_id[i] = tmp;
-		if (!of_property_read_u32_index(dev->of_node, "smi-vdec-larb-id", i, &tmp))
-			smi->subsys[SMI_VDEC].larb_id[i] = tmp;
-	}
+	of_property_read_u64_index(dev->of_node, "smi-venc-skip-rpm", 0,
+				&smi->subsys[SMI_VENC].larb_skip_rpm);
+	of_property_read_u64_index(dev->of_node, "smi-venc-skip-rpm", 1,
+				&smi->subsys[SMI_VENC].comm_skip_rpm);
 
-	for (i = 0; i < SMI_DEV_MAX_NR; i++) {
-		smi->subsys[SMI_DISP].comm_id[i] = -1;
-		smi->subsys[SMI_DISP].larb_id[i] = -1;
-		if (!of_property_read_u32_index(dev->of_node, "smi-disp-common-id", i, &tmp))
-			smi->subsys[SMI_DISP].comm_id[i] = tmp;
-		if (!of_property_read_u32_index(dev->of_node, "smi-disp-larb-id", i, &tmp))
-			smi->subsys[SMI_DISP].larb_id[i] = tmp;
-	}
+	of_property_read_u64_index(dev->of_node, "smi-vdec-skip-rpm", 0,
+				&smi->subsys[SMI_VDEC].larb_skip_rpm);
+	of_property_read_u64_index(dev->of_node, "smi-vdec-skip-rpm", 1,
+				&smi->subsys[SMI_VDEC].comm_skip_rpm);
 
-	for (i = 0; i < SMI_DEV_MAX_NR; i++) {
-		smi->subsys[SMI_DIP1].comm_id[i] = -1;
-		smi->subsys[SMI_DIP1].larb_id[i] = -1;
-		if (!of_property_read_u32_index(dev->of_node, "smi-isp-dip1-common-id", i, &tmp))
-			smi->subsys[SMI_DIP1].comm_id[i] = tmp;
-		if (!of_property_read_u32_index(dev->of_node, "smi-isp-dip1-larb-id", i, &tmp))
-			smi->subsys[SMI_DIP1].larb_id[i] = tmp;
-	}
+	of_property_read_u64_index(dev->of_node, "smi-disp-skip-rpm", 0,
+				&smi->subsys[SMI_DISP].larb_skip_rpm);
+	of_property_read_u64_index(dev->of_node, "smi-disp-skip-rpm", 1,
+				&smi->subsys[SMI_DISP].comm_skip_rpm);
 
-	for (i = 0; i < SMI_DEV_MAX_NR; i++) {
-		smi->subsys[SMI_TRAW].comm_id[i] = -1;
-		smi->subsys[SMI_TRAW].larb_id[i] = -1;
-		if (!of_property_read_u32_index(dev->of_node, "smi-isp-traw-common-id", i, &tmp))
-			smi->subsys[SMI_TRAW].comm_id[i] = tmp;
-		if (!of_property_read_u32_index(dev->of_node, "smi-isp-traw-larb-id", i, &tmp))
-			smi->subsys[SMI_TRAW].larb_id[i] = tmp;
-	}
+	of_property_read_u64_index(dev->of_node, "smi-mml-skip-rpm", 0,
+				&smi->subsys[SMI_MML].larb_skip_rpm);
+	of_property_read_u64_index(dev->of_node, "smi-mml-skip-rpm", 1,
+				&smi->subsys[SMI_MML].comm_skip_rpm);
+
+	of_property_read_u64_index(dev->of_node, "smi-isp-dip1-skip-rpm", 0,
+				&smi->subsys[SMI_DIP1].larb_skip_rpm);
+	of_property_read_u64_index(dev->of_node, "smi-isp-dip1-skip-rpm", 1,
+				&smi->subsys[SMI_DIP1].comm_skip_rpm);
+
+	of_property_read_u64_index(dev->of_node, "smi-isp-traw-skip-rpm", 0,
+				&smi->subsys[SMI_TRAW].larb_skip_rpm);
+	of_property_read_u64_index(dev->of_node, "smi-isp-traw-skip-rpm", 1,
+				&smi->subsys[SMI_TRAW].comm_skip_rpm);
 
 	smi->probe = true;
 	return 0;
@@ -1179,7 +1185,7 @@ static void read_smi_ostd_status(struct mtk_smi_dbg_node node[])
 			type = node[id].smi_type;
 			dbg_setting = &smi->init_setting[type];
 
-			if (pm_runtime_get_if_in_use(node[id].dev) <= 0) {
+			if (mtk_smi_get_if_in_use(&node[id]) <= 0) {
 				memset(node[id].bus_ostd_val[i], 0,
 						sizeof(u32) * SMI_LARB_OSTD_MON_PORT_NR);
 				continue;
@@ -1190,7 +1196,7 @@ static void read_smi_ostd_status(struct mtk_smi_dbg_node node[])
 				readl_relaxed(node[id].va +
 						dbg_setting->ostd_cnt_offset + (j << 2));
 
-			pm_runtime_put(node[id].dev);
+			mtk_smi_put(&node[id]);
 		}
 		udelay(3);
 	}
@@ -1555,6 +1561,30 @@ static struct kernel_param_ops smi_put_larb_ops = {
 module_param_cb(smi_larb_disable, &smi_put_larb_ops, NULL, 0644);
 MODULE_PARM_DESC(smi_larb_disable, "disable smi larb");
 
+#if IS_ENABLED(CONFIG_MTK_SMI_DEBUG)
+int smi_force_skip_dump(const char *val, const struct kernel_param *kp)
+{
+	s32	result;
+	u64	larb_skip_id, comm_skip_id;
+
+	result = sscanf(val, "%lli %lli", &larb_skip_id, &comm_skip_id);
+	if (result != 2) {
+		pr_notice("%s: failed: %d\n", __func__, result);
+		return result;
+	}
+
+	mtk_smi_dbg_hang_detect_force_dump("smi driver", larb_skip_id, comm_skip_id);
+
+	return 0;
+}
+
+static const struct kernel_param_ops smi_force_skip_dump_ops = {
+	.set = smi_force_skip_dump,
+};
+module_param_cb(smi_force_dump, &smi_force_skip_dump_ops, NULL, 0644);
+MODULE_PARM_DESC(smi_force_dump, "smi force skip dump ops");
+#endif
+
 module_init(mtk_smi_dbg_init);
 MODULE_LICENSE("GPL v2");
 
@@ -1595,7 +1625,10 @@ s32 smi_monitor_start(struct device *dev, u32 common_id, u32 commonlarb_id[MAX_M
 		return -EAGAIN;
 	}
 
-	ret = pm_runtime_get_if_in_use(smi->comm[common_id].dev);
+	if (mon_id == SMI_BW_BUS)
+		ret = mtk_smi_get_if_in_use(&smi->comm[common_id]);
+	else
+		ret = pm_runtime_get_if_in_use(smi->comm[common_id].dev);
 	if (ret <= 0) {
 		pr_notice("[smi]%s: comm%d power off, rpm:%d\n", __func__, common_id, ret);
 		return ret;
@@ -1668,7 +1701,11 @@ s32 smi_monitor_stop(struct device *dev, u32 common_id, u32 *bw, enum smi_mon_id
 	writel_relaxed(0x0, comm_base + SMI_MON_CLR(mon_id));
 
 	atomic_dec(&smi->comm[common_id].mon_ref_cnt[mon_id]);
-	pm_runtime_put(smi->comm[common_id].dev);
+
+	if (mon_id == SMI_BW_BUS)
+		mtk_smi_put(&smi->comm[common_id]);
+	else
+		pm_runtime_put(smi->comm[common_id].dev);
 
 	return 0;
 }
@@ -1693,76 +1730,65 @@ static void smi_hang_detect_bw_monitor(bool is_start)
 	}
 }
 
-static void mtk_smi_dbg_dump_for_subsys(u32 subsys_id)
-{
-	struct mtk_smi_dbg	*smi = gsmi;
-	s32			i, j, id, PRINT_NR = 5;
-
-	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
-	for (i = 0; i < PRINT_NR; i++) {
-		for (j = 0; j < SMI_DEV_MAX_NR; j++) {
-			id = smi->subsys[subsys_id].larb_id[j];
-			if (id < 0)
-				break;
-			mtk_smi_dbg_print(smi, true, false, id, true);
-		}
-		for (j = 0; j < SMI_DEV_MAX_NR; j++) {
-			id = smi->subsys[subsys_id].comm_id[j];
-			if (id < 0)
-				break;
-			mtk_smi_dbg_print(smi, false, false, id, true);
-		}
-	}
-	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
-}
-
 void mtk_smi_dbg_dump_for_mminfra(void)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
-	s32			i, j, PRINT_NR = 5;
 
-	mtk_smi_dbg_dump_for_subsys(SMI_MMINFRA);
-	for (i = 0; i < PRINT_NR; i++) {
-		for (j = 0; j < ARRAY_SIZE(smi->rsi); j++)
-			mtk_smi_dbg_print(smi, true, true, j, true);
-	}
+	mtk_smi_dbg_hang_detect_force_dump("MMINFRA",
+		smi->subsys[SMI_MMINFRA].larb_skip_rpm, smi->subsys[SMI_MMINFRA].comm_skip_rpm);
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_mminfra);
 
 void mtk_smi_dbg_dump_for_venc(void)
 {
-	raw_notifier_call_chain(&smi_notifier_list, 0, "SMI driver");
-	mtk_smi_dbg_dump_for_subsys(SMI_VENC);
-	mtk_smi_dbg_dump_for_mminfra();
+	struct mtk_smi_dbg	*smi = gsmi;
+
+	mtk_smi_dbg_hang_detect_force_dump("VENC",
+		smi->subsys[SMI_VENC].larb_skip_rpm, smi->subsys[SMI_VENC].comm_skip_rpm);
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_venc);
 
 void mtk_smi_dbg_dump_for_vdec(void)
 {
-	raw_notifier_call_chain(&smi_notifier_list, 0, "SMI driver");
-	mtk_smi_dbg_dump_for_subsys(SMI_VDEC);
-	mtk_smi_dbg_dump_for_mminfra();
+	struct mtk_smi_dbg	*smi = gsmi;
+
+	mtk_smi_dbg_hang_detect_force_dump("VDEC",
+		smi->subsys[SMI_VDEC].larb_skip_rpm, smi->subsys[SMI_VDEC].comm_skip_rpm);
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_vdec);
 
 void mtk_smi_dbg_dump_for_isp_fast(u32 isp_id)
 {
+	struct mtk_smi_dbg	*smi = gsmi;
+
 	pr_notice("%s: isp_id=%#x\n", __func__, isp_id);
 	if (isp_id & ISP_TRAW)
-		mtk_smi_dbg_dump_for_subsys(SMI_TRAW);
+		mtk_smi_dbg_hang_detect_force_dump("ISP_TRAW",
+			smi->subsys[SMI_TRAW].larb_skip_rpm, smi->subsys[SMI_TRAW].comm_skip_rpm);
 	if (isp_id & ISP_DIP)
-		mtk_smi_dbg_dump_for_subsys(SMI_DIP1);
+		mtk_smi_dbg_hang_detect_force_dump("ISP_DIP1",
+			smi->subsys[SMI_DIP1].larb_skip_rpm, smi->subsys[SMI_DIP1].comm_skip_rpm);
 
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_isp_fast);
 
 void mtk_smi_dbg_dump_for_disp(void)
 {
-	raw_notifier_call_chain(&smi_notifier_list, 0, "SMI driver");
-	mtk_smi_dbg_dump_for_subsys(SMI_DISP);
-	mtk_smi_dbg_dump_for_mminfra();
+	struct mtk_smi_dbg	*smi = gsmi;
+
+	mtk_smi_dbg_hang_detect_force_dump("DISP",
+		smi->subsys[SMI_DISP].larb_skip_rpm, smi->subsys[SMI_DISP].comm_skip_rpm);
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_disp);
+
+void mtk_smi_dbg_dump_for_mml(void)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+
+	mtk_smi_dbg_hang_detect_force_dump("MML",
+		smi->subsys[SMI_MML].larb_skip_rpm, smi->subsys[SMI_MML].comm_skip_rpm);
+}
+EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_mml);
 
 s32 mtk_smi_dbg_hang_detect(char *user)
 {
@@ -1785,14 +1811,13 @@ s32 mtk_smi_dbg_hang_detect(char *user)
 #endif
 
 	raw_notifier_call_chain(&smi_notifier_list, 0, user);
+	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
 
 	if(!mtk_smi_mminfra_get_if_in_use()) {
 		pr_info("%s: ===== MMinfra may off =====:%s\n", __func__, user);
+		spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
 		return 0;
 	}
-
-	/*start to monitor bw and check ostd*/
-	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
 
 	/* vote disp on for disp_fast_on_off */
 	ret = smi_vote_disp_on();
@@ -1840,13 +1865,33 @@ s32 mtk_smi_dbg_hang_detect(char *user)
 	if (ret < 0)
 		pr_info("%s: vote disp off fail, ret=%d\n", __func__, ret);
 
-	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
-
 	mtk_smi_mminfra_put();
+
+	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
 
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_hang_detect);
+
+void mtk_smi_dbg_hang_detect_force_dump(char *user, u64 larb_skip_rpm, u64 comm_skip_rpm)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+
+	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
+	smi->larb_skip = larb_skip_rpm;
+	smi->comm_skip = comm_skip_rpm;
+	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
+
+	pr_notice("%s: larb_skip_id=0x%llx, comm_skip_id=0x%llx\n", __func__,
+					smi->larb_skip, smi->comm_skip);
+	mtk_smi_dbg_hang_detect(user);
+
+	spin_lock_irqsave(&smi_lock.lock, smi_lock.flags);
+	smi->larb_skip = 0;
+	smi->comm_skip = 0;
+	spin_unlock_irqrestore(&smi_lock.lock, smi_lock.flags);
+}
+EXPORT_SYMBOL_GPL(mtk_smi_dbg_hang_detect_force_dump);
 
 s32 mtk_smi_golden_set(bool enable, bool is_larb, u32 id, u32 port)
 {

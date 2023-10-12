@@ -675,6 +675,8 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 		call_dbg_op(comp, dump);
 	}
 
+	mtk_smi_dbg_dump_for_mml();
+
 	call_hw_op(path->mmlsys, pw_disable);
 	call_hw_op(path->mmlsys, mminfra_pw_disable);
 	mml_dpc_exc_release(cfg->mml);
