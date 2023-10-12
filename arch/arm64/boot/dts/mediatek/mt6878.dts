@@ -4997,10 +4997,8 @@
 #endif
 			// pre-define-bw = <0xffffffff>, <4200>, <0>;
 			// crtc-ovl-usage = <7>, <4>, <8>;
-#if 0
 			nvmem-cells = <&efuse_segment>;
 			nvmem-cell-names = "efuse_seg_disp_cell";
-#endif
 #if 1
 			/* define threads, see mt6878-gce.h */
 			mediatek,mailbox-gce = <&gce>;
