@@ -1831,9 +1831,67 @@ static void mtk_dsi_cmd_type1_hs(struct mtk_dsi *dsi)
 		mtk_dsi_mask(dsi, DSI_CMD_TYPE1_HS, CMD_CPHY_6BYTE_EN, 0);
 }
 
+static int mtk_dsi_calculate_rw_times(struct mtk_dsi *dsi,
+		u32 width, u32 height)
+{
+	u32 rw_times = 0;
+	u32 ps_wc = 0, in_width = 0;
+	struct mtk_panel_ext *ext = mtk_dsi_get_panel_ext(&dsi->ddp_comp);
+	struct mtk_panel_dsc_params *dsc_params = &ext->params->dsc_params;
+	struct mtk_drm_crtc *mtk_crtc =	dsi->is_slave ?
+			dsi->master_dsi->ddp_comp.mtk_crtc : dsi->ddp_comp.mtk_crtc;
+	u32 dsi_buf_bpp = mtk_get_dsi_buf_bpp(dsi);
+	struct mtk_drm_private *priv = NULL;
+
+	if (mtk_crtc && mtk_crtc->base.dev)
+		priv = mtk_crtc->base.dev->dev_private;
+
+	if (dsc_params->enable)
+		ps_wc = dsc_params->chunk_size * (dsc_params->slice_mode + 1);
+	else {
+		if (dsc_params->bit_per_pixel == 10)
+			ps_wc = width * 30 / 8;
+		else
+			ps_wc = width * dsi_buf_bpp;
+	}
+
+	if (!IS_ERR_OR_NULL(priv) && !IS_ERR_OR_NULL(priv->data)
+		&& (priv->data->mmsys_id == MMSYS_MT6989 ||
+		priv->data->mmsys_id == MMSYS_MT6878))
+		in_width = DSI_IPM_1_8_0_0_IN_WIDTH;
+	else
+		in_width = DSI_IPM_1_6_0_1_IN_WIDTH;
+
+	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+		// cmd mode
+		if (ext->params->lp_perline_en) {
+			if ((ps_wc % in_width) == 0)
+				rw_times = (ps_wc / in_width) * height;
+			else
+				rw_times = (ps_wc / in_width + 1) * height;
+		} else {
+			if ((ps_wc * height % in_width) == 0)
+				rw_times = ps_wc * height / in_width;
+			else
+				rw_times = ps_wc * height / in_width + 1;
+		}
+	} else {
+		// video mode
+		if ((ps_wc * height % in_width) == 0)
+			rw_times = ps_wc * height / in_width;
+		else
+			rw_times = ps_wc * height / in_width + 1;
+	}
+
+	DDPINFO("%s,width=%d,height=%d,ps_wc:%d,rw_times=%d\n",
+			__func__, width, height, ps_wc, rw_times);
+
+	return rw_times;
+}
+
 static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 {
-	u32 mmsys_clk = 208, ps_wc = 0;
+	u32 mmsys_clk = 208;
 	u32 width, height, tmp = 0, rw_times;
 	u32 preultra_hi, preultra_lo, ultra_hi, ultra_lo, urgent_hi, urgent_lo;
 	u32 fill_rate;
@@ -1841,13 +1899,11 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	u32 sram_unit, buffer_unit;
 	u32 urgent_lo_fifo_us, urgent_hi_fifo_us;
 	struct mtk_panel_ext *ext = mtk_dsi_get_panel_ext(&dsi->ddp_comp);
-	struct mtk_panel_dsc_params *dsc_params = &ext->params->dsc_params;
 	struct mtk_drm_crtc *mtk_crtc =	dsi->is_slave ?
 			dsi->master_dsi->ddp_comp.mtk_crtc : dsi->ddp_comp.mtk_crtc;
 	u32 dsi_buf_bpp = mtk_get_dsi_buf_bpp(dsi);
-		struct mtk_ddp_comp *comp = dsi->is_slave ?
+	struct mtk_ddp_comp *comp = dsi->is_slave ?
 			(&dsi->master_dsi->ddp_comp) : (&dsi->ddp_comp);
-	u32 in_width = 0;
 	struct mtk_drm_private *priv = NULL;
 	int dli_relay_1tnp = 1;
 	int buf_con = 0;
@@ -1884,15 +1940,6 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		}
 	}
 
-	if (dsc_params->enable)
-		ps_wc = dsc_params->chunk_size * (dsc_params->slice_mode + 1);
-	else {
-		if (dsc_params->bit_per_pixel == 10)
-			ps_wc = width * 30 / 8;
-		else
-			ps_wc = width * dsi_buf_bpp;
-	}
-
 	buffer_unit = dsi->driver_data->buffer_unit;
 	sram_unit = dsi->driver_data->sram_unit;
 	urgent_lo_fifo_us = dsi->driver_data->urgent_lo_fifo_us ?
@@ -1902,7 +1949,6 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 
 	if (!IS_ERR_OR_NULL(priv) && !IS_ERR_OR_NULL(priv->data)
 		&& priv->data->mmsys_id == MMSYS_MT6989) {
-		in_width = DSI_IPM_1_8_0_0_IN_WIDTH;
 		dli_relay_1tnp = 2;
 
 		if (comp->id == DDP_COMPONENT_DSI2)
@@ -1911,46 +1957,30 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 			buf_con = 1544;
 		else
 			DDPMSG("%s, %d, unknown id:%d\n", __func__, __LINE__, comp->id);
-	} else if (!IS_ERR_OR_NULL(priv) && !IS_ERR_OR_NULL(priv->data)
-		&& priv->data->mmsys_id == MMSYS_MT6878) {
-		in_width = DSI_IPM_1_8_0_0_IN_WIDTH;
-	} else
-		in_width = DSI_IPM_1_6_0_1_IN_WIDTH;
+	}
 
 	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
 		// cmd mode
-		if (ext->params->lp_perline_en) {
+		if (ext->params->lp_perline_en)
 		// LP mode per line  => enables DSI wait data every line in command mode
 			mtk_dsi_mask(dsi, DSI_CON_CTRL, DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN,
 						DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN);
-			if ((ps_wc % in_width) == 0)
-				rw_times = (ps_wc / in_width) * height;
-			else
-				rw_times = (ps_wc / in_width + 1) * height;
-		} else {
+		else
 			mtk_dsi_mask(dsi, DSI_CON_CTRL, DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN,
 						0);
-			if ((ps_wc * height % in_width) == 0)
-				rw_times = ps_wc * height / in_width;
-			else
-				rw_times = ps_wc * height / in_width + 1;
-		}
 
 		if (dsi->ext->params->is_cphy)
 			tmp = 25 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
 		else
 			tmp = 25 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
-	} else {
-		if ((ps_wc * height % in_width) == 0)
-			rw_times = ps_wc * height / in_width;
-		else
-			rw_times = ps_wc * height / in_width + 1;
 	}
 
+	rw_times = mtk_dsi_calculate_rw_times(dsi, width, height);
+
 	DDPINFO(
-		"%s,mode=0x%lx,valid_theshold=0x%x,width=%d,height=%d,ps_wc:%d,rw_times=%d,lp_perline_en=%d,1t%dp,buf_con:%d\n",
+		"%s,mode=0x%lx,valid_theshold=0x%x,lp_perline_en=%d,1t%dp,buf_con:%d\n",
 		__func__, dsi->mode_flags & MIPI_DSI_MODE_VIDEO, tmp,
-		width, height, ps_wc, rw_times, ext->params->lp_perline_en, dli_relay_1tnp, buf_con);
+		ext->params->lp_perline_en, dli_relay_1tnp, buf_con);
 
 	mtk_dsi_mask(dsi, DSI_BUF_CON1, 0x7fff, tmp);
 	if (dsi->driver_data->new_rst_dsi && !(dsi->ext->params->is_cphy))
@@ -10475,9 +10505,10 @@ void mtk_dsi_first_cfg(struct mtk_ddp_comp *comp,
 static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
 {
-	struct mtk_panel_ext *panel_ext = NULL;
 	struct mtk_dsi *dsi =
 		container_of(comp, struct mtk_dsi, ddp_comp);
+	struct mtk_panel_ext *panel_ext = mtk_dsi_get_panel_ext(comp);
+	unsigned int rw_times = 0;
 	struct mtk_drm_crtc *crtc = comp->mtk_crtc;
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
@@ -10499,6 +10530,8 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DSI_SIZE_CON,
 			roi_height << 16, 0xffff0000);
+
+		rw_times = mtk_dsi_calculate_rw_times(dsi, partial_roi.width, roi_height);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DSI_VACT_NL,
@@ -10507,9 +10540,13 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DSI_SIZE_CON,
 			full_height << 16, 0xffff0000);
+
+		rw_times = mtk_dsi_calculate_rw_times(dsi, partial_roi.width, full_height);
 	}
 
-	panel_ext = mtk_dsi_get_panel_ext(comp);
+	// update dsi buf rw_times
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_TX_BUF_RW_TIMES, rw_times, ~0);
 
 	if (panel_ext && panel_ext->funcs
 		&& panel_ext->funcs->lcm_update_roi_cmdq) {
