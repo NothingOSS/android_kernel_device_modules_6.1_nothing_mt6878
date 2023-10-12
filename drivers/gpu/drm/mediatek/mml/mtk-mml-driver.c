@@ -1024,7 +1024,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	} else if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		hrt = true;
 		bandwidth = mml_calc_bw_racing(datasize);
-		hrt_bw = bandwidth;
+		hrt_bw = (u32)((u64)datasize * 1000 / cfg->info.act_time);
 		if (unlikely(mml_racing_bw)) {
 			bandwidth = mml_racing_bw;
 			hrt_bw = mml_racing_bw * 1000;
@@ -1062,8 +1062,8 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 
 	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, (comp->cur_bw << 16) | comp->cur_peak);
 
-	mml_msg_qos("%s comp %u %s qos bw %u(%u) by throughput %u pixel %u size %u%s%s",
-		__func__, comp->id, comp->name, bandwidth, hrt_bw,
+	mml_msg_qos("%s comp %u %s qos bw %u(%u %u) by throughput %u pixel %u size %u%s%s",
+		__func__, comp->id, comp->name, bandwidth, hrt_bw, cfg->disp_hrt,
 		throughput, cache->max_pixel, datasize,
 		hrt ? " hrt" : "", updated ? " update" : "");
 }

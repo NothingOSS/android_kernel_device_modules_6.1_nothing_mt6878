@@ -39,7 +39,7 @@ module_param(mml_max_cache_cfg, int, 0644);
 int mml_dc = 1;
 module_param(mml_dc, int, 0644);
 
-int mml_hrt_overhead = 110;
+int mml_hrt_overhead = 100;
 module_param(mml_hrt_overhead, int, 0644);
 
 struct mml_drm_ctx {
@@ -468,10 +468,9 @@ static u32 frame_calc_layer_hrt(struct mml_drm_ctx *ctx, struct mml_frame_info *
 	u32 layer_w, u32 layer_h)
 {
 	/* MML HRT bandwidth calculate by
-	 *	hrt_MBps = crop_bytes * width_resize_ratio / active_duration * overhead
+	 *	hrt_MBps = crop_bytes / active_duration * overhead
 	 *
 	 * with following:
-	 *	width_resize_ratio:	panel width to layer width ratio
 	 *	overhead:		default 10%
 	 *	active_duration:	active time provide by display driver
 	 */
@@ -479,22 +478,18 @@ static u32 frame_calc_layer_hrt(struct mml_drm_ctx *ctx, struct mml_frame_info *
 	u32 cropw = info->dest[0].crop.r.width;
 	u32 croph = info->dest[0].crop.r.height;
 	u64 hrt;
-	u32 inw;
 
 	if (MML_FMT_COMPRESS(info->src.format)) {
 		cropw = round_up(cropw, 32);
 		croph = round_up(croph, 16);
 	}
 
-	inw = info->dest[0].rotate == MML_ROT_0 || info->dest[0].rotate == MML_ROT_180 ?
-		cropw : croph;
-
 	/* calculate source data size as bandwidth */
 	hrt = mml_color_get_min_y_size(info->src.format, cropw, croph);
 	if (!MML_FMT_COMPRESS(info->src.format) && plane > 1)
 		hrt += (u64)mml_color_get_min_uv_size(info->src.format, cropw, croph) * (plane - 1);
 
-	hrt = hrt * 1000 * ctx->panel_width / layer_w / info->act_time * mml_hrt_overhead / 100;
+	hrt = hrt * 1000 / info->act_time * mml_hrt_overhead / 100;
 
 	/* region pq read map data */
 	if (info->dest[0].pq_config.en_region_pq) {
@@ -502,7 +497,7 @@ static u32 frame_calc_layer_hrt(struct mml_drm_ctx *ctx, struct mml_frame_info *
 			info->seg_map.width, info->seg_map.height);
 
 		/* read whole frame and also count resize ratio */
-		hrt += size * 1000 * ctx->panel_width / layer_w / info->act_time * mml_hrt_overhead / 100;
+		hrt += size * 1000 / info->act_time * mml_hrt_overhead / 100;
 	}
 
 	/* region pq wrot out small frame, count wrot hrt */
@@ -511,7 +506,7 @@ static u32 frame_calc_layer_hrt(struct mml_drm_ctx *ctx, struct mml_frame_info *
 			info->dest[1].data.width, info->dest[1].data.height);
 
 		/* also must write done in layer time to avoid blocking hw path */
-		hrt += size * 1000 * ctx->panel_width / layer_w / info->act_time * mml_hrt_overhead / 100;
+		hrt += size * 1000 / info->act_time * mml_hrt_overhead / 100;
 	}
 
 	mml_msg("%s hrt %llu size %ux%u panel %ux%u layer width %u acttime %u",
