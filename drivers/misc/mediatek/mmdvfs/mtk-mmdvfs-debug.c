@@ -24,6 +24,7 @@
 
 #include "mtk-mmdvfs-v3-memory.h"
 #include "mtk-mmdvfs-ftrace.h"
+#include "clk-mtk.h"
 
 #define MMDVFS_DBG_VER1	BIT(0)
 #define MMDVFS_DBG_VER3	BIT(1)
@@ -574,23 +575,33 @@ static struct kernel_param_ops mmdvfs_debug_set_ftrace_ops = {
 module_param_cb(ftrace, &mmdvfs_debug_set_ftrace_ops, NULL, 0644);
 MODULE_PARM_DESC(ftrace, "mmdvfs ftrace log");
 
-static int mmdvfs_debug_smi_cb(struct notifier_block *nb, unsigned long action, void *data)
+static int mmdvfs_debug_volt_dump(void *data)
 {
-	int i;
-
-/* TODO: Use non-sleep API or thread
-	if (g_mmdvfs->reg_vcore)
+	if (!IS_ERR_OR_NULL(g_mmdvfs->reg_vcore))
 		MMDVFS_DBG("vcore enabled:%d voltage:%d", regulator_is_enabled(g_mmdvfs->reg_vcore),
 			regulator_get_voltage(g_mmdvfs->reg_vcore));
 
-	if (g_mmdvfs->reg_vmm)
+	if (!IS_ERR_OR_NULL(g_mmdvfs->reg_vmm))
 		MMDVFS_DBG("vmm enabled:%d voltage:%d", regulator_is_enabled(g_mmdvfs->reg_vmm),
 			regulator_get_voltage(g_mmdvfs->reg_vmm));
-*/
-	for (i = 0; i < g_mmdvfs->fmeter_count; i++)
+	return 0;
+}
+
+static int mmdvfs_debug_smi_cb(struct notifier_block *nb, unsigned long action, void *data)
+{
+	int i;
+	unsigned int val;
+	struct task_struct *kthr;
+
+	kthr = kthread_run(mmdvfs_debug_volt_dump, NULL, "mmdvfs-dbg-volt-dump");
+	for (i = 0; i < g_mmdvfs->fmeter_count; i++) {
+		val = mt_get_fmeter_freq(g_mmdvfs->fmeter_id[i], g_mmdvfs->fmeter_type[i]);
 		MMDVFS_DBG("i:%d id:%hu type:%hu freq:%u",
-			i, g_mmdvfs->fmeter_id[i], g_mmdvfs->fmeter_type[i],
-			mt_get_fmeter_freq(g_mmdvfs->fmeter_id[i], g_mmdvfs->fmeter_type[i]));
+			i, g_mmdvfs->fmeter_id[i], g_mmdvfs->fmeter_type[i], val);
+		if (g_mmdvfs->fmeter_id[i] == 2 && g_mmdvfs->fmeter_type[i] == 4 &&
+			val && (val > 2596000 || val < 2396000))
+			mtk_clk_notify(NULL, NULL, NULL, 0, 0, 1, CLK_EVT_CHECK_APMIXED_STAT);
+	}
 
 	for (i = 0; i < g_mmdvfs->clk_count; i++)
 		MMDVFS_DBG("[%#010x] = %#010x", g_mmdvfs->clk_base_pa + g_mmdvfs->clk_ofs[i],
