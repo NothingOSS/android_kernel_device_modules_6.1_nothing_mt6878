@@ -19,7 +19,7 @@
 #include <sound/soc.h>
 #include <sound/core.h>
 
-#define BYPASS_FOR_61_BRINGUP
+//#define BYPASS_FOR_61_BRINGUP
 
 #include "mt6369.h"
 #if IS_ENABLED(CONFIG_SND_SOC_MT6369_ACCDET) && !defined(BYPASS_FOR_61_BRINGUP)
