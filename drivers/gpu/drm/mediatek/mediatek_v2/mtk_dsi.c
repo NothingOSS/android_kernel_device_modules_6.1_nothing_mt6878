@@ -2855,6 +2855,18 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 						dsi->skip_vblank = (dsi->mode_switch_delay == 0) ?
 						panel_ext->params->skip_vblank : dsi->skip_vblank;
 					}
+
+					if (dsi->skip_vblank != 0 &&
+						dsi->cnt % dsi->skip_vblank == (dsi->skip_vblank - 1)) {
+						//trigger at the last little TE
+						drm_trace_tag_start("last_little_TE");
+						atomic_set(&mtk_crtc->last_little_TE_for_check_trigger, 1);
+						wake_up_interruptible(&mtk_crtc->last_little_TE_cmdq);
+					}
+					if(dsi->cnt == 0) {
+						atomic_set(&mtk_crtc->last_little_TE_for_check_trigger, 0);
+						drm_trace_tag_end("last_little_TE");
+					}
 					dsi->cnt++;
 				} else if (mtk_crtc->vblank_en) {
 					//send hwvsync to sf

@@ -7575,6 +7575,7 @@ static void mtk_disp_signal_fence_worker_signal(struct drm_crtc *crtc, struct cm
 		if (ret != 0)
 			kfree(cb_data_s);
 	}
+
 	atomic_set(&mtk_crtc->cmdq_done, 1);
 	wake_up_interruptible(&mtk_crtc->signal_fence_task_wq);
 }
@@ -8256,10 +8257,16 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 	} else if (crtc && crtc->state) {
 		cur_fps = drm_mode_vrefresh(&crtc->state->mode);
 	}
-	if (cur_fps)
-		frame_time = 1000000 / cur_fps;
-	DDPINFO("%s: cur_fps:%d, frame_time:%d\n", __func__, cur_fps, frame_time);
 
+	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
+		&& mtk_crtc->panel_ext->params->real_te_duration != 0)
+		frame_time = mtk_crtc->panel_ext->params->real_te_duration;
+	else if (cur_fps)
+		frame_time = 1000000 / cur_fps;
+	DDPINFO("%s:%d cur_fps:%d, frame_time:%d, %d, %d, %d, %d, %d\n",
+		__func__, __LINE__, cur_fps, frame_time, mtk_crtc->pre_te_cfg.prefetch_te_en
+		,mtk_crtc->pre_te_cfg.merge_trigger_en, mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en
+		,mtk_crtc->pre_te_cfg.vidle_apsrc_off_en, merge_trigger_offset);
 	frame_time = CMDQ_US_TO_TICK(frame_time);
 	if (frame_time <= (dsi_pll_check_off_offset
 			   + v_idle_power_off_offset
@@ -9992,20 +9999,43 @@ static int __mtk_check_trigger(struct mtk_drm_crtc *mtk_crtc)
 
 static int _mtk_crtc_check_trigger(void *data)
 {
+	struct mtk_drm_private *priv = NULL;
 	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *) data;
 	struct sched_param param = {.sched_priority = 94 };
+	struct mtk_ddp_comp *output_comp = NULL;
 	int ret;
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
 	sched_setscheduler(current, SCHED_RR, &param);
+	priv = mtk_crtc->base.dev->dev_private;
 
 	atomic_set(&mtk_crtc->trig_event_act, 0);
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_CHECK_TRIGGER_MERGE))
+		atomic_set(&mtk_crtc->last_little_TE_for_check_trigger, 0);
+
 	while (1) {
+		struct mtk_dsi *dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
+
 		ret = wait_event_interruptible(mtk_crtc->trigger_event,
 			atomic_read(&mtk_crtc->trig_event_act));
 		if (ret < 0)
 			DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
 		atomic_set(&mtk_crtc->trig_event_act, 0);
+		drm_trace_tag_value("normal_check_trigger", 1);
 
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_CHECK_TRIGGER_MERGE)
+				&& dsi->skip_vblank > 1 && dsi->ext->params->real_te_duration
+				&& dsi->ext->params->real_te_duration < 8333) {
+			//wait to the last TE
+			ret = wait_event_interruptible(mtk_crtc->last_little_TE_cmdq,
+				atomic_read(&mtk_crtc->last_little_TE_for_check_trigger));
+			if (ret < 0)
+				DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
+			atomic_set(&mtk_crtc->last_little_TE_for_check_trigger, 0);
+			drm_trace_tag_value("normal_check_trigger", 2);
+		}
+
+		drm_trace_tag_end("last_little_TE");
 		__mtk_check_trigger(mtk_crtc);
 
 		if (kthread_should_stop())
@@ -10017,25 +10047,50 @@ static int _mtk_crtc_check_trigger(void *data)
 
 static int _mtk_crtc_check_trigger_delay(void *data)
 {
+	struct mtk_drm_private *priv = NULL;
 	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *) data;
 	struct sched_param param = {.sched_priority = 94 };
+	struct mtk_ddp_comp *output_comp = NULL;
 	int ret;
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
 	sched_setscheduler(current, SCHED_RR, &param);
+	priv = mtk_crtc->base.dev->dev_private;
 
 	atomic_set(&mtk_crtc->trig_delay_act, 0);
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_CHECK_TRIGGER_MERGE))
+		atomic_set(&mtk_crtc->last_little_TE_for_check_trigger, 0);
 
 	while (1) {
+		struct mtk_dsi *dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
+
 		ret = wait_event_interruptible(mtk_crtc->trigger_delay,
 			atomic_read(&mtk_crtc->trig_delay_act));
 		if (ret < 0)
 			DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
 		atomic_set(&mtk_crtc->trig_delay_act, 0);
 		atomic_set(&mtk_crtc->delayed_trig, 0);
-
+		drm_trace_tag_value("delay_check_trigger", 1);
 		usleep_range(32000, 33000);
-		if (!atomic_read(&mtk_crtc->delayed_trig))
+		drm_trace_tag_value("delay_check_trigger", 2);
+
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_CHECK_TRIGGER_MERGE)
+				&& dsi->skip_vblank > 1 && dsi->ext->params->real_te_duration
+				&& dsi->ext->params->real_te_duration < 8333) {
+			//wait to the last TE
+			ret = wait_event_interruptible(mtk_crtc->last_little_TE_cmdq,
+				atomic_read(&mtk_crtc->last_little_TE_for_check_trigger));
+			if (ret < 0)
+				DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
+			atomic_set(&mtk_crtc->last_little_TE_for_check_trigger, 0);
+			drm_trace_tag_value("delay_check_trigger", 3);
+		}
+
+		if (!atomic_read(&mtk_crtc->delayed_trig)) {
+			drm_trace_tag_value("delay_check_trigger", 4);
+			drm_trace_tag_end("last_little_TE");
 			__mtk_check_trigger(mtk_crtc);
+		}
 
 		if (kthread_should_stop())
 			break;
@@ -10140,6 +10195,7 @@ void mtk_crtc_check_trigger(struct mtk_drm_crtc *mtk_crtc, bool delay,
 			CRTC_MMP_MARK(index, kick_trigger, 0, 5);
 			goto err;
 		}
+		drm_trace_tag_mark("trig_delay_act");
 		atomic_set(&mtk_crtc->trig_delay_act, 1);
 		wake_up_interruptible(&mtk_crtc->trigger_delay);
 	} else {
@@ -10148,6 +10204,7 @@ void mtk_crtc_check_trigger(struct mtk_drm_crtc *mtk_crtc, bool delay,
 			CRTC_MMP_MARK(index, kick_trigger, 0, 6);
 			goto err;
 		}
+		drm_trace_tag_mark("trig_event_act");
 		atomic_set(&mtk_crtc->trig_event_act, 1);
 		wake_up_interruptible(&mtk_crtc->trigger_event);
 	}
@@ -14376,7 +14433,6 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		wait_event_interruptible(mtk_crtc->mode_switch_end_wq,
 			(atomic_read(&mtk_crtc->singal_for_mode_switch) == 0));
 	}
-
 #ifdef MTK_DRM_CMDQ_ASYNC
 #ifdef MTK_DRM_ASYNC_HANDLE
 	if (gce_cb) {
@@ -17144,6 +17200,8 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		mtk_crtc->trig_cmdq_task =
 			kthread_run(_mtk_crtc_cmdq_retrig,
 					mtk_crtc, "ddp_cmdq_trig");
+
+		init_waitqueue_head(&mtk_crtc->last_little_TE_cmdq);
 	}
 
 	init_waitqueue_head(&mtk_crtc->present_fence_wq);
