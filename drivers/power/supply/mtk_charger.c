@@ -2966,7 +2966,8 @@ static int charger_routine_thread(void *arg)
 	static bool is_module_init_done;
 	bool is_charger_on;
 	int ret;
-	int vbat_min, vbat_max;
+	int vbat_min = 0;
+	int vbat_max = 0;
 	u32 chg_cv = 0;
 
 	while (1) {
@@ -3007,6 +3008,8 @@ static int charger_routine_thread(void *arg)
 		info->battery_temp = get_battery_temperature(info);
 		ret = charger_dev_get_adc(info->chg1_dev,
 			ADC_CHANNEL_VBAT, &vbat_min, &vbat_max);
+		if (ret < 0)
+			chr_err("failed to get vbat_min\n");
 		ret = charger_dev_get_constant_voltage(info->chg1_dev, &chg_cv);
 
 		if (vbat_min != 0)
