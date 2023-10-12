@@ -550,6 +550,7 @@ struct mt6681_priv {
 	int vow_dmic_lp;
 	int vow_single_mic_select;
 	int bypass_hpdet_dump;
+	int hdr_record;
 
 	/* regulator */
 	struct regulator *reg_vaud18;

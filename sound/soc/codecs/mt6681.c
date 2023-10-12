@@ -6352,6 +6352,16 @@ static int mt_vaud18_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int is_hdr_record(struct snd_soc_dapm_widget *source,
+			 struct snd_soc_dapm_widget *sink)
+{
+	struct snd_soc_dapm_widget *w = sink;
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	return priv->hdr_record;
+}
+
 static int is_need_pll_208M(struct snd_soc_dapm_widget *source,
 			    struct snd_soc_dapm_widget *sink)
 {
@@ -13501,6 +13511,7 @@ static const struct snd_soc_dapm_route mt6681_dapm_routes[] = {
 
 	{"AIN0", NULL, "MIC_BIAS_0"},
 	{"AIN0", NULL, "MIC_BIAS_2"},
+	{"AIN0", NULL, "MIC_BIAS_3", is_hdr_record},
 	{"AIN1", NULL, "MIC_BIAS_1"},
 	{"AIN2", NULL, "MIC_BIAS_0"},
 	{"AIN2", NULL, "MIC_BIAS_2"},
@@ -16728,6 +16739,29 @@ static int audio_dctrim_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int audio_hdr_get(struct snd_kcontrol *kcontrol,
+			 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	dev_info(priv->dev, "%s(), %s = 0x%x\n", __func__, kcontrol->id.name,
+		 priv->hdr_record);
+
+	ucontrol->value.integer.value[0] = priv->hdr_record;
+	return 0;
+}
+
+static int audio_hdr_set(struct snd_kcontrol *kcontrol,
+			 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	priv->hdr_record = ucontrol->value.integer.value[0];
+	return 0;
+}
+
 static int audio_hpdet_get(struct snd_kcontrol *kcontrol,
 			    struct snd_ctl_elem_value *ucontrol)
 {
@@ -17266,6 +17300,8 @@ static const struct snd_kcontrol_new mt6681_snd_misc_controls[] = {
 		       mt6681_hwgain_get, mt6681_hwgain_set),
 	SOC_SINGLE_EXT("HPDET_DEBUG", SND_SOC_NOPM, 0, 0x80000, 0,
 		       audio_hpdet_get, audio_hpdet_set),
+	SOC_SINGLE_EXT("HDR_RECORD", SND_SOC_NOPM, 0, 0x80000, 0,
+		       audio_hdr_get, audio_hdr_set),
 	SOC_ENUM_EXT("CODEC_RECORD_MISO1", misc_control_enum[0], mt6681_record_miso1_en_get,
 		     mt6681_record_miso1_en_set),
 };
@@ -22171,6 +22207,7 @@ static int mt6681_codec_init_reg(struct mt6681_priv *priv)
 	priv->vow_hdr_concurrent = 0;
 	priv->vow_cic_type = 0;
 	priv->bypass_hpdet_dump = 1;
+	priv->hdr_record = 0;
 	/* mic type setting */
 	mic_type_default_init(priv);
 	regmap_read(priv->regmap, MT6681_STRUP_ELR_1, &value);
