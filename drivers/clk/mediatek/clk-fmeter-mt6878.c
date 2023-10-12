@@ -23,6 +23,7 @@
 #define FM_CKDIV_MASK			GENMASK(10, 7)
 #define FM_POSTDIV_SHIFT		(24)
 #define FM_POSTDIV_MASK			GENMASK(26, 24)
+#define FM_TEST_CLK_EN			(1 << 15)
 
 static DEFINE_SPINLOCK(meter_lock);
 #define fmeter_lock(flags)   spin_lock_irqsave(&meter_lock, flags)
@@ -39,10 +40,10 @@ static DEFINE_SPINLOCK(subsys_meter_lock);
 /* check from topckgen&vlpcksys CODA */
 #define CLK26CALI_0					(0x220)
 #define CLK26CALI_1					(0x224)
-#define CLK_MISC_CFG_0					(0x240)
-#define CLK_DBG_CFG					(0x28C)
-#define VLP_FQMTR_CON0					(0x230)
-#define VLP_FQMTR_CON1					(0x234)
+#define CLK_MISC_CFG_0				(0x140)
+#define CLK_DBG_CFG					(0x17C)
+#define VLP_FQMTR_CON0				(0x230)
+#define VLP_FQMTR_CON1				(0x234)
 
 /* MFGPLL_PLL_CTRL Register */
 #define MFGPLL_CON0					(0x0008)
@@ -295,42 +296,34 @@ static unsigned int check_pdn(void __iomem *base,
 	return 0;
 }
 
-static unsigned int get_post_div(unsigned int type, unsigned int ID)
+static void set_test_clk_en(unsigned int type, unsigned int ID, bool onoff)
 {
-	unsigned int post_div = 1;
+	void __iomem *pll_con0 = NULL;
 	int i;
 
-	if ((ID <= 0) || (ID >= FM_ABIST_NUM))
-		return post_div;
+	if (type != ABIST && type != ABIST_CK2)
+		return;
+
+	if ((ID <= 0) || (type == ABIST && ID >= FM_ABIST_NUM))
+		return;
 
 	for (i = 0; i < ARRAY_SIZE(fclks) - 1; i++) {
 		if (fclks[i].type == type && fclks[i].id == ID
-				&& fclks[i].grp == 1) {
-			post_div =  clk_readl(fm_base[FM_APMIXEDSYS] + fclks[i].ofs);
-			post_div = 1 << ((post_div >> 24) & 0x7);
+				&& fclks[i].grp != 0) {
+			pll_con0 =  fm_base[FM_APMIXEDSYS] + fclks[i].ofs - 0x4;
 			break;
 		}
 	}
 
-	return post_div;
-}
+	if ((i == (ARRAY_SIZE(fclks) - 1)) || pll_con0 == NULL)
+		return;
 
-static unsigned int get_clk_div(unsigned int type, unsigned int ID)
-{
-	unsigned int clk_div = 1;
-	int i;
-
-	if ((ID <= 0) || (ID >= FM_CKGEN_NUM))
-		return clk_div;
-
-	for (i = 0; i < ARRAY_SIZE(fclks) - 1; i++)
-		if (fclks[i].type == type && fclks[i].id == ID)
-			break;
-
-	if (i >= ARRAY_SIZE(fclks) - 1)
-		return clk_div;
-
-	return fclks[i].ck_div;
+	if (onoff) {
+		// pll con0[15] = 1 (enable test clk)
+		clk_writel(pll_con0, (clk_readl(pll_con0) | FM_TEST_CLK_EN));
+	} else {
+		clk_writel(pll_con0, (clk_readl(pll_con0) & ~(FM_TEST_CLK_EN)));
+	}
 }
 
 /* implement ckgen&abist api (example as below) */
@@ -342,11 +335,12 @@ static int __mt_get_freq(unsigned int ID, int type)
 	void __iomem *cali0_addr = fm_base[FM_TOPCKGEN] + CLK26CALI_0;
 	void __iomem *cali1_addr = fm_base[FM_TOPCKGEN] + CLK26CALI_1;
 	unsigned int temp, clk_dbg_cfg, clk_misc_cfg_0, clk26cali_1 = 0;
-	unsigned int clk_div = 1, post_div = 1;
 	unsigned long flags;
 	int output = 0, i = 0;
 
 	fmeter_lock(flags);
+
+	set_test_clk_en(type, ID, true);
 
 	if (type == CKGEN && check_pdn(fm_base[FM_TOPCKGEN], CKGEN, ID)) {
 		pr_notice("ID-%d: MUX PDN, return 0.\n", ID);
@@ -379,6 +373,7 @@ static int __mt_get_freq(unsigned int ID, int type)
 		return 0;
 	}
 
+	/* sel fqmtr_cksel and set ckgen_k1 to 0(DIV4) */
 	clk_misc_cfg_0 = clk_readl(misc_addr);
 	clk_writel(misc_addr, (clk_misc_cfg_0 & 0x00FFFFFF) | (3 << 24));
 
@@ -397,12 +392,9 @@ static int __mt_get_freq(unsigned int ID, int type)
 
 	temp = clk_readl(cali1_addr) & 0xFFFF;
 
-	if (type == ABIST)
-		post_div = get_post_div(type, ID);
+	output = (temp * 26000) / 1024;
 
-	clk_div = get_clk_div(type, ID);
-
-	output = (temp * 26000) / 1024 * clk_div / post_div;
+	set_test_clk_en(type, ID, false);
 
 	clk_writel(dbg_addr, clk_dbg_cfg);
 	clk_writel(misc_addr, clk_misc_cfg_0);
@@ -425,6 +417,7 @@ static int __mt_get_freq(unsigned int ID, int type)
 			clk_readl(cali1_addr));
 	}
 
+	/* Fmeter is div by 4 */
 	return (output * 4);
 }
 
@@ -432,11 +425,9 @@ static int __mt_get_freq(unsigned int ID, int type)
 
 static int __mt_get_freq2(unsigned int  type, unsigned int id)
 {
-	void __iomem *pll_con0 = fm_base[type] + subsys_fm[type].pll_con0;
-	void __iomem *pll_con1 = fm_base[type] + subsys_fm[type].pll_con1;
 	void __iomem *con0 = fm_base[type] + subsys_fm[type].con0;
 	void __iomem *con1 = fm_base[type] + subsys_fm[type].con1;
-	unsigned int temp, clk_div = 1, post_div = 1;
+	unsigned int temp;
 	unsigned long flags;
 	int output = 0, i = 0;
 
@@ -453,7 +444,7 @@ static int __mt_get_freq2(unsigned int  type, unsigned int id)
 	else
 		clk_writel(con0, (clk_readl(con0) & 0x00FFFFF8) | (id << 0));
 	/* set ckgen_load_cnt to 1024 */
-	clk_writel(con1, (clk_readl(con1) & 0xFC00FFFF) | (0x3FF << 16));
+	clk_writel(con1, (clk_readl(con1) & 0xFC00FFFF) | (0x1FF << 16));
 
 	/* sel fqmtr_cksel and set ckgen_k1 to 0(DIV4) */
 	clk_writel(con0, (clk_readl(con0) & 0x00FFFFFF) | (3 << 24));
@@ -479,22 +470,14 @@ static int __mt_get_freq2(unsigned int  type, unsigned int id)
 	}
 
 	temp = clk_readl(con1) & 0xFFFF;
-	output = ((temp * 26000)) / 1024; // Khz
-
-	if (type != FM_VLP_CKSYS && id == FM_PLL_CKDIV_CK)
-		clk_div = (clk_readl(pll_con0) & FM_CKDIV_MASK) >> FM_CKDIV_SHIFT;
-
-	if (clk_div == 0)
-		clk_div = 1;
-
-	if (type != FM_VLP_CKSYS)
-		post_div = 1 << ((clk_readl(pll_con1) & FM_POSTDIV_MASK) >> FM_POSTDIV_SHIFT);
+	output = ((temp * 26000)) / 512; // Khz
 
 	clk_writel(con0, 0x8000);
 
 	fmeter_unlock(flags);
 
-	return (output * 4 * clk_div) / post_div;
+	/* Fmeter is div by 4 */
+	return (output * 4);
 }
 
 static unsigned int mt6878_get_ckgen_freq(unsigned int ID)
@@ -523,7 +506,7 @@ static unsigned int mt6878_get_subsys_freq(unsigned int ID)
 	if (ID >= FM_SYS_NUM)
 		return 0;
 
-	output = __mt_get_freq2(ID, FM_PLL_CKDIV_CK);
+	output = __mt_get_freq2(ID, FM_PLL_CK);
 
 	subsys_fmeter_unlock(flags);
 
