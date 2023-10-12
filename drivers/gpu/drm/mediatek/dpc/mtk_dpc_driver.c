@@ -895,9 +895,6 @@ void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
 			DISP_DPC_INT_DT6 | DISP_DPC_INT_DT3,
 			dpc_base + DISP_REG_DPC_DISP_INTEN);
 		writel(0x33000, dpc_base + DISP_REG_DPC_MML_INTEN);
-	} else {
-		writel(DISP_DPC_INT_DISP1_ON | DISP_DPC_INT_DISP1_OFF,
-			dpc_base + DISP_REG_DPC_DISP_INTEN);
 	}
 
 	if (mtcmos_ao) {
@@ -963,20 +960,24 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_dpc *priv = dev_id;
 	u32 status;
+	u32 mminfra_hangfree_val = 0;
+	irqreturn_t ret = IRQ_NONE;
 
 	if (IS_ERR_OR_NULL(priv))
-		return IRQ_NONE;
+		return ret;
 
 	if (dpc_pm_ctrl(true)) {
 		dpc_mmp(mminfra, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
-		return IRQ_NONE;
+		return ret;
 	}
 
+	/* disable devapc power check temporarily, the value usually not changed after boot */
+	mminfra_hangfree_val = readl(g_priv->mminfra_hangfree);
+	writel(mminfra_hangfree_val & ~0x1, g_priv->mminfra_hangfree);
+
 	status = readl(dpc_base + DISP_REG_DPC_DISP_INTSTA);
-	if (!status) {
-		dpc_pm_ctrl(false);
-		return IRQ_NONE;
-	}
+	if (!status)
+		goto out;
 
 	writel(~status, dpc_base + DISP_REG_DPC_DISP_INTSTA);
 
@@ -1056,29 +1057,37 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 			mtk_dprec_logger_pr(1, "DISP1 ON\n");
 	}
 
+	ret = IRQ_HANDLED;
+
+out:
+	writel(mminfra_hangfree_val, g_priv->mminfra_hangfree);
 	dpc_pm_ctrl(false);
 
-	return IRQ_HANDLED;
+	return ret;
 }
 
 irqreturn_t mtk_dpc_mml_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_dpc *priv = dev_id;
 	u32 status;
+	u32 mminfra_hangfree_val = 0;
+	irqreturn_t ret = IRQ_NONE;
 
 	if (IS_ERR_OR_NULL(priv))
-		return IRQ_NONE;
+		return ret;
 
 	if (dpc_pm_ctrl(true)) {
 		dpc_mmp(mminfra, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
-		return IRQ_NONE;
+		return ret;
 	}
 
+	/* disable devapc power check temporarily, the value usually not changed after boot */
+	mminfra_hangfree_val = readl(g_priv->mminfra_hangfree);
+	writel(mminfra_hangfree_val & ~0x1, g_priv->mminfra_hangfree);
+
 	status = readl(dpc_base + DISP_REG_DPC_MML_INTSTA);
-	if (!status) {
-		dpc_pm_ctrl(false);
-		return IRQ_NONE;
-	}
+	if (!status)
+		goto out;
 
 	writel(~status, dpc_base + DISP_REG_DPC_MML_INTSTA);
 
@@ -1094,9 +1103,13 @@ irqreturn_t mtk_dpc_mml_irq_handler(int irq, void *dev_id)
 			dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_END, 0, 0);
 	}
 
+	ret = IRQ_HANDLED;
+
+out:
+	writel(mminfra_hangfree_val, g_priv->mminfra_hangfree);
 	dpc_pm_ctrl(false);
 
-	return IRQ_HANDLED;
+	return ret;
 }
 
 static int dpc_res_init(struct mtk_dpc *priv)
