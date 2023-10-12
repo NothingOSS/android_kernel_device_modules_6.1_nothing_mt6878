@@ -10843,7 +10843,7 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 #include "mediatek/cust_mt6878_connfem.dtsi"
 
 &mt6685_rtc {
-	status = "disabled";
+	status = "okay";
 };
 
 &mt6685_mfd {
