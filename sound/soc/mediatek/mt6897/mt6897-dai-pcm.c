@@ -90,6 +90,33 @@ enum AUD_PCM1_1x_EN_SLAVE_MODE {
 	PCM1_SLAVE_1x_EN = 2,
 };
 
+enum {
+	PCM_8K = 0,
+	PCM_16K = 4,
+	PCM_32K = 8,
+	PCM_48K = 10
+};
+
+static unsigned int pcm_1x_rate_transform(struct device *dev,
+				       unsigned int rate)
+{
+	switch (rate) {
+	case 8000:
+		return PCM_8K;
+	case 16000:
+		return PCM_16K;
+	case 32000:
+		return PCM_32K;
+	case 48000:
+		return PCM_48K;
+	default:
+		dev_info(dev, "%s(), rate %u invalid, use %d!!!\n",
+			 __func__,
+			 rate, PCM_32K);
+		return PCM_32K;
+	}
+}
+
 /* dai component */
 static const struct snd_kcontrol_new mtk_pcm_0_playback_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN096_0,
@@ -332,6 +359,7 @@ static int mtk_dai_pcm_hw_params(struct snd_pcm_substream *substream,
 	struct mtk_base_afe *afe = snd_soc_dai_get_drvdata(dai);
 	unsigned int rate = params_rate(params);
 	unsigned int rate_reg = mt6897_rate_transform(afe->dev, rate, dai->id);
+	unsigned int x_rate_reg = pcm_1x_rate_transform(afe->dev, rate);
 	unsigned int pcm_con0 = 0;
 	unsigned int pcm_con1 = 0;
 
@@ -379,8 +407,8 @@ static int mtk_dai_pcm_hw_params(struct snd_pcm_substream *substream,
 		regmap_update_bits(afe->regmap, AFE_PCM1_INTF_CON0,
 				   0xfffffffe, pcm_con0);
 
-		pcm_con1 |= SLAVE << PCM1_1X_EN_DOMAIN_SFT;
-		pcm_con1 |= PCM1_SLAVE_1x_EN << PCM1_1X_EN_MODE_SFT;
+		pcm_con1 |= HOPPING_26M << PCM1_1X_EN_DOMAIN_SFT;
+		pcm_con1 |= x_rate_reg << PCM1_1X_EN_MODE_SFT;
 
 		regmap_update_bits(afe->regmap, AFE_PCM1_INTF_CON1,
 				   0x3fc0000, pcm_con1);
