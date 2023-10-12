@@ -20,6 +20,7 @@
 #include <dt-bindings/mml/mml-mt6878.h>
 #include <dt-bindings/iio/adc/mediatek,mt6375_auxadc.h>
 #include <dt-bindings/iio/adc/mediatek,mt6375_adc.h>
+#include <dt-bindings/interconnect/mtk,mmqos.h>
 #include <dt-bindings/mfd/mt6375.h>
 #include <dt-bindings/power/mt6375-gauge.h>
 #include <dt-bindings/power/mtk-charger.h>
@@ -3163,6 +3164,36 @@
 		mask = /bits/ 64 <0x00000003ffffffff>;
 		dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		iommus = <&apu_iommu0 M4U_L42_APU_DATA>;
+	};
+
+	mmqos-wrapper {
+			compatible = "mediatek,mt6878-mmqos-wrapper";
+	};
+
+	mmqos: interconnect {
+		compatible = "mediatek,mt6878-mmqos";
+		#mtk-interconnect-cells = <1>;
+		mediatek,larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2
+					&smi_larb4  &smi_larb7 &smi_larb9
+					&smi_larb11 &smi_larb12 &smi_larb13
+					&smi_larb14 &smi_larb15 &smi_larb16
+					&smi_larb17 &smi_larb22 &smi_larb25
+					&smi_larb28 &smi_larb29 &smi_larb30
+					&smi_larb33 &smi_larb34 &smi_larb38>;
+		mediatek,commons-supply = <&smi_disp_common>;
+		mmqos-state = <0x0>;
+		mmqos-log-level = <0>;
+		clocks = <&topckgen_clk CLK_TOP_MMINFRA_SEL>;
+		clock-names = "mm";
+		interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
+				<&dvfsrc MT6873_MASTER_HRT_MMSYS
+				&dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
+		interconnect-names = "icc-bw", "icc-hrt-bw";
+		vmmrc-base = <0x1ec00000>;
+		vmmrc-mask = <0x2e814>;
+		vmmrc-mask-bit = <8>;
+		vmmrc-on-table = <0x2e788>;
+		vmmrc-off-table = <0x2e7a8>;
 	};
 
 	soc {
