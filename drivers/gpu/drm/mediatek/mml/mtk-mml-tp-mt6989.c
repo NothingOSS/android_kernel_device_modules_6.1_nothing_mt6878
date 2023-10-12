@@ -33,6 +33,10 @@
 /* use OPP index 0(229Mhz) 1(273Mhz) 2(458Mhz) */
 #define MML_IR_MAX_OPP		2
 
+/* max hrt in MB/s, see mmqos hrt support */
+int mml_max_hrt = 6988;
+module_param(mml_max_hrt, int, 0644);
+
 int mml_force_rsz;
 module_param(mml_force_rsz, int, 0644);
 
@@ -777,13 +781,14 @@ static inline bool tp_need_resize(struct mml_frame_info *info, bool *can_binning
 static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache *tp,
 	u32 panel_width, u32 panel_height, bool *dual)
 {
-	u32 srcw, srch;
+	u32 srcw, srch, binw, binh;
 	u32 cropw = info->dest[0].crop.r.width;
 	u32 croph = info->dest[0].crop.r.height;
 	const u32 destw = info->dest[0].data.width;
 	const u32 desth = info->dest[0].data.height;
 	const enum mml_orientation rotate = info->dest[0].rotate;
-	u64 tput, pixel;
+	const u32 plane = MML_FMT_PLANE(info->src.format);
+	u64 tput, pixel, hrt;
 
 	/* always assign dual as default */
 	*dual = true;
@@ -801,19 +806,21 @@ static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache
 		round_down(info->dest[0].crop.r.left, 32);
 	srch = round_up(info->dest[0].crop.r.top + info->dest[0].crop.r.height, 16) -
 		round_down(info->dest[0].crop.r.top, 16);
+	binw = srcw;
+	binh = srch;
 
 	/* rotate source */
 	if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
-		swap(srcw, srch);
+		swap(binw, binh);
 		swap(cropw, croph);
 	}
 
 	/* binning case */
 	if (MML_FMT_YUV420(info->src.format)) {
 		if ((cropw >> 1) >= destw)
-			srcw = srcw >> 1;
+			binw = binw >> 1;
 		if ((croph >> 1) >= desth)
-			srch = srch >> 1;
+			binh = binh >> 1;
 	}
 
 	/* not support if exceeding max throughput
@@ -824,21 +831,33 @@ static bool tp_check_tput(struct mml_frame_info *info, struct mml_topology_cache
 	 * so merge all constant:
 	 *	tput = pixel / 2 * 11 / 10 / (act_time / 1000)
 	 */
-	pixel = max(srcw, destw) * max(srch, desth);
+	pixel = max(binw, destw) * max(binh, desth);
 	tput = pixel * 11 / 20 / (info->act_time / 1000);
 	if (panel_width > destw)
 		tput = tput * panel_width / destw;
-	if (mml_rrot_single != 2 && srcw * srch <= MML_DL_RROT_S_PX &&
+	if (mml_rrot_single != 2 && binw * binh <= MML_DL_RROT_S_PX &&
 		tput < tp->opp_speeds[tp->opp_cnt / 2]) {
 		*dual = false;
-		return true;
+		goto check_hrt;
 	} else if (tput < tp->opp_speeds[tp->opp_cnt - 1]) {
 		if (mml_rrot_single == 1)
 			*dual = false;
 		else
 			*dual = true;
-		return true;
+		goto check_hrt;
 	}
+
+	return false;
+
+check_hrt:
+	/* calculate source data size as bandwidth */
+	hrt = mml_color_get_min_y_size(info->src.format, srcw, srch);
+	if (!MML_FMT_COMPRESS(info->src.format) && plane > 1)
+		hrt += (u64)mml_color_get_min_uv_size(info->src.format, srcw, srch) * (plane - 1);
+	hrt = hrt * 1000 / info->act_time;
+	mml_msg("%s tput %llu hrt %llu", __func__, tput, hrt);
+	if (hrt <= mml_max_hrt)
+		return true;
 
 	return false;
 }
