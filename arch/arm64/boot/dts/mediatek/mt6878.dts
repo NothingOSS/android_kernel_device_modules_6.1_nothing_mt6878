@@ -2667,7 +2667,8 @@
 		mediatek,smi-supply = <&smi_img1_2x1_sub_comm0 0>;
 		mediatek,larb-id = <28>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_DIP1>;
-		clocks = <&traw_dip1_clk CLK_TRAW_DIP1_LARB28>;
+		clocks = <&traw_dip1_clk CLK_TRAW_DIP1_LARB28>,
+				<&traw_dip1_clk CLK_TRAW_DIP1_TRAW>;
 		clock-names = "apb";
 	};
 
