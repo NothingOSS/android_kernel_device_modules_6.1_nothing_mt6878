@@ -230,7 +230,6 @@
 			<&afe_clk CLK_AFE_APLL_TUNER1>,
 			<&mminfra_config_clk CLK_MMINFRA_GCE_D>,
 			<&mminfra_config_clk CLK_MMINFRA_GCE_M>,
-			<&mminfra_config_clk CLK_MMINFRA_SMI>,
 			<&mminfra_config_clk CLK_MMINFRA_GCE_26M>,
 			<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP>,
 			<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN>,

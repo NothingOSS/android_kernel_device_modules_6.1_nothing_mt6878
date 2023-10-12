@@ -1449,9 +1449,15 @@
 		};
 	};
 
+	hwv: syscon@10320000 {
+		compatible = "mediatek,mt6878-hwv", "syscon";
+		reg = <0 0x10320000 0 0x2000>;
+	};
+
 	topckgen_clk: syscon@10000000 {
 		compatible = "mediatek,mt6878-topckgen", "syscon";
 		reg = <0 0x10000000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
@@ -1464,6 +1470,7 @@
 	apmixedsys_clk: syscon@1000c000 {
 		compatible = "mediatek,mt6878-apmixedsys", "syscon";
 		reg = <0 0x1000c000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
@@ -1649,6 +1656,7 @@
 		nemicfg-ao-mem-reg-bus = <&nemicfg_ao_mem_reg_bus_clk>;
 		ssr-top = <&ssr_top_clk>;
 		vlpcfg-reg = <&vlpcfg_reg_clk>;
+		hw-voter-regmap = <&hwv>;
 		clocks =/* AUDIO */
 			<&topckgen_clk CLK_TOP_AUD_INTBUS_SEL>,
 			/* ISP_MAIN */
@@ -1716,9 +1724,7 @@
 			<&ccu_main_clk CLK_CCU2MM0_GALS_CON>,
 			/* DISP0 */
 			<&dispsys_config_clk CLK_MM_SMI_COMMON>,
-			<&mdpsys_config_clk CLK_MDP_SMI0>,
-			/* MM_INFRA */
-			<&mminfra_config_clk CLK_MMINFRA_SMI>;
+			<&mdpsys_config_clk CLK_MDP_SMI0>;
 		clock-names = "audio", "isp", "ipe", "vde", "ven", "cam",
 			"ccu", "ccu_ahb", "disp", "mm_infra", "mmup",
 			"isp_lp-0","isp_lp-1", "isp_lp-2", "isp_lp-3", "isp_lp-4",
@@ -1732,7 +1738,7 @@
 			"cam_subb_lp-0", "cam_subb_lp-1", "cam_subb_lp-2", "cam_subb_lp-3",
 			"cam_subb_lp-4",
 			"cam_ccu-0", "cam_ccu-1", "cam_ccu-2",
-			"disp0-0", "mdp_lp-0", "mm_infra-0";
+			"disp0-0", "mdp_lp-0";
 		isp-main-supply = <&mt6319_6_vbuck1>;
 		cam-main-supply = <&mt6319_6_vbuck1>;
 	};
