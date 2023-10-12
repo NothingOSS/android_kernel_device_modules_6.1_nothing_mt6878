@@ -3722,7 +3722,6 @@ static int mtk_dai_i2s_set_sysclk(struct snd_soc_dai *dai,
 static const struct snd_soc_dai_ops mtk_dai_i2s_ops = {
 	.hw_params = mtk_dai_i2s_hw_params,
 	.set_sysclk = mtk_dai_i2s_set_sysclk,
-	.trigger = mtk_dai_etdm_trigger,
 };
 
 /* dai driver */
