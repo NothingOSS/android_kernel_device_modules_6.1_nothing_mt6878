@@ -70,8 +70,6 @@
 	multi-temp-gauge0 = <(1)>;
 	/* Multi gauge0 enable */
 	rbat-pull-up-volt = <(1840)>;
-	/* disable battery temp compensate*/
-	no-bat-temp-compensate = <(1)>;
 #include "mt6878_battery_table.dtsi"
 #include "mt6878_battery_prop_dim2_ext.dtsi"
 };
