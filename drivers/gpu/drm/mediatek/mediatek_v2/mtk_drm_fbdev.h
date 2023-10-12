@@ -11,6 +11,7 @@ struct tag_videolfb {
 	u32 islcmfound;
 	u32 fps;
 	u32 vram;
+	u32 lcm_id;
 	char lcmname[1]; /* this is the minimum size */
 };
 
