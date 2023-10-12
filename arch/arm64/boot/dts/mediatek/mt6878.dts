@@ -2570,7 +2570,7 @@
 	};
 
 	mmdvfs_clk: mmdvfs-clk {
-		//compatible = "mediatek,mtk-mmdvfs-v3";
+		compatible = "mediatek,mtk-mmdvfs-v3";
 		//mmdvfs-free-run;
 		#mmdvfs,clock-cells = <6>;
 		mediatek,mmdvfs-clocks =
@@ -2619,11 +2619,11 @@
 	};
 
 	mmdvfs-v3-start {
-		//compatible = "mediatek,mmdvfs-v3-start";
+		compatible = "mediatek,mmdvfs-v3-start";
 	};
 
 	mmdvfs_debug: mmdvfs-debug {
-		//compatible = "mediatek,mmdvfs-debug";
+		compatible = "mediatek,mmdvfs-debug";
 		//dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		//disp-dev = <&dispsys_config>;
 		force-step0 = <0>;	/* 0:opp0,  1:opp1, ... */
