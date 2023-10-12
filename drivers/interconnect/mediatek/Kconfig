@@ -101,3 +101,15 @@ config INTERCONNECT_MTK_MMQOS_MT6989
 	  driver will collect BW requests from MM users, such as display,
 	  camera, mdp and video codec, and configure SMI settings dynamically
 	  according to the aggregated BW.
+
+config INTERCONNECT_MTK_MMQOS_MT6878
+	tristate "Mediatek MT6878 MMQoS interconnect driver"
+	depends on INTERCONNECT_MTK
+	depends on DEVICE_MODULES_MTK_SMI
+	select INTERCONNECT_MTK_MMQOS_COMMON
+	help
+	  Support MT6878 for multimedia QoS in Mediatek's SoCs.
+	  The Mediatek MMQoS(Multimedia Quality of Service) Interconnect
+	  driver will collect BW requests from MM users, such as display,
+	  camera, mdp and video codec, and configure SMI settings dynamically
+	  according to the aggregated BW.

@@ -1990,7 +1990,10 @@ int mtk_mmqos_v2_probe(struct platform_device *pdev)
 		gmmqos->vmmrc_base = NULL;
 	}
 
-	kthr_vcp = kthread_run(mmqos_vcp_init_thread, NULL, "mmqos-vcp");
+	if (mmqos_state & VCP_ENABLE)
+		kthr_vcp = kthread_run(mmqos_vcp_init_thread, NULL, "mmqos-vcp");
+	else
+		MMQOS_DBG("VCP not enable");
 
 	return probe_ret;
 }
@@ -2188,6 +2191,11 @@ static int mmqos_debug_set_ftrace(const char *val,
 	static struct task_struct *kthr;
 	u32 ena = 0;
 	int ret;
+
+	if (!gmmqos) {
+		ftrace_ena = false;
+		return 0;
+	}
 
 	mutex_lock(&gmmqos->bw_lock);
 	ret = kstrtou32(val, 0, &ena);
