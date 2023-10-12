@@ -8564,7 +8564,7 @@
 		#size-cells = <2>;
 		ranges;
 		lpm-kernel-suspend = <1>;
-		suspend-method = "disable";
+		suspend-method = "enable";
 
 		logger-enable-states = "mcusysoff_l", "mcusysoff_b", "system_vcore";
 
