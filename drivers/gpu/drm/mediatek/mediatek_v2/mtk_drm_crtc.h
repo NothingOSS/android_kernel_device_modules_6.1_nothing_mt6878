@@ -1055,7 +1055,7 @@ struct mtk_drm_crtc {
 	unsigned int mml_debug;
 	bool is_force_mml_scen;
 	bool mml_cmd_ir;
-	bool mml_ir_enable;
+	bool mml_prefer_dc;
 	enum MML_LINK_STATE mml_link_state;
 	enum SLBC_STATE slbc_state;
 

@@ -338,6 +338,25 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 	DDPINFO("%s:pan_disp_set_hrt_bw: %u\n", caller, bw);
 }
 
+void mtk_disp_hrt_repaint_blocking(const unsigned int hrt_idx)
+{
+	int i, ret;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dev_crtc);
+
+	drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, dev_crtc->dev);
+	for (i = 0; i < 5; ++i) {
+		ret = wait_event_timeout(
+			mtk_crtc->qos_ctx->hrt_cond_wq,
+			atomic_read(&mtk_crtc->qos_ctx->hrt_cond_sig),
+			HZ / 5);
+		if (ret == 0)
+			DDPINFO("wait repaint timeout %d\n", i);
+		atomic_set(&mtk_crtc->qos_ctx->hrt_cond_sig, 0);
+		if (atomic_read(&mtk_crtc->qos_ctx->last_hrt_idx) >= hrt_idx)
+			break;
+	}
+}
+
 /* force report all display's mmqos BW include SRT & HRT */
 void mtk_disp_mmqos_bw_repaint(struct mtk_drm_private *priv)
 {
@@ -394,7 +413,6 @@ int mtk_disp_hrt_cond_change_cb(struct notifier_block *nb, unsigned long value,
 				void *v)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dev_crtc);
-	int i, ret;
 	unsigned int hrt_idx;
 
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
@@ -414,19 +432,7 @@ int mtk_disp_hrt_cond_change_cb(struct notifier_block *nb, unsigned long value,
 		hrt_idx = _layering_rule_get_hrt_idx(drm_crtc_index(dev_crtc));
 		hrt_idx++;
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, dev_crtc->dev);
-		for (i = 0; i < 5; ++i) {
-			ret = wait_event_timeout(
-				mtk_crtc->qos_ctx->hrt_cond_wq,
-				atomic_read(&mtk_crtc->qos_ctx->hrt_cond_sig),
-				HZ / 5);
-			if (ret == 0)
-				DDPINFO("wait repaint timeout %d\n", i);
-			atomic_set(&mtk_crtc->qos_ctx->hrt_cond_sig, 0);
-			if (atomic_read(&mtk_crtc->qos_ctx->last_hrt_idx) >=
-			    hrt_idx)
-				break;
-		}
+		mtk_disp_hrt_repaint_blocking(hrt_idx);
 		mtk_disp_mmqos_bw_repaint(dev_crtc->dev->dev_private);
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 		break;

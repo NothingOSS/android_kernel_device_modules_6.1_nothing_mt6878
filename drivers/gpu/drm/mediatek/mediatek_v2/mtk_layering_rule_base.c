@@ -4022,7 +4022,7 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 		}
 	}
 
-	if (!mtk_crtc->mml_ir_enable)
+	if (mtk_crtc->mml_prefer_dc)
 		mml_info->mode = MML_MODE_MML_DECOUPLE;
 
 	if (mtk_crtc_is_frame_trigger_mode(crtc) && (!mtk_crtc->mml_cmd_ir) &&

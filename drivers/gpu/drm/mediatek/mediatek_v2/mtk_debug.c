@@ -4446,16 +4446,16 @@ static void process_dbg_opt(const char *opt)
 
 		if (mtk_crtc)
 			mtk_crtc->mml_cmd_ir = mml_cmd_ir;
-	} else if (strncmp(opt, "mml_enable_ir:", 14) == 0) {
+	} else if (strncmp(opt, "mml_prefer_dc:", 14) == 0) {
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;
-		bool mml_ir_enable = false;
+		bool mml_prefer_dc = false;
 
 		if (strncmp(opt + 14, "1", 1) == 0)
-			mml_ir_enable = true;
+			mml_prefer_dc = true;
 		else if (strncmp(opt + 14, "0", 1) == 0)
-			mml_ir_enable = false;
-		DDPMSG("mml_enable_ir:%d", mml_ir_enable);
+			mml_prefer_dc = false;
+		DDPMSG("mml_prefer_dc:%d", mml_prefer_dc);
 
 		/* this debug cmd only for crtc0 */
 		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
@@ -4469,7 +4469,7 @@ static void process_dbg_opt(const char *opt)
 		mtk_crtc = to_mtk_crtc(crtc);
 
 		if (mtk_crtc)
-			mtk_crtc->mml_ir_enable = mml_ir_enable;
+			mtk_crtc->mml_prefer_dc = mml_prefer_dc;
 	} else if (strncmp(opt, "pf_ts_type:", 11) == 0) {
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;

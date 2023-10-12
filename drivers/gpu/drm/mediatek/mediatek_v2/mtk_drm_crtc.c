@@ -1735,6 +1735,7 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 	struct mtk_panel_params *params =
 			mtk_drm_get_lcm_ext_params(crtc);
 	struct mtk_cmdq_cb_data *cb_data;
+	unsigned int hrt_idx = 0;
 
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	drm_trace_tag_mark("start_switch_spr");
@@ -1760,6 +1761,15 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		DDPMSG("ERROR: previous spr switing is unfinished\n");
 		return -EINVAL;
+	}
+
+	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
+		hrt_idx = _layering_rule_get_hrt_idx(drm_crtc_index(crtc));
+		hrt_idx++;
+		mtk_crtc->mml_prefer_dc = true;
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		mtk_disp_hrt_repaint_blocking(hrt_idx);	/* must not in lock */
+		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	}
 
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
@@ -1815,6 +1825,11 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 			kfree(cb_data);
 			return -EINVAL;
 		}
+	}
+
+	if (mtk_crtc->mml_prefer_dc) {
+		mtk_crtc->mml_prefer_dc = false;
+		drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, crtc->dev);
 	}
 
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
@@ -8435,14 +8450,9 @@ static void cmdq_pkt_switch_panel_spr_enable(struct cmdq_pkt *cmdq_handle,
 				 mtk_get_gce_backup_slot_pa(mtk_crtc,
 				DISP_SLOT_PANEL_SPR_EN), 0, ~0);
 	if(params_lcm != NULL &&
-		params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2){
-		cmdq_pkt_clear_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_TE]);
-		cmdq_pkt_wfe(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_TE]);
+		params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2)
 		cmdq_pkt_set_event(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
-	}
 
 	/* this is end of whole condition, thus condition
 	 * FALSE part should jump here
@@ -8517,14 +8527,9 @@ static void cmdq_pkt_switch_panel_spr_disable(struct cmdq_pkt *cmdq_handle,
 				 mtk_get_gce_backup_slot_pa(mtk_crtc,
 				DISP_SLOT_PANEL_SPR_EN), 0, ~0);
 	if(params_lcm != NULL &&
-		params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2){
-		cmdq_pkt_clear_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_TE]);
-		cmdq_pkt_wfe(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_TE]);
+		params_lcm->spr_params.spr_switch_type == SPR_SWITCH_TYPE2)
 		cmdq_pkt_set_event(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
-	}
 
 	/* this is end of whole condition, thus condition
 	 * FALSE part should jump here
@@ -16807,7 +16812,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	mtk_crtc->path_data = path_data;
 	mtk_crtc->is_dual_pipe = false;
 	mtk_crtc->is_force_mml_scen = mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PQ);
-	mtk_crtc->mml_ir_enable = mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_IR);
+	mtk_crtc->mml_prefer_dc = !mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_IR);
 	mtk_crtc->slbc_state = SLBC_UNREGISTER;
 	mtk_crtc->mml_ir_sram.data.type = TP_BUFFER;
 	mtk_crtc->mml_ir_sram.data.uid = UID_DISP;

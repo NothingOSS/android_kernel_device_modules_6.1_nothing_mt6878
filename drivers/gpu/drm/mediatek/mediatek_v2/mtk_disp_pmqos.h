@@ -53,4 +53,5 @@ void mtk_drm_set_mmclk_by_pixclk(struct drm_crtc *crtc, unsigned int pixclk,
 			const char *caller);
 unsigned long mtk_drm_get_freq(struct drm_crtc *crtc, const char *caller);
 unsigned long mtk_drm_get_mmclk(struct drm_crtc *crtc, const char *caller);
+void mtk_disp_hrt_repaint_blocking(const unsigned int hrt_idx);
 #endif
