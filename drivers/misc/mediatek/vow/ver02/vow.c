@@ -1608,7 +1608,10 @@ static void vow_service_GetVowDumpData(void)
 		temp_dump_info = vow_dump_info[i];
 		idx = temp_dump_info.kernel_dump_idx;
 		if (temp_dump_info.vir_addr != NULL && temp_dump_info.scp_dump_size[0] != 0) {
-			if (vowserv.vow_mic_number == 2 && temp_dump_info.scp_dump_size[1] != 0) {
+			if ((i != DUMP_BARGEIN && vowserv.vow_mic_number == 2
+				&& temp_dump_info.scp_dump_size[1] != 0) ||
+			    (i == DUMP_BARGEIN && vowserv.vow_speaker_number == 2
+				&& temp_dump_info.scp_dump_size[1] != 0)) {
 				/* DRAM to kernel buffer and sample interleaving */
 				if ((idx + (temp_dump_info.scp_dump_size[0] * 2)) >
 				    temp_dump_info.kernel_dump_size) {
