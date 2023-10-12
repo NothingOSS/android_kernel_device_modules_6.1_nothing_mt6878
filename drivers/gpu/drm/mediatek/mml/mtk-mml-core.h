@@ -73,7 +73,7 @@ do { \
 	if (mml_log_rec & mml_logbuf_msg) \
 		_mml_save_log(fmt "\n", ##args); \
 	if (mtk_mml_msg) \
-		_mml_log(fmt, ##args); \
+		pr_notice("[mml]" fmt "\n", ##args); \
 } while (0)
 
 #define mml_log(fmt, args...) \
