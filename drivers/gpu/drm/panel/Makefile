@@ -46,6 +46,7 @@ ifneq ($(wildcard $(srctree)/$(src)/k6989v1_64_alpha),)
 obj-$(CONFIG_DRM_PANEL_ILI7838E_ALPHA_CMD) += k6989v1_64_alpha/panel-ili7838e-alpha-cmd.o
 obj-$(CONFIG_DRM_PANEL_ILI7838E_DV2_ALPHA_CMD) += k6989v1_64_alpha/panel-ili7838e-dv2-alpha-cmd.o
 obj-$(CONFIG_DRM_PANEL_ILI7838E_DV2_SPR_CMD) += k6989v1_64_alpha/panel-ili7838e-dv2-spr-cmd.o
+obj-$(CONFIG_DRM_PANEL_RM692H5_ALPHA_CMD) += k6989v1_64_alpha/panel-rm692h5-alpha-cmd.o
 endif
 ifneq ($(wildcard $(srctree)/$(src)/k6989v1_64_flip_alpha),)
 obj-$(CONFIG_DRM_PANEL_BOE_BF130_DPHY_CMD_HD) += k6989v1_64_flip_alpha/panel-boe-bf130-dphy-cmd-hd.o
