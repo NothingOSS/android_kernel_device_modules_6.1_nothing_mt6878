@@ -277,6 +277,12 @@ struct pd_check_swcg camsys_main_swcgs[] = {
 	SWCG("cam_m_cam2mm1_GCON_0"),
 	SWCG("cam_m_ccusys"),
 	SWCG("cam_m_cam_asg"),
+	SWCG("cam_m_camsv_a_con_1"),
+	SWCG("cam_m_camsv_b_con_1"),
+	SWCG("cam_m_camsv_c_con_1"),
+	SWCG("cam_m_camsv_d_con_1"),
+	SWCG("cam_m_camsv_e_con_1"),
+	SWCG("cam_m_camsv_con_1"),
 	SWCG(NULL),
 };
 /* camsys_rawa */
@@ -284,6 +290,8 @@ struct pd_check_swcg camsys_rawa_swcgs[] = {
 	SWCG("cam_ra_larbx"),
 	SWCG("cam_ra_cam"),
 	SWCG("cam_ra_camtg"),
+	SWCG("cam_ra_raw2mm_gals"),
+	SWCG("cam_ra_yuv2raw2mm"),
 	SWCG(NULL),
 };
 /* camsys_yuva */
@@ -298,6 +306,8 @@ struct pd_check_swcg camsys_rawb_swcgs[] = {
 	SWCG("cam_rb_larbx"),
 	SWCG("cam_rb_cam"),
 	SWCG("cam_rb_camtg"),
+	SWCG("cam_rb_raw2mm_gals"),
+	SWCG("cam_rb_yuv2raw2mm"),
 	SWCG(NULL),
 };
 /* camsys_yuvb */
@@ -599,6 +609,12 @@ static u32 get_pd_pwr_status(int pd_id)
 }
 
 static int off_mtcmos_id[] = {
+	PD_NULL,
+};
+
+static int notice_mtcmos_id[] = {
+	MT6878_CHK_PD_MD1,
+	MT6878_CHK_PD_CONN,
 	MT6878_CHK_PD_AUDIO,
 	MT6878_CHK_PD_ISP_MAIN,
 	MT6878_CHK_PD_ISP_DIP1,
@@ -618,12 +634,6 @@ static int off_mtcmos_id[] = {
 	MT6878_CHK_PD_SSRSYS,
 	MT6878_CHK_PD_SSUSB,
 	MT6878_CHK_PD_MFG0,
-	PD_NULL,
-};
-
-static int notice_mtcmos_id[] = {
-	MT6878_CHK_PD_MD1,
-	MT6878_CHK_PD_CONN,
 	PD_NULL,
 };
 

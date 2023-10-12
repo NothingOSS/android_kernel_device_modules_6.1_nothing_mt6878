@@ -443,11 +443,19 @@ const char * const *get_mt6878_all_clk_names(void)
 		"cam_m_cam2mm1_GCON_0",
 		"cam_m_ccusys",
 		"cam_m_cam_asg",
+		"cam_m_camsv_a_con_1",
+		"cam_m_camsv_b_con_1",
+		"cam_m_camsv_c_con_1",
+		"cam_m_camsv_d_con_1",
+		"cam_m_camsv_e_con_1",
+		"cam_m_camsv_con_1",
 
 		/* camsys_rawa */
 		"cam_ra_larbx",
 		"cam_ra_cam",
 		"cam_ra_camtg",
+		"cam_ra_raw2mm_gals",
+		"cam_ra_yuv2raw2mm",
 
 		/* camsys_yuva */
 		"cam_ya_larbx",
@@ -458,6 +466,8 @@ const char * const *get_mt6878_all_clk_names(void)
 		"cam_rb_larbx",
 		"cam_rb_cam",
 		"cam_rb_camtg",
+		"cam_rb_raw2mm_gals",
+		"cam_rb_yuv2raw2mm",
 
 		/* camsys_yuvb */
 		"cam_yb_larbx",
