@@ -2307,9 +2307,11 @@ static int ufs_mtk_link_set_hpm(struct ufs_hba *hba)
 	}
 	ufshcd_set_link_active(hba);
 
-	if (!is_mcq_enabled(hba)) {
-		err = ufshcd_make_hba_operational(hba);
-	} else {
+	err = ufshcd_make_hba_operational(hba);
+	if (err)
+		return err;
+
+	if (is_mcq_enabled(hba)) {
 		ufs_mtk_config_mcq(hba, false);
 		/* Enable required interrupts */
 		_ufshcd_enable_intr(hba, UFSHCD_ENABLE_MTK_MCQ_INTRS);
@@ -2319,9 +2321,6 @@ static int ufs_mtk_link_set_hpm(struct ufs_hba *hba)
 		ufshcd_writel(hba, ufshcd_readl(hba, REG_UFS_MEM_CFG) | 0x1,
 			      REG_UFS_MEM_CFG);
 	}
-
-	if (err)
-		return err;
 
 	return 0;
 }
