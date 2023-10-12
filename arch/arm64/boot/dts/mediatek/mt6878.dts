@@ -79,7 +79,7 @@
 			    nosoftlockup \
 			    8250.nr_uarts=3\
 			    androidboot.hardware=mt6878 \
-			    vmalloc=400M swiotlb=noforce \
+			    vmalloc=400M swiotlb=noforce cma=64M \
 			    firmware_class.path=/vendor/firmware ";
 		kaslr-seed = <0 0>;
 	};
