@@ -128,10 +128,9 @@ struct mtk_disp_dither {
 	struct mtk_disp_dither_tile_overhead tile_overhead;
 	struct mtk_disp_dither_tile_overhead_v tile_overhead_v;
 	bool reg_backup;
+	bool set_partial_update;
+	unsigned int roi_height;
 };
-
-static bool set_partial_update;
-static unsigned int roi_height;
 
 static inline struct mtk_disp_dither *comp_to_dither(struct mtk_ddp_comp *comp)
 {
@@ -494,7 +493,7 @@ static void mtk_dither_config(struct mtk_ddp_comp *comp,
 		enable << 1 |
 		primary_data->relay_value, 0x3);
 
-	if (!set_partial_update)
+	if (!dither_data->set_partial_update)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_DITHER_SIZE,
 			width << 16 | cfg->h, ~0);
@@ -503,7 +502,7 @@ static void mtk_dither_config(struct mtk_ddp_comp *comp,
 					? 0 : dither_data->tile_overhead_v.overhead_v;
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_DITHER_SIZE,
-			width << 16 | (roi_height + overhead_v * 2), ~0);
+			width << 16 | (dither_data->roi_height + overhead_v * 2), ~0);
 	}
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_DITHER_PURECOLOR0,
@@ -959,18 +958,18 @@ static int mtk_dither_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
-	set_partial_update = enable;
-	roi_height = partial_roi.height;
+	dither_data->set_partial_update = enable;
+	dither_data->roi_height = partial_roi.height;
 	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
 				? 0 : dither_data->tile_overhead_v.overhead_v;
 
-	DDPINFO/*DDPDBG*/("%s, %s overhead_v:%d\n",
+	DDPDBG("%s, %s overhead_v:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v);
 
-	if (set_partial_update) {
+	if (dither_data->set_partial_update) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_DITHER_SIZE,
-			roi_height + overhead_v * 2, 0x1fff);
+			dither_data->roi_height + overhead_v * 2, 0x1fff);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_DITHER_SIZE,

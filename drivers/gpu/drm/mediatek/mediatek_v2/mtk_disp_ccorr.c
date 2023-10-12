@@ -64,9 +64,6 @@
 
 static struct drm_device *g_drm_dev;
 
-static bool set_partial_update;
-static unsigned int roi_height;
-
 static int disp_ccorr_write_coef_reg(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int lock);
 /* static void ccorr_dump_reg(void); */
@@ -1233,7 +1230,7 @@ static void mtk_ccorr_config(struct mtk_ddp_comp *comp,
 	else
 		DDPINFO("Disp CCORR's bit is : %u\n", cfg->bpc);
 
-	if (!set_partial_update)
+	if (!ccorr_data->set_partial_update)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_REG_CCORR_SIZE,
 				   (width << 16) | cfg->h, ~0);
@@ -1242,7 +1239,7 @@ static void mtk_ccorr_config(struct mtk_ddp_comp *comp,
 					? 0 : ccorr_data->tile_overhead_v.overhead_v;
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_CCORR_SIZE,
-			       (width << 16) | (roi_height + overhead_v * 2), ~0);
+			       (width << 16) | (ccorr_data->roi_height + overhead_v * 2), ~0);
 	}
 }
 
@@ -1545,18 +1542,18 @@ static int mtk_ccorr_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
-	set_partial_update = enable;
-	roi_height = partial_roi.height;
+	ccorr_data->set_partial_update = enable;
+	ccorr_data->roi_height = partial_roi.height;
 	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
 				? 0 : ccorr_data->tile_overhead_v.overhead_v;
 
-	DDPINFO/*DDPDBG*/("%s, %s overhead_v:%d\n",
+	DDPDBG("%s, %s overhead_v:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v);
 
-	if (set_partial_update) {
+	if (ccorr_data->set_partial_update) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_REG_CCORR_SIZE,
-				   roi_height + overhead_v * 2, 0x1fff);
+				   ccorr_data->roi_height + overhead_v * 2, 0x1fff);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_REG_CCORR_SIZE,

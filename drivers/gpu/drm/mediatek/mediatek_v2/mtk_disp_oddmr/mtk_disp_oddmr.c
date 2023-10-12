@@ -403,8 +403,6 @@ static uint32_t g_od_udma_merge_lines_cand[] = {
 	1, 2, 4, 6, 8, 10, 12, 14, 16,
 };
 
-static bool set_partial_update;
-static unsigned int roi_height;
 static struct mtk_disp_oddmr_parital_data_v dbi_part_data;
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -1641,11 +1639,11 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp,
 		mtk_oddmr_write(default_comp, addr >> 4, DISP_ODDMR_DMR_UDMA_CTR_4, handle);
 		mtk_oddmr_write(default_comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, handle);
 
-		if(set_partial_update) {
+		if(oddmr->set_partial_update) {
 			overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
 				? 0 : oddmr->tile_overhead_v.overhead_v;
 			comp_overhead_v = (!overhead_v) ? 0 : oddmr->tile_overhead_v.comp_overhead_v;
-			crop_height = roi_height + (overhead_v - comp_overhead_v) * 2;
+			crop_height = oddmr->roi_height + (overhead_v - comp_overhead_v) * 2;
 			ODDMRAPI_LOG("log: %s %d overhead_v:%d comp_overhead_v:%d crop_hegiht:%d\n",
 				__func__, __LINE__, overhead_v, comp_overhead_v, crop_height);
 
@@ -1653,7 +1651,7 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp,
 				/* ODDMR on MT6989 dose not support V crop */
 				mtk_oddmr_write(comp, dbi_part_data.dbi_y_ini,
 					DISP_ODDMR_REG_DMR_Y_INI, handle);
-				mtk_oddmr_write(comp, (roi_height + overhead_v * 2),
+				mtk_oddmr_write(comp, (oddmr->roi_height + overhead_v * 2),
 					DISP_ODDMR_FMT_CTR_1, handle); // oddmr input height
 
 				mtk_oddmr_write(comp, dbi_part_data.dbi_udma_y_ini,
@@ -6230,19 +6228,19 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 		__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
 	/* oddmr crop offset set*/
-	set_partial_update = enable;
+	oddmr->set_partial_update = enable;
 	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
 			? 0 : oddmr->tile_overhead_v.overhead_v;
 	comp_overhead_v = (!overhead_v) ? 0 : oddmr->tile_overhead_v.comp_overhead_v;
-	roi_height = partial_roi.height;
+	oddmr->roi_height = partial_roi.height;
 	crop_voffset = comp_overhead_v;
-	crop_height = roi_height + (overhead_v - comp_overhead_v) * 2;
+	crop_height = oddmr->roi_height + (overhead_v - comp_overhead_v) * 2;
 
 	DDPDBG("%s, %s total overhead_v:%d, spr overhead_v:%d\n",
 		__func__, mtk_dump_comp_str(comp), overhead_v, comp_overhead_v);
 
 	/* update y ini */
-	if (set_partial_update)
+	if (oddmr->set_partial_update)
 		dbi_y_ini = partial_roi.y;
 	else
 		dbi_y_ini = full_height;
@@ -6275,14 +6273,14 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 	dbi_part_data.y_remain2_ini = y_remain2_ini;
 
 	/* oddmr reg config */
-	if (set_partial_update) {
+	if (oddmr->set_partial_update) {
 		if (priv->data->mmsys_id == MMSYS_MT6989) {
 			/* ODDMR on MT6989 not support V crop */
-//			mtk_oddmr_write(comp, set_partial_update,
+//			mtk_oddmr_write(comp, oddmr->set_partial_update,
 //					DISP_ODDMR_TOP_CRP_BYPASS, handle);
 			mtk_oddmr_write(comp, dbi_y_ini,
 					DISP_ODDMR_REG_DMR_Y_INI, handle);
-			mtk_oddmr_write(comp, (roi_height + overhead_v * 2),
+			mtk_oddmr_write(comp, (oddmr->roi_height + overhead_v * 2),
 					DISP_ODDMR_FMT_CTR_1, handle); // oddmr input height
 //			mtk_oddmr_write(comp, crop_height,
 //					DISP_ODDMR_CRP_CTR_1, handle); // oddmr output height
@@ -6297,7 +6295,7 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 		}
 	} else {
 		if (priv->data->mmsys_id == MMSYS_MT6989) {
-//			mtk_oddmr_write(comp, set_partial_update,
+//			mtk_oddmr_write(comp, oddmr->set_partial_update,
 //					DISP_ODDMR_TOP_CRP_BYPASS, handle);
 			mtk_oddmr_write(comp, 0,
 					DISP_ODDMR_REG_DMR_Y_INI, handle);

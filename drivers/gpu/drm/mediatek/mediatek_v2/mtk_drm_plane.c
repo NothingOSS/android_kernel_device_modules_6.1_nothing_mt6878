@@ -572,8 +572,16 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 
 		overhead_v = to_v_info.overhead_v;
 
-		ovl_partial_roi.y -= overhead_v;
-		ovl_partial_roi.height += (overhead_v * 2);
+		if (mtk_crtc->scaling_ctx.scaling_en) {
+			ovl_partial_roi.width = crtc->state->adjusted_mode.hdisplay;
+			ovl_partial_roi.y = to_v_info.src_y;
+			ovl_partial_roi.height = to_v_info.in_height;
+			DDPDBG("%s roi_width:%d, roi_y:%d, roi_height:%d\n", __func__,
+				ovl_partial_roi.width, ovl_partial_roi.y, ovl_partial_roi.height);
+		} else {
+			ovl_partial_roi.y -= overhead_v;
+			ovl_partial_roi.height += (overhead_v * 2);
+		}
 		layer_roi.x = dst_x;
 		layer_roi.y = dst_y;
 		layer_roi.width = dst_w;
@@ -598,8 +606,8 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 					mtk_plane_state->pending.dst_y << 16 |
 					mtk_plane_state->pending.dst_x;
 
-			DDPINFO("partial (%d,%d)(%d,%d,%dx%d) to (%d,%d)(%d,%d,%dx%d)\n",
-					src_x, src_y, dst_x, dst_y, dst_w, dst_h,
+			DDPINFO("%s partial (%d,%d)(%d,%d,%dx%d) to (%d,%d)(%d,%d,%dx%d)\n",
+					__func__, src_x, src_y, dst_x, dst_y, dst_w, dst_h,
 					mtk_plane_state->pending.src_x,
 					mtk_plane_state->pending.src_y,
 					mtk_plane_state->pending.dst_x,

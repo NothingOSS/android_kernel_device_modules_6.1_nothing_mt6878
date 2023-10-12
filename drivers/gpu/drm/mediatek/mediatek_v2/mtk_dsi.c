@@ -408,9 +408,6 @@ static struct mtk_drm_property mtk_connector_property[CONNECTOR_PROP_MAX] = {
 static u32 underrun_cnt;
 module_param(underrun_cnt, uint, 0644);
 
-static bool set_partial_update;
-static unsigned int roi_y_offset, roi_height;
-
 struct mtk_panel_ext *mtk_dsi_get_panel_ext(struct mtk_ddp_comp *comp);
 static void mtk_dsi_set_targetline(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, unsigned int hactive);
@@ -1710,18 +1707,18 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 	/* scaling path */
 	if (mtk_crtc->scaling_ctx.scaling_en) {
 		width = mtk_crtc_get_width_by_comp(__func__, &mtk_crtc->base, comp, false);
-		if (!set_partial_update)
+		if (!dsi->set_partial_update)
 			height = mtk_crtc_get_height_by_comp(__func__, &mtk_crtc->base,
 								comp, false);
 		else
-			height = roi_height;
+			height = dsi->roi_height;
 	} else {
 		if (!dsi->is_slave) {
 			width = mtk_dsi_get_virtual_width(dsi, dsi->encoder.crtc);
-			if (!set_partial_update)
+			if (!dsi->set_partial_update)
 				height = mtk_dsi_get_virtual_heigh(dsi, dsi->encoder.crtc);
 			else
-				height = roi_height;
+				height = dsi->roi_height;
 		} else {
 			width = mtk_dsi_get_virtual_width(dsi,
 					dsi->master_dsi->encoder.crtc);
@@ -1920,18 +1917,18 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	/* scaling path */
 	if (mtk_crtc && mtk_crtc->scaling_ctx.scaling_en) {
 		width = mtk_crtc_get_width_by_comp(__func__, &mtk_crtc->base, comp, false);
-		if (!set_partial_update)
+		if (!dsi->set_partial_update)
 			height = mtk_crtc_get_height_by_comp(__func__, &mtk_crtc->base,
 								comp, false);
 		else
-			height = roi_height;
+			height = dsi->roi_height;
 	} else {
 		if (!dsi->is_slave) {
 			width = mtk_dsi_get_virtual_width(dsi, dsi->encoder.crtc);
-			if (!set_partial_update)
+			if (!dsi->set_partial_update)
 				height = mtk_dsi_get_virtual_heigh(dsi, dsi->encoder.crtc);
 			else
-				height = roi_height;
+				height = dsi->roi_height;
 		} else {
 			width = mtk_dsi_get_virtual_width(dsi,
 					dsi->master_dsi->encoder.crtc);
@@ -10517,21 +10514,21 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
 	if (comp->id == DDP_COMPONENT_DSI0) {
-		set_partial_update = enable;
-		roi_y_offset = partial_roi.y;
-		roi_height = partial_roi.height;
+		dsi->set_partial_update = enable;
+		dsi->roi_y_offset = partial_roi.y;
+		dsi->roi_height = partial_roi.height;
 	}
 
-	if (set_partial_update) {
+	if (dsi->set_partial_update) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DSI_VACT_NL,
-			roi_height, ~0);
+			dsi->roi_height, ~0);
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DSI_SIZE_CON,
-			roi_height << 16, 0xffff0000);
+			dsi->roi_height << 16, 0xffff0000);
 
-		rw_times = mtk_dsi_calculate_rw_times(dsi, partial_roi.width, roi_height);
+		rw_times = mtk_dsi_calculate_rw_times(dsi, partial_roi.width, dsi->roi_height);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DSI_VACT_NL,
@@ -10550,15 +10547,18 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 
 	if (panel_ext && panel_ext->funcs
 		&& panel_ext->funcs->lcm_update_roi_cmdq) {
-		if (set_partial_update)
+		if (dsi->set_partial_update)
 			panel_ext->funcs->lcm_update_roi_cmdq(dsi,
-			mipi_dsi_dcs_write_gce, handle, 0, roi_y_offset,
-			mtk_dsi_get_virtual_width(dsi, &crtc->base), roi_height);
+			mipi_dsi_dcs_write_gce, handle, 0, dsi->roi_y_offset,
+			mtk_crtc_get_width_by_comp(__func__, &crtc->base,
+				comp, true), dsi->roi_height);
 		else
 			panel_ext->funcs->lcm_update_roi_cmdq(dsi,
 			mipi_dsi_dcs_write_gce, handle, 0, 0,
-			mtk_dsi_get_virtual_width(dsi, &crtc->base),
-			mtk_dsi_get_virtual_heigh(dsi, &crtc->base));
+			mtk_crtc_get_width_by_comp(__func__, &crtc->base,
+				comp, true),
+			mtk_crtc_get_height_by_comp(__func__, &crtc->base,
+				comp, true));
 	}
 
 	return 0;

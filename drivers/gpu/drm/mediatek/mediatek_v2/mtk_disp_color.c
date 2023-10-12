@@ -102,10 +102,9 @@ struct mtk_disp_color {
 	unsigned long color_dst_h;
 	atomic_t color_is_clock_on;
 	spinlock_t clock_lock;
+	bool set_partial_update;
+	unsigned int roi_height;
 };
-
-static bool set_partial_update;
-static unsigned int roi_height;
 
 static inline struct mtk_disp_color *comp_to_color(struct mtk_ddp_comp *comp)
 {
@@ -1264,14 +1263,14 @@ static void mtk_color_config(struct mtk_ddp_comp *comp,
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_COLOR_WIDTH(color), width, ~0);
-	if (!set_partial_update)
+	if (!color->set_partial_update)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + DISP_COLOR_HEIGHT(color), cfg->h, ~0);
 	else {
 		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
 					? 0 : color->tile_overhead_v.overhead_v;
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_HEIGHT(color), roi_height + overhead_v * 2, ~0);
+			comp->regs_pa + DISP_COLOR_HEIGHT(color), color->roi_height + overhead_v * 2, ~0);
 	}
 	// set color_8bit_switch register
 	if (cfg->source_bpc == 8)
@@ -2944,17 +2943,17 @@ static int mtk_color_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
-	set_partial_update = enable;
-	roi_height = partial_roi.height;
+	color->set_partial_update = enable;
+	color->roi_height = partial_roi.height;
 	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
 				? 0 : color->tile_overhead_v.overhead_v;
 
-	DDPINFO/*DDPDBG*/("%s, %s overhead_v:%d\n",
+	DDPDBG("%s, %s overhead_v:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v);
 
-	if (set_partial_update) {
+	if (color->set_partial_update) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_HEIGHT(color), roi_height + overhead_v * 2, ~0);
+			comp->regs_pa + DISP_COLOR_HEIGHT(color), color->roi_height + overhead_v * 2, ~0);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_HEIGHT(color), full_height, ~0);

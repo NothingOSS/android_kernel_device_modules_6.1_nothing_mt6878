@@ -66,9 +66,6 @@ struct mtk_dmdp_aal_data {
 	u32 block_info_00_mask;
 };
 
-static bool set_partial_update;
-static unsigned int roi_height;
-
 struct aal_backup { /* structure for backup AAL register value */
 	unsigned int DRE_MAPPING;
 	unsigned int DRE_BLOCK_INFO_00;
@@ -133,6 +130,8 @@ struct mtk_dmdp_aal {
 	int path_order;
 	struct mtk_ddp_comp *companion;
 	struct mtk_disp_mdp_primary *primary_data;
+	bool set_partial_update;
+	unsigned int roi_height;
 };
 
 static inline struct mtk_dmdp_aal *comp_to_dmdp_aal(struct mtk_ddp_comp *comp)
@@ -278,14 +277,14 @@ static void mtk_dmdp_aal_config(struct mtk_ddp_comp *comp,
 		out_width = width;
 	}
 
-	if (!set_partial_update) {
+	if (!data->set_partial_update) {
 		val = (width << 16) | height;
 		out_val = (out_width << 16) | height;
 	} else {
 		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
 					? 0 : data->tile_overhead_v.overhead_v;
-		val = (width << 16) | (roi_height + overhead_v * 2);
-		out_val = (out_width << 16) | (roi_height + overhead_v * 2);
+		val = (width << 16) | (data->roi_height + overhead_v * 2);
+		out_val = (out_width << 16) | (data->roi_height + overhead_v * 2);
 	}
 
 	DDPINFO("%s: 0x%08x\n", __func__, val);
@@ -666,7 +665,7 @@ static void mtk_dmdp_aal_update_pu_region_setting(struct mtk_ddp_comp *comp,
 	blk_y_start_idx = roi_height_y_start / blk_height;
 	blk_y_end_idx = roi_height_y_end / blk_height;
 
-	if (set_partial_update) {
+	if (dmdp_aal->set_partial_update) {
 		// blk_num_y
 		blk_num_y_start = blk_y_start_idx;
 		blk_num_y_end = blk_y_end_idx;
@@ -705,19 +704,19 @@ static int mtk_dmdp_aal_set_partial_update(struct mtk_ddp_comp *comp,
 			mtk_dump_comp_str(comp), enable,
 			partial_roi.x, partial_roi.y, partial_roi.width, partial_roi.height);
 
-	set_partial_update = enable;
-	roi_height = partial_roi.height;
+	data->set_partial_update = enable;
+	data->roi_height = partial_roi.height;
 	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
 				? 0 : data->tile_overhead_v.overhead_v;
 
-	DDPINFO("%s, %s overhead_v:%d\n",
+	DDPDBG("%s, %s overhead_v:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v);
 
-	if (set_partial_update) {
+	if (data->set_partial_update) {
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_SIZE,
-				roi_height + overhead_v * 2, 0x0FFFF);
+				data->roi_height + overhead_v * 2, 0x0FFFF);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DMDP_AAL_OUTPUT_SIZE, roi_height + overhead_v * 2, 0x0FFFF);
+				comp->regs_pa + DMDP_AAL_OUTPUT_SIZE, data->roi_height + overhead_v * 2, 0x0FFFF);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_SIZE,
 				full_height, 0x0FFFF);

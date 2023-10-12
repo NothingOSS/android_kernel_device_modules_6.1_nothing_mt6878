@@ -82,6 +82,12 @@ struct rsz_tile_params {
 	u32 sub_offset;
 	u32 in_len;
 	u32 out_len;
+	u32 ori_in_len;
+	u32 ori_out_len;
+	u32 src_y;
+	u32 dst_y;
+	u32 overhead_y;
+	bool par_update_y;
 };
 
 struct mtk_rsz_config_struct {
@@ -92,17 +98,6 @@ struct mtk_rsz_config_struct {
 	u32 frm_in_h;
 	u32 frm_out_w;
 	u32 frm_out_h;
-};
-
-/**
- * struct mtk_disp_rsz - DISP_RSZ driver structure
- * @ddp_comp - structure containing type enum and hardware resources
- * @crtc - associated crtc to report irq events to
- */
-struct mtk_disp_rsz {
-	struct mtk_ddp_comp ddp_comp;
-	struct drm_crtc *crtc;
-	const struct mtk_disp_rsz_data *data;
 };
 
 struct mtk_disp_rsz_tile_overhead {
@@ -118,6 +113,26 @@ struct mtk_disp_rsz_tile_overhead {
 
 	/* store rsz tile_overhead calc */
 	struct rsz_tile_params tw[2];
+};
+
+struct mtk_disp_rsz_tile_overhead_v {
+	unsigned int overhead_v;
+	unsigned int comp_overhead_v;
+};
+
+/**
+ * struct mtk_disp_rsz - DISP_RSZ driver structure
+ * @ddp_comp - structure containing type enum and hardware resources
+ * @crtc - associated crtc to report irq events to
+ */
+struct mtk_disp_rsz {
+	struct mtk_ddp_comp ddp_comp;
+	struct drm_crtc *crtc;
+	const struct mtk_disp_rsz_data *data;
+	bool set_partial_update;
+	unsigned int roi_y_offset;
+	unsigned int roi_height;
+	struct mtk_disp_rsz_tile_overhead_v tile_overhead_v;
 };
 
 struct mtk_disp_rsz_tile_overhead rsz_tile_overhead = { 0 };
@@ -155,6 +170,80 @@ static void mtk_rsz_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		       comp->regs_pa + DISP_REG_RSZ_ENABLE, 0x0, ~0);
 }
 
+static void mtk_rsz_back_taps(int outStart, int outEnd, int step, int prec,
+	int crop, int crop_frac, int inMaxEnd, int alignment,
+	int *inStart, int *inEnd)
+{
+	s64 startTemp, endTemp;
+	int overhead = 2;
+
+	if (crop_frac < 0)
+		crop_frac = -0xfffff;
+	crop_frac = ((s64)crop_frac * prec) >> 20;
+
+	startTemp = (s64)outStart * step + (s64)crop * prec + crop_frac;
+	if (startTemp <= (s64)overhead * prec)
+		*inStart = 0;
+	else {
+		startTemp = startTemp / prec - overhead;
+		if (!(startTemp & 0x1) || alignment == 1)
+			*inStart = (int)startTemp;
+		else /* must be even */
+			*inStart = (int)startTemp - 1;
+	}
+
+	endTemp = (s64)outEnd * step + (s64)crop * prec + crop_frac +
+		(overhead + 2) * prec;
+	if(endTemp > (s64)inMaxEnd * prec)
+		*inEnd = inMaxEnd;
+	else {
+		endTemp /= prec;
+		if ((endTemp & 0x1) || alignment == 1)
+			*inEnd = (int)endTemp;
+		else /* must be odd */
+			*inEnd = (int)endTemp + 1;
+	}
+}
+
+static void mtk_rsz_for_taps(int inStart, int inEnd, int inMaxEnd, int step, int prec,
+	int crop, int crop_frac, int outMaxEnd, int alignment, int backOutStart,
+	int *outStart, int *outEnd, int *int_offset, int *sub_offset)
+{
+	int overhead = 2;
+	s64 subTemp;
+
+	if (crop_frac < 0)
+		crop_frac = -0xfffff;
+	crop_frac = ((s64)crop_frac * prec) >> 20;
+
+	if (inEnd == inMaxEnd)
+		*outEnd = outMaxEnd;
+	else {
+		s64 end = (s64)(inEnd - (overhead - 1) - 2) * prec - (s64)crop * prec - crop_frac;
+		int tmp = (int)(end / step);
+
+		if((s64)tmp * step == end) /* ceiling in forward */
+			tmp -= 1;
+		if(tmp & 0x1 || alignment == 1)
+			*outEnd = tmp;
+		else /* must be odd */
+			*outEnd = tmp - 1;
+	}
+
+	*outStart = backOutStart;
+	subTemp = (s64)*outStart * step + (s64)crop * prec + crop_frac -
+		(s64)inStart * prec;
+	*int_offset = (int)(subTemp / prec);
+	*sub_offset = (int)(subTemp - prec * (*int_offset));
+	if (*sub_offset < 0) {
+		*int_offset -= 1;
+		*sub_offset += prec;
+	}
+
+	if (*outEnd > outMaxEnd)
+		*outEnd = outMaxEnd;
+}
+
 int mtk_rsz_calc_tile_params(u32 frm_in_len, u32 frm_out_len, bool tile_mode,
 			     struct rsz_tile_params t[])
 {
@@ -167,6 +256,47 @@ int mtk_rsz_calc_tile_params(u32 frm_in_len, u32 frm_out_len, bool tile_mode,
 	s32 sub_offset[2] = {0};
 	u32 tile_in_len[2] = {0};
 	u32 tile_out_len[2] = {0};
+	u32 y_in_start, y_in_end, y_out_start, y_out_end, dst_y, dst_height;
+
+	DDPINFO("%s:%s:in_len:%u,out_len:%u,ori_in_len:%u,ori_out_len:%u\n", __func__,
+		t[0].par_update_y ? "pUpdate:on" : "pUpdate:off", t[0].in_len, t[0].out_len,
+		t[0].ori_in_len, t[0].ori_out_len);
+
+	if(t[0].par_update_y){
+		step = (UNIT * (t[0].ori_in_len - 1) + (t[0].ori_out_len - 2)) /
+			(t[0].ori_out_len - 1);
+
+		sub_offset[0] = (step * (t[0].ori_out_len - 1) - UNIT *
+			(t[0].ori_in_len - 1)) / 2;
+		if (sub_offset[0] < 0) {
+			int_offset[0]--;
+			sub_offset[0] = UNIT + sub_offset[0];
+		}
+		if (sub_offset[0] >= UNIT) {
+			int_offset[0]++;
+			sub_offset[0] = sub_offset[0] - UNIT;
+		}
+		dst_y = t[0].dst_y - t[0].overhead_y;
+		dst_height = frm_out_len + (t[0].overhead_y << 1);
+
+		mtk_rsz_back_taps(dst_y, dst_y + dst_height - 1, step, UNIT,
+			int_offset[0], sub_offset[0], t[0].ori_in_len - 1, 2,
+			&y_in_start, &y_in_end);
+		mtk_rsz_for_taps(y_in_start, y_in_end, t[0].ori_in_len - 1, step, UNIT,
+			int_offset[0], sub_offset[0], t[0].ori_out_len - 1, 2, dst_y,
+			&y_out_start, &y_out_end, &(int_offset[0]), &(sub_offset[0]));
+
+		t[0].src_y = y_in_start;
+		t[0].step = step;
+		t[0].int_offset = (u32)(int_offset[0] & 0xffff);
+		t[0].sub_offset = (u32)(sub_offset[0] & 0x1fffff);
+		t[0].in_len = y_in_end - y_in_start + 1;
+		t[0].out_len = y_out_end - y_out_start + 1;
+		DDPINFO("%s:%s:step:%u,offset:%u.%u,len:%u->%u,yin:%u->%u,dst_y:%u\n", __func__,
+			"pUpdate", t[0].step, t[0].int_offset, t[0].sub_offset,
+			t[0].in_len, t[0].out_len, y_in_start, y_in_end, t[0].dst_y);
+		return 0;
+	}
 
 	if (frm_out_len > 1)
 		step = (UNIT * (frm_in_len - 1) + (frm_out_len - 2)) /
@@ -386,6 +516,25 @@ static void mtk_disp_rsz_config_overhead(struct mtk_ddp_comp *comp,
 	}
 }
 
+static void mtk_disp_rsz_config_overhead_v(struct mtk_ddp_comp *comp,
+	struct total_tile_overhead_v  *tile_overhead_v)
+{
+	struct mtk_disp_rsz *rsz = comp_to_rsz(comp);
+
+	DDPDBG("line: %d\n", __LINE__);
+
+	if (!comp->mtk_crtc->scaling_ctx.scaling_en)
+		return;
+
+	/*set component overhead*/
+	rsz->tile_overhead_v.comp_overhead_v = 0;
+	/*add component overhead on total overhead*/
+	tile_overhead_v->overhead_v +=
+		rsz->tile_overhead_v.comp_overhead_v;
+	/*copy from total overhead info*/
+	rsz->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+}
+
 static void mtk_rsz_config(struct mtk_ddp_comp *comp,
 			   struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
@@ -396,6 +545,7 @@ static void mtk_rsz_config(struct mtk_ddp_comp *comp,
 	u32 reg_val = 0;
 	u32 tile_idx = 0;
 	u32 in_w = 0, in_h = 0, out_w = 0, out_h = 0;
+	unsigned int overhead_v;
 
 	if (!mtk_crtc_check_is_scaling_comp(comp->mtk_crtc, comp->id)) {
 		DDPINFO("%s only for res switch on ap, return\n", __func__);
@@ -460,6 +610,25 @@ static void mtk_rsz_config(struct mtk_ddp_comp *comp,
 					 tile_mode, rsz_config->tw);
 	}
 
+	rsz_config->th[0].ori_in_len = rsz_config->frm_in_h;
+	rsz_config->th[0].ori_out_len = rsz_config->frm_out_h;
+	if (!rsz->set_partial_update) {
+		rsz_config->frm_in_h = cfg->rsz_src_h;
+		rsz_config->frm_out_h = cfg->h;
+		rsz_config->th[0].par_update_y =  false;
+		rsz_config->th[0].src_y = 0;
+		rsz_config->th[0].dst_y = 0;
+		rsz_config->th[0].overhead_y = 0;
+	} else {
+		rsz_config->frm_in_h = cfg->rsz_src_h;
+		rsz_config->frm_out_h = rsz->roi_height;
+		rsz_config->th[0].par_update_y = true;
+		rsz_config->th[0].dst_y = rsz->roi_y_offset;
+		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
+					? 0 : rsz->tile_overhead_v.overhead_v;
+		rsz_config->th[0].overhead_y = overhead_v;
+	}
+
 	mtk_rsz_calc_tile_params(rsz_config->frm_in_h, rsz_config->frm_out_h,
 				 tile_mode, rsz_config->th);
 
@@ -474,6 +643,9 @@ static void mtk_rsz_config(struct mtk_ddp_comp *comp,
 		kfree(rsz_config);
 		return;
 	}
+
+	comp->mtk_crtc->tile_overhead_v.in_height = in_h;
+	comp->mtk_crtc->tile_overhead_v.src_y = rsz_config->th[0].src_y;
 
 	reg_val = 0;
 	reg_val |= REG_FLD_VAL(FLD_RSZ_HORIZONTAL_EN, 1);
@@ -803,15 +975,114 @@ static int mtk_rsz_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	return ret;
 }
 
+static int mtk_rsz_set_partial_update(struct mtk_ddp_comp *comp,
+				struct cmdq_pkt *handle, struct mtk_rect partial_roi, bool enable)
+{
+	struct mtk_disp_rsz *rsz = comp_to_rsz(comp);
+	unsigned int full_in_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, NULL, false);
+	unsigned int full_out_height = mtk_crtc_get_height_by_comp(__func__,
+						&comp->mtk_crtc->base, NULL, true);
+	u32 frm_in_h, frm_out_h;
+	u32 in_h = 0, out_h = 0;
+	struct rsz_tile_params th[1];
+	u32 reg_val = 0;
+	u32 tile_idx = 0;
+	unsigned int overhead_v;
+	unsigned int comp_overhead_v;
+
+	if (!comp->mtk_crtc->scaling_ctx.scaling_en)
+		return 0;
+
+	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
+			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+	rsz->set_partial_update = enable;
+	rsz->roi_height = partial_roi.height;
+	rsz->roi_y_offset = partial_roi.y;
+	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
+				? 0 : rsz->tile_overhead_v.overhead_v;
+	comp_overhead_v = (!overhead_v) ? 0 : rsz->tile_overhead_v.comp_overhead_v;
+
+	DDPDBG("%s, %s overhead_v:%d, comp_overhead_v:%d\n",
+			__func__, mtk_dump_comp_str(comp), overhead_v, comp_overhead_v);
+
+	//set rsz params
+	th[0].ori_in_len = full_in_height;
+	th[0].ori_out_len = full_out_height;
+	if (rsz->set_partial_update) {
+		frm_in_h = full_in_height;
+		frm_out_h = rsz->roi_height;
+		th[0].par_update_y = true;
+		th[0].src_y = 0;
+		th[0].dst_y = rsz->roi_y_offset;
+		th[0].overhead_y = overhead_v;
+	} else{
+		frm_in_h = full_in_height;
+		frm_out_h = full_out_height;
+		th[0].par_update_y = false;
+		th[0].src_y = 0;
+		th[0].dst_y = 0;
+		th[0].overhead_y = 0;
+	}
+
+	mtk_rsz_calc_tile_params(frm_in_h, frm_out_h,
+				tile_idx, th);
+
+	DDPDBG("%s:%s:in_len:%u,out_len:%u,ori_in_len:%u,ori_out_len:%u\n", __func__,
+		th[0].par_update_y ? "pUpdate:on" : "pUpdate:off",
+		th[0].in_len, th[0].out_len,
+		th[0].ori_in_len, th[0].ori_out_len);
+
+	in_h = th[0].in_len;
+	out_h = th[0].out_len;
+
+	if (in_h > out_h) {
+		DDPPR_ERR("DISP_RSZ only supports y scale-up,(%u)->(%u)\n",
+			in_h, out_h);
+		return 0;
+	}
+
+	comp->mtk_crtc->tile_overhead_v.in_height = in_h;
+	comp->mtk_crtc->tile_overhead_v.src_y = th[0].src_y;
+
+	reg_val = 0;
+	reg_val |= REG_FLD_VAL(FLD_RSZ_VERTICAL_EN, (in_h != out_h));
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			   comp->regs_pa + DISP_REG_RSZ_CONTROL_1, reg_val, 0x2);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			   comp->regs_pa + DISP_REG_RSZ_INPUT_IMAGE,
+			   in_h << 16, 0xffff0000);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			   comp->regs_pa + DISP_REG_RSZ_OUTPUT_IMAGE,
+			   out_h << 16, 0xffff0000);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			   comp->regs_pa + DISP_REG_RSZ_VERTICAL_COEFF_STEP,
+			   th[0].step, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			   comp->regs_pa + DISP_REG_RSZ_LUMA_VERTICAL_INTEGER_OFFSET,
+			   th[0].int_offset, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			   comp->regs_pa + DISP_REG_RSZ_LUMA_VERTICAL_SUBPIXEL_OFFSET,
+			   th[0].sub_offset, ~0);
+
+	return 0;
+
+}
+
 static const struct mtk_ddp_comp_funcs mtk_disp_rsz_funcs = {
 	.start = mtk_rsz_start,
 	.stop = mtk_rsz_stop,
 	.addon_config = mtk_rsz_addon_config,
 	.config = mtk_rsz_config,
 	.config_overhead = mtk_disp_rsz_config_overhead,
+	.config_overhead_v = mtk_disp_rsz_config_overhead_v,
 	.prepare = mtk_rsz_prepare,
 	.unprepare = mtk_rsz_unprepare,
 	.io_cmd = mtk_rsz_io_cmd,
+	.partial_update = mtk_rsz_set_partial_update,
 };
 
 static int mtk_disp_rsz_bind(struct device *dev, struct device *master,

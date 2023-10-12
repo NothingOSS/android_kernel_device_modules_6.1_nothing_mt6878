@@ -320,6 +320,8 @@ struct mtk_disp_oddmr {
 	/*user pq od bypass lock*/
 	uint32_t pq_od_bypass;
 	struct mtk_disp_oddmr_tile_overhead_v tile_overhead_v;
+	bool set_partial_update;
+	unsigned int roi_height;
 };
 
 int mtk_drm_ioctl_oddmr_load_param(struct drm_device *dev, void *data,

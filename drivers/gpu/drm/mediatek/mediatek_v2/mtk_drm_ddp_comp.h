@@ -743,8 +743,10 @@ bool is_support;
 };
 
 struct total_tile_overhead_v {
-unsigned int overhead_v;
-unsigned int overhead_v_scaling;
+	unsigned int in_height;
+	unsigned int overhead_v;
+	unsigned int overhead_v_scaling;
+	unsigned int src_y;
 };
 
 struct mtk_ddp_config {

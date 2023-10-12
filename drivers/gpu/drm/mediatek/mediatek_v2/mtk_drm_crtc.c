@@ -13421,7 +13421,9 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 
 			DDPDBG("partial_enable: %d\n", partial_enable);
 			if (!partial_enable &&
-				!old_mtk_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE])
+				!old_mtk_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE]
+				&& (old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
+				mtk_crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX]))
 				DDPDBG("partial update is disable and equal to old\n");
 			else
 				/* set partial update */
@@ -14635,16 +14637,14 @@ void mtk_crtc_set_width_height(
 }
 
 static void _assign_full_lcm_roi(struct drm_crtc *crtc,
-		struct mtk_rect *roi)
+		struct mtk_rect *roi, bool scaling)
 {
-	bool in_scaling_path = true;
-
 	roi->x = 0;
 	roi->y = 0;
 	roi->width = mtk_crtc_get_width_by_comp(__func__, crtc,
-						NULL, in_scaling_path);
+						NULL, scaling);
 	roi->height = mtk_crtc_get_height_by_comp(__func__, crtc,
-						NULL, in_scaling_path);
+						NULL, scaling);
 }
 
 static int _is_equal_full_lcm(struct drm_crtc *crtc,
@@ -14652,9 +14652,40 @@ static int _is_equal_full_lcm(struct drm_crtc *crtc,
 {
 	static struct mtk_rect full_roi;
 
-	_assign_full_lcm_roi(crtc, &full_roi);
+	_assign_full_lcm_roi(crtc, &full_roi, true);
 
 	return mtk_rect_equal(&full_roi, roi);
+}
+
+static void layer_roi_to_lcm_roi(struct drm_crtc *crtc,
+		struct mtk_rect *roi)
+{
+	unsigned int ori_src_height, ori_dst_height = 0;
+	static struct mtk_rect dst_roi;
+	unsigned int scaling_ratio = 0;
+
+	ori_src_height = mtk_crtc_get_height_by_comp(__func__, crtc,
+						NULL, false);
+	ori_dst_height = mtk_crtc_get_height_by_comp(__func__, crtc,
+						NULL, true);
+
+	if (ori_src_height != 0)
+		scaling_ratio = (ori_dst_height * 1000) / ori_src_height;
+	else
+		scaling_ratio = 1000;
+
+	dst_roi.x = (roi->x * scaling_ratio) / 1000;
+	dst_roi.y = (roi->y * scaling_ratio) / 1000;
+	dst_roi.width = (roi->width * (scaling_ratio + 2)) / 1000;
+	dst_roi.height = (roi->height * (scaling_ratio + 2)) / 1000;
+
+	DDPDBG("%s ori_src_height:%d ori_dst_height:%d scaling_ratio:%d)\n",
+			__func__, ori_src_height, ori_dst_height, scaling_ratio);
+	DDPDBG("%s layer_roi(%d,%d,%dx%d) to lcm_roi(%d,%d,%dx%d)\n",
+			__func__, roi->x, roi->y, roi->width, roi->height,
+			dst_roi.x, dst_roi.y, dst_roi.width, dst_roi.height);
+
+	memcpy(roi, &dst_roi, sizeof(struct mtk_rect));
 }
 
 static void _convert_picture_to_ovl_dirty(struct mtk_rect *src,
@@ -14696,10 +14727,10 @@ static int mtk_crtc_partial_compute_ovl_roi(struct drm_crtc *crtc,
 	int dirty_roi_num = 0;
 
 	if (mtkfb_is_force_partial_roi()) {
-		_assign_full_lcm_roi(crtc, result);
+		_assign_full_lcm_roi(crtc, result, true);
 		result->x = 0;
 		result->y = mtkfb_force_partial_y_offset();
-		result->width = crtc->state->adjusted_mode.hdisplay;
+		result->width = mtk_crtc_get_width_by_comp(__func__, crtc, NULL, true);
 		result->height = mtkfb_force_partial_height();
 		if (!mtk_rect_is_empty(result))
 			return 0;
@@ -14762,19 +14793,32 @@ static int mtk_crtc_partial_compute_ovl_roi(struct drm_crtc *crtc,
 		mtk_rect_join(&layer_total_roi, result, result);
 
 		/* 4. break if roi is full lcm */
-		if (_is_equal_full_lcm(crtc, result))
-			break;
+		if (mtk_crtc->res_switch == RES_SWITCH_ON_AP &&
+		mtk_crtc->scaling_ctx.scaling_en) {
+			struct mtk_rect full_roi;
+
+			_assign_full_lcm_roi(crtc, &full_roi, false);
+			if (mtk_rect_equal(&full_roi, result))
+				break;
+		} else {
+			if (_is_equal_full_lcm(crtc, result))
+				break;
+		}
 
 	}
 
+	if (mtk_crtc->res_switch == RES_SWITCH_ON_AP &&
+		mtk_crtc->scaling_ctx.scaling_en)
+		layer_roi_to_lcm_roi(crtc, result);
+
 	if (disable_layer >= mtk_crtc->layer_nr) {
 		DDPDBG(" all layer disabled, force full roi\n");
-		_assign_full_lcm_roi(crtc, result);
+		_assign_full_lcm_roi(crtc, result, true);
 	}
 
 	if (mtk_rect_is_empty(result)) {
 		DDPDBG(" total roi is empty, force full roi\n");
-		_assign_full_lcm_roi(crtc, result);
+		_assign_full_lcm_roi(crtc, result, true);
 	}
 
 	return 0;
@@ -14791,7 +14835,7 @@ static void mtk_crtc_validate_roi(struct drm_crtc *crtc,
 	struct mtk_ddp_comp *comp;
 	int i, j;
 
-	_assign_full_lcm_roi(crtc, &full_roi);
+	_assign_full_lcm_roi(crtc, &full_roi, true);
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_SPR ||
@@ -14835,7 +14879,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		to_mtk_crtc_state(old_crtc_state);
 	int crtc_index = 0;
 	struct mtk_ddp_comp *comp;
-	struct mtk_ddp_comp *dsc_comp;
+	struct mtk_ddp_comp *dsc_comp, *rsz_comp;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	static struct mtk_rect full_roi;
 	struct total_tile_overhead_v tile_overhead_v;
@@ -14877,11 +14921,13 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_enable = false;
 	}
 
+#ifdef IF_ZERO
 	/* disable partial update if res switch is enable*/
 	if (mtk_crtc->scaling_ctx.scaling_en) {
-		DDPDBG("\n");
+		DDPDBG("skip because res switch is enable\n");
 		partial_enable = false;
 	}
+#endif
 
 	if (mtk_crtc->capturing == true) {
 		DDPDBG("skip because cwb is enable\n");
@@ -14891,7 +14937,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	if (partial_enable)
 		mtk_crtc_partial_compute_ovl_roi(crtc, &partial_roi);
 	else
-		_assign_full_lcm_roi(crtc, &partial_roi);
+		_assign_full_lcm_roi(crtc, &partial_roi, true);
 
 	DDPDBG("partial roi: (%d,%d,%d,%d)\n",
 		partial_roi.x, partial_roi.y,
@@ -14904,7 +14950,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_roi.x, partial_roi.y,
 		partial_roi.width, partial_roi.height);
 
-	_assign_full_lcm_roi(crtc, &full_roi);
+	_assign_full_lcm_roi(crtc, &full_roi, true);
 
 	/* disable partial update if partial roi overlap with round corner */
 	if (mtk_crtc->panel_ext->params->round_corner_en &&
@@ -14912,7 +14958,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		(partial_roi.y + partial_roi.height >= full_roi.height -
 		mtk_crtc->panel_ext->params->corner_pattern_height_bot))) {
 		DDPDBG("skip because partial roi overlap with corner pattern\n");
-		_assign_full_lcm_roi(crtc, &partial_roi);
+		_assign_full_lcm_roi(crtc, &partial_roi, true);
 		partial_enable = false;
 	}
 
@@ -14936,7 +14982,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		full_roi.height - mtk_crtc->tile_overhead_v.overhead_v) {
 		mtk_crtc->tile_overhead_v.overhead_v = 0;
 		mtk_crtc->tile_overhead_v.overhead_v_scaling = 0;
-		_assign_full_lcm_roi(crtc, &partial_roi);
+		_assign_full_lcm_roi(crtc, &partial_roi, true);
 		partial_enable = false;
 	}
 
@@ -14950,14 +14996,18 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 
 	/* skip if ovl partial dirty is disable and equal to old */
 	if (!state->ovl_partial_dirty &&
-		!old_state->ovl_partial_dirty) {
+		!old_state->ovl_partial_dirty &&
+		(old_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
+			state->prop_val[CRTC_PROP_DISP_MODE_IDX])) {
 		DDPDBG("skip because partial dirty is disable and equal to old\n");
 		return ret;
 	}
 
 	/* skip if partial roi is equal to old partial roi */
 	if (mtk_rect_equal(&state->ovl_partial_roi,
-				&old_state->ovl_partial_roi)) {
+			&old_state->ovl_partial_roi) &&
+			(old_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
+			state->prop_val[CRTC_PROP_DISP_MODE_IDX])) {
 		DDPDBG("skip because partial roi is equal to old\n");
 		return ret;
 	}
@@ -14975,9 +15025,14 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	/* disable oddmr if enable partial update */
 	//mtk_crtc->panel_ext->params->is_support_dmr = !partial_enable;
 
+	rsz_comp = priv->ddp_comp[DDP_COMPONENT_RSZ0];
+	mtk_ddp_comp_partial_update(rsz_comp, cmdq_handle, partial_roi, partial_enable);
+
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		mtk_ddp_comp_partial_update(comp, cmdq_handle, partial_roi, partial_enable);
+		if (mtk_ddp_comp_get_type(comp->id) != MTK_DISP_RSZ)
+			mtk_ddp_comp_partial_update(comp, cmdq_handle, partial_roi, partial_enable);
 	}
+
 
 	dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
 	mtk_ddp_comp_partial_update(dsc_comp, cmdq_handle, partial_roi, partial_enable);
@@ -19505,7 +19560,7 @@ struct total_tile_overhead mtk_crtc_get_total_overhead(struct mtk_drm_crtc *mtk_
 void mtk_crtc_store_total_overhead_v(struct mtk_drm_crtc *mtk_crtc,
 	struct total_tile_overhead_v info)
 {
-	mtk_crtc->tile_overhead_v = info;
+	mtk_crtc->tile_overhead_v.overhead_v = info.overhead_v;
 }
 
 struct total_tile_overhead_v mtk_crtc_get_total_overhead_v(struct mtk_drm_crtc *mtk_crtc)

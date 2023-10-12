@@ -50,9 +50,6 @@
 static struct drm_device *g_drm_dev;
 static int mtk_aal_sof_irq_trigger(void *data);
 
-static bool set_partial_update;
-static unsigned int roi_height;
-
 enum AAL_UPDATE_HIST {
 	UPDATE_NONE = 0,
 	UPDATE_SINGLE,
@@ -744,14 +741,14 @@ static void mtk_aal_config(struct mtk_ddp_comp *comp,
 		AALFLOW_LOG("size available: (w,h)=(%d,%d)+\n", width, height);
 	}
 
-	if (!set_partial_update) {
+	if (!aal_data->set_partial_update) {
 		val = (width << 16) | (height);
 		out_val = (out_width << 16) | height;
 	} else {
 		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
 					? 0 : aal_data->tile_overhead_v.overhead_v;
-		val = (width << 16) | (roi_height + overhead_v * 2);
-		out_val = (out_width << 16) | (roi_height + overhead_v * 2);
+		val = (width << 16) | (aal_data->roi_height + overhead_v * 2);
+		out_val = (out_width << 16) | (aal_data->roi_height + overhead_v * 2);
 	}
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_AAL_SIZE, val, ~0);
@@ -4175,19 +4172,19 @@ static int mtk_disp_aal_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s set partial update, height:%d, enable:%d\n",
 			mtk_dump_comp_str(comp), partial_roi.height, enable);
 
-	set_partial_update = enable;
-	roi_height = partial_roi.height;
+	aal_data->set_partial_update = enable;
+	aal_data->roi_height = partial_roi.height;
 	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
 				? 0 : aal_data->tile_overhead_v.overhead_v;
 
-	DDPINFO("%s, %s overhead_v:%d\n",
+	DDPDBG("%s, %s overhead_v:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v);
 
-	if (set_partial_update) {
+	if (aal_data->set_partial_update) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_AAL_SIZE, roi_height + overhead_v * 2, 0x0FFF);
+				comp->regs_pa + DISP_AAL_SIZE, aal_data->roi_height + overhead_v * 2, 0x0FFF);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_AAL_OUTPUT_SIZE, roi_height + overhead_v * 2, 0x0FFF);
+				comp->regs_pa + DISP_AAL_OUTPUT_SIZE, aal_data->roi_height + overhead_v * 2, 0x0FFF);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_AAL_SIZE, full_height, 0x0FFF);

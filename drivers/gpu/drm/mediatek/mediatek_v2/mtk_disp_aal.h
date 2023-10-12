@@ -401,6 +401,8 @@ struct mtk_disp_aal {
 	struct mtk_ddp_comp *comp_gamma;
 	struct mtk_ddp_comp *comp_color;
 	struct mtk_ddp_comp *comp_dmdp_aal;
+	bool set_partial_update;
+	unsigned int roi_height;
 };
 
 static inline struct mtk_disp_aal *comp_to_aal(struct mtk_ddp_comp *comp)

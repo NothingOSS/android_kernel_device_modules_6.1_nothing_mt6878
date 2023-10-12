@@ -87,9 +87,6 @@ enum GAMMA_CMDQ_TYPE {
 	GAMMA_PREPARE,
 };
 
-static bool set_partial_update;
-static unsigned int roi_height;
-
 static int mtk_disp_gamma_create_gce_pkt(struct mtk_ddp_comp *comp, struct cmdq_pkt **pkt)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
@@ -214,7 +211,7 @@ static void mtk_gamma_init(struct mtk_ddp_comp *comp,
 			width = cfg->w;
 	}
 
-	if (!set_partial_update)
+	if (!gamma->set_partial_update)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_SIZE,
 			(width << 16) | cfg->h, ~0);
@@ -223,7 +220,7 @@ static void mtk_gamma_init(struct mtk_ddp_comp *comp,
 					? 0 : gamma->tile_overhead_v.overhead_v;
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_SIZE,
-			(width << 16) | (roi_height + overhead_v * 2), ~0);
+			(width << 16) | (gamma->roi_height + overhead_v * 2), ~0);
 	}
 	if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_8BIT ||
 		gamma->primary_data->data_mode == HW_12BIT_MODE_IN_10BIT) {
@@ -1317,18 +1314,18 @@ static int mtk_gamma_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
-	set_partial_update = enable;
-	roi_height = partial_roi.height;
+	gamma->set_partial_update = enable;
+	gamma->roi_height = partial_roi.height;
 	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
 				? 0 : gamma->tile_overhead_v.overhead_v;
 
-	DDPINFO/*DDPDBG*/("%s, %s overhead_v:%d\n",
+	DDPDBG("%s, %s overhead_v:%d\n",
 			__func__, mtk_dump_comp_str(comp), overhead_v);
 
-	if (set_partial_update) {
+	if (gamma->set_partial_update) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_GAMMA_SIZE,
-				   roi_height + overhead_v * 2, 0xffff);
+				   gamma->roi_height + overhead_v * 2, 0xffff);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_GAMMA_SIZE,
