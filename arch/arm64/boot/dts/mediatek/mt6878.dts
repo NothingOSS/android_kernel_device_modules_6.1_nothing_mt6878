@@ -414,7 +414,6 @@
 
 	tboard_thermistor1: thermal-ntc1@1c013128 {
 		compatible = "mediatek,mt6685-tia-ntc";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		reg = <0 0x1c013128 0 0x4>; /* TIA DATA T0 */
 		temperature-lookup-table =
@@ -588,7 +587,6 @@
 
 	tboard_thermistor2: thermal-ntc2@1c01312c {
 		compatible = "mediatek,mt6685-tia-ntc";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		reg = <0 0x1c01312c 0 0x4>; /* TIA DATA T1 */
 		temperature-lookup-table =
@@ -762,7 +760,6 @@
 
 	tboard_thermistor3: thermal-ntc3@1c013130 {
 		compatible = "mediatek,mt6685-tia-ntc";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		reg = <0 0x1c013130 0 0x4>; /* TIA DATA T2 */
 		temperature-lookup-table =
@@ -936,7 +933,6 @@
 
 	tsx_thermistor: thermal-ntc6@1c013120 {
 		compatible = "mediatek,mt6685-tia-ntc";
-		status = "disabled";
 		#thermal-sensor-cells = <0>;
 		reg = <0 0x1c013120 0 0x4>;
 		temperature-lookup-table = <
@@ -2426,7 +2422,6 @@
 
 	vtskin: vtskin {
 		compatible = "mediatek,mt6878-virtual-tskin";
-		status = "disabled";
 		#thermal-sensor-cells = <1>;
 	};
 
@@ -2887,7 +2882,6 @@
 
 		lvts: lvts@10315000 {
 			compatible = "mediatek,mt6878-lvts";
-			status = "disabled";
 			#thermal-sensor-cells = <1>;
 			reg = <0 0x10315000 0 0x1000>,
 				  <0 0x10316000 0 0x1000>,
@@ -8825,12 +8819,10 @@
 		compatible = "mediatek,therm_intf";
 		reg = <0 0x00114000 0 0x400>;
 		reg-names = "therm_sram";
-		status = "disabled";
 	};
 
 	mt6363_temp: mt6363-temp {
 		compatible = "mediatek,mt6363-pmic-temp";
-		status = "disabled";
 		io-channels =
 			<&pmic_adc AUXADC_CHIP_TEMP>,
 			<&pmic_adc AUXADC_VCORE_TEMP>,
@@ -8849,7 +8841,6 @@
 
 	mt6369_temp: mt6369-temp {
 		compatible = "mediatek,mt6369-pmic-temp";
-		status = "disabled";
 		io-channels =
 			<&mt6369_adc AUXADC_CHIP_TEMP>,
 			<&mt6369_adc AUXADC_VCORE_TEMP>,
