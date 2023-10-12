@@ -1128,7 +1128,7 @@
 
 	lastbus: lastbus {
 		compatible = "mediatek,lastbus";
-		enabled = <0>;
+		enabled = <1>;
 		sw-version = <1>;
 		timeout-ms = <200>;
 		timeout-type = <0>;
@@ -1190,7 +1190,7 @@
 	};
 
 	tracker: tracker {
-		compatible = "mediatek,tracker-disabled";
+		compatible = "mediatek,tracker";
 		timer-sep = <0>;
 		no-w-valid-chk = <1>;
 		subsys {
@@ -1605,13 +1605,13 @@
 		compatible = "mediatek,mtk_composite_v4l2_2";
 	};
 
-	dbg-error-flag-disabled {
-		compatible = "mediatek,dbg-error-flag-disabled";
+	dbg-error-flag {
+		compatible = "mediatek,dbg-error-flag";
 		mediatek,error-flag = <&soc_dbg_error_flag>;
 	};
 
 	bus-parity@c538800 {
-		compatible = "mediatek,bus-parity-disabled";
+		compatible = "mediatek,bus-parity";
 		reg = <0 0x0c538800 0 0x20>,	/* M0, MST_CCIM0 */
 			<0 0x0c538820 0 0x20>,	/* M1, MST_CCIM1 */
 			<0 0x0c538840 0 0x20>,	/* M2, MST_INTAXI */
@@ -4000,7 +4000,7 @@
 		};
 
 		bus-tracer@d040000 {
-			compatible = "mediatek,bus_tracer-v1-disabled";
+			compatible = "mediatek,bus_tracer-v1";
 			reg = <0 0x0d040000 0 0x1000>, /* dem base */
 				<0 0x0d01a000 0 0x1000>, /* dbgao base */
 				<0 0x0d041000 0 0x3000>, /* funnel/rep/etr base */
