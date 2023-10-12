@@ -14415,7 +14415,8 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"mvpu_freq0,mvpu_freq1,",
 				"mvpu_on_ratio0,mvpu_on_ratio1";
 			node-89 = "SSPM_SWPM_APU__TOP_FRQ_AND_RATIO",
-				"top_freq,top_on_ratio,idle_ratio_noc,wfi_ratio";
+				"top_freq,top_on_ratio,idle_ratio_noc,wfi_ratio,",
+				"top_on_ratio_acx0,top_on_ratio_acx1,top_on_ratio_acx2";
 			node-90 = "SSPM_SWPM_APU__TOP_BW",
 				"top_bw,eDPAbw,tcmbw,rcxbw,acx0bw,acx1bw,acx2bw";
 			node-91 = "SSPM_SWPM_CPU__CORE_PMU_AI_GROUP0",
