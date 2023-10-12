@@ -16,6 +16,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/sched/clock.h>
 #include <linux/soc/mediatek/mtk_mmdvfs.h>
+#include <linux/workqueue.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include <mt-plat/mrdump.h>
 
@@ -78,6 +79,8 @@ struct mmdvfs_debug {
 	u32 clk_base_pa;
 	void __iomem *clk_base;
 	struct notifier_block nb;
+	struct work_struct	work;
+	struct workqueue_struct *workq;
 
 	/* user & power id mapping*/
 	u8 user_pwr[USER_NUM];
@@ -575,8 +578,7 @@ static struct kernel_param_ops mmdvfs_debug_set_ftrace_ops = {
 module_param_cb(ftrace, &mmdvfs_debug_set_ftrace_ops, NULL, 0644);
 MODULE_PARM_DESC(ftrace, "mmdvfs ftrace log");
 
-/*
-static int mmdvfs_debug_volt_dump(void *data)
+static void mmdvfs_debug_work(struct work_struct *work)
 {
 	if (!IS_ERR_OR_NULL(g_mmdvfs->reg_vcore))
 		MMDVFS_DBG("vcore enabled:%d voltage:%d", regulator_is_enabled(g_mmdvfs->reg_vcore),
@@ -585,20 +587,18 @@ static int mmdvfs_debug_volt_dump(void *data)
 	if (!IS_ERR_OR_NULL(g_mmdvfs->reg_vmm))
 		MMDVFS_DBG("vmm enabled:%d voltage:%d", regulator_is_enabled(g_mmdvfs->reg_vmm),
 			regulator_get_voltage(g_mmdvfs->reg_vmm));
-	return 0;
 }
-*/
 
 static int mmdvfs_debug_smi_cb(struct notifier_block *nb, unsigned long action, void *data)
 {
 	int i;
 	unsigned int val;
 
-	/* TODO: get voltage from pmic reg.
-	struct task_struct *kthr;
+	if (!work_pending(&g_mmdvfs->work))
+		queue_work(g_mmdvfs->workq, &g_mmdvfs->work);
+	else
+		MMDVFS_DBG("mmdvfs_debug_work fail");
 
-	kthr = kthread_run(mmdvfs_debug_volt_dump, NULL, "mmdvfs-dbg-volt-dump");
-	*/
 	for (i = 0; i < g_mmdvfs->fmeter_count; i++) {
 		val = mt_get_fmeter_freq(g_mmdvfs->fmeter_id[i], g_mmdvfs->fmeter_type[i]);
 		MMDVFS_DBG("i:%d id:%hu type:%hu freq:%u",
@@ -834,6 +834,8 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	if (g_mmdvfs->debug_version & MMDVFS_DBG_VER3)
 		kthr = kthread_run(mmdvfs_v3_debug_thread, NULL, "mmdvfs-dbg-vcp");
 
+	g_mmdvfs->workq = create_singlethread_workqueue("mmdvfs_debug_workq");
+	INIT_WORK(&g_mmdvfs->work, mmdvfs_debug_work);
 	return 0;
 }
 
