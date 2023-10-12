@@ -26,6 +26,7 @@
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
 #include <linux/syscore_ops.h>
+#include <linux/kmemleak.h>
 
 #include "ccci_dpmaif_bat.h"
 #include "ccci_dpmaif_resv_mem.h"
@@ -119,6 +120,10 @@ static inline int skb_alloc(
 
 		return LOW_MEMORY_SKB;
 	}
+
+#if IS_ENABLED(CONFIG_DEBUG_KMEMLEAK)
+	kmemleak_not_leak(*ppskb);
+#endif
 
 	(*p_base_addr) = dma_map_single(
 			dpmaif_ctl->dev, (*ppskb)->data,
