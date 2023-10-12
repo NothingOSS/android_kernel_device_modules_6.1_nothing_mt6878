@@ -7463,12 +7463,25 @@ static int mtk_drm_init_emi_eff_table(struct drm_device *drm_dev)
 static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
 	struct mtk_drm_kernel_pm *kernel_pm = container_of(notifier, typeof(*kernel_pm), nb);
+	struct mtk_drm_private *priv = container_of(kernel_pm, typeof(*priv), kernel_pm);
 
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		DDPMSG("Disabling CRTC wakelock\n");
 		atomic_set(&kernel_pm->status, KERNEL_PM_SUSPEND);
 		wake_up_interruptible(&kernel_pm->wq);
+
+		if (priv->dpc_dev) {
+			u32 force_release = 0;
+
+			while (atomic_read(&priv->dpc_dev->power.usage_count) > 0) {
+				force_release++;
+				pm_runtime_put_sync(priv->dpc_dev);
+			}
+
+			if (unlikely(force_release))
+				DDPAEE("dpc_dev pm unbalanced(%u)\n", force_release);
+		}
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
 		atomic_set(&kernel_pm->status, KERNEL_PM_RESUME);
