@@ -30,6 +30,10 @@ static struct audio_gpio_attr aud_gpios[MT6878_AFE_GPIO_GPIO_NUM] = {
 	[MT6878_AFE_GPIO_I2SOUT4_ON] = {"aud-gpio-i2sout4-on", false, NULL},
 	[MT6878_AFE_GPIO_I2SIN4_OFF] = {"aud-gpio-i2sin4-off", false, NULL},
 	[MT6878_AFE_GPIO_I2SIN4_ON] = {"aud-gpio-i2sin4-on", false, NULL},
+	[MT6878_AFE_GPIO_VOW_DAT_OFF] = {"vow-dat-miso-off", false, NULL},
+	[MT6878_AFE_GPIO_VOW_DAT_ON] = {"vow-dat-miso-on", false, NULL},
+	[MT6878_AFE_GPIO_VOW_CLK_OFF] = {"vow-clk-miso-off", false, NULL},
+	[MT6878_AFE_GPIO_VOW_CLK_ON] = {"vow-clk-miso-on", false, NULL},
 	[MT6878_AFE_GPIO_VOW_SCP_DMIC_DAT_OFF] = {"vow-scp-dmic-dat-off", false, NULL},
 	[MT6878_AFE_GPIO_VOW_SCP_DMIC_DAT_ON] = {"vow-scp-dmic-dat-on", false, NULL},
 	[MT6878_AFE_GPIO_VOW_SCP_DMIC_CLK_OFF] = {"vow-scp-dmic-clk-off", false, NULL},
@@ -176,6 +180,17 @@ int mt6878_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 		}
 		break;
 	case MT6878_DAI_VOW:
+		if (enable) {
+			mt6878_afe_gpio_select(afe,
+					       MT6878_AFE_GPIO_VOW_CLK_ON);
+			mt6878_afe_gpio_select(afe,
+					       MT6878_AFE_GPIO_VOW_DAT_ON);
+		} else {
+			mt6878_afe_gpio_select(afe,
+					       MT6878_AFE_GPIO_VOW_CLK_OFF);
+			mt6878_afe_gpio_select(afe,
+					       MT6878_AFE_GPIO_VOW_DAT_OFF);
+		}
 		break;
 	case MT6878_DAI_VOW_SCP_DMIC:
 		if (enable) {

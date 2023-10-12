@@ -4617,8 +4617,6 @@ static bool mt6897_is_volatile_reg(struct device *dev, unsigned int reg)
 	case AFE_GASRC3_NEW_CON9:
 	case AFE_GASRC3_NEW_CON12:
 	case AFE_GASRC3_NEW_IP_VERSION:
-	/* for vow/ultrasound using */
-	case AFE_IRQ_MCU_SCP_EN:
 	/* these reg would change in adsp */
 	case AFE_IRQ_MCU_EN:
 	case AFE_IRQ_MCU_DSP_EN:
@@ -4688,6 +4686,13 @@ static bool mt6897_is_volatile_reg(struct device *dev, unsigned int reg)
 	case AFE_IRQ24_MCU_CFG1:
 	case AFE_IRQ25_MCU_CFG1:
 	case AFE_IRQ26_MCU_CFG1:
+	/* for vow using */
+	case AFE_IRQ_MCU_SCP_EN:
+	case AFE_VUL_CM0_BASE_MSB:
+	case AFE_VUL_CM0_BASE:
+	case AFE_VUL_CM0_END_MSB:
+	case AFE_VUL_CM0_END:
+	case AFE_VUL_CM0_CON0:
 		return true;
 	default:
 		return false;

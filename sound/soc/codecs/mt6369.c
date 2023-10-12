@@ -455,6 +455,40 @@ static int dmic_used_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
+
+static int vow_pbuf_ch_get(struct snd_kcontrol *kcontrol,
+			   struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned int pbuf_active = 0; // no use
+
+	ucontrol->value.integer.value[0] = pbuf_active;
+
+	return 0;
+}
+
+static int vow_codec_type_get(struct snd_kcontrol *kcontrol,
+			      struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned int codec_type = VOW_SCP_FIFO;
+
+	ucontrol->value.integer.value[0] = codec_type;
+
+	return 0;
+}
+
+static int vow_cic_type_get(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned int vow_cic_type = 0; // VOW Legacy CIC
+
+	ucontrol->value.integer.value[0] = vow_cic_type;
+
+	return 0;
+}
+
+#endif
+
 static int mt6369_snd_soc_put_volsw(struct snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_value *ucontrol)
 {
@@ -2986,8 +3020,8 @@ static int mt_pga_l_event(struct snd_soc_dapm_widget *w,
 		return -EINVAL;
 	}
 
-	/* if vow is enabled, always set volume as 4(24dB) */
-	mic_gain_l = priv->vow_enable ? 4 :
+	/* if vow is enabled, always set volume as 3(18dB) */
+	mic_gain_l = priv->vow_enable ? 3 :
 		     priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP1];
 	dev_dbg(priv->dev, "%s(), event = 0x%x, mic_type %d, mic_gain_l %d, mux_pga %d\n",
 		__func__, event, mic_type, mic_gain_l, mux_pga);
@@ -5722,6 +5756,11 @@ static const struct snd_kcontrol_new mt6369_snd_misc_controls[] = {
 	SOC_ENUM_EXT("PMIC_REG_CLEAR", misc_control_enum[0],
 		     NULL, mt6369_rcv_acc_set),
 	SOC_ENUM_EXT("DMic Used", misc_control_enum[0], dmic_used_get, NULL),
+#if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
+	SOC_ENUM_EXT("VOW PBUF Channel", misc_control_enum[0], vow_pbuf_ch_get, NULL),
+	SOC_ENUM_EXT("VOW codec type", misc_control_enum[0], vow_codec_type_get, NULL),
+	SOC_ENUM_EXT("VOW CIC type", misc_control_enum[0], vow_cic_type_get, NULL),
+#endif
 };
 
 static int mt6369_codec_init_reg(struct snd_soc_component *cmpnt)
