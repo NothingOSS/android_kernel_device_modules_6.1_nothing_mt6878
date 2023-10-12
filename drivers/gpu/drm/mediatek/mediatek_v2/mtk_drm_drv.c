@@ -2323,6 +2323,7 @@ static const enum mtk_ddp_comp_id mt6897_mtk_ovlsys_main[] = {
 
 static const enum mtk_ddp_comp_id mt6897_mtk_ddp_main[] = {
 	DDP_COMPONENT_DLI_ASYNC0,
+	DDP_COMPONENT_PQ0_IN_CB0,
 #ifdef DRM_BYPASS_PQ
 	DDP_COMPONENT_PQ0_OUT_CB3,
 	DDP_COMPONENT_PANEL0_COMP_OUT_CB1,
@@ -2399,6 +2400,7 @@ static const enum mtk_ddp_comp_id mt6897_mtk_ovlsys_dual_main[] = {
 
 static const enum mtk_ddp_comp_id mt6897_mtk_ddp_dual_main[] = {
 	DDP_COMPONENT_DLI_ASYNC6,
+	DDP_COMPONENT_PQ1_IN_CB0,
 #ifdef DRM_BYPASS_PQ
 	DDP_COMPONENT_PQ1_OUT_CB3,
 	DDP_COMPONENT_PANEL1_COMP_OUT_CB1,
@@ -3315,6 +3317,14 @@ static const struct mtk_addon_module_data mt6897_addon_wdma0_data[] = {
 	{DISP_WDMA0_v4, ADDON_AFTER, DDP_COMPONENT_PANEL0_COMP_OUT_CB0},
 };
 
+static const struct mtk_addon_module_data mt6897_addon_ufbc_wdma1_data[] = {
+	{DISP_UFBC_WDMA1, ADDON_AFTER, DDP_COMPONENT_PQ0_IN_CB0},
+};
+
+static const struct mtk_addon_module_data mt6897_addon_ufbc_wdma1_data_1[] = {
+	{DISP_UFBC_WDMA1_1, ADDON_AFTER, DDP_COMPONENT_PQ1_IN_CB0},
+};
+
 static const struct mtk_addon_module_data mt6985_addon_ovlsys_wdma0_data[] = {
 	{DISP_OVLSYS_WDMA0, ADDON_AFTER, DDP_COMPONENT_OVL2_2L},
 };
@@ -3795,6 +3805,11 @@ static const struct mtk_addon_scenario_data mt6897_addon_main[ADDON_SCN_NR] = {
 		.module_data = mt6985_addon_ovlsys_wdma0_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
+	[IDLE_WDMA_WRITE_BACK] = {
+		.module_num = ARRAY_SIZE(mt6897_addon_ufbc_wdma1_data),
+		.module_data = mt6897_addon_ufbc_wdma1_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
 	[TRIPLE_DISP] = {
 		.module_num = 0,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
@@ -3834,6 +3849,11 @@ static const struct mtk_addon_scenario_data mt6897_addon_main_dual[ADDON_SCN_NR]
 	[WDMA_WRITE_BACK_OVL] = {
 		.module_num = ARRAY_SIZE(mt6985_addon_ovlsys_wdma2_data),
 		.module_data = mt6985_addon_ovlsys_wdma2_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[IDLE_WDMA_WRITE_BACK] = {
+		.module_num = ARRAY_SIZE(mt6897_addon_ufbc_wdma1_data_1),
+		.module_data = mt6897_addon_ufbc_wdma1_data_1,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 	[TRIPLE_DISP] = {
