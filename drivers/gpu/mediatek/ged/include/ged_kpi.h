@@ -76,11 +76,11 @@ unsigned int ged_kpi_enabled(void);
 void ged_kpi_set_target_FPS(u64 ulID, int target_FPS);
 void ged_kpi_set_target_FPS_margin(u64 ulID, int target_FPS,
 		int target_FPS_margin, int eara_fps_margin, int cpu_time);
-void ged_kpi_set_memtwo_level(int level);
-int ged_kpi_get_memtwo_level(void);
-void ged_kpi_set_memtwo_debug(int level);
-void ged_kpi_set_memtwo_timer_count(int count);
-int ged_kpi_get_memtwo_timer_count(void);
+void ged_kpi_set_mewtwo_level(int level);
+int ged_kpi_get_mewtwo_level(void);
+void ged_kpi_set_mewtwo_debug(int level);
+void ged_kpi_set_mewtwo_timer_count(int count);
+int ged_kpi_get_mewtwo_timer_count(void);
 
 u64 ged_kpi_get_taget_time(void);
 

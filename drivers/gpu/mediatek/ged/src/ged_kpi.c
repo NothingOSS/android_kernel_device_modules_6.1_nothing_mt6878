@@ -284,8 +284,8 @@ static unsigned int is_GED_KPI_enabled = 1;
 #endif
 
 static unsigned int g_force_gpu_dvfs_fallback;
-static int g_memtwo_level;
-static int g_memtwo_timer_count;
+static int g_mewtwo_level;
+static int g_mewtwo_timer_count;
 
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
 #define FW_IDLE_TIMER_0_MS    0
@@ -993,31 +993,31 @@ void ged_kpi_set_loading_mode(unsigned int mode, unsigned int stride_size)
 	set_lb_timeout(t_gpu_target_now);
 }
 
-void ged_kpi_set_memtwo_level(int level)
+void ged_kpi_set_mewtwo_level(int level)
 {
-	g_memtwo_level = level;
+	g_mewtwo_level = level;
 }
 
-int ged_kpi_get_memtwo_level(void)
+int ged_kpi_get_mewtwo_level(void)
 {
-	return g_memtwo_level;
+	return g_mewtwo_level;
 }
 
-void ged_kpi_set_memtwo_debug(int level)
+void ged_kpi_set_mewtwo_debug(int level)
 {
 	if (level >= 0) {
 		mtk_custom_upbound_gpu_freq(g_ged_mewtwo_debug[level].check);
 		dcs_set_fix_num(g_ged_mewtwo_debug[level].config);
 	}
 }
-void ged_kpi_set_memtwo_timer_count(int count)
+void ged_kpi_set_mewtwo_timer_count(int count)
 {
-	g_memtwo_timer_count = count;
+	g_mewtwo_timer_count = count;
 }
 
-int ged_kpi_get_memtwo_timer_count(void)
+int ged_kpi_get_mewtwo_timer_count(void)
 {
-	return g_memtwo_timer_count;
+	return g_mewtwo_timer_count;
 }
 
 
@@ -1117,29 +1117,29 @@ static int ged_kpi_get_fallback_mode(void)
 
 static void ged_kpi_mewtwo_count(void)
 {
-	int memtwo_level = ged_kpi_get_memtwo_level();
+	int mewtwo_level = ged_kpi_get_mewtwo_level();
 
-	if (memtwo_level == GED_MEWTWO_LEVEL_2) {
-		g_memtwo_timer_count++;
-		if (g_memtwo_timer_count == (GED_MEWTWO_FRONT + GED_MEWTWO_COUNT)) {
-			ged_kpi_set_memtwo_debug(memtwo_level);
-			pr_info("g_debug: check memtwo %d", memtwo_level);
-			g_memtwo_level++;
-			g_memtwo_timer_count = 0;
+	if (mewtwo_level == GED_MEWTWO_LEVEL_2) {
+		g_mewtwo_timer_count++;
+		if (g_mewtwo_timer_count == (GED_MEWTWO_FRONT + GED_MEWTWO_COUNT)) {
+			ged_kpi_set_mewtwo_debug(mewtwo_level);
+			pr_info("g_debug: check mewtwo %d", mewtwo_level);
+			g_mewtwo_level++;
+			g_mewtwo_timer_count = 0;
 		}
-	} else if (memtwo_level == GED_MEWTWO_LEVEL_3) {
-		g_memtwo_timer_count++;
-		if (g_memtwo_timer_count == GED_MEWTWO_COUNT) {
-			ged_kpi_set_memtwo_debug(memtwo_level);
-			pr_info("g_debug: check memtwo %d", memtwo_level);
-			g_memtwo_level++;
-			g_memtwo_timer_count = 0;
+	} else if (mewtwo_level == GED_MEWTWO_LEVEL_3) {
+		g_mewtwo_timer_count++;
+		if (g_mewtwo_timer_count == GED_MEWTWO_COUNT) {
+			ged_kpi_set_mewtwo_debug(mewtwo_level);
+			pr_info("g_debug: check mewtwo %d", mewtwo_level);
+			g_mewtwo_level++;
+			g_mewtwo_timer_count = 0;
 		}
-	} else if (memtwo_level == GED_MEWTWO_LEVEL_TIMEOUT) {
-		ged_kpi_set_memtwo_debug(memtwo_level);
-		pr_info("g_debug: check memtwo %d", memtwo_level);
-		g_memtwo_level = GED_MEWTWO_LEVEL_RESET;
-		g_memtwo_timer_count = 0;
+	} else if (mewtwo_level == GED_MEWTWO_LEVEL_TIMEOUT) {
+		ged_kpi_set_mewtwo_debug(mewtwo_level);
+		pr_info("g_debug: check mewtwo %d", mewtwo_level);
+		g_mewtwo_level = GED_MEWTWO_LEVEL_RESET;
+		g_mewtwo_timer_count = 0;
 	}
 
 }

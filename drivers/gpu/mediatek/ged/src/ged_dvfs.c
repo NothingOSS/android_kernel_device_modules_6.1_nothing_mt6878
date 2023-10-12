@@ -2091,19 +2091,19 @@ void set_api_sync_flag(int flag)
 		api_sync_flag = flag;
 	} else if (flag == 3) {
 		if (g_max_core_num == GED_DEBUG_MAX_CORE) {
-			ged_kpi_set_memtwo_level(GED_MEWTWO_LEVEL_2);
+			ged_kpi_set_mewtwo_level(GED_MEWTWO_LEVEL_2);
 			mewtwo_level = GED_MEWTWO_LEVEL_1;
-			ged_kpi_set_memtwo_debug(mewtwo_level);
-			pr_info("g_debug: check memtwo %d", mewtwo_level);
+			ged_kpi_set_mewtwo_debug(mewtwo_level);
+			pr_info("g_debug: check mewtwo %d", mewtwo_level);
 			start_mewtwo_timer();
 		}
 	} else if (flag == 2) {
-		if (ged_kpi_get_memtwo_level() != GED_MEWTWO_LEVEL_RESET) {
+		if (ged_kpi_get_mewtwo_level() != GED_MEWTWO_LEVEL_RESET) {
 			mewtwo_level = GED_MEWTWO_LEVEL_RESET;
-			ged_kpi_set_memtwo_level(mewtwo_level);
-			ged_kpi_set_memtwo_debug(mewtwo_level);
-			pr_info("g_debug: check memtwo %d", mewtwo_level);
-			ged_kpi_set_memtwo_timer_count(0);
+			ged_kpi_set_mewtwo_level(mewtwo_level);
+			ged_kpi_set_mewtwo_debug(mewtwo_level);
+			pr_info("g_debug: check mewtwo %d", mewtwo_level);
+			ged_kpi_set_mewtwo_timer_count(0);
 			cancel_mewtwo_timer();
 		}
 	}
@@ -3307,8 +3307,8 @@ int ged_dvfs_get_recude_mips_policy_state(void)
 
 static enum hrtimer_restart gpu_mewtwo_timer_cb(struct hrtimer *timer)
 {
-	if (ged_kpi_get_memtwo_level() != GED_MEWTWO_LEVEL_RESET)
-		ged_kpi_set_memtwo_level(GED_MEWTWO_LEVEL_TIMEOUT);
+	if (ged_kpi_get_mewtwo_level() != GED_MEWTWO_LEVEL_RESET)
+		ged_kpi_set_mewtwo_level(GED_MEWTWO_LEVEL_TIMEOUT);
 
 	return HRTIMER_NORESTART;
 }
