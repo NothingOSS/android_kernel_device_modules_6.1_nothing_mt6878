@@ -179,7 +179,7 @@ int mt6878_adda_dl_gain_control(bool mute)
 	if (mute)
 		dl_gain_ctl = MTK_AFE_ADDA_DL_GAIN_MUTE;
 	else
-		dl_gain_ctl = MTK_AFE_ADDA_DL_GAIN_NORMAL;
+		dl_gain_ctl = 0xf74ff74f; //MTK_AFE_ADDA_DL_GAIN_NORMAL for platform before 6878
 
 
 	dev_info(local_afe->dev, "%s(), adda_dl_gain %x\n",

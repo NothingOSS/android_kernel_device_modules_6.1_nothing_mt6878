@@ -293,7 +293,7 @@ static int mt6878_sgen_tmp_set(struct snd_kcontrol *kcontrol,
 		regmap_update_bits(afe->regmap, AFE_SINEGEN_CON1,
 				   INNER_LOOP_BACK_MODE_MASK_SFT,
 				   0x7 << INNER_LOOP_BACK_MODE_SFT);
-		regmap_write(afe->regmap, AFE_SINEGEN_CON0, 0x04702702);
+		regmap_write(afe->regmap, AFE_SINEGEN_CON0, 0x04f02f02);
 	} else {
 		/* disable sgen */
 		regmap_update_bits(afe->regmap, AFE_SINEGEN_CON0,

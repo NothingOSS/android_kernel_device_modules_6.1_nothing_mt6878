@@ -1543,6 +1543,8 @@ static int mtk_dai_adda_hw_params(struct snd_pcm_substream *substream,
 		/* SA suggest apply -0.3db to audio/speech path */
 		dl_src_con1 = MTK_AFE_ADDA_DL_GAIN_NORMAL <<
 			       AFE_DL_GAIN1_CTL_PRE_SFT;
+		dl_src_con1 |= MTK_AFE_ADDA_DL_GAIN_NORMAL <<
+			       AFE_DL_GAIN2_CTL_PRE_SFT;
 
 		/* turn on down-link gain */
 		dl_src_con0 |= (0x01 << AFE_DL_GAIN_ON_CTL_PRE_SFT);
