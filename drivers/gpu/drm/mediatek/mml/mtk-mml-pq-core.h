@@ -202,7 +202,7 @@ struct mml_pq_sub_task {
 	void *result;
 	atomic_t result_ref;
 	struct mml_pq_readback_data readback_data;
-	struct mml_pq_frame_data frame_data;
+	struct mml_pq_frame_data *frame_data;
 	struct wait_queue_head wq;
 	struct list_head mbox_list;
 	bool job_cancelled;
