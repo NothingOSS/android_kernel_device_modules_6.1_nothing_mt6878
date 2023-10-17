@@ -139,9 +139,9 @@ static int cm_mgr_check_dram_type(void)
 	int ddr_type = mtk_dramc_get_ddr_type();
 	int ddr_hz = mtk_dramc_get_steps_freq(0);
 
-	if (ddr_type == TYPE_LPDDR4X)
+	if (CM_IS_DRAM_TYPE_LP_FOUR_ALL(ddr_type))
 		cm_mgr_idx = CM_MGR_LP4X;
-	else if (ddr_type == TYPE_LPDDR5)
+	else if (CM_IS_DRAM_TYPE_LP_FIVE_ALL(ddr_type))
 		cm_mgr_idx = CM_MGR_LP5;
 	else {
 		cm_mgr_idx = -1;

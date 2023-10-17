@@ -14,7 +14,8 @@
 #endif /* CONFIG_MTK_DRAMC */
 
 #define PERF_TIME 100
-
+#define CM_IS_DRAM_TYPE_LP_FOUR_ALL(d) ((d == TYPE_LPDDR4) || (d == TYPE_LPDDR4X) || (d == TYPE_LPDDR4P))
+#define CM_IS_DRAM_TYPE_LP_FIVE_ALL(d) ((d == TYPE_LPDDR5) || (d == TYPE_LPDDR5X))
 enum {
 	CM_MGR_LP4X = 0,
 	CM_MGR_LP5 = 1,
