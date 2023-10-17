@@ -20,14 +20,6 @@
 			<&topckgen_clk CLK_TOP_CAMTG5_SEL>,
 			<&topckgen_clk CLK_TOP_CAMTG6_SEL>,
 			<&topckgen_clk CLK_TOP_UART_SEL>,
-			<&topckgen_clk CLK_TOP_SPI0_SEL>,
-			<&topckgen_clk CLK_TOP_SPI1_SEL>,
-			<&topckgen_clk CLK_TOP_SPI2_SEL>,
-			<&topckgen_clk CLK_TOP_SPI3_SEL>,
-			<&topckgen_clk CLK_TOP_SPI4_SEL>,
-			<&topckgen_clk CLK_TOP_SPI5_SEL>,
-			<&topckgen_clk CLK_TOP_SPI6_SEL>,
-			<&topckgen_clk CLK_TOP_SPI7_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC_0P_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC50_0_HCLK_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC50_0_SEL>,
@@ -103,14 +95,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_PWM_FB2>,
 			<&pericfg_ao_clk CLK_PERAOP_PWM_FB3>,
 			<&pericfg_ao_clk CLK_PERAOP_PWM_FB4>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI0_B>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI1_B>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI2_B>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI3_B>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI4_B>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI5_B>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI6_B>,
-			<&pericfg_ao_clk CLK_PERAOP_SPI7_B>,
 			<&pericfg_ao_clk CLK_PERAOP_DMA_B>,
 			<&pericfg_ao_clk CLK_PERAOP_MSDC0>,
 			<&pericfg_ao_clk CLK_PERAOP_MSDC0_H>,
@@ -335,11 +319,7 @@
 			<&mdpsys_config_clk CLK_MDP_WROT0>,
 			<&mdpsys_config_clk CLK_MDP_RDMA1>,
 			<&mdpsys_config_clk CLK_MDP_RSZ1>,
-			<&mdpsys_config_clk CLK_MDP_WROT1>,
-			<&scp_clk CLK_SCP_SET_SPI0>,
-			<&scp_clk CLK_SCP_SET_SPI1>,
-			<&scp_clk CLK_SCP_SET_SPI2>,
-			<&scp_clk CLK_SCP_SET_SPI3>;
+			<&mdpsys_config_clk CLK_MDP_WROT1>;
 	};
 
 	bring-up-pd-audio@1 {
