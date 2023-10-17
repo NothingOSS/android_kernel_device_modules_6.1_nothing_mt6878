@@ -1051,9 +1051,9 @@ static int dump_native_maps(pid_t pid, struct task_struct *current_task)
 				current_task->comm);
 		return -1;
 	}
-	mas.tree = &current_mm->mm_mt;
 
 	mmap_read_lock(current_mm);
+	mas.tree = &current_mm->mm_mt;
 	log_hang_info("Dump native maps files:\n");
 	hang_log("Dump native maps files:\n");
 	mas_for_each(&mas, vma, ULONG_MAX) {
@@ -1134,11 +1134,11 @@ static int dump_native_info_by_tid(pid_t tid,
 	unsigned long userstack_start = 0;
 	unsigned long userstack_end = 0, length = 0;
 	int ret = -1;
+	struct mm_struct *current_mm;
 	MA_STATE(mas, 0, 0, 0);
 
 	if (!current_task)
 		return -ESRCH;
-	mas.tree = &current_task->mm->mm_mt;
 	user_ret = task_pt_regs(current_task);
 
 	if (!user_mode(user_ret)) {
@@ -1147,13 +1147,15 @@ static int dump_native_info_by_tid(pid_t tid,
 		return ret;
 	}
 
-	if (!get_task_mm(current_task)) {
+	current_mm = get_task_mm(current_task);
+	if (!current_mm) {
 		pr_info(" %s,%d:%s, current_task->mm == NULL", __func__, tid,
 				current_task->comm);
 		return ret;
 	}
 
-	mmap_read_lock(current_task->mm);
+	mmap_read_lock(current_mm);
+	mas.tree = &current_mm->mm_mt;
 #ifndef __aarch64__		/* 32bit */
 	log_hang_info(" pc/lr/sp 0x%08x/0x%08x/0x%08x\n", user_ret->ARM_pc,
 			user_ret->ARM_lr, user_ret->ARM_sp);
@@ -1398,8 +1400,8 @@ static int dump_native_info_by_tid(pid_t tid,
 #endif
 	ret = 0;
 err:
-	mmap_read_unlock(current_task->mm);
-	mmput(current_task->mm);
+	mmap_read_unlock(current_mm);
+	mmput(current_mm);
 	return ret;
 }
 
