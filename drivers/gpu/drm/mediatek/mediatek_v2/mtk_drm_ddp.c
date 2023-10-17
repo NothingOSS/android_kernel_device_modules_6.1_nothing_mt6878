@@ -20697,7 +20697,7 @@ void mtk_ddp_remove_comp_from_path(struct mtk_drm_crtc *mtk_crtc,
 		break;
 
 	case MMSYS_MT6878:
-		if (!reg_data || !reg_data->dispsys_map) {
+		if (!reg_data) {
 			DDPPR_ERR("%s failed with NULL reg_data or dispsys_map\n", __func__);
 			break;
 		}

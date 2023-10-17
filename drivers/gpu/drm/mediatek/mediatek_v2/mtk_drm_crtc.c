@@ -157,6 +157,9 @@ unsigned int ovl_win_size;
 #define DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW 0xf00
 #define DISP_REG_CONFIG_OVLSYS_CB_BYPASS_MUX_SHADOW 0xf0c
 
+#define MT6878_MMSYS_BYPASS_MUX_SHADOW 0xC00
+#define MT6878_MMSYS_CROSSBAR_CON 0xC0C
+
 #define DISP_MUTEX0_EN 0xA0
 #define DISP_MUTEX0_CTL 0xAc
 #define DISP_MUTEX0_MOD0 0xB0
@@ -7472,7 +7475,8 @@ void mtk_crtc_enable_iommu_runtime(struct mtk_drm_crtc *mtk_crtc,
 			priv->data->mmsys_id == MMSYS_MT6895 ||
 			priv->data->mmsys_id == MMSYS_MT6835 ||
 			priv->data->mmsys_id == MMSYS_MT6855 ||
-			priv->data->mmsys_id == MMSYS_MT6886) {
+			priv->data->mmsys_id == MMSYS_MT6886 ||
+			priv->data->mmsys_id == MMSYS_MT6878) {
 			/*set smi_larb_sec_con reg as 1*/
 			mtk_crtc_exec_atf_prebuilt_instr(mtk_crtc, handle);
 		}
@@ -10751,7 +10755,8 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc)
 		priv->data->mmsys_id == MMSYS_MT6895 ||
 		priv->data->mmsys_id == MMSYS_MT6886 ||
 		priv->data->mmsys_id == MMSYS_MT6835 ||
-		priv->data->mmsys_id == MMSYS_MT6855) {
+		priv->data->mmsys_id == MMSYS_MT6855 ||
+		priv->data->mmsys_id == MMSYS_MT6878) {
 		handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 
 		if (!handle) {
@@ -11783,6 +11788,19 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 						DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW);
 			}
 		}
+	} else if (priv->data->mmsys_id == MMSYS_MT6878) {
+		/*Set EVENT_GCED_EN EVENT_GCEM_EN*/
+		writel(0x3, mtk_crtc->config_regs +
+				DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL);
+
+		/*Set BYPASS_MUX_SHADOW*/
+		writel(0x1, mtk_crtc->config_regs +
+				MT6878_MMSYS_BYPASS_MUX_SHADOW);
+
+		/*Set CROSSBAR_BYPASS_MUX_SHADOW*/
+		writel(0x00ff0000, mtk_crtc->config_regs +
+				MT6878_MMSYS_CROSSBAR_CON);
+
 	}
 #endif
 

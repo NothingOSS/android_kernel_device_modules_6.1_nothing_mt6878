@@ -5527,7 +5527,7 @@ static const struct mtk_disp_ovl_data mt6878_ovl_driver_data = {
 	.aid_sel_mapping = &mtk_ovl_aid_sel_MT6878,
 	.aid_per_layer_setting = false,
 	.mmsys_mapping = &mtk_ovl_mmsys_mapping_MT6878,
-	.source_bpc = 8,
+	.source_bpc = 10,
 };
 
 static const struct mtk_disp_ovl_data mt8173_ovl_driver_data = {
