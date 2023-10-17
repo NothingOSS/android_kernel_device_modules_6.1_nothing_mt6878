@@ -3452,7 +3452,7 @@ static const struct mtk_iommu_plat_data mt6873_data_apu = {
 static const struct mtk_iommu_plat_data mt6878_data_disp = {
 	.m4u_plat	= M4U_MT6878,
 	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
-			  NOT_STD_AXI_MODE | TLB_SYNC_EN | /*IOMMU_SEC_EN |*/
+			  NOT_STD_AXI_MODE | TLB_SYNC_EN | IOMMU_SEC_EN |
 			  SKIP_CFG_PORT | IOVA_34_EN |
 			  IOMMU_CLK_AO_EN | /*HAS_BCLK |*/
 			  HAS_SMI_SUB_COMM | SAME_SUBSYS,
@@ -3469,7 +3469,7 @@ static const struct mtk_iommu_plat_data mt6878_data_disp = {
 
 static const struct mtk_iommu_plat_data mt6878_data_apu0 = {
 	.m4u_plat	= M4U_MT6878,
-	.flags          = TLB_SYNC_EN | /*IOMMU_SEC_EN |*/
+	.flags          = TLB_SYNC_EN | IOMMU_SEC_EN |
 			  GET_DOM_ID_LEGACY | IOVA_34_EN | /*LINK_WITH_APU |*/
 			  PM_OPS_SKIP | IOMMU_CLK_AO_EN,
 	.hw_list        = &apu_iommu_list,
