@@ -690,7 +690,7 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 
 		log_size += scnprintf(log_buf + log_size,
 			  LOG_BUF_OUT_SZ - log_size,
-			  "cg_check_sta = 0x%x, isr = 0x%x, sw_rsv = 0x%x, 0x%x, 0x%x, 0x%x | 0x%x, 0x%x, 0x%x, 0x%x | 0x%x, ",
+			  "cg_check_sta = 0x%x, isr = 0x%x, sw_rsv = 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x, ",
 			  wakesrc->cg_check_sta,
 			  wakesrc->isr, wakesrc->sw_rsv0,
 			  wakesrc->sw_rsv1, wakesrc->sw_rsv2,
