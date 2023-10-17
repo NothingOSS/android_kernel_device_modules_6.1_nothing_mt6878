@@ -7168,87 +7168,20 @@
 			clock-names =
 				"CORE_MT_CG_VDEC0";
 			mediatek,clock-parents = <4 3>;
-
 			operating-points-v2 = <&opp_table_vdec>;
-			//mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-			interconnects = <&mmqos MASTER_LARB_PORT(M4U_L4_P0_HW_VDEC_MC_EXT)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L4_P1_HW_VDEC_UFO_EXT)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L4_P2_HW_VDEC_PP_EXT)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L4_P3_HW_VDEC_PRED_RD_EXT)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L4_P4_HW_VDEC_PRED_WR_EXT)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L4_P5_HW_VDEC_PPWRAP_EXT)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L4_P6_HW_VDEC_TILE_EXT)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L4_P7_HW_VDEC_VLD_EXT)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L4_P8_HW_VDEC_VLD2_EXT)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L4_P9_HW_VDEC_AVC_MV_EXT)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L4_P10_HW_VDEC_RG_CTRL_DMA_EXT)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L4_P11_HW_VDEC_UFO_ENC_EXT)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos SLAVE_LARB(4) &mmqos SLAVE_COMMON(0)>;
-			interconnect-names = "path_vdec_mc", "path_vdec_ufo",
-						"path_vdec_pp", "path_vdec_pred_rd",
-						"path_vdec_pred_wr", "path_vdec_ppwrap",
-						"path_vdec_tile", "path_vdec_vld",
-						"path_vdec_vld2", "path_vdec_avc_mv",
-						"path_vdec_rg_ctrl_dma","path_vdec_ufo_c",
-						"path_larb4";
-			interconnect-num = <13>;
+			vdec-mmdvfs-in-vcp = <1>;
+			vdec-mmdvfs-in-adaptive = <1>;
+			mmqos-supply = <&mmqos>;
+			interconnects = <&mmqos SLAVE_LARB(4) &mmqos SLAVE_COMMON(0)>,
+				<&mmqos SLAVE_LARB(5) &mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "path_larb4", "path_larb5";
+			interconnect-num = <2>;
 			throughput-op-rate-thresh = <120>;
 			throughput-min = <218000000>;
-			throughput-normal-max = <416000000>;
-			profile-duration = <60 2000>;
-			profile-target = <15 25 30 50 60 90 120 150 180 240 480>;
-			max-op-rate-table =
-				<877088845 921600 30 3686400 30 8847360 15>, /* MPEG4 */
-				<826757197 921600 30 3686400 30 8847360 15>, /* MPEG1 */
-				<843534413 921600 30 3686400 30 8847360 15>, /* MPEG2 */
-				<859189832 921600 30 3686400 30 8847360 15>, /* H.263 */
-				<875967048 921600 30 3686400 30 8847360 15>, /* H.264 */
-				<826496577 921600 30 3686400 30 8847360 15>, /* H.264 */
-				<1129727304 921600 30 3686400 30 8847360 15>, /* HEVC */
-				<892744264 921600 30 3686400 30 8847360 15>, /* H.265 */
-				<1179206984 262144 550 2097152 550 8847360 550>, /* HEIF */
-				<808996950 921600 30 3686400 30 8847360 15>, /* VP8 */
-				<809062486 921600 30 3686400 30 8847360 15>, /* VP9 */
-				<808539713 921600 30 3686400 30 8847360 15>; /* AV1 */
-			throughput-table =
-				<877088845 0 478 478>, /* MPEG4 */
-				<826757197 0 417 417>, /* MPEG1 */
-				<843534413 0 417 417>, /* MPEG2 */
-				<859189832 0 478 478>, /* H.263 */
-				<875967048 0 298 298>, /* H.264 */
-				<826496577 0 298 298>, /* H.264 */
-				<1129727304 0 298 298>, /* HEVC */
-				<892744264 0 298 298>, /* H.265 */
-				<1179206984 0 550 550>, /* HEIF */
-				<808996950 0 417 417>, /* VP8 */
-				<809062486 0 298 298>, /* VP9 */
-				<808539713 0 298 298>; /* AV1 */
-			bandwidth-table =
-				<3 840>,
-				<3 70>,
-				<2 550>,
-				<5 10>,
-				<5 10>,
-				<5 0>,
-				<5 0>,
-				<0 26>,
-				<0 26>,
-				<5 26>,
-				<5 20>,
-				<3 66>,
-				<6 4>;
+			throughput-normal-max = <546000000>;
+			bandwidth-table = // avg occupy
+				<4 0 975>, /* larb_id, rw, base_bw*/
+				<5 1 645>;
 		};
 
 		venc@17000000 {
@@ -7283,7 +7216,6 @@
 				"MT_CG_VENC0",
 				"mmdvfs_clk";
 			port-arg-num = <3>;
-
 			port-def =<0 M4U_L7_P0_VENC_RCPU 0>,
 				<0 M4U_L7_P1_VENC_REC 0>,
 				<0 M4U_L7_P2_VENC_BSDMA 0>,
@@ -7299,105 +7231,94 @@
 				<0 M4U_L7_P12_VENC_REF_LUMA 0>,
 				<0 M4U_L7_P13_VENC_REF_CHROMA 0>,
 				<0 M4U_L7_P14_VENC_SUB_R_LUMA 0>;
-
 			operating-points-v2 = <&opp_table_venc>;
+			venc-mmdvfs-in-vcp = <0>;
+			venc-mmdvfs-in-adaptive = <1>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-			interconnects = <&mmqos MASTER_LARB_PORT(M4U_L7_P0_VENC_RCPU)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L7_P1_VENC_REC)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L7_P2_VENC_BSDMA)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L7_P3_VENC_SV_COMV)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L7_P4_VENC_RD_COMV)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L7_P8_VENC_SUB_W_LUMA)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L7_P10_VENC_CUR_LUMA)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L7_P11_VENC_CUR_CHROMA)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L7_P12_VENC_REF_LUMA)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L7_P13_VENC_REF_CHROMA)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos MASTER_LARB_PORT(M4U_L7_P14_VENC_SUB_R_LUMA)
-						&mmqos SLAVE_COMMON(0)>,
-					<&mmqos SLAVE_LARB(7) &mmqos SLAVE_COMMON(0)>;
-			interconnect-names = "path_venc_rcpu", "path_venc_rec",
-					"path_venc_bsdma", "path_venc_sv_comv",
-					"path_venc_rd_comv", "path_venc_nbm_rdma",
-					"path_venc_nbm_rdma_lite", "path_venc_sub_w_luma",
-					"path_venc_fcs_nbm_rdma", "path_venc_nbm_wdma",
-					"path_venc_nbm_wdma_lite", "path_venc_cur_luma",
-					"path_venc_cur_chroma", "path_venc_ref_luma",
-					"path_venc_ref_chroma", "path_venc_sub_r_luma",
-					"path_venc_fcs_nbm_wdma", "path_larb7";
-			interconnect-num = <18>;
+			mmqos-supply = <&mmqos>;
+			interconnects = <&mmqos SLAVE_LARB(7) &mmqos SLAVE_COMMON(0)>,
+					<&mmqos SLAVE_LARB(8) &mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "path_larb7", "path_larb8";
+			interconnect-num = <2>;
 			throughput-op-rate-thresh = <120>;
 			throughput-min = <250000000>;
-			throughput-normal-max = <458000000>;
+			throughput-normal-max = <624000000>;
 			throughput-config-offset = <2>;
 			throughput-table =
-				<875967048 3 974 974>, /* H.264 */
-				<875967048 4 860 860>, /* H.264 */
-				<875967048 5 766 766>,
-				<875967048 12 413 413>,
-				<875967048 13 2880 2880>,
-				<875967048 14 2545 2545>,
-				<1129727304 2 860 860>, /* HEVC low power*/
-				<1129727304 4 766 766>,
-				<1129727304 9 413 413>,
-				<1129727304 10 1016 1016>, /* HEVC high quality*/
-				<1129727304 11 932 932>,
-				<1129727304 16 435 435>,
-				<892744264 2 860 860>, /* H265 low power*/
-				<892744264 4 766 766>,
-				<892744264 9 413 413>,
-				<892744264 10 1016 1016>, /* H265 high quality*/
-				<892744264 11 932 932>,
-				<892744264 16 435 435>,
-				<1179206984 2 3500 3500>, /* HEIF*/
-				<1179206984 4 1720 1720>,
-				<1179206984 9 926 926>;
-			config-table =
-				/* H264 */
-				<875967048 108000 3 13>, /* 720p30 */
-				<875967048 244800 4 14>, /* 1080p30 */
-				<875967048 489600 5 14>, /* 1080p60 */
-				<875967048 4294967295 12 14>, /* 4K30 */
-				/* HEVC*/
-				<1129727304 244800 2 10>, /* 1080p30 */
-				<1129727304 489600 4 11>, /* 1080p60 */
-				<1129727304 4294967295 9 16>, /* 4K30 */
-				/* H265 */
-				<892744264 244800 2 10>,
-				<892744264 489600 4 11>,
-				<892744264 4294967295 9 16>,
+				/* H.264 */
+				<875967048 3 1148 1394 250000000 72>, /* 720p, LP */
+				<875967048 4 1010 996 250000000 72>, /* 1080p30, LP */
+				<875967048 5 925 891 458000000 149>, /* 1080p60, LP */
+				<875967048 12 430 477 458000000 275>, /* 4K30, LP */
+				<875967048 17 430 477 624000000 275>, /* others, LP */
+				<875967048 18 2800 4495 312000000 72>, /* 720p30, HQ*/
+				<875967048 19 2530 1998 624000000 72>, /* 1080p30, HQ*/
+				<875967048 20 2530 1998 624000000 275>, /* others, HQ */
+				/* HEVC */
+				<1129727304 1 4592 4495 250000000 100>, /* 720p, LP*/
+				<1129727304 2 4040 1998 250000000 100>, /* 1080p30, LP */
+				<1129727304 4 3700 996 458000000 256>, /* 1080p60, LP */
+				<1129727304 9 1720 891 458000000 347>, /* 4K30, LP */
+				<1129727304 11 1720 891 458000000 347>, /* others, LP */
+				<1129727304 18 4592 4495 250000000 100>, /* 720p30, HQ*/
+				<1129727304 19 4040 1998 250000000 100>, /* 1080p30, HQ*/
+				<1129727304 20 3660 1865 458000000 256>, /* 1080p60, HQ*/
+				<1129727304 21 1715 1865 458000000 347>, /* 4K30, HQ*/
+				<1129727304 21 1715 1865 624000000 347>, /* others, HQ*/
+				/* H.265 */
+				<892744264 1 4592 4495 250000000 100>, /* 720p, LP*/
+				<892744264 2 4040 1998 250000000 100>, /* 1080p30, LP */
+				<892744264 4 3700 996 458000000 256>, /* 1080p60, LP */
+				<892744264 9 1720 891 458000000 347>, /* 4K30, LP */
+				<892744264 11 1720 891 458000000 347>, /* others, LP */
+				<892744264 18 4592 4495 250000000 100>, /* 720p30, HQ*/
+				<892744264 19 4040 1998 250000000 100>, /* 1080p30, HQ*/
+				<892744264 20 3660 1865 458000000 256>, /* 1080p60, HQ*/
+				<892744264 21 1715 1865 458000000 347>, /* 4K30, HQ*/
+				<892744264 21 1715 1865 624000000 347>, /* others, HQ*/
 				/* HEIF */
-				<1179206984 244800 2 10>,
-				<1179206984 489600 4 11>,
-				<1179206984 4294967295 9 16>;
-			bandwidth-table =
-				<4 10>,
-				<3 282>,
-				<0 20>,
-				<5 4>,
-				<5 16>,
-				<5 0>,
-				<5 0>,
-				<5 47>,
-				<5 0>,
-				<5 0>,
-				<5 0>,
-				<1 188>,
-				<2 94>,
-				<1 188>,
-				<2 94>,
-				<3 47>,
-				<5 0>,
-				<6 7>;
+				<1179206984 1 4592 4495 250000000 100>, /* 720p, LP*/
+				<1179206984 2 4040 1998 250000000 100>, /* 1080p30, LP */
+				<1179206984 4 3700 996 458000000 256>, /* 1080p60, LP */
+				<1179206984 9 1720 891 458000000 347>, /* 4K30, LP */
+				<1179206984 11 1720 891 458000000 347>, /* others, LP */
+				<1179206984 18 4592 4495 250000000 100>, /* 720p30, HQ*/
+				<1179206984 19 4040 1998 250000000 100>, /* 1080p30, HQ*/
+				<1179206984 20 3660 1865 458000000 256>, /* 1080p60, HQ*/
+				<1179206984 21 1715 1865 458000000 347>, /* 4K30, HQ*/
+				<1179206984 21 1715 1865 624000000 347>; /* others, HQ*/
+			config-table = /* codec, mb/s, normal config, high quality config*/
+				/* H.264 */
+				<875967048 108000 3 18>, /* 720p */
+				<875967048 244800 4 19>, /* 1080p30 */
+				<875967048 489600 5 20>, /* 1080p60 */
+				<875967048 1044480 12 20>, /* 4K30 */
+				<875967048 4294967295 17 20>, /* others */
+				/* HEVC */
+				<1129727304 108000 1 18>, /* 720p */
+				<1129727304 244800 2 19>, /* 1080p30 */
+				<1129727304 489600 4 20>, /* 1080p60 */
+				<1129727304 1044480 9 21>, /* 4K30 */
+				<1129727304 4294967295 11 21>, /* others */
+				/* H.265 */
+				<892744264 108000 1 18>, /* 720p */
+				<892744264 244800 2 19>, /* 1080p30 */
+				<892744264 489600 4 20>, /* 1080p60 */
+				<892744264 1044480 9 21>, /* 4K30 */
+				<892744264 4294967295 11 21>, /* others */
+				/* HEIF */
+				<1179206984 108000 1 18>, /* 720p */
+				<1179206984 244800 2 19>, /* 1080p30 */
+				<1179206984 489600 4 20>, /* 1080p60 */
+				<1179206984 1044480 9 21>, /* 4K30 */
+				<1179206984 4294967295 11 21>; /* others */
+			bandwidth-table = // avg occupy
+				<7 0 135>, /* larb_id, rw, base_bw*/
+				<8 1 270>;
+			need-smi-monitor = <1>; /* enable smi bw monitor in kernel */
+			commlarb-id = <4 4>; /* Monitor port of <comm0 comm1> */
+			common-id = <0 0>; /* <DISP_COMM MDP_COMM> */
+			monitor-id = <3 3>; /* Monitor id of <comm_0 comm_1> */
 		};
 #endif
 
