@@ -10,7 +10,7 @@
 #include "audio_mbox.h"
 #include "scp_audio_ipi.h"
 
-#define SHARE_BUF_SIZE  128
+#define SHARE_BUF_SIZE  256
 
 static recv_queue_handler_t recv_queue_callback;
 

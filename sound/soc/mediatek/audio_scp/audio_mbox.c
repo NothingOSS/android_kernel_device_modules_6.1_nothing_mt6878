@@ -17,11 +17,12 @@ static bool init_done;
 
 struct mtk_mbox_info audio_mbox_table[AUDIO_TOTAL_MBOX] = {
 	{ .opt = MBOX_OPT_QUEUE_DIR, .is64d = true},
+	{ .opt = MBOX_OPT_QUEUE_DIR, .is64d = true}
 };
 
 static struct mtk_mbox_pin_send audio_mbox_pin_send[AUDIO_TOTAL_SEND_PIN] = {
 	{
-		.mbox = AUDIO_MBOX_CH_ID,
+		.mbox = AUDIO_MBOX0_CH_ID,
 		.offset = AUDIO_MBOX_SEND_SLOT_OFFSET,
 		.msg_size = AUDIO_MBOX_SEND_SLOT_SIZE,
 		.pin_index = 0,
@@ -30,7 +31,7 @@ static struct mtk_mbox_pin_send audio_mbox_pin_send[AUDIO_TOTAL_SEND_PIN] = {
 
 static struct mtk_mbox_pin_recv audio_mbox_pin_recv[AUDIO_TOTAL_RECV_PIN] = {
 	{
-		.mbox = AUDIO_MBOX_CH_ID,
+		.mbox = AUDIO_MBOX1_CH_ID,
 		.offset = AUDIO_MBOX_RECV_SLOT_OFFSET,
 		.msg_size = AUDIO_MBOX_RECV_SLOT_SIZE,
 		.pin_index = 0,
@@ -114,20 +115,65 @@ EXIT:
 	return ret;
 }
 
+static bool audio_mbox_table_init(struct mtk_mbox_device *mbdev, struct platform_device *pdev)
+{
+	struct mtk_mbox_pin_send *pin_send = NULL;
+	struct mtk_mbox_pin_recv *pin_recv = NULL;
+
+	/* Get mbox count */
+	of_property_read_u32(pdev->dev.of_node, "mbox-num", &mbdev->count);
+	if (mbdev->count <= 0 || mbdev->count > AUDIO_TOTAL_MBOX) {
+		pr_warn("[audio_mbox] mbox-num %d invalid\n", mbdev->count);
+		return false;
+	}
+
+	/* Setup send and receive table when mbox count is 1, which is true for legacy plaform.
+	 * Use the same mbox channel for send and receive.
+	 */
+
+	if (mbdev->count == 1) {
+		// send table
+		pin_send = mbdev->pin_send_table;
+		pin_send[0].mbox = AUDIO_MBOX0_CH_ID;
+		pin_send[0].offset = AUDIO_MBOX_SEND_SLOT_OFFSET_1CH;
+		pin_send[0].msg_size = AUDIO_MBOX_SLOT_SIZE_1CH;
+		// recv table
+		pin_recv = mbdev->pin_recv_table;
+		pin_recv[0].mbox = AUDIO_MBOX0_CH_ID;
+		pin_recv[0].offset = AUDIO_MBOX_RECV_SLOT_OFFSET_1CH;
+		pin_recv[0].msg_size = AUDIO_MBOX_SLOT_SIZE_1CH;
+	}
+	return true;
+}
+
 static int scp_audio_mbox_dev_probe(struct platform_device *pdev)
 {
 	int ret = -1;
-	int mbox = AUDIO_MBOX_CH_ID;
+	int idx;
 	struct mtk_mbox_device *mbdev = &audio_mboxdev;
 
-	ret = mtk_mbox_probe(pdev, mbdev, mbox);
-	if (ret) {
-		pr_warn("%s, mtk_mbox_probe mboxdev fail ret(%d)", __func__, ret);
-		goto EXIT;
+	/* Setup mbox info for different set of mbox channels */
+	if (!audio_mbox_table_init(&audio_mboxdev, pdev)) {
+		pr_warn("%s, audio_mbox_table_init fail\n", __func__);
+		return -ENODEV;
 	}
 
-	enable_irq_wake(mbdev->info_table[mbox].irq_num);
-	mutex_init(&audio_mbox_pin_send[0].mutex_send);
+	for (idx = 0; idx < mbdev->count; idx++) {
+		ret = mtk_mbox_probe(pdev, mbdev, idx);
+		if (ret) {
+			pr_warn("%s, mtk_mbox_probe mboxdev id %d fail ret(%d)", __func__, idx, ret);
+			goto EXIT;
+		}
+
+		ret = enable_irq_wake(mbdev->info_table[idx].irq_num);
+		if (ret) {
+			pr_warn("%s, enable_irq_wake id %d fail ret (%d)", __func__, idx, ret);
+			goto EXIT;
+		}
+	}
+
+	for (idx = 0; idx < mbdev->send_count; idx++)
+		mutex_init(&audio_mbox_pin_send[idx].mutex_send);
 
 	ret = misc_register(&mdev);
 	if (ret)
