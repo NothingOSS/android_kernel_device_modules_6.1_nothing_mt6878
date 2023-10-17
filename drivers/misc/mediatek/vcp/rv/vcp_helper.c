@@ -600,7 +600,7 @@ void vcp_A_register_notify(struct notifier_block *nb)
 	mutex_lock(&vcp_A_notify_mutex);
 	blocking_notifier_chain_register(&vcp_A_notifier_list, nb);
 
-	pr_debug("[VCP] register vcp A notify callback..\n");
+	pr_notice("[VCP] register vcp A notify callback..\n");
 
 	if (is_vcp_ready(VCP_A_ID))
 		nb->notifier_call(nb, VCP_EVENT_READY, NULL);
