@@ -2750,7 +2750,6 @@
 
 	remoteproc_ccd: remoteproc-ccd {
 		compatible = "mediatek,ccd";
-#if 0
 		iommus = <&disp_iommu M4U_L16_P0_CQI_R1_U0>,
 			<&disp_iommu M4U_L16_P1_RAWI_R2_U0>,
 			<&disp_iommu M4U_L16_P2_RAWI_R3_U0>,
@@ -2763,7 +2762,6 @@
 			<&disp_iommu M4U_L16_P12_LTMSO_R1_U0>,
 			<&disp_iommu M4U_L16_P14_AFO_R1_U0>,
 			<&disp_iommu M4U_L16_P15_AAO_R1_U0>;
-#endif
 		msg-dev {
 			mtk,rpmsg-name = "mtk_ccd_msgdev";
 		};
