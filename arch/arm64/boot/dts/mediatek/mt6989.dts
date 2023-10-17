@@ -12851,6 +12851,11 @@
 		};
 	};
 
+	monitorhang: monitorhang {
+		/* compatible = "mediatek,monitorhang"; */
+		enabled = <0>;
+	};
+
 	systimer: systimer@1cc10000 {
 		compatible = "mediatek,mt6989-timer",
 				"mediatek,mt6765-timer";
