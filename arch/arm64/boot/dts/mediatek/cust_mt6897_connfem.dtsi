@@ -6,13 +6,16 @@
 &connfem {
 	/* PINCTRL States*/
 	pinctrl-names = "wlan7207h-wlan7207c",		/* pinctrl-0 */
-			"qm42195-qm45197";		/* pinctrl-1 */
+			"qm42195-qm45197",		/* pinctrl-1 */
+			"nofem-sky85732";		/* pinctrl-2 */
 
 	pinctrl-0 = <&wlan7207h_wf0>, <&wlan7207h_wf1>,
 		<&wlan7207c_wf0>, <&wlan7207c_wf1>;
 
 	pinctrl-1 = <&qm42195_wf0>, <&qm42195_wf1>,
 		<&qm45197_wf0>, <&qm45197_wf1>;
+
+	pinctrl-2 = <&sky85732_wf0>, <&sky85732_wf1>;
 
 	/* FEM ID */
 	nofem: nofem {
@@ -34,6 +37,10 @@
 	qm45197: qm45197 {
 		vid = <3>;
 		pid = <2>;
+	};
+	sky85732: sky85732 {
+		vid = <1>;
+		pid = <3>;
 	};
 };
 
@@ -78,13 +85,13 @@
 
 	wlan7207c_wf1: wlan7207c-wf1 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO128__FUNC_ANT_SEL18>,
+			pinmux = <PINMUX_GPIO184__FUNC_ANT_SEL11>,
 				<PINMUX_GPIO26__FUNC_ANT_SEL21>,
-				<PINMUX_GPIO120__FUNC_ANT_SEL19>,
+				<PINMUX_GPIO185__FUNC_ANT_SEL12>,
 				<PINMUX_GPIO178__FUNC_ANT_SEL5>;
-			mapping = <18 0xca 0>,	/* ANTSEL 18 <-> PIN #10: C0 */
+			mapping = <11 0xca 0>,	/* ANTSEL 11 <-> PIN #10: C0 */
 				<21 0xcb 0>,	/* ANTSEL 21 <-> PIN #11: C1 */
-				<19 0xcc 0>,	/* ANTSEL 19 <-> PIN #12: C2 */
+				<12 0xcc 0>,	/* ANTSEL 12 <-> PIN #12: C2 */
 				<5 0xc1 0>;	/* ANTSEL  5 <-> PIN #1: C3 */
 		};
 	};
@@ -126,12 +133,30 @@
 
 	qm45197_wf1: qm45197-wf1 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO128__FUNC_ANT_SEL18>,
+			pinmux = <PINMUX_GPIO184__FUNC_ANT_SEL11>,
 				<PINMUX_GPIO26__FUNC_ANT_SEL21>,
-				<PINMUX_GPIO120__FUNC_ANT_SEL19>;
-			mapping = <18 0xca 0>,	/* ANTSEL 18 <-> PIN #10: PAEN */
+				<PINMUX_GPIO185__FUNC_ANT_SEL12>;
+			mapping = <11 0xca 0>,	/* ANTSEL 11 <-> PIN #10: PAEN */
 				<21 0xcb 0>,	/* ANTSEL 21 <-> PIN #11: LNAEN */
-				<19 0xcc 0>;	/* ANTSEL 19 <-> PIN #12: SEL3 */
+				<12 0xcc 0>;	/* ANTSEL 12 <-> PIN #12: SEL3 */
+		};
+	};
+
+	sky85732_wf0: sky85732-wf0 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO177__FUNC_ANT_SEL4>,
+				<PINMUX_GPIO25__FUNC_ANT_SEL20>;
+			mapping = <4 0x47 0>,	/* ANTSEL  4 <-> PIN #7: PAEN */
+				<20 0x49 0>;	/* ANTSEL 20 <-> PIN #9: LNAEN */
+		};
+	};
+
+	sky85732_wf1: sky85732-wf1 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO184__FUNC_ANT_SEL11>,
+				<PINMUX_GPIO26__FUNC_ANT_SEL21>;
+			mapping = <11 0xc7 0>,	/* ANTSEL 11 <-> PIN #7: PAEN */
+				<21 0xc9 0>;	/* ANTSEL 21 <-> PIN #9: LNAEN */
 		};
 	};
 };
