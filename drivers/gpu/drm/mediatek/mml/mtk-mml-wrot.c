@@ -533,6 +533,22 @@ static void wrot_config_pipe1(struct mml_frame_config *cfg,
 	}
 }
 
+static void wrot_config_smi(struct mml_comp_wrot *wrot,
+	struct mml_frame_config *cfg, struct cmdq_pkt *pkt)
+{
+	const enum mml_mode mode = cfg->info.mode;
+	u32 mask = GENMASK(19, 16) | (0x1 << 3);
+	u32 value;
+
+	/* config smi addr to emi (iova) or sram, and bw throttling */
+	if (mode == MML_MODE_RACING)
+		value = 0xf << 16;
+	else
+		value = 0x1 << 3;
+
+	cmdq_pkt_write(pkt, NULL, wrot->smi_larb_con, value, mask);
+}
+
 static s32 wrot_prepare(struct mml_comp *comp, struct mml_task *task,
 			struct mml_comp_config *ccfg)
 {
@@ -1222,6 +1238,9 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		swap(wrot_frm->plane_offset[1], wrot_frm->plane_offset[2]);
 	}
 
+	if (!mml_slt)
+		wrot_config_smi(wrot, cfg, pkt);
+
 	if (task->config->info.mode == MML_MODE_RACING) {
 		u64 sram_addr;
 
@@ -1231,11 +1250,6 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 			wrot_frm->hor_sh_uv, wrot_frm->ver_sh_uv,
 			wrot_frm->plane_offset);
 		sram_addr = wrot->sram_pa + wrot_frm->plane_offset[0];
-
-		/* config smi addr to emi (iova) or sram */
-		if (!mml_slt)
-			cmdq_pkt_write(pkt, NULL, wrot->smi_larb_con,
-				GENMASK(19, 16), GENMASK(19, 16));
 
 		/* config ready signal from disp0 or disp1 */
 		wrot_config_ready(wrot, cfg, ccfg->pipe, pkt, true);
@@ -1272,11 +1286,6 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 			wrot_frm->bbp_y, wrot_frm->bbp_uv,
 			wrot_frm->hor_sh_uv, wrot_frm->ver_sh_uv,
 			wrot_frm->plane_offset);
-
-		if (wrot->smi_larb_con && !mml_slt) {
-			/* always reset larb con to va mode to avoid last frame fail */
-			cmdq_pkt_write(pkt, NULL, wrot->smi_larb_con, 0, GENMASK(19, 16));
-		}
 
 		/* normal dram case config wrot iova with reuse */
 		wrot_config_addr(dest, dest_fmt, base_pa,
@@ -2130,15 +2139,6 @@ static s32 wrot_post(struct mml_comp *comp, struct mml_task *task,
 		__func__, task, ccfg->pipe, wrot_frm->datasize, cache->line_bubble,
 		cache->max_size.width, cache->max_size.height, cache->max_pixel,
 		wrot_frm->wdone_cnt);
-
-	if (task->config->info.mode == MML_MODE_RACING) {
-		struct mml_comp_wrot *wrot = comp_to_wrot(comp);
-
-		/* clear path sel back to dram */
-		if (!mml_slt)
-			cmdq_pkt_write(task->pkts[ccfg->pipe], NULL, wrot->smi_larb_con,
-				0, GENMASK(19, 16));
-	}
 
 	wrot_backup_crc(comp, task, ccfg);
 

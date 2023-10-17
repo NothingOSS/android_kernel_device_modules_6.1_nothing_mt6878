@@ -727,6 +727,22 @@ static s32 rdma_config_read(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+static void rdma_config_smi(struct mml_comp_rdma *rdma,
+	struct mml_frame_config *cfg, struct cmdq_pkt *pkt)
+{
+	const enum mml_mode mode = cfg->info.mode;
+	u32 mask = GENMASK(19, 16) | (0x1 << 3);
+	u32 value;
+
+	/* config smi addr to emi (iova) or sram, and bw throttling */
+	if (mode == MML_MODE_SRAM_READ || mode == MML_MODE_APUDC)
+		value = 0xf << 16;
+	else
+		value = 0x1 << 3;
+
+	cmdq_pkt_write(pkt, NULL, rdma->smi_larb_con, value, mask);
+}
+
 static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,
 			const struct mml_path_node *node)
 {
@@ -1563,6 +1579,9 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   (simple_mode << 4),
 		   write_sec);
 
+	if (!mml_slt)
+		rdma_config_smi(rdma, cfg, pkt);
+
 	/* Write frame base address */
 	if (cfg->info.mode == MML_MODE_APUDC) {
 		u32 stride = mml_color_get_min_y_stride(src->format, src->width);
@@ -1571,9 +1590,6 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		iova[0] = rdma->sram_pa;
 		iova[1] = rdma->sram_pa + tile_size;
 		iova[2] = 0;
-
-		cmdq_pkt_write(pkt, NULL, rdma->smi_larb_con,
-			GENMASK(19, 16), GENMASK(19, 16));
 
 		/* select rdma read toggle signal send to apu, instead of disp */
 		if (rdma->apudc_sel)
@@ -1585,9 +1601,6 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		iova[0] = rdma->sram_pa + src->plane_offset[0];
 		iova[1] = rdma->sram_pa + src->plane_offset[1];
 		iova[2] = rdma->sram_pa + src->plane_offset[2];
-
-		cmdq_pkt_write(pkt, NULL, rdma->smi_larb_con,
-			GENMASK(19, 16), GENMASK(19, 16));
 
 		mml_msg("%s sram %#011llx", __func__, iova[0]);
 
@@ -2037,10 +2050,6 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 	/* for sram test rollback smi config */
 	if (cfg->info.mode == MML_MODE_APUDC ||
 		unlikely(cfg->info.mode == MML_MODE_SRAM_READ)) {
-		struct mml_comp_rdma *rdma = comp_to_rdma(comp);
-
-		cmdq_pkt_write(task->pkts[ccfg->pipe], NULL, rdma->smi_larb_con,
-			0, GENMASK(19, 16));
 
 		/* disable handshaking for safe */
 		cmdq_pkt_write(task->pkts[ccfg->pipe], NULL,
