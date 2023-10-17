@@ -307,6 +307,11 @@
 
 	};
 
+	logstore: logstore {
+		enabled = <1>;
+		pmic-register = <0xa0d>;
+	};
+
 	dcm: dcm@c530000 {
 		compatible = "mediatek,mt6878-dcm";
 		reg = <0 0xc530000 0 0xc8a0>,
