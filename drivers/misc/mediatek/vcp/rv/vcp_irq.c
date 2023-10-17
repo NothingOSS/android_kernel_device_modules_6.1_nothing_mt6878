@@ -15,6 +15,8 @@
 #include "vcp_excep.h"
 #include "vcp_status.h"
 
+#include <soc/mediatek/smi.h>
+
 static inline void vcp_wdt_clear(uint32_t coreid)
 {
 	coreid == 0 ? writel(B_WDT_IRQ, R_CORE0_WDT_IRQ) :
@@ -77,6 +79,8 @@ static void vcp_A_wdt_handler(struct tasklet_struct *t)
 	/* Wakeup mobile_log_d after vcp flush the log */
 	vcp_logger_wakeup_handler(0, NULL, NULL, 0);
 	vcp_dump_last_regs(mmup_enable_count());
+	if (vcp_ao)
+		mtk_smi_dbg_dump_for_mminfra();
 #if VCP_RECOVERY_SUPPORT
 	if (vcp_set_reset_status() == RESET_STATUS_STOP) {
 		pr_debug("[VCP] start to reset vcp...\n");
