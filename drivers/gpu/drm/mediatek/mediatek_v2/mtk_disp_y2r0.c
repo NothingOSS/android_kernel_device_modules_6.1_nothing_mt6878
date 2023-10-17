@@ -23,8 +23,8 @@
 #define MT6989_DISP_REG_DISP_Y2R0_CFG  0x018
 	#define MT6989_DISP_REG_DISP_Y2R0_CLAMP BIT(4)
 	#define MT6989_DISP_REG_DISP_Y2R0_RELAY_MODE BIT(5)
-	//#define MT6989_DISP_REG_DISP_Y2R0_LUT_EN BIT(6)
-	//#define MT6989_DISP_REG_DISP_Y2R0_STALL_CG_ON BIT(7)
+	#define MT6989_DISP_REG_DISP_Y2R0_LUT_EN BIT(6)
+	#define MT6989_DISP_REG_DISP_Y2R0_STALL_CG_ON BIT(7)
 	//#define MT6989_DISP_REG_DISP_Y2R0_OP_8BIT_MODE BIT(8)
 	#define MT6989_DISP_REG_DISP_Y2R0_CLAMP_U10 BIT(9)
 #define MT6989_DISP_REG_DISP_Y2R0_SIZE 0x01C
@@ -140,7 +140,9 @@ static void mtk_y2r_mt6989_config(struct mtk_drm_crtc *mtk_crtc,
 			comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_CFG,
 			MT6989_DISP_REG_DISP_Y2R0_RELAY_MODE, ~0);
 	} else {
-		disp_y2r_cfg |= ~MT6989_DISP_REG_DISP_Y2R0_RELAY_MODE;
+		disp_y2r_cfg &= ~MT6989_DISP_REG_DISP_Y2R0_RELAY_MODE;
+		disp_y2r_cfg |= MT6989_DISP_REG_DISP_Y2R0_LUT_EN;
+		disp_y2r_cfg |= MT6989_DISP_REG_DISP_Y2R0_STALL_CG_ON;
 		DDPINFO("disp_y2r_cfg: 0x%x\n",disp_y2r_cfg);
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 			comp->regs_pa + MT6989_DISP_REG_DISP_Y2R0_CFG, disp_y2r_cfg, ~0);
