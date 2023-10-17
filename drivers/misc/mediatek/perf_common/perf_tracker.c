@@ -66,7 +66,7 @@ static unsigned int gpu_pmu_period = 8000000; //8ms
 #endif
 static unsigned int mcupm_freq_enable;
 /* 1: enable, 3: enable & enable debug */
-static unsigned int support_cpu_pmu = 1;
+static unsigned int support_cpu_pmu;
 
 static DEFINE_PER_CPU(u64, cpu_last_inst_spec);
 static DEFINE_PER_CPU(u64, cpu_last_cycle);
@@ -498,6 +498,7 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 		val = (val > 0) ? 1 : 0;
 
 		perf_tracker_on = val;
+		support_cpu_pmu = 0;
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 		mtk_btag_mictx_enable(&ufs_mictx_id, val);
 #endif
@@ -514,11 +515,13 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 		/* do something after on/off perf_tracker */
 		if (perf_tracker_on) {
 			insert_freq_qos_hook();
-			init_pmu_data();
+			if (support_cpu_pmu)
+				init_pmu_data();
 			check_dram_bw = qos_rec_check_sram_ext();
 		} else {
 			remove_freq_qos_hook();
-			exit_pmu_data();
+			if (pmu_init)
+				exit_pmu_data();
 		}
 	}
 
@@ -789,7 +792,7 @@ static ssize_t show_cpu_pmu_enable(struct kobject *kobj,
 	unsigned int len = 0;
 	unsigned int max_len = 4096;
 
-	len += snprintf(buf, max_len, "cpu_pmu_enable = %u\n", support_cpu_pmu);
+	len += snprintf(buf, max_len, "cpu_pmu_enable = %u, pmu_init = %d\n", support_cpu_pmu, pmu_init);
 	return len;
 }
 
