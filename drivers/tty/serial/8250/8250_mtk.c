@@ -951,6 +951,7 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 {
 	#if defined(KERNEL_UARTHUB_dev0_set_tx_request)
 		int ret  = 0;
+		int rx_state = 0;
 
 		if (hub_uart_data != NULL && hub_uart_data->support_wakeup) {
 			mutex_lock(&hub_uart_data->clk_mutex);
@@ -978,12 +979,18 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 						KERNEL_mtk_uart_apdma_enable_vff(true);
 					#endif
 				}
-				/*unmask dma irq*/
-				#if defined(KERNEL_mtk_uart_set_apdma_rx_irq)
-					KERNEL_mtk_uart_set_apdma_rx_irq(true);
+				#if defined(KERNEL_mtk_uart_get_apdma_rx_state)
+					rx_state = KERNEL_mtk_uart_get_apdma_rx_state();
+					if(!rx_state) {
+						/*unmask dma irq*/
+						#if defined(KERNEL_mtk_uart_set_apdma_rx_irq)
+						KERNEL_mtk_uart_set_apdma_rx_irq(true);
+						#endif
+					}
 				#endif
 				atomic_set(&hub_uart_data->wakeup_state, 1);
-				pr_info("[%s]: atomic_set wakeup_state 1\n", __func__);
+				pr_info("[%s]: atomic_set wakeup_state 1,rx_state[%d]\n"
+					, __func__, rx_state);
 			}
 			mutex_unlock(&hub_uart_data->clk_mutex);
 		}
@@ -1072,6 +1079,12 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 	#endif
 
 	if (hub_uart_data != NULL && hub_uart_data->support_wakeup == 1) {
+		/*avoid multi call*/
+		if (atomic_read(&hub_uart_data->wakeup_state) == 0) {
+			pr_info("%s is already done!\n", __func__);
+			ret = -1;
+			goto exit;
+		}
 		/*polling tx dma finish*/
 		#if defined(KERNEL_mtk_uart_apdma_polling_tx_finish)
 		ret = KERNEL_mtk_uart_apdma_polling_tx_finish();
@@ -1996,6 +2009,7 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 	u64 wakeup_time_2 = 0;
 	u64 wakeup_time_3 = 0;
 	u64 wakeup_time_4 = 0;
+	int rx_state = 0;
 
 	pdev= (struct platform_device *)dev_id;
 	data = platform_get_drvdata(pdev);
@@ -2039,16 +2053,20 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 			KERNEL_mtk_uart_apdma_enable_vff(true);
 			#endif
 		}
-		/*unmask dma irq*/
-		#if defined(KERNEL_mtk_uart_set_apdma_rx_irq)
-			KERNEL_mtk_uart_set_apdma_rx_irq(true);
+		#if defined(KERNEL_mtk_uart_get_apdma_rx_state)
+			rx_state = KERNEL_mtk_uart_get_apdma_rx_state();
+			if(!rx_state) {
+				/*unmask dma irq*/
+				#if defined(KERNEL_mtk_uart_set_apdma_rx_irq)
+				KERNEL_mtk_uart_set_apdma_rx_irq(true);
+				#endif
+			}
 		#endif
-
 		atomic_set(&data->wakeup_state, 1);
 		wakeup_time_4 = sched_clock();
-		pr_info("[%s]: handler[%lld]ns, udelay[%lld], bottom_half[%lld]\n", __func__,
-			 wakeup_time_4 - wakeup_irq_time, wakeup_time_3 - wakeup_time_2,
-			 wakeup_time_4 - wakeup_time_1);
+		pr_info("[%s]: handler[%lld]ns, udelay[%lld], bottom_half[%lld], rx_state[%d]\n"
+			, __func__, wakeup_time_4 - wakeup_irq_time, wakeup_time_3 - wakeup_time_2,
+			 wakeup_time_4 - wakeup_time_1, rx_state);
 	}
 	mutex_unlock(&data->clk_mutex);
 	return IRQ_HANDLED;

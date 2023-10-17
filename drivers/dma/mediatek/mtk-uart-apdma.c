@@ -461,6 +461,8 @@ void mtk_uart_set_apdma_clk(bool enable)
 		}
 	} else {
 		atomic_dec(&dma_clk_count);
+		if (atomic_read(&dma_clk_count) < 0)
+			pr_info("[%s] dma_clk_count < 0\n", __func__);
 		if (atomic_read(&dma_clk_count) == 0) {
 			mtk_uart_apdma_write(hub_dma_rx_chan, VFF_INT_EN, VFF_INT_EN_CLR_B);
 			mtk_uart_apdma_write(hub_dma_rx_chan, VFF_INT_FLAG, VFF_RX_INT_CLR_B);
@@ -1022,7 +1024,7 @@ static irqreturn_t mtk_uart_apdma_irq_handler(int irq, void *dev_id)
 	//spin_unlock_irqrestore(&c->vc.lock, flags);
 	spin_unlock(&c->vc.lock);
 	if (current_dir == DMA_DEV_TO_MEM) {
-		if (num % 5000 == 2)
+		if (num % 5000 == 10)
 			pr_debug("debug: %s: VFF_VALID_SIZE=0, num[%llu], flag_state[0x%x]\n",
 				__func__, num, flag_state);
 	} else if (current_dir == DMA_MEM_TO_DEV) {
