@@ -496,58 +496,21 @@ void cmdq_mdp_init_module_base_VA(void)
 {
 	memset(&gCmdqMdpModuleBaseVA, 0, sizeof(struct CmdqMdpModuleBaseVA));
 
-	gCmdqMdpModuleBaseVA.MDP_RDMA0 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp-rdma0");
 	gCmdqMdpModuleBaseVA.MDP_RDMA1 =
 		cmdq_dev_alloc_reference_VA_by_name("mdp-rdma1");
-	gCmdqMdpModuleBaseVA.MDP_RSZ0 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp-rsz0");
 	gCmdqMdpModuleBaseVA.MDP_RSZ1 =
 		cmdq_dev_alloc_reference_VA_by_name("mdp-rsz1");
-	gCmdqMdpModuleBaseVA.MDP_WROT0 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp-wrot0");
 	gCmdqMdpModuleBaseVA.MDP_WROT1 =
 		cmdq_dev_alloc_reference_VA_by_name("mdp-wrot1");
-	gCmdqMdpModuleBaseVA.MDP_TDSHP0 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp-tdshp0");
-	gCmdqMdpModuleBaseVA.MDP_TDSHP1 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp-tdshp1");
-	gCmdqMdpModuleBaseVA.MDP_AAL0 =
-		cmdq_dev_alloc_reference_by_name("mdp-aal0",
-			&mdp_module_pa.aal0);
-	gCmdqMdpModuleBaseVA.MDP_AAL1 =
-		cmdq_dev_alloc_reference_by_name("mdp-aal1",
-			&mdp_module_pa.aal1);
-	gCmdqMdpModuleBaseVA.MDP_COLOR0 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp-color0");
-	gCmdqMdpModuleBaseVA.MDP_COLOR1 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp-color1");
-	gCmdqMdpModuleBaseVA.MDP_HDR0 =
-		cmdq_dev_alloc_reference_by_name("mdp-hdr0",
-		&mdp_module_pa.hdr0);
-	gCmdqMdpModuleBaseVA.MDP_HDR1 =
-		cmdq_dev_alloc_reference_by_name("mdp-hdr1",
-		&mdp_module_pa.hdr1);
 	gCmdqMdpModuleBaseVA.MM_MUTEX =
 		cmdq_dev_alloc_reference_VA_by_name("mm-mutex");
 }
 
 void cmdq_mdp_deinit_module_base_VA(void)
 {
-	cmdq_dev_free_module_base_VA(cmdq_mdp_get_module_base_VA_MDP_RDMA0());
 	cmdq_dev_free_module_base_VA(cmdq_mdp_get_module_base_VA_MDP_RDMA1());
-	cmdq_dev_free_module_base_VA(cmdq_mdp_get_module_base_VA_MDP_RSZ0());
 	cmdq_dev_free_module_base_VA(cmdq_mdp_get_module_base_VA_MDP_RSZ1());
-	cmdq_dev_free_module_base_VA(cmdq_mdp_get_module_base_VA_MDP_WROT0());
 	cmdq_dev_free_module_base_VA(cmdq_mdp_get_module_base_VA_MDP_WROT1());
-	cmdq_dev_free_module_base_VA(cmdq_mdp_get_module_base_VA_MDP_TDSHP0());
-	cmdq_dev_free_module_base_VA(cmdq_mdp_get_module_base_VA_MDP_TDSHP1());
-	cmdq_dev_free_module_base_VA(cmdq_mdp_get_module_base_VA_MDP_COLOR0());
-	cmdq_dev_free_module_base_VA(cmdq_mdp_get_module_base_VA_MDP_COLOR1());
-	cmdq_dev_free_module_base_VA(cmdq_mdp_get_module_base_VA_MDP_HDR0());
-	cmdq_dev_free_module_base_VA(cmdq_mdp_get_module_base_VA_MDP_HDR1());
-	cmdq_dev_free_module_base_VA(cmdq_mdp_get_module_base_VA_MDP_AAL0());
-	cmdq_dev_free_module_base_VA(cmdq_mdp_get_module_base_VA_MDP_AAL1());
 
 	memset(&gCmdqMdpModuleBaseVA, 0, sizeof(struct CmdqMdpModuleBaseVA));
 }
@@ -555,34 +518,12 @@ void cmdq_mdp_deinit_module_base_VA(void)
 bool cmdq_mdp_clock_is_on(u32 engine)
 {
 	switch (engine) {
-	case CMDQ_ENG_MDP_RDMA0:
-		return cmdq_mdp_clock_is_enable_MDP_RDMA0();
 	case CMDQ_ENG_MDP_RDMA1:
 		return cmdq_mdp_clock_is_enable_MDP_RDMA1();
-	case CMDQ_ENG_MDP_RSZ0:
-		return cmdq_mdp_clock_is_enable_MDP_RSZ0();
 	case CMDQ_ENG_MDP_RSZ1:
 		return cmdq_mdp_clock_is_enable_MDP_RSZ1();
-	case CMDQ_ENG_MDP_WROT0:
-		return cmdq_mdp_clock_is_enable_MDP_WROT0();
 	case CMDQ_ENG_MDP_WROT1:
 		return cmdq_mdp_clock_is_enable_MDP_WROT1();
-	case CMDQ_ENG_MDP_TDSHP0:
-		return cmdq_mdp_clock_is_enable_MDP_TDSHP0();
-	case CMDQ_ENG_MDP_TDSHP1:
-		return cmdq_mdp_clock_is_enable_MDP_TDSHP1();
-	case CMDQ_ENG_MDP_AAL0:
-		return cmdq_mdp_clock_is_enable_MDP_AAL0();
-	case CMDQ_ENG_MDP_AAL1:
-		return cmdq_mdp_clock_is_enable_MDP_AAL1();
-	case CMDQ_ENG_MDP_COLOR0:
-		return cmdq_mdp_clock_is_enable_MDP_COLOR0();
-	case CMDQ_ENG_MDP_COLOR1:
-		return cmdq_mdp_clock_is_enable_MDP_COLOR1();
-	case CMDQ_ENG_MDP_HDR0:
-		return cmdq_mdp_clock_is_enable_MDP_HDR0();
-	case CMDQ_ENG_MDP_HDR1:
-		return cmdq_mdp_clock_is_enable_MDP_HDR1();
 	default:
 		CMDQ_ERR("try to query unknown mdp clock");
 		return false;
@@ -592,47 +533,14 @@ bool cmdq_mdp_clock_is_on(u32 engine)
 void cmdq_mdp_enable_clock(bool enable, u32 engine)
 {
 	switch (engine) {
-	case CMDQ_ENG_MDP_RDMA0:
-		cmdq_mdp_enable_clock_MDP_RDMA0(enable);
-		break;
 	case CMDQ_ENG_MDP_RDMA1:
 		cmdq_mdp_enable_clock_MDP_RDMA1(enable);
-		break;
-	case CMDQ_ENG_MDP_RSZ0:
-		cmdq_mdp_enable_clock_MDP_RSZ0(enable);
 		break;
 	case CMDQ_ENG_MDP_RSZ1:
 		cmdq_mdp_enable_clock_MDP_RSZ1(enable);
 		break;
-	case CMDQ_ENG_MDP_WROT0:
-		cmdq_mdp_enable_clock_MDP_WROT0(enable);
-		break;
 	case CMDQ_ENG_MDP_WROT1:
 		cmdq_mdp_enable_clock_MDP_WROT1(enable);
-		break;
-	case CMDQ_ENG_MDP_TDSHP0:
-		cmdq_mdp_enable_clock_MDP_TDSHP0(enable);
-		break;
-	case CMDQ_ENG_MDP_TDSHP1:
-		cmdq_mdp_enable_clock_MDP_TDSHP1(enable);
-		break;
-	case CMDQ_ENG_MDP_COLOR0:
-		cmdq_mdp_enable_clock_MDP_COLOR0(enable);
-		break;
-	case CMDQ_ENG_MDP_COLOR1:
-		cmdq_mdp_enable_clock_MDP_COLOR1(enable);
-		break;
-	case CMDQ_ENG_MDP_HDR0:
-		cmdq_mdp_enable_clock_MDP_HDR0(enable);
-		break;
-	case CMDQ_ENG_MDP_HDR1:
-		cmdq_mdp_enable_clock_MDP_HDR1(enable);
-		break;
-	case CMDQ_ENG_MDP_AAL0:
-		cmdq_mdp_enable_clock_MDP_AAL0(enable);
-		break;
-	case CMDQ_ENG_MDP_AAL1:
-		cmdq_mdp_enable_clock_MDP_AAL1(enable);
 		break;
 	default:
 		CMDQ_ERR("try to enable unknown mdp clock");
@@ -647,34 +555,12 @@ void cmdq_mdp_init_module_clk(void)
 		&gCmdqMdpModuleClock.clk_APB);
 	cmdq_dev_get_module_clock_by_name("mm-mutex", "MDP_MUTEX0",
 		&gCmdqMdpModuleClock.clk_MDP_MUTEX0);
-	cmdq_dev_get_module_clock_by_name("mdp-rdma0", "MDP_RDMA0",
-		&gCmdqMdpModuleClock.clk_MDP_RDMA0);
 	cmdq_dev_get_module_clock_by_name("mdp-rdma1", "MDP_RDMA1",
 		&gCmdqMdpModuleClock.clk_MDP_RDMA1);
-	cmdq_dev_get_module_clock_by_name("mdp-rsz0", "MDP_RSZ0",
-		&gCmdqMdpModuleClock.clk_MDP_RSZ0);
 	cmdq_dev_get_module_clock_by_name("mdp-rsz1", "MDP_RSZ1",
 		&gCmdqMdpModuleClock.clk_MDP_RSZ1);
-	cmdq_dev_get_module_clock_by_name("mdp-wrot0", "MDP_WROT0",
-		&gCmdqMdpModuleClock.clk_MDP_WROT0);
 	cmdq_dev_get_module_clock_by_name("mdp-wrot1", "MDP_WROT1",
 		&gCmdqMdpModuleClock.clk_MDP_WROT1);
-	cmdq_dev_get_module_clock_by_name("mdp-tdshp0", "MDP_TDSHP0",
-		&gCmdqMdpModuleClock.clk_MDP_TDSHP0);
-	cmdq_dev_get_module_clock_by_name("mdp-tdshp1", "MDP_TDSHP1",
-		&gCmdqMdpModuleClock.clk_MDP_TDSHP1);
-	cmdq_dev_get_module_clock_by_name("mdp-color0", "MDP_COLOR0",
-		&gCmdqMdpModuleClock.clk_MDP_COLOR0);
-	cmdq_dev_get_module_clock_by_name("mdp-color1", "MDP_COLOR1",
-		&gCmdqMdpModuleClock.clk_MDP_COLOR1);
-	cmdq_dev_get_module_clock_by_name("mdp-aal0", "MDP_AAL0",
-		&gCmdqMdpModuleClock.clk_MDP_AAL0);
-	cmdq_dev_get_module_clock_by_name("mdp-aal1", "MDP_AAL1",
-		&gCmdqMdpModuleClock.clk_MDP_AAL1);
-	cmdq_dev_get_module_clock_by_name("mdp-hdr0", "MDP_HDR0",
-		&gCmdqMdpModuleClock.clk_MDP_HDR0);
-	cmdq_dev_get_module_clock_by_name("mdp-hdr1", "MDP_HDR1",
-		&gCmdqMdpModuleClock.clk_MDP_HDR1);
 
 }
 
@@ -897,19 +783,8 @@ int32_t cmdqMdpClockOn(uint64_t engineFlag)
 {
 	CMDQ_MSG("%s: Enable MDP(0x%llx) clock begin\n", __func__, engineFlag);
 #ifdef CMDQ_PWR_AWARE
-	cmdq_mdp_enable(engineFlag, CMDQ_ENG_MDP_RDMA0);
 	cmdq_mdp_enable(engineFlag, CMDQ_ENG_MDP_RDMA1);
-	cmdq_mdp_enable(engineFlag, CMDQ_ENG_MDP_RSZ0);
 	cmdq_mdp_enable(engineFlag, CMDQ_ENG_MDP_RSZ1);
-	cmdq_mdp_enable(engineFlag, CMDQ_ENG_MDP_AAL0);
-	cmdq_mdp_enable(engineFlag, CMDQ_ENG_MDP_AAL1);
-	cmdq_mdp_enable(engineFlag, CMDQ_ENG_MDP_TDSHP0);
-	cmdq_mdp_enable(engineFlag, CMDQ_ENG_MDP_TDSHP1);
-	cmdq_mdp_enable(engineFlag, CMDQ_ENG_MDP_COLOR0);
-	cmdq_mdp_enable(engineFlag, CMDQ_ENG_MDP_COLOR1);
-	cmdq_mdp_enable(engineFlag, CMDQ_ENG_MDP_HDR0);
-	cmdq_mdp_enable(engineFlag, CMDQ_ENG_MDP_HDR1);
-	cmdq_mdp_enable(engineFlag, CMDQ_ENG_MDP_WROT0);
 	cmdq_mdp_enable(engineFlag, CMDQ_ENG_MDP_WROT1);
 #else
 	CMDQ_MSG("Force MDP clock all on\n");
@@ -919,6 +794,11 @@ int32_t cmdqMdpClockOn(uint64_t engineFlag)
 	CMDQ_REG_SET32(MMSYS_CONFIG_BASE + 0x118, 0xFFFFFFFF);
 
 #endif				/* #ifdef CMDQ_PWR_AWARE */
+	CMDQ_MSG("%s: cmdq_util_prebuilt_init(0)\n", __func__);
+	cmdq_util_prebuilt_init(0);
+
+	CMDQ_MSG("%s: set BYPASS_MUX_SHADOW bit0 as 0x1\n", __func__);
+	CMDQ_REG_SET32(MMSYS_CONFIG_BASE + 0xF00, 0x1);
 
 	CMDQ_MSG("%s: Enable MDP(0x%llx) clock end\n", __func__, engineFlag);
 	return 0;
@@ -935,47 +815,14 @@ struct MODULE_BASE {
 
 int32_t cmdqMdpDumpInfo(uint64_t engineFlag, int logLevel)
 {
-	if (engineFlag & (1LL << CMDQ_ENG_MDP_RDMA0))
-		cmdq_mdp_dump_rdma(MDP_RDMA0_BASE, "RDMA0");
-
 	if (engineFlag & (1LL << CMDQ_ENG_MDP_RDMA1))
 		cmdq_mdp_dump_rdma(MDP_RDMA1_BASE, "RDMA1");
-
-	if (engineFlag & (1LL << CMDQ_ENG_MDP_RSZ0))
-		cmdq_mdp_get_func()->mdpDumpRsz(MDP_RSZ0_BASE, "RSZ0");
 
 	if (engineFlag & (1LL << CMDQ_ENG_MDP_RSZ1))
 		cmdq_mdp_get_func()->mdpDumpRsz(MDP_RSZ1_BASE, "RSZ1");
 
-	if (engineFlag & (1LL << CMDQ_ENG_MDP_TDSHP0))
-		cmdq_mdp_get_func()->mdpDumpTdshp(MDP_TDSHP0_BASE, "TDSHP0");
-
-	if (engineFlag & (1LL << CMDQ_ENG_MDP_TDSHP1))
-		cmdq_mdp_get_func()->mdpDumpTdshp(MDP_TDSHP1_BASE, "TDSHP1");
-
-	if (engineFlag & (1LL << CMDQ_ENG_MDP_COLOR0))
-		cmdq_mdp_dump_color(MDP_COLOR0_BASE, "COLOR0");
-
-	if (engineFlag & (1LL << CMDQ_ENG_MDP_COLOR1))
-		cmdq_mdp_dump_color(MDP_COLOR1_BASE, "COLOR1");
-
-	if (engineFlag & (1LL << CMDQ_ENG_MDP_WROT0))
-		cmdq_mdp_dump_rot(MDP_WROT0_BASE, "WROT0");
-
 	if (engineFlag & (1LL << CMDQ_ENG_MDP_WROT1))
 		cmdq_mdp_dump_rot(MDP_WROT1_BASE, "WROT1");
-
-	if (engineFlag & (1LL << CMDQ_ENG_MDP_HDR0))
-		cmdq_mdp_dump_hdr(MDP_HDR0_BASE, "HDR0");
-
-	if (engineFlag & (1LL << CMDQ_ENG_MDP_HDR1))
-		cmdq_mdp_dump_hdr(MDP_HDR1_BASE, "HDR1");
-
-	if (engineFlag & (1LL << CMDQ_ENG_MDP_AAL0))
-		cmdq_mdp_dump_aal(MDP_AAL0_BASE, "AAL0");
-
-	if (engineFlag & (1LL << CMDQ_ENG_MDP_AAL1))
-		cmdq_mdp_dump_aal(MDP_AAL1_BASE, "AAL1");
 
 	/* verbose case, dump entire 1KB HW register region */
 	/* for each enabled HW module. */
@@ -983,20 +830,9 @@ int32_t cmdqMdpDumpInfo(uint64_t engineFlag, int logLevel)
 		int inner = 0;
 
 		const struct MODULE_BASE bases[] = {
-			DEFINE_MODULE(CMDQ_ENG_MDP_RDMA0, MDP_RDMA0_BASE),
 			DEFINE_MODULE(CMDQ_ENG_MDP_RDMA1, MDP_RDMA1_BASE),
-			DEFINE_MODULE(CMDQ_ENG_MDP_RSZ0, MDP_RSZ0_BASE),
 			DEFINE_MODULE(CMDQ_ENG_MDP_RSZ1, MDP_RSZ1_BASE),
-			DEFINE_MODULE(CMDQ_ENG_MDP_TDSHP0, MDP_TDSHP0_BASE),
-			DEFINE_MODULE(CMDQ_ENG_MDP_TDSHP1, MDP_TDSHP1_BASE),
-			DEFINE_MODULE(CMDQ_ENG_MDP_COLOR0, MDP_COLOR0_BASE),
-			DEFINE_MODULE(CMDQ_ENG_MDP_COLOR1, MDP_COLOR1_BASE),
-			DEFINE_MODULE(CMDQ_ENG_MDP_HDR0, MDP_HDR0_BASE),
-			DEFINE_MODULE(CMDQ_ENG_MDP_HDR1, MDP_HDR1_BASE),
-			DEFINE_MODULE(CMDQ_ENG_MDP_WROT0, MDP_WROT0_BASE),
 			DEFINE_MODULE(CMDQ_ENG_MDP_WROT1, MDP_WROT1_BASE),
-			DEFINE_MODULE(CMDQ_ENG_MDP_AAL0, MDP_AAL0_BASE),
-			DEFINE_MODULE(CMDQ_ENG_MDP_AAL1, MDP_AAL1_BASE),
 		};
 
 		for (inner = 0; inner < ARRAY_SIZE(bases); ++inner) {
