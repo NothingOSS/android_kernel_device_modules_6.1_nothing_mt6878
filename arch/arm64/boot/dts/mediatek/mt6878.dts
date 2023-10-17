@@ -6092,7 +6092,6 @@
 					<0 0x15710000 0 0x00100>,	/* 20 IMGSYS_TRAW_DIP1 */
 					<0 0x15330000 0 0x10000>;	/* 21 IMGSYS_ME_MMG */
 			mediatek,hcp = <&hcp>;
-#if 0
 			mediatek,larbs = <&smi_larb9>,
 					<&smi_larb11>,
 					<&smi_larb15>,
@@ -6100,7 +6099,6 @@
 					<&smi_larb28>,
 					<&smi_larb38>,
 					<&smi_larb12>;
-#endif
 			mediatek,imgsys-cmdq = <&imgsys_cmdq>;
 			mmqos-supply = <&mmqos>;
 			iommus = <&disp_iommu M4U_L28_P1_IMGI_T1_N_A>;
@@ -6936,7 +6934,6 @@
 					/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_ADL_WAIT>;
 				sw-sync-token-tzmp-adl-set =
 					/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_ADL_SET>;
-#if 0
 			clocks = <&imgsys_main_clk CLK_IMG_TRAW0>,
 				<&imgsys_main_clk CLK_IMG_TRAW1>,
 				<&imgsys_main_clk CLK_IMG_DIP0>,
@@ -7010,7 +7007,6 @@
 			      "MMG_CG",
 			      "mmdvfs_clk";
 			operating-points-v2 = <&opp_table_img>;
-#endif
 			mediatek,imgsys-dvfs-pix-mode = <1>;
 			mediatek,imgsys-qos-sc-motr = <2>;
 			mediatek,imgsys-qos-sc-nums = <2>;
