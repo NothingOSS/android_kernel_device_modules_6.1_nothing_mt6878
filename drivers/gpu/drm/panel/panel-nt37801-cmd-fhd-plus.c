@@ -773,6 +773,7 @@ static struct mtk_panel_params ext_params = {
 		.vact_timing_fps = 120,
 	},
 	.real_te_duration = 8333,
+	.merge_trig_offset = 13260,
 };
 
 static struct mtk_panel_params ext_params_90hz = {
@@ -840,6 +841,7 @@ static struct mtk_panel_params ext_params_90hz = {
 	},
 	.real_te_duration = 11111,
 	.mode_switch_delay = 2,
+	.merge_trig_offset = 13260,
 };
 
 static struct mtk_panel_params ext_params_60hz = {
@@ -906,6 +908,7 @@ static struct mtk_panel_params ext_params_60hz = {
 		.vact_timing_fps = 120,
 	},
 	.real_te_duration = 8333,
+	.merge_trig_offset = 13260,
 };
 
 struct drm_display_mode *get_mode_by_id(struct drm_connector *connector,

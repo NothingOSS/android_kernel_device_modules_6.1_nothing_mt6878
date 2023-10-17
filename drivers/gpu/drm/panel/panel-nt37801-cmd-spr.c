@@ -987,6 +987,7 @@ static struct mtk_panel_params ext_params = {
 	},
 	.mode_switch_cmdq = MODE_SWITCH_CMDQ_ENABLE,
 	.real_te_duration = 8333,
+	.merge_trig_offset = 13260,
 };
 
 
@@ -1152,6 +1153,7 @@ static struct mtk_panel_params ext_params_90hz = {
 	.mode_switch_cmdq = MODE_SWITCH_CMDQ_ENABLE,
 	.real_te_duration = 11111,
 	.mode_switch_delay = 2,
+	.merge_trig_offset = 13260,
 };
 
 
@@ -1317,6 +1319,7 @@ static struct mtk_panel_params ext_params_60hz = {
 	},
 	.mode_switch_cmdq = MODE_SWITCH_CMDQ_ENABLE,
 	.real_te_duration = 8333,
+	.merge_trig_offset = 13260,
 };
 
 struct drm_display_mode *get_mode_by_id(struct drm_connector *connector,
@@ -1465,7 +1468,7 @@ static void mode_switch_to_60(struct drm_panel *panel)
 		{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
 		{2, {0x6F, 0x1C}},
 		{9, {0xBA, 0x91, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x00}},
-		{2, {0x5A, 0x01}},
+		{2, {0x5A, 0x00}},
 		{2, {0x2F, 0x30}}
 	};
 
@@ -1480,7 +1483,7 @@ static void mode_switch_to_60(struct drm_panel *panel)
 	lcm_dcs_write_seq_static(ctx, 0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0x6F, 0x1C);
 	lcm_dcs_write_seq_static(ctx, 0xBA, 0x91, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x00);
-	lcm_dcs_write_seq_static(ctx, 0x5A, 0x01);
+	lcm_dcs_write_seq_static(ctx, 0x5A, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0x2F, 0x30);
 #endif
 }
