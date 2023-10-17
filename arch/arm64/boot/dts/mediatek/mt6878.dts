@@ -6078,6 +6078,7 @@
 					<&smi_larb12>;
 #endif
 			mediatek,imgsys-cmdq = <&imgsys_cmdq>;
+			mmqos-supply = <&mmqos>;
 			iommus = <&disp_iommu M4U_L28_P1_IMGI_T1_N_A>;
 #if 0
 			imgsys-supply = <&gce_m_sec>;
@@ -7001,7 +7002,8 @@
 			      "MMG_CG",
 			      "mmdvfs_clk";
 			operating-points-v2 = <&opp_table_img>;
-			mediatek,imgsys-dvfs-pix-mode = <2>;
+#endif
+			mediatek,imgsys-dvfs-pix-mode = <1>;
 			mediatek,imgsys-qos-sc-motr = <2>;
 			mediatek,imgsys-qos-sc-nums = <2>;
 			mediatek,imgsys-qos-sc-id = <29 30>;
@@ -7012,15 +7014,15 @@
 				<&mmqos SLAVE_LARB(22)
 					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos SLAVE_LARB(9)
-					&mmqos SLAVE_COMMON(1)>,
+					&mmqos SLAVE_COMMON(0)>,
 				<&mmqos SLAVE_LARB(15)
-					&mmqos SLAVE_COMMON(1)>;
+					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names =
 				"l10_common_r_0",
 				"l22_common_w_0",
 				"l9_common_r_1",
 				"l15_common_w_1";
-#endif
+
 		};
 
 		mtk_aie_debug_7sp_2: mtk-aie-debug-7sp-2@15311000 {
