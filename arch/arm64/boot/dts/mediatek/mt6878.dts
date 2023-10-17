@@ -475,9 +475,9 @@
 		mediatek,enable = <0>;
 	};
 
-	cm_mgr: cm-mgr@c100000 {
+	cm_mgr: cm-mgr@c531000 {
 		compatible = "mediatek,mt6878-cm_mgr";
-		reg = <0 0xc100000 0 0x9000>;
+		reg = <0 0xc531000 0 0x8000>;
 		reg-names = "cm_mgr_base";
 		interconnects = <&dvfsrc MT6873_MASTER_MCU_1 &dvfsrc MT6873_SLAVE_DDR_EMI>;
 		interconnect-names = "cm-perf-bw";
