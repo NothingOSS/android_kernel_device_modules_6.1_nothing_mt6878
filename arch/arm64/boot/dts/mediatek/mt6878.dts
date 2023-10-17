@@ -7071,30 +7071,25 @@
 			mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>;
 			//mboxes = <&gce_m 20 0 CMDQ_THR_PRIO_1>,
 			//		<&gce_m_sec 11 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
-			//mediatek,larb = <&smi_larb12>;
-			//mediatek,aov = <&aov>;
+			mediatek,larb = <&smi_larb12>;
 			fdvt-frame-done = <CMDQ_EVENT_IMG_IMGSYS_IPE_FDVT0_DONE>;
 			sw-sync-token-tzmp-aie-wait = <CMDQ_SYNC_TOKEN_TZMP_AIE_WAIT>;
 			sw-sync-token-tzmp-aie-set = <CMDQ_SYNC_TOKEN_TZMP_AIE_SET>;
 			iommus = <&disp_iommu M4U_L12_P0_FDVT_RDA_0>,
 				<&disp_iommu M4U_L12_P1_FDVT_WRA_0>;
-#if 0
 			power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_MAIN>;
-			clocks = <&img_vcore_d1a_clk CLK_IMGV_IMG_VCORE_SUB1_CON_0>,
-				<&img_vcore_d1a_clk CLK_IMGV_IMG_VCORE_SUB0_CON_0>,
-				<&img_vcore_d1a_clk CLK_IMGV_IMG_VCORE_MAIN_CON_0>,
-				<&img_vcore_d1a_clk CLK_IMGV_IMG_VCORE_GALS_DISP_CON_0>,
+			clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN>,
 				<&imgsys_main_clk CLK_IMG_FDVT>,
+				<&imgsys_main_clk CLK_IMG_SUB_COMMON3>,
 				<&imgsys_main_clk CLK_IMG_LARB12>,
 				<&imgsys_main_clk CLK_IMG_IPE>;
-			clock-names = "VCORE_SUB1_CON_0",
-				"VCORE_SUB0_CON_0",
+			clock-names = "VCORE_SUB0_CON_0",
 				"VCORE_MAIN_CON_0",
-				"VCORE_GALS_DISP_CON_0",
 				"IPE_FDVT",
+				"SUB_COMMON3",
 				"IPE_SMI_LARB12",
 				"IMG_IPE";
-#endif
 		};
 
 #if 0
