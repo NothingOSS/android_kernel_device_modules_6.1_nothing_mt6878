@@ -3271,6 +3271,7 @@
 			compatible = "mediatek,dbgtop-drm";
 			reg = <0 0x1000d000 0 0x1000>;
 			ver = <2>;
+			sec-write = <1>;
 		};
 
 		topckgen@10000000 {
