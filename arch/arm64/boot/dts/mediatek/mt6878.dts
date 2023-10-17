@@ -3905,6 +3905,26 @@
 			token-gpr-set4 = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>;
 		};
 
+		mminfra-imax@1e80b000 {
+			compatible = "mediatek,mminfra-imax";
+			reg = <0 0x1e80b000 0 0x1000>, /* mminfra_disp0_fake */
+				<0 0x14000000 0 0x1000>, /* dispsys */
+				<0 0x1f000000 0 0x1000>, /* mdpsys */
+				<0 0x1401e000 0 0x1000>, /* disp_larb_0 */
+				<0 0x1401f000 0 0x1000>, /* disp_larb_1 */
+				<0 0x1f002000 0 0x1000>; /* mdp_larb_0 */
+			disp-larb0-fake-port = <6>;
+			disp-larb1-fake-port = <5>;
+			mdp-larb0-fake-port = <4>;
+
+			reg-names = "mminfra_disp0_fake",
+				"dispsys",
+				"mdpsys",
+				"disp_larb_0",
+				"disp_larb_1",
+				"mdp_larb_0";
+		};
+
 		infra-dpmaif@1022c000 {
 			compatible = "mediatek,infra_dpmaif";
 			reg = <0 0x1022c000 0 0x1000>;
