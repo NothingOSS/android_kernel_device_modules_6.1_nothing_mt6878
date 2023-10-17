@@ -844,7 +844,7 @@ CONFIG_REG:
 	value = REG_FLD_VAL(FLD_LPX, lpx)
 		| REG_FLD_VAL(FLD_HS_PREP, da_hs_prep)
 		| REG_FLD_VAL(FLD_HS_ZERO, da_hs_zero)
-		| REG_FLD_VAL(FLD_HS_TRAIL, da_hs_exit);
+		| REG_FLD_VAL(FLD_HS_TRAIL, da_hs_trail);
 
 	if (handle)
 		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
