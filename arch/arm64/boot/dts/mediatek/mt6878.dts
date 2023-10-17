@@ -2891,22 +2891,28 @@
 		compatible = "mediatek,mt6878-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x15781000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_common 0>;
+		mediatek,smi-supply = <&mminfra_smi_2x1_sub_comm 0>;
 		mediatek,common-id = <29>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_MAIN>;
-		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0>;
-		clock-names = "apb";
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP>,
+				<&imgsys_main_clk CLK_IMG_DIP0>;
+		clock-names = "apb", "smi", "gals0", "gals1";
 	};
 
 	smi_img_vcore_2x1_sub_comm1: smi-img-vcore-2x1-sub-comm1@15782000 {
 		compatible = "mediatek,mt6878-smi-common",
 			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 		reg = <0 0x15782000 0 0x1000>;
-		mediatek,smi-supply = <&smi_disp_common 0>;
+		mediatek,smi-supply = <&mminfra_smi_2x1_sub_comm 0>;
 		mediatek,common-id = <30>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_MAIN>;
-		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1>;
-		clock-names = "apb";
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN>,
+				<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP>,
+				<&imgsys_main_clk CLK_IMG_DIP0>;
+		clock-names = "apb", "smi", "gals0", "gals1";
 	};
 
 	smi_img1_2x1_sub_comm0: smi-img1-2x1-sub-comm0@15002000 {
@@ -2916,8 +2922,9 @@
 		mediatek,smi-supply = <&smi_img_vcore_2x1_sub_comm0 0>;
 		mediatek,common-id = <24>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_MAIN>;
-		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON0>;
-		clock-names = "apb";
+		clocks = <&imgsys_main_clk CLK_IMG_GALS>,
+				<&imgsys_main_clk CLK_IMG_SUB_COMMON0>;
+		clock-names = "apb", "smi";
 	};
 
 	smi_img1_2x1_sub_comm1: smi-img1-2x1-sub-comm1@15003000 {
@@ -2927,8 +2934,9 @@
 		mediatek,smi-supply = <&smi_img_vcore_2x1_sub_comm1 0>;
 		mediatek,common-id = <25>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_MAIN>;
-		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON1>;
-		clock-names = "apb";
+		clocks = <&imgsys_main_clk CLK_IMG_GALS>,
+				<&imgsys_main_clk CLK_IMG_SUB_COMMON1>;
+		clock-names = "apb", "smi";
 	};
 
 	smi_img1_2x1_sub_comm2: smi-img1-2x1-sub-comm2@15009000 {
@@ -2938,8 +2946,9 @@
 		mediatek,smi-supply = <&smi_img_vcore_2x1_sub_comm0 0>;
 		mediatek,common-id = <27>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_MAIN>;
-		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON3>;
-		clock-names = "apb";
+		clocks = <&imgsys_main_clk CLK_IMG_GALS>,
+				<&imgsys_main_clk CLK_IMG_SUB_COMMON3>;
+		clock-names = "apb", "smi";
 	};
 
 	smi_larb9: smi-larb9@15001000 {
@@ -2960,8 +2969,12 @@
 		mediatek,smi-supply = <&smi_img1_2x1_sub_comm1 0>;
 		mediatek,larb-id = <11>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_DIP1>;
-		clocks = <&wpe1_dip1_clk CLK_WPE1_DIP1_LARB11>;
-		clock-names = "apb";
+		clocks = <&imgsys_main_clk CLK_IMG_WPE0>,
+				<&imgsys_main_clk CLK_IMG_GALS_RX_WPE0>,
+				<&wpe1_dip1_clk CLK_WPE1_DIP1_GALS0>,
+				<&wpe1_dip1_clk CLK_WPE1_DIP1_WPE>,
+				<&wpe1_dip1_clk CLK_WPE1_DIP1_LARB11>;
+		clock-names = "apb", "smi", "gals0", "gals1", "gals2";
 	};
 
 	smi_larb15: smi-larb15@15140000 {
@@ -2971,9 +2984,14 @@
 		mediatek,smi-supply = <&smi_img1_2x1_sub_comm1 0>;
 		mediatek,larb-id = <15>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_DIP1>;
-		clocks = <&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB15>,
+		clocks = <&imgsys_main_clk CLK_IMG_GALS_RX_DIP0>,
+				<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP>,
+				<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB15>,
+				<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS1>,
+				<&dip_nr1_dip1_clk CLK_DIP_NR1_DIP1_DIP_NR1>,
+				<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB15>,
 				<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_DIP_NR>;
-		clock-names = "apb", "smi";
+		clock-names = "apb", "smi", "gals0", "gals1", "gals2", "gals3", "gals4";
 	};
 
 	smi_larb22: smi-larb22@15530000 {
@@ -2983,8 +3001,12 @@
 		mediatek,smi-supply = <&smi_img1_2x1_sub_comm0 0>;
 		mediatek,larb-id = <22>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_DIP1>;
-		clocks = <&wpe2_dip1_clk CLK_WPE2_DIP1_LARB11>;
-		clock-names = "apb";
+		clocks = <&imgsys_main_clk CLK_IMG_WPE1>,
+				<&imgsys_main_clk CLK_IMG_GALS_RX_WPE1>,
+				<&wpe2_dip1_clk CLK_WPE2_DIP1_GALS0>,
+				<&wpe2_dip1_clk CLK_WPE2_DIP1_WPE>,
+				<&wpe2_dip1_clk CLK_WPE2_DIP1_LARB11>;
+		clock-names = "apb", "smi", "gals0", "gals1", "gals2";
 	};
 
 	smi_larb28: smi-larb28@15720000 {
@@ -2994,9 +3016,12 @@
 		mediatek,smi-supply = <&smi_img1_2x1_sub_comm0 0>;
 		mediatek,larb-id = <28>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_DIP1>;
-		clocks = <&traw_dip1_clk CLK_TRAW_DIP1_LARB28>,
+		clocks = <&imgsys_main_clk CLK_IMG_TRAW0>,
+				<&imgsys_main_clk CLK_IMG_GALS_RX_TRAW0>,
+				<&traw_dip1_clk CLK_TRAW_DIP1_GALS>,
+				<&traw_dip1_clk CLK_TRAW_DIP1_LARB28>,
 				<&traw_dip1_clk CLK_TRAW_DIP1_TRAW>;
-		clock-names = "apb", "smi";
+		clock-names = "apb", "smi", "gals0", "gals1", "gals2";
 	};
 
 	smi_larb38: smi-larb38@15190000 {
@@ -3006,8 +3031,11 @@
 		mediatek,smi-supply = <&smi_img1_2x1_sub_comm2 0>;
 		mediatek,larb-id = <38>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_DIP1>;
-		clocks = <&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB38>;
-		clock-names = "apb";
+		clocks = <&imgsys_main_clk CLK_IMG_GALS_RX_DIP0>,
+				<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB38>,
+				<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS2>,
+				<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP>;
+		clock-names = "apb", "smi", "gals0", "gals1";
 	};
 
 	smi_larb12: smi-larb12@15340000 {
@@ -3017,8 +3045,11 @@
 		mediatek,smi-supply = <&smi_img1_2x1_sub_comm2 0>;
 		mediatek,larb-id = <12>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_MAIN>;
-		clocks = <&imgsys_main_clk CLK_IMG_LARB12>;
-		clock-names = "apb";
+		clocks = <&imgsys_main_clk CLK_IMG_IPE>,
+				<&imgsys_main_clk CLK_IMG_GALS_RX_IPE0>,
+				<&imgsys_main_clk CLK_IMG_GALS_TX_IPE0>,
+				<&imgsys_main_clk CLK_IMG_LARB12>;
+		clock-names = "apb", "smi", "gals0", "gals1";
 	};
 
 	smi_cam_vcore_2x1_sub_comm0: smi-cam-vcore-2x1-sub-comm0@1b203000 {
