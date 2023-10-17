@@ -21,6 +21,13 @@ static void update_disp_info(void)
 	disp_swpm_data_ptr->dsi_lane_num = 4;
 	disp_swpm_data_ptr->dsi_data_rate = mtk_disp_get_dsi_data_rate(0);
 	disp_swpm_data_ptr->dsi_phy_type = mtk_disp_get_dsi_data_rate(1);
+	disp_swpm_data_ptr->disp_aal = mtk_disp_get_pq_data(DISP_PQ_AAL);
+	disp_swpm_data_ptr->disp_ccorr = mtk_disp_get_pq_data(DISP_PQ_CCORR);
+	disp_swpm_data_ptr->disp_c3d = mtk_disp_get_pq_data(DISP_PQ_C3D);
+	disp_swpm_data_ptr->disp_gamma = mtk_disp_get_pq_data(DISP_PQ_GAMMA);
+	disp_swpm_data_ptr->disp_color = mtk_disp_get_pq_data(DISP_PQ_COLOR);
+	disp_swpm_data_ptr->disp_tdshp = mtk_disp_get_pq_data(DISP_PQ_TDSHP);
+	disp_swpm_data_ptr->disp_dither = mtk_disp_get_pq_data(DISP_PQ_DITHER);
 }
 
 static int disp_swpm_event(struct notifier_block *nb,

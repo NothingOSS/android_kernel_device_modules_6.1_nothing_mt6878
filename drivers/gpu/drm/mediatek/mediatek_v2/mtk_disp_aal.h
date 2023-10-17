@@ -443,6 +443,8 @@ int mtk_drm_ioctl_aal_set_ess20_spect_param(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
 int mtk_drm_ioctl_clarity_set_reg(struct drm_device *dev, void *data,
 		struct drm_file *file_priv);
+// for displayPQ update to swpm tppa
+unsigned int disp_aal_bypass_info(struct mtk_drm_crtc *mtk_crtc);
 
 #endif
 

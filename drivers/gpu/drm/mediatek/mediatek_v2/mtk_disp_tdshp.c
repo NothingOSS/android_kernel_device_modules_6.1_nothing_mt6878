@@ -1122,3 +1122,14 @@ void disp_tdshp_set_bypass(struct drm_crtc *crtc, int bypass)
 
 	DDPINFO("%s : ret = %d", __func__, ret);
 }
+
+unsigned int disp_tdshp_bypass_info(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_ddp_comp *comp;
+	struct mtk_disp_tdshp *tdshp_data;
+
+	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_TDSHP, 0);
+	tdshp_data = comp_to_tdshp(comp);
+
+	return tdshp_data->primary_data->relay_value;
+}

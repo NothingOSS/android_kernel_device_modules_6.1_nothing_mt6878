@@ -1686,3 +1686,14 @@ void disp_c3d_set_bypass(struct drm_crtc *crtc, int bypass)
 
 	DDPINFO("%s : ret = %d", __func__, ret);
 }
+
+unsigned int disp_c3d_bypass_info(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_ddp_comp *comp;
+	struct mtk_disp_c3d *c3d_data;
+
+	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_C3D, 0);
+	c3d_data = comp_to_c3d(comp);
+
+	return atomic_read(&c3d_data->primary_data->c3d_force_relay);
+}

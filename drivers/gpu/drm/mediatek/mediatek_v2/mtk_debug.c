@@ -818,6 +818,47 @@ void display_exit_tui(void)
 }
 EXPORT_SYMBOL(display_exit_tui);
 
+unsigned int mtk_disp_get_pq_data(unsigned int info_idx)
+{
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	unsigned int ret = 1;
+
+	if (IS_ERR_OR_NULL(drm_dev)) {
+		DDPPR_ERR("%s, invalid drm dev\n", __func__);
+		return 0;
+	}
+
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("find crtc fail\n");
+		return 0;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+
+	if (info_idx == 0)
+		ret = disp_aal_bypass_info(mtk_crtc);
+	else if (info_idx == 1)
+		ret = disp_ccorr_bypass_info(mtk_crtc);
+	else if (info_idx == 2)
+		ret = disp_c3d_bypass_info(mtk_crtc);
+	else if (info_idx == 3)
+		ret = disp_gamma_bypass_info(mtk_crtc);
+	else if (info_idx == 4)
+		ret = disp_color_bypass_info(mtk_crtc);
+	else if (info_idx == 5)
+		ret = disp_tdshp_bypass_info(mtk_crtc);
+	else if (info_idx == 6)
+		ret = disp_dither_bypass_info(mtk_crtc);
+
+	return ret ? 0 : 1;
+
+}
+EXPORT_SYMBOL(mtk_disp_get_pq_data);
+
 unsigned int mtk_disp_get_dsi_data_rate(unsigned int info_idx)
 {
 	struct drm_crtc *crtc;

@@ -409,7 +409,7 @@ void mtk_color_regdump(struct mtk_ddp_comp *comp);
 void disp_color_write_pos_main_for_dual_pipe(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, struct DISP_WRITE_REG *wParams,
 	unsigned int pa, unsigned int pa1);
+// for displayPQ update to swpm tppa
+unsigned int disp_color_bypass_info(struct mtk_drm_crtc *mtk_crtc);
 
 #endif
-
-

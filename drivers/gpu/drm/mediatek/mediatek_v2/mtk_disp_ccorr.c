@@ -1957,3 +1957,14 @@ void mtk_ccorr_regdump(struct mtk_ddp_comp *comp)
 		DDPDUMP("[%s REGS End Dump]\n", mtk_dump_comp_str(ccorr->companion));
 	}
 }
+
+unsigned int disp_ccorr_bypass_info(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_ddp_comp *comp;
+	struct mtk_disp_ccorr *ccorr_data;
+
+	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_CCORR, 0);
+	ccorr_data = comp_to_ccorr(comp);
+
+	return ccorr_data->primary_data->ccorr_relay_value;
+}
