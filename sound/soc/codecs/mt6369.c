@@ -5771,6 +5771,7 @@ static int mt6369_codec_init_reg(struct snd_soc_component *cmpnt)
 	dev_info(priv->dev, "+%s()\n", __func__);
 	/* enable clk buf */
 #if IS_ENABLED(CONFIG_MT6685_AUDCLK)
+	mt6685_set_dcxo_mode(0);
 	mt6685_set_dcxo(true);
 #endif
 
