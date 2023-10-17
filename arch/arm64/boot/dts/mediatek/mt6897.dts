@@ -15530,6 +15530,7 @@ FLL0_out,FLL1_out,FLL4_out,FLL5_out,FLL6_out";
 			<0 0x1cbff100 0 0x4>,
 			<0 0x1cbff10c 0 0x4>;
 
+		mbox-num = <1>;
 		reg-names = "mbox0_base", "mbox0_set", "mbox0_clr";
 		interrupts = <GIC_SPI 719 IRQ_TYPE_LEVEL_HIGH 0>;
 		interrupt-names = "mbox0";
