@@ -32,6 +32,7 @@ struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 		list_for_each(item, &dev->vdec_dvfs_inst) {
 			if(item == (void *) 0) {
 				mtk_v4l2_debug(0, "%s [VDVFS][VDEC] find null in item in list!\n", __func__);
+				INIT_LIST_HEAD(&dev->vdec_dvfs_inst);
 				return 0;
 			}
 			inst = list_entry(item, struct vcodec_inst, list);
@@ -43,6 +44,7 @@ struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 		list_for_each(item, &dev->venc_dvfs_inst) {
 			if(item == (void *) 0) {
 				mtk_v4l2_debug(0, "%s [VDVFS][VENC] find null in item in list!\n", __func__);
+				INIT_LIST_HEAD(&dev->venc_dvfs_inst);
 				return 0;
 			}
 			inst = list_entry(item, struct vcodec_inst, list);
@@ -61,13 +63,14 @@ struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 int get_cfg(struct vcodec_inst *inst, struct mtk_vcodec_ctx *ctx)
 {
 	struct mtk_vcodec_dev *dev;
-	u32 mb_per_sec;
+	u32 mb_per_sec, op_rate;
 	int i;
 
-	if (inst->op_rate <= 0)
+	op_rate = MAX(inst->op_rate_user, inst->op_rate_adaptive);
+	if (op_rate <= 0)
 		mb_per_sec = inst->width * inst->height / 256 * 30;
 	else
-		mb_per_sec = inst->width * inst->height / 256 * inst->op_rate;
+		mb_per_sec = inst->width * inst->height / 256 * op_rate;
 
 	dev = ctx->dev;
 
@@ -109,6 +112,8 @@ int add_inst(struct mtk_vcodec_ctx *ctx)
 	new_inst->codec_type = ctx->type;
 	new_inst->codec_fmt = (new_inst->codec_type == MTK_INST_ENCODER) ?
 		ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc : ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
+	new_inst->yuv_fmt = (new_inst->codec_type == MTK_INST_ENCODER) ?
+		ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc : ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc;
 	new_inst->config = DEFAULT_VENC_CONFIG; /* Read from register when encode done */
 	new_inst->core_cnt = 1; /* Depends on WP */
 	new_inst->b_frame = (new_inst->codec_type == MTK_INST_ENCODER) ?
@@ -117,16 +122,17 @@ int add_inst(struct mtk_vcodec_ctx *ctx)
 		ctx->enc_params.scenario : 0;
 	if (new_inst->wp == WP_SCENARIO)
 		new_inst->core_cnt = 1;
-	new_inst->op_rate = (new_inst->codec_type == MTK_INST_ENCODER) ?
+	new_inst->op_rate_user = (new_inst->codec_type == MTK_INST_ENCODER) ?
 		ctx->enc_params.operationrate : ctx->dec_params.operating_rate;
+	new_inst->op_rate_adaptive = new_inst->op_rate_user;
+	new_inst->op_rate = new_inst->op_rate_user;
+	new_inst->fps = ctx->enc_params.framerate_denom == 0 ? 0 :
+		(ctx->enc_params.framerate_num / ctx->enc_params.framerate_denom);
 	new_inst->priority = (new_inst->codec_type == MTK_INST_ENCODER) ?
-				ctx->enc_params.priority : ctx->dec_params.priority;
-	if (new_inst->op_rate == 0) {
-		new_inst->op_rate = (new_inst->codec_type == MTK_INST_ENCODER) ?
-			(ctx->enc_params.framerate_denom == 0 ? 0 :
-			(ctx->enc_params.framerate_num / ctx->enc_params.framerate_denom)) :
-			0; /* TODO: Update with decoder frame rate */
-	}
+		ctx->enc_params.priority : ctx->dec_params.priority;
+	if (new_inst->op_rate == 0)
+		new_inst->is_transcode = (new_inst->codec_type == MTK_INST_ENCODER) ?
+		1 : 0; // only support user init-op-zero transcoding
 	new_inst->width = (new_inst->codec_type == MTK_INST_ENCODER) ?
 		ctx->q_data[MTK_Q_DATA_SRC].visible_width :
 		ctx->q_data[MTK_Q_DATA_DST].coded_width;
@@ -134,7 +140,9 @@ int add_inst(struct mtk_vcodec_ctx *ctx)
 		ctx->q_data[MTK_Q_DATA_SRC].visible_height :
 		ctx->q_data[MTK_Q_DATA_DST].coded_height;
 	new_inst->last_access = ktime_get_boottime_ns();
+	new_inst->is_active = 1;
 	new_inst->ctx = ctx;
+
 	/* Calculate config */
 	if (new_inst->codec_type == MTK_INST_ENCODER) {
 		ret = get_cfg(new_inst, ctx);
@@ -159,7 +167,7 @@ int add_inst(struct mtk_vcodec_ctx *ctx)
 
 bool setting_changed(struct vcodec_inst *inst, struct mtk_vcodec_ctx *ctx)
 {
-	s32 op_rate;
+	s32 op_rate_user, op_rate_adaptive;
 	int ret;
 
 	if (inst->codec_type == MTK_INST_DECODER) {
@@ -172,19 +180,17 @@ bool setting_changed(struct vcodec_inst *inst, struct mtk_vcodec_ctx *ctx)
 			return true;
 		}
 	} else if (inst->codec_type == MTK_INST_ENCODER) {
-		op_rate = ctx->enc_params.operationrate;
-		if (op_rate == 0) {
-			op_rate = ctx->enc_params.framerate_denom == 0 ? 0 :
-				(ctx->enc_params.framerate_num /
-				ctx->enc_params.framerate_denom);
-		}
+		op_rate_user = ctx->enc_params.operationrate;
+		op_rate_adaptive = ctx->enc_params.operationrate_adaptive;
 
 		if (inst->width != ctx->q_data[MTK_Q_DATA_SRC].visible_width ||
 			inst->height != ctx->q_data[MTK_Q_DATA_SRC].visible_height ||
-			inst->op_rate != op_rate) {
+			inst->op_rate_user != op_rate_user ||
+			inst->op_rate_adaptive != op_rate_adaptive) {
 			inst->width = ctx->q_data[MTK_Q_DATA_SRC].visible_width;
 			inst->height = ctx->q_data[MTK_Q_DATA_SRC].visible_height;
-			inst->op_rate = op_rate;
+			inst->op_rate_user = op_rate_user;
+			inst->op_rate_adaptive = op_rate_adaptive;
 			ret = get_cfg(inst, ctx);
 			if (ret != 0)
 				mtk_v4l2_debug(0, "[VDVFS] VENC no config");
@@ -420,9 +426,7 @@ u32 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 				freq = freq * perf->cy_per_mb_2;
 
 			freq = freq / inst->core_cnt;
-			/* SW overhead */
-			if (inst->width * inst->height <= 1920 * 1088)
-				freq = freq / 10 * 11;
+
 
 			mtk_v4l2_debug(6, "[VDVFS] VENC w:%u x h:%u / 256 x oprate: %d x mb %u",
 				inst->width, inst->height, inst->op_rate,
@@ -430,17 +434,101 @@ u32 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 		} else
 			freq = 100000000;
 
-		if (inst->op_rate <= 0) {
-			freq = dev->venc_dvfs_params.normal_max_freq;
-			mtk_v4l2_debug(6, "[VDVFS] VENC oprate: %d, set freq = %u",
-					inst->op_rate, freq);
-		}
+		// Transcode Scenario:
+		// 1. Init user-defined op rate == 0
+		// 2. Monitor/user dynamic-setting op > output fps
+		// 3. Exist active decode instance (check oprate_sum of active instances)
+		if (inst->is_transcode && (inst->op_rate > (inst->fps*11/10)))
+			dev->venc_dvfs_params.trans_inst = 1;
 	}
 
 	mtk_v4l2_debug(6, "[VDVFS] freq = %u", freq);
 	return freq;
 }
 
+bool mtk_vcodec_is_10Bit(u32 cur_codec_fmt, int codec_type)
+{
+	if (codec_type == MTK_INST_DECODER) {
+		/* Todo: add decoder */
+	} else if (codec_type == MTK_INST_ENCODER) {
+		if (cur_codec_fmt == V4L2_PIX_FMT_RGBA1010102 ||
+		    cur_codec_fmt == V4L2_PIX_FMT_BGRA1010102 ||
+		    cur_codec_fmt == V4L2_PIX_FMT_ARGB1010102 ||
+		    cur_codec_fmt == V4L2_PIX_FMT_ABGR1010102 ||
+		    cur_codec_fmt == V4L2_PIX_FMT_RGBA1010102_AFBC ||
+		    cur_codec_fmt == V4L2_PIX_FMT_BGRA1010102_AFBC ||
+		    cur_codec_fmt == V4L2_PIX_FMT_MT10 || cur_codec_fmt == V4L2_PIX_FMT_MT10S ||
+		    cur_codec_fmt == V4L2_PIX_FMT_P010S || cur_codec_fmt == V4L2_PIX_FMT_P010M ||
+		    cur_codec_fmt == V4L2_PIX_FMT_NV12_10B_AFBC) {
+			mtk_v4l2_debug(8, "[VDVFS] venc ctx is 10bit");
+			return true;
+		}
+	}
+	return false;
+}
+
+bool mtk_vcodec_is_afbc(u32 cur_codec_fmt, int codec_type)
+{
+	if (codec_type == MTK_INST_DECODER) {
+		/* Todo: add decoder */
+	} else if (codec_type == MTK_INST_ENCODER) {
+		if (cur_codec_fmt == V4L2_PIX_FMT_RGB32_AFBC ||
+		    cur_codec_fmt == V4L2_PIX_FMT_BGR32_AFBC ||
+		    cur_codec_fmt == V4L2_PIX_FMT_RGBA1010102_AFBC ||
+		    cur_codec_fmt == V4L2_PIX_FMT_BGRA1010102_AFBC ||
+		    cur_codec_fmt == V4L2_PIX_FMT_NV12_AFBC ||
+		    cur_codec_fmt == V4L2_PIX_FMT_NV21_AFBC ||
+		    cur_codec_fmt == V4L2_PIX_FMT_NV12_10B_AFBC) {
+			mtk_v4l2_debug(8, "[VDVFS] venc ctx is afbc");
+			return true;
+		}
+	}
+	return false;
+}
+
+u32 mtk_vcodec_get_bw_factor(struct mtk_vcodec_dev *dev, int codec_type)
+{
+	int i;
+	struct list_head *item;
+	struct vcodec_inst *inst;
+	u32 bw_factor_bit, bw_factor_afbc;
+	u32 inst_bw_factor, target_bw_factor = 0;
+	u32 freq_sum = dev->venc_dvfs_params.target_freq;
+	u32 freq_scale = 1;
+
+	if (codec_type == MTK_INST_DECODER) {
+		/*Todo: decoder use bw factor*/
+		return 0;
+	} else if (codec_type == MTK_INST_ENCODER) {
+		/*get encoder bw factor*/
+		list_for_each(item, &dev->venc_dvfs_inst) {
+			if(item == (void *) 0) {
+				mtk_v4l2_debug(0, "%s [VDVFS][VENC] find null in item in list!\n", __func__);
+				return 0;
+			}
+			inst = list_entry(item, struct vcodec_inst, list);
+			bw_factor_bit = mtk_vcodec_is_10Bit(inst->yuv_fmt, MTK_INST_ENCODER) ?
+				BW_FACTOR_10BIT : 100;
+			bw_factor_afbc = mtk_vcodec_is_afbc(inst->yuv_fmt, MTK_INST_ENCODER) ?
+				100 : BW_FACTOR_NONAFBC;
+			for (i = 0 ; i < dev->venc_tput_cnt; i++) {
+				if (inst->config == dev->venc_tput[i].config &&
+				    inst->codec_fmt == dev->venc_tput[i].codec_fmt) {
+					freq_scale = (u64)freq_sum*100/dev->venc_tput[i].base_freq;
+					inst_bw_factor = dev->venc_tput[i].bw_factor * bw_factor_bit
+						* bw_factor_afbc * freq_scale / 100;
+					mtk_v4l2_debug(4, "[VDVFS] %d, %d, %d, %d, %d",
+					dev->venc_tput[i].bw_factor, dev->venc_tput[i].base_freq,
+					bw_factor_bit, bw_factor_afbc, freq_sum);
+					if (inst_bw_factor > target_bw_factor)
+						target_bw_factor = inst_bw_factor;
+				}
+			}
+		}
+		return target_bw_factor;
+	}
+	return 0;
+}
 
 void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 {
@@ -449,6 +537,7 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 	u32 freq = 0;
 	u64 freq_sum = 0;
 	u32 op_rate_sum = 0;
+	u32 target_bw_factor;
 	bool no_op_rate_max_freq = false;
 
 	if (codec_type == MTK_INST_DECODER) {
@@ -457,6 +546,7 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 			return;
 
 		dev->vdec_dvfs_params.allow_oc = 0;
+		dev->vdec_dvfs_params.trans_inst = 0;
 
 		if (list_empty(&dev->vdec_dvfs_inst)) {
 			freq_sum = match_avail_freq(dev, codec_type, 0);
@@ -467,10 +557,11 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 		list_for_each(item, &dev->vdec_dvfs_inst) {
 			if(item == (void *) 0) {
 				mtk_v4l2_debug(0, "%s [VDVFS][VDEC] find null in item in list!\n", __func__);
+				INIT_LIST_HEAD(&dev->vdec_dvfs_inst);
 				return;
 			}
 			inst = list_entry(item, struct vcodec_inst, list);
-			if (inst) {
+			if (inst && inst->is_active) {
 				freq = calc_freq(inst, dev);
 
 				if (freq > dev->vdec_dvfs_params.normal_max_freq)
@@ -505,6 +596,7 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 			return;
 
 		dev->venc_dvfs_params.allow_oc = 0;
+		dev->venc_dvfs_params.trans_inst = 0;
 
 		if (list_empty(&dev->venc_dvfs_inst)) {
 			freq_sum = match_avail_freq(dev, codec_type, 0);
@@ -515,6 +607,7 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 		list_for_each(item, &dev->venc_dvfs_inst) {
 			if(item == (void *) 0) {
 				mtk_v4l2_debug(0, "%s [VDVFS][VENC] find null in item in list!\n", __func__);
+				INIT_LIST_HEAD(&dev->venc_dvfs_inst);
 				return;
 			}
 			inst = list_entry(item, struct vcodec_inst, list);
@@ -546,10 +639,25 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 		else
 			dev->venc_dvfs_params.per_frame_adjust = 0;
 
+		dev->venc_dvfs_params.freq_sum = (u32)freq_sum;
+		dev->venc_dvfs_params.oprate_sum  = (u32)op_rate_sum;
 		freq_sum = match_avail_freq(dev, codec_type, freq_sum);
 
 		dev->venc_dvfs_params.target_freq = (u32)freq_sum;
 		mtk_v4l2_debug(6, "[VDVFS] VENC freq = %u", dev->venc_dvfs_params.target_freq);
+
+		target_bw_factor = mtk_vcodec_get_bw_factor(dev, MTK_INST_ENCODER);
+		dev->venc_dvfs_params.target_bw_factor = target_bw_factor;
+		mtk_v4l2_debug(6, "[VDVFS] VENC bw_factor = %u",
+			dev->venc_dvfs_params.target_bw_factor);
+
+		// Check transcode scenario
+		if (dev->venc_dvfs_params.trans_inst) {
+			if (dev->venc_reg != 0 || dev->venc_mmdvfs_clk != 0)
+				dev->venc_dvfs_params.target_freq = dev->venc_dvfs_params.normal_max_freq;
+			mtk_v4l2_debug(0, "%s [VDVFS] - has trancode, set venc max freq\n", __func__);
+			return;
+		}
 	}
 }
 
@@ -590,6 +698,18 @@ void mtk_vcodec_alive_checker_resume(struct mtk_vcodec_dev *dev)
 #endif
 }
 
+bool mtk_dvfs_check_op_diff(int op1, int op2, int threshold, int compare)
+{
+	if (op1 == 0)
+		return true;
+
+	if (compare * (100 * ABS(op1 - op2) / op1) < (threshold * compare))
+		return true;
+	else
+		return false;
+}
+
+// This func should be around dvfs mutex
 void mtk_vcodec_cpu_grp_aware_hint(struct mtk_vcodec_ctx *ctx, int enable)
 {
 
