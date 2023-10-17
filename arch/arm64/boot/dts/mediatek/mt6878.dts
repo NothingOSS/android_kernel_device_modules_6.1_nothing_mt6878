@@ -7052,6 +7052,7 @@
 #endif
 		};
 
+#if 0
 		vdec@16000000 {
 			compatible = "mediatek,mt6878-vcodec-dec";
 			mediatek,platform = "platform:mt6878";
@@ -7122,7 +7123,7 @@
 			clock-names =
 				"CORE_MT_CG_VDEC0";
 			mediatek,clock-parents = <4 3>;
-#if 0
+
 			operating-points-v2 = <&opp_table_vdec>;
 			//mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects = <&mmqos MASTER_LARB_PORT(M4U_L4_P0_HW_VDEC_MC_EXT)
@@ -7203,7 +7204,6 @@
 				<5 20>,
 				<3 66>,
 				<6 4>;
-#endif
 		};
 
 		venc@17000000 {
@@ -7254,7 +7254,7 @@
 				<0 M4U_L7_P12_VENC_REF_LUMA 0>,
 				<0 M4U_L7_P13_VENC_REF_CHROMA 0>,
 				<0 M4U_L7_P14_VENC_SUB_R_LUMA 0>;
-#if 0
+
 			operating-points-v2 = <&opp_table_venc>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects = <&mmqos MASTER_LARB_PORT(M4U_L7_P0_VENC_RCPU)
@@ -7353,8 +7353,8 @@
 				<3 47>,
 				<5 0>,
 				<6 7>;
-#endif
 		};
+#endif
 
 		jpgenc@17030000 {
 			compatible = "mediatek,mtk-jpgenc";
