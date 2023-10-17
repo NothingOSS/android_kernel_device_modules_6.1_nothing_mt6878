@@ -795,7 +795,7 @@ int mtk_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_order
 		*is_right_pipe = _is_right_pipe;
 	if (path_order)
 		*path_order = _path_order;
-	DDPMSG("%s %s order %d pipe %d\n", __func__,
+	DDPINFO("%s %s order %d pipe %d\n", __func__,
 					mtk_dump_comp_str(comp), _path_order, _is_right_pipe);
 	comp_type = mtk_ddp_comp_get_type(comp->id);
 	if (comp_type < 0) {
