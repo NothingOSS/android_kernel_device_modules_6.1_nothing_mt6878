@@ -57,7 +57,7 @@ module_param(mml_path_mode, int, 0644);
 int mml_racing;
 module_param(mml_racing, int, 0644);
 
-int mml_dl = 2;
+int mml_dl;
 module_param(mml_dl, int, 0644);
 
 int mml_racing_rsz = 1;
@@ -1043,6 +1043,8 @@ static void tp_select_path(struct mml_topology_cache *cache,
 			scene[0] = PATH_MML_PQ_DL0;
 			scene[1] = PATH_MML_PQ_DL1;
 		}
+		if (cfg->info.dl_pos == MML_DL_POS_RIGHT)
+			scene[0] = scene[1];
 	} else if (!en_pq) {
 		/* dual pipe, rdma to wrot */
 		scene[0] = PATH_MML_NOPQ_P0;
@@ -1117,7 +1119,7 @@ static s32 tp_select(struct mml_topology_cache *cache,
 		cfg->framemode = true;
 		cfg->nocmd = true;
 	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
-		cfg->dual = cfg->disp_dual;
+		cfg->dual = cfg->disp_dual && cfg->info.dl_pos == MML_DL_POS_DUAL;
 		cfg->framemode = true;
 	} else if (cfg->info.mode == MML_MODE_APUDC) {
 		cfg->dual = true;
@@ -1158,7 +1160,8 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 	if (unlikely(mml_dl)) {
 		if (mml_dl == 2)
 			goto decouple;
-	}
+	} else if (!mml_dl_enable(mml))
+		goto decouple;
 
 	/* no pq support for dl mode */
 	if (info->dest[0].pq_config.en_dc ||
@@ -1183,7 +1186,7 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 	}
 
 	/* destination width must cross display pipe width */
-	if (info->dest[0].data.width < MML_OUT_MIN_W) {
+	if (info->dest[0].data.width < MML_OUT_MIN_W && !mml_tablet_ext(mml)) {
 		*reason = mml_query_outwidth;
 		goto decouple;
 	}
