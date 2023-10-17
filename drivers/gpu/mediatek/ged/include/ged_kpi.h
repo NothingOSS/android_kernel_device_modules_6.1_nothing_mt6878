@@ -14,31 +14,6 @@
 #include <linux/cpufreq.h>
 #include <linux/topology.h>
 
-#define GED_MEWTWO_FRONT 160
-#define GED_MEWTWO_COUNT 60
-
-enum ged_mewtwo_level {
-	GED_MEWTWO_LEVEL_RESET = 0,
-	GED_MEWTWO_LEVEL_TIMEOUT,
-	GED_MEWTWO_LEVEL_1,
-	GED_MEWTWO_LEVEL_2,
-	GED_MEWTWO_LEVEL_3,
-	GED_MEWTWO_LEVEL_MAX
-};
-
-struct ged_mewtwo_debug {
-	unsigned int check;
-	unsigned int config;
-};
-
-static struct ged_mewtwo_debug g_ged_mewtwo_debug[GED_MEWTWO_LEVEL_MAX] = {
-	{ 0,  0},
-	{ 0,  0},
-	{ 0,  6},
-	{11,  9},
-	{16, 12},
-};
-
 GED_ERROR ged_kpi_dequeue_buffer_ts(int pid,
 		u64 ullWdnd,
 		int i32FrameID,
@@ -76,11 +51,6 @@ unsigned int ged_kpi_enabled(void);
 void ged_kpi_set_target_FPS(u64 ulID, int target_FPS);
 void ged_kpi_set_target_FPS_margin(u64 ulID, int target_FPS,
 		int target_FPS_margin, int eara_fps_margin, int cpu_time);
-void ged_kpi_set_mewtwo_level(int level);
-int ged_kpi_get_mewtwo_level(void);
-void ged_kpi_set_mewtwo_debug(int level);
-void ged_kpi_set_mewtwo_timer_count(int count);
-int ged_kpi_get_mewtwo_timer_count(void);
 
 u64 ged_kpi_get_taget_time(void);
 

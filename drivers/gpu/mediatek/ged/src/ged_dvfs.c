@@ -45,8 +45,6 @@
 //sliding window
 #define MAX_SLIDE_WINDOW_SIZE 64
 
-#define GED_DEBUG_MAX_CORE 12
-
 spinlock_t gsGpuUtilLock;
 
 #define GPU_MEWTWO_TIMEOUT  90000
@@ -2085,27 +2083,14 @@ int get_api_sync_flag(void)
 }
 void set_api_sync_flag(int flag)
 {
-	int mewtwo_level = GED_MEWTWO_LEVEL_RESET;
-
 	if (flag == 1 || flag == 0) {
 		api_sync_flag = flag;
 	} else if (flag == 3) {
-		if (g_max_core_num == GED_DEBUG_MAX_CORE) {
-			ged_kpi_set_mewtwo_level(GED_MEWTWO_LEVEL_2);
-			mewtwo_level = GED_MEWTWO_LEVEL_1;
-			ged_kpi_set_mewtwo_debug(mewtwo_level);
-			pr_info("g_debug: check mewtwo %d", mewtwo_level);
-			start_mewtwo_timer();
-		}
+		dcs_set_fix_num(8);
+		start_mewtwo_timer();
 	} else if (flag == 2) {
-		if (ged_kpi_get_mewtwo_level() != GED_MEWTWO_LEVEL_RESET) {
-			mewtwo_level = GED_MEWTWO_LEVEL_RESET;
-			ged_kpi_set_mewtwo_level(mewtwo_level);
-			ged_kpi_set_mewtwo_debug(mewtwo_level);
-			pr_info("g_debug: check mewtwo %d", mewtwo_level);
-			ged_kpi_set_mewtwo_timer_count(0);
-			cancel_mewtwo_timer();
-		}
+		dcs_set_fix_num(0);
+		cancel_mewtwo_timer();
 	}
 }
 
@@ -3307,9 +3292,7 @@ int ged_dvfs_get_recude_mips_policy_state(void)
 
 static enum hrtimer_restart gpu_mewtwo_timer_cb(struct hrtimer *timer)
 {
-	if (ged_kpi_get_mewtwo_level() != GED_MEWTWO_LEVEL_RESET)
-		ged_kpi_set_mewtwo_level(GED_MEWTWO_LEVEL_TIMEOUT);
-
+	dcs_fix_reset();
 	return HRTIMER_NORESTART;
 }
 
