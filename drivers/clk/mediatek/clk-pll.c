@@ -49,6 +49,8 @@
 #define PLL_EN_TYPE				0
 #define PLL_RSTB_TYPE				1
 
+#define PLL_MMINFRA_VOTE_BIT		26
+
 static bool is_registered;
 
 /*
@@ -621,7 +623,7 @@ static int mtk_hwv_pll_prepare(struct clk_hw *hw)
 	int i = 0;
 
 	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
-		mtk_clk_mminfra_hwv_power_ctrl(true);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(true, PLL_MMINFRA_VOTE_BIT);
 	/* wait for irq idle */
 	do {
 		regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
@@ -666,7 +668,7 @@ static int mtk_hwv_pll_prepare(struct clk_hw *hw)
 	} while (1);
 
 	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
-		mtk_clk_mminfra_hwv_power_ctrl(false);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(false, PLL_MMINFRA_VOTE_BIT);
 
 	return 0;
 
@@ -685,7 +687,7 @@ err_hwv_prepare:
 			pll->data->hwv_set_ofs, 0,
 			pll->data->hwv_shift, CLK_EVT_HWV_PLL_TIMEOUT);
 	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
-		mtk_clk_mminfra_hwv_power_ctrl(false);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(false, PLL_MMINFRA_VOTE_BIT);
 
 	return -EBUSY;
 }
@@ -697,7 +699,7 @@ static void mtk_hwv_pll_unprepare(struct clk_hw *hw)
 	int i = 0;
 
 	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
-		mtk_clk_mminfra_hwv_power_ctrl(true);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(true, PLL_MMINFRA_VOTE_BIT);
 	/* wait for irq idle */
 	do {
 		regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
@@ -744,7 +746,7 @@ static void mtk_hwv_pll_unprepare(struct clk_hw *hw)
 	} while (1);
 
 	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
-		mtk_clk_mminfra_hwv_power_ctrl(false);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(false, PLL_MMINFRA_VOTE_BIT);
 
 	return;
 
@@ -763,7 +765,7 @@ err_hwv_prepare:
 			pll->data->hwv_set_ofs, 0,
 			pll->data->hwv_shift, CLK_EVT_HWV_PLL_TIMEOUT);
 	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
-		mtk_clk_mminfra_hwv_power_ctrl(false);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(false, PLL_MMINFRA_VOTE_BIT);
 }
 
 static int mtk_hwv_pll_setclr_is_prepared(struct mtk_clk_pll *pll,
@@ -977,7 +979,7 @@ static int mtk_hwv_pll_setclr_prepare(struct clk_hw *hw)
 	int ret = 0;
 
 	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
-		mtk_clk_mminfra_hwv_power_ctrl(true);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(true, PLL_MMINFRA_VOTE_BIT);
 
 	ret = mtk_hwv_pll_res_prepare(pll);
 	if (ret)
@@ -1031,7 +1033,7 @@ static int mtk_hwv_pll_setclr_prepare(struct clk_hw *hw)
 	}
 
 	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
-		mtk_clk_mminfra_hwv_power_ctrl(false);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(false, PLL_MMINFRA_VOTE_BIT);
 
 	return 0;
 hwv_rstb_done_fail:
@@ -1053,7 +1055,7 @@ hwv_prepare_fail:
 			0, (pll->data->hwv_set_ofs / MTK_HWV_ID_OFS),
 			0, CLK_EVT_HWV_CG_TIMEOUT);
 	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
-		mtk_clk_mminfra_hwv_power_ctrl(false);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(false, PLL_MMINFRA_VOTE_BIT);
 
 	return -EBUSY;
 }
@@ -1065,7 +1067,7 @@ static void mtk_hwv_pll_setclr_unprepare(struct clk_hw *hw)
 	int i = 0;
 
 	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
-		mtk_clk_mminfra_hwv_power_ctrl(true);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(true, PLL_MMINFRA_VOTE_BIT);
 
 	if (pll->data->flags & HAVE_RST_BAR) {
 		regmap_write(pll->hwv_regmap, pll->data->hwv_clr_ofs + (PLL_RSTB_TYPE * 0x8),
@@ -1114,7 +1116,7 @@ static void mtk_hwv_pll_setclr_unprepare(struct clk_hw *hw)
 
 	mtk_hwv_pll_res_unprepare(pll);
 	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
-		mtk_clk_mminfra_hwv_power_ctrl(false);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(false, PLL_MMINFRA_VOTE_BIT);
 
 	return;
 
@@ -1136,7 +1138,7 @@ hwv_prepare_fail:
 			0, (pll->data->hwv_clr_ofs / MTK_HWV_ID_OFS),
 			0, CLK_EVT_HWV_CG_TIMEOUT);
 	if (pll->data->flags & CLK_EN_MM_INFRA_PWR)
-		mtk_clk_mminfra_hwv_power_ctrl(false);
+		mtk_clk_mminfra_hwv_power_ctrl_optional(false, PLL_MMINFRA_VOTE_BIT);
 }
 
 int mtk_hwv_pll_on(struct clk_hw *hw)
