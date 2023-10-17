@@ -2182,8 +2182,9 @@ static int reset_fg_rtc_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_fiel
 			__func__, spare0_reg, after_rst_spare0_reg,
 			spare3_reg, after_rst_spare3_reg);
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-		if ((after_rst_spare3_reg != (spare3_reg | 0x80)) ||
-			(after_rst_spare0_reg != temp_value))
+		if (((after_rst_spare3_reg != (spare3_reg | 0x80)) ||
+			(after_rst_spare0_reg != temp_value)) &&
+			gauge->gm->disableGM30 == 0)
 			aee_kernel_warning("BATTERY", "BATTERY: RG_SPARE R/W fail");
 #endif
 	}
@@ -2646,7 +2647,8 @@ static int rtc_ui_soc_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_
 			__func__, val, spare3_reg, new_spare3_reg,
 			latest_spare3_reg, spare3_reg_valid);
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-		if (latest_spare3_reg != new_spare3_reg)
+		if (latest_spare3_reg != new_spare3_reg &&
+			gauge->gm->disableGM30 == 0)
 			aee_kernel_warning("BATTERY", "BATTERY: RG_SPARE R/W fail");
 #endif
 	}
