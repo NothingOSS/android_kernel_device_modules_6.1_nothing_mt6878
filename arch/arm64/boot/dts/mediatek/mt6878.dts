@@ -1659,12 +1659,6 @@
 		#clock-cells = <1>;
 	};
 
-	gpuebpll_pll_ctrl_clk: syscon@13fa0800 {
-		compatible = "mediatek,mt6878-gpuebpll_pll_ctrl", "syscon";
-		reg = <0 0x13fa0800 0 0x0400>;
-		#clock-cells = <1>;
-	};
-
 	mfgscpll_pll_ctrl_clk: syscon@13fa0c00 {
 		compatible = "mediatek,mt6878-mfgscpll_pll_ctrl", "syscon";
 		reg = <0 0x13fa0c00 0 0x1000>;

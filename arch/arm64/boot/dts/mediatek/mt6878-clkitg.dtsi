@@ -119,7 +119,6 @@
 			<&imp_iic_wrap_w_s_clk CLK_IMP_W_S_I3C7_W1S>,
 			<&imp_iic_wrap_w_s_clk CLK_IMP_W_S_I3C8_W1S>,
 			<&imp_iic_wrap_w_s_clk CLK_IMP_W_S_SEC_EN_W1S>,
-			<&gpuebpll_pll_ctrl_clk CLK_GPUEB_AO_GPUEBPLL>,
 			<&vlp_cksys_clk CLK_VLP_TIA_ULPOSC_SEL>,
 			<&afe_clk CLK_AFE_DL0_DAC_TML>,
 			<&afe_clk CLK_AFE_DL0_DAC_HIRES>,
