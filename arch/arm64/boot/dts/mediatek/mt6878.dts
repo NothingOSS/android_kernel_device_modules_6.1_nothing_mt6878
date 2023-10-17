@@ -4272,7 +4272,7 @@
 			reg = <0 0x112b0000 0 0x2300>;
 			phys = <&ufsphy>;
 			interrupts = <GIC_SPI 393 IRQ_TYPE_LEVEL_HIGH 0>;
-#if 0
+
 			clocks =
 				<&topckgen_clk CLK_TOP_UFS_SEL>,
 				<&topckgen_clk CLK_TOP_AES_UFSFDE_SEL>,
@@ -4319,7 +4319,7 @@
 				<0 0>;
 
 			vcc-supply = <&mt6363_vemc>;
-#endif
+
 			resets =	<&ufscfgpdn_rst 0>,
 					<&ufscfgpdn_rst 1>,
 					<&ufscfgpdn_rst 2>;
@@ -4329,8 +4329,8 @@
 
 			mediatek,ufs-qos;
 			mediatek,ufs-mphy-debug;
-			mediatek,ufs-disable-ah8;
 			mediatek,ufs-disable-mcq;
+			mediatek,ufs-rtff-mtcmos;
 
 			bootmode = <&chosen>;
 		};
@@ -11834,10 +11834,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 };
 
 &mt6363_vufs12 {
-	regulator-always-on;
-};
-
-&mt6363_vemc {
 	regulator-always-on;
 };
 
