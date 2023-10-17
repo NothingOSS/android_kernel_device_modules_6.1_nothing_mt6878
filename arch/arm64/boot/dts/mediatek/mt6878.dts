@@ -9546,9 +9546,7 @@
 		<35 3  2>,/* IPI_OUT_C_SCP_HWVOTER_DEBUG */
 		<39 3  4>,/* IPI_OUT_AOV_SCP */
 		<43 3  4>,/* IPI_OUT_NPU_SCP */
-		<45 3  1>,/* IPI_OUT_SCP_PM_NOTIFY_0 */
-		<47 3  2>,/* IPI_PIN_HOST_SCP_CHRE */
-		<48 3  2>;/* IPI_PIN_SCP_HOST_CHRE */
+		<45 3  1>;/* IPI_OUT_SCP_PM_NOTIFY_0 */
 
 		#recv-cells-mode = <1>;
 		/* mode 0 or no defined #recv-cells-mode => 4 elements : id, mbox,
@@ -9578,9 +9576,7 @@
 		<27 3  2 0 0 0 0>,/* IPI_IN_AUDIO_ULTRA_SND_ACK_0 */
 		<35 3  4 1 0 0 0>,/* IPI_OUT_C_SCP_HWVOTER_DEBUG */
 		<40 3  4 0 0 0 0>,/* IPI_IN_SCP_AOV */
-		<44 3  4 0 0 0 0>,/* IPI_IN_SCP_NPU */
-		<47 3  2 1 0 0 0>,/* IPI_PIN_HOST_SCP_CHRE ack slot */
-		<48 3  2 0 0 0 1>;/* IPI_PIN_SCP_HOST_CHRE msg slot */
+		<44 3  4 0 0 0 0>;/* IPI_IN_SCP_NPU */
 
 		//legacy_table =	<11>, /* out_id_0 IPI_OUT_SCP_MPOOL_0 */
 		//		<24>, /* out_id_1 IPI_OUT_SCP_MPOOL_1 */
