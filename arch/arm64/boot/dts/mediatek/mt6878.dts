@@ -8505,7 +8505,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			compatible = "mediatek,vcp";
-			vcp-support = <0>;
+			vcp-support = <1>;
 			status = "okay";
 			reg = <0 0x1ea00000 0 0x40000>, /* tcm */
 				<0 0x1ec24000 0 0x1000>, /* cfg */
@@ -8673,7 +8673,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			compatible =  "mediatek,vcp-io-vdec";
-			vcp-support = <0>;
+			vcp-support = <2>;
 			reg = <0 0x1ec24000 0 0x1000>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&disp_iommu M4U_L41_VIDEO_UP>;
@@ -8683,7 +8683,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			compatible =  "mediatek,vcp-io-venc";
-			vcp-support = <0>;
+			vcp-support = <3>;
 			reg = <0 0x1ec30000 0 0x1000>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&disp_iommu M4U_L41_VIDEO_UP>;
@@ -8693,7 +8693,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			compatible = "mediatek,vcp-io-work";
-			vcp-support = <0>;
+			vcp-support = <4>;
 			reg = <0 0x1ec32000 0 0x1000>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&disp_iommu M4U_L41_VIDEO_UP>;
@@ -8703,7 +8703,7 @@
 			#address-cells = <2>;
 			#size-cells = <2>;
 			compatible =  "mediatek,vcp-io-sec";
-			vcp-support = <0>;
+			vcp-support = <7>;
 			reg = <0 0x1ec37000 0 0x1000>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&disp_iommu M4U_L41_VIDEO_UP>;
