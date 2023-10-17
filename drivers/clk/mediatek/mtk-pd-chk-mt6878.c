@@ -478,7 +478,6 @@ static enum chk_sys_id debug_dump_id[] = {
 	top,
 	apmixed,
 	mfg_ao,
-	gpueb_ao,
 	mfgsc_ao,
 	vlp,
 	hwv,

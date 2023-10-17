@@ -262,10 +262,6 @@
 #define MFGPLL_CON1				0x00C
 #define MFGPLL_CON2				0x010
 #define MFGPLL_CON3				0x014
-#define GPUEBPLL_CON0				0x008
-#define GPUEBPLL_CON1				0x00C
-#define GPUEBPLL_CON2				0x010
-#define GPUEBPLL_CON3				0x014
 #define MFGSCPLL_CON0				0x008
 #define MFGSCPLL_CON1				0x00C
 #define MFGSCPLL_CON2				0x010
@@ -2685,7 +2681,6 @@ enum subsys_id {
 	APMIXEDSYS = 0,
 	MFGPLL_PLL_CTRL = 1,
 	MFGSCPLL_PLL_CTRL = 2,
-	GPUEBPLL_PLL_CTRL = 3,
 	PLL_SYS_NUM,
 };
 
@@ -2868,15 +2863,6 @@ static const struct mtk_pll_data mfgsc_ao_plls[] = {
 		MFGSCPLL_CON1, 0, 22/*pcw*/),
 };
 
-static const struct mtk_pll_data gpueb_ao_plls[] = {
-	PLL(CLK_GPUEB_AO_GPUEBPLL, "gpueb-ao-gpuebpll", GPUEBPLL_CON0/*base*/,
-		GPUEBPLL_CON0, 0, 0/*en*/,
-		0, BIT(0)/*rstb*/,
-		GPUEBPLL_CON1, 24/*pd*/,
-		0, 0, 0/*tuner*/,
-		GPUEBPLL_CON1, 0, 22/*pcw*/),
-};
-
 static int clk_mt6878_pll_registration(enum subsys_id id,
 		const struct mtk_pll_data *plls,
 		struct platform_device *pdev,
@@ -2929,12 +2915,6 @@ static int clk_mt6878_apmixed_probe(struct platform_device *pdev)
 {
 	return clk_mt6878_pll_registration(APMIXEDSYS, apmixed_plls,
 			pdev, ARRAY_SIZE(apmixed_plls));
-}
-
-static int clk_mt6878_gpueb_ao_probe(struct platform_device *pdev)
-{
-	return clk_mt6878_pll_registration(GPUEBPLL_PLL_CTRL, gpueb_ao_plls,
-			pdev, ARRAY_SIZE(gpueb_ao_plls));
 }
 
 static int clk_mt6878_mfg_ao_probe(struct platform_device *pdev)
@@ -3077,9 +3057,6 @@ static const struct of_device_id of_match_clk_mt6878[] = {
 	{
 		.compatible = "mediatek,mt6878-apmixedsys",
 		.data = clk_mt6878_apmixed_probe,
-	}, {
-		.compatible = "mediatek,mt6878-gpuebpll_pll_ctrl",
-		.data = clk_mt6878_gpueb_ao_probe,
 	}, {
 		.compatible = "mediatek,mt6878-mfgpll_pll_ctrl",
 		.data = clk_mt6878_mfg_ao_probe,

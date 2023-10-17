@@ -57,12 +57,6 @@ static DEFINE_SPINLOCK(subsys_meter_lock);
 #define MFGSCPLL_FQMTR_CON0				(0x0040)
 #define MFGSCPLL_FQMTR_CON1				(0x0044)
 
-/* GPUEBPLL_PLL_CTRL Register */
-#define GPUEBPLL_CON0					(0x0008)
-#define GPUEBPLL_CON1					(0x000C)
-#define GPUEBPLL_FQMTR_CON0				(0x0040)
-#define GPUEBPLL_FQMTR_CON1				(0x0044)
-
 
 static void __iomem *fm_base[FM_SYS_NUM];
 
@@ -82,8 +76,6 @@ static struct fmeter_data subsys_fm[] = {
 		MFGPLL_CON0, MFGPLL_CON1, MFGPLL_FQMTR_CON0, MFGPLL_FQMTR_CON1},
 	[FM_MFGSCPLL] = {FM_MFGSCPLL, "fm_mfgscpll",
 		MFGSCPLL_CON0, MFGSCPLL_CON1, MFGSCPLL_FQMTR_CON0, MFGSCPLL_FQMTR_CON1},
-	[FM_GPUEBPLL] = {FM_GPUEBPLL, "fm_gpuebpll",
-		GPUEBPLL_CON0, GPUEBPLL_CON1, GPUEBPLL_FQMTR_CON0, GPUEBPLL_FQMTR_CON1},
 };
 
 const char *comp_list[] = {
@@ -92,7 +84,6 @@ const char *comp_list[] = {
 	[FM_VLP_CKSYS] = "mediatek,mt6878-vlp_cksys",
 	[FM_MFGPLL] = "mediatek,mt6878-mfgpll_pll_ctrl",
 	[FM_MFGSCPLL] = "mediatek,mt6878-mfgscpll_pll_ctrl",
-	[FM_GPUEBPLL] = "mediatek,mt6878-gpuebpll_pll_ctrl",
 };
 
 /*
@@ -259,7 +250,6 @@ static const struct fmeter_clk fclks[] = {
 	/* SUBSYS Part */
 	FMCLK(SUBSYS, FM_MFGPLL, "fm_mfgpll", 1),
 	FMCLK(SUBSYS, FM_MFGSCPLL, "fm_mfgscpll", 1),
-	FMCLK(SUBSYS, FM_GPUEBPLL, "fm_gpuebpll", 1),
 	{},
 };
 

@@ -718,7 +718,6 @@ static struct regbase rb[] = {
 	[imp_es_s] = REGBASE_V(0x11D73000, imp_es_s, PD_NULL, CLK_NULL),
 	[imp_w_s] = REGBASE_V(0x11E04000, imp_w_s, PD_NULL, CLK_NULL),
 	[mfg_ao] = REGBASE_V(0x13fa0000, mfg_ao, PD_NULL, CLK_NULL),
-	[gpueb_ao] = REGBASE_V(0x13fa0800, gpueb_ao, PD_NULL, CLK_NULL),
 	[mfgsc_ao] = REGBASE_V(0x13fa0c00, mfgsc_ao, PD_NULL, CLK_NULL),
 	[mm] = REGBASE_V(0x14000000, mm, MT6878_CHK_PD_DIS0, CLK_NULL),
 	[img] = REGBASE_V(0x15000000, img, MT6878_CHK_PD_ISP_MAIN, CLK_NULL),
@@ -894,11 +893,6 @@ static struct regname rn[] = {
 	REGNAME(mfg_ao, 0xc, MFGPLL_CON1),
 	REGNAME(mfg_ao, 0x10, MFGPLL_CON2),
 	REGNAME(mfg_ao, 0x14, MFGPLL_CON3),
-	/* GPUEBPLL_PLL_CTRL register */
-	REGNAME(gpueb_ao, 0x8, GPUEBPLL_CON0),
-	REGNAME(gpueb_ao, 0xc, GPUEBPLL_CON1),
-	REGNAME(gpueb_ao, 0x10, GPUEBPLL_CON2),
-	REGNAME(gpueb_ao, 0x14, GPUEBPLL_CON3),
 	/* MFGSCPLL_PLL_CTRL register */
 	REGNAME(mfgsc_ao, 0x8, MFGSCPLL_CON0),
 	REGNAME(mfgsc_ao, 0xc, MFGSCPLL_CON1),
@@ -1410,7 +1404,6 @@ static enum chk_sys_id devapc_dump_id[] = {
 	top,
 	apmixed,
 	mfg_ao,
-	gpueb_ao,
 	mfgsc_ao,
 	vlp,
 	hwv,
@@ -1483,7 +1476,6 @@ static const char * const notice_pll_names[] = {
 	"mmpll",
 	"ufspll",
 	"mfg-ao-mfgpll",
-	"gpueb-ao-gpuebpll",
 	"mfgsc-ao-mfgscpll",
 	NULL
 };

@@ -169,8 +169,7 @@ enum fm_sys_id {
 	FM_VLP_CKSYS = 2,
 	FM_MFGPLL = 3,
 	FM_MFGSCPLL = 4,
-	FM_GPUEBPLL = 5,
-	FM_SYS_NUM = 6,
+	FM_SYS_NUM = 5,
 };
 
 #endif /* _CLK_MT6878_FMETER_H */
