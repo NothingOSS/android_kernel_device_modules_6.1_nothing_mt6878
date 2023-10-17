@@ -27,10 +27,23 @@
 #define RPC_ALIVE_DBG	(0)
 
 static uint32_t ce_pwr_on[] = {
-	/* cmd_rcx_on_v1p1 */
+	/* cmd_rcx_on_v2 */
 	0x35011900,
+	0x300e0000,
+	0x20021040,
+	0x20821041,
+	0x33870000,
+	0xbbbc0016,
+	0xbbbe001e,
+	0xb8bc0002,
+	0x3a7805b0,
+	0x3201190b,
+	0x3a210001,
+	0x38f80001,
+	0x30810022,
+	0x00e00004,
 	0xf803c812,
-	0x01111203,
+	0x00211375,
 	0x0383c00d,
 	0xbbbc001f,
 	0xbbbe001f,
@@ -81,6 +94,23 @@ static uint32_t ce_pwr_on[] = {
 	0x60000002,
 	0x48810002,
 	0x8b83c00a,
+	0x0003c00b,
+	0x38f80000,
+	0x30818000,
+	0xb8010001,
+	0x0043c00b,
+	0x7243c81d,
+	0x07c3c81d,
+	0x60000002,
+	0x7283c81e,
+	0x07c3c81e,
+	0x60000002,
+	0x7103c002,
+	0x39780000,
+	0x31015000,
+	0x0003c00a,
+	0xb8000002,
+	0x5011fffe,
 	0x00028000,
 	0xb804000a,
 	0xb806001f,
@@ -117,6 +147,39 @@ static uint32_t ce_pwr_on[] = {
 	0x39780002,
 	0x31010022,
 	0x0143c007,
+	0x0003ce00,
+	0x0042bc40,
+	0x0003ce20,
+	0x0042bc41,
+	0x0003ce21,
+	0x0042bc42,
+	0x0003ce23,
+	0x0042bc43,
+	0x0003ce40,
+	0x0042bc44,
+	0x0003ce41,
+	0x0042bc45,
+	0x0003c005,
+	0x0042bc48,
+	0x0003c006,
+	0x0042bc49,
+	0x0003c00a,
+	0x0042bc4a,
+	0x0003da81,
+	0x0042bc54,
+	0x0003da82,
+	0x0042bc55,
+	0x0003da83,
+	0x0042bc56,
+	0x0003da84,
+	0x0042bc57,
+	0x0003da85,
+	0x0042bc58,
+	0x3878beef,
+	0x3001dead,
+	0x0042bc59,
+	0x0042bc5a,
+	0x0042bc5b,
 	0x00028000,
 	0xb8040009,
 	0xb806001f,
@@ -131,18 +194,30 @@ static uint32_t ce_pwr_on[] = {
 	0x40010002,
 	0x74c3c007,
 	0x74c3c007,
-	0x7243c81d,
-	0x07c3c81d,
-	0x60000002,
-	0x7283c81e,
-	0x07c3c81e,
-	0x60000002,
-	0x7103c002,
-	0x39780000,
-	0x31015000,
-	0x0003c00a,
-	0xb8000002,
-	0x5011fffe,
+	0x0003c00b,
+	0x38f80000,
+	0x30814000,
+	0xb8010001,
+	0x0043c00b,
+	0x97c3c00a,
+	0x0003c00b,
+	0x38f8ffff,
+	0x30813fff,
+	0xb8000001,
+	0x0043c00b,
+	0x300e0000,
+	0x20021042,
+	0x20821043,
+	0x33870000,
+	0xbbbc0016,
+	0xbbbe001e,
+	0xb8bc0002,
+	0x3a7805b0,
+	0x3201190b,
+	0x3a210001,
+	0x38f80001,
+	0x3081ffff,
+	0x00e00004,
 	0x28010000,
 };
 static uint32_t ce_pwr_on_sz = sizeof(ce_pwr_on);
@@ -276,7 +351,7 @@ static void aputop_dump_reg(enum apupw_reg idx, uint32_t offset, uint32_t size)
 	// reg dump for RPC
 	memset(buf, 0, sizeof(buf));
 	ret = snprintf(buf, 32, "phys 0x%08x: ",
-		       (u32)(papw->phy_addr[idx]) + offset);
+			(u32)(papw->phy_addr[idx]) + offset);
 	if (ret)
 		print_hex_dump(KERN_ERR, buf, DUMP_PREFIX_OFFSET, 16, 4,
 			papw->regs[idx] + offset, size, true);
@@ -383,7 +458,7 @@ static void get_pll_pcw(uint32_t clk_rate, uint32_t *r1, uint32_t *r2)
 	*r2 = pcw_val;
 }
 
-static void __apu_engine_acc_on(void)
+static int __apu_engine_acc_on(void)
 {
 	// need to 1-1 in order mapping to these two array
 	uint32_t eng_acc[] = {MDLA_ACC_BASE};
@@ -393,18 +468,33 @@ static void __apu_engine_acc_on(void)
 	int ret = 0, acc_idx;
 
 	for (acc_idx = 0; acc_idx < eng_acc_arr_size; acc_idx++) {
-		addr = (ulong)papw->regs[apu_pll] + eng_acc[acc_idx] + APU_ACC_AUTO_CTRL_SET0;
+		aputop_dump_reg(apu_acc, MDLA_ACC_BASE, 0x110);
+		addr = (ulong)papw->regs[apu_acc] + eng_acc[acc_idx] + APU_ACC_AUTO_CTRL_SET0;
 
 		/* TINFO="[pllon/off]Step2: auto enable acc_idx clock" */
 		apu_setl(1 << 9, (void __iomem *)addr);
-		addr = (ulong)papw->regs[apu_pll] + eng_acc[acc_idx] + APU_ACC_AUTO_STATUS0;
+		addr = (ulong)papw->regs[apu_acc] + eng_acc[acc_idx] + APU_ACC_AUTO_STATUS0;
 
 		ret = readl_relaxed_poll_timeout_atomic((void *)addr, val,
-							(val & (0x1UL << 5)), 50, 10000);
-		if (ret)
+							(val & (0x1UL << 6)), 50, 10000);
+		if (ret) {
 			pr_info("%s %d wait acc-%d on fail, ret = %d\n",
 			       __func__, __LINE__, acc_idx, ret);
+			aputop_dump_reg(apu_pll, 0xa0c, 0x10);
+			/* dump RCX_AO content */
+			aputop_dump_reg(apu_are, 0,
+				(0x90 + 4*ARE_ENTRIES(RCX_AO_BEGIN, RCX_AO_END)));
+			aputop_dump_reg(apu_acc, 0, 0x110);
+			aputop_dump_reg(apu_acc, 0x800, 0x110);
+			aputop_dump_reg(apu_pll, 0x200, 0x200);
+			aputop_dump_reg(apu_pll, 0xa00, 0x200);
+			aputop_dump_reg(apu_rpc, 0x0, 0x100);
+			aputop_dump_reg(apu_ao_ctl, 0x40, 0x10);
+			aputop_dump_reg(apu_are, 0x00010400, 0x400);
+			return -1;
+		}
 	}
+	return 0;
 }
 
 static void __apu_pll_init(void)
@@ -657,8 +747,6 @@ static void __apu_rpc_init(void)
 	// BUCK_PROT_SEL
 	apu_setl((0x1 << 20), papw->regs[apu_rpc] + APU_RPC_TOP_SEL_1);
 
-	apu_writel(0x892b8000, papw->regs[apu_rpc] + APU_RPC_TOP_SEL);
-	apu_writel(0x004b0568, papw->regs[apu_rpc] + APU_RPC_TOP_SEL_1);
 	pr_info("%s APU_RPC_TOP_SEL  0x%08x = 0x%08x\n",
 			__func__,
 			(u32)(papw->phy_addr[apu_rpc] + APU_RPC_TOP_SEL),
@@ -713,19 +801,19 @@ static int __apu_are_init(struct device *dev)
 
 	memset(buf, 0, sizeof(buf));
 	ret = snprintf(buf, sizeof(buf), "phys 0x%08x ", (u32)(papw->phy_addr[apu_are]));
-	if (!ret)
+	if (ret)
 		print_hex_dump(KERN_WARNING, buf, DUMP_PREFIX_OFFSET,
 			       16, 4, papw->regs[apu_are], 0x20, 1);
 
 	memset(buf, 0, sizeof(buf));
 	ret = snprintf(buf, sizeof(buf), "phys 0x%08x ", (u32)(papw->phy_addr[apu_are] + 0x2000));
-	if (!ret)
+	if (ret)
 		print_hex_dump(KERN_WARNING, buf, DUMP_PREFIX_OFFSET,
 			       16, 4, papw->regs[apu_are] + 0x2000, ce_pwr_on_sz, 1);
 
 	memset(buf, 0, sizeof(buf));
 	ret = snprintf(buf, sizeof(buf), "phys 0x%08x ", (u32)(papw->phy_addr[apu_are] + 0x3000));
-	if (!ret)
+	if (ret)
 		print_hex_dump(KERN_WARNING, buf, DUMP_PREFIX_OFFSET,
 			       16, 4, papw->regs[apu_are] + 0x3000, ce_pwr_off_sz, 1);
 
@@ -828,6 +916,71 @@ static int __apu_off_rpc_rcx(struct device *dev)
 			readl(papw->regs[apu_are] + APU_CE_IF_PC));
 
 	return ret;
+}
+
+static void mtk_clk_acc_get_rate_MDLA(void)
+{
+	int32_t output = 0, i = 0, j = 0;
+	uint32_t tempValue = 0;
+	bool timeout = false;
+	//uint32_t phy_confg_set;
+	//uint32_t phy_fm_confg_set, phy_fm_confg_clr, phy_fm_sel, phy_fm_cnt;
+	ulong confg_set;
+	ulong fm_confg_set, fm_confg_clr, fm_sel, fm_cnt;
+	uint32_t loop_ref = 0;  // 0 for Max freq  ~ 1074MHz
+	int32_t retry = 30;
+
+	uint32_t acc_base_arr[] = {MDLA_ACC_BASE};
+	uint32_t acc_offset_arr[] = {
+		APU_ACC_CONFG_SET0, APU_ACC_FM_SEL, APU_ACC_FM_CONFG_SET,
+		APU_ACC_FM_CONFG_CLR, APU_ACC_FM_CNT};
+
+	for (j = 0 ; j < (sizeof(acc_base_arr) / sizeof(uint32_t)) ; j++) {
+
+		pr_info("%s: loop:%d\n", __func__, j);
+
+		confg_set = (ulong)papw->regs[apu_acc] + acc_base_arr[j] + acc_offset_arr[0];
+		fm_sel = (ulong)papw->regs[apu_acc] + acc_base_arr[j] + acc_offset_arr[1];
+		fm_confg_set = (ulong)papw->regs[apu_acc] + acc_base_arr[j] + acc_offset_arr[2];
+		fm_confg_clr = (ulong)papw->regs[apu_acc] + acc_base_arr[j] + acc_offset_arr[3];
+		fm_cnt = (ulong)papw->regs[apu_acc] + acc_base_arr[j] + acc_offset_arr[4];
+
+		/* reset */
+		apu_writel(0x0, (void __iomem *)fm_sel);
+		apu_writel(apu_readl((void __iomem *)fm_sel), (void __iomem *)fm_sel);
+		apu_writel(apu_readl((void __iomem *)fm_sel) | (loop_ref << 16),
+				(void __iomem *)fm_sel);
+		apu_writel(BIT(0), (void __iomem *)fm_confg_set);
+		apu_writel(BIT(1), (void __iomem *)fm_confg_set);
+
+		/* wait frequency meter finish */
+		while (!(apu_readl((void __iomem *)fm_confg_set) & BIT(4))) {
+			udelay(10);
+			i++;
+			if (i > retry) {
+				timeout = true;
+				pr_info("%s acc error, fm_sel = 0x%08x, fm_confg_set = 0x%08x\n",
+						__func__,
+						apu_readl((void __iomem *)fm_sel),
+						apu_readl((void __iomem *)fm_confg_set));
+				break;
+			}
+		}
+
+		if ((!timeout) &&
+				!(apu_readl((void __iomem *)fm_confg_set) & BIT(5))) {
+			tempValue = apu_readl((void __iomem *)fm_cnt);
+			tempValue = tempValue & 0xFFFFF;
+			output = tempValue * 16384 / ((loop_ref + 1) * 1000);  //KHz
+		} else {
+			output = 0;
+		}
+		pr_info("%s: MNOC/UP ACC:%d\n", __func__, output);
+
+		apu_writel(BIT(4), (void __iomem *)fm_confg_clr);
+		apu_writel(BIT(1), (void __iomem *)fm_confg_clr);
+		apu_writel(BIT(0), (void __iomem *)fm_confg_clr);
+	}
 }
 
 static void mtk_clk_acc_get_rate(void)
@@ -1016,6 +1169,7 @@ static int __apu_pwr_ctl_rcx_engines(struct device *dev,
 		dev_mtcmos_ctl, dev_mtcmos_chk, dev_cg_con, dev_cg_clr);
 
 	if (pwron) {
+		aputop_dump_reg(apu_rpctop_mdla, 0x0, 0x10);
 		/* config rpc mdla */
 		apu_setl(dev_mtcmos_ctl,
 				papw->regs[rpc_mdla_base] + APU_RPC_SW_FIFO_WE);
@@ -1158,7 +1312,14 @@ int mt6878_all_on(struct platform_device *pdev, struct apu_power *g_papw)
 		aputop_dump_reg(apu_pll, 0xa0c, 0x10);
 		/* dump RCX_AO content */
 		aputop_dump_reg(apu_are, 0,
-			(0x40 + 4*ARE_ENTRIES(RCX_AO_BEGIN, RCX_AO_END)));
+			(0x90 + 4*ARE_ENTRIES(RCX_AO_BEGIN, RCX_AO_END)));
+		aputop_dump_reg(apu_acc, 0, 0x110);
+		aputop_dump_reg(apu_acc, 0x800, 0x110);
+		aputop_dump_reg(apu_pll, 0x200, 0x200);
+		aputop_dump_reg(apu_pll, 0xa00, 0x200);
+		aputop_dump_reg(apu_rpc, 0x0, 0x100);
+		aputop_dump_reg(apu_ao_ctl, 0x40, 0x10);
+		aputop_dump_reg(apu_are, 0x00010400, 0x400);
 		check_if_rpc_alive();
 		return -EIO;
 	}
@@ -1166,7 +1327,9 @@ int mt6878_all_on(struct platform_device *pdev, struct apu_power *g_papw)
 	aputop_dump_reg(apu_rpc, 0x0, 0x50);
 
 	if (papw->env == AO) {
-		__apu_engine_acc_on();
+		if (__apu_engine_acc_on())
+			return -1;
+		mtk_clk_acc_get_rate_MDLA();
 		__apu_pwr_ctl_rcx_engines(&pdev->dev, DLA0, 1);
 	}
 

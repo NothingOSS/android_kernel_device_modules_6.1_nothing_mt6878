@@ -36,8 +36,8 @@ static const char *reg_name[APUPW_MAX_REGS] = {
 };
 
 static struct apu_power apupw = {
-	.env = AO,
-	.rcx = RPC_HW,
+	.env = MP,
+	.rcx = CE_FW,
 };
 
 static void aputop_dump_reg(enum apupw_reg idx, uint32_t offset, uint32_t size)
@@ -51,7 +51,7 @@ static void aputop_dump_reg(enum apupw_reg idx, uint32_t offset, uint32_t size)
 			(ulong)(apupw.phy_addr[idx]) + offset);
 
 	/* dump content with pa as prefix */
-	if (!ret)
+	if (ret)
 		print_hex_dump(KERN_ERR, buf, DUMP_PREFIX_OFFSET, 16, 4,
 			       apupw.regs[idx] + offset, size, true);
 }
@@ -97,6 +97,7 @@ static int init_reg_base(struct platform_device *pdev)
 	return 0;
 }
 
+#if !APUPW_DUMP_FROM_APMCU
 static uint32_t apusys_pwr_smc_call(struct device *dev, uint32_t smc_id,
 		uint32_t a2)
 {
@@ -110,6 +111,7 @@ static uint32_t apusys_pwr_smc_call(struct device *dev, uint32_t smc_id,
 				smc_id, res.a0);
 	return res.a0;
 }
+#endif
 
 /*
  * APU_PCU_SEMA_CTRL
@@ -120,6 +122,7 @@ static uint32_t apusys_pwr_smc_call(struct device *dev, uint32_t smc_id,
  *      0x1 - acquire hw semaphore
  *      0x0 - release hw semaphore
  */
+ #if APU_HW_SEMA_CTRL
 static int apu_hw_sema_ctl(struct device *dev, uint32_t sema_offset,
 		uint8_t usr_bit, uint8_t ctl, int32_t timeout)
 {
@@ -186,6 +189,7 @@ static int apu_hw_sema_ctl(struct device *dev, uint32_t sema_offset,
 				timeout_cnt_max);
 	return 0;
 }
+#endif
 
 /*
  * APU_PCU_SEMA_READ
@@ -212,6 +216,8 @@ static uint32_t plat_apu_boot_host(void)
 
 static void aputop_dump_pwr_reg(struct device *dev)
 {
+#if APUPW_DUMP_FROM_APMCU
+#else
 	// dump reg in ATF log
 	apusys_pwr_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_PWR_DUMP,
@@ -219,6 +225,7 @@ static void aputop_dump_pwr_reg(struct device *dev)
 	// dump reg in AEE db
 	apusys_pwr_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_REGDUMP, 0);
+#endif
 }
 
 static void aputop_dump_rpc_data(void)
@@ -231,9 +238,12 @@ static void aputop_dump_pcu_data(struct device *dev)
 	aputop_dump_reg(apu_pcu, 0x0, 0x20);
 	aputop_dump_reg(apu_pcu, 0x80, 0x20);
 
+#if APUPW_DUMP_FROM_APMCU
+#else
 	apusys_pwr_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_PWR_DUMP,
 			SMC_PWR_DUMP_PCU);
+#endif
 }
 
 #if APUPW_DUMP_FROM_APMCU
@@ -281,6 +291,111 @@ static void aputop_dump_pll_data(void)
 				buf);
 	}
 }
+static void aputop_dump_acc_data(void)
+{
+	// need to 1-1 in order mapping with array in __apu_acc_init func
+	uint32_t acc_base_arr[] = {MNOC_ACC_BASE};
+	uint32_t acc_offset_arr[] = {
+				APU_ACC_CONFG_SET0, APU_ACC_CONFG_CLR0};
+	int base_arr_size = ARRAY_SIZE(acc_base_arr);
+	int offset_arr_size = ARRAY_SIZE(acc_offset_arr);
+	int acc_idx;
+	int ofs_idx;
+	uint32_t phy_addr = 0x0;
+	char buf[256];
+	int ret = 0;
+
+	for (acc_idx = 0 ; acc_idx < base_arr_size ; acc_idx++) {
+
+		memset(buf, 0, sizeof(buf));
+
+		for (ofs_idx = 0 ; ofs_idx < offset_arr_size ; ofs_idx++) {
+
+			phy_addr = apupw.phy_addr[apu_acc] +
+				acc_base_arr[acc_idx] +
+				acc_offset_arr[ofs_idx];
+
+			ret = snprintf(buf + strlen(buf),
+					sizeof(buf) - strlen(buf),
+					" 0x%08x",
+					apu_readl(apupw.regs[apu_acc] +
+						acc_base_arr[acc_idx] +
+						acc_offset_arr[ofs_idx]));
+			if (ret <= 0)
+				break;
+		}
+
+		if (ret <= 0)
+			break;
+
+		pr_info("%s acc_base:0x%08x = %s\n", __func__,
+				apupw.phy_addr[apu_acc] + acc_base_arr[acc_idx],
+				buf);
+	}
+}
+
+static void mtk_clk_acc_get_rate(void)
+{
+	int32_t output = 0, i = 0, j = 0;
+	uint32_t tempValue = 0;
+	bool timeout = false;
+	//uint32_t phy_confg_set;
+	//uint32_t phy_fm_confg_set, phy_fm_confg_clr, phy_fm_sel, phy_fm_cnt;
+	ulong confg_set;
+	ulong fm_confg_set, fm_confg_clr, fm_sel, fm_cnt;
+	uint32_t loop_ref = 0;  // 0 for Max freq  ~ 1074MHz
+	int32_t retry = 30;
+
+	uint32_t acc_base_arr[] = {MNOC_ACC_BASE};
+	uint32_t acc_offset_arr[] = {
+				APU_ACC_CONFG_SET0, APU_ACC_FM_SEL, APU_ACC_FM_CONFG_SET,
+				APU_ACC_FM_CONFG_CLR, APU_ACC_FM_CNT};
+	int base_arr_size = ARRAY_SIZE(acc_base_arr);
+
+	for (j = 0; j < base_arr_size; j++) {
+		confg_set = (ulong)apupw.regs[apu_acc] + acc_base_arr[j] + acc_offset_arr[0];
+		fm_sel = (ulong)apupw.regs[apu_acc] + acc_base_arr[j] + acc_offset_arr[1];
+		fm_confg_set = (ulong)apupw.regs[apu_acc] + acc_base_arr[j] + acc_offset_arr[2];
+		fm_confg_clr = (ulong)apupw.regs[apu_acc] + acc_base_arr[j] + acc_offset_arr[3];
+		fm_cnt = (ulong)apupw.regs[apu_acc] + acc_base_arr[j] + acc_offset_arr[4];
+
+		/* reset */
+		apu_writel(0x0, (void __iomem *)fm_sel);
+		apu_writel(apu_readl((void __iomem *)fm_sel), (void __iomem *)fm_sel);
+		apu_writel(apu_readl((void __iomem *)fm_sel) | (loop_ref << 16),
+			(void __iomem *)fm_sel);
+		apu_writel(BIT(0), (void __iomem *)fm_confg_set);
+		apu_writel(BIT(1), (void __iomem *)fm_confg_set);
+
+		/* wait frequency meter finish */
+		while (!(apu_readl((void __iomem *)fm_confg_set) & BIT(4))) {
+			udelay(10);
+			i++;
+			if (i > retry) {
+				timeout = true;
+				pr_info("%s acc error, fm_sel = 0x%08x, fm_confg_set = 0x%08x\n",
+					__func__,
+					apu_readl((void __iomem *)fm_sel),
+					apu_readl((void __iomem *)fm_confg_set));
+				break;
+			}
+		}
+
+		if ((!timeout) &&
+			!(apu_readl((void __iomem *)fm_confg_set) & BIT(5))) {
+			tempValue = apu_readl((void __iomem *)fm_cnt);
+			tempValue = tempValue & 0xFFFFF;
+			output = tempValue * 16384 / ((loop_ref + 1) * 1000);  //KHz
+		} else {
+			output = 0;
+		}
+		pr_info("%s: MNOC/UP ACC:%d\n", __func__, output);
+
+		apu_writel(BIT(4), (void __iomem *)fm_confg_clr);
+		apu_writel(BIT(1), (void __iomem *)fm_confg_clr);
+		apu_writel(BIT(0), (void __iomem *)fm_confg_clr);
+	}
+}
 #endif
 
 static int __apu_wake_rpc_rcx(struct device *dev)
@@ -293,14 +408,23 @@ static int __apu_wake_rpc_rcx(struct device *dev)
 			 (u32)(apupw.phy_addr[apu_rpc] + APU_RPC_INTF_PWR_RDY),
 			 readl(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY));
 
+#if APUPW_DUMP_FROM_APMCU
+	apu_setl(0x1 << 16, apupw.regs[apu_rpc] + APU_RPC_TOP_SEL_1);
+#else
 	apusys_pwr_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_PWR_RCX,
 			SMC_RCX_PWR_AFC_EN);
+#endif
 
+#if APUPW_DUMP_FROM_APMCU
+	apu_writel(0x00000100, apupw.regs[apu_rpc] + APU_RPC_TOP_CON);
+#else
 	/* wake up RPC */
 	apusys_pwr_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_PWR_RCX,
 			SMC_RCX_PWR_WAKEUP_RPC);
+#endif
+
 	ret = readl_relaxed_poll_timeout_atomic(
 			(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY),
 			val, (val & 0x1UL), 50, 10000);
@@ -311,6 +435,11 @@ static int __apu_wake_rpc_rcx(struct device *dev)
 					 __func__,
 					 (u32)(apupw.phy_addr[apu_rpc] + APU_RPC_PWR_ACK),
 					 readl(apupw.regs[apu_rpc] + APU_RPC_PWR_ACK));
+		/* dump are config */
+		aputop_dump_reg(apu_are, 0x0, 0x100);
+		/* dump are rcx ce */
+		aputop_dump_reg(apu_are, 0x4400, 0x400);
+
 		goto out;
 	}
 
@@ -339,10 +468,44 @@ static int __apu_wake_rpc_rcx(struct device *dev)
 		goto out;
 	}
 
+#if APUPW_DUMP_FROM_APMCU
+	apu_writel(0xFFFFFFFF, apupw.regs[apu_vcore] + APUSYS_VCORE_CG_CLR);
+	apu_writel(0xFFFFFFFF, apupw.regs[apu_rcx] + APU_RCX_CG_CLR);
+
+	mtk_clk_acc_get_rate();
+
+	dev_info(dev, "%s RCX before Spare RG 0x%x = 0x%x\n",
+		__func__,
+		(u32)(apupw.phy_addr[apu_rcx] + 0x0300),
+		readl(apupw.regs[apu_rcx] + 0x0300));
+
+	dev_info(dev, "%s RCX before Spare RG 0x%x = 0x%x\n",
+		__func__,
+		(u32)(apupw.phy_addr[apu_rcx] + 0x0304),
+		readl(apupw.regs[apu_rcx] + 0x0304));
+
+	/* access spare RG */
+	apu_writel(0x12345678, apupw.regs[apu_rcx] + 0x0300);
+	apu_writel(0x12345678, apupw.regs[apu_rcx] + 0x0304);
+
+	dev_info(dev, "%s RCX after Spare RG 0x%x = 0x%x\n",
+		__func__,
+		(u32)(apupw.phy_addr[apu_rcx] + 0x0300),
+		readl(apupw.regs[apu_rcx] + 0x0300));
+
+	dev_info(dev, "%s RCX after Spare RG 0x%x = 0x%x\n",
+		__func__,
+		(u32)(apupw.phy_addr[apu_rcx] + 0x0304),
+		readl(apupw.regs[apu_rcx] + 0x0304));
+
+	mtk_clk_acc_get_rate();
+#else
 	/* clear vcore/rcx cgs */
 	apusys_pwr_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_PWR_RCX,
 			SMC_RCX_PWR_CG_EN);
+#endif
+
 out:
 	return ret;
 }
@@ -358,9 +521,15 @@ static int mt6878_apu_top_on(struct device *dev)
 		pr_info("%s +\n", __func__);
 
 	// acquire hw sema
+#if APU_HW_SEMA_CTRL
 	apu_hw_sema_ctl(dev, APU_HW_SEMA_PWR_CTL, SYS_APMCU, 1, -1);
+#endif
 
 	ret = __apu_wake_rpc_rcx(dev);
+#if APUPW_DUMP_FROM_APMCU
+	aputop_dump_pll_data();
+	aputop_dump_acc_data();
+#endif
 	if (ret) {
 		pr_info("%s fail to wakeup RPC, ret %d\n", __func__, ret);
 		aputop_dump_pwr_reg(dev);
@@ -454,7 +623,9 @@ static int mt6878_apu_top_off(struct device *dev)
 	}
 
 	// release hw sema
+#if APU_HW_SEMA_CTRL
 	apu_hw_sema_ctl(dev, APU_HW_SEMA_PWR_CTL, SYS_APMCU, 0, -1);
+#endif
 
 	if (log_lvl)
 		pr_info("%s -\n", __func__);
@@ -510,12 +681,14 @@ static int mt6878_apu_top_func(struct platform_device *pdev,
 	pr_info("%s func_id : %d\n", __func__, aputop->func_id);
 
 	switch (aputop->func_id) {
+#if APU_POWER_BRING_UP
 	case APUTOP_FUNC_PWR_OFF:
 		pm_runtime_put_sync(&pdev->dev);
 		break;
 	case APUTOP_FUNC_PWR_ON:
 		pm_runtime_get_sync(&pdev->dev);
 		break;
+#endif
 	case APUTOP_FUNC_OPP_LIMIT_HAL:
 		mt6878_aputop_opp_limit(aputop, OPP_LIMIT_HAL);
 		break;
@@ -528,9 +701,11 @@ static int mt6878_apu_top_func(struct platform_device *pdev,
 	case APUTOP_FUNC_DRV_CFG:
 		mt6878_drv_cfg_remote_sync(aputop);
 		break;
+#if APU_POWER_BRING_UP
 	case APUTOP_FUNC_IPI_TEST:
 		test_ipi_wakeup_apu();
 		break;
+#endif
 	case APUTOP_FUNC_ARE_DUMP1:
 	case APUTOP_FUNC_ARE_DUMP2:
 #if APUPW_DUMP_FROM_APMCU

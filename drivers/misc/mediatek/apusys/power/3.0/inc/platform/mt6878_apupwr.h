@@ -16,7 +16,8 @@
 #define ENABLE_SOC_CLK_MUX	(0)	// 1: enable soc clk in rpm resume
 #define DEBUG_DUMP_REG		(0)	// dump overall apu registers for debug
 #define APMCU_REQ_RPC_SLEEP	(0)	// rpm suspend trigger sleep req to rpc
-#define APUPW_DUMP_FROM_APMCU	(0)	// 1: dump reg from APMCU, 0: from ATF
+#define APUPW_DUMP_FROM_APMCU	(1)	// 1: dump reg from APMCU, 0: from ATF
+#define APU_HW_SEMA_CTRL	(0)
 
 #define VAPU_DEF_VOLT		(750000)	// 0.75v
 
@@ -117,11 +118,11 @@ struct rpc_status_dump {
  */
 enum rcx_ao_range {
 RCX_AO_BEGIN = 0,
-	PLL_ENTRY_BEGIN = 0, //4(pll)*6(steps) = 24
-	PLL_ENTRY_END = 23,
-	ACC_ENTRY_BEGIN = 24, //26 ARE entries, ARDCM(4*4=16) + ACC(2*2+3*2=10)
-	ACC_ENTRY_END = 49,
-RCX_AO_END = 49,
+	PLL_ENTRY_BEGIN = 0, //2(pll)*6(steps) = 12
+	PLL_ENTRY_END = 11,
+	ACC_ENTRY_BEGIN = 12, //13 ARE entries, mnoc(6) + mdla (7)
+	ACC_ENTRY_END = 24,
+RCX_AO_END = 25,
 };
 
 /* SW ARE entry i = (HW are entry i) + (HW are entry i+1) */
