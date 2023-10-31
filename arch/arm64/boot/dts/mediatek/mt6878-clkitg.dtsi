@@ -21,8 +21,6 @@
 			<&topckgen_clk CLK_TOP_MSDC30_1_HCLK_SEL>,
 			<&topckgen_clk CLK_TOP_DISP_PWM_SEL>,
 			<&topckgen_clk CLK_TOP_I2C_SEL>,
-			<&topckgen_clk CLK_TOP_VENC_SEL>,
-			<&topckgen_clk CLK_TOP_VDEC_SEL>,
 			<&topckgen_clk CLK_TOP_PWM_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC_1P_RX_SEL>,
 			<&topckgen_clk CLK_TOP_SR_PKA_SEL>,
@@ -78,14 +76,7 @@
 			<&vlp_cksys_clk CLK_VLP_TIA_ULPOSC_SEL>,
 			<&mminfra_config_clk CLK_MMINFRA_GCE_D>,
 			<&mminfra_config_clk CLK_MMINFRA_GCE_M>,
-			<&mminfra_config_clk CLK_MMINFRA_GCE_26M>,
-			<&vdec_gcon_base_clk CLK_VDE2_LARB_CKEN>,
-			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN>,
-			<&vdec_gcon_base_clk CLK_VDE2_VDEC_ACTIVE>,
-			<&venc_gcon_clk CLK_VEN1_CKE0_LARB>,
-			<&venc_gcon_clk CLK_VEN1_CKE1_VENC>,
-			<&venc_gcon_clk CLK_VEN1_CKE2_JPGENC>,
-			<&venc_gcon_clk CLK_VEN1_CKE5_GALS>;
+			<&mminfra_config_clk CLK_MMINFRA_GCE_26M>;
 	};
 
 
@@ -105,18 +96,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x4>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_ISP_VCORE>;
-	};
-
-	bring-up-pd-vde0@5 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x5>;
-		power-domains = <&scpsys MT6878_POWER_DOMAIN_VDE0>;
-	};
-
-	bring-up-pd-ven0@6 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x6>;
-		power-domains = <&scpsys MT6878_POWER_DOMAIN_VEN0>;
 	};
 
 	bring-up-pd-cam-suba@8 {
