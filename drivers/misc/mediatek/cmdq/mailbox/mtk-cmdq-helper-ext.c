@@ -119,6 +119,9 @@ u32 BUF_SIZE_THRD[CMDQ_HW_MAX][CMDQ_THR_MAX_COUNT];
 u32 BUF_SIZE_MAX[CMDQ_HW_MAX];
 u32 BUF_SIZE_THRD_MAX[CMDQ_HW_MAX][CMDQ_THR_MAX_COUNT];
 
+u32 PKT_SIZE_THRD[CMDQ_HW_MAX][CMDQ_THR_MAX_COUNT];
+
+struct mutex pkt_size_mutex;
 struct workqueue_struct *cmdq_pkt_destroy_wq;
 
 struct vcp_control {
@@ -218,11 +221,11 @@ void cmdq_dump_buffer_size_seq(struct seq_file *seq)
 		seq_printf(seq, "%s hwid:%d max total buf size:%u\n", __func__, i, BUF_SIZE_MAX[i]);
 		for (j = 0; j < CMDQ_THR_MAX_COUNT; j += 4) {
 			seq_printf(seq,
-				"%s max total buf size thr%d=[%u] thr%d=[%u] thr%d=[%u] thr%d=[%u]\n",
-				__func__, j, BUF_SIZE_THRD_MAX[i][j],
-				j + 1, BUF_SIZE_THRD_MAX[i][j + 1],
-				j + 2, BUF_SIZE_THRD_MAX[i][j + 2],
-				j + 3, BUF_SIZE_THRD_MAX[i][j + 3]);
+				"%s max total buf size thr%d=[%u][%u] thr%d=[%u][%u] thr%d=[%u][%u] thr%d=[%u][%u]\n",
+				__func__, j, PKT_SIZE_THRD[i][j] , BUF_SIZE_THRD_MAX[i][j],
+				j + 1, PKT_SIZE_THRD[i][j + 1], BUF_SIZE_THRD_MAX[i][j + 1],
+				j + 2, PKT_SIZE_THRD[i][j + 2], BUF_SIZE_THRD_MAX[i][j + 2],
+				j + 3, PKT_SIZE_THRD[i][j + 3], BUF_SIZE_THRD_MAX[i][j + 3]);
 		}
 	}
 }
@@ -260,6 +263,29 @@ void cmdq_set_buffer_size(struct cmdq_client *cl, bool b)
 		BUF_SIZE[hwid]--;
 	}
 	mutex_unlock(&buffer_size_mutex);
+}
+
+void cmdq_set_pkt_size(struct cmdq_client *cl, bool b)
+{
+	s32 hwid, thd;
+
+	if (!cmdq_dump_buf_size)
+		return;
+
+	if (!cl) {
+		cmdq_msg("%s cl is null", __func__);
+		return;
+	}
+
+	hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
+	thd = (s32)cmdq_mbox_chan_id(cl->chan);
+	if (hwid < 0 || thd < 0) {
+		cmdq_err("hwid:%d thd:%d", hwid, thd);
+		return;
+	}
+	mutex_lock(&pkt_size_mutex);
+	PKT_SIZE_THRD[hwid][thd] += b ? 1 : -1;
+	mutex_unlock(&pkt_size_mutex);
 }
 
 static s8 cmdq_subsys_base_to_id(struct cmdq_base *clt_base, u32 base)
@@ -1144,6 +1170,8 @@ struct cmdq_pkt *cmdq_pkt_create(struct cmdq_client *client)
 			__func__, end[end_cnt] - start, end[0] - start,
 			end[1] - end[0], end[2] - end[1]);
 #endif
+
+	cmdq_set_pkt_size(client, true);
 	return pkt;
 }
 EXPORT_SYMBOL(cmdq_pkt_create);
@@ -1152,6 +1180,7 @@ static void cmdq_pkt_destroy_work(struct work_struct *work_item)
 {
 	struct cmdq_pkt *pkt =
 		container_of(work_item, struct cmdq_pkt, destroy_work);
+	u64 start = sched_clock(), diff;
 
 	cmdq_log("%s pkt:%p ", __func__, pkt);
 	cmdq_pkt_free_buf(pkt);
@@ -1163,6 +1192,9 @@ static void cmdq_pkt_destroy_work(struct work_struct *work_item)
 #endif
 #endif
 	kfree(pkt);
+	diff = sched_clock() - start;
+	if (diff >= 4000000) /* 4 ms*/
+		cmdq_msg("%s cost time %llu ms ", __func__, div_u64(diff, 1000000));
 }
 
 void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt)
@@ -1235,6 +1267,8 @@ void cmdq_pkt_destroy(struct cmdq_pkt *pkt)
 	diff = sched_clock() - start;
 	if (diff >= 4000000) /* 4 ms*/
 		cmdq_msg("%s cost time %llu ms ", __func__, div_u64(diff, 1000000));
+
+	cmdq_set_pkt_size(client, false);
 }
 EXPORT_SYMBOL(cmdq_pkt_destroy);
 
@@ -3969,6 +4003,7 @@ int cmdq_helper_init(void)
 		"cmdq_pkt_destroy_wq");
 
 	mutex_init(&buffer_size_mutex);
+	mutex_init(&pkt_size_mutex);
 
 	return 0;
 }
