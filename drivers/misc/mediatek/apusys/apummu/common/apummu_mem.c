@@ -265,7 +265,8 @@ static int apummu_mem_alloc_sgt(struct device *dev, struct apummu_mem *mem)
 
 	kva = vzalloc(mdbuf->dma_size);
 	if (!kva) {
-		AMMU_LOG_ERR("alloc DRAM fail\n");
+		AMMU_LOG_ERR("alloc DRAM fail, (mem size, dma size)=(0x%x, 0x%x)\n",
+			mem->size, mdbuf->dma_size);
 		ret = -ENOMEM;
 		goto free_ammu_dbuf;
 	}
