@@ -1407,12 +1407,12 @@
 
 	dfd_mcu: dfd-mcu {
 		compatible = "mediatek,dfd_mcu";
-		enabled = <0>;
+		enabled = <1>;
 		hw-version = <35>;
 		sw-version = <1>;
 		dfd-timeout = <0x7d0>; /* 1 sec */
 		buf-length = <0x100000>;
-		buf-addr-align = <0x400000>;
+		buf-addr-align = <0x1000000>;
 		buf-addr-max = <0xffffffff>;
 		nr-max-core = <8>;
 		nr-big-core = <4>;
@@ -1421,11 +1421,12 @@
 		nr-header-row = <0>;
 		chip-id-offset = <0x18>;
 		check-pattern-offset = <0>;
-		dfd-disable-efuse = <(-1) (-1)>;
+		dfd-disable-efuse = <25 12>;
+		efuse-sec-ctrl = <27 0 6>;
 		dfd_cache: dfd-cache {
 			enabled = <0>;
 			dfd-timeout = <0x4e20>; /* 60 sec */
-			buf-length = <0x800000>;
+			buf-length = <0x2000000>;
 			tap-en = <0x43ff>;
 		};
 	};
