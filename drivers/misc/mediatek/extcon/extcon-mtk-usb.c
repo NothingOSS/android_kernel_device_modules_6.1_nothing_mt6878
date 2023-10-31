@@ -233,12 +233,65 @@ static int mtk_usb_extcon_set_vbus(struct mtk_extcon_info *extcon,
 		}
 	} else {
 		regulator_disable(vbus);
+		/* Restore to default state */
+		extcon->vbus_cur_inlimit = 0;
 	}
 
 	extcon->vbus_on = is_on;
 
 	return 0;
 }
+
+static ssize_t vbus_limit_cur_show(struct device *dev,
+				   struct device_attribute *attr, char *buf)
+{
+	struct mtk_extcon_info *extcon = dev_get_drvdata(dev);
+	struct regulator *vbus = extcon->vbus;
+
+	if (!vbus)
+		return sprintf(buf, "0");
+	else
+		return sprintf(buf, "%d\n", extcon->vbus_cur_inlimit);
+}
+
+static ssize_t vbus_limit_cur_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
+	struct mtk_extcon_info *extcon = dev_get_drvdata(dev);
+	struct regulator *vbus = extcon->vbus;
+	int ret, in_limit = 0;
+	unsigned int vbus_cur = 0;
+	/* Check whether we have vbus instance */
+	if (!vbus) {
+		dev_info(dev, "No vbus instance\n");
+		return -EOPNOTSUPP;
+	}
+	if ((kstrtoint(buf, 10, &in_limit) != 0) || (in_limit != 1  && in_limit != 0)) {
+		dev_info(dev, "Invalid input\n");
+		return -EINVAL;
+	}
+
+	extcon->vbus_cur_inlimit = (in_limit == 1);
+	/* Only operate while vbus is on */
+	if (extcon->vbus_on) {
+		if (extcon->vbus_cur_inlimit && extcon->vbus_limit_cur)
+			vbus_cur = extcon->vbus_limit_cur;
+		else if (!extcon->vbus_cur_inlimit && extcon->vbus_cur)
+			vbus_cur = extcon->vbus_cur;
+	}
+	if (vbus_cur) {
+		ret = regulator_set_current_limit(vbus, vbus_cur, vbus_cur);
+		if (ret) {
+			dev_info(dev, "vbus regulator set current failed\n");
+			return -EIO;
+		}
+	} else
+		dev_info(dev, "Do not change current\n");
+	return count;
+}
+
+static DEVICE_ATTR_RW(vbus_limit_cur);
 
 static int mtk_usb_extcon_vbus_init(struct mtk_extcon_info *extcon)
 {
@@ -273,6 +326,14 @@ static int mtk_usb_extcon_vbus_init(struct mtk_extcon_info *extcon)
 	if (!of_property_read_u32(dev->of_node, "vbus-current",
 				&extcon->vbus_cur))
 		dev_info(dev, "vbus-current=%d", extcon->vbus_cur);
+	if (!of_property_read_u32(dev->of_node, "vbus-limit-current",
+				&extcon->vbus_limit_cur)) {
+		dev_info(dev, "vbus limited current=%d", extcon->vbus_limit_cur);
+		extcon->vbus_cur_inlimit = 0;
+		ret = device_create_file(dev, &dev_attr_vbus_limit_cur);
+		if (ret)
+			dev_info(dev, "failed to create vbus currnet limit control node\n");
+	}
 
 fail:
 	return ret;

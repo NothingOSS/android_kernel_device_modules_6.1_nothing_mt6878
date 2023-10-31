@@ -25,6 +25,8 @@ struct mtk_extcon_info {
 	struct gpio_desc *id_gpiod;
 	int id_irq;
 	struct delayed_work wq_detcable;
+	unsigned int vbus_limit_cur;
+	bool vbus_cur_inlimit;
 };
 
 struct usb_role_info {
