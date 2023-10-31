@@ -8937,6 +8937,12 @@
 
 	};
 
+	snd_scp_ultra: snd-scp-ultra {
+		compatible = "mediatek,snd-scp-ultra";
+		scp-ultra-dl-memif-id = <0x7>;
+		scp-ultra-ul-memif-id = <0x14>;
+	};
+
 	smart_pa: smart-pa {
 	};
 
