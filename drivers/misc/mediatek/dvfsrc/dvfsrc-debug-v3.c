@@ -894,6 +894,18 @@ static void dvfsrc_set_ceiling_ddr_opp(struct mtk_dvfsrc *dvfsrc, u32 gear)
 	}
 }
 
+static void dvfsrc_set_vcore_avs(struct mtk_dvfsrc *dvfsrc, u32 enable, u32 bit)
+{
+	u32 rsrv4;
+
+	rsrv4 = dvfsrc_read(dvfsrc, DVFSRC_RSRV_4, 0);
+
+	if (!enable)
+		dvfsrc_write(dvfsrc, DVFSRC_RSRV_4, rsrv4 | (1 << bit));
+	else
+		dvfsrc_write(dvfsrc, DVFSRC_RSRV_4, rsrv4 & ~(1 << bit));
+}
+
 static int dvfsrc_query_request_status(struct mtk_dvfsrc *dvfsrc, u32 id)
 {
 	int ret = 0;
@@ -1023,6 +1035,7 @@ const struct dvfsrc_config mt6897_dvfsrc_config = {
 	.dump_spm_cmd = dvfsrc_dump_mt6983_spm_cmd,
 	.dump_spm_timer_latch = dvfsrc_dump_mt6983_spm_timer_latch,
 	.dump_md_floor_table = dvfsrc_dump_mt6983_md_floor_table,
+	.set_vcore_avs = dvfsrc_set_vcore_avs,
 };
 
 const struct dvfsrc_config mt6989_dvfsrc_config = {
@@ -1041,4 +1054,5 @@ const struct dvfsrc_config mt6989_dvfsrc_config = {
 	.query_opp_count = dvfsrc_get_opp_count,
 	.query_opp_gear_info = dvfsrc_get_opp_gear_info,
 	.set_ddr_ceiling = dvfsrc_set_ceiling_ddr_opp,
+	.set_vcore_avs = dvfsrc_set_vcore_avs,
 };

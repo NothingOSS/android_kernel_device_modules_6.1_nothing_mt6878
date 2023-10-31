@@ -26,6 +26,7 @@ static inline u32 dvfsrc_get_required_opp_peak_bw(struct device_node *np,
 #endif /* CONFIG_MTK_DVFSRC */
 
 #if IS_ENABLED(CONFIG_MTK_DVFSRC_HELPER)
+extern int mtk_dvfsrc_set_vcore_avs(int enable);
 extern int mtk_dvfsrc_query_opp_info(u32 id);
 extern int mtk_dvfsrc_vcore_uv_table(u32 opp);
 #else

@@ -67,6 +67,7 @@ struct dvfsrc_config {
 	u32 (*query_opp_count)(struct mtk_dvfsrc *dvfsrc);
 	u32 (*query_opp_gear_info)(struct mtk_dvfsrc *dvfsrc, u32 idx);
 	void (*set_ddr_ceiling)(struct mtk_dvfsrc *dvfsrc, u32 gear);
+	void (*set_vcore_avs)(struct mtk_dvfsrc *dvfsrc, u32 enable, u32 bit);
 };
 
 struct dvfsrc_debug_data {
@@ -108,6 +109,7 @@ struct mtk_dvfsrc {
 	u32 vcore_range_step;
 	u32 vcore_range_min_uV;
 	u32 qos_mode;
+	u32 vcore_avs_enable;
 	u8 ceil_ddr_opp[CEILING_ITEM_MAX];
 	bool ceil_ddr_support;
 	bool vchk_enable;

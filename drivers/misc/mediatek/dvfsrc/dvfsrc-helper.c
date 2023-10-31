@@ -563,6 +563,33 @@ static void mtk_dvfsrc_get_perf_bw(struct mtk_dvfsrc *dvfsrc,
 	}
 }
 
+int mtk_dvfsrc_set_vcore_avs(int enable)
+{
+	struct mtk_dvfsrc *dvfsrc = dvfsrc_drv;
+	const struct dvfsrc_config *config;
+
+	if (!dvfsrc_drv)
+		return 0;
+
+	config = dvfsrc_drv->dvd->config;
+
+	switch (dvfsrc->dvd->version) {
+	case 0x6989:
+	case 0x6897:
+	case 0x6878:
+		config->set_vcore_avs(dvfsrc, enable, 3);
+	break;
+	default:
+	break;
+	}
+
+	if (!enable)
+		udelay(2000);
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_dvfsrc_set_vcore_avs);
+
 static int mtk_dvfsrc_debug_setting(struct mtk_dvfsrc *dvfsrc)
 {
 	struct device_node *np = dvfsrc->dev->of_node;
