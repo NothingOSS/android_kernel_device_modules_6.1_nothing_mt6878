@@ -15276,6 +15276,10 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_enable = false;
 	}
 
+	DDPINFO("final partial roi: (%d,%d,%d,%d), pu_en: (%d)(%d)\n",
+		partial_roi.x, partial_roi.y, partial_roi.width,
+		partial_roi.height, enable, partial_enable);
+
 	state->ovl_partial_roi = partial_roi;
 
 	/* set ovl_partial_dirty if roi is full lcm */
@@ -15322,7 +15326,6 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		if (mtk_ddp_comp_get_type(comp->id) != MTK_DISP_RSZ)
 			mtk_ddp_comp_partial_update(comp, cmdq_handle, partial_roi, partial_enable);
 	}
-
 
 	dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
 	mtk_ddp_comp_partial_update(dsc_comp, cmdq_handle, partial_roi, partial_enable);

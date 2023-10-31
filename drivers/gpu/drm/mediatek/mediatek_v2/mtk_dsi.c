@@ -9595,7 +9595,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		/*Msync 2.0*/
 		/*leave idle need keep msync status*/
-		if (mtk_drm_helper_get_opt(priv->helper_opt,
+		if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
 					   MTK_DRM_OPT_MSYNC2_0)
 			&& panel_ext && panel_ext->params
 			&& panel_ext->params->msync2_enable) {
@@ -10638,6 +10638,9 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
+	cmdq_pkt_wfe(handle,
+		crtc->gce_obj.event[EVENT_CABC_EOF]);
+
 	if (comp->id == DDP_COMPONENT_DSI0) {
 		dsi->set_partial_update = enable;
 		dsi->roi_y_offset = partial_roi.y;
@@ -10685,6 +10688,9 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 			mtk_crtc_get_height_by_comp(__func__, &crtc->base,
 				comp, true));
 	}
+
+	cmdq_pkt_set_event(handle,
+		crtc->gce_obj.event[EVENT_CABC_EOF]);
 
 	return 0;
 }
