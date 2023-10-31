@@ -5297,6 +5297,14 @@
 			nvmem-cells = <&efuse_segment>;
 			nvmem-cell-names = "efuse_seg_disp_cell";
 
+			default-emi-eff = <8800>;
+			emi-eff-lp4-table =
+				<2074 4182 5401 7658 6935 8689 7357 9013
+				7780 8963 7919 8682 8095 8803 7821 8611>;
+			emi-eff-lp5-table =
+				<2808 3994 5389 6701 6887 8137 7453 8088
+				7434 8012 7437 7830 7420 7844 7311 7757>;
+
 			/* define threads, see mt6878-gce.h */
 			mediatek,mailbox-gce = <&gce>;
 			mboxes = <&gce 0 0 CMDQ_THR_PRIO_4>,
@@ -5555,7 +5563,7 @@
 				<0>, /*MTK_DRM_OPT_VIDLE_DSI_PLL_OFF*/
 				<0>, /*MTK_DRM_OPT_CHECK_TRIGGER_MERGE*/
 				<0>, /*MTK_DRM_OPT_VIRTUAL_DISP*/
-				<0>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
+				<1>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
 				<0>, /*MTK_DRM_OPT_GPU_CACHE*/
 				<1>, /*MTK_DRM_OPT_SPHRT*/
 				<0>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
