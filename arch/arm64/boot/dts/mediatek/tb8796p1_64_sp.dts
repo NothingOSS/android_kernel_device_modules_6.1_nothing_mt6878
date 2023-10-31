@@ -522,6 +522,66 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	};
 };
 
+&spi6 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	pinctrl-names = "default","nt36532_spi_mode","nt36532_spi_lowpower_mode";
+	pinctrl-0 = <&ctp_nt36532_pins_default>;
+	pinctrl-1 = <&ctp_nt36532_spi_mode>;
+	pinctrl-2 = <&ctp_nt36532_spi_lowpower_mode>;
+
+	novatek@0 {
+		compatible = "novatek,NVT-ts-spi";
+		reg = <0>; //Same as CS ID
+		status = "ok";
+
+		pinctrl-names ="nt36532_touch_lowpower_mode";
+		pinctrl-0 = <&touch_pin_sleep>;
+
+		spi-max-frequency = <4800000>; //4800000,9600000,15000000,19200000
+		novatek,reset-gpio = <&pio 3 0x00>;
+		novatek,irq-gpio = <&pio 4 0x2001>;
+		novatek,pen-support;
+		novatek,stylus-resol-double;
+	};
+};
+
+&pio {
+	ctp_nt36532_pins_default: pins-default {
+	};
+	ctp_nt36532_spi_mode: spimode-default {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO231__FUNC_SPI6_B_CLK>,
+				 <PINMUX_GPIO232__FUNC_SPI6_B_CSB>,
+				 <PINMUX_GPIO233__FUNC_SPI6_B_MO>,
+				 <PINMUX_GPIO234__FUNC_SPI6_B_MI>;
+			drive-strength = <7>;
+		};
+	};
+
+	ctp_nt36532_spi_lowpower_mode: spi-sleepmode-default {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO231__FUNC_GPIO231>,
+				 <PINMUX_GPIO232__FUNC_GPIO232>,
+				 <PINMUX_GPIO233__FUNC_GPIO233>,
+				 <PINMUX_GPIO234__FUNC_GPIO234>;
+				 input-enable;
+				 bias-disable;
+		};
+	};
+
+	touch_pin_sleep: touch-pin-sleep {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO3__FUNC_GPIO3>,
+				 <PINMUX_GPIO4__FUNC_GPIO4>;
+				 input-enable;
+				 bias-disable;
+		};
+	};
+};
+
 &sound {
 	mediatek,spk-i2s = <25 24>;
 	mediatek,speaker-codec {
@@ -539,6 +599,5 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 
 #include <tb8796p1_64_sp/cust.dtsi>
 #include "mediatek/cust_k6989_connfem.dtsi"
-#include "mediatek/cust_mt6989_touch_1080x2400_mult.dtsi"
 #include "mediatek/cust_mt6989_camera_v4l2.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/
