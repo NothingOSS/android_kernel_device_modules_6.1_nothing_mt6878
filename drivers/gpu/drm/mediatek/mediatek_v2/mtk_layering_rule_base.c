@@ -3059,6 +3059,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 	static u32 last_mml_ir_lye;
 	bool exclusive_chance = false;
 	u32 rpo_comp = 0, mml_comp = 0;
+	int rpo_idx = 0, mml_idx = 0;
 	unsigned int *comp_id_list = NULL, comp_id_nr;
 	struct mtk_drm_private *priv = drm_dev->dev_private;
 
@@ -3158,15 +3159,18 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 		}
 
 		if (mtk_has_layer_cap(layer_info, MTK_MML_DISP_DIRECT_DECOUPLE_LAYER |
-						  MTK_MML_DISP_DIRECT_LINK_LAYER))
+						  MTK_MML_DISP_DIRECT_LINK_LAYER)) {
 			mml_comp = comp_state.comp_id;
-		else if (mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER))
+			mml_idx = i;
+		} else if (mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER)) {
 			rpo_comp = comp_state.comp_id;
+			rpo_idx = i;
+		}
 
 		if (mml_comp && (mml_comp == rpo_comp)) {
 			if (exclusive_chance && (mml_comp != comp_id_list[comp_id_nr - 1]) &&
 				(priv->data->mmsys_id != MMSYS_MT6897) &&
-				(priv->data->mmsys_id != MMSYS_MT6989)) {
+				(mml_idx < rpo_idx)) {
 				DDPMSG("MML RPO use the same OVL, got exclusive_chance\n");
 				layer_map |= (layer_map_idx << 1);
 				i--;
