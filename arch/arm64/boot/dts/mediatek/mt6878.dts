@@ -1307,6 +1307,7 @@
 				monitor-name = "debug_ctrl_ao_INFRA_AO";
 				base = <0x10023000>;
 				num-ports = <54>;
+				idle-masks = <0x0c 0x00040000>;
 				bus-status-offset = <0x1c>;
 				bus-status-num = <7>;
 				bus-freq-mhz = <78>;
