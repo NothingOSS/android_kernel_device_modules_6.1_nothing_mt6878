@@ -15,6 +15,7 @@
 #include "scp.h"
 #include "mtk_log.h"
 #include "mtk_drm_crtc.h"
+#include "mtk_disp_oddmr/mtk_disp_oddmr.h"
 
 struct aod_scp_ipi_receive_info {
 	unsigned int aod_id;
@@ -617,8 +618,10 @@ static int aod_scp_resume(struct device *dev)
 
 static int aod_scp_suspend_noirq(struct device *dev)
 {
-	if (AOD_STAT_MATCH(AOD_STAT_ACTIVE))
+	if (AOD_STAT_MATCH(AOD_STAT_ACTIVE)) {
 		mtk_aod_scp_ipi_send(0);
+		mtk_oddmr_scp_status(1);
+	}
 
 	mtk_aod_scp_set_semaphore_noirq(0);
 	return 0;
@@ -628,6 +631,9 @@ static int aod_scp_resume_noirq(struct device *dev)
 {
 	if (mtk_aod_scp_set_semaphore_noirq(1) == 0)
 		DDPAEE("[AOD]:failed to get semaphore\n");
+	else
+		mtk_oddmr_scp_status(0);
+
 	return 0;
 }
 
