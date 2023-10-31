@@ -22,7 +22,6 @@
 #include <linux/atomic.h>
 #include <asm/cacheflush.h>
 #include <linux/io.h>
-
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
 #include <linux/list.h>
@@ -30,6 +29,7 @@
 #include <linux/hardirq.h>
 #include <linux/sched.h>
 #include <linux/debugfs.h>
+#include <linux/proc_fs.h>
 
 #include <linux/ftrace.h>
 #include <linux/trace_events.h>
@@ -1463,6 +1463,13 @@ static struct dentry *g_p_debug_fs_global;
 static struct dentry *g_p_debug_fs_reset;
 static struct dentry *g_p_debug_fs_enable;
 
+static struct proc_dir_entry *g_p_proc_dir;
+static struct proc_dir_entry *g_p_proc_start;
+static struct proc_dir_entry *g_p_proc_buffer;
+static struct proc_dir_entry *g_p_proc_global;
+static struct proc_dir_entry *g_p_proc_reset;
+static struct proc_dir_entry *g_p_proc_enable;
+
 static ssize_t mmprofile_dbgfs_reset_write(struct file *file,
 	const char __user *buf, size_t size, loff_t *ppos)
 {
@@ -1619,6 +1626,37 @@ static const struct file_operations mmprofile_dbgfs_global_fops = {
 
 
 /* Debug FS end */
+
+
+static const struct proc_ops mmprofile_proc_enable_fops = {
+	.proc_read = mmprofile_dbgfs_enable_read,
+	.proc_write = mmprofile_dbgfs_enable_write,
+	.proc_lseek = generic_file_llseek,
+};
+
+static const struct proc_ops mmprofile_proc_start_fops = {
+	.proc_read = mmprofile_dbgfs_start_read,
+	.proc_write = mmprofile_dbgfs_start_write,
+	.proc_lseek = generic_file_llseek,
+};
+
+static const struct proc_ops mmprofile_proc_reset_fops = {
+	.proc_write = mmprofile_dbgfs_reset_write,
+	.proc_lseek = generic_file_llseek,
+};
+
+static const struct proc_ops mmprofile_proc_buffer_fops = {
+	.proc_read = mmprofile_dbgfs_buffer_read,
+	.proc_lseek = generic_file_llseek,
+};
+
+static const struct proc_ops mmprofile_proc_global_fops = {
+	.proc_read = mmprofile_dbgfs_global_read,
+#ifdef MMP_USE
+	.proc_write = mmprofile_dbgfs_global_write,
+#endif
+	.proc_lseek = generic_file_llseek,
+};
 
 static char cmd_buf[128];
 static void process_dbg_cmd(char *cmd)
@@ -2395,6 +2433,33 @@ static int mmprofile_probe(void)
 				&mmprofile_dbgfs_reset_fops);
 	}
 
+	g_p_proc_dir = proc_mkdir("mmprofile", NULL);
+	if (g_p_proc_dir) {
+		/* Create proc files. */
+		g_p_proc_enable =
+		    proc_create("enable", 0600,
+				g_p_proc_dir,
+				&mmprofile_proc_enable_fops);
+		g_p_proc_start =
+		    proc_create("start", 0600,
+				g_p_proc_dir,
+				&mmprofile_proc_start_fops);
+		g_p_proc_buffer =
+		    proc_create("buffer", 0400,
+				g_p_proc_dir,
+				&mmprofile_proc_buffer_fops);
+		g_p_proc_global =
+		    proc_create("global", 0400,
+				g_p_proc_dir,
+				&mmprofile_proc_global_fops);
+		g_p_proc_reset =
+		    proc_create("reset", 0200,
+				g_p_proc_dir,
+				&mmprofile_proc_reset_fops);
+	}
+
+
+
 	mmp_dev = kzalloc(sizeof(*mmp_dev), GFP_KERNEL);
 	if (!mmp_dev)
 		return -ENOMEM;
@@ -2422,6 +2487,14 @@ static int mmprofile_remove(void)
 	debugfs_remove(g_p_debug_fs_global);
 	debugfs_remove(g_p_debug_fs_buffer);
 	debugfs_remove(g_p_debug_fs_reset);
+
+	proc_remove(g_p_proc_dir);
+	proc_remove(g_p_proc_enable);
+	proc_remove(g_p_proc_start);
+	proc_remove(g_p_proc_global);
+	proc_remove(g_p_proc_buffer);
+	proc_remove(g_p_proc_reset);
+
 	return 0;
 }
 
