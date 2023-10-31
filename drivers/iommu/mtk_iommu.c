@@ -392,7 +392,7 @@ static const struct mtk_iommu_iova_region mt6878_multi_dom_mm[] = {
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL},		/* 1.LK_RESV:32MB */
 	{ .iova_base = 0x108000000ULL, .size = SZ_64M, .type = PROTECTED},	/* 2.CCU0:64MB */
 	{ .iova_base = 0x10C000000ULL, .size = SZ_64M, .type = PROTECTED},	/* 3.CCU1:64MB */
-	{ .iova_base = 0x110000000ULL, .size = 0x60000000, .type = NORMAL},	/* 4.VDO_UP:1.5GB */
+	{ .iova_base = 0x110000000ULL, .size = 0x60000000, .type = PROTECTED},	/* 4.VDO_UP:1.5GB */
 	{ .iova_base = 0x170000000ULL, .size = 0x90000000, .type = NORMAL},	/* 5.VDEC:2.25GB */
 };
 
