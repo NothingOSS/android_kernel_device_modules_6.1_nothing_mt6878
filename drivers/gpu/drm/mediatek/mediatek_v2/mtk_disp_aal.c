@@ -2403,7 +2403,7 @@ static void disp_aal_single_pipe_hist_update(struct mtk_ddp_comp *comp, unsigned
 			}
 		}
 	} else {
-		AALERR("comp %d hist not retrieved\n", comp->id);
+		AALIRQ_LOG("comp %d hist not retrieved\n", comp->id);
 		CRTC_MMP_MARK(0, aal_dre20_rh, comp->id, 0xEE);
 	}
 	CRTC_MMP_MARK(0, aal_dre20_rh, comp->id, 3);

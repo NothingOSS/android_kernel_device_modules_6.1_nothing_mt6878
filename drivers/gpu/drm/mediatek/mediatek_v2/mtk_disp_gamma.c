@@ -175,6 +175,7 @@ static bool disp_gamma_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 	switch (cmd_type) {
 	case GAMMA_USERSPACE:
 		primary_data->table_out_sel = primary_data->table_config_sel;
+		cmdq_pkt_refinalize(cmdq_handle);
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_mbox_stop(client);
 		cmdq_mbox_disable(client->chan);
