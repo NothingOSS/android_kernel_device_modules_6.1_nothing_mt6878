@@ -269,6 +269,8 @@ static unsigned int g_tb_dvfs_margin_mode = DYNAMIC_TB_MASK | DYNAMIC_TB_PERF_MO
 static int g_loading_slide_window_size_cmd;
 static int g_fallback_idle;
 static int g_last_commit_type;
+static int g_last_commit_api_flag;
+static unsigned long g_last_commit_before_api_boost;
 
 static void ged_dvfs_early_force_fallback(struct GpuUtilization_Ex *Util_Ex)
 {
@@ -850,6 +852,10 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		g_ulCommitFreq = ged_get_freq_by_idx(ui32NewFreqID);
 		ged_commit_freq = ui32NewFreq;
 		ged_commit_opp_freq = ged_get_freq_by_idx(ui32NewFreqID);
+		g_last_commit_api_flag = api_sync_flag;
+		// record commit freq ID if api boost disable
+		if (api_sync_flag == 0)
+			g_last_commit_before_api_boost = ui32NewFreqID;
 
 		/* do change */
 		if (ui32NewFreqID != ui32CurFreqID || dcs_get_setting_dirty()) {
@@ -973,6 +979,10 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	g_ulCommitFreq = ged_get_freq_by_idx(stackNewFreqID);
 	ged_commit_freq = ui32NewFreq;
 	ged_commit_opp_freq = ged_get_freq_by_idx(stackNewFreqID);
+	g_last_commit_api_flag = api_sync_flag;
+	// record commit freq ID if api boost disable
+	if (api_sync_flag == 0)
+		g_last_commit_before_api_boost = stackNewFreqID;
 
 	/* do change, top change or stack change */
 	if (stackNewFreqID != ui32CurFreqID ||
@@ -2389,6 +2399,12 @@ static bool ged_dvfs_policy(
 			t_gpu_target_hd, t_gpu_complete, t_gpu_uncomplete);
 		trace_tracing_mark_write(5566, "t_gpu", t_gpu);
 		trace_tracing_mark_write(5566, "t_gpu_target", t_gpu_target);
+
+		// set cur freq back to before api boost
+		if (g_last_commit_api_flag == 1 && api_sync_flag == 0) {
+			ui32GPUFreq = g_last_commit_before_api_boost;
+			i32NewFreqID = ui32GPUFreq;
+		}
 
 		/* bound update */
 		if (init == 0) {
