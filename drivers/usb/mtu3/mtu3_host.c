@@ -26,6 +26,11 @@
 #define UWK_V1_3_CTRL0_MASK	0x3
 #define UWK_V1_3_CTRL2_MASK	0x699
 
+/* mt6878 etc */
+/* bit0: IP_SLEEP */
+/* bit2: LINESTATE */
+#define UWK_V1_5_CTRL2_MASK	0x5
+
 /* mt8173 etc */
 #define PERI_WK_CTRL1	0x4
 #define WC1_IS_C(x)	(((x) & 0xf) << 26)  /* cycle debounce */
@@ -54,6 +59,7 @@ enum ssusb_uwk_vers {
 	SSUSB_UWK_V1_2,		/* specific revision 1.02 */
 	SSUSB_UWK_V1_3,		/* specific revision 1.03 */
 	SSUSB_UWK_V1_4,		/* specific revision 1.04 */
+	SSUSB_UWK_V1_5,		/* specific revision 1.05 */
 };
 
 /*
@@ -93,6 +99,11 @@ static void ssusb_wakeup_ip_sleep_set(struct ssusb_mtk *ssusb, bool enable)
 	case SSUSB_UWK_V1_4:
 		reg = ssusb->uwk_reg_base + PERI_WK_CTRL3;
 		msk = UWK_V1_4_CTRL0_MASK;
+		val = enable ? msk : 0;
+		break;
+	case SSUSB_UWK_V1_5:
+		reg = ssusb->uwk_reg_base + PERI_WK_CTRL2;
+		msk = UWK_V1_5_CTRL2_MASK;
 		val = enable ? msk : 0;
 		break;
 	case SSUSB_UWK_V2:
