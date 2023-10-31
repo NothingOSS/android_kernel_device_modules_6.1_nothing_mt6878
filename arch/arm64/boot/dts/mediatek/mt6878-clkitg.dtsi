@@ -55,10 +55,7 @@
 			<&imp_iic_wrap_w_s_clk CLK_IMP_W_S_I3C7_W1S>,
 			<&imp_iic_wrap_w_s_clk CLK_IMP_W_S_I3C8_W1S>,
 			<&imp_iic_wrap_w_s_clk CLK_IMP_W_S_SEC_EN_W1S>,
-			<&vlp_cksys_clk CLK_VLP_TIA_ULPOSC_SEL>,
-			<&mminfra_config_clk CLK_MMINFRA_GCE_D>,
-			<&mminfra_config_clk CLK_MMINFRA_GCE_M>,
-			<&mminfra_config_clk CLK_MMINFRA_GCE_26M>;
+			<&vlp_cksys_clk CLK_VLP_TIA_ULPOSC_SEL>;
 	};
 
 
