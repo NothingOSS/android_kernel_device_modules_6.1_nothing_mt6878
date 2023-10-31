@@ -67,6 +67,7 @@ enum {
 	VMM_SPM_MT6886,
 	VMM_SPM_7S,
 	VMM_SPM_7SP,
+	VMM_SPM_MT6878,
 
 	VMM_SPM_MAX,
 };
@@ -104,6 +105,14 @@ static const struct vmm_spm_reg_info spm_reg_tbl[VMM_SPM_MAX] = {
 		.iso_din_bit = 21,
 		.latch_en_bit = 22,
 	},
+	[VMM_SPM_MT6878] = {
+		.iso_con_status = 0xF28,
+		.iso_con_set = 0xF2C,
+		.iso_con_clr = 0xF30,
+		.ext_iso_bit = 24,
+		.iso_din_bit = 25,
+		.latch_en_bit = 26,
+	}
 };
 
 static void vmm_dump_spm_sem_reg(void __iomem *base)
@@ -428,6 +437,8 @@ static int vmm_spm_probe(struct platform_device *pdev)
 		spm_ver = VMM_SPM_7S;
 	else if (of_device_is_compatible(dev->of_node, "mediatek,vmm_spm_mt6886"))
 		spm_ver = VMM_SPM_MT6886;
+	else if (of_device_is_compatible(dev->of_node, "mediatek,vmm_spm_mt6878"))
+		spm_ver = VMM_SPM_MT6878;
 	else
 		spm_ver = VMM_SPM_DEFAULT;
 
@@ -451,6 +462,9 @@ static const struct of_device_id of_vmm_spm_match_tbl[] = {
 	},
 	{
 		.compatible = "mediatek,vmm_spm_mt6886",
+	},
+	{
+		.compatible = "mediatek,vmm_spm_mt6878",
 	},
 	{}
 };
