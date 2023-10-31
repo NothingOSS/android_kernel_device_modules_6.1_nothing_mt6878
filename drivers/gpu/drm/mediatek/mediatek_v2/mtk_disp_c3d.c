@@ -209,17 +209,14 @@ static bool disp_c3d_write_sram(struct mtk_ddp_comp *comp, int cmd_type)
 	case C3D_USERSPACE:
 		cmdq_pkt_refinalize(cmdq_handle);
 		cmdq_pkt_flush(cmdq_handle);
-		if (async == false) {
-			cmdq_mbox_stop(client);
+		if (async == false)
 			cmdq_mbox_disable(client->chan);
-		}
 		break;
 
 	case C3D_PREPARE:
 		cmdq_pkt_refinalize(cmdq_handle);
 		if (async == false) {
 			cmdq_pkt_flush(cmdq_handle);
-			cmdq_mbox_stop(client);
 			cmdq_mbox_disable(client->chan);
 		} else {
 			int ret = 0;
