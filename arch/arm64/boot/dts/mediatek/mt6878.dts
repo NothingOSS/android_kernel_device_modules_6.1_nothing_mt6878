@@ -1920,6 +1920,7 @@
 	mminfra_config_clk: syscon@1e800000 {
 		compatible = "mediatek,mt6878-mminfra_config", "syscon";
 		reg = <0 0x1e800000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
