@@ -666,9 +666,11 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 			cmdq_thread_dump(cfg->path[0]->clt->chan, task->pkts[0], NULL, NULL);
 	}
 
+	mml_clock_lock(cfg->mml);
 	call_hw_op(path->mmlsys, mminfra_pw_enable);
 	call_hw_op(path->mmlsys, pw_enable);
 	mml_dpc_exc_keep(cfg->mml);
+	mml_clock_unlock(cfg->mml);
 
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
@@ -677,9 +679,11 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 
 	mtk_smi_dbg_dump_for_mml();
 
+	mml_clock_lock(cfg->mml);
 	call_hw_op(path->mmlsys, pw_disable);
 	call_hw_op(path->mmlsys, mminfra_pw_disable);
 	mml_dpc_exc_release(cfg->mml);
+	mml_clock_unlock(cfg->mml);
 }
 
 static s32 core_enable(struct mml_task *task, u32 pipe)
