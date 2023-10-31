@@ -32,7 +32,6 @@
 #define SKIP_SB_DSP
 #define SKIP_SB_BTCVSD
 #define SKIP_SB_OFFLOAD
-#define SKIP_SB_VOW
 #define SKIP_SMCC_SB
 #define SKIP_SB_USB_OFFLOAD
 #endif
@@ -598,7 +597,6 @@ struct mt6878_afe_private {
 	int mtkaif_dmic;
 	int mtkaif_dmic_ch34;
 	int mtkaif_adda6_only;
-	unsigned int audio_r_miso1_enable;
 	/* add for vs1 voter */
 	/* adda dl/ul is on */
 	bool is_adda_dl_on;

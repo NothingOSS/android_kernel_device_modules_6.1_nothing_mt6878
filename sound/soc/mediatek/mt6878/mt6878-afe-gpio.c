@@ -120,23 +120,26 @@ static int mt6878_afe_gpio_adda_dl(struct mtk_base_afe *afe, bool enable)
 
 static int mt6878_afe_gpio_adda_ul(struct mtk_base_afe *afe, bool enable)
 {
-	struct mt6878_afe_private *afe_priv = afe->platform_priv;
+	int ret = 0;
 
-	if (enable) {
-		if (afe_priv->audio_r_miso1_enable == 1) {
-			return mt6878_afe_gpio_select(afe, MT6878_AFE_GPIO_DAT_MISO1_ON);
-		} else {
-			return mt6878_afe_gpio_select(afe,
-						      MT6878_AFE_GPIO_DAT_MISO0_ON);
-		}
-	} else {
-		if (afe_priv->audio_r_miso1_enable == 1) {
-			return mt6878_afe_gpio_select(afe, MT6878_AFE_GPIO_DAT_MISO1_OFF);
-		} else {
-			return mt6878_afe_gpio_select(afe,
-						      MT6878_AFE_GPIO_DAT_MISO0_OFF);
-		}
+	ret = mt6878_afe_gpio_select(afe, enable ?
+				     MT6878_AFE_GPIO_DAT_MISO0_ON :
+				     MT6878_AFE_GPIO_DAT_MISO0_OFF);
+	/* if error happened, skip miso1 select */
+	if (ret) {
+		dev_info(afe->dev, "%s(), error, can not set enable %d miso gpio\n",
+			 __func__, enable);
+		return ret;
 	}
+
+	ret = mt6878_afe_gpio_select(afe, enable ?
+				     MT6878_AFE_GPIO_DAT_MISO1_ON :
+				     MT6878_AFE_GPIO_DAT_MISO1_OFF);
+	if (ret)
+		dev_info(afe->dev, "%s(), error, can not set enable %d miso1 gpio\n",
+			 __func__, enable);
+
+	return ret;
 }
 
 
