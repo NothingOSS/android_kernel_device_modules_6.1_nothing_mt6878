@@ -90,6 +90,9 @@
 			    8250.nr_uarts=3\
 			    androidboot.hardware=mt6878 \
 			    vmalloc=400M swiotlb=noforce \
+			    transparent_hugepage=never \
+			    cgroup.memory=nosocket,nokmem \
+			    disable_dma32=on \
 			    firmware_class.path=/vendor/firmware ";
 		kaslr-seed = <0 0>;
 	};
