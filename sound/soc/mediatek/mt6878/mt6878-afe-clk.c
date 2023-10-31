@@ -443,6 +443,8 @@ void mt6878_afe_disable_clock(struct mtk_base_afe *afe)
 
 	mt6878_set_audio_int_bus_parent(afe, CLK_CLK26M);
 	clk_disable_unprepare(afe_priv->clk[CLK_MUX_AUDIOINTBUS]);
+	mt6878_set_audio_h_parent(afe, CLK_CLK26M);
+	clk_disable_unprepare(afe_priv->clk[CLK_TOP_MUX_AUDIO_H]);
 
 	/* IPM2.0: Use HOPPING & 26M */
 	clk_disable_unprepare(afe_priv->clk[CLK_HOPPING]);
