@@ -13357,7 +13357,7 @@
 		interconnect-names = "icc-bw";
 		required-opps = <&dvfsrc_freq_opp0>;
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-		vcore = <825000>;
+		vcore = <725000>;
 		usb-audio;
 		small-core = <1250000>;
 	};
