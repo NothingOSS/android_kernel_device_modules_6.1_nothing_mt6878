@@ -11,7 +11,6 @@
 		reg = <0>;
 		clocks =
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
-			<&topckgen_clk CLK_TOP_MMUP_SEL>,
 			<&topckgen_clk CLK_TOP_DISP_PWM_SEL>,
 			<&topckgen_clk CLK_TOP_PWM_SEL>,
 			<&topckgen_clk CLK_TOP_SR_PKA_SEL>,
@@ -50,12 +49,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0xe>;
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_MM_INFRA>;
-	};
-
-	bring-up-pd-mm-proc-dormant@f {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0xf>;
-		power-domains = <&scpsys MT6878_POWER_DOMAIN_MM_PROC_DORMANT>;
 	};
 
 	bring-up-pd-ssrsys@11 {

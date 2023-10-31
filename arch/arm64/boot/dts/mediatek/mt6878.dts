@@ -8727,7 +8727,7 @@
 
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&disp_iommu M4U_L41_VIDEO_UP>;
-			/*mediatek,smi = <&mminfra_smi_3x1_sub_comm>;*/
+			mediatek,smi = <&mminfra_smi_3x1_sub_comm>;
 
 			core-0 = "enable";
 			vcp-hwvoter = "disable";
@@ -8735,8 +8735,8 @@
 			vcp-dram-size = <0x00800000>;
 			core-nums = <1>;	/* core number */
 			twohart = <1>;		/* two hart arch */
-			femter-ck = <7>;	/* clk table fmeter f_fmmup_ck */
-			femter-type = <2>;	/* fmeter type */
+			fmeter-ck = <7>;	/* clk table fmeter f_fmmup_ck */
+			fmeter-type = <2>;	/* fmeter type */
 			mbox-count = <5>;
 			vcp-ee-enable = <0>;
 			bus-debug-num-ports = <13>;
