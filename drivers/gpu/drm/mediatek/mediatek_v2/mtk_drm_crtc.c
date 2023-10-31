@@ -13284,11 +13284,13 @@ static void mtk_crtc_spr_switch_cfg(struct mtk_drm_crtc *mtk_crtc, struct cmdq_p
 			mtk_ddp_comp_config(spr1_comp, &cfg, cmdq_handle);
 		}
 
-		if (mtk_crtc->spr_is_on == 0)
-			s2r_bypass = true;
-		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
-			if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR))
-				mtk_ddp_comp_io_cmd(comp, cmdq_handle, BYPASS_SPR2RGB, &s2r_bypass);
+		if (params->spr_params.postalign_en == 0) {
+			if (mtk_crtc->spr_is_on == 0)
+				s2r_bypass = true;
+			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+				if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR))
+					mtk_ddp_comp_io_cmd(comp, cmdq_handle, BYPASS_SPR2RGB, &s2r_bypass);
+		}
 	}
 }
 
