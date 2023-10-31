@@ -3343,7 +3343,7 @@ static const struct mtk_pll_data apmixed_plls[] = {
 		APLL2_CON0, 0, 0/*en*/,
 		APLL2_CON4/*pwr*/, 0, BIT(0)/*rstb*/,
 		APLL2_CON1, 24/*pd*/,
-		APLL2_TUNER_CON0, AP_PLL_CON3, 5/*tuner*/,
+		APLL2_TUNER_CON0, AP_PLL_CON3, 1/*tuner*/,
 		APLL2_CON2, 0, 32/*pcw*/),
 	PLL(CLK_APMIXED_MPLL, "mpll", MPLL_CON0/*base*/,
 		MPLL_CON0, 0, 0/*en*/,
