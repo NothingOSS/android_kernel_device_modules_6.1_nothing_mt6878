@@ -172,13 +172,11 @@ enum ADSP_MI_SELECT {
 #define CAM_START_ADDR				(0x1a000000)
 #define CAM_END_ADDR				(0x1BFFFFFF)
 #define CODEC_START_ADDR			(0x16000000)
-#define CODEC_END_ADDR				(0x1786FFFF)
+#define CODEC_END_ADDR				(0x17FFFFFF)
 #define DISP_START_ADDR				(0x14000000)
 #define DISP_END_ADDR				(0x143FFFFF)
-#define OVL_START_ADDR				(0x14400000)
-#define OVL_END_ADDR				(0x147FFFFF)
 #define MML_START_ADDR				(0x1F000000)
-#define MML_END_ADDR				(0x1FFFFFFF)
+#define MML_END_ADDR				(0x1F7FFFFF)
 
 /* For GPU Bus Parser */
 #define GPU_PD_START				(0xC00000)

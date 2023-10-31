@@ -64,6 +64,9 @@ static const struct INFRAAXI_ID_INFO infra_mi_id_to_master[] = {
 	{"INFRA_BUS_HRE_M@APB", { 0, 0, 0, 0, 0, 1, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0 } },
 	{"MCU_AP_M",            { 1, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0 } },
 	{"MM2SLB1_M",           { 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0 } },
+	{"HFRP2INFRA_M",        { 0, 1, 0, 1, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0 } },
+	{"GCE_D_M",             { 0, 1, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
+	{"GCE_M_M",             { 0, 1, 1, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
 	{"MD_AP_M",             { 1, 1, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
 };
 
@@ -160,11 +163,11 @@ static const char *mt6878_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 			else if ((bus_id & 0xf) == 0x3)
 				return "MMINFRA_HRE";
 			else if ((bus_id & 0xf) == 0x5)
-				return "HFRP";
-			else if ((bus_id & 0xf) == 0x7)
 				return "GCED";
-			else if ((bus_id & 0xf) == 0x9)
+			else if ((bus_id & 0xf) == 0x7)
 				return "GCEM";
+			else if ((bus_id & 0xf) == 0x9)
+				return "HFRP";
 			else
 				return mminfra_domain[domain];
 		/* VENC/VDEC slave*/
@@ -176,16 +179,15 @@ static const char *mt6878_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 			else if ((bus_id & 0xf) == 0x3)
 				return "MMINFRA_HRE";
 			else if ((bus_id & 0xf) == 0x5)
-				return "HFRP";
-			else if ((bus_id & 0xf) == 0x7)
 				return "GCED";
-			else if ((bus_id & 0xf) == 0x9)
+			else if ((bus_id & 0xf) == 0x7)
 				return "GCEM";
+			else if ((bus_id & 0xf) == 0x9)
+				return "HFRP";
 			else
 				return mminfra_domain[domain];
-		/* DISP/OVL/MML */
+		/* DISP/MML */
 		} else if (((vio_addr >= DISP_START_ADDR) && (vio_addr <= DISP_END_ADDR)) ||
-			((vio_addr >= OVL_START_ADDR) && (vio_addr <= OVL_END_ADDR)) ||
 			((vio_addr >= MML_START_ADDR) && (vio_addr <= MML_END_ADDR))) {
 			if ((bus_id & 0x1) == 0x0)
 				return "GCED_direct";
@@ -194,11 +196,11 @@ static const char *mt6878_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 			else if ((bus_id & 0xf) == 0x3)
 				return "MMINFRA_HRE";
 			else if ((bus_id & 0xf) == 0x5)
-				return "HFRP";
-			else if ((bus_id & 0xf) == 0x7)
 				return "GCED";
-			else if ((bus_id & 0xf) == 0x9)
+			else if ((bus_id & 0xf) == 0x7)
 				return "GCEM";
+			else if ((bus_id & 0xf) == 0x9)
+				return "HFRP";
 			else
 				return mminfra_domain[domain];
 		/* other mminfra slave*/
@@ -208,11 +210,11 @@ static const char *mt6878_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 			else if ((bus_id & 0x7) == 0x1)
 				return "MMINFRA_HRE";
 			else if ((bus_id & 0x7) == 0x2)
-				return "HFRP";
-			else if ((bus_id & 0x7) == 0x3)
 				return "GCED";
-			else if ((bus_id & 0xf) == 0x4)
+			else if ((bus_id & 0x7) == 0x3)
 				return "GCEM";
+			else if ((bus_id & 0xf) == 0x4)
+				return "HFRP";
 			else
 				return mminfra_domain[domain];
 		}
