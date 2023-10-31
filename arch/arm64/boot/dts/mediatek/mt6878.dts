@@ -507,7 +507,7 @@
 				<&dvfsrc_freq_opp5>,
 				<&dvfsrc_freq_opp6>;
 
-		cm-mgr-enable = <0>;
+		cm-mgr-enable = <1>;
 		cm-mgr-arch = "v1p";
 
 		cm-mgr-num-array = <7>;
