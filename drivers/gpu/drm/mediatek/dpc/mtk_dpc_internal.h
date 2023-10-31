@@ -29,11 +29,16 @@ extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define SPM_OVL0_PWR_CON 0xEA0
 #define SPM_OVL1_PWR_CON 0xEA4
 #define SPM_MML1_PWR_CON 0xE94
-#define SPM_PWR_STATUS_MSB 0xf78 /* vcore[3] mml[4][5] dis[6][7] ovl[8][9] mminfra[10] */
-#define SPM_PWR_FLD_DISP_VCORE_MASK   BIT(3)
-#define SPM_PWR_FLD_MML1_MASK         BIT(5)
-#define SPM_PWR_FLD_DISP1_MASK        BIT(7)
-#define SPM_PWR_FLD_MMINFRA_MASK      BIT(10)
+
+#define SPM_PWR_STATUS_MT6989 0xf78 /* vcore[3] mml[4][5] dis[6][7] ovl[8][9] mminfra[10] */
+#define SPM_PWR_FLD_DISP_VCORE_MASK_MT6989   BIT(3)
+#define SPM_PWR_FLD_MML1_MASK_MT6989         BIT(5)
+#define SPM_PWR_FLD_DISP1_MASK_MT6989        BIT(7)
+#define SPM_PWR_FLD_MMINFRA_MASK_MT6989      BIT(10)
+
+#define SPM_PWR_STATUS_MT6878 0xf40
+#define SPM_PWR_FLD_DISP_VCORE_MASK_MT6878   BIT(28)
+#define SPM_PWR_FLD_MMINFRA_MASK_MT6878      BIT(30)
 
 #define VCORE_DVFSRC_HRT_BW_MASK      0x3FF
 #define VCORE_DVFSRC_SRT_BW_MASK      0xFFC
@@ -241,6 +246,7 @@ extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define DPC_VIDLE_MML_DC_WINDOW    BIT(7)
 #define DPC_VIDLE_BW_MASK          BIT(8)
 #define DPC_VIDLE_WINDOW_MASK      BIT(9)
+#define DPC_VIDLE_VDISP_MASK       BIT(10)
 
 enum mtk_dpc_vidle_mode {
 	DPC_VIDLE_INACTIVE_MODE,
@@ -279,6 +285,22 @@ enum dpc_idle_cmd {
 	DPC_VIDLE_CMD_COUNT,
 };
 
+enum dpc_sys_status_id {
+	SYS_POWER_ACK_MMINFRA,
+	SYS_POWER_ACK_DPC,
+	SYS_POWER_ACK_DISP1_SUBSYS,
+	SYS_POWER_ACK_MML1_SUBSYS,
+	SYS_STATE_MMINFRA,
+	SYS_STATE_APSRC,
+	SYS_STATE_EMI,
+	SYS_STATE_HRT_BW,
+	SYS_STATE_SRT_BW,
+	SYS_STATE_VLP_VOTE,
+	SYS_STATE_VDISP_DVFS,
+	SYS_VALUE_VDISP_DVFS_LEVEL,
+	SYS_STATUS_ID_COUNT,
+};
+
 enum dpc_idle_id {
 	DPC_IDLE_ID_MTCMOS_OFF_OVL0,
 	DPC_IDLE_ID_MTCMOS_OFF_MML1,
@@ -286,6 +308,7 @@ enum dpc_idle_id {
 	DPC_IDLE_ID_MMINFRA_OFF,
 	DPC_IDLE_ID_APSRC_OFF,
 	DPC_IDLE_ID_DVFS_OFF,
+	DPC_IDLE_ID_VDISP_OFF,
 	DPC_IDLE_ID_WINDOW_DISP,
 	DPC_IDLE_ID_WINDOW_MML,
 	DPC_IDLE_ID_WINDOW,

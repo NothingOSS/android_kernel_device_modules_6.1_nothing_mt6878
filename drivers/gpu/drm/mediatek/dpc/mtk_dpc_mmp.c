@@ -57,7 +57,8 @@ void dpc_mmp_init(void)
 	dpc_mmp_events.mtcmos_ovl0 = mmprofile_register_event(dpc_mmp_events.mtcmos_off, "ovl0_off");
 	dpc_mmp_events.mtcmos_mml1 = mmprofile_register_event(dpc_mmp_events.mtcmos_off, "mml1_off");
 	dpc_mmp_events.dvfs_off = mmprofile_register_event(folder, "dvfs_off");
-	dpc_mmp_events.vdisp_level = mmprofile_register_event(dpc_mmp_events.dvfs_off, "vdisp_level");
+	dpc_mmp_events.vdisp_off = mmprofile_register_event(folder, "vdisp_off");
+	dpc_mmp_events.vdisp_level = mmprofile_register_event(dpc_mmp_events.vdisp_off, "vdisp_level");
 	dpc_mmp_events.hrt_bw = mmprofile_register_event(dpc_mmp_events.dvfs_off, "hrt_bw");
 	dpc_mmp_events.srt_bw = mmprofile_register_event(dpc_mmp_events.dvfs_off, "srt_bw");
 

@@ -538,12 +538,12 @@ void mtk_vidle_register(const struct dpc_funcs *funcs)
 
 	if(vidle_data.hrt_bw != 0xffffffff) {
 		DDPINFO("%s need set hrt bw:%d\n", __func__, vidle_data.hrt_bw);
-		mtk_vidle_dvfs_set(vidle_data.hrt_bw);
+		mtk_vidle_hrt_bw_set(vidle_data.hrt_bw);
 	}
 
 	if(vidle_data.srt_bw != 0xffffffff) {
 		DDPINFO("%s need set srt bw:%d\n", __func__, vidle_data.srt_bw);
-		mtk_vidle_dvfs_set(vidle_data.srt_bw);
+		mtk_vidle_srt_bw_set(vidle_data.srt_bw);
 	}
 }
 EXPORT_SYMBOL(mtk_vidle_register);
