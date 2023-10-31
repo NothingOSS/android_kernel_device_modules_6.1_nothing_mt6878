@@ -8612,6 +8612,7 @@
 			mediatek,iommu-banks = <&disp_iommu_bank1 &disp_iommu_bank2
 						&disp_iommu_bank3 &disp_iommu_bank4>;
 			interrupts = <GIC_SPI 278 IRQ_TYPE_LEVEL_HIGH 0>;
+			power-domains = <&scpsys MT6878_POWER_DOMAIN_MM_INFRA>;
 			clock-names = "bclk";
 			#iommu-cells = <1>;
 		};
