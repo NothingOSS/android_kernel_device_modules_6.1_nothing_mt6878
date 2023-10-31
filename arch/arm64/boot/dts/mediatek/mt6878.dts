@@ -1904,6 +1904,13 @@
 		#clock-cells = <1>;
 	};
 
+	vmmspm: vmmspm {
+		compatible = "mediatek,vmm_spm_mt6878";
+		reg = <0 0x1c001000 0 0x1000>;
+		reg-names = "SPM_BASE";
+		vmm-pmic-supply = <&mt6319_6_vbuck1>;
+	};
+
 	scp_clk: syscon@1cb21000 {
 		compatible = "mediatek,mt6878-scp", "syscon";
 		reg = <0 0x1cb21000 0 0x1000>;
@@ -12164,10 +12171,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		iommus = <&apu_iommu0 M4U_L42_APU_CODE>;
 		status = "okay";
 	};
-};
-
-&mt6319_6_vbuck1 {
-	regulator-always-on;
 };
 
 &mt6319_6_vbuck2 {
