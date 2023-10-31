@@ -1133,6 +1133,8 @@ static unsigned int mtk_dsi_default_rate(struct mtk_dsi *dsi)
 		data_rate = dsi->ext->params->dyn_fps.data_rate;
 	} else if (dsi->ext && dsi->ext->params->data_rate) {
 		data_rate = dsi->ext->params->data_rate;
+		if (dsi->ext->params->data_rate_khz)
+			dsi->data_rate_khz = dsi->ext->params->data_rate_khz;
 	} else if (dsi->ext && dsi->ext->params->pll_clk) {
 		data_rate = dsi->ext->params->pll_clk * 2;
 	} else {
@@ -1355,8 +1357,15 @@ static int mtk_dsi_set_data_rate(struct mtk_dsi *dsi)
 
 	/* Store DSI data rate in MHz */
 	dsi->data_rate = data_rate;
+	if (dsi->ext && dsi->ext->params->data_rate_khz)
+		mipi_tx_rate = dsi->ext->params->data_rate_khz * 1000;
 
 	DDPDBG("set mipitx's data rate: %lu Hz\n", mipi_tx_rate);
+
+	mtk_mipi_tx_pll_rate_set_adpt(dsi->phy, data_rate);
+	if (dsi->ext->params->data_rate_khz)
+		mtk_mipi_tx_pll_rate_khz_set_adpt(dsi->phy,
+			dsi->ext->params->data_rate_khz);
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
 		ret = clk_set_rate(dsi->hs_clk, mipi_tx_rate);
@@ -5403,6 +5412,9 @@ static void mtk_dsi_clk_change(struct mtk_dsi *dsi, int en)
 
 	dsi->data_rate = data_rate;
 	mtk_mipi_tx_pll_rate_set_adpt(dsi->phy, data_rate);
+	if (dsi->ext->params->data_rate_khz)
+		mtk_mipi_tx_pll_rate_khz_set_adpt(dsi->phy,
+			dsi->ext->params->data_rate_khz);
 
 	/* implicit way for display power state */
 	if (dsi->clk_refcnt == 0) {
@@ -9146,9 +9158,23 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 		if (dsi->data_rate == 0) {
 			dsi->data_rate = mtk_dsi_default_rate(dsi);
 			mtk_mipi_tx_pll_rate_set_adpt(dsi->phy, dsi->data_rate);
-			if (dsi->data_rate)
+			if (dsi->ext->params->data_rate_khz)
+				mtk_mipi_tx_pll_rate_khz_set_adpt(dsi->phy,
+					dsi->ext->params->data_rate_khz);
+			if (dsi->slave_dsi) {
+				dsi->slave_dsi->data_rate = dsi->data_rate;
+				mtk_mipi_tx_pll_rate_set_adpt(dsi->slave_dsi->phy, dsi->data_rate);
+				if (dsi->ext->params->data_rate_khz)
+					mtk_mipi_tx_pll_rate_khz_set_adpt(dsi->slave_dsi->phy,
+						dsi->ext->params->data_rate_khz);
+			}
+			if (dsi->data_rate) {
 				mtk_dsi_phy_timconfig(dsi, NULL);
+				if (dsi->slave_dsi)
+					mtk_dsi_phy_timconfig(dsi->slave_dsi, NULL);
+			}
 		}
+
 		if (dsi->mipi_hopping_sta) {
 			DDPINFO("%s,mipi_clk_change_sta\n", __func__);
 			hfp = dsi->ext->params->dyn.hfp;

@@ -2090,13 +2090,16 @@ static int mtk_mipi_tx_pll_dphy_config_mt6989(struct mtk_mipi_tx *mipi_tx)
 {
 	unsigned int txdiv, txdiv0, tmp;
 	u32 rate;
+	u32 rate_khz;
 	unsigned int fbksel;
 
 	DDPINFO("%s+\n", __func__);
 
 	rate = (mipi_tx->data_rate_adpt) ? mipi_tx->data_rate_adpt :
 			mipi_tx->data_rate / 1000000;
+	rate_khz = (mipi_tx->data_rate_khz_adpt) ? mipi_tx->data_rate_khz_adpt : 0;
 	dev_dbg(mipi_tx->dev, "prepare: %u MHz\n", rate);
+	dev_dbg(mipi_tx->dev, "prepare: %u KHz\n", rate_khz);
 
 	if (rate >= 2000) {
 		txdiv = 1;
@@ -2176,7 +2179,10 @@ static int mtk_mipi_tx_pll_dphy_config_mt6989(struct mtk_mipi_tx *mipi_tx)
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
 			FLD_RG_DSI_PLL_FBSEL_MT6983, (fbksel - 1) << 13);
 
-	tmp = mipi_tx->driver_data->dsi_get_pcw(rate, txdiv);
+	if (rate_khz && mipi_tx->driver_data->dsi_get_pcw_khz)
+		tmp = mipi_tx->driver_data->dsi_get_pcw_khz(rate_khz, txdiv);
+	else
+		tmp = mipi_tx->driver_data->dsi_get_pcw(rate, txdiv);
 	writel(tmp, mipi_tx->regs + MIPITX_PLL_CON0);
 
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
@@ -2617,6 +2623,38 @@ static unsigned int _dsi_get_pcw_mt6886(unsigned long data_rate,
 	return tmp;
 }
 
+static unsigned int _dsi_get_pcw_khz_mt6897(unsigned long data_rate_khz,
+	unsigned int pcw_ratio)
+{
+	unsigned int pcw, tmp, pcw_floor, fbksel, div3 = 1;
+	u32 clk_26m = 26000;
+	unsigned long data_rate;
+
+	data_rate = data_rate_khz / 1000;
+	if (data_rate < 125) {
+		DDPINFO("invalid data rate %lu\n", data_rate);
+		return -EINVAL;
+	}
+
+	data_rate_khz = data_rate_khz >> 1;
+	fbksel = 1;
+
+	/**
+	 * PCW bit 24~30 = floor(pcw)
+	 * PCW bit 16~23 = (pcw - floor(pcw))*256
+	 * PCW bit 8~15 = (pcw*256 - floor(pcw)*256)*256
+	 * PCW bit 0~7 = (pcw*256*256 - floor(pcw)*256*256)*256
+	 * div3_en=0,so div3 always 1
+	 */
+	pcw = data_rate_khz * pcw_ratio * div3 / fbksel / clk_26m;
+	pcw_floor = data_rate_khz * pcw_ratio  * div3 / fbksel % clk_26m;
+	tmp = ((pcw & 0xFF) << 24) | (((256 * pcw_floor / clk_26m) & 0xFF) << 16) |
+		(((256 * (256 * pcw_floor % clk_26m) / clk_26m) & 0xFF) << 8) |
+		((256 * (256 * (256 * pcw_floor % clk_26m) % clk_26m) / clk_26m) & 0xFF);
+
+	return tmp;
+}
+
 static unsigned int _dsi_get_pcw_mt6897(unsigned long data_rate,
 	unsigned int pcw_ratio)
 {
@@ -2642,6 +2680,38 @@ static unsigned int _dsi_get_pcw_mt6897(unsigned long data_rate,
 	tmp = ((pcw & 0xFF) << 24) | (((256 * pcw_floor / 26) & 0xFF) << 16) |
 		(((256 * (256 * pcw_floor % 26) / 26) & 0xFF) << 8) |
 		((256 * (256 * (256 * pcw_floor % 26) % 26) / 26) & 0xFF);
+
+	return tmp;
+}
+
+static unsigned int _dsi_get_pcw_khz_mt6989(unsigned long data_rate_khz,
+	unsigned int pcw_ratio)
+{
+	unsigned int pcw, tmp, pcw_floor, fbksel, div3 = 1;
+	u32 clk_26m = 26000;
+	unsigned long data_rate;
+
+	data_rate = data_rate_khz / 1000;
+	if (data_rate < 125) {
+		DDPINFO("invalid data rate %lu\n", data_rate);
+		return -EINVAL;
+	}
+
+	data_rate_khz = data_rate_khz >> 1;
+	fbksel = 1;
+
+	/**
+	 * PCW bit 24~30 = floor(pcw)
+	 * PCW bit 16~23 = (pcw - floor(pcw))*256
+	 * PCW bit 8~15 = (pcw*256 - floor(pcw)*256)*256
+	 * PCW bit 0~7 = (pcw*256*256 - floor(pcw)*256*256)*256
+	 * div3_en=0,so div3 always 1
+	 */
+	pcw = data_rate_khz * pcw_ratio / clk_26m;
+	pcw_floor = data_rate_khz * pcw_ratio  * div3 / fbksel % clk_26m;
+	tmp = ((pcw & 0xFF) << 24) | (((256 * pcw_floor / clk_26m) & 0xFF) << 16) |
+		(((256 * (256 * pcw_floor % clk_26m) / clk_26m) & 0xFF) << 8) |
+		((256 * (256 * (256 * pcw_floor % clk_26m) % clk_26m) / clk_26m) & 0xFF);
 
 	return tmp;
 }
@@ -3225,6 +3295,7 @@ static int mtk_mipi_tx_pll_prepare_mt6897(struct clk_hw *hw)
 	struct mtk_mipi_tx *mipi_tx = mtk_mipi_tx_from_clk_hw(hw);
 	unsigned int txdiv, txdiv0, tmp;
 	u32 rate;
+	u32 rate_khz;
 	unsigned int fbksel;
 
 	DDPDBG("%s+\n", __func__);
@@ -3237,7 +3308,9 @@ static int mtk_mipi_tx_pll_prepare_mt6897(struct clk_hw *hw)
 
 	rate = (mipi_tx->data_rate_adpt) ? mipi_tx->data_rate_adpt :
 			mipi_tx->data_rate / 1000000;
+	rate_khz = (mipi_tx->data_rate_khz_adpt) ? mipi_tx->data_rate_khz_adpt : 0;
 	dev_dbg(mipi_tx->dev, "prepare: %u MHz\n", rate);
+	dev_dbg(mipi_tx->dev, "prepare: %u KHz\n", rate_khz);
 
 	if (rate >= 2000) {
 		txdiv = 1;
@@ -3317,7 +3390,10 @@ static int mtk_mipi_tx_pll_prepare_mt6897(struct clk_hw *hw)
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
 			FLD_RG_DSI_PLL_FBSEL_MT6983, (fbksel - 1) << 13);
 
-	tmp = mipi_tx->driver_data->dsi_get_pcw(rate, txdiv);
+	if (rate_khz && mipi_tx->driver_data->dsi_get_pcw_khz)
+		tmp = mipi_tx->driver_data->dsi_get_pcw_khz(rate_khz, txdiv);
+	else
+		tmp = mipi_tx->driver_data->dsi_get_pcw(rate, txdiv);
 	writel(tmp, mipi_tx->regs + MIPITX_PLL_CON0);
 
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
@@ -4837,6 +4913,23 @@ void mtk_mipi_tx_pll_rate_set_adpt(struct phy *phy, unsigned long rate)
 	mipi_tx->data_rate_adpt = rate;
 }
 
+void mtk_mipi_tx_pll_rate_khz_set_adpt(struct phy *phy, unsigned long rate_khz)
+{
+	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
+
+	mipi_tx->data_rate_khz_adpt = rate_khz;
+}
+
+void mtk_mipi_tx_pll_rate_khz_switch_gce(struct phy *phy,
+		void *handle, unsigned long rate)
+{
+	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
+
+	if (mipi_tx->driver_data->pll_rate_khz_switch_gce) {
+		mipi_tx->driver_data->pll_rate_khz_switch_gce(phy, handle, rate);
+	}
+}
+
 void mtk_mipi_tx_pre_oe_config_gce(struct phy *phy, void *handle, bool en)
 {
 #ifndef CONFIG_FPGA_EARLY_PORTING
@@ -5445,6 +5538,64 @@ void mtk_mipi_tx_pll_rate_switch_gce_N4(struct phy *phy,
 
 	cmdq_pkt_write(handle, mipi_tx->cmdq_base,
 			mipi_tx->regs_pa + MIPITX_PLL_CON1, reg_val, ~0);
+
+	DDPINFO("%s-\n", __func__);
+}
+
+void mtk_mipi_tx_pll_rate_khz_switch_gce_N4(struct phy *phy,
+		void *handle, unsigned long rate)
+{
+	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(phy);
+	unsigned int txdiv, txdiv0, tmp;
+	u32 reg_val;
+
+	DDPINFO("%s+ %lu\n", __func__, rate);
+
+	/* parameter rate should be MHz */
+	if (rate >= 2000000) {
+		txdiv = 1;
+		txdiv0 = 0;
+	} else if (rate >= 1000000) {
+		txdiv = 2;
+		txdiv0 = 1;
+	} else if (rate >= 500000) {
+		txdiv = 4;
+		txdiv0 = 2;
+	} else if (rate > 250000) {
+		txdiv = 8;
+		txdiv0 = 3;
+	} else if (rate >= 125000) {
+		txdiv = 16;
+		txdiv0 = 4;
+	} else {
+		return;
+	}
+
+	DDPINFO("%s, Using dsi_get_pcw_khz!! rate_khz=%ld\n", __func__, rate);
+	tmp = mipi_tx->driver_data->dsi_get_pcw_khz(rate, txdiv);
+
+	cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + MIPITX_PLL_CON0, tmp, ~0);
+
+	reg_val = readl(mipi_tx->regs + MIPITX_PLL_CON1);
+
+	reg_val = reg_val & ~(mipi_tx->driver_data->dsi_pll_sdm_pcw_chg);
+	cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + MIPITX_PLL_CON1, reg_val, ~0);
+	//must delay sometime otherwise system hang
+	cmdq_pkt_sleep(handle, 10, CMDQ_GPR_R07); //delay 380ns
+
+	reg_val = reg_val | mipi_tx->driver_data->dsi_pll_sdm_pcw_chg;
+	cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + MIPITX_PLL_CON1, reg_val, ~0);
+	//must delay sometime otherwise system hang
+	cmdq_pkt_sleep(handle, 10, CMDQ_GPR_R07); //delay 380ns
+
+	reg_val = reg_val & ~(mipi_tx->driver_data->dsi_pll_sdm_pcw_chg);
+	cmdq_pkt_write(handle, mipi_tx->cmdq_base,
+			mipi_tx->regs_pa + MIPITX_PLL_CON1, reg_val, ~0);
+	//must delay sometime otherwise system hang
+	cmdq_pkt_sleep(handle, 10, CMDQ_GPR_R07); //delay 380ns
 
 	DDPINFO("%s-\n", __func__);
 }
@@ -6468,10 +6619,12 @@ static const struct mtk_mipitx_data mt6989_mipitx_data = {
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6989,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6989,
 	.dsi_get_pcw = _dsi_get_pcw_mt6989,
+	.dsi_get_pcw_khz = _dsi_get_pcw_khz_mt6989,
 	.dsi_get_data_rate = _dsi_get_data_rate_N4,
 	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
 	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
 	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_N4,
+	.pll_rate_khz_switch_gce = mtk_mipi_tx_pll_rate_khz_switch_gce_N4,
 	.phy = MIPITX_DPHY,
 	.mipi_tx_ssc_en = mtk_mipi_tx_ssc_en_N4,
 };
@@ -6519,10 +6672,12 @@ static const struct mtk_mipitx_data mt6897_mipitx_data = {
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6897,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6983,
 	.dsi_get_pcw = _dsi_get_pcw_mt6897,
+	.dsi_get_pcw_khz = _dsi_get_pcw_khz_mt6897,
 	.dsi_get_data_rate = _dsi_get_data_rate_mt6983,
 	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
 	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
 	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_N4,
+	.pll_rate_khz_switch_gce = mtk_mipi_tx_pll_rate_khz_switch_gce_N4,
 	.mipi_tx_ssc_en = mtk_mipi_tx_ssc_en_N4,
 };
 

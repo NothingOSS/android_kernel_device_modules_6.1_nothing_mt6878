@@ -93,6 +93,7 @@ struct mtk_dsi {
 	struct clk *hs_clk;
 
 	u32 data_rate;
+	u32 data_rate_khz;
 	u32 d_rate;
 	u32 ulps_wakeup_prd;
 
