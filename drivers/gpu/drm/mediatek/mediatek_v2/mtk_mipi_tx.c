@@ -5851,7 +5851,6 @@ static void backup_mipitx_impedance_mt6897(struct mtk_mipi_tx *mipi_tx)
 	DDPMSG("%s MIPI_TX\n", __func__);
 	/* backup mipitx impedance */
 	for (j = 0; j < 5; j++) {
-		DDPMSG("%s %d j%d MIPI_TX\n", __func__, __LINE__, j);
 		rt_mt6886_code_backup[0][j] = readl(mipi_tx->regs +
 				MIPITX_D2P_RTCODE0_MT6886 + j * 0x100);
 		rt_mt6886_code_backup[1][j] = readl(mipi_tx->regs +
@@ -5863,7 +5862,6 @@ static void backup_mipitx_impedance_mt6897(struct mtk_mipi_tx *mipi_tx)
 	}
 	/* CK1 RT_CODE RT_DEM_CODE */
 	j++;
-	DDPMSG("%s %d j%d MIPI_TX\n", __func__, __LINE__, j);
 	rt_mt6886_code_backup[0][5] = readl(mipi_tx->regs +
 				MIPITX_D2P_RTCODE0_MT6886 + j * 0x100);
 	rt_mt6886_code_backup[1][5] = readl(mipi_tx->regs +
@@ -5874,10 +5872,10 @@ static void backup_mipitx_impedance_mt6897(struct mtk_mipi_tx *mipi_tx)
 				MIPITX_D2N_RT_DEM_CODE_MT6886 + j * 0x100);
 	for (i = 0; i < 5; i++) {
 		DDPMSG("[0x%08lx 0x%08lx 0x%08lx 0x%08lx]:0x%08x 0x%08x 0x%08x 0x%08x\n",
-			(unsigned long)mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100,
-			(unsigned long)mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100,
-			(unsigned long)mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100,
-			(unsigned long)mipi_tx->regs + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs_pa + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs_pa + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs_pa + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs_pa + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100,
 			readl((mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100)),
 			readl((mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100)),
 			readl((mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100)),
@@ -5886,10 +5884,10 @@ static void backup_mipitx_impedance_mt6897(struct mtk_mipi_tx *mipi_tx)
 	/* CK1 dump */
 	i++;
 	DDPMSG("[0x%08lx 0x%08lx 0x%08lx 0x%08lx]:0x%08x 0x%08x 0x%08x 0x%08x\n",
-			(unsigned long)mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100,
-			(unsigned long)mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100,
-			(unsigned long)mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100,
-			(unsigned long)mipi_tx->regs + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs_pa + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs_pa + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs_pa + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs_pa + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100,
 			readl((mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100)),
 			readl((mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100)),
 			readl((mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100)),
