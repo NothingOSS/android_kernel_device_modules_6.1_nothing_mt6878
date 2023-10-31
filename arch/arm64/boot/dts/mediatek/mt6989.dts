@@ -11583,6 +11583,7 @@
 			mediatek,hwrscs-vers = <1>;
 			mediatek,syscon-wakeup = <&pericfg_ao_clk 0x200 103>;
 			wakeup-source;
+			mediatek,uds = <&usb_dp_selector 19>;
 			usb-role-switch;
 			cdp-block;
 			usb3-lpm-disable;
