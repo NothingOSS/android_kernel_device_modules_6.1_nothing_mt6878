@@ -1061,7 +1061,8 @@ static irqreturn_t mtk_disp_ovl_irq_handler(int irq, void *dev_id)
 		DDPIRQ("[IRQ] %s: OVL target line\n", mtk_dump_comp_str(ovl));
 		if (mtk_crtc && mtk_crtc->esd_ctx) {
 			if (drv_priv && (drv_priv->data->mmsys_id == MMSYS_MT6985 ||
-				drv_priv->data->mmsys_id == MMSYS_MT6897)) {
+				drv_priv->data->mmsys_id == MMSYS_MT6897 ||
+				drv_priv->data->mmsys_id == MMSYS_MT6878)) {
 				unsigned int index = drm_crtc_index(&mtk_crtc->base);
 
 				CRTC_MMP_MARK(index, target_time, ovl->id, 0xffff0001);
@@ -3480,7 +3481,8 @@ static void mtk_ovl_addon_config(struct mtk_ddp_comp *comp,
 		addon_config->config_type.module == DISP_RSZ_v3 ||
 		addon_config->config_type.module == DISP_RSZ_v4 ||
 		addon_config->config_type.module == DISP_RSZ_v5 ||
-		addon_config->config_type.module == DISP_RSZ_v6) &&
+		addon_config->config_type.module == DISP_RSZ_v6 ||
+		addon_config->config_type.module == DISP_RSZ_v7) &&
 		addon_config->config_type.type == ADDON_BETWEEN) {
 		struct mtk_addon_rsz_config *config =
 			&addon_config->addon_rsz_config;
@@ -3977,7 +3979,8 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
-			priv->data->mmsys_id == MMSYS_MT6897)
+			priv->data->mmsys_id == MMSYS_MT6897 ||
+			priv->data->mmsys_id == MMSYS_MT6878)
 			inten = REG_FLD_VAL(INTEN_FLD_FME_UND_INTEN, 1) |
 					REG_FLD_VAL(INTEN_FLD_FME_CPL_INTEN, 1) |
 					REG_FLD_VAL(INIEN_ROI_TIMING_0, 1);

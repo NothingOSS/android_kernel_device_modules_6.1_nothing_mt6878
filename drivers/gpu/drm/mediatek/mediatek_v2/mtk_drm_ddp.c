@@ -5848,6 +5848,73 @@ static const unsigned int mt6897_dispsys_map[DDP_COMPONENT_ID_MAX] = {
 		[DDP_COMPONENT_MERGE1_OUT_CB7] = DISPSYS1,
 };
 
+static const unsigned int mt6878_dispsys_map[DDP_COMPONENT_ID_MAX] = {
+/* dispsys0 only */
+		[DDP_COMPONENT_OVL0_2L] = DISPSYS0,
+		[DDP_COMPONENT_OVL1_2L] = DISPSYS0,
+		[DDP_COMPONENT_OVL2_2L] = DISPSYS0,
+		[DDP_COMPONENT_OVL3_2L] = DISPSYS0,
+		[DDP_COMPONENT_RSZ0] = DISPSYS0,
+		[DDP_COMPONENT_RSZ1] = DISPSYS0,
+		[DDP_COMPONENT_TDSHP0] = DISPSYS0,
+		[DDP_COMPONENT_TDSHP1] = DISPSYS0,
+		[DDP_COMPONENT_COLOR0] = DISPSYS0,
+		[DDP_COMPONENT_CCORR0] = DISPSYS0,
+		[DDP_COMPONENT_CCORR1] = DISPSYS0,
+		[DDP_COMPONENT_CCORR2] = DISPSYS0,
+		[DDP_COMPONENT_CCORR3] = DISPSYS0,
+		[DDP_COMPONENT_C3D0] = DISPSYS0,
+		[DDP_COMPONENT_C3D1] = DISPSYS0,
+		[DDP_COMPONENT_AAL0] = DISPSYS0,
+		[DDP_COMPONENT_GAMMA0] = DISPSYS0,
+		[DDP_COMPONENT_GAMMA1] = DISPSYS0,
+		[DDP_COMPONENT_DITHER0] = DISPSYS0,
+		[DDP_COMPONENT_DITHER1] = DISPSYS0,
+		[DDP_COMPONENT_POSTMASK0] = DISPSYS0,
+		[DDP_COMPONENT_SPLITTER0] = DISPSYS0,
+		[DDP_COMPONENT_DSC0] = DISPSYS0,
+		[DDP_COMPONENT_WDMA1] = DISPSYS0,
+		[DDP_COMPONENT_UFBC_WDMA0] = DISPSYS0,
+		[DDP_COMPONENT_PWM0] = DISPSYS0,
+		[DDP_COMPONENT_DSI0] = DISPSYS0,
+		[DDP_COMPONENT_DSI1] = DISPSYS0,
+/* crossbar */
+		[DDP_COMPONENT_OVL0_BLEND_CB0] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_BLEND_CB1] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_BLEND_CB2] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_BLEND_CB3] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_BG_CB0] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_BG_CB1] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_BG_CB2] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_BG_CB3] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_PQ_OUT_CB0] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_PQ_OUT_CB1] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_PQ_OUT_CB2] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_PQ_OUT_CB3] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_PQ_IN_CB0] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_PQ_IN_CB1] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_IN_CB0] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_IN_CB1] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_IN_CB2] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_OUT_CB0] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_OUT_CB1] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_OUT_CB2] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_OUT_CB3] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_OUT_CB4] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_OUT_CB5] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_OUT_CB6] = DISPSYS0,
+		[DDP_COMPONENT_SPLIT_OUT_CB0] = DISPSYS0,
+		[DDP_COMPONENT_SPLIT_OUT_CB1] = DISPSYS0,
+		[DDP_COMPONENT_SPLIT_OUT_CB2] = DISPSYS0,
+		[DDP_COMPONENT_SPLIT_OUT_CB3] = DISPSYS0,
+		[DDP_COMPONENT_SPLIT_OUT_CB4] = DISPSYS0,
+		[DDP_COMPONENT_COMP0_OUT_CB0] = DISPSYS0,
+		[DDP_COMPONENT_COMP0_OUT_CB1] = DISPSYS0,
+		[DDP_COMPONENT_COMP0_OUT_CB2] = DISPSYS0,
+		[DDP_COMPONENT_COMP0_OUT_CB3] = DISPSYS0,
+		[DDP_COMPONENT_COMP0_OUT_CB4] = DISPSYS0,
+};
+
 static const unsigned int mt6895_dispsys_map[DDP_COMPONENT_ID_MAX] = {
 /* DISPSYS0 */
 		[DDP_COMPONENT_DMDP_AAL0] = 0,
@@ -6268,6 +6335,7 @@ static const struct mtk_disp_ddp_data mt6878_ddp_driver_data = {
 	.mutex_sof = mt6878_mutex_sof,
 	.mutex_mod_reg = MT6878_DISP_MUTEX0_MOD0,
 	.mutex_sof_reg = MT6878_DISP_MUTEX0_SOF,
+	.dispsys_map = mt6878_dispsys_map,
 	.wakeup_pf_wq = 1,
 	.wakeup_esd_wq = 1,
 };
@@ -6378,6 +6446,7 @@ const struct mtk_mmsys_reg_data mt6855_mmsys_reg_data = {
 
 const struct mtk_mmsys_reg_data mt6878_mmsys_reg_data = {
 	// To-Do
+	.dispsys_map = mt6878_dispsys_map,
 };
 
 static char *ddp_signal_0_mt6885(int bit)
@@ -22079,6 +22148,7 @@ unsigned int mtk_ddp_ovlsys_path(struct mtk_drm_private *priv, unsigned int **ov
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT6985:
 	case MMSYS_MT6897:
+	case MMSYS_MT6878:
 #define OVLSYS_PATH_MT6985 4
 		if (_ovlsys_path) {
 			*ovl_list = _ovlsys_path;
@@ -22173,6 +22243,7 @@ unsigned int mtk_ddp_ovl_resource_list(struct mtk_drm_private *priv, unsigned in
 	case MMSYS_MT6985:
 	case MMSYS_MT6897:
 	case MMSYS_MT6989:
+	case MMSYS_MT6878:
 		if (_ovl_list) {
 			*ovl_list = _ovl_list;
 			return ovl_list_size;
@@ -28351,8 +28422,6 @@ static struct ddp_signal_t mt6878_valid_signal_tb[] = {
     {DDP_COMPONENT_OVL1_2L, "ovl1_2l_out", MT6878_DISP_OVL_FLOW_CTRL_DBG, 12, 13},
     {DDP_COMPONENT_OVL2_2L, "ovl2_2l_out", MT6878_DISP_OVL_FLOW_CTRL_DBG, 12, 13},
     {DDP_COMPONENT_OVL3_2L, "ovl3_2l_out", MT6878_DISP_OVL_FLOW_CTRL_DBG, 12, 13},
-#if 0
-	// added will KE before porting dts done
 	{DDP_COMPONENT_UFBC_WDMA0, "ufbc_wdma0_in", MT6878_DISP_UFBC_DEBUG, 18, 17},
     {DDP_COMPONENT_WDMA1, "wdma1_in", MT6878_DISP_WDMA_FLOW_CTRL_DBG, 15, 14},
     {DDP_COMPONENT_GAMMA0, "gamma0_in", MT6878_DISP_REG_GAMMA_STATUS, 5, 4},
@@ -28390,7 +28459,6 @@ static struct ddp_signal_t mt6878_valid_signal_tb[] = {
     {DDP_COMPONENT_RSZ0, "rsz0_out", MT6878_RSZ_DEBUG, 16, 17},
     {DDP_COMPONENT_POSTMASK0, "postmask0_in", MT6878_DISP_REG_POSTMASK_STATUS, 7, 6},
     {DDP_COMPONENT_POSTMASK0, "postmask0_out", MT6878_DISP_REG_POSTMASK_STATUS, 17, 16},
-#endif
 };
 
 static struct ddp_count_t mt6878_in_out_cnt_tb[] = {
@@ -28404,13 +28472,11 @@ static struct ddp_count_t mt6878_in_out_cnt_tb[] = {
     {DDP_COMPONENT_OVL3_2L, "ovl3_line_count", MT6878_OVL_ADDCON_DBG, OVL_ADDCON_DBG_FLD_ROI_Y},
 	{DDP_COMPONENT_DSI0, "dsi0_in_pix_count", MT6878_DSI_INPUT_DEBUG, INP_PIXEL_COUNT},
 	{DDP_COMPONENT_DSI0, "dsi0_in_line_count", MT6878_DSI_INPUT_DEBUG, INP_LINE_COUNT},
-#if 0
 	{DDP_COMPONENT_COLOR0, "color0_horiz_pix_count", MT6878_COLOR_PXL_CNT_MAIN, H_CONT},
     {DDP_COMPONENT_COLOR0, "color0_verti_line_count", MT6878_COLOR_LINE_CNT_MAIN, LINE_CONT},
     {DDP_COMPONENT_COLOR0, "color0_verti_pix_count", MT6878_COLOR_LINE_CNT_MAIN, V_CONT},
 	{DDP_COMPONENT_DSI1, "dsi1_in_pix_count", MT6878_DSI_INPUT_DEBUG, INP_PIXEL_COUNT},
 	{DDP_COMPONENT_DSI1, "dsi1_in_line_count", MT6878_DSI_INPUT_DEBUG, INP_LINE_COUNT},
-#endif
 };
 
 void mmsys_config_dump_analysis_mt6878(struct drm_crtc *crtc)
@@ -28451,40 +28517,42 @@ void mmsys_config_dump_analysis_mt6878(struct drm_crtc *crtc)
 	for (idx = 0; idx < ARRAY_SIZE(mt6878_valid_signal_tb); idx++) {
 		name = mt6878_valid_signal_tb[idx].signalName;
 		if (!name)
-				continue;
-			pos = clock_on;
+			continue;
+		pos = clock_on;
 
-			comp_id = mt6878_valid_signal_tb[idx].sig_comp_id;
-			comp = priv->ddp_comp[comp_id];
-			baddr = comp->regs;
+		comp_id = mt6878_valid_signal_tb[idx].sig_comp_id;
+		comp = priv->ddp_comp[comp_id];
+		if (comp == NULL)
+			continue;
+		baddr = comp->regs;
 
-			if (comp_id == DDP_COMPONENT_RSZ1 || comp_id == DDP_COMPONENT_RSZ0)
-				writel_relaxed(1, baddr + MT6878_RSZ_DEBUG_SEL);
+		if (comp_id == DDP_COMPONENT_RSZ1 || comp_id == DDP_COMPONENT_RSZ0)
+			writel_relaxed(1, baddr + MT6878_RSZ_DEBUG_SEL);
 
-			reg = readl_relaxed(baddr + mt6878_valid_signal_tb[idx].addr);
-			validMask = 1U << mt6878_valid_signal_tb[idx].valid_bit;
-			if (reg & validMask)
-				len = sprintf(pos, "%s,", "v");
-			else
-				len = sprintf(pos, "%s,", "n");
+		reg = readl_relaxed(baddr + mt6878_valid_signal_tb[idx].addr);
+		validMask = 1U << mt6878_valid_signal_tb[idx].valid_bit;
+		if (reg & validMask)
+			len = sprintf(pos, "%s,", "v");
+		else
+			len = sprintf(pos, "%s,", "n");
 
-			if (len >= 0)
-				pos += len;
+		if (len >= 0)
+			pos += len;
 
-			readyMask = 1U << mt6878_valid_signal_tb[idx].ready_bit;
-			if (reg & readyMask)
-				len = sprintf(pos, "%s", "r");
-			else
-				len = sprintf(pos, "%s", "n");
-			if (len >= 0)
-				pos += len;
+		readyMask = 1U << mt6878_valid_signal_tb[idx].ready_bit;
+		if (reg & readyMask)
+			len = sprintf(pos, "%s", "r");
+		else
+			len = sprintf(pos, "%s", "n");
+		if (len >= 0)
+			pos += len;
 
-			len = sprintf(pos, ": %s", name);
-			if (len >= 0)
-				pos += len;
+		len = sprintf(pos, ": %s", name);
+		if (len >= 0)
+			pos += len;
 
-			if ((reg & validMask) | (reg & readyMask))
-				DDPDUMP("%s\n", clock_on);
+		if ((reg & validMask) | (reg & readyMask))
+			DDPDUMP("%s\n", clock_on);
 	}
 
 	for (idx = 0; idx < ARRAY_SIZE(mt6878_in_out_cnt_tb); idx++) {
@@ -28495,6 +28563,8 @@ void mmsys_config_dump_analysis_mt6878(struct drm_crtc *crtc)
 
 		comp_id = mt6878_in_out_cnt_tb[idx].cnt_comp_id;
 		comp = priv->ddp_comp[comp_id];
+		if (comp == NULL)
+			continue;
 		baddr = comp->regs;
 
 		reg = readl_relaxed(baddr + mt6878_in_out_cnt_tb[idx].addr);

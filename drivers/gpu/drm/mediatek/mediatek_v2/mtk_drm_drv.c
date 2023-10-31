@@ -2833,6 +2833,10 @@ static const enum mtk_ddp_comp_id mt6989_scaling_main[] = {
 	DDP_COMPONENT_RSZ0,
 };
 
+static const enum mtk_ddp_comp_id mt6878_scaling_main[] = {
+	DDP_COMPONENT_RSZ1,
+};
+
 /* CRTC0 */
 
 /* CRTC1 */
@@ -5029,7 +5033,7 @@ static const struct mtk_crtc_path_data mt6878_mtk_main_path_data = {
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6878_mtk_ddp_main),
 	.path_req_hrt[DDP_MAJOR][0] = true,
 	.addon_data = mt6878_addon_main,
-	.scaling_data = mt6985_scaling_main,
+	.scaling_data = mt6878_scaling_main,
 };
 
 const struct mtk_session_mode_tb mt6779_mode_tb[MTK_DRM_SESSION_NUM] = {

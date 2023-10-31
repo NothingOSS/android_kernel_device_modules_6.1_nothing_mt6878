@@ -1971,7 +1971,8 @@ static void mtk_drm_cwb_info_init(struct drm_crtc *crtc)
 	if (crtc_idx == 0) {
 		if (cwb_info->scn == WDMA_WRITE_BACK) {
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA0];
-			if (priv->data->mmsys_id == MMSYS_MT6989)
+			if (priv->data->mmsys_id == MMSYS_MT6989 ||
+			    priv->data->mmsys_id == MMSYS_MT6878)
 				cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA1];
 		}
 		else if ((priv->data->mmsys_id == MMSYS_MT6985 ||

@@ -3229,7 +3229,9 @@ void _mtk_crtc_wb_addon_module_disconnect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0) ||
 			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_v2)) {
+			addon_module->module == DISP_OVLSYS_WDMA0_v2) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v3)) {
 			if (mtk_crtc->is_dual_pipe) {
 				/* disconnect left pipe */
 				mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
@@ -3510,7 +3512,9 @@ _mtk_crtc_wb_addon_module_connect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0) ||
 			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_v2)) {
+			addon_module->module == DISP_OVLSYS_WDMA0_v2) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v3)) {
 			struct mtk_rect src_roi = {0};
 			struct mtk_rect dst_roi = {0};
 			struct drm_framebuffer *fb;
@@ -17314,7 +17318,8 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			/* HW support cwb dump */
 			if (priv->data->mmsys_id == MMSYS_MT6985 ||
 				priv->data->mmsys_id == MMSYS_MT6989 ||
-				priv->data->mmsys_id == MMSYS_MT6897)
+				priv->data->mmsys_id == MMSYS_MT6897 ||
+				priv->data->mmsys_id == MMSYS_MT6878)
 				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_IDLEMGR;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_ESD_CHECK;

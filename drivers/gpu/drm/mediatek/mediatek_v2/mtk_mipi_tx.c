@@ -6799,7 +6799,7 @@ static const struct mtk_mipitx_data mt6878_mipitx_data = {
 	.d1_sw_lptx_dp = MIPITX_D1_SW_LPTX_DP_MT6983,
 	.d1_sw_lptx_dn = MIPITX_D1_SW_LPTX_DN_MT6983,
 	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE_MT6983,
-	.d1c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
+	.d1c_sw_lptx_oe = MIPITX_D1C_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE_MT6983,
 	.d2_sw_lptx_oe = MIPITX_D2_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_dp = MIPITX_D2_SW_LPTX_DP_MT6983,
@@ -6821,10 +6821,11 @@ static const struct mtk_mipitx_data mt6878_mipitx_data = {
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6989,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6989,
 	.dsi_get_pcw = _dsi_get_pcw_mt6989,
-	.dsi_get_data_rate = _dsi_get_data_rate_N4,///???
+	.dsi_get_data_rate = _dsi_get_data_rate_N4,
 	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
 	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
 	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_N4,
+	.phy = MIPITX_DPHY,
 	.mipi_tx_ssc_en = mtk_mipi_tx_ssc_en_N4,
 };
 
@@ -7150,7 +7151,7 @@ static const struct mtk_mipitx_data mt6878_mipitx_cphy_data = {
 	.d1_sw_lptx_dp = MIPITX_D1_SW_LPTX_DP_MT6983,
 	.d1_sw_lptx_dn = MIPITX_D1_SW_LPTX_DN_MT6983,
 	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE_MT6983,
-	.d1c_sw_lptx_oe = MIPITX_D0C_SW_LPTX_OE_MT6983,
+	.d1c_sw_lptx_oe = MIPITX_D1C_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE_MT6983,
 	.d2_sw_lptx_oe = MIPITX_D2_SW_LPTX_OE_MT6983,
 	.d2_sw_lptx_dp = MIPITX_D2_SW_LPTX_DP_MT6983,
@@ -7176,6 +7177,7 @@ static const struct mtk_mipitx_data mt6878_mipitx_cphy_data = {
 	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
 	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
 	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_cphy_gce_mt6983,
+	.phy = MIPITX_CPHY,
 };
 
 static const struct mtk_mipitx_data mt6873_mipitx_data = {
