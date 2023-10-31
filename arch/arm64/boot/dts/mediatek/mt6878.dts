@@ -6326,9 +6326,7 @@
 			mediatek,imgsys-cmdq = <&imgsys_cmdq>;
 			mmqos-supply = <&mmqos>;
 			iommus = <&disp_iommu M4U_L28_P1_IMGI_T1_N_A>;
-#if 0
 			imgsys-supply = <&gce_m_sec>;
-#endif
 			mboxes =
 					/* normal thread */
 					<&gce_m 0 3000 CMDQ_THR_PRIO_2>,
@@ -6349,12 +6347,10 @@
 					<&gce_m 26 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					<&gce_m 27 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					<&gce_m 30 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
-					<&gce_m 31 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
-#if 0
+					<&gce_m 31 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					/* secure thread */
 					<&gce_m_sec 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
 					<&gce_m_sec 12 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
-#endif
 					/* thread list end */
 				traw-cq-thread0-frame-done =
 					/bits/ 16 <CMDQ_EVENT_IMG_TRAW0_CQ_THR_DONE_TRAW0_0>;
