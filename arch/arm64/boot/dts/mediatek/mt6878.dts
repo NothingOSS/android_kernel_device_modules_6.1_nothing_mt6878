@@ -3431,10 +3431,10 @@
 		};
 
 		fhctl@1000ce00 {
-			// mcupm-supply = <&mcupm>;
-			// gpueb-supply = <&gpueb>;
+			mcupm-supply = <&mcupm>;
+			gpueb-supply = <&gpueb>;
 
-			// compatible = "mediatek,mt6878-fhctl";
+			compatible = "mediatek,mt6878-fhctl";
 			reg = <0 0x1000ce00 0 0x200>, //AP FHCTL base
 				<0 0x1000c000 0 0xe00>, //APMIX base
 				<0 0x1000ce00 0 0x200>, // AP FHCTL base (for MCU PLL)
@@ -3480,21 +3480,21 @@
 			map2 {
 				domain = "gpu0";
 				method = "fhctl-gpueb";
-				mfgpll {
+				mfg-ao-mfgpll {
 					fh-id = <0>;
 				};
 			};
 			map3 {
 				domain = "gpu1";
 				method = "fhctl-gpueb";
-				gpuebpll {
+				gpueb-ao-gpuebpll {
 					fh-id = <0>;
 				};
 			};
 			map4 {
 				domain = "gpu2";
 				method = "fhctl-gpueb";
-				mfgscpll {
+				mfgsc-ao-mfgscpll {
 					fh-id = <0>;
 				};
 			};
