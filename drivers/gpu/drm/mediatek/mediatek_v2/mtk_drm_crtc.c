@@ -15328,7 +15328,8 @@ static void mtk_drm_crtc_enable_fake_layer(struct drm_crtc *crtc,
 
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6897) {
+			priv->data->mmsys_id == MMSYS_MT6897 ||
+			priv->data->mmsys_id == MMSYS_MT6878) {
 			layer_num2 = mtk_ovl_layer_num(
 					priv->ddp_comp[DDP_COMPONENT_OVL1_2L]);
 
@@ -15420,7 +15421,8 @@ static void mtk_drm_crtc_disable_fake_layer(struct drm_crtc *crtc,
 
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6897) {
+			priv->data->mmsys_id == MMSYS_MT6897 ||
+			priv->data->mmsys_id == MMSYS_MT6878) {
 			layer_num2 = mtk_ovl_layer_num(
 					priv->ddp_comp[DDP_COMPONENT_OVL1_2L]);
 
