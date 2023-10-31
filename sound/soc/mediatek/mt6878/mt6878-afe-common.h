@@ -33,7 +33,6 @@
 #define SKIP_SB_BTCVSD
 #define SKIP_SB_OFFLOAD
 #define SKIP_SB_VOW
-#define SKIP_SB_ULTRA
 #define SKIP_SMCC_SB
 #define SKIP_SB_USB_OFFLOAD
 #endif
