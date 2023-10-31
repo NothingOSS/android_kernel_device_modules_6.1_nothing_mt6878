@@ -7075,6 +7075,7 @@
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			iommus = <&mdp_iommu M4U_PORT_L43_GCE_DM>;
 			dma-mask-bit = <35>;
+			cmdq-dump-buf-size = <1>;
 		};
 
 		gce_sec: gce-mbox-sec@1e980000 {
@@ -7120,6 +7121,7 @@
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			iommus = <&mdp_iommu M4U_PORT_L43_GCE_MM>;
 			dma-mask-bit = <35>;
+			cmdq-dump-buf-size = <1>;
 		};
 
 		gce_m_sec: gce-mbox-m-sec@1e990000 {
