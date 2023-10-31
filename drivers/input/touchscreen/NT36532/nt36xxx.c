@@ -115,6 +115,17 @@ char *BOOT_UPDATE_FIRMWARE_NAME;
 char *MP_UPDATE_FIRMWARE_NAME;
 #endif
 
+/* For SPI mode */
+#define PINCTRL_STATE_SPI_DEFAULT   "nt36532_spi_mode"
+#define PINCTRL_STATE_SPI_LOWPOWER_MODE   "nt36532_spi_lowpower_mode"
+#define PINCTRL_STATE_TOUCH_LOWPOWER_MODE   "nt36532_touch_lowpower_mode"
+static struct pinctrl *nt36672_pinctrl;
+static struct pinctrl *nt36672_touch_pinctrl;
+
+static struct pinctrl_state *nt36672_spi_mode_default;
+static struct pinctrl_state *nt36672_spi_mode_lowpower;
+static struct pinctrl_state *nt36672_touch_mode_lowpower;
+
 /* Spinel code for OSPINEL-851 by gaobw1 at 2023/03/03 start */
 //used to detect KB connection status and control screen off
 extern void kb_hid_suspend(void);
@@ -2474,6 +2485,55 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 		goto err_gpio_config_failed;
 	}
 
+	/* get pinctrl handler from of node */
+	nt36672_pinctrl = devm_pinctrl_get(ts->client->controller->dev.parent);
+	if (IS_ERR_OR_NULL(nt36672_pinctrl)) {
+		NVT_ERR("Failed to get pinctrl handler[need confirm]");
+		nt36672_pinctrl = NULL;
+		goto err_gpio_config_failed;
+	}
+
+	nt36672_touch_pinctrl = devm_pinctrl_get(&ts->client->dev);
+	if (IS_ERR_OR_NULL(nt36672_touch_pinctrl)) {
+		NVT_ERR("Failed to get pinctrl handler[need confirm]");
+		nt36672_touch_pinctrl = NULL;
+		goto err_gpio_config_failed;
+	}
+
+	nt36672_touch_mode_lowpower = pinctrl_lookup_state(
+				nt36672_touch_pinctrl, PINCTRL_STATE_TOUCH_LOWPOWER_MODE);
+	if (IS_ERR_OR_NULL(nt36672_touch_mode_lowpower)) {
+		ret = PTR_ERR(nt36672_touch_mode_lowpower);
+		NVT_ERR("Failed to get pinctrl state:%s, r:%d",
+				PINCTRL_STATE_TOUCH_LOWPOWER_MODE, ret);
+		nt36672_touch_mode_lowpower = NULL;
+		goto err_pinctrl_failed;
+	}
+
+	nt36672_spi_mode_default = pinctrl_lookup_state(
+				nt36672_pinctrl, PINCTRL_STATE_SPI_DEFAULT);
+	if (IS_ERR_OR_NULL(nt36672_spi_mode_default)) {
+		ret = PTR_ERR(nt36672_spi_mode_default);
+		NVT_ERR("Failed to get pinctrl state:%s, r:%d",
+				PINCTRL_STATE_SPI_DEFAULT, ret);
+		nt36672_spi_mode_default = NULL;
+		goto err_pinctrl_failed;
+	}
+
+	nt36672_spi_mode_lowpower = pinctrl_lookup_state(
+				nt36672_pinctrl, PINCTRL_STATE_SPI_LOWPOWER_MODE);
+	if (IS_ERR_OR_NULL(nt36672_spi_mode_lowpower)) {
+		ret = PTR_ERR(nt36672_spi_mode_lowpower);
+		NVT_ERR("Failed to get pinctrl state:%s, r:%d",
+				PINCTRL_STATE_SPI_LOWPOWER_MODE, ret);
+		nt36672_spi_mode_lowpower = NULL;
+		goto err_pinctrl_failed;
+	}
+
+	ret = pinctrl_select_state(nt36672_pinctrl, nt36672_spi_mode_default);
+	if (ret < 0)
+		NVT_ERR("Failed to select default pinstate, r:%d", ret);
+
 	mutex_init(&ts->lock);
 	mutex_init(&ts->xbuf_lock);
 
@@ -2879,6 +2939,9 @@ err_chipvertrim_failed:
 	mutex_destroy(&ts->lock);
 	nvt_gpio_deconfig(ts);
 err_gpio_config_failed:
+err_pinctrl_failed:
+	pinctrl_put(nt36672_pinctrl);
+	nt36672_pinctrl = NULL;
 err_spi_setup:
 err_ckeck_full_duplex:
 	spi_set_drvdata(client, NULL);
@@ -3063,12 +3126,21 @@ static int32_t nvt_ts_suspend(struct device *dev)
 #endif
 	/* Spinel code for OSPINEL-6824 by gaobw1 at 2023/6/8 start */
 	int hall_work_status = -1;
+	int ret = -1;
 	hall_work_status = gpio_get_value(1275);
 	/* Spinel code for OSPINEL-6824 by gaobw1 at 2023/6/8 end */
 	if (!bTouchIsAwake) {
 		NVT_LOG("Touch is already suspend\n");
 		return 0;
 	}
+
+	ret = pinctrl_select_state(nt36672_pinctrl, nt36672_spi_mode_lowpower);
+	if (ret < 0)
+		NVT_ERR("Failed to select lowpower pinstate, r:%d", ret);
+
+	ret = pinctrl_select_state(nt36672_touch_pinctrl, nt36672_touch_mode_lowpower);
+	if (ret < 0)
+		NVT_ERR("Failed to select default pinstate, r:%d", ret);
 
 /* Spinel code for OSPINEL-192 by dingying3 at 2023/3/6 start */
 #if WAKEUP_GESTURE
@@ -3177,6 +3249,7 @@ return:
 *******************************************************/
 static int32_t nvt_ts_resume(struct device *dev)
 {
+	int ret = -1;
 /* Spinel code for OSPINEL-3680 by zhangyd22 at 2023/5/11 start */
 #if NVT_HALL_CHECK
 	if(nvt_gesture_flag == true){
@@ -3193,6 +3266,10 @@ static int32_t nvt_ts_resume(struct device *dev)
 	mutex_lock(&ts->lock);
 
 	NVT_LOG("start\n");
+
+	ret = pinctrl_select_state(nt36672_pinctrl, nt36672_spi_mode_default);
+	if (ret < 0)
+		NVT_ERR("Failed to select default pinstate, r:%d", ret);
 
 	// please make sure display reset(RESX) sequence and mipi dsi cmds sent before this
 #if NVT_TOUCH_SUPPORT_HW_RST
