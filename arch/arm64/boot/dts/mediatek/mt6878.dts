@@ -3372,6 +3372,11 @@
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_CAM_MAIN>;
 	};
 
+	camera-camsys-ccu {
+		compatible = "mediatek,camera-camsys-ccu";
+		mediatek,ccu-rproc = <&ccu_rproc>;
+	};
+
 	soc {
 		compatible = "simple-bus";
 		#address-cells = <2>;
