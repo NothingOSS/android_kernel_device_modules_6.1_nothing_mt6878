@@ -79,9 +79,12 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 			return "DIP";
 		case CMDQ_EVENT_IMG_WPE_EIS_GCE_FRAME_DONE
 			... CMDQ_EVENT_IMG_WOE_EIS_CQ_THR_DONE_P2_9:
-		case CMDQ_EVENT_IMG_PQDIP_A_CQ_THR_DONE_P2_0
+		case CMDQ_EVENT_IMG_WPE0_DUMMY_0
 			... CMDQ_EVENT_IMG_WPE0_DUMMY_2:
 			return "WPE_EIS";
+		case CMDQ_EVENT_IMG_PQDIP_A_CQ_THR_DONE_P2_0
+			... CMDQ_EVENT_IMG_PQA_DMA_ERR_EVENT:
+			return "PQDIP_A";
 		case CMDQ_EVENT_IMG_WPE_TNR_GCE_FRAME_DONE
 			... CMDQ_EVENT_IMG_WOE_TNR_CQ_THR_DONE_P2_9:
 			return "WPE_TNR";
