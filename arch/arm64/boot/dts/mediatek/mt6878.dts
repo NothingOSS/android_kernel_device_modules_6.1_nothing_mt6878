@@ -109,7 +109,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
-			// capacity-dmips-mhz  = <283>;
+			capacity-dmips-mhz  = <267>;
 		};
 
 		cpu1: cpu@1 {
@@ -119,7 +119,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
-			// capacity-dmips-mhz  = <283>;
+			capacity-dmips-mhz  = <267>;
 		};
 
 		cpu2: cpu@2 {
@@ -129,7 +129,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
-			// capacity-dmips-mhz  = <283>;
+			capacity-dmips-mhz  = <267>;
 		};
 
 		cpu3: cpu@3 {
@@ -139,7 +139,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 						&system_vcore &s2idle>;
-			// capacity-dmips-mhz  = <283>;
+			capacity-dmips-mhz  = <267>;
 		};
 
 		cpu4: cpu@100 {
@@ -149,7 +149,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 						&system_vcore &s2idle>;
-			// capacity-dmips-mhz  = <1024>;
+			capacity-dmips-mhz  = <1024>;
 		};
 
 		cpu5: cpu@101 {
@@ -159,7 +159,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 						&system_vcore &s2idle>;
-			// capacity-dmips-mhz  = <1024>;
+			capacity-dmips-mhz  = <1024>;
 		};
 
 		cpu6: cpu@102 {
@@ -169,7 +169,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 						&system_vcore &s2idle>;
-			// capacity-dmips-mhz  = <1024>;
+			capacity-dmips-mhz  = <1024>;
 		};
 
 		cpu7: cpu@103 {
@@ -179,7 +179,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 						&system_vcore &s2idle>;
-			// capacity-dmips-mhz  = <1024>;
+			capacity-dmips-mhz  = <1024>;
 		};
 
 		cpu-map {
