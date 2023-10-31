@@ -11838,20 +11838,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			input-enable;
 			bias-pull-down;
 		};
-		pins-cmd2-dat {
-			pinmux = <PINMUX_GPIO148__FUNC_GPIO148>;
-			input-enable;
-			bias-pull-down;
-		};
 	};
 	vow_scp_dmic_dat_on: vow-scp-dmic-dat-on {
 		pins-cmd1-dat {
 			pinmux = <PINMUX_GPIO3__FUNC_SCP_DMIC_DAT>;
-			input-schmitt-enable;
-			bias-disable;
-		};
-		pins-cmd2-dat {
-			pinmux = <PINMUX_GPIO148__FUNC_SCP_DMIC_DAT>;
 			input-schmitt-enable;
 			bias-disable;
 		};
@@ -11862,20 +11852,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 			input-enable;
 			bias-pull-down;
 		};
-		pins-cmd2-dat {
-			pinmux = <PINMUX_GPIO147__FUNC_GPIO147>;
-			input-enable;
-			bias-pull-down;
-		};
 	};
 	vow_scp_dmic_clk_on: vow-scp-dmic-clk-on {
 		pins-cmd1-dat {
 			pinmux = <PINMUX_GPIO2__FUNC_SCP_DMIC_CLK>;
-			input-schmitt-enable;
-			bias-disable;
-		};
-		pins-cmd2-dat {
-			pinmux = <PINMUX_GPIO147__FUNC_SCP_DMIC_CLK>;
 			input-schmitt-enable;
 			bias-disable;
 		};
