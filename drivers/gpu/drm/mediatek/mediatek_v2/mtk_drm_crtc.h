@@ -633,6 +633,8 @@ enum MML_LINK_STATE {
 	MML_DIRECT_LINKING,
 	MML_STOP_LINKING,
 	MML_IR_IDLE,
+	MML_DC_ENTERING,
+	MML_STOP_DC,
 };
 
 enum PF_TS_TYPE {
@@ -1049,6 +1051,7 @@ struct mtk_drm_crtc {
 	// MML inline rotate SRAM
 	struct mtk_drm_sram mml_ir_sram;
 	struct mml_submit *mml_cfg;
+	struct mml_submit *mml_cfg_dc;
 	struct mml_submit *mml_cfg_pq;
 	struct mtk_mml_cb_para mml_cb;
 
@@ -1056,6 +1059,7 @@ struct mtk_drm_crtc {
 	wait_queue_head_t signal_mml_last_job_is_flushed_wq;
 	bool is_mml;
 	bool is_mml_dl;
+	bool is_mml_dc;
 	unsigned int mml_debug;
 	bool is_force_mml_scen;
 	bool mml_cmd_ir;

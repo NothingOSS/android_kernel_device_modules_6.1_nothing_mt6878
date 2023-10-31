@@ -674,6 +674,37 @@ out:
 static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc);
 static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc);
 
+
+static void mtk_drm_vidle_control(struct drm_crtc *crtc, bool enable)
+{
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+
+	if (crtc == NULL || crtc->dev == NULL)
+		return;
+
+	priv = crtc->dev->dev_private;
+	if (priv== NULL)
+		return;
+
+	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) ||
+		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE))
+		return;
+
+	DDPINFO("%s, enable:%d\n", __func__, enable);
+	if (enable && !mtk_vidle_is_ff_enabled()) {
+		CRTC_MMP_MARK((int)drm_crtc_index(crtc), enter_vidle, 0x1d1e, enable);
+		mtk_vidle_enable(true, priv);
+		mtk_vidle_force_enable_mml(true);
+		mtk_vidle_config_ff(true);
+		mtk_vidle_force_enable_mml(false);
+	} else if (!enable && mtk_vidle_is_ff_enabled()) {
+		CRTC_MMP_MARK((int)drm_crtc_index(crtc), leave_vidle, 0x1d1e, enable);
+		mtk_vidle_force_enable_mml(true);
+		mtk_vidle_config_ff(false);
+		mtk_vidle_enable(false, priv);
+	}
+}
+
 static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 {
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
@@ -715,6 +746,7 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 		int en = 0;
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_VFP_IDLE_MODE, NULL);
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_LFR_SET, &en);
+		mtk_drm_vidle_control(crtc, true);
 	}
 
 	cmdq_pkt_flush(handle);
@@ -761,6 +793,8 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (comp) {
 		int en = 1;
+
+		mtk_drm_vidle_control(crtc, false);
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_VFP_DEFAULT_MODE, NULL);
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_LFR_SET, &en);
 	}
@@ -1306,7 +1340,7 @@ void mtk_drm_clear_async_cb_list(struct drm_crtc *crtc)
 	bool adjusted = false;
 
 	priv = crtc->dev->dev_private;
-	if (priv == NULL ||
+	if (priv == NULL || idlemgr == NULL ||
 		!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_IDLEMGR_ASYNC))
 		return;

@@ -4090,6 +4090,7 @@ static void check_is_mml_layer(const int disp_idx,
 	u32 ns = 0;
 	u32 mml_ovl_layers = 0;
 	u8 down_scale_cnt = 0;
+	bool mml_dc_layers = false;
 
 	if (!dev || !disp_info)
 		return;
@@ -4230,6 +4231,21 @@ static void check_is_mml_layer(const int disp_idx,
 
 		if (MTK_MML_DISP_NOT_SUPPORT & c->layer_caps)
 			mtk_gles_incl_layer(disp_info, disp_idx, i);
+
+		if (mml_dc_layers == false &&
+			(c->layer_caps & MTK_MML_DISP_DECOUPLE_LAYER))
+			mml_dc_layers = true;
+	}
+
+	if (mtk_crtc->mml_cfg_dc && mml_dc_layers == false) {
+		for (i = 0; i < MML_MAX_OUTPUTS; i++)
+			kfree(mtk_crtc->mml_cfg_dc->pq_param[i]);
+		kfree(mtk_crtc->mml_cfg_dc->job);
+		kfree(mtk_crtc->mml_cfg_dc);
+		mtk_crtc->mml_cfg_dc = NULL;
+		DDPINFO("%s, dc:%d, cap:0x%x w/o 0x%x destroy mml_cfg_dc\n",
+			__func__, mtk_crtc->is_mml_dc, c->layer_caps,
+			MTK_MML_DISP_DECOUPLE_LAYER);
 	}
 
 	if (disp_info->gles_head[disp_idx] != -1) {

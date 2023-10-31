@@ -1588,16 +1588,27 @@ static void mtk_atomic_mml(struct drm_device *dev,
 		mtk_crtc->mml_link_state = MML_IR_ENTERING;
 	else if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl)
 		mtk_crtc->mml_link_state = MML_DIRECT_LINKING;
+	else if (mtk_crtc->is_mml_dc && mtk_crtc->mml_cfg_dc == NULL &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DECOUPLE_MODE))
+		mtk_crtc->mml_link_state = MML_STOP_DC;
 	else
 		mtk_crtc->mml_link_state = NON_MML;
 
+	if (mtk_crtc->mml_link_state == MML_STOP_DC)
+		mtk_crtc->is_mml_dc = false;
+
 	if (priv && priv->dpc_dev) {
-		if ((mtk_crtc->mml_link_state == MML_DIRECT_LINKING) &&
+		if (mtk_crtc->mml_link_state == MML_DIRECT_LINKING &&
 		    !mtk_vidle_is_ff_enabled()) {
+			CRTC_MMP_MARK((int)drm_crtc_index(crtc), enter_vidle,
+				mtk_crtc->mml_link_state, new_mode);
 			mtk_vidle_enable(true, priv);
 			mtk_vidle_config_ff(true);
-		} else if ((mtk_crtc->mml_link_state == MML_STOP_LINKING) &&
+		} else if ((mtk_crtc->mml_link_state == MML_STOP_LINKING ||
+			   mtk_crtc->mml_link_state == MML_STOP_DC) &&
 			   mtk_vidle_is_ff_enabled()) {
+			CRTC_MMP_MARK((int)drm_crtc_index(crtc), leave_vidle,
+				mtk_crtc->mml_link_state, new_mode);
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(false, priv);
 		}
@@ -5954,12 +5965,19 @@ void mtk_drm_top_clk_prepare_enable(struct drm_device *drm)
 	bool en = 1;
 	int ret;
 	unsigned long flags = 0;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
 
 	if (priv->top_clk_num <= 0)
 		return;
 
 	//set_swpm_disp_active(true);
 	mtk_drm_pm_ctrl(priv, DISP_PM_GET);
+
+	CRTC_MMP_MARK(0, leave_vidle, U32_MAX, 1);
+	mtk_crtc = to_mtk_crtc(priv->crtc[0]);
+	if (mtk_crtc &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DECOUPLE_MODE))
+		mtk_crtc->is_mml_dc = false;
 	mtk_vidle_config_ff(false);
 	mtk_vidle_enable(mtk_vidle_is_ff_enabled(), priv);
 
@@ -5996,6 +6014,7 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
 	struct mtk_drm_private *priv = drm->dev_private;
 	int i = 0, cnt = 0;
 	unsigned long flags = 0;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
 
 	if (priv->top_clk_num <= 0)
 		return;
@@ -6024,8 +6043,14 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
 		clk_disable_unprepare(priv->top_clk[i]);
 	}
 
+	CRTC_MMP_MARK(0, leave_vidle, U32_MAX, 0);
+	mtk_crtc = to_mtk_crtc(priv->crtc[0]);
+	if (mtk_crtc &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DECOUPLE_MODE))
+		mtk_crtc->is_mml_dc = false;
 	mtk_vidle_config_ff(false);
 	mtk_vidle_enable(false, priv);
+
 	mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 
 	DRM_MMP_MARK(top_clk, atomic_read(&top_clk_ref),
@@ -9088,9 +9113,19 @@ SKIP_OVLSYS_CONFIG:
 	if (private->dpc_dev) {
 		pm_runtime_irq_safe(private->dpc_dev);
 		g_dpc_dev = private->dpc_dev;
-		g_mminfra_dummy = ioremap(0x1e8ff400, 0x4);
-		g_dispsys1_inten = ioremap(0x14200000, 0x4);
-		private->dispvcore_pwr_chk = ioremap(0x1c001e8c, 0x4);
+		if (private->data && private->data->mmsys_id == MMSYS_MT6989) {
+			g_mminfra_dummy = ioremap(0x1e8ff400, 0x4);
+			g_dispsys1_inten = ioremap(0x14200000, 0x4);
+			private->dispvcore_pwr_chk = ioremap(0x1c001e8c, 0x4);
+		}
+
+		if (g_mminfra_dummy && g_dispsys1_inten && private->dispvcore_pwr_chk)
+			DDPMSG("%s, debug of mminfra:0x%lx, disp:0x%lx, vcore:0x%lx\n",
+				__func__, (unsigned long)g_mminfra_dummy,
+				(unsigned long)g_dispsys1_inten,
+				(unsigned long)private->dispvcore_pwr_chk);
+		else
+			DDPMSG("%s, invalid debug address of mminfra, disp, vcore\n", __func__);
 	}
 	mtk_drm_pm_ctrl(private, DISP_PM_ENABLE);
 
