@@ -2833,7 +2833,7 @@ static void mtk_hp_enable(struct mt6681_priv *priv)
 				   DL34_DEBUG_SOURCE_SEL_MASK_SFT,
 				   0x1 << DL34_DEBUG_SOURCE_SEL_SFT);
 	}
-	if (priv->hwgain_enable) {
+	if (priv->hwgain_enable && (priv->hp_hifi_mode != 0)) {
 		regmap_write(priv->regmap, MT6681_AFE_TOP_DEBUG0, 0x0);
 	}
 	if (priv->mux_select[MUX_HP_L] == HP_MUX_HPSPK) {
