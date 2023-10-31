@@ -1343,7 +1343,8 @@ static void rrot_config_right(struct mml_tile_engine *tile)
 
 static void rrot_config_top(struct mml_tile_engine *tile)
 {
-	u32 in_ye = tile->in.ys + (tile->in.ye - tile->in.ys + 1) / 2 - 1;
+	u32 in_h = round_up(tile->in.ye - tile->in.ys + 1, 2);
+	u32 in_ye = tile->in.ys + in_h / 2 - 1;
 	u32 out_h = round_up(tile->out.ye - tile->out.ys + 1, 2);
 
 	tile->out.ye = tile->out.ys + out_h / 2 - 1;
@@ -1358,11 +1359,12 @@ static void rrot_config_top(struct mml_tile_engine *tile)
 
 static void rrot_config_bottom(struct mml_tile_engine *tile)
 {
+	u32 in_top_h = round_up(tile->in.ye - tile->in.ys + 1, 2);
 	u32 out_top = tile->in.ys & 0x1;
-	u32 in_ys = tile->in.ys + (tile->in.ye - tile->in.ys + 1) / 2;
-	u32 out_h = round_up(tile->out.ye - tile->out.ys + 1, 2);
+	u32 in_ys = tile->in.ys + in_top_h / 2;
+	u32 out_top_h = round_up(tile->out.ye - tile->out.ys + 1, 2);
 
-	tile->out.ys = tile->out.ys + out_h / 2;
+	tile->out.ys = tile->out.ys + out_top_h / 2;
 	tile->luma.y = 0;
 	tile->in.ys = round_up(in_ys, 16);
 	tile->out.ys += tile->in.ys - in_ys;
