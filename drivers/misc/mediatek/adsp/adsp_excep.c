@@ -24,7 +24,7 @@
 #if IS_ENABLED(CONFIG_MTK_EMI)
 #include <soc/mediatek/emi.h>
 #endif
-
+#include <aed.h>
 #include "adsp_reg.h"
 #include "adsp_core.h"
 #include "adsp_clk.h"
@@ -236,7 +236,6 @@ static void adsp_exception_dump(struct adsp_exception_control *ctrl)
 		db_opt |= DB_OPT_FTRACE;
 		break;
 	default:
-		dump_flag = false;
 		aed_type = "unknown exception";
 		break;
 	}
@@ -254,6 +253,11 @@ static void adsp_exception_dump(struct adsp_exception_control *ctrl)
 		pr_info("%s, suppress Test EE dump", __func__);
 		msleep(20);
 		return;
+	}
+
+	if (aee_get_mode() >= AEE_MODE_CUSTOMER_USER) {
+		dump_flag = false;
+		pr_info("%s, bypass coredump, aee customer user mode", __func__);
 	}
 
 	if (dump_flag) {
