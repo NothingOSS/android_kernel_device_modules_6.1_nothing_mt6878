@@ -31,6 +31,7 @@
 static char bl_tb0[] = {0x51, 0xf, 0xff};
 
 static int current_fps = 144;
+#define SUPPORT_90Hz 0
 
 struct panel_desc {
 	const struct drm_display_mode *modes;
@@ -844,6 +845,7 @@ static const struct drm_display_mode default_mode = {
 	.vtotal = 1840 + 26 + 2 + 182,
 };
 
+#if SUPPORT_90Hz
 static const struct drm_display_mode performance_mode_90hz = {
 	.clock = 887371,//890914,
 	.hdisplay = 2944,
@@ -855,6 +857,7 @@ static const struct drm_display_mode performance_mode_90hz = {
 	.vsync_end = 1840 + 1256 + 2,
 	.vtotal = 1840 + 1256 + 2 + 182,
 };
+#endif
 
 static const struct drm_display_mode performance_mode_120hz = {
 	.clock = 766044,
@@ -969,6 +972,7 @@ static struct mtk_panel_params ext_params = {
 	},
 };
 
+#if SUPPORT_90Hz
 static struct mtk_panel_params ext_params_90hz = {
 	.pll_clk = 491,//501,
 	.data_rate = 982,//1002,
@@ -1044,6 +1048,7 @@ static struct mtk_panel_params ext_params_90hz = {
 		.hbp = 26,//32,
 	},
 };
+#endif
 
 static struct mtk_panel_params ext_params_120hz = {
 	.pll_clk = 491,
@@ -1325,10 +1330,14 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	if (drm_mode_vrefresh(m) == 144) {
 		ext->params = &ext_params;
 		current_fps = 144;
-	} else if (drm_mode_vrefresh(m) == 90) {
+	}
+#if SUPPORT_90Hz
+	else if (drm_mode_vrefresh(m) == 90) {
 		ext->params = &ext_params_90hz;
 		current_fps = 90;
-	} else if (drm_mode_vrefresh(m) == 120) {
+	}
+#endif
+	else if (drm_mode_vrefresh(m) == 120) {
 		ext->params = &ext_params_120hz;
 		current_fps = 120;
 	} else if (drm_mode_vrefresh(m) == 60) {
@@ -1379,8 +1388,10 @@ static int mode_switch(struct drm_panel *panel,
 
 	if (drm_mode_vrefresh(m) == 144)
 		mode_switch_to_144(panel);
+#if SUPPORT_90Hz
 	else if (drm_mode_vrefresh(m) == 90)
 		mode_switch_to_144(panel);
+#endif
 	else if (drm_mode_vrefresh(m) == 120)
 		mode_switch_to_120(panel);
 	else if (drm_mode_vrefresh(m) == 60)
@@ -1406,7 +1417,9 @@ static int boe_get_modes(struct drm_panel *panel,
 					struct drm_connector *connector)
 {
 	struct drm_display_mode *mode;
+#if SUPPORT_90Hz
 	struct drm_display_mode *mode2;
+#endif
 	struct drm_display_mode *mode3;
 	struct drm_display_mode *mode4;
 	struct drm_display_mode *mode5;
@@ -1424,6 +1437,7 @@ static int boe_get_modes(struct drm_panel *panel,
 	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
 	drm_mode_probed_add(connector, mode);
 
+#if SUPPORT_90Hz
 	mode2 = drm_mode_duplicate(connector->dev, &performance_mode_90hz);
 	if (!mode2) {
 		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
@@ -1434,6 +1448,7 @@ static int boe_get_modes(struct drm_panel *panel,
 	drm_mode_set_name(mode2);
 	mode2->type = DRM_MODE_TYPE_DRIVER;
 	drm_mode_probed_add(connector, mode2);
+#endif
 
 	mode3 = drm_mode_duplicate(connector->dev, &performance_mode_120hz);
 	if (!mode3) {
