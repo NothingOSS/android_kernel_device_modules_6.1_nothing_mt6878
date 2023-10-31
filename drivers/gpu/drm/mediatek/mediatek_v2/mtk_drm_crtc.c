@@ -14482,6 +14482,8 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		}
 
 		cmdq_pkt_wait_no_clear(cmdq_handle, gce_event);
+		event = mtk_crtc_wb_addon_get_event(crtc);
+		cmdq_pkt_clear_event(cmdq_handle, event);
 	} else if (mtk_crtc_is_frame_trigger_mode(crtc) &&
 					mtk_crtc_with_trigger_loop(crtc)) {
 		if (mtk_crtc->skip_frame ||
@@ -14588,7 +14590,6 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			return -EINVAL;
 		}
 
-		cmdq_pkt_clear_event(handle, event);
 		cmdq_pkt_wfe(handle, event);
 		_mtk_crtc_wb_addon_module_disconnect(crtc, mtk_crtc->ddp_mode, handle);
 		mtk_crtc->capturing = false;
