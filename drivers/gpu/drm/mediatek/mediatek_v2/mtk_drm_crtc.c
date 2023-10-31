@@ -10388,6 +10388,19 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 					DISP_REG_CONFIG_OVLSYS_GCE_EVENT_SEL);
 
 		_mtk_crtc_1tnp_setting(mtk_crtc);
+	} else if (priv->data->mmsys_id == MMSYS_MT6878) {
+		/*Set EVENT_GCED_EN EVENT_GCEM_EN*/
+		writel(0x3, mtk_crtc->config_regs +
+				DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL);
+
+		/*Set BYPASS_MUX_SHADOW*/
+		writel(0x1, mtk_crtc->config_regs +
+				MT6878_MMSYS_BYPASS_MUX_SHADOW);
+
+		/*Set CROSSBAR_BYPASS_MUX_SHADOW*/
+		writel(0x00ff0000, mtk_crtc->config_regs +
+				MT6878_MMSYS_CROSSBAR_CON);
+
 	}
 #endif
 

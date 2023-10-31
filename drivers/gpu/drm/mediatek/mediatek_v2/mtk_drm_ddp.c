@@ -26155,6 +26155,7 @@ void mmsys_config_dump_reg_mt6878(void __iomem *config_regs)
 {
 	unsigned int off = 0;
 
+	DDPDUMP("== DISP MMSYS_CONFIG REGS ==\n");
 /* TODO: use raw dump helper here */
 	for (off = 0x0; off <= 0x10; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
