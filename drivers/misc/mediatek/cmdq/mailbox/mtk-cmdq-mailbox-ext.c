@@ -1297,13 +1297,16 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 	u32 end_cnt = 0;
 #endif
 
+	cmdq_mtcmos_by_fast(cmdq, true);
 	if (atomic_read(&cmdq->usage) <= 0 ||
 		(mminfra_power_cb && !mminfra_power_cb()) ||
 		(mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid))) {
 		cmdq_log("irq handling during gce off gce:%lx thread:%u",
 			(unsigned long)cmdq->base_pa, thread->idx);
+		cmdq_mtcmos_by_fast(cmdq, false);
 		return;
 	}
+	cmdq_mtcmos_by_fast(cmdq, false);
 
 	irq_flag = readl(thread->base + CMDQ_THR_IRQ_STATUS);
 	if (cmdq->error_irq_sw_req && (irq_flag & CMDQ_THR_IRQ_ERROR)) {
@@ -1528,6 +1531,7 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 	u32 end_cnt = 0;
 #endif
 
+	cmdq_mtcmos_by_fast(cmdq, true);
 	if (atomic_read(&cmdq->usage) <= 0 ||
 		(mminfra_gce_cg && !mminfra_gce_cg(cmdq->hwid))) {
 		for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++)
@@ -1537,8 +1541,11 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 					cmdq->hwid, cmdq->suspended,
 					atomic_read(&cmdq->usage), i,
 					atomic_read(&cmdq->thread[i].usage));
+		cmdq_mtcmos_by_fast(cmdq, false);
 		return IRQ_HANDLED;
 	}
+	cmdq_mtcmos_by_fast(cmdq, false);
+
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt++] = sched_clock();
 #endif
