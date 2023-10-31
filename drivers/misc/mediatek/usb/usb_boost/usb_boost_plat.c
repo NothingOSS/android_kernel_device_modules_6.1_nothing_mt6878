@@ -146,7 +146,8 @@ static int vcore_hold(struct act_arg_obj *arg)
 		USB_BOOST_NOTICE("%s: input vcore (%d)\n", __func__, val);
 	}
 
-	if (of_device_is_compatible(np, "mediatek,mt6897-usb-boost") && reg && (val > 0)) {
+	if ((of_device_is_compatible(np, "mediatek,mt6897-usb-boost") ||
+		of_device_is_compatible(np, "mediatek,mt6989-usb-boost")) && reg && (val > 0)) {
 		ret = regulator_set_voltage(reg, val, INT_MAX);
 		if (!ret)
 			USB_BOOST_NOTICE("%s: set usb vcore (%d)\n", __func__, val);
@@ -165,7 +166,8 @@ static int vcore_release(struct act_arg_obj *arg)
 	val = 0;
 	device_property_read_u32(gdev, "vcore", &val);
 
-	if (of_device_is_compatible(np, "mediatek,mt6897-usb-boost") && reg && (val > 0)) {
+	if ((of_device_is_compatible(np, "mediatek,mt6897-usb-boost") ||
+		of_device_is_compatible(np, "mediatek,mt6989-usb-boost")) && reg && (val > 0)) {
 		regulator_set_voltage(reg, 0, INT_MAX);
 		USB_BOOST_NOTICE("%s: release usb vcore\n", __func__);
 	}

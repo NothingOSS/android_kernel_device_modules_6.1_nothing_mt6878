@@ -852,6 +852,7 @@ static int mtu3_ep0_queue(struct usb_ep *ep,
 	mreq = to_mtu3_request(req);
 
 	spin_lock_irqsave(&mtu->lock, flags);
+	trace_mtu3_gadget_queue(mreq);
 	ret = ep0_queue(mep, mreq);
 	spin_unlock_irqrestore(&mtu->lock, flags);
 	return ret;
