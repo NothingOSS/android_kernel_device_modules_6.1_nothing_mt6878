@@ -1846,6 +1846,7 @@ static void vow_service_reset(void)
 	VOWDRV_DEBUG("+%s()\n", __func__);
 	vowserv.scp_command_flag = false;
 	vowserv.tx_keyword_start = false;
+	vowserv.provider_type = 0;
 	vow_hal_reboot();
 	for (I = 0; I < MAX_VOW_SPEAKER_MODEL; I++) {
 		if (vowserv.vow_speaker_model[I].enabled  == 1) {
