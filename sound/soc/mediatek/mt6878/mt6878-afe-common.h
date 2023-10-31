@@ -30,7 +30,6 @@
 #else
 /* delete define below if your feature don't want to skip */
 //#define SKIP_SB_DSP
-#define SKIP_SB_BTCVSD
 #define SKIP_SB_OFFLOAD
 #define SKIP_SB_USB_OFFLOAD
 #endif
