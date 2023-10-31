@@ -1260,11 +1260,6 @@ static void dpc_disp_group_enable(const enum mtk_dpc_disp_vidle group, bool en)
 	int i, avail = 0;
 	u32 value = 0, value1 = 0;
 
-	if (g_disp_dt_usage == NULL) {
-		DPCERR("invalid dt usage table");
-		return;
-	}
-
 	avail = mtk_dpc_support_group(group);
 	switch (group) {
 	case DPC_DISP_VIDLE_MTCMOS:
@@ -1310,6 +1305,9 @@ static void dpc_disp_group_enable(const enum mtk_dpc_disp_vidle group, bool en)
 	}
 	dpc_mmp(disp_group, MMPROFILE_FLAG_PULSE, group, value);
 
+	if (g_disp_dt_usage == NULL)
+		return;
+
 	if (!en) {
 		for (i = 0; i < DPC_DISP_DT_CNT; ++i) {
 			if (group == g_disp_dt_usage[i].group)
@@ -1329,11 +1327,6 @@ static void dpc_mml_group_enable(const enum mtk_dpc_mml_vidle group, bool en)
 {
 	int i, avail = 0;
 	u32 value = 0, value1 = 0;
-
-	if (g_mml_dt_usage == NULL) {
-		DPCERR("invalid dt usage table");
-		return;
-	}
 
 	avail = mtk_dpc_support_group(group);
 	switch (group) {
@@ -1369,6 +1362,9 @@ static void dpc_mml_group_enable(const enum mtk_dpc_mml_vidle group, bool en)
 		break;
 	}
 	dpc_mmp(mml_group, MMPROFILE_FLAG_PULSE, group, value);
+
+	if (g_mml_dt_usage == NULL)
+		return;
 
 	if (!en) {
 		for (i = 0; i < DPC_MML_DT_CNT; ++i) {
@@ -2025,7 +2021,7 @@ EXPORT_SYMBOL(dpc_dvfs_both_set);
 
 void dpc_group_enable(const u16 group, bool en)
 {
-	if (g_panel_type >= PANEL_TYPE_COUNT)
+	if (g_panel_type >= PANEL_TYPE_COUNT && en)
 		return;
 
 	if (dpc_pm_ctrl(true))
