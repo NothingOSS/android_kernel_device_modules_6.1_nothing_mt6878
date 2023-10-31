@@ -39,6 +39,9 @@ int audio_freq_hold(void);
 int audio_freq_release(void);
 void audio_boost_quirk_setting(int vid, int pid);
 void audio_boost_default_setting(void);
+void usb_boost_vcore_control(bool hold);
+extern bool vcore_holding_by_others;
+
 
 void register_usb_boost_act(int type_id, int action_id,
 	int (*func)(struct act_arg_obj *arg));

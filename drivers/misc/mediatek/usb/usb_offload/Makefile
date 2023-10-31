@@ -24,6 +24,8 @@ ccflags-y += -I$(srctree)/drivers/usb/host
 endif
 endif
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb_boost
+
 ifneq ($(CONFIG_SND_USB_AUDIO), )
 ccflags-y += -I$(srctree)/sound/usb
 endif

@@ -100,6 +100,7 @@ static int boost_ep[MAX_EP_NUM * 2 + 1];
 #endif
 
 #define MAX_LEN_WQ_NAME 32
+bool vcore_holding_by_others;
 static int trigger_cnt_disabled;
 static int enabled;
 static int inited;
@@ -885,6 +886,18 @@ static int mtu3_trace_init(void)
 	return 0;
 }
 #endif
+
+/* api which allows other modules to hold/release vcore */
+void usb_boost_vcore_control(bool hold)
+{
+	int action_id;
+
+	action_id = hold ? ACT_HOLD : ACT_RELEASE;
+	vcore_holding_by_others = hold ? true : false;
+	USB_BOOST_NOTICE("directly control vcore, action:%d\n", action_id);
+	__boost_act(TYPE_VCORE, action_id);
+}
+EXPORT_SYMBOL_GPL(usb_boost_vcore_control);
 
 /* host_request_vcore - determine hold vcore or not
  * [policy]
