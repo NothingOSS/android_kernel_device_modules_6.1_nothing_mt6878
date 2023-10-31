@@ -233,6 +233,7 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
+	switch-fps = <120>;
 	panel1@0 {
 		compatible = "jdi,nt36672e,vdo,120hz";
 		reg = <0>;
@@ -246,10 +247,26 @@ bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 			};
 		};
 	};
+	panel2@1 {
+		compatible = "jdi,nt36672e,vdo,60hz";
+		reg = <1>;
+		pm-enable-gpios = <&pio 149 0>;
+		reset-gpios = <&pio 90 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in2: endpoint {
+				remote-endpoint = <&dsi_out2>;
+			};
+		};
+	};
 	ports {
 		port {
 			dsi_out: endpoint {
 				remote-endpoint = <&panel_in1>;
+			};
+			dsi_out2: endpoint2 {
+				remote-endpoint = <&panel_in2>;
 			};
 		};
 	};
