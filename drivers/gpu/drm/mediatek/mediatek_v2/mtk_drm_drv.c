@@ -107,7 +107,6 @@ static spinlock_t top_clk_lock; /* power status protection*/
 
 struct device *g_dpc_dev; /* mminfra power control */
 static void __iomem *g_mminfra_dummy; /* mminfra dummy register for access check */
-static void __iomem *g_dispsys1_inten; /* dispsys1 register for access check */
 
 unsigned long long mutex_time_start;
 unsigned long long mutex_time_end;
@@ -6080,8 +6079,6 @@ bool mtk_drm_top_clk_isr_get(char *master)
 			}
 			if (likely(g_mminfra_dummy))
 				(void)readl(g_mminfra_dummy);
-			if (likely(g_dispsys1_inten))
-				(void)readl(g_dispsys1_inten);
 		}
 		spin_unlock_irqrestore(&top_clk_lock, flags);
 	}
@@ -8922,6 +8919,8 @@ static int mtk_drm_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	private->data = of_device_get_match_data(dev);
+	if (!private->data)
+		return -ENODEV;
 
 	private->reg_data = mtk_ddp_get_mmsys_reg_data(private->data->mmsys_id);
 	if (IS_ERR(private->reg_data)) {
@@ -9103,17 +9102,9 @@ SKIP_OVLSYS_CONFIG:
 		g_dpc_dev = private->dpc_dev;
 		if (private->data && private->data->mmsys_id == MMSYS_MT6989) {
 			g_mminfra_dummy = ioremap(0x1e8ff400, 0x4);
-			g_dispsys1_inten = ioremap(0x14200000, 0x4);
-			private->dispvcore_pwr_chk = ioremap(0x1c001e8c, 0x4);
+			if (!g_mminfra_dummy)
+				DDPMSG("%s, invalid debug address of mminfra\n", __func__);
 		}
-
-		if (g_mminfra_dummy && g_dispsys1_inten && private->dispvcore_pwr_chk)
-			DDPMSG("%s, debug of mminfra:0x%lx, disp:0x%lx, vcore:0x%lx\n",
-				__func__, (unsigned long)g_mminfra_dummy,
-				(unsigned long)g_dispsys1_inten,
-				(unsigned long)private->dispvcore_pwr_chk);
-		else
-			DDPMSG("%s, invalid debug address of mminfra, disp, vcore\n", __func__);
 	}
 	mtk_drm_pm_ctrl(private, DISP_PM_ENABLE);
 

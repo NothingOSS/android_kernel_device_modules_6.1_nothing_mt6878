@@ -71,6 +71,7 @@ enum mtk_vidle_voter_user {
 	DISP_VIDLE_USER_MML,
 	DISP_VIDLE_USER_MDP,
 	DISP_VIDLE_USER_DISP_CMDQ,
+	DISP_VIDLE_USER_DDIC_CMDQ,
 	DISP_VIDLE_USER_MML_CMDQ = 24,
 	DISP_VIDLE_USER_SMI_DUMP = 30,
 	DISP_VIDLE_FORCE_KEEP = 31,
@@ -121,7 +122,7 @@ void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
 int dpc_vidle_power_keep(const enum mtk_vidle_voter_user);
 void dpc_vidle_power_release(const enum mtk_vidle_voter_user);
 void dpc_vidle_power_keep_by_gce(struct cmdq_pkt *pkt,
-		const enum mtk_vidle_voter_user user);
+		const enum mtk_vidle_voter_user user, const u16 gpr);
 void dpc_vidle_power_release_by_gce(struct cmdq_pkt *pkt,
 		const enum mtk_vidle_voter_user user);
 void dpc_init_panel_type(enum mtk_panel_type);
@@ -138,7 +139,7 @@ struct dpc_funcs {
 	int (*dpc_vidle_power_keep)(const enum mtk_vidle_voter_user);
 	void (*dpc_vidle_power_release)(const enum mtk_vidle_voter_user);
 	void (*dpc_vidle_power_keep_by_gce)(struct cmdq_pkt *pkt,
-				const enum mtk_vidle_voter_user user);
+				const enum mtk_vidle_voter_user user, const u16 gpr);
 	void (*dpc_vidle_power_release_by_gce)(struct cmdq_pkt *pkt,
 				const enum mtk_vidle_voter_user user);
 	void (*dpc_hrt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);

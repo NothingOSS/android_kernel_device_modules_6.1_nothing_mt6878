@@ -12394,7 +12394,7 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 			cmdq_pkt_wfe(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
-			mtk_vidle_user_power_keep_by_gce(cmdq_handle);
+			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
 		}
 		mml_drm_racing_config_sync(mml_ctx, cmdq_handle);
 		break;
@@ -12405,7 +12405,7 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 			cmdq_pkt_wfe(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
-			mtk_vidle_user_power_keep_by_gce(cmdq_handle);
+			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
 		}
 		break;
 	case MML_STOP_LINKING:
@@ -15868,7 +15868,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	mtk_drm_idlemgr_kick(__func__, crtc, false); /* update kick timestamp */
 
 	if (priv->dpc_dev)
-		mtk_vidle_user_power_release_by_gce(cmdq_handle);
+		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
 
 #ifndef DRM_CMDQ_DISABLE
 #ifdef MTK_DRM_CMDQ_ASYNC

@@ -137,24 +137,24 @@ static void mtk_vidle_dt_enable(unsigned int en)
 		(en && mtk_vidle_enable_check(DISP_VIDLE_QOS_DT_EN)));
 }
 
-void mtk_vidle_user_power_keep_by_gce(struct cmdq_pkt *pkt)
+void mtk_vidle_user_power_keep_by_gce(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt, u16 gpr)
 {
 	if (disp_dpc_driver.dpc_vidle_power_keep_by_gce == NULL)
 		return;
 
 	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
 		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
-		disp_dpc_driver.dpc_vidle_power_keep_by_gce(pkt, DISP_VIDLE_USER_DISP_CMDQ);
+		disp_dpc_driver.dpc_vidle_power_keep_by_gce(pkt, user, gpr);
 }
 
-void mtk_vidle_user_power_release_by_gce(struct cmdq_pkt *pkt)
+void mtk_vidle_user_power_release_by_gce(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt)
 {
 	if (disp_dpc_driver.dpc_vidle_power_release_by_gce == NULL)
 		return;
 
 	if (mtk_vidle_enable_check(DISP_VIDLE_MTCMOS_DT_EN) ||
 		mtk_vidle_enable_check(DISP_VIDLE_MMINFRA_DT_EN))
-		disp_dpc_driver.dpc_vidle_power_release_by_gce(pkt, DISP_VIDLE_USER_DISP_CMDQ);
+		disp_dpc_driver.dpc_vidle_power_release_by_gce(pkt, user);
 }
 
 int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
@@ -188,8 +188,10 @@ int mtk_vidle_pq_power_get(const char *caller)
 	ref = atomic_inc_return(&g_vidle_pq_ref);
 	if (ref == 1) {
 		pm_ret = mtk_vidle_user_power_keep(DISP_VIDLE_USER_PQ);
-		if (pm_ret < 0)
+		if (pm_ret < 0) {
+			DDPMSG("%s skipped, user %s\n", __func__, caller);
 			ref = atomic_dec_return(&g_vidle_pq_ref);
+		}
 	}
 	mutex_unlock(&g_vidle_pq_ref_lock);
 	if (ref < 0) {

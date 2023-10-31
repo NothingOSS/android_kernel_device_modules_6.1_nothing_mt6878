@@ -620,10 +620,30 @@ static unsigned int mtk_dpc_get_vidle_mask(const enum mtk_dpc_subsys subsys, boo
 
 static inline int dpc_pm_ctrl(bool en)
 {
+	int ret = 0;
+	u32 mminfra_hangfree_val = 0;
+
 	if (!g_priv->pd_dev)
 		return 0;
 
-	return en ? pm_runtime_resume_and_get(g_priv->pd_dev) : pm_runtime_put_sync(g_priv->pd_dev);
+	if (en) {
+		ret = pm_runtime_resume_and_get(g_priv->pd_dev);
+		if (ret) {
+			DPCERR("pm_runtime_resume_and_get failed skip_force_power(%u)",
+				g_priv->skip_force_power);
+			return -1;
+		}
+
+		/* disable devapc power check false alarm, */
+		/* DPC address is bound by power of disp1 on current platform */
+		if (g_priv->sys_va[MMINFRA_HANG_FREE]) {
+			mminfra_hangfree_val = readl(g_priv->sys_va[MMINFRA_HANG_FREE]);
+			writel(mminfra_hangfree_val & ~0x1, g_priv->sys_va[MMINFRA_HANG_FREE]);
+		}
+	} else
+		pm_runtime_put_sync(g_priv->pd_dev);
+
+	return ret;
 }
 
 static inline bool dpc_pm_check_and_get(void)
@@ -1950,7 +1970,7 @@ static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level)
 		mmdvfs_user = VCP_PWR_USR_DISP;
 		addr = DISP_REG_DPC_DISP_VDISP_DVFS_VAL;
 	} else if (subsys == DPC_SUBSYS_MML) {
-		mmdvfs_user = VCP_PWR_USR_DISP;
+		mmdvfs_user = VCP_PWR_USR_MML;
 		addr = DISP_REG_DPC_MML_VDISP_DVFS_VAL;
 	}
 
@@ -2434,7 +2454,6 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_dpc *priv = dev_id;
 	u32 status;
-	u32 mminfra_hangfree_val = 0;
 	irqreturn_t ret = IRQ_NONE;
 
 	if (IS_ERR_OR_NULL(priv))
@@ -2443,12 +2462,6 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 	if (dpc_pm_ctrl(true)) {
 		dpc_mmp(mminfra_off, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
 		return ret;
-	}
-
-	/* disable devapc power check temporarily, the value usually not changed after boot */
-	if (g_priv->sys_va[MMINFRA_HANG_FREE]) {
-		mminfra_hangfree_val = readl(g_priv->sys_va[MMINFRA_HANG_FREE]);
-		writel(mminfra_hangfree_val & ~0x1, g_priv->sys_va[MMINFRA_HANG_FREE]);
 	}
 
 	status = readl(dpc_base + DISP_REG_DPC_DISP_INTSTA);
@@ -2553,9 +2566,6 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 	ret = IRQ_HANDLED;
 
 out:
-	if (g_priv->sys_va[MMINFRA_HANG_FREE])
-		writel(mminfra_hangfree_val, g_priv->sys_va[MMINFRA_HANG_FREE]);
-
 	dpc_pm_ctrl(false);
 
 	return ret;
@@ -2565,10 +2575,8 @@ irqreturn_t mtk_dpc_mml_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_dpc *priv = dev_id;
 	u32 status;
-	u32 mminfra_hangfree_val = 0;
 	irqreturn_t ret = IRQ_NONE;
 	unsigned int val = 0;
-
 
 	if (IS_ERR_OR_NULL(priv))
 		return ret;
@@ -2576,12 +2584,6 @@ irqreturn_t mtk_dpc_mml_irq_handler(int irq, void *dev_id)
 	if (dpc_pm_ctrl(true)) {
 		dpc_mmp(mminfra_off, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
 		return ret;
-	}
-
-	/* disable devapc power check temporarily, the value usually not changed after boot */
-	if (g_priv->sys_va[MMINFRA_HANG_FREE]) {
-		mminfra_hangfree_val = readl(g_priv->sys_va[MMINFRA_HANG_FREE]);
-		writel(mminfra_hangfree_val & ~0x1, g_priv->sys_va[MMINFRA_HANG_FREE]);
 	}
 
 	status = readl(dpc_base + DISP_REG_DPC_MML_INTSTA);
@@ -2606,32 +2608,28 @@ irqreturn_t mtk_dpc_mml_irq_handler(int irq, void *dev_id)
 		if ((status & MML_DPC_INT_DT35) || (status & MML_DPC_INT_DT32)) {
 			if (atomic_read(&g_vidle_window) & DPC_VIDLE_MML_DC_WINDOW)
 				mtk_update_dpc_state(DPC_VIDLE_MML_DC_WINDOW, true);
-			if (g_priv) {
-				atomic_set(&g_priv->dpc_state, DPC_STATE_OFF);
-				wake_up_interruptible(&g_priv->dpc_state_wq);
-			}
+			atomic_set(&priv->dpc_state, DPC_STATE_OFF);
+			wake_up_interruptible(&priv->dpc_state_wq);
 		}
 
 		if (status & MML_DPC_INT_DT33) {
 			if (atomic_read(&g_vidle_window) & DPC_VIDLE_MML_DC_WINDOW)
 				mtk_update_dpc_state(DPC_VIDLE_MML_DC_WINDOW, false);
-			if (g_priv) {
-				atomic_set(&g_priv->dpc_state, DPC_STATE_ON);
-				wake_up_interruptible(&g_priv->dpc_state_wq);
-			}
+			atomic_set(&priv->dpc_state, DPC_STATE_ON);
+			wake_up_interruptible(&priv->dpc_state_wq);
 		}
 
 		if (status & MML_DPC_INT_DT54) {
-			if (g_priv->get_sys_status)
-				g_priv->get_sys_status(SYS_STATE_VLP_VOTE, &val);
+			if (priv->get_sys_status)
+				priv->get_sys_status(SYS_STATE_VLP_VOTE, &val);
 			else
 				val = 0;
 			dpc_mmp(gce_vote, MMPROFILE_FLAG_PULSE, 1, val);
 			mtk_dpc_update_vlp_state(0x54 << 16, val, false);
 		}
 		if (status & MML_DPC_INT_DT55) {
-			if (g_priv->get_sys_status)
-				g_priv->get_sys_status(SYS_STATE_VLP_VOTE, &val);
+			if (priv->get_sys_status)
+				priv->get_sys_status(SYS_STATE_VLP_VOTE, &val);
 			else
 				val = 0;
 			dpc_mmp(gce_vote, MMPROFILE_FLAG_PULSE, 0, val);
@@ -2642,8 +2640,6 @@ irqreturn_t mtk_dpc_mml_irq_handler(int irq, void *dev_id)
 	ret = IRQ_HANDLED;
 
 out:
-	if (g_priv->sys_va[MMINFRA_HANG_FREE])
-		writel(mminfra_hangfree_val, g_priv->sys_va[MMINFRA_HANG_FREE]);
 	dpc_pm_ctrl(false);
 
 	return ret;
@@ -2844,18 +2840,6 @@ static void mtk_disp_vlp_vote_by_gce(struct cmdq_pkt *pkt, bool vote_set, unsign
 		cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC_DTx_SW_TRIG(dt), 0x1, 0x1);
 }
 
-void dpc_vidle_power_keep_by_gce(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user)
-{
-	mtk_disp_vlp_vote_by_gce(pkt, VOTE_SET, user);
-}
-EXPORT_SYMBOL(dpc_vidle_power_keep_by_gce);
-
-void dpc_vidle_power_release_by_gce(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user)
-{
-	mtk_disp_vlp_vote_by_gce(pkt, VOTE_CLR, user);
-}
-EXPORT_SYMBOL(dpc_vidle_power_release_by_gce);
-
 static void mtk_disp_vlp_vote_by_cpu(unsigned int vote_set, unsigned int thread)
 {
 	u32 addr = vote_set ? VLP_DISP_SW_VOTE_SET : VLP_DISP_SW_VOTE_CLR;
@@ -2890,6 +2874,22 @@ static void mtk_disp_vlp_vote_by_cpu(unsigned int vote_set, unsigned int thread)
 		dpc_mmp(cpu_vote, MMPROFILE_FLAG_PULSE, BIT(thread) | vote_set, val);
 	mtk_dpc_update_vlp_state(thread, val, false);
 }
+
+void dpc_vidle_power_keep_by_gce(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user,
+				 const u16 gpr)
+{
+	mtk_disp_vlp_vote_by_gce(pkt, VOTE_SET, user);
+	if (gpr)
+		cmdq_pkt_poll_timeout(pkt, 0xb, SUBSYS_NO_SUPPORT,
+				      g_priv->dpc_pa + DISP_REG_DPC_DISP1_DEBUG1, ~0, 0xFFFF, gpr);
+}
+EXPORT_SYMBOL(dpc_vidle_power_keep_by_gce);
+
+void dpc_vidle_power_release_by_gce(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user)
+{
+	mtk_disp_vlp_vote_by_gce(pkt, VOTE_CLR, user);
+}
+EXPORT_SYMBOL(dpc_vidle_power_release_by_gce);
 
 int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 {
@@ -3089,7 +3089,6 @@ static void process_dbg_opt(const char *opt)
 {
 	int ret = 0;
 	u32 val = 0, v1 = 0, v2 = 0;
-	u32 mminfra_hangfree_val = 0;
 	u32 status1= 0, status2 = 0, value = 0;
 
 	if (g_priv->get_sys_status) {
@@ -3103,12 +3102,6 @@ static void process_dbg_opt(const char *opt)
 
 	if (dpc_pm_ctrl(true))
 		return;
-
-	/* disable devapc power check temporarily, the value usually not changed after boot */
-	if (g_priv->sys_va[MMINFRA_HANG_FREE]) {
-		mminfra_hangfree_val = readl(g_priv->sys_va[MMINFRA_HANG_FREE]);
-		writel(mminfra_hangfree_val & ~0x1, g_priv->sys_va[MMINFRA_HANG_FREE]);
-	}
 
 	if (strncmp(opt, "en:", 3) == 0) {
 		ret = sscanf(opt, "en:%u\n", &val);
@@ -3235,11 +3228,7 @@ static void process_dbg_opt(const char *opt)
 		writel(DISP_DPC_EN|DISP_DPC_DT_EN|DISP_DPC_VDO_MODE, dpc_base + DISP_REG_DPC_EN);
 	}
 
-	/* enable devapc power check */
-	if (g_priv->sys_va[MMINFRA_HANG_FREE])
-		writel(mminfra_hangfree_val, g_priv->sys_va[MMINFRA_HANG_FREE]);
 	goto end;
-
 err:
 	DPCERR();
 end:

@@ -19,7 +19,7 @@ extern void dpc_dvfs_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb
 extern int dpc_vidle_power_keep(const enum mtk_vidle_voter_user);
 extern void dpc_vidle_power_release(const enum mtk_vidle_voter_user);
 extern void dpc_vidle_power_keep_by_gce(struct cmdq_pkt *pkt,
-		const enum mtk_vidle_voter_user user);
+		const enum mtk_vidle_voter_user user, const u16 gpr);
 extern void dpc_vidle_power_release_by_gce(struct cmdq_pkt *pkt,
 		const enum mtk_vidle_voter_user user);
 extern void dpc_init_panel_type(enum mtk_panel_type);
@@ -66,8 +66,9 @@ void mtk_vidle_enable(bool en, void *drm_priv);
 void mtk_vidle_force_enable_mml(bool en);
 int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user);
 void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user);
-extern void mtk_vidle_user_power_keep_by_gce(struct cmdq_pkt *pkt);
-extern void mtk_vidle_user_power_release_by_gce(struct cmdq_pkt *pkt);
+void mtk_vidle_user_power_keep_by_gce(enum mtk_vidle_voter_user user,
+				      struct cmdq_pkt *pkt, u16 gpr);
+void mtk_vidle_user_power_release_by_gce(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt);
 int mtk_vidle_pq_power_get(const char *caller);
 void mtk_vidle_pq_power_put(const char *caller);
 void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop);
