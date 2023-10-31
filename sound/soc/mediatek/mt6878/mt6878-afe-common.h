@@ -32,7 +32,6 @@
 #define SKIP_SB_DSP
 #define SKIP_SB_BTCVSD
 #define SKIP_SB_OFFLOAD
-#define SKIP_SMCC_SB
 #define SKIP_SB_USB_OFFLOAD
 #endif
 
