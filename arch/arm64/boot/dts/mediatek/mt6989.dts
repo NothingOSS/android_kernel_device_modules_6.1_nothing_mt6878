@@ -1860,7 +1860,6 @@
 	rt-pd-manager {
 		compatible = "mediatek,rt-pd-manager";
 		nr-port = <1>;
-		//en-wd0-port0;
 	};
 
 	pd_adapter: pd-adapter {
@@ -18224,7 +18223,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 			wd,wd0-tsleep = <1>;
 			/* 0:400us, 1:1ms, 2:2ms, 3:4ms, 4:10ms, 5:40ms, 6:100ms, 7:400ms */
 			wd,wd0-tdet = <3>;
-			/* example wd0-tsleep = 512x, wd0_tdet = 4ms, wd0 polling time = 512*4ms */
+			/* example wd0-tsleep = 512x, wd0-tdet = 4ms, wd0 polling time = 512*4ms */
 			pd-data {
 				pd,vid = <0x29cf>;
 				pd,pid = <0x6375>;
@@ -18291,7 +18290,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 				attempt-enter-dp-mode;
 				// attempt-discover-cable;
 				// attempt-discover-id;
-				// attempt-discover-svid;
+				// attempt-discover-svids;
 
 				/* 0: disable, 1: prefer-snk, 2: prefer-src */
 				pr-check = <0>;
@@ -18300,7 +18299,7 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 				// pr-check-gp-source;
 				// pr-check-gp-sink;
 
-				/* 0: disable, 1: prefer_ufp, 2: prefer_dfp */
+				/* 0: disable, 1: prefer-ufp, 2: prefer-dfp */
 				dr-check = <0>;
 				// dr-reject-as-dfp;
 				// dr-reject-as-ufp;
@@ -18309,8 +18308,6 @@ tboard_thermistor1: thermal-ntc1@1cc00554 {
 				/* connection type = "both", "ufp-d", "dfp-d" */
 				1st-connection = "dfp-d";
 				2nd-connection = "dfp-d";
-				signal,dp-v13;
-				// signal,dp-gen2;
 				// usbr20-not-used;
 				typec,receptacle;
 				ufp-d {

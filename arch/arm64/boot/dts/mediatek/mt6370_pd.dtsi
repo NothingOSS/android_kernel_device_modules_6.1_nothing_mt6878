@@ -98,7 +98,7 @@
 			attempt-enter-dp-mode;
 			// attempt-discover-cable;
 			// attempt-discover-id;
-			// attempt-discover-svid;
+			// attempt-discover-svids;
 
 			/* 0: disable, 1: prefer-snk, 2: prefer-src */
 			pr-check = <0>;
@@ -116,8 +116,6 @@
 			/* connection type = "both", "ufp-d", "dfp-d" */
 			1st-connection = "dfp-d";
 			2nd-connection = "dfp-d";
-			signal,dp-v13;
-			// signal,dp-gen2;
 			// usbr20-not-used;
 			typec,receptacle;
 			ufp-d {
