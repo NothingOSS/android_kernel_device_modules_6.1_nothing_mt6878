@@ -214,6 +214,21 @@ static ssize_t emimpu_ctrl_store
 
 static DRIVER_ATTR_RW(emimpu_ctrl);
 
+static ssize_t hp_mod_show(struct device_driver *driver, char *buf)
+{
+	unsigned int hp_mod = 0, ret = 0;
+	unsigned int len = strlen("1") + 2;
+
+	hp_mod = emimpu_read_protection(MTK_EMIMPU_CHECK_HP_MOD, 0, 0);
+	ret = snprintf(buf, len, "%u\n", hp_mod);
+
+	if (ret < 0 || ret > sizeof(buf))
+		pr_info("failed to get hp_mod, ret: %d, sizeof(buf): %lu\n", ret, sizeof(buf));
+
+	return strlen(buf);
+}
+static DRIVER_ATTR_RO(hp_mod);
+
 static __init int emimputest_init(void)
 {
 	struct device_node *node;
@@ -267,10 +282,19 @@ static __init int emimputest_init(void)
 		goto free_emi_mpu_test;
 	}
 
+	// create emimpu_ctrl node
 	ret = driver_create_file(pdev->dev.driver,
 				 &driver_attr_emimpu_ctrl);
 	if (ret) {
 		pr_info("emimputest: failed to create file\n");
+		goto free_emi_mpu_test;
+	}
+
+	// create hp_mod node
+	ret = driver_create_file(pdev->dev.driver,
+			&driver_attr_hp_mod);
+	if (ret) {
+		pr_info("emimputest: failed to create hp_mod node");
 		goto free_emi_mpu_test;
 	}
 	mpu_test->driver = pdev->dev.driver;
