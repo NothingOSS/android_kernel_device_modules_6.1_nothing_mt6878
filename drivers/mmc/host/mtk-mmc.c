@@ -403,6 +403,7 @@ static const struct mtk_mmc_compatible mt6878_compat = {
 	.infra_check = {
 		.enable = false,
 	},
+	.set_crypto_enable_in_sw = true,
 };
 
 static const struct of_device_id msdc_of_ids[] = {
@@ -3420,6 +3421,7 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	spin_lock_init(&host->log_lock);
 #endif
 
+	spin_lock_init(&host->err_info_lock);
 	ret = devm_request_threaded_irq(&pdev->dev, host->irq, msdc_irq, msdc_thread_irq,
 					IRQF_TRIGGER_NONE, pdev->name, host);
 
