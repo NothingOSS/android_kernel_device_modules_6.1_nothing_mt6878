@@ -9161,7 +9161,7 @@
 		mtk-dsp-voip = <0x0 0xffffffff 0xffffffff 0xffffffff 0x30000>;
 		mtk-dsp-primary = <0x5 0xffffffff 0xffffffff \
 				   0xffffffff 0x30000>;
-		mtk-dsp-offload = <0x0 0xffffffff 0xffffffff \
+		mtk-dsp-offload = <0x1d 0xffffffff 0xffffffff \
 				   0xffffffff 0x400000>;
 		mtk-dsp-deep = <0x5 0xffffffff 0xffffffff 0xffffffff 0x30000>;
 		mtk-dsp-playback = <0x1 0xc 0xffffffff 0x10 0x30000>;
@@ -9193,6 +9193,10 @@
 		mtk-dsp-btul = <0x0 0xffffffff 0x19 0xe 0x20000>;
 
 		interrupts = <GIC_SPI 492 IRQ_TYPE_LEVEL_HIGH 0>; /* DEBUG_CTRL */
+	};
+
+	mt-soc-offload-common {
+		compatible = "mediatek,mt-soc-offload-common";
 	};
 
 	md_auxadc:md-auxadc {
