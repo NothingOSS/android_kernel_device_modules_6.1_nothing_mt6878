@@ -85,19 +85,7 @@
 			<&venc_gcon_clk CLK_VEN1_CKE0_LARB>,
 			<&venc_gcon_clk CLK_VEN1_CKE1_VENC>,
 			<&venc_gcon_clk CLK_VEN1_CKE2_JPGENC>,
-			<&venc_gcon_clk CLK_VEN1_CKE5_GALS>,
-			<&mdpsys_config_clk CLK_MDP_MUTEX0>,
-			<&mdpsys_config_clk CLK_MDP_APB_BUS>,
-			<&mdpsys_config_clk CLK_MDP_SMI0>,
-			<&mdpsys_config_clk CLK_MDP_RDMA0>,
-			<&mdpsys_config_clk CLK_MDP_HDR0>,
-			<&mdpsys_config_clk CLK_MDP_AAL0>,
-			<&mdpsys_config_clk CLK_MDP_RSZ0>,
-			<&mdpsys_config_clk CLK_MDP_TDSHP0>,
-			<&mdpsys_config_clk CLK_MDP_WROT0>,
-			<&mdpsys_config_clk CLK_MDP_RDMA1>,
-			<&mdpsys_config_clk CLK_MDP_RSZ1>,
-			<&mdpsys_config_clk CLK_MDP_WROT1>;
+			<&venc_gcon_clk CLK_VEN1_CKE5_GALS>;
 	};
 
 
