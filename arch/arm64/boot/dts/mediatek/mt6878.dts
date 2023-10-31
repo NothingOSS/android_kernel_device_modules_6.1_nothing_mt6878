@@ -1291,6 +1291,10 @@
 		compatible = "mediatek,page-based-v2-enabled";
 	};
 
+	tee: tee-mmap-by-page-enabled {
+		compatible = "mediatek,tee-mmap-by-page-enabled";
+	};
+
 	lastbus: lastbus {
 		compatible = "mediatek,lastbus";
 		enabled = <1>;
