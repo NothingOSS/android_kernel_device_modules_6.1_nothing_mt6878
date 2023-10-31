@@ -1315,9 +1315,9 @@ static enum mml_mode tp_query_mode_racing(struct mml_dev *mml, struct mml_frame_
 		}
 	}
 
-	if (info->dest[0].crop.r.width > MML_IR_WIDTH_2K ||
+	if ((info->dest[0].crop.r.width > MML_IR_WIDTH_2K ||
 		info->dest[0].crop.r.height > MML_IR_HEIGHT_2K ||
-		pixel > MML_IR_2K) {
+		pixel > MML_IR_2K) && !mml_tablet_ext(mml)) {
 		*reason = mml_query_highpixel;
 		goto decouple;
 	}
