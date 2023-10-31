@@ -1806,7 +1806,7 @@ static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level)
 	mtk_mmdvfs_enable_vcp(true, mmdvfs_user);
 
 	/* polling vdisp dvfsrc idle */
-	if (g_priv->sys_va[VDISP_DVFSRC_DEBUG])
+	if (g_priv->mmsys_id == MMSYS_MT6989 && g_priv->sys_va[VDISP_DVFSRC_DEBUG])
 		ret = readl_poll_timeout(g_priv->sys_va[VDISP_DVFSRC_DEBUG],
 				value, (value & 0x3) == 0, 1, 500);
 	else
