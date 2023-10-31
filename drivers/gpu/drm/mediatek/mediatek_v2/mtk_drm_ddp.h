@@ -8,6 +8,7 @@
 
 #include "mtk_drm_ddp_comp.h"
 #include "mtk_drm_crtc.h"
+#include "mtk_disp_spr.h"
 #ifndef DRM_CMDQ_DISABLE
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #else

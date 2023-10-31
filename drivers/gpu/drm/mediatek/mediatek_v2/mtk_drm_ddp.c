@@ -24122,6 +24122,7 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 	int j;
 #endif
 	int i;
+	int temp;
 
 	if (ddp->mtk_crtc[0])
 		mtk_crtc0 = ddp->mtk_crtc[0];
@@ -24208,6 +24209,12 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 						wake_up(&mtk_crtc0->spr_switch_wait_queue);
 					}
 				}
+			}
+			if(mtk_crtc0 && atomic_read(&mtk_crtc0->get_data_type)) {
+				temp = mtk_spr_check_postalign_status(mtk_crtc0);
+				if(temp >= 0)
+					atomic_set(&mtk_crtc0->postalign_relay, temp);
+				atomic_dec(&mtk_crtc0->get_data_type);
 			}
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 			if (m_id == 0) {

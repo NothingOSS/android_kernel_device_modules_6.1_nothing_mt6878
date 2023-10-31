@@ -866,8 +866,8 @@ struct mtk_drm_sram {
 	unsigned int expiry_hrt_idx;
 };
 
-struct spr_type_map {
-	struct mtk_spr_type_fence map[SPR_TYPE_FENCE_MAX];
+struct pixel_type_map {
+	struct mtk_pixel_type_fence map[SPR_TYPE_FENCE_MAX];
 	unsigned int head;
 };
 
@@ -875,7 +875,7 @@ struct pq_common_data {
 	unsigned int old_persist_property[32];
 	unsigned int new_persist_property[32];
 	struct pq_tuning_pa_base tuning_pa_table[TUNING_REG_MAX];
-	struct spr_type_map spr_types;
+	struct pixel_type_map pixel_types;
 	int tdshp_flag; /* 0: normal, 1: tuning mode */
 	atomic_t pq_hw_relay_cfg_done;
 	wait_queue_head_t pq_hw_relay_cb_wq;
@@ -1099,6 +1099,8 @@ struct mtk_drm_crtc {
 	atomic_t spr_switching;
 	atomic_t spr_switch_cb_done;
 	unsigned int spr_switch_type;
+	atomic_t get_data_type;
+	atomic_t postalign_relay;
 
 	struct mtk_vblank_config_rec *vblank_rec;
 

@@ -631,6 +631,7 @@ int mtkfb_set_spr_status(unsigned int en)
 		DDPPR_ERR("%s failed to find crtc\n", __func__);
 		return -EINVAL;
 	}
+
 	if (en)
 		ret = mtk_drm_switch_spr(crtc, 1);
 	else

@@ -1774,6 +1774,8 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 		mtk_disp_hrt_repaint_blocking(hrt_idx);	/* must not in lock */
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	}
+	if(params && params->is_support_dbi)
+		atomic_set(&mtk_crtc->get_data_type, DBI_GET_RAW_TYPE_FRAME_NUM);
 
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
@@ -14373,26 +14375,20 @@ unsigned int mtk_get_cur_spr_type(struct drm_crtc *crtc)
 	unsigned int type;
 	struct mtk_panel_params *panel_params;
 	struct mtk_panel_spr_params *spr_params;
-	unsigned int slot_spr_en = 0;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	int postalign_relay_mode;
 
 	panel_params = mtk_drm_get_lcm_ext_params(crtc);
 	if (!panel_params)
 		return MTK_PANEL_INVALID_TYPE;
 	spr_params = &panel_params->spr_params;
-	if (spr_params->enable != 1 || spr_params->relay)
-		return MTK_PANEL_SPR_OFF_TYPE;
-	slot_spr_en = readl(mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_PANEL_SPR_EN));
-	if (slot_spr_en == 1)
+	postalign_relay_mode = atomic_read(&mtk_crtc->postalign_relay);
+	if(postalign_relay_mode < 0)
+		return MTK_PANEL_INVALID_TYPE;
+	else if(postalign_relay_mode > 0)
 		type = MTK_PANEL_SPR_OFF_TYPE;
-	else if (slot_spr_en == 2)
+	else
 		type = spr_params->spr_format_type;
-	else {
-		if (mtk_crtc->spr_is_on)
-			type = spr_params->spr_format_type;
-		else
-			type = MTK_PANEL_SPR_OFF_TYPE;
-	}
 	return type;
 }
 
@@ -14403,18 +14399,19 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int session_id;
 	unsigned int fence_idx = cb_data->wb_fence_idx;
-	struct spr_type_map *spr_types;
+	struct pixel_type_map *pixel_types;
 	unsigned int spr_mode_type;
 
 	if (mtk_crtc->pq_data) {
 		spr_mode_type = mtk_get_cur_spr_type(crtc);
-		spr_types = &mtk_crtc->pq_data->spr_types;
-		spr_types->map[spr_types->head].fence_idx = fence_idx;
-		spr_types->map[spr_types->head].type = spr_mode_type;
+		pixel_types = &mtk_crtc->pq_data->pixel_types;
+		pixel_types->map[pixel_types->head].fence_idx = fence_idx;
+		pixel_types->map[pixel_types->head].type = spr_mode_type;
+		pixel_types->map[pixel_types->head].secure = false;
 		DDPDBG("%s: idx %d fence %u type %u", __func__,
-			spr_types->head, fence_idx, spr_mode_type);
-		spr_types->head += 1;
-		spr_types->head %= SPR_TYPE_FENCE_MAX;
+			pixel_types->head, fence_idx, spr_mode_type);
+		pixel_types->head += 1;
+		pixel_types->head %= SPR_TYPE_FENCE_MAX;
 	}
 	/* fb reference conut will also have 1 after put */
 	//	drm_framebuffer_put(cb_data->wb_fb);
@@ -14445,6 +14442,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	int session_id = 0;
 	unsigned int fence_idx;
+	struct pixel_type_map *pixel_types;
 
 
 	if (!cmdq_handle) {
@@ -14608,7 +14606,6 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 
 	/* For DL write-back path */
 	/* wait WDMA frame done and disconnect immediately */
-
 	if (state->prop_val[CRTC_PROP_OUTPUT_ENABLE]
 		&& crtc_index == 0 && !is_from_dal) {
 		wb_cb_data = kmalloc(sizeof(*wb_cb_data), GFP_KERNEL);
@@ -14621,6 +14618,16 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			/* Skip capture for secure content */
 			fence_idx = state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX];
 			session_id = mtk_get_session_id(crtc);
+			if (mtk_crtc->pq_data) {
+				pixel_types = &mtk_crtc->pq_data->pixel_types;
+				pixel_types->map[pixel_types->head].fence_idx = fence_idx;
+				pixel_types->map[pixel_types->head].type = MTK_PANEL_INVALID_TYPE;
+				pixel_types->map[pixel_types->head].secure = true;
+				DDPDBG("%s: idx %d fence %u type %u", __func__,
+					pixel_types->head, fence_idx, MTK_PANEL_INVALID_TYPE);
+					pixel_types->head += 1;
+					pixel_types->head %= SPR_TYPE_FENCE_MAX;
+			}
 			mtk_crtc_release_output_buffer_fence_by_idx(crtc, session_id, fence_idx);
 			kfree(wb_cb_data);
 			return 0;
@@ -17258,6 +17265,10 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	if (mtk_crtc && mtk_crtc->panel_ext &&
 		mtk_crtc->panel_ext->params) {
 		mtk_crtc->spr_is_on = mtk_crtc->panel_ext->params->spr_params.enable;
+		if(mtk_crtc->panel_ext->params->is_support_dbi)
+			atomic_set(&mtk_crtc->get_data_type, DBI_GET_RAW_TYPE_FRAME_NUM);
+		else
+			atomic_set(&mtk_crtc->get_data_type, 0);
 	}
 	drm_mode_crtc_set_gamma_size(&mtk_crtc->base, MTK_LUT_SIZE);
 	/* TODO: Skip color mgmt first */

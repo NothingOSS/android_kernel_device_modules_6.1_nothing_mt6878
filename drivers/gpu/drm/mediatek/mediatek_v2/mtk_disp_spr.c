@@ -1159,6 +1159,31 @@ static void mtk_disp_spr_config_overhead_v(struct mtk_ddp_comp *comp,
 	spr->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
 }
 
+int mtk_spr_check_postalign_status(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_drm_private *priv;
+	struct mtk_ddp_comp *postalign_comp;
+	unsigned int postalign_cfg;
+	void __iomem *baddr;
+
+	if(!mtk_crtc)
+		return -1;
+
+	priv = mtk_crtc->base.dev->dev_private;
+	if(priv == NULL)
+		return -1;
+	if(priv->data->mmsys_id == MMSYS_MT6989) {
+		postalign_comp = priv->ddp_comp[DDP_COMPONENT_POSTALIGN0];
+		baddr = postalign_comp->regs;
+		postalign_cfg = readl(baddr + MT6989_DISP_REG_POSTALIGN0_CFG);
+		if(postalign_cfg&MT6989_RELAY_MODE)
+			return 1;
+		else
+			return 0;
+	}
+	return -1;
+}
+
 static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 				 struct mtk_ddp_config *cfg,
 				 struct cmdq_pkt *handle)

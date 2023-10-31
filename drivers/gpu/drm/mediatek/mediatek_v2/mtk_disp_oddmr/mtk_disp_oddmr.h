@@ -32,7 +32,7 @@
 
 #define DMR_DBV_TABLE_MAX 4
 #define DMR_FPS_TABLE_MAX 4
-
+#define DBI_GET_RAW_TYPE_FRAME_NUM (10)
 
 enum ODDMR_STATE {
 	ODDMR_INVALID = 0,
@@ -51,6 +51,8 @@ enum ODDMR_USER_CMD {
 	ODDMR_CMD_OD_TUNING_WRITE_SRAM,
 	ODDMR_CMD_ODDMR_DDREN_OFF,
 	ODDMR_CMD_ODDMR_REMAP_EN,
+	ODDMR_CMD_ODDMR_REMAP_OFF,
+	ODDMR_CMD_ODDMR_REMAP_CHG,
 };
 enum MTK_ODDMR_MODE_CHANGE_INDEX {
 	MODE_ODDMR_NOT_DEFINED = 0,
@@ -229,9 +231,11 @@ struct mtk_disp_oddmr_dbi_data {
 	atomic_t cur_table_idx;
 	atomic_t update_table_idx;
 	atomic_t update_table_done;
+	atomic_t enter_scp;
 	struct mtk_drm_gem_obj *dbi_table[2];
 	unsigned int table_size;
 	unsigned int cur_max_time;
+	bool max_time_set_done;
 	unsigned int remap_enable;
 };
 
@@ -336,4 +340,7 @@ void mtk_oddmr_ddren(struct cmdq_pkt *cmdq_handle,
 	struct drm_crtc *crtc, int en);
 unsigned int check_oddmr_err_event(void);
 void clear_oddmr_err_event(void);
+void mtk_oddmr_scp_status(bool enable);
+
+
 #endif

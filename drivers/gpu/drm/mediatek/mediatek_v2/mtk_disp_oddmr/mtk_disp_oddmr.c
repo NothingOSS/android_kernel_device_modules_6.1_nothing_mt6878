@@ -451,6 +451,7 @@ static DECLARE_WAIT_QUEUE_HEAD(g_oddmr_sof_irq_wq);
 static DECLARE_WAIT_QUEUE_HEAD(g_oddmr_hrt_wq);
 static DEFINE_SPINLOCK(g_oddmr_clock_lock);
 static DEFINE_SPINLOCK(g_oddmr_timing_lock);
+static DEFINE_MUTEX(g_dbi_data_lock);
 
 static void mtk_oddmr_od_hsk_force_clk(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
 static void mtk_oddmr_od_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
@@ -498,6 +499,9 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 
 static void mtk_oddmr_dbi_change_remap_gain(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *pkg, uint32_t cur_max_time);
+static void mtk_oddmr_remap_set_enable(struct mtk_ddp_comp *comp,
+		struct cmdq_pkt *pkg, bool en);
+static int mtk_oddmr_remap_enable(struct drm_device *dev, bool en);
 
 
 
@@ -1582,6 +1586,19 @@ static void mtk_oddmr_first_cfg(struct mtk_ddp_comp *comp,
 	DDPMSG("%s dmr %d od %d-\n", __func__, is_oddmr_dmr_support, is_oddmr_od_support);
 }
 
+static void mtk_oddmr_remap_config(struct mtk_ddp_comp *comp,
+		struct cmdq_pkt *handle)
+{
+	ODDMRAPI_LOG("+\n");
+	mutex_lock(&g_dbi_data_lock);
+	if (g_oddmr_priv->dbi_data.remap_enable) {
+		mtk_oddmr_dbi_change_remap_gain(default_comp, handle, g_oddmr_priv->dbi_data.cur_max_time);
+		mtk_oddmr_remap_set_enable(comp, handle, true);
+	}
+	mutex_unlock(&g_dbi_data_lock);
+}
+
+
 static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *handle)
 {
@@ -1601,11 +1618,7 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_comp *output_comp = mtk_ddp_comp_request_output(comp->mtk_crtc);
 	struct mtk_dsi *dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
 
-	ODDMRAPI_LOG("+\n");
-	if (is_oddmr_dbi_support == true && g_oddmr_priv->dbi_state == ODDMR_INIT_DONE
-		&& g_oddmr_priv->dbi_data.remap_enable)
-		mtk_oddmr_dbi_change_remap_gain(default_comp, handle, g_oddmr_priv->dbi_data.cur_max_time);
-
+	mutex_lock(&g_dbi_data_lock);
 	if (is_oddmr_dbi_support == true && g_oddmr_priv->dbi_state == ODDMR_INIT_DONE
 		&& atomic_read(&g_oddmr_priv->dbi_data.update_table_done)) {
 		mtk_oddmr_dmr_common_init(comp, handle);
@@ -1680,6 +1693,7 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp,
 		}
 		mtk_oddmr_set_dbi_enable(comp, g_oddmr_priv->dbi_enable, handle);
 	}
+	mutex_unlock(&g_dbi_data_lock);
 }
 
 static void mtk_oddmr_s2r_bypass(struct mtk_ddp_comp *comp,
@@ -1821,6 +1835,7 @@ static void mtk_oddmr_config(struct mtk_ddp_comp *comp,
 		mtk_oddmr_set_spr2rgb(comp, handle);
 
 	mtk_oddmr_dbi_config(comp,handle);
+	mtk_oddmr_remap_config(comp, handle);
 }
 
 static void mtk_oddmr_dump_od_table(int table_idx)
@@ -3195,29 +3210,25 @@ static int mtk_oddmr_dmr_dbv_lookup(unsigned int dbv, struct mtk_drm_dmr_cfg_inf
 
 static void mtk_oddmr_dbi_timing_chg_dual(struct mtk_oddmr_timing *timing, struct cmdq_pkt *handle)
 {
-
-
 	uint32_t dbv_node = 0;
 	uint32_t fps_node = 0;
-
 	uint32_t fps;
 
 	ODDMRAPI_LOG("+\n");
+	mutex_lock(&g_dbi_data_lock);
 	if (g_oddmr_priv->dbi_state >= ODDMR_INIT_DONE) {
 		fps = timing->vrefresh;
 		mtk_oddmr_dbi_fps_lookup(fps, &g_oddmr_priv->dbi_cfg_info,&fps_node);
 		dbv_node = atomic_read(&g_oddmr_priv->dbi_data.cur_dbv_node);
 
-		if(fps_node != atomic_read(&g_oddmr_priv->dmr_data.cur_fps_node)){
-			mtk_oddmr_dmr_gain_cfg(default_comp,
-				handle, dbv_node, fps_node,
-				(struct mtk_drm_dmr_cfg_info *)&g_oddmr_priv->dbi_cfg_info);
-			atomic_set(&g_oddmr_priv->dmr_data.cur_fps_node, fps_node);
-		}
+		mtk_oddmr_dmr_gain_cfg(default_comp,
+			handle, dbv_node, fps_node,
+			(struct mtk_drm_dmr_cfg_info *)&g_oddmr_priv->dbi_cfg_info);
+		atomic_set(&g_oddmr_priv->dbi_data.cur_fps_node, fps_node);
 
-		ODDMRFLOW_LOG("dmr gain config: dbv_node:%d, fps_node:%d\n", dbv_node, fps_node);
-
+		ODDMRFLOW_LOG("dbi gain config: dbv_node:%d, fps_node:%d\n", dbv_node, fps_node);
 	}
+	mutex_unlock(&g_dbi_data_lock);
 }
 
 
@@ -3351,7 +3362,6 @@ void mtk_oddmr_timing_chg(struct mtk_oddmr_timing *timing, struct cmdq_pkt *hand
 		mtk_oddmr_dmr_timing_chg_dual(&timing_working_copy, handle);
 	if (is_oddmr_od_support && handle != NULL)
 		mtk_oddmr_od_timing_chg_dual(&timing_working_copy, handle);
-
 	if (is_oddmr_dbi_support && handle != NULL)
 		mtk_oddmr_dbi_timing_chg_dual(&timing_working_copy, handle);
 }
@@ -3390,21 +3400,22 @@ static void mtk_oddmr_dbi_bl_chg(uint32_t bl_level, struct cmdq_pkt *handle)
 	uint32_t dbv_node = 0;
 	uint32_t fps_node = 0;
 
+	mutex_lock(&g_dbi_data_lock);
 	if (g_oddmr_priv->dbi_state >= ODDMR_INIT_DONE) {
 		ODDMRAPI_LOG("+\n");
 		mtk_oddmr_dbi_dbv_lookup(bl_level, &g_oddmr_priv->dbi_cfg_info, &dbv_node);
-		fps_node = atomic_read(&g_oddmr_priv->dmr_data.cur_fps_node);
+		fps_node = atomic_read(&g_oddmr_priv->dbi_data.cur_fps_node);
 
-		if(dbv_node != atomic_read(&g_oddmr_priv->dmr_data.cur_dbv_node)){
-			mtk_oddmr_dmr_gain_cfg(default_comp,
-					handle, dbv_node, fps_node,
-					(struct mtk_drm_dmr_cfg_info *)&g_oddmr_priv->dbi_cfg_info);
-			atomic_set(&g_oddmr_priv->dmr_data.cur_dbv_node, dbv_node);
-		}
-		if(g_oddmr_priv->dbi_data.remap_enable)
+		mtk_oddmr_dmr_gain_cfg(default_comp,
+			handle, dbv_node, fps_node,
+			(struct mtk_drm_dmr_cfg_info *)&g_oddmr_priv->dbi_cfg_info);
+		atomic_set(&g_oddmr_priv->dbi_data.cur_dbv_node, dbv_node);
+
+		if(g_oddmr_priv->dbi_data.max_time_set_done)
 			mtk_oddmr_dbi_change_remap_gain(default_comp, handle, g_oddmr_priv->dbi_data.cur_max_time);
-		ODDMRFLOW_LOG("dmr gain config: dbv_node:%d, fps_node:%d\n", dbv_node, fps_node);
+		ODDMRFLOW_LOG("dbi gain config: dbv_node:%d, fps_node:%d\n", dbv_node, fps_node);
 	}
+	mutex_unlock(&g_dbi_data_lock);
 }
 
 static void mtk_oddmr_od_bl_chg(uint32_t bl_level, struct cmdq_pkt *handle)
@@ -4126,6 +4137,17 @@ static int mtk_oddmr_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 		break;
 	}
 	case ODDMR_CMD_ODDMR_REMAP_EN:
+	{
+		mtk_oddmr_dbi_change_remap_gain(comp, handle, g_oddmr_priv->dbi_data.cur_max_time);
+		mtk_oddmr_remap_set_enable(comp, handle, true);
+		break;
+	}
+	case ODDMR_CMD_ODDMR_REMAP_OFF:
+	{
+		mtk_oddmr_remap_set_enable(comp, handle, false);
+		break;
+	}
+	case ODDMR_CMD_ODDMR_REMAP_CHG:
 	{
 		mtk_oddmr_dbi_change_remap_gain(comp, handle, g_oddmr_priv->dbi_data.cur_max_time);
 		break;
@@ -5133,7 +5155,9 @@ void kernel_dbi_table_update(struct bitstream_buffer *ret_drm_data, struct mtk_d
 		atomic_set(&g_oddmr_priv->dbi_data.update_table_done, 1);
 		atomic_set(&g_oddmr_priv->dbi_data.cur_table_idx, 0);
 		atomic_set(&g_oddmr_priv->dbi_data.update_table_idx, 0);
+		mutex_lock(&g_dbi_data_lock);
 		g_oddmr_priv->dbi_data.table_size =  dbi_table->used_entry;
+		mutex_unlock(&g_dbi_data_lock);
 
 	} else {
 
@@ -5565,6 +5589,13 @@ uint32_t mtk_oddmr_dbi_alpha_blend_int(uint32_t list_num, uint32_t *list_node,
 	return 0;
 }
 
+void mtk_oddmr_scp_status(bool enable)
+{
+	if(enable)
+		atomic_set(&g_oddmr_priv->dbi_data.enter_scp, 1);
+}
+EXPORT_SYMBOL(mtk_oddmr_scp_status);
+
 static void mtk_oddmr_dbi_change_remap_gain(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *pkg, uint32_t cur_max_time)
 {
@@ -5577,32 +5608,36 @@ static void mtk_oddmr_dbi_change_remap_gain(struct mtk_ddp_comp *comp,
 	unsigned long flags;
 	uint32_t remap_gain;
 
-	ODDMRLOW_LOG("cur_max_time %u\n", cur_max_time);
-	ODDMRLOW_LOG("remap_gain_target_code %u\n", dbi_cfg_data->fps_dbv_node.remap_gain_target_code);
+	if (g_oddmr_priv->dbi_state < ODDMR_INIT_DONE) {
+		ODDMRLOW_LOG("dbi off remap_gain_target_code %u\n", dbi_cfg_data->fps_dbv_node.remap_gain_target_code);
+		remap_gain_target_code = (dbi_cfg_data->fps_dbv_node.remap_gain_target_code<<16);
+		remap_gain = MIN(((remap_gain_target_code  / 255) >> 4), 4096);
+		mtk_oddmr_write_mask(comp, remap_gain,
+			DISP_ODDMR_REG_SPR_REMAP_GAIN, 0xffffffff, pkg);
+	} else {
+		ODDMRLOW_LOG("cur_max_time %u\n", cur_max_time);
+		ODDMRLOW_LOG("remap_gain_target_code %u\n", dbi_cfg_data->fps_dbv_node.remap_gain_target_code);
 
-	spin_lock_irqsave(&g_oddmr_timing_lock, flags);
-	cur_dbv = g_oddmr_current_timing.bl_level;
-	spin_unlock_irqrestore(&g_oddmr_timing_lock, flags);
+		spin_lock_irqsave(&g_oddmr_timing_lock, flags);
+		cur_dbv = g_oddmr_current_timing.bl_level;
+		spin_unlock_irqrestore(&g_oddmr_timing_lock, flags);
 
-	cur_offset = mtk_oddmr_dbi_alpha_blend_int(dbi_cfg_data->fps_dbv_node.remap_reduce_offset_num,
+		cur_offset = mtk_oddmr_dbi_alpha_blend_int(dbi_cfg_data->fps_dbv_node.remap_reduce_offset_num,
 			dbi_cfg_data->fps_dbv_node.remap_reduce_offset_node,
 			dbi_cfg_data->fps_dbv_node.remap_reduce_offset_value, cur_max_time, frac_bit);
-	cur_dbv_gain = mtk_oddmr_dbi_alpha_blend_int(dbi_cfg_data->fps_dbv_node.remap_dbv_gain_num,
-		dbi_cfg_data->fps_dbv_node.remap_dbv_gain_node,
-		dbi_cfg_data->fps_dbv_node.remap_dbv_gain_value, cur_dbv, frac_bit);
+		cur_dbv_gain = mtk_oddmr_dbi_alpha_blend_int(dbi_cfg_data->fps_dbv_node.remap_dbv_gain_num,
+			dbi_cfg_data->fps_dbv_node.remap_dbv_gain_node,
+			dbi_cfg_data->fps_dbv_node.remap_dbv_gain_value, cur_dbv, frac_bit);
 
-	remap_gain_target_code = (dbi_cfg_data->fps_dbv_node.remap_gain_target_code<<16);
-	remap_gain = MIN((((remap_gain_target_code - (cur_offset * cur_dbv_gain)) / 255) >> 4), 4096);
+		remap_gain_target_code = (dbi_cfg_data->fps_dbv_node.remap_gain_target_code<<16);
+		remap_gain = MIN((((remap_gain_target_code - (cur_offset * cur_dbv_gain)) / 255) >> 4), 4096);
 
-	ODDMRLOW_LOG("remap gain:0x%x, remap offset:0x%x, remap DBV gain:0x%x\n",
-		remap_gain, cur_offset, cur_dbv_gain);
+		ODDMRLOW_LOG("remap gain:0x%x, remap offset:0x%x, remap DBV gain:0x%x\n",
+			remap_gain, cur_offset, cur_dbv_gain);
 
-	mtk_oddmr_write_mask(comp, remap_gain,
-		DISP_ODDMR_REG_SPR_REMAP_GAIN, 0xffffffff, pkg);
-	mtk_oddmr_write_mask(comp, 1,
-		DISP_ODDMR_REG_SPR_REMAP_EN, 0xffffffff, pkg);
-	mtk_oddmr_write_mask(comp, 0,
-		DISP_ODDMR_TOP_S2R_BYPASS, 0xffffffff, pkg);
+		mtk_oddmr_write_mask(comp, remap_gain,
+			DISP_ODDMR_REG_SPR_REMAP_GAIN, 0xffffffff, pkg);
+	}
 }
 
 static int mtk_oddmr_dbi_enable(struct drm_device *dev, bool en)
@@ -5642,6 +5677,33 @@ static int mtk_oddmr_dbi_enable(struct drm_device *dev, bool en)
 	}
 	return ret;
 }
+
+static int mtk_oddmr_remap_update(void)
+{
+	int ret = 0;
+
+	ODDMRAPI_LOG("+\n");
+	if (default_comp == NULL || g_oddmr_priv == NULL) {
+		ODDMRFLOW_LOG("oddmr comp is NULL\n");
+		return -1;
+	}
+
+	mtk_drm_idlemgr_kick(__func__,
+			&default_comp->mtk_crtc->base, 1);
+	ret = mtk_oddmr_acquire_clock();
+	if (ret == 0) {
+		mutex_lock(&g_dbi_data_lock);
+		ret = mtk_crtc_user_cmd(&default_comp->mtk_crtc->base, default_comp,
+					ODDMR_CMD_ODDMR_REMAP_CHG, NULL);
+		mutex_unlock(&g_dbi_data_lock);
+		mtk_oddmr_release_clock();
+	} else {
+		ODDMRFLOW_LOG("clock not on %d\n", ret);
+		return ret;
+	}
+	return ret;
+}
+
 
 static int mtk_oddmr_dmr_enable(struct drm_device *dev, bool en)
 {
@@ -6102,6 +6164,65 @@ static void mtk_oddmr_config_trigger(struct mtk_ddp_comp *comp,
 	}
 }
 
+static void mtk_oddmr_remap_set_enable(struct mtk_ddp_comp *comp,
+		struct cmdq_pkt *pkg, bool en)
+{
+	int enable = en;
+
+	ODDMRAPI_LOG("%d\n", enable);
+	if (en) {
+		mtk_oddmr_write_mask(comp, 1,
+			DISP_ODDMR_REG_SPR_REMAP_EN, 0xffffffff, pkg);
+		mtk_oddmr_write_mask(comp, 0,
+			DISP_ODDMR_TOP_S2R_BYPASS, 0xffffffff, pkg);
+	} else
+		mtk_oddmr_write_mask(comp, 0,
+			DISP_ODDMR_REG_SPR_REMAP_EN, 0xffffffff, pkg);
+}
+
+static int mtk_oddmr_remap_enable(struct drm_device *dev, bool en)
+{
+	int ret = 0, enable = en;
+
+	ODDMRAPI_LOG("%d\n", enable);
+	if (default_comp == NULL || g_oddmr_priv == NULL) {
+		ODDMRFLOW_LOG("oddmr comp is NULL\n");
+		return -1;
+	}
+
+	mtk_drm_idlemgr_kick(__func__,
+			&default_comp->mtk_crtc->base, 1);
+	ret = mtk_oddmr_acquire_clock();
+
+	if (ret == 0) {
+		mutex_lock(&g_dbi_data_lock);
+		if(en) {
+			if (!g_oddmr_priv->dbi_data.remap_enable) {
+				ret = mtk_crtc_user_cmd(&default_comp->mtk_crtc->base, default_comp,
+					ODDMR_CMD_ODDMR_REMAP_EN, NULL);
+				g_oddmr_priv->dbi_data.remap_enable = 1;
+			}
+		}
+		if(!en) {
+			if (g_oddmr_priv->dbi_data.remap_enable) {
+				ret = mtk_crtc_user_cmd(&default_comp->mtk_crtc->base, default_comp,
+					ODDMR_CMD_ODDMR_REMAP_OFF, NULL);
+				g_oddmr_priv->dbi_data.remap_enable = 0;
+			}
+		}
+		mutex_unlock(&g_dbi_data_lock);
+		mtk_oddmr_release_clock();
+		drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, default_comp->mtk_crtc->base.dev);
+	} else {
+		mutex_lock(&g_dbi_data_lock);
+		g_oddmr_priv->dbi_data.remap_enable = en;
+		mutex_unlock(&g_dbi_data_lock);
+		ODDMRFLOW_LOG("clock not on %d\n", ret);
+		return ret;
+	}
+	return ret;
+}
+
 static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 	unsigned int cmd, void *params, unsigned int size)
 {
@@ -6109,8 +6230,10 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 	struct bitstream_buffer *stream_buffer;
 	void *ptr;
 	unsigned int *cur_max_time;
+	unsigned int *target_code;
 	struct mtk_drm_private *priv = NULL;
 	unsigned long flags;
+	unsigned int temp;
 
 	switch (cmd) {
 	case PQ_DMR_INIT:
@@ -6134,7 +6257,6 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 	case PQ_DBI_LOAD_TB:
 	{
 		ret = 0;
-
 		if (g_oddmr_priv->dbi_state < ODDMR_INIT_DONE) {
 			ODDMRFLOW_LOG("can not load table, state %d\n", g_oddmr_priv->dbi_state);
 			return -EFAULT;
@@ -6172,18 +6294,32 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 		mtk_oddmr_dbi_enable(NULL, false);
 		DDPMSG("%s, PQ_DBI_ENABLE\n", __func__);
 		break;
-	case PQ_DBI_REMAP:
+	case PQ_DBI_REMAP_TARGET:
 		ret = 0;
+		mutex_lock(&g_dbi_data_lock);
+		target_code = params;
+		g_oddmr_priv->dbi_cfg_info.fps_dbv_node.remap_gain_target_code = *target_code;
+		mutex_unlock(&g_dbi_data_lock);
+		mtk_oddmr_remap_update();
+		DDPMSG("%s, PQ_DBI_REMAP_TARGET remap_gain_target_code:%d\n",
+			__func__, g_oddmr_priv->dbi_cfg_info.fps_dbv_node.remap_gain_target_code);
+		break;
+	case PQ_DBI_REMAP_CHG:
+		ret = 0;
+		mutex_lock(&g_dbi_data_lock);
 		cur_max_time = params;
 		g_oddmr_priv->dbi_data.cur_max_time = *cur_max_time;
+		g_oddmr_priv->dbi_data.max_time_set_done = true;
+		mutex_unlock(&g_dbi_data_lock);
 		DDPMSG("%s, PQ_DBI_REMAP cur_max_time:%d\n", __func__, g_oddmr_priv->dbi_data.cur_max_time);
-		if (is_oddmr_dbi_support == true && g_oddmr_priv->dbi_state == ODDMR_INIT_DONE) {
-			if (!g_oddmr_priv->dbi_data.remap_enable) {
-				ret = mtk_crtc_user_cmd(&comp->mtk_crtc->base, comp,
-					ODDMR_CMD_ODDMR_REMAP_EN, NULL);
-				g_oddmr_priv->dbi_data.remap_enable = 1;
-			}
-		}
+		break;
+	case PQ_DBI_REMAP_ENABLE:
+		ret = 0;
+		mtk_oddmr_remap_enable(NULL, true);
+		break;
+	case PQ_DBI_REMAP_DISABLE:
+		ret = 0;
+		mtk_oddmr_remap_enable(NULL, false);
 		break;
 	case PQ_DBI_GET_HW_ID:
 		ret = 0;
@@ -6217,6 +6353,13 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 		spin_lock_irqsave(&g_oddmr_timing_lock, flags);
 		*(unsigned int *)params = g_oddmr_current_timing.vrefresh;
 		spin_unlock_irqrestore(&g_oddmr_timing_lock, flags);
+		break;
+	case PQ_DBI_GET_SCP:
+		ret = 0;
+		temp = atomic_read(&g_oddmr_priv->dbi_data.enter_scp);
+		*(unsigned int *)params = temp;
+		if(temp)
+			atomic_set(&g_oddmr_priv->dbi_data.enter_scp, 0);
 		break;
 	default:
 		break;
@@ -6729,6 +6872,8 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 	atomic_set(&priv->dbi_data.cur_table_idx, 0);
 	atomic_set(&priv->dbi_data.update_table_idx, 0);
 	atomic_set(&priv->dbi_data.update_table_done, 0);
+	priv->dbi_cfg_info.fps_dbv_node.remap_gain_target_code = 255;
+	atomic_set(&priv->dbi_data.enter_scp, 0);
 
 	DDPMSG("%s id %d, type %d\n", __func__, comp_id, mtk_ddp_comp_get_type(comp_id));
 	return ret;
