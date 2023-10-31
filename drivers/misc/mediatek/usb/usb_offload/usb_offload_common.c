@@ -521,6 +521,57 @@ get_speed_info(enum usb_device_speed udev_speed)
 	}
 }
 
+static bool is_pcm_size_valid(struct usb_audio_stream_info *uainfo)
+{
+	struct snd_usb_audio *chip = NULL;
+	struct snd_usb_substream *subs = NULL;
+	struct snd_usb_endpoint *data_ep = NULL;
+	int pkt_sz, ringbuf_sz, packs_per_ms;
+
+	subs = find_snd_usb_substream(
+		uainfo->pcm_card_num,
+		uainfo->pcm_dev_num,
+		uainfo->direction,
+		&chip);
+
+	if (!subs || !chip || atomic_read(&chip->shutdown)) {
+		USB_OFFLOAD_ERR("can't find substream for card# %u, dev# %u, dir: %u\n",
+			uainfo->pcm_card_num, uainfo->pcm_dev_num, uainfo->direction);
+		return false;
+	}
+
+	data_ep = subs->data_endpoint;
+	if (!data_ep) {
+		USB_OFFLOAD_ERR("data_endpoint can't be NULL(card# %u, dev# %u, dir: %u)\n",
+			uainfo->pcm_card_num, uainfo->pcm_dev_num, uainfo->direction);
+		return false;
+	}
+
+	if (get_speed_info(subs->dev->speed) != USB_AUDIO_DEVICE_SPEED_FULL)
+		packs_per_ms = 8 >> data_ep->datainterval;
+	else
+		packs_per_ms = 1;
+
+	/* multiple by 10 to avoid 1 digit after decimal dot */
+	pkt_sz = 10 * (((uainfo->bit_depth * uainfo->number_of_ch) >> 3) * uainfo->bit_rate) / data_ep->pps;
+	ringbuf_sz = pkt_sz * packs_per_ms * uainfo->dram_size * uainfo->dram_cnt;
+
+	USB_OFFLOAD_MEM_DBG("10*pkt_sz:%d 10*ringbuf_sz:%d 10*pcm_sz:%d\n",
+		pkt_sz, ringbuf_sz, 10* uainfo->pcm_size);
+
+	/* cause we multiple pkt_sz by 10 before, pcm_size should be also multipled */
+	if (ringbuf_sz < uainfo->pcm_size * 10) {
+		USB_OFFLOAD_ERR("Invalid uainfo(10*pcm_sz:%d > 10*ringbuf_sz:%d) 10*pkt_sz:%d\n",
+			uainfo->pcm_size, ringbuf_sz, pkt_sz);
+		USB_OFFLOAD_ERR("pkt_per_ms:%d interval:%d frame_bit:%d rate:%d pps:%d\n",
+			packs_per_ms, data_ep->datainterval, uainfo->bit_depth * uainfo->number_of_ch,
+			uainfo->bit_rate, data_ep->pps);
+		return false;
+	}
+
+	return true;
+}
+
 static bool is_uainfo_valid(struct usb_audio_stream_info *uainfo)
 {
 	if (uainfo == NULL) {
@@ -552,12 +603,14 @@ static bool is_uainfo_valid(struct usb_audio_stream_info *uainfo)
 		USB_OFFLOAD_ERR("uainfo->direction invalid (%d)\n", uainfo->direction);
 		return false;
 	}
-	return true;
+
+	return is_pcm_size_valid(uainfo);
 }
 
 static void dump_uainfo(struct usb_audio_stream_info *uainfo)
 {
-	USB_OFFLOAD_INFO("enable:%d rate:%d ch:%d depth:%d dir:%d period:%dms card:%d pcm:%d\n",
+	USB_OFFLOAD_INFO(
+		"enable:%d rate:%d ch:%d depth:%d dir:%d period:%d card:%d pcm:%d drm_sz:%d drm_cnt:%d\n",
 		uainfo->enable,
 		uainfo->bit_rate,
 		uainfo->number_of_ch,
@@ -565,7 +618,9 @@ static void dump_uainfo(struct usb_audio_stream_info *uainfo)
 		uainfo->direction,
 		uainfo->xhc_irq_period_ms,
 		uainfo->pcm_card_num,
-		uainfo->pcm_dev_num);
+		uainfo->pcm_dev_num,
+		uainfo->dram_size,
+		uainfo->dram_cnt);
 }
 
 static void usb_audio_dev_intf_cleanup(struct usb_device *udev,
@@ -1139,8 +1194,15 @@ static struct urb_information mtk_usb_offload_calculate_urb(
 		uainfo->bit_rate);
 	freqmax = freqn + (freqn >> 1);
 	maxsize = (((freqmax << ep->datainterval) + 0xffff) >> 16) * (frame_bits >> 3);
-	USB_OFFLOAD_INFO("maxsize:%d frame_bits:%d freqmax:%d datainterval:%d\n",
-		maxsize, frame_bits, freqmax, ep->datainterval);
+
+	if (ep->maxpacksize && ep->maxpacksize < maxsize) {
+		unsigned int pre_maxsize = maxsize, pre_freqmax = freqmax;
+		unsigned int data_maxsize = maxsize = ep->maxpacksize;
+
+		freqmax = (data_maxsize / (frame_bits >> 3)) << (16 - ep->datainterval);
+		USB_OFFLOAD_INFO("maxsize:%d->%d freqmax:%d->%d\n",
+			pre_maxsize, maxsize, pre_freqmax, freqmax);
+	}
 
 	if (chip->dev->speed != USB_SPEED_FULL) {
 		packs_per_ms = 8 >> ep->datainterval;
@@ -1173,6 +1235,11 @@ static struct urb_information mtk_usb_offload_calculate_urb(
 
 	packets = urb_packs;
 	buffer_size = maxsize * packets;
+
+	USB_OFFLOAD_INFO(
+		"maxsz:%d frame_bits:%d freqmax:%d freqn:%d intval:%d urb_pkt:%d bufsz:%d maxpktsz:%d",
+		maxsize, frame_bits, freqmax, freqn, ep->datainterval,
+		packets, buffer_size, ep->maxpacksize);
 
 	urb_info.urb_size = buffer_size;
 	urb_info.urb_num = nurbs;
@@ -2466,12 +2533,13 @@ static long usb_offload_ioctl(struct file *fp,
 			goto fail;
 		}
 
+		dump_uainfo(&uainfo);
 		if (!is_uainfo_valid(&uainfo)) {
 			USB_OFFLOAD_ERR("uainfo invalid!!!\n");
 			ret = -EFAULT;
 			goto fail;
 		}
-		dump_uainfo(&uainfo);
+
 
 		if (cmd == USB_OFFLOAD_ENABLE_STREAM) {
 			switch (uainfo.direction) {
