@@ -2402,7 +2402,12 @@ static bool ged_dvfs_policy(
 
 		// set cur freq back to before api boost
 		if (g_last_commit_api_flag == 1 && api_sync_flag == 0) {
-			ui32GPUFreq = g_last_commit_before_api_boost;
+			// if api boost with dequeue, decrease half freq
+			if (g_uncomplete_type == GED_TIMESTAMP_TYPE_D)
+				ui32GPUFreq = (ui32GPUFreq + (int)g_last_commit_before_api_boost) / 2;
+			else
+				ui32GPUFreq = g_last_commit_before_api_boost;
+
 			i32NewFreqID = ui32GPUFreq;
 		}
 
