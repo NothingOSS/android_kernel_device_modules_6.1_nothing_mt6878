@@ -13,9 +13,67 @@
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/printk.h>
+#include <linux/soc/mediatek/mtk_sip_svc.h>
+#include <linux/arm-smccc.h>
+#include "sda.h"
+
+#define DRM_REG_INVALID_INDEX 0xDEADDEAD
 
 /* global pointer for exported functions */
 static struct dbgtop_drm *global_dbgtop_drm;
+static unsigned int is_sec_write;
+
+static unsigned long rg_white_list[] = {
+	MTK_DBGTOP_MODE,
+	MTK_DBGTOP_DEBUG_CTL,
+	MTK_DBGTOP_DEBUG_CTL2,
+	MTK_DBGTOP_DEBUG_CTL3,
+	MTK_DBGTOP_LATCH_CTL,
+	MTK_DBGTOP_LATCH_CTL2,
+	MTK_DBGTOP_LATCH_CTL3,
+	MTK_DBGTOP_LATCH_CTL4,
+	MTK_DBGTOP_LATCH_CTL5,
+	MTK_DBGTOP_MFG_REG
+};
+
+static unsigned long mtk_drm_get_white_list_index(unsigned long offset)
+{
+	unsigned long index;
+
+	for (index = 0; index < ARRAY_SIZE(rg_white_list); index++) {
+		if (rg_white_list[index] == offset)
+			return index;
+	}
+	return DRM_REG_INVALID_INDEX;
+}
+
+static int mtk_dbgtop_drm_update_status(unsigned long offset, unsigned int val)
+{
+	unsigned long index;
+	struct arm_smccc_res res;
+
+	if (!global_dbgtop_drm) {
+		pr_info("%s: global_dbgtop_drm has not been initialized yet.\n", __func__);
+		return -EFAULT;
+	}
+	if (is_sec_write) {
+		index = mtk_drm_get_white_list_index(offset);
+		if (index >= ARRAY_SIZE(rg_white_list)) {
+			pr_info("%s: not support writing to (base + 0x%lx).\n", __func__, offset);
+			return -1;
+		}
+		arm_smccc_smc(MTK_SIP_SDA_CONTROL, SDA_DBGTOP_DRM, DRM_SET_STATUS,
+				index, val, 0, 0, 0, &res);
+		if (res.a0) {
+			pr_info("%s: drm reg update failed.\n", __func__);
+			return -EFAULT;
+		}
+	} else {
+		writel(val, global_dbgtop_drm->base + offset);
+	}
+
+	return 0;
+}
 
 /* For GPU DFD */
 int mtk_dbgtop_mfg_pwr_on(int value)
@@ -33,12 +91,12 @@ int mtk_dbgtop_mfg_pwr_on(int value)
 		tmp = readl(drm->base + MTK_DBGTOP_MFG_REG);
 		tmp |= MTK_DBGTOP_MFG_PWR_ON;
 		tmp |= MTK_DBGTOP_MFG_REG_KEY;
-		writel(tmp, drm->base + MTK_DBGTOP_MFG_REG);
+		mtk_dbgtop_drm_update_status(MTK_DBGTOP_MFG_REG, tmp);
 	} else if (value == 0) {
 		tmp = readl(drm->base + MTK_DBGTOP_MFG_REG);
 		tmp &= ~MTK_DBGTOP_MFG_PWR_ON;
 		tmp |= MTK_DBGTOP_MFG_REG_KEY;
-		writel(tmp, drm->base + MTK_DBGTOP_MFG_REG);
+		mtk_dbgtop_drm_update_status(MTK_DBGTOP_MFG_REG, tmp);
 	} else
 		return -1;
 
@@ -64,12 +122,12 @@ int mtk_dbgtop_mfg_pwr_en(int value)
 		tmp = readl(drm->base + MTK_DBGTOP_MFG_REG);
 		tmp |= MTK_DBGTOP_MFG_PWR_EN;
 		tmp |= MTK_DBGTOP_MFG_REG_KEY;
-		writel(tmp, drm->base + MTK_DBGTOP_MFG_REG);
+		mtk_dbgtop_drm_update_status(MTK_DBGTOP_MFG_REG, tmp);
 	} else if (value == 0) {
 		tmp = readl(drm->base + MTK_DBGTOP_MFG_REG);
 		tmp &= ~MTK_DBGTOP_MFG_PWR_EN;
 		tmp |= MTK_DBGTOP_MFG_REG_KEY;
-		writel(tmp, drm->base + MTK_DBGTOP_MFG_REG);
+		mtk_dbgtop_drm_update_status(MTK_DBGTOP_MFG_REG, tmp);
 	} else
 		return -1;
 
@@ -108,7 +166,7 @@ int mtk_dbgtop_dfd_timeout(int value_abnormal, int value_normal)
 	/* set dfd timeout */
 	tmp &= ~MTK_DBGTOP_DFD_TIMEOUT_MASK;
 	tmp |= value_abnormal | MTK_DBGTOP_LATCH_CTL2_KEY;
-	writel(tmp, drm->base + MTK_DBGTOP_LATCH_CTL2);
+	mtk_dbgtop_drm_update_status(MTK_DBGTOP_LATCH_CTL2, tmp);
 
 	pr_debug("%s: MTK_DBGTOP_LATCH_CTL2(0x%x)\n", __func__,
 		readl(drm->base + MTK_DBGTOP_LATCH_CTL2));
@@ -126,6 +184,12 @@ static int mtk_dbgtop_drm_probe(struct platform_device *pdev)
 
 	if (!node)
 		return -ENXIO;
+
+	is_sec_write = 0;
+	if (of_property_read_u32(node, "sec-write", &is_sec_write))
+		dev_info(&pdev->dev, "%s: sec-write not found, use default value 0.\n", __func__);
+	else
+		dev_info(&pdev->dev, "%s: found sec-write = %d.\n", __func__, is_sec_write);
 
 	drm = devm_kmalloc(&pdev->dev, sizeof(struct dbgtop_drm), GFP_KERNEL);
 	if (!drm)
