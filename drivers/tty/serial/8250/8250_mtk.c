@@ -2162,7 +2162,6 @@ static int mtk8250_wakeup_probe_of(struct platform_device *pdev, struct uart_por
 		return -1;
 	}
 
-	mutex_init(&data->clk_mutex);
 	/*get wakeup irq id*/
 	data->wakeup_irq = platform_get_irq(pdev, 1);
 	if (data->wakeup_irq < 0) {
@@ -2472,6 +2471,7 @@ static int mtk8250_probe(struct platform_device *pdev)
 
 	data->clk_count = 0;
 	mutex_init(&data->uart_mutex);
+	mutex_init(&data->clk_mutex);
 
 	uart.port.private_data = data;
 #ifndef CONFIG_FPGA_EARLY_PORTING
