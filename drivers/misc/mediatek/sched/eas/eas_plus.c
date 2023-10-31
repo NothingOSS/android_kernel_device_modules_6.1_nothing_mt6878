@@ -576,9 +576,9 @@ EXPORT_SYMBOL_GPL(get_thermal_headroom_interval_tick);
 static DEFINE_RAW_SPINLOCK(migration_lock);
 
 int select_idle_cpu_from_domains(struct task_struct *p,
-					struct perf_domain **prefer_pds, int len)
+					struct perf_domain **prefer_pds, unsigned int len)
 {
-	int i = 0;
+	unsigned int i = 0;
 	struct perf_domain *pd;
 	int cpu, best_cpu = -1;
 
@@ -605,7 +605,7 @@ int select_bigger_idle_cpu(struct task_struct *p)
 	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
 	struct perf_domain *pd, *prefer_pds[MAX_NR_CPUS];
 	int cpu = task_cpu(p), bigger_idle_cpu = -1;
-	int i = 0;
+	unsigned int i = 0;
 	long max_capacity = cpu_cap_ceiling(cpu);
 	long capacity;
 
