@@ -10915,6 +10915,10 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 		};
 	};
 
+	disp-sec {
+		compatible = "mediatek,disp-sec-aidctl";
+	};
+
 	fm: fm {
 		compatible = "mediatek,fm";
 		family-id = <0x6983>;
