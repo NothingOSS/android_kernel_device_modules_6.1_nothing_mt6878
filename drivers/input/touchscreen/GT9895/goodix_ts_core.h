@@ -715,9 +715,8 @@ int goodix_ts_gpio_suspend(struct goodix_ts_core *core_data);
 int goodix_ts_gpio_resume(struct goodix_ts_core *core_data);
 #endif
 
-extern void register_tpd_tui_request(int (*enter_func)(void), int (*exit_func)(void));
-
 #if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
+extern void register_tpd_tui_request(int (*enter_func)(void), int (*exit_func)(void));
 extern atomic_t gt9895_tui_flag;
 extern struct goodix_ts_core *ts_core_gt9895_tui;
 extern void mt_spi_enable_master_clk(struct spi_device *spidev);

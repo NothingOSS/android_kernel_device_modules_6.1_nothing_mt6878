@@ -776,9 +776,8 @@ void gt9896s_ts_report_finger(struct input_dev *dev,
 
 int gt9896s_fwu_module_init(void *data);
 
-extern void register_tpd_tui_request(int (*enter_func)(void), int (*exit_func)(void));
-
 #if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
+extern void register_tpd_tui_request(int (*enter_func)(void), int (*exit_func)(void));
 extern atomic_t gt9896s_tui_flag;
 extern struct gt9896s_ts_core *ts_core_for_tui;
 extern void mt_spi_enable_master_clk(struct spi_device *spidev);
