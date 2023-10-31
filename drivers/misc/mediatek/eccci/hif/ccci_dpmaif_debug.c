@@ -170,10 +170,10 @@ void ccci_dpmaif_debug_add(void *data, int len)
 	free_cnt = get_ringbuf_free_cnt(g_debug_buf_len, g_debug_buf.rd, g_debug_buf.wr);
 	if (len <= free_cnt) {
 		if ((g_debug_buf.wr + len) > g_debug_buf_len) {
-			memcpy(g_debug_buf.data + g_debug_buf.wr, data,
-						g_debug_buf_len - g_debug_buf.wr);
-			memcpy(g_debug_buf.data, data,
-						len - (g_debug_buf_len - g_debug_buf.wr));
+			int s = g_debug_buf_len - g_debug_buf.wr;
+
+			memcpy(g_debug_buf.data + g_debug_buf.wr, data, s);
+			memcpy(g_debug_buf.data, data + s, len - s);
 		} else
 			memcpy(g_debug_buf.data + g_debug_buf.wr, data, len);
 

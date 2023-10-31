@@ -83,8 +83,8 @@ struct debug_rx_push_skb_hdr {
 	u16 ipid;
 	u16 fcnt;
 	u16 bid;
-	u8  proc:4;
 	u8  ver:4;
+	u8  proc:4;
 
 } __packed;
 
