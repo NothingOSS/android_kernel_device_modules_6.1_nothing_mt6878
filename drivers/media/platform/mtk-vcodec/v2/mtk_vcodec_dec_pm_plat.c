@@ -767,7 +767,7 @@ bool mtk_vdec_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 {
 	unsigned int cur_in_timestamp, time_diff, threshold = 20;
 	unsigned int prev_op, cur_op, tmp_op;/* monitored op in the prev interval */
-	bool need_update = false;
+	bool update_op = false;
 
 	if (buf_type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE ||
 		!ctx->dev->vdec_dvfs_params.mmdvfs_in_adaptive)
@@ -798,10 +798,10 @@ bool mtk_vdec_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 
 		tmp_op = MAX(ctx->last_monitor_op, prev_op);
 
-		need_update = mtk_dvfs_check_op_diff(prev_op, ctx->last_monitor_op, threshold, 1) &&
+		update_op = mtk_dvfs_check_op_diff(prev_op, ctx->last_monitor_op, threshold, 1) &&
 			mtk_dvfs_check_op_diff(cur_op, tmp_op, threshold, -1);
 
-		if (need_update) {
+		if (update_op) {
 			ctx->op_rate_adaptive = tmp_op;
 			mtk_v4l2_debug(0, "[VDVFS][VDEC][ADAPTIVE][%d] update adaptive op %d -> %d",
 				ctx->id, cur_op, ctx->op_rate_adaptive);
