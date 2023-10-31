@@ -8,13 +8,13 @@
 
 #if IS_ENABLED(CONFIG_MTK_MMINFRA)
 
-int mtk_mminfra_dbg_hang_detect(const char *user);
+int mtk_mminfra_dbg_hang_detect(const char *user, bool skip_pm_runtime);
 
 void mtk_mminfra_off_gipc(void);
 
 #else
 
-static inline int mtk_mminfra_dbg_hang_detect(const char *user)
+static inline int mtk_mminfra_dbg_hang_detect(const char *user, bool skip_pm_runtime)
 {
 	return 0;
 }

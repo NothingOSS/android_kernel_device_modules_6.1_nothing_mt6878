@@ -1573,7 +1573,7 @@ int smi_force_skip_dump(const char *val, const struct kernel_param *kp)
 		return result;
 	}
 
-	mtk_smi_dbg_hang_detect_force_dump("smi driver", larb_skip_id, comm_skip_id);
+	mtk_smi_dbg_hang_detect_force_dump("FORCE_DUMP_smi_driver", larb_skip_id, comm_skip_id);
 
 	return 0;
 }
@@ -1734,7 +1734,7 @@ void mtk_smi_dbg_dump_for_mminfra(void)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
 
-	mtk_smi_dbg_hang_detect_force_dump("MMINFRA",
+	mtk_smi_dbg_hang_detect_force_dump("FORCE_DUMP_MMINFRA",
 		smi->subsys[SMI_MMINFRA].larb_skip_rpm, smi->subsys[SMI_MMINFRA].comm_skip_rpm);
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_mminfra);
@@ -1743,7 +1743,7 @@ void mtk_smi_dbg_dump_for_venc(void)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
 
-	mtk_smi_dbg_hang_detect_force_dump("VENC",
+	mtk_smi_dbg_hang_detect_force_dump("FORCE_DUMP_VENC",
 		smi->subsys[SMI_VENC].larb_skip_rpm, smi->subsys[SMI_VENC].comm_skip_rpm);
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_venc);
@@ -1752,7 +1752,7 @@ void mtk_smi_dbg_dump_for_vdec(void)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
 
-	mtk_smi_dbg_hang_detect_force_dump("VDEC",
+	mtk_smi_dbg_hang_detect_force_dump("FORCE_DUMP_VDEC",
 		smi->subsys[SMI_VDEC].larb_skip_rpm, smi->subsys[SMI_VDEC].comm_skip_rpm);
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_vdec);
@@ -1763,10 +1763,10 @@ void mtk_smi_dbg_dump_for_isp_fast(u32 isp_id)
 
 	pr_notice("%s: isp_id=%#x\n", __func__, isp_id);
 	if (isp_id & ISP_TRAW)
-		mtk_smi_dbg_hang_detect_force_dump("ISP_TRAW",
+		mtk_smi_dbg_hang_detect_force_dump("FORCE_DUMP_ISP_TRAW",
 			smi->subsys[SMI_TRAW].larb_skip_rpm, smi->subsys[SMI_TRAW].comm_skip_rpm);
 	if (isp_id & ISP_DIP)
-		mtk_smi_dbg_hang_detect_force_dump("ISP_DIP1",
+		mtk_smi_dbg_hang_detect_force_dump("FORCE_DUMP_ISP_DIP1",
 			smi->subsys[SMI_DIP1].larb_skip_rpm, smi->subsys[SMI_DIP1].comm_skip_rpm);
 
 }
@@ -1776,7 +1776,7 @@ void mtk_smi_dbg_dump_for_disp(void)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
 
-	mtk_smi_dbg_hang_detect_force_dump("DISP",
+	mtk_smi_dbg_hang_detect_force_dump("FORCE_DUMP_DISP",
 		smi->subsys[SMI_DISP].larb_skip_rpm, smi->subsys[SMI_DISP].comm_skip_rpm);
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_disp);
@@ -1785,7 +1785,7 @@ void mtk_smi_dbg_dump_for_mml(void)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
 
-	mtk_smi_dbg_hang_detect_force_dump("MML",
+	mtk_smi_dbg_hang_detect_force_dump("FORCE_DUMP_MML",
 		smi->subsys[SMI_MML].larb_skip_rpm, smi->subsys[SMI_MML].comm_skip_rpm);
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_for_mml);
