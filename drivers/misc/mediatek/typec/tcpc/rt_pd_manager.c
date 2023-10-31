@@ -32,7 +32,6 @@ struct rt_pd_manager_data {
 	struct typec_partner_desc *partner_desc;
 	struct usb_pd_identity *partner_identity;
 	struct typec_mux **mux;
-	bool *en_wd0;
 	struct rpmd_notifier_block *pd_nb;
 };
 
@@ -312,8 +311,8 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		};
 		break;
 	case TCP_NOTIFY_CABLE_TYPE:
-		dev_info(rpmd->dev, "%s cable type = %d\n",
-				    __func__, noti->cable_type.type);
+		dev_dbg(rpmd->dev, "%s cable type = %d\n",
+				   __func__, noti->cable_type.type);
 		break;
 	case TCP_NOTIFY_AMA_DP_HPD_STATE:
 		dev_info(rpmd->dev, "%s irq = %u, state = %u\n",
@@ -338,12 +337,17 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		typec_mux_set(rpmd->mux[idx], &state);
 		break;
 	case TCP_NOTIFY_WD0_STATE:
-		if (!rpmd->en_wd0[idx])
-			break;
 		tcpm_typec_change_role_postpone(rpmd->tcpc[idx],
 						noti->wd0_state.wd0 ?
 						rpmd->role_def[idx] :
 						TYPEC_ROLE_SNK, true);
+		break;
+	case TCP_NOTIFY_PS_CHANGE:
+		dev_dbg(rpmd->dev, "%s vbus_level = %d\n",
+				   __func__, noti->vbus_level);
+		break;
+	case TCP_NOTIFY_CC_HI:
+		dev_info(rpmd->dev, "%s cc_hi = %d\n", __func__, noti->cc_hi);
 		break;
 	default:
 		break;
@@ -645,13 +649,10 @@ static int rt_pd_manager_probe(struct platform_device *pdev)
 	RPMD_DEVM_KCALLOC(partner_desc);
 	RPMD_DEVM_KCALLOC(partner_identity);
 	RPMD_DEVM_KCALLOC(mux);
-	RPMD_DEVM_KCALLOC(en_wd0);
 	RPMD_DEVM_KCALLOC(pd_nb);
 	if (!rpmd->tcpc || !rpmd->role_def || !rpmd->typec_caps ||
 	    !rpmd->typec_port || !rpmd->partner || !rpmd->partner_desc ||
-	    !rpmd->partner_identity ||
-	    !rpmd->mux ||
-	    !rpmd->en_wd0 || !rpmd->pd_nb)
+	    !rpmd->partner_identity || !rpmd->mux || !rpmd->pd_nb)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, rpmd);
 
@@ -677,13 +678,6 @@ static int rt_pd_manager_probe(struct platform_device *pdev)
 					      __func__, ret);
 			goto out;
 		}
-
-		ret = snprintf(name, sizeof(name), "en-wd0-port%d", i);
-		if (ret >= sizeof(name))
-			dev_notice(rpmd->dev,
-				   "%s en-wd0 name is truncated\n", __func__);
-
-		rpmd->en_wd0[i] = of_property_read_bool(np, name);
 
 		rpmd->pd_nb[i].nb.notifier_call = pd_tcp_notifier_call;
 		rpmd->pd_nb[i].rpmd = rpmd;

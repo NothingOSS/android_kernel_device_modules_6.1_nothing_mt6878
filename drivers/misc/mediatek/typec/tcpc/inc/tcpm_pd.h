@@ -11,15 +11,14 @@
 /* --- PD data message helpers --- */
 
 #define PD_DATA_OBJ_SIZE		(7)
-#define PDO_MAX_NR				(PD_DATA_OBJ_SIZE)
-#define VDO_MAX_NR				(PD_DATA_OBJ_SIZE-1)
+#define PDO_MAX_NR			(PD_DATA_OBJ_SIZE)
+#define VDO_MAX_NR			(PD_DATA_OBJ_SIZE-1)
 #define VDO_MAX_SVID_NR			(VDO_MAX_NR*2)
 
-#define VDO_DISCOVER_ID_IDH			0
+#define VDO_DISCOVER_ID_IDH		0
 #define VDO_DISCOVER_ID_CSTAT		1
 #define VDO_DISCOVER_ID_PRODUCT		2
 #define VDO_DISCOVER_ID_CABLE		3
-#define VDO_DISCOVER_ID_AMA			3
 
 /******************* PD30 *******************/
 

@@ -433,7 +433,7 @@ static inline bool pd_process_timer_msg(
 
 #if CONFIG_USB_PD_DFP_READY_DISCOVER_ID
 	case PD_TIMER_DISCOVER_ID:
-		vdm_put_dpm_discover_cable_event(pd_port);
+		vdm_put_dpm_discover_cable_id_event(pd_port);
 		break;
 #endif	/* CONFIG_USB_PD_DFP_READY_DISCOVER_ID */
 #if CONFIG_USB_PD_REV30

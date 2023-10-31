@@ -178,10 +178,8 @@ static const char *const pe_state_name[] = {
 	"PE_UFP_VDM_EVALUATE_MODE_ENTRY",
 	"PE_UFP_VDM_MODE_EXIT",
 	"PE_UFP_VDM_ATTENTION_REQUEST",
-#if CONFIG_USB_PD_ALT_MODE
 	"PE_UFP_VDM_DP_STATUS_UPDATE",
 	"PE_UFP_VDM_DP_CONFIGURE",
-#endif/* CONFIG_USB_PD_ALT_MODE */
 /******************* DFP_VDM *******************/
 	"PE_DFP_UFP_VDM_IDENTITY_REQUEST",
 	"PE_DFP_UFP_VDM_IDENTITY_ACKED",
@@ -189,6 +187,12 @@ static const char *const pe_state_name[] = {
 	"PE_DFP_CBL_VDM_IDENTITY_REQUEST",
 	"PE_DFP_CBL_VDM_IDENTITY_ACKED",
 	"PE_DFP_CBL_VDM_IDENTITY_NAKED",
+	"PE_DFP_CBL_VDM_SVIDS_REQUEST",
+	"PE_DFP_CBL_VDM_SVIDS_ACKED",
+	"PE_DFP_CBL_VDM_SVIDS_NAKED",
+	"PE_DFP_CBL_VDM_MODES_REQUEST",
+	"PE_DFP_CBL_VDM_MODES_ACKED",
+	"PE_DFP_CBL_VDM_MODES_NAKED",
 	"PE_DFP_VDM_SVIDS_REQUEST",
 	"PE_DFP_VDM_SVIDS_ACKED",
 	"PE_DFP_VDM_SVIDS_NAKED",
@@ -205,14 +209,12 @@ static const char *const pe_state_name[] = {
 	"PE_DFP_CBL_SEND_SOFT_RESET",
 	"PE_DFP_CBL_SEND_CABLE_RESET",
 #endif	/* CONFIG_PD_DFP_RESET_CABLE */
-#if CONFIG_USB_PD_ALT_MODE_DFP
 	"PE_DFP_VDM_DP_STATUS_UPDATE_REQUEST",
 	"PE_DFP_VDM_DP_STATUS_UPDATE_ACKED",
 	"PE_DFP_VDM_DP_STATUS_UPDATE_NAKED",
 	"PE_DFP_VDM_DP_CONFIGURATION_REQUEST",
 	"PE_DFP_VDM_DP_CONFIGURATION_ACKED",
 	"PE_DFP_VDM_DP_CONFIGURATION_NAKED",
-#endif/* CONFIG_USB_PD_ALT_MODE_DFP */
 /******************* UVDM & SVDM *******************/
 #if CONFIG_USB_PD_CUSTOM_VDM
 	"PE_UFP_UVDM_RECV",
@@ -452,10 +454,8 @@ static const char *const pe_state_name[] = {
 	"U_EVA_MODE",
 	"U_MODE_EX",
 	"U_ATTENTION",
-#if CONFIG_USB_PD_ALT_MODE
 	"U_D_STATUS",
 	"U_D_CONFIG",
-#endif/* CONFIG_USB_PD_ALT_MODE */
 /******************* DFP_VDM *******************/
 	"D_UID_REQ",
 	"D_UID_A",
@@ -463,6 +463,12 @@ static const char *const pe_state_name[] = {
 	"D_CID_REQ",
 	"D_CID_ACK",
 	"D_CID_NAK",
+	"D_CSVID_REQ",
+	"D_CSVID_ACK",
+	"D_CSVID_NAK",
+	"D_CMODE_REQ",
+	"D_CMODE_ACK",
+	"D_CMODE_NAK",
 	"D_SVID_REQ",
 	"D_SVID_ACK",
 	"D_SVID_NAK",
@@ -479,14 +485,12 @@ static const char *const pe_state_name[] = {
 	"D_C_SRESET",
 	"D_C_CRESET",
 #endif	/* CONFIG_PD_DFP_RESET_CABLE */
-#if CONFIG_USB_PD_ALT_MODE_DFP
 	"D_DP_STATUS_REQ",
 	"D_DP_STATUS_ACK",
 	"D_DP_STATUS_NAK",
 	"D_DP_CONFIG_REQ",
 	"D_DP_CONFIG_ACK",
 	"D_DP_CONFIG_NAK",
-#endif/* CONFIG_USB_PD_ALT_MODE_DFP */
 /******************* UVDM & SVDM *******************/
 #if CONFIG_USB_PD_CUSTOM_VDM
 	"U_UVDM_RECV",
@@ -736,10 +740,8 @@ static const struct pe_state_actions pe_state_actions[] = {
 	PE_STATE_ACTIONS(pe_ufp_vdm_evaluate_mode_entry),
 	PE_STATE_ACTIONS(pe_ufp_vdm_mode_exit),
 	PE_STATE_ACTIONS(pe_ufp_vdm_attention_request),
-#if CONFIG_USB_PD_ALT_MODE
 	PE_STATE_ACTIONS(pe_ufp_vdm_dp_status_update),
 	PE_STATE_ACTIONS(pe_ufp_vdm_dp_configure),
-#endif/* CONFIG_USB_PD_ALT_MODE */
 /******************* DFP_VDM *******************/
 	PE_STATE_ACTIONS(pe_dfp_ufp_vdm_identity_request),
 	PE_STATE_ACTIONS(pe_dfp_ufp_vdm_identity_acked),
@@ -747,6 +749,12 @@ static const struct pe_state_actions pe_state_actions[] = {
 	PE_STATE_ACTIONS(pe_dfp_cbl_vdm_identity_request),
 	PE_STATE_ACTIONS(pe_dfp_cbl_vdm_identity_acked),
 	PE_STATE_ACTIONS(pe_dfp_cbl_vdm_identity_naked),
+	PE_STATE_ACTIONS(pe_dfp_cbl_vdm_svids_request),
+	PE_STATE_ACTIONS(pe_dfp_cbl_vdm_svids_acked),
+	PE_STATE_ACTIONS(pe_dfp_cbl_vdm_svids_naked),
+	PE_STATE_ACTIONS(pe_dfp_cbl_vdm_modes_request),
+	PE_STATE_ACTIONS(pe_dfp_cbl_vdm_modes_acked),
+	PE_STATE_ACTIONS(pe_dfp_cbl_vdm_modes_naked),
 	PE_STATE_ACTIONS(pe_dfp_vdm_svids_request),
 	PE_STATE_ACTIONS(pe_dfp_vdm_svids_acked),
 	PE_STATE_ACTIONS(pe_dfp_vdm_svids_naked),
@@ -763,14 +771,12 @@ static const struct pe_state_actions pe_state_actions[] = {
 	PE_STATE_ACTIONS(pe_dfp_cbl_send_soft_reset),
 	PE_STATE_ACTIONS(pe_dfp_cbl_send_cable_reset),
 #endif	/* CONFIG_PD_DFP_RESET_CABLE */
-#if CONFIG_USB_PD_ALT_MODE_DFP
 	PE_STATE_ACTIONS(pe_dfp_vdm_dp_status_update_request),
 	PE_STATE_ACTIONS(pe_dfp_vdm_dp_status_update_acked),
 	PE_STATE_ACTIONS(pe_dfp_vdm_dp_status_update_naked),
 	PE_STATE_ACTIONS(pe_dfp_vdm_dp_configuration_request),
 	PE_STATE_ACTIONS(pe_dfp_vdm_dp_configuration_acked),
 	PE_STATE_ACTIONS(pe_dfp_vdm_dp_configuration_naked),
-#endif/* CONFIG_USB_PD_ALT_MODE_DFP */
 /******************* UVDM & SVDM *******************/
 #if CONFIG_USB_PD_CUSTOM_VDM
 	PE_STATE_ACTIONS(pe_ufp_uvdm_recv),

@@ -18,35 +18,6 @@
 #define CONFIG_USB_PD_TCPM_CB_2ND	1
 #define CONFIG_USB_PD_BLOCK_TCPM	1
 
-#define CONFIG_USB_PD_RICHTEK_UVDM	0
-
-/**********************************************************
- * Mode Operation
- **********************************************************/
-
-#define CONFIG_USB_PD_MODE_OPERATION	1
-
-#if CONFIG_USB_PD_MODE_OPERATION
-
-#define CONFIG_USB_PD_ALT_MODE	1
-
-#if CONFIG_USB_PD_ALT_MODE
-#define CONFIG_USB_PD_ALT_MODE_DFP	1
-#else
-#define CONFIG_USB_PD_ALT_MODE_DFP	0
-#endif	/* CONFIG_USB_PD_ALT_MODE */
-
-#define CONFIG_USB_PD_DP_CHECK_CABLE	0
-#define CONFIG_USB_PD_RTDC_CHECK_CABLE	0
-
-#else /* no CONFIG_USB_PD_MODE_OPERATION */
-#define CONFIG_USB_PD_ALT_MODE	0
-#define CONFIG_USB_PD_ALT_MODE_DFP	0
-#define CONFIG_USB_PD_DP_CHECK_CABLE	0
-#define CONFIG_USB_PD_RTDC_CHECK_CABLE	0
-
-#endif	/* CONFIG_USB_PD_MODE_OPERATION */
-
 /**********************************************************
  * PD revision 3.0 feature
  **********************************************************/
@@ -118,7 +89,7 @@
 #define CONFIG_USB_PD_VCONN_SAFE5V_ONLY		1
 
 #define CONFIG_USB_PD_ATTEMPT_DISCOVER_ID	1
-#define CONFIG_USB_PD_ATTEMPT_DISCOVER_SVID	1
+#define CONFIG_USB_PD_ATTEMPT_DISCOVER_SVIDS	1
 
 #define CONFIG_USB_PD_DISCOVER_CABLE_REQUEST_VCONN	1
 #define CONFIG_USB_PD_DISCOVER_CABLE_RETURN_VCONN	0

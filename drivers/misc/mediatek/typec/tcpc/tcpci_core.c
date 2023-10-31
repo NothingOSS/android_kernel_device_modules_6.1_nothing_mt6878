@@ -25,7 +25,7 @@
 #endif /* CONFIG_USB_POWER_DELIVERY */
 #include "inc/rt-regmap.h"
 
-#define TCPC_CORE_VERSION		"2.0.25_MTK"
+#define TCPC_CORE_VERSION		"2.0.26_MTK"
 
 static ssize_t tcpc_show_property(struct device *dev,
 				  struct device_attribute *attr, char *buf);
@@ -190,7 +190,7 @@ static ssize_t tcpc_show_property(struct device *dev,
 				"1: pr_swap", "2: dr_swap", "3: vconn_swap",
 				"4: soft reset", "5: hard reset",
 				"6: get_src_cap", "7: get_sink_cap",
-				"8: discover_id", "9: discover_cable");
+				"8: discover_id", "9: discover_cable_id");
 		if (ret < 0)
 			dev_dbg(dev, "%s: ret=%d\n", __func__, ret);
 		break;
@@ -345,7 +345,7 @@ static ssize_t tcpc_store_property(struct device *dev,
 			tcpm_dpm_vdm_discover_id(tcpc, NULL);
 			break;
 		case 9:
-			tcpm_dpm_vdm_discover_cable(tcpc, NULL);
+			tcpm_dpm_vdm_discover_cable_id(tcpc, NULL);
 			break;
 		default:
 			break;
@@ -504,7 +504,7 @@ static void bat_update_work_func(struct work_struct *work)
 	ret = power_supply_get_property(
 			tcpc->bat_psy, POWER_SUPPLY_PROP_CAPACITY, &value);
 	if (ret == 0) {
-		TCPC_INFO("%s battery update soc = %d\n",
+		TCPC_DBG("%s battery update soc = %d\n",
 					__func__, value.intval);
 		tcpc->bat_soc = value.intval;
 	} else
@@ -514,13 +514,16 @@ static void bat_update_work_func(struct work_struct *work)
 		POWER_SUPPLY_PROP_STATUS, &value);
 	if (ret == 0) {
 		if (value.intval == POWER_SUPPLY_STATUS_CHARGING) {
-			TCPC_INFO("%s Battery Charging\n", __func__);
+			TCPC_INFO("%s Battery Charging, soc = %d\n",
+				  __func__, tcpc->bat_soc);
 			tcpc->charging_status = BSDO_BAT_INFO_CHARGING;
 		} else if (value.intval == POWER_SUPPLY_STATUS_DISCHARGING) {
-			TCPC_INFO("%s Battery Discharging\n", __func__);
+			TCPC_INFO("%s Battery Discharging, soc = %d\n",
+				  __func__, tcpc->bat_soc);
 			tcpc->charging_status = BSDO_BAT_INFO_DISCHARGING;
 		} else {
-			TCPC_INFO("%s Battery Idle\n", __func__);
+			TCPC_INFO("%s Battery Idle, soc = %d\n",
+				  __func__, tcpc->bat_soc);
 			tcpc->charging_status = BSDO_BAT_INFO_IDLE;
 		}
 	}
@@ -876,6 +879,13 @@ MODULE_VERSION(TCPC_CORE_VERSION);
 MODULE_LICENSE("GPL");
 
 /* Release Version
+ * 2.0.26_MTK
+ * (1) Fix coverity issues
+ * (2) PD DP Alt Mode V2.1
+ * (3) Revise WD
+ * (4) Decrease tDRP to 51.2ms and dcSRC.DRP to 30%
+ * (5) Remove old code
+ *
  * 2.0.25_MTK
  * (1) Fix COMMON.CHECK.PD.9#1 of MQP
  * (2) Revise PR_Swap flow

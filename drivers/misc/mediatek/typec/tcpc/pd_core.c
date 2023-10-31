@@ -485,7 +485,7 @@ static const struct {
 	{"attempt-discover-cable", "attempt_discover_cable", DPM_CAP_ATTEMPT_DISCOVER_CABLE},
 	{"attempt-discover-id", "attempt_discover_id", DPM_CAP_ATTEMPT_DISCOVER_ID},
 	{"attempt-discover-id-dfp", "attempt_discover_id_dfp", DPM_CAP_ATTEMPT_DISCOVER_ID_DFP},
-	{"attempt-discover-svid", "attempt_discover_svid", DPM_CAP_ATTEMPT_DISCOVER_SVID},
+	{"attempt-discover-svids", "attempt_discover_svids", DPM_CAP_ATTEMPT_DISCOVER_SVIDS},
 
 	{"pr-reject-as-source", "pr_reject_as_source", DPM_CAP_PR_SWAP_REJECT_AS_SRC},
 	{"pr-reject-as-sink", "pr_reject_as_sink", DPM_CAP_PR_SWAP_REJECT_AS_SNK},
@@ -711,13 +711,8 @@ bool pd_is_reset_cable(struct pd_port *pd_port)
 
 bool pd_is_discover_cable(struct pd_port *pd_port)
 {
-	if (!dpm_reaction_check(pd_port, DPM_REACTION_CAP_DISCOVER_CABLE))
-		return false;
-
 	if (pd_port->pe_data.discover_id_counter >= PD_DISCOVER_ID_COUNT) {
-		dpm_reaction_clear(pd_port,
-			DPM_REACTION_DISCOVER_CABLE |
-			DPM_REACTION_CAP_DISCOVER_CABLE);
+		dpm_reaction_clear(pd_port, DPM_REACTION_DISCOVER_CABLE);
 		return false;
 	}
 
@@ -886,9 +881,13 @@ static void pd_init_spec_revision(struct pd_port *pd_port)
 	if (pd_port->tcpc->tcpc_flags & TCPC_FLAGS_PD_REV30) {
 		pd_port->pd_revision[0] = PD_REV30;
 		pd_port->pd_revision[1] = PD_REV30;
+		pd_port->svdm_ver_min[0] = 1;
+		pd_port->svdm_ver_min[1] = 1;
 	} else {
 		pd_port->pd_revision[0] = PD_REV20;
 		pd_port->pd_revision[1] = PD_REV20;
+		pd_port->svdm_ver_min[0] = 0;
+		pd_port->svdm_ver_min[1] = 0;
 	}
 #endif	/* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
 }
@@ -957,8 +956,8 @@ static inline int pd_reset_modal_operation(struct pd_port *pd_port)
 		svid_data = &pd_port->svid_data[i];
 
 		if (svid_data->active_mode) {
-			svid_data->active_mode = 0;
 			tcpci_exit_mode(pd_port->tcpc, svid_data->svid);
+			svid_data->active_mode = 0;
 		}
 	}
 
@@ -1236,6 +1235,14 @@ int pd_disable_bist_mode2(struct pd_port *pd_port)
 
 /* ---- Send / Reply VDM Command ----*/
 
+uint8_t pd_get_svdm_ver_min(
+	struct pd_port *pd_port, enum tcpm_transmit_type sop_type)
+{
+	if (sop_type >= ARRAY_SIZE(pd_port->svdm_ver_min))
+		return 0;
+	return pd_port->svdm_ver_min[sop_type];
+}
+
 int pd_send_svdm_request(struct pd_port *pd_port,
 		uint8_t sop_type, uint16_t svid, uint8_t vdm_cmd,
 		uint8_t obj_pos, uint8_t cnt, uint32_t *data_obj,
@@ -1258,7 +1265,8 @@ int pd_send_svdm_request(struct pd_port *pd_port,
 	if (pd_get_rev(pd_port, sop_type) >= PD_REV30)
 		ver = SVDM_REV20;
 
-	payload[0] = VDO_S(svid, ver, CMDT_INIT, vdm_cmd, obj_pos);
+	payload[0] = VDO_S(svid, ver, pd_get_svdm_ver_min(pd_port, sop_type),
+			   CMDT_INIT, vdm_cmd, obj_pos);
 	memcpy(&payload[1], data_obj, sizeof(uint32_t) * cnt);
 
 #if CONFIG_USB_PD_STOP_SEND_VDM_IF_RX_BUSY
@@ -1297,7 +1305,8 @@ int pd_reply_svdm_request(struct pd_port *pd_port,
 	if (pd_check_rev30(pd_port))
 		ver = SVDM_REV20;
 
-	payload[0] = VDO_REPLY(ver, reply, pd_get_msg_vdm_hdr(pd_port));
+	payload[0] = VDO_REPLY(ver, pd_get_svdm_ver_min(pd_port, TCPC_TX_SOP),
+			       reply, pd_get_msg_vdm_hdr(pd_port));
 
 	if (cnt > 0 && cnt <= PD_DATA_OBJ_SIZE - 1) {
 		PD_BUG_ON(data_obj == NULL);
@@ -1409,12 +1418,14 @@ void pd_sync_sop_spec_revision(struct pd_port *pd_port)
 {
 #if CONFIG_USB_PD_REV30_SYNC_SPEC_REV
 	uint8_t rev = pd_get_msg_hdr_rev(pd_port);
+	uint8_t ver_min = rev >= PD_REV30 ? 1 : 0;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
 	if (!pd_port->pe_data.pd_connected) {
 		pd_port->pd_revision[0] = MIN(pd_port->pd_revision[0], rev);
 		pd_port->pd_revision[1] = MIN(pd_port->pd_revision[1], rev);
-
+		pd_sync_svdm_ver_min(pd_port, TCPC_TX_SOP, ver_min);
+		pd_sync_svdm_ver_min(pd_port, TCPC_TX_SOP_PRIME, ver_min);
 		PE_INFO("pd_rev=%d\n", pd_port->pd_revision[0]);
 	}
 #endif /* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
@@ -1423,15 +1434,30 @@ void pd_sync_sop_spec_revision(struct pd_port *pd_port)
 void pd_sync_sop_prime_spec_revision(struct pd_port *pd_port, uint8_t rev)
 {
 #if CONFIG_USB_PD_REV30_SYNC_SPEC_REV
+	uint8_t ver_min = rev >= PD_REV30 ? 1 : 0;
 	struct pe_data *pe_data = &pd_port->pe_data;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
 	if (!pe_data->cable_rev_discovered) {
 		pe_data->cable_rev_discovered = true;
 		pd_port->pd_revision[1] = MIN(pd_port->pd_revision[1], rev);
+		pd_sync_svdm_ver_min(pd_port, TCPC_TX_SOP_PRIME, ver_min);
 		PE_INFO("cable_rev=%d\n", pd_port->pd_revision[1]);
 	}
 #endif /* CONFIG_USB_PD_REV30_SYNC_SPEC_REV */
+}
+
+void pd_sync_svdm_ver_min(
+	struct pd_port *pd_port, enum tcpm_transmit_type sop_type, uint8_t ver)
+{
+	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
+
+	if (sop_type >= ARRAY_SIZE(pd_port->svdm_ver_min))
+		return;
+
+	pd_port->svdm_ver_min[sop_type] =
+		MIN(pd_port->svdm_ver_min[sop_type], ver);
+	PE_DBG("svdm_ver_min[%d]=%u\n", sop_type, ver);
 }
 
 bool pd_is_multi_chunk_msg(struct pd_port *pd_port)

@@ -394,7 +394,7 @@ static inline bool pd_process_timer_msg_source_start(
 		}
 #endif	/* CONFIG_PD_SRC_RESET_CABLE */
 
-		if (vdm_put_dpm_discover_cable_event(pd_port))
+		if (vdm_put_dpm_discover_cable_id_event(pd_port))
 			return false;
 	}
 #endif	/* CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID */
@@ -467,7 +467,7 @@ static inline bool pd_process_timer_msg(
 
 #if CONFIG_PD_DISCOVER_CABLE_ID
 	case PD_TIMER_DISCOVER_ID:
-		vdm_put_dpm_discover_cable_event(pd_port);
+		vdm_put_dpm_discover_cable_id_event(pd_port);
 		break;
 #endif	/* CONFIG_PD_DISCOVER_CABLE_ID */
 

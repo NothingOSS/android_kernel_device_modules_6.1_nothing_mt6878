@@ -320,10 +320,8 @@ enum pd_pe_state {
 	PE_UFP_VDM_MODE_EXIT,
 	PE_UFP_VDM_ATTENTION_REQUEST,
 
-#if CONFIG_USB_PD_ALT_MODE
 	PE_UFP_VDM_DP_STATUS_UPDATE,
 	PE_UFP_VDM_DP_CONFIGURE,
-#endif/* CONFIG_USB_PD_ALT_MODE */
 
 /******************* DFP_VDM *******************/
 	PE_DFP_UFP_VDM_IDENTITY_REQUEST,
@@ -332,6 +330,12 @@ enum pd_pe_state {
 	PE_DFP_CBL_VDM_IDENTITY_REQUEST,
 	PE_DFP_CBL_VDM_IDENTITY_ACKED,
 	PE_DFP_CBL_VDM_IDENTITY_NAKED,
+	PE_DFP_CBL_VDM_SVIDS_REQUEST,
+	PE_DFP_CBL_VDM_SVIDS_ACKED,
+	PE_DFP_CBL_VDM_SVIDS_NAKED,
+	PE_DFP_CBL_VDM_MODES_REQUEST,
+	PE_DFP_CBL_VDM_MODES_ACKED,
+	PE_DFP_CBL_VDM_MODES_NAKED,
 
 	PE_DFP_VDM_SVIDS_REQUEST,
 	PE_DFP_VDM_SVIDS_ACKED,
@@ -351,7 +355,6 @@ enum pd_pe_state {
 	PE_DFP_CBL_SEND_CABLE_RESET,
 #endif	/* CONFIG_PD_DFP_RESET_CABLE */
 
-#if CONFIG_USB_PD_ALT_MODE_DFP
 	PE_DFP_VDM_DP_STATUS_UPDATE_REQUEST,
 	PE_DFP_VDM_DP_STATUS_UPDATE_ACKED,
 	PE_DFP_VDM_DP_STATUS_UPDATE_NAKED,
@@ -359,7 +362,6 @@ enum pd_pe_state {
 	PE_DFP_VDM_DP_CONFIGURATION_REQUEST,
 	PE_DFP_VDM_DP_CONFIGURATION_ACKED,
 	PE_DFP_VDM_DP_CONFIGURATION_NAKED,
-#endif/* CONFIG_USB_PD_ALT_MODE_DFP */
 
 /******************* UVDM & SVDM *******************/
 
@@ -796,12 +798,10 @@ void pe_ufp_vdm_mode_exit_nak_entry(
 void pe_ufp_vdm_attention_request_entry(
 	struct pd_port *pd_port);
 
-#if CONFIG_USB_PD_ALT_MODE
 void pe_ufp_vdm_dp_status_update_entry(
 	struct pd_port *pd_port);
 void pe_ufp_vdm_dp_configure_entry(
 	struct pd_port *pd_port);
-#endif/* CONFIG_USB_PD_ALT_MODE */
 /******************* DFP_VDM *******************/
 void pe_dfp_ufp_vdm_identity_request_entry(
 	struct pd_port *pd_port);
@@ -814,6 +814,18 @@ void pe_dfp_cbl_vdm_identity_request_entry(
 void pe_dfp_cbl_vdm_identity_acked_entry(
 	struct pd_port *pd_port);
 void pe_dfp_cbl_vdm_identity_naked_entry(
+	struct pd_port *pd_port);
+void pe_dfp_cbl_vdm_svids_request_entry(
+	struct pd_port *pd_port);
+void pe_dfp_cbl_vdm_svids_acked_entry(
+	struct pd_port *pd_port);
+void pe_dfp_cbl_vdm_svids_naked_entry(
+	struct pd_port *pd_port);
+void pe_dfp_cbl_vdm_modes_request_entry(
+	struct pd_port *pd_port);
+void pe_dfp_cbl_vdm_modes_acked_entry(
+	struct pd_port *pd_port);
+void pe_dfp_cbl_vdm_modes_naked_entry(
 	struct pd_port *pd_port);
 
 void pe_dfp_vdm_svids_request_entry(
@@ -847,7 +859,6 @@ void pe_dfp_cbl_send_soft_reset_entry(
 void pe_dfp_cbl_send_cable_reset_entry(
 	struct pd_port *pd_port);
 #endif	/* CONFIG_PD_DFP_RESET_CABLE */
-#if CONFIG_USB_PD_ALT_MODE_DFP
 void pe_dfp_vdm_dp_status_update_request_entry(
 	struct pd_port *pd_port);
 void pe_dfp_vdm_dp_status_update_acked_entry(
@@ -861,7 +872,6 @@ void pe_dfp_vdm_dp_configuration_acked_entry(
 	struct pd_port *pd_port);
 void pe_dfp_vdm_dp_configuration_naked_entry(
 	struct pd_port *pd_port);
-#endif/* CONFIG_USB_PD_ALT_MODE_DFP */
 /******************* UVDM & SVDM *******************/
 #if CONFIG_USB_PD_CUSTOM_VDM
 void pe_ufp_uvdm_recv_entry(

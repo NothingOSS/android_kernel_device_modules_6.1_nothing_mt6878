@@ -63,6 +63,8 @@ extern int tcpc_typec_handle_ctd(struct tcpc_device *tcpc,
 				 enum tcpc_cable_type cable_type);
 #endif /* CONFIG_CABLE_TYPEC_DETECTION */
 
+extern int tcpc_typec_handle_cc_hi(struct tcpc_device *tcpc, int cc_hi);
+
 #define typec_get_cc1()		\
 	tcpc->typec_remote_cc[0]
 #define typec_get_cc2()		\

@@ -31,8 +31,6 @@
 
 #define MT6370_REG_BMCIO_RXDZEN			(0x9A)
 #define MT6370_REG_IDLE_CTRL				(0x9B)
-#define MT6370_REG_INTRST_CTRL				(0x9C)
-#define MT6370_REG_WATCHDOG_CTRL			(0x9D)
 #define MT6370_REG_I2CRST_CTRL				(0X9E)
 
 #define MT6370_REG_SWRESET				(0xA0)
@@ -109,7 +107,6 @@
  * MT6370_REG_MT_INT				(0x98)
  */
 
-#define MT6370_REG_INT_WATCHDOG			(1<<2)
 #define MT6370_REG_INT_VBUS_80				(1<<1)
 #define MT6370_REG_INT_WAKEUP				(1<<0)
 
@@ -117,7 +114,6 @@
  * MT6370_REG_MT_MASK				(0x99)
  */
 
-#define MT6370_REG_M_WATCHDOG				(1<<2)
 #define MT6370_REG_M_VBUS_80				(1<<1)
 #define MT6370_REG_M_WAKEUP				(1<<0)
 
@@ -139,26 +135,6 @@
 #define MT6370_REG_IDLE_SET(ck300, ship_dis, auto_idle, tout) \
 	((ck300 << 7) | (ship_dis << 5) | (auto_idle << 3) | (tout & 0x07))
 #endif
-
-/*
- * MT6370_REG_INTRST_CTRL			(0x9C)
- */
-
-#define MT6370_REG_INTRST_EN				(1<<7)
-
-/* timeout = (tout+1) * 0.2sec */
-#define MT6370_REG_INTRST_SET(en, tout) \
-	((en << 7) | (tout & 0x03))
-
-/*
- * MT6370_REG_WATCHDOG_CTRL		(0x9D)
- */
-
-#define MT6370_REG_WATCHDOG_EN				(1<<7)
-
-/* timeout = (tout+1) * 0.4sec */
-#define MT6370_REG_WATCHDOG_CTRL_SET(en, tout)	\
-	((en << 7) | (tout & 0x07))
 
 /*
  * MT6370_REG_I2CRST_CTRL		(0x9E)

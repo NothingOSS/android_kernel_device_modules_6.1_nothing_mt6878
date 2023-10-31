@@ -181,12 +181,12 @@ void pe_src_vdm_identity_request_entry(struct pd_port *pd_port)
 
 void pe_src_vdm_identity_acked_entry(struct pd_port *pd_port)
 {
-	pd_dpm_inform_cable_id(pd_port, true);
+	pd_dpm_inform_cable_id(pd_port, true, true);
 }
 
 void pe_src_vdm_identity_naked_entry(struct pd_port *pd_port)
 {
-	pd_dpm_inform_cable_id(pd_port, true);
+	pd_dpm_inform_cable_id(pd_port, false, true);
 }
 
 #endif	/* CONFIG_USB_PD_SRC_STARTUP_DISCOVER_ID */

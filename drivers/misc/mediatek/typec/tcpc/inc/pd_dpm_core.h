@@ -15,9 +15,10 @@ int pd_dpm_core_init(struct pd_port *pd_port);
 int pd_dpm_enable_vconn(struct pd_port *pd_port, bool en);
 int pd_dpm_send_sink_caps(struct pd_port *pd_port);
 int pd_dpm_send_source_caps(struct pd_port *pd_port);
-
-void pd_dpm_inform_cable_id(struct pd_port *pd_port, bool src_startup);
-
+void pd_dpm_inform_cable_id(struct pd_port *pd_port, bool ack,
+			    bool src_startup);
+void pd_dpm_inform_cable_svids(struct pd_port *pd_port, bool ack);
+void pd_dpm_inform_cable_modes(struct pd_port *pd_port, bool ack);
 void pd_dpm_dynamic_enable_vconn(struct pd_port *pd_port);
 void pd_dpm_dynamic_disable_vconn(struct pd_port *pd_port);
 
@@ -56,11 +57,9 @@ void pd_dpm_ufp_request_exit_mode(struct pd_port *pd_port);
 
 /* ---- UFP : DP Only ---- */
 
-#if CONFIG_USB_PD_ALT_MODE
 int pd_dpm_ufp_request_dp_status(struct pd_port *pd_port);
 int pd_dpm_ufp_request_dp_config(struct pd_port *pd_port);
 void pd_dpm_ufp_send_dp_attention(struct pd_port *pd_port);
-#endif
 
 /* ---- DFP : Inform VDM Result ---- */
 
@@ -73,13 +72,11 @@ void pd_dpm_dfp_inform_attention(struct pd_port *pd_port);
 
 /* ---- DFP : DP Only  ---- */
 
-#if CONFIG_USB_PD_ALT_MODE_DFP
 void pd_dpm_dfp_send_dp_status_update(struct pd_port *pd_port);
 void pd_dpm_dfp_inform_dp_status_update(struct pd_port *pd_port, bool ack);
 
 void pd_dpm_dfp_send_dp_configuration(struct pd_port *pd_port);
 void pd_dpm_dfp_inform_dp_configuration(struct pd_port *pd_port, bool ack);
-#endif
 
 /* ---- SVDM/UVDM  ---- */
 
@@ -230,18 +227,14 @@ static inline int pd_dpm_source_vbus(struct pd_port *pd_port, bool en)
 
 /* Mode Operations */
 
-#if CONFIG_USB_PD_ALT_MODE
-#if CONFIG_USB_PD_ALT_MODE_DFP
-
 extern bool dp_dfp_u_notify_discover_id(struct pd_port *pd_port,
 	struct svdm_svid_data *svid_data, bool ack);
 
-extern bool dp_dfp_u_notify_discover_svid(
+extern bool dp_dfp_u_notify_discover_svids(
 	struct pd_port *pd_port, struct svdm_svid_data *svid_data, bool ack);
 
 extern bool dp_dfp_u_notify_discover_modes(
 	struct pd_port *pd_port, struct svdm_svid_data *svid_data, bool ack);
-
 
 extern bool dp_dfp_u_notify_enter_mode(struct pd_port *pd_port,
 	struct svdm_svid_data *svid_data, uint8_t ops, bool ack);
@@ -251,42 +244,36 @@ extern bool dp_dfp_u_notify_exit_mode(
 
 extern bool dp_dfp_u_notify_attention(struct pd_port *pd_port,
 	struct svdm_svid_data *svid_data);
-#endif	/* CONFIG_USB_PD_ALT_MODE_DFP */
 
-extern void dp_ufp_u_request_enter_mode(
+extern bool dp_dfp_u_notify_discover_cable_id(struct pd_port *pd_port,
+	struct svdm_svid_data *svid_data, bool ack, uint32_t *payload,
+	uint8_t cnt);
+
+extern bool dp_dfp_u_notify_discover_cable_svids(struct pd_port *pd_port,
+	struct svdm_svid_data *svid_data, bool ack, uint32_t *payload,
+	uint8_t cnt);
+
+extern bool dp_dfp_u_notify_discover_cable_modes(struct pd_port *pd_port,
+	struct svdm_svid_data *svid_data, bool ack, uint32_t *payload,
+	uint8_t cnt);
+
+extern bool dp_ufp_u_request_enter_mode(
 	struct pd_port *pd_port, struct svdm_svid_data *svid_data, uint8_t ops);
 
-extern void dp_ufp_u_request_exit_mode(
+extern bool dp_ufp_u_request_exit_mode(
 	struct pd_port *pd_port, struct svdm_svid_data *svid_data, uint8_t ops);
 
-#if CONFIG_USB_PD_ALT_MODE_DFP
 extern bool dp_dfp_u_notify_pe_startup(
 	struct pd_port *pd_port, struct svdm_svid_data *svid_data);
 
-extern int dp_dfp_u_notify_pe_ready(struct pd_port *pd_port,
+extern bool dp_dfp_u_notify_pe_ready(struct pd_port *pd_port,
 	struct svdm_svid_data *svid_data);
-#endif	/* CONFIG_USB_PD_ALT_MODE_DFP */
 
 extern bool dp_reset_state(
 	struct pd_port *pd_port, struct svdm_svid_data *svid_data);
 
 extern bool dp_parse_svid_data(
 	struct pd_port *pd_port, struct svdm_svid_data *svid_data);
-#endif	/* CONFIG_USB_PD_ALT_MODE */
-
-#if CONFIG_USB_PD_RICHTEK_UVDM
-extern bool richtek_dfp_notify_pe_startup(
-	struct pd_port *pd_port, struct svdm_svid_data *svid_data);
-
-extern int richtek_dfp_notify_pe_ready(struct pd_port *pd_port,
-	struct svdm_svid_data *svid_data);
-
-extern bool richtek_dfp_notify_uvdm(struct pd_port *pd_port,
-		struct svdm_svid_data *svid_data, bool ack);
-extern bool richtek_ufp_notify_uvdm(struct pd_port *pd_port,
-		struct svdm_svid_data *svid_data);
-#endif	/* CONFIG_USB_PD_RICHTEK_UVDM */
-
 
 /**
  * pd_dpm_get_ready_reaction
@@ -335,7 +322,6 @@ extern uint8_t pd_dpm_get_ready_reaction(struct pd_port *pd_port);
 
 #define DPM_REACTION_CAP_RESET_CABLE		BIT(28)
 #define DPM_REACTION_CAP_READY_ONCE		BIT(29)
-#define DPM_REACTION_CAP_DISCOVER_CABLE		BIT(30)
 #define DPM_REACTION_CAP_ALWAYS			BIT(31)
 
 static inline void dpm_reaction_clear(struct pd_port *pd_port, uint32_t mask)

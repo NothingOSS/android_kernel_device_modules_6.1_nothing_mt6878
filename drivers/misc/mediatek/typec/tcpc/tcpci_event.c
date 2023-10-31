@@ -464,7 +464,7 @@ bool pd_put_deferred_tcp_event(
 	}
 
 	switch (tcp_event->event_id) {
-	case TCP_DPM_EVT_DISCOVER_CABLE:
+	case TCP_DPM_EVT_DISCOVER_CABLE_ID:
 	case TCP_DPM_EVT_CABLE_SOFTRESET:
 		dpm_reaction_set(pd_port,
 			DPM_REACTION_DYNAMIC_VCONN |

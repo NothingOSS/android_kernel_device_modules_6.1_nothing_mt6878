@@ -266,23 +266,19 @@ static int tcpci_alert_fault(struct tcpc_device *tcpc)
 	return 0;
 }
 
-#if CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG
 int tcpci_alert_wakeup(struct tcpc_device *tcpc)
 {
-	if (tcpc->tcpc_flags & TCPC_FLAGS_LPM_WAKEUP_WATCHDOG) {
-		TCPC_INFO("Wakeup\n");
-		if (tcpc->typec_lpm) {
-			if (tcpc->ops->set_low_power_mode)
-				tcpc->ops->set_low_power_mode(tcpc, false,
-							      TYPEC_CC_OPEN);
-			tcpc_enable_lpm_timer(tcpc, true);
-		}
+	TCPC_INFO("Wakeup\n");
+	if (tcpc->typec_lpm) {
+		if (tcpc->ops->set_low_power_mode)
+			tcpc->ops->set_low_power_mode(tcpc, false,
+						      TYPEC_CC_OPEN);
+		tcpc_enable_lpm_timer(tcpc, true);
 	}
 
 	return 0;
 }
 EXPORT_SYMBOL(tcpci_alert_wakeup);
-#endif /* CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG */
 
 struct tcpci_alert_handler {
 	uint32_t bit_mask;
@@ -311,9 +307,7 @@ static const struct tcpci_alert_handler tcpci_alert_handlers[] = {
 	DECL_TCPCI_ALERT_HANDLER(0, tcpci_alert_cc_changed),
 	DECL_TCPCI_ALERT_HANDLER(1, tcpci_alert_power_status_changed),
 
-#if CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG
 	DECL_TCPCI_ALERT_HANDLER(16, tcpci_alert_wakeup),
-#endif /* CONFIG_TYPEC_CAP_LPM_WAKEUP_WATCHDOG */
 };
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
@@ -398,8 +392,9 @@ int tcpci_alert(struct tcpc_device *tcpc)
 		}
 	}
 
-	/* unmask alert */
-	rv = tcpci_set_alert_mask(tcpc, alert_mask);
+	/* unmask alert when not receiving PD HardReset */
+	if (!(alert_status & BIT(3)))
+		rv = tcpci_set_alert_mask(tcpc, alert_mask);
 
 	if (tcpc->tcpc_flags & TCPC_FLAGS_ALERT_V10)
 		return rv;
@@ -423,12 +418,8 @@ static inline int tcpci_set_wake_lock(struct tcpc_device *tcpc, bool pd_lock)
 			TCPC_DBG("wake_lock=1\n");
 			__pm_wakeup_event(tcpc->attach_wake_lock,
 					  CONFIG_TCPC_ATTACH_WAKE_LOCK_TOUT);
-			if (tcpc->typec_watchdog)
-				tcpci_set_intrst(tcpc, true);
 		} else {
 			TCPC_DBG("wake_lock=0\n");
-			if (tcpc->typec_watchdog)
-				tcpci_set_intrst(tcpc, false);
 			__pm_relax(tcpc->attach_wake_lock);
 		}
 		return 1;
@@ -450,7 +441,7 @@ static int tcpci_set_wake_lock_pd(struct tcpc_device *tcpc, bool pd_lock)
 		wake_lock_pd--;
 
 	if (wake_lock_pd == 0)
-		__pm_wakeup_event(tcpc->detach_wake_lock, 5000);
+		__pm_wakeup_event(tcpc->detach_wake_lock, 1000);
 
 	tcpci_set_wake_lock(tcpc, wake_lock_pd);
 	tcpc->wake_lock_pd = wake_lock_pd;

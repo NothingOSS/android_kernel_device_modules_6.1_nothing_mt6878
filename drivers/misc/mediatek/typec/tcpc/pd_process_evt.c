@@ -203,25 +203,26 @@ static const char *const tcp_dpm_evt_name[] = {
 #endif	/* CONFIG_USB_PD_REV30 */
 
 	/* TCP_DPM_EVT_VDM_COMMAND */
-	"disc_cable",
+	"disc_cable_id",
 	"disc_id",
-	"disc_svid",
-	"disc_mode",
+	"disc_svids",
+	"disc_modes",
 	"enter_mode",
 	"exit_mode",
 	"attention",
 
-#if CONFIG_USB_PD_ALT_MODE
 	"dp_atten",
-#if CONFIG_USB_PD_ALT_MODE_DFP
 	"dp_status",
 	"dp_config",
-#endif	/* CONFIG_USB_PD_ALT_MODE_DFP */
-#endif	/* CONFIG_USB_PD_ALT_MODE */
 
 #if CONFIG_USB_PD_CUSTOM_VDM
 	"uvdm",
 #endif	/* CONFIG_USB_PD_CUSTOM_VDM */
+
+#if CONFIG_USB_PD_DFP_READY_DISCOVER_ID
+	"disc_cable_svids",
+	"disc_cable_modes",
+#endif /* CONFIG_USB_PD_DFP_READY_DISCOVER_ID */
 
 	/* TCP_DPM_EVT_IMMEDIATELY */
 	"hard_reset",
@@ -520,7 +521,7 @@ static inline bool pd_process_cable_ctrl_msg_accept(
 	switch (pd_port->pe_state_curr) {
 #if CONFIG_PD_SRC_RESET_CABLE
 	case PE_SRC_CBL_SEND_SOFT_RESET:
-		vdm_put_dpm_discover_cable_event(pd_port);
+		vdm_put_dpm_discover_cable_id_event(pd_port);
 		return false;
 #endif	/* CONFIG_PD_SRC_RESET_CABLE */
 
