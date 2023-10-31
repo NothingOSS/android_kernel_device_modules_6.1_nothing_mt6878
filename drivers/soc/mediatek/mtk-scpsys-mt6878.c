@@ -298,7 +298,6 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.basic_clk_name = {"disp"},
 		.subsys_clk_prefix = "disp0",
-		.subsys_lp_clk_prefix = "mdp_lp",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6878_TOP_AXI_PROT_EN_MMSYS_STA_0_DISP),
@@ -315,6 +314,7 @@ static const struct scp_domain_data scp_domain_mt6878_spm_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 0,
+		.basic_clk_name = {"mm_infra"},
 		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_HWV_OPS | default_cap,
 	},
 	[MT6878_POWER_DOMAIN_MM_PROC_DORMANT] = {
