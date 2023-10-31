@@ -534,7 +534,7 @@ static void fuel_gauge_handler(struct work_struct *work)
 {
 	int curr, volt, cap;
 	struct power_supply *psy;
-	union power_supply_propval val;
+	union power_supply_propval val = {0};
 	int ret;
 
 	if (!fuel_gauge_enable)
