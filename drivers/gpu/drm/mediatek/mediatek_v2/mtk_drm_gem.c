@@ -898,6 +898,8 @@ int mtk_drm_ioctl_mml_gem_submit(struct drm_device *dev, void *data,
 	struct mml_submit *submit_kernel;
 	struct drm_crtc *crtc;
 	struct mtk_drm_crtc *mtk_crtc;
+	enum mml_mode new_mode = MML_MODE_UNKNOWN;
+	bool skip_free = false;
 
 	DDPINFO("%s:%d +\n", __func__, __LINE__);
 	ret = wait_event_interruptible(priv->kernel_pm.wq,
@@ -977,8 +979,49 @@ int mtk_drm_ioctl_mml_gem_submit(struct drm_device *dev, void *data,
 		DDPINFO("%s:%d mml_drm_submit - ret:%d, job(id,fence):(%d,%d)\n",
 			__func__, __LINE__, ret,
 			submit_kernel->job->jobid, submit_kernel->job->fence);
-		if (ret)
-			DDPMSG("submit failed: %d\n", ret);
+
+		if (ret == 0 && priv && priv->dpc_dev &&
+			mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_VIDLE_DECOUPLE_MODE)) {
+			new_mode = submit_kernel->info.mode;
+			if (new_mode == MML_MODE_MML_DECOUPLE && !mtk_crtc->is_mml_dc)
+				mtk_crtc->mml_link_state = MML_DC_ENTERING;
+			else if (new_mode != MML_MODE_MML_DECOUPLE && mtk_crtc->is_mml_dc)
+				mtk_crtc->mml_link_state = MML_STOP_DC;
+			else
+				mtk_crtc->mml_link_state = NON_MML;
+			mtk_crtc->is_mml_dc = (new_mode == MML_MODE_MML_DECOUPLE);
+
+			if ((mtk_crtc->mml_link_state == MML_DC_ENTERING) &&
+			    !mtk_vidle_is_ff_enabled()) {
+				DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+				mtk_drm_idlemgr_kick(__func__, crtc, false);
+				CRTC_MMP_MARK((int)drm_crtc_index(crtc), enter_vidle,
+						mtk_crtc->mml_link_state, new_mode);
+				mtk_vidle_enable(true, priv);
+				mtk_vidle_config_ff(true);
+				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			} else if ((mtk_crtc->mml_link_state == MML_STOP_DC) &&
+				   mtk_vidle_is_ff_enabled()) {
+				DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+				mtk_drm_idlemgr_kick(__func__, crtc, false);
+				CRTC_MMP_MARK((int)drm_crtc_index(crtc), leave_vidle,
+						mtk_crtc->mml_link_state, new_mode);
+				mtk_vidle_config_ff(false);
+				mtk_vidle_enable(false, priv);
+				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			}
+			if (mtk_crtc->mml_cfg_dc != NULL) {
+				for (i = 0; i < MML_MAX_OUTPUTS; i++)
+					kfree(mtk_crtc->mml_cfg_dc->pq_param[i]);
+				kfree(mtk_crtc->mml_cfg_dc->job);
+				kfree(mtk_crtc->mml_cfg_dc);
+				mtk_crtc->mml_cfg_dc = NULL;
+			}
+			mtk_crtc->mml_cfg_dc = submit_kernel;
+			skip_free = true;
+		} else if (ret)
+			DDPMSG("%s, submit failed: %d\n", __func__, ret);
 	}
 
 	if (submit_user->job) {
@@ -986,6 +1029,9 @@ int mtk_drm_ioctl_mml_gem_submit(struct drm_device *dev, void *data,
 		if (ret)
 			DDPMSG("[%s][%d][%d] copy_to_user fail\n", __func__, __LINE__, ret);
 	}
+
+	if (skip_free)
+		return ret;
 
 err_handle_create:
 	for (i = 0; i < MML_MAX_OUTPUTS; i++) {

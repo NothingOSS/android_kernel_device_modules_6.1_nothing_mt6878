@@ -1097,6 +1097,7 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 		// mmsys_config_dump_analysis_mt6878(mtk_crtc->config_regs);
 		mmsys_config_dump_analysis_mt6878(crtc);
 		mutex_dump_analysis_mt6878(mtk_crtc->mutex[0]);
+		mtk_vidle_dpc_analysis(false);
 		break;
 	default:
 		DDPPR_ERR("%s mtk drm not support mmsys id %d\n",
@@ -12372,7 +12373,7 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 
 	switch (mtk_crtc->mml_link_state) {
 	case MML_IR_ENTERING:
-		DDP_PROFILE("MML_IR_ENTERING\n");
+		DDP_PROFILE("MML IR start vidle: %d\n", mtk_crtc->mml_link_state);
 		mtk_addon_get_comp(mtk_crtc_state->lye_state.mml_ir_lye, &c.tgt_comp, &c.tgt_layer);
 		for (; i <= mtk_crtc->is_dual_pipe; ++i) {
 			comp = priv->ddp_comp[id[i]];
@@ -12383,20 +12384,28 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 		}
 		fallthrough;
 	case MML_DIRECT_LINKING:
+		DDP_PROFILE("MML DL start vidle: %d\n", mtk_crtc->mml_link_state);
 		if (mtk_vidle_is_ff_enabled()) {
 			cmdq_pkt_clear_event(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 			cmdq_pkt_wfe(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
-			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000414,
-				1 << DISP_VIDLE_USER_DISP_CMDQ, U32_MAX);
-			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000414,
-				1 << DISP_VIDLE_USER_DISP_CMDQ, U32_MAX);
+			mtk_vidle_user_power_keep_by_gce(cmdq_handle);
 		}
 		mml_drm_racing_config_sync(mml_ctx, cmdq_handle);
 		break;
+	case MML_DC_ENTERING:
+		DDP_PROFILE("MML DC start vidle: %d\n", mtk_crtc->mml_link_state);
+		if (mtk_vidle_is_ff_enabled()) {
+			cmdq_pkt_clear_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+			cmdq_pkt_wfe(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+			mtk_vidle_user_power_keep_by_gce(cmdq_handle);
+		}
+		break;
 	case MML_STOP_LINKING:
-		DDP_PROFILE("MML_STOP_LINKING\n");
+		DDP_PROFILE("MML DL stop vidle: %d\n", mtk_crtc->mml_link_state);
 		mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle, false);
 		break;
 	default:
@@ -15766,12 +15775,8 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 
 	mtk_drm_idlemgr_kick(__func__, crtc, false); /* update kick timestamp */
 
-	if (priv->dpc_dev) {
-		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000418,
-			1 << DISP_VIDLE_USER_DISP_CMDQ, U32_MAX);
-		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x1c000418,
-			1 << DISP_VIDLE_USER_DISP_CMDQ, U32_MAX);
-	}
+	if (priv->dpc_dev)
+		mtk_vidle_user_power_release_by_gce(cmdq_handle);
 
 #ifndef DRM_CMDQ_DISABLE
 #ifdef MTK_DRM_CMDQ_ASYNC
@@ -16683,7 +16688,8 @@ static int mtk_drm_mode_switch_thread(void *data)
 
 		/* TODO: set proper DT with corresponding CRTC */
 		if (drm_crtc_index(crtc) == 0)
-			mtk_vidle_update_dt_by_period(crtc);
+			mtk_vidle_update_dt_by_type(crtc,
+				mtk_dsi_is_cmd_mode(output_comp) ? PANEL_TYPE_CMD : PANEL_TYPE_VDO);
 
 		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 1, 2);
 
