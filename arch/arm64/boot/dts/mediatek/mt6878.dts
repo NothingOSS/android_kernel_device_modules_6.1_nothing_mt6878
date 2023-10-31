@@ -10132,20 +10132,17 @@
 	wifi_cooler: wifi-cooler {
 		compatible = "mediatek,wifi-level-cooler";
 		#cooling-cells = <2>;
-		status = "disabled";
 	};
 
 	charger_cooler: charger-cooler {
 		compatible = "mediatek,mt6375-charger-cooler";
 		#cooling-cells = <2>;
-		status = "disabled";
 	};
 
 	backlight_cooler: backlight-cooler {
 		compatible = "mediatek,backlight-cooler";
 		backlight-names = "lcd-backlight";
 		#cooling-cells = <2>;
-		status = "disabled";
 	};
 
 	therm_intf: therm-intf@114000 {
