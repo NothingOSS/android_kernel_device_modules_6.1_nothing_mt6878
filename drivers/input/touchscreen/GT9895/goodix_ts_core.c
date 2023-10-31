@@ -23,6 +23,8 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
+#include <linux/thermal.h>
+#include <linux/math.h>
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 38)
 #include <linux/input/mt.h>
@@ -33,8 +35,8 @@
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 #include "mtk_panel_ext.h"
-static struct goodix_ts_core *ts_core;
 #endif
+static struct goodix_ts_core *ts_core;
 
 #define GOODIX_DEFAULT_CFG_NAME		"goodix_cfg_group.cfg"
 #define GOOIDX_INPUT_PHYS		"goodix_ts/input0"
@@ -49,6 +51,10 @@ static int gt9895_ts_event_polling(void *arg);
 static int gt9895_polling_flag;
 struct mutex irq_info_mutex;
 static unsigned int x_last[GOODIX_MAX_TOUCH], y_last[GOODIX_MAX_TOUCH];
+
+#ifdef GOODIX_TZ
+static atomic_t delayed_reset;
+#endif
 
 #if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
 struct goodix_ts_core *ts_core_gt9895_tui;
@@ -1109,6 +1115,9 @@ static int goodix_parse_dt(struct device_node *node,
 {
 	const char *name_tmp;
 	int r;
+#ifdef GOODIX_TZ
+	struct goodix_ts_bdata_tz *ts_tz = &board_data->ts_bdata_tz;
+#endif
 
 	if (!board_data) {
 		ts_err("invalid board data");
@@ -1236,6 +1245,48 @@ static int goodix_parse_dt(struct device_node *node,
 		board_data->panel_max_x, board_data->panel_max_y,
 		board_data->panel_max_w, board_data->panel_max_p,
 		board_data->sleep_enable, board_data->pen_enable);
+
+#ifdef GOODIX_TZ
+	ts_tz->tz_enable = of_property_read_bool(node, "goodix,tz-enable");
+	if (ts_tz->tz_enable) {
+		ts_info("tz enabled");
+		ts_tz->tz_dev = NULL;
+
+		r = of_property_read_string(node, "goodix,tz-name", &name_tmp);
+		if (!r && (strlen(name_tmp) < sizeof(ts_tz->tz_name))) {
+			strscpy(ts_tz->tz_name, name_tmp, sizeof(ts_tz->tz_name));
+			ts_info("thermal zone name from dt: %s", ts_tz->tz_name);
+		} else{
+			strscpy(ts_tz->tz_name, TS_DEFAULT_THERMAL_ZONE, sizeof(ts_tz->tz_name));
+			ts_info("can't find thermal zone name, use default: %s", ts_tz->tz_name);
+		}
+
+		r = of_property_read_u32(node, "goodix,temperature-difference",
+				&ts_tz->temperature_difference);
+		if (r) {
+			ts_tz->temperature_difference = GOODIX_DEFAULT_TEMPERATURE_DIFFERENCE;
+			ts_info("can't find temperature-difference value, use default: %d",
+				ts_tz->temperature_difference);
+		} else {
+			ts_info("temperature-difference value from dt: %d",
+				ts_tz->temperature_difference);
+		}
+
+		r = of_property_read_u32(node, "goodix,temperature-threshold",
+				&ts_tz->temperature_threshold);
+		if (r) {
+			ts_tz->temperature_threshold = GOODIX_DEFAULT_TEMPERATURE_THRESHOLD;
+			ts_info("can't find temperature-threshold value, use default: %d",
+				ts_tz->temperature_threshold);
+		} else {
+			ts_info("temperature-threshold value from dt: %d",
+				ts_tz->temperature_threshold);
+		}
+	} else {
+		ts_info("tz not enabled");
+	}
+#endif
+
 	return 0;
 }
 #endif
@@ -1280,6 +1331,25 @@ void goodix_ts_report_finger(struct input_dev *dev,
 	input_set_timestamp(dev,
 		ns_to_ktime(atomic64_read(&ts_core->timestamp)));
 	input_sync(dev);
+
+#ifdef GOODIX_TZ
+	if ((atomic_read(&delayed_reset) == 1) && (touch_num == 0)) {
+		struct goodix_ts_hw_ops *hw_ops = ts_core->hw_ops;
+
+		if (hw_ops->reset){
+			if (hw_ops->reset(ts_core, GOODIX_NORMAL_RESET_DELAY_MS)) {
+				/* don't clear flag */
+				ts_err("Failed to reset for rebase operation.");
+			} else {
+				ts_info("Reset for rebase operation completed.");
+				atomic_set(&delayed_reset, 0);
+			}
+		} else {
+			ts_err("no reset hardware function.");
+			atomic_set(&delayed_reset, 0);
+		}
+	}
+#endif
 
 	mutex_unlock(&dev->mutex);
 }
@@ -1725,6 +1795,47 @@ void goodix_ts_input_dev_remove(struct goodix_ts_core *core_data)
 	input_unregister_device(core_data->input_dev);
 	core_data->input_dev = NULL;
 }
+#ifdef GOODIX_TZ
+void thermal_zone_monitor(struct goodix_ts_bdata_tz *ts_tz)
+{
+	static int last_reset_temp = INT_MAX;
+	int ret;
+	int temp;
+
+	if (!ts_tz->tz_enable)
+		return;
+
+	if (ts_tz->tz_dev == NULL) {
+		ts_info("Get thermal zone '%s'", ts_tz->tz_name);
+		ts_tz->tz_dev = thermal_zone_get_zone_by_name(ts_tz->tz_name);
+		if (IS_ERR_OR_NULL(ts_tz->tz_dev)) {
+			ts_err("Failed to get thermal zone '%s', error : %ld",
+					ts_tz->tz_name,
+					IS_ERR(ts_tz->tz_dev) ? PTR_ERR(ts_tz->tz_dev) : 0);
+			ts_tz->tz_dev = NULL;
+			return;
+		}
+	}
+	ret = thermal_zone_get_temp(ts_tz->tz_dev, &temp);
+	if (ret) {
+		ts_err("Failed to get thermal zone temperature");
+		return;
+	}
+
+	if ((temp < ts_tz->temperature_threshold) && ((last_reset_temp == INT_MAX)
+		|| abs(temp - last_reset_temp) >= ts_tz->temperature_difference)) {
+		ts_info("current temperature %d requires reset, last reset at temperature %d",
+				temp, last_reset_temp);
+		if (atomic_read(&delayed_reset) == 1){
+			ts_info("last reset marked was not executed!");
+		} else {
+			ts_info("last reset marked was executed already!");
+			atomic_set(&delayed_reset, 1);
+		}
+		last_reset_temp = temp;
+	}
+}
+#endif
 
 /**
  * goodix_ts_esd_work - check hardware status and recovery
@@ -1755,6 +1866,10 @@ static void goodix_ts_esd_work(struct work_struct *work)
 		goodix_ts_power_off(cd);
 		usleep_range(5000, 5100);
 		goodix_ts_power_on(cd);
+	} else {
+	#ifdef GOODIX_TZ
+		thermal_zone_monitor(&cd->board_data.ts_bdata_tz);
+	#endif
 	}
 
 exit:
@@ -1796,6 +1911,10 @@ void goodix_ts_esd_off(struct goodix_ts_core *cd)
 		return;
 
 	atomic_set(&ts_esd->esd_on, 0);
+#ifdef GOODIX_TZ
+	if (cd->board_data.ts_bdata_tz.tz_enable)
+		atomic_set(&delayed_reset, 0);
+#endif
 	ret = cancel_delayed_work_sync(&ts_esd->esd_work);
 	ts_info("Esd off, esd work state %d", ret);
 }
@@ -1850,6 +1969,10 @@ int goodix_ts_esd_init(struct goodix_ts_core *cd)
 	INIT_DELAYED_WORK(&ts_esd->esd_work, goodix_ts_esd_work);
 	ts_esd->ts_core = cd;
 	atomic_set(&ts_esd->esd_on, 0);
+#ifdef GOODIX_TZ
+	if (cd->board_data.ts_bdata_tz.tz_enable)
+		atomic_set(&delayed_reset, 0);
+#endif
 	ts_esd->esd_notifier.notifier_call = goodix_esd_notifier_callback;
 	goodix_ts_register_notifier(&ts_esd->esd_notifier);
 	goodix_ts_esd_on(cd);
@@ -1945,6 +2068,11 @@ static int goodix_ts_suspend(struct goodix_ts_core *core_data)
 	 */
 	goodix_ts_blocking_notify(NOTIFY_SUSPEND, NULL);
 
+#ifdef GOODIX_TZ
+	/* clear delayed reset flag*/
+	if (core_data->board_data.ts_bdata_tz.tz_enable)
+		atomic_set(&delayed_reset, 0);
+#endif
 	/* inform external module */
 	mutex_lock(&goodix_modules.mutex);
 	if (!list_empty(&goodix_modules.head)) {
@@ -2445,12 +2573,12 @@ static int goodix_ts_probe(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 		ts_info("TP power_on reset!\n");
-		ts_core = core_data;
 		if (mtk_panel_tch_handle_init()) {
 			ret_disp = mtk_panel_tch_handle_init();
 			*ret_disp = (void *)goodix_ts_power_on_reinit;
 		}
 #endif
+	ts_core = core_data;
 
 	/* for tui touch */
 #if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
