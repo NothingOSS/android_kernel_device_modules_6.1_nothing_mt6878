@@ -99,6 +99,7 @@ static struct mtk_drm_property mtk_crtc_property[CRTC_PROP_MAX] = {
 	{DRM_MODE_PROP_ATOMIC, "USER_SCEN", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "HDR_ENABLE", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "MSYNC2_0_ENABLE", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "MSYNC2_0_EPT", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "OVL_DSI_SEQ", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "OUTPUT_SCENARIO", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC | DRM_MODE_PROP_IMMUTABLE,
@@ -119,6 +120,14 @@ struct timespec64 rdma_sof_tval;
 bool hdr_en;
 static const char * const crtc_gce_client_str[] = {
 	DECLARE_GCE_CLIENT(DECLARE_STR)};
+
+/* For Msync2.0 CPU and GCE wait EPT */
+unsigned long long flush_add_delay_time;
+bool flush_add_delay_need;
+#define MSYNC20_AVG_FPS_FRAME_NUM (60)
+bool msync2_is_on;
+unsigned int atomic_fps;
+static unsigned int msync_fps_record[MSYNC20_AVG_FPS_FRAME_NUM];
 
 /* Overlay bw monitor define */
 struct layer_compress_ratio_data
@@ -1529,15 +1538,20 @@ bool msync_is_on(struct mtk_drm_private *priv,
 						struct mtk_crtc_state *old_state)
 {
 	if (priv == NULL || params == NULL ||
-			state == NULL || old_state == NULL)
+			state == NULL || old_state == NULL) {
+		msync2_is_on = false;
 		return false;
+	}
 	if (crtc_id == 0 &&
 			mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_MSYNC2_0) &&
 			params->msync2_enable &&
 			((state->prop_val[CRTC_PROP_MSYNC2_0_ENABLE] != 0) ||
-			(old_state->prop_val[CRTC_PROP_MSYNC2_0_ENABLE] != 0)))
+			(old_state->prop_val[CRTC_PROP_MSYNC2_0_ENABLE] != 0))) {
+		msync2_is_on = true;
 		return true;
+	}
+	msync2_is_on = false;
 	return false;
 }
 
@@ -12876,8 +12890,14 @@ int mtk_drm_get_atomic_fps(void)
 		count++;
 	} else {
 		ktime_get_real_ts64(&tval);
-		sec1 = tval.tv_sec - sec;
-		usec1 = tval.tv_nsec/1000 - usec;
+		if ((tval.tv_sec >= sec) && (tval.tv_nsec/1000 >= usec)) {
+			sec1 = tval.tv_sec - sec;
+			usec1 = tval.tv_nsec/1000 - usec;
+		}
+		if ((tval.tv_sec > sec) && (tval.tv_nsec/1000 < usec)) {
+			sec1 = tval.tv_sec - sec - 1;
+			usec1 = 1000000 + tval.tv_nsec/1000 - usec;
+		}
 		x_time = sec1 * 1000000 + usec1;
 
 		target_fps = 1000000/x_time;
@@ -12947,7 +12967,8 @@ static void mtk_crtc_msync2_send_cmds_bef_cfg(struct drm_crtc *crtc, unsigned in
 			DDPMSG("[Msync2.0] Msync Need close R-TE\n");
 			fps_level = 0xFFFF;
 			min_fps = drm_mode_vrefresh(&crtc->state->mode);
-		} else if (mtk_sync_te_level_decision_fp) {
+		} else if (mtk_sync_te_level_decision_fp &&
+			params->msync_cmd_table.need_switch_level_tb) {
 			x_time = 0;
 			mtk_sync_te_level_decision_fp((void *)rte_tb->rte_te_level,
 				REQUEST_TE, target_fps, &fps_level, &min_fps, x_time);
@@ -12972,42 +12993,44 @@ static void mtk_crtc_msync2_send_cmds_bef_cfg(struct drm_crtc *crtc, unsigned in
 		if (target_fps == 0xFFFF)
 			goto rte_target;
 
-		if (target_fps < level_min_fps)
-			count++;
+		if (params->msync_cmd_table.need_close_when_lowfps) {
+			if (target_fps < level_min_fps)
+				count++;
 
-		if (target_fps >= level_min_fps)
-			count = 0;
+			if (target_fps >= level_min_fps)
+				count = 0;
 
-		if (count == 5) {
-			count = 0;
-			if (msync_is_close == 0) {
-				mtk_crtc_msync2_send_cmds_bef_cfg(crtc, 0xFFFF);
-				cmdq_pkt_write(state->cmdq_handle, mtk_crtc->gce_obj.base,
-					addr, DISABLE_REQUEST_TE, ~0);
+			if (count == 5) {
+				count = 0;
+				if (msync_is_close == 0) {
+					mtk_crtc_msync2_send_cmds_bef_cfg(crtc, 0xFFFF);
+					cmdq_pkt_write(state->cmdq_handle, mtk_crtc->gce_obj.base,
+						addr, DISABLE_REQUEST_TE, ~0);
+				}
+				msync_is_close = 1;
+				DDPMSG("[Msync2.0] low min fps close msync\n");
+				return;
 			}
-			msync_is_close = 1;
-			DDPMSG("[Msync2.0] low min fps close msync\n");
-			return;
-		}
 
-		if (target_fps > level_min_fps)
-			count1++;
+			if (target_fps > level_min_fps)
+				count1++;
 
-		if (target_fps <= level_min_fps)
+			if (target_fps <= level_min_fps)
+				count1 = 0;
+
+			DDPMSG("[Msync2.0] count1:%u msync_is_close:%d\n",
+					count1, msync_is_close);
+			if ((count1 != 5) && (msync_is_close == 1)) {
+				DDPMSG("[Msync2.0] continue close msync\n");
+				return;
+			}
+
 			count1 = 0;
-
-		DDPMSG("[Msync2.0] count1:%u msync_is_close:%d\n",
-				count1, msync_is_close);
-		if ((count1 != 5) && (msync_is_close == 1)) {
-			DDPMSG("[Msync2.0] continue close msync\n");
-			return;
+			msync_is_close = 0;
+			DDPMSG("[Msync2.0] come back enable msync\n");
 		}
-
-		count1 = 0;
 		cmdq_pkt_write(state->cmdq_handle, mtk_crtc->gce_obj.base, addr,
 			ENABLE_REQUSET_TE, ~0);
-		msync_is_close = 0;
-		DDPMSG("[Msync2.0] come back enable msync\n");
 
 rte_target:
 		if (mtk_sync_slow_descent_fp) {
@@ -13104,7 +13127,8 @@ rte_target:
 			DDPMSG("[Msync2.0] Msync Need close M-TE\n");
 			fps_level = 0xFFFF;
 			min_fps = drm_mode_vrefresh(&crtc->state->mode);
-		} else if (mtk_sync_te_level_decision_fp) {
+		} else if (mtk_sync_te_level_decision_fp &&
+			params->msync_cmd_table.need_switch_level_tb) {
 			mtk_sync_te_level_decision_fp((void *)mte_tb->multi_te_level,
 				MULTI_TE, target_fps, &fps_level, &min_fps, x_time);
 			level_min_fps = mte_tb->multi_te_level[0].min_fps;
@@ -13127,37 +13151,39 @@ rte_target:
 		if (target_fps == 0xFFFF)
 			goto mte_target;
 
-		if (target_fps < level_min_fps)
-			count++;
+		if (params->msync_cmd_table.need_close_when_lowfps) {
+			if (target_fps < level_min_fps)
+				count++;
 
-		if (target_fps >= level_min_fps)
-			count = 0;
+			if (target_fps >= level_min_fps)
+				count = 0;
 
-		if (count == 5) {
-			count = 0;
-			if (msync_is_close == 0)
-				mtk_crtc_msync2_send_cmds_bef_cfg(crtc, 0xFFFF);
-			msync_is_close = 1;
-			DDPMSG("[Msync2.0] low min fps close msync\n");
-			return;
-		}
+			if (count == 5) {
+				count = 0;
+				if (msync_is_close == 0)
+					mtk_crtc_msync2_send_cmds_bef_cfg(crtc, 0xFFFF);
+				msync_is_close = 1;
+				DDPMSG("[Msync2.0] low min fps close msync\n");
+				return;
+			}
 
-		if (target_fps > level_min_fps)
-			count1++;
+			if (target_fps > level_min_fps)
+				count1++;
 
-		if (target_fps <= level_min_fps)
+			if (target_fps <= level_min_fps)
+				count1 = 0;
+
+			DDPMSG("[Msync2.0] count1:%u msync_is_close:%d\n",
+					count1, msync_is_close);
+			if ((count1 != 5) && (msync_is_close == 1)) {
+				DDPMSG("[Msync2.0] continue close msync\n");
+				return;
+			}
+
 			count1 = 0;
-
-		DDPMSG("[Msync2.0] count1:%u msync_is_close:%d\n",
-				count1, msync_is_close);
-		if ((count1 != 5) && (msync_is_close == 1)) {
-			DDPMSG("[Msync2.0] continue close msync\n");
-			return;
+			msync_is_close = 0;
+			DDPMSG("[Msync2.0] come back enable msync\n");
 		}
-
-		count1 = 0;
-		msync_is_close = 0;
-		DDPMSG("[Msync2.0] come back enable msync\n");
 
 mte_target:
 		if (mtk_sync_slow_descent_fp) {
@@ -13353,9 +13379,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	struct mtk_panel_params *params =
 			mtk_drm_get_lcm_ext_params(crtc);
 	unsigned int target_fps = 0;
-	unsigned int atomic_fps = 0;
 	static unsigned int msync_may_close;
-	unsigned int msync_fps_record[60];
 	static unsigned int position;
 	dma_addr_t msync_slot_addr;
 	bool msync20_status_changed = 0;
@@ -14493,6 +14517,79 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		} else {
 			DDPPR_ERR("%s:%d first_comp is NULL\n", __func__, __LINE__);
 			return -EINVAL;
+		}
+	}
+
+	/* Msync2.0 Smoothness tuning */
+	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
+		msync2_is_on && (crtc_index == 0) &&
+		(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MSYNC2_0_WAIT_EPT))) {
+		struct mtk_panel_params *params =
+			mtk_drm_get_lcm_ext_params(crtc);
+		unsigned int delay_us = 0;
+		unsigned long long current_time = ktime_get_boottime_ns();
+		unsigned long long ept_time = state->prop_val[CRTC_PROP_MSYNC2_0_EPT];
+		unsigned int frame_rate =
+			drm_mode_vrefresh(&crtc->state->adjusted_mode);
+		unsigned int te_step_time = 0;
+		unsigned int frame_time = 0;
+
+		DDPDBG("%s:%d systime:%lld\n", __func__, __LINE__, current_time);
+		DDPDBG("%s:%d last frame sof:%llu\n", __func__, __LINE__, g_pf_time);
+		DDPDBG("%s:%d MSYNC2_0_EPT:%llu\n", __func__, __LINE__, ept_time);
+		DDPDBG("%s:%d vrefresh%u frame_time:%u\n", __func__, __LINE__, frame_rate, frame_time);
+
+		if (params) {
+			te_step_time = params->msync_cmd_table.te_step_time;
+			DDPDBG("%s:%d te_step_time:%u\n", __func__, __LINE__, te_step_time);
+		}
+
+		if (frame_rate > 0)
+			frame_time = 1000000000 / frame_rate;
+
+		if ((ept_time > g_pf_time) &&
+			(ept_time - g_pf_time < frame_time)) {
+			ept_time += frame_time - (ept_time - g_pf_time);
+			DDPINFO("%s:%d > MSYNC2_0_EPT modified:%llu\n", __func__, __LINE__, ept_time);
+		}
+
+		if (ept_time <= g_pf_time) {
+			ept_time = frame_time + g_pf_time;
+			DDPINFO("%s:%d < MSYNC2_0_EPT modified:%llu\n", __func__, __LINE__, ept_time);
+		}
+
+		if ((ept_time != 0) &&
+			(ept_time/1000 > current_time/1000) &&
+			(state->prop_val[CRTC_PROP_USER_SCEN] != 1)) {
+			unsigned long long x_time = ept_time/1000 - current_time/1000;
+
+			if (x_time > te_step_time)
+				delay_us = x_time - te_step_time;
+			else
+				delay_us = x_time;
+
+			flush_add_delay_time = current_time/1000 + delay_us;
+			flush_add_delay_need = false;
+			//GCE wait EPT
+			if (params && params->msync_cmd_table.is_gce_delay && (delay_us < 1000000)) {
+				CRTC_MMP_MARK(crtc_index, atomic_delay, delay_us, 0);
+				// TODO: add gce wait EPT function
+				DDPINFO("%s:%d GCE delay: msync2 st sleep %u us\n", __func__, __LINE__, delay_us);
+				flush_add_delay_need = true;
+			//CPU wait EPT
+			} else if (delay_us < 1000000) {
+				mtk_drm_trace_begin("msync2_delay:%u", delay_us);
+				CRTC_MMP_EVENT_START(crtc_index, atomic_delay, delay_us, 0);
+
+				mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+				usleep_range(delay_us, delay_us + 1);
+				mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
+
+				CRTC_MMP_EVENT_END(crtc_index, atomic_delay, delay_us, 0);
+				mtk_drm_trace_end("msync2_delay:%u", delay_us);
+
+				DDPINFO("%s:%d CPU delay: msync2 st sleep %u us\n", __func__, __LINE__, delay_us);
+			}
 		}
 	}
 

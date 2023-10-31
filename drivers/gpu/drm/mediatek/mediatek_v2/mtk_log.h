@@ -264,4 +264,5 @@ extern bool g_ovl_bwm_debug;
 extern bool g_vidle_apsrc_debug;
 extern bool g_profile_log;
 extern bool g_y2r_en;
+extern unsigned long long g_pf_time;
 #endif

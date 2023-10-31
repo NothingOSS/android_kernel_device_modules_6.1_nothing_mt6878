@@ -84,6 +84,8 @@ bool g_detail_log;
 EXPORT_SYMBOL(g_detail_log);
 bool g_msync_debug;
 EXPORT_SYMBOL(g_msync_debug);
+unsigned long long g_pf_time;
+EXPORT_SYMBOL(g_pf_time);
 bool g_gpuc_direct_push;
 EXPORT_SYMBOL(g_gpuc_direct_push);
 bool g_ovl_bwm_debug;

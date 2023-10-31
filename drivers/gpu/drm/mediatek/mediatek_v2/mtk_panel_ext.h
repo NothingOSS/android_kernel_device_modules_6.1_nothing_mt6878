@@ -464,7 +464,11 @@ struct msync_trigger_level_te_table {
 };
 
 struct msync_cmd_table {
+	bool is_gce_delay;
+	bool need_switch_level_tb;
+	bool need_close_when_lowfps;
 	unsigned int te_type;
+	unsigned int te_step_time;
 	unsigned int msync_max_fps;
 	unsigned int msync_min_fps;
 	unsigned int msync_level_num;

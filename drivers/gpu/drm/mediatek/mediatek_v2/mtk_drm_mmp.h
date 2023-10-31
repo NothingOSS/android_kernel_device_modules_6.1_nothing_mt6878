@@ -87,6 +87,7 @@ struct CRTC_MMP_Events {
 	mmp_event warn_sf_pf_0;
 	mmp_event warn_sf_pf_2;
 	mmp_event ovl_bw_monitor;
+	mmp_event atomic_delay;
 	mmp_event atomic_begin;
 	mmp_event atomic_flush;
 	mmp_event enable_vblank;
