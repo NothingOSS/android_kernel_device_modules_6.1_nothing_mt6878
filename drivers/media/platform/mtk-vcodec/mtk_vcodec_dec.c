@@ -3838,6 +3838,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 	src_mem->index = vb->index;
 	src_mem->hdr10plus_buf = &buf->hdr10plus_buf;
 	ctx->timestamp = src_vb2_v4l2->vb2_buf.timestamp;
+	ctx->bs_list[src_mem->index + 1] = (uintptr_t)src_mem;
 
 	mtk_v4l2_debug(2,
 		"[%d] buf id=%d va=%p DMA=%lx size=%zx length=%zu dmabuf=%p pts %llu",

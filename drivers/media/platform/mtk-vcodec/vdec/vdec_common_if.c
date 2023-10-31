@@ -313,6 +313,7 @@ static void vdec_get_bs(struct vdec_inst *inst,
 	unsigned long vdec_bs_va;
 	struct mtk_vcodec_mem *bs;
 
+get_bs:
 	if (list->count == 0) {
 		mtk_vcodec_debug(inst, "[BS] there is no bs");
 		*out_bs = NULL;
@@ -320,14 +321,25 @@ static void vdec_get_bs(struct vdec_inst *inst,
 	}
 
 	bs_index = list->vdec_bs_va_list[list->read_idx];
+	if (bs_index == 0 || bs_index > VB2_MAX_FRAME) {
+		mtk_vcodec_err(inst, "free bs list read_idx %d bs_index %lld invalid !",
+			list->read_idx, bs_index);
+		list->read_idx = (list->read_idx == DEC_MAX_BS_NUM - 1U) ? 0U : list->read_idx + 1U;
+		list->count--;
+		if (list->count > 0)
+			goto get_bs;
+		else {
+			*out_bs = NULL;
+			return;
+		}
+	}
 	vdec_bs_va = (unsigned long)inst->ctx->bs_list[bs_index];
 	bs = (struct mtk_vcodec_mem *)vdec_bs_va;
 
 	*out_bs = bs;
 	mtk_vcodec_debug(inst, "[BS] get free bs %lld %lx", bs_index, vdec_bs_va);
 
-	list->read_idx = (list->read_idx == DEC_MAX_BS_NUM - 1) ?
-					 0 : list->read_idx + 1;
+	list->read_idx = (list->read_idx == DEC_MAX_BS_NUM - 1) ? 0 : list->read_idx + 1;
 	list->count--;
 }
 
@@ -338,6 +350,7 @@ static void vdec_get_fb(struct vdec_inst *inst,
 	unsigned long vdec_fb_va;
 	struct vdec_fb *fb;
 
+get_fb:
 	if (list->count >= DEC_MAX_FB_NUM) {
 		mtk_vcodec_err(inst, "list count %d invalid ! (write_idx %d, read_idx %d)",
 			list->count, list->write_idx, list->read_idx);
@@ -349,13 +362,24 @@ static void vdec_get_fb(struct vdec_inst *inst,
 			list->count = list->write_idx + DEC_MAX_FB_NUM - list->read_idx;
 	}
 	if (list->count == 0) {
-		mtk_vcodec_debug(inst, "[FB] there is no %s fb",
-						 disp_list ? "disp" : "free");
+		mtk_vcodec_debug(inst, "[FB] there is no %s fb", disp_list ? "disp" : "free");
 		*out_fb = NULL;
 		return;
 	}
 
 	fb_index = (u64)list->fb_list[list->read_idx].vdec_fb_va;
+	if (fb_index == 0 || fb_index > VB2_MAX_FRAME) {
+		mtk_vcodec_err(inst, "%s fb list read_idx %d fb_index %lld invalid !",
+			disp_list ? "disp" : "free", list->read_idx, fb_index);
+		list->read_idx = (list->read_idx == DEC_MAX_FB_NUM - 1U) ? 0U : list->read_idx + 1U;
+		list->count--;
+		if (list->count > 0)
+			goto get_fb;
+		else {
+			*out_fb = NULL;
+			return;
+		}
+	}
 	vdec_fb_va = (unsigned long)inst->ctx->fb_list[fb_index];
 	fb = (struct vdec_fb *)vdec_fb_va;
 	if (fb == NULL)
@@ -382,8 +406,7 @@ static void vdec_get_fb(struct vdec_inst *inst,
 		list->fb_list[list->read_idx].vdec_fb_va, vdec_fb_va,
 		fb->general_buf_fd, fb->dma_general_buf);
 
-	list->read_idx = (list->read_idx == DEC_MAX_FB_NUM - 1U) ?
-					 0U : list->read_idx + 1U;
+	list->read_idx = (list->read_idx == DEC_MAX_FB_NUM - 1U) ? 0U : list->read_idx + 1U;
 	list->count--;
 }
 
