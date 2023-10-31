@@ -1274,10 +1274,20 @@ static int mt6375_chg_get_property(struct power_supply *psy,
 		mutex_unlock(&ddata->attach_lock);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		val->intval = 3225000;
+		if (ddata->psy_usb_type[ddata->active_idx] == POWER_SUPPLY_USB_TYPE_SDP)
+			val->intval = 500000;
+		else if (ddata->psy_usb_type[ddata->active_idx] == POWER_SUPPLY_USB_TYPE_DCP)
+			val->intval = 3225000;
+		else if (ddata->psy_usb_type[ddata->active_idx] == POWER_SUPPLY_USB_TYPE_CDP)
+			val->intval = 1500000;
+		else
+			val->intval = 500000;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		val->intval = 22000000;
+		if (ddata->psy_usb_type[ddata->active_idx] == POWER_SUPPLY_USB_TYPE_DCP)
+			val->intval = 22000000;
+		else
+			val->intval = 5000000;
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
 		mutex_lock(&ddata->attach_lock);
