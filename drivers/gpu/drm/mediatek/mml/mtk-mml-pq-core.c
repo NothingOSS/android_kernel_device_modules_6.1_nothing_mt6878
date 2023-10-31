@@ -631,6 +631,7 @@ void put_dma_buffer(struct mml_task *task, u8 pipe,
 		mml_pq_msg("%s dma_buf_num[%d] exceeds limit[%d]",
 			__func__, dma_buf_num, DMA_BUF_NUM_LIMIT);
 		dma_free_noncoherent(dev, size, (*buf)->va, (*buf)->pa, DMA_TO_DEVICE);
+		kfree(*buf);
 		dma_buf_num--;
 	} else {
 		if (size == FG_BUF_SCALING_SIZE)
