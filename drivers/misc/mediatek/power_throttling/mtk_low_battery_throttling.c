@@ -229,6 +229,7 @@ static unsigned int decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned
 						low_bat_thl_data->lvsys_thl_intr_level);
 			exec_throttle(input);
 		}
+		mutex_unlock(&exe_thr_lock);
 	} else if (user == LVSYS_INTR) {
 		low_bat_thl_data->lvsys_thl_intr_level = input;
 		if (low_bat_thl_data->low_bat_thl_stop > 0 || low_bat_thl_data->ppb_mode > 0) {
@@ -240,14 +241,17 @@ static unsigned int decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned
 						low_bat_thl_data->lvsys_thl_intr_level);
 			exec_throttle(input);
 		}
+		mutex_unlock(&exe_thr_lock);
 	} else if (user == PPB) {
 		low_bat_thl_data->ppb_mode = input;
 		if (low_bat_thl_data->low_bat_thl_stop > 0) {
 			pr_info("[%s] ppb not apply, low_bat_thl_stop=%d\n", __func__,
 				low_bat_thl_data->low_bat_thl_stop);
+			mutex_unlock(&exe_thr_lock);
 		} else if (low_bat_thl_data->ppb_mode > 0) {
 			low_bat_thl_data->lbat_thl_intr_level = 0;
 			exec_throttle(0);
+			mutex_unlock(&exe_thr_lock);
 			lbat_user_modify_thd_ext_locked(low_bat_thl_data->lbat_pt,
 				&low_thd_volts[0], LOW_BATTERY_LEVEL_NUM);
 			dump_thd_volts_ext(&low_thd_volts[0], LOW_BATTERY_LEVEL_NUM);
@@ -258,6 +262,7 @@ static unsigned int decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned
 			thd_info =
 				&low_bat_thl_data->lbat_thd_info[low_bat_thl_data->temp_cur_stage];
 			low_bat_thl_data->temp_reg_stage = low_bat_thl_data->temp_cur_stage;
+			mutex_unlock(&exe_thr_lock);
 			lbat_user_modify_thd_ext_locked(low_bat_thl_data->lbat_pt,
 				thd_info->thd_volts, thd_info->thd_volts_size);
 			dump_thd_volts_ext(thd_info->thd_volts, thd_info->thd_volts_size);
@@ -265,9 +270,10 @@ static unsigned int decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned
 	} else if (user == UT) {
 		low_bat_thl_data->low_bat_thl_stop = 1;
 		exec_throttle(input);
+		mutex_unlock(&exe_thr_lock);
+	} else {
+		mutex_unlock(&exe_thr_lock);
 	}
-	mutex_unlock(&exe_thr_lock);
-
 	return 0;
 }
 
