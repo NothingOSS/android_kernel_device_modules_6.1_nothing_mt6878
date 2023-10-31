@@ -489,13 +489,13 @@ int mt6878_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src)
 		break;
 	case APUTOP_DUMP_OPP_TBL:
 		if (len)
-			memcpy(&opp_tbl, data, len);
+			memcpy(&opp_tbl, data, (len > sizeof(opp_tbl)) ? sizeof(opp_tbl) : len);
 		else
 			ret = -EINVAL;
 		break;
 	case APUTOP_DUMP_OPP_TBL2:
 		if (len)
-			memcpy(&opp_tbl2, data, len);
+			memcpy(&opp_tbl2, data, (len > sizeof(opp_tbl2)) ? sizeof(opp_tbl2) : len);
 		else
 			ret = -EINVAL;
 		break;
