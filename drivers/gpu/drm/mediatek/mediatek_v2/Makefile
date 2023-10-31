@@ -63,7 +63,6 @@ mediatek-drm-y := mtk_drm_drv.o \
 		  mtk_disp_pq_helper.o \
 		  mtk_disp_vidle.o \
 		  mtk_disp_r2y0.o \
-		  mtk_disp_splitter.o \
 
 #ccflags-y += -DDRM_CMDQ_DISABLE
 #mediatek-drm-y += mtk_cmdq_dummy.o

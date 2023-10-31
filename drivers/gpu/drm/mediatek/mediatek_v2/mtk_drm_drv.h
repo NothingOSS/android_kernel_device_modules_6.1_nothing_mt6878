@@ -425,7 +425,6 @@ extern struct platform_driver mtk_disp_spr_driver;
 extern struct platform_driver mtk_disp_oddmr_driver;
 extern struct lcm_fps_ctx_t lcm_fps_ctx[MAX_CRTC];
 extern struct platform_driver mtk_disp_merge_driver;
-extern struct platform_driver mtk_disp_splitter_driver;
 extern struct platform_driver mtk_dp_tx_driver;
 extern struct platform_driver mtk_dp_intf_driver;
 extern struct platform_driver mtk_disp_y2r_driver;
