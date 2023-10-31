@@ -7702,6 +7702,7 @@
 				"path_jpegenc_q_table",
 				"path_jpegenc_bsdma";
 			operating-points-v2 = <&opp_table_venc>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 
 		};
 
