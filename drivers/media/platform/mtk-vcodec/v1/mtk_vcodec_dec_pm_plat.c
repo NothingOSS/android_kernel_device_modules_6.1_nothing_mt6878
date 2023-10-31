@@ -76,50 +76,48 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 
 	mtk_v4l2_debug(8, "[VDEC] max-op-rate table elements %u, %d per line",
 			cnt, op_item_num);
-	if (!dev->vdec_op_rate_cnt) {
+	if (!dev->vdec_op_rate_cnt)
 		mtk_v4l2_debug(0, "[VDEC] max-op-rate-table not exist");
-		return false;
-	}
+
 
 	dev->vdec_dflt_op_rate = vzalloc(sizeof(struct vcodec_op_rate) * dev->vdec_op_rate_cnt);
 
 	mtk_v4l2_debug(8, "[VDEC] vzalloc %zu x %d res %p",
 			sizeof(struct vcodec_op_rate), dev->vdec_op_rate_cnt,
 			dev->vdec_dflt_op_rate);
-	if (!dev->vdec_dflt_op_rate) {
+
+	if (dev->vdec_dflt_op_rate) {
+		for (i = 0; i < dev->vdec_op_rate_cnt; i++) {
+			ret = of_property_read_u32_index(pdev->dev.of_node, "max-op-rate-table",
+					i * op_item_num, &dev->vdec_dflt_op_rate[i].codec_fmt);
+			if (ret) {
+				mtk_v4l2_debug(0, "[VDEC] Cannot get default op rate codec_fmt");
+				return false;
+			}
+
+			for (j = 0; j < (op_item_num - 1) / 2; j++) {
+				ret = of_property_read_u32_index(pdev->dev.of_node, "max-op-rate-table",
+						i * op_item_num + 1 + j * 2,
+						(u32 *)&dev->vdec_dflt_op_rate[i].pixel_per_frame[j]);
+				if (ret) {
+					mtk_v4l2_debug(0, "[VDEC] Cannot get pixel per frame %d %d",
+							i, j);
+					return false;
+				}
+
+				ret = of_property_read_u32_index(pdev->dev.of_node, "max-op-rate-table",
+						i * op_item_num + 2 + j * 2,
+						(u32 *)&dev->vdec_dflt_op_rate[i].max_op_rate[j]);
+				if (ret) {
+					mtk_v4l2_debug(0, "[VDEC] Cannot get max_op_rate %d %d",
+							i, j);
+					return false;
+				}
+			}
+			dev->vdec_dflt_op_rate[i].codec_type = 0;
+		}
+	} else
 		mtk_v4l2_debug(0, "[VDEC] vzalloc vdec_dflt_op_rate table failed");
-		return false;
-	}
-
-	for (i = 0; i < dev->vdec_op_rate_cnt; i++) {
-		ret = of_property_read_u32_index(pdev->dev.of_node, "max-op-rate-table",
-				i * op_item_num, &dev->vdec_dflt_op_rate[i].codec_fmt);
-		if (ret) {
-			mtk_v4l2_debug(0, "[VDEC] Cannot get default op rate codec_fmt");
-			return false;
-		}
-
-		for (j = 0; j < (op_item_num - 1) / 2; j++) {
-			ret = of_property_read_u32_index(pdev->dev.of_node, "max-op-rate-table",
-					i * op_item_num + 1 + j * 2,
-					(u32 *)&dev->vdec_dflt_op_rate[i].pixel_per_frame[j]);
-			if (ret) {
-				mtk_v4l2_debug(0, "[VDEC] Cannot get pixel per frame %d %d",
-						i, j);
-				return false;
-			}
-
-			ret = of_property_read_u32_index(pdev->dev.of_node, "max-op-rate-table",
-					i * op_item_num + 2 + j * 2,
-					(u32 *)&dev->vdec_dflt_op_rate[i].max_op_rate[j]);
-			if (ret) {
-				mtk_v4l2_debug(0, "[VDEC] Cannot get max_op_rate %d %d",
-						i, j);
-				return false;
-			}
-		}
-		dev->vdec_dflt_op_rate[i].codec_type = 0;
-	}
 
 
 	/* throughput */
@@ -127,52 +125,48 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 	dev->vdec_tput_cnt = cnt / tp_item_num;
 
 	mtk_v4l2_debug(8, "[VDEC] tput table elements %u, %d per line",
-			tp_item_num, dev->vdec_tput_cnt);
-	if (!dev->vdec_tput_cnt) {
-		mtk_v4l2_debug(0, "[VDEC] throughtput table not exist");
-		return false;
-	}
-
-	dev->vdec_tput = vzalloc(sizeof(struct vcodec_perf) * dev->vdec_tput_cnt);
-
-	mtk_v4l2_debug(8, "[VDEC] vzalloc %zu x %d res %p",
+			cnt, tp_item_num);
+	if (dev->vdec_tput_cnt > 0) {
+		dev->vdec_tput = vzalloc(sizeof(struct vcodec_perf) * dev->vdec_tput_cnt);
+		mtk_v4l2_debug(8, "[VDEC] vzalloc %zu x %d res %p",
 			sizeof(struct vcodec_perf), dev->vdec_tput_cnt, dev->vdec_tput);
-	if (!dev->vdec_tput) {
+	} else
+		mtk_v4l2_debug(0, "[VDEC] throughtput table not exist");
+
+	if (dev->vdec_tput) {
+		for (i = 0; i < dev->vdec_tput_cnt; i++) {
+			ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
+					i * tp_item_num, &dev->vdec_tput[i].codec_fmt);
+			if (ret) {
+				mtk_v4l2_debug(0, "[VDEC] Cannot get codec_fmt");
+				return false;
+			}
+
+			ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
+					i * tp_item_num + 1, (u32 *)&dev->vdec_tput[i].config);
+			if (ret) {
+				mtk_v4l2_debug(0, "[VDEC] Cannot get config");
+				return false;
+			}
+
+
+			ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
+					i * tp_item_num + 2, &dev->vdec_tput[i].cy_per_mb_1);
+			if (ret) {
+				mtk_v4l2_debug(0, "[VDEC] Cannot get cycle per mb 1");
+				return false;
+			}
+
+			ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
+					i * tp_item_num + 3, &dev->vdec_tput[i].cy_per_mb_2);
+			if (ret) {
+				mtk_v4l2_debug(0, "[VDEC] Cannot get cycle per mb 2");
+				return false;
+			}
+			dev->vdec_tput[i].codec_type = 0;
+		}
+	} else
 		mtk_v4l2_debug(0, "[VDEC] vzalloc vdec_tput table failed");
-		return false;
-	}
-
-	for (i = 0; i < dev->vdec_tput_cnt; i++) {
-		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
-				i * tp_item_num, &dev->vdec_tput[i].codec_fmt);
-		if (ret) {
-			mtk_v4l2_debug(0, "[VDEC] Cannot get codec_fmt");
-			return false;
-		}
-
-		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
-				i * tp_item_num + 1, (u32 *)&dev->vdec_tput[i].config);
-		if (ret) {
-			mtk_v4l2_debug(0, "[VDEC] Cannot get config");
-			return false;
-		}
-
-
-		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
-				i * tp_item_num + 2, &dev->vdec_tput[i].cy_per_mb_1);
-		if (ret) {
-			mtk_v4l2_debug(0, "[VDEC] Cannot get cycle per mb 1");
-			return false;
-		}
-
-		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
-				i * tp_item_num + 3, &dev->vdec_tput[i].cy_per_mb_2);
-		if (ret) {
-			mtk_v4l2_debug(0, "[VDEC] Cannot get cycle per mb 2");
-			return false;
-		}
-		dev->vdec_tput[i].codec_type = 0;
-	}
 
 	/* bw */
 	dev->vdec_larb_cnt = of_property_count_u32_elems(pdev->dev.of_node,

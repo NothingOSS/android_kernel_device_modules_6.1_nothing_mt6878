@@ -435,7 +435,7 @@ u64 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 		}
 	} else if (inst->codec_type == MTK_INST_ENCODER) {
 		if (perf != 0) {
-			inst->op_rate = MAX(inst->op_rate_user, inst->op_rate_adaptive);
+			inst->op_rate = MAX(MAX(inst->op_rate_user, inst->op_rate_adaptive), inst->fps);
 			freq = (u64)inst->width * inst->height / 256 * inst->op_rate;
 			if (inst->b_frame == 0)
 				freq = freq * perf->cy_per_mb_1;
@@ -443,9 +443,6 @@ u64 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 				freq = freq * perf->cy_per_mb_2;
 
 			freq = freq / inst->core_cnt;
-			/* SW overhead */
-			if (inst->width * inst->height <= 1920 * 1088)
-				freq = freq / 10 * 11;
 
 			mtk_v4l2_debug(6, "[VDVFS] VENC w:%u x h:%u / 256 x oprate: %d x mb %u",
 				inst->width, inst->height, inst->op_rate,
