@@ -8635,9 +8635,6 @@
 
 		apu_top_3: apu-top-3@1c000000 {
 			compatible = "mt6878,apu_top_3";
-			vapu-supply = <&mt6319_6_vbuck3>;
-			vsram-supply = <&mt6369_vdigrf>;
-			vcore-supply = <&mt6319_6_vbuck4>;
 
 			reg = <0 0x1c000000 0 0x1000>,		// sys_vlp
 				<0 0x1c001000 0 0x1000>,	// sys_spm
@@ -12010,15 +12007,6 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 				regulator-enable-ramp-delay = <256>;
 				regulator-allowed-modes = <0 1 2>;
 			};
-			mt6319_6_vbuck3: 6-vbuck3 {
-				regulator-compatible = "vbuck3";
-				regulator-name = "6_vbuck3";
-				regulator-min-microvolt = <300000>;
-				regulator-max-microvolt = <1193750>;
-				regulator-enable-ramp-delay = <256>;
-				regulator-allowed-modes = <0 1 2>;
-				regulator-always-on;
-			};
 			mt6319_6_vbuck4: 6-vbuck4 {
 				regulator-compatible = "vbuck4";
 				regulator-name = "6_vbuck4";
@@ -12305,16 +12293,12 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 
 };
 
-&mt6369_vdigrf{
-	regulator-always-on;
-
-};
-
 /delete-node/ &mt6363_vbuck1_sshub;
 /delete-node/ &mt6363_vbuck2_sshub;
 /delete-node/ &mt6363_vbuck4_sshub;
 /delete-node/ &mt6369_vmch;
 /delete-node/ &mt6369_vmch_eint_low;
+/delete-node/ &mt6369_vdigrf;
 
 &main_pmic {
 	pmic-lvsys-notify {
