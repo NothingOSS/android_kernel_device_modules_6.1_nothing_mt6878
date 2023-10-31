@@ -5163,11 +5163,11 @@
 			vdisp-dvfs-opp = /bits/ 8 <3>;
 			interconnects = <&mmqos SLAVE_LARB(39) &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "disp_hrt_qos";
-			// pre-define-bw = <0xffffffff>, <4200>, <0>;
-			// crtc-ovl-usage = <7>, <4>, <8>;
+			pre-define-bw = <0xffffffff>, <0>, <0>;
+			crtc-ovl-usage = <7>, <0>, <0>;
 			nvmem-cells = <&efuse_segment>;
 			nvmem-cell-names = "efuse_seg_disp_cell";
-#if 1
+
 			/* define threads, see mt6878-gce.h */
 			mediatek,mailbox-gce = <&gce>;
 			mboxes = <&gce 0 0 CMDQ_THR_PRIO_4>,
@@ -5289,7 +5289,6 @@
 				<&gce CMDQ_SYNC_TOKEN_VIDLE_POWER_ON>,
 				<&gce CMDQ_SYNC_TOKEN_CHECK_TRIGGER_MERGE>,
 				<&gce CMDQ_EVENT_DISPSYS_DISP_DPC_DT6>;
-#endif
 
 			helper-name = "MTK_DRM_OPT_STAGE",
 				"MTK_DRM_OPT_USE_CMDQ",
@@ -5374,7 +5373,7 @@
 				<1>, /*MTK_DRM_OPT_MMQOS_SUPPORT*/
 				<1>, /*MTK_DRM_OPT_MMDVFS_SUPPORT*/
 				<0>, /*MTK_DRM_OPT_SODI_SUPPORT*/
-				<0>, /*MTK_DRM_OPT_IDLE_MGR*/
+				<1>, /*MTK_DRM_OPT_IDLE_MGR*/
 				<0>, /*MTK_DRM_OPT_IDLEMGR_SWTCH_DECOUPLE*/
 				<0>, /*MTK_DRM_OPT_IDLEMGR_BY_REPAINT*/
 				<0>, /*MTK_DRM_OPT_IDLEMGR_ENTER_ULPS*/
@@ -5429,7 +5428,7 @@
 				<0>, /*MTK_DRM_OPT_VIRTUAL_DISP*/
 				<0>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
 				<0>, /*MTK_DRM_OPT_GPU_CACHE*/
-				<0>, /*MTK_DRM_OPT_SPHRT*/
+				<1>, /*MTK_DRM_OPT_SPHRT*/
 				<0>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
 				<0>, /*MTK_DRM_OPT_HRT_BY_LARB*/
 				<0>, /*MTK_DRM_OPT_RES_SWITCH_ON_AP*/
