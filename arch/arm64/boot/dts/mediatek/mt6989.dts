@@ -6435,6 +6435,9 @@
 				"MTK_DRM_OPT_VIDLE_DVFS_DT_EN",
 				"MTK_DRM_OPT_VIDLE_QOS_DT_EN",
 				"MTK_DRM_OPT_VIDLE_GCE_TS_EN",
+				"MTK_DRM_OPT_VIDLE_DECOUPLE_MODE",
+				"MTK_DRM_OPT_VIDLE_VDO_PANEL",
+				"MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE",
 				"MTK_DRM_OPT_DPC_PRE_TE_EN",
 				"MTK_DRM_OPT_PARTIAL_UPDATE",
 				"MTK_DRM_OPT_SLC_ALL_CACHE",
@@ -6513,6 +6516,9 @@
 				<0>, /*MTK_DRM_OPT_VIDLE_DVFS_DT_EN*/
 				<0>, /*MTK_DRM_OPT_VIDLE_QOS_DT_EN*/
 				<0>, /*MTK_DRM_OPT_VIDLE_GCE_TS_EN*/
+				<0>, /*MTK_DRM_OPT_VIDLE_DECOUPLE_MODE*/
+				<0>, /*MTK_DRM_OPT_VIDLE_VDO_PANEL*/
+				<0>, /*MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE*/
 				<0>, /*MTK_DRM_OPT_DPC_PRE_TE_EN*/
 				<1>, /*MTK_DRM_OPT_PARTIAL_UPDATE*/
 				<1>, /*MTK_DRM_OPT_SLC_ALL_CACHE*/
@@ -7218,7 +7224,8 @@
 				<0 0x1ec45130 0 0x4>,             /* hwvote */
 				<0 0x1ec352b8 0 0x4>,             /* hfrp */
 				<0 0x1c00f000 0 0x4>,             /* dvfsrc_apb */
-				<0 0x1c00f2a0 0 0x4>;             /* dvfsrc_apb */
+				<0 0x1c00f2a0 0 0x4>,             /* dvfsrc_apb */
+				<0 0x1e80090c 0 0x4>;             /* mminfra*/
 			reg-names =
 				"DPC_BASE",
 				"VLP_BASE",
@@ -7226,7 +7233,8 @@
 				"hw_vote_status",
 				"vdisp_dvsrc_debug_sta_7",
 				"dvfsrc_en",
-				"dvfsrc_debug_sta_1";
+				"dvfsrc_debug_sta_1",
+				"mminfra_hangfree";
 			interrupts =
 				<GIC_SPI 515 IRQ_TYPE_LEVEL_HIGH 0>, /* DPC_DISP_IRQ_BIT */
 				<GIC_SPI 514 IRQ_TYPE_LEVEL_HIGH 0>; /* DPC_MML_IRQ_BIT */
@@ -7235,6 +7243,7 @@
 			event-ovl0-on = /bits/ 16 <CMDQ_EVENT_DPC_OVL0_MTCMOS_ON>;
 			event-disp1-off = /bits/ 16 <CMDQ_EVENT_DPC_DISP1_MTCMOS_OFF>;
 			event-disp1-on = /bits/ 16 <CMDQ_EVENT_DPC_DISP1_MTCMOS_ON>;
+			vidle-mask = <0x7be>;
 		};
 
 		reserved@14227000 {

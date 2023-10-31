@@ -5186,9 +5186,10 @@
 			<&dispsys_config_clk CLK_MM_DISP_APB_BUS>,
 			<&dispsys_config_clk CLK_MM_26M>;
 			clock-num = <3>;
+			pd-others = <&disp_dpc>;
+			pd-names = "mminfra_in_dpc";
 			operating-points-v2 = <&opp_table_disp>;
-			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-			// vdisp-dvfs-opp = /bits/ 8 <3>;
+			vdisp-dvfs-opp = /bits/ 8 <3>;
 			interconnects = <&mmqos SLAVE_LARB(39) &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "disp_hrt_qos";
 			pre-define-bw = <0xffffffff>, <0>, <0>;
@@ -5273,7 +5274,8 @@
 				// "disp_dsi0_targetline0",
 				// "disp_dsi1_targetline0",
 				"disp_token_disp_v_idle_power_on0",
-				"disp_token_disp_check_trigger_merge0";
+				"disp_token_disp_check_trigger_merge0",
+				"dpc_disp1_prete";
 
 			gce-events =
 				<&gce CMDQ_EVENT_DISPSYS_STREAM_DONE_ENG_EVENT_0>,
@@ -5314,7 +5316,8 @@
 				// <&gce CMDQ_EVENT_DISPSYS_DISP_DSI0_TARGET_LINE_ENG_EVENT>,
 				// <&gce CMDQ_EVENT_DISPSYS_DISP_DSI1_TARGET_LINE_ENG_EVENT>,
 				<&gce CMDQ_SYNC_TOKEN_VIDLE_POWER_ON>,
-				<&gce CMDQ_SYNC_TOKEN_CHECK_TRIGGER_MERGE>;
+				<&gce CMDQ_SYNC_TOKEN_CHECK_TRIGGER_MERGE>,
+				<&gce CMDQ_EVENT_DISPSYS_DISP_DPC_DT6>;
 
 			helper-name = "MTK_DRM_OPT_STAGE",
 				"MTK_DRM_OPT_USE_CMDQ",
@@ -5381,7 +5384,17 @@
 				"MTK_DRM_OPT_SDPA_OVL_SWITCH",
 				"MTK_DRM_OPT_HRT_BY_LARB",
 				"MTK_DRM_OPT_RES_SWITCH_ON_AP",
-				"MTK_DRM_OPT_TILE_OVERHEAD";
+				"MTK_DRM_OPT_TILE_OVERHEAD",
+				"MTK_DRM_OPT_VIDLE_TOP_EN",
+				"MTK_DRM_OPT_VIDLE_MTCMOS_DT_EN",
+				"MTK_DRM_OPT_VIDLE_MMINFRA_DT_EN",
+				"MTK_DRM_OPT_VIDLE_DVFS_DT_EN",
+				"MTK_DRM_OPT_VIDLE_QOS_DT_EN",
+				"MTK_DRM_OPT_VIDLE_GCE_TS_EN",
+				"MTK_DRM_OPT_VIDLE_DECOUPLE_MODE",
+				"MTK_DRM_OPT_VIDLE_VDO_PANEL",
+				"MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE",
+				"MTK_DRM_OPT_DPC_PRE_TE_EN";
 
 			helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
 				<1>, /*MTK_DRM_OPT_USE_CMDQ*/
@@ -5448,7 +5461,17 @@
 				<0>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
 				<0>, /*MTK_DRM_OPT_HRT_BY_LARB*/
 				<0>, /*MTK_DRM_OPT_RES_SWITCH_ON_AP*/
-				<0>; /*MTK_DRM_OPT_TILE_OVERHEAD*/
+				<0>, /*MTK_DRM_OPT_TILE_OVERHEAD*/
+				<1>, /*MTK_DRM_OPT_VIDLE_TOP_EN*/
+				<0>, /*MTK_DRM_OPT_VIDLE_MTCMOS_DT_EN*/
+				<1>, /*MTK_DRM_OPT_VIDLE_MMINFRA_DT_EN*/
+				<0>, /*MTK_DRM_OPT_VIDLE_DVFS_DT_EN*/
+				<0>, /*MTK_DRM_OPT_VIDLE_QOS_DT_EN*/
+				<0>, /*MTK_DRM_OPT_VIDLE_GCE_TS_EN*/
+				<0>, /*MTK_DRM_OPT_VIDLE_DECOUPLE_MODE*/
+				<1>, /*MTK_DRM_OPT_VIDLE_VDO_PANEL*/
+				<0>, /*MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE*/
+				<0>; /*MTK_DRM_OPT_DPC_PRE_TE_EN*/
 		};
 
 		disp_mutex0: disp-mutex0@14001000 {
@@ -6239,9 +6262,28 @@
 		};
 
 		disp_dpc: disp-dpc@14020000 {
-			compatible = "mediatek,disp_dpc";
-			reg = <0 0x14020000 0 0x1000>;
-			interrupts = <GIC_SPI 343 IRQ_TYPE_NONE 0>;
+			compatible = "mediatek,mt6878-disp-dpc";
+			reg = <0 0x14020000 0 0x1000>,        /* dpc base */
+				<0 0x1c01c000 0 0x1000>,          /* vlp base */
+				<0 0x1c001000 0 0x1000>,          /* spm base */
+				<0 0x1ec45130 0 0x4>,             /* hwvote */
+				<0 0x1ec352b8 0 0x4>,             /* hfrp */
+				<0 0x1c00f000 0 0x4>,             /* dvfsrc_apb */
+				<0 0x1c00f2a0 0 0x4>,             /* dvfsrc_apb */
+				<0 0x1e80090c 0 0x4>;             /* mminfra*/
+			reg-names =
+				"DPC_BASE",
+				"VLP_BASE",
+				"SPM_BASE",
+				"hw_vote_status",
+				"vdisp_dvsrc_debug_sta_7",
+				"dvfsrc_en",
+				"dvfsrc_debug_sta_1",
+				"mminfra_hangfree";
+			interrupts =
+				<GIC_SPI 343 IRQ_TYPE_LEVEL_HIGH 0>, /* DPC_DISP_IRQ_BIT */
+				<GIC_SPI 344 IRQ_TYPE_LEVEL_HIGH 0>; /* DPC_MML_IRQ_BIT */
+			vidle-mask = <0x43e>;
 		};
 
 		reserved@14021000 {
