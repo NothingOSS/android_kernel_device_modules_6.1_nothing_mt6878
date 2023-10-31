@@ -459,6 +459,12 @@ static void pbm_timer_add(int enable)
 
 void pbm_check_and_run_polling(int uisoc, int pbm_stop)
 {
+	bool pbm_enable = false;
+
+	pbm_enable = pbm_func_enable_check();
+	if (!pbm_enable)
+		return;
+
 	if (((uisoc <= BAT_PERCENT_LIMIT && uisoc >= 0 && pbm_stop == 0)
 				|| pbm_stop == 2) && g_start_polling == 0) {
 		g_start_polling = 1;
