@@ -628,7 +628,7 @@ static void charger_handler(struct work_struct *work)
 {
 	int volt, temp;
 	struct power_supply *psy;
-	union power_supply_propval val;
+	union power_supply_propval val = {0};
 	int ret;
 
 	if (!charger_enable)
