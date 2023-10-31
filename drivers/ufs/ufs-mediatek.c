@@ -2235,30 +2235,6 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 	ufshcd_rpm_put(hba);
 }
 
-static int ufs_mtk_mcq_config_cqid(struct ufs_hba *hba)
-{
-	u32 sq_attr, reg, i;
-
-	ufs_mtk_scsi_block_requests(hba);
-	for (i = 0; i < hba->nr_hw_queues; i++) {
-		sq_attr = MCQ_CFG_n(REG_SQATTR, i);
-
-		/* Disable SQ and clear CQID */
-		reg = ufsmcq_readl(hba, sq_attr);
-		reg &= ~(1 << QUEUE_EN_OFFSET);
-		reg &= ~(0xFF << QUEUE_ID_OFFSET);
-		ufsmcq_writel(hba, reg, sq_attr);
-
-		/* Config CQID and re-enable SQ */
-		reg |= (1 << QUEUE_EN_OFFSET) |
-			(3 << QUEUE_ID_OFFSET);
-		ufsmcq_writel(hba, reg, sq_attr);
-	}
-	ufs_mtk_scsi_unblock_requests(hba);
-
-	return 0;
-}
-
 static void _ufshcd_enable_intr(struct ufs_hba *hba, u32 intrs)
 {
 	u32 set = ufshcd_readl(hba, REG_INTERRUPT_ENABLE);
@@ -2316,7 +2292,6 @@ static int ufs_mtk_link_set_hpm(struct ufs_hba *hba)
 		/* Enable required interrupts */
 		_ufshcd_enable_intr(hba, UFSHCD_ENABLE_MTK_MCQ_INTRS);
 		ufshcd_mcq_make_queues_operational(hba);
-		ufs_mtk_mcq_config_cqid(hba);
 		ufshcd_mcq_config_mac(hba, hba->nutrs);
 		ufshcd_writel(hba, ufshcd_readl(hba, REG_UFS_MEM_CFG) | 0x1,
 			      REG_UFS_MEM_CFG);
@@ -2602,8 +2577,6 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 
 		/* set affinity */
 		ufs_mtk_mcq_set_irq_affinity(hba);
-
-		ufs_mtk_mcq_config_cqid(hba);
 	}
 
 	if (mid == UFS_VENDOR_SAMSUNG) {
