@@ -11847,7 +11847,24 @@ TOP_LDRO7,TOP_LDRO8,TOP_LDRO9,TOP_LDRO10,TOP_LDRO11,TOP_LDRO12,TOP_LDRO13,TOP_LD
 };
 
 &spmi {
-	/* TODO: add mt6363_dynamic_loading_throttling after bring up*/
+	pmic: pmic@4 {
+		mt6363_dynamic_loading_throttling: mtk-dynamic-loading-throttling {
+			compatible = "mediatek,mt6363-dynamic_loading_throttling";
+			/* charger: mtk_charger_thread */
+			mediatek,charger = <&lk_charger>;
+			/* 2000~2900mV, one gear per 100mV */
+			uvlo-level = <2500>;
+			vbb-uvlo-level = <2500>;
+			io-channels = <&mt6375_auxadc MT6375_AUXADC_IMP>,
+				<&mt6375_auxadc MT6375_AUXADC_IMIX_R>,
+				<&mt6375_auxadc MT6375_AUXADC_BATSNS>;
+			io-channel-names = "pmic_ptim",
+					"pmic_imix_r",
+					"pmic_batadc";
+			bootmode = <&chosen>;
+		};
+	};
+
 	mt6319_6: mt6319@6 {
 		compatible = "mediatek,mt6319";
 		reg = <0x6 SPMI_USID>;
