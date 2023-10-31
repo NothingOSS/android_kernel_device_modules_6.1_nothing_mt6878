@@ -2760,10 +2760,11 @@
 		vib-supply = <&mt6369_vibr>;
 	};
 
-	gpu_dvfs_mode: gpu-loading-mode {
-		compatible = "mediatek,gpu_loading_mode";
-		dvfs-loading-mode = <5>;
-		dvfs-workload-mode = <5>;
+	gpu-fdvfs@112000 {
+		compatible = "mediatek,gpu_fdvfs";
+		reg = <0 0x112000 0 0x400>;
+		fdvfs-policy-support = <0>;
+		gpu-freq-notify-support = <1>;
 	};
 
 	vtskin: vtskin {
