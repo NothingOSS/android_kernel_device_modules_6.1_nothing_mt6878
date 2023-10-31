@@ -3280,7 +3280,7 @@
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_MM_INFRA>;
 		interrupts = <GIC_SPI 292 IRQ_TYPE_LEVEL_HIGH 0>;
 		mminfra-gals-sel = <15 16 17 18 19 20>;
-		mminfra-bkrs = <1>;
+		mminfra-bkrs = <0>;
 		bkrs-reg = <0x1e800860>;
 		init-clk-on;
 		clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_D>,
