@@ -16662,6 +16662,13 @@ static int mtk_ddp_mout_en_MT6897(const struct mtk_mmsys_reg_data *data,
 		/* PQ_IN_CROSSBAR */
 		*addr = MT6985_PQ_IN_CROSSBAR0_MOUT_EN;
 		value = DISP_DLI_RELAY0_TO_PQ_OUT_CROSSBAR4;
+	} else if ((cur == DDP_COMPONENT_PQ0_IN_CB0 &&
+		next == DDP_COMPONENT_PQ0_OUT_CB3) ||
+		(cur == DDP_COMPONENT_PQ1_IN_CB0 &&
+		next == DDP_COMPONENT_PQ1_OUT_CB3)) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6985_PQ_IN_CROSSBAR0_MOUT_EN;
+		value = DISP_DLI_RELAY0_TO_PQ_OUT_CROSSBAR3;
 	} else if ((cur == DDP_COMPONENT_DLI_ASYNC1 &&
 		next == DDP_COMPONENT_PQ0_OUT_CB3) ||
 		(cur == DDP_COMPONENT_DLI_ASYNC7 &&
@@ -16759,6 +16766,13 @@ static int mtk_ddp_mout_en_MT6897(const struct mtk_mmsys_reg_data *data,
 		/* PQ_OUT_CROSSBAR */
 		*addr = MT6985_PQ_OUT_CROSSBAR3_MOUT_EN;
 		value = DISP_PQ_IN_CROSSBAR2_TO_PANEL_COMP_OUT_CROSSBAR1;
+	}else if ((cur == DDP_COMPONENT_PQ0_OUT_CB3 &&
+		next == DDP_COMPONENT_PANEL0_COMP_OUT_CB3) ||
+		(cur == DDP_COMPONENT_PQ1_OUT_CB3 &&
+		next == DDP_COMPONENT_PANEL1_COMP_OUT_CB3)) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6985_PQ_OUT_CROSSBAR3_MOUT_EN;
+		value = DISP_PQ_IN_CROSSBAR2_TO_PANEL_COMP_OUT_CROSSBAR3;
 	} else if ((cur == DDP_COMPONENT_PQ0_OUT_CB4 &&
 		next == DDP_COMPONENT_PANEL0_COMP_OUT_CB2) ||
 		(cur == DDP_COMPONENT_PQ1_OUT_CB4 &&

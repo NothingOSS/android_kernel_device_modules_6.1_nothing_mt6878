@@ -2202,9 +2202,11 @@ static void mtk_drm_idlemgr_wb_cmdq_cb(struct cmdq_cb_data data)
 	trace = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_IDLEMGR_BY_WB_TRACE);
 	DDPINFO("after enter IDLEMGR_BY_WB_TRACE:0x%x\n", *trace);
 
-	bw_base = mtk_drm_primary_frame_bw(crtc);
-	mtk_disp_set_hrt_bw(mtk_crtc, bw_base);
-	mtk_crtc->qos_ctx->last_hrt_req = bw_base;
+	if (*trace & BIT(4)) {
+		bw_base = mtk_drm_primary_frame_bw(crtc);
+		mtk_disp_set_hrt_bw(mtk_crtc, bw_base);
+		mtk_crtc->qos_ctx->last_hrt_req = bw_base;
+	}
 
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);

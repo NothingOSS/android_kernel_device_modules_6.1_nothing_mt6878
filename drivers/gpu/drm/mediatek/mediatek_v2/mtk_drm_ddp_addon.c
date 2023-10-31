@@ -139,7 +139,7 @@ static const int disp_wdma2_path_v2[] = {
 };
 
 static const int disp_ufbc_wdma1_path[] = {
-	DDP_COMPONENT_PQ0_OUT_CB4,
+	DDP_COMPONENT_PQ0_OUT_CB3,
 	DDP_COMPONENT_PANEL0_COMP_OUT_CB3,
 	DDP_COMPONENT_COMP0_OUT_CB5,
 	DDP_COMPONENT_MERGE0_OUT_CB3,
@@ -147,7 +147,7 @@ static const int disp_ufbc_wdma1_path[] = {
 };
 
 static const int disp_ufbc_wdma1_path_1[] = {
-	DDP_COMPONENT_PQ1_OUT_CB4,
+	DDP_COMPONENT_PQ1_OUT_CB3,
 	DDP_COMPONENT_PANEL1_COMP_OUT_CB3,
 	DDP_COMPONENT_COMP1_OUT_CB5,
 	DDP_COMPONENT_MERGE1_OUT_CB3,
