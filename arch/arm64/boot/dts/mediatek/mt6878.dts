@@ -9676,7 +9676,8 @@
 					 <&level_spi4>,
 					 <&level_spi5>,
 					 <&level_spi6>,
-					 <&level_spi7>;
+					 <&level_spi7>,
+					 <&level_dsi0>;
 
 		resource-ctrl = <&bus26m &infra &syspll>,
 				<&dram_s0 &dram_s1 &spm_emi>,
@@ -9742,6 +9743,10 @@
 			};
 			level_spi7: level-spi7 {
 				target = <&spi7>;
+				value = <0 0 0 0>;
+			};
+			level_dsi0: level-dsi0 {
+				target = <&dsi0>;
 				value = <0 0 0 0>;
 			};
 		};
