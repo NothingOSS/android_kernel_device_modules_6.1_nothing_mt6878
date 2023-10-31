@@ -21,7 +21,7 @@
 #include <linux/spi/spi-mem.h>
 #include <linux/dma-mapping.h>
 #include <linux/time.h>
-#include <linux/timekeeping.h>
+#include <linux/iopoll.h>
 
 #define SPI_CFG0_REG                      0x0000
 #define SPI_CFG1_REG                      0x0004
@@ -125,8 +125,8 @@
 #define DMA_ADDR_EXT_BITS (36)
 #define DMA_ADDR_DEF_BITS (32)
 
-/*Reference to core layer timeout (ns) */
-#define SPI_FIFO_POLLING_TIMEOUT (200000000)
+/*Reference to core layer timeout (us) */
+#define SPI_FIFO_POLLING_TIMEOUT (200000)
 
 struct mtk_spi_compatible {
 	bool need_pad_sel;
@@ -897,7 +897,7 @@ static int mtk_spi_fifo_transfer(struct spi_master *master,
 				 struct spi_transfer *xfer)
 {
 	u32 reg_val, cnt, remainder, len, irq_status;
-	u64 cur_time;
+	int ret;
 	struct mtk_spi *mdata = spi_master_get_devdata(master);
 
 	mdata->cur_transfer = xfer;
@@ -928,22 +928,18 @@ static int mtk_spi_fifo_transfer(struct spi_master *master,
 				writel(reg_val, mdata->base + SPI_TX_DATA_REG);
 			}
 		}
-		/* make sure all reg setting done before transfer */
-		mb();
+
 		spi_debug("spi setting Done.Dump reg before Transfer start:\n");
 		spi_dump_reg(mdata, master);
 
 		mtk_spi_enable_transfer(master);
 
-		cur_time = ktime_get_ns();
-		do {
-			irq_status = readl(mdata->base+SPI_STATUS1_REG);
-			if ((ktime_get_ns() - cur_time)
-				> SPI_FIFO_POLLING_TIMEOUT) {
-				return -ETIMEDOUT;
-			}
-			cpu_relax();
-		} while (!irq_status);
+		ret = readl_poll_timeout_atomic(mdata->base + SPI_STATUS1_REG, irq_status,
+			irq_status, 1, SPI_FIFO_POLLING_TIMEOUT);
+		if (ret) {
+			dev_err(mdata->dev, "SPI PIO polling timeout.\n");
+			return ret;
+		}
 
 		reg_val = readl(mdata->base + SPI_STATUS0_REG);
 		if (reg_val & MTK_SPI_PAUSE_INT_STATUS)
@@ -1023,8 +1019,6 @@ static int mtk_spi_dma_transfer(struct spi_master *master,
 	mtk_spi_setup_packet(master);
 	mtk_spi_setup_dma_addr(master, xfer);
 
-	/* make sure all reg setting done before transfer */
-	mb();
 	spi_debug("spi setting Done.Dump reg before Transfer start:\n");
 	spi_dump_reg(mdata, master);
 
@@ -1418,8 +1412,7 @@ static int mtk_spi_mem_exec_op(struct spi_mem *mem,
 	writel(reg_val, mdata->base + SPI_CMD_REG);
 
 	mtk_spi_mem_setup_dma_xfer(mem->spi->master, op);
-	/* make sure all reg setting done before transfer */
-	mb();
+
 	spi_debug("spi-mem setting Done.Dump reg before Transfer start:\n");
 	spi_dump_reg(mdata, mem->spi->master);
 	mtk_spi_enable_transfer(mem->spi->master);
