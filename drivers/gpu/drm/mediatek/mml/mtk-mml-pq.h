@@ -84,6 +84,9 @@ struct mml_pq_comp_config_result {
 	struct mml_pq_reg *ds_regs;
 	u32 color_reg_cnt;
 	struct mml_pq_reg *color_regs;
+	u32 c3d_reg_cnt;
+	struct mml_pq_reg *c3d_regs;
+	u32 *c3d_lut; // 9*9*9*3
 	bool is_set_test;
 };
 

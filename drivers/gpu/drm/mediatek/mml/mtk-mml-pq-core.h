@@ -23,6 +23,7 @@
 #define AAL_HIST_NUM (768)
 #define AAL_DUAL_INFO_NUM (16)
 #define AAL_CLARITY_STATUS_NUM (7)
+#define C3D_LUT_NUM (729) // 9*9*9
 
 #define CMDQ_GPR_UPDATE	(2)
 

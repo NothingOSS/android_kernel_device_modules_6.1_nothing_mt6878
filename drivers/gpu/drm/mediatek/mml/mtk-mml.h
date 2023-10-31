@@ -113,6 +113,7 @@ struct mml_pq_config {
 	bool en_dre:1;
 	bool en_region_pq:1;
 	bool en_fg:1;
+	bool en_c3d:1;
 };
 
 enum mml_pq_enable_flag {
@@ -130,6 +131,7 @@ enum mml_pq_enable_flag {
 	MML_PQ_AI_SDR_TO_HDR_EN = 1 << 8,
 	MML_PQ_VIDEO_HDR_EN = 1 << 9,
 	MML_PQ_AI_REGION_EN = 1 << 10,
+	MML_PQ_C3D_EN = 1 << 11,
 };
 
 enum mml_pq_user_info {

@@ -332,6 +332,8 @@ static void release_comp_config_result(void *data)
 	kfree(result->aal_curve);
 	kfree(result->ds_regs);
 	kfree(result->color_regs);
+	kfree(result->c3d_regs);
+	kfree(result->c3d_lut);
 	kfree(result);
 }
 
@@ -1944,8 +1946,10 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 	struct mml_pq_reg *hdr_regs;
 	struct mml_pq_reg *ds_regs;
 	struct mml_pq_reg *color_regs;
+	struct mml_pq_reg *c3d_regs;
 	u32 *aal_curve;
 	u32 *hdr_curve;
+	u32 *c3d_lut;
 	s32 ret;
 
 	mml_pq_trace_ex_begin("%s", __func__);
@@ -2082,6 +2086,36 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 		goto free_color_regs;
 	}
 
+	c3d_regs = kmalloc_array(result->c3d_reg_cnt, sizeof(*c3d_regs),
+				   GFP_KERNEL);
+	if (unlikely(!c3d_regs)) {
+		mml_pq_err("err: create c3d_regs failed, size:%d\n",
+			result->ds_reg_cnt);
+		goto free_color_regs;
+	}
+
+	ret = copy_from_user(c3d_regs, result->c3d_regs,
+		result->c3d_reg_cnt * sizeof(*c3d_regs));
+	if (unlikely(ret)) {
+		mml_pq_err("copy color config failed!: %d\n", ret);
+		goto free_c3d_regs;
+	}
+
+	c3d_lut = kmalloc_array(C3D_LUT_NUM, sizeof(u32),
+				  GFP_KERNEL);
+	if (unlikely(!c3d_lut)) {
+		mml_pq_err("err: create c3d_lut failed, size:%d\n",
+			C3D_LUT_NUM);
+		goto free_c3d_regs;
+	}
+
+	ret = copy_from_user(c3d_lut, result->c3d_lut,
+		C3D_LUT_NUM * sizeof(u32));
+	if (unlikely(ret)) {
+		mml_pq_err("copy c3d_lut failed!: %d\n", ret);
+		goto free_c3d_lut_curve;
+	}
+
 	result->aal_param = aal_param;
 	result->aal_regs = aal_regs;
 	result->aal_curve = aal_curve;
@@ -2089,19 +2123,25 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 	result->hdr_curve = hdr_curve;
 	result->ds_regs = ds_regs;
 	result->color_regs = color_regs;
+	result->c3d_regs = c3d_regs;
+	result->c3d_lut = c3d_lut;
 
 	handle_sub_task_result(sub_task, result, release_comp_config_result);
 	mml_pq_msg("%s result end, result_id[%d] sub_task[%p]",
 		__func__, job->result_job_id, sub_task);
 	goto wake_up_prev_comp_config_task;
+free_c3d_lut_curve:
+	kfree(c3d_lut);
+free_c3d_regs:
+	kfree(c3d_regs);
+free_color_regs:
+	kfree(color_regs);
+free_ds_regs:
+	kfree(ds_regs);
 free_hdr_curve:
 	kfree(hdr_curve);
 free_hdr_regs:
 	kfree(hdr_regs);
-free_ds_regs:
-	kfree(ds_regs);
-free_color_regs:
-	kfree(color_regs);
 free_aal_curve:
 	kfree(aal_curve);
 free_aal_regs:

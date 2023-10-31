@@ -309,7 +309,7 @@ static s32 color_config_tile(struct mml_comp *comp, struct mml_task *task,
 		base_pa + color->data->reg_table[COLOR_INTERNAL_IP_WIDTH], width, U32_MAX);
 	cmdq_pkt_write(pkt, NULL,
 		base_pa + color->data->reg_table[COLOR_INTERNAL_IP_HEIGHT], height, U32_MAX);
-
+	mml_pq_msg("[color] %s width [%d] height[%d]", __func__, width, height);
 	return 0;
 }
 

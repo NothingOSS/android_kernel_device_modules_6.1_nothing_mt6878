@@ -129,7 +129,8 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_DLI0_SEL, MML_FG0,},
 		{MML_FG0, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
-		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_AAL0, MML_C3D0,},
+		{MML_C3D0, MML_PQ_AAL0_SEL,},
 		{MML_PQ_AAL0_SEL, MML_RSZ0,},
 		{MML_RSZ0, MML_TDSHP0,},
 		{MML_TDSHP0, MML_COLOR0,},
@@ -145,7 +146,8 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_DLI0_SEL, MML_FG0,},
 		{MML_FG0, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
-		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_AAL0, MML_C3D0,},
+		{MML_C3D0, MML_PQ_AAL0_SEL,},
 		{MML_PQ_AAL0_SEL, MML_RSZ0,},
 		{MML_RSZ0, MML_TDSHP0,},
 		{MML_TDSHP0, MML_COLOR0,},
@@ -160,7 +162,8 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_DLI0_SEL, MML_FG0,},
 		{MML_FG0, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
-		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_AAL0, MML_C3D0,},
+		{MML_C3D0, MML_PQ_AAL0_SEL,},
 		{MML_PQ_AAL0_SEL, MML_RSZ0,},
 		{MML_RSZ0, MML_TDSHP0,},
 		{MML_TDSHP0, MML_COLOR0,},
@@ -187,7 +190,8 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_DLI0_SEL, MML_FG0,},
 		{MML_FG0, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
-		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_AAL0, MML_C3D0,},
+		{MML_C3D0, MML_PQ_AAL0_SEL,},
 		{MML_PQ_AAL0_SEL, MML_RSZ0,},
 		{MML_RSZ0, MML_TDSHP0,},
 		{MML_TDSHP0, MML_COLOR0,},
@@ -205,7 +209,8 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_DLI0_SEL, MML_FG0,},
 		{MML_FG0, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
-		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_AAL0, MML_C3D0,},
+		{MML_C3D0, MML_PQ_AAL0_SEL,},
 		{MML_PQ_AAL0_SEL, MML_RSZ0,},
 		{MML_RSZ0, MML_TDSHP0,},
 		{MML_TDSHP0, MML_COLOR0,},
@@ -221,7 +226,8 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_DLI0_SEL, MML_FG0,},
 		{MML_FG0, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
-		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_AAL0, MML_C3D0,},
+		{MML_C3D0, MML_PQ_AAL0_SEL,},
 		{MML_PQ_AAL0_SEL, MML_RSZ0,},
 		{MML_RSZ0, MML_TDSHP0,},
 		{MML_RDMA2, MML_BIRSZ0,},
@@ -243,7 +249,8 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_DLI0_SEL, MML_FG0,},
 		{MML_FG0, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
-		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_AAL0, MML_C3D0,},
+		{MML_C3D0, MML_PQ_AAL0_SEL,},
 		{MML_PQ_AAL0_SEL, MML_RSZ0,},
 		{MML_RSZ0, MML_TDSHP0,},
 		{MML_RDMA2, MML_BIRSZ0,},
@@ -265,7 +272,8 @@ static const struct path_node path_map[PATH_MML_MAX][MML_MAX_PATH_NODES] = {
 		{MML_DLI0_SEL, MML_FG0,},
 		{MML_FG0, MML_HDR0,},
 		{MML_HDR0, MML_AAL0,},
-		{MML_AAL0, MML_PQ_AAL0_SEL,},
+		{MML_AAL0, MML_C3D0,},
+		{MML_C3D0, MML_PQ_AAL0_SEL,},
 		{MML_PQ_AAL0_SEL, MML_RSZ0,},
 		{MML_RSZ0, MML_TDSHP0,},
 		{MML_RDMA2, MML_BIRSZ0,},
@@ -997,7 +1005,8 @@ static s32 tp_select(struct mml_topology_cache *cache,
 	      cfg->info.dest[0].pq_config.en_ccorr ||
 	      cfg->info.dest[0].pq_config.en_dre ||
 	      cfg->info.dest[0].pq_config.en_region_pq ||
-	      cfg->info.dest[0].pq_config.en_fg) &&
+	      cfg->info.dest[0].pq_config.en_fg ||
+	      cfg->info.dest[0].pq_config.en_c3d) &&
 	    (cfg->info.mode == MML_MODE_DIRECT_LINK ||
 	     cfg->info.mode == MML_MODE_RACING ||
 	     cfg->info.mode == MML_MODE_DDP_ADDON))
@@ -1027,7 +1036,8 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 		goto decouple;
 
 	/* no fg/c3d support for dl mode */
-	if (dest->pq_config.en_fg) {
+	if (dest->pq_config.en_fg ||
+		dest->pq_config.en_c3d) {
 		*reason = mml_query_pqen;
 		goto decouple;
 	}
@@ -1039,7 +1049,8 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 		dest->pq_config.en_ccorr ||
 		dest->pq_config.en_dre ||
 		dest->pq_config.en_region_pq ||
-		dest->pq_config.en_fg) {
+		dest->pq_config.en_fg ||
+		dest->pq_config.en_c3d) {
 		*reason = mml_query_pqen;
 		goto decouple;
 	}
@@ -1116,7 +1127,8 @@ static enum mml_mode tp_query_mode_racing(struct mml_dev *mml, struct mml_frame_
 		info->dest[0].pq_config.en_ccorr ||
 		info->dest[0].pq_config.en_dre ||
 		info->dest[0].pq_config.en_region_pq ||
-		info->dest[0].pq_config.en_fg) {
+		info->dest[0].pq_config.en_fg ||
+		info->dest[0].pq_config.en_c3d) {
 		*reason = mml_query_pqen;
 		goto decouple;
 	}
