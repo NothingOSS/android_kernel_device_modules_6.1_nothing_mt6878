@@ -17029,6 +17029,27 @@ static bool check_comp_in_crtc(const struct mtk_crtc_path_data *path_data,
 	return false;
 }
 
+static void mtk_pq_data_init(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+
+	init_waitqueue_head(&pq_data->pq_hw_relay_cb_wq);
+	mutex_init(&pq_data->wake_mutex);
+	atomic_set(&pq_data->wake_ref, 0);
+	/* init wakelock resources */
+	{
+		unsigned int len = 21;
+
+		pq_data->wake_lock_name = vzalloc(len * sizeof(char));
+		(void)snprintf(pq_data->wake_lock_name, len * sizeof(char),
+			 "disp_pq%u_wakelock",
+			 drm_crtc_index(&mtk_crtc->base));
+		pq_data->wake_lock =
+			wakeup_source_create(pq_data->wake_lock_name);
+		wakeup_source_add(pq_data->wake_lock);
+	}
+}
+
 int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			const struct mtk_crtc_path_data *path_data)
 {
@@ -17118,7 +17139,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		DDPPR_ERR("Failed to alloc pq_data\n");
 		return -ENOMEM;
 	}
-	init_waitqueue_head(&mtk_crtc->pq_data->pq_hw_relay_cb_wq);
+	mtk_pq_data_init(mtk_crtc);
 
 	if (priv->data->mmsys_id == MMSYS_MT6985 ||
 		priv->data->mmsys_id == MMSYS_MT6989 ||

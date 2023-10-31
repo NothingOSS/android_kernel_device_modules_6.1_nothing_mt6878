@@ -108,6 +108,34 @@ static bool mtk_drm_get_resource_from_dts(struct resource *res, const char *node
 	return true;
 }
 
+void mtk_pq_wake_get(unsigned int cmd, struct pq_common_data *pq_data)
+{
+	s32 ref;
+
+	mutex_lock(&pq_data->wake_mutex);
+	ref = atomic_inc_return(&pq_data->wake_ref);
+	DDPDBG("%s cmd %d ref %d\n", __func__, cmd, ref);
+	if (ref == 1)
+		__pm_stay_awake(pq_data->wake_lock);
+	mutex_unlock(&pq_data->wake_mutex);
+	if (ref < 0)
+		DDPPR_ERR("%s  get invalid cnt %d\n", __func__, ref);
+}
+
+void mtk_pq_wake_put(unsigned int cmd, struct pq_common_data *pq_data)
+{
+	s32 ref;
+
+	mutex_lock(&pq_data->wake_mutex);
+	ref = atomic_dec_return(&pq_data->wake_ref);
+	DDPDBG("%s cmd %d ref %d\n", __func__, cmd, ref);
+	if (!ref)
+		__pm_relax(pq_data->wake_lock);
+	mutex_unlock(&pq_data->wake_mutex);
+	if (ref < 0)
+		DDPPR_ERR("%s  put invalid cnt %d\n", __func__, ref);
+}
+
 int mtk_drm_ioctl_sw_read_impl(struct drm_crtc *crtc, void *data)
 {
 	struct DISP_READ_REG *rParams = data;
@@ -525,8 +553,10 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 
 	if (copy_from_user(kdata, (void __user *)params->data, params->size) != 0)
 		goto err;
-	if (is_pq_cmd_need_pm(cmd))
+	if (is_pq_cmd_need_pm(cmd)) {
+		mtk_pq_wake_get(cmd, to_mtk_crtc(crtc)->pq_data);
 		pm_ret = mtk_vidle_pq_power_get(__func__);
+	}
 	if (pq_type == MTK_DISP_VIRTUAL_TYPE) {
 		ret = mtk_drm_virtual_type_impl(crtc, dev, cmd, kdata, file_priv);
 	} else {
@@ -540,9 +570,11 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 			}
 		}
 	}
-	if (is_pq_cmd_need_pm(cmd) && !pm_ret)
-		mtk_vidle_pq_power_put(__func__);
-
+	if (is_pq_cmd_need_pm(cmd)) {
+		if (!pm_ret)
+			mtk_vidle_pq_power_put(__func__);
+		mtk_pq_wake_put(cmd, to_mtk_crtc(crtc)->pq_data);
+	}
 	if (cmd > PQ_GET_CMD_START) {
 		if (copy_to_user((void __user *)params->data, kdata,  params->size) != 0)
 			goto err;

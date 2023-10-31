@@ -883,6 +883,10 @@ struct pq_common_data {
 	atomic_t pq_hw_relay_cfg_done;
 	wait_queue_head_t pq_hw_relay_cb_wq;
 	atomic_t pipe_info_filled;
+	struct mutex wake_mutex;
+	atomic_t wake_ref;
+	struct wakeup_source *wake_lock;
+	char *wake_lock_name;
 };
 
 struct mtk_vblank_config_rec {
