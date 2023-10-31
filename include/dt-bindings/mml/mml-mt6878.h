@@ -19,7 +19,7 @@
 #define MML_TDSHP0		8
 #define MML_WROT0_SEL		9
 #define MML_WROT0		10
-#define MML_ENGINE_TOTAL	26
+#define MML_ENGINE_TOTAL	11
 
 /* MML component types. See mtk-mml-sys.c */
 #define MML_CT_SYS		1
@@ -78,8 +78,7 @@
 #define MML_DLO0_SOUT_SEL	0xf88
 #define MML_BYP0_MOUT_EN	0xf90
 #define MML_BYP0_SEL_IN		0xf98
-#define MML_RSZ2_SEL_IN		0xfa0
-#define MML_AAL0_MOUT_EN	0xf68
+#define MML_AAL0_MOUT_EN	0xfb8
 #define MML_MOUT_MASK0		0xfd0
 #define MML_MOUT_MASK1		0xfd4
 #define MML_MOUT_MASK2		0xfd8
