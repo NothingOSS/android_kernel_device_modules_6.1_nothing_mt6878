@@ -27,7 +27,8 @@
 #define MML_IR_RSZ_MIN_RATIO	375	/* resize must lower than this ratio */
 #define MML_OUT_MIN_W		784	/* wqhd 1440/2+64=784 */
 #define MML_DL_MAX_W		2560
-
+#define MML_OUT_MIN_W_3K       1664	/* wqhd 3200/2+64=1664 */
+#define MML_DL_MAX_W_3K		3200
 /* use OPP index 0(229Mhz) 1(273Mhz) 2(458Mhz) */
 #define MML_IR_MAX_OPP		2
 
@@ -1180,7 +1181,8 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 		goto decouple;
 	}
 
-	if (info->src.width > MML_DL_MAX_W) {
+	if ((info->src.width > MML_DL_MAX_W && !mml_tablet_ext(mml)) ||
+		(info->src.width > MML_DL_MAX_W_3K && mml_tablet_ext(mml))) {
 		*reason = mml_query_inwidth;
 		goto decouple;
 	}
@@ -1329,7 +1331,8 @@ static enum mml_mode tp_query_mode_racing(struct mml_dev *mml, struct mml_frame_
 	}
 
 	/* destination width must cross display pipe width */
-	if (info->dest[0].data.width < MML_OUT_MIN_W) {
+	if ((info->dest[0].data.width < MML_OUT_MIN_W && !mml_tablet_ext(mml)) ||
+		(info->dest[0].data.width < MML_OUT_MIN_W_3K && mml_tablet_ext(mml))) {
 		*reason = mml_query_outwidth;
 		goto decouple;
 	}
