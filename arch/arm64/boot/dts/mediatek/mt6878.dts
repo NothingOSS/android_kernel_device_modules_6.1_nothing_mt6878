@@ -9274,7 +9274,6 @@
 		mdp-rsz1   = <&mdp_rsz1>;
 		mdp-wrot1  = <&mdp_wrot1>;
 		mediatek,larb = <&smi_larb2>;
-		power-domains = <&scpsys MT6878_POWER_DOMAIN_MM_INFRA>;
 		mdp-rdma1-sof = <CMDQ_EVENT_MDPSYS_MDP_RDMA1_SOF>;
 		mdp-wrot1-sof = <CMDQ_EVENT_MDPSYS_MDP_WROT1_SOF>;
 		mdp-wrot1-write-frame-done = <CMDQ_EVENT_MDPSYS_MDP_WROT1_FRAME_DONE>;
