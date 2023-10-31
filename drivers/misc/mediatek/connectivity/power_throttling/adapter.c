@@ -166,7 +166,6 @@ int conn_pwr_set_battery_level(int level)
 {
 	struct conn_pwr_update_info info;
 
-	pr_info("%s level = %d\n", __func__, level);
 	if (level < LOW_BATTERY_LEVEL_0 || level >= LOW_BATTERY_LEVEL_NUM) {
 		pr_info("invalid level %d\n", level);
 		return -1;
