@@ -13,6 +13,14 @@
 bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
 };
 
+&clkbuf_ctrl {
+	compatible = "mediatek,mt8796-clkbuf";
+};
+
+&mt6685_clkbuf {
+	compatible = "mediatek,mt6685-tb-clkbuf";
+};
+
 &mtk_leds {
 	compatible = "mediatek,i2c-leds";
 
