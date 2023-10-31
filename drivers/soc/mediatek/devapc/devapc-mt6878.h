@@ -60,7 +60,7 @@ enum DEVAPC_PD_OFFSET {
 	PD_VIO_DBG3_OFFSET = 0x90C,
 };
 
-#define SRAMROM_SLAVE_TYPE	SLAVE_TYPE_INFRA1	/* Infra1 */
+#define SRAMROM_SLAVE_TYPE	SLAVE_TYPE_INFRA	/* Infra */
 #define MM2ND_SLAVE_TYPE	SLAVE_TYPE_NUM		/* No MM2ND */
 
 enum OTHER_TYPES_INDEX {
@@ -1644,7 +1644,7 @@ static const struct mtk_device_info mt6878_devices_mmup[] = {
 
 static const struct mtk_device_info mt6878_devices_gpu[] = {
 	/* sys_idx, ctrl_idx, vio_idx, device, vio_irq */
-/* 0 */
+	/* 0 */
 	{0, 0, 0, "mfg_rpc", true},
 	{0, 1, 1, "mfgpll", true},
 	{0, 2, 2, "MFG_DEVICE_APC_AO", true},

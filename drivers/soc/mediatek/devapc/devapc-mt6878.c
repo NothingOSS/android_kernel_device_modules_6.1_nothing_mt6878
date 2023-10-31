@@ -14,7 +14,7 @@
 static const struct mtk_device_num mtk6878_devices_num[] = {
 	{SLAVE_TYPE_INFRA, VIO_SLAVE_NUM_INFRA, IRQ_TYPE_INFRA},
 	{SLAVE_TYPE_INFRA1, VIO_SLAVE_NUM_INFRA1, IRQ_TYPE_INFRA},
-	{SLAVE_TYPE_PERI_PAR, VIO_SLAVE_NUM_PERI_PAR, IRQ_TYPE_PERI},
+	{SLAVE_TYPE_PERI_PAR, VIO_SLAVE_NUM_PERI_PAR, IRQ_TYPE_INFRA},
 	{SLAVE_TYPE_VLP, VIO_SLAVE_NUM_VLP, IRQ_TYPE_VLP},
 #if ENABLE_DEVAPC_ADSP
 	{SLAVE_TYPE_ADSP, VIO_SLAVE_NUM_ADSP, IRQ_TYPE_ADSP},
@@ -127,7 +127,7 @@ static const char *mt6878_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 				return infra_mi_trans(bus_id >> 2);
 			else
 				return "UNKNOWN_MASTER_TO_SCP";
-		/* mi2 */
+		/* mi1 */
 		} else if ((vio_addr <= VLP_INFRA_END) ||
 			(vio_addr >= VLP_INFRA_1_START && vio_addr <= VLP_INFRA_1_END)) {
 			if ((bus_id & 0x3) == 0x0)
@@ -136,14 +136,14 @@ static const char *mt6878_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 				return "SSPM_M";
 			else if ((bus_id & 0x3) == 0x2)
 				return "SPM_M/DPMSR_AHB_M";
-			else if ((bus_id & 0x3) == 0x3)
-				return infra_mi_trans(bus_id >> 2);
-		/* mi3 */
+			else
+				return "UNKNOWN_MASTER_TO_INFRA";
+		/* mi2 */
 		} else {
 			if ((bus_id & 0x3) == 0x0)
 				return "SCP_M";
 			else if ((bus_id & 0x3) == 0x1)
-				return "SPM_M";
+				return "SSPM_M";
 			else if ((bus_id & 0x3) == 0x2)
 				return "SPM_M/DPMSR_AHB_M";
 			else
