@@ -335,6 +335,8 @@ static void tp_select_path(struct mml_topology_cache *cache,
 	} else {
 		scene = PATH_MML_PQ;
 	}
+
+	*path = &cache->paths[scene];
 }
 
 static s32 tp_select(struct mml_topology_cache *cache,

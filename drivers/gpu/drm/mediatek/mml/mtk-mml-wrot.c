@@ -232,6 +232,12 @@ static const struct wrot_data mt6989_wrot_data = {
 	/* .rb_swap = 2 */
 };
 
+static const struct wrot_data mt6878_wrot_data = {
+	.fifo = 256,
+	.tile_width = 512,
+	.sram_size = 512 * 1024,
+};
+
 struct mml_comp_wrot {
 	struct mtk_ddp_comp ddp_comp;
 	struct mml_comp comp;
@@ -2679,7 +2685,7 @@ const struct of_device_id mml_wrot_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6878-mml_wrot",
-		.data = &mt6983_wrot_data
+		.data = &mt6878_wrot_data
 	},
 	{},
 };
