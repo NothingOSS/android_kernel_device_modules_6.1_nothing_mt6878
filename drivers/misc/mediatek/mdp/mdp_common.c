@@ -2618,14 +2618,12 @@ static void mdp_request_voltage(unsigned long frequency, bool is_mdp)
 			if (IS_ERR_OR_NULL(mdp_mmdvfs_clk))
 				CMDQ_ERR("%s wrong mdp_mmdvfs_clk\n", __func__);
 			else {
-				if (mmdvfs_get_version())
-					mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MDP);
+				mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MDP);
 				ret = clk_set_rate(mdp_mmdvfs_clk, frequency * 1000000);
 				if (ret)
 					CMDQ_ERR("%s clk_set_rate(mdp) fail ret:%d\n",
 						__func__, ret);
-				if (mmdvfs_get_version())
-					mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MDP);
+				mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MDP);
 			}
 		} else {
 			ret = regulator_set_voltage(mdp_mmdvfs_reg, low_volt, INT_MAX);

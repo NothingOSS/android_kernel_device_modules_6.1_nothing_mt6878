@@ -296,8 +296,7 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, u32 peak_bw)
 					__func__, volt, i, tput);
 		} else if (tp->dvfs_clk) {
 			/* set dvfs clock rate by unit Hz */
-			if (mmdvfs_get_version())
-				mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MML);
+			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MML);
 			ret = clk_set_rate(tp->dvfs_clk,
 				tp->opp_speeds[i] * 1000000);
 			if (ret)
@@ -306,8 +305,7 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, u32 peak_bw)
 			else
 				mml_msg("%s rate %uMHz (%u) tput %u",
 					__func__, tp->opp_speeds[i], i, tput);
-			if (mmdvfs_get_version())
-				mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MML);
+			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MML);
 		}
 	}
 	mml_trace_end();
