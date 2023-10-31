@@ -23,6 +23,7 @@
 #include <linux/completion.h>
 #include <linux/sizes.h>
 #include <linux/dma-heap.h>
+#include <linux/mm.h>
 #include <uapi/linux/dma-heap.h>
 
 #include "private/mld_helper.h"
@@ -36,8 +37,31 @@
 #include "tests/ut_common.h"
 #include "ssmr/memory_ssmr.h"
 
-#define MAX_STRESS_THREAD (1)
+#define ONE_STRESS_THREAD (1)
 #define MAX_ALLOC (100)
+#define MAXORDER (9) //page order: 0~8
+#define KEEPORDER (5)
+#define MAX_STRESS_THREAD (16)
+#define LOW_ORDER_GFP (GFP_HIGHUSER | __GFP_ZERO | __GFP_COMP)
+#define MID_ORDER_GFP (LOW_ORDER_GFP | __GFP_NOWARN)
+#define HIGH_ORDER_GFP                                                         \
+	(((GFP_HIGHUSER | __GFP_ZERO | __GFP_NOWARN | __GFP_NORETRY) &         \
+	  ~__GFP_RECLAIM) |                                                    \
+	 __GFP_COMP)
+
+struct order_t {
+	struct list_head order_list;
+	spinlock_t lock;
+	unsigned long long num;
+	int order;
+	bool req;
+};
+
+static struct order_t *order_arr;
+static struct completion wait_for_trigger;
+static struct task_struct *threads[MAX_STRESS_THREAD];
+static gfp_t order_flags[] = { LOW_ORDER_GFP, MID_ORDER_GFP, HIGH_ORDER_GFP };
+static atomic_t finish_count;
 
 static enum UT_RET_STATE regmgr_state_check(int mem_idx, int region_final_state)
 {
@@ -185,6 +209,145 @@ enum UT_RET_STATE mem_alloc_simple_test(enum TRUSTED_MEM_TYPE mem_type,
 	return UT_STATE_PASS;
 }
 
+int ut_multi_thread(void *from)
+{
+	struct page *page = NULL, *tmpage = NULL;
+	struct order_t *order_i = (struct order_t *)from;
+	unsigned long long req_num = order_i->num;
+	bool req_status = order_i->req;
+	int count, entry, gfp_flag_index;
+	gfp_t gfp_flag;
+
+	allow_signal(SIGKILL|SIGSTOP);
+
+	wait_for_completion(&wait_for_trigger);
+
+	pr_debug("[cpu_num -> %d], req_num=%llu\n", smp_processor_id(),
+		 req_num);
+	if (req_status) {
+		gfp_flag_index = order_i->order / 3;
+		gfp_flag = order_flags[gfp_flag_index];
+		// gfp_flag = order_mvable_flags[gfp_flag_index];
+		while (req_num > 0) {
+			page = alloc_pages(gfp_flag, order_i->order);
+			if (!page) {
+				pr_debug("Failed to alloc pages, order:%d\n",
+					 order_i->order);
+				order_i->req = false;
+				goto out;
+			}
+			list_add_tail(&page->lru, &order_i->order_list);
+			req_num -= 1;
+		}
+	}
+
+out:
+	count = 1;
+	entry = (SZ_2M / 2) / (SZ_4K * int_pow(2, order_i->order));
+	pr_debug("Free pages order:%d, entry:%d\n", order_i->order, entry);
+	list_for_each_entry_safe (page, tmpage, &order_i->order_list, lru) {
+		if (order_i->order > KEEPORDER || count % entry != 0) {
+			list_del(&page->lru);
+			__free_pages(page, compound_order(page));
+		}
+		count++;
+	}
+
+	if (!order_i->req)
+		order_i->req = true;
+	atomic_inc(&finish_count);
+
+	return 0;
+}
+
+int ut_multi_thread_memory_order_free_UT(void)
+{
+	unsigned long long count = 0;
+	struct page *page, *tmpage;
+	int i;
+
+	for (i = 0; i < MAXORDER; ++i) {
+		count = 0;
+		list_for_each_entry_safe (
+			page, tmpage, &order_arr[i].order_list, lru) {
+			list_del(&page->lru);
+			__free_pages(page, compound_order(page));
+			count++;
+		}
+		pr_info("Free pages order[%d]: %llu\n",
+			order_arr[i].order, count);
+	}
+	pr_info("Memory Each Order Free UT DONE\n");
+
+	return 0;
+}
+
+int ut_multi_thread_memory_fragment_UT(void)
+{
+	int i, loop_count;
+	uint32_t ut_loop;
+
+	ut_loop = 1;
+
+	loop_count = 0;
+	while (loop_count <= ut_loop) {
+		for (i = 0; i < MAXORDER; i++) {
+			threads[i] = kthread_create(
+				ut_multi_thread, (void *)&order_arr[i],
+				"stress_test_multi_thread_sec_heap_alloc");
+			wake_up_process(threads[i]);
+		}
+		complete_all(&wait_for_trigger);
+		do {
+			wfi();
+		} while (atomic_read(&finish_count) != MAXORDER);
+		atomic_set(&finish_count, 0);
+		loop_count++;
+	}
+	pr_info("Memory Fragmentatation UT DONE\n");
+
+	return 0;
+}
+
+int mtk_mem_frag_ut_init(void)
+{
+	int i, size;
+
+	size = MAXORDER * sizeof(struct order_t);
+	order_arr = kzalloc(size, GFP_KERNEL);
+	for (i = 0; i < MAXORDER; ++i) {
+		INIT_LIST_HEAD(&order_arr[i].order_list);
+		spin_lock_init(&order_arr[i].lock);
+		order_arr[i].num = int_pow(MAXORDER + 1 - i, 6) / 2;
+		order_arr[i].order = i;
+		order_arr[i].req = true;
+		pr_info("Set order_arr[%d].num: %llu\n", i, order_arr[i].num);
+	}
+	atomic_set(&finish_count, 0);
+	init_completion(&wait_for_trigger);
+
+	return 0;
+}
+
+
+enum UT_RET_STATE mem_order_free_test(void)
+{
+	mtk_mem_frag_ut_init();
+	ut_multi_thread_memory_order_free_UT();
+	kfree(order_arr);
+
+	return UT_STATE_PASS;
+}
+
+enum UT_RET_STATE mem_fragmentation_test(void)
+{
+	mtk_mem_frag_ut_init();
+	ut_multi_thread_memory_fragment_UT();
+	kfree(order_arr);
+
+	return UT_STATE_PASS;
+}
+
 int ut_multi_thread_mtkSecHeap(void *from)
 {
 	struct dma_heap *dma_heap;
@@ -253,12 +416,11 @@ enum UT_RET_STATE mem_alloc_page_test(enum TRUSTED_MEM_TYPE mem_type,
 					u8 *mem_owner, int region_final_state,
 					int un_order_sz_cfg)
 {
-	struct task_struct *threads[MAX_STRESS_THREAD];
 	int i;
 
 	pr_info("%s:%d\n", __func__, __LINE__);
 
-	for (i = 0; i < MAX_STRESS_THREAD; i++) {
+	for (i = 0; i < ONE_STRESS_THREAD; i++) {
 		threads[i] = kthread_create(
 			ut_multi_thread_mtkSecHeap, NULL,
 			"stress_test_multi_thread_sec_heap_alloc");

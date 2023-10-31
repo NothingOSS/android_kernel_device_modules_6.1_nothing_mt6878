@@ -95,6 +95,22 @@ static enum UT_RET_STATE tmem_alloc_simple_test(struct ut_params *params,
 	return UT_STATE_PASS;
 }
 
+static enum UT_RET_STATE tmem_memory_order_free_test(struct ut_params *params,
+						char *test_desc)
+{
+	mem_order_free_test();
+
+	return UT_STATE_PASS;
+}
+
+static enum UT_RET_STATE tmem_memory_fragmentation_test(struct ut_params *params,
+						char *test_desc)
+{
+	mem_fragmentation_test();
+
+	return UT_STATE_PASS;
+}
+
 static enum UT_RET_STATE tmem_alloc_page_test(struct ut_params *params,
 						char *test_desc)
 {
@@ -814,6 +830,10 @@ static struct test_case test_cases[] = {
 	CASE(TMEM_PROFILE_DUMP, "Profiling Dump Test", 0, 0, 0,
 	     profile_dump_all),
 #endif
+	CASE(TMEM_MEMORY_FRAGMENTATION, "Memory Fragmentation Test", 0, 0, 0,
+	     tmem_memory_fragmentation_test),
+	CASE(TMEM_MEMORY_ORDER_FREE, "Memory All Order Free Test", 0, 0, 0,
+	     tmem_memory_order_free_test),
 };
 
 #define TEST_CASE_COUNT ARRAY_SIZE(test_cases)
