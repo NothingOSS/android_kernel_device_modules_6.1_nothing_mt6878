@@ -54,6 +54,7 @@
 		tpd-filter-pixel-density = <161>;
 		tpd-filter-custom-prameters = <0 0 0 0 0 0 0 0 0 0 0 0>;
 		tpd-filter-custom-speed = <0 0 0>;
+		goodix,tz-enable;
 	};
 
 };
