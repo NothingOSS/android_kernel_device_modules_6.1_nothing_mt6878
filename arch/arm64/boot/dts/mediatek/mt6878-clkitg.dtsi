@@ -13,12 +13,6 @@
 			<&topckgen_clk CLK_TOP_MMINFRA_SEL>;
 	};
 
-	bring-up-pd-disp@d {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0xd>;
-		power-domains = <&scpsys MT6878_POWER_DOMAIN_DISP>;
-	};
-
 	bring-up-pd-mm-infra@e {
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0xe>;
