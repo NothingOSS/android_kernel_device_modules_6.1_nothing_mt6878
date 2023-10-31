@@ -9452,7 +9452,15 @@
 
 		logger-enable-states = "mcusysoff_l", "mcusysoff_b", "system_vcore";
 
-		irq-remain = <&edge_keypad>;
+		irq-remain = <&edge_keypad>,
+					 <&level_spi0>,
+					 <&level_spi1>,
+					 <&level_spi2>,
+					 <&level_spi3>,
+					 <&level_spi4>,
+					 <&level_spi5>,
+					 <&level_spi6>,
+					 <&level_spi7>;
 
 		resource-ctrl = <&bus26m &infra &syspll>,
 				<&dram_s0 &dram_s1 &spm_emi>,
@@ -9487,6 +9495,38 @@
 			edge_keypad: edge-keypad {
 				target = <&keypad>;
 				value = <1 0 0 0x04>;
+			};
+			level_spi0: level-spi0 {
+				target = <&spi0>;
+				value = <0 0 0 0>;
+			};
+			level_spi1: level-spi1 {
+				target = <&spi1>;
+				value = <0 0 0 0>;
+			};
+			level_spi2: level-spi2 {
+				target = <&spi2>;
+				value = <0 0 0 0>;
+			};
+			level_spi3: level-spi3 {
+				target = <&spi3>;
+				value = <0 0 0 0>;
+			};
+			level_spi4: level-spi4 {
+				target = <&spi4>;
+				value = <0 0 0 0>;
+			};
+			level_spi5: level-spi5 {
+				target = <&spi5>;
+				value = <0 0 0 0>;
+			};
+			level_spi6: level-spi6 {
+				target = <&spi6>;
+				value = <0 0 0 0>;
+			};
+			level_spi7: level-spi7 {
+				target = <&spi7>;
+				value = <0 0 0 0>;
 			};
 		};
 
