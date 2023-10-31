@@ -10024,6 +10024,7 @@
 		vbus-supply = <&mt6375_otg_vbus>;
 		vbus-voltage = <5000000>;
 		vbus-current = <1800000>;
+		vbus-limit-current = <500000>;
 		charger = <&mt6375_chg>;
 		tcpc = "type_c_port0";
 		mediatek,bypss-typec-sink = <1>;
