@@ -11145,6 +11145,7 @@
 			/* !!Above code generate by topology parser (tpparser.py)!! */
 
 			mutex-ids = <MML_RDMA0 0 MML_RROT0 1>;
+			dpc-base = <0x1c000000>;
 		};
 
 		mml_rdma0: mml-rdma0@1f803000 {
