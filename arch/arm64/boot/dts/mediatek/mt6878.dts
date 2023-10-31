@@ -3318,6 +3318,25 @@
 		iommus = <&apu_iommu0 M4U_L42_APU_DATA>;
 	};
 
+	hwrng: hwrng {
+		compatible = "arm,sec-rng";
+		methods = "smc";
+		method-fid = /bits/ 16 <0x26a>;
+		quality = /bits/ 16 <900>;
+	};
+
+	security_ao: security-ao@1040d000 {
+		compatible = "mediatek,security_ao";
+		reg = <0 0x1040d000 0 0x1000>;
+	};
+
+	masp: masp@1040e000 {
+		compatible = "mediatek,masp";
+		reg = <0 0x1040e000 0 0x1000>;
+		interrupts = <GIC_SPI 686 IRQ_TYPE_LEVEL_HIGH 0>;
+		/* GIC_IRQ ID(sej_axgpt_irq) - 32 = 718 - 32 = 686 */
+	};
+
 	mmqos-wrapper {
 			compatible = "mediatek,mt6878-mmqos-wrapper";
 	};
@@ -3742,16 +3761,6 @@
 		infracfg@1020e000 {
 			compatible = "mediatek,infracfg";
 			reg = <0 0x1020e000 0 0x1000>;
-		};
-
-		trng@1020f000 {
-			compatible = "mediatek,trng";
-			reg = <0 0x1020f000 0 0x1000>;
-		};
-
-		dxcc-sec@10210000 {
-			compatible = "mediatek,dxcc_sec";
-			reg = <0 0x10210000 0 0x1000>;
 		};
 
 		md2md-md1-ccif0@10211000 {
