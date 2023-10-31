@@ -39,6 +39,45 @@ extern int mml_qos_log;
 extern int mml_dpc_log;
 extern int mml_rrot_msg;
 
+/* see mml_qos in mtk-mml-core.c */
+#define MML_QOS_EN_MASK			0x1
+#define MML_QOS_FORCE_CLOCK_MASK	(BIT(1))
+#define MML_QOS_FORCE_CLOCK_SH		2
+#define MML_QOS_FORCE_BW_MASK		(BIT(17))
+#define MML_QOS_FORCE_BW_SH		18
+#define MML_QOS_FORCE_MASK		0xfff
+
+/* get force throughput (clock) or bandwidth helper */
+#define mml_qos_force_clk	((mml_qos >> MML_QOS_FORCE_CLOCK_SH) & MML_QOS_FORCE_MASK)
+#define mml_qos_force_bw	((mml_qos >> MML_QOS_FORCE_BW_SH) & MML_QOS_FORCE_MASK)
+
+/* 513 to ensure port has good ostd
+ * 1536 is the worst bw calculated by DE
+ */
+#define MML_QOS_MIN_BW		513
+#define MML_QOS_MAX_BW		1536
+
+/* MML couple mode HRT mode, HRT bandwidth to MMQoS and DPC
+ * MML_HRT_ENABLE:	default, config srt and hrt to mmqos and dpc
+ * MML_HRT_OSTD_MAX:	report hrt to dpc, report srt and MAX OSTD hrt to smi.
+ * MML_HRT_OSTD_ONLY:	max ostd only mode, report 0 srt and max hrt to mmqos, but no bw to dpc
+ *			this prevent mminfra or dram opp raise
+ * MML_HRT_LIMIT:	hrt lower than mtk_mml_hrt_bound, follow MML_HRT_OSTD_ONLY,
+ *			config srt and hrt instead.
+ * MML_HRT_MMQOS:	set srt and hrt to mmqos, but skip dpc
+ *
+ * note: this symbol export to mtk-mml-mt6xxx to do platform config.
+ */
+enum mml_hrt_mode {
+	MML_HRT_ENABLE = 0,
+	MML_HRT_OSTD_MAX,
+	MML_HRT_OSTD_ONLY,
+	MML_HRT_LIMIT,
+	MML_HRT_MMQOS,
+};
+extern int mtk_mml_hrt_mode;
+extern int mml_hrt_bound;
+
 /* define in mtk-mml-wrot.c */
 extern int mml_wrot_bkgd_en;
 extern int mml_rrot_debug;

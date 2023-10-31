@@ -19,6 +19,7 @@
 #include <linux/minmax.h>
 
 #include <soc/mediatek/mmdvfs_v3.h>
+#include <soc/mediatek/mmqos.h>
 #include <soc/mediatek/smi.h>
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #include <slbc_ops.h>
@@ -158,9 +159,6 @@ struct mml_dev {
 	bool tablet_ext;
 };
 
-int mml_racing_bw;
-module_param(mml_racing_bw, int, 0644);
-
 struct platform_device *mml_get_plat_device(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -283,6 +281,16 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, u32 peak_bw)
 		/* dpc set voltage */
 		mml_msg("%s dpc set rate %uMHz volt %d (%u) tput %u",
 			__func__, tp->opp_speeds[i], volt, i, tput);
+
+		if (mtk_mml_hrt_mode == MML_HRT_OSTD_ONLY ||
+			mtk_mml_hrt_mode == MML_HRT_MMQOS) {
+			/* dpc off case set bw to 0 */
+			peak_bw = 0;
+		} else if (mtk_mml_hrt_mode == MML_HRT_LIMIT) {
+			/* no dpc if lower than hrt bound */
+			if (peak_bw < mml_hrt_bound)
+				peak_bw = 0;
+		}
 
 		mml_dpc_dvfs_both_set(DPC_SUBSYS_MML, i, false, peak_bw);
 	} else {
@@ -986,12 +994,14 @@ void mml_dpc_dc_enable(struct mml_dev *mml, bool en)
  */
 static u32 mml_calc_bw(u64 data, u32 pixel, u64 throughput)
 {
-	/* ocucpied bw efficiency is 1.33 while accessing DRAM */
-	data = (u64)div_u64(data * 4 * throughput, 3);
+	/* ocucpied bw efficiency is 1.33 while accessing DRAM
+	 * also 1.3 overhead to secure ostd
+	 */
+	data = (u64)div_u64(data * 4 * throughput * 13, 3 * 10);
 	if (!pixel)
 		pixel = 1;
-	/* 1536 is the worst bw calculated by DE */
-	return min_t(u32, div_u64(data, pixel), 1536);
+
+	return max_t(u32, MML_QOS_MIN_BW, min_t(u32, div_u64(data, pixel), MML_QOS_MAX_BW));
 }
 
 static u32 mml_calc_bw_racing(u32 datasize)
@@ -1006,6 +1016,10 @@ static u32 mml_calc_bw_racing(u32 datasize)
 	 */
 	return (u32)div_u64((u64)datasize * 21, 80000);
 }
+
+#define MML_DVFS_FORCE_MIN	0xf
+#define MML_DVFS_FORCE_MASK	0xffff
+
 
 void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 throughput, u32 tput_up)
@@ -1022,21 +1036,26 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 		hrt_bw = 0;
 	} else if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		hrt = true;
-		bandwidth = mml_calc_bw_racing(datasize);
-		hrt_bw = (u32)((u64)datasize * 1000 / cfg->info.act_time);
-		if (unlikely(mml_racing_bw)) {
-			bandwidth = mml_racing_bw;
-			hrt_bw = mml_racing_bw * 1000;
+		if (likely(mtk_mml_hrt_mode == MML_HRT_ENABLE) ||
+			mtk_mml_hrt_mode == MML_HRT_OSTD_MAX ||
+			mtk_mml_hrt_mode == MML_HRT_LIMIT ||
+			mtk_mml_hrt_mode == MML_HRT_MMQOS) {
+			bandwidth = mml_calc_bw_racing(datasize);
+			hrt_bw = (u32)((u64)datasize * 1000 / cfg->info.act_time);
+
+			if (mtk_mml_hrt_mode == MML_HRT_LIMIT && hrt_bw < mml_hrt_bound) {
+				bandwidth = 0;
+				hrt_bw = 0;
+			}
+		} else {	/* MML_HRT_OSTD_ONLY */
+			bandwidth = 0;
+			hrt_bw = 0;
 		}
 	} else {
 		hrt = false;
 		bandwidth = mml_calc_bw(datasize, cache->max_pixel, throughput);
-		if (unlikely(mml_qos)) {
-			u32 qos = mml_qos >> 16;
-
-			if (qos)
-				bandwidth = qos;
-		}
+		if ((unlikely(mml_qos & MML_QOS_FORCE_BW_MASK)))
+			bandwidth = mml_qos_force_bw;
 		hrt_bw = 0;
 	}
 
@@ -1046,10 +1065,31 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	if (comp->cur_bw != bandwidth || comp->cur_peak != hrt_bw) {
 		mml_trace_begin("mml_bw_%u_%u", bandwidth, hrt_bw);
 #ifndef MML_FPGA
-		if (task->config->dpc)
-			mtk_icc_set_bw(comp->icc_dpc_path,
-				MBps_to_icc(bandwidth), MBps_to_icc(hrt_bw));
-		else
+		if (task->config->dpc) {
+			u32 srt_icc, hrt_icc;
+
+			if (mtk_mml_hrt_mode == MML_HRT_OSTD_MAX) {
+				srt_icc = MBps_to_icc(bandwidth);
+				hrt_icc = MTK_MMQOS_MAX_BW;
+			} else if (mtk_mml_hrt_mode == MML_HRT_OSTD_ONLY) {
+				srt_icc = 0;
+				hrt_icc = MTK_MMQOS_MAX_BW;
+			} else if (mtk_mml_hrt_mode == MML_HRT_LIMIT) {
+				if (hrt_bw < mml_hrt_bound) {
+					srt_icc = 0;
+					hrt_icc = MTK_MMQOS_MAX_BW;
+				} else {
+					srt_icc = MBps_to_icc(bandwidth);
+					hrt_icc = MBps_to_icc(hrt_bw);
+				}
+			} else {
+				/* MML_HRT_ENABLE, MML_HRT_MMQOS */
+				srt_icc = MBps_to_icc(bandwidth);
+				hrt_icc = MBps_to_icc(hrt_bw);
+			}
+
+			mtk_icc_set_bw(comp->icc_dpc_path, srt_icc, hrt_icc);
+		} else
 			mtk_icc_set_bw(comp->icc_path,
 				MBps_to_icc(bandwidth), MBps_to_icc(hrt_bw));
 #endif
@@ -1061,10 +1101,11 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 
 	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, (comp->cur_bw << 16) | comp->cur_peak);
 
-	mml_msg_qos("%s comp %u %s qos bw %u(%u %u) by throughput %u pixel %u size %u%s%s",
+	mml_msg_qos("%s comp %u %s qos bw %u(%u %u) by throughput %u pixel %u size %u%s%s mode %d",
 		__func__, comp->id, comp->name, bandwidth, hrt_bw, cfg->disp_hrt,
 		throughput, cache->max_pixel, datasize,
-		hrt ? " hrt" : "", updated ? " update" : "");
+		hrt ? " hrt" : "", updated ? " update" : "",
+		mtk_mml_hrt_mode);
 }
 
 void mml_comp_qos_clear(struct mml_comp *comp, bool dpc)

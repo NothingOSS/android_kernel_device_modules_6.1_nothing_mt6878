@@ -1297,6 +1297,9 @@ static const struct mml_topology_ops tp_ops_mt6989 = {
 
 static __init int mml_topology_ip_init(void)
 {
+	/* init hrt mode as max ostd */
+	mtk_mml_hrt_mode = MML_HRT_OSTD_MAX;
+
 	return mml_topology_register_ip(TOPOLOGY_PLATFORM, &tp_ops_mt6989);
 }
 module_init(mml_topology_ip_init);

@@ -994,10 +994,15 @@ s32 mml_drm_submit(struct mml_drm_ctx *ctx, struct mml_submit *submit,
 
 	/* copy per-frame info */
 	task->ctx = ctx;
-	task->end_time.tv_sec = submit->end.sec;
-	task->end_time.tv_nsec = submit->end.nsec;
-	/* give default time if empty */
-	frame_check_end_time(&task->end_time);
+	if (cfg->info.mode == MML_MODE_MML_DECOUPLE) {
+		task->end_time.tv_sec = submit->end.sec;
+		task->end_time.tv_nsec = submit->end.nsec;
+		/* give default time if empty */
+		frame_check_end_time(&task->end_time);
+		mml_msg("[drm]mml job %u end %2u.%03llu",
+			task->job.jobid,
+			(u32)task->end_time.tv_sec, div_u64(task->end_time.tv_nsec, 1000000));
+	}
 
 	if (cfg->info.mode == MML_MODE_APUDC) {
 		task->buf.src.apu_handle = mml_get_apu_handle(&submit->buffer.src);

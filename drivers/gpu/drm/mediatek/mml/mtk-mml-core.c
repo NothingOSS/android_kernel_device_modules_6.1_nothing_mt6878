@@ -32,6 +32,14 @@ int mtk_mml_msg = 1;
 EXPORT_SYMBOL(mtk_mml_msg);
 module_param(mtk_mml_msg, int, 0644);
 
+/* see mtk-mml-core.c enum mml_hrt_mode for more detail */
+int mtk_mml_hrt_mode;
+EXPORT_SYMBOL(mtk_mml_hrt_mode);
+module_param(mtk_mml_hrt_mode, int, 0644);
+
+int mml_hrt_bound = 2500;
+module_param(mml_hrt_bound, int, 0644);
+
 int mml_cmdq_err;
 EXPORT_SYMBOL(mml_cmdq_err);
 module_param(mml_cmdq_err, int, 0644);
@@ -48,17 +56,19 @@ module_param(mml_comp_dump, int, 0644);
 int mml_trace = 1;
 module_param(mml_trace, int, 0644);
 
-/* MML DVFS/QoS debug option, set following value:
- * 0: disable mml dvfs/qos feature
- * 1: default value, enable and calculate by frame data and end time
- * > MML_DVFS_FORCE_MIN: force overwrite throughput/bandwidth by mask
- *	bit[15:0]  throughput for dvfs
- *	bit[31:16] bandwidth for qos
+/* MML DVFS/QoS debug option, set following value by bit:
+ * bit[0:0]	0: disable mml dvfs/qos feature
+ *		1: default value, enable and calculate by frame data and end time
+ * bit[1:1]	0: do not use force throughput
+ *		1: use force throughput in bit[15:2]
+ * bit[13:2]	force throghput (clock), only work if bit[1]=1
+ * bit[16:16]	reserve
+ * bit[17:17]	0: do not use force bandwidth
+ *		1: use force bandwidth in bit[31:18]
+ * bit[29:18]	force bandwidth, only work if bit[17]=1
  */
 int mml_qos = 1;
 module_param(mml_qos, int, 0644);
-#define MML_DVFS_FORCE_MIN	0xf
-#define MML_DVFS_FORCE_MASK	0xffff
 
 int mml_qos_log;
 module_param(mml_qos_log, int, 0644);
@@ -969,7 +979,7 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	}
 
 	/* do not append to list and no qos/dvfs for this task */
-	if (!mml_qos)
+	if (!(mml_qos & MML_QOS_EN_MASK))
 		goto done;
 
 	if (timespec64_compare(&curr_time, &task->end_time) > 0)
@@ -999,8 +1009,8 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 			&task->end_time, &task->submit_time);
 	}
 
-	if (mml_qos > MML_DVFS_FORCE_MIN)
-		task->pipe[pipe].throughput = mml_qos & MML_DVFS_FORCE_MASK;
+	if (unlikely(mml_qos & MML_QOS_FORCE_CLOCK_MASK))
+		task->pipe[pipe].throughput = mml_qos_force_clk;
 
 	if (task->pipe[pipe].throughput) {
 		throughput = task->pipe[pipe].throughput;
