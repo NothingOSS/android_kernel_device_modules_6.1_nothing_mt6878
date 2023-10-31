@@ -39,9 +39,6 @@
 #define APU_HANDLE_H		0x204
 #define APU_DCEN		0x208
 
-#define VLP_VOTE_SET		0x414
-#define VLP_VOTE_CLR		0x418
-
 /* SMI offset */
 #define SMI_LARB_DISABLE_ULTRA	0x70
 
@@ -50,12 +47,6 @@ module_param(mml_ir_loop, int, 0644);
 
 int mml_racing_sleep = 16000;
 module_param(mml_racing_sleep, int, 0644);
-
-enum mml_dl_dpc_config {
-	MML_DLDPC_VOTE = 0x1,	/* vote dpc before write and after done */
-};
-int mml_dl_dpc = MML_DLDPC_VOTE;
-module_param(mml_dl_dpc, int, 0644);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 int mml_ddp_dump = 1;
@@ -2046,7 +2037,7 @@ static int mml_sys_init(struct platform_device *pdev, struct mml_sys *sys,
 
 	of_property_read_u32(dev->of_node, "dpc-base", &sys->dpc_base);
 	if (sys->dpc_base)
-		mml_log("support dpc base %#010x", sys->dpc_base);
+		mml_log("sys support dpc base %#010x", sys->dpc_base);
 
 	return 0;
 

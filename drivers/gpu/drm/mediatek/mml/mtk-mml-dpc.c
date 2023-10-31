@@ -7,6 +7,9 @@
 #include "mtk-mml-dpc.h"
 #include "mtk-mml-core.h"
 
+int mml_dl_dpc = MML_DLDPC_VOTE;
+module_param(mml_dl_dpc, int, 0644);
+
 void mml_dpc_register(const struct dpc_funcs *funcs)
 {
 	mml_dpc_funcs = *funcs;

@@ -12,6 +12,15 @@
 
 #include "mtk_dpc.h"
 
+extern int mml_dl_dpc;
+
+enum mml_dl_dpc_config {
+	MML_DLDPC_VOTE = 0x1,	/* vote dpc before write and after done */
+};
+
+#define VLP_VOTE_SET		0x414
+#define VLP_VOTE_CLR		0x418
+
 static struct dpc_funcs mml_dpc_funcs;
 
 /*
