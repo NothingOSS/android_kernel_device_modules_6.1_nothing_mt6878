@@ -36,8 +36,8 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 	const int tp_item_num = 4;
 	const int bw_item_num = 3;
 	struct platform_device *pdev;
-	int i, j, larb_cnt, ret;
-	u32 nmin = 0, nmax = 0, cnt = 0;
+	int i, j, larb_cnt, ret, cnt = 0;
+	u32 nmin = 0, nmax = 0;
 
 	pdev = dev->plat_dev;
 	larb_cnt = 0;
@@ -81,16 +81,17 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 
 	mtk_v4l2_debug(8, "[VDEC] max-op-rate table elements %u, %d per line",
 			cnt, op_item_num);
-	if (dev->vdec_op_rate_cnt == 0 || dev->vdec_op_rate_cnt > VDEC_VENC_MAX) {
+
+	if (dev->vdec_op_rate_cnt > 0 && dev->vdec_op_rate_cnt < VDEC_VENC_MAX) {
+		dev->vdec_dflt_op_rate = vzalloc(sizeof(struct vcodec_op_rate) * dev->vdec_op_rate_cnt);
+		mtk_v4l2_debug(8, "[VDEC] vzalloc %zu x %d res %p",
+				sizeof(struct vcodec_op_rate), dev->vdec_op_rate_cnt,
+				dev->vdec_dflt_op_rate);
+	} else {
 		mtk_v4l2_debug(0, "[VDEC] max-op-rate-table not exist or config wrong %d", dev->vdec_op_rate_cnt);
 		dev->vdec_op_rate_cnt = 0;
+		dev->vdec_dflt_op_rate = NULL;
 	}
-
-	dev->vdec_dflt_op_rate = vzalloc(sizeof(struct vcodec_op_rate) * dev->vdec_op_rate_cnt);
-
-	mtk_v4l2_debug(8, "[VDEC] vzalloc %zu x %d res %p",
-			sizeof(struct vcodec_op_rate), dev->vdec_op_rate_cnt,
-			dev->vdec_dflt_op_rate);
 
 	if (dev->vdec_dflt_op_rate) {
 		for (i = 0; i < dev->vdec_op_rate_cnt; i++) {
