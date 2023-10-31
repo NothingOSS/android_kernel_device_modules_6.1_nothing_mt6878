@@ -222,6 +222,9 @@ static int gt9896s_parse_dt(struct device_node *node,
 	struct property *prop;
 	const char *name_tmp;
 	int r;
+#ifdef GT9896S_TZ
+	struct gt9896s_ts_bdata_tz *ts_tz = &board_data->ts_bdata_tz;
+#endif
 
 	if (!board_data) {
 		ts_err("invalid board data");
@@ -340,6 +343,47 @@ static int gt9896s_parse_dt(struct device_node *node,
 	ts_debug("[DT]x:%d, y:%d, w:%d, p:%d", board_data->panel_max_x,
 		 board_data->panel_max_y, board_data->panel_max_w,
 		 board_data->panel_max_p);
+
+#ifdef GT9896S_TZ
+	ts_tz->tz_enable = of_property_read_bool(node, "goodix,tz-enable");
+	if (ts_tz->tz_enable) {
+		ts_info("tz enabled");
+		ts_tz->tz_dev = NULL;
+
+		r = of_property_read_string(node, "goodix,tz-name", &name_tmp);
+		if (!r && (strlen(name_tmp) < sizeof(ts_tz->tz_name))) {
+			strscpy(ts_tz->tz_name, name_tmp, sizeof(ts_tz->tz_name));
+			ts_info("thermal zone name from dt: %s", ts_tz->tz_name);
+		} else{
+			strscpy(ts_tz->tz_name, TS_DEFAULT_THERMAL_ZONE, sizeof(ts_tz->tz_name));
+			ts_info("can't find thermal zone name, use default: %s", ts_tz->tz_name);
+		}
+
+		r = of_property_read_u32(node, "goodix,temperature-difference",
+				&ts_tz->temperature_difference);
+		if (r) {
+			ts_tz->temperature_difference = GOODIX_DEFAULT_TEMPERATURE_DIFFERENCE;
+			ts_info("can't find temperature-difference value, use default: %d",
+				ts_tz->temperature_difference);
+		} else {
+			ts_info("temperature-difference value from dt: %d",
+				ts_tz->temperature_difference);
+		}
+
+		r = of_property_read_u32(node, "goodix,temperature-threshold",
+				&ts_tz->temperature_threshold);
+		if (r) {
+			ts_tz->temperature_threshold = GOODIX_DEFAULT_TEMPERATURE_THRESHOLD;
+			ts_info("can't find temperature-threshold value, use default: %d",
+				ts_tz->temperature_threshold);
+		} else {
+			ts_info("temperature-threshold value from dt: %d",
+				ts_tz->temperature_threshold);
+		}
+	} else {
+		ts_info("tz not enabled");
+	}
+#endif
 
 	return 0;
 }

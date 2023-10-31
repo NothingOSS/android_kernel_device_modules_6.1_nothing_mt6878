@@ -29,8 +29,8 @@
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 #include "mtk_panel_ext.h"
-static struct gt9896s_ts_core *ts_core;
 #endif
+static struct gt9896s_ts_core *ts_core;
 
 #include "goodix_ts_core.h"
 #include <linux/spi/spi.h>
@@ -42,6 +42,8 @@ static struct gt9896s_ts_core *ts_core;
 
 #define GOOIDX_INPUT_PHYS	"goodix_ts/input0"
 
+//#define GT9896S_SYSFS
+
 #ifdef GT9896S_SYSFS
 static struct task_struct *gt9896s_polling_thread;
 static int gt9896s_ts_event_polling(void *arg);
@@ -51,6 +53,11 @@ struct mutex irq_info_mutex;
 
 struct gt9896s_module gt9896s_modules;
 static unsigned int x_last[GOODIX_MAX_TOUCH], y_last[GOODIX_MAX_TOUCH];
+#ifdef GT9896S_TZ
+#include <linux/thermal.h>
+#include <linux/math.h>
+static atomic_t delayed_reset;
+#endif
 
 #if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
 struct gt9896s_ts_core *ts_core_for_tui;
@@ -1134,6 +1141,25 @@ void gt9896s_ts_report_finger(struct input_dev *dev,
 	input_set_timestamp(dev,
 		ns_to_ktime(atomic64_read(&ts_core->timestamp)));
 	input_sync(dev);
+
+#ifdef GT9896S_TZ
+	if ((atomic_read(&delayed_reset) == 1) && (touch_num == 0)) {
+		const struct gt9896s_ts_hw_ops *hw_ops = ts_hw_ops(ts_core);
+
+		if (hw_ops->reset){
+			if (hw_ops->reset(ts_core->ts_dev)) {
+				/* don't clear flag */
+				ts_err("Failed to reset for rebase operation.");
+			} else {
+				ts_info("Reset for rebase operation completed.");
+				atomic_set(&delayed_reset, 0);
+			}
+		} else {
+			ts_err("no reset hardware function.");
+			atomic_set(&delayed_reset, 0);
+		}
+	}
+#endif
 }
 
 static irqreturn_t gt9896s_ts_interrupt_func(int irq, void *data)
@@ -1160,7 +1186,10 @@ static irqreturn_t gt9896s_ts_threadirq_func(int irq, void *data)
 	struct gt9896s_ts_event *ts_event = &core_data->ts_event;
 	u8 irq_flag = 0;
 	int r;
-
+#ifdef GT9896S_TZ
+	if (board_data(core_data)->ts_bdata_tz.tz_enable)
+		core_data->ts_core_tz.tz_irq_status = true;
+#endif
 	core_data->irq_trig_cnt++;
 	/* inform external module */
 	mutex_lock(&gt9896s_modules.mutex);
@@ -1839,6 +1868,115 @@ int gt9896s_ts_esd_init(struct gt9896s_ts_core *core)
 
 	return 0;
 }
+
+#ifdef GT9896S_TZ
+static void gt9896s_ts_tz_on(struct gt9896s_ts_core *core)
+{
+	struct gt9896s_ts_core_tz *ts_tz = &core->ts_core_tz;
+
+	if (!board_data(core)->ts_bdata_tz.tz_enable)
+		return;
+
+	if (atomic_read(&ts_tz->tz_on))
+		return;
+
+	atomic_set(&ts_tz->tz_on, 1);
+
+	if (!schedule_delayed_work(&ts_tz->tz_work, 2 * HZ))
+		ts_info("tz work already in workqueue");
+
+	ts_info("tz on");
+}
+
+static void gt9896s_ts_tz_off(struct gt9896s_ts_core *core)
+{
+	struct gt9896s_ts_core_tz *ts_tz = &core->ts_core_tz;
+	int ret;
+
+	if (!board_data(core)->ts_bdata_tz.tz_enable)
+		return;
+
+	if (!atomic_read(&ts_tz->tz_on))
+		return;
+
+	atomic_set(&ts_tz->tz_on, 0);
+	atomic_set(&delayed_reset, 0);
+	ret = cancel_delayed_work_sync(&ts_tz->tz_work);
+	ts_info("tz off, tz work state %d", ret);
+}
+
+void thermal_zone_monitor(struct gt9896s_ts_bdata_tz *ts_tz)
+{
+	static int last_reset_temp = INT_MAX;
+	int ret;
+	int temp;
+
+	if (ts_tz->tz_dev == NULL) {
+		ts_info("Get thermal zone '%s'", ts_tz->tz_name);
+		ts_tz->tz_dev = thermal_zone_get_zone_by_name(ts_tz->tz_name);
+		if (IS_ERR_OR_NULL(ts_tz->tz_dev)) {
+			ts_err("Failed to get thermal zone '%s', error : %ld",
+					ts_tz->tz_name,
+					IS_ERR(ts_tz->tz_dev) ? PTR_ERR(ts_tz->tz_dev) : 0);
+			ts_tz->tz_dev = NULL;
+			return;
+		}
+	}
+	ret = thermal_zone_get_temp(ts_tz->tz_dev, &temp);
+	if (ret) {
+		ts_err("Failed to get thermal zone temperature");
+		return;
+	}
+
+	if ((temp < ts_tz->temperature_threshold) && ((last_reset_temp == INT_MAX)
+		|| abs(temp - last_reset_temp) >= ts_tz->temperature_difference)) {
+		ts_info("current temperature %d requires reset, last reset at temperature %d",
+				temp, last_reset_temp);
+		if (atomic_read(&delayed_reset) == 1){
+			ts_info("last reset marked was not executed!");
+		} else {
+			ts_info("last reset marked was executed already!");
+			atomic_set(&delayed_reset, 1);
+		}
+		last_reset_temp = temp;
+	}
+}
+
+static void gt9896s_temp_monitor_work(struct work_struct *work)
+{
+	struct delayed_work *tzwork = to_delayed_work(work);
+	struct gt9896s_ts_core_tz *ts_tz = container_of(tzwork,
+			struct gt9896s_ts_core_tz, tz_work);
+	struct gt9896s_ts_core *core = container_of(ts_tz,
+			struct gt9896s_ts_core, ts_core_tz);
+
+	if (ts_tz->tz_irq_status)
+		goto exit;
+
+	if (!atomic_read(&ts_tz->tz_on))
+		return;
+
+	thermal_zone_monitor(&board_data(core)->ts_bdata_tz);
+exit:
+	ts_tz->tz_irq_status = false;
+	schedule_delayed_work(&ts_tz->tz_work, 2 * HZ);
+}
+
+void gt9896s_ts_tz_init(struct gt9896s_ts_core *core)
+{
+	struct gt9896s_ts_core_tz *ts_tz = &core->ts_core_tz;
+
+	if (!board_data(core)->ts_bdata_tz.tz_enable)
+		return;
+
+	INIT_DELAYED_WORK(&ts_tz->tz_work, gt9896s_temp_monitor_work);
+	atomic_set(&delayed_reset, 0);
+	atomic_set(&ts_tz->tz_on, 0);
+	gt9896s_ts_tz_on(core);
+	ts_info("init temperature check work");
+}
+#endif
+
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 static int gt9896s_ts_power_on_reinit(void)
 {
@@ -1895,7 +2033,9 @@ static int gt9896s_ts_suspend(struct gt9896s_ts_core *core_data)
 	 * and charger detector to turn off the work
 	 */
 	gt9896s_ts_blocking_notify(NOTIFY_SUSPEND, NULL);
-
+#ifdef GT9896S_TZ
+	gt9896s_ts_tz_off(core_data);
+#endif
 	/* inform external module */
 	mutex_lock(&gt9896s_modules.mutex);
 	if (!list_empty(&gt9896s_modules.head)) {
@@ -2038,6 +2178,9 @@ static int gt9896s_ts_resume(struct gt9896s_ts_core *core_data)
 	 */
 	ts_info("try notify resume");
 	gt9896s_ts_blocking_notify(NOTIFY_RESUME, NULL);
+#ifdef GT9896S_TZ
+	gt9896s_ts_tz_on(core_data);
+#endif
 out:
 	ts_debug("Resume end");
 	return 0;
@@ -2209,6 +2352,10 @@ int gt9896s_ts_stage2_init(struct gt9896s_ts_core *core_data)
 	/* esd protector */
 	gt9896s_ts_esd_init(core_data);
 
+#ifdef GT9896S_TZ
+	/* tz temperature monitor*/
+	gt9896s_ts_tz_init(core_data);
+#endif
 	/*
 	 * r = gt9896s_start_fwupdate_module(core_data);
 	 * if (r)

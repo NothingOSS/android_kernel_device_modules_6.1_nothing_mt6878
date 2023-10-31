@@ -81,6 +81,14 @@
 #define GOODIX_MAX_TP_KEY  4
 #define GOODIX_MAX_PEN_KEY 2
 
+#define GT9896S_TZ
+
+#ifdef GT9896S_TZ
+#define GOODIX_DEFAULT_TEMPERATURE_DIFFERENCE 10000
+#define GOODIX_DEFAULT_TEMPERATURE_THRESHOLD 0
+#define GT9896S_DEFAULT_TEMPERATURE_CHECK_INTERVAL 2
+#define TS_DEFAULT_THERMAL_ZONE "ap_ntc"
+#endif
 /*
  * struct goodix_module - external modules container
  * @head: external modules list
@@ -99,6 +107,21 @@ struct gt9896s_module {
 	struct completion core_comp;
 	struct gt9896s_ts_core *core_data;
 };
+
+#ifdef GT9896S_TZ
+struct gt9896s_ts_bdata_tz {
+	struct thermal_zone_device *tz_dev; /* thermal zone device */
+	int temperature_difference;
+	int temperature_threshold; /*must be of 'int' type*/
+	bool tz_enable;
+	char tz_name[24]; /* thermal zone name */
+};
+struct gt9896s_ts_core_tz {
+	atomic_t tz_on;
+	struct delayed_work tz_work;
+	bool tz_irq_status;
+};
+#endif
 
 /*
  * struct gt9896s_ts_board_data -  board data
@@ -146,6 +169,9 @@ struct gt9896s_ts_board_data {
 	const char *fw_name;
 	const char *cfg_bin_name;
 	bool esd_default_on;
+#ifdef GT9896S_TZ
+	struct gt9896s_ts_bdata_tz ts_bdata_tz;
+#endif
 };
 
 enum gt9896s_fw_update_mode {
@@ -421,6 +447,7 @@ struct gt9896s_ts_esd {
 	atomic_t esd_on;
 };
 
+
 /*
  * struct godix_ts_core - core layer data struct
  * @initialized: indicate core state, 1 ok, 0 bad
@@ -471,6 +498,10 @@ struct gt9896s_ts_core {
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	struct notifier_block disp_notifier;
+#endif
+
+#ifdef GT9896S_TZ
+	struct gt9896s_ts_core_tz ts_core_tz;
 #endif
 };
 
