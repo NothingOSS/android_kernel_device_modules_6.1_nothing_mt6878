@@ -7243,7 +7243,7 @@
 			event-ovl0-on = /bits/ 16 <CMDQ_EVENT_DPC_OVL0_MTCMOS_ON>;
 			event-disp1-off = /bits/ 16 <CMDQ_EVENT_DPC_DISP1_MTCMOS_OFF>;
 			event-disp1-on = /bits/ 16 <CMDQ_EVENT_DPC_DISP1_MTCMOS_ON>;
-			vidle-mask = <0x7be>;
+			vidle-mask = <0x7b6>;
 		};
 
 		reserved@14227000 {
