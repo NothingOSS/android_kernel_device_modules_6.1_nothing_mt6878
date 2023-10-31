@@ -122,6 +122,8 @@ u32 mtk_pcie_dump_link_info(int port);
 #define PCIE_P2_EXIT_BY_CLKREQ		BIT(17)
 #define PCIE_P2_IDLE_TIME_MASK		GENMASK(27, 24)
 #define PCIE_P2_IDLE_TIME(x)		((x << 24) & PCIE_P2_IDLE_TIME_MASK)
+#define PCIE_P2_SLEEP_TIME_MASK		GENMASK(31, 28)
+#define PCIE_P2_SLEEP_TIME_4US		(0x4 << 28)
 
 #define PCIE_MSI_SET_NUM		8
 #define PCIE_MSI_IRQS_PER_SET		32
@@ -2173,6 +2175,12 @@ static int mtk_pcie_pre_init_6989(struct mtk_pcie_port *port)
 
 	/* Set write completion timeout to 4ms */
 	writel_relaxed(WCPL_TIMEOUT_4MS, port->base + PCIE_WCPL_TIMEOUT);
+
+	/* Set p2_sleep_time to 4us */
+	val = readl_relaxed(port->base + PCIE_ASPM_CTRL);
+	val &= ~PCIE_P2_SLEEP_TIME_MASK;
+	val |= PCIE_P2_SLEEP_TIME_4US;
+	writel_relaxed(val, port->base + PCIE_ASPM_CTRL);
 
 	return 0;
 }
