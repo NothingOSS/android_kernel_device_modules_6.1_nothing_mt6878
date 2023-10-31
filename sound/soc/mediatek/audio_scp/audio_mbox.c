@@ -83,7 +83,7 @@ int audio_mbox_send(void *msg, unsigned int wait)
 	if (scp_awake_lock((void *)SCP_A_ID)) {
 		/* leave without doing scp_awake_unlock, since the function trigger warning */
 		mutex_unlock(&pin_send->mutex_send);
-		return MBOX_PRE_CB_ERR;
+		return MBOX_PLT_ERR;
 	}
 
 	if (mtk_mbox_check_send_irq(mbdev, pin_send->mbox, pin_send->pin_index)) {
