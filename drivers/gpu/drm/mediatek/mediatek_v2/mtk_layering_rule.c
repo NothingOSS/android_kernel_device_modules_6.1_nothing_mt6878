@@ -256,17 +256,12 @@ static void filter_by_wcg(struct drm_device *dev,
 	struct drm_mtk_layer_config *c;
 	unsigned int disp_idx = 0;
 	unsigned int condition;
-	struct mtk_drm_private *priv = dev->dev_private;
 
 	if (get_layering_opt(LYE_OPT_SPHRT))
 		disp_idx = disp_info->disp_idx;
 
 	for (; disp_idx < HRT_DISP_TYPE_NUM ; disp_idx++) {
 		for (j = 0; j < disp_info->layer_num[disp_idx]; j++) {
-			if (priv->data->mmsys_id == MMSYS_MT6878) {
-				mtk_rollback_layer_to_GPU(disp_info, disp_idx, j);
-				continue;
-			}
 			c = &disp_info->input_config[disp_idx][j];
 			/* TODO: check disp WCG cap */
 			condition = (disp_idx == 0) || !is_ovl_wcg(c->dataspace);
