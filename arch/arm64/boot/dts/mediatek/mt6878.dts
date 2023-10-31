@@ -8481,6 +8481,7 @@
 			dlo0-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY0_SIZE>;
 			dlo1-dl-relay = /bits/ 16 <MML_DL_OUT_RELAY1_SIZE>;
 			operating-points-v2 = <&opp_table_disp>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			mmqos-supply = <&mmqos>;
 		};
 
@@ -9415,6 +9416,7 @@
 			"mdp_wrot1";
 		mdp-opp = <&opp_table_disp>;
 		operating-points-v2 = <&opp_table_disp>;
+		mdp-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		clocks = <&mmdvfs_clk CLK_MMDVFS_MDP>;
 		clock-names = "mmdvfs_clk";
