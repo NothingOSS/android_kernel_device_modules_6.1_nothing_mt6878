@@ -81,9 +81,10 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 
 	mtk_v4l2_debug(8, "[VDEC] max-op-rate table elements %u, %d per line",
 			cnt, op_item_num);
-	if (!dev->vdec_op_rate_cnt)
-		mtk_v4l2_debug(0, "[VDEC] max-op-rate-table not exist");
-
+	if (dev->vdec_op_rate_cnt == 0 || dev->vdec_op_rate_cnt > VDEC_VENC_MAX) {
+		mtk_v4l2_debug(0, "[VDEC] max-op-rate-table not exist or config wrong %d", dev->vdec_op_rate_cnt);
+		dev->vdec_op_rate_cnt = 0;
+	}
 
 	dev->vdec_dflt_op_rate = vzalloc(sizeof(struct vcodec_op_rate) * dev->vdec_op_rate_cnt);
 
@@ -132,7 +133,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 
 	mtk_v4l2_debug(8, "[VDEC] tput table elements %u, %d per line",
 			cnt, tp_item_num);
-	if (dev->vdec_tput_cnt > 0) {
+	if (dev->vdec_tput_cnt > 0 && dev->vdec_tput_cnt < VDEC_VENC_MAX) {
 		dev->vdec_tput = vzalloc(sizeof(struct vcodec_perf) * dev->vdec_tput_cnt);
 		mtk_v4l2_debug(8, "[VDEC] vzalloc %zu x %d res %p",
 			sizeof(struct vcodec_perf), dev->vdec_tput_cnt, dev->vdec_tput);
