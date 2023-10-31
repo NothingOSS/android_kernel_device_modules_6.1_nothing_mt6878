@@ -2614,7 +2614,9 @@ static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
 		if (ufs_mtk_is_tx_skew_fix(hba) &&
 			(STR_PRFX_EQUAL("MT128GBCAV2U31", dev_info->model) ||
 			STR_PRFX_EQUAL("MT256GBCAV4U31", dev_info->model) ||
-			STR_PRFX_EQUAL("MT512GBCAV8U31", dev_info->model))) {
+			STR_PRFX_EQUAL("MT512GBCAV8U31", dev_info->model) ||
+			STR_PRFX_EQUAL("MT256GBEAX4U40", dev_info->model) ||
+			STR_PRFX_EQUAL("MT512GAYAX4U40", dev_info->model))) {
 			ufshcd_dme_set(hba, UIC_ARG_MIB(PA_TACTIVATE), 8);
 		}
 	}
