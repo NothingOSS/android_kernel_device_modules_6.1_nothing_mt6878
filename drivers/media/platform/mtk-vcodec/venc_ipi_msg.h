@@ -47,6 +47,7 @@ enum venc_ipi_msg_id {
 	VCU_IPIMSG_ENC_CHECK_CODEC_ID,
 	VCU_IPIMSG_ENC_GET_BS_BUFFER,
 	VCU_IPIMSG_ENC_SMI_BUS_DUMP,
+	VCU_IPIMSG_ENC_FRAME_DUMP,
 
 	AP_IPIMSG_ENC_POWER_ON_DONE = AP_IPIMSG_VENC_ACK_BASE,
 	AP_IPIMSG_ENC_POWER_OFF_DONE,
@@ -57,6 +58,7 @@ enum venc_ipi_msg_id {
 	AP_IPIMSG_ENC_CHECK_CODEC_ID_DONE,
 	AP_IPIMSG_ENC_GET_BS_BUFFER_DONE,
 	AP_IPIMSG_ENC_SMI_BUS_DUMP_DONE,
+	AP_IPIMSG_ENC_FRAME_DUMP_DONE,
 };
 
 /* enum venc_get_param_type - The type of set parameter used in
@@ -597,6 +599,7 @@ struct venc_vsi {
 	__u64 general_buf_dma;
 	__s32 general_buf_fd;
 	__u32 general_buf_size;
+	__u64 frame_addr;
 	__u32 reserved;
 };
 

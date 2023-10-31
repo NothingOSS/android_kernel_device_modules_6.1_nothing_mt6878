@@ -202,7 +202,7 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 	}
 
 	if (is_ack)
-		return 0;
+		return 0;
 
 	if (!is_ack) {
 		inst->vcu_inst.in_ipi = true;
@@ -692,6 +692,15 @@ int vcp_enc_ipi_handler(void *arg)
 				mtk_smi_dbg_hang_detect("venc timeout");
 
 			msg->msg_id = AP_IPIMSG_ENC_SMI_BUS_DUMP_DONE;
+			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
+		}
+			break;
+		case VCU_IPIMSG_ENC_FRAME_DUMP:
+		{
+			unsigned long frm_va = vsi->frame_addr;
+
+			venc_dump_frame_data(ctx, frm_va);
+			msg->msg_id = AP_IPIMSG_ENC_FRAME_DUMP_DONE;
 			venc_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 		}
 			break;
