@@ -7584,6 +7584,7 @@
 				<0 M4U_L7_P13_VENC_REF_CHROMA 0>,
 				<0 M4U_L7_P14_VENC_SUB_R_LUMA 0>;
 			operating-points-v2 = <&opp_table_venc>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			venc-mmdvfs-in-vcp = <0>;
 			venc-mmdvfs-in-adaptive = <1>;
 			mmqos-supply = <&mmqos>;
