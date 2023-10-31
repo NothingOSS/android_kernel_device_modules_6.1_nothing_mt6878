@@ -2864,6 +2864,24 @@ static void mtk_crtc_cwb_set_sec(struct drm_crtc *crtc)
 	}
 }
 
+static bool mtk_crtc_check_fb_secure(struct drm_crtc *crtc)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct drm_framebuffer *fb;
+	int i;
+
+	for (i = 0; i < mtk_crtc->layer_nr; i++) {
+		struct drm_plane *plane = &mtk_crtc->planes[i].base;
+
+		fb = plane->state->fb;
+		if (mtk_drm_fb_is_secure(fb)) {
+			DDPDBG("plane%d has secure content !!", i);
+			return true;
+		}
+	}
+	return false;
+}
+
 static void calc_mml_config(struct drm_crtc *crtc,
 	union mtk_addon_config *addon_config,
 	struct mtk_crtc_state *crtc_state)
@@ -3436,7 +3454,8 @@ _mtk_crtc_wb_addon_module_connect(
 	enum addon_scenario scn;
 
 	if (index != 0 || mtk_crtc_is_dc_mode(crtc) ||
-		!state->prop_val[CRTC_PROP_OUTPUT_ENABLE])
+		!state->prop_val[CRTC_PROP_OUTPUT_ENABLE] ||
+		mtk_crtc_check_fb_secure(crtc))
 		return;
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
@@ -14411,6 +14430,8 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	unsigned int r_comp_id;
 	struct mtk_ddp_comp *first_comp, *r_comp;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	int session_id = 0;
+	unsigned int fence_idx;
 
 
 	if (!cmdq_handle) {
@@ -14574,12 +14595,22 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 
 	/* For DL write-back path */
 	/* wait WDMA frame done and disconnect immediately */
+
 	if (state->prop_val[CRTC_PROP_OUTPUT_ENABLE]
 		&& crtc_index == 0 && !is_from_dal) {
 		wb_cb_data = kmalloc(sizeof(*wb_cb_data), GFP_KERNEL);
 		if (unlikely(wb_cb_data == NULL)) {
 			DDPPR_ERR("%s:%d kmalloc fail\n", __func__, __LINE__);
 			return -EINVAL;
+		}
+
+		if (mtk_crtc_check_fb_secure(crtc)) {
+			/* Skip capture for secure content */
+			fence_idx = state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX];
+			session_id = mtk_get_session_id(crtc);
+			mtk_crtc_release_output_buffer_fence_by_idx(crtc, session_id, fence_idx);
+			kfree(wb_cb_data);
+			return 0;
 		}
 
 		event = mtk_crtc_wb_addon_get_event(crtc);
