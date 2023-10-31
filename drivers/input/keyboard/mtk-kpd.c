@@ -39,6 +39,8 @@
 #define KPD_MEM5_BITS	8
 #define KPD_NUM_KEYS	72	/* 4 * 16 + KPD_MEM5_BITS */
 
+static atomic_t kp_wakeup_flag = ATOMIC_INIT(1);
+
 struct mtk_keypad {
 	struct input_dev *input_dev;
 	struct wakeup_source *suspend_lock;
@@ -55,6 +57,34 @@ struct mtk_keypad {
 
 static struct platform_device *ktf_pdev;
 static struct mtk_keypad *ktf_keypad;
+
+static ssize_t keypad_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", atomic_read(&kp_wakeup_flag));
+}
+
+static ssize_t keypad_store(struct device *dev,
+			struct device_attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	int value;
+
+	ret = kstrtoint(buf, 10, &value);
+	if (ret) {
+		pr_notice("%s: kstrtoint error return %d\n", __func__, ret);
+		return -1;
+	}
+
+	if (value != 0 && value != 1)
+		return -EINVAL;
+
+	atomic_set(&kp_wakeup_flag, value);
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(keypad);
+
 static void kpd_get_keymap_state(void __iomem *kp_base, u16 state[])
 {
 	state[0] = readw(kp_base + KP_MEM1);
@@ -156,6 +186,13 @@ static int kpd_get_dts_info(struct mtk_keypad *keypad,
 		keypad->use_extend_type = 0;
 	}
 
+	if(of_property_read_bool(node, "non-wakeup")){
+		pr_notice("wakeup default disable.\n");
+		atomic_set(&kp_wakeup_flag, 0);
+	} else {
+		atomic_set(&kp_wakeup_flag, 1);
+	}
+
 	ret = of_property_read_u32(node, "mediatek,hw-map-num",
 		&keypad->hw_map_num);
 	if (ret) {
@@ -224,6 +261,10 @@ static int kpd_pdrv_probe(struct platform_device *pdev)
 		ret = -ENODEV;
 		goto err_unprepare_clk;
 	}
+
+	ret = device_create_file(&pdev->dev, &dev_attr_keypad);
+	if(ret)
+		pr_notice("create keypad file fail");
 
 	ret = kpd_get_dts_info(keypad, pdev->dev.of_node);
 	if (ret) {
@@ -318,17 +359,38 @@ static int kpd_pdrv_remove(struct platform_device *pdev)
 	wakeup_source_unregister(keypad->suspend_lock);
 	input_unregister_device(keypad->input_dev);
 	clk_disable_unprepare(keypad->clk);
+	device_remove_file(&pdev->dev, &dev_attr_keypad);
 
 	return 0;
 }
 
-static int kpd_pdrv_suspend(struct platform_device *pdev, pm_message_t state)
+static int kpd_pdrv_suspend_noirq(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
+	struct mtk_keypad *keypad = platform_get_drvdata(pdev);
+
+	if (atomic_read(&kp_wakeup_flag) == 1)
+		return 0;
+	if (keypad->irqnr)
+		disable_irq_nosync(keypad->irqnr);
+	if (keypad->base)
+		enable_kpd(keypad->base, 0);
+
 	return 0;
 }
 
-static int kpd_pdrv_resume(struct platform_device *pdev)
+static int kpd_pdrv_resume_noirq(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
+	struct mtk_keypad *keypad = platform_get_drvdata(pdev);
+
+	if (atomic_read(&kp_wakeup_flag) == 1)
+		return 0;
+	if (keypad->irqnr)
+		enable_irq(keypad->irqnr);
+	if (keypad->base)
+		enable_kpd(keypad->base, 1);
+
 	return 0;
 }
 
@@ -338,14 +400,18 @@ static const struct of_device_id kpd_of_match[] = {
 	{}
 };
 
+static const struct dev_pm_ops kpd_pm_ops = {
+	.suspend_noirq = kpd_pdrv_suspend_noirq,
+	.resume_noirq = kpd_pdrv_resume_noirq,
+};
+
 static struct platform_driver kpd_pdrv = {
 	.probe = kpd_pdrv_probe,
 	.remove = kpd_pdrv_remove,
-	.suspend = kpd_pdrv_suspend,
-	.resume = kpd_pdrv_resume,
 	.driver = {
 		   .name = KPD_NAME,
 		   .of_match_table = kpd_of_match,
+		   .pm = &kpd_pm_ops,
 	},
 };
 module_platform_driver(kpd_pdrv);
@@ -354,7 +420,6 @@ int ktf_mtk_kpd_test(char *str)
 {
 	int ret = 0;
 	int irq = 0;
-	pm_message_t ktf_state;
 
 	if (!str)
 		return -EINVAL;
@@ -363,9 +428,8 @@ int ktf_mtk_kpd_test(char *str)
 	if (!ktf_keypad)
 		return -ENODEV;
 	if (!strncmp(str, "suspend", 7)) {
-		ktf_state.event = 0;
-		kpd_pdrv_suspend(ktf_pdev, ktf_state);
-		ret = kpd_pdrv_resume(ktf_pdev);
+		kpd_pdrv_suspend_noirq(&ktf_pdev->dev);
+		ret = kpd_pdrv_resume_noirq(&ktf_pdev->dev);
 	} else if (!strncmp(str, "probe", 5)) {
 		ret = kpd_pdrv_probe(ktf_pdev);
 	} else if (!strncmp(str, "handler", 7)) {
