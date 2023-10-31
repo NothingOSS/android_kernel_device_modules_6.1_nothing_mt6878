@@ -462,7 +462,7 @@ static int disp_c3d_cfg_write_3dlut_to_reg(struct mtk_ddp_comp *comp,
 		mutex_unlock(&primary_data->c3d_lut_lock);
 	} else if (c3dBinNum == 9) {
 		if (!c3d_data->is_right_pipe) {
-			if (memcpy(&primary_data->c3d_reg_9bin,
+			if (copy_from_user(&primary_data->c3d_reg_9bin,
 						C3D_U32_PTR(c3d_lut->lut3d),
 						sizeof(primary_data->c3d_reg_9bin)) == 0) {
 				mutex_lock(&primary_data->c3d_lut_lock);
