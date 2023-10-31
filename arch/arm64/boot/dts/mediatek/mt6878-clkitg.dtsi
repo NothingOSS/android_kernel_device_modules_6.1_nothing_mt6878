@@ -19,10 +19,4 @@
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_MM_INFRA>;
 	};
 
-	bring-up-pd-ssrsys@11 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x11>;
-		power-domains = <&scpsys MT6878_POWER_DOMAIN_SSR>;
-	};
-
 };
