@@ -10,24 +10,7 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0>;
 		clocks =
-			<&topckgen_clk CLK_TOP_MMINFRA_SEL>,
-			<&topckgen_clk CLK_TOP_DISP_PWM_SEL>,
-			<&topckgen_clk CLK_TOP_SR_PKA_SEL>,
-			<&topckgen_clk CLK_TOP_SR_DMA_SEL>,
-			<&topckgen_clk CLK_TOP_SR_KDF_SEL>,
-			<&topckgen_clk CLK_TOP_SR_RNG_SEL>,
-			<&topckgen_clk CLK_TOP_ARMPLL_DIV_PLL1_CK_EN>,
-			<&topckgen_clk CLK_TOP_ARMPLL_DIV_PLL2_CK_EN>,
-			<&topckgen_clk CLK_TOP_FMEM_CK_OCC_FRC_EN>,
-			<&topckgen_clk CLK_TOP_MD_32K>,
-			<&topckgen_clk CLK_TOP_MD_26M>,
-			<&infra_ao_reg_clk CLK_IFRAO_CPUM>,
-			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
-			<&apmixedsys_clk CLK_APMIXED_MMPLL>,
-			<&apmixedsys_clk CLK_APMIXED_APLL1>,
-			<&apmixedsys_clk CLK_APMIXED_APLL2>,
-			<&pericfg_ao_clk CLK_PERAOP_AO_F32K_CK_OCC>,
-			<&vlp_cksys_clk CLK_VLP_TIA_ULPOSC_SEL>;
+			<&topckgen_clk CLK_TOP_MMINFRA_SEL>;
 	};
 
 	bring-up-pd-disp@d {

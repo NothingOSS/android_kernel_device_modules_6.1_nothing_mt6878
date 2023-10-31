@@ -463,7 +463,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_MSDC1_H>,
 			<&pericfg_ao_clk CLK_PERAOP_MSDC1_MST_F>,
 			<&pericfg_ao_clk CLK_PERAOP_MSDC1_SLV_H>,
-			<&pericfg_ao_clk CLK_PERAOP_AO_F32K_CK_OCC>,
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO0>,
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO1>,
 			<&pericfg_ao_clk CLK_PERAOP_AUDIO2>;
@@ -474,7 +473,6 @@
 		reg = <0x82>;
 		clocks =
 			<&infra_ao_reg_clk CLK_IFRAO_CQ_DMA_FPC>,
-			<&infra_ao_reg_clk CLK_IFRAO_CPUM>,
 			<&infra_ao_reg_clk CLK_IFRAO_CCIF1_AP>,
 			<&infra_ao_reg_clk CLK_IFRAO_CCIF1_MD>,
 			<&infra_ao_reg_clk CLK_IFRAO_CCIF_AP>,
@@ -499,20 +497,14 @@
 			<&topckgen_clk CLK_TOP_APLL12_DIV_SO1>,
 			<&topckgen_clk CLK_TOP_APLL12_DIV_SO2>,
 			<&topckgen_clk CLK_TOP_APLL12_DIV_SO4>,
-			<&topckgen_clk CLK_TOP_APLL12_DIV_FMI2S>,
-			<&topckgen_clk CLK_TOP_ARMPLL_DIV_PLL1_CK_EN>,
-			<&topckgen_clk CLK_TOP_ARMPLL_DIV_PLL2_CK_EN>,
-			<&topckgen_clk CLK_TOP_FMEM_CK_OCC_FRC_EN>,
-			<&topckgen_clk CLK_TOP_MD_32K>,
-			<&topckgen_clk CLK_TOP_MD_26M>;
+			<&topckgen_clk CLK_TOP_APLL12_DIV_FMI2S>;
 	};
 
 	disable-unused-clk-vlp-cksys@84 {
 		compatible = "mediatek,clk-disable-unused";
 		reg = <0x84>;
 		clocks =
-			<&vlp_cksys_clk CLK_VLP_SCP_SEL>,
-			<&vlp_cksys_clk CLK_VLP_TIA_ULPOSC_SEL>;
+			<&vlp_cksys_clk CLK_VLP_SCP_SEL>;
 	};
 
 	disable-unused-clk-topckgen@85 {
@@ -546,7 +538,6 @@
 			<&topckgen_clk CLK_TOP_MSDC30_1_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC30_1_HCLK_SEL>,
 			<&topckgen_clk CLK_TOP_AUD_INTBUS_SEL>,
-			<&topckgen_clk CLK_TOP_DISP_PWM_SEL>,
 			<&topckgen_clk CLK_TOP_USB_TOP_SEL>,
 			<&topckgen_clk CLK_TOP_USB_XHCI_SEL>,
 			<&topckgen_clk CLK_TOP_I2C_SEL>,
@@ -574,10 +565,6 @@
 			<&topckgen_clk CLK_TOP_CCU_AHB_SEL>,
 			<&topckgen_clk CLK_TOP_CCUTM_SEL>,
 			<&topckgen_clk CLK_TOP_MSDC_1P_RX_SEL>,
-			<&topckgen_clk CLK_TOP_SR_PKA_SEL>,
-			<&topckgen_clk CLK_TOP_SR_DMA_SEL>,
-			<&topckgen_clk CLK_TOP_SR_KDF_SEL>,
-			<&topckgen_clk CLK_TOP_SR_RNG_SEL>,
 			<&topckgen_clk CLK_TOP_APLL_SI0_MCK_SEL>,
 			<&topckgen_clk CLK_TOP_APLL_SI1_MCK_SEL>,
 			<&topckgen_clk CLK_TOP_APLL_SI2_MCK_SEL>,

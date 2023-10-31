@@ -1840,7 +1840,7 @@
 			"cam_subb-0", "cam_subb-1", "cam_subb-2", "cam_subb-3",
 			"cam_subb-4",
 			"cam_ccu-0", "cam_ccu-1", "cam_ccu-2",
-			"disp0-0", "mdp_lp-0";
+			"disp0-0", "disp0-1";
 		isp-main-supply = <&mt6319_6_vbuck1>;
 		cam-main-supply = <&mt6319_6_vbuck1>;
 	};
