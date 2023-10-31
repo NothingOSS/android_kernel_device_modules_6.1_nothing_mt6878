@@ -1449,9 +1449,11 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 				} else if (priv->data->mmsys_id == MMSYS_MT6897) {
 					mtk_mipi_tx_cphy_lane_config_mt6897(dsi->phy, dsi->ext,
 								     !dsi->is_slave, mtk_crtc);
-				} else if (priv->data->mmsys_id == MMSYS_MT6989 ||
-						   priv->data->mmsys_id == MMSYS_MT6878) {
+				} else if (priv->data->mmsys_id == MMSYS_MT6989) {
 					mtk_mipi_tx_cphy_lane_config_mt6989(dsi->phy, dsi->ext,
+								     !dsi->is_slave, mtk_crtc);
+				} else if (priv->data->mmsys_id == MMSYS_MT6878) {
+					mtk_mipi_tx_cphy_lane_config_mt6878(dsi->phy, dsi->ext,
 								     !dsi->is_slave, mtk_crtc);
 				} else {
 					mtk_mipi_tx_cphy_lane_config(dsi->phy, dsi->ext,
