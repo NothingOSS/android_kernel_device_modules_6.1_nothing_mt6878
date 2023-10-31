@@ -13948,8 +13948,10 @@ void mtk_drm_crtc_discrete_update(struct drm_crtc *crtc,
 		if (!mtk_crtc->pending_handle) {
 			client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 			mtk_crtc_pkt_create(&pending_handle, crtc, client);
-			cmdq_pkt_set_event(pending_handle,
-					   mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+
+			if (!mtk_crtc->skip_frame)
+				cmdq_pkt_set_event(pending_handle,
+					mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 
 			mtk_crtc->pending_handle = pending_handle;
 		} else
