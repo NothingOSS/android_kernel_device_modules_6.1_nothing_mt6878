@@ -101,10 +101,4 @@
 		power-domains = <&scpsys MT6878_POWER_DOMAIN_SSR>;
 	};
 
-	bring-up-pd-ssusb@12 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x12>;
-		power-domains = <&scpsys MT6878_POWER_DOMAIN_SSUSB>;
-	};
-
 };
