@@ -290,6 +290,9 @@ static int fake_eng_init(unsigned int chn_id)
 			fakeng->fake_eng_base[chn_id] + FAKE_ENG_FREEZE_RESULT);
 
 	/* HASH */
+	if (fakeng->emi_fake_eng_cnt == 2)
+		fakeng->feng_arg.chn_number = (fakeng->feng_arg.chn_number == 1)? 0x2:0;
+
 	val = (0x1 << 24) | (0x1 << 20) | (0x1 << 16) |
 			(fakeng->feng_arg.emi_disp_en << 12) |
 			(fakeng->feng_arg.chn_hash_en << 8) |
