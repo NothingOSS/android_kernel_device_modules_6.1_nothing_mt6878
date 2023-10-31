@@ -44,7 +44,7 @@
  * Shader Core Setting
  **************************************************/
 #define MFG3_SHADER_STACK0                  (T0C0)          /* MFG9 */
-#define MFG5_SHADER_STACK2                  (T2C1)          /* MFG10 */
+#define MFG5_SHADER_STACK2                  (T2C0)          /* MFG10 */
 
 #define GPU_SHADER_PRESENT_1 \
 	(T0C0)
