@@ -187,7 +187,7 @@ static void mminfra_clk_set(bool is_enable)
 			if (mminfra_clk[i])
 				clk_disable_unprepare(mminfra_clk[i]);
 			else
-				break;
+				pr_notice("mminfra clk(%d) null\n", i);
 		}
 	}
 }
