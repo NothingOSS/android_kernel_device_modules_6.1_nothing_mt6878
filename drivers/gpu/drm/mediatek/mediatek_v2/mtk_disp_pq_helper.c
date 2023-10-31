@@ -458,6 +458,16 @@ bool is_pq_cmd_need_pm(enum mtk_pq_frame_cfg_cmd cmd)
 	case PQ_C3D_GET_IRQ:
 	case PQ_TDSHP_GET_SIZE:
 	case PQ_VIRTUAL_GET_IRQ:
+	case PQ_DBI_LOAD_PARAM:
+	case PQ_DBI_LOAD_TB:
+	case PQ_DBI_REMAP_CHG:
+	case PQ_DBI_GET_HW_ID:
+	case PQ_DBI_GET_WIDTH:
+	case PQ_DBI_GET_HEIGHT:
+	case PQ_DBI_GET_DBV:
+	case PQ_DBI_GET_FPS:
+	case PQ_DBI_GET_SCP:
+	case PQ_VIRTUAL_GET_PIXEL_TYPE_BY_FENCE:
 		ret = false;
 		break;
 	default:
