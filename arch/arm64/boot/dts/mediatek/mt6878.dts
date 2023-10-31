@@ -9150,6 +9150,28 @@
 		iommus = <&disp_iommu M4U_L0_P0_DISP_POSTMASK0>;
 	};
 
+	mtkheap-region-sapu-data {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_sapu_data_shm_region";
+		trusted-mem-type = <12>;
+		region-heap-align-name = "mtk_sapu_data_shm_region-aligned";
+		iommus = <&apu_iommu0 M4U_L42_APU_CODE>;
+	};
+
+	mtkheap-region-sapu-engine {
+		compatible = "mediatek,dmaheap-mtk-sec-region";
+		heap-name = "mtk_sapu_engine_shm_region";
+		trusted-mem-type = <13>;
+		region-heap-align-name = "mtk_sapu_engine_shm_region-aligned";
+		iommus = <&apu_iommu0 M4U_L42_APU_CODE>;
+	};
+
+	mtkheap-page-sapu {
+		compatible = "mediatek,dmaheap-mtk-sec-page";
+		heap-name = "mtk_sapu_page-uncached";
+		trusted-mem-type = <16>;
+	};
+
 	mtkheap_page_svp: mtkheap-page-svp {
 		compatible = "mediatek,dmaheap-mtk-sec-page";
 		heap-name = "mtk_svp_page-uncached";
