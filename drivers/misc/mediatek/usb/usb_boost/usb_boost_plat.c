@@ -210,10 +210,8 @@ static int usb_boost_probe(struct platform_device *pdev)
 	cpu_latency_qos_add_request(&pm_qos_req, PM_QOS_DEFAULT_VALUE);
 
 	usb_icc_path = of_icc_get(&pdev->dev, "icc-bw");
-	if (!usb_icc_path) {
-		USB_BOOST_NOTICE("%s: fail to get icc path\n", __func__);
-		return -1;
-	}
+	if (!usb_icc_path)
+		USB_BOOST_NOTICE("%s: can't get icc path\n", __func__);
 
 	peak_bw = dvfsrc_get_required_opp_peak_bw(node, 0);
 	USB_BOOST_NOTICE("%s: peak_bw(%x)\n", __func__, peak_bw);
