@@ -39,6 +39,9 @@
 #define APU_SEMA_DATA1 (0x940)
 #define APU_SEMA_MPU_CTRL1 (0x980)
 
+#define MBOX_RV_PWR_STA_FLG (0x50)
+#define MBOX_RV_TIMESYNC_FLG (0x54)
+
 /* apu_rpc register definition */
 #define APU_RPC_STATUS_1 (0x34)
 

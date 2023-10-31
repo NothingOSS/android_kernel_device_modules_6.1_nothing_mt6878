@@ -542,6 +542,8 @@ static void timesync_update(struct mtk_apu *apu)
 	apu->conf_buf->time_diff_cycle =
 		timertick - (apu->conf_buf->time_offset * sys_timer_clk_mhz / 1000);
 
+	iowrite32(1, apu->apu_mbox + MBOX_RV_TIMESYNC_FLG);
+
 	if (apu->platdata->flags & F_DEBUG_LOG_ON) {
 		dev_info(dev, "%s: time_diff = %llu, time_diff_cycle = %llu\n", __func__,
 			apu->conf_buf->time_diff, apu->conf_buf->time_diff_cycle);
@@ -583,7 +585,7 @@ static int mt6989_polling_rpc_status(struct mtk_apu *apu, u32 pwr_stat, u32 time
 	if (pwr_stat == 0)
 		addr = apu->apu_rpc + 0x44;
 	else
-		addr = apu->apu_mbox + 0x50;
+		addr = apu->apu_mbox + MBOX_RV_PWR_STA_FLG;
 
 	ret = readl_relaxed_poll_timeout_atomic(addr, val,
 		((val & (0x1UL)) == pwr_stat), 1, timeout);
@@ -1036,7 +1038,7 @@ static void apu_polling_on_work_func(struct work_struct *p_work)
 		dev_info(dev, "%s: APU_RPC_INTF_PWR_RDY = 0x%x\n",
 			__func__, ioread32(apu->apu_rpc + 0x44));
 		dev_info(dev, "%s: MBOX0_RV_PWR_STA = 0x%x\n",
-			__func__, ioread32(apu->apu_mbox + 0x50));
+			__func__, ioread32(apu->apu_mbox + MBOX_RV_PWR_STA_FLG));
 		apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
 	}
 }
